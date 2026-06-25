@@ -6,6 +6,13 @@ import { Command } from 'commander';
 import { createRequire } from 'node:module';
 import { registerInitCommand } from '../commands/init.js';
 import { registerFlowCommand } from '../commands/flow.js';
+import { registerKnowledgeCommand } from '../commands/knowledge.js';
+import { registerViewCommand } from '../commands/view.js';
+import { registerArchiveCommand } from '../commands/archive.js';
+import { registerRoadmapCommand } from '../commands/roadmap.js';
+import { registerPlanCommand } from '../commands/plan.js';
+import { registerInstructionsCommand } from '../commands/instructions.js';
+import { registerUpdateCommand } from '../commands/update.js';
 
 // 读取 package.json 获取版本号
 const require = createRequire(import.meta.url);
@@ -22,5 +29,12 @@ program
 // 注册子命令
 registerInitCommand(program);
 registerFlowCommand(program);
+registerKnowledgeCommand(program);
+registerViewCommand(program);
+registerArchiveCommand(program);
+registerRoadmapCommand(program);
+registerPlanCommand(program);
+registerInstructionsCommand(program);
+registerUpdateCommand(program);
 
 export { program };

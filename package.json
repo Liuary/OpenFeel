@@ -16,14 +16,17 @@
     "dev": "vitest"
   },
   "dependencies": {
-    "commander": "^14.0.0"
+    "commander": "^14.0.0",
+    "fast-glob": "^3.3.3",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0",
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",
-    "typescript-eslint": "^8.0.0"
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
   },
   "engines": {
     "node": ">=20.0.0"

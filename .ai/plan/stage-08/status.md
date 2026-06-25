@@ -12,7 +12,7 @@
 
 ## 前置依赖
 - **前置依赖**：stage-03(hard)
-- **依赖状态**：pending
+- **依赖状态**：satisfied
 
 ## Worktree / Session
 - **工作模式**：manual
@@ -24,9 +24,11 @@
 - **清理策略**：manual
 
 ## 阻塞 / 暂停原因
-等待 stage-03 完成
+stage-02 + stage-03 已完成，可启动
 
 ## 状态记录
 | 时间 | Agent | 状态变化 | 说明 |
 |------|-------|----------|------|
 | 2026-06-24 | architect | planned | 阶段计划创建 |
+
+| 2026-06-25 22:46 | architect | 依赖满足 | stage-02+03 done，解锁 stage-08 |

@@ -1,0 +1,50 @@
+name: spec-driven
+version: "1.0"
+description: "规范驱动开发工作流 — proposal → specs → design → tasks → implementation → review → archive"
+
+artifacts:
+  - id: proposal
+    description: "项目提案文档"
+    generates: "docs/proposal.md"
+    template: "proposal.md"
+    requires: []
+    instruction: "创建项目提案文档，描述项目目标、范围和初步技术方案"
+
+  - id: specs
+    description: "功能规范文档"
+    generates: "docs/specs/**/*.md"
+    template: "plan.md"
+    dependsOn: ["proposal"]
+    instruction: "根据提案撰写详细功能规范"
+
+  - id: design
+    description: "技术设计文档"
+    generates: "docs/design.md"
+    template: "design.md"
+    dependsOn: ["specs"]
+    instruction: "根据规范制定技术设计方案"
+
+  - id: tasks
+    description: "任务分解"
+    generates: "docs/tasks.md"
+    template: "tasks.md"
+    dependsOn: ["design"]
+    instruction: "将设计方案分解为可执行的开发任务"
+
+  - id: implementation
+    description: "代码实现"
+    generates: "src/**/*.ts"
+    dependsOn: ["tasks"]
+    instruction: "按照任务列表进行代码实现"
+
+  - id: review
+    description: "代码审查"
+    generates: "docs/review.md"
+    dependsOn: ["implementation"]
+    instruction: "对实现代码进行审查，输出审查报告"
+
+  - id: archive
+    description: "项目归档"
+    generates: "docs/archive.md"
+    dependsOn: ["review"]
+    instruction: "归档项目文档和最终产出"

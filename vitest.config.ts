@@ -7,4 +7,8 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.test.ts'],
   },
+  // 配置模块解析：让 Vite 能正确解析 .ts 源文件
+  resolve: {
+    extensions: ['.ts', '.js', '.mjs', '.json'],
+  },
 });

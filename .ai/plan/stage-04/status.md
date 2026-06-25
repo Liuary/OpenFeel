@@ -12,7 +12,7 @@
 
 ## 前置依赖
 - **前置依赖**：stage-02(hard), stage-03(hard)
-- **依赖状态**：pending
+- **依赖状态**：satisfied
 
 ## Worktree / Session
 - **工作模式**：manual
@@ -27,3 +27,4 @@
 | 时间 | Agent | 状态变化 | 说明 |
 |------|-------|----------|------|
 | 2026-06-24 | architect | planned | v3：新增 scheme 命令 + 三层穿透 |
+| 2026-06-25 22:46 | architect | 依赖满足 | stage-02+03 done，解锁 stage-04 |

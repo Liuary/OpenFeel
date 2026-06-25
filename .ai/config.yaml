@@ -1,0 +1,27 @@
+# .ai/config.yaml
+# AI_Prompt 瀹搞儰缍斿ù浣虹埠娑撯偓闁板秶鐤?
+# 閹绘劒绶甸幍鈧張澶愭▉濞堢數娈戦崗銊ョ湰姒涙顓婚崐?
+# 閸氬嫰妯佸▓?status.md 閸欘垰鐪柈銊洬閻?
+
+meta:
+  version: 1.0.0
+
+# ---- 瀹搞儰缍斿ù渚€绮拋銈呪偓?----
+# 閸掓稑缂撻弬浼存▉濞堝灚鍨?status.md 閺堫亜锝為崘娆愭鎼存梻鏁ゆ禒銉ょ瑓姒涙顓婚崐?
+# 濞夘煉绱板銈勮礋闁劎璁插Ο鈩冩緲姒涙顓婚崐纭风礄manual+disabled閿涘绱濇禒鎾崇氨閼奉亣闊?config.yaml 閸欘垵鍏樻稉宥呮倱
+defaults:
+  # 閹笛嗩攽濡€崇础閿涙anual=娴滃搫浼愭す鍗炲З閿涘畮uto=Agent 妞瑰崬濮?
+  # 娴?auto+enabled 閻ㄥ嫰妯佸▓闈涘棘娑撳氦鍤滈崝銊╂４閻?
+  execution_mode: manual
+
+  # 閼奉亜濮╅幒銊ㄧ箻閿涙瓰isabled=濮ｅ繑顒為弳鍌氫粻閿涘當nabled=閼奉亜濮╂稉瀣╃濮?
+  # 闂団偓鐟?execution_mode=auto 閹靛秶鏁撻弫?
+  auto_advance: disabled
+
+  # 閸楁洖鍘撳ù瀣槸闁炬崘鐭鹃敍姝燼lse=鐠哄疇绻?test_writing閳姲esting閳妼ug_fixing
+  # 娑?false 閺?review_passed 閻╁瓨甯存潻鍥ㄦ诞閸?done
+  test_enabled: false
+
+  # Worktree merge mode: manual=confirm in Agent Manager
+  # auto=AutoRunner auto git merge + cleanup
+  merge_mode: auto

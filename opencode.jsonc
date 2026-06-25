@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "code",
+  "instructions": [
+    "AGENTS.md",
+    ".opencode/instructions/core.md"
+  ],
+  "skills": {
+    "get-bugs": ".opencode/skills/get-bugs",
+    "check-kb": ".opencode/skills/check-kb",
+    "bug-acceptance": ".opencode/skills/bug-acceptance",
+    "sync-status": ".opencode/skills/sync-status",
+    "get-stage-status": ".opencode/skills/get-stage-status",
+    "update-stage-status": ".opencode/skills/update-stage-status"
+  },
+  "experimental": {
+    "agent_manager_tool": true
+  }
+}

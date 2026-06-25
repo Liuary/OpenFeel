@@ -1,0 +1,36 @@
+{
+  "name": "openfeel",
+  "version": "0.1.0",
+  "description": "AI Agent 开发流程治理 CLI 工具",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "openfeel": "./bin/openfeel.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "test": "vitest run",
+    "dev": "vitest"
+  },
+  "dependencies": {
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "files": [
+    "dist",
+    "bin"
+  ]
+}

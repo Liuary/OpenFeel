@@ -1,0 +1,12 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "chat.includeApplyingInstructions": true,
+    "chat.useAgentsMdFile": true,
+    "chat.useCustomAgentHooks": true
+  }
+}

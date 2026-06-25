@@ -1,18 +1,18 @@
 ---
 description: 项目测试与 Bug 管理 Subagent，负责缺陷提交与修复验收，源码只读。
 mode: subagent
+color: "#D94A4A"
 permission:
-  edit:
-    ".ai/users/**/bugs/**": "allow"
-    "*": "deny"
+  # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
+  # 实际文件修改能力由 bash 工具权限控制
+  # 原规则: ".ai/users/**/bugs/**": "allow", "*": "deny"
   bash: "allow"
   read: "allow"
   glob: "allow"
   grep: "allow"
   task: "allow"
-  todowrite: "allow"
   skill: "allow"
-  todoread: "allow"
+  webfetch: "deny"
 ---
 
 # 本 Agent 的调用由 .ai/config.yaml defaults.test_enabled 控制，auto-runner 在 test_enabled=false 时不会调度本 Agent。
@@ -34,7 +34,7 @@ permission:
 2. 若 Prompt 指定计划阶段，调用 `load skill get-stage-status` 读取该阶段状态。
 3. 调用 `load skill check-kb` 查阅知识库。
 
-> **编辑权限**：你可以用 write/edit 工具直接修改 `.ai/users/{username}/bugs/` 下的 Bug 文件（提交 Bug、更新状态）。无需通过 bash 绕路。源码不可编辑。
+> **编辑权限**：你可以通过 `bash` 工具修改 `.ai/users/{username}/bugs/` 下的 Bug 文件（提交 Bug、更新状态）。源码不可编辑。
 
 ## 提交 Bug
 

@@ -3,24 +3,16 @@ description: TestWriter Agent，负责根据计划和实现补充自动化测试
 mode: subagent
 color: "#6A8DFF"
 permission:
-  edit:
-    "**/*test*.*": "allow"
-    "**/*spec*.*": "allow"
-    "**/tests/**": "allow"
-    "**/Tests/**": "allow"
-    ".ai/plan/**": "allow"
-    ".ai/dev/**": "allow"
-    ".ai/log/**": "allow"
-    ".ai/kb/**": "allow"
-    ".ai/users/**": "allow"
-    "*": "deny"
+  # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
+  # 实际文件修改能力由 bash 工具权限控制
+  # 原规则: "**/*test*.*": "allow", "**/*spec*.*": "allow", "**/tests/**": "allow", "**/Tests/**": "allow", ".ai/plan/**": "allow", ".ai/dev/**": "allow", ".ai/log/**": "allow", ".ai/kb/**": "allow", ".ai/users/**": "allow", "*": "deny"
   bash: "allow"
   read: "allow"
   glob: "allow"
   grep: "allow"
   task: "allow"
-  todowrite: "allow"
   skill: "allow"
+  webfetch: "deny"
 ---
 
 # 本 Agent 的调用由 .ai/config.yaml defaults.test_enabled 控制，auto-runner 在 test_enabled=false 时不会调度本 Agent。
@@ -29,7 +21,7 @@ permission:
 
 ## 核心原则
 
-> **编辑权限**：你可以用 write/edit 工具直接修改测试文件（*test*、*spec*、tests/、Tests/）和 `.ai/` 目录下的文档。无需通过 bash 绕路。生产源码不可编辑。
+> **编辑权限**：你可以通过 `bash` 工具写入测试文件（*test*、*spec*、tests/、Tests/）和 `.ai/` 目录下的文档。生产源码不可编辑。
 
 - 只修改测试相关文件，不修改生产源码。
 - 写测试前必须阅读对应子计划、实现记录和相关源码。

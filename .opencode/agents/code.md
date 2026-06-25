@@ -3,20 +3,16 @@ description: 代码 Agent，负责 Bug 修复与审查问题处理，完成后�
 mode: primary
 color: "#4A90D9"
 permission:
-  edit:
-    ".ai/plan/**": "allow"
-    ".ai/dev/**": "allow"
-    ".ai/log/**": "allow"
-    ".ai/kb/**": "allow"
-    ".ai/users/**": "allow"
-    "*": "allow"
+  # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
+  # 实际文件修改能力由 bash 工具权限控制
+  # 原规则: ".ai/plan/**": "allow", ".ai/dev/**": "allow", ".ai/log/**": "allow", ".ai/kb/**": "allow", ".ai/users/**": "allow", "*": "allow"
   bash: "allow"
   read: "allow"
   glob: "allow"
   grep: "allow"
   task: "allow"
-  todowrite: "allow"
   skill: "allow"
+  webfetch: "allow"
 ---
 
 你是项目的代码 Agent，负责 **Bug 修复** 与 **审查问题处理**，完成后再调用对应 Agent 验收。每次会话启动时应：

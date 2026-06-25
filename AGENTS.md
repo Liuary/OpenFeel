@@ -1,4 +1,4 @@
-# AI_Prompt
+# OpenFeel
 
 AI Agent 项目级行为约束与编码规范。本文件为永久性约束，适用于项目中所有 AI Agent 会话。
 

@@ -3,20 +3,16 @@ description: CodeWorker 子 Agent，供 AutoRunner 调用，在自动闭环中�
 mode: subagent
 color: "#4A90D9"
 permission:
-  edit:
-    ".ai/plan/**": "allow"
-    ".ai/dev/**": "allow"
-    ".ai/log/**": "allow"
-    ".ai/kb/**": "allow"
-    ".ai/users/**": "allow"
-    "*": "allow"
+  # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
+  # 实际文件修改能力由 bash 工具权限控制
+  # 原规则: ".ai/plan/**": "allow", ".ai/dev/**": "allow", ".ai/log/**": "allow", ".ai/kb/**": "allow", ".ai/users/**": "allow", "*": "allow"
   bash: "allow"
   read: "allow"
   glob: "allow"
   grep: "allow"
   task: "allow"
-  todowrite: "allow"
   skill: "allow"
+  webfetch: "deny"
 ---
 
 你是 CodeWorker 子 Agent，只由 AutoRunner 调用，用于自动闭环中的编码实现、审查问题修复和 Bug 修复。人工流程仍由主 `code` Agent 负责。

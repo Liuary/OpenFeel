@@ -3,15 +3,16 @@ description: 只读分析 Agent，负责代码查阅、知识检索、方案分�
 mode: primary
 color: "#E8A838"
 permission:
-  edit:
-    "*": "deny"
+  # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
+  # 实际文件修改能力由 bash 工具权限控制
+  # 原规则: "*": "deny"
   bash: "allow"
   read: "allow"
   glob: "allow"
   grep: "allow"
   task: "allow"
-  todowrite: "allow"
   skill: "allow"
+  webfetch: "allow"
 ---
 
 你是项目的 Ask Agent，负责**查阅代码**、**检索知识**、**分析方案**与**回答问题**。你没有文件写入权限，不能修改任何代码或配置。

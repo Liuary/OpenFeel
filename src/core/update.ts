@@ -12,6 +12,57 @@ export interface UpdateResult {
   skipped: string[];  // 跳过的文件（已存在且内容一致）
 }
 
+
+// ─── 支持的工具注册表 ──────────────────────────────────────────────
+
+/** 支持的 AI 工具条目 */
+export interface ToolEntry {
+  id: string;        // 适配器 ID（如 opencode）
+  name: string;      // 显示名称（如 OpenCode）
+  description: string;
+  enabled: boolean;  // 是否默认启用
+}
+
+/** 当前支持部署的 AI 工具列表 */
+export const supportedTools: ToolEntry[] = [
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    description: 'OpenCode AI 编码助手 — 生成 Agent 定义和 /opfx:* 技能',
+    enabled: true,
+  },
+  // 后续扩展：
+  // { id: 'claude', name: 'Claude Code', description: 'Anthropic Claude Code CLI', enabled: false },
+  // { id: 'cursor', name: 'Cursor', description: 'Cursor IDE', enabled: false },
+];
+
+/**
+ * 交互式选择部署目标工具
+ * 使用 @inquirer/prompts checkbox，上下键导航，空格选中，回车确认
+ * @returns 用户选中的工具 ID 列表
+ */
+export async function selectTools(): Promise<string[]> {
+  try {
+    const { checkbox } = await import('@inquirer/prompts');
+    const choices = supportedTools.map((t) => ({
+      name: `${t.name} — ${t.description}`,
+      value: t.id,
+      checked: t.enabled,
+    }));
+
+    const selected = await checkbox({
+      message: '选择要部署的 AI 工具（空格选中，回车确认）',
+      choices,
+      pageSize: 10,
+    });
+
+    return selected;
+  } catch {
+    // 交互不可用时（如非 TTY 环境），回退到全部启用项
+    console.log('（非交互环境，使用默认工具列表）');
+    return supportedTools.filter((t) => t.enabled).map((t) => t.id);
+  }
+}
 // ─── Agent 定义内容 ────────────────────────────────────────────────
 
 /** 各 Agent 定义的 Markdown 内容，key 为文件名（不含 .md） */
@@ -953,7 +1004,7 @@ function buildJsoncFromObject(obj: Record<string, unknown>): string {
  * @param projectPath - 目标项目根路径
  * @returns 更新结果（created / updated / skipped 文件列表）
  */
-export function updateProject(projectPath: string): UpdateResult {
+export function updateProject(projectPath: string, selectedTools: string[] = ["opencode"]): UpdateResult {
   const created: string[] = [];
   const updated: string[] = [];
   const skipped: string[] = [];
@@ -964,6 +1015,11 @@ export function updateProject(projectPath: string): UpdateResult {
   // 确保目标目录存在
   mkdirSync(agentsDir, { recursive: true });
   mkdirSync(skillsDir, { recursive: true });
+
+  // 过滤：仅处理选中的工具
+  if (!selectedTools.includes('opencode')) {
+    return { created: [], updated: [], skipped: [] };
+  }
 
   // 1. 生成 Agent 定义文件
   for (const [name, content] of Object.entries(AGENT_DEFINITIONS)) {

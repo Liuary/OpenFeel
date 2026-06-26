@@ -16,6 +16,7 @@
     "dev": "vitest"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.5.2",
     "commander": "^14.0.0",
     "fast-glob": "^3.3.3",
     "yaml": "^2.9.0",
@@ -39,7 +40,13 @@
   "bugs": {
     "url": "https://github.com/user/openfeel/issues"
   },
-  "keywords": ["ai-agent", "cli", "workflow", "governance", "openfeel"],
+  "keywords": [
+    "ai-agent",
+    "cli",
+    "workflow",
+    "governance",
+    "openfeel"
+  ],
   "publishConfig": {
     "access": "public"
   },

@@ -12,29 +12,31 @@ export interface Roadmap {
   path: string;
 }
 
+/** 规范化版本号：去掉用户可能输入的前导 v */
+function normalizeVersion(version: string): string {
+  return version.replace(/^v/, '');
+}
+
 /**
  * 创建分期大纲
  * 在 .openfeel/roadmap/ 下创建 v{version}.md 骨架文件
- * 骨架包含 # 分期大纲 v{version} / ## 目标 / ## 阶段划分 / ## 里程碑 等标题
  */
 export function createRoadmap(projectPath: string, version: string): void {
+  const ver = normalizeVersion(version);
   const roadmapDir = resolve(projectPath, '.openfeel', 'roadmap');
 
-  // 确保目录存在
   if (!existsSync(roadmapDir)) {
     mkdirSync(roadmapDir, { recursive: true });
   }
 
-  const filePath = join(roadmapDir, `v${version}.md`);
+  const filePath = join(roadmapDir, `v${ver}.md`);
 
-  // 若文件已存在则提示
   if (existsSync(filePath)) {
-    console.log(`大纲已存在: v${version}.md`);
+    console.log(`大纲已存在: v${ver}.md`);
     return;
   }
 
-  // 生成骨架内容
-  const content = `# 分期大纲 v${version}
+  const content = `# 分期大纲 v${ver}
 
 ## 目标
 
@@ -54,33 +56,30 @@ export function createRoadmap(projectPath: string, version: string): void {
 `;
 
   writeFileSync(filePath, content, 'utf-8');
-  console.log(`已创建分期大纲: v${version}.md`);
+  console.log(`已创建分期大纲: v${ver}.md`);
 }
 
 /**
  * 显示分期大纲内容
  * @param version 不传则列出所有大纲文件
- * @returns 大纲内容文本
  */
 export function showRoadmap(projectPath: string, version?: string): string {
   const roadmapDir = resolve(projectPath, '.openfeel', 'roadmap');
 
-  // 目录不存在时返回提示
   if (!existsSync(roadmapDir)) {
     return '暂无分期大纲（.openfeel/roadmap/ 目录不存在）';
   }
 
-  // 若指定 version，直接读取并返回文件内容
   if (version) {
-    const filePath = join(roadmapDir, `v${version}.md`);
+    const ver = normalizeVersion(version);
+    const filePath = join(roadmapDir, `v${ver}.md`);
     if (!existsSync(filePath)) {
-      console.error(`错误：大纲文件不存在 — v${version}.md`);
+      console.error(`错误：大纲文件不存在 — v${ver}.md`);
       process.exit(1);
     }
     return readFileSync(filePath, 'utf-8');
   }
 
-  // 列出所有 v*.md 文件
   const files = readdirSync(roadmapDir).filter(
     (f) => f.startsWith('v') && f.endsWith('.md'),
   );
@@ -89,6 +88,5 @@ export function showRoadmap(projectPath: string, version?: string): string {
     return '暂无分期大纲文件';
   }
 
-  // 每行一个文件名（不带路径前缀）
   return files.join('\n');
 }

@@ -13,7 +13,7 @@ description: 标准化 Bug 验收流程，供测试 Agent 或代码 Agent（自�
 
 ### 1. 读取 Bug 文件
 
-读取 `.ai/users/{username}/bugs/{模块名}/{编号}_{标题}.md`，提取以下关键信息：
+读取 `.openfeel/users/{username}/bugs/{模块名}/{编号}_{标题}.md`，提取以下关键信息：
 - 期望行为（`## 期望行为`）
 - 复现步骤（`## 复现步骤`）
 - 修复记录中的 Commit（`## 修复记录` 表格）
@@ -44,9 +44,9 @@ description: 标准化 Bug 验收流程，供测试 Agent 或代码 Agent（自�
 
 - **验收通过**：Bug 状态改为 `closed`。
 - **验收不通过**：Bug 状态退回 `fixing`。
-- 更新 `.ai/users/{username}/bugs/index.md` 中该 Bug 的状态。
-- 更新 `.ai/users/{username}/bugs/log.md` 追加变更摘要。
+- 更新 `.openfeel/users/{username}/bugs/index.md` 中该 Bug 的状态。
+- 更新 `.openfeel/users/{username}/bugs/log.md` 追加变更摘要。
 
 ### 6. 归入公共域
 
-验收通过后，核心结论写入 `.ai/bugs/{module}.md`，并在公共日志简要记录。
+验收通过后，核心结论写入 `.openfeel/bugs/{module}.md`，并在公共日志简要记录。

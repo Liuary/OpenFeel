@@ -93,7 +93,7 @@ describe('updateProject', () => {
   it('应更新已有的 opencode.jsonc：修改 default_agent 和添加 skills', () => {
     // 先创建一个已有的 opencode.jsonc
     const existing = `{
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://opencode.openfeel/config.json",
   "default_agent": "code",
   "instructions": [
     "AGENTS.md",
@@ -116,7 +116,7 @@ describe('updateProject', () => {
 
   it('保留已有 opencode.jsonc 中的 experimental 字段', () => {
     const existing = `{
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://opencode.openfeel/config.json",
   "default_agent": "code",
   "instructions": [
     "AGENTS.md"
@@ -187,7 +187,7 @@ describe('updateProject', () => {
   it('更新已有的 opencode.jsonc 时 skills 正确归入 updated 列表', () => {
     // 先创建已有 opencode.jsonc（不包含新 skills）
     const existing = `{
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://opencode.openfeel/config.json",
   "default_agent": "code",
   "instructions": ["AGENTS.md"],
   "skills": {}

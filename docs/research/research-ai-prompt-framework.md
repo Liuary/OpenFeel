@@ -26,7 +26,7 @@ AI_Prompt 是一个 **AI Agent 开发治理模板项目**——不是运行时�
 | **约束优先于赋能** | 先定义边界，再谈能力 | AGENTS.md 六条核心约束优先于所有 Agent 定义 |
 | **默认人工，可选自动** | 人保持控制权，需要时再开启自动闭环 | `status.md` 默认 `manual`，需显式切换 `auto` |
 | **声明式替代程序式** | 用 Markdown/YAML 配置文件替代 Python/TS 代码 | 所有 Agent、Skill、规则均在 Markdown 中定义 |
-| **公域私域分离** | 团队共享与个人工作区物理隔离 | `.ai/` 公域纳入 Git，`.ai/users/{name}/` 本地忽略 |
+| **公域私域分离** | 团队共享与个人工作区物理隔离 | `.openfeel/` 公域纳入 Git，`.openfeel/users/{name}/` 本地忽略 |
 | **过程可追溯** | 每个决策、每次变更都有记录 | 日志、审查记录、Bug 修复记录、状态变更记录 |
 
 ### 1.3 三层约束体系
@@ -35,12 +35,12 @@ AI_Prompt 采用三层递进式约束体系，优先级从低到高：
 
 ```
 ┌────────────────────────────────────────────┐
-│  第三层：动态规则 (.ai/dev/dev_core.md)       │
+│  第三层：动态规则 (.openfeel/dev/dev_core.md)       │
 │  [+] / [-] 开关管理，频繁变动，项目级定制       │
 │  高于 AGENTS.md，低于用户指令                  │
 ├────────────────────────────────────────────┤
 │  第二层：流程约束 (Kilo/Instructions/...)      │
-│  定义 .ai/ 工作区操作流程、状态机、审查/Bug 流转  │
+│  定义 .openfeel/ 工作区操作流程、状态机、审查/Bug 流转  │
 │  覆盖 AGENTS.md 的通用约束                     │
 ├────────────────────────────────────────────┤
 │  第一层：永久约束 (AGENTS.md)                  │
@@ -51,7 +51,7 @@ AI_Prompt 采用三层递进式约束体系，优先级从低到高：
 
 约束体系与知识库严格分离：
 - **约束体系**（AGENTS.md / Instructions / dev_core.md）：记录"应该怎么做"
-- **知识库**（.ai/kb/）：记录"这个项目是什么样的"和"遇到问题怎么办"
+- **知识库**（.openfeel/kb/）：记录"这个项目是什么样的"和"遇到问题怎么办"
 
 ### 1.4 项目结构
 
@@ -83,7 +83,7 @@ AI_Prompt/
 │       ├── get-stage-status/
 │       └── update-stage-status/
 │
-└── .ai/                               # AI 工作目录
+└── .openfeel/                               # AI 工作目录
     ├── .info.json                     # 用户身份（本地不纳入版本管理）
     ├── dev/                           # 核心规则与进度状态
     │   ├── dev_core.md                # 第三层：动态规则
@@ -119,12 +119,12 @@ AI_Prompt 定义了完整的 Agent 角色分工，按**人工流程**与**自动
 
 | 角色 | 类型 | 轨道 | 权限 | 职责 |
 |------|------|------|------|------|
-| **architect** | 主 Agent | 人工 | `.ai/` 目录读写，源码只读 | 计划管理 + 代码审查 + 审查验收 |
+| **architect** | 主 Agent | 人工 | `.openfeel/` 目录读写，源码只读 | 计划管理 + 代码审查 + 审查验收 |
 | **code** | 主 Agent | 人工 | 全项目读写 | Bug 修复 + 审查问题处理 |
 | **ask** | 主 Agent | 人工 | 全项目只读 | 代码查阅 + 知识检索 + 方案分析 |
-| **auto-runner** | 子代办 | 自动 | `.ai/` 目录读写，源码只读 | 在单个 worktree 中串行调度自动闭环 |
+| **auto-runner** | 子代办 | 自动 | `.openfeel/` 目录读写，源码只读 | 在单个 worktree 中串行调度自动闭环 |
 | **code-worker** | 子代办 | 自动 | 全项目读写（限定 worktree） | 自动闭环编码实现 + 审查修复 + Bug 修复 |
-| **review-worker** | 子代办 | 自动 | `.ai/` 目录读写，源码只读 | 自动闭环代码审查 + 审查验收 |
+| **review-worker** | 子代办 | 自动 | `.openfeel/` 目录读写，源码只读 | 自动闭环代码审查 + 审查验收 |
 | **test-writer** | 子代办 | 自动 | 仅测试文件 | 根据计划编写自动化测试 |
 | **tester** | 子代办 | 双轨 | Bug 文件读写 | 测试执行 + Bug 提交 + 验收闭环 |
 | **debug** | 子代办 | 双轨 | Bug 文件读写 | 缺陷排查 + 根因分析 |
@@ -151,7 +151,7 @@ AI_Prompt 的愿景分为三层：
 
 1. **近期（当前阶段）**：作为 Kilo 的 Agent 治理模板，为单个工具提供可控的 AI 开发体验。
 2. **中期（v2.0）**：成为跨工具的 Agent 治理框架，支持 Kilo、Cursor、Claude Code、GitHub Copilot 等主流 Agent 工具，提供统一的配置-运行-审计体系。
-3. **远期（v3.0）**：发展成为 AI 辅助软件开发的**治理标准**，类似 ESLint 之于代码风格、Conventional Commits 之于提交规范——让 `.ai/` 工作区成为任何一个 AI 驱动的开发项目的标配。
+3. **远期（v3.0）**：发展成为 AI 辅助软件开发的**治理标准**，类似 ESLint 之于代码风格、Conventional Commits 之于提交规范——让 `.openfeel/` 工作区成为任何一个 AI 驱动的开发项目的标配。
 
 ---
 
@@ -189,7 +189,7 @@ AI_Prompt 明确位于**右下象限**——开发工具治理层 + 声明式配
 | 维度 | Claude Code | AI_Prompt |
 |------|------------|-----------|
 | **定位** | Anthropic 官方 CLI Agent 工具 | 跨工具 Agent 治理模板套件 |
-| **规则文件** | `CLAUDE.md`（项目根目录，单文件）| `AGENTS.md` + `Instructions/` + `.ai/dev/dev_core.md`（三层递进） |
+| **规则文件** | `CLAUDE.md`（项目根目录，单文件）| `AGENTS.md` + `Instructions/` + `.openfeel/dev/dev_core.md`（三层递进） |
 | **Agent 角色** | 单 Agent，无角色分工 | 9 个预定义角色，人工/自动双轨 |
 | **工作流** | 无显式工作流 | 完整状态机（planned→done），双轨调度 |
 | **审查机制** | 无内建审查 | Architect 审查 + ReviewWorker 自动审查 |
@@ -222,7 +222,7 @@ AI_Prompt 明确位于**右下象限**——开发工具治理层 + 声明式配
 | **Agent 支持** | 支持 `AGENTS.md` 作为 Agent 指令文件 | `AGENTS.md` 是核心约束文件，是最早使用该文件名的项目之一 |
 | **审查** | Copilot Code Review（使用自定义指令） | Architect 审查 + ReviewWorker 审查 + 审查条目生命周期 |
 | **状态管理** | 无 | `status.md` 状态机（14 种状态） |
-| **工作区** | 无 | `.ai/` 标准化工作区 |
+| **工作区** | 无 | `.openfeel/` 标准化工作区 |
 
 **关键差异**：GitHub Copilot 的规则体系是最接近 AI_Prompt 的（都是声明式、多层级、支持 Agent），但它缺少工作流状态机、Agent 角色体系、Bug 追踪等深度治理能力。
 
@@ -298,7 +298,7 @@ AI_Prompt 的生态位就是要在 **AI Agent 开发治理**这个领域，做�
 | 维度 | AI_Prompt 的做法 | 行业现状 | 差异化程度 |
 |------|-----------------|----------|------------|
 | **约束哲学** | 用三层约束做减法，先定义"不能做什么" | 几乎所有项目都在做加法（更多工具/能力） | ⭐⭐⭐⭐⭐ |
-| **跨工具治理** | 一套配置多工具生效（AGENTS.md + .ai/） | 每个工具都有自己的规则格式，互不兼容 | ⭐⭐⭐⭐⭐ |
+| **跨工具治理** | 一套配置多工具生效（AGENTS.md + .openfeel/） | 每个工具都有自己的规则格式，互不兼容 | ⭐⭐⭐⭐⭐ |
 | **Agent 角色体系** | 预定义 9 个角色，权限分明，职责清晰 | 最多区分"设计/编码"两个阶段 | ⭐⭐⭐⭐ |
 | **人工/自动双轨** | 默认人工控制，需要时启动自动闭环，互不干扰 | 要么纯人工，要么纯自动 | ⭐⭐⭐⭐ |
 | **状态机驱动** | 14 种状态的形式化开发阶段机 | 无或极度简化的状态 | ⭐⭐⭐⭐⭐ |
@@ -359,9 +359,9 @@ AI_Prompt 的生态位就是要在 **AI Agent 开发治理**这个领域，做�
 - 将 Agent/Skill 定义从 Kilo 专用格式中**解耦**，定义**通用描述格式**（YAML/JSON Schema）
 - 提供适配器：Kilo Adapter、Claude Code Adapter、Cursor Adapter
 - 发布 `ai-init` CLI 替代 deploy.py，支持 `ai-init --tool cursor`
-- 将 `.ai/` 工作区作为独立标准，与具体工具解耦
+- 将 `.openfeel/` 工作区作为独立标准，与具体工具解耦
 
-**里程碑**：一个 `.ai/` 目录 + `AGENTS.md` 同时在 Kilo、Claude Code、Cursor 中生效
+**里程碑**：一个 `.openfeel/` 目录 + `AGENTS.md` 同时在 Kilo、Claude Code、Cursor 中生效
 
 #### 第二阶段（2027 Q1-Q2）：治理平台化
 
@@ -388,7 +388,7 @@ AI_Prompt 的生态位就是要在 **AI Agent 开发治理**这个领域，做�
 
 - **模板市场**：社区贡献的规则模板（startup-template、enterprise-template、open-source-template）
 - **适配器生态**：第三方开发的工具适配器（JetBrains AI、Windsurf、Zed、Replit Agent...）
-- **`.ai-spec` 标准提案**：将 `.ai/` 工作区规范形式化为开放标准（参考 OpenAPI、Conventional Commits 的发展路径）
+- **`.ai-spec` 标准提案**：将 `.openfeel/` 工作区规范形式化为开放标准（参考 OpenAPI、Conventional Commits 的发展路径）
 - **CI/CD 集成**：GitHub Action `ai-governance-check` 检验 PR 是否遵循治理规则
 
 **里程碑**：有 10+ 个工具的原生适配器，`.ai-spec` v1.0 草案发布
@@ -430,7 +430,7 @@ AI_Prompt 的生态位就是要在 **AI Agent 开发治理**这个领域，做�
 
 ### 5.1 定位一句话
 
-AI_Prompt 是 **AI Agent 开发治理领域的 ESLint**——它解决的不是"AI 能做什么"，而是"AI 在开发中该怎么做"；它的差异化不在算法或模型层面，而在**流程、约束和治理**层面；它的终极愿景是让 `.ai/` 工作区和 `AGENTS.md` 成为任何 AI 驱动开发项目的标配，就像 `.gitignore` 之于版本管理。
+AI_Prompt 是 **AI Agent 开发治理领域的 ESLint**——它解决的不是"AI 能做什么"，而是"AI 在开发中该怎么做"；它的差异化不在算法或模型层面，而在**流程、约束和治理**层面；它的终极愿景是让 `.openfeel/` 工作区和 `AGENTS.md` 成为任何 AI 驱动开发项目的标配，就像 `.gitignore` 之于版本管理。
 
 ### 5.2 当前状态
 

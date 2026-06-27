@@ -1,6 +1,6 @@
 ---
 name: update-stage-status
-description: 标准化更新 .ai/plan/{stage}/status.md 的子计划状态、责任 Agent 和状态记录，避免各 Agent 随意改写状态文件。适用于自动闭环和人工流程中的阶段状态变更。
+description: 标准化更新 .openfeel/plan/{stage}/status.md 的子计划状态、责任 Agent 和状态记录，避免各 Agent 随意改写状态文件。适用于自动闭环和人工流程中的阶段状态变更。
 ---
 
 # 更新子计划状态
@@ -28,14 +28,14 @@ description: 标准化更新 .ai/plan/{stage}/status.md 的子计划状态、责
 
 ### 0. 读取全局配置
 
-读取 `.ai/config.yaml`，获取 `defaults` 中的 `execution_mode`、`auto_advance`、`merge_mode`。
+读取 `.openfeel/config.yaml`，获取 `defaults` 中的 `execution_mode`、`auto_advance`、`merge_mode`。
 
 ### 1. 读取状态文件
 
-读取 `.ai/plan/{stage}/status.md`。
+读取 `.openfeel/plan/{stage}/status.md`。
 
 若文件不存在且当前 Agent 为 Architect：
-  1. 从 `.ai/config.yaml` `defaults` 读取 `execution_mode`、`auto_advance` 作为初始值
+  1. 从 `.openfeel/config.yaml` `defaults` 读取 `execution_mode`、`auto_advance` 作为初始值
   2. 按模板创建 `status.md`，将 config 默认值写入对应字段
 其他 Agent 不得自行创建，必须提示用户或 Architect 先初始化阶段状态。
 
@@ -96,7 +96,7 @@ planned | ready_for_code | coding | ready_for_review | review_failed | review_pa
 
 ### 6. 合并状态处理
 
-当子计划状态变为 `done` 或 `review_passed`（且 Architect 验收完毕）时，根据 `.ai/config.yaml` 中的 `merge_mode` 决定合并行为：
+当子计划状态变为 `done` 或 `review_passed`（且 Architect 验收完毕）时，根据 `.openfeel/config.yaml` 中的 `merge_mode` 决定合并行为：
 
 - **`merge_mode=auto`**：
   1. 将 `合并状态` 更新为 `merged`（实际合并由 AutoRunner 或 Architect 执行 git 操作，Skill 仅更新状态字段）

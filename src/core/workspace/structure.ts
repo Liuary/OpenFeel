@@ -16,15 +16,20 @@ export function ensureDir(path: string): void {
 
 /** .openfeel/ 下的子目录清单 */
 const WORKSPACE_DIRS = [
-  'roadmap',
+  'plan',
   'stages',
+  'roadmap',
   'kb',
   'dev',
   'log',
   'code_review',
   'bugs',
+  'users',
   'tmp',
 ];
+
+/** dev/ 下的子目录清单 */
+const DEV_SUB_DIRS = ['note'];
 
 /**
  * 创建 .openfeel/ 完整目录结构
@@ -45,6 +50,16 @@ export function createWorkspace(projectPath: string): string[] {
     if (!existsSync(fullPath)) {
       mkdirSync(fullPath, { recursive: true });
       created.push(`.openfeel/${dir}/`);
+    }
+  }
+
+  // 创建 dev 下的子目录
+  const devBase = resolve(base, 'dev');
+  for (const subDir of DEV_SUB_DIRS) {
+    const fullPath = resolve(devBase, subDir);
+    if (!existsSync(fullPath)) {
+      mkdirSync(fullPath, { recursive: true });
+      created.push(`.openfeel/dev/${subDir}/`);
     }
   }
 

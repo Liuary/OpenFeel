@@ -9,13 +9,13 @@ description: 聚合所有成员的任务进度视图，供任意 Agent 快速了
 
 ## 输入
 
-无（自动从 `.ai/dev/current.md` 提取）
+无（自动从 `.openfeel/dev/current.md` 提取）
 
 ## 执行步骤
 
 ### 1. 读取进度文件
 
-读取 `.ai/dev/current.md`，提取所有 `@{username}` 行。
+读取 `.openfeel/dev/current.md`，提取所有 `@{username}` 行。
 
 ### 2. 解析任务条目
 
@@ -28,7 +28,7 @@ description: 聚合所有成员的任务进度视图，供任意 Agent 快速了
 
 ### 3. 查漏补缺
 
-- 对比 `.ai/users/` 下的所有用户目录，检查是否有成员在 `current.md` 中无记录
+- 对比 `.openfeel/users/` 下的所有用户目录，检查是否有成员在 `current.md` 中无记录
 - 若有，标记为「未同步」
 
 ### 4. 格式化输出

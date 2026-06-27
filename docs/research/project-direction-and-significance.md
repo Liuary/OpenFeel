@@ -11,7 +11,7 @@ AI_Prompt 不是业务代码库，也不是单一提示词合集，而是一套�
 | 类型 | 代表文件 | 作用 |
 |------|----------|------|
 | 行为约束 | `AGENTS.md` | 规定 AI Agent 的通用行为边界、编码规范、确认规则和文档规则 |
-| 流程规范 | `Kilo/Instructions/kilo_instructions_core.md` | 规定 `.ai/` 工作区、计划、日志、知识库、Bug 和审查的运行方式 |
+| 流程规范 | `Kilo/Instructions/kilo_instructions_core.md` | 规定 `.openfeel/` 工作区、计划、日志、知识库、Bug 和审查的运行方式 |
 | 角色模板 | `Kilo/agents/*.md` | 将 Architect、Code、AutoRunner、Tester、Debug 等职责拆开 |
 | 能力模板 | `Kilo/skills/*/SKILL.md` | 用 Skill 标准化知识库查阅、Bug 获取、阶段状态更新等重复操作 |
 
@@ -29,7 +29,7 @@ AI_Prompt 不是业务代码库，也不是单一提示词合集，而是一套�
 
 AI 编码的另一类问题是记忆不可靠。很多关键经验只存在于某次对话中，一旦上下文压缩或会话结束，约定、排障经验和设计理由就会消失。
 
-本项目通过 `.ai/` 工作区把记忆分为公共域和私域：公共域沉淀计划、知识库、团队日志、审查摘要和 Bug 结论；私域保存个人操作状态、详细审查、Bug 追踪和临时笔记。这个设计将 AI 记忆从“模型上下文”迁移到“项目文件系统”，使经验可以被人查看、被 Git 追踪、被下次会话重新加载。
+本项目通过 `.openfeel/` 工作区把记忆分为公共域和私域：公共域沉淀计划、知识库、团队日志、审查摘要和 Bug 结论；私域保存个人操作状态、详细审查、Bug 追踪和临时笔记。这个设计将 AI 记忆从“模型上下文”迁移到“项目文件系统”，使经验可以被人查看、被 Git 追踪、被下次会话重新加载。
 
 ### 2.3 多 Agent 协作缺少职责分离
 
@@ -49,7 +49,7 @@ AI_Prompt 将人工流程和自动流程拆开：人工流程使用 `architect`�
 
 `deploy.py` 和 `DEPLOY.md` 表明项目希望被复制到其他项目中使用。它不是只服务当前仓库，而是作为模板项目为不同业务仓库提供统一 AI 协作底座。
 
-这个方向下，AI_Prompt 的核心竞争力不在某个单点规则，而在迁移后的完整性：目标项目拿到 AGENTS、Instructions、Agent、Skill、`.ai/` 工作区和 `.gitignore` 规则后，可以立即形成一套可运行的协作秩序。
+这个方向下，AI_Prompt 的核心竞争力不在某个单点规则，而在迁移后的完整性：目标项目拿到 AGENTS、Instructions、Agent、Skill、`.openfeel/` 工作区和 `.gitignore` 规则后，可以立即形成一套可运行的协作秩序。
 
 ### 3.3 从人工辅助走向受控自动闭环
 
@@ -59,7 +59,7 @@ AI_Prompt 将人工流程和自动流程拆开：人工流程使用 `architect`�
 
 ### 3.4 从一次性产出走向长期知识积累
 
-`.ai/kb/` 的定位说明项目重视“经验的结构化复用”。调试流程、架构决策、代码模式和环境搭建经验不再散落在聊天记录里，也不混入 AGENTS 这种行为约束文件，而是进入知识库。
+`.openfeel/kb/` 的定位说明项目重视“经验的结构化复用”。调试流程、架构决策、代码模式和环境搭建经验不再散落在聊天记录里，也不混入 AGENTS 这种行为约束文件，而是进入知识库。
 
 未来方向上，项目可以继续强化知识库索引、阶段复盘和 Bug 根因归档，让每一次 AI 协作都留下可复用的信息增量。
 
@@ -91,7 +91,7 @@ AI 工具带来的效率提升，经常被隐性成本抵消：重复解释项�
 
 ## 五、建议保持的建设重点
 
-1. 继续强化部署后的可用性：让目标项目首次部署后能快速完成 `.ai/` 初始化、身份识别、知识库索引和状态检查。
+1. 继续强化部署后的可用性：让目标项目首次部署后能快速完成 `.openfeel/` 初始化、身份识别、知识库索引和状态检查。
 2. 继续控制模板复杂度：新增 Agent 或 Skill 前，先判断是否能复用现有角色，避免模板本身变成维护负担。
 3. 继续完善文档索引：README 面向快速理解，DEPLOY 面向部署执行，`docs/research/` 面向方向分析和长期思考。
 4. 继续沉淀真实使用反馈：把自动闭环失败、Bug 验收反复、知识库遗漏等案例转化为规则或知识库条目。
@@ -107,4 +107,4 @@ AI_Prompt 的项目方向可以概括为：构建一套可部署、可审查、�
 
 撰写时间：2026-05-11
 
-核心参考来源：本仓库 `README.md`、`DEPLOY.md`、`AGENTS.md`、`kilo.jsonc`、`deploy.py`、`Kilo/Instructions/kilo_instructions_core.md`、`Kilo/agents/*.md`、`Kilo/skills/*/SKILL.md`、`.ai/dev/dev_core.md`、`.ai/kb/index.md`。
+核心参考来源：本仓库 `README.md`、`DEPLOY.md`、`AGENTS.md`、`kilo.jsonc`、`deploy.py`、`Kilo/Instructions/kilo_instructions_core.md`、`Kilo/agents/*.md`、`Kilo/skills/*/SKILL.md`、`.openfeel/dev/dev_core.md`、`.openfeel/kb/index.md`。

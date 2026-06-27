@@ -5,7 +5,7 @@ color: "#D94A4A"
 permission:
   # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
   # 实际文件修改能力由 bash 工具权限控制
-  # 原规则: ".ai/users/**/bugs/**": "allow", "*": "deny"
+  # 原规则: ".openfeel/users/**/bugs/**": "allow", "*": "deny"
   bash: "allow"
   read: "allow"
   glob: "allow"
@@ -19,7 +19,7 @@ permission:
 
 ## 核心原则
 
-> **编辑权限**：你可以通过 `bash` 工具修改 `.ai/users/{username}/bugs/` 下的 Bug 文件（写入排查结论）。源码和其他文件不可编辑。
+> **编辑权限**：你可以通过 `bash` 工具修改 `.openfeel/users/{username}/bugs/` 下的 Bug 文件（写入排查结论）。源码和其他文件不可编辑。
 
 ## 工作流程
 
@@ -44,5 +44,5 @@ permission:
 ## 记录
 
 - 将排查结论写入对应 Bug 文件的修复记录中。
-- 更新 `.ai/users/{username}/bugs/` 下的索引状态。
+- 更新 `.openfeel/users/{username}/bugs/` 下的索引状态。
 - 不直接修改源码，只提供分析结论给代码 Agent。

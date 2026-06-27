@@ -1,0 +1,95 @@
+version: "2.0"
+project: "OpenFeel"
+
+# ============================================================
+# v2.0 阶段依赖声明
+# ============================================================
+
+stages:
+  v2-stage-01:
+    display: "目录统一 + 基础设施补全"
+    depends: []
+    downstream:
+      - stage: v2-stage-02
+        type: hard
+        reason: "CLI 修复需要统一后的目录结构"
+      - stage: v2-stage-03
+        type: hard
+        reason: "Agent 规范更新需要统一后的工作区"
+
+  v2-stage-02:
+    display: "CLI Bug 修复 + 增强"
+    depends:
+      - stage: v2-stage-01
+        type: hard
+    downstream:
+      - stage: v2-stage-04
+        type: hard
+        reason: "韧性验证需要修复后的 CLI"
+      - stage: v2-stage-05
+        type: hard
+        reason: "交互 CLI 需要修复后的命令基础"
+      - stage: v2-stage-07
+        type: hard
+        reason: "可扩展性重构需要稳定的流水线基础"
+
+  v2-stage-03:
+    display: "Agent 规范 + 工具使用约束"
+    depends:
+      - stage: v2-stage-01
+        type: hard
+    downstream: []
+
+  v2-stage-04:
+    display: "韧性路径验证"
+    depends:
+      - stage: v2-stage-02
+        type: hard
+    downstream:
+      - stage: v2-stage-06
+        type: hard
+        reason: "部署测试前须验证韧性机制"
+      - stage: v2-stage-07
+        type: hard
+        reason: "可扩展性重构需要验证后的稳定流水线"
+
+  v2-stage-05:
+    display: "交互式 CLI + 工具链补齐"
+    depends:
+      - stage: v2-stage-02
+        type: hard
+    downstream:
+      - stage: v2-stage-06
+        type: hard
+        reason: "部署测试需包含交互 CLI 验证"
+
+  v2-stage-06:
+    display: "部署测试 2.0"
+    depends:
+      - stage: v2-stage-04
+        type: hard
+      - stage: v2-stage-05
+        type: hard
+      - stage: v2-stage-07
+        type: hard
+    downstream: []
+
+  v2-stage-07:
+    display: "可扩展性重构（核心+适配器）"
+    depends:
+      - stage: v2-stage-02
+        type: hard
+      - stage: v2-stage-04
+        type: hard
+    downstream:
+      - stage: v2-stage-06
+        type: hard
+        reason: "部署测试须验证可扩展性"
+
+# ============================================================
+# 执行约束
+# ============================================================
+constraints:
+  max_parallel: 2           # 允许 stage-02 ∥ stage-03 并行
+  review_gate: enabled
+  test_gate: enabled

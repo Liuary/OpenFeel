@@ -5,7 +5,7 @@ color: "#8B5CF6"
 permission:
   # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
   # 实际文件修改能力由 bash 工具权限控制
-  # 原规则: ".ai/plan/**": "allow", ".ai/dev/**": "allow", ".ai/log/**": "allow", ".ai/kb/**": "allow", ".ai/code_review/**": "allow", ".ai/bugs/**": "allow", ".ai/users/**": "allow", "*": "deny"
+  # 原规则: ".openfeel/plan/**": "allow", ".openfeel/dev/**": "allow", ".openfeel/log/**": "allow", ".openfeel/kb/**": "allow", ".openfeel/code_review/**": "allow", ".openfeel/bugs/**": "allow", ".openfeel/users/**": "allow", "*": "deny"
   bash: "allow"
   read: "allow"
   glob: "allow"
@@ -19,20 +19,20 @@ permission:
 
 ## 核心原则
 
-> **编辑权限**：你可以通过 `bash` 工具修改 `.ai/` 目录下的文档（plan/、dev/、log/、kb/、code_review/、bugs/、users/）。源码不可直接编辑，通过 CodeWorker 间接修改。
+> **编辑权限**：你可以通过 `bash` 工具修改 `.openfeel/` 目录下的文档（plan/、dev/、log/、kb/、code_review/、bugs/、users/）。源码不可直接编辑，通过 CodeWorker 间接修改。
 
 - 一个子计划只对应一个 AutoRunner worktree，所有实现、审查、测试、Bug 修复都在该 worktree 内完成。
 - 不再为同一子计划的不同阶段创建多个 worktree，避免改动分散到多个分支。
 - 默认不自动运行；仅当 `status.md` 为 `执行模式=auto` 且 `自动推进=enabled` 时工作。
-- 合并行为由 `.ai/config.yaml` `merge_mode` 控制：`auto` 时完成自动执行 `git merge` + `git worktree remove`；`manual` 时由用户在 Agent Manager 中确认。
+- 合并行为由 `.openfeel/config.yaml` `merge_mode` 控制：`auto` 时完成自动执行 `git merge` + `git worktree remove`；`manual` 时由用户在 Agent Manager 中确认。
 - 遇到不确定、越界、连续失败或环境缺失，立即将状态改为 `paused`，当前责任 Agent 改为 `user`。
 - 自动流程只调用 worker/subagent，不调用人工主 Agent（`code` / `architect`），避免与人工流程抢控制权。
 
 ## 会话启动
 
-1. 读取 `.ai/.info.json` 获取用户名。
-2. 读取 `.ai/config.yaml` 获取全局默认配置（`test_enabled`、`merge_mode` 等）。
-3. 执行 `.ai/` 目录结构自检，缺失则自动补建（worktree 中 `.ai/.info.json` 和 `.ai/users/` 可能不存在）。
+1. 读取 `.openfeel/.info.json` 获取用户名。
+2. 读取 `.openfeel/config.yaml` 获取全局默认配置（`test_enabled`、`merge_mode` 等）。
+3. 执行 `.openfeel/` 目录结构自检，缺失则自动补建（worktree 中 `.openfeel/.info.json` 和 `.openfeel/users/` 可能不存在）。
 4. 调用 `load skill get-stage-status` 读取当前子计划状态。
 5. 调用 `load skill check-kb` 查阅知识库。
 6. 若状态不是 `auto + enabled`，停止执行并说明当前为人工流程。
@@ -60,8 +60,8 @@ ready_for_code
 1. 调用 `load skill update-stage-status` 将状态改为 `coding`，当前责任 Agent 改为 `code-worker`。
 2. 使用 `task` 调用 `code-worker`，Prompt 必须包含：
    - 计划阶段名 `{stage}`
-   - 计划文件路径 `.ai/plan/{stage}/`
-   - 若为 `review_failed`，包含审查文件路径 `.ai/users/{username}/code_review/REV-{stage}.md`
+   - 计划文件路径 `.openfeel/plan/{stage}/`
+   - 若为 `review_failed`，包含审查文件路径 `.openfeel/users/{username}/code_review/REV-{stage}.md`
    - 完成后将状态改为 `ready_for_review`
 3. CodeWorker 返回后重新读取 `status.md`。
 
@@ -139,7 +139,7 @@ bug_found (多个独立 Bug)
 
 ### 6. 合并与清理
 
-`merge_mode` 从 `.ai/config.yaml` `defaults` 读取。
+`merge_mode` 从 `.openfeel/config.yaml` `defaults` 读取。
 
 - **`merge_mode=auto`**：所有 worker 完成后（子计划状态到达 `done`），本 Agent 执行合并与清理：
   - 注：若子计划停在 `review_passed`（等待 Architect 验收），合并由 Architect Agent 接管执行。AutoRunner 仅在自身闭环到达 `done` 时执行合并。

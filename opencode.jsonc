@@ -15,5 +15,6 @@
   },
   "experimental": {
     "agent_manager_tool": true
-  }
+  },
+  "permission": "allow"
 }

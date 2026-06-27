@@ -7,13 +7,13 @@ description: 获取当前模块下状态为 open 或 fixing 的 Bug 列表，供
 
 ## 输入
 
-无（自动从 `.ai/users/{username}/bugs/index.md` 和模块归属中提取）
+无（自动从 `.openfeel/users/{username}/bugs/index.md` 和模块归属中提取）
 
 ## 执行步骤
 
 ### 1. 读取模块索引
 
-读取 `.ai/users/{username}/bugs/index.md`，获取当前 Agent 负责模块下的所有 Bug 条目（编号、标题、状态、优先级）。
+读取 `.openfeel/users/{username}/bugs/index.md`，获取当前 Agent 负责模块下的所有 Bug 条目（编号、标题、状态、优先级）。
 
 ### 2. 筛选活跃 Bug
 

@@ -1,0 +1,107 @@
+# .openfeel/plan/deps.yaml
+# OpenFeel 阶段依赖声明
+# hard: 语义依赖，必须串行
+# soft: 弱依赖，可并行但合并需确认
+# mutual_exclusion: 修改同一文件集，严格串行
+
+stages:
+  stage-01:
+    name: 项目骨架与构建体系
+    depends_on: []
+    modifies:
+      - "package.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "src/cli/index.ts"
+      - "bin/openfeel.js"
+
+  stage-02:
+    name: 核心 Schema 引擎
+    depends_on:
+      - { stage: stage-01, type: hard }
+    modifies:
+      - "src/core/schema.ts"
+      - "src/core/artifact-graph/**"
+      - "schemas/**"
+
+  stage-03:
+    name: 工作区管理 (init)
+    depends_on:
+      - { stage: stage-01, type: hard }
+    modifies:
+      - "src/core/init.ts"
+      - "src/core/workspace/**"
+      - "src/commands/init.ts"
+
+  stage-04:
+    name: 开发计划管理 (plan)
+    depends_on:
+      - { stage: stage-02, type: hard }
+      - { stage: stage-03, type: hard }
+    modifies:
+      - "src/core/plan/**"
+      - "src/commands/plan.ts"
+
+  stage-05:
+    name: 指令生成系统
+    depends_on:
+      - { stage: stage-02, type: hard }
+      - { stage: stage-04, type: soft }
+    modifies:
+      - "src/core/artifact-graph/instruction-loader.ts"
+      - "src/commands/instructions.ts"
+
+  stage-06:
+    name: 审查与归档闭环
+    depends_on:
+      - { stage: stage-02, type: hard }
+      - { stage: stage-03, type: hard }
+    modifies:
+      - "src/core/review/**"
+      - "src/core/archive/**"
+      - "src/commands/review.ts"
+      - "src/commands/archive.ts"
+
+  stage-07:
+    name: OpenCode 适配器
+    depends_on:
+      - { stage: stage-05, type: hard }
+      - { stage: stage-03, type: hard }
+    modifies:
+      - "src/adapters/opencode/**"
+      - "schemas/**/templates/**"
+
+  stage-08:
+    name: 知识库系统
+    depends_on:
+      - { stage: stage-03, type: hard }
+    modifies:
+      - "src/core/workspace/knowledge.ts"
+      - "src/commands/knowledge.ts"
+
+  stage-09:
+    name: 测试、文档与发布
+    depends_on:
+      - { stage: stage-01, type: hard }
+      - { stage: stage-02, type: hard }
+      - { stage: stage-03, type: hard }
+      - { stage: stage-04, type: hard }
+      - { stage: stage-05, type: hard }
+      - { stage: stage-06, type: hard }
+      - { stage: stage-07, type: hard }
+      - { stage: stage-08, type: hard }
+    # mutual_exclusion with all previous stages since tests touch everything
+    modifies:
+      - "test/**"
+      - "README.md"
+      - "docs/**"
+      - "AGENTS.md"
+      - "package.json"
+      - ".github/**"
+
+# 并行批次规划
+# Batch 1 (无依赖): stage-01
+# Batch 2 (依赖 stage-01): stage-02, stage-03 (可并行)
+# Batch 3 (依赖 stage-02+03): stage-04, stage-06, stage-08 (可并行)
+# Batch 4 (依赖 stage-04+05): stage-05, stage-07 (部分并行)
+# Batch 5 (依赖全部): stage-09

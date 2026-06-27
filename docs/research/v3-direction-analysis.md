@@ -33,7 +33,7 @@ Obsidian 是一款基于本地 Markdown 文件的知识管理工具，截至 202
 | **可塑性** | 500+ 社区插件，高度可定制 | AI 工作流应可扩展、可定制 |
 | **独立** | 100% 用户支持，无投资者压力 | AI 治理标准应由社区驱动 |
 
-Obsidian 的核心技术创新是**双向链接**（`[[wikilink]]`）和**知识图谱**——笔记之间形成可导航的语义网络，而非平面列表。这与 AI_Prompt 当前 `.ai/kb/` 的线性索引形成鲜明对比。
+Obsidian 的核心技术创新是**双向链接**（`[[wikilink]]`）和**知识图谱**——笔记之间形成可导航的语义网络，而非平面列表。这与 AI_Prompt 当前 `.openfeel/kb/` 的线性索引形成鲜明对比。
 
 ### 2.2 Claudian：AI 嵌入知识工作环境
 
@@ -49,7 +49,7 @@ Obsidian 的核心技术创新是**双向链接**（`[[wikilink]]`）和**知识
 
 **Claudian 的核心思想**：AI 不应该只是"你打开终端调用一下"的工具，而应该**驻留在你的知识工作环境中**——理解你的笔记结构、知道你的知识图谱、在你的 vault 中读写 Markdown 文件。这是一种"环境型 Agent"的理念。
 
-对 AI_Prompt 的启示：当前 AI_Prompt 的治理体系部署在项目目录中，Agent 通过读写 `.ai/` 下的 Markdown 文件来维持状态。这天然兼容 Obsidian 的 vault 架构——`.ai/` 工作区本身就是一个结构化的 Markdown 知识库，可以被 Obsidian 打开、浏览、双向链接。
+对 AI_Prompt 的启示：当前 AI_Prompt 的治理体系部署在项目目录中，Agent 通过读写 `.openfeel/` 下的 Markdown 文件来维持状态。这天然兼容 Obsidian 的 vault 架构——`.openfeel/` 工作区本身就是一个结构化的 Markdown 知识库，可以被 Obsidian 打开、浏览、双向链接。
 
 ### 2.3 Hermes：开源本地模型的能力突围
 
@@ -111,7 +111,7 @@ Mem0 是这个领域的典型代表（57.6k stars，Y Combinator S24 项目）�
 - **多信号融合检索**：语义 + BM25 关键词 + 实体匹配并行打分后融合
 
 **对 AI_Prompt 的关键启示**：
-- 当前 `.ai/kb/` 的文件系统记忆方案是可靠的 single source of truth，但检索效率低（grep/文件名匹配）
+- 当前 `.openfeel/kb/` 的文件系统记忆方案是可靠的 single source of truth，但检索效率低（grep/文件名匹配）
 - 可增加**可选的向量化索引层**：文件系统仍是主存储，向量索引是加速检索的缓存，可随时从 Markdown 文件重建
 - Agent 生成的操作结果（状态变更、决策记录、审查结论）应被索引为与用户输入同等权重的一等记忆
 
@@ -181,12 +181,12 @@ AI_Prompt 有机会成为连接"能力基础设施"（Mem0/Hermes）和"工作�
 
 ### 阶段六：向量化知识库（优先级：🥇 最高）
 
-**目标**：在现有 `.ai/kb/` 文件系统基础上增加可选的语义检索层
+**目标**：在现有 `.openfeel/kb/` 文件系统基础上增加可选的语义检索层
 
 **核心原则**：文件系统是 single source of truth，向量索引是加速缓存层，可随时从 MD 文件重建
 
 **具体内容**：
-- **轻量级嵌入索引**：使用本地嵌入模型（如 bge-small）对 `.ai/kb/*.md` 中的所有条目生成向量索引，存储在 `.ai/tmp/vectors/`（不纳入版本管理）
+- **轻量级嵌入索引**：使用本地嵌入模型（如 bge-small）对 `.openfeel/kb/*.md` 中的所有条目生成向量索引，存储在 `.openfeel/tmp/vectors/`（不纳入版本管理）
 - **会话启动自动更新**：每次 Agent 会话启动时，对比文件哈希判断是否需要增量重建索引
 - **混合检索接口**：语义相似度 + 文件名/标题精确匹配 + 最近更新时间衰减，融合打分
 - **可选依赖**：向量化能力作为可选增强，不影响不安装依赖的基础使用
@@ -202,12 +202,12 @@ AI_Prompt 有机会成为连接"能力基础设施"（Mem0/Hermes）和"工作�
 **目标**：让知识条目之间形成可遍历的关联网络，受 Obsidian 双向链接启发
 
 **具体内容**：
-- **Wikilink 支持**：在 `.ai/kb/` 的所有 Markdown 文件中引入 `[[条目名]]` 式双向引用
+- **Wikilink 支持**：在 `.openfeel/kb/` 的所有 Markdown 文件中引入 `[[条目名]]` 式双向引用
 - **自动关联建议**：Agent 在写入知识库条目时，自动分析已有条目，建议可能的链接
 - **图谱遍历检索**：当 Agent 查询某个知识条目时，不仅能返回该条目，还能沿链接图返回一度/二度关联条目
 - **知识图谱可视化**（远期）：可选的 Mermaid/Graphviz 导出，在 Obsidian 中可视化
 
-**验证方式**：在 `.ai/kb/` 中创建 5+ 个相互有关联的知识条目，Agent 查询时能够沿链接图返回相关条目，准确率 > 80%
+**验证方式**：在 `.openfeel/kb/` 中创建 5+ 个相互有关联的知识条目，Agent 查询时能够沿链接图返回相关条目，准确率 > 80%
 
 ---
 
@@ -216,8 +216,8 @@ AI_Prompt 有机会成为连接"能力基础设施"（Mem0/Hermes）和"工作�
 **目标**：将 Agent 能力描述与具体模型后端解耦，支持云端 API 和本地模型
 
 **具体内容**：
-- **模型配置文件**：`.ai/config.yaml` 中增加 `model` 配置节，支持 `provider`（openai/anthropic/ollama）、`model_name`、`base_url`
-- **Agent 角色标准化**：将 Agent 角色定义从工具特定格式（`.kilo/agents/`、`adapters/claude-code/`）中提取出工具无关的核心描述，存储在 `.ai/agents/` 下
+- **模型配置文件**：`.openfeel/config.yaml` 中增加 `model` 配置节，支持 `provider`（openai/anthropic/ollama）、`model_name`、`base_url`
+- **Agent 角色标准化**：将 Agent 角色定义从工具特定格式（`.kilo/agents/`、`adapters/claude-code/`）中提取出工具无关的核心描述，存储在 `.openfeel/agents/` 下
 - **Function Calling 对齐**：Agent 的工具调用格式对齐 OpenAI/Hermes function calling 标准
 - **Hermes 本地支持**：提供 Hermes 模型的 Ollama 部署配置模板，验证 Agent 角色在本地 Hermes 模型上的可用性
 
@@ -231,7 +231,7 @@ AI_Prompt 有机会成为连接"能力基础设施"（Mem0/Hermes）和"工作�
 
 **具体内容**：
 - **Obsidian 集成**：
-  - 将 `.ai/` 工作区映射为 Obsidian vault，知识库条目之间自动形成双向链接图
+  - 将 `.openfeel/` 工作区映射为 Obsidian vault，知识库条目之间自动形成双向链接图
   - Agent 可以直接在 Obsidian 中创建/编辑知识库条目
   - 利用 Obsidian 的 Dataview 插件生成计划仪表盘（状态总览、审查条目、Bug 列表）
 - **VS Code 深度集成**：
@@ -239,7 +239,7 @@ AI_Prompt 有机会成为连接"能力基础设施"（Mem0/Hermes）和"工作�
   - CLI 工具补充：`ai-status`、`ai-review`、`ai-bugs`、`ai-log`
 - **统一入口**：无论通过 Obsidian、VS Code 还是 CLI 调用 AI，都遵循同一套约束和记忆体系
 
-**验证方式**：在本地 Obsidian vault 中打开 `.ai/` 目录，验证双向链接自动生成、Agent 可读写知识库条目、Dataview 仪表盘正常显示
+**验证方式**：在本地 Obsidian vault 中打开 `.openfeel/` 目录，验证双向链接自动生成、Agent 可读写知识库条目、Dataview 仪表盘正常显示
 
 ---
 
@@ -285,7 +285,7 @@ v3.0 路线图：
 
 | 机遇 | 说明 | 时间窗口 |
 |------|------|---------|
-| **记忆层标准化空白** | 尚无 AI Agent 记忆的开放标准，AI_Prompt 有机会定义 `.ai/kb/` + 向量索引的标准格式 | 2026-2027 |
+| **记忆层标准化空白** | 尚无 AI Agent 记忆的开放标准，AI_Prompt 有机会定义 `.openfeel/kb/` + 向量索引的标准格式 | 2026-2027 |
 | **Obsidian 生态增长** | Obsidian 用户基数持续增长，Claudian 概念刚刚萌芽，AI_Prompt 可成为连接 AI 治理与知识管理的桥梁 | 2026 Q3-Q4 |
 | **本地模型拐点** | Hermes-3 + Ollama 的组合已可满足 Agent 函数调用需求，隐私敏感行业的需求即将爆发 | 2027+ |
 | **GitHub 正定义 AGENTS.md** | GitHub Copilot 官方支持 AGENTS.md，AI_Prompt 作为最早系统化该格式的项目，有机会参与标准制定 | 现在 |
@@ -328,7 +328,7 @@ AI_Prompt 的 v3.0 方向可以概括为：**从"治理 Agent 行为"扩展到"�
 - Hermes Function Calling 仓库：https://github.com/NousResearch/Hermes-Function-Calling（1.4k stars，MIT 许可）
 - GitHub Claudian 话题页：https://github.com/topics/claudian（7 个公开项目）
 - Anthropic Claude Code 仓库：https://github.com/anthropics/claude-code（130k stars）
-- AI_Prompt 项目自身文档：`README.md`、`docs/research/`、`.ai/plan/plan.md`
+- AI_Prompt 项目自身文档：`README.md`、`docs/research/`、`.openfeel/plan/plan.md`
 - Andrej Karpathy LLM Wiki 方法论（Obsidian 社区参考）
 
 ---

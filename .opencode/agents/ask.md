@@ -19,7 +19,7 @@ permission:
 
 ## 会话启动
 
-1. 读取 `.ai/.info.json` 获取用户名。
+1. 读取 `.openfeel/.info.json` 获取用户名。
 2. 调用 `load skill check-kb` 查阅知识库获取背景信息。
 
 ## 工作方式

@@ -95,11 +95,34 @@ export function readConfig(projectPath: string): Config {
  */
 export function writeDefaultConfig(projectPath: string): void {
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
-  const content = `# OpenFeel 项目配置
-execution_mode: ${DEFAULT_CONFIG.execution_mode}
-auto_advance: ${DEFAULT_CONFIG.auto_advance}
-test_enabled: ${String(DEFAULT_CONFIG.test_enabled)}
-merge_mode: ${DEFAULT_CONFIG.merge_mode}
+  const content = `# .openfeel/config.yaml
+# OpenFeel 项目全局工作流配置
+# 级联优先级：用户指令 > status.md 局部覆盖 > 本文件 defaults
+# 本文件为所有阶段提供默认值，status.md 可覆盖
+
+meta:
+  version: 1.0.0
+
+# ---- 工作流默认配置 ----
+# 所有阶段 status.md 的初始值由此处写入
+# 部署模板默认 auto+enabled，仓库自身默认 manual+disabled
+
+defaults:
+  # 执行模式：manual=人工流程，agent 不自动接管
+  #          auto=Agent 可按状态机自动推进
+  execution_mode: ${DEFAULT_CONFIG.execution_mode}
+
+  # 自动推进：disabled=关闭自动闭环
+  #          enabled=在 execution_mode=auto 时允许自动调度
+  auto_advance: ${DEFAULT_CONFIG.auto_advance}
+
+  # 测试阶段：true=review_passed 后进入 test_writing→testing→bug_fixing 链路
+  #          false=review_passed 直接转 done，跳过测试链路
+  test_enabled: ${String(DEFAULT_CONFIG.test_enabled)}
+
+  # Worktree 合并模式：manual=Agent Manager 中手动确认合并
+  #                   auto=AutoRunner 自动 git merge + cleanup
+  merge_mode: ${DEFAULT_CONFIG.merge_mode}
 `;
   writeFileSync(configPath, content, 'utf-8');
 }

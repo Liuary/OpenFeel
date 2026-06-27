@@ -73,8 +73,8 @@ Kilo 的权限模型基于 YAML 前页（Frontmatter）中的 `permission` 块�
 ```yaml
 permission:
   edit:
-    ".ai/plan/**": "allow"
-    ".ai/dev/**": "allow"
+    ".openfeel/plan/**": "allow"
+    ".openfeel/dev/**": "allow"
     "*": "deny"
   bash: "allow"
   read: "allow"
@@ -110,7 +110,7 @@ permission:
   │   └─ 自动合并与清理流程失效
   │
   ├─ [edit/write 不可用] → 所有 Agent 无法直接写入文件
-  │   ├─ architect 无法编辑 plan/、dev/、log/ 等 .ai/ 文档
+  │   ├─ architect 无法编辑 plan/、dev/、log/ 等 .openfeel/ 文档
   │   ├─ CodeWorker 无法修改源码
   │   ├─ TestWriter 无法创建测试文件
   │   ├─ Tester/Debug 无法写入 Bug 文件
@@ -169,7 +169,7 @@ AI_Prompt 仓库结构（建议）:
 
 1. **使用抽象能力名而非具体工具名**：不在定义中写 "用 edit 工具修改文件"，而是写 "修改文件"。由适配器层根据目标平台翻译为具体工具调用（Kilo → `edit`，OpenCode → `bash: Set-Content`，Claude Code → `Write`）。
 
-2. **权限声明使用文件路径匹配而非工具名**：不在 YAML 中声明 `edit: { ".ai/plan/**": "allow" }`，而是声明 `can_write: [".ai/plan/**", ".ai/dev/**"]`、`can_read: ["src/**"]`。适配器层将其翻译为各平台的权限格式。
+2. **权限声明使用文件路径匹配而非工具名**：不在 YAML 中声明 `edit: { ".openfeel/plan/**": "allow" }`，而是声明 `can_write: [".openfeel/plan/**", ".openfeel/dev/**"]`、`can_read: ["src/**"]`。适配器层将其翻译为各平台的权限格式。
 
 3. **流程描述使用平台中立的状态机**：不在正文中写 "使用 `agent_manager` 工具以 `worktree` 模式启动"，而是写 "为子计划创建隔离的执行环境，在其中调度子任务"。适配器层在 Kilo 上翻译为 `agent_manager` 调用，在 OpenCode 上翻译为手动 `git worktree` 命令序列，在 Claude Code 上可能不需要隔离环境。
 
@@ -180,7 +180,7 @@ AI_Prompt 仓库结构（建议）:
 | 职责 | 说明 | 输入 | 输出 |
 |------|------|------|------|
 | **工具名映射** | 将抽象能力名翻译为平台原生工具名 | `抽象能力: file_write` | `Kilo: edit`, `OpenCode: bash` |
-| **权限声明翻译** | 将通用权限模型翻译为平台原生权限格式 | `can_write: [".ai/**"]` | Kilo YAML `permission.edit` 块, OpenCode 的对应格式 |
+| **权限声明翻译** | 将通用权限模型翻译为平台原生权限格式 | `can_write: [".openfeel/**"]` | Kilo YAML `permission.edit` 块, OpenCode 的对应格式 |
 | **指令模板渲染** | 将平台中立的指令模板注入平台特定的工具使用说明 | 通用 Agent 定义 | 完整的特定平台 Agent 文件（含正确工具名和调用格式） |
 | **工具调用适配** | 提供平台特定的工具调用示例和最佳实践 | 抽象任务描述 | 平台特定的工具调用模式 |
 | **能力降级处理** | 当目标平台不支持的抽象能力时，提供替代方案 | `agent_manager` 在 OpenCode 中不可用 | 生成手动 git worktree 命令序列作为替代 |
@@ -276,11 +276,11 @@ permissions:
   filesystem:
     read:
       - "src/**"
-      - ".ai/**"
+      - ".openfeel/**"
       - "*.md"
     write:
-      - ".ai/plan/**"      # 允许写入计划文件
-      - ".ai/users/**/bugs/**"  # 允许写入 Bug 记录
+      - ".openfeel/plan/**"      # 允许写入计划文件
+      - ".openfeel/users/**/bugs/**"  # 允许写入 Bug 记录
       - "**/*test*.*"      # 允许写入测试文件
     deny_write:
       - "src/**"           # 明确禁止修改源码
@@ -342,7 +342,7 @@ permissions:
 | 1 | 6-13 | `edit` 权限块引用不存在的工具 | `permission: edit: ...` | 移除 `edit` 权限块（或替换为 OpenCode 等效声明）。OpenCode 中文件写入通过 `bash` 实现，权限控制不在此层 | P0 |
 | 2 | 19 | `agent_manager` 工具不存在 | `agent_manager: "allow"` | 删除此行。在 OpenCode 中无可用的 agent_manager 等效工具 | P0 |
 | 3 | 20 | `todowrite` 工具不存在 | `todowrite: "allow"` | 删除此行。OpenCode 无此工具 | P1 |
-| 4 | 28-30 | 正文引用 `write/edit` 工具 | `> **编辑权限**：你可以用 write/edit 工具直接修改...` / `- **不能修改源码**：你的 `edit` 权限仅限于...` | 改为：`> **编辑权限**：你可以通过 `bash` 工具（Set-Content 等 PowerShell 命令）修改 `.ai/` 目录下的文档...` / `- **不能修改源码**：你的文件修改权限仅限于 `.ai/` 目录下的文档文件。` | P0 |
+| 4 | 28-30 | 正文引用 `write/edit` 工具 | `> **编辑权限**：你可以用 write/edit 工具直接修改...` / `- **不能修改源码**：你的 `edit` 权限仅限于...` | 改为：`> **编辑权限**：你可以通过 `bash` 工具（Set-Content 等 PowerShell 命令）修改 `.openfeel/` 目录下的文档...` / `- **不能修改源码**：你的文件修改权限仅限于 `.openfeel/` 目录下的文档文件。` | P0 |
 | 5 | 196-247 | 整个「自动闭环」章节依赖 `agent_manager` | 包含 `agent_manager` 工具调用、worktree 创建、并行启动等 | 重写此章节：`agent_manager` 不可用的替代方案——改为人工流程触发 + 状态更新，删除 worktree 并行启动相关内容。保留状态机逻辑但移除工具调用示例。第 204 行的 JSON 示例需删除或替换为"手动执行 git worktree 命令"的 bash 示例 | P0 |
 | 6 | 237 | 正文引用 `load skill` | `调用 `load skill update-stage-status`` | 验证 OpenCode 是否支持 `load skill` 语法。如不支持，改为直接说明技能执行步骤或通过 opencode.jsonc 的 skills 配置引用 | P1 |
 | 7 | 缺少 | `webfetch` 未在 YAML 中声明 | 无 | 添加 `webfetch: "allow"`（如果 OpenCode 需要 YAML 权限声明） | P2 |
@@ -356,7 +356,7 @@ permissions:
 | 1 | 5-7 | `edit` 权限块引用不存在的工具 | `permission: edit: ...` | 移除 `edit` 权限块或替换为 OpenCode 等效声明 | P0 |
 | 2 | 13 | `todowrite` 工具不存在 | `todowrite: "allow"` | 删除此行 | P1 |
 | 3 | 15 | `todoread` 工具不存在 | `todoread: "allow"` | 删除此行。OpenCode 无此工具 | P1 |
-| 4 | 37 | 正文引用 `write/edit` 工具 | `> **编辑权限**：你可以用 write/edit 工具直接修改...` | 改为：`> **编辑权限**：你可以通过 `bash` 工具修改 `.ai/users/{username}/bugs/` 下的 Bug 文件...` | P0 |
+| 4 | 37 | 正文引用 `write/edit` 工具 | `> **编辑权限**：你可以用 write/edit 工具直接修改...` | 改为：`> **编辑权限**：你可以通过 `bash` 工具修改 `.openfeel/users/{username}/bugs/` 下的 Bug 文件...` | P0 |
 | 5 | 缺少 | `webfetch` 未在 YAML 中声明 | 无 | 添加 `webfetch: "allow"`（如 OpenCode 需要） | P2 |
 
 ---
@@ -504,7 +504,7 @@ permissions:
 |-------|--------|--------------|
 | **architect.md** | `agent_manager` 章节是否需要完全重写？ | ✅ 需要重写（第 196-247 行） |
 | **architect.md** | 自动合并逻辑（`git merge` + `git worktree remove`）是否在目标平台可执行？ | ⚠️ 需验证（依赖 git 环境） |
-| **architect.md** | `Plan Mode 迁移`（`.kilo/plans/` → `.ai/plan/`）是否仍然需要？ | ⚠️ OpenCode 不存在 `.kilo/`，此章节应移除 |
+| **architect.md** | `Plan Mode 迁移`（`.kilo/plans/` → `.openfeel/plan/`）是否仍然需要？ | ⚠️ OpenCode 不存在 `.kilo/`，此章节应移除 |
 | **tester.md** | `todoread` 是否在正文中使用？ | ✅ 仅 YAML 声明，可安全移除 |
 | **auto-runner.md** | 调度逻辑（调用 CodeWorker/ReviewWorker 等）是否依赖 `agent_manager`？ | ⚠️ auto-runner 通过 `task` 调度，但 auto-runner 本身是靠 architect 通过 `agent_manager` 启动的 |
 | **code.md** | 自动闭环逻辑是否需要修改？ | ✅ 包含自动闭环章节（第 102-128 行），调用 `agent_manager` 的部分需调整 |
@@ -516,7 +516,7 @@ permissions:
 | `AGENTS.md` | 是否包含平台特定工具名或路径？ | ⚠️ 第 7 行提到 `.kilo/` 路径，在 OpenCode 中不存在 |
 | `instructions/core.md` | 是否包含平台特定工具名？ | ✅ 第 57 行引用 `edit`/`write` |
 | `opencode.jsonc`（或 `kilo.jsonc`） | 配置文件格式是否与目标平台匹配？ | ✅ 已改为 `opencode.jsonc` 格式 |
-| `.ai/config.yaml` | 文件内容是否因编码问题损坏？ | ✅ 当前文件出现乱码，需修复编码后重新写入 |
+| `.openfeel/config.yaml` | 文件内容是否因编码问题损坏？ | ✅ 当前文件出现乱码，需修复编码后重新写入 |
 | `skills/*/SKILL.md` | 技能定义中是否包含平台特定工具调用？ | ⚠️ 需逐技能检查 `bash` 命令是否与 PowerShell 兼容 |
 
 ---

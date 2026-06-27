@@ -1,6 +1,6 @@
 ---
 name: search-kb
-description: 语义检索 .ai/kb/ 项目知识库。当精确匹配无结果或任务描述模糊时，通过向量相似度搜索语义相关的知识条目。支持图谱遍历返回关联条目。
+description: 语义检索 .openfeel/kb/ 项目知识库。当精确匹配无结果或任务描述模糊时，通过向量相似度搜索语义相关的知识条目。支持图谱遍历返回关联条目。
 ---
 
 # 语义检索知识库
@@ -15,14 +15,14 @@ description: 语义检索 .ai/kb/ 项目知识库。当精确匹配无结果或�
 
 - 向量索引已构建（运行 `python scripts/build_kb_index.py`）
 - 已安装 `sentence-transformers`（`pip install sentence-transformers`）
-- 索引文件 `.ai/tmp/vectors/index.json` 存在
+- 索引文件 `.openfeel/tmp/vectors/index.json` 存在
 - （可选）图谱已构建（运行 `python scripts/build_kb_index.py --graph`），用于返回关联条目
 
 ## 执行步骤
 
 ### 1. 检查索引就绪
 
-确认 `.ai/tmp/vectors/index.json` 文件存在。若不存在，拒绝执行并提示先运行 `build_kb_index.py`。
+确认 `.openfeel/tmp/vectors/index.json` 文件存在。若不存在，拒绝执行并提示先运行 `build_kb_index.py`。
 
 ### 2. 执行语义检索
 
@@ -46,7 +46,7 @@ description: 语义检索 .ai/kb/ 项目知识库。当精确匹配无结果或�
 
 ### 4. 图谱遍历（关联条目发现）
 
-当查询命中条目后，若 `.ai/tmp/graph.json` 存在且命中条目在其中，按以下步骤执行图谱遍历：
+当查询命中条目后，若 `.openfeel/tmp/graph.json` 存在且命中条目在其中，按以下步骤执行图谱遍历：
 
 #### 4.1 一度关联（直接关联）
 

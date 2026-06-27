@@ -367,18 +367,18 @@ permission:
 1. **操作记录归档**：整理阶段中的全部操作记录（方案、代码 diff、审查条目、Bug 修复记录）。
 2. **知识提取**：从操作记录中提取可复用的知识和经验，写入知识库。
 3. **阶段总结**：产出一个阶段的完整总结报告。
-4. **知识库维护**：更新 \`.ai/kb/\` 中的对应分类文件。
+4. **知识库维护**：更新 \`.openfeel/kb/\` 中的对应分类文件。
 
 ## 归档内容
 
 | 来源 | 归档目标 |
 |------|----------|
 | 操作方案 | \`.openfeel/stages/{stage}/ops/\` |
-| 审查条目（REV） | \`.ai/code_review/{stage}.md\` |
-| Bug 记录（BUG） | \`.ai/bugs/{module}.md\` |
-| 架构决策 | \`.ai/kb/architecture.md\` |
-| 代码模式 | \`.ai/kb/patterns.md\` |
-| 排查经验 | \`.ai/kb/troubleshooting.md\` |
+| 审查条目（REV） | \`.openfeel/code_review/{stage}.md\` |
+| Bug 记录（BUG） | \`.openfeel/bugs/{module}.md\` |
+| 架构决策 | \`.openfeel/kb/architecture.md\` |
+| 代码模式 | \`.openfeel/kb/patterns.md\` |
+| 排查经验 | \`.openfeel/kb/troubleshooting.md\` |
 
 ## 归档流程
 
@@ -636,11 +636,11 @@ task(subagent_type="archiver", description="归档阶段产出", prompt="归档 
 | 来源 | 归档目标 |
 |------|----------|
 | 操作方案 | \`.openfeel/stages/{stage}/ops/\` |
-| 审查条目 | \`.ai/code_review/{stage}.md\` |
-| Bug 记录 | \`.ai/bugs/{module}.md\` |
-| 架构决策 | \`.ai/kb/architecture.md\` |
-| 代码模式 | \`.ai/kb/patterns.md\` |
-| 排查经验 | \`.ai/kb/troubleshooting.md\` |
+| 审查条目 | \`.openfeel/code_review/{stage}.md\` |
+| Bug 记录 | \`.openfeel/bugs/{module}.md\` |
+| 架构决策 | \`.openfeel/kb/architecture.md\` |
+| 代码模式 | \`.openfeel/kb/patterns.md\` |
+| 排查经验 | \`.openfeel/kb/troubleshooting.md\` |
 
 ## 归档流程
 \`\`\`
@@ -811,7 +811,7 @@ function buildUpdatedJsonc(projectPath: string): string {
   } else {
     // 新文件 → 基础结构
     jsoncObj = {
-      $schema: 'https://opencode.ai/config.json',
+      $schema: 'https://opencode.openfeel/config.json',
       default_agent: 'feel',
       instructions: ['AGENTS.md', '.opencode/instructions/core.md'],
       skills: {},
@@ -965,7 +965,7 @@ function buildJsoncFromObject(obj: Record<string, unknown>): string {
   const hasExperimental = typeof obj.experimental === 'object' && obj.experimental !== null;
   const lines: string[] = [
     '{',
-    '  "$schema": "https://opencode.ai/config.json",',
+    '  "$schema": "https://opencode.openfeel/config.json",',
     `  "default_agent": "${obj.default_agent}",`,
     '  "instructions": [',
     ...instructionLines,

@@ -1,6 +1,6 @@
 ---
 name: get-stage-status
-description: 读取 .ai/plan/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Architect/Code/TestWriter/Tester 在处理阶段任务前确认流程状态。
+description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Architect/Code/TestWriter/Tester 在处理阶段任务前确认流程状态。
 ---
 
 # 获取子计划状态
@@ -8,17 +8,17 @@ description: 读取 .ai/plan/{stage}/status.md，判断当前子计划状态、�
 ## 输入
 
 - 计划阶段名 `{stage}`（如 `stage01`、`auth-login`）
-- 若用户未提供阶段名，先读取 `.ai/plan/plan_index.md` 查找当前活跃阶段；仍不明确时询问用户
+- 若用户未提供阶段名，先读取 `.openfeel/plan/plan_index.md` 查找当前活跃阶段；仍不明确时询问用户
 
 ## 执行步骤
 
 ### 0. 读取全局配置
 
-读取 `.ai/config.yaml`，解析 `defaults` 中的 `execution_mode`、`auto_advance`、`test_enabled`、`merge_mode`。
+读取 `.openfeel/config.yaml`，解析 `defaults` 中的 `execution_mode`、`auto_advance`、`test_enabled`、`merge_mode`。
 
 ### 1. 定位状态文件
 
-读取 `.ai/plan/{stage}/status.md`。
+读取 `.openfeel/plan/{stage}/status.md`。
 
 若文件不存在：
 - 不要自行进入自动流程。
@@ -43,7 +43,7 @@ description: 读取 .ai/plan/{stage}/status.md，判断当前子计划状态、�
 
 若 `status.md` 中存在 `前置依赖` 字段且不为 `无`：
 
-1. 读取 `.ai/plan/deps.yaml`，查找当前阶段的 `depends_on` 列表。
+1. 读取 `.openfeel/plan/deps.yaml`，查找当前阶段的 `depends_on` 列表。
 2. 对每条依赖检查其阶段状态：
    - `type: hard` 且依赖阶段状态为 `done` → 已满足
    - `type: hard` 且依赖阶段状态非 `done` → 未满足，阻塞
@@ -68,9 +68,9 @@ description: 读取 .ai/plan/{stage}/status.md，判断当前子计划状态、�
 
 ### 5. 判断自动推进资格
 
-**字段回退**：若 `status.md` 未填写 `执行模式` 或 `自动推进`，从 `.ai/config.yaml` `defaults` 中读取对应值。
+**字段回退**：若 `status.md` 未填写 `执行模式` 或 `自动推进`，从 `.openfeel/config.yaml` `defaults` 中读取对应值。
 
-**测试状态排除**：若 `.ai/config.yaml` 中 `test_enabled=false`，则以下测试链路状态视为已禁用，不参与自动推进：
+**测试状态排除**：若 `.openfeel/config.yaml` 中 `test_enabled=false`，则以下测试链路状态视为已禁用，不参与自动推进：
   - `ready_for_test`、`test_writing`、`testing`、`bug_found`、`bug_fixing`
   - 当前处于上述任一状态时，建议直接切换至 `done`（跳过测试链路）
   - `review_passed` 在 `test_enabled=false` 时等价于 `done`

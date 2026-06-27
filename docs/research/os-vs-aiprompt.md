@@ -1,7 +1,7 @@
-﻿# OpenSpec vs AI_Prompt：对比分析
+# OpenSpec vs AI_Prompt：对比分析
 
 > 撰写时间：2026-06-18
-> 核心参考来源：AI_Prompt 项目源码与 .ai/ 工作区、OpenSpec v1.4.1 源码与文档
+> 核心参考来源：AI_Prompt 项目源码与 .openfeel/ 工作区、OpenSpec v1.4.1 源码与文档
 
 ## 一、两个项目的定位
 

@@ -34,4 +34,4 @@
 | 版本 | 状态 | 阶段数 | 完成 | 复盘 |
 |------|------|--------|------|------|
 | v1.0 | 已归档 | 9 | stage-01 done | [001-deploy-review](../docs/2026-06-27-001-deploy-review.md) |
-| v2.0 | 执行中 | 7 | stage-01 ready_for_code | — |
+| v2.0 | 已完成 | 7 | 7/7 done | [003-deploy-v2-review](../docs/2026-06-27-003-deploy-v2-review.md) |

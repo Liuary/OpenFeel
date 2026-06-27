@@ -53,9 +53,11 @@ export function startRepl(program: Command): void {
     }
 
     // 将输入拆分为 argv 格式传给 Commander parse
+    // 注意：不使用 process.argv[0]/[1]（Windows 下 node 路径含空格会导致误解析）
+    // 用固定占位符替代，Commander 仅用于 help 文本显示
     try {
       const args = trimmed.split(/\s+/);
-      program.parse([process.argv[0], process.argv[1], ...args], { from: 'user' });
+      program.parse(['node', 'openfeel', ...args], { from: 'user' });
     } catch (err: unknown) {
       // 捕获 CommanderError（包括 exitOverride 抛出的和 --help 触发的）
       // 忽略它们以保持 REPL 运行

@@ -4,26 +4,13 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { parse as parseYaml } from 'yaml';
+import { PipelineConfigSchema, type PipelineConfig } from './pipeline-schema.js';
 
 // ── 类型定义 ──
 
-/** 流水线阶段枚举 */
-export type PipelinePhase =
-  | 'plan_pending'
-  | 'plan_review'
-  | 'plan_passed'
-  | 'scheme_pending'
-  | 'scheme_review'
-  | 'scheme_passed'
-  | 'exec_running'
-  | 'review_pending'
-  | 'review_failed'
-  | 'review_passed'
-  | 'test_pending'
-  | 'test_failed'
-  | 'test_passed'
-  | 'archiving'
-  | 'done';
+/** 流水线阶段（动态来源，合法值列表见 pipeline.yaml 或 getDefaultPipelineConfig()） */
+export type PipelinePhase = string;
 
 /** 操作执行状态 */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed';
@@ -125,34 +112,6 @@ function defaultFlowData(): FlowData {
   };
 }
 
-/** 合法的 phase 流转映射 */
-const VALID_TRANSITIONS: Record<PipelinePhase, PipelinePhase[]> = {
-  plan_pending: ['plan_review', 'plan_passed'],
-  plan_review: ['plan_passed', 'plan_pending'],
-  plan_passed: ['scheme_pending'],
-  scheme_pending: ['scheme_review', 'scheme_passed'],
-  scheme_review: ['scheme_passed', 'scheme_pending'],
-  scheme_passed: ['exec_running'],
-  exec_running: ['review_pending'],
-  review_pending: ['review_failed', 'review_passed'],
-  review_failed: ['review_pending'],
-  review_passed: ['test_pending'],
-  test_pending: ['test_failed', 'test_passed'],
-  test_failed: ['test_pending'],
-  test_passed: ['archiving'],
-  archiving: ['done'],
-  done: [],
-};
-
-/** phase 前缀到 checkpoint 字段的映射 */
-const PHASE_TO_CHECKPOINT: Record<string, keyof Checkpoints> = {
-  plan: 'plan',
-  scheme: 'scheme',
-  exec: 'exec',
-  review: 'review',
-  test: 'test',
-};
-
 /** opId 解析结果 */
 interface OpIdParts {
   stageId: string;
@@ -165,11 +124,14 @@ export class FlowManager {
   private projectPath: string;
   private data: FlowData | null;
   private filePath: string;
+  /** 从 pipeline.yaml 加载的流水线配置（含后备默认值） */
+  private pipelineConfig: PipelineConfig | null = null;
 
   constructor(projectPath: string) {
     this.projectPath = projectPath;
     this.data = null;
     this.filePath = resolve(projectPath, '.openfeel', 'flow.json');
+    this.loadPipelineConfig();
     this.load();
   }
 
@@ -391,6 +353,26 @@ export class FlowManager {
     };
   }
 
+  /**
+   * 将阶段注册到 flow.json 的 stages 中（若不存在）
+   * @param stageName 阶段名（如 stage-01）
+   * @param deps 依赖阶段列表（可选）
+   */
+  registerStage(stageName: string, deps: string[] = []): void {
+    if (!this.data) {
+      return;
+    }
+    if (this.data.stages[stageName]) {
+      return; // 已注册，跳过
+    }
+    this.data.stages[stageName] = {
+      name: stageName,
+      status: 'planned',
+      deps,
+      ops: {},
+    };
+  }
+
   // ═══ 推进 ═══
 
   /**
@@ -398,55 +380,61 @@ export class FlowManager {
    * @param opId 操作 ID（格式 "stage-xx.op-xxx"）
    * @param to 目标流水线阶段
    */
-  advancePhase(opId: string, to: PipelinePhase): void {
+  advancePhase(opId: string | null, to: PipelinePhase): void {
     if (!this.data) {
       return;
     }
 
-    const op = this.getOp(opId);
-    if (!op) {
-      return;
-    }
+    if (opId) {
+      const op = this.getOp(opId);
+      if (!op) {
+        return;
+      }
 
-    const parts = this.parseOpId(opId);
-    if (!parts) {
-      return;
+      const parts = this.parseOpId(opId);
+      if (!parts) {
+        return;
+      }
+
+      // 保存推进前的状态（REV-001: 日志需要旧 phase 值）
+      const prevStage = this.data.pipeline.current.stage;
+      const prevOp = this.data.pipeline.current.op;
+
+      // 更新 pipeline 状态
+      this.data.pipeline.current = { stage: parts.stageId, op: parts.opLocalId };
+
+      // REV-002: 切换到新操作时重置重试计数
+      if (prevStage !== parts.stageId || prevOp !== parts.opLocalId) {
+        this.data.pipeline.retry = 0;
+      }
+
+      // 根据目标 phase 更新对应的 checkpoint
+      const checkpointKey = this.getCheckpointFromPhase(to);
+      if (checkpointKey) {
+        if (checkpointKey === 'exec') {
+          // exec 检查点需要更新 self 字段
+          if (to === 'exec_running') {
+            op.checkpoints.exec.self = 'running';
+          }
+        } else {
+          // 以 passed/failed 结尾的阶段更新对应检查点
+          if (to.endsWith('_passed')) {
+            (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'passed';
+          } else if (to.endsWith('_failed')) {
+            (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'failed';
+          } else {
+            // 中间状态设为 pending 对应的变体
+            (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'pending';
+          }
+        }
+      }
     }
 
     // 保存推进前的状态（REV-001: 日志需要旧 phase 值）
     const fromPhase = this.data.pipeline.phase;
-    const prevStage = this.data.pipeline.current.stage;
-    const prevOp = this.data.pipeline.current.op;
 
-    // 更新 pipeline 状态
+    // 更新 pipeline phase（无论是否有 opId）
     this.data.pipeline.phase = to;
-    this.data.pipeline.current = { stage: parts.stageId, op: parts.opLocalId };
-
-    // REV-002: 切换到新操作时重置重试计数
-    if (prevStage !== parts.stageId || prevOp !== parts.opLocalId) {
-      this.data.pipeline.retry = 0;
-    }
-
-    // 根据目标 phase 更新对应的 checkpoint
-    const checkpointKey = this.getCheckpointFromPhase(to);
-    if (checkpointKey) {
-      if (checkpointKey === 'exec') {
-        // exec 检查点需要更新 self 字段
-        if (to === 'exec_running') {
-          op.checkpoints.exec.self = 'running';
-        }
-      } else {
-        // 以 passed/failed 结尾的阶段更新对应检查点
-        if (to.endsWith('_passed')) {
-          (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'passed';
-        } else if (to.endsWith('_failed')) {
-          (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'failed';
-        } else {
-          // 中间状态设为 pending 对应的变体
-          (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'pending';
-        }
-      }
-    }
 
     // 追加日志（from 使用推进前的阶段值）
     this.appendLog({
@@ -457,10 +445,10 @@ export class FlowManager {
     });
   }
 
-  /** 从 PipelinePhase 提取对应的 checkpoint 字段名 */
+  /** 从 PipelinePhase 提取对应的 checkpoint 字段名（从 pipeline.yaml 映射查找） */
   private getCheckpointFromPhase(phase: PipelinePhase): keyof Checkpoints | null {
     const prefix = phase.split('_')[0];
-    return PHASE_TO_CHECKPOINT[prefix] ?? null;
+    return (this.pipelineConfig?.checkpoint_mapping[prefix] as keyof Checkpoints) ?? null;
   }
 
   /**
@@ -560,7 +548,7 @@ export class FlowManager {
   // ═══ 校验 ═══
 
   /**
-   * 校验 phase 流转是否合法
+   * 校验 phase 流转是否合法（从 pipeline.yaml 配置驱动）
    */
   canAdvance(opId: string, to: PipelinePhase): boolean {
     if (!this.data) {
@@ -573,10 +561,15 @@ export class FlowManager {
       return false;
     }
 
+    // 若 pipelineConfig 未加载，无法校验
+    if (!this.pipelineConfig) {
+      return false;
+    }
+
     // 检查从当前 phase 到目标 phase 的流转是否合法
     const currentPhase = this.data.pipeline.phase;
-    const validTargets = VALID_TRANSITIONS[currentPhase];
-    if (!validTargets.includes(to)) {
+    const validTargets = this.pipelineConfig.transitions[currentPhase];
+    if (!validTargets || !validTargets.includes(to)) {
       return false;
     }
 
@@ -607,6 +600,20 @@ export class FlowManager {
     if (!this.data.pipeline?.phase) {
       errors.push('pipeline.phase 缺失');
     }
+
+    // 检查 phase 是否为合法枚举值（从 pipeline.yaml 配置获取）
+    if (this.pipelineConfig && this.data.pipeline?.phase && !this.pipelineConfig.phases.includes(this.data.pipeline.phase)) {
+      // 尝试自动修正已知的非标准值
+      const phaseCorrections: Record<string, string> = this.pipelineConfig.phase_corrections;
+      const correction = phaseCorrections[this.data.pipeline.phase];
+      if (correction) {
+        errors.push(`pipeline.phase 值 "${this.data.pipeline.phase}" 非标准，已自动修正为 "${correction}"`);
+        this.data.pipeline.phase = correction;
+      } else {
+        errors.push(`pipeline.phase 值 "${this.data.pipeline.phase}" 不是合法的 PipelinePhase 枚举值`);
+      }
+    }
+
     if (!this.data.pipeline?.current) {
       errors.push('pipeline.current 缺失');
     }
@@ -652,5 +659,74 @@ export class FlowManager {
    */
   setData(data: FlowData): void {
     this.data = data;
+  }
+
+  // ═══ 流水线配置加载 ═══
+
+  /**
+   * 从 .openfeel/pipeline.yaml 加载流水线配置
+   * 若文件不存在或解析失败，回退到内置默认值
+   */
+  private loadPipelineConfig(): void {
+    const pipelinePath = resolve(this.projectPath, '.openfeel', 'pipeline.yaml');
+    try {
+      if (!existsSync(pipelinePath)) {
+        this.pipelineConfig = this.getDefaultPipelineConfig();
+        return;
+      }
+      const raw = readFileSync(pipelinePath, 'utf-8');
+      const parsed = parseYaml(raw);
+      this.pipelineConfig = PipelineConfigSchema.parse(parsed);
+    } catch {
+      // 解析失败时回退到内置默认值
+      this.pipelineConfig = this.getDefaultPipelineConfig();
+    }
+  }
+
+  /**
+   * 获取内置默认流水线配置（等价于硬编码常量 + 3 个 Bug 修复）
+   * 当 pipeline.yaml 不存在或解析失败时使用
+   */
+  private getDefaultPipelineConfig(): PipelineConfig {
+    return {
+      phases: [
+        'plan_pending', 'plan_review', 'plan_passed',
+        'scheme_pending', 'scheme_review', 'scheme_passed',
+        'exec_running', 'review_pending', 'review_failed',
+        'review_passed', 'test_pending', 'test_failed',
+        'test_passed', 'archiving', 'done',
+      ],
+      transitions: {
+        plan_pending: ['plan_review', 'plan_passed'],
+        plan_review: ['plan_passed', 'plan_pending'],
+        plan_passed: ['scheme_pending'],
+        scheme_pending: ['scheme_review', 'scheme_passed'],
+        scheme_review: ['scheme_passed', 'scheme_pending'],
+        scheme_passed: ['exec_running'],
+        exec_running: ['review_pending', 'scheme_pending'],       // BUG 修复：增加 scheme_pending
+        review_pending: ['review_failed', 'review_passed'],
+        review_failed: ['review_pending', 'scheme_pending'],      // BUG 修复：增加 scheme_pending
+        review_passed: ['test_pending'],
+        test_pending: ['test_failed', 'test_passed'],
+        test_failed: ['test_pending', 'scheme_pending'],          // BUG 修复：增加 scheme_pending
+        test_passed: ['archiving'],
+        archiving: ['done'],
+        done: [],
+      },
+      checkpoint_mapping: {
+        plan: 'plan',
+        scheme: 'scheme',
+        exec: 'exec',
+        review: 'review',
+        test: 'test',
+        archive: 'archive',
+      },
+      phase_corrections: {
+        completed: 'done',
+        finished: 'done',
+        archived: 'done',
+        pending: 'plan_pending',
+      },
+    };
   }
 }

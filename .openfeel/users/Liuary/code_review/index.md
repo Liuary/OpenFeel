@@ -9,7 +9,7 @@
 | pending | 14 |
 | fixing | 0 |
 | resolved | 0 |
-| closed | 5 |
+| closed | 11 |
 
 ## 阶段
 
@@ -49,6 +49,30 @@
 ### v2-stage-01
 - ✅ 审查通过 — 0 个阻塞 REV 条目，1 个低优提醒 (closed)
 - [REV-001-01](REV-v2-stage-01.md#rev-001-01structurets-仍含-stagesroadmap) — closed (low) — structure.ts WORKSPACE_DIRS 仍含 stages/roadmap
+
+### v2-stage-02
+- ✅ 审查通过 — 0 个阻塞 REV 条目，2 个低优提醒 (pending)
+- [REV-002-01](REV-v2-stage-02.md#rev-002-01schemer-模板拼写错误) — pending (low) — "声名" → 应为 "声明"
+- [REV-002-02](REV-v2-stage-02.md#rev-002-02synctoflowjson-与-registerstage-stage-entry-代码重复) — pending (low) — stage entry 创建代码重复
+
+### v2-stage-05
+- ✅ 审查通过 — 1 个 REV 已关闭 (high×1)
+- [REV-001](REV-v2-stage-05.md#rev-v2-stage-05-001-initproject-添加-vitestcoverage-v8-未检查-vitest-存在性) — closed (high) — initProject 添加 @vitest/coverage-v8 未检查 vitest 存在性，修复验收通过 ✅
+
+### v2-stage-07
+- ✅ 审查通过 — 4 个 REV 已关闭（medium×1 low×3）
+- [REV-001](REV-v2-stage-07.md#rev-v2-stage-07-001-pipelinephase-类型从固定枚举退化为-string) — closed (medium) — PipelinePhase 类型退化设计权衡
+- [REV-002](REV-v2-stage-07.md#rev-v2-stage-07-002-loadpipelineconfig-catch-块静默吞异常) — closed (low) — loadPipelineConfig 静默吞异常
+- [REV-003](REV-v2-stage-07.md#rev-v2-stage-07-003-autoregistercommands-依赖-processcwd) — closed (low) — autoRegisterCommands cwd 依赖
+- [REV-004](REV-v2-stage-07.md#rev-v2-stage-07-004-instruction-loaderts-模板文件加载失败静默回退) — closed (low) — 模板加载静默回退
+
+### v2-stage-06
+- ✅ 审查通过 — 0 个阻塞 REV 条目
+- 源码修改正确（config.ts + cli/index.ts），编译测试无回归（217/219），验证文档完整，部署复盘合格
+
+### v2-stage-03
+- ✅ 审查通过 — 1 个 REV 已关闭 (medium)
+- [REV-001](REV-v2-stage-03.md#rev-v2-stage-03-001-op-004-未完整实施7-个-agent-缺失工具使用规范小节) — closed (medium) — 7 个 Agent 缺失「工具使用规范」小节，第二轮验收通过 ✅
 
 ### stage-09
 - ✅ 审查通过 — 1 个 REV 已关闭（high×1）

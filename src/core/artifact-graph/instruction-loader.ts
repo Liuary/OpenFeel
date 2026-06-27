@@ -13,6 +13,7 @@ import { detectCompletedArtifacts } from './state.js';
 import { readConfig, type Config } from '../config.js';
 import { FlowManager } from '../flow-manager.js';
 import { existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // ─── XML 工具函数 ────────────────────────────────────────────────
@@ -41,6 +42,36 @@ const DEFAULT_RULES: string[] = [
   '完成所有 hard 依赖后再开始当前 artifact',
 ];
 
+/**
+ * 判断 artifact.template 是否为文件路径
+ * 文件路径特征：以 . 或 / 开头、以 .md/.yaml/.json/.xml 结尾、不以 ( 开头
+ */
+function isFilePath(template: string): boolean {
+  if (template.startsWith('(')) {
+    return false; // "(无模板)" 等回退文本
+  }
+  if (template.startsWith('.') || template.startsWith('/')) {
+    return true;
+  }
+  if (/\.(md|yaml|yml|json|xml)$/.test(template)) {
+    return true;
+  }
+  return false;
+}
+
+/** 从文件加载模板内容，失败时返回 null */
+function loadTemplateFile(templatePath: string, projectPath: string): string | null {
+  const fullPath = resolve(projectPath, templatePath);
+  try {
+    if (!existsSync(fullPath)) {
+      return null;
+    }
+    return readFileSync(fullPath, 'utf-8');
+  } catch {
+    return null;
+  }
+}
+
 // ─── 子块生成 ────────────────────────────────────────────────────
 
 /**
@@ -48,9 +79,9 @@ const DEFAULT_RULES: string[] = [
  * 包含技术栈、工作区状态、项目名和 config.yaml 关键配置
  */
 function generateProjectContext(config: Config): string {
-  const techStack = 'TypeScript';
+  const techStack = config.meta?.tech_stack ?? 'TypeScript';
   const workspace = '.openfeel/ 工作区已初始化';
-  const project = 'OpenFeel';
+  const project = config.meta?.project ?? 'OpenFeel';
 
   // 提取关键配置项摘要
   const configParts: string[] = [];
@@ -268,9 +299,19 @@ export async function generateInstructions(
   const instruction = artifact.instruction
     ? xmlEscape(artifact.instruction)
     : xmlEscape(generateFallbackInstruction(artifact));
-  const template = artifact.template
-    ? xmlEscape(artifact.template)
-    : '(无模板)';
+  const template = (() => {
+    if (artifact.template) {
+      // 若 template 是文件路径，尝试从文件加载
+      if (isFilePath(artifact.template)) {
+        const fileContent = loadTemplateFile(artifact.template, projectPath);
+        if (fileContent !== null) {
+          return xmlEscape(fileContent);
+        }
+      }
+      return xmlEscape(artifact.template);
+    }
+    return '(无模板)';
+  })();
   const unlocks = generateUnlocks(artifactId, graph, schema);
 
   // 8. 拼接完整 XML
@@ -366,9 +407,9 @@ export async function generateInstructionsJson(
     },
     task: artifact.instruction ?? artifact.description ?? '请完成此 artifact',
     project_context: {
-      tech_stack: 'TypeScript',
+      tech_stack: config.meta?.tech_stack ?? 'TypeScript',
       workspace: '.openfeel/ 工作区已初始化',
-      project: 'OpenFeel',
+      project: config.meta?.project ?? 'OpenFeel',
       config: {
         execution_mode: config.execution_mode ?? null,
         auto_advance: config.auto_advance ?? null,
@@ -380,7 +421,19 @@ export async function generateInstructionsJson(
     dependencies,
     output: artifact.generates,
     instruction: artifact.instruction ?? generateFallbackInstruction(artifact),
-    template: artifact.template ?? null,
+    template: (() => {
+      if (artifact.template) {
+        // 若 template 是文件路径，尝试从文件加载
+        if (isFilePath(artifact.template)) {
+          const fileContent = loadTemplateFile(artifact.template, projectPath);
+          if (fileContent !== null) {
+            return fileContent;
+          }
+        }
+        return artifact.template;
+      }
+      return null;
+    })(),
     unlocks,
   };
 }

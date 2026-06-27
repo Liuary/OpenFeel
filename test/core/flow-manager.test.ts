@@ -823,6 +823,43 @@ describe('FlowManager', () => {
       }));
       expect(mgr.canAdvance('stage-01.op-001', 'plan_passed')).toBe(false);
     });
+
+    // BUG-01/02 修复验证：失败态应能回退到 scheme_pending
+    it('review_failed → scheme_pending 应返回 true（BUG-01 修复）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        pipeline: {
+          phase: 'review_failed' as PipelinePhase,
+          current: { stage: 'stage-01', op: 'op-001' },
+          retry: 0,
+        },
+      }));
+      expect(mgr.canAdvance('stage-01.op-001', 'scheme_pending')).toBe(true);
+    });
+
+    it('test_failed → scheme_pending 应返回 true（BUG-02 修复）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        pipeline: {
+          phase: 'test_failed' as PipelinePhase,
+          current: { stage: 'stage-01', op: 'op-001' },
+          retry: 0,
+        },
+      }));
+      expect(mgr.canAdvance('stage-01.op-001', 'scheme_pending')).toBe(true);
+    });
+
+    it('exec_running → scheme_pending 应返回 true', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        pipeline: {
+          phase: 'exec_running' as PipelinePhase,
+          current: { stage: 'stage-01', op: 'op-001' },
+          retry: 0,
+        },
+      }));
+      expect(mgr.canAdvance('stage-01.op-001', 'scheme_pending')).toBe(true);
+    });
   });
 
   describe('validate', () => {

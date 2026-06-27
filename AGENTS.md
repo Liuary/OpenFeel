@@ -1,5 +1,8 @@
 # OpenFeel
 
+> 本文档为 OpenFeel 核心约束层，跨平台统一适用。
+> 平台特化配置参见各适配器目录（`.opencode/`、`kilo/`、`claude/`）。
+
 AI Agent 项目级行为约束与编码规范。本文件为永久性约束，适用于项目中所有 AI Agent 会话。
 
 详细流程规则由 `openfeel` CLI 工具管理（`openfeel flow` / `openfeel plan` 等）。
@@ -53,6 +56,27 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 - 重要逻辑分支/状态机：须有一行中文注释解释意图。
 - 错误路径：每个错误返回前须有中文注释说明触发条件。
 - 关键文件头部需中文注释说明文件职责。
+
+## 跨 Agent 工具使用约束
+
+1. **统一工具规范**：所有 Agent 必须遵循 `.openfeel/dev/dev_core.md` 中「Agent 工具使用规范」，该规范定义了 `todowrite`、`question`、`task`、`skill` 四种核心工具的使用准则和触发条件。
+
+2. **工具使用优先级**（由高到低）：
+   - `todowrite` > 凭记忆逐条执行 — 多步骤任务必须先创建 todo 列表
+   - `question` > 自行假设 — 需求模糊时先澄清再动手
+   - `task(explore)` > 手动逐个 grep/read — 批量代码探索交给子 Agent 并行处理
+   - `skill` > 凭记忆推断 — 获取状态、查阅知识库等操作必须通过 skill 加载
+
+3. **职责边界**：跨 Agent 协作时，每个 Agent 仅在自己的职责边界内操作，不得越界：
+   - Planner 制定计划，不写代码
+   - Executor 按计划实现，不自行改计划
+   - Architect / Reviewer 审查代码，不自查自改
+   - Tester 提交 Bug 和验收，不修复代码
+   - Archiver 归档和沉淀知识，不修改源码
+
+4. **自动闭环约束**：自动闭环中由 AutoRunner 调度的子 Agent（code-worker、review-worker、test-writer、tester、debug）不得自行启动新的 Agent Manager session，不得创建新的 worktree。所有自动推进由 AutoRunner 在同一 worktree 内管理。
+
+偏离以上约束的行为视为违规，审查时将被标记。
 
 ## 动态规则
 

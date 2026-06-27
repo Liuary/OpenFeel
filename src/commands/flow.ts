@@ -3,7 +3,7 @@
  * openfeel flow status|current|advance|attempt|log|review|retry
  */
 import { Command } from 'commander';
-import { FlowManager } from '../core/flow-manager.js';
+import { FlowManager, PipelinePhase } from '../core/flow-manager.js';
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -41,9 +41,9 @@ export function registerFlowCommand(program: Command): void {
   flow
     .command('advance')
     .description('推进流水线阶段')
-    .requiredOption('--op <id>', '操作 ID（如 stage-01.op-001）')
+    .option('--op <id>', '操作 ID（如 stage-01.op-001），全局阶段（如 done）可不传')
     .requiredOption('--to <phase>', '目标阶段（如 plan_passed）')
-    .action((options: { op: string; to: string }) => {
+    .action((options: { op?: string; to: string }) => {
       const mgr = createManager();
       if (!mgr.isLoaded()) {
         console.error('错误：flow.json 未初始化，请先运行 openfeel init');
@@ -56,17 +56,30 @@ export function registerFlowCommand(program: Command): void {
         for (const err of errors) {
           console.error(`  - ${err}`);
         }
-        process.exit(1);
+        // validate() 可能已自动修正，允许在有修正的情况下继续
+        const correctedErrors = errors.filter(e => e.includes('已自动修正'));
+        const realErrors = errors.filter(e => !e.includes('已自动修正'));
+        if (realErrors.length > 0) {
+          process.exit(1);
+        }
+        console.log('（非标准 phase 已自动修正，继续推进）');
       }
 
-      if (!mgr.canAdvance(options.op, options.to as Parameters<typeof mgr.advancePhase>[1])) {
-        console.error(`错误：无法从当前阶段推进到 "${options.to}"（不合法或 op 不存在）`);
-        process.exit(1);
+      // 全局推进（无 opId）时跳过 canAdvance 检查
+      if (options.op) {
+        if (!mgr.canAdvance(options.op, options.to as PipelinePhase)) {
+          console.error(`错误：无法从当前阶段推进到 "${options.to}"（不合法或 op 不存在）`);
+          process.exit(1);
+        }
       }
 
-      mgr.advancePhase(options.op, options.to as Parameters<typeof mgr.advancePhase>[1]);
+      mgr.advancePhase(options.op ?? null, options.to as PipelinePhase);
       mgr.save();
-      console.log(`✓ 已推进: ${options.op} → ${options.to}`);
+      if (options.op) {
+        console.log(`✓ 已推进: ${options.op} → ${options.to}`);
+      } else {
+        console.log(`✓ 已全局推进 → ${options.to}`);
+      }
     });
 
   // flow attempt --op <id> --result <pass|fail>
@@ -96,6 +109,10 @@ export function registerFlowCommand(program: Command): void {
         console.log(`⚠ ${options.op} 执行失败，将重试（${outcome.shouldRetry ? '可重试' : '重试耗尽'}）`);
       } else if (outcome.shouldReplan) {
         console.log(`✗ ${options.op} 重试耗尽，需要重新规划`);
+        // BUG-03 修复：shouldReplan 时自动推进到 scheme_pending
+        mgr.advancePhase(options.op, 'scheme_pending');
+        mgr.save();
+        console.log(`→ 已自动回退到 scheme_pending，请重新规划方案`);
       }
     });
 

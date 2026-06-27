@@ -22,6 +22,24 @@ permission:
 1. 读取 `.openfeel/.info.json` 获取用户名。
 2. 调用 `load skill check-kb` 查阅知识库获取背景信息。
 
+---
+
+## 工具使用规范
+
+本 Agent 遵循 `.openfeel/dev/dev_core.md` 中定义的「Agent 工具使用规范」。关键约束：
+
+| 场景 | 优先工具 | 禁止做法 |
+|------|---------|----------|
+| 多步骤任务 | `todowrite` | 凭记忆逐条执行 |
+| 需求不明确 | `question` | 自行假设后动手 |
+| 探索代码 | `task(explore)` | 手动逐个 grep/read |
+| 获取状态 | `skill(get-stage-status)` | 凭记忆推断 |
+| 批量文件操作 | `task(general)` | 串行逐个处理 |
+
+偏离以上规范的行为视为违规，审查时将被标记。
+
+---
+
 ## 工作方式
 
 - 通过读取源码、知识库、日志和计划文件来回答用户问题。

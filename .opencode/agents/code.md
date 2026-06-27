@@ -27,7 +27,23 @@ permission:
    - 若配置文件不存在或 `models` 节缺失，使用会话默认模型（工具内置）。
 4. 调用 `load skill get-bugs` 获取待处理 Bug，调用 `load skill check-kb` 查阅知识库。
 5. 若用户或启动 Prompt 指定计划阶段，调用 `load skill get-stage-status` 读取 `.openfeel/plan/{stage}/status.md`。
-6. 分析用户指令是否需要计划化，若涉及多步骤 / 跨会话 / 多模块，主动更新 `.openfeel/plan/plan.md` 或 `.openfeel/dev/current.md`。
+ 6. 分析用户指令是否需要计划化，若涉及多步骤 / 跨会话 / 多模块，主动更新 `.openfeel/plan/plan.md` 或 `.openfeel/dev/current.md`。
+
+---
+
+## 工具使用规范
+
+本 Agent 遵循 `.openfeel/dev/dev_core.md` 中定义的「Agent 工具使用规范」。关键约束：
+
+| 场景 | 优先工具 | 禁止做法 |
+|------|---------|----------|
+| 多步骤任务 | `todowrite` | 凭记忆逐条执行 |
+| 需求不明确 | `question` | 自行假设后动手 |
+| 探索代码 | `task(explore)` | 手动逐个 grep/read |
+| 获取状态 | `skill(get-stage-status)` | 凭记忆推断 |
+| 批量文件操作 | `task(general)` | 串行逐个处理 |
+
+偏离以上规范的行为视为违规，审查时将被标记。
 
 ---
 

@@ -117,8 +117,14 @@ function syncToFlowJson(
     }
 
     // 检查 stage 是否存在
+    // 若 stage 未在 flow.json 中注册，自动注册
     if (!flowData.stages[stageName]) {
-      return; // 跳过同步，不报错
+      flowData.stages[stageName] = {
+        name: stageName,
+        status: 'planned',
+        deps: [],
+        ops: {},
+      };
     }
 
     // 将 op 注册到 stages.{stageName}.ops 中

@@ -68,16 +68,16 @@ auto_advance: disabled
     expect(config.auto_advance).toBe('disabled');
   });
 
-  it('应忽略没有 value 的 key（如块标记 "defaults:"）', () => {
+  it('defaults: 块标记在 Zod Schema 中被规范化为空对象', () => {
     const content = `defaults:
 execution_mode: manual
 `;
     writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), content, 'utf-8');
     const config = readConfig(tmpDir);
-    // "defaults:" 行没有 value，应被忽略
+    // yaml.parse() 将 "defaults:" 空块解析为 null，Zod Schema 规范化为 {}
     expect(config.execution_mode).toBe('manual');
-    // defaults 不是已知 key，不会被赋值
-    expect((config as Record<string, unknown>).defaults).toBeUndefined();
+    // Zod Schema 为 defaults 提供了默认值 {}，但 null 被预处理转为了 {} 且 normalizeConfig 提升后 defaults 内有字段
+    expect(config.defaults).toBeDefined();
   });
 
   it('test_enabled 应正确解析 true/false 布尔值', () => {
@@ -92,8 +92,9 @@ execution_mode: manual
     expect(readConfig(tmpDir).test_enabled).toBe(false);
   });
 
-  it('应正确解析 meta.version', () => {
-    const content = `version: 1.0
+  it('应正确解析 meta.version（嵌套格式）', () => {
+    const content = `meta:
+  version: "1.0"
 execution_mode: manual
 `;
     writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), content, 'utf-8');

@@ -5,6 +5,7 @@
 import { FlowManager } from '../flow-manager.js';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { initKnowledgeBase, addKnowledgeEntry } from '../workspace/knowledge.js';
 
 /** 归档结果 */
 export interface ArchiveResult {
@@ -126,6 +127,15 @@ ${reviewRows}
 
   // 持久化
   mgr.save();
+
+  // 自动同步知识库：将提取的知识条目写入 kb/
+  if (knowledgeExtracts.length > 0) {
+    initKnowledgeBase(projectPath);
+    for (const entry of knowledgeExtracts) {
+      // 知识提取格式为 "[REV-XXX] 标题"，默认归入 patterns 分类
+      addKnowledgeEntry(projectPath, 'patterns', entry, `归档自阶段 ${stageName}`);
+    }
+  }
 
   return {
     summary,

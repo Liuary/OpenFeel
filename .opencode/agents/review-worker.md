@@ -33,6 +33,24 @@ permission:
 3. 调用 `load skill get-stage-status` 读取当前子计划状态。
 4. 调用 `load skill check-kb` 查阅知识库。
 
+---
+
+## 工具使用规范
+
+本 Agent 遵循 `.openfeel/dev/dev_core.md` 中定义的「Agent 工具使用规范」。关键约束：
+
+| 场景 | 优先工具 | 禁止做法 |
+|------|---------|----------|
+| 多步骤任务 | `todowrite` | 凭记忆逐条执行 |
+| 需求不明确 | `question` | 自行假设后动手 |
+| 探索代码 | `task(explore)` | 手动逐个 grep/read |
+| 获取状态 | `skill(get-stage-status)` | 凭记忆推断 |
+| 批量文件操作 | `task(general)` | 串行逐个处理 |
+
+偏离以上规范的行为视为违规，审查时将被标记。
+
+---
+
 ## 审查流程
 
 当 AutoRunner 要求审查 `ready_for_review` 状态的子计划时：

@@ -3,7 +3,7 @@
  * 协调创建工作区、写入配置、初始化 flow.json、确保身份文件、
  * 生成 dev_core.md/current.md/instructions/core.md 模板。
  */
-import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson } from './workspace/identity.js';
@@ -111,6 +111,34 @@ export function initProject(projectPath: string): InitResult {
   const coreResult = writeTemplateIfMissing(coreInstructionsPath, coreContent);
   if (coreResult.created) {
     created.push('.opencode/instructions/core.md');
+  }
+
+  // 8. 检测 package.json，若存在 vitest 则添加 @vitest/coverage-v8
+  const pkgPath = resolve(projectPath, 'package.json');
+  if (existsSync(pkgPath)) {
+    const pkgContent = readFileSync(pkgPath, 'utf-8');
+    const pkg = JSON.parse(pkgContent);
+
+    // 检查 vitest 是否存在于 dependencies 或 devDependencies 中
+    const vitestVersion =
+      pkg.dependencies?.vitest || pkg.devDependencies?.vitest;
+
+    if (vitestVersion) {
+      // 确保 devDependencies 对象存在
+      if (!pkg.devDependencies) {
+        pkg.devDependencies = {};
+      }
+
+      // 仅在 @vitest/coverage-v8 尚未添加时处理
+      if (!pkg.devDependencies['@vitest/coverage-v8']) {
+        // 提取 vitest 的主版本号，使 coverage-v8 版本匹配
+        const majorMatch = vitestVersion.match(/^(?:[\^~]?)(\d+)/);
+        const majorVersion = majorMatch ? majorMatch[1] : '3';
+        pkg.devDependencies['@vitest/coverage-v8'] = `^${majorVersion}.0.0`;
+        writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+        updated.push('package.json');
+      }
+    }
   }
 
   return { created, updated };

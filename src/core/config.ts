@@ -1,17 +1,47 @@
 /**
  * 配置文件读写
- * 管理项目下的 .openfeel/config.yaml 文件，使用简单手写 YAML 解析。
+ * 管理项目下的 .openfeel/config.yaml 文件，使用 yaml.parse() + Zod Schema 校验。
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { z } from 'zod';
+import { parse as parseYaml } from 'yaml';
 
-/** 配置文件结构 */
+// ── Zod Schema ──
+
+/** meta 块 Schema（允许扩展字段） */
+export const ConfigMetaSchema = z.object({
+  version: z.string().optional(),
+  project: z.string().optional(),
+  tech_stack: z.string().optional(),
+}).passthrough();
+
+/** defaults 块 Schema（允许扩展字段） */
+export const ConfigDefaultsSchema = z.object({
+  execution_mode: z.enum(['manual', 'auto']).optional().default('manual'),
+  auto_advance: z.enum(['disabled', 'enabled']).optional().default('disabled'),
+  test_enabled: z.boolean().optional().default(false),
+  merge_mode: z.enum(['manual', 'auto']).optional().default('manual'),
+}).passthrough();
+
+/** 完整的 config.yaml Schema */
+export const ConfigSchema = z.object({
+  meta: ConfigMetaSchema.optional(),
+  defaults: ConfigDefaultsSchema.optional(),
+}).passthrough();
+
+// ── 类型 ──
+
+/** 配置文件结构（backward-compatible: 扁平字段 + 嵌套结构并存） */
 export interface Config {
-  meta?: { version?: string };
+  meta?: { version?: string; project?: string; tech_stack?: string; [key: string]: unknown };
+  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; test_enabled?: boolean; merge_mode?: 'manual' | 'auto'; [key: string]: unknown };
+  // 向后兼容：扁平字段（由 normalizeConfig 从 defaults 提升）
   execution_mode?: 'manual' | 'auto';
   auto_advance?: 'disabled' | 'enabled';
   test_enabled?: boolean;
   merge_mode?: 'manual' | 'auto';
+  [key: string]: unknown;
 }
 
 /** 默认配置值 */
@@ -22,9 +52,32 @@ const DEFAULT_CONFIG: Config = {
   merge_mode: 'manual',
 };
 
+// ── 工具函数 ──
+
+/**
+ * 将 Config 的嵌套 defaults 字段提升到顶层
+ * 向后兼容旧代码中 config.execution_mode 等扁平访问方式
+ */
+function normalizeConfig(parsed: Config): Config {
+  const result: Config = { ...parsed };
+  // 若存在 defaults 块，将其字段提升到顶层（不覆盖已有的顶层值）
+  if (result.defaults) {
+    const defaults = result.defaults;
+    // 提升所有 defaults 字段
+    for (const [key, value] of Object.entries(defaults)) {
+      if (!(key in result)) {
+        (result as Record<string, unknown>)[key] = value;
+      }
+    }
+  }
+  return result;
+}
+
+// ── 公开 API ──
+
 /**
  * 读取项目下的 .openfeel/config.yaml
- * 解析简单 key: value 格式 YAML，忽略注释和空行。
+ * 使用 yaml.parse() 解析嵌套结构，Zod Schema 校验，自动规范化
  * 若文件不存在，返回空对象。
  */
 export function readConfig(projectPath: string): Config {
@@ -34,60 +87,19 @@ export function readConfig(projectPath: string): Config {
   }
 
   const content = readFileSync(configPath, 'utf-8');
-  const config: Config = {};
-  const lines = content.split('\n');
+  const raw = parseYaml(content); // yaml.parse() 自动处理嵌套结构
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // 跳过注释行和空行
-    if (trimmed === '' || trimmed.startsWith('#')) {
-      continue;
-    }
-
-    const colonIdx = trimmed.indexOf(':');
-    if (colonIdx === -1) {
-      continue;
-    }
-
-    const key = trimmed.substring(0, colonIdx).trim();
-    const val = trimmed.substring(colonIdx + 1).trim();
-
-    // 跳过只有 key 没有 value 的行（如 "defaults:" 块标记）
-    if (val === '') {
-      continue;
-    }
-
-    // 按 key 赋值
-    switch (key) {
-      case 'version':
-        if (!config.meta) {
-          config.meta = {};
-        }
-        config.meta.version = val;
-        break;
-      case 'execution_mode':
-        if (val === 'manual' || val === 'auto') {
-          config.execution_mode = val;
-        }
-        break;
-      case 'auto_advance':
-        if (val === 'disabled' || val === 'enabled') {
-          config.auto_advance = val;
-        }
-        break;
-      case 'test_enabled':
-        config.test_enabled = val === 'true';
-        break;
-      case 'merge_mode':
-        if (val === 'manual' || val === 'auto') {
-          config.merge_mode = val;
-        }
-        break;
-      // 未知 key 静默忽略
-    }
+  // 预处理：将应为对象但值为 null 的字段转为 {}（兼容 "defaults:\n" 等空块）
+  const preprocessed = { ...raw } as Record<string, unknown>;
+  if (preprocessed.meta === null) {
+    preprocessed.meta = {};
+  }
+  if (preprocessed.defaults === null) {
+    preprocessed.defaults = {};
   }
 
-  return config;
+  const parsed = ConfigSchema.parse(preprocessed) as Config;
+  return normalizeConfig(parsed);
 }
 
 /**
@@ -102,6 +114,8 @@ export function writeDefaultConfig(projectPath: string): void {
 
 meta:
   version: 1.0.0
+  project: OpenFeel
+  tech_stack: TypeScript
 
 # ---- 工作流默认配置 ----
 # 所有阶段 status.md 的初始值由此处写入

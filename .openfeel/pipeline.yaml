@@ -1,0 +1,54 @@
+# OpenFeel 流水线状态机定义
+# 新增/修改流水线阶段只需编辑此文件，不改 TS 源码
+
+# 流水线阶段列表（顺序即流水线流转方向）
+phases:
+  - plan_pending
+  - plan_review
+  - plan_passed
+  - scheme_pending
+  - scheme_review
+  - scheme_passed
+  - exec_running
+  - review_pending
+  - review_failed
+  - review_passed
+  - test_pending
+  - test_failed
+  - test_passed
+  - archiving
+  - done
+
+# 合法的 phase 流转映射（from → [to1, to2, ...]）
+transitions:
+  plan_pending: [plan_review, plan_passed]
+  plan_review: [plan_passed, plan_pending]
+  plan_passed: [scheme_pending]
+  scheme_pending: [scheme_review, scheme_passed]
+  scheme_review: [scheme_passed, scheme_pending]
+  scheme_passed: [exec_running]
+  exec_running: [review_pending, scheme_pending]       # 允许回退到重定方案
+  review_pending: [review_failed, review_passed]
+  review_failed: [review_pending, scheme_pending]      # 审查失败后可重定方案
+  review_passed: [test_pending]
+  test_pending: [test_failed, test_passed]
+  test_failed: [test_pending, scheme_pending]          # 测试失败后可重定方案
+  test_passed: [archiving]
+  archiving: [done]
+  done: []
+
+# phase 前缀到 checkpoint 字段的映射
+checkpoint_mapping:
+  plan: plan
+  scheme: scheme
+  exec: exec
+  review: review
+  test: test
+  archive: archive
+
+# 非标准 phase 修正映射（validate 自动纠错用）
+phase_corrections:
+  completed: done
+  finished: done
+  archived: done
+  pending: plan_pending

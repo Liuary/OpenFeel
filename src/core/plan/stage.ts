@@ -4,6 +4,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { FlowManager } from '../flow-manager.js';
 
 /** 工作阶段 */
 export interface Stage {
@@ -93,6 +94,13 @@ ${depsText}
 | ${new Date().toISOString().replace('T', ' ').substring(0, 16)} | user | planned | 阶段已创建 |
 `;
     writeFileSync(statusPath, statusContent, 'utf-8');
+  }
+
+  // 同步到 flow.json（若 flow.json 存在）
+  const flowMgr = new FlowManager(projectPath);
+  if (flowMgr.isLoaded()) {
+    flowMgr.registerStage(name, deps ?? []);
+    flowMgr.save();
   }
 }
 

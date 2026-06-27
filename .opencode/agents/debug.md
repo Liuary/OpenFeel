@@ -21,6 +21,24 @@ permission:
 
 > **编辑权限**：你可以通过 `bash` 工具修改 `.openfeel/users/{username}/bugs/` 下的 Bug 文件（写入排查结论）。源码和其他文件不可编辑。
 
+---
+
+## 工具使用规范
+
+本 Agent 遵循 `.openfeel/dev/dev_core.md` 中定义的「Agent 工具使用规范」。关键约束：
+
+| 场景 | 优先工具 | 禁止做法 |
+|------|---------|----------|
+| 多步骤任务 | `todowrite` | 凭记忆逐条执行 |
+| 需求不明确 | `question` | 自行假设后动手 |
+| 探索代码 | `task(explore)` | 手动逐个 grep/read |
+| 获取状态 | `skill(get-stage-status)` | 凭记忆推断 |
+| 批量文件操作 | `task(general)` | 串行逐个处理 |
+
+偏离以上规范的行为视为违规，审查时将被标记。
+
+---
+
 ## 工作流程
 
 1. 从 Bug 文件中获取缺陷描述、复现步骤和期望行为。

@@ -1,9 +1,13 @@
 /**
  * OpenCode 适配器更新编排
- * 在目标项目中生成 Agent 定义、Skill 定义，并更新 opencode.jsonc 配置。
+ * 在目标项目中生成 Agent 定义、Skill 定义、instructions/core.md，并更新 opencode.jsonc 配置。
+ *
+ * 变更摘要 (v3-stage-04 第二轮):
+ * - 新增 instructions/core.md 创建（从 init.ts 迁移至此，职责归位适配器层）
  */
 import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
+import { CORE_INSTRUCTIONS_TEMPLATE_B64 } from './templates.js';
 
 /** 更新结果 */
 export interface UpdateResult {
@@ -1083,6 +1087,13 @@ export function updateProject(projectPath: string, selectedTools: string[] = ["o
   if (!selectedTools.includes('opencode')) {
     return { created: [], updated: [], skipped: [] };
   }
+
+  // 0. 生成 instructions/core.md（适配器层核心指令，与 init 的核心层分离）
+  const instructionsDir = resolve(projectPath, '.opencode', 'instructions');
+  mkdirSync(instructionsDir, { recursive: true });
+  const coreInstructionsPath = join(instructionsDir, 'core.md');
+  const coreContent = Buffer.from(CORE_INSTRUCTIONS_TEMPLATE_B64, 'base64').toString('utf-8');
+  writeIfChanged(coreInstructionsPath, coreContent, '.opencode/instructions/core.md', created, updated, skipped);
 
   // 1. 生成 Agent 定义文件
   for (const [name, content] of Object.entries(AGENT_DEFINITIONS)) {

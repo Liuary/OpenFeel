@@ -170,16 +170,31 @@ export function listKnowledge(projectPath: string, category?: string): Knowledge
 
 /**
  * 全文搜索知识条目
- * 在 title 和 content 中进行不区分大小写的关键词搜索。
+ * 在 title 和 content 中进行不区分大小写的关键词搜索，并对匹配关键词用 ** 包裹高亮。
+ * @param projectPath 项目路径
+ * @param query 搜索关键词
+ * @param limit 返回结果数量上限（默认 10）
+ * @param offset 结果偏移量（默认 0）
  */
-export function searchKnowledge(projectPath: string, query: string): KnowledgeEntry[] {
+export function searchKnowledge(
+  projectPath: string,
+  query: string,
+  limit: number = 10,
+  offset: number = 0,
+): KnowledgeEntry[] {
   const entries = listKnowledge(projectPath);
   const q = query.toLowerCase();
 
-  return entries.filter(
+  const matched = entries.filter(
     (entry) =>
       entry.title.toLowerCase().includes(q) || entry.content.toLowerCase().includes(q),
   );
+
+  // 对匹配结果高亮关键词（标题和内容摘要中用 ** 包裹）
+  const highlighted = matched.map((entry) => highlightEntry(entry, q));
+
+  // 分页截取
+  return highlighted.slice(offset, offset + limit);
 }
 
 /**
@@ -213,6 +228,21 @@ export function getKnowledgeIndex(projectPath: string): KnowledgeIndex {
 // ---------------------------------------------------------------------------
 // 内部解析函数
 // ---------------------------------------------------------------------------
+
+/**
+ * 高亮条目中的匹配关键词（不区分大小写）
+ * 在标题和内容摘要中用 ** 包裹匹配词
+ */
+function highlightEntry(entry: KnowledgeEntry, query: string): KnowledgeEntry {
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'gi');
+
+  return {
+    ...entry,
+    title: entry.title.replace(regex, '**$1**'),
+    content: entry.content.replace(regex, '**$1**'),
+  };
+}
 
 /**
  * 解析分类文件的条目

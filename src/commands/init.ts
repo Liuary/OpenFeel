@@ -1,17 +1,20 @@
 /**
  * init 命令注册
- * openfeel init [path] — 初始化项目工作区
+ * openfeel init [path] [--demo] — 初始化项目工作区
+ *
+ * --demo 标志：在基础初始化之外，额外创建示例项目骨架
  */
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { initProject } from '../core/init.js';
+import { initProject, initDemo } from '../core/init.js';
 
 export function registerInitCommand(program: Command): void {
   program
     .command('init [path]')
     .description('初始化项目工作区，创建 .openfeel/ 目录结构和配置文件')
-    .action((path?: string) => {
+    .option('--demo', '创建带示例骨架的项目（NumKit 风格）')
+    .action((path?: string, options?: { demo?: boolean }) => {
       const targetPath = resolve(path ?? process.cwd());
 
       // 校验路径是否存在
@@ -44,6 +47,28 @@ export function registerInitCommand(program: Command): void {
         console.log('工作区已是最新状态，无需变更。');
       } else {
         console.log('\n✓ OpenFeel 工作区初始化完成');
+      }
+
+      // --demo 标志：创建示例项目骨架
+      if (options?.demo) {
+        console.log('\n⚙ 创建示例项目骨架...\n');
+        const demoResult = initDemo(targetPath);
+
+        if (demoResult.created.length > 0) {
+          console.log('已创建示例文件:');
+          for (const item of demoResult.created) {
+            console.log(`  + ${item}`);
+          }
+        }
+
+        if (demoResult.skipped.length > 0) {
+          console.log('已跳过（文件已存在）:');
+          for (const item of demoResult.skipped) {
+            console.log(`  - ${item}`);
+          }
+        }
+
+        console.log('\n✅ 示例项目已创建，运行 npm install && npm test 开始');
       }
     });
 }

@@ -1,6 +1,7 @@
 ---
 description: Reviewer Agent，负责人工流程中的代码审查结果汇总与归档。
 mode: subagent
+model: cross_model
 color: "#D4A017"
 permission:
   # 源码只读，可读写 .openfeel/ 下审查相关文档
@@ -35,7 +36,15 @@ permission:
 1. 读取 `.openfeel/.info.json` 获取用户名。
 2. 执行 `.openfeel/` 目录结构自检（见 `instructions/core.md` 会话启动自检章节），缺失则自动补建。
 3. 调用 `load skill check-kb` 查阅知识库，了解项目编码规范和技术背景。
-4. 若 Prompt 指定计划阶段，调用 `load skill get-stage-status` 读取该阶段状态。
+4. **读取模型配置**：读取 `.openfeel/config.yaml` 的 `models` 节，按以下优先级匹配当前 Agent 的模型后端：
+   - `models.agents.{agent_id}` → Agent 级覆盖（最高优先级）
+   - `models.roles.{agent_id}` → 按 Agent 角色（如 `cross_model`）查找
+   - `models.default` → 默认配置（兜底）
+   - 匹配结果中的 `provider`、`model_name`、`base_url`、`api_key_env` 字段用于配置模型连接。
+   - 若配置文件不存在或 `models` 节缺失，使用会话默认模型（工具内置）。
+       - 若当前模型与 roles.cross_model 配置不同，在审查时有意采用异种视角审视代码。
+    - 注：实际模型由平台层分配，此处为 Awareness 目的。
+5. 若 Prompt 指定计划阶段，调用 `load skill get-stage-status` 读取该阶段状态。
 
 ## 审查流程 — 提交问题
 
@@ -53,6 +62,8 @@ permission:
 
 ### 问题描述
 ...
+
+- **Tester 标记**：`→Tester 重点关注`（可选，Reviewer 发现功能边界问题时使用）
 
 ### 处理记录
 | 时间 | 操作者 | 说明 | Commit |
@@ -73,6 +84,17 @@ permission:
 3. 比对原始问题描述与改动，判断是否解决。
 4. 写入验收记录：通过 → `closed`，不通过 → 退回 `fixing`。
 5. 条目 `closed` 后，核心结论写入 `.openfeel/code_review/{stage}.md`。
+
+## 与 Tester 的职责边界
+
+| 维度 | Reviewer（本 Agent） | Tester |
+|------|---------------------|--------|
+| 关注点 | 方案符合性 | 功能正确性 |
+| 输入 | op 操作方案 | 需求 + op 方案 |
+| 产出 | REV 条目 | BUG 条目 |
+| 视角 | 设计者视角（"按方案做对了吗"） | 用户视角（"功能做对了吗"） |
+
+当 Reviewer 发现潜在的功能边界问题时（如 IEEE 754 精度），可在 REV 条目中附带 `→Tester 重点关注` 标记。
 
 ## 工具使用规范
 

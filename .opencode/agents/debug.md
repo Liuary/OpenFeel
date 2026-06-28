@@ -23,6 +23,19 @@ permission:
 
 ---
 
+## 会话启动
+
+1. 读取 `.openfeel/.info.json` 获取用户名。
+2. 调用 `load skill check-kb` 查阅知识库获取项目背景。
+3. **读取模型配置**：读取 `.openfeel/config.yaml` 的 `models` 节，按以下优先级匹配当前 Agent 的模型后端：
+   - `models.agents.{agent_id}` → Agent 级覆盖（最高优先级）
+   - `models.roles.{agent_id}` → 按 Agent 角色查找
+   - `models.default` → 默认配置（兜底）
+   - 匹配结果中的 `provider`、`model_name`、`base_url`、`api_key_env` 字段用于配置模型连接。
+   - 若配置文件不存在或 `models` 节缺失，使用会话默认模型（工具内置）。
+
+---
+
 ## 工具使用规范
 
 本 Agent 遵循 `.openfeel/dev/dev_core.md` 中定义的「Agent 工具使用规范」。关键约束：

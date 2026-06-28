@@ -190,7 +190,7 @@ describe('searchKnowledge', () => {
   it('应按关键词在标题中找到匹配条目', () => {
     const results = searchKnowledge(tmpDir, 'React');
     expect(results.length).toBe(1);
-    expect(results[0].title).toBe('React 组件设计');
+    expect(results[0].title).toBe('**React** 组件设计');
   });
 
   it('应按关键词在内容中找到匹配条目', () => {
@@ -202,12 +202,26 @@ describe('searchKnowledge', () => {
   it('应区分大小写不敏感', () => {
     const results = searchKnowledge(tmpDir, 'REACT');
     expect(results.length).toBe(1);
-    expect(results[0].title).toBe('React 组件设计');
+    expect(results[0].title).toBe('**React** 组件设计');
   });
 
   it('无匹配时应返回空数组', () => {
     const results = searchKnowledge(tmpDir, '不存在的关键词');
     expect(results.length).toBe(0);
+  });
+
+  it('应支持 limit 分页', () => {
+    const results = searchKnowledge(tmpDir, 'a', 2);
+    // 所有条目都包含 'a'（来自 description column），但这里只测 limit 行为
+    expect(results.length).toBeLessThanOrEqual(2);
+  });
+
+  it('应支持 offset 偏移', () => {
+    const all = searchKnowledge(tmpDir, '组件');
+    const paged = searchKnowledge(tmpDir, '组件', 10, 1);
+    if (all.length > 1) {
+      expect(paged.length).toBe(all.length - 1);
+    }
   });
 });
 

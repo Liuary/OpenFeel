@@ -57,7 +57,7 @@ export function startRepl(program: Command): void {
     // 用固定占位符替代，Commander 仅用于 help 文本显示
     try {
       const args = trimmed.split(/\s+/);
-      program.parse(['node', 'openfeel', ...args], { from: 'user' });
+      program.parse(['node', 'openfeel', ...args]);
     } catch (err: unknown) {
       // 捕获 CommanderError（包括 exitOverride 抛出的和 --help 触发的）
       // 忽略它们以保持 REPL 运行

@@ -1,6 +1,7 @@
 ---
 description: Executor Agent，负责根据计划实现代码并执行构建/测试命令。
 mode: subagent
+model: fast
 color: "#3498DB"
 permission:
   bash: "allow"
@@ -26,7 +27,14 @@ permission:
 1. 读取 `.openfeel/.info.json` 获取用户名。
 2. 执行 `.openfeel/` 目录结构自检（见 `instructions/core.md` 会话启动自检章节），缺失则自动补建。
 3. 调用 `load skill check-kb` 查阅知识库获取项目背景。
-4. 若 Prompt 指定计划阶段，调用 `load skill get-stage-status` 读取 `.openfeel/plan/{stage}/status.md`。
+4. **读取模型配置**：读取 `.openfeel/config.yaml` 的 `models` 节，按以下优先级匹配当前 Agent 的模型后端：
+   - `models.agents.{agent_id}` → Agent 级覆盖（最高优先级）
+   - `models.roles.{agent_id}` → 按 Agent 角色（如 `fast`）查找
+   - `models.default` → 默认配置（兜底）
+   - 匹配结果中的 `provider`、`model_name`、`base_url`、`api_key_env` 字段用于配置模型连接。
+       - 若配置文件不存在或 `models` 节缺失，使用会话默认模型（工具内置）。
+    - 注：实际模型由平台层分配，此处为 Awareness 目的。
+5. 若 Prompt 指定计划阶段，调用 `load skill get-stage-status` 读取 `.openfeel/plan/{stage}/status.md`。
 
 ## 环境自适应
 
@@ -79,6 +87,34 @@ Executor 面对不同项目时必须具备环境自适应能力，自动检测�
 - **写入文件时**：始终显式指定 UTF-8 编码（无 BOM）。使用 `write` 工具时确保内容编码一致
 - **特殊文件**：`.bat` / `.cmd` 脚本使用系统默认 ANSI 编码（Windows）；Shell 脚本使用 UTF-8
 
+## 依赖版本自适应
+
+安装依赖时若方案声明的版本不存在：
+
+1. 根据前面「构建工具自适应」检测到的包管理器，执行对应查询命令查找可用版本：
+   - npm：`npm view <package> versions --json`
+   - yarn：`yarn info <package> versions --json`
+   - pnpm：`pnpm view <package> versions --json`
+   - bun：`bun info <package> versions --json`
+2. 选择同系列最新补丁版本安装
+3. 在自测报告中记录偏差：`[版本偏差] <包名>: 声明 X → 实际 Y`
+4. 偏差仅在版本号修正时允许，主版本/次版本不可自行变更
+
+## 网络安全与超时
+
+- 安装前检测网络连通性（根据包管理器选择对应命令）：
+  - npm：`npm ping`
+  - yarn：`yarn config get registry` 后 ping 对应 registry
+  - pnpm：`pnpm ping`
+  - bun：`curl --head <registry>` 测试连通性
+- 设置安装超时（根据包管理器选择对应方式）：
+  - npm：`npm install --timeout=60000`
+  - yarn：`yarn install --network-timeout 60000`
+  - pnpm：`pnpm install --fetch-timeout=60000`
+  - bun：`bun install`（无统一超时选项，通过脚本 timeout 控制）
+- 网络不可用时：报告明确诊断信息，暂停等待用户处理
+- 不得无限重试——失败 2 次后停止并说明原因
+
 ## 代码实现流程
 
 ### 1. 接收任务
@@ -102,6 +138,8 @@ Executor 面对不同项目时必须具备环境自适应能力，自动检测�
 - 运行项目既有的构建命令（如 `npm run build`）确认无编译错误。
 - 运行相关测试命令（如 `npm test` 或指定测试文件）确认无回归。
 - 构建或测试失败时，分析错误信息并修复，不得跳过。
+- **编码前执行 `load skill check-kb`**，参考 patterns.md 中的代码模式和 troubleshooting.md 中的已知问题，避免重复踩坑。
+- **修改 flow.json 或 config.yaml 后执行格式校验**；若校验失败，立即从 .bak 恢复。
 
 ## 与 Code Agent 的协作边界
 

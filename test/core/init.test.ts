@@ -25,8 +25,7 @@ describe('initProject', () => {
     const base = join(tmpDir, '.openfeel');
 
     expect(existsSync(base)).toBe(true);
-    expect(existsSync(join(base, 'roadmap'))).toBe(true);
-    expect(existsSync(join(base, 'stages'))).toBe(true);
+    expect(existsSync(join(base, 'plan'))).toBe(true);
     expect(existsSync(join(base, 'kb'))).toBe(true);
     expect(existsSync(join(base, 'dev'))).toBe(true);
     expect(existsSync(join(base, 'log'))).toBe(true);

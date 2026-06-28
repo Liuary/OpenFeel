@@ -6,12 +6,35 @@
 
 | 状态 | 数量 |
 |------|------|
-| pending | 14 |
+| pending | 27 |
 | fixing | 0 |
 | resolved | 0 |
-| closed | 11 |
+| closed | 13 |
 
 ## 阶段
+
+### v3-stage-01
+- [REV-001](REV-v3-stage-01.md#rev-001-phase-枚举硬化存在多处缺陷) — pending (high) — Phase 枚举硬化 validate() 副作用、fuzzyCorrectPhase 正则缺陷
+- [REV-002](REV-v3-stage-01.md#rev-002-addautofixreview-缺少关键前置校验和-checkpoint-更新) — pending (high) — addAutoFixReview 无前置校验 + checkpoint 遗漏
+- [REV-003](REV-v3-stage-01.md#rev-003-healthcheck-僵尸-bug-检测完全失效) — pending (high) — checkZombieStates Bug 文件过滤逻辑错误
+- [REV-004](REV-v3-stage-01.md#rev-004-repair-dry-run-逻辑完全错误) — pending (high) — repair --dry-run 输出逻辑双缺陷
+- [REV-005](REV-v3-stage-01.md#rev-005-新增功能全部缺少测试覆盖) — pending (medium) — 5 个新方法零测试
+
+### v3-stage-02
+- [REV-006](REV-v3-stage-02.md#rev-006-writedefaultconfig-未写入-models-节) — closed (medium) — writeDefaultConfig 缺 models 节，修复验收通过 ✅
+- [REV-007](REV-v3-stage-02.md#rev-007-模型配置步骤缺少-awareness-注释) — closed (low) — 模型配置读取步骤 Awareness 注释，修复验收通过 ✅
+
+### v3-stage-03
+- [REV-008](REV-v3-stage-03.md#rev-008-schemer-产出路径指向不存在的目录) — pending (high) — schemer.md 产出路径 .openfeel/stages/ 不存在
+- [REV-009](REV-v3-stage-03.md#rev-009-feel-任务路由表缺少-schemer) — pending (high) — Feel 路由表无 Schemer 条目
+- [REV-010](REV-v3-stage-03.md#rev-010-executor-版本校验和网络安全仅覆盖-npm) — pending (medium) — 依赖版本校验仅 npm 命令
+- [REV-011](REV-v3-stage-03.md#rev-011-addautofixreview-命令层-opid-未校验) — pending (medium) --auto-fix 命令未校验 opId
+- [REV-012](REV-v3-stage-03.md#rev-012-wizard-的-phaselabels-硬编码不完整) — pending (low) — wizard phaseLabels 静态映射
+
+### v3-stage-04
+- [REV-013](REV-v3-stage-04.md#rev-013-architect-审查模板缺少-tester-标记字段) — pending (medium) — architect.md 审查模板缺 Tester 标记
+- [REV-014](REV-v3-stage-04.md#rev-014-tester-reviewer-标记处理未指明-rev-文件路径) — pending (low) — tester.md 未给 REV 文件路径
+- [REV-015](REV-v3-stage-04.md#rev-015-check-kb-强制检索提示在空知识库时冗余) — pending (low) — check-kb 空库时冗余提示
 
 ### stage-01
 - [REV-01](REV-stage-01.md#rev-01-eslintconfigjs-依赖缺失--typescript-eslint-未在-devdependencies-中声明) — pending — eslint.config.js 依赖缺失

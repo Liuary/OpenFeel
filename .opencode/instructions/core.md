@@ -248,6 +248,8 @@
 | 代码模式（如状态机统一用 Switch + Enum） | `patterns.md` |
 | 排查经验（如构建报错时的处理步骤） | `troubleshooting.md` |
 | 环境配置（如特殊编译流程） | `setup.md` |
+| 项目分析报告（测试复盘、流程分析、问题总结） | 项目根目录下的 `docs/phase-{N}/` |
+| 对体系的理解（与项目分析报告同目录） | 项目根目录下的 `docs/phase-{N}/` |
 
 禁止写入知识库：行为约束（→ AGENTS.md）、操作流程（→ Instructions）、工作区维护规则（→ dev_core.md）。每次写入后在公共日志中记录。
 

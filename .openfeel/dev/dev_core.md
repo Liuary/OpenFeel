@@ -3,7 +3,7 @@
 
 ## [+] 归档命名规范 (2026-06-27)
 
-`.openfeel/docs/` 下所有归档文档必须遵循统一命名规范：
+`docs/` 下所有归档文档必须遵循统一命名规范：
 
 ```
 yyyy-mm-dd-NNN-{category}-{title}.md
@@ -25,7 +25,7 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 
 ### 关联要求
 
-- 每次新增归档文档后，同步更新 `.openfeel/docs/index.md`（按类别分组索引）
+- 每次新增归档文档后，同步更新 `docs/index.md`（按类别分组索引）
 - 序号 NNN 跨类别全局递增，通过 `index.md` 中最大序号 +1 确定
 - 归档操作同步记录到 `.openfeel/log/` 和 `.openfeel/plan/plan_log.md`
 

@@ -17,8 +17,6 @@ export function ensureDir(path: string): void {
 /** .openfeel/ 下的子目录清单 */
 const WORKSPACE_DIRS = [
   'plan',
-  'stages',
-  'roadmap',
   'kb',
   'dev',
   'log',

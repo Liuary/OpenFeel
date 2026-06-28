@@ -90,17 +90,24 @@ export function registerKnowledgeCommand(program: Command): void {
     });
 
   // -----------------------------------------------------------------------
-  // knowledge search <query>
+  // knowledge search <query> [--limit <n>] [--offset <n>]
   // -----------------------------------------------------------------------
   knowledge
     .command('search')
     .description('搜索知识库')
     .argument('<query>', '搜索关键词')
-    .action((query: string) => {
-      const entries = searchKnowledge(process.cwd(), query);
+    .option('--limit <n>', '返回结果数量上限（默认 10）', '10')
+    .option('--offset <n>', '结果偏移量（默认 0）', '0')
+    .action((query: string, options: { limit: string; offset: string }) => {
+      const limit = Math.max(1, parseInt(options.limit, 10) || 10);
+      const offset = Math.max(0, parseInt(options.offset, 10) || 0);
+      const entries = searchKnowledge(process.cwd(), query, limit, offset);
 
       if (entries.length === 0) {
         console.log(`未找到与 "${query}" 相关的知识条目。`);
+        if (offset > 0) {
+          console.log(`（偏移量 ${offset}，已越界）`);
+        }
         return;
       }
 

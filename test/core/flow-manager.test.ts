@@ -905,5 +905,89 @@ describe('FlowManager', () => {
       expect(valid).toBe(false);
       expect(errors.length).toBe(1);
     });
+
+    // REV-005: 新增功能测试 — validate 自动修正
+    it('非法 phase 可自动修正时应返回 valid=true 且 warnings 包含修正信息', () => {
+      const mgr = new FlowManager(tmpDir);
+      const bad = makeTestFlowData({
+        pipeline: {
+          phase: 'planning' as unknown as PipelinePhase,
+          current: { stage: '', op: '' },
+          retry: 0,
+        },
+      });
+      mgr.setData(bad);
+      const { valid, errors, warnings } = mgr.validate();
+      expect(valid).toBe(true);
+      expect(errors.length).toBe(0);
+      expect(warnings.length).toBeGreaterThan(0);
+      expect(warnings[0]).toContain('自动修正');
+      expect(warnings[0]).toContain('planning');
+      expect(mgr.getPhase()).toBe('plan_pending'); // 已修正
+    });
+
+    it('无法自动修正的非法 phase 应返回 valid=false 且 errors 包含错误', () => {
+      const mgr = new FlowManager(tmpDir);
+      const bad = makeTestFlowData({
+        pipeline: {
+          phase: 'xyz_invalid_phase' as unknown as PipelinePhase,
+          current: { stage: '', op: '' },
+          retry: 0,
+        },
+      });
+      mgr.setData(bad);
+      const { valid, errors, warnings } = mgr.validate();
+      expect(valid).toBe(false);
+      expect(errors.some((e) => e.includes('不是合法的') || e.includes('无法自动修正'))).toBe(true);
+    });
+
+    it('合法 phase 应返回 valid=true 且无 errors 和 warnings', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        pipeline: {
+          phase: 'exec_running' as PipelinePhase,
+          current: { stage: 'stage-01', op: 'op-001' },
+          retry: 0,
+        },
+      }));
+      const { valid, errors, warnings } = mgr.validate();
+      expect(valid).toBe(true);
+      expect(errors.length).toBe(0);
+      expect(warnings.length).toBe(0);
+    });
+  });
+
+  describe('repair dry-run', () => {
+    it('dry-run 模式在 flow.json 不存在时应返回 fixed=false 且不创建文件', () => {
+      // 确保 flow.json 不存在
+      const fp = join(tmpDir, '.openfeel', 'flow.json');
+      // tmpDir 是干净的临时目录
+      const mgr = new FlowManager(tmpDir);
+      // 先确认文件不存在
+      expect(existsSync(fp)).toBe(false);
+      const result = mgr.repair(true);
+      expect(result.fixed).toBe(false);
+      expect(result.changes.some((c) => c.includes('dry-run'))).toBe(true);
+      // dry-run 不应创建文件
+      expect(existsSync(fp)).toBe(false);
+    });
+
+    it('dry-run 模式在正常 flow.json 时应返回 fixed=false 且 changes 含"未检测到"', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.repair(true);
+      expect(result.fixed).toBe(false);
+      expect(result.changes.some((c) => c.includes('未检测到'))).toBe(true);
+    });
+
+    it('非 dry-run 模式在 flow.json 不存在时应创建文件并返回 fixed=true', () => {
+      const fp = join(tmpDir, '.openfeel', 'flow.json');
+      expect(existsSync(fp)).toBe(false);
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.repair(false);
+      expect(result.fixed).toBe(true);
+      expect(result.changes.some((c) => c.includes('已创建'))).toBe(true);
+      expect(existsSync(fp)).toBe(true);
+    });
   });
 });

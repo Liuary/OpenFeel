@@ -1,6 +1,7 @@
 ---
 description: ReviewWorker 子 Agent，供 AutoRunner 调用，在自动闭环中负责代码审查与审查验收，源码只读。
 mode: subagent
+model: cross_model
 color: "#D4A017"
 permission:
   # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
@@ -31,7 +32,14 @@ permission:
 1. 读取 `.openfeel/.info.json` 获取用户名。
 2. 执行 `.openfeel/` 目录结构自检，缺失则自动补建。
 3. 调用 `load skill get-stage-status` 读取当前子计划状态。
-4. 调用 `load skill check-kb` 查阅知识库。
+4. **读取模型配置**：读取 `.openfeel/config.yaml` 的 `models` 节，按以下优先级匹配当前 Agent 的模型后端：
+   - `models.agents.{agent_id}` → Agent 级覆盖（最高优先级）
+   - `models.roles.{agent_id}` → 按 Agent 角色（如 `cross_model`）查找
+   - `models.default` → 默认配置（兜底）
+   - 匹配结果中的 `provider`、`model_name`、`base_url`、`api_key_env` 字段用于配置模型连接。
+   - 若配置文件不存在或 `models` 节缺失，使用会话默认模型（工具内置）。
+   - 若当前模型与 roles.cross_model 配置不同，在审查时有意采用异种视角审视代码。
+5. 调用 `load skill check-kb` 查阅知识库。
 
 ---
 

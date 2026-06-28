@@ -1,0 +1,44 @@
+# OpenFeel 模型配置模板
+# 部署新项目时，将此文件的 models 节复制到目标项目的 .openfeel/config.yaml
+# 或使用 openfeel init 自动检测并导入
+#
+# 生成时间：2026-06-27
+# 来源项目：OpenFeel（自举项目）
+
+models:
+  # 默认配置（兜底），必填 — 所有 Agent 未匹配到特定覆盖时使用
+  default:
+    provider: <填写>
+    model_name: <填写>
+    base_url: <填写>
+    api_key_env: <填写>
+
+  # Agent 级覆盖（按 agent_id 精确匹配，最高优先级）
+  # 示例：为特定 Agent 指定不同模型
+  agents:
+    # reviewer 和 review-worker 需要异种模型以实现交叉审查
+    # reviewer:
+    #   provider: <不同于 default 的供应商>
+    #   model_name: <不同于 default 的模型>
+    # review-worker:
+    #   provider: <不同于 default 的供应商>
+    #   model_name: <不同于 default 的模型>
+    # executor 和 code-worker 可使用快速模型以降低成本
+    # executor:
+    #   provider: <填写>
+    #   model_name: <快速模型名>
+    # code-worker:
+    #   provider: <填写>
+    #   model_name: <快速模型名>
+
+  # 角色级覆盖（按角色名匹配）
+  roles:
+    # 异种推理角色 — reviewer / review-worker 审查时使用非默认模型
+    cross_model:
+      provider: <不同于 default 的供应商>
+      model_name: <不同于 default 的模型>
+
+    # 快速模型角色 — executor / code-worker / ask 等使用
+    fast:
+      provider: <填写>
+      model_name: <快速模型名>

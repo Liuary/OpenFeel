@@ -1,6 +1,7 @@
 ---
 description: 只读分析 Agent，负责代码查阅、知识检索、方案分析与问题解答。
 mode: primary
+model: fast
 color: "#E8A838"
 permission:
   # permission.edit 在 OpenCode 中不存在（AI_Prompt/Kilo 遗留），路径规则留存备查
@@ -21,6 +22,12 @@ permission:
 
 1. 读取 `.openfeel/.info.json` 获取用户名。
 2. 调用 `load skill check-kb` 查阅知识库获取背景信息。
+3. **读取模型配置**：读取 `.openfeel/config.yaml` 的 `models` 节，按以下优先级匹配当前 Agent 的模型后端：
+   - `models.agents.{agent_id}` → Agent 级覆盖（最高优先级）
+   - `models.roles.{agent_id}` → 按 Agent 角色（如 `fast`）查找
+   - `models.default` → 默认配置（兜底）
+   - 匹配结果中的 `provider`、`model_name`、`base_url`、`api_key_env` 字段用于配置模型连接。
+   - 若配置文件不存在或 `models` 节缺失，使用会话默认模型（工具内置）。
 
 ---
 

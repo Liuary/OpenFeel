@@ -28,3 +28,22 @@ defaults:
   # Worktree 合并模式：manual=Agent Manager 中手动确认合并
   #                   auto=AutoRunner 自动 git merge + cleanup
   merge_mode: manual
+
+# ---- 模型配置 ----
+# 配置 Agent 使用的模型后端。支持 Agent/角色 级精细化覆盖。
+# 注：实际模型由平台层分配，此处为 Awareness 目的。
+models:
+  # 默认模型（兜底配置，所有未显式配置的 Agent 使用此模型）
+  default:
+    provider: deepseek
+    model_name: deepseek-v4-pro
+  # Agent 级覆盖（可选）：为特定 Agent ID 分配不同模型
+  # agents:
+  #   feel:
+  #     provider: deepseek
+  #     model_name: deepseek-v4-pro
+  # 角色级覆盖（可选）：按 Agent frontmatter model 字段匹配
+  # roles:
+  #   fast:
+  #     provider: deepseek
+  #     model_name: deepseek-chat

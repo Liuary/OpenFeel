@@ -24,18 +24,50 @@ export const ConfigDefaultsSchema = z.object({
   merge_mode: z.enum(['manual', 'auto']).optional().default('manual'),
 }).passthrough();
 
+/** 单个模型配置 Schema */
+export const ModelConfigSchema = z.object({
+  provider: z.string(),      // deepseek / openai / anthropic / zhipu / qwen
+  model_name: z.string(),    // 具体模型 ID
+  base_url: z.string().optional(),
+  api_key_env: z.string().optional(),  // 环境变量名
+});
+
+/** 模型配置节 Schema */
+export const ModelsSchema = z.object({
+  default: ModelConfigSchema,                           // 兜底（必填）
+  agents: z.record(z.string(), ModelConfigSchema).optional(),  // Agent 级覆盖
+  roles: z.record(z.string(), ModelConfigSchema).optional(),   // 角色级覆盖
+});
+
 /** 完整的 config.yaml Schema */
 export const ConfigSchema = z.object({
   meta: ConfigMetaSchema.optional(),
   defaults: ConfigDefaultsSchema.optional(),
+  models: ModelsSchema.optional(),
 }).passthrough();
 
 // ── 类型 ──
+
+/** 模型配置结构 */
+export interface ModelConfig {
+  provider: string;
+  model_name: string;
+  base_url?: string;
+  api_key_env?: string;
+}
+
+/** 模型配置节结构 */
+export interface ModelsConfig {
+  default: ModelConfig;
+  agents?: Record<string, ModelConfig>;
+  roles?: Record<string, ModelConfig>;
+}
 
 /** 配置文件结构（backward-compatible: 扁平字段 + 嵌套结构并存） */
 export interface Config {
   meta?: { version?: string; project?: string; tech_stack?: string; [key: string]: unknown };
   defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; test_enabled?: boolean; merge_mode?: 'manual' | 'auto'; [key: string]: unknown };
+  models?: ModelsConfig;
   // 向后兼容：扁平字段（由 normalizeConfig 从 defaults 提升）
   execution_mode?: 'manual' | 'auto';
   auto_advance?: 'disabled' | 'enabled';
@@ -97,6 +129,9 @@ export function readConfig(projectPath: string): Config {
   if (preprocessed.defaults === null) {
     preprocessed.defaults = {};
   }
+  if (preprocessed.models === null) {
+    delete preprocessed.models;  // models 节为 null 时直接删除，让其走 optional 逻辑
+  }
 
   const parsed = ConfigSchema.parse(preprocessed) as Config;
   return normalizeConfig(parsed);
@@ -137,6 +172,25 @@ defaults:
   # Worktree 合并模式：manual=Agent Manager 中手动确认合并
   #                   auto=AutoRunner 自动 git merge + cleanup
   merge_mode: ${DEFAULT_CONFIG.merge_mode}
+
+# ---- 模型配置 ----
+# 配置 Agent 使用的模型后端。支持 Agent/角色 级精细化覆盖。
+# 注：实际模型由平台层分配，此处为 Awareness 目的。
+models:
+  # 默认模型（兜底配置，所有未显式配置的 Agent 使用此模型）
+  default:
+    provider: deepseek
+    model_name: deepseek-v4-pro
+  # Agent 级覆盖（可选）：为特定 Agent ID 分配不同模型
+  # agents:
+  #   feel:
+  #     provider: deepseek
+  #     model_name: deepseek-v4-pro
+  # 角色级覆盖（可选）：按 Agent frontmatter model 字段匹配
+  # roles:
+  #   fast:
+  #     provider: deepseek
+  #     model_name: deepseek-chat
 `;
   writeFileSync(configPath, content, 'utf-8');
 }

@@ -73,6 +73,17 @@ permission:
 1. 读取 `.openfeel/.info.json` 获取用户名。
 2. 若 Prompt 指定计划阶段，调用 `load skill get-stage-status` 读取该阶段状态。
 3. 调用 `load skill check-kb` 查阅知识库。
+4. **读取模型配置**：读取 `.openfeel/config.yaml` 的 `models` 节，按以下优先级匹配当前 Agent 的模型后端：
+   - `models.agents.{agent_id}` → Agent 级覆盖（最高优先级）
+   - `models.roles.{agent_id}` → 按 Agent 角色查找
+   - `models.default` → 默认配置（兜底）
+   - 匹配结果中的 `provider`、`model_name`、`base_url`、`api_key_env` 字段用于配置模型连接。
+   - 若配置文件不存在或 `models` 节缺失，使用会话默认模型（工具内置）。
+
+## Reviewer 标记处理
+
+启动测试前，读取 `.openfeel/users/{username}/code_review/REV-{stage}.md`，检查是否有 `→Tester 重点关注` 标记。
+若有，将标记指向的问题作为优先测试项，设计针对性边界用例。
 
 > **编辑权限**：你可以通过 `bash` 工具修改 `.openfeel/users/{username}/bugs/` 下的 Bug 文件（提交 Bug、更新状态）。源码不可编辑。
 

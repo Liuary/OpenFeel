@@ -1,0 +1,81 @@
+# v3.0 阶段依赖声明
+
+version: 3.0
+generated: 2026-06-27
+
+stages:
+  v3-stage-01:
+    description: flow.json 鲁棒性加固
+    depends_on: []
+    modifies:
+      - src/core/flow-manager.ts
+      - src/core/pipeline-schema.ts
+      - src/commands/flow.ts
+      - test/core/flow-manager.test.ts
+
+  v3-stage-02:
+    description: 模型配置落地
+    depends_on: []
+    modifies:
+      - src/core/config.ts
+      - .openfeel/config.yaml
+      - .opencode/skills/model-check/SKILL.md
+      - .opencode/agents/feel.md
+      - .opencode/agents/planner.md
+      - .opencode/agents/executor.md
+      - .opencode/agents/reviewer.md
+      - .opencode/agents/review-worker.md
+      - .opencode/agents/tester.md
+      - .opencode/agents/test-writer.md
+      - .opencode/agents/archiver.md
+      - .opencode/agents/auto-runner.md
+      - .opencode/agents/debug.md
+      - .opencode/agents/ask.md
+      - .opencode/agents/code-worker.md
+
+  v3-stage-03:
+    description: 效率优化
+    depends_on:
+      - stage: v3-stage-01
+        type: hard
+    modifies:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - .opencode/agents/feel.md
+      - .opencode/agents/schemer.md
+      - .opencode/agents/executor.md
+
+  v3-stage-04:
+    description: 体验补全
+    depends_on:
+      - stage: v3-stage-03
+        type: hard
+    modifies:
+      - src/commands/flow.ts
+      - src/commands/init.ts
+      - src/core/init.ts
+      - .opencode/agents/feel.md
+      - .opencode/agents/reviewer.md
+      - .opencode/agents/tester.md
+      - .opencode/agents/schemer.md
+      - .opencode/agents/executor.md
+      - .opencode/skills/check-kb/SKILL.md
+
+batches:
+  batch-1:
+    parallel:
+      - v3-stage-01
+      - v3-stage-02
+  batch-2:
+    serial:
+      - v3-stage-03
+    depends_on: batch-1
+  batch-3:
+    serial:
+      - v3-stage-04
+    depends_on: batch-2
+
+# 并行安全验证
+# batch-1 中两阶段修改文件集无交集 → 可并行
+# batch-2 修改 flow-manager.ts（与 stage-01 重叠）→ 必须串行
+# batch-3 修改 commands/flow.ts 和 Agent 文件（与 stage-03 重叠）→ 必须串行

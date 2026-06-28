@@ -1,10 +1,17 @@
 /**
  * 项目初始化编排
  * 协调创建工作区、写入配置、初始化 flow.json、确保身份文件、
- * 生成 dev_core.md/current.md/instructions/core.md 模板。
+ * 生成 dev_core.md/current.md 模板。
+ *
+ * 注意：`.opencode/instructions/core.md` 由 update 命令创建（适配器层，
+ * 非核心层），不在 init 阶段生成。
+ *
+ * 变更摘要：
+ * - stage-04: 新增 initDemo() 支持 --demo 标志
+ * - stage-04 第二轮：移除了 .opencode/instructions/core.md 创建（移至 update.ts）
  */
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
 import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson } from './workspace/identity.js';
 import { writeDefaultConfig } from './config.js';
@@ -12,13 +19,18 @@ import { FlowManager } from './flow-manager.js';
 import {
   DEV_CORE_TEMPLATE,
   CURRENT_TEMPLATE,
-  CORE_INSTRUCTIONS_TEMPLATE_B64,
 } from './templates.js';
 
 /** 初始化结果 */
 export interface InitResult {
   created: string[]; // 创建的目录列表
   updated: string[]; // 更新的文件列表
+}
+
+/** 示例骨架创建结果 */
+export interface DemoResult {
+  created: string[];
+  skipped: string[];
 }
 
 /**
@@ -97,20 +109,11 @@ export function initProject(projectPath: string): InitResult {
     created.push('.openfeel/dev/current.md');
   }
 
-  // 7. 生成 .opencode/instructions/core.md 模板
-  const coreInstructionsPath = resolve(
-    projectPath,
-    '.opencode',
-    'instructions',
-    'core.md',
-  );
-  // base64 解码模板内容
-  const coreContent = Buffer.from(CORE_INSTRUCTIONS_TEMPLATE_B64, 'base64').toString(
-    'utf-8',
-  );
-  const coreResult = writeTemplateIfMissing(coreInstructionsPath, coreContent);
-  if (coreResult.created) {
-    created.push('.opencode/instructions/core.md');
+  // 7. 生成 .openfeel/kb/index.md 模板
+  const kbIndexPath = resolve(projectPath, '.openfeel', 'kb', 'index.md');
+  const kbResult = writeTemplateIfMissing(kbIndexPath, '# 知识库索引\n\n> 暂无条目。\n');
+  if (kbResult.created) {
+    created.push('.openfeel/kb/index.md');
   }
 
   // 8. 检测 package.json，若存在 vitest 则添加 @vitest/coverage-v8
@@ -142,4 +145,81 @@ export function initProject(projectPath: string): InitResult {
   }
 
   return { created, updated };
+}
+
+/**
+ * 创建示例项目骨架（--demo 标志触发）
+ * 在项目目录下创建简化的 TypeScript 项目结构和示例 stage。
+ */
+export function initDemo(projectPath: string): DemoResult {
+  const created: string[] = [];
+  const skipped: string[] = [];
+
+  const ensureFile = (relPath: string, content: string) => {
+    const fullPath = join(projectPath, relPath);
+    if (existsSync(fullPath)) {
+      skipped.push(relPath);
+      return;
+    }
+    const parentDir = dirname(fullPath);
+    if (!existsSync(parentDir)) {
+      mkdirSync(parentDir, { recursive: true });
+    }
+    writeFileSync(fullPath, content, 'utf-8');
+    created.push(relPath);
+  };
+
+  // src/index.ts — 简单入口
+  ensureFile(
+    'src/index.ts',
+    `/**\n * OpenFeel 示例项目入口\n */\nexport function greet(name: string): string {\n  return \`你好，\${name}！欢迎使用 OpenFeel。\`;\n}\n`,
+  );
+
+  // tsconfig.json — TypeScript 配置
+  ensureFile(
+    'tsconfig.json',
+    `{\n  "compilerOptions": {\n    "target": "ES2022",\n    "module": "ESNext",\n    "moduleResolution": "bundler",\n    "strict": true,\n    "esModuleInterop": true,\n    "skipLibCheck": true,\n    "outDir": "dist",\n    "rootDir": "src",\n    "declaration": true\n  },\n  "include": ["src"]\n}\n`,
+  );
+
+  // package.json — 项目清单（仅当不存在时创建）
+  if (!existsSync(join(projectPath, 'package.json'))) {
+    ensureFile(
+      'package.json',
+      `{\n  "name": "openfeel-demo",\n  "version": "0.1.0",\n  "type": "module",\n  "scripts": {\n    "test": "vitest run",\n    "dev": "vitest"\n  },\n  "devDependencies": {\n    "vitest": "^3.0.0"\n  }\n}\n`,
+    );
+  }
+
+  // vitest.config.ts
+  ensureFile(
+    'vitest.config.ts',
+    `import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    include: ['test/**/*.test.ts'],\n  },\n});\n`,
+  );
+
+  // test/index.test.ts — 示例测试
+  ensureFile(
+    'test/index.test.ts',
+    `import { describe, it, expect } from 'vitest';\n\n// TODO: 替换为项目实际的模块路径\nconst greet = (name: string): string => \`你好，\${name}！欢迎使用 OpenFeel。\`;\n\ndescribe('greet', () => {\n  it('应返回正确的问候语', () => {\n    expect(greet('世界')).toBe('你好，世界！欢迎使用 OpenFeel。');\n  });\n\n  it('应处理空字符串', () => {\n    expect(greet('')).toBe('你好，！欢迎使用 OpenFeel。');\n  });\n});\n`,
+  );
+
+  // .openfeel/plan/stage-01/status.md — 示例阶段
+  ensureFile(
+    '.openfeel/plan/stage-01/status.md',
+    `# stage-01 状态\n\n- **状态**：planned\n- **当前责任 Agent**：executor\n- **上一责任 Agent**：none\n- **更新时间**：${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## 当前任务\n\n初始化项目骨架，创建基础文件结构。\n\n## 状态记录\n\n| 时间 | Agent | 状态变化 | 说明 |\n|------|-------|----------|------|\n| - | - | - | 示例阶段 |\n`,
+  );
+
+  // 确保 config.yaml 存在（含 models 节）
+  const configPath = join(projectPath, '.openfeel', 'config.yaml');
+  if (!existsSync(configPath)) {
+    writeDefaultConfig(projectPath);
+    created.push('.openfeel/config.yaml');
+  }
+
+  // 在 flow.json 中注册 stage-01
+  const flowMgr = new FlowManager(projectPath);
+  if (flowMgr.isLoaded()) {
+    flowMgr.registerStage('stage-01', []);
+    flowMgr.save();
+  }
+
+  return { created, skipped };
 }

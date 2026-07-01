@@ -45,18 +45,10 @@ Feel Agent 在以下时机加载本 Skill：
 |------------|-------------|
 | `feel.md` | `primary_reasoning`（主力推理） |
 | `planner.md` | `reasoning`（推理） |
-| `architect.md` | `primary_reasoning`（主力推理） |
 | `executor.md` | `fast`（快速） |
 | `code.md` | `fast`（快速） |
-| `code-worker.md` | `fast`（快速） |
 | `reviewer.md` | `cross_model`（异种推理） |
-| `review-worker.md` | `cross_model`（异种推理） |
-| `tester.md` | `reasoning`（推理） |
-| `test-writer.md` | `reasoning`（推理） |
 | `archiver.md` | `reasoning`（推理） |
-| `auto-runner.md` | `reasoning`（推理） |
-| `debug.md` | `reasoning`（推理） |
-| `ask.md` | `fast`（快速） |
 | `schemer.md` | `reasoning`（推理） |
 | `feel-tester.md` | `reasoning`（推理） |
 

@@ -1,0 +1,104 @@
+# v4.0 阶段依赖声明
+
+version: 4.0
+generated: 2026-07-01
+updated: 2026-07-01
+
+stages:
+  v4-stage-01:
+    description: 工程改造 — 15→7 Agent 全面对齐部署项目（9删除 + 7更新 + 配套3 + 后调1 = 20项）
+    depends_on: []
+    modifies:
+      # A. 删除（9个）
+      - .opencode/agents/auto-runner.md        # 删除
+      - .opencode/agents/code-worker.md        # 删除
+      - .opencode/agents/review-worker.md       # 删除
+      - .opencode/agents/ask.md                # 删除
+      - .opencode/agents/debug.md              # 删除
+      - .opencode/agents/test-writer.md        # 删除
+      - .opencode/agents/architect.md          # 删除（职责合并到 reviewer.md）
+      - .opencode/agents/code.md               # 删除（职责合并到 executor.md）
+      - .opencode/agents/tester.md             # 删除（替换为 feel-tester.md）
+      # B. 重写（4个）
+      - .opencode/agents/feel.md               # 重写：flow.json 调度 + Planner 兼任 + /opfx: 技能表
+      - .opencode/agents/executor.md           # 重写：合并 code.md（自测+修复+重试）
+      - .opencode/agents/reviewer.md           # 重写：合并 architect.md（架构审查+5维度+异种模型）
+      - .opencode/agents/feel-tester.md        # 新建：替换 tester.md（Bug管理+测试类型）
+      # C. 精简（3个）
+      - .opencode/agents/planner.md            # 精简：核心原则+计划工作流+协作边界
+      - .opencode/agents/schemer.md            # 精简：方案模板+deps声明+版本校验
+      - .opencode/agents/archiver.md           # 精简：归档流程+PipelinePhase枚举
+      # D. 配套更新
+      - .opencode/instructions/core.md         # 重写：清理废弃引用+Feel调度模型
+      - AGENTS.md                              # 修改：更新职责边界+自动闭环约束
+      # E. 源码引用清理
+      - src/**/*.ts                            # 修改：清理废弃Agent引用
+
+  v4-stage-02:
+    description: 核心增强 — KB 检索增强 + Executor 前置校验（#4 #5）
+    depends_on:
+      - stage: v4-stage-01
+        type: hard
+        reason: stage-01 中 planner/schemer/executor 被精简/重写，stage-02 需基于新版本注入增强逻辑
+    modifies:
+      - .opencode/agents/planner.md            # 修改：#4 KB 检索注入（基于精简后版本）
+      - .opencode/agents/schemer.md            # 修改：#4 KB 检索注入（基于精简后版本）
+      - .opencode/agents/executor.md           # 修改：#5 前置校验钩子（基于重写后版本）
+      - .opencode/skills/check-kb/SKILL.md     # 可能修改：自动触发逻辑
+      - src/core/flow-manager.ts               # 可能修改：暴露校验接口
+
+  v4-stage-03:
+    description: 审查增强 + 流水线可视化（#1 模式一致性子维度 + #2 方案回写 + #3 REV blocking + #6 可视化）
+    depends_on:
+      - stage: v4-stage-01
+        type: hard
+        reason: stage-01 中 reviewer 已重写为 5 维度版本，stage-03 需基于此版本细化「内部模式一致性」子维度
+      - stage: v4-stage-02
+        type: hard
+        reason: stage-02 修改 executor（#5 前置校验），stage-03 继续修改 executor（#2 方案回写），共享同一文件需串行
+    modifies:
+      - .opencode/agents/reviewer.md           # 修改：#1 子维度细化 + #3 REV blocking
+      - .opencode/agents/executor.md           # 修改：#2 方案一致性回写
+      - src/commands/flow.ts                   # 新增/修改：#6 流水线可视化
+
+  v4-stage-04:
+    description: 体验优化 — 6 项锦上添花（#7-#12）
+    depends_on:
+      - stage: v4-stage-03
+        type: soft
+        reason: stage-04 修改的 feel-tester/flow-manager 与 stage-03 修改范围不冲突，可独立推进
+    modifies:
+      - src/core/flow-manager.ts               # 修改：#7 stats + #10 上下文恢复
+      - .opencode/agents/reviewer.md           # 修改：#8 快速通道条件
+      - .opencode/agents/feel-tester.md        # 修改：#8 快速通道条件（替代原 tester.md）
+      - src/core/logging.ts 或日志写入逻辑     # 修改：#9 审计链补全
+      - src/core/metrics.ts (新增)             # 新增：#11 Agent 性能指标
+      - src/utils/kb-dedup.ts (新增)           # 新增：#12 知识库去重
+
+batches:
+  # 串行推进：Stage 01 → Stage 02 → Stage 03 → Stage 04
+  # 理由：各阶段间存在文件级修改依赖（planner/schemer/executor/reviewer 被多阶段共享）
+  # 在 manual 模式下，按顺序逐阶段人工推进即可
+
+  batch-1:
+    serial:
+      - v4-stage-01
+    depends_on: []
+    notes: |
+      范围扩大：从原 11 项（移除 4 Agent + 精简 core.md）扩大为 20 项（15→7 Agent 全面对齐）。
+      后续阶段（stage-02/03/04）在 stage-01 完成后需重新评估任务细节和涉及文件。
+
+  batch-2:
+    serial:
+      - v4-stage-02
+    depends_on: batch-1
+
+  batch-3:
+    serial:
+      - v4-stage-03
+    depends_on: batch-2
+
+  batch-4:
+    serial:
+      - v4-stage-04
+    depends_on: batch-3

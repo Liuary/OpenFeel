@@ -57,6 +57,14 @@ export interface ReviewItem {
   canAutoFix?: boolean;
   /** 自动修复说明 */
   autoFixDetail?: string;
+  /** 是否阻塞流水线。
+   * - true：REV 未关闭时阻止流水线进入下一阶段（阻塞性 REV）
+   * - false（默认）：REV 不中断流水线，仅作为记录跟踪（非阻塞 REV）
+   *
+   * 方案级审查 REV 默认非阻塞（blocking=false），代码级审查 REV 默认阻塞（blocking=true）。
+   * 审查者可根据严重程度覆盖默认值。
+   */
+  blocking?: boolean;
 }
 
 /** 日志条目 */
@@ -812,15 +820,15 @@ export class FlowManager {
     const prefix = phase.split('_')[0];
     switch (prefix) {
       case 'plan':
-        return 'architect';
+        return 'planner';
       case 'scheme':
         return 'schemer';
       case 'exec':
         return 'executor';
       case 'review':
-        return 'architect';
+        return 'reviewer';
       case 'test':
-        return 'tester';
+        return 'feel-tester';
       case 'archiving':
         return 'archiver';
       case 'done':

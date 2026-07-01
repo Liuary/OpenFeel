@@ -1,6 +1,6 @@
 ---
 name: get-stage-status
-description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Architect/Code/TestWriter/Tester 在处理阶段任务前确认流程状态。
+description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Reviewer/Executor/Feel Tester 在处理阶段任务前确认流程状态。
 ---
 
 # 获取子计划状态
@@ -64,7 +64,7 @@ description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状�
    - `deps_satisfied = true`（本 Skill 递归判断）
    - `状态` 为 `ready_for_code` 或 `auto_running`
    - `自动推进` 为 `enabled`（若 status.md 未填则回退到 config.yaml `auto_advance`）
-2. 收集为 `parallel_candidates` 列表，供 Architect 批量启动 AutoRunner。
+2. 收集为 `parallel_candidates` 列表，供 Feel 批量调度执行。
 
 ### 5. 判断自动推进资格
 
@@ -111,16 +111,16 @@ description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状�
 
 | 状态 | 下一步建议 |
 |------|------------|
-| `planned` | 等待用户确认或 Architect 细化计划 |
-| `ready_for_code` | Architect 可启动 Code |
-| `coding` | Code 正在开发 |
-| `ready_for_review` | Code 可启动 Architect 审查，或等待用户触发 |
-| `review_failed` | Architect 可启动 Code 修复审查问题 |
-| `review_passed` | Architect 可推进到 ready_for_test |
-| `ready_for_test` | Architect 可启动 TestWriter 或 Tester |
-| `test_writing` | TestWriter 正在写测试 |
-| `testing` | Tester 正在测试 |
-| `bug_found` | Tester 可启动 Code 修复 Bug |
-| `bug_fixing` | Code 正在修复 Bug |
+| `planned` | 等待用户确认或 Planner 细化计划 |
+| `ready_for_code` | Planner 可启动 Executor |
+| `coding` | Executor 正在开发 |
+| `ready_for_review` | Executor 可启动 Reviewer 审查，或等待用户触发 |
+| `review_failed` | Reviewer 可启动 Executor 修复审查问题 |
+| `review_passed` | Feel 可推进到 ready_for_test |
+| `ready_for_test` | Feel 可启动 Feel Tester |
+| `test_writing` | Feel Tester 正在写测试 |
+| `testing` | Feel Tester 正在测试 |
+| `bug_found` | Feel Tester 可启动 Executor 修复 Bug |
+| `bug_fixing` | Executor 正在修复 Bug |
 | `done` | 流程完成，停止 |
 | `paused` | 等待用户处理暂停原因 |

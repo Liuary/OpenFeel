@@ -169,8 +169,8 @@ defaults:
   #          false=review_passed 直接转 done，跳过测试链路
   test_enabled: ${String(DEFAULT_CONFIG.test_enabled)}
 
-  # Worktree 合并模式：manual=Agent Manager 中手动确认合并
-  #                   auto=AutoRunner 自动 git merge + cleanup
+  # Worktree 合并模式：manual=手动确认合并
+  #                   auto=Feel 自动 git merge + cleanup
   merge_mode: ${DEFAULT_CONFIG.merge_mode}
 
 # ---- 模型配置 ----

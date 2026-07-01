@@ -1,0 +1,77 @@
+# v4-stage-03 操作方案依赖关系
+# 由 Schemer 自动生成，供 Feel 并行调度使用
+# 依赖类型：hard（前置 op 必须完成）、soft（弱依赖，警告但可启动）
+
+version: "v4-stage-03"
+generated: "2026-07-02"
+generated_by: "Schemer"
+
+ops:
+  op-001:
+    title: "内部模式一致性审查子维度 + 更新审查模板"
+    file: "ops/op-001.md"
+    target_files:
+      - ".opencode/agents/reviewer.md"
+    deps: []
+    type: "independent"
+    description: "扩展 reviewer.md 审查维度表（5→7行含子维度），插入检查要点章节，更新审查流程。无前置依赖，可先行执行。"
+
+  op-002:
+    title: "Executor 方案一致性回写"
+    file: "ops/op-002.md"
+    target_files:
+      - ".opencode/agents/executor.md"
+    deps: []
+    type: "independent"
+    description: "在 executor.md 中新增「方案一致性回写」章节，修改工作流程步骤编号。与 op-001 无文件冲突，可并行执行。"
+
+  op-003:
+    title: "REV blocking 标记 — Agent 语义 + 数据结构"
+    file: "ops/op-003.md"
+    target_files:
+      - "src/core/flow-manager.ts"
+      - "src/commands/flow.ts"
+      - ".opencode/agents/reviewer.md"
+    deps:
+      - op_id: "op-001"
+        type: "hard"
+        reason: "op-003 在 reviewer.md 的「注意事项」中追加 blocking 条款。op-001 修改了 reviewer.md 的审查维度表和模板结构，op-003 需基于 op-001 完成后的稳定版本进行追加，避免编辑位置冲突。"
+    type: "hard"
+    description: "三文件联动：flow-manager.ts 增加 blocking 字段、flow.ts 支持 --blocking 参数、reviewer.md 增加 blocking 使用条款。必须在 op-001 完成后执行。"
+
+  op-004:
+    title: "流水线可视化 — /opfx:status 全状态视图"
+    file: "ops/op-004.md"
+    target_files:
+      - "src/commands/flow.ts"
+    deps:
+      - op_id: "op-003"
+        type: "soft"
+        reason: "flow.ts 中 overview 命令的「审查条目」板块需区分阻塞/非阻塞 REV，依赖 op-003 为 ReviewItem 新增的 blocking 字段。但 overview 命令使用 `r.blocking !== false` 判断，op-003 未完成时 blocking 字段为 undefined 也能正常工作（全部视为阻塞性），故为弱依赖。"
+    type: "weak"
+    description: "在 flow.ts 中新增 flow overview 子命令，实现阶段性/审查/Bug/日志/健康一站式全状态可视化。弱依赖 op-003，可独立执行但审查显示维度会少。"
+
+# 并行批次建议
+# Batch 1（并行，2 个 op 无文件冲突）：
+#   - op-001（reviewer.md）
+#   - op-002（executor.md）
+# Batch 2（串行，依赖 Batch 1 的 op-001）：
+#   - op-003（flow-manager.ts + flow.ts + reviewer.md）
+# Batch 3（可与 Batch 2 并行，也可串行——软依赖 op-003）：
+#   - op-004（flow.ts）
+
+batches:
+  batch_1:
+    parallel: true
+    ops: ["op-001", "op-002"]
+    note: "op-001 修改 reviewer.md，op-002 修改 executor.md，不同文件可完全并行"
+  batch_2:
+    parallel: false
+    ops: ["op-003"]
+    deps: ["op-001"]
+    note: "op-003 需在 op-001 完成的 reviewer.md 基础上追加 blocking 条款，必须串行"
+  batch_3:
+    parallel: false
+    ops: ["op-004"]
+    deps: ["op-003"]
+    note: "op-004 弱依赖 op-003（blocking 字段），可在 batch_2 完成后执行以确保审查显示完整"

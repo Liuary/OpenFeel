@@ -1,0 +1,41 @@
+# op 级依赖声明
+# Feel 读取此文件决定哪些 op 可并行调度
+# depends_on 为空列表 = 无前置依赖，可与其他无依赖 op 并行
+
+ops:
+  op-001:
+    depends_on: []
+    description: 删除 9 个旧 Agent
+  op-002:
+    depends_on: []
+    description: 重写 feel.md 总统领
+  op-003:
+    depends_on: []
+    description: 重写 executor.md 执行官
+  op-004:
+    depends_on: []
+    description: 重写 reviewer.md 审查官
+  op-005:
+    depends_on: []
+    description: 新建 feel-tester.md 测试官
+  op-006:
+    depends_on: []
+    description: 精简 planner.md
+  op-007:
+    depends_on: []
+    description: 精简 schemer.md
+  op-008:
+    depends_on: []
+    description: 精简 archiver.md
+  op-009:
+    depends_on: [op-001]
+    description: 精简 core.md（需先删除旧 Agent）
+  op-010:
+    depends_on: [op-009]
+    description: 更新 AGENTS.md（需 core.md 就绪）
+  op-011:
+    depends_on: [op-001, op-005]
+    description: 清理源码引用（需 Agent 文件就绪）
+  op-012:
+    depends_on: [op-010, op-011]
+    description: 调整后续阶段计划（需全部引用清理完毕）

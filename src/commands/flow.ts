@@ -10,11 +10,14 @@
  * - flow review add 新增 --auto-fix 标志，支持轻量修正路径
  * - 新增 flow health 子命令，全面健康检查
  *
+ * 变更摘要 (stage-03: 流水线可视化):
+ * - 新增 flow overview 子命令，实现 /opfx:status 全状态可视化
+ *
  * 变更摘要 (stage-04: 体验补全):
  * - 新增 flow wizard 子命令，交互式推进流水线阶段
  */
 import { Command } from 'commander';
-import { existsSync, copyFileSync } from 'node:fs';
+import { existsSync, copyFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FlowManager, type PipelinePhase } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
@@ -99,6 +102,132 @@ export function registerFlowCommand(program: Command): void {
           console.log(`${dp.phase.padEnd(20)} ${dp.responsibleAgent}`);
         }
       }
+    });
+
+  // flow overview — 全状态可视化（/opfx:status 的后端实现）
+  flow
+    .command('overview')
+    .description('全状态可视化视图（/opfx:status 的后端实现）')
+    .action(() => {
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.log('流水线未初始化（flow.json 不存在）');
+        return;
+      }
+
+      const phase = mgr.getPhase();
+      const current = mgr.getCurrent();
+      const summary = mgr.getSummary();
+      const data = mgr.getData();
+
+      // ═══ 标题 ═══
+      console.log('');
+      console.log('╔══════════════════════════════════════════╗');
+      console.log('║     OpenFeel 流水线全景视图              ║');
+      console.log('╚══════════════════════════════════════════╝');
+      console.log('');
+
+      // ── 当前状态 ──
+      console.log('📍 当前状态');
+      console.log(`   阶段:  ${phase}`);
+      console.log(`   操作:  ${current ? `${current.stage}.${current.op}` : '(无)'}`);
+      console.log(`   重试:  ${summary.retryCount} 次`);
+      console.log('');
+
+      // ── 阶段总览 ──
+      console.log('📋 阶段总览');
+      if (!data || Object.keys(data.stages).length === 0) {
+        console.log('   （无阶段数据）');
+      } else {
+        console.log(`   共 ${Object.keys(data.stages).length} 个阶段:`);
+        for (const [stageId, stageData] of Object.entries(data.stages)) {
+          const opsTotal = Object.keys(stageData.ops).length;
+          const opsDone = Object.values(stageData.ops).filter(
+            (o: unknown) => (o as { state?: string }).state === 'done'
+          ).length;
+          const marker = current?.stage === stageId ? '← 当前' : '';
+          const bar = opsTotal > 0
+            ? '█'.repeat(opsDone) + '░'.repeat(opsTotal - opsDone)
+            : '(无操作)';
+          console.log(`   ${stageId}: ${bar} ${opsDone}/${opsTotal} ${marker}`);
+        }
+      }
+      console.log('');
+
+      // ── 审查条目 ──
+      console.log('🔍 审查条目 (REV)');
+      if (!data || data.reviews.length === 0) {
+        console.log('   （无审查条目）');
+      } else {
+        const openReviews = data.reviews.filter((r) => r.status === 'open');
+        const resolvedReviews = data.reviews.filter((r) => r.status === 'resolved');
+        const closedReviews = data.reviews.filter((r) => r.status === 'closed');
+        const blockingOpen = openReviews.filter((r) => r.blocking !== false);
+        const nonBlockingOpen = openReviews.filter((r) => r.blocking === false);
+
+        console.log(`   打开: ${openReviews.length}（阻塞 ${blockingOpen.length} / 非阻塞 ${nonBlockingOpen.length}）`);
+        console.log(`   已解决: ${resolvedReviews.length}`);
+        console.log(`   已关闭: ${closedReviews.length}`);
+
+        if (openReviews.length > 0) {
+          console.log('');
+          console.log('   待处理审查:');
+          for (const rev of openReviews) {
+            const blockIcon = rev.blocking !== false ? '🔴' : '🟡';
+            const priIcon = rev.priority === 'high' ? '↑' : rev.priority === 'low' ? '↓' : '=';
+            console.log(`     ${blockIcon} [${priIcon}] ${rev.id}: ${rev.title} (${rev.op})`);
+          }
+        }
+      }
+      console.log('');
+
+      // ── Bug 统计 ──
+      console.log('🐛 Bug 追踪');
+      const bugsIndexPath = resolve(process.cwd(), '.openfeel', 'bugs', 'index.md');
+      if (existsSync(bugsIndexPath)) {
+        try {
+          const bugsContent = readFileSync(bugsIndexPath, 'utf-8');
+          const openMatch = bugsContent.match(/open[:：]\s*(\d+)/i);
+          const closedMatch = bugsContent.match(/closed[:：]\s*(\d+)/i);
+          const openBugs = openMatch ? parseInt(openMatch[1]) : 0;
+          const closedBugs = closedMatch ? parseInt(closedMatch[1]) : 0;
+          console.log(`   打开: ${openBugs}  已关闭: ${closedBugs}`);
+        } catch {
+          console.log('   （无法读取 Bug 统计）');
+        }
+      } else {
+        console.log('   （Bug 追踪未初始化）');
+      }
+      console.log('');
+
+      // ── 最近日志 ──
+      console.log('📝 最近操作（5 条）');
+      if (!data || data.log.length === 0) {
+        console.log('   （无日志记录）');
+      } else {
+        const recentLogs = data.log.slice(-5).reverse();
+        for (const entry of recentLogs) {
+          const time = entry.time.substring(0, 19).replace('T', ' ');
+          console.log(`   [${time}] ${entry.agent}: ${entry.action}`);
+        }
+      }
+      console.log('');
+
+      // ── 健康状态 ──
+      console.log('💚 健康状态');
+      const health = mgr.healthCheck(true); // quick mode
+      const passCount = health.items.filter((i) => i.status === 'pass').length;
+      const warnCount = health.items.filter((i) => i.status === 'warn').length;
+      const failCount = health.items.filter((i) => i.status === 'fail').length;
+      console.log(`   ✅ ${passCount}  🟡 ${warnCount}  ❌ ${failCount}`);
+      if (!health.ok) {
+        console.log('');
+        for (const item of health.items.filter((i) => i.status === 'fail')) {
+          console.log(`   ❌ ${item.section}: ${item.message}`);
+        }
+      }
+      console.log('');
+      console.log('════════════════════════════════════════════');
     });
 
   // flow current — 显示当前 phase + op + retry
@@ -278,7 +407,8 @@ export function registerFlowCommand(program: Command): void {
     .requiredOption('--op <id>', '操作 ID（如 stage-01.op-001）')
     .option('--title <title>', '审查标题')
     .option('--auto-fix <detail>', '自动修复说明，设置后跳过 scheme_pending 直接推进到 exec_running')
-    .action((options: { op: string; title?: string; autoFix?: string }) => {
+    .option('--blocking [boolean]', '是否阻塞流水线（默认 true）', 'true')
+    .action((options: { op: string; title?: string; autoFix?: string; blocking?: string | boolean }) => {
       const mgr = createManager();
       if (!mgr.isLoaded()) {
         console.error('错误：flow.json 未初始化，请先运行 openfeel init');
@@ -299,6 +429,7 @@ export function registerFlowCommand(program: Command): void {
         filed_at: new Date().toISOString(),
         canAutoFix: !!options.autoFix,
         autoFixDetail: options.autoFix,
+        blocking: options.blocking !== undefined ? (options.blocking === 'false' || options.blocking === false ? false : true) : true,
       };
 
       if (options.autoFix) {
@@ -327,14 +458,16 @@ export function registerFlowCommand(program: Command): void {
         // 自动修复路径：记录 REV 条目（状态直接 resolved），跳过 review_failed → scheme_pending
         mgr.addAutoFixReview(reviewItem, options.op);
         mgr.save();
-        console.log(`✓ [AUTO_FIX] 审查条目已添加并自动修复: ${revId}`);
+        const blockingLabel = reviewItem.blocking !== false ? '[阻塞]' : '[非阻塞]';
+        console.log(`✓ ${blockingLabel} [AUTO_FIX] 审查条目已添加并自动修复: ${revId}`);
         console.log(`  操作: ${options.op}`);
         console.log(`  说明: ${options.autoFix}`);
         console.log(`  流水线已跳过 review_failed，直接推进到 exec_running`);
       } else {
         mgr.addReview(reviewItem);
         mgr.save();
-        console.log(`✓ 审查条目已添加: ${revId} (${options.op})${options.title ? ` — ${options.title}` : ''}`);
+        const blockingLabel = reviewItem.blocking !== false ? '[阻塞]' : '[非阻塞]';
+        console.log(`✓ ${blockingLabel} 审查条目已添加: ${revId} (${options.op})${options.title ? ` — ${options.title}` : ''}`);
       }
     });
 

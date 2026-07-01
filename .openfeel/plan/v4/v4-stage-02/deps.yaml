@@ -1,0 +1,76 @@
+# v4-stage-02 操作方案依赖关系
+# 由 Schemer 自动生成，供 Feel 并行调度使用
+# 依赖类型：hard（前置 op 必须完成）、soft（弱依赖，警告但可启动）、mutual_exclusion（互斥，串行执行）
+
+version: "v4-stage-02"
+generated: "2026-07-02"
+generated_by: "Schemer"
+
+ops:
+  op-001:
+    title: "KB 检索增强 Schemer Agent 决策"
+    file: "ops/op-001.md"
+    target_files:
+      - ".opencode/agents/schemer.md"
+    deps: []
+    type: "independent"
+    description: "修改 schemer.md，注入 KB 检索步骤。无文件冲突，可并行。"
+
+  op-002:
+    title: "KB 检索增强 Planner Agent 决策"
+    file: "ops/op-002.md"
+    target_files:
+      - ".opencode/agents/planner.md"
+    deps: []
+    type: "independent"
+    description: "修改 planner.md，注入 KB 检索步骤。无文件冲突，可并行。"
+
+  op-003:
+    title: "扩展 check-kb skill — 自动触发语义检索回退"
+    file: "ops/op-003.md"
+    target_files:
+      - ".opencode/skills/check-kb/SKILL.md"
+    deps: []
+    type: "independent"
+    description: "修改 check-kb SKILL.md，使语义检索真正自动触发。无文件冲突，可并行。"
+
+  op-004:
+    title: "Executor 前置校验钩子 — 编码前验证 op 存在性/完整性"
+    file: "ops/op-004.md"
+    target_files:
+      - ".opencode/agents/executor.md"
+    deps: []
+    type: "independent"
+    description: "修改 executor.md，新增「前置校验」章节（步骤 0~2）。无前置依赖，可先行执行。"
+
+  op-005:
+    title: "集成 FlowManager 校验 — Executor 调用 canAdvance/validate"
+    file: "ops/op-005.md"
+    target_files:
+      - ".opencode/agents/executor.md"
+    deps:
+      - op_id: "op-004"
+        type: "hard"
+        reason: "op-005 需要在 op-004 创建的「前置校验」章节中追加「步骤 3：FlowManager 校验」。若 op-004 未完成，executor.md 中不存在注入点。"
+    type: "hard"
+    description: "在 executor.md 的「前置校验」中追加步骤 3，集成 FlowManager 校验逻辑。必须串行在 op-004 之后执行。"
+
+# 并行批次建议
+# Batch 1（并行，4 个 op 无文件冲突）：
+#   - op-001（schemer.md）
+#   - op-002（planner.md）
+#   - op-003（check-kb/SKILL.md）
+#   - op-004（executor.md — 创建前置校验章节）
+# Batch 2（串行，依赖 Batch 1 的 op-004）：
+#   - op-005（executor.md — 追加步骤 3）
+
+batches:
+  batch_1:
+    parallel: true
+    ops: ["op-001", "op-002", "op-003", "op-004"]
+    note: "四个 op 修改不同文件或同一文件的不同区域，可完全并行"
+  batch_2:
+    parallel: false
+    ops: ["op-005"]
+    deps: ["op-004"]
+    note: "op-005 依赖 op-004 创建的注入点，必须串行在 op-004 之后执行"

@@ -96,15 +96,15 @@ planned | ready_for_code | coding | ready_for_review | review_failed | review_pa
 
 ### 6. 合并状态处理
 
-当子计划状态变为 `done` 或 `review_passed`（且 Architect 验收完毕）时，根据 `.openfeel/config.yaml` 中的 `merge_mode` 决定合并行为：
+当子计划状态变为 `done` 或 `review_passed`（且 Reviewer 验收完毕）时，根据 `.openfeel/config.yaml` 中的 `merge_mode` 决定合并行为：
 
 - **`merge_mode=auto`**：
-  1. 将 `合并状态` 更新为 `merged`（实际合并由 AutoRunner 或 Architect 执行 git 操作，Skill 仅更新状态字段）
+  1. 将 `合并状态` 更新为 `merged`（实际合并由 Executor 执行 git 操作，Skill 仅更新状态字段）
   2. 将 `合并状态` 更新为 `cleaned`
   3. 在状态记录中注明"自动合并"
 - **`merge_mode=manual`**：
   1. 将 `合并状态` 设为 `pending_merge`
-  2. 输出提示：合并与清理需在 Agent Manager 中手动完成
+  2. 输出提示：合并与清理需手动完成
 
 ### 7. 输出结果
 

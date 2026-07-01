@@ -60,7 +60,7 @@
 2. **比对并修正**：将当前使用的 `username` 与 `.openfeel/.info.json` 中的值逐字符比对。若不一致，用正确值重建完整路径后重试。
 3. **连续失败上报**：重试仍失败时，向用户报告「路径 `{失败的路径}` 不存在，已确认用户名为 `{正确用户名}`」，由用户确认后再操作。
 
-此规则适用于所有 Agent（Architect / Code / Debug / Tester / Ask）。
+此规则适用于所有 Agent（Feel / Planner / Schemer / Executor / Reviewer / Feel Tester / Archiver）。
 
 ---
 
@@ -105,7 +105,7 @@
 
 公共代码审查目录，存放私域审查完成后的核心结论摘要。纳入版本管理，供团队查阅。
 
-按计划阶段组织，与私域审查目录对应。根目录维护 `index.md`（按阶段分组索引，顶部统计各状态数量）。每个阶段的心得建议总结在 `{stage}.md` 中，而具体的审查过程与每个提交点的详细审查内容，则保存在私域 `code_review/REV-{stage}.md` 中。
+按计划阶段组织，与私域审查目录对应。根目录维护 `index.md`（按阶段分组索引，顶部统计各状态数量）。每个阶段的心得建议总结在 `{stage}.md` 中，具体的审查过程与每个提交点的详细审查内容则保存在私域 `code_review/REV-{stage}.md` 中。
 
 ### Bug 追踪目录
 
@@ -134,88 +134,20 @@
 
 发生计划外操作或偏差时，必须先向用户说明并寻求确认，同时在日志中记录。
 
-#### 子计划状态与自动闭环
+#### 流水线推进
 
-每个小计划阶段目录下必须维护 `status.md`，用于记录该阶段的执行状态和责任 Agent。人工流程为默认模式，只有用户明确开启自动闭环时，Agent 才能根据状态自动启动下游会话。
+各阶段状态由 `flow.json` 和 `status.md` 联合管理。Feel Agent 读取 flow.json 判断当前阶段和 phase，通过 `openfeel flow` 命令推进流水线：
 
-`status.md` 模板：
+- `openfeel flow status` — 查看当前流水线状态
+- `openfeel flow advance` — 推进到下一阶段
+- `openfeel flow repair` — 修复流水线状态
 
-```markdown
-# {stage} 状态
+流水线 phase 枚举（flow.json PipelinePhase）：
+plan_pending → plan_review → plan_passed → scheme_pending → scheme_review → scheme_passed → exec_running → review_pending → review_failed → review_passed → test_pending → test_failed → test_passed → archiving → done
 
-- **执行模式**：manual | auto  <!-- 初始值从 .openfeel/config.yaml defaults 读取，本文件可覆盖 -->
-- **自动推进**：disabled | enabled  <!-- 初始值从 .openfeel/config.yaml defaults 读取，本文件可覆盖 -->
-- **状态**：planned | ready_for_code | auto_running | coding | ready_for_review | review_failed | review_passed | ready_for_test | test_writing | testing | bug_found | bug_fixing | done | paused
-- **当前责任 Agent**：architect | auto-runner | code | code-worker | review-worker | test-writer | tester | user
-- **上一责任 Agent**：architect | auto-runner | code | code-worker | review-worker | test-writer | tester | user | none
-- **更新时间**：yyyy-mm-dd HH:MM
+人工流程为默认模式。Feel 根据 flow.json 状态调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / Archiver），不依赖旧式自动化调度。
 
-## Worktree / Session
-
-- **工作模式**：manual | worktree
-- **分支名**：-
-- **Session 名称**：-
-- **合并状态**：not_started | pending_merge | merged | cleanup_ready | cleaned
-- **清理策略**：manual | auto
-
-## 当前任务
-...
-
-## 阻塞 / 暂停原因
-...
-
-## 状态记录
-| 时间 | Agent | 状态变化 | 说明 |
-|------|-------|----------|------|
-```
-
-### 级联优先级
-
-工作流配置采用级联覆盖机制（高优先级覆盖低优先级）：
-
-1. `.openfeel/config.yaml` `defaults` — 全局默认值，所有阶段通用
-2. `.openfeel/plan/{stage}/status.md` — 阶段局部覆盖，可覆盖全局默认
-3. 用户直接指令 — 最高优先级，覆盖所有配置
-
-具体字段取值规则：
-- `执行模式` / `自动推进`：先查 status.md，若未填则回退到 config.yaml defaults
-- `test_enabled` / `merge_mode`：仅从 config.yaml 读取，status.md 不直接声明此字段
-- `合并状态` / `清理策略`：merge_mode=auto 时自动推进，merge_mode=manual 时需人工确认
-
-状态含义：
-- `planned`：计划已创建，等待用户确认或细化。
-- `ready_for_code`：可进入编码实现。
-- `auto_running`：AutoRunner 已在单个 worktree 内接管该子计划闭环。
-- `coding`：代码 Agent 或 CodeWorker 正在实现。
-- `ready_for_review`：实现完成，等待 Architect 或 ReviewWorker 审查。
-- `review_failed`：审查不通过，等待代码 Agent 或 CodeWorker 修改。
-- `review_passed`：审查通过，可进入测试阶段。
-- `ready_for_test`：等待测试编写或验收。
-- `test_writing`：TestWriter Agent 正在补充测试代码。
-- `testing`：Tester Agent 正在执行测试与验收。
-- `bug_found`：测试发现 Bug，等待代码 Agent 或 CodeWorker 修复。
-- `bug_fixing`：代码 Agent 或 CodeWorker 正在修复 Bug。
-- `done`：子计划完成，自动流程停止。
-- `paused`：流程暂停，必须等待用户决策。
-
-自动推进规则：
-- 默认值来自 `.openfeel/config.yaml` defaults 字段（部署模板默认为 `manual + disabled`，仓库自身为 `auto + enabled` 以支持自驱动）。仅当 `执行模式=auto` 且 `自动推进=enabled` 时，允许 Architect 启动 AutoRunner 或 Agent Manager worktree session。
-- 自动流程采用"每个独立的子计划一个 worktree"：Architect 根据 `.openfeel/plan/deps.yaml` 判断阶段依赖，**无依赖的阶段可并行启动多个 AutoRunner worktree**；AutoRunner 在单个 worktree 内调度 CodeWorker / ReviewWorker / TestWriter / Tester / Debug，其中部分阶段允许内部并行（如审查和测试编写并行调度）。
-- **并行安全规则**：
-  - 并行 worktree 不得修改同一文件；若可能冲突，Architect 必须在 `deps.yaml` 中标记为 `mutual_exclusion` 使其串行
-  - 先完成的 worktree 先合并，后完成的在合并前需 rebase 已合并分支
-  - 并行 worktree 间通过 `task_claim.md` 的 🔒 锁定机制检测文件冲突
-- 任一 Agent 遇到计划外架构变更、超过范围的修改、权限不明确、测试环境缺失、连续两次验收失败时，必须将状态改为 `paused`，`当前责任 Agent` 改为 `user`，并写明暂停原因。
-- 状态为 `done`、`paused` 或 `当前责任 Agent=user` 时，不得继续自动推进。
-
-允许的自动启动链路：
-- Architect 可启动 AutoRunner（可并行启动多个，每个对应独立的无依赖子计划）。
-- AutoRunner 可通过 `task` 调度 CodeWorker、ReviewWorker、TestWriter、Tester、Debug。
-- 自动流程使用 `code-worker` / `review-worker`，人工流程使用主 `code` / `architect`，两者职责隔离。
-- Code、CodeWorker、ReviewWorker、TestWriter、Tester 不得自行创建新的 Agent Manager worktree；只更新状态并将控制权交回 AutoRunner 或用户。
-- Debug 不得启动其他 Agent。
-
-自动流程中的 `status.md` 更新发生在 AutoRunner worktree 内。主工作区只有在用户将 worktree 改动 Apply/Merge 后才能看到最终状态；不要在主工作区同时手改同一子计划状态文件。
+状态为 done 或 paused 时，不得继续自动推进。遇到计划外变更或连续失败时，必须暂停并等待用户决策。
 
 ### 临时目录
 
@@ -257,19 +189,8 @@
 
 **触发时机**：每次会话中，Agent 完成非平凡任务后（排除纯查询/对话类操作），应在覆盖写入 `dev_last.md` 时将本会话的**关键经验**暂存其中。
 
-**dev_last.md 经验暂存格式**：
-```markdown
-# 上次操作状态
-
-- 时间: yyyy-mm-dd HH:MM
-- 阶段: {当前阶段}
-- 操作: {一句话描述}
-- 文件: {新增/修改的文件}
-- 当前状态: {阶段进度}
-
-## 经验暂存
-- [ ] `{分类}`：{经验描述}  ← 待用户确认归入 kb/
-```
+**经验暂存格式**（写入 `dev_last.md`）：
+- `- [ ] \`{分类}\`：{经验描述}` — 待用户确认归入 kb/
 
 **归档流程**：
 1. Agent 在下一次会话启动时读取 `dev_last.md`，若发现有未归档的经验条目，提醒用户确认。
@@ -303,7 +224,6 @@
 **模板**：
 ```markdown
 # 上次操作状态
-
 - 时间: yyyy-mm-dd HH:MM
 - 阶段: {当前计划阶段}
 - 操作: {一句话描述上次操作}
@@ -345,8 +265,8 @@
 管理开发阶段的代码评审问题（架构、规范、逻辑），按计划阶段组织。与 Bug 追踪分离。
 
 **角色分工：**
-- **Architect Agent**：根据计划阶段审查代码，提交问题，验收修复结果。
-- **代码 Agent**：处理审查问题，修改代码并标记状态。
+- **Reviewer**：根据计划阶段审查代码，提交问题，验收修复结果。
+- **Executor**：处理审查问题，修改代码并标记状态。
 
 每个计划阶段的审查问题集中在 `REV-{plan_stage}.md`。条目模板：
 
@@ -354,7 +274,7 @@
 ## REV-{NO}: {简要标题}
 - **状态**：pending | fixing | resolved | closed
 - **优先级**：high | medium | low
-- **提出人**：Architect Agent
+- **提出人**：Reviewer
 - **提出时间**：yyyy-mm-dd HH:MM
 
 ### 问题描述
@@ -380,8 +300,8 @@
 管理测试阶段发现的缺陷，按模块组织。与代码审查分离。
 
 **角色分工：**
-- **测试 Agent**：提交 Bug 和最终验收。
-- **代码 Agent**：按模块分工修复，会话启动时通过 `load skill get-bugs` 获取负责模块的待处理 Bug。
+- **Tester**：提交 Bug 和最终验收。
+- **Executor**：按模块分工修复，会话启动时通过 `load skill get-bugs` 获取负责模块的待处理 Bug。
 
 Bug 按模块子目录组织，每个模块目录下 Bug 命名 `BUG-{NNN}_{简略标题}.md`（NNN 模块内递增）：
 
@@ -395,8 +315,6 @@ Bug 按模块子目录组织，每个模块目录下 Bug 命名 `BUG-{NNN}_{简�
 └── {module_b}/
     └── BUG-001_标题.md
 ```
-
-Bug 文件的详细模板与操作流程由 `tester` Subagent 负责（见 `Kilo/agents/tester.md`）。
 
 Bug 标记为 `open` 时，若优先级为 `high`，须将缺陷详情（标题、描述、复现步骤、影响模块）写入公共日志，确保团队及时可见。条目 `closed` 时，核心结论写入 `.openfeel/bugs/{module}.md`，并在公共日志简要记录。
 
@@ -412,10 +330,10 @@ pending/open  ──→  fixing  ──→  resolved  ──→  closed
 
 | 状态 | 代码审查 | Bug 追踪 | 操作者 |
 |------|---------|---------|--------|
-| 起始 | `pending` | `open` | Architect/测试 Agent 提交 |
-| 修复中 | `fixing` | `fixing` | 代码 Agent 承接 |
-| 待验收 | `resolved` | `resolved` | 代码 Agent 完成 |
-| 关闭 | `closed` | `closed` | Architect/测试 Agent 验收通过 |
+| 起始 | `pending` | `open` | Reviewer / Tester 提交 |
+| 修复中 | `fixing` | `fixing` | Executor 承接 |
+| 待验收 | `resolved` | `resolved` | Executor 完成 |
+| 关闭 | `closed` | `closed` | Reviewer / Tester 验收通过 |
 
 ### 个人临时目录
 

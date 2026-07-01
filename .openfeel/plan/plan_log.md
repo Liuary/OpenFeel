@@ -2,9 +2,11 @@
 
 | 时间 | 操作者 | 变更描述 |
 |------|--------|----------|
-| 2026-06-27 | Liuary | v3.0 计划制定：4 阶段 21 项任务，基于二期 NumKit 测试审查驱动。P0 消缺 → P1 提效 → P2 体验，3 批次推进（batch-1 并行 stage-01/02） |
+| 2026-07-01 | Liuary | **归档**：v3.0 / v3.1 / v3.2 全系列归档。plan_index 移入历史计划，知识沉淀 19 条至 kb/（architecture 4、patterns 7、troubleshooting 5、setup 3），审查归档 4 阶段摘要至 code_review/ |
+| 2026-06-28 | Liuary | v3.2 补丁完成：文档路径绝对路径化、flow status --verbose 可视化、Schemer 自动生成 deps.yaml。测试 225/227 通过。 |
 | 2026-06-28 | Liuary | v3.1 补丁完成：文档写入路径规范、Flow CLI 严格校验(/--force)、Flow↔Stage 同步(/--stage)、知识库搜索增强(/--limit/--offset)。测试 225/227 通过。 |
 | 2026-06-27 | Liuary | v3.0 四阶段全部实现完成：P0 鲁棒性 + 模型落地，P1 轻量修正 + health + 并行，P2 wizard + demo + 边界 + KB + 安全。测试 217/219 通过。 |
+| 2026-06-27 | Liuary | v3.0 计划制定：4 阶段 21 项任务，基于二期 NumKit 测试审查驱动。P0 消缺 → P1 提效 → P2 体验，3 批次推进（batch-1 并行 stage-01/02） |
 | 2026-06-24 | Liuary | v3 架构：流水线 Agent（Feel/Schemer/Executor/Reviewer/Tester/Archiver）+ flow.json + FlowManager + 模型分工（推理/快速/异种） |
 | 2026-06-24 | Liuary | v2 架构：feel Agent 链 + 三层计划体系 |
 | 2026-06-24 | Liuary | 全局替换 .openfeel/ → .openfeel/ 工作区命名 |

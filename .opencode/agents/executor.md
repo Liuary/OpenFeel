@@ -151,5 +151,6 @@ Executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码执行追�
 - 修改任何文件前先阅读其完整内容，理解上下文后再动手。
 - 优先使用 `edit` 工具做精确替换，避免整文件重写。
 - 跨平台项目注意路径分隔符和编码一致性。
+- **阶段状态管理**：更新 status.md 必须通过 `openfeel stage` CLI 命令（`status`/`set`/`task`），禁止直接 `edit` status.md。参见 kb/troubleshooting.md #格式匹配脆弱。
 - 安装依赖失败时尝试语义兼容降级，最多失败 2 次后报告 Feel。
 - 构建或测试失败时分析错误信息并修复，不得跳过。

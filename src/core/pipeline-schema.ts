@@ -35,3 +35,13 @@ export const PipelineConfigSchema = z.object({
 
 /** pipeline.yaml 解析后的类型 */
 export type PipelineConfig = z.infer<typeof PipelineConfigSchema>;
+
+/** 阶段耗时统计 */
+export interface StageStats {
+  /** 阶段开始时间（ISO 8601） */
+  start_time: string;
+  /** 阶段结束时间（ISO 8601），未完成时为空字符串 */
+  end_time: string;
+  /** 阶段耗时（毫秒），未完成时为 0 */
+  duration_ms: number;
+}

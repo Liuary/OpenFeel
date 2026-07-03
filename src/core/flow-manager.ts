@@ -18,8 +18,10 @@ import {
   PIPELINE_PHASES,
   type PipelineConfig,
   type PipelinePhase,
+  type StageStats,
 } from './pipeline-schema.js';
-export { type PipelinePhase } from './pipeline-schema.js';
+import { PublicLogger } from './public-logger.js';
+export { type PipelinePhase, type StageStats } from './pipeline-schema.js';
 
 /** 操作执行状态 */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed';
@@ -75,11 +77,21 @@ export interface LogEntry {
   detail: Record<string, unknown>;
 }
 
+/** 阶段数据结构 */
+export interface StageData {
+  name: string;
+  status: string;
+  deps: string[];
+  ops: Record<string, Op>;
+  /** 阶段耗时统计（可选，运行时填充） */
+  stats?: StageStats;
+}
+
 /** Flow 完整数据结构 */
 export interface FlowData {
   meta: { version: string; project: string; updated: string };
   pipeline: { phase: PipelinePhase; current: { stage: string; op: string }; retry: number };
-  stages: Record<string, { name: string; status: string; deps: string[]; ops: Record<string, Op> }>;
+  stages: Record<string, StageData>;
   reviews: ReviewItem[];
   log: LogEntry[];
 }
@@ -123,6 +135,20 @@ export interface VerboseSummary {
   cascade: CascadeConfig;
   recentChanges: RecentChange[];
   downstreamPhases: DownstreamPhase[];
+}
+
+/** 跨会话上下文恢复结果 */
+export interface RecoveryContext {
+  /** 当前流水线阶段 */
+  phase: PipelinePhase | null;
+  /** 当前操作 ID */
+  currentOp: string | null;
+  /** 当前阶段状态（来自 status.md） */
+  stageStatus: string;
+  /** 阻塞原因（若有） */
+  blockedBy: string;
+  /** 待处理任务列表 */
+  pendingTasks: string[];
 }
 
 /** 校验结果 */
@@ -198,11 +224,14 @@ export class FlowManager {
   private filePath: string;
   /** 从 pipeline.yaml 加载的流水线配置（含后备默认值） */
   private pipelineConfig: PipelineConfig | null = null;
+  /** 公共日志写入器（审计链） */
+  private publicLogger: PublicLogger;
 
   constructor(projectPath: string) {
     this.projectPath = projectPath;
     this.data = null;
     this.filePath = resolve(projectPath, '.openfeel', 'flow.json');
+    this.publicLogger = PublicLogger.getInstance(projectPath);
     this.loadPipelineConfig();
     this.load();
   }
@@ -478,6 +507,179 @@ export class FlowManager {
     };
   }
 
+  // ═══ 阶段耗时统计 ═══
+
+  /**
+   * 记录阶段开始时间
+   * @param stageId 阶段 ID（如 stage-01）
+   */
+  startStage(stageId: string): void {
+    if (!this.data) {
+      return;
+    }
+    const stage = this.data.stages[stageId];
+    if (!stage) {
+      return;
+    }
+    if (!stage.stats) {
+      stage.stats = { start_time: '', end_time: '', duration_ms: 0 };
+    }
+    stage.stats.start_time = new Date().toISOString();
+  }
+
+  /**
+   * 记录阶段结束时间并计算耗时
+   * @param stageId 阶段 ID（如 stage-01）
+   */
+  endStage(stageId: string): void {
+    if (!this.data) {
+      return;
+    }
+    const stage = this.data.stages[stageId];
+    if (!stage) {
+      return;
+    }
+    // 确保 stats 已初始化
+    if (!stage.stats) {
+      stage.stats = { start_time: '', end_time: '', duration_ms: 0 };
+    }
+    stage.stats.end_time = new Date().toISOString();
+    // 计算耗时（毫秒）
+    if (stage.stats.start_time) {
+      const startMs = new Date(stage.stats.start_time).getTime();
+      const endMs = new Date(stage.stats.end_time).getTime();
+      stage.stats.duration_ms = Math.max(0, endMs - startMs);
+    }
+  }
+
+  /**
+   * 获取阶段耗时统计
+   * @param stageId 阶段 ID（如 stage-01）
+   * @returns 阶段耗时数据，不存在时返回 null
+   */
+  getStageStats(stageId: string): StageStats | null {
+    if (!this.data) {
+      return null;
+    }
+    const stage = this.data.stages[stageId];
+    if (!stage || !stage.stats) {
+      return null;
+    }
+    return { ...stage.stats };
+  }
+
+  /**
+   * 获取所有阶段的耗时统计映射
+   */
+  getAllStageStats(): Record<string, StageStats> {
+    if (!this.data) {
+      return {};
+    }
+    const result: Record<string, StageStats> = {};
+    for (const [stageId, stage] of Object.entries(this.data.stages)) {
+      if (stage.stats) {
+        result[stageId] = { ...stage.stats };
+      }
+    }
+    return result;
+  }
+
+  // ═══ 跨会话上下文恢复 ═══
+
+  /**
+   * 从 flow.json + status.md 恢复上下文
+   * 供 Feel 重启后准确恢复状态机位置，无需重新推断
+   * @returns 恢复上下文对象
+   */
+  recoverContext(): RecoveryContext {
+    if (!this.data) {
+      return {
+        phase: null,
+        currentOp: null,
+        stageStatus: '未初始化',
+        blockedBy: '',
+        pendingTasks: [],
+      };
+    }
+
+    const phase = this.data.pipeline.phase;
+    const cur = this.data.pipeline.current;
+    const currentOp = (cur.stage && cur.op) ? `${cur.stage}.${cur.op}` : null;
+
+    // 从 status.md 读取当前阶段详细状态
+    let stageStatus = '未知';
+    let blockedBy = '';
+    const pendingTasks: string[] = [];
+
+    if (cur.stage) {
+      const statusPath = this.findStatusPath(cur.stage);
+      if (statusPath) {
+        try {
+          const content = readFileSync(statusPath, 'utf-8');
+
+          // 提取执行模式
+          const execMatch = content.match(/\*\*执行模式\*\*[：:]\s*(manual|auto)/);
+          const modeLabel = execMatch ? (execMatch[1] === 'auto' ? '自动执行' : '手动执行') : '';
+
+          // 提取状态
+          const statusMatch = content.match(/\*\*状态\*\*[：:]\s*(\S+)/);
+          stageStatus = statusMatch ? statusMatch[1] : '未知';
+          if (modeLabel) {
+            stageStatus += ` (${modeLabel})`;
+          }
+
+          // 提取阻塞原因
+          const blockMatch = content.match(/\*\*阻塞原因\*\*[：:]\s*(.+)/);
+          if (blockMatch) {
+            blockedBy = blockMatch[1].trim();
+          }
+
+          // 提取待完成/待续事项
+          const contentLower = content.toLowerCase();
+          // 查找待续事项或未完成的任务
+          const todoSection = content.match(/##\s*待续事项[\s\S]*?(?=##)/i)
+            || content.match(/##\s*待做[\s\S]*?(?=##)/i);
+          if (todoSection) {
+            const lines = todoSection[0].split(/\r?\n/);
+            for (const line of lines) {
+              const taskMatch = line.match(/[-*]\s*\[ \]\s*(.+)/);
+              if (taskMatch) {
+                pendingTasks.push(taskMatch[1].trim());
+              }
+            }
+          }
+
+          // 如果没有找到待续事项，尝试从所有阶段收集未完成的 op
+          if (pendingTasks.length === 0) {
+            for (const [, stage] of Object.entries(this.data.stages)) {
+              for (const [opKey, op] of Object.entries(stage.ops)) {
+                if (op.state === 'pending' || op.state === 'executing') {
+                  pendingTasks.push(`${stage.name}.${opKey}: ${op.title}`);
+                }
+              }
+            }
+          }
+        } catch {
+          stageStatus = '无法读取 status.md';
+        }
+      } else {
+        stageStatus = 'status.md 不存在';
+      }
+    } else {
+      // 无当前阶段时，列出所有 pending/executing 的任务
+      for (const [stageId, stage] of Object.entries(this.data.stages)) {
+        for (const [opKey, op] of Object.entries(stage.ops)) {
+          if (op.state === 'pending' || op.state === 'executing') {
+            pendingTasks.push(`${stageId}.${opKey}: ${op.title}`);
+          }
+        }
+      }
+      stageStatus = '无当前阶段';
+    }
+
+    return { phase, currentOp, stageStatus, blockedBy, pendingTasks };
+  }
+
   // ═══ 推进 ═══
 
   /**
@@ -577,12 +779,31 @@ export class FlowManager {
       detail: { opId, from: fromPhase, to: targetPhase },
     });
 
+    // 公共日志：记录状态变更到 .openfeel/log/（审计链）
+    this.publicLogger.logPhaseChange({
+      action: 'advance_phase',
+      opId,
+      from: fromPhase,
+      to: targetPhase,
+    });
+
     // 同步更新 stage 状态（若传入 stageId）
     if (stageId && this.data && this.data.stages[stageId]) {
-      this.data.stages[stageId].status = mapPhaseToStageStatus(
-        targetPhase,
-        this.data.stages[stageId].status,
-      );
+      const stage = this.data.stages[stageId];
+      const prevStatus = stage.status;
+      const newStatus = mapPhaseToStageStatus(targetPhase, prevStatus);
+
+      // 自动记录阶段计时：首次状态变更时启动
+      if (!stage.stats || !stage.stats.start_time) {
+        this.startStage(stageId);
+      }
+
+      stage.status = newStatus;
+
+      // 阶段完成时自动结束计时
+      if (newStatus === 'done' && prevStatus !== 'done') {
+        this.endStage(stageId);
+      }
     }
   }
 
@@ -872,6 +1093,12 @@ export class FlowManager {
         action: 'attempt_pass',
         detail: { opId, attempts: op.attempts },
       });
+      // 公共日志：记录执行通过（审计链）
+      this.publicLogger.logPhaseChange({
+        action: 'attempt_pass',
+        opId,
+        extra: { attempts: op.attempts },
+      });
       return { shouldRetry: false, shouldReplan: false };
     }
 
@@ -885,6 +1112,12 @@ export class FlowManager {
         action: 'attempt_fail_retry',
         detail: { opId, attempts: op.attempts, maxAttempts: op.max_attempts },
       });
+      // 公共日志：记录执行失败-重试（审计链）
+      this.publicLogger.logPhaseChange({
+        action: 'attempt_fail_retry',
+        opId,
+        extra: { attempts: op.attempts, maxAttempts: op.max_attempts },
+      });
       return { shouldRetry: true, shouldReplan: false };
     }
 
@@ -896,6 +1129,12 @@ export class FlowManager {
       agent: 'executor',
       action: 'attempt_fail_exhausted',
       detail: { opId, attempts: op.attempts, maxAttempts: op.max_attempts },
+    });
+    // 公共日志：记录执行失败-耗尽（审计链）
+    this.publicLogger.logPhaseChange({
+      action: 'attempt_fail_exhausted',
+      opId,
+      extra: { attempts: op.attempts, maxAttempts: op.max_attempts },
     });
     return { shouldRetry: false, shouldReplan: true };
   }
@@ -911,6 +1150,12 @@ export class FlowManager {
     } else {
       this.data.reviews.push(item);
     }
+    // 公共日志：记录审查事件（审计链）
+    this.publicLogger.logReviewEvent({
+      action: 'review_added',
+      opId: item.op,
+      extra: { reviewId: item.id, status: item.status, priority: item.priority, title: item.title },
+    });
   }
 
   /** 将指定审查条目标记为 resolved */
@@ -971,6 +1216,14 @@ export class FlowManager {
       agent: 'flow-manager',
       action: 'auto_fix_review',
       detail: { opId, reviewId: item.id, detail: item.autoFixDetail ?? '' },
+    });
+
+    // 公共日志：记录自动修复审查事件（审计链）
+    // 注: advancePhase 和 addReview 调用已各自记录其事件，此处记录 auto_fix 专项事件
+    this.publicLogger.logReviewEvent({
+      action: 'auto_fix_review',
+      opId,
+      extra: { reviewId: item.id, autoFixDetail: item.autoFixDetail ?? '' },
     });
   }
 

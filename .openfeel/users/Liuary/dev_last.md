@@ -18,7 +18,7 @@
 - 此项纳入 stage-04，与 flow.json 管理模式一致
 
 ## 经验暂存
-- [ ] `patterns`：Schemer 产出 op 文件命名格式应为 op-NNN.md（仅编号），中文标题写入内部 # 行
-- [ ] `patterns`：deps.yaml 应增加 file 字段声明实际文件名，Feel 调度前 glob 校验
-- [ ] `patterns`：Executor prompt 应强制"第一步 read 方案文件"，避免跳步
-- [ ] `troubleshooting`：手动 edit status.md 因空格/换行/编码细微差异频繁失败 → 改为 CLI 原子操作
+- [x] `patterns`：Schemer 产出 op 文件命名格式应为 op-NNN.md（仅编号），中文标题写入内部 # 行
+- [x] `patterns`：deps.yaml 应增加 file 字段声明实际文件名，Feel 调度前 glob 校验
+- [x] `patterns`：Executor prompt 应强制"第一步 read 方案文件"，避免跳步
+- [x] `troubleshooting`：手动 edit status.md 因空格/换行/编码细微差异频繁失败 → 改为 CLI 原子操作

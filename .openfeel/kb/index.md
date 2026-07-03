@@ -7,8 +7,8 @@
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 4 | 2026-07-01 | 技术选型、设计理由、并行策略 |
-| 代码模式 | [patterns.md](patterns.md) | 7 | 2026-07-01 | 项目约定、最佳实践、反模式 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 5 | 2026-07-01 | 常见 Bug、调试流程、已知坑位 |
+| 代码模式 | [patterns.md](patterns.md) | 10 | 2026-07-02 | 项目约定、最佳实践、反模式 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 6 | 2026-07-02 | 常见 Bug、调试流程、已知坑位 |
 | 环境配置 | [setup.md](setup.md) | 3 | 2026-07-01 | 环境搭建、构建流程、依赖管理 |
 
 ## 各分类摘要
@@ -33,6 +33,9 @@
 | 文档路径绝对路径规范 | 2026-06-28 | "项目根目录下的 docs/phase-{N}/" 绝对路径格式 |
 | Schemer op 级依赖声明 | 2026-06-28 | 自动生成 deps.yaml，hard/soft/mutual_exclusion |
 | 知识库搜索增强 | 2026-06-28 | --limit/--offset 参数，正文匹配 |
+| op 文件命名规范 | 2026-07-02 | op-NNN.md 仅编号，中文标题入内部 # 行 |
+| Executor 强制第一步读方案 | 2026-07-02 | prompt 硬化"read 方案文件完整内容" |
+| deps.yaml 声明实际文件名 | 2026-07-02 | file 字段桥接命名断链，Feel 调度前 glob 校验 |
 
 ### troubleshooting.md
 
@@ -43,6 +46,7 @@
 | repair dry-run 误报 | 2026-06-27 | 文件不存在时返回 fixed=true，正常时 exit(1) |
 | Schemer 产出路径不匹配 | 2026-06-27 | stages/ vs plan/ 路径不一致 |
 | architect 审查模板未同步 | 2026-06-27 | Reviewer↔Tester 闭环在 Architect 审查场景下断裂 |
+| 手动 edit status.md 频繁失败 | 2026-07-02 | 格式匹配脆弱 → 改为 CLI 原子操作 |
 
 ### setup.md
 
@@ -56,5 +60,6 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-07-02 | 新增 | v4 经验沉淀：op命名规范 + Executor读文件 + deps校验 + status.md CLI |
 | 2026-07-01 | 归档 | v3.0 / v3.1 / v3.2 全系列归档，知识沉淀到四个分类 |
 | 2026-07-01 | 初始化 | 首次创建知识库分类文件，提取 v3 系列 19 条经验 |

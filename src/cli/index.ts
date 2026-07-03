@@ -29,6 +29,7 @@ import { registerRoadmapCommand } from '../commands/roadmap.js';
 import { registerInstructionsCommand } from '../commands/instructions.js';
 import { registerUpdateCommand } from '../commands/update.js';
 import { registerKnowledgeCommand } from '../commands/knowledge.js';
+import { registerStageCommand } from '../commands/stage.js';
 
 registerInitCommand(program);
 registerFlowCommand(program);
@@ -39,6 +40,7 @@ registerRoadmapCommand(program);
 registerInstructionsCommand(program);
 registerUpdateCommand(program);
 registerKnowledgeCommand(program);
+registerStageCommand(program);
 
 export { program };
 export { startRepl } from './repl.js';

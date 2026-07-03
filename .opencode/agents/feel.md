@@ -49,4 +49,5 @@ Feel 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，确保深度理�
 
 - 不要直接修改源码，通过 Executor Agent 间接修改。
 - 流程状态必须通过 `openfeel flow` 命令管理，不要手动修改 flow.json。
+- 阶段状态更新须通过 `openfeel stage` 命令（`status`/`set`/`task`），禁止直接 `edit` status.md。
 - 遇到不确定情况时，向用户说明并暂停自动推进。

@@ -1,36 +1,40 @@
-# v4-stage-04 状态 — 体验优化：6 项锦上添花
+# v4-stage-04 状态 — 体验优化：全部完成
 
 - **执行模式**：manual
 - **自动推进**：disabled
-- **状态**：planned
+- **状态**：done
 - **当前责任 Agent**：user
-- **上一责任 Agent**：planner
-- **更新时间**：2026-07-01 23:00
+- **上一责任 Agent**：executor
+- **更新时间**：2026-07-02 10:20
 
 ## Worktree / Session
 
 - **工作模式**：manual
 - **合并状态**：not_started
 - **前置依赖**：v4-stage-03（soft）
-- **依赖状态**：blocked
+- **依赖状态**：satisfied
 
 ## 当前任务
 
-- [ ] 任务1：#7 阶段耗时统计 — flow.json 增加 stats 字段
-- [ ] 任务2：#8 Reviewer 快速通道 — 代码量<200行+自测全通过+覆盖率达标时跳过完整审查
-- [ ] 任务3：#8 Feel Tester 快速通道 — 同上条件，测试阶段快速验收
-- [ ] 任务4：#9 公共日志审计链补全 — 正常流程状态变更也写入公共日志
-- [ ] 任务5：#10 跨会话上下文恢复 — Feel 重启后从 flow.json+status.md 准确恢复
-- [ ] 任务6：#11 Agent 性能指标 — 记录执行时间、成功率、重试次数
-- [ ] 任务7：#12 知识库自动去重 — 归档前检索现有条目，相似度>80%更新而非新增
+- [x] 任务1：#7 阶段耗时统计 — pipeline-schema + flow-manager + flow overview
+- [x] 任务2：#8 Reviewer 快速通道 — <200行+自测+覆盖率 → review_passed
+- [x] 任务3：#8 Feel Tester 快速通道 — 同上，快速验收
+- [x] 任务4：#9 审计链补全 — PublicLogger + 6 处集成
+- [x] 任务5：#10 跨会话上下文恢复 — recoverContext() + flow recover 命令
+- [x] 任务6：#11 Agent 性能指标 — metrics.ts + flow metrics 命令
+- [x] 任务7：#12 知识库自动去重 — kb-dedup.ts + archiver 集成
+- [x] 任务8：status.md CLI 管理 — stage.ts + Agent 更新
 
 ## 阻塞 / 暂停原因
 
-等待 v4-stage-03 完成。
+无
 
 ## 状态记录
 
 | 时间 | Agent | 状态变化 | 说明 |
 |------|-------|----------|------|
-| 2026-07-01 23:00 | planner | → planned | v4.0 计划创建，本阶段 7 项任务（#7-#12） |
-| 2026-07-01 23:30 | executor | 修改 | stage-01 完成，Agent 15→7 体系已对齐。修正：任务3 `Tester` → `Feel Tester` |
+| 2026-07-01 23:00 | planner | → planned | v4.0 计划创建 |
+| 2026-07-01 23:30 | executor | 修改 | stage-01 完成 |
+| 2026-07-02 10:00 | feel | planned → scheme_pending | 新增 CLI 任务，移交 Schemer |
+| 2026-07-02 10:15 | feel | scheme_pending → coding | 批次1：op-001~003 并行 |
+| 2026-07-02 10:20 | executor | coding → done | 全 6 op / 8 任务完成 |

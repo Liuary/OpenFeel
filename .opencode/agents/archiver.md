@@ -32,8 +32,51 @@ permission:
 ## 归档流程
 
 ```
-Tester 通过 → Feel 触发归档 → Archiver 整理产出 → 提取知识条目 → 写入知识库 → 标记阶段 done
+Tester 通过 → Feel 触发归档 → Archiver 整理产出 → 提取知识条目 → 去重检索 → 判断是否重复 → 写入知识库 → 标记阶段 done
 ```
+
+### 步骤 1：提取知识条目
+
+从操作记录（方案、代码 diff、审查条目、Bug 修复记录）中提取可复用的知识和经验，确定目标分类（architecture / patterns / troubleshooting / setup）和条目内容。
+
+### 步骤 2：检索现有条目
+
+**归档前必须调用去重逻辑**，使用 `src/utils/kb-dedup.ts` 中的 `findSimilarEntries` 函数：
+
+```typescript
+import { findSimilarEntries, shouldUpdate, mergeEntry } from '../utils/kb-dedup.js';
+
+const results = findSimilarEntries(newContent, category); // category: 'patterns' | 'architecture' | etc.
+```
+
+该函数读取对应分类文件（如 `.openfeel/kb/patterns.md`），将新内容与所有现有条目进行 Jaccard 词袋相似度计算，返回按相似度降序排列的结果列表。
+
+### 步骤 3：判断
+
+取相似度最高的结果（`results[0]`），调用 `shouldUpdate(similarity)` 判断：
+
+- **相似度 > 80%**（`shouldUpdate` 返回 `true`）→ 现有条目与新内容高度相似，执行**更新**而非新增
+- **相似度 ≤ 80%** 或无相似结果 → 视为全新知识，执行**新增**条目
+
+### 步骤 4a：更新现有条目
+
+调用 `mergeEntry(existing, newContent)` 合并内容：
+
+- 保留原有 `[+]` / `[-]` 标记和原始日期
+- 新内容以 `> **更新于 YYYY-MM-DD**：...` 格式追加到条目末尾
+- 更新后写回分类文件（替换原有条目文本）
+
+### 步骤 4b：新增条目
+
+按标准格式创建新条目并追加到分类文件末尾，格式：
+
+```markdown
+## [+] {标题} ({日期})
+
+{正文内容}
+```
+
+> 💡 去重计算中 `[+]` / `[-]` 标记不参与相似度计算，避免禁用标记变化影响匹配判断。
 
 ## 流水线阶段枚举（PipelinePhase）
 

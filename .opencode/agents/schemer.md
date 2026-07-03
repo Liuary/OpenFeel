@@ -104,6 +104,10 @@ permission:
 - 产出方案经 Reviewer 审查后交给 Executor 执行
 - 审查不通过时，根据 Reviewer 反馈重新制定方案
 
+## 注意事项
+
+- 制定方案时，若涉及阶段状态更新（如标记任务完成、推进状态），须指示 Executor 通过 `openfeel stage` CLI 命令操作 status.md，而非手动 `edit`。
+
 ## 模型选择
 
 Schemer 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，方案制定需要细粒度推理能力。

@@ -1,0 +1,105 @@
+# v4-stage-04 操作方案依赖声明
+
+# 约定：
+# - key 格式：op-NNN（仅编号，Feel 据此拼接文件路径 op-NNN.md）
+# - hard: 前置 op 必须完成
+# - soft: 弱依赖，警告但可启动
+# - 批次内 op 互不修改同一文件，可并行执行
+
+version: 4.0
+stage: v4-stage-04
+generated: 2026-07-04
+updated: 2026-07-04
+
+ops:
+  op-001:
+    description: Reviewer / Feel Tester 快速通道（#8）
+    depends_on: []
+    modifies:
+      - .opencode/agents/reviewer.md
+      - .opencode/agents/feel-tester.md
+
+  op-002:
+    description: Agent 性能指标模块（#11）
+    depends_on: []
+    modifies:
+      - src/core/metrics.ts (新建)
+      - src/commands/flow.ts
+
+  op-003:
+    description: 知识库自动去重（#12）
+    depends_on: []
+    modifies:
+      - src/utils/kb-dedup.ts (新建)
+      - .opencode/agents/archiver.md
+
+  op-004:
+    description: status.md CLI 管理命令（#13 工程项）
+    depends_on:
+      - op: op-001
+        type: soft
+        reason: 共享 reviewer.md（op-001 增加快速通道节，op-004 增加 CLI 约束声明，修改位置不同），建议串行以安全合并
+    modifies:
+      - src/commands/stage.ts (新建)
+      - src/index.ts 或 src/cli.ts
+      - .opencode/agents/feel.md
+      - .opencode/agents/schemer.md
+      - .opencode/agents/executor.md
+      - .opencode/agents/reviewer.md
+
+  op-005:
+    description: 阶段耗时统计 + 跨会话上下文恢复（#7 + #10）
+    depends_on:
+      - op: op-004
+        type: soft
+        reason: 共享 flow-manager.ts 但修改区域不重叠（op-004 仅改 Agent md 文件），可并行推进
+    modifies:
+      - src/core/pipeline-schema.ts
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+
+  op-006:
+    description: 审计链补全 — 公共日志写入（#9）
+    depends_on:
+      - op: op-005
+        type: hard
+        reason: op-005 修改 flow-manager.ts 的 advancePhase 签名/逻辑，op-006 需在其基础上追加公共日志写入
+    modifies:
+      - src/core/public-logger.ts (新建)
+      - src/core/flow-manager.ts
+
+batches:
+  # ── 批次 1：并行（核心文件集互不相交）──
+  batch-1:
+    parallel:
+      - op-001   # reviewer.md + feel-tester.md
+      - op-002   # metrics.ts (新) + flow.ts
+      - op-003   # kb-dedup.ts (新) + archiver.md
+    depends_on: []
+    notes: |
+      三个 op 核心修改文件互不相交，可完全并行执行。
+      op-004 依赖 op-001（soft，共享 reviewer.md），放入批内但建议串行：
+      - reviewer.md：op-001 增加「快速通道」节（审查流程前），op-004 增加 CLI 约束声明（注意事项节）
+      - 两处修改在文件中位置不同，合并安全但建议 op-001 先行
+
+  # ── 批次 1.5：弱依赖并行 ──
+  batch-1_5:
+    parallel:
+      - op-004   # stage.ts (新) + Agent .md 文件
+    depends_on: batch-1
+    notes: |
+      op-004 对 op-001 有 soft 依赖（共享 reviewer.md）。
+      若 op-001 先完成，op-004 可直接基于最新 reviewer.md 修改，避免合并冲突。
+
+  # ── 批次 2：串行（共享 flow-manager.ts）──
+  batch-2:
+    serial:
+      - op-005   # pipeline-schema.ts + flow-manager.ts + flow.ts
+      - op-006   # public-logger.ts (新) + flow-manager.ts
+    depends_on:
+      - batch-1
+      - batch-1_5
+    notes: |
+      op-005 和 op-006 共享 flow-manager.ts，必须串行推进。
+      op-005 建立 stats 基础设施 + recoverContext 方法，
+      op-006 在此基础上追加 PublicLogger 调用点。

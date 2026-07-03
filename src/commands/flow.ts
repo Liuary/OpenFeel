@@ -1,6 +1,6 @@
 /**
  * flow 命令组注册
- * openfeel flow status|current|advance|attempt|log|review|retry|repair|health|wizard
+ * openfeel flow status|current|metrics|advance|attempt|log|review|retry|repair|health|wizard
  *
  * 变更摘要 (stage-01: flow.json 鲁棒性加固):
  * - 新增 flow repair 子命令，自动检测并修复 flow.json 常见问题
@@ -15,12 +15,16 @@
  *
  * 变更摘要 (stage-04: 体验补全):
  * - 新增 flow wizard 子命令，交互式推进流水线阶段
+ *
+ * 变更摘要 (stage-04: 性能指标):
+ * - 新增 flow metrics 子命令，展示 Agent 性能指标
  */
 import { Command } from 'commander';
 import { existsSync, copyFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, type PipelinePhase } from '../core/flow-manager.js';
+import { FlowManager, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
+import { MetricsStore } from '../core/metrics.js';
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -37,6 +41,16 @@ export function registerFlowCommand(program: Command): void {
       const mgr = createManager();
       if (!options.verbose) {
         console.log(mgr.summary());
+
+        // 阶段耗时统计
+        const allStats = mgr.getAllStageStats();
+        if (Object.keys(allStats).length > 0) {
+          console.log('\n阶段耗时:');
+          for (const [stageId, s] of Object.entries(allStats)) {
+            const duration = formatDuration(s.duration_ms);
+            console.log(`  ${stageId}: ${duration}${s.end_time ? '' : ' (进行中)'}`);
+          }
+        }
         return;
       }
 
@@ -100,6 +114,26 @@ export function registerFlowCommand(program: Command): void {
         console.log('──────────────────────────────────');
         for (const dp of v.downstreamPhases) {
           console.log(`${dp.phase.padEnd(20)} ${dp.responsibleAgent}`);
+        }
+      }
+      console.log('');
+
+      // ── 跨会话恢复信息 ──
+      const recovery = mgr.recoverContext();
+      console.log('── 跨会话恢复信息 ──');
+      console.log(`  阶段: ${recovery.phase ?? '(未知)'}`);
+      console.log(`  操作: ${recovery.currentOp ?? '(无)'}`);
+      console.log(`  状态: ${recovery.stageStatus}`);
+      if (recovery.blockedBy) {
+        console.log(`  阻塞原因: ${recovery.blockedBy}`);
+      }
+      if (recovery.pendingTasks.length > 0) {
+        console.log('  待处理任务:');
+        for (let i = 0; i < Math.min(recovery.pendingTasks.length, 10); i++) {
+          console.log(`    ${i + 1}. ${recovery.pendingTasks[i]}`);
+        }
+        if (recovery.pendingTasks.length > 10) {
+          console.log(`    ... 还有 ${recovery.pendingTasks.length - 10} 项`);
         }
       }
     });
@@ -246,6 +280,16 @@ export function registerFlowCommand(program: Command): void {
       console.log(`阶段: ${phase}`);
       console.log(`当前操作: ${current ? `${current.stage}.${current.op}` : '(无)'}`);
       console.log(`重试次数: ${summary.retryCount}`);
+    });
+
+  // flow metrics — 展示 Agent 性能指标
+  flow
+    .command('metrics')
+    .description('展示 Agent 性能指标')
+    .action(() => {
+      const store = MetricsStore.getInstance();
+      store.load();
+      console.log(store.summary());
     });
 
   // flow advance --op <id> --to <phase> [--stage <id>] [--force]
@@ -635,6 +679,57 @@ export function registerFlowCommand(program: Command): void {
       }
     });
 
+  // flow recover — 跨会话上下文恢复
+  flow
+    .command('recover')
+    .description('跨会话上下文恢复：输出流水线状态、阻塞原因和待处理任务')
+    .action(() => {
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.log('流水线未初始化（flow.json 不存在）');
+        return;
+      }
+
+      const recovery = mgr.recoverContext();
+
+      console.log('');
+      console.log('═══ 跨会话上下文恢复 ═══');
+      console.log('');
+      console.log(`流水线阶段: ${recovery.phase ?? '(未知)'}`);
+      console.log(`当前操作:   ${recovery.currentOp ?? '(无)'}`);
+      console.log(`阶段状态:   ${recovery.stageStatus}`);
+
+      if (recovery.blockedBy) {
+        console.log(`阻塞原因:   ${recovery.blockedBy}`);
+      }
+
+      if (recovery.pendingTasks.length > 0) {
+        console.log('');
+        console.log(`待处理任务 (${recovery.pendingTasks.length}):`);
+        for (let i = 0; i < recovery.pendingTasks.length; i++) {
+          console.log(`  ${i + 1}. ${recovery.pendingTasks[i]}`);
+        }
+      } else {
+        console.log('');
+        console.log('无待处理任务');
+      }
+
+      // 阶段耗时一览
+      const allStats = mgr.getAllStageStats();
+      if (Object.keys(allStats).length > 0) {
+        console.log('');
+        console.log('阶段耗时:');
+        for (const [stageId, s] of Object.entries(allStats)) {
+          const duration = formatDuration(s.duration_ms);
+          const status = s.end_time ? '已完成' : '进行中';
+          console.log(`  ${stageId}: ${duration} (${status})`);
+        }
+      }
+
+      console.log('');
+      console.log('═══════════════════════════');
+    });
+
   // flow wizard — 交互式推进流水线
   flow
     .command('wizard')
@@ -753,4 +848,23 @@ export function registerFlowCommand(program: Command): void {
 /** 创建 FlowManager 实例（使用当前工作目录） */
 function createManager(): FlowManager {
   return new FlowManager(process.cwd());
+}
+
+/** 格式化毫秒时长为人类可读形式 */
+function formatDuration(ms: number): string {
+  if (ms <= 0) {
+    return '0ms';
+  }
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  if (ms < 60000) {
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.round((ms % 60000) / 1000);
+  if (seconds === 0) {
+    return `${minutes}m`;
+  }
+  return `${minutes}m ${seconds}s`;
 }

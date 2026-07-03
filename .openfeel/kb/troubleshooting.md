@@ -53,3 +53,13 @@
 **修复：** `architect.md` 审查模板同步增加 Tester 标记字段。
 
 **见于：** REV-013
+
+## [+] 手动 edit status.md 频繁失败 — 格式匹配脆弱 (2026-07-02)
+
+**现象**：Feel 调度完成后通过 `edit` 工具更新 `status.md` 的 checkbox 或状态字段时，频繁报错 "oldString not found"，即使肉眼看起来匹配。
+
+**根因**：`edit` 工具对字符串匹配要求极其严格（空格/换行/编码/不可见字符），手动构造的 `oldString` 与文件实际内容常有细微差异。
+
+**修复方向**：保留 status.md 作为人类可读快照，但读写操作改为通过 CLI 命令（`openfeel stage`）完成原子操作。与 flow.json 管理模式一致——Agent 不直接修改数据文件，通过 CLI 间接管理。
+
+**见于**：v4-stage-01/02/03 阶段状态更新流程中反复出现。

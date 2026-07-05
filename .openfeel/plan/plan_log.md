@@ -2,6 +2,7 @@
 
 | 时间 | 操作者 | 变更描述 |
 |------|--------|----------|
+| 2026-07-05 | Liuary | **v4.1 计划扩展为双阶段**：新增 v4.1-stage-02（Agent 特化 + Utility Agent）。v4.1 从单阶段模板同步升级为「构建稳健性 + Agent 深化」双阶段计划。stage-01 细化到 8 项子任务，stage-02 覆盖 7 个 Agent 扩充 + 新增 Utility Agent + 配套目录调整共 11 项。两阶段为 soft 依赖可并行。 |
 | 2026-07-01 | Liuary | **v4-stage-01 范围扩大**：11→20 项任务。15→7 Agent 全面对齐部署项目（feel/planner/schemer/executor/reviewer/feel-tester/archiver）。移除 9 个 Agent（新增 debug/test-writer/architect/code/tester），重写 4 个 + 精简 3 个 + 配套更新 3 个 + 后调 1 个。后续阶段（stage-02/03/04）概要同步调整。 |
 | 2026-07-01 | Liuary | **v4.0 计划创建**：4 阶段 27 项任务。减法（移除 4 Agent + 精简 core.md）+ 加法（12 项改进建议按优先级分三批落地）。基于四期改进建议 suggestions.md 和工程改造需求。 |
 | 2026-07-01 | Liuary | **归档**：v3.0 / v3.1 / v3.2 全系列归档。plan_index 移入历史计划，知识沉淀 19 条至 kb/（architecture 4、patterns 7、troubleshooting 5、setup 3），审查归档 4 阶段摘要至 code_review/ |

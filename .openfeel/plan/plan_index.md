@@ -4,13 +4,14 @@
 
 ## 当前计划
 
-### [OpenFeel v4.1 — 模板自动同步](v4.1/plan.md) ← 计划中
+### [OpenFeel v4.1 — 构建稳健性 + Agent 深化](v4.1/plan.md) ← 计划中
 
-**目标**：构建时自动从源文件生成模板，消除手动同步遗漏。
+**目标**：(1) 构建时自动同步模板，消除部署版本漂移；(2) 7 个 Agent prompt 扩充职责边界，新增 Utility Agent。
 
 | 阶段 | 任务 | 优先级 | 状态 |
 |------|------|:--:|:--:|
-| v4.1-stage-01 | 构建脚本自动同步模板 | P1 | planned |
+| v4.1-stage-01 | 构建脚本自动同步模板（8 项） | P1 | planned |
+| v4.1-stage-02 | Agent 特化 + Utility Agent（11 项） | P1 | planned |
 
 ## 历史计划
 

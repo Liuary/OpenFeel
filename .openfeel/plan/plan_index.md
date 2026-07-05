@@ -4,18 +4,20 @@
 
 ## 当前计划
 
-### [OpenFeel v4.0 — 工程精简与能力增强](v4/plan.md) 🔵 计划中
-
-**目标**：15→7 Agent 全面对齐部署项目 + 精简 core.md（424→~250 行）+ 落地 12 项改进建议。4 阶段 20+ 项任务。
-
-| 阶段 | 任务 | 优先级 | 状态 |
-|------|------|:--:|:--:|
-| [v4-stage-01](v4/v4-stage-01/status.md) | 工程改造 — 15→7 Agent 全面对齐 | P0 | planned |
-| [v4-stage-02](v4/v4-stage-02/status.md) | 核心增强 — KB 检索 + 前置校验 | P1 | planned |
-| [v4-stage-03](v4/v4-stage-03/status.md) | 审查增强 + 流水线可视化 | P2 | planned |
-| [v4-stage-04](v4/v4-stage-04/status.md) | 体验优化 — 6 项锦上添花 | P3 | planned |
+_（暂无活跃计划）_
 
 ## 历史计划
+
+### [OpenFeel v4.0 — 工程精简与能力增强](v4/plan.md) ✅ 已归档
+
+**目标**：15→7 Agent 全面对齐部署项目 + 精简 core.md（424→342 行）+ 落地 12 项改进建议。4 阶段 39 项任务全部闭环。
+
+| 阶段 | 任务 | REV | 状态 |
+|------|:--:|:--:|:--:|
+| [v4-stage-01](v4/v4-stage-01/status.md) | 工程改造 — 15→7 Agent | 20 | 4→closed | done |
+| [v4-stage-02](v4/v4-stage-02/status.md) | 核心增强 — KB 检索 + 前置校验 | 5 | 4→3 closed | done |
+| [v4-stage-03](v4/v4-stage-03/status.md) | 审查增强 + 流水线可视化 | 6 | 1→low | done |
+| [v4-stage-04](v4/v4-stage-04/status.md) | 体验优化 — 7 项锦上添花 | 8 | 3→low | done |
 
 ### [OpenFeel v3.2 — 收尾补丁](v3.2/v3.2-stage-01/status.md) ✅ 已归档
 
@@ -61,4 +63,4 @@
 | v3.0 | 已归档 | 4 | 4/4 done | — |
 | v3.1 | 已归档 | 1 | 1/1 done | — |
 | v3.2 | 已归档 | 1 | 1/1 done | — |
-| v4.0 | 计划中 | 4 | 0/4 done | — |
+| v4.0 | 已归档 | 4 | 4/4 done | — |

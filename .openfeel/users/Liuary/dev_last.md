@@ -1,21 +1,27 @@
 # 上次操作状态
 - 时间: 2026-07-05
-- 阶段: v4-stage-02
-- 操作: 代码审查完成 — 3 阻塞 REV (high) + 1 非阻塞 REV (low)
-- 文件: REV-v4-stage-02.md, status.md (→ review_failed), 公共日志
-- 当前状态: review_failed — 等待 Executor 修复 REV-001~003
+- 阶段: v4.0 全阶段（归档）
+- 操作: v4.0 全阶段归档完成 — 4 阶段 39 项任务闭环，知识沉淀 10 条至 kb/
+- 文件: plan_index.md, current.md, kb/architecture.md(+3), kb/patterns.md(+5), kb/troubleshooting.md(+2), kb/index.md, .openfeel/log/2026/07/05/2026-07-05-Liuary-002.md
+- 当前状态: v4.0 已归档，项目无活跃计划
 
 ## 待续事项
-- [ ] Executor 修复 REV-001：executor.md L58 flow.json 路径 → `.openfeel/flow.json`
-- [ ] Executor 修复 REV-002：实现 `openfeel flow validate` CLI 命令 或 更新 executor.md 步骤 3a 引用
-- [ ] Executor 修复 REV-003：创建 `.openfeel/pipeline.yaml` 或修正步骤 3b 路径
-- [ ] 修复后 Reviewer 再审
+- [ ] 准备 v5.0 计划（如有新需求）
+- [ ] low 优先级 REV 跟踪：REV-004 (v4-stage-02 search-kb 语义陈旧)、REV-001~003 (v4-stage-04 kb-dedup死代码/MetricsStore/schemer风格)
+- [ ] 清理 v3 系列残留 pending REV（35 条历史审查条目）
 
 ## 关键决策
-- op-001~003（KB检索 + check-kb自包含化）通过审查，无需修改
-- op-004 flow.json 路径描述不准确，需修正
-- op-005 CLI 命令引用和 pipeline.yaml 路径存在两处断裂，需修正方案或实现对应功能
+- v4.0 归档完成，项目 Agent 体系从 15→7 稳定运行
+- 知识库从 19 条增长到 33 条（新增 14 条，其中 10 条为 v4.0 新增，4 条为 v4 早期阶段沉淀）
 
 ## 经验暂存
-- [ ] `troubleshooting`：Agent prompt 中引用的 CLI 命令应在方案制定阶段先验证命令是否存在，避免"纸上谈兵"式引用
-- [ ] `patterns`：schemer/planner/executor 三者的 KB 检索注入模式（同位置、同结构、对称内容）可作为 Agent 增强标准模式
+- [x] `architecture`：15→7 Agent 精简体系设计 — 已归档至 kb/architecture.md
+- [x] `architecture`：Feel 调度 + CLI 推进模型 — 已归档至 kb/architecture.md
+- [x] `architecture`：知识库自动化体系 — 已归档至 kb/architecture.md
+- [x] `patterns`：KB 检索注入 Agent 模式 — 已归档至 kb/patterns.md
+- [x] `patterns`：Executor 前置校验三步模式 — 已归档至 kb/patterns.md
+- [x] `patterns`：REV blocking 标记模式 — 已归档至 kb/patterns.md
+- [x] `patterns`：CLI 原子管理模式 — 已归档至 kb/patterns.md
+- [x] `patterns`：审查五维度体系 — 已归档至 kb/patterns.md
+- [x] `troubleshooting`：Agent prompt CLI 命令引用应预验证 — 已归档至 kb/troubleshooting.md
+- [x] `troubleshooting`：流水线文件引用断裂连锁修复 — 已归档至 kb/troubleshooting.md

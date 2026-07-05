@@ -60,3 +60,45 @@ v3.1 引入的校验规则：
 - 阶段跳跃（如从 `coding` 跳到 `done`）需 `--force` 参数显式确认
 - `flow advance --stage` 参数支持跨阶段同步（Flow↔Stage 联动）
 - `flow status --verbose` 输出完整配置摘要（config.yaml 当前值、pipeline.yaml 阶段表、flow.json 当前状态）
+
+## [+] 15→7 Agent 精简体系设计 (2026-07-05)
+
+v4.0 将 Agent 从 15 个精简为 7 个，形成职责清晰的层级结构：
+
+```
+feel（总统领） → 兼任 Planner
+  ├─ planner（计划官）
+  ├─ schemer（方案官）
+  ├─ executor（执行官） — 合并 code.md（修复）+ code-worker.md（自测）
+  ├─ reviewer（审查官） — 合并 architect.md（架构审查）
+  ├─ feel-tester（测试官） — 替换 tester.md
+  └─ archiver（归档官）
+```
+
+**设计原则：**
+- 每个 Agent 职责单一，避免越界操作
+- 评审和测试角色分离（Reviewer 审查代码、Tester 验收功能）
+- Feel 总统领统一调度，通过 `task` 工具按流水线阶段串行推进
+- 删除的 9 个 Agent 中：4 个功能被合并（code/architect/code-worker/review-worker）、3 个被替代（tester/debug/test-writer）、2 个职责划归 Feel（ask/auto-runner）
+
+## [+] Feel 调度 + openfeel CLI 推进模型 (2026-07-05)
+
+v4.0 废弃旧式"自动闭环"（auto-runner 调度 code-worker/review-worker），统一为 Feel 总统领通过 CLI 推进流水线：
+
+- Feel 读取 `flow.json` 判断当前阶段和 phase
+- 通过 `openfeel flow` 命令推进流水线（`status` → `advance` → `repair`）
+- 下游 Agent（Planner/Schemer/Executor/Reviewer/Tester/Archiver）仅在自己的职责边界内操作
+- 新增 `openfeel flow overview` 命令输出全阶段可视化状态
+- 新增 `openfeel flow metrics` 命令追踪 Agent 性能指标
+- 新增 `openfeel flow recover` 命令实现跨会话上下文恢复
+- 新增 `openfeel stage status/set/task` 命令以原子操作管理 status.md
+
+## [+] 知识库自动化体系：检索 → 去重 → 沉淀 (2026-07-05)
+
+v4.0 建立了知识库的「读写闭环」：
+
+- **检索层**：`check-kb` skill 内嵌语义检索（步骤 5 自执行 `python scripts/search_kb.py`），无需再手动调用 `search-kb`
+- **去重层**：`kb-dedup.ts` 在归档前执行 Jaccard 词袋相似度计算，相似度 > 80% 时更新而非新增条目
+- **沉淀层**：Archiver 在阶段完成后从操作记录中提取可复用经验，自动写入对应 kb/ 分类
+- **触发时机**：每个阶段 `test_passed` → `archiving` → 提取经验 → 去重 → 写入 → `done`
+- **CLI 入口**：`openfeel flow overview --full` 可查看知识库最近更新摘要

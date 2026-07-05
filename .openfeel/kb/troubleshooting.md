@@ -63,3 +63,38 @@
 **修复方向**：保留 status.md 作为人类可读快照，但读写操作改为通过 CLI 命令（`openfeel stage`）完成原子操作。与 flow.json 管理模式一致——Agent 不直接修改数据文件，通过 CLI 间接管理。
 
 **见于**：v4-stage-01/02/03 阶段状态更新流程中反复出现。
+
+## [+] Agent prompt 中 CLI 命令引用应预先验证存在性 (2026-07-05)
+
+**现象**：Executor prompt 中写入了 `openfeel flow validate` 命令引用，但实际 CLI 中不存在 `validate` 子命令。Executor 按 prompt 执行时立即遇到"命令不存在"错误。
+
+**根因**：方案制定阶段（Schemer）在编写 Agent prompt 修改时，引用了"理应存在"但实际未实现的 CLI 命令。prompt 中的 shell 命令没有经过存在性验证。
+
+**影响**：REV-002（v4-stage-02）为 high 阻塞级，Executor 前置校验步骤 3a 完全不可用。
+
+**修复原则**：
+1. Schemer 在方案中引用 CLI 命令前，应执行 `openfeel flow --help` 确认命令存在
+2. 若命令不存在，选择方案 B（用现有命令替代并注明限制）而非假设命令"稍后实现"
+3. Reviewer 审查时应实测 prompt 中引用的 CLI 命令
+
+**见于**：REV-002 (v4-stage-02)
+
+> **更新于 2026-07-05**：REV-002 已通过替换为 `openfeel flow health --quick`（现有命令）+ 限制说明的方式修复。
+
+## [+] 流水线文件引用断裂的连锁修复 (2026-07-05)
+
+**现象**：v4-stage-02 审查中发现三处引用断裂形成连锁故障：
+1. `flow.json` 路径写为根目录 → 实际在 `.openfeel/flow.json`
+2. CLI `flow validate` 命令不存在 → 步骤 3a 不可用
+3. `pipeline.yaml` 路径错误且文件缺失 → 手动兜底步骤 3b 不可用
+
+三处分属不同层级（文件路径 + CLI 命令 + 配置文件），但共同导致 Executor 前置校验的「步骤 3」完全不可用。
+
+**修复策略**：统一采用"降至现有能力 + 注明限制"原则：
+- 路径修正为实际路径 `.openfeel/flow.json`
+- 命令替换为现有 `flow health --quick`（注明校验范围差异）
+- 不创建新文件，改为引用 FlowManager 内置 transitions 表
+
+**教训**：Agent prompt 中的三层引用（路径/命令/配置文件）应视为一个整体校验单元，在方案阶段逐项验证存在性。
+
+**见于**：REV-001/002/003 (v4-stage-02)

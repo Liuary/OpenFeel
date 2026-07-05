@@ -112,3 +112,97 @@ Schemer 产出操作方案文件时，文件名格式应为 `op-NNN.md`（仅编
 ## [+] deps.yaml 应声明实际文件名 (2026-07-02)
 
 当 op 文件名与 key 不一致时（如历史遗留的 `op-NNN_中文.md`），deps.yaml 应增加 `file` 字段声明实际文件名。Feel 调度前应 glob 校验文件存在性，失败时输出实际文件列表。
+
+## [+] KB 检索注入 Agent 模式 (2026-07-05)
+
+在 planner/schemer/executor 三者中统一注入 KB 检索步骤，采用同位置、同结构、对称内容的模式：
+
+- **位置**：均在「会话启动」节末尾（程序性步骤的最后位置）
+- **触发条件**：本地决策需要参考项目已有模式/架构时
+- **实现方式**：`load skill check-kb` → 输入 ""（自动按上下文推断分类）
+- **兜底**：若 check-kb 未找到相关条目，继续执行而非阻塞
+
+```markdown
+### KB 检索
+收到任务后，若任务涉及代码编写或架构决策，应首先 `load skill check-kb` 检索相关经验。
+```
+
+此模式确保三个上游 Agent 在决策前都能访问知识库，同时不阻塞流水线推进。
+
+## [+] Executor 前置校验三步模式 (2026-07-05)
+
+Executor 在执行 op 任务前必须完成三步前置校验，不完整时拒绝执行：
+
+```
+步骤 1: op 方案完整性校验
+  1. 根据 op-id 读取对应方案文件
+  2. 校验方案包含：标题(#)、目标、执行步骤、（可选）验收条件
+  3. 不完整 → 输出缺失项，标记为阻塞 → Feel 介入
+
+步骤 2: Phase 合法性校验
+  1. 读取 .openfeel/flow.json → 确认 pipeline.phase 在允许执行范围内
+  2. phase 非法 → 输出当前状态 + 允许值，拒绝执行
+
+步骤 3: 操作合法性校验（双路兜底）
+  3a. CLI 优先：openfeel flow health --quick
+  3b. 手动兜底：读取 FlowManager 内置 transitions 表比对
+```
+
+**反模式**：Executor 在无方案文件时自行推断执行步骤（见"强制第一步读方案"条目）。
+
+## [+] REV blocking 标记模式 (2026-07-05)
+
+审查条目（REV）引入 `blocking` 字段区分阻塞性与非阻塞性问题：
+
+```markdown
+## REV-{NO}: {标题}
+- **状态**：pending | fixing | resolved | closed
+- **优先级**：high | medium | low
+- **阻塞**：true | false   ← 新增字段
+- **提出人**：Reviewer
+```
+
+**规则**：
+- `blocking: true` → 阻塞流水线推进（`review_failed`），必须修复后才可再审
+- `blocking: false` → 不阻塞流水线（可推进到下一阶段），标记为 low 优先级跟踪
+- 快速通道（代码量 < 200 行 + 自测全通过）命中时，REV 默认 `blocking: false`
+
+**数据结构**（`pipeline-schema.ts`）：
+```typescript
+review: z.object({
+  id: z.string(),
+  blocking: z.boolean().default(true),  // 新增
+  // ... 其他字段
+})
+```
+
+## [+] CLI 原子管理模式：Agent 不直接 edit 数据文件 (2026-07-05)
+
+统一原则：Agent 通过 CLI 命令原子操作管理数据文件，不直接使用 `edit`/`write` 工具修改：
+
+| 数据文件 | CLI 命令 | 禁止操作 |
+|----------|----------|----------|
+| `flow.json` | `openfeel flow advance/repair/status` | 直接 `edit` flow.json |
+| `status.md` | `openfeel stage status/set/task` | 直接 `edit` status.md |
+| `kb/*.md` | Archiver 通过 `kb-dedup.ts` 去重后写入 | 随意追加重复条目 |
+
+**理由**：
+- `edit` 工具对字符串匹配极其严格（空格/换行/编码），手动构造 `oldString` 频繁失败
+- CLI 命令内置校验逻辑（phase 合法性、transitions 表等），避免数据不一致
+- 与 flow.json 管理方式保持一致
+
+## [+] 审查五维度体系 (2026-07-05)
+
+Reviewer 审查报告统一使用五维度框架：
+
+| 维度 | 检查内容 | 典型 REV 示例 |
+|------|----------|------|
+| 正确性 | 逻辑是否正确，是否与方案目标一致 | flow.json 路径错误、CLI 命令不存在 |
+| 规范性 | 是否符合编码规范和 Agent 约束 | 废弃 Agent 引用残留、命名不一致 |
+| 安全性 | 是否存在注入/越权/泄露风险 | 路径注入、未校验的用户输入 |
+| 完整性 | 方案声明的产出是否全部到位 | pipeline.yaml 缺失、deps.yaml 遗漏 |
+| 一致性 | 内部模式是否一致，与外部架构是否兼容 | 同批 Agent CLI 约束风格不统一、外部引用陈旧 |
+
+其中「一致性」维度在 v4-stage-03 细化为两个子维度：
+- **外部一致性**：产出与项目架构、全局约束的一致性
+- **内部模式一致性**：同批次变更中各文件间的风格和结构一致性

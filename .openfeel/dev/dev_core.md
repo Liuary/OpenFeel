@@ -106,3 +106,23 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 | 探索代码 | `task(explore)` | 手动逐个 grep/read |
 | 获取状态 | `skill(get-stage-status)` | 凭记忆推断 |
 | 批量文件操作 | `task(general)` | 串行逐个处理 |
+
+---
+
+## [+] 模板文件同步约束 (2026-07-02)
+
+`openfeel update` 部署的文件来自源码中硬编码的模板，而非读取项目文件系统。修改以下源文件后，必须同步更新对应模板：
+
+| 源文件 | 模板位置 | 编码方式 |
+|:--|:--|:--|
+| `.opencode/agents/*.md` | `src/core/update.ts` → `AGENT_DEFINITIONS` | 模板字符串 |
+| `.opencode/skills/*/SKILL.md` | `src/core/update.ts` → `SKILL_DEFINITIONS` | 模板字符串 |
+| `.opencode/instructions/core.md` | `src/core/templates.ts` → `CORE_INSTRUCTIONS_TEMPLATE_B64` | Base64 |
+
+**更新流程**：
+1. 修改源文件后，将新内容同步写入对应模板
+2. core.md 需先 Base64 编码：`[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))`
+3. 更新后运行 `npm run build` 确认编译通过
+4. 用 `openfeel update` 测试部署验证
+
+> 违反此约束将导致 `update` 部署旧版内容，用户项目使用过期规范。

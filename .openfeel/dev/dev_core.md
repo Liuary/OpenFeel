@@ -33,7 +33,7 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 
 ## [+] Agent 工具使用规范 (2026-06-27)
 
-所有 Agent（含 Feel、Planner、Schemer、Executor、Reviewer、Tester、Archiver）在会话中应主动使用平台内置工具，不得仅凭对话文本完成复杂任务。
+所有 Agent（含 Feel、Planner、Schemer、Executor、Reviewer、Feel Tester、Archiver）在会话中应主动使用平台内置工具，不得仅凭对话文本完成复杂任务。
 
 ### 1. todowrite — 任务列表管理
 
@@ -78,7 +78,7 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 **触发条件**：
 - 需并行探索多个代码区域（启动 2~3 个 explore agent）
 - 复杂多步骤任务需委托给 general agent
-- 自动闭环中调度 code-worker / review-worker
+- 复杂任务需委托给下游 Agent（通过 Feel 总统领调度）
 
 **使用要求**：
 - 并行任务用一条消息发出多个 task 调用

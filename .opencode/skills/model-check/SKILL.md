@@ -46,7 +46,6 @@ Feel Agent 在以下时机加载本 Skill：
 | `feel.md` | `primary_reasoning`（主力推理） |
 | `planner.md` | `reasoning`（推理） |
 | `executor.md` | `fast`（快速） |
-| `code.md` | `fast`（快速） |
 | `reviewer.md` | `cross_model`（异种推理） |
 | `archiver.md` | `reasoning`（推理） |
 | `schemer.md` | `reasoning`（推理） |

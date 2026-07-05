@@ -6,7 +6,7 @@
 
 | 状态 | 数量 |
 |------|------|
-| pending | 27 |
+| pending | 35 |
 | fixing | 0 |
 | resolved | 0 |
 | closed | 13 |
@@ -97,6 +97,27 @@
 - ✅ 审查通过 — 1 个 REV 已关闭 (medium)
 - [REV-001](REV-v2-stage-03.md#rev-v2-stage-03-001-op-004-未完整实施7-个-agent-缺失工具使用规范小节) — closed (medium) — 7 个 Agent 缺失「工具使用规范」小节，第二轮验收通过 ✅
 
+### v4-stage-01
+- ⚠️ 审查不通过 — 3 个阻塞 REV + 1 个非阻塞 REV
+- [REV-001](REV-v4-stage-01.md#rev-001-dev_coremd-仍引用已删除的-code-worker--review-worker) — pending (high) — dev_core.md 仍引用 code-worker / review-worker
+- [REV-002](REV-v4-stage-01.md#rev-002-modelstemplateyaml-多处引用已删除的-review-worker--code-worker--ask) — pending (medium) — models.template.yaml 6 处废弃引用
+- [REV-003](REV-v4-stage-01.md#rev-003-model-check-skill-角色映射表仍列出已删除的-codemd) — pending (medium) — model-check SKILL 角色映射表列出 code.md
+- [REV-004](REV-v4-stage-01.md#rev-004-dev_coremd-agent-列表中-tester-未更新为-feel-tester) — pending (low, non-blocking) — dev_core.md Agent 列表 Tester → Feel Tester
+
+### v4-stage-02
+- ⚠️ 审查不通过 — 3 个阻塞 REV (high) + 1 个非阻塞 REV (low)
+- [REV-001](REV-v4-stage-02.md#rev-001executormd-步骤-21--flowjson-路径描述不准确) — pending (high) — flow.json 路径写为根目录，实际在 .openfeel/
+- [REV-002](REV-v4-stage-02.md#rev-002executormd-步骤-3a--cli-命令-openfeel-flow-validate-不存在) — pending (high) — openfeel flow validate 命令不存在
+- [REV-003](REV-v4-stage-02.md#rev-003executormd-步骤-3b--pipelineyaml-路径不一致且文件缺失) — pending (high) — pipeline.yaml 路径错误且文件缺失
+- [REV-004](REV-v4-stage-02.md#rev-004search-kb-skillmd-仍声称是-check-kb-回退方案语义陈旧) — pending (low) — 语义陈旧引用（非变更范围）
+
 ### stage-09
 - ✅ 审查通过 — 1 个 REV 已关闭（high×1）
 - [REV-001](REV-stage-09.md#rev-001-github-actions-ci-配置文件缺失) — closed (high) — .github/workflows/ci.yml 已创建，验收通过 ✅
+
+### v4-stage-04
+- ✅ 审查通过 — 3 个非阻塞 REV (low×3) + 1 个 FAST-PASS
+- [REV-001](REV-v4-stage-04.md#rev-001kb-deduopts-tokenize-标记去除正则无实际效果) — pending (low, non-blocking) — kb-dedup.ts tokenize() 正则死代码
+- [REV-002](REV-v4-stage-04.md#rev-002metricsstoregetinstance-datadir-参数忽略提示缺失) — pending (low, non-blocking) — MetricsStore.getInstance dataDir 参数说明缺失
+- [REV-003](REV-v4-stage-04.md#rev-003同批次多-agent-prompt-文件-cli-约束声明风格不统一) — pending (low, non-blocking) — Agent prompt CLI 约束声明风格不一致
+- [FAST-PASS-001](REV-v4-stage-04.md#fast-pass-001op-001-reviewer--feel-tester-快速通道) — resolved (low) — op-001 快速通道一致性验证通过

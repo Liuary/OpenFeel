@@ -16,29 +16,23 @@ models:
   # Agent 级覆盖（按 agent_id 精确匹配，最高优先级）
   # 示例：为特定 Agent 指定不同模型
   agents:
-    # reviewer 和 review-worker 需要异种模型以实现交叉审查
+    # reviewer 需要异种模型以实现交叉审查
     # reviewer:
     #   provider: <不同于 default 的供应商>
     #   model_name: <不同于 default 的模型>
-    # review-worker:
-    #   provider: <不同于 default 的供应商>
-    #   model_name: <不同于 default 的模型>
-    # executor 和 code-worker 可使用快速模型以降低成本
+    # executor 可使用快速模型以降低成本
     # executor:
-    #   provider: <填写>
-    #   model_name: <快速模型名>
-    # code-worker:
     #   provider: <填写>
     #   model_name: <快速模型名>
 
   # 角色级覆盖（按角色名匹配）
   roles:
-    # 异种推理角色 — reviewer / review-worker 审查时使用非默认模型
+    # 异种推理角色 — reviewer 审查时使用非默认模型
     cross_model:
       provider: <不同于 default 的供应商>
       model_name: <不同于 default 的模型>
 
-    # 快速模型角色 — executor / code-worker / ask 等使用
+    # 快速模型角色 — executor 等使用
     fast:
       provider: <填写>
       model_name: <快速模型名>

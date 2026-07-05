@@ -5,9 +5,9 @@
     "updated": "2026-06-25T16:09:43.998Z"
   },
   "pipeline": {
-    "phase": "plan_pending",
+    "phase": "review_passed",
     "current": {
-      "stage": "",
+      "stage": "v4-stage-01",
       "op": ""
     },
     "retry": 0

@@ -32,7 +32,7 @@ permission:
 
 在开始任何编码工作前，必须执行以下校验步骤。校验不通过则**拒绝执行**并向 Feel 反馈原因。
 
-> **校验策略**：优先使用 `openfeel flow validate` CLI 命令进行自动化校验；CLI 不可用时回退到手动读取 `flow.json` + `pipeline.yaml` 比对。
+> **校验策略**：优先使用 `openfeel flow health --quick` CLI 命令进行自动化校验；CLI 不可用时回退到手动读取 `.openfeel/flow.json` + FlowManager 内置默认 transitions 表比对。
 
 ### 步骤 0：读取操作方案
 
@@ -55,7 +55,7 @@ permission:
 
 ### 步骤 2：Phase 合法性校验
 
-1. 读取项目根目录下的 `flow.json` 文件
+1. 读取 `.openfeel/flow.json` 文件
 2. 检查 `pipeline.phase` 字段的值是否为合法的流水线 phase（合法值枚举：`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done`）
 3. 当前 phase 不是 `exec_running` 时：若 Feel 已明确指示执行，可以执行但需在自测报告中注明 phase 偏差；若未经 Feel 明确指示，则**拒绝执行**并反馈 `"当前 phase 为 {actual}，非 exec_running，请 Feel 确认是否继续"`
 4. 确认 `pipeline.current.op` 字段与当前 op-id 匹配（如 `v4-stage-02.op-004`），不匹配时**拒绝执行**并反馈
@@ -66,14 +66,15 @@ permission:
 
 在通过步骤 2 的 phase 合法性校验后，进一步通过 FlowManager 的 `canAdvance` 和 `validate` 逻辑确保执行安全。
 
-**3a. 首选方式 — CLI 命令校验**（若 `openfeel flow validate` 命令可用）：
+**3a. 首选方式 — CLI 命令校验**（若 `openfeel flow health` 命令可用）：
 
 1. 执行以下命令检查 flow.json 状态：
    ```bash
-   openfeel flow validate --stage {当前stage} --op {当前op-id}
+   openfeel flow health --quick
    ```
-2. 命令返回 `valid: true` 且无 errors → 校验通过
-3. 命令返回 `valid: false`：
+   > 注：`flow health --quick` 仅校验 flow.json 整体合法性，不校验 stage/op 级的 `canAdvance` 流转（这是当前 CLI 的已知限制）。stage/op 级流转合法性由步骤 2 和步骤 3b 兜底覆盖。
+2. 命令正常退出且无报错 → 校验通过
+3. 命令返回非零或报错：
    - 若 errors 包含 phase 不合法 → **拒绝执行**，反馈 Feel: `"FlowManager 校验失败：phase {actual} 无法推进到 exec_running"`
    - 若 errors 包含字段缺失 → **拒绝执行**，反馈 Feel 具体缺失字段
    - 若仅有 warnings（自动修正类） → 可以执行，但需在自测报告中注明 warning 内容
@@ -81,12 +82,12 @@ permission:
 
 **3b. 兜底方式 — 手动比对**（CLI 不可用时）：
 
-1. 读取 `.openfeel/plan/v4/pipeline.yaml`，确认其中 `transitions` 节对当前 phase 的合法目标 phase 列表
-2. 读取 `flow.json`，获取 `pipeline.phase` 当前值
+1. 从 FlowManager 内置默认 transitions 表获取当前 phase 的合法目标 phase 列表（参考 `src/core/flow-manager.ts` 中的 `getDefaultPipelineConfig()`，该函数在 `pipeline.yaml` 文件不存在时使用硬编码默认值）
+2. 读取 `.openfeel/flow.json`，获取 `pipeline.phase` 当前值
 3. 检查当前 phase → `exec_running` 是否在 transitions 允许列表中：
    - 允许 → 校验通过
    - 不允许 → **拒绝执行**，反馈 Feel: `"阶段流转不合法：从 {currentPhase} 无法推进到 exec_running。合法目标：{validTargets}"`
-4. 若 `pipeline.yaml` 不存在或 `transitions` 节缺失，向 Feel 反馈 `"无法获取 phase 流转配置，请确认 pipeline.yaml 是否就绪"`，暂停执行
+4. 若无法获取 transitions 配置（如无法读取源代码中的默认定义），向 Feel 反馈 `"无法获取 phase 流转配置，请确认 FlowManager 是否可用"`，暂停执行
 
 **3c. 结果记录**：
 
@@ -96,7 +97,7 @@ permission:
 - 校验结论（通过 / 拒绝）
 - 拒绝时的具体原因
 
-> 注：FlowManager 校验是 op-004 中 phase 校验的**增强层**。步骤 2 校验 phase 值是否合法枚举，步骤 3 校验 phase 流转是否在 pipeline.yaml 允许范围内。
+> 注：FlowManager 校验是 op-004 中 phase 校验的**增强层**。步骤 2 校验 phase 值是否合法枚举，步骤 3 校验 phase 流转是否在 FlowManager 内置 transitions 表允许范围内。
 
 ## 工作流程
 

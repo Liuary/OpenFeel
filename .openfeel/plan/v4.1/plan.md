@@ -20,8 +20,11 @@ v4.0 审查阶段发现 `openfeel update` 部署的 core.md 是旧版（424行�
 | 4 | **移除 dev_core.md 中手动同步约束** | 自动同步后，该约束不再需要 |
 | 5 | **构建产物验证** | CI/build 后自动对比模板与源文件，不一致时报错 |
 | 6 | **init 创建 AGENTS.md 模板** | `init` 应创建 AGENTS.md 空模板，与 opencode.jsonc 的 instructions 引用保持一致 |
+| 7 | **子 Agent 返回精简模式** | Executor 返回精简摘要而非完整自测报告，减少 Feel 上下文膨胀 |
 
 ## 四、预期效果
 
 - 修改 core.md / Agent / Skill 后，`npm run build` 自动同步模板
 - 不再出现 `update` 部署旧版内容的问题
+- `init` 产出完整骨架（含 AGENTS.md）
+- 子 Agent 返回精简摘要，会话上下文增速降低 ~60%

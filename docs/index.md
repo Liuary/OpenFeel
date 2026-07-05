@@ -2,6 +2,12 @@
 
 > 归档命名规范：`yyyy-mm-dd-NNN-{category}-{title}.md`（NNN 全局递增）
 
+## 设计文档
+
+| 文件 | 内容 |
+|------|------|
+| [design-philosophy.md](design-philosophy.md) | 开发思路 — v1.0 到 v4.1 的设计决策演变与实战教训 |
+
 ## 研发分期归档
 
 | 目录 | 内容 |

@@ -10,7 +10,7 @@
 
 | 阶段 | 任务 | 优先级 | 状态 |
 |------|------|:--:|:--:|
-| v4.1-stage-01 | 构建脚本自动同步模板（8 项） | P1 | planned |
+| v4.1-stage-01 | 构建脚本自动同步模板（9 项） | P1 | planned |
 | v4.1-stage-02 | Agent 特化 + Utility Agent（11 项） | P1 | planned |
 
 ## 历史计划

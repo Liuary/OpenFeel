@@ -6,7 +6,8 @@
 
 | 文件 | 内容 |
 |------|------|
-| [design-philosophy.md](design-philosophy.md) | 开发思路 — v1.0 到 v4.1 的设计决策演变与实战教训 |
+| [harnessed-coding.md](harnessed-coding.md) | 给 AI 编程套上缰绳 — 面向社区的理念文（vibe coding / harness / loop） |
+| [design-philosophy.md](design-philosophy.md) | 开发思路 — 内部设计决策演变记录 |
 
 ## 研发分期归档
 

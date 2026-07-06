@@ -43,7 +43,12 @@ models:
   #     provider: deepseek
   #     model_name: deepseek-v4-pro
   # 角色级覆盖（可选）：按 Agent frontmatter model 字段匹配
-  # roles:
-  #   fast:
-  #     provider: deepseek
-  #     model_name: deepseek-chat
+  roles:
+    # 快速模型：Executor、事务官 等执行类 Agent
+    fast:
+      provider: deepseek
+      model_name: deepseek-v4-flash
+    # 异种模型：Reviewer 交叉审查用（与主力模型不同系列，当前可用模型有限暂用同系列）
+    cross_model:
+      provider: deepseek
+      model_name: deepseek-v4-pro

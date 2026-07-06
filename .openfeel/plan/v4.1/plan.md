@@ -23,11 +23,17 @@ v4.0 将 Agent 从 15 个精简到 7 个，打通了核心流水线，但审查�
 
 ## 二、目标
 
+### SiteGen 实测反馈新增（2026-07-06）
+
 | # | 目标 | 对应阶段 |
 |:--:|------|:--:|
-| 1 | 模板维护从"手动同步"改为"构建时自动生成"，消除人工遗漏风险 | stage-01 |
-| 2 | 7 个 Agent prompt 扩充到 80-120 行，硬化职责边界和操作纪律 | stage-02 |
-| 3 | 新增轻量事务官 Agent，承接文件操作、格式校验等辅助杂活 | stage-02 |
+| 1 | 模板维护从"手动同步"改为"构建时自动生成" | stage-01 |
+| 2 | 7 个 Agent prompt 扩充到 80-120 行，硬化职责边界 | stage-02 |
+| 3 | 新增事务官 Agent | stage-02 |
+| 4 | **flow.json 多阶段独立状态机** — SiteGen 实测最大瓶颈：全局 phase 无法表达 9 阶段嵌套循环 | stage-03 |
+| 5 | **模型分工落地** — Agent frontmatter 加 model 字段，Executor→fast，Reviewer→cross_model | stage-02 |
+| 6 | **CLI 稳定性修复** — flow advance 在 done→新阶段、force 模式等场景不稳定（SiteGen 手动编辑 15+ 次） | stage-01 |
+| 7 | **版本控制提示** — feel.md 增加"检测项目无 git 时建议初始化" | stage-02 |
 
 ## 三、阶段划分
 

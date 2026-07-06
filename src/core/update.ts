@@ -261,6 +261,7 @@ Schemer 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，方案制定�
   executor: `---
 description: Executor 执行官 Agent，快速模型，按操作方案编码实现并自测。
 mode: subagent
+model: fast
 color: "#D94A4A"
 permission:
   bash: "allow"
@@ -294,6 +295,7 @@ Executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码执行追�
   reviewer: `---
 description: Reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
 mode: subagent
+model: cross_model
 color: "#D4A017"
 permission:
   bash: "allow"

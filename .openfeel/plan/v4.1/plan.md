@@ -162,6 +162,53 @@ v4.0 将 Agent 从 15 个精简到 7 个，打通了核心流水线，但审查�
 | 无回归 | `npm test` 全部通过（225+/227） |
 | 构建同步 | `npm run build` 成功，templates.ts 中新/改 Agent 已同步 |
 
+---
+
+### v4.1-stage-03：flow.json 多阶段独立状态机
+
+> SiteGen 实测最大瓶颈。全局单 `pipeline.phase` 无法表达"stage-03 编码时 stage-04 在计划"的并行状态，Feel 频繁手动切状态。
+
+**目标**：将 flow.json 从全局单 phase 改为每个 stage 独立的 phase 机。
+
+#### 现状
+
+```json
+{ "pipeline": { "phase": "exec_running" } }  // 全局唯一，9阶段共用
+```
+
+#### 目标
+
+```json
+{
+  "pipeline": { "phase": "active" },
+  "stages": {
+    "stage-03": { "phase": "exec_running" },
+    "stage-04": { "phase": "plan_pending" }
+  }
+}
+```
+
+#### 任务（P0，7 项）
+
+| # | 任务 | 说明 |
+|:--:|------|------|
+| 3.1 | **PipelineSchema 重构** | `PipelinePhase` 从全局字段移到 `StageData` 内部，新增 `PipelineMeta.phase` 降级为 `active/paused/done` 三个宏观状态 |
+| 3.2 | **FlowManager 适配** | `advancePhase` 改为 `advanceStagePhase(stage, phase)`，`current` 记录改为阶段级追踪 |
+| 3.3 | **CLI 命令适配** | `flow advance` 增加 `--stage` 必选参数（无 stage 时提示），`flow status` 改为按阶段展示 |
+| 3.4 | **feel.md 路由更新** | Feel 读取 flow.json 时改为遍历 `stages` 找当前活跃阶段，而非读全局 phase |
+| 3.5 | **其他 Agent 适配** | Planner/Archiver 的 flow.json 写入逻辑改为阶段性更新（通过 Feel 间接写） |
+| 3.6 | **迁移脚本** | 提供 `openfeel flow migrate` 将旧版 flow.json 自动转换为新版格式 |
+| 3.7 | **测试覆盖** | 多阶段并行推进场景测试、迁移脚本测试 |
+
+#### 修改文件
+- `src/core/pipeline-schema.ts` — 结构变更
+- `src/core/flow-manager.ts` — 核心逻辑重写
+- `src/commands/flow.ts` — CLI 适配
+- `.opencode/agents/feel.md` — 路由更新
+- `src/core/init.ts` — 初始 flow.json 模板
+
+---
+
 ## 四、依赖关系
 
 ```
@@ -169,8 +216,9 @@ v4.1-stage-01 (构建脚本自动同步)
     │
     ├─(soft)── v4.1-stage-02 (Agent 特化 + 事务官)
     │
-    └─(soft)── v4.1-stage-02
+    └─(soft)── v4.1-stage-03 (flow.json 多阶段状态机)
 ```
+**依赖**：三个阶段文件集不重叠，可并行推进。stage-03 建议在 stage-02 之后（Agent 适配需要新 prompt）。
 
 **依赖说明**：
 - Stage-01 → Stage-02：**soft**。两者修改的文件集不重叠（stage-01 改构建脚本和 TS 源码，stage-02 改 Agent .md 文件）。Stage-01 先完成可确保 stage-02 的 Agent 变更通过构建自动同步到 templates.ts，但 stage-02 可先行启动（Agent 文件编辑不依赖构建脚本）。
@@ -187,7 +235,7 @@ v4.1-stage-01 (构建脚本自动同步)
 
 | 指标 | 目标 | 备注 |
 |------|:--:|------|
-| 阶段完成率 | 2/2 | 两个阶段全部闭环 |
+| 阶段完成率 | 3/3 | 三个阶段全部闭环 |
 | 测试通过率 | 225+/227 | 不引入新失败 |
 | Agent prompt 覆盖率 | 7/7 达标 | 行数在目标范围内，新增内容逐条对应 |
 | 新增 Agent | +1 (事务官) | 8 个 Agent 体系 |

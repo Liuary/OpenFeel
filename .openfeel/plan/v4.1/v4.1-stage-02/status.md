@@ -1,0 +1,26 @@
+# v4.1-stage-02 状态 — Agent 特化 + 事务官
+
+- **执行模式**：manual
+- **自动推进**：disabled
+- **状态**：ready_for_review
+- **当前责任 Agent**：reviewer
+- **更新时间**：2026-07-06
+
+## 当前任务
+
+- [x] op-001~007: 7 Agent prompt 扩充完成
+- [x] op-008: 事务官创建 + update.ts 注册
+- [x] op-009: AGENTS.md 8 Agent 体系总览
+
+## Agent 行数变化
+
+| Agent | 前 | 后 | 关键新增 |
+|:--|:--:|:--:|------|
+| feel | 66 | 108 | 白名单+委托边界+Planner阈值+事务官路由+版本控制 |
+| planner | 50 | 95 | 唤起条件+粒度判定+拒绝条件 |
+| schemer | 113 | 119 | 命名规范+deps规范+决策纪律+可测试性 |
+| executor | 158 | 120 | 执行纪律硬化+非编码小活（净减38行） |
+| reviewer | 86 | 110 | 快速通道细则+REV模板+blocking场景化 |
+| feel-tester | 72 | 105 | 独立快速验收+Bug模板+回归流程 |
+| archiver | 107 | 107 | 去重触发+降级策略 |
+| utility | — | 新建 | 事务官 |

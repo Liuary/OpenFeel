@@ -1,0 +1,60 @@
+# v4.1-stage-02 操作方案依赖声明
+# 参见 kb/patterns.md #Schemer op 级依赖声明、#deps.yaml 声明实际文件名
+
+version: "4.1"
+stage: "v4.1-stage-02"
+
+# === 批次 1：7 Agent 扩充（并行 — 互不修改同一文件） ===
+batch-1:
+  strategy: parallel
+  ops:
+    op-001:
+      file: op-001.md
+      target: .opencode/agents/feel.md
+      description: feel.md 扩充 — 白名单 + 委托边界 + 阈值 + 事务官路由
+    op-002:
+      file: op-002.md
+      target: .opencode/agents/planner.md
+      description: planner.md 扩充 — 与 Feel 职责划分 + 粒度判定 + 拒绝条件
+    op-003:
+      file: op-003.md
+      target: .opencode/agents/schemer.md
+      description: schemer.md 更新 — 命名规范 + deps.yaml 规范 + 修正方案
+    op-004:
+      file: op-004.md
+      target: .opencode/agents/executor.md
+      description: executor.md 重构 — 执行纪律 + 前置校验精简 + 非编码小活
+    op-005:
+      file: op-005.md
+      target: .opencode/agents/reviewer.md
+      description: reviewer.md 扩充 — 快速通道细则 + REV 模板 + blocking 判定
+    op-006:
+      file: op-006.md
+      target: .opencode/agents/feel-tester.md
+      description: feel-tester.md 扩充 — 快速验收 + Bug 模板 + 回归流程
+    op-007:
+      file: op-007.md
+      target: .opencode/agents/archiver.md
+      description: archiver.md 扩充 — 知识去重触发条件 + 降级策略
+
+# === 批次 2：事务官创建 ===
+batch-2:
+  strategy: serial
+  depends_on: [batch-1]
+  ops:
+    op-008:
+      file: op-008.md
+      target:
+        - .opencode/agents/utility.md
+        - src/core/update.ts
+      description: 事务官 Agent 创建 + update.ts 注册
+
+# === 批次 3：配置更新 ===
+batch-3:
+  strategy: serial
+  depends_on: [batch-2]
+  ops:
+    op-009:
+      file: op-009.md
+      target: AGENTS.md
+      description: 职责边界表纳入事务官 + 8 Agent 体系总览

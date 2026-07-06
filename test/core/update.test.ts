@@ -19,7 +19,7 @@ describe('updateProject', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('应创建 7 个 Agent 定义文件', () => {
+  it('应创建 8 个 Agent 定义文件', () => {
     updateProject(tmpDir);
     const agentsDir = join(tmpDir, '.opencode', 'agents');
 
@@ -30,6 +30,7 @@ describe('updateProject', () => {
     expect(existsSync(join(agentsDir, 'reviewer.md'))).toBe(true);
     expect(existsSync(join(agentsDir, 'feel-tester.md'))).toBe(true);
     expect(existsSync(join(agentsDir, 'archiver.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'utility.md'))).toBe(true);
   });
 
   it('feel.md 应包含 mode: primary 和正确的 YAML frontmatter', () => {
@@ -51,14 +52,14 @@ describe('updateProject', () => {
     const skillsDir = join(tmpDir, '.opencode', 'skills');
 
     const expectedSkills = [
-      'opfx-flow',
-      'opfx-plan',
-      'opfx-scheme',
-      'opfx-code',
-      'opfx-view',
-      'opfx-test',
-      'opfx-archive',
-      'opfx-kb',
+      'bug-acceptance',
+      'check-kb',
+      'get-bugs',
+      'get-stage-status',
+      'model-check',
+      'search-kb',
+      'sync-status',
+      'update-stage-status',
     ];
 
     for (const skillName of expectedSkills) {
@@ -70,12 +71,12 @@ describe('updateProject', () => {
   it('SKILL.md 应包含正确的 YAML frontmatter', () => {
     updateProject(tmpDir);
     const skillContent = readFileSync(
-      join(tmpDir, '.opencode', 'skills', 'opfx-flow', 'SKILL.md'),
+      join(tmpDir, '.opencode', 'skills', 'bug-acceptance', 'SKILL.md'),
       'utf-8',
     );
 
-    expect(skillContent).toContain('name: opfx-flow');
-    expect(skillContent).toContain('description: 查询和推进');
+    expect(skillContent).toContain('name: bug-acceptance');
+    expect(skillContent).toContain('description: 标准化 Bug 验收流程');
   });
 
   it('应创建 opencode.jsonc 并设置 default_agent 为 feel（无前置文件时）', () => {
@@ -86,8 +87,8 @@ describe('updateProject', () => {
 
     const content = readFileSync(jsoncPath, 'utf-8');
     expect(content).toContain('"default_agent": "feel"');
-    expect(content).toContain('"opfx-flow"');
-    expect(content).toContain('"opfx-kb"');
+    expect(content).toContain('"bug-acceptance"');
+    expect(content).toContain('"check-kb"');
   });
 
   it('应更新已有的 opencode.jsonc：修改 default_agent 和添加 skills', () => {
@@ -111,7 +112,7 @@ describe('updateProject', () => {
     const content = readFileSync(join(tmpDir, 'opencode.jsonc'), 'utf-8');
     expect(content).toContain('"default_agent": "feel"');
     expect(content).toContain('"get-bugs": ".opencode/skills/get-bugs"');
-    expect(content).toContain('"opfx-flow": ".opencode/skills/opfx-flow"');
+    expect(content).toContain('"bug-acceptance": ".opencode/skills/bug-acceptance"');
   });
 
   it('保留已有 opencode.jsonc 中的 experimental 字段', () => {
@@ -147,8 +148,8 @@ describe('updateProject', () => {
     // 第二次调用 — 所有内容一致，应全部 skipped
     expect(result2.created.length).toBe(0);
     expect(result2.updated.length).toBe(0);
-    // 应有 7+8+1+1 = 17 个文件被跳过（agents + skills + opencode.jsonc + instructions/core.md）
-    expect(result2.skipped.length).toBe(17);
+    // 应有 8+8+1+1 = 18 个文件被跳过（agents + skills + opencode.jsonc + instructions/core.md）
+    expect(result2.skipped.length).toBe(18);
   });
 
   it('修改已有 agent 内容后应正确更新', () => {
@@ -177,8 +178,8 @@ describe('updateProject', () => {
     expect(result.created).toContain('.opencode/agents/feel-tester.md');
 
     // Skill 文件
-    expect(result.created).toContain('.opencode/skills/opfx-flow/SKILL.md');
-    expect(result.created).toContain('.opencode/skills/opfx-kb/SKILL.md');
+    expect(result.created).toContain('.opencode/skills/bug-acceptance/SKILL.md');
+    expect(result.created).toContain('.opencode/skills/check-kb/SKILL.md');
 
     // opencode.jsonc
     expect(result.created).toContain('opencode.jsonc');

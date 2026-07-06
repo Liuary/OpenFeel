@@ -19,6 +19,7 @@ import { FlowManager } from './flow-manager.js';
 import {
   DEV_CORE_TEMPLATE,
   CURRENT_TEMPLATE,
+  AGENTS_MD_TEMPLATE,
 } from './templates.js';
 
 /** 初始化结果 */
@@ -116,7 +117,14 @@ export function initProject(projectPath: string): InitResult {
     created.push('.openfeel/kb/index.md');
   }
 
-  // 8. 检测 package.json，若存在 vitest 则添加 @vitest/coverage-v8
+  // 8. 生成 AGENTS.md 骨架文件（项目根目录）
+  const agentsMdPath = resolve(projectPath, 'AGENTS.md');
+  const agentsMdResult = writeTemplateIfMissing(agentsMdPath, AGENTS_MD_TEMPLATE);
+  if (agentsMdResult.created) {
+    created.push('AGENTS.md');
+  }
+
+  // 9. 检测 package.json，若存在 vitest 则添加 @vitest/coverage-v8
   const pkgPath = resolve(projectPath, 'package.json');
   if (existsSync(pkgPath)) {
     const pkgContent = readFileSync(pkgPath, 'utf-8');

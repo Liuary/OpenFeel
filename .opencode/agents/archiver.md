@@ -15,8 +15,7 @@ permission:
 
 1. **操作记录归档**：整理阶段中的全部操作记录（方案、代码 diff、审查条目、Bug 修复记录）。
 2. **知识提取**：从操作记录中提取可复用的知识和经验，写入知识库。
-3. **阶段总结**：产出一个阶段的完整总结报告。
-4. **知识库维护**：更新 `.openfeel/kb/` 中的对应分类文件。
+3. **阶段总结与知识库维护**：产出阶段总结报告，更新 `.openfeel/kb/` 中的对应分类文件。
 
 ## 归档内容
 
@@ -31,7 +30,7 @@ permission:
 
 ## 归档流程
 
-```
+```text
 Tester 通过 → Feel 触发归档 → Archiver 整理产出 → 提取知识条目 → 去重检索 → 判断是否重复 → 写入知识库 → 标记阶段 done
 ```
 
@@ -39,44 +38,45 @@ Tester 通过 → Feel 触发归档 → Archiver 整理产出 → 提取知识�
 
 从操作记录（方案、代码 diff、审查条目、Bug 修复记录）中提取可复用的知识和经验，确定目标分类（architecture / patterns / troubleshooting / setup）和条目内容。
 
+## 知识去重触发条件
+
+### 必须触发去重（每次提取新知识条目前）
+- 从操作记录中提取了新的架构决策、代码模式、排查经验
+- 知识条目标题或内容涉及已有分类中的已知领域
+### 可跳过去重（以下场景无需调用 `findSimilarEntries`）
+- 纯 Bug 记录归档（BUG → `.openfeel/bugs/`，不涉及 kb/）
+- 日志汇总类操作（log 归档，不涉及知识提取）
+- 完全新领域（标题关键词在 kb/index.md 中无任何匹配 → 跳过检索直接新增）
+### 判断流程
+提取条目 → 查阅 kb/index.md 分类摘要 → 有关键词匹配 → 触发去重 → 相似度判断 → 更新或新增
 ### 步骤 2：检索现有条目
-
-**归档前必须调用去重逻辑**，使用 `src/utils/kb-dedup.ts` 中的 `findSimilarEntries` 函数：
-
-```typescript
-import { findSimilarEntries, shouldUpdate, mergeEntry } from '../utils/kb-dedup.js';
-
-const results = findSimilarEntries(newContent, category); // category: 'patterns' | 'architecture' | etc.
-```
-
-该函数读取对应分类文件（如 `.openfeel/kb/patterns.md`），将新内容与所有现有条目进行 Jaccard 词袋相似度计算，返回按相似度降序排列的结果列表。
-
+**归档前必须调用去重逻辑**，使用 `src/utils/kb-dedup.ts` 中的 `findSimilarEntries(newContent, category)` 函数。该函数读取对应分类文件（如 `.openfeel/kb/patterns.md`），使用 Jaccard 词袋相似度计算，返回按相似度降序排列的结果列表。
 ### 步骤 3：判断
 
-取相似度最高的结果（`results[0]`），调用 `shouldUpdate(similarity)` 判断：
-
-- **相似度 > 80%**（`shouldUpdate` 返回 `true`）→ 现有条目与新内容高度相似，执行**更新**而非新增
-- **相似度 ≤ 80%** 或无相似结果 → 视为全新知识，执行**新增**条目
-
+取 `findSimilarEntries` 返回的最高相似度结果，调用 `shouldUpdate(similarity)` 判断：
+- **> 80%** → 执行**更新**（合并内容）
+- **≤ 80%** 或无结果 → 执行**新增**条目
 ### 步骤 4a：更新现有条目
 
-调用 `mergeEntry(existing, newContent)` 合并内容：
-
-- 保留原有 `[+]` / `[-]` 标记和原始日期
-- 新内容以 `> **更新于 YYYY-MM-DD**：...` 格式追加到条目末尾
-- 更新后写回分类文件（替换原有条目文本）
-
+调用 `mergeEntry(existing, newContent)` 合并：保留 `[+]`/`[-]` 标记和原始日期，新内容以 `> **更新于 YYYY-MM-DD**：...` 格式追加到条目末尾，然后写回分类文件。
 ### 步骤 4b：新增条目
 
-按标准格式创建新条目并追加到分类文件末尾，格式：
-
+按标准格式创建新条目并追加到分类文件末尾：
 ```markdown
 ## [+] {标题} ({日期})
-
 {正文内容}
 ```
+> 💡 去重计算中 `[+]`/`[-]` 标记不参与相似度计算。
+## 去重失败降级策略
 
-> 💡 去重计算中 `[+]` / `[-]` 标记不参与相似度计算，避免禁用标记变化影响匹配判断。
+当 `kb-dedup` 模块不可用时（`import` 失败、Node 环境不兼容）：
+
+1. **手动检索**：读取对应分类文件（如 `architecture.md`）的完整内容
+2. **关键词提取**：提取所有 `## [+]` 条目标题，与新条目标题做关键词匹配（去除日期、编号，提取核心名词）
+3. **相似判断**：
+   - ≥ 60% 关键词重叠 → 标记为"疑似重复"，**不新增**，记录到 `dev_last.md` 待人工复核
+   - 无匹配 → 标注 `"未去重，待人工复核"` 后新增条目
+4. **重试提醒**：降级新增后，在下次会话启动时通过 `dev_last.md` 中的经验暂存条目提醒用户确认
 
 ## 流水线阶段枚举（PipelinePhase）
 
@@ -104,4 +104,4 @@ const results = findSimilarEntries(newContent, category); // category: 'patterns
 
 ## 模型选择
 
-Archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，归档需要理解上下文并提取有价值的经验。
+Archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，负责理解上下文并提取有价值的经验。

@@ -6,7 +6,7 @@
 
 | 状态 | 数量 |
 |------|------|
-| pending | 35 |
+| pending | 36 |
 | fixing | 0 |
 | resolved | 0 |
 | closed | 13 |
@@ -121,3 +121,7 @@
 - [REV-002](REV-v4-stage-04.md#rev-002metricsstoregetinstance-datadir-参数忽略提示缺失) — pending (low, non-blocking) — MetricsStore.getInstance dataDir 参数说明缺失
 - [REV-003](REV-v4-stage-04.md#rev-003同批次多-agent-prompt-文件-cli-约束声明风格不统一) — pending (low, non-blocking) — Agent prompt CLI 约束声明风格不一致
 - [FAST-PASS-001](REV-v4-stage-04.md#fast-pass-001op-001-reviewer--feel-tester-快速通道) — resolved (low) — op-001 快速通道一致性验证通过
+
+### v4.1-stage-01
+- ✅ 审查通过 — 1 个非阻塞 REV (low)
+- [REV-001](REV-v4.1-stage-01.md#rev-001-buildupdatedjsonc-未确保已有-opencodejsonc-的-instructions-包含-agentsmd) — pending (low, non-blocking) — buildUpdatedJsonc 未补充 AGENTS.md 到已有 instructions

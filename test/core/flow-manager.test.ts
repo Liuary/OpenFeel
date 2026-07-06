@@ -127,7 +127,7 @@ describe('FlowManager', () => {
       FlowManager.initFlow(tmpDir);
       const mgr = new FlowManager(tmpDir);
       expect(mgr.getPhase()).toBe('plan_pending');
-      expect(mgr.getCurrent()).toBeNull();
+      expect(mgr.getCurrent()).toEqual({ stage: '-', op: 'init' });
       const summary = mgr.getSummary();
       expect(summary.stagesCount).toBe(0);
       expect(summary.opsCount).toBe(0);

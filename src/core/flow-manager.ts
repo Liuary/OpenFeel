@@ -201,7 +201,7 @@ function defaultFlowData(): FlowData {
     },
     pipeline: {
       phase: 'plan_pending',
-      current: { stage: '', op: '' },
+      current: { stage: '-', op: 'init' },
       retry: 0,
     },
     stages: {},

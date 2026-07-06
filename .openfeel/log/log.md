@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-07-06-Liuary-001.md](2026/07/06/2026-07-06-Liuary-001.md) | Liuary | op-003 约束清理：dev_core.md 模板文件同步约束标记 [-] 禁用，AGENTS.md 无需修改 |
 | [2026-07-05-Liuary-002.md](2026/07/05/2026-07-05-Liuary-002.md) | Liuary | v4.0 全阶段归档：4 阶段 39 项闭环，知识沉淀 10 条（architecture+3/patterns+5/troubleshooting+2），项目进入无活跃计划状态 |
 | [2026-07-05-reviewer-001.md](2026/07/05/2026-07-05-reviewer-001.md) | reviewer | v4-stage-02 审查不通过：executor.md flow.json路径错误 + CLI validate命令不存在 + pipeline.yaml缺失（3阻塞REV high） |
 | [2026-07-01-Liuary-001.md](2026/07/01/2026-07-01-Liuary-001.md) | Liuary | v3 全系列归档完成：v3.0(4) + v3.1(1) + v3.2(1) 共 6 阶段，知识沉淀 19 条至 kb/ |

@@ -48,20 +48,36 @@ permission:
 
 | 条件 | 阈值 | 获取方式 |
 |------|------|----------|
-| 代码量 | < 200 行 | 从 Executor 自测报告中获取新增/修改行数 |
-| Executor 自测 | 全部通过 | 从 Executor 自测报告中获取自测结果 |
-| 测试覆盖率 | ≥ 80% | 从 Executor 自测报告中获取覆盖率数据 |
+| 代码量 | < 200 行 | Executor 自测报告 `git diff --stat` 汇总的 `+` 行数¹ |
+| Executor 自测 | 全部通过 | 自测报告「自测结果」字段须为 `全部通过` |
+| 测试覆盖率 | ≥ 80% | 自测报告 `coverage` 字段值须 ≥ 80% |
+
+> ¹ 代码量统计规则：仅统计新增（`+`）和修改（`~`）的行数，不统计删除行（`-`）。
 
 ### 快速通道行为
 
 - 跳过完整 5 维度审查（正确性/规范性/安全性/完整性/一致性）
 - 仍须提交审查结论摘要，至少 1 条 REV 标记，`blocking=false`
 - 审查标记使用 `FAST-PASS-{NNN}` 格式（非阻塞），直接推进到 `review_passed`
+- 即使快速通道，仍需对产出文件做最低限度的人工审查（通读 diff）
+- 若产出文件 ≥ 5 个，快速通道自动失效，恢复完整审查
 - 快速通道不影响对严重安全问题的拦截——若发现明显安全隐患，仍可标记 `blocking=true`
 
 ### 非快速通道行为
 
 若任一条件不满足，跳过快速通道，执行完整审查流程。
+
+## REV 模板规范
+
+```yaml
+status: pending | fixing | resolved | closed
+priority: high | medium | low
+author: Reviewer
+created: YYYY-MM-DD HH:MM
+blocking: true | false
+```
+
+编号 `REV-{NNN}`（阶段内递增），`---` 分隔，工具链可解析（参见 kb/patterns.md #REV blocking 标记模式）。
 
 ## 审查流程
 
@@ -79,9 +95,16 @@ Reviewer 必须由**异种推理模型**（如 GLM / Qwen）驱动，与 Feel/Sc
 - 审查中若需更新阶段状态，应指示执行者通过 `openfeel stage` CLI 命令操作 status.md，而非直接 `edit`。
 - 审查条目按 REV-{NO} 格式编号，记录优先级和详细描述。
 - 模式一致性审查仅在有 ≥2 个同类实体时触发；单一孤立函数不强制要求此项。
-- REV 条目默认 `blocking=true`（阻塞流水线）。以下情况可设为 `blocking=false`：
-  - 仅影响代码风格/命名建议，不影响功能正确性
-  - 属于优化建议而非必要修复项
-  - 方案级审查中发现的可后续修正的次要问题
-- 非阻塞 REV 的流水线行为：审查提交后 pipeline 直接推进到下一阶段（跳过 review_failed），REV 条目保持 open 状态跟踪直至 closed。
-- 每个操作（op）至少需要 1 条阻塞性 REV 被 closed 才能标记阶段为 review_passed。
+| 类别 | 场景 | blocking |
+|------|------|----------|
+| 无条件阻塞 | 功能缺陷 / 安全事故 / 产出文件缺失 / 破坏测试 | `true` |
+| 需判定（默认阻塞） | 编码规范严重违反 / 跨模块一致性问题 | `true` |
+| 非阻塞 | 命名建议 / 注释完善 / 风格微调 / 优化建议 | `false` |
+
+> 快速通道命中时，REV 默认 `blocking=false`（安全漏洞除外）。
+
+## blocking 与流水线行为
+
+- blocking=true → 流水线设为 `review_failed`，阻塞推进
+- blocking=false → 流水线直接推进到 `review_passed`，REV 保持 open 跟踪
+- 每个操作（op）至少需要 1 条阻塞性 REV closed 才能标记阶段为 review_passed

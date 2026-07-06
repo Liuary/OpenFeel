@@ -48,7 +48,7 @@ models:
     fast:
       provider: deepseek
       model_name: deepseek-v4-flash
-    # 异种模型：Reviewer 交叉审查用（与主力模型不同系列，当前可用模型有限暂用同系列）
+    # 异种模型：Reviewer 交叉审查用（GLM 系列，与 DeepSeek 不同架构）
     cross_model:
-      provider: deepseek
-      model_name: deepseek-v4-pro
+      provider: zhipu
+      model_name: glm-5.2

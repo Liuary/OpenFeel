@@ -109,6 +109,21 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 
 ---
 
+## [+] 遇到问题优先查知识库 (2026-07-06)
+
+当遇到技术问题、配置错误、构建失败、平台行为异常等情况时，**第一个动作必须是查阅知识库**（`skill("check-kb")` 或直接 grep `.openfeel/kb/`），而非凭记忆猜测或反复试错。
+
+- 模型配置问题 → `kb/setup.md`
+- 代码模式/命名规范 → `kb/patterns.md`
+- 已知坑位/排查经验 → `kb/troubleshooting.md`
+- 架构决策 → `kb/architecture.md`
+
+**反例**：openfeel agent model 配置失败——多次尝试 `fast`/`deepseek-v4-flash`/`DeepSeek/` 等格式逐一试错共 5 轮，实际正确格式 `deepseek/deepseek-v4-flash` 在问题首次出现时就可从文档中获知。
+
+> 禁止：遇到问题直接猜测解决方案并执行多轮试错。必须先查 kb/，无结果再提问。
+
+---
+
 ## [+] 模板文件同步约束 (2026-07-02)
 
 `openfeel update` 部署的文件来自源码中硬编码的模板，而非读取项目文件系统。修改以下源文件后，必须同步更新对应模板：

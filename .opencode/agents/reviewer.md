@@ -1,7 +1,7 @@
 ---
 description: Reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
 mode: subagent
-model: cross_model
+model: zhipuai/glm-5.1
 color: "#D4A017"
 permission:
   bash: "allow"

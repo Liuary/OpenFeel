@@ -35,3 +35,21 @@ npm test
 ```
 
 当前测试状态：**225/227 通过**（2 个已知弱项，非阻塞性）
+
+## [+] OpenCode Agent 模型配置 (2026-07-06)
+
+Agent frontmatter 的 `model` 字段格式为 `provider/model-name`，非简短角色名或裸模型名：
+
+```yaml
+# ✅ 正确格式
+model: deepseek/deepseek-v4-pro   # 默认推理
+model: deepseek/deepseek-v4-flash # 快速执行
+model: zhipuai/glm-5.1            # 异种审查
+```
+
+**踩过的坑**：
+- ❌ `model: fast` → 平台当字面模型名查找
+- ❌ `model: deepseek-v4-flash` → 缺 provider 前缀
+- ❌ `model: DeepSeek/` → provider 大小写敏感，dee 小写
+
+**缓存注意**：修改 frontmatter 后需重启 OpenCode/VSCode。config.yaml roles 不参与模型解析——模型完全由 frontmatter 直接指定。

@@ -9,7 +9,7 @@
 | 架构决策 | [architecture.md](architecture.md) | 7 | 2026-07-05 | 技术选型、设计理由、并行策略 |
 | 代码模式 | [patterns.md](patterns.md) | 15 | 2026-07-05 | 项目约定、最佳实践、反模式 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 8 | 2026-07-05 | 常见 Bug、调试流程、已知坑位 |
-| 环境配置 | [setup.md](setup.md) | 3 | 2026-07-01 | 环境搭建、构建流程、依赖管理 |
+| 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
 ## 各分类摘要
 

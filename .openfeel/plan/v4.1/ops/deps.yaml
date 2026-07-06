@@ -1,0 +1,99 @@
+# v4.1-stage-01 操作方案依赖声明
+# 生成时间: 2026-07-06
+# 生成者: Schemer
+# 阶段: v4.1-stage-01
+
+# 全局配置
+stage: v4.1-stage-01
+plan_file: .openfeel/plan/v4.1/plan.md
+ops_dir: .openfeel/plan/v4.1/ops/
+
+# 操作方案列表
+ops:
+  op-001:
+    file: op-001.md
+    title: 构建脚本三步管线改造
+    tasks: [1.1, 1.2, 1.3]
+    priority: P1
+    max_retry: 3
+    deps: []  # 无前置依赖，可最先执行
+    produces:
+      - build.js
+      - src/core/templates.ts
+      - src/core/update.ts
+
+  op-002:
+    file: op-002.md
+    title: 构建产物一致性校验
+    tasks: [1.6]
+    priority: P1
+    max_retry: 3
+    deps:
+      - { op: op-001, type: hard, reason: "必须有注入锚点和生成逻辑后方可校验" }
+    produces:
+      - build.js
+
+  op-003:
+    file: op-003.md
+    title: 约束清理
+    tasks: [1.4, 1.5]
+    priority: P1
+    max_retry: 2
+    deps:
+      - { op: op-001, type: soft, reason: "op-001 落地构建自动同步后手动约束才真正过时，但约束清理本身可先行" }
+    produces:
+      - .openfeel/dev/dev_core.md
+      - .openfeel/log/
+
+  op-004:
+    file: op-004.md
+    title: init 命令完善
+    tasks: [1.7, 1.9]
+    priority: P1
+    max_retry: 3
+    deps: []  # 无前置依赖，与构建管线并行
+    produces:
+      - src/core/templates.ts
+      - src/core/init.ts
+      - src/core/flow-manager.ts
+
+  op-005:
+    file: op-005.md
+    title: 子 Agent 返回精简模式
+    tasks: [1.8]
+    priority: P2
+    max_retry: 2
+    deps: []  # P2，无阻塞依赖
+    produces:
+      - .opencode/agents/feel.md
+
+# 并行执行建议
+parallelism:
+  wave_1:
+    - op-001  # 构建脚本改造（核心）
+    - op-003  # 约束清理（纯文档，独立）
+    - op-004  # init 完善（独立文件集）
+    - op-005  # 精简模式（P2，独立）
+  wave_2:
+    - op-002  # 一致性校验（依赖 op-001 完成）
+
+# 文件冲突域（同一文件的 op 不可并行）
+conflict_domains:
+  build.js: [op-001, op-002]
+  src/core/templates.ts: [op-001, op-004]
+  src/core/update.ts: [op-001]
+  .opencode/agents/feel.md: [op-005]
+
+# 质量指标覆盖
+quality_indicators:
+  - 指标: "构建自动同步 (3 类模板全自动)"
+    覆盖: [op-001]
+    验证: "修改任意源文件 → npm run build → templates.ts/update.ts 已更新"
+
+  - 指标: "模板同步断链风险 = 0"
+    覆盖: [op-001, op-002]
+    验证: "源文件与模板不一致时 npm run build exit(1)"
+
+  - 指标: "测试通过率 ≥ 225/227"
+    覆盖: [op-001, op-002, op-003, op-004, op-005]
+    验证: "每个 op 完成后运行 npm test"

@@ -195,7 +195,7 @@ models:
     # 异种模型：Reviewer 交叉审查用（GLM 系列，与 DeepSeek 不同架构）
     cross_model:
       provider: zhipu
-      model_name: glm-5.2
+      model_name: glm-5.1
 `;
   writeFileSync(configPath, content, 'utf-8');
 }

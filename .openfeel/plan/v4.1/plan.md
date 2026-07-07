@@ -209,6 +209,36 @@ v4.0 将 Agent 从 15 个精简到 7 个，打通了核心流水线，但审查�
 
 ---
 
+### v4.1-stage-04：Agent 去语言特化 (P2, 4 项)
+
+**目标**：Agent 是职责特化，不是语言特化。清理硬编码的 `.ts`/`npm`/`vitest` 等语言和工具特定表述，替换为通用描述。
+
+#### 问题
+
+| 文件 | 过特化的表述 | 问题 |
+|:--|:--|:--|
+| feel.md | `修改 .ts 源码`、`npm 依赖变更` | 框架不限于 TypeScript 项目 |
+| feel-tester.md | `vitest 测试用例`、`npm test` | 用户可能用 pytest/jest/cargo test |
+| schemer.md | `@vitest/coverage-v8 3.0.0` | 示例过于具体，缺乏上下文 |
+| executor.md | `deepseek/` model 字段 | 仅用于平台层配置，不应出现在正文约束中 |
+
+#### 原则
+
+- **职责特化 ≠ 语言特化**：Agent 只做审查，但可以审查任何语言；Agent 只做测试，但可以运行任何测试工具
+- **范例带上下文**：如果必须举例，说明"例如在 Node.js 项目中可用 vitest"，而非直接写 `vitest`
+- **禁止写死工具名**：`npm test` → `项目配置的测试命令`，`vitest` → `测试框架`
+
+#### 任务
+
+| # | 文件 | 修改 |
+|:--:|------|------|
+| 4.1 | feel.md | `.ts` → `源码`，`npm` → `依赖管理`，保留 bash 白名单不变 |
+| 4.2 | feel-tester.md | vitest/npm 替换为通用描述，Bug 模板保持 |
+| 4.3 | schemer.md | 版本声明示例加"例如在 Node.js 项目中"上下文 |
+| 4.4 | executor.md | 确认正文无语言特化（model 字段仅 frontmatter，正确） |
+
+---
+
 ## 四、依赖关系
 
 ```

@@ -12,7 +12,8 @@
 |------|------|:--:|:--:|
 | v4.1-stage-01 | 构建脚本自动同步模板（9 项） | P1 | planned |
 | v4.1-stage-02 | Agent 特化 + 事务官（11 项） | P1 | planned |
-| v4.1-stage-03 | flow.json 多阶段状态机（7 项） | P0 | planned |
+| v4.1-stage-03 | flow.json 多阶段状态机（7 项） | P0 | review_passed |
+| v4.1-stage-04 | Agent 去语言特化（4 项） | P2 | planned |
 
 ## 历史计划
 

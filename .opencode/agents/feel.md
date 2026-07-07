@@ -22,7 +22,7 @@ permission:
 - **文件操作**：`git add`/`git rm`、文件复制 `cp`/移动 `mv`、`mkdir`、`rm`（非源码文件）、`cat` 读取
 - **文本处理**：Base64 编码/解码、`diff` 对比、简单 `sed` 替换（非 `.ts` 文件）
 - **环境操作**：`npm run build`、`npm test`（仅验证，不修改依赖）
-- **明确禁止**：修改 `.ts` 源码、跨文件重构、npm 依赖变更（`install`/`uninstall`）
+- **明确禁止**：修改源码内容、跨文件重构、依赖变更（`install`/`uninstall`）
 
 > 白名单遵循 CLI 原子管理模式原则：每个操作可由一条 bash 命令独立完成，无依赖链。
 
@@ -31,7 +31,7 @@ permission:
 任务超出直接操作白名单范围时，按以下规则委托：
 
 ### 必须委托 Executor
-- `.ts` 源码修改、跨文件重构、npm 依赖变更（`install`/`uninstall`）
+- 源码修改、跨文件重构、依赖变更（`install`/`uninstall`）
 - 需要理解业务逻辑上下文的操作
 
 ### 可派事务官（`/opfx:utility`）

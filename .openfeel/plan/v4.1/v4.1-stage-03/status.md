@@ -2,9 +2,9 @@
 
 - **执行模式**：manual
 - **自动推进**：disabled
-- **状态**：ready_for_review
-- **当前责任 Agent**：executor
-- **更新时间**：2026-07-07
+- **状态**：review_passed
+- **当前责任 Agent**：reviewer
+- **更新时间**：2026-07-07 (再审通过)
 
 ## 当前任务
 - [ ] op-001: PipelineSchema 重构

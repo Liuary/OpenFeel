@@ -1835,8 +1835,11 @@ export class FlowManager {
       }
     }
 
+    // dry-run 模式下使用数据副本，避免修改原始内存状态
+    const targetData = dryRun ? JSON.parse(JSON.stringify(this.data)) as FlowData : this.data;
+
     // ── 遍历 stages，为每个没有 phase 的 stage 分配 phase ──
-    for (const [stageId, stage] of stageEntries) {
+    for (const [stageId, stage] of Object.entries(targetData.stages)) {
       // 已有 phase 的 stage 跳过，不覆盖
       if (stage.phase !== undefined) {
         changes.push(`  ${stageId}: 已有 phase="${stage.phase}"，跳过`);
@@ -1855,7 +1858,8 @@ export class FlowManager {
 
     // 若 current.stage 为 "-" 或空，下沉到第一个 stage
     if (currentStageId === '-' || !currentStageId) {
-      const firstEntry = stageEntries[0];
+      const targetEntries = Object.entries(targetData.stages);
+      const firstEntry = targetEntries[0];
       if (firstEntry) {
         const [firstStageId, firstStageData] = firstEntry;
         firstStageData.phase = oldPhase as PipelinePhase;
@@ -1865,7 +1869,7 @@ export class FlowManager {
 
     // ── 更新全局 phase ──
     const newMetaPhase: MetaPhase = oldPhase === 'done' ? 'done' : 'active';
-    this.data.pipeline.phase = newMetaPhase;
+    targetData.pipeline.phase = newMetaPhase;
     changes.push(`全局 pipeline.phase: "${oldPhase}" → "${newMetaPhase}"`);
 
     // ── 追加迁移日志 ──

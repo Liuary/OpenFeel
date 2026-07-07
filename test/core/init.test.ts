@@ -66,7 +66,7 @@ describe('initProject', () => {
     const flowData = JSON.parse(readFileSync(flowPath, 'utf-8'));
     expect(flowData.meta.version).toBe('1.0');
     expect(flowData.meta.project).toBe('OpenFeel');
-    expect(flowData.pipeline.phase).toBe('plan_pending');
+    expect(flowData.pipeline.phase).toBe('active');
     expect(flowData.pipeline.retry).toBe(0);
     expect(Array.isArray(flowData.reviews)).toBe(true);
     expect(Array.isArray(flowData.log)).toBe(true);

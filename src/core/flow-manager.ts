@@ -16,12 +16,15 @@ import {
   PipelineConfigSchema,
   PipelinePhaseSchema,
   PIPELINE_PHASES,
+  MetaPhaseSchema,
+  META_PHASES,
   type PipelineConfig,
   type PipelinePhase,
+  type MetaPhase,
   type StageStats,
 } from './pipeline-schema.js';
 import { PublicLogger } from './public-logger.js';
-export { type PipelinePhase, type StageStats } from './pipeline-schema.js';
+export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
 
 /** 操作执行状态 */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed';
@@ -80,6 +83,8 @@ export interface LogEntry {
 /** 阶段数据结构 */
 export interface StageData {
   name: string;
+  /** 阶段当前流水线阶段 */
+  phase: PipelinePhase;
   status: string;
   deps: string[];
   ops: Record<string, Op>;
@@ -90,7 +95,7 @@ export interface StageData {
 /** Flow 完整数据结构 */
 export interface FlowData {
   meta: { version: string; project: string; updated: string };
-  pipeline: { phase: PipelinePhase; current: { stage: string; op: string }; retry: number };
+  pipeline: { phase: MetaPhase; current: { stage: string; op: string }; retry: number };
   stages: Record<string, StageData>;
   reviews: ReviewItem[];
   log: LogEntry[];
@@ -200,7 +205,7 @@ function defaultFlowData(): FlowData {
       updated: new Date().toISOString(),
     },
     pipeline: {
-      phase: 'plan_pending',
+      phase: 'active',
       current: { stage: '-', op: 'init' },
       retry: 0,
     },
@@ -323,8 +328,8 @@ export class FlowManager {
 
   // ═══ 查询 ═══
 
-  /** 获取当前流水线阶段 */
-  getPhase(): PipelinePhase | null {
+  /** 获取全局宏观状态（MetaPhase：active/paused/done） */
+  getPhase(): MetaPhase | null {
     if (!this.data) {
       return null;
     }
@@ -441,10 +446,15 @@ export class FlowManager {
       (r) => r.status === 'open',
     ).length;
 
+    const cur = this.data.pipeline.current;
+    const stagePhase = (cur.stage && this.data.stages[cur.stage])
+      ? this.data.stages[cur.stage].phase
+      : '(无当前阶段)';
     const lines: string[] = [
       'OpenFeel 流水线状态',
-      `当前阶段: ${this.data.pipeline.phase}`,
-      `当前操作: ${this.data.pipeline.current.stage ? `${this.data.pipeline.current.stage}.${this.data.pipeline.current.op}` : '(无)'}`,
+      `全局状态: ${this.data.pipeline.phase}`,
+      `当前阶段: ${cur.stage || '(无)'} — 阶段状态: ${stagePhase}`,
+      `当前操作: ${cur.stage ? `${cur.stage}.${cur.op}` : '(无)'}`,
       `重试次数: ${this.data.pipeline.retry}`,
       `阶段数: ${stagesCount}`,
       `操作数: ${opsCount}`,
@@ -501,6 +511,7 @@ export class FlowManager {
     }
     this.data.stages[stageName] = {
       name: stageName,
+      phase: 'plan_pending' as PipelinePhase,
       status: 'planned',
       deps,
       ops: {},
@@ -602,8 +613,11 @@ export class FlowManager {
       };
     }
 
-    const phase = this.data.pipeline.phase;
     const cur = this.data.pipeline.current;
+    // phase 从当前 stage 的 stage.phase 读取，而非全局 pipeline.phase
+    const phase = (cur.stage && this.data.stages[cur.stage])
+      ? this.data.stages[cur.stage].phase
+      : null;
     const currentOp = (cur.stage && cur.op) ? `${cur.stage}.${cur.op}` : null;
 
     // 从 status.md 读取当前阶段详细状态
@@ -683,21 +697,102 @@ export class FlowManager {
   // ═══ 推进 ═══
 
   /**
-   * 推进流水线阶段
+   * 推进指定阶段到目标流水线阶段（新 API）
+   * @param stageName 阶段名（如 stage-01）
+   * @param phase 目标流水线阶段（PipelinePhase）
+   */
+  advanceStagePhase(stageName: string, phase: PipelinePhase): void {
+    if (!this.data) {
+      return;
+    }
+
+    // 校验 stageName 存在
+    const stage = this.data.stages[stageName];
+    if (!stage) {
+      throw new Error(`阶段 '${stageName}' 不存在`);
+    }
+
+    // 校验 phase 为合法 PipelinePhase，非法时走模糊修正兜底
+    let targetPhase: PipelinePhase;
+    const phaseResult = PipelinePhaseSchema.safeParse(phase);
+    if (!phaseResult.success) {
+      const corrected = this.fuzzyCorrectPhase(phase as unknown as string);
+      if (corrected) {
+        console.warn(`[WARN] advanceStagePhase: Phase '${phase}' 自动修正为 '${corrected}'`);
+        targetPhase = corrected;
+      } else {
+        throw new Error(`非法 phase '${phase}'，模糊修正失败`);
+      }
+    } else {
+      targetPhase = phaseResult.data;
+    }
+
+    // 保存旧 phase 用于日志
+    const fromPhase = stage.phase;
+
+    // 更新 stage phase
+    this.data.stages[stageName].phase = targetPhase;
+
+    // 同步更新 pipeline.current：从该 stage 的 ops 中找到第一个 pending/executing 的 op
+    const pendingOpEntry = Object.entries(stage.ops).find(
+      ([, op]) => op.state === 'pending' || op.state === 'executing',
+    );
+    this.data.pipeline.current = {
+      stage: stageName,
+      op: pendingOpEntry ? pendingOpEntry[0] : this.data.pipeline.current.op,
+    };
+
+    // 同步更新 pipeline.phase 为 'active'
+    this.data.pipeline.phase = 'active' as MetaPhase;
+
+    // 追加日志
+    this.appendLog({
+      time: '',
+      agent: 'flow-manager',
+      action: 'advance_stage_phase',
+      detail: { stageName, from: fromPhase, to: targetPhase },
+    });
+
+    // 公共日志：记录状态变更（审计链）
+    this.publicLogger.logPhaseChange({
+      action: 'advance_stage_phase',
+      opId: `${stageName}.${this.data.pipeline.current.op}`,
+      from: fromPhase,
+      to: targetPhase,
+    });
+
+    // 同步 stage status（调用已有 mapPhaseToStageStatus）
+    const prevStatus = stage.status;
+    const newStatus = mapPhaseToStageStatus(targetPhase, prevStatus);
+    stage.status = newStatus;
+
+    // 自动记录阶段计时：首次状态变更时启动
+    if (!stage.stats || !stage.stats.start_time) {
+      this.startStage(stageName);
+    }
+
+    // 阶段完成时自动结束计时
+    if (targetPhase === 'done' && prevStatus !== 'done') {
+      this.endStage(stageName);
+    }
+  }
+
+  /**
+   * 推进流水线阶段（旧 API）
    * @param opId 操作 ID（格式 "stage-xx.op-xxx"）
    * @param to 目标流水线阶段
    * @param stageId 可选阶段 ID，传入时同步更新 flow.json.stages[stageId].status
    * @param force 是否强制执行（非法 phase 时走模糊修正路径）
+   * @deprecated 请使用 advanceStagePhase(stageName, phase) 替代。内部保留 op 级逻辑后委托给 advanceStagePhase。
    */
   advancePhase(opId: string | null, to: string, stageId?: string, force?: boolean): void {
-    // 确定目标 phase 值（类型安全）
-    let targetPhase: PipelinePhase;
+    console.warn('[DEPRECATED] advancePhase() 已弃用，请使用 advanceStagePhase(stageName, phase) 替代');
 
-    // 校验 to 参数是否为合法 phase 值
+    // ── 1. 校验目标 phase ──
+    let targetPhase: PipelinePhase;
     const phaseResult = PipelinePhaseSchema.safeParse(to);
     if (!phaseResult.success) {
       if (force) {
-        // --force 标志下走模糊修正路径
         const corrected = this.fuzzyCorrectPhase(to);
         if (corrected) {
           console.warn(`[WARN] Phase '${to}' 自动修正为 '${corrected}'`);
@@ -707,7 +802,6 @@ export class FlowManager {
           throw new Error(`非法 phase '${to}'，模糊修正失败`);
         }
       } else {
-        // 非法 phase 直接拒绝，不修改 flow.json
         const validPhasesStr = (PIPELINE_PHASES as readonly string[]).join(', ');
         console.error(`错误: '${to}' 不是合法的 PipelinePhase。合法值: [${validPhasesStr}]`);
         return;
@@ -720,91 +814,53 @@ export class FlowManager {
       return;
     }
 
+    // ── 2. 解析 stageId ──
+    const resolvedStageId = stageId || (opId ? this.parseOpId(opId)?.stageId : this.data.pipeline.current.stage);
+    if (!resolvedStageId) {
+      console.warn('[DEPRECATED] advancePhase: 无法解析 stageId，跳过');
+      return;
+    }
+
+    // ── 3. Op 级工作（检查点更新、重试计数） ──
     if (opId) {
       const op = this.getOp(opId);
-      if (!op) {
-        return;
-      }
+      if (op) {
+        const parts = this.parseOpId(opId);
+        if (parts) {
+          const prevStage = this.data.pipeline.current.stage;
+          const prevOp = this.data.pipeline.current.op;
 
-      const parts = this.parseOpId(opId);
-      if (!parts) {
-        return;
-      }
+          // 更新 pipeline current（用于 op 级追踪）
+          this.data.pipeline.current = { stage: parts.stageId, op: parts.opLocalId };
 
-      // 保存推进前的状态（REV-001: 日志需要旧 phase 值）
-      const prevStage = this.data.pipeline.current.stage;
-      const prevOp = this.data.pipeline.current.op;
-
-      // 更新 pipeline 状态
-      this.data.pipeline.current = { stage: parts.stageId, op: parts.opLocalId };
-
-      // REV-002: 切换到新操作时重置重试计数
-      if (prevStage !== parts.stageId || prevOp !== parts.opLocalId) {
-        this.data.pipeline.retry = 0;
-      }
-
-      // 根据目标 phase 更新对应的 checkpoint
-      const checkpointKey = this.getCheckpointFromPhase(targetPhase);
-      if (checkpointKey) {
-        if (checkpointKey === 'exec') {
-          // exec 检查点需要更新 self 字段
-          if (targetPhase === 'exec_running') {
-            op.checkpoints.exec.self = 'running';
+          // REV-002: 切换到新操作时重置重试计数
+          if (prevStage !== parts.stageId || prevOp !== parts.opLocalId) {
+            this.data.pipeline.retry = 0;
           }
-        } else {
-          // 以 passed/failed 结尾的阶段更新对应检查点
-          if (targetPhase.endsWith('_passed')) {
-            (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'passed';
-          } else if (targetPhase.endsWith('_failed')) {
-            (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'failed';
-          } else {
-            // 中间状态设为 pending 对应的变体
-            (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'pending';
+
+          // 根据目标 phase 更新对应的 checkpoint
+          const checkpointKey = this.getCheckpointFromPhase(targetPhase);
+          if (checkpointKey) {
+            if (checkpointKey === 'exec') {
+              if (targetPhase === 'exec_running') {
+                op.checkpoints.exec.self = 'running';
+              }
+            } else {
+              if (targetPhase.endsWith('_passed')) {
+                (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'passed';
+              } else if (targetPhase.endsWith('_failed')) {
+                (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'failed';
+              } else {
+                (op.checkpoints as unknown as Record<string, string>)[checkpointKey] = 'pending';
+              }
+            }
           }
         }
       }
     }
 
-    // 保存推进前的状态（REV-001: 日志需要旧 phase 值）
-    const fromPhase = this.data.pipeline.phase;
-
-    // 更新 pipeline phase（无论是否有 opId）
-    this.data.pipeline.phase = targetPhase;
-
-    // 追加日志（from 使用推进前的阶段值）
-    this.appendLog({
-      time: '',
-      agent: 'flow-manager',
-      action: 'advance_phase',
-      detail: { opId, from: fromPhase, to: targetPhase },
-    });
-
-    // 公共日志：记录状态变更到 .openfeel/log/（审计链）
-    this.publicLogger.logPhaseChange({
-      action: 'advance_phase',
-      opId,
-      from: fromPhase,
-      to: targetPhase,
-    });
-
-    // 同步更新 stage 状态（若传入 stageId）
-    if (stageId && this.data && this.data.stages[stageId]) {
-      const stage = this.data.stages[stageId];
-      const prevStatus = stage.status;
-      const newStatus = mapPhaseToStageStatus(targetPhase, prevStatus);
-
-      // 自动记录阶段计时：首次状态变更时启动
-      if (!stage.stats || !stage.stats.start_time) {
-        this.startStage(stageId);
-      }
-
-      stage.status = newStatus;
-
-      // 阶段完成时自动结束计时
-      if (newStatus === 'done' && prevStatus !== 'done') {
-        this.endStage(stageId);
-      }
-    }
+    // ── 4. 委托给 advanceStagePhase（处理 stage phase 更新、pipeline.phase、日志、stage status、统计） ──
+    this.advanceStagePhase(resolvedStageId, targetPhase);
   }
 
   // ── 阶段跳转检测 ──
@@ -812,29 +868,45 @@ export class FlowManager {
   /**
    * 检查当前 phase 到目标 phase 是否存在直接跳转路径
    * 供 CLI --force 判断使用
+   * @param stageName 可选阶段名，提供时使用该阶段 phase 进行查找；否则使用 current.stage 的 phase
    */
-  hasTransition(to: string): boolean {
+  hasTransition(to: string, stageName?: string): boolean {
     if (!this.data || !this.pipelineConfig) {
       return false;
     }
-    const validTargets = this.pipelineConfig.transitions[this.data.pipeline.phase];
+    const phase = this.resolveCurrentPhase(stageName);
+    if (!phase) return false;
+    const validTargets = this.pipelineConfig.transitions[phase];
     return validTargets ? validTargets.includes(to) : false;
   }
 
   /**
    * 获取当前阶段的所有可达下一阶段（基于 transitions 表）
    * 供 flow wizard 交互模式使用
+   * @param stageName 可选阶段名，提供时使用该阶段 phase 进行查找；否则使用 current.stage 的 phase
    */
-  getAvailablePhases(): PipelinePhase[] {
+  getAvailablePhases(stageName?: string): PipelinePhase[] {
     if (!this.data) {
       return [];
     }
     if (!this.pipelineConfig) {
       return [];
     }
-    const currentPhase = this.data.pipeline.phase;
+    const currentPhase = this.resolveCurrentPhase(stageName);
+    if (!currentPhase) return [];
     const validTargets = this.pipelineConfig.transitions[currentPhase];
     return (validTargets ?? []) as PipelinePhase[];
+  }
+
+  /**
+   * 解析当前阶段 phase：优先使用传入的 stageName，其次 current.stage，最后 fallback
+   */
+  private resolveCurrentPhase(stageName?: string): PipelinePhase | null {
+    if (!this.data) return null;
+    const targetStageName = stageName || this.data.pipeline.current.stage;
+    if (!targetStageName) return null;
+    const stage = this.data.stages[targetStageName];
+    return stage?.phase ?? null;
   }
 
   /**
@@ -1183,20 +1255,21 @@ export class FlowManager {
       return;
     }
 
-    // 前置条件：仅允许从 review_failed 状态调用
-    if (this.data.pipeline.phase !== 'review_failed') {
-      console.warn(`[WARN] addAutoFixReview 仅允许从 review_failed 状态调用，当前为 ${this.data.pipeline.phase}`);
-      return;
-    }
-
     // 校验 opId 格式：必须包含 '.'，且 stage 必须存在于 stages 中
     if (!opId.includes('.')) {
       console.error(`错误：opId 格式不正确 "${opId}"，应为 stage-xx.op-xxx`);
       return;
     }
     const stageId = opId.substring(0, opId.lastIndexOf('.'));
-    if (!this.data.stages[stageId]) {
+    const stage = this.data.stages[stageId];
+    if (!stage) {
       console.error(`错误：opId "${opId}" 中的 stage "${stageId}" 不存在`);
+      return;
+    }
+
+    // 前置条件：仅允许从 review_failed 状态调用，检查对应 stage 的 phase
+    if (stage.phase !== 'review_failed') {
+      console.warn(`[WARN] addAutoFixReview 仅允许从 review_failed 状态调用，当前 stage ${stageId} phase 为 ${stage.phase}`);
       return;
     }
 
@@ -1243,6 +1316,7 @@ export class FlowManager {
 
   /**
    * 校验 phase 流转是否合法（从 pipeline.yaml 配置驱动）
+   * 使用 opId 对应的 stage.phase 作为当前阶段进行流转校验
    */
   canAdvance(opId: string, to: PipelinePhase): boolean {
     if (!this.data) {
@@ -1260,8 +1334,14 @@ export class FlowManager {
       return false;
     }
 
+    // 从 opId 解析出 stage，使用 stage.phase 而非全局 pipeline.phase
+    const parts = this.parseOpId(opId);
+    if (!parts || !this.data.stages[parts.stageId]) {
+      return false;
+    }
+    const currentPhase = this.data.stages[parts.stageId].phase;
+
     // 检查从当前 phase 到目标 phase 的流转是否合法
-    const currentPhase = this.data.pipeline.phase;
     const validTargets = this.pipelineConfig.transitions[currentPhase];
     if (!validTargets || !validTargets.includes(to)) {
       return false;
@@ -1297,19 +1377,20 @@ export class FlowManager {
       errors.push('pipeline.phase 缺失');
     }
 
-    // 使用 Zod enum 校验 phase 值，非法时通过模糊匹配自动修正
+    // pipeline.phase 校验：使用 MetaPhaseSchema（全局宏观状态：active/paused/done）
     if (this.data.pipeline?.phase) {
-      const phaseResult = PipelinePhaseSchema.safeParse(this.data.pipeline.phase);
+      const phaseResult = MetaPhaseSchema.safeParse(this.data.pipeline.phase);
       if (!phaseResult.success) {
-        const corrected = this.fuzzyCorrectPhase(this.data.pipeline.phase);
+        // 尝试简单修正：若非 MetaPhase 值，默认为 'active'
+        const corrected = this.fuzzyCorrectMetaPhase(this.data.pipeline.phase as string);
         if (corrected) {
           warnings.push(
-            `Phase '${this.data.pipeline.phase}' 自动修正为 '${corrected}'`,
+            `pipeline.phase '${this.data.pipeline.phase}' 自动修正为 '${corrected}'`,
           );
           this.data.pipeline.phase = corrected;
         } else {
           errors.push(
-            `pipeline.phase 值 "${this.data.pipeline.phase}" 不是合法的 PipelinePhase 枚举值，且无法自动修正`,
+            `pipeline.phase 值 "${this.data.pipeline.phase}" 不是合法的 MetaPhase 枚举值（active/paused/done），且无法自动修正`,
           );
         }
       }
@@ -1322,6 +1403,29 @@ export class FlowManager {
     // 检查 stages 是否为对象
     if (typeof this.data.stages !== 'object' || this.data.stages === null) {
       errors.push('stages 不是有效对象');
+    } else {
+      // 遍历每个 stage，校验其 phase 字段为合法 PipelinePhase
+      for (const [stageId, stage] of Object.entries(this.data.stages)) {
+        if (!stage.phase) {
+          warnings.push(`stages.${stageId}.phase 缺失，设为默认 'plan_pending'`);
+          stage.phase = 'plan_pending' as PipelinePhase;
+        } else {
+          const stagePhaseResult = PipelinePhaseSchema.safeParse(stage.phase);
+          if (!stagePhaseResult.success) {
+            const corrected = this.fuzzyCorrectPhase(stage.phase as string);
+            if (corrected) {
+              warnings.push(
+                `stages.${stageId}.phase '${stage.phase}' 自动修正为 '${corrected}'`,
+              );
+              stage.phase = corrected;
+            } else {
+              errors.push(
+                `stages.${stageId}.phase 值 "${stage.phase}" 不是合法的 PipelinePhase 枚举值，且无法自动修正`,
+              );
+            }
+          }
+        }
+      }
     }
 
     // 检查 reviews 是否为数组
@@ -1416,6 +1520,19 @@ export class FlowManager {
     }
 
     return null;
+  }
+
+  /**
+   * 模糊修正非法 MetaPhase 值
+   * 将所有非 MetaPhase 的 pipeline.phase 默认为 'active'
+   */
+  private fuzzyCorrectMetaPhase(input: string): MetaPhase | null {
+    const normalized = input.trim().toLowerCase();
+    if ((META_PHASES as readonly string[]).includes(normalized)) {
+      return normalized as MetaPhase;
+    }
+    // 任何 PipelinePhase 值或未知值皆默认映射为 'active'
+    return 'active' as MetaPhase;
   }
 
   // ═══ 修复 ═══
@@ -1529,24 +1646,24 @@ export class FlowManager {
         modified = true;
       }
 
-      // 修复非标准 phase
+      // 修复非标准 pipeline.phase（MetaPhase：active/paused/done）
       if (flowData.pipeline.phase) {
-        const phaseResult = PipelinePhaseSchema.safeParse(
+        const phaseResult = MetaPhaseSchema.safeParse(
           flowData.pipeline.phase,
         );
         if (!phaseResult.success) {
-          const corrected = this.fuzzyCorrectPhase(
+          const corrected = this.fuzzyCorrectMetaPhase(
             flowData.pipeline.phase as string,
           );
           if (corrected) {
             changes.push(
-              `Phase '${flowData.pipeline.phase}' 已修正为 '${corrected}'`,
+              `pipeline.phase '${flowData.pipeline.phase}' 已修正为 '${corrected}'`,
             );
             flowData.pipeline.phase = corrected;
             modified = true;
           } else {
             changes.push(
-              `Phase '${flowData.pipeline.phase}' 无法修正，使用默认值 'plan_pending'`,
+              `pipeline.phase '${flowData.pipeline.phase}' 无法修正，使用默认值 'active'`,
             );
             flowData.pipeline.phase = defaults.pipeline.phase;
             modified = true;
@@ -1564,6 +1681,30 @@ export class FlowManager {
       flowData.stages = defaults.stages;
       changes.push('已补全缺失的 stages');
       modified = true;
+    } else {
+      // 修复各 stage 的 phase 字段（PipelinePhase）
+      for (const [stageId, stage] of Object.entries(flowData.stages)) {
+        const s = stage as unknown as Record<string, unknown>;
+        if (s && typeof s === 'object' && s.phase) {
+          const stagePhaseResult = PipelinePhaseSchema.safeParse(s.phase);
+          if (!stagePhaseResult.success) {
+            const corrected = this.fuzzyCorrectPhase(s.phase as string);
+            if (corrected) {
+              changes.push(`stages.${stageId}.phase '${s.phase}' 已修正为 '${corrected}'`);
+              s.phase = corrected;
+              modified = true;
+            } else {
+              changes.push(`stages.${stageId}.phase '${s.phase}' 无法修正，使用默认值 'plan_pending'`);
+              s.phase = 'plan_pending';
+              modified = true;
+            }
+          }
+        } else if (s && typeof s === 'object' && !s.phase) {
+          s.phase = 'plan_pending';
+          changes.push(`已补全缺失的 stages.${stageId}.phase`);
+          modified = true;
+        }
+      }
     }
 
     // 修复 reviews 类型
@@ -1630,6 +1771,119 @@ export class FlowManager {
     }
 
     return { fixed: modified || recovered, changes, recovered };
+  }
+
+  // ═══ 迁移 ═══
+
+  /**
+   * 检测是否为旧版格式（全局 PipelinePhase 而非 MetaPhase）
+   * 旧版：pipeline.phase 为 PipelinePhase 值（如 "exec_running"）
+   * 新版：pipeline.phase 为 MetaPhase 值（"active"/"paused"/"done"）
+   */
+  needsMigration(): boolean {
+    if (!this.data) return false;
+    const phase = this.data.pipeline?.phase;
+    if (!phase) return false;
+    // 若 phase 是 PipelinePhase 值但非 MetaPhase 值 → 旧版
+    return (PIPELINE_PHASES as readonly string[]).includes(phase as string)
+      && !(META_PHASES as readonly string[]).includes(phase as string);
+  }
+
+  /**
+   * 将旧版 flow.json（v4.0：全局 phase）迁移到新版格式（v4.1：阶段级 phase）
+   *
+   * 迁移逻辑：
+   * 1. 旧 pipeline.phase 下沉到 current.stage 对应 stage → stages[stageId].phase = oldPhase
+   * 2. 若 pipeline.current.stage 为 "-" 或空，下沉到第一个 stage
+   * 3. stages 中已有 phase 的 stage 保持不变（不覆盖）
+   * 4. stages 中无 phase 的 stage 默认设为 "done"，但 current.stage 对应 stage 除外
+   * 5. 全局 pipeline.phase 改为 "active"（若旧 phase 为 "done" 则改为 "done"）
+   *
+   * @param dryRun 仅检测预览，不实际写入
+   * @param noBackup 跳过 .bak 备份
+   * @returns 迁移结果
+   */
+  migrate(dryRun: boolean = false, noBackup: boolean = false): { migrated: boolean; changes: string[] } {
+    const changes: string[] = [];
+
+    if (!this.data) {
+      changes.push('flow.json 未加载，无法迁移');
+      return { migrated: false, changes };
+    }
+
+    // 已是新版格式
+    if (!this.needsMigration()) {
+      changes.push('已是新版格式，无需迁移');
+      return { migrated: false, changes };
+    }
+
+    const oldPhase = this.data.pipeline.phase as unknown as string;
+    const currentStageId = this.data.pipeline.current?.stage || '-';
+    const stageEntries = Object.entries(this.data.stages);
+
+    changes.push(`检测到旧版格式: pipeline.phase="${oldPhase}"`);
+
+    // ── 备份旧文件 ──
+    if (!dryRun && !noBackup) {
+      const bakPath = this.filePath + '.v4.0.bak';
+      try {
+        copyFileSync(this.filePath, bakPath);
+        changes.push(`已备份旧文件: flow.json.v4.0.bak`);
+      } catch (e) {
+        changes.push(`备份失败: ${(e as Error).message}`);
+        return { migrated: false, changes };
+      }
+    }
+
+    // ── 遍历 stages，为每个没有 phase 的 stage 分配 phase ──
+    for (const [stageId, stage] of stageEntries) {
+      // 已有 phase 的 stage 跳过，不覆盖
+      if (stage.phase !== undefined) {
+        changes.push(`  ${stageId}: 已有 phase="${stage.phase}"，跳过`);
+        continue;
+      }
+
+      // 当前 stage → 下沉旧的 phase
+      if (stageId === currentStageId && currentStageId !== '-') {
+        (stage as StageData).phase = oldPhase as PipelinePhase;
+        changes.push(`  ${stageId}: ← 下沉旧 phase="${oldPhase}"`);
+      } else {
+        (stage as StageData).phase = 'done' as PipelinePhase;
+        changes.push(`  ${stageId}: ← 设为 "done"`);
+      }
+    }
+
+    // 若 current.stage 为 "-" 或空，下沉到第一个 stage
+    if (currentStageId === '-' || !currentStageId) {
+      const firstEntry = stageEntries[0];
+      if (firstEntry) {
+        const [firstStageId, firstStageData] = firstEntry;
+        firstStageData.phase = oldPhase as PipelinePhase;
+        changes.push(`  ${firstStageId}: ← (current.stage 为空) 下沉旧 phase="${oldPhase}"`);
+      }
+    }
+
+    // ── 更新全局 phase ──
+    const newMetaPhase: MetaPhase = oldPhase === 'done' ? 'done' : 'active';
+    this.data.pipeline.phase = newMetaPhase;
+    changes.push(`全局 pipeline.phase: "${oldPhase}" → "${newMetaPhase}"`);
+
+    // ── 追加迁移日志 ──
+    if (!dryRun) {
+      this.appendLog({
+        time: '',
+        agent: 'flow-manager',
+        action: 'migrate_v4.0_to_v4.1',
+        detail: {
+          oldPhase,
+          newMetaPhase,
+          currentStage: currentStageId,
+          stagesUpdated: stageEntries.filter(([_, s]) => s.phase !== undefined).length,
+        },
+      });
+    }
+
+    return { migrated: true, changes };
   }
 
   // ═══ 健康检查 ═══
@@ -1701,16 +1955,16 @@ export class FlowManager {
       return;
     }
 
-    // phase 合法性
-    const phase = this.data.pipeline?.phase;
-    if (!phase) {
+    // pipeline.phase 合法性（MetaPhase：active/paused/done）
+    const metaPhase = this.data.pipeline?.phase;
+    if (!metaPhase) {
       items.push({ section: 'flow.json', status: 'fail', message: 'pipeline.phase 缺失' });
     } else {
-      const phaseResult = PipelinePhaseSchema.safeParse(phase);
+      const phaseResult = MetaPhaseSchema.safeParse(metaPhase);
       if (!phaseResult.success) {
-        items.push({ section: 'flow.json', status: 'fail', message: `phase="${phase}" 不是合法枚举值` });
+        items.push({ section: 'flow.json', status: 'fail', message: `pipeline.phase="${metaPhase}" 不是合法 MetaPhase 枚举值（active/paused/done）` });
       } else {
-        items.push({ section: 'flow.json', status: 'pass', message: `phase=${phase}，合法` });
+        items.push({ section: 'flow.json', status: 'pass', message: `pipeline.phase=${metaPhase}，合法` });
       }
     }
 
@@ -1724,6 +1978,22 @@ export class FlowManager {
         items.push({ section: 'flow.json', status: 'fail', message: `current 指向不存在的 op: ${cur.stage}.${cur.op}` });
       } else {
         items.push({ section: 'flow.json', status: 'pass', message: `current=${cur.stage}.${cur.op}，存在` });
+      }
+    }
+
+    // 各 stage phase 合法性（PipelinePhase）
+    if (this.data.stages) {
+      for (const [stageId, stage] of Object.entries(this.data.stages)) {
+        if (!stage.phase) {
+          items.push({ section: 'flow.json', status: 'warn', message: `${stageId}.phase 缺失` });
+        } else {
+          const stagePhaseResult = PipelinePhaseSchema.safeParse(stage.phase);
+          if (!stagePhaseResult.success) {
+            items.push({ section: 'flow.json', status: 'fail', message: `${stageId}.phase="${stage.phase}" 不是合法 PipelinePhase 枚举值` });
+          } else {
+            items.push({ section: 'flow.json', status: 'pass', message: `${stageId}.phase=${stage.phase}，合法` });
+          }
+        }
       }
     }
   }

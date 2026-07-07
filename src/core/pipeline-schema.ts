@@ -25,6 +25,15 @@ export const PipelinePhaseSchema = z.enum(PIPELINE_PHASES);
 /** 流水线阶段类型（从 Zod enum 推导，替代此前动态 string） */
 export type PipelinePhase = z.infer<typeof PipelinePhaseSchema>;
 
+/** 流水线全局宏观状态枚举常量 */
+export const META_PHASES = ['active', 'paused', 'done'] as const;
+
+/** 全局宏观状态 Zod 枚举 Schema，用于运行时校验 */
+export const MetaPhaseSchema = z.enum(META_PHASES);
+
+/** 全局宏观状态类型 */
+export type MetaPhase = z.infer<typeof MetaPhaseSchema>;
+
 /** pipeline.yaml 的完整 Schema */
 export const PipelineConfigSchema = z.object({
   phases: z.array(z.string()),
@@ -45,3 +54,5 @@ export interface StageStats {
   /** 阶段耗时（毫秒），未完成时为 0 */
   duration_ms: number;
 }
+
+/** 阶段级流水线阶段（从 PipelineMeta 移到 StageData 内） */

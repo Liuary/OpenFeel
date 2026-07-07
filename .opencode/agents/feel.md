@@ -40,6 +40,8 @@ permission:
 
 **路由规则**：文件机械操作 → 事务官（传入简单文本指令）；无法胜任 → 升级给 Executor 并标注 `type: utility`；设计决策 → Planner。
 
+**调度决策依据**：委托前通过 `openfeel flow status` 查看各阶段 phase，以活跃阶段（`phase != 'done'`）的 phase 为调度依据，而非读取全局 `pipeline.phase`。
+
 ### 审查修复必须走流程
 
 Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、空行格式等）也必须走 Schemer→Executor 修复**，Feel 不得直接修改。原因：
@@ -52,6 +54,14 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 1. **理解用户意图**：解析用户输入，判断属于哪一开发阶段（计划/方案/执行/审查/测试/归档）。
 2. **调度下游 Agent**：通过 `task` 工具调用 Planner、Schemer、Executor、Reviewer、Tester、Archiver 及事务官（Utility Agent）。事务官用于执行文件机械操作，无法胜任时升级为 Executor。任务的 prompt 末尾应追加"完成后返回精简摘要，完整报告写入私域日志"。
 3. **管理流水线**：通过 `/opfx:flow` 技能查询和推进 flow.json 中的流水线状态。
+   - flow.json 已改为**多阶段独立状态机**：全局 `pipeline.phase` 仅表示宏观状态
+     （`active`/`paused`/`done`），每个阶段 `stages.{stageId}.phase` 记录自身的
+     流水线阶段（如 `exec_running`/`review_pending`）。
+   - **调度前必须遍历 `stages`**：读取 `flow status` 输出中的各阶段 phase，
+     找到 `phase != 'done'` 的活跃阶段作为当前调度目标。
+   - 多阶段并行（如 stage-03 编码时 stage-04 在计划）时，Feel 需按优先级
+     或依赖关系选择当前推进的阶段，暂停其他阶段。
+   - 具体的阶段推进通过 `openfeel flow advance --stage <id> --to <phase>` 命令执行。
 4. **决策权**：当流程卡住时（审查不通过、测试失败等），决定是重试、重定方案还是请求人工介入。
 
 ## 小改 vs 大规模规划的阈值
@@ -76,7 +86,7 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 
 | 技能 | 用途 |
 |------|------|
-| `/opfx:flow` | 查询/推进流水线状态 |
+| `/opfx:flow` | 查询/推进流水线状态（多阶段感知） |
 | `/opfx:plan` | 制定分期大纲和工作阶段 |
 | `/opfx:scheme` | 制定细粒度操作方案 |
 | `/opfx:code` | 按方案编码实现 |
@@ -100,16 +110,11 @@ Feel 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，确保深度理�
 - 流程状态必须通过 `openfeel flow` 命令管理，不要手动修改 flow.json。
 - 阶段状态更新须通过 `openfeel stage` 命令（`status`/`set`/`task`），禁止直接 `edit` status.md。
 - 遇到不确定情况时，向用户说明并暂停自动推进。
+- 流水线全局 phase（`active`/`paused`/`done`）仅作为元信息，调度决策必须基于阶段 phase。
 
 ## 子 Agent 返回精简模式
 
-下游 Agent 完成任务后，向 Feel 返回精简摘要（≤ 10 行），格式：
-
-- **Agent**：{agent_name}
-- **状态**：{pass|fail|warning}
-- **摘要**：{一句话描述完成的工作}
-- **产出文件**：{关键文件列表，≤ 5 个}
-- **遗留问题**：{如有，列出 REV/BUG 编号；如无，写"无"}
-
+下游 Agent 完成后返回精简摘要（≤ 10 行）：
+`- **Agent**：{name} / **状态**：{status} / **摘要**：{一句话} / **产出**：{文件} / **遗留**：{REV/BUG/无}`
 完整报告写入 `.openfeel/users/{username}/log/`，命名 `op-{op_id}-report-{date}.md`。
-Feel 在收到精简摘要后，检查状态决定下一步；需要详情时通过 `read` 工具加载完整报告。
+Feel 收到后检查状态决定下一步；需要详情时通过 `read` 加载完整报告。

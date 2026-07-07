@@ -38,6 +38,11 @@ Tester 通过 → Feel 触发归档 → Archiver 整理产出 → 提取知识�
 
 从操作记录（方案、代码 diff、审查条目、Bug 修复记录）中提取可复用的知识和经验，确定目标分类（architecture / patterns / troubleshooting / setup）和条目内容。
 
+### 步骤 4（NEW）：推进流水线状态
+归档完成后，通过 Feel 调用 `openfeel flow advance --stage <id> --to done`
+将对应阶段标记为完成。Archiver **不直接修改** flow.json，所有流水线状态
+变更通过 Feel + CLI 命令原子操作完成。
+
 ## 知识去重触发条件
 
 ### 必须触发去重（每次提取新知识条目前）

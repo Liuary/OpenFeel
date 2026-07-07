@@ -1,0 +1,56 @@
+# v4.1-stage-03 方案依赖声明
+# 供 Feel 调度前 glob 校验文件存在性
+#
+# 依赖类型: hard (必须完成) / soft (弱依赖，警告但可启动) / mutual_exclusion (串行)
+
+stages:
+  v4.1-stage-03:
+    deps: []
+    description: flow.json 多阶段独立状态机
+
+ops:
+  op-001:
+    file:
+      - src/core/pipeline-schema.ts
+    deps: { type: hard, on: [] }
+    description: PipelineSchema 重构 — 全局 phase 迁移到阶段内部
+
+  op-002:
+    file:
+      - src/core/flow-manager.ts
+    deps: { type: hard, on: [op-001] }
+    description: FlowManager 适配 — 全局 phase 到阶段级 phase 核心逻辑重写
+
+  op-003:
+    file:
+      - src/commands/flow.ts
+    deps: { type: hard, on: [op-002] }
+    description: CLI 命令适配 — flow advance --stage 必选 + flow status 按阶段展示
+
+  op-004:
+    file:
+      - .opencode/agents/feel.md
+    deps: { type: hard, on: [op-003] }
+    description: feel.md 路由更新 — 遍历 stages 找活跃阶段替换全局 phase
+
+  op-005:
+    file:
+      - .opencode/agents/planner.md
+      - .opencode/agents/archiver.md
+      - AGENTS.md
+    deps: { type: soft, on: [op-004] }
+    description: 其他 Agent 适配 — Planner/Archiver 通过 Feel 间接写 flow.json
+
+  op-006:
+    file:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+    deps: { type: hard, on: [op-001, op-002] }
+    description: 迁移脚本 — openfeel flow migrate 旧版→新版自动转换
+
+  op-007:
+    file:
+      - test/commands/flow-migrate.test.ts
+      - test/core/flow-manager.test.ts
+    deps: { type: hard, on: [op-002, op-003, op-006] }
+    description: 测试覆盖 — 多阶段并行推进 + 迁移脚本测试

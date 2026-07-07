@@ -73,12 +73,12 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
    - `skill` > 凭记忆推断 — 获取状态、查阅知识库等操作必须通过 skill 加载
 
 3. **职责边界**：跨 Agent 协作时，每个 Agent 仅在自己的职责边界内操作，不得越界：
-   - Planner 制定计划，不写代码
+   - Planner 制定计划，不写代码；不直写 flow.json（通过 Feel 写入）
    - Executor 按计划实现，不自行改计划
    - Reviewer 审查代码，不自查自改
    - Feel Tester 提交 Bug 和验收，不修复代码
    - 事务官 执行文件机械操作，不参与设计决策
-   - Archiver 归档和沉淀知识，不修改源码
+   - Archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过 Feel 写入）
 
 4. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / 事务官 / Archiver），通过 `task` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
 
@@ -96,6 +96,8 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 | Feel Tester | 测试官 | 推理模型 | subagent |
 | 事务官 | 事务官 | 快速模型 (Flash) | subagent |
 | Archiver | 归档官 | 推理模型 | subagent |
+
+> **写入约束**：Planner 和 Archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 `edit` 或 `write` flow.json。
 
 ## 动态规则
 

@@ -5,7 +5,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { FlowManager } from '../flow-manager.js';
+import { FlowManager, type PipelinePhase } from '../flow-manager.js';
 
 /** 操作方案 */
 export interface Scheme {
@@ -121,6 +121,7 @@ function syncToFlowJson(
     if (!flowData.stages[stageName]) {
       flowData.stages[stageName] = {
         name: stageName,
+        phase: 'plan_pending' as PipelinePhase,
         status: 'planned',
         deps: [],
         ops: {},

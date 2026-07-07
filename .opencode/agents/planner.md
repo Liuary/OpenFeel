@@ -25,6 +25,10 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 2. **工作阶段**：将每个分期拆解为可独立执行的工作阶段（stage）。
 3. **依赖声明**：明确各阶段的前置依赖关系（hard/soft/mutual_exclusion）。
 4. **三层计划**：维护「分期大纲 → 工作阶段 → 操作方案」三层体系。
+5. **禁止直写 flow.json**：计划制定/变更完成后，通过 Feel 调用
+   `openfeel flow advance --stage <id> --to <phase>` 推进流水线状态。
+   不得直接 `edit` 或 `write` flow.json 文件。计划产出写入
+   `.openfeel/plan/{stage}/plan.md`，由 Feel 读取后统一推进。
 
 ## 计划粒度判定标准
 
@@ -56,7 +60,9 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
   - 核心目标变更（与原计划解决的核心问题不同）
   - 阶段数变化 ≥ 2（新增或移除超过 2 个阶段）
   - ≥ 50% 的任务项被重新定义或替换
-  - 涉及 Agent 职责边界调整或流水线阶段变更
+   - 涉及 Agent 职责边界调整或流水线阶段变更
+
+> 计划被接受后，流水线状态的推进由 Feel 执行（通过 `openfeel flow advance --stage <id> --to <phase>`），Planner 不直接操作 flow.json。
 
 ## KB 检索增强
 

@@ -42,13 +42,22 @@ export function registerFlowCommand(program: Command): void {
       if (!options.verbose) {
         console.log(mgr.summary());
 
-        // 阶段耗时统计
+        // 各阶段 phase 展示
+        const data = mgr.getData();
+        if (data?.pipeline?.current?.stage && data.stages[data.pipeline.current.stage]) {
+          const curStage = data.pipeline.current.stage;
+          const curPhase = data.stages[curStage].phase;
+          console.log(`\n当前活跃阶段: ${curStage} (${curPhase})`);
+        }
+
+        // 阶段耗时统计（含 phase 显示）
         const allStats = mgr.getAllStageStats();
         if (Object.keys(allStats).length > 0) {
           console.log('\n阶段耗时:');
           for (const [stageId, s] of Object.entries(allStats)) {
             const duration = formatDuration(s.duration_ms);
-            console.log(`  ${stageId}: ${duration}${s.end_time ? '' : ' (进行中)'}`);
+            const stagePhase = data?.stages[stageId]?.phase ?? '';
+            console.log(`  ${stageId} [${stagePhase}]: ${duration}${s.end_time ? '' : ' (进行中)'}`);
           }
         }
         return;
@@ -58,8 +67,13 @@ export function registerFlowCommand(program: Command): void {
       const v = mgr.verboseSummary(n);
 
       // ── 基本摘要 ──
+      const mgrData = mgr.getData();
+      const stagePhase = mgrData?.pipeline?.current?.stage && mgrData.stages[mgrData.pipeline.current.stage]
+        ? mgrData.stages[mgrData.pipeline.current.stage].phase
+        : '(无)';
       console.log('OpenFeel 流水线状态（verbose）\n');
-      console.log(`当前阶段: ${v.basic.phase}`);
+      console.log(`全局状态: ${v.basic.phase}`);
+      console.log(`当前阶段: ${mgrData?.pipeline?.current?.stage ?? '(无)'} — 阶段阶段: ${stagePhase}`);
       console.log(`当前操作: ${v.basic.currentOp ?? '(无)'}`);
       console.log(`重试次数: ${v.basic.retryCount}`);
       console.log(`阶段数: ${v.basic.stagesCount}`);
@@ -163,7 +177,10 @@ export function registerFlowCommand(program: Command): void {
 
       // ── 当前状态 ──
       console.log('📍 当前状态');
-      console.log(`   阶段:  ${phase}`);
+      const curStagePhase = current?.stage && data?.stages[current.stage]
+        ? data.stages[current.stage].phase
+        : phase;
+      console.log(`   阶段:  ${curStagePhase}`);
       console.log(`   操作:  ${current ? `${current.stage}.${current.op}` : '(无)'}`);
       console.log(`   重试:  ${summary.retryCount} 次`);
       console.log('');
@@ -183,7 +200,7 @@ export function registerFlowCommand(program: Command): void {
           const bar = opsTotal > 0
             ? '█'.repeat(opsDone) + '░'.repeat(opsTotal - opsDone)
             : '(无操作)';
-          console.log(`   ${stageId}: ${bar} ${opsDone}/${opsTotal} ${marker}`);
+          console.log(`   ${stageId}: phase=${stageData.phase} ${bar} ${opsDone}/${opsTotal} ${marker}`);
         }
       }
       console.log('');
@@ -264,7 +281,7 @@ export function registerFlowCommand(program: Command): void {
       console.log('════════════════════════════════════════════');
     });
 
-  // flow current — 显示当前 phase + op + retry
+  // flow current — 显示全局状态 + stage + stage phase + op + retry
   flow
     .command('current')
     .description('显示当前阶段和操作')
@@ -274,10 +291,16 @@ export function registerFlowCommand(program: Command): void {
         console.log('流水线未初始化（flow.json 不存在）');
         return;
       }
-      const phase = mgr.getPhase();
+      const phase = mgr.getPhase();     // MetaPhase: active/paused/done
       const current = mgr.getCurrent();
       const summary = mgr.getSummary();
-      console.log(`阶段: ${phase}`);
+      const data = mgr.getData();
+      const stagePhase = current?.stage && data?.stages[current.stage]
+        ? data.stages[current.stage].phase
+        : '(无)';
+      console.log(`全局状态: ${phase}`);
+      console.log(`阶段: ${current?.stage ?? '(无)'}`);
+      console.log(`阶段阶段: ${stagePhase}`);
       console.log(`当前操作: ${current ? `${current.stage}.${current.op}` : '(无)'}`);
       console.log(`重试次数: ${summary.retryCount}`);
     });
@@ -292,15 +315,21 @@ export function registerFlowCommand(program: Command): void {
       console.log(store.summary());
     });
 
-  // flow advance --op <id> --to <phase> [--stage <id>] [--force]
+  // flow advance --stage <id> --to <phase> [--op <id>] [--force]
   flow
     .command('advance')
     .description('推进流水线阶段')
-    .option('--op <id>', '操作 ID（如 stage-01.op-001），全局阶段（如 done）可不传')
-    .requiredOption('--to <phase>', '目标阶段（如 plan_passed）')
-    .option('--stage <id>', '同步更新 stage 状态')
+    .option('--op <id>', '操作 ID（如 stage-01.op-001），仅用于日志/展示')
+    .requiredOption('--to <phase>', '目标阶段（如 exec_running）')
+    .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查）')
     .action((options: { op?: string; to: string; stage?: string; force?: boolean }) => {
+      // 自定义 --stage 必选校验（提供中文错误提示）
+      if (!options.stage) {
+        console.error('错误：--stage 参数必须指定阶段 ID（如 stage-03）');
+        process.exit(1);
+      }
+
       const mgr = createManager();
       if (!mgr.isLoaded()) {
         console.error('错误：flow.json 未初始化，请先运行 openfeel init');
@@ -336,41 +365,27 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
-      // 阶段跳跃保护（P2）：检查当前 phase 到目标 phase 是否存在直接路径
+      // 阶段跳跃保护：基于 stage phase 检查当前 phase 到目标 phase 是否存在直接路径
       if (!options.force) {
         const phaseResult = PipelinePhaseSchema.safeParse(options.to);
-        if (phaseResult.success && !mgr.hasTransition(options.to)) {
-          console.error(`该阶段跳转可能不合法，使用 --force 强制执行`);
+        if (phaseResult.success && !mgr.hasTransition(options.to, options.stage)) {
+          console.error(`错误: 阶段 "${options.stage}" 当前 phase 无法跳转到 "${options.to}"`);
+          console.error(`使用 --force 强制执行`);
           process.exit(1);
         }
       }
 
-      // 全局推进（无 opId）时跳过 canAdvance 检查
-      if (options.op) {
-        if (!mgr.canAdvance(options.op, options.to as PipelinePhase)) {
-          if (!options.force) {
-            console.error(`错误：无法从当前阶段推进到 "${options.to}"（不合法或 op 不存在）`);
-            console.error(`使用 --force 强制执行`);
-            process.exit(1);
-          }
-        }
-      }
-
       try {
-        mgr.advancePhase(options.op ?? null, options.to as PipelinePhase, options.stage, options.force ?? false);
+        mgr.advanceStagePhase(options.stage, options.to as PipelinePhase);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`错误：${msg}`);
         process.exit(1);
       }
       mgr.save();
+      console.log(`✓ 已推进: ${options.stage} → ${options.to}`);
       if (options.op) {
-        console.log(`✓ 已推进: ${options.op} → ${options.to}`);
-      } else {
-        console.log(`✓ 已全局推进 → ${options.to}`);
-      }
-      if (options.stage) {
-        console.log(`✓ 已同步更新 stage "${options.stage}" 状态`);
+        console.log(`  操作: ${options.op}`);
       }
     });
 
@@ -638,6 +653,77 @@ export function registerFlowCommand(program: Command): void {
           process.exit(1);
         }
       }
+
+      // 检测旧格式并建议迁移
+      if (mgr.isLoaded() && mgr.needsMigration()) {
+        console.log('\n💡 检测到旧版 flow.json 格式（全局 phase），建议运行:');
+        console.log('   openfeel flow migrate');
+        console.log('   查看迁移预览: openfeel flow migrate --dry-run');
+      }
+    });
+
+  // flow migrate [--dry-run] [--no-backup]
+  flow
+    .command('migrate')
+    .description('将旧版 flow.json（v4.0 全局 phase）迁移到新版格式（v4.1 阶段级 phase）')
+    .option('--dry-run', '仅检测预览，不实际写入文件')
+    .option('--no-backup', '跳过 .bak 文件生成（默认生成 flow.json.v4.0.bak）')
+    .action((options: { dryRun?: boolean; backup?: boolean }) => {
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.error('错误：flow.json 未初始化');
+        process.exit(1);
+      }
+
+      // 检测是否已为新格式
+      if (!mgr.needsMigration()) {
+        console.log('✓ 已是新版格式，无需迁移');
+        return;
+      }
+
+      // Commander 的 --no-backup 生成 backup=false（而非 noBackup=true）
+      const noBackup = options.backup === false;
+
+      // --dry-run 输出迁移预览
+      if (options.dryRun) {
+        console.log('[DRY-RUN 模式] 以下变更将被执行:\n');
+        const result = mgr.migrate(true, noBackup);
+        for (const change of result.changes) {
+          console.log(`  ${change}`);
+        }
+        if (result.migrated) {
+          console.log('\n（未实际修改文件，使用不带 --dry-run 执行以应用迁移）');
+        }
+        return;
+      }
+
+      // 执行迁移
+      const result = mgr.migrate(false, noBackup);
+
+      if (!result.migrated) {
+        // 非迁移失败场景（如已是新版格式）已在上方 return
+        for (const change of result.changes) {
+          if (change.includes('失败')) {
+            console.error(`  ${change}`);
+          } else {
+            console.log(`  ${change}`);
+          }
+        }
+        if (result.changes.some((c) => c.includes('失败'))) {
+          console.error('\n✗ 迁移失败');
+          process.exit(1);
+        }
+        return;
+      }
+
+      // 持久化
+      mgr.save();
+
+      console.log('迁移完成:\n');
+      for (const change of result.changes) {
+        console.log(`  ${change}`);
+      }
+      console.log('\n✓ flow.json 已迁移至新版格式');
     });
 
   // flow health [--quick]
@@ -695,6 +781,7 @@ export function registerFlowCommand(program: Command): void {
       console.log('');
       console.log('═══ 跨会话上下文恢复 ═══');
       console.log('');
+      console.log(`全局状态:   ${mgr.getPhase() ?? '(未知)'}`);
       console.log(`流水线阶段: ${recovery.phase ?? '(未知)'}`);
       console.log(`当前操作:   ${recovery.currentOp ?? '(无)'}`);
       console.log(`阶段状态:   ${recovery.stageStatus}`);
@@ -730,7 +817,7 @@ export function registerFlowCommand(program: Command): void {
       console.log('═══════════════════════════');
     });
 
-  // flow wizard — 交互式推进流水线
+  // flow wizard — 交互式推进流水线（支持多 stage 选择，基于 stage phase）
   flow
     .command('wizard')
     .description('交互式流水线向导，逐步推进阶段')
@@ -753,33 +840,70 @@ export function registerFlowCommand(program: Command): void {
           // 刷新当前状态
           mgr.load();
 
-          const phase = mgr.getPhase();
+          const metaPhase = mgr.getPhase();   // MetaPhase: active/paused/done
           const current = mgr.getCurrent();
           const summary = mgr.getSummary();
+          const data = mgr.getData();
 
-          // 到达终态时自动退出
-          if (phase === 'done') {
+          // 终态判断：pipeline.phase === 'done' 或所有 stage phase 均为 'done'
+          const allStagesDone = data && Object.keys(data.stages).length > 0
+            ? Object.values(data.stages).every(s => s.phase === 'done')
+            : false;
+          if (metaPhase === 'done' || allStagesDone) {
             console.log('🎉 流水线已完成！');
             return;
           }
 
+          // 确定当前推进的 stage
+          const stages = data ? Object.keys(data.stages) : [];
+          let currentStage = current?.stage;
+
+          if (stages.length === 0) {
+            console.log('无可用阶段。');
+            return;
+          }
+
+          if (stages.length > 1) {
+            // 多个 stage 时让用户选择
+            currentStage = await select({
+              message: '选择要推进的阶段',
+              choices: stages.map(s => ({
+                name: s + (s === current?.stage ? ' (当前)' : ''),
+                value: s,
+              })),
+            });
+          } else {
+            currentStage = stages[0];
+          }
+
+          if (!currentStage || !data?.stages[currentStage]) {
+            console.log('选择的阶段不可用。');
+            return;
+          }
+
+          const stagePhase = data.stages[currentStage].phase;
+
           // 显示当前状态
           console.log('\n═══ 流水线状态 ═══');
-          console.log(`阶段: ${phase} (${phaseLabels[phase ?? ''] ?? '未知'})`);
-          console.log(`当前操作: ${current ? `${current.stage}.${current.op}` : '(无)'}`);
+          console.log(`全局状态: ${metaPhase}`);
+          console.log(`阶段: ${currentStage}`);
+          console.log(`阶段阶段: ${stagePhase} (${phaseLabels[stagePhase] ?? '未知'})`);
+          if (current && current.stage === currentStage) {
+            console.log(`当前操作: ${current.stage}.${current.op}`);
+          }
           console.log(`重试次数: ${summary.retryCount}`);
           console.log(`待处理审查: ${summary.reviewItemsOpen}`);
           console.log('═══════════════════\n');
 
-          // 获取可达的下一步阶段
-          const availablePhases = mgr.getAvailablePhases();
+          // 获取可达的下一步阶段（基于选定 stage 的 phase）
+          const availablePhases = mgr.getAvailablePhases(currentStage);
 
           if (availablePhases.length === 0) {
             console.log('当前阶段无可达的下一步操作。');
             return;
           }
 
-          // 构建选项列表（含退出选项，类型扩展支持 '__exit__'）
+          // 构建选项列表（含退出选项）
           type WizardChoice = { name: string; value: PipelinePhase | '__exit__' };
           const choices: WizardChoice[] = availablePhases.map((p, idx) => ({
             name: `${idx + 1}. ${p} → ${phaseLabels[p] ?? p}`,
@@ -805,18 +929,16 @@ export function registerFlowCommand(program: Command): void {
           }
 
           // 预览变更
-          const prevLabel = phaseLabels[phase ?? ''] ?? phase;
+          const prevLabel = phaseLabels[stagePhase] ?? stagePhase;
           const nextLabel = phaseLabels[targetPhase] ?? targetPhase;
-          console.log(`\n预览: 将阶段从 ${phase} (${prevLabel}) 推进到 ${targetPhase} (${nextLabel})`);
-
-          const confirmChoices = [
-            { name: '确认推进', value: 'yes' },
-            { name: '取消', value: 'no' },
-          ];
+          console.log(`\n预览: 将阶段 ${currentStage} 从 ${stagePhase} (${prevLabel}) 推进到 ${targetPhase} (${nextLabel})`);
 
           const confirmed = await select({
             message: '确认执行此操作？',
-            choices: confirmChoices,
+            choices: [
+              { name: '确认推进', value: 'yes' },
+              { name: '取消', value: 'no' },
+            ],
           });
 
           if (confirmed !== 'yes') {
@@ -824,11 +946,10 @@ export function registerFlowCommand(program: Command): void {
             continue;
           }
 
-          // 执行推进
-          const currentOp = current ? `${current.stage}.${current.op}` : null;
-          mgr.advancePhase(currentOp, targetPhase);
+          // 执行推进（使用 advanceStagePhase）
+          mgr.advanceStagePhase(currentStage, targetPhase);
           mgr.save();
-          console.log(`\n✓ 已推进: ${phase} → ${targetPhase}`);
+          console.log(`\n✓ 已推进: ${currentStage}: ${stagePhase} → ${targetPhase}`);
 
           // 到达终态时退出循环
           if (targetPhase === 'done') {

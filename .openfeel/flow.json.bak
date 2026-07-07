@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-06-25T16:09:43.998Z"
+    "updated": "2026-07-07T15:22:08.060Z"
   },
   "pipeline": {
     "phase": "active",
@@ -12,7 +12,15 @@
     },
     "retry": 0
   },
-  "stages": {},
+  "stages": {
+    "stage-03": {
+      "name": "stage-03",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [],
+      "ops": {}
+    }
+  },
   "reviews": [],
   "log": []
 }

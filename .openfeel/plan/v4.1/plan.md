@@ -236,6 +236,20 @@ v4.0 将 Agent 从 15 个精简到 7 个，打通了核心流水线，但审查�
 | 4.2 | feel-tester.md | vitest/npm 替换为通用描述，Bug 模板保持 |
 | 4.3 | schemer.md | 版本声明示例加"例如在 Node.js 项目中"上下文 |
 | 4.4 | executor.md | 确认正文无语言特化（model 字段仅 frontmatter，正确） |
+| 4.5 | 各 Agent | **信息落档约束**：关键操作必须落文件，不可仅存在对话中。计划→plan.md，方案→ops/，状态→status.md，经验→kb/，进度→dev_last.md。禁止"只说不写"。 |
+
+#### 信息落档规则
+
+| Agent | 必须落档的内容 |
+|:--|:--|
+| Feel | 阶段推进 → status.md；调度决策 → 日志 |
+| Planner | 产出 → plan.md / roadmap |
+| Schemer | 产出 → ops/ + deps.yaml |
+| Executor | 自测报告 → 私域日志；修正记录 → op 文件 |
+| Reviewer | REV 条目 → 私域 code_review/ |
+| Tester | Bug 条目 → 私域 bugs/；验收记录 → status.md |
+| Archiver | 知识条目 → kb/；归档日志 → 公共日志 |
+| 事务官 | 操作记录 → 调用方指定的日志路径 |
 
 ---
 

@@ -11,6 +11,7 @@
 - [x] 4.2 feel-tester.md: vitest/npm→通用描述
 - [x] 4.3 schemer.md: vitest示例加"例如在Node.js项目中"上下文
 - [x] 4.4 executor.md: 确认无语言特化
+- [x] 4.5 各Agent: 信息落档约束 — feel.md注意事项新增"信息落档"节
 
 ## 修改摘要
 

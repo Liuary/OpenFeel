@@ -1,7 +1,7 @@
 # v4.2-stage-01 代码审查
 
 ## REV-001: kb/index.md 概览表源文件数与实际不一致
-- **状态**：pending
+- **状态**：closed
 - **优先级**：high
 - **提出人**：Reviewer
 - **提出时间**：2026-07-08 23:56
@@ -17,15 +17,17 @@ Archiver 的索引维护逻辑虽然会在下次归档时修正，但初始值�
 ### 处理记录
 | 时间 | 操作者 | 说明 | Commit |
 |------|--------|------|--------|
+| 2026-07-09 10:00 | Executor | `kb/index.md` 38→39 已修正 | 235b6d7 |
 
 ### 验收记录
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
+| 2026-07-09 | Reviewer | ✅ 通过 | glob 验证 39 个 TS 文件；CLI 输出 `TS 源文件: 39 个`；与 kb/index.md 一致 |
 
 ---
 
 ## REV-002: plan 目录计数 glob 模式错误，始终输出 0
-- **状态**：pending
+- **状态**：closed
 - **优先级**：high
 - **提出人**：Reviewer
 - **提出时间**：2026-07-08 23:56
@@ -49,15 +51,17 @@ const planDirEntries = fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: 
 ### 处理记录
 | 时间 | 操作者 | 说明 | Commit |
 |------|--------|------|--------|
+| 2026-07-09 10:00 | Executor | 添加 `onlyDirectories: true`，移除尾部斜杠 | 235b6d7 |
 
 ### 验收记录
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
+| 2026-07-09 | Reviewer | ✅ 通过 | glob 验证返回 8 个目录；CLI 输出 `工作计划（8 个版本）`；与同行 skills 统计 `onlyDirectories` 模式一致 |
 
 ---
 
 ## REV-003: Archiver 核心职责编号重复（两个 1.）
-- **状态**：pending
+- **状态**：closed
 - **优先级**：medium
 - **提出人**：Reviewer
 - **提出时间**：2026-07-08 23:56
@@ -75,10 +79,12 @@ const planDirEntries = fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: 
 ### 处理记录
 | 时间 | 操作者 | 说明 | Commit |
 |------|--------|------|--------|
+| 2026-07-09 10:00 | Executor | 1→2, 2→3, 3→4 重新编号 | 235b6d7 |
 
 ### 验收记录
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
+| 2026-07-09 | Reviewer | ✅ 通过 | archiver.md 编号 1-4 无重复；update.ts 模板同步更新 |
 
 ---
 
@@ -110,13 +116,13 @@ op-002 方案自测清单第 10 项仅要求"不会崩溃"，但更好的体验�
 
 | 状态 | 数量 |
 |------|------|
-| pending | 4 |
+| pending | 1 |
 | fixing | 0 |
 | resolved | 0 |
-| closed | 0 |
+| closed | 3 |
 
 | 优先级 | 数量 | blocking |
 |--------|------|----------|
-| high | 2 | true |
-| medium | 1 | true |
-| low | 1 | false |
+| high | 2 | true (已 closed) |
+| medium | 1 | true (已 closed) |
+| low | 1 | false (pending) |

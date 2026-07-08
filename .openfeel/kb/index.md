@@ -9,7 +9,7 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 38 个 .ts 文件（src/） |
+| 源文件 | 39 个 .ts 文件（src/） |
 | Agent 数 | 8 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |

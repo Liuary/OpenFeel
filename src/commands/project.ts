@@ -105,7 +105,7 @@ function outputProjectOverview(cwd: string): void {
 
   if (openfeelExists) {
     const kbFiles = fg.sync(['kb/*.md'], { cwd: openfeelDir }).length;
-    const planDirEntries = fg.sync(['plan/*/'], { cwd: openfeelDir }).length;
+    const planDirEntries = fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true }).length;
     const reviewFiles = fg.sync(['code_review/*.md'], { cwd: openfeelDir }).length;
     const bugDirExists = existsSync(resolve(openfeelDir, 'bugs'));
     console.log('   .openfeel/');

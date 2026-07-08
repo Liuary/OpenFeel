@@ -2,17 +2,22 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-06-25T16:09:43.998Z"
+    "updated": "2026-07-09T12:00:00.000Z"
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v4-stage-01",
+      "stage": "v4.2",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
+  "stages": {
+    "v4.2": {
+      "phase": "review_passed",
+      "ops": {}
+    }
+  },
   "reviews": [],
   "log": []
 }

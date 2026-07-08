@@ -1,0 +1,20 @@
+# v4.2-stage-01 操作方案依赖声明
+# 两个 op 独立，可并行执行
+
+ops:
+  op-001:
+    file: op-001.md
+    title: 增强 kb/index.md 项目快速概览节
+    dependencies: []                          # 无前置，可立即启动
+    batch: 1                                  # 并行批次 1
+
+  op-002:
+    file: op-002.md
+    title: 新增 openfeel project overview CLI 命令
+    dependencies: []                          # 无前置，可立即启动
+    batch: 1                                  # 并行批次 1（与 op-001 无文件冲突）
+
+# 并行安全判定：
+# - op-001 修改 .openfeel/kb/index.md + .opencode/agents/archiver.md
+# - op-002 新增 src/commands/project.ts + 修改 src/cli/index.ts
+# - 两 op 文件集无交集 → 可并行

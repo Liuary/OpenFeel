@@ -1,80 +1,59 @@
 # op-002 自测报告
 
+## 基本信息
+
+| 字段 | 值 |
+|------|-----|
+| 操作 ID | op-002 |
+| 方案文件 | `.openfeel/plan/v4.2/ops/op-002.md` |
+| 执行时间 | 2026-07-08 |
+| 负责 Agent | Executor |
+| 前置校验方式 | CLI `openfeel flow health --quick` |
+
 ## 前置校验结果
 
-| 项目 | 状态 |
+| 项目 | 结果 |
 |------|------|
-| 方式 | CLI (`openfeel flow health --quick`) |
-| phase | `review_passed`（已通过 openfeel flow repair 修正为 `active`） |
-| 结论 | 通过 ✅ |
-| 原因 | flow.json 可读，phase 合法（修复后） |
-
-## 方案实施记录
-
-| 步骤 | 描述 | 状态 |
-|------|------|------|
-| 1 | 读取方案文件 | ✅ |
-| 2 | 修改导入 — 新增 MetaPhaseSchema、META_PHASES | ✅ |
-| 3 | 修改 defaultFlowData() — pipeline.phase 默认值改为 'active' | ✅ |
-| 4 | 新增 advanceStagePhase(stageName, phase) 方法 | ✅ |
-| 5 | 标记旧 advancePhase 为 @deprecated，委托调用 advanceStagePhase | ✅ |
-| 6 | 适配 validate() — pipeline.phase 用 MetaPhaseSchema，新增 stages phase 校验 | ✅ |
-| 7 | 适配 recoverContext() — phase 改为从 stage 读取 | ✅ |
-| 8 | 适配 summary() / getSummary() — 展示 MetaPhase，新增当前阶段 phase 行 | ✅ |
-| 9 | 适配 canAdvance() — 从 opId 解析 stage phase | ✅ |
-| 10 | 适配 hasTransition() / getAvailablePhases() — 接受可选 stageName | ✅ |
-| 11 | 适配 addAutoFixReview() — 前置条件改为检查对应 stage phase | ✅ |
-| 12 | 适配 healthCheck().checkFlowJson() — MetaPhase + stage phase 校验 | ✅ |
-| 13 | 适配 repair() — MetaPhase + stage phase 修复 | ✅ |
-| 14 | 适配 checkCrossFileConsistency() — 确认已正确引用 stage status（无需改） | ✅ |
-| 15 | 适配 mapPhaseToAgent() — 输入参数已为 PipelinePhase（无需改） | ✅ |
+| 方式 | CLI health --quick |
+| Phase | `active`（非标准枚举值，但 CLI 校验通过） |
+| 结论 | 通过（含偏差） |
+| 偏差说明 | flow.json phase 为 `"active"` 而非标准 phase 枚举值；flow.json current.stage 为 `"v4-stage-01"` 而非方案中的 `"v4.2-stage-01"`。但 health check 通过，按 Feel 指示继续执行。 |
 
 ## 自测清单验证
 
-| # | 验证项 | 结果 |
-|---|--------|------|
-| 1 | `FlowManager.initFlow()` 创建的 flow.json 中 `pipeline.phase` 为 `"active"` | ✅ |
-| 2 | `advanceStagePhase('stage-01', 'exec_running')` 正确更新 `stages['stage-01'].phase` | ✅ |
-| 3 | `advanceStagePhase` 校验非法 stageName 时抛出清晰错误 | ✅ |
-| 4 | 旧 `advancePhase` 调用可工作，输出 console.warn 提示 | ✅ |
-| 5 | `validate()` 报告 stage phase 非法值 | ✅ |
-| 6 | `summary()` 展示 `active/paused/done` 而非旧 15 值 | ✅ |
-| 7 | `recoverContext().phase` 返回当前活跃 stage 的 phase | ✅ |
-| 8 | `canAdvance()` 基于 stage.phase 校验 | ✅ |
-| 9 | 健康检查通过（`openfeel flow health`） | ✅ |
-| 10 | 现有 flow-manager 测试通过（74/74） | ✅ |
+| # | 检查项 | 预期 | 实际 | 结果 |
+|---|--------|------|------|:----:|
+| 1 | `src/commands/project.ts` 存在，含 `registerProjectCommand` 导出 | 文件存在 | ✅ 已创建 | ✅ |
+| 2 | `src/cli/index.ts` import + register `registerProjectCommand` | 已追加 | ✅ import + 调用已追加 | ✅ |
+| 3 | `npm run build` 编译通过，无 TypeScript 错误 | 编译通过 | ✅ 编译通过 | ✅ |
+| 4 | `project overview` 输出含五个节 | 基本信息/目录结构/统计信息/入口路径/技术栈 | ✅ 全部包含 | ✅ |
+| 5 | TS 源文件数 ≥ 38 | ≥ 38 | 39 | ✅ |
+| 6 | Agent 定义数 = 8 | 8 | 8 | ✅ |
+| 7 | CLI 命令模块数 ≥ 10（含 project.ts） | ≥ 10 | 11 | ✅ |
+| 8 | `project --help` 显示 overview 子命令 | 显示 | ✅ 显示 | ✅ |
+| 9 | `project overview --help` 显示描述 | 显示 | ✅ 显示 | ✅ |
+| 10 | 项目根目录外运行不崩溃 | 不崩溃 | ✅ C:\ 运行正常降级 | ✅ |
 
-## 构建验证
+## 偏差记录
 
-- `npm run build` 通过 ✅
-- 编译无错误 ✅
-- 模板一致性校验通过 ✅
+| 类型 | 描述 |
+|------|------|
+| 前置校验偏差 | flow.json phase 为 `"active"` 非标准枚举值，但 CLI health check 通过 |
+| 前置校验偏差 | flow.json current.stage 为 `"v4-stage-01"` 而非方案标题 `"v4.2-stage-01"` |
+| 实现修正 | 方案中 `import { globSync } from 'fast-glob'` 在 ESM 中不可用，fast-glob 为 CommonJS 模块，修正为 `import fg from 'fast-glob'` 默认导入 |
+| 实现修正 | `skills/*/` 在 Windows 上不匹配目录，修正为 `skills/*` + `onlyDirectories: true` |
+| 实现改进 | `countKbEntries` 中条件从 `cells.length >= 5` 改为 `>= 7`，避免误解析详细表格中的数字 |
+| 跳步违规 | 无 |
 
-## 方案一致性回写
+## 方案一致性比对
 
-### 声明产出
-- `src/core/flow-manager.ts`
+| 声明产出 | 操作 | 实际产出 | 比对结果 |
+|----------|------|----------|:--------:|
+| `src/commands/project.ts` | 新增 | ✅ 已创建 | 一致 |
+| `src/cli/index.ts` | 修改（追加 import + register） | ✅ import + registerProjectCommand(program) 已追加 | 一致 |
 
-### 实际修改文件
-| 文件 | 类型 | 状态 |
-|------|------|------|
-| `src/core/flow-manager.ts` | 方案产出 | ✅ 一致 |
-| `src/core/plan/scheme.ts` | 编译修复（缺少 phase 字段） | ⚠️ 超范围（须添加 phase 和 PipelinePhase 导入以通过编译） |
-| `test/core/flow-manager.test.ts` | 测试更新 | ⚠️ 超范围（合理更新测试以适配新 API） |
-| `test/core/init.test.ts` | 测试更新 | ⚠️ 超范围（单行预期值更新） |
+**比对结论**：实际产出与声明产出一致，无遗漏无超范围。
 
-### 偏差记录
-- 超范围修改 `scheme.ts`：缺 `phase` 字段导致 stage 创建时编译失败，添加了 `phase: 'plan_pending'` 字段和 `PipelinePhase` 导入
-- 超范围修改测试文件：按方案所述"或合理更新"调整测试预期值
-- 无跳步违规
+## 结论
 
-## 修正记录表
-
-| 时间 | 文件 | 原内容 | 新内容 | 原因 |
-|------|------|--------|--------|------|
-| 本次 | `src/core/flow-manager.ts` | pipeline.phase 使用 PipelinePhaseSchema | 使用 MetaPhaseSchema | 全局 phase 改为 MetaPhase |
-| 本次 | `src/core/flow-manager.ts` | advancePhase 直接操作 pipeline.phase | advancePhase 委托 advanceStagePhase | 阶段级 phase 管理 |
-| 本次 | `src/core/flow-manager.ts` | 新增 advanceStagePhase、fuzzyCorrectMetaPhase、resolveCurrentPhase | — | 新增 API |
-| 本次 | `src/core/plan/scheme.ts` | StageData 缺少 phase | 添加 phase: 'plan_pending' | 编译修复 |
-| 本次 | `test/core/flow-manager.test.ts` | 测试使用 PipelinePhase 作为 pipeline.phase | 改用 MetaPhase | API 变更适配 |
-| 本次 | `test/core/init.test.ts` | 预期 pipeline.phase='plan_pending' | 改为 'active' | API 变更适配 |
+所有 10 项自测项通过，方案一致性比对无偏差。可进入审查阶段。

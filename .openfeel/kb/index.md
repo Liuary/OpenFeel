@@ -2,6 +2,19 @@
 
 > 项目知识库总索引，按分类组织。Agent 加载 `check-kb` 技能时自动读取本文件。
 
+## 项目快速概览
+
+| 维度 | 内容 |
+|------|------|
+| 定位 | AI Agent 开发流程治理 CLI 工具 |
+| 语言 | TypeScript (Node.js ≥20) |
+| 核心依赖 | Commander, Zod, YAML, fast-glob |
+| 源文件 | 38 个 .ts 文件（src/） |
+| Agent 数 | 8 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官） |
+| 模块入口 | src/index.ts → src/cli/index.ts |
+| 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
+| 最近更新 | 2026-07-08（归档时自动更新此字段） |
+
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |

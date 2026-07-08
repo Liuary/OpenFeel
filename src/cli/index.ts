@@ -30,6 +30,7 @@ import { registerInstructionsCommand } from '../commands/instructions.js';
 import { registerUpdateCommand } from '../commands/update.js';
 import { registerKnowledgeCommand } from '../commands/knowledge.js';
 import { registerStageCommand } from '../commands/stage.js';
+import { registerProjectCommand } from '../commands/project.js';
 
 registerInitCommand(program);
 registerFlowCommand(program);
@@ -41,6 +42,7 @@ registerInstructionsCommand(program);
 registerUpdateCommand(program);
 registerKnowledgeCommand(program);
 registerStageCommand(program);
+registerProjectCommand(program);
 
 export { program };
 export { startRepl } from './repl.js';

@@ -375,6 +375,15 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
+      // 安全提示：跳过审查直接 done
+      const SKIP_WARN_PHASES: PipelinePhase[] = ['exec_running', 'review_pending'];
+      if (options.to === 'done' && options.stage) {
+        const stage = (mgr.getData()?.stages || {})[options.stage];
+        if (stage && SKIP_WARN_PHASES.includes(stage.phase as PipelinePhase)) {
+          console.warn('[!] 跳过审查阶段直接标记 done，确认继续');
+        }
+      }
+
       try {
         mgr.advanceStagePhase(options.stage, options.to as PipelinePhase);
       } catch (err: unknown) {

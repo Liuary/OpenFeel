@@ -111,6 +111,7 @@ Feel 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，确保深度理�
 - 阶段状态更新须通过 `openfeel stage` 命令（`status`/`set`/`task`），禁止直接 `edit` status.md。
 - 遇到不确定情况时，向用户说明并暂停自动推进。
 - 流水线全局 phase（`active`/`paused`/`done`）仅作为元信息，调度决策必须基于阶段 phase。
+- 多步骤任务（≥3 步）开始时必须创建 `todowrite` 列表，中途更新进度。禁止"做完才补"。
 
 ## 信息落档
 

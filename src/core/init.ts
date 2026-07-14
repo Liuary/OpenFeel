@@ -13,7 +13,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { createWorkspace } from './workspace/structure.js';
-import { ensureInfoJson } from './workspace/identity.js';
+import { ensureInfoJson, isFirstUse, getGlobalConfig, setGlobalConfig, DEFAULT_GLOBAL_CONFIG } from './workspace/identity.js';
 import { writeDefaultConfig } from './config.js';
 import { FlowManager } from './flow-manager.js';
 import { DEV_CORE_TEMPLATE, CURRENT_TEMPLATE } from './templates.js';
@@ -68,6 +68,55 @@ function writeLang(projectPath: string, lang: 'zh-CN' | 'en'): void {
   }
 }
 
+/**
+ * 确保全局配置文件存在。
+ * 首次使用时提示用户选择全局默认语言，非交互环境默认 zh-CN。
+ * 仅当全局配置文件不存在时触发。
+ */
+async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
+  if (!isFirstUse()) {
+    // 已配置，返回现有全局语言
+    return getGlobalConfig().lang;
+  }
+
+  // 非交互环境（CI/CD / 无 TTY）
+  if (!process.stdout.isTTY) {
+    console.log('首次使用 OpenFeel：检测到非交互环境，全局默认语言设置为 zh-CN。');
+    console.log('使用 openfeel config set lang <zh-CN|en> 可修改。');
+    setGlobalConfig({ ...DEFAULT_GLOBAL_CONFIG, lang: 'zh-CN' });
+    return 'zh-CN';
+  }
+
+  // 交互环境：中英双语提示
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    console.log('\n🌐 欢迎使用 OpenFeel！请选择全局默认语言');
+    console.log('   Welcome to OpenFeel! Please select your global default language:');
+    console.log('');
+    console.log('   1. English (en)');
+    console.log('   2. 中文 (zh-CN)');
+    console.log('');
+
+    rl.question('请输入选项 (1/2) / Enter choice (1/2) [2]: ', (answer) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      const lang: 'zh-CN' | 'en' =
+        (trimmed === '1' || trimmed === 'en' || trimmed === 'english') ? 'en' : 'zh-CN';
+
+      setGlobalConfig({ ...DEFAULT_GLOBAL_CONFIG, lang });
+      console.log(lang === 'en'
+        ? '\n✓ Global language set to English. You can change it later with: openfeel config set lang'
+        : '\n✓ 全局语言已设置为中文。后续可通过以下命令修改：openfeel config set lang');
+      console.log('');
+      resolve(lang);
+    });
+  });
+}
+
 /** 初始化结果 */
 export interface InitResult {
   created: string[]; // 创建的目录列表
@@ -108,6 +157,9 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   const created: string[] = [];
   const updated: string[] = [];
 
+  // 0. 确保全局配置存在（首次使用时交互选择语言）
+  await ensureGlobalConfig();
+
   // 1. 创建 .openfeel/ 目录结构（含 plan/, stages/, roadmap/, dev/note/, 等）
   const dirs = createWorkspace(projectPath);
   created.push(...dirs);
@@ -142,7 +194,8 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
     created.push('.openfeel/.info.json');
   }
 
-  // 4a. 语言选择：CLI --lang 参数 > 交互式选择 > 默认 zh-CN
+  // 4a. 语言选择：CLI --lang 参数 > 交互式选择 > 全局默认语言
+  const globalLang = getGlobalConfig().lang;
   let selectedLang: 'zh-CN' | 'en';
   if (cliLang === 'en' || cliLang === 'zh-CN') {
     selectedLang = cliLang;

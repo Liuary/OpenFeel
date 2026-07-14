@@ -1913,9 +1913,7 @@ export class FlowManager {
       renameSync(tmpPath, this.filePath);
     }
 
-    if (!modified && changes.length === 0) {
-      changes.push('未检测到需要修复的问题');
-    }
+    // changes 在无问题时保持空数组，CLI 层通过 changes.length === 0 判断"没问题"
 
     return { fixed: modified || recovered, changes, recovered };
   }
@@ -1950,18 +1948,18 @@ export class FlowManager {
    * @param noBackup 跳过 .bak 备份
    * @returns 迁移结果
    */
-  migrate(dryRun: boolean = false, noBackup: boolean = false): { migrated: boolean; changes: string[] } {
+  migrate(dryRun: boolean = false, noBackup: boolean = false): { migrated: boolean; changes: string[]; failed: boolean } {
     const changes: string[] = [];
 
     if (!this.data) {
       changes.push('flow.json 未加载，无法迁移');
-      return { migrated: false, changes };
+      return { migrated: false, changes, failed: true };
     }
 
     // 已是新版格式
     if (!this.needsMigration()) {
       changes.push('已是新版格式，无需迁移');
-      return { migrated: false, changes };
+      return { migrated: false, changes, failed: false };
     }
 
     const oldPhase = this.data.pipeline.phase as unknown as string;
@@ -1978,7 +1976,7 @@ export class FlowManager {
         changes.push(`已备份旧文件: flow.json.v4.0.bak`);
       } catch (e) {
         changes.push(`备份失败: ${(e as Error).message}`);
-        return { migrated: false, changes };
+        return { migrated: false, changes, failed: true };
       }
     }
 
@@ -2034,7 +2032,7 @@ export class FlowManager {
       });
     }
 
-    return { migrated: true, changes };
+    return { migrated: true, changes, failed: false };
   }
 
   // ═══ 健康检查 ═══

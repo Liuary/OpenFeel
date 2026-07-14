@@ -736,7 +736,7 @@ export function registerFlowCommand(program: Command): void {
       } else {
         if (options.dryRun && result.changes.length > 0) {
           console.log('\n' + t('flow.repair.dryRunHint', lang));
-        } else if (result.changes.length === 1 && result.changes[0] === '未检测到需要修复的问题') {
+        } else if (!result.recovered && result.changes.length === 0) {
           console.log('\n' + t('flow.repair.noFix', lang));
         } else {
           console.error('\n' + t('flow.repair.fixFailed', lang));
@@ -794,13 +794,9 @@ export function registerFlowCommand(program: Command): void {
       if (!result.migrated) {
         // 非迁移失败场景（如已是新版格式）已在上方 return
         for (const change of result.changes) {
-          if (change.includes('失败')) {
-            console.error(`  ${change}`);
-          } else {
-            console.log(`  ${change}`);
-          }
+          console.log(`  ${change}`);
         }
-        if (result.changes.some((c) => c.includes('失败'))) {
+        if (result.failed) {
           console.error('\n' + t('flow.migrate.failed', lang));
           process.exit(1);
         }

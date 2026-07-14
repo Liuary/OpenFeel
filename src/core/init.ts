@@ -84,7 +84,7 @@ async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
   // 非交互环境（CI/CD / 无 TTY）
   if (!process.stdout.isTTY) {
     console.log('首次使用 OpenFeel：检测到非交互环境，全局默认语言设置为 zh-CN。');
-    console.log('使用 openfeel config set lang <zh-CN|en> 可修改。');
+    console.log('使用 openfeel config set-lang <zh-CN|en> 可修改。');
     setGlobalConfig({ ...DEFAULT_GLOBAL_CONFIG, lang: 'zh-CN' });
     return 'zh-CN';
   }
@@ -111,8 +111,8 @@ async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
 
       setGlobalConfig({ ...DEFAULT_GLOBAL_CONFIG, lang });
       console.log(lang === 'en'
-        ? '\n✓ Global language set to English. You can change it later with: openfeel config set lang'
-        : '\n✓ 全局语言已设置为中文。后续可通过以下命令修改：openfeel config set lang');
+        ? '\n✓ Global language set to English. You can change it later with: openfeel config set-lang'
+        : '\n✓ 全局语言已设置为中文。后续可通过以下命令修改：openfeel config set-lang');
       console.log('');
       resolve(lang);
     });

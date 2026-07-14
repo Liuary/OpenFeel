@@ -1,8 +1,8 @@
 /**
  * config 命令注册
- * openfeel config get lang        — 显示全局默认语言
- * openfeel config set lang <v>    — 修改全局默认语言
- * openfeel config list projects   — 列出项目路径→语言映射
+ * openfeel config get-lang        — 显示全局默认语言
+ * openfeel config set-lang <v>    — 修改全局默认语言
+ * openfeel config list-projects   — 列出项目路径→语言映射
  */
 import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
@@ -15,9 +15,9 @@ import { t, getCliLang } from '../core/i18n.js';
 export function registerConfigCommand(program: Command): void {
   const configCmd = program.command('config');
 
-  // openfeel config get lang — 显示全局默认语言
+  // openfeel config get-lang — 显示全局默认语言
   configCmd
-    .command('get lang')
+    .command('get-lang')
     .description(t('config.get.lang', getCliLang(process.cwd())))
     .action(() => {
       const lang = getCliLang(process.cwd());
@@ -25,9 +25,9 @@ export function registerConfigCommand(program: Command): void {
       console.log(t('config.get.lang', lang, { lang: config.lang }));
     });
 
-  // openfeel config set lang <lang> — 修改全局默认语言
+  // openfeel config set-lang <lang> — 修改全局默认语言
   configCmd
-    .command('set lang <lang>')
+    .command('set-lang <lang>')
     .description('修改全局默认语言 (zh-CN 或 en)')
     .action((lang: string) => {
       const cliLang = getCliLang(process.cwd());
@@ -41,9 +41,9 @@ export function registerConfigCommand(program: Command): void {
       console.log(t('config.set.ok', cliLang, { lang }));
     });
 
-  // openfeel config list projects — 列出项目路径→语言映射
+  // openfeel config list-projects — 列出项目路径→语言映射
   configCmd
-    .command('list projects')
+    .command('list-projects')
     .description('列出所有已记录的项目路径→语言映射')
     .action(() => {
       const lang = getCliLang(process.cwd());

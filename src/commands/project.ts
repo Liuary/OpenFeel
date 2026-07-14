@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import fg from 'fast-glob';
+import { t, getCliLang } from '../core/i18n.js';
 
 export function registerProjectCommand(program: Command): void {
   const project = program
@@ -23,6 +24,8 @@ export function registerProjectCommand(program: Command): void {
 }
 
 function outputProjectOverview(cwd: string): void {
+  const lang = getCliLang(cwd);
+
   // ── 读取项目基本信息 ──
   const pkgPath = resolve(cwd, 'package.json');
   let projectName = 'unknown';
@@ -68,20 +71,20 @@ function outputProjectOverview(cwd: string): void {
 
   // ── 输出结构化概览 ──
   console.log('');
-  console.log('╔══════════════════════════════════════════╗');
-  console.log('║     OpenFeel 项目结构化概览              ║');
-  console.log('╚══════════════════════════════════════════╝');
+  console.log(`╔══════════════════════════════════════════╗`);
+  console.log(`║     ${t('project.overview.title', lang).padEnd(40)}║`);
+  console.log(`╚══════════════════════════════════════════╝`);
   console.log('');
 
   // 📋 基本信息
-  console.log('📋 基本信息');
-  console.log(`   项目名: ${projectName} (v${projectVersion})`);
-  console.log(`   定位:   ${projectDesc}`);
-  console.log(`   语言:   TypeScript (Node.js)`);
+  console.log(t('project.overview.basicInfo', lang));
+  console.log(`   ${t('project.overview.projectName', lang)}: ${projectName} (v${projectVersion})`);
+  console.log(`   ${t('project.overview.description', lang)}:   ${projectDesc}`);
+  console.log(`   ${t('project.overview.language', lang)}:   TypeScript (Node.js)`);
   console.log('');
 
   // 📁 目录结构
-  console.log('📁 目录结构');
+  console.log(t('project.overview.dirStructure', lang));
   if (srcExists) {
     console.log('   src/');
     console.log(`    ├─ cli/          — CLI 入口程序（${srcCliFiles} 个文件）`);
@@ -89,7 +92,7 @@ function outputProjectOverview(cwd: string): void {
     console.log(`    ├─ core/         — 核心逻辑（${srcCoreFiles} 个文件）`);
     console.log(`    └─ utils/        — 工具函数（${srcUtilsFiles} 个文件）`);
   } else {
-    console.log('   src/    （目录不存在）');
+    console.log(`   src/    ${t('project.overview.dirNotExist', lang)}`);
   }
 
   if (opencodeExists) {
@@ -100,7 +103,7 @@ function outputProjectOverview(cwd: string): void {
     // skills 下可能有多个子目录，用 glob 统计
     console.log(`    └─ skills/       — 技能定义（${skillDirs} 个）`);
   } else {
-    console.log('   .opencode/  （目录不存在）');
+    console.log(`   .opencode/  ${t('project.overview.dirNotExist', lang)}`);
   }
 
   if (openfeelExists) {
@@ -114,12 +117,12 @@ function outputProjectOverview(cwd: string): void {
     console.log(`    ├─ code_review/  — 代码审查记录（${reviewFiles} 个文件）`);
     console.log(`    └─ bugs/         — Bug 追踪${bugDirExists ? '' : '（未初始化）'}`);
   } else {
-    console.log('   .openfeel/  （目录不存在）');
+    console.log(`   .openfeel/  ${t('project.overview.dirNotExist', lang)}`);
   }
   console.log('');
 
   // 📊 统计信息
-  console.log('📊 统计信息');
+  console.log(t('project.overview.stats', lang));
   console.log(`   TS 源文件:   ${tsSourceFiles} 个`);
   console.log(`   Agent 定义:  ${agentDefs} 个`);
   console.log(`   CLI 命令模块: ${cliCommandModules} 个`);
@@ -128,19 +131,19 @@ function outputProjectOverview(cwd: string): void {
   console.log('');
 
   // 🚪 入口路径（以 src/ 存在性为统一门控）
-  console.log('🚪 入口路径');
+  console.log(t('project.overview.entryPath', lang));
   if (srcExists) {
     console.log('   CLI 入口:  src/cli/index.ts');
     console.log('   包入口:    src/index.ts');
     console.log('   构建产物:  dist/');
   } else {
     // 三条入口均依赖 src/，src/ 不存在时整节替换统一提示
-    console.log('   （未检测到项目结构——缺少 src/ 目录）');
+    console.log(`   ${t('project.overview.noSrc', lang)}`);
   }
   console.log('');
 
   // 🔧 技术栈（从 package.json 依赖动态提取版本号）
-  console.log('🔧 技术栈');
+  console.log(t('project.overview.techStack', lang));
   const runtimeVer = dependencies['node'] || 'Node.js ≥20';
   const tsVer = devDependencies['typescript']
     ? `TypeScript ${devDependencies['typescript'].replace(/^\^|~/, '')}+`

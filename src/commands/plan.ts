@@ -5,6 +5,7 @@
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
 import { createScheme, listSchemes } from '../core/plan/scheme.js';
+import { t, getCliLang } from '../core/i18n.js';
 
 export function registerPlanCommand(program: Command): void {
   const plan = program
@@ -23,8 +24,9 @@ export function registerPlanCommand(program: Command): void {
     .argument('<name>', '阶段名（如 stage-01）')
     .action((name: string) => {
       const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
       addStage(projectPath, name);
-      console.log(`已创建阶段: ${name}`);
+      console.log(t('plan.stage.createdTmpl', lang, { name }));
     });
 
   // plan stage list
@@ -33,10 +35,11 @@ export function registerPlanCommand(program: Command): void {
     .description('列出所有工作阶段')
     .action(() => {
       const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
       const stages = listStages(projectPath);
 
       if (stages.length === 0) {
-        console.log('暂无工作阶段');
+        console.log(t('plan.stage.empty', lang));
         return;
       }
 
@@ -58,8 +61,9 @@ export function registerPlanCommand(program: Command): void {
     .argument('<title>', '方案标题')
     .action((stage: string, title: string) => {
       const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
       const opId = createScheme(projectPath, stage, title);
-      console.log(`已创建操作方案: ${opId}（${stage}）`);
+      console.log(t('plan.scheme.createdTmpl', lang, { opId, stage }));
     });
 
   // plan scheme list [stage]
@@ -69,10 +73,11 @@ export function registerPlanCommand(program: Command): void {
     .argument('[stage]', '阶段名（可选）')
     .action((stage?: string) => {
       const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
       const schemes = listSchemes(projectPath, stage);
 
       if (schemes.length === 0) {
-        console.log('暂无操作方案');
+        console.log(t('plan.scheme.empty', lang));
         return;
       }
 

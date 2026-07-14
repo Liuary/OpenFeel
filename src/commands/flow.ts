@@ -25,6 +25,7 @@ import { resolve } from 'node:path';
 import { FlowManager, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { MetricsStore } from '../core/metrics.js';
+import { t, getCliLang } from '../core/i18n.js';
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -38,6 +39,7 @@ export function registerFlowCommand(program: Command): void {
     .option('--verbose', '增强输出：配置级联、最近状态变更、下游 Agent 就绪状态')
     .option('-n, --lines <n>', '最近状态变更条数（默认 5）', '5')
     .action((options: { verbose?: boolean; lines: string }) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!options.verbose) {
         console.log(mgr.summary());
@@ -47,17 +49,17 @@ export function registerFlowCommand(program: Command): void {
         if (data?.pipeline?.current?.stage && data.stages[data.pipeline.current.stage]) {
           const curStage = data.pipeline.current.stage;
           const curPhase = data.stages[curStage].phase;
-          console.log(`\n当前活跃阶段: ${curStage} (${curPhase})`);
+          console.log('\n' + t('flow.status.currentStage', lang) + `: ${curStage} (${curPhase})`);
         }
 
         // 阶段耗时统计（含 phase 显示）
         const allStats = mgr.getAllStageStats();
         if (Object.keys(allStats).length > 0) {
-          console.log('\n阶段耗时:');
+          console.log('\n' + t('flow.status.stageDuration', lang) + ':');
           for (const [stageId, s] of Object.entries(allStats)) {
             const duration = formatDuration(s.duration_ms);
             const stagePhase = data?.stages[stageId]?.phase ?? '';
-            console.log(`  ${stageId} [${stagePhase}]: ${duration}${s.end_time ? '' : ' (进行中)'}`);
+            console.log(`  ${stageId} [${stagePhase}]: ${duration}${s.end_time ? '' : ' ' + t('common.inProgress', lang)}`);
           }
         }
         return;
@@ -71,27 +73,27 @@ export function registerFlowCommand(program: Command): void {
       const stagePhase = mgrData?.pipeline?.current?.stage && mgrData.stages[mgrData.pipeline.current.stage]
         ? mgrData.stages[mgrData.pipeline.current.stage].phase
         : '(无)';
-      console.log('OpenFeel 流水线状态（verbose）\n');
-      console.log(`全局状态: ${v.basic.phase}`);
-      console.log(`当前阶段: ${mgrData?.pipeline?.current?.stage ?? '(无)'} — 阶段阶段: ${stagePhase}`);
-      console.log(`当前操作: ${v.basic.currentOp ?? '(无)'}`);
-      console.log(`重试次数: ${v.basic.retryCount}`);
-      console.log(`阶段数: ${v.basic.stagesCount}`);
-      console.log(`操作数: ${v.basic.opsCount}`);
-      console.log(`待处理审查: ${v.basic.reviewItemsOpen}`);
-      console.log(`日志总数: ${v.basic.recentLogs}`);
+      console.log(t('flow.status.verboseTitle', lang) + '\n');
+      console.log(t('flow.status.globalStatus', lang) + `: ${v.basic.phase}`);
+      console.log(t('flow.status.currentStageLabel', lang) + `: ${mgrData?.pipeline?.current?.stage ?? t('common.none', lang)} — ` + t('flow.status.stagePhase', lang) + `: ${stagePhase}`);
+      console.log(t('flow.status.currentOp', lang) + `: ${v.basic.currentOp ?? t('common.none', lang)}`);
+      console.log(t('flow.status.retryCount', lang) + `: ${v.basic.retryCount}`);
+      console.log(t('flow.status.stagesCount', lang) + `: ${v.basic.stagesCount}`);
+      console.log(t('flow.status.opsCount', lang) + `: ${v.basic.opsCount}`);
+      console.log(t('flow.status.reviewPending', lang) + `: ${v.basic.reviewItemsOpen}`);
+      console.log(t('flow.status.logTotal', lang) + `: ${v.basic.recentLogs}`);
       console.log('');
 
       // ── 配置级联状态 ──
-      console.log('── 配置级联状态 ──');
+      console.log(t('flow.status.cascadeTitle', lang));
       const allKeys = new Set([
         ...Object.keys(v.cascade.configDefaults),
         ...Object.keys(v.cascade.statusOverrides),
       ]);
       if (allKeys.size === 0) {
-        console.log('（无配置）');
+        console.log(t('common.noConfig', lang));
       } else {
-        console.log('字段               config.yaml  status.md  生效值');
+        console.log(t('flow.status.cascadeHeader', lang));
         console.log('─────────────────────────────────────────────────');
         for (const key of [...allKeys].sort()) {
           const def = v.cascade.configDefaults[key] ?? '-';
@@ -100,16 +102,16 @@ export function registerFlowCommand(program: Command): void {
           const overFlag = v.cascade.statusOverrides[key] ? '*' : ' ';
           console.log(`${key.padEnd(18)} ${def.padEnd(12)} ${overFlag}${over.padEnd(11)} ${eff}`);
         }
-        console.log('（* 表示 status.md 覆盖了 config.yaml 默认值）');
+        console.log(t('flow.status.cascadeNote', lang));
       }
       console.log('');
 
       // ── 最近 N 条状态变更 ──
-      console.log(`── 最近 ${n} 条状态变更 ──`);
+      console.log(t('flow.status.recentTitleTmpl', lang, { n: String(n) }));
       if (v.recentChanges.length === 0) {
-        console.log('（无记录）');
+        console.log(t('common.noData', lang));
       } else {
-        console.log('时间              Agent          状态变化            说明');
+        console.log(t('flow.status.recentHeader', lang));
         console.log('───────────────────────────────────────────────────────');
         for (const change of v.recentChanges) {
           console.log(
@@ -120,11 +122,11 @@ export function registerFlowCommand(program: Command): void {
       console.log('');
 
       // ── 下游 Agent 就绪状态 ──
-      console.log('── 下游 Agent 就绪状态 ──');
+      console.log(t('flow.status.downstreamTitle', lang));
       if (v.downstreamPhases.length === 0) {
-        console.log('（当前阶段无下游可达阶段）');
+        console.log(t('flow.status.noDownstream', lang));
       } else {
-        console.log('可达阶段            负责 Agent');
+        console.log(t('flow.status.downstreamHeader', lang));
         console.log('──────────────────────────────────');
         for (const dp of v.downstreamPhases) {
           console.log(`${dp.phase.padEnd(20)} ${dp.responsibleAgent}`);
@@ -134,20 +136,20 @@ export function registerFlowCommand(program: Command): void {
 
       // ── 跨会话恢复信息 ──
       const recovery = mgr.recoverContext();
-      console.log('── 跨会话恢复信息 ──');
-      console.log(`  阶段: ${recovery.phase ?? '(未知)'}`);
-      console.log(`  操作: ${recovery.currentOp ?? '(无)'}`);
-      console.log(`  状态: ${recovery.stageStatus}`);
+      console.log(t('flow.status.recoveryTitle', lang));
+      console.log(`  ` + t('common.stage', lang) + `: ${recovery.phase ?? t('common.unknown', lang)}`);
+      console.log(`  ` + t('common.op', lang) + `: ${recovery.currentOp ?? t('common.none', lang)}`);
+      console.log(`  ` + t('common.status', lang) + `: ${recovery.stageStatus}`);
       if (recovery.blockedBy) {
-        console.log(`  阻塞原因: ${recovery.blockedBy}`);
+        console.log(`  ` + t('common.blockedBy', lang) + `: ${recovery.blockedBy}`);
       }
       if (recovery.pendingTasks.length > 0) {
-        console.log('  待处理任务:');
+        console.log('  ' + t('flow.recover.pendingTasksTmpl', lang, { n: String(Math.min(recovery.pendingTasks.length, 10)) }) + ':');
         for (let i = 0; i < Math.min(recovery.pendingTasks.length, 10); i++) {
           console.log(`    ${i + 1}. ${recovery.pendingTasks[i]}`);
         }
         if (recovery.pendingTasks.length > 10) {
-          console.log(`    ... 还有 ${recovery.pendingTasks.length - 10} 项`);
+          console.log(t('flow.status.recoveryMoreTmpl', lang, { n: String(recovery.pendingTasks.length - 10) }));
         }
       }
     });
@@ -157,9 +159,10 @@ export function registerFlowCommand(program: Command): void {
     .command('overview')
     .description('全状态可视化视图（/opfx:status 的后端实现）')
     .action(() => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.log('流水线未初始化（flow.json 不存在）');
+        console.log(t('common.noInit', lang));
         return;
       }
 
@@ -171,44 +174,45 @@ export function registerFlowCommand(program: Command): void {
       // ═══ 标题 ═══
       console.log('');
       console.log('╔══════════════════════════════════════════╗');
-      console.log('║     OpenFeel 流水线全景视图              ║');
+      console.log('║' + t('flow.overview.title', lang).padStart(38) + '              ║');
       console.log('╚══════════════════════════════════════════╝');
       console.log('');
 
       // ── 当前状态 ──
-      console.log('📍 当前状态');
+      console.log(t('flow.overview.currentStatus', lang));
       const curStagePhase = current?.stage && data?.stages[current.stage]
         ? data.stages[current.stage].phase
         : phase;
-      console.log(`   阶段:  ${curStagePhase}`);
-      console.log(`   操作:  ${current ? `${current.stage}.${current.op}` : '(无)'}`);
-      console.log(`   重试:  ${summary.retryCount} 次`);
+      console.log(`   ` + t('common.stage', lang) + `:  ${curStagePhase}`);
+      console.log(`   ` + t('common.op', lang) + `:  ${current ? `${current.stage}.${current.op}` : t('common.none', lang)}`);
+      const retrySuffix = t('common.retry', lang).toLowerCase() === 'retry' ? 'times' : '次';
+      console.log(`   ` + t('common.retry', lang) + `:  ${summary.retryCount} ${retrySuffix}`);
       console.log('');
 
       // ── 阶段总览 ──
-      console.log('📋 阶段总览');
+      console.log(t('flow.overview.stagesOverview', lang));
       if (!data || Object.keys(data.stages).length === 0) {
-        console.log('   （无阶段数据）');
+        console.log('   ' + t('flow.overview.noStages', lang));
       } else {
-        console.log(`   共 ${Object.keys(data.stages).length} 个阶段:`);
+        console.log(`   ` + t('flow.overview.totalStagesTmpl', lang, { n: String(Object.keys(data.stages).length) }) + `:`);
         for (const [stageId, stageData] of Object.entries(data.stages)) {
           const opsTotal = Object.keys(stageData.ops).length;
           const opsDone = Object.values(stageData.ops).filter(
             (o: unknown) => (o as { state?: string }).state === 'done'
           ).length;
-          const marker = current?.stage === stageId ? '← 当前' : '';
+          const marker = current?.stage === stageId ? '← ' + t('flow.wizard.currentLabel', lang) : '';
           const bar = opsTotal > 0
             ? '█'.repeat(opsDone) + '░'.repeat(opsTotal - opsDone)
-            : '(无操作)';
+            : t('flow.overview.noOps', lang);
           console.log(`   ${stageId}: phase=${stageData.phase} ${bar} ${opsDone}/${opsTotal} ${marker}`);
         }
       }
       console.log('');
 
       // ── 审查条目 ──
-      console.log('🔍 审查条目 (REV)');
+      console.log(t('flow.overview.reviewSection', lang));
       if (!data || data.reviews.length === 0) {
-        console.log('   （无审查条目）');
+        console.log('   ' + t('flow.overview.noReviews', lang));
       } else {
         const openReviews = data.reviews.filter((r) => r.status === 'open');
         const resolvedReviews = data.reviews.filter((r) => r.status === 'resolved');
@@ -216,13 +220,13 @@ export function registerFlowCommand(program: Command): void {
         const blockingOpen = openReviews.filter((r) => r.blocking !== false);
         const nonBlockingOpen = openReviews.filter((r) => r.blocking === false);
 
-        console.log(`   打开: ${openReviews.length}（阻塞 ${blockingOpen.length} / 非阻塞 ${nonBlockingOpen.length}）`);
-        console.log(`   已解决: ${resolvedReviews.length}`);
-        console.log(`   已关闭: ${closedReviews.length}`);
+        console.log(`   ` + t('flow.overview.reviewOpen', lang) + `: ${openReviews.length}` + `（` + t('flow.review.labelBlocking', lang) + ` ${blockingOpen.length} / ` + t('flow.review.labelNonBlocking', lang) + ` ${nonBlockingOpen.length}）`);
+        console.log(`   ` + t('flow.overview.reviewResolved', lang) + `: ${resolvedReviews.length}`);
+        console.log(`   ` + t('flow.overview.reviewClosed', lang) + `: ${closedReviews.length}`);
 
         if (openReviews.length > 0) {
           console.log('');
-          console.log('   待处理审查:');
+          console.log('   ' + t('flow.overview.reviewPending', lang) + ':');
           for (const rev of openReviews) {
             const blockIcon = rev.blocking !== false ? '🔴' : '🟡';
             const priIcon = rev.priority === 'high' ? '↑' : rev.priority === 'low' ? '↓' : '=';
@@ -233,7 +237,7 @@ export function registerFlowCommand(program: Command): void {
       console.log('');
 
       // ── Bug 统计 ──
-      console.log('🐛 Bug 追踪');
+      console.log(t('flow.overview.bugSection', lang));
       const bugsIndexPath = resolve(process.cwd(), '.openfeel', 'bugs', 'index.md');
       if (existsSync(bugsIndexPath)) {
         try {
@@ -242,19 +246,19 @@ export function registerFlowCommand(program: Command): void {
           const closedMatch = bugsContent.match(/closed[:：]\s*(\d+)/i);
           const openBugs = openMatch ? parseInt(openMatch[1]) : 0;
           const closedBugs = closedMatch ? parseInt(closedMatch[1]) : 0;
-          console.log(`   打开: ${openBugs}  已关闭: ${closedBugs}`);
+          console.log(`   ` + t('flow.overview.bugOpen', lang) + `: ${openBugs}  ` + t('flow.overview.bugClosed', lang) + `: ${closedBugs}`);
         } catch {
-          console.log('   （无法读取 Bug 统计）');
+          console.log('   ' + t('flow.overview.bugUnreadable', lang));
         }
       } else {
-        console.log('   （Bug 追踪未初始化）');
+        console.log('   ' + t('flow.overview.bugUninitialized', lang));
       }
       console.log('');
 
       // ── 最近日志 ──
-      console.log('📝 最近操作（5 条）');
+      console.log(t('flow.overview.recentLogs', lang));
       if (!data || data.log.length === 0) {
-        console.log('   （无日志记录）');
+        console.log('   ' + t('flow.overview.noLogs', lang));
       } else {
         const recentLogs = data.log.slice(-5).reverse();
         for (const entry of recentLogs) {
@@ -265,12 +269,12 @@ export function registerFlowCommand(program: Command): void {
       console.log('');
 
       // ── 健康状态 ──
-      console.log('💚 健康状态');
+      console.log(t('flow.overview.health', lang));
       const health = mgr.healthCheck(true); // quick mode
       const passCount = health.items.filter((i) => i.status === 'pass').length;
       const warnCount = health.items.filter((i) => i.status === 'warn').length;
       const failCount = health.items.filter((i) => i.status === 'fail').length;
-      console.log(`   ✅ ${passCount}  🟡 ${warnCount}  ❌ ${failCount}`);
+      console.log('   ' + t('flow.overview.healthStatsTmpl', lang, { n: String(passCount), m: String(warnCount), k: String(failCount) }));
       if (!health.ok) {
         console.log('');
         for (const item of health.items.filter((i) => i.status === 'fail')) {
@@ -286,9 +290,10 @@ export function registerFlowCommand(program: Command): void {
     .command('current')
     .description('显示当前阶段和操作')
     .action(() => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.log('流水线未初始化（flow.json 不存在）');
+        console.log(t('common.noInit', lang));
         return;
       }
       const phase = mgr.getPhase();     // MetaPhase: active/paused/done
@@ -297,12 +302,12 @@ export function registerFlowCommand(program: Command): void {
       const data = mgr.getData();
       const stagePhase = current?.stage && data?.stages[current.stage]
         ? data.stages[current.stage].phase
-        : '(无)';
-      console.log(`全局状态: ${phase}`);
-      console.log(`阶段: ${current?.stage ?? '(无)'}`);
-      console.log(`阶段阶段: ${stagePhase}`);
-      console.log(`当前操作: ${current ? `${current.stage}.${current.op}` : '(无)'}`);
-      console.log(`重试次数: ${summary.retryCount}`);
+        : t('common.none', lang);
+      console.log(t('flow.current.globalStatus', lang) + `: ${phase}`);
+      console.log(t('common.stage', lang) + `: ${current?.stage ?? t('common.none', lang)}`);
+      console.log(t('flow.current.stagePhase', lang) + `: ${stagePhase}`);
+      console.log(t('flow.current.currentOp', lang) + `: ${current ? `${current.stage}.${current.op}` : t('common.none', lang)}`);
+      console.log(t('flow.current.retryCount', lang) + `: ${summary.retryCount}`);
     });
 
   // flow metrics — 展示 Agent 性能指标
@@ -310,6 +315,7 @@ export function registerFlowCommand(program: Command): void {
     .command('metrics')
     .description('展示 Agent 性能指标')
     .action(() => {
+      const lang = getCliLang(process.cwd());
       const store = MetricsStore.getInstance();
       store.load();
       console.log(store.summary());
@@ -326,18 +332,19 @@ export function registerFlowCommand(program: Command): void {
     .description('新增流水线阶段')
     .argument('<stageId>', '阶段 ID（如 v4.3）')
     .action((stageId: string) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error('错误：flow.json 未初始化，请先运行 openfeel init');
+        console.error(t('common.errorNoInit', lang));
         process.exit(1);
       }
       try {
         mgr.addStage(stageId);
         mgr.save();
-        console.log(`✓ 已创建阶段: ${stageId} → plan_pending`);
+        console.log(t('flow.stage.addedTmpl', lang, { stage: stageId }));
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`错误：${msg}`);
+        console.error(t('common.error', lang) + `：${msg}`);
         process.exit(1);
       }
     });
@@ -351,15 +358,16 @@ export function registerFlowCommand(program: Command): void {
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查）')
     .action((options: { op?: string; to: string; stage?: string; force?: boolean }) => {
+      const lang = getCliLang(process.cwd());
       // 自定义 --stage 必选校验（提供中文错误提示）
       if (!options.stage) {
-        console.error('错误：--stage 参数必须指定阶段 ID（如 stage-03）');
+        console.error(t('flow.advance.errorNoStage', lang));
         process.exit(1);
       }
 
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error('错误：flow.json 未初始化，请先运行 openfeel init');
+        console.error(t('common.errorNoInit', lang));
         process.exit(1);
       }
 
@@ -370,11 +378,11 @@ export function registerFlowCommand(program: Command): void {
         for (const w of warnings) {
           console.warn(`[WARN] ${w}`);
         }
-        console.log('（非标准 phase 已自动修正，继续推进）');
+        console.log(t('flow.advance.warnAutoCorrect', lang));
       }
 
       if (!valid) {
-        console.error('错误：flow.json 格式不合法');
+        console.error(t('flow.advance.errorInvalidFormat', lang));
         for (const err of errors) {
           console.error(`  - ${err}`);
         }
@@ -385,9 +393,9 @@ export function registerFlowCommand(program: Command): void {
       if (!options.force) {
         const phaseResult = PipelinePhaseSchema.safeParse(options.to);
         if (!phaseResult.success) {
-          console.error(`错误: '${options.to}' 不是合法的 PipelinePhase。`);
-          console.error(`合法值: [${PIPELINE_PHASES.join(', ')}]`);
-          console.error('使用 --force 强制执行（自动模糊修正）');
+          console.error(t('flow.advance.errorInvalidPhaseTmpl', lang, { phase: options.to }));
+          console.error(t('flow.advance.labelValidPhases', lang) + `: [${PIPELINE_PHASES.join(', ')}]`);
+          console.error(t('flow.advance.hintUseForceFuzzy', lang));
           process.exit(1);
         }
       }
@@ -396,8 +404,8 @@ export function registerFlowCommand(program: Command): void {
       if (!options.force) {
         const phaseResult = PipelinePhaseSchema.safeParse(options.to);
         if (phaseResult.success && !mgr.hasTransition(options.to, options.stage)) {
-          console.error(`错误: 阶段 "${options.stage}" 当前 phase 无法跳转到 "${options.to}"`);
-          console.error(`使用 --force 强制执行`);
+          console.error(t('flow.advance.errorPhaseJumpTmpl', lang, { stage: options.stage || '', to: options.to }));
+          console.error(t('flow.advance.hintUseForce', lang));
           process.exit(1);
         }
       }
@@ -407,7 +415,7 @@ export function registerFlowCommand(program: Command): void {
       if (options.to === 'done' && options.stage) {
         const stage = (mgr.getData()?.stages || {})[options.stage];
         if (stage && SKIP_WARN_PHASES.includes(stage.phase as PipelinePhase)) {
-          console.warn('[!] 跳过审查阶段直接标记 done，确认继续');
+          console.warn(t('flow.advance.warnSkipReview', lang));
         }
       }
 
@@ -415,13 +423,13 @@ export function registerFlowCommand(program: Command): void {
         mgr.advanceStagePhase(options.stage, options.to as PipelinePhase);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`错误：${msg}`);
+        console.error(t('common.error', lang) + `：${msg}`);
         process.exit(1);
       }
       mgr.save();
-      console.log(`✓ 已推进: ${options.stage} → ${options.to}`);
+      console.log(t('flow.advance.okTmpl', lang, { stage: options.stage || '', to: options.to }));
       if (options.op) {
-        console.log(`  操作: ${options.op}`);
+        console.log(t('flow.advance.opLabelTmpl', lang, { op: options.op }));
       }
     });
 
@@ -432,14 +440,15 @@ export function registerFlowCommand(program: Command): void {
     .requiredOption('--op <id>', '操作 ID（如 stage-01.op-001）')
     .requiredOption('--result <pass|fail>', '执行结果（pass 或 fail）')
     .action((options: { op: string; result: string }) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error('错误：flow.json 未初始化，请先运行 openfeel init');
+        console.error(t('common.errorNoInit', lang));
         process.exit(1);
       }
 
       if (options.result !== 'pass' && options.result !== 'fail') {
-        console.error('错误：--result 必须为 pass 或 fail');
+        console.error(t('flow.attempt.errorInvalidResult', lang));
         process.exit(1);
       }
 
@@ -447,15 +456,15 @@ export function registerFlowCommand(program: Command): void {
       mgr.save();
 
       if (options.result === 'pass') {
-        console.log(`✓ ${options.op} 执行成功`);
+        console.log(t('flow.attempt.passTmpl', lang, { op: options.op }));
       } else if (outcome.shouldRetry) {
-        console.log(`⚠ ${options.op} 执行失败，将重试（${outcome.shouldRetry ? '可重试' : '重试耗尽'}）`);
+        console.log(t('flow.attempt.failRetryTmpl', lang, { op: options.op }));
       } else if (outcome.shouldReplan) {
-        console.log(`✗ ${options.op} 重试耗尽，需要重新规划`);
+        console.log(t('flow.attempt.failReplanTmpl', lang, { op: options.op }));
         // BUG-03 修复：shouldReplan 时自动推进到 scheme_pending
         mgr.advancePhase(options.op, 'scheme_pending');
         mgr.save();
-        console.log(`→ 已自动回退到 scheme_pending，请重新规划方案`);
+        console.log(t('flow.attempt.autoReplan', lang));
       }
     });
 
@@ -465,26 +474,27 @@ export function registerFlowCommand(program: Command): void {
     .description('显示最近操作日志')
     .option('--last <n>', '显示最近 n 条（默认 10）', '10')
     .action((options: { last: string }) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.log('流水线未初始化，无日志');
+        console.log(t('flow.log.noInit', lang));
         return;
       }
 
       const n = Math.max(1, parseInt(options.last, 10) || 10);
       const data = mgr.getData();
       if (!data || data.log.length === 0) {
-        console.log('暂无操作日志');
+        console.log(t('flow.log.noLogs', lang));
         return;
       }
 
       const recent = data.log.slice(-n);
-      console.log(`最近 ${recent.length} 条操作日志:\n`);
+      console.log(t('flow.log.recentTitleTmpl', lang, { n: String(recent.length) }) + ':\n');
       for (const entry of recent) {
         const time = entry.time.substring(0, 19).replace('T', ' ');
         console.log(`[${time}] ${entry.agent} — ${entry.action}`);
         if (Object.keys(entry.detail).length > 0) {
-          console.log(`  详情: ${JSON.stringify(entry.detail)}`);
+          console.log(`  ` + t('flow.log.detail', lang) + `: ${JSON.stringify(entry.detail)}`);
         }
         console.log('');
       }
@@ -504,9 +514,10 @@ export function registerFlowCommand(program: Command): void {
     .option('--auto-fix <detail>', '自动修复说明，设置后跳过 scheme_pending 直接推进到 exec_running')
     .option('--blocking [boolean]', '是否阻塞流水线（默认 true）', 'true')
     .action((options: { op: string; title?: string; autoFix?: string; blocking?: string | boolean }) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error('错误：flow.json 未初始化，请先运行 openfeel init');
+        console.error(t('common.errorNoInit', lang));
         process.exit(1);
       }
 
@@ -519,7 +530,7 @@ export function registerFlowCommand(program: Command): void {
         op: options.op,
         status: 'open' as const,
         priority: 'medium' as const,
-        title: options.title || `审查: ${options.op}`,
+        title: options.title || t('flow.review.detail', lang) + `: ${options.op}`,
         filed_by: 'cli',
         filed_at: new Date().toISOString(),
         canAutoFix: !!options.autoFix,
@@ -531,7 +542,7 @@ export function registerFlowCommand(program: Command): void {
         // opId 格式校验（来自 REV-011：命令层校验，避免无效 opId 穿透到 addAutoFixReview）
         const dotIdx = options.op.lastIndexOf('.');
         if (dotIdx === -1) {
-          console.error('错误：opId 格式不正确，应为 stage-xx.op-xxx（如 stage-01.op-001）');
+          console.error(t('common.invalidOpId', lang));
           process.exit(1);
         }
         const stageId = options.op.substring(0, dotIdx);
@@ -540,29 +551,29 @@ export function registerFlowCommand(program: Command): void {
         // 校验 stage 是否存在于 flow.json
         const data = mgr.getData();
         if (!data || !data.stages[stageId]) {
-          console.error(`错误：opId "${options.op}" 中的阶段 "${stageId}" 在 flow.json 中不存在`);
+          console.error(t('flow.review.errorStageNotFoundTmpl', lang, { opId: options.op, stage: stageId }));
           process.exit(1);
         }
 
         // 校验 op 是否存在于对应 stage 中
         if (!data.stages[stageId].ops[opLocalId]) {
-          console.error(`错误：opId "${options.op}" 中的操作 "${opLocalId}" 在阶段 "${stageId}" 中不存在`);
+          console.error(t('flow.review.errorOpNotFoundTmpl', lang, { opId: options.op, op: opLocalId, stage: stageId }));
           process.exit(1);
         }
 
         // 自动修复路径：记录 REV 条目（状态直接 resolved），跳过 review_failed → scheme_pending
         mgr.addAutoFixReview(reviewItem, options.op);
         mgr.save();
-        const blockingLabel = reviewItem.blocking !== false ? '[阻塞]' : '[非阻塞]';
-        console.log(`✓ ${blockingLabel} [AUTO_FIX] 审查条目已添加并自动修复: ${revId}`);
-        console.log(`  操作: ${options.op}`);
-        console.log(`  说明: ${options.autoFix}`);
-        console.log(`  流水线已跳过 review_failed，直接推进到 exec_running`);
+        const blockingLabel = reviewItem.blocking !== false ? t('flow.review.labelBlocking', lang) : t('flow.review.labelNonBlocking', lang);
+        console.log(t('flow.review.addedAutoFixTmpl', lang, { label: blockingLabel, revId }));
+        console.log(`  ` + t('common.op', lang) + `: ${options.op}`);
+        console.log(`  ` + t('flow.review.detail', lang) + `: ${options.autoFix}`);
+        console.log(t('flow.review.autoFixPhase', lang));
       } else {
         mgr.addReview(reviewItem);
         mgr.save();
-        const blockingLabel = reviewItem.blocking !== false ? '[阻塞]' : '[非阻塞]';
-        console.log(`✓ ${blockingLabel} 审查条目已添加: ${revId} (${options.op})${options.title ? ` — ${options.title}` : ''}`);
+        const blockingLabel = reviewItem.blocking !== false ? t('flow.review.labelBlocking', lang) : t('flow.review.labelNonBlocking', lang);
+        console.log(t('flow.review.addedTmpl', lang, { label: blockingLabel, revId, op: options.op }) + (options.title ? ` — ${options.title}` : ''));
       }
     });
 
@@ -572,18 +583,19 @@ export function registerFlowCommand(program: Command): void {
     .description('解决审查条目')
     .argument('<rev-id>', '审查条目 ID（如 REV-001）')
     .action((revId: string) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error('错误：flow.json 未初始化，请先运行 openfeel init');
+        console.error(t('common.errorNoInit', lang));
         process.exit(1);
       }
 
       const ok = mgr.resolveReview(revId);
       if (ok) {
         mgr.save();
-        console.log(`✓ 审查条目已解决: ${revId}`);
+        console.log(t('flow.review.resolvedTmpl', lang, { revId }));
       } else {
-        console.error(`错误：未找到审查条目 ${revId}`);
+        console.error(t('flow.review.notFoundTmpl', lang, { revId }));
         process.exit(1);
       }
     });
@@ -594,23 +606,24 @@ export function registerFlowCommand(program: Command): void {
     .description('查询操作的重试状态')
     .requiredOption('--op <id>', '操作 ID（如 stage-01.op-001）')
     .action((options: { op: string }) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error('错误：flow.json 未初始化，请先运行 openfeel init');
+        console.error(t('common.errorNoInit', lang));
         process.exit(1);
       }
 
       // 通过 getData() 获取 op 的 max_attempts
       const data = mgr.getData();
       if (!data) {
-        console.error('错误：无法读取流水线数据');
+        console.error(t('flow.retry.errorNoData', lang));
         process.exit(1);
       }
 
       // 解析 opId 查找 op
       const dotIdx = options.op.lastIndexOf('.');
       if (dotIdx === -1) {
-        console.error('错误：opId 格式不正确，应为 stage-xx.op-xxx');
+        console.error(t('common.invalidOpId', lang));
         process.exit(1);
       }
       const stageId = options.op.substring(0, dotIdx);
@@ -618,22 +631,22 @@ export function registerFlowCommand(program: Command): void {
 
       const stage = data.stages[stageId];
       if (!stage) {
-        console.error(`错误：未找到阶段 ${stageId}`);
+        console.error(t('flow.retry.errorStageNotFoundTmpl', lang, { stage: stageId }));
         process.exit(1);
       }
 
       const op = stage.ops[opLocalId];
       if (!op) {
-        console.error(`错误：未找到操作 ${options.op}`);
+        console.error(t('flow.retry.errorOpNotFoundTmpl', lang, { op: options.op }));
         process.exit(1);
       }
 
       const retryCount = mgr.getRetryCount(options.op);
-      console.log(`操作: ${options.op}`);
-      console.log(`状态: ${op.state}`);
-      console.log(`当前尝试次数: ${retryCount} / ${op.max_attempts}`);
+      console.log(t('common.op', lang) + `: ${options.op}`);
+      console.log(t('common.status', lang) + `: ${op.state}`);
+      console.log(t('flow.retry.attemptCount', lang) + `: ${retryCount} / ${op.max_attempts}`);
       if (retryCount >= op.max_attempts) {
-        console.log('⚠ 重试次数已用尽');
+        console.log(t('flow.retry.exhausted', lang));
       }
     });
 
@@ -644,6 +657,7 @@ export function registerFlowCommand(program: Command): void {
     .option('--dry-run', '仅检测不修复')
     .option('--backup', '修复前备份为 .bak')
     .action((options: { dryRun?: boolean; backup?: boolean }) => {
+      const lang = getCliLang(process.cwd());
       const mgr = new FlowManager(process.cwd());
 
       // --backup 选项：修复前手动备份
@@ -651,20 +665,20 @@ export function registerFlowCommand(program: Command): void {
         const fp = resolve(process.cwd(), '.openfeel', 'flow.json');
         if (existsSync(fp)) {
           copyFileSync(fp, fp + '.bak');
-          console.log('已备份: flow.json.bak');
+          console.log(t('flow.repair.backupOk', lang));
         } else {
-          console.log('flow.json 不存在，无需备份');
+          console.log(t('flow.repair.noBackup', lang));
         }
       }
 
       const result = mgr.repair(options.dryRun ?? false);
 
       if (options.dryRun) {
-        console.log('[DRY-RUN 模式] 以下问题将被修复:');
+        console.log(t('flow.repair.dryRunTitle', lang));
       }
 
       if (result.recovered) {
-        console.log('♻ flow.json 从 .bak 恢复成功');
+        console.log(t('flow.repair.recovered', lang));
       }
 
       for (const change of result.changes) {
@@ -673,28 +687,26 @@ export function registerFlowCommand(program: Command): void {
 
       if (result.fixed) {
         if (options.dryRun) {
-          console.log('\n检测到可修复的问题，使用不带 --dry-run 执行以应用修复。');
+          console.log('\n' + t('flow.repair.dryRunHint', lang));
         } else {
-          console.log('\n✓ flow.json 修复完成');
+          console.log('\n' + t('flow.repair.fixDone', lang));
         }
       } else {
         if (options.dryRun && result.changes.length > 0) {
-          console.log('\n检测到以下问题（dry-run 模式）:');
-          // changes 已在上面输出
-          console.log('使用不带 --dry-run 执行以应用修复。');
+          console.log('\n' + t('flow.repair.dryRunHint', lang));
         } else if (result.changes.length === 1 && result.changes[0] === '未检测到需要修复的问题') {
-          console.log('\n未检测到需要修复的问题');
+          console.log('\n' + t('flow.repair.noFix', lang));
         } else {
-          console.error('\n✗ 部分问题无法自动修复，请手动检查 flow.json');
+          console.error('\n' + t('flow.repair.fixFailed', lang));
           process.exit(1);
         }
       }
 
       // 检测旧格式并建议迁移
       if (mgr.isLoaded() && mgr.needsMigration()) {
-        console.log('\n💡 检测到旧版 flow.json 格式（全局 phase），建议运行:');
+        console.log('\n' + t('flow.repair.migrationHint', lang));
         console.log('   openfeel flow migrate');
-        console.log('   查看迁移预览: openfeel flow migrate --dry-run');
+        console.log('   ' + t('flow.repair.migrationPreview', lang));
       }
     });
 
@@ -705,15 +717,16 @@ export function registerFlowCommand(program: Command): void {
     .option('--dry-run', '仅检测预览，不实际写入文件')
     .option('--no-backup', '跳过 .bak 文件生成（默认生成 flow.json.v4.0.bak）')
     .action((options: { dryRun?: boolean; backup?: boolean }) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error('错误：flow.json 未初始化');
+        console.error(t('common.errorNoInit', lang));
         process.exit(1);
       }
 
       // 检测是否已为新格式
       if (!mgr.needsMigration()) {
-        console.log('✓ 已是新版格式，无需迁移');
+        console.log(t('flow.migrate.alreadyNew', lang));
         return;
       }
 
@@ -722,13 +735,13 @@ export function registerFlowCommand(program: Command): void {
 
       // --dry-run 输出迁移预览
       if (options.dryRun) {
-        console.log('[DRY-RUN 模式] 以下变更将被执行:\n');
+        console.log(t('flow.migrate.dryRunTitle', lang) + '\n');
         const result = mgr.migrate(true, noBackup);
         for (const change of result.changes) {
           console.log(`  ${change}`);
         }
         if (result.migrated) {
-          console.log('\n（未实际修改文件，使用不带 --dry-run 执行以应用迁移）');
+          console.log('\n' + t('flow.migrate.dryRunNote', lang));
         }
         return;
       }
@@ -746,7 +759,7 @@ export function registerFlowCommand(program: Command): void {
           }
         }
         if (result.changes.some((c) => c.includes('失败'))) {
-          console.error('\n✗ 迁移失败');
+          console.error('\n' + t('flow.migrate.failed', lang));
           process.exit(1);
         }
         return;
@@ -755,11 +768,11 @@ export function registerFlowCommand(program: Command): void {
       // 持久化
       mgr.save();
 
-      console.log('迁移完成:\n');
+      console.log(t('flow.migrate.complete', lang) + ':\n');
       for (const change of result.changes) {
         console.log(`  ${change}`);
       }
-      console.log('\n✓ flow.json 已迁移至新版格式');
+      console.log('\n' + t('flow.migrate.done', lang));
     });
 
   // flow health [--quick]
@@ -768,9 +781,10 @@ export function registerFlowCommand(program: Command): void {
     .description('全面健康检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml 等')
     .option('--quick', '仅检查关键项（phase/current 合法性，跳过其他检查）')
     .action((options: { quick?: boolean }) => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
 
-      console.log('openfeel flow health\n');
+      console.log(t('flow.health.title', lang) + '\n');
 
       const result = mgr.healthCheck(options.quick ?? false);
 
@@ -787,13 +801,13 @@ export function registerFlowCommand(program: Command): void {
 
       console.log('');
       if (result.ok) {
-        console.log('🎉 健康检查通过');
+        console.log(t('flow.health.pass', lang));
       } else {
-        console.log('⚠️  存在不通过项，请检查上述错误');
+        console.log(t('flow.health.hasFailures', lang));
       }
 
       if (options.quick) {
-        console.log('（快速模式：仅检查关键项）');
+        console.log(t('flow.health.quickMode', lang));
       }
 
       if (!result.ok) {
@@ -806,45 +820,46 @@ export function registerFlowCommand(program: Command): void {
     .command('recover')
     .description('跨会话上下文恢复：输出流水线状态、阻塞原因和待处理任务')
     .action(() => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.log('流水线未初始化（flow.json 不存在）');
+        console.log(t('common.noInit', lang));
         return;
       }
 
       const recovery = mgr.recoverContext();
 
       console.log('');
-      console.log('═══ 跨会话上下文恢复 ═══');
+      console.log(t('flow.recover.title', lang));
       console.log('');
-      console.log(`全局状态:   ${mgr.getPhase() ?? '(未知)'}`);
-      console.log(`流水线阶段: ${recovery.phase ?? '(未知)'}`);
-      console.log(`当前操作:   ${recovery.currentOp ?? '(无)'}`);
-      console.log(`阶段状态:   ${recovery.stageStatus}`);
+      console.log(t('flow.recover.globalStatus', lang) + `:   ${mgr.getPhase() ?? t('common.unknown', lang)}`);
+      console.log(t('flow.recover.phase', lang) + `: ${recovery.phase ?? t('common.unknown', lang)}`);
+      console.log(t('flow.recover.currentOp', lang) + `:   ${recovery.currentOp ?? t('common.none', lang)}`);
+      console.log(t('flow.recover.stageStatus', lang) + `:   ${recovery.stageStatus}`);
 
       if (recovery.blockedBy) {
-        console.log(`阻塞原因:   ${recovery.blockedBy}`);
+        console.log(t('common.blockedBy', lang) + `:   ${recovery.blockedBy}`);
       }
 
       if (recovery.pendingTasks.length > 0) {
         console.log('');
-        console.log(`待处理任务 (${recovery.pendingTasks.length}):`);
+        console.log(t('flow.recover.pendingTasksTmpl', lang, { n: String(recovery.pendingTasks.length) }) + ':');
         for (let i = 0; i < recovery.pendingTasks.length; i++) {
           console.log(`  ${i + 1}. ${recovery.pendingTasks[i]}`);
         }
       } else {
         console.log('');
-        console.log('无待处理任务');
+        console.log(t('flow.recover.noTasks', lang));
       }
 
       // 阶段耗时一览
       const allStats = mgr.getAllStageStats();
       if (Object.keys(allStats).length > 0) {
         console.log('');
-        console.log('阶段耗时:');
+        console.log(t('flow.recover.stageDuration', lang) + ':');
         for (const [stageId, s] of Object.entries(allStats)) {
           const duration = formatDuration(s.duration_ms);
-          const status = s.end_time ? '已完成' : '进行中';
+          const status = s.end_time ? t('common.completed', lang) : t('common.inProgress', lang);
           console.log(`  ${stageId}: ${duration} (${status})`);
         }
       }
@@ -858,10 +873,11 @@ export function registerFlowCommand(program: Command): void {
     .command('wizard')
     .description('交互式流水线向导，逐步推进阶段')
     .action(async () => {
+      const lang = getCliLang(process.cwd());
       const mgr = createManager();
 
       if (!mgr.isLoaded()) {
-        console.log('流水线未初始化（flow.json 不存在）');
+        console.log(t('common.noInit', lang));
         return;
       }
 
@@ -886,7 +902,7 @@ export function registerFlowCommand(program: Command): void {
             ? Object.values(data.stages).every(s => s.phase === 'done')
             : false;
           if (metaPhase === 'done' || allStagesDone) {
-            console.log('🎉 流水线已完成！');
+            console.log(t('flow.wizard.done', lang));
             return;
           }
 
@@ -895,16 +911,16 @@ export function registerFlowCommand(program: Command): void {
           let currentStage = current?.stage;
 
           if (stages.length === 0) {
-            console.log('无可用阶段。');
+            console.log(t('flow.wizard.noStages', lang));
             return;
           }
 
           if (stages.length > 1) {
             // 多个 stage 时让用户选择
             currentStage = await select({
-              message: '选择要推进的阶段',
+              message: t('flow.wizard.selectStage', lang),
               choices: stages.map(s => ({
-                name: s + (s === current?.stage ? ' (当前)' : ''),
+                name: s + (s === current?.stage ? ' ' + t('flow.wizard.currentLabel', lang) : ''),
                 value: s,
               })),
             });
@@ -913,29 +929,29 @@ export function registerFlowCommand(program: Command): void {
           }
 
           if (!currentStage || !data?.stages[currentStage]) {
-            console.log('选择的阶段不可用。');
+            console.log(t('flow.wizard.unavailable', lang));
             return;
           }
 
           const stagePhase = data.stages[currentStage].phase;
 
           // 显示当前状态
-          console.log('\n═══ 流水线状态 ═══');
-          console.log(`全局状态: ${metaPhase}`);
-          console.log(`阶段: ${currentStage}`);
-          console.log(`阶段阶段: ${stagePhase} (${phaseLabels[stagePhase] ?? '未知'})`);
+          console.log('\n' + t('flow.wizard.statusHeader', lang));
+          console.log(t('flow.status.globalStatus', lang) + `: ${metaPhase}`);
+          console.log(t('common.stage', lang) + `: ${currentStage}`);
+          console.log(t('flow.wizard.stagePhase', lang) + `: ${stagePhase} (${phaseLabels[stagePhase] ?? t('common.unknown', lang)})`);
           if (current && current.stage === currentStage) {
-            console.log(`当前操作: ${current.stage}.${current.op}`);
+            console.log(t('flow.status.currentOp', lang) + `: ${current.stage}.${current.op}`);
           }
-          console.log(`重试次数: ${summary.retryCount}`);
-          console.log(`待处理审查: ${summary.reviewItemsOpen}`);
+          console.log(t('flow.wizard.retryCount', lang) + `: ${summary.retryCount}`);
+          console.log(t('flow.wizard.pendingReviews', lang) + `: ${summary.reviewItemsOpen}`);
           console.log('═══════════════════\n');
 
           // 获取可达的下一步阶段（基于选定 stage 的 phase）
           const availablePhases = mgr.getAvailablePhases(currentStage);
 
           if (availablePhases.length === 0) {
-            console.log('当前阶段无可达的下一步操作。');
+            console.log(t('flow.wizard.noNext', lang));
             return;
           }
 
@@ -948,55 +964,55 @@ export function registerFlowCommand(program: Command): void {
 
           // 添加退出选项
           choices.push({
-            name: '退出向导',
+            name: t('flow.wizard.exitOption', lang),
             value: '__exit__',
           });
 
           const targetPhase = await select<PipelinePhase | '__exit__'>({
-            message: '选择下一步操作',
+            message: t('flow.wizard.selectAction', lang),
             choices,
             pageSize: 10,
           });
 
           // 用户选择退出
           if (targetPhase === '__exit__') {
-            console.log('已退出向导。');
+            console.log(t('flow.wizard.exited', lang));
             return;
           }
 
           // 预览变更
           const prevLabel = phaseLabels[stagePhase] ?? stagePhase;
           const nextLabel = phaseLabels[targetPhase] ?? targetPhase;
-          console.log(`\n预览: 将阶段 ${currentStage} 从 ${stagePhase} (${prevLabel}) 推进到 ${targetPhase} (${nextLabel})`);
+          console.log(t('flow.wizard.previewTmpl', lang, { stage: currentStage, from: stagePhase, fromLabel: prevLabel, to: targetPhase, toLabel: nextLabel }));
 
           const confirmed = await select({
-            message: '确认执行此操作？',
+            message: t('flow.wizard.confirmTitle', lang),
             choices: [
-              { name: '确认推进', value: 'yes' },
-              { name: '取消', value: 'no' },
+              { name: t('flow.wizard.confirm', lang), value: 'yes' },
+              { name: t('common.cancel', lang), value: 'no' },
             ],
           });
 
           if (confirmed !== 'yes') {
-            console.log('已取消。');
+            console.log(t('common.cancelled', lang));
             continue;
           }
 
           // 执行推进（使用 advanceStagePhase）
           mgr.advanceStagePhase(currentStage, targetPhase);
           mgr.save();
-          console.log(`\n✓ 已推进: ${currentStage}: ${stagePhase} → ${targetPhase}`);
+          console.log(t('flow.wizard.advancedTmpl', lang, { stage: currentStage, from: stagePhase, to: targetPhase }));
 
           // 到达终态时退出循环
           if (targetPhase === 'done') {
-            console.log('🎉 流水线已完成！');
+            console.log(t('flow.wizard.done', lang));
             return;
           }
         }
       } catch (err) {
         // 非 TTY 环境或用户中断等异常
         if (err instanceof Error) {
-          console.error(`错误: ${err.message}`);
+          console.error(t('common.error', lang) + `: ${err.message}`);
         }
       }
     });

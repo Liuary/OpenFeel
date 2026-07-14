@@ -18,6 +18,7 @@ import { writeDefaultConfig } from './config.js';
 import { FlowManager } from './flow-manager.js';
 import { DEV_CORE_TEMPLATE, CURRENT_TEMPLATE } from './templates.js';
 import { loadTemplate } from './template-loader.js';
+import { t, getCliLang } from './i18n.js';
 import readline from 'node:readline';
 
 /**
@@ -25,8 +26,9 @@ import readline from 'node:readline';
  * 交互模式下显示中英双语提示，非交互模式默认 zh-CN
  */
 async function promptLanguage(): Promise<'zh-CN' | 'en'> {
+  const lang = getCliLang(process.cwd());
   if (!process.stdout.isTTY) {
-    console.log('非交互环境，Agent 提示词语言默认设置为 zh-CN。使用 openfeel update --lang <zh-CN|en> 可修改。');
+    console.log(t('init.prompt.nonInteractive', lang));
     return 'zh-CN';
   }
 
@@ -36,7 +38,7 @@ async function promptLanguage(): Promise<'zh-CN' | 'en'> {
       output: process.stdout,
     });
 
-    console.log('\n🌐 Select Agent prompt language / 选择 Agent 提示词语言:');
+    console.log(t('init.prompt.bilingual', lang));
     console.log('  1. English (en)');
     console.log('  2. 中文 (zh-CN) [default]');
 
@@ -199,9 +201,9 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   let selectedLang: 'zh-CN' | 'en';
   if (cliLang === 'en' || cliLang === 'zh-CN') {
     selectedLang = cliLang;
-    console.log(`Agent 提示词语言: ${selectedLang === 'en' ? 'English' : '中文'}`);
+    console.log(t('init.agentLangTmpl', getCliLang(projectPath), { lang: selectedLang === 'en' ? 'English' : '中文' }));
   } else if (cliLang) {
-    console.warn(`无效的 --lang 值 "${cliLang}"，回退到交互式选择`);
+    console.warn(t('init.invalidLangWarnTmpl', getCliLang(projectPath), { lang: cliLang }));
     selectedLang = await promptLanguage();
   } else {
     selectedLang = await promptLanguage();

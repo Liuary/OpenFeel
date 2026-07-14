@@ -4,6 +4,7 @@
  */
 import { Command } from 'commander';
 import { resolveSchema } from '../core/artifact-graph/resolver.js';
+import { t, getCliLang } from '../core/i18n.js';
 import {
   generateInstructions,
   generateInstructionsJson,
@@ -18,6 +19,7 @@ export function registerInstructionsCommand(program: Command): void {
     .option('--json', '输出 JSON 格式而非 XML')
     .option('--schema <name>', 'Schema 名称（默认 spec-driven）', 'spec-driven')
     .action(async (artifactId: string, options: Record<string, string | boolean>) => {
+      const lang = getCliLang(process.cwd());
       const changeName = options.change as string;
       const schemaName = options.schema as string;
       const useJson = options.json === true;
@@ -45,7 +47,7 @@ export function registerInstructionsCommand(program: Command): void {
           console.log(xml);
         }
       } catch (err) {
-        console.error(`错误: ${(err as Error).message}`);
+        console.error(t('common.error', lang) + ': ' + (err as Error).message);
         process.exit(1);
       }
     });

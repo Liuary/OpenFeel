@@ -13,6 +13,7 @@ import { Command } from 'commander';
 import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import fastGlob from 'fast-glob';
+import { t, getCliLang } from '../core/i18n.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -148,6 +149,7 @@ function listAllStages(projectPath: string): { stageId: string; statusPath: stri
  * 显示单个阶段的详细状态
  */
 function showStageStatus(statusPath: string, stageId: string): void {
+  const lang = getCliLang(process.cwd());
   const content = readFileSync(statusPath, 'utf-8');
   const fields = parseStatusFields(content);
   const tasks = parseTasks(content);
@@ -171,20 +173,21 @@ function showStageStatus(statusPath: string, stageId: string): void {
 
   // 输出任务列表
   if (tasks.length > 0) {
-    console.log(`\n  任务列表 (${tasks.filter((t) => t.done).length}/${tasks.length} 完成):`);
+    const doneCount = tasks.filter((t) => t.done).length;
+    console.log(t('stage.task.taskListTmpl', lang, { done: String(doneCount), total: String(tasks.length) }));
     for (const task of tasks) {
       const icon = task.done ? '✅' : '⬜';
       // 提取任务描述（去掉 checkbox 和"任务{N}："前缀）
       const descMatch = task.line.match(/任务\d+[：:]\s*(.*)/);
       const desc = descMatch ? descMatch[1] : task.line;
-      console.log(`    ${icon} 任务${task.number}: ${desc}`);
+      console.log(`    ${icon} ` + t('stage.task.taskItemTmpl', lang, { number: String(task.number), desc }));
     }
   }
 
   // 输出阻塞原因
   const blockLine = content.match(/^## 阻塞 \/ 暂停原因\n\n(.+?)(?:\n##|\n*$)/ms);
   if (blockLine && blockLine[1].trim() !== '无' && blockLine[1].trim() !== '') {
-    console.log(`\n  ⚠ 阻塞原因: ${blockLine[1].trim()}`);
+    console.log(t('stage.task.blockedByTmpl', lang, { reason: blockLine[1].trim() }));
   }
 
   console.log('');
@@ -263,17 +266,18 @@ export function registerStageCommand(program: Command): void {
     .argument('[stageId]', '阶段 ID（如 v4-stage-04）')
     .action((stageId?: string) => {
       const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
 
       if (!stageId) {
         // 无参数：列出所有阶段
         const stages = listAllStages(projectPath);
 
         if (stages.length === 0) {
-          console.log('未发现任何阶段（.openfeel/plan/ 中无 status.md 文件）');
+          console.log(t('stage.status.noStages', lang));
           return;
         }
 
-        console.log(`\n发现 ${stages.length} 个阶段:\n`);
+        console.log(t('stage.status.foundTmpl', lang, { n: String(stages.length) }));
         for (const s of stages) {
           const statusIcon = s.status === 'done'
             ? '✅'
@@ -284,15 +288,15 @@ export function registerStageCommand(program: Command): void {
             : '  ';
           console.log(`  ${statusIcon} ${s.stageId}  →  ${s.status}`);
         }
-        console.log(`\n使用 openfeel stage status <stageId> 查看详细状态\n`);
+        console.log(`\n${t('stage.status.hint', lang)}\n`);
         return;
       }
 
       // 有参数：显示指定阶段详细状态
       const statusPath = resolveStatusPath(projectPath, stageId);
       if (!statusPath) {
-        console.error(`错误：未找到阶段 "${stageId}" 的 status.md 文件`);
-        console.error('请确认阶段 ID 是否正确（如 v4-stage-04）');
+        console.error(t('stage.errorStageNotFoundTmpl', lang, { stageId }));
+        console.error(t('stage.errorCheckStageId', lang));
         process.exit(1);
       }
 
@@ -307,10 +311,11 @@ export function registerStageCommand(program: Command): void {
     .requiredOption('--status <value>', '状态值（如 exec_running）')
     .action((stageId: string, options: { status: string }) => {
       const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
       const statusPath = resolveStatusPath(projectPath, stageId);
 
       if (!statusPath) {
-        console.error(`错误：未找到阶段 "${stageId}" 的 status.md 文件`);
+        console.error(t('stage.errorStageNotFoundTmpl', lang, { stageId }));
         process.exit(1);
       }
 
@@ -320,11 +325,11 @@ export function registerStageCommand(program: Command): void {
       const ok = setStatusField(statusPath, '状态', options.status);
 
       if (!ok) {
-        console.error(`错误：在 ${stageId} 的 status.md 中未找到「状态」字段`);
+        console.error(t('stage.set.errorFieldNotFoundTmpl', lang, { stageId }));
         process.exit(1);
       }
 
-      console.log(`✓ 已更新 ${stageId} 状态: → ${options.status}`);
+      console.log(t('stage.set.updatedTmpl', lang, { stageId, status: options.status }));
     });
 
   // ═══ stage task <stageId> <taskNo> --done|--undone ═══
@@ -337,22 +342,23 @@ export function registerStageCommand(program: Command): void {
     .option('--undone', '标记任务为未完成')
     .action((stageId: string, taskNoStr: string, options: { done?: boolean; undone?: boolean }) => {
       const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
       const statusPath = resolveStatusPath(projectPath, stageId);
 
       if (!statusPath) {
-        console.error(`错误：未找到阶段 "${stageId}" 的 status.md 文件`);
+        console.error(t('stage.errorStageNotFoundTmpl', lang, { stageId }));
         process.exit(1);
       }
 
       // 互斥校验
       if (options.done === options.undone) {
-        console.error('错误：必须指定 --done 或 --undone（二者互斥）');
+        console.error(t('stage.task.errorMutualExclusive', lang));
         process.exit(1);
       }
 
       const taskNo = parseInt(taskNoStr, 10);
       if (isNaN(taskNo) || taskNo < 1) {
-        console.error('错误：任务编号必须为正整数');
+        console.error(t('stage.task.errorInvalidTaskNo', lang));
         process.exit(1);
       }
 
@@ -363,11 +369,11 @@ export function registerStageCommand(program: Command): void {
       const ok = toggleTask(statusPath, taskNo, toDone);
 
       if (!ok) {
-        console.error(`错误：在 ${stageId} 的 status.md 中未找到「任务${taskNo}」`);
+        console.error(t('stage.task.errorTaskNotFoundTmpl', lang, { stageId, taskNo: String(taskNo) }));
         process.exit(1);
       }
 
-      const actionLabel = toDone ? '✓ 已勾选' : '○ 已取消勾选';
-      console.log(`${actionLabel} ${stageId} 任务${taskNo}`);
+      const actionLabel = toDone ? t('stage.task.done', lang) : t('stage.task.undone', lang);
+      console.log(t('stage.task.actionLabelTmpl', lang, { label: actionLabel, stageId, taskNo: String(taskNo) }));
     });
 }

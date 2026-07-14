@@ -4,6 +4,7 @@
  */
 import { Command } from 'commander';
 import { createReviewEntry, listReviews, acceptReview } from '../core/view/entry.js';
+import { t, getCliLang } from '../core/i18n.js';
 
 export function registerViewCommand(program: Command): void {
   const view = program
@@ -16,20 +17,21 @@ export function registerViewCommand(program: Command): void {
     .description('列出审查条目')
     .option('--op <id>', '按操作 ID 过滤')
     .action((options: { op?: string }) => {
+      const lang = getCliLang(process.cwd());
       try {
         const items = listReviews(process.cwd(), options.op);
 
         if (items.length === 0) {
-          console.log('暂无审查条目');
+          console.log(t('view.list.empty', lang));
           return;
         }
 
         for (const item of items) {
           console.log(`${item.id} [${item.status}] ${item.priority} — ${item.title}`);
-          console.log(`  操作: ${item.op}  提交人: ${item.filed_by}  时间: ${item.filed_at}`);
+          console.log(`  ${t('common.op', lang)}: ${item.op}  ${t('view.list.filedBy', lang)}: ${item.filed_by}  ${t('view.list.filedAt', lang)}: ${item.filed_at}`);
         }
       } catch (err) {
-        console.error(`错误：${err instanceof Error ? err.message : String(err)}`);
+        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
         process.exit(1);
       }
     });
@@ -42,11 +44,12 @@ export function registerViewCommand(program: Command): void {
     .requiredOption('--title <title>', '审查标题')
     .option('--priority <priority>', '优先级（high/medium/low，默认 medium）', 'medium')
     .action((options: { op: string; title: string; priority: string }) => {
+      const lang = getCliLang(process.cwd());
       try {
         // 校验 priority 值有效性
         const validPriorities = ['high', 'medium', 'low'];
         if (!validPriorities.includes(options.priority)) {
-          console.error(`错误：无效的优先级 "${options.priority}"，可选值：high / medium / low`);
+          console.error(t('view.add.errorInvalidPriorityTmpl', lang, { priority: options.priority }));
           process.exit(1);
         }
 
@@ -57,9 +60,9 @@ export function registerViewCommand(program: Command): void {
           options.priority as 'high' | 'medium' | 'low',
         );
 
-        console.log(`✓ 审查条目已添加: ${review.id} (${review.op}) — ${review.title}`);
+        console.log(t('view.add.okTmpl', lang, { id: review.id, op: review.op, title: review.title }));
       } catch (err) {
-        console.error(`错误：${err instanceof Error ? err.message : String(err)}`);
+        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
         process.exit(1);
       }
     });
@@ -70,17 +73,18 @@ export function registerViewCommand(program: Command): void {
     .description('验收审查条目（标记为 closed）')
     .argument('<rev-id>', '审查条目 ID（如 REV-001）')
     .action((revId: string) => {
+      const lang = getCliLang(process.cwd());
       try {
         const review = acceptReview(process.cwd(), revId);
 
         if (review) {
-          console.log(`✓ 审查条目已验收: ${review.id} → closed`);
+          console.log(t('view.accept.okTmpl', lang, { id: review.id }));
         } else {
-          console.error(`错误：未找到审查条目 ${revId}`);
+          console.error(t('view.accept.errorNotFoundTmpl', lang, { id: revId }));
           process.exit(1);
         }
       } catch (err) {
-        console.error(`错误：${err instanceof Error ? err.message : String(err)}`);
+        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
         process.exit(1);
       }
     });

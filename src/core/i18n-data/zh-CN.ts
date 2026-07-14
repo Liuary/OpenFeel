@@ -252,6 +252,10 @@ export const stage: I18nDomain = {
   'task.errorTaskNotFoundTmpl':  { key: 'stage.task.errorTaskNotFoundTmpl',  zh: '错误：在 {stageId} 的 status.md 中未找到「任务{taskNo}」', en: '' },
   'task.done':                   { key: 'stage.task.done',                   zh: '✓ 已勾选',                                en: '' },
   'task.undone':                 { key: 'stage.task.undone',                 zh: '○ 已取消勾选',                             en: '' },
+  'task.taskListTmpl':           { key: 'stage.task.taskListTmpl',           zh: '任务列表 ({done}/{total} 完成)',           en: '' },
+  'task.taskItemTmpl':           { key: 'stage.task.taskItemTmpl',           zh: '任务{number}: {desc}',                     en: '' },
+  'task.blockedByTmpl':          { key: 'stage.task.blockedByTmpl',          zh: '阻塞原因: {reason}',                       en: '' },
+  'task.actionLabelTmpl':        { key: 'stage.task.actionLabelTmpl',        zh: '{label} {stageId} 任务{taskNo}',           en: '' },
 };
 
 /* ==================== plan 域：计划命令 ==================== */
@@ -296,6 +300,8 @@ export const roadmap: I18nDomain = {};
 /* ==================== view 域：审查视图命令 ==================== */
 export const view: I18nDomain = {
   'list.empty':                    { key: 'view.list.empty',                    zh: '暂无审查条目',                            en: '' },
+  'list.filedBy':                  { key: 'view.list.filedBy',                  zh: '提交人',                                 en: '' },
+  'list.filedAt':                  { key: 'view.list.filedAt',                  zh: '时间',                                   en: '' },
   'add.errorInvalidPriorityTmpl':  { key: 'view.add.errorInvalidPriorityTmpl',  zh: '错误：无效的优先级 "{priority}"，可选值：high / medium / low', en: '' },
   'add.okTmpl':                    { key: 'view.add.okTmpl',                    zh: '✓ 审查条目已添加: {id} ({op}) — {title}', en: '' },
   'accept.okTmpl':                 { key: 'view.accept.okTmpl',                 zh: '✓ 审查条目已验收: {id} → closed',         en: '' },

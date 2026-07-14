@@ -4,6 +4,7 @@
  */
 import { Command } from 'commander';
 import { createRoadmap, showRoadmap } from '../core/plan/roadmap.js';
+import { t, getCliLang } from '../core/i18n.js';
 
 export function registerRoadmapCommand(program: Command): void {
   const roadmap = program

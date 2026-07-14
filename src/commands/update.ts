@@ -7,7 +7,7 @@ import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { updateProject, supportedTools, selectTools } from '../core/update.js';
-import { getLang } from '../core/workspace/identity.js';
+import { t, getCliLang } from '../core/i18n.js';
 
 export function registerUpdateCommand(program: Command): void {
   program
@@ -15,25 +15,13 @@ export function registerUpdateCommand(program: Command): void {
     .description('部署 OpenFeel 适配文件到目标项目（无参数时交互式选择工具）')
     .option('--lang <lang>', 'Agent prompt language (zh-CN or en)')
     .action(async (path?: string, options?: { lang?: string }) => {
+      const targetPath = resolve(path ?? process.cwd());
+      const lang = getCliLang(targetPath);
       try {
-        const targetPath = resolve(path ?? process.cwd());
 
         if (!existsSync(targetPath)) {
-          console.error(`错误：路径不存在 — ${targetPath}`);
+          console.error(t('update.errorPathNotExistTmpl', lang, { path: targetPath }));
           process.exit(1);
-        }
-
-        // 无显式路径参数 → 交互式选择工具
-        // 解析语言参数
-        let lang: 'zh-CN' | 'en';
-        if (options?.lang) {
-          if (options.lang !== 'zh-CN' && options.lang !== 'en') {
-            console.error(`错误：不支持的语言 "${options.lang}"。支持的值：zh-CN, en`);
-            process.exit(1);
-          }
-          lang = options.lang;
-        } else {
-          lang = getLang(targetPath);
         }
 
         const selectedTools = path
@@ -41,43 +29,43 @@ export function registerUpdateCommand(program: Command): void {
           : await selectTools();             // 无参数则交互选择
 
         if (selectedTools.length === 0) {
-          console.log('未选择任何工具，已取消。');
+          console.log(t('update.cancelled', lang));
           return;
         }
 
-        console.log(`正在部署适配文件到: ${targetPath}`);
-        console.log(`选定工具: ${selectedTools.join(', ')}\n`);
+        console.log(t('update.deployingTmpl', lang, { path: targetPath }));
+        console.log(t('update.selectedToolsTmpl', lang, { tools: selectedTools.join(', ') }));
 
         const result = updateProject(targetPath, selectedTools, lang);
 
         if (result.created.length > 0) {
-          console.log('已创建:');
+          console.log(t('update.created', lang));
           for (const item of result.created) {
             console.log(`  + ${item}`);
           }
         }
 
         if (result.updated.length > 0) {
-          console.log('已更新:');
+          console.log(t('update.updated', lang));
           for (const item of result.updated) {
             console.log(`  ~ ${item}`);
           }
         }
 
         if (result.skipped.length > 0) {
-          console.log('已跳过（内容一致）:');
+          console.log(t('update.skipped', lang));
           for (const item of result.skipped) {
             console.log(`  - ${item}`);
           }
         }
 
         if (result.created.length === 0 && result.updated.length === 0) {
-          console.log('所有适配文件已是最新状态，无需变更。');
+          console.log(t('update.alreadyUpToDate', lang));
         } else {
-          console.log('\n✓ 适配文件部署完成');
+          console.log(t('update.complete', lang));
         }
       } catch (err) {
-        console.error(`错误：部署失败 — ${(err as Error).message}`);
+        console.error(t('update.errorDeployFailedTmpl', lang, { message: (err as Error).message }));
         process.exit(1);
       }
     });

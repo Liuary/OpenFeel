@@ -235,6 +235,10 @@ export const stage: I18nDomain = {
   'task.errorTaskNotFoundTmpl':  { key: 'stage.task.errorTaskNotFoundTmpl',  zh: '', en: 'Error: Task {taskNo} not found in {stageId} status.md' },
   'task.done':                   { key: 'stage.task.done',                   zh: '', en: '✓ Checked' },
   'task.undone':                 { key: 'stage.task.undone',                 zh: '', en: '○ Unchecked' },
+  'task.taskListTmpl':           { key: 'stage.task.taskListTmpl',           zh: '', en: 'Task list ({done}/{total} complete)' },
+  'task.taskItemTmpl':           { key: 'stage.task.taskItemTmpl',           zh: '', en: 'Task {number}: {desc}' },
+  'task.blockedByTmpl':          { key: 'stage.task.blockedByTmpl',          zh: '', en: 'Blocked by: {reason}' },
+  'task.actionLabelTmpl':        { key: 'stage.task.actionLabelTmpl',        zh: '', en: '{label} {stageId} Task {taskNo}' },
 };
 
 /* ==================== plan ==================== */
@@ -279,6 +283,8 @@ export const roadmap: I18nDomain = {};
 /* ==================== view ==================== */
 export const view: I18nDomain = {
   'list.empty':                    { key: 'view.list.empty',                    zh: '', en: 'No review entries' },
+  'list.filedBy':                  { key: 'view.list.filedBy',                  zh: '', en: 'Filed By' },
+  'list.filedAt':                  { key: 'view.list.filedAt',                  zh: '', en: 'Time' },
   'add.errorInvalidPriorityTmpl':  { key: 'view.add.errorInvalidPriorityTmpl',  zh: '', en: 'Error: Invalid priority "{priority}", options: high / medium / low' },
   'add.okTmpl':                    { key: 'view.add.okTmpl',                    zh: '', en: '✓ Review entry added: {id} ({op}) — {title}' },
   'accept.okTmpl':                 { key: 'view.accept.okTmpl',                 zh: '', en: '✓ Review entry accepted: {id} → closed' },

@@ -10,6 +10,7 @@ import {
   getKnowledgeIndex,
 } from '../core/workspace/knowledge.js';
 import type { KnowledgeEntry } from '../core/workspace/knowledge.js';
+import { t, getCliLang } from '../core/i18n.js';
 
 /** 有效分类列表 */
 const VALID_CATEGORIES = ['architecture', 'patterns', 'troubleshooting', 'setup'];
@@ -27,20 +28,21 @@ export function registerKnowledgeCommand(program: Command): void {
     .description('列出知识条目')
     .option('--type <category>', '按分类过滤')
     .action((options: { type?: string }) => {
+      const lang = getCliLang(process.cwd());
       const entries = listKnowledge(process.cwd(), options.type);
 
       if (entries.length === 0) {
-        console.log('暂无知识条目');
+        console.log(t('knowledge.list.empty', lang));
         return;
       }
 
       // 表格输出：分类 | 标题 | 日期 | 状态
-      const headers = ['分类', '标题', '日期', '状态'];
+      const headers = ['分类', '标题', '日期', t('common.status', lang)];
       const rows = entries.map((e) => [
         e.category,
         e.title,
         e.date,
-        e.enabled ? '启用' : '禁用',
+        e.enabled ? t('knowledge.list.enabled', lang) : t('knowledge.list.disabled', lang),
       ]);
 
       console.log(formatTable(rows, headers));
@@ -56,10 +58,11 @@ export function registerKnowledgeCommand(program: Command): void {
     .argument('<title>', '条目标题')
     .option('--content <text>', '条目内容（也可通过管道 stdin 传入）')
     .action(async (category: string, title: string, options: { content?: string }) => {
+      const lang = getCliLang(process.cwd());
       try {
         // 校验分类
         if (!VALID_CATEGORIES.includes(category)) {
-          console.error(`错误：无效分类 "${category}"，有效值：${VALID_CATEGORIES.join(', ')}`);
+          console.error(t('knowledge.add.errorInvalidCategoryTmpl', lang, { category, valid: VALID_CATEGORIES.join(', ') }));
           process.exit(1);
         }
 
@@ -70,21 +73,21 @@ export function registerKnowledgeCommand(program: Command): void {
           if (!process.stdin.isTTY) {
             content = await readStdin();
           } else {
-            console.error('错误：请使用 --content 提供内容，或通过管道提供内容。');
+            console.error(t('knowledge.add.errorNoContent', lang));
             process.exit(1);
           }
         }
 
         // 内容不能为空
         if (!content || content.trim().length === 0) {
-          console.error('错误：内容不能为空。');
+          console.error(t('knowledge.add.errorEmptyContent', lang));
           process.exit(1);
         }
 
         addKnowledgeEntry(process.cwd(), category, title, content.trim());
-        console.log(`✓ 已添加知识条目: [${category}] ${title}`);
+        console.log(t('knowledge.add.okTmpl', lang, { category, title }));
       } catch (err) {
-        console.error(`错误：${err instanceof Error ? err.message : String(err)}`);
+        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
         process.exit(1);
       }
     });
@@ -99,22 +102,23 @@ export function registerKnowledgeCommand(program: Command): void {
     .option('--limit <n>', '返回结果数量上限（默认 10）', '10')
     .option('--offset <n>', '结果偏移量（默认 0）', '0')
     .action((query: string, options: { limit: string; offset: string }) => {
+      const lang = getCliLang(process.cwd());
       const limit = Math.max(1, parseInt(options.limit, 10) || 10);
       const offset = Math.max(0, parseInt(options.offset, 10) || 0);
       const entries = searchKnowledge(process.cwd(), query, limit, offset);
 
       if (entries.length === 0) {
-        console.log(`未找到与 "${query}" 相关的知识条目。`);
+        console.log(t('knowledge.search.noResultsTmpl', lang, { query }));
         if (offset > 0) {
-          console.log(`（偏移量 ${offset}，已越界）`);
+          console.log(t('knowledge.search.offsetOutOfBoundsTmpl', lang, { offset: String(offset) }));
         }
         return;
       }
 
-      console.log(`找到 ${entries.length} 条匹配:\n`);
+      console.log(t('knowledge.search.foundTmpl', lang, { n: String(entries.length) }));
 
       for (const entry of entries) {
-        const status = entry.enabled ? '启用' : '禁用';
+        const status = entry.enabled ? t('knowledge.list.enabled', lang) : t('knowledge.list.disabled', lang);
         console.log(`[${entry.category}] ${entry.title} (${entry.date}) [${status}]`);
         // 输出内容摘要（前 100 字）
         const summary = entry.content.length > 100
@@ -132,20 +136,21 @@ export function registerKnowledgeCommand(program: Command): void {
     .command('index')
     .description('显示知识库索引概览')
     .action(() => {
+      const lang = getCliLang(process.cwd());
       const idx = getKnowledgeIndex(process.cwd());
 
-      console.log('=== 分类概览 ===\n');
+      console.log(t('knowledge.index.categoryOverview', lang));
       if (idx.categories.length === 0) {
-        console.log('（无分类）');
+        console.log(t('knowledge.index.noCategories', lang));
       } else {
         for (const cat of idx.categories) {
           console.log(`  ${cat.name.padEnd(20)} ${cat.description}`);
         }
       }
 
-      console.log('\n=== 最近更新 ===\n');
+      console.log(`\n${t('knowledge.index.recentUpdates', lang)}\n`);
       if (idx.recentUpdates.length === 0) {
-        console.log('暂无更新记录。');
+        console.log(t('knowledge.index.noUpdates', lang));
       } else {
         const headers = ['日期', '分类', '标题'];
         const rows = idx.recentUpdates.map((u) => [u.date, u.category, u.title]);

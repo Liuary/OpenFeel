@@ -295,7 +295,7 @@ export function initDemo(projectPath: string): DemoResult {
   // src/index.ts — 简单入口
   ensureFile(
     'src/index.ts',
-    `/**\n * OpenFeel 示例项目入口\n */\nexport function greet(name: string): string {\n  return \`你好，\${name}！欢迎使用 OpenFeel。\`;\n}\n`,
+    `/**\n * 示例项目入口\n */\nexport function sum(a: number, b: number): number {\n  return a + b;\n}\n`,
   );
 
   // tsconfig.json — TypeScript 配置
@@ -321,7 +321,7 @@ export function initDemo(projectPath: string): DemoResult {
   // test/index.test.ts — 示例测试
   ensureFile(
     'test/index.test.ts',
-    `import { describe, it, expect } from 'vitest';\n\n// TODO: 替换为项目实际的模块路径\nconst greet = (name: string): string => \`你好，\${name}！欢迎使用 OpenFeel。\`;\n\ndescribe('greet', () => {\n  it('应返回正确的问候语', () => {\n    expect(greet('世界')).toBe('你好，世界！欢迎使用 OpenFeel。');\n  });\n\n  it('应处理空字符串', () => {\n    expect(greet('')).toBe('你好，！欢迎使用 OpenFeel。');\n  });\n});\n`,
+    `import { describe, it, expect } from 'vitest';\n\nfunction sum(a: number, b: number): number {\n  return a + b;\n}\n\ndescribe('sum', () => {\n  it('应正确计算两个正数之和', () => {\n    expect(sum(1, 2)).toBe(3);\n  });\n\n  it('应正确计算负数', () => {\n    expect(sum(-1, -2)).toBe(-3);\n  });\n\n  it('应处理零', () => {\n    expect(sum(0, 5)).toBe(5);\n  });\n});\n`,
   );
 
   // .openfeel/plan/stage-01/status.md — 示例阶段

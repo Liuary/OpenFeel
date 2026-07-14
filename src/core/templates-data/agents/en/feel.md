@@ -110,6 +110,10 @@ A shared log entry (`.openfeel/log/yyyy-mm-dd-feel-NNN.md`) must be created when
 - Decision making when review fails (retry / re-scheme / pause / human intervention)
 - Stage summary when a stage reaches done
 
+### Skeleton File Note
+
+During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory. Feel does not need to manually create log files; simply fill in the content when you see a skeleton file.
+
 ### Log Entry Format
 
 ```markdown

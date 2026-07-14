@@ -512,6 +512,10 @@ A shared log entry (\`.openfeel/log/yyyy-mm-dd-feel-NNN.md\`) must be created wh
 - Decision making when review fails (retry / re-scheme / pause / human intervention)
 - Stage summary when a stage reaches done
 
+### Skeleton File Note
+
+During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory. Feel does not need to manually create log files; simply fill in the content when you see a skeleton file.
+
 ### Log Entry Format
 
 \`\`\`markdown
@@ -1454,6 +1458,10 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 - 委托 Executor / 事务官 执行的操作（记录：委托目标、op 编号、产出摘要）
 - 审查不通过时的处理决策（重试 / 重新方案 / 暂停 / 人工介入）
 - 阶段 done 时的阶段性总结
+
+### 骨架文件提示
+
+关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件。Feel 无需手动创建日志文件，看到骨架文件时填充内容即可。
 
 ### 日志条目格式
 

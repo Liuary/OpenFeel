@@ -603,6 +603,89 @@ export class FlowManager {
     return result;
   }
 
+  // ═══ 日志骨架创建 ═══
+
+  /**
+   * 在私域日志目录创建带日期前缀的骨架文件
+   * Agent 只需填充内容，无需手动创建文件
+   * @param stageId 阶段 ID（如 v4.4-stage-02）
+   * @param label 骨架标签（如 exec_running / review_pending / test_pending）
+   */
+  private createLogSkeleton(stageId: string, label: string): void {
+    const username = this.getUsername();
+    const now = new Date();
+    const dateStr = this.formatDateStr(now);
+    const logDir = resolve(this.projectPath, '.openfeel', 'users', username, 'log');
+
+    // 确保私域日志目录存在
+    if (!existsSync(logDir)) {
+      mkdirSync(logDir, { recursive: true });
+    }
+
+    // 计算 NNN 序号（基于当日已有文件数 + 1）
+    const nnn = this.computeSkeletonNnn(logDir, dateStr);
+    const fileName = `${dateStr}-${String(nnn).padStart(3, '0')}.md`;
+    const filePath = resolve(logDir, fileName);
+
+    // 仅当文件不存在时创建（幂等性）
+    if (!existsSync(filePath)) {
+      const content = `# ${fileName.replace('.md', '')}
+- **时间**：${now.toISOString()}
+- **阶段**：${stageId}
+- **节点**：${label}
+- **状态**：待填充
+
+> 此文件由流水线自动创建。请在此记录操作详情。
+`;
+      writeFileSync(filePath, content, 'utf-8');
+    }
+  }
+
+  /** 获取当前用户名 */
+  private getUsername(): string {
+    try {
+      const infoPath = resolve(this.projectPath, '.openfeel', '.info.json');
+      if (existsSync(infoPath)) {
+        const raw = readFileSync(infoPath, 'utf-8');
+        const info = JSON.parse(raw) as Record<string, unknown>;
+        if (info.user && typeof info.user === 'string') {
+          return info.user;
+        }
+      }
+    } catch {
+      // 加载失败使用默认值
+    }
+    return 'unknown';
+  }
+
+  /** 格式化日期为 yyyy-mm-dd */
+  private formatDateStr(date: Date): string {
+    const yyyy = date.getFullYear().toString();
+    const MM = (date.getMonth() + 1).toString().padStart(2, '0');
+    const dd = date.getDate().toString().padStart(2, '0');
+    return `${yyyy}-${MM}-${dd}`;
+  }
+
+  /** 计算当日已有文件数，返回下一个序号 */
+  private computeSkeletonNnn(logDir: string, datePrefix: string): number {
+    try {
+      const entries = readdirSync(logDir);
+      let maxNnn = 0;
+      for (const entry of entries) {
+        if (entry.startsWith(datePrefix) && entry.endsWith('.md')) {
+          const nnnStr = entry.slice(datePrefix.length + 1, -3); // +1 跳过连字符
+          const nnn = parseInt(nnnStr, 10);
+          if (!isNaN(nnn) && nnn > maxNnn) {
+            maxNnn = nnn;
+          }
+        }
+      }
+      return maxNnn + 1;
+    } catch {
+      return 1;
+    }
+  }
+
   // ═══ 跨会话上下文恢复 ═══
 
   /**
@@ -759,6 +842,17 @@ export class FlowManager {
 
     // 更新 stage phase
     this.data.stages[stageName].phase = targetPhase;
+
+    // 日志强制落档骨架：关键 phase 节点自动创建骨架文件
+    const SKELETON_PHASES: PipelinePhase[] = [
+      'exec_running',
+      'review_pending',
+      'test_pending',
+      'archiving',
+    ];
+    if (SKELETON_PHASES.includes(targetPhase)) {
+      this.createLogSkeleton(stageName, targetPhase);
+    }
 
     // 同步更新 pipeline.current：从该 stage 的 ops 中找到第一个 pending/executing 的 op
     const pendingOpEntry = Object.entries(stage.ops).find(

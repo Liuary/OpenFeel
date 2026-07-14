@@ -463,7 +463,16 @@ REVs found during Reviewer review, **even whitelist operations (such as document
      find the active stage with \`phase != 'done'\` as the current dispatch target.
    - When multiple stages are running in parallel (e.g., stage-03 coding while stage-04 is in planning), Feel must
      prioritize or select the appropriate stage to advance based on dependencies, pausing other stages.
-   - Specific stage advancement is done via the \`openfeel flow advance --stage <id> --to <phase>\` command.
+    - Specific stage advancement is done via the \`openfeel flow advance --stage <id> --to <phase>\` command.
+
+#### Auto-Advance Decision Rules
+
+When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to \`disabled\` (i.e., manual execution mode):
+1. **Must ask the user**: Before advancing to \`scheme_pending\` / \`exec_running\`, Feel must ask the user via the \`question\` tool whether to enable auto-advance.
+2. **User agrees**: Feel sets \`auto_advance\` to \`enabled\` via the \`openfeel flow\` CLI or FlowManager API, then continues in auto mode.
+3. **User declines**: Feel keeps \`auto_advance=disabled\` and requires user confirmation before each stage advance (manual execution mode).
+4. **No silent advancement**: When \`auto_advance=disabled\`, Feel must not advance the pipeline without asking the user.
+
 4. **Decision authority**: When the process is stuck (review failed, test failed, etc.), decide whether to retry, re-plan, or request human intervention.
 
 ## Threshold for Small Changes vs. Large-Scale Planning
@@ -1410,7 +1419,16 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
      找到 \`phase != 'done'\` 的活跃阶段作为当前调度目标。
    - 多阶段并行（如 stage-03 编码时 stage-04 在计划）时，Feel 需按优先级
      或依赖关系选择当前推进的阶段，暂停其他阶段。
-   - 具体的阶段推进通过 \`openfeel flow advance --stage <id> --to <phase>\` 命令执行。
+    - 具体的阶段推进通过 \`openfeel flow advance --stage <id> --to <phase>\` 命令执行。
+
+#### 自动推进决策纪律
+
+当阶段进入 \`plan_passed\` 且项目的 \`auto_advance\` 设为 \`disabled\`（即手动执行模式）时：
+1. **必须询问用户**：Feel 在推进到 \`scheme_pending\` / \`exec_running\` 前，必须通过 \`question\` 工具询问用户是否开启自动推进。
+2. **用户同意**：Feel 通过 \`openfeel flow\` CLI 或调用 FlowManager API 将 \`auto_advance\` 设为 \`enabled\`，之后按自动模式继续推进。
+3. **用户拒绝**：Feel 保持 \`auto_advance=disabled\`，每次阶段推进前均需向用户确认（手动执行模式）。
+4. **禁止静默推进**：\`auto_advance=disabled\` 时禁止 Feel 不询问用户直接推进流水线。
+
 4. **决策权**：当流程卡住时（审查不通过、测试失败等），决定是重试、重定方案还是请求人工介入。
 
 ## 小改 vs 大规模规划的阈值

@@ -61,7 +61,16 @@ REVs found during Reviewer review, **even whitelist operations (such as document
      find the active stage with `phase != 'done'` as the current dispatch target.
    - When multiple stages are running in parallel (e.g., stage-03 coding while stage-04 is in planning), Feel must
      prioritize or select the appropriate stage to advance based on dependencies, pausing other stages.
-   - Specific stage advancement is done via the `openfeel flow advance --stage <id> --to <phase>` command.
+    - Specific stage advancement is done via the `openfeel flow advance --stage <id> --to <phase>` command.
+
+#### Auto-Advance Decision Rules
+
+When a stage enters `plan_passed` and the project's `auto_advance` is set to `disabled` (i.e., manual execution mode):
+1. **Must ask the user**: Before advancing to `scheme_pending` / `exec_running`, Feel must ask the user via the `question` tool whether to enable auto-advance.
+2. **User agrees**: Feel sets `auto_advance` to `enabled` via the `openfeel flow` CLI or FlowManager API, then continues in auto mode.
+3. **User declines**: Feel keeps `auto_advance=disabled` and requires user confirmation before each stage advance (manual execution mode).
+4. **No silent advancement**: When `auto_advance=disabled`, Feel must not advance the pipeline without asking the user.
+
 4. **Decision authority**: When the process is stuck (review failed, test failed, etc.), decide whether to retry, re-plan, or request human intervention.
 
 ## Threshold for Small Changes vs. Large-Scale Planning

@@ -77,15 +77,17 @@ const stringMaps: Record<string, Map<string, string>> = {};
 
 /**
  * 构建指定语言的字符串映射表。
- * @param lang 语言标识
  * @param domains 域列表
+ * @param lang 语言标识（用于明确选取对应字段）
  * @returns Map<string, string> 键→本地化字符串
  */
-function buildMap(domains: DomainImport[]): Map<string, string> {
+function buildMap(domains: DomainImport[], lang: string): Map<string, string> {
   const map = new Map<string, string>();
+  // 按 lang 明确选取对应字段，en 模式下不依赖 zh 为空的副效应
+  const field = lang === 'en' ? ('en' as const) : ('zh' as const);
   for (const domain of domains) {
     for (const entry of Object.values(domain)) {
-      map.set(entry.key, entry.zh || entry.en);
+      map.set(entry.key, entry[field]);
     }
   }
   return map;
@@ -99,12 +101,12 @@ function buildMap(domains: DomainImport[]): Map<string, string> {
 function getStringMap(lang: string): Map<string, string> {
   if (!stringMaps[lang]) {
     if (lang === 'zh-CN') {
-      stringMaps[lang] = buildMap(zhDomains);
+      stringMaps[lang] = buildMap(zhDomains, lang);
     } else if (lang === 'en') {
-      stringMaps[lang] = buildMap(enDomains);
+      stringMaps[lang] = buildMap(enDomains, lang);
     } else {
       // 未知语言回退到 zh-CN
-      stringMaps[lang] = buildMap(zhDomains);
+      stringMaps[lang] = buildMap(zhDomains, lang);
     }
   }
   return stringMaps[lang];

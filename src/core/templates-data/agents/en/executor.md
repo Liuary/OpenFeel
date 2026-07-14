@@ -157,6 +157,32 @@ Executor is driven by a **fast model** (such as DeepSeek V4 Flash), prioritizing
 - If self-test fails 3 consecutive times, fall back and wait for Feel to re-schedule Schemer.
 - Modified code must pass the project's existing build and test commands.
 
+## package.json Template Requirements
+
+When the task involves creating a new project or initializing `package.json`, ensure the generated file includes the following minimum template fields:
+
+```json
+{
+  "name": "project-name",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  }
+}
+```
+
+**Required fields**:
+
+| Field | Requirement | Description |
+|-------|-------------|-------------|
+| `name` | Required | Project name, using lowercase letters and hyphens |
+| `version` | Required | Fixed initial value `"1.0.0"` |
+| `type` | Required | Fixed as `"module"`, using ES Module import mode |
+| `scripts.test` | Required | At least one test command (e.g., `"vitest run"`) |
+
+> These fields are the minimum requirements for an OpenFeel standardized project. Agents may extend with additional fields as needed, but must not omit any required fields.
+
 ## Notes
 
 - Read the complete file content before modification; prefer precise replacement with `edit`. Be mindful of path separators and encoding consistency across platforms.

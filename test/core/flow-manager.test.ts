@@ -1399,12 +1399,12 @@ describe('FlowManager', () => {
       expect(existsSync(fp)).toBe(false);
     });
 
-    it('dry-run 模式在正常 flow.json 时应返回 fixed=false 且 changes 含"未检测到"', () => {
+    it('dry-run 模式在正常 flow.json 时应返回 fixed=false 且 changes 为空数组', () => {
       FlowManager.initFlow(tmpDir);
       const mgr = new FlowManager(tmpDir);
       const result = mgr.repair(true);
       expect(result.fixed).toBe(false);
-      expect(result.changes.some((c) => c.includes('未检测到'))).toBe(true);
+      expect(result.changes.length).toBe(0);
     });
 
     it('非 dry-run 模式在 flow.json 不存在时应创建文件并返回 fixed=true', () => {

@@ -736,6 +736,24 @@ export class FlowManager {
       targetPhase = phaseResult.data;
     }
 
+    // REV 闭环：blocking REV > 0 时拒绝推进到 done（--force 仅降级警告）
+    if (targetPhase === 'done') {
+      const stageReviews = this.data!.reviews.filter(
+        (r) => r.op.startsWith(stageName + '.') || r.op === stageName,
+      );
+      const blockingOpen = stageReviews.filter(
+        (r) => r.blocking !== false && r.status === 'open',
+      );
+      if (blockingOpen.length > 0) {
+        const revList = blockingOpen
+          .map((r) => `  ${r.id}: ${r.title} (priority=${r.priority})`)
+          .join('\n');
+        throw new Error(
+          `无法推进到 done：存在 ${blockingOpen.length} 个未解决的阻塞 REV：\n${revList}`,
+        );
+      }
+    }
+
     // 保存旧 phase 用于日志
     const fromPhase = stage.phase;
 

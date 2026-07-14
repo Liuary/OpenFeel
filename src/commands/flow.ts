@@ -356,7 +356,7 @@ export function registerFlowCommand(program: Command): void {
     .option('--op <id>', '操作 ID（如 stage-01.op-001），仅用于日志/展示')
     .requiredOption('--to <phase>', '目标阶段（如 exec_running）')
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
-    .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查）')
+    .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
     .action((options: { op?: string; to: string; stage?: string; force?: boolean }) => {
       const lang = getCliLang(process.cwd());
       // 自定义 --stage 必选校验（提供中文错误提示）
@@ -389,7 +389,7 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
       }
 
-      // 非法 phase 校验（P1）：拒绝不在枚举中的目标 phase
+      // 非法 phase 校验（P1）：拒绝不在枚举中的目标 phase；--force 可跳过此项，但不可绕过 REV 阻塞检查
       if (!options.force) {
         const phaseResult = PipelinePhaseSchema.safeParse(options.to);
         if (!phaseResult.success) {
@@ -416,6 +416,29 @@ export function registerFlowCommand(program: Command): void {
         const stage = (mgr.getData()?.stages || {})[options.stage];
         if (stage && SKIP_WARN_PHASES.includes(stage.phase as PipelinePhase)) {
           console.warn(t('flow.advance.warnSkipReview', lang));
+        }
+      }
+
+      // REV 闭环（命令层兜底）：推进到 done 时检查 blocking REV
+      if (options.to === 'done' && options.stage) {
+        const allReviews = mgr.getReviewItems();
+        const stageReviews = allReviews.filter(
+          (r) => r.op.startsWith(options.stage!) || r.op === options.stage,
+        );
+        const blockingOpen = stageReviews.filter(
+          (r) => r.blocking !== false && r.status === 'open',
+        );
+        if (blockingOpen.length > 0) {
+          console.warn(`[!] 检测到 ${blockingOpen.length} 个未解决的阻塞 REV：`);
+          for (const rev of blockingOpen) {
+            console.warn(`    ${rev.id}: ${rev.title} (priority=${rev.priority})`);
+          }
+          if (options.force) {
+            console.warn('[!] --force 已指定，但 REV 安全检查不可绕过。拒绝推进。');
+          }
+          console.error('错误：blocking REV 未解决前禁止推进到 done。');
+          console.error('请先解决上述 REV 或通过 flow review resolve 标记为非阻塞。');
+          process.exit(1);
         }
       }
 

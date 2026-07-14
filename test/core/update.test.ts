@@ -3,8 +3,8 @@
  * 测试 updateProject 在临时目录中的完整行为
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { updateProject } from '../../src/core/update.js';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { updateProject, AgentsMdLangConflictError } from '../../src/core/update.js';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -148,8 +148,8 @@ describe('updateProject', () => {
     // 第二次调用 — 所有内容一致，应全部 skipped
     expect(result2.created.length).toBe(0);
     expect(result2.updated.length).toBe(0);
-    // 应有 8+8+1+1 = 18 个文件被跳过（agents + skills + opencode.jsonc + instructions/core.md）
-    expect(result2.skipped.length).toBe(18);
+    // 应有 8+8+1+1+1 = 19 个文件被跳过（agents + skills + opencode.jsonc + instructions/core.md + AGENTS.md）
+    expect(result2.skipped.length).toBe(19);
   });
 
   it('修改已有 agent 内容后应正确更新', () => {
@@ -200,6 +200,68 @@ describe('updateProject', () => {
 
     // opencode.jsonc 应被更新（因为 default_agent 从 code 改为 feel）
     expect(result.updated).toContain('opencode.jsonc');
+  });
+
+  // ── AGENTS.md 语言同步逻辑测试 ──
+
+  it('首次部署 + --lang=en 应创建英文版 AGENTS.md', () => {
+    updateProject(tmpDir, ['opencode'], 'en', { lang: 'en' });
+    const agentsMdPath = join(tmpDir, 'AGENTS.md');
+    expect(existsSync(agentsMdPath)).toBe(true);
+    const content = readFileSync(agentsMdPath, 'utf-8');
+    expect(content).toContain('This document is the core constraint layer');
+    expect(content).not.toContain('核心约束层');
+  });
+
+  it('已有 agents 目录但 AGENTS.md 被删 + --lang 应重新创建 (REV-002)', () => {
+    // 模拟已有 agents 目录（有内容）
+    const agentsDir = join(tmpDir, '.opencode', 'agents');
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(join(agentsDir, 'feel.md'), 'dummy', 'utf-8');
+
+    // AGENTS.md 不存在（手动删除）
+
+    const result = updateProject(tmpDir, ['opencode'], 'en', { lang: 'en' });
+    const agentsMdPath = join(tmpDir, 'AGENTS.md');
+    expect(existsSync(agentsMdPath)).toBe(true);
+    expect(result.created).toContain('AGENTS.md');
+    const content = readFileSync(agentsMdPath, 'utf-8');
+    expect(content).toContain('This document is the core constraint layer');
+  });
+
+  it('语言冲突交互模式跳过 AGENTS.md 但继续更新其他文件 (REV-004)', () => {
+    // 模拟已有 .info.json（项目语言为 zh-CN）
+    const infoDir = join(tmpDir, '.openfeel');
+    mkdirSync(infoDir, { recursive: true });
+    writeFileSync(join(infoDir, '.info.json'), JSON.stringify({ user: 'test', lang: 'zh-CN' }), 'utf-8');
+
+    // 模拟已有 AGENTS.md（中文版）
+    const agentsMdContent = '# 测试项目\n\n> 本文档为 测试项目 核心约束层';
+    writeFileSync(join(tmpDir, 'AGENTS.md'), agentsMdContent, 'utf-8');
+
+    // 交互模式 + --lang=en，语言冲突 → 不应 throw，应跳过 AGENTS.md
+    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', {
+      lang: 'en',
+      interactive: true,
+    });
+
+    // AGENTS.md 内容不变（跳过）
+    expect(readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8')).toBe(agentsMdContent);
+    expect(result.skipped).toContain('AGENTS.md (language conflict)');
+
+    // 其他文件正常创建（不因语言冲突中断）
+    expect(existsSync(join(tmpDir, '.opencode', 'agents', 'feel.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'skills', 'check-kb', 'SKILL.md'))).toBe(true);
+    expect(result.created.length).toBeGreaterThan(5);
+  });
+
+  it('AgentsMdLangConflictError 应包含正确的语言信息', () => {
+    const err = new AgentsMdLangConflictError('zh-CN', 'en');
+    expect(err.name).toBe('AgentsMdLangConflictError');
+    expect(err.projectLang).toBe('zh-CN');
+    expect(err.requestedLang).toBe('en');
+    expect(err.message).toContain('zh-CN');
+    expect(err.message).toContain('en');
   });
 
   it('子命令正确注册（程序包含 update 命令）', async () => {

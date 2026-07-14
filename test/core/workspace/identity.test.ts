@@ -5,8 +5,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { ensureInfoJson, getLang } from '../../../src/core/workspace/identity.js';
+import { tmpdir, homedir } from 'node:os';
+import { ensureInfoJson, getLang, recordProjectLang, getGlobalConfig } from '../../../src/core/workspace/identity.js';
 
 describe('getLang', () => {
   let tmpDir: string;
@@ -88,5 +88,64 @@ describe('ensureInfoJson', () => {
     const info = JSON.parse(readFileSync(infoPath, 'utf-8'));
     expect(info.lang).toBe('en');
     expect(info.user).toBe('test');
+  });
+});
+
+describe('recordProjectLang', () => {
+  let tmpDir: string;
+  let globalConfigPath: string;
+  let savedConfig: string | null = null;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-identity-record-'));
+    globalConfigPath = join(homedir(), '.openfeel', 'config.json');
+    // 保存现有的全局配置内容，测试后恢复
+    if (existsSync(globalConfigPath)) {
+      savedConfig = readFileSync(globalConfigPath, 'utf-8');
+    }
+  });
+
+  afterEach(() => {
+    // 清理测试写入的全局配置
+    if (savedConfig !== null) {
+      writeFileSync(globalConfigPath, savedConfig, 'utf-8');
+    } else {
+      try {
+        const config = JSON.parse(readFileSync(globalConfigPath, 'utf-8'));
+        delete config.projects[tmpDir];
+        if (Object.keys(config.projects).length === 0) {
+          delete config.projects;
+        }
+        writeFileSync(globalConfigPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+      } catch {
+        // 忽略清理失败
+      }
+    }
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('应记录项目语言到全局配置', () => {
+    recordProjectLang(tmpDir, 'en');
+    const config = getGlobalConfig();
+    expect(config.projects[tmpDir]).toBe('en');
+  });
+
+  it('语言相同时应跳过写入（幂等性）', () => {
+    recordProjectLang(tmpDir, 'en');
+    const config1 = JSON.parse(readFileSync(globalConfigPath, 'utf-8'));
+    const mtime1 = JSON.stringify(config1);
+
+    recordProjectLang(tmpDir, 'en');
+    const config2 = JSON.parse(readFileSync(globalConfigPath, 'utf-8'));
+    const mtime2 = JSON.stringify(config2);
+
+    expect(mtime2).toBe(mtime1);
+  });
+
+  it('语言不同时应更新映射', () => {
+    recordProjectLang(tmpDir, 'en');
+    recordProjectLang(tmpDir, 'zh-CN');
+    const config = getGlobalConfig();
+    expect(config.projects[tmpDir]).toBe('zh-CN');
   });
 });

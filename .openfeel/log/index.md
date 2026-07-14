@@ -10,3 +10,7 @@
 | [2026-07-06](2026/07/06/day_index.md) | op-003 约束清理：dev_core.md 模板文件同步约束已禁用 |
 | [2026-07-05](2026/07/05/day_index.md) | v4-stage-02 代码审查完成（3阻塞REV） |
 | [2026-07-07](2026/07/07/day_index.md) | stage-03. advance_stage_phase |
+| [2026-07-09](2026/07/09/day_index.md) | v4.2. advance_stage_phase |
+| [2026-07-10](2026/07/10/day_index.md) | v4.3-stage-01. advance_stage_phase |
+| [2026-07-12](2026/07/12/day_index.md) | v4.3-stage-01. advance_stage_phase |
+| [2026-07-14](2026/07/14/day_index.md) | v4.4. advance_stage_phase |

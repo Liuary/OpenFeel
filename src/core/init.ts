@@ -16,11 +16,57 @@ import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson } from './workspace/identity.js';
 import { writeDefaultConfig } from './config.js';
 import { FlowManager } from './flow-manager.js';
-import {
-  DEV_CORE_TEMPLATE,
-  CURRENT_TEMPLATE,
-  AGENTS_MD_TEMPLATE,
-} from './templates.js';
+import { DEV_CORE_TEMPLATE, CURRENT_TEMPLATE } from './templates.js';
+import { loadTemplate } from './template-loader.js';
+import readline from 'node:readline';
+
+/**
+ * 提示用户选择语言
+ * 交互模式下显示中英双语提示，非交互模式默认 zh-CN
+ */
+async function promptLanguage(): Promise<'zh-CN' | 'en'> {
+  if (!process.stdout.isTTY) {
+    console.log('非交互环境，Agent 提示词语言默认设置为 zh-CN。使用 openfeel update --lang <zh-CN|en> 可修改。');
+    return 'zh-CN';
+  }
+
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    console.log('\n🌐 Select Agent prompt language / 选择 Agent 提示词语言:');
+    console.log('  1. English (en)');
+    console.log('  2. 中文 (zh-CN) [default]');
+
+    rl.question('Enter choice (1/2/en/zh) [2]: ', (answer) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      if (trimmed === '1' || trimmed === 'en' || trimmed === 'english') {
+        resolve('en');
+      } else {
+        // 默认 zh-CN（包含回车、2、zh、chinese 等情况）
+        resolve('zh-CN');
+      }
+    });
+  });
+}
+
+/**
+ * 写入语言配置到 .openfeel/.info.json
+ */
+function writeLang(projectPath: string, lang: 'zh-CN' | 'en'): void {
+  const infoPath = resolve(projectPath, '.openfeel', '.info.json');
+  try {
+    const content = readFileSync(infoPath, 'utf-8');
+    const info = JSON.parse(content);
+    info.lang = lang;
+    writeFileSync(infoPath, JSON.stringify(info, null, 2) + '\n', 'utf-8');
+  } catch {
+    // 文件不存在或解析失败，忽略
+  }
+}
 
 /** 初始化结果 */
 export interface InitResult {
@@ -56,9 +102,9 @@ function writeTemplateIfMissing(
 /**
  * 初始化项目工作区
  * 步骤：创建目录 → 写入 config.yaml → 初始化 flow.json → 创建 .info.json
- *       → 生成 dev_core.md → 生成 current.md → 生成 instructions/core.md
+ *       → 语言选择 → 生成 dev_core.md → 生成 current.md → 生成 AGENTS.md
  */
-export function initProject(projectPath: string): InitResult {
+export async function initProject(projectPath: string, cliLang?: string): Promise<InitResult> {
   const created: string[] = [];
   const updated: string[] = [];
 
@@ -96,6 +142,19 @@ export function initProject(projectPath: string): InitResult {
     created.push('.openfeel/.info.json');
   }
 
+  // 4a. 语言选择：CLI --lang 参数 > 交互式选择 > 默认 zh-CN
+  let selectedLang: 'zh-CN' | 'en';
+  if (cliLang === 'en' || cliLang === 'zh-CN') {
+    selectedLang = cliLang;
+    console.log(`Agent 提示词语言: ${selectedLang === 'en' ? 'English' : '中文'}`);
+  } else if (cliLang) {
+    console.warn(`无效的 --lang 值 "${cliLang}"，回退到交互式选择`);
+    selectedLang = await promptLanguage();
+  } else {
+    selectedLang = await promptLanguage();
+  }
+  writeLang(projectPath, selectedLang);
+
   // 5. 生成 .openfeel/dev/dev_core.md 模板
   const devCorePath = resolve(projectPath, '.openfeel', 'dev', 'dev_core.md');
   const devCoreResult = writeTemplateIfMissing(devCorePath, DEV_CORE_TEMPLATE);
@@ -117,9 +176,10 @@ export function initProject(projectPath: string): InitResult {
     created.push('.openfeel/kb/index.md');
   }
 
-  // 8. 生成 AGENTS.md 骨架文件（项目根目录）
+  // 8. 生成 AGENTS.md 骨架文件（项目根目录），根据语言选择加载模板
   const agentsMdPath = resolve(projectPath, 'AGENTS.md');
-  const agentsMdResult = writeTemplateIfMissing(agentsMdPath, AGENTS_MD_TEMPLATE);
+  const agentsMdContent = loadTemplate(selectedLang, 'agents-md');
+  const agentsMdResult = writeTemplateIfMissing(agentsMdPath, agentsMdContent);
   if (agentsMdResult.created) {
     created.push('AGENTS.md');
   }

@@ -4,24 +4,58 @@
 
 ## 当前计划
 
-### [OpenFeel v4.1 — 构建稳健性 + Agent 深化](v4.1/plan.md) ← 计划中
+### [OpenFeel v4.4 — 国际化 + 流水线纪律强化](v4.4/plan.md) ← 计划中
+
+**目标**：(1) CLI 输出国际化 + 全局语言配置；(2) 流水线纪律：REV 闭环、git commit、日志强制落档、日志体系修复；(3) 配置优化与 Agent 提示词完善；(4) 数据同步与收尾修复。共 15 项问题（Feel 研究补充 5 项），4 阶段。
+
+| 阶段 | 任务 | 优先级 | 依赖 | 状态 |
+|------|------|:--:|------|:--:|
+| v4.4-stage-01 | i18n 基建 + CLI 国际化（6 项） | P0 | — | plan_pending |
+| v4.4-stage-02 | 日志修复 + 流水线安全增强（6 项） | P0 | —（与 s01 并行） | plan_pending |
+| v4.4-stage-03 | 配置优化 + Agent 提示词完善（3 项） | P1 | s01 (hard), s02 (soft) | plan_pending |
+| v4.4-stage-04 | 数据同步 + 收尾修复（5 项） | P2 | s01 (soft), s02 (soft) | plan_pending |
+
+| # | 问题 | 优先级 | 阶段 | 来源 |
+|:--:|------|:--:|:--:|------|
+| 1 | CLI 输出国际化 | P0 | s01 | 用户反馈 |
+| 2 | 全局默认语言配置 | P0 | s01 | 用户反馈 |
+| 5 | REV 闭环——blocking REV 禁止推进 done | P0 | s02 | 测试发现 |
+| 6 | Executor 自动 git commit | P0 | s02 | 测试发现 |
+| 7 | 日志强制落档 | P0 | s02 | 测试发现 |
+| 9 | 日志体系断裂——flow.json缺上下文/公域噪音/私域全空 | P0 | s02 | 日志审计 |
+| 10 | 自动推进询问——plan_passed时Feel询问是否开启 | P1 | s02 | 用户反馈 |
+| 3 | 全局语言可修改 + 项目映射 | P1 | s03 | 用户反馈 |
+| 4 | update 同步 AGENTS.md | P1 | s03 | 用户反馈 |
+| 8 | package.json 模板规范化 | P1 | s03 | 测试发现 |
+
+### [OpenFeel v4.3 — 审计修复 + 中英双语支持](v4.3/plan.md) ✅ 已归档
+
+**目标**：(Part A) 修复 v4.2 审计遗留的 3 个违规（日志纪律、自测报告已融入 stage-01，REV-004 独立为 stage-02）；(Part B) 实现中英双语 Agent prompt 部署支持，包括模板文件化重构（构建时内联）、init/update 语言选择、8 个英文 Agent 模板、README 双语化。
+
+| 阶段 | 任务 | 优先级 | 依赖 | 状态 |
+|------|------|:--:|------|:--:|
+| v4.3-stage-01 | 模板文件化重构 + 纪律强化（8 项） | P0 | — | done ✅ |
+| v4.3-stage-02 | REV-004 修复 project.ts（1 项） | P0 | —（与 s01 并行） | done ✅ |
+| v4.3-stage-03 | 英文内容 + 双语交互（8 项） | P1 | stage-01 (hard) | done ✅ |
+
+### [OpenFeel v4.1 — 构建稳健性 + Agent 深化](v4.1/plan.md) ✅ 已归档
 
 **目标**：(1) 构建时自动同步模板，消除部署版本漂移；(2) 7 个 Agent prompt 扩充职责边界，新增 Utility Agent。
 
 | 阶段 | 任务 | 优先级 | 状态 |
 |------|------|:--:|:--:|
-| v4.1-stage-01 | 构建脚本自动同步模板（9 项） | P1 | planned |
-| v4.1-stage-02 | Agent 特化 + 事务官（11 项） | P1 | planned |
+| v4.1-stage-01 | 构建脚本自动同步模板（9 项） | P1 | review_passed |
+| v4.1-stage-02 | Agent 特化 + 事务官（11 项） | P1 | done |
 | v4.1-stage-03 | flow.json 多阶段状态机（7 项） | P0 | review_passed |
-| v4.1-stage-04 | Agent 去语言特化（4 项） | P2 | planned |
+| v4.1-stage-04 | Agent 去语言特化（4 项） | P2 | done |
 
-### [OpenFeel v4.2 — 项目快速架构索引](v4.2/plan.md) ← 评估中
+### [OpenFeel v4.2 — 项目快速架构索引](v4.2/plan.md) ✅ 已归档
 
-**结论**：Planner 独立评估后**不建议实施**。当前项目规模（38 TS 文件）下索引的维护成本超过收益，建议替代方案增强 `kb/index.md`。
+**实际实施**：用户确认方案 A+B — 增强 `kb/index.md` 概览节 + `openfeel project overview` CLI 命令。2 个 op 完成，审查 3/4 REV closed（1 low 延期），测试 14/14 通过。
 
 | 阶段 | 任务 | 状态 |
 |------|------|:--:|
-| v4.2-stage-01 | 实验性 architecture-index（6 项） | ⏸ 条件性待启 |
+| v4.2-stage-01 | 方案 A+B 落地（2 项） | done ✅ |
 
 ## 历史计划
 
@@ -82,4 +116,6 @@
 | v3.2 | 已归档 | 1 | 1/1 done | — |
 | v4.0 | 已归档 | 4 | 4/4 done | — |
 | v4.1 | 计划中 | 4 | 1/4 | — |
-| v4.2 | 评估中 | (1) | 不建议实施 | — |
+| v4.2 | 已归档 | 1 | 1/1 done | — |
+| v4.3 | 已归档 | 3 | 3/3 done | — |
+| v4.4 | 计划中 | 4 | 0/4 | — |

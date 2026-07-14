@@ -778,6 +778,37 @@ export class FlowManager {
   }
 
   /**
+   * 新增流水线阶段
+   * @param stageId 阶段标识符（如 v4.3）
+   * @param initialPhase 初始流水线阶段，默认 plan_pending
+   */
+  addStage(stageId: string, initialPhase: PipelinePhase = 'plan_pending'): void {
+    if (!this.data) {
+      return;
+    }
+    if (this.data.stages[stageId]) {
+      throw new Error(`阶段 '${stageId}' 已存在`);
+    }
+    this.data.stages[stageId] = {
+      name: stageId,
+      phase: initialPhase,
+      status: 'planned',
+      deps: [],
+      ops: {},
+    };
+    this.data.pipeline.current = {
+      stage: stageId,
+      op: '',
+    };
+    this.appendLog({
+      time: '',
+      agent: 'flow-manager',
+      action: 'add_stage',
+      detail: { stageId, phase: initialPhase },
+    });
+  }
+
+  /**
    * 推进流水线阶段（旧 API）
    * @param opId 操作 ID（格式 "stage-xx.op-xxx"）
    * @param to 目标流水线阶段

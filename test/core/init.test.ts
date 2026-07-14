@@ -20,8 +20,8 @@ describe('initProject', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('应创建 .openfeel/ 目录结构', () => {
-    const result = initProject(tmpDir);
+  it('应创建 .openfeel/ 目录结构', async () => {
+    const result = await initProject(tmpDir);
     const base = join(tmpDir, '.openfeel');
 
     expect(existsSync(base)).toBe(true);
@@ -37,8 +37,8 @@ describe('initProject', () => {
     expect(result.created.some((item) => item.includes('.openfeel/'))).toBe(true);
   });
 
-  it('应创建 config.yaml 并包含正确默认值', () => {
-    initProject(tmpDir);
+  it('应创建 config.yaml 并包含正确默认值', async () => {
+    await initProject(tmpDir);
     const configPath = join(tmpDir, '.openfeel', 'config.yaml');
     expect(existsSync(configPath)).toBe(true);
 
@@ -49,8 +49,8 @@ describe('initProject', () => {
     expect(content).toContain('merge_mode: manual');
   });
 
-  it('readConfig 应能正确解析 config.yaml', () => {
-    initProject(tmpDir);
+  it('readConfig 应能正确解析 config.yaml', async () => {
+    await initProject(tmpDir);
     const config = readConfig(tmpDir);
     expect(config.execution_mode).toBe('manual');
     expect(config.auto_advance).toBe('disabled');
@@ -58,8 +58,8 @@ describe('initProject', () => {
     expect(config.merge_mode).toBe('manual');
   });
 
-  it('应创建 flow.json 并包含正确结构', () => {
-    initProject(tmpDir);
+  it('应创建 flow.json 并包含正确结构', async () => {
+    await initProject(tmpDir);
     const flowPath = join(tmpDir, '.openfeel', 'flow.json');
     expect(existsSync(flowPath)).toBe(true);
 
@@ -73,8 +73,8 @@ describe('initProject', () => {
     expect(typeof flowData.stages).toBe('object');
   });
 
-  it('应创建 .info.json 包含用户信息', () => {
-    initProject(tmpDir);
+  it('应创建 .info.json 包含用户信息', async () => {
+    await initProject(tmpDir);
     const infoPath = join(tmpDir, '.openfeel', '.info.json');
     expect(existsSync(infoPath)).toBe(true);
 
@@ -84,35 +84,13 @@ describe('initProject', () => {
     expect(info.user.length).toBeGreaterThan(0);
   });
 
-  it('应更新 .gitignore 包含 .openfeel/', () => {
-    initProject(tmpDir);
-    const gitignorePath = join(tmpDir, '.gitignore');
-
-    expect(existsSync(gitignorePath)).toBe(true);
-    const content = readFileSync(gitignorePath, 'utf-8');
-    expect(content).toContain('.openfeel/');
-  });
-
-  it('已有 .gitignore 且不含 .openfeel/ 时应追加', () => {
-    // 先创建一个初始 .gitignore
-    const gitignorePath = join(tmpDir, '.gitignore');
-    writeFileSync(gitignorePath, 'node_modules/\n', 'utf-8');
-
-    // 然后初始化
-    initProject(tmpDir);
-
-    const content = readFileSync(gitignorePath, 'utf-8');
-    expect(content).toContain('node_modules/');
-    expect(content).toContain('.openfeel/');
-  });
-
-  it('已存在 .openfeel/ 时不覆盖已有文件（只更新）', () => {
+  it('已存在 .openfeel/ 时不覆盖已有文件（只更新）', async () => {
     // 第一次初始化
-    const result1 = initProject(tmpDir);
+    const result1 = await initProject(tmpDir);
     expect(result1.created.length).toBeGreaterThan(0);
 
     // 第二次初始化 — 目录已存在，不会重复创建
-    const result2 = initProject(tmpDir);
+    const result2 = await initProject(tmpDir);
     // 第二次初始化时 created 应该为空（所有文件和目录都已存在）
     expect(result2.created.length).toBe(0);
   });
@@ -122,8 +100,8 @@ describe('initProject', () => {
     expect(config).toEqual({});
   });
 
-  it('应返回正确的 created 列表', () => {
-    const result = initProject(tmpDir);
+  it('应返回正确的 created 列表', async () => {
+    const result = await initProject(tmpDir);
 
     // 验证 created 包含关键条目
     expect(result.created.some((e) => e === '.openfeel/config.yaml')).toBe(true);

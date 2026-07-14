@@ -102,3 +102,37 @@ v4.0 建立了知识库的「读写闭环」：
 - **沉淀层**：Archiver 在阶段完成后从操作记录中提取可复用经验，自动写入对应 kb/ 分类
 - **触发时机**：每个阶段 `test_passed` → `archiving` → 提取经验 → 去重 → 写入 → `done`
 - **CLI 入口**：`openfeel flow overview --full` 可查看知识库最近更新摘要
+
+## [+] 多语言模板数据管线：源文件→构建时内联→运行时加载 (2026-07-12)
+
+v4.3 建立了支持多语言的模板数据管线，采用「源文件管理 → 构建时内联 → 运行时按语言加载」三层架构：
+
+```
+templates-data/                              ← 唯一真相源（人类编辑）
+├─ agents/{lang}/*.md        (16 files)      ← Agent prompt 模板
+├─ agents-md/{lang}.md       (2 files)       ← AGENTS.md 模板
+└─ core-instructions/{lang}.md (2 files)     ← Core instructions 模板
+        │
+        ▼ 构建时 (build.js)
+src/core/template-loader.ts                  ← 编译产物（AUTO-GENERATED）
+  AGENT_TEMPLATES: Record<lang, Record<agentId, string>>
+        │
+        ▼ 运行时
+template-loader.ts 导出函数：
+  loadAgentTemplate(lang, agentId): string    ← 按语言+AgentID 返回模板
+  loadTemplate(lang, name): string            ← 按语言+模板名返回模板
+```
+
+**设计决策：**
+- 源文件按 `{type}/{lang}/` 两级目录组织，语言为第一级键（支持未来新增语言）
+- 构建脚本 (`build.js`) 在 `npm run build` 时遍历语言目录，将所有 .md 文件读取并内联为 TS 字符串常量，写入 `template-loader.ts` 的 `AUTO-GENERATED-BEGIN/END` 块
+- 运行时通过 `loadAgentTemplate(lang, agentId)` 按语言键查表返回，无需 fs 读取，消除跨平台路径解析风险
+- `getLang()` 函数从 `.info.json` 读取 `lang` 字段，缺失时默认 `zh-CN`，保证向后兼容
+- 模板加载器通过 `??` 运算符实现语言回退：`AGENT_TEMPLATES[lang] ?? AGENT_TEMPLATES['zh-CN']`
+
+**优势：**
+- 编译产出自包含，npm 包分发无需额外配置（.md 文件仅供构建时使用）
+- 语言配置与模板内容完全解耦——新增语言只需添加模板目录+构建脚本注册，无需修改 runtime 代码
+- 与 v4.1 建立的构建时模板同步机制（templates-data/ → .opencode/agents/）协同工作
+
+**参见：** v4.3-stage-01 op-005（模板加载器）、v4.3-stage-03 op-001/op-006（多语言扩展）、kb/patterns.md #构建脚本多语言循环生成模式

@@ -7,12 +7,14 @@ import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { updateProject, supportedTools, selectTools } from '../core/update.js';
+import { getLang } from '../core/workspace/identity.js';
 
 export function registerUpdateCommand(program: Command): void {
   program
     .command('update [path]')
     .description('部署 OpenFeel 适配文件到目标项目（无参数时交互式选择工具）')
-    .action(async (path?: string) => {
+    .option('--lang <lang>', 'Agent prompt language (zh-CN or en)')
+    .action(async (path?: string, options?: { lang?: string }) => {
       try {
         const targetPath = resolve(path ?? process.cwd());
 
@@ -22,6 +24,18 @@ export function registerUpdateCommand(program: Command): void {
         }
 
         // 无显式路径参数 → 交互式选择工具
+        // 解析语言参数
+        let lang: 'zh-CN' | 'en';
+        if (options?.lang) {
+          if (options.lang !== 'zh-CN' && options.lang !== 'en') {
+            console.error(`错误：不支持的语言 "${options.lang}"。支持的值：zh-CN, en`);
+            process.exit(1);
+          }
+          lang = options.lang;
+        } else {
+          lang = getLang(targetPath);
+        }
+
         const selectedTools = path
           ? supportedTools.map((t) => t.id) // 有路径参数则全部部署
           : await selectTools();             // 无参数则交互选择
@@ -34,7 +48,7 @@ export function registerUpdateCommand(program: Command): void {
         console.log(`正在部署适配文件到: ${targetPath}`);
         console.log(`选定工具: ${selectedTools.join(', ')}\n`);
 
-        const result = updateProject(targetPath, selectedTools);
+        const result = updateProject(targetPath, selectedTools, lang);
 
         if (result.created.length > 0) {
           console.log('已创建:');

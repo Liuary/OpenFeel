@@ -206,3 +206,175 @@ Reviewer 审查报告统一使用五维度框架：
 其中「一致性」维度在 v4-stage-03 细化为两个子维度：
 - **外部一致性**：产出与项目架构、全局约束的一致性
 - **内部模式一致性**：同批次变更中各文件间的风格和结构一致性
+
+## [+] 跨平台构建管线中的行尾归一化模式 (2026-07-12)
+
+构建管线中若涉及 Base64 编解码往返（读取 UTF-8 文本 → Base64 编码 → 注入 TS 常量 → 解码比对），必须在编码前对文本执行行尾归一化：
+
+```typescript
+// 读取文件后、Base64 编码前务必归一化
+let content = readFileSync(filePath, 'utf-8');
+content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n'); // CRLF → LF
+const b64 = Buffer.from(content, 'utf-8').toString('base64');
+```
+
+**不归一化的后果**：
+- Windows 上 `readFileSync` 返回 CRLF，经 Base64 编码后与 Linux/macOS 上的 LF 编码结果不同
+- 构建产物不可跨平台复现（同样的源文件在不同 OS 上产生不同的 B64 字符串）
+- 一致性校验（如 `validateCoreInstruction()` 解码后比对）在跨平台时必然失败
+
+**连带应用**：任何涉及"从文件读取 → 编码/序列化 → 存储 → 解码 → 比对"的管线都应归一化：
+- 模板提取后与源文件的一致性 diff 应 `replace(/\r\n/g, '\n')` 后再对比
+- 测试验收中模板源与部署目标对比时同理，避免因行尾符差异误报不一致
+- 参见 v4.3-stage-01 REV-003（B64 往返时 CRLF 未归一化）和 dev_last.md（验收 diff 误报）
+
+## [+] 统一门控 + 整节替换模式 (2026-07-12)
+
+当 UI 输出的多个条目共享同一存在性条件时，应采用"统一门控 + 整节替换"而非逐条标注：
+
+```typescript
+// ✅ 推荐：统一门控 + 整节替换
+if (!srcExists) {
+  lines.push('🚪 入口路径');
+  lines.push('   （未检测到项目结构——缺少 src/ 目录）');
+} else {
+  lines.push('🚪 入口路径');
+  lines.push(`   CLI 入口:  ${join('src', 'cli', 'index.ts')}`);
+  lines.push(`   包入口:    ${join('src', 'index.ts')}`);
+  lines.push('   构建产物:  dist/');
+}
+
+// ❌ 反模式：逐条标注（三条输出均为相同提示，冗余且降低可读性）
+lines.push('🚪 入口路径');
+lines.push(srcExists ? `   CLI 入口:  ...` : '   （未检测到）');
+lines.push(srcExists ? `   包入口:    ...` : '   （未检测到）');
+lines.push(srcExists ? '   构建产物:  dist/' : '   （未检测到）');
+```
+
+**优势**：
+- 整节替换可附带更丰富的上下文提示（如具体缺少哪个目录），优于逐条重复的"未检测到"
+- 代码更清晰——一个 `if/else` 覆盖整节，而非逐行 condition ? a : b 三元嵌套
+- 实现时可在方案基础上适度增强提示文案的可诊断性（如 `——缺少 src/ 目录` 比 `未检测到项目结构` 更精确定位根因），这类正向偏差经审查确认后应予以保留
+
+> 参见 v4.3-stage-02 REV-001（统一门控决策）、REV-005（正向偏差——增强版文案）
+
+## [+] API 回退逻辑中的错误信息应报告实际状态 (2026-07-12)
+
+当 API 实现语言/配置回退逻辑时，错误信息或日志应报告**实际使用的值**（而非用户传入的参数），避免误导调试：
+
+```typescript
+// ✅ 推荐：追踪实际使用的语言
+export function loadAgentTemplate(lang: string, agentId: string): string {
+  const actualLang = AGENT_TEMPLATES[lang] ? lang : 'zh-CN';
+  const langData = AGENT_TEMPLATES[actualLang];
+  const content = langData?.[agentId];
+  if (content === undefined) {
+    throw new Error(
+      `Agent template not found: agentId=${agentId} (actual lang=${actualLang}, requested=${lang})`
+    );
+  }
+  return content;
+}
+
+// ❌ 反模式：错误信息显示用户传入的 lang，但实际查找的是回退后的 zh-CN 数据
+// 当 lang='fr' 回退到 zh-CN 时，错误信息显示 lang=fr 会误导调试者去检查 fr 数据
+```
+
+**连带检查**：回退逻辑中的死代码分支也需清理——`??` 运算符已保证回退值存在时，后续的 `if (!langData) return []` 永远不会执行，应在审查中移除。
+
+> 参见 v4.3-stage-01 REV-006（方案审查）/ REV-011（代码审查——遗留项）
+
+## [+] 构建脚本多语言循环生成模式 (2026-07-12)
+
+当构建脚本需要为多个语言生成相同的模板常量时，应采用「语言数组 + 循环遍历 + 统一的模板生成函数」模式，而非为每种语言单独展开代码：
+
+```javascript
+// ✅ 推荐：语言数组 + 统一循环
+const langs = ['zh-CN', 'en'];
+let agentDefs = '';
+for (const lang of langs) {
+  const dir = path.join(__dirname, `src/core/templates-data/agents/${lang}`);
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
+  agentDefs += `  ${lang}: {\n`;
+  for (const file of files) {
+    const agentId = file.replace('.md', '');
+    const content = fs.readFileSync(path.join(dir, file), 'utf-8');
+    agentDefs += `    ${agentId}: \`${content}\`,\n`;
+  }
+  agentDefs += `  },\n`;
+}
+
+// ❌ 反模式：为每种语言单独展开（新增语言需新增代码块）
+generateZhCnTemplates();
+generateEnTemplates();
+// 新增日语需要新增 generateJaTemplates() + 调用点 → 不可扩展
+```
+
+**关键要点：**
+- 语言列表应作为可配置数组，新增语言仅需向数组追加，无需修改生成逻辑
+- 每个语言目录的文件结构必须对称（同目录下同组 Agent 文件），确保循环遍历逻辑通用
+- 构建脚本修改后应在自测中验证所有语言键均成功生成（检查 `AGENT_TEMPLATES` 对象的 `Object.keys()` 包含预期语言）
+- npm 包仅分发编译产物（含内联模板常量的 .js），`.md` 源文件仅供构建时使用，`package.json` `files` 字段无需配置
+
+> 参见 v4.3-stage-03 op-001（build.js 多语言扩展）、kb/architecture.md #多语言模板数据管线
+
+## [+] 双语 CLI 交互模式：init 选择 → .info.json 持久化 → update 读取 (2026-07-12)
+
+当 CLI 工具需要支持多语言部署时，采用「init 时交互选择 → .info.json 持久化 → update 时读取」的三段式模式：
+
+```
+openfeel init
+  │
+  ├─ 显示中英双语选择提示
+  ├─ 用户选择 → 写入 .info.json 的 lang 字段
+  ├─ 根据选择的语言加载对应 AGENTS.md 模板  ← 立即可用，不等 update
+  └─ .info.json 持久化 lang 值
+
+openfeel update
+  │
+  ├─ 从 .info.json 读取 lang 字段
+  ├─ --lang 参数可覆盖（优先级：CLI 参数 > .info.json > 默认 zh-CN）
+  └─ 按语言调用 loadAgentTemplate(lang, agentId) 部署对应语言模板
+```
+
+**设计要点：**
+- init 时选择的语言应**立即**作用于 AGENTS.md 生成（而非仅持久化、留待 update 再生效），确保首次体验无缝
+- update 命令的 `--lang` 参数作为可选覆盖手段，不影响已持久化的 `.info.json` 中的 `lang` 值
+- 非交互环境（如 CI/CD）下 init 应自动选择默认语言并记录提示，不阻塞流程
+- init 和 update 共享同一套模板加载器函数，确保内容一致性
+
+> 参见 v4.3-stage-03 op-004（init 双语选择）、op-005（语言配置存储）、op-006（update --lang 参数）
+
+## [+] 向后兼容的可选配置字段模式 (2026-07-12)
+
+当需要在已有的 JSON 配置文件中新增可选字段时，应采用「只读访问器 + 默认值回退 + 不强制写入」三层保护，确保已有部署项目不受影响：
+
+```typescript
+// ✅ 推荐：只读访问器 + 默认值回退
+export function getLang(): string {
+  const info = readInfoJson();  // 读取 .info.json
+  return info?.lang ?? 'zh-CN';  // 无字段 → 默认值，undefined 或 "" 均触发回退
+}
+
+// init 时写入新字段（仅在明确传入时）
+export function ensureInfoJson(lang?: string): void {
+  const info = readInfoJson() ?? { user: getGitUser() };
+  if (lang) {
+    info.lang = lang;  // 仅当明确传入时才写入，不强制覆盖
+  }
+  writeInfoJson(info);
+}
+```
+
+**设计要点：**
+- **读取侧**：使用 `??` 运算符提供默认值，`undefined` 或空字符串均触发回退，绝不抛出错误
+- **写入侧**：仅在有明确用户意图时才写入新字段；update 命令不覆盖已有 lang 值
+- **兼容性验证**：自测中应包含「旧 .info.json（无 lang 字段）→ getLang() 返回默认值且不报错」的用例
+- **工具函数命名**：使用语义化的 getter（如 `getLang()`）而非直接 expose 原始字段，便于未来扩展（如增加缓存、环境变量覆盖）
+
+**反模式：**
+- `info.lang || 'zh-CN'` — 会将空字符串 `""` 视为 falsy 并回退，但空字符串可能是合法值
+- 读取时对缺失字段抛出异常 — 破坏已有部署项目的向后兼容性
+- update 命令用默认值强制覆写已有 lang 字段 — 用户已选择语言被重置
+
+> 参见 v4.3-stage-03 op-005（identity.ts lang 字段 + getLang 函数）

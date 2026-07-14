@@ -9,19 +9,19 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 39 个 .ts 文件（src/） |
+| 源文件 | 40 个 .ts 文件（src/） |
 | Agent 数 | 8 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-07-08（归档时自动更新此字段） |
+| 最近更新 | 2026-07-12（归档时自动更新此字段） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 7 | 2026-07-05 | 技术选型、设计理由、并行策略 |
-| 代码模式 | [patterns.md](patterns.md) | 15 | 2026-07-05 | 项目约定、最佳实践、反模式 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 8 | 2026-07-05 | 常见 Bug、调试流程、已知坑位 |
+| 架构决策 | [architecture.md](architecture.md) | 8 | 2026-07-12 | 技术选型、设计理由、并行策略、多语言模板管线 |
+| 代码模式 | [patterns.md](patterns.md) | 21 | 2026-07-12 | 项目约定、最佳实践、反模式 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 9 | 2026-07-09 | 常见 Bug、调试流程、已知坑位 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
 ## 各分类摘要
@@ -37,6 +37,7 @@
 | 15→7 Agent 精简体系 | 2026-07-05 | 删除/合并/替代/划归 四类操作，7 Agent 职责边界 |
 | Feel 调度 + CLI 推进模型 | 2026-07-05 | 废弃自动闭环，Feel 总统领通过 openfeel flow 推进 |
 | 知识库自动化体系 | 2026-07-05 | 检索→去重→沉淀 三环闭环，check-kb 自包含语义检索 |
+| 多语言模板数据管线 | 2026-07-12 | templates-data 源文件→build.js 构建时内联→template-loader 运行时按语言加载 |
 
 ### patterns.md
 
@@ -57,6 +58,12 @@
 | REV blocking 标记模式 | 2026-07-05 | 审查条目 blocking 字段区分阻塞/非阻塞，数据结构硬化 |
 | CLI 原子管理模式 | 2026-07-05 | Agent 通过 CLI 命令操作数据文件，不直接 edit |
 | 审查五维度体系 | 2026-07-05 | 正确性/规范性/安全性/完整性/一致性，一致性分内外子维度 |
+| 跨平台行尾归一化模式 | 2026-07-12 | 构建管线中 CRLF→LF 归一化，防止 Base64 往返跨平台差异 |
+| 统一门控 + 整节替换模式 | 2026-07-12 | 多输出共享同一条件时统一门控整节替换，优于逐条标注 |
+| API 回退逻辑中的错误信息准确性 | 2026-07-12 | 回退后的错误信息应报告实际使用的值，含死代码清理 |
+| 构建脚本多语言循环生成模式 | 2026-07-12 | 语言数组+循环遍历替代逐语言展开，新增语言零代码变更 |
+| 双语 CLI 交互模式 | 2026-07-12 | init 选择→.info.json 持久化→update 读取，init 立即生效 |
+| 向后兼容可选配置字段模式 | 2026-07-12 | 只读访问器+??默认值+不强制写入，兼容已有部署项目 |
 
 ### troubleshooting.md
 
@@ -70,6 +77,7 @@
 | 手动 edit status.md 频繁失败 | 2026-07-02 | 格式匹配脆弱 → 改为 CLI 原子操作 |
 | Agent prompt CLI 命令引用应预验证 | 2026-07-05 | Schemer 引用未实现命令导致 Executor 前置校验断裂 |
 | 流水线文件引用断裂连锁修复 | 2026-07-05 | 路径+命令+配置三层引用断裂的修复策略 |
+| fast-glob 目录匹配 onlyDirectories | 2026-07-09 | 尾部斜杠模式不自动激活目录匹配，需显式声明选项 |
 
 ### setup.md
 
@@ -83,6 +91,9 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-07-12 | 归档 | v4.3 全系列归档：3 阶段全部完成，多语言模板管线落成（templates-data → build.js → template-loader），双语 CLI 交互（init 选择 → .info.json 持久化 → update 读取），知识沉淀 4 条至 architecture(1) + patterns(3) |
+| 2026-07-12 | 归档 | v4.3-stage-01/02 归档：17 项 op 落地（模板文件化重构 + project.ts REV-004 修复），16 条 REV（13 closed + 3 非阻塞），知识沉淀 3 条至 patterns |
+| 2026-07-09 | 归档 | v4.2-stage-01 归档：2 项 op 落地（kb/index.md 快速概览 + project overview CLI），4 条 REV（3 closed），知识沉淀 1 条至 troubleshooting |
 | 2026-07-05 | 归档 | v4.0 全系列归档：4 阶段 39 项任务闭环，知识沉淀 10 条至 architecture(3) + patterns(5) + troubleshooting(2) |
 | 2026-07-02 | 新增 | v4 经验沉淀：op命名规范 + Executor读文件 + deps校验 + status.md CLI |
 | 2026-07-01 | 归档 | v3.0 / v3.1 / v3.2 全系列归档，知识沉淀到四个分类 |

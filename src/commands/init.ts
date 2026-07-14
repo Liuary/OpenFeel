@@ -14,7 +14,8 @@ export function registerInitCommand(program: Command): void {
     .command('init [path]')
     .description('初始化项目工作区，创建 .openfeel/ 目录结构和配置文件')
     .option('--demo', '创建带示例骨架的项目（NumKit 风格）')
-    .action((path?: string, options?: { demo?: boolean }) => {
+    .option('--lang <lang>', 'Agent 提示词语言（zh-CN 或 en），非交互环境默认 zh-CN')
+    .action(async (path?: string, options?: { demo?: boolean; lang?: string }) => {
       const targetPath = resolve(path ?? process.cwd());
 
       // 校验路径是否存在
@@ -25,7 +26,7 @@ export function registerInitCommand(program: Command): void {
 
       console.log(`正在初始化 OpenFeel 工作区: ${targetPath}\n`);
 
-      const result = initProject(targetPath);
+      const result = await initProject(targetPath, options?.lang);
 
       // 输出创建的目录
       if (result.created.length > 0) {

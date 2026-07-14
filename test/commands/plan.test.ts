@@ -18,10 +18,10 @@ describe('plan 命令', () => {
   let cwdMock: ReturnType<typeof vi.fn>;
   let exitMock: ReturnType<typeof vi.fn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-plan-test-'));
     // 初始化工作区
-    initProject(tmpDir);
+    await initProject(tmpDir);
 
     // mock console.log 捕获输出
     logMock = vi.spyOn(console, 'log').mockImplementation(() => {});

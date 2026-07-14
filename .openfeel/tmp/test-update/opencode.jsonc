@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.openfeel/config.json",
+  "default_agent": "feel",
+  "instructions": [
+    "AGENTS.md",
+    ".opencode/instructions/core.md"
+  ],
+  "skills": {
+    "bug-acceptance": ".opencode/skills/bug-acceptance",
+    "check-kb": ".opencode/skills/check-kb",
+    "get-bugs": ".opencode/skills/get-bugs",
+    "get-stage-status": ".opencode/skills/get-stage-status",
+    "model-check": ".opencode/skills/model-check",
+    "search-kb": ".opencode/skills/search-kb",
+    "sync-status": ".opencode/skills/sync-status",
+    "update-stage-status": ".opencode/skills/update-stage-status"
+  }
+}

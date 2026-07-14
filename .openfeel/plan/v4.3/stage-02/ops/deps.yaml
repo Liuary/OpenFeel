@@ -1,0 +1,15 @@
+# v4.3-stage-02 依赖声明
+# 由 Schemer 自动生成，Feel 调度前校验
+
+ops:
+  op-001:
+    file:
+      - src/commands/project.ts
+    deps: []
+
+# ── 并行安全组 ──────────────────────────────────────────────────────────
+# 仅有一个 op，无并行需求
+parallel_groups:
+  - batch: 1
+    ops: [op-001]
+    reason: 仅一个 op，修改 project.ts 入口路径节存在性判断

@@ -2,22 +2,756 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-07-09T12:00:00.000Z"
+    "updated": "2026-07-14T15:05:35.032Z"
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v4.2",
+      "stage": "v4.4-stage-02",
       "op": ""
     },
     "retry": 0
   },
   "stages": {
     "v4.2": {
-      "phase": "review_passed",
+      "phase": "done",
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-09T15:11:48.775Z",
+        "end_time": "",
+        "duration_ms": 0
+      },
+      "status": "done"
+    },
+    "v4.3-stage-01": {
+      "name": "v4.3-stage-01",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-09T15:56:28.995Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v4.3-stage-02": {
+      "name": "v4.3-stage-02",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-09T15:56:29.446Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v4.3-stage-03": {
+      "name": "v4.3-stage-03",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-12T12:52:31.177Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v4.4": {
+      "name": "v4.4",
+      "phase": "plan_passed",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T14:52:08.794Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v4.4-stage-04": {
+      "name": "v4.4-stage-04",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [],
+      "ops": {}
+    },
+    "v4.4-stage-01": {
+      "name": "v4.4-stage-01",
+      "phase": "exec_running",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T14:52:57.739Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v4.4-stage-02": {
+      "name": "v4.4-stage-02",
+      "phase": "scheme_passed",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T14:52:58.190Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v4.4-stage-03": {
+      "name": "v4.4-stage-03",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [],
       "ops": {}
     }
   },
   "reviews": [],
-  "log": []
+  "log": [
+    {
+      "time": "2026-07-09T15:11:48.758Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.2",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:16:17.527Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.2",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T15:16:30.704Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.2",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-09T15:20:37.104Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.2",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-09T15:31:43.834Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.3",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:31:48.589Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-07-09T15:50:11.860Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3",
+        "from": "plan_review",
+        "to": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:54:28.853Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-07-09T15:55:43.342Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:06.493Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.3-stage-01",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:06.904Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.3-stage-02",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:07.324Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.3-stage-03",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:28.983Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:29.438Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:37.815Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:38.251Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T16:03:49.894Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-09T16:03:50.350Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-09T16:08:04.202Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "scheme_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T16:08:04.677Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "scheme_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T16:14:01.917Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-09T16:14:02.326Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-09T16:16:44.200Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T16:16:44.620Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T03:54:45.945Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-12T03:54:46.307Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-12T04:05:50.159Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T04:05:50.587Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T04:15:09.193Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T04:15:09.627Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T04:15:14.633Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T04:15:15.049Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T12:48:06.452Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T12:48:06.866Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T12:48:11.924Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-12T12:48:12.339Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-12T12:51:58.530Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T12:52:06.975Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T12:52:30.343Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-01",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T12:52:30.756Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-02",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T12:52:31.171Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T12:57:37.270Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-12T13:01:46.893Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "scheme_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T13:06:37.022Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-12T13:08:22.348Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T13:08:22.814Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-12T13:20:23.085Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T13:23:30.280Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T13:23:30.705Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T13:28:07.628Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T13:28:08.059Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-12T13:33:52.264Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T13:34:44.949Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.3-stage-03",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-13T15:15:02.921Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.4",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:01.579Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.4-stage-04",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:08.780Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:40.401Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.4-stage-01",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:40.834Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.4-stage-02",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:41.285Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v4.4-stage-03",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:49.522Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:57.727Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:58.183Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:00:12.189Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:05:34.463Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T15:05:35.022Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    }
+  ]
 }

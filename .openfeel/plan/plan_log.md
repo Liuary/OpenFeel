@@ -2,6 +2,10 @@
 
 | 时间 | 操作者 | 变更描述 |
 |------|--------|----------|
+| 2026-07-14 | Planner | **v4.4 正式计划制定**：3 阶段 14 项任务。stage-01（i18n 基建 + CLI 国际化，6 项）→ 构建时内联 i18n 机制 + 全局语言配置 + 首次使用检测 + 命令输出国际化。stage-02（日志修复 + 流水线安全，5 项）→ REV 闭环 + git commit + 日志强制落档 + 日志体系三处断裂修复。stage-03（配置优化 + 提示词完善，3 项）→ config 命令 + 项目语言映射 + update AGENTS.md 同步 + package.json 模板规范化。s01 与 s02 并行无 hard 依赖，s03 hard 依赖 s01。~20 文件变更，走完整流水线。 |
+| 2026-07-12 | Archiver | **归档**：v4.3 全系列归档完成。v4.3-stage-03（英文内容产出 + 双语交互）8 项 op 全部落地（英文 Agent 模板 8 个 + AGENTS.md/code-instructions 英文版 + init 双语选择 + lang 配置存储 + update --lang 参数 + README 双语化 + 测试覆盖），审查 5 条 REV（2 blocking resolved）。知识沉淀 4 条至 kb/（architecture 1 + patterns 3）。v4.3 三阶段累计 17 项 op、21 条 REV 全部闭环，多语言模板管线正式落成。 |
+| 2026-07-12 | Archiver | **归档**：v4.3-stage-01（模板文件化重构 + 纪律强化，8 op / 13 REV / 3 非阻塞）和 v4.3-stage-02（REV-004 修复 project.ts，1 op / 5 REV closed）归档完成。知识沉淀 3 条至 patterns。v4.3 进度 2/3。 |
+| 2026-07-09 | Planner | **v4.3 计划创建**：3 阶段 15 项任务。Part A 审计遗留修复（日志纪律/自测报告/REV-004）+ Part B 中英双语支持（模板文件化重构 + 8 英文 Agent 模板 + init/update 双语交互 + README 双语化）。~33 文件变更，走完整流水线。 |
 | 2026-07-08 | Planner | **v4.2 计划评估：不建议实施**。创建 architecture-index 提案可行性分析，结论为当前项目规模（38 TS 文件）下索引维护成本超过收益。推荐替代方案：增强 kb/index.md 的项目概览能力（零新增文件，5 分钟工作量）。条件性实施计划已就位，待用户决策。 |
 | 2026-07-05 | Liuary | **v4.1 计划扩展为双阶段**：新增 v4.1-stage-02（Agent 特化 + Utility Agent）。v4.1 从单阶段模板同步升级为「构建稳健性 + Agent 深化」双阶段计划。stage-01 细化到 8 项子任务，stage-02 覆盖 7 个 Agent 扩充 + 新增 Utility Agent + 配套目录调整共 11 项。两阶段为 soft 依赖可并行。 |
 | 2026-07-01 | Liuary | **v4-stage-01 范围扩大**：11→20 项任务。15→7 Agent 全面对齐部署项目（feel/planner/schemer/executor/reviewer/feel-tester/archiver）。移除 9 个 Agent（新增 debug/test-writer/architect/code/tester），重写 4 个 + 精简 3 个 + 配套更新 3 个 + 后调 1 个。后续阶段（stage-02/03/04）概要同步调整。 |

@@ -127,11 +127,16 @@ function outputProjectOverview(cwd: string): void {
   console.log(`   计划版本:    ${planVersions} 个`);
   console.log('');
 
-  // 🚪 入口路径
+  // 🚪 入口路径（以 src/ 存在性为统一门控）
   console.log('🚪 入口路径');
-  console.log('   CLI 入口:  src/cli/index.ts');
-  console.log('   包入口:    src/index.ts');
-  console.log('   构建产物:  dist/');
+  if (srcExists) {
+    console.log('   CLI 入口:  src/cli/index.ts');
+    console.log('   包入口:    src/index.ts');
+    console.log('   构建产物:  dist/');
+  } else {
+    // 三条入口均依赖 src/，src/ 不存在时整节替换统一提示
+    console.log('   （未检测到项目结构——缺少 src/ 目录）');
+  }
   console.log('');
 
   // 🔧 技术栈（从 package.json 依赖动态提取版本号）

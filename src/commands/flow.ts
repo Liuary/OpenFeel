@@ -315,6 +315,33 @@ export function registerFlowCommand(program: Command): void {
       console.log(store.summary());
     });
 
+  // flow stage — 阶段管理子命令组
+  const stageCmd = flow
+    .command('stage')
+    .description('阶段管理');
+
+  // flow stage add <stageId>
+  stageCmd
+    .command('add')
+    .description('新增流水线阶段')
+    .argument('<stageId>', '阶段 ID（如 v4.3）')
+    .action((stageId: string) => {
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.error('错误：flow.json 未初始化，请先运行 openfeel init');
+        process.exit(1);
+      }
+      try {
+        mgr.addStage(stageId);
+        mgr.save();
+        console.log(`✓ 已创建阶段: ${stageId} → plan_pending`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`错误：${msg}`);
+        process.exit(1);
+      }
+    });
+
   // flow advance --stage <id> --to <phase> [--op <id>] [--force]
   flow
     .command('advance')

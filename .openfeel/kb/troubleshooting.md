@@ -81,6 +81,26 @@
 
 > **更新于 2026-07-05**：REV-002 已通过替换为 `openfeel flow health --quick`（现有命令）+ 限制说明的方式修复。
 
+## [+] fast-glob 目录匹配需显式声明 onlyDirectories (2026-07-09)
+
+**现象**：使用 `fg.sync(['plan/*/'])` 匹配子目录时返回空数组，即使目标目录确实存在。实际有 8 个子目录，但输出 0。
+
+**根因**：fast-glob 默认 `onlyDirectories: false`，仅返回文件条目。尾部斜杠 `plan/*/` 不会自动激活目录匹配模式，需**显式声明** `onlyDirectories: true`。
+
+**修复**：
+```typescript
+// 错误：返回空数组
+fg.sync(['plan/*/'], { cwd: openfeelDir })
+
+// 正确：返回目录列表
+fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
+```
+同时移除尾部斜杠（`onlyDirectories: true` 时斜杠不是必需的匹配条件）。
+
+**经验**：使用 fast-glob 匹配目录时，应始终检查是否需要 `onlyDirectories` 选项。若同时匹配文件和目录，使用 `{ onlyDirectories: false }` 或省略该选项，但模式中不要依赖尾部斜杠的隐式行为。
+
+**见于**：REV-002 (v4.2-stage-01)
+
 ## [+] 流水线文件引用断裂的连锁修复 (2026-07-05)
 
 **现象**：v4-stage-02 审查中发现三处引用断裂形成连锁故障：

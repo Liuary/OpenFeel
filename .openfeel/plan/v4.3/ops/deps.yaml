@@ -1,0 +1,141 @@
+# v4.3-stage-03 依赖声明
+# 由 Schemer 自动生成，Feel 调度前校验
+# 修订于 2026-07-12：REV-001 并行安全修复（op-003 合并入 op-002）
+# 参见 kb/patterns.md #Schemer op 级依赖声明、kb/patterns.md #deps.yaml 声明实际文件名
+
+ops:
+  op-001:
+    file:
+      - src/core/template-loader.ts
+      - src/core/templates-data/agents/en/archiver.md
+      - src/core/templates-data/agents/en/executor.md
+      - src/core/templates-data/agents/en/feel-tester.md
+      - src/core/templates-data/agents/en/feel.md
+      - src/core/templates-data/agents/en/planner.md
+      - src/core/templates-data/agents/en/reviewer.md
+      - src/core/templates-data/agents/en/schemer.md
+      - src/core/templates-data/agents/en/utility.md
+      - build.js
+    deps: []
+    note: |
+      含 3 条遗留 REV 修复（REV-011/012/013）+ 8 Agent 英文翻译 + build.js generateAgentDefinitions 多语言化。
+      另含 REV-003（validateAgentDefinitions 多语言适配细节）和 REV-004（REV-013 空值检查）。
+      产出文件最多，建议优先执行。
+
+  op-002:
+    file:
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/core-instructions/en.md
+      - build.js
+    deps:
+      - op: op-001
+        type: soft
+        note: build.js 多语言改造模式在 op-001 确立，op-002 复用同一模式扩展 generateAgentsMdTemplate + generateTemplateFromCoreMd
+    note: |
+      **合并自原 op-002 + op-003（REV-001）**。
+      同时产出英文 AGENTS.md 和 core-instructions 模板，修改 build.js 两个注入函数和两个校验函数的多语言支持。
+      合并消除了 op-002/op-003 同时修改 build.js 的并行安全冲突。
+
+  op-004:
+    file:
+      - src/core/init.ts
+    deps:
+      - op: op-005
+        type: hard
+        note: init 流程中语言选择需调用 ensureInfoJson（已含 lang 字段）持久化
+      - op: op-001
+        type: soft
+        note: REV-002 修复后 init.ts 使用 loadTemplate(lang, 'agents-md')，需 template-loader.ts 就绪（stage-01 已创建，op-001 仅修改，weak 即可）
+    note: |
+      REV-002 修复：增加根据 lang 参数选择模板的逻辑，调用 loadTemplate(lang, 'agents-md') 替代硬编码 AGENTS_MD_TEMPLATE。
+
+  op-005:
+    file:
+      - src/core/workspace/identity.ts
+    deps: []
+    note: |
+      独立 op，无前置依赖。产出 `ensureInfoJson`（含 lang 字段）和 `getLang` 函数，
+      供 op-004 和 op-006 使用。
+
+  op-006:
+    file:
+      - src/commands/update.ts
+      - src/core/update.ts
+    deps:
+      - op: op-001
+        type: hard
+        note: 英文 Agent 模板需就绪，update.ts 通过 loadAgentTemplate(en, ...) 加载
+      - op: op-002
+        type: hard
+        note: 英文 AGENTS.md + core-instructions 模板需就绪（合并后 op-002 覆盖原 op-002+op-003 的产出）
+      - op: op-005
+        type: hard
+        note: 需 getLang 读取 .info.json 的 lang 字段作为默认语言
+
+  op-007:
+    file:
+      - README.md
+    deps: []
+    note: 独立文档修改，无前置依赖。
+
+  op-008:
+    file:
+      - test/core/template-loader.test.ts
+      - test/core/init.test.ts
+      - test/core/update.test.ts
+      - test/core/workspace/identity.test.ts
+    deps:
+      - op: op-001
+        type: soft
+        note: 测试对象 template-loader.ts 在 op-001 中修改完成
+      - op: op-002
+        type: soft
+        note: 测试对象需 op-002 的 build.js 多语言注入完成（合并后覆盖原 op-002+op-003）
+      - op: op-004
+        type: soft
+        note: 测试对象 init.ts 在 op-004 中修改完成
+      - op: op-005
+        type: soft
+        note: 测试对象 identity.ts 在 op-005 中修改完成
+      - op: op-006
+        type: soft
+        note: 测试对象 update.ts 在 op-006 中修改完成
+
+# ── 并行安全组 ──────────────────────────────────────────────────────────
+# 基于文件集无交集判定，同组内可并行执行
+# 参见 kb/architecture.md #Worktree 并行批次策略
+#
+# REV-001 修复：原 Batch 2 [op-002, op-003, op-004] 中 op-002/op-003 共享 build.js，
+# 无法并行。已将 op-003 合并入 op-002，消除冲突。op-002 与 op-004 无文件交集，
+# 可安全并行。
+
+parallel_groups:
+  - batch: 1
+    ops: [op-001, op-005, op-007]
+    reason: |
+      产出文件集无交集：
+      - op-001: template-loader.ts + agents/en/*.md + build.js
+      - op-005: identity.ts
+      - op-007: README.md
+      三者完全独立，可并行推进。
+
+  - batch: 2
+    ops: [op-002, op-004]
+    reason: |
+      - op-002: agents-md/en.md + core-instructions/en.md + build.js（合并后单 op 修改 build.js）
+      - op-004: init.ts（REV-002 修复后使用 loadTemplate）
+      两者产出文件无交集（agents-md/en.md + core-instructions/en.md + build.js vs init.ts），可并行。
+      op-004 有 hard 依赖 op-005（batch-1 已完成），soft 依赖 op-001（batch-1 已完成）。
+
+  - batch: 3
+    ops: [op-006]
+    reason: |
+      hard 依赖 op-001 + op-002（英文模板全部就绪）+ op-005（getLang 就绪）。
+      文件集：commands/update.ts + core/update.ts，不与其他 batch 冲突。
+      单独推进确保上游全部完成后才进行命令行层面的集成。
+
+  - batch: 4
+    ops: [op-008]
+    reason: |
+      软依赖前面所有 batch。测试文件独立，不影响源码。
+      在所有功能实现完成后统一执行，确保全量测试覆盖和回归验证。

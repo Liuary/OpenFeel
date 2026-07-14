@@ -1,0 +1,102 @@
+# v4.4-stage-01 操作方案依赖声明
+# Schemer 产出，Feel 调度时据此决定并行/串行策略。
+#
+# 依赖类型:
+#   hard:             前置 op 必须完成（失败时阻塞后续所有依赖该 op 的操作）
+#   soft:             弱依赖，警告但允许启动（用于文件集有交集但操作区域不同的场景）
+#   mutual_exclusion: 互斥，串行执行（同一文件的不同 op 不能并行）
+#
+# 参见 kb/patterns.md #Schemer op 级依赖声明
+# 参见 kb/patterns.md #deps.yaml 应声明实际文件名
+
+version: "1.0"
+stage: v4.4-stage-01
+
+ops:
+  op-001:
+    file:
+      - src/core/i18n-data/types.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    deps: []
+    description: "创建 i18n 字符串源文件"
+
+  op-002:
+    file:
+      - src/core/i18n.ts
+    deps:
+      - { op: op-001, type: hard }
+    description: "实现 i18n 运行时引擎（t() + getCliLang()）"
+
+  op-003:
+    file:
+      - src/core/workspace/identity.ts  # 在原文件末尾新增函数
+    deps: []
+    description: "实现全局语言配置存储（~/.openfeel/config.json）"
+
+  op-004:
+    file:
+      - src/core/init.ts  # 新增 ensureGlobalConfig() + 调整 initProject() 入口
+    deps:
+      - { op: op-003, type: hard }
+    description: "首次使用语言选择提示（init.ts 入口）"
+
+  op-005:
+    file:
+      - src/commands/flow.ts
+      - src/commands/init.ts
+      - src/commands/update.ts
+      - src/commands/project.ts
+      - src/commands/stage.ts
+      - src/commands/plan.ts
+      - src/commands/knowledge.ts
+      - src/commands/archive.ts
+      - src/commands/roadmap.ts
+      - src/commands/view.ts
+      - src/commands/instructions.ts
+      - src/core/init.ts
+    deps:
+      - { op: op-001, type: hard }
+      - { op: op-002, type: hard }
+    description: "国际化 CLI 命令输出（11 个命令文件的 console.log/error 替换）"
+
+  op-006:
+    file:
+      - test/core/i18n.test.ts
+      - test/core/workspace/global-config.test.ts
+    deps:
+      - { op: op-001, type: hard }
+      - { op: op-002, type: hard }
+      - { op: op-003, type: hard }
+      - { op: op-004, type: hard }
+      - { op: op-005, type: hard }
+    description: "自测与回归验证"
+
+# 执行顺序建议（基于依赖图拓扑排序）:
+#
+# ┌─────────────────┐     ┌─────────────────┐
+# │ op-001 (i18n数据)│     │ op-003 (全局配置)│
+# └───────┬─────────┘     └───────┬─────────┘
+#         │ hard                  │ hard
+#         ▼                       ▼
+# ┌─────────────────┐     ┌─────────────────┐
+# │ op-002 (i18n引擎)│     │ op-004 (首次使用)│
+# └───────┬─────────┘     └───────┬─────────┘
+#         │ hard                  │ (文件不交叠，可与 op-005 并行)
+#         │                       │
+#         └───────┬───────────────┘
+#                 ▼
+#         ┌─────────────────┐
+#         │ op-005 (CLI替换) │
+#         └───────┬─────────┘
+#                 │ hard
+#                 ▼
+#         ┌─────────────────┐
+#         │ op-006 (自测)    │
+#         └─────────────────┘
+#
+# 并行建议：
+#   - op-001 和 op-003 可并行（文件无交叠）
+#   - op-002 和 op-004 可并行（op-002 依赖 op-001；op-004 依赖 op-003；两组独立）
+#   - op-005 必须串行（依赖 op-001 + op-002）
+#   - op-006 必须串行（依赖所有前序 op）

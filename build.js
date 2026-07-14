@@ -21,6 +21,14 @@ import { fileURLToPath } from 'node:url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const TEMPLATES_PATH = resolve(__dirname, 'src', 'core', 'templates.ts');
 const UPDATE_PATH = resolve(__dirname, 'src', 'core', 'update.ts');
+const TEMPLATE_LOADER_PATH = resolve(__dirname, 'src', 'core', 'template-loader.ts');
+
+const TEMPLATES_DATA_DIR = resolve(__dirname, 'src', 'core', 'templates-data');
+const TEMPLATE_AGENTS_DIR = resolve(TEMPLATES_DATA_DIR, 'agents');
+const TEMPLATE_CORE_MD_PATH = resolve(TEMPLATES_DATA_DIR, 'core-instructions', 'zh-CN.md');
+const TEMPLATE_AGENTS_MD_PATH = resolve(TEMPLATES_DATA_DIR, 'agents-md', 'zh-CN.md');
+const TEMPLATE_CORE_INSTRUCTIONS_DIR = resolve(TEMPLATES_DATA_DIR, 'core-instructions');
+const TEMPLATE_AGENTS_MD_DIR = resolve(TEMPLATES_DATA_DIR, 'agents-md');
 
 const CORE_MD_PATH = resolve(__dirname, '.opencode', 'instructions', 'core.md');
 const AGENTS_DIR = resolve(__dirname, '.opencode', 'agents');
@@ -82,52 +90,121 @@ function replaceBetweenAnchors(filePath, anchorName, newContent) {
 // ── 管线函数 ──────────────────────────────────────────────────────────
 
 /**
- * 步骤 1：读取 core.md → Base64 编码 → 注入 templates.ts
+ * 步骤 1：读取 templates-data/core-instructions/ 下所有 .md 文件 → CRLF→LF 归一化 → Base64 编码 → 注入 template-loader.ts
+ * 每个文件名（不含扩展名）作为语言键
+ * [FIX] REV-003：读取后先归一化行尾（CRLF→LF），再 Base64 编码，确保跨平台可复现
  */
 function generateTemplateFromCoreMd() {
-  console.log('⟳ 正在注入 core.md → templates.ts...');
-  const coreContent = safeReadFile(CORE_MD_PATH);
-  const base64 = Buffer.from(coreContent, 'utf-8').toString('base64');
-  const exportLine = `export const CORE_INSTRUCTIONS_TEMPLATE_B64 =\n  "${base64}";`;
-  replaceBetweenAnchors(
-    TEMPLATES_PATH,
-    'CORE_INSTRUCTIONS_TEMPLATE_B64',
-    exportLine,
-  );
-  console.log('✓ core.md 已注入 templates.ts');
-}
-
-/**
- * 步骤 2：读取 agents 目录下的 .md 文件 → 注入 update.ts 的 AGENT_DEFINITIONS
- */
-function generateAgentDefinitions() {
-  console.log('⟳ 正在注入 Agent 定义 → update.ts...');
-  if (!existsSync(AGENTS_DIR)) {
-    console.warn('⚠ agents 目录不存在，跳过 Agent 定义注入');
+  console.log('⟳ 正在注入 core-instructions 模板 → template-loader.ts...');
+  if (!existsSync(TEMPLATE_CORE_INSTRUCTIONS_DIR)) {
+    console.warn('⚠ templates-data/core-instructions/ 目录不存在，跳过 core-instructions 注入');
     return;
   }
 
-  const agentFiles = readdirSync(AGENTS_DIR).filter((f) => f.endsWith('.md'));
+  const mdFiles = readdirSync(TEMPLATE_CORE_INSTRUCTIONS_DIR).filter((f) => f.endsWith('.md'));
   const entries = [];
 
-  for (const file of agentFiles) {
-    const key = file.replace(/\.md$/, '');
-    const content = safeReadFile(join(AGENTS_DIR, file));
-    const escaped = escapeForTemplateString(content);
-    // 含连字符的 key 需要引号
-    const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
-      ? key
-      : `'${key}'`;
-    entries.push(`  ${formattedKey}: \`${escaped}\`,`);
+  for (const file of mdFiles) {
+    const lang = file.replace(/\.md$/, '');
+    let content = safeReadFile(join(TEMPLATE_CORE_INSTRUCTIONS_DIR, file));
+    // [FIX] REV-003：CRLF→LF 归一化，确保跨平台 B64 编码一致
+    content = content.replace(/\r\n/g, '\n');
+    const base64 = Buffer.from(content, 'utf-8').toString('base64');
+    // 含连字符的 lang 键需要引号
+    const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang) ? lang : `'${lang}'`;
+    entries.push(`  ${formattedLang}: '${base64}'`);
   }
 
-  const objectBody = `const AGENT_DEFINITIONS: Record<string, string> = {\n${entries.join('\n')}\n};`;
-  replaceBetweenAnchors(UPDATE_PATH, 'AGENT_DEFINITIONS', objectBody);
-  console.log(`✓ ${agentFiles.length} 个 Agent 定义已注入 update.ts`);
+  const objectBody = `const CORE_INSTRUCTIONS_TEMPLATES: Record<string, string> = {\n${entries.join(',\n')}\n};`;
+  replaceBetweenAnchors(
+    TEMPLATE_LOADER_PATH,
+    'CORE_INSTRUCTIONS_TEMPLATES',
+    objectBody,
+  );
+  console.log(`✓ ${mdFiles.length} 个语言的 core-instructions 模板已注入 template-loader.ts`);
 }
 
 /**
- * 步骤 3：读取 skills 目录下的 SKILL.md → 注入 update.ts 的 SKILL_DEFINITIONS
+ * 步骤 2：读取 templates-data/agents/ 下各语言子目录的 .md 文件 → 注入 template-loader.ts 的 AGENT_TEMPLATES
+ * 数据结构为双层 Record: Record<string, Record<string, string>>
+ * 每个语言子目录（如 zh-CN/、en/）作为一个顶层语言键
+ */
+function generateAgentDefinitions() {
+  console.log('⟳ 正在注入 Agent 模板 → template-loader.ts...');
+  if (!existsSync(TEMPLATE_AGENTS_DIR)) {
+    console.warn('⚠ templates-data/agents/ 目录不存在，跳过 Agent 模板注入');
+    return;
+  }
+
+  const langDirs = readdirSync(TEMPLATE_AGENTS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  const langEntries = [];
+  let totalAgentCount = 0;
+
+  for (const lang of langDirs) {
+    const langPath = join(TEMPLATE_AGENTS_DIR, lang);
+    const agentFiles = readdirSync(langPath).filter((f) => f.endsWith('.md'));
+    const entries = [];
+
+    for (const file of agentFiles) {
+      const key = file.replace(/\.md$/, '');
+      const content = safeReadFile(join(langPath, file));
+      const escaped = escapeForTemplateString(content);
+      // 含连字符的 key 需要引号
+      const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
+        ? key
+        : `'${key}'`;
+      entries.push(`    ${formattedKey}: \`${escaped}\`,`);
+    }
+
+    // 含连字符的语言键需要引号
+    const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang)
+      ? lang
+      : `'${lang}'`;
+    langEntries.push(`  ${formattedLang}: {\n${entries.join('\n')}\n  }`);
+    totalAgentCount += agentFiles.length;
+  }
+
+  const objectBody = `const AGENT_TEMPLATES: Record<string, Record<string, string>> = {\n${langEntries.join(',\n')}\n};`;
+  replaceBetweenAnchors(TEMPLATE_LOADER_PATH, 'AGENT_TEMPLATES', objectBody);
+  console.log(`✓ ${langDirs.length} 个语言, ${totalAgentCount} 个 Agent 模板已注入 template-loader.ts`);
+}
+
+/**
+ * 步骤 3：读取 templates-data/agents-md/ 下所有 .md 文件 → 转义 → 注入 template-loader.ts 的 AGENTS_MD_TEMPLATES
+ * 每个文件名（不含扩展名）作为语言键
+ */
+function generateAgentsMdTemplate() {
+  console.log('⟳ 正在注入 agents-md 模板 → template-loader.ts...');
+  if (!existsSync(TEMPLATE_AGENTS_MD_DIR)) {
+    console.warn('⚠ templates-data/agents-md/ 目录不存在，跳过 agents-md 注入');
+    return;
+  }
+
+  const mdFiles = readdirSync(TEMPLATE_AGENTS_MD_DIR).filter((f) => f.endsWith('.md'));
+  const entries = [];
+
+  for (const file of mdFiles) {
+    const lang = file.replace(/\.md$/, '');
+    const content = safeReadFile(join(TEMPLATE_AGENTS_MD_DIR, file));
+    const escaped = escapeForTemplateString(content);
+    // 含连字符的 lang 键需要引号
+    const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang) ? lang : `'${lang}'`;
+    entries.push(`  ${formattedLang}: \`${escaped}\``);
+  }
+
+  const objectBody = `const AGENTS_MD_TEMPLATES: Record<string, string> = {\n${entries.join(',\n')}\n};`;
+  replaceBetweenAnchors(
+    TEMPLATE_LOADER_PATH,
+    'AGENTS_MD_TEMPLATES',
+    objectBody,
+  );
+  console.log(`✓ ${mdFiles.length} 个语言的 agents-md 模板已注入 template-loader.ts`);
+}
+
+/**
+ * 步骤 4：读取 skills 目录下的 SKILL.md → 注入 update.ts 的 SKILL_DEFINITIONS
  */
 function generateSkillDefinitions() {
   console.log('⟳ 正在注入 Skill 定义 → update.ts...');
@@ -237,43 +314,112 @@ function unescapeTemplateString(str) {
 }
 
 /**
- * 校验 core.md Base64 模板
+ * 校验 core-instructions Base64 模板（从 template-loader.ts 提取）
+ * 多语言支持：遍历所有语言键，逐语言与源文件比对
  */
 function validateCoreInstruction() {
-  const section = extractBetweenAnchors(TEMPLATES_PATH, 'CORE_INSTRUCTIONS_TEMPLATE_B64');
-  const quoteMatch = section.match(/"([^"]+)"/);
-  if (!quoteMatch) {
-    return { ok: false, errors: ['无法在 templates.ts 中提取 Base64 字符串'] };
-  }
-  const b64 = quoteMatch[1];
-  const decoded = Buffer.from(b64, 'base64').toString('utf-8');
-  const source = safeReadFile(CORE_MD_PATH);
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'CORE_INSTRUCTIONS_TEMPLATES');
+  const errors = [];
+  let totalCount = 0;
 
-  const normD = decoded.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const normS = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // 匹配所有语言条目: 'zh-CN': 'base64string' 或 en: 'base64string'
+  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*'([^']+)'/g;
+  let match;
+  while ((match = langRegex.exec(section)) !== null) {
+    const langKey = match[2] || match[3];
+    const b64 = match[4];
+    const decoded = Buffer.from(b64, 'base64').toString('utf-8');
 
-  if (normD !== normS) {
-    const dLines = normD.split('\n');
-    const sLines = normS.split('\n');
-    const errors = [];
-    for (let i = 0; i < Math.max(dLines.length, sLines.length) && errors.length < 5; i++) {
-      if (dLines[i] !== sLines[i]) {
-        const maxLen = 60;
-        const tmpl = (dLines[i] || '').length > maxLen
-          ? (dLines[i] || '').slice(0, maxLen) + '...'
-          : (dLines[i] || '');
-        const src = (sLines[i] || '').length > maxLen
-          ? (sLines[i] || '').slice(0, maxLen) + '...'
-          : (sLines[i] || '');
-        errors.push(`  第 ${i + 1} 行: 模板="${tmpl}", 源文件="${src}"`);
+    const sourcePath = join(TEMPLATE_CORE_INSTRUCTIONS_DIR, `${langKey}.md`);
+    if (!existsSync(sourcePath)) {
+      errors.push(`[${langKey}] 源文件不存在: ${sourcePath}`);
+      continue;
+    }
+    const source = safeReadFile(sourcePath);
+
+    const normD = decoded.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const normS = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    if (normD !== normS) {
+      const dLines = normD.split('\n');
+      const sLines = normS.split('\n');
+      for (let i = 0; i < Math.max(dLines.length, sLines.length) && errors.length < 5; i++) {
+        if (dLines[i] !== sLines[i]) {
+          const maxLen = 60;
+          const tmpl = (dLines[i] || '').length > maxLen
+            ? (dLines[i] || '').slice(0, maxLen) + '...'
+            : (dLines[i] || '');
+          const src = (sLines[i] || '').length > maxLen
+            ? (sLines[i] || '').slice(0, maxLen) + '...'
+            : (sLines[i] || '');
+          errors.push(`[${langKey}] 第 ${i + 1} 行: 模板="${tmpl}", 源文件="${src}"`);
+        }
+      }
+      if (dLines.length !== sLines.length) {
+        errors.push(`[${langKey}] 行数不同: 模板 ${dLines.length} 行, 源文件 ${sLines.length} 行`);
       }
     }
-    if (dLines.length !== sLines.length) {
-      errors.push(`  行数不同: 模板 ${dLines.length} 行, 源文件 ${sLines.length} 行`);
-    }
-    return { ok: false, errors };
+    totalCount++;
   }
-  return { ok: true, errors: [] };
+
+  if (totalCount === 0) {
+    return { ok: false, errors: ['无法在 template-loader.ts 中提取任何 core-instructions 语言条目'] };
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+/**
+ * 校验 agents-md 模板（从 template-loader.ts 提取）
+ * 多语言支持：遍历所有语言键，逐语言与源文件比对
+ */
+function validateAgentsMdTemplate() {
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'AGENTS_MD_TEMPLATES');
+  const errors = [];
+  let totalCount = 0;
+
+  // 匹配所有语言条目: 'zh-CN': `...` 或 en: `...`
+  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*`((?:[^`\\]|\\.)*)`/g;
+  let match;
+  while ((match = langRegex.exec(section)) !== null) {
+    const langKey = match[2] || match[3];
+    const decoded = unescapeTemplateString(match[4]);
+
+    const sourcePath = join(TEMPLATE_AGENTS_MD_DIR, `${langKey}.md`);
+    if (!existsSync(sourcePath)) {
+      errors.push(`[${langKey}] 源文件不存在: ${sourcePath}`);
+      continue;
+    }
+    const source = safeReadFile(sourcePath);
+
+    const normD = decoded.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const normS = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    if (normD !== normS) {
+      const dLines = normD.split('\n');
+      const sLines = normS.split('\n');
+      for (let i = 0; i < Math.max(dLines.length, sLines.length) && errors.length < 5; i++) {
+        if (dLines[i] !== sLines[i]) {
+          const maxLen = 60;
+          const tmpl = (dLines[i] || '').length > maxLen
+            ? (dLines[i] || '').slice(0, maxLen) + '...'
+            : (dLines[i] || '');
+          const src = (sLines[i] || '').length > maxLen
+            ? (sLines[i] || '').slice(0, maxLen) + '...'
+            : (sLines[i] || '');
+          errors.push(`[${langKey}] 第 ${i + 1} 行: 模板="${tmpl}", 源文件="${src}"`);
+        }
+      }
+      if (dLines.length !== sLines.length) {
+        errors.push(`[${langKey}] 行数不同: 模板 ${dLines.length} 行, 源文件 ${sLines.length} 行`);
+      }
+    }
+    totalCount++;
+  }
+
+  if (totalCount === 0) {
+    return { ok: false, errors: ['无法在 template-loader.ts 中提取任何 agents-md 语言条目'] };
+  }
+  return { ok: errors.length === 0, errors };
 }
 
 /**
@@ -352,29 +498,123 @@ function compareTemplatePairs(templateEntries, sourceEntries) {
 }
 
 /**
- * 校验 Agent 定义一致性
+ * 在字符串中从指定位置开始找到匹配的闭合括号
+ * @param {string} str - 源字符串
+ * @param {number} startIdx - 起始 { 的位置
+ * @returns {number} 匹配的 } 的位置，未找到返回 -1
+ */
+function matchBraceAt(str, startIdx) {
+  if (str[startIdx] !== '{') return -1;
+  let depth = 1;
+  let inStr = false;
+  let inTmpl = false;
+  let strChar = '';
+
+  for (let i = startIdx + 1; i < str.length; i++) {
+    const ch = str[i];
+
+    if (ch === '\\' && (inStr || inTmpl)) {
+      i++;
+      continue;
+    }
+
+    if ((ch === '"' || ch === "'") && !inTmpl) {
+      if (inStr && ch === strChar) inStr = false;
+      else if (!inStr) { inStr = true; strChar = ch; }
+      continue;
+    }
+
+    if (ch === '`' && !inStr) {
+      inTmpl = !inTmpl;
+      continue;
+    }
+
+    if (!inStr && !inTmpl) {
+      if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
+ * 校验 Agent 定义一致性（从 template-loader.ts AGENT_TEMPLATES 提取）
+ * 多语言支持：遍历所有顶层语言键，逐语言与源目录文件比对
  */
 function validateAgentDefinitions() {
-  const section = extractBetweenAnchors(UPDATE_PATH, 'AGENT_DEFINITIONS');
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'AGENT_TEMPLATES');
   const objText = matchBraces(section);
   if (!objText) {
-    return { ok: false, count: 0, errors: ['无法在 update.ts 中提取 AGENT_DEFINITIONS 对象'] };
+    return { ok: false, count: 0, errors: ['无法在 template-loader.ts 中提取 AGENT_TEMPLATES 对象'] };
   }
 
-  const templateEntries = extractTemplatePairs(objText);
+  const errors = [];
+  let totalCount = 0;
+  const foundLangs = new Set();
 
-  // 读取源文件
-  const sourceEntries = {};
-  if (existsSync(AGENTS_DIR)) {
-    const files = readdirSync(AGENTS_DIR).filter((f) => f.endsWith('.md'));
-    for (const file of files) {
-      const key = file.replace(/\.md$/, '');
-      sourceEntries[key] = safeReadFile(join(AGENTS_DIR, file));
+  // 遍历顶层语言键: 匹配 'langKey': { ... } 或 langKey: { ... }
+  // 正则：带引号的键 (group 2) 或不带引号的键 (group 3)
+  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*\{/g;
+  let langMatch;
+
+  while ((langMatch = langRegex.exec(objText)) !== null) {
+    const langKey = langMatch[2] || langMatch[3];
+    foundLangs.add(langKey);
+
+    // 找到该语言对象内部的闭合括号
+    const innerStart = objText.indexOf('{', langMatch.index);
+    if (innerStart === -1) {
+      errors.push(`[${langKey}] 无法找到语言对象的起始括号`);
+      continue;
+    }
+    const innerEnd = matchBraceAt(objText, innerStart);
+    if (innerEnd === -1) {
+      errors.push(`[${langKey}] 无法找到匹配的闭合括号`);
+      continue;
+    }
+
+    const innerObj = objText.slice(innerStart, innerEnd + 1);
+    const templateEntries = extractTemplatePairs(innerObj);
+    totalCount += Object.keys(templateEntries).length;
+
+    // 读取对应语言目录的源文件
+    const langDir = join(TEMPLATE_AGENTS_DIR, langKey);
+    const sourceEntries = {};
+    if (existsSync(langDir)) {
+      const files = readdirSync(langDir).filter((f) => f.endsWith('.md'));
+      for (const file of files) {
+        const key = file.replace(/\.md$/, '');
+        sourceEntries[key] = safeReadFile(join(langDir, file));
+      }
+    } else {
+      errors.push(`[${langKey}] 源目录不存在: ${langDir}（模板中有语言键但无对应目录）`);
+    }
+
+    const result = compareTemplatePairs(templateEntries, sourceEntries);
+    if (result.errors.length > 0) {
+      errors.push(...result.errors.map(e => `[${langKey}] ${e}`));
+    }
+
+    // 更新 lastIndex 到对象末尾之后，继续扫描下一个语言键
+    langRegex.lastIndex = innerEnd + 1;
+  }
+
+  // 检查有源目录但模板中无对应语言键的情况
+  if (existsSync(TEMPLATE_AGENTS_DIR)) {
+    const dirs = readdirSync(TEMPLATE_AGENTS_DIR, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+    for (const dir of dirs) {
+      if (!foundLangs.has(dir)) {
+        errors.push(`源目录 '${dir}' 存在但模板中缺少对应的语言键`);
+      }
     }
   }
 
-  const result = compareTemplatePairs(templateEntries, sourceEntries);
-  return { ok: result.errors.length === 0, count: result.count, errors: result.errors };
+  return { ok: errors.length === 0, count: totalCount, errors };
 }
 
 /**
@@ -412,19 +652,23 @@ function validateTemplates() {
   console.log('');
   console.log('⟳ 正在校验模板一致性...');
 
-  // 1. core.md Base64
+  // 1. core-instructions Base64（从 template-loader.ts 校验）
   const coreResult = validateCoreInstruction();
 
-  // 2. Agent 定义
+  // 2. Agent 定义（从 template-loader.ts 校验，源为 templates-data）
   const agentResult = validateAgentDefinitions();
 
-  // 3. Skill 定义
+  // 3. agents-md 模板（从 template-loader.ts 校验，多语言）
+  const agentsMdResult = validateAgentsMdTemplate();
+
+  // 4. Skill 定义（仍从 update.ts 校验）
   const skillResult = validateSkillDefinitions();
 
   const results = [
-    { name: `core.md (Base64)`, ok: coreResult.ok, errors: coreResult.errors },
-    { name: `Agent 定义 (${agentResult.count} 个)`, ok: agentResult.ok, errors: agentResult.errors },
-    { name: `Skill 定义 (${skillResult.count} 个)`, ok: skillResult.ok, errors: skillResult.errors },
+    { name: `core-instructions (Base64, template-loader.ts)`, ok: coreResult.ok, errors: coreResult.errors },
+    { name: `Agent 定义 (${agentResult.count} 个, template-loader.ts)`, ok: agentResult.ok, errors: agentResult.errors },
+    { name: `agents-md (template-loader.ts)`, ok: agentsMdResult.ok, errors: agentsMdResult.errors },
+    { name: `Skill 定义 (${skillResult.count} 个, update.ts)`, ok: skillResult.ok, errors: skillResult.errors },
   ];
 
   const passed = results.filter((r) => r.ok).length;
@@ -460,9 +704,10 @@ try {
   rmSync('dist', { recursive: true, force: true });
   console.log('✓ dist/ 已清理');
 
-  // 三步管线：注入动态内容到源文件
+  // 四步管线：注入动态内容到 template-loader.ts（不再注入 templates.ts 和 update.ts 的模板段）
   generateTemplateFromCoreMd();
   generateAgentDefinitions();
+  generateAgentsMdTemplate();
   generateSkillDefinitions();
 
   // 执行 TypeScript 编译

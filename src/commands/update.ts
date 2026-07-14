@@ -72,13 +72,13 @@ export function registerUpdateCommand(program: Command): void {
         }
       } catch (err) {
         if (err instanceof AgentsMdLangConflictError) {
-          // 语言冲突 → 提示用户确认
+          // 语言冲突 → 输出警告但不阻塞后续流程
+          // updateProject 已在非交互模式下直接处理跳过，此处为安全兜底
           console.warn(t('update.langConflict', getCliLang(targetPath), {
             projectLang: (err as AgentsMdLangConflictError).projectLang,
             requestedLang: (err as AgentsMdLangConflictError).requestedLang,
           }));
-          // TODO: 交互确认后可重试（当前版本仅输出警告）
-          process.exit(0);  // 非致命，正常退出
+          return;
         }
         console.error(t('update.errorDeployFailedTmpl', lang, { message: (err as Error).message }));
         process.exit(1);

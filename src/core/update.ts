@@ -1269,6 +1269,12 @@ export function updateProject(
     const agentsMdContent = loadTemplate(deployLang, 'agents-md');
     writeFileSync(agentsMdPath, agentsMdContent, 'utf-8');
     created.push('AGENTS.md');
+  } else if (!agentsMdExists && options?.lang) {
+    // 情况 2b：已有 agents 目录但 AGENTS.md 被手动删除 + --lang 指定
+    // → 用指定语言重新创建 AGENTS.md
+    const agentsMdContent = loadTemplate(options.lang, 'agents-md');
+    writeFileSync(agentsMdPath, agentsMdContent, 'utf-8');
+    created.push('AGENTS.md');
   } else if (agentsMdExists && options?.lang) {
     // 情况 2：已有项目 + --lang 参数指定了语言
     const projectLang = getLang(projectPath);
@@ -1282,8 +1288,9 @@ export function updateProject(
         writeFileSync(agentsMdPath, agentsMdContent, 'utf-8');
         updated.push('AGENTS.md');
       } else if (options?.interactive) {
-        // 交互模式 → 等待用户确认（由命令层处理）
-        throw new AgentsMdLangConflictError(projectLang, requestedLang);
+        // 交互模式 → 输出冲突警告，跳过 AGENTS.md，继续执行后续框架更新
+        console.warn(`[update] AGENTS.md language mismatch: project=${projectLang}, requested=${requestedLang}. Skipped. Use --force to override.`);
+        skipped.push('AGENTS.md (language conflict)');
       } else {
         // 非交互模式 → 输出警告，不覆盖
         console.warn(`[update] AGENTS.md language mismatch: project=${projectLang}, requested=${requestedLang}. Skipped. Use --force to override.`);
@@ -1299,8 +1306,10 @@ export function updateProject(
   }
 
   // 记录项目语言映射到全局配置
+  // 使用 options?.lang（用户通过 --lang 显式指定的语言）优先，
+  // 回退到 lang（getCliLang 三级回退结果）。确保记录的语言与实际部署语言一致。
   try {
-    recordProjectLang(projectPath, lang);
+    recordProjectLang(projectPath, options?.lang ?? lang);
   } catch {
     // 记录失败不影响主流程
   }

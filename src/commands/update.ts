@@ -6,7 +6,7 @@
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { updateProject, supportedTools, selectTools } from '../core/update.js';
+import { updateProject, supportedTools, selectTools, AgentsMdLangConflictError } from '../core/update.js';
 import { t, getCliLang } from '../core/i18n.js';
 
 export function registerUpdateCommand(program: Command): void {
@@ -14,9 +14,11 @@ export function registerUpdateCommand(program: Command): void {
     .command('update [path]')
     .description('部署 OpenFeel 适配文件到目标项目（无参数时交互式选择工具）')
     .option('--lang <lang>', 'Agent prompt language (zh-CN or en)')
-    .action(async (path?: string, options?: { lang?: string }) => {
+    .option('--force', '跳过 AGENTS.md 覆盖确认，直接覆盖')
+    .action(async (path?: string, options?: { lang?: string; force?: boolean }) => {
       const targetPath = resolve(path ?? process.cwd());
       const lang = getCliLang(targetPath);
+      const force = options?.force ?? false;
       try {
 
         if (!existsSync(targetPath)) {
@@ -36,7 +38,11 @@ export function registerUpdateCommand(program: Command): void {
         console.log(t('update.deployingTmpl', lang, { path: targetPath }));
         console.log(t('update.selectedToolsTmpl', lang, { tools: selectedTools.join(', ') }));
 
-        const result = updateProject(targetPath, selectedTools, lang);
+        const result = updateProject(targetPath, selectedTools, lang, {
+          force,
+          interactive: true,  // 命令层是交互模式
+          lang: options?.lang, // 传递 --lang 参数
+        });
 
         if (result.created.length > 0) {
           console.log(t('update.created', lang));
@@ -65,6 +71,15 @@ export function registerUpdateCommand(program: Command): void {
           console.log(t('update.complete', lang));
         }
       } catch (err) {
+        if (err instanceof AgentsMdLangConflictError) {
+          // 语言冲突 → 提示用户确认
+          console.warn(t('update.langConflict', getCliLang(targetPath), {
+            projectLang: (err as AgentsMdLangConflictError).projectLang,
+            requestedLang: (err as AgentsMdLangConflictError).requestedLang,
+          }));
+          // TODO: 交互确认后可重试（当前版本仅输出警告）
+          process.exit(0);  // 非致命，正常退出
+        }
         console.error(t('update.errorDeployFailedTmpl', lang, { message: (err as Error).message }));
         process.exit(1);
       }

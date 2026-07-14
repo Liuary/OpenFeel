@@ -221,6 +221,7 @@ export const update: I18nDomain = {
   'alreadyUpToDate':            { key: 'update.alreadyUpToDate',            zh: '所有适配文件已是最新状态，无需变更。',      en: '' },
   'complete':                   { key: 'update.complete',                   zh: '✓ 适配文件部署完成',                       en: '' },
   'errorDeployFailedTmpl':      { key: 'update.errorDeployFailedTmpl',      zh: '错误：部署失败 — {message}',               en: '' },
+  'langConflict':               { key: 'update.langConflict',               zh: '⚠️ AGENTS.md 语言差异：当前项目为 {projectLang}，请求部署为 {requestedLang}。使用 --force 覆盖或手动调整。', en: '' },
 };
 
 /* ==================== project 域：项目概览命令 ==================== */

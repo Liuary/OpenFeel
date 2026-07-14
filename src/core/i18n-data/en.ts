@@ -204,6 +204,7 @@ export const update: I18nDomain = {
   'alreadyUpToDate':            { key: 'update.alreadyUpToDate',            zh: '', en: 'All adapter files are up-to-date, no changes needed.' },
   'complete':                   { key: 'update.complete',                   zh: '', en: '✓ Adapter files deployed' },
   'errorDeployFailedTmpl':      { key: 'update.errorDeployFailedTmpl',      zh: '', en: 'Error: Deployment failed — {message}' },
+  'langConflict':               { key: 'update.langConflict',               zh: '', en: '⚠️ AGENTS.md language mismatch: project is {projectLang}, requested is {requestedLang}. Use --force to override or adjust manually.' },
 };
 
 /* ==================== project ==================== */

@@ -5,9 +5,10 @@
  * 变更摘要 (v3-stage-04 第二轮):
  * - 新增 instructions/core.md 创建（从 init.ts 迁移至此，职责归位适配器层）
  */
-import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, existsSync, readFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader.js';
+import { recordProjectLang, getGlobalConfig, getLang } from './workspace/identity.js';
 
 /** 更新结果 */
 export interface UpdateResult {
@@ -16,6 +17,16 @@ export interface UpdateResult {
   skipped: string[];  // 跳过的文件（已存在且内容一致）
 }
 
+/** AGENTS.md 语言冲突错误（由命令层捕获处理） */
+export class AgentsMdLangConflictError extends Error {
+  constructor(
+    public projectLang: string,
+    public requestedLang: string,
+  ) {
+    super(`AGENTS.md language conflict: project=${projectLang}, requested=${requestedLang}`);
+    this.name = 'AgentsMdLangConflictError';
+  }
+}
 
 // ─── 支持的工具注册表 ──────────────────────────────────────────────
 
@@ -1218,7 +1229,12 @@ function buildJsoncFromObject(obj: Record<string, unknown>): string {
  * @param projectPath - 目标项目根路径
  * @returns 更新结果（created / updated / skipped 文件列表）
  */
-export function updateProject(projectPath: string, selectedTools: string[] = ["opencode"], lang: 'zh-CN' | 'en' = 'zh-CN'): UpdateResult {
+export function updateProject(
+  projectPath: string,
+  selectedTools: string[] = ["opencode"],
+  lang: 'zh-CN' | 'en' = 'zh-CN',
+  options?: { force?: boolean; interactive?: boolean; lang?: string }
+): UpdateResult {
   const created: string[] = [];
   const updated: string[] = [];
   const skipped: string[] = [];
@@ -1233,6 +1249,60 @@ export function updateProject(projectPath: string, selectedTools: string[] = ["o
   // 过滤：仅处理选中的工具
   if (!selectedTools.includes('opencode')) {
     return { created: [], updated: [], skipped: [] };
+  }
+
+  // ── AGENTS.md 语言同步逻辑 ──
+  let agentsDirHasContent = false;
+  try {
+    agentsDirHasContent = existsSync(agentsDir) && readdirSync(agentsDir).length > 0;
+  } catch {
+    agentsDirHasContent = false;
+  }
+
+  const agentsMdPath = resolve(projectPath, 'AGENTS.md');
+  const agentsMdExists = existsSync(agentsMdPath);
+
+  if (!agentsDirHasContent && !agentsMdExists) {
+    // 情况 1：首次部署 → 使用全局默认语言部署 AGENTS.md
+    const globalConfig = getGlobalConfig();
+    const deployLang = lang ?? globalConfig.lang ?? 'zh-CN';
+    const agentsMdContent = loadTemplate(deployLang, 'agents-md');
+    writeFileSync(agentsMdPath, agentsMdContent, 'utf-8');
+    created.push('AGENTS.md');
+  } else if (agentsMdExists && options?.lang) {
+    // 情况 2：已有项目 + --lang 参数指定了语言
+    const projectLang = getLang(projectPath);
+    const requestedLang = options.lang;
+
+    if (requestedLang !== projectLang) {
+      // 语言不同 → 提示确认
+      if (options?.force) {
+        // --force → 跳过确认，直接覆盖
+        const agentsMdContent = loadTemplate(requestedLang, 'agents-md');
+        writeFileSync(agentsMdPath, agentsMdContent, 'utf-8');
+        updated.push('AGENTS.md');
+      } else if (options?.interactive) {
+        // 交互模式 → 等待用户确认（由命令层处理）
+        throw new AgentsMdLangConflictError(projectLang, requestedLang);
+      } else {
+        // 非交互模式 → 输出警告，不覆盖
+        console.warn(`[update] AGENTS.md language mismatch: project=${projectLang}, requested=${requestedLang}. Skipped. Use --force to override.`);
+        skipped.push('AGENTS.md');
+      }
+    } else {
+      // 语言相同 → 跳过 AGENTS.md，仅更新框架内容
+      skipped.push('AGENTS.md (language unchanged)');
+    }
+  } else if (agentsMdExists) {
+    // 情况 3：已有项目 + 无 --lang 参数 → 保持现状，跳过
+    skipped.push('AGENTS.md (use existing)');
+  }
+
+  // 记录项目语言映射到全局配置
+  try {
+    recordProjectLang(projectPath, lang);
+  } catch {
+    // 记录失败不影响主流程
   }
 
   // 0. 生成 instructions/core.md（适配器层核心指令，与 init 的核心层分离）

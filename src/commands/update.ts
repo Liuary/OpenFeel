@@ -41,7 +41,7 @@ export function registerUpdateCommand(program: Command): void {
         const result = updateProject(targetPath, selectedTools, lang, {
           force,
           interactive: true,  // 命令层是交互模式
-          lang: options?.lang, // 传递 --lang 参数
+          lang: options?.lang as 'zh-CN' | 'en' | undefined, // 传递 --lang 参数
         });
 
         if (result.created.length > 0) {

@@ -1233,7 +1233,7 @@ export function updateProject(
   projectPath: string,
   selectedTools: string[] = ["opencode"],
   lang: 'zh-CN' | 'en' = 'zh-CN',
-  options?: { force?: boolean; interactive?: boolean; lang?: string }
+  options?: { force?: boolean; interactive?: boolean; lang?: 'zh-CN' | 'en' }
 ): UpdateResult {
   const created: string[] = [];
   const updated: string[] = [];

@@ -99,7 +99,8 @@ export class PublicLogger {
    * 此类重要事件逐条记录，不参与批量聚合
    */
   logMilestone(title: string, event: MilestoneEvent): void {
-    this.writeLog('里程碑', { ...event, action: event.action } as LogEventDetail);
+    // 确保 title 参数被传递到日志内容的 extra.title 字段中
+    this.writeLog('里程碑', { ...event, action: event.action, extra: { title } } as LogEventDetail);
   }
 
   // ═══ 私有方法 ═══
@@ -395,7 +396,11 @@ function getShortDesc(detail: LogEventDetail, eventType: string): string {
       parts.push('自动修复审查');
       break;
     case 'stage_completed':
-      parts.push('阶段完成');
+      if (detail.extra?.title) {
+        parts.push(String(detail.extra.title));
+      } else {
+        parts.push('阶段完成');
+      }
       break;
     default:
       parts.push(detail.action);

@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-07-14T15:23:30.746Z"
+    "updated": "2026-07-14T15:36:01.175Z"
   },
   "pipeline": {
     "phase": "active",
@@ -80,8 +80,8 @@
     },
     "v4.4-stage-01": {
       "name": "v4.4-stage-01",
-      "phase": "review_pending",
-      "status": "planned",
+      "phase": "review_failed",
+      "status": "review_failed",
       "deps": [],
       "ops": {},
       "stats": {
@@ -92,8 +92,8 @@
     },
     "v4.4-stage-02": {
       "name": "v4.4-stage-02",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "review_failed",
+      "status": "review_failed",
       "deps": [],
       "ops": {},
       "stats": {
@@ -771,6 +771,36 @@
         "stageName": "v4.4-stage-02",
         "from": "scheme_passed",
         "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T15:31:11.507Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:36:00.495Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:36:01.174Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "review_pending",
+        "to": "review_failed"
       }
     }
   ]

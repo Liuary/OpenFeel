@@ -88,6 +88,22 @@
 
 ---
 
+## v4.4-stage-02（日志修复 + 流水线安全增强）
+
+| REV | 标题 | 状态 | 优先级 | blocking |
+|-----|------|------|--------|----------|
+| REV-001 | logMilestone 的 title 参数未传递到日志内容中 | pending | medium | true |
+| REV-002 | flow.ts advance 命令未传递 triggeredBy 参数 | pending | medium | false |
+| REV-003 | getUsername / formatDateStr 与 PublicLogger 重复实现 | pending | low | false |
+| REV-004 | createLogSkeleton 私域日志文件命名观察（合规，无需修复） | pending | medium | false |
+
+### 统计
+- 总计：4 条
+- 阻塞：1 条 | 非阻塞：3 条
+- pending：4 | fixing：0 | resolved：0 | closed：0
+
+---
+
 ## v4.1-stage-03（flow.json 多阶段状态机）
 
 | REV | 标题 | 状态 | 优先级 | blocking |

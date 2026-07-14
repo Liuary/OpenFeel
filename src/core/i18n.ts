@@ -44,11 +44,13 @@ function lazyGetGlobalConfig(): { lang: string; projects: Record<string, string>
 // 导入所有 i18n 域
 import { common as zhCommon, flow as zhFlow, init as zhInit, update as zhUpdate,
          project as zhProject, stage as zhStage, plan as zhPlan, knowledge as zhKnowledge,
-         archive as zhArchive, roadmap as zhRoadmap, view as zhView, instructions as zhInstructions }
+         archive as zhArchive, roadmap as zhRoadmap, view as zhView, instructions as zhInstructions,
+         config as zhConfig }
   from './i18n-data/zh-CN.js';
 import { common as enCommon, flow as enFlow, init as enInit, update as enUpdate,
          project as enProject, stage as enStage, plan as enPlan, knowledge as enKnowledge,
-         archive as enArchive, roadmap as enRoadmap, view as enView, instructions as enInstructions }
+         archive as enArchive, roadmap as enRoadmap, view as enView, instructions as enInstructions,
+         config as enConfig }
   from './i18n-data/en.js';
 
 /** 合法的语言值列表 */
@@ -63,13 +65,13 @@ type DomainImport = Record<string, { key: string; zh: string; en: string }>;
 /** 所有域的列表（zh-CN） */
 const zhDomains: DomainImport[] = [
   zhCommon, zhFlow, zhInit, zhUpdate, zhProject,
-  zhStage, zhPlan, zhKnowledge, zhArchive, zhRoadmap, zhView, zhInstructions,
+  zhStage, zhPlan, zhKnowledge, zhArchive, zhRoadmap, zhView, zhInstructions, zhConfig,
 ];
 
 /** 所有域的列表（en） */
 const enDomains: DomainImport[] = [
   enCommon, enFlow, enInit, enUpdate, enProject,
-  enStage, enPlan, enKnowledge, enArchive, enRoadmap, enView, enInstructions,
+  enStage, enPlan, enKnowledge, enArchive, enRoadmap, enView, enInstructions, enConfig,
 ];
 
 /** 语言→字符串映射表（模块级缓存，惰性初始化） */

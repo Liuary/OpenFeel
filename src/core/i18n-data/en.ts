@@ -338,6 +338,16 @@ export const view: I18nDomain = {
 /* ==================== instructions ==================== */
 export const instructions: I18nDomain = {};
 
+/* ==================== config ==================== */
+export const config: I18nDomain = {
+  'get.lang':                { key: 'config.get.lang',                zh: '', en: 'Global language: {lang}' },
+  'set.ok':                  { key: 'config.set.ok',                  zh: '', en: 'Global language set to: {lang}' },
+  'set.invalidLang':         { key: 'config.set.invalidLang',         zh: '', en: 'Invalid language "{val}". Supported: zh-CN and en' },
+  'list.title':              { key: 'config.list.title',              zh: '', en: 'Recorded project language mappings:' },
+  'list.empty':              { key: 'config.list.empty',              zh: '', en: '(No projects recorded)' },
+  'list.item':               { key: 'config.list.item',               zh: '', en: '  {path} → {lang}' },
+};
+
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
@@ -352,4 +362,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'roadmap',      domain: roadmap },
   { name: 'view',         domain: view },
   { name: 'instructions', domain: instructions },
+  { name: 'config',       domain: config },
 ];

@@ -1,0 +1,80 @@
+# v4.4-stage-03 操作方案依赖声明
+# Schemer 产出，Feel 调度时据此决定并行/串行策略。
+#
+# 依赖类型:
+#   hard:             前置 op 必须完成（失败时阻塞后续所有依赖该 op 的操作）
+#   soft:             弱依赖，警告但允许启动（用于文件集有交集但操作区域不同的场景）
+#   mutual_exclusion: 互斥，串行执行（同一文件的不同 op 不能并行）
+#
+# 参见 kb/patterns.md #Schemer op 级依赖声明
+# 参见 kb/patterns.md #deps.yaml 应声明实际文件名
+
+version: "1.0"
+stage: v4.4-stage-03
+
+ops:
+  op-001:
+    file:
+      - src/commands/config.ts           # 新增：config 命令组
+      - src/cli/index.ts                 # 修改：注册 config 命令
+      - src/core/workspace/identity.ts   # 修改：新增 recordProjectLang()
+      - src/core/i18n-data/zh-CN.ts      # 修改：新增 config 域
+      - src/core/i18n-data/en.ts         # 修改：新增 config 域
+      - src/core/i18n.ts                 # 修改：导入 config 域
+    deps: []
+    description: "实现 openfeel config 命令 + 项目语言映射（recordProjectLang）"
+
+  op-002:
+    file:
+      - src/core/update.ts               # 修改：AGENTS.md 语言同步 + recordProjectLang 调用
+      - src/commands/update.ts           # 修改：--force 参数 + 语言冲突处理
+      - src/core/i18n-data/zh-CN.ts      # 修改：新增 update.langConflict 键
+      - src/core/i18n-data/en.ts         # 修改：新增 update.langConflict 键
+    deps:
+      - { op: op-001, type: hard }       # hard: 依赖 recordProjectLang() 函数实现
+    description: "完善 update 的 AGENTS.md 语言同步（首次部署/切换/一致/确认）"
+
+  op-003:
+    file:
+      - src/core/templates-data/agents/zh-CN/executor.md  # 修改：新增 package.json 模板要求
+      - src/core/templates-data/agents/en/executor.md     # 修改：新增 package.json 模板要求
+    deps: []                             # 无阶段内依赖，与 op-001 可并行
+    description: "强化 Agent 的 package.json 模板要求（中英文 executor.md）"
+
+# ── 跨阶段依赖声明 ──
+#
+# stage-03 整体对外的依赖：
+#   - stage-01 (hard): config 命令依赖全局配置读写机制（getGlobalConfig/setGlobalConfig）
+#   - stage-02 (soft): executor.md 模板文件与 stage-02 op-003 共享（需确保 stage-02 修改已合并后再修改）
+
+# ── 执行顺序建议（基于依赖图拓扑排序） ──
+#
+#   ┌──────────────────────┐     ┌──────────────────────┐
+#   │ op-001 (config命令)   │     │ op-003 (模板要求)     │
+#   │ 文件: config.ts 等    │     │ 文件: executor.md×2  │
+#   └──────────┬───────────┘     └──────────┬───────────┘
+#              │ hard                       │ 无阶段内依赖
+#              ▼                            │
+#   ┌──────────────────────┐               │
+#   │ op-002 (update同步)   │               │
+#   │ 文件: update.ts 等    │               │
+#   └──────────────────────┘               │
+#              │                            │
+#              └──────────── 并行 ──────────┘
+#
+# 推荐执行顺序：op-001 → op-002（硬依赖），op-003 可在 op-001 开始后任意时间并行执行
+#
+# 并行建议：
+#   - op-001 和 op-003 可并行（文件无交叠）
+#   - op-002 必须串行（依赖 op-001 的 recordProjectLang()）
+
+# ── 文件冲突矩阵 ──
+#
+# zh-CN.ts + en.ts:      op-001 + op-002（同一文件不同域：config vs update，可先后修改）
+#   建议: op-001 先完成 i18n-data 变更 → op-002 再追加 update.langConflict
+# executor.md×2:         op-003（独占，不与其他 op 重叠）
+# identity.ts:           op-001（独占）
+# config.ts:             op-001（独占，新增）
+# cli/index.ts:          op-001（独占）
+# update.ts:             op-002（独占）
+# commands/update.ts:    op-002（独占）

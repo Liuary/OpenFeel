@@ -378,3 +378,131 @@ export function ensureInfoJson(lang?: string): void {
 - update 命令用默认值强制覆写已有 lang 字段 — 用户已选择语言被重置
 
 > 参见 v4.3-stage-03 op-005（identity.ts lang 字段 + getLang 函数）
+
+## [+] CLI 国际化封装模式：t() + 键命名规范 + 模板插值 (2026-07-14)
+
+CLI 命令输出国际化采用三层封装：
+
+**1. 键命名规范：**
+- 格式：`{domain}.{module}.{name}`（全部小写，`.`分隔层级）
+- domain：12 个功能域（common/flow/init/update/project/stage/plan/knowledge/archive/roadmap/view/instructions）
+- 动态字符串：key 末尾加 `Tmpl` 后缀区分（如 `flow.advance.okTmpl`），值中使用 `{var}` 占位符
+
+**2. t() 查表函数：**
+```typescript
+// 静态字符串
+t('flow.status.title', lang)                // → "OpenFeel 流水线状态" / "OpenFeel Pipeline Status"
+
+// 动态模板（含变量插值）
+t('flow.advance.okTmpl', lang, { stage, to }) // → "已推进: stage-01 → done"
+```
+
+**3. 字符串映射表按语言文件分离：**
+```typescript
+// zh-CN.ts — 中文条目
+export const flow: I18nDomain = {
+  'status.title': { key: 'flow.status.title', zh: 'OpenFeel 流水线状态', en: '' },
+  // ...
+};
+
+// en.ts — 英文条目（键结构完全对称，仅 en 字段有值）
+export const flow: I18nDomain = {
+  'status.title': { key: 'flow.status.title', zh: '', en: 'OpenFeel Pipeline Status' },
+  // ...
+};
+```
+
+**关键约束：**
+- 两语言文件的 `Object.keys()` 必须完全一致（新增 key 须双语言同步）
+- t() 缺失 key 时回退 `zh-CN` 而非抛错，确保向后兼容
+- 封装前应从现有代码 grep 所有 `console.log/error` 含中文的调用点，建立完整清单后逐条替换
+
+**参见：** v4.4-stage-01 op-001/op-002/op-005、kb/architecture.md #i18n 基础设施
+
+## [+] 语言配置三级回退链：用户级 → 项目级 → 默认值 (2026-07-14)
+
+`getCliLang()` 实现语言偏好的三级优先级解析链：
+
+```typescript
+function getCliLang(projectPath: string): 'zh-CN' | 'en' {
+  // 1. 用户级全局偏好（~/.openfeel/config.json 的 lang 字段）
+  const globalConfig = getGlobalConfig();
+  if (globalConfig.lang) return globalConfig.lang;
+
+  // 2. 项目级偏好（.info.json 的 lang 字段）
+  const projectLang = getLang();  // 从 .info.json 读取
+  if (projectLang) return projectLang;
+
+  // 3. 默认回退
+  return 'zh-CN';
+}
+```
+
+**与已有「向后兼容可选配置字段模式」的关系：**
+- 两层模式互补——本条目解决"多来源优先级合并"，已有条目解决"单来源字段缺失的回退"
+- 两者均使用 `??` 运算符（非 `||`），确保空字符串也触发回退
+- 写入侧遵循已有原则：仅在有明确用户意图时才写入新字段，不强制覆盖已有值
+
+**参见：** v4.4-stage-01 op-003/op-004、kb/patterns.md #向后兼容的可选配置字段模式
+
+## [+] REV 闭环双路兜底 + --force 不可绕过模式 (2026-07-14)
+
+与已有的 REV blocking 标记模式（数据结构层——为审查条目增加 `blocking` 字段）互补，本模式实现**执行层强制校验**：
+
+```
+命令层（flow.ts advance 命令）   ← 双路兜底 A：提前校验 + 丰富 CLI 错误输出
+        │
+        ▼
+核心层（flow-manager.ts）       ← 双路兜底 B：last resort，直接 throw Error
+```
+
+**实现要点：**
+
+```typescript
+// flow.ts — 命令层兜底（含 --force 处理）
+if (options.to === 'done' && options.stage) {
+  const blockingOpen = allReviews.filter(r => r.blocking !== false && r.status === 'open');
+  if (blockingOpen.length > 0) {
+    // --force 仅降级日志级别（warn vs error），仍拒绝推进
+    if (options.force) console.warn('--force 已指定，但 REV 安全检查不可绕过');
+    console.error(`错误：${blockingOpen.length} 个阻塞 REV 未解决`);
+    process.exit(1);
+  }
+}
+
+// flow-manager.ts — 核心层兜底（无 --force 概念，直接 throw）
+if (targetPhase === 'done') {
+  const blockingOpen = stageReviews.filter(r => r.blocking !== false && r.status === 'open');
+  if (blockingOpen.length > 0) throw new Error(`无法推进到 done：${blockingOpen.length} 个阻塞 REV`);
+}
+```
+
+**安全原则：**
+- `--force` 可跳过 phase 非法校验和阶段跳跃，但**不可绕过 REV 阻塞检查**
+- 流水线安全不应存在后门——若确有 low 优先级 REV 故意不修，应先通过 `flow review resolve` 或修改 REV 的 `blocking` 标记
+- 两路校验逻辑需保持同步，命令层提供更丰富的错误输出，核心层作为最后防线
+
+**参见：** v4.4-stage-02 op-002、kb/patterns.md #REV blocking 标记模式、kb/patterns.md #Executor 前置校验三步模式
+
+## [+] 流水线节点触发日志骨架自动创建模式 (2026-07-14)
+
+在流水线推进到关键 phase 时，自动在私域日志目录创建带日期前缀的空骨架文件，将"日志强制落档"从 Agent 自律升级为流水线基础设施：
+
+```typescript
+// flow-manager.ts — advanceStagePhase 中关键节点触发
+if (targetPhase === 'exec_running' || targetPhase === 'review_pending' || targetPhase === 'test_pending') {
+  this.logSkeleton.createSkeleton(stageName, targetPhase);
+}
+```
+
+**骨架文件格式：**
+- 路径：`.openfeel/users/{username}/log/{yyyy}/{MM}/{dd}/{date}-001-template.md`
+- 内容：含模板提示的 Markdown 骨架（标题、操作摘要占位、关键文件占位）
+- Agent 只需填充内容，无需手动创建文件和目录
+
+**优势：**
+- 消除"日志全空"的常见问题——骨架已创建，Agent 仅需填充
+- 与公域日志降噪协同：私域记录过程（骨架→填充），公域仅记录里程碑
+- 不影响已有 Agent prompt（文件已存在，Agent 按原有流程读写即可）
+
+**参见：** v4.4-stage-02 op-004、kb/architecture.md #公域日志批量聚合策略

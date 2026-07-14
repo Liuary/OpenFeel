@@ -174,3 +174,21 @@ export function setGlobalConfig(config: GlobalConfig): void {
 export function isFirstUse(): boolean {
   return !existsSync(getGlobalConfigPath());
 }
+
+/**
+ * 记录项目路径→语言映射到全局配置的 projects 表。
+ * 由 openfeel update 完成后自动调用。
+ * 若映射已存在且语言相同则跳过；语言不同则更新。
+ * @param projectPath 项目绝对路径
+ * @param lang 项目使用的语言
+ */
+export function recordProjectLang(projectPath: string, lang: 'zh-CN' | 'en'): void {
+  const config = getGlobalConfig();
+  const existing = config.projects[projectPath];
+  if (existing === lang) {
+    // 映射已存在且语言一致，跳过写入
+    return;
+  }
+  config.projects[projectPath] = lang;
+  setGlobalConfig(config);
+}

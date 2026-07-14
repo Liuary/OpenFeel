@@ -355,6 +355,16 @@ export const view: I18nDomain = {
 /* ==================== instructions 域：说明命令 ==================== */
 export const instructions: I18nDomain = {};
 
+/* ==================== config 域：配置管理命令 ==================== */
+export const config: I18nDomain = {
+  'get.lang':                { key: 'config.get.lang',                zh: '全局语言：{lang}',                     en: '' },
+  'set.ok':                  { key: 'config.set.ok',                  zh: '全局语言已设置为：{lang}',              en: '' },
+  'set.invalidLang':         { key: 'config.set.invalidLang',         zh: '无效的语言值 "{val}"，仅支持 zh-CN 和 en', en: '' },
+  'list.title':              { key: 'config.list.title',              zh: '已记录的项目语言映射：',                 en: '' },
+  'list.empty':              { key: 'config.list.empty',              zh: '（暂无记录的项目）',                     en: '' },
+  'list.item':               { key: 'config.list.item',               zh: '  {path} → {lang}',                     en: '' },
+};
+
 /* ==================== 聚合导出 ==================== */
 /** 所有功能域的聚合数组（供 i18n.ts 构建 Map 使用） */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
@@ -370,4 +380,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'roadmap',      domain: roadmap },
   { name: 'view',         domain: view },
   { name: 'instructions', domain: instructions },
+  { name: 'config',       domain: config },
 ];

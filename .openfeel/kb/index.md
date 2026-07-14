@@ -9,18 +9,18 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 40 个 .ts 文件（src/） |
+| 源文件 | 43 个 .ts 文件（src/） |
 | Agent 数 | 8 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-07-12（归档时自动更新此字段） |
+| 最近更新 | 2026-07-14（归档时自动更新此字段） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 8 | 2026-07-12 | 技术选型、设计理由、并行策略、多语言模板管线 |
-| 代码模式 | [patterns.md](patterns.md) | 21 | 2026-07-12 | 项目约定、最佳实践、反模式 |
+| 架构决策 | [architecture.md](architecture.md) | 10 | 2026-07-14 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合 |
+| 代码模式 | [patterns.md](patterns.md) | 25 | 2026-07-14 | 项目约定、最佳实践、反模式 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 9 | 2026-07-09 | 常见 Bug、调试流程、已知坑位 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -38,6 +38,8 @@
 | Feel 调度 + CLI 推进模型 | 2026-07-05 | 废弃自动闭环，Feel 总统领通过 openfeel flow 推进 |
 | 知识库自动化体系 | 2026-07-05 | 检索→去重→沉淀 三环闭环，check-kb 自包含语义检索 |
 | 多语言模板数据管线 | 2026-07-12 | templates-data 源文件→build.js 构建时内联→template-loader 运行时按语言加载 |
+| i18n 基础设施：TS常量导入+运行时查表 | 2026-07-14 | 不同于 template-loader 构建管线，i18n 采用 TS 常量直接导入的轻量方案，零构建脚本，与 template-loader 互补覆盖运行时输出+部署内容 |
+| 公域日志批量聚合策略 | 2026-07-14 | advance_stage_phase 改为 endStage 时汇总里程碑，消除 85%+ 噪音 |
 
 ### patterns.md
 
@@ -64,6 +66,10 @@
 | 构建脚本多语言循环生成模式 | 2026-07-12 | 语言数组+循环遍历替代逐语言展开，新增语言零代码变更 |
 | 双语 CLI 交互模式 | 2026-07-12 | init 选择→.info.json 持久化→update 读取，init 立即生效 |
 | 向后兼容可选配置字段模式 | 2026-07-12 | 只读访问器+??默认值+不强制写入，兼容已有部署项目 |
+| CLI 国际化封装模式 | 2026-07-14 | t() 函数 + {domain}.{module}.{name} 键命名 + {var} 模板插值，12 个功能域覆盖 |
+| 语言配置三级回退链 | 2026-07-14 | getCliLang 实现用户级全局→项目级.info.json→默认zh-CN 的三级优先级解析 |
+| REV 闭环双路兜底+--force不可绕过 | 2026-07-14 | flow-manager+命令层两层校验，--force 仅降级警告仍拒绝推进，流水线安全无后门 |
+| 流水线节点触发日志骨架模式 | 2026-07-14 | 关键 phase 推进时自动创建私域日志骨架文件，Agent 仅需填充 |
 
 ### troubleshooting.md
 
@@ -91,6 +97,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-07-14 | 归档 | v4.4-stage-01/02 归档：i18n 基础设施落成（TS常量导入+12文件国际化，206 entries×2语言），日志修复+流水线安全增强（REV双路兜底+公域降噪+git钩子+日志骨架+自动推进询问），测试 291/291 全通过，知识沉淀 6 条至 architecture(2) + patterns(4) |
 | 2026-07-12 | 归档 | v4.3 全系列归档：3 阶段全部完成，多语言模板管线落成（templates-data → build.js → template-loader），双语 CLI 交互（init 选择 → .info.json 持久化 → update 读取），知识沉淀 4 条至 architecture(1) + patterns(3) |
 | 2026-07-12 | 归档 | v4.3-stage-01/02 归档：17 项 op 落地（模板文件化重构 + project.ts REV-004 修复），16 条 REV（13 closed + 3 非阻塞），知识沉淀 3 条至 patterns |
 | 2026-07-09 | 归档 | v4.2-stage-01 归档：2 项 op 落地（kb/index.md 快速概览 + project overview CLI），4 条 REV（3 closed），知识沉淀 1 条至 troubleshooting |

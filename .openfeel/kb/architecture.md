@@ -136,3 +136,50 @@ template-loader.ts 导出函数：
 - 与 v4.1 建立的构建时模板同步机制（templates-data/ → .opencode/agents/）协同工作
 
 **参见：** v4.3-stage-01 op-005（模板加载器）、v4.3-stage-03 op-001/op-006（多语言扩展）、kb/patterns.md #构建脚本多语言循环生成模式
+
+## [+] i18n 基础设施：TS 常量导入 + 运行时查表模式 (2026-07-14)
+
+与 template-loader 的构建脚本+Base64 内联管线互补，CLI 输出的 i18n 采用更轻量的方案：
+
+```
+i18n-data/{lang}.ts                ← 唯一真相源（人类编辑）
+  zh-CN.ts (206 entries)           ← 中文映射表
+  en.ts    (206 entries)           ← 英文映射表（键结构对称）
+  types.ts                         ← I18nEntry / I18nDomain 类型定义
+        │
+        ▼ 构建时（零脚本——TS 直接 import）
+src/core/i18n.ts                   ← 运行时引擎
+  t(key, lang?, vars?): string     ← 按键+语言查表+模板插值
+  getCliLang(projectPath): string  ← 三级回退解析语言
+```
+
+**设计决策：**
+- 字符串量可控（每语言 < 250 条），无需构建脚本的 Base64→decode 链路，TS 常量直接导入即可
+- 键名采用 `{domain}.{module}.{name}` 层级命名（如 `flow.status.title`），动态字符串用 `Tmpl` 后缀区分
+- 源文件按语言分离（zh-CN.ts / en.ts），键结构完全对称，新增语言仅需新增一个文件
+- 与 template-loader 共享「运行时按键查表」模式——`t()` 和 `loadAgentTemplate()` 均为同步查表函数
+- 全局语言配置路径 `os.homedir()/.openfeel/config.json`，跨平台兼容
+
+**与 template-loader 的关系：**
+- template-loader 处理**部署时模板**（Agent prompt、AGENTS.md、core instructions，内容量大需 Base64 编码）
+- i18n 处理**运行时 CLI 输出**（命令反馈文本，内容量小直接 TS 常量）
+- 两者互补形成完整的多语言覆盖：运行时输出（i18n）+ 部署时内容（template-loader）
+
+**参见：** v4.4-stage-01 op-001~op-002、kb/patterns.md #CLI 国际化封装模式
+
+## [+] 公域日志批量聚合策略：推进事件延迟并入阶段里程碑 (2026-07-14)
+
+v4.4 将公域日志从"每次 advance_stage_phase 逐条写入"改为"endStage() 完成时批量聚合为一条里程碑记录"：
+
+```
+之前：flow advance 每次调用 → 公域日志立即写入一条（每阶段 6-8 条噪音）
+之后：advance_stage_phase 取消直接日志写入 → endStage() 汇总为一条里程碑记录
+```
+
+**规则：**
+- advance_stage_phase 不再调用 publicLogger.logPhaseChange()——仅记录 flow.json 内部 log
+- endStage() 新增 logMilestone() 调用，汇总该阶段全部推进为一条里程碑
+- 里程碑事件（test_passed、archiving→done）仍逐条记录，确保审计链不丢失
+- 降噪效果：消除约 85%+ 的公域日志条目，剩余均为里程碑级事件
+
+**参见：** v4.4-stage-02 op-001、kb/patterns.md #流水线节点触发日志骨架模式

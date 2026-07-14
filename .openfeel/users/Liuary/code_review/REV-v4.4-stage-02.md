@@ -9,7 +9,7 @@
 
 ## REV-001: logMilestone 的 title 参数未传递到日志内容中
 
-- **状态**：resolved
+- **状态**：closed
 - **优先级**：medium
 - **提出人**：Reviewer
 - **提出时间**：2026-07-14 23:50
@@ -45,6 +45,7 @@ logMilestone(title: string, event: MilestoneEvent): void {
 
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
+| 2026-07-14 23:43 | Reviewer (GLM) | ✅ 通过 | title 正确传递到 extra.title；getShortDesc 对 stage_completed 优先使用 extra.title；npm test 288/291（3 个 i18n en 翻译失败为既有问题，与本次修复无关） |
 
 ---
 

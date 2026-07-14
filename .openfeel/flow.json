@@ -2,12 +2,12 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-07-14T15:41:49.469Z"
+    "updated": "2026-07-14T16:06:33.818Z"
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v4.4-stage-01",
+      "stage": "v4.4-stage-03",
       "op": ""
     },
     "retry": 0
@@ -73,15 +73,20 @@
     },
     "v4.4-stage-04": {
       "name": "v4.4-stage-04",
-      "phase": "plan_pending",
+      "phase": "scheme_pending",
       "status": "planned",
       "deps": [],
-      "ops": {}
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T16:02:42.684Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
     },
     "v4.4-stage-01": {
       "name": "v4.4-stage-01",
-      "phase": "exec_running",
-      "status": "review_failed",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "stats": {
@@ -92,8 +97,8 @@
     },
     "v4.4-stage-02": {
       "name": "v4.4-stage-02",
-      "phase": "review_pending",
-      "status": "review_failed",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "stats": {
@@ -104,10 +109,15 @@
     },
     "v4.4-stage-03": {
       "name": "v4.4-stage-03",
-      "phase": "plan_pending",
+      "phase": "exec_running",
       "status": "planned",
       "deps": [],
-      "ops": {}
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T16:02:42.101Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
     }
   },
   "reviews": [],
@@ -830,6 +840,186 @@
       "detail": {
         "stageName": "v4.4-stage-01",
         "from": "review_failed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T15:44:50.384Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:44:50.955Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:48:12.377Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "review_pending",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:48:12.963Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:49:45.432Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:49:54.727Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T15:51:15.299Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:54:43.267Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:56:38.455Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:56:39.026Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:56:46.421Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T15:56:46.989Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T16:02:35.120Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-01",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:02:35.718Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-02",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:02:42.099Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:02:42.682Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:06:33.222Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:06:33.818Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "scheme_passed",
         "to": "exec_running"
       }
     }

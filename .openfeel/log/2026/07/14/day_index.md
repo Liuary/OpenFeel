@@ -10,3 +10,5 @@
 | [2026-07-14-Liuary-005.md](2026-07-14-Liuary-005.md) | Liuary | v4.4-stage-01. advance_stage_phase |
 | [2026-07-14-Liuary-006.md](2026-07-14-Liuary-006.md) | Liuary | v4.4-stage-01. advance_stage_phase |
 | [2026-07-14-Liuary-007.md](2026-07-14-Liuary-007.md) | Liuary | v4.4-stage-02. advance_stage_phase |
+| [2026-07-14-Liuary-008.md](2026-07-14-Liuary-008.md) | Liuary | v4.4-stage-01. advance_stage_phase |
+| [2026-07-14-Liuary-009.md](2026-07-14-Liuary-009.md) | Liuary | v4.4-stage-02. advance_stage_phase |

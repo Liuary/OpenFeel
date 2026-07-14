@@ -12,6 +12,15 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 
+/** 里程碑事件 */
+export interface MilestoneEvent {
+  action: string;
+  stageId?: string;
+  durationMs?: number;
+  finalPhase?: string;
+  [key: string]: unknown;
+}
+
 /** 日志事件详情 */
 export interface LogEventDetail {
   /** 操作类型（如 advance_phase, attempt_pass, review_added 等） */
@@ -83,6 +92,14 @@ export class PublicLogger {
    */
   logTestEvent(detail: LogEventDetail): void {
     this.writeLog('测试事件', detail);
+  }
+
+  /**
+   * 记录里程碑事件（阶段完成、测试通过、归档完成等）
+   * 此类重要事件逐条记录，不参与批量聚合
+   */
+  logMilestone(title: string, event: MilestoneEvent): void {
+    this.writeLog('里程碑', { ...event, action: event.action } as LogEventDetail);
   }
 
   // ═══ 私有方法 ═══
@@ -376,6 +393,9 @@ function getShortDesc(detail: LogEventDetail, eventType: string): string {
       break;
     case 'auto_fix_review':
       parts.push('自动修复审查');
+      break;
+    case 'stage_completed':
+      parts.push('阶段完成');
       break;
     default:
       parts.push(detail.action);

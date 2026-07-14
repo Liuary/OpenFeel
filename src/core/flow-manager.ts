@@ -561,6 +561,14 @@ export class FlowManager {
       const endMs = new Date(stage.stats.end_time).getTime();
       stage.stats.duration_ms = Math.max(0, endMs - startMs);
     }
+
+    // 公域日志：阶段完成时汇总写入一条里程碑记录
+    this.publicLogger.logMilestone(`阶段 ${stageId} 完成`, {
+      action: 'stage_completed',
+      stageId,
+      durationMs: stage.stats?.duration_ms ?? 0,
+      finalPhase: stage.phase,
+    });
   }
 
   /**
@@ -701,10 +709,11 @@ export class FlowManager {
    * @param stageName 阶段名（如 stage-01）
    * @param phase 目标流水线阶段（PipelinePhase）
    */
-  advanceStagePhase(stageName: string, phase: PipelinePhase): void {
+  advanceStagePhase(stageName: string, phase: PipelinePhase, triggeredBy?: string): void {
     if (!this.data) {
       return;
     }
+    const actualTrigger = triggeredBy ?? 'flow-manager';
 
     // 校验 stageName 存在
     const stage = this.data.stages[stageName];
@@ -745,21 +754,16 @@ export class FlowManager {
     // 同步更新 pipeline.phase 为 'active'
     this.data.pipeline.phase = 'active' as MetaPhase;
 
-    // 追加日志
+    // 追加日志（使用实际触发者名，而非硬编码 'flow-manager'）
     this.appendLog({
       time: '',
-      agent: 'flow-manager',
+      agent: actualTrigger,
       action: 'advance_stage_phase',
       detail: { stageName, from: fromPhase, to: targetPhase },
     });
 
-    // 公共日志：记录状态变更（审计链）
-    this.publicLogger.logPhaseChange({
-      action: 'advance_stage_phase',
-      opId: `${stageName}.${this.data.pipeline.current.op}`,
-      from: fromPhase,
-      to: targetPhase,
-    });
+    // REV-003: advance_stage_phase 改为 endStage 时批量聚合，取消逐条写入
+    // this.publicLogger.logPhaseChange({...});
 
     // 同步 stage status（调用已有 mapPhaseToStageStatus）
     const prevStatus = stage.status;

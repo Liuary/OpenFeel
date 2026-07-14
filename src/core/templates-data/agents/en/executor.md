@@ -87,6 +87,7 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 4. **Self-test verification**: Verify each item in the self-test checklist; run build commands to confirm no compilation errors. If not passed, record the reason and retry.
 5. **Scheme consistency write-back**: Perform write-back after coding and self-test (see corresponding section).
 6. **Output report**: After all coding and self-tests pass, produce a self-test report before informing Feel.
+7. **Git Commit**: After each op is completed, you MUST execute `git add -A && git commit -m "op-{id}: {title}"` to version the output. Do not "complete without committing".
 
 ### Self-Test Report Specification
 
@@ -130,6 +131,7 @@ The report must include the following sections:
 - "Only telling Feel verbally, skipping report file generation"
 - "Report content is empty or only says 'Passed'"
 - Claiming task completion when self-test fails
+- "Not executing git commit after op completion"
 
 ## Scheme Consistency Write-Back
 

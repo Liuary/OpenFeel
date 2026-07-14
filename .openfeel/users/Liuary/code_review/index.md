@@ -64,6 +64,30 @@
 
 ---
 
+## v4.4-stage-01（i18n 基建 + CLI 国际化）
+
+| REV | 标题 | 状态 | 优先级 | blocking |
+|-----|------|------|--------|----------|
+| REV-001 | buildMap 语言字段选取逻辑语义错误 | pending | high | true |
+| REV-002 | project.ts 大量中文硬编码未 i18n 化 | pending | high | true |
+| REV-003 | knowledge.ts 表头中文字符串未 i18n 化 | pending | medium | true |
+| REV-004 | flow.ts repair/migrate 中中文硬编码字符串比较 | pending | medium | true |
+| REV-005 | FlowManager.getPhaseLabels() 和 addStage() 硬编码中文 | pending | medium | false |
+| REV-006 | init.ts ensureGlobalConfig 中硬编码中英文字符串 | pending | medium | false |
+| REV-007 | VALID_LANGS 常量重复定义 | pending | low | false |
+| REV-008 | lazyGetGlobalConfig 不必要的复杂度 | pending | low | false |
+| REV-009 | flow overview Unicode box 对齐在英文模式下破坏 | pending | low | false |
+| REV-010 | flow overview retry 后缀判断使用字符串比较 hack | pending | low | false |
+| REV-011 | 错误消息中全角/半角冒号使用不一致 | pending | low | false |
+| REV-012 | global-config.test.ts 直接操作用户 home 目录 | pending | low | false |
+
+### 统计
+- 总计：12 条
+- 阻塞：4 条 | 非阻塞：8 条
+- pending：12 | fixing：0 | resolved：0 | closed：0
+
+---
+
 ## v4.1-stage-03（flow.json 多阶段状态机）
 
 | REV | 标题 | 状态 | 优先级 | blocking |

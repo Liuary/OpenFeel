@@ -219,6 +219,7 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 4. **Self-test verification**: Verify each item in the self-test checklist; run build commands to confirm no compilation errors. If not passed, record the reason and retry.
 5. **Scheme consistency write-back**: Perform write-back after coding and self-test (see corresponding section).
 6. **Output report**: After all coding and self-tests pass, produce a self-test report before informing Feel.
+7. **Git Commit**: After each op is completed, you MUST execute \`git add -A && git commit -m "op-{id}: {title}"\` to version the output. Do not "complete without committing".
 
 ### Self-Test Report Specification
 
@@ -262,6 +263,7 @@ The report must include the following sections:
 - "Only telling Feel verbally, skipping report file generation"
 - "Report content is empty or only says 'Passed'"
 - Claiming task completion when self-test fails
+- "Not executing git commit after op completion"
 
 ## Scheme Consistency Write-Back
 
@@ -1175,6 +1177,7 @@ permission:
 4. **自测验证**：按自测清单逐项验证，运行构建命令确认无编译错误。不通过则记录原因并重试。
 5. **方案一致性回写**：编码和自测完成后执行回写（详见对应章节）。
 6. **输出报告**：编码和自测全部通过后，必须在告知 Feel 前产出自测报告。
+7. **Git 提交**：每个 op 完成后必须执行 \`git add -A && git commit -m "op-{id}: {title}"\`，将产出纳入版本管理。禁止"做完不提交"。
 
 ### 自测报告规范
 
@@ -1218,6 +1221,7 @@ permission:
 - 禁止「仅对话告知 Feel，跳过报告文件生成」
 - 禁止「报告内容为空或仅写"通过"」
 - 自测不通过时禁止声称任务完成
+- 禁止「op 完成后不执行 git commit」
 
 ## 方案一致性回写
 

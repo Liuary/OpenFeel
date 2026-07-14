@@ -20,6 +20,7 @@
  * - 新增 flow metrics 子命令，展示 Agent 性能指标
  */
 import { Command } from 'commander';
+import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FlowManager, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
@@ -451,6 +452,24 @@ export function registerFlowCommand(program: Command): void {
       }
       mgr.save();
       console.log(t('flow.advance.okTmpl', lang, { stage: options.stage || '', to: options.to }));
+
+      // git 脏区检查（安全网）：Executor 未提交时输出醒目警告
+      try {
+        const gitStatus = execSync('git status --porcelain', {
+          cwd: process.cwd(),
+          encoding: 'utf-8',
+          timeout: 5000,
+        }).trim();
+        if (gitStatus) {
+          console.warn('[!] ╔════════════════════════════════════════╗');
+          console.warn('[!] ║  ⚠ Git 脏区警告：存在未提交的变更     ║');
+          console.warn('[!] ║  请确认 Executor 已完成 git commit    ║');
+          console.warn('[!] ╚════════════════════════════════════════╝');
+        }
+      } catch {
+        // git 不可用（无 .git 目录或 git 未安装）时静默跳过
+      }
+
       if (options.op) {
         console.log(t('flow.advance.opLabelTmpl', lang, { op: options.op }));
       }

@@ -219,6 +219,40 @@ export const project: I18nDomain = {
   'overview.entryPath':         { key: 'project.overview.entryPath',         zh: '', en: '🚪 Entry Path' },
   'overview.noSrc':             { key: 'project.overview.noSrc',             zh: '', en: '(No project structure detected — missing src/ directory)' },
   'overview.techStack':         { key: 'project.overview.techStack',         zh: '', en: '🔧 Tech Stack' },
+
+  // 目录结构 — 描述模板（带 {n} 变量插值）
+  'dir.cliTmpl':          { key: 'project.dir.cliTmpl',          zh: '', en: '— CLI Entry ({n} file(s))' },
+  'dir.commandsTmpl':     { key: 'project.dir.commandsTmpl',     zh: '', en: '— CLI Commands ({n})' },
+  'dir.coreTmpl':         { key: 'project.dir.coreTmpl',         zh: '', en: '— Core Logic ({n} file(s))' },
+  'dir.utilsTmpl':        { key: 'project.dir.utilsTmpl',        zh: '', en: '— Utilities ({n} file(s))' },
+  'dir.agentsTmpl':       { key: 'project.dir.agentsTmpl',       zh: '', en: '— Agent Definitions ({n})' },
+  'dir.skillsTmpl':       { key: 'project.dir.skillsTmpl',       zh: '', en: '— Skill Definitions ({n})' },
+  'dir.kbTmpl':           { key: 'project.dir.kbTmpl',           zh: '', en: '— Knowledge Base ({n} file(s))' },
+  'dir.planTmpl':         { key: 'project.dir.planTmpl',         zh: '', en: '— Work Plans ({n} version(s))' },
+  'dir.codeReviewTmpl':   { key: 'project.dir.codeReviewTmpl',   zh: '', en: '— Code Reviews ({n} file(s))' },
+  'dir.bugs':             { key: 'project.dir.bugs',             zh: '', en: '— Bug Tracking' },
+  'dir.bugsNotInit':      { key: 'project.dir.bugsNotInit',      zh: '', en: ' (not initialized)' },
+
+  // 统计信息标签
+  'stats.tsSource':       { key: 'project.stats.tsSource',       zh: '', en: 'TS Source Files' },
+  'stats.agentDefs':      { key: 'project.stats.agentDefs',      zh: '', en: 'Agent Definitions' },
+  'stats.cliModules':     { key: 'project.stats.cliModules',     zh: '', en: 'CLI Command Modules' },
+  'stats.kbEntries':      { key: 'project.stats.kbEntries',      zh: '', en: 'KB Entries' },
+  'stats.planVersions':   { key: 'project.stats.planVersions',   zh: '', en: 'Plan Versions' },
+
+  // 入口路径标签
+  'entry.cli':            { key: 'project.entry.cli',            zh: '', en: 'CLI Entry' },
+  'entry.pkg':            { key: 'project.entry.pkg',            zh: '', en: 'Package Entry' },
+  'entry.build':          { key: 'project.entry.build',          zh: '', en: 'Build Output' },
+
+  // 技术栈标签
+  'tech.runtime':         { key: 'project.tech.runtime',         zh: '', en: 'Runtime' },
+  'tech.language':        { key: 'project.tech.language',        zh: '', en: 'Language' },
+  'tech.cliFramework':    { key: 'project.tech.cliFramework',    zh: '', en: 'CLI Framework' },
+  'tech.validation':      { key: 'project.tech.validation',      zh: '', en: 'Validation' },
+  'tech.config':          { key: 'project.tech.config',          zh: '', en: 'Config' },
+  'tech.fileMatch':       { key: 'project.tech.fileMatch',       zh: '', en: 'File Matching' },
+  'tech.test':            { key: 'project.tech.test',            zh: '', en: 'Testing' },
 };
 
 /* ==================== stage ==================== */
@@ -265,6 +299,16 @@ export const knowledge: I18nDomain = {
   'index.noCategories':              { key: 'knowledge.index.noCategories',              zh: '', en: '(No categories)' },
   'index.recentUpdates':             { key: 'knowledge.index.recentUpdates',             zh: '', en: '=== Recent Updates ===' },
   'index.noUpdates':                 { key: 'knowledge.index.noUpdates',                 zh: '', en: 'No updates yet.' },
+
+  // knowledge list 表头列名
+  'list.colCategory':     { key: 'knowledge.list.colCategory',     zh: '', en: 'Category' },
+  'list.colTitle':        { key: 'knowledge.list.colTitle',        zh: '', en: 'Title' },
+  'list.colDate':         { key: 'knowledge.list.colDate',         zh: '', en: 'Date' },
+
+  // knowledge index 表头列名
+  'index.colDate':        { key: 'knowledge.index.colDate',        zh: '', en: 'Date' },
+  'index.colCategory':    { key: 'knowledge.index.colCategory',    zh: '', en: 'Category' },
+  'index.colTitle':       { key: 'knowledge.index.colTitle',       zh: '', en: 'Title' },
 };
 
 /* ==================== archive ==================== */

@@ -87,10 +87,10 @@ function outputProjectOverview(cwd: string): void {
   console.log(t('project.overview.dirStructure', lang));
   if (srcExists) {
     console.log('   src/');
-    console.log(`    ├─ cli/          — CLI 入口程序（${srcCliFiles} 个文件）`);
-    console.log(`    ├─ commands/     — CLI 命令模块（${srcCommandsFiles} 个）`);
-    console.log(`    ├─ core/         — 核心逻辑（${srcCoreFiles} 个文件）`);
-    console.log(`    └─ utils/        — 工具函数（${srcUtilsFiles} 个文件）`);
+    console.log(`    ├─ cli/          ${t('project.dir.cliTmpl', lang, { n: String(srcCliFiles) })}`);
+    console.log(`    ├─ commands/     ${t('project.dir.commandsTmpl', lang, { n: String(srcCommandsFiles) })}`);
+    console.log(`    ├─ core/         ${t('project.dir.coreTmpl', lang, { n: String(srcCoreFiles) })}`);
+    console.log(`    └─ utils/        ${t('project.dir.utilsTmpl', lang, { n: String(srcUtilsFiles) })}`);
   } else {
     console.log(`   src/    ${t('project.overview.dirNotExist', lang)}`);
   }
@@ -99,9 +99,9 @@ function outputProjectOverview(cwd: string): void {
     const agentFiles = fg.sync(['agents/*.md'], { cwd: opencodeDir }).length;
     const skillDirs = fg.sync(['skills/*'], { cwd: opencodeDir, onlyDirectories: true }).length;
     console.log('   .opencode/');
-    console.log(`    ├─ agents/       — Agent 定义（${agentFiles} 个）`);
+    console.log(`    ├─ agents/       ${t('project.dir.agentsTmpl', lang, { n: String(agentFiles) })}`);
     // skills 下可能有多个子目录，用 glob 统计
-    console.log(`    └─ skills/       — 技能定义（${skillDirs} 个）`);
+    console.log(`    └─ skills/       ${t('project.dir.skillsTmpl', lang, { n: String(skillDirs) })}`);
   } else {
     console.log(`   .opencode/  ${t('project.overview.dirNotExist', lang)}`);
   }
@@ -112,10 +112,10 @@ function outputProjectOverview(cwd: string): void {
     const reviewFiles = fg.sync(['code_review/*.md'], { cwd: openfeelDir }).length;
     const bugDirExists = existsSync(resolve(openfeelDir, 'bugs'));
     console.log('   .openfeel/');
-    console.log(`    ├─ kb/           — 项目知识库（${kbFiles} 个文件）`);
-    console.log(`    ├─ plan/         — 工作计划（${planDirEntries} 个版本）`);
-    console.log(`    ├─ code_review/  — 代码审查记录（${reviewFiles} 个文件）`);
-    console.log(`    └─ bugs/         — Bug 追踪${bugDirExists ? '' : '（未初始化）'}`);
+    console.log(`    ├─ kb/           ${t('project.dir.kbTmpl', lang, { n: String(kbFiles) })}`);
+    console.log(`    ├─ plan/         ${t('project.dir.planTmpl', lang, { n: String(planDirEntries) })}`);
+    console.log(`    ├─ code_review/  ${t('project.dir.codeReviewTmpl', lang, { n: String(reviewFiles) })}`);
+    console.log(`    └─ bugs/         ${t('project.dir.bugs', lang)}${bugDirExists ? '' : t('project.dir.bugsNotInit', lang)}`);
   } else {
     console.log(`   .openfeel/  ${t('project.overview.dirNotExist', lang)}`);
   }
@@ -123,19 +123,19 @@ function outputProjectOverview(cwd: string): void {
 
   // 📊 统计信息
   console.log(t('project.overview.stats', lang));
-  console.log(`   TS 源文件:   ${tsSourceFiles} 个`);
-  console.log(`   Agent 定义:  ${agentDefs} 个`);
-  console.log(`   CLI 命令模块: ${cliCommandModules} 个`);
-  console.log(`   KB 条目:     ${kbEntries} 个`);
-  console.log(`   计划版本:    ${planVersions} 个`);
+  console.log(`   ${t('project.stats.tsSource', lang)}:   ${tsSourceFiles}`);
+  console.log(`   ${t('project.stats.agentDefs', lang)}:  ${agentDefs}`);
+  console.log(`   ${t('project.stats.cliModules', lang)}: ${cliCommandModules}`);
+  console.log(`   ${t('project.stats.kbEntries', lang)}:  ${kbEntries}`);
+  console.log(`   ${t('project.stats.planVersions', lang)}: ${planVersions}`);
   console.log('');
 
   // 🚪 入口路径（以 src/ 存在性为统一门控）
   console.log(t('project.overview.entryPath', lang));
   if (srcExists) {
-    console.log('   CLI 入口:  src/cli/index.ts');
-    console.log('   包入口:    src/index.ts');
-    console.log('   构建产物:  dist/');
+    console.log(`   ${t('project.entry.cli', lang)}:  src/cli/index.ts`);
+    console.log(`   ${t('project.entry.pkg', lang)}:    src/index.ts`);
+    console.log(`   ${t('project.entry.build', lang)}:  dist/`);
   } else {
     // 三条入口均依赖 src/，src/ 不存在时整节替换统一提示
     console.log(`   ${t('project.overview.noSrc', lang)}`);
@@ -161,13 +161,13 @@ function outputProjectOverview(cwd: string): void {
     ? `Vitest ${devDependencies['vitest'].replace(/^\^|~/, '')}+`
     : 'Vitest 3+';
 
-  console.log(`   运行时:    ${runtimeVer}`);
-  console.log(`   语言:      ${tsVer}`);
-  console.log(`   CLI 框架:  ${commanderVer}`);
-  console.log(`   校验:      ${zodVer}`);
-  console.log(`   配置:      YAML`);
-  console.log(`   文件匹配:  ${globVer}`);
-  console.log(`   测试:      ${vitestVer}`);
+  console.log(`   ${t('project.tech.runtime', lang)}:    ${runtimeVer}`);
+  console.log(`   ${t('project.tech.language', lang)}:      ${tsVer}`);
+  console.log(`   ${t('project.tech.cliFramework', lang)}:  ${commanderVer}`);
+  console.log(`   ${t('project.tech.validation', lang)}:      ${zodVer}`);
+  console.log(`   ${t('project.tech.config', lang)}:      YAML`);
+  console.log(`   ${t('project.tech.fileMatch', lang)}:  ${globVer}`);
+  console.log(`   ${t('project.tech.test', lang)}:      ${vitestVer}`);
   console.log('');
 }
 

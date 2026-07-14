@@ -37,7 +37,12 @@ export function registerKnowledgeCommand(program: Command): void {
       }
 
       // 表格输出：分类 | 标题 | 日期 | 状态
-      const headers = ['分类', '标题', '日期', t('common.status', lang)];
+      const headers = [
+        t('knowledge.list.colCategory', lang),
+        t('knowledge.list.colTitle', lang),
+        t('knowledge.list.colDate', lang),
+        t('common.status', lang),
+      ];
       const rows = entries.map((e) => [
         e.category,
         e.title,
@@ -152,7 +157,11 @@ export function registerKnowledgeCommand(program: Command): void {
       if (idx.recentUpdates.length === 0) {
         console.log(t('knowledge.index.noUpdates', lang));
       } else {
-        const headers = ['日期', '分类', '标题'];
+        const headers = [
+          t('knowledge.index.colDate', lang),
+          t('knowledge.index.colCategory', lang),
+          t('knowledge.index.colTitle', lang),
+        ];
         const rows = idx.recentUpdates.map((u) => [u.date, u.category, u.title]);
         console.log(formatTable(rows, headers));
       }

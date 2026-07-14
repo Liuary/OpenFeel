@@ -1,0 +1,61 @@
+# v4.4-stage-01 审查修复操作方案依赖声明
+# 对应 REV-001 ~ REV-004 阻塞项修复
+#
+# 依赖类型:
+#   hard:             前置 op 必须完成
+#   soft:             弱依赖
+#   mutual_exclusion: 互斥，串行执行（同一文件的不同 op 不能并行）
+#
+# 参见 kb/patterns.md #Schemer op 级依赖声明
+
+version: "1.0"
+stage: v4.4-stage-01
+group: rev-fix
+
+ops:
+  op-rev-001:
+    file:
+      - src/core/i18n.ts
+    deps: []
+    description: "修正 buildMap 语言字段选取逻辑（对应 REV-001）"
+
+  op-rev-002:
+    file:
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/commands/project.ts
+    deps: []
+    description: "project.ts 中文硬编码 i18n 化（对应 REV-002）"
+
+  op-rev-003:
+    file:
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/commands/knowledge.ts
+    deps:
+      - { op: op-rev-002, type: mutual_exclusion }
+    description: "knowledge.ts 表头硬编码 i18n 化（对应 REV-003）"
+
+  op-rev-004:
+    file:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+    deps: []
+    description: "flow.ts repair/migrate 中文字符串比较修正（对应 REV-004）"
+
+# 执行顺序建议（基于依赖图拓扑排序）:
+#
+# ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+# │ op-rev-001      │     │ op-rev-002      │     │ op-rev-004      │
+# │ (i18n.ts buildMap)│     │ (project.ts)    │     │ (flow.ts/manager)│
+# └─────────────────┘     └───────┬─────────┘     └─────────────────┘
+#         (独立)                  │ mutual_exclusion      (独立)
+#                                 ▼
+#                        ┌─────────────────┐
+#                        │ op-rev-003      │
+#                        │ (knowledge.ts)   │
+#                        └─────────────────┘
+#
+# 并行建议：
+#   - op-rev-001、op-rev-002、op-rev-004 可并行（文件无交叠）
+#   - op-rev-003 须在 op-rev-002 之后串行（共享 zh-CN.ts / en.ts）

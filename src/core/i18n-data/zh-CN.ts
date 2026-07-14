@@ -236,6 +236,40 @@ export const project: I18nDomain = {
   'overview.entryPath':         { key: 'project.overview.entryPath',         zh: '🚪 入口路径',                              en: '' },
   'overview.noSrc':             { key: 'project.overview.noSrc',             zh: '（未检测到项目结构——缺少 src/ 目录）',      en: '' },
   'overview.techStack':         { key: 'project.overview.techStack',         zh: '🔧 技术栈',                               en: '' },
+
+  // 目录结构 — 描述模板（带 {n} 变量插值）
+  'dir.cliTmpl':          { key: 'project.dir.cliTmpl',          zh: '— CLI 入口程序（{n} 个文件）',   en: '' },
+  'dir.commandsTmpl':     { key: 'project.dir.commandsTmpl',     zh: '— CLI 命令模块（{n} 个）',       en: '' },
+  'dir.coreTmpl':         { key: 'project.dir.coreTmpl',         zh: '— 核心逻辑（{n} 个文件）',       en: '' },
+  'dir.utilsTmpl':        { key: 'project.dir.utilsTmpl',        zh: '— 工具函数（{n} 个文件）',       en: '' },
+  'dir.agentsTmpl':       { key: 'project.dir.agentsTmpl',       zh: '— Agent 定义（{n} 个）',         en: '' },
+  'dir.skillsTmpl':       { key: 'project.dir.skillsTmpl',       zh: '— 技能定义（{n} 个）',           en: '' },
+  'dir.kbTmpl':           { key: 'project.dir.kbTmpl',           zh: '— 项目知识库（{n} 个文件）',     en: '' },
+  'dir.planTmpl':         { key: 'project.dir.planTmpl',         zh: '— 工作计划（{n} 个版本）',       en: '' },
+  'dir.codeReviewTmpl':   { key: 'project.dir.codeReviewTmpl',   zh: '— 代码审查记录（{n} 个文件）',   en: '' },
+  'dir.bugs':             { key: 'project.dir.bugs',             zh: '— Bug 追踪',                      en: '' },
+  'dir.bugsNotInit':      { key: 'project.dir.bugsNotInit',      zh: '（未初始化）',                     en: '' },
+
+  // 统计信息标签
+  'stats.tsSource':       { key: 'project.stats.tsSource',       zh: 'TS 源文件',       en: '' },
+  'stats.agentDefs':      { key: 'project.stats.agentDefs',      zh: 'Agent 定义',      en: '' },
+  'stats.cliModules':     { key: 'project.stats.cliModules',     zh: 'CLI 命令模块',    en: '' },
+  'stats.kbEntries':      { key: 'project.stats.kbEntries',      zh: 'KB 条目',         en: '' },
+  'stats.planVersions':   { key: 'project.stats.planVersions',   zh: '计划版本',        en: '' },
+
+  // 入口路径标签
+  'entry.cli':            { key: 'project.entry.cli',            zh: 'CLI 入口',        en: '' },
+  'entry.pkg':            { key: 'project.entry.pkg',            zh: '包入口',          en: '' },
+  'entry.build':          { key: 'project.entry.build',          zh: '构建产物',        en: '' },
+
+  // 技术栈标签
+  'tech.runtime':         { key: 'project.tech.runtime',         zh: '运行时',    en: '' },
+  'tech.language':        { key: 'project.tech.language',        zh: '语言',      en: '' },
+  'tech.cliFramework':    { key: 'project.tech.cliFramework',    zh: 'CLI 框架',  en: '' },
+  'tech.validation':      { key: 'project.tech.validation',      zh: '校验',      en: '' },
+  'tech.config':          { key: 'project.tech.config',          zh: '配置',      en: '' },
+  'tech.fileMatch':       { key: 'project.tech.fileMatch',       zh: '文件匹配',  en: '' },
+  'tech.test':            { key: 'project.tech.test',            zh: '测试',      en: '' },
 };
 
 /* ==================== stage 域：阶段管理命令 ==================== */
@@ -282,6 +316,16 @@ export const knowledge: I18nDomain = {
   'index.noCategories':              { key: 'knowledge.index.noCategories',              zh: '（无分类）',                              en: '' },
   'index.recentUpdates':             { key: 'knowledge.index.recentUpdates',             zh: '=== 最近更新 ===',                         en: '' },
   'index.noUpdates':                 { key: 'knowledge.index.noUpdates',                 zh: '暂无更新记录。',                          en: '' },
+
+  // knowledge list 表头列名
+  'list.colCategory':     { key: 'knowledge.list.colCategory',     zh: '分类', en: '' },
+  'list.colTitle':        { key: 'knowledge.list.colTitle',        zh: '标题', en: '' },
+  'list.colDate':         { key: 'knowledge.list.colDate',         zh: '日期', en: '' },
+
+  // knowledge index 表头列名
+  'index.colDate':        { key: 'knowledge.index.colDate',        zh: '日期', en: '' },
+  'index.colCategory':    { key: 'knowledge.index.colCategory',    zh: '分类', en: '' },
+  'index.colTitle':       { key: 'knowledge.index.colTitle',       zh: '标题', en: '' },
 };
 
 /* ==================== archive 域：归档命令 ==================== */

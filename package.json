@@ -1,6 +1,6 @@
 {
   "name": "openfeel",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "AI Agent 开发流程治理 CLI 工具",
   "type": "module",
   "private": false,
@@ -13,7 +13,8 @@
   "scripts": {
     "build": "node build.js",
     "test": "vitest run",
-    "dev": "vitest"
+    "dev": "vitest",
+    "postinstall": "node scripts/patch-inquirer.js"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",

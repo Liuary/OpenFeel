@@ -444,7 +444,7 @@ export function registerFlowCommand(program: Command): void {
       }
 
       try {
-        mgr.advanceStagePhase(options.stage, options.to as PipelinePhase);
+        mgr.advanceStagePhase(options.stage, options.to as PipelinePhase, 'cli');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.error', lang) + `：${msg}`);
@@ -1036,8 +1036,8 @@ export function registerFlowCommand(program: Command): void {
             continue;
           }
 
-          // 执行推进（使用 advanceStagePhase）
-          mgr.advanceStagePhase(currentStage, targetPhase);
+          // 执行推进（使用 advanceStagePhase，标记为 CLI 触发）
+          mgr.advanceStagePhase(currentStage, targetPhase, 'cli');
           mgr.save();
           console.log(t('flow.wizard.advancedTmpl', lang, { stage: currentStage, from: stagePhase, to: targetPhase }));
 

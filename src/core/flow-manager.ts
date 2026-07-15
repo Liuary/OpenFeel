@@ -23,7 +23,7 @@ import {
   type MetaPhase,
   type StageStats,
 } from './pipeline-schema.js';
-import { PublicLogger } from './public-logger.js';
+import { PublicLogger, formatDate } from './public-logger.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
 
 /** 操作执行状态 */
@@ -641,29 +641,14 @@ export class FlowManager {
     }
   }
 
-  /** 获取当前用户名 */
+  /** 获取当前用户名（委托给 PublicLogger） */
   private getUsername(): string {
-    try {
-      const infoPath = resolve(this.projectPath, '.openfeel', '.info.json');
-      if (existsSync(infoPath)) {
-        const raw = readFileSync(infoPath, 'utf-8');
-        const info = JSON.parse(raw) as Record<string, unknown>;
-        if (info.user && typeof info.user === 'string') {
-          return info.user;
-        }
-      }
-    } catch {
-      // 加载失败使用默认值
-    }
-    return 'unknown';
+    return this.publicLogger.getUsername();
   }
 
   /** 格式化日期为 yyyy-mm-dd */
   private formatDateStr(date: Date): string {
-    const yyyy = date.getFullYear().toString();
-    const MM = (date.getMonth() + 1).toString().padStart(2, '0');
-    const dd = date.getDate().toString().padStart(2, '0');
-    return `${yyyy}-${MM}-${dd}`;
+    return formatDate(date);
   }
 
   /** 计算当日已有文件数，返回下一个序号 */

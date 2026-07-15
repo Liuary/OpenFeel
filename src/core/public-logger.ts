@@ -105,6 +105,11 @@ export class PublicLogger {
 
   // ═══ 私有方法 ═══
 
+  /** 获取当前用户名 */
+  getUsername(): string {
+    return this.username;
+  }
+
   /** 从 .openfeel/.info.json 加载用户名 */
   private loadUsername(): string {
     try {
@@ -360,7 +365,7 @@ export class PublicLogger {
 // ── 辅助函数 ──
 
 /** 格式化日期为 yyyy-mm-dd */
-function formatDate(date: Date): string {
+export function formatDate(date: Date): string {
   const yyyy = date.getFullYear().toString();
   const MM = (date.getMonth() + 1).toString().padStart(2, '0');
   const dd = date.getDate().toString().padStart(2, '0');

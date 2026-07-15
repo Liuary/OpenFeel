@@ -92,7 +92,7 @@ export function registerKnowledgeCommand(program: Command): void {
         addKnowledgeEntry(process.cwd(), category, title, content.trim());
         console.log(t('knowledge.add.okTmpl', lang, { category, title }));
       } catch (err) {
-        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
+        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
         process.exit(1);
       }
     });

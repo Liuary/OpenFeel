@@ -9,6 +9,7 @@ import type { I18nEntry, I18nDomain } from './types.js';
 /* ==================== common 域：跨命令共享字符串 ==================== */
 export const common: I18nDomain = {
   error:           { key: 'common.error',           zh: '错误',       en: '' },
+  errorTmpl:       { key: 'common.errorTmpl',       zh: '错误：{msg}', en: '' },
   ok:              { key: 'common.ok',              zh: '✓',         en: '' },
   none:            { key: 'common.none',            zh: '(无)',      en: '' },
   noData:          { key: 'common.noData',          zh: '（无记录）',  en: '' },

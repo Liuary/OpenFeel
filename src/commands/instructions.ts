@@ -47,7 +47,7 @@ export function registerInstructionsCommand(program: Command): void {
           console.log(xml);
         }
       } catch (err) {
-        console.error(t('common.error', lang) + ': ' + (err as Error).message);
+        console.error(t('common.errorTmpl', lang, { msg: (err as Error).message }));
         process.exit(1);
       }
     });

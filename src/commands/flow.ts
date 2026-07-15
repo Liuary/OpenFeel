@@ -345,7 +345,7 @@ export function registerFlowCommand(program: Command): void {
         console.log(t('flow.stage.addedTmpl', lang, { stage: stageId }));
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(t('common.error', lang) + `：${msg}`);
+        console.error(t('common.errorTmpl', lang, { msg }));
         process.exit(1);
       }
     });
@@ -447,7 +447,7 @@ export function registerFlowCommand(program: Command): void {
         mgr.advanceStagePhase(options.stage, options.to as PipelinePhase, 'cli');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(t('common.error', lang) + `：${msg}`);
+        console.error(t('common.errorTmpl', lang, { msg }));
         process.exit(1);
       }
       mgr.save();
@@ -1050,7 +1050,7 @@ export function registerFlowCommand(program: Command): void {
       } catch (err) {
         // 非 TTY 环境或用户中断等异常
         if (err instanceof Error) {
-          console.error(t('common.error', lang) + `: ${err.message}`);
+          console.error(t('common.errorTmpl', lang, { msg: err.message }));
         }
       }
     });

@@ -39,7 +39,7 @@ export function registerArchiveCommand(program: Command): void {
         const archivePath = join(process.cwd(), '.openfeel', 'log', `archive-${stage}.md`);
         console.log(`  ${t('archive.archivePath', lang)}: ${archivePath}`);
       } catch (err) {
-        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
+        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
         process.exit(1);
       }
     });

@@ -31,7 +31,7 @@ export function registerViewCommand(program: Command): void {
           console.log(`  ${t('common.op', lang)}: ${item.op}  ${t('view.list.filedBy', lang)}: ${item.filed_by}  ${t('view.list.filedAt', lang)}: ${item.filed_at}`);
         }
       } catch (err) {
-        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
+        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
         process.exit(1);
       }
     });
@@ -62,7 +62,7 @@ export function registerViewCommand(program: Command): void {
 
         console.log(t('view.add.okTmpl', lang, { id: review.id, op: review.op, title: review.title }));
       } catch (err) {
-        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
+        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
         process.exit(1);
       }
     });
@@ -84,7 +84,7 @@ export function registerViewCommand(program: Command): void {
           process.exit(1);
         }
       } catch (err) {
-        console.error(t('common.error', lang) + '：' + (err instanceof Error ? err.message : String(err)));
+        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
         process.exit(1);
       }
     });

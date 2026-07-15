@@ -8,6 +8,7 @@ import type { I18nEntry, I18nDomain } from './types.js';
 /* ==================== common ==================== */
 export const common: I18nDomain = {
   error:           { key: 'common.error',           zh: '', en: 'Error' },
+  errorTmpl:       { key: 'common.errorTmpl',       zh: '', en: 'Error: {msg}' },
   ok:              { key: 'common.ok',              zh: '', en: '✓' },
   none:            { key: 'common.none',            zh: '', en: '(none)' },
   noData:          { key: 'common.noData',          zh: '', en: '(no records)' },

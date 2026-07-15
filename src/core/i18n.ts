@@ -32,11 +32,9 @@ import { common as enCommon, flow as enFlow, init as enInit, update as enUpdate,
          config as enConfig }
   from './i18n-data/en.js';
 
-/** 合法的语言值列表 */
-export const VALID_LANGS = ['zh-CN', 'en'] as const;
-
-/** 支持的语言类型 */
-export type SupportedLang = typeof VALID_LANGS[number];
+import { VALID_LANGS, type SupportedLang } from './i18n-data/types.js';
+// 向后兼容：i18n.ts 仍可导入 VALID_LANGS / SupportedLang
+export { VALID_LANGS, type SupportedLang };
 
 /** 域导入数组类型 */
 type DomainImport = Record<string, { key: string; zh: string; en: string }>;

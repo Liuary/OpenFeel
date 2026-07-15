@@ -6,15 +6,13 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
+import { VALID_LANGS } from '../i18n-data/types.js';
 
 /** .info.json 的类型定义 */
 export interface InfoJson {
   user: string;
   lang: 'zh-CN' | 'en';
 }
-
-/** 合法的语言值列表 */
-const VALID_LANGS = ['zh-CN', 'en'] as const;
 
 /** 默认语言 */
 const DEFAULT_LANG: 'zh-CN' = 'zh-CN';

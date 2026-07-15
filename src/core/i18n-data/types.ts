@@ -13,3 +13,9 @@ export interface I18nEntry {
 
 /** 按功能域组织的 i18n 数据 */
 export type I18nDomain = Record<string, I18nEntry>;
+
+/** 合法的语言值列表 */
+export const VALID_LANGS = ['zh-CN', 'en'] as const;
+
+/** 支持的语言类型 */
+export type SupportedLang = typeof VALID_LANGS[number];

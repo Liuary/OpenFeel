@@ -9,18 +9,18 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 43 个 .ts 文件（src/） |
+| 源文件 | 45 个 .ts 文件（src/） |
 | Agent 数 | 8 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-07-14（归档时自动更新此字段） |
+| 最近更新 | 2026-07-15（归档时自动更新此字段） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 10 | 2026-07-14 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合 |
-| 代码模式 | [patterns.md](patterns.md) | 25 | 2026-07-14 | 项目约定、最佳实践、反模式 |
+| 代码模式 | [patterns.md](patterns.md) | 27 | 2026-07-15 | 项目约定、最佳实践、反模式 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 9 | 2026-07-09 | 常见 Bug、调试流程、已知坑位 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -97,6 +97,8 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-07-15 | 归档 | v4.4-stage-03 归档：3 项配置优化（config命令组 get/set/list + AGENTS.md语言同步 + package.json模板要求），知识沉淀 2 条至 patterns（i18n域扩展模式 + Agent模板约束模式），BUG-001 修复，v4.4 全系列完成 |
+| 2026-07-15 | 归档 | v4.4-stage-04 归档：5 项收尾修复（Node20 兼容 / kb 数据更新 / init 模板通用化 / 版本号 1.0.0 / v4.2 一致性），测试 291/291 全通过 |
 | 2026-07-14 | 归档 | v4.4-stage-01/02 归档：i18n 基础设施落成（TS常量导入+12文件国际化，206 entries×2语言），日志修复+流水线安全增强（REV双路兜底+公域降噪+git钩子+日志骨架+自动推进询问），测试 291/291 全通过，知识沉淀 6 条至 architecture(2) + patterns(4) |
 | 2026-07-12 | 归档 | v4.3 全系列归档：3 阶段全部完成，多语言模板管线落成（templates-data → build.js → template-loader），双语 CLI 交互（init 选择 → .info.json 持久化 → update 读取），知识沉淀 4 条至 architecture(1) + patterns(3) |
 | 2026-07-12 | 归档 | v4.3-stage-01/02 归档：17 项 op 落地（模板文件化重构 + project.ts REV-004 修复），16 条 REV（13 closed + 3 非阻塞），知识沉淀 3 条至 patterns |

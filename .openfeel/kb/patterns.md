@@ -506,3 +506,61 @@ if (targetPhase === 'exec_running' || targetPhase === 'review_pending' || target
 - 不影响已有 Agent prompt（文件已存在，Agent 按原有流程读写即可）
 
 **参见：** v4.4-stage-02 op-004、kb/architecture.md #公域日志批量聚合策略
+
+## [+] i18n 域扩展与 config 命令组模式 (2026-07-15)
+
+当在已有 i18n 基础设施的项目中新增 CLI 命令组时，遵循「域扩展 + Commander 子命令 + 原子操作」三层模式：
+
+**1. i18n 域扩展：**
+- 新增功能域（如 `config`），在 `zh-CN.ts` 和 `en.ts` 中对称添加 `I18nDomain` 导出
+- 每个域内键名遵循 `{domain}.{module}.{name}` 命名规范
+- 在 `i18n.ts` 的 `zhDomains` 和 `enDomains` 数组中追加新域
+
+**2. Commander 子命令组：**
+```typescript
+const configCmd = program.command('config');
+configCmd
+  .command('get-lang')                    // get 操作：读取并显示
+  .action(() => { ... });
+configCmd
+  .command('set-lang <lang>')             // set 操作：校验 + 写入 + 回显
+  .action((lang) => { ... });
+configCmd
+  .command('list-projects')               // list 操作：遍历 KV 表并格式化输出
+  .action(() => { ... });
+```
+
+**3. 原子操作原则：**
+- 全局配置读写通过 `identity.ts` 的工具函数（`getGlobalConfig()` / `setGlobalConfig()`）暴露
+- 命令层不直接 `readFile` / `writeFile` JSON 文件，避免格式错误和数据不一致
+- 与已有 CLI 原子管理模式互补——本条目聚焦命令组结构，已有条目覆盖全局原则
+
+**参见：** v4.4-stage-03 op-001、kb/patterns.md #CLI 原子管理模式、kb/patterns.md #CLI 国际化封装模式
+
+## [+] Agent 提示词中的产出最小模板约束模式 (2026-07-15)
+
+在 Agent 提示词模板中嵌入产出物最小模板要求，从 prompt 层面约束 AI Agent 的输出质量，确保跨 Agent/跨语言产出同质化：
+
+**1. 独立章节嵌入：**
+在 Agent prompt（如 `executor.md`）中以独立 `## 模板要求` 章节明确最小字段约束，不与核心逻辑混杂。
+
+**2. 结构化约束表述：**
+- 用表格列出必填字段、要求、说明（三列结构）
+- 提供完整的 JSON 示例作为参考模板
+- 明确 Agent 可扩展但不可遗漏的原则
+
+**3. 中英文对称同步：**
+- 两语言模板文件的字段要求完全一致（仅描述语言不同）
+- 新增语言时零代码变更（遵循构建脚本多语言循环生成模式）
+
+**示例（package.json 最小模板）：**
+```json
+{ "name": "project-name", "version": "1.0.0", "type": "module", "scripts": { "test": "vitest run" } }
+```
+
+**适用场景：**
+- 任何希望 Agent 自动生成的配置文件（package.json、tsconfig.json、.env 模板等）
+- 跨语言项目需确保中英 Agent 产出一致时
+- 新项目初始化模板标准化
+
+**参见：** v4.4-stage-03 op-003、kb/patterns.md #构建脚本多语言循环生成模式

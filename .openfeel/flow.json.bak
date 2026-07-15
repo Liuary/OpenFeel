@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-07-14T16:06:33.224Z"
+    "updated": "2026-07-14T16:44:08.515Z"
   },
   "pipeline": {
     "phase": "active",
@@ -73,13 +73,13 @@
     },
     "v4.4-stage-04": {
       "name": "v4.4-stage-04",
-      "phase": "scheme_pending",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "stats": {
         "start_time": "2026-07-14T16:02:42.684Z",
-        "end_time": "",
+        "end_time": "2026-07-15T00:30:00.000Z",
         "duration_ms": 0
       }
     },
@@ -109,8 +109,8 @@
     },
     "v4.4-stage-03": {
       "name": "v4.4-stage-03",
-      "phase": "scheme_passed",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "stats": {
@@ -1011,6 +1011,236 @@
         "stageName": "v4.4-stage-03",
         "from": "scheme_pending",
         "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:06:33.818Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T16:10:40.934Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:10:41.548Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:10:42.138Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T16:19:24.594Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:19:25.164Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:19:33.156Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "review_failed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T16:25:28.870Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:25:29.465Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "review_pending",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-15T00:30:00.000Z",
+      "agent": "feel-tester",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:28:02.466Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "review_pending",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:28:03.060Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "test_passed",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:28:03.669Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T16:33:36.955Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-04",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:33:37.568Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "test_pending",
+        "to": "test_failed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:33:38.209Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "test_failed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:19.166Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:19.775Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:20.376Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:20.970Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:21.570Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T16:43:42.150Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:44:08.513Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.4-stage-03",
+        "from": "done",
+        "to": "done"
       }
     }
   ]

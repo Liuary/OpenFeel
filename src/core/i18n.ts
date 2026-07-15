@@ -18,28 +18,7 @@
  * ```
  */
 
-import { getLang } from './workspace/identity.js';
-
-// 动态导入 getGlobalConfig（op-003 实现，运行时通过 require 获取）
-// 使用延迟动态导入以避免循环依赖
-let _getGlobalConfig: (() => { lang: string; projects: Record<string, string> }) | null = null;
-
-/** 获取 getGlobalConfig 函数的延迟引用 */
-function lazyGetGlobalConfig(): { lang: string; projects: Record<string, string> } {
-  if (!_getGlobalConfig) {
-    try {
-      // 动态导入 op-003 的 identity.ts 扩展
-      const identity = require('./workspace/identity.js') as typeof import('./workspace/identity.js') & {
-        getGlobalConfig?: () => { lang: string; projects: Record<string, string> };
-      };
-      _getGlobalConfig = identity.getGlobalConfig ?? (() => ({ lang: 'zh-CN', projects: {} }));
-    } catch {
-      // fallback：如果 getGlobalConfig 尚未实现，返回默认值
-      _getGlobalConfig = () => ({ lang: 'zh-CN', projects: {} });
-    }
-  }
-  return _getGlobalConfig!();
-}
+import { getLang, getGlobalConfig } from './workspace/identity.js';
 
 // 导入所有 i18n 域
 import { common as zhCommon, flow as zhFlow, init as zhInit, update as zhUpdate,
@@ -166,7 +145,7 @@ export function getCliLang(projectPath: string): 'zh-CN' | 'en' {
   const projectLang = getLang(projectPath);
 
   // 2. 读取全局配置
-  const globalConfig = lazyGetGlobalConfig();
+  const globalConfig = getGlobalConfig();
   const globalLang = globalConfig.lang;
 
   // 3. 优先级合并：项目 lang > 全局 lang > 默认 'zh-CN'

@@ -104,6 +104,25 @@
 
 ---
 
+## v4.4-stage-03（配置优化 + Agent 提示词完善）
+
+| REV | 标题 | 状态 | 优先级 | blocking |
+|-----|------|------|--------|----------|
+| REV-001 | config get lang description 误用 t() 模板插值 | pending | medium | false |
+| REV-002 | agentsDir 有内容但 AGENTS.md 不存在时的逻辑缺口 | pending | high | true |
+| REV-003 | recordProjectLang 记录语言与实际部署语言可能不一致 | pending | high | true |
+| REV-004 | 语言冲突导致 update 后续框架更新被中断 | pending | high | true |
+| REV-005 | config set lang description 未国际化 | pending | low | false |
+| REV-006 | 非交互分支 console.warn 硬编码英文 | pending | low | false |
+| REV-007 | 无新增单元测试，覆盖率 0% | pending | high | true |
+
+### 统计
+- 总计：7 条
+- 阻塞：4 条 | 非阻塞：3 条
+- pending：7 | fixing：0 | resolved：0 | closed：0
+
+---
+
 ## v4.1-stage-03（flow.json 多阶段状态机）
 
 | REV | 标题 | 状态 | 优先级 | blocking |

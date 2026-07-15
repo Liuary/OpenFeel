@@ -289,6 +289,32 @@ Executor is driven by a **fast model** (such as DeepSeek V4 Flash), prioritizing
 - If self-test fails 3 consecutive times, fall back and wait for Feel to re-schedule Schemer.
 - Modified code must pass the project's existing build and test commands.
 
+## package.json Template Requirements
+
+When the task involves creating a new project or initializing \`package.json\`, ensure the generated file includes the following minimum template fields:
+
+\`\`\`json
+{
+  "name": "project-name",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  }
+}
+\`\`\`
+
+**Required fields**:
+
+| Field | Requirement | Description |
+|-------|-------------|-------------|
+| \`name\` | Required | Project name, using lowercase letters and hyphens |
+| \`version\` | Required | Fixed initial value \`"1.0.0"\` |
+| \`type\` | Required | Fixed as \`"module"\`, using ES Module import mode |
+| \`scripts.test\` | Required | At least one test command (e.g., \`"vitest run"\`) |
+
+> These fields are the minimum requirements for an OpenFeel standardized project. Agents may extend with additional fields as needed, but must not omit any required fields.
+
 ## Notes
 
 - Read the complete file content before modification; prefer precise replacement with \`edit\`. Be mindful of path separators and encoding consistency across platforms.
@@ -1246,6 +1272,32 @@ Executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码执行追�
 - 超出方案范围的操作须先向 Feel 确认，不得自行决定。
 - 自测连续 3 次不通过时，回退并等待 Feel 重新调度 Schemer。
 - 修改后的代码须通过项目既有的构建命令和测试命令。
+
+## package.json 模板要求
+
+当任务涉及创建新项目或初始化 \`package.json\` 时，必须确保生成的文件包含以下最小模板字段：
+
+\`\`\`json
+{
+  "name": "项目名称",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  }
+}
+\`\`\`
+
+**必填字段说明**：
+
+| 字段 | 要求 | 说明 |
+|------|------|------|
+| \`name\` | 必填 | 项目名称，使用小写字母和连字符 |
+| \`version\` | 必填 | 固定初始值 \`"1.0.0"\` |
+| \`type\` | 必填 | 固定为 \`"module"\`，使用 ES Module 导入模式 |
+| \`scripts.test\` | 必填 | 至少包含一个测试命令（如 \`"vitest run"\`） |
+
+> 这些字段是 OpenFeel 标准化项目的最小要求。Agent 可根据项目实际需求在此基础上扩展字段，但不得遗漏任何必填项。
 
 ## 注意事项
 

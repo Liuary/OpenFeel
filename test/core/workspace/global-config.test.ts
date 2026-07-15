@@ -2,58 +2,44 @@
  * 全局配置单元测试
  *
  * 验证 getGlobalConfig / setGlobalConfig / isFirstUse 功能。
- * 注意：这些测试会在真实 ~/.openfeel/config.json 上操作，
- * 执行前会备份并恢复现有配置。
+ * 使用 mock homedir() + 临时目录完全隔离，不碰触真实 ~/.openfeel/config.json。
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   getGlobalConfig,
   setGlobalConfig,
   isFirstUse,
   DEFAULT_GLOBAL_CONFIG,
 } from '../../../src/core/workspace/identity.js';
-import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { homedir } from 'node:os';
+import { tmpdir } from 'node:os';
 
 describe('全局配置 - getGlobalConfig/setGlobalConfig/isFirstUse', () => {
-  const configPath = join(homedir(), '.openfeel', 'config.json');
-  const configDir = dirname(configPath);
-
-  // 在测试前保存现有配置的备份
-  let backup: string | null = null;
+  // 创建临时目录作为 mock home
+  let tempHome: string;
+  let configPath: string;
+  let configDir: string;
 
   beforeEach(() => {
-    if (existsSync(configPath)) {
-      backup = readFileSync(configPath, 'utf-8');
-    } else {
-      backup = null;
-    }
+    // 创建临时目录
+    tempHome = mkdtempSync(join(tmpdir(), 'openfeel-test-'));
+    configDir = join(tempHome, '.openfeel');
+    configPath = join(configDir, 'config.json');
+    // Mock homedir() 返回临时目录
+    vi.mock('node:os', () => ({
+      ...vi.importActual('node:os'),
+      homedir: () => tempHome,
+    }));
   });
 
   afterEach(() => {
-    // 恢复备份
-    if (backup !== null) {
-      try {
-        writeFileSync(configPath, backup, 'utf-8');
-      } catch {
-        // 忽略
-      }
-    } else {
-      // 创建前不存在，测试后清理
-      try {
-        rmSync(configPath, { force: true });
-      } catch {
-        // 忽略
-      }
-    }
+    // 清理临时目录
+    rmSync(tempHome, { recursive: true, force: true });
+    vi.restoreAllMocks();
   });
 
   it('isFirstUse() 在文件不存在时返回 true', () => {
-    // 确保配置文件不存在
-    if (existsSync(configPath)) {
-      rmSync(configPath, { force: true });
-    }
     expect(isFirstUse()).toBe(true);
   });
 
@@ -63,9 +49,6 @@ describe('全局配置 - getGlobalConfig/setGlobalConfig/isFirstUse', () => {
   });
 
   it('getGlobalConfig() 在无文件时返回默认配置', () => {
-    if (existsSync(configPath)) {
-      rmSync(configPath, { force: true });
-    }
     const config = getGlobalConfig();
     expect(config.lang).toBe('zh-CN');
     expect(config.projects).toEqual({});

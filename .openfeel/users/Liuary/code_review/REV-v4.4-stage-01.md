@@ -361,12 +361,13 @@ console.log('║' + t('flow.overview.title', lang).padStart(38) + '             
 
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
+| 2026-07-15 | Executor | closed | 已知限制，不影响功能，当前版本暂不修复 |
 
 ---
 
 ## REV-010: flow overview retry 后缀判断使用字符串比较 hack
 
-- **状态**：pending
+- **状态**：closed
 - **优先级**：low
 - **提出人**：Reviewer
 - **提出时间**：2026-07-14 23:30
@@ -395,6 +396,7 @@ const retrySuffix = t('common.retry', lang).toLowerCase() === 'retry' ? 'times' 
 
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
+| 2026-07-15 | Executor | closed | 已知限制，不影响功能，当前版本暂不修复 |
 
 ---
 

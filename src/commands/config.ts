@@ -18,7 +18,7 @@ export function registerConfigCommand(program: Command): void {
   // openfeel config get-lang — 显示全局默认语言
   configCmd
     .command('get-lang')
-    .description(t('config.get.lang', getCliLang(process.cwd())))
+    .description(t('config.get.lang'))
     .action(() => {
       const lang = getCliLang(process.cwd());
       const config = getGlobalConfig();

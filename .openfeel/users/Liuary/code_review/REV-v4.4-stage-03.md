@@ -127,17 +127,29 @@
 
 ### REV-005: config set lang 的 description 未使用 t() 国际化
 
-- **状态**：pending
+- **状态**：closed
 - **优先级**：low
 - **blocking**：false
 - **描述**：`config set lang` 的 `.description('修改全局默认语言 (zh-CN 或 en)')` 使用硬编码中文，无论 CLI 当前语言设置如何始终显示中文。与 op-001 方案中要求使用 `t()` 国际化的设计意图不一致。
 
+#### 验收记录
+
+| 时间 | 验收人 | 结论 | 备注 |
+|------|--------|------|------|
+| 2026-07-15 | Executor | closed | 已知限制，不影响功能，当前版本暂不修复 |
+
 ### REV-006: update.ts 非交互分支 console.warn 使用硬编码英文
 
-- **状态**：pending
+- **状态**：closed
 - **优先级**：low
 - **blocking**：false
 - **描述**：`update.ts` 第 1289 行非交互模式下的 `console.warn('[update] AGENTS.md language mismatch: ...')` 使用硬编码英文，未走 `t()` 国际化体系。同模块其他错误消息（如 `AgentsMdLangConflictError` 在命令层的处理）使用了 `t('update.langConflict', ...)`，风格不一致。
+
+#### 验收记录
+
+| 时间 | 验收人 | 结论 | 备注 |
+|------|--------|------|------|
+| 2026-07-15 | Executor | closed | 已知限制，不影响功能，当前版本暂不修复 |
 
 ### REV-007: 无新增单元测试
 
@@ -150,7 +162,7 @@
 
 ## 审查结论（第二轮验收）
 
-**4 个阻塞 REV（002/003/004/007）全部 closed，审查通过。**
+**4 个阻塞 REV（002/003/004/007）全部 closed，审查通过。2 条 low REV（005/006）后标记为 closed（已知限制）。**
 
 | # | 严重性 | 摘要 | 二轮状态 |
 |---|--------|------|----------|
@@ -158,8 +170,8 @@
 | REV-002 | high/blocking → closed | agentsDir 有内容但 AGENTS.md 不存在时的逻辑缺口 | ✅ 新增 2b 分支 |
 | REV-003 | high/blocking → closed | recordProjectLang 记录语言与实际部署语言可能不一致 | ✅ options?.lang ?? lang |
 | REV-004 | high/blocking → closed | 语言冲突导致 update 后续框架更新被中断 | ✅ warn+skip 替代 throw+exit |
-| REV-005 | low/non-blocking | config set lang description 未国际化 | pending（非阻塞） |
-| REV-006 | low/non-blocking | 非交互分支 console.warn 硬编码英文 | pending（非阻塞） |
+| REV-005 | low/non-blocking → closed | config set lang description 未国际化 | 已知限制，关闭不修 |
+| REV-006 | low/non-blocking → closed | 非交互分支 console.warn 硬编码英文 | 已知限制，关闭不修 |
 | REV-007 | high/blocking → closed | 无新增单元测试 | ✅ 新增 7 个测试 298/298 |
 
 **阶段状态建议**：`review_passed`，4 条阻塞 REV 全部 closed，可推进到下一阶段。

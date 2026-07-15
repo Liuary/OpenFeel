@@ -5,6 +5,14 @@
  * 使用 mock homedir() + 临时目录完全隔离，不碰触真实 ~/.openfeel/config.json。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// 在模块加载前 mock node:os，确保 identity.ts 加载时拿到 mock 的 homedir
+let mockHomeDir = '';
+vi.mock('node:os', async () => {
+  const actual = await vi.importActual<typeof import('node:os')>('node:os');
+  return { ...actual, homedir: () => mockHomeDir };
+});
+
 import {
   getGlobalConfig,
   setGlobalConfig,
@@ -16,27 +24,23 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 
 describe('全局配置 - getGlobalConfig/setGlobalConfig/isFirstUse', () => {
-  // 创建临时目录作为 mock home
   let tempHome: string;
   let configPath: string;
   let configDir: string;
 
   beforeEach(() => {
-    // 创建临时目录
+    // 创建临时目录并设置为 mock home
     tempHome = mkdtempSync(join(tmpdir(), 'openfeel-test-'));
+    mockHomeDir = tempHome;
     configDir = join(tempHome, '.openfeel');
     configPath = join(configDir, 'config.json');
-    // Mock homedir() 返回临时目录
-    vi.mock('node:os', () => ({
-      ...vi.importActual('node:os'),
-      homedir: () => tempHome,
-    }));
   });
 
   afterEach(() => {
     // 清理临时目录
-    rmSync(tempHome, { recursive: true, force: true });
-    vi.restoreAllMocks();
+    if (tempHome) {
+      try { rmSync(tempHome, { recursive: true, force: true }); } catch { /* 忽略 */ }
+    }
   });
 
   it('isFirstUse() 在文件不存在时返回 true', () => {

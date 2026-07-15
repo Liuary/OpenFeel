@@ -903,7 +903,7 @@ export class FlowManager {
       return;
     }
     if (this.data.stages[stageId]) {
-      throw new Error(`阶段 '${stageId}' 已存在`);
+      throw new Error(`Stage '${stageId}' already exists`);
     }
     this.data.stages[stageId] = {
       name: stageId,
@@ -1057,13 +1057,14 @@ export class FlowManager {
   }
 
   /**
-   * 获取流水线阶段的中文标签映射
+   * 获取流水线阶段的标签映射
    * 从 pipelineConfig.phases 动态生成：已知阶段使用预定义标签，未知阶段自动生成回退标签
    * 供 flow wizard 交互模式使用
+   * @param lang 语言标识（'zh-CN' | 'en'），默认 'zh-CN'
    */
-  getPhaseLabels(): Record<string, string> {
-    // 内置中文标签映射（含所有标准阶段）
-    const builtinLabels: Record<string, string> = {
+  getPhaseLabels(lang: string = 'zh-CN'): Record<string, string> {
+    // 内置标签映射（含所有标准阶段，双语）
+    const zhLabels: Record<string, string> = {
       plan_pending: '计划待定',
       plan_review: '计划审查中',
       plan_passed: '计划已通过',
@@ -1080,6 +1081,24 @@ export class FlowManager {
       archiving: '归档中',
       done: '已完成',
     };
+    const enLabels: Record<string, string> = {
+      plan_pending: 'Plan Pending',
+      plan_review: 'Plan Reviewing',
+      plan_passed: 'Plan Passed',
+      scheme_pending: 'Scheme Pending',
+      scheme_review: 'Scheme Reviewing',
+      scheme_passed: 'Scheme Passed',
+      exec_running: 'Executing',
+      review_pending: 'Review Pending',
+      review_failed: 'Review Failed',
+      review_passed: 'Review Passed',
+      test_pending: 'Test Pending',
+      test_failed: 'Test Failed',
+      test_passed: 'Test Passed',
+      archiving: 'Archiving',
+      done: 'Completed',
+    };
+    const builtinLabels = lang === 'en' ? enLabels : zhLabels;
 
     // 从 pipelineConfig 获取完整阶段列表
     const phases = this.pipelineConfig?.phases ?? [];

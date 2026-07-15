@@ -189,6 +189,14 @@ export const init: I18nDomain = {
   'prompt.bilingual':           { key: 'init.prompt.bilingual',           zh: '', en: 'Select Agent prompt language / 选择 Agent 提示词语言:' },
   'agentLangTmpl':              { key: 'init.agentLangTmpl',              zh: '', en: 'Agent prompt language: {lang}' },
   'invalidLangWarnTmpl':        { key: 'init.invalidLangWarnTmpl',        zh: '', en: 'Invalid --lang value "{lang}", falling back to interactive selection' },
+  // ensureGlobalConfig 非交互环境消息（REV-006）
+  'firstUse.nonInteractive':    { key: 'init.firstUse.nonInteractive',    zh: '', en: 'First time using OpenFeel: Non-interactive environment detected, global default language set to zh-CN.' },
+  'firstUse.changeHint':        { key: 'init.firstUse.changeHint',        zh: '', en: 'Use openfeel config set-lang <zh-CN|en> to change.' },
+  // ensureGlobalConfig 交互环境消息
+  'firstUse.interactiveWelcome': { key: 'init.firstUse.interactiveWelcome', zh: '', en: '🌐 Welcome to OpenFeel! Please select your global default language:' },
+  'firstUse.interactiveOption':   { key: 'init.firstUse.interactiveOption',   zh: '', en: 'Please enter choice (1/2) / 请输入选项 (1/2) [2]: ' },
+  'firstUse.langSetEn':           { key: 'init.firstUse.langSetEn',           zh: '', en: '✓ Global language set to English. You can change it later with: openfeel config set-lang' },
+  'firstUse.langSetZh':           { key: 'init.firstUse.langSetZh',           zh: '', en: '✓ Global language set to Chinese. You can change it later with: openfeel config set-lang' },
 };
 
 /* ==================== update ==================== */

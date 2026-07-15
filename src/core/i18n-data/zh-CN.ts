@@ -206,6 +206,14 @@ export const init: I18nDomain = {
   // init.ts 中 initProject 里额外的 console 字符串
   'agentLangTmpl':              { key: 'init.agentLangTmpl',              zh: 'Agent 提示词语言: {lang}',                  en: '' },
   'invalidLangWarnTmpl':        { key: 'init.invalidLangWarnTmpl',        zh: '无效的 --lang 值 "{lang}"，回退到交互式选择', en: '' },
+  // ensureGlobalConfig 非交互环境消息（REV-006）
+  'firstUse.nonInteractive':    { key: 'init.firstUse.nonInteractive',    zh: '首次使用 OpenFeel：检测到非交互环境，全局默认语言设置为 zh-CN。', en: 'First time using OpenFeel: Non-interactive environment detected, global default language set to zh-CN.' },
+  'firstUse.changeHint':        { key: 'init.firstUse.changeHint',        zh: '使用 openfeel config set-lang <zh-CN|en> 可修改。', en: 'Use openfeel config set-lang <zh-CN|en> to change.' },
+  // ensureGlobalConfig 交互环境消息
+  'firstUse.interactiveWelcome': { key: 'init.firstUse.interactiveWelcome', zh: '🌐 欢迎使用 OpenFeel！请选择全局默认语言', en: '🌐 Welcome to OpenFeel! Please select your global default language:' },
+  'firstUse.interactiveOption':   { key: 'init.firstUse.interactiveOption',   zh: '请输入选项 (1/2) / Enter choice (1/2) [2]: ', en: '' },
+  'firstUse.langSetEn':           { key: 'init.firstUse.langSetEn',           zh: '✓ 全局语言已设置为英文。后续可通过以下命令修改：openfeel config set-lang', en: '✓ Global language set to English. You can change it later with: openfeel config set-lang' },
+  'firstUse.langSetZh':           { key: 'init.firstUse.langSetZh',           zh: '✓ 全局语言已设置为中文。后续可通过以下命令修改：openfeel config set-lang', en: '✓ Global language set to Chinese. You can change it later with: openfeel config set-lang' },
 };
 
 /* ==================== update 域：更新命令 ==================== */

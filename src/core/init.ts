@@ -81,10 +81,12 @@ async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
     return getGlobalConfig().lang;
   }
 
-  // 非交互环境（CI/CD / 无 TTY）
+  // 非交互环境（CI/CD / 无 TTY）：此时用户语言偏好未知，输出中英双语
   if (!process.stdout.isTTY) {
-    console.log('首次使用 OpenFeel：检测到非交互环境，全局默认语言设置为 zh-CN。');
-    console.log('使用 openfeel config set-lang <zh-CN|en> 可修改。');
+    console.log(t('init.firstUse.nonInteractive', 'zh-CN'));
+    console.log(t('init.firstUse.nonInteractive', 'en'));
+    console.log(t('init.firstUse.changeHint', 'zh-CN'));
+    console.log(t('init.firstUse.changeHint', 'en'));
     setGlobalConfig({ ...DEFAULT_GLOBAL_CONFIG, lang: 'zh-CN' });
     return 'zh-CN';
   }
@@ -96,14 +98,14 @@ async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
       output: process.stdout,
     });
 
-    console.log('\n🌐 欢迎使用 OpenFeel！请选择全局默认语言');
-    console.log('   Welcome to OpenFeel! Please select your global default language:');
+    console.log('\n' + t('init.firstUse.interactiveWelcome', 'zh-CN'));
+    console.log('   ' + t('init.firstUse.interactiveWelcome', 'en'));
     console.log('');
     console.log('   1. English (en)');
     console.log('   2. 中文 (zh-CN)');
     console.log('');
 
-    rl.question('请输入选项 (1/2) / Enter choice (1/2) [2]: ', (answer) => {
+    rl.question(t('init.firstUse.interactiveOption', 'zh-CN') + ' ', (answer) => {
       rl.close();
       const trimmed = answer.trim().toLowerCase();
       const lang: 'zh-CN' | 'en' =
@@ -111,8 +113,8 @@ async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
 
       setGlobalConfig({ ...DEFAULT_GLOBAL_CONFIG, lang });
       console.log(lang === 'en'
-        ? '\n✓ Global language set to English. You can change it later with: openfeel config set-lang'
-        : '\n✓ 全局语言已设置为中文。后续可通过以下命令修改：openfeel config set-lang');
+        ? '\n' + t('init.firstUse.langSetEn', lang)
+        : '\n' + t('init.firstUse.langSetZh', lang));
       console.log('');
       resolve(lang);
     });

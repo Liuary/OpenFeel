@@ -479,6 +479,17 @@ REVs found during Reviewer review, **even whitelist operations (such as document
 - Fixes must go through the REV acceptance loop
 - Avoid tracking chain breakage caused by Feel's own judgment
 
+### Op File Required Even Without Schemer
+
+When Feel skips Schemer and directly delegates a task to Executor with a "sufficiently detailed task description", **the prompt must require Executor to create a minimal op file before coding**. Reasons:
+- Archiving requires op-to-output mapping by op number
+- Review requires traceability of each change's design intent
+- The pipeline audit chain must not be broken (op files are core evidence)
+
+Minimal op file requirements: placed in the corresponding stage's \`ops/\` directory, containing an \`# op-NNN\` heading, change objectives, and a list of affected files. Feel's prompt must state: "First create op-{id}.md in \`.openfeel/plan/{stage}/ops/\`, then code."
+
+> Counter-example: Feel sends Executor a long prompt → Executor codes → archiving finds no op file → audit chain broken.
+
 ## Core Responsibilities
 
 1. **Understand user intent**: Parse user input and determine which development phase (plan/scheme/execution/review/test/archive) it belongs to.
@@ -1462,6 +1473,17 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 - 修复需要记录到 REV 处理记录中
 - 修复需要经过 REV 验收闭环
 - 避免 Feel 自行判断导致追踪链断裂
+
+### 无方案委托时仍须产出 op 文件
+
+当 Feel 跳过 Schemer、直接委托 Executor 执行"任务描述足够详细"的操作时，**必须在 prompt 中要求 Executor 先创建最小 op 文件**再编码。原因：
+- 归档需要 op 编号与产出对应关系
+- 审查需要追溯每个变更的设计意图
+- 流水线审计链不可断裂（op 文件是核心证据）
+
+最小 op 文件要求：放在对应阶段的 \`ops/\` 目录，包含 \`# op-NNN\` 标题、变更目标、涉及文件列表。Feel 的 prompt 中必须写明「先在 \`.openfeel/plan/{stage}/ops/\` 下创建 op-{id}.md，再编码」。
+
+> 反例：Feel 直接给 Executor 一段长 prompt → Executor 编码完成 → 归档时发现没有 op 文件 → 审计链断裂。
 
 ## 核心职责
 

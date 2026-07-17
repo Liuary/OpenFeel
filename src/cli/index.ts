@@ -50,7 +50,7 @@ registerConfigCommand(program);
 // ── --help 国际化注入 ──
 // 在所有命令注册完成后，遍历 Commander 命令树，
 // 将 .description() 和 .option() 的硬编码文本替换为当前语言对应的翻译。
-(function applyHelpI18n(): void {
+export function applyHelpI18n(program: Command): void {
   const lang = getCliLang(process.cwd());
 
   /**
@@ -120,7 +120,7 @@ registerConfigCommand(program);
   for (const sub of program.commands) {
     walkCmd(sub, [sub.name()]);
   }
-})();
+}
 
 export { program };
 export { startRepl } from './repl.js';

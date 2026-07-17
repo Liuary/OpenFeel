@@ -49,6 +49,17 @@ REVs found during Reviewer review, **even whitelist operations (such as document
 - Fixes must go through the REV acceptance loop
 - Avoid tracking chain breakage caused by Feel's own judgment
 
+### Op File Required Even Without Schemer
+
+When Feel skips Schemer and directly delegates a task to Executor with a "sufficiently detailed task description", **the prompt must require Executor to create a minimal op file before coding**. Reasons:
+- Archiving requires op-to-output mapping by op number
+- Review requires traceability of each change's design intent
+- The pipeline audit chain must not be broken (op files are core evidence)
+
+Minimal op file requirements: placed in the corresponding stage's `ops/` directory, containing an `# op-NNN` heading, change objectives, and a list of affected files. Feel's prompt must state: "First create op-{id}.md in `.openfeel/plan/{stage}/ops/`, then code."
+
+> Counter-example: Feel sends Executor a long prompt → Executor codes → archiving finds no op file → audit chain broken.
+
 ## Core Responsibilities
 
 1. **Understand user intent**: Parse user input and determine which development phase (plan/scheme/execution/review/test/archive) it belongs to.

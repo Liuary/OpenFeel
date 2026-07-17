@@ -55,7 +55,8 @@ export function registerInitCommand(program: Command): void {
       // --demo 标志：创建示例项目骨架
       if (options?.demo) {
         console.log(t('init.demoCreating', lang));
-        const demoResult = initDemo(targetPath);
+        const demoLang = (options?.lang === 'en' || options?.lang === 'zh-CN') ? options.lang : 'zh-CN';
+        const demoResult = initDemo(targetPath, demoLang);
 
         if (demoResult.created.length > 0) {
           console.log(t('init.demoCreated', lang));

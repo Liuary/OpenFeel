@@ -16,7 +16,7 @@ import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson, isFirstUse, getGlobalConfig, setGlobalConfig, DEFAULT_GLOBAL_CONFIG } from './workspace/identity.js';
 import { writeDefaultConfig } from './config.js';
 import { FlowManager } from './flow-manager.js';
-import { DEV_CORE_TEMPLATE, CURRENT_TEMPLATE } from './templates.js';
+import { getDevCoreTemplate, getCurrentTemplate } from './templates.js';
 import { loadTemplate } from './template-loader.js';
 import { t, getCliLang } from './i18n.js';
 import readline from 'node:readline';
@@ -168,10 +168,24 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   const dirs = createWorkspace(projectPath);
   created.push(...dirs);
 
-  // 2. 写入默认配置
+  // 1a. 语言选择：CLI --lang 参数 > 交互式选择 > 全局默认语言
+  //     提前选择，以便后续写入的模板文件使用正确语言
+  const globalLang = getGlobalConfig().lang;
+  let selectedLang: 'zh-CN' | 'en';
+  if (cliLang === 'en' || cliLang === 'zh-CN') {
+    selectedLang = cliLang;
+    console.log(t('init.agentLangTmpl', getCliLang(projectPath), { lang: selectedLang === 'en' ? 'English' : '中文' }));
+  } else if (cliLang) {
+    console.warn(t('init.invalidLangWarnTmpl', getCliLang(projectPath), { lang: cliLang }));
+    selectedLang = await promptLanguage();
+  } else {
+    selectedLang = await promptLanguage();
+  }
+
+  // 2. 写入默认配置（根据所选语言）
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
   const configExisted = existsSync(configPath);
-  writeDefaultConfig(projectPath);
+  writeDefaultConfig(projectPath, selectedLang);
   if (configExisted) {
     updated.push('.openfeel/config.yaml');
   } else {
@@ -198,37 +212,29 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
     created.push('.openfeel/.info.json');
   }
 
-  // 4a. 语言选择：CLI --lang 参数 > 交互式选择 > 全局默认语言
-  const globalLang = getGlobalConfig().lang;
-  let selectedLang: 'zh-CN' | 'en';
-  if (cliLang === 'en' || cliLang === 'zh-CN') {
-    selectedLang = cliLang;
-    console.log(t('init.agentLangTmpl', getCliLang(projectPath), { lang: selectedLang === 'en' ? 'English' : '中文' }));
-  } else if (cliLang) {
-    console.warn(t('init.invalidLangWarnTmpl', getCliLang(projectPath), { lang: cliLang }));
-    selectedLang = await promptLanguage();
-  } else {
-    selectedLang = await promptLanguage();
-  }
+  // 4b. 将语言写入 .info.json
   writeLang(projectPath, selectedLang);
 
-  // 5. 生成 .openfeel/dev/dev_core.md 模板
+  // 5. 生成 .openfeel/dev/dev_core.md 模板（双语）
   const devCorePath = resolve(projectPath, '.openfeel', 'dev', 'dev_core.md');
-  const devCoreResult = writeTemplateIfMissing(devCorePath, DEV_CORE_TEMPLATE);
+  const devCoreResult = writeTemplateIfMissing(devCorePath, getDevCoreTemplate(selectedLang));
   if (devCoreResult.created) {
     created.push('.openfeel/dev/dev_core.md');
   }
 
-  // 6. 生成 .openfeel/dev/current.md 模板
+  // 6. 生成 .openfeel/dev/current.md 模板（双语）
   const currentPath = resolve(projectPath, '.openfeel', 'dev', 'current.md');
-  const currentResult = writeTemplateIfMissing(currentPath, CURRENT_TEMPLATE);
+  const currentResult = writeTemplateIfMissing(currentPath, getCurrentTemplate(selectedLang));
   if (currentResult.created) {
     created.push('.openfeel/dev/current.md');
   }
 
-  // 7. 生成 .openfeel/kb/index.md 模板
+  // 7. 生成 .openfeel/kb/index.md 模板（双语）
   const kbIndexPath = resolve(projectPath, '.openfeel', 'kb', 'index.md');
-  const kbResult = writeTemplateIfMissing(kbIndexPath, '# 知识库索引\n\n> 暂无条目。\n');
+  const kbContent = selectedLang === 'en'
+    ? '# Knowledge Base Index\n\n> No entries yet.\n'
+    : '# 知识库索引\n\n> 暂无条目。\n';
+  const kbResult = writeTemplateIfMissing(kbIndexPath, kbContent);
   if (kbResult.created) {
     created.push('.openfeel/kb/index.md');
   }
@@ -276,7 +282,7 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
  * 创建示例项目骨架（--demo 标志触发）
  * 在项目目录下创建简化的 TypeScript 项目结构和示例 stage。
  */
-export function initDemo(projectPath: string): DemoResult {
+export function initDemo(projectPath: string, lang: 'zh-CN' | 'en' = 'zh-CN'): DemoResult {
   const created: string[] = [];
   const skipped: string[] = [];
 
@@ -326,16 +332,16 @@ export function initDemo(projectPath: string): DemoResult {
     `import { describe, it, expect } from 'vitest';\n\nfunction sum(a: number, b: number): number {\n  return a + b;\n}\n\ndescribe('sum', () => {\n  it('应正确计算两个正数之和', () => {\n    expect(sum(1, 2)).toBe(3);\n  });\n\n  it('应正确计算负数', () => {\n    expect(sum(-1, -2)).toBe(-3);\n  });\n\n  it('应处理零', () => {\n    expect(sum(0, 5)).toBe(5);\n  });\n});\n`,
   );
 
-  // .openfeel/plan/stage-01/status.md — 示例阶段
-  ensureFile(
-    '.openfeel/plan/stage-01/status.md',
-    `# stage-01 状态\n\n- **状态**：planned\n- **当前责任 Agent**：executor\n- **上一责任 Agent**：none\n- **更新时间**：${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## 当前任务\n\n初始化项目骨架，创建基础文件结构。\n\n## 状态记录\n\n| 时间 | Agent | 状态变化 | 说明 |\n|------|-------|----------|------|\n| - | - | - | 示例阶段 |\n`,
-  );
+  // .openfeel/plan/stage-01/status.md — 示例阶段（双语）
+  const statusMdContent = lang === 'en'
+    ? `# stage-01 Status\n\n- **Status**: planned\n- **Current Agent**: executor\n- **Previous Agent**: none\n- **Updated**: ${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## Current Task\n\nInitialize project skeleton, create basic file structure.\n\n## Status Log\n\n| Time | Agent | Status Change | Description |\n|------|-------|---------------|-------------|\n| - | - | - | Sample stage |\n`
+    : `# stage-01 状态\n\n- **状态**：planned\n- **当前责任 Agent**：executor\n- **上一责任 Agent**：none\n- **更新时间**：${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## 当前任务\n\n初始化项目骨架，创建基础文件结构。\n\n## 状态记录\n\n| 时间 | Agent | 状态变化 | 说明 |\n|------|-------|----------|------|\n| - | - | - | 示例阶段 |\n`;
+  ensureFile('.openfeel/plan/stage-01/status.md', statusMdContent);
 
-  // 确保 config.yaml 存在（含 models 节）
+  // 确保 config.yaml 存在（含 models 节，根据语言）
   const configPath = join(projectPath, '.openfeel', 'config.yaml');
   if (!existsSync(configPath)) {
-    writeDefaultConfig(projectPath);
+    writeDefaultConfig(projectPath, lang);
     created.push('.openfeel/config.yaml');
   }
 

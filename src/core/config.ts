@@ -137,12 +137,8 @@ export function readConfig(projectPath: string): Config {
   return normalizeConfig(parsed);
 }
 
-/**
- * 写入默认配置到 .openfeel/config.yaml
- */
-export function writeDefaultConfig(projectPath: string): void {
-  const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
-  const content = `# .openfeel/config.yaml
+/** 中文版 config.yaml 模板 */
+const CONFIG_TEMPLATE_ZH = `# .openfeel/config.yaml
 # OpenFeel 项目全局工作流配置
 # 级联优先级：用户指令 > status.md 局部覆盖 > 本文件 defaults
 # 本文件为所有阶段提供默认值，status.md 可覆盖
@@ -197,5 +193,71 @@ models:
       provider: zhipu
       model_name: glm-5.1
 `;
+
+/** 英文版 config.yaml 模板 */
+const CONFIG_TEMPLATE_EN = `# .openfeel/config.yaml
+# OpenFeel project global workflow configuration
+# Cascade priority: user instructions > status.md local overrides > this file defaults
+# This file provides defaults for all stages; status.md can override
+
+meta:
+  version: 1.0.0
+  project: OpenFeel
+  tech_stack: TypeScript
+
+# ---- Workflow Defaults ----
+# Initial values for all stage status.md are written from here
+# Deployment template defaults to auto+enabled, repo itself defaults to manual+disabled
+
+defaults:
+  # Execution mode: manual=human workflow, agent does not automatically take over
+  #                auto=Agent can advance automatically according to the state machine
+  execution_mode: ${DEFAULT_CONFIG.execution_mode}
+
+  # Auto advance: disabled=auto-closed-loop off
+  #              enabled=allows auto-scheduling when execution_mode=auto
+  auto_advance: ${DEFAULT_CONFIG.auto_advance}
+
+  # Test enabled: true=after review_passed, enters test_writing→testing→bug_fixing chain
+  #               false=review_passed directly transitions to done, skipping test chain
+  test_enabled: ${String(DEFAULT_CONFIG.test_enabled)}
+
+  # Worktree merge mode: manual=manually confirm merge
+  #                      auto=Feel auto git merge + cleanup
+  merge_mode: ${DEFAULT_CONFIG.merge_mode}
+
+# ---- Model Configuration ----
+# Configure the model backend used by Agents. Supports Agent/role level fine-grained overrides.
+# Note: Actual models are allocated by the platform layer; this is for Awareness purposes.
+models:
+  # Default model (fallback configuration, all Agents without explicit config use this model)
+  default:
+    provider: deepseek
+    model_name: deepseek-v4-pro
+  # Agent-level override (optional): assign a different model for a specific Agent ID
+  # agents:
+  #   feel:
+  #     provider: deepseek
+  #     model_name: deepseek-v4-pro
+  # Role-level override (optional): matches by Agent frontmatter model field
+  roles:
+    # Fast model: Executor, Utility Agent and other execution-type Agents
+    fast:
+      provider: deepseek
+      model_name: deepseek-v4-flash
+    # Cross-review model: Reviewer (GLM series, different architecture from DeepSeek)
+    cross_model:
+      provider: zhipu
+      model_name: glm-5.1
+`;
+
+/**
+ * 写入默认配置到 .openfeel/config.yaml
+ * @param projectPath 项目路径
+ * @param lang 语言，'zh-CN' 或 'en'，默认 'zh-CN'
+ */
+export function writeDefaultConfig(projectPath: string, lang: 'zh-CN' | 'en' = 'zh-CN'): void {
+  const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
+  const content = lang === 'en' ? CONFIG_TEMPLATE_EN : CONFIG_TEMPLATE_ZH;
   writeFileSync(configPath, content, 'utf-8');
 }

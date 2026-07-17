@@ -7,6 +7,7 @@ import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { updateProject, supportedTools, selectTools, AgentsMdLangConflictError } from '../core/update.js';
+import { initProject } from '../core/init.js';
 import { t, getCliLang } from '../core/i18n.js';
 
 export function registerUpdateCommand(program: Command): void {
@@ -24,6 +25,19 @@ export function registerUpdateCommand(program: Command): void {
         if (!existsSync(targetPath)) {
           console.error(t('update.errorPathNotExistTmpl', lang, { path: targetPath }));
           process.exit(1);
+        }
+
+        // 若项目尚未 init（无 .openfeel/ 目录），自动初始化
+        const openfeelDir = resolve(targetPath, '.openfeel');
+        if (!existsSync(openfeelDir)) {
+          console.log(t('update.autoInitTmpl', lang, { path: targetPath }));
+          const initResult = await initProject(targetPath, options?.lang);
+          if (initResult.created.length > 0) {
+            console.log(t('update.autoInitCreated', lang));
+            for (const item of initResult.created) {
+              console.log(`  + ${item}`);
+            }
+          }
         }
 
         const selectedTools = path

@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-07-18-Liuary-001.md](2026/07/18/2026-07-18-Liuary-001.md) | Liuary | 阶段 v4.5 完成 |
 | [2026-07-15-Liuary-002.md](2026/07/15/2026-07-15-Liuary-002.md) | Liuary | 阶段 v4.4 完成 |
 | [2026-07-15-Liuary-001.md](2026/07/15/2026-07-15-Liuary-001.md) | Liuary | v4.4-stage-03 归档完成：config命令组 + AGENTS.md同步 + package.json模板，知识沉淀 2 条至 patterns，v4.4 全系列结束 |
 | [2026-07-14-Liuary-010.md](2026/07/14/2026-07-14-Liuary-010.md) | Liuary | v4.4-stage-02.op-test review_added |
@@ -31,4 +32,3 @@
 | [2026-07-12-Liuary-018.md](2026/07/12/2026-07-12-Liuary-018.md) | Liuary | v4.3-stage-02. advance_stage_phase |
 | [2026-07-12-Liuary-017.md](2026/07/12/2026-07-12-Liuary-017.md) | Liuary | v4.3-stage-01. advance_stage_phase |
 | [2026-07-12-Liuary-016.md](2026/07/12/2026-07-12-Liuary-016.md) | Liuary | v4.3-stage-02. advance_stage_phase |
-| [2026-07-12-Liuary-015.md](2026/07/12/2026-07-12-Liuary-015.md) | Liuary | v4.3-stage-01. advance_stage_phase |

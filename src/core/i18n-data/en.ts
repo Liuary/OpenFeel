@@ -211,6 +211,8 @@ export const init: I18nDomain = {
 export const update: I18nDomain = {
   'errorPathNotExistTmpl':      { key: 'update.errorPathNotExistTmpl',      zh: '', en: 'Error: Path does not exist — {path}' },
   'errorUnsupportedLangTmpl':   { key: 'update.errorUnsupportedLangTmpl',   zh: '', en: 'Error: Unsupported language "{lang}". Supported values: zh-CN, en' },
+  'autoInitTmpl':               { key: 'update.autoInitTmpl',               zh: '', en: 'Project not initialized, auto-running openfeel init...' },
+  'autoInitCreated':            { key: 'update.autoInitCreated',            zh: '', en: 'Auto-created' },
   'cancelled':                  { key: 'update.cancelled',                  zh: '', en: 'No tool selected, cancelled.' },
   'deployingTmpl':              { key: 'update.deployingTmpl',              zh: '', en: 'Deploying adapter files to: {path}' },
   'selectedToolsTmpl':          { key: 'update.selectedToolsTmpl',          zh: '', en: 'Selected tools: {tools}' },

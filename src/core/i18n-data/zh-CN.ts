@@ -228,6 +228,8 @@ export const init: I18nDomain = {
 export const update: I18nDomain = {
   'errorPathNotExistTmpl':      { key: 'update.errorPathNotExistTmpl',      zh: '错误：路径不存在 — {path}',                en: '' },
   'errorUnsupportedLangTmpl':   { key: 'update.errorUnsupportedLangTmpl',   zh: '错误：不支持的语言 "{lang}"。支持的值：zh-CN, en', en: '' },
+  'autoInitTmpl':               { key: 'update.autoInitTmpl',               zh: '检测到项目尚未初始化，正在自动执行 openfeel init...', en: '' },
+  'autoInitCreated':            { key: 'update.autoInitCreated',            zh: '已自动创建', en: '' },
   'cancelled':                  { key: 'update.cancelled',                  zh: '未选择任何工具，已取消。',                  en: '' },
   'deployingTmpl':              { key: 'update.deployingTmpl',              zh: '正在部署适配文件到: {path}',               en: '' },
   'selectedToolsTmpl':          { key: 'update.selectedToolsTmpl',          zh: '选定工具: {tools}',                        en: '' },

@@ -6,11 +6,12 @@
 - 当前状态: 全部 done ✅（4/4 阶段）
 
 ## 待续事项
-- [ ] REV-005~012（stage-01 8 条 non-blocking，CLI 细节优化）
-- [ ] REV-002~004（stage-02 3 条 non-blocking，日志 agent 字段等）
-- [ ] REV-001/005/006（stage-03 3 条 non-blocking，i18n 字符串细节）
-- [ ] REV-001（stage-04 1 条 low，patch-inquirer 数组格式支持）
-- [ ] kb 文档测试计数从 291→298（因 stage-03 新增 7 个测试）
+- [x] REV-005~012（stage-01 8 条 non-blocking）→ 5 条修复 closed + 3 条关闭不修
+- [x] REV-002~004（stage-02 3 条 non-blocking）→ 2 条修复 closed + 1 条观察记录
+- [x] REV-001/005/006（stage-03 3 条 non-blocking）→ 1 条修复 closed + 2 条关闭不修
+- [x] REV-001（stage-04 1 条 low）→ 关闭不修
+- [x] kb 文档测试计数 291→298
+- [ ] _（无待续事项，全部遗留已清理）_
 
 ## 关键决策
 - i18n TS 常量导入模式（零构建脚本，与 template-loader B64 链路解耦）

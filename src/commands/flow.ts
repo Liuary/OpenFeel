@@ -43,7 +43,7 @@ export function registerFlowCommand(program: Command): void {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!options.verbose) {
-        console.log(mgr.summary());
+        console.log(mgr.summary(lang));
 
         // 各阶段 phase 展示
         const data = mgr.getData();
@@ -136,7 +136,7 @@ export function registerFlowCommand(program: Command): void {
       console.log('');
 
       // ── 跨会话恢复信息 ──
-      const recovery = mgr.recoverContext();
+      const recovery = mgr.recoverContext(lang);
       console.log(t('flow.status.recoveryTitle', lang));
       console.log(`  ` + t('common.stage', lang) + `: ${recovery.phase ?? t('common.unknown', lang)}`);
       console.log(`  ` + t('common.op', lang) + `: ${recovery.currentOp ?? t('common.none', lang)}`);
@@ -865,7 +865,7 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
 
-      const recovery = mgr.recoverContext();
+      const recovery = mgr.recoverContext(lang);
 
       console.log('');
       console.log(t('flow.recover.title', lang));

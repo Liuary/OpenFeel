@@ -51,6 +51,7 @@ export const flow: I18nDomain = {
   'status.downstreamTitle':     { key: 'flow.status.downstreamTitle',     zh: '', en: '── Downstream Agent Readiness ──' },
   'status.noDownstream':        { key: 'flow.status.noDownstream',        zh: '', en: '(No downstream stages reachable from current stage)' },
   'status.downstreamHeader':    { key: 'flow.status.downstreamHeader',    zh: '', en: 'Reachable Stage       Responsible Agent' },
+  'status.lastUpdated':         { key: 'flow.status.lastUpdated',         zh: '', en: 'Last Updated' },
   'status.recoveryTitle':       { key: 'flow.status.recoveryTitle',       zh: '', en: '── Cross-Session Recovery Info ──' },
   'status.recoveryMoreTmpl':    { key: 'flow.status.recoveryMoreTmpl',    zh: '', en: '... {n} more items' },
 
@@ -154,6 +155,12 @@ export const flow: I18nDomain = {
   'recover.pendingTasksTmpl':       { key: 'flow.recover.pendingTasksTmpl',       zh: '', en: 'Pending Tasks ({n})' },
   'recover.noTasks':                { key: 'flow.recover.noTasks',                zh: '', en: 'No pending tasks' },
   'recover.stageDuration':          { key: 'flow.recover.stageDuration',          zh: '', en: 'Stage Duration' },
+  'recover.statusUninitialized':   { key: 'flow.recover.statusUninitialized',     zh: '', en: 'Uninitialized' },
+  'recover.statusAutoExec':        { key: 'flow.recover.statusAutoExec',          zh: '', en: 'Auto Execute' },
+  'recover.statusManualExec':      { key: 'flow.recover.statusManualExec',        zh: '', en: 'Manual Execute' },
+  'recover.statusUnreadable':      { key: 'flow.recover.statusUnreadable',        zh: '', en: 'Cannot read status.md' },
+  'recover.statusFileMissing':     { key: 'flow.recover.statusFileMissing',       zh: '', en: 'status.md not found' },
+  'recover.statusNoCurrentStage':  { key: 'flow.recover.statusNoCurrentStage',    zh: '', en: 'No current stage' },
 
   'wizard.done':                    { key: 'flow.wizard.done',                    zh: '', en: '🎉 Pipeline is complete!' },
   'wizard.noStages':                { key: 'flow.wizard.noStages',                zh: '', en: 'No stages available.' },

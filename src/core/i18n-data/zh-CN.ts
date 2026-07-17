@@ -38,7 +38,7 @@ export const flow: I18nDomain = {
   'status.stageDuration':       { key: 'flow.status.stageDuration',       zh: '阶段耗时',                               en: '' },
   'status.globalStatus':        { key: 'flow.status.globalStatus',        zh: '全局状态',                               en: '' },
   'status.currentStageLabel':   { key: 'flow.status.currentStageLabel',   zh: '当前阶段',                               en: '' },
-  'status.stagePhase':          { key: 'flow.status.stagePhase',          zh: '阶段阶段',                               en: '' },
+  'status.stagePhase':          { key: 'flow.status.stagePhase',          zh: '阶段状态',                               en: '' },
   'status.currentOp':           { key: 'flow.status.currentOp',           zh: '当前操作',                               en: '' },
   'status.retryCount':          { key: 'flow.status.retryCount',          zh: '重试次数',                               en: '' },
   'status.stagesCount':         { key: 'flow.status.stagesCount',         zh: '阶段数',                                 en: '' },
@@ -53,6 +53,7 @@ export const flow: I18nDomain = {
   'status.downstreamTitle':     { key: 'flow.status.downstreamTitle',     zh: '── 下游 Agent 就绪状态 ──',             en: '' },
   'status.noDownstream':        { key: 'flow.status.noDownstream',        zh: '（当前阶段无下游可达阶段）',              en: '' },
   'status.downstreamHeader':    { key: 'flow.status.downstreamHeader',    zh: '可达阶段            负责 Agent',          en: '' },
+  'status.lastUpdated':         { key: 'flow.status.lastUpdated',         zh: '最后更新',                               en: '' },
   'status.recoveryTitle':       { key: 'flow.status.recoveryTitle',       zh: '── 跨会话恢复信息 ──',                   en: '' },
   'status.recoveryMoreTmpl':    { key: 'flow.status.recoveryMoreTmpl',    zh: '... 还有 {n} 项',                        en: '' },
 
@@ -81,7 +82,7 @@ export const flow: I18nDomain = {
 
   // flow current
   'current.globalStatus':       { key: 'flow.current.globalStatus',       zh: '全局状态',                               en: '' },
-  'current.stagePhase':         { key: 'flow.current.stagePhase',         zh: '阶段阶段',                               en: '' },
+  'current.stagePhase':         { key: 'flow.current.stagePhase',         zh: '阶段状态',                               en: '' },
   'current.currentOp':          { key: 'flow.current.currentOp',          zh: '当前操作',                               en: '' },
   'current.retryCount':         { key: 'flow.current.retryCount',         zh: '重试次数',                               en: '' },
 
@@ -168,6 +169,12 @@ export const flow: I18nDomain = {
   'recover.pendingTasksTmpl':       { key: 'flow.recover.pendingTasksTmpl',       zh: '待处理任务 ({n})',                       en: '' },
   'recover.noTasks':                { key: 'flow.recover.noTasks',                zh: '无待处理任务',                            en: '' },
   'recover.stageDuration':          { key: 'flow.recover.stageDuration',          zh: '阶段耗时',                               en: '' },
+  'recover.statusUninitialized':   { key: 'flow.recover.statusUninitialized',    zh: '未初始化',                               en: '' },
+  'recover.statusAutoExec':        { key: 'flow.recover.statusAutoExec',          zh: '自动执行',                               en: '' },
+  'recover.statusManualExec':      { key: 'flow.recover.statusManualExec',        zh: '手动执行',                               en: '' },
+  'recover.statusUnreadable':      { key: 'flow.recover.statusUnreadable',        zh: '无法读取 status.md',                     en: '' },
+  'recover.statusFileMissing':     { key: 'flow.recover.statusFileMissing',       zh: 'status.md 不存在',                       en: '' },
+  'recover.statusNoCurrentStage':  { key: 'flow.recover.statusNoCurrentStage',    zh: '无当前阶段',                             en: '' },
 
   // flow wizard
   'wizard.done':                    { key: 'flow.wizard.done',                    zh: '🎉 流水线已完成！',                       en: '' },
@@ -176,7 +183,7 @@ export const flow: I18nDomain = {
   'wizard.currentLabel':            { key: 'flow.wizard.currentLabel',            zh: '(当前)',                                 en: '' },
   'wizard.unavailable':             { key: 'flow.wizard.unavailable',             zh: '选择的阶段不可用。',                      en: '' },
   'wizard.statusHeader':            { key: 'flow.wizard.statusHeader',            zh: '═══ 流水线状态 ═══',                      en: '' },
-  'wizard.stagePhase':              { key: 'flow.wizard.stagePhase',              zh: '阶段阶段',                               en: '' },
+  'wizard.stagePhase':              { key: 'flow.wizard.stagePhase',              zh: '阶段状态',                               en: '' },
   'wizard.retryCount':              { key: 'flow.wizard.retryCount',              zh: '重试次数',                               en: '' },
   'wizard.pendingReviews':          { key: 'flow.wizard.pendingReviews',          zh: '待处理审查',                              en: '' },
   'wizard.noNext':                  { key: 'flow.wizard.noNext',                  zh: '当前阶段无可达的下一步操作。',            en: '' },

@@ -24,6 +24,7 @@ import {
   type StageStats,
 } from './pipeline-schema.js';
 import { PublicLogger, formatDate } from './public-logger.js';
+import { t } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
 
 /** 操作执行状态 */
@@ -430,10 +431,10 @@ export class FlowManager {
     return op ? op.attempts : 0;
   }
 
-  /** 返回人类可读的中文摘要 */
-  summary(): string {
+  /** 返回人类可读的流水线摘要（支持 i18n） */
+  summary(lang: string = 'zh-CN'): string {
     if (!this.data) {
-      return '流水线未初始化（flow.json 不存在）';
+      return t('common.noInit', lang);
     }
 
     const stagesCount = Object.keys(this.data.stages).length;
@@ -449,18 +450,18 @@ export class FlowManager {
     const cur = this.data.pipeline.current;
     const stagePhase = (cur.stage && this.data.stages[cur.stage])
       ? this.data.stages[cur.stage].phase
-      : '(无当前阶段)';
+      : t('common.none', lang);
     const lines: string[] = [
-      'OpenFeel 流水线状态',
-      `全局状态: ${this.data.pipeline.phase}`,
-      `当前阶段: ${cur.stage || '(无)'} — 阶段状态: ${stagePhase}`,
-      `当前操作: ${cur.stage ? `${cur.stage}.${cur.op}` : '(无)'}`,
-      `重试次数: ${this.data.pipeline.retry}`,
-      `阶段数: ${stagesCount}`,
-      `操作数: ${opsCount}`,
-      `待处理审查: ${openReviews}`,
-      `日志总数: ${this.data.log.length}`,
-      `最后更新: ${this.data.meta.updated}`,
+      t('flow.status.title', lang),
+      `${t('flow.status.globalStatus', lang)}: ${this.data.pipeline.phase}`,
+      `${t('flow.status.currentStageLabel', lang)}: ${cur.stage || t('common.none', lang)} — ${t('flow.status.stagePhase', lang)}: ${stagePhase}`,
+      `${t('flow.status.currentOp', lang)}: ${cur.stage ? `${cur.stage}.${cur.op}` : t('common.none', lang)}`,
+      `${t('flow.status.retryCount', lang)}: ${this.data.pipeline.retry}`,
+      `${t('flow.status.stagesCount', lang)}: ${stagesCount}`,
+      `${t('flow.status.opsCount', lang)}: ${opsCount}`,
+      `${t('flow.status.reviewPending', lang)}: ${openReviews}`,
+      `${t('flow.status.logTotal', lang)}: ${this.data.log.length}`,
+      `${t('flow.status.lastUpdated', lang)}: ${this.data.meta.updated}`,
     ];
     return lines.join('\n');
   }
@@ -676,14 +677,15 @@ export class FlowManager {
   /**
    * 从 flow.json + status.md 恢复上下文
    * 供 Feel 重启后准确恢复状态机位置，无需重新推断
+   * @param lang 语言标识（默认 'zh-CN'）
    * @returns 恢复上下文对象
    */
-  recoverContext(): RecoveryContext {
+  recoverContext(lang: string = 'zh-CN'): RecoveryContext {
     if (!this.data) {
       return {
         phase: null,
         currentOp: null,
-        stageStatus: '未初始化',
+        stageStatus: t('flow.recover.statusUninitialized', lang),
         blockedBy: '',
         pendingTasks: [],
       };
@@ -697,7 +699,7 @@ export class FlowManager {
     const currentOp = (cur.stage && cur.op) ? `${cur.stage}.${cur.op}` : null;
 
     // 从 status.md 读取当前阶段详细状态
-    let stageStatus = '未知';
+    let stageStatus = t('common.unknown', lang);
     let blockedBy = '';
     const pendingTasks: string[] = [];
 
@@ -709,11 +711,13 @@ export class FlowManager {
 
           // 提取执行模式
           const execMatch = content.match(/\*\*执行模式\*\*[：:]\s*(manual|auto)/);
-          const modeLabel = execMatch ? (execMatch[1] === 'auto' ? '自动执行' : '手动执行') : '';
+          const modeLabel = execMatch
+            ? (execMatch[1] === 'auto' ? t('flow.recover.statusAutoExec', lang) : t('flow.recover.statusManualExec', lang))
+            : '';
 
           // 提取状态
           const statusMatch = content.match(/\*\*状态\*\*[：:]\s*(\S+)/);
-          stageStatus = statusMatch ? statusMatch[1] : '未知';
+          stageStatus = statusMatch ? statusMatch[1] : t('common.unknown', lang);
           if (modeLabel) {
             stageStatus += ` (${modeLabel})`;
           }
@@ -750,10 +754,10 @@ export class FlowManager {
             }
           }
         } catch {
-          stageStatus = '无法读取 status.md';
+          stageStatus = t('flow.recover.statusUnreadable', lang);
         }
       } else {
-        stageStatus = 'status.md 不存在';
+        stageStatus = t('flow.recover.statusFileMissing', lang);
       }
     } else {
       // 无当前阶段时，列出所有 pending/executing 的任务
@@ -764,7 +768,7 @@ export class FlowManager {
           }
         }
       }
-      stageStatus = '无当前阶段';
+      stageStatus = t('flow.recover.statusNoCurrentStage', lang);
     }
 
     return { phase, currentOp, stageStatus, blockedBy, pendingTasks };

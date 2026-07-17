@@ -143,3 +143,35 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 > 违反此约束将导致 `update` 部署旧版内容，用户项目使用过期规范。
 
 > **已禁用 (v4.1-stage-01)**：构建时自动同步已落地。`npm run build` 自动完成三类模板的编码和注入，无需手动同步。参见 op-001。
+
+## [+] 双语开发强制约束 (2026-07-15)
+
+OpenFeel 自身是双语项目（zh-CN / en），开发时必须同时产出两种语言的内容，禁止仅实现单语。
+
+### 适用范围
+
+| 内容类型 | 涉及文件 | 要求 |
+|----------|----------|------|
+| i18n 字符串 | `src/core/i18n-data/zh-CN.ts` + `en.ts` | **键名一致**，zh 和 en 字段都必须填，禁止留空 |
+| Agent 模板 | `templates-data/agents/{zh-CN,en}/*.md` | 中英文版本内容同步，结构一致 |
+| CLI 输出 | `src/commands/*.ts` | 全部用户可见字符串走 `t()` 查表，禁止硬编码 |
+| 核心引擎输出 | `src/core/flow-manager.ts` 等 | 返回给用户的方法（getStatus/getOverview 等）必须走 i18n |
+| 错误消息 | 所有 throw / console.error | 走 `t()` 或 `common.errorTmpl` 统一格式 |
+
+### 开发检查清单
+
+新增或修改功能后，逐项确认：
+- [ ] i18n 数据文件中 zh 和 en 值均已填写（`en` 字段非空字符串 `''`）
+- [ ] 新增 Agent 模板内容在中英文目录下同步存在
+- [ ] `getCliLang(projectPath)` 路径正确（CLI 用 `process.cwd()`，API 用传入路径）
+- [ ] `flow-manager.ts` 无硬编码中文字符串（用 `t()` 替代）
+- [ ] `npm run build && npm test` 通过
+
+### 反模式
+
+- ❌ `en: ''` — 英文翻译留空，导致回退到中文
+- ❌ 只在 `zh-CN.ts` 加 key，`en.ts` 不加 — 英文环境 `t()` 返回空字符串
+- ❌ flow-manager.ts 硬编码中文标签 — CLI 拿到的是已拼接好的中文，无法翻译
+- ❌ 仅更新 `commands/flow.ts` 而不更新 `flow-manager.ts` — 核心引擎输出未经 i18n 处理
+
+> 违反此约束将导致 CLI 在英文项目下仍输出中文，双语部署形同虚设。

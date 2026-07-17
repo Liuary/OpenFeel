@@ -355,6 +355,112 @@ export const view: I18nDomain = {
 /* ==================== instructions ==================== */
 export const instructions: I18nDomain = {};
 
+/* ==================== help ==================== */
+export const help: I18nDomain = {
+  'openfeel':              { key: 'help.openfeel',              zh: '', en: 'AI Agent development workflow governance CLI tool' },
+  'openfeel.version':      { key: 'help.openfeel.version',      zh: '', en: 'Output version number' },
+
+  'init':                  { key: 'help.init',                  zh: '', en: 'Initialize project workspace, create .openfeel/ directory structure and config files' },
+  'init.demo':             { key: 'help.init.demo',             zh: '', en: 'Create demo project skeleton (NumKit style)' },
+  'init.lang':             { key: 'help.init.lang',             zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN in non-interactive mode' },
+
+  'update':                { key: 'help.update',                zh: '', en: 'Deploy OpenFeel adapter files to target project (interactive tool selection when no args)' },
+  'update.lang':           { key: 'help.update.lang',           zh: '', en: 'Agent prompt language (zh-CN or en)' },
+  'update.force':          { key: 'help.update.force',          zh: '', en: 'Skip AGENTS.md overwrite confirmation, force overwrite' },
+
+  'flow':                  { key: 'help.flow',                  zh: '', en: 'Pipeline status management' },
+  'flow.status':           { key: 'help.flow.status',           zh: '', en: 'Show pipeline status summary' },
+  'flow.status.verbose':   { key: 'help.flow.status.verbose',   zh: '', en: 'Enhanced output: config cascade, recent changes, downstream agent readiness' },
+  'flow.status.lines':     { key: 'help.flow.status.lines',     zh: '', en: 'Number of recent status changes (default 5)' },
+  'flow.overview':         { key: 'help.flow.overview',         zh: '', en: 'Full status visualization (/opfx:status backend)' },
+  'flow.current':          { key: 'help.flow.current',          zh: '', en: 'Show current stage and operation' },
+  'flow.metrics':          { key: 'help.flow.metrics',          zh: '', en: 'Show Agent performance metrics' },
+  'flow.stage':            { key: 'help.flow.stage',            zh: '', en: 'Stage management' },
+  'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '', en: 'Add pipeline stage' },
+  'flow.advance':          { key: 'help.flow.advance',          zh: '', en: 'Advance pipeline stage' },
+  'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001), for logging/display only' },
+  'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '', en: 'Target phase (e.g. exec_running)' },
+  'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '', en: 'Stage ID (e.g. stage-03), required' },
+  'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '', en: 'Force execution (skip invalid phase check and phase jump check, but not REV block check)' },
+  'flow.attempt':          { key: 'help.flow.attempt',          zh: '', en: 'Record operation execution result' },
+  'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },
+  'flow.attempt.result':   { key: 'help.flow.attempt.result',   zh: '', en: 'Execution result (pass or fail)' },
+  'flow.log':              { key: 'help.flow.log',              zh: '', en: 'Show recent operation logs' },
+  'flow.log.last':         { key: 'help.flow.log.last',         zh: '', en: 'Show last n entries (default 10)' },
+  'flow.review':           { key: 'help.flow.review',           zh: '', en: 'Manage review entries' },
+  'flow.review.add':       { key: 'help.flow.review.add',       zh: '', en: 'Add review entry' },
+  'flow.review.add.op':    { key: 'help.flow.review.add.op',    zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },
+  'flow.review.add.title': { key: 'help.flow.review.add.title', zh: '', en: 'Review title' },
+  'flow.review.add.autoFix':   { key: 'help.flow.review.add.autoFix',   zh: '', en: 'Auto-fix detail, when set skips scheme_pending and advances directly to exec_running' },
+  'flow.review.add.blocking':  { key: 'help.flow.review.add.blocking',  zh: '', en: 'Whether to block pipeline (default true)' },
+  'flow.review.resolve':   { key: 'help.flow.review.resolve',   zh: '', en: 'Resolve review entry' },
+  'flow.retry':            { key: 'help.flow.retry',            zh: '', en: 'Query operation retry status' },
+  'flow.retry.op':         { key: 'help.flow.retry.op',         zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },
+  'flow.repair':           { key: 'help.flow.repair',           zh: '', en: 'Auto-detect and fix common issues in flow.json' },
+  'flow.repair.dryRun':    { key: 'help.flow.repair.dryRun',    zh: '', en: 'Detect only, do not fix' },
+  'flow.repair.backup':    { key: 'help.flow.repair.backup',    zh: '', en: 'Backup as .bak before repair' },
+  'flow.migrate':          { key: 'help.flow.migrate',          zh: '', en: 'Migrate legacy flow.json (v4.0 global phase) to new format (v4.1 stage-level phase)' },
+  'flow.migrate.dryRun':   { key: 'help.flow.migrate.dryRun',   zh: '', en: 'Preview only, do not write files' },
+  'flow.migrate.noBackup': { key: 'help.flow.migrate.noBackup', zh: '', en: 'Skip .bak file generation (default generates flow.json.v4.0.bak)' },
+  'flow.health':           { key: 'help.flow.health',           zh: '', en: 'Comprehensive health check: flow.json / cross-file consistency / zombie states / config.yaml etc.' },
+  'flow.health.quick':     { key: 'help.flow.health.quick',     zh: '', en: 'Key checks only (phase/current validity, skip other checks)' },
+  'flow.recover':          { key: 'help.flow.recover',          zh: '', en: 'Cross-session context recovery: pipeline status, blockers, and pending tasks' },
+  'flow.wizard':           { key: 'help.flow.wizard',           zh: '', en: 'Interactive pipeline wizard, advance stage by stage' },
+
+  'config.get-lang':       { key: 'help.config.get-lang',       zh: '', en: 'Show global default language' },
+  'config.set-lang':       { key: 'help.config.set-lang',       zh: '', en: 'Change global default language (zh-CN or en)' },
+  'config.list-projects':  { key: 'help.config.list-projects',  zh: '', en: 'List all recorded project path→language mappings' },
+
+  'project':               { key: 'help.project',               zh: '', en: 'Project management and overview' },
+  'project.overview':      { key: 'help.project.overview',      zh: '', en: 'Scan project structure in real-time, output structured overview' },
+
+  'plan':                  { key: 'help.plan',                  zh: '', en: 'Plan management' },
+  'plan.stage':            { key: 'help.plan.stage',            zh: '', en: 'Work stage management' },
+  'plan.stage.add':        { key: 'help.plan.stage.add',        zh: '', en: 'Add work stage' },
+  'plan.stage.list':       { key: 'help.plan.stage.list',       zh: '', en: 'List all work stages' },
+  'plan.scheme':           { key: 'help.plan.scheme',           zh: '', en: 'Operation scheme management' },
+  'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '', en: 'Create operation scheme' },
+  'plan.scheme.list':      { key: 'help.plan.scheme.list',      zh: '', en: 'List operation schemes (optionally filter by stage)' },
+
+  'stage':                 { key: 'help.stage',                 zh: '', en: 'Work stage status management (status.md atomic operations)' },
+  'stage.status':          { key: 'help.stage.status',          zh: '', en: 'View stage status (list all stages when no arg)' },
+  'stage.set':             { key: 'help.stage.set',             zh: '', en: 'Set stage status field (atomic update, preserve rest)' },
+  'stage.set.status':      { key: 'help.stage.set.status',      zh: '', en: 'Status value (e.g. exec_running)' },
+  'stage.task':            { key: 'help.stage.task',            zh: '', en: 'Check or uncheck task checkbox' },
+  'stage.task.done':       { key: 'help.stage.task.done',       zh: '', en: 'Mark task as done' },
+  'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '', en: 'Mark task as not done' },
+
+  'view':                  { key: 'help.view',                  zh: '', en: 'Review entry management' },
+  'view.list':             { key: 'help.view.list',             zh: '', en: 'List review entries' },
+  'view.list.op':          { key: 'help.view.list.op',          zh: '', en: 'Filter by operation ID' },
+  'view.add':              { key: 'help.view.add',              zh: '', en: 'Add review entry' },
+  'view.add.op':           { key: 'help.view.add.op',           zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },
+  'view.add.title':        { key: 'help.view.add.title',        zh: '', en: 'Review title' },
+  'view.add.priority':     { key: 'help.view.add.priority',     zh: '', en: 'Priority (high/medium/low, default medium)' },
+  'view.accept':           { key: 'help.view.accept',           zh: '', en: 'Accept review entry (mark as closed)' },
+
+  'knowledge':             { key: 'help.knowledge',             zh: '', en: 'Knowledge base management' },
+  'knowledge.list':        { key: 'help.knowledge.list',        zh: '', en: 'List knowledge entries' },
+  'knowledge.list.type':   { key: 'help.knowledge.list.type',   zh: '', en: 'Filter by category' },
+  'knowledge.add':         { key: 'help.knowledge.add',         zh: '', en: 'Add knowledge entry' },
+  'knowledge.add.content': { key: 'help.knowledge.add.content', zh: '', en: 'Entry content (can also be piped via stdin)' },
+  'knowledge.search':      { key: 'help.knowledge.search',      zh: '', en: 'Search knowledge base' },
+  'knowledge.search.limit':  { key: 'help.knowledge.search.limit',  zh: '', en: 'Max results (default 10)' },
+  'knowledge.search.offset': { key: 'help.knowledge.search.offset', zh: '', en: 'Result offset (default 0)' },
+  'knowledge.index':       { key: 'help.knowledge.index',       zh: '', en: 'Show knowledge base index overview' },
+
+  'archive':               { key: 'help.archive',               zh: '', en: 'Archive stage (summarize output, generate summary, extract knowledge)' },
+
+  'roadmap':               { key: 'help.roadmap',               zh: '', en: 'Roadmap management' },
+  'roadmap.create':        { key: 'help.roadmap.create',        zh: '', en: 'Create roadmap (version number like 1.0, 2.0)' },
+  'roadmap.show':          { key: 'help.roadmap.show',          zh: '', en: 'Show roadmap content (list all if no version)' },
+
+  'instructions':          { key: 'help.instructions',          zh: '', en: 'Generate structured instructions (XML or JSON) for an artifact' },
+  'instructions.change':   { key: 'help.instructions.change',   zh: '', en: 'Change name (e.g. feat-login)' },
+  'instructions.json':     { key: 'help.instructions.json',     zh: '', en: 'Output JSON format instead of XML' },
+  'instructions.schema':   { key: 'help.instructions.schema',   zh: '', en: 'Schema name (default spec-driven)' },
+};
+
 /* ==================== config ==================== */
 export const config: I18nDomain = {
   'get.lang':                { key: 'config.get.lang',                zh: '', en: 'Global language: {lang}' },
@@ -368,6 +474,7 @@ export const config: I18nDomain = {
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
+  { name: 'help',         domain: help },
   { name: 'flow',         domain: flow },
   { name: 'init',         domain: init },
   { name: 'update',       domain: update },

@@ -372,6 +372,125 @@ export const view: I18nDomain = {
 /* ==================== instructions 域：说明命令 ==================== */
 export const instructions: I18nDomain = {};
 
+/* ==================== help 域：命令帮助文本（--help 输出用语） ==================== */
+export const help: I18nDomain = {
+  // openfeel 顶层
+  'openfeel':              { key: 'help.openfeel',              zh: 'AI Agent 开发流程治理 CLI 工具', en: '' },
+  'openfeel.version':      { key: 'help.openfeel.version',      zh: '输出版本号',                      en: '' },
+
+  // init
+  'init':                  { key: 'help.init',                  zh: '初始化项目工作区，创建 .openfeel/ 目录结构和配置文件', en: '' },
+  'init.demo':             { key: 'help.init.demo',             zh: '创建带示例骨架的项目（NumKit 风格）', en: '' },
+  'init.lang':             { key: 'help.init.lang',             zh: 'Agent 提示词语言（zh-CN 或 en），非交互环境默认 zh-CN', en: '' },
+
+  // update
+  'update':                { key: 'help.update',                zh: '部署 OpenFeel 适配文件到目标项目（无参数时交互式选择工具）', en: '' },
+  'update.lang':           { key: 'help.update.lang',           zh: 'Agent prompt language (zh-CN or en)', en: '' },
+  'update.force':          { key: 'help.update.force',          zh: '跳过 AGENTS.md 覆盖确认，直接覆盖', en: '' },
+
+  // flow
+  'flow':                  { key: 'help.flow',                  zh: '流水线状态管理', en: '' },
+  'flow.status':           { key: 'help.flow.status',           zh: '显示流水线状态摘要', en: '' },
+  'flow.status.verbose':   { key: 'help.flow.status.verbose',   zh: '增强输出：配置级联、最近状态变更、下游 Agent 就绪状态', en: '' },
+  'flow.status.lines':     { key: 'help.flow.status.lines',     zh: '最近状态变更条数（默认 5）', en: '' },
+  'flow.overview':         { key: 'help.flow.overview',         zh: '全状态可视化视图（/opfx:status 的后端实现）', en: '' },
+  'flow.current':          { key: 'help.flow.current',          zh: '显示当前阶段和操作', en: '' },
+  'flow.metrics':          { key: 'help.flow.metrics',          zh: '展示 Agent 性能指标', en: '' },
+  'flow.stage':            { key: 'help.flow.stage',            zh: '阶段管理', en: '' },
+  'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '新增流水线阶段', en: '' },
+  'flow.advance':          { key: 'help.flow.advance',          zh: '推进流水线阶段', en: '' },
+  'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '操作 ID（如 stage-01.op-001），仅用于日志/展示', en: '' },
+  'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '目标阶段（如 exec_running）', en: '' },
+  'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '阶段 ID（如 stage-03），必须指定', en: '' },
+  'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）', en: '' },
+  'flow.attempt':          { key: 'help.flow.attempt',          zh: '记录操作执行结果', en: '' },
+  'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '操作 ID（如 stage-01.op-001）', en: '' },
+  'flow.attempt.result':   { key: 'help.flow.attempt.result',   zh: '执行结果（pass 或 fail）', en: '' },
+  'flow.log':              { key: 'help.flow.log',              zh: '显示最近操作日志', en: '' },
+  'flow.log.last':         { key: 'help.flow.log.last',         zh: '显示最近 n 条（默认 10）', en: '' },
+  'flow.review':           { key: 'help.flow.review',           zh: '管理审查条目', en: '' },
+  'flow.review.add':       { key: 'help.flow.review.add',       zh: '添加审查条目', en: '' },
+  'flow.review.add.op':    { key: 'help.flow.review.add.op',    zh: '操作 ID（如 stage-01.op-001）', en: '' },
+  'flow.review.add.title': { key: 'help.flow.review.add.title', zh: '审查标题', en: '' },
+  'flow.review.add.autoFix':   { key: 'help.flow.review.add.autoFix',   zh: '自动修复说明，设置后跳过 scheme_pending 直接推进到 exec_running', en: '' },
+  'flow.review.add.blocking':  { key: 'help.flow.review.add.blocking',  zh: '是否阻塞流水线（默认 true）', en: '' },
+  'flow.review.resolve':   { key: 'help.flow.review.resolve',   zh: '解决审查条目', en: '' },
+  'flow.retry':            { key: 'help.flow.retry',            zh: '查询操作的重试状态', en: '' },
+  'flow.retry.op':         { key: 'help.flow.retry.op',         zh: '操作 ID（如 stage-01.op-001）', en: '' },
+  'flow.repair':           { key: 'help.flow.repair',           zh: '自动检测并修复 flow.json 中的常见问题', en: '' },
+  'flow.repair.dryRun':    { key: 'help.flow.repair.dryRun',    zh: '仅检测不修复', en: '' },
+  'flow.repair.backup':    { key: 'help.flow.repair.backup',    zh: '修复前备份为 .bak', en: '' },
+  'flow.migrate':          { key: 'help.flow.migrate',          zh: '将旧版 flow.json（v4.0 全局 phase）迁移到新版格式（v4.1 阶段级 phase）', en: '' },
+  'flow.migrate.dryRun':   { key: 'help.flow.migrate.dryRun',   zh: '仅检测预览，不实际写入文件', en: '' },
+  'flow.migrate.noBackup': { key: 'help.flow.migrate.noBackup', zh: '跳过 .bak 文件生成（默认生成 flow.json.v4.0.bak）', en: '' },
+  'flow.health':           { key: 'help.flow.health',           zh: '全面健康检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml 等', en: '' },
+  'flow.health.quick':     { key: 'help.flow.health.quick',     zh: '仅检查关键项（phase/current 合法性，跳过其他检查）', en: '' },
+  'flow.recover':          { key: 'help.flow.recover',          zh: '跨会话上下文恢复：输出流水线状态、阻塞原因和待处理任务', en: '' },
+  'flow.wizard':           { key: 'help.flow.wizard',           zh: '交互式流水线向导，逐步推进阶段', en: '' },
+
+  // config
+  'config.get-lang':       { key: 'help.config.get-lang',       zh: '显示全局默认语言', en: '' },
+  'config.set-lang':       { key: 'help.config.set-lang',       zh: '修改全局默认语言（zh-CN 或 en）', en: '' },
+  'config.list-projects':  { key: 'help.config.list-projects',  zh: '列出所有已记录的项目路径→语言映射', en: '' },
+
+  // project
+  'project':               { key: 'help.project',               zh: '项目管理与概览', en: '' },
+  'project.overview':      { key: 'help.project.overview',      zh: '实时扫描项目结构，输出结构化概览', en: '' },
+
+  // plan
+  'plan':                  { key: 'help.plan',                  zh: '计划管理', en: '' },
+  'plan.stage':            { key: 'help.plan.stage',            zh: '工作阶段管理', en: '' },
+  'plan.stage.add':        { key: 'help.plan.stage.add',        zh: '添加工作阶段', en: '' },
+  'plan.stage.list':       { key: 'help.plan.stage.list',       zh: '列出所有工作阶段', en: '' },
+  'plan.scheme':           { key: 'help.plan.scheme',           zh: '操作方案管理', en: '' },
+  'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '创建操作方案', en: '' },
+  'plan.scheme.list':      { key: 'help.plan.scheme.list',      zh: '列出操作方案（可选按阶段过滤）', en: '' },
+
+  // stage
+  'stage':                 { key: 'help.stage',                 zh: '工作阶段状态管理（status.md 原子操作）', en: '' },
+  'stage.status':          { key: 'help.stage.status',          zh: '查看阶段状态（无参数时列出所有阶段）', en: '' },
+  'stage.set':             { key: 'help.stage.set',             zh: '设置阶段状态字段（原子更新，保留其余内容不变）', en: '' },
+  'stage.set.status':      { key: 'help.stage.set.status',      zh: '状态值（如 exec_running）', en: '' },
+  'stage.task':            { key: 'help.stage.task',            zh: '勾选或取消任务 checkbox', en: '' },
+  'stage.task.done':       { key: 'help.stage.task.done',       zh: '标记任务为已完成', en: '' },
+  'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '标记任务为未完成', en: '' },
+
+  // view
+  'view':                  { key: 'help.view',                  zh: '审查条目管理', en: '' },
+  'view.list':             { key: 'help.view.list',             zh: '列出审查条目', en: '' },
+  'view.list.op':          { key: 'help.view.list.op',          zh: '按操作 ID 过滤', en: '' },
+  'view.add':              { key: 'help.view.add',              zh: '添加审查条目', en: '' },
+  'view.add.op':           { key: 'help.view.add.op',           zh: '操作 ID（如 stage-01.op-001）', en: '' },
+  'view.add.title':        { key: 'help.view.add.title',        zh: '审查标题', en: '' },
+  'view.add.priority':     { key: 'help.view.add.priority',     zh: '优先级（high/medium/low，默认 medium）', en: '' },
+  'view.accept':           { key: 'help.view.accept',           zh: '验收审查条目（标记为 closed）', en: '' },
+
+  // knowledge
+  'knowledge':             { key: 'help.knowledge',             zh: '知识库管理', en: '' },
+  'knowledge.list':        { key: 'help.knowledge.list',        zh: '列出知识条目', en: '' },
+  'knowledge.list.type':   { key: 'help.knowledge.list.type',   zh: '按分类过滤', en: '' },
+  'knowledge.add':         { key: 'help.knowledge.add',         zh: '添加知识条目', en: '' },
+  'knowledge.add.content': { key: 'help.knowledge.add.content', zh: '条目内容（也可通过管道 stdin 传入）', en: '' },
+  'knowledge.search':      { key: 'help.knowledge.search',      zh: '搜索知识库', en: '' },
+  'knowledge.search.limit':  { key: 'help.knowledge.search.limit',  zh: '返回结果数量上限（默认 10）', en: '' },
+  'knowledge.search.offset': { key: 'help.knowledge.search.offset', zh: '结果偏移量（默认 0）', en: '' },
+  'knowledge.index':       { key: 'help.knowledge.index',       zh: '显示知识库索引概览', en: '' },
+
+  // archive
+  'archive':               { key: 'help.archive',               zh: '归档指定阶段（汇总产出、生成摘要、提取知识）', en: '' },
+
+  // roadmap
+  'roadmap':               { key: 'help.roadmap',               zh: '分期大纲管理', en: '' },
+  'roadmap.create':        { key: 'help.roadmap.create',        zh: '创建分期大纲（版本号如 1.0、2.0）', en: '' },
+  'roadmap.show':          { key: 'help.roadmap.show',          zh: '显示分期大纲内容（不传版本则列出所有）', en: '' },
+
+  // instructions
+  'instructions':          { key: 'help.instructions',          zh: '为指定 artifact 生成结构化指令（XML 或 JSON）', en: '' },
+  'instructions.change':   { key: 'help.instructions.change',   zh: '变更名称（如 feat-login）', en: '' },
+  'instructions.json':     { key: 'help.instructions.json',     zh: '输出 JSON 格式而非 XML', en: '' },
+  'instructions.schema':   { key: 'help.instructions.schema',   zh: 'Schema 名称（默认 spec-driven）', en: '' },
+};
+
 /* ==================== config 域：配置管理命令 ==================== */
 export const config: I18nDomain = {
   'get.lang':                { key: 'config.get.lang',                zh: '全局语言：{lang}',                     en: '' },
@@ -386,6 +505,7 @@ export const config: I18nDomain = {
 /** 所有功能域的聚合数组（供 i18n.ts 构建 Map 使用） */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
+  { name: 'help',         domain: help },
   { name: 'flow',         domain: flow },
   { name: 'init',         domain: init },
   { name: 'update',       domain: update },

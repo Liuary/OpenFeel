@@ -95,6 +95,8 @@ export const flow: I18nDomain = {
   'advance.warnSkipReview':     { key: 'flow.advance.warnSkipReview',     zh: '', en: '[!] Skipping review phase directly to done, confirm to continue' },
   'advance.okTmpl':             { key: 'flow.advance.okTmpl',             zh: '', en: '✓ Advanced: {stage} → {to}' },
   'advance.opLabelTmpl':        { key: 'flow.advance.opLabelTmpl',        zh: '', en: 'Op: {op}' },
+  'advance.autoRepaired':       { key: 'flow.advance.autoRepaired',       zh: '', en: 'Stage data inconsistency detected, auto-repaired' },
+  'advance.saveError':          { key: 'flow.advance.saveError',          zh: '', en: 'flow.json save failed' },
 
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '', en: 'Error: --result must be pass or fail' },
   'attempt.passTmpl':           { key: 'flow.attempt.passTmpl',           zh: '', en: '✓ {op} completed successfully' },

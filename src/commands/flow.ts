@@ -372,6 +372,15 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
       }
 
+      // 自动修复 phase/status 不一致（在 validate() 前执行）
+      if (options.stage) {
+        const repairResult = mgr.autoRepairInconsistency(options.stage);
+        if (repairResult.fixed) {
+          console.log(t('flow.advance.autoRepaired', lang) + `: ${repairResult.detail}`);
+          mgr.save();
+        }
+      }
+
       const { valid, errors, warnings } = mgr.validate();
 
       // 输出自动修正警告

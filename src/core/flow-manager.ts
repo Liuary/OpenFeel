@@ -294,27 +294,35 @@ export class FlowManager {
       }
     }
 
-    // 写入临时文件
-    writeFileSync(tmpPath, content, 'utf-8');
-
-    // 校验临时文件 JSON 合法性
     try {
-      const tmpContent = readFileSync(tmpPath, 'utf-8');
-      JSON.parse(tmpContent);
-    } catch (parseErr) {
-      // 清理失败的临时文件
-      try {
-        writeFileSync(tmpPath, '', 'utf-8');
-      } catch {
-        // 清理失败也不阻塞
-      }
-      throw new Error(
-        `flow.json 写入校验失败: ${(parseErr as Error).message}。备份已保留在 ${bakPath}`,
-      );
-    }
+      // 写入临时文件
+      writeFileSync(tmpPath, content, 'utf-8');
 
-    // 校验通过，rename 临时文件到正式文件
-    renameSync(tmpPath, this.filePath);
+      // 校验临时文件 JSON 合法性
+      try {
+        const tmpContent = readFileSync(tmpPath, 'utf-8');
+        JSON.parse(tmpContent);
+      } catch (parseErr) {
+        // 清理失败的临时文件
+        try {
+          writeFileSync(tmpPath, '', 'utf-8');
+        } catch {
+          // 清理失败也不阻塞
+        }
+        throw new Error(
+          `flow.json 写入校验失败: ${(parseErr as Error).message}。备份已保留在 ${bakPath}`,
+        );
+      }
+
+      // 校验通过，rename 临时文件到正式文件
+      renameSync(tmpPath, this.filePath);
+
+      // 同步备份
+      writeFileSync(this.filePath + '.bak', content, 'utf-8');
+    } catch (err) {
+      console.error(`[ERROR] flow.json 保存失败: ${err instanceof Error ? err.message : err}`);
+      throw err;
+    }
   }
 
   /** 数据是否已加载 */
@@ -1580,6 +1588,19 @@ export class FlowManager {
             }
           }
         }
+
+        // 检查 phase 与 status 不一致（非阻塞警告）
+        if (stage.phase && stage.status) {
+          if (stage.status === 'done' && stage.phase !== 'done') {
+            warnings.push(
+              `${stageId}: status=done 但 phase=${stage.phase}，不一致（非阻塞）`,
+            );
+          } else if (stage.phase === 'done' && stage.status !== 'done') {
+            warnings.push(
+              `${stageId}: phase=done 但 status=${stage.status}，不一致（非阻塞）`,
+            );
+          }
+        }
       }
     }
 
@@ -1924,6 +1945,39 @@ export class FlowManager {
     // changes 在无问题时保持空数组，CLI 层通过 changes.length === 0 判断"没问题"
 
     return { fixed: modified || recovered, changes, recovered };
+  }
+
+  /**
+   * 自动修复指定阶段的 phase/status 不一致
+   * - status=done 但 phase≠done → 同步 phase 为 done
+   * - phase=done 但 status≠done → 同步 status 为 done
+   * @param stageName 阶段名（如 stage-01）
+   * @returns 修复结果（是否修复 + 详情）
+   */
+  autoRepairInconsistency(stageName: string): { fixed: boolean; detail: string } {
+    if (!this.data) {
+      return { fixed: false, detail: 'flow.json 未加载' };
+    }
+    const stage = this.data.stages[stageName];
+    if (!stage) {
+      return { fixed: false, detail: `阶段 '${stageName}' 不存在` };
+    }
+
+    // 修复: status=done 但 phase≠done 时，同步 phase 为 done
+    if (stage.status === 'done' && stage.phase !== 'done') {
+      const oldPhase = stage.phase;
+      stage.phase = 'done' as PipelinePhase;
+      return { fixed: true, detail: `phase ${oldPhase} → done (与 status 同步)` };
+    }
+
+    // 修复: phase=done 但 status≠done 时，同步 status
+    if (stage.phase === 'done' && stage.status !== 'done') {
+      const oldStatus = stage.status;
+      stage.status = 'done';
+      return { fixed: true, detail: `status ${oldStatus} → done (与 phase 同步)` };
+    }
+
+    return { fixed: false, detail: '未检测到不一致' };
   }
 
   // ═══ 迁移 ═══

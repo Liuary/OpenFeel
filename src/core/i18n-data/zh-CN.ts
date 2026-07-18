@@ -101,6 +101,8 @@ export const flow: I18nDomain = {
   'advance.warnSkipReview':     { key: 'flow.advance.warnSkipReview',     zh: '[!] 跳过审查阶段直接标记 done，确认继续',   en: '' },
   'advance.okTmpl':             { key: 'flow.advance.okTmpl',             zh: '✓ 已推进: {stage} → {to}',               en: '' },
   'advance.opLabelTmpl':        { key: 'flow.advance.opLabelTmpl',        zh: '操作: {op}',                              en: '' },
+  'advance.autoRepaired':       { key: 'flow.advance.autoRepaired',       zh: '检测到阶段数据不一致，已自动修复',          en: '' },
+  'advance.saveError':          { key: 'flow.advance.saveError',          zh: 'flow.json 保存失败',                      en: '' },
 
   // flow attempt
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '错误：--result 必须为 pass 或 fail',       en: '' },

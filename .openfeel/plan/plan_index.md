@@ -4,6 +4,14 @@
 
 ## 当前计划
 
+### [OpenFeel v4.7 — 部署版修复 + 后续路线图](v4.7/roadmap-v5.md)
+
+**目标**：修复 Feel / Executor 部署版过期问题（+38 / +26 行），清理 dev_core.md 重复规则。基于三份调研报告制定 v4.8~v5.1 路线图（8 项 5 期）。
+
+| 阶段 | 任务 | 优先级 | 状态 |
+|------|------|:--:|:--:|
+| v4.7-stage-01 | 部署版修复 + 规则清理 + 路线图制定 | P0 | done ✅ |
+
 ### [OpenFeel v4.6 — 新增多模态 Agent + CLI 补充](v4.6/plan.md) ✅ 已归档
 
 **目标**：(stage-01) 新增 Vision 视觉官 Agent（qwen-vl-plus 多模态模型），全链路 9 项文件更新；(stage-02) 补充 `openfeel config get/set` CLI 命令、AGENTS.md 过度设计规则增强、Reviewer 审查维度扩展、Vision 模板去硬编码。2 阶段全部归档。
@@ -132,9 +140,10 @@
 | v3.1 | 已归档 | 1 | 1/1 done | — |
 | v3.2 | 已归档 | 1 | 1/1 done | — |
 | v4.0 | 已归档 | 4 | 4/4 done | — |
-| v4.1 | 计划中 | 4 | 1/4 | — |
+| v4.1 | 已归档 | 4 | 4/4 done | — |
 | v4.2 | 已归档 | 1 | 1/1 done | — |
 | v4.3 | 已归档 | 3 | 3/3 done | — |
 | v4.4 | 已归档 | 4 | 4/4 done | — |
 | v4.5 | 已归档 | 1 | 1/1 done | — |
 | v4.6 | 已归档 | 2 | 2/2 done | — |
+| v4.7 | 已归档 | 1 | 1/1 done | [roadmap-v5](v4.7/roadmap-v5.md) |

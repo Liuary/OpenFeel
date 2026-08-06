@@ -13,7 +13,7 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-08-07（v4.6 全版本归档完成） |
+| 最近更新 | 2026-08-07（v4.7 归档完成，v4.8~v5.1 路线图制定） |
 
 ## 分类概览
 
@@ -101,6 +101,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v4.7 归档完成：部署版过期修复（Feel +38行 / Executor +26行）+ dev_core.md 重复规则清理，制定 v4.8~v5.1 路线图（8 项 4 期），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v4.6 全版本归档完成：stage-01（Vision Agent 全链路落地，9 ops + 3 REV 闭环）+ stage-02（CLI config get/set 命令 + AGENTS.md 过度设计规则增强 + Reviewer 审查维度扩展 + Vision 模板去硬编码），知识沉淀 2 条至 patterns（YAML 增量修改、审查子维度扩展），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v4.6-stage-01 归档：Vision Agent 全链路落地（9 ops + 3 REV 闭环），知识沉淀 1 条至 patterns（新增 Agent 全链路更新清单模式），测试 298/298 全通过 |
 | 2026-07-15 | 归档 | v4.4-stage-03 归档：3 项配置优化（config命令组 get/set/list + AGENTS.md语言同步 + package.json模板要求），知识沉淀 2 条至 patterns（i18n域扩展模式 + Agent模板约束模式），BUG-001 修复，v4.4 全系列完成 |

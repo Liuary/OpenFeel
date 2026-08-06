@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-06T17:19:17.116Z"
+    "updated": "2026-08-06T17:24:00.223Z"
   },
   "pipeline": {
     "phase": "active",
@@ -157,8 +157,8 @@
     },
     "v4.7-stage-01": {
       "name": "v4.7-stage-01",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "stats": {
@@ -1588,6 +1588,66 @@
         "stageName": "v4.7-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:17.814Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.7-stage-01",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:18.161Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.7-stage-01",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:18.472Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.7-stage-01",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:18.759Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.7-stage-01",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:19.071Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.7-stage-01",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-06T17:24:00.221Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.7-stage-01",
+        "from": "archiving",
+        "to": "done"
       }
     }
   ]

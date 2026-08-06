@@ -73,8 +73,9 @@ export function registerConfigCommand(program: Command): void {
         } else {
           console.log(t('config.get.result', lang, { key, value }));
         }
-      } catch {
-        console.error(t('config.set.noProject', lang));
+      } catch (err) {
+        // 读取 config.yaml 失败（YAML 语法错误、权限问题等），输出实际错误原因
+        console.error(t('config.get.noProject', lang, { err: (err as Error).message }));
         process.exit(1);
       }
     });
@@ -103,8 +104,8 @@ export function registerConfigCommand(program: Command): void {
         setConfigValue(process.cwd(), key, value);
         console.log(t('config.set.valueOk', lang, { key, value }));
       } catch (err) {
-        // 不存在 config.yaml 时提示 init
-        console.error(t('config.set.noProject', lang));
+        // 写入 config.yaml 失败（YAML 语法错误、权限问题等），输出实际错误原因
+        console.error(t('config.set.error', lang, { err: (err as Error).message }));
         process.exit(1);
       }
     });

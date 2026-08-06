@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { parse as parseYaml, parseDocument } from 'yaml';
 
 // ── Zod Schema ──
 
@@ -282,7 +282,7 @@ export function getConfigValue(projectPath: string, key: string): string | null 
 
 /**
  * 向项目 config.yaml 的 defaults 块写入指定 key
- * 使用 Zod Schema 局部校验 value，通过 yaml.stringify() 序列化写回
+ * 使用 Zod Schema 局部校验 value，通过 yaml.Document 增量修改写回（保留注释与原始结构）
  * @param projectPath 项目根路径
  * @param key 配置键名（当前仅支持 ConfigDefaultsSchema 中定义的键）
  * @param value 配置值
@@ -290,10 +290,7 @@ export function getConfigValue(projectPath: string, key: string): string | null 
 export function setConfigValue(projectPath: string, key: string, value: string): void {
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
 
-  // 1. 读取现有配置（不存在则用空对象）
-  const raw = existsSync(configPath) ? readConfig(projectPath) : ({} as Config);
-
-  // 2. 通过 ConfigDefaultsSchema.shape 做局部校验
+  // 1. 通过 ConfigDefaultsSchema.shape 做局部校验
   const fieldSchema = ConfigDefaultsSchema.shape[key as keyof typeof ConfigDefaultsSchema.shape];
   if (!fieldSchema) {
     throw new Error(`Unknown config key: ${key}`);
@@ -301,12 +298,14 @@ export function setConfigValue(projectPath: string, key: string, value: string):
   // 对 enum 字段尝试直接解析值（如 'enabled'/'disabled' → Zod enum 通过）
   fieldSchema.parse(value);
 
-  // 3. 写入 defaults[key]
-  const defaults = (raw.defaults ?? {}) as Record<string, unknown>;
-  defaults[key] = value;
-  raw.defaults = defaults as Config['defaults'];
+  // 2. 读取原始 YAML（绕过 normalizeConfig，保留注释与原始结构；文件不存在则创建空文档）
+  const doc = existsSync(configPath)
+    ? parseDocument(readFileSync(configPath, 'utf-8'))
+    : parseDocument('');
+
+  // 3. 写入 defaults[key]（setIn 原地修改，路径不存在时自动创建节点）
+  doc.setIn(['defaults', key], value);
 
   // 4. 序列化并写回
-  const content = stringifyYaml(raw);
-  writeFileSync(configPath, content, 'utf-8');
+  writeFileSync(configPath, doc.toString(), 'utf-8');
 }

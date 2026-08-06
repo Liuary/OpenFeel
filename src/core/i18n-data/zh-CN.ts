@@ -506,10 +506,11 @@ export const config: I18nDomain = {
   'list.empty':              { key: 'config.list.empty',              zh: '（暂无记录的项目）',                     en: '' },
   'list.item':               { key: 'config.list.item',               zh: '  {path} → {lang}',                     en: '' },
   'get.result':              { key: 'config.get.result',              zh: '{key}：{value}',                          en: '' },
+  'get.noProject':           { key: 'config.get.noProject',           zh: '项目配置读取失败：{err}',                  en: '' },
   'set.valueOk':             { key: 'config.set.valueOk',             zh: '{key} 已设置为：{value}',                 en: '' },
   'set.invalidKey':          { key: 'config.set.invalidKey',          zh: '无效的配置键 "{val}"，当前仅支持：{keys}', en: '' },
   'set.invalidValue':        { key: 'config.set.invalidValue',        zh: '无效的值 "{val}"。{key} 仅支持：{values}', en: '' },
-  'set.noProject':           { key: 'config.set.noProject',           zh: '未找到项目配置文件，请先运行 openfeel init', en: '' },
+  'set.error':               { key: 'config.set.error',               zh: '项目配置写入失败：{err}',                  en: '' },
 };
 
 /* ==================== 聚合导出 ==================== */

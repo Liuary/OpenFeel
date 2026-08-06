@@ -476,10 +476,11 @@ export const config: I18nDomain = {
   'list.empty':              { key: 'config.list.empty',              zh: '', en: '(No projects recorded)' },
   'list.item':               { key: 'config.list.item',               zh: '', en: '  {path} → {lang}' },
   'get.result':              { key: 'config.get.result',              zh: '', en: '{key}: {value}' },
+  'get.noProject':           { key: 'config.get.noProject',           zh: '', en: 'Failed to read project config: {err}' },
   'set.valueOk':             { key: 'config.set.valueOk',             zh: '', en: '{key} set to: {value}' },
   'set.invalidKey':          { key: 'config.set.invalidKey',          zh: '', en: 'Invalid config key "{val}". Currently supported: {keys}' },
   'set.invalidValue':        { key: 'config.set.invalidValue',        zh: '', en: 'Invalid value "{val}". {key} only supports: {values}' },
-  'set.noProject':           { key: 'config.set.noProject',           zh: '', en: 'No project config file found, please run openfeel init first' },
+  'set.error':               { key: 'config.set.error',               zh: '', en: 'Failed to write project config: {err}' },
 };
 
 /* ==================== 聚合导出 ==================== */

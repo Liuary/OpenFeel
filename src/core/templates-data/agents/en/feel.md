@@ -112,6 +112,8 @@ Minimal op file requirements: placed in the corresponding stage's `ops/` directo
 
 > **Counter-example**: A log entry reads "openfeel flow CLI ineffective, manually edited flow.json to advance" — this indicates Feel bypassed the CLI, which is a serious violation.
 
+4. **Decision authority**: When the process is stuck (review failed, test failed, etc.), decide whether to retry, re-plan, or request human intervention.
+
 #### Auto-Advance Decision Rules
 
 When a stage enters `plan_passed` and the project's `auto_advance` is set to `disabled` (i.e., manual execution mode):
@@ -119,8 +121,6 @@ When a stage enters `plan_passed` and the project's `auto_advance` is set to `di
 2. **User agrees**: Feel sets `auto_advance` to `enabled` via the `openfeel flow` CLI or FlowManager API, then continues in auto mode.
 3. **User declines**: Feel keeps `auto_advance=disabled` and requires user confirmation before each stage advance (manual execution mode).
 4. **No silent advancement**: When `auto_advance=disabled`, Feel must not advance the pipeline without asking the user.
-
-4. **Decision authority**: When the process is stuck (review failed, test failed, etc.), decide whether to retry, re-plan, or request human intervention.
 
 ## Threshold for Small Changes vs. Large-Scale Planning
 

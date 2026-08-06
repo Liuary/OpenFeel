@@ -11,6 +11,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, renameSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
 import {
   PipelineConfigSchema,
@@ -24,7 +25,7 @@ import {
   type StageStats,
 } from './pipeline-schema.js';
 import { PublicLogger, formatDate } from './public-logger.js';
-import { t } from './i18n.js';
+import { t, getCliLang } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
 
 /** 操作执行状态 */
@@ -887,6 +888,26 @@ export class FlowManager {
     // 阶段完成时自动结束计时
     if (targetPhase === 'done' && prevStatus !== 'done') {
       this.endStage(stageName);
+      // CLI 内化归档：推进到 done 时自动 git add + commit（非 git 仓库或失败时静默跳过）
+      this.autoCommitOnDone(stageName);
+    }
+  }
+
+  /**
+   * 阶段归档自动 git 提交（内部方法）
+   * 目标 phase 为 done 时自动将工作区变更提交，保证归档点有版本记录。
+   * 非 git 仓库、git 不可用或无变更时静默跳过，不阻塞 done 推进。
+   * @param stageName 阶段名（用于 commit message）
+   */
+  private autoCommitOnDone(stageName: string): void {
+    const lang = getCliLang(process.cwd());
+    try {
+      const msg = `chore: 阶段归档 ${stageName}`;
+      execSync(`git add -A && git commit -m "${msg}"`, { stdio: 'pipe' });
+      console.log(t('flow.advance.gitCommitOkTmpl', lang, { stage: stageName }));
+    } catch {
+      // 不在 git 仓库 / git 不可用 / 无变更时静默跳过，不阻塞 done 推进
+      console.log(t('flow.advance.gitCommitSkipTmpl', lang, { stage: stageName }));
     }
   }
 

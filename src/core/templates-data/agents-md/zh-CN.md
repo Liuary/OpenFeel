@@ -60,3 +60,60 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 - 重要逻辑分支/状态机：须有一行中文注释解释意图。
 - 错误路径：每个错误返回前须有中文注释说明触发条件。
 - 关键文件头部需中文注释说明文件职责。
+
+## 跨 Agent 工具使用约束
+
+1. **统一工具规范**：所有 Agent 必须遵循 `.openfeel/dev/dev_core.md` 中「Agent 工具使用规范」，该规范定义了 `todowrite`、`question`、`task`、`skill` 四种核心工具的使用准则和触发条件。
+
+2. **工具使用优先级**（由高到低）：
+   - `todowrite` > 凭记忆逐条执行 — 多步骤任务必须先创建 todo 列表
+   - `question` > 自行假设 — 需求模糊时先澄清再动手
+   - `task(explore)` > 手动逐个 grep/read — 批量代码探索交给子 Agent 并行处理
+   - `skill` > 凭记忆推断 — 获取状态、查阅知识库等操作必须通过 skill 加载
+
+3. **职责边界**：跨 Agent 协作时，每个 Agent 仅在自己的职责边界内操作，不得越界：
+   - Planner 制定计划，不写代码；不直写 flow.json（通过 Feel 写入）
+   - Executor 按计划实现，不自行改计划
+   - Reviewer 审查代码，不自查自改
+   - Feel Tester 提交 Bug 和验收，不修复代码
+   - 事务官 执行文件机械操作，不参与设计决策
+   - Archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过 Feel 写入）
+
+4. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / 事务官 / Vision / Archiver），通过 `task` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
+
+偏离以上约束的行为视为违规，审查时将被标记。
+
+### 9 Agent 体系总览
+
+| Agent | 角色 | 驱动模型 | 调起方式 |
+|-------|------|----------|----------|
+| Feel | 总统领 | 主力推理模型 | primary |
+| Planner | 计划官 | 推理模型 | subagent |
+| Schemer | 方案官 | 主力推理模型 | subagent |
+| Executor | 执行官 | 快速模型 (Flash) | subagent |
+| Reviewer | 审查官 | 异种推理模型 (GLM) | subagent |
+| Feel Tester | 测试官 | 推理模型 | subagent |
+| 事务官 | 事务官 | 快速模型 (Flash) | subagent |
+| Vision | 视觉官 | 多模态模型 (qwen-vl-plus) | subagent |
+| Archiver | 归档官 | 推理模型 | subagent |
+
+> **写入约束**：Planner 和 Archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 `edit` 或 `write` flow.json。
+
+## 动态规则
+
+项目运行中产生的具体规则沉淀在 `.openfeel/dev/dev_core.md` 中，使用 `[+]` / `[-]` 标记管理启用/禁用。该文件优先级高于本文件，但低于用户直接指令。
+
+## 项目流程工具
+
+项目的详细流程规则（Agent 体系、开发流水线、三层计划、审查闭环、状态文件模板等）由 OpenFeel CLI 工具统一管理：
+
+- `openfeel flow status` — 查看流水线状态
+- `openfeel flow current` — 查看当前阶段和操作
+- `openfeel flow overview` — 流水线全景视图
+- `openfeel flow metrics` — Agent 性能指标
+- `openfeel stage status <id>` — 查看阶段状态
+- `openfeel stage set <id> --status <v>` — 更新阶段状态
+- `openfeel plan stage list` — 列出工作阶段
+- `openfeel knowledge list` — 查看知识库
+
+AGENTS.md 仅保留项目级行为约束，流程规则由工具动态注入，实现"提示词瘦身，流程入工具"。

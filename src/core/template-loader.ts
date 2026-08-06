@@ -542,6 +542,8 @@ Minimal op file requirements: placed in the corresponding stage's \`ops/\` direc
 
 > **Counter-example**: A log entry reads "openfeel flow CLI ineffective, manually edited flow.json to advance" — this indicates Feel bypassed the CLI, which is a serious violation.
 
+4. **Decision authority**: When the process is stuck (review failed, test failed, etc.), decide whether to retry, re-plan, or request human intervention.
+
 #### Auto-Advance Decision Rules
 
 When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to \`disabled\` (i.e., manual execution mode):
@@ -549,8 +551,6 @@ When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to
 2. **User agrees**: Feel sets \`auto_advance\` to \`enabled\` via the \`openfeel flow\` CLI or FlowManager API, then continues in auto mode.
 3. **User declines**: Feel keeps \`auto_advance=disabled\` and requires user confirmation before each stage advance (manual execution mode).
 4. **No silent advancement**: When \`auto_advance=disabled\`, Feel must not advance the pipeline without asking the user.
-
-4. **Decision authority**: When the process is stuck (review failed, test failed, etc.), decide whether to retry, re-plan, or request human intervention.
 
 ## Threshold for Small Changes vs. Large-Scale Planning
 
@@ -1677,6 +1677,8 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 
 > **反例**：日志中出现"openfeel flow CLI 失效，手动编辑 flow.json 推进"——这说明 Feel 绕过了 CLI，这是严重违规。
 
+4. **决策权**：当流程卡住时（审查不通过、测试失败等），决定是重试、重定方案还是请求人工介入。
+
 #### 自动推进决策纪律
 
 当阶段进入 \`plan_passed\` 且项目的 \`auto_advance\` 设为 \`disabled\`（即手动执行模式）时：
@@ -1685,7 +1687,6 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 3. **用户拒绝**：Feel 保持 \`auto_advance=disabled\`，每次阶段推进前均需向用户确认（手动执行模式）。
 4. **禁止静默推进**：\`auto_advance=disabled\` 时禁止 Feel 不询问用户直接推进流水线。
 
-4. **决策权**：当流程卡住时（审查不通过、测试失败等），决定是重试、重定方案还是请求人工介入。
 
 ## 小改 vs 大规模规划的阈值
 
@@ -2352,6 +2353,63 @@ When encountering technical issues, **the first action MUST be to consult the kn
 - Important logic branches/state machines: must have a one-line comment explaining the intent.
 - Error paths: must have a comment before each error return explaining the trigger condition.
 - Key files need a header comment explaining the file's responsibilities.
+
+## Cross-Agent Tool Usage Constraints
+
+1. **Unified tool conventions**: All Agents must follow the "Agent Tool Usage Conventions" in \`.openfeel/dev/dev_core.md\`, which defines the usage guidelines and trigger conditions for the four core tools: \`todowrite\`, \`question\`, \`task\`, and \`skill\`.
+
+2. **Tool usage priority** (high to low):
+   - \`todowrite\` > executing step-by-step from memory — multi-step tasks must first create a todo list
+   - \`question\` > making assumptions — clarify ambiguous requirements before acting
+   - \`task(explore)\` > manual grep/read one by one — batch code exploration should be delegated to sub-agents for parallel processing
+   - \`skill\` > inferring from memory — getting status, consulting the knowledge base, etc. must be loaded via skill
+
+3. **Responsibility boundaries**: In cross-Agent collaboration, each Agent operates only within its own responsibility boundary and must not overstep:
+   - Planner formulates plans, does not write code; does not write flow.json directly (written via Feel)
+   - Executor implements per the plan, does not modify the plan on its own
+   - Reviewer reviews code, does not self-review or self-fix
+   - Feel Tester submits Bugs and accepts results, does not fix code
+   - Utility Agent performs mechanical file operations, does not participate in design decisions
+   - Archiver archives and distills knowledge, does not modify source code; does not write flow.json directly (written via Feel)
+
+4. **Feel orchestration constraint**: Feel, as the overall commander, uniformly orchestrates downstream Agents (Planner / Schemer / Executor / Reviewer / Feel Tester / Utility Agent / Vision / Archiver), advancing serially via the \`task\` tool according to pipeline phases (plan → scheme → execute → review → test → archive). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
+
+Deviating from the above constraints is considered a violation and will be flagged during review.
+
+### 9-Agent System Overview
+
+| Agent | Role | Driving Model | Invocation |
+|-------|------|---------------|------------|
+| Feel | Overall Commander | Flagship reasoning model | primary |
+| Planner | Planning Officer | Reasoning model | subagent |
+| Schemer | Scheme Officer | Flagship reasoning model | subagent |
+| Executor | Execution Officer | Fast model (Flash) | subagent |
+| Reviewer | Review Officer | Heterogeneous reasoning model (GLM) | subagent |
+| Feel Tester | Testing Officer | Reasoning model | subagent |
+| Utility Agent | Utility Officer | Fast model (Flash) | subagent |
+| Vision | Vision Officer | Multimodal model (qwen-vl-plus) | subagent |
+| Archiver | Archiving Officer | Reasoning model | subagent |
+
+> **Write constraint**: Planner and Archiver must operate on flow.json indirectly through Feel, and must not directly \`edit\` or \`write\` flow.json.
+
+## Dynamic Rules
+
+Concrete rules generated during project operation are deposited in \`.openfeel/dev/dev_core.md\`, managed with \`[+]\` / \`[-]\` markers for enable/disable. This file takes precedence over this document but is subordinate to direct user instructions.
+
+## Project Flow Tools
+
+The detailed process rules for the project (Agent system, development pipeline, three-tier planning, review loop, status file templates, etc.) are uniformly managed by the OpenFeel CLI tool:
+
+- \`openfeel flow status\` — view pipeline status
+- \`openfeel flow current\` — view current stage and op
+- \`openfeel flow overview\` — pipeline overview
+- \`openfeel flow metrics\` — Agent performance metrics
+- \`openfeel stage status <id>\` — view stage status
+- \`openfeel stage set <id> --status <v>\` — update stage status
+- \`openfeel plan stage list\` — list work stages
+- \`openfeel knowledge list\` — view knowledge base
+
+AGENTS.md retains only project-level behavioral constraints; process rules are dynamically injected by tools, achieving "slim prompts, process into tools".
 `,
   'zh-CN': `# {项目名称}
 
@@ -2415,6 +2473,63 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 - 重要逻辑分支/状态机：须有一行中文注释解释意图。
 - 错误路径：每个错误返回前须有中文注释说明触发条件。
 - 关键文件头部需中文注释说明文件职责。
+
+## 跨 Agent 工具使用约束
+
+1. **统一工具规范**：所有 Agent 必须遵循 \`.openfeel/dev/dev_core.md\` 中「Agent 工具使用规范」，该规范定义了 \`todowrite\`、\`question\`、\`task\`、\`skill\` 四种核心工具的使用准则和触发条件。
+
+2. **工具使用优先级**（由高到低）：
+   - \`todowrite\` > 凭记忆逐条执行 — 多步骤任务必须先创建 todo 列表
+   - \`question\` > 自行假设 — 需求模糊时先澄清再动手
+   - \`task(explore)\` > 手动逐个 grep/read — 批量代码探索交给子 Agent 并行处理
+   - \`skill\` > 凭记忆推断 — 获取状态、查阅知识库等操作必须通过 skill 加载
+
+3. **职责边界**：跨 Agent 协作时，每个 Agent 仅在自己的职责边界内操作，不得越界：
+   - Planner 制定计划，不写代码；不直写 flow.json（通过 Feel 写入）
+   - Executor 按计划实现，不自行改计划
+   - Reviewer 审查代码，不自查自改
+   - Feel Tester 提交 Bug 和验收，不修复代码
+   - 事务官 执行文件机械操作，不参与设计决策
+   - Archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过 Feel 写入）
+
+4. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / 事务官 / Vision / Archiver），通过 \`task\` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
+
+偏离以上约束的行为视为违规，审查时将被标记。
+
+### 9 Agent 体系总览
+
+| Agent | 角色 | 驱动模型 | 调起方式 |
+|-------|------|----------|----------|
+| Feel | 总统领 | 主力推理模型 | primary |
+| Planner | 计划官 | 推理模型 | subagent |
+| Schemer | 方案官 | 主力推理模型 | subagent |
+| Executor | 执行官 | 快速模型 (Flash) | subagent |
+| Reviewer | 审查官 | 异种推理模型 (GLM) | subagent |
+| Feel Tester | 测试官 | 推理模型 | subagent |
+| 事务官 | 事务官 | 快速模型 (Flash) | subagent |
+| Vision | 视觉官 | 多模态模型 (qwen-vl-plus) | subagent |
+| Archiver | 归档官 | 推理模型 | subagent |
+
+> **写入约束**：Planner 和 Archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 \`edit\` 或 \`write\` flow.json。
+
+## 动态规则
+
+项目运行中产生的具体规则沉淀在 \`.openfeel/dev/dev_core.md\` 中，使用 \`[+]\` / \`[-]\` 标记管理启用/禁用。该文件优先级高于本文件，但低于用户直接指令。
+
+## 项目流程工具
+
+项目的详细流程规则（Agent 体系、开发流水线、三层计划、审查闭环、状态文件模板等）由 OpenFeel CLI 工具统一管理：
+
+- \`openfeel flow status\` — 查看流水线状态
+- \`openfeel flow current\` — 查看当前阶段和操作
+- \`openfeel flow overview\` — 流水线全景视图
+- \`openfeel flow metrics\` — Agent 性能指标
+- \`openfeel stage status <id>\` — 查看阶段状态
+- \`openfeel stage set <id> --status <v>\` — 更新阶段状态
+- \`openfeel plan stage list\` — 列出工作阶段
+- \`openfeel knowledge list\` — 查看知识库
+
+AGENTS.md 仅保留项目级行为约束，流程规则由工具动态注入，实现"提示词瘦身，流程入工具"。
 `
 };
 // AUTO-GENERATED-END: AGENTS_MD_TEMPLATES

@@ -103,6 +103,8 @@ export const flow: I18nDomain = {
   'advance.opLabelTmpl':        { key: 'flow.advance.opLabelTmpl',        zh: '操作: {op}',                              en: '' },
   'advance.autoRepaired':       { key: 'flow.advance.autoRepaired',       zh: '检测到阶段数据不一致，已自动修复',          en: '' },
   'advance.saveError':          { key: 'flow.advance.saveError',          zh: 'flow.json 保存失败',                      en: '' },
+  'advance.gitCommitOkTmpl':    { key: 'flow.advance.gitCommitOkTmpl',    zh: '✓ 阶段 {stage} 已自动 git commit 归档',    en: '' },
+  'advance.gitCommitSkipTmpl':  { key: 'flow.advance.gitCommitSkipTmpl',  zh: '（跳过自动 git commit：非 git 仓库或无变更）{stage}', en: '' },
 
   // flow attempt
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '错误：--result 必须为 pass 或 fail',       en: '' },

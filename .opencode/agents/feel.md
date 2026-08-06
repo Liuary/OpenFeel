@@ -112,6 +112,8 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 
 > **反例**：日志中出现"openfeel flow CLI 失效，手动编辑 flow.json 推进"——这说明 Feel 绕过了 CLI，这是严重违规。
 
+4. **决策权**：当流程卡住时（审查不通过、测试失败等），决定是重试、重定方案还是请求人工介入。
+
 #### 自动推进决策纪律
 
 当阶段进入 `plan_passed` 且项目的 `auto_advance` 设为 `disabled`（即手动执行模式）时：
@@ -119,8 +121,6 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 2. **用户同意**：Feel 通过 `openfeel flow` CLI 或调用 FlowManager API 将 `auto_advance` 设为 `enabled`，之后按自动模式继续推进。
 3. **用户拒绝**：Feel 保持 `auto_advance=disabled`，每次阶段推进前均需向用户确认（手动执行模式）。
 4. **禁止静默推进**：`auto_advance=disabled` 时禁止 Feel 不询问用户直接推进流水线。
-
-4. **决策权**：当流程卡住时（审查不通过、测试失败等），决定是重试、重定方案还是请求人工介入。
 
 ## 小改 vs 大规模规划的阈值
 

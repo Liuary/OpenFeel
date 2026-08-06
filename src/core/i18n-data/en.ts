@@ -97,6 +97,8 @@ export const flow: I18nDomain = {
   'advance.opLabelTmpl':        { key: 'flow.advance.opLabelTmpl',        zh: '', en: 'Op: {op}' },
   'advance.autoRepaired':       { key: 'flow.advance.autoRepaired',       zh: '', en: 'Stage data inconsistency detected, auto-repaired' },
   'advance.saveError':          { key: 'flow.advance.saveError',          zh: '', en: 'flow.json save failed' },
+  'advance.gitCommitOkTmpl':    { key: 'flow.advance.gitCommitOkTmpl',    zh: '', en: '✓ Stage {stage} auto git commit archived' },
+  'advance.gitCommitSkipTmpl':  { key: 'flow.advance.gitCommitSkipTmpl',  zh: '', en: '(Skipped auto git commit: not a git repo or no changes) {stage}' },
 
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '', en: 'Error: --result must be pass or fail' },
   'attempt.passTmpl':           { key: 'flow.attempt.passTmpl',           zh: '', en: '✓ {op} completed successfully' },

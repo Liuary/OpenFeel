@@ -60,3 +60,60 @@ When encountering technical issues, **the first action MUST be to consult the kn
 - Important logic branches/state machines: must have a one-line comment explaining the intent.
 - Error paths: must have a comment before each error return explaining the trigger condition.
 - Key files need a header comment explaining the file's responsibilities.
+
+## Cross-Agent Tool Usage Constraints
+
+1. **Unified tool conventions**: All Agents must follow the "Agent Tool Usage Conventions" in `.openfeel/dev/dev_core.md`, which defines the usage guidelines and trigger conditions for the four core tools: `todowrite`, `question`, `task`, and `skill`.
+
+2. **Tool usage priority** (high to low):
+   - `todowrite` > executing step-by-step from memory — multi-step tasks must first create a todo list
+   - `question` > making assumptions — clarify ambiguous requirements before acting
+   - `task(explore)` > manual grep/read one by one — batch code exploration should be delegated to sub-agents for parallel processing
+   - `skill` > inferring from memory — getting status, consulting the knowledge base, etc. must be loaded via skill
+
+3. **Responsibility boundaries**: In cross-Agent collaboration, each Agent operates only within its own responsibility boundary and must not overstep:
+   - Planner formulates plans, does not write code; does not write flow.json directly (written via Feel)
+   - Executor implements per the plan, does not modify the plan on its own
+   - Reviewer reviews code, does not self-review or self-fix
+   - Feel Tester submits Bugs and accepts results, does not fix code
+   - Utility Agent performs mechanical file operations, does not participate in design decisions
+   - Archiver archives and distills knowledge, does not modify source code; does not write flow.json directly (written via Feel)
+
+4. **Feel orchestration constraint**: Feel, as the overall commander, uniformly orchestrates downstream Agents (Planner / Schemer / Executor / Reviewer / Feel Tester / Utility Agent / Vision / Archiver), advancing serially via the `task` tool according to pipeline phases (plan → scheme → execute → review → test → archive). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
+
+Deviating from the above constraints is considered a violation and will be flagged during review.
+
+### 9-Agent System Overview
+
+| Agent | Role | Driving Model | Invocation |
+|-------|------|---------------|------------|
+| Feel | Overall Commander | Flagship reasoning model | primary |
+| Planner | Planning Officer | Reasoning model | subagent |
+| Schemer | Scheme Officer | Flagship reasoning model | subagent |
+| Executor | Execution Officer | Fast model (Flash) | subagent |
+| Reviewer | Review Officer | Heterogeneous reasoning model (GLM) | subagent |
+| Feel Tester | Testing Officer | Reasoning model | subagent |
+| Utility Agent | Utility Officer | Fast model (Flash) | subagent |
+| Vision | Vision Officer | Multimodal model (qwen-vl-plus) | subagent |
+| Archiver | Archiving Officer | Reasoning model | subagent |
+
+> **Write constraint**: Planner and Archiver must operate on flow.json indirectly through Feel, and must not directly `edit` or `write` flow.json.
+
+## Dynamic Rules
+
+Concrete rules generated during project operation are deposited in `.openfeel/dev/dev_core.md`, managed with `[+]` / `[-]` markers for enable/disable. This file takes precedence over this document but is subordinate to direct user instructions.
+
+## Project Flow Tools
+
+The detailed process rules for the project (Agent system, development pipeline, three-tier planning, review loop, status file templates, etc.) are uniformly managed by the OpenFeel CLI tool:
+
+- `openfeel flow status` — view pipeline status
+- `openfeel flow current` — view current stage and op
+- `openfeel flow overview` — pipeline overview
+- `openfeel flow metrics` — Agent performance metrics
+- `openfeel stage status <id>` — view stage status
+- `openfeel stage set <id> --status <v>` — update stage status
+- `openfeel plan stage list` — list work stages
+- `openfeel knowledge list` — view knowledge base
+
+AGENTS.md retains only project-level behavioral constraints; process rules are dynamically injected by tools, achieving "slim prompts, process into tools".

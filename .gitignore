@@ -1,2 +1,5 @@
 node_modules/
 dist/
+
+# 私域目录（.openfeel 工作区规范：个人日志/笔记/审查/Bug 不纳入版本管理）
+.openfeel/users/

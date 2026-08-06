@@ -179,3 +179,15 @@ OpenFeel 自身是双语项目（zh-CN / en），开发时必须同时产出两�
 - ❌ 仅更新 `commands/flow.ts` 而不更新 `flow-manager.ts` — 核心引擎输出未经 i18n 处理
 
 > 违反此约束将导致 CLI 在英文项目下仍输出中文，双语部署形同虚设。
+
+---
+
+## [+] Feel 归档后版本控制收尾 (2026-08-07)
+
+Feel 完成全阶段调度后（归档 done），必须检查 git 状态并处理剩余的版本控制信息：
+
+- 归档阶段产生的文件（`flow.json`、`kb/` 更新、`plan/` 更新、`dev/current.md`、日志等）由 Feel 负责 `git add -A && git commit`
+- 禁止让归档产物的提交悬空，导致流水线结束后工作区仍有未提交变更
+- 提交信息格式：`chore: v{版本} 归档 — {简述}`
+
+> 此规则是对 Executor "自动 git commit"（仅编码阶段）的补充——归档阶段的提交责任归属 Feel。

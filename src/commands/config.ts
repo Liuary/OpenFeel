@@ -6,6 +6,7 @@
  */
 import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
+import { getConfigValue, setConfigValue } from '../core/config.js';
 import { t, getCliLang } from '../core/i18n.js';
 
 /**
@@ -56,6 +57,55 @@ export function registerConfigCommand(program: Command): void {
       }
       for (const [path, projLang] of entries) {
         console.log(t('config.list.item', lang, { path, lang: projLang }));
+      }
+    });
+
+  // openfeel config get <key> — 读取项目配置项
+  configCmd
+    .command('get <key>')
+    .description(t('help.config.get'))
+    .action((key: string) => {
+      const lang = getCliLang(process.cwd());
+      try {
+        const value = getConfigValue(process.cwd(), key);
+        if (value === null) {
+          console.log(t('config.get.result', lang, { key, value: t('common.noConfig', lang) }));
+        } else {
+          console.log(t('config.get.result', lang, { key, value }));
+        }
+      } catch {
+        console.error(t('config.set.noProject', lang));
+        process.exit(1);
+      }
+    });
+
+  // openfeel config set <key> <value> — 写入项目配置项
+  configCmd
+    .command('set <key> <value>')
+    .description(t('help.config.set'))
+    .action((key: string, value: string) => {
+      const lang = getCliLang(process.cwd());
+
+      // key 白名单校验
+      const allowedKeys = ['auto_advance'];
+      if (!allowedKeys.includes(key)) {
+        console.error(t('config.set.invalidKey', lang, { val: key, keys: allowedKeys.join(', ') }));
+        process.exit(1);
+      }
+
+      // value 白名单校验
+      if (key === 'auto_advance' && !['enabled', 'disabled'].includes(value)) {
+        console.error(t('config.set.invalidValue', lang, { val: value, key, values: 'enabled, disabled' }));
+        process.exit(1);
+      }
+
+      try {
+        setConfigValue(process.cwd(), key, value);
+        console.log(t('config.set.valueOk', lang, { key, value }));
+      } catch (err) {
+        // 不存在 config.yaml 时提示 init
+        console.error(t('config.set.noProject', lang));
+        process.exit(1);
       }
     });
 }

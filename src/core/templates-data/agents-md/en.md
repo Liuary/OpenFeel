@@ -17,6 +17,9 @@ You should think in English. At the start of a session, organize your analysis i
    - Introducing new abstraction layers without clear reuse needs
    - Introducing third-party libraries or frameworks for a single feature
    When the user explicitly requests a simple implementation, the above thresholds are automatically lowered.
+   This rule constrains both code implementation and architectural design:
+   - Code level: Avoid meaningless abstraction layers, excessive wrapping, and unnecessary design patterns
+   - Architecture level: Do not introduce base classes, middleware, or design pattern wrappers without reuse requirements
 
 3. Strictly control the scope of modifications. Avoid modifying existing code that is not directly related to the current requirements. Small-scale refactoring must be communicated to the user in advance. Large-scale refactoring or architectural changes require explicit user consent.
 

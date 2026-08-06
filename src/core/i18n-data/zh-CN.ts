@@ -436,6 +436,8 @@ export const help: I18nDomain = {
   'config.get-lang':       { key: 'help.config.get-lang',       zh: '显示全局默认语言', en: '' },
   'config.set-lang':       { key: 'help.config.set-lang',       zh: '修改全局默认语言（zh-CN 或 en）', en: '' },
   'config.list-projects':  { key: 'help.config.list-projects',  zh: '列出所有已记录的项目路径→语言映射', en: '' },
+  'config.get':            { key: 'help.config.get',            zh: '读取项目工作流配置项的值（项目配置）', en: '' },
+  'config.set':            { key: 'help.config.set',            zh: '设置项目工作流配置项的值（项目配置）', en: '' },
 
   // project
   'project':               { key: 'help.project',               zh: '项目管理与概览', en: '' },
@@ -503,6 +505,11 @@ export const config: I18nDomain = {
   'list.title':              { key: 'config.list.title',              zh: '已记录的项目语言映射：',                 en: '' },
   'list.empty':              { key: 'config.list.empty',              zh: '（暂无记录的项目）',                     en: '' },
   'list.item':               { key: 'config.list.item',               zh: '  {path} → {lang}',                     en: '' },
+  'get.result':              { key: 'config.get.result',              zh: '{key}：{value}',                          en: '' },
+  'set.valueOk':             { key: 'config.set.valueOk',             zh: '{key} 已设置为：{value}',                 en: '' },
+  'set.invalidKey':          { key: 'config.set.invalidKey',          zh: '无效的配置键 "{val}"，当前仅支持：{keys}', en: '' },
+  'set.invalidValue':        { key: 'config.set.invalidValue',        zh: '无效的值 "{val}"。{key} 仅支持：{values}', en: '' },
+  'set.noProject':           { key: 'config.set.noProject',           zh: '未找到项目配置文件，请先运行 openfeel init', en: '' },
 };
 
 /* ==================== 聚合导出 ==================== */

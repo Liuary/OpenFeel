@@ -414,6 +414,8 @@ export const help: I18nDomain = {
   'config.get-lang':       { key: 'help.config.get-lang',       zh: '', en: 'Show global default language' },
   'config.set-lang':       { key: 'help.config.set-lang',       zh: '', en: 'Change global default language (zh-CN or en)' },
   'config.list-projects':  { key: 'help.config.list-projects',  zh: '', en: 'List all recorded project path→language mappings' },
+  'config.get':            { key: 'help.config.get',            zh: '', en: 'Read a project workflow config value (project config)' },
+  'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a project workflow config value (project config)' },
 
   'project':               { key: 'help.project',               zh: '', en: 'Project management and overview' },
   'project.overview':      { key: 'help.project.overview',      zh: '', en: 'Scan project structure in real-time, output structured overview' },
@@ -473,6 +475,11 @@ export const config: I18nDomain = {
   'list.title':              { key: 'config.list.title',              zh: '', en: 'Recorded project language mappings:' },
   'list.empty':              { key: 'config.list.empty',              zh: '', en: '(No projects recorded)' },
   'list.item':               { key: 'config.list.item',               zh: '', en: '  {path} → {lang}' },
+  'get.result':              { key: 'config.get.result',              zh: '', en: '{key}: {value}' },
+  'set.valueOk':             { key: 'config.set.valueOk',             zh: '', en: '{key} set to: {value}' },
+  'set.invalidKey':          { key: 'config.set.invalidKey',          zh: '', en: 'Invalid config key "{val}". Currently supported: {keys}' },
+  'set.invalidValue':        { key: 'config.set.invalidValue',        zh: '', en: 'Invalid value "{val}". {key} only supports: {values}' },
+  'set.noProject':           { key: 'config.set.noProject',           zh: '', en: 'No project config file found, please run openfeel init first' },
 };
 
 /* ==================== 聚合导出 ==================== */

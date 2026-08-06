@@ -41,7 +41,8 @@
 
 | 阶段 | 任务数 | 优先级 | 依赖 | 状态 |
 |------|:--:|:--:|------|:--:|
-| v4.6-stage-01 | 8 项 op | P1 | — | plan_pending |
+| v4.6-stage-01 | 8 项 op | P1 | — | archiving |
+| v4.6-stage-02 | 7 项 op | P1 | — | plan_passed |
 
 ---
 
@@ -327,3 +328,240 @@ Vision 选用 `#06B6D4`（cyan）——青色/蓝绿色系未被使用，且语�
 | model-check 技能 | 需在角色映射回退表中新增 `vision.md → multimodal` |
 | config.yaml | 如需为 vision 单独配置模型，可在 `models.agents.vision` 下指定 provider/alibaba + model/qwen-vl-plus |
 | 与现有管线的关系 | vision 不参与流水线阶段推进，仅在按需调用时生效；config.yaml 中的 test_enabled 状态不影响 vision |
+
+---
+
+# v4.6-stage-02：CLI 命令补充 + 规则/审查维度增强
+
+> 阶段目标：补充 `openfeel config get/set` 命令（项目配置读写）和 AGENTS.md 过度设计规则强化 + Reviewer 审查维度同步。
+> 创建于 2026-08-07 | Planner（草案已由 Feel 确认）
+
+## 需求概述
+
+本阶段处理两项独立的补充需求，均为低风险增量变更：
+
+| 编号 | 需求 | 性质 | 优先级 |
+|------|------|------|:--:|
+| R1 | `openfeel config` 添加 `get`/`set` 子命令，支持 `auto_advance` 读写 | CLI 功能缺失 | P1 |
+| R2 | AGENTS.md 补充"禁止过度设计"规则 + Reviewer 审查维度同步 | 规则/审查缺失 | P1 |
+
+## 依赖关系
+
+```
+批次 A（并行）
+  A1 ──→ B1 ──┐
+  A2 ──→ B1 ──┤
+  A3 ──→ B2 ──┼──→ C1（构建验证）
+         B3 ──┘
+```
+
+- **hard**：A1→B1, A2→B1, A3→B2, A3→B3
+- **soft**：B1→C1, B2→C1, B3→C1
+
+### 并行安全判定
+
+| 批次 | 任务 | 冲突域分析 |
+|------|------|------------|
+| A | A1 (config.ts), A2 (i18n), A3 (AGENTS.md) | 互不修改同一文件，可并行 |
+| B | B1 (commands/config.ts), B2 (template-loader.ts), B3 (reviewer.md ×2) | 互不修改同一文件，可并行 |
+
+## 涉及文件全景
+
+| 文件 | 操作 | 变更量估算 | 关联任务 |
+|------|:--:|------|------|
+| `src/core/config.ts` | 修改 | +40 行 | A1 |
+| `src/commands/config.ts` | 修改 | +50 行 | B1 |
+| `src/core/i18n-data/zh-CN.ts` | 修改 | +5 条目 | A2 |
+| `src/core/i18n-data/en.ts` | 修改 | +5 条目 | A2 |
+| `AGENTS.md` | 修改 | ~10 行 | A3 |
+| `src/core/template-loader.ts` | 修改 | ~30 行 | B2 |
+| `src/core/templates-data/agents/zh-CN/reviewer.md` | 修改 | ~10 行 | B3 |
+| `src/core/templates-data/agents/en/reviewer.md` | 修改 | ~10 行 | B3 |
+| `src/core/templates-data/agents/zh-CN/vision.md` | 修改 | 1 行 | op-008 |
+| `src/core/templates-data/agents/en/vision.md` | 修改 | 1 行 | op-008 |
+| `.opencode/agents/vision.md` | 修改 | 1 行 | op-008 |
+| `test/core/config.test.ts` | 修改 | +40 行 | C1 |
+
+## 操作列表
+
+### op-001 (A1)：添加 config.yaml 读写方法 → `src/core/config.ts`
+
+- **优先级**：P1
+- **依赖**：无
+- **涉及文件**：`src/core/config.ts`（修改）
+
+**任务描述**：
+
+提供 `getConfigValue(projectPath, key)` 和 `setConfigValue(projectPath, key, value)` 两个方法：
+
+1. **getConfigValue**：读取 `.openfeel/config.yaml` → 从 `defaults` 块中获取指定 key
+2. **setConfigValue**：
+   - 读现有 config.yaml（不存在则用空对象）
+   - 将值写入 `defaults[key]`（需经过 `ConfigDefaultsSchema` 的 `.shape[key]` 局部校验）
+   - 使用 `yaml.stringify()` 序列化写回（不保留原始注释，简洁实现）
+
+> **确认**：YAML 注释不需要保留，使用简单的 stringify 方案即可。
+
+---
+
+### op-002 (A2)：添加 i18n 键 → `zh-CN.ts` + `en.ts`
+
+- **优先级**：P1
+- **依赖**：无
+- **涉及文件**：`src/core/i18n-data/zh-CN.ts`、`src/core/i18n-data/en.ts`（修改）
+
+**新增 help 键**（各 2 条）：
+- `help.config.get` → "读取项目工作流配置项的值" / "Read a project workflow config value"
+- `help.config.set` → "设置项目工作流配置项的值" / "Set a project workflow config value"
+
+**新增 output 键**（各 5 条）：
+- `config.get.result` → "{key}：{value}"（含未设置时的 "未设置" 回退）
+- `config.set.ok` → "{key} 已设置为：{value}"
+- `config.set.invalidKey` → 无效的配置键 "{val}"，当前仅支持：{keys}
+- `config.set.invalidValue` → 无效的值 "{val}"。{key} 仅支持：{values}
+- `config.set.noProject` → 未找到项目配置文件，请先运行 openfeel init
+
+> 参见 kb/patterns.md #i18n 域扩展模式、#双语 CLI 交互模式
+
+---
+
+### op-003 (A3)：增强 AGENTS.md "禁止过度设计"规则 → `AGENTS.md`
+
+- **优先级**：P1
+- **依赖**：无
+- **涉及文件**：`AGENTS.md`（修改）
+
+修改第 2 条（行 18~23），扩展现有规则，新增代码层与架构层的明确区分：
+
+```markdown
+2. 设计应保持简洁，避免过度设计。以下任一情况视为可能过度设计，须与用户确认：
+   - 新增或修改文件超过 3 个
+   - 引入新抽象层（基类、中间件、设计模式包装）但无明显复用需求
+   - 为单一功能引入第三方库或框架
+   - 计划中包含过多未来扩展点
+   用户明确要求简洁实现时，以上阈值自动降低。
+   本规则同时约束代码实现与架构设计：
+   - 代码层面：避免无意义的抽象层、过度包装、不必要的设计模式
+   - 架构层面：无复用需求时不引入基类、中间件或设计模式包装
+```
+
+> **确认**：代码层/架构层分离措辞符合预期。
+
+---
+
+### op-004 (B1)：添加 config get/set 子命令 → `src/commands/config.ts`
+
+- **优先级**：P1
+- **依赖**：op-001 (A1)、op-002 (A2)
+- **涉及文件**：`src/commands/config.ts`（修改）
+
+新增两个子命令：
+
+- `openfeel config get <key>` — 读取当前项目 config.yaml 的 defaults 值
+- `openfeel config set <key> <value>` — 写入值
+
+**验证逻辑**：
+- key 白名单：当前仅允许 `auto_advance`
+- value 白名单：`auto_advance` 仅允许 `enabled` / `disabled`
+- 不在项目目录内时输出错误提示
+
+**行为细节**：
+- 参考现有 `get-lang` / `set-lang` 的命令模式（参见 kb/patterns.md #CLI 原子管理模式）
+- 使用 `t()` 做 i18n 输出
+- help 文本中明确标注"项目配置"以区分全局配置命令（get-lang/set-lang）
+
+> **确认**：配置分层可接受，在 help 中明确区分全局/项目即可。
+
+---
+
+### op-005 (B2)：同步 AGENTS 模板到 template-loader.ts
+
+- **优先级**：P1
+- **依赖**：op-003 (A3)
+- **涉及文件**：`src/core/template-loader.ts`（修改）
+
+- en 模板：行 ~2103-2107（英文 AGENTS.md 模板的核心约束#2）
+- zh-CN 模板：行 ~2163-2167（中文 AGENTS.md 模板的核心约束#2）
+- 变更内容与 A3 保持完全一致（中英双语各自翻译）
+
+> 参见 kb/architecture.md #多语言模板数据管线 — 模板修改后由 build.js 自动注入，无需手动更新构建脚本。
+
+---
+
+### op-006 (B3)：添加 Reviewer "过度设计"审查维度
+
+- **优先级**：P1
+- **依赖**：op-003 (A3)
+- **涉及文件**：
+  - `src/core/templates-data/agents/zh-CN/reviewer.md`
+  - `src/core/templates-data/agents/en/reviewer.md`
+
+在审查维度表的"规范性"行下新增"过度设计"子维度：
+
+```markdown
+| | 过度设计 | 是否存在无复用需求的抽象层、设计模式包装或过度工程化（参见 AGENTS.md 第 2 条） |
+```
+
+插入位置：在"规范性"行之后，"安全性"之前（参见 kb/architecture.md #多语言模板数据管线 — Reviewer 模板修改后由 build.js 自动注入）。
+
+---
+
+### op-007 (C1)：构建 + 测试验证
+
+- **优先级**：P1
+- **依赖**：op-004, op-005, op-006
+- **涉及文件**：无（纯验证）
+
+1. 运行 `npm run build` 确保构建成功
+2. 运行 `npm test` 确保现有测试无回归
+3. 新增测试通过
+4. 手动验证：`openfeel config get auto_advance` 和 `openfeel config set auto_advance enabled/disabled`
+
+### op-008 (R3)：Vision 模板去除硬编码模型名 → 3 个 vision 文件
+
+- **优先级**：P1
+- **依赖**：无（独立修正）
+- **涉及文件**：
+  - `src/core/templates-data/agents/zh-CN/vision.md`
+  - `src/core/templates-data/agents/en/vision.md`
+  - `.opencode/agents/vision.md`
+
+**问题**：Vision Agent 正文自我介绍中硬编码了具体模型名（"由通义千问多模态模型（qwen-vl-plus）驱动"），但实际模型取决于用户配置，不应写死。
+
+**修复**：
+- 中文版第 13 行：`你由通义千问多模态模型（qwen-vl-plus）驱动` → `你由多模态模型驱动`
+- 英文版第 13 行：`You are driven by the Qwen-VL-Plus multimodal model` → `You are driven by a multimodal model`
+- `.opencode/agents/vision.md` 同步修改
+
+---
+
+## 风险与注意事项
+
+1. **配置两层混杂**：`openfeel config` 一部分操作全局配置（get-lang/set-lang），一部分操作项目配置（新增的 get/set）。在 help 文本中明确标注区分。
+
+2. **模板一致性**：AGENTS.md 和 template-loader.ts 中的 AGENTS 模板必须内容一致。建议 A3 和 B2 由同一个 Agent 串行执行以保证同步。
+
+3. **Reviewer 模板同步**：中英双语 Reviewer 模板（zh-CN/reviewer.md + en/reviewer.md）须同步修改，内容对应但语言各自独立。
+
+## 预估总变更量
+
+| 分类 | 文件数 | 估计新增行数 |
+|------|:--:|:--:|
+| 核心逻辑 (src/core/) | 2 | ~50 |
+| CLI 命令 (src/commands/) | 1 | ~50 |
+| i18n 数据 | 2 | ~20 |
+| 模板数据 | 2 | ~40 |
+| Agent 约束 (AGENTS.md) | 1 | ~10 |
+| 测试 | 1 | ~40 |
+| **合计** | **12** | **~220** |
+
+## 知识库引用
+
+| 条目 | 来源 | 与本次计划的关系 |
+|------|------|-----------------|
+| CLI 原子管理模式 | kb/patterns.md | Agent 通过 CLI 命令操作数据文件，不直接 edit config.yaml |
+| i18n 域扩展模式 | kb/patterns.md | 新增 i18n 键遵循 `{domain}.{subdomain}.{name}` 命名规范 |
+| 多语言模板数据管线 | kb/architecture.md | Reviewer 模板修改后由 build.js 自动注入，无需手动更新构建脚本 |
+| 双语 CLI 交互模式 | kb/patterns.md | 所有命令行输出须双语支持 |
+
+> 知识库中暂无"自动化配置项读写"相关记录，本次为首次在项目配置层添加 CLI 读写能力。

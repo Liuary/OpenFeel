@@ -1,0 +1,95 @@
+# v4.6-stage-02 操作方案依赖声明
+# 参见 kb/patterns.md #deps.yaml 声明实际文件名
+version: "1.0"
+stage: v4.6-stage-02
+pipeline_phase: scheme_pending
+
+# 依赖关系图：
+#   op-001 ─┐
+#   op-002 ─┼──→ op-004 ──┐
+#   op-003 ─┼──→ op-005 ──┼──→ op-007（构建验证）
+#           └──→ op-006 ──┘
+#   op-008 ──→ （独立，无依赖）
+
+ops:
+  stage-02-op-001:
+    file: stage-02-op-001.md
+    dependency: []
+    parallel_group: A
+    description: config.ts — 添加 getConfigValue/setConfigValue 方法
+
+  stage-02-op-002:
+    file: stage-02-op-002.md
+    dependency: []
+    parallel_group: A
+    description: i18n — 添加 7 对中英双语键（config + help 域）
+
+  stage-02-op-003:
+    file: stage-02-op-003.md
+    dependency: []
+    parallel_group: A
+    description: AGENTS.md — 增强"禁止过度设计"规则（代码层/架构层分离）
+
+  stage-02-op-008:
+    file: stage-02-op-008.md
+    dependency: []
+    parallel_group: A
+    description: Vision 模板去除硬编码模型名（3 文件各改 1 行）
+
+  stage-02-op-004:
+    file: stage-02-op-004.md
+    dependency:
+      - stage-02-op-001
+      - stage-02-op-002
+    dep_type: hard
+    parallel_group: B
+    description: commands/config.ts — 添加 config get/set 子命令
+
+  stage-02-op-005:
+    file: stage-02-op-005.md
+    dependency:
+      - stage-02-op-003
+    dep_type: hard
+    parallel_group: B
+    description: template-loader.ts — 同步 AGENTS 模板（en + zh-CN 约束#2 增强）
+
+  stage-02-op-006:
+    file: stage-02-op-006.md
+    dependency:
+      - stage-02-op-003
+    dep_type: hard
+    parallel_group: B
+    description: Reviewer 模板 — 添加"过度设计"审查维度（zh-CN + en）
+
+  stage-02-op-007:
+    file: stage-02-op-007.md
+    dependency:
+      - stage-02-op-004
+      - stage-02-op-005
+      - stage-02-op-006
+    dep_type: hard
+    parallel_group: ~
+    description: 构建 + 测试验证（npm run build + npm test + 手动 CLI 验证）
+
+# 并行批次
+parallel:
+  batch-A:
+    - stage-02-op-001
+    - stage-02-op-002
+    - stage-02-op-003
+    - stage-02-op-008
+    conflict_free: true  # 互不修改同一文件：
+                         #   001→config.ts, 002→i18n-data/, 003→AGENTS.md, 008→vision templates
+                         # 可完全并行执行
+
+  batch-B:
+    - stage-02-op-004
+    - stage-02-op-005
+    - stage-02-op-006
+    conflict_free: true  # 互不修改同一文件：
+                         #   004→commands/config.ts, 005→template-loader.ts, 006→reviewer templates
+                         # 可完全并行执行
+
+  batch-C:
+    - stage-02-op-007
+    note: 依赖批次 A + B 全部完成，纯验证无代码变更

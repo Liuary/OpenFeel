@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 // ── Zod Schema ──
 
@@ -259,5 +259,54 @@ models:
 export function writeDefaultConfig(projectPath: string, lang: 'zh-CN' | 'en' = 'zh-CN'): void {
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
   const content = lang === 'en' ? CONFIG_TEMPLATE_EN : CONFIG_TEMPLATE_ZH;
+  writeFileSync(configPath, content, 'utf-8');
+}
+
+/**
+ * 读取项目 config.yaml 中 defaults 块的指定 key
+ * @param projectPath 项目根路径
+ * @param key 配置键名（如 'auto_advance'）
+ * @returns 配置值（string），未设置时返回 null
+ */
+export function getConfigValue(projectPath: string, key: string): string | null {
+  const config = readConfig(projectPath);
+  if (!config.defaults) {
+    return null;
+  }
+  const value = (config.defaults as Record<string, unknown>)[key];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  return String(value);
+}
+
+/**
+ * 向项目 config.yaml 的 defaults 块写入指定 key
+ * 使用 Zod Schema 局部校验 value，通过 yaml.stringify() 序列化写回
+ * @param projectPath 项目根路径
+ * @param key 配置键名（当前仅支持 ConfigDefaultsSchema 中定义的键）
+ * @param value 配置值
+ */
+export function setConfigValue(projectPath: string, key: string, value: string): void {
+  const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
+
+  // 1. 读取现有配置（不存在则用空对象）
+  const raw = existsSync(configPath) ? readConfig(projectPath) : ({} as Config);
+
+  // 2. 通过 ConfigDefaultsSchema.shape 做局部校验
+  const fieldSchema = ConfigDefaultsSchema.shape[key as keyof typeof ConfigDefaultsSchema.shape];
+  if (!fieldSchema) {
+    throw new Error(`Unknown config key: ${key}`);
+  }
+  // 对 enum 字段尝试直接解析值（如 'enabled'/'disabled' → Zod enum 通过）
+  fieldSchema.parse(value);
+
+  // 3. 写入 defaults[key]
+  const defaults = (raw.defaults ?? {}) as Record<string, unknown>;
+  defaults[key] = value;
+  raw.defaults = defaults as Config['defaults'];
+
+  // 4. 序列化并写回
+  const content = stringifyYaml(raw);
   writeFileSync(configPath, content, 'utf-8');
 }

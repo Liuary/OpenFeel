@@ -69,15 +69,17 @@
 |:--:|------|:--:|:--:|
 | 7 | **`openfeel lint i18n`**：自动校验 i18n 数据文件的空键、中英文键不一致、缺失翻译等。作为 `lint` 命令组的首个子命令，后续可扩展更多检查项 | 调研 A | 中（~3h） |
 | 8 | **kb 过期引用清理 + prompt 腐化检测**：扫描知识库中引用的已删除/重命名文件，提示过期条目；检测 Agent prompt 中过时的命令引用和路径。提供 `--fix` 自动修复过期引用 | 调研 C | 大（~5h） |
+| 9 | **CLI-Agent 能力对齐**：当前 CLI 有 12 个命令组但 Agent 只感知 8 个 skill。启用 `openfeel roadmap`，为 roadmap/health/recover/wizard 补充 `/opfx:*` skill 映射，确保 Agent 能利用全部 CLI 能力 | 新发现 | 中（~3h） |
 
 **涉及文件**：
 - `src/commands/lint.ts` — 新增 lint 命令组，i18n 校验为首个子命令
 - `src/core/i18n.ts` / `src/core/i18n-data/*.ts` — i18n 校验逻辑
 - `src/core/kb-health.ts` — 知识库健康检查（新文件）
+- `.opencode/skills/` — 补充 roadmap/health/recover/wizard 等 skill 定义
 - `.openfeel/kb/*.md` — 过期引用检查目标
 - `.opencode/agents/*.md` — prompt 腐化检测目标
 
-**里程碑**：CI/CD 可集成 `openfeel lint` 阻断质量退化；知识库引用保持健康。
+**里程碑**：CI/CD 可集成 `openfeel lint` 阻断质量退化；知识库引用保持健康；CLI 全部命令对 Agent 可见。
 
 ---
 
@@ -88,11 +90,11 @@
 | v5.0 | 2 | ~4h | 工具链内化 + 一致性治理 |
 | v5.1 | 2 | ~8h | 职责迁移 + Agent 协作原语 |
 | v5.2 | 2 | ~12h | 状态持久化 + 灵活流程控制 |
-| v5.3 | 2 | ~8h | 质量保障 + 知识库健康 |
-| **合计** | **8** | **~32h** | v5 系列完整路线 |
+| v5.3 | 3 | ~11h | 质量保障 + 知识库健康 + CLI-Agent 对齐 |
+| **合计** | **9** | **~35h** | v5 系列完整路线 |
 
 ---
 
 > **制定依据**：调研 A（CLI 内化 + 提示词统一 + 规范迁移 + i18n lint）、调研 B（Handoff + Checkpoint + 组合终止条件）、调研 C（kb 健康 + prompt 腐化检测）
 > 
-> **优先级策略**：先消除手动负担（v5.0 git 自动提交）→ 重构架构债（v5.1 规范迁移 + v5.2 灵活流程）→ 引入质量门禁（v5.3 lint + 健康检测）
+> **优先级策略**：先消除手动负担（v5.0 git 自动提交）→ 重构架构债（v5.1 规范迁移 + v5.2 灵活流程）→ 引入质量门禁（v5.3 lint + 健康检测 + CLI-Agent 能力对齐）

@@ -903,7 +903,8 @@ export class FlowManager {
     const lang = getCliLang(process.cwd());
     try {
       const msg = `chore: 阶段归档 ${stageName}`;
-      execSync(`git add -A && git commit -m "${msg}"`, { stdio: 'pipe' });
+      // cwd 指向项目根，确保 git 在 flow.json 所在仓库执行而非进程工作目录
+      execSync(`git add -A && git commit -m "${msg}"`, { stdio: 'pipe', cwd: this.projectPath });
       console.log(t('flow.advance.gitCommitOkTmpl', lang, { stage: stageName }));
     } catch {
       // 不在 git 仓库 / git 不可用 / 无变更时静默跳过，不阻塞 done 推进

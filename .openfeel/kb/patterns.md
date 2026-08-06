@@ -761,3 +761,70 @@ export function writeProfile(profile: Profile): void {
 - 记忆体系需支持渐进扩展（新增记忆节时遵循模板扩展模式，参见 core.md 模板更新规则）
 
 **参见：** v5.0-stage-01 op-003（feel.md + core.md）、kb/patterns.md #新增 Agent 全链路更新清单模式
+
+## [+] 流水线归档自动 git commit 模式 (2026-08-07)
+
+当 `flow advance --to done` 推进阶段到完成时，在 `flow-manager.ts` 中自动执行 git 提交，将归档点纳入版本控制：
+
+```typescript
+private autoCommitOnDone(stageName: string): void {
+  const lang = getCliLang(process.cwd());
+  try {
+    const msg = `chore: 阶段归档 ${stageName}`;
+    execSync(`git add -A && git commit -m "${msg}"`, { stdio: 'pipe' });
+    console.log(t('flow.advance.gitCommitOkTmpl', lang, { stage: stageName }));
+  } catch {
+    // 不在 git 仓库 / git 不可用 / 无变更时静默跳过，不阻塞 done 推进
+    console.log(t('flow.advance.gitCommitSkipTmpl', lang, { stage: stageName }));
+  }
+}
+```
+
+**设计要点：**
+- **触发时机**：`endStage()` 完成后、`advanceStagePhase` 返回前，仅在 `targetPhase === 'done'` 时触发
+- **静默降级**：非 git 仓库、git 不可用或无变更时 catch 异常、输出跳过信息，不阻塞 done 推进——归档完成不应因版本控制问题而失败
+- **i18n 覆盖**：成功提交和跳过场景均有对应 i18n 消息键（`gitCommitOkTmpl` / `gitCommitSkipTmpl`），zh-CN + en 双语
+- **与归档流程解耦**：git 提交失败不影响阶段状态迁移——`done` 仍然正常写入 flow.json，确保流水线鲁棒性
+- **Commit 格式**：`chore: 阶段归档 {stageName}`，便于 git log 中快速定位各阶段归档点
+
+**参见：** v5.1-stage-01、kb/architecture.md #Feel 调度 + openfeel CLI 推进模型
+
+## [+] Agent 提示词编号一致性审计模式 (2026-08-07)
+
+当进行 Agent 提示词格式统一治理时，按以下流程审计和修复结构性问题：
+
+**审计流程：**
+1. 全量扫描 `templates-data/agents/{lang}/*.md` 所有 Agent 源模板
+2. 检查结构性一致性问题：重复编号（如两个 `4.` 条目）、格式漂移、缩进不一致
+3. 修复在**源模板层**（templates-data/）进行，传播路径：`build.js → template-loader.ts → .opencode/agents/`
+
+**典型问题——feel.md 编号漂移：**
+原 feel.md 中「决策权」和「自动推进决策纪律」形成两个 `4.` 编号——前者描述 Feel 核心能力，后者描述自动推进决策流程。修复为独立的顺序编号，确保结构清晰。此类问题源于多轮迭代中独立追加条目而未检查编号连续性。
+
+**关键要点：**
+- 修复在源模板层（templates-data/）而非构建产物或部署目录——确保修复不被后续构建覆盖
+- 构建后校验：`npm run build` 自动传播修改，然后对比 `.opencode/agents/` 部署文件确认一致性
+- 多语言同步：zh-CN 和 en 模板编号结构必须完全对应，修改一处须同步另一处
+
+**参见：** v5.1-stage-01、kb/patterns.md #构建脚本多语言循环生成模式
+
+## [+] AGENTS.md 模板四节同步机制 (2026-08-07)
+
+AGENTS.md 源模板（`templates-data/agents-md/{lang}.md`）在基础行为约束之上，需保持四节附录结构完整。新增或修改内容时须在 zh-CN 和 en 两语言文件中同步更新。
+
+**标准四节结构（模板附录）：**
+
+| 节 | 内容 | 职责 |
+|:--:|------|------|
+| 跨 Agent 工具使用约束 | 统一工具规范（todowrite/question/task/skill）、使用优先级、各 Agent 职责边界、Feel 调度约束 | 定义所有 Agent 的工具使用准则，防止越界操作 |
+| 9 Agent 体系总览 | 完整 Agent 表格（角色/驱动模型/调起方式）+ Planner/Archiver 写入约束 | 提供项目 Agent 全景视图，新成员快速了解体系 |
+| 动态规则 | dev_core.md 的 `[+]` / `[-]` 标记管理机制 | 说明动态规则沉淀位置和启用/禁用机制 |
+| 项目流程工具 | openfeel CLI 命令参考速查表（flow/stage/plan/knowledge 子命令） | 提供 CLI 能力菜单，降低查阅门槛 |
+
+**同步机制：**
+- `npm run build` 将 agents-md 模板注入 `template-loader.ts`（与其他 Agent 模板共用管线）
+- `openfeel update` 读取 `loadTemplate(lang, 'agents-md')` 部署到项目根 `AGENTS.md`
+- 两语言文件内容语言各自独立但结构（章节标题、表格列数、命令列表）完全对称——新增节或命令时须双语言同步修改
+- 设计原则：AGENTS.md 仅保留项目级行为约束，流程规则由 CLI 工具动态注入（"提示词瘦身，流程入工具"）
+
+**参见：** v5.1-stage-01、kb/architecture.md #多语言模板数据管线、kb/patterns.md #双语 CLI 交互模式

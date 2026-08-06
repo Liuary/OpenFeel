@@ -40,6 +40,7 @@
 | 多语言模板数据管线 | 2026-07-12 | templates-data 源文件→build.js 构建时内联→template-loader 运行时按语言加载 |
 | i18n 基础设施：TS常量导入+运行时查表 | 2026-07-14 | 不同于 template-loader 构建管线，i18n 采用 TS 常量直接导入的轻量方案，零构建脚本，与 template-loader 互补覆盖运行时输出+部署内容 |
 | 公域日志批量聚合策略 | 2026-07-14 | advance_stage_phase 改为 endStage 时汇总里程碑，消除 85%+ 噪音 |
+| 8→9 Agent 体系扩展：Vision 视觉官 | 2026-08-07 | v4.6 新增 Vision 视觉官（通用视觉分析），qwen-vl-plus 多模态模型，不参与流水线调度，按需被 Feel 和其他 Agent 调用 |
 
 ### patterns.md
 

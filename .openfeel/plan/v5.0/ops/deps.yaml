@@ -1,0 +1,42 @@
+# v5.0 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+
+version: "5.0"
+stage: v5.0
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "全局 profile 数据结构 + 读写方法"
+    produces:
+      - src/core/config.ts
+    deps: []
+
+  op-002:
+    file: op-002.md
+    title: "CLI config --global 标志"
+    produces:
+      - src/commands/config.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "依赖 readProfile() / writeProfile() 方法"
+
+  op-003:
+    file: op-003.md
+    title: "dev_last.md 模板扩展 + Feel 启动逻辑"
+    produces:
+      - AGENTS.md
+      - .opencode/agents/feel.md
+    deps:
+      - op: op-001
+        type: soft
+        reason: "引用 Profile 类型定义，但模板修改可与 Profile 定义并行；Feel 启动逻辑需 Profile 方法就绪后才能联调验证"
+
+parallel_groups:
+  - group: [op-001]
+    desc: "基础层——Profile 数据结构，必须先完成"
+  - group: [op-002, op-003]
+    desc: "应用层——CLI 命令 + Agent prompt，依赖 op-001 就绪后可并行执行"

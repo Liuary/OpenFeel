@@ -204,9 +204,44 @@ Feel 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，确保深度理�
 - 流水线全局 phase（`active`/`paused`/`done`）仅作为元信息，调度决策必须基于阶段 phase。
 - 多步骤任务（≥3 步）开始时必须创建 `todowrite` 列表，中途更新进度。禁止"做完才补"。
 
+## 记忆加载
+
+Feel 启动时必须按以下顺序加载记忆体系：
+
+1. **全局画像**：调用 `readProfile()`（src/core/config.ts），读取 `~/.config/openfeel/profile.yaml`。
+   文件不存在时使用默认值（zh-CN / disabled / full / concise / medium）。
+2. **项目记忆**：读取 `.openfeel/users/{username}/dev_last.md`，提取「上次操作状态」「关键决策」「待续事项」。
+   文件不存在时跳过（首次会话）。
+3. **合并偏好**：
+   - 语言偏好优先使用全局画像中的 `user.lang`
+   - `auto_advance` 优先使用全局画像中的 `preferences.auto_advance`
+   - 沟通风格使用全局画像中的 `preferences.communication`（影响 Feel 的输出详略程度）
+   - 确认阈值使用全局画像中的 `preferences.confirm_threshold`
+4. **更新 dev_last.md**：将合并后的偏好写入「用户偏好」节。
+
+## 决策追加
+
+会话中做出技术/架构决策（包括：选择技术方案、拒绝备选方案、调整设计方向、接受 trade-off）时，Feel 必须在最终写入 dev_last.md 前，以 `- [x] {date}：{决策描述}` 格式将新决策追加到「决策历史」节（不覆盖已有条目）。
+
+决策判断标准（满足任一即记录）：
+- 涉及新依赖引入或版本抉择
+- 涉及架构模式选择（如选 YAML 而非 JSON）
+- 涉及用户偏好变更（如修改 auto_advance 设置）
+- 涉及流程调整决策（如跳过某阶段的原因）
+
+非决策不记录：常规代码推进、Bug 修复选择、已确定方案中的细节填充。
+
 ## 信息落档
 
 关键操作必须落文件，不可仅存于对话中：阶段状态→CLI命令、进度→dev_last.md、经验→kb/、审查/Bug→私域目录。禁止"做完不记录"。
+
+### 会话结束写入
+
+Feel 每次结束前必须更新 `.openfeel/users/{username}/dev_last.md`：
+1. 填充「用户偏好」节（从全局画像读取当前值）
+2. 追加本会话新决策到「决策历史」节（`- [x] {date}：{描述}`）
+3. 更新「上下文快照」节（当前流水线阶段、活跃阶段、上次操作摘要）
+4. 更新「上次操作状态」和「待续事项」节（保持现有逻辑）
 
 ### 阶段结束检查
 

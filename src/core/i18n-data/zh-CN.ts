@@ -436,8 +436,10 @@ export const help: I18nDomain = {
   'config.get-lang':       { key: 'help.config.get-lang',       zh: '显示全局默认语言', en: '' },
   'config.set-lang':       { key: 'help.config.set-lang',       zh: '修改全局默认语言（zh-CN 或 en）', en: '' },
   'config.list-projects':  { key: 'help.config.list-projects',  zh: '列出所有已记录的项目路径→语言映射', en: '' },
-  'config.get':            { key: 'help.config.get',            zh: '读取项目工作流配置项的值（项目配置）', en: '' },
-  'config.set':            { key: 'help.config.set',            zh: '设置项目工作流配置项的值（项目配置）', en: '' },
+  'config.get':            { key: 'help.config.get',            zh: '读取配置项的值（项目配置；--global 时读取全局 profile）', en: '' },
+  'config.get.global':     { key: 'help.config.get.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
+  'config.set':            { key: 'help.config.set',            zh: '设置配置项的值（项目配置；--global 时写入全局 profile）', en: '' },
+  'config.set.global':     { key: 'help.config.set.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
 
   // project
   'project':               { key: 'help.project',               zh: '项目管理与概览', en: '' },
@@ -507,10 +509,17 @@ export const config: I18nDomain = {
   'list.item':               { key: 'config.list.item',               zh: '  {path} → {lang}',                     en: '' },
   'get.result':              { key: 'config.get.result',              zh: '{key}：{value}',                          en: '' },
   'get.noProject':           { key: 'config.get.noProject',           zh: '项目配置读取失败：{err}',                  en: '' },
+  'get.globalProfileNotFound': { key: 'config.get.globalProfileNotFound', zh: '全局 profile 未设置（使用默认值）',       en: '' },
+  'get.globalKeyNotFound':   { key: 'config.get.globalKeyNotFound',   zh: '{key}：未设置',                            en: '' },
+  'get.globalResult':        { key: 'config.get.globalResult',        zh: '{key}: {value}',                           en: '' },
   'set.valueOk':             { key: 'config.set.valueOk',             zh: '{key} 已设置为：{value}',                 en: '' },
   'set.invalidKey':          { key: 'config.set.invalidKey',          zh: '无效的配置键 "{val}"，当前仅支持：{keys}', en: '' },
   'set.invalidValue':        { key: 'config.set.invalidValue',        zh: '无效的值 "{val}"。{key} 仅支持：{values}', en: '' },
   'set.error':               { key: 'config.set.error',               zh: '项目配置写入失败：{err}',                  en: '' },
+  'set.globalInvalidKey':    { key: 'config.set.globalInvalidKey',    zh: '无效的全局配置键 "{val}"',                en: '' },
+  'set.globalInvalidValue':  { key: 'config.set.globalInvalidValue',  zh: '无效的值 "{val}"。{key} 仅支持：{values}', en: '' },
+  'set.globalValueOk':       { key: 'config.set.globalValueOk',       zh: '✓ 全局配置已设置：{key} = {value}',       en: '' },
+  'set.globalAllowedKeys':   { key: 'config.set.globalAllowedKeys',   zh: '支持的全局配置键：{keys}',                en: '' },
 };
 
 /* ==================== 聚合导出 ==================== */

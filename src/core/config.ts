@@ -1,11 +1,13 @@
 /**
  * 配置文件读写
  * 管理项目下的 .openfeel/config.yaml 文件，使用 yaml.parse() + Zod Schema 校验。
+ * 同时管理全局用户画像 ~/.config/openfeel/profile.yaml（跨项目共享偏好）。
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { resolve, join, dirname } from 'node:path';
+import { homedir } from 'node:os';
 import { z } from 'zod';
-import { parse as parseYaml, parseDocument } from 'yaml';
+import { parse as parseYaml, parseDocument, stringify as stringifyYaml } from 'yaml';
 
 // ── Zod Schema ──
 
@@ -46,7 +48,45 @@ export const ConfigSchema = z.object({
   models: ModelsSchema.optional(),
 }).passthrough();
 
+// ── 全局用户画像 Profile Schema（v5.0 记忆体系第一层） ──
+
+/** 用户基础信息 Schema：姓名 + 偏好语言 */
+export const ProfileUserSchema = z.object({
+  name: z.string().optional(),
+  lang: z.enum(['zh-CN', 'en']).optional(),
+});
+
+/** 用户偏好 Schema：工作流偏好（全部可选，缺失时使用默认值） */
+export const ProfilePreferencesSchema = z.object({
+  auto_advance: z.enum(['enabled', 'disabled']).optional(),
+  review_mode: z.enum(['full', 'skip_small_changes']).optional(),
+  communication: z.enum(['concise', 'detailed']).optional(),
+  confirm_threshold: z.enum(['low', 'medium', 'high']).optional(),
+});
+
+/** 历史记录 Schema：最近项目信息 */
+export const ProfileHistorySchema = z.object({
+  last_project: z.string().optional(),
+  recent_projects: z.array(z.string()).optional(),
+});
+
+/** 完整 Profile Schema：组合三块，全部可选，允许扩展字段 */
+export const ProfileSchema = z.object({
+  user: ProfileUserSchema.optional(),
+  preferences: ProfilePreferencesSchema.optional(),
+  history: ProfileHistorySchema.optional(),
+}).passthrough();
+
 // ── 类型 ──
+
+/** 全局用户画像结构（Zod inferred） */
+export type Profile = z.infer<typeof ProfileSchema>;
+/** 用户基础信息结构 */
+export type UserProfile = z.infer<typeof ProfileUserSchema>;
+/** 用户偏好结构 */
+export type Preferences = z.infer<typeof ProfilePreferencesSchema>;
+/** 历史记录结构 */
+export type History = z.infer<typeof ProfileHistorySchema>;
 
 /** 模型配置结构 */
 export interface ModelConfig {
@@ -103,6 +143,74 @@ function normalizeConfig(parsed: Config): Config {
     }
   }
   return result;
+}
+
+// ── 全局用户画像 Profile 读写（v5.0 记忆体系第一层） ──
+
+/** 默认全局 Profile（所有字段安全默认值，向后兼容的可选配置字段模式） */
+const DEFAULT_PROFILE: Profile = {
+  user: { name: '', lang: 'zh-CN' },
+  preferences: {
+    auto_advance: 'disabled',
+    review_mode: 'full',
+    communication: 'concise',
+    confirm_threshold: 'medium',
+  },
+  history: { last_project: '', recent_projects: [] },
+};
+
+/**
+ * 构造全局 profile.yaml 的路径
+ * @returns ~/.config/openfeel/profile.yaml 的绝对路径
+ */
+function getProfilePath(): string {
+  return join(homedir(), '.config', 'openfeel', 'profile.yaml');
+}
+
+/**
+ * 读取全局用户画像 ~/.config/openfeel/profile.yaml
+ * 文件不存在时返回默认 Profile（空用户名、zh-CN、disabled、full、concise、medium、空数组）。
+ * 文件存在时用 yaml.parse() 解析 + ProfileSchema.parse() 校验，
+ * 缺失字段回填默认值，返回带完整默认值的 Profile。
+ * @returns 带默认值的完整 Profile
+ */
+export function readProfile(): Profile {
+  const profilePath = getProfilePath();
+  if (!existsSync(profilePath)) {
+    return { ...DEFAULT_PROFILE };
+  }
+
+  try {
+    const content = readFileSync(profilePath, 'utf-8');
+    const raw = parseYaml(content) as Record<string, unknown> | null;
+    if (!raw || typeof raw !== 'object') {
+      return { ...DEFAULT_PROFILE };
+    }
+    const parsed = ProfileSchema.parse(raw) as Profile;
+    // 与默认值深度合并：缺失字段回填默认值
+    return {
+      user: { ...DEFAULT_PROFILE.user, ...(parsed.user ?? {}) },
+      preferences: { ...DEFAULT_PROFILE.preferences, ...(parsed.preferences ?? {}) },
+      history: { ...DEFAULT_PROFILE.history, ...(parsed.history ?? {}) },
+    };
+  } catch {
+    // YAML 解析失败或 Zod 校验失败时回退默认值（保持可用性）
+    return { ...DEFAULT_PROFILE };
+  }
+}
+
+/**
+ * 写入全局用户画像到 ~/.config/openfeel/profile.yaml
+ * 自动创建父目录 ~/.config/openfeel/（不存在时）。
+ * @param profile 要写入的 Profile 对象
+ */
+export function writeProfile(profile: Profile): void {
+  const profilePath = getProfilePath();
+  // 确保父目录存在
+  mkdirSync(dirname(profilePath), { recursive: true });
+  // 序列化为 YAML（保留块结构可读性）
+  const content = stringifyYaml(profile);
+  writeFileSync(profilePath, content, 'utf-8');
 }
 
 // ── 公开 API ──

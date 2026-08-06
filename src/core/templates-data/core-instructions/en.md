@@ -231,12 +231,27 @@ Records the brief state at the end of the last operation, overwritten at the end
 - Files: {key files added or modified}
 - Current State: {stage progress, e.g., 3/7 tasks completed}
 
+## User Preferences
+- Language: {lang}
+- Auto Advance: {auto_advance}
+- Review Mode: {review_mode}
+- Communication: {communication}
+- Confirm Threshold: {confirm_threshold}
+
+## Context Snapshot
+- Current Pipeline Phase: {phase}
+- Active Stages: {active_stages}
+- Last Operation Summary: {one sentence}
+
 ## Pending Items
 - [ ] {unfinished tasks}
 - [ ] {blockers}
 
 ## Key Decisions
 - {important architecture or design decisions from this session}
+
+## Decision History
+(New decisions from this session are appended here in the format `- [x] {date}: {decision description}`)
 
 ## Experience Staging
 - [ ] `architecture`: {architecture decisions pending archiving}
@@ -245,7 +260,7 @@ Records the brief state at the end of the last operation, overwritten at the end
 - [ ] `setup`: {environment configuration pending archiving}
 ```
 
-This template ensures that cross-session context is restored to a level sufficient to execute the next task, while also supporting the experience staging function that underpins the automatic knowledge base writing mechanism.
+This template ensures that cross-session context is restored to a level sufficient to execute the next task, while also supporting the experience staging function that underpins the automatic knowledge base writing mechanism. **Write instructions**: Feel fills the "User Preferences" section from `readProfile()` global preferences at startup; appends technical/architecture decisions to "Decision History" during the session; updates the "Context Snapshot" section every time it writes dev_last.md.
 
 ### Personal Notes
 

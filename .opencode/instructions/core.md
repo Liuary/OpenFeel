@@ -230,12 +230,27 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 - 文件: {新增或修改的关键文件列表}
 - 当前状态: {阶段进度，如 3/7 任务完成}
 
+## 用户偏好
+- 语言：{lang}
+- 自动推进：{auto_advance}
+- 审查模式：{review_mode}
+- 沟通风格：{communication}
+- 确认阈值：{confirm_threshold}
+
+## 上下文快照
+- 当前流水线阶段：{phase}
+- 活跃阶段：{active_stages}
+- 上次操作摘要：{一句话}
+
 ## 待续事项
 - [ ] {未完成的任务}
 - [ ] {阻塞项}
 
 ## 关键决策
 - {本次会话中的重要架构或设计决策}
+
+## 决策历史
+（本会话新增的决策以 `- [x] {date}：{决策描述}` 格式追加于此）
 
 ## 经验暂存
 - [ ] `architecture`：{待归档的架构决策}
@@ -244,7 +259,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 - [ ] `setup`：{待归档的环境配置}
 ```
 
-此模板确保跨会话上下文恢复到足够执行下一个任务的程度，同时承载经验暂存功能，支撑知识库自动写入机制。
+此模板确保跨会话上下文恢复到足够执行下一个任务的程度，同时承载经验暂存功能，支撑知识库自动写入机制。**写入说明**：Feel 启动时从 `readProfile()` 读取全局偏好填充「用户偏好」；会话中做技术/架构决策时自动追加到「决策历史」；每次写入 dev_last.md 时更新「上下文快照」。
 
 ### 个人笔记
 

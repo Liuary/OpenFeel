@@ -414,8 +414,10 @@ export const help: I18nDomain = {
   'config.get-lang':       { key: 'help.config.get-lang',       zh: '', en: 'Show global default language' },
   'config.set-lang':       { key: 'help.config.set-lang',       zh: '', en: 'Change global default language (zh-CN or en)' },
   'config.list-projects':  { key: 'help.config.list-projects',  zh: '', en: 'List all recorded project path→language mappings' },
-  'config.get':            { key: 'help.config.get',            zh: '', en: 'Read a project workflow config value (project config)' },
-  'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a project workflow config value (project config)' },
+  'config.get':            { key: 'help.config.get',            zh: '', en: 'Read a config value (project config; --global reads global profile)' },
+  'config.get.global':     { key: 'help.config.get.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
+  'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a config value (project config; --global writes global profile)' },
+  'config.set.global':     { key: 'help.config.set.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
 
   'project':               { key: 'help.project',               zh: '', en: 'Project management and overview' },
   'project.overview':      { key: 'help.project.overview',      zh: '', en: 'Scan project structure in real-time, output structured overview' },
@@ -477,10 +479,17 @@ export const config: I18nDomain = {
   'list.item':               { key: 'config.list.item',               zh: '', en: '  {path} → {lang}' },
   'get.result':              { key: 'config.get.result',              zh: '', en: '{key}: {value}' },
   'get.noProject':           { key: 'config.get.noProject',           zh: '', en: 'Failed to read project config: {err}' },
+  'get.globalProfileNotFound': { key: 'config.get.globalProfileNotFound', zh: '', en: 'Global profile not set (using defaults)' },
+  'get.globalKeyNotFound':   { key: 'config.get.globalKeyNotFound',   zh: '', en: '{key}: not set' },
+  'get.globalResult':        { key: 'config.get.globalResult',        zh: '', en: '{key}: {value}' },
   'set.valueOk':             { key: 'config.set.valueOk',             zh: '', en: '{key} set to: {value}' },
   'set.invalidKey':          { key: 'config.set.invalidKey',          zh: '', en: 'Invalid config key "{val}". Currently supported: {keys}' },
   'set.invalidValue':        { key: 'config.set.invalidValue',        zh: '', en: 'Invalid value "{val}". {key} only supports: {values}' },
   'set.error':               { key: 'config.set.error',               zh: '', en: 'Failed to write project config: {err}' },
+  'set.globalInvalidKey':    { key: 'config.set.globalInvalidKey',    zh: '', en: 'Invalid global config key "{val}"' },
+  'set.globalInvalidValue':  { key: 'config.set.globalInvalidValue',  zh: '', en: 'Invalid value "{val}". {key} only supports: {values}' },
+  'set.globalValueOk':       { key: 'config.set.globalValueOk',       zh: '', en: '✓ Global config set: {key} = {value}' },
+  'set.globalAllowedKeys':   { key: 'config.set.globalAllowedKeys',   zh: '', en: 'Supported global config keys: {keys}' },
 };
 
 /* ==================== 聚合导出 ==================== */

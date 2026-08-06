@@ -204,9 +204,44 @@ When detecting that the project has no `.git` directory, suggest the user execut
 - The global pipeline phase (`active`/`paused`/`done`) is only metadata; orchestration decisions must be based on stage phases.
 - For multi-step tasks (≥3 steps), create a `todowrite` list at the start and update progress midway. Do not "fill in after completion".
 
+## Memory Loading
+
+At startup, Feel must load the memory system in the following order:
+
+1. **Global profile**: Call `readProfile()` (src/core/config.ts) to read `~/.config/openfeel/profile.yaml`.
+   If the file does not exist, use defaults (zh-CN / disabled / full / concise / medium).
+2. **Project memory**: Read `.openfeel/users/{username}/dev_last.md` and extract "Last Operation Status", "Key Decisions", and "Pending Items".
+   Skip if the file does not exist (first session).
+3. **Merge preferences**:
+   - Language preference takes priority from `user.lang` in the global profile
+   - `auto_advance` takes priority from `preferences.auto_advance` in the global profile
+   - Communication style uses `preferences.communication` from the global profile (affects Feel's output verbosity)
+   - Confirm threshold uses `preferences.confirm_threshold` from the global profile
+4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.
+
+## Decision Appending
+
+When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to the "Decision History" section in the format `- [x] {date}: {decision description}` before finally writing dev_last.md (do not overwrite existing entries).
+
+Decision criteria (record when any applies):
+- Involves introducing a new dependency or version choice
+- Involves an architecture pattern choice (e.g., choosing YAML over JSON)
+- Involves a user preference change (e.g., modifying auto_advance settings)
+- Involves a process adjustment decision (e.g., reason for skipping a stage)
+
+Non-decisions are not recorded: routine code progress, Bug fix choices, filling in details of an already-decided plan.
+
 ## Information Archiving
 
 Critical operations must be committed to files, not kept only in conversations: stage state → CLI commands, progress → dev_last.md, experience → kb/, reviews/Bugs → private directories. Do not "complete without recording".
+
+### End-of-Session Write
+
+Before ending each session, Feel must update `.openfeel/users/{username}/dev_last.md`:
+1. Fill the "User Preferences" section (read current values from the global profile)
+2. Append this session's new decisions to the "Decision History" section (`- [x] {date}: {description}`)
+3. Update the "Context Snapshot" section (current pipeline phase, active stages, last operation summary)
+4. Update the "Last Operation Status" and "Pending Items" sections (keep existing logic)
 
 ### End-of-Stage Checklist
 

@@ -13,14 +13,14 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-08-07（v4.6 Vision Agent 落地） |
+| 最近更新 | 2026-08-07（v4.6 全版本归档完成） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 11 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官 |
-| 代码模式 | [patterns.md](patterns.md) | 28 | 2026-08-07 | 项目约定、最佳实践、反模式、Agent 新增清单 |
+| 代码模式 | [patterns.md](patterns.md) | 30 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 9 | 2026-07-09 | 常见 Bug、调试流程、已知坑位 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -72,6 +72,8 @@
 | REV 闭环双路兜底+--force不可绕过 | 2026-07-14 | flow-manager+命令层两层校验，--force 仅降级警告仍拒绝推进，流水线安全无后门 |
 | 流水线节点触发日志骨架模式 | 2026-07-14 | 关键 phase 推进时自动创建私域日志骨架文件，Agent 仅需填充 |
 | 新增 Agent 全链路更新清单模式 | 2026-08-07 | 新增 Agent 时的 9 项文件更新清单 + Agent 模板规范要点（frontmatter五字段/权限顺序/颜色选型/正文结构/部署同步）+ 构建验证流程 |
+| YAML Document API 增量修改模式 | 2026-08-07 | 使用 yaml 库 parseDocument()+setIn() 原地增量修改 config.yaml，保留注释与结构，结合 Zod 局部校验 |
+| 过度设计审查子维度扩展模式 | 2026-08-07 | 在 Reviewer 审查维度规范性下新增过度设计子维度，中英双语模板同步 |
 
 ### troubleshooting.md
 
@@ -99,6 +101,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v4.6 全版本归档完成：stage-01（Vision Agent 全链路落地，9 ops + 3 REV 闭环）+ stage-02（CLI config get/set 命令 + AGENTS.md 过度设计规则增强 + Reviewer 审查维度扩展 + Vision 模板去硬编码），知识沉淀 2 条至 patterns（YAML 增量修改、审查子维度扩展），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v4.6-stage-01 归档：Vision Agent 全链路落地（9 ops + 3 REV 闭环），知识沉淀 1 条至 patterns（新增 Agent 全链路更新清单模式），测试 298/298 全通过 |
 | 2026-07-15 | 归档 | v4.4-stage-03 归档：3 项配置优化（config命令组 get/set/list + AGENTS.md语言同步 + package.json模板要求），知识沉淀 2 条至 patterns（i18n域扩展模式 + Agent模板约束模式），BUG-001 修复，v4.4 全系列完成 |
 | 2026-07-15 | 归档 | v4.4-stage-04 归档：5 项收尾修复（Node20 兼容 / kb 数据更新 / init 模板通用化 / 版本号 1.0.0 / v4.2 一致性），测试 291/291 全通过 |

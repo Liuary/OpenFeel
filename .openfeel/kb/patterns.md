@@ -612,3 +612,63 @@ configCmd
 v4.6-stage-01 新增 Vision Agent 时严格按此清单执行，一次性通过构建（`npm run build` 退出码 0）、模板一致性校验（18/18 一致）、测试（更新断言后 298/298 全通过）。3 条 REV 全部通过 op-009 修复闭环（权限顺序 + bash 用途说明 + 摘要表补全）。
 
 **参见：** v4.6-stage-01（Vision Agent 全链路落地）、kb/architecture.md #8→9 Agent 体系扩展：Vision 视觉官
+
+## [+] YAML Document API 增量修改模式 (2026-08-07)
+
+当需要程序化修改 YAML 配置文件时，若文件包含注释或精细结构需保留，应使用 `yaml` 库的 Document API 做增量修改，而非 `parse()` → 修改对象 → `stringify()` 的全量重建：
+
+```typescript
+import { parseDocument } from 'yaml';
+
+// 1. 读取原始 YAML（文件不存在时创建空文档）
+const doc = existsSync(configPath)
+  ? parseDocument(readFileSync(configPath, 'utf-8'))
+  : parseDocument('');
+
+// 2. 原地修改：setIn 在路径不存在时自动创建中间节点
+doc.setIn(['defaults', key], value);
+
+// 3. 序列化写回（注释与原始结构完整保留）
+writeFileSync(configPath, doc.toString(), 'utf-8');
+```
+
+**关键要点：**
+- `parseDocument()` 解析为内部 Document 节点树，保留注释、空行、原始引号风格
+- `doc.setIn(path, value)` 支持深层嵌套路径（如 `['defaults', 'auto_advance']`），中间节点不存在时自动创建
+- `doc.toString()` 将修改后的节点树序列化回 YAML 字符串，注释和结构完整保留
+- **配合 Zod 校验**：在 `setIn` 前通过 `ConfigDefaultsSchema.shape[key].parse(value)` 做局部校验，确保写入值与 Schema 一致
+
+**对比 `parse() → stringify()` 方案的劣势：**
+- 后者会丢弃所有注释（如 `# 执行模式说明...`）
+- 后者会丢失键的顺序和空行格式
+- 后者需手动拼接注释和结构，代码冗长且容易与原始格式不一致
+
+**适用场景：**
+- 程序化读写带有大量注释的 YAML 配置文件（如 `config.yaml`、`pipeline.yaml`）
+- 需要保持 Git diff 干净——仅修改的键值对出现在 diff 中，相邻注释和空行不受影响
+- 与 CLI 原子管理模式互补：本条目聚焦 YAML 写入技术方案，CLI 原子管理覆盖"Agent 不直接 edit 数据文件"的原则
+
+**参见：** v4.6-stage-02 op-001（config.ts setConfigValue）、kb/patterns.md #CLI 原子管理模式
+
+## [+] 过度设计审查子维度扩展模式 (2026-08-07)
+
+在已有的 Reviewer 审查五维度体系基础上，为特定父维度新增细化子维度，实现更精确的审查覆盖：
+
+```markdown
+| 规范性 | — | 是否符合项目编码规范（AGENTS.md） |
+| | 过度设计 | 是否存在无复用需求的抽象层、设计模式包装或过度工程化（参见 AGENTS.md 第 2 条） |
+```
+
+**模式要点：**
+
+1. **父子关系**：子维度是父维度的细化——「过度设计」天然归属于「规范性」（因为 AGENTS.md 的反过度设计规则本身就是编码规范的一部分），以独立子维度列出可确保不被遗漏
+2. **中英双语同步**：子维度变更须在 `zh-CN/reviewer.md` 和 `en/reviewer.md` 中同步修改，内容语言各自独立但结构一致
+3. **模板管线自动传播**：Reviewer 模板变更由 `build.js` 自动注入 `template-loader.ts`，无需手动更新构建脚本（参见 kb/architecture.md #多语言模板数据管线）
+4. **引用溯源**：子维度描述中引用触发规则的具体位置（如 `AGENTS.md 第 2 条`），确保审查者能快速定位约束原文
+
+**与「审查五维度体系」的关系：**
+- 已有条目定义了五维度框架和「一致性」的两个子维度（外部/内部模式）
+- 本条目展示的是向「规范性」维度新增子维度的扩展模式——子维度扩展不限于特定父维度
+- 新增子维度的时机：当项目编码规范中某条规则的违反检测需要显式提醒（而非隐含在通用检查中），即可独立为子维度
+
+**参见：** v4.6-stage-02 op-006（Reviewer 过度设计审查维度）、kb/patterns.md #审查五维度体系、kb/patterns.md #多语言模板数据管线

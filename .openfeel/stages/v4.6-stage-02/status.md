@@ -2,10 +2,10 @@
 
 - **执行模式**：manual
 - **自动推进**：disabled
-- **状态**：planned
-- **当前责任 Agent**：user
-- **上一责任 Agent**：none
-- **更新时间**：2026-08-06 16:27
+- **状态**：done
+- **当前责任 Agent**：archiver
+- **上一责任 Agent**：executor
+- **更新时间**：2026-08-07
 
 ## Worktree / Session
 
@@ -17,7 +17,7 @@
 
 ## 当前任务
 
-> 待补充
+> 全部完成。8 项 op 已落地（config get/set 命令 + AGENTS.md 增强 + Reviewer 审查维度扩展 + Vision 模板去硬编码）。
 
 ## 阻塞 / 暂停原因
 
@@ -28,3 +28,4 @@
 | 时间 | Agent | 状态变化 | 说明 |
 |------|-------|----------|------|
 | 2026-08-06 16:27 | user | planned | 阶段已创建 |
+| 2026-08-07 | archiver | done | 归档完成：2 条知识沉淀至 patterns（YAML 增量修改 + 审查子维度扩展） |

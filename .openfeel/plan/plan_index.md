@@ -4,7 +4,16 @@
 
 ## 当前计划
 
-### [OpenFeel v4.5 — 自动 init 修复](v4.5/plan.md) ← 当前
+### [OpenFeel v4.6 — 新增多模态 Agent + CLI 补充](v4.6/plan.md) ✅ 已归档
+
+**目标**：(stage-01) 新增 Vision 视觉官 Agent（qwen-vl-plus 多模态模型），全链路 9 项文件更新；(stage-02) 补充 `openfeel config get/set` CLI 命令、AGENTS.md 过度设计规则增强、Reviewer 审查维度扩展、Vision 模板去硬编码。2 阶段全部归档。
+
+| 阶段 | 任务 | 优先级 | 状态 |
+|------|------|:--:|:--:|
+| v4.6-stage-01 | Vision Agent 全链路落地（8+1 ops） | P1 | done ✅ |
+| v4.6-stage-02 | CLI 命令 + 规则/审查增强（8 ops） | P1 | done ✅ |
+
+### [OpenFeel v4.5 — 自动 init 修复](v4.5/plan.md) ✅ 已归档
 
 **目标**：`openfeel update` 在未 init 项目上自动调用 `initProject()`，消除"先 init 再 update"的手动步骤。1 项改动，已实现。
 
@@ -127,4 +136,5 @@
 | v4.2 | 已归档 | 1 | 1/1 done | — |
 | v4.3 | 已归档 | 3 | 3/3 done | — |
 | v4.4 | 已归档 | 4 | 4/4 done | — |
-| v4.5 | 当前 | 1 | 1/1 done | — |
+| v4.5 | 已归档 | 1 | 1/1 done | — |
+| v4.6 | 已归档 | 2 | 2/2 done | — |

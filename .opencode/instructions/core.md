@@ -60,7 +60,7 @@
 2. **比对并修正**：将当前使用的 `username` 与 `.openfeel/.info.json` 中的值逐字符比对。若不一致，用正确值重建完整路径后重试。
 3. **连续失败上报**：重试仍失败时，向用户报告「路径 `{失败的路径}` 不存在，已确认用户名为 `{正确用户名}`」，由用户确认后再操作。
 
-此规则适用于所有 Agent（Feel / Planner / Schemer / Executor / Reviewer / Feel Tester / Archiver）。
+此规则适用于所有 Agent（Feel / Planner / Schemer / Executor / Reviewer / Feel Tester / Vision / Archiver）。
 
 ---
 
@@ -145,7 +145,7 @@
 流水线 phase 枚举（flow.json PipelinePhase）：
 plan_pending → plan_review → plan_passed → scheme_pending → scheme_review → scheme_passed → exec_running → review_pending → review_failed → review_passed → test_pending → test_failed → test_passed → archiving → done
 
-人工流程为默认模式。Feel 根据 flow.json 状态调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / Archiver），不依赖旧式自动化调度。
+人工流程为默认模式。Feel 根据 flow.json 状态调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / Vision / Archiver），不依赖旧式自动化调度。
 
 状态为 done 或 paused 时，不得继续自动推进。遇到计划外变更或连续失败时，必须暂停并等待用户决策。
 

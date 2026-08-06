@@ -19,7 +19,7 @@ describe('updateProject', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('应创建 8 个 Agent 定义文件', () => {
+  it('应创建 9 个 Agent 定义文件', () => {
     updateProject(tmpDir);
     const agentsDir = join(tmpDir, '.opencode', 'agents');
 
@@ -31,6 +31,7 @@ describe('updateProject', () => {
     expect(existsSync(join(agentsDir, 'feel-tester.md'))).toBe(true);
     expect(existsSync(join(agentsDir, 'archiver.md'))).toBe(true);
     expect(existsSync(join(agentsDir, 'utility.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'vision.md'))).toBe(true);
   });
 
   it('feel.md 应包含 mode: primary 和正确的 YAML frontmatter', () => {
@@ -148,8 +149,8 @@ describe('updateProject', () => {
     // 第二次调用 — 所有内容一致，应全部 skipped
     expect(result2.created.length).toBe(0);
     expect(result2.updated.length).toBe(0);
-    // 应有 8+8+1+1+1 = 19 个文件被跳过（agents + skills + opencode.jsonc + instructions/core.md + AGENTS.md）
-    expect(result2.skipped.length).toBe(19);
+    // 应有 9+8+1+1+1 = 20 个文件被跳过（agents + skills + opencode.jsonc + instructions/core.md + AGENTS.md）
+    expect(result2.skipped.length).toBe(20);
   });
 
   it('修改已有 agent 内容后应正确更新', () => {

@@ -455,6 +455,8 @@ Feel Agent 在以下时机加载本 Skill：
 | \`archiver.md\` | \`reasoning\`（推理） |
 | \`schemer.md\` | \`reasoning\`（推理） |
 | \`feel-tester.md\` | \`reasoning\`（推理） |
+| \`utility.md\` | \`fast\`（快速） |
+| \`vision.md\` | \`multimodal\`（多模态） |
 
 ### 3. 检查 config.yaml 模型配置
 

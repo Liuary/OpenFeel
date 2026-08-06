@@ -50,9 +50,9 @@ describe('loadAgentTemplate', () => {
 });
 
 describe('listAgentIds', () => {
-  it('zh-CN 返回 8 个 Agent ID 数组', () => {
+  it('zh-CN 返回 9 个 Agent ID 数组', () => {
     const ids = listAgentIds('zh-CN');
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(9);
     expect(ids).toContain('feel');
     expect(ids).toContain('executor');
     expect(ids).toContain('planner');
@@ -61,18 +61,19 @@ describe('listAgentIds', () => {
     expect(ids).toContain('feel-tester');
     expect(ids).toContain('archiver');
     expect(ids).toContain('utility');
+    expect(ids).toContain('vision');
   });
 
-  it('en 返回 8 个 Agent ID 数组（与 zh-CN 相同）', () => {
+  it('en 返回 9 个 Agent ID 数组（与 zh-CN 相同）', () => {
     const zhIds = listAgentIds('zh-CN');
     const enIds = listAgentIds('en');
-    expect(enIds).toHaveLength(8);
+    expect(enIds).toHaveLength(9);
     expect(enIds).toEqual(zhIds);
   });
 
-  it('fr 回退到 zh-CN，仍返回 8 个 ID', () => {
+  it('fr 回退到 zh-CN，仍返回 9 个 ID', () => {
     const ids = listAgentIds('fr');
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(9);
   });
 });
 

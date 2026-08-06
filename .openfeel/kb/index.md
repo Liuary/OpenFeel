@@ -10,16 +10,16 @@
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
 | 源文件 | 45 个 .ts 文件（src/） |
-| Agent 数 | 8 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官） |
+| Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-07-15（归档时自动更新此字段） |
+| 最近更新 | 2026-08-07（v4.6 Vision Agent 落地） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 10 | 2026-07-14 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合 |
+| 架构决策 | [architecture.md](architecture.md) | 11 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官 |
 | 代码模式 | [patterns.md](patterns.md) | 27 | 2026-07-15 | 项目约定、最佳实践、反模式 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 9 | 2026-07-09 | 常见 Bug、调试流程、已知坑位 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |

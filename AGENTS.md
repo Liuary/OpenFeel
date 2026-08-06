@@ -80,11 +80,11 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
    - 事务官 执行文件机械操作，不参与设计决策
    - Archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过 Feel 写入）
 
-4. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / 事务官 / Archiver），通过 `task` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
+4. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / 事务官 / Vision / Archiver），通过 `task` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
 
 偏离以上约束的行为视为违规，审查时将被标记。
 
-### 8 Agent 体系总览
+### 9 Agent 体系总览
 
 | Agent | 角色 | 驱动模型 | 调起方式 |
 |-------|------|----------|----------|
@@ -95,6 +95,7 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 | Reviewer | 审查官 | 异种推理模型 (GLM) | subagent |
 | Feel Tester | 测试官 | 推理模型 | subagent |
 | 事务官 | 事务官 | 快速模型 (Flash) | subagent |
+| Vision | 视觉官 | 多模态模型 (qwen-vl-plus) | subagent |
 | Archiver | 归档官 | 推理模型 | subagent |
 
 > **写入约束**：Planner 和 Archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 `edit` 或 `write` flow.json。

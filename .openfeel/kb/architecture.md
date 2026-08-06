@@ -183,3 +183,19 @@ v4.4 将公域日志从"每次 advance_stage_phase 逐条写入"改为"endStage(
 - 降噪效果：消除约 85%+ 的公域日志条目，剩余均为里程碑级事件
 
 **参见：** v4.4-stage-02 op-001、kb/patterns.md #流水线节点触发日志骨架模式
+
+## [+] 8→9 Agent 体系扩展：Vision 视觉官 (2026-08-07)
+
+v4.6 新增第 9 个 Agent：**Vision（视觉官）**，基于 qwen-vl-plus 多模态模型：
+
+- **职责**：通用视觉分析（图像理解、UI 截图分析、图表/流程图解析、错误堆栈截图分析）
+- **模型**：alibaba/qwen-vl-plus（通义千问多模态）
+- **调起方式**：Feel 或其他 Agent 通过 `task` 按需调用，接收图片输入，输出结构化分析结果
+- **模式**：subagent（不参与流水线调度，仅作为分析能力提供者）
+- **权限**：read、glob、grep、bash（不需要 write/task 权限——产出通过返回值传递）
+
+**设计决策：**
+- Vision 不参与流水线阶段推进，不是流水线中的固定环节，而是被其他 Agent 按需调用的"能力代理"
+- 与现有 8 Agent 的流水线调度模型（Feel → Planner → Schemer → Executor → Reviewer → Tester → Archiver）不同，Vision 是横向能力扩展
+- 模板文件按现有多语言管线创建（zh-CN + en），由 build.js 自动注入 template-loader.ts，无需修改构建脚本
+- Agent 颜色选 `#06B6D4`（青色），与现有 8 色无冲突，且符合"视觉/光学"的语义联想

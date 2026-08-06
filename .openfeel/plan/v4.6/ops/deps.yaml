@@ -1,0 +1,106 @@
+# v4.6-stage-01 操作方案依赖声明
+# 参见 kb/patterns.md #deps.yaml 声明实际文件名
+version: "1.0"
+stage: v4.6-stage-01
+pipeline_phase: scheme_pending
+
+# 依赖关系图：
+#   op-001 ──┐
+#             ├── op-004 ──┐
+#   op-002 ──┘             ├── op-007 ── op-008
+#             ┌── op-005 ──┤
+#   op-003 ──┤             │
+#             └── op-006 ──┘
+
+ops:
+  op-001:
+    file: op-001.md
+    dependency: []
+    parallel_group: A
+    description: 创建中文 Agent 模板 vision.md (zh-CN)
+
+  op-002:
+    file: op-002.md
+    dependency: []
+    parallel_group: A
+    description: 创建英文 Agent 模板 vision.md (en)
+
+  op-003:
+    file: op-003.md
+    dependency: []
+    parallel_group: A
+    description: 创建 Agent 部署定义 .opencode/agents/vision.md
+
+  op-004:
+    file: op-004.md
+    dependency:
+      - op-001
+      - op-002
+      - op-003
+    dep_type: hard
+    parallel_group: B
+    description: 更新 AGENTS.md — 8→9 Agent 总览表
+
+  op-005:
+    file: op-005.md
+    dependency:
+      - op-001
+      - op-002
+      - op-003
+    dep_type: hard
+    parallel_group: B
+    description: 更新 core.md — 职责边界和调度列表
+
+  op-006:
+    file: op-006.md
+    dependency:
+      - op-003
+    dep_type: hard
+    parallel_group: B
+    description: 更新 model-check 角色映射回退表
+
+  op-007:
+    file: op-007.md
+    dependency:
+      - op-004
+      - op-005
+      - op-006
+    dep_type: hard
+    parallel_group: ~
+    description: 更新知识库 — 架构决策 + 索引
+
+  op-008:
+    file: op-008.md
+    dependency:
+      - op-001
+      - op-002
+      - op-003
+      - op-004
+      - op-005
+      - op-006
+      - op-007
+    dep_type: hard
+    parallel_group: ~
+    description: 构建验证
+
+# 并行批次
+parallel:
+  batch-A:
+    - op-001
+    - op-002
+    - op-003
+    conflict_free: true  # 互不修改同一文件，可并行
+
+  batch-B:
+    - op-004
+    - op-005
+    - op-006
+    conflict_free: true  # 修改不同文件（AGENTS.md / core.md / model-check.md），可并行
+
+  batch-C:
+    - op-007
+    note: 依赖批次 A+B 全部完成
+
+  batch-D:
+    - op-008
+    note: 依赖 op-001~007 全部完成

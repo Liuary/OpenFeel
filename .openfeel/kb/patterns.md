@@ -564,3 +564,51 @@ configCmd
 - 新项目初始化模板标准化
 
 **参见：** v4.4-stage-03 op-003、kb/patterns.md #构建脚本多语言循环生成模式
+
+## [+] 新增 Agent 全链路更新清单模式 (2026-08-07)
+
+在 OpenFeel 9 Agent 体系中新增 Agent 时，需按以下清单逐项更新，确保全链路一致。遗漏任一项将导致构建失败、测试失败或知识库检索断裂。
+
+### 必须更新的文件清单
+
+| 序号 | 文件 | 操作 | 说明 |
+|:--:|------|:--:|------|
+| 1 | `src/core/templates-data/agents/{lang}/new-agent.md` | **新建** | 中英双语源模板（zh-CN + en），结构对称 |
+| 2 | `.opencode/agents/new-agent.md` | **新建** | 部署定义，内容与 zh-CN 模板同步 |
+| 3 | `AGENTS.md` | **修改** | 标题计数 + 总览表格 + 调度列表（三处同步） |
+| 4 | `.opencode/instructions/core.md` | **修改** | 路径自校验范围 + Feel 调度列表（两处补充） |
+| 5 | `.opencode/skills/model-check/SKILL.md` | **修改** | 角色映射回退表新增条目 |
+| 6 | `.openfeel/kb/architecture.md` | **修改** | 新增架构决策条目 |
+| 7 | `.openfeel/kb/index.md` | **修改** | Agent 计数 + 分类概览条目数 + 摘要表 |
+| 8 | `test/core/template-loader.test.ts` | **修改** | Agent 计数断言更新 |
+| 9 | `test/core/update.test.ts` | **修改** | Agent 计数断言 + skipped 计数更新 |
+
+### 无需修改的文件
+
+| 文件 | 原因 |
+|------|------|
+| `build.js` | 构建脚本自动遍历 `templates-data/agents/{lang}/` 下所有 .md 文件，新增 Agent 零代码变更 |
+| `src/core/template-loader.ts` | 由 `npm run build` 自动生成，不手动编辑 |
+| `src/core/update.ts` | 由 `npm run build` 自动注入 Skill 定义 |
+
+### Agent 模板规范要点
+
+1. **Frontmatter 五字段齐全**：description / mode / model / color / permission（全部必填）
+2. **权限声明顺序**：统一使用 `bash → read → glob → grep`（bash-first 惯例），与现有 8 个 Agent 保持一致
+3. **颜色选型**：从现有 9 色中选未被占用的色值，语义与 Agent 角色关联
+4. **正文结构**：核心职责（3-4 项）/ 调起方式 / 输出规范 / 能力边界（能做 + 不做）/ 模型选择 / 注意事项
+5. **部署同步**：`.opencode/agents/` 下的部署定义内容须与 `zh-CN` 源模板**逐字符一致**
+
+### 构建验证流程
+
+```
+新增模板文件 → npm run build（模板注入 + 一致性校验） → npm test（断言更新 + 无回归）
+```
+
+**注意**：Agent 计数变更必然导致 `template-loader.test.ts` 和 `update.test.ts` 中的硬编码断言过期（测试失败数 = 受影响的断言数），属预期变更而非回归——更新断言后应恢复全量通过。
+
+### 实战验证
+
+v4.6-stage-01 新增 Vision Agent 时严格按此清单执行，一次性通过构建（`npm run build` 退出码 0）、模板一致性校验（18/18 一致）、测试（更新断言后 298/298 全通过）。3 条 REV 全部通过 op-009 修复闭环（权限顺序 + bash 用途说明 + 摘要表补全）。
+
+**参见：** v4.6-stage-01（Vision Agent 全链路落地）、kb/architecture.md #8→9 Agent 体系扩展：Vision 视觉官

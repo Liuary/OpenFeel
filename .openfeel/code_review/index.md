@@ -14,6 +14,7 @@
 
 | 阶段 | 摘要 | 状态 |
 |------|------|------|
+| [v4.6-stage-01](v4.6-stage-01.md) | Vision Agent 全链路落地 — 3 REV 全部 closed | passed |
 | [v4.4-stage-01](v4.4-stage-01.md) | i18n 基建 + CLI 国际化 — 12 REV (4 closed, 8 non-blocking) | passed |
 | [v4.4-stage-02](v4.4-stage-02.md) | 日志修复 + 流水线安全 — 4 REV (1 closed, 3 non-blocking) | passed |
 | [v4.2-stage-01](v4.2-stage-01.md) | 项目快速架构索引 — 4 REV (3 closed, 1 low pending) | passed |

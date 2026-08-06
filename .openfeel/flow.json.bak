@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-06T16:23:53.365Z"
+    "updated": "2026-08-06T16:29:08.289Z"
   },
   "pipeline": {
     "phase": "active",
@@ -133,12 +133,24 @@
     },
     "v4.6-stage-01": {
       "name": "v4.6-stage-01",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "stats": {
         "start_time": "2026-08-06T16:06:20.696Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v4.6-stage-02": {
+      "name": "v4.6-stage-02",
+      "phase": "plan_passed",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-06T16:27:46.450Z",
         "end_time": "",
         "duration_ms": 0
       }
@@ -1374,6 +1386,76 @@
         "stageName": "v4.6-stage-01",
         "from": "review_pending",
         "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T16:25:53.910Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.6-stage-01",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:25:59.596Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.6-stage-01",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:26:04.320Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.6-stage-01",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:26:09.021Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.6-stage-01",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:26:16.963Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.6-stage-01",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-06T16:27:46.450Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.6-stage-02",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:29:08.288Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v4.6-stage-01",
+        "from": "done",
+        "to": "done"
       }
     }
   ]

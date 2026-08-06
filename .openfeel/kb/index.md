@@ -13,14 +13,14 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-08-07（v4.7 归档完成，v4.8~v5.1 路线图制定） |
+| 最近更新 | 2026-08-07（v5.0-stage-01 框架级记忆体系归档完成） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 11 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官 |
-| 代码模式 | [patterns.md](patterns.md) | 30 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展 |
+| 代码模式 | [patterns.md](patterns.md) | 32 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 9 | 2026-07-09 | 常见 Bug、调试流程、已知坑位 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -74,6 +74,8 @@
 | 新增 Agent 全链路更新清单模式 | 2026-08-07 | 新增 Agent 时的 9 项文件更新清单 + Agent 模板规范要点（frontmatter五字段/权限顺序/颜色选型/正文结构/部署同步）+ 构建验证流程 |
 | YAML Document API 增量修改模式 | 2026-08-07 | 使用 yaml 库 parseDocument()+setIn() 原地增量修改 config.yaml，保留注释与结构，结合 Zod 局部校验 |
 | 过度设计审查子维度扩展模式 | 2026-08-07 | 在 Reviewer 审查维度规范性下新增过度设计子维度，中英双语模板同步 |
+| 全局跨项目用户画像 YAML 配置模式 | 2026-08-07 | ~/.config/{tool}/profile.yaml 约定路径 + Zod Schema 校验 + 深度合并默认值 + 异常安全 |
+| Agent 记忆生命周期三层模式 | 2026-08-07 | Agent prompt 中的记忆加载 → 决策追加 → 会话结束写入三段式，两层记忆（全局画像 + 项目卡片） |
 
 ### troubleshooting.md
 
@@ -101,6 +103,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v5.0-stage-01 归档完成：框架级记忆体系落成（全局 profile ~/.config/openfeel/profile.yaml + dev_last.md 7 节模板 + CLI config --global 标志），知识沉淀 2 条至 patterns（全局用户画像配置模式、Agent 记忆生命周期三层模式），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v4.7 归档完成：部署版过期修复（Feel +38行 / Executor +26行）+ dev_core.md 重复规则清理，制定 v4.8~v5.1 路线图（8 项 4 期），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v4.6 全版本归档完成：stage-01（Vision Agent 全链路落地，9 ops + 3 REV 闭环）+ stage-02（CLI config get/set 命令 + AGENTS.md 过度设计规则增强 + Reviewer 审查维度扩展 + Vision 模板去硬编码），知识沉淀 2 条至 patterns（YAML 增量修改、审查子维度扩展），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v4.6-stage-01 归档：Vision Agent 全链路落地（9 ops + 3 REV 闭环），知识沉淀 1 条至 patterns（新增 Agent 全链路更新清单模式），测试 298/298 全通过 |

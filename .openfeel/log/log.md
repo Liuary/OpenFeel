@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-08-07-Liuary-002.md](2026-08-07/2026-08-07-Liuary-002.md) | Liuary | v5.0-stage-01 归档完成：框架级记忆体系（全局 profile + dev_last.md 7 节 + CLI --global），知识沉淀 2 条至 patterns |
+| [2026-08-07-Liuary-001.md](2026-08-07/2026-08-07-Liuary-001.md) | Liuary | [HIGH] REV-001: kb/index.md architecture.md 摘要表遗漏 Vision 条目 |
 | [2026-07-18-Liuary-001.md](2026/07/18/2026-07-18-Liuary-001.md) | Liuary | 阶段 v4.5 完成 |
 | [2026-07-15-Liuary-002.md](2026/07/15/2026-07-15-Liuary-002.md) | Liuary | 阶段 v4.4 完成 |
 | [2026-07-15-Liuary-001.md](2026/07/15/2026-07-15-Liuary-001.md) | Liuary | v4.4-stage-03 归档完成：config命令组 + AGENTS.md同步 + package.json模板，知识沉淀 2 条至 patterns，v4.4 全系列结束 |

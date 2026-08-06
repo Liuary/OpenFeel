@@ -672,3 +672,92 @@ writeFileSync(configPath, doc.toString(), 'utf-8');
 - 新增子维度的时机：当项目编码规范中某条规则的违反检测需要显式提醒（而非隐含在通用检查中），即可独立为子维度
 
 **参见：** v4.6-stage-02 op-006（Reviewer 过度设计审查维度）、kb/patterns.md #审查五维度体系、kb/patterns.md #多语言模板数据管线
+
+## [+] 全局跨项目用户画像 YAML 配置模式 (2026-08-07)
+
+当需要跨项目共享用户偏好（语言、自动化设置、审查模式等）时，采用 `~/.config/{tool}/profile.yaml` 约定路径（类比 Git `~/.gitconfig`），结合 Zod Schema 校验 + 安全默认值 + 深度合并策略实现读写：
+
+```typescript
+import { homedir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+
+// 路径约定：遵循 XDG ~/.config/ 约定，不依赖任何平台机制
+function getProfilePath(): string {
+  return join(homedir(), '.config', 'openfeel', 'profile.yaml');
+}
+
+// 读取：文件不存在 → 返回完整默认值；文件存在 → Zod 校验 + 缺失字段回填
+export function readProfile(): Profile {
+  const profilePath = getProfilePath();
+  if (!existsSync(profilePath)) return deepClone(DEFAULT_PROFILE);
+  const raw = parseYaml(readFileSync(profilePath, 'utf-8'));
+  const parsed = ProfileSchema.parse(raw) as Profile;
+  return {
+    user: { ...DEFAULT_PROFILE.user, ...(parsed.user ?? {}) },
+    preferences: { ...DEFAULT_PROFILE.preferences, ...(parsed.preferences ?? {}) },
+    history: { ...DEFAULT_PROFILE.history, ...(parsed.history ?? {}) },
+  };
+}
+
+// 写入：自动创建 ~/.config/openfeel/ 父目录，全量 YAML 序列化
+export function writeProfile(profile: Profile): void {
+  const profilePath = getProfilePath();
+  mkdirSync(dirname(profilePath), { recursive: true });
+  writeFileSync(profilePath, stringifyYaml(profile), 'utf-8');
+}
+```
+
+**关键要点：**
+
+- **路径约定**：`homedir()/.config/{tool}/profile.yaml`，复用 XDG 用户配置目录约定，跨平台统一
+- **Zod Schema 硬化**：Profile 由 `user`、`preferences`、`history` 三块组成，全部 optional + `.passthrough()` 允许扩展
+- **深度合并默认值**：文件缺失字段不回退 null/undefined，而是逐节合并 `DEFAULT_PROFILE` 对应节的默认值——确保调用方总拿到完整可用对象
+- **异常安全**：YAML 解析失败或 Zod 校验失败时静默返回完整默认值，不抛异常中断 Agent 启动流程
+- **与 YAML Document API 互补**：profile.yaml 为新建文件无注释需保留 → 用 `stringify` 全量写入即可；config.yaml 有注释需保留 → 用 `parseDocument()+setIn()` 增量修改
+
+**适用场景：**
+
+- CLI 工具需要跨项目记住用户偏好（类比 `git config --global`）
+- Agent 启动时需加载用户的全局设置（语言、自动化偏好、沟通风格等）
+- 多个相关项目共享同一套用户画像
+
+**参见：** v5.0-stage-01 op-001（config.ts）、kb/patterns.md #YAML Document API 增量修改模式、kb/patterns.md #向后兼容的可选配置字段模式
+
+## [+] Agent 记忆生命周期三层模式 (2026-08-07)
+
+在 Agent prompt 中设计持久记忆体系时，遵循三阶段生命周期模式，确保跨会话决策连续性：
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  记忆加载        │ →  │  决策追加        │ →  │  会话结束写入    │
+│  (启动时)        │    │  (会话中)        │    │  (结束时)        │
+├─────────────────┤    ├─────────────────┤    ├─────────────────┤
+│ 1. 全局画像       │    │ 技术决策发生时     │    │ 1. 用户偏好回写   │
+│ 2. 项目记忆       │    │ - [x] 格式追加    │    │ 2. 决策历史追加   │
+│ 3. 合并偏好       │    │ 不覆盖已有条目     │    │ 3. 上下文快照更新 │
+│ 4. 偏好回写       │    │ 四类决策判定标准   │    │ 4. 操作状态更新   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+**两层记忆架构：**
+
+| 层级 | 存储位置 | 作用域 | 内容 |
+|:--:|------|:--:|------|
+| 全局画像 | `~/.config/openfeel/profile.yaml` | 跨项目共享 | 用户名、语言、自动化偏好、沟通风格、确认阈值、最近项目 |
+| 项目记忆 | `.openfeel/users/{username}/dev_last.md` | 当前项目 | 上次操作状态、用户偏好快照、上下文快照、待续事项、关键决策、决策历史、经验暂存 |
+
+**关键要点：**
+
+- **加载顺序不可颠倒**：先全局画像（提供默认偏好）→ 再项目记忆（覆盖恢复上下文），项目级覆盖全局级
+- **决策追加而非覆盖**：`- [x] {date}：{决策描述}` 格式累积追加，不覆盖既往条目。判定标准：新依赖引入 / 架构模式选择 / 用户偏好变更 / 流程调整决策
+- **模板结构硬化为 prompt**：dev_last.md 7 节模板（上次操作状态 → 用户偏好 → 上下文快照 → 待续事项 → 关键决策 → 决策历史 → 经验暂存）在 core.md 中统一定义，Feel prompt 引用该模板
+- **写入触发机制**：Feel prompt 中定义「会话结束写入」规则（4 步流程），Agent 不需自己判断何时写——prompt 级别强制执行
+
+**适用场景：**
+
+- 多 Agent 体系中需要跨会话保持决策连续性
+- Agent prompt 需要定义「启动时加载什么」「会话中记录什么」「结束时写入什么」的三段式流程
+- 记忆体系需支持渐进扩展（新增记忆节时遵循模板扩展模式，参见 core.md 模板更新规则）
+
+**参见：** v5.0-stage-01 op-003（feel.md + core.md）、kb/patterns.md #新增 Agent 全链路更新清单模式

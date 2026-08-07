@@ -1,6 +1,6 @@
 {
   "name": "openfeel",
-  "version": "1.0.4",
+  "version": "1.0.1",
   "description": "AI Agent 开发流程治理 CLI 工具",
   "type": "module",
   "private": false,

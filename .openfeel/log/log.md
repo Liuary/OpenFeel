@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-08-07-reviewer-001.md](2026/08/07/2026-08-07-reviewer-001.md) | Reviewer | [HIGH] v1.0.0-stage-02 审查：REV-001 postinstall 脚本不在 files 白名单（blocking=true），发布后用户安装将失败；另发现 REV-002 stage-04 缺 name（medium）、REV-003 ci.yml 优化（low） |
 | [2026-08-07-Liuary-006.md](2026-08-07/2026-08-07-Liuary-006.md) | Liuary | v0.5.11-stage-01 归档完成：目录归位 + 版本重映射 v0 体系 + 四级版本号落地，1 op 闭环，3 REV（low）审查通过，知识沉淀 3 条（版本号重映射边界判定、kb 同步时点 → patterns；git 重命名交叉匹配假象 → troubleshooting） |
 | [2026-08-07-Liuary-005.md](2026-08-07/2026-08-07-Liuary-005.md) | Liuary | v5.10-stage-01 归档完成：profile 自动填充 + 异常安全（ensureProfileDefaults + 3 项健壮性修复），3 REV 全部 closed，知识沉淀 3 条至 patterns |
 | [2026-08-07-Liuary-004.md](2026-08-07/2026-08-07-Liuary-004.md) | Liuary | v5.8-stage-01 归档完成：三项缺陷修复（autoCommitOnDone/AGENTS.md模板/init缺manual），知识沉淀 2+1 条，首次无--force全阶段推进 |

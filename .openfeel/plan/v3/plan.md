@@ -1,4 +1,4 @@
-# OpenFeel v3.0 项目计划
+# OpenFeel v0.3.0 项目计划
 
 > 创建时间：2026-06-27 | 拟稿人：Architect Agent (Liuary)
 > 状态：draft | 基于二期 NumKit 端到端测试审查驱动

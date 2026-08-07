@@ -99,7 +99,7 @@ fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
 
 **经验**：使用 fast-glob 匹配目录时，应始终检查是否需要 `onlyDirectories` 选项。若同时匹配文件和目录，使用 `{ onlyDirectories: false }` 或省略该选项，但模式中不要依赖尾部斜杠的隐式行为。
 
-**见于**：REV-002 (v4.2-stage-01)
+**见于**：REV-002 (v0.4.2-stage-01)
 
 ## [+] autoRepairInconsistency 干扰组合条件推进路径 (2026-08-07)
 
@@ -112,15 +112,15 @@ fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
 2. `phase` 字段为组合条件中的中间值（如 `test_passed`）
 3. `autoRepairInconsistency` 被调用（如 `openfeel flow health`、`openfeel flow repair` 等触发一致性检查）
 
-**影响范围**：非本次 v5.3 引入的 Bug——`autoRepairInconsistency` 设计时未考虑组合终止条件场景，属已知遗留项。不影响含 `|` 组合条件以外的常规单条件 transitions。
+**影响范围**：非本次 v0.5.3 引入的 Bug——`autoRepairInconsistency` 设计时未考虑组合终止条件场景，属已知遗留项。不影响含 `|` 组合条件以外的常规单条件 transitions。
 
-**临时规避**：在归档完成前避免调用 `autoRepairInconsistency`（即避免 `flow health` / `flow repair` 对 v5.3-stage-01 的检查），或手动恢复 phase 后推进。
+**临时规避**：在归档完成前避免调用 `autoRepairInconsistency`（即避免 `flow health` / `flow repair` 对 v0.5.3-stage-01 的检查），或手动恢复 phase 后推进。
 
 **建议修复方向**：`autoRepairInconsistency` 在同步 phase 前检查当前 phase 是否在 transitions 中存在合法出边（通过 `getValidTargets`），若存在则不强制同步——仅对无合法出边的"真卡住"状态执行修复。
 
-**见于**：v5.3-stage-01 归档阶段（Executor 发现，已记录为遗留项供后续修复）
+**见于**：v0.5.3-stage-01 归档阶段（Executor 发现，已记录为遗留项供后续修复）
 
-> **更新于 2026-08-07**：**v5.8 已修复根因**——问题核心在 `mapPhaseToStageStatus`（flow-manager.ts:2758）：原实现将 `test_passed` 和 `archiving` 都映射为 `done` status，导致 `autoRepairInconsistency` 检测到 `status=done, phase≠done` 时强制同步 phase 为 done。修复方案：仅 `done` phase 映射为 `done` status；`test_passed` → `testing`，`archiving` → `archiving`。注意 `mapPhaseToStageStatus` 的返回值直接影响 `autoRepairInconsistency` 的触发条件，二者构成耦合——修改映射表时必须考虑兼容性。
+> **更新于 2026-08-07**：**v0.5.8 已修复根因**——问题核心在 `mapPhaseToStageStatus`（flow-manager.ts:2758）：原实现将 `test_passed` 和 `archiving` 都映射为 `done` status，导致 `autoRepairInconsistency` 检测到 `status=done, phase≠done` 时强制同步 phase 为 done。修复方案：仅 `done` phase 映射为 `done` status；`test_passed` → `testing`，`archiving` → `archiving`。注意 `mapPhaseToStageStatus` 的返回值直接影响 `autoRepairInconsistency` 的触发条件，二者构成耦合——修改映射表时必须考虑兼容性。
 
 ## [+] 流水线文件引用断裂的连锁修复 (2026-07-05)
 

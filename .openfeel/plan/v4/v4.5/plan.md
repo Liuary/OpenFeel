@@ -1,4 +1,4 @@
-# OpenFeel v4.5 — 自动 init 修复
+# OpenFeel v0.4.5 — 自动 init 修复
 
 > 创建于 2026-07-18 | Feel 直接处理
 

@@ -1,4 +1,4 @@
-# OpenFeel v2.0 — 迭代打磨
+# OpenFeel v0.2.0 — 迭代打磨
 
 > 创建时间：2026-06-27 | 拟稿人：Architect Agent (Liuary)
 > 更新：2026-06-27 第二轮 — 融入统一结构、易扩展体系、交互式 CLI

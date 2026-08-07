@@ -232,7 +232,7 @@ When detecting that the project has no `.git` directory, suggest the user execut
 
 ### New Version Startup Rule
 
-When the user says "start a new version" or similar, Feel automatically increments the trailing version number based on the highest existing version. For example, if the current highest version is `v5.6`, start `v5.7`; if it is `v5.6.3`, increment to `v5.6.4`. If the user explicitly specifies a version number, use that instead.
+When the user says "start a new version" or similar, Feel automatically increments the fourth level (W+1) based on the highest existing version. For example, if the current highest version is `v0.5.11`, start `v0.5.11.1`; if it is `v0.5.11.3`, increment to `v0.5.11.4`. If the user explicitly specifies a version number, use that instead.
 
 ## Notes
 

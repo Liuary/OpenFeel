@@ -2,18 +2,18 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-07T12:10:20.538Z"
+    "updated": "2026-08-07T12:14:58.820Z"
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v5.10-stage-01",
+      "stage": "v0.5.11-stage-01",
       "op": ""
     },
     "retry": 0
   },
   "stages": {
-    "v4.2": {
+    "v0.4.2": {
       "phase": "done",
       "ops": {},
       "stats": {
@@ -23,8 +23,8 @@
       },
       "status": "done"
     },
-    "v4.3-stage-01": {
-      "name": "v4.3-stage-01",
+    "v0.4.3-stage-01": {
+      "name": "v0.4.3-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -35,8 +35,8 @@
         "duration_ms": 0
       }
     },
-    "v4.3-stage-02": {
-      "name": "v4.3-stage-02",
+    "v0.4.3-stage-02": {
+      "name": "v0.4.3-stage-02",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -47,8 +47,8 @@
         "duration_ms": 0
       }
     },
-    "v4.3-stage-03": {
-      "name": "v4.3-stage-03",
+    "v0.4.3-stage-03": {
+      "name": "v0.4.3-stage-03",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -59,8 +59,8 @@
         "duration_ms": 0
       }
     },
-    "v4.4": {
-      "name": "v4.4",
+    "v0.4.4": {
+      "name": "v0.4.4",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -71,8 +71,8 @@
         "duration_ms": 6720228
       }
     },
-    "v4.4-stage-04": {
-      "name": "v4.4-stage-04",
+    "v0.4.4-stage-04": {
+      "name": "v0.4.4-stage-04",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -83,8 +83,8 @@
         "duration_ms": 0
       }
     },
-    "v4.4-stage-01": {
-      "name": "v4.4-stage-01",
+    "v0.4.4-stage-01": {
+      "name": "v0.4.4-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -95,8 +95,8 @@
         "duration_ms": 0
       }
     },
-    "v4.4-stage-02": {
-      "name": "v4.4-stage-02",
+    "v0.4.4-stage-02": {
+      "name": "v0.4.4-stage-02",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -107,8 +107,8 @@
         "duration_ms": 0
       }
     },
-    "v4.4-stage-03": {
-      "name": "v4.4-stage-03",
+    "v0.4.4-stage-03": {
+      "name": "v0.4.4-stage-03",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -119,8 +119,8 @@
         "duration_ms": 0
       }
     },
-    "v4.5": {
-      "name": "v4.5",
+    "v0.4.5": {
+      "name": "v0.4.5",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -131,8 +131,8 @@
         "duration_ms": 0
       }
     },
-    "v4.6-stage-01": {
-      "name": "v4.6-stage-01",
+    "v0.4.6-stage-01": {
+      "name": "v0.4.6-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -143,8 +143,8 @@
         "duration_ms": 0
       }
     },
-    "v4.6-stage-02": {
-      "name": "v4.6-stage-02",
+    "v0.4.6-stage-02": {
+      "name": "v0.4.6-stage-02",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -155,8 +155,8 @@
         "duration_ms": 0
       }
     },
-    "v4.7-stage-01": {
-      "name": "v4.7-stage-01",
+    "v0.4.7-stage-01": {
+      "name": "v0.4.7-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -167,8 +167,8 @@
         "duration_ms": 0
       }
     },
-    "v5.0-stage-01": {
-      "name": "v5.0-stage-01",
+    "v0.5.0-stage-01": {
+      "name": "v0.5.0-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -179,8 +179,8 @@
         "duration_ms": 0
       }
     },
-    "v5.1-stage-01": {
-      "name": "v5.1-stage-01",
+    "v0.5.1-stage-01": {
+      "name": "v0.5.1-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -191,8 +191,8 @@
         "duration_ms": 0
       }
     },
-    "v5.2-stage-01": {
-      "name": "v5.2-stage-01",
+    "v0.5.2-stage-01": {
+      "name": "v0.5.2-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -203,8 +203,8 @@
         "duration_ms": 0
       }
     },
-    "v5.3-stage-01": {
-      "name": "v5.3-stage-01",
+    "v0.5.3-stage-01": {
+      "name": "v0.5.3-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -215,8 +215,8 @@
         "duration_ms": 0
       }
     },
-    "v5.4-stage-01": {
-      "name": "v5.4-stage-01",
+    "v0.5.4-stage-01": {
+      "name": "v0.5.4-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -227,8 +227,8 @@
         "duration_ms": 0
       }
     },
-    "v5.5-stage-01": {
-      "name": "v5.5-stage-01",
+    "v0.5.5-stage-01": {
+      "name": "v0.5.5-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -239,8 +239,8 @@
         "duration_ms": 0
       }
     },
-    "v5.6-stage-01": {
-      "name": "v5.6-stage-01",
+    "v0.5.6-stage-01": {
+      "name": "v0.5.6-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -251,8 +251,8 @@
         "duration_ms": 0
       }
     },
-    "v5.7-stage-01": {
-      "name": "v5.7-stage-01",
+    "v0.5.7-stage-01": {
+      "name": "v0.5.7-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -263,8 +263,8 @@
         "duration_ms": 0
       }
     },
-    "v5.8-stage-01": {
-      "name": "v5.8-stage-01",
+    "v0.5.8-stage-01": {
+      "name": "v0.5.8-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -275,8 +275,8 @@
         "duration_ms": 765487
       }
     },
-    "v5.9-stage-01": {
-      "name": "v5.9-stage-01",
+    "v0.5.9-stage-01": {
+      "name": "v0.5.9-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -287,8 +287,8 @@
         "duration_ms": 534110
       }
     },
-    "v5.10-stage-01": {
-      "name": "v5.10-stage-01",
+    "v0.5.10-stage-01": {
+      "name": "v0.5.10-stage-01",
       "phase": "done",
       "status": "done",
       "deps": [],
@@ -297,6 +297,18 @@
         "start_time": "2026-08-07T11:56:16.243Z",
         "end_time": "2026-08-07T12:10:20.532Z",
         "duration_ms": 844289
+      }
+    },
+    "v0.5.11-stage-01": {
+      "name": "v0.5.11-stage-01",
+      "phase": "exec_running",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T12:14:58.820Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
@@ -307,7 +319,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.2",
+        "stageName": "v0.4.2",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -317,7 +329,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.2",
+        "stageName": "v0.4.2",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -327,7 +339,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.2",
+        "stageName": "v0.4.2",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -337,7 +349,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.2",
+        "stageName": "v0.4.2",
         "from": "archiving",
         "to": "done"
       }
@@ -347,7 +359,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.3",
+        "stageId": "v0.4.3",
         "phase": "plan_pending"
       }
     },
@@ -356,7 +368,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3",
+        "stageName": "v0.4.3",
         "from": "plan_pending",
         "to": "plan_review"
       }
@@ -366,7 +378,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3",
+        "stageName": "v0.4.3",
         "from": "plan_review",
         "to": "plan_pending"
       }
@@ -376,7 +388,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3",
+        "stageName": "v0.4.3",
         "from": "plan_pending",
         "to": "plan_review"
       }
@@ -386,7 +398,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3",
+        "stageName": "v0.4.3",
         "from": "plan_review",
         "to": "plan_passed"
       }
@@ -396,7 +408,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.3-stage-01",
+        "stageId": "v0.4.3-stage-01",
         "phase": "plan_pending"
       }
     },
@@ -405,7 +417,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.3-stage-02",
+        "stageId": "v0.4.3-stage-02",
         "phase": "plan_pending"
       }
     },
@@ -414,7 +426,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.3-stage-03",
+        "stageId": "v0.4.3-stage-03",
         "phase": "plan_pending"
       }
     },
@@ -423,7 +435,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "plan_pending",
         "to": "plan_passed"
       }
@@ -433,7 +445,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "plan_pending",
         "to": "plan_passed"
       }
@@ -443,7 +455,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "plan_passed",
         "to": "scheme_pending"
       }
@@ -453,7 +465,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "plan_passed",
         "to": "scheme_pending"
       }
@@ -463,7 +475,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "scheme_pending",
         "to": "scheme_review"
       }
@@ -473,7 +485,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "scheme_pending",
         "to": "scheme_review"
       }
@@ -483,7 +495,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "scheme_review",
         "to": "scheme_pending"
       }
@@ -493,7 +505,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "scheme_review",
         "to": "scheme_pending"
       }
@@ -503,7 +515,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "scheme_pending",
         "to": "scheme_review"
       }
@@ -513,7 +525,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "scheme_pending",
         "to": "scheme_review"
       }
@@ -523,7 +535,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "scheme_review",
         "to": "scheme_passed"
       }
@@ -533,7 +545,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "scheme_review",
         "to": "scheme_passed"
       }
@@ -543,7 +555,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -553,7 +565,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -563,7 +575,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -573,7 +585,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -583,7 +595,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -593,7 +605,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -603,7 +615,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -613,7 +625,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -623,7 +635,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -633,7 +645,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -643,7 +655,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -653,7 +665,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -663,7 +675,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "archiving",
         "to": "done"
       }
@@ -673,7 +685,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "archiving",
         "to": "done"
       }
@@ -683,7 +695,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-01",
+        "stageName": "v0.4.3-stage-01",
         "from": "done",
         "to": "done"
       }
@@ -693,7 +705,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-02",
+        "stageName": "v0.4.3-stage-02",
         "from": "done",
         "to": "done"
       }
@@ -703,7 +715,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "plan_pending",
         "to": "scheme_pending"
       }
@@ -713,7 +725,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "scheme_pending",
         "to": "scheme_review"
       }
@@ -723,7 +735,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "scheme_review",
         "to": "scheme_pending"
       }
@@ -733,7 +745,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "scheme_pending",
         "to": "scheme_review"
       }
@@ -743,7 +755,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "scheme_review",
         "to": "scheme_passed"
       }
@@ -753,7 +765,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -763,7 +775,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -773,7 +785,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -783,7 +795,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -793,7 +805,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -803,7 +815,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -813,7 +825,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "archiving",
         "to": "done"
       }
@@ -823,7 +835,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.3-stage-03",
+        "stageName": "v0.4.3-stage-03",
         "from": "done",
         "to": "done"
       }
@@ -833,7 +845,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.4",
+        "stageId": "v0.4.4",
         "phase": "plan_pending"
       }
     },
@@ -842,7 +854,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.4-stage-04",
+        "stageId": "v0.4.4-stage-04",
         "phase": "plan_pending"
       }
     },
@@ -851,7 +863,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4",
+        "stageName": "v0.4.4",
         "from": "plan_pending",
         "to": "plan_review"
       }
@@ -861,7 +873,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.4-stage-01",
+        "stageId": "v0.4.4-stage-01",
         "phase": "plan_pending"
       }
     },
@@ -870,7 +882,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.4-stage-02",
+        "stageId": "v0.4.4-stage-02",
         "phase": "plan_pending"
       }
     },
@@ -879,7 +891,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.4-stage-03",
+        "stageId": "v0.4.4-stage-03",
         "phase": "plan_pending"
       }
     },
@@ -888,7 +900,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4",
+        "stageName": "v0.4.4",
         "from": "plan_review",
         "to": "plan_passed"
       }
@@ -898,7 +910,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "plan_pending",
         "to": "scheme_pending"
       }
@@ -908,7 +920,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "plan_pending",
         "to": "scheme_pending"
       }
@@ -918,7 +930,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "scheme_pending",
         "to": "scheme_passed"
       }
@@ -928,7 +940,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -938,7 +950,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "scheme_pending",
         "to": "scheme_passed"
       }
@@ -948,7 +960,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -958,7 +970,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -968,7 +980,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -978,7 +990,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "review_pending",
         "to": "review_failed"
       }
@@ -988,7 +1000,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "review_pending",
         "to": "review_failed"
       }
@@ -998,7 +1010,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "review_failed",
         "to": "exec_running"
       }
@@ -1008,7 +1020,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1018,7 +1030,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "review_failed",
         "to": "exec_running"
       }
@@ -1028,7 +1040,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1038,7 +1050,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -1048,7 +1060,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "review_pending",
         "to": "test_pending"
       }
@@ -1058,7 +1070,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -1068,7 +1080,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1078,7 +1090,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -1088,7 +1100,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1098,7 +1110,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1108,7 +1120,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1118,7 +1130,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1128,7 +1140,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -1138,7 +1150,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -1148,7 +1160,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-01",
+        "stageName": "v0.4.4-stage-01",
         "from": "archiving",
         "to": "done"
       }
@@ -1158,7 +1170,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-02",
+        "stageName": "v0.4.4-stage-02",
         "from": "archiving",
         "to": "done"
       }
@@ -1168,7 +1180,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "plan_pending",
         "to": "scheme_pending"
       }
@@ -1178,7 +1190,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "plan_pending",
         "to": "scheme_pending"
       }
@@ -1188,7 +1200,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "scheme_pending",
         "to": "scheme_passed"
       }
@@ -1198,7 +1210,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -1208,7 +1220,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1218,7 +1230,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "scheme_pending",
         "to": "scheme_passed"
       }
@@ -1228,7 +1240,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -1238,7 +1250,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "review_pending",
         "to": "review_failed"
       }
@@ -1248,7 +1260,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1258,7 +1270,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "review_failed",
         "to": "exec_running"
       }
@@ -1268,7 +1280,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1278,7 +1290,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "review_pending",
         "to": "test_pending"
       }
@@ -1288,7 +1300,7 @@
       "agent": "feel-tester",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1298,7 +1310,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "review_pending",
         "to": "test_pending"
       }
@@ -1308,7 +1320,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "test_passed",
         "to": "test_passed"
       }
@@ -1318,7 +1330,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -1328,7 +1340,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-04",
+        "stageName": "v0.4.4-stage-04",
         "from": "archiving",
         "to": "done"
       }
@@ -1338,7 +1350,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "test_pending",
         "to": "test_failed"
       }
@@ -1348,7 +1360,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "test_failed",
         "to": "exec_running"
       }
@@ -1358,7 +1370,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1368,7 +1380,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -1378,7 +1390,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -1388,7 +1400,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1398,7 +1410,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -1408,7 +1420,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "archiving",
         "to": "done"
       }
@@ -1418,7 +1430,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4-stage-03",
+        "stageName": "v0.4.4-stage-03",
         "from": "done",
         "to": "done"
       }
@@ -1428,7 +1440,7 @@
       "agent": "flow-manager",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.4",
+        "stageName": "v0.4.4",
         "from": "plan_passed",
         "to": "done"
       }
@@ -1438,7 +1450,7 @@
       "agent": "flow-manager",
       "action": "add_stage",
       "detail": {
-        "stageId": "v4.5",
+        "stageId": "v0.4.5",
         "phase": "plan_pending"
       }
     },
@@ -1447,7 +1459,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.5",
+        "stageName": "v0.4.5",
         "from": "plan_pending",
         "to": "done"
       }
@@ -1457,7 +1469,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "plan_pending",
         "to": "plan_review"
       }
@@ -1467,7 +1479,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "plan_review",
         "to": "plan_passed"
       }
@@ -1477,7 +1489,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "plan_passed",
         "to": "scheme_pending"
       }
@@ -1487,7 +1499,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "scheme_pending",
         "to": "scheme_review"
       }
@@ -1497,7 +1509,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "scheme_review",
         "to": "scheme_passed"
       }
@@ -1507,7 +1519,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -1517,7 +1529,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1527,7 +1539,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "review_pending",
         "to": "exec_running"
       }
@@ -1537,7 +1549,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1547,7 +1559,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -1557,7 +1569,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -1567,7 +1579,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1577,7 +1589,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -1587,7 +1599,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "plan_pending",
         "to": "plan_passed"
       }
@@ -1597,7 +1609,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-01",
+        "stageName": "v0.4.6-stage-01",
         "from": "done",
         "to": "done"
       }
@@ -1607,7 +1619,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "plan_passed",
         "to": "scheme_pending"
       }
@@ -1617,7 +1629,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "scheme_pending",
         "to": "scheme_passed"
       }
@@ -1627,7 +1639,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -1637,7 +1649,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1647,7 +1659,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "review_pending",
         "to": "exec_running"
       }
@@ -1657,7 +1669,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1667,7 +1679,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -1677,7 +1689,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -1687,7 +1699,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1697,7 +1709,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "done",
         "to": "archiving"
       }
@@ -1707,7 +1719,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.6-stage-02",
+        "stageName": "v0.4.6-stage-02",
         "from": "done",
         "to": "done"
       }
@@ -1717,7 +1729,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.7-stage-01",
+        "stageName": "v0.4.7-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -1727,7 +1739,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.7-stage-01",
+        "stageName": "v0.4.7-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1737,7 +1749,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.7-stage-01",
+        "stageName": "v0.4.7-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -1747,7 +1759,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.7-stage-01",
+        "stageName": "v0.4.7-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -1757,7 +1769,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.7-stage-01",
+        "stageName": "v0.4.7-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1767,7 +1779,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.7-stage-01",
+        "stageName": "v0.4.7-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -1777,7 +1789,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v4.7-stage-01",
+        "stageName": "v0.4.7-stage-01",
         "from": "archiving",
         "to": "done"
       }
@@ -1787,7 +1799,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.0-stage-01",
+        "stageName": "v0.5.0-stage-01",
         "from": "plan_pending",
         "to": "scheme_pending"
       }
@@ -1797,7 +1809,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.0-stage-01",
+        "stageName": "v0.5.0-stage-01",
         "from": "scheme_pending",
         "to": "scheme_passed"
       }
@@ -1807,7 +1819,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.0-stage-01",
+        "stageName": "v0.5.0-stage-01",
         "from": "scheme_passed",
         "to": "exec_running"
       }
@@ -1817,7 +1829,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.0-stage-01",
+        "stageName": "v0.5.0-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1827,7 +1839,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.0-stage-01",
+        "stageName": "v0.5.0-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -1837,7 +1849,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.0-stage-01",
+        "stageName": "v0.5.0-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -1847,7 +1859,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.0-stage-01",
+        "stageName": "v0.5.0-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1857,7 +1869,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.0-stage-01",
+        "stageName": "v0.5.0-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -1867,7 +1879,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.1-stage-01",
+        "stageName": "v0.5.1-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -1877,7 +1889,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.1-stage-01",
+        "stageName": "v0.5.1-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1887,7 +1899,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.1-stage-01",
+        "stageName": "v0.5.1-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -1897,7 +1909,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.1-stage-01",
+        "stageName": "v0.5.1-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -1907,7 +1919,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.1-stage-01",
+        "stageName": "v0.5.1-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1917,7 +1929,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.1-stage-01",
+        "stageName": "v0.5.1-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -1927,7 +1939,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.2-stage-01",
+        "stageName": "v0.5.2-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -1937,7 +1949,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.2-stage-01",
+        "stageName": "v0.5.2-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -1947,7 +1959,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.2-stage-01",
+        "stageName": "v0.5.2-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -1957,7 +1969,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.2-stage-01",
+        "stageName": "v0.5.2-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -1967,7 +1979,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.2-stage-01",
+        "stageName": "v0.5.2-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -1977,7 +1989,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.2-stage-01",
+        "stageName": "v0.5.2-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -1987,7 +1999,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.3-stage-01",
+        "stageName": "v0.5.3-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -1997,7 +2009,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.3-stage-01",
+        "stageName": "v0.5.3-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2007,7 +2019,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.3-stage-01",
+        "stageName": "v0.5.3-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -2017,7 +2029,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.3-stage-01",
+        "stageName": "v0.5.3-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -2027,7 +2039,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.3-stage-01",
+        "stageName": "v0.5.3-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -2037,7 +2049,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.3-stage-01",
+        "stageName": "v0.5.3-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -2047,7 +2059,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.4-stage-01",
+        "stageName": "v0.5.4-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -2057,7 +2069,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.4-stage-01",
+        "stageName": "v0.5.4-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2067,7 +2079,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.4-stage-01",
+        "stageName": "v0.5.4-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -2077,7 +2089,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.4-stage-01",
+        "stageName": "v0.5.4-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -2087,7 +2099,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.4-stage-01",
+        "stageName": "v0.5.4-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -2097,7 +2109,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.4-stage-01",
+        "stageName": "v0.5.4-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -2107,7 +2119,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.4-stage-01",
+        "stageName": "v0.5.4-stage-01",
         "from": "done",
         "to": "done"
       }
@@ -2117,7 +2129,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.5-stage-01",
+        "stageName": "v0.5.5-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -2127,7 +2139,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.5-stage-01",
+        "stageName": "v0.5.5-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2137,7 +2149,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.5-stage-01",
+        "stageName": "v0.5.5-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -2147,7 +2159,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.5-stage-01",
+        "stageName": "v0.5.5-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -2157,7 +2169,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.5-stage-01",
+        "stageName": "v0.5.5-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -2167,7 +2179,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.5-stage-01",
+        "stageName": "v0.5.5-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -2177,7 +2189,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.6-stage-01",
+        "stageName": "v0.5.6-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -2187,7 +2199,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.6-stage-01",
+        "stageName": "v0.5.6-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2197,7 +2209,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.6-stage-01",
+        "stageName": "v0.5.6-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -2207,7 +2219,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.6-stage-01",
+        "stageName": "v0.5.6-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -2217,7 +2229,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.6-stage-01",
+        "stageName": "v0.5.6-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -2227,7 +2239,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.6-stage-01",
+        "stageName": "v0.5.6-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -2237,7 +2249,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.7-stage-01",
+        "stageName": "v0.5.7-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -2247,7 +2259,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.7-stage-01",
+        "stageName": "v0.5.7-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2257,7 +2269,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.7-stage-01",
+        "stageName": "v0.5.7-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -2267,7 +2279,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.7-stage-01",
+        "stageName": "v0.5.7-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -2277,7 +2289,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.7-stage-01",
+        "stageName": "v0.5.7-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -2287,7 +2299,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.7-stage-01",
+        "stageName": "v0.5.7-stage-01",
         "from": "done",
         "to": "archiving"
       }
@@ -2297,7 +2309,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.8-stage-01",
+        "stageName": "v0.5.8-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -2307,7 +2319,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.8-stage-01",
+        "stageName": "v0.5.8-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2317,7 +2329,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.8-stage-01",
+        "stageName": "v0.5.8-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -2327,7 +2339,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.8-stage-01",
+        "stageName": "v0.5.8-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -2337,7 +2349,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.8-stage-01",
+        "stageName": "v0.5.8-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -2347,7 +2359,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.8-stage-01",
+        "stageName": "v0.5.8-stage-01",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -2357,7 +2369,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.8-stage-01",
+        "stageName": "v0.5.8-stage-01",
         "from": "archiving",
         "to": "done"
       }
@@ -2367,7 +2379,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.9-stage-01",
+        "stageName": "v0.5.9-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -2377,7 +2389,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.9-stage-01",
+        "stageName": "v0.5.9-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2387,7 +2399,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.9-stage-01",
+        "stageName": "v0.5.9-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -2397,7 +2409,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.9-stage-01",
+        "stageName": "v0.5.9-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -2407,7 +2419,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.9-stage-01",
+        "stageName": "v0.5.9-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -2417,7 +2429,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.9-stage-01",
+        "stageName": "v0.5.9-stage-01",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -2427,7 +2439,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.9-stage-01",
+        "stageName": "v0.5.9-stage-01",
         "from": "archiving",
         "to": "done"
       }
@@ -2437,7 +2449,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
       }
@@ -2447,7 +2459,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2457,7 +2469,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "review_pending",
         "to": "exec_running"
       }
@@ -2467,7 +2479,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "exec_running",
         "to": "review_pending"
       }
@@ -2477,7 +2489,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "review_pending",
         "to": "review_passed"
       }
@@ -2487,7 +2499,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "review_passed",
         "to": "test_pending"
       }
@@ -2497,7 +2509,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "test_pending",
         "to": "test_passed"
       }
@@ -2507,7 +2519,7 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "test_passed",
         "to": "archiving"
       }
@@ -2517,9 +2529,19 @@
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v5.10-stage-01",
+        "stageName": "v0.5.10-stage-01",
         "from": "archiving",
         "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-07T12:14:58.820Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v0.5.11-stage-01",
+        "from": "plan_pending",
+        "to": "exec_running"
       }
     }
   ]

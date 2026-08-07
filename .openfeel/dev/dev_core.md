@@ -37,7 +37,7 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 
 ## [-] Agent 工具使用规范 (2026-06-27)
 
-> **已迁移到 `.opencode/instructions/core.md` (v5.2)**：完整工具规范（todowrite/question/task/skill + 优先级表）已迁移至 `.opencode/instructions/core.md`「Agent 工具使用规范」节，此处不再维护。历史内容保留备查。
+> **已迁移到 `.opencode/instructions/core.md` (v0.5.2)**：完整工具规范（todowrite/question/task/skill + 优先级表）已迁移至 `.opencode/instructions/core.md`「Agent 工具使用规范」节，此处不再维护。历史内容保留备查。
 
 所有 Agent（含 Feel、Planner、Schemer、Executor、Reviewer、Feel Tester、Archiver）在会话中应主动使用平台内置工具，不得仅凭对话文本完成复杂任务。
 
@@ -133,7 +133,7 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 
 > 违反此约束将导致 `update` 部署旧版内容，用户项目使用过期规范。
 
-> **已禁用 (v4.1-stage-01)**：构建时自动同步已落地。`npm run build` 自动完成三类模板的编码和注入，无需手动同步。参见 op-001。
+> **已禁用 (v0.4.1-stage-01)**：构建时自动同步已落地。`npm run build` 自动完成三类模板的编码和注入，无需手动同步。参见 op-001。
 
 ## [+] 双语开发强制约束 (2026-07-15)
 

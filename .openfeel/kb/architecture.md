@@ -63,7 +63,7 @@ v3.1 引入的校验规则：
 
 ## [+] 15→7 Agent 精简体系设计 (2026-07-05)
 
-v4.0 将 Agent 从 15 个精简为 7 个，形成职责清晰的层级结构：
+v0.4.0 将 Agent 从 15 个精简为 7 个，形成职责清晰的层级结构：
 
 ```
 feel（总统领） → 兼任 Planner
@@ -83,7 +83,7 @@ feel（总统领） → 兼任 Planner
 
 ## [+] Feel 调度 + openfeel CLI 推进模型 (2026-07-05)
 
-v4.0 废弃旧式"自动闭环"（auto-runner 调度 code-worker/review-worker），统一为 Feel 总统领通过 CLI 推进流水线：
+v0.4.0 废弃旧式"自动闭环"（auto-runner 调度 code-worker/review-worker），统一为 Feel 总统领通过 CLI 推进流水线：
 
 - Feel 读取 `flow.json` 判断当前阶段和 phase
 - 通过 `openfeel flow` 命令推进流水线（`status` → `advance` → `repair`）
@@ -95,7 +95,7 @@ v4.0 废弃旧式"自动闭环"（auto-runner 调度 code-worker/review-worker�
 
 ## [+] 知识库自动化体系：检索 → 去重 → 沉淀 (2026-07-05)
 
-v4.0 建立了知识库的「读写闭环」：
+v0.4.0 建立了知识库的「读写闭环」：
 
 - **检索层**：`check-kb` skill 内嵌语义检索（步骤 5 自执行 `python scripts/search_kb.py`），无需再手动调用 `search-kb`
 - **去重层**：`kb-dedup.ts` 在归档前执行 Jaccard 词袋相似度计算，相似度 > 80% 时更新而非新增条目
@@ -105,7 +105,7 @@ v4.0 建立了知识库的「读写闭环」：
 
 ## [+] 多语言模板数据管线：源文件→构建时内联→运行时加载 (2026-07-12)
 
-v4.3 建立了支持多语言的模板数据管线，采用「源文件管理 → 构建时内联 → 运行时按语言加载」三层架构：
+v0.4.3 建立了支持多语言的模板数据管线，采用「源文件管理 → 构建时内联 → 运行时按语言加载」三层架构：
 
 ```
 templates-data/                              ← 唯一真相源（人类编辑）
@@ -133,9 +133,9 @@ template-loader.ts 导出函数：
 **优势：**
 - 编译产出自包含，npm 包分发无需额外配置（.md 文件仅供构建时使用）
 - 语言配置与模板内容完全解耦——新增语言只需添加模板目录+构建脚本注册，无需修改 runtime 代码
-- 与 v4.1 建立的构建时模板同步机制（templates-data/ → .opencode/agents/）协同工作
+- 与 v0.4.1 建立的构建时模板同步机制（templates-data/ → .opencode/agents/）协同工作
 
-**参见：** v4.3-stage-01 op-005（模板加载器）、v4.3-stage-03 op-001/op-006（多语言扩展）、kb/patterns.md #构建脚本多语言循环生成模式
+**参见：** v0.4.3-stage-01 op-005（模板加载器）、v0.4.3-stage-03 op-001/op-006（多语言扩展）、kb/patterns.md #构建脚本多语言循环生成模式
 
 ## [+] i18n 基础设施：TS 常量导入 + 运行时查表模式 (2026-07-14)
 
@@ -165,11 +165,11 @@ src/core/i18n.ts                   ← 运行时引擎
 - i18n 处理**运行时 CLI 输出**（命令反馈文本，内容量小直接 TS 常量）
 - 两者互补形成完整的多语言覆盖：运行时输出（i18n）+ 部署时内容（template-loader）
 
-**参见：** v4.4-stage-01 op-001~op-002、kb/patterns.md #CLI 国际化封装模式
+**参见：** v0.4.4-stage-01 op-001~op-002、kb/patterns.md #CLI 国际化封装模式
 
 ## [+] 公域日志批量聚合策略：推进事件延迟并入阶段里程碑 (2026-07-14)
 
-v4.4 将公域日志从"每次 advance_stage_phase 逐条写入"改为"endStage() 完成时批量聚合为一条里程碑记录"：
+v0.4.4 将公域日志从"每次 advance_stage_phase 逐条写入"改为"endStage() 完成时批量聚合为一条里程碑记录"：
 
 ```
 之前：flow advance 每次调用 → 公域日志立即写入一条（每阶段 6-8 条噪音）
@@ -182,11 +182,11 @@ v4.4 将公域日志从"每次 advance_stage_phase 逐条写入"改为"endStage(
 - 里程碑事件（test_passed、archiving→done）仍逐条记录，确保审计链不丢失
 - 降噪效果：消除约 85%+ 的公域日志条目，剩余均为里程碑级事件
 
-**参见：** v4.4-stage-02 op-001、kb/patterns.md #流水线节点触发日志骨架模式
+**参见：** v0.4.4-stage-02 op-001、kb/patterns.md #流水线节点触发日志骨架模式
 
 ## [+] 8→9 Agent 体系扩展：Vision 视觉官 (2026-08-07)
 
-v4.6 新增第 9 个 Agent：**Vision（视觉官）**，基于 qwen-vl-plus 多模态模型：
+v0.4.6 新增第 9 个 Agent：**Vision（视觉官）**，基于 qwen-vl-plus 多模态模型：
 
 - **职责**：通用视觉分析（图像理解、UI 截图分析、图表/流程图解析、错误堆栈截图分析）
 - **模型**：alibaba/qwen-vl-plus（通义千问多模态）
@@ -202,7 +202,7 @@ v4.6 新增第 9 个 Agent：**Vision（视觉官）**，基于 qwen-vl-plus 多
 
 ## [+] CLI 质量门禁体系：lint 子命令组 (2026-08-07)
 
-v5.4 引入首个自动化质量检查命令组 `openfeel lint`，以子命令形式承载多领域校验：
+v0.5.4 引入首个自动化质量检查命令组 `openfeel lint`，以子命令形式承载多领域校验：
 
 ```
 openfeel lint
@@ -213,7 +213,7 @@ openfeel lint
 **设计决策：**
 - 选择 `lint` 作为命令组名而非 `check` 或 `validate`，与前端工具链（ESLint）和 DevOps（Hadolint）命名习惯一致，降低认知成本
 - 每个子命令独立实现校验逻辑，通过 Commander `.command()` 注册，新校验项以新增子命令的方式扩展，无需修改现有校验逻辑
-- `--fix` 自动修复为可选能力，当前 `lint i18n` 无自动修复（键缺失需人工决策），`lint kb` 的 `--fix` 已在路线图中但尚未实现（v5.4 首版仅检测）
+- `--fix` 自动修复为可选能力，当前 `lint i18n` 无自动修复（键缺失需人工决策），`lint kb` 的 `--fix` 已在路线图中但尚未实现（v0.5.4 首版仅检测）
 - lint 命令零依赖外部服务——i18n 校验通过静态分析 `src/core/i18n-data/*.ts` 的导出键集合，kb 校验通过 `glob` 检查文件存在性
 
 **路线图：**
@@ -221,11 +221,11 @@ openfeel lint
 - 中期：`lint prompt` 检测 Agent prompt 中的过时 CLI 命令引用和路径
 - 长期：CI/CD 集成 `openfeel lint` 作为提交前门禁，阻断质量退化
 
-**参见：** v5.4-stage-01 op-001（lint i18n）、op-002（lint kb）、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式
+**参见：** v0.5.4-stage-01 op-001（lint i18n）、op-002（lint kb）、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式
 
 ## [+] 分级模块文档系统：manual + 树图索引 (2026-08-07)
 
-v5.6 建立了 `.openfeel/manual/` 分级模块文档系统，与 kb/ 知识库形成互补：
+v0.5.6 建立了 `.openfeel/manual/` 分级模块文档系统，与 kb/ 知识库形成互补：
 
 ```
 manual/               ← 模块文档系统（人类维护，Archiver 归档时更新）
@@ -255,27 +255,27 @@ manual/               ← 模块文档系统（人类维护，Archiver 归档时
 | 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更 |
 | Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更 |
 
-**参见：** v5.6-stage-01 op-001（manual 创建 + AGENTS.md 模块手册约束）、kb/patterns.md #归档官维护 manual 模块文档模式
+**参见：** v0.5.6-stage-01 op-001（manual 创建 + AGENTS.md 模块手册约束）、kb/patterns.md #归档官维护 manual 模块文档模式
 
 ## [+] 计划目录按大版本系列分组模式 (2026-08-07)
 
-v5.7 将 `.openfeel/plan/` 从平铺目录重构为按大版本系列分组，形成「系列索引 + 顶层指针」的二级导航体系：
+v0.5.7 将 `.openfeel/plan/` 从平铺目录重构为按大版本系列分组，形成「系列索引 + 顶层指针」的二级导航体系：
 
 ```
 plan/                    ← 顶层（仅入口文件）
 ├── index.md             ← 顶层索引（系列导航 + 各版本阶段对照表）
 ├── plan_index.md        ← 指针文件（指向系列索引，轻量）
 ├── plan_log.md          ← 变更日志（最近 30 条摘要）
-├── v4/                  ← v4 系列收纳（v4 ~ v4.7）
+├── v4/                  ← v4 系列收纳（v4 ~ v0.4.7）
 │   ├── index.md         ← v4 系列索引（各期摘要 + 状态表）
 │   ├── plan.md          ← v4 大版本计划（顶层设计）
-│   ├── v4.7/            ← 各小版本目录
+│   ├── v0.4.7/            ← 各小版本目录
 │   │   └── plan.md
 │   └── ...
-├── v5/                  ← v5 系列收纳（v5.0 ~ v5.7）
+├── v5/                  ← v5 系列收纳（v0.5.0 ~ v0.5.7）
 │   ├── index.md         ← v5 系列索引
-│   ├── roadmap-v5.md    ← v5 系列路线图（从 v4.7 迁入）
-│   └── v5.7/
+│   ├── roadmap-v5.md    ← v5 系列路线图（从 v0.4.7 迁入）
+│   └── v0.5.7/
 │       └── ops/
 └── v1/ v2/ v3/ ...      ← 历史版本原位保留
 ```
@@ -293,4 +293,4 @@ plan/                    ← 顶层（仅入口文件）
 - 重构后立即校验所有引用路径的可用性（glob 全量检查 + 每个链接点击验证）
 - 计划目录调整涉及 skill/模板/CLI 三层引用，需全链路同步→自测闭环
 
-**参见：** v5.7-stage-01 op-001（目录重构 + reasoning_effort 调整）、kb/patterns.md #约束文件→指令文件迁移模式（同属目录重构类模式）
+**参见：** v0.5.7-stage-01 op-001（目录重构 + reasoning_effort 调整）、kb/patterns.md #约束文件→指令文件迁移模式（同属目录重构类模式）

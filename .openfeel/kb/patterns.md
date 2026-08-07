@@ -226,7 +226,7 @@ const b64 = Buffer.from(content, 'utf-8').toString('base64');
 **连带应用**：任何涉及"从文件读取 → 编码/序列化 → 存储 → 解码 → 比对"的管线都应归一化：
 - 模板提取后与源文件的一致性 diff 应 `replace(/\r\n/g, '\n')` 后再对比
 - 测试验收中模板源与部署目标对比时同理，避免因行尾符差异误报不一致
-- 参见 v4.3-stage-01 REV-003（B64 往返时 CRLF 未归一化）和 dev_last.md（验收 diff 误报）
+- 参见 v0.4.3-stage-01 REV-003（B64 往返时 CRLF 未归一化）和 dev_last.md（验收 diff 误报）
 
 ## [+] 统一门控 + 整节替换模式 (2026-07-12)
 
@@ -256,7 +256,7 @@ lines.push(srcExists ? '   构建产物:  dist/' : '   （未检测到）');
 - 代码更清晰——一个 `if/else` 覆盖整节，而非逐行 condition ? a : b 三元嵌套
 - 实现时可在方案基础上适度增强提示文案的可诊断性（如 `——缺少 src/ 目录` 比 `未检测到项目结构` 更精确定位根因），这类正向偏差经审查确认后应予以保留
 
-> 参见 v4.3-stage-02 REV-001（统一门控决策）、REV-005（正向偏差——增强版文案）
+> 参见 v0.4.3-stage-02 REV-001（统一门控决策）、REV-005（正向偏差——增强版文案）
 
 ## [+] API 回退逻辑中的错误信息应报告实际状态 (2026-07-12)
 
@@ -282,7 +282,7 @@ export function loadAgentTemplate(lang: string, agentId: string): string {
 
 **连带检查**：回退逻辑中的死代码分支也需清理——`??` 运算符已保证回退值存在时，后续的 `if (!langData) return []` 永远不会执行，应在审查中移除。
 
-> 参见 v4.3-stage-01 REV-006（方案审查）/ REV-011（代码审查——遗留项）
+> 参见 v0.4.3-stage-01 REV-006（方案审查）/ REV-011（代码审查——遗留项）
 
 ## [+] 构建脚本多语言循环生成模式 (2026-07-12)
 
@@ -316,7 +316,7 @@ generateEnTemplates();
 - 构建脚本修改后应在自测中验证所有语言键均成功生成（检查 `AGENT_TEMPLATES` 对象的 `Object.keys()` 包含预期语言）
 - npm 包仅分发编译产物（含内联模板常量的 .js），`.md` 源文件仅供构建时使用，`package.json` `files` 字段无需配置
 
-> 参见 v4.3-stage-03 op-001（build.js 多语言扩展）、kb/architecture.md #多语言模板数据管线
+> 参见 v0.4.3-stage-03 op-001（build.js 多语言扩展）、kb/architecture.md #多语言模板数据管线
 
 ## [+] 双语 CLI 交互模式：init 选择 → .info.json 持久化 → update 读取 (2026-07-12)
 
@@ -343,7 +343,7 @@ openfeel update
 - 非交互环境（如 CI/CD）下 init 应自动选择默认语言并记录提示，不阻塞流程
 - init 和 update 共享同一套模板加载器函数，确保内容一致性
 
-> 参见 v4.3-stage-03 op-004（init 双语选择）、op-005（语言配置存储）、op-006（update --lang 参数）
+> 参见 v0.4.3-stage-03 op-004（init 双语选择）、op-005（语言配置存储）、op-006（update --lang 参数）
 
 ## [+] 向后兼容的可选配置字段模式 (2026-07-12)
 
@@ -377,7 +377,7 @@ export function ensureInfoJson(lang?: string): void {
 - 读取时对缺失字段抛出异常 — 破坏已有部署项目的向后兼容性
 - update 命令用默认值强制覆写已有 lang 字段 — 用户已选择语言被重置
 
-> 参见 v4.3-stage-03 op-005（identity.ts lang 字段 + getLang 函数）
+> 参见 v0.4.3-stage-03 op-005（identity.ts lang 字段 + getLang 函数）
 
 ## [+] CLI 国际化封装模式：t() + 键命名规范 + 模板插值 (2026-07-14)
 
@@ -417,7 +417,7 @@ export const flow: I18nDomain = {
 - t() 缺失 key 时回退 `zh-CN` 而非抛错，确保向后兼容
 - 封装前应从现有代码 grep 所有 `console.log/error` 含中文的调用点，建立完整清单后逐条替换
 
-**参见：** v4.4-stage-01 op-001/op-002/op-005、kb/architecture.md #i18n 基础设施
+**参见：** v0.4.4-stage-01 op-001/op-002/op-005、kb/architecture.md #i18n 基础设施
 
 ## [+] 语言配置三级回退链：用户级 → 项目级 → 默认值 (2026-07-14)
 
@@ -443,7 +443,7 @@ function getCliLang(projectPath: string): 'zh-CN' | 'en' {
 - 两者均使用 `??` 运算符（非 `||`），确保空字符串也触发回退
 - 写入侧遵循已有原则：仅在有明确用户意图时才写入新字段，不强制覆盖已有值
 
-**参见：** v4.4-stage-01 op-003/op-004、kb/patterns.md #向后兼容的可选配置字段模式
+**参见：** v0.4.4-stage-01 op-003/op-004、kb/patterns.md #向后兼容的可选配置字段模式
 
 ## [+] REV 闭环双路兜底 + --force 不可绕过模式 (2026-07-14)
 
@@ -482,7 +482,7 @@ if (targetPhase === 'done') {
 - 流水线安全不应存在后门——若确有 low 优先级 REV 故意不修，应先通过 `flow review resolve` 或修改 REV 的 `blocking` 标记
 - 两路校验逻辑需保持同步，命令层提供更丰富的错误输出，核心层作为最后防线
 
-**参见：** v4.4-stage-02 op-002、kb/patterns.md #REV blocking 标记模式、kb/patterns.md #Executor 前置校验三步模式
+**参见：** v0.4.4-stage-02 op-002、kb/patterns.md #REV blocking 标记模式、kb/patterns.md #Executor 前置校验三步模式
 
 ## [+] 流水线节点触发日志骨架自动创建模式 (2026-07-14)
 
@@ -505,7 +505,7 @@ if (targetPhase === 'exec_running' || targetPhase === 'review_pending' || target
 - 与公域日志降噪协同：私域记录过程（骨架→填充），公域仅记录里程碑
 - 不影响已有 Agent prompt（文件已存在，Agent 按原有流程读写即可）
 
-**参见：** v4.4-stage-02 op-004、kb/architecture.md #公域日志批量聚合策略
+**参见：** v0.4.4-stage-02 op-004、kb/architecture.md #公域日志批量聚合策略
 
 ## [+] i18n 域扩展与 config 命令组模式 (2026-07-15)
 
@@ -535,7 +535,7 @@ configCmd
 - 命令层不直接 `readFile` / `writeFile` JSON 文件，避免格式错误和数据不一致
 - 与已有 CLI 原子管理模式互补——本条目聚焦命令组结构，已有条目覆盖全局原则
 
-**参见：** v4.4-stage-03 op-001、kb/patterns.md #CLI 原子管理模式、kb/patterns.md #CLI 国际化封装模式
+**参见：** v0.4.4-stage-03 op-001、kb/patterns.md #CLI 原子管理模式、kb/patterns.md #CLI 国际化封装模式
 
 ## [+] Agent 提示词中的产出最小模板约束模式 (2026-07-15)
 
@@ -563,7 +563,7 @@ configCmd
 - 跨语言项目需确保中英 Agent 产出一致时
 - 新项目初始化模板标准化
 
-**参见：** v4.4-stage-03 op-003、kb/patterns.md #构建脚本多语言循环生成模式
+**参见：** v0.4.4-stage-03 op-003、kb/patterns.md #构建脚本多语言循环生成模式
 
 ## [+] 新增 Agent 全链路更新清单模式 (2026-08-07)
 
@@ -609,9 +609,9 @@ configCmd
 
 ### 实战验证
 
-v4.6-stage-01 新增 Vision Agent 时严格按此清单执行，一次性通过构建（`npm run build` 退出码 0）、模板一致性校验（18/18 一致）、测试（更新断言后 298/298 全通过）。3 条 REV 全部通过 op-009 修复闭环（权限顺序 + bash 用途说明 + 摘要表补全）。
+v0.4.6-stage-01 新增 Vision Agent 时严格按此清单执行，一次性通过构建（`npm run build` 退出码 0）、模板一致性校验（18/18 一致）、测试（更新断言后 298/298 全通过）。3 条 REV 全部通过 op-009 修复闭环（权限顺序 + bash 用途说明 + 摘要表补全）。
 
-**参见：** v4.6-stage-01（Vision Agent 全链路落地）、kb/architecture.md #8→9 Agent 体系扩展：Vision 视觉官
+**参见：** v0.4.6-stage-01（Vision Agent 全链路落地）、kb/architecture.md #8→9 Agent 体系扩展：Vision 视觉官
 
 ## [+] YAML Document API 增量修改模式 (2026-08-07)
 
@@ -648,7 +648,7 @@ writeFileSync(configPath, doc.toString(), 'utf-8');
 - 需要保持 Git diff 干净——仅修改的键值对出现在 diff 中，相邻注释和空行不受影响
 - 与 CLI 原子管理模式互补：本条目聚焦 YAML 写入技术方案，CLI 原子管理覆盖"Agent 不直接 edit 数据文件"的原则
 
-**参见：** v4.6-stage-02 op-001（config.ts setConfigValue）、kb/patterns.md #CLI 原子管理模式
+**参见：** v0.4.6-stage-02 op-001（config.ts setConfigValue）、kb/patterns.md #CLI 原子管理模式
 
 ## [+] 过度设计审查子维度扩展模式 (2026-08-07)
 
@@ -671,7 +671,7 @@ writeFileSync(configPath, doc.toString(), 'utf-8');
 - 本条目展示的是向「规范性」维度新增子维度的扩展模式——子维度扩展不限于特定父维度
 - 新增子维度的时机：当项目编码规范中某条规则的违反检测需要显式提醒（而非隐含在通用检查中），即可独立为子维度
 
-**参见：** v4.6-stage-02 op-006（Reviewer 过度设计审查维度）、kb/patterns.md #审查五维度体系、kb/patterns.md #多语言模板数据管线
+**参见：** v0.4.6-stage-02 op-006（Reviewer 过度设计审查维度）、kb/patterns.md #审查五维度体系、kb/patterns.md #多语言模板数据管线
 
 ## [+] 全局跨项目用户画像 YAML 配置模式 (2026-08-07)
 
@@ -722,7 +722,7 @@ export function writeProfile(profile: Profile): void {
 - Agent 启动时需加载用户的全局设置（语言、自动化偏好、沟通风格等）
 - 多个相关项目共享同一套用户画像
 
-**参见：** v5.0-stage-01 op-001（config.ts）、kb/patterns.md #YAML Document API 增量修改模式、kb/patterns.md #向后兼容的可选配置字段模式
+**参见：** v0.5.0-stage-01 op-001（config.ts）、kb/patterns.md #YAML Document API 增量修改模式、kb/patterns.md #向后兼容的可选配置字段模式
 
 ## [+] Agent 记忆生命周期三层模式 (2026-08-07)
 
@@ -760,7 +760,7 @@ export function writeProfile(profile: Profile): void {
 - Agent prompt 需要定义「启动时加载什么」「会话中记录什么」「结束时写入什么」的三段式流程
 - 记忆体系需支持渐进扩展（新增记忆节时遵循模板扩展模式，参见 core.md 模板更新规则）
 
-**参见：** v5.0-stage-01 op-003（feel.md + core.md）、kb/patterns.md #新增 Agent 全链路更新清单模式
+**参见：** v0.5.0-stage-01 op-003（feel.md + core.md）、kb/patterns.md #新增 Agent 全链路更新清单模式
 
 ## [+] 流水线归档自动 git commit 模式 (2026-08-07)
 
@@ -781,14 +781,14 @@ private autoCommitOnDone(stageName: string): void {
 ```
 
 **设计要点：**
-- **触发时机（v5.5 修正）**：原实现 `autoCommitOnDone` 在 `advanceStagePhase` 内部调用，先于 `flowManager.save()` 执行，导致 git commit 不包含本次 phase 变更。**v5.5 修正**：`advanceStagePhase` 返回 `boolean` 标记是否需要归档 commit，命令层在 `save()` 之后调用 `autoCommitOnDone`，确保 commit 包含完整的 phase 状态变更。
+- **触发时机（v0.5.5 修正）**：原实现 `autoCommitOnDone` 在 `advanceStagePhase` 内部调用，先于 `flowManager.save()` 执行，导致 git commit 不包含本次 phase 变更。**v0.5.5 修正**：`advanceStagePhase` 返回 `boolean` 标记是否需要归档 commit，命令层在 `save()` 之后调用 `autoCommitOnDone`，确保 commit 包含完整的 phase 状态变更。
 - **静默降级**：非 git 仓库、git 不可用或无变更时 catch 异常、输出跳过信息，不阻塞 done 推进——归档完成不应因版本控制问题而失败
 - **i18n 覆盖**：成功提交和跳过场景均有对应 i18n 消息键（`gitCommitOkTmpl` / `gitCommitSkipTmpl`），zh-CN + en 双语
 - **与归档流程解耦**：git 提交失败不影响阶段状态迁移——`done` 仍然正常写入 flow.json，确保流水线鲁棒性
 - **Commit 格式**：`chore: 阶段归档 {stageName}`，便于 git log 中快速定位各阶段归档点
 - **方法可见性**：从 `private` 提升为 `public`，供命令层在 `save()` 后显式调用
 
-**参见：** v5.1-stage-01（原始实现）、v5.5-stage-01（时序修正）、kb/architecture.md #Feel 调度 + openfeel CLI 推进模型
+**参见：** v0.5.1-stage-01（原始实现）、v0.5.5-stage-01（时序修正）、kb/architecture.md #Feel 调度 + openfeel CLI 推进模型
 
 ## [+] Agent 提示词编号一致性审计模式 (2026-08-07)
 
@@ -807,7 +807,7 @@ private autoCommitOnDone(stageName: string): void {
 - 构建后校验：`npm run build` 自动传播修改，然后对比 `.opencode/agents/` 部署文件确认一致性
 - 多语言同步：zh-CN 和 en 模板编号结构必须完全对应，修改一处须同步另一处
 
-**参见：** v5.1-stage-01、kb/patterns.md #构建脚本多语言循环生成模式
+**参见：** v0.5.1-stage-01、kb/patterns.md #构建脚本多语言循环生成模式
 
 ## [+] AGENTS.md 模板四节同步机制 (2026-08-07)
 
@@ -828,7 +828,7 @@ AGENTS.md 源模板（`templates-data/agents-md/{lang}.md`）在基础行为约�
 - 两语言文件内容语言各自独立但结构（章节标题、表格列数、命令列表）完全对称——新增节或命令时须双语言同步修改
 - 设计原则：AGENTS.md 仅保留项目级行为约束，流程规则由 CLI 工具动态注入（"提示词瘦身，流程入工具"）
 
-**参见：** v5.1-stage-01、kb/architecture.md #多语言模板数据管线、kb/patterns.md #双语 CLI 交互模式
+**参见：** v0.5.1-stage-01、kb/architecture.md #多语言模板数据管线、kb/patterns.md #双语 CLI 交互模式
 
 ## [+] 跨 Agent Handoff 委派原语模式 (2026-08-07)
 
@@ -869,7 +869,7 @@ Agent A 返回 → 含 [HANDOFF: agent_name] 标记
 
 **设计理由：** 若走 CLI 方案（新增 `openfeel handoff` 命令）则需修改解析器、flow-manager 和测试，且与现有 Agent 体系耦合度高。Prompt 级标记方案零基础设施成本，符合 OpenFeel "提示词瘦身，流程入工具"的设计理念中关于 Agent 间协作应尽量轻量的原则。
 
-**参见：** v5.2-stage-01、kb/architecture.md #Feel 调度 + CLI 推进模型
+**参见：** v0.5.2-stage-01、kb/architecture.md #Feel 调度 + CLI 推进模型
 
 ## [+] 约束文件→指令文件迁移模式 (2026-08-07)
 
@@ -898,7 +898,7 @@ Agent A 返回 → 含 [HANDOFF: agent_name] 标记
 - 双语模板必须同步修改，否则 `npm run build` 后 en 部署版本丢失迁移内容
 - 本模式下不属于代码变更（无需修改 `.ts` 文件），但产生设计文档变更（需记录到 plan 和日志）
 
-**参见：** v5.2-stage-01
+**参见：** v0.5.2-stage-01
 
 ## [+] Checkpoint 快照自动保存 + 生命周期管理模式 (2026-08-07)
 
@@ -944,7 +944,7 @@ private saveCheckpoint(stageId: string, phase: string): void {
 - 调试 phase 推进逻辑时需要对比历史快照
 - 多 Agent 并行场景下任一 Agent 完成即可触发下一阶段时的状态追溯
 
-**参见：** v5.3-stage-01 op-001（步骤1~3）、kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径
+**参见：** v0.5.3-stage-01 op-001（步骤1~3）、kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径
 
 ## [+] 流水线 transitions 组合条件 `|` 运算符模式 (2026-08-07)
 
@@ -1000,7 +1000,7 @@ function getValidTargets(data: PipelineData, fromPhase: PipelinePhase): Pipeline
 
 **设计理由：** 若采用方案 B（为每种组合单独定义一条 transition），则 `test_passed → archiving` 和 `review_passed → archiving` 需写两条——当组合数增长时（如 3 个 source phase 的组合），条目数呈指数增长。`|` 运算符方案以单一 key 表达组合语义，兼具可读性和可维护性。
 
-**参见：** v5.3-stage-01 op-001（步骤5~7）、kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径
+**参见：** v0.5.3-stage-01 op-001（步骤5~7）、kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径
 
 ## [+] CLI lint 子命令组扩展与 `--fix` 自动修复模式 (2026-08-07)
 
@@ -1032,7 +1032,7 @@ lintCmd.command('kb').description('检测 .openfeel/kb/ 中的过期文件引用
 - 新增校验类型仅需在 `lint.ts` 中追加一个 `.command('xxx')` 调用 + 对应校验函数实现
 - 无需修改父命令组注册逻辑、无需修改其他子命令代码
 
-**参见：** v5.4-stage-01 op-001（lint i18n）、op-002（lint kb）、kb/architecture.md #CLI 质量门禁体系
+**参见：** v0.5.4-stage-01 op-001（lint i18n）、op-002（lint kb）、kb/architecture.md #CLI 质量门禁体系
 
 ## [+] i18n 键对称性校验模式 (2026-08-07)
 
@@ -1067,11 +1067,11 @@ function validateI18nKeys(): { ok: boolean; report: string } {
 - 键提取依赖源码结构稳定性——若 i18n 数据文件的导出格式变更（如从 `export const` 改为动态构造），需同步更新提取逻辑
 - 不检测键值内容的质量（如翻译准确性、变量占位符一致性），仅做键名层面对称性校验
 
-**参见：** v5.4-stage-01 op-001（lint i18n）、kb/patterns.md #CLI 国际化封装模式、kb/architecture.md #i18n 基础设施
+**参见：** v0.5.4-stage-01 op-001（lint i18n）、kb/patterns.md #CLI 国际化封装模式、kb/architecture.md #i18n 基础设施
 
 ## [+] kb 过期引用检测与 CLI-Agent skill 映射全量对齐模式 (2026-08-07)
 
-v5.4 在引入 `openfeel lint kb` 质量检查的同时，补充了 CLI-Agent skill 映射对齐。两机制互补形成"检测→修复→可见性"闭环：
+v0.5.4 在引入 `openfeel lint kb` 质量检查的同时，补充了 CLI-Agent skill 映射对齐。两机制互补形成"检测→修复→可见性"闭环：
 
 ### kb 过期引用检测
 
@@ -1081,12 +1081,12 @@ v5.4 在引入 `openfeel lint kb` 质量检查的同时，补充了 CLI-Agent sk
 - 输出过期条目列表：文件 + 行号 + 过期路径
 
 **已知限制：**
-- 无法区分"模板占位符路径"和"真实路径引用"——如 kb/patterns.md 的 Agent 清单表中的 `` `.opencode/agents/new-agent.md` `` 是文档模板示例而非真实文件引用，会被误报为过期。此为 v5.4 首版限制，后续可增加注释标记（如 `` `<!-- placeholder -->` ``）跳过占位符路径
+- 无法区分"模板占位符路径"和"真实路径引用"——如 kb/patterns.md 的 Agent 清单表中的 `` `.opencode/agents/new-agent.md` `` 是文档模板示例而非真实文件引用，会被误报为过期。此为 v0.5.4 首版限制，后续可增加注释标记（如 `` `<!-- placeholder -->` ``）跳过占位符路径
 - 不检测反向引用（即文件存在但 kb 中未记录的遗漏项）
 
 ### CLI-Agent skill 映射全量对齐
 
-**背景：** v5.4 之前 CLI 有 12 个命令组（flow/stage/plan/knowledge/archive/init/update/project/instructions/lint/config/roadmap），但 `.opencode/skills/` 仅 8 个 skill，导致 `roadmap`、`health`、`recover`、`wizard` 四个 CLI 能力对 Agent 不可见。
+**背景：** v0.5.4 之前 CLI 有 12 个命令组（flow/stage/plan/knowledge/archive/init/update/project/instructions/lint/config/roadmap），但 `.opencode/skills/` 仅 8 个 skill，导致 `roadmap`、`health`、`recover`、`wizard` 四个 CLI 能力对 Agent 不可见。
 
 **对齐步骤：**
 1. 为缺失命令组创建对应 skill：`roadmap/SKILL.md`、`health/SKILL.md`、`recover/SKILL.md`、`wizard/SKILL.md`
@@ -1103,7 +1103,7 @@ v5.4 在引入 `openfeel lint kb` 质量检查的同时，补充了 CLI-Agent sk
 - 每个 CLI 命令组在 skills/ 中应有对应 skill，确保 Agent 通过 `load skill` 发现和利用全部 CLI 能力——Agent prompt 不应硬编码 CLI 命令列表，而应通过 skill 描述间接感知
 - 新增 CLI 命令组时，同步创建对应 skill 为强制步骤（参考「新增 Agent 全链路更新清单模式」的清单驱动方法论）
 
-**参见：** v5.4-stage-01 op-003（kb lint）、op-004（skill 补充）、kb/architecture.md #CLI 质量门禁体系、kb/patterns.md #新增 Agent 全链路更新清单模式、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式
+**参见：** v0.5.4-stage-01 op-003（kb lint）、op-004（skill 补充）、kb/architecture.md #CLI 质量门禁体系、kb/patterns.md #新增 Agent 全链路更新清单模式、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式
 
 ## [+] 部署传播内容哈希比对模式 (2026-08-07)
 
@@ -1139,37 +1139,38 @@ if (existingContent !== templateContent) {
 - 跳过消息语义不变（仍为 `language unchanged` / `use existing`），仅在内容不同时静默覆盖并标记为 `updated`
 - 此模式适用于所有由模板生成、可能随 CLI 版本演进而内容变化的部署文件
 
-**参见：** v5.5-stage-01、kb/patterns.md #AGENTS.md 模板四节同步机制、kb/architecture.md #多语言模板数据管线
+**参见：** v0.5.5-stage-01、kb/patterns.md #AGENTS.md 模板四节同步机制、kb/architecture.md #多语言模板数据管线
 
 ## [+] 版本号语义管理与递增规范模式 (2026-08-07)
 
-v5.6 在 AGENTS.md 和 feel.md 中写入版本号管理规范，将版本推进从"约定俗成"硬化为准则：
+v0.5.6 在 AGENTS.md 和 feel.md 中写入版本号管理规范，将版本推进从"约定俗成"硬化为准则；v0.5.11 升级为 X.Y.Z.W 四级版本号并重映射为 v0 体系：
 
 **版本号语义（写入 AGENTS.md「版本管理」节）：**
 
 | 版本位 | 语义 | 触发条件 |
 |:--:|------|------|
-| 主版本号 (X) | 破坏性变更 | API 签名变化、不兼容的数据格式升级、Agent 体系重构 |
-| 次版本号 (Y) | 新增功能 | 新 Agent、新 CLI 命令组、新知识库分类、功能里程碑 |
-| 修订号 (Z) | Bug 修复 | 缺陷修复、文档修正、格式统一、轻微优化 |
+| 一级 (X) | 主版本 | 项目重大迭代（立项、架构重写），极其罕见 |
+| 二级 (Y) | 开发周期 | 开发主题或周期变化 |
+| 三级 (Z) | 功能主题 | 固定周期内的具体功能方向 |
+| 四级 (W) | 功能细节 | 独立提交的功能或子模块 |
 
 **递增规则（写入 feel.md 调度逻辑）：**
 
-- **默认行为**：Feel 启动新版本时默认使用尾部版本号递增（修订号 +1），不跳号
+- **默认行为**：Feel 启动新版本时默认使用四级版本递增（W+1），不跳号
 - **显式版本**：用户明确指定版本号时，以用户指定为准
-- **并发侦测**：迭代中若出现可触发次版本号递增的变更（新增功能），Feel 应主动侦测并提出升级次版本号供用户确认
-- **审慎原则**：避免无意义的跳号——修复类任务不应触发次版本号递增，微调类任务不应触发主版本号递增
+- **并发侦测**：迭代中若出现可触发更高版本位递增的变更（如开发周期变化），Feel 应主动侦测并提出升级版本号供用户确认
+- **审慎原则**：避免无意义的跳号——修复类任务不应触发功能主题递增，微调类任务不应触发主版本递增
 
 **实施位置：**
 - `AGENTS.md` — 「版本管理」节：语义定义 + 团队可见的永久性规范
 - `.opencode/agents/feel.md` — 调度逻辑：新版本递增规则由 Feel 在执行时遵循
 - `templates-data/agents/{zh-CN,en}/feel.md` — 中英双语模板同步
 
-**参见：** v5.6-stage-01 op-001（AGENTS.md 版本管理 + feel.md 递增规则）
+**参见：** v0.5.6-stage-01 op-001（AGENTS.md 版本管理 + feel.md 递增规则）、v0.5.11-stage-01 op-001（四级版本号 + v0 重映射）
 
 ## [+] Agent 推理深度分档配置模式（reasoning_effort）(2026-08-07)
 
-v5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段，按角色职责分三档配置推理深度，实现 Agent 计算资源的差异化分配：
+v0.5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段，按角色职责分三档配置推理深度，实现 Agent 计算资源的差异化分配：
 
 **三档分档策略：**
 
@@ -1194,14 +1195,14 @@ v5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段
 - **新增 Agent 时同步**：新增 Agent 时根据其角色确定 reasoning_effort 分档，在源模板和部署文件中同步写入
 - **构建自动传播**：构建脚本基于语言数组循环遍历所有 .md 模板文件，新增字段零代码变更——仅在模板中添加即可被自动注入
 
-**参见：** v5.6-stage-01 op-001（9 Agent frontmatter + 18 模板同步）、kb/patterns.md #新增 Agent 全链路更新清单模式、kb/patterns.md #构建脚本多语言循环生成模式
+**参见：** v0.5.6-stage-01 op-001（9 Agent frontmatter + 18 模板同步）、kb/patterns.md #新增 Agent 全链路更新清单模式、kb/patterns.md #构建脚本多语言循环生成模式
 
-> **更新于 2026-08-07（v5.7-stage-01）**：v5.6 初始分档中 Executor 和 Vision 设为 `low`，但实践发现 Executor 执行复杂任务时 low 推理深度导致方案理解不足、实现偏差；Vision 进行图像分析时 low 推理影响多模态理解质量。v5.7 将 Executor 和 Vision 从 `low` 提升为 `medium`，Planner/Schemer 从原 `high` 明确为 `max`（OpenCode 平台支持的四档值：minimal/low/medium/max），中英双语 12 文件同步更新。调整后的完整分档：
+> **更新于 2026-08-07（v0.5.7-stage-01）**：v0.5.6 初始分档中 Executor 和 Vision 设为 `low`，但实践发现 Executor 执行复杂任务时 low 推理深度导致方案理解不足、实现偏差；Vision 进行图像分析时 low 推理影响多模态理解质量。v0.5.7 将 Executor 和 Vision 从 `low` 提升为 `medium`，Planner/Schemer 从原 `high` 明确为 `max`（OpenCode 平台支持的四档值：minimal/low/medium/max），中英双语 12 文件同步更新。调整后的完整分档：
 
 | 档位 | 值 | 适用 Agent | 变更说明 |
 |:--:|:--:|------|------|
-| 最高 | `max` | Planner、Schemer | v5.6 为 high→v5.7 提升为 max，计划与方案需最强推理 |
-| 中 | `medium` | Feel、Reviewer、Feel Tester、Executor、Vision | Executor/Vision 从 low↑提升为 medium（v5.7 调整） |
+| 最高 | `max` | Planner、Schemer | v0.5.6 为 high→v0.5.7 提升为 max，计划与方案需最强推理 |
+| 中 | `medium` | Feel、Reviewer、Feel Tester、Executor、Vision | Executor/Vision 从 low↑提升为 medium（v0.5.7 调整） |
 | 低 | `low` | 事务官、Archiver | 执行型/归档型角色保持 low，任务明确优先速度 |
 
 ## [+] AGENTS.md 模板同步模式：新增节须同步 templates-data (2026-08-07)
@@ -1221,7 +1222,7 @@ v5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段
 - 构建脚本的多语言循环会自动处理新增模板文件，零代码变更
 - 此模式与「部署传播内容哈希比对模式」互补：模板更新后内容哈希变化，`openfeel update` 会将新模板传播到存量项目
 
-**实例：** v5.8 发现 AGENTS.md 已有"版本管理"节（v5.6 新增），但 `agents-md` 模板缺失该节，导致 `openfeel init` 部署的项目 AGENTS.md 无版本管理规范。修复为：在 `zh-CN.md` 和 `en.md` 中「动态规则」节后追加「版本管理」节（zh-CN 10 行原文 + en 10 行翻译）。
+**实例：** v0.5.8 发现 AGENTS.md 已有"版本管理"节（v0.5.6 新增），但 `agents-md` 模板缺失该节，导致 `openfeel init` 部署的项目 AGENTS.md 无版本管理规范。修复为：在 `zh-CN.md` 和 `en.md` 中「动态规则」节后追加「版本管理」节（zh-CN 10 行原文 + en 10 行翻译）。
 
 **参见：** kb/patterns.md #部署传播内容哈希比对模式、kb/patterns.md #统一门控 + 整节替换模式
 
@@ -1240,7 +1241,7 @@ v5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段
 - 目录名不含 `.openfeel/` 前缀（数组项为相对路径，如 `manual`、`kb`、`tmp`）
 - 若目录有初始化文件（如 `kb/index.md`），需在 init 逻辑中同步追加
 
-**实例：** v5.6 新增 `.openfeel/manual/` 模块文档系统但遗漏更新 `WORKSPACE_DIRS`，v5.8 修复为在数组中追加 `'manual'`。注意 v5.6 的 `template-loader.ts` 已通过构建自动同步，仅目录创建逻辑缺失。
+**实例：** v0.5.6 新增 `.openfeel/manual/` 模块文档系统但遗漏更新 `WORKSPACE_DIRS`，v0.5.8 修复为在数组中追加 `'manual'`。注意 v0.5.6 的 `template-loader.ts` 已通过构建自动同步，仅目录创建逻辑缺失。
 
 **参见：** kb/architecture.md #分级模块文档系统：manual + 树图索引
 
@@ -1315,7 +1316,7 @@ npm run build  # 模板一致性校验 4/4 通过
 # git diff --no-index .opencode/agents/executor.md templates-data/agents/zh-CN/executor.md
 ```
 
-**参见：** v5.9-stage-01、kb/patterns.md #REV 闭环双路兜底+--force不可绕过模式、kb/patterns.md #新增 Agent 全链路更新清单模式
+**参见：** v0.5.9-stage-01、kb/patterns.md #REV 闭环双路兜底+--force不可绕过模式、kb/patterns.md #新增 Agent 全链路更新清单模式
 
 ## [+] Profile 写盘异常安全降级模式 (2026-08-07)
 
@@ -1355,7 +1356,7 @@ export function ensureProfileDefaults(projectPath: string): void {
 - 任何"自动执行且失败不应阻断主流程"的写操作（自动保存、缓存刷新、日志落盘）
 - 多个调用方对同一公共 API 有不同异常处理需求时
 
-**参见：** v5.10-stage-01 REV-001、kb/patterns.md #全局跨项目用户画像 YAML 配置模式
+**参见：** v0.5.10-stage-01 REV-001、kb/patterns.md #全局跨项目用户画像 YAML 配置模式
 
 ## [+] YAML 配置 passthrough 扩展字段保留模式 (2026-08-07)
 
@@ -1390,7 +1391,7 @@ export function readProfile(): Profile {
 - **全量写回必须配对**：如果采用全量 `writeProfile(profile)` 而非增量修改，读取侧必须保证 profile 对象的完整性——丢失字段 = 丢失数据
 - **选择性覆盖 vs 选择性保留**：只对需要合并默认值的块做 `{...defaults, ...actual}`，其余字段无条件保留——用结构而非条件判断来表达意图，更清晰
 
-**参见：** v5.10-stage-01 REV-002、kb/patterns.md #全局跨项目用户画像 YAML 配置模式、kb/patterns.md #YAML Document API 增量修改模式
+**参见：** v0.5.10-stage-01 REV-002、kb/patterns.md #全局跨项目用户画像 YAML 配置模式、kb/patterns.md #YAML Document API 增量修改模式
 
 ## [+] 路径规范化前置去重模式 (2026-08-07)
 
@@ -1436,5 +1437,5 @@ export function ensureProfileDefaults(projectPath: string): void {
 - 路径映射表/reverse map 的键一致性
 - 跨平台路径匹配逻辑（Windows 反斜杠 vs Linux 正斜杠）
 
-**参见：** v5.10-stage-01 REV-003
+**参见：** v0.5.10-stage-01 REV-003
 

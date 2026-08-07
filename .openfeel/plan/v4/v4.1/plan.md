@@ -1,4 +1,4 @@
-# OpenFeel v4.1 — 构建稳健性 + Agent 深化
+# OpenFeel v0.4.1 — 构建稳健性 + Agent 深化
 
 > 基于 v4.0 部署审查反馈，补强模板同步链路，深化 Agent prompt 职责边界
 

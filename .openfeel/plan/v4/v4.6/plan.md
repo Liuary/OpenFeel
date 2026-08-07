@@ -1,4 +1,4 @@
-# OpenFeel v4.6 — 新增多模态 Agent (Vision)
+# OpenFeel v0.4.6 — 新增多模态 Agent (Vision)
 
 > 创建于 2026-08-07 | Feel 总统领
 > 最后更新 2026-08-07 | Planner 制定详细方案

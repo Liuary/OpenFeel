@@ -105,13 +105,17 @@ Concrete rules generated during project operation are deposited in `.openfeel/de
 
 ## Version Management
 
-Version progression must be prudent. Each level of the version number has clear semantics:
+Version progression must be prudent, using the four-level X.Y.Z.W version number:
 
-- Major version (X): breaking changes
-- Minor version (Y): new features
-- Patch version (Z): bug fixes
+| Level | Name | Change Condition |
+|:--:|------|------|
+| Level 1 (X) | Major version | Major project iteration (project initiation, architecture rewrite), extremely rare |
+| Level 2 (Y) | Development cycle | Development theme or cycle changes |
+| Level 3 (Z) | Feature theme | Specific feature direction within a fixed cycle |
+| Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
-When Feel starts a new version, it defaults to incrementing the trailing version number (patch +1), unless the user explicitly specifies otherwise.
+When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
+The project is currently in the v0 development stage; the official v1 will be released when features are complete.
 
 ## Project Flow Tools
 

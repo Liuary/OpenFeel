@@ -688,7 +688,7 @@ When detecting that the project has no \`.git\` directory, suggest the user exec
 
 ### New Version Startup Rule
 
-When the user says "start a new version" or similar, Feel automatically increments the trailing version number based on the highest existing version. For example, if the current highest version is \`v5.6\`, start \`v5.7\`; if it is \`v5.6.3\`, increment to \`v5.6.4\`. If the user explicitly specifies a version number, use that instead.
+When the user says "start a new version" or similar, Feel automatically increments the fourth level (W+1) based on the highest existing version. For example, if the current highest version is \`v0.5.11\`, start \`v0.5.11.1\`; if it is \`v0.5.11.3\`, increment to \`v0.5.11.4\`. If the user explicitly specifies a version number, use that instead.
 
 ## Notes
 
@@ -1909,7 +1909,7 @@ Feel 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，确保深度理�
 
 ### 新版本启动规则
 
-当用户说"开启新版本"或类似表述时，Feel 自动在已有最高版本号基础上递增尾部版本。例如当前最高版本为 \`v5.6\`，则开启 \`v5.7\`；若为 \`v5.6.3\` 则递增为 \`v5.6.4\`。用户明确指定版本号时以其指定为准。
+当用户说"开启新版本"或类似表述时，Feel 自动在已有最高版本号基础上递增四级版本（W+1）。例如当前最高版本为 \`v0.5.11\`，则开启 \`v0.5.11.1\`；若为 \`v0.5.11.3\` 则递增为 \`v0.5.11.4\`。用户明确指定版本号时以其指定为准。
 
 ## 注意事项
 
@@ -2568,13 +2568,17 @@ Concrete rules generated during project operation are deposited in \`.openfeel/d
 
 ## Version Management
 
-Version progression must be prudent. Each level of the version number has clear semantics:
+Version progression must be prudent, using the four-level X.Y.Z.W version number:
 
-- Major version (X): breaking changes
-- Minor version (Y): new features
-- Patch version (Z): bug fixes
+| Level | Name | Change Condition |
+|:--:|------|------|
+| Level 1 (X) | Major version | Major project iteration (project initiation, architecture rewrite), extremely rare |
+| Level 2 (Y) | Development cycle | Development theme or cycle changes |
+| Level 3 (Z) | Feature theme | Specific feature direction within a fixed cycle |
+| Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
-When Feel starts a new version, it defaults to incrementing the trailing version number (patch +1), unless the user explicitly specifies otherwise.
+When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
+The project is currently in the v0 development stage; the official v1 will be released when features are complete.
 
 ## Project Flow Tools
 
@@ -2698,13 +2702,17 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 
 ## 版本管理
 
-版本推进须审慎。每级版本号有明确语义：
+版本推进须审慎，采用 X.Y.Z.W 四级版本号：
 
-- 主版本号（X）：破坏性变更
-- 次版本号（Y）：新增功能
-- 修订号（Z）：Bug 修复
+| 级别 | 名称 | 变更条件 |
+|:--:|------|------|
+| 一级（X） | 主版本 | 项目重大迭代（立项、架构重写），极其罕见 |
+| 二级（Y） | 开发周期 | 开发主题或周期变化 |
+| 三级（Z） | 功能主题 | 固定周期内的具体功能方向 |
+| 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
-Feel 启动新版本时默认使用尾部版本号递增（修订号 +1），除非用户明确指定。
+Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
+当前项目处于 v0 开发阶段，正式版 v1 待功能完备后发布。
 
 ## 项目流程工具
 

@@ -13,7 +13,7 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-07（v5.10-stage-01 归档完成：profile 自动填充 + 异常安全） |
+| 最近更新 | 2026-08-07（v0.5.10-stage-01 归档完成：profile 自动填充 + 异常安全） |
 
 ## 分类概览
 
@@ -40,10 +40,10 @@
 | 多语言模板数据管线 | 2026-07-12 | templates-data 源文件→build.js 构建时内联→template-loader 运行时按语言加载 |
 | i18n 基础设施：TS常量导入+运行时查表 | 2026-07-14 | 不同于 template-loader 构建管线，i18n 采用 TS 常量直接导入的轻量方案，零构建脚本，与 template-loader 互补覆盖运行时输出+部署内容 |
 | 公域日志批量聚合策略 | 2026-07-14 | advance_stage_phase 改为 endStage 时汇总里程碑，消除 85%+ 噪音 |
-| 8→9 Agent 体系扩展：Vision 视觉官 | 2026-08-07 | v4.6 新增 Vision 视觉官（通用视觉分析），qwen-vl-plus 多模态模型，不参与流水线调度，按需被 Feel 和其他 Agent 调用 |
-| CLI 质量门禁体系：lint 子命令组 | 2026-08-07 | v5.4 引入 `openfeel lint` 命令组，子命令 i18n（422 键对称性校验）和 kb（过期引用检测），为 CI/CD 集成质量门禁奠定基础 |
-| 分级模块文档系统：manual + 树图索引 | 2026-08-07 | v5.6 建立 .openfeel/manual/ 分级模块文档系统（index.md 树图 + core/cli/agents 模块文档），归档官同步维护，与 kb/ 知识库互补 |
-| 计划目录按大版本系列分组模式 | 2026-08-07 | v5.7 将 .openfeel/plan/ 从平铺目录重构为按大版本系列分组（v4/、v5/），系列索引 + 顶层指针二级导航，git mv 保留历史，全链路引用同步 |
+| 8→9 Agent 体系扩展：Vision 视觉官 | 2026-08-07 | v0.4.6 新增 Vision 视觉官（通用视觉分析），qwen-vl-plus 多模态模型，不参与流水线调度，按需被 Feel 和其他 Agent 调用 |
+| CLI 质量门禁体系：lint 子命令组 | 2026-08-07 | v0.5.4 引入 `openfeel lint` 命令组，子命令 i18n（422 键对称性校验）和 kb（过期引用检测），为 CI/CD 集成质量门禁奠定基础 |
+| 分级模块文档系统：manual + 树图索引 | 2026-08-07 | v0.5.6 建立 .openfeel/manual/ 分级模块文档系统（index.md 树图 + core/cli/agents 模块文档），归档官同步维护，与 kb/ 知识库互补 |
+| 计划目录按大版本系列分组模式 | 2026-08-07 | v0.5.7 将 .openfeel/plan/ 从平铺目录重构为按大版本系列分组（v4/、v5/），系列索引 + 顶层指针二级导航，git mv 保留历史，全链路引用同步 |
 
 ### patterns.md
 
@@ -97,7 +97,7 @@
 
 | 条目 | 日期 | 摘要 |
 |------|------|------|
-| autoRepairInconsistency 干扰组合条件推进路径 | 2026-08-07 | status=done 强制同步 phase 为 done 截断 test_passed→archiving；v5.8 已修复根因：mapPhaseToStageStatus 仅 done→done |
+| autoRepairInconsistency 干扰组合条件推进路径 | 2026-08-07 | status=done 强制同步 phase 为 done 截断 test_passed→archiving；v0.5.8 已修复根因：mapPhaseToStageStatus 仅 done→done |
 | fuzzyCorrectPhase 正则尾部下划线 | 2026-06-27 | replace 后在末尾产生 `_`，需去首尾下划线 |
 | 僵尸检测 filter 失效 | 2026-06-27 | startsWith(stageId) 与模块目录组织不匹配 |
 | repair dry-run 误报 | 2026-06-27 | 文件不存在时返回 fixed=true，正常时 exit(1) |
@@ -120,27 +120,27 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
-| 2026-08-07 | 归档 | v5.10-stage-01 归档完成：profile 自动填充 + 异常安全（ensureProfileDefaults + 3 项健壮性修复：写盘降级 + passthrough 保留 + 路径规范化），2 op 完成，3 REV 全部 closed，知识沉淀 3 条至 patterns（写盘降级、passthrough 保留、路径规范化），Agent 数 9，源文件 46 |
-| 2026-08-07 | 归档 | v5.9-stage-01 归档完成：审查纪律强化（feel.md 新增「审查不可跳过（硬性纪律）」节 + executor.md 新增「审查移交（硬性纪律）」节），中英双语 6 文件同步插入，知识沉淀 1 条至 patterns（审查硬性纪律嵌入 Agent Prompt 模式），Agent 数 9，源文件 46 |
-| 2026-08-07 | 归档 | v5.8-stage-01 归档完成：三项缺陷修复（autoCommitOnDone mapPhaseToStageStatus 映射修正 + AGENTS.md 模板补版本管理节 + init 创建 manual/ 目录），知识沉淀 2 条至 patterns（模板同步、WORKSPACE_DIRS同步）+ 1 条更新至 troubleshooting（autoRepairInconsistency 根因修复），Agent 数 9，源文件 46。v5 全系列 8 期 19 项任务全部闭环 |
-| 2026-08-07 | 归档 | v5.7-stage-01 归档完成：计划目录按大版本分组重构（v4/v5/系列收纳 + 系列索引+顶层指针）+ reasoning_effort 分档调整（Planner/Schemer→max, Executor/Vision→medium），知识沉淀 2 条至 architecture(1) + patterns(1，更新)，Agent 数 9，源文件 46。v5 全系列 7 期 16 项任务全部闭环 |
-| 2026-08-07 | 归档 | v5.6-stage-01 归档完成：版本管理规范（AGENTS.md 主.次.修订语义 + feel.md 默认递增修订号）+ 模块文档系统 .openfeel/manual/（4 模块 + 树图索引）+ 9 Agent reasoning_effort 思考深度分档配置，知识沉淀 3 条至 architecture(1) + patterns(2)，Agent 数 9，源文件 46 |
-| 2026-08-07 | 归档 | v5.5-stage-01 归档完成：缺陷修复（AGENTS.md 部署传播内容哈希比对 + autoCommitOnDone save 前移到 commit 前时序修正），知识沉淀 1 条至 patterns（部署传播哈希比对模式）+ 1 条更新（autoCommit 时序修正），Agent 数 9，源文件 46。v5 全系列最终闭环 |
-| 2026-08-07 | 归档 | v5.4-stage-01 归档完成：lint 质量门禁（i18n 422键校验 + kb 过期引用检测）+ CLI-Agent skill 全量对齐（4新skill：roadmap/health/recover/wizard），知识沉淀 4 条至 architecture(1) + patterns(3)，Agent 数 9，源文件 46 |
-| 2026-08-07 | 归档 | v5.3-stage-01 归档完成：Checkpoint 快照（phase 推进自动保存 + list/restore CLI，毫秒级时间戳 + 自动清理 20 个限制）+ 组合终止条件（transitions `\|` 运算符，多 Agent 并行任一完成即推进），知识沉淀 2 条至 patterns（Checkpoint 快照模式、组合终止条件模式）+ 1 条至 troubleshooting（autoRepairInconsistency 干扰组合条件，遗留项），Agent 数 9，源文件 45 |
-| 2026-08-07 | 归档 | v5.2-stage-01 归档完成：规范迁移（dev_core.md 工具规范→core.md，[-] 标记 + 中英双语同步）+ Handoff 委派原语（feel.md 委派机制 + 4 个 Agent Handoff 声明，15 文件双语同步），知识沉淀 2 条至 patterns（Handoff 委派、约束迁移），Agent 数 9，源文件 45 |
-| 2026-08-07 | 归档 | v5.1-stage-01 归档完成：工具链内化（flow advance --to done 自动 git commit）+ 一致性治理（feel.md 编号修复 + AGENTS.md 模板补齐 4 节），知识沉淀 3 条至 patterns（归档自动 git commit、Agent 提示词编号审计、AGENTS.md 四节同步），Agent 数 9，源文件 45 |
-| 2026-08-07 | 归档 | v5.0-stage-01 归档完成：框架级记忆体系落成（全局 profile ~/.config/openfeel/profile.yaml + dev_last.md 7 节模板 + CLI config --global 标志），知识沉淀 2 条至 patterns（全局用户画像配置模式、Agent 记忆生命周期三层模式），Agent 数 9，源文件 45 |
-| 2026-08-07 | 归档 | v4.7 归档完成：部署版过期修复（Feel +38行 / Executor +26行）+ dev_core.md 重复规则清理，制定 v4.8~v5.1 路线图（8 项 4 期），Agent 数 9，源文件 45 |
-| 2026-08-07 | 归档 | v4.6 全版本归档完成：stage-01（Vision Agent 全链路落地，9 ops + 3 REV 闭环）+ stage-02（CLI config get/set 命令 + AGENTS.md 过度设计规则增强 + Reviewer 审查维度扩展 + Vision 模板去硬编码），知识沉淀 2 条至 patterns（YAML 增量修改、审查子维度扩展），Agent 数 9，源文件 45 |
-| 2026-08-07 | 归档 | v4.6-stage-01 归档：Vision Agent 全链路落地（9 ops + 3 REV 闭环），知识沉淀 1 条至 patterns（新增 Agent 全链路更新清单模式），测试 298/298 全通过 |
-| 2026-07-15 | 归档 | v4.4-stage-03 归档：3 项配置优化（config命令组 get/set/list + AGENTS.md语言同步 + package.json模板要求），知识沉淀 2 条至 patterns（i18n域扩展模式 + Agent模板约束模式），BUG-001 修复，v4.4 全系列完成 |
-| 2026-07-15 | 归档 | v4.4-stage-04 归档：5 项收尾修复（Node20 兼容 / kb 数据更新 / init 模板通用化 / 版本号 1.0.0 / v4.2 一致性），测试 291/291 全通过 |
-| 2026-07-14 | 归档 | v4.4-stage-01/02 归档：i18n 基础设施落成（TS常量导入+12文件国际化，206 entries×2语言），日志修复+流水线安全增强（REV双路兜底+公域降噪+git钩子+日志骨架+自动推进询问），测试 291/291 全通过，知识沉淀 6 条至 architecture(2) + patterns(4) |
-| 2026-07-12 | 归档 | v4.3 全系列归档：3 阶段全部完成，多语言模板管线落成（templates-data → build.js → template-loader），双语 CLI 交互（init 选择 → .info.json 持久化 → update 读取），知识沉淀 4 条至 architecture(1) + patterns(3) |
-| 2026-07-12 | 归档 | v4.3-stage-01/02 归档：17 项 op 落地（模板文件化重构 + project.ts REV-004 修复），16 条 REV（13 closed + 3 非阻塞），知识沉淀 3 条至 patterns |
-| 2026-07-09 | 归档 | v4.2-stage-01 归档：2 项 op 落地（kb/index.md 快速概览 + project overview CLI），4 条 REV（3 closed），知识沉淀 1 条至 troubleshooting |
-| 2026-07-05 | 归档 | v4.0 全系列归档：4 阶段 39 项任务闭环，知识沉淀 10 条至 architecture(3) + patterns(5) + troubleshooting(2) |
+| 2026-08-07 | 归档 | v0.5.10-stage-01 归档完成：profile 自动填充 + 异常安全（ensureProfileDefaults + 3 项健壮性修复：写盘降级 + passthrough 保留 + 路径规范化），2 op 完成，3 REV 全部 closed，知识沉淀 3 条至 patterns（写盘降级、passthrough 保留、路径规范化），Agent 数 9，源文件 46 |
+| 2026-08-07 | 归档 | v0.5.9-stage-01 归档完成：审查纪律强化（feel.md 新增「审查不可跳过（硬性纪律）」节 + executor.md 新增「审查移交（硬性纪律）」节），中英双语 6 文件同步插入，知识沉淀 1 条至 patterns（审查硬性纪律嵌入 Agent Prompt 模式），Agent 数 9，源文件 46 |
+| 2026-08-07 | 归档 | v0.5.8-stage-01 归档完成：三项缺陷修复（autoCommitOnDone mapPhaseToStageStatus 映射修正 + AGENTS.md 模板补版本管理节 + init 创建 manual/ 目录），知识沉淀 2 条至 patterns（模板同步、WORKSPACE_DIRS同步）+ 1 条更新至 troubleshooting（autoRepairInconsistency 根因修复），Agent 数 9，源文件 46。v5 全系列 8 期 19 项任务全部闭环 |
+| 2026-08-07 | 归档 | v0.5.7-stage-01 归档完成：计划目录按大版本分组重构（v4/v5/系列收纳 + 系列索引+顶层指针）+ reasoning_effort 分档调整（Planner/Schemer→max, Executor/Vision→medium），知识沉淀 2 条至 architecture(1) + patterns(1，更新)，Agent 数 9，源文件 46。v5 全系列 7 期 16 项任务全部闭环 |
+| 2026-08-07 | 归档 | v0.5.6-stage-01 归档完成：版本管理规范（AGENTS.md 主.次.修订语义 + feel.md 默认递增修订号）+ 模块文档系统 .openfeel/manual/（4 模块 + 树图索引）+ 9 Agent reasoning_effort 思考深度分档配置，知识沉淀 3 条至 architecture(1) + patterns(2)，Agent 数 9，源文件 46 |
+| 2026-08-07 | 归档 | v0.5.5-stage-01 归档完成：缺陷修复（AGENTS.md 部署传播内容哈希比对 + autoCommitOnDone save 前移到 commit 前时序修正），知识沉淀 1 条至 patterns（部署传播哈希比对模式）+ 1 条更新（autoCommit 时序修正），Agent 数 9，源文件 46。v5 全系列最终闭环 |
+| 2026-08-07 | 归档 | v0.5.4-stage-01 归档完成：lint 质量门禁（i18n 422键校验 + kb 过期引用检测）+ CLI-Agent skill 全量对齐（4新skill：roadmap/health/recover/wizard），知识沉淀 4 条至 architecture(1) + patterns(3)，Agent 数 9，源文件 46 |
+| 2026-08-07 | 归档 | v0.5.3-stage-01 归档完成：Checkpoint 快照（phase 推进自动保存 + list/restore CLI，毫秒级时间戳 + 自动清理 20 个限制）+ 组合终止条件（transitions `\|` 运算符，多 Agent 并行任一完成即推进），知识沉淀 2 条至 patterns（Checkpoint 快照模式、组合终止条件模式）+ 1 条至 troubleshooting（autoRepairInconsistency 干扰组合条件，遗留项），Agent 数 9，源文件 45 |
+| 2026-08-07 | 归档 | v0.5.2-stage-01 归档完成：规范迁移（dev_core.md 工具规范→core.md，[-] 标记 + 中英双语同步）+ Handoff 委派原语（feel.md 委派机制 + 4 个 Agent Handoff 声明，15 文件双语同步），知识沉淀 2 条至 patterns（Handoff 委派、约束迁移），Agent 数 9，源文件 45 |
+| 2026-08-07 | 归档 | v0.5.1-stage-01 归档完成：工具链内化（flow advance --to done 自动 git commit）+ 一致性治理（feel.md 编号修复 + AGENTS.md 模板补齐 4 节），知识沉淀 3 条至 patterns（归档自动 git commit、Agent 提示词编号审计、AGENTS.md 四节同步），Agent 数 9，源文件 45 |
+| 2026-08-07 | 归档 | v0.5.0-stage-01 归档完成：框架级记忆体系落成（全局 profile ~/.config/openfeel/profile.yaml + dev_last.md 7 节模板 + CLI config --global 标志），知识沉淀 2 条至 patterns（全局用户画像配置模式、Agent 记忆生命周期三层模式），Agent 数 9，源文件 45 |
+| 2026-08-07 | 归档 | v0.4.7 归档完成：部署版过期修复（Feel +38行 / Executor +26行）+ dev_core.md 重复规则清理，制定 v0.4.8~v0.5.1 路线图（8 项 4 期），Agent 数 9，源文件 45 |
+| 2026-08-07 | 归档 | v0.4.6 全版本归档完成：stage-01（Vision Agent 全链路落地，9 ops + 3 REV 闭环）+ stage-02（CLI config get/set 命令 + AGENTS.md 过度设计规则增强 + Reviewer 审查维度扩展 + Vision 模板去硬编码），知识沉淀 2 条至 patterns（YAML 增量修改、审查子维度扩展），Agent 数 9，源文件 45 |
+| 2026-08-07 | 归档 | v0.4.6-stage-01 归档：Vision Agent 全链路落地（9 ops + 3 REV 闭环），知识沉淀 1 条至 patterns（新增 Agent 全链路更新清单模式），测试 298/298 全通过 |
+| 2026-07-15 | 归档 | v0.4.4-stage-03 归档：3 项配置优化（config命令组 get/set/list + AGENTS.md语言同步 + package.json模板要求），知识沉淀 2 条至 patterns（i18n域扩展模式 + Agent模板约束模式），BUG-001 修复，v0.4.4 全系列完成 |
+| 2026-07-15 | 归档 | v0.4.4-stage-04 归档：5 项收尾修复（Node20 兼容 / kb 数据更新 / init 模板通用化 / 版本号 1.0.0 / v0.4.2 一致性），测试 291/291 全通过 |
+| 2026-07-14 | 归档 | v0.4.4-stage-01/02 归档：i18n 基础设施落成（TS常量导入+12文件国际化，206 entries×2语言），日志修复+流水线安全增强（REV双路兜底+公域降噪+git钩子+日志骨架+自动推进询问），测试 291/291 全通过，知识沉淀 6 条至 architecture(2) + patterns(4) |
+| 2026-07-12 | 归档 | v0.4.3 全系列归档：3 阶段全部完成，多语言模板管线落成（templates-data → build.js → template-loader），双语 CLI 交互（init 选择 → .info.json 持久化 → update 读取），知识沉淀 4 条至 architecture(1) + patterns(3) |
+| 2026-07-12 | 归档 | v0.4.3-stage-01/02 归档：17 项 op 落地（模板文件化重构 + project.ts REV-004 修复），16 条 REV（13 closed + 3 非阻塞），知识沉淀 3 条至 patterns |
+| 2026-07-09 | 归档 | v0.4.2-stage-01 归档：2 项 op 落地（kb/index.md 快速概览 + project overview CLI），4 条 REV（3 closed），知识沉淀 1 条至 troubleshooting |
+| 2026-07-05 | 归档 | v0.4.0 全系列归档：4 阶段 39 项任务闭环，知识沉淀 10 条至 architecture(3) + patterns(5) + troubleshooting(2) |
 | 2026-07-02 | 新增 | v4 经验沉淀：op命名规范 + Executor读文件 + deps校验 + status.md CLI |
 | 2026-07-01 | 归档 | v3.0 / v3.1 / v3.2 全系列归档，知识沉淀到四个分类 |
 | 2026-07-01 | 初始化 | 首次创建知识库分类文件，提取 v3 系列 19 条经验 |

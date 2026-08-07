@@ -93,3 +93,53 @@ tar -tzf openfeel-*.tgz | wc -l
 - 在 `files` 中使用过宽的 glob（如 `"*"`）——会包含 `src/`、`test/` 等不应发布的源码
 
 **参见：** v1.0.0-stage-02 op-004
+
+## [+] CI/CD npm 自动发布配置：Granular token + Bypass 2FA (2026-08-08)
+
+GitHub Actions 自动发布 npm 包的正确配置方式。适用于包级开启了强制 2FA 的场景。
+
+### npm token 配置（npm 网站）
+
+npm 自 2025 年 11 月起移除 legacy token（Automation/Publish/Read-only），只支持 **Granular access token**。CI 发布需创建满足以下条件的 Granular token：
+
+| 配置项 | 值 | 说明 |
+|--------|-----|------|
+| Permissions | Read and write | 发布需要写权限 |
+| Bypass 2FA | 开启（true） | 覆盖账号级和包级 2FA 要求，CI 无需 OTP |
+| Packages | 指定目标包（如 openfeel） | 最小权限原则 |
+
+> ⚠️ Bypass 2FA 默认为 false，必须显式开启。开启后 "takes precedence over account-level and package-level 2FA settings for publishing"，包级强制 2FA 仍保留（安全不降级，token 绕过 2FA 仅限发布动作）。
+
+### GitHub Actions workflow 配置
+
+```yaml
+# .github/workflows/ci.yml 关键片段
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-node@v4
+    with:
+      registry-url: 'https://registry.npmjs.org'   # 必须设置，触发 NODE_AUTH_TOKEN 注入
+      node-version: '20'
+  - run: npm ci
+  - run: npm run build
+  - run: npm publish
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.OPENFEEL_AUTO_NPM }}   # secret 名必须与仓库配置一致
+```
+
+**关键点**：
+- `setup-node` 的 `registry-url` 设置后，会自动在 `.npmrc` 中写入 `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`
+- `NODE_AUTH_TOKEN` 环境变量名是 setup-node 约定，值指向 GitHub Secret
+- **secret 名字必须与 workflow 引用完全一致**（本例 `OPENFEEL_AUTO_NPM`）—— 名字不匹配会导致 token 取空值，npm 返回 404（非 401）
+
+### 排查清单
+
+CI 发布失败时按以下顺序排查：
+
+1. **secret 名字一致性**：workflow 中 `secrets.XXX` 与 GitHub 仓库 Settings → Secrets 中的名字逐字符比对
+2. **token 类型**：确认使用 Granular token（legacy automation token 已被移除，且与包级 2FA 冲突返回 403）
+3. **Bypass 2FA**：包级开启强制 2FA 时，Granular token 必须开启 Bypass 2FA
+4. **registry-url**：setup-node 必须设置 `registry-url`，否则不会注入 NODE_AUTH_TOKEN
+5. **包级 2FA 设置**：保持 "Require two-factor authentication or a granular access token with bypass 2fa enabled"，不要降级为 "none"
+
+**参见**：troubleshooting.md「npm publish 404/403 诊断链」、v1.0.0 npm 发布排查

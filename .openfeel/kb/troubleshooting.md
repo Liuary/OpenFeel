@@ -167,3 +167,48 @@ fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
 - 重构项目目录结构时的批量迁移操作
 
 **参见**：v0.5.11-stage-01、.openfeel/code_review/v0.5.11-stage-01.md（心得建议2）
+
+## [+] npm publish 404/403 诊断链：secret 名字不匹配 + 2FA 冲突 (2026-08-08)
+
+**背景**：GitHub Actions workflow 自动发布 npm 包 `openfeel@1.0.1` 失败，经历两个阶段的错误，最终定位为 secret 名字不匹配（404）+ 2FA 与 automation token 冲突（403）。
+
+### 第一阶段：404 错误（secret 名字不匹配）
+
+**现象**：`npm error 404 Not Found - PUT https://registry.npmjs.org/openfeel - Not found`，提示 `'openfeel@1.0.1' is not in this registry.`
+
+**验证**：
+- `npm view openfeel` 确认包已存在（1.0.0，维护者 liuary），版本 1.0.1 不冲突
+- registry URL 配置正确
+
+**根因**：`.github/workflows/ci.yml` 第26行引用 `secrets.NPM_TOKEN`，但 GitHub 仓库实际配置的 Secret 名为 `OPENFEEL_AUTO_NPM`，名字不匹配导致 token 取空值。
+
+**关键认知**：npm registry 对空/无效/权限不足的 token 故意返回 404（而非 401/403），这是 npm 的安全设计——防止攻击者通过返回码推断包是否存在。所以 **`publish 时的 404 ≠ 包不存在`**，通常指认证失败。
+
+**修复**：ci.yml 第26行 `secrets.NPM_TOKEN` → `secrets.OPENFEEL_AUTO_NPM`（提交 e5485ec）。
+
+### 第二阶段：403 错误（2FA 与 token 冲突）
+
+**现象**（修复 secret 名字后）：`npm error 403 Forbidden - Two-factor authentication is required to publish this package but an automation token was specified`
+
+**根因**：包 `openfeel` 在 npm 网站设置了包级强制 2FA（"Require two-factor authentication to publish"），而使用的是 automation token（legacy 旧式 token）。automation token 设计上绕过 2FA，与包级强制 2FA 冲突 → 被拒。
+
+**关键认知**（基于 npm 官方文档查证）：
+- npm 自 2025 年 11 月起移除 legacy token（Automation/Publish/Read-only），只支持 Granular token
+- 发布要求："Publishing to npm requires either: 2FA enabled on your account, OR A granular access token with bypass 2FA enabled"
+- Granular token 的 "Bypass 2FA" 选项（默认 false）设为 true 时，"takes precedence over account-level and package-level 2FA settings for publishing"——即覆盖账号级和包级 2FA 要求，CI 发布无需 OTP
+
+**解决方案**：创建 Granular token（权限 Read and write + Bypass 2FA 开启 + 指定包 openfeel），更新 GitHub Secret `OPENFEEL_AUTO_NPM`。包级设置保持 "Require two-factor authentication or a granular access token with bypass 2fa enabled"（安全不降级，token 绕过 2FA 仅限发布动作）。
+
+### 诊断要点
+
+| 错误码 | 直觉判断 | 真实含义 | 验证方法 |
+|--------|---------|---------|---------|
+| 404 Not Found | 包不存在 | 认证失败（空/无效/权限不足 token） | `npm view <pkg>` 确认包存在 + 检查 secret 引用名 |
+| 403 Forbidden + 2FA | 权限不足 | automation token 与包级 2FA 冲突 | 检查 token 类型 + 包级 2FA 设置 |
+
+### 官方文档依据
+
+- https://docs.npmjs.com/about-access-tokens ："As of November 2025, only Granular access tokens are supported. Legacy access tokens have been removed."
+- https://docs.npmjs.com/configuring-two-factor-authentication ："Publishing to npm requires either: Two-factor authentication (2FA) enabled on your account, OR A granular access token with bypass 2FA enabled"
+
+**见于**：v1.0.0 npm 发布排查（GitHub Actions CI）

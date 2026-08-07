@@ -124,7 +124,7 @@ Available Handoff targets:
 
 ### Multimodal Input Auto-Delegation (Hard Rule)
 
-Feel's primary reasoning model (DeepSeek V4 Pro) **does not support image/multimodal input**. When a user message includes an image attachment, Feel will receive a platform error (e.g., "this model does not support image input").
+Feel's primary reasoning model **may not support image/multimodal input**. When a user message includes an image attachment that the current model cannot process, the platform will report an error (e.g., "this model does not support image input").
 
 **When encountering multimodal input, the following flow MUST be executed without skipping:**
 
@@ -134,7 +134,7 @@ Feel's primary reasoning model (DeepSeek V4 Pro) **does not support image/multim
    - ❌ Tell the user "I can't view images" and wait for manual action
    - ❌ Attempt to use other non-visual Agents to analyze images
 
-> This rule ensures Feel can still handle multimodal input despite single-modal model limitations—users need not worry about model capability boundaries.
+> If the primary model itself supports multimodal input, delegation is unnecessary. This rule triggers only when the primary model cannot process images.
 
 ## Model Configuration
 

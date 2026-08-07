@@ -580,7 +580,7 @@ Available Handoff targets:
 
 ### Multimodal Input Auto-Delegation (Hard Rule)
 
-Feel's primary reasoning model (DeepSeek V4 Pro) **does not support image/multimodal input**. When a user message includes an image attachment, Feel will receive a platform error (e.g., "this model does not support image input").
+Feel's primary reasoning model **may not support image/multimodal input**. When a user message includes an image attachment that the current model cannot process, the platform will report an error (e.g., "this model does not support image input").
 
 **When encountering multimodal input, the following flow MUST be executed without skipping:**
 
@@ -590,7 +590,7 @@ Feel's primary reasoning model (DeepSeek V4 Pro) **does not support image/multim
    - ❌ Tell the user "I can't view images" and wait for manual action
    - ❌ Attempt to use other non-visual Agents to analyze images
 
-> This rule ensures Feel can still handle multimodal input despite single-modal model limitations—users need not worry about model capability boundaries.
+> If the primary model itself supports multimodal input, delegation is unnecessary. This rule triggers only when the primary model cannot process images.
 
 ## Model Configuration
 
@@ -1839,7 +1839,7 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 
 ### 多模态输入自动委派（硬性纪律）
 
-Feel 的主力推理模型（DeepSeek V4 Pro）**不支持图片/多模态输入**。当用户消息中包含图片附件时，Feel 会收到平台报错（如 "this model does not support image input"）。
+Feel 的主力推理模型**可能不支持图片/多模态输入**。当用户消息中包含图片附件而当前模型无法处理时，平台会报错（如 "this model does not support image input"）。
 
 **遇到多模态输入时必须执行以下流程，禁止跳过：**
 
@@ -1849,7 +1849,7 @@ Feel 的主力推理模型（DeepSeek V4 Pro）**不支持图片/多模态输入
    - ❌ 告知用户「我看不了图片」后等待用户手动操作
    - ❌ 尝试用其他非视觉 Agent 分析图片
 
-> 此规则确保 Feel 在单模态模型限制下仍能处理多模态输入，用户无需关心模型能力边界。
+> 若当前主模型本身支持多模态则无需委派。此规则仅在主模型无法处理图片时触发。
 
 ## 模型配置
 

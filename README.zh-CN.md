@@ -4,6 +4,10 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。
 
+> **支持平台**：目前仅支持 [opencode](https://opencode.ai)。  
+> **默认模型配置**：DeepSeek V4（主力推理） + GLM-5.1（交叉审查） + Alibaba-CN qwen3-vl-plus（多模态视觉）。  
+> 首次 `openfeel init` 时会自动检测用户已注册的模型并引导配置。
+
 ## 解决什么问题
 
 在 AI Agent 项目开发中，常见的痛点：

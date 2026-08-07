@@ -2,6 +2,8 @@
 
 [English](README.en.md) | [更新日志](CHANGELOG.md)
 
+> ⚡ **支持平台**：opencode ｜ **默认模型**：DeepSeek（主力推理）+ GLM（交叉审查）+ Alibaba-CN（多模态）
+
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
 ---

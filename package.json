@@ -37,10 +37,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/openfeel"
+    "url": "https://github.com/Liuary/OpenFeel.git"
   },
   "bugs": {
-    "url": "https://github.com/user/openfeel/issues"
+    "url": "https://github.com/Liuary/OpenFeel/issues"
   },
   "keywords": [
     "ai-agent",

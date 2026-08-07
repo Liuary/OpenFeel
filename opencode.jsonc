@@ -17,7 +17,7 @@
   },
   "agent": {
     "vision": {
-      "model": "qwen3-vl-plus"
+      "model": "qwen-vl-plus"
     }
   },
   "experimental": {

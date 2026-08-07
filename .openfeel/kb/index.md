@@ -13,14 +13,14 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-07（v5.9-stage-01 归档完成：审查纪律强化 feel.md + executor.md 硬性纪律约束） |
+| 最近更新 | 2026-08-07（v5.10-stage-01 归档完成：profile 自动填充 + 异常安全） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 14 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组 |
-| 代码模式 | [patterns.md](patterns.md) | 48 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt |
+| 代码模式 | [patterns.md](patterns.md) | 51 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 10 | 2026-08-07 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -120,6 +120,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v5.10-stage-01 归档完成：profile 自动填充 + 异常安全（ensureProfileDefaults + 3 项健壮性修复：写盘降级 + passthrough 保留 + 路径规范化），2 op 完成，3 REV 全部 closed，知识沉淀 3 条至 patterns（写盘降级、passthrough 保留、路径规范化），Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v5.9-stage-01 归档完成：审查纪律强化（feel.md 新增「审查不可跳过（硬性纪律）」节 + executor.md 新增「审查移交（硬性纪律）」节），中英双语 6 文件同步插入，知识沉淀 1 条至 patterns（审查硬性纪律嵌入 Agent Prompt 模式），Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v5.8-stage-01 归档完成：三项缺陷修复（autoCommitOnDone mapPhaseToStageStatus 映射修正 + AGENTS.md 模板补版本管理节 + init 创建 manual/ 目录），知识沉淀 2 条至 patterns（模板同步、WORKSPACE_DIRS同步）+ 1 条更新至 troubleshooting（autoRepairInconsistency 根因修复），Agent 数 9，源文件 46。v5 全系列 8 期 19 项任务全部闭环 |
 | 2026-08-07 | 归档 | v5.7-stage-01 归档完成：计划目录按大版本分组重构（v4/v5/系列收纳 + 系列索引+顶层指针）+ reasoning_effort 分档调整（Planner/Schemer→max, Executor/Vision→medium），知识沉淀 2 条至 architecture(1) + patterns(1，更新)，Agent 数 9，源文件 46。v5 全系列 7 期 16 项任务全部闭环 |

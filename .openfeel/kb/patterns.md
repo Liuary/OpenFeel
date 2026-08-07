@@ -1317,3 +1317,124 @@ npm run build  # 模板一致性校验 4/4 通过
 
 **参见：** v5.9-stage-01、kb/patterns.md #REV 闭环双路兜底+--force不可绕过模式、kb/patterns.md #新增 Agent 全链路更新清单模式
 
+## [+] Profile 写盘异常安全降级模式 (2026-08-07)
+
+当公共 API 函数（如 `writeProfile`）本身应保留抛异常语义、但某个特定调用场景需要静默降级时，在调用方包裹 try/catch + 告警，而非在公共函数内部吞异常：
+
+```typescript
+// writeProfile 保持原始异常抛出语义——调用方自行决定是否处理
+export function writeProfile(profile: Profile): void {
+  mkdirSync(dirname(profilePath), { recursive: true });
+  writeFileSync(profilePath, stringifyYaml(profile), 'utf-8');
+}
+
+// ensureProfileDefaults 作为特定调用方，对写盘失败降级处理
+export function ensureProfileDefaults(projectPath: string): void {
+  // ... 填充逻辑 ...
+  if (changed) {
+    try {
+      writeProfile(profile);
+    } catch (err) {
+      // 写盘失败（权限不足、磁盘满、只读挂载等）时静默降级：仅告警，不阻断启动
+      console.warn(`[profile] 自动填充写盘失败，已跳过：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+}
+```
+
+**为什么不在 writeProfile 内部吞异常：**
+- `writeProfile` 是公共 API，其他调用方（如 `config set --global`）需要感知写入是否成功——这类场景抛异常是正确行为
+- 只有自动填充场景（非用户显式操作）才需要静默降级——因为自动填充不应阻断 Agent 启动
+
+**关键要点：**
+- **异常粒度在调用方决定**：函数本身只管正确抛异常，是否捕获/降级由调用方按场景判断
+- **告警不可省略**：降级不是静默忽略——`console.warn` 必须记录失败原因，方便排查配置持久化问题
+- **try 块范围最小化**：仅包裹写盘操作本身，不包裹 fill 逻辑——确保填充成功与否与写盘成功与否独立
+
+**适用场景：**
+- 任何"自动执行且失败不应阻断主流程"的写操作（自动保存、缓存刷新、日志落盘）
+- 多个调用方对同一公共 API 有不同异常处理需求时
+
+**参见：** v5.10-stage-01 REV-001、kb/patterns.md #全局跨项目用户画像 YAML 配置模式
+
+## [+] YAML 配置 passthrough 扩展字段保留模式 (2026-08-07)
+
+配置文件读取函数（如 `readProfile`）在深度合并默认值时，必须用 `...parsed` 先展开所有字段，再逐节覆盖结构化块——防止后续全量写回时静默抹除用户手动添加的扩展字段：
+
+```typescript
+export function readProfile(): Profile {
+  const raw = parseYaml(readFileSync(profilePath, 'utf-8'));
+  const parsed = ProfileSchema.parse(raw) as Profile;
+
+  // ✅ 正确：先展开所有 parsed 字段（含用户扩展字段），再深度合并三块
+  return {
+    ...parsed,                                          // 保留 passthrough 扩展字段
+    user: { ...DEFAULT_PROFILE.user, ...(parsed.user ?? {}) },
+    preferences: { ...DEFAULT_PROFILE.preferences, ...(parsed.preferences ?? {}) },
+    history: { ...DEFAULT_PROFILE.history, ...(parsed.history ?? {}) },
+  };
+
+  // ❌ 错误：直接返回 { user, preferences, history } 三块——
+  // 用户手动添加的顶层扩展字段（如 custom_top_level）被丢弃，
+  // 后续 writeProfile 全量写回时这些字段永久丢失
+}
+```
+
+**为什么 `...parsed` 位置关键：**
+- 放在前面：扩展字段原样保留，三块的覆盖值写在后面覆盖同名字段 → 扩展字段不受影响
+- 如果放在后面：`user/preferences/history` 的覆盖值会丢失，但这不是本场景需求
+- **核心逻辑**：结构化块需要深度合并默认值，扩展字段需要原样 pass-through
+
+**关键要点：**
+- **Zod `.passthrough()` 只解决校验问题**：`ProfileSchema.passthrough()` 允许解析阶段不过滤扩展字段，但如果读取侧不用 `...parsed`，这些字段仍然丢失——校验放行 ≠ 内存保留
+- **全量写回必须配对**：如果采用全量 `writeProfile(profile)` 而非增量修改，读取侧必须保证 profile 对象的完整性——丢失字段 = 丢失数据
+- **选择性覆盖 vs 选择性保留**：只对需要合并默认值的块做 `{...defaults, ...actual}`，其余字段无条件保留——用结构而非条件判断来表达意图，更清晰
+
+**参见：** v5.10-stage-01 REV-002、kb/patterns.md #全局跨项目用户画像 YAML 配置模式、kb/patterns.md #YAML Document API 增量修改模式
+
+## [+] 路径规范化前置去重模式 (2026-08-07)
+
+在涉及路径比较、去重或集合管理的函数中，在入口处对输入路径做 `resolve()` 规范化，避免不同表示形式产生重复条目：
+
+```typescript
+export function ensureProfileDefaults(projectPath: string): void {
+  // ⚠️ 入口第一行：规范化路径，消除分隔符、尾斜杠、.. 等差异
+  const normalizedPath = resolve(projectPath);
+
+  const profile = readProfile();
+
+  // 后续所有比较和存储均使用 normalizedPath
+  if (profile.history?.last_project !== normalizedPath) {
+    profile.history = { ...(profile.history ?? {}), last_project: normalizedPath };
+  }
+
+  const recent = profile.history?.recent_projects ?? [];
+  const deduped = [normalizedPath, ...recent.filter((p) => p !== normalizedPath)].slice(0, 5);
+  // ...
+}
+```
+
+**`resolve()` 能统一的差异：**
+| 输入 | resolve() 后 |
+|------|------|
+| `C:\foo` | `C:\foo` |
+| `C:/foo` | `C:\foo` |
+| `C:\foo\` | `C:\foo` |
+| `C:\foo\bar\..` | `C:\foo` |
+
+**已知限制：**
+- **不统一盘符大小写**：`c:\foo` vs `C:\foo` 在 Windows 上指向同一路径，但 `resolve()` 不转换大小写。可通过 `normalizedPath.toLowerCase()` 补充处理（按需）
+- **不解析符号链接**：`resolve()` 不解析路径中的符号链接或 junction，如 `C:\link` 和 `C:\real` 仍为不同路径
+
+**关键要点：**
+- **入口即规范化**：将规范化放在函数第一行，后续所有代码只需使用 `normalizedPath`，无需在每处比较点重复处理
+- **比规范化时机更重要的是一次性规范**：去重失败通常不是因为没做规范化，而是因为在多处比较点各自做了不一致的规范化
+- **记录已知限制**：明确 `resolve()` 不处理的边缘场景（盘符大小写），避免后续排查时误判
+
+**适用场景：**
+- 历史记录类集合（`recent_projects`、`recent_files`）的去重
+- 路径映射表/reverse map 的键一致性
+- 跨平台路径匹配逻辑（Windows 反斜杠 vs Linux 正斜杠）
+
+**参见：** v5.10-stage-01 REV-003
+

@@ -7,13 +7,14 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 6 |
+| passed | 7 |
 | failed | 0 |
 
 ## v4 系列审查
 
 | 阶段 | 摘要 | 状态 |
 |------|------|------|
+| [v5.10-stage-01](v5.10-stage-01.md) | profile 自动填充 + 异常安全 — 3 REV 全部 closed | passed |
 | [v4.6-stage-01](v4.6-stage-01.md) | Vision Agent 全链路落地 — 3 REV 全部 closed | passed |
 | [v4.4-stage-01](v4.4-stage-01.md) | i18n 基建 + CLI 国际化 — 12 REV (4 closed, 8 non-blocking) | passed |
 | [v4.4-stage-02](v4.4-stage-02.md) | 日志修复 + 流水线安全 — 4 REV (1 closed, 3 non-blocking) | passed |

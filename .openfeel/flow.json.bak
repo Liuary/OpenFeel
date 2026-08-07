@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-07T12:01:11.034Z"
+    "updated": "2026-08-07T12:10:20.538Z"
   },
   "pipeline": {
     "phase": "active",
@@ -289,14 +289,14 @@
     },
     "v5.10-stage-01": {
       "name": "v5.10-stage-01",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "stats": {
         "start_time": "2026-08-07T11:56:16.243Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-08-07T12:10:20.532Z",
+        "duration_ms": 844289
       }
     }
   },
@@ -2460,6 +2460,66 @@
         "stageName": "v5.10-stage-01",
         "from": "review_pending",
         "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T12:04:48.176Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v5.10-stage-01",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T12:06:47.157Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v5.10-stage-01",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T12:07:11.363Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v5.10-stage-01",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T12:07:11.706Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v5.10-stage-01",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T12:07:12.048Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v5.10-stage-01",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T12:10:20.531Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v5.10-stage-01",
+        "from": "archiving",
+        "to": "done"
       }
     }
   ]

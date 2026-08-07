@@ -15,6 +15,11 @@
     "model-check": ".opencode/skills/model-check",
     "model-config": ".opencode/skills/model-config"
   },
+  "agent": {
+    "vision": {
+      "model": "qwen3.7-plus"
+    }
+  },
   "experimental": {
     "agent_manager_tool": true
   },

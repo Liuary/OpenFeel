@@ -188,8 +188,10 @@ export function readProfile(): Profile {
       return { ...DEFAULT_PROFILE };
     }
     const parsed = ProfileSchema.parse(raw) as Profile;
-    // 与默认值深度合并：缺失字段回填默认值
+    // 与默认值深度合并：缺失字段回填默认值，同时保留顶层 passthrough 扩展字段
+    // （避免后续 writeProfile 全量写回时抹除用户自定义扩展字段，REV-002）
     return {
+      ...parsed,
       user: { ...DEFAULT_PROFILE.user, ...(parsed.user ?? {}) },
       preferences: { ...DEFAULT_PROFILE.preferences, ...(parsed.preferences ?? {}) },
       history: { ...DEFAULT_PROFILE.history, ...(parsed.history ?? {}) },
@@ -225,31 +227,38 @@ export function writeProfile(profile: Profile): void {
  * @param projectPath 当前项目根路径
  */
 export function ensureProfileDefaults(projectPath: string): void {
+  // 路径规范化：统一分隔符、消除 . / ..，避免 recent_projects 因路径形式差异产生重复（REV-003）
+  const normalizedPath = resolve(projectPath);
   const profile = readProfile();
   let changed = false;
 
   // 1. user.name 为空时自动填充（.info.json → git config 回退）
   if (!profile.user?.name) {
-    profile.user = { ...(profile.user ?? {}), name: getUserName(projectPath) };
+    profile.user = { ...(profile.user ?? {}), name: getUserName(normalizedPath) };
     changed = true;
   }
 
   // 2. 更新 last_project
-  if (profile.history?.last_project !== projectPath) {
-    profile.history = { ...(profile.history ?? {}), last_project: projectPath };
+  if (profile.history?.last_project !== normalizedPath) {
+    profile.history = { ...(profile.history ?? {}), last_project: normalizedPath };
     changed = true;
   }
 
   // 3. recent_projects 去重追加（新项目置顶，保留最近 5 个）
   const recent = profile.history?.recent_projects ?? [];
-  const deduped = [projectPath, ...recent.filter((p) => p !== projectPath)].slice(0, 5);
+  const deduped = [normalizedPath, ...recent.filter((p) => p !== normalizedPath)].slice(0, 5);
   if (deduped.length !== recent.length || deduped.some((p, i) => p !== recent[i])) {
     profile.history = { ...(profile.history ?? {}), recent_projects: deduped };
     changed = true;
   }
 
   if (changed) {
-    writeProfile(profile);
+    try {
+      writeProfile(profile);
+    } catch (err) {
+      // 写盘失败（权限不足、磁盘满、只读挂载等）时静默降级：仅告警，不阻断 Feel 启动（REV-001）
+      console.warn(`[profile] 自动填充写盘失败，已跳过：${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 }
 

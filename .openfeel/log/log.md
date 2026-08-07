@@ -1,41 +1,7 @@
-# 最近日志
+# 公共日志摘要
 
-| 文件 | 用户 | 描述 |
-|------|------|------|
-| [2026-08-07-reviewer-001.md](2026/08/07/2026-08-07-reviewer-001.md) | Reviewer | [HIGH] v1.0.0-stage-02 审查：REV-001 postinstall 脚本不在 files 白名单（blocking=true），发布后用户安装将失败；另发现 REV-002 stage-04 缺 name（medium）、REV-003 ci.yml 优化（low） |
-| [2026-08-07-Liuary-006.md](2026-08-07/2026-08-07-Liuary-006.md) | Liuary | v0.5.11-stage-01 归档完成：目录归位 + 版本重映射 v0 体系 + 四级版本号落地，1 op 闭环，3 REV（low）审查通过，知识沉淀 3 条（版本号重映射边界判定、kb 同步时点 → patterns；git 重命名交叉匹配假象 → troubleshooting） |
-| [2026-08-07-Liuary-005.md](2026-08-07/2026-08-07-Liuary-005.md) | Liuary | v5.10-stage-01 归档完成：profile 自动填充 + 异常安全（ensureProfileDefaults + 3 项健壮性修复），3 REV 全部 closed，知识沉淀 3 条至 patterns |
-| [2026-08-07-Liuary-004.md](2026-08-07/2026-08-07-Liuary-004.md) | Liuary | v5.8-stage-01 归档完成：三项缺陷修复（autoCommitOnDone/AGENTS.md模板/init缺manual），知识沉淀 2+1 条，首次无--force全阶段推进 |
-| [2026-08-07-Liuary-003.md](2026-08-07/2026-08-07-Liuary-003.md) | Liuary | v5.6-stage-01 归档完成：版本管理规范 + manual 模块文档系统 + reasoning_effort 思考深度配置，知识沉淀 3 条至 architecture(1) + patterns(2) |
-| [2026-08-07-Liuary-002.md](2026-08-07/2026-08-07-Liuary-002.md) | Liuary | v5.0-stage-01 归档完成：框架级记忆体系（全局 profile + dev_last.md 7 节 + CLI --global），知识沉淀 2 条至 patterns |
-| [2026-08-07-Liuary-001.md](2026-08-07/2026-08-07-Liuary-001.md) | Liuary | [HIGH] REV-001: kb/index.md architecture.md 摘要表遗漏 Vision 条目 |
-| [2026-07-18-Liuary-001.md](2026/07/18/2026-07-18-Liuary-001.md) | Liuary | 阶段 v4.5 完成 |
-| [2026-07-15-Liuary-002.md](2026/07/15/2026-07-15-Liuary-002.md) | Liuary | 阶段 v4.4 完成 |
-| [2026-07-15-Liuary-001.md](2026/07/15/2026-07-15-Liuary-001.md) | Liuary | v4.4-stage-03 归档完成：config命令组 + AGENTS.md同步 + package.json模板，知识沉淀 2 条至 patterns，v4.4 全系列结束 |
-| [2026-07-14-Liuary-010.md](2026/07/14/2026-07-14-Liuary-010.md) | Liuary | v4.4-stage-02.op-test review_added |
-| [2026-07-14-Liuary-009.md](2026/07/14/2026-07-14-Liuary-009.md) | Liuary | v4.4-stage-02. advance_stage_phase |
-| [2026-07-14-Liuary-008.md](2026/07/14/2026-07-14-Liuary-008.md) | Liuary | v4.4-stage-01. advance_stage_phase |
-| [2026-07-14-Liuary-007.md](2026/07/14/2026-07-14-Liuary-007.md) | Liuary | v4.4-stage-02. advance_stage_phase |
-| [2026-07-14-Liuary-006.md](2026/07/14/2026-07-14-Liuary-006.md) | Liuary | v4.4-stage-01. advance_stage_phase |
-| [2026-07-14-Liuary-005.md](2026/07/14/2026-07-14-Liuary-005.md) | Liuary | v4.4-stage-01. advance_stage_phase |
-| [2026-07-14-Liuary-004.md](2026/07/14/2026-07-14-Liuary-004.md) | Liuary | v4.4-stage-02. advance_stage_phase |
-| [2026-07-14-Liuary-003.md](2026/07/14/2026-07-14-Liuary-003.md) | Liuary | v4.4-stage-01. advance_stage_phase |
-| [2026-07-14-Liuary-002.md](2026/07/14/2026-07-14-Liuary-002.md) | Liuary | v4.4. advance_stage_phase |
-| [2026-07-14-Liuary-001.md](2026/07/14/2026-07-14-Liuary-001.md) | Liuary | v4.4. advance_stage_phase |
-| [2026-07-12-Liuary-032.md](2026/07/12/2026-07-12-Liuary-032.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-031.md](2026/07/12/2026-07-12-Liuary-031.md) | Liuary | v4.3 全系列归档完成：知识沉淀 4 条（architecture 1 + patterns 3），索引更新 |
-| [2026-07-12-Liuary-030.md](2026/07/12/2026-07-12-Liuary-030.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-029.md](2026/07/12/2026-07-12-Liuary-029.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-028.md](2026/07/12/2026-07-12-Liuary-028.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-027.md](2026/07/12/2026-07-12-Liuary-027.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-026.md](2026/07/12/2026-07-12-Liuary-026.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-025.md](2026/07/12/2026-07-12-Liuary-025.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-024.md](2026/07/12/2026-07-12-Liuary-024.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-023.md](2026/07/12/2026-07-12-Liuary-023.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-022.md](2026/07/12/2026-07-12-Liuary-022.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-021.md](2026/07/12/2026-07-12-Liuary-021.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-020.md](2026/07/12/2026-07-12-Liuary-020.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-019.md](2026/07/12/2026-07-12-Liuary-019.md) | Liuary | v4.3-stage-03. advance_stage_phase |
-| [2026-07-12-Liuary-018.md](2026/07/12/2026-07-12-Liuary-018.md) | Liuary | v4.3-stage-02. advance_stage_phase |
-| [2026-07-12-Liuary-017.md](2026/07/12/2026-07-12-Liuary-017.md) | Liuary | v4.3-stage-01. advance_stage_phase |
-| [2026-07-12-Liuary-016.md](2026/07/12/2026-07-12-Liuary-016.md) | Liuary | v4.3-stage-02. advance_stage_phase |
+> 最近 30 条团队级重要事件摘要。
+
+| 日期 | 文件 | 操作者 | 描述 |
+|------|------|--------|------|
+| 2026-08-07 | [2026-08-07-Liuary-001](2026/08/07/2026-08-07-Liuary-001.md) | Liuary | stage-03 审查发现阻塞性问题：GETTING_STARTED flow advance 示例缺 --stage 参数（REV-001, high, blocking） |

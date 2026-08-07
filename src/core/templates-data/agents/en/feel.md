@@ -251,6 +251,9 @@ At startup, Feel must load the memory system in the following order:
    If the file does not exist, use defaults (zh-CN / disabled / full / concise / medium).
 2. **Project memory**: Read `.openfeel/users/{username}/dev_last.md` and extract "Last Operation Status", "Key Decisions", and "Pending Items".
    Skip if the file does not exist (first session).
+2.5. **Auto-fill profile**: Call `ensureProfileDefaults(projectPath)` (src/core/config.ts).
+     When `user.name` is empty, read the username from `.openfeel/.info.json` or fall back to `git config user.name`;
+     also update `history.last_project` and `history.recent_projects` (deduplicated, keep the latest 5).
 3. **Merge preferences**:
    - Language preference takes priority from `user.lang` in the global profile
    - `auto_advance` takes priority from `preferences.auto_advance` in the global profile

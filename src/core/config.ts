@@ -8,6 +8,7 @@ import { resolve, join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { z } from 'zod';
 import { parse as parseYaml, parseDocument, stringify as stringifyYaml } from 'yaml';
+import { getUserName } from './workspace/identity.js';
 
 // ── Zod Schema ──
 
@@ -211,6 +212,45 @@ export function writeProfile(profile: Profile): void {
   // 序列化为 YAML（保留块结构可读性）
   const content = stringifyYaml(profile);
   writeFileSync(profilePath, content, 'utf-8');
+}
+
+/**
+ * 确保全局 Profile 关键字段已自动填充
+ * 首次使用时 user.name 与 history.last_project 可能为空。
+ * 填充规则：
+ * 1. user.name 为空时：优先从 .openfeel/.info.json 的 user 字段读取，回退 git config user.name（复用 getUserName）
+ * 2. history.last_project 更新为当前 projectPath
+ * 3. projectPath 追加到 history.recent_projects 头部（去重，保留最近 5 个）
+ * 仅在发生变更时写盘，避免无谓 IO。
+ * @param projectPath 当前项目根路径
+ */
+export function ensureProfileDefaults(projectPath: string): void {
+  const profile = readProfile();
+  let changed = false;
+
+  // 1. user.name 为空时自动填充（.info.json → git config 回退）
+  if (!profile.user?.name) {
+    profile.user = { ...(profile.user ?? {}), name: getUserName(projectPath) };
+    changed = true;
+  }
+
+  // 2. 更新 last_project
+  if (profile.history?.last_project !== projectPath) {
+    profile.history = { ...(profile.history ?? {}), last_project: projectPath };
+    changed = true;
+  }
+
+  // 3. recent_projects 去重追加（新项目置顶，保留最近 5 个）
+  const recent = profile.history?.recent_projects ?? [];
+  const deduped = [projectPath, ...recent.filter((p) => p !== projectPath)].slice(0, 5);
+  if (deduped.length !== recent.length || deduped.some((p, i) => p !== recent[i])) {
+    profile.history = { ...(profile.history ?? {}), recent_projects: deduped };
+    changed = true;
+  }
+
+  if (changed) {
+    writeProfile(profile);
+  }
 }
 
 // ── 公开 API ──

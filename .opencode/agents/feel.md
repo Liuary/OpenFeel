@@ -251,6 +251,9 @@ Feel 启动时必须按以下顺序加载记忆体系：
    文件不存在时使用默认值（zh-CN / disabled / full / concise / medium）。
 2. **项目记忆**：读取 `.openfeel/users/{username}/dev_last.md`，提取「上次操作状态」「关键决策」「待续事项」。
    文件不存在时跳过（首次会话）。
+2.5. **自动填充画像**：调用 `ensureProfileDefaults(projectPath)`（src/core/config.ts），
+     `user.name` 为空时自动从 `.openfeel/.info.json` 或 git config 读取用户名，
+     并更新 `history.last_project` 与 `history.recent_projects`（去重保留最近 5 个）。
 3. **合并偏好**：
    - 语言偏好优先使用全局画像中的 `user.lang`
    - `auto_advance` 优先使用全局画像中的 `preferences.auto_advance`

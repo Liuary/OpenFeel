@@ -13,7 +13,7 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-07（v0.5.11-stage-01 归档完成：目录归位 + 版本重映射 + 四级版本号） |
+| 最近更新 | 2026-08-07（v1.0.0-stage-02 op-003 版本号统一：flow.json 25 个 stageId 重映射为 v1.0.0-stage-04~28） |
 
 ## 分类概览
 
@@ -123,6 +123,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 版本统一 | op-003 版本号统一（v1.0.0-stage-02）：flow.json 25 个 stageId 从 v0.x.x 体系重映射为 v1.0.0-stage-04~28（v0.4.2→04 起按 flow.json 顺序编号），同步更新 plan/index.md 对照表、plan_log.md、dev/current.md |
 | 2026-08-07 | 归档 | v0.5.11-stage-01 归档完成：目录归位 + 版本重映射 + 四级版本号 v0 体系（plan 目录 v5.8~v5.10 归入 v5/ 系列 + flow.json 25 stageId v0 化 + AGENTS.md 四级版本号规则落地），1 op 完成，3 REV（low, non-blocking）审查通过，知识沉淀 2 条至 patterns（版本号重映射边界判定、kb 同步时点）+ 1 条至 troubleshooting（git 重命名交叉匹配假象），Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v0.5.10-stage-01 归档完成：profile 自动填充 + 异常安全（ensureProfileDefaults + 3 项健壮性修复：写盘降级 + passthrough 保留 + 路径规范化），2 op 完成，3 REV 全部 closed，知识沉淀 3 条至 patterns（写盘降级、passthrough 保留、路径规范化），Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v0.5.9-stage-01 归档完成：审查纪律强化（feel.md 新增「审查不可跳过（硬性纪律）」节 + executor.md 新增「审查移交（硬性纪律）」节），中英双语 6 文件同步插入，知识沉淀 1 条至 patterns（审查硬性纪律嵌入 Agent Prompt 模式），Agent 数 9，源文件 46 |

@@ -1244,3 +1244,76 @@ v5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段
 
 **参见：** kb/architecture.md #分级模块文档系统：manual + 树图索引
 
+## [+] 审查硬性纪律嵌入 Agent Prompt 模式 (2026-08-07)
+
+流水线阶段推进中的合规约束不应仅依赖代码层校验（如 flow-manager 的 REV 双路兜底），还需在 Agent prompt 层硬编码行为纪律，形成"决策前约束 + 执行后校验"的双层防护。
+
+**问题背景：**
+
+代码层校验的盲区——当 Agent 在 `review_pending` 阶段自行决策"改动小、风险低、build+test 全绿、不需要审查"时，代码层校验在**审查尚未发生**时无法介入（代码层仅在有 REV 阻塞时拦截 `done` 推进，但无法阻止 Agent 跳过调用 Reviewer 这一步骤）。Prompt 层行为约束填补了此盲区。
+
+**实施模式：两 Agent 对称插入 + 中英双语 6 文件同步：**
+
+### Feel 层面：审查不可跳过（硬性纪律）
+
+在 feel.md 中「审查修复必须走流程」节之后插入：
+
+```markdown
+### 审查不可跳过（硬性纪律）
+
+**禁止以任何理由跳过 Reviewer 审查**。以下行为视为严重违规：
+- ❌ Executor 自测通过后直接推进 review_pending→review_passed
+- ❌ 以"改动小、风险低"为由跳过审查
+- ❌ 以"build+test 全绿"为由跳过审查
+- ❌ 用 --force 绕过审查阶段
+
+**强制要求**：review_pending 阶段**必须**通过 task 工具委托 Reviewer Agent 执行审查。
+Reviewer 返回审查结论后，Feel 根据结论决定推进 review_passed 或回退 exec_running。
+```
+
+### Executor 层面：审查移交（硬性纪律）
+
+在 executor.md 中「自测报告规范」节之后插入：
+
+```markdown
+### 审查移交（硬性纪律）
+
+自测通过后，Executor **必须**将结果移交给 Feel，由 Feel 调度 Reviewer 审查。**禁止**以下行为：
+- ❌ 自行推进流水线状态（如 review_pending→review_passed）
+- ❌ 在返回摘要中建议跳过审查（如"改动小不需要审查"）
+- ❌ 修改 flow.json 中的 phase 字段
+
+**标准移交语**：返回 Feel 时使用"请 Feel 安排 Reviewer 审查"或"可进入审查阶段"（指由 Feel 调度，而非自行推进）。
+```
+
+### 部署与双语同步
+
+| 文件 | 操作 | 内容 |
+|------|:--:|------|
+| `.opencode/agents/feel.md` | 插入 13 行 | 「审查不可跳过（硬性纪律）」节 |
+| `templates-data/agents/zh-CN/feel.md` | 插入 13 行 | 中文源模板，内容一致 |
+| `templates-data/agents/en/feel.md` | 插入 13 行 | 英文版「Review Must Not Be Skipped (Hard Discipline)」 |
+| `.opencode/agents/executor.md` | 插入 10 行 | 「审查移交（硬性纪律）」节 |
+| `templates-data/agents/zh-CN/executor.md` | 插入 10 行 | 中文源模板，内容一致 |
+| `templates-data/agents/en/executor.md` | 插入 10 行 | 英文版「Review Handover (Hard Discipline)」 |
+
+**关键要点：**
+
+- **对称性**：Feel 端和 Executor 端约束形成闭环——Feel 禁止接受"跳过审查"的请求，Executor 禁止提出"跳过审查"的建议，双向封堵
+- **具体化**：❌ 列表逐条列举常见违规理由（改动小/全绿/--force），而非笼统的"不得跳过"——具体化使 Agent 不易找到规避理由
+- **标准移交语**：Executor 统一使用"请 Feel 安排 Reviewer 审查"，避免模糊表达（如"审查可以跳过"）被误读为跳过许可
+- **与代码层互补**：本模式约束 Agent 的决策行为（prompt 层），REV 双路兜底约束流水线的推进行为（代码层），二者互不替代但协同防护——代码层校验在 `done` 推进时触发（后置），prompt 层约束在 `review_pending` 决策时触发（前置）
+- **插入位置语义**：Feel 的新节紧随「审查修复必须走流程」节——逻辑延续（先定义修复需走流程，再定义审查不可绕过）；Executor 的新节紧随「自测报告规范」节——自测完成后的下一步自然就是移交审查
+- **模板同步**：中英双语 6 文件对称插入，遵循已有「新增 Agent 全链路更新清单模式」中的模板同步方法论——源模板修改 → `npm run build` 自动注入 → `openfeel update` 部署传播
+
+**验证方法：**
+
+```
+npm run build  # 模板一致性校验 4/4 通过
+# 然后比对部署版与源模板中的新增节内容：
+# git diff --no-index .opencode/agents/feel.md templates-data/agents/zh-CN/feel.md
+# git diff --no-index .opencode/agents/executor.md templates-data/agents/zh-CN/executor.md
+```
+
+**参见：** v5.9-stage-01、kb/patterns.md #REV 闭环双路兜底+--force不可绕过模式、kb/patterns.md #新增 Agent 全链路更新清单模式
+

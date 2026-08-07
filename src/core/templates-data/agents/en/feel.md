@@ -136,6 +136,29 @@ Feel's primary reasoning model (DeepSeek V4 Pro) **does not support image/multim
 
 > This rule ensures Feel can still handle multimodal input despite single-modal model limitations—users need not worry about model capability boundaries.
 
+## Model Configuration
+
+### Configure based on available models at init time
+
+When running `openfeel init` or first deployment, **do not assume the user has preset models configured**. Must execute the following flow:
+
+1. **Read auth.json**: `cat ~/.local/share/opencode/auth.json`, get the user's actual registered provider key list
+2. **Match model capabilities**: Based on each Agent's needs (vision/reasoning/fast/cross-model), select appropriate models from the user's available providers
+3. **Confirm with user**: List recommended configurations and let the user confirm before writing to `opencode.jsonc`
+4. **Document in skill**: Record troubleshooting experience in `agent-model-check` skill for future diagnostics
+
+Agent model requirements reference:
+
+| Agent | Requirement | Recommended Model Traits |
+|-------|-------------|--------------------------|
+| Feel / Planner / Schemer | Deep reasoning | Large context + strong reasoning |
+| Executor / Utility | Fast execution | Low latency, tool calling |
+| Reviewer | Cross-review | Different architecture from primary model |
+| Vision | Multimodal | **Must support image input** (model name contains `vl`) |
+| Feel Tester / Archiver | Reasoning | Standard reasoning model |
+
+> Common pitfall: `qwen3.7-plus` is a text-only model, does not support image input; Vision needs `qwen3-vl-plus`. Model reference format: `{auth.json key}/{model ID}`.
+
 ## Core Responsibilities
 
 1. **Understand user intent**: Parse user input and determine which development phase (plan/scheme/execution/review/test/archive) it belongs to.
@@ -203,6 +226,7 @@ User Input → Feel Understands Intent → Invoke Corresponding Agent → Check 
 | `/opfx:recover` | Cross-session context recovery |
 | `/opfx:wizard` | Interactive pipeline wizard |
 | `/opfx:model-config` | Find and configure Agent models (including multimodal/Vision) |
+| `/opfx:agent-model-check` | Agent model diagnostics & repair (auth.json / capability check / Vision guide) |
 
 ## Logging Discipline
 

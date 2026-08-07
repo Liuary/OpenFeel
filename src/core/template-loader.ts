@@ -592,6 +592,29 @@ Feel's primary reasoning model (DeepSeek V4 Pro) **does not support image/multim
 
 > This rule ensures Feel can still handle multimodal input despite single-modal model limitations—users need not worry about model capability boundaries.
 
+## Model Configuration
+
+### Configure based on available models at init time
+
+When running \`openfeel init\` or first deployment, **do not assume the user has preset models configured**. Must execute the following flow:
+
+1. **Read auth.json**: \`cat ~/.local/share/opencode/auth.json\`, get the user's actual registered provider key list
+2. **Match model capabilities**: Based on each Agent's needs (vision/reasoning/fast/cross-model), select appropriate models from the user's available providers
+3. **Confirm with user**: List recommended configurations and let the user confirm before writing to \`opencode.jsonc\`
+4. **Document in skill**: Record troubleshooting experience in \`agent-model-check\` skill for future diagnostics
+
+Agent model requirements reference:
+
+| Agent | Requirement | Recommended Model Traits |
+|-------|-------------|--------------------------|
+| Feel / Planner / Schemer | Deep reasoning | Large context + strong reasoning |
+| Executor / Utility | Fast execution | Low latency, tool calling |
+| Reviewer | Cross-review | Different architecture from primary model |
+| Vision | Multimodal | **Must support image input** (model name contains \`vl\`) |
+| Feel Tester / Archiver | Reasoning | Standard reasoning model |
+
+> Common pitfall: \`qwen3.7-plus\` is a text-only model, does not support image input; Vision needs \`qwen3-vl-plus\`. Model reference format: \`{auth.json key}/{model ID}\`.
+
 ## Core Responsibilities
 
 1. **Understand user intent**: Parse user input and determine which development phase (plan/scheme/execution/review/test/archive) it belongs to.
@@ -659,6 +682,7 @@ User Input → Feel Understands Intent → Invoke Corresponding Agent → Check 
 | \`/opfx:recover\` | Cross-session context recovery |
 | \`/opfx:wizard\` | Interactive pipeline wizard |
 | \`/opfx:model-config\` | Find and configure Agent models (including multimodal/Vision) |
+| \`/opfx:agent-model-check\` | Agent model diagnostics & repair (auth.json / capability check / Vision guide) |
 
 ## Logging Discipline
 
@@ -1178,7 +1202,7 @@ The Utility Agent is driven by a **fast model** (such as DeepSeek V4 Flash). Mec
     vision: `---
 description: Vision Agent, multimodal model, responsible for general visual analysis — receives image input and outputs structured analysis results.
 mode: subagent
-model: Alibaba(China)/qwen3.7-plus
+model: alibaba-cn/qwen3-vl-plus
 reasoning_effort: medium
 color: "#06B6D4"
 permission:
@@ -1827,6 +1851,29 @@ Feel 的主力推理模型（DeepSeek V4 Pro）**不支持图片/多模态输入
 
 > 此规则确保 Feel 在单模态模型限制下仍能处理多模态输入，用户无需关心模型能力边界。
 
+## 模型配置
+
+### 初始化时按可用模型调配
+
+执行 \`openfeel init\` 或首次部署时，**不能假设用户已配置预设模型**。必须执行以下流程：
+
+1. **读取 auth.json**：\`cat ~/.local/share/opencode/auth.json\`，获取用户实际注册的 provider key 列表
+2. **匹配模型能力**：根据各 Agent 的需求（视觉/推理/快速/异种），从用户已有的 provider 中选择合适的模型
+3. **向用户确认**：列出推荐配置，让用户确认后再写入 \`opencode.jsonc\`
+4. **写入 skill**：将排查经验沉淀到 \`agent-model-check\` skill，供后续故障排查
+
+Agent 模型需求对照：
+
+| Agent | 需求 | 推荐模型特征 |
+|-------|------|-------------|
+| Feel / Planner / Schemer | 深度推理 | 大上下文 + 强推理能力 |
+| Executor / 事务官 | 快速执行 | 低延迟、工具调用 |
+| Reviewer | 交叉审查 | 异种模型（与主力不同架构） |
+| Vision | 多模态 | **必须支持图像输入**（模型名含 \`vl\`） |
+| Feel Tester / Archiver | 推理 | 标准推理模型 |
+
+> 常见陷阱：\`qwen3.7-plus\` 是纯文本模型，不支持图像输入；Vision 需要 \`qwen3-vl-plus\`。模型引用格式为 \`{auth.json中的key}/{模型ID}\`。
+
 ## 核心职责
 
 1. **理解用户意图**：解析用户输入，判断属于哪一开发阶段（计划/方案/执行/审查/测试/归档）。
@@ -1895,6 +1942,7 @@ Feel 的主力推理模型（DeepSeek V4 Pro）**不支持图片/多模态输入
 | \`/opfx:recover\` | 跨会话上下文恢复 |
 | \`/opfx:wizard\` | 交互式流水线向导 |
 | \`/opfx:model-config\` | 查找和配置 Agent 模型（含多模态/Vision） |
+| \`/opfx:agent-model-check\` | Agent 模型排查与修复（auth.json / 模型能力校验 / Vision 专项） |
 
 ## 日志记录纪律
 
@@ -2414,7 +2462,7 @@ task_type: utility
     vision: `---
 description: Vision 视觉官 Agent，多模态模型，负责通用视觉分析，接收图片输入并输出结构化分析结果。
 mode: subagent
-model: Alibaba(China)/qwen3.7-plus
+model: alibaba-cn/qwen3-vl-plus
 reasoning_effort: medium
 color: "#06B6D4"
 permission:

@@ -51,6 +51,9 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 - 遇到图片输入时 Feel 会自动委托 Vision Agent
 - Vision Agent 需要配置多模态模型（如 `qwen-vl-plus`、`qwen3-vl-plus`）
 - 模型名不要随意添加前缀（如 `alibaba/`），以平台提示的可用名为准
+- **模型引用格式**：`{auth.json中的key}/{模型ID}`，不是 `provider.name` 也不是 `provider.id`
+- 读取 `~/.local/share/opencode/auth.json` 确认实际 provider key（常见：`alibaba-cn`、`deepseek`、`zhipuai`）
+- `provider` 块中的 `name` 和 `id` 仅用于显示，不影响模型解析
 
 ## 项目 Agent 模型概览
 

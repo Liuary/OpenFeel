@@ -13,17 +13,12 @@
     "get-stage-status": ".opencode/skills/get-stage-status",
     "update-stage-status": ".opencode/skills/update-stage-status",
     "model-check": ".opencode/skills/model-check",
-    "model-config": ".opencode/skills/model-config"
-  },
-  "provider": {
-    "alibaba": {
-      "name": "Alibaba(China)",
-      "id": "Alibaba(China)"
-    }
+    "model-config": ".opencode/skills/model-config",
+    "agent-model-check": ".opencode/skills/agent-model-check"
   },
   "agent": {
     "vision": {
-      "model": "Alibaba(China)/qwen3.7-plus"
+      "model": "alibaba-cn/qwen3-vl-plus"
     }
   },
   "experimental": {

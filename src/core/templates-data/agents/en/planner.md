@@ -1,6 +1,7 @@
 ---
 description: Planner Agent, responsible for defining version roadmaps and work stage divisions. Driven by a reasoning model.
 mode: subagent
+reasoning_effort: high
 color: "#6A8DFF"
 permission:
   bash: "allow"

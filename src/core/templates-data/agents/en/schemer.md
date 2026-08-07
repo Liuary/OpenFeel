@@ -1,6 +1,7 @@
 ---
 description: Schemer Agent, responsible for formulating the lowest-level, finest-grained operation schemes. Driven by a reasoning model.
 mode: subagent
+reasoning_effort: high
 color: "#4A90D9"
 permission:
   bash: "allow"

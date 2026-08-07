@@ -2,6 +2,7 @@
 description: Executor Agent, fast model, implements code according to operation schemes and self-tests.
 mode: subagent
 model: deepseek/deepseek-v4-flash
+reasoning_effort: low
 color: "#D94A4A"
 permission:
   bash: "allow"

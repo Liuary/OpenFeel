@@ -2,6 +2,7 @@
 description: Utility Agent, fast model, responsible for file operations, format conversion, build/test and other mechanical auxiliary tasks.
 mode: subagent
 model: deepseek/deepseek-v4-flash
+reasoning_effort: low
 color: "#8B9DC3"
 permission:
   bash: "allow"

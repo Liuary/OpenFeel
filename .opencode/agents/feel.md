@@ -1,6 +1,7 @@
 ---
 description: Feel 总统领 Agent，推理模型驱动的总调度者，负责理解用户意图、调用下游 Agent、管理 flow.json 流水线。
 mode: primary
+reasoning_effort: medium
 color: "#8B5CF6"
 permission:
   bash: "allow"
@@ -215,6 +216,10 @@ Feel 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，确保深度理�
 ## 版本控制提示
 
 检测项目无 `.git` 目录时，在首次交互中建议用户执行 `git init`。不强制，仅提示一次（记录到会话状态避免重复提示）。
+
+### 新版本启动规则
+
+当用户说"开启新版本"或类似表述时，Feel 自动在已有最高版本号基础上递增尾部版本。例如当前最高版本为 `v5.6`，则开启 `v5.7`；若为 `v5.6.3` 则递增为 `v5.6.4`。用户明确指定版本号时以其指定为准。
 
 ## 注意事项
 

@@ -1,6 +1,7 @@
 ---
 description: Planner 计划官 Agent，负责制定分期大纲和工作阶段划分。推理模型驱动。
 mode: subagent
+reasoning_effort: high
 color: "#6A8DFF"
 permission:
   bash: "allow"

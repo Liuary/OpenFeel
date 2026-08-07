@@ -11,6 +11,7 @@ const AGENT_TEMPLATES: Record<string, Record<string, string>> = {
     archiver: `---
 description: Archiver Agent, reasoning model, responsible for archiving operation records and knowledge extraction.
 mode: subagent
+reasoning_effort: low
 color: "#50C878"
 permission:
   bash: "allow"
@@ -30,6 +31,7 @@ You are Archiver (归档官), the finalizer in the OpenFeel pipeline. You are dr
    - Last updated ("Last updated" line): Archive date differs from recorded value → update to current date
 3. **Knowledge extraction**: Extract reusable knowledge and experience from operation records and write to the knowledge base.
 4. **Stage summary and knowledge base maintenance**: Produce a stage summary report and update the corresponding files under \`.openfeel/kb/\`.
+5. **Module manual maintenance**: During archiving, check the modules involved in this stage (\`.openfeel/manual/index.md\` module tree). If their APIs, structure, or responsibilities have changed, update the corresponding module docs under \`.openfeel/manual/\` (\`core/flow-manager.md\`, \`core/config.md\`, \`cli/commands.md\`, \`agents/feel.md\`, etc.).
 
 ## Archive Content
 
@@ -134,6 +136,7 @@ Archiver is driven by a **reasoning model** (such as DeepSeek V4 Pro), responsib
 description: Executor Agent, fast model, implements code according to operation schemes and self-tests.
 mode: subagent
 model: deepseek/deepseek-v4-flash
+reasoning_effort: low
 color: "#D94A4A"
 permission:
   bash: "allow"
@@ -331,6 +334,7 @@ Delegable targets: Vision (analyze screenshots), Reviewer (pre-review code)
     'feel-tester': `---
 description: Feel Tester Agent, reasoning model, responsible for formal testing and acceptance in the pipeline.
 mode: subagent
+reasoning_effort: medium
 color: "#E8A838"
 permission:
   bash: "allow"
@@ -443,6 +447,7 @@ Delegable targets: Vision (verify UI screenshots), Executor (fix bugs)
     feel: `---
 description: Feel Orchestrator Agent, the chief conductor driven by a reasoning model, responsible for understanding user intent, dispatching downstream agents, and managing the flow.json pipeline.
 mode: primary
+reasoning_effort: medium
 color: "#8B5CF6"
 permission:
   bash: "allow"
@@ -658,6 +663,10 @@ Feel is driven by a **flagship reasoning model** (such as DeepSeek V4 Pro) to en
 
 When detecting that the project has no \`.git\` directory, suggest the user execute \`git init\` in the first interaction. Not mandatory, prompt only once (record in session state to avoid repeated prompting).
 
+### New Version Startup Rule
+
+When the user says "start a new version" or similar, Feel automatically increments the trailing version number based on the highest existing version. For example, if the current highest version is \`v5.6\`, start \`v5.7\`; if it is \`v5.6.3\`, increment to \`v5.6.4\`. If the user explicitly specifies a version number, use that instead.
+
 ## Notes
 
 - Do not modify source code directly; do so indirectly through the Executor Agent.
@@ -726,6 +735,7 @@ Feel checks the status to determine the next step; load the full report via \`re
     planner: `---
 description: Planner Agent, responsible for defining version roadmaps and work stage divisions. Driven by a reasoning model.
 mode: subagent
+reasoning_effort: high
 color: "#6A8DFF"
 permission:
   bash: "allow"
@@ -829,6 +839,7 @@ Planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Fee
 description: Reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
 mode: subagent
 model: zhipuai/glm-5.1
+reasoning_effort: medium
 color: "#D4A017"
 permission:
   bash: "allow"
@@ -946,6 +957,7 @@ Delegable targets: Vision (review UI screenshots)
     schemer: `---
 description: Schemer Agent, responsible for formulating the lowest-level, finest-grained operation schemes. Driven by a reasoning model.
 mode: subagent
+reasoning_effort: high
 color: "#4A90D9"
 permission:
   bash: "allow"
@@ -1073,6 +1085,7 @@ Delegable targets: Reviewer (pre-review schemes), Planner (confirm plans)
 description: Utility Agent, fast model, responsible for file operations, format conversion, build/test and other mechanical auxiliary tasks.
 mode: subagent
 model: deepseek/deepseek-v4-flash
+reasoning_effort: low
 color: "#8B9DC3"
 permission:
   bash: "allow"
@@ -1125,6 +1138,7 @@ The Utility Agent is driven by a **fast model** (such as DeepSeek V4 Flash). Mec
 description: Vision Agent, multimodal model, responsible for general visual analysis — receives image input and outputs structured analysis results.
 mode: subagent
 model: alibaba/qwen-vl-plus
+reasoning_effort: low
 color: "#06B6D4"
 permission:
   bash: "allow"
@@ -1192,6 +1206,7 @@ Vision is driven by a **multimodal model** with strong image understanding and c
     archiver: `---
 description: Archiver 归档官 Agent，推理模型驱动，负责归档操作记录和知识提取。
 mode: subagent
+reasoning_effort: low
 color: "#50C878"
 permission:
   bash: "allow"
@@ -1211,6 +1226,7 @@ permission:
    - 最近更新（"最近更新"行）：归档日期与记录值不一致 → 更新为当前日期
 3. **知识提取**：从操作记录中提取可复用的知识和经验，写入知识库。
 4. **阶段总结与知识库维护**：产出阶段总结报告，更新 \`.openfeel/kb/\` 中的对应分类文件。
+5. **模块手册维护**：归档时检查本阶段涉及的模块（\`.openfeel/manual/index.md\` 模块树），若其 API、结构或职责发生变更，同步更新 \`.openfeel/manual/\` 中对应模块文档（\`core/flow-manager.md\`、\`core/config.md\`、\`cli/commands.md\`、\`agents/feel.md\` 等）。
 
 ## 归档内容
 
@@ -1314,6 +1330,7 @@ Archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，负责理解上下
 description: Executor 执行官 Agent，快速模型，按操作方案编码实现并自测。
 mode: subagent
 model: deepseek/deepseek-v4-flash
+reasoning_effort: low
 color: "#D94A4A"
 permission:
   bash: "allow"
@@ -1511,6 +1528,7 @@ Executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码执行追�
     'feel-tester': `---
 description: Feel Tester 测试官 Agent，推理模型驱动，负责流水线中的正式测试验收。
 mode: subagent
+reasoning_effort: medium
 color: "#E8A838"
 permission:
   bash: "allow"
@@ -1623,6 +1641,7 @@ Tester 由**推理模型**（如 DeepSeek V4 Pro）驱动，测试分析需要�
     feel: `---
 description: Feel 总统领 Agent，推理模型驱动的总调度者，负责理解用户意图、调用下游 Agent、管理 flow.json 流水线。
 mode: primary
+reasoning_effort: medium
 color: "#8B5CF6"
 permission:
   bash: "allow"
@@ -1839,6 +1858,10 @@ Feel 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，确保深度理�
 
 检测项目无 \`.git\` 目录时，在首次交互中建议用户执行 \`git init\`。不强制，仅提示一次（记录到会话状态避免重复提示）。
 
+### 新版本启动规则
+
+当用户说"开启新版本"或类似表述时，Feel 自动在已有最高版本号基础上递增尾部版本。例如当前最高版本为 \`v5.6\`，则开启 \`v5.7\`；若为 \`v5.6.3\` 则递增为 \`v5.6.4\`。用户明确指定版本号时以其指定为准。
+
 ## 注意事项
 
 - 不要直接修改源码，通过 Executor Agent 间接修改。
@@ -1907,6 +1930,7 @@ Feel 收到后检查状态决定下一步；需要详情时通过 \`read\` 加�
     planner: `---
 description: Planner 计划官 Agent，负责制定分期大纲和工作阶段划分。推理模型驱动。
 mode: subagent
+reasoning_effort: high
 color: "#6A8DFF"
 permission:
   bash: "allow"
@@ -2010,6 +2034,7 @@ Planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设�
 description: Reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
 mode: subagent
 model: zhipuai/glm-5.1
+reasoning_effort: medium
 color: "#D4A017"
 permission:
   bash: "allow"
@@ -2127,6 +2152,7 @@ Reviewer 必须由**异种推理模型**（如 GLM / Qwen）驱动，与 Feel/Sc
     schemer: `---
 description: Schemer 方案官 Agent，负责制定最底层、极细粒度的操作方案。推理模型驱动。
 mode: subagent
+reasoning_effort: high
 color: "#4A90D9"
 permission:
   bash: "allow"
@@ -2254,6 +2280,7 @@ Schemer 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，方案制定�
 description: 事务官 Agent，快速模型，负责文件操作、格式转换、构建测试等机械性辅助任务。
 mode: subagent
 model: deepseek/deepseek-v4-flash
+reasoning_effort: low
 color: "#8B9DC3"
 permission:
   bash: "allow"
@@ -2306,6 +2333,7 @@ task_type: utility
 description: Vision 视觉官 Agent，多模态模型，负责通用视觉分析，接收图片输入并输出结构化分析结果。
 mode: subagent
 model: alibaba/qwen-vl-plus
+reasoning_effort: low
 color: "#06B6D4"
 permission:
   bash: "allow"

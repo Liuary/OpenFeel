@@ -1,6 +1,7 @@
 ---
 description: Feel Tester Agent, reasoning model, responsible for formal testing and acceptance in the pipeline.
 mode: subagent
+reasoning_effort: medium
 color: "#E8A838"
 permission:
   bash: "allow"

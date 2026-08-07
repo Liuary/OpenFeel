@@ -1,6 +1,7 @@
 ---
 description: Schemer 方案官 Agent，负责制定最底层、极细粒度的操作方案。推理模型驱动。
 mode: subagent
+reasoning_effort: high
 color: "#4A90D9"
 permission:
   bash: "allow"

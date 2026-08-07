@@ -1,6 +1,7 @@
 ---
 description: Archiver 归档官 Agent，推理模型驱动，负责归档操作记录和知识提取。
 mode: subagent
+reasoning_effort: low
 color: "#50C878"
 permission:
   bash: "allow"
@@ -20,6 +21,7 @@ permission:
    - 最近更新（"最近更新"行）：归档日期与记录值不一致 → 更新为当前日期
 3. **知识提取**：从操作记录中提取可复用的知识和经验，写入知识库。
 4. **阶段总结与知识库维护**：产出阶段总结报告，更新 `.openfeel/kb/` 中的对应分类文件。
+5. **模块手册维护**：归档时检查本阶段涉及的模块（`.openfeel/manual/index.md` 模块树），若其 API、结构或职责发生变更，同步更新 `.openfeel/manual/` 中对应模块文档（`core/flow-manager.md`、`core/config.md`、`cli/commands.md`、`agents/feel.md` 等）。
 
 ## 归档内容
 

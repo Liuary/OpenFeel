@@ -2,6 +2,7 @@
 description: 事务官 Agent，快速模型，负责文件操作、格式转换、构建测试等机械性辅助任务。
 mode: subagent
 model: deepseek/deepseek-v4-flash
+reasoning_effort: low
 color: "#8B9DC3"
 permission:
   bash: "allow"

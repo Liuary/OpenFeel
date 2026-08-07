@@ -2,6 +2,7 @@
 description: Reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
 mode: subagent
 model: zhipuai/glm-5.1
+reasoning_effort: medium
 color: "#D4A017"
 permission:
   bash: "allow"

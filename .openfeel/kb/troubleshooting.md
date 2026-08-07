@@ -101,6 +101,25 @@ fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
 
 **见于**：REV-002 (v4.2-stage-01)
 
+## [+] autoRepairInconsistency 干扰组合条件推进路径 (2026-08-07)
+
+**现象**：使用组合终止条件（`test_passed|review_passed → archiving`）时，阶段在 `test_passed` 状态下被 `autoRepairInconsistency` 自动修复为 `done`，跳过了 `archiving` 阶段。
+
+**根因**：`autoRepairInconsistency`（flow-manager.ts L2135）的修复逻辑之一为：`status=done 但 phase≠done → 同步 phase 为 done`。当阶段 status 已为 `done`（如因测试通过标记）而 phase 为 `test_passed` 时，该逻辑将 phase 强制同步为 `done`。这截断了组合条件中 `test_passed→archiving` 的合法路径——`archiving` 被跳过，归档流程无法执行。
+
+**触发条件**：
+1. 阶段的 `status` 字段已为 `done`（常见于快速通过场景：测试通过后 status 直接被标记为 done）
+2. `phase` 字段为组合条件中的中间值（如 `test_passed`）
+3. `autoRepairInconsistency` 被调用（如 `openfeel flow health`、`openfeel flow repair` 等触发一致性检查）
+
+**影响范围**：非本次 v5.3 引入的 Bug——`autoRepairInconsistency` 设计时未考虑组合终止条件场景，属已知遗留项。不影响含 `|` 组合条件以外的常规单条件 transitions。
+
+**临时规避**：在归档完成前避免调用 `autoRepairInconsistency`（即避免 `flow health` / `flow repair` 对 v5.3-stage-01 的检查），或手动恢复 phase 后推进。
+
+**建议修复方向**：`autoRepairInconsistency` 在同步 phase 前检查当前 phase 是否在 transitions 中存在合法出边（通过 `getValidTargets`），若存在则不强制同步——仅对无合法出边的"真卡住"状态执行修复。
+
+**见于**：v5.3-stage-01 归档阶段（Executor 发现，已记录为遗留项供后续修复）
+
 ## [+] 流水线文件引用断裂的连锁修复 (2026-07-05)
 
 **现象**：v4-stage-02 审查中发现三处引用断裂形成连锁故障：

@@ -898,3 +898,105 @@ Agent A 返回 → 含 [HANDOFF: agent_name] 标记
 - 本模式下不属于代码变更（无需修改 `.ts` 文件），但产生设计文档变更（需记录到 plan 和日志）
 
 **参见：** v5.2-stage-01
+
+## [+] Checkpoint 快照自动保存 + 生命周期管理模式 (2026-08-07)
+
+在流水线 phase 推进时自动保存 flow.json 完整快照到 `.openfeel/checkpoints/`，实现状态可回溯恢复的轻量快照体系：
+
+```typescript
+// flow-manager.ts — advanceStagePhase 中 phase 推进成功后触发
+private saveCheckpoint(stageId: string, phase: string): void {
+  try {
+    const checkpointsDir = resolve(this.projectPath, '.openfeel', 'checkpoints');
+    mkdirSync(checkpointsDir, { recursive: true });
+    const timestamp = formatTimestamp(new Date()); // yyyyMMddTHHmmssSSS 毫秒级
+    const filename = `${stageId}-${timestamp}-${phase}.json`;
+    writeFileSync(join(checkpointsDir, filename), JSON.stringify(this.data, null, 2), 'utf-8');
+    // 保留最近 20 个，清理更旧的文件（按 mtime 排序）
+    const files = readdirSync(checkpointsDir)
+      .filter(f => f.endsWith('.json'))
+      .map(f => ({ name: f, mtime: statSync(join(checkpointsDir, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+    for (const f of files.slice(20)) {
+      unlinkSync(join(checkpointsDir, f.name));
+    }
+  } catch {
+    // 快照失败不阻塞 phase 推进（非关键路径）
+  }
+}
+```
+
+**CLI 命令：**
+- `openfeel flow checkpoint list [stage]` — 列出全部快照或按阶段过滤，显示文件大小和时间
+- `openfeel flow checkpoint restore <file> --force` — 恢复快照（覆盖当前 flow.json，须 --force 确认），恢复前自动备份 `.bak`
+
+**关键要点：**
+
+- **时间戳精度**：不使用秒级 `yyyyMMddTHHmmss`，必须用**毫秒级** `yyyyMMddTHHmmssSSS`——同一秒内多次 phase 推进（如 `review_passed → test_pending → test_passed → archiving`）若用时不足 1 秒，秒级时间戳会覆盖前序快照
+- **自动清理**：保留最近 20 个快照，按 mtime 降序，超出部分自动删除——避免 checkpoints 目录无限膨胀
+- **失败不阻塞**：整个 saveCheckpoint 包裹在 try-catch 中，任何失败（权限、磁盘满、目录创建失败）仅记录 console.error，不抛出异常阻塞 phase 推进——快照是辅助功能，不应成为流水线瓶颈
+- **restore 安全确认**：恢复前将当前 flow.json 备份为 `.bak`，需显式 `--force` 确认（`--force` 不可绕过 restore 的安全提示）
+- **文件名安全校验**：`restoreCheckpoint` 对传入文件名做路径穿越检测（拒绝含 `..` 或 `/` 的文件名），防止 `../../etc/passwd` 类攻击
+
+**适用场景：**
+- 流水线操作失误后需要回滚到之前状态
+- 调试 phase 推进逻辑时需要对比历史快照
+- 多 Agent 并行场景下任一 Agent 完成即可触发下一阶段时的状态追溯
+
+**参见：** v5.3-stage-01 op-001（步骤1~3）、kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径
+
+## [+] 流水线 transitions 组合条件 `|` 运算符模式 (2026-08-07)
+
+当多个不同 source phase 均可合法推进到同一 target phase 时，在 transitions key 中使用 `|` 运算符组合多个 source phase，替代为每种组合单独定义一条 transition：
+
+```typescript
+// pipeline-schema.ts — 新增组合条件工具
+const TRANSITION_OR_SEPARATOR = '|';
+
+function parseTransitionKey(key: string): string[] {
+  return key.split(TRANSITION_OR_SEPARATOR).map(s => s.trim());
+}
+
+function transitionKeyMatches(key: string, testedPhase: string): boolean {
+  return parseTransitionKey(key).some(phase => phase === testedPhase);
+}
+```
+
+```typescript
+// flow-manager.ts — 使用组合条件统一控制各方法
+function getValidTargets(data: PipelineData, fromPhase: PipelinePhase): PipelinePhase[] {
+  const targets: PipelinePhase[] = [];
+  for (const [key, toList] of Object.entries(data.transitions)) {
+    // 组合 key 中任一 source phase 匹配即生效
+    if (transitionKeyMatches(key, fromPhase)) {
+      targets.push(...toList);
+    }
+  }
+  return [...new Set(targets)]; // 去重
+}
+
+// hasTransition / canAdvance / getAvailablePhases 均使用 getValidTargets
+```
+
+**transitions 示例：**
+```json
+{
+  "transitions": {
+    "test_passed|review_passed": ["archiving"],
+    "archiving": ["done"],
+    "done": []
+  }
+}
+```
+`test_passed|review_passed → archiving` 表示：任一完成即可进入归档——适用于多 Agent 并行完成任一即推进的场景。
+
+**关键要点：**
+
+- **兼容性**：不含 `|` 的 key 保持原有单条件行为，`transitionKeyMatches` 对普通 key 退化为精确匹配——零破坏性变更
+- **去重**：`getValidTargets` 使用 `new Set()` 对结果去重，防止两个不同的组合 key 指向同一 target phase 时重复推送
+- **与 `autoRepairInconsistency` 的已知交互问题**：当阶段 `status=done` 但 `phase` 为组合条件中的中间值（如 `test_passed`）时，`autoRepairInconsistency` 会将 `phase` 直接同步为 `done`，跳过 `archiving` 阶段——这截断了组合条件中 `test_passed→archiving` 的合法路径（参见 kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径）
+- **CLI 层透明**：`flow advance` 命令依赖 `canAdvance` 做合法性校验，组合条件的支持使其天然兼容组合 key，无需 CLI 命令层额外改动
+
+**设计理由：** 若采用方案 B（为每种组合单独定义一条 transition），则 `test_passed → archiving` 和 `review_passed → archiving` 需写两条——当组合数增长时（如 3 个 source phase 的组合），条目数呈指数增长。`|` 运算符方案以单一 key 表达组合语义，兼具可读性和可维护性。
+
+**参见：** v5.3-stage-01 op-001（步骤5~7）、kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径

@@ -1140,3 +1140,58 @@ if (existingContent !== templateContent) {
 - 此模式适用于所有由模板生成、可能随 CLI 版本演进而内容变化的部署文件
 
 **参见：** v5.5-stage-01、kb/patterns.md #AGENTS.md 模板四节同步机制、kb/architecture.md #多语言模板数据管线
+
+## [+] 版本号语义管理与递增规范模式 (2026-08-07)
+
+v5.6 在 AGENTS.md 和 feel.md 中写入版本号管理规范，将版本推进从"约定俗成"硬化为准则：
+
+**版本号语义（写入 AGENTS.md「版本管理」节）：**
+
+| 版本位 | 语义 | 触发条件 |
+|:--:|------|------|
+| 主版本号 (X) | 破坏性变更 | API 签名变化、不兼容的数据格式升级、Agent 体系重构 |
+| 次版本号 (Y) | 新增功能 | 新 Agent、新 CLI 命令组、新知识库分类、功能里程碑 |
+| 修订号 (Z) | Bug 修复 | 缺陷修复、文档修正、格式统一、轻微优化 |
+
+**递增规则（写入 feel.md 调度逻辑）：**
+
+- **默认行为**：Feel 启动新版本时默认使用尾部版本号递增（修订号 +1），不跳号
+- **显式版本**：用户明确指定版本号时，以用户指定为准
+- **并发侦测**：迭代中若出现可触发次版本号递增的变更（新增功能），Feel 应主动侦测并提出升级次版本号供用户确认
+- **审慎原则**：避免无意义的跳号——修复类任务不应触发次版本号递增，微调类任务不应触发主版本号递增
+
+**实施位置：**
+- `AGENTS.md` — 「版本管理」节：语义定义 + 团队可见的永久性规范
+- `.opencode/agents/feel.md` — 调度逻辑：新版本递增规则由 Feel 在执行时遵循
+- `templates-data/agents/{zh-CN,en}/feel.md` — 中英双语模板同步
+
+**参见：** v5.6-stage-01 op-001（AGENTS.md 版本管理 + feel.md 递增规则）
+
+## [+] Agent 推理深度分档配置模式（reasoning_effort）(2026-08-07)
+
+v5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段，按角色职责分三档配置推理深度，实现 Agent 计算资源的差异化分配：
+
+**三档分档策略：**
+
+| 档位 | 值 | 适用 Agent | 理由 |
+|:--:|:--:|------|------|
+| 高 | `high` | Planner、Schemer | 计划制定和方案设计需深度推理，遍历多方案对比 |
+| 中 | `medium` | Feel、Reviewer、Feel Tester | 总统领协调、代码审查、测试验收需平衡推理深度与响应速度 |
+| 低 | `low` | Executor、事务官、Archiver、Vision | 执行型角色以速度和吞吐优先，任务明确不需遍历多方案 |
+
+**同步传播链路：**
+
+```
+源模板（templates-data/agents/{zh-CN,en}/*.md）
+  → npm run build（构建脚本自动注入）
+    → template-loader.ts（编译产物，AUTO-GENERATED）
+      → .opencode/agents/*.md（部署文件，openfeel update 写入）
+```
+
+**关键要点：**
+- **Frontmatter 位置**：在所有 Agent 模板文件的 YAML frontmatter 中 `model` 之后、`color` 之前插入 `reasoning_effort` 字段
+- **中英对称**：zh-CN 和 en 两语言模板字段值完全一致（仅 `description` 语言不同），确保跨语言部署行为统一
+- **新增 Agent 时同步**：新增 Agent 时根据其角色确定 reasoning_effort 分档，在源模板和部署文件中同步写入
+- **构建自动传播**：构建脚本基于语言数组循环遍历所有 .md 模板文件，新增字段零代码变更——仅在模板中添加即可被自动注入
+
+**参见：** v5.6-stage-01 op-001（9 Agent frontmatter + 18 模板同步）、kb/patterns.md #新增 Agent 全链路更新清单模式、kb/patterns.md #构建脚本多语言循环生成模式

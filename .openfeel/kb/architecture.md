@@ -222,3 +222,37 @@ openfeel lint
 - 长期：CI/CD 集成 `openfeel lint` 作为提交前门禁，阻断质量退化
 
 **参见：** v5.4-stage-01 op-001（lint i18n）、op-002（lint kb）、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式
+
+## [+] 分级模块文档系统：manual + 树图索引 (2026-08-07)
+
+v5.6 建立了 `.openfeel/manual/` 分级模块文档系统，与 kb/ 知识库形成互补：
+
+```
+manual/               ← 模块文档系统（人类维护，Archiver 归档时更新）
+├── index.md          ← 树图索引（核心引擎 / CLI 层 / Agent 体系）
+├── core/
+│   ├── flow-manager.md   ← 流水线管理模块（职责、核心 API、状态机）
+│   └── config.md         ← 配置管理模块（配置层级、读写方法）
+├── cli/
+│   └── commands.md       ← 命令体系（命令注册、i18n 集成）
+└── agents/
+    └── feel.md           ← Agent 设计（9 Agent 体系、调度模型）
+```
+
+**设计决策：**
+- **分工明确**：manual 记录"模块是什么"（API 参考、职责、结构），kb 记录"怎么做决策/踩了什么坑"（经验沉淀）
+- **按需扩展**：新增模块时在 index.md 树图中追加条目，创建对应文档，不预建空目录
+- **归档官维护**：归档官在归档时必须检查本阶段涉及的模块，若其 API、结构或职责发生变更，须同步更新 manual/ 中对应模块文档
+- **轻量结构**：每个模块文档 20-30 行左右，含职责描述、核心 API 速查、关键数据结构，不做过度展开
+- **与 AGENTS.md 联动**：AGENTS.md 中写入「模块手册」约束（`manual/index.md` 模块树），确保 Agent 知晓该文档系统并能在需要时查阅
+
+**维护规则索引表：**
+
+| 模块 | 对应文档 | 归档时检查点 |
+|------|----------|--------------|
+| flow.json / 流水线推进 | `core/flow-manager.md` | 核心 API 或状态机变更 |
+| config.yaml / profile.yaml | `core/config.md` | 配置层级或读写方法变更 |
+| 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更 |
+| Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更 |
+
+**参见：** v5.6-stage-01 op-001（manual 创建 + AGENTS.md 模块手册约束）、kb/patterns.md #归档官维护 manual 模块文档模式

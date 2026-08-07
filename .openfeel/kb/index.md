@@ -12,15 +12,15 @@
 | 源文件 | 46 个 .ts 文件（src/） |
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
-| 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-08-07（v5.5-stage-01 缺陷修复归档完成：AGENTS.md 部署传播内容哈希比对 + autoCommitOnDone 时序修正，v5 全系列最终闭环） |
+| 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
+| 最近更新 | 2026-08-07（v5.6-stage-01 归档完成：版本管理规范 + manual 模块文档系统 + Agent reasoning_effort 思考深度配置） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 12 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁 |
-| 代码模式 | [patterns.md](patterns.md) | 43 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对 |
+| 架构决策 | [architecture.md](architecture.md) | 13 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统 |
+| 代码模式 | [patterns.md](patterns.md) | 45 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 10 | 2026-08-07 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -42,6 +42,7 @@
 | 公域日志批量聚合策略 | 2026-07-14 | advance_stage_phase 改为 endStage 时汇总里程碑，消除 85%+ 噪音 |
 | 8→9 Agent 体系扩展：Vision 视觉官 | 2026-08-07 | v4.6 新增 Vision 视觉官（通用视觉分析），qwen-vl-plus 多模态模型，不参与流水线调度，按需被 Feel 和其他 Agent 调用 |
 | CLI 质量门禁体系：lint 子命令组 | 2026-08-07 | v5.4 引入 `openfeel lint` 命令组，子命令 i18n（422 键对称性校验）和 kb（过期引用检测），为 CI/CD 集成质量门禁奠定基础 |
+| 分级模块文档系统：manual + 树图索引 | 2026-08-07 | v5.6 建立 .openfeel/manual/ 分级模块文档系统（index.md 树图 + core/cli/agents 模块文档），归档官同步维护，与 kb/ 知识库互补 |
 
 ### patterns.md
 
@@ -85,6 +86,8 @@
 | i18n 键对称性校验模式 | 2026-08-07 | 三向比对（zhOnly/enOnly/共享键数）+ 空值检测，422 键全量一致性校验 |
 | kb 过期引用检测与 CLI-Agent skill 映射全量对齐模式 | 2026-08-07 | 扫描 kb 文件路径引用验证存在性 + CLI 12 命令组全量 skill 映射，4 个新 skill 落地 |
 | 部署传播内容哈希比对模式 | 2026-08-07 | openfeel update 部署 AGENTS.md 时用内容比对替代仅语言判断，确保模板更新能传播到存量项目 |
+| 版本号语义管理与递增规范模式 | 2026-08-07 | AGENTS.md 写入主.次.修订语义，feel.md 默认递增修订号，Feel 审慎推进版本 |
+| Agent 推理深度分档配置模式 | 2026-08-07 | 9 Agent frontmatter 统一新增 reasoning_effort 三档（high/medium/low），中英模板同步传播 |
 
 ### troubleshooting.md
 
@@ -113,6 +116,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v5.6-stage-01 归档完成：版本管理规范（AGENTS.md 主.次.修订语义 + feel.md 默认递增修订号）+ 模块文档系统 .openfeel/manual/（4 模块 + 树图索引）+ 9 Agent reasoning_effort 思考深度分档配置，知识沉淀 3 条至 architecture(1) + patterns(2)，Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v5.5-stage-01 归档完成：缺陷修复（AGENTS.md 部署传播内容哈希比对 + autoCommitOnDone save 前移到 commit 前时序修正），知识沉淀 1 条至 patterns（部署传播哈希比对模式）+ 1 条更新（autoCommit 时序修正），Agent 数 9，源文件 46。v5 全系列最终闭环 |
 | 2026-08-07 | 归档 | v5.4-stage-01 归档完成：lint 质量门禁（i18n 422键校验 + kb 过期引用检测）+ CLI-Agent skill 全量对齐（4新skill：roadmap/health/recover/wizard），知识沉淀 4 条至 architecture(1) + patterns(3)，Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v5.3-stage-01 归档完成：Checkpoint 快照（phase 推进自动保存 + list/restore CLI，毫秒级时间戳 + 自动清理 20 个限制）+ 组合终止条件（transitions `\|` 运算符，多 Agent 并行任一完成即推进），知识沉淀 2 条至 patterns（Checkpoint 快照模式、组合终止条件模式）+ 1 条至 troubleshooting（autoRepairInconsistency 干扰组合条件，遗留项），Agent 数 9，源文件 45 |

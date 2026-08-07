@@ -16,7 +16,8 @@
 | v5.3 | 状态持久化与灵活流程控制（2 项） | P1 | done ✅ |
 | v5.4 | 质量保障与知识库健康 + CLI-Agent 对齐（3 项） | P1 | done ✅ |
 | v5.5 | 缺陷修复：AGENTS.md 部署传播 + autoCommitOnDone 时序（2 项） | P0 | done ✅ |
-| **v5 全系列** | **5 期 12 项任务** | — | **✅ 全部完成** |
+| v5.6 | 版本管理规范 + manual 模块文档 + reasoning_effort 思考深度配置（3 项） | P1 | done ✅ |
+| **v5 全系列** | **6 期 15 项任务** | — | **✅ 全部完成** |
 
 ### [OpenFeel v4.7 — 部署版修复 + 路线图](v4.7/plan.md) ✅ 已归档
 
@@ -161,3 +162,4 @@
 | v5.3 | 已归档 | 1 | 1/1 done | — |
 | v5.4 | 已归档 | 1 | 1/1 done | — |
 | v5.5 | 已归档 | 1 | 1/1 done | [roadmap-v5](v4.7/roadmap-v5.md) |
+| v5.6 | 已归档 | 1 | 1/1 done | [roadmap-v5](v4.7/roadmap-v5.md) |

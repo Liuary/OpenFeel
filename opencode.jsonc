@@ -12,7 +12,13 @@
     "sync-status": ".opencode/skills/sync-status",
     "get-stage-status": ".opencode/skills/get-stage-status",
     "update-stage-status": ".opencode/skills/update-stage-status",
-    "model-check": ".opencode/skills/model-check"
+    "model-check": ".opencode/skills/model-check",
+    "model-config": ".opencode/skills/model-config"
+  },
+  "agent": {
+    "vision": {
+      "model": "qwen3-vl-plus"
+    }
   },
   "experimental": {
     "agent_manager_tool": true

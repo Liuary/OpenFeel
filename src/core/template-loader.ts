@@ -578,6 +578,20 @@ Available Handoff targets:
 | Reviewer | Vision (review UI screenshots) |
 | Feel Tester | Vision (verify UI screenshots), Executor (fix bugs) |
 
+### Multimodal Input Auto-Delegation (Hard Rule)
+
+Feel's primary reasoning model (DeepSeek V4 Pro) **does not support image/multimodal input**. When a user message includes an image attachment, Feel will receive a platform error (e.g., "this model does not support image input").
+
+**When encountering multimodal input, the following flow MUST be executed without skipping:**
+
+1. **Detect**: Recognize that the user message contains an image attachment or that the platform reports "does not support image input"
+2. **Delegate**: Immediately delegate to Vision Agent via the \`task\` tool (\`subagent_type: vision\`), describing the content to analyze in the prompt
+3. **Prohibited behaviors**:
+   - ❌ Tell the user "I can't view images" and wait for manual action
+   - ❌ Attempt to use other non-visual Agents to analyze images
+
+> This rule ensures Feel can still handle multimodal input despite single-modal model limitations—users need not worry about model capability boundaries.
+
 ## Core Responsibilities
 
 1. **Understand user intent**: Parse user input and determine which development phase (plan/scheme/execution/review/test/archive) it belongs to.
@@ -644,6 +658,7 @@ User Input → Feel Understands Intent → Invoke Corresponding Agent → Check 
 | \`/opfx:health\` | Pipeline health check |
 | \`/opfx:recover\` | Cross-session context recovery |
 | \`/opfx:wizard\` | Interactive pipeline wizard |
+| \`/opfx:model-config\` | Find and configure Agent models (including multimodal/Vision) |
 
 ## Logging Discipline
 
@@ -1163,7 +1178,7 @@ The Utility Agent is driven by a **fast model** (such as DeepSeek V4 Flash). Mec
     vision: `---
 description: Vision Agent, multimodal model, responsible for general visual analysis — receives image input and outputs structured analysis results.
 mode: subagent
-model: alibaba/qwen-vl-plus
+model: qwen3-vl-plus
 reasoning_effort: medium
 color: "#06B6D4"
 permission:
@@ -1798,6 +1813,20 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 | Reviewer | Vision（审查 UI 截图） |
 | Feel Tester | Vision（验证 UI 截图）、Executor（修复 Bug） |
 
+### 多模态输入自动委派（硬性纪律）
+
+Feel 的主力推理模型（DeepSeek V4 Pro）**不支持图片/多模态输入**。当用户消息中包含图片附件时，Feel 会收到平台报错（如 "this model does not support image input"）。
+
+**遇到多模态输入时必须执行以下流程，禁止跳过：**
+
+1. **识别**：检测到用户消息含图片附件或平台报"不支持图像输入"
+2. **委派**：立即通过 \`task\` 工具委托 Vision Agent（\`subagent_type: vision\`），prompt 中描述需分析的内容
+3. **禁止行为**：
+   - ❌ 告知用户「我看不了图片」后等待用户手动操作
+   - ❌ 尝试用其他非视觉 Agent 分析图片
+
+> 此规则确保 Feel 在单模态模型限制下仍能处理多模态输入，用户无需关心模型能力边界。
+
 ## 核心职责
 
 1. **理解用户意图**：解析用户输入，判断属于哪一开发阶段（计划/方案/执行/审查/测试/归档）。
@@ -1865,6 +1894,7 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 | \`/opfx:health\` | 流水线健康检查 |
 | \`/opfx:recover\` | 跨会话上下文恢复 |
 | \`/opfx:wizard\` | 交互式流水线向导 |
+| \`/opfx:model-config\` | 查找和配置 Agent 模型（含多模态/Vision） |
 
 ## 日志记录纪律
 
@@ -2384,7 +2414,7 @@ task_type: utility
     vision: `---
 description: Vision 视觉官 Agent，多模态模型，负责通用视觉分析，接收图片输入并输出结构化分析结果。
 mode: subagent
-model: alibaba/qwen-vl-plus
+model: qwen3-vl-plus
 reasoning_effort: medium
 color: "#06B6D4"
 permission:

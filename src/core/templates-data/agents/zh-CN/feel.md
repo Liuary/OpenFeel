@@ -122,6 +122,20 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 | Reviewer | Vision（审查 UI 截图） |
 | Feel Tester | Vision（验证 UI 截图）、Executor（修复 Bug） |
 
+### 多模态输入自动委派（硬性纪律）
+
+Feel 的主力推理模型（DeepSeek V4 Pro）**不支持图片/多模态输入**。当用户消息中包含图片附件时，Feel 会收到平台报错（如 "this model does not support image input"）。
+
+**遇到多模态输入时必须执行以下流程，禁止跳过：**
+
+1. **识别**：检测到用户消息含图片附件或平台报"不支持图像输入"
+2. **委派**：立即通过 `task` 工具委托 Vision Agent（`subagent_type: vision`），prompt 中描述需分析的内容
+3. **禁止行为**：
+   - ❌ 告知用户「我看不了图片」后等待用户手动操作
+   - ❌ 尝试用其他非视觉 Agent 分析图片
+
+> 此规则确保 Feel 在单模态模型限制下仍能处理多模态输入，用户无需关心模型能力边界。
+
 ## 核心职责
 
 1. **理解用户意图**：解析用户输入，判断属于哪一开发阶段（计划/方案/执行/审查/测试/归档）。
@@ -189,6 +203,7 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 | `/opfx:health` | 流水线健康检查 |
 | `/opfx:recover` | 跨会话上下文恢复 |
 | `/opfx:wizard` | 交互式流水线向导 |
+| `/opfx:model-config` | 查找和配置 Agent 模型（含多模态/Vision） |
 
 ## 日志记录纪律
 

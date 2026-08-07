@@ -122,6 +122,20 @@ Available Handoff targets:
 | Reviewer | Vision (review UI screenshots) |
 | Feel Tester | Vision (verify UI screenshots), Executor (fix bugs) |
 
+### Multimodal Input Auto-Delegation (Hard Rule)
+
+Feel's primary reasoning model (DeepSeek V4 Pro) **does not support image/multimodal input**. When a user message includes an image attachment, Feel will receive a platform error (e.g., "this model does not support image input").
+
+**When encountering multimodal input, the following flow MUST be executed without skipping:**
+
+1. **Detect**: Recognize that the user message contains an image attachment or that the platform reports "does not support image input"
+2. **Delegate**: Immediately delegate to Vision Agent via the `task` tool (`subagent_type: vision`), describing the content to analyze in the prompt
+3. **Prohibited behaviors**:
+   - ❌ Tell the user "I can't view images" and wait for manual action
+   - ❌ Attempt to use other non-visual Agents to analyze images
+
+> This rule ensures Feel can still handle multimodal input despite single-modal model limitations—users need not worry about model capability boundaries.
+
 ## Core Responsibilities
 
 1. **Understand user intent**: Parse user input and determine which development phase (plan/scheme/execution/review/test/archive) it belongs to.
@@ -188,6 +202,7 @@ User Input → Feel Understands Intent → Invoke Corresponding Agent → Check 
 | `/opfx:health` | Pipeline health check |
 | `/opfx:recover` | Cross-session context recovery |
 | `/opfx:wizard` | Interactive pipeline wizard |
+| `/opfx:model-config` | Find and configure Agent models (including multimodal/Vision) |
 
 ## Logging Discipline
 

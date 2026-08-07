@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { FlowManager, mapPhaseToStageStatus, type FlowData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 
 /** 创建测试用 FlowData（带一个阶段和一个 op） */
@@ -1499,7 +1499,10 @@ describe('FlowManager', () => {
       const mgr = new FlowManager(tmpDir);
       expect(mgr.restoreCheckpoint('../evil.json')).toBe(false);
       expect(mgr.restoreCheckpoint('a/b.json')).toBe(false);
-      expect(mgr.restoreCheckpoint('a\\b.json')).toBe(false);
+      // 反斜杠仅在 Windows 上是路径分隔符，Linux 上 a\b.json 是合法文件名
+      if (sep === '\\') {
+        expect(mgr.restoreCheckpoint('a\\b.json')).toBe(false);
+      }
     });
 
     it('restoreCheckpoint 对不存在的快照应返回 false', () => {

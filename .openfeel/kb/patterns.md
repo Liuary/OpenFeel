@@ -1000,3 +1000,106 @@ function getValidTargets(data: PipelineData, fromPhase: PipelinePhase): Pipeline
 **设计理由：** 若采用方案 B（为每种组合单独定义一条 transition），则 `test_passed → archiving` 和 `review_passed → archiving` 需写两条——当组合数增长时（如 3 个 source phase 的组合），条目数呈指数增长。`|` 运算符方案以单一 key 表达组合语义，兼具可读性和可维护性。
 
 **参见：** v5.3-stage-01 op-001（步骤5~7）、kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径
+
+## [+] CLI lint 子命令组扩展与 `--fix` 自动修复模式 (2026-08-07)
+
+当需要在 CLI 中新增多领域自动化校验时，采用「父命令组注册 + 子命令独立实现 + 共享 `--fix` 约定」模式：
+
+**Command 注册结构：**
+```typescript
+// src/commands/lint.ts — 父命令组
+const lintCmd = program.command('lint').description('项目健康检查（i18n 键一致性、kb 引用有效性）');
+
+// 子命令 1：i18n 校验
+lintCmd.command('i18n').description('校验 i18n 键一致性（空值/中英独有键）').action(() => { ... });
+
+// 子命令 2：kb 引用检测
+lintCmd.command('kb').description('检测 .openfeel/kb/ 中的过期文件引用').action(() => { ... });
+```
+
+**每个子命令实现规范：**
+1. **独立校验逻辑**：每个子命令拥有独立的校验函数（如 `validateI18nKeys()` / `scanKbReferences()`），不共享全局状态
+2. **输出格式统一**：`✅ 422 键一致`（通过时简洁肯定）/ `❌ 发现 N 个过期引用`（失败时列出明细含文件名和行号）
+3. **退出码纪律**：校验通过 `exit(0)`，发现问题 `exit(1)`——确保 CI/CD 可集成
+4. **`--fix` 可选**：自动修复非必需——仅当修复方案确定且无歧义时才提供（如 kb 过期引用可自动替换为最近似文件名），i18n 键缺失需人工决策故不提供 `--fix`
+
+**多子命令 vs 独立命令的抉择：**
+- 选择子命令组 `lint i18n / lint kb` 而非独立命令 `check-i18n / check-kb` 的理由：语义内聚（均为"检查"类操作）、命名空间清晰（`lint` 下可无限扩展）、与 Commander 子命令模式一致（已有 `flow` 命令组先例）
+- 不选择 `lint --type i18n` 模式的理由：选项模式不利于每个子命令携带独立选项（如 `lint kb --fix`），且子命令模式更符合 Commander 的 help 分层展示习惯
+
+**扩展方式：**
+- 新增校验类型仅需在 `lint.ts` 中追加一个 `.command('xxx')` 调用 + 对应校验函数实现
+- 无需修改父命令组注册逻辑、无需修改其他子命令代码
+
+**参见：** v5.4-stage-01 op-001（lint i18n）、op-002（lint kb）、kb/architecture.md #CLI 质量门禁体系
+
+## [+] i18n 键对称性校验模式 (2026-08-07)
+
+当项目拥有中英双语 i18n 数据文件时，实现自动化键对称性校验确保两语言文件完全同步：
+
+```typescript
+// src/commands/lint.ts — lintI18n 核心校验逻辑
+function validateI18nKeys(): { ok: boolean; report: string } {
+  // 1. 从 ts 源码中提取键集合（正则匹配 export const xxx 或直接 import 域对象）
+  const zhKeys = extractKeys(i18nDataZhCN);
+  const enKeys = extractKeys(i18nDataEn);
+
+  // 2. 三向比对
+  const zhOnly = [...zhKeys].filter(k => !enKeys.has(k));   // 中文独有
+  const enOnly = [...enKeys].filter(k => !zhKeys.has(k));   // 英文独有
+  const bothCount = zhKeys.size - zhOnly.length;             // 共享键数
+
+  // 3. 空值检测：任一语言中值为空字符串的键
+  const emptyKeys = findEmptyValues();
+
+  return { ok: zhOnly.length === 0 && enOnly.length === 0 && emptyKeys.length === 0, report };
+}
+```
+
+**设计要点：**
+- **键提取方式**：从 TypeScript 源码中提取键集合——解析 `export const xxx: I18nDomain = { ... }` 的导出结构，无需运行时加载。原因：i18n 数据文件即为源码，静态分析零运行时开销且无需构建
+- **三向比对而非双向**：zhOnly + enOnly + 共享键数，三数之和应等于 422（当前总键数），确保比对完整性
+- **空值检测**：即使两语言键集合完全一致，也需要检测每个键在两个语言文件中是否均有有效值（zh 字段在 zh-CN.ts 中不为空、en 字段在 en.ts 中不为空）
+- **校验输出**：通过时简洁输出 `✅ 422 键一致`，失败时列出独有键和空值键的完整明细（含键名和所属域）
+
+**已知限制：**
+- 键提取依赖源码结构稳定性——若 i18n 数据文件的导出格式变更（如从 `export const` 改为动态构造），需同步更新提取逻辑
+- 不检测键值内容的质量（如翻译准确性、变量占位符一致性），仅做键名层面对称性校验
+
+**参见：** v5.4-stage-01 op-001（lint i18n）、kb/patterns.md #CLI 国际化封装模式、kb/architecture.md #i18n 基础设施
+
+## [+] kb 过期引用检测与 CLI-Agent skill 映射全量对齐模式 (2026-08-07)
+
+v5.4 在引入 `openfeel lint kb` 质量检查的同时，补充了 CLI-Agent skill 映射对齐。两机制互补形成"检测→修复→可见性"闭环：
+
+### kb 过期引用检测
+
+**检测策略：**
+- 扫描 `.openfeel/kb/*.md` 文件，提取 backtick 包裹的路径引用（正则 `` /`([^`]+\.(?:md|ts|yaml|json|js))`/g ``）
+- 对每个提取到的路径执行 `existsSync()` 或 `glob` 验证目标文件是否存在
+- 输出过期条目列表：文件 + 行号 + 过期路径
+
+**已知限制：**
+- 无法区分"模板占位符路径"和"真实路径引用"——如 kb/patterns.md 的 Agent 清单表中的 `` `.opencode/agents/new-agent.md` `` 是文档模板示例而非真实文件引用，会被误报为过期。此为 v5.4 首版限制，后续可增加注释标记（如 `` `<!-- placeholder -->` ``）跳过占位符路径
+- 不检测反向引用（即文件存在但 kb 中未记录的遗漏项）
+
+### CLI-Agent skill 映射全量对齐
+
+**背景：** v5.4 之前 CLI 有 12 个命令组（flow/stage/plan/knowledge/archive/init/update/project/instructions/lint/config/roadmap），但 `.opencode/skills/` 仅 8 个 skill，导致 `roadmap`、`health`、`recover`、`wizard` 四个 CLI 能力对 Agent 不可见。
+
+**对齐步骤：**
+1. 为缺失命令组创建对应 skill：`roadmap/SKILL.md`、`health/SKILL.md`、`recover/SKILL.md`、`wizard/SKILL.md`
+2. 每个 skill 的 `location` 指向项目 skills 目录，`description` 描述该命令的用途和触发条件
+3. 在 feel.md 的「可用 Skill」清单中追加四个新 skill 的引用
+
+**对齐后的 skill 列表（12 个）：**
+
+| 原有 (8) | 新增 (4) |
+|-----------|----------|
+| check-kb, search-kb, get-stage-status, update-stage-status, get-bugs, bug-acceptance, sync-status, model-check | roadmap, health, recover, wizard |
+
+**设计原则：**
+- 每个 CLI 命令组在 skills/ 中应有对应 skill，确保 Agent 通过 `load skill` 发现和利用全部 CLI 能力——Agent prompt 不应硬编码 CLI 命令列表，而应通过 skill 描述间接感知
+- 新增 CLI 命令组时，同步创建对应 skill 为强制步骤（参考「新增 Agent 全链路更新清单模式」的清单驱动方法论）
+
+**参见：** v5.4-stage-01 op-003（kb lint）、op-004（skill 补充）、kb/architecture.md #CLI 质量门禁体系、kb/patterns.md #新增 Agent 全链路更新清单模式、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式

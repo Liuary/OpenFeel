@@ -9,18 +9,18 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 45 个 .ts 文件（src/） |
+| 源文件 | 46 个 .ts 文件（src/） |
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-08-07（v5.3-stage-01 Checkpoint 快照 + 组合终止条件归档完成） |
+| 最近更新 | 2026-08-07（v5.4-stage-01 lint 质量门禁 + CLI-Agent 对齐归档完成，v5 全系列闭环） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 11 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官 |
-| 代码模式 | [patterns.md](patterns.md) | 39 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件 |
+| 架构决策 | [architecture.md](architecture.md) | 12 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁 |
+| 代码模式 | [patterns.md](patterns.md) | 42 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 10 | 2026-08-07 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -41,6 +41,7 @@
 | i18n 基础设施：TS常量导入+运行时查表 | 2026-07-14 | 不同于 template-loader 构建管线，i18n 采用 TS 常量直接导入的轻量方案，零构建脚本，与 template-loader 互补覆盖运行时输出+部署内容 |
 | 公域日志批量聚合策略 | 2026-07-14 | advance_stage_phase 改为 endStage 时汇总里程碑，消除 85%+ 噪音 |
 | 8→9 Agent 体系扩展：Vision 视觉官 | 2026-08-07 | v4.6 新增 Vision 视觉官（通用视觉分析），qwen-vl-plus 多模态模型，不参与流水线调度，按需被 Feel 和其他 Agent 调用 |
+| CLI 质量门禁体系：lint 子命令组 | 2026-08-07 | v5.4 引入 `openfeel lint` 命令组，子命令 i18n（422 键对称性校验）和 kb（过期引用检测），为 CI/CD 集成质量门禁奠定基础 |
 
 ### patterns.md
 
@@ -80,6 +81,9 @@
 | 约束文件→指令文件迁移模式 | 2026-08-07 | 规范四步迁移法（复制→双语同步→[-]禁用→引用更新），保留审计链 |
 | Checkpoint 快照自动保存 + 生命周期管理模式 | 2026-08-07 | phase 推进自动保存 flow.json 快照，毫秒级时间戳 + 自动清理 + CLI list/restore |
 | 流水线 transitions 组合条件 `\|` 运算符模式 | 2026-08-07 | transitions key 支持 `\|` 组合 source phase，多 Agent 并行任一完成即触发推进 |
+| CLI lint 子命令组扩展与 `--fix` 自动修复模式 | 2026-08-07 | 父命令组注册 + 子命令独立实现 + 共享 --fix 约定，新增校验仅需追加一个子命令 |
+| i18n 键对称性校验模式 | 2026-08-07 | 三向比对（zhOnly/enOnly/共享键数）+ 空值检测，422 键全量一致性校验 |
+| kb 过期引用检测与 CLI-Agent skill 映射全量对齐模式 | 2026-08-07 | 扫描 kb 文件路径引用验证存在性 + CLI 12 命令组全量 skill 映射，4 个新 skill 落地 |
 
 ### troubleshooting.md
 
@@ -108,6 +112,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v5.4-stage-01 归档完成：lint 质量门禁（i18n 422键校验 + kb 过期引用检测）+ CLI-Agent skill 全量对齐（4新skill：roadmap/health/recover/wizard），知识沉淀 4 条至 architecture(1) + patterns(3)，Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v5.3-stage-01 归档完成：Checkpoint 快照（phase 推进自动保存 + list/restore CLI，毫秒级时间戳 + 自动清理 20 个限制）+ 组合终止条件（transitions `\|` 运算符，多 Agent 并行任一完成即推进），知识沉淀 2 条至 patterns（Checkpoint 快照模式、组合终止条件模式）+ 1 条至 troubleshooting（autoRepairInconsistency 干扰组合条件，遗留项），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v5.2-stage-01 归档完成：规范迁移（dev_core.md 工具规范→core.md，[-] 标记 + 中英双语同步）+ Handoff 委派原语（feel.md 委派机制 + 4 个 Agent Handoff 声明，15 文件双语同步），知识沉淀 2 条至 patterns（Handoff 委派、约束迁移），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v5.1-stage-01 归档完成：工具链内化（flow advance --to done 自动 git commit）+ 一致性治理（feel.md 编号修复 + AGENTS.md 模板补齐 4 节），知识沉淀 3 条至 patterns（归档自动 git commit、Agent 提示词编号审计、AGENTS.md 四节同步），Agent 数 9，源文件 45 |

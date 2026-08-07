@@ -199,3 +199,26 @@ v4.6 新增第 9 个 Agent：**Vision（视觉官）**，基于 qwen-vl-plus 多
 - 与现有 8 Agent 的流水线调度模型（Feel → Planner → Schemer → Executor → Reviewer → Tester → Archiver）不同，Vision 是横向能力扩展
 - 模板文件按现有多语言管线创建（zh-CN + en），由 build.js 自动注入 template-loader.ts，无需修改构建脚本
 - Agent 颜色选 `#06B6D4`（青色），与现有 8 色无冲突，且符合"视觉/光学"的语义联想
+
+## [+] CLI 质量门禁体系：lint 子命令组 (2026-08-07)
+
+v5.4 引入首个自动化质量检查命令组 `openfeel lint`，以子命令形式承载多领域校验：
+
+```
+openfeel lint
+├─ i18n    → 校验 422 键在 zh-CN/en 之间的对称一致性（空值检测、独有键检测）
+└─ kb      → 扫描 .openfeel/kb/ 中的过期文件引用（目标文件不存在），输出过期条目列表
+```
+
+**设计决策：**
+- 选择 `lint` 作为命令组名而非 `check` 或 `validate`，与前端工具链（ESLint）和 DevOps（Hadolint）命名习惯一致，降低认知成本
+- 每个子命令独立实现校验逻辑，通过 Commander `.command()` 注册，新校验项以新增子命令的方式扩展，无需修改现有校验逻辑
+- `--fix` 自动修复为可选能力，当前 `lint i18n` 无自动修复（键缺失需人工决策），`lint kb` 的 `--fix` 已在路线图中但尚未实现（v5.4 首版仅检测）
+- lint 命令零依赖外部服务——i18n 校验通过静态分析 `src/core/i18n-data/*.ts` 的导出键集合，kb 校验通过 `glob` 检查文件存在性
+
+**路线图：**
+- 短期：`lint kb --fix` 自动修复过期引用（替换为最近似文件名或标记弃用）
+- 中期：`lint prompt` 检测 Agent prompt 中的过时 CLI 命令引用和路径
+- 长期：CI/CD 集成 `openfeel lint` 作为提交前门禁，阻断质量退化
+
+**参见：** v5.4-stage-01 op-001（lint i18n）、op-002（lint kb）、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式

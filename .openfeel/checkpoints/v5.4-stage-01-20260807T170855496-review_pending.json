@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-07T09:10:18.475Z"
+    "updated": "2026-08-07T09:01:58.072Z"
   },
   "pipeline": {
     "phase": "active",
@@ -217,8 +217,8 @@
     },
     "v5.4-stage-01": {
       "name": "v5.4-stage-01",
-      "phase": "done",
-      "status": "done",
+      "phase": "review_pending",
+      "status": "planned",
       "deps": [],
       "ops": {},
       "stats": {
@@ -1978,66 +1978,6 @@
         "stageName": "v5.4-stage-01",
         "from": "plan_pending",
         "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-08-07T09:08:55.499Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v5.4-stage-01",
-        "from": "exec_running",
-        "to": "review_pending"
-      }
-    },
-    {
-      "time": "2026-08-07T09:08:55.857Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v5.4-stage-01",
-        "from": "review_pending",
-        "to": "review_passed"
-      }
-    },
-    {
-      "time": "2026-08-07T09:08:56.222Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v5.4-stage-01",
-        "from": "review_passed",
-        "to": "test_pending"
-      }
-    },
-    {
-      "time": "2026-08-07T09:08:56.563Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v5.4-stage-01",
-        "from": "test_pending",
-        "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-08-07T09:08:56.913Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v5.4-stage-01",
-        "from": "done",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-08-07T09:10:18.475Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v5.4-stage-01",
-        "from": "done",
-        "to": "done"
       }
     }
   ]

@@ -3,3 +3,4 @@
 | 文件 | 操作者 | 摘要 |
 |------|--------|------|
 | [2026-08-07-Liuary-001.md](2026-08-07-Liuary-001.md) | Liuary (Reviewer) | stage-03 审查发现阻塞性问题：GETTING_STARTED flow advance 示例缺 --stage 参数 |
+| [2026-08-07-Liuary-007.md](2026-08-07-Liuary-007.md) | Liuary | 阶段 v1.0.0-stage-03 完成 |

@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-07T14:32:15.720Z"
+    "updated": "2026-08-07T14:30:23.679Z"
   },
   "pipeline": {
     "phase": "active",
@@ -2794,16 +2794,6 @@
         "stageName": "v1.0.0-stage-02",
         "from": "review_pending",
         "to": "review_failed"
-      }
-    },
-    {
-      "time": "2026-08-07T14:32:15.720Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-02",
-        "from": "review_failed",
-        "to": "review_pending"
       }
     }
   ]

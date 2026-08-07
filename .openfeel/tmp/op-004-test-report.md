@@ -1,38 +1,43 @@
 # 自测报告 — op-004
 
-- **执行时间**：2026-07-12 21:18
+- **执行时间**：2026-08-07 22:23
 - **执行 Agent**：Executor
-- **重试次数**：1
+- **重试次数**：第 1 次
 
 ## 执行摘要
-init.ts 双语化完成：新增 promptLanguage 交互函数、writeLang 写入函数，initProject 改为 async + 语言选择 + loadTemplate 替代 AGENTS_MD_TEMPLATE。254/254 测试通过。
+
+package.json 占位符 URL 修复（repository/bugs），npm pack --dry-run 验证产物 192 文件齐全，files 字段一致，.gitignore 未忽略 .github/。
 
 ## 实施步骤完成情况
-- [x] 步骤1: 读取 init.ts（233行）和 commands/init.ts 完整内容
-- [x] 步骤2: 语言选择交互（promptLanguage 函数，readline 模块）
-- [x] 步骤3a: 导入变更（移除 AGENTS_MD_TEMPLATE，新增 loadTemplate）
-- [x] 步骤3b: AGENTS.md 生成改用 loadTemplate(selectedLang, 'agents-md')
-- [x] 步骤3c: selectedLang 变量可达 AGENTS.md 生成行
-- [x] 步骤4: writeLang 内部函数写入 .info.json
-- [x] 步骤5: initDemo 无需修改（不生成 AGENTS.md）
+
+- [x] 步骤1：确认占位符（repository.url/bugs.url 为 https://github.com/user/openfeel）
+- [x] 步骤2：repository.url → https://github.com/Liuary/OpenFeel.git
+- [x] 步骤3：bugs.url → https://github.com/Liuary/OpenFeel/issues
+- [x] 步骤4：npm pack --dry-run（192 文件 / 294.3 kB，dist/bin/schemas 齐全）
+- [x] 步骤5：files 字段与产物一致（README.md/package.json 为 npm 自动包含）
+- [x] 步骤6：.gitignore 未忽略 .github/（仅 node_modules/dist/users/coverage）
+- [x] 步骤7：npm run build 无回归（op-003 已验证）
 
 ## 自测清单验证
+
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 非交互模式默认 zh-CN | ✅ | 测试输出确认 |
-| init.ts 不再导入 AGENTS_MD_TEMPLATE | ✅ | 从 templates.js 导入中移除 |
-| loadTemplate('zh-CN', 'agents-md') 用于 AGENTS.md | ✅ | 代码确认 |
-| npm run build 通过 | ✅ | |
-| npm test 全量通过 | ✅ | 254/254 |
+| package.json 无占位符 URL | ✅ | 无 `user/openfeel` 残留 |
+| npm pack --dry-run 产物完整 | ✅ | dist/ + bin/openfeel.js + schemas/ |
+| files 字段与实际一致 | ✅ | ["dist","bin","schemas"] |
+| .gitignore 未忽略 .github/ | ✅ | git check-ignore 返回未忽略 |
+| npm run build 通过 | ✅ | 模板一致性 4/4 |
 
 ## 产出文件
-- ✅ `src/core/init.ts`（导入变更 + 语言选择交互 + loadTemplate 替代 AGENTS_MD_TEMPLATE + writeLang）
-- ✅ `src/commands/init.ts`（action 改为 async）
+
+- `package.json`（repository.url / bugs.url 修复）
 
 ## 前置校验结果
+
 - 方案完整性：通过
-- Phase 合法性：通过（exec_running）
-- 流转合法性：通过（CLI health --quick）
+- Phase 合法性：通过（v1.0.0-stage-02=exec_running）
+- 流转合法性：通过（openfeel flow health --quick 无错误）
 
 ## 偏差记录
-测试文件中移除了 2 个 gitignore 测试（预存失败，功能尚未实现），已将 init.test.ts 和 plan.test.ts 中的 initProject 调用改为 await。
+
+- 无偏差。npm pack 产物中 README.md 与 package.json 由 npm 自动包含（files 字段外），属正常行为。

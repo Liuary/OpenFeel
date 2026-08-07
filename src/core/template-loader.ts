@@ -2514,6 +2514,16 @@ Deviating from the above constraints is considered a violation and will be flagg
 
 Concrete rules generated during project operation are deposited in \`.openfeel/dev/dev_core.md\`, managed with \`[+]\` / \`[-]\` markers for enable/disable. This file takes precedence over this document but is subordinate to direct user instructions.
 
+## Version Management
+
+Version progression must be prudent. Each level of the version number has clear semantics:
+
+- Major version (X): breaking changes
+- Minor version (Y): new features
+- Patch version (Z): bug fixes
+
+When Feel starts a new version, it defaults to incrementing the trailing version number (patch +1), unless the user explicitly specifies otherwise.
+
 ## Project Flow Tools
 
 The detailed process rules for the project (Agent system, development pipeline, three-tier planning, review loop, status file templates, etc.) are uniformly managed by the OpenFeel CLI tool:
@@ -2633,6 +2643,16 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 ## 动态规则
 
 项目运行中产生的具体规则沉淀在 \`.openfeel/dev/dev_core.md\` 中，使用 \`[+]\` / \`[-]\` 标记管理启用/禁用。该文件优先级高于本文件，但低于用户直接指令。
+
+## 版本管理
+
+版本推进须审慎。每级版本号有明确语义：
+
+- 主版本号（X）：破坏性变更
+- 次版本号（Y）：新增功能
+- 修订号（Z）：Bug 修复
+
+Feel 启动新版本时默认使用尾部版本号递增（修订号 +1），除非用户明确指定。
 
 ## 项目流程工具
 

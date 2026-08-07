@@ -103,6 +103,16 @@ Deviating from the above constraints is considered a violation and will be flagg
 
 Concrete rules generated during project operation are deposited in `.openfeel/dev/dev_core.md`, managed with `[+]` / `[-]` markers for enable/disable. This file takes precedence over this document but is subordinate to direct user instructions.
 
+## Version Management
+
+Version progression must be prudent. Each level of the version number has clear semantics:
+
+- Major version (X): breaking changes
+- Minor version (Y): new features
+- Patch version (Z): bug fixes
+
+When Feel starts a new version, it defaults to incrementing the trailing version number (patch +1), unless the user explicitly specifies otherwise.
+
 ## Project Flow Tools
 
 The detailed process rules for the project (Agent system, development pipeline, three-tier planning, review loop, status file templates, etc.) are uniformly managed by the OpenFeel CLI tool:

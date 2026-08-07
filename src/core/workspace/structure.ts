@@ -24,6 +24,7 @@ const WORKSPACE_DIRS = [
   'bugs',
   'users',
   'tmp',
+  'manual',
 ];
 
 /** dev/ 下的子目录清单 */

@@ -2758,9 +2758,12 @@ export function mapPhaseToStageStatus(
     case 'review_passed':
       return testEnabled ? 'review_passed' : 'done';
     case 'test_passed':
-      return 'done';
+      // status=done 是 phase=done 的专属状态：test_passed 映射为中间状态 testing，
+      // 避免 autoRepairInconsistency 在 flow advance 时把 phase 误修正为 done，截断 test_passed→archiving 路径
+      return 'testing';
     case 'archiving':
-      return 'done';
+      // 归档阶段映射为中间状态 archiving，避免被 autoRepairInconsistency 误修正为 done
+      return 'archiving';
     case 'done':
       return 'done';
     default:

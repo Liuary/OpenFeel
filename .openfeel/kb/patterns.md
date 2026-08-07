@@ -574,7 +574,7 @@ configCmd
 | 序号 | 文件 | 操作 | 说明 |
 |:--:|------|:--:|------|
 | 1 | `src/core/templates-data/agents/{lang}/new-agent.md` | **新建** | 中英双语源模板（zh-CN + en），结构对称 |
-| 2 | `.opencode/agents/new-agent.md` | **新建** | 部署定义，内容与 zh-CN 模板同步 |
+| 2 | `new-agent.md`（部署到 `.opencode/agents/` 目录） | **新建** | 部署定义，内容与 zh-CN 模板同步 |
 | 3 | `AGENTS.md` | **修改** | 标题计数 + 总览表格 + 调度列表（三处同步） |
 | 4 | `.opencode/instructions/core.md` | **修改** | 路径自校验范围 + Feel 调度列表（两处补充） |
 | 5 | `.opencode/skills/model-check/SKILL.md` | **修改** | 角色映射回退表新增条目 |

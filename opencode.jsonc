@@ -15,6 +15,12 @@
     "model-check": ".opencode/skills/model-check",
     "model-config": ".opencode/skills/model-config"
   },
+  "provider": {
+    "alibaba": {
+      "name": "Alibaba",
+      "id": "alibaba"
+    }
+  },
   "agent": {
     "vision": {
       "model": "alibaba/qwen3.7-plus"

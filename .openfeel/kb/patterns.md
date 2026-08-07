@@ -1195,3 +1195,12 @@ v5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段
 - **构建自动传播**：构建脚本基于语言数组循环遍历所有 .md 模板文件，新增字段零代码变更——仅在模板中添加即可被自动注入
 
 **参见：** v5.6-stage-01 op-001（9 Agent frontmatter + 18 模板同步）、kb/patterns.md #新增 Agent 全链路更新清单模式、kb/patterns.md #构建脚本多语言循环生成模式
+
+> **更新于 2026-08-07（v5.7-stage-01）**：v5.6 初始分档中 Executor 和 Vision 设为 `low`，但实践发现 Executor 执行复杂任务时 low 推理深度导致方案理解不足、实现偏差；Vision 进行图像分析时 low 推理影响多模态理解质量。v5.7 将 Executor 和 Vision 从 `low` 提升为 `medium`，Planner/Schemer 从原 `high` 明确为 `max`（OpenCode 平台支持的四档值：minimal/low/medium/max），中英双语 12 文件同步更新。调整后的完整分档：
+
+| 档位 | 值 | 适用 Agent | 变更说明 |
+|:--:|:--:|------|------|
+| 最高 | `max` | Planner、Schemer | v5.6 为 high→v5.7 提升为 max，计划与方案需最强推理 |
+| 中 | `medium` | Feel、Reviewer、Feel Tester、Executor、Vision | Executor/Vision 从 low↑提升为 medium（v5.7 调整） |
+| 低 | `low` | 事务官、Archiver | 执行型/归档型角色保持 low，任务明确优先速度 |
+

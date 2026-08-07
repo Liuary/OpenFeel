@@ -2,6 +2,7 @@
 
 | 时间 | 操作者 | 变更描述 |
 |------|--------|----------|
+| 2026-08-07 | Archiver | **归档**：v5.7-stage-01 归档完成。计划目录按大版本分组重构（v4/v5/系列收纳 + 系列索引+顶层指针）+ reasoning_effort 调整（Planner/Schemer→max, Executor/Vision→medium），中英双语 12 文件同步。自测五维全通过。知识沉淀 2 条至 architecture(1) + patterns(1，更新)。v5 全系列 7 期 16 项任务全部闭环。 |
 | 2026-08-07 | Archiver | **归档**：v5.2-stage-01 归档完成。规范迁移（dev_core.md→core.md）+ Handoff 委派原语（feel.md 委派机制 + 4 Agent Handoff 声明），15 文件双语同步，npm test 无回归。知识沉淀 2 条至 patterns（Handoff 委派、约束迁移）。v5 路线图进度 3/5 期。 |
 | 2026-07-14 | Planner | **v4.4 正式计划制定**：3 阶段 14 项任务。stage-01（i18n 基建 + CLI 国际化，6 项）→ 构建时内联 i18n 机制 + 全局语言配置 + 首次使用检测 + 命令输出国际化。stage-02（日志修复 + 流水线安全，5 项）→ REV 闭环 + git commit + 日志强制落档 + 日志体系三处断裂修复。stage-03（配置优化 + 提示词完善，3 项）→ config 命令 + 项目语言映射 + update AGENTS.md 同步 + package.json 模板规范化。s01 与 s02 并行无 hard 依赖，s03 hard 依赖 s01。~20 文件变更，走完整流水线。 |
 | 2026-07-12 | Archiver | **归档**：v4.3 全系列归档完成。v4.3-stage-03（英文内容产出 + 双语交互）8 项 op 全部落地（英文 Agent 模板 8 个 + AGENTS.md/code-instructions 英文版 + init 双语选择 + lang 配置存储 + update --lang 参数 + README 双语化 + 测试覆盖），审查 5 条 REV（2 blocking resolved）。知识沉淀 4 条至 kb/（architecture 1 + patterns 3）。v4.3 三阶段累计 17 项 op、21 条 REV 全部闭环，多语言模板管线正式落成。 |

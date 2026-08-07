@@ -13,14 +13,14 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义） |
-| 最近更新 | 2026-08-07（v5.1-stage-01 工具链内化 + 一致性治理归档完成） |
+| 最近更新 | 2026-08-07（v5.2-stage-01 规范迁移 + Handoff 原语归档完成） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 11 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官 |
-| 代码模式 | [patterns.md](patterns.md) | 35 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步 |
+| 代码模式 | [patterns.md](patterns.md) | 37 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 9 | 2026-07-09 | 常见 Bug、调试流程、已知坑位 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -76,6 +76,8 @@
 | 过度设计审查子维度扩展模式 | 2026-08-07 | 在 Reviewer 审查维度规范性下新增过度设计子维度，中英双语模板同步 |
 | 全局跨项目用户画像 YAML 配置模式 | 2026-08-07 | ~/.config/{tool}/profile.yaml 约定路径 + Zod Schema 校验 + 深度合并默认值 + 异常安全 |
 | Agent 记忆生命周期三层模式 | 2026-08-07 | Agent prompt 中的记忆加载 → 决策追加 → 会话结束写入三段式，两层记忆（全局画像 + 项目卡片） |
+| 跨 Agent Handoff 委派原语模式 | 2026-08-07 | Prompt 级 `[HANDOFF: agent_name]` 标记实现轻量 Agent 间委派，Feel 自动解析调度，零 CLI 新增 |
+| 约束文件→指令文件迁移模式 | 2026-08-07 | 规范四步迁移法（复制→双语同步→[-]禁用→引用更新），保留审计链 |
 
 ### troubleshooting.md
 
@@ -103,6 +105,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v5.2-stage-01 归档完成：规范迁移（dev_core.md 工具规范→core.md，[-] 标记 + 中英双语同步）+ Handoff 委派原语（feel.md 委派机制 + 4 个 Agent Handoff 声明，15 文件双语同步），知识沉淀 2 条至 patterns（Handoff 委派、约束迁移），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v5.1-stage-01 归档完成：工具链内化（flow advance --to done 自动 git commit）+ 一致性治理（feel.md 编号修复 + AGENTS.md 模板补齐 4 节），知识沉淀 3 条至 patterns（归档自动 git commit、Agent 提示词编号审计、AGENTS.md 四节同步），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v5.0-stage-01 归档完成：框架级记忆体系落成（全局 profile ~/.config/openfeel/profile.yaml + dev_last.md 7 节模板 + CLI config --global 标志），知识沉淀 2 条至 patterns（全局用户画像配置模式、Agent 记忆生命周期三层模式），Agent 数 9，源文件 45 |
 | 2026-08-07 | 归档 | v4.7 归档完成：部署版过期修复（Feel +38行 / Executor +26行）+ dev_core.md 重复规则清理，制定 v4.8~v5.1 路线图（8 项 4 期），Agent 数 9，源文件 45 |

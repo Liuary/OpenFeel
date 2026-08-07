@@ -828,3 +828,73 @@ AGENTS.md 源模板（`templates-data/agents-md/{lang}.md`）在基础行为约�
 - 设计原则：AGENTS.md 仅保留项目级行为约束，流程规则由 CLI 工具动态注入（"提示词瘦身，流程入工具"）
 
 **参见：** v5.1-stage-01、kb/architecture.md #多语言模板数据管线、kb/patterns.md #双语 CLI 交互模式
+
+## [+] 跨 Agent Handoff 委派原语模式 (2026-08-07)
+
+在 Agent prompt 层实现轻量级跨 Agent 委派机制，子 Agent 通过返回标记声明"某任务应交由其他 Agent 处理"，Feel 自动解析并调度。零 CLI 命令新增，纯 prompt 层实现。
+
+**机制流程：**
+
+```
+Agent A 返回 → 含 [HANDOFF: agent_name] 标记
+             → Feel 解析标记
+             → task(agent_name) 调度 Agent B，附带 A 的上下文
+             → Agent B 结果回传 Feel（或回传给 A）
+             → 记录 handoff 日志
+```
+
+**各 Agent 可委派目标声明：**
+
+| 来源 Agent | 可委派目标 | 示例场景 |
+|------------|-----------|----------|
+| Executor | Vision、Reviewer | 分析截图输出、编码前预审代码 |
+| Schemer | Reviewer、Planner | 方案预审、需 Planner 确认的计划调整 |
+| Reviewer | Vision | 审查 UI 截图、多模态内容审查 |
+| Feel Tester | Vision、Executor | 验证 UI 截图、委托修复简单 Bug |
+
+**Feel 声明格式（feel.md）：**
+- 在"委托边界"节之后新增「Handoff 委派机制」节
+- 说明 Feel 解析逻辑（解析标记→调度→回传→日志）
+- 包含完整委派目标表（4 个来源 Agent × 可委派目标）
+
+**Agent 声明格式（各 Agent 末尾）：**
+- 节名 `## Handoff`，通用模板：「当你遇到超出职责边界但可委派的子任务时，在返回结果中使用 `[HANDOFF: agent_name]` 标记...」
+- 最后一行列出可委派目标列表
+
+**关键约束：**
+- Handoff 不修改职责边界——委派前须确认目标 Agent 确实具备对应能力
+- 标记格式固定为 `[HANDOFF: agent_name]`，Feel 按正则 `\[HANDOFF:\s*(\w+)\]` 解析
+- 中英双语模板（`.opencode/agents/` + `templates-data/agents/{zh-CN,en}/`）同步维护
+
+**设计理由：** 若走 CLI 方案（新增 `openfeel handoff` 命令）则需修改解析器、flow-manager 和测试，且与现有 Agent 体系耦合度高。Prompt 级标记方案零基础设施成本，符合 OpenFeel "提示词瘦身，流程入工具"的设计理念中关于 Agent 间协作应尽量轻量的原则。
+
+**参见：** v5.2-stage-01、kb/architecture.md #Feel 调度 + CLI 推进模型
+
+## [+] 约束文件→指令文件迁移模式 (2026-08-07)
+
+当通用规范（如工具使用准则、操作流程）在项目约束体系中的归属发生变化时，从一个文件迁移到另一个文件，遵循标准迁移四步法。
+
+**适用场景：**
+- 操作规范从 `dev_core.md`（项目约束层）迁移到 `.opencode/instructions/core.md`（平台指令层）
+- 项目级约束收窄为仅行为准则，平台适配器承载操作规范
+
+**标准迁移步骤：**
+
+| # | 操作 | 目标文件 | 要求 |
+|:--:|------|----------|------|
+| 1 | 完整复制 | 目标平台文件 | 插入到语义最接近的节之后，保留原章节标题层级 |
+| 2 | 双语同步 | templates-data 源模板（zh-CN + en） | 同时更新两语言版本，确保 build 和 update 能传播到部署文件 |
+| 3 | 禁用原标记 | 源文件 | 原规则标记为 `[-] 已迁移到 {目标文件} (v{版本})`，内容不删除——保留审计链 |
+| 4 | 更新交叉引用 | 所有引用原位置的文档 | 如 AGENTS.md、agents-md 模板中的「统一工具规范」引用指向新位置 |
+
+**反模式：**
+- 直接从源文件删除内容（审计链断裂，无法追溯"为什么这条规则不见了"）
+- 只迁移到一个语言模板（导致 en 版缺失规范，部署版本行为不一致）
+- 不更新交叉引用（其他文档仍指向旧位置，读者困惑）
+
+**关键要点：**
+- `[-]` 标记写明版本号和目标文件，提供完整跳转信息
+- 双语模板必须同步修改，否则 `npm run build` 后 en 部署版本丢失迁移内容
+- 本模式下不属于代码变更（无需修改 `.ts` 文件），但产生设计文档变更（需记录到 plan 和日志）
+
+**参见：** v5.2-stage-01

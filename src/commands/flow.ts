@@ -452,14 +452,19 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
+      let archived = false;
       try {
-        mgr.advanceStagePhase(options.stage, options.to as PipelinePhase, 'cli');
+        archived = mgr.advanceStagePhase(options.stage, options.to as PipelinePhase, 'cli');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));
         process.exit(1);
       }
       mgr.save();
+      // 归档 commit 必须在 flow.json save 之后执行，确保 commit 包含本次 phase 变更
+      if (archived) {
+        mgr.autoCommitOnDone(options.stage);
+      }
       console.log(t('flow.advance.okTmpl', lang, { stage: options.stage || '', to: options.to }));
 
       // git 脏区检查（安全网）：Executor 未提交时输出醒目警告
@@ -1096,8 +1101,12 @@ export function registerFlowCommand(program: Command): void {
           }
 
           // 执行推进（使用 advanceStagePhase，标记为 CLI 触发）
-          mgr.advanceStagePhase(currentStage, targetPhase, 'cli');
+          const archived = mgr.advanceStagePhase(currentStage, targetPhase, 'cli');
           mgr.save();
+          // 归档 commit 必须在 flow.json save 之后执行，确保 commit 包含本次 phase 变更
+          if (archived) {
+            mgr.autoCommitOnDone(currentStage);
+          }
           console.log(t('flow.wizard.advancedTmpl', lang, { stage: currentStage, from: stagePhase, to: targetPhase }));
 
           // 到达终态时退出循环

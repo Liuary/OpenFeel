@@ -691,6 +691,29 @@ describe('FlowManager', () => {
       const mgr = new FlowManager(tmpDir);
       expect(() => mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase)).not.toThrow();
     });
+
+    it('推进到 done（之前非 done）应返回 true（归档标记，REV: autoCommitOnDone 时序）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const result = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
+      expect(result).toBe(true);
+      expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+    });
+
+    it('推进到非 done phase 应返回 false', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const result = mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase);
+      expect(result).toBe(false);
+    });
+
+    it('已是 done 再次推进到 done 应返回 false（不重复触发归档）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
+      const result = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
+      expect(result).toBe(false);
+    });
   });
 
   describe('recordAttempt', () => {

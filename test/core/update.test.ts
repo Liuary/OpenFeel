@@ -265,6 +265,47 @@ describe('updateProject', () => {
     expect(err.message).toContain('en');
   });
 
+  it('语言相同但 AGENTS.md 内容与模板不一致时应覆盖部署（REV: 部署传播）', () => {
+    // 模拟已有 .info.json（项目语言为 zh-CN）
+    const infoDir = join(tmpDir, '.openfeel');
+    mkdirSync(infoDir, { recursive: true });
+    writeFileSync(join(infoDir, '.info.json'), JSON.stringify({ user: 'test', lang: 'zh-CN' }), 'utf-8');
+
+    // 模拟已有 AGENTS.md（旧版内容，缺少最新模板章节）
+    writeFileSync(join(tmpDir, 'AGENTS.md'), '# 旧版 AGENTS.md\n\n缺少 9 Agent 体系总览', 'utf-8');
+
+    // 语言相同（zh-CN）+ --lang=zh-CN → 应比较内容并覆盖
+    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', {
+      lang: 'zh-CN',
+    });
+
+    expect(result.updated).toContain('AGENTS.md');
+    const content = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
+    expect(content).toContain('9 Agent 体系总览');
+  });
+
+  it('无 --lang 参数但 AGENTS.md 内容与模板不一致时应覆盖部署（REV: 部署传播）', () => {
+    // 模拟已有 AGENTS.md（旧版内容）
+    writeFileSync(join(tmpDir, 'AGENTS.md'), '# 旧版 AGENTS.md\n\n缺少 9 Agent 体系总览', 'utf-8');
+
+    // 无 --lang 参数 → 应比较内容并覆盖
+    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', {});
+
+    expect(result.updated).toContain('AGENTS.md');
+    const content = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
+    expect(content).toContain('9 Agent 体系总览');
+  });
+
+  it('AGENTS.md 内容与模板一致时仍跳过（语言相同分支）', () => {
+    // 先正常部署一次，得到与模板一致的 AGENTS.md
+    updateProject(tmpDir, ['opencode'], 'zh-CN', { lang: 'zh-CN' });
+
+    // 再次部署，内容一致 → 应跳过
+    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', { lang: 'zh-CN' });
+    expect(result.updated).not.toContain('AGENTS.md');
+    expect(result.skipped).toContain('AGENTS.md (language unchanged)');
+  });
+
   it('子命令正确注册（程序包含 update 命令）', async () => {
     // 动态导入 CLI 程序，验证 update 命令已注册
     const { program } = await import('../../src/cli/index.js');

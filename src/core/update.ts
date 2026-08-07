@@ -1385,12 +1385,26 @@ export function updateProject(
         skipped.push('AGENTS.md');
       }
     } else {
-      // 语言相同 → 跳过 AGENTS.md，仅更新框架内容
-      skipped.push('AGENTS.md (language unchanged)');
+      // 语言相同 → 比较内容，模板更新时传播部署
+      const templateContent = loadTemplate(requestedLang, 'agents-md');
+      const existingContent = readFileSync(agentsMdPath, 'utf-8');
+      if (existingContent !== templateContent) {
+        writeFileSync(agentsMdPath, templateContent, 'utf-8');
+        updated.push('AGENTS.md');
+      } else {
+        skipped.push('AGENTS.md (language unchanged)');
+      }
     }
   } else if (agentsMdExists) {
-    // 情况 3：已有项目 + 无 --lang 参数 → 保持现状，跳过
-    skipped.push('AGENTS.md (use existing)');
+    // 情况 3：已有项目 + 无 --lang 参数 → 比较内容，模板更新时传播部署
+    const templateContent = loadTemplate(lang, 'agents-md');
+    const existingContent = readFileSync(agentsMdPath, 'utf-8');
+    if (existingContent !== templateContent) {
+      writeFileSync(agentsMdPath, templateContent, 'utf-8');
+      updated.push('AGENTS.md');
+    } else {
+      skipped.push('AGENTS.md (use existing)');
+    }
   }
 
   // 记录项目语言映射到全局配置

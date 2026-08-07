@@ -924,10 +924,12 @@ export class FlowManager {
    * 推进指定阶段到目标流水线阶段（新 API）
    * @param stageName 阶段名（如 stage-01）
    * @param phase 目标流水线阶段（PipelinePhase）
+   * @param triggeredBy 触发者标识（如 'cli' / 'Feel'），默认 'flow-manager'
+   * @returns 是否触发 done 归档（true = 本次推进将阶段变为 done 且之前非 done，需在 save 后执行归档 commit）
    */
-  advanceStagePhase(stageName: string, phase: PipelinePhase, triggeredBy?: string): void {
+  advanceStagePhase(stageName: string, phase: PipelinePhase, triggeredBy?: string): boolean {
     if (!this.data) {
-      return;
+      return false;
     }
     const actualTrigger = triggeredBy ?? 'flow-manager';
 
@@ -1026,18 +1028,21 @@ export class FlowManager {
     // 阶段完成时自动结束计时
     if (targetPhase === 'done' && prevStatus !== 'done') {
       this.endStage(stageName);
-      // CLI 内化归档：推进到 done 时自动 git add + commit（非 git 仓库或失败时静默跳过）
-      this.autoCommitOnDone(stageName);
+      // 归档 git commit 移出本方法：必须在 flow.json save 之后执行（否则 commit 不含本次 phase 变更）。
+      // 返回 true 由命令层在 save 后调用 autoCommitOnDone。
+      return true;
     }
+    return false;
   }
 
   /**
-   * 阶段归档自动 git 提交（内部方法）
+   * 阶段归档自动 git 提交
    * 目标 phase 为 done 时自动将工作区变更提交，保证归档点有版本记录。
    * 非 git 仓库、git 不可用或无变更时静默跳过，不阻塞 done 推进。
+   * 必须在 flow.json save() 之后调用，确保 commit 包含本次 phase 变更。
    * @param stageName 阶段名（用于 commit message）
    */
-  private autoCommitOnDone(stageName: string): void {
+  public autoCommitOnDone(stageName: string): void {
     const lang = getCliLang(process.cwd());
     try {
       const msg = `chore: 阶段归档 ${stageName}`;

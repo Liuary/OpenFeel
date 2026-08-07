@@ -17,7 +17,7 @@
   },
   "agent": {
     "vision": {
-      "model": "qwen/qwen3.7-plus"
+      "model": "alibaba/qwen3.7-plus"
     }
   },
   "experimental": {

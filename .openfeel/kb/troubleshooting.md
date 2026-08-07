@@ -139,3 +139,31 @@ fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
 **教训**：Agent prompt 中的三层引用（路径/命令/配置文件）应视为一个整体校验单元，在方案阶段逐项验证存在性。
 
 **见于**：REV-001/002/003 (v4-stage-02)
+
+## [+] Git 重命名检测交叉匹配假象 (2026-08-07)
+
+**现象**：使用 `git mv` 将多个平铺目录（如 `plan/v5.8`、`plan/v5.9`、`plan/v5.10`）批量移入同一父目录（`plan/v5/`）后，`git diff` 的重命名检测出现**交叉匹配**——同一源目录下的不同文件被 git 归到不同目标目录。
+
+**具体表现**（v0.5.11-stage-01 实例）：
+- `plan/v5.8/status.md` → 被 git 检测为 renamed to `plan/v5/v5.10/status.md`
+- `plan/v5.9/overview.md` → 被 git 检测为 renamed to `plan/v5/v5.8/overview.md`
+- 原因是这些空模板文件（overview.md / status.md）内容高度相似，git 的相似度算法在多个候选目标中选择了错误匹配
+
+**根因**：git 的 rename detection 基于文件内容相似度（`diff.renameLimit` 和 `-M` 相似度阈值），当多个源目录包含结构相同、内容相近的文件时，git 会将同目录的不同文件交叉分配到不同目标目录，产生随机但看似合理的重命名标注。
+
+**影响**：
+- 审查时若轻信 `git diff` 的重命名标注，可能误判文件迁移错误
+- 实际 `git mv` 操作是正确的——文件在磁盘上的位置和内容均无误，仅 git 的元数据推断有偏差
+
+**验证方法**：
+1. **不依赖 `git diff --stat` 的重命名总结**——它可能将正确的移动标注为跨目录的交叉匹配
+2. **以实际文件内容为准**——检查目标目录中每个文件的标题、时间戳、内容是否匹配预期归属
+3. **使用 `git diff --name-status` 而非 `--find-renames`**——直接看文件增删，避免被相似度算法误导
+4. **对比源端和目标端的文件列表**——确认每个源文件仅在预期目标目录中出现一次
+
+**何时遇到**：
+- 批量 `git mv` 结构相似的模板文件（空 overview.md / status.md / plan.md）
+- 包含 `__init__.py` 或 `index.ts` 等通用命名的跨目录移动
+- 重构项目目录结构时的批量迁移操作
+
+**参见**：v0.5.11-stage-01、.openfeel/code_review/v0.5.11-stage-01.md（心得建议2）

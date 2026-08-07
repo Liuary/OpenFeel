@@ -13,15 +13,15 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-07（v0.5.10-stage-01 归档完成：profile 自动填充 + 异常安全） |
+| 最近更新 | 2026-08-07（v0.5.11-stage-01 归档完成：目录归位 + 版本重映射 + 四级版本号） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 14 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组 |
-| 代码模式 | [patterns.md](patterns.md) | 51 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 10 | 2026-08-07 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件 |
+| 代码模式 | [patterns.md](patterns.md) | 53 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 11 | 2026-08-07 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
 ## 各分类摘要
@@ -92,6 +92,8 @@
 | AGENTS.md 模板同步模式 | 2026-08-07 | AGENTS.md 新增节时，templates-data agents-md zh-CN/en 模板必须同步更新 |
 | WORKSPACE_DIRS 同步模式 | 2026-08-07 | 新增 .openfeel/ 子目录时，结构定义中的 WORKSPACE_DIRS 数组必须同步追加 |
 | 审查硬性纪律嵌入 Agent Prompt 模式 | 2026-08-07 | 在 Feel 和 Executor prompt 中硬编码审查合规约束（禁止跳过审查/禁止自行推进/标准移交语），中英双语 6 文件同步插入，与代码层 REV 双路兜底形成互补 |
+| 版本号重映射边界判定模式 | 2026-08-07 | 项目级版本重映射时区分"目录名"（组织单位，保留原名）与"版本号引用"（文本，需重映射），practically applied on v0.5.11 plan/v5/ 系列目录名不变但 stageId/标题 v0 化 |
+| kb 条目与规则升级同步时点模式 | 2026-08-07 | 规则升级在 exec 阶段实施，kb 同步在 archiving 阶段执行，审查时需识别"待归档同步"条目避免误判为缺陷 |
 
 ### troubleshooting.md
 
@@ -107,6 +109,7 @@
 | Agent prompt CLI 命令引用应预验证 | 2026-07-05 | Schemer 引用未实现命令导致 Executor 前置校验断裂 |
 | 流水线文件引用断裂连锁修复 | 2026-07-05 | 路径+命令+配置三层引用断裂的修复策略 |
 | fast-glob 目录匹配 onlyDirectories | 2026-07-09 | 尾部斜杠模式不自动激活目录匹配，需显式声明选项 |
+| Git 重命名检测交叉匹配假象 | 2026-08-07 | git mv 批量移动相似内容目录时，git diff 重命名标注不可轻信，应以实际文件内容（标题/时间戳）为准 |
 
 ### setup.md
 
@@ -120,6 +123,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v0.5.11-stage-01 归档完成：目录归位 + 版本重映射 + 四级版本号 v0 体系（plan 目录 v5.8~v5.10 归入 v5/ 系列 + flow.json 25 stageId v0 化 + AGENTS.md 四级版本号规则落地），1 op 完成，3 REV（low, non-blocking）审查通过，知识沉淀 2 条至 patterns（版本号重映射边界判定、kb 同步时点）+ 1 条至 troubleshooting（git 重命名交叉匹配假象），Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v0.5.10-stage-01 归档完成：profile 自动填充 + 异常安全（ensureProfileDefaults + 3 项健壮性修复：写盘降级 + passthrough 保留 + 路径规范化），2 op 完成，3 REV 全部 closed，知识沉淀 3 条至 patterns（写盘降级、passthrough 保留、路径规范化），Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v0.5.9-stage-01 归档完成：审查纪律强化（feel.md 新增「审查不可跳过（硬性纪律）」节 + executor.md 新增「审查移交（硬性纪律）」节），中英双语 6 文件同步插入，知识沉淀 1 条至 patterns（审查硬性纪律嵌入 Agent Prompt 模式），Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v0.5.8-stage-01 归档完成：三项缺陷修复（autoCommitOnDone mapPhaseToStageStatus 映射修正 + AGENTS.md 模板补版本管理节 + init 创建 manual/ 目录），知识沉淀 2 条至 patterns（模板同步、WORKSPACE_DIRS同步）+ 1 条更新至 troubleshooting（autoRepairInconsistency 根因修复），Agent 数 9，源文件 46。v5 全系列 8 期 19 项任务全部闭环 |

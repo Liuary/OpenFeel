@@ -1439,3 +1439,65 @@ export function ensureProfileDefaults(projectPath: string): void {
 
 **参见：** v0.5.10-stage-01 REV-003
 
+## [+] 版本号重映射边界判定模式 (2026-08-07)
+
+项目级版本号重映射（如 v5.X → v0.X.Y 体系）时，需严格区分两类目标：
+
+| 类别 | 示例 | 操作 |
+|------|------|------|
+| **目录名**（组织形式） | `plan/v5/v5.10/`、`plan/v5/v5.11/` | 保留原名，不重映射 |
+| **版本号引用**（文本内容） | flow.json stageId、plan_index.md 文本、plan.md 标题、kb/index.md 条目 | 统一重映射为新体系 |
+
+**边界判定原则**：
+
+- **目录名是系列内组织单位**：`plan/v5/` 下的子目录 `v5.8`~`v5.11` 是系列内部的阶段编号，不是对外版本号。保留原名可维护 git 历史和系列语义的连续性。
+- **版本号引用是对外标识**：`flow.json` 中的 `stageId`、索引文档中的版本号文本、`plan.md` 中的标题等是系统间交互的标识，必须统一为 v0 体系以保持一致性。
+
+**实践案例（v0.5.11-stage-01）**：
+
+- **重映射（版本号引用）**：flow.json 中 25 个 stageId 全部从 `vX.X-stage-XX` 改为 `v0.X.X-stage-XX`；plan 系列索引中全部版本号文本 v0 化；各 plan.md 内部标题同步更新
+- **保留（目录名）**：`plan/v5/` 系列子目录名（v5.0~v5.11）不变——它们作为"系列内编号"而非版本号，git mv 历史完整保留
+- **Executor 在偏差记录 8 中准确区分**：明确标注 `plan/v5/` 目录名不重映射，判定清晰
+
+**关键要点**：
+
+- 重映射前先分类：列出所有含版本号的路径和文本，明确区分"目录名"与"版本号引用"
+- git 层面：`git mv` 重命名目录时注意与内容重映射的操作顺序——先迁移目录，再编辑文件内容
+- 验证方法：搜索 `v5.` / `v4.` 等旧模式，排除历史日志/快照/私域后确认无遗漏
+
+**参见**：v0.5.11-stage-01 op-001（步骤4~6）、.openfeel/code_review/v0.5.11-stage-01.md（心得建议1）
+
+## [+] kb 条目与规则升级同步时点模式 (2026-08-07)
+
+OpenFeel 流水线中，规则升级与 kb 知识库同步存在天然的**阶段时间差**：
+
+```
+exec_running          archiving
+[Executor 实施规则变更]  ───→  [Archiver 同步 kb 条目]
+       ↑                            ↑
+   修改 AGENTS.md、feel.md     更新 patterns.md 对应条目
+   写入 X.Y.Z.W 四级版本号      补充 v0.5.11 案例引用
+```
+
+**影响**：
+
+- 审查阶段（`review_pending`）时，kb/ 中的版本号语义条目仍描述旧规则（如"主.次.修订三级"），与 AGENTS.md 中的新规则（X.Y.Z.W 四级）不一致
+- 若 Reviewer 未识别此时间差，可能将 kb 条目过期误判为 Executor 的执行缺陷
+
+**处理策略**：
+
+| 角色 | 职责 |
+|------|------|
+| **Executor** | exec 阶段完成规则变更后，在产出文件中标注"kb 条目待归档同步"，提示 Archiver 关注 |
+| **Reviewer** | 审查时识别"待归档同步"的 kb 条目，标记为 low/non-blocking REV，明确"非 exec 缺陷" |
+| **Archiver** | 归档时读取审查建议，将 REV 中的 kb 同步建议落实为知识条目更新 |
+
+**实践案例（v0.5.11 REV-002）**：
+
+- Reviewer 发现 `kb/index.md` patterns 条目仍描述旧版本号语义
+- 正确判定为"非 exec 缺陷，待归档同步"（low, non-blocking）
+- 标注 `"v0.5.11 归档时由 Archiver 同步更新为 X.Y.Z.W 四级语义"`
+- Archiver 归档时确认该条目已在 v0.5.6 条目中更新（含 v0.5.11 补充），自然闭环
+
+**参见**：v0.5.11-stage-01 REV-002、.openfeel/code_review/v0.5.11-stage-01.md（心得建议3）、kb/patterns.md #版本号语义管理与递增规范模式
+

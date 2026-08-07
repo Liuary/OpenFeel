@@ -30,5 +30,15 @@ jobs:
           node-version: 22.x
       - run: npm ci
       - run: npm run build
-      - run: npm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
+      - run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "ERROR: NPM_TOKEN is empty"
+            exit 1
+          fi
+          echo "Token length: ${#NPM_TOKEN}"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm config set "//registry.npmjs.org/:_authToken" "$NPM_TOKEN"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish --access public

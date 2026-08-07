@@ -1,7 +1,11 @@
-# OpenFeel v1.0 CI — 自动构建与测试
+# OpenFeel v1.0 CI — 自动构建、测试与发布
 name: CI
 
 on: [push, pull_request]
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   build-and-test:
@@ -18,3 +22,17 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test -- --reporter=verbose
+
+  publish:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish --provenance --access public

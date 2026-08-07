@@ -1,3 +1,4 @@
+# OpenFeel v1.0 CI — 自动构建与测试
 name: CI
 
 on: [push, pull_request]
@@ -13,6 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'npm'
       - run: npm ci
       - run: npm run build
       - run: npm test

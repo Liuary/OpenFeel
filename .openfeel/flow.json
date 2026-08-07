@@ -14,6 +14,7 @@
   },
   "stages": {
     "v1.0.0-stage-04": {
+      "name": "v1.0.0-stage-04",
       "phase": "done",
       "ops": {},
       "stats": {

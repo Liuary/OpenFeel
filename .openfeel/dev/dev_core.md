@@ -178,3 +178,42 @@ Feel 完成全阶段调度后（归档 done），必须检查 git 状态并处�
 - 提交信息格式：`chore: v{版本} 归档 — {简述}`
 
 > 此规则是对 Executor "自动 git commit"（仅编码阶段）的补充——归档阶段的提交责任归属 Feel。
+
+---
+
+## [+] npm 发布与版本号管理 (2026-08-08)
+
+### 自动发布
+
+- 使用 **Trusted Publishing**（OIDC），不用 token，不用绕过 2FA
+- npm 端配置：包 → Add Trusted Publisher → Owner/Repo/Workflow
+- CI 端配置：`permissions: id-token: write` + `npm publish --access public`
+- 发布 job 仅对 master 分支触发（`if: github.ref == 'refs/heads/master'`）
+- 发布 job 依赖 build-and-test（`needs: build-and-test`），测试不通过不发布
+
+### 版本号管理
+
+- 版本号遵循 `package.json` 的 `version` 字段，与 AGENTS.md 四级版本号（X.Y.Z.W）对应
+- 每次发布前 Feel 手动递增版本号（`npm version patch` 或直接修改 `package.json`）
+- 版本递增规则：
+  - W（修订）：CI 配置修复、文档更新、非功能变更 → `1.0.0` → `1.0.1`
+  - Z（功能）：新增功能或显著改进 → `1.1.0`
+  - 重大变更需用户决策
+- CI 自动发布不会自动递增版本号——Feel 必须在 push 前手动更新
+
+---
+
+## [+] 提交推送纪律 (2026-08-08)
+
+Feel 在会话中应**减少推送频率**。遵守以下规则：
+
+- **一个会话 ≤3 次推送**：计划阶段一次、执行阶段一次、收尾阶段一次
+- **合并小提交**：同一阶段的多个小修复（lint、测试、CI 调整）应合并在一次 commit 中
+- **仅在必要时推送**：以下情况才 push：
+  1. 用户明确要求
+  2. 需要触发 CI 验证
+  3. 阶段完成归档
+- **禁止**：每做一个微小修改就 `commit + push`（如本次会话中多次单独推送模型名修改）
+- 多次 commit 可以积累到本地，统一 push 一次
+
+> 反例：本次会话中 Vision 模型名反复修改，每次修改都单独 push，产生 7+ 次无效 CI 触发。正确做法：所有模型配置修改合为一个 commit，验证通过后一次推送。

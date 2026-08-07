@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-07T14:33:37.405Z"
+    "updated": "2026-08-07T14:36:45.895Z"
   },
   "pipeline": {
     "phase": "active",
@@ -338,7 +338,7 @@
     },
     "v1.0.0-stage-03": {
       "name": "v1.0.0-stage-03",
-      "phase": "exec_running",
+      "phase": "review_pending",
       "status": "planned",
       "deps": [],
       "ops": {},
@@ -2899,6 +2899,16 @@
         "stageName": "v1.0.0-stage-03",
         "from": "scheme_passed",
         "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T14:36:45.895Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "exec_running",
+        "to": "review_pending"
       }
     }
   ]

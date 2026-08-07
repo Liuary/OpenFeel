@@ -1204,3 +1204,43 @@ v5.6 为 9 个 Agent 的 YAML frontmatter 统一新增 `reasoning_effort` 字段
 | 中 | `medium` | Feel、Reviewer、Feel Tester、Executor、Vision | Executor/Vision 从 low↑提升为 medium（v5.7 调整） |
 | 低 | `low` | 事务官、Archiver | 执行型/归档型角色保持 low，任务明确优先速度 |
 
+## [+] AGENTS.md 模板同步模式：新增节须同步 templates-data (2026-08-07)
+
+当项目根 `AGENTS.md` 新增节或修改已有节时，`src/core/templates-data/agents-md/` 中的部署模板文件（`zh-CN.md`、`en.md`）必须同步更新——否则 `openfeel init` 创建的部署项目 AGENTS.md 将缺失该节。
+
+**同步流程：**
+1. 修改根 `AGENTS.md`，新增/修改节
+2. 同步更新 `templates-data/agents-md/zh-CN.md`（中文原版）
+3. 同步更新 `templates-data/agents-md/en.md`（英文翻译，字段值保持一致）
+4. 运行 `npm run build`，构建脚本自动将模板内联到 `template-loader.ts`
+5. 运行 `npm test` 验证构建一致性
+
+**关键要点：**
+- 新增节的位置必须在中英两文件相同——使用统一门控 + 整节替换模式确保 diff 清晰
+- 若仅新增少量行，可在公共节末尾追加（如"版本管理"节追加在"动态规则"与"项目流程工具"之间）
+- 构建脚本的多语言循环会自动处理新增模板文件，零代码变更
+- 此模式与「部署传播内容哈希比对模式」互补：模板更新后内容哈希变化，`openfeel update` 会将新模板传播到存量项目
+
+**实例：** v5.8 发现 AGENTS.md 已有"版本管理"节（v5.6 新增），但 `agents-md` 模板缺失该节，导致 `openfeel init` 部署的项目 AGENTS.md 无版本管理规范。修复为：在 `zh-CN.md` 和 `en.md` 中「动态规则」节后追加「版本管理」节（zh-CN 10 行原文 + en 10 行翻译）。
+
+**参见：** kb/patterns.md #部署传播内容哈希比对模式、kb/patterns.md #统一门控 + 整节替换模式
+
+## [+] WORKSPACE_DIRS 同步模式：新增 .openfeel/ 子目录须更新目录清单 (2026-08-07)
+
+当在 `.openfeel/` 下新增工作区子目录（如 `manual/`）时，`src/core/workspace/structure.ts` 中的 `WORKSPACE_DIRS` 数组必须同步追加新目录名——否则 `openfeel init` 创建新项目时不会创建该目录。
+
+**同步流程：**
+1. 确定新目录在 `.openfeel/` 下的用途和结构
+2. 在 `structure.ts` 的 `WORKSPACE_DIRS` 数组中追加目录名（保持字母序排列）
+3. 若目录有子目录结构，检查 `DEV_DIRS` 或其他清单数组是否也需要更新
+4. 运行 `npm run build && npm test` 验证
+
+**关键要点：**
+- `WORKSPACE_DIRS` 直接驱动 `init` 的目录创建逻辑，遗漏会导致功能不完整
+- 目录名不含 `.openfeel/` 前缀（数组项为相对路径，如 `manual`、`kb`、`tmp`）
+- 若目录有初始化文件（如 `kb/index.md`），需在 init 逻辑中同步追加
+
+**实例：** v5.6 新增 `.openfeel/manual/` 模块文档系统但遗漏更新 `WORKSPACE_DIRS`，v5.8 修复为在数组中追加 `'manual'`。注意 v5.6 的 `template-loader.ts` 已通过构建自动同步，仅目录创建逻辑缺失。
+
+**参见：** kb/architecture.md #分级模块文档系统：manual + 树图索引
+

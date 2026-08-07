@@ -13,14 +13,14 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-07（v5.7-stage-01 归档完成：计划目录按大版本分组重构 + reasoning_effort 分档调整） |
+| 最近更新 | 2026-08-07（v5.8-stage-01 归档完成：三项缺陷修复 autoCommitOnDone/模板版本管理节/init 缺 manual 目录） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 14 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组 |
-| 代码模式 | [patterns.md](patterns.md) | 45 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档 |
+| 代码模式 | [patterns.md](patterns.md) | 47 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 10 | 2026-08-07 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件 |
 | 环境配置 | [setup.md](setup.md) | 4 | 2026-07-06 | 环境搭建、构建流程、依赖管理、Agent 模型配置 |
 
@@ -89,12 +89,14 @@
 | 部署传播内容哈希比对模式 | 2026-08-07 | openfeel update 部署 AGENTS.md 时用内容比对替代仅语言判断，确保模板更新能传播到存量项目 |
 | 版本号语义管理与递增规范模式 | 2026-08-07 | AGENTS.md 写入主.次.修订语义，feel.md 默认递增修订号，Feel 审慎推进版本 |
 | Agent 推理深度分档配置模式 | 2026-08-07 | 9 Agent frontmatter 统一新增 reasoning_effort 三档（high/medium/low），中英模板同步传播 |
+| AGENTS.md 模板同步模式 | 2026-08-07 | AGENTS.md 新增节时，templates-data agents-md zh-CN/en 模板必须同步更新 |
+| WORKSPACE_DIRS 同步模式 | 2026-08-07 | 新增 .openfeel/ 子目录时，结构定义中的 WORKSPACE_DIRS 数组必须同步追加 |
 
 ### troubleshooting.md
 
 | 条目 | 日期 | 摘要 |
 |------|------|------|
-| autoRepairInconsistency 干扰组合条件推进路径 | 2026-08-07 | status=done 时强制同步 phase 为 done，截断 test_passed→archiving 组合条件路径（遗留项） |
+| autoRepairInconsistency 干扰组合条件推进路径 | 2026-08-07 | status=done 强制同步 phase 为 done 截断 test_passed→archiving；v5.8 已修复根因：mapPhaseToStageStatus 仅 done→done |
 | fuzzyCorrectPhase 正则尾部下划线 | 2026-06-27 | replace 后在末尾产生 `_`，需去首尾下划线 |
 | 僵尸检测 filter 失效 | 2026-06-27 | startsWith(stageId) 与模块目录组织不匹配 |
 | repair dry-run 误报 | 2026-06-27 | 文件不存在时返回 fixed=true，正常时 exit(1) |
@@ -117,6 +119,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-07 | 归档 | v5.8-stage-01 归档完成：三项缺陷修复（autoCommitOnDone mapPhaseToStageStatus 映射修正 + AGENTS.md 模板补版本管理节 + init 创建 manual/ 目录），知识沉淀 2 条至 patterns（模板同步、WORKSPACE_DIRS同步）+ 1 条更新至 troubleshooting（autoRepairInconsistency 根因修复），Agent 数 9，源文件 46。v5 全系列 8 期 19 项任务全部闭环 |
 | 2026-08-07 | 归档 | v5.7-stage-01 归档完成：计划目录按大版本分组重构（v4/v5/系列收纳 + 系列索引+顶层指针）+ reasoning_effort 分档调整（Planner/Schemer→max, Executor/Vision→medium），知识沉淀 2 条至 architecture(1) + patterns(1，更新)，Agent 数 9，源文件 46。v5 全系列 7 期 16 项任务全部闭环 |
 | 2026-08-07 | 归档 | v5.6-stage-01 归档完成：版本管理规范（AGENTS.md 主.次.修订语义 + feel.md 默认递增修订号）+ 模块文档系统 .openfeel/manual/（4 模块 + 树图索引）+ 9 Agent reasoning_effort 思考深度分档配置，知识沉淀 3 条至 architecture(1) + patterns(2)，Agent 数 9，源文件 46 |
 | 2026-08-07 | 归档 | v5.5-stage-01 归档完成：缺陷修复（AGENTS.md 部署传播内容哈希比对 + autoCommitOnDone save 前移到 commit 前时序修正），知识沉淀 1 条至 patterns（部署传播哈希比对模式）+ 1 条更新（autoCommit 时序修正），Agent 数 9，源文件 46。v5 全系列最终闭环 |

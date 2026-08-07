@@ -781,13 +781,14 @@ private autoCommitOnDone(stageName: string): void {
 ```
 
 **设计要点：**
-- **触发时机**：`endStage()` 完成后、`advanceStagePhase` 返回前，仅在 `targetPhase === 'done'` 时触发
+- **触发时机（v5.5 修正）**：原实现 `autoCommitOnDone` 在 `advanceStagePhase` 内部调用，先于 `flowManager.save()` 执行，导致 git commit 不包含本次 phase 变更。**v5.5 修正**：`advanceStagePhase` 返回 `boolean` 标记是否需要归档 commit，命令层在 `save()` 之后调用 `autoCommitOnDone`，确保 commit 包含完整的 phase 状态变更。
 - **静默降级**：非 git 仓库、git 不可用或无变更时 catch 异常、输出跳过信息，不阻塞 done 推进——归档完成不应因版本控制问题而失败
 - **i18n 覆盖**：成功提交和跳过场景均有对应 i18n 消息键（`gitCommitOkTmpl` / `gitCommitSkipTmpl`），zh-CN + en 双语
 - **与归档流程解耦**：git 提交失败不影响阶段状态迁移——`done` 仍然正常写入 flow.json，确保流水线鲁棒性
 - **Commit 格式**：`chore: 阶段归档 {stageName}`，便于 git log 中快速定位各阶段归档点
+- **方法可见性**：从 `private` 提升为 `public`，供命令层在 `save()` 后显式调用
 
-**参见：** v5.1-stage-01、kb/architecture.md #Feel 调度 + openfeel CLI 推进模型
+**参见：** v5.1-stage-01（原始实现）、v5.5-stage-01（时序修正）、kb/architecture.md #Feel 调度 + openfeel CLI 推进模型
 
 ## [+] Agent 提示词编号一致性审计模式 (2026-08-07)
 
@@ -1103,3 +1104,39 @@ v5.4 在引入 `openfeel lint kb` 质量检查的同时，补充了 CLI-Agent sk
 - 新增 CLI 命令组时，同步创建对应 skill 为强制步骤（参考「新增 Agent 全链路更新清单模式」的清单驱动方法论）
 
 **参见：** v5.4-stage-01 op-003（kb lint）、op-004（skill 补充）、kb/architecture.md #CLI 质量门禁体系、kb/patterns.md #新增 Agent 全链路更新清单模式、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式
+
+## [+] 部署传播内容哈希比对模式 (2026-08-07)
+
+`openfeel update` 更新 AGENTS.md 时，不应仅凭语言判断是否跳过覆盖，而应使用内容哈希比对决定是否需要传播部署。
+
+**问题背景：**
+- 原实现：已有项目执行 `openfeel update` 时，若项目语言与目标语言相同，直接跳过 AGENTS.md 部署（`AGENTS.md (language unchanged)`）
+- 后果：模板四节结构（如新增 9 Agent 体系总览、工具使用约束等章节）在存量项目中永远无法传播——项目语言不变的情况下，模板更新完全失效
+- 同样，无 `--lang` 参数的已有项目也直接跳过（`AGENTS.md (use existing)`），不检查内容差异
+
+**修正实现：**
+
+```typescript
+// 情况 2/3：语言相同或有已有文件 → 比较内容，模板更新时传播部署
+const templateContent = loadTemplate(requestedLang, 'agents-md');
+const existingContent = readFileSync(agentsMdPath, 'utf-8');
+if (existingContent !== templateContent) {
+  writeFileSync(agentsMdPath, templateContent, 'utf-8');
+  updated.push('AGENTS.md');
+} else {
+  skipped.push('AGENTS.md (language unchanged)');
+}
+```
+
+**修复范围（`src/core/update.ts`）：**
+- **语言相同的已有项目**（`--lang` 参数指定的语言与 .info.json 一致）：从"直接跳过"改为"内容比对后决定"
+- **无 `--lang` 参数的已有项目**：从"保持现状跳过"改为"内容比对后决定"
+- **语言不同的新项目**：原逻辑不变（始终覆盖部署）
+- **新项目（无已有 AGENTS.md）**：原逻辑不变（首次创建）
+
+**设计要点：**
+- 内容比对选用全文字符串相等（`!==`），而非文件修改时间或版本号——简单可靠，无额外元数据依赖
+- 跳过消息语义不变（仍为 `language unchanged` / `use existing`），仅在内容不同时静默覆盖并标记为 `updated`
+- 此模式适用于所有由模板生成、可能随 CLI 版本演进而内容变化的部署文件
+
+**参见：** v5.5-stage-01、kb/patterns.md #AGENTS.md 模板四节同步机制、kb/architecture.md #多语言模板数据管线

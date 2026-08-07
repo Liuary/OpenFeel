@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "default_agent": "code",
+  "default_agent": "feel",
   "instructions": [
     "AGENTS.md",
     ".opencode/instructions/core.md"

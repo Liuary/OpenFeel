@@ -170,6 +170,10 @@ User Input → Feel Understands Intent → Invoke Corresponding Agent → Check 
 | `/opfx:archive` | Archive operation records |
 | `/opfx:kb` | Knowledge base operations |
 | `/opfx:utility` | Invoke Utility Agent for file operations |
+| `/opfx:roadmap` | Load project roadmap (version plan and milestones) |
+| `/opfx:health` | Pipeline health check |
+| `/opfx:recover` | Cross-session context recovery |
+| `/opfx:wizard` | Interactive pipeline wizard |
 
 ## Logging Discipline
 

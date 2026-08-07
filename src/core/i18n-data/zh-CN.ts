@@ -387,6 +387,22 @@ export const view: I18nDomain = {
 /* ==================== instructions 域：说明命令 ==================== */
 export const instructions: I18nDomain = {};
 
+/* ==================== lint 域：健康检查命令 ==================== */
+export const lint: I18nDomain = {
+  'i18n.okTmpl':           { key: 'lint.i18n.okTmpl',           zh: '✅ {n} 键一致',                        en: '' },
+  'i18n.failTitleTmpl':    { key: 'lint.i18n.failTitleTmpl',    zh: '❌ {m} 个问题',                        en: '' },
+  'i18n.consistentTmpl':   { key: 'lint.i18n.consistentTmpl',   zh: '（{n} 键一致 / 共 {total} 键）',        en: '' },
+  'i18n.emptyZhTmpl':      { key: 'lint.i18n.emptyZhTmpl',      zh: '[空值 zh-CN] {key}',                   en: '' },
+  'i18n.emptyEnTmpl':      { key: 'lint.i18n.emptyEnTmpl',      zh: '[空值 en] {key}',                      en: '' },
+  'i18n.zhOnlyTmpl':       { key: 'lint.i18n.zhOnlyTmpl',       zh: '[中文独有] {key}',                     en: '' },
+  'i18n.enOnlyTmpl':       { key: 'lint.i18n.enOnlyTmpl',       zh: '[英文独有] {key}',                     en: '' },
+  'kb.noDir':              { key: 'lint.kb.noDir',              zh: '（.openfeel/kb/ 目录不存在）',          en: '' },
+  'kb.scanTmpl':           { key: 'lint.kb.scanTmpl',           zh: '扫描 {n} 个 kb 文件中的文件引用...',    en: '' },
+  'kb.okTmpl':             { key: 'lint.kb.okTmpl',             zh: '✅ 未发现过期引用（共检查 {n} 个引用）', en: '' },
+  'kb.staleTmpl':          { key: 'lint.kb.staleTmpl',          zh: '❌ 发现 {n} 个过期引用',                en: '' },
+  'kb.staleItemTmpl':      { key: 'lint.kb.staleItemTmpl',      zh: '  {file} L{line}: "{ref}" → 文件不存在', en: '' },
+};
+
 /* ==================== help 域：命令帮助文本（--help 输出用语） ==================== */
 export const help: I18nDomain = {
   // openfeel 顶层
@@ -512,6 +528,11 @@ export const help: I18nDomain = {
   'instructions.change':   { key: 'help.instructions.change',   zh: '变更名称（如 feat-login）', en: '' },
   'instructions.json':     { key: 'help.instructions.json',     zh: '输出 JSON 格式而非 XML', en: '' },
   'instructions.schema':   { key: 'help.instructions.schema',   zh: 'Schema 名称（默认 spec-driven）', en: '' },
+
+  // lint
+  'lint':                  { key: 'help.lint',                  zh: '项目健康检查（i18n 键一致性、kb 引用有效性）', en: '' },
+  'lint.i18n':             { key: 'help.lint.i18n',             zh: '校验 i18n 键一致性（空值/中英独有键）', en: '' },
+  'lint.kb':               { key: 'help.lint.kb',               zh: '检测 .openfeel/kb/ 中的过期文件引用', en: '' },
 };
 
 /* ==================== config 域：配置管理命令 ==================== */
@@ -553,5 +574,6 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'roadmap',      domain: roadmap },
   { name: 'view',         domain: view },
   { name: 'instructions', domain: instructions },
+  { name: 'lint',         domain: lint },
   { name: 'config',       domain: config },
 ];

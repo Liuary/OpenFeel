@@ -149,8 +149,8 @@ describe('updateProject', () => {
     // 第二次调用 — 所有内容一致，应全部 skipped
     expect(result2.created.length).toBe(0);
     expect(result2.updated.length).toBe(0);
-    // 应有 9+8+1+1+1 = 20 个文件被跳过（agents + skills + opencode.jsonc + instructions/core.md + AGENTS.md）
-    expect(result2.skipped.length).toBe(20);
+    // 应有 9+12+1+1+1 = 24 个文件被跳过（agents + skills + opencode.jsonc + instructions/core.md + AGENTS.md）
+    expect(result2.skipped.length).toBe(24);
   });
 
   it('修改已有 agent 内容后应正确更新', () => {

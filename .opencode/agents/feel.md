@@ -170,6 +170,10 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 | `/opfx:archive` | 归档操作记录 |
 | `/opfx:kb` | 知识库操作 |
 | `/opfx:utility` | 调起事务官执行文件操作 |
+| `/opfx:roadmap` | 加载项目路线图（版本规划和里程碑） |
+| `/opfx:health` | 流水线健康检查 |
+| `/opfx:recover` | 跨会话上下文恢复 |
+| `/opfx:wizard` | 交互式流水线向导 |
 
 ## 日志记录纪律
 

@@ -403,6 +403,27 @@ description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状�
 | \`done\` | 流程完成，停止 |
 | \`paused\` | 等待用户处理暂停原因 |
 `,
+  'health': `---
+name: health
+description: 加载流水线健康检查结果，供 Agent 判断 flow.json 与工作区状态是否一致。
+---
+
+# 流水线健康检查
+
+## 输入
+
+无
+
+## 执行步骤
+
+1. 运行 \`openfeel flow health --quick\` 检查关键项（phase/current 合法性）
+2. 需要全面检查时运行 \`openfeel flow health\`（含跨文件一致性、僵尸状态、config.yaml）
+3. 解析输出中的 ✅ / ⚠️ / ❌ 项
+
+## 输出
+
+健康检查摘要：通过项数、失败项列表及原因，失败时给出修复建议
+`,
   'model-check': `---
 name: model-check
 description: Feel 自检时检查所有 Agent 的模型配置状态，识别期望模型 vs 实际模型的差距，引导用户在目标工具中完成配置。首次配置后存储为部署模板，新项目可直接复用。
@@ -599,6 +620,48 @@ models:
 - 状态图标：✅ 已满足、⚠️ 降级使用（可接受但非最优）、❌ 缺失或严重不匹配
 - 报告语言：中文
 - 每次检查后将结果摘要写入 \`.openfeel/log/\`（仅首次发现关键问题时）
+`,
+  'recover': `---
+name: recover
+description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水线状态。
+---
+
+# 跨会话上下文恢复
+
+## 输入
+
+无
+
+## 执行步骤
+
+1. 运行 \`openfeel flow recover\` 获取全局状态、流水线阶段、当前操作、阻塞原因与待处理任务
+2. 读取 \`.openfeel/users/{username}/dev_last.md\` 恢复上次操作状态与待续事项
+3. 将两者合并为当前会话起点
+
+## 输出
+
+恢复摘要：流水线状态 + 阻塞项 + 待处理任务列表
+`,
+  'roadmap': `---
+name: roadmap
+description: 加载项目路线图，供 Agent 查看版本规划和里程碑。
+---
+
+# 路线图加载
+
+## 输入
+
+无（可传入版本号过滤，如 \`v5\`）
+
+## 执行步骤
+
+1. 运行 \`openfeel roadmap show\` 列出 \`.openfeel/roadmap/\` 下所有版本大纲，或读取指定 \`v{version}.md\`
+2. 提取各版本「目标」「阶段划分」「里程碑」节
+3. 对照 \`.openfeel/flow.json\` 中各阶段 phase 判断进度状态
+
+## 输出
+
+格式化路线图摘要：版本清单 + 各版本阶段进度
 `,
   'search-kb': `---
 name: search-kb
@@ -912,6 +975,29 @@ planned | ready_for_code | coding | ready_for_review | review_failed | review_pa
 - 当前责任 Agent：{current_agent}
 - 自动推进：保持 {enabled/disabled}
 \`\`\`
+`,
+  'wizard': `---
+name: wizard
+description: 交互式流水线向导，供 Agent 在终端中逐步推进流水线阶段。
+---
+
+# 交互式流水线向导
+
+## 输入
+
+无
+
+## 执行步骤
+
+1. 运行 \`openfeel flow wizard\` 启动交互式向导
+2. 按提示选择要推进的阶段和下一步 phase（基于当前阶段的可达 transitions）
+3. 确认后执行推进，循环直至阶段 done 或退出
+
+## 输出
+
+向导推进结果：阶段 phase 变化（from → to），结束/退出提示
+
+> 注：需交互式终端（TTY），非交互环境请改用 \`openfeel flow advance --stage <id> --to <phase>\`
 `,
 };
 // AUTO-GENERATED-END: SKILL_DEFINITIONS

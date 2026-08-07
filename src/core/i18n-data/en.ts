@@ -369,6 +369,22 @@ export const view: I18nDomain = {
 /* ==================== instructions ==================== */
 export const instructions: I18nDomain = {};
 
+/* ==================== lint ==================== */
+export const lint: I18nDomain = {
+  'i18n.okTmpl':           { key: 'lint.i18n.okTmpl',           zh: '', en: '✅ {n} key(s) consistent' },
+  'i18n.failTitleTmpl':    { key: 'lint.i18n.failTitleTmpl',    zh: '', en: '❌ {m} problem(s)' },
+  'i18n.consistentTmpl':   { key: 'lint.i18n.consistentTmpl',   zh: '', en: '({n} consistent / {total} total keys)' },
+  'i18n.emptyZhTmpl':      { key: 'lint.i18n.emptyZhTmpl',      zh: '', en: '[empty zh-CN] {key}' },
+  'i18n.emptyEnTmpl':      { key: 'lint.i18n.emptyEnTmpl',      zh: '', en: '[empty en] {key}' },
+  'i18n.zhOnlyTmpl':       { key: 'lint.i18n.zhOnlyTmpl',       zh: '', en: '[zh-CN only] {key}' },
+  'i18n.enOnlyTmpl':       { key: 'lint.i18n.enOnlyTmpl',       zh: '', en: '[en only] {key}' },
+  'kb.noDir':              { key: 'lint.kb.noDir',              zh: '', en: '(.openfeel/kb/ directory does not exist)' },
+  'kb.scanTmpl':           { key: 'lint.kb.scanTmpl',           zh: '', en: 'Scanning file references in {n} kb file(s)...' },
+  'kb.okTmpl':             { key: 'lint.kb.okTmpl',             zh: '', en: '✅ No stale references (checked {n} reference(s))' },
+  'kb.staleTmpl':          { key: 'lint.kb.staleTmpl',          zh: '', en: '❌ Found {n} stale reference(s)' },
+  'kb.staleItemTmpl':      { key: 'lint.kb.staleItemTmpl',      zh: '', en: '  {file} L{line}: "{ref}" → file not found' },
+};
+
 /* ==================== help ==================== */
 export const help: I18nDomain = {
   'openfeel':              { key: 'help.openfeel',              zh: '', en: 'AI Agent development workflow governance CLI tool' },
@@ -481,6 +497,10 @@ export const help: I18nDomain = {
   'instructions.change':   { key: 'help.instructions.change',   zh: '', en: 'Change name (e.g. feat-login)' },
   'instructions.json':     { key: 'help.instructions.json',     zh: '', en: 'Output JSON format instead of XML' },
   'instructions.schema':   { key: 'help.instructions.schema',   zh: '', en: 'Schema name (default spec-driven)' },
+
+  'lint':                  { key: 'help.lint',                  zh: '', en: 'Project health checks (i18n key consistency, kb reference validity)' },
+  'lint.i18n':             { key: 'help.lint.i18n',             zh: '', en: 'Validate i18n key consistency (empty values / zh-CN-only / en-only keys)' },
+  'lint.kb':               { key: 'help.lint.kb',               zh: '', en: 'Detect stale file references in .openfeel/kb/' },
 };
 
 /* ==================== config ==================== */
@@ -521,5 +541,6 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'roadmap',      domain: roadmap },
   { name: 'view',         domain: view },
   { name: 'instructions', domain: instructions },
+  { name: 'lint',         domain: lint },
   { name: 'config',       domain: config },
 ];

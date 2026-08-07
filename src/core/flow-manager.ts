@@ -874,9 +874,9 @@ export class FlowManager {
 
           // 提取待完成/待续事项
           const contentLower = content.toLowerCase();
-          // 查找待续事项或未完成的任务
-          const todoSection = content.match(/##\s*待续事项[\s\S]*?(?=##)/i)
-            || content.match(/##\s*待做[\s\S]*?(?=##)/i);
+          // 查找待续事项或未完成的任务（`(?=##|$)` 支持其作为文件最后章节的边界场景）
+          const todoSection = content.match(/##\s*待续事项[\s\S]*?(?=##|$)/i)
+            || content.match(/##\s*待做[\s\S]*?(?=##|$)/i);
           if (todoSection) {
             const lines = todoSection[0].split(/\r?\n/);
             for (const line of lines) {
@@ -1943,6 +1943,12 @@ export class FlowManager {
             changes.push('flow.json 和 .bak 均已损坏（dry-run 模式下不自动重建）');
             return { fixed: false, changes, recovered: false };
           }
+          // 删除损坏文件后重建（initFlow 仅在文件不存在时创建）
+          try {
+            unlinkSync(this.filePath);
+          } catch {
+            // 删除失败忽略
+          }
           FlowManager.initFlow(this.projectPath);
           changes.push('flow.json 和 .bak 均已损坏，已重建默认 flow.json');
           return { fixed: true, changes, recovered: false };
@@ -1952,6 +1958,12 @@ export class FlowManager {
         if (dryRun) {
           changes.push('flow.json 解析失败且无 .bak（dry-run 模式下不自动重建）');
           return { fixed: false, changes, recovered: false };
+        }
+        // 删除损坏文件后重建（initFlow 仅在文件不存在时创建）
+        try {
+          unlinkSync(this.filePath);
+        } catch {
+          // 删除失败忽略
         }
         FlowManager.initFlow(this.projectPath);
         changes.push('flow.json 解析失败且无 .bak，已重建默认 flow.json');
@@ -2080,13 +2092,15 @@ export class FlowManager {
       modified = true;
     }
 
-    // 写入修复后的数据
-    if (modified && !dryRun) {
-      // 备份当前文件
-      try {
-        copyFileSync(this.filePath, this.filePath + '.bak');
-      } catch {
-        // 备份失败不阻塞
+    // 写入修复后的数据（recovered 场景下磁盘文件仍损坏，即使无字段修改也必须写回恢复内容）
+    if ((modified || recovered) && !dryRun) {
+      // 备份当前文件（recovered 场景下 .bak 已是有效恢复来源，避免被损坏文件覆盖）
+      if (!recovered) {
+        try {
+          copyFileSync(this.filePath, this.filePath + '.bak');
+        } catch {
+          // 备份失败不阻塞
+        }
       }
 
       // 使用安全写入

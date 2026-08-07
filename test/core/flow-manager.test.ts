@@ -3,7 +3,7 @@
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { FlowManager, type FlowData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { FlowManager, mapPhaseToStageStatus, type FlowData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -1438,6 +1438,717 @@ describe('FlowManager', () => {
       expect(result.fixed).toBe(true);
       expect(result.changes.some((c) => c.includes('已创建'))).toBe(true);
       expect(existsSync(fp)).toBe(true);
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // Checkpoint 快照机制
+  // ═══════════════════════════════════════
+
+  describe('saveCheckpoint & listCheckpoints & restoreCheckpoint', () => {
+    it('saveCheckpoint 应创建快照文件到 .openfeel/checkpoints/', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.saveCheckpoint('stage-01', 'exec_running' as PipelinePhase);
+
+      const snapshots = mgr.listCheckpoints();
+      expect(snapshots.length).toBe(1);
+      expect(snapshots[0]).toMatch(/^stage-01-\d{8}T\d{9}-exec_running\.json$/);
+    });
+
+    it('listCheckpoints 应按 stageId 过滤', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.saveCheckpoint('stage-01', 'exec_running' as PipelinePhase);
+      mgr.saveCheckpoint('stage-02', 'plan_passed' as PipelinePhase);
+
+      const stage01 = mgr.listCheckpoints('stage-01');
+      const stage02 = mgr.listCheckpoints('stage-02');
+      expect(stage01.length).toBe(1);
+      expect(stage01[0]).toContain('stage-01-');
+      expect(stage02.length).toBe(1);
+      expect(stage02[0]).toContain('stage-02-');
+    });
+
+    it('listCheckpoints 在目录不存在时应返回空数组', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      expect(mgr.listCheckpoints()).toEqual([]);
+    });
+
+    it('restoreCheckpoint 应恢复 flow.json 并重新加载数据', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.save();
+      mgr.saveCheckpoint('stage-01', 'exec_running' as PipelinePhase);
+      const snapshot = mgr.listCheckpoints()[0];
+      expect(snapshot).toBeDefined();
+
+      // 修改数据后恢复
+      mgr.setData({ ...makeTestFlowData(), pipeline: { ...makeTestFlowData().pipeline, retry: 99 } });
+      mgr.save();
+      expect(new FlowManager(tmpDir).getData()!.pipeline.retry).toBe(99);
+
+      const restored = mgr.restoreCheckpoint(snapshot);
+      expect(restored).toBe(true);
+      expect(new FlowManager(tmpDir).getData()!.pipeline.retry).toBe(0);
+    });
+
+    it('restoreCheckpoint 应拒绝含路径分隔符的文件名（防路径穿越）', () => {
+      const mgr = new FlowManager(tmpDir);
+      expect(mgr.restoreCheckpoint('../evil.json')).toBe(false);
+      expect(mgr.restoreCheckpoint('a/b.json')).toBe(false);
+      expect(mgr.restoreCheckpoint('a\\b.json')).toBe(false);
+    });
+
+    it('restoreCheckpoint 对不存在的快照应返回 false', () => {
+      const mgr = new FlowManager(tmpDir);
+      expect(mgr.restoreCheckpoint('stage-01-20260101T000000000-plan_pending.json')).toBe(false);
+    });
+
+    it('data 为 null 时 saveCheckpoint 应静默跳过', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.saveCheckpoint('stage-01', 'exec_running' as PipelinePhase);
+      expect(mgr.listCheckpoints()).toEqual([]);
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // 阶段生命周期 & 耗时统计
+  // ═══════════════════════════════════════
+
+  describe('registerStage & startStage & endStage & getStageStats', () => {
+    it('registerStage 应新增阶段（含 deps）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.registerStage('stage-02', ['stage-01']);
+
+      const stage = mgr.getData()!.stages['stage-02'];
+      expect(stage).toBeDefined();
+      expect(stage.phase).toBe('plan_pending');
+      expect(stage.deps).toEqual(['stage-01']);
+      expect(stage.ops).toEqual({});
+    });
+
+    it('registerStage 对已存在的阶段应跳过', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const before = JSON.stringify(mgr.getData()!.stages['stage-01']);
+      mgr.registerStage('stage-01');
+      expect(JSON.stringify(mgr.getData()!.stages['stage-01'])).toBe(before);
+    });
+
+    it('startStage 应记录 start_time', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const before = Date.now();
+      mgr.startStage('stage-01');
+      const stats = mgr.getStageStats('stage-01')!;
+      expect(stats.start_time).toBeDefined();
+      expect(new Date(stats.start_time).getTime()).toBeGreaterThanOrEqual(before);
+      expect(stats.duration_ms).toBe(0);
+    });
+
+    it('endStage 应计算 duration_ms', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.startStage('stage-01');
+      mgr.endStage('stage-01');
+      const stats = mgr.getStageStats('stage-01')!;
+      expect(stats.end_time).toBeDefined();
+      expect(stats.duration_ms).toBeGreaterThanOrEqual(0);
+    });
+
+    it('endStage 在无 start_time 时 duration_ms 应保持 0', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.endStage('stage-01');
+      expect(mgr.getStageStats('stage-01')!.duration_ms).toBe(0);
+    });
+
+    it('getStageStats 对不存在的阶段应返回 null', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      expect(mgr.getStageStats('stage-99')).toBeNull();
+    });
+
+    it('getAllStageStats 应返回所有已记录阶段的统计', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.startStage('stage-01');
+      const stats = mgr.getAllStageStats();
+      expect(Object.keys(stats)).toContain('stage-01');
+      expect(stats['stage-01'].start_time).toBeDefined();
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // addStage
+  // ═══════════════════════════════════════
+
+  describe('addStage', () => {
+    it('addStage 应新增阶段并更新 current 与日志', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.addStage('stage-02');
+
+      const data = mgr.getData()!;
+      expect(data.stages['stage-02']).toBeDefined();
+      expect(data.pipeline.current).toEqual({ stage: 'stage-02', op: '' });
+      expect(data.log.some((l) => l.action === 'add_stage' && l.detail.stageId === 'stage-02')).toBe(true);
+    });
+
+    it('addStage 对重复阶段应抛出错误', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      expect(() => mgr.addStage('stage-01')).toThrow(/already exists/);
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // 流转查询（hasTransition / getAvailablePhases / getPhaseLabels）
+  // ═══════════════════════════════════════
+
+  describe('hasTransition & getAvailablePhases & getPhaseLabels', () => {
+    it('hasTransition 对合法跳转应返回 true', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({ ...makeTestFlowData(), pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 } });
+      expect(mgr.hasTransition('plan_review')).toBe(true);
+      expect(mgr.hasTransition('plan_passed')).toBe(true);
+    });
+
+    it('hasTransition 对非法跳转应返回 false', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({ ...makeTestFlowData(), pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 } });
+      expect(mgr.hasTransition('exec_running')).toBe(false);
+    });
+
+    it('getAvailablePhases 应返回当前阶段的可达目标', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const targets = mgr.getAvailablePhases('stage-01');
+      expect(targets).toContain('plan_review');
+      expect(targets).toContain('plan_passed');
+    });
+
+    it('getAvailablePhases 对不存在的阶段应返回空数组', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      expect(mgr.getAvailablePhases('stage-99')).toEqual([]);
+    });
+
+    it('getPhaseLabels 应返回中文标签映射', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const labels = mgr.getPhaseLabels('zh-CN');
+      expect(labels['plan_pending']).toBe('计划待定');
+      expect(labels['done']).toBe('已完成');
+    });
+
+    it('getPhaseLabels 应返回英文标签映射', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const labels = mgr.getPhaseLabels('en');
+      expect(labels['plan_pending']).toBe('Plan Pending');
+      expect(labels['done']).toBe('Completed');
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // recoverContext（跨会话上下文恢复）
+  // ═══════════════════════════════════════
+
+  describe('recoverContext', () => {
+    it('未加载数据时应返回 uninitialized 状态', () => {
+      const mgr = new FlowManager(tmpDir);
+      const ctx = mgr.recoverContext();
+      expect(ctx.phase).toBeNull();
+      expect(ctx.stageStatus).toContain('未初始化');
+      expect(ctx.pendingTasks).toEqual([]);
+    });
+
+    it('应解析 status.md 中的状态与待续事项', () => {
+      // 构造 status.md（findStatusPath 优先查 stages 目录，再查 plan 目录）
+      const planDir = join(tmpDir, '.openfeel', 'plan', 'stage-01');
+      mkdirSync(planDir, { recursive: true });
+      writeFileSync(join(planDir, 'status.md'), `# stage-01 状态
+
+- **执行模式**：manual
+- **状态**：in_progress
+- **阻塞原因**：等待用户确认
+
+## 待续事项
+
+- [ ] 任务A：完成方案
+- [ ] 任务B：执行编码
+`, 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      });
+      const ctx = mgr.recoverContext();
+      expect(ctx.phase).toBe('plan_pending');
+      expect(ctx.currentOp).toBe('stage-01.op-001');
+      expect(ctx.stageStatus).toContain('in_progress');
+      expect(ctx.stageStatus).toContain('手动执行');
+      expect(ctx.blockedBy).toContain('等待用户确认');
+      expect(ctx.pendingTasks).toContain('任务A：完成方案');
+      expect(ctx.pendingTasks).toContain('任务B：执行编码');
+    });
+
+    it('status.md 不存在时状态应标记为 statusFileMissing', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      });
+      const ctx = mgr.recoverContext();
+      expect(ctx.stageStatus).toContain('不存在');
+    });
+
+    it('无当前阶段时应列出所有 pending op 并标记 noCurrentStage', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const ctx = mgr.recoverContext();
+      expect(ctx.stageStatus).toContain('无当前阶段');
+      expect(ctx.pendingTasks.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // verboseSummary（verbose 模式摘要）
+  // ═══════════════════════════════════════
+
+  describe('verboseSummary', () => {
+    it('应返回结构化摘要（basic/cascade/recentChanges/downstreamPhases）', () => {
+      // 构造 config.yaml 与 status.md
+      const openfeelDir = join(tmpDir, '.openfeel');
+      mkdirSync(openfeelDir, { recursive: true });
+      writeFileSync(join(openfeelDir, 'config.yaml'), 'defaults:\n  execution_mode: auto\n', 'utf-8');
+      const planDir = join(tmpDir, '.openfeel', 'plan', 'stage-01');
+      mkdirSync(planDir, { recursive: true });
+      writeFileSync(join(planDir, 'status.md'), `# stage-01 状态
+
+- **执行模式**：auto
+- **状态**：in_progress
+
+## 状态记录
+
+| 时间 | Agent | 状态变化 | 说明 |
+|------|-------|----------|------|
+| 2026-08-01 | Planner | plan_pending → plan_review | 计划提交 |
+| 2026-08-02 | Feel | plan_review → plan_passed | 计划通过 |
+`, 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      });
+
+      const vs = mgr.verboseSummary();
+      expect(vs.basic).toBeDefined();
+      expect(vs.basic.stagesCount).toBe(1);
+      expect(vs.cascade.configDefaults).toEqual({ execution_mode: 'auto' });
+      expect(vs.cascade.statusOverrides).toEqual({ execution_mode: 'auto' });
+      expect(vs.recentChanges.length).toBe(2);
+      expect(vs.recentChanges[0].agent).toBe('Planner');
+      expect(vs.downstreamPhases.length).toBeGreaterThan(0);
+      // 下游 phase 应有负责 Agent 映射（plan_* → planner）
+      expect(vs.downstreamPhases[0].responsibleAgent).toBe('planner');
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // addAutoFixReview（自动修复审查）
+  // ═══════════════════════════════════════
+
+  describe('addAutoFixReview', () => {
+    it('应从 review_failed 直通 exec_running 并写入 resolved 审查', () => {
+      const origWarn = console.warn;
+      console.warn = () => {};
+      try {
+        const mgr = new FlowManager(tmpDir);
+        mgr.setData({
+          ...makeTestFlowData(),
+          stages: {
+            'stage-01': {
+              ...makeTestFlowData().stages['stage-01'],
+              phase: 'review_failed' as PipelinePhase,
+              status: 'review_failed',
+            },
+          },
+        });
+        mgr.addAutoFixReview(
+          { id: 'REV-001', title: '修复配置', op: 'stage-01.op-001', status: 'open', priority: 'medium', blocking: false },
+          'stage-01.op-001',
+        );
+
+        const data = mgr.getData()!;
+        const review = data.reviews.find((r) => r.id === 'REV-001');
+        expect(review).toBeDefined();
+        expect(review!.status).toBe('resolved');
+        expect(review!.canAutoFix).toBe(true);
+        expect(data.stages['stage-01'].phase).toBe('exec_running');
+        expect(data.log.some((l) => l.action === 'auto_fix_review')).toBe(true);
+      } finally {
+        console.warn = origWarn;
+      }
+    });
+
+    it('opId 格式不正确时应拒绝并返回', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.addAutoFixReview(
+        { id: 'REV-002', title: 'x', op: 'bad', status: 'open', priority: 'low' },
+        'bad',
+      );
+      expect(mgr.getData()!.reviews.length).toBe(0);
+    });
+
+    it('opId 指向不存在的 stage 时应拒绝', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.addAutoFixReview(
+        { id: 'REV-003', title: 'x', op: 'stage-99.op-001', status: 'open', priority: 'low' },
+        'stage-99.op-001',
+      );
+      expect(mgr.getData()!.reviews.length).toBe(0);
+    });
+
+    it('当前 phase 非 review_failed 时应拒绝', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData()); // stage-01 phase = plan_pending
+      const origWarn = console.warn;
+      console.warn = () => {};
+      try {
+        mgr.addAutoFixReview(
+          { id: 'REV-004', title: 'x', op: 'stage-01.op-001', status: 'open', priority: 'low' },
+          'stage-01.op-001',
+        );
+        expect(mgr.getData()!.reviews.length).toBe(0);
+        expect(mgr.getData()!.stages['stage-01'].phase).toBe('plan_pending');
+      } finally {
+        console.warn = origWarn;
+      }
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // repair 完整分支
+  // ═══════════════════════════════════════
+
+  describe('repair 完整修复', () => {
+    it('flow.json 损坏且 .bak 有效时应从 .bak 恢复', () => {
+      // 先创建正常 flow.json 和备份
+      FlowManager.initFlow(tmpDir);
+      const fp = join(tmpDir, '.openfeel', 'flow.json');
+      writeFileSync(fp + '.bak', readFileSync(fp, 'utf-8'), 'utf-8');
+      // 破坏主文件
+      writeFileSync(fp, '{broken json', 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.repair(false);
+      expect(result.recovered).toBe(true);
+      expect(result.fixed).toBe(true);
+      // 恢复后文件应可解析
+      expect(JSON.parse(readFileSync(fp, 'utf-8'))).toBeTruthy();
+    });
+
+    it('flow.json 损坏且无 .bak 时应重建默认 flow.json', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      const fp = join(tmpDir, '.openfeel', 'flow.json');
+      writeFileSync(fp, '{broken json', 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.repair(false);
+      expect(result.fixed).toBe(true);
+      expect(result.changes.some((c) => c.includes('已重建'))).toBe(true);
+      expect(JSON.parse(readFileSync(fp, 'utf-8'))).toBeTruthy();
+    });
+
+    it('应补全缺失的 meta 字段', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      const fp = join(tmpDir, '.openfeel', 'flow.json');
+      writeFileSync(fp, JSON.stringify({
+        meta: { project: 'Test' },
+        pipeline: { phase: 'active', current: { stage: '', op: '' }, retry: 0 },
+        stages: {},
+        reviews: [],
+        log: [],
+      }), 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.repair(false);
+      expect(result.changes.some((c) => c.includes('meta.version'))).toBe(true);
+      expect(result.fixed).toBe(true);
+    });
+
+    it('应修正非法的 pipeline.phase 值', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      const fp = join(tmpDir, '.openfeel', 'flow.json');
+      writeFileSync(fp, JSON.stringify({
+        meta: { version: '1.0', project: 'Test', updated: '2026-01-01' },
+        pipeline: { phase: 'exec_running', current: { stage: '', op: '' }, retry: 0 },
+        stages: {},
+        reviews: [],
+        log: [],
+      }), 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.repair(false);
+      expect(result.fixed).toBe(true);
+      expect(result.changes.some((c) => c.includes('pipeline.phase'))).toBe(true);
+      // 修复后 phase 应为 MetaPhase（active）
+      expect(JSON.parse(readFileSync(fp, 'utf-8')).pipeline.phase).toBe('active');
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // autoRepairInconsistency（phase/status 不一致自动修复）
+  // ═══════════════════════════════════════
+
+  describe('autoRepairInconsistency', () => {
+    it('status=done 但 phase≠done 时应同步 phase 为 done', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        stages: {
+          'stage-01': {
+            ...makeTestFlowData().stages['stage-01'],
+            status: 'done',
+            phase: 'exec_running' as PipelinePhase,
+          },
+        },
+      });
+      const result = mgr.autoRepairInconsistency('stage-01');
+      expect(result.fixed).toBe(true);
+      expect(result.detail).toContain('→ done');
+      expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+    });
+
+    it('phase=done 但 status≠done 时应同步 status 为 done', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        stages: {
+          'stage-01': {
+            ...makeTestFlowData().stages['stage-01'],
+            status: 'in_progress',
+            phase: 'done' as PipelinePhase,
+          },
+        },
+      });
+      const result = mgr.autoRepairInconsistency('stage-01');
+      expect(result.fixed).toBe(true);
+      expect(mgr.getData()!.stages['stage-01'].status).toBe('done');
+    });
+
+    it('一致时返回未检测到不一致', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        stages: {
+          'stage-01': {
+            ...makeTestFlowData().stages['stage-01'],
+            status: 'done',
+            phase: 'done' as PipelinePhase,
+          },
+        },
+      });
+      const result = mgr.autoRepairInconsistency('stage-01');
+      expect(result.fixed).toBe(false);
+    });
+
+    it('不存在的阶段应返回未修复', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const result = mgr.autoRepairInconsistency('stage-99');
+      expect(result.fixed).toBe(false);
+      expect(result.detail).toContain('不存在');
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // needsMigration & migrate（v4.0 → v4.1 迁移）
+  // ═══════════════════════════════════════
+
+  describe('needsMigration & migrate', () => {
+    it('新版格式（pipeline.phase=active）needsMigration 应为 false', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      expect(mgr.needsMigration()).toBe(false);
+    });
+
+    it('旧版格式（pipeline.phase=exec_running）needsMigration 应为 true', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        pipeline: { phase: 'exec_running' as unknown as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      });
+      expect(mgr.needsMigration()).toBe(true);
+    });
+
+    it('migrate dry-run 应预览但不修改数据', () => {
+      const mgr = new FlowManager(tmpDir);
+      const oldData = {
+        ...makeTestFlowData(),
+        pipeline: { phase: 'exec_running' as unknown as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      };
+      mgr.setData(oldData);
+      const result = mgr.migrate(true);
+      expect(result.migrated).toBe(true);
+      expect(result.failed).toBe(false);
+      // dry-run 不修改内存数据
+      expect(mgr.getData()!.pipeline.phase).toBe('exec_running' as unknown as MetaPhase);
+    });
+
+    it('migrate 应下沉旧 phase 到 stage 并更新全局 phase 为 active', () => {
+      // 先落盘 flow.json（migrate 备份依赖磁盘文件存在）
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      // stage-01 无 phase（旧格式）
+      const oldData = {
+        ...makeTestFlowData(),
+        stages: {
+          'stage-01': {
+            ...makeTestFlowData().stages['stage-01'],
+            phase: undefined as unknown as PipelinePhase,
+          },
+        },
+        pipeline: { phase: 'exec_running' as unknown as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      };
+      mgr.setData(oldData);
+      mgr.save();
+      const result = mgr.migrate(false);
+      expect(result.migrated).toBe(true);
+      const data = mgr.getData()!;
+      expect(data.stages['stage-01'].phase).toBe('exec_running');
+      expect(data.pipeline.phase).toBe('active');
+      expect(data.log.some((l) => l.action === 'migrate_v4.0_to_v4.1')).toBe(true);
+    });
+
+    it('migrate 在数据未加载时应返回 failed', () => {
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.migrate(false);
+      expect(result.failed).toBe(true);
+      expect(result.migrated).toBe(false);
+    });
+
+    it('已是新版格式时 migrate 应返回无需迁移', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const result = mgr.migrate(false);
+      expect(result.migrated).toBe(false);
+      expect(result.failed).toBe(false);
+      expect(result.changes[0]).toContain('无需迁移');
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // healthCheck（健康检查）
+  // ═══════════════════════════════════════
+
+  describe('healthCheck', () => {
+    it('quick 模式应只检查 flow.json 关键项并通过', () => {
+      // 使用合法数据（默认模板 current.stage="-" 在空 stages 中不存在，会触发 fail）
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.save();
+      const result = mgr.healthCheck(true);
+      expect(result.ok).toBe(true);
+      expect(result.items.length).toBeGreaterThan(0);
+      expect(result.items.every((i) => i.section === 'flow.json')).toBe(true);
+    });
+
+    it('完整模式应包含跨文件一致性/僵尸状态/config.yaml 检查项', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.healthCheck(false);
+      const sections = result.items.map((i) => i.section);
+      expect(sections).toContain('config.yaml'); // 不存在 → warn
+      expect(sections).toContain('僵尸状态');
+    });
+
+    it('flow.json 不存在时应报告 fail', () => {
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.healthCheck(true);
+      expect(result.ok).toBe(false);
+      expect(result.items.some((i) => i.message.includes('flow.json 不存在'))).toBe(true);
+    });
+
+    it('config.yaml 损坏时应报告 fail', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), '{{{{broken', 'utf-8');
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.healthCheck(false);
+      expect(result.items.some((i) => i.section === 'config.yaml' && i.status === 'fail')).toBe(true);
+    });
+
+    it('deps.yaml 无环时应报告 pass', () => {
+      FlowManager.initFlow(tmpDir);
+      const planDir = join(tmpDir, '.openfeel', 'plan');
+      mkdirSync(planDir, { recursive: true });
+      writeFileSync(join(planDir, 'deps.yaml'), 'stages:\n  stage-01:\n    deps: []\n  stage-02:\n    deps: [stage-01]\n', 'utf-8');
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.healthCheck(false);
+      expect(result.items.some((i) => i.section === 'deps.yaml' && i.status === 'pass')).toBe(true);
+    });
+
+    it('deps.yaml 存在循环依赖时应报告 fail', () => {
+      FlowManager.initFlow(tmpDir);
+      const planDir = join(tmpDir, '.openfeel', 'plan');
+      mkdirSync(planDir, { recursive: true });
+      writeFileSync(join(planDir, 'deps.yaml'), 'stages:\n  stage-01:\n    deps: [stage-02]\n  stage-02:\n    deps: [stage-01]\n', 'utf-8');
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.healthCheck(false);
+      expect(result.items.some((i) => i.section === 'deps.yaml' && i.status === 'fail')).toBe(true);
+    });
+
+    it('pipeline.yaml 不存在时不应产生 fail 项', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const result = mgr.healthCheck(false);
+      expect(result.items.some((i) => i.section === 'pipeline.yaml' && i.status === 'fail')).toBe(false);
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // mapPhaseToStageStatus（独立辅助函数）
+  // ═══════════════════════════════════════
+
+  describe('mapPhaseToStageStatus', () => {
+    it('review_failed 应映射为 review_failed', () => {
+      expect(mapPhaseToStageStatus('review_failed', 'anything')).toBe('review_failed');
+    });
+
+    it('review_passed 且 testEnabled 时应映射为 review_passed', () => {
+      expect(mapPhaseToStageStatus('review_passed', 'x', true)).toBe('review_passed');
+    });
+
+    it('review_passed 且 testEnabled=false 时应映射为 done', () => {
+      expect(mapPhaseToStageStatus('review_passed', 'x', false)).toBe('done');
+    });
+
+    it('test_passed 应映射为中间状态 testing', () => {
+      expect(mapPhaseToStageStatus('test_passed', 'review_passed')).toBe('testing');
+    });
+
+    it('archiving 应映射为 archiving', () => {
+      expect(mapPhaseToStageStatus('archiving', 'testing')).toBe('archiving');
+    });
+
+    it('done 应映射为 done', () => {
+      expect(mapPhaseToStageStatus('done', 'archiving')).toBe('done');
+    });
+
+    it('其他阶段应保持当前状态不变', () => {
+      expect(mapPhaseToStageStatus('plan_pending', 'in_progress')).toBe('in_progress');
+      expect(mapPhaseToStageStatus('exec_running', 'planned')).toBe('planned');
     });
   });
 });

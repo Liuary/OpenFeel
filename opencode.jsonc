@@ -17,13 +17,13 @@
   },
   "provider": {
     "alibaba": {
-      "name": "Alibaba",
-      "id": "alibaba"
+      "name": "Alibaba(China)",
+      "id": "Alibaba(China)"
     }
   },
   "agent": {
     "vision": {
-      "model": "alibaba/qwen3.7-plus"
+      "model": "Alibaba(China)/qwen3.7-plus"
     }
   },
   "experimental": {

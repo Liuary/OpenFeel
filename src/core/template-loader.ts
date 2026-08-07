@@ -1178,7 +1178,7 @@ The Utility Agent is driven by a **fast model** (such as DeepSeek V4 Flash). Mec
     vision: `---
 description: Vision Agent, multimodal model, responsible for general visual analysis — receives image input and outputs structured analysis results.
 mode: subagent
-model: qwen3.7-plus
+model: Alibaba(China)/qwen3.7-plus
 reasoning_effort: medium
 color: "#06B6D4"
 permission:
@@ -2414,7 +2414,7 @@ task_type: utility
     vision: `---
 description: Vision 视觉官 Agent，多模态模型，负责通用视觉分析，接收图片输入并输出结构化分析结果。
 mode: subagent
-model: qwen3.7-plus
+model: Alibaba(China)/qwen3.7-plus
 reasoning_effort: medium
 color: "#06B6D4"
 permission:

@@ -1,7 +1,7 @@
 ---
 description: Vision Agent, multimodal model, responsible for general visual analysis — receives image input and outputs structured analysis results.
 mode: subagent
-model: qwen3.7-plus
+model: Alibaba(China)/qwen3.7-plus
 reasoning_effort: medium
 color: "#06B6D4"
 permission:

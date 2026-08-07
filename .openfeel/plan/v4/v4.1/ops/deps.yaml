@@ -5,8 +5,8 @@
 
 # 全局配置
 stage: v4.1-stage-01
-plan_file: .openfeel/plan/v4.1/plan.md
-ops_dir: .openfeel/plan/v4.1/ops/
+plan_file: .openfeel/plan/v4/v4.1/plan.md
+ops_dir: .openfeel/plan/v4/v4.1/ops/
 
 # 操作方案列表
 ops:

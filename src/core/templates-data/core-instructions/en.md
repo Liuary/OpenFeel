@@ -207,7 +207,7 @@ Plans are divided into two layers:
 
 If a plan does not exist, create it based on user instructions. Large plan changes require user confirmation; small plan adjustments can be done autonomously by the Agent but must be recorded.
 
-`plan_index.md` stores core summaries of each plan and indexes to the corresponding plan directories. `plan_log.md` records the last 30 change summaries, format `{username}: change description`, with jump links.
+Plan indexes are organized by major version series: `plan/index.md` is the top-level index, and series indexes such as `plan/v4/index.md` and `plan/v5/index.md` store core summaries of each plan. `plan_log.md` records the last 30 change summaries, format `{username}: change description`, with jump links.
 
 If unplanned operations or deviations occur, explain to the user first and seek confirmation, while recording in the log.
 

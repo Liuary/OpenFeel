@@ -76,5 +76,5 @@
 | `.opencode/agents/reviewer.md` | 同 | 一致 | REV-004：新增过度设计维度行（model 保持 glm-5.2 不动） |
 | `.openfeel/tmp/op-stage-02-op-009-test-report.md` | 同 | 一致 | 自测报告 |
 | — | `.openfeel/users/Liuary/code_review/REV-v4.6-stage-02.md` | 超范围（预期） | 4 条 REV 状态标记为 resolved + 处理记录 |
-| — | `.openfeel/plan/v4.6/ops/stage-02-op-009.md` | 超范围（预期） | 本方案文件本身 |
+| — | `.openfeel/plan/v4/v4.6/ops/stage-02-op-009.md` | 超范围（预期） | 本方案文件本身 |
 | — | `.openfeel/flow.json` / `.openfeel/flow.json.bak` | 超范围（预期） | 审查回退流程状态（review_pending → exec_running），随提交纳入 |

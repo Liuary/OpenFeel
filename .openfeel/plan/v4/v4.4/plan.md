@@ -273,7 +273,7 @@ v4.4-stage-01 (i18n 基建) ── parallel ── v4.4-stage-02 (日志修复 +
 | op-002 | **更新知识库测试数据** | `kb/setup.md` 第 37 行和 `kb/index.md` 第 88 行仍写"225/227 通过（2 个已知弱项）"，实际 `npm test` 已 275/275 全部通过（18 个测试文件）。更新为当前准确数据。 |
 | op-003 | **修复 init.ts 测试模板硬编码** | `src/core/init.ts` 第 269 行生成的示例测试文件 `test/index.test.ts` 中硬编码了 OpenFeel 的问候语逻辑（`greet` 函数返回"你好，${name}！欢迎使用 OpenFeel"），且包含一个 TODO 注释"替换为项目实际的模块路径"。修复：将示例测试改为更通用的模板（如简单的 `sum` 函数测试），移除 OpenFeel 特有引用和 TODO。 |
 | op-004 | **更新项目版本号** | `package.json` 中 `version` 仍为 `0.1.0`，未反映经历 v1~v4.4 多轮迭代的实际成熟度。更新为 `1.0.0`（首个正式版本）。同步检查 README.md 和 Agent 模板中是否有引用版本号的位置。 |
-| op-005 | **修复 v4.2 跨文件一致性问题** | `flow health` 检测到 v4.2 的 `flow.json` 状态为 `done` 但 `status.md` 状态为 `review_passed`，不一致。修复：将 `.openfeel/plan/v4.2/v4.2-stage-01/status.md` 的状态更新为 `done`，与 flow.json 对齐。 |
+| op-005 | **修复 v4.2 跨文件一致性问题** | `flow health` 检测到 v4.2 的 `flow.json` 状态为 `done` 但 `status.md` 状态为 `review_passed`，不一致。修复：将 `.openfeel/plan/v4/v4.2/v4.2-stage-01/status.md` 的状态更新为 `done`，与 flow.json 对齐。 |
 
 #### 产出文件
 
@@ -284,7 +284,7 @@ v4.4-stage-01 (i18n 基建) ── parallel ── v4.4-stage-02 (日志修复 +
 | **修改** | `.openfeel/kb/index.md` — 测试数据更新 | op-002 |
 | **修改** | `src/core/init.ts` — 测试模板去 OpenFeel 化 | op-003 |
 | **修改** | `package.json` — 版本号更新 | op-004 |
-| **修改** | `.openfeel/plan/v4.2/v4.2-stage-01/status.md` — 状态对齐 | op-005 |
+| **修改** | `.openfeel/plan/v4/v4.2/v4.2-stage-01/status.md` — 状态对齐 | op-005 |
 
 #### 自测要点
 

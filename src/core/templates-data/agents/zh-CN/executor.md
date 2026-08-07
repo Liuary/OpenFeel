@@ -2,7 +2,7 @@
 description: Executor 执行官 Agent，快速模型，按操作方案编码实现并自测。
 mode: subagent
 model: deepseek/deepseek-v4-flash
-reasoning_effort: low
+reasoning_effort: medium
 color: "#D94A4A"
 permission:
   bash: "allow"

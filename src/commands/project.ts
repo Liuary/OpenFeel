@@ -67,7 +67,7 @@ function outputProjectOverview(cwd: string): void {
   const agentDefs = opencodeExists ? fg.sync(['.opencode/agents/*.md'], { cwd }).length : 0;
   const cliCommandModules = srcExists ? fg.sync(['src/commands/*.ts'], { cwd }).length : 0;
   const kbEntries = countKbEntries(cwd);
-  const planVersions = openfeelExists ? fg.sync(['.openfeel/plan/*/plan.md'], { cwd }).length : 0;
+  const planVersions = openfeelExists ? fg.sync(['.openfeel/plan/*/plan.md', '.openfeel/plan/*/*/plan.md'], { cwd }).length : 0;
 
   // ── 输出结构化概览 ──
   console.log('');

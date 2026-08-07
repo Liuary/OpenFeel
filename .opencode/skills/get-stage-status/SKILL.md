@@ -8,7 +8,7 @@ description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状�
 ## 输入
 
 - 计划阶段名 `{stage}`（如 `stage01`、`auth-login`）
-- 若用户未提供阶段名，先读取 `.openfeel/plan/plan_index.md` 查找当前活跃阶段；仍不明确时询问用户
+- 若用户未提供阶段名，先读取 `.openfeel/plan/index.md` 查找当前活跃阶段；仍不明确时询问用户
 
 ## 执行步骤
 

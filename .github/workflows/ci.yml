@@ -26,12 +26,21 @@ jobs:
       NODE_AUTH_TOKEN: ${{ secrets.OPENFEEL_AUTO_NPM }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check if version changed
+        id: version
+        run: |
+          git diff HEAD~1 -- package.json | grep -q '"version"' && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
       - uses: actions/setup-node@v4
+        if: steps.version.outputs.changed == 'true'
         with:
           node-version: 22.x
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
       - run: npm ci
+        if: steps.version.outputs.changed == 'true'
       - run: npm run build
-      - run: npm config list
+        if: steps.version.outputs.changed == 'true'
       - run: npm publish --access public --registry https://registry.npmjs.org
+        if: steps.version.outputs.changed == 'true'

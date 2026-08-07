@@ -199,7 +199,14 @@ Feel 完成全阶段调度后（归档 done），必须检查 git 状态并处�
   - W（修订）：CI 配置修复、文档更新、非功能变更 → `1.0.0` → `1.0.1`
   - Z（功能）：新增功能或显著改进 → `1.1.0`
   - 重大变更需用户决策
-- CI 自动发布不会自动递增版本号——Feel 必须在 push 前手动更新
+
+### 自动发布触发条件
+
+- CI 每次 push master 都跑 build+test，但**仅在 `package.json` 版本号变更时才触发 npm publish**
+- 触发流程：修改 `package.json` 的 `version` → commit → push master → CI 自动 build → test → publish
+- 不改变版本号的常规 push 不会触发发布（避免 "version already exists" 错误）
+
+> Feel 职责：只在确认所有变更就绪、测试通过后，才升版本号并 push。
 
 ---
 

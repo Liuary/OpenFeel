@@ -34,9 +34,35 @@ export const MetaPhaseSchema = z.enum(META_PHASES);
 /** 全局宏观状态类型 */
 export type MetaPhase = z.infer<typeof MetaPhaseSchema>;
 
-/** pipeline.yaml 的完整 Schema */
+/**
+ * 组合转换条件分隔符
+ * transitions 的 key 可用 '|' 组合多个源 phase，任一源 phase 匹配即可推进到目标（多 Agent 并行场景）。
+ * 示例: `'test_passed|review_passed': ['archiving']` → 审查或测试任一通过即可归档。
+ */
+export const TRANSITION_OR_SEPARATOR = '|';
+
+/**
+ * 将 transitions 的 key 解析为条件 phase 列表
+ * 简单 key（如 'review_pending'）返回单个条件；组合 key（如 'test_passed|review_passed'）按 '|' 分割返回多个条件。
+ * @param key 转换 key（transitions 的键）
+ * @returns 条件 phase 列表（已去空、去空白）
+ */
+export function parseTransitionKey(key: string): string[] {
+  return key
+    .split(TRANSITION_OR_SEPARATOR)
+    .map((c) => c.trim())
+    .filter(Boolean);
+}
+
+/** 判断某 phase 是否匹配转换 key（组合条件下任一条件匹配即 true，简单 key 为精确相等） */
+export function transitionKeyMatches(key: string, phase: string): boolean {
+  return parseTransitionKey(key).includes(phase);
+}
+
+/** pipeline.yaml 的完整 Schema（transitions key 允许 '|' 组合条件） */
 export const PipelineConfigSchema = z.object({
   phases: z.array(z.string()),
+  // transitions: { fromPhase | "fromA|fromB": [toPhase, ...] }，key 可含 '|' 组合多个源 phase
   transitions: z.record(z.string(), z.array(z.string())),
   checkpoint_mapping: z.record(z.string(), z.string()),
   phase_corrections: z.record(z.string(), z.string()).default({}),

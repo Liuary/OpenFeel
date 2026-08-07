@@ -1,62 +1,61 @@
 # 自测报告 — op-001
 
-- **执行时间**：2026-08-07 15:12
+- **执行时间**：2026-08-07 16:31
 - **执行 Agent**：Executor
 - **重试次数**：第 1 次
 
 ## 执行摘要
 
-全部 10 项步骤完成（任务 1 规范迁移 4 项 + 任务 2 Handoff 原语 5 项 + 验证 1 项），构建通过、298 条测试无回归，自测通过。
+全部 7 项实施步骤完成；`npm run build` 与 `npm test`（298/298）通过；Checkpoint 快照与组合终止条件在单元级（node 脚本 16 项断言）与 CLI 级（临时目录模拟真实流程）均验证通过。
 
 ## 实施步骤完成情况
 
-- [x] 任务1a：dev_core.md「Agent 工具使用规范」节（75 行）完整迁移到 `.opencode/instructions/core.md`，插入到「设计原则」节之后，保留 todowrite/question/task/skill + 优先级表结构
-- [x] 任务1b：同步迁移到模板源 `src/core/templates-data/core-instructions/zh-CN.md`（中文一致）与 `en.md`（英文翻译版）
-- [x] 任务1c：dev_core.md 原规则标题改为 `## [-] Agent 工具使用规范 (2026-06-27)`，并添加「已迁移到 .opencode/instructions/core.md (v5.2)」说明，内容完整保留未删除
-- [x] 任务1d：AGENTS.md 第 70 行及 agents-md 模板 zh-CN/en 第 66 行「统一工具规范」引用由 `.openfeel/dev/dev_core.md` 改为 `.opencode/instructions/core.md`
-- [x] 任务2a：feel.md 三份（.opencode + zh-CN/en 模板）在「委托边界」节末尾新增「### Handoff 委派机制」节，含 4 步委派流程 + 可用 Handoff 目标表（4 个来源 Agent）
-- [x] 任务2b：executor.md 三份末尾新增「## Handoff」节（可委派 Vision 分析截图、Reviewer 预审代码）
-- [x] 任务2c：schemer.md 三份末尾新增「## Handoff」节（可委派 Reviewer 方案预审、Planner 计划确认）
-- [x] 任务2d：reviewer.md 三份末尾新增「## Handoff」节（可委派 Vision 审查 UI 截图）
-- [x] 任务2e：feel-tester.md 三份末尾新增「## Handoff」节（可委派 Vision 验证 UI 截图、Executor 修复 Bug）
-- [x] 验证：`npm run build` 通过（模板一致性校验 4/4）、`npm test` 通过（20 文件 298 条）
+- [x] 步骤1：`advanceStagePhase` 推进成功后调用 `saveCheckpoint(stageId, phase)`（建目录/毫秒时间戳命名/完整快照/保留 20 个自动清理/try-catch 不阻塞）
+- [x] 步骤2：新增 `listCheckpoints(stageId?)` 与 `restoreCheckpoint(filename)`（含路径穿越安全校验、恢复前 .bak 备份）
+- [x] 步骤3：`src/commands/flow.ts` 新增 `flow checkpoint list [stage]` 与 `flow checkpoint restore <file> --force`
+- [x] 步骤4：zh-CN.ts / en.ts 的 flow 域新增 7 组 checkpoint 双语键 + help 域 4 组帮助键
+- [x] 步骤5：pipeline-schema.ts 新增 `TRANSITION_OR_SEPARATOR`、`parseTransitionKey`、`transitionKeyMatches`（transitions key 支持 `|` 组合）
+- [x] 步骤6：新增 `getValidTargets(fromPhase)`，改造 `hasTransition` / `getAvailablePhases` / `canAdvance`（无 `|` 保持单条件原行为）
+- [x] 步骤7：默认 transitions 增加组合条件 `'review_passed|test_passed': ['archiving']`
 
 ## 自测清单验证
 
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| core.md 已包含完整「Agent 工具使用规范」（todowrite/question/task/skill + 优先级表） | ✅ | `.opencode/instructions/core.md` 第 45-118 行，5 个子节齐全 |
-| dev_core.md 中规范已标记 `[-]` 且内容未删除 | ✅ | 第 38 行 `[-]`，内容保留备查 |
-| AGENTS.md 及 agents-md 模板引用已指向 core.md | ✅ | 3 个文件（AGENTS.md、agents-md zh-CN/en）均已更新 |
-| feel.md 已包含「Handoff 委派机制」节（含 4 个来源 Agent 委派表） | ✅ | 3 份 feel.md 同步 |
-| 4 个 Agent（executor/schemer/reviewer/feel-tester）已包含「Handoff」节且可委派目标正确 | ✅ | 12 个文件（4 Agent × 3 语言位置）全部验证 |
-| 中英双语（zh-CN + en）模板已同步 | ✅ | core-instructions en.md 含英文工具规范；4 Agent en 模板含英文 Handoff |
-| `npm run build` 构建通过 | ✅ | 模板一致性校验 4/4 通过，TypeScript 编译完成 |
-| `npm test` 无回归 | ✅ | 20 个测试文件 298 条测试全部通过 |
+| `npm run build` 通过 | ✅ | 模板一致性校验 4/4 |
+| `npm test` 无回归 | ✅ | 20 文件 298 用例全部通过 |
+| 推进后生成快照 | ✅ | 临时目录 CLI 推进 demo → plan_review，`demo-20260807T162853782-plan_review.json` 自动生成，内容为完整 flow.json |
+| `flow checkpoint list` 列出快照 | ✅ | 全部列出 / `[stage]` 过滤 / 空阶段提示均正常 |
+| `flow checkpoint restore` 安全确认 | ✅ | 不带 `--force` 拒绝（exit 1）；带 `--force` 恢复成功，flow.json 回滚至快照状态，原文件备份 .bak |
+| 组合条件任一匹配即可推进 | ✅ | canAdvance/hasTransition/getAvailablePhases：test_passed→archiving ✓、review_passed→archiving ✓、plan_pending→archiving ✗、plan_pending→plan_review ✓（单条件保持） |
+| 组合条件 CLI 推进不报错 | ✅ | 临时目录推进 demo2 → review_passed 后 `flow advance --to archiving` 成功（exit 0），不再报阶段跳跃错误 |
+| 快照保留上限 | ✅ | 超出后清理为 20 个 |
+| `openfeel flow health --quick` 通过 | ✅ | EXIT=0 |
 
 ## 产出文件
 
-- `.opencode/instructions/core.md`（修改：新增工具规范节）
-- `.openfeel/dev/dev_core.md`（修改：规范标记 [-]）
-- `AGENTS.md`（修改：引用指向 core.md）
-- `src/core/templates-data/core-instructions/zh-CN.md`（修改：新增工具规范节）
-- `src/core/templates-data/core-instructions/en.md`（修改：新增英文工具规范节）
-- `.opencode/agents/feel.md`（修改：新增 Handoff 委派机制）
-- `.opencode/agents/executor.md`、`.opencode/agents/schemer.md`、`.opencode/agents/reviewer.md`、`.opencode/agents/feel-tester.md`（修改：新增 Handoff 节）
-- `src/core/templates-data/agents/zh-CN/{feel,executor,schemer,reviewer,feel-tester}.md`（修改）
-- `src/core/templates-data/agents/en/{feel,executor,schemer,reviewer,feel-tester}.md`（修改）
-- `src/core/templates-data/agents-md/zh-CN.md`、`src/core/templates-data/agents-md/en.md`（修改：引用指向 core.md）
-- `src/core/template-loader.ts`（构建自动重新注入，随 build 更新，属预期产物）
-- `.openfeel/plan/v5.2/ops/op-001.md`（创建）
+- `src/core/flow-manager.ts`（saveCheckpoint/listCheckpoints/restoreCheckpoint/cleanupCheckpoints/formatCheckpointTimestamp/getValidTargets；advanceStagePhase 接入快照；hasTransition/getAvailablePhases/canAdvance 改造；默认 transitions 组合条件）
+- `src/core/pipeline-schema.ts`（TRANSITION_OR_SEPARATOR/parseTransitionKey/transitionKeyMatches）
+- `src/commands/flow.ts`（checkpoint 子命令组）
+- `src/core/i18n-data/zh-CN.ts`（checkpoint 域键 + help 键）
+- `src/core/i18n-data/en.ts`（checkpoint 域键 + help 键）
+
+**方案产出比对**：声明 5 个文件全部产出，无遗漏、无超范围 → 一致。
 
 ## 前置校验结果
 
-- 方案完整性：通过（目标/实施步骤 10 项/产出文件/自测清单 8 项/阶段/最多重试 均齐备）
-- Phase 合法性：通过（flow.json `pipeline.current.stage=v5.2-stage-01`，阶段 phase=`exec_running`，合法）
-- 流转合法性：通过（`openfeel flow health --quick` 正常退出 exit 0，无 errors）
+- 方案完整性：通过（任务未预置方案文件，按任务指示创建 `.openfeel/plan/v5.3/ops/op-001.md`，含 6 项必填字段：目标/实施步骤/产出文件/自测清单/阶段/最多重试）
+- Phase 合法性：通过（`openfeel flow health --quick` EXIT=0；pipeline.phase=active 合法 MetaPhase；v5.3-stage-01.phase=exec_running 合法 PipelinePhase）
+- 流转合法性：通过（CLI 优先校验 `openfeel flow health --quick` 正常退出）
 
 ## 偏差记录
 
-- **范围说明**：任务 2B 标题提及"9 个 Agent"，但设计表格（A 节 Handoff 可用目标表）仅定义 4 个来源 Agent 的委派关系（Executor/Schemer/Reviewer/Feel Tester），故按表格仅更新这 4 个 Agent 的 prompt；其余 5 个（Planner/Archiver/Vision/Utility）无委派目标定义，未添加 Handoff 节，与任务"需要更新的 Agent（至少）"清单一致。
-- **关联同步**：除任务明确要求的文件外，额外更新了 AGENTS.md 与 agents-md 模板中的「统一工具规范」引用（由 dev_core.md → core.md），属规范迁移的必要关联同步，确保引用不失效。
-- **超范围产物**：`src/core/template-loader.ts` 由 `npm run build` 自动重新注入（core-instructions / agents-md 模板内容变化），属构建预期行为，非手动修改。
+| # | 类型 | 说明 |
+|---|------|------|
+| 1 | 流程 | 方案文件 op-001.md 由 Executor 按任务指示创建（正常由 Schemer 制定），Feel 已显式指示"先在 ops/ 下创建 op-001.md" |
+| 2 | Phase | flow.json `pipeline.current.op` 为空字符串，与 op-001 不匹配（阶段刚注册、op 尚未分配）；按 Feel 执行指示继续，health --quick 无告警 |
+| 3 | 实现 | 组合条件采用实际代码结构（transitions 为 `Record<from, to[]>`，key 含 `\|` 组合），而非任务描述的 `{from,to,condition}[]` 数组结构——现有代码 transitions 为 Record 结构，改为数组将破坏 pipeline.yaml Zod 校验与既有测试；功能语义一致（任一条件满足即可推进） |
+| 4 | 增强 | 快照时间戳提升为毫秒级（`yyyyMMddTHHmmssSSS`），避免同秒多次推进覆盖快照（自测发现，已记入方案修正记录） |
+| 5 | 增强 | 补充 help 域 checkpoint 帮助键（CLI 自测发现 Missing key 警告，已记入方案修正记录） |
+
+> 注：CLI 验证中 `test_passed → archiving` 受既有 `autoRepairInconsistency` 行为干扰（test_passed 时 status 已被 mapPhaseToStageStatus 置为 done，被误判修正为 phase=done，属既有逻辑、非本次改动引入）；组合条件的 test_passed 分支已通过单元级断言验证。

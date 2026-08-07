@@ -119,6 +119,15 @@ export const flow: I18nDomain = {
   'log.recentTitleTmpl':        { key: 'flow.log.recentTitleTmpl',        zh: '最近 {n} 条操作日志',                     en: '' },
   'log.detail':                 { key: 'flow.log.detail',                 zh: '详情',                                   en: '' },
 
+  // flow checkpoint
+  'checkpoint.listTitle':           { key: 'flow.checkpoint.listTitle',           zh: 'Checkpoint 快照',                        en: '' },
+  'checkpoint.noSnapshots':         { key: 'flow.checkpoint.noSnapshots',         zh: '（暂无 Checkpoint 快照）',                en: '' },
+  'checkpoint.noSnapshotsStageTmpl':{ key: 'flow.checkpoint.noSnapshotsStageTmpl', zh: '（阶段 {stage} 暂无 Checkpoint 快照）',    en: '' },
+  'checkpoint.listCountTmpl':       { key: 'flow.checkpoint.listCountTmpl',       zh: '共 {n} 个快照',                          en: '' },
+  'checkpoint.restoreNeedForce':    { key: 'flow.checkpoint.restoreNeedForce',    zh: '错误：恢复操作将覆盖当前 flow.json，请使用 --force 确认', en: '' },
+  'checkpoint.restoreOkTmpl':       { key: 'flow.checkpoint.restoreOkTmpl',       zh: '✓ 已从快照 {file} 恢复 flow.json（当前文件已备份为 flow.json.bak）', en: '' },
+  'checkpoint.restoreFailTmpl':     { key: 'flow.checkpoint.restoreFailTmpl',     zh: '错误：无法从快照 {file} 恢复（文件不存在、名称非法或内容无效）', en: '' },
+
   // flow review
   'review.errorStageNotFoundTmpl':  { key: 'flow.review.errorStageNotFoundTmpl',  zh: '错误：opId "{opId}" 中的阶段 "{stage}" 在 flow.json 中不存在', en: '' },
   'review.errorOpNotFoundTmpl':     { key: 'flow.review.errorOpNotFoundTmpl',     zh: '错误：opId "{opId}" 中的操作 "{op}" 在阶段 "{stage}" 中不存在', en: '' },
@@ -431,6 +440,10 @@ export const help: I18nDomain = {
   'flow.migrate.noBackup': { key: 'help.flow.migrate.noBackup', zh: '跳过 .bak 文件生成（默认生成 flow.json.v4.0.bak）', en: '' },
   'flow.health':           { key: 'help.flow.health',           zh: '全面健康检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml 等', en: '' },
   'flow.health.quick':     { key: 'help.flow.health.quick',     zh: '仅检查关键项（phase/current 合法性，跳过其他检查）', en: '' },
+  'flow.checkpoint':       { key: 'help.flow.checkpoint',       zh: 'Checkpoint 快照管理（phase 推进时自动保存 flow.json 快照）', en: '' },
+  'flow.checkpoint.list':  { key: 'help.flow.checkpoint.list',  zh: '列出所有（或指定阶段的）Checkpoint 快照', en: '' },
+  'flow.checkpoint.restore':      { key: 'help.flow.checkpoint.restore',      zh: '从 Checkpoint 快照恢复 flow.json（覆盖当前文件，需 --force 确认）', en: '' },
+  'flow.checkpoint.restore.force':{ key: 'help.flow.checkpoint.restore.force', zh: '确认恢复操作（覆盖当前 flow.json）', en: '' },
   'flow.recover':          { key: 'help.flow.recover',          zh: '跨会话上下文恢复：输出流水线状态、阻塞原因和待处理任务', en: '' },
   'flow.wizard':           { key: 'help.flow.wizard',           zh: '交互式流水线向导，逐步推进阶段', en: '' },
 

@@ -9,7 +9,7 @@
  * - advancePhase() 增加 to 参数的 PipelinePhaseSchema 校验
  * - 新增 repair() 方法，自动检测并修复 flow.json 常见问题
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, renameSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, renameSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
@@ -19,6 +19,7 @@ import {
   PIPELINE_PHASES,
   MetaPhaseSchema,
   META_PHASES,
+  transitionKeyMatches,
   type PipelineConfig,
   type PipelinePhase,
   type MetaPhase,
@@ -329,6 +330,140 @@ export class FlowManager {
   /** 数据是否已加载 */
   isLoaded(): boolean {
     return this.data !== null;
+  }
+
+  // ═══ Checkpoint 快照 ═══
+
+  /** 快照保留上限：超过该数量自动清理最旧的 */
+  private static readonly CHECKPOINT_MAX_KEEP = 20;
+
+  /**
+   * 保存 flow.json 快照到 .openfeel/checkpoints/
+   * 命名格式: {stageId}-{yyyyMMddTHHmmss}-{phase}.json
+   * 保留最近 CHECKPOINT_MAX_KEEP 个快照，超出自动清理最旧的。
+   * try-catch 包裹：快照失败不阻塞 phase 推进（调用方保证）。
+   * @param stageId 阶段 ID（如 v5.3-stage-01）
+   * @param phase 推进后的目标 phase（如 exec_running）
+   */
+  saveCheckpoint(stageId: string, phase: PipelinePhase): void {
+    try {
+      if (!this.data) {
+        return;
+      }
+      const dir = resolve(this.projectPath, '.openfeel', 'checkpoints');
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+
+      // 序列化时去除 op 中的 id 字段（与 save() 保持一致）
+      const serializable = JSON.parse(JSON.stringify(this.data)) as FlowData;
+      for (const stage of Object.values(serializable.stages)) {
+        for (const op of Object.values(stage.ops)) {
+          delete (op as unknown as Record<string, unknown>).id;
+        }
+      }
+
+      const timestamp = this.formatCheckpointTimestamp(new Date());
+      const filename = `${stageId}-${timestamp}-${phase}.json`;
+      const filePath = resolve(dir, filename);
+      writeFileSync(filePath, JSON.stringify(serializable, null, 2) + '\n', 'utf-8');
+
+      // 清理超限的最旧快照
+      this.cleanupCheckpoints(stageId);
+    } catch {
+      // 快照失败静默跳过，不阻塞 phase 推进
+    }
+  }
+
+  /**
+   * 列出 Checkpoint 快照文件名（按时间升序）
+   * @param stageId 可选阶段 ID，提供时仅列出该阶段的快照
+   * @returns 快照文件名列表，目录不存在或读取失败时返回空数组
+   */
+  listCheckpoints(stageId?: string): string[] {
+    try {
+      const dir = resolve(this.projectPath, '.openfeel', 'checkpoints');
+      if (!existsSync(dir)) {
+        return [];
+      }
+      return readdirSync(dir)
+        .filter((f) => f.endsWith('.json') && (!stageId || f.startsWith(stageId + '-')))
+        .sort();
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * 从 Checkpoint 快照恢复 flow.json
+   * 恢复前将当前 flow.json 备份为 .bak；恢复成功后重新加载数据。
+   * @param filename 快照文件名（仅允许纯文件名，防路径穿越）
+   * @returns 是否恢复成功
+   */
+  restoreCheckpoint(filename: string): boolean {
+    // 安全校验：拒绝含路径分隔符或 '..' 的文件名，防止路径穿越
+    if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+      return false;
+    }
+    try {
+      const dir = resolve(this.projectPath, '.openfeel', 'checkpoints');
+      const filePath = resolve(dir, filename);
+      if (!existsSync(filePath)) {
+        return false;
+      }
+      const content = readFileSync(filePath, 'utf-8');
+      // 校验快照 JSON 合法性，非法内容拒绝恢复
+      JSON.parse(content);
+      // 备份当前 flow.json（失败不阻塞恢复）
+      if (existsSync(this.filePath)) {
+        try {
+          copyFileSync(this.filePath, this.filePath + '.bak');
+        } catch {
+          // 备份失败忽略
+        }
+      }
+      writeFileSync(this.filePath, content, 'utf-8');
+      this.load();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** 格式化快照时间戳: yyyyMMddTHHmmssSSS（毫秒级，避免同秒多次推进覆盖快照） */
+  private formatCheckpointTimestamp(date: Date): string {
+    const pad = (n: number): string => String(n).padStart(2, '0');
+    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}` +
+      `T${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}` +
+      `${String(date.getMilliseconds()).padStart(3, '0')}`;
+  }
+
+  /**
+   * 清理超限快照：按文件名（含时间戳）升序，删除最旧的直至不超过 CHECKPOINT_MAX_KEEP
+   * @param stageId 阶段 ID，仅清理该阶段的快照
+   */
+  private cleanupCheckpoints(stageId: string): void {
+    try {
+      const dir = resolve(this.projectPath, '.openfeel', 'checkpoints');
+      if (!existsSync(dir)) {
+        return;
+      }
+      const entries = readdirSync(dir)
+        .filter((f) => f.startsWith(stageId + '-') && f.endsWith('.json'))
+        .sort();
+      const excess = entries.length - FlowManager.CHECKPOINT_MAX_KEEP;
+      if (excess > 0) {
+        for (let i = 0; i < excess; i++) {
+          try {
+            unlinkSync(resolve(dir, entries[i]));
+          } catch {
+            // 单个文件删除失败跳过
+          }
+        }
+      }
+    } catch {
+      // 清理失败静默跳过
+    }
   }
 
   /** 获取原始数据（供测试用） */
@@ -841,6 +976,9 @@ export class FlowManager {
     // 更新 stage phase
     this.data.stages[stageName].phase = targetPhase;
 
+    // Checkpoint 自动快照：phase 推进成功后保存 flow.json 快照到 .openfeel/checkpoints/（失败不阻塞推进）
+    this.saveCheckpoint(stageName, targetPhase);
+
     // 日志强制落档骨架：关键 phase 节点自动创建骨架文件
     const SKELETON_PHASES: PipelinePhase[] = [
       'exec_running',
@@ -1032,6 +1170,26 @@ export class FlowManager {
   // ── 阶段跳转检测 ──
 
   /**
+   * 获取从指定 phase 可达的所有目标 phase（支持组合条件 key）
+   * 遍历 transitions 表，key 与 fromPhase 匹配（组合 key 如 'test_passed|review_passed' 任一条件匹配即可）即收集其目标。
+   * 无 '|' 的简单 key 保持单条件原行为（精确相等）。
+   * @param fromPhase 当前源 phase
+   * @returns 去重后的可达目标 phase 列表
+   */
+  private getValidTargets(fromPhase: PipelinePhase): string[] {
+    const transitions = this.pipelineConfig?.transitions ?? {};
+    const result = new Set<string>();
+    for (const [key, targets] of Object.entries(transitions)) {
+      if (transitionKeyMatches(key, fromPhase)) {
+        for (const target of targets) {
+          result.add(target);
+        }
+      }
+    }
+    return [...result];
+  }
+
+  /**
    * 检查当前 phase 到目标 phase 是否存在直接跳转路径
    * 供 CLI --force 判断使用
    * @param stageName 可选阶段名，提供时使用该阶段 phase 进行查找；否则使用 current.stage 的 phase
@@ -1042,12 +1200,11 @@ export class FlowManager {
     }
     const phase = this.resolveCurrentPhase(stageName);
     if (!phase) return false;
-    const validTargets = this.pipelineConfig.transitions[phase];
-    return validTargets ? validTargets.includes(to) : false;
+    return this.getValidTargets(phase).includes(to);
   }
 
   /**
-   * 获取当前阶段的所有可达下一阶段（基于 transitions 表）
+   * 获取当前阶段的所有可达下一阶段（基于 transitions 表，支持组合条件）
    * 供 flow wizard 交互模式使用
    * @param stageName 可选阶段名，提供时使用该阶段 phase 进行查找；否则使用 current.stage 的 phase
    */
@@ -1060,8 +1217,7 @@ export class FlowManager {
     }
     const currentPhase = this.resolveCurrentPhase(stageName);
     if (!currentPhase) return [];
-    const validTargets = this.pipelineConfig.transitions[currentPhase];
-    return (validTargets ?? []) as PipelinePhase[];
+    return this.getValidTargets(currentPhase) as PipelinePhase[];
   }
 
   /**
@@ -1526,9 +1682,9 @@ export class FlowManager {
     }
     const currentPhase = this.data.stages[parts.stageId].phase;
 
-    // 检查从当前 phase 到目标 phase 的流转是否合法
-    const validTargets = this.pipelineConfig.transitions[currentPhase];
-    if (!validTargets || !validTargets.includes(to)) {
+    // 检查从当前 phase 到目标 phase 的流转是否合法（支持组合条件 key）
+    const validTargets = this.getValidTargets(currentPhase);
+    if (!validTargets.includes(to)) {
       return false;
     }
 
@@ -2554,6 +2710,8 @@ export class FlowManager {
         test_pending: ['test_failed', 'test_passed'],
         test_failed: ['test_pending', 'scheme_pending'],          // BUG 修复：增加 scheme_pending
         test_passed: ['archiving'],
+        // 组合条件示例：审查通过 或 测试通过 任一即可推进到 archiving（多 Agent 并行场景，任一完成即推进）
+        'review_passed|test_passed': ['archiving'],
         archiving: ['done'],
         done: [],
       },

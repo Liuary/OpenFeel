@@ -111,6 +111,14 @@ export const flow: I18nDomain = {
   'log.recentTitleTmpl':        { key: 'flow.log.recentTitleTmpl',        zh: '', en: 'Recent {n} operation logs' },
   'log.detail':                 { key: 'flow.log.detail',                 zh: '', en: 'Details' },
 
+  'checkpoint.listTitle':           { key: 'flow.checkpoint.listTitle',           zh: '', en: 'Checkpoint Snapshots' },
+  'checkpoint.noSnapshots':         { key: 'flow.checkpoint.noSnapshots',         zh: '', en: '(No checkpoint snapshots yet)' },
+  'checkpoint.noSnapshotsStageTmpl':{ key: 'flow.checkpoint.noSnapshotsStageTmpl', zh: '', en: '(No checkpoint snapshots for stage {stage})' },
+  'checkpoint.listCountTmpl':       { key: 'flow.checkpoint.listCountTmpl',       zh: '', en: '{n} snapshot(s) in total' },
+  'checkpoint.restoreNeedForce':    { key: 'flow.checkpoint.restoreNeedForce',    zh: '', en: 'Error: Restore will overwrite the current flow.json, use --force to confirm' },
+  'checkpoint.restoreOkTmpl':       { key: 'flow.checkpoint.restoreOkTmpl',       zh: '', en: '✓ flow.json restored from snapshot {file} (current file backed up as flow.json.bak)' },
+  'checkpoint.restoreFailTmpl':     { key: 'flow.checkpoint.restoreFailTmpl',     zh: '', en: 'Error: Cannot restore from snapshot {file} (missing, invalid name, or bad content)' },
+
   'review.errorStageNotFoundTmpl':  { key: 'flow.review.errorStageNotFoundTmpl',  zh: '', en: 'Error: Stage "{stage}" in opId "{opId}" not found in flow.json' },
   'review.errorOpNotFoundTmpl':     { key: 'flow.review.errorOpNotFoundTmpl',     zh: '', en: 'Error: Op "{op}" in opId "{opId}" not found in stage "{stage}"' },
   'review.labelBlocking':           { key: 'flow.review.labelBlocking',           zh: '', en: '[Blocking]' },
@@ -410,6 +418,10 @@ export const help: I18nDomain = {
   'flow.migrate.noBackup': { key: 'help.flow.migrate.noBackup', zh: '', en: 'Skip .bak file generation (default generates flow.json.v4.0.bak)' },
   'flow.health':           { key: 'help.flow.health',           zh: '', en: 'Comprehensive health check: flow.json / cross-file consistency / zombie states / config.yaml etc.' },
   'flow.health.quick':     { key: 'help.flow.health.quick',     zh: '', en: 'Key checks only (phase/current validity, skip other checks)' },
+  'flow.checkpoint':       { key: 'help.flow.checkpoint',       zh: '', en: 'Checkpoint snapshot management (auto-saves flow.json snapshots on phase advance)' },
+  'flow.checkpoint.list':  { key: 'help.flow.checkpoint.list',  zh: '', en: 'List all (or stage-filtered) checkpoint snapshots' },
+  'flow.checkpoint.restore':      { key: 'help.flow.checkpoint.restore',      zh: '', en: 'Restore flow.json from a checkpoint snapshot (overwrites current file, requires --force)' },
+  'flow.checkpoint.restore.force':{ key: 'help.flow.checkpoint.restore.force', zh: '', en: 'Confirm restore operation (overwrites current flow.json)' },
   'flow.recover':          { key: 'help.flow.recover',          zh: '', en: 'Cross-session context recovery: pipeline status, blockers, and pending tasks' },
   'flow.wizard':           { key: 'help.flow.wizard',           zh: '', en: 'Interactive pipeline wizard, advance stage by stage' },
 

@@ -822,6 +822,56 @@ export function registerFlowCommand(program: Command): void {
       console.log('\n' + t('flow.migrate.done', lang));
     });
 
+  // flow checkpoint — Checkpoint 快照管理子命令组
+  const checkpointCmd = flow
+    .command('checkpoint')
+    .description('Checkpoint 快照管理（phase 推进时自动保存 flow.json 快照）');
+
+  // flow checkpoint list [stage]
+  checkpointCmd
+    .command('list')
+    .description('列出所有（或指定阶段的）Checkpoint 快照')
+    .argument('[stage]', '阶段 ID（可选），如 v5.3-stage-01')
+    .action((stage?: string) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      const snapshots = mgr.listCheckpoints(stage);
+      if (snapshots.length === 0) {
+        console.log(stage
+          ? t('flow.checkpoint.noSnapshotsStageTmpl', lang, { stage })
+          : t('flow.checkpoint.noSnapshots', lang));
+        return;
+      }
+      console.log(t('flow.checkpoint.listTitle', lang) + (stage ? ` [${stage}]` : '') + ':');
+      for (const s of snapshots) {
+        console.log(`  ${s}`);
+      }
+      console.log(t('flow.checkpoint.listCountTmpl', lang, { n: String(snapshots.length) }));
+    });
+
+  // flow checkpoint restore <checkpoint-file> [--force]
+  checkpointCmd
+    .command('restore')
+    .description('从 Checkpoint 快照恢复 flow.json（覆盖当前文件，需 --force 确认）')
+    .argument('<checkpoint-file>', '快照文件名（如 v5.3-stage-01-20260807T162300-exec_running.json）')
+    .option('--force', '确认恢复操作（覆盖当前 flow.json）')
+    .action((file: string, options: { force?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      // 安全确认：恢复会覆盖当前 flow.json，必须显式 --force
+      if (!options.force) {
+        console.error(t('flow.checkpoint.restoreNeedForce', lang));
+        process.exit(1);
+      }
+      const ok = mgr.restoreCheckpoint(file);
+      if (ok) {
+        console.log(t('flow.checkpoint.restoreOkTmpl', lang, { file }));
+      } else {
+        console.error(t('flow.checkpoint.restoreFailTmpl', lang, { file }));
+        process.exit(1);
+      }
+    });
+
   // flow health [--quick]
   flow
     .command('health')

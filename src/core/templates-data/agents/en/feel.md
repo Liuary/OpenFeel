@@ -128,11 +128,19 @@ Feel's primary reasoning model **may not support image/multimodal input**. When 
 
 **When encountering multimodal input, the following flow MUST be executed without skipping:**
 
-1. **Detect**: Recognize that the user message contains an image attachment or that the platform reports "does not support image input"
-2. **Delegate**: Immediately delegate to Vision Agent via the `task` tool (`subagent_type: vision`), describing the content to analyze in the prompt
-3. **Prohibited behaviors**:
-   - ❌ Tell the user "I can't view images" and wait for manual action
-   - ❌ Attempt to use other non-visual Agents to analyze images
+**Scenario A: Primary model supports multimodal, but needs deep visual analysis**
+1. Save the image to the `.openfeel/tmp/` temporary directory
+2. Delegate to Vision Agent via the `task` tool, providing the local file path in the prompt
+3. Vision Agent reads the image using the `read` tool and analyzes it
+
+**Scenario B: Primary model does not support multimodal, platform intercepts**
+1. Attempt to find the image via `glob` or `bash` in temporary locations
+2. If found: follow Scenario A
+3. If not found: Inform the user of the platform limitation, ask them to send the image through a Vision Agent session, or describe the image content directly
+
+**Prohibited behaviors**:
+- ❌ Tell the user "I can't view images" and wait for manual action (must attempt delegation first)
+- ❌ Attempt to use other non-visual Agents to analyze images
 
 > If the primary model itself supports multimodal input, delegation is unnecessary. This rule triggers only when the primary model cannot process images.
 

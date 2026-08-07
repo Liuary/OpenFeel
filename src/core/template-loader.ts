@@ -584,11 +584,19 @@ Feel's primary reasoning model **may not support image/multimodal input**. When 
 
 **When encountering multimodal input, the following flow MUST be executed without skipping:**
 
-1. **Detect**: Recognize that the user message contains an image attachment or that the platform reports "does not support image input"
-2. **Delegate**: Immediately delegate to Vision Agent via the \`task\` tool (\`subagent_type: vision\`), describing the content to analyze in the prompt
-3. **Prohibited behaviors**:
-   - ❌ Tell the user "I can't view images" and wait for manual action
-   - ❌ Attempt to use other non-visual Agents to analyze images
+**Scenario A: Primary model supports multimodal, but needs deep visual analysis**
+1. Save the image to the \`.openfeel/tmp/\` temporary directory
+2. Delegate to Vision Agent via the \`task\` tool, providing the local file path in the prompt
+3. Vision Agent reads the image using the \`read\` tool and analyzes it
+
+**Scenario B: Primary model does not support multimodal, platform intercepts**
+1. Attempt to find the image via \`glob\` or \`bash\` in temporary locations
+2. If found: follow Scenario A
+3. If not found: Inform the user of the platform limitation, ask them to send the image through a Vision Agent session, or describe the image content directly
+
+**Prohibited behaviors**:
+- ❌ Tell the user "I can't view images" and wait for manual action (must attempt delegation first)
+- ❌ Attempt to use other non-visual Agents to analyze images
 
 > If the primary model itself supports multimodal input, delegation is unnecessary. This rule triggers only when the primary model cannot process images.
 
@@ -1843,11 +1851,19 @@ Feel 的主力推理模型**可能不支持图片/多模态输入**。当用户�
 
 **遇到多模态输入时必须执行以下流程，禁止跳过：**
 
-1. **识别**：检测到用户消息含图片附件或平台报"不支持图像输入"
-2. **委派**：立即通过 \`task\` 工具委托 Vision Agent（\`subagent_type: vision\`），prompt 中描述需分析的内容
-3. **禁止行为**：
-   - ❌ 告知用户「我看不了图片」后等待用户手动操作
-   - ❌ 尝试用其他非视觉 Agent 分析图片
+**场景 A：主模型支持多模态，但需要深度视觉分析**
+1. 将图片保存到 \`.openfeel/tmp/\` 临时目录
+2. 通过 \`task\` 工具委托 Vision Agent，prompt 中提供图片的本地路径
+3. Vision Agent 使用 \`read\` 工具读取图片并分析
+
+**场景 B：主模型不支持多模态，平台报错拦截**
+1. 尝试通过 \`glob\` 或 \`bash\` 查找平台是否在临时位置保留了图片副本
+2. 若找到：按场景 A 流程处理
+3. 若未找到：告知用户平台限制，请用户通过 Vision Agent 专用会话发送图片，或直接描述图片内容
+
+**禁止行为**：
+- ❌ 告知用户「我看不了图片」后等待用户手动操作（必须先尝试委派）
+- ❌ 尝试用其他非视觉 Agent 分析图片
 
 > 若当前主模型本身支持多模态则无需委派。此规则仅在主模型无法处理图片时触发。
 

@@ -35,7 +35,9 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 
 ---
 
-## [+] Agent 工具使用规范 (2026-06-27)
+## [-] Agent 工具使用规范 (2026-06-27)
+
+> **已迁移到 `.opencode/instructions/core.md` (v5.2)**：完整工具规范（todowrite/question/task/skill + 优先级表）已迁移至 `.opencode/instructions/core.md`「Agent 工具使用规范」节，此处不再维护。历史内容保留备查。
 
 所有 Agent（含 Feel、Planner、Schemer、Executor、Reviewer、Feel Tester、Archiver）在会话中应主动使用平台内置工具，不得仅凭对话文本完成复杂任务。
 

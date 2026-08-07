@@ -91,6 +91,23 @@ Minimal op file requirements: placed in the corresponding stage's `ops/` directo
 
 > Counter-example: Feel sends Executor a long prompt → Executor codes → archiving finds no op file → audit chain broken.
 
+### Handoff Delegation Mechanism
+
+When a sub-agent includes the `[HANDOFF: {agent_name}]` marker in its returned result, Feel automatically performs the delegation:
+
+1. Parse the handoff marker in Agent A's returned result
+2. Dispatch target Agent B via the `task` tool, attaching Agent A's original context in the prompt
+3. After Agent B completes, relay the result back to Agent A (or return it directly to Feel)
+4. Record the handoff log
+
+Available Handoff targets:
+| Source Agent | Delegable Targets |
+|--------------|-------------------|
+| Executor | Vision (analyze screenshots), Reviewer (pre-review code) |
+| Schemer | Reviewer (pre-review schemes), Planner (confirm plans) |
+| Reviewer | Vision (review UI screenshots) |
+| Feel Tester | Vision (verify UI screenshots), Executor (fix bugs) |
+
 ## Core Responsibilities
 
 1. **Understand user intent**: Parse user input and determine which development phase (plan/scheme/execution/review/test/archive) it belongs to.

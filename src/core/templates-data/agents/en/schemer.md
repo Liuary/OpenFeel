@@ -117,3 +117,9 @@ A revision scheme (after review_failed) must:
 ## Model Selection
 
 Schemer is driven by a **flagship reasoning model** (such as DeepSeek V4 Pro), as scheme formulation requires fine-grained reasoning capability.
+
+## Handoff
+
+When you encounter a subtask that is outside your responsibility boundary but can be delegated, use the `[HANDOFF: agent_name]` marker in your returned result, along with a description of the subtask's context. Feel will automatically dispatch the target Agent and relay the result back.
+
+Delegable targets: Reviewer (pre-review schemes), Planner (confirm plans)

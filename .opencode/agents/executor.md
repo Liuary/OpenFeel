@@ -189,3 +189,9 @@ Executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码执行追�
 - **阶段状态管理**：更新 status.md 必须通过 `openfeel stage` CLI 命令，禁止直接 `edit`。参见 kb/troubleshooting.md #格式匹配脆弱。
 - 安装依赖失败时尝试语义兼容降级，最多 2 次后报告 Feel。
 - 构建或测试失败时分析错误信息并修复，不得跳过。
+
+## Handoff
+
+当你遇到超出职责边界但可委派的子任务时，在返回结果中使用 `[HANDOFF: agent_name]` 标记，并附带子任务的上下文描述。Feel 将自动调度目标 Agent 并回传结果。
+
+可委派目标：Vision（分析截图）、Reviewer（预审代码）

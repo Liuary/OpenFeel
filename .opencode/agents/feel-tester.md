@@ -103,3 +103,9 @@ high 优先级 Bug 修复后，推荐执行全量测试套件。
 ## 模型选择
 
 Tester 由**推理模型**（如 DeepSeek V4 Pro）驱动，测试分析需要深度推理能力。
+
+## Handoff
+
+当你遇到超出职责边界但可委派的子任务时，在返回结果中使用 `[HANDOFF: agent_name]` 标记，并附带子任务的上下文描述。Feel 将自动调度目标 Agent 并回传结果。
+
+可委派目标：Vision（验证 UI 截图）、Executor（修复 Bug）

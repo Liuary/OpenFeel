@@ -43,6 +43,82 @@ The .openfeel directory is divided into **Public Domain** and **Private Domain**
 
 All users (including single-person projects) follow this structure.
 
+## Agent Tool Usage Conventions
+
+All Agents (including Feel, Planner, Schemer, Executor, Reviewer, Feel Tester, Archiver) should proactively use the platform's built-in tools during sessions. Do not rely solely on conversational text to complete complex tasks.
+
+### 1. todowrite — Task List Management
+
+**Trigger conditions** (use when any of the following applies):
+- The current task contains more than 3 independent steps
+- The user issues multiple tasks at once (numbered or comma-separated)
+- The task involves cross-file modifications and needs progress tracking
+
+**Usage requirements**:
+- Create a todo list before starting execution, one entry per step
+- Only one `in_progress` at a time
+- Mark `completed` immediately after finishing (do not wait for batch processing)
+- Append newly discovered steps to the end of the list
+
+**Example**:
+```
+User: "Fix three bugs in flow.json, then run tests"
+→ Create todo: [FixBug1, FixBug2, FixBug3, RunTests]
+```
+
+### 2. question — Ask the User
+
+**Trigger conditions** (must ask when any applies; speculative assumptions are prohibited):
+- The requirement is ambiguous or has multiple reasonable interpretations
+- There are 2 or more equally reasonable technical approaches
+- The operation may cause irreversible consequences (deleting files, overwriting config, force push, etc.)
+- It involves architecture decisions or design direction choices
+
+**Usage requirements**:
+- Mark the recommended option with "(Recommended)"
+- Each option must include a one-sentence explanation of its consequences
+- Simple confirmation questions should not exceed 3 options
+- Urgent or high-risk operations must include a "Cancel" option
+
+**Prohibited behaviors**:
+- Making speculative assumptions and executing directly when requirements are ambiguous
+- Implementing without user selection when multiple options exist
+- Starting with "maybe" or "perhaps" without asking
+
+### 3. task — Sub-Agent Dispatch
+
+**Trigger conditions**:
+- Need to explore multiple code areas in parallel (launch 2~3 explore agents)
+- Complex multi-step tasks need to be delegated to a general agent
+- Complex tasks need to be delegated to downstream Agents (dispatched by Feel, the chief conductor)
+
+**Usage requirements**:
+- For parallel tasks, issue multiple task calls in a single message
+- Each task prompt must include: specific task description + expected information to return
+- Clearly tell the sub-agent whether it is read-only research or can write code
+
+### 4. skill — Skill Loading
+
+**Trigger conditions**:
+- Need to understand current stage status → `get-stage-status`
+- Need to consult the project knowledge base → `check-kb`
+- Need to get the Bug list → `get-bugs`
+
+**Usage requirements**:
+- Load `check-kb` at session start to get project background
+- Load `get-stage-status` before handling stage tasks to confirm process status
+- Must not skip skills and operate directly from memory
+
+### 5. Tool Usage Priority
+
+| Scenario | Preferred Tool | Prohibited Practice |
+|----------|---------------|---------------------|
+| Multi-step tasks | `todowrite` | Executing step-by-step from memory |
+| Ambiguous requirements | `question` | Making assumptions and acting directly |
+| Code exploration | `task(explore)` | Manual grep/read one by one |
+| Getting status | `skill(get-stage-status)` | Inferring from memory |
+| Batch file operations | `task(general)` | Processing serially one by one |
+
 ## User Identity
 
 > .openfeel/.info.json

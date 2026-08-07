@@ -67,7 +67,7 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 
 ## 跨 Agent 工具使用约束
 
-1. **统一工具规范**：所有 Agent 必须遵循 `.openfeel/dev/dev_core.md` 中「Agent 工具使用规范」，该规范定义了 `todowrite`、`question`、`task`、`skill` 四种核心工具的使用准则和触发条件。
+1. **统一工具规范**：所有 Agent 必须遵循 `.opencode/instructions/core.md` 中「Agent 工具使用规范」，该规范定义了 `todowrite`、`question`、`task`、`skill` 四种核心工具的使用准则和触发条件。
 
 2. **工具使用优先级**（由高到低）：
    - `todowrite` > 凭记忆逐条执行 — 多步骤任务必须先创建 todo 列表

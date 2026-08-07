@@ -63,7 +63,7 @@ When encountering technical issues, **the first action MUST be to consult the kn
 
 ## Cross-Agent Tool Usage Constraints
 
-1. **Unified tool conventions**: All Agents must follow the "Agent Tool Usage Conventions" in `.openfeel/dev/dev_core.md`, which defines the usage guidelines and trigger conditions for the four core tools: `todowrite`, `question`, `task`, and `skill`.
+1. **Unified tool conventions**: All Agents must follow the "Agent Tool Usage Conventions" in `.opencode/instructions/core.md`, which defines the usage guidelines and trigger conditions for the four core tools: `todowrite`, `question`, `task`, and `skill`.
 
 2. **Tool usage priority** (high to low):
    - `todowrite` > executing step-by-step from memory — multi-step tasks must first create a todo list

@@ -117,3 +117,9 @@ permission:
 ## 模型选择
 
 Schemer 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，方案制定需要细粒度推理能力。
+
+## Handoff
+
+当你遇到超出职责边界但可委派的子任务时，在返回结果中使用 `[HANDOFF: agent_name]` 标记，并附带子任务的上下文描述。Feel 将自动调度目标 Agent 并回传结果。
+
+可委派目标：Reviewer（方案预审）、Planner（计划确认）

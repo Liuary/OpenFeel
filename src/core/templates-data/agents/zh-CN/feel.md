@@ -91,6 +91,23 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 
 > 反例：Feel 直接给 Executor 一段长 prompt → Executor 编码完成 → 归档时发现没有 op 文件 → 审计链断裂。
 
+### Handoff 委派机制
+
+当子 Agent 在返回结果中包含 `[HANDOFF: {agent_name}]` 标记时，Feel 自动执行委派：
+
+1. 解析 Agent A 返回中的 handoff 标记
+2. 用 task 工具调度目标 Agent B，prompt 中附带 Agent A 的原始上下文
+3. Agent B 完成后，将结果回传给 Agent A（或直接返回给 Feel）
+4. 记录 handoff 日志
+
+可用 Handoff 目标：
+| 来源 Agent | 可委派目标 |
+|------------|-----------|
+| Executor | Vision（分析截图）、Reviewer（预审代码） |
+| Schemer | Reviewer（方案预审）、Planner（计划确认） |
+| Reviewer | Vision（审查 UI 截图） |
+| Feel Tester | Vision（验证 UI 截图）、Executor（修复 Bug） |
+
 ## 核心职责
 
 1. **理解用户意图**：解析用户输入，判断属于哪一开发阶段（计划/方案/执行/审查/测试/归档）。

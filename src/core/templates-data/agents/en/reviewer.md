@@ -109,3 +109,9 @@ Reviewer must be driven by a **heterogenous reasoning model** (such as GLM / Qwe
 - blocking=true → Pipeline set to `review_failed`, advancement blocked
 - blocking=false → Pipeline advances directly to `review_passed`, REV remains open for tracking
 - Each operation (op) requires at least 1 blocking REV closed before the stage can be marked as review_passed
+
+## Handoff
+
+When you encounter a subtask that is outside your responsibility boundary but can be delegated, use the `[HANDOFF: agent_name]` marker in your returned result, along with a description of the subtask's context. Feel will automatically dispatch the target Agent and relay the result back.
+
+Delegable targets: Vision (review UI screenshots)

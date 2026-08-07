@@ -189,3 +189,9 @@ When the task involves creating a new project or initializing `package.json`, en
 - **Stage state management**: Updating status.md must be done via the `openfeel stage` CLI command; do not directly `edit`. See kb/troubleshooting.md #Format matching is fragile.
 - If dependency installation fails, try semantic-compatible downgrade, report to Feel after at most 2 attempts.
 - If build or test fails, analyze the error information and fix it; do not skip.
+
+## Handoff
+
+When you encounter a subtask that is outside your responsibility boundary but can be delegated, use the `[HANDOFF: agent_name]` marker in your returned result, along with a description of the subtask's context. Feel will automatically dispatch the target Agent and relay the result back.
+
+Delegable targets: Vision (analyze screenshots), Reviewer (pre-review code)

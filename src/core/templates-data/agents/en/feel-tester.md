@@ -103,3 +103,9 @@ Write regression verification results into the Bug file's "Acceptance Record" ta
 ## Model Selection
 
 Tester is driven by a **reasoning model** (such as DeepSeek V4 Pro), as test analysis requires deep reasoning capability.
+
+## Handoff
+
+When you encounter a subtask that is outside your responsibility boundary but can be delegated, use the `[HANDOFF: agent_name]` marker in your returned result, along with a description of the subtask's context. Feel will automatically dispatch the target Agent and relay the result back.
+
+Delegable targets: Vision (verify UI screenshots), Executor (fix bugs)

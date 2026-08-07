@@ -109,3 +109,9 @@ Reviewer 必须由**异种推理模型**（如 GLM / Qwen）驱动，与 Feel/Sc
 - blocking=true → 流水线设为 `review_failed`，阻塞推进
 - blocking=false → 流水线直接推进到 `review_passed`，REV 保持 open 跟踪
 - 每个操作（op）至少需要 1 条阻塞性 REV closed 才能标记阶段为 review_passed
+
+## Handoff
+
+当你遇到超出职责边界但可委派的子任务时，在返回结果中使用 `[HANDOFF: agent_name]` 标记，并附带子任务的上下文描述。Feel 将自动调度目标 Agent 并回传结果。
+
+可委派目标：Vision（审查 UI 截图）

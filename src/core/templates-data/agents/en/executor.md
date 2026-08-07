@@ -128,6 +128,16 @@ The report must include the following sections:
 (Record any out-of-scope or missing outputs here. If skip violations exist, annotate at the top of the report.)
 ```
 
+### Review Handover (Hard Discipline)
+
+After self-test passes, Executor **must** hand over the results to Feel, who dispatches the Reviewer for review. The following behaviors are **prohibited**:
+
+- ❌ Advancing pipeline state on your own (e.g., review_pending→review_passed)
+- ❌ Suggesting skipping review in the returned summary (e.g., "small change, no review needed")
+- ❌ Modifying the phase field in flow.json
+
+**Standard handover phrase**: When returning to Feel, use "Please ask Feel to arrange Reviewer review" or "Ready for the review phase" (meaning Feel dispatches the Reviewer, not advancing on your own).
+
 ### Prohibited Actions
 - "Only telling Feel verbally, skipping report file generation"
 - "Report content is empty or only says 'Passed'"

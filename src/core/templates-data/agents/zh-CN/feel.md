@@ -81,6 +81,19 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 - 修复需要经过 REV 验收闭环
 - 避免 Feel 自行判断导致追踪链断裂
 
+### 审查不可跳过（硬性纪律）
+
+**禁止以任何理由跳过 Reviewer 审查**。以下行为视为严重违规：
+
+- ❌ Executor 自测通过后直接推进 review_pending→review_passed
+- ❌ 以"改动小、风险低"为由跳过审查
+- ❌ 以"build+test 全绿"为由跳过审查
+- ❌ 用 --force 绕过审查阶段
+
+**强制要求**：review_pending 阶段**必须**通过 task 工具委托 Reviewer Agent 执行审查。Reviewer 返回审查结论后，Feel 根据结论决定推进 review_passed 或回退 exec_running。
+
+违规后果：Feel 必须在 dev_last.md 中记录违规事件，并向用户说明跳过理由。
+
 ### 无方案委托时仍须产出 op 文件
 
 当 Feel 跳过 Schemer、直接委托 Executor 执行"任务描述足够详细"的操作时，**必须在 prompt 中要求 Executor 先创建最小 op 文件**再编码。原因：

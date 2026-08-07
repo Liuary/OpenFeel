@@ -262,6 +262,16 @@ The report must include the following sections:
 (Record any out-of-scope or missing outputs here. If skip violations exist, annotate at the top of the report.)
 \`\`\`
 
+### Review Handover (Hard Discipline)
+
+After self-test passes, Executor **must** hand over the results to Feel, who dispatches the Reviewer for review. The following behaviors are **prohibited**:
+
+- ❌ Advancing pipeline state on your own (e.g., review_pending→review_passed)
+- ❌ Suggesting skipping review in the returned summary (e.g., "small change, no review needed")
+- ❌ Modifying the phase field in flow.json
+
+**Standard handover phrase**: When returning to Feel, use "Please ask Feel to arrange Reviewer review" or "Ready for the review phase" (meaning Feel dispatches the Reviewer, not advancing on your own).
+
 ### Prohibited Actions
 - "Only telling Feel verbally, skipping report file generation"
 - "Report content is empty or only says 'Passed'"
@@ -526,6 +536,19 @@ REVs found during Reviewer review, **even whitelist operations (such as document
 - Fixes need to be recorded in the REV processing history
 - Fixes must go through the REV acceptance loop
 - Avoid tracking chain breakage caused by Feel's own judgment
+
+### Review Must Not Be Skipped (Hard Discipline)
+
+**Skipping Reviewer review for any reason is prohibited.** The following behaviors are serious violations:
+
+- ❌ Directly advancing review_pending→review_passed after Executor's self-test passes
+- ❌ Skipping review citing "small change, low risk"
+- ❌ Skipping review citing "build+test all green"
+- ❌ Using --force to bypass the review phase
+
+**Mandatory requirement**: During the review_pending phase, review **must** be delegated to the Reviewer Agent via the \`task\` tool. After the Reviewer returns its conclusion, Feel decides whether to advance to review_passed or fall back to exec_running.
+
+Consequence of violation: Feel must record the violation in dev_last.md and explain the skip reason to the user.
 
 ### Op File Required Even Without Schemer
 
@@ -1456,6 +1479,16 @@ permission:
 （如有超范围或遗漏的产出，在此记录。含跳步违规时须额外标注到报告顶部）
 \`\`\`
 
+### 审查移交（硬性纪律）
+
+自测通过后，Executor **必须**将结果移交给 Feel，由 Feel 调度 Reviewer 审查。**禁止**以下行为：
+
+- ❌ 自行推进流水线状态（如 review_pending→review_passed）
+- ❌ 在返回摘要中建议跳过审查（如"改动小不需要审查"）
+- ❌ 修改 flow.json 中的 phase 字段
+
+**标准移交语**：返回 Feel 时使用"请 Feel 安排 Reviewer 审查"或"可进入审查阶段"（指由 Feel 调度 Reviewer，而非自行推进）。
+
 ### 禁止事项
 - 禁止「仅对话告知 Feel，跳过报告文件生成」
 - 禁止「报告内容为空或仅写"通过"」
@@ -1720,6 +1753,19 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 - 修复需要记录到 REV 处理记录中
 - 修复需要经过 REV 验收闭环
 - 避免 Feel 自行判断导致追踪链断裂
+
+### 审查不可跳过（硬性纪律）
+
+**禁止以任何理由跳过 Reviewer 审查**。以下行为视为严重违规：
+
+- ❌ Executor 自测通过后直接推进 review_pending→review_passed
+- ❌ 以"改动小、风险低"为由跳过审查
+- ❌ 以"build+test 全绿"为由跳过审查
+- ❌ 用 --force 绕过审查阶段
+
+**强制要求**：review_pending 阶段**必须**通过 task 工具委托 Reviewer Agent 执行审查。Reviewer 返回审查结论后，Feel 根据结论决定推进 review_passed 或回退 exec_running。
+
+违规后果：Feel 必须在 dev_last.md 中记录违规事件，并向用户说明跳过理由。
 
 ### 无方案委托时仍须产出 op 文件
 

@@ -81,6 +81,19 @@ REVs found during Reviewer review, **even whitelist operations (such as document
 - Fixes must go through the REV acceptance loop
 - Avoid tracking chain breakage caused by Feel's own judgment
 
+### Review Must Not Be Skipped (Hard Discipline)
+
+**Skipping Reviewer review for any reason is prohibited.** The following behaviors are serious violations:
+
+- ❌ Directly advancing review_pending→review_passed after Executor's self-test passes
+- ❌ Skipping review citing "small change, low risk"
+- ❌ Skipping review citing "build+test all green"
+- ❌ Using --force to bypass the review phase
+
+**Mandatory requirement**: During the review_pending phase, review **must** be delegated to the Reviewer Agent via the `task` tool. After the Reviewer returns its conclusion, Feel decides whether to advance to review_passed or fall back to exec_running.
+
+Consequence of violation: Feel must record the violation in dev_last.md and explain the skip reason to the user.
+
 ### Op File Required Even Without Schemer
 
 When Feel skips Schemer and directly delegates a task to Executor with a "sufficiently detailed task description", **the prompt must require Executor to create a minimal op file before coding**. Reasons:

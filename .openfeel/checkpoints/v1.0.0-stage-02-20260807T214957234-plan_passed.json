@@ -2,12 +2,12 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-07T13:49:58.279Z"
+    "updated": "2026-08-07T13:48:42.475Z"
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.0.0-stage-02",
+      "stage": "v1.0.0-stage-01",
       "op": ""
     },
     "retry": 0
@@ -325,15 +325,10 @@
     },
     "v1.0.0-stage-02": {
       "name": "v1.0.0-stage-02",
-      "phase": "exec_running",
+      "phase": "plan_passed",
       "status": "planned",
       "deps": [],
-      "ops": {},
-      "stats": {
-        "start_time": "2026-08-07T13:49:57.236Z",
-        "end_time": "",
-        "duration_ms": 0
-      }
+      "ops": {}
     },
     "v1.0.0-stage-03": {
       "name": "v1.0.0-stage-03",
@@ -2733,46 +2728,6 @@
         "stageName": "v1.0.0-stage-01",
         "from": "archiving",
         "to": "done"
-      }
-    },
-    {
-      "time": "2026-08-07T13:49:57.236Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-02",
-        "from": "plan_pending",
-        "to": "plan_passed"
-      }
-    },
-    {
-      "time": "2026-08-07T13:49:57.600Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-02",
-        "from": "plan_passed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-08-07T13:49:57.948Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-02",
-        "from": "scheme_pending",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-08-07T13:49:58.279Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-02",
-        "from": "scheme_passed",
-        "to": "exec_running"
       }
     }
   ]

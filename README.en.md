@@ -21,7 +21,8 @@ OpenFeel provides automated pipeline governance — agents obtain current state 
 ## Installation
 
 ```bash
-npm install -g openfeel
+npm install -g openfeel        # Install
+npm install -g openfeel@latest # Update to latest
 ```
 
 Requires: Node.js ≥ 20
@@ -49,7 +50,8 @@ openfeel flow status
 
 | Command | Purpose |
 |---------|---------|
-| `openfeel init [path]` | Initialize project workspace |
+| `openfeel init [path]` | Initialize new project with `.openfeel/` workspace and platform adapter (opencode) |
+| `openfeel update` | Incrementally deploy platform adapter to existing projects |
 | `openfeel flow` | Pipeline state management (status / current / advance / overview) |
 | `openfeel roadmap` | Version roadmap management (create / show) |
 | `openfeel plan` | Stage and scheme management (stage add/list, scheme create/list) |

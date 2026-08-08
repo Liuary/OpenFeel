@@ -21,7 +21,8 @@ OpenFeel 将「提示词瘦身，流程入工具」——Agent 不靠读长文�
 ## 安装
 
 ```bash
-npm install -g openfeel
+npm install -g openfeel        # 安装
+npm install -g openfeel@latest # 更新到最新版本
 ```
 
 要求：Node.js ≥ 20
@@ -49,7 +50,8 @@ openfeel flow status
 
 | 命令 | 用途 |
 |------|------|
-| `openfeel init [path]` | 初始化项目工作区，创建 `.openfeel/` 目录结构和配置文件 |
+| `openfeel init [path]` | 初始化新项目，创建 `.openfeel/` 目录结构和平台适配器（opencode） |
+| `openfeel update` | 为已有项目增量部署平台适配器（适用于 `init` 之后再引入 OpenFeel 的项目） |
 | `openfeel flow` | 流水线状态管理（status / current / advance / overview） |
 | `openfeel roadmap` | 分期大纲管理（create / show） |
 | `openfeel plan` | 工作阶段与操作方案管理（stage add/list、scheme create/list） |

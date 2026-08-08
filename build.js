@@ -62,7 +62,7 @@ function safeReadFile(filePath) {
     return readFileSync(filePath, 'utf-8');
   } catch (err) {
     console.error(`✗ 无法读取文件 ${filePath}: ${err.message}`);
-    process.exit(1);
+    return null;
   }
 }
 
@@ -381,8 +381,10 @@ function generateOpencodeConfigTemplates() {
       console.warn(`⚠ ${adapterPath} 不存在，跳过 adapter 注入`);
     }
 
-    // .gitignore（不区分语言，两语言重复注入）
-    entries.push(`    gitignore: \`${escapeForTemplateString(gitignoreContent)}\`,`);
+    // .gitignore（不区分语言，两语言重复注入；文件缺失时跳过）
+    if (gitignoreContent !== null) {
+      entries.push(`    gitignore: \`${escapeForTemplateString(gitignoreContent)}\`,`);
+    }
 
     const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang)
       ? lang

@@ -11,13 +11,13 @@
  * - stage-04 第二轮：移除了 .opencode/instructions/core.md 创建（移至 update.ts）
  */
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
+import { resolve, dirname, join, basename } from 'node:path';
 import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson, isFirstUse, getGlobalConfig, setGlobalConfig, DEFAULT_GLOBAL_CONFIG } from './workspace/identity.js';
 import { writeDefaultConfig } from './config.js';
 import { FlowManager } from './flow-manager.js';
 import { getDevCoreTemplate, getCurrentTemplate } from './templates.js';
-import { loadTemplate } from './template-loader.js';
+import { loadTemplate, loadOpencodeAgentTemplate, loadOpencodeSkillTemplate, loadOpencodeConfigTemplate, listOpencodeAgentIds, listOpencodeSkillNames } from './template-loader.js';
 import { t, getCliLang } from './i18n.js';
 import readline from 'node:readline';
 
@@ -51,6 +51,31 @@ async function promptLanguage(): Promise<'zh-CN' | 'en'> {
         // 默认 zh-CN（包含回车、2、zh、chinese 等情况）
         resolve('zh-CN');
       }
+    });
+  });
+}
+
+/**
+ * 提示用户是否部署 OpenCode 平台适配器
+ * 交互模式：提问 Y/n（默认 Y），非交互模式：静默返回 false
+ */
+async function promptOpencodeDeploy(lang: 'zh-CN' | 'en'): Promise<boolean> {
+  if (!process.stdout.isTTY) {
+    return false; // 非交互模式，跳过
+  }
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    const prompt = lang === 'en'
+      ? 'Deploy OpenCode platform adapter? [Y/n] '
+      : '是否部署 OpenCode 平台适配器？[Y/n] ';
+    rl.question(prompt, (answer) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      // 默认 Y（仅显式 n/no 时拒绝）
+      resolve(trimmed !== 'n' && trimmed !== 'no');
     });
   });
 }
@@ -125,6 +150,7 @@ async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
 export interface InitResult {
   created: string[]; // 创建的目录列表
   updated: string[]; // 更新的文件列表
+  opencode?: OpencodeDeployResult; // 如部署了 opencode 则有此字段
 }
 
 /** 示例骨架创建结果 */
@@ -150,6 +176,75 @@ function writeTemplateIfMissing(
   }
   writeFileSync(filePath, content, 'utf-8');
   return { created: true };
+}
+
+/** opencode 部署结果 */
+export interface OpencodeDeployResult {
+  created: number;
+  skipped: number;
+}
+
+/**
+ * 部署 OpenCode 平台适配器到目标项目
+ * 所有写入遵循"已存在不覆盖"原则
+ * ⚠️ 不部署 package.json（REV-001）
+ * 导出供测试直接调用（不依赖交互流程）
+ */
+export function deployOpencode(projectPath: string, lang: 'zh-CN' | 'en'): OpencodeDeployResult {
+  let created = 0;
+  let skipped = 0;
+
+  const track = (result: { created: boolean }) => {
+    if (result.created) created++; else skipped++;
+  };
+
+  // 1. 部署 Agent 定义（9 个）
+  const agentIds = listOpencodeAgentIds(lang);
+  for (const agentId of agentIds) {
+    const content = loadOpencodeAgentTemplate(lang, agentId);
+    const filePath = resolve(projectPath, '.opencode', 'agents', `${agentId}.md`);
+    track(writeTemplateIfMissing(filePath, content));
+  }
+
+  // 2. 部署 Skill 定义（14 个）
+  const skillNames = listOpencodeSkillNames();
+  for (const skillName of skillNames) {
+    const content = loadOpencodeSkillTemplate(skillName);
+    const skillDir = resolve(projectPath, '.opencode', 'skills', skillName);
+    const filePath = join(skillDir, 'SKILL.md');
+    track(writeTemplateIfMissing(filePath, content));
+  }
+
+  // 3. 部署 instructions/core.md
+  track(writeTemplateIfMissing(
+    resolve(projectPath, '.opencode', 'instructions', 'core.md'),
+    loadOpencodeConfigTemplate(lang, 'instructions'),
+  ));
+
+  // 4. 部署 opencode.jsonc（替换 {项目名称}）
+  const configContent = loadOpencodeConfigTemplate(lang, 'opencode_jsonc')
+    .replace(/\{项目名称\}/g, basename(projectPath));
+  track(writeTemplateIfMissing(
+    resolve(projectPath, 'opencode.jsonc'),
+    configContent,
+  ));
+
+  // 5. 部署 ADAPTER.{lang}.md（文件名保留语言后缀）
+  const adapterSuffix = lang === 'en' ? 'en' : 'zh-CN';
+  track(writeTemplateIfMissing(
+    resolve(projectPath, '.opencode', `ADAPTER.${adapterSuffix}.md`),
+    loadOpencodeConfigTemplate(lang, 'adapter'),
+  ));
+
+  // 6. 部署 .gitignore
+  track(writeTemplateIfMissing(
+    resolve(projectPath, '.opencode', '.gitignore'),
+    loadOpencodeConfigTemplate(lang, 'gitignore'),
+  ));
+
+  // ⚠️ 不部署 package.json（REV-001）
+
+  return { created, skipped };
 }
 
 /**
@@ -181,6 +276,9 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   } else {
     selectedLang = await promptLanguage();
   }
+
+  // 1b. OpenCode 部署确认
+  const deployOpencodeFlag = await promptOpencodeDeploy(selectedLang);
 
   // 2. 写入默认配置（根据所选语言）
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
@@ -239,10 +337,18 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
     created.push('.openfeel/kb/index.md');
   }
 
+  // 7b. 部署 opencode 适配器（如用户确认）
+  let opencodeResult: OpencodeDeployResult | undefined;
+  if (deployOpencodeFlag) {
+    opencodeResult = deployOpencode(projectPath, selectedLang);
+  }
+
   // 8. 生成 AGENTS.md 骨架文件（项目根目录），根据语言选择加载模板
   const agentsMdPath = resolve(projectPath, 'AGENTS.md');
   const agentsMdContent = loadTemplate(selectedLang, 'agents-md');
-  const agentsMdResult = writeTemplateIfMissing(agentsMdPath, agentsMdContent);
+  const projectName = basename(projectPath);
+  const replacedContent = agentsMdContent.replace(/\{项目名称\}/g, projectName);
+  const agentsMdResult = writeTemplateIfMissing(agentsMdPath, replacedContent);
   if (agentsMdResult.created) {
     created.push('AGENTS.md');
   }
@@ -275,7 +381,16 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
     }
   }
 
-  return { created, updated };
+  // 10. 重启提醒（仅在 opencode 首次部署时，且为交互模式）
+  if (opencodeResult && opencodeResult.created > 0 && process.stdout.isTTY) {
+    console.log(
+      selectedLang === 'en'
+        ? 'opencode configuration deployed. Please restart opencode to load the new configuration.'
+        : 'opencode 配置已部署，请重启 opencode 以加载新配置。'
+    );
+  }
+
+  return { created, updated, opencode: opencodeResult };
 }
 
 /**

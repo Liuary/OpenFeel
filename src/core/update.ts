@@ -9,6 +9,7 @@ import { writeFileSync, existsSync, readFileSync, mkdirSync, readdirSync } from 
 import { resolve, dirname, join } from 'node:path';
 import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader.js';
 import { recordProjectLang, getGlobalConfig, getLang } from './workspace/identity.js';
+import { getCliLang } from './i18n.js';
 
 /** 更新结果 */
 export interface UpdateResult {
@@ -1632,6 +1633,16 @@ export function updateProject(
   const newContent = buildUpdatedJsonc(projectPath);
   const relJsoncPath = 'opencode.jsonc';
   writeIfChanged(jsoncPath, newContent, relJsoncPath, created, updated, skipped);
+
+  // 重启提醒（仅在 opencode agent 配置更新时，且为交互模式）
+  if (updated.some(f => f.startsWith('.opencode/agents/')) && process.stdout.isTTY) {
+    const lang = getCliLang(projectPath);
+    console.log(
+      lang === 'en'
+        ? 'opencode agent configuration updated. Please restart opencode to load the new configuration.'
+        : 'opencode agent 配置已更新，请重启 opencode 以加载新配置。'
+    );
+  }
 
   return { created, updated, skipped };
 }

@@ -3,10 +3,10 @@
  * 测试 initProject 在临时目录中的完整行为
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { initProject } from '../../src/core/init.js';
+import { initProject, deployOpencode } from '../../src/core/init.js';
 import { readConfig } from '../../src/core/config.js';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
+import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 
 describe('initProject', () => {
@@ -107,5 +107,72 @@ describe('initProject', () => {
     expect(result.created.some((e) => e === '.openfeel/config.yaml')).toBe(true);
     expect(result.created.some((e) => e === '.openfeel/flow.json')).toBe(true);
     expect(result.created.some((e) => e === '.openfeel/.info.json')).toBe(true);
+  });
+});
+
+describe('initProject — opencode deployment', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-init-opencode-test-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('应替换 AGENTS.md 中的 {项目名称} 占位符为目录名', async () => {
+    await initProject(tmpDir, 'zh-CN');
+    const content = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
+    const dirName = basename(tmpDir);
+    expect(content).not.toContain('{项目名称}');
+    expect(content).toContain(dirName);
+  });
+
+  it('deployOpencode 首次部署应创建完整的 opencode 适配器文件', () => {
+    // 直接调用导出的 deployOpencode（不依赖 initProject 交互流程）
+    const result = deployOpencode(tmpDir, 'zh-CN');
+
+    // 创建数：9 Agent + 14 Skill + instructions + opencode.jsonc + ADAPTER + .gitignore = 27
+    // 注意 opencode.jsonc 部署到项目根目录
+    expect(result.created).toBe(27);
+    expect(result.skipped).toBe(0);
+
+    // 验证关键文件存在
+    expect(existsSync(join(tmpDir, '.opencode', 'agents', 'feel.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'skills', 'check-kb', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'instructions', 'core.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, 'opencode.jsonc'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'ADAPTER.zh-CN.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', '.gitignore'))).toBe(true);
+
+    // REV-001：不部署 package.json
+    expect(existsSync(join(tmpDir, '.opencode', 'package.json'))).toBe(false);
+
+    // Agent 数量 9 个
+    const agentFiles = readdirSync(join(tmpDir, '.opencode', 'agents')).filter((f) => f.endsWith('.md'));
+    expect(agentFiles.length).toBe(9);
+
+    // 再次部署 → 全部 skipped（已存在不覆盖）
+    const result2 = deployOpencode(tmpDir, 'zh-CN');
+    expect(result2.created).toBe(0);
+    expect(result2.skipped).toBe(27);
+  });
+
+  it('非交互模式应跳过 opencode 部署', async () => {
+    // vitest 运行时 stdout.isTTY 为 false → promptOpencodeDeploy 返回 false
+    const result = await initProject(tmpDir, 'zh-CN');
+    const opencodeDir = join(tmpDir, '.opencode');
+    expect(existsSync(opencodeDir)).toBe(false);
+    expect(result.opencode).toBeUndefined();
+  });
+
+  it('opencode.jsonc 中 {项目名称} 应被替换为目录名', () => {
+    deployOpencode(tmpDir, 'zh-CN');
+    const opencodeJsonPath = join(tmpDir, 'opencode.jsonc');
+    expect(existsSync(opencodeJsonPath)).toBe(true);
+    const content = readFileSync(opencodeJsonPath, 'utf-8');
+    expect(content).not.toContain('{项目名称}');
+    expect(content).toContain(basename(tmpDir));
   });
 });

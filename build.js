@@ -34,6 +34,12 @@ const CORE_MD_PATH = resolve(__dirname, '.opencode', 'instructions', 'core.md');
 const AGENTS_DIR = resolve(__dirname, '.opencode', 'agents');
 const SKILLS_DIR = resolve(__dirname, '.opencode', 'skills');
 
+// opencode 模板数据源目录（templates-data/opencode/）
+const TEMPLATE_OPENCODE_DIR = resolve(TEMPLATES_DATA_DIR, 'opencode');
+const TEMPLATE_OPENCODE_AGENTS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'agents');
+const TEMPLATE_OPENCODE_SKILLS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'skills');
+const TEMPLATE_OPENCODE_INSTRUCTIONS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'instructions');
+
 // ── 辅助函数 ──────────────────────────────────────────────────────────
 
 /**
@@ -232,6 +238,161 @@ function generateSkillDefinitions() {
   const objectBody = `const SKILL_DEFINITIONS: Record<string, string> = {\n${entries.join('\n')}\n};`;
   replaceBetweenAnchors(UPDATE_PATH, 'SKILL_DEFINITIONS', objectBody);
   console.log(`✓ ${entries.length} 个 Skill 定义已注入 update.ts`);
+}
+
+/**
+ * 步骤 5：遍历 templates-data/opencode/agents/{zh-CN,en}/ 下的 .md 文件
+ * → 转义 → 注入 template-loader.ts 的 OPENCODE_AGENT_TEMPLATES
+ * 数据结构为双层 Record: Record<string, Record<string, string>>（与 AGENT_TEMPLATES 同构）
+ */
+function generateOpencodeAgentTemplates() {
+  console.log('⟳ 正在注入 opencode Agent 模板 → template-loader.ts...');
+  if (!existsSync(TEMPLATE_OPENCODE_AGENTS_DIR)) {
+    console.warn('⚠ templates-data/opencode/agents/ 目录不存在，跳过 opencode Agent 模板注入');
+    return;
+  }
+
+  const langDirs = readdirSync(TEMPLATE_OPENCODE_AGENTS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  const langEntries = [];
+  let totalAgentCount = 0;
+
+  for (const lang of langDirs) {
+    const langPath = join(TEMPLATE_OPENCODE_AGENTS_DIR, lang);
+    const agentFiles = readdirSync(langPath).filter((f) => f.endsWith('.md'));
+    const entries = [];
+
+    for (const file of agentFiles) {
+      const key = file.replace(/\.md$/, '');
+      const content = safeReadFile(join(langPath, file));
+      const escaped = escapeForTemplateString(content);
+      // 含连字符的 key（如 feel-tester）需要引号
+      const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
+        ? key
+        : `'${key}'`;
+      entries.push(`    ${formattedKey}: \`${escaped}\`,`);
+    }
+
+    // 含连字符的语言键需要引号
+    const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang)
+      ? lang
+      : `'${lang}'`;
+    langEntries.push(`  ${formattedLang}: {\n${entries.join('\n')}\n  }`);
+    totalAgentCount += agentFiles.length;
+  }
+
+  const objectBody = `const OPENCODE_AGENT_TEMPLATES: Record<string, Record<string, string>> = {\n${langEntries.join(',\n')}\n};`;
+  replaceBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_AGENT_TEMPLATES', objectBody);
+  console.log(`✓ ${langDirs.length} 个语言, ${totalAgentCount} 个 opencode Agent 模板已注入 template-loader.ts`);
+}
+
+/**
+ * 步骤 6：遍历 templates-data/opencode/skills/ 子目录，读取各 SKILL.md
+ * → 转义 → 注入 template-loader.ts 的 OPENCODE_SKILL_DEFINITIONS
+ * 数据结构为 Record<string, string>（skill 名 → 内容）
+ */
+function generateOpencodeSkillTemplates() {
+  console.log('⟳ 正在注入 opencode Skill 定义 → template-loader.ts...');
+  if (!existsSync(TEMPLATE_OPENCODE_SKILLS_DIR)) {
+    console.warn('⚠ templates-data/opencode/skills/ 目录不存在，跳过 opencode Skill 定义注入');
+    return;
+  }
+
+  const skillDirs = readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  const entries = [];
+
+  for (const dir of skillDirs) {
+    const skillPath = join(TEMPLATE_OPENCODE_SKILLS_DIR, dir, 'SKILL.md');
+    if (!existsSync(skillPath)) {
+      console.warn(`⚠ ${dir}/SKILL.md 不存在，跳过`);
+      continue;
+    }
+    const content = safeReadFile(skillPath);
+    const escaped = escapeForTemplateString(content);
+    // 含连字符的 skill 名（如 agent-model-check）需要引号
+    const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(dir)
+      ? dir
+      : `'${dir}'`;
+    entries.push(`  ${formattedKey}: \`${escaped}\`,`);
+  }
+
+  const objectBody = `const OPENCODE_SKILL_DEFINITIONS: Record<string, string> = {\n${entries.join('\n')}\n};`;
+  replaceBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_SKILL_DEFINITIONS', objectBody);
+  console.log(`✓ ${entries.length} 个 opencode Skill 定义已注入 template-loader.ts`);
+}
+
+/**
+ * 步骤 7：读取 opencode 配置类模板 → 注入 template-loader.ts 的 OPENCODE_CONFIG_TEMPLATES
+ * 结构：Record<lang, Record<configName, string>>
+ * - [lang].instructions ← templates-data/opencode/instructions/{lang}.md
+ * - [lang].opencode_jsonc ← templates-data/opencode/opencode.jsonc（SKILLS_PLACEHOLDER → 实际 skills 列表）
+ * - [lang].adapter ← templates-data/opencode/ADAPTER.{lang}.md
+ * - [lang].gitignore ← templates-data/opencode/.gitignore（不区分语言，两语言重复注入）
+ */
+function generateOpencodeConfigTemplates() {
+  console.log('⟳ 正在注入 opencode 配置模板 → template-loader.ts...');
+  if (!existsSync(TEMPLATE_OPENCODE_DIR)) {
+    console.warn('⚠ templates-data/opencode/ 目录不存在，跳过 opencode 配置模板注入');
+    return;
+  }
+
+  // 读取 opencode.jsonc 模板并替换 skills 占位锚点为实际 skills 列表
+  const jsoncTemplatePath = join(TEMPLATE_OPENCODE_DIR, 'opencode.jsonc');
+  let jsoncContent = safeReadFile(jsoncTemplatePath);
+  const skillsList = readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  // 生成 "skill-name": ".opencode/skills/skill-name" 格式的 JSON 对象
+  const skillsObject = `{\n${skillsList.map((s) => `    "${s}": ".opencode/skills/${s}"`).join(',\n')}\n  }`;
+  jsoncContent = jsoncContent.replace(/"SKILLS_PLACEHOLDER"/, skillsObject);
+
+  const gitignoreContent = safeReadFile(join(TEMPLATE_OPENCODE_DIR, '.gitignore'));
+  const langEntries = [];
+  const langs = ['zh-CN', 'en'];
+
+  for (const lang of langs) {
+    const instructionsPath = join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, `${lang}.md`);
+    const adapterPath = join(TEMPLATE_OPENCODE_DIR, `ADAPTER.${lang}.md`);
+    const entries = [];
+
+    // instructions 模板（Base64 编码，与 core-instructions 一致的处理）
+    if (existsSync(instructionsPath)) {
+      let content = safeReadFile(instructionsPath);
+      content = content.replace(/\r\n/g, '\n');
+      const base64 = Buffer.from(content, 'utf-8').toString('base64');
+      entries.push(`    instructions: '${base64}',`);
+    } else {
+      console.warn(`⚠ ${instructionsPath} 不存在，跳过 instructions 注入`);
+    }
+
+    // opencode.jsonc 模板（转义后注入）
+    entries.push(`    opencode_jsonc: \`${escapeForTemplateString(jsoncContent)}\`,`);
+
+    // adapter 模板（Base64 编码）
+    if (existsSync(adapterPath)) {
+      let content = safeReadFile(adapterPath);
+      content = content.replace(/\r\n/g, '\n');
+      const base64 = Buffer.from(content, 'utf-8').toString('base64');
+      entries.push(`    adapter: '${base64}',`);
+    } else {
+      console.warn(`⚠ ${adapterPath} 不存在，跳过 adapter 注入`);
+    }
+
+    // .gitignore（不区分语言，两语言重复注入）
+    entries.push(`    gitignore: \`${escapeForTemplateString(gitignoreContent)}\`,`);
+
+    const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang)
+      ? lang
+      : `'${lang}'`;
+    langEntries.push(`  ${formattedLang}: {\n${entries.join('\n')}\n  }`);
+  }
+
+  const objectBody = `const OPENCODE_CONFIG_TEMPLATES: Record<string, Record<string, string>> = {\n${langEntries.join(',\n')}\n};`;
+  replaceBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_CONFIG_TEMPLATES', objectBody);
+  console.log(`✓ ${langs.length} 个语言的 opencode 配置模板已注入 template-loader.ts`);
 }
 
 // ── 校验函数 ──────────────────────────────────────────────────────────
@@ -697,6 +858,288 @@ function validateTemplates() {
   }
 }
 
+/**
+ * 校验 opencode Agent 模板一致性（从 template-loader.ts OPENCODE_AGENT_TEMPLATES 提取）
+ * 多语言支持：遍历所有顶层语言键，逐语言与源目录文件比对
+ */
+function validateOpencodeAgentTemplates() {
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_AGENT_TEMPLATES');
+  const objText = matchBraces(section);
+  if (!objText) {
+    return { ok: false, count: 0, errors: ['无法在 template-loader.ts 中提取 OPENCODE_AGENT_TEMPLATES 对象'] };
+  }
+
+  const errors = [];
+  let totalCount = 0;
+  const foundLangs = new Set();
+
+  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*\{/g;
+  let langMatch;
+
+  while ((langMatch = langRegex.exec(objText)) !== null) {
+    const langKey = langMatch[2] || langMatch[3];
+    foundLangs.add(langKey);
+
+    const innerStart = objText.indexOf('{', langMatch.index);
+    if (innerStart === -1) {
+      errors.push(`[${langKey}] 无法找到语言对象的起始括号`);
+      continue;
+    }
+    const innerEnd = matchBraceAt(objText, innerStart);
+    if (innerEnd === -1) {
+      errors.push(`[${langKey}] 无法找到匹配的闭合括号`);
+      continue;
+    }
+
+    const innerObj = objText.slice(innerStart, innerEnd + 1);
+    const templateEntries = extractTemplatePairs(innerObj);
+    totalCount += Object.keys(templateEntries).length;
+
+    const langDir = join(TEMPLATE_OPENCODE_AGENTS_DIR, langKey);
+    const sourceEntries = {};
+    if (existsSync(langDir)) {
+      const files = readdirSync(langDir).filter((f) => f.endsWith('.md'));
+      for (const file of files) {
+        const key = file.replace(/\.md$/, '');
+        sourceEntries[key] = safeReadFile(join(langDir, file));
+      }
+    } else {
+      errors.push(`[${langKey}] 源目录不存在: ${langDir}`);
+    }
+
+    const result = compareTemplatePairs(templateEntries, sourceEntries);
+    if (result.errors.length > 0) {
+      errors.push(...result.errors.map(e => `[${langKey}] ${e}`));
+    }
+
+    langRegex.lastIndex = innerEnd + 1;
+  }
+
+  if (existsSync(TEMPLATE_OPENCODE_AGENTS_DIR)) {
+    const dirs = readdirSync(TEMPLATE_OPENCODE_AGENTS_DIR, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+    for (const dir of dirs) {
+      if (!foundLangs.has(dir)) {
+        errors.push(`源目录 '${dir}' 存在但模板中缺少对应的语言键`);
+      }
+    }
+  }
+
+  return { ok: errors.length === 0, count: totalCount, errors };
+}
+
+/**
+ * 校验 opencode Skill 定义一致性（从 template-loader.ts OPENCODE_SKILL_DEFINITIONS 提取）
+ */
+function validateOpencodeSkillDefinitions() {
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_SKILL_DEFINITIONS');
+  const objText = matchBraces(section);
+  if (!objText) {
+    return { ok: false, count: 0, errors: ['无法在 template-loader.ts 中提取 OPENCODE_SKILL_DEFINITIONS 对象'] };
+  }
+
+  const templateEntries = extractTemplatePairs(objText);
+
+  const sourceEntries = {};
+  if (existsSync(TEMPLATE_OPENCODE_SKILLS_DIR)) {
+    const dirs = readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory());
+    for (const dir of dirs) {
+      const skillPath = join(TEMPLATE_OPENCODE_SKILLS_DIR, dir.name, 'SKILL.md');
+      if (existsSync(skillPath)) {
+        sourceEntries[dir.name] = safeReadFile(skillPath);
+      }
+    }
+  }
+
+  const result = compareTemplatePairs(templateEntries, sourceEntries);
+  return { ok: result.errors.length === 0, count: result.count, errors: result.errors };
+}
+
+/**
+ * 从 template-loader.ts 中提取 OPENCODE_CONFIG_TEMPLATES 内指定语言对象的全部键值
+ * 支持两种值格式：Base64 单引号字符串（instructions/adapter）与模板字符串（opencode_jsonc/gitignore）
+ * @param {string} objText - 对象字面量文本
+ * @param {string} lang - 语言键
+ * @returns {Object.<string, string>} 配置名 → 未转义内容
+ */
+function extractOpencodeConfigLangEntries(objText, lang) {
+  // 定位语言对象: 'zh-CN': { ... } 或 en: { ... }
+  const langRegex = new RegExp(`(?:[\\s,])(?:(['"])(${lang})\\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\\s*:\\s*\\{`);
+  const langMatch = langRegex.exec(objText);
+  if (!langMatch) {
+    return null;
+  }
+  const innerStart = objText.indexOf('{', langMatch.index);
+  if (innerStart === -1) {
+    return null;
+  }
+  const innerEnd = matchBraceAt(objText, innerStart);
+  if (innerEnd === -1) {
+    return null;
+  }
+  const innerObj = objText.slice(innerStart, innerEnd + 1);
+  const entries = {};
+
+  // 单引号字符串条目（Base64）：instructions / adapter
+  const quotePattern = /^\s+([a-zA-Z_$][\w$]*):\s*'([^']*)'\s*,?\s*$/gm;
+  let qMatch;
+  while ((qMatch = quotePattern.exec(innerObj)) !== null) {
+    entries[qMatch[1]] = qMatch[2];
+  }
+
+  // 模板字符串条目：opencode_jsonc / gitignore
+  const tmplPattern = /^\s+([a-zA-Z_$][\w$]*):\s*`((?:[^`\\]|\\.)*)`\s*,?\s*$/gm;
+  let tMatch;
+  while ((tMatch = tmplPattern.exec(innerObj)) !== null) {
+    entries[tMatch[1]] = unescapeTemplateString(tMatch[2]);
+  }
+
+  return entries;
+}
+
+/**
+ * 校验 opencode 配置模板一致性（从 template-loader.ts OPENCODE_CONFIG_TEMPLATES 提取）
+ * 对 instructions/adapter（Base64）和 opencode_jsonc/gitignore（模板字符串）分别解码后与源文件比对
+ */
+function validateOpencodeConfigTemplates() {
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_CONFIG_TEMPLATES');
+  const objText = matchBraces(section);
+  if (!objText) {
+    return { ok: false, count: 0, errors: ['无法在 template-loader.ts 中提取 OPENCODE_CONFIG_TEMPLATES 对象'] };
+  }
+
+  const errors = [];
+  let totalCount = 0;
+
+  // 读取源文件
+  const jsoncSource = safeReadFile(join(TEMPLATE_OPENCODE_DIR, 'opencode.jsonc'));
+  const gitignoreSource = safeReadFile(join(TEMPLATE_OPENCODE_DIR, '.gitignore'));
+
+  // 预期 opencode.jsonc（SKILLS_PLACEHOLDER 替换后的完整内容）
+  const skillsList = readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  const expectedJsonc = jsoncSource.replace(
+    /"SKILLS_PLACEHOLDER"/,
+    `{\n${skillsList.map((s) => `    "${s}": ".opencode/skills/${s}"`).join(',\n')}\n  }`,
+  );
+
+  const langs = ['zh-CN', 'en'];
+  for (const lang of langs) {
+    const entries = extractOpencodeConfigLangEntries(objText, lang);
+    if (!entries) {
+      errors.push(`[${lang}] 无法提取 opencode 配置语言对象`);
+      continue;
+    }
+
+    // instructions（Base64 编码）
+    if (entries.instructions !== undefined) {
+      totalCount++;
+      const decoded = Buffer.from(entries.instructions, 'base64').toString('utf-8');
+      const sourcePath = join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, `${lang}.md`);
+      if (!existsSync(sourcePath)) {
+        errors.push(`[${lang}] instructions 源文件不存在: ${sourcePath}`);
+      } else {
+        const normD = decoded.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const normS = safeReadFile(sourcePath).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        if (normD !== normS) {
+          errors.push(`[${lang}] instructions 内容不一致`);
+        }
+      }
+    } else {
+      errors.push(`[${lang}] 模板缺少 instructions 键`);
+    }
+
+    // opencode_jsonc（模板字符串，已替换 SKILLS_PLACEHOLDER）
+    if (entries.opencode_jsonc !== undefined) {
+      totalCount++;
+      const normD = entries.opencode_jsonc.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const normS = expectedJsonc.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      if (normD !== normS) {
+        errors.push(`[${lang}] opencode_jsonc 内容不一致`);
+      }
+    } else {
+      errors.push(`[${lang}] 模板缺少 opencode_jsonc 键`);
+    }
+
+    // adapter（Base64 编码）
+    if (entries.adapter !== undefined) {
+      totalCount++;
+      const decoded = Buffer.from(entries.adapter, 'base64').toString('utf-8');
+      const sourcePath = join(TEMPLATE_OPENCODE_DIR, `ADAPTER.${lang}.md`);
+      if (!existsSync(sourcePath)) {
+        errors.push(`[${lang}] adapter 源文件不存在: ${sourcePath}`);
+      } else {
+        const normD = decoded.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const normS = safeReadFile(sourcePath).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        if (normD !== normS) {
+          errors.push(`[${lang}] adapter 内容不一致`);
+        }
+      }
+    } else {
+      errors.push(`[${lang}] 模板缺少 adapter 键`);
+    }
+
+    // gitignore（模板字符串，不区分语言）
+    if (entries.gitignore !== undefined) {
+      totalCount++;
+      const normD = entries.gitignore.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const normS = gitignoreSource.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      if (normD !== normS) {
+        errors.push(`[${lang}] gitignore 内容不一致`);
+      }
+    } else {
+      errors.push(`[${lang}] 模板缺少 gitignore 键`);
+    }
+  }
+
+  return { ok: errors.length === 0, count: totalCount, errors };
+}
+
+/**
+ * 校验 opencode 模板一致性（Agent + Skill + Config 三类）
+ */
+function validateOpencodeTemplates() {
+  console.log('');
+  console.log('⟳ 正在校验 opencode 模板一致性...');
+
+  const agentResult = validateOpencodeAgentTemplates();
+  const skillResult = validateOpencodeSkillDefinitions();
+  const configResult = validateOpencodeConfigTemplates();
+
+  const results = [
+    { name: `opencode Agent 定义 (${agentResult.count} 个, template-loader.ts)`, ok: agentResult.ok, errors: agentResult.errors },
+    { name: `opencode Skill 定义 (${skillResult.count} 个, template-loader.ts)`, ok: skillResult.ok, errors: skillResult.errors },
+    { name: `opencode 配置模板 (${configResult.count} 个, template-loader.ts)`, ok: configResult.ok, errors: configResult.errors },
+  ];
+
+  const passed = results.filter((r) => r.ok).length;
+  const total = results.length;
+
+  if (passed === total) {
+    console.log(`  ✓ opencode 模板一致性校验通过 (${total}/${total})`);
+    for (const r of results) {
+      console.log(`    ✓ ${r.name} — 一致`);
+    }
+  } else {
+    console.error(`  ✗ opencode 模板一致性校验失败 (${passed}/${total})`);
+    for (const r of results) {
+      if (r.ok) {
+        console.log(`    ✓ ${r.name} — 一致`);
+      } else {
+        console.error(`    ✗ ${r.name} — 不一致`);
+        if (r.errors && r.errors.length > 0) {
+          for (const e of r.errors) {
+            console.error(`      ${e}`);
+          }
+        }
+      }
+    }
+    process.exit(1);
+  }
+}
+
 // ── 主流程 ────────────────────────────────────────────────────────────
 
 try {
@@ -704,11 +1147,14 @@ try {
   rmSync('dist', { recursive: true, force: true });
   console.log('✓ dist/ 已清理');
 
-  // 四步管线：注入动态内容到 template-loader.ts（不再注入 templates.ts 和 update.ts 的模板段）
+  // 七步管线：注入动态内容到 template-loader.ts（不再注入 templates.ts 和 update.ts 的模板段）
   generateTemplateFromCoreMd();
   generateAgentDefinitions();
   generateAgentsMdTemplate();
   generateSkillDefinitions();
+  generateOpencodeAgentTemplates();
+  generateOpencodeSkillTemplates();
+  generateOpencodeConfigTemplates();
 
   // 执行 TypeScript 编译
   execSync('npx tsc', { stdio: 'inherit' });
@@ -716,6 +1162,7 @@ try {
 
   // 校验模板一致性
   validateTemplates();
+  validateOpencodeTemplates();
 } catch (err) {
   console.error(`✗ 构建失败: ${err.message}`);
   process.exit(1);

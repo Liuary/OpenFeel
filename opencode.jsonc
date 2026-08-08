@@ -19,6 +19,9 @@
   "agent": {
     "vision": {
       "model": "alibaba-cn/qwen3-vl-plus"
+    },
+    "reviewer": {
+      "model": "deepseek/deepseek-v4-pro"
     }
   },
   "experimental": {

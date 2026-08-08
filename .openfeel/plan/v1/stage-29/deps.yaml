@@ -1,0 +1,34 @@
+# stage-29 操作方案依赖声明
+# 由 Schemer 自动生成，Feel 调度前校验
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "OpenCode 模板数据源化与构建管线"
+    depends_on: []
+    stage: "v1.0.0-stage-29-01"
+    produces:
+      - "src/core/templates-data/opencode/agents/zh-CN/*.md"
+      - "src/core/templates-data/opencode/agents/en/*.md"
+      - "src/core/templates-data/opencode/skills/*/SKILL.md"
+      - "src/core/templates-data/opencode/instructions/zh-CN.md"
+      - "src/core/templates-data/opencode/instructions/en.md"
+      - "src/core/templates-data/opencode/opencode.jsonc"
+      - "src/core/templates-data/opencode/ADAPTER.zh-CN.md"
+      - "src/core/templates-data/opencode/ADAPTER.en.md"
+      - "src/core/templates-data/opencode/.gitignore"
+      - "build.js"
+      - "src/core/template-loader.ts"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "init 集成 — OpenCode 部署 + AGENTS.md 修复 + 测试 + 重启提醒"
+    depends_on:
+      - op: "op-001"
+        type: "hard"
+    stage: "v1.0.0-stage-29-02"
+    produces:
+      - "src/core/init.ts"
+      - "src/core/update.ts"
+      - "src/core/template-loader.ts"
+      - "test/core/init.test.ts"

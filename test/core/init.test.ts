@@ -167,12 +167,11 @@ describe('initProject — opencode deployment', () => {
     expect(result.opencode).toBeUndefined();
   });
 
-  it('opencode.jsonc 中 {项目名称} 应被替换为目录名', () => {
+  it('opencode.jsonc 中不应包含 {项目名称} 占位符', () => {
     deployOpencode(tmpDir, 'zh-CN');
     const opencodeJsonPath = join(tmpDir, 'opencode.jsonc');
     expect(existsSync(opencodeJsonPath)).toBe(true);
     const content = readFileSync(opencodeJsonPath, 'utf-8');
     expect(content).not.toContain('{项目名称}');
-    expect(content).toContain(basename(tmpDir));
   });
 });

@@ -13,14 +13,14 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-08（npm 自动发布排查归档：404 secret 名字不匹配 + 403 2FA 与 automation token 冲突 → Granular token + Bypass 2FA，知识沉淀 2 条） |
+| 最近更新 | 2026-08-08（stage-29 归档：init 增强 — AGENTS.md 项目名称替换 + opencode 适配器部署，~50 文件模板数据源 + 构建管线 + 4 测试，2 条 patterns 知识沉淀） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 14 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组 |
-| 代码模式 | [patterns.md](patterns.md) | 54 | 2026-08-07 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步 |
+| 代码模式 | [patterns.md](patterns.md) | 56 | 2026-08-08 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 12 | 2026-08-08 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-08-08 | 环境搭建、构建流程、依赖管理、Agent 模型配置、npm pack 发布验证、CI/CD npm 自动发布 |
 
@@ -94,6 +94,8 @@
 | 审查硬性纪律嵌入 Agent Prompt 模式 | 2026-08-07 | 在 Feel 和 Executor prompt 中硬编码审查合规约束（禁止跳过审查/禁止自行推进/标准移交语），中英双语 6 文件同步插入，与代码层 REV 双路兜底形成互补 |
 | 版本号重映射边界判定模式 | 2026-08-07 | 项目级版本重映射时区分"目录名"（组织单位，保留原名）与"版本号引用"（文本，需重映射），practically applied on v0.5.11 plan/v5/ 系列目录名不变但 stageId/标题 v0 化 |
 | kb 条目与规则升级同步时点模式 | 2026-08-07 | 规则升级在 exec 阶段实施，kb 同步在 archiving 阶段执行，审查时需识别"待归档同步"条目避免误判为缺陷 |
+| AGENTS.md 模板变量替换模式 | 2026-08-08 | init 阶段将 `{项目名称}` 占位符替换为 `basename(projectPath)`，实现模板个性化部署，替换在 writeTemplateIfMissing 之前执行 |
+| init/update 重启提醒对称输出模式 | 2026-08-08 | init 部署 opencode 后和 update 更新 agent 文件后均输出重启提醒，两端均检查 isTTY 实现非交互模式静默跳过 |
 
 ### troubleshooting.md
 
@@ -125,6 +127,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-08 | 归档 | stage-29 归档：init 增强（AGENTS.md 项目名称替换 + opencode 适配器部署），2 op（模板数据源化 + init 集成），~50 文件模板数据源 + 构建管线 + 部署逻辑 + 4 测试，399/399 全通过，3 non-blocking REV，知识沉淀 2 条至 patterns（变量替换 + 重启提醒） |
 | 2026-08-08 | 归档 | npm 自动发布排查经验沉淀：GitHub Actions CI 发布失败（404 secret 名字不匹配 + 403 2FA 与 automation token 冲突），定位需用 Granular token + Bypass 2FA，知识沉淀 2 条至 troubleshooting(1) + setup(1) |
 | 2026-08-07 | 归档 | v1.0.0 正式版三阶段全部归档：stage-01（质量加固：lint零错误，395测试，3缺陷修复）+ stage-02（发布工程：版本统一v1.0.0，npm pack 193文件验证，CI/CD GitHub Actions）+ stage-03（文档完善：CHANGELOG.md + GETTING_STARTED.md），知识沉淀 2 条至 patterns(1) + setup(1)，Agent 数 9，源文件 46 |
 | 2026-08-07 | 版本统一 | op-003 版本号统一（v1.0.0-stage-02）：flow.json 25 个 stageId 从 v0.x.x 体系重映射为 v1.0.0-stage-04~28（v0.4.2→04 起按 flow.json 顺序编号），同步更新 plan/index.md 对照表、plan_log.md、dev/current.md |

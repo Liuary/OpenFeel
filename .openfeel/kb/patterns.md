@@ -1545,3 +1545,50 @@ exec_running          archiving
 
 **参见：** v1.0.0-stage-02 op-003、kb/patterns.md #版本号重映射边界判定模式
 
+## [+] AGENTS.md 模板变量替换模式 (2026-08-08)
+
+在 `init` 阶段部署 AGENTS.md 时，将模板中的 `{项目名称}` 占位符替换为项目目录名（`basename(projectPath)`），实现模板个性化部署：
+
+```typescript
+const projectName = path.basename(projectPath);
+const replacedContent = agentsMdContent.replace(/\{项目名称\}/g, projectName);
+```
+
+**设计要点：**
+- 替换在 `writeTemplateIfMissing()` **之前**执行，确保写入的内容已含实际项目名
+- 占位符名称为中文 `{项目名称}`，后续可扩展为多语言占位符体系
+- 替换值来自 `basename()`（无路径分隔符），不会引入路径遍历风险
+
+**与 update 的一致性注意事项：**
+- `init` 做替换，`update` 的 AGENTS.md 语言同步逻辑当前不做替换（REV-001 记录在案，non-blocking）。若未来 update 支持替换，需与 init 保持同逻辑。
+
+**参见：** v1.0.0-stage-29 op-002
+
+## [+] init/update 重启提醒对称输出模式 (2026-08-08)
+
+模板部署后提醒用户重启平台以加载新配置。`init` 和 `update` 两个入口对称实现，按各自的触发条件输出重启提醒：
+
+**init 端**（`deployOpencode` 首次部署后）：
+```typescript
+if (opencodeResult && opencodeResult.created > 0 && process.stdout.isTTY) {
+  console.log('opencode 配置已部署，请重启 opencode 以加载新配置。');
+}
+```
+
+**update 端**（agent 文件更新后）：
+```typescript
+if (updated.some(f => f.startsWith('.opencode/agents/')) && process.stdout.isTTY) {
+  console.log('opencode agent 配置已更新，请重启 opencode 以加载新配置。');
+}
+```
+
+**设计要点：**
+- 两端均检查 `isTTY`，非交互模式（CI/CD）静默跳过，避免日志噪音
+- 提醒触发条件语义不同但正确对齐：
+  - init：仅首次部署时有新文件创建（`created > 0`）
+  - update：仅 agent 文件有变更时触发
+- 中英双语字符串，语言跟随用户选择
+- 重复部署（文件已存在不覆盖）不触发提醒，避免无意义输出
+
+**参见：** v1.0.0-stage-29 op-002 步骤 4.5 + 7.2
+

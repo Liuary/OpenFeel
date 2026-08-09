@@ -207,6 +207,13 @@ export const flow: I18nDomain = {
   'wizard.confirmTitle':            { key: 'flow.wizard.confirmTitle',            zh: '确认执行此操作？',                        en: '' },
   'wizard.confirm':                 { key: 'flow.wizard.confirm',                 zh: '确认推进',                               en: '' },
   'wizard.advancedTmpl':            { key: 'flow.wizard.advancedTmpl',            zh: '✓ 已推进: {stage}: {from} → {to}',       en: '' },
+  'wizard.createPrompt':            { key: 'flow.wizard.createPrompt',            zh: '当前无任何阶段，是否创建首个阶段？',       en: '' },
+  'wizard.createYes':               { key: 'flow.wizard.createYes',               zh: '是，创建新阶段',                           en: '' },
+  'wizard.createNo':                { key: 'flow.wizard.createNo',                zh: '否，退出向导',                             en: '' },
+  'wizard.createInput':             { key: 'flow.wizard.createInput',             zh: '请输入阶段 ID（如 stage-01）',              en: '' },
+  'wizard.createEmpty':             { key: 'flow.wizard.createEmpty',             zh: '阶段 ID 不能为空',                         en: '' },
+  'wizard.createdTmpl':             { key: 'flow.wizard.createdTmpl',             zh: '✓ 已创建阶段: {stage}，正在进入向导...',     en: '' },
+  'wizard.createSkipped':           { key: 'flow.wizard.createSkipped',           zh: '已跳过阶段创建，退出向导。',                en: '' },
 };
 
 /* ==================== init 域：初始化命令 ==================== */

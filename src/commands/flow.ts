@@ -1018,7 +1018,33 @@ export function registerFlowCommand(program: Command): void {
 
           if (stages.length === 0) {
             console.log(t('flow.wizard.noStages', lang));
-            return;
+
+            // 无阶段时引导用户交互式创建首个阶段，创建成功后重新进入主循环
+            const { select: sel, input: inp } = await import('@inquirer/prompts');
+            const shouldCreate = await sel({
+              message: t('flow.wizard.createPrompt', lang),
+              choices: [
+                { name: t('flow.wizard.createYes', lang), value: 'yes' },
+                { name: t('flow.wizard.createNo', lang), value: 'no' },
+              ],
+            });
+
+            if (shouldCreate === 'yes') {
+              const stageId = await inp({
+                message: t('flow.wizard.createInput', lang),
+                validate: (val: string) => {
+                  if (!val.trim()) return t('flow.wizard.createEmpty', lang);
+                  return true;
+                },
+              });
+              mgr.addStage(stageId.trim());
+              mgr.save();
+              console.log(t('flow.wizard.createdTmpl', lang, { stage: stageId.trim() }));
+              continue; // 重新进入主循环，此时 stages 已非空
+            } else {
+              console.log(t('flow.wizard.createSkipped', lang));
+              return;
+            }
           }
 
           if (stages.length > 1) {

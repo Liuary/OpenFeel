@@ -191,6 +191,13 @@ export const flow: I18nDomain = {
   'wizard.confirmTitle':            { key: 'flow.wizard.confirmTitle',            zh: '', en: 'Confirm this action?' },
   'wizard.confirm':                 { key: 'flow.wizard.confirm',                 zh: '', en: 'Confirm advance' },
   'wizard.advancedTmpl':            { key: 'flow.wizard.advancedTmpl',            zh: '', en: '✓ Advanced: {stage}: {from} → {to}' },
+  'wizard.createPrompt':            { key: 'flow.wizard.createPrompt',            zh: '', en: 'No stages exist. Create the first stage?' },
+  'wizard.createYes':               { key: 'flow.wizard.createYes',               zh: '', en: 'Yes, create a stage' },
+  'wizard.createNo':                { key: 'flow.wizard.createNo',                zh: '', en: 'No, exit wizard' },
+  'wizard.createInput':             { key: 'flow.wizard.createInput',             zh: '', en: 'Enter stage ID (e.g. stage-01)' },
+  'wizard.createEmpty':             { key: 'flow.wizard.createEmpty',             zh: '', en: 'Stage ID cannot be empty' },
+  'wizard.createdTmpl':             { key: 'flow.wizard.createdTmpl',             zh: '', en: '✓ Stage created: {stage}, entering wizard...' },
+  'wizard.createSkipped':           { key: 'flow.wizard.createSkipped',           zh: '', en: 'Stage creation skipped, exiting wizard.' },
 };
 
 /* ==================== init ==================== */

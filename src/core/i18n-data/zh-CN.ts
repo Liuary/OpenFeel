@@ -451,6 +451,7 @@ export const help: I18nDomain = {
   'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '目标阶段（如 exec_running）', en: '' },
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '阶段 ID（如 stage-03），必须指定', en: '' },
   'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）', en: '' },
+  'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改', en: '' },
   'flow.attempt':          { key: 'help.flow.attempt',          zh: '记录操作执行结果', en: '' },
   'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '操作 ID（如 stage-01.op-001）', en: '' },
   'flow.attempt.result':   { key: 'help.flow.attempt.result',   zh: '执行结果（pass 或 fail）', en: '' },

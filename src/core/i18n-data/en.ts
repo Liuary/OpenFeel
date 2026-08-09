@@ -429,6 +429,7 @@ export const help: I18nDomain = {
   'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '', en: 'Target phase (e.g. exec_running)' },
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '', en: 'Stage ID (e.g. stage-03), required' },
   'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '', en: 'Force execution (skip invalid phase check and phase jump check, but not REV block check)' },
+  'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '', en: 'Validate only without modifying (preview output). When combined with --force, skips validation but still does not modify' },
   'flow.attempt':          { key: 'help.flow.attempt',          zh: '', en: 'Record operation execution result' },
   'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },
   'flow.attempt.result':   { key: 'help.flow.attempt.result',   zh: '', en: 'Execution result (pass or fail)' },

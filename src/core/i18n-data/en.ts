@@ -102,6 +102,11 @@ export const flow: I18nDomain = {
   'advance.saveError':          { key: 'flow.advance.saveError',          zh: '', en: 'flow.json save failed' },
   'advance.gitCommitOkTmpl':    { key: 'flow.advance.gitCommitOkTmpl',    zh: '', en: '✓ Stage {stage} auto git commit archived' },
   'advance.gitCommitSkipTmpl':  { key: 'flow.advance.gitCommitSkipTmpl',  zh: '', en: '(Skipped auto git commit: not a git repo or no changes) {stage}' },
+  'advance.dryRunForceWarn':    { key: 'flow.advance.dryRunForceWarn',    zh: '', en: '⚠ --force + --dry-run: Stage jump check and invalid phase check skipped' },
+  'advance.dryRunTitle':        { key: 'flow.advance.dryRunTitle',        zh: '', en: '═══ Dry-run Preview ═══' },
+  'advance.dryRunFrom':         { key: 'flow.advance.dryRunFrom',         zh: '', en: 'Current phase' },
+  'advance.dryRunTo':           { key: 'flow.advance.dryRunTo',           zh: '', en: 'Target phase' },
+  'advance.dryRunOk':           { key: 'flow.advance.dryRunOk',           zh: '', en: '✓ Validation passed. No changes were made to flow.json. Remove --dry-run to execute.' },
 
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '', en: 'Error: --result must be pass or fail' },
   'attempt.passTmpl':           { key: 'flow.attempt.passTmpl',           zh: '', en: '✓ {op} completed successfully' },

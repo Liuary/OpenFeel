@@ -362,7 +362,8 @@ export function registerFlowCommand(program: Command): void {
     .requiredOption('--to <phase>', '目标阶段（如 exec_running）')
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
-    .action((options: { op?: string; to: string; stage?: string; force?: boolean }) => {
+    .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')
+    .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean }) => {
       const lang = getCliLang(process.cwd());
       // 自定义 --stage 必选校验（提供中文错误提示）
       if (!options.stage) {
@@ -465,6 +466,24 @@ export function registerFlowCommand(program: Command): void {
           console.error('请先解决上述 REV 或通过 flow review resolve 标记为非阻塞。');
           process.exit(1);
         }
+      }
+
+      // --dry-run：仅验证合法性，不实际修改 flow.json
+      if (options.dryRun) {
+        const data = mgr.getData();
+        const fromPhase = data?.stages[options.stage!]?.phase ?? t('common.unknown', lang);
+        const toPhase = options.to;
+
+        if (options.force) {
+          console.warn(t('flow.advance.dryRunForceWarn', lang));
+        }
+        console.log(t('flow.advance.dryRunTitle', lang));
+        console.log(`  ` + t('common.stage', lang) + `: ${options.stage}`);
+        console.log(`  ` + t('flow.advance.dryRunFrom', lang) + `: ${fromPhase}`);
+        console.log(`  ` + t('flow.advance.dryRunTo', lang) + `: ${toPhase}`);
+        console.log('');
+        console.log(t('flow.advance.dryRunOk', lang));
+        return;
       }
 
       let archived = false;

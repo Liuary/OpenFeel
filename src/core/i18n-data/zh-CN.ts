@@ -108,6 +108,11 @@ export const flow: I18nDomain = {
   'advance.saveError':          { key: 'flow.advance.saveError',          zh: 'flow.json 保存失败',                      en: '' },
   'advance.gitCommitOkTmpl':    { key: 'flow.advance.gitCommitOkTmpl',    zh: '✓ 阶段 {stage} 已自动 git commit 归档',    en: '' },
   'advance.gitCommitSkipTmpl':  { key: 'flow.advance.gitCommitSkipTmpl',  zh: '（跳过自动 git commit：非 git 仓库或无变更）{stage}', en: '' },
+  'advance.dryRunForceWarn':    { key: 'flow.advance.dryRunForceWarn',    zh: '⚠ --force + --dry-run：已跳过阶段跳跃检查和非法 phase 校验', en: '' },
+  'advance.dryRunTitle':        { key: 'flow.advance.dryRunTitle',        zh: '═══ Dry-run 预览 ═══',                     en: '' },
+  'advance.dryRunFrom':         { key: 'flow.advance.dryRunFrom',         zh: '当前阶段',                                 en: '' },
+  'advance.dryRunTo':           { key: 'flow.advance.dryRunTo',           zh: '目标阶段',                                 en: '' },
+  'advance.dryRunOk':           { key: 'flow.advance.dryRunOk',           zh: '✓ 合法性验证通过，未实际修改 flow.json。去掉 --dry-run 后正式执行。', en: '' },
 
   // flow attempt
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '错误：--result 必须为 pass 或 fail',       en: '' },

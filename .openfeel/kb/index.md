@@ -13,14 +13,14 @@
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-08（stage-29 归档：init 增强 — AGENTS.md 项目名称替换 + opencode 适配器部署，~50 文件模板数据源 + 构建管线 + 4 测试，2 条 patterns 知识沉淀） |
+| 最近更新 | 2026-08-09（stage-31 归档：Pantheogen CLI 体验优化 4 项，3 条 patterns 知识沉淀） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 14 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组 |
-| 代码模式 | [patterns.md](patterns.md) | 58 | 2026-08-08 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒 |
+| 代码模式 | [patterns.md](patterns.md) | 61 | 2026-08-09 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒 |
 | 排查经验 | [troubleshooting.md](troubleshooting.md) | 13 | 2026-08-08 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-08-08 | 环境搭建、构建流程、依赖管理、Agent 模型配置、npm pack 发布验证、CI/CD npm 自动发布 |
 
@@ -96,6 +96,9 @@
 | kb 条目与规则升级同步时点模式 | 2026-08-07 | 规则升级在 exec 阶段实施，kb 同步在 archiving 阶段执行，审查时需识别"待归档同步"条目避免误判为缺陷 |
 | AGENTS.md 模板变量替换模式 | 2026-08-08 | init 阶段将 `{项目名称}` 占位符替换为 `basename(projectPath)`，实现模板个性化部署，替换在 writeTemplateIfMissing 之前执行 |
 | init/update 重启提醒对称输出模式 | 2026-08-08 | init 部署 opencode 后和 update 更新 agent 文件后均输出重启提醒，两端均检查 isTTY 实现非交互模式静默跳过 |
+| CLI 错误诊断增强模式 | 2026-08-09 | 校验失败时三层诊断：错误原因 + 当前状态 + 可用操作/合法目标，含 stage create 引导和合法跳转列表 |
+| CLI --dry-run 安全预览模式 | 2026-08-09 | 状态变更命令新增 --dry-run 选项，校验全量通过后在 save() 前截断，--force 组合时先警告再预览不写盘 |
+| CLI 向导空状态交互式兜底模式 | 2026-08-09 | wizard 检测到 stages 为空时不静默退出，交互式询问创建首个阶段，创建后 continue 自动进入主循环 |
 
 ### troubleshooting.md
 
@@ -127,6 +130,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-09 | 归档 | stage-31 归档：Pantheogen CLI 体验优化 4 项（--stage 缺失提示引导 + wizard 无阶段交互式创建 + 跳转失败增强诊断 + advance --dry-run 预览），3 文件变更，399/399 测试通过，441 i18n 键对称，1 non-blocking REV（特殊字符校验），知识沉淀 3 条至 patterns |
 | 2026-08-09 | 归档 | stage-30 归档：Pantheogen 兼容性 Bug 修复（flow-manager load() 类型守卫 + 正则兼容非粗体 + stage create 子命令），3 op / 4 文件变更，399/399 测试通过，1 non-blocking REV，知识沉淀 3 条至 patterns(2) + troubleshooting(1) |
 | 2026-08-08 | 归档 | stage-29 归档：init 增强（AGENTS.md 项目名称替换 + opencode 适配器部署），2 op（模板数据源化 + init 集成），~50 文件模板数据源 + 构建管线 + 部署逻辑 + 4 测试，399/399 全通过，3 non-blocking REV，知识沉淀 2 条至 patterns（变量替换 + 重启提醒） |
 | 2026-08-08 | 归档 | npm 自动发布排查经验沉淀：GitHub Actions CI 发布失败（404 secret 名字不匹配 + 403 2FA 与 automation token 冲突），定位需用 Granular token + Bypass 2FA，知识沉淀 2 条至 troubleshooting(1) + setup(1) |

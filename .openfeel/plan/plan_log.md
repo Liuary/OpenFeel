@@ -2,6 +2,7 @@
 
 | 时间 | 操作者 | 变更描述 |
 |------|--------|----------|
+| 2026-08-09 | Archiver | **归档**：v1.0.0-stage-31 归档完成。Pantheogen CLI 体验优化 4 项（--stage 缺失提示引导 + wizard 无阶段交互式创建 + 跳转失败增强诊断 + advance --dry-run 预览），3 文件变更，399/399 测试通过，441 i18n 键对称，1 non-blocking REV（特殊字符校验），知识沉淀 3 条至 patterns。 |
 | 2026-08-09 | Archiver | **归档**：v1.0.0-stage-30 归档完成。Pantheogen 兼容性 Bug 修复 3 项（flow-manager load() 类型守卫 + 正则兼容非粗体 + stage create 子命令），4 文件变更，399/399 测试通过，1 non-blocking REV，知识沉淀 3 条至 patterns(2) + troubleshooting(1)。 |
 | 2026-08-09 | Planner | **新建**：v1.0.0-stage-30 计划制定（Pantheogen 兼容性 Bug 修复）。3 项 op：flow-manager load() ops 类型守卫 + repair() ops 修复 / stage setStatusField 正则兼容非粗体 / stage create 子命令。3 文件变更，小规模。 |
 | 2026-08-07 | Archiver | **归档**：v1.0.0 正式版三阶段全部归档完成（stage-01 质量加固 + stage-02 发布工程 + stage-03 文档完善），28 阶段全部闭环。知识沉淀 2 条至 patterns(1) + setup(1)。正式版发布就绪。 |

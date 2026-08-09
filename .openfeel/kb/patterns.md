@@ -1647,3 +1647,169 @@ ew RegExp() 模板字符串（需双反斜杠转义），捕获组数量保持�
 
 **参见：** v1.0.0-stage-30 op-002（stage setStatusField / parseStatusFields）
 
+## [+] CLI 错误诊断增强模式 (2026-08-09)
+
+CLI 命令校验失败时，错误输出应提供三层诊断信息，帮助用户快速定位问题和选择下一步操作：
+
+```
+层级 1：错误原因（已有）
+  → "阶段 '<stage>' 当前 phase 无法跳转到 '<target>'"
+
+层级 2：当前状态（新增）
+  → "当前阶段 phase: plan_passed"
+
+层级 3：可用操作/合法目标（新增）
+  → "合法跳转目标: [scheme_pending, exec_running]"
+  → 或在参数缺失时："如果是新项目，请先运行 openfeel stage create <id> 创建阶段。"
+```
+
+**模式要素：**
+
+1. **告诉用户"发生了什么"** — 原有错误消息保留不变（`errorPhaseJumpTmpl` / `errorNoStage`）
+2. **告诉用户"现在在哪"** — 输出当前状态（当前 phase），让用户理解"为什么会报错"
+3. **告诉用户"能做什么"** — 输出合法目标列表或建议的下一步命令，将"阻塞"转化为"引导"
+
+**实践案例：**
+
+| 问题 | 原有输出 | 增强后输出 |
+|------|----------|-----------|
+| --stage 缺失 | `错误：--stage 参数必须指定阶段 ID` | + `如果是新项目，请先运行 openfeel stage create <id> 创建阶段。` |
+| 跳转失败 | `当前 phase 无法跳转到 X` | + `当前阶段 phase: done` + `合法跳转目标: [done]`（或无合法目标） |
+
+**关键约束：**
+
+- 三层信息仅在错误路径输出，正常路径不增加 stderr 噪音
+- 状态信息通过 FlowManager API 获取（`getData()?.stages[stageId]?.phase`、`getAvailablePhases()`），不与数据层耦合
+- `??` 回退值（如 `common.unknown`）覆盖边界情况（stage 不存在时）
+- i18n 键分散在错误处理逻辑附近，不集中在单一函数中——保持代码局部性
+
+**与 i18n 体系的配合：**
+- 新增诊断文本通过 `t()` 函数走 i18n 体系（如 `currentPhaseTmpl`、`availableTargets`）
+- zh-CN + en 双向同步，`openfeel lint i18n` 自动校验对称性
+- 动态内容（phase 名称、目标列表）通过 `{var}` 模板插值，与静态文本分离
+
+**适用场景：**
+- 任何需要用户输入参数的 CLI 校验失败场景（参数缺失、值非法、状态不匹配）
+- 阶段跳跃保护、权限校验、依赖检查等"用户需要知道为什么失败 + 有哪些可选路径"的错误路径
+
+**参见：** v1.0.0-stage-31 op-001（i18n 文案引导）、op-003（跳转失败诊断增强）
+
+## [+] CLI --dry-run 安全预览模式 (2026-08-09)
+
+为状态变更 CLI 命令新增 `--dry-run` 选项，让用户在正式执行前预览操作结果和验证合法性：
+
+```typescript
+// flow advance 命令：在全部前置校验通过后、advanceStagePhase() 执行前截断
+if (options.dryRun) {
+  const data = mgr.getData();
+  const fromPhase = data?.stages[options.stage!]?.phase ?? t('common.unknown', lang);
+
+  // --force + --dry-run 组合：先警告校验被跳过
+  if (options.force) {
+    console.warn(t('flow.advance.dryRunForceWarn', lang));
+  }
+  // 预览输出
+  console.log(t('flow.advance.dryRunTitle', lang));
+  console.log(`  ` + t('common.stage', lang) + `: ${options.stage}`);
+  console.log(`  ` + t('flow.advance.dryRunFrom', lang) + `: ${fromPhase}`);
+  console.log(`  ` + t('flow.advance.dryRunTo', lang) + `: ${options.to}`);
+  console.log(t('flow.advance.dryRunOk', lang));
+  return;  // ← 不执行 advanceStagePhase() + save()
+}
+```
+
+**设计原则：**
+
+1. **校验全量通过后才截断** — dry-run 判断在所有前置校验（格式 P0、非法 phase P1、阶段跳跃保护、REV 阻塞检查）**之后**、实际执行 **之前**。这意味着 dry-run 看到的预览与真实执行将通过的校验完全一致——校验失败的场景下 dry-run 同样报错，不会输出虚假的"预览通过"。
+2. **明确声明"未修改"** — 预览末尾输出 `去掉 --dry-run 后正式执行`，降低用户误以为操作已完成的概率
+3. **--force 组合语义透明** — 同时指定 `--force` + `--dry-run` 时，先输出警告（告知校验被跳过），再输出预览，但最终仍不写盘。预览反映的是"如果强制执行"的结果
+
+**插入位置选择：**
+
+- Commander 选项声明中放在 `--force` 之后（`--force` 跳过校验，`--dry-run` 截断执行——语义层级自顶向下）
+- 代码逻辑中放在 `autoCommitOnDone` 之前、`advanceStagePhase()` 之前——确保 `autoRepair` 触发的 save() 在 dry-run 中不会被"未修改"声明误导（autoRepair 极少触发且非侵入性）
+
+**不可变性验证：**
+
+dry-run 正确性的核心验证手段：执行前后对比 flow.json 的 hash 值（或 git diff），确认文件内容未发生任何变化。
+
+**与已有模式的互补关系：**
+- `dry-run 逻辑真值处理模式`（patterns.md 早期条目）覆盖的是 FlowManager 内部 repair 函数的 dry-run 返回值语义（`fixed: boolean`），本条目覆盖的是 CLI 命令层的 dry-run 用户体验模式——两者处于不同抽象层级，互不覆盖。
+- `CLI 原子管理模式` 要求 Agent 不直接 edit 数据文件——dry-run 天然遵循这一原则（`return` 跳过 save()，数据文件不触碰）
+
+**适用场景：**
+- 任何具有"校验 + 写盘"两阶段操作的 CLI 命令（advance、repair、config set、stage set 等）
+- 与 `--force` 搭配时需明确标注组合行为，避免用户误以为 dry-run 也跳过校验
+- 自动化脚本/CI 中可在正式执行前用 `--dry-run` 预检合法性
+
+**参见：** v1.0.0-stage-31 op-004（advance --dry-run）、kb/patterns.md #CLI 原子管理模式
+
+## [+] CLI 向导空状态交互式兜底模式 (2026-08-09)
+
+当交互式 CLI 向导（wizard）启动时检测到数据为空（如无任何阶段），不静默退出，而是就地提供交互式创建能力：
+
+```typescript
+while (true) {  // wizard 主循环
+  const stages = mgr.listStages();
+  if (stages.length === 0) {
+    console.log(t('flow.wizard.noStages', lang));
+
+    // 1. 询问用户意图
+    const shouldCreate = await sel({
+      message: t('flow.wizard.createPrompt', lang),
+      choices: [
+        { name: t('flow.wizard.createYes', lang), value: 'yes' },
+        { name: t('flow.wizard.createNo', lang), value: 'no' },
+      ],
+    });
+
+    if (shouldCreate === 'yes') {
+      // 2. 输入创建参数
+      const stageId = await inp({
+        message: t('flow.wizard.createInput', lang),
+        validate: (val) => val.trim() ? true : t('flow.wizard.createEmpty', lang),
+      });
+      // 3. 通过 CLI 原子 API 创建（不直接编辑 flow.json）
+      mgr.addStage(stageId.trim());
+      mgr.save();
+      // 4. 自动重新进入主循环（continue 而非 return）
+      console.log(t('flow.wizard.createdTmpl', lang, { stage: stageId.trim() }));
+      continue;
+    } else {
+      console.log(t('flow.wizard.createSkipped', lang));
+      return;  // 用户拒绝 → 保持原有退出行为
+    }
+  }
+  // ... 正常 wizard 逻辑（阶段列表选择、推进）...
+}
+```
+
+**模式关键点：**
+
+| 要素 | 说明 |
+|------|------|
+| 就地创建 | 不要求用户退出向导 → 手动运行 `stage create` → 重新进入向导，减少操作断点 |
+| `continue` 语义 | 创建成功后在 while 循环内 `continue`，自动回到选择/推进流程，无需重新运行向导 |
+| 双向出口 | 用户可选择"是"（创建并继续）或"否"（退出），不强制创建 |
+| 输入校验 | 空 ID 拒绝（`val.trim()` 检查），重复 ID 由 `addStage()` 内部检测，外层 try-catch 兜底 |
+| 原子 API | 创建通过 `mgr.addStage()` + `save()` 而非直接写 flow.json，遵循 CLI 原子管理模式 |
+
+**与常见反模式的对比：**
+
+| 反模式 | 本模式 |
+|--------|--------|
+| `console.log('无可用阶段'); return;` — 静默退出 | 交互式询问 + 创建 + 自动继续 |
+| 创建后退出向导，让用户重新运行 | `continue` 无缝进入主循环 |
+| 假设用户已知道如何创建阶段 | 提供输入提示和校验引导 |
+
+**非交互环境保护：**
+- `@inquirer/prompts` 的 `select`/`input` 在非 TTY 环境中抛出异常，wizard 外层 try-catch 捕获
+- 后续可扩展 `--non-interactive` 模式（超出本条目范围）
+
+**适用场景：**
+- 任何"需要数据才能运行，但启动时数据可能为空"的交互式 CLI 工具
+- 新用户首次使用时——通过引导式创建降低学习曲线
+- 多步骤 config/setup 向导中的中途数据补充
+
+**参见：** v1.0.0-stage-31 op-002（wizard 交互式创建）、kb/patterns.md #CLI 原子管理模式
+

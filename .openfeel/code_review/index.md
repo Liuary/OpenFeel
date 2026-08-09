@@ -41,3 +41,4 @@
 |------|------|------|
 | [stage-06](stage-06.md) | View + Archive 闭环 — 无阻塞问题，通过 | passed |
 | [stage-09](stage-09.md) | 测试文档发布准备 — REV-001 CI 缺失已修复，通过 | passed |
+| [v1.0.0-stage-31](v1.0.0-stage-31.md) | Pantheogen CLI 体验优化 — 4 REV (3 closed + 1 low non-blocking) | passed |

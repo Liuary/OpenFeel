@@ -46,7 +46,8 @@
 | v1.0.0-stage-27 | v0.5.10-stage-01 | 已归档 | 1 | 1/1 |
 | v1.0.0-stage-28 | v0.5.11-stage-01 | 已归档 | 1 | 1/1 |
 | v1.0.0-stage-29 | v1.0.0（init 增强） | 已归档 | 2 op | 2/2 |
-| v1.0.0-stage-30 | v1.0.0（Pantheogen 兼容性 Bug 修复） | 进行中 | 3 op | 0/3 |
+| v1.0.0-stage-30 | v1.0.0（Pantheogen 兼容性 Bug 修复） | 已归档 | 3 op | 3/3 |
+| v1.0.0-stage-31 | v1.0.0（Pantheogen CLI 体验优化） | 已归档 | 4 op | 4/4 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

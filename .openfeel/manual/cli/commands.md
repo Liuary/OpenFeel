@@ -36,7 +36,8 @@ src/commands/lint.ts        registerLintCommand
 
 ## 关键命令示例
 
-- `openfeel flow advance --stage <id> --to <phase>` — 推进阶段（经 FlowManager 校验）
+- `openfeel flow advance --stage <id> --to <phase> [--dry-run] [--force]` — 推进阶段（经 FlowManager 校验）；`--dry-run` 预览不修改，`--force` 跳过非法 phase 和阶段跳跃检查
+- `openfeel flow wizard` — 交互式流水线向导，支持无阶段时自动引导创建首个阶段
 - `openfeel flow health --quick` — 流水线健康检查
 - `openfeel stage set <id> --status <v>` — 更新阶段状态
 - `openfeel stage create <stageId>` — 创建新的工作阶段（复用 FlowManager.addStage，与 flow stage add 等价）

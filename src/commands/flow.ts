@@ -418,7 +418,18 @@ export function registerFlowCommand(program: Command): void {
       if (!options.force) {
         const phaseResult = PipelinePhaseSchema.safeParse(options.to);
         if (phaseResult.success && !mgr.hasTransition(options.to, options.stage)) {
+          // 获取当前 phase 和合法目标列表（增强诊断信息）
+          const data = mgr.getData();
+          const currentPhase = data?.stages[options.stage || '']?.phase ?? t('common.unknown', lang);
+          const availableTargets = mgr.getAvailablePhases(options.stage);
+
           console.error(t('flow.advance.errorPhaseJumpTmpl', lang, { stage: options.stage || '', to: options.to }));
+          console.error(t('flow.advance.currentPhaseTmpl', lang, { phase: currentPhase }));
+          if (availableTargets.length > 0) {
+            console.error(t('flow.advance.availableTargets', lang) + `: [${availableTargets.join(', ')}]`);
+          } else {
+            console.error(t('flow.advance.noAvailableTargets', lang));
+          }
           console.error(t('flow.advance.hintUseForce', lang));
           process.exit(1);
         }

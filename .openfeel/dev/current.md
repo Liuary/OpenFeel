@@ -2,9 +2,9 @@
 
 > OpenFeel v1.0.0 正式版 — 全系列归档完成 ✅ | 发布就绪
 
-- **状态**：v1.0.0-stage-01 ~ stage-29 全部完成 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段）
+- **状态**：v1.0.0-stage-01 ~ stage-30 全部完成 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复）
 - **旧版本**：v1.0.0-stage-04 ~ stage-28 全部归档 ✅（原 v0.4.2 ~ v0.5.11，共 25 个阶段）
-- **知识库**：architecture(14) + patterns(56) + troubleshooting(12) + setup(6) = 88 条目
+- **知识库**：architecture(14) + patterns(58) + troubleshooting(13) + setup(6) = 91 条目
 - **Agent 数**：9 个
 - **Skill 数**：14 个（全量对齐）
 - **源文件**：46 个 .ts 文件
@@ -18,6 +18,7 @@
 | stage-02 | 发布工程 | 版本统一 v1.0.0，npm pack 193 文件验证，CI/CD GitHub Actions | 2026-08-07 |
 | stage-03 | 文档完善 | CHANGELOG.md + docs/GETTING_STARTED.md | 2026-08-07 |
 | stage-29 | init 增强 | AGENTS.md 项目名称替换 + opencode 适配器部署（~50 模板文件 + 构建管线 + 部署逻辑 + 4 测试） | 2026-08-08 |
+| stage-30 | Pantheogen 兼容性修复 | flow-manager load() 类型守卫 + 正则兼容非粗体 + stage create 子命令（4 文件变更，399/399 测试） | 2026-08-09 |
 
 ## 旧 v0.5 系列里程碑（重映射为 v1.0.0-stage-17 ~ 28）
 
@@ -39,9 +40,9 @@
 
 ## 整体统计
 
-- 阶段覆盖：v1.0.0-stage-01 ~ stage-29（29 个阶段，含 25 个历史重映射 + 4 个新阶段）
+- 阶段覆盖：v1.0.0-stage-01 ~ stage-30（30 个阶段，含 25 个历史重映射 + 5 个新阶段）
 - 知识库总量：88 条目（architecture 14 + patterns 56 + troubleshooting 12 + setup 6）
 - 源文件：46 个 .ts 文件
 - 测试：399/399 全通过
 
-**v1.0.0 正式版发布就绪。** 29 个阶段全部完成，知识库 88 条目，npm publish 待用户确认。
+**v1.0.0 正式版发布就绪。** 30 个阶段全部完成，知识库 91 条目，npm publish 待用户确认。

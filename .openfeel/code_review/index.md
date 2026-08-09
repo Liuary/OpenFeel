@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 8 |
+| passed | 9 |
 | failed | 0 |
 
 ## v5 系列审查

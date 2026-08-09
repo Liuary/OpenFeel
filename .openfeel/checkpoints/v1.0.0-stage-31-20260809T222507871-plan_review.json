@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-08-09T14:32:04.176Z"
+    "updated": "2026-08-09T14:14:38.980Z"
   },
   "pipeline": {
     "phase": "active",
@@ -374,15 +374,10 @@
     },
     "v1.0.0-stage-31": {
       "name": "v1.0.0-stage-31",
-      "phase": "exec_running",
+      "phase": "plan_review",
       "status": "planned",
       "deps": [],
-      "ops": {},
-      "stats": {
-        "start_time": "2026-08-09T14:25:07.874Z",
-        "end_time": "",
-        "duration_ms": 0
-      }
+      "ops": {}
     }
   },
   "reviews": [],
@@ -3243,56 +3238,6 @@
       "detail": {
         "stageId": "v1.0.0-stage-31",
         "phase": "plan_pending"
-      }
-    },
-    {
-      "time": "2026-08-09T14:25:07.874Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-31",
-        "from": "plan_pending",
-        "to": "plan_review"
-      }
-    },
-    {
-      "time": "2026-08-09T14:28:46.337Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-31",
-        "from": "plan_review",
-        "to": "plan_passed"
-      }
-    },
-    {
-      "time": "2026-08-09T14:28:46.694Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-31",
-        "from": "plan_passed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-08-09T14:32:03.809Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-31",
-        "from": "scheme_pending",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-08-09T14:32:04.175Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.0.0-stage-31",
-        "from": "scheme_passed",
-        "to": "exec_running"
       }
     }
   ]

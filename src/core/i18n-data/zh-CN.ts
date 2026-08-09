@@ -90,7 +90,7 @@ export const flow: I18nDomain = {
   'stage.addedTmpl':            { key: 'flow.stage.addedTmpl',            zh: '✓ 已创建阶段: {stage} → plan_pending',   en: '' },
 
   // flow advance
-  'advance.errorNoStage':       { key: 'flow.advance.errorNoStage',       zh: '错误：--stage 参数必须指定阶段 ID（如 stage-03）', en: '' },
+  'advance.errorNoStage':       { key: 'flow.advance.errorNoStage',       zh: '错误：--stage 参数必须指定阶段 ID（如 stage-03）。如果是新项目，请先运行 openfeel stage create <id> 创建阶段。', en: '' },
   'advance.warnAutoCorrect':    { key: 'flow.advance.warnAutoCorrect',    zh: '（非标准 phase 已自动修正，继续推进）',     en: '' },
   'advance.errorInvalidFormat': { key: 'flow.advance.errorInvalidFormat', zh: '错误：flow.json 格式不合法',               en: '' },
   'advance.errorInvalidPhaseTmpl': { key: 'flow.advance.errorInvalidPhaseTmpl', zh: "错误: '{phase}' 不是合法的 PipelinePhase。", en: '' },

@@ -2,6 +2,8 @@
 
 | 时间 | 操作者 | 变更描述 |
 |------|--------|----------|
+| 2026-08-09 | Archiver | **归档**：v1.0.0-stage-30 归档完成。Pantheogen 兼容性 Bug 修复 3 项（flow-manager load() 类型守卫 + 正则兼容非粗体 + stage create 子命令），4 文件变更，399/399 测试通过，1 non-blocking REV，知识沉淀 3 条至 patterns(2) + troubleshooting(1)。 |
+| 2026-08-09 | Planner | **新建**：v1.0.0-stage-30 计划制定（Pantheogen 兼容性 Bug 修复）。3 项 op：flow-manager load() ops 类型守卫 + repair() ops 修复 / stage setStatusField 正则兼容非粗体 / stage create 子命令。3 文件变更，小规模。 |
 | 2026-08-07 | Archiver | **归档**：v1.0.0 正式版三阶段全部归档完成（stage-01 质量加固 + stage-02 发布工程 + stage-03 文档完善），28 阶段全部闭环。知识沉淀 2 条至 patterns(1) + setup(1)。正式版发布就绪。 |
 | 2026-08-07 | Executor | **op-003 版本号统一**：flow.json 25 个 stageId 从 v0.x.x 体系重映射为 v1.0.0-stage-04 ~ v1.0.0-stage-28（v0.4.2→04 起按 flow.json 顺序编号，经 Feel 确认锚点1 为准），同步更新 plan/index.md 对照表、kb/index.md、dev/current.md。v1.0.0-stage-01/02/03 为 v1.0.0 新阶段保留不变。 |
 | 2026-08-07 | Planner | **v1.0 发布计划制定**：3 阶段 6 项任务。stage-01（质量加固：lint 全量 + 测试覆盖率，2 项）→ stage-02（发布工程：版本统一 + npm 准备 + CI/CD，3 项）→ stage-03（文档完善：CHANGELOG + 入门指南，1 项）。s01 无依赖先行，s02 hard 依赖 s01，s03 hard 依赖 s01 + soft 依赖 s02。功能冻结定位，无核心代码变更。 |

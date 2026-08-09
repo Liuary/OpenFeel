@@ -212,3 +212,32 @@ fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
 - https://docs.npmjs.com/configuring-two-factor-authentication ："Publishing to npm requires either: Two-factor authentication (2FA) enabled on your account, OR A granular access token with bypass 2FA enabled"
 
 **见于**：v1.0.0 npm 发布排查（GitHub Actions CI）
+
+## [+] flow.json load() 静默失败：stage.ops 为 null/undefined 时 Object.entries 遍历崩溃 (2026-08-09)
+
+**现象：** `openfeel flow status`、`flow current`、`flow overview` 均报告 "flow.json 不存在"，但 flow.json 文件确实存在且其他字段正常。
+
+**根因：** `FlowManager.load()` 中遍历 `Object.entries(stage.ops)` 时未对 `stage.ops` 做类型守卫。当 flow.json 中某个 stage 的 ops 字段为 null（JSON 解析保留原值）或缺失（undefined）时，`Object.entries(null)` 抛 TypeError，被外层 try-catch 静默捕获后 `this.data = null`，导致所有后续读取（status/current/overview）均报告文件不存在。
+
+**触发条件：**
+1. flow.json 中任意 stage 的 ops 字段值为 null（`"ops": null`）
+2. 或 stage 对象中不存在 ops 字段（`undefined`）
+3. 或其他非普通对象值（数组、字符串等）
+4. 调用 `load()` 方法 — 任何 flow 命令（status/current/overview/health/repair）都会触发
+
+**影响范围：** 不仅是 `load()` 中的遍历崩溃，同源崩溃点包括 `summary()`（ops 计数）、`getSummary()`（ops 计数）、`flow overview` 命令中 ops 遍历——共 **4 处** Object.entries(stage.ops) 调用均受波及。
+
+**修复方案：**
+1. 在所有遍历 `stage.ops` 的位置增加三重类型守卫：`stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)`
+2. `repair()` 增加 ops 修复逻辑：检测 ops 缺失或非普通对象时重置为 `{}`
+
+**排查经验：**
+- JSON 解析后的 `null` 值保留原语义，不等同于 JS 的 undefined 或空对象 —— 需显式检查
+- 静默捕获（`try-catch` 仅设 `this.data = null` 而不记录原因）使根因排查困难 —— 建议在 catch 块中至少记录 `err.message` 到日志
+- 一处崩溃点被发现后应主动排查同数据结构的其他访问点（全局搜索 `stage.ops` 的所有 `Object.entries`/`Object.keys` 调用）
+
+**验证方法：**
+1. 手动构造 flow.json，将某个 stage 的 ops 设为 null → `openfeel flow status` 应正常运行（而非报"不存在"）
+2. `openfeel flow repair --dry-run` 检测到缺失 ops 并报告 → `openfeel flow repair` 实际修复为 `{}`
+
+**参见：** v1.0.0-stage-30 op-001

@@ -1,0 +1,32 @@
+# stage-30 操作方案依赖声明
+# 由 Planner 生成，Feel 调度前校验
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "flow-manager load() ops 类型守卫 + repair() ops 修复"
+    depends_on: []
+    stage: "v1.0.0-stage-30"
+    produces:
+      - "src/core/flow-manager.ts"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "setStatusField / parseStatusFields 正则兼容非粗体格式"
+    depends_on: []
+    stage: "v1.0.0-stage-30"
+    produces:
+      - "src/commands/stage.ts"
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "新增 stage create 子命令 + i18n 键"
+    depends_on: []
+    stage: "v1.0.0-stage-30"
+    produces:
+      - "src/commands/stage.ts"
+      - "src/core/i18n-data/zh-CN.ts"
+      - "src/core/i18n-data/en.ts"
+
+# 三个 op 相互独立，无互斥关系
+# 建议执行顺序：op-001 → op-002 → op-003（逻辑分组，非硬依赖）

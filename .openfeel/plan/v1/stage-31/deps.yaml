@@ -1,0 +1,56 @@
+# stage-31 操作方案依赖声明
+# 由 Schemer 更新（纳入 REV-001~003），Feel 调度前校验
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "flow advance --stage 缺失提示增强（i18n 文案修改）"
+    depends_on: []
+    stage: "v1.0.0-stage-31"
+    produces:
+      - "src/core/i18n-data/zh-CN.ts"
+      - "src/core/i18n-data/en.ts"
+    i18n_keys: 1 modified
+    rev: REV-001
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "flow wizard 无阶段时交互式创建阶段"
+    depends_on: []
+    stage: "v1.0.0-stage-31"
+    produces:
+      - "src/commands/flow.ts"
+      - "src/core/i18n-data/zh-CN.ts"
+      - "src/core/i18n-data/en.ts"
+    i18n_keys: 7 new
+    rev: REV-001
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "flow advance 跳转失败增强诊断信息（当前 phase + 合法目标）"
+    depends_on: []
+    stage: "v1.0.0-stage-31"
+    produces:
+      - "src/commands/flow.ts"
+      - "src/core/i18n-data/zh-CN.ts"
+      - "src/core/i18n-data/en.ts"
+    i18n_keys: 3 new
+    rev: REV-001
+
+  op-004:
+    file: "ops/op-004.md"
+    title: "flow advance 新增 --dry-run 预览选项"
+    depends_on: []
+    stage: "v1.0.0-stage-31"
+    produces:
+      - "src/commands/flow.ts"
+      - "src/core/i18n-data/zh-CN.ts"
+      - "src/core/i18n-data/en.ts"
+    i18n_keys: 5 new (含 dryRunForceWarn — REV-003)
+    rev: REV-001, REV-002, REV-003
+
+# 四个 op 相互独立，无互斥关系
+# 修改 flow.ts 不同区域：op-002(wizard L1019) / op-003(advance L417) / op-004(advance L363+L459)
+# i18n 文件修改不冲突（每个 op 新增/修改不同键）
+# 建议执行顺序：op-001 → op-002 → op-003 → op-004（按问题编号递增）
+# i18n 键总计: 1 modified + 15 new = 16 键变更

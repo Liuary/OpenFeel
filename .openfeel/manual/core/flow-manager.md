@@ -10,11 +10,11 @@
 
 | 方法 | 功能 |
 |------|------|
-| `load()` / `save()` | 读取 / 持久化 flow.json（save 含备份与防损坏机制） |
+| `load()` / `save()` | 读取 / 持久化 flow.json（save 含备份与防损坏机制；load 含 ops 防御性类型守卫） |
 | `addStage(stageId, initialPhase)` | 注册新阶段 |
 | `advanceStagePhase(stageName, phase)` | 推进阶段到目标 phase（校验合法性） |
 | `getSummary()` / `summary(lang)` | 获取流水线摘要（结构化 / 文本） |
-| `validate()` / `repair()` / `healthCheck()` | 校验、自动修复、健康检查 |
+| `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查 |
 | `saveCheckpoint()` / `restoreCheckpoint()` | 阶段检查点保存与回滚 |
 | `autoCommitOnDone(stageName)` | 阶段 done 时自动 git 提交 |
 

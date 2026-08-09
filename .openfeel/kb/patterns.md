@@ -1592,3 +1592,58 @@ if (updated.some(f => f.startsWith('.opencode/agents/')) && process.stdout.isTTY
 
 **参见：** v1.0.0-stage-29 op-002 步骤 4.5 + 7.2
 
+
+## [+] 数据加载防御性类型守卫模式 (2026-08-09)
+
+在遍历 Object.entries() 读取 JSON 数据的嵌套字段前，必须增加防御性类型守卫。JSON 解析不保证字段的存在性或其类型（可能为 null、undefined、数组等非预期值），直接遍历会导致 TypeError 抛异常。
+
+`	ypescript
+// 反模式：直接遍历，遇到 null ops 时抛异常崩溃
+for (const [opKey, op] of Object.entries(stage.ops)) {
+  op.id = opKey;
+}
+
+// 正确：三重类型守卫
+if (stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)) {
+  for (const [opKey, op] of Object.entries(stage.ops)) {
+    op.id = opKey;
+  }
+}
+`
+
+**三重检查语义：**
+1. 	ruthy — 排除 null、undefined
+2. 	ypeof === 'object' — 确认是对象（而非字符串、数字等标量）
+3. !Array.isArray() — 排除数组（typeof [] 也为 'object'），因为数组的 entries() 语义不同
+
+**同源崩溃点排查原则：** 当发现一处因类型不安全导致的崩溃点后，应全局搜索同一数据结构的其他调用点——本阶段修复了 load()、summary()、getSummary()、flow overview 共 4 处同类崩溃。
+
+**配合使用：** epair() 方法同步增加 ops 字段修复，将 null/undefined/非对象 ops 重置为空对象 {}，与 load() 的类型守卫形成"加载时防御 + 修复时补全"的双向保障。
+
+**参见：** v1.0.0-stage-30 op-001（flow-manager load() + repair()）
+
+## [+] 正则兼容粗体/非粗体双格式模式 (2026-08-09)
+
+当正则匹配 Markdown 中的格式化文本时，使用非捕获组 (?:pattern)? 使格式标记变为可选，同时兼容有格式和无格式两种写法。
+
+`	ypescript
+// 反模式：仅匹配粗体格式
+const fieldRegex = /^-\s*\*\*(.+?)\*\*[：:]\s*(.*)$/gm;
+
+// 正确：粗体标记改为可选非捕获组
+const fieldRegex = /^-\s*(?:\*\*)?(.+?)(?:\*\*)?[：:]s*(.*)$/gm;
+`
+
+**关键要点：**
+- (?:\*\*)? — 非捕获组，? 使星号标记（粗体）变为可选，同时不改变捕获组编号
+- 向后兼容：可选格式是原语法的超集，已有粗体格式不受影响
+- 锚定行首 -  防止误匹配正文行
+- 适用于任何需要"标记可选化"的场景：斜体 _text_、代码块 \code\ 等
+
+**双端应用：** 本模式在 parseStatusFields()（读取）和 setStatusField()（写入）两端对称应用——读取使用正则字面量，写入使用 
+ew RegExp() 模板字符串（需双反斜杠转义），捕获组数量保持不变。
+
+**配合使用：** 长线策略应遵循"CLI 原子管理模式"——status.md 通过 CLI 命令操作而非手动 edit，从源头保证格式一致性，正则兼容作为兜底保障。
+
+**参见：** v1.0.0-stage-30 op-002（stage setStatusField / parseStatusFields）
+

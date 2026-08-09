@@ -84,7 +84,7 @@ export const flow: I18nDomain = {
 
   'stage.addedTmpl':            { key: 'flow.stage.addedTmpl',            zh: '', en: '✓ Stage created: {stage} → plan_pending' },
 
-  'advance.errorNoStage':       { key: 'flow.advance.errorNoStage',       zh: '', en: 'Error: --stage parameter must specify a stage ID (e.g. stage-03)' },
+  'advance.errorNoStage':       { key: 'flow.advance.errorNoStage',       zh: '', en: 'Error: --stage parameter must specify a stage ID (e.g. stage-03). If this is a new project, run openfeel stage create <id> first.' },
   'advance.warnAutoCorrect':    { key: 'flow.advance.warnAutoCorrect',    zh: '', en: '(Non-standard phase auto-corrected, proceeding)' },
   'advance.errorInvalidFormat': { key: 'flow.advance.errorInvalidFormat', zh: '', en: 'Error: flow.json format is invalid' },
   'advance.errorInvalidPhaseTmpl': { key: 'flow.advance.errorInvalidPhaseTmpl', zh: '', en: "Error: '{phase}' is not a valid PipelinePhase." },

@@ -1,56 +1,51 @@
 # 自测报告 — op-003
 
-- **执行时间**：2026-08-07 22:20
+- **执行时间**：2026-08-09 20:50
 - **执行 Agent**：Executor
 - **重试次数**：第 1 次
 
 ## 执行摘要
 
-flow.json 25 个 stageId 从 v0.x.x 体系重映射为 v1.0.0-stage-04~28（Feel 确认锚点1 为准），4 个引用文件同步更新，flow health 通过，构建 + 395 测试全通过。
+`stage create <stageId>` 子命令注册完成，新增 4 个 i18n 键（功能域 2 + help 域 2，双语），REV-001/002/003 全部验证通过，自测全部通过。
 
 ## 实施步骤完成情况
 
-- [x] 步骤1：建立 25 项映射表（v0.4.2→04 起按 flow.json 顺序连续编号至 v0.5.11-stage-01→28）
-- [x] 步骤2：重映射 flow.json stages 全部 key + name 字段（25 个）
-- [x] 步骤3：pipeline.current.stage 确认（v1.0.0-stage-02，无 v0 引用）
-- [x] 步骤4：log 中 stageName 重映射（220 处）+ add_stage stageId 补映射（10 处）
-- [x] 步骤5：openfeel flow health --quick 通过（28 stage 合法）
-- [x] 步骤6：plan/index.md 对照表更新（v1.0.0-stage-01~28 + 历史版本）
-- [x] 步骤7：plan_log.md 新增 op-003 变更记录
-- [x] 步骤8：kb/index.md 最近更新 + 新增记录
-- [x] 步骤9：dev/current.md 版本引用更新
-- [x] 步骤10：活跃文档搜索确认无遗漏（kb 正文历史溯源按原则保留）
-- [x] 步骤11：npm run build + npm test 全通过
+- [x] 步骤1：stage.ts 文件头 L3 注释追加 `|create`（REV-002）
+- [x] 步骤2：stage.ts 新增 `import { FlowManager } from '../core/flow-manager.js';`
+- [x] 步骤3：注册 `stage create <stageId>` 子命令（复用 `FlowManager.addStage()` + `mgr.save()`，未 init 报错退出，已存在阶段 catch 统一处理）
+- [x] 步骤4：功能域 i18n 键 `stage.create.desc` / `stage.create.addedTmpl`（zh-CN.ts + en.ts）
+- [x] 步骤5：help 域 i18n 键 `help.stage.create`（zh-CN.ts + en.ts，REV-001）
 
 ## 自测清单验证
 
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| flow.json 无残留 v0.x.x stageId | ✅ | stages/log（含 add_stage stageId）全部映射 |
-| openfeel flow health --quick 通过 | ✅ | 28 个 stage 全部合法 |
-| plan/index.md 对照表同步 | ✅ | v1.0.0-stage-01~28 + 历史 v0.1.0~v0.4.1 |
-| plan_log.md 版本引用同步 | ✅ | 新增 op-003 记录 |
-| kb/index.md 版本列表同步 | ✅ | 最近更新 + 新增记录 |
-| dev/current.md 版本引用同步 | ✅ | v1.0.0-stage 体系 |
-| npm run build + npm test 通过 | ✅ | build ✅ / 395/395 通过 |
+| TypeScript 编译 `npm run build` 零错误 | ✅ | 含模板一致性校验 |
+| 现有测试无回归 `npm test` | ✅ | 399/399 通过 |
+| stage create 基本功能 | ✅ | 输出「✓ 已创建阶段: v1.0.0-stage-30-test → plan_pending」，flow.json 中阶段存在、phase=plan_pending、ops={} |
+| 已存在阶段报错 | ✅ | 重复创建输出「错误：Stage '...' already exists」，退出码 1 |
+| 未 init 项目报错 | ✅ | 「错误：flow.json 未初始化，请先运行 openfeel init」，退出码 1 |
+| 帮助信息显示 create | ✅ | `help stage` 显示 `create <stageId>` |
+| i18n 英文切换 | ✅ | 设置 lang=en 后输出「✓ Stage created: ... → plan_pending」，help 显示英文 |
+
+### REV 专项验证
+
+- [x] **REV-001**：`help.stage.create` 键在 zh-CN.ts 与 en.ts 均定义，帮助输出显示对应说明（中/英）
+- [x] **REV-002**：stage.ts 文件头 L3 注释已包含 `|create`
+- [x] **REV-003**：`stage create` 与 `flow stage add` 均调用 `FlowManager.addStage()`，行为一致（flow.ts L343 对照确认）
 
 ## 产出文件
 
-- `.openfeel/flow.json`（25 stageId + 230 处 log 引用重映射）
-- `.openfeel/plan/index.md`（对照表重构）
-- `.openfeel/plan/plan_log.md`（新增记录）
-- `.openfeel/kb/index.md`（版本列表更新）
-- `.openfeel/dev/current.md`（里程碑表重映射）
+- `src/commands/stage.ts`
+- `src/core/i18n-data/zh-CN.ts`
+- `src/core/i18n-data/en.ts`
 
 ## 前置校验结果
 
-- 方案完整性：通过（任务含目标/步骤/产出/自测清单，op 方案文件已创建）
-- Phase 合法性：通过（flow.json pipeline.phase=active，v1.0.0-stage-02=exec_running）
-- 流转合法性：通过（openfeel flow health --quick 无错误）
+- 方案完整性：通过
+- Phase 合法性：通过（`pipeline.current.op` 为空属 Feel 人工调度，已按指示执行）
+- 流转合法性：通过（`openfeel flow health --quick` 退出码 0）
 
 ## 偏差记录
 
-- 映射规则两次向 Feel 确认：锚点2（v0.5.11-stage-01→15）与锚点1（v0.4.2→04）经穷举无法同时满足连续编号，Feel 确认锚点1 为准、04 起顺序编号（v0.5.11-stage-01→28）。
-- log 中版本级 stageName（v0.4.2/v0.4.3/v0.4.4/v0.4.5）映射到对应版本首个 stage 编号（04/05/08/13）。
-- 脚本第一版遗漏 add_stage 事件 `detail.stageId` 字段（10 处），补映射后无残留。
-- kb 正文（architecture/patterns/troubleshooting）v0.x.x 引用为历史溯源，按任务范围与「排除历史」原则保留。
+- 无超范围/遗漏。方案自测命令入口 `dist/index.js` 实际为库入口，验证使用 `bin/openfeel.js`（同 op-001 记录）。

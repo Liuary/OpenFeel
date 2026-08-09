@@ -322,6 +322,8 @@ export const stage: I18nDomain = {
   'task.taskItemTmpl':           { key: 'stage.task.taskItemTmpl',           zh: '任务{number}: {desc}',                     en: '' },
   'task.blockedByTmpl':          { key: 'stage.task.blockedByTmpl',          zh: '阻塞原因: {reason}',                       en: '' },
   'task.actionLabelTmpl':        { key: 'stage.task.actionLabelTmpl',        zh: '{label} {stageId} 任务{taskNo}',           en: '' },
+  'create.desc':                 { key: 'stage.create.desc',                 zh: '创建新的工作阶段',                        en: '' },
+  'create.addedTmpl':            { key: 'stage.create.addedTmpl',            zh: '✓ 已创建阶段: {stage} → plan_pending',    en: '' },
 };
 
 /* ==================== plan 域：计划命令 ==================== */
@@ -493,6 +495,7 @@ export const help: I18nDomain = {
   'stage.task':            { key: 'help.stage.task',            zh: '勾选或取消任务 checkbox', en: '' },
   'stage.task.done':       { key: 'help.stage.task.done',       zh: '标记任务为已完成', en: '' },
   'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '标记任务为未完成', en: '' },
+  'stage.create':          { key: 'help.stage.create',          zh: '创建新的工作阶段（自动写入 flow.json）', en: '' },
 
   // view
   'view':                  { key: 'help.view',                  zh: '审查条目管理', en: '' },

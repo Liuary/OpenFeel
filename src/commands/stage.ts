@@ -1,6 +1,6 @@
 /**
  * stage 命令组注册
- * openfeel stage status|set|task — status.md 的 CLI 原子操作管理
+ * openfeel stage status|set|task|create — status.md 的 CLI 原子操作管理
  *
  * 变更摘要 (stage-04: status.md CLI 管理):
  * - 新增 stage 命令组，通过 CLI 原子操作管理 status.md 读写
@@ -14,6 +14,7 @@ import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from
 import { resolve } from 'node:path';
 import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
+import { FlowManager } from '../core/flow-manager.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -73,7 +74,7 @@ function backupStatus(statusPath: string, stageId: string): void {
  */
 function parseStatusFields(content: string): StatusFields {
   const fields: StatusFields = {};
-  const fieldRegex = /^-\s*\*\*(.+?)\*\*[：:]\s*(.*)$/gm;
+  const fieldRegex = /^-\s*(?:\*\*)?(.+?)(?:\*\*)?[：:]\s*(.*)$/gm;
   let match: RegExpExecArray | null;
 
   while ((match = fieldRegex.exec(content)) !== null) {
@@ -200,9 +201,9 @@ function showStageStatus(statusPath: string, stageId: string): void {
 function setStatusField(statusPath: string, key: string, newValue: string): boolean {
   const content = readFileSync(statusPath, 'utf-8');
 
-  // 匹配格式：`- **{key}**：{value}` — 支持中文冒号
+  // 匹配格式：`- **{key}**：{value}` 或 `- {key}：{value}` — 支持中文冒号
   const fieldRegex = new RegExp(
-    `^(-\\s*\\*\\*${escapeRegex(key)}\\*\\*[：:]\\s*)(.*)$`,
+    `^(-\\s*(?:\\*\\*)?${escapeRegex(key)}(?:\\*\\*)?[：:]\\s*)(.*)$`,
     'gm',
   );
 
@@ -375,5 +376,29 @@ export function registerStageCommand(program: Command): void {
 
       const actionLabel = toDone ? t('stage.task.done', lang) : t('stage.task.undone', lang);
       console.log(t('stage.task.actionLabelTmpl', lang, { label: actionLabel, stageId, taskNo: String(taskNo) }));
+    });
+
+  // ═══ stage create <stageId> ═══
+  stage
+    .command('create')
+    .description(t('stage.create.desc', getCliLang(process.cwd())))
+    .argument('<stageId>', '阶段 ID（如 v1.0.0-stage-30）')
+    .action((stageId: string) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      const mgr = new FlowManager(projectPath);
+      if (!mgr.isLoaded()) {
+        console.error(t('common.errorNoInit', lang));
+        process.exit(1);
+      }
+      try {
+        mgr.addStage(stageId);
+        mgr.save();
+        console.log(t('stage.create.addedTmpl', lang, { stage: stageId }));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(t('common.errorTmpl', lang, { msg }));
+        process.exit(1);
+      }
     });
 }

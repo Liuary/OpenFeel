@@ -304,6 +304,8 @@ export const stage: I18nDomain = {
   'task.taskItemTmpl':           { key: 'stage.task.taskItemTmpl',           zh: '', en: 'Task {number}: {desc}' },
   'task.blockedByTmpl':          { key: 'stage.task.blockedByTmpl',          zh: '', en: 'Blocked by: {reason}' },
   'task.actionLabelTmpl':        { key: 'stage.task.actionLabelTmpl',        zh: '', en: '{label} {stageId} Task {taskNo}' },
+  'create.desc':                 { key: 'stage.create.desc',                 zh: '', en: 'Create a new work stage' },
+  'create.addedTmpl':            { key: 'stage.create.addedTmpl',            zh: '', en: '✓ Stage created: {stage} → plan_pending' },
 };
 
 /* ==================== plan ==================== */
@@ -467,6 +469,7 @@ export const help: I18nDomain = {
   'stage.task':            { key: 'help.stage.task',            zh: '', en: 'Check or uncheck task checkbox' },
   'stage.task.done':       { key: 'help.stage.task.done',       zh: '', en: 'Mark task as done' },
   'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '', en: 'Mark task as not done' },
+  'stage.create':          { key: 'help.stage.create',          zh: '', en: 'Create a new work stage (writes to flow.json)' },
 
   'view':                  { key: 'help.view',                  zh: '', en: 'Review entry management' },
   'view.list':             { key: 'help.view.list',             zh: '', en: 'List review entries' },

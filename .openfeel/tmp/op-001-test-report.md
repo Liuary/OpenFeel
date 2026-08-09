@@ -1,68 +1,43 @@
 # 自测报告 — op-001
 
-- **执行时间**：2026-08-08 10:32
+- **执行时间**：2026-08-09 20:50
 - **执行 Agent**：Executor
-- **重试次数**：1（首次构建失败后修复双逗号与 Base64 解码问题，第 2 次构建通过）
+- **重试次数**：第 1 次
 
 ## 执行摘要
 
-OpenCode 模板数据源化与构建管线全部完成：创建 9+9 Agent 模板、14 个 Skill 模板、2 份 instructions、opencode.jsonc 模板、双语 ADAPTER、.gitignore；build.js 新增 3 个生成函数 + 1 个校验函数；template-loader.ts 新增 3 类 AUTO-GENERATED 锚点段 + 5 个导出函数。构建与全部测试通过。
+步骤 1（load() ops 类型守卫）与步骤 2（repair() ops 字段修复）完成；自测发现 Bug #1 同源崩溃点 3 处（summary/getSummary/overview 的 ops 遍历）并补充同模式守卫后，flow status/current/overview 在 null/缺失 ops 下均不崩溃，repair 可正确修复，全部自测项通过。
 
 ## 实施步骤完成情况
 
-- [x] 步骤1.1：创建 `templates-data/opencode/agents/{zh-CN,en}/`，zh-CN 9 个（复用 `.opencode/agents/`），en 9 个（复用 `templates-data/agents/en/`）
-- [x] 步骤1.2：创建 `templates-data/opencode/skills/{14}/SKILL.md`，从 `.opencode/skills/` 逐目录复制
-- [x] 步骤1.3：创建 `templates-data/opencode/instructions/{zh-CN,en}.md`（zh-CN ← `.opencode/instructions/core.md`，en ← `core-instructions/en.md`）
-- [x] 步骤1.4：创建 `opencode.jsonc` 模板（SKILLS_PLACEHOLDER 锚点 + `{项目名称}` 占位符）、`ADAPTER.zh-CN.md`（推荐 B 简洁版）、`ADAPTER.en.md`、`.gitignore`；不含 package.json
-- [x] 步骤2.1：build.js 新增 4 个 TEMPLATE_OPENCODE_* 常量
-- [x] 步骤2.2：新增 `generateOpencodeAgentTemplates()`（双层 Record，含连字符键加引号）
-- [x] 步骤2.3：新增 `generateOpencodeSkillTemplates()`（单层 Record）
-- [x] 步骤2.4：新增 `generateOpencodeConfigTemplates()`（instructions/adapter Base64 编码；opencode_jsonc 扫描 skills 目录替换占位锚点；gitignore 双语言注入）
-- [x] 步骤2.5：新增 `validateOpencodeTemplates()`（Agent/Skill/Config 三类一致性校验）
-- [x] 步骤2.6：主流程串联步骤 5/6/7 + 校验区添加 `validateOpencodeTemplates()`
-- [x] 步骤3.1：template-loader.ts 新增 3 类 AUTO-GENERATED 锚点段（loadTemplate 之后、兼容导出之前）
-- [x] 步骤3.2：新增 `loadOpencodeAgentTemplate` / `loadOpencodeSkillTemplate` / `loadOpencodeConfigTemplate`（Base64 解码）/ `listOpencodeAgentIds` / `listOpencodeSkillNames`（op-002 依赖）
-- [x] 步骤3.3：`npm run build` 通过 + `npm test` 无回归
+- [x] 步骤1：`load()` 在 L259-265 增加 ops 三重类型守卫（truthy + object + 非数组），null/undefined/数组 ops 跳过遍历
+- [x] 步骤2：`repair()` 在 stage phase 修复循环内（else-if 闭合后）插入 ops 修复——缺失或非普通对象时重置为 `{}` 并记录 change
 
 ## 自测清单验证
 
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| `npm run build` 成功（退出码 0） | ✅ | TypeScript 编译完成 |
-| `npm test` 无回归 | ✅ | 395/395 通过（含原 298 个） |
-| 控制台输出新增步骤确认 | ✅ | `✓ 2 个语言, 18 个 opencode Agent 模板已注入`、`✓ 14 个 opencode Skill 定义已注入`、`✓ 2 个语言的 opencode 配置模板已注入` |
-| `validateOpencodeTemplates()` 校验通过 | ✅ | 3/3 一致（Agent 18 + Skill 14 + Config 8） |
-| 新增 5 个导出函数可正常导入 | ✅ | dist 导入测试通过 |
-| zh-CN 9 个文件与 `.opencode/agents/` 一致 | ✅ | 字符级对比 diff=0 |
-| skills 14 个 SKILL.md 与 `.opencode/skills/` 一致 | ✅ | 字符级对比 diff=0 |
-| 不含 `package.json` | ✅ | REV-001 验证通过 |
-| opencode.jsonc 模板含占位符 | ✅ | `SKILLS_PLACEHOLDER` 与 `{项目名称}` 均存在 |
-| 构建后 skills 列表包含全部 14 个 skill | ✅ | jsonc 中 14 条 `.opencode/skills/` 条目 |
-| OPENCODE_* 锚点段 TS 语法有效 | ✅ | 编译无错误 |
-| `listOpencodeAgentIds('zh-CN')` 长度 9 | ✅ | |
-| `listOpencodeAgentIds('en')` 长度 9 | ✅ | |
+| TypeScript 编译 `npm run build` 零错误 | ✅ | 多次构建均通过，含模板一致性校验 |
+| 现有测试无回归 `npm test` | ✅ | 399/399 通过（21 文件） |
+| Bug #1 — 含 `"ops": null` 的 flow.json 执行 flow status 不崩溃 | ✅ | 正常显示流水线状态（30 阶段，操作数 0） |
+| Bug #1 — 无 ops 字段的 stage 执行 flow current 正常 | ✅ | 正常输出，不报错 |
+| Bug #1 — flow repair --dry-run 报告缺失 ops | ✅ | 报告 stage-04 / stage-30 补全缺失 ops |
+| Bug #1 — flow repair 修复 ops 为 {} | ✅ | 修复后 stage-30.ops={}，stage-04 补上 ops 键 |
+| 正常 flow.json 不受影响 | ✅ | 真实项目 flow status 输出正常 |
 
 ## 产出文件
 
-- `src/core/templates-data/opencode/agents/zh-CN/*.md` (x9)
-- `src/core/templates-data/opencode/agents/en/*.md` (x9)
-- `src/core/templates-data/opencode/skills/{14}/SKILL.md`
-- `src/core/templates-data/opencode/instructions/zh-CN.md`
-- `src/core/templates-data/opencode/instructions/en.md`
-- `src/core/templates-data/opencode/opencode.jsonc`
-- `src/core/templates-data/opencode/ADAPTER.zh-CN.md`
-- `src/core/templates-data/opencode/ADAPTER.en.md`
-- `src/core/templates-data/opencode/.gitignore`
-- `build.js`（MODIFY）
-- `src/core/template-loader.ts`（MODIFY）
+- `src/core/flow-manager.ts`（load/repair/summary/getSummary 守卫）
+- `src/commands/flow.ts`（overview ops 守卫，超范围补充）
 
 ## 前置校验结果
 
-- 方案完整性：通过（6 项必填字段齐全）
-- Phase 合法性：通过（stage-29 phase=exec_running，合法枚举；CLI health 校验通过）
-- 流转合法性：通过（`openfeel flow health --quick` 正常退出，无 errors/warnings）
+- 方案完整性：通过（目标/实施步骤/产出文件/自测清单/阶段/最多重试 6 项齐备）
+- Phase 合法性：通过（pipeline.phase=active、stage-30 phase=exec_running；`pipeline.current.op` 为空属 Feel 人工调度，已按 Feel 明确指示执行）
+- 流转合法性：通过（`openfeel flow health --quick` 退出码 0，仅快速模式检查）
 
 ## 偏差记录
 
-- **超范围（预期内）**：template-loader.ts 额外新增 `listOpencodeSkillNames()` 导出函数——这是 op-002 步骤 3.1 明确要求的依赖（"在 op-001 的 template-loader.ts 中额外新增"），一并完成避免 op-002 重复修改。
-- **实现细节**：instructions/adapter 以 Base64 编码存储（与 core-instructions 处理一致），`loadOpencodeConfigTemplate` 在加载时对这两个键解码。
+- **超范围（方案一致性）**：`src/commands/flow.ts` overview ops 遍历、`flow-manager.ts` summary()/getSummary() ops 计数补类型守卫——自测清单要求「flow status/current/overview 不崩溃」，实测发现 null ops 时崩溃于 `Object.keys(stage.ops)`（方案仅覆盖 load()/repair()，未覆盖下游消费点），为满足验收的必要补充，守卫模式与方案 load() 一致，已回写方案修正记录。
+- 方案中自测命令写的是 `node dist/index.js flow status`，实际 CLI 入口为 `bin/openfeel.js`（`dist/index.js` 是库 API 入口），验证时以 `bin/openfeel.js` 为准。
+- `todowrite` 工具在当前环境不可用，改用文本方式跟踪多步骤进度。

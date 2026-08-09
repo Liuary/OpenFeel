@@ -197,8 +197,12 @@ export function registerFlowCommand(program: Command): void {
       } else {
         console.log(`   ` + t('flow.overview.totalStagesTmpl', lang, { n: String(Object.keys(data.stages).length) }) + `:`);
         for (const [stageId, stageData] of Object.entries(data.stages)) {
-          const opsTotal = Object.keys(stageData.ops).length;
-          const opsDone = Object.values(stageData.ops).filter(
+          // 类型守卫：仅统计普通对象 ops（跳过 null/undefined/数组）
+          const opsMap = stageData.ops && typeof stageData.ops === 'object' && !Array.isArray(stageData.ops)
+            ? stageData.ops
+            : {};
+          const opsTotal = Object.keys(opsMap).length;
+          const opsDone = Object.values(opsMap).filter(
             (o: unknown) => (o as { state?: string }).state === 'done'
           ).length;
           const marker = current?.stage === stageId ? '← ' + t('flow.wizard.currentLabel', lang) : '';

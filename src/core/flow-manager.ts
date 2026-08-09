@@ -258,8 +258,11 @@ export class FlowManager {
       // 从 stages 的键名恢复 op 的 id 字段（运行时便利字段，磁盘不存储）
       if (this.data && this.data.stages) {
         for (const [, stage] of Object.entries(this.data.stages)) {
-          for (const [opKey, op] of Object.entries(stage.ops)) {
-            op.id = opKey;
+          // 类型守卫：仅当 ops 为普通对象时才遍历（跳过 null/undefined/数组）
+          if (stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)) {
+            for (const [opKey, op] of Object.entries(stage.ops)) {
+              op.id = opKey;
+            }
           }
         }
       }
@@ -584,7 +587,10 @@ export class FlowManager {
     const stagesCount = Object.keys(this.data.stages).length;
     let opsCount = 0;
     for (const stage of Object.values(this.data.stages)) {
-      opsCount += Object.keys(stage.ops).length;
+      // 类型守卫：仅统计普通对象 ops（跳过 null/undefined/数组）
+      if (stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)) {
+        opsCount += Object.keys(stage.ops).length;
+      }
     }
 
     const openReviews = this.data.reviews.filter(
@@ -626,7 +632,10 @@ export class FlowManager {
 
     let opsCount = 0;
     for (const stage of Object.values(this.data.stages)) {
-      opsCount += Object.keys(stage.ops).length;
+      // 类型守卫：仅统计普通对象 ops（跳过 null/undefined/数组）
+      if (stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)) {
+        opsCount += Object.keys(stage.ops).length;
+      }
     }
 
     return {
@@ -2073,6 +2082,13 @@ export class FlowManager {
         } else if (s && typeof s === 'object' && !s.phase) {
           s.phase = 'plan_pending';
           changes.push(`已补全缺失的 stages.${stageId}.phase`);
+          modified = true;
+        }
+
+        // 修复缺失或非对象的 ops 字段
+        if (!s.ops || typeof s.ops !== 'object' || Array.isArray(s.ops)) {
+          s.ops = {};
+          changes.push(`已为阶段 ${stageId} 补全缺失的 ops`);
           modified = true;
         }
       }

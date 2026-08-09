@@ -1,40 +1,37 @@
 # 自测报告 — op-002
 
-- **执行时间**：2026-08-09 20:50
+- **执行时间**：2026-08-09 22:35
 - **执行 Agent**：Executor
 - **重试次数**：第 1 次
 
 ## 执行摘要
-
-`parseStatusFields()` 与 `setStatusField()` 两处正则改为粗体可选（`(?:\*\*)?` 非捕获组），非粗体与粗体 status.md 格式均可正常更新与解析，正文行不误匹配，自测全部通过。
+`flow wizard` 无阶段时由静默退出改为交互式创建（select 是/否 + input 阶段 ID → addStage → continue），自测全部通过。
 
 ## 实施步骤完成情况
-
-- [x] 步骤1：`parseStatusFields()` L76 正则 `\*\*(.+?)\*\*` → `(?:\*\*)?(.+?)(?:\*\*)?`（粗体星号变可选非捕获组）
-- [x] 步骤2：`setStatusField()` L204-207 模板正则 `\\*\\*${key}\\*\\*` → `(?:\\*\\*)?${key}(?:\\*\\*)?`（双反斜杠转义，捕获组数量不变）
+- [x] 步骤1：flow.ts wizard 无阶段处理块替换为交互式创建逻辑（`@inquirer/prompts` select + input，`mgr.addStage()` + `save()`，`continue` 重新进入 `for(;;)` 主循环）
+- [x] 步骤2：zh-CN.ts / en.ts 各新增 7 个 wizard 键（createPrompt/createYes/createNo/createInput/createEmpty/createdTmpl/createSkipped）
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| TypeScript 编译 `npm run build` 零错误 | ✅ | 含模板一致性校验 |
-| 现有测试无回归 `npm test` | ✅ | 399/399 通过 |
-| 非粗体格式 `- 状态：plan_pending` 执行 stage set 成功 | ✅ | 更新为 `- 状态：exec_running`，输出「✓ 已更新」 |
-| 粗体格式 `- **状态**：plan_pending` 仍正常更新 | ✅ | 更新为 `- **状态**：review_pending` |
-| stage status 对粗体/非粗体均正常解析 | ✅ | 两种格式均正确显示状态值 |
-| 非目标字段不误匹配 | ✅ | `- 正文内容：...` 行在 stage set 后保持不变（set 仅替换「状态」键） |
-| setStatusField 返回值正确 | ✅ | 字段存在时更新并返回 true（输出成功）；不存在时返回 false（实测粗体/非粗体均正常） |
+| TypeScript 编译：`npm run build` 零错误 | ✅ | 0 错误 |
+| i18n 对称性：`openfeel lint i18n` | ✅ | 新增 7 键双向匹配 |
+| 验证—空项目交互式创建（快乐路径） | ✅ | 模拟 TTY 输入：提示→选"是"→输入 test-stage→"已创建阶段: test-stage"→flow.json 出现 `test-stage: {phase:"plan_pending"}`→自动进入向导主循环（continue 生效） |
+| 验证—选择"否"退出 | ✅ | 输出"已跳过阶段创建，退出向导。"，退出码 0，未创建阶段 |
+| 验证—正常项目不受影响 | ✅ | 代码仅改 `stages.length===0` 分支；非空场景走原 select 逻辑（回归场景 3 验证通过） |
+| 验证—空 ID 拦截 | ✅ | 输入空串回车 → "阶段 ID 不能为空"拦截；重新输入 ok-stage 成功创建 |
+| 验证—重复 ID 防护 | ✅ | `addStage()` L1076-1078 对重复 ID 抛异常，wizard 外层 try-catch（L993）捕获不崩溃（flow-manager 单测已覆盖同逻辑） |
+| 现有测试无回归：`npm test` | ✅ | 399/399 通过 |
 
 ## 产出文件
-
-- `src/commands/stage.ts`
+- `src/commands/flow.ts`
+- `src/core/i18n-data/zh-CN.ts`
+- `src/core/i18n-data/en.ts`
 
 ## 前置校验结果
-
 - 方案完整性：通过
-- Phase 合法性：通过（`pipeline.current.op` 为空属 Feel 人工调度，已按指示执行）
-- 流转合法性：通过（`openfeel flow health --quick` 退出码 0）
+- Phase 合法性：通过
+- 流转合法性：通过（`openfeel flow health --quick` 正常退出）
 
 ## 偏差记录
-
-- 无超范围/遗漏。方案自测命令入口 `dist/index.js` 实际为库入口，验证使用 `bin/openfeel.js`（同 op-001 记录）。
+无。产出与声明一致。注：CLI 交互验证通过 spawn 分阶段延迟写 stdin 模拟 TTY 时序完成（spawnSync 一次性写入会因 stdin EOF 触发 @inquirer "User force closed" 取消，属测试手段限制而非代码缺陷）。

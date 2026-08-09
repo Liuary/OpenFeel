@@ -1,43 +1,40 @@
 # 自测报告 — op-004
 
-- **执行时间**：2026-08-07 22:23
+- **执行时间**：2026-08-09 22:35
 - **执行 Agent**：Executor
 - **重试次数**：第 1 次
 
 ## 执行摘要
-
-package.json 占位符 URL 修复（repository/bugs），npm pack --dry-run 验证产物 192 文件齐全，files 字段一致，.gitignore 未忽略 .github/。
+`flow advance` 新增 `--dry-run` 选项（校验后截断，不修改 flow.json），自测全部通过（含 REV-002 类型注解、REV-003 --force 组合标注）。
 
 ## 实施步骤完成情况
-
-- [x] 步骤1：确认占位符（repository.url/bugs.url 为 https://github.com/user/openfeel）
-- [x] 步骤2：repository.url → https://github.com/Liuary/OpenFeel.git
-- [x] 步骤3：bugs.url → https://github.com/Liuary/OpenFeel/issues
-- [x] 步骤4：npm pack --dry-run（192 文件 / 294.3 kB，dist/bin/schemas 齐全）
-- [x] 步骤5：files 字段与产物一致（README.md/package.json 为 npm 自动包含）
-- [x] 步骤6：.gitignore 未忽略 .github/（仅 node_modules/dist/users/coverage）
-- [x] 步骤7：npm run build 无回归（op-003 已验证）
+- [x] 步骤1：命令定义追加 `.option('--dry-run', ...)`（注明与 --force 组合行为，REV-003）
+- [x] 步骤2：action 类型签名新增 `dryRun?: boolean`（REV-002）
+- [x] 步骤3：`advanceStagePhase()` 前插入 dry-run 截断块（--force 时先 warn，预览后 return）
+- [x] 步骤4：zh-CN.ts / en.ts 各新增 5 个键（dryRunForceWarn/dryRunTitle/dryRunFrom/dryRunTo/dryRunOk）
+- [x] 步骤4+（超范围）：补充 `help.flow.advance.dryRun` 双语键——见偏差记录
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| package.json 无占位符 URL | ✅ | 无 `user/openfeel` 残留 |
-| npm pack --dry-run 产物完整 | ✅ | dist/ + bin/openfeel.js + schemas/ |
-| files 字段与实际一致 | ✅ | ["dist","bin","schemas"] |
-| .gitignore 未忽略 .github/ | ✅ | git check-ignore 返回未忽略 |
-| npm run build 通过 | ✅ | 模板一致性 4/4 |
+| TypeScript 编译：`npm run build` 零错误 | ✅ | 0 错误（含 REV-002 类型检查） |
+| i18n 对称性：`openfeel lint i18n` | ✅ | 441 键一致 |
+| 验证—dry-run 预览快乐路径 | ✅ | 输出含"═══ Dry-run 预览 ═══"、stage ID、`当前阶段`、`目标阶段`、`✓ 合法性验证通过`；flow.json 前后 SHA256 hash 一致（不可变性） |
+| 验证—dry-run 校验非法 phase | ✅ | `--to invalid_phase --dry-run` 在非法 phase 校验处报错退出（预览不出现） |
+| 验证—dry-run 校验非法跳转（op-003 组合） | ✅ | done 阶段 + dry-run → 拒绝并输出增强诊断（"当前 phase 无合法跳转目标"） |
+| 验证—正常推进不受影响 | ✅ | 不带 --dry-run 正常推进，flow.json 变更生效（stage-01 plan_review→plan_passed） |
+| 验证—--force + --dry-run 组合（REV-003） | ✅ | stderr 先输出"⚠ --force + --dry-run：已跳过…"，stdout 输出预览 + 合法性通过；flow.json 未修改；退出码 0 |
+| 验证—REV-002 类型注解 | ✅ | build 通过；L365 类型签名含 `dryRun?: boolean` |
 
 ## 产出文件
-
-- `package.json`（repository.url / bugs.url 修复）
+- `src/commands/flow.ts`
+- `src/core/i18n-data/zh-CN.ts`
+- `src/core/i18n-data/en.ts`
 
 ## 前置校验结果
-
 - 方案完整性：通过
-- Phase 合法性：通过（v1.0.0-stage-02=exec_running）
-- 流转合法性：通过（openfeel flow health --quick 无错误）
+- Phase 合法性：通过
+- 流转合法性：通过（`openfeel flow health --quick` 正常退出）
 
 ## 偏差记录
-
-- 无偏差。npm pack 产物中 README.md 与 package.json 由 npm 自动包含（files 字段外），属正常行为。
+**超范围 1 项**：新增 `help.flow.advance.dryRun` 键（zh-CN.ts / en.ts 各 1）。原因：lint i18n 检测到 `--dry-run` 选项缺少 help 域键（440→441），与既有 `help.flow.advance.force` 模式一致，属满足自测清单"i18n 对称性"的必要补充。已在方案 op-004 修正记录表回写。

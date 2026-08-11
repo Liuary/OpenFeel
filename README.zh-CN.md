@@ -1,6 +1,6 @@
 # OpenFeel — AI Agent 开发流程治理 CLI
 
-[English](README.en.md) | [更新日志](CHANGELOG.md) | [入门指南](docs/GETTING_STARTED.md)
+[English](README.en.md) | [更新日志](CHANGELOG.md) | [npm](https://www.npmjs.com/package/openfeel) | [入门指南](docs/GETTING_STARTED.md)
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。
 

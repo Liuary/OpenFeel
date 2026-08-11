@@ -1,6 +1,6 @@
 # OpenFeel — AI Agent Development Process Governance CLI
 
-[中文](README.zh-CN.md) | [Changelog](CHANGELOG.md) | [Getting Started](docs/GETTING_STARTED.md)
+[中文](README.zh-CN.md) | [Changelog](CHANGELOG.md) | [npm](https://www.npmjs.com/package/openfeel) | [Getting Started](docs/GETTING_STARTED.md)
 
 OpenFeel is a TypeScript CLI tool for end-to-end process governance in AI Agent development. Core philosophy: **"Slim prompts, process in tools"** — agents understand workflows by reading `flow.json` state, not long text documents.
 

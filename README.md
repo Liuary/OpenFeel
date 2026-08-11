@@ -1,6 +1,6 @@
 # OpenFeel — AI Agent 开发流程治理 CLI
 
-[English](README.en.md) | [更新日志](CHANGELOG.md)
+[English](README.en.md) | [更新日志](CHANGELOG.md) | [npm](https://www.npmjs.com/package/openfeel)
 
 > ⚡ **支持平台**：opencode ｜ **默认模型**：DeepSeek（主力推理）+ GLM（交叉审查）+ Alibaba-CN（多模态）
 

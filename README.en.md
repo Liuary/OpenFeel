@@ -141,6 +141,10 @@ npm run build      # Compile TypeScript
 npm test           # Run tests (395 cases)
 ```
 
+## Acknowledgments
+
+This project is based on [AI_Prompt](https://github.com/Liuary/AI_Prompt) and draws inspiration from tools like [OpenSpec](https://github.com/Fission-AI/OpenSpec).
+
 ## License
 
 [MIT](LICENSE)

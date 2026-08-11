@@ -141,6 +141,10 @@ npm run build      # 编译 TypeScript
 npm test           # 运行测试（395 用例）
 ```
 
+## 致谢
+
+本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的流程治理思路。
+
 ## 许可
 
 [MIT](LICENSE)

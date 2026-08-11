@@ -11,7 +11,7 @@
       "model": "alibaba-cn/qwen3-vl-plus"
     },
     "reviewer": {
-      "model": "deepseek/deepseek-v4-pro"
+      "model": "zhipuai/glm-5.2"
     }
   },
   "experimental": {

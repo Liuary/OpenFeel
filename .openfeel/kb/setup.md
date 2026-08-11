@@ -44,7 +44,7 @@ Agent frontmatter 的 `model` 字段格式为 `provider/model-name`，非简短�
 # ✅ 正确格式
 model: deepseek/deepseek-v4-pro   # 默认推理
 model: deepseek/deepseek-v4-flash # 快速执行
-model: zhipuai/glm-5.1            # 异种审查
+model: zhipuai/glm-5.2            # 异种审查
 ```
 
 **踩过的坑**：

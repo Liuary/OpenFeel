@@ -1813,3 +1813,76 @@ while (true) {  // wizard 主循环
 
 **参见：** v1.0.0-stage-31 op-002（wizard 交互式创建）、kb/patterns.md #CLI 原子管理模式
 
+## [+] update 增量部署哈希追踪 + 冲突标记三态模式 (2026-08-11)
+
+`openfeel update` 增量更新机制引入 `update_state.json` 元数据追踪 + `writeWithMergeDetection` 四态判定 + 冲突文件 Git 风格标记，实现"用户手动修改的文件不被覆盖"的安全更新策略。
+
+**架构概览：**
+
+```
+openfeel update
+  │
+  ├─ loadUpdateState() → 读取 .openfeel/update_state.json
+  │   ├─ Schema 校验通过 → 使用已有 hash 记录
+  │   └─ 校验失败/不存在 → null（降级为"全量覆盖"模式）
+  │
+  ├─ writeWithMergeDetection() — 逐文件四态判定：
+  │   ├─ 文件不存在 → created
+  │   ├─ hash 匹配 update_state 记录 → 安全覆盖 → updated
+  │   ├─ hash 不匹配 → 用户已修改 → conflicts（拒绝覆盖）
+  │   └─ 无 state 记录 → 降级安全覆盖 → updated
+  │
+  └─ 写入冲突文件 → .openfeel/update_conflicts/{relativePath}
+      （Git 风格 <<<<<<< / ======= / >>>>>>> 标记）
+```
+
+**核心模块：`src/core/update-state.ts`**
+
+| API | 功能 |
+|-----|------|
+| `hashContent(content)` | SHA-256 hash（含 CRLF→LF 行尾归一化，确保跨平台一致） |
+| `loadUpdateState(path)` | 读取 + Zod 校验 update_state.json，失败返回 null |
+| `saveUpdateState(path, state)` | 持久化（缩进 JSON，末尾换行） |
+| `createUpdateState(path, files)` | 首次 update 时创建初始状态 |
+| `updateFileHash(state, path, content)` | 原地更新文件 hash，status=clean |
+| `markFileConflict(state, path)` | 原地标记文件 status=conflict |
+
+**`update_state.json` 结构（Zod Schema 校验）：**
+
+```json
+{
+  "version": "1.0",
+  "last_update": "2026-08-11T...",
+  "openfeel_version": "1.0.6",
+  "files": {
+    ".opencode/agents/feel.md": { "hash": "abc123...", "status": "clean" },
+    ".opencode/agents/reviewer.md": { "hash": "def456...", "status": "conflict" }
+  }
+}
+```
+
+**设计要点：**
+
+- **三态分类而非二态**：旧逻辑只有覆盖/跳过，新模式引入 conflicts 分类，将"用户修改过的文件"与"工具生成的未修改文件"区分开来
+- **降级路径**（loadUpdateState → null）：确保首次 update、旧版本升级、或 state 文件损坏时不会阻塞流程——回退到"全量覆盖 + 重建 state"模式
+- **冲突后 state 同步**（REV-001 约束）：即使有冲突文件，created/updated 文件的 hash 仍同步更新——确保下次 update 时不因未更新的 hash 导致误判冲突
+- **行尾归一化**（hashContent）：CRLF→LF 归一化在 hash 计算前执行，与已有「跨平台构建管线中的行尾归一化模式」原理一致但应用场景不同（hash 而非 Base64）
+- **冲突文件目录**：`.openfeel/update_conflicts/` 纳入 `.gitignore`，不提交但用户可本地查看差异后手动合并
+
+**writeWithMergeDetection 判定矩阵：**
+
+| 文件存在？ | update_state 有记录？ | hash 匹配？ | 结果 |
+|:--:|:--:|:--:|:--:|
+| ❌ | — | — | created |
+| ✅ | ❌ | — | updated（降级） |
+| ✅ | ✅ | ✅ | updated（安全覆盖） |
+| ✅ | ✅ | ❌ | conflicts（拒绝覆盖） |
+
+**注意事项：**
+
+1. **state 文件版本兼容**：`openfeel_version` 字段记录写入时的工具版本，未来可用于检测跨版本 state 格式变更
+2. **REV-001 约束**：hash 的实际更新在 `updateProject()` 末尾统一处理——确保冲突路径中非冲突文件的 hash 同步更新，而非在 `writeWithMergeDetection` 内部更新
+3. **降级覆盖风险**：当 `loadUpdateState` 返回 null（state 丢失或损坏）时，`writeWithMergeDetection` 中的 `fileState` 为 undefined，走降级路径——所有文件都会被安全覆盖，用户手动修改可能丢失。应定期检查 state 文件完整性
+
+**参见：** v1.0.0-stage-32（update 增量更新 + 冲突标记）、kb/patterns.md #部署传播内容哈希比对模式、kb/patterns.md #跨平台构建管线中的行尾归一化模式、kb/troubleshooting.md #update_state.json 降级风险排查
+

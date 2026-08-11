@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-08-11-Liuary-002.md](2026/08/11/2026-08-11-Liuary-002.md) | Liuary | 阶段 v1.0.0-stage-32 完成 |
+| [2026-08-11-Liuary-001.md](2026-08-11/2026-08-11-Liuary-001.md) | Liuary | **stage-32 归档完成**：update 增量更新 + 冲突标记机制（update-state.ts 新模块 + writeWithMergeDetection 三态逻辑 + 冲突文件写入），知识沉淀 2 条至 patterns(1) + troubleshooting(1)，406/406 测试 |
 | [2026-08-09-Liuary-002.md](2026/08/09/2026-08-09-Liuary-002.md) | Liuary | 阶段 v1.0.0-stage-31 完成 |
 | [2026-08-09-Liuary-001.md](2026/08/09/2026-08-09-Liuary-001.md) | Liuary | 阶段 v1.0.0-stage-30 完成 |
 | [2026-08-08-Liuary-004.md](2026/08/08/2026-08-08-Liuary-004.md) | Liuary | **stage-29 归档完成**：init 增强 — AGENTS.md 项目名称替换 + opencode 适配器部署，2 patterns 知识沉淀 + manual/core/init.md 新增 |

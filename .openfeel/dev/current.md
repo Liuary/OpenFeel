@@ -2,13 +2,13 @@
 
 > OpenFeel v1.0.0 正式版 — 全系列归档完成 ✅ | 发布就绪
 
-- **状态**：v1.0.0-stage-01 ~ stage-31 全部完成 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化）
+- **状态**：v1.0.0-stage-01 ~ stage-32 全部完成 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化 + update 增量冲突标记）
 - **旧版本**：v1.0.0-stage-04 ~ stage-28 全部归档 ✅（原 v0.4.2 ~ v0.5.11，共 25 个阶段）
-- **知识库**：architecture(14) + patterns(61) + troubleshooting(13) + setup(6) = 94 条目
+- **知识库**：architecture(14) + patterns(62) + troubleshooting(14) + setup(6) = 96 条目
 - **Agent 数**：9 个
 - **Skill 数**：14 个（全量对齐）
-- **源文件**：46 个 .ts 文件
-- **测试**：399/399 全通过（20 个测试文件）
+- **源文件**：47 个 .ts 文件
+- **测试**：406/406 全通过（+7 新测试于 stage-32）
 
 ## v1.0.0 发布里程碑 🏆
 
@@ -20,6 +20,7 @@
 | stage-29 | init 增强 | AGENTS.md 项目名称替换 + opencode 适配器部署（~50 模板文件 + 构建管线 + 部署逻辑 + 4 测试） | 2026-08-08 |
 | stage-30 | Pantheogen 兼容性修复 | flow-manager load() 类型守卫 + 正则兼容非粗体 + stage create 子命令（4 文件变更，399/399 测试） | 2026-08-09 |
 | stage-31 | CLI 体验优化 | --stage 缺失提示引导 + wizard 无阶段交互式创建 + 跳转失败增强诊断 + advance --dry-run 预览（3 文件变更，441 i18n 键对称） | 2026-08-09 |
+| stage-32 | update 增量冲突标记 | 新增 update-state.ts 模块 + writeWithMergeDetection 三态逻辑 + 冲突文件写入 + Feel 冲突检测（3 文件变更，406 测试，+7） | 2026-08-11 |
 
 ## 旧 v0.5 系列里程碑（重映射为 v1.0.0-stage-17 ~ 28）
 
@@ -41,9 +42,9 @@
 
 ## 整体统计
 
-- 阶段覆盖：v1.0.0-stage-01 ~ stage-31（31 个阶段，含 25 个历史重映射 + 6 个新阶段）
-- 知识库总量：94 条目（architecture 14 + patterns 61 + troubleshooting 13 + setup 6）
-- 源文件：46 个 .ts 文件
-- 测试：399/399 全通过
+- 阶段覆盖：v1.0.0-stage-01 ~ stage-32（32 个阶段，含 25 个历史重映射 + 7 个新阶段）
+- 知识库总量：96 条目（architecture 14 + patterns 62 + troubleshooting 14 + setup 6）
+- 源文件：47 个 .ts 文件
+- 测试：406/406 全通过
 
-**v1.0.0 正式版发布就绪。** 31 个阶段全部完成，知识库 94 条目，npm publish 待用户确认。
+**v1.0.0 正式版发布就绪。** 32 个阶段全部完成，知识库 96 条目，npm publish 待用户确认。

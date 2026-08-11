@@ -241,3 +241,39 @@ fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
 2. `openfeel flow repair --dry-run` 检测到缺失 ops 并报告 → `openfeel flow repair` 实际修复为 `{}`
 
 **参见：** v1.0.0-stage-30 op-001
+
+## [+] update_state.json 降级风险：Schema 不匹配或丢失导致全量覆盖 (2026-08-11)
+
+**现象：** 执行 `openfeel update` 后，用户手动修改过的 Agent 定义文件（如 feel.md）被静默覆盖，但预期应触发冲突检测并保留修改。
+
+**根因：** `loadUpdateState()` 在以下情况返回 null，导致 `writeWithMergeDetection` 中 `fileState` 为 undefined：
+1. `.openfeel/update_state.json` 文件不存在（首次 update 后意外删除）
+2. Zod Schema 校验失败（工具版本升级后字段格式不兼容）
+3. JSON 解析失败（文件损坏）
+
+当 `loadUpdateState` → null 时，降级到"全量覆盖"模式——所有文件无论是否被用户修改，都被模板内容覆盖，等同于旧版 update 行为。
+
+**诊断方法：**
+
+```bash
+# 检查 state 文件是否存在
+ls -la .openfeel/update_state.json
+
+# 检查 state 文件内容是否合法（手动 JSON 校验）
+node -e "const s = require('./.openfeel/update_state.json'); console.log(Object.keys(s.files).length + ' files tracked')"
+
+# 查看最近一次 update 记录
+openfeel flow log --stage v1.0.0-stage-32  # 若有对应阶段日志
+```
+
+**修复与规避：**
+
+1. **预防**：在 CI/CD 或自动化脚本中备份 `update_state.json`，确保升级工具时不丢失
+2. **恢复**：若 state 丢失，下一次 `openfeel update` 会自动重建，但首次会全量覆盖。若用户有手动修改的文件，需提前备份
+3. **升级路径**：`update_state.json` 的 `openfeel_version` 字段记录写入版本，未来可在 `loadUpdateState` 中增加版本迁移逻辑，而非仅在 Schema 不匹配时返回 null
+
+**设计原理（不是 Bug）：**
+- 降级为全量覆盖是**有意为之的安全回退**——相比"因 state 损坏而拒绝更新"，"全量覆盖"是更可用（usable）的选择
+- `console.warn` 会输出 Schema 不匹配的详细原因，但用户可能忽略警告
+
+**参见：** v1.0.0-stage-32（update 增量更新 + 冲突标记）、kb/patterns.md #update 增量部署哈希追踪 + 冲突标记三态模式

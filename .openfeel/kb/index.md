@@ -9,19 +9,19 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 46 个 .ts 文件（src/） |
+| 源文件 | 47 个 .ts 文件（src/） |
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-09（stage-31 归档：Pantheogen CLI 体验优化 4 项，3 条 patterns 知识沉淀） |
+| 最近更新 | 2026-08-11（stage-32 归档：update 增量更新 + 冲突标记机制，2 条知识沉淀至 patterns + troubleshooting） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 14 | 2026-08-07 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组 |
-| 代码模式 | [patterns.md](patterns.md) | 61 | 2026-08-09 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 13 | 2026-08-08 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链 |
+| 代码模式 | [patterns.md](patterns.md) | 62 | 2026-08-11 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 14 | 2026-08-11 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-08-08 | 环境搭建、构建流程、依赖管理、Agent 模型配置、npm pack 发布验证、CI/CD npm 自动发布 |
 
 ## 各分类摘要
@@ -99,6 +99,7 @@
 | CLI 错误诊断增强模式 | 2026-08-09 | 校验失败时三层诊断：错误原因 + 当前状态 + 可用操作/合法目标，含 stage create 引导和合法跳转列表 |
 | CLI --dry-run 安全预览模式 | 2026-08-09 | 状态变更命令新增 --dry-run 选项，校验全量通过后在 save() 前截断，--force 组合时先警告再预览不写盘 |
 | CLI 向导空状态交互式兜底模式 | 2026-08-09 | wizard 检测到 stages 为空时不静默退出，交互式询问创建首个阶段，创建后 continue 自动进入主循环 |
+| update 增量部署哈希追踪 + 冲突标记三态模式 | 2026-08-11 | writeWithMergeDetection 四态判定（created/updated/skipped/conflicts）+ update_state.json 元数据追踪 + 冲突文件 Git 风格标记 + 降级策略 |
 
 ### troubleshooting.md
 
@@ -115,6 +116,7 @@
 | 流水线文件引用断裂连锁修复 | 2026-07-05 | 路径+命令+配置三层引用断裂的修复策略 |
 | fast-glob 目录匹配 onlyDirectories | 2026-07-09 | 尾部斜杠模式不自动激活目录匹配，需显式声明选项 |
 | Git 重命名检测交叉匹配假象 | 2026-08-07 | git mv 批量移动相似内容目录时，git diff 重命名标注不可轻信，应以实际文件内容（标题/时间戳）为准 |
+| update_state.json 降级风险排查 | 2026-08-11 | Schema 不匹配或文件丢失导致 loadUpdateState → null，降级为全量覆盖；诊断方法 + 预防措施 + 设计原理说明 |
 | npm publish 404/403 诊断链 | 2026-08-08 | secret 名字不匹配致 404 + automation token 与包级 2FA 冲突致 403；npm 404 实为认证失败，legacy token 已弃用改 Granular token + Bypass 2FA |
 
 ### setup.md
@@ -130,6 +132,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-11 | 归档 | stage-32 归档：openfeel update 增量更新 + 冲突标记机制（update-state.ts 新模块 + writeWithMergeDetection 三态逻辑 + 冲突文件写入），1 文件新增 + 2 文件变更，406/406 测试通过，443 i18n 键，3 non-blocking REV，知识沉淀 2 条至 patterns(1) + troubleshooting(1) |
 | 2026-08-09 | 归档 | stage-31 归档：Pantheogen CLI 体验优化 4 项（--stage 缺失提示引导 + wizard 无阶段交互式创建 + 跳转失败增强诊断 + advance --dry-run 预览），3 文件变更，399/399 测试通过，441 i18n 键对称，1 non-blocking REV（特殊字符校验），知识沉淀 3 条至 patterns |
 | 2026-08-09 | 归档 | stage-30 归档：Pantheogen 兼容性 Bug 修复（flow-manager load() 类型守卫 + 正则兼容非粗体 + stage create 子命令），3 op / 4 文件变更，399/399 测试通过，1 non-blocking REV，知识沉淀 3 条至 patterns(2) + troubleshooting(1) |
 | 2026-08-08 | 归档 | stage-29 归档：init 增强（AGENTS.md 项目名称替换 + opencode 适配器部署），2 op（模板数据源化 + init 集成），~50 文件模板数据源 + 构建管线 + 部署逻辑 + 4 测试，399/399 全通过，3 non-blocking REV，知识沉淀 2 条至 patterns（变量替换 + 重启提醒） |

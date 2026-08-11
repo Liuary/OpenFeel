@@ -4,3 +4,7 @@ dist/
 # 私域目录（.openfeel 工作区规范：个人日志/笔记/审查/Bug 不纳入版本管理）
 .openfeel/users/
 coverage/
+
+# update 状态与冲突文件（不纳入版本管理）
+.openfeel/update_state.json
+.openfeel/update_conflicts/

@@ -764,6 +764,26 @@ At startup, Feel must load the memory system in the following order:
    - Confirm threshold uses \`preferences.confirm_threshold\` from the global profile
 4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.
 
+## Conflict Detection
+
+At startup, Feel checks \`.openfeel/update_state.json\` (if the file exists):
+
+1. Read \`update_state.json\`, iterate over the \`files\` field, and find entries with \`status=conflict\`
+2. If conflicts exist:
+   - If the terminal is an interactive TTY environment, output the conflict list and resolution guidance:
+     \`\`\`
+     ⚠️ openfeel update conflicts detected:
+       {file1}
+       {file2}
+     ({N} conflict file(s) total)
+     Conflict files saved in .openfeel/update_conflicts/ directory.
+     Please merge manually, then run openfeel update to update state.
+     \`\`\`
+   - If the terminal is NOT a TTY environment (e.g., CI/CD), **silently skip** without any output
+     (conflicts cannot be resolved in non-interactive environments; output would only pollute logs)
+3. Do not block Feel's main flow — silently proceed after the conflict prompt
+4. If \`update_state.json\` does not exist: **silently skip** (the project has not run \`openfeel update\`)
+
 ## Decision Appending
 
 When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to the "Decision History" section in the format \`- [x] {date}: {decision description}\` before finally writing dev_last.md (do not overwrite existing entries).
@@ -911,7 +931,7 @@ Planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Fee
     reviewer: `---
 description: Reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
 mode: subagent
-model: zhipuai/glm-5.1
+model: zhipuai/glm-5.2
 reasoning_effort: medium
 color: "#D4A017"
 permission:
@@ -2032,6 +2052,26 @@ Feel 启动时必须按以下顺序加载记忆体系：
    - 确认阈值使用全局画像中的 \`preferences.confirm_threshold\`
 4. **更新 dev_last.md**：将合并后的偏好写入「用户偏好」节。
 
+## 冲突检测
+
+Feel 启动时检测 \`.openfeel/update_state.json\`（若文件存在）：
+
+1. 读取 \`update_state.json\`，遍历 \`files\` 字段，查找 \`status=conflict\` 的条目
+2. 若存在冲突：
+   - 若终端为 TTY 交互环境，输出冲突列表和解决指引：
+     \`\`\`
+     ⚠️ 检测到 openfeel update 冲突：
+       {file1}
+       {file2}
+     （共 {N} 个冲突文件）
+     冲突文件已保存在 .openfeel/update_conflicts/ 目录。
+     请手动合并冲突后运行 openfeel update 更新状态。
+     \`\`\`
+   - 若终端非 TTY 环境（如 CI/CD），**静默跳过**，不输出任何冲突提示
+     （非交互环境下无法处理冲突，输出提示只会污染日志）
+3. 不阻塞 Feel 主体流程——冲突提示后照常进入主流程
+4. 若 \`update_state.json\` 不存在：**静默跳过**（项目尚未执行过 \`openfeel update\`）
+
 ## 决策追加
 
 会话中做出技术/架构决策（包括：选择技术方案、拒绝备选方案、调整设计方向、接受 trade-off）时，Feel 必须在最终写入 dev_last.md 前，以 \`- [x] {date}：{决策描述}\` 格式将新决策追加到「决策历史」节（不覆盖已有条目）。
@@ -2179,7 +2219,7 @@ Planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设�
     reviewer: `---
 description: Reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
 mode: subagent
-model: zhipuai/glm-5.1
+model: zhipuai/glm-5.2
 reasoning_effort: medium
 color: "#D4A017"
 permission:
@@ -3778,7 +3818,7 @@ Planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Fee
     reviewer: `---
 description: Reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
 mode: subagent
-model: zhipuai/glm-5.1
+model: zhipuai/glm-5.2
 reasoning_effort: medium
 color: "#D4A017"
 permission:
@@ -5045,7 +5085,7 @@ Planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设�
     reviewer: `---
 description: Reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
 mode: subagent
-model: deepseek/deepseek-v4-pro
+model: zhipuai/glm-5.2
 reasoning_effort: medium
 color: "#D4A017"
 permission:
@@ -6550,7 +6590,7 @@ const OPENCODE_CONFIG_TEMPLATES: Record<string, Record<string, string>> = {
       "model": "alibaba-cn/qwen3-vl-plus"
     },
     "reviewer": {
-      "model": "deepseek/deepseek-v4-pro"
+      "model": "zhipuai/glm-5.2"
     }
   },
   "experimental": {
@@ -6596,7 +6636,7 @@ bun.lock
       "model": "alibaba-cn/qwen3-vl-plus"
     },
     "reviewer": {
-      "model": "deepseek/deepseek-v4-pro"
+      "model": "zhipuai/glm-5.2"
     }
   },
   "experimental": {

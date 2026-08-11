@@ -25,6 +25,7 @@ const WORKSPACE_DIRS = [
   'users',
   'tmp',
   'manual',
+  'update_conflicts',  // 新增：update 冲突文件目录
 ];
 
 /** dev/ 下的子目录清单 */

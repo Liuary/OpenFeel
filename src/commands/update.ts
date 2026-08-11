@@ -79,6 +79,15 @@ export function registerUpdateCommand(program: Command): void {
           }
         }
 
+        // 冲突文件报告
+        if (result.conflicts && result.conflicts.length > 0) {
+          console.log(t('update.conflictsTitle', lang));
+          for (const item of result.conflicts) {
+            console.log(`  ⚠ ${item}`);
+          }
+          console.log(t('update.conflictsHint', lang));
+        }
+
         if (result.created.length === 0 && result.updated.length === 0) {
           console.log(t('update.alreadyUpToDate', lang));
         } else {

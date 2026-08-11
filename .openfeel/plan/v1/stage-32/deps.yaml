@@ -1,0 +1,64 @@
+# stage-32 操作方案依赖声明
+# 由 Planner 制定基础结构，Schemer 细化各 op 内容并更新
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "新增 update_state.json 读写模块（src/core/update-state.ts）"
+    depends_on: []
+    stage: "v1.0.0-stage-32"
+    type: hard
+    produces:
+      - "src/core/update-state.ts"
+    description: "建立 update_state.json 的 Zod Schema、hash 计算、读/写/初始化/更新 API。纯新增模块，无对外依赖。"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "改造 update 核心 merge 逻辑（writeIfChanged → writeWithMergeDetection）"
+    depends_on: ["op-001"]
+    stage: "v1.0.0-stage-32"
+    type: hard
+    produces:
+      - "src/core/update.ts"
+    description: "替换 writeIfChanged() 为三态逻辑（不变/安全覆盖/冲突拒绝），集成 update-state.ts 的 hash 读/写，扩展 UpdateResult 接口。"
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "冲突文件写入 + CLI 冲突报告 + 工作区目录扩展"
+    depends_on: ["op-002"]
+    stage: "v1.0.0-stage-32"
+    type: hard
+    produces:
+      - "src/core/update.ts"
+      - "src/commands/update.ts"
+      - "src/core/workspace/structure.ts"
+      - "src/core/i18n-data/zh-CN.ts"
+      - "src/core/i18n-data/en.ts"
+      - ".gitignore"
+    description: "实现 writeConflictFile() 写入 Git 风格冲突标记；命令层输出 conflicts 列表和解决指引；WORKSPACE_DIRS 新增 update_conflicts；REV-006 .gitignore 追加 update_state.json + update_conflicts/。"
+
+  op-004:
+    file: "ops/op-004.md"
+    title: "Feel Agent 启动时冲突检测集成（REV-004 非TTY静默 / REV-005 路径修正）"
+    depends_on: ["op-001"]
+    stage: "v1.0.0-stage-32"
+    type: soft
+    produces:
+      - "src/core/templates-data/agents/zh-CN/feel.md"
+      - "src/core/templates-data/agents/en/feel.md"
+      - ".opencode/agents/feel.md"
+      - "src/core/template-loader.ts"
+    description: "在 feel.md 中英双语模板的「记忆加载」节后新增「冲突检测」步：读取 update_state.json，有冲突 → TTY 输出提示 / 非TTY 静默跳过。不阻塞主流程。REV-004 非TTY 行为声明；REV-005 模板路径补全为 src/core/templates-data/..."
+
+# 依赖关系说明：
+# - op-002 hard 依赖 op-001：需要 update-state.ts 的 loadUpdateState / saveUpdateState / hashContent API
+# - op-003 hard 依赖 op-002：需要改造后的 writeWithMergeDetection 三态逻辑和 UpdateResult.conflicts 字段
+# - op-004 soft 依赖 op-001：仅需读取 update_state.json（loadUpdateState），不依赖 op-002/op-003 的改造产出
+
+# 建议执行顺序：op-001 → op-002 → op-003 → op-004
+# op-004 可在 op-001 完成后与 op-002/op-003 并行开发
+
+# 文件冲突域分析：
+# - op-001 仅新增文件，不与任何 op 冲突
+# - op-002 修改 update.ts，op-003 也修改 update.ts → 必须串行（op-002 先，op-003 基于 op-002 产物）
+# - op-004 修改模板文件，与 op-001/op-002/op-003 修改区域无交集

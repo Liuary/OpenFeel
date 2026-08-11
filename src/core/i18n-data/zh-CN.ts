@@ -268,6 +268,8 @@ export const update: I18nDomain = {
   'complete':                   { key: 'update.complete',                   zh: '✓ 适配文件部署完成',                       en: '' },
   'errorDeployFailedTmpl':      { key: 'update.errorDeployFailedTmpl',      zh: '错误：部署失败 — {message}',               en: '' },
   'langConflict':               { key: 'update.langConflict',               zh: '⚠️ AGENTS.md 语言差异：当前项目为 {projectLang}，请求部署为 {requestedLang}。使用 --force 覆盖或手动调整。', en: '' },
+  'conflictsTitle':             { key: 'update.conflictsTitle',             zh: '检测到冲突（文件已被手动修改，拒绝覆盖）',        en: '' },
+  'conflictsHint':              { key: 'update.conflictsHint',              zh: '冲突文件已写入 .openfeel/update_conflicts/，请手动合并后重新运行 openfeel update。', en: '' },
 };
 
 /* ==================== project 域：项目概览命令 ==================== */

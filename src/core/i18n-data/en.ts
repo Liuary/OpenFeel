@@ -250,6 +250,8 @@ export const update: I18nDomain = {
   'complete':                   { key: 'update.complete',                   zh: '', en: '✓ Adapter files deployed' },
   'errorDeployFailedTmpl':      { key: 'update.errorDeployFailedTmpl',      zh: '', en: 'Error: Deployment failed — {message}' },
   'langConflict':               { key: 'update.langConflict',               zh: '', en: '⚠️ AGENTS.md language mismatch: project is {projectLang}, requested is {requestedLang}. Use --force to override or adjust manually.' },
+  'conflictsTitle':             { key: 'update.conflictsTitle',             zh: '', en: 'Conflicts detected (files have been manually modified, overwrite refused)' },
+  'conflictsHint':              { key: 'update.conflictsHint',              zh: '', en: 'Conflict files written to .openfeel/update_conflicts/. Please merge manually, then re-run openfeel update.' },
 };
 
 /* ==================== project ==================== */

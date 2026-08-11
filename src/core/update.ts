@@ -11,11 +11,24 @@ import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader
 import { recordProjectLang, getGlobalConfig, getLang } from './workspace/identity.js';
 import { getCliLang } from './i18n.js';
 
+// 新增：update_state.json hash 比对与冲突检测
+import {
+  hashContent,
+  loadUpdateState,
+  saveUpdateState,
+  createUpdateState,
+  updateFileHash,
+  markFileConflict,
+  getOpenfeelVersion,
+  type UpdateState,
+} from './update-state.js';
+
 /** 更新结果 */
 export interface UpdateResult {
   created: string[];  // 新创建的文件列表
   updated: string[];  // 更新的文件列表
   skipped: string[];  // 跳过的文件（已存在且内容一致）
+  conflicts: string[];  // 冲突文件相对路径列表（用户手动修改，拒绝覆盖）
 }
 
 /** AGENTS.md 语言冲突错误（由命令层捕获处理） */
@@ -1205,31 +1218,64 @@ const NEW_SKILL_NAMES = [
 // ─── 辅助函数 ──────────────────────────────────────────────────────
 
 /**
- * 写入文件，返回操作类型
- * 若文件已存在且内容一致 → skipped
- * 若文件已存在但内容不同 → updated
- * 若文件不存在 → created
+ * 带冲突检测的写入函数（替代原 writeIfChanged）
+ *
+ * 三态逻辑：
+ *  - 文件不存在 → created
+ *  - 文件已存在 + hash 匹配 update_state 中记录 → 安全覆盖 → updated
+ *  - 文件已存在 + hash 不匹配 → 拒绝覆盖 → conflicts
+ *  - 文件已存在 + 不在 update_state 管理中 → 安全覆盖 → updated（降级）
+ *  - 文件已存在 + update_state 不存在或损坏 → 安全覆盖 → updated（降级为旧行为）
+ *
+ * REV-001：此函数仅负责分类（created/updated/skipped/conflicts），
+ * hash 的实际更新在 updateProject() 末尾统一处理，
+ * 确保"冲突路径非冲突文件 hash 同步更新"。
  */
-function writeIfChanged(
+function writeWithMergeDetection(
   filePath: string,
   content: string,
   relativePath: string,
+  updateState: UpdateState | null,
   created: string[],
   updated: string[],
   skipped: string[],
+  conflicts: string[],
 ): void {
-  if (existsSync(filePath)) {
-    const existing = readFileSync(filePath, 'utf-8');
-    if (existing === content) {
-      skipped.push(relativePath);
-      return;
-    }
-    writeFileSync(filePath, content, 'utf-8');
-    updated.push(relativePath);
-  } else {
+  if (!existsSync(filePath)) {
+    // 文件不存在 → 新建
+    mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, content, 'utf-8');
     created.push(relativePath);
+    return;
   }
+
+  const existing = readFileSync(filePath, 'utf-8');
+
+  // 内容相同 → skip（快速路径：全文比对，避免 hash 计算）
+  if (existing === content) {
+    skipped.push(relativePath);
+    return;
+  }
+
+  // 检查 update_state 中是否有该文件的记录
+  const fileState = updateState?.files[relativePath];
+  if (fileState) {
+    // 有记录 → 比对 hash
+    const currentHash = hashContent(existing);
+    if (currentHash === fileState.hash) {
+      // hash 一致 → 用户未修改 → 安全覆盖
+      writeFileSync(filePath, content, 'utf-8');
+      updated.push(relativePath);
+      return;
+    }
+    // hash 不一致 → 用户已修改 → 冲突！
+    conflicts.push(relativePath);
+    return;
+  }
+
+  // 无记录（降级路径：update_state 损坏或旧版本）→ 安全覆盖
+  writeFileSync(filePath, content, 'utf-8');
+  updated.push(relativePath);
 }
 
 /**
@@ -1514,6 +1560,10 @@ export function updateProject(
   const updated: string[] = [];
   const skipped: string[] = [];
 
+  // ── 增量更新：加载 update_state.json ──
+  const state = loadUpdateState(projectPath);
+  const conflicts: string[] = [];
+
   const agentsDir = resolve(projectPath, '.opencode', 'agents');
   const skillsDir = resolve(projectPath, '.opencode', 'skills');
 
@@ -1523,7 +1573,7 @@ export function updateProject(
 
   // 过滤：仅处理选中的工具
   if (!selectedTools.includes('opencode')) {
-    return { created: [], updated: [], skipped: [] };
+    return { created: [], updated: [], skipped: [], conflicts: [] };
   }
 
   // ── AGENTS.md 语言同步逻辑 ──
@@ -1608,14 +1658,14 @@ export function updateProject(
   mkdirSync(instructionsDir, { recursive: true });
   const coreInstructionsPath = join(instructionsDir, 'core.md');
   const coreContent = loadTemplate(lang, 'core-instructions');
-  writeIfChanged(coreInstructionsPath, coreContent, '.opencode/instructions/core.md', created, updated, skipped);
+  writeWithMergeDetection(coreInstructionsPath, coreContent, '.opencode/instructions/core.md', state, created, updated, skipped, conflicts);
 
   // 1. 生成 Agent 定义文件（从 template-loader 加载模板，按语言选择）
   for (const name of listAgentIds(lang)) {
     const content = loadAgentTemplate(lang, name);
     const filePath = join(agentsDir, `${name}.md`);
     const relPath = `.opencode/agents/${name}.md`;
-    writeIfChanged(filePath, content, relPath, created, updated, skipped);
+    writeWithMergeDetection(filePath, content, relPath, state, created, updated, skipped, conflicts);
   }
 
   // 2. 生成 Skill 定义文件（每个 Skill 一个子目录，包含 SKILL.md）
@@ -1625,14 +1675,14 @@ export function updateProject(
 
     const filePath = join(skillSubDir, 'SKILL.md');
     const relPath = `.opencode/skills/${name}/SKILL.md`;
-    writeIfChanged(filePath, content, relPath, created, updated, skipped);
+    writeWithMergeDetection(filePath, content, relPath, state, created, updated, skipped, conflicts);
   }
 
   // 3. 更新 opencode.jsonc
   const jsoncPath = resolve(projectPath, 'opencode.jsonc');
   const newContent = buildUpdatedJsonc(projectPath);
   const relJsoncPath = 'opencode.jsonc';
-  writeIfChanged(jsoncPath, newContent, relJsoncPath, created, updated, skipped);
+  writeWithMergeDetection(jsoncPath, newContent, relJsoncPath, state, created, updated, skipped, conflicts);
 
   // 重启提醒（仅在 opencode agent 配置更新时，且为交互模式）
   if (updated.some(f => f.startsWith('.opencode/agents/')) && process.stdout.isTTY) {
@@ -1644,5 +1694,125 @@ export function updateProject(
     );
   }
 
-  return { created, updated, skipped };
+  // ── 写入冲突标记文件 ──
+  if (conflicts.length > 0) {
+    const openfeelVersion = getOpenfeelVersion();
+    for (const relPath of conflicts) {
+      const absPath = resolve(projectPath, relPath);
+      const currentContent = existsSync(absPath)
+        ? readFileSync(absPath, 'utf-8')
+        : '';
+      // 获取 incoming 内容：从模板/构建产物中重新读取
+      // 注意：由于 writeWithMergeDetection 未实际写入，需单独获取 incoming 内容
+      const incomingContent = getIncomingContent(projectPath, relPath, lang);
+      writeConflictFile(projectPath, relPath, currentContent, incomingContent, openfeelVersion);
+    }
+  }
+
+  // ── REV-001：统一更新 update_state.json ──
+  // 规则：
+  // 1. 无论有无冲突，所有 created/updated 文件的 hash 都必须更新到 state
+  // 2. 有冲突时，额外标记冲突文件
+  // 3. 首次 update（state === null）→ 创建新 state
+
+  const newState: UpdateState = state ?? createUpdateState(projectPath, {});
+
+  // 更新所有非冲突文件的 hash（created 和 updated）
+  for (const relPath of [...created, ...updated]) {
+    const absPath = resolve(projectPath, relPath);
+    if (existsSync(absPath)) {
+      const content = readFileSync(absPath, 'utf-8');
+      updateFileHash(newState, relPath, content);
+    }
+  }
+
+  // 标记冲突文件
+  for (const relPath of conflicts) {
+    markFileConflict(newState, relPath);
+  }
+
+  // 更新时间戳
+  newState.last_update = new Date().toISOString();
+
+  // 持久化
+  saveUpdateState(projectPath, newState);
+
+  return { created, updated, skipped, conflicts };
+}
+
+/**
+ * 写入冲突标记文件到 .openfeel/update_conflicts/{relativePath}
+ * 格式：Git 风格冲突标记
+ *
+ * REV-006：update_conflicts/ 目录已加入 .gitignore，不纳入版本管理。
+ */
+function writeConflictFile(
+  projectPath: string,
+  relativePath: string,
+  currentContent: string,
+  incomingContent: string,
+  openfeelVersion: string,
+): void {
+  const conflictsBase = resolve(projectPath, '.openfeel', 'update_conflicts');
+  mkdirSync(conflictsBase, { recursive: true });
+
+  const conflictPath = resolve(conflictsBase, relativePath);
+  mkdirSync(dirname(conflictPath), { recursive: true });
+
+  const conflictContent = [
+    `<<<<<<< CURRENT (用户修改版)`,
+    currentContent,
+    `=======`,
+    incomingContent,
+    `>>>>>>> INCOMING (openfeel v${openfeelVersion} 更新)`,
+  ].join('\n');
+
+  writeFileSync(conflictPath, conflictContent, 'utf-8');
+}
+
+/**
+ * 根据相对路径获取 incoming（openfeel 期望写入）内容
+ * 与 updateProject() 中生成内容的逻辑一一对应：
+ *  - .opencode/instructions/core.md → loadTemplate(lang, 'core-instructions')
+ *  - .opencode/agents/{name}.md → loadAgentTemplate(lang, name)
+ *  - .opencode/skills/{name}/SKILL.md → SKILL_DEFINITIONS[name]
+ *  - opencode.jsonc → buildUpdatedJsonc(projectPath)
+ *  - AGENTS.md → loadTemplate(lang, 'agents-md')
+ */
+function getIncomingContent(
+  projectPath: string,
+  relativePath: string,
+  lang: 'zh-CN' | 'en',
+): string {
+  // instructions/core.md
+  if (relativePath === '.opencode/instructions/core.md') {
+    return loadTemplate(lang, 'core-instructions');
+  }
+
+  // Agent 定义文件
+  const agentMatch = relativePath.match(/^\.opencode\/agents\/(.+)\.md$/);
+  if (agentMatch) {
+    const name = agentMatch[1];
+    return loadAgentTemplate(lang, name);
+  }
+
+  // Skill 定义文件
+  const skillMatch = relativePath.match(/^\.opencode\/skills\/(.+)\/SKILL\.md$/);
+  if (skillMatch) {
+    const name = skillMatch[1];
+    return SKILL_DEFINITIONS[name] ?? '';
+  }
+
+  // opencode.jsonc
+  if (relativePath === 'opencode.jsonc') {
+    return buildUpdatedJsonc(projectPath);
+  }
+
+  // AGENTS.md
+  if (relativePath === 'AGENTS.md') {
+    return loadTemplate(lang, 'agents-md');
+  }
+
+  // 未知路径 → 空内容（不应发生）
+  return '';
 }

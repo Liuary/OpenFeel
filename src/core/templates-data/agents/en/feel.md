@@ -308,6 +308,26 @@ At startup, Feel must load the memory system in the following order:
    - Confirm threshold uses `preferences.confirm_threshold` from the global profile
 4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.
 
+## Conflict Detection
+
+At startup, Feel checks `.openfeel/update_state.json` (if the file exists):
+
+1. Read `update_state.json`, iterate over the `files` field, and find entries with `status=conflict`
+2. If conflicts exist:
+   - If the terminal is an interactive TTY environment, output the conflict list and resolution guidance:
+     ```
+     ⚠️ openfeel update conflicts detected:
+       {file1}
+       {file2}
+     ({N} conflict file(s) total)
+     Conflict files saved in .openfeel/update_conflicts/ directory.
+     Please merge manually, then run openfeel update to update state.
+     ```
+   - If the terminal is NOT a TTY environment (e.g., CI/CD), **silently skip** without any output
+     (conflicts cannot be resolved in non-interactive environments; output would only pollute logs)
+3. Do not block Feel's main flow — silently proceed after the conflict prompt
+4. If `update_state.json` does not exist: **silently skip** (the project has not run `openfeel update`)
+
 ## Decision Appending
 
 When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to the "Decision History" section in the format `- [x] {date}: {decision description}` before finally writing dev_last.md (do not overwrite existing entries).

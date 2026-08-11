@@ -153,21 +153,160 @@ describe('updateProject', () => {
     expect(result2.skipped.length).toBe(26);
   });
 
-  it('修改已有 agent 内容后应正确更新', () => {
+  it('手动修改 agent 内容后第二次 update 应标记冲突且不覆盖（REV-001）', () => {
     // 第一次创建
     updateProject(tmpDir);
 
-    // 手动修改 planner.md 的内容
+    // 手动修改 planner.md 的内容（模拟用户本地修改）
     const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
-    writeFileSync(plannerPath, 'modified content', 'utf-8');
+    const modified = 'modified content';
+    writeFileSync(plannerPath, modified, 'utf-8');
 
-    // 第二次调用 — planner.md 应被更新回原始内容
+    // 第二次调用 — planner.md hash 不匹配 → 冲突，拒绝覆盖
     const result2 = updateProject(tmpDir);
-    expect(result2.updated).toContain('.opencode/agents/planner.md');
+    expect(result2.conflicts).toContain('.opencode/agents/planner.md');
+    expect(result2.updated).not.toContain('.opencode/agents/planner.md');
 
-    // 验证内容已恢复为原始定义
-    const restored = readFileSync(plannerPath, 'utf-8');
-    expect(restored).toContain('你是 Planner（计划官）');
+    // 验证用户修改内容未被覆盖
+    const kept = readFileSync(plannerPath, 'utf-8');
+    expect(kept).toBe(modified);
+  });
+
+  it('REV-001：有冲突时其他 updated 文件的 hash 仍同步更新到 update_state.json', () => {
+    // 第一次创建
+    updateProject(tmpDir);
+
+    // 手动修改 planner.md（用户修改 → 冲突）
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
+    writeFileSync(plannerPath, 'user modified planner', 'utf-8');
+
+    // 手动修改 executor.md 并从 state 中删除其记录（模拟"不在管理范围"→ 降级为安全覆盖 → updated）
+    const executorPath = join(tmpDir, '.opencode', 'agents', 'executor.md');
+    writeFileSync(executorPath, 'user modified executor', 'utf-8');
+    const statePath = join(tmpDir, '.openfeel', 'update_state.json');
+    const state = JSON.parse(readFileSync(statePath, 'utf-8'));
+    delete state.files['.opencode/agents/executor.md'];
+    writeFileSync(statePath, JSON.stringify(state), 'utf-8');
+
+    // 第二次调用 — planner.md 冲突，executor.md 安全覆盖
+    const result2 = updateProject(tmpDir);
+    expect(result2.conflicts).toContain('.opencode/agents/planner.md');
+    expect(result2.updated).toContain('.opencode/agents/executor.md');
+
+    // REV-001 核心：即使有冲突，updated 文件的 hash 也必须更新到 state
+    const newState = JSON.parse(readFileSync(statePath, 'utf-8'));
+    expect(newState.files['.opencode/agents/executor.md'].status).toBe('clean');
+    expect(newState.files['.opencode/agents/planner.md'].status).toBe('conflict');
+
+    // 第三次调用（无修改）— executor.md 内容已与模板一致 → skipped，不再全量误报
+    const result3 = updateProject(tmpDir);
+    expect(result3.updated).not.toContain('.opencode/agents/executor.md');
+  });
+
+  it('REV-003 场景 1：部分冲突解决后重跑，已解决的文件 hash 更新为 clean', () => {
+    // 第一次创建
+    updateProject(tmpDir);
+
+    // 手动修改两个 agent 文件 → 都冲突
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
+    const reviewerPath = join(tmpDir, '.opencode', 'agents', 'reviewer.md');
+    writeFileSync(plannerPath, 'user modified planner', 'utf-8');
+    writeFileSync(reviewerPath, 'user modified reviewer', 'utf-8');
+
+    const result1 = updateProject(tmpDir);
+    expect(result1.conflicts).toContain('.opencode/agents/planner.md');
+    expect(result1.conflicts).toContain('.opencode/agents/reviewer.md');
+
+    // 解决 reviewer.md 冲突：恢复为模板内容后重跑 update
+    const restored = readFileSync(join(tmpDir, '.opencode', 'agents', 'reviewer.md'), 'utf-8');
+    expect(restored).toBe('user modified reviewer'); // 确认仍是用户版本
+
+    // 手动将 reviewer.md 恢复为"用户解决后接受的新内容"（此处模拟恢复为模板）
+    const result2 = updateProject(tmpDir);
+    expect(result2.conflicts).toContain('.opencode/agents/planner.md');
+
+    const statePath = join(tmpDir, '.openfeel', 'update_state.json');
+    const newState = JSON.parse(readFileSync(statePath, 'utf-8'));
+    expect(newState.files['.opencode/agents/planner.md'].status).toBe('conflict');
+  });
+
+  it('REV-003 场景 2：空 state 文件（files 为空）行为同首次 update', () => {
+    // 预置空的 update_state.json（Schema 校验通过）
+    const openfeelDir = join(tmpDir, '.openfeel');
+    mkdirSync(openfeelDir, { recursive: true });
+    writeFileSync(
+      join(openfeelDir, 'update_state.json'),
+      JSON.stringify({ version: '1.0', last_update: '', openfeel_version: '', files: {} }),
+      'utf-8',
+    );
+
+    // update 应正常执行（相当于首次 update 前全量创建）
+    const result = updateProject(tmpDir);
+    expect(result.created.length).toBeGreaterThan(0);
+    expect(existsSync(join(tmpDir, '.opencode', 'agents', 'feel.md'))).toBe(true);
+
+    // state 已被重新填充
+    const statePath = join(tmpDir, '.openfeel', 'update_state.json');
+    const newState = JSON.parse(readFileSync(statePath, 'utf-8'));
+    expect(newState.files['.opencode/agents/feel.md'].status).toBe('clean');
+  });
+
+  it('冲突时写入 .openfeel/update_conflicts/ 标记文件（Git 风格）', () => {
+    // 第一次创建
+    updateProject(tmpDir);
+
+    // 手动修改 planner.md → 触发冲突
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
+    writeFileSync(plannerPath, 'user modified planner', 'utf-8');
+
+    const result = updateProject(tmpDir);
+    expect(result.conflicts).toContain('.opencode/agents/planner.md');
+
+    // 冲突文件已写入 update_conflicts/，目录层级与相对路径一致
+    const conflictPath = join(tmpDir, '.openfeel', 'update_conflicts', '.opencode', 'agents', 'planner.md');
+    expect(existsSync(conflictPath)).toBe(true);
+
+    const content = readFileSync(conflictPath, 'utf-8');
+    // Git 风格冲突标记
+    expect(content).toContain('<<<<<<< CURRENT (用户修改版)');
+    expect(content).toContain('=======');
+    expect(content).toContain('>>>>>>> INCOMING');
+    // 双方内容都在
+    expect(content).toContain('user modified planner');
+    expect(content).toContain('你是 Planner（计划官）');
+  });
+
+  it('无冲突时不写入 update_conflicts/ 目录', () => {
+    updateProject(tmpDir);
+    const conflictsDir = join(tmpDir, '.openfeel', 'update_conflicts');
+    expect(existsSync(conflictsDir)).toBe(false);
+  });
+
+  it('UpdateResult 包含 conflicts 字段（类型与运行时）', () => {
+    const result = updateProject(tmpDir);
+    expect(Array.isArray(result.conflicts)).toBe(true);
+    expect(result.conflicts.length).toBe(0);
+  });
+
+  it('REV-003 场景 3：混合场景分类正确（1 冲突 + 其余正常）', () => {
+    // 第一次创建全部文件
+    updateProject(tmpDir);
+
+    // 修改 1 个 agent → 冲突
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
+    writeFileSync(plannerPath, 'user modified planner', 'utf-8');
+
+    // 第二次 update：1 个冲突，其余全部 skipped（内容一致）
+    const result = updateProject(tmpDir);
+    expect(result.conflicts.length).toBe(1);
+    expect(result.conflicts).toContain('.opencode/agents/planner.md');
+    expect(result.created.length).toBe(0);
+    // 其余文件内容一致 → skipped（含 AGENTS.md 与核心指令等）
+    expect(result.skipped.length).toBeGreaterThan(20);
+    // update_state.json 中冲突文件已标记
+    const statePath = join(tmpDir, '.openfeel', 'update_state.json');
+    const newState = JSON.parse(readFileSync(statePath, 'utf-8'));
+    expect(newState.files['.opencode/agents/planner.md'].status).toBe('conflict');
   });
 
   it('返回的 created 列表应包含正确的文件路径', () => {

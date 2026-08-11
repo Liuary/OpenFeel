@@ -198,6 +198,7 @@ Agent 模型需求对照：
 3. **用户拒绝**：Feel 保持 `auto_advance=disabled`，每次阶段推进前均需向用户确认（手动执行模式）。
 4. **禁止静默推进**：`auto_advance=disabled` 时禁止 Feel 不询问用户直接推进流水线。
 
+
 ## 小改 vs 大规模规划的阈值
 
 根据变更规模选择适当的流程路径：
@@ -307,6 +308,26 @@ Feel 启动时必须按以下顺序加载记忆体系：
    - 沟通风格使用全局画像中的 `preferences.communication`（影响 Feel 的输出详略程度）
    - 确认阈值使用全局画像中的 `preferences.confirm_threshold`
 4. **更新 dev_last.md**：将合并后的偏好写入「用户偏好」节。
+
+## 冲突检测
+
+Feel 启动时检测 `.openfeel/update_state.json`（若文件存在）：
+
+1. 读取 `update_state.json`，遍历 `files` 字段，查找 `status=conflict` 的条目
+2. 若存在冲突：
+   - 若终端为 TTY 交互环境，输出冲突列表和解决指引：
+     ```
+     ⚠️ 检测到 openfeel update 冲突：
+       {file1}
+       {file2}
+     （共 {N} 个冲突文件）
+     冲突文件已保存在 .openfeel/update_conflicts/ 目录。
+     请手动合并冲突后运行 openfeel update 更新状态。
+     ```
+   - 若终端非 TTY 环境（如 CI/CD），**静默跳过**，不输出任何冲突提示
+     （非交互环境下无法处理冲突，输出提示只会污染日志）
+3. 不阻塞 Feel 主体流程——冲突提示后照常进入主流程
+4. 若 `update_state.json` 不存在：**静默跳过**（项目尚未执行过 `openfeel update`）
 
 ## 决策追加
 

@@ -9,6 +9,7 @@
   - [配置管理](core/config.md)
   - [项目初始化](core/init.md)
   - [增量更新状态](core/update-state.md)
+  - [阶段路径映射](core/plan-path.md)
 - CLI 层
   - [命令体系](cli/commands.md)
 - Agent 体系
@@ -22,6 +23,7 @@
 | config.yaml / profile.yaml | `core/config.md` | 配置层级或读写方法变更 |
 | init.ts / 项目初始化 | `core/init.md` | 初始化流程、API 或部署逻辑变更 |
 | update-state.ts / update_state.json | `core/update-state.md` | hash 追踪、冲突标记或 update_state.json 结构变更 |
+| plan-path.ts / stageId↔目录映射 | `core/plan-path.md` | stageId 解析格式、目录映射规则或三级回退逻辑变更 |
 | 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更 |
 | Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更 |
 

@@ -28,6 +28,7 @@ import {
 import { PublicLogger, formatDate } from './public-logger.js';
 import { t, getCliLang } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
+import { findStageStatusPath } from './plan/path.js';
 
 /** 操作执行状态 */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed';
@@ -1377,17 +1378,9 @@ export class FlowManager {
     return { configDefaults, statusOverrides, effective };
   }
 
-  /** 查找 status.md 的路径（先查 stages 目录，再回退 plan 目录） */
+  /** 查找 status.md 的路径（三级回退：plan/{series}/ 精确 → plan 递归 → stages 兜底） */
   private findStatusPath(stageId: string): string | null {
-    const stagesDir = resolve(this.projectPath, '.openfeel', 'stages', stageId, 'status.md');
-    if (existsSync(stagesDir)) {
-      return stagesDir;
-    }
-    const planDir = resolve(this.projectPath, '.openfeel', 'plan', stageId, 'status.md');
-    if (existsSync(planDir)) {
-      return planDir;
-    }
-    return null;
+    return findStageStatusPath(this.projectPath, stageId);
   }
 
   /** 从 status.md 的状态记录表提取最近 N 条变更 */
@@ -2422,29 +2415,20 @@ export class FlowManager {
     }
   }
 
-  /** 2. 检查 flow.json 与 plan/{stage}/status.md 跨文件一致性 */
+  /** 2. 检查 flow.json 与 plan/{series}/stage-NN/status.md 跨文件一致性 */
   private checkCrossFileConsistency(items: HealthCheckItem[]): void {
     if (!this.data) {
       return;
     }
 
-    const planDir = resolve(this.projectPath, '.openfeel', 'plan');
-
-    // 同时检查 .openfeel/stages/ 目录（代码实际使用路径）
-    const stagesDir = resolve(this.projectPath, '.openfeel', 'stages');
-
     let total = 0;
     let consistent = 0;
 
     for (const [stageId, stage] of Object.entries(this.data.stages)) {
-      // 尝试 .openfeel/stages/{stageId}/status.md（代码实际路径）
-      let statusPath = resolve(stagesDir, stageId, 'status.md');
-      if (!existsSync(statusPath)) {
-        // 回退到 .openfeel/plan/{stageId}/status.md（文档声明路径）
-        statusPath = resolve(planDir, stageId, 'status.md');
-        if (!existsSync(statusPath)) {
-          continue;
-        }
+      // 三级回退查找 status.md（plan/{series}/ 精确 → plan 递归 → stages 兜底）
+      const statusPath = findStageStatusPath(this.projectPath, stageId);
+      if (!statusPath) {
+        continue;
       }
 
       total++;
@@ -2481,9 +2465,6 @@ export class FlowManager {
     }
 
     // 僵尸阶段检测：各 stage 在 status.md 中声明的状态与 stage.status 不一致
-    const planDir = resolve(this.projectPath, '.openfeel', 'plan');
-    const stagesDir = resolve(this.projectPath, '.openfeel', 'stages');
-
     for (const [stageId, stage] of Object.entries(this.data.stages)) {
       // 所有 REV 已 closed 但 stage 仍为 review_failed
       if (stage.status === 'review_failed') {

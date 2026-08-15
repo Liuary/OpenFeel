@@ -15,6 +15,7 @@ import { resolve } from 'node:path';
 import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
 import { FlowManager } from '../core/flow-manager.js';
+import { findStageStatusPath, planDirToStageId, parseStageId } from '../core/plan/path.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -33,27 +34,10 @@ interface TaskEntry {
 
 /**
  * 根据 stageId 解析 status.md 文件路径
- * 在 .openfeel/plan/ 下递归搜索匹配的目录
+ * 三级回退：plan/{series}/ 精确 → plan 递归 → stages 兜底（委托 path.ts）
  */
 function resolveStatusPath(projectPath: string, stageId: string): string | null {
-  const planDir = resolve(projectPath, '.openfeel', 'plan');
-  if (!existsSync(planDir)) {
-    return null;
-  }
-
-  // 使用 fast-glob 在 plan/ 下递归搜索匹配的 status.md
-  const matches = fastGlob.sync(`**/${stageId}/status.md`, {
-    cwd: planDir,
-    onlyFiles: true,
-    caseSensitiveMatch: true,
-  });
-
-  if (matches.length === 0) {
-    return null;
-  }
-
-  // 取第一个匹配项
-  return resolve(planDir, matches[0]);
+  return findStageStatusPath(projectPath, stageId);
 }
 
 /**
@@ -124,9 +108,20 @@ function listAllStages(projectPath: string): { stageId: string; statusPath: stri
   const results: { stageId: string; statusPath: string; status: string }[] = [];
 
   for (const file of statusFiles) {
-    // 从路径中提取 stageId：.openfeel/plan/v4/v4-stage-04/status.md → v4-stage-04
+    // 从路径中提取目录名：.openfeel/plan/v1/stage-33/status.md → stage-33
+    //                     .openfeel/plan/v4/v4-stage-04/status.md → v4-stage-04（历史）
     const parts = file.replace(/\\/g, '/').split('/');
-    const stageId = parts.length >= 3 ? parts[parts.length - 2] : parts[0];
+    const rawDir = parts.length >= 3 ? parts[parts.length - 2] : parts[0];
+
+    // 反向映射：目录名 → 完整 stageId（回查 flow.json 匹配 *-stage-NN）
+    let stageId: string;
+    const parsed = parseStageId(rawDir);
+    if (parsed) {
+      const full = planDirToStageId(projectPath, parsed.stageDir);
+      stageId = full ?? parsed.fullStageId; // 回查失败兜底用解析结果
+    } else {
+      stageId = rawDir; // 无法解析时直接用目录名
+    }
 
     try {
       const content = readFileSync(resolve(planDir, file), 'utf-8');

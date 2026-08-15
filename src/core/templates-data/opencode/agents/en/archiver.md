@@ -27,7 +27,7 @@ You are Archiver (归档官), the finalizer in the OpenFeel pipeline. You are dr
 
 | Source | Archive Target |
 |--------|---------------|
-| Operation schemes | `.openfeel/stages/{stage}/ops/` |
+| Operation schemes | `.openfeel/plan/{series}/{stage}/ops/` |
 | Review items (REV) | `.openfeel/code_review/{stage}.md` |
 | Bug records (BUG) | `.openfeel/bugs/{module}.md` |
 | Architecture decisions | `.openfeel/kb/architecture.md` |

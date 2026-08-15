@@ -1672,8 +1672,8 @@ describe('FlowManager', () => {
     });
 
     it('应解析 status.md 中的状态与待续事项', () => {
-      // 构造 status.md（findStatusPath 优先查 stages 目录，再查 plan 目录）
-      const planDir = join(tmpDir, '.openfeel', 'plan', 'stage-01');
+      // 构造 status.md（findStatusPath 三级回退：plan/{series}/ 精确 → plan 递归 → stages 兜底）
+      const planDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01');
       mkdirSync(planDir, { recursive: true });
       writeFileSync(join(planDir, 'status.md'), `# stage-01 状态
 

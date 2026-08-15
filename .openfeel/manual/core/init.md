@@ -89,3 +89,4 @@ interface DemoResult {
 | stage-04 | 新增 `initDemo()` 支持 `--demo` 标志 |
 | stage-29 | 新增 `promptOpencodeDeploy()` + `deployOpencode()` + AGENTS.md `{项目名称}` 替换 + 重启提醒；`InitResult` 扩展 `opencode` 字段 |
 | stage-33 | 新增 decisions.md 生成步（6b 步，`getDecisionsTemplate`）；templates.ts 新增 `DECISIONS_TEMPLATE_ZH/EN` + `getDecisionsTemplate(lang)` |
+| stage-34 | 示例阶段多级化：部署路径 `plan/stage-01/status.md` → `plan/v1/stage-01/status.md`，flow.json 注册 `stage-01` → `v1.0.0-stage-01`，status.md 标题同步；路径映射统一走 `plan-path` 模块 |

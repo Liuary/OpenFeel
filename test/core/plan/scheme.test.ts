@@ -30,7 +30,7 @@ describe('scheme', () => {
 
       expect(opId).toBe('op-001');
 
-      const filePath = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'ops', 'op-001_实现登录功能.md');
+      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001_实现登录功能.md');
       expect(existsSync(filePath)).toBe(true);
     });
 
@@ -46,7 +46,7 @@ describe('scheme', () => {
 
       createScheme(tmpDir, 'stage-01', '配置数据库');
 
-      const filePath = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'ops', 'op-001_配置数据库.md');
+      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001_配置数据库.md');
       const content = readFileSync(filePath, 'utf-8');
 
       expect(content).toContain('# op-001：配置数据库');
@@ -73,11 +73,11 @@ describe('scheme', () => {
 
     it('阶段目录不存在时自动创建', () => {
       // 不预先创建阶段目录，直接 createScheme
-      const opId = createScheme(tmpDir, 'stage-auto', '自动创建');
+      const opId = createScheme(tmpDir, 'stage-03', '自动创建');
 
       expect(opId).toBe('op-001');
 
-      const filePath = join(tmpDir, '.openfeel', 'stages', 'stage-auto', 'ops', 'op-001_自动创建.md');
+      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-03', 'ops', 'op-001_自动创建.md');
       expect(existsSync(filePath)).toBe(true);
     });
 
@@ -86,7 +86,7 @@ describe('scheme', () => {
 
       createScheme(tmpDir, 'stage-01', '实现 登录 功能');
 
-      const opsDir = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'ops');
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
       // 文件名中空格应替换为下划线
       const filePath = join(opsDir, 'op-001_实现_登录_功能.md');
       expect(existsSync(filePath)).toBe(true);
@@ -104,8 +104,8 @@ describe('scheme', () => {
       const flowMgr = new FlowManager(tmpDir);
       const flowData = flowMgr.getData();
       if (flowData) {
-        flowData.stages['stage-01'] = {
-          name: 'stage-01',
+        flowData.stages['v1.0.0-stage-01'] = {
+          name: 'v1.0.0-stage-01',
           status: 'planned',
           deps: [],
           ops: {},
@@ -127,7 +127,7 @@ describe('scheme', () => {
       expect(verifyData).not.toBeNull();
 
       if (verifyData) {
-        const stage = verifyData.stages['stage-01'];
+        const stage = verifyData.stages['v1.0.0-stage-01'];
         expect(stage).toBeDefined();
         expect(stage.ops['op-001']).toBeDefined();
         expect(stage.ops['op-001'].title).toBe('同步测试');
@@ -221,7 +221,7 @@ describe('scheme', () => {
       expect(schemes).toEqual([]);
     });
 
-    it('stages 目录不存在时应返回空数组', () => {
+    it('plan 目录不存在时应返回空数组', () => {
       const schemes = listSchemes(tmpDir);
       expect(schemes).toEqual([]);
     });

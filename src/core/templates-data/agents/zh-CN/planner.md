@@ -35,7 +35,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 5. **禁止直写 flow.json**：计划制定/变更完成后，通过 Feel 调用
    `openfeel flow advance --stage <id> --to <phase>` 推进流水线状态。
    不得直接 `edit` 或 `write` flow.json 文件。计划产出写入
-   `.openfeel/plan/{stage}/plan.md`，由 Feel 读取后统一推进。
+   `.openfeel/plan/{series}/{stage}/plan.md`，由 Feel 读取后统一推进。
 
 ## 计划粒度判定标准
 
@@ -56,7 +56,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 当 Feel 请求制定的计划与现有计划重复时，Planner 应拒绝重复制定以避免资源浪费。
 
 - **拒绝触发条件**：Feel 请求的计划**已存在**且无重大偏离
-  - 检查方式：对比 `deps.yaml` 中的阶段定义和 `plan/{stage}/` 下的现有计划文件
+  - 检查方式：对比 `deps.yaml` 中的阶段定义和 `plan/{series}/{stage}/` 下的现有计划文件
   - 轻微偏差（文件增减 ≤ 2、阶段描述微调）不构成重新制定的理由
 - **拒绝时的标准反馈模板**：
   ```
@@ -89,7 +89,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 ## 产出格式
 
 - 分期大纲写入 `roadmap/{version}.md`
-- 工作阶段写入 `stages/{stage}/`
+- 工作阶段写入 `plan/{series}/{stage}/`
 - 依赖关系写入 `deps.yaml`
 
 ## 与其他 Agent 的关系

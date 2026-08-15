@@ -35,7 +35,7 @@ Feel invokes Planner only when a **formal plan document** (plan.md, including st
 5. **No direct write to flow.json**: After plan formulation/changes are complete, advance pipeline state through Feel by calling
    `openfeel flow advance --stage <id> --to <phase>`.
    Do not directly `edit` or `write` the flow.json file. Plan outputs are written to
-   `.openfeel/plan/{stage}/plan.md`, and Feel reads them for unified advancement.
+   `.openfeel/plan/{series}/{stage}/plan.md`, and Feel reads them for unified advancement.
 
 ## Plan Granularity Criteria
 
@@ -56,7 +56,7 @@ Determine whether Planner should intervene and which process to follow based on 
 When the plan requested by Feel duplicates an existing plan, Planner should refuse redundant formulation to avoid resource waste.
 
 - **Rejection trigger condition**: The plan requested by Feel **already exists** with no major deviation
-  - Check method: Compare stage definitions in `deps.yaml` with existing plan files under `plan/{stage}/`
+  - Check method: Compare stage definitions in `deps.yaml` with existing plan files under `plan/{series}/{stage}/`
   - Minor deviations (file changes ≤ 2, minor stage description adjustments) do not warrant re-formulation
 - **Standard rejection feedback template**:
   ```
@@ -89,7 +89,7 @@ This step ensures Planner absorbs existing project knowledge before making plans
 ## Output Format
 
 - Version roadmap written to `roadmap/{version}.md`
-- Work stages written to `stages/{stage}/`
+- Work stages written to `plan/{series}/{stage}/`
 - Dependency relationships written to `deps.yaml`
 
 ## Relationship with Other Agents

@@ -1931,3 +1931,54 @@ openfeel update
 
 **参见：** v1.0.0-stage-33 op-004、kb/architecture.md #分级模块文档系统、kb/patterns.md #Agent 记忆生命周期三层模式
 
+## [+] stageId 三格式解析 + plan 目录双向映射模式 (2026-08-15)
+
+阶段标识在系统中以三种格式并存，须用统一解析器收敛，杜绝各处硬编码 split/resolve 路径：
+
+| 格式 | 示例 | 解析结果（series / stageDir / fullStageId） |
+|------|------|------|
+| 完整四级 | `v1.0.0-stage-34` | `v1` / `stage-34` / 原样 |
+| 历史短版 | `v4-stage-04` | `v4` / `stage-04` / 原样 |
+| 短名 | `stage-01` | `v1`（默认）/ `stage-01` / `v1.0.0-stage-01` |
+
+```typescript
+// 完整/历史格式：{version}-stage-{NN}，version 可为 v1.0.0（四级）或 v4（仅主版本）
+const full = stageId.match(/^(v\d+(?:\.\d+)*)-stage-(\d+)$/);
+// 短名格式：stage-{NN}
+const short = stageId.match(/^stage-(\d+)$/);
+```
+
+**关键要点：**
+
+- **单一权威工具**：`src/core/plan/path.ts` 收敛全部 stageId↔plan 目录映射，是唯一的路径权威，禁止其他模块自行 split 版本号或 resolve 目录。
+- **stageId 是权威标识，目录名是派生组织单位**：flow.json 的 `stages` 键是唯一键（如 `v1.0.0-stage-34`），目录名 `stage-34` 是物理组织单位，二者不可混同。
+- **反向映射须回查 flow.json**：目录名 `stage-33` 无法唯一还原版本前缀，须匹配 `*-stage-33` 得到完整 stageId。**多匹配去歧义规则**：优先 `pipeline.current.stage`（若在匹配集中），否则按版本前缀字典序降序取最新（`v1.0.0 > v0.9 > v0.5`）。
+- **前导零保留**：NN 用捕获组原样保留（`stage-04` 不丢前导零），不做 `parseInt`。
+- **短名默认系列**：无版本前缀时 series 默认 `v1`（`DEFAULT_SERIES`），完整 ID 补齐默认前缀 `v1.0.0`（`DEFAULT_STAGE_VERSION`，与 init 示例阶段一致）。
+
+**参见：** v1.0.0-stage-34 op-001、kb/architecture.md #计划目录按大版本系列分组模式
+
+## [+] 点号分隔符锚定解析模式（opId 含版本号点号）(2026-08-15)
+
+当标识符内部合法包含分隔符（如完整 stageId `v1.0.0-stage-01` 含点号），而你又需要按该分隔符切分复合 ID 时，须用**锚定正则**而非简单 `split`：
+
+```typescript
+// opId 两种形态：'{stage}.{op-XXX}' 或纯 '{op-XXX}'
+// ✅ 正确：锚定尾部 .op-NNN，避免完整 stageId 版本号中的点号干扰
+const match = opId.match(/^(.+)\.(op-\d+)$/);
+if (match) { targetStage = match[1]; targetOpId = match[2]; }
+
+// ❌ 反模式：简单 split('.') 会把 v1.0.0-stage-01.op-001 切成 5 段，破坏 stage 名
+opId.split('.')  // ['v1','0','0-stage-01','op-001']
+```
+
+**关键要点：**
+
+- **锚定到语义上唯一的尾部段**（`op-\d+`），用贪婪 `.+` 吞掉前面所有含点号的部分（含版本号中的点号）。
+- **全串锚定** `^...$` 而非部分匹配，避免 `stage-01.op-001.bak` 之类尾随内容被误匹配或漏配。
+- **歧义判定**：若切分后 stage 名无法解析（`parseStageId` 返回 null），直接返回 null 而非静默降级——阶段名非法时应显式失败。
+
+**适用场景：** 任何「分隔符在值内部也合法出现」的复合标识切分——版本号、文件扩展名（`file.tar.gz`）、URL path 等。
+
+**参见：** v1.0.0-stage-34 op-003（getScheme opId 解析）、kb/patterns.md #stageId 三格式解析 + plan 目录双向映射模式
+

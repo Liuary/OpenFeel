@@ -37,7 +37,7 @@ You are Archiver (归档官), the finalizer in the OpenFeel pipeline. You are dr
 
 | Source | Archive Target |
 |--------|---------------|
-| Operation schemes | \`.openfeel/stages/{stage}/ops/\` |
+| Operation schemes | \`.openfeel/plan/{series}/{stage}/ops/\` |
 | Review items (REV) | \`.openfeel/code_review/{stage}.md\` |
 | Bug records (BUG) | \`.openfeel/bugs/{module}.md\` |
 | Architecture decisions | \`.openfeel/kb/architecture.md\` |
@@ -557,7 +557,7 @@ When Feel skips Schemer and directly delegates a task to Executor with a "suffic
 - Review requires traceability of each change's design intent
 - The pipeline audit chain must not be broken (op files are core evidence)
 
-Minimal op file requirements: placed in the corresponding stage's \`ops/\` directory, containing an \`# op-NNN\` heading, change objectives, and a list of affected files. Feel's prompt must state: "First create op-{id}.md in \`.openfeel/plan/{stage}/ops/\`, then code."
+Minimal op file requirements: placed in the corresponding stage's \`ops/\` directory, containing an \`# op-NNN\` heading, change objectives, and a list of affected files. Feel's prompt must state: "First create op-{id}.md in \`.openfeel/plan/{series}/{stage}/ops/\`, then code."
 
 > Counter-example: Feel sends Executor a long prompt → Executor codes → archiving finds no op file → audit chain broken.
 
@@ -870,7 +870,7 @@ Feel invokes Planner only when a **formal plan document** (plan.md, including st
 5. **No direct write to flow.json**: After plan formulation/changes are complete, advance pipeline state through Feel by calling
    \`openfeel flow advance --stage <id> --to <phase>\`.
    Do not directly \`edit\` or \`write\` the flow.json file. Plan outputs are written to
-   \`.openfeel/plan/{stage}/plan.md\`, and Feel reads them for unified advancement.
+   \`.openfeel/plan/{series}/{stage}/plan.md\`, and Feel reads them for unified advancement.
 
 ## Plan Granularity Criteria
 
@@ -891,7 +891,7 @@ Determine whether Planner should intervene and which process to follow based on 
 When the plan requested by Feel duplicates an existing plan, Planner should refuse redundant formulation to avoid resource waste.
 
 - **Rejection trigger condition**: The plan requested by Feel **already exists** with no major deviation
-  - Check method: Compare stage definitions in \`deps.yaml\` with existing plan files under \`plan/{stage}/\`
+  - Check method: Compare stage definitions in \`deps.yaml\` with existing plan files under \`plan/{series}/{stage}/\`
   - Minor deviations (file changes ≤ 2, minor stage description adjustments) do not warrant re-formulation
 - **Standard rejection feedback template**:
   \`\`\`
@@ -924,7 +924,7 @@ This step ensures Planner absorbs existing project knowledge before making plans
 ## Output Format
 
 - Version roadmap written to \`roadmap/{version}.md\`
-- Work stages written to \`stages/{stage}/\`
+- Work stages written to \`plan/{series}/{stage}/\`
 - Dependency relationships written to \`deps.yaml\`
 
 ## Relationship with Other Agents
@@ -1339,7 +1339,7 @@ permission:
 
 | 来源 | 归档目标 |
 |------|----------|
-| 操作方案 | \`.openfeel/stages/{stage}/ops/\` |
+| 操作方案 | \`.openfeel/plan/{series}/{stage}/ops/\` |
 | 审查条目（REV） | \`.openfeel/code_review/{stage}.md\` |
 | Bug 记录（BUG） | \`.openfeel/bugs/{module}.md\` |
 | 架构决策 | \`.openfeel/kb/architecture.md\` |
@@ -1858,7 +1858,7 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 - 审查需要追溯每个变更的设计意图
 - 流水线审计链不可断裂（op 文件是核心证据）
 
-最小 op 文件要求：放在对应阶段的 \`ops/\` 目录，包含 \`# op-NNN\` 标题、变更目标、涉及文件列表。Feel 的 prompt 中必须写明「先在 \`.openfeel/plan/{stage}/ops/\` 下创建 op-{id}.md，再编码」。
+最小 op 文件要求：放在对应阶段的 \`ops/\` 目录，包含 \`# op-NNN\` 标题、变更目标、涉及文件列表。Feel 的 prompt 中必须写明「先在 \`.openfeel/plan/{series}/{stage}/ops/\` 下创建 op-{id}.md，再编码」。
 
 > 反例：Feel 直接给 Executor 一段长 prompt → Executor 编码完成 → 归档时发现没有 op 文件 → 审计链断裂。
 
@@ -2172,7 +2172,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 5. **禁止直写 flow.json**：计划制定/变更完成后，通过 Feel 调用
    \`openfeel flow advance --stage <id> --to <phase>\` 推进流水线状态。
    不得直接 \`edit\` 或 \`write\` flow.json 文件。计划产出写入
-   \`.openfeel/plan/{stage}/plan.md\`，由 Feel 读取后统一推进。
+   \`.openfeel/plan/{series}/{stage}/plan.md\`，由 Feel 读取后统一推进。
 
 ## 计划粒度判定标准
 
@@ -2193,7 +2193,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 当 Feel 请求制定的计划与现有计划重复时，Planner 应拒绝重复制定以避免资源浪费。
 
 - **拒绝触发条件**：Feel 请求的计划**已存在**且无重大偏离
-  - 检查方式：对比 \`deps.yaml\` 中的阶段定义和 \`plan/{stage}/\` 下的现有计划文件
+  - 检查方式：对比 \`deps.yaml\` 中的阶段定义和 \`plan/{series}/{stage}/\` 下的现有计划文件
   - 轻微偏差（文件增减 ≤ 2、阶段描述微调）不构成重新制定的理由
 - **拒绝时的标准反馈模板**：
   \`\`\`
@@ -2226,7 +2226,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 ## 产出格式
 
 - 分期大纲写入 \`roadmap/{version}.md\`
-- 工作阶段写入 \`stages/{stage}/\`
+- 工作阶段写入 \`plan/{series}/{stage}/\`
 - 依赖关系写入 \`deps.yaml\`
 
 ## 与其他 Agent 的关系
@@ -3000,7 +3000,7 @@ You are Archiver (归档官), the finalizer in the OpenFeel pipeline. You are dr
 
 | Source | Archive Target |
 |--------|---------------|
-| Operation schemes | \`.openfeel/stages/{stage}/ops/\` |
+| Operation schemes | \`.openfeel/plan/{series}/{stage}/ops/\` |
 | Review items (REV) | \`.openfeel/code_review/{stage}.md\` |
 | Bug records (BUG) | \`.openfeel/bugs/{module}.md\` |
 | Architecture decisions | \`.openfeel/kb/architecture.md\` |
@@ -3520,7 +3520,7 @@ When Feel skips Schemer and directly delegates a task to Executor with a "suffic
 - Review requires traceability of each change's design intent
 - The pipeline audit chain must not be broken (op files are core evidence)
 
-Minimal op file requirements: placed in the corresponding stage's \`ops/\` directory, containing an \`# op-NNN\` heading, change objectives, and a list of affected files. Feel's prompt must state: "First create op-{id}.md in \`.openfeel/plan/{stage}/ops/\`, then code."
+Minimal op file requirements: placed in the corresponding stage's \`ops/\` directory, containing an \`# op-NNN\` heading, change objectives, and a list of affected files. Feel's prompt must state: "First create op-{id}.md in \`.openfeel/plan/{series}/{stage}/ops/\`, then code."
 
 > Counter-example: Feel sends Executor a long prompt → Executor codes → archiving finds no op file → audit chain broken.
 
@@ -3813,7 +3813,7 @@ Feel invokes Planner only when a **formal plan document** (plan.md, including st
 5. **No direct write to flow.json**: After plan formulation/changes are complete, advance pipeline state through Feel by calling
    \`openfeel flow advance --stage <id> --to <phase>\`.
    Do not directly \`edit\` or \`write\` the flow.json file. Plan outputs are written to
-   \`.openfeel/plan/{stage}/plan.md\`, and Feel reads them for unified advancement.
+   \`.openfeel/plan/{series}/{stage}/plan.md\`, and Feel reads them for unified advancement.
 
 ## Plan Granularity Criteria
 
@@ -3834,7 +3834,7 @@ Determine whether Planner should intervene and which process to follow based on 
 When the plan requested by Feel duplicates an existing plan, Planner should refuse redundant formulation to avoid resource waste.
 
 - **Rejection trigger condition**: The plan requested by Feel **already exists** with no major deviation
-  - Check method: Compare stage definitions in \`deps.yaml\` with existing plan files under \`plan/{stage}/\`
+  - Check method: Compare stage definitions in \`deps.yaml\` with existing plan files under \`plan/{series}/{stage}/\`
   - Minor deviations (file changes ≤ 2, minor stage description adjustments) do not warrant re-formulation
 - **Standard rejection feedback template**:
   \`\`\`
@@ -3867,7 +3867,7 @@ This step ensures Planner absorbs existing project knowledge before making plans
 ## Output Format
 
 - Version roadmap written to \`roadmap/{version}.md\`
-- Work stages written to \`stages/{stage}/\`
+- Work stages written to \`plan/{series}/{stage}/\`
 - Dependency relationships written to \`deps.yaml\`
 
 ## Relationship with Other Agents
@@ -4282,7 +4282,7 @@ permission:
 
 | 来源 | 归档目标 |
 |------|----------|
-| 操作方案 | \`.openfeel/stages/{stage}/ops/\` |
+| 操作方案 | \`.openfeel/plan/{series}/{stage}/ops/\` |
 | 审查条目（REV） | \`.openfeel/code_review/{stage}.md\` |
 | Bug 记录（BUG） | \`.openfeel/bugs/{module}.md\` |
 | 架构决策 | \`.openfeel/kb/architecture.md\` |
@@ -4801,7 +4801,7 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 - 审查需要追溯每个变更的设计意图
 - 流水线审计链不可断裂（op 文件是核心证据）
 
-最小 op 文件要求：放在对应阶段的 \`ops/\` 目录，包含 \`# op-NNN\` 标题、变更目标、涉及文件列表。Feel 的 prompt 中必须写明「先在 \`.openfeel/plan/{stage}/ops/\` 下创建 op-{id}.md，再编码」。
+最小 op 文件要求：放在对应阶段的 \`ops/\` 目录，包含 \`# op-NNN\` 标题、变更目标、涉及文件列表。Feel 的 prompt 中必须写明「先在 \`.openfeel/plan/{series}/{stage}/ops/\` 下创建 op-{id}.md，再编码」。
 
 > 反例：Feel 直接给 Executor 一段长 prompt → Executor 编码完成 → 归档时发现没有 op 文件 → 审计链断裂。
 
@@ -5094,7 +5094,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 5. **禁止直写 flow.json**：计划制定/变更完成后，通过 Feel 调用
    \`openfeel flow advance --stage <id> --to <phase>\` 推进流水线状态。
    不得直接 \`edit\` 或 \`write\` flow.json 文件。计划产出写入
-   \`.openfeel/plan/{stage}/plan.md\`，由 Feel 读取后统一推进。
+   \`.openfeel/plan/{series}/{stage}/plan.md\`，由 Feel 读取后统一推进。
 
 ## 计划粒度判定标准
 
@@ -5115,7 +5115,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 当 Feel 请求制定的计划与现有计划重复时，Planner 应拒绝重复制定以避免资源浪费。
 
 - **拒绝触发条件**：Feel 请求的计划**已存在**且无重大偏离
-  - 检查方式：对比 \`deps.yaml\` 中的阶段定义和 \`plan/{stage}/\` 下的现有计划文件
+  - 检查方式：对比 \`deps.yaml\` 中的阶段定义和 \`plan/{series}/{stage}/\` 下的现有计划文件
   - 轻微偏差（文件增减 ≤ 2、阶段描述微调）不构成重新制定的理由
 - **拒绝时的标准反馈模板**：
   \`\`\`
@@ -5148,7 +5148,7 @@ Planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决
 ## 产出格式
 
 - 分期大纲写入 \`roadmap/{version}.md\`
-- 工作阶段写入 \`stages/{stage}/\`
+- 工作阶段写入 \`plan/{series}/{stage}/\`
 - 依赖关系写入 \`deps.yaml\`
 
 ## 与其他 Agent 的关系
@@ -5847,7 +5847,7 @@ description: 获取当前模块下状态为 open 或 fixing 的 Bug 列表，供
 `,
   'get-stage-status': `---
 name: get-stage-status
-description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Reviewer/Executor/Feel Tester 在处理阶段任务前确认流程状态。
+description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Reviewer/Executor/Feel Tester 在处理阶段任务前确认流程状态。
 ---
 
 # 获取子计划状态
@@ -5855,6 +5855,7 @@ description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状�
 ## 输入
 
 - 计划阶段名 \`{stage}\`（如 \`stage01\`、\`auth-login\`）
+- 阶段 ID \`{stage}\` 可为完整 \`vX.Y.Z.W-stage-NN\` 或短名 \`stage-NN\`，对应目录 \`plan/{series}/stage-NN/\`（\`{series}\` = 主版本系列，如 \`v1\`；短名默认 \`v1\`）
 - 若用户未提供阶段名，先读取 \`.openfeel/plan/index.md\` 查找当前活跃阶段；仍不明确时询问用户
 
 ## 执行步骤
@@ -5865,7 +5866,7 @@ description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状�
 
 ### 1. 定位状态文件
 
-读取 \`.openfeel/plan/{stage}/status.md\`。
+读取 \`.openfeel/plan/{series}/{stage}/status.md\`。
 
 若文件不存在：
 - 不要自行进入自动流程。
@@ -6499,7 +6500,7 @@ Base directory for this skill: file:///C:/Code/AI/AI_Prompt/.kilo/skills/sync-st
 `,
   'update-stage-status': `---
 name: update-stage-status
-description: 标准化更新 .openfeel/plan/{stage}/status.md 的子计划状态、责任 Agent 和状态记录，避免各 Agent 随意改写状态文件。适用于自动闭环和人工流程中的阶段状态变更。
+description: 标准化更新 .openfeel/plan/{series}/{stage}/status.md 的子计划状态、责任 Agent 和状态记录，避免各 Agent 随意改写状态文件。适用于自动闭环和人工流程中的阶段状态变更。
 ---
 
 # 更新子计划状态
@@ -6507,6 +6508,7 @@ description: 标准化更新 .openfeel/plan/{stage}/status.md 的子计划状态
 ## 输入
 
 - 计划阶段名 \`{stage}\`
+- 阶段 ID \`{stage}\` 可为完整 \`vX.Y.Z.W-stage-NN\` 或短名 \`stage-NN\`，对应目录 \`plan/{series}/stage-NN/\`（\`{series}\` = 主版本系列，如 \`v1\`；短名默认 \`v1\`）
 - 新状态 \`{status}\`
 - 当前责任 Agent \`{current_agent}\`
 - 上一责任 Agent \`{previous_agent}\`
@@ -6531,7 +6533,7 @@ description: 标准化更新 .openfeel/plan/{stage}/status.md 的子计划状态
 
 ### 1. 读取状态文件
 
-读取 \`.openfeel/plan/{stage}/status.md\`。
+读取 \`.openfeel/plan/{series}/{stage}/status.md\`。
 
 若文件不存在且当前 Agent 为 Architect：
   1. 从 \`.openfeel/config.yaml\` \`defaults\` 读取 \`execution_mode\`、\`auto_advance\` 作为初始值

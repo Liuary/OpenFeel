@@ -43,7 +43,7 @@ openfeel init ./my-agent-project
 ├── flow.json            # 流水线状态核心
 ├── .info.json           # 用户身份信息
 ├── roadmap/             # 分期大纲目录
-├── stages/              # 工作阶段目录
+├── plan/                # 计划目录（plan/{series}/stage-{NN}/ 多级结构）
 ├── kb/                  # 知识库目录
 ├── dev/                 # 开发记录目录
 ├── log/                 # 日志目录
@@ -179,7 +179,7 @@ openfeel plan stage add <name>
 openfeel plan stage add stage-01
 ```
 
-创建 `stages/stage-01/` 目录，包含 `overview.md` 和 `status.md`。
+创建 `plan/v1/stage-01/` 目录，包含 `overview.md` 和 `status.md`。
 
 ### plan stage list
 
@@ -192,8 +192,8 @@ openfeel plan stage list
 输出示例：
 
 ```
-- stage-01  .openfeel/stages/stage-01/
-- stage-02  .openfeel/stages/stage-02/
+- stage-01  .openfeel/plan/v1/stage-01/
+- stage-02  .openfeel/plan/v1/stage-02/
 ```
 
 ### plan scheme create
@@ -215,7 +215,7 @@ openfeel plan scheme create <stage> <title>
 openfeel plan scheme create stage-01 "实现核心功能"
 ```
 
-在 `stages/stage-01/ops/` 下创建 `op-001_实现核心功能.md`，按固定模板生成内容（目标、实施步骤、产出文件、自测清单、修正记录），并同步到 `flow.json`。
+在 `plan/v1/stage-01/ops/` 下创建 `op-001_实现核心功能.md`，按固定模板生成内容（目标、实施步骤、产出文件、自测清单、修正记录），并同步到 `flow.json`。
 
 ### plan scheme list
 

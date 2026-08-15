@@ -295,6 +295,8 @@ plan/                    ← 顶层（仅入口文件）
 
 **参见：** v0.5.7-stage-01 op-001（目录重构 + reasoning_effort 调整）、kb/patterns.md #约束文件→指令文件迁移模式（同属目录重构类模式）
 
+> **更新于 2026-08-15（v1.0.0-stage-34）**：本模式从「OpenFeel 自身目录重构」落地为「框架标准部署」。stage-34 修复三处路径不一致（`init.ts` 示例阶段平铺、`plan/stage.ts` + `plan/scheme.ts` 误写 `stages/`、`flow-manager` findStatusPath 双路径平铺回退），统一为 `plan/{series}/{stage}/` 多级结构（series=`v{MAJOR}`）。新增唯一权威工具 `src/core/plan/path.ts`：`parseStageId`（三格式解析）、`stageIdToPlanDir`（正向映射）、`planDirToStageId`（回查 flow.json 反向映射 + 去歧义）、`findStageStatusPath`（三级回退）。init 示例阶段部署到 `plan/v1/stage-01/` 并注册 `v1.0.0-stage-01`；CLI 参数兼容「完整 stageId 为主、短名 `stage-NN` 为别名（series 默认 v1）」。存量 `stages/` 保留只读兜底、不做物理迁移（规避 Git 重命名交叉匹配假象，见 kb/troubleshooting.md #Git 重命名检测交叉匹配假象）。
+
 ## [+] config.yaml meta.version 语义：OpenFeel 框架版本 (2026-08-15)
 
 `config.yaml` 的 `meta.version` 语义确认为「**OpenFeel 框架版本**」（非配置格式版本），与 package.json 同步。

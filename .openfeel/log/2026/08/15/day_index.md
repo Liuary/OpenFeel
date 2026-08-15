@@ -5,3 +5,5 @@
 |------|--------|------|
 | [2026-08-15-Liuary-001.md](2026-08-15-Liuary-001.md) | Archiver | stage-33 归档完成（反馈规则 + decisions.md + 1.0.8，知识沉淀 4 条） |
 | [2026-08-15-Liuary-002.md](2026-08-15-Liuary-002.md) | Liuary | 阶段 v1.0.0-stage-33 完成 |
+| [2026-08-15-Liuary-003.md](2026-08-15-Liuary-003.md) | Archiver | stage-34 归档完成（plan 目录多级化与路径统一，知识沉淀 4 条） |
+| [2026-08-15-Liuary-004.md](2026-08-15-Liuary-004.md) | Liuary | 阶段 v1.0.0-stage-34 完成 |

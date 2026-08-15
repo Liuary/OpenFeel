@@ -60,7 +60,7 @@ describe('plan 命令', () => {
     await safeParse(['plan', 'stage', 'add', 'stage-01']);
 
     // 验证阶段目录存在
-    const stageDir = join(tmpDir, '.openfeel', 'stages', 'stage-01');
+    const stageDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01');
     expect(existsSync(stageDir)).toBe(true);
     expect(existsSync(join(stageDir, 'overview.md'))).toBe(true);
     expect(existsSync(join(stageDir, 'status.md'))).toBe(true);
@@ -102,7 +102,7 @@ describe('plan 命令', () => {
     await safeParse(['plan', 'scheme', 'create', 'stage-01', '实现核心功能']);
 
     // 验证方案文件存在
-    const opsDir = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'ops');
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
     expect(existsSync(opsDir)).toBe(true);
 
     // 验证输出
@@ -146,8 +146,8 @@ describe('plan 命令', () => {
     const flowMgr = new FlowManager(tmpDir);
     const flowData = flowMgr.getData();
     if (flowData) {
-      flowData.stages['stage-01'] = {
-        name: 'stage-01',
+      flowData.stages['v1.0.0-stage-01'] = {
+        name: 'v1.0.0-stage-01',
         status: 'in_progress',
         deps: [],
         ops: {},
@@ -161,7 +161,7 @@ describe('plan 命令', () => {
     // 重新读取 flow.json 验证 op 已注册
     const flowPath = join(tmpDir, '.openfeel', 'flow.json');
     const flowContent = JSON.parse(readFileSync(flowPath, 'utf-8'));
-    const ops = flowContent.stages['stage-01']?.ops;
+    const ops = flowContent.stages['v1.0.0-stage-01']?.ops;
     expect(ops).toBeDefined();
     // 应该有至少一个 op
     const opIds = Object.keys(ops);

@@ -2,14 +2,14 @@
 
 > OpenFeel v1.0.0 正式版 — 全系列归档完成 ✅ | 发布就绪
 
-- **状态**：v1.0.0-stage-01 ~ stage-33 全部完成 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化 + update 增量冲突标记 + 反馈规则/decisions.md/1.0.8）
+- **状态**：v1.0.0-stage-01 ~ stage-34 全部完成 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化 + update 增量冲突标记 + 反馈规则/decisions.md/1.0.8 + plan 目录多级化与路径统一）
 - **旧版本**：v1.0.0-stage-04 ~ stage-28 全部归档 ✅（原 v0.4.2 ~ v0.5.11，共 25 个阶段）
-- **知识库**：architecture(15) + patterns(64) + troubleshooting(15) + setup(6) = 100 条目
+- **知识库**：architecture(15) + patterns(66) + troubleshooting(15) + setup(6) = 102 条目
 - **Agent 数**：9 个
 - **Skill 数**：14 个（全量对齐）
-- **源文件**：47 个 .ts 文件
-- **测试**：407/407 全通过（+1 新测试于 stage-33）
-- **版本**：v1.0.8（stage-33 同步）
+- **源文件**：48 个 .ts 文件
+- **测试**：425/425 全通过（+18 新测试于 stage-34）
+- **版本**：v1.0.8（stage-34 发布版本号待定：1.0.9 vs 1.1.0，待 Feel 与用户确认）
 
 ## v1.0.0 发布里程碑 🏆
 
@@ -23,6 +23,7 @@
 | stage-31 | CLI 体验优化 | --stage 缺失提示引导 + wizard 无阶段交互式创建 + 跳转失败增强诊断 + advance --dry-run 预览（3 文件变更，441 i18n 键对称） | 2026-08-09 |
 | stage-32 | update 增量冲突标记 | 新增 update-state.ts 模块 + writeWithMergeDetection 三态逻辑 + 冲突文件写入 + Feel 冲突检测（3 文件变更，406 测试，+7） | 2026-08-11 |
 | stage-33 | 反馈规则 + decisions.md + 1.0.8 | 日志纪律解耦 + 任务类型路由 + 轻量决策边界（三层）+ decisions.md ADR 框架化 + 版本 1.0.8 全链路（29 源码文件变更，407 测试，+1） | 2026-08-15 |
+| stage-34 | plan 目录多级化与路径统一 | path.ts 唯一权威（三格式解析 + 双向映射 + 三级回退）+ stage/scheme 写入迁移 + init 多级化 + 模板/skill 双语同步（33 文件变更，425 测试，+18） | 2026-08-15 |
 
 ## 旧 v0.5 系列里程碑（重映射为 v1.0.0-stage-17 ~ 28）
 
@@ -44,9 +45,9 @@
 
 ## 整体统计
 
-- 阶段覆盖：v1.0.0-stage-01 ~ stage-33（33 个阶段，含 25 个历史重映射 + 8 个新阶段）
-- 知识库总量：100 条目（architecture 15 + patterns 64 + troubleshooting 15 + setup 6）
-- 源文件：47 个 .ts 文件
-- 测试：407/407 全通过
+- 阶段覆盖：v1.0.0-stage-01 ~ stage-34（34 个阶段，含 25 个历史重映射 + 9 个新阶段）
+- 知识库总量：102 条目（architecture 15 + patterns 66 + troubleshooting 15 + setup 6）
+- 源文件：48 个 .ts 文件
+- 测试：425/425 全通过
 
-**v1.0.8 已发布。** 33 个阶段全部完成，知识库 100 条目，npm publish 待用户确认。
+**v1.0.8 已发布。** 34 个阶段全部完成，知识库 102 条目。stage-34 发布版本号（1.0.9 vs 1.1.0）待 Feel 与用户确认后递增，npm publish 待用户确认。

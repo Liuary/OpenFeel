@@ -44,6 +44,8 @@
 
 **见于：** REV-008
 
+> **更新于 2026-08-15（v1.0.0-stage-34）**：此历史坑正式收敛。stage-34 将「stages/ vs plan/ 不一致」从局部修复升级为**全链路路径统一**：废弃 `stages/` 作为写入目标（`plan/stage.ts` 与 `plan/scheme.ts` 不再写 `stages/`），改为写入 `plan/{series}/{stage}/` 多级目录；保留 `stages/{stageId}/status.md` 为三级回退的最后一级**只读兜底**。新增 `src/core/plan/path.ts` 作为 stageId↔plan 目录双向映射唯一权威，`findStageStatusPath` 实现三级回退（`plan/{series}/` 精确 → `plan/**` 递归 → `stages/` 兜底）。存量 `stages/` 目录**不迁移、不删除**，仅作历史存档，保证存量项目 status.md 读取不破坏。`getScheme` 的 opId 解析同步用锚定正则 `/^(.+)\.(op-\d+)$/` 而非 split（见 kb/patterns.md #点号分隔符锚定解析模式）。
+
 ## [+] architect 审查模板未同步更新 (2026-06-27)
 
 **现象：** `reviewer.md` 新增了 `Tester 标记：→Tester 重点关注` 字段，但 `architect.md` 的审查模板未同步更新。

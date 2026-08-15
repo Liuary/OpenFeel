@@ -1,6 +1,6 @@
 ---
 name: get-stage-status
-description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Reviewer/Executor/Feel Tester 在处理阶段任务前确认流程状态。
+description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Reviewer/Executor/Feel Tester 在处理阶段任务前确认流程状态。
 ---
 
 # 获取子计划状态
@@ -8,6 +8,7 @@ description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状�
 ## 输入
 
 - 计划阶段名 `{stage}`（如 `stage01`、`auth-login`）
+- 阶段 ID `{stage}` 可为完整 `vX.Y.Z.W-stage-NN` 或短名 `stage-NN`，对应目录 `plan/{series}/stage-NN/`（`{series}` = 主版本系列，如 `v1`；短名默认 `v1`）
 - 若用户未提供阶段名，先读取 `.openfeel/plan/index.md` 查找当前活跃阶段；仍不明确时询问用户
 
 ## 执行步骤
@@ -18,7 +19,7 @@ description: 读取 .openfeel/plan/{stage}/status.md，判断当前子计划状�
 
 ### 1. 定位状态文件
 
-读取 `.openfeel/plan/{stage}/status.md`。
+读取 `.openfeel/plan/{series}/{stage}/status.md`。
 
 若文件不存在：
 - 不要自行进入自动流程。

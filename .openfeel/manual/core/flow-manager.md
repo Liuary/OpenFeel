@@ -37,3 +37,15 @@ plan_pending → plan_review → plan_passed
 ## 数据位置
 
 `flow.json` 位于项目根 `.openfeel/` 下，含 `pipeline`（宏观状态 + 当前阶段/op）、`stages`（各阶段独立状态机）、`reviews`、`log`。
+
+## status.md 路径解析
+
+`findStatusPath`（及健康检查）委托 `src/core/plan/path.ts` 的 `findStageStatusPath` 实现**三级回退**：
+
+```
+1. plan/{series}/stage-NN/status.md   ← 解析 stageId → 精确路径（首选）
+2. plan/**/stage-NN/status.md         ← fast-glob 递归（兼容 series 变化/旧平铺）
+3. stages/{stageId}/status.md         ← 历史遗留，只读兜底
+```
+
+stageId↔目录映射收敛到 `plan-path` 模块，flow-manager 不再自行 split 版本号或 resolve 目录（stage-34 变更）。

@@ -1,40 +1,42 @@
 # 自测报告 — op-002
 
-- **执行时间**：2026-08-15 14:08
+- **执行时间**：2026-08-15 14:54
 - **执行 Agent**：Executor
-- **重试次数**：1
+- **重试次数**：0
 
 ## 执行摘要
 
-全部 2 处改动（任务类型路由节 / 轻量决策边界第 5 条）应用到 3 文件（模板源 zh/en + 根目录 AGENTS.md），build 全绿通过。
+全部 5 项步骤完成，flow-manager.test.ts 155 用例通过，无「stages 优先」残留。
 
 ## 实施步骤完成情况
 
-- [x] 改动 1（任务类型路由）：3 文件各新增 `## 任务类型路由` / `## Task Type Routing` 节（位于「行为准则」之后、「核心约束」之前），含 3 行表格 + 1 行提示
-- [x] 改动 2（轻量决策边界）：3 文件各新增 `5. **轻量决策边界**` / `5. **Lightweight decision boundary**`（位于第 4 条 Feel 调度约束之后、「偏离以上约束…」之前）
+- [x] 步骤1：flow-manager.ts 新增 `import { findStageStatusPath } from './plan/path.js'`
+- [x] 步骤2：findStatusPath（原 1380-1391 行）整体替换为委托 findStageStatusPath，删除 stagesDir/planDir 双路径判断
+- [x] 步骤3：checkCrossFileConsistency（原 2425-2475 行）改用 findStageStatusPath，删除 planDir/stagesDir 局部变量与手写回退
+- [x] 步骤4：checkZombieStates 删除 planDir/stagesDir 两行死代码（保留注释首行，循环逻辑不变）
+- [x] 步骤5：flow-manager.test.ts 1675 注释更新 + 1676 路径改多级 plan/v1/stage-01/
 
 ## 自测清单验证
 
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 改动 1 节 3 文件各 1 处 | ✅ | grep 命中 3 |
-| 改动 2 第 5 条 3 文件各 1 处 | ✅ | grep 命中 3 |
-| 根目录 AGENTS.md「模块手册」节 / 头部适配器行 / 详细知识约束操作规范未动 | ✅ | 均保留（模块手册 L138、适配器行 L4） |
-| 模板源 zh/en 双语对称 | ✅ | 改动 1/2 逐条对应 |
-| npm run build | ✅ | 4/4 + 3/3 一致性校验全绿 |
+| findStatusPath 委托 findStageStatusPath，无「stages 优先」残留 | ✅ | grep 验证 |
+| checkCrossFileConsistency 走三级回退，无 planDir/stagesDir 残留 | ✅ | |
+| checkZombieStates 死代码已删，循环逻辑不变 | ✅ | |
+| checkDepsYaml `.openfeel/plan/deps.yaml` 路径未被改动 | ✅ | 2099/2109 行保持原样 |
+| flow-manager.test.ts（recoverContext + 健康检查）通过 | ✅ | 155 passed |
 
 ## 产出文件
 
-- `src/core/templates-data/agents-md/zh-CN.md`
-- `src/core/templates-data/agents-md/en.md`
-- `AGENTS.md`
+- `src/core/flow-manager.ts`
+- `test/core/flow-manager.test.ts`
 
 ## 前置校验结果
 
 - 方案完整性：通过
 - Phase 合法性：通过
-- 流转合法性：通过（`openfeel flow health --quick` EXIT 0）
+- 流转合法性：通过
 
 ## 偏差记录
 
-无。根目录 AGENTS.md 按独立适配原则插入两处（未用模板源覆盖），保留其「模块手册」节与更详细约束内容。
+无。

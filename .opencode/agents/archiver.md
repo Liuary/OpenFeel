@@ -27,7 +27,7 @@ permission:
 
 | 来源 | 归档目标 |
 |------|----------|
-| 操作方案 | `.openfeel/stages/{stage}/ops/` |
+| 操作方案 | `.openfeel/plan/{series}/{stage}/ops/` |
 | 审查条目（REV） | `.openfeel/code_review/{stage}.md` |
 | Bug 记录（BUG） | `.openfeel/bugs/{module}.md` |
 | 架构决策 | `.openfeel/kb/architecture.md` |

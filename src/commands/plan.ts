@@ -21,7 +21,7 @@ export function registerPlanCommand(program: Command): void {
   stageCmd
     .command('add')
     .description('添加工作阶段')
-    .argument('<name>', '阶段名（如 stage-01）')
+    .argument('<name>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
     .action((name: string) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
@@ -57,7 +57,7 @@ export function registerPlanCommand(program: Command): void {
   schemeCmd
     .command('create')
     .description('创建操作方案')
-    .argument('<stage>', '阶段名（如 stage-01）')
+    .argument('<stage>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
     .argument('<title>', '方案标题')
     .action((stage: string, title: string) => {
       const projectPath = process.cwd();

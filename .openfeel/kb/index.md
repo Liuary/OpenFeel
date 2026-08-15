@@ -9,19 +9,19 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 47 个 .ts 文件（src/） |
+| 源文件 | 48 个 .ts 文件（src/） |
 | Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-08-15（stage-33 归档：Pantheogen 反馈规则落地 + decisions.md 框架化 + 版本 1.0.8，4 条知识沉淀至 architecture/patterns/troubleshooting） |
+| 最近更新 | 2026-08-15（stage-34 归档：plan 目录多级化与路径统一，4 条知识沉淀至 architecture(更新) + patterns(2 新增) + troubleshooting(更新)） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 15 | 2026-08-15 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义 |
-| 代码模式 | [patterns.md](patterns.md) | 64 | 2026-08-15 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 15 | 2026-08-15 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散 |
+| 代码模式 | [patterns.md](patterns.md) | 66 | 2026-08-15 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 15 | 2026-08-15 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-08-08 | 环境搭建、构建流程、依赖管理、Agent 模型配置、npm pack 发布验证、CI/CD npm 自动发布 |
 
 ## 各分类摘要
@@ -103,6 +103,8 @@
 | update 增量部署哈希追踪 + 冲突标记三态模式 | 2026-08-11 | writeWithMergeDetection 四态判定（created/updated/skipped/conflicts）+ update_state.json 元数据追踪 + 冲突文件 Git 风格标记 + 降级策略 |
 | 任务类型路由 + 轻量决策边界模式 | 2026-08-15 | 非编码任务一等公民（调研→research / 编码→流水线 / 选型→Feel+question），轻量决策边界三层统一定义，flow.json 不必空转 |
 | 长期决策独立持久存储模式（decisions.md ADR） | 2026-08-15 | 长期决策→decisions.md（ADR 格式）与临时决策→dev_last.md 分离，templates.ts + init.ts + core.md 三处联动框架化 |
+| stageId 三格式解析 + plan 目录双向映射模式 | 2026-08-15 | 完整/历史/短名三格式统一解析 + path.ts 唯一权威 + 反向映射回查 flow.json 去歧义 |
+| 点号分隔符锚定解析模式（opId 含版本号点号） | 2026-08-15 | 复合 ID 切分用锚定正则 `/^(.+)\.(op-\d+)$/` 而非 split，避免完整 stageId 版本号点号干扰 |
 
 ### troubleshooting.md
 
@@ -136,6 +138,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-08-15 | 归档 | stage-34 归档：plan 目录多级化与路径统一（path.ts 新模块 + 三级回退 + 写入迁移 + init 多级化 + 模板/skill 双语同步），6 op / 33 文件变更，0 REV，425/425 测试通过，0 Bug，知识沉淀 4 条至 architecture(更新) + patterns(2 新增) + troubleshooting(更新) |
 | 2026-08-15 | 归档 | stage-33 归档：Pantheogen 反馈 3 项规则改动（日志纪律解耦 + 任务类型路由 + 轻量决策边界）+ decisions.md 框架化 + 版本 1.0.8 全链路同步，5 op / 29 源码文件变更，0 REV，407/407 测试通过，0 Bug，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1) |
 | 2026-08-11 | 归档 | stage-32 归档：openfeel update 增量更新 + 冲突标记机制（update-state.ts 新模块 + writeWithMergeDetection 三态逻辑 + 冲突文件写入），1 文件新增 + 2 文件变更，406/406 测试通过，443 i18n 键，3 non-blocking REV，知识沉淀 2 条至 patterns(1) + troubleshooting(1) |
 | 2026-08-09 | 归档 | stage-31 归档：Pantheogen CLI 体验优化 4 项（--stage 缺失提示引导 + wizard 无阶段交互式创建 + 跳转失败增强诊断 + advance --dry-run 预览），3 文件变更，399/399 测试通过，441 i18n 键对称，1 non-blocking REV（特殊字符校验），知识沉淀 3 条至 patterns |

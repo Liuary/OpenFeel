@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-08-15-Liuary-004.md](2026/08/15/2026-08-15-Liuary-004.md) | Liuary | 阶段 v1.0.0-stage-34 完成 |
+| [2026-08-15-Liuary-003.md](2026/08/15/2026-08-15-Liuary-003.md) | Liuary | **stage-34 归档完成**：plan 目录多级化与路径统一（path.ts 唯一权威 + 三级回退 + 写入迁移 + init 多级化 + 模板/skill 双语同步），知识沉淀 4 条至 architecture(更新) + patterns(2) + troubleshooting(更新)，425/425 测试 |
 | [2026-08-15-Liuary-002.md](2026/08/15/2026-08-15-Liuary-002.md) | Liuary | 阶段 v1.0.0-stage-33 完成 |
 | [2026-08-15-Liuary-001.md](2026/08/15/2026-08-15-Liuary-001.md) | Liuary | **stage-33 归档完成**：Pantheogen 反馈 3 项规则改动（日志纪律解耦 + 任务类型路由 + 轻量决策边界）+ decisions.md 框架化 + 版本 1.0.8 全链路，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，407/407 测试 |
 | [2026-08-11-Liuary-002.md](2026/08/11/2026-08-11-Liuary-002.md) | Liuary | 阶段 v1.0.0-stage-32 完成 |

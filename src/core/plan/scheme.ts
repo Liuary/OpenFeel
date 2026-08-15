@@ -1,11 +1,12 @@
 /**
  * 操作方案管理（Schemer 产出层）
- * 负责 .openfeel/stages/{stage}/ops/ 下的操作方案文件 CRUD
+ * 负责 .openfeel/plan/{series}/{stage}/ops/ 下的操作方案文件 CRUD
  * 创建后自动同步到 flow.json 的 stages/{stage}.ops 中
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { FlowManager, type PipelinePhase } from '../flow-manager.js';
+import { parseStageId } from './path.js';
 
 /** 操作方案 */
 export interface Scheme {
@@ -17,7 +18,7 @@ export interface Scheme {
   title: string;
   /** Markdown 全文 */
   content: string;
-  /** 相对路径 .openfeel/stages/{stage}/ops/op-001_{title}.md */
+  /** 相对路径 .openfeel/plan/{series}/{stage}/ops/op-001_{title}.md */
   filePath: string;
 }
 
@@ -97,6 +98,7 @@ function getNextOpId(opsDir: string): string {
 /**
  * 同步方案到 flow.json
  * 若 flow.json 不存在或对应 stage 不存在，跳过同步（不报错）
+ * @param stageName 完整 stageId（如 v1.0.0-stage-01，调用方已规范化）
  */
 function syncToFlowJson(
   projectPath: string,
@@ -153,15 +155,22 @@ function syncToFlowJson(
 
 /**
  * 创建操作方案
- * 在 .openfeel/stages/{stage}/ops/ 下创建 op-NNN_{title}.md
+ * 在 .openfeel/plan/{series}/{stage}/ops/ 下创建 op-NNN_{title}.md
  * NNN 自动递增（从该阶段的已有方案中计算）
  * 必须按固定模板生成，包含：目标、实施步骤（checkbox）、产出文件、自测清单、修正记录
  * 创建后自动同步到 flow.json（如果存在）
+ * @param stageName 阶段名（短名 stage-01 或完整 v1.0.0-stage-01 均可）
  * @returns opId（如 op-001）
  */
 export function createScheme(projectPath: string, stageName: string, title: string): string {
-  // 1. 确保 .openfeel/stages/{stage}/ops/ 目录存在
-  const opsDir = resolve(projectPath, '.openfeel', 'stages', stageName, 'ops');
+  // 解析 stageId（短名/完整）得到 series + stageDir + 完整 ID
+  const parsed = parseStageId(stageName);
+  if (!parsed) {
+    throw new Error(`非法阶段名: ${stageName}（应为 stage-NN 或 vX.Y.Z.W-stage-NN）`);
+  }
+
+  // 1. 确保 .openfeel/plan/{series}/{stageDir}/ops/ 目录存在
+  const opsDir = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'ops');
   if (!existsSync(opsDir)) {
     mkdirSync(opsDir, { recursive: true });
   }
@@ -175,11 +184,11 @@ export function createScheme(projectPath: string, stageName: string, title: stri
   const fileName = `${opId}_${safeTitle}.md`;
   const filePath = join(opsDir, fileName);
 
-  const content = generateSchemeTemplate(opId, stageName, title);
+  const content = generateSchemeTemplate(opId, parsed.fullStageId, title);
   writeFileSync(filePath, content, 'utf-8');
 
-  // 4. 同步到 flow.json
-  syncToFlowJson(projectPath, stageName, opId, title);
+  // 4. 同步到 flow.json（键用完整 stageId）
+  syncToFlowJson(projectPath, parsed.fullStageId, opId, title);
 
   // 5. 返回 opId
   return opId;
@@ -187,68 +196,39 @@ export function createScheme(projectPath: string, stageName: string, title: stri
 
 /**
  * 读取操作方案
- * @param opId 操作ID（如 op-001）或完整 opId（如 stage-01.op-001）
+ * @param opId 操作ID（如 op-001）或完整 opId（如 stage-01.op-001 / v1.0.0-stage-01.op-001）
  * @returns Scheme 或 null
  */
 export function getScheme(projectPath: string, opId: string): Scheme | null {
-  const stagesDir = resolve(projectPath, '.openfeel', 'stages');
-
-  if (!existsSync(stagesDir)) {
-    return null;
-  }
-
-  let targetStageName: string;
+  let targetStage: string | null = null;
   let targetOpId: string;
 
-  // 判断 opId 格式：包含 "." 则为完整格式 "stage-01.op-001"
-  const dotIdx = opId.indexOf('.');
-  if (dotIdx !== -1) {
-    targetStageName = opId.substring(0, dotIdx);
-    targetOpId = opId.substring(dotIdx + 1);
+  // 解析 opId：'{stage}.{op-XXX}' 或纯 '{op-XXX}'
+  // 用正则锚定尾部 .op-NNN，避免完整 stageId 版本号中的点号干扰
+  const match = opId.match(/^(.+)\.(op-\d+)$/);
+  if (match) {
+    targetStage = match[1];
+    targetOpId = match[2];
   } else {
-    targetStageName = ''; // 遍历所有阶段查找
+    targetStage = null;
     targetOpId = opId;
   }
 
-  // 读取 stages 目录下的子目录
-  const stageEntries = readdirSync(stagesDir, { withFileTypes: true });
-  for (const stageEntry of stageEntries) {
-    if (!stageEntry.isDirectory()) {
-      continue;
+  // 若指定阶段，解析出 stageDir 后遍历查找
+  let targetStageDir: string | null = null;
+  if (targetStage) {
+    const parsed = parseStageId(targetStage);
+    if (!parsed) {
+      return null; // 阶段名非法
     }
-
-    // 若指定了阶段名，只检查匹配的目录
-    if (targetStageName && stageEntry.name !== targetStageName) {
-      continue;
-    }
-
-    const opsDir = join(stagesDir, stageEntry.name, 'ops');
-    if (!existsSync(opsDir)) {
-      continue;
-    }
-
-    // 在 ops 目录中查找匹配的文件
-    const opFiles = readdirSync(opsDir).filter((f) => f.startsWith(targetOpId) && f.endsWith('.md'));
-    if (opFiles.length === 0) {
-      continue;
-    }
-
-    // 找到匹配文件，读取内容
-    const matchedFile = opFiles[0]; // 取第一个匹配
-    const filePath = join(opsDir, matchedFile);
-    const content = readFileSync(filePath, 'utf-8');
-
-    const scheme: Scheme = {
-      opId: targetOpId,
-      stage: stageEntry.name,
-      title: extractTitle(matchedFile),
-      content,
-      filePath: `.openfeel/stages/${stageEntry.name}/ops/${matchedFile}`,
-    };
-
-    return scheme;
+    targetStageDir = parsed.stageDir;
   }
 
+  for (const scheme of listSchemes(projectPath, targetStageDir ?? undefined)) {
+    if (scheme.opId === targetOpId) {
+      return scheme;
+    }
+  }
   return null;
 }
 
@@ -257,49 +237,69 @@ export function getScheme(projectPath: string, opId: string): Scheme | null {
  * @param stageName 可选，不传则列出所有阶段的方案
  */
 export function listSchemes(projectPath: string, stageName?: string): Scheme[] {
-  const stagesDir = resolve(projectPath, '.openfeel', 'stages');
+  const planDir = resolve(projectPath, '.openfeel', 'plan');
   const result: Scheme[] = [];
 
-  if (!existsSync(stagesDir)) {
+  if (!existsSync(planDir)) {
     return result;
   }
 
-  // 若指定了阶段名，只遍历该阶段
-  const stageNames: string[] = [];
+  // 解析目标 stageDir（若指定阶段过滤）
+  let targetStageDir: string | null = null;
   if (stageName) {
-    stageNames.push(stageName);
-  } else {
-    const stageEntries = readdirSync(stagesDir, { withFileTypes: true });
-    for (const entry of stageEntries) {
-      if (entry.isDirectory()) {
-        stageNames.push(entry.name);
-      }
+    const parsed = parseStageId(stageName);
+    if (!parsed) {
+      return result; // 阶段名非法时返回空
     }
+    targetStageDir = parsed.stageDir;
   }
 
-  for (const sn of stageNames) {
-    const opsDir = join(stagesDir, sn, 'ops');
-    if (!existsSync(opsDir)) {
+  // 遍历 plan/{series}/stage-NN/ 两层目录
+  const seriesEntries = readdirSync(planDir, { withFileTypes: true });
+  for (const seriesEntry of seriesEntries) {
+    if (!seriesEntry.isDirectory()) {
+      continue;
+    }
+    const seriesDir = join(planDir, seriesEntry.name);
+
+    let stageEntries: import('node:fs').Dirent[];
+    try {
+      stageEntries = readdirSync(seriesDir, { withFileTypes: true });
+    } catch {
       continue;
     }
 
-    const opFiles = readdirSync(opsDir).filter((f) => f.endsWith('.md'));
-    for (const fileName of opFiles) {
-      const opId = extractOpId(fileName);
-      if (!opId) {
+    for (const stageEntry of stageEntries) {
+      if (!stageEntry.isDirectory()) {
+        continue;
+      }
+      if (targetStageDir && stageEntry.name !== targetStageDir) {
         continue;
       }
 
-      const filePath = join(opsDir, fileName);
-      const content = readFileSync(filePath, 'utf-8');
+      const opsDir = join(seriesDir, stageEntry.name, 'ops');
+      if (!existsSync(opsDir)) {
+        continue;
+      }
 
-      result.push({
-        opId,
-        stage: sn,
-        title: extractTitle(fileName),
-        content,
-        filePath: `.openfeel/stages/${sn}/ops/${fileName}`,
-      });
+      const opFiles = readdirSync(opsDir).filter((f) => f.endsWith('.md'));
+      for (const fileName of opFiles) {
+        const opId = extractOpId(fileName);
+        if (!opId) {
+          continue;
+        }
+
+        const filePath = join(opsDir, fileName);
+        const content = readFileSync(filePath, 'utf-8');
+
+        result.push({
+          opId,
+          stage: stageEntry.name,
+          title: extractTitle(fileName),
+          content,
+          filePath: `.openfeel/plan/${seriesEntry.name}/${stageEntry.name}/ops/${fileName}`,
+        });
+      }
     }
   }
 

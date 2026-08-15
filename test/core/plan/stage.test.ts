@@ -23,7 +23,7 @@ describe('stage', () => {
     it('应创建 stage-01 目录、overview.md、status.md', () => {
       addStage(tmpDir, 'stage-01');
 
-      const stageDir = join(tmpDir, '.openfeel', 'stages', 'stage-01');
+      const stageDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01');
       expect(existsSync(stageDir)).toBe(true);
       expect(existsSync(join(stageDir, 'overview.md'))).toBe(true);
       expect(existsSync(join(stageDir, 'status.md'))).toBe(true);
@@ -32,9 +32,9 @@ describe('stage', () => {
     it('overview.md 应包含阶段名标题', () => {
       addStage(tmpDir, 'stage-01');
 
-      const overviewPath = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'overview.md');
+      const overviewPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'overview.md');
       const content = readFileSync(overviewPath, 'utf-8');
-      expect(content).toContain('# stage-01');
+      expect(content).toContain('# v1.0.0-stage-01');
       expect(content).toContain('## 目标');
       expect(content).toContain('## 依赖');
       expect(content).toContain('## 操作方案');
@@ -43,7 +43,7 @@ describe('stage', () => {
     it('带 deps 参数时 overview.md 应包含依赖信息', () => {
       addStage(tmpDir, 'stage-01', ['stage-00']);
 
-      const overviewPath = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'overview.md');
+      const overviewPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'overview.md');
       const content = readFileSync(overviewPath, 'utf-8');
       expect(content).toContain('- stage-00');
     });
@@ -51,7 +51,7 @@ describe('stage', () => {
     it('debs 为空数组时 overview.md 应显示"无"', () => {
       addStage(tmpDir, 'stage-01', []);
 
-      const overviewPath = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'overview.md');
+      const overviewPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'overview.md');
       const content = readFileSync(overviewPath, 'utf-8');
       // deps 为空时，依赖部分应显示"无"
       expect(content).toContain('无');
@@ -60,7 +60,7 @@ describe('stage', () => {
     it('status.md 应包含标准骨架字段', () => {
       addStage(tmpDir, 'stage-01');
 
-      const statusPath = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'status.md');
+      const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md');
       const content = readFileSync(statusPath, 'utf-8');
 
       expect(content).toContain('执行模式');
@@ -72,7 +72,7 @@ describe('stage', () => {
     it('重复调用 addStage 不覆盖已有文件', () => {
       addStage(tmpDir, 'stage-01');
 
-      const overviewPath = join(tmpDir, '.openfeel', 'stages', 'stage-01', 'overview.md');
+      const overviewPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'overview.md');
       const originalContent = readFileSync(overviewPath, 'utf-8');
 
       // 第二次调用 — 不应覆盖
@@ -101,7 +101,7 @@ describe('stage', () => {
       expect(names).toContain('stage-02');
 
       // 应包含 overview 内容
-      expect(stages[0].overview).toContain('# stage-01');
+      expect(stages[0].overview).toContain('# v1.0.0-stage-01');
     });
 
     it('只列出子目录，忽略文件', () => {

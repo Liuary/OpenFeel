@@ -3,7 +3,7 @@
  * 测试 initProject 在临时目录中的完整行为
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { initProject, deployOpencode } from '../../src/core/init.js';
+import { initProject, deployOpencode, initDemo } from '../../src/core/init.js';
 import { readConfig } from '../../src/core/config.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
@@ -187,5 +187,35 @@ describe('initProject — opencode deployment', () => {
     expect(existsSync(opencodeJsonPath)).toBe(true);
     const content = readFileSync(opencodeJsonPath, 'utf-8');
     expect(content).not.toContain('{项目名称}');
+  });
+});
+
+describe('initDemo', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-init-demo-test-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('应部署多级示例阶段 plan/v1/stage-01/status.md', async () => {
+    // 先初始化工作区（确保 flow.json 存在）
+    await initProject(tmpDir);
+    initDemo(tmpDir, 'zh-CN');
+
+    // 断言多级路径存在
+    expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md'))).toBe(true);
+
+    // 断言 flow.json 注册完整 stageId
+    const flowData = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flowData.stages['v1.0.0-stage-01']).toBeDefined();
+    expect(flowData.stages['stage-01']).toBeUndefined();
+
+    // 断言 status.md 标题为完整 stageId
+    const statusContent = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md'), 'utf-8');
+    expect(statusContent).toContain('# v1.0.0-stage-01 状态');
   });
 });

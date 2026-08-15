@@ -1,6 +1,6 @@
 ---
 name: update-stage-status
-description: 标准化更新 .openfeel/plan/{stage}/status.md 的子计划状态、责任 Agent 和状态记录，避免各 Agent 随意改写状态文件。适用于自动闭环和人工流程中的阶段状态变更。
+description: 标准化更新 .openfeel/plan/{series}/{stage}/status.md 的子计划状态、责任 Agent 和状态记录，避免各 Agent 随意改写状态文件。适用于自动闭环和人工流程中的阶段状态变更。
 ---
 
 # 更新子计划状态
@@ -8,6 +8,7 @@ description: 标准化更新 .openfeel/plan/{stage}/status.md 的子计划状态
 ## 输入
 
 - 计划阶段名 `{stage}`
+- 阶段 ID `{stage}` 可为完整 `vX.Y.Z.W-stage-NN` 或短名 `stage-NN`，对应目录 `plan/{series}/stage-NN/`（`{series}` = 主版本系列，如 `v1`；短名默认 `v1`）
 - 新状态 `{status}`
 - 当前责任 Agent `{current_agent}`
 - 上一责任 Agent `{previous_agent}`
@@ -32,7 +33,7 @@ description: 标准化更新 .openfeel/plan/{stage}/status.md 的子计划状态
 
 ### 1. 读取状态文件
 
-读取 `.openfeel/plan/{stage}/status.md`。
+读取 `.openfeel/plan/{series}/{stage}/status.md`。
 
 若文件不存在且当前 Agent 为 Architect：
   1. 从 `.openfeel/config.yaml` `defaults` 读取 `execution_mode`、`auto_advance` 作为初始值

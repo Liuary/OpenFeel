@@ -101,7 +101,7 @@ Reviewer 审查发现的 REV，**即使是白名单操作（如文档缩进、�
 - 审查需要追溯每个变更的设计意图
 - 流水线审计链不可断裂（op 文件是核心证据）
 
-最小 op 文件要求：放在对应阶段的 `ops/` 目录，包含 `# op-NNN` 标题、变更目标、涉及文件列表。Feel 的 prompt 中必须写明「先在 `.openfeel/plan/{stage}/ops/` 下创建 op-{id}.md，再编码」。
+最小 op 文件要求：放在对应阶段的 `ops/` 目录，包含 `# op-NNN` 标题、变更目标、涉及文件列表。Feel 的 prompt 中必须写明「先在 `.openfeel/plan/{series}/{stage}/ops/` 下创建 op-{id}.md，再编码」。
 
 > 反例：Feel 直接给 Executor 一段长 prompt → Executor 编码完成 → 归档时发现没有 op 文件 → 审计链断裂。
 

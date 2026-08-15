@@ -1,0 +1,111 @@
+# stage-34 操作方案依赖声明
+# 由 Planner 制定基础结构，Schemer 细化各 op 内容并更新
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "路径映射工具 path.ts（stageId ↔ plan 目录双向映射唯一权威）"
+    depends_on: []
+    stage: "v1.0.0-stage-34"
+    type: hard
+    produces:
+      - "src/core/plan/path.ts"
+      - "test/core/plan/path.test.ts"
+    description: "建立 stageId ↔ plan 目录双向映射的唯一权威工具，消除各处硬编码路径。导出 parseStageId / stageIdToPlanDir / planDirToStageId / findStageStatusPath。解析规则：stageId {version}-stage-{NN} → series=v{MAJOR}、stageDir=stage-NN；兼容历史 v4-stage-04 与短名 stage-01（默认 series v1）；反向映射回查 flow.json；findStageStatusPath 三级回退（plan/{series}/ 精确 → plan 递归 → stages 兜底）。先导 op，无依赖。"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "flow-manager 读取路径统一（findStatusPath 三级回退 + 健康检查同步）"
+    depends_on: ["op-001"]
+    stage: "v1.0.0-stage-34"
+    type: hard
+    produces:
+      - "src/core/flow-manager.ts"
+      - "test/core/flow-manager.test.ts"
+    description: "findStatusPath（1380-1391）改为委托 path.ts 的 findStageStatusPath，消除「stages 优先、plan 平铺回退」；checkCrossFileConsistency（2426-2475）同步走 plan/{series}/ 多级，stages/ 仅兜底；checkZombieStates 删除未使用的 planDir/stagesDir 死代码（2484-2485，不涉及 status.md 路径读取）；checkDepsYaml（2568）路径确认不变。测试断言从「stages 优先」改为「plan/{series}/ 优先」。"
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "plan 核心层写入迁移（stage.ts + scheme.ts 从 stages/ 改写 plan/{series}/）"
+    depends_on: ["op-001"]
+    stage: "v1.0.0-stage-34"
+    type: hard
+    produces:
+      - "src/core/plan/stage.ts"
+      - "src/core/plan/scheme.ts"
+      - "src/commands/plan.ts"
+      - "test/core/plan/stage.test.ts"
+      - "test/core/plan/scheme.test.ts"
+      - "test/commands/plan.test.ts"
+    description: "addStage/listStages（stage.ts）与 createScheme/getScheme/listSchemes（scheme.ts）从 .openfeel/stages/ 改写 .openfeel/plan/{series}/{stage}/，series 从 stageId 解析（短名默认 v1）。plan stage add / plan scheme create 参数接受完整 stageId 或短名别名（短名 series 默认 v1），内部用 path.ts 解析。三测试文件的 .openfeel/stages/ 路径断言改为 .openfeel/plan/v1/，scheme.test.ts:224 描述文本同步改为 plan 目录不存在时。"
+
+  op-004:
+    file: "ops/op-004.md"
+    title: "命令层 + init 路径统一（commands/stage.ts 映射修正 + init 示例阶段多级化）"
+    depends_on: ["op-001"]
+    stage: "v1.0.0-stage-34"
+    type: hard
+    produces:
+      - "src/commands/stage.ts"
+      - "src/core/init.ts"
+      - "test/core/init.test.ts"
+    description: "resolveStatusPath（commands/stage.ts:38-57）用 path.ts 解析 stageId → stage-NN 后再递归搜索；listAllStages（111-147）反向映射回查 flow.json 得到完整 stageId。init.ts 示例阶段部署 plan/v1/stage-01/status.md + 注册 v1.0.0-stage-01 + 注释修正。soft 依赖 op-002（findStatusPath 定版后语义对齐）。"
+
+  op-005:
+    file: "ops/op-005.md"
+    title: "模板源与部署实例路径引用统一（双层模板 + skill 定义，双语）"
+    depends_on: ["op-002", "op-003", "op-004"]
+    stage: "v1.0.0-stage-34"
+    type: soft
+    produces:
+      - "src/core/templates-data/agents/zh-CN/feel.md"
+      - "src/core/templates-data/agents/en/feel.md"
+      - "src/core/templates-data/agents/zh-CN/planner.md"
+      - "src/core/templates-data/agents/en/planner.md"
+      - "src/core/templates-data/agents/zh-CN/archiver.md"
+      - "src/core/templates-data/agents/en/archiver.md"
+      - "src/core/templates-data/opencode/agents/zh-CN/feel.md"
+      - "src/core/templates-data/opencode/agents/en/feel.md"
+      - "src/core/templates-data/opencode/agents/zh-CN/planner.md"
+      - "src/core/templates-data/opencode/agents/en/planner.md"
+      - "src/core/templates-data/opencode/agents/zh-CN/archiver.md"
+      - "src/core/templates-data/opencode/agents/en/archiver.md"
+      - "src/core/templates-data/opencode/skills/get-stage-status/SKILL.md"
+      - "src/core/templates-data/opencode/skills/update-stage-status/SKILL.md"
+      - ".opencode/agents/feel.md"
+      - ".opencode/agents/planner.md"
+      - ".opencode/agents/archiver.md"
+      - ".opencode/skills/get-stage-status/SKILL.md"
+      - ".opencode/skills/update-stage-status/SKILL.md"
+      # 构建产物（npm run build 自动生成，不手动编辑）
+      - "src/core/template-loader.ts"
+      - "src/core/update.ts"
+    description: "Agent 模板（feel/planner/archiver）与 skill 定义（get-stage-status/update-stage-status）中残留的 stages/ 或平铺 plan/{stage}/ 引用统一为 plan/{series}/{stage}/。双层模板源（agents + opencode/agents）+ 部署实例（.opencode/）逐字符同步，zh-CN + en 双语。按 troubleshooting #双层模板源发散「按节锚点定点编辑、禁止整文件复制」，用 git diff --no-index 验证。npm run build 重生成 template-loader.ts + update.ts（AUTO-GENERATED 段不手动编辑）。soft 依赖 op-002/003/004（路径约定定版后对齐文案，无文件重叠）。"
+
+  op-006:
+    file: "ops/op-006.md"
+    title: "文档同步 + 全量回归（docs 两文件 + build/test 收尾）"
+    depends_on: ["op-003", "op-004"]
+    stage: "v1.0.0-stage-34"
+    type: hard
+    produces:
+      - "docs/commands.md"
+      - "docs/GETTING_STARTED.md"
+    description: "docs/commands.md 逐行修正所有 stages/ 路径引用（Line 46/182/195-196/218），短名参数示例（174/179/209/215）保留不改；docs/GETTING_STARTED.md 短名示例保留不改（仅确认无需改，注意 GBK 编码）。全量回归 npm run build && npm test，grep 全量扫描 src/ 确认无遗留 .openfeel/stages 写入路径。hard 依赖 op-003/004（文档反映其输出），soft 依赖 op-005。"
+
+# 依赖关系说明：
+# - op-002/003/004 均 hard 依赖 op-001（复用 path.ts 工具）
+# - op-002 与 op-004 为 soft 依赖（op-004 的 findStatusPath 语义对齐 op-002 定版），但文件不重叠可并行
+# - op-005 soft 依赖 op-002/003/004：路径约定定版后对齐模板文案，文件不重叠
+# - op-006 hard 依赖 op-003/004：文档反映其输出
+
+# 建议执行顺序：
+#   批次 1：op-001（唯一先导，产出共享工具）
+#   批次 2（并行）：op-002、op-003、op-004（文件冲突域互不相交，均 hard 依赖 op-001）
+#   批次 3：op-005（soft 依赖 op-002/003/004，路径约定定版后对齐文案）
+#   批次 4：op-006（文档 + 全量回归收尾）
+
+# 文件冲突域分析：
+# - op-002（flow-manager.ts + flow-manager.test.ts）、op-003（plan/stage.ts + plan/scheme.ts + commands/plan.ts + 三测试）、op-004（commands/stage.ts + init.ts + init.test.ts）互不重叠 → 可并行
+# - op-005（templates-data 双层 + .opencode 部署实例）与 op-002/003/004 无文件重叠，但语义依赖路径约定
+# - op-006（docs 两文件：commands.md + GETTING_STARTED.md）独立，但依赖 op-003/004 输出稳定

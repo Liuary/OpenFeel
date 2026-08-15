@@ -19,6 +19,7 @@ import { FlowManager } from './flow-manager.js';
 import { getDevCoreTemplate, getCurrentTemplate, getDecisionsTemplate } from './templates.js';
 import { loadTemplate, loadOpencodeAgentTemplate, loadOpencodeSkillTemplate, loadOpencodeConfigTemplate, listOpencodeAgentIds, listOpencodeSkillNames } from './template-loader.js';
 import { t, getCliLang } from './i18n.js';
+import { DEFAULT_STAGE_VERSION } from './plan/path.js';
 import readline from 'node:readline';
 
 /**
@@ -259,7 +260,7 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   // 0. 确保全局配置存在（首次使用时交互选择语言）
   await ensureGlobalConfig();
 
-  // 1. 创建 .openfeel/ 目录结构（含 plan/, stages/, roadmap/, dev/note/, 等）
+  // 1. 创建 .openfeel/ 目录结构（含 plan/, roadmap/, dev/note/, 等）
   const dirs = createWorkspace(projectPath);
   created.push(...dirs);
 
@@ -454,11 +455,13 @@ export function initDemo(projectPath: string, lang: 'zh-CN' | 'en' = 'zh-CN'): D
     `import { describe, it, expect } from 'vitest';\n\nfunction sum(a: number, b: number): number {\n  return a + b;\n}\n\ndescribe('sum', () => {\n  it('应正确计算两个正数之和', () => {\n    expect(sum(1, 2)).toBe(3);\n  });\n\n  it('应正确计算负数', () => {\n    expect(sum(-1, -2)).toBe(-3);\n  });\n\n  it('应处理零', () => {\n    expect(sum(0, 5)).toBe(5);\n  });\n});\n`,
   );
 
-  // .openfeel/plan/stage-01/status.md — 示例阶段（双语）
+  // .openfeel/plan/v1/stage-01/status.md — 示例阶段（双语）
+  // 示例阶段版本前缀抽为常量（path.ts DEFAULT_STAGE_VERSION），短名规范化与 init 保持一致
+  const demoStageId = `${DEFAULT_STAGE_VERSION}-stage-01`; // v1.0.0-stage-01
   const statusMdContent = lang === 'en'
-    ? `# stage-01 Status\n\n- **Status**: planned\n- **Current Agent**: executor\n- **Previous Agent**: none\n- **Updated**: ${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## Current Task\n\nInitialize project skeleton, create basic file structure.\n\n## Status Log\n\n| Time | Agent | Status Change | Description |\n|------|-------|---------------|-------------|\n| - | - | - | Sample stage |\n`
-    : `# stage-01 状态\n\n- **状态**：planned\n- **当前责任 Agent**：executor\n- **上一责任 Agent**：none\n- **更新时间**：${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## 当前任务\n\n初始化项目骨架，创建基础文件结构。\n\n## 状态记录\n\n| 时间 | Agent | 状态变化 | 说明 |\n|------|-------|----------|------|\n| - | - | - | 示例阶段 |\n`;
-  ensureFile('.openfeel/plan/stage-01/status.md', statusMdContent);
+    ? `# ${demoStageId} Status\n\n- **Status**: planned\n- **Current Agent**: executor\n- **Previous Agent**: none\n- **Updated**: ${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## Current Task\n\nInitialize project skeleton, create basic file structure.\n\n## Status Log\n\n| Time | Agent | Status Change | Description |\n|------|-------|---------------|-------------|\n| - | - | - | Sample stage |\n`
+    : `# ${demoStageId} 状态\n\n- **状态**：planned\n- **当前责任 Agent**：executor\n- **上一责任 Agent**：none\n- **更新时间**：${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## 当前任务\n\n初始化项目骨架，创建基础文件结构。\n\n## 状态记录\n\n| 时间 | Agent | 状态变化 | 说明 |\n|------|-------|----------|------|\n| - | - | - | 示例阶段 |\n`;
+  ensureFile('.openfeel/plan/v1/stage-01/status.md', statusMdContent);
 
   // 确保 config.yaml 存在（含 models 节，根据语言）
   const configPath = join(projectPath, '.openfeel', 'config.yaml');
@@ -467,10 +470,10 @@ export function initDemo(projectPath: string, lang: 'zh-CN' | 'en' = 'zh-CN'): D
     created.push('.openfeel/config.yaml');
   }
 
-  // 在 flow.json 中注册 stage-01
+  // 在 flow.json 中注册 v1.0.0-stage-01
   const flowMgr = new FlowManager(projectPath);
   if (flowMgr.isLoaded()) {
-    flowMgr.registerStage('stage-01', []);
+    flowMgr.registerStage(demoStageId, []);
     flowMgr.save();
   }
 

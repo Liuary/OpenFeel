@@ -101,7 +101,7 @@ When Feel skips Schemer and directly delegates a task to Executor with a "suffic
 - Review requires traceability of each change's design intent
 - The pipeline audit chain must not be broken (op files are core evidence)
 
-Minimal op file requirements: placed in the corresponding stage's `ops/` directory, containing an `# op-NNN` heading, change objectives, and a list of affected files. Feel's prompt must state: "First create op-{id}.md in `.openfeel/plan/{stage}/ops/`, then code."
+Minimal op file requirements: placed in the corresponding stage's `ops/` directory, containing an `# op-NNN` heading, change objectives, and a list of affected files. Feel's prompt must state: "First create op-{id}.md in `.openfeel/plan/{series}/{stage}/ops/`, then code."
 
 > Counter-example: Feel sends Executor a long prompt → Executor codes → archiving finds no op file → audit chain broken.
 

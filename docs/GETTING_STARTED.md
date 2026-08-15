@@ -80,7 +80,7 @@ openfeel plan scheme create stage-01 "实现核心功能"
 
 ```bash
 # 推进到指定阶段
-openfeel flow advance --stage stage-01 --op stage-01.op-001 --to exec_running
+openfeel flow advance --stage v1.0.0-stage-01 --op v1.0.0-stage-01.op-001 --to exec_running
 
 # 查看当前阶段与操作
 openfeel flow current

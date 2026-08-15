@@ -4,7 +4,7 @@
 # 本文件为所有阶段提供默认值，status.md 可覆盖
 
 meta:
-  version: 1.0.8
+  version: 1.0.9
   project: OpenFeel
   tech_stack: TypeScript
 

@@ -108,6 +108,20 @@ describe('initProject', () => {
     expect(result.created.some((e) => e === '.openfeel/flow.json')).toBe(true);
     expect(result.created.some((e) => e === '.openfeel/.info.json')).toBe(true);
   });
+
+  it('应生成 .openfeel/dev/decisions.md（ADR 模板骨架）', async () => {
+    const result = await initProject(tmpDir);
+    const decisionsPath = join(tmpDir, '.openfeel', 'dev', 'decisions.md');
+    expect(existsSync(decisionsPath)).toBe(true);
+    expect(result.created.some((e) => e === '.openfeel/dev/decisions.md')).toBe(true);
+
+    const content = readFileSync(decisionsPath, 'utf-8');
+    // ADR 骨架四要素：决策 / 理由 / 日期 / 状态
+    expect(content).toContain('决策');
+    expect(content).toContain('理由');
+    expect(content).toContain('日期');
+    expect(content).toContain('状态');
+  });
 });
 
 describe('initProject — opencode deployment', () => {

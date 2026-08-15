@@ -1886,3 +1886,48 @@ openfeel update
 
 **参见：** v1.0.0-stage-32（update 增量更新 + 冲突标记）、kb/patterns.md #部署传播内容哈希比对模式、kb/patterns.md #跨平台构建管线中的行尾归一化模式、kb/troubleshooting.md #update_state.json 降级风险排查
 
+## [+] 任务类型路由 + 轻量决策边界模式 (2026-08-15)
+
+非编码任务与编码任务是**一等公民**，按任务类型选择路径，flow.json 不必为所有任务空转：
+
+| 任务类型 | 处理路径 | 说明 |
+|----------|----------|------|
+| 调研/探索（读代码、查资料、定位问题） | Feel → research（general / explore Agent） | 只读探索，不产出源码变更 |
+| 编码实现（新增/修改源码） | 完整流水线（Planner → Schemer → Executor → Reviewer → Tester） | 有源码变更须走完整审计链 |
+| 选型讨论（敲定技术方案/设计取舍） | Feel + `question` 工具 | 对话式决策，产出结论不产出 plan.md |
+
+**轻量决策边界**（Feel / Planner / AGENTS 三层统一定义）：对话式选型（产出结论不产出 plan.md）由 Feel 直接处理，不委托 Planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达规模阈值时才委托 Planner——消除「要么全亲为、要么全委托」的极端。
+
+**落地位置（三处对称）：**
+- `AGENTS.md` 新增「任务类型路由」节（行为准则之后）+「跨 Agent 工具使用约束」第 5 条；
+- `feel.md`「小改 vs 大规模规划阈值」节末尾补充「轻量决策边界」小节；
+- `planner.md`「唤起条件」节末尾补充边界说明。
+
+**关键约束**：根目录 AGENTS.md 与 agents-md 模板源已不同步（根目录多「模块手册」节、更详细知识约束/操作规范），须**分别适配、禁止简单复制**；双语 zh/en 对称。
+
+**参见：** v1.0.0-stage-33 op-001/op-002/op-003、kb/architecture.md #Feel 调度 + openfeel CLI 推进模型
+
+## [+] 长期决策独立持久存储模式（decisions.md ADR）(2026-08-15)
+
+长期技术/架构决策须与会话临时决策**分离存储**：
+
+| 决策类型 | 存储位置 | 格式 |
+|----------|----------|------|
+| 长期决策（技术选型、架构方向、跨会话有效的设计取舍） | `.openfeel/dev/decisions.md` | ADR 轻量格式（决策+理由+日期+状态） |
+| 临时决策（流程调整、单次取舍） | dev_last.md「决策历史」节 | 会话级临时 |
+
+**写入时机**：Feel 做出长期技术/架构决策时，同步追加 ADR 记录；`feel.md`「决策追加」节须明确该归属区分。
+
+**框架化落地三处联动（语义须一致）：**
+1. `templates.ts` 新增 `DECISIONS_TEMPLATE_ZH/EN` 常量 + `getDecisionsTemplate(lang)` 函数 + 向后兼容导出 `DECISIONS_TEMPLATE`；
+2. `init.ts` 在 dev_core.md/current.md 生成步之后新增 decisions.md 生成步（`writeTemplateIfMissing`）；
+3. core.md 双层模板源「公共域文件」列表加 `.openfeel/dev/decisions.md`（位于 current.md 之后、kb/index.md 之前）。
+
+**模板字符串安全约束**：`DECISIONS_TEMPLATE_*` 常量不得含反引号与 `${`（避免模板字符串转义/插值错误）；路径中的 `{username}`、`{NNN}` 花括号无 `$` 前缀，安全。
+
+**测试保障**：`init.test.ts` 须断言「init 生成 decisions.md」（框架级行为变更，必选而非可选）；decisions.md 用 `writeTemplateIfMissing` 写入，不影响「已存在不覆盖」既有用例。
+
+**与「Agent 记忆生命周期三层模式」的关系**：本条目聚焦长期决策的持久存储位置，既有条目聚焦跨会话记忆的三段式生命周期，两者互补——decisions.md 是「决策历史」中值得长期保留的子集的独立落点。
+
+**参见：** v1.0.0-stage-33 op-004、kb/architecture.md #分级模块文档系统、kb/patterns.md #Agent 记忆生命周期三层模式
+

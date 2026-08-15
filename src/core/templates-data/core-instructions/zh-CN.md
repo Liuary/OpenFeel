@@ -22,6 +22,7 @@
 **公共域文件**（如不存在则创建空文件）：
 - `.openfeel/dev/dev_core.md`
 - `.openfeel/dev/current.md`
+- `.openfeel/dev/decisions.md`
 - `.openfeel/kb/index.md`
 
 **私域目录**（基于 `.openfeel/.info.json` 获取的 `{username}`）：

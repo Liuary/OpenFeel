@@ -1,0 +1,3531 @@
+{
+  "meta": {
+    "version": "1.0",
+    "project": "OpenFeel",
+    "updated": "2026-08-15T05:47:24.520Z"
+  },
+  "pipeline": {
+    "phase": "active",
+    "current": {
+      "stage": "v1.0.0-stage-33",
+      "op": ""
+    },
+    "retry": 0
+  },
+  "stages": {
+    "v1.0.0-stage-04": {
+      "name": "v1.0.0-stage-04",
+      "phase": "done",
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-09T15:11:48.775Z",
+        "end_time": "",
+        "duration_ms": 0
+      },
+      "status": "done"
+    },
+    "v1.0.0-stage-05": {
+      "name": "v1.0.0-stage-05",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-09T15:56:28.995Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-06": {
+      "name": "v1.0.0-stage-06",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-09T15:56:29.446Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-07": {
+      "name": "v1.0.0-stage-07",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-12T12:52:31.177Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-08": {
+      "name": "v1.0.0-stage-08",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T14:52:08.794Z",
+        "end_time": "2026-07-14T16:44:09.022Z",
+        "duration_ms": 6720228
+      }
+    },
+    "v1.0.0-stage-09": {
+      "name": "v1.0.0-stage-09",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T16:02:42.684Z",
+        "end_time": "2026-07-15T00:30:00.000Z",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-10": {
+      "name": "v1.0.0-stage-10",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T14:52:57.739Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-11": {
+      "name": "v1.0.0-stage-11",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T14:52:58.190Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-12": {
+      "name": "v1.0.0-stage-12",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-14T16:02:42.101Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-13": {
+      "name": "v1.0.0-stage-13",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-07-17T19:14:38.639Z",
+        "end_time": "2026-07-17T19:14:38.639Z",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-14": {
+      "name": "v1.0.0-stage-14",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-06T16:06:20.696Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-15": {
+      "name": "v1.0.0-stage-15",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-06T16:27:46.450Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-16": {
+      "name": "v1.0.0-stage-16",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-06T17:19:17.116Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-17": {
+      "name": "v1.0.0-stage-17",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-06T17:41:06.936Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-18": {
+      "name": "v1.0.0-stage-18",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-06T18:11:29.793Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-19": {
+      "name": "v1.0.0-stage-19",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T07:03:39.042Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-20": {
+      "name": "v1.0.0-stage-20",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T08:23:19.836Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-21": {
+      "name": "v1.0.0-stage-21",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T09:01:58.072Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-22": {
+      "name": "v1.0.0-stage-22",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T09:22:57.033Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-23": {
+      "name": "v1.0.0-stage-23",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T09:50:12.571Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-24": {
+      "name": "v1.0.0-stage-24",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T10:43:32.418Z",
+        "end_time": "2026-08-07T10:52:53.269Z",
+        "duration_ms": 0
+      }
+    },
+    "v1.0.0-stage-25": {
+      "name": "v1.0.0-stage-25",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T11:25:57.694Z",
+        "end_time": "2026-08-07T11:38:43.181Z",
+        "duration_ms": 765487
+      }
+    },
+    "v1.0.0-stage-26": {
+      "name": "v1.0.0-stage-26",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T11:42:44.658Z",
+        "end_time": "2026-08-07T11:51:38.768Z",
+        "duration_ms": 534110
+      }
+    },
+    "v1.0.0-stage-27": {
+      "name": "v1.0.0-stage-27",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T11:56:16.243Z",
+        "end_time": "2026-08-07T12:10:20.532Z",
+        "duration_ms": 844289
+      }
+    },
+    "v1.0.0-stage-28": {
+      "name": "v1.0.0-stage-28",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T12:14:58.820Z",
+        "end_time": "2026-08-07T12:55:30.916Z",
+        "duration_ms": 2432096
+      }
+    },
+    "v1.0.0-stage-01": {
+      "name": "v1.0.0-stage-01",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T13:28:38.129Z",
+        "end_time": "2026-08-07T13:48:42.469Z",
+        "duration_ms": 1204340
+      }
+    },
+    "v1.0.0-stage-02": {
+      "name": "v1.0.0-stage-02",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T13:49:57.236Z",
+        "end_time": "2026-08-07T14:33:29.645Z",
+        "duration_ms": 2612409
+      }
+    },
+    "v1.0.0-stage-03": {
+      "name": "v1.0.0-stage-03",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-07T14:33:36.351Z",
+        "end_time": "2026-08-07T14:40:41.490Z",
+        "duration_ms": 425139
+      }
+    },
+    "v1.0.0-stage-29": {
+      "name": "v1.0.0-stage-29",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-08T02:10:37.806Z",
+        "end_time": "2026-08-08T02:38:46.107Z",
+        "duration_ms": 1688301
+      }
+    },
+    "v1.0.0-stage-30": {
+      "name": "v1.0.0-stage-30",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-09T12:30:39.406Z",
+        "end_time": "2026-08-09T13:00:56.272Z",
+        "duration_ms": 1816866
+      }
+    },
+    "v1.0.0-stage-31": {
+      "name": "v1.0.0-stage-31",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-09T14:25:07.874Z",
+        "end_time": "2026-08-09T14:52:34.740Z",
+        "duration_ms": 1646866
+      }
+    },
+    "v1.0.0-stage-32": {
+      "name": "v1.0.0-stage-32",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-11T14:42:04.625Z",
+        "end_time": "2026-08-11T15:19:32.740Z",
+        "duration_ms": 2248115
+      }
+    },
+    "v1.0.0-stage-33": {
+      "name": "v1.0.0-stage-33",
+      "phase": "plan_passed",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-08-15T05:15:32.146Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-07-09T15:11:48.758Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-04",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:16:17.527Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-04",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T15:16:30.704Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-04",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-09T15:20:37.104Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-04",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-09T15:31:43.834Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-05",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:31:48.589Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-07-09T15:50:11.860Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "plan_review",
+        "to": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:54:28.853Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-07-09T15:55:43.342Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:06.493Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-05",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:06.904Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-06",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:07.324Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-07",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:28.983Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:29.438Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:37.815Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T15:56:38.251Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T16:03:49.894Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-09T16:03:50.350Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-09T16:08:04.202Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "scheme_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T16:08:04.677Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "scheme_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-09T16:14:01.917Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-09T16:14:02.326Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-09T16:16:44.200Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-09T16:16:44.620Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T03:54:45.945Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-12T03:54:46.307Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-12T04:05:50.159Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T04:05:50.587Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T04:15:09.193Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T04:15:09.627Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T04:15:14.633Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T04:15:15.049Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T12:48:06.452Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T12:48:06.866Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T12:48:11.924Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-12T12:48:12.339Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-12T12:51:58.530Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T12:52:06.975Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T12:52:30.343Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-05",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T12:52:30.756Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-06",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T12:52:31.171Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T12:57:37.270Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-12T13:01:46.893Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "scheme_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T13:06:37.022Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-07-12T13:08:22.348Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T13:08:22.814Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-12T13:20:23.085Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T13:23:30.280Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T13:23:30.705Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-12T13:28:07.628Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-12T13:28:08.059Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-12T13:33:52.264Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-12T13:34:44.949Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-07",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-13T15:15:02.921Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-08",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:01.579Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-09",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:08.780Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-08",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:40.401Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-10",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:40.834Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-11",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:41.285Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-12",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:49.522Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-08",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:57.727Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T14:52:58.183Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:00:12.189Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:05:34.463Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T15:05:35.022Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:23:30.209Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:23:30.738Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T15:31:11.507Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:36:00.495Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:36:01.174Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:41:48.202Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "review_failed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T15:41:48.834Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:41:49.469Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "review_failed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T15:44:50.384Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:44:50.955Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:48:12.377Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "review_pending",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:48:12.963Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T15:49:45.432Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:49:54.727Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T15:51:15.299Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:54:43.267Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:56:38.455Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:56:39.026Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T15:56:46.421Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T15:56:46.989Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T16:02:35.120Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-10",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:02:35.718Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-11",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:02:42.099Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:02:42.682Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:06:33.222Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:06:33.818Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T16:10:40.934Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:10:41.548Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:10:42.138Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T16:19:24.594Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:19:25.164Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:19:33.156Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "review_failed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T16:25:28.870Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:25:29.465Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "review_pending",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-15T00:30:00.000Z",
+      "agent": "feel-tester",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:28:02.466Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "review_pending",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:28:03.060Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "test_passed",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:28:03.669Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T16:33:36.955Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-09",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:33:37.568Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "test_pending",
+        "to": "test_failed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:33:38.209Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "test_failed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:19.166Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:19.775Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:20.376Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:20.970Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-07-14T16:36:21.570Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-07-14T16:43:42.150Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:44:08.513Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-12",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-14T16:44:09.021Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-08",
+        "from": "plan_passed",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-07-17T19:12:18.423Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-13",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-07-17T19:14:38.637Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-13",
+        "from": "plan_pending",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-06T16:06:20.695Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-08-06T16:09:02.523Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:09:40.629Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:15:23.345Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-08-06T16:15:28.157Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:15:32.463Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T16:20:16.444Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:23:53.364Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "review_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T16:25:53.910Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:25:59.596Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:26:04.320Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:26:09.021Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:26:16.963Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-06T16:27:46.450Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:29:08.288Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-14",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-06T16:30:24.052Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:34:11.925Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:34:16.250Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T16:42:37.026Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:46:09.619Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "review_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T16:53:10.697Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:53:15.762Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:53:20.859Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T16:53:21.155Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T16:53:25.825Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-06T16:59:07.606Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-15",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-06T17:19:17.116Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-16",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:17.814Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-16",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:18.161Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-16",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:18.472Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-16",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:18.759Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-16",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T17:22:19.071Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-16",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-06T17:24:00.221Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-16",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-06T17:41:06.935Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-17",
+        "from": "plan_pending",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T17:44:49.879Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-17",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T17:44:50.198Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-17",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T17:53:53.478Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-17",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T17:53:53.805Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-17",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T17:53:54.109Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-17",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T17:53:54.402Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-17",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T17:53:54.701Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-17",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-06T18:11:29.793Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-18",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-06T18:19:06.384Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-18",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T18:19:06.676Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-18",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T18:19:06.975Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-18",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-06T18:19:07.263Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-18",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-06T18:19:07.564Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-18",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T07:03:39.042Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-19",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T07:12:02.282Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-19",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T07:12:02.641Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-19",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T07:12:03.010Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-19",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T07:12:03.403Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-19",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T07:12:03.759Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-19",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T08:23:19.836Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-20",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T08:30:53.748Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-20",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T08:30:54.118Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-20",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T08:30:54.484Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-20",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T08:30:54.841Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-20",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T08:30:55.255Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-20",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T09:01:58.072Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-21",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T09:08:55.499Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-21",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T09:08:55.857Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-21",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T09:08:56.222Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-21",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T09:08:56.563Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-21",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T09:08:56.913Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-21",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T09:10:18.475Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-21",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-07T09:22:57.033Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-22",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T09:31:50.765Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-22",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T09:31:51.115Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-22",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T09:31:51.452Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-22",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T09:31:51.782Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-22",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T09:31:52.117Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-22",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T09:50:12.570Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-23",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T09:55:54.150Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-23",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T09:55:54.503Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-23",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T09:55:54.824Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-23",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T09:55:55.146Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-23",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T09:55:55.477Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-23",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T10:43:32.418Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-24",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T10:52:51.866Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-24",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T10:52:52.207Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-24",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T10:52:52.544Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-24",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T10:52:52.913Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-24",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T10:52:53.269Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-24",
+        "from": "done",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T11:25:57.694Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-25",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T11:31:57.737Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-25",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T11:34:36.745Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-25",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T11:34:37.098Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-25",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T11:34:37.434Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-25",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T11:34:37.772Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-25",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T11:38:43.180Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-25",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-07T11:42:44.658Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-26",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T11:45:31.864Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-26",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T11:48:43.664Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-26",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T11:48:44.003Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-26",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T11:48:44.341Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-26",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T11:48:44.664Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-26",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T11:51:38.768Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-26",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-07T11:56:16.243Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T11:59:11.740Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T12:01:11.034Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "review_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T12:04:48.176Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T12:06:47.157Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T12:07:11.363Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T12:07:11.706Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T12:07:12.048Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T12:10:20.531Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-27",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-07T12:14:58.820Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-28",
+        "from": "plan_pending",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T12:44:00.061Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-28",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T12:51:48.352Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-28",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T12:51:48.719Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-28",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T12:51:49.065Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-28",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T12:51:49.400Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-28",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T12:55:30.915Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-28",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-07T13:28:38.129Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T13:28:48.519Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T13:29:00.392Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T13:29:00.735Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T13:44:13.005Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T13:48:34.167Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T13:48:41.444Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T13:48:41.785Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T13:48:42.130Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T13:48:42.468Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-01",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-07T13:49:57.236Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T13:49:57.600Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T13:49:57.948Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T13:49:58.279Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T14:25:50.909Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T14:30:23.679Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-08-07T14:32:15.720Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "review_failed",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:28.269Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:28.614Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:28.970Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:29.302Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:29.645Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-02",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:36.351Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:36.697Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:37.051Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T14:33:37.404Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-07T14:36:45.895Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T14:39:18.316Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-08-07T14:39:48.807Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "review_failed",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T14:40:40.023Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T14:40:40.400Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-07T14:40:40.766Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-07T14:40:41.125Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-07T14:40:41.490Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-08T02:10:37.806Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-08-08T02:16:52.514Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "plan_review",
+        "to": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-08-08T02:20:08.512Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-08-08T02:21:46.114Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-08T02:21:52.669Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-08T02:25:22.164Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-08T02:25:28.051Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-08T02:35:36.535Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-08T02:38:24.961Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-08T02:38:46.107Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-29",
+        "from": "review_passed",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-09T12:03:55.415Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-30",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-08-09T12:30:39.406Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-08-09T12:34:14.025Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-09T12:34:18.994Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-09T12:37:45.127Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-09T12:37:45.488Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-09T12:44:12.649Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-09T12:49:25.189Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-09T12:49:25.565Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-09T12:53:38.742Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-09T12:53:39.123Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-09T13:00:56.272Z",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-30",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-09T14:14:38.979Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-31",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-08-09T14:25:07.874Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-08-09T14:28:46.337Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-08-09T14:28:46.694Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-09T14:32:03.809Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-09T14:32:04.175Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-09T14:39:28.308Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-09T14:43:46.763Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-09T14:43:47.138Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-09T14:48:03.284Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-09T14:48:29.064Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-09T14:52:34.740Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-31",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-11T14:42:04.405Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-32",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-08-11T14:42:04.625Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-08-11T14:45:02.416Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "plan_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-08-11T14:49:50.769Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-08-11T14:49:51.120Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-08-11T15:01:08.497Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-08-11T15:08:48.700Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-08-11T15:08:49.077Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-08-11T15:12:03.216Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-08-11T15:12:46.008Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-08-11T15:19:32.740Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-32",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-08-15T05:06:26.325Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.0.0-stage-33",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-08-15T05:15:32.146Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-33",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-08-15T05:44:04.379Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-33",
+        "from": "plan_review",
+        "to": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-08-15T05:47:24.520Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.0.0-stage-33",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    }
+  ]
+}

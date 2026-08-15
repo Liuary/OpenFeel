@@ -48,6 +48,8 @@
 | v1.0.0-stage-29 | v1.0.0（init 增强） | 已归档 | 2 op | 2/2 |
 | v1.0.0-stage-30 | v1.0.0（Pantheogen 兼容性 Bug 修复） | 已归档 | 3 op | 3/3 |
 | v1.0.0-stage-31 | v1.0.0（Pantheogen CLI 体验优化） | 已归档 | 4 op | 4/4 |
+| v1.0.0-stage-32 | v1.0.0（update 增量冲突标记） | 已归档 | 4 op | 4/4 |
+| v1.0.0-stage-33 | v1.0.0（反馈规则 + decisions.md + 1.0.8） | 已归档 | 5 op | 5/5 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

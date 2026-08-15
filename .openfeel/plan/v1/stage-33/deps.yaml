@@ -1,0 +1,92 @@
+# stage-33 操作方案依赖声明
+# 由 Planner 制定基础结构，Schemer 细化各 op 内容并更新
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "Feel 角色定义：日志纪律解耦 + 轻量决策边界（feel.md 双层模板源 + 部署实例）"
+    depends_on: []
+    stage: "v1.0.0-stage-33"
+    type: hard
+    produces:
+      - "src/core/templates-data/agents/zh-CN/feel.md"
+      - "src/core/templates-data/agents/en/feel.md"
+      - "src/core/templates-data/opencode/agents/zh-CN/feel.md"
+      - "src/core/templates-data/opencode/agents/en/feel.md"
+      - ".opencode/agents/feel.md"
+    description: "修复反馈问题 1（日志纪律错误豁免调研类委托）——「日志记录纪律」节改为任意下游委托（含 general/explore/utility）都须落公域日志；补充问题 3 的 Feel 侧轻量决策边界（小改 vs 大规模规划阈值节）；联动 REV-006 在「决策追加」节区分长期决策（→ decisions.md ADR）与临时决策（→ dev_last.md）。双层模板源（agents + opencode/agents）逐字符同步。"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "AGENTS.md：任务类型路由 + 轻量决策边界（agents-md 双语模板 + 根目录实例）"
+    depends_on: []
+    stage: "v1.0.0-stage-33"
+    type: hard
+    produces:
+      - "src/core/templates-data/agents-md/zh-CN.md"
+      - "src/core/templates-data/agents-md/en.md"
+      - "AGENTS.md"
+    description: "修复反馈问题 2（非编码任务一等公民）——新增任务类型路由节（调研→research、编码→流水线、选型→Feel+question）；问题 3 跨 Agent 约束层轻量决策边界。注意根目录 AGENTS.md 与模板源已不同步，两边分别适配。"
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "Planner 角色定义：轻量决策边界（planner.md 双层模板源 + 部署实例）"
+    depends_on: ["op-002"]
+    stage: "v1.0.0-stage-33"
+    type: soft
+    produces:
+      - "src/core/templates-data/agents/zh-CN/planner.md"
+      - "src/core/templates-data/agents/en/planner.md"
+      - "src/core/templates-data/opencode/agents/zh-CN/planner.md"
+      - "src/core/templates-data/opencode/agents/en/planner.md"
+      - ".opencode/agents/planner.md"
+    description: "问题 3 的 Planner 侧边界说明：轻量决策（对话式选型、不产出 plan.md）由 Feel 直接处理，仅产出正式计划文档或达规模阈值才唤起 Planner。双层模板源（agents + opencode/agents）逐字符同步。soft 依赖 op-002（语义对齐「轻量决策」概念，无文件重叠）。"
+
+  op-004:
+    file: "ops/op-004.md"
+    title: "decisions.md 纳入框架标准（新建实例 + templates.ts + init.ts + core.md 双层模板源）"
+    depends_on: []
+    stage: "v1.0.0-stage-33"
+    type: hard
+    produces:
+      - ".openfeel/dev/decisions.md"
+      - "src/core/templates.ts"
+      - "src/core/init.ts"
+      - "src/core/templates-data/core-instructions/zh-CN.md"
+      - "src/core/templates-data/core-instructions/en.md"
+      - "src/core/templates-data/opencode/instructions/zh-CN.md"
+      - "src/core/templates-data/opencode/instructions/en.md"
+      - ".opencode/instructions/core.md"
+      - "test/core/init.test.ts"
+    description: "长期决策获得独立持久存储 decisions.md（ADR 轻量格式），纳入框架标准：新建项目实例 + templates.ts 模板常量 + init.ts 生成步 + core.md 会话启动自检公共域文件列表（双层模板源 core-instructions + opencode/instructions 同改）。定义写入规则：长期技术/架构决策 → decisions.md，临时决策 → dev_last.md。init.test.ts 必选断言（REV-005/REV-007：测试断言提升为必选后 produces 补齐 init.test.ts）。"
+
+  op-005:
+    file: "ops/op-005.md"
+    title: "版本号同步 1.0.8（package.json + config.yaml + config.ts + CHANGELOG.md + AGENTS.md 版本声明）"
+    depends_on: ["op-002"]
+    stage: "v1.0.0-stage-33"
+    type: hard
+    produces:
+      - "package.json"
+      - ".openfeel/config.yaml"
+      - "src/core/config.ts"
+      - "CHANGELOG.md"
+      - "AGENTS.md"
+      - "src/core/templates-data/agents-md/zh-CN.md"
+      - "src/core/templates-data/agents-md/en.md"
+    description: "版本 1.0.7 → 1.0.8 全链路同步：package.json version、config.yaml meta.version（方案 A：= OpenFeel 框架版本）、config.ts CONFIG_TEMPLATE_ZH/EN 硬编码 version、CHANGELOG 新增 1.0.8 条目、AGENTS.md 及 agents-md 版本声明更新。hard 依赖 op-002（AGENTS.md/agents-md 文件冲突域重叠，须串行）。"
+
+# 依赖关系说明：
+# - op-003 soft 依赖 op-002：语义对齐「轻量决策」概念定义，文件无重叠，可并行但建议 op-002 先行
+# - op-005 hard 依赖 op-002：共享 AGENTS.md + agents-md/{zh-CN,en}.md，文件冲突域重叠，必须串行
+
+# 建议执行顺序：
+#   批次 1（并行）：op-001、op-002、op-004（文件冲突域互不相交）
+#   批次 2：op-003（soft 依赖 op-002）
+#   批次 3：op-005（hard 依赖 op-002）
+
+# 文件冲突域分析：
+# - op-002 与 op-005 共享 AGENTS.md + agents-md/{zh-CN,en}.md → 必须串行（op-002 先，op-005 基于其产物）
+# - op-001（feel.md 双层：agents + opencode/agents）、op-003（planner.md 双层：agents + opencode/agents）、op-004（core 双层：core-instructions + opencode/instructions + init + templates）互不重叠 → 可并行
+# - op-005 新增 config.ts（config 模板常量），与 op-004 的 templates.ts/init.ts 不重叠 → 可并行（但 op-005 仍须 hard 依赖 op-002 串行）
+# 注：opencode/agents（Agent 第二层）与 opencode/instructions（core 第二层）是不同子目录，op-001/003 与 op-004 无文件冲突

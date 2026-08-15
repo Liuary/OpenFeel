@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-08-15-Liuary-002.md](2026/08/15/2026-08-15-Liuary-002.md) | Liuary | 阶段 v1.0.0-stage-33 完成 |
+| [2026-08-15-Liuary-001.md](2026/08/15/2026-08-15-Liuary-001.md) | Liuary | **stage-33 归档完成**：Pantheogen 反馈 3 项规则改动（日志纪律解耦 + 任务类型路由 + 轻量决策边界）+ decisions.md 框架化 + 版本 1.0.8 全链路，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，407/407 测试 |
 | [2026-08-11-Liuary-002.md](2026/08/11/2026-08-11-Liuary-002.md) | Liuary | 阶段 v1.0.0-stage-32 完成 |
 | [2026-08-11-Liuary-001.md](2026-08-11/2026-08-11-Liuary-001.md) | Liuary | **stage-32 归档完成**：update 增量更新 + 冲突标记机制（update-state.ts 新模块 + writeWithMergeDetection 三态逻辑 + 冲突文件写入），知识沉淀 2 条至 patterns(1) + troubleshooting(1)，406/406 测试 |
 | [2026-08-09-Liuary-002.md](2026/08/09/2026-08-09-Liuary-002.md) | Liuary | 阶段 v1.0.0-stage-31 完成 |

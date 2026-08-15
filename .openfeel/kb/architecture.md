@@ -294,3 +294,18 @@ plan/                    ← 顶层（仅入口文件）
 - 计划目录调整涉及 skill/模板/CLI 三层引用，需全链路同步→自测闭环
 
 **参见：** v0.5.7-stage-01 op-001（目录重构 + reasoning_effort 调整）、kb/patterns.md #约束文件→指令文件迁移模式（同属目录重构类模式）
+
+## [+] config.yaml meta.version 语义：OpenFeel 框架版本 (2026-08-15)
+
+`config.yaml` 的 `meta.version` 语义确认为「**OpenFeel 框架版本**」（非配置格式版本），与 package.json 同步。
+
+**关键点：**
+- `config.yaml meta.version` 由 `src/core/config.ts` 的硬编码模板常量 `CONFIG_TEMPLATE_ZH`（约 304 行）/ `CONFIG_TEMPLATE_EN`（约 361 行）生成，是**字面量**（非 `${DEFAULT_CONFIG.xxx}` 插值）；
+- 版本升级须**三处同步**：项目实例 config.yaml + config.ts 双语言模板常量，否则新项目 `init` 仍生成旧版本号（REV-003 曾指出此源码遗漏）；
+- `flow.json meta.version='1.0'` 是**内部格式**，与 config.yaml meta.version 是两个独立字段，不参与框架版本同步。
+
+**编码注意**：config.yaml 实测为 UTF-8 无 BOM（非 GBK），改后须保留原编码，避免乱码。
+
+**与既有「模型配置三级体系」的关系**：本条目界定 `meta` 节的版本语义，既有条目界定 `models` 节的模型覆盖层级，两者同属 config.yaml 的不同节，互不覆盖。
+
+**参见：** v1.0.0-stage-33 op-005、kb/patterns.md #版本号语义管理与递增规范模式

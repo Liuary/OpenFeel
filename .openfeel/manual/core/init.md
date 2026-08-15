@@ -4,7 +4,7 @@
 
 ## 职责
 
-项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`kb/index.md`、`AGENTS.md`），并提供 OpenCode 平台适配器部署、示例项目骨架（`--demo`）和一键 demo 模式。
+项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`、`AGENTS.md`），并提供 OpenCode 平台适配器部署、示例项目骨架（`--demo`）和一键 demo 模式。
 
 ## 核心 API
 
@@ -53,6 +53,7 @@ interface DemoResult {
 步骤 4b: writeLang() — 写入语言配置到 .info.json
 步骤 5: writeTemplateIfMissing(dev_core.md)
 步骤 6: writeTemplateIfMissing(current.md)
+步骤 6b: writeTemplateIfMissing(decisions.md) — 生成 ADR 决策记录骨架（getDecisionsTemplate）
 步骤 7: writeTemplateIfMissing(kb/index.md)
 步骤 7b: deployOpencode() — 部署 OpenCode 适配器（如确认）
 步骤 8: 生成 AGENTS.md（含 {项目名称} 替换）
@@ -87,3 +88,4 @@ interface DemoResult {
 |------|------|
 | stage-04 | 新增 `initDemo()` 支持 `--demo` 标志 |
 | stage-29 | 新增 `promptOpencodeDeploy()` + `deployOpencode()` + AGENTS.md `{项目名称}` 替换 + 重启提醒；`InitResult` 扩展 `opencode` 字段 |
+| stage-33 | 新增 decisions.md 生成步（6b 步，`getDecisionsTemplate`）；templates.ts 新增 `DECISIONS_TEMPLATE_ZH/EN` + `getDecisionsTemplate(lang)` |

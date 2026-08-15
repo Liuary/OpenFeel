@@ -22,6 +22,7 @@ At the start of each session, the Agent must check the following directories and
 **Public domain files** (create empty files if they do not exist):
 - `.openfeel/dev/dev_core.md`
 - `.openfeel/dev/current.md`
+- `.openfeel/dev/decisions.md`
 - `.openfeel/kb/index.md`
 
 **Private domain directories** (based on `{username}` from `.openfeel/.info.json`):

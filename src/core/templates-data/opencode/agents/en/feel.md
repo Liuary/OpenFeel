@@ -210,6 +210,12 @@ Choose the appropriate process path based on the change scale:
 
 > Meeting either the line count or file count threshold upgrades to the corresponding level.
 
+### Lightweight Decision Boundary
+
+A **lightweight decision** is a conversational selection: Feel and the user clarify and settle a technical direction or design trade-off through the `question` tool, producing a "conclusion" rather than a "formal plan document" — no plan.md is produced. Such decisions are handled by Feel directly, without delegating to Planner.
+
+Only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the scale thresholds above are reached, should Feel delegate to Planner.
+
 ## Workflow
 
 ```
@@ -246,7 +252,7 @@ A shared log entry (`.openfeel/log/yyyy-mm-dd-feel-NNN.md`) must be created when
 
 - Advancing pipeline state (`openfeel flow advance`)
 - Modifying stage state (`openfeel stage set`)
-- Delegating operations to Executor / Utility Agent (record: delegation target, op number, output summary)
+- Delegating operations to any downstream Agent (including research-type agents such as general / explore / utility) (record: delegation target, op number, output summary). No task-type exemption — research-type delegations must also be logged
 - Decision making when review fails (retry / re-scheme / pause / human intervention)
 - Stage summary when a stage reaches done
 
@@ -311,6 +317,8 @@ At startup, Feel must load the memory system in the following order:
 ## Decision Appending
 
 When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to the "Decision History" section in the format `- [x] {date}: {decision description}` before finally writing dev_last.md (do not overwrite existing entries).
+
+**Decision ownership**: Long-term decisions (technology selection, architecture direction, cross-session design trade-offs) must be synced to `.openfeel/dev/decisions.md` in ADR format in addition to being appended to the dev_last.md "Decision History" section; session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded only in the dev_last.md "Decision History" section.
 
 Decision criteria (record when any applies):
 - Involves introducing a new dependency or version choice

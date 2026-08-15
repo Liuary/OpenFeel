@@ -8,6 +8,18 @@ Project-level behavioral constraints and coding conventions for AI Agents. This 
 
 You should think in English. At the start of a session, organize your analysis into concise information and output it in English.
 
+## Task Type Routing
+
+Not all tasks must go through the full pipeline. Non-coding tasks and coding tasks are both first-class citizens; choose the path based on task type:
+
+| Task Type | Handling Path | Notes |
+|-----------|---------------|-------|
+| Research/exploration (reading code, consulting references, locating issues) | Feel → research (general / explore Agent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
+| Coding implementation (adding/modifying source code) | Full pipeline (Planner → Schemer → Executor → Reviewer → Tester) | Involves source changes, must go through the full audit chain |
+| Selection discussion (settling a technical approach / design trade-off) | Feel + `question` tool | Conversational decision, produces a conclusion, no plan.md |
+
+> Non-coding tasks (research, selection discussion) do not require creating a plan or advancing the pipeline; the pipeline is engaged only when source changes or a formal plan document is produced.
+
 ## Core Constraints
 
 1. When the user makes a request, first analyze and break down the requirements, then list your understanding in bullet points for user confirmation. Requirements that are extremely simple and unambiguous may skip confirmation, but a brief explanation of your understanding is still required. Content that is uncertain during analysis must be clarified promptly; avoid speculative assumptions.
@@ -81,6 +93,8 @@ When encountering technical issues, **the first action MUST be to consult the kn
 
 4. **Feel orchestration constraint**: Feel, as the overall commander, uniformly orchestrates downstream Agents (Planner / Schemer / Executor / Reviewer / Feel Tester / Utility Agent / Vision / Archiver), advancing serially via the `task` tool according to pipeline phases (plan → scheme → execute → review → test → archive). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
 
+5. **Lightweight decision boundary**: Conversational selections (Feel and the user settle a technical direction or design trade-off via the `question` tool, producing a conclusion but no plan.md) are handled by Feel directly, without delegating to Planner; only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the planning scale threshold is reached, should Planner be delegated. Avoid the extremes of "handle everything personally" or "delegate everything".
+
 Deviating from the above constraints is considered a violation and will be flagged during review.
 
 ### 9-Agent System Overview
@@ -115,7 +129,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The project is currently in the v0 development stage; the official v1 will be released when features are complete.
+The OpenFeel framework has released the official v1.0.x (currently v1.0.8). After deploying this template via openfeel init, new projects set their own starting version number as needed.
 
 ## Project Flow Tools
 

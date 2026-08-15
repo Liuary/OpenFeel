@@ -20,6 +20,12 @@ Planner acts as an independent sub-agent invoked by Feel on demand. Feel decides
 - **May invoke** (medium scale): Single stage with ≥ 5 files but no architectural adjustments, or ambiguous requirements needing structured decomposition
 - **Feel handles concurrently** (small scale): < 5 files, ≤ 30 lines of changes, supplementing existing plans, or bug fixes
 
+### Lightweight Decision Boundary
+
+**Lightweight decisions** (conversational selections: Feel and the user settle a technical direction or design trade-off via the `question` tool, producing a conclusion but no plan.md) are handled by Feel directly; Planner is not invoked.
+
+Feel invokes Planner only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the scale thresholds above are reached.
+
 ## Core Responsibilities
 
 1. **Version roadmap**: Based on project overall goals, define version roadmaps.

@@ -27,6 +27,24 @@
 - **写入约束**：Planner 与 Archiver 对 flow.json 的操作必须通过 Feel + CLI 间接完成
 - **跨 Agent 协作**：`[HANDOFF: agent]` 标记可触发委派（如 Executor → Vision 分析截图）
 
+## 任务类型路由（非编码任务一等公民）
+
+| 任务类型 | 处理路径 |
+|----------|----------|
+| 调研/探索（读代码、查资料、定位问题） | Feel → research（general / explore Agent），只读探索不产出源码变更 |
+| 编码实现（新增/修改源码） | 完整流水线（Planner → Schemer → Executor → Reviewer → Tester） |
+| 选型讨论（敲定技术方案/设计取舍） | Feel + `question` 工具，对话式决策产出结论不产出 plan.md |
+
+非编码任务不强制创建计划或推进流水线，flow.json 不必为所有任务空转。
+
+## 轻量决策边界
+
+对话式选型（Feel 与用户通过 `question` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由 Feel 直接处理，不委托 Planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达规模阈值时才委托 Planner。消除「要么全亲为、要么全委托」的极端。
+
+## 决策归属区分
+
+长期决策（技术选型、架构方向、跨会话有效的设计取舍）以 ADR 格式同步写入 `.openfeel/dev/decisions.md`；会话临时决策（流程调整、单次取舍）仅记录在 dev_last.md「决策历史」节。
+
 ## 思考深度配置
 
 各 Agent frontmatter 含 `reasoning_effort` 字段（high/medium/low）：规划/方案类用 high，调度/审查/测试用 medium，执行/机械/归档/视觉用 low。模板与 `.opencode/agents/` 部署副本需保持同步。

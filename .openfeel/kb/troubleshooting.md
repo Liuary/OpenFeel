@@ -277,3 +277,26 @@ openfeel flow log --stage v1.0.0-stage-32  # 若有对应阶段日志
 - `console.warn` 会输出 Schema 不匹配的详细原因，但用户可能忽略警告
 
 **参见：** v1.0.0-stage-32（update 增量更新 + 冲突标记）、kb/patterns.md #update 增量部署哈希追踪 + 冲突标记三态模式
+
+## [+] 双层模板源发散：init 与 update 部署内容不一致 (2026-08-15)
+
+OpenFeel 的模板部署存在**两层模板源**：
+
+| 内容 | update 路径（AGENT_TEMPLATES） | init 路径（OPENCODE_AGENT_TEMPLATES） |
+|------|------|------|
+| Agent 模板 | `templates-data/agents/{lang}/` | `templates-data/opencode/agents/{lang}/` |
+| core 指令 | `templates-data/core-instructions/{lang}/` | `templates-data/opencode/instructions/{lang}/` |
+
+两层本应逐字符一致，但已发生发散（stage-33 实测）：
+- **feel.md**：`agents/` 层含「冲突检测」节（21 行，stage-32 新增），`opencode/agents/` 层缺失（agents=371 行 vs opencode=350 行）；
+- **core.md zh**：`core-instructions/zh-CN.md` 缺 Vision（2 处），`opencode/instructions/zh-CN.md` 含 Vision（Vision 扩展 8→9 Agent 遗留）。
+
+**关键坑点**：`build.js` 对两层分别独立校验（`validateAgentDefinitions` vs `validateOpencodeAgentTemplates`），**无跨层比对**，因此发散不会被 `npm run build` 报错，却会导致 init（`deployOpencode`）与 update（`loadTemplate`）部署内容不一致。
+
+**规避方法**：改双层模板时必须「**按节锚点定点编辑、禁止整文件复制**」——整文件复制会抹掉或错位既有差异（如决策追加节因 opencode 层缺冲突检测节而上移 21 行，须用锚点文本而非死行号定位）。
+
+**排查教训**：判断两层是否一致时，`git diff --no-index` 比 PowerShell `diff`（=Compare-Object 别名）可靠——计划审查阶段曾误用后者将已发散的两层判为 IDENTICAL，Schemer 阶段用 `git diff` 重新实测才纠正。
+
+**遗留**：发散本身是历史遗留（feel.md 21 行差属 stage-32、core.md Vision 差异属 8→9 Agent 扩展），超出本 stage 范围未修复，需后续 stage 专项收敛。
+
+**参见：** v1.0.0-stage-33（op-001/op-004）、kb/architecture.md #多语言模板数据管线

@@ -16,7 +16,7 @@ import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson, isFirstUse, getGlobalConfig, setGlobalConfig, DEFAULT_GLOBAL_CONFIG } from './workspace/identity.js';
 import { writeDefaultConfig } from './config.js';
 import { FlowManager } from './flow-manager.js';
-import { getDevCoreTemplate, getCurrentTemplate } from './templates.js';
+import { getDevCoreTemplate, getCurrentTemplate, getDecisionsTemplate } from './templates.js';
 import { loadTemplate, loadOpencodeAgentTemplate, loadOpencodeSkillTemplate, loadOpencodeConfigTemplate, listOpencodeAgentIds, listOpencodeSkillNames } from './template-loader.js';
 import { t, getCliLang } from './i18n.js';
 import readline from 'node:readline';
@@ -250,7 +250,7 @@ export function deployOpencode(projectPath: string, lang: 'zh-CN' | 'en'): Openc
 /**
  * 初始化项目工作区
  * 步骤：创建目录 → 写入 config.yaml → 初始化 flow.json → 创建 .info.json
- *       → 语言选择 → 生成 dev_core.md → 生成 current.md → 生成 AGENTS.md
+ *       → 语言选择 → 生成 dev_core.md → 生成 current.md → 生成 decisions.md → 生成 AGENTS.md
  */
 export async function initProject(projectPath: string, cliLang?: string): Promise<InitResult> {
   const created: string[] = [];
@@ -325,6 +325,13 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   const currentResult = writeTemplateIfMissing(currentPath, getCurrentTemplate(selectedLang));
   if (currentResult.created) {
     created.push('.openfeel/dev/current.md');
+  }
+
+  // 6b. 生成 .openfeel/dev/decisions.md 模板（ADR 格式）
+  const decisionsPath = resolve(projectPath, '.openfeel', 'dev', 'decisions.md');
+  const decisionsResult = writeTemplateIfMissing(decisionsPath, getDecisionsTemplate(selectedLang));
+  if (decisionsResult.created) {
+    created.push('.openfeel/dev/decisions.md');
   }
 
   // 7. 生成 .openfeel/kb/index.md 模板（双语）

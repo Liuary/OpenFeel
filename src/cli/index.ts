@@ -6,6 +6,7 @@
 import { Command } from 'commander';
 import { createRequire } from 'node:module';
 import { t, getCliLang } from '../core/i18n.js';
+import { isFlowConcurrentError } from '../core/flow-manager.js';
 
 // 读取 package.json 获取版本号
 const require = createRequire(import.meta.url);
@@ -121,6 +122,29 @@ export function applyHelpI18n(program: Command): void {
   // 子命令路径从命令名开始（不含 root），与 help 域 key 命名对齐
   for (const sub of program.commands) {
     walkCmd(sub, [sub.name()]);
+  }
+}
+
+/** 并发冲突退出码：与通用错误 1 区分，便于自动化识别「可重试」冲突 */
+export const EXIT_CONCURRENT = 2;
+
+/** 统一 CLI 错误处理：识别 flow.json 并发冲突并输出可重试提示 */
+export function handleCliError(err: unknown): never {
+  if (isFlowConcurrentError(err)) {
+    console.error(`[并发冲突] flow.json 已被其它进程修改（期望 revision=${err.expectedRevision}，磁盘=${err.actualRevision}）。`);
+    console.error('本次修改未写入。请重新执行该命令（将基于最新 flow.json 重试）。');
+    console.error('若多 Agent 并发推进，请串行化 flow.json 写入后重试。');
+    process.exit(EXIT_CONCURRENT);
+  }
+  throw err;
+}
+
+/** CLI 启动入口：包裹 program.parse，统一处理并发冲突 */
+export function runCli(): void {
+  try {
+    program.parse();
+  } catch (err) {
+    handleCliError(err);
   }
 }
 

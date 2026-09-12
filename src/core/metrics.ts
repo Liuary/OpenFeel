@@ -4,8 +4,9 @@
  * 数据持久化到 .openfeel/metrics.json（与 flow.json 同级）
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { atomicWriteFileSync } from './fs/atomic-write.js';
 
 /** Agent 性能指标 */
 export interface AgentMetrics {
@@ -184,6 +185,7 @@ export class MetricsStore {
     }
 
     const data: MetricsData = { agents };
-    writeFileSync(this.metricsPath, JSON.stringify(data, null, 2), 'utf-8');
+    // 指标写入：仅原子写，不加锁（低并发、非一致性关键路径）
+    atomicWriteFileSync(this.metricsPath, JSON.stringify(data, null, 2) + '\n');
   }
 }

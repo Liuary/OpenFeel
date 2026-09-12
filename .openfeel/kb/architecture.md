@@ -311,3 +311,38 @@ plan/                    ← 顶层（仅入口文件）
 **与既有「模型配置三级体系」的关系**：本条目界定 `meta` 节的版本语义，既有条目界定 `models` 节的模型覆盖层级，两者同属 config.yaml 的不同节，互不覆盖。
 
 **参见：** v1.0.0-stage-33 op-005、kb/patterns.md #版本号语义管理与递增规范模式
+
+## [+] 跨进程并发保护架构：原子写 + 建议性文件锁 + 序号原子化三层底座 (2026-09-12)
+
+OpenFeel 多进程/多 Agent 并发写共享状态文件的统一安全底座，由三个零依赖小工具组成（`src/core/fs/`）：
+
+| 层 | 模块 | 机制 | 解决的问题 |
+|----|------|------|-----------|
+| 原子写 | `atomic-write.ts` | 同目录唯一名 temp（`.{basename}.{pid}.{rand}.tmp`）→ write → fsync → `renameSync` 覆盖 | 进程中断致文件半写/损坏 |
+| 建议性锁 | `file-lock.ts` | `openSync(lockPath,'wx')`（O_EXCL）独占创建 + 指数退避 + 陈旧锁 rename 抢占 + token 归属校验 | 跨进程「读-改-写」交错 / 丢失更新 |
+| 序号原子化 | `sequence.ts` | `openSync(candidate,'wx')` 占号 + EEXIST 递增重试 | `max+1` 分配器的跨进程重号 / 覆盖 |
+
+**设计选型理由：**
+- **零第三方依赖**：仅用 `node:fs`/`node:crypto`/`node:path`/`node:os`，契合项目「避免过度设计、不随意引第三方库」约束。
+- **同目录 temp 保证 rename 同卷原子**：跨卷 rename 会退化为「复制 + 删除」非原子操作。
+- **建议性锁（advisory）而非强制锁**：跨平台简单可靠；锁文件集中 `.openfeel/tmp/locks/`（项目级）与 `~/.openfeel/locks/`（全局级），不污染业务目录。
+- **序号 `max+1` 降级为「候选起点快速路径」**：最终分配权归 O_EXCL 独占创建 + EEXIST 重试，单进程一次命中、并发绝不重号。
+- **锁 TTL=3000ms 基于实测**：最长临界区 P99 ≈ 8.14ms（94KB flow.json 原子写 5.22ms / 公共日志读改写 6.53ms），取 368×P99 大余量；`staleMs < timeoutMs`（3000 < 5000）保证崩溃残留可在等待窗口内被抢占。同步 API 下事件循环被阻塞，心跳续期不可行，故用静态大余量 TTL。
+
+**接入范围**：仅高风险共享写入点（flow.json、公共日志、status.md、op 序号、全局配置、kb/index.md），低风险一次性写入（init 模板、日志骨架）保持裸 `writeFileSync`，避免过度设计。
+
+**参见：** v1.1.0-stage-35 op-001~004、kb/patterns.md #原子写模式、#建议性文件锁模式、#flow.json 乐观并发校验模式
+
+## [+] opencode 全局/项目 agent 与 skill 合并语义（源码验证）(2026-09-12)
+
+opencode 加载配置时，全局（`~/.config/opencode/`）与项目（`.opencode/`）资产的合并语义经源码验证如下，是 v1.1 stage-37「全局部署架构」的关键前提：
+
+- **agent：按名 `mergeDeep` 合并**。项目覆盖同名 agent；**异名全局 agent 保留**，项目目录**不屏蔽**全局 agent（**无**「项目 config 存在即跳过全局」的短路逻辑）。
+- **skill：并集合并，但同名覆盖结果非确定**。故全局与项目 skill **必须保持名唯一**，不得依赖同名覆盖。
+- **`default_agent` 在合并后的注册表解析**（非各层独立解析）。
+
+**对全局部署的推论**：框架 agent/skill 全局安装后，项目侧只需部署「同名覆盖项」（如模型 / 语言定制），无需复制全部资产；项目自定义 agent/skill 与全局共存。因 skill 同名覆盖非确定，命名前缀统一（D2：`openfeel-`）是保证全局/项目不冲突的必要前提。
+
+> 注：本条描述 **agent / skill 的合并语义**，与 P2 / REV-001 已验证的 **`instructions` 拼接 + 去重**（`mergeConfigConcatArrays`）是不同维度的合并行为，勿混同。
+
+**参见：** `.openfeel/plan/v1/v1.1/plan.md` P2 / REV-001、v1.1.0-stage-35 计划阶段源码核实（general agent）

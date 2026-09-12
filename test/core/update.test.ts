@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { updateProject, AgentsMdLangConflictError } from '../../src/core/update.js';
+import { createUpdateState, saveUpdateState } from '../../src/core/update-state.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -450,5 +451,13 @@ describe('updateProject', () => {
     const { program } = await import('../../src/cli/index.js');
     const commands = program.commands.map((cmd: { name: () => string }) => cmd.name());
     expect(commands).toContain('update');
+  });
+
+  it('saveUpdateState 写出合法 JSON（原子写）', () => {
+    const state = createUpdateState(tmpDir, { 'a.md': 'x' });
+    saveUpdateState(tmpDir, state);
+    const raw = readFileSync(join(tmpDir, '.openfeel', 'update_state.json'), 'utf-8');
+    expect(raw.endsWith('\n')).toBe(true);
+    expect(() => JSON.parse(raw)).not.toThrow();
   });
 });

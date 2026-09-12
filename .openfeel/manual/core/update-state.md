@@ -54,7 +54,7 @@
 - **hash 算法**：SHA-256（Node.js 内置 crypto），不引入新 npm 依赖
 - **行尾归一化**：`hashContent()` 在计算前执行 CRLF → LF 转换，确保跨平台 hash 一致
 - **Zod 校验**：读写入口均经过 Zod Schema 校验，非法数据在入口处拒绝
-- **文件原子性**：writes 使用 `writeFileSync`（同步），确保与调用方的顺序一致性
+- **文件原子性**：`saveUpdateState()` 使用 `atomicWriteFileSync`（同目录 temp + fsync + rename），确保进程中断不产生半写文件；不加锁（`update_state.json` 由 `openfeel update` 独占，单写者假设）。详见 `manual/core/fs.md`。
 
 ## 调用关系
 

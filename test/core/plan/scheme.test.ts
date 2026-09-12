@@ -71,6 +71,15 @@ describe('scheme', () => {
       expect(opId3).toBe('op-003');
     });
 
+    it('已存在空占位 op 文件时从 max+1 继续（不重号）', () => {
+      addStage(tmpDir, 'stage-01');
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      writeFileSync(join(opsDir, 'op-001_stale.md'), '', 'utf-8'); // 崩溃残留空文件
+      const opId = createScheme(tmpDir, 'stage-01', '新方案');
+      expect(opId).toBe('op-002');
+    });
+
     it('阶段目录不存在时自动创建', () => {
       // 不预先创建阶段目录，直接 createScheme
       const opId = createScheme(tmpDir, 'stage-03', '自动创建');

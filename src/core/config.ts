@@ -3,8 +3,10 @@
  * 管理项目下的 .openfeel/config.yaml 文件，使用 yaml.parse() + Zod Schema 校验。
  * 同时管理全局用户画像 ~/.config/openfeel/profile.yaml（跨项目共享偏好）。
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve, join, dirname } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { withFileLock, globalLockPath } from './fs/file-lock.js';
 import { homedir } from 'node:os';
 import { z } from 'zod';
 import { parse as parseYaml, parseDocument, stringify as stringifyYaml } from 'yaml';
@@ -209,11 +211,12 @@ export function readProfile(): Profile {
  */
 export function writeProfile(profile: Profile): void {
   const profilePath = getProfilePath();
-  // 确保父目录存在
-  mkdirSync(dirname(profilePath), { recursive: true });
   // 序列化为 YAML（保留块结构可读性）
   const content = stringifyYaml(profile);
-  writeFileSync(profilePath, content, 'utf-8');
+  // 全局跨项目共享文件：加锁 + 原子写（mkdirSync 由 atomicWriteFileSync 内部完成）
+  withFileLock(globalLockPath('global-config'), () => {
+    atomicWriteFileSync(profilePath, content);
+  });
 }
 
 /**
@@ -416,7 +419,8 @@ models:
 export function writeDefaultConfig(projectPath: string, lang: 'zh-CN' | 'en' = 'zh-CN'): void {
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
   const content = lang === 'en' ? CONFIG_TEMPLATE_EN : CONFIG_TEMPLATE_ZH;
-  writeFileSync(configPath, content, 'utf-8');
+  // 项目内 config.yaml，init 一次性写入：仅原子写，不加锁
+  atomicWriteFileSync(configPath, content);
 }
 
 /**
@@ -464,5 +468,5 @@ export function setConfigValue(projectPath: string, key: string, value: string):
   doc.setIn(['defaults', key], value);
 
   // 4. 序列化并写回
-  writeFileSync(configPath, doc.toString(), 'utf-8');
+  atomicWriteFileSync(configPath, doc.toString());
 }

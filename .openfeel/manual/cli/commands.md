@@ -34,6 +34,22 @@ src/commands/lint.ts        registerLintCommand
 - 核心函数：`t(key, lang, vars)` 按 key 取翻译；`getCliLang(projectPath)` 确定当前语言
 - `applyHelpI18n(program)`：递归遍历 Commander 命令树，将 description / option 硬编码文本替换为当前语言翻译（`help.{命令}.{选项}` key 规则）
 
+## 错误处理与退出码
+
+`src/cli/index.ts` 提供统一 CLI 入口与错误处理（v1.1.0-stage-35 新增）：
+
+- `runCli()`：包裹 `program.parse()`，捕获冒泡异常交给 `handleCliError()`；`bin/openfeel.js` 有参数模式改调 `runCli()`（REPL 分支不变）。
+- `handleCliError(err)`：识别 `isFlowConcurrentError(err)`（flow.json 乐观并发冲突）→ 输出中文可重试提示后 `process.exit(EXIT_CONCURRENT)`；非并发错误原样 rethrow。
+- `EXIT_CONCURRENT = 2`：并发冲突退出码，与通用错误 1 区分，供自动化识别「可重试」冲突。
+
+| 场景 | 退出码 |
+|------|:--:|
+| 并发冲突（可重试） | `2` |
+| 通用错误 | `1` |
+| 成功 | `0` |
+
+已包裹 `mgr.save()` 的 catch 块（`flow stage add`、`stage create`、`flow wizard`）在 catch 首部增加 `isFlowConcurrentError` 分支，保证同样提示与退出码 2。
+
 ## 关键命令示例
 
 - `openfeel flow advance --stage <id> --to <phase> [--dry-run] [--force]` — 推进阶段（经 FlowManager 校验）；`--dry-run` 预览不修改，`--force` 跳过非法 phase 和阶段跳跃检查

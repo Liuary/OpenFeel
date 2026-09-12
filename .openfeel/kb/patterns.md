@@ -1982,3 +1982,64 @@ opId.split('.')  // ['v1','0','0-stage-01','op-001']
 
 **参见：** v1.0.0-stage-34 op-003（getScheme opId 解析）、kb/patterns.md #stageId 三格式解析 + plan 目录双向映射模式
 
+## [+] flow.json 乐观并发校验模式（meta.revision + 锁内比对 + 退出码 2）(2026-09-12)
+
+单靠写互斥锁 + 原子写只能防「文件交错」，不能防跨进程 `load → modify → save` 的**丢失更新**（两个会话各持旧快照，后保存者覆盖前者）。OpenFeel 在 `flow.json` 引入**乐观并发校验**，把「静默覆盖」转为「冲突报错」：
+
+- **版本标识**：`meta.revision`（整数，单调递增；缺失 / 非整数一律视为 0，兼容存量文件）。选整数而非内容哈希：O(1) 比较、可读可调试、错误信息可给出版本号、贴合既有 `meta` 对象。
+- **加载基线**：`FlowManager.load()` 记录 `loadedRevision = extractRevision(data)`（私有实例字段）。
+- **保存校验**（`save()`）：在 `flow.lock` 临界区内 `readDiskRevision()` 读盘比对 `loadedRevision`：
+  - 不一致 → 抛 `FlowConcurrentModificationError(expected, actual)`，**不写盘 / 不备份**；
+  - 一致 → `nextRevision = loadedRevision + 1` 随内容原子落盘，并同步内存与基线（支持同实例连续 save）。
+- **恢复路径**（`restoreCheckpoint()`）：同样锁内校验，冲突时保持 boolean 契约返回 `false` 并告警；成功时快照 revision **重定基为 `diskRevision + 1`**，保证单调递增、兼容旧快照。
+- **修复路径**（`repair()`）：显式恢复工具**不做校验**（否则无法强行修复），改为**写时递增 revision**，使其它实例后续 save 自然检测到冲突；写盘后 `this.load()` 重同步基线。
+- **命令层统一捕获**：`src/cli/index.ts` 新增 `runCli()` / `handleCliError()` / `EXIT_CONCURRENT = 2`，`bin/openfeel.js` 改调 `runCli()`。并发冲突输出中文可重试提示并 **`process.exit(2)`**；通用错误维持退出码 1、成功 0。已包裹 save 的 catch 块（`flow stage add` / `stage create` / `flow wizard`）在 catch 首部加 `isFlowConcurrentError` 分支保证退出码一致。
+
+**能力边界（诚实标注）**：仅能发现「同样经 `FlowManager.save()` 维护 revision」的写入者（即多 Agent / 多 CLI 主场景）；外部手工改写不递增 revision 无法检测（约定 flow.json 一切写入走 FlowManager；如需覆盖可后续叠加内容哈希）。
+
+**存量兼容**：无 revision 的旧文件加载视为 0，首次 save 补写为 1，无需一次性迁移。
+
+**参见：** v1.1.0-stage-35 op-004（乐观并发修订）、kb/patterns.md #CLI 原子管理模式
+
+## [+] 原子写模式：同目录唯一名 temp + fsync + rename (2026-09-12)
+
+替换裸 `writeFileSync` 的通用原子写原语（`src/core/fs/atomic-write.ts`）：
+
+```
+mkdirSync(dirname, recursive)                    // 确保父目录存在
+[backup && exists] copyFileSync(file, file.bak)  // S5：写前备份旧版本
+tmp = dir/.{basename}.{pid}.{rand}.tmp           // 同目录 + 唯一名
+open(tmp,'w') → write → fsyncSync → close        // 落盘
+renameSync(tmp, file)                            // 原子覆盖
+catch: unlinkSync(tmp)（best-effort）→ throw      // 失败不留半成品
+```
+
+**关键要点：**
+- **temp 必须与目标同目录**：`rename` 仅同卷原子；放系统临时目录会退化为「复制 + 删除」非原子。
+- **唯一名 `pid + random`**：避免多进程 temp 互相覆盖。
+- **内容零改写**：不归一化行尾、不增删字符，`content` 原样落盘（保证 flow.json 末尾 `\n`、CRLF 文本行为与既有调用方一致）。
+- **`backup: true` 语义（S5）**：写前复制旧文件为 `{file}.bak`，**写成功后不再触碰** `.bak`，使其始终保留「上一个已落盘版本」（修复旧 `.bak` 被新内容覆盖的缺陷）。复制失败不阻塞写入。
+- **`atomicWriteJson`**：`JSON.stringify(obj, null, 2) + '\n'`，与项目既有 JSON 写盘格式一致。
+
+**跨平台注意：**
+- Windows `renameSync` 使用 `MOVEFILE_REPLACE_EXISTING` 可覆盖已存在目标；但目标被其它进程以独占句柄打开时可能抛 `EPERM/EBUSY`（原子写只保证「失败则不留 temp 且抛出」，重试 / 互斥由文件锁负责）。
+- 并发无锁写同一目标在 Windows 下 rename 可能失败（实测 6 进程 2 个失败），故共享写点必须由文件锁串行化；无锁点仅限唯一文件名 / 单写者假设。
+
+**参见：** v1.1.0-stage-35 op-001、kb/troubleshooting.md #并发写入竞态排查
+
+## [+] 建议性文件锁模式：O_EXCL 独占 + 指数退避 + rename 抢占 + token 归属校验 (2026-09-12)
+
+跨进程互斥原语（`src/core/fs/file-lock.ts` 的 `withFileLock(lockPath, fn, options?)`，同步 API）：
+
+1. **获取**：`openSync(lockPath, 'wx')`（`O_CREAT|O_EXCL|O_WRONLY`）独占创建成功即持锁，写入 `{pid, time, token}`；非 `EEXIST` 错误直接抛出（不吞错）。
+2. **重试**：`EEXIST` → 指数退避（初始 10ms、×2、上限 500ms、**±20% 抖动**避免同频重试），直至 `timeoutMs`（默认 5000）抛「获取文件锁超时」。
+3. **陈旧锁抢占**：`mtime` 年龄 > `staleMs`（默认 3000）→ **原子 `renameSync(lockPath, lockPath + '.stale.{pid}.{rand}')`** 抢占（并发只有一个成功），失败者得 `ENOENT`（他人已抢）或 `EPERM/EBUSY`（Windows 占用 = 持锁者仍活跃）→ 回到重试。**绝不用 `unlink + open` 两步**（非原子，会双持锁）。
+4. **释放**：`finally` 读回锁文件并比对 `token`，**仅当归属本进程才 `unlinkSync`**，防止误删被抢占后的新持有者锁。
+5. **同步睡眠**：`Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)`，不空转 CPU（Node ≥20 可用）。
+
+**Windows 容错**：`unlinkSync` 释放可能因句柄占用 / 已抢占而抛错 → **try/catch 静默忽略**，残留锁由 TTL 兜底（最多等 `staleMs`）；不重试释放、不强制删除。
+
+**锁路径约定**：`projectLockPath(projectPath, name)` → `.openfeel/tmp/locks/{name}.lock`（项目级）；`globalLockPath(name)` → `~/.openfeel/locks/{name}.lock`（跨项目全局写入）。**锁不嵌套**——同一进程不可对同一 lockPath 嵌套调用（会自锁至超时），故 scheme/stage/merge 对 flow.json 的同步统一委托 `FlowManager.save()` 的 `flow.lock`，调用点自身不再取 flow 锁。
+
+**参见：** v1.1.0-stage-35 op-002、kb/architecture.md #跨进程并发保护架构、kb/troubleshooting.md #并发写入竞态排查
+

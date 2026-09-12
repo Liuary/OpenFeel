@@ -9,8 +9,11 @@
  * - 自动维护 day_index.md（每日索引）、根级 index.md + log.md
  * - 异步乐观：写入失败仅 console.warn，不阻塞流水线推进
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
+import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { withFileLock, projectLockPath } from './fs/file-lock.js';
+import { reserveSequence } from './fs/sequence.js';
 
 /** 里程碑事件 */
 export interface MilestoneEvent {
@@ -127,23 +130,31 @@ export class PublicLogger {
     return 'unknown';
   }
 
-  /** 写入日志并维护索引（乐观操作） */
+  /** 写入日志并维护索引（乐观操作；锁内完成占号 + 写条目 + 索引读改写） */
   private writeLog(eventType: string, detail: LogEventDetail): void {
     try {
       const now = new Date();
       const dateDir = this.ensureDateDir(now);
-      const nnn = this.computeNextNnn(dateDir, now);
-      const fileName = this.buildFileName(now, nnn);
-      const filePath = resolve(dateDir, fileName);
+      const lockPath = projectLockPath(this.projectPath, 'log');
 
-      // 写入日志文件
-      const content = this.buildLogContent(now, eventType, detail, fileName);
-      writeFileSync(filePath, content, 'utf-8');
+      withFileLock(lockPath, () => {
+        // 原子占号（候选起点 = 当日 max NNN + 1，最终以 O_EXCL 为准）
+        const reserved = reserveSequence({
+          dir: dateDir,
+          candidate: (seq) => this.buildFileName(now, seq),
+          parse: (fileName) => this.parseNnn(fileName, now),
+        });
+        const fileName = reserved.fileName;
 
-      // 维护三级索引
-      this.updateDayIndex(dateDir, fileName, now, getShortDesc(detail, eventType));
-      this.updateRootIndex(now, getShortDesc(detail, eventType));
-      this.updateLogMd(fileName, now, getShortDesc(detail, eventType));
+        // 写入日志文件（占位空文件被原子写覆盖）
+        const content = this.buildLogContent(now, eventType, detail, fileName);
+        atomicWriteFileSync(reserved.path, content);
+
+        // 维护三级索引（同一临界区内完成读-改-写，避免并发覆盖）
+        this.updateDayIndex(dateDir, fileName, now, getShortDesc(detail, eventType));
+        this.updateRootIndex(now, getShortDesc(detail, eventType));
+        this.updateLogMd(fileName, now, getShortDesc(detail, eventType));
+      });
     } catch (err) {
       console.warn(`[WARN] 公共日志写入失败: ${(err as Error).message}`);
     }
@@ -169,27 +180,14 @@ export class PublicLogger {
     return dayDir;
   }
 
-  /** 计算当日的下一个 NNN 值（当日已有日志文件数 + 1） */
-  private computeNextNnn(dayDir: string, now: Date): number {
-    const datePrefix = formatDate(now);
-    try {
-      const entries = readdirSync(dayDir);
-      // 匹配文件名模式 {datePrefix}-{username}-{NNN}.md
-      const userPrefix = `${datePrefix}-${this.username}-`;
-      let maxNnn = 0;
-      for (const entry of entries) {
-        if (entry.startsWith(userPrefix) && entry.endsWith('.md')) {
-          const nnnStr = entry.slice(userPrefix.length, -3); // 去掉 ".md" 后缀
-          const nnn = parseInt(nnnStr, 10);
-          if (!isNaN(nnn) && nnn > maxNnn) {
-            maxNnn = nnn;
-          }
-        }
-      }
-      return maxNnn + 1;
-    } catch {
-      return 1;
+  /** 从日志文件名解析 NNN（仅按文件名，不读内容；空文件占位仍计入） */
+  private parseNnn(fileName: string, now: Date): number | null {
+    const userPrefix = `${formatDate(now)}-${this.username}-`;
+    if (!fileName.startsWith(userPrefix) || !fileName.endsWith('.md')) {
+      return null;
     }
+    const nnn = parseInt(fileName.slice(userPrefix.length, -3), 10);
+    return isNaN(nnn) ? null : nnn;
   }
 
   /** 构建日志文件名 yyyy-mm-dd-{username}-NNN.md */
@@ -251,7 +249,7 @@ export class PublicLogger {
     if (!existsSync(indexPath)) {
       // 新建索引
       const entry = `\n| [${fileName}](${fileName}) | ${this.username} | ${desc} |\n`;
-      writeFileSync(indexPath, headerContent + entry, 'utf-8');
+      atomicWriteFileSync(indexPath, headerContent + entry);
       return;
     }
 
@@ -264,7 +262,7 @@ export class PublicLogger {
     // 去掉末尾空白后追加
     content = content.replace(/\s*$/, '');
     content += `\n| [${fileName}](${fileName}) | ${this.username} | ${desc} |\n`;
-    writeFileSync(indexPath, content, 'utf-8');
+    atomicWriteFileSync(indexPath, content);
   }
 
   /** 更新根级 index.md（日期索引） */
@@ -279,7 +277,7 @@ export class PublicLogger {
 
     if (!existsSync(indexPath)) {
       const content = `# 日志索引\n\n## 日期索引\n\n| 日期 | 摘要 |\n|------|------|\n${entry}\n`;
-      writeFileSync(indexPath, content, 'utf-8');
+      atomicWriteFileSync(indexPath, content);
       return;
     }
 
@@ -298,7 +296,7 @@ export class PublicLogger {
     } else {
       content = content.replace(/\s*$/, '') + '\n' + entry + '\n';
     }
-    writeFileSync(indexPath, content, 'utf-8');
+    atomicWriteFileSync(indexPath, content);
   }
 
   /** 更新根级 log.md（最近 30 条摘要，倒序插入顶部） */
@@ -312,7 +310,7 @@ export class PublicLogger {
 
     if (!existsSync(logPath)) {
       const content = `# 最近日志\n\n| 文件 | 用户 | 描述 |\n|------|------|------|\n${entry}\n`;
-      writeFileSync(logPath, content, 'utf-8');
+      atomicWriteFileSync(logPath, content);
       return;
     }
 
@@ -328,7 +326,7 @@ export class PublicLogger {
     if (tableHeaderEnd === -1) {
       // 格式异常，重新初始化
       const newContent = `# 最近日志\n\n| 文件 | 用户 | 描述 |\n|------|------|------|\n${entry}\n`;
-      writeFileSync(logPath, newContent, 'utf-8');
+      atomicWriteFileSync(logPath, newContent);
       return;
     }
 
@@ -358,7 +356,7 @@ export class PublicLogger {
 
     // 确保末尾有换行
     const newContent = before + entryLines.join('\n').replace(/\n*$/, '\n');
-    writeFileSync(logPath, newContent, 'utf-8');
+    atomicWriteFileSync(logPath, newContent);
   }
 }
 

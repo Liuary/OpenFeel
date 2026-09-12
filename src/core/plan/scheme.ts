@@ -3,10 +3,13 @@
  * 负责 .openfeel/plan/{series}/{stage}/ops/ 下的操作方案文件 CRUD
  * 创建后自动同步到 flow.json 的 stages/{stage}.ops 中
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { FlowManager, type PipelinePhase } from '../flow-manager.js';
+import { FlowManager, isFlowConcurrentError, type PipelinePhase } from '../flow-manager.js';
 import { parseStageId } from './path.js';
+import { atomicWriteFileSync } from '../fs/atomic-write.js';
+import { withFileLock, projectLockPath } from '../fs/file-lock.js';
+import { reserveSequence } from '../fs/sequence.js';
 
 /** 操作方案 */
 export interface Scheme {
@@ -71,28 +74,9 @@ function extractTitle(fileName: string): string {
   return noPrefix.replace(/\.md$/, '').replace(/_/g, ' ');
 }
 
-/**
- * 计算下一个 opId（基于已有方案中的最大编号 +1）
- */
-function getNextOpId(opsDir: string): string {
-  if (!existsSync(opsDir)) {
-    return 'op-001';
-  }
-
-  const files = readdirSync(opsDir).filter((f) => f.endsWith('.md'));
-  let maxNum = 0;
-
-  for (const file of files) {
-    const match = file.match(/^op-(\d+)/);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxNum) {
-        maxNum = num;
-      }
-    }
-  }
-
-  return `op-${String(maxNum + 1).padStart(3, '0')}`;
+/** 序号 → opId（3 位补零） */
+function opIdOf(seq: number): string {
+  return `op-${String(seq).padStart(3, '0')}`;
 }
 
 /**
@@ -148,8 +132,16 @@ function syncToFlowJson(
     };
 
     flowMgr.save();
-  } catch {
-    // 同步失败不阻塞方案创建（静默忽略）
+  } catch (err) {
+    // 并发冲突：op 文件已创建，但 flow.json 注册失败；不静默吞错，告警并提示兜底
+    if (isFlowConcurrentError(err)) {
+      console.warn(
+        `[WARN] op ${opId} 已创建，但 flow.json 同步因并发冲突失败；` +
+        `请执行 openfeel flow repair 兜底或重新注册该 op。`,
+      );
+      return;
+    }
+    // 其它同步失败不阻塞方案创建（既有语义：静默忽略）
   }
 }
 
@@ -175,22 +167,26 @@ export function createScheme(projectPath: string, stageName: string, title: stri
     mkdirSync(opsDir, { recursive: true });
   }
 
-  // 2. 计算下一个 opId
-  const opId = getNextOpId(opsDir);
-
-  // 3. 生成模板内容并写入文件
-  // 文件名中空格用下划线替换
+  // 2. 锁内：原子占号 + 原子写 op 文件（临界区仅含占号与写文件，不含 flow 同步）
   const safeTitle = title.replace(/\s+/g, '_');
-  const fileName = `${opId}_${safeTitle}.md`;
-  const filePath = join(opsDir, fileName);
+  const lockPath = projectLockPath(projectPath, `scheme-${parsed.stageDir}`);
+  const opId = withFileLock(lockPath, () => {
+    const reserved = reserveSequence({
+      dir: opsDir,
+      candidate: (seq) => `${opIdOf(seq)}_${safeTitle}.md`,
+      parse: (fileName) => {
+        const m = fileName.match(/^op-(\d+)/);
+        return m ? parseInt(m[1], 10) : null;
+      },
+    });
+    const content = generateSchemeTemplate(opIdOf(reserved.seq), parsed.fullStageId, title);
+    atomicWriteFileSync(reserved.path, content);
+    return opIdOf(reserved.seq);
+  });
 
-  const content = generateSchemeTemplate(opId, parsed.fullStageId, title);
-  writeFileSync(filePath, content, 'utf-8');
-
-  // 4. 同步到 flow.json（键用完整 stageId）
+  // 3. 同步到 flow.json（键用完整 stageId；由 FlowManager.save 的 flow.lock 保护）
   syncToFlowJson(projectPath, parsed.fullStageId, opId, title);
 
-  // 5. 返回 opId
   return opId;
 }
 

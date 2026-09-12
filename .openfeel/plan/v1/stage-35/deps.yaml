@@ -1,0 +1,100 @@
+# stage-35 操作方案依赖声明
+# 由 Planner 制定基础结构，Schemer 细化各 op 内容并更新
+# 阶段：v1.1.0-stage-35（并发保护基础设施）
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "统一原子写工具（atomicWriteFileSync / atomicWriteJson）"
+    depends_on: []
+    stage: "v1.1.0-stage-35"
+    type: hard
+    produces:
+      - "src/core/fs/atomic-write.ts"
+      - "test/core/fs/atomic-write.test.ts"
+    description: "新建 src/core/fs/atomic-write.ts：同目录唯一名 temp（.{basename}.{pid}.{random}.tmp）→ fsync → rename 覆盖；失败清理 temp。导出 atomicWriteFileSync(filePath, content, {encoding, fsync, backup}) / atomicWriteJson / buildTempName。backup:true 实现 S5（写前复制 .bak，写后不覆盖）。不提供 atomicWriteYaml（fs/ 保持零第三方依赖，调用方自行序列化）。仅 node:fs/node:crypto/node:path。先导 op，无依赖。"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "跨进程文件锁（withFileLock + 路径约定）"
+    depends_on: []
+    stage: "v1.1.0-stage-35"
+    type: hard
+    produces:
+      - "src/core/fs/file-lock.ts"
+      - "test/core/fs/file-lock.test.ts"
+    description: "新建 src/core/fs/file-lock.ts：openSync(lockPath,'wx') 独占创建 + 指数退避（初始 10ms、上限 500ms、±20% 抖动、总超时 5000ms）+ 陈旧锁原子 rename 抢占 + token 归属校验释放；Windows unlinkSync 释放失败 try/catch 容错（TTL 兜底）。TTL（staleMs）默认 3000ms，基于实测最长临界区 P99≈8.14ms（≈368×），且 staleMs < timeoutMs；同步临界区无法心跳续期故用静态大余量。导出 projectLockPath（.openfeel/tmp/locks/）/ globalLockPath（~/.openfeel/locks/）。仅 node:fs/path/os/crypto。先导 op，无依赖。"
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "序号分配原子化（reserveSequence / nextSequence）"
+    depends_on: []
+    stage: "v1.1.0-stage-35"
+    type: hard
+    produces:
+      - "src/core/fs/sequence.ts"
+      - "test/core/fs/sequence.test.ts"
+    description: "新建 src/core/fs/sequence.ts：reserveSequence({dir, candidate, parse, start?, maxAttempts?}) 以 openSync(path,'wx') 独占创建空文件占位、EEXIST 递增重试（默认上限 1000），返回 {seq, fileName, path}；nextSequence(dir, parse) 纯计算 max+1。max+1 降级为候选起点（单进程快速路径），最终分配权归 O_EXCL；parse 只解析文件名，保证空文件占位不重号（REV-009）。仅 node:fs/path。先导 op，无依赖。"
+
+  op-004:
+    file: "ops/op-004.md"
+    title: "高风险写入接入（约 12 模块 + 测试更新 + flow.json 写入路径审计）"
+    depends_on: ["op-001", "op-002", "op-003"]
+    # （REV-105 修订）per-dependency 类型：op-001/op-002 为 hard，op-003 实为 soft。
+    # 注：health 的 buildDepsGraph（flow-manager.ts）仅识别 `deps`(数组) 或 `depends_on`(字符串)，
+    #     不解析 per-dependency 类型，故保留 depends_on 字符串数组以兼容既有解析；
+    #     类型语义由本字段声明。type: hard 仅为批次调度简化（三者均在批次 1）。
+    dependency_types:
+      op-001: hard
+      op-002: hard
+      op-003: soft
+    stage: "v1.1.0-stage-35"
+    type: hard
+    produces:
+      - "src/core/flow-manager.ts"
+      - "src/cli/index.ts"
+      - "bin/openfeel.js"
+      - "src/core/public-logger.ts"
+      - "src/core/plan/scheme.ts"
+      - "src/core/plan/stage.ts"
+      - "src/commands/stage.ts"
+      - "src/core/update-state.ts"
+      - "src/core/config.ts"
+      - "src/core/workspace/identity.ts"
+      - "src/core/workspace/knowledge.ts"
+      - "src/core/archive/merge.ts"
+      - "src/core/metrics.ts"
+      - "test/core/flow-manager.test.ts"
+      - "test/core/flow-concurrent.test.ts"
+      - "test/fixtures/flow-writer.mjs"
+      - "test/core/plan/scheme.test.ts"
+      - "test/core/update.test.ts"
+      - "test/core/public-logger.test.ts"
+    description: "将原子写/锁/原子序号接入高风险清单：① FlowManager.save() flow.lock + 原子写 backup:true，删除末尾覆盖 .bak 的缺陷（S5）；② restoreCheckpoint() flow.lock + 原子写 backup:true（REV-002）；③ repair() flow.lock + backup:!recovered；④ saveCheckpoint() 原子写不加锁（REV-003）；⑤ initFlow() 原子写不加锁；⑥ PublicLogger.writeLog() log.lock 内占号+条目+三级索引读改写，computeNextNnn→parseNnn（只解析文件名）；⑦ scheme.createScheme() scheme-{stageDir}.lock 内 reserveSequence+原子写；⑧ plan/stage.ts overview/status 原子写；⑨ commands/stage.ts setStatusField/toggleTask status-{stageDir}.lock 内读-改-写（计划任务 5 未覆盖的补充项，status.md 真正高频写入点）；⑩ update-state.saveUpdateState 原子写且路径不变；⑪ config.writeProfile/identity.setGlobalConfig global-config 锁+原子写，writeDefaultConfig/setConfigValue/ensureInfoJson 仅原子写；⑫ knowledge.addKnowledgeEntry kb.lock 内分类文件+index.md 读改写；⑬ archive/merge.ts + metrics.ts 原子写。附 flow.json 写入路径全量审计表（save/restoreCheckpoint/initFlow/repair/migrate/saveCheckpoint/createLogSkeleton 逐一标注锁与理由）。【乐观并发修订】flow.json 引入 meta.revision 整数（可选，存量缺失视为 0，首次 save 补写为 1）：save() 锁内 readDiskRevision 比对 loadedRevision，不一致抛 FlowConcurrentModificationError 且不写盘；成功 revision+1。restoreCheckpoint 冲突拒绝恢复返回 false，快照 revision 重定基；repair 补全 revision 且写时递增、不做并发校验；initFlow 默认 revision:0；setData 同步 loadedRevision。命令层 src/cli/index.ts 新增 runCli/handleCliError/EXIT_CONCURRENT，bin/openfeel.js 改调 runCli，冲突退出码 2（可重试）。新增单元测试（冲突/递增/存量兼容/同进程双实例）+ 子进程冲突测试（test/core/flow-concurrent.test.ts + test/fixtures/flow-writer.mjs，依赖 dist，无 dist 自动跳过）。hard 依赖 op-001/002（用原子写与锁），soft 依赖 op-003（序号接入 public-logger/scheme）。"
+
+# 依赖关系说明：
+# - op-001 / op-002 / op-003 互不依赖，文件冲突域不相交（各自新增独立 fs 模块 + 独立测试），可并行。
+# - op-004 hard 依赖 op-001（原子写 API）与 op-002（锁 API + 路径约定）；soft 依赖 op-003（序号 API，public-logger/scheme 接入）。
+# - 计划原文 op-004 前置写「op-003 soft」。（REV-105 修订）op-003 实为 soft，op-004 顶层的 `type: hard`
+#   仅为批次调度简化（批次 1 三者一起完成后再跑批次 2），不代表 op-003 是 hard 依赖；
+#   逐依赖类型以 op-004 的 `dependency_types` 字段为准：op-001=hard、op-002=hard、op-003=soft。
+
+# 建议执行顺序：
+#   批次 1（并行）：op-001、op-002、op-003（三个独立 fs 工具模块）
+#   批次 2：op-004（统一接入，文件冲突域集中在既有模块）
+
+# 文件冲突域分析：
+# - op-001（src/core/fs/atomic-write.ts + test/core/fs/atomic-write.test.ts）
+# - op-002（src/core/fs/file-lock.ts + test/core/fs/file-lock.test.ts）
+# - op-003（src/core/fs/sequence.ts + test/core/fs/sequence.test.ts）
+#   三者目录同级但文件不同，互不重叠 → 可并行。
+# - op-004 触及既有模块（flow-manager / public-logger / plan/{scheme,stage} / commands/stage /
+#   update-state / config / workspace/{identity,knowledge} / archive/merge / metrics）与对应测试，
+#   必须在批次 1 完成后执行（依赖三个 fs 模块的导出）。
+
+# 关键风险（回填 stage-35 plan「遗留风险」）：
+# - flow.json 的「跨进程 load-modify-save 丢失更新」已由【乐观并发修订】的 meta.revision 乐观校验拦截：
+#   save() 锁内比对 loadedRevision，冲突抛 FlowConcurrentModificationError（CLI 退出码 2，可重试）。
+#   遗留边界：不维护 revision 的外部手工改写无法检测（约定所有写入走 FlowManager）；如需覆盖可 stage-36+ 叠加内容哈希。
+# - 全局配置（profile.yaml / ~/.openfeel/config.json）读-改-写丢失更新为低概率遗留项。
+# - 并发子进程测试在 CI 上若不稳定，已按计划降级为告警跳过（同进程用例仍覆盖核心语义）。

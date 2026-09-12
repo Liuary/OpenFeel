@@ -10,11 +10,13 @@
  * 参见 kb/troubleshooting.md「手动 edit status.md 频繁失败 — 格式匹配脆弱」
  */
 import { Command } from 'commander';
-import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync, copyFileSync, mkdirSync } from 'node:fs';
+import { resolve, basename, dirname } from 'node:path';
+import { atomicWriteFileSync } from '../core/fs/atomic-write.js';
+import { withFileLock, projectLockPath } from '../core/fs/file-lock.js';
 import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
-import { FlowManager } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError } from '../core/flow-manager.js';
 import { findStageStatusPath, planDirToStageId, parseStageId } from '../core/plan/path.js';
 
 /** 状态字段键值对 */
@@ -38,6 +40,12 @@ interface TaskEntry {
  */
 function resolveStatusPath(projectPath: string, stageId: string): string | null {
   return findStageStatusPath(projectPath, stageId);
+}
+
+/** status.md 的锁路径：按阶段目录隔离（status-stage-35.lock），锁粒度最小化 */
+function statusLockPath(projectPath: string, statusPath: string): string {
+  const stageDir = basename(dirname(statusPath)); // .openfeel/plan/v1/stage-35/status.md → stage-35
+  return projectLockPath(projectPath, `status-${stageDir}`);
 }
 
 /**
@@ -192,52 +200,69 @@ function showStageStatus(statusPath: string, stageId: string): void {
 /**
  * 更新 status.md 中指定字段的值
  * 使用正则精确定位 `- **{key}**：{value}` 行，替换 value 部分，保留其余内容不变
+ * 读-改-写整体在 status-{stageDir}.lock 临界区内完成
  */
-function setStatusField(statusPath: string, key: string, newValue: string): boolean {
-  const content = readFileSync(statusPath, 'utf-8');
+function setStatusField(
+  projectPath: string,
+  statusPath: string,
+  key: string,
+  newValue: string,
+): boolean {
+  const lockPath = statusLockPath(projectPath, statusPath);
+  return withFileLock(lockPath, () => {
+    const content = readFileSync(statusPath, 'utf-8');
 
-  // 匹配格式：`- **{key}**：{value}` 或 `- {key}：{value}` — 支持中文冒号
-  const fieldRegex = new RegExp(
-    `^(-\\s*(?:\\*\\*)?${escapeRegex(key)}(?:\\*\\*)?[：:]\\s*)(.*)$`,
-    'gm',
-  );
+    // 匹配格式：`- **{key}**：{value}` 或 `- {key}：{value}` — 支持中文冒号
+    const fieldRegex = new RegExp(
+      `^(-\\s*(?:\\*\\*)?${escapeRegex(key)}(?:\\*\\*)?[：:]\\s*)(.*)$`,
+      'gm',
+    );
 
-  const updated = content.replace(fieldRegex, `$1${newValue}`);
+    const updated = content.replace(fieldRegex, `$1${newValue}`);
+    if (updated === content) {
+      return false; // 未找到匹配字段
+    }
 
-  if (updated === content) {
-    return false; // 未找到匹配字段
-  }
-
-  writeFileSync(statusPath, updated, 'utf-8');
-  return true;
+    atomicWriteFileSync(statusPath, updated);
+    return true;
+  });
 }
 
 /**
  * 切换任务的 checkbox 状态
+ * 读-改-写整体在 status-{stageDir}.lock 临界区内完成
  * @param toDone true = 勾选，false = 取消勾选
  */
-function toggleTask(statusPath: string, taskNo: number, toDone: boolean): boolean {
-  const content = readFileSync(statusPath, 'utf-8');
+function toggleTask(
+  projectPath: string,
+  statusPath: string,
+  taskNo: number,
+  toDone: boolean,
+): boolean {
+  const lockPath = statusLockPath(projectPath, statusPath);
+  return withFileLock(lockPath, () => {
+    const content = readFileSync(statusPath, 'utf-8');
 
-  // 匹配格式：`- [ ] 任务{N}：...` 或 `- [x] 任务{N}：...`
-  const taskRegex = new RegExp(
-    `^(- \\[)([ x])(\\] 任务${taskNo}[：:].*)$`,
-    'gm',
-  );
+    // 匹配格式：`- [ ] 任务{N}：...` 或 `- [x] 任务{N}：...`
+    const taskRegex = new RegExp(
+      `^(- \\[)([ x])(\\] 任务${taskNo}[：:].*)$`,
+      'gm',
+    );
 
-  let found = false;
-  const updated = content.replace(taskRegex, (_match, before, _current, after) => {
-    found = true;
-    const newMarker = toDone ? 'x' : ' ';
-    return `${before}${newMarker}${after}`;
+    let found = false;
+    const updated = content.replace(taskRegex, (_match, before, _current, after) => {
+      found = true;
+      const newMarker = toDone ? 'x' : ' ';
+      return `${before}${newMarker}${after}`;
+    });
+
+    if (!found) {
+      return false;
+    }
+
+    atomicWriteFileSync(statusPath, updated);
+    return true;
   });
-
-  if (!found) {
-    return false;
-  }
-
-  writeFileSync(statusPath, updated, 'utf-8');
-  return true;
 }
 
 /**
@@ -318,7 +343,7 @@ export function registerStageCommand(program: Command): void {
       // 写操作前备份
       backupStatus(statusPath, stageId);
 
-      const ok = setStatusField(statusPath, '状态', options.status);
+      const ok = setStatusField(projectPath, statusPath, '状态', options.status);
 
       if (!ok) {
         console.error(t('stage.set.errorFieldNotFoundTmpl', lang, { stageId }));
@@ -362,7 +387,7 @@ export function registerStageCommand(program: Command): void {
       backupStatus(statusPath, stageId);
 
       const toDone = !!options.done;
-      const ok = toggleTask(statusPath, taskNo, toDone);
+      const ok = toggleTask(projectPath, statusPath, taskNo, toDone);
 
       if (!ok) {
         console.error(t('stage.task.errorTaskNotFoundTmpl', lang, { stageId, taskNo: String(taskNo) }));
@@ -391,6 +416,12 @@ export function registerStageCommand(program: Command): void {
         mgr.save();
         console.log(t('stage.create.addedTmpl', lang, { stage: stageId }));
       } catch (err: unknown) {
+        // 并发冲突：本次未写入 flow.json，输出可重试提示并退出码 2（R3.2）
+        if (isFlowConcurrentError(err)) {
+          console.error(`[并发冲突] flow.json 已被其它进程修改（期望 revision=${err.expectedRevision}，磁盘=${err.actualRevision}）。`);
+          console.error('本次修改未写入。请重新执行该命令重试。');
+          process.exit(2);
+        }
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));
         process.exit(1);

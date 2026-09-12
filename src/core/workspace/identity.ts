@@ -2,11 +2,13 @@
  * 用户身份识别
  * 管理项目下的 .openfeel/.info.json 文件。
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve, join, dirname } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, join } from 'node:path';
 import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { VALID_LANGS } from '../i18n-data/types.js';
+import { atomicWriteFileSync } from '../fs/atomic-write.js';
+import { withFileLock, globalLockPath } from '../fs/file-lock.js';
 
 /** .info.json 的类型定义 */
 export interface InfoJson {
@@ -103,7 +105,7 @@ export function ensureInfoJson(projectPath: string): void {
   if (!existsSync(infoPath)) {
     const userName = getUserName(projectPath);
     const content = JSON.stringify({ user: userName, lang: 'zh-CN' }, null, 2) + '\n';
-    writeFileSync(infoPath, content, 'utf-8');
+    atomicWriteFileSync(infoPath, content);
     return;
   }
 
@@ -113,7 +115,7 @@ export function ensureInfoJson(projectPath: string): void {
     const info = JSON.parse(content) as InfoJson;
     if (!info.lang || !VALID_LANGS.includes(info.lang as any)) {
       info.lang = 'zh-CN';
-      writeFileSync(infoPath, JSON.stringify(info, null, 2) + '\n', 'utf-8');
+      atomicWriteFileSync(infoPath, JSON.stringify(info, null, 2) + '\n');
     }
     // lang 已存在且有效，保留不变（向后兼容）
   } catch {
@@ -159,10 +161,10 @@ export function getGlobalConfig(): GlobalConfig {
  */
 export function setGlobalConfig(config: GlobalConfig): void {
   const path = getGlobalConfigPath();
-  // 确保父目录存在
-  mkdirSync(dirname(path), { recursive: true });
-  // 写入文件
-  writeFileSync(path, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+  // 全局跨项目共享文件：加锁 + 原子写（mkdirSync 由 atomicWriteFileSync 内部完成）
+  withFileLock(globalLockPath('global-config'), () => {
+    atomicWriteFileSync(path, JSON.stringify(config, null, 2) + '\n');
+  });
 }
 
 /**

@@ -26,6 +26,8 @@
 | `getConfigValue(projectPath, key)` / `setConfigValue(...)` | 读取 / 修改单个配置项 |
 | `readProfile()` / `writeProfile(profile)` | 读取 / 写入全局用户画像 |
 
+> **写入安全（v1.1.0-stage-35）**：`writeProfile()` 与 `setGlobalConfig()`（`workspace/identity.ts`）为跨项目全局写入，均在 `global-config` 锁（`~/.openfeel/locks/global-config.lock`）内 + 原子写；`writeDefaultConfig()` / `setConfigValue()` / `ensureInfoJson()` 仅原子写（不加锁，低风险）。详见 `manual/core/fs.md`。
+
 ## 模型配置
 
 `models.default` 为兜底模型，`models.agents` 按 Agent 名覆盖，`models.roles` 按角色覆盖。每个模型条目含 `provider`、`model_name`、可选 `base_url` 与 `api_key_env`。

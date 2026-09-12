@@ -2,8 +2,8 @@
  * FlowManager 单元测试
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { FlowManager, mapPhaseToStageStatus, type FlowData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { FlowManager, mapPhaseToStageStatus, FlowConcurrentModificationError, isFlowConcurrentError, type FlowData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -110,6 +110,82 @@ describe('FlowManager', () => {
       writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'not-valid-json{', 'utf-8');
       const mgr = new FlowManager(tmpDir);
       expect(mgr.isLoaded()).toBe(false);
+    });
+
+    it('连续 save 后 .bak 保留上一版本（S5）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.save();
+      const v1 = readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8');
+
+      // 修改内存数据后再保存
+      mgr.addStage('v1.0.0-stage-99');
+      mgr.save();
+      const v2 = readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8');
+
+      expect(v2).not.toBe(v1);
+      // .bak 应为 v1（上一版本），而非 v2
+      expect(readFileSync(join(tmpDir, '.openfeel', 'flow.json.bak'), 'utf-8')).toBe(v1);
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // 乐观并发校验（revision）
+  // ═══════════════════════════════════════
+
+  describe('乐观并发校验', () => {
+    it('load 后外部递增 revision → save 抛 FlowConcurrentModificationError', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const p = join(tmpDir, '.openfeel', 'flow.json');
+
+      // 模拟并发进程：读盘、revision+1、写回
+      const raw = JSON.parse(readFileSync(p, 'utf-8'));
+      raw.meta.revision = (raw.meta.revision ?? 0) + 1;
+      writeFileSync(p, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
+
+      expect(() => mgr.save()).toThrow(FlowConcurrentModificationError);
+      try {
+        mgr.save();
+      } catch (e) {
+        expect(isFlowConcurrentError(e)).toBe(true);
+      }
+    });
+
+    it('正常 save revision 递增：0 → 1 → 2', () => {
+      FlowManager.initFlow(tmpDir);
+      const p = join(tmpDir, '.openfeel', 'flow.json');
+      expect(JSON.parse(readFileSync(p, 'utf-8')).meta.revision).toBe(0);
+
+      const mgr = new FlowManager(tmpDir);
+      mgr.save();
+      expect(JSON.parse(readFileSync(p, 'utf-8')).meta.revision).toBe(1);
+      mgr.save();
+      expect(JSON.parse(readFileSync(p, 'utf-8')).meta.revision).toBe(2);
+    });
+
+    it('无 revision 的存量 flow.json 兼容：加载视为 0，首次 save 补写为 1', () => {
+      // 写一份不含 meta.revision 的旧格式 flow.json
+      const dir = join(tmpDir, '.openfeel');
+      mkdirSync(dir, { recursive: true });
+      const legacy = {
+        meta: { version: '1.0', project: 'OpenFeel', updated: '2020-01-01T00:00:00.000Z' },
+        pipeline: { phase: 'active', current: { stage: '-', op: 'init' }, retry: 0 },
+        stages: {}, reviews: [], log: [],
+      };
+      writeFileSync(join(dir, 'flow.json'), JSON.stringify(legacy, null, 2) + '\n', 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      expect(() => mgr.save()).not.toThrow();
+      expect(JSON.parse(readFileSync(join(dir, 'flow.json'), 'utf-8')).meta.revision).toBe(1);
+    });
+
+    it('同进程两个实例：后写者抛冲突而非静默覆盖', () => {
+      FlowManager.initFlow(tmpDir);
+      const a = new FlowManager(tmpDir); // 均加载 revision=0
+      const b = new FlowManager(tmpDir);
+      b.save();                            // 磁盘 revision → 1
+      expect(() => a.save()).toThrow(FlowConcurrentModificationError); // a 基线 0 ≠ 1
     });
   });
 
@@ -1514,6 +1590,47 @@ describe('FlowManager', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.saveCheckpoint('stage-01', 'exec_running' as PipelinePhase);
       expect(mgr.listCheckpoints()).toEqual([]);
+    });
+
+    it('restoreCheckpoint 恢复后 .bak 保留紧邻恢复前版本（REV-002）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.save();
+
+      mgr.saveCheckpoint('stage-01', 'exec_running' as PipelinePhase);
+      const snapshot = mgr.listCheckpoints('stage-01')[0];
+      expect(snapshot).toBeDefined();
+
+      // 修改后再保存：此版本即「紧邻恢复前」的版本
+      mgr.addStage('v1.0.0-stage-98');
+      mgr.save();
+      const beforeRestore = readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8');
+
+      expect(mgr.restoreCheckpoint(snapshot)).toBe(true);
+      // backup:true 语义下 .bak 应为紧邻恢复前的版本（而非首次 save 的版本）
+      expect(readFileSync(join(tmpDir, '.openfeel', 'flow.json.bak'), 'utf-8')).toBe(beforeRestore);
+    });
+
+    it('restoreCheckpoint 并发冲突时拒绝恢复返回 false（不覆盖磁盘）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.save();
+      mgr.saveCheckpoint('stage-01', 'exec_running' as PipelinePhase);
+      const snapshot = mgr.listCheckpoints('stage-01')[0];
+      expect(snapshot).toBeDefined();
+
+      // 外部并发递增 revision（模拟另一进程写入）
+      const p = join(tmpDir, '.openfeel', 'flow.json');
+      const raw = JSON.parse(readFileSync(p, 'utf-8'));
+      raw.meta.revision = (raw.meta.revision ?? 0) + 1;
+      writeFileSync(p, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
+      const afterExternal = readFileSync(p, 'utf-8');
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      expect(mgr.restoreCheckpoint(snapshot)).toBe(false);
+      warnSpy.mockRestore();
+      // 磁盘未被快照覆盖
+      expect(readFileSync(p, 'utf-8')).toBe(afterExternal);
     });
   });
 

@@ -2,10 +2,11 @@
  * 工作阶段管理
  * 负责 .openfeel/plan/{series}/ 下的阶段目录创建与列取
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { FlowManager } from '../flow-manager.js';
 import { parseStageId } from './path.js';
+import { atomicWriteFileSync } from '../fs/atomic-write.js';
 
 /** 工作阶段 */
 export interface Stage {
@@ -56,7 +57,7 @@ ${depsText}
 
 > 待补充
 `;
-    writeFileSync(overviewPath, overviewContent, 'utf-8');
+    atomicWriteFileSync(overviewPath, overviewContent);
   }
 
   // 创建 status.md（若不存在）— 标题用完整 stageId
@@ -93,7 +94,7 @@ ${depsText}
 |------|-------|----------|------|
 | ${new Date().toISOString().replace('T', ' ').substring(0, 16)} | user | planned | 阶段已创建 |
 `;
-    writeFileSync(statusPath, statusContent, 'utf-8');
+    atomicWriteFileSync(statusPath, statusContent);
   }
 
   // 同步到 flow.json（若存在）— 键用完整 stageId

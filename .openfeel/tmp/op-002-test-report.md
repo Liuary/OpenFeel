@@ -1,42 +1,36 @@
-# 自测报告 — op-002
+# 自测报告 — op-002（跨进程文件锁）
 
-- **执行时间**：2026-08-15 14:54
+- **执行时间**：2026-09-12 21:05
 - **执行 Agent**：Executor
-- **重试次数**：0
+- **重试次数**：1（首次即通过）
 
 ## 执行摘要
-
-全部 5 项步骤完成，flow-manager.test.ts 155 用例通过，无「stages 优先」残留。
+新增 `src/core/fs/file-lock.ts` 与 `test/core/fs/file-lock.test.ts`，6 个用例全绿（含跨进程互斥用例），全量 446 测试无回归。
 
 ## 实施步骤完成情况
-
-- [x] 步骤1：flow-manager.ts 新增 `import { findStageStatusPath } from './plan/path.js'`
-- [x] 步骤2：findStatusPath（原 1380-1391 行）整体替换为委托 findStageStatusPath，删除 stagesDir/planDir 双路径判断
-- [x] 步骤3：checkCrossFileConsistency（原 2425-2475 行）改用 findStageStatusPath，删除 planDir/stagesDir 局部变量与手写回退
-- [x] 步骤4：checkZombieStates 删除 planDir/stagesDir 两行死代码（保留注释首行，循环逻辑不变）
-- [x] 步骤5：flow-manager.test.ts 1675 注释更新 + 1676 路径改多级 plan/v1/stage-01/
+- [x] 步骤1：新建 `src/core/fs/file-lock.ts`（`withFileLock` / `projectLockPath` / `globalLockPath` / 4 个常量）
+- [x] 步骤2：新建 `test/core/fs/file-lock.test.ts`（6 用例，含 4 子进程 × 25 次跨进程互斥）
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| findStatusPath 委托 findStageStatusPath，无「stages 优先」残留 | ✅ | grep 验证 |
-| checkCrossFileConsistency 走三级回退，无 planDir/stagesDir 残留 | ✅ | |
-| checkZombieStates 死代码已删，循环逻辑不变 | ✅ | |
-| checkDepsYaml `.openfeel/plan/deps.yaml` 路径未被改动 | ✅ | 2099/2109 行保持原样 |
-| flow-manager.test.ts（recoverContext + 健康检查）通过 | ✅ | 155 passed |
+| 正常返回 fn 结果，退出后锁已删 | ✅ | |
+| fn 抛错时 finally 仍释放锁 | ✅ | |
+| 占用未超时重试，超时抛 `/超时/` | ✅ | |
+| mtime 回拨超 TTL 可抢占 | ✅ | rename 抢占 |
+| token 不匹配不误删他人锁 | ✅ | 归属校验 |
+| 跨进程 4×25 计数为 100 | ✅ | 本机 Windows 稳定通过（2100ms） |
+| `LOCK_STALE_MS_DEFAULT`==3000 且 < timeout 5000 | ✅ | 常量定义符合 |
+| `npm test` 全绿 | ✅ | 446 passed |
 
 ## 产出文件
-
-- `src/core/flow-manager.ts`
-- `test/core/flow-manager.test.ts`
+- `src/core/fs/file-lock.ts`
+- `test/core/fs/file-lock.test.ts`
 
 ## 前置校验结果
-
 - 方案完整性：通过
 - Phase 合法性：通过
 - 流转合法性：通过
 
 ## 偏差记录
-
-无。
+- 无。跨进程测试在本机 Windows 稳定通过，未触发降级跳过分支。

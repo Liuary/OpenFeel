@@ -7,10 +7,11 @@
  * 降级策略：loadUpdateState() 返回 null 时，调用方回退到"全量覆盖 + 重建 state"模式。
  */
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
+import { atomicWriteFileSync } from './fs/atomic-write.js';
 
 // ─── Zod Schema ──────────────────────────────────────────────────────
 
@@ -100,8 +101,8 @@ export function saveUpdateState(
   state: UpdateState,
 ): void {
   const statePath = getStatePath(projectPath);
-  mkdirSync(dirname(statePath), { recursive: true });
-  writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n', 'utf-8');
+  // 路径不变（拆分属 stage-39）；仅替换写入机制为原子写
+  atomicWriteFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
 }
 
 /**

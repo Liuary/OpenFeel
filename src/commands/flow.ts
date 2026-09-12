@@ -23,7 +23,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { MetricsStore } from '../core/metrics.js';
 import { t, getCliLang } from '../core/i18n.js';
@@ -348,6 +348,12 @@ export function registerFlowCommand(program: Command): void {
         mgr.save();
         console.log(t('flow.stage.addedTmpl', lang, { stage: stageId }));
       } catch (err: unknown) {
+        // 并发冲突：本次未写入 flow.json，输出可重试提示并退出码 2（R3.2）
+        if (isFlowConcurrentError(err)) {
+          console.error(`[并发冲突] flow.json 已被其它进程修改（期望 revision=${err.expectedRevision}，磁盘=${err.actualRevision}）。`);
+          console.error('本次修改未写入。请重新执行该命令重试。');
+          process.exit(2);
+        }
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));
         process.exit(1);
@@ -1176,6 +1182,12 @@ export function registerFlowCommand(program: Command): void {
           }
         }
       } catch (err) {
+        // 并发冲突：本次未写入 flow.json，输出可重试提示并退出码 2（R3.2）
+        if (isFlowConcurrentError(err)) {
+          console.error(`[并发冲突] flow.json 已被其它进程修改（期望 revision=${err.expectedRevision}，磁盘=${err.actualRevision}）。`);
+          console.error('本次修改未写入。请重新执行该命令重试。');
+          process.exit(2);
+        }
         // 非 TTY 环境或用户中断等异常
         if (err instanceof Error) {
           console.error(t('common.errorTmpl', lang, { msg: err.message }));

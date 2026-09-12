@@ -3,8 +3,9 @@
  * 负责汇总阶段产出、生成归档摘要、提取知识条目，通过 FlowManager 操作 flow.json
  */
 import { FlowManager } from '../flow-manager.js';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { initKnowledgeBase, addKnowledgeEntry } from '../workspace/knowledge.js';
 
 /** 归档结果 */
@@ -107,9 +108,9 @@ ${reviewRows}
     mkdirSync(logDir, { recursive: true });
   }
 
-  // 写入归档摘要文件
+  // 写入归档摘要文件（每阶段唯一，不加锁；flow 同步走 mgr.save()）
   const archivePath = join(logDir, `archive-${stageName}.md`);
-  writeFileSync(archivePath, summary, 'utf-8');
+  atomicWriteFileSync(archivePath, summary);
 
   // 追加归档日志到 flow.json
   mgr.appendLog({

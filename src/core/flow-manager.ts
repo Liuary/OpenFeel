@@ -9,7 +9,7 @@
  * - advancePhase() 增加 to 参数的 PipelinePhaseSchema 校验
  * - 新增 repair() 方法，自动检测并修复 flow.json 常见问题
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, renameSync, readdirSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
@@ -29,6 +29,8 @@ import { PublicLogger, formatDate } from './public-logger.js';
 import { t, getCliLang } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
 import { findStageStatusPath } from './plan/path.js';
+import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { withFileLock, projectLockPath } from './fs/file-lock.js';
 
 /** 操作执行状态 */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed';
@@ -98,11 +100,32 @@ export interface StageData {
 
 /** Flow 完整数据结构 */
 export interface FlowData {
-  meta: { version: string; project: string; updated: string };
+  meta: { version: string; project: string; updated: string; revision?: number };
   pipeline: { phase: MetaPhase; current: { stage: string; op: string }; retry: number };
   stages: Record<string, StageData>;
   reviews: ReviewItem[];
   log: LogEntry[];
+}
+
+/** flow.json 乐观并发冲突：磁盘 revision 与本次加载时不一致（存在并发写入） */
+export class FlowConcurrentModificationError extends Error {
+  /** 本次实例加载时的 revision */
+  readonly expectedRevision: number;
+  /** 锁内读到的磁盘当前 revision */
+  readonly actualRevision: number;
+
+  constructor(expected: number, actual: number) {
+    super(`flow.json 并发冲突：期望 revision=${expected}，磁盘为 ${actual}（已被其它进程修改）`);
+    this.name = 'FlowConcurrentModificationError';
+    this.expectedRevision = expected;
+    this.actualRevision = actual;
+  }
+}
+
+/** 判断错误是否为 flow.json 并发冲突（供命令层统一识别） */
+export function isFlowConcurrentError(err: unknown): err is FlowConcurrentModificationError {
+  return err instanceof FlowConcurrentModificationError
+    || (typeof err === 'object' && err !== null && (err as { name?: string }).name === 'FlowConcurrentModificationError');
 }
 
 /** 流水线摘要 */
@@ -207,6 +230,7 @@ function defaultFlowData(): FlowData {
       version: '1.0',
       project: 'OpenFeel',
       updated: new Date().toISOString(),
+      revision: 0,
     },
     pipeline: {
       phase: 'active',
@@ -217,6 +241,12 @@ function defaultFlowData(): FlowData {
     reviews: [],
     log: [],
   };
+}
+
+/** 从 FlowData 提取 revision（缺失/非整数 → 0，兼容存量文件） */
+function extractRevision(data: FlowData | null): number {
+  const rev = data?.meta?.revision;
+  return typeof rev === 'number' && Number.isInteger(rev) ? rev : 0;
 }
 
 /** opId 解析结果 */
@@ -230,6 +260,8 @@ interface OpIdParts {
 export class FlowManager {
   private projectPath: string;
   private data: FlowData | null;
+  /** 本次实例加载（或最近一次成功 save）时的 flow.json revision，用于乐观并发校验 */
+  private loadedRevision = 0;
   private filePath: string;
   /** 从 pipeline.yaml 加载的流水线配置（含后备默认值） */
   private pipelineConfig: PipelineConfig | null = null;
@@ -251,11 +283,14 @@ export class FlowManager {
   load(): void {
     if (!existsSync(this.filePath)) {
       this.data = null;
+      this.loadedRevision = 0;
       return;
     }
     try {
       const raw = readFileSync(this.filePath, 'utf-8');
       this.data = JSON.parse(raw) as FlowData;
+      // 记录加载基线 revision（缺失/非法视为 0，兼容存量文件）
+      this.loadedRevision = extractRevision(this.data);
       // 从 stages 的键名恢复 op 的 id 字段（运行时便利字段，磁盘不存储）
       if (this.data && this.data.stages) {
         for (const [, stage] of Object.entries(this.data.stages)) {
@@ -269,10 +304,11 @@ export class FlowManager {
       }
     } catch {
       this.data = null;
+      this.loadedRevision = 0;
     }
   }
 
-  /** 保存 flow.json（自动更新 meta.updated，序列化时去除 op 中的 id 字段以与键名保持一致） */
+  /** 保存 flow.json（自动更新 meta.updated；锁内做乐观并发校验、备份旧版本并原子写） */
   save(): void {
     if (!this.data) {
       return;
@@ -287,47 +323,41 @@ export class FlowManager {
       }
     }
 
-    const content = JSON.stringify(serializable, null, 2) + '\n';
-    const tmpPath = this.filePath + '.tmp';
-    const bakPath = this.filePath + '.bak';
-
-    // 备份旧文件（写入前）
-    if (existsSync(this.filePath)) {
-      try {
-        copyFileSync(this.filePath, bakPath);
-      } catch {
-        // 备份失败不阻塞写入
-      }
-    }
-
+    const lockPath = projectLockPath(this.projectPath, 'flow');
     try {
-      // 写入临时文件
-      writeFileSync(tmpPath, content, 'utf-8');
-
-      // 校验临时文件 JSON 合法性
-      try {
-        const tmpContent = readFileSync(tmpPath, 'utf-8');
-        JSON.parse(tmpContent);
-      } catch (parseErr) {
-        // 清理失败的临时文件
-        try {
-          writeFileSync(tmpPath, '', 'utf-8');
-        } catch {
-          // 清理失败也不阻塞
+      withFileLock(lockPath, () => {
+        // 乐观并发校验：锁内读磁盘 revision，与加载时比对；不一致说明有并发写，拒绝覆盖
+        const diskRevision = this.readDiskRevision();
+        if (diskRevision !== this.loadedRevision) {
+          throw new FlowConcurrentModificationError(this.loadedRevision, diskRevision);
         }
-        throw new Error(
-          `flow.json 写入校验失败: ${(parseErr as Error).message}。备份已保留在 ${bakPath}`,
-        );
-      }
+        const nextRevision = this.loadedRevision + 1;
+        serializable.meta.revision = nextRevision;
 
-      // 校验通过，rename 临时文件到正式文件
-      renameSync(tmpPath, this.filePath);
+        // S5：写前复制旧文件为 .bak；写成功后不覆盖 .bak，使其始终保留上一版本
+        const content = JSON.stringify(serializable, null, 2) + '\n';
+        atomicWriteFileSync(this.filePath, content, { backup: true });
 
-      // 同步备份
-      writeFileSync(this.filePath + '.bak', content, 'utf-8');
+        // 同步内存与加载基线，避免同实例连续 save 误判冲突
+        this.data!.meta.revision = nextRevision;
+        this.loadedRevision = nextRevision;
+      });
     } catch (err) {
       console.error(`[ERROR] flow.json 保存失败: ${err instanceof Error ? err.message : err}`);
       throw err;
+    }
+  }
+
+  /** 读取磁盘当前 revision（不存在/损坏/缺失 → 0，兼容存量文件） */
+  private readDiskRevision(): number {
+    try {
+      const raw = readFileSync(this.filePath, 'utf-8');
+      const parsed = JSON.parse(raw) as { meta?: { revision?: unknown } };
+      const rev = parsed?.meta?.revision;
+      return typeof rev === 'number' && Number.isInteger(rev) ? rev : 0;
+    } catch {
+      // 文件不存在或损坏：视为 0（首次写入 / 由 repair 兜底）
+      return 0;
     }
   }
 
@@ -370,7 +400,8 @@ export class FlowManager {
       const timestamp = this.formatCheckpointTimestamp(new Date());
       const filename = `${stageId}-${timestamp}-${phase}.json`;
       const filePath = resolve(dir, filename);
-      writeFileSync(filePath, JSON.stringify(serializable, null, 2) + '\n', 'utf-8');
+      // REV-003：快照唯一文件名 + best-effort，原子写防半写；不接全局锁（避免长序列化纳入临界区）
+      atomicWriteFileSync(filePath, JSON.stringify(serializable, null, 2) + '\n');
 
       // 清理超限的最旧快照
       this.cleanupCheckpoints(stageId);
@@ -418,15 +449,28 @@ export class FlowManager {
       const content = readFileSync(filePath, 'utf-8');
       // 校验快照 JSON 合法性，非法内容拒绝恢复
       JSON.parse(content);
-      // 备份当前 flow.json（失败不阻塞恢复）
-      if (existsSync(this.filePath)) {
-        try {
-          copyFileSync(this.filePath, this.filePath + '.bak');
-        } catch {
-          // 备份失败忽略
+
+      const lockPath = projectLockPath(this.projectPath, 'flow');
+      let conflict = false;
+      withFileLock(lockPath, () => {
+        // 乐观并发校验：磁盘被并发修改时拒绝恢复，防止覆盖他人写入
+        const diskRevision = this.readDiskRevision();
+        if (diskRevision !== this.loadedRevision) {
+          conflict = true;
+          return;
         }
+        // 快照 revision 重定基为 diskRevision+1，保证单调递增
+        const restored = JSON.parse(content) as FlowData;
+        restored.meta.revision = diskRevision + 1;
+        const restoredContent = JSON.stringify(restored, null, 2) + '\n';
+        // REV-002：与 save() 同锁、同 S5 语义（写前复制旧文件为 .bak，写后不覆盖）
+        atomicWriteFileSync(this.filePath, restoredContent, { backup: true });
+      });
+      if (conflict) {
+        console.warn('[WARN] flow.json 已被其它进程修改，拒绝从快照恢复（请重新加载后重试）');
+        return false;
       }
-      writeFileSync(this.filePath, content, 'utf-8');
+
       this.load();
       return true;
     } catch {
@@ -2000,6 +2044,12 @@ export class FlowManager {
         changes.push('已补全缺失的 meta.updated');
         modified = true;
       }
+      // （乐观并发修订）补全缺失的 meta.revision（存量兼容，视为 0）
+      if (typeof flowData.meta.revision !== 'number') {
+        flowData.meta.revision = 0;
+        changes.push('已补全缺失的 meta.revision（存量兼容，视为 0）');
+        modified = true;
+      }
     }
 
     // 修复缺失的 pipeline 字段
@@ -2103,17 +2153,12 @@ export class FlowManager {
 
     // 写入修复后的数据（recovered 场景下磁盘文件仍损坏，即使无字段修改也必须写回恢复内容）
     if ((modified || recovered) && !dryRun) {
-      // 备份当前文件（recovered 场景下 .bak 已是有效恢复来源，避免被损坏文件覆盖）
-      if (!recovered) {
-        try {
-          copyFileSync(this.filePath, this.filePath + '.bak');
-        } catch {
-          // 备份失败不阻塞
-        }
-      }
+      // （乐观并发修订）恢复/修复亦视为一次写入：先在源对象上递增 revision，
+      // 再序列化深拷贝，确保 revision 随内容一起落盘（避免陈旧实例后续 save 误判冲突）
+      const meta = flowData.meta ?? defaults.meta;
+      flowData.meta = meta;
+      meta.revision = (typeof meta.revision === 'number' ? meta.revision : 0) + 1;
 
-      // 使用安全写入
-      const tmpPath = this.filePath + '.tmp';
       const serializable = JSON.parse(JSON.stringify(flowData)) as Record<string, unknown>;
       // 去除 op 中的 id 字段
       if (serializable.stages && typeof serializable.stages === 'object') {
@@ -2129,23 +2174,18 @@ export class FlowManager {
       }
 
       const content = JSON.stringify(serializable, null, 2) + '\n';
-      writeFileSync(tmpPath, content, 'utf-8');
-
-      // 校验临时文件
+      const lockPath = projectLockPath(this.projectPath, 'flow');
       try {
-        const tmpContent = readFileSync(tmpPath, 'utf-8');
-        JSON.parse(tmpContent);
-      } catch (parseErr) {
-        try {
-          writeFileSync(tmpPath, '', 'utf-8');
-        } catch {
-          // 清理失败不阻塞
-        }
-        changes.push(`修复后写入校验失败: ${(parseErr as Error).message}`);
+        withFileLock(lockPath, () => {
+          // recovered 场景 .bak 已是有效恢复来源，避免被损坏文件覆盖（保持既有语义）
+          atomicWriteFileSync(this.filePath, content, { backup: !recovered });
+        });
+      } catch (err) {
+        changes.push(`修复后写入失败: ${(err as Error).message}`);
         return { fixed: false, changes, recovered };
       }
-
-      renameSync(tmpPath, this.filePath);
+      // 写盘成功后重新加载，同步 this.data 与 this.loadedRevision 基线
+      this.load();
     }
 
     // changes 在无问题时保持空数组，CLI 层通过 changes.length === 0 判断"没问题"
@@ -2666,7 +2706,8 @@ export class FlowManager {
       return; // 已存在则不覆盖
     }
     const data = defaultFlowData();
-    writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf-8');
+    // 首次创建（existsSync 守卫）、无并发读者，故不加锁，仅原子写；默认 revision:0
+    atomicWriteFileSync(filePath, JSON.stringify(data, null, 2) + '\n');
   }
 
   /**
@@ -2675,6 +2716,8 @@ export class FlowManager {
    */
   setData(data: FlowData): void {
     this.data = data;
+    // 测试专用：注入数据视为「当前磁盘状态」，同步并发校验基线，避免后续 save 误判冲突
+    this.loadedRevision = this.readDiskRevision();
   }
 
   // ═══ 流水线配置加载 ═══

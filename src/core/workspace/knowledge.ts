@@ -2,8 +2,10 @@
  * 知识库核心模块
  * 管理 .openfeel/kb/ 目录，包含知识条目的增删查改、索引维护和解析。
  */
-import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { atomicWriteFileSync } from '../fs/atomic-write.js';
+import { withFileLock, projectLockPath } from '../fs/file-lock.js';
 
 // ---------------------------------------------------------------------------
 // 类型定义
@@ -122,23 +124,31 @@ export function addKnowledgeEntry(
   }
 
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
-  // 追加条目到分类文件
   const catPath = resolve(kbDir, `${category}.md`);
-  const entryText = `\n## [+] ${title} (${today})\n\n${content}\n`;
-  appendFileSync(catPath, entryText, 'utf-8');
-
-  // 更新 index.md 的"最近更新"表格（在表头分隔行后插入新行）
   const indexPath = resolve(kbDir, 'index.md');
-  let indexContent = readFileSync(indexPath, 'utf-8');
-  const sepLine = '|------|------|------|';
-  const sepIdx = indexContent.indexOf(sepLine);
-  if (sepIdx !== -1) {
+  const entryText = `\n## [+] ${title} (${today})\n\n${content}\n`;
+
+  const lockPath = projectLockPath(projectPath, 'kb');
+  withFileLock(lockPath, () => {
+    // 分类文件：读 → 拼接 → 原子写（替代 appendFileSync，避免半写）
+    const catContent = existsSync(catPath) ? readFileSync(catPath, 'utf-8') : '';
+    atomicWriteFileSync(catPath, catContent + entryText);
+
+    // index.md：读 → 插入行 → 原子写
+    if (!existsSync(indexPath)) {
+      return; // index.md 不存在时跳过（与既有行为一致）
+    }
+    const indexContent = readFileSync(indexPath, 'utf-8');
+    const sepLine = '|------|------|------|';
+    const sepIdx = indexContent.indexOf(sepLine);
+    if (sepIdx === -1) {
+      return; // 格式异常时不修改（与既有行为一致）
+    }
     const insertPos = sepIdx + sepLine.length;
     const newRow = `| ${today} | ${category} | ${title} |`;
-    indexContent = indexContent.slice(0, insertPos) + '\n' + newRow + indexContent.slice(insertPos);
-    writeFileSync(indexPath, indexContent, 'utf-8');
-  }
+    const updated = indexContent.slice(0, insertPos) + '\n' + newRow + indexContent.slice(insertPos);
+    atomicWriteFileSync(indexPath, updated);
+  });
 }
 
 /**

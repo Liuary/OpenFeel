@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-25-Liuary-002.md](2026/09/25/2026-09-25-Liuary-002.md) | Archiver | **stage-36 归档完成**：模板源收敛（templates-data/opencode/ 单源）+ 命名前缀统一（8 agent/14 skill 加 openfeel- 前缀 + /opfx: 类型化 + normalizeAgentName 读取兼容），470/470 测试，BUG-001 closed，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/template-loader.md + core/build.md |
 | [2026-09-25-Liuary-001.md](2026/09/25/2026-09-25-Liuary-001.md) | Liuary | 阶段 v1.1.0-stage-36 完成 |
 | [2026-09-13-Liuary-001.md](2026/09/13/2026-09-13-Liuary-001.md) | Liuary | 阶段 v1.1.0-stage-35 完成 |
 | [2026-09-12-Liuary-002.md](2026/09/12/2026-09-12-Liuary-002.md) | Archiver | **stage-35 归档完成**：并发保护基础设施（原子写 + 建议性文件锁 + 序号原子化 + 高风险写入接入 + flow.json 乐观并发校验），457/457 测试，0 Bug，知识沉淀 6 条至 architecture(2) + patterns(3) + troubleshooting(1)，manual 新增 core/fs.md |

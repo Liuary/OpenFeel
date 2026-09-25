@@ -4,7 +4,7 @@
 
 ## 职责
 
-项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`、`AGENTS.md`），并提供 OpenCode 平台适配器部署、示例项目骨架（`--demo`）和一键 demo 模式。
+项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`、`AGENTS.md`），并提供 OpenCode 平台适配器全局部署、示例项目骨架（`--demo`）和一键 demo 模式。
 
 ## 核心 API
 
@@ -12,9 +12,10 @@
 |------|------|
 | `initProject(projectPath, cliLang?)` | 主初始化流程：创建目录 → 写 config → init flow.json → 语言选择 → OpenCode 部署确认 → 生成模板文件 → AGENTS.md 变量替换 → 重启提醒 |
 | `initDemo(projectPath, lang)` | 创建示例项目骨架（TS 项目 + vitest 配置 + 示例测试 + 示例阶段） |
-| `deployOpencode(projectPath, lang)` | 部署 OpenCode 平台适配器到目标项目（Agents、Skills、instructions、opencode.jsonc、ADAPTER、.gitignore），遵循"已存在不覆盖"原则 |
+| `deployOpencode(projectPath, lang)` | 部署 OpenCode 平台适配器到**全局** `~/.config/opencode/`（Agents、Skills、框架约束 core.md、全局 opencode.jsonc）+ 项目最小 opencode.jsonc 覆盖，遵循"已存在不覆盖"原则 |
 | `promptOpencodeDeploy(lang)` | 交互式确认是否部署 OpenCode 适配器（Y/n，默认 Y），非交互模式返回 false |
 | `writeTemplateIfMissing(filePath, content)` | 底层工具：仅在目标不存在时写入，返回 `{ created: boolean }` |
+| `writeGlobalFileIfMissing(filePath, content)` | 全局文件写入：全局文件锁 + 原子写 + 已存在不覆盖（跨项目共享路径） |
 | `ensureGlobalConfig()` | 首次使用时的全局配置引导（语言选择），交互模式中英双语提示 |
 
 ## 类型定义
@@ -61,22 +62,25 @@ interface DemoResult {
 步骤 10: 重启提醒（如 opencode 首次部署）
 ```
 
-## OpenCode 部署内容
+## OpenCode 部署内容（全局化，stage-37）
 
-`deployOpencode()` 部署 6 类文件到目标项目：
+`deployOpencode()` 部署到**全局** `~/.config/opencode/`，项目仅写最小覆盖：
 
 | 类别 | 数量 | 目标路径 |
 |------|:--:|------|
-| Agent 定义 | 9 | `.opencode/agents/{agent}.md`（`feel` 原名 + 8 个 `openfeel-*` 前缀） |
-| Skill 定义 | 14 | `.opencode/skills/{name}/SKILL.md`（全部 `openfeel-*` 前缀） |
-| 操作规范 | 1 | `.opencode/instructions/core.md` |
-| 平台配置 | 1 | `opencode.jsonc`（含 `{项目名称}` 替换） |
-| 适配器说明 | 1 | `.opencode/ADAPTER.{zh-CN\|en}.md` |
-| 忽略规则 | 1 | `.opencode/.gitignore` |
+| Agent 定义 | 9 | `~/.config/opencode/agents/{agent}.md`（`feel` 原名 + 8 个 `openfeel-*` 前缀） |
+| Skill 定义 | 14 | `~/.config/opencode/skills/{name}/SKILL.md`（全部 `openfeel-*` 前缀） |
+| 框架约束 core.md | 1 | `~/.config/opencode/openfeel/core.md` |
+| 全局配置 | 1 | `~/.config/opencode/opencode.jsonc`（框架级，已存在则跳过，合并归 update） |
+| 项目覆盖 | 1 | 项目根 `opencode.jsonc`（最小 `{ $schema }`） |
 
-⚠️ 不部署 `.opencode/package.json`（REV-001 设计决策：避免用户项目引入不必要的 `@opencode-ai/plugin` 依赖）。
+⚠️ 不部署 `.opencode/package.json`（REV-001）；不部署 `.opencode/{ADAPTER,.gitignore,instructions}`（已随项目 `.opencode/` 布局废弃，见「项目精简」）。
 
-> **命名前缀（stage-36）**：8 个 agent 与 14 个 skill 均加 `openfeel-` 前缀（`feel` agent 保留原名，作为 primary/default_agent 例外），避免与 opencode 生态及用户自定义 agent/skill 命名冲突（见 kb/architecture.md #opencode 全局/项目 agent 与 skill 合并语义）。`deployOpencode` 通过 `listOpencodeAgentIds` / `listOpencodeSkillNames` 读模板源，键随 build 生成段自动带前缀，无需硬编码名。
+**项目精简（D1）**：`initProject` 不再产生项目 `.opencode/`，项目仅保留 `.openfeel/` 工作区 + 项目 `AGENTS.md`（项目级约束）+ 项目 `opencode.jsonc`（模型/语言覆盖，仅 `$schema`，不写 instructions/skills/default_agent）。
+
+> **命名前缀（stage-36）**：8 个 agent 与 14 个 skill 均加 `openfeel-` 前缀（`feel` agent 保留原名，作为 primary/default_agent 例外），避免与 opencode 生态及用户自定义 agent/skill 命名冲突。`deployOpencode` 通过 `listOpencodeAgentIds` / `listOpencodeSkillNames` 读模板源，键随 build 生成段自动带前缀。
+>
+> **全局化（stage-37）**：部署目标从项目 `.opencode/` 切换到全局 `~/.config/opencode/`（D1）；全局文件写入走 `writeGlobalFileIfMissing`（全局锁 + 原子写 + 已存在不覆盖）；框架约束 core.md 部署到 `getGlobalCoreMdPath()`；重启提醒文案更新为「全局部署语义」。OpenFeel 仓库自身 `.opencode/` 仍保留为构建产物/自举实例（N1），本阶段不动。
 
 ## 语言回退
 
@@ -93,3 +97,4 @@ interface DemoResult {
 | stage-33 | 新增 decisions.md 生成步（6b 步，`getDecisionsTemplate`）；templates.ts 新增 `DECISIONS_TEMPLATE_ZH/EN` + `getDecisionsTemplate(lang)` |
 | stage-34 | 示例阶段多级化：部署路径 `plan/stage-01/status.md` → `plan/v1/stage-01/status.md`，flow.json 注册 `stage-01` → `v1.0.0-stage-01`，status.md 标题同步；路径映射统一走 `plan-path` 模块 |
 | stage-36 | agent/skill 命名加 `openfeel-` 前缀（`feel` 保留）；模板源收敛为 `templates-data/opencode/` 单源，`deployOpencode` 读模板源键自动带前缀；示例 status.md 的 `executor` 改 `openfeel-executor` |
+| stage-37 | 全局部署（D1）：`deployOpencode` 部署目标改全局 `~/.config/opencode/`；新增 `writeGlobalFileIfMissing`；项目精简为 `.openfeel/`+AGENTS.md+opencode.jsonc；不再部署 `.opencode/{ADAPTER,.gitignore,instructions}`；重启提醒文案全局化 |

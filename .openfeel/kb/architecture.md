@@ -376,3 +376,39 @@ init.ts（deployOpencode 部署）  vs  update.ts（增量更新）
 - **行尾归一 LF**：新增 `.gitattributes`（`src/core/templates-data/**` 与 `.opencode/**` `text eol=lf`）+ 各注入函数读文件后 `content.replace(/\r\n/g,'\n')`，防止 CRLF 泄漏进生成模板串造成跨平台不可复现。
 
 **参见：** v1.1.0-stage-36 op-001/op-004、kb/troubleshooting.md #双层模板源发散、kb/patterns.md #构建脚本多语言循环生成模式、#跨平台行尾归一化模式
+
+## [+] 全局部署架构：框架资产全局化 + 项目精简 + 双 state (2026-09-25)
+
+v1.1.0-stage-37（D1/P2 全量落地）将框架部署目标从「逐项目部署」切换到「全局部署」，并落地框架约束走 instructions 机制：
+
+**部署架构三层：**
+
+| 层 | 部署目标 | 内容 |
+|----|----------|------|
+| 全局框架资产 | `~/.config/opencode/` | 9 agent（`agents/`）、14 skill（`skills/`）、框架约束 `openfeel/core.md`、框架级 `opencode.jsonc` |
+| 全局 state | `~/.openfeel/update_state.json` | 全局资产的 hash 追踪（绝对路径作 key） |
+| 项目精简 | 项目根 | 仅 `.openfeel/` 工作区 + 项目 `AGENTS.md`（项目级约束）+ 项目 `opencode.jsonc`（模型/语言覆盖，仅 `$schema` + 用户 `agent.<name>.model`，**不写** instructions/skills/default_agent） |
+
+**核心设计决策：**
+
+- **框架约束走 `instructions`（P2）**：框架 core.md 部署到 `~/.config/opencode/openfeel/core.md`，全局 `opencode.jsonc` 的 `instructions` 引用其**绝对路径**；项目 `opencode.jsonc` 完全不写 `instructions`（继承全局）。项目级约束仍走项目 `AGENTS.md`（opencode 约定自动加载，实测确认，无需列入 instructions）。
+- **全局/项目双 state（N2）**：全局资产（agents/skills/core.md/全局 opencode.jsonc）hash 追踪走 `~/.openfeel/update_state.json`（绝对路径 key）；项目资产（AGENTS.md / 项目 opencode.jsonc）继续走项目 `.openfeel/update_state.json`。首次全局 state 加载降级须防全量覆盖（见 troubleshooting.md #update_state.json 降级风险排查）。
+- **全局 opencode.jsonc 深度合并**：已有全局配置时「解析→深度合并→序列化」，保留用户自定义字段（含未知字段 passthrough）；合并/写入加全局锁 + 原子写。见 patterns.md #JSONC 深度合并模式。
+- **legacy 布局识别（N8）**：update 检测项目内遗留 `.opencode/{agents,skills,instructions}` 时仅提示「请运行 openfeel migrate（stage-39 提供）」，不静默迁移/删除。存量旧 state 重键迁移、项目自定义资产保留均属 stage-39。
+- **仓库自身 `.opencode/` 不动（N1）**：「项目精简」仅指 init 部署的新项目；OpenFeel 仓库自身的 `.opencode/` 仍是构建产物/自举实例（stage-36 步骤 8），本阶段不删除、不改 build.js。
+
+**opencode 全局/项目配置合并语义实测结论（op-000，真实 CLI 子进程 + 隔离 HOME）：**
+
+| 验证项 | 结论 |
+|--------|------|
+| instructions 合并 | **拼接 + 去重**（全局在前，项目追加，不覆盖） |
+| `~` 展开（配置值层） | `debug config` 输出**不展开**（保留字面 `~/...`） |
+| `~` 展开（加载层） | 加载时实际展开并成功加载（与「未展开→必须绝对路径」的直觉预判不同） |
+| core.md 实际加载 | **PASS**（指令型探针回显命中 token） |
+| AGENTS.md 自动加载 | **YES**（项目 `opencode.jsonc` 为 `{}` 时仍加载） |
+| config 目录 | **无 APPDATA 偏差**（`config == $HOME/.config/opencode`） |
+| agent_manager_tool | schema 未定义 + **静默丢弃**（无报错 exit 0）→ 移除 |
+
+> `~` 虽在加载层可展开，但仍采用绝对路径（`getGlobalCoreMdPath()`）：配置值层可读、跨平台无歧义、不依赖 opencode 内部展开实现（「加固而非推翻」）。
+
+**参见：** v1.1.0-stage-37 op-000~005、`.openfeel/plan/v1/stage-37/op-000-findings.md`、kb/architecture.md #opencode 全局/项目 agent 与 skill 合并语义、kb/patterns.md #JSONC 深度合并模式、#全局/项目双 state 路由模式

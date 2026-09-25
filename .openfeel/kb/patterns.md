@@ -2070,3 +2070,64 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.0-stage-36 op-002、kb/architecture.md #模板单源架构
 
+## [+] JSONC 深度合并模式：parseJsonc 注释剥离 + deepMergeJsonc 五类字段规则 (2026-09-25)
+
+全局 opencode.jsonc 更新时须「解析→深度合并→序列化」以保留用户自定义字段，不能直接覆盖。`src/core/opencode-config.ts` 提供两段式处理：
+
+**一、`parseJsonc(text)` — 剥离行注释后 JSON.parse**（迁移自 update.ts 的 parseJsonc，op-003 删本地副本改 import 本函数）：
+
+- 状态机逐字符扫描，处理三态：`inString`（字符串内不剥注释）、`inEscape`（转义符跳过）、`!inString && // ` 命中则跳过到行尾并补回 `\n`。
+- 先 `replace(/\r/g, '')` 归一 CRLF，避免 Windows 行尾干扰行注释边界判断。
+- 仅支持 `//` 行注释；**块注释 `/* */` 会解析失败抛异常**。因此调用方（update.ts）对合并加了 try/catch 降级：解析失败 → 告警并「跳过合并、保留原文件」，不阻断主流程。
+
+**二、`deepMergeJsonc(base, overlay)` — 五类字段规则**（overlay=框架覆盖 base=用户）：
+
+| 字段 | 规则 |
+|------|------|
+| `instructions` | 数组**拼接 + `Set` 去重**，overlay（框架）在前、base（用户）在后，不覆盖 |
+| `agent` | `mergeAgentDefaults`：**仅增补缺失 agent**（用户未定义该 key 时补整条 `{ model }`）；用户已定义即视为完整自定义，**不覆盖其内部任何字段**（REV-703 修订：粒度为 agent 级，兼容 stage-40 模型接口） |
+| `skills` | 框架**不写**（全局 skill 走自动发现），保留用户已有（result.skills 不动） |
+| 纯对象（双方） | 递归 `deepMergeJsonc` |
+| 标量 / 数组（非 instructions） | overlay 直接覆盖 |
+
+**关键要点：**
+- 结果以 `{ ...base }` 起步，用户**未知字段 passthrough 保留**（符合「向后兼容可选配置字段模式」）。
+- 合并后 `JSON.stringify(merged, null, 2)` 序列化，**注释不保留**（parseJsonc 已剥离，序列化后为纯 JSON）。
+- `buildGlobalOpencodeFrameworkObj()` 为框架级内容对象：`$schema`（`https://opencode.ai/config.json`）+ `default_agent: 'feel'` + `instructions: [getGlobalCoreMdPath()]`（绝对路径）+ `agent.{openfeel-vision,openfeel-reviewer}.model` 框架默认模型。**不写** `experimental.agent_manager_tool`（schema 未定义，见 troubleshooting）。
+- `buildProjectOpencodeJsoncObj()` 为项目最小覆盖：仅 `$schema`，不写 instructions/skills/default_agent（P2 稳健设计：项目不声明 instructions 则全局约束不丢）。
+
+**参见：** v1.1.0-stage-37 op-001/op-003、kb/architecture.md #全局部署架构、kb/patterns.md #向后兼容可选配置字段模式、kb/troubleshooting.md #agent_manager_tool schema 未定义静默丢弃
+
+## [+] 全局/项目双 state 路由模式：isAbsolute 分流 + 绝对路径 key + 加锁差异 (2026-09-25)
+
+全局部署后，框架资产与项目资产分属不同 state 文件，写入/更新/冲突标记按路径类型路由：
+
+**双 state 结构：**
+
+| state | 路径 | 追踪内容 | key 形式 |
+|-------|------|----------|----------|
+| 全局 state | `~/.openfeel/update_state.json` | 框架资产（agents/skills/core.md/全局 opencode.jsonc） | **绝对路径** |
+| 项目 state | `.openfeel/update_state.json` | 项目资产（AGENTS.md / 项目 opencode.jsonc） | 相对路径 |
+
+**路由依据 `isAbsolute(path)`：**
+- 写入分类（`created`/`updated`/`skipped`/`conflicts`）后，按 `isAbsolute(p)` 分流：绝对路径 → `newGlobalState`，相对路径 → `newState`。
+- 冲突标记同理：`markFileConflict(newGlobalState, p)` vs `markFileConflict(newState, p)`。
+- 冲突文件写入位置：绝对路径冲突 → `~/.openfeel/update_conflicts/`（`relFromGlobal = relative(getOpencodeGlobalDir(), conflictPath)`）；相对路径冲突 → 项目 `.openfeel/update_conflicts/`。
+
+**加锁差异（对称但语义不同）：**
+- `saveGlobalUpdateState()` → `withFileLock(globalLockPath('global-update-state'))` + 原子写（跨项目共享，须加锁）。
+- `saveUpdateState()` → 仅 `atomicWriteFileSync` 不加锁（项目 state 由 `openfeel update` 独占，单写者假设，与既有项目 state 语义一致）。
+- `loadGlobalUpdateState()` 复用同一 `UpdateStateSchema`，不存在/校验失败 → null（降级为「全量覆盖+重建」，调用方须防全量覆盖——见 troubleshooting #update_state.json 降级风险排查）。
+
+**全局 state 相关函数（`src/core/update-state.ts` 新增）：**
+
+| 函数 | 功能 |
+|------|------|
+| `loadGlobalUpdateState()` | 读 `~/.openfeel/update_state.json`，复用 Schema 校验，失败返 null |
+| `saveGlobalUpdateState(state)` | 加锁 + 原子写全局 state |
+| `createGlobalUpdateState(files)` | 组装初始全局 state（**不触碰文件系统**，与 `createUpdateState` 语义对称） |
+
+> 本模式是「update 增量部署哈希追踪 + 冲突标记三态模式」（stage-32）的全局化扩展：三态判定逻辑（created/updated/skipped/conflicts）不变，仅新增「按 isAbsolute 分流到双 state」这一层。
+
+**参见：** v1.1.0-stage-37 op-003、kb/architecture.md #全局部署架构、kb/patterns.md #update 增量部署哈希追踪 + 冲突标记三态模式、#建议性文件锁模式
+

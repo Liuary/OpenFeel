@@ -345,3 +345,43 @@ OpenFeel 的模板部署存在**两层模板源**：
 **排查方法：** `rg "deepseek-v4-flash"` 全库搜索（排除 `docs/` 历史记录、`.openfeel/tmp/` 测试 fixture），确认 `src/` 与 `.opencode/` 下清零。
 
 **参见：** v1.1.0-stage-36 op-004（附带修复）、kb/setup.md #OpenCode Agent 模型配置（model 格式 `provider/model-name`）
+
+## [+] opencode instructions 路径 `~` 不展开（debug config 输出保留字面 `~/...`）(2026-09-25)
+
+**现象：** 全局 opencode.jsonc 的 `instructions: ["~/.config/opencode/openfeel/core.md"]`，用 `opencode debug config` 查看时输出**原样保留** `"~/.config/opencode/openfeel/core.md"`（未展开为绝对路径）。
+
+**实测结论（op-000，真实 CLI 子进程 + 隔离 HOME）：**
+
+| 层 | `~` 是否展开 | 证据 |
+|----|-------------|------|
+| 配置值层（`debug config` 输出） | **不展开** | 输出原样 `~/...` |
+| 加载层（实际加载 core.md） | **展开并成功加载** | 指令型探针回显命中 token |
+
+> 即：`~` 在 `debug config` 展示层不展开，但在**加载层实际会展开且可成功加载**——与计划阶段「未展开→必须绝对路径」的直觉预判不同。这是「加固而非推翻」。
+
+**处置（仍采用绝对路径）：** 框架仍用绝对路径（`getGlobalCoreMdPath()` → `~/.config/opencode/openfeel/core.md` 经 `homedir()` 解析为绝对路径）写入全局 `opencode.jsonc` 的 `instructions`。理由：配置值层可读（`debug config` 显示完整路径而非 `~`）、跨平台无歧义、不依赖 opencode 内部展开实现（版本变更可能破坏 `~` 展开）。
+
+**排查经验：**
+- 判断「路径是否展开」须区分**展示层**与**加载层**，两者可能不同——不能仅凭 `debug config` 输出下结论「不展开 = 不会加载」。
+- 验证「文件是否真的被加载进 agent 上下文」用**指令型探针**（在 core.md 写「回复开头必须输出 token XXX」→ `opencode run` grep 回显），而非「请复述系统提示词」（会被模型安全策略拒答）。
+- 隔离全局路径用环境变量 `USERPROFILE`/`HOME`/`XDG_CONFIG_HOME` 指向临时目录，全程不污染真实 `~/.config/opencode/`。
+
+**参见：** v1.1.0-stage-37 op-000、`.openfeel/plan/v1/stage-37/op-000-findings.md`、kb/architecture.md #全局部署架构
+
+## [+] agent_manager_tool schema 未定义静默丢弃 (2026-09-25)
+
+**现象：** 全局 opencode.jsonc 写入 `experimental.agent_manager_tool: true` 后，`opencode debug config` 输出 `"experimental": {}`（字段被丢弃），**无报错、无警告、exit 0**。
+
+**根因：** 现行 opencode config schema（`https://opencode.ai/config.json`）的 `experimental` 对象**未定义** `agent_manager_tool` 字段，且 schema 采用「未知字段静默丢弃」而非「报错拒绝」策略。
+
+**影响：** 静默丢弃比报错更危险——配置了看似生效、实则无效的字段，且无任何提示可发现。若不实测，会误以为该字段已启用。
+
+**处置（N3 三选一 → 移除）：** 实测确认 schema 未定义后，选择**移除**该字段：
+- `buildGlobalOpencodeFrameworkObj()` 不再写 `experimental` 块（源码注释标注 N3 依据）。
+- 同步删除模板 `templates-data/opencode/opencode.jsonc` 的 `experimental` 块（D37-2）。
+
+**排查经验：**
+- opencode 配置字段是否生效**不能只看 schema 是否允许写入**——运行时「静默丢弃」无任何告警，须用 `opencode debug config` 实测最终生效值。
+- 判断「字段该保留还是移除」遵循「实测优先于猜测」（AGENTS.md 第 6 条）：schema 已定义→保留；未定义但运行时静默接受→记录依据后保守保留或移除；运行时报错→移除。本案例为「未定义 + 静默丢弃」→ 移除。
+
+**参见：** v1.1.0-stage-37 op-000/op-003、`.openfeel/plan/v1/stage-37/op-000-findings.md`、kb/architecture.md #全局部署架构

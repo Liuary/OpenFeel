@@ -3,6 +3,14 @@
  * 测试 openfeel init 命令的 CLI 行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// mock homedir：隔离 ensureGlobalConfig 的全局写（~/.openfeel/config.json），不污染真实主目录
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
+
 import { Command, CommanderError } from 'commander';
 import { registerInitCommand } from '../../src/commands/init.js';
 import { existsSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
@@ -11,6 +19,7 @@ import { tmpdir } from 'node:os';
 
 describe('init 命令', () => {
   let tmpDir: string;
+  let homeDir: string;
   let program: Command;
   let exitMock: ReturnType<typeof vi.fn>;
   let errorMock: ReturnType<typeof vi.fn>;
@@ -18,6 +27,8 @@ describe('init 命令', () => {
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-init-test-'));
+    homeDir = mkdtempSync(join(tmpdir(), 'openfeel-home-'));
+    mockHome.dir = homeDir;
     // mock process.exit 防止测试中断（exitOverride 也会调用 process.exit）
     exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {
       // 不真正退出
@@ -33,6 +44,7 @@ describe('init 命令', () => {
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(homeDir, { recursive: true, force: true });
     exitMock.mockRestore();
     errorMock.mockRestore();
     logMock.mockRestore();
@@ -47,6 +59,9 @@ describe('init 命令', () => {
     expect(existsSync(openfeelDir)).toBe(true);
     expect(existsSync(join(openfeelDir, 'config.yaml'))).toBe(true);
     expect(existsSync(join(openfeelDir, 'flow.json'))).toBe(true);
+
+    // 项目精简：非交互模式不写项目 .opencode/
+    expect(existsSync(join(tmpDir, '.opencode'))).toBe(false);
   });
 
   it('不存在的路径应报错退出', async () => {

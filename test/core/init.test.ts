@@ -1,23 +1,41 @@
 /**
  * init 单元测试
  * 测试 initProject 在临时目录中的完整行为
+ * mock homedir 隔离全局部署（~/.config/opencode、~/.openfeel），不污染真实主目录。
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// mock homedir（vi.hoisted 变体；回调内不可引用外层 import）
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
+
 import { initProject, deployOpencode, initDemo } from '../../src/core/init.js';
 import { readConfig } from '../../src/core/config.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 
+/** 全局 opencode 目录（基于 mock home） */
+function globalOpencodeDir(): string {
+  return join(mockHome.dir, '.config', 'opencode');
+}
+
 describe('initProject', () => {
   let tmpDir: string;
+  let homeDir: string;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-init-test-'));
+    homeDir = mkdtempSync(join(tmpdir(), 'openfeel-home-'));
+    mockHome.dir = homeDir;
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(homeDir, { recursive: true, force: true });
   });
 
   it('应创建 .openfeel/ 目录结构', async () => {
@@ -126,13 +144,17 @@ describe('initProject', () => {
 
 describe('initProject — opencode deployment', () => {
   let tmpDir: string;
+  let homeDir: string;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-init-opencode-test-'));
+    homeDir = mkdtempSync(join(tmpdir(), 'openfeel-home-'));
+    mockHome.dir = homeDir;
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(homeDir, { recursive: true, force: true });
   });
 
   it('应替换 AGENTS.md 中的 {项目名称} 占位符为目录名', async () => {
@@ -143,62 +165,91 @@ describe('initProject — opencode deployment', () => {
     expect(content).toContain(dirName);
   });
 
-  it('deployOpencode 首次部署应创建完整的 opencode 适配器文件', () => {
+  it('deployOpencode 首次部署应写全局框架资产并精简项目', () => {
     // 直接调用导出的 deployOpencode（不依赖 initProject 交互流程）
     const result = deployOpencode(tmpDir, 'zh-CN');
 
-    // 创建数：9 Agent + 14 Skill + instructions + opencode.jsonc + ADAPTER + .gitignore = 27
-    // 注意 opencode.jsonc 部署到项目根目录
-    expect(result.created).toBe(27);
+    // 创建数：9 Agent + 14 Skill + 1 core.md + 1 全局 opencode.jsonc + 1 项目 opencode.jsonc = 26
+    expect(result.created).toBe(26);
     expect(result.skipped).toBe(0);
 
-    // 验证关键文件存在
-    expect(existsSync(join(tmpDir, '.opencode', 'agents', 'feel.md'))).toBe(true);
-    expect(existsSync(join(tmpDir, '.opencode', 'skills', 'openfeel-check-kb', 'SKILL.md'))).toBe(true);
-    expect(existsSync(join(tmpDir, '.opencode', 'instructions', 'core.md'))).toBe(true);
-    expect(existsSync(join(tmpDir, 'opencode.jsonc'))).toBe(true);
-    expect(existsSync(join(tmpDir, '.opencode', 'ADAPTER.zh-CN.md'))).toBe(true);
-    expect(existsSync(join(tmpDir, '.opencode', '.gitignore'))).toBe(true);
+    const globalDir = globalOpencodeDir();
 
-    // REV-001：不部署 package.json
-    expect(existsSync(join(tmpDir, '.opencode', 'package.json'))).toBe(false);
+    // 全局框架资产存在
+    expect(existsSync(join(globalDir, 'agents', 'feel.md'))).toBe(true);
+    expect(existsSync(join(globalDir, 'skills', 'openfeel-check-kb', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(globalDir, 'openfeel', 'core.md'))).toBe(true);
+    expect(existsSync(join(globalDir, 'opencode.jsonc'))).toBe(true);
 
-    // Agent 数量 9 个
-    const agentFiles = readdirSync(join(tmpDir, '.opencode', 'agents')).filter((f) => f.endsWith('.md'));
+    // 全局 agent 数量 9 个
+    const agentFiles = readdirSync(join(globalDir, 'agents')).filter((f) => f.endsWith('.md'));
     expect(agentFiles.length).toBe(9);
+
+    // 项目精简：无 .opencode/，仅项目根 opencode.jsonc（最小覆盖）
+    expect(existsSync(join(tmpDir, '.opencode'))).toBe(false);
+    const projectJsonc = JSON.parse(readFileSync(join(tmpDir, 'opencode.jsonc'), 'utf-8'));
+    expect(projectJsonc).toEqual({ $schema: 'https://opencode.ai/config.json' });
+
+    // 全局 opencode.jsonc 为框架级内容
+    const globalJsonc = JSON.parse(readFileSync(join(globalDir, 'opencode.jsonc'), 'utf-8'));
+    expect(globalJsonc.$schema).toBe('https://opencode.ai/config.json');
+    expect(globalJsonc.default_agent).toBe('feel');
+    expect(globalJsonc.instructions).toEqual([join(globalDir, 'openfeel', 'core.md')]);
+    expect(globalJsonc.skills).toBeUndefined();
+    expect(globalJsonc.experimental).toBeUndefined();
 
     // 再次部署 → 全部 skipped（已存在不覆盖）
     const result2 = deployOpencode(tmpDir, 'zh-CN');
     expect(result2.created).toBe(0);
-    expect(result2.skipped).toBe(27);
+    expect(result2.skipped).toBe(26);
+  });
+
+  it('全局已存在的 opencode.jsonc 再次部署时被跳过（不覆盖）', () => {
+    deployOpencode(tmpDir, 'zh-CN');
+    // 模拟用户自定义全局配置
+    const globalJsoncPath = join(globalOpencodeDir(), 'opencode.jsonc');
+    const custom = '{ "custom": true }\n';
+    writeFileSync(globalJsoncPath, custom, 'utf-8');
+
+    const result2 = deployOpencode(tmpDir, 'zh-CN');
+    expect(result2.created).toBe(0);
+    // 全局 jsonc 未被覆盖
+    expect(readFileSync(globalJsoncPath, 'utf-8')).toBe(custom);
   });
 
   it('非交互模式应跳过 opencode 部署', async () => {
     // vitest 运行时 stdout.isTTY 为 false → promptOpencodeDeploy 返回 false
     const result = await initProject(tmpDir, 'zh-CN');
-    const opencodeDir = join(tmpDir, '.opencode');
-    expect(existsSync(opencodeDir)).toBe(false);
+    expect(existsSync(join(tmpDir, '.opencode'))).toBe(false);
     expect(result.opencode).toBeUndefined();
   });
 
-  it('opencode.jsonc 中不应包含 {项目名称} 占位符', () => {
+  it('项目 opencode.jsonc 为最小覆盖，不含 instructions/skills/default_agent', () => {
     deployOpencode(tmpDir, 'zh-CN');
     const opencodeJsonPath = join(tmpDir, 'opencode.jsonc');
     expect(existsSync(opencodeJsonPath)).toBe(true);
-    const content = readFileSync(opencodeJsonPath, 'utf-8');
-    expect(content).not.toContain('{项目名称}');
+    const parsed = JSON.parse(readFileSync(opencodeJsonPath, 'utf-8'));
+    expect(parsed).toEqual({ $schema: 'https://opencode.ai/config.json' });
+    expect(parsed.instructions).toBeUndefined();
+    expect(parsed.skills).toBeUndefined();
+    expect(parsed.default_agent).toBeUndefined();
+    expect(readFileSync(opencodeJsonPath, 'utf-8')).not.toContain('{项目名称}');
   });
 });
 
 describe('initDemo', () => {
   let tmpDir: string;
+  let homeDir: string;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-init-demo-test-'));
+    homeDir = mkdtempSync(join(tmpdir(), 'openfeel-home-'));
+    mockHome.dir = homeDir;
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(homeDir, { recursive: true, force: true });
   });
 
   it('应部署多级示例阶段 plan/v1/stage-01/status.md', async () => {

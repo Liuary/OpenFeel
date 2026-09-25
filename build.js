@@ -334,9 +334,8 @@ function generateOpencodeSkillTemplates() {
  * 步骤 7：读取 opencode 配置类模板 → 注入 template-loader.ts 的 OPENCODE_CONFIG_TEMPLATES
  * 结构：Record<lang, Record<configName, string>>
  * - [lang].instructions ← templates-data/opencode/instructions/{lang}.md
- * - [lang].opencode_jsonc ← templates-data/opencode/opencode.jsonc（SKILLS_PLACEHOLDER → 实际 skills 列表）
  * - [lang].adapter ← templates-data/opencode/ADAPTER.{lang}.md
- * - [lang].gitignore ← templates-data/opencode/.gitignore（不区分语言，两语言重复注入）
+ * （opencode_jsonc / gitignore 已随全局部署退役，不再注入）
  */
 function generateOpencodeConfigTemplates() {
   console.log('⟳ 正在注入 opencode 配置模板 → template-loader.ts...');
@@ -345,17 +344,6 @@ function generateOpencodeConfigTemplates() {
     return;
   }
 
-  // 读取 opencode.jsonc 模板并替换 skills 占位锚点为实际 skills 列表
-  const jsoncTemplatePath = join(TEMPLATE_OPENCODE_DIR, 'opencode.jsonc');
-  let jsoncContent = safeReadFile(jsoncTemplatePath);
-  const skillsList = readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name);
-  // 生成 "skill-name": ".opencode/skills/skill-name" 格式的 JSON 对象
-  const skillsObject = `{\n${skillsList.map((s) => `    "${s}": ".opencode/skills/${s}"`).join(',\n')}\n  }`;
-  jsoncContent = jsoncContent.replace(/"SKILLS_PLACEHOLDER"/, skillsObject);
-
-  const gitignoreContent = safeReadFile(join(TEMPLATE_OPENCODE_DIR, '.gitignore'));
   const langEntries = [];
   const langs = ['zh-CN', 'en'];
 
@@ -374,9 +362,6 @@ function generateOpencodeConfigTemplates() {
       console.warn(`⚠ ${instructionsPath} 不存在，跳过 instructions 注入`);
     }
 
-    // opencode.jsonc 模板（转义后注入）
-    entries.push(`    opencode_jsonc: \`${escapeForTemplateString(jsoncContent)}\`,`);
-
     // adapter 模板（Base64 编码）
     if (existsSync(adapterPath)) {
       let content = safeReadFile(adapterPath);
@@ -385,11 +370,6 @@ function generateOpencodeConfigTemplates() {
       entries.push(`    adapter: '${base64}',`);
     } else {
       console.warn(`⚠ ${adapterPath} 不存在，跳过 adapter 注入`);
-    }
-
-    // .gitignore（不区分语言，两语言重复注入；文件缺失时跳过）
-    if (gitignoreContent !== null) {
-      entries.push(`    gitignore: \`${escapeForTemplateString(gitignoreContent)}\`,`);
     }
 
     const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang)
@@ -966,7 +946,7 @@ function validateOpencodeSkillDefinitions() {
 
 /**
  * 从 template-loader.ts 中提取 OPENCODE_CONFIG_TEMPLATES 内指定语言对象的全部键值
- * 支持两种值格式：Base64 单引号字符串（instructions/adapter）与模板字符串（opencode_jsonc/gitignore）
+ * 仅支持 Base64 单引号字符串格式（instructions/adapter）
  * @param {string} objText - 对象字面量文本
  * @param {string} lang - 语言键
  * @returns {Object.<string, string>} 配置名 → 未转义内容
@@ -996,19 +976,12 @@ function extractOpencodeConfigLangEntries(objText, lang) {
     entries[qMatch[1]] = qMatch[2];
   }
 
-  // 模板字符串条目：opencode_jsonc / gitignore
-  const tmplPattern = /^\s+([a-zA-Z_$][\w$]*):\s*`((?:[^`\\]|\\.)*)`\s*,?\s*$/gm;
-  let tMatch;
-  while ((tMatch = tmplPattern.exec(innerObj)) !== null) {
-    entries[tMatch[1]] = unescapeTemplateString(tMatch[2]);
-  }
-
   return entries;
 }
 
 /**
  * 校验 opencode 配置模板一致性（从 template-loader.ts OPENCODE_CONFIG_TEMPLATES 提取）
- * 对 instructions/adapter（Base64）和 opencode_jsonc/gitignore（模板字符串）分别解码后与源文件比对
+ * 对 instructions/adapter（Base64）解码后与源文件比对
  */
 function validateOpencodeConfigTemplates() {
   const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_CONFIG_TEMPLATES');
@@ -1019,19 +992,6 @@ function validateOpencodeConfigTemplates() {
 
   const errors = [];
   let totalCount = 0;
-
-  // 读取源文件
-  const jsoncSource = safeReadFile(join(TEMPLATE_OPENCODE_DIR, 'opencode.jsonc'));
-  const gitignoreSource = safeReadFile(join(TEMPLATE_OPENCODE_DIR, '.gitignore'));
-
-  // 预期 opencode.jsonc（SKILLS_PLACEHOLDER 替换后的完整内容）
-  const skillsList = readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name);
-  const expectedJsonc = jsoncSource.replace(
-    /"SKILLS_PLACEHOLDER"/,
-    `{\n${skillsList.map((s) => `    "${s}": ".opencode/skills/${s}"`).join(',\n')}\n  }`,
-  );
 
   const langs = ['zh-CN', 'en'];
   for (const lang of langs) {
@@ -1059,18 +1019,6 @@ function validateOpencodeConfigTemplates() {
       errors.push(`[${lang}] 模板缺少 instructions 键`);
     }
 
-    // opencode_jsonc（模板字符串，已替换 SKILLS_PLACEHOLDER）
-    if (entries.opencode_jsonc !== undefined) {
-      totalCount++;
-      const normD = entries.opencode_jsonc.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      const normS = expectedJsonc.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      if (normD !== normS) {
-        errors.push(`[${lang}] opencode_jsonc 内容不一致`);
-      }
-    } else {
-      errors.push(`[${lang}] 模板缺少 opencode_jsonc 键`);
-    }
-
     // adapter（Base64 编码）
     if (entries.adapter !== undefined) {
       totalCount++;
@@ -1089,17 +1037,6 @@ function validateOpencodeConfigTemplates() {
       errors.push(`[${lang}] 模板缺少 adapter 键`);
     }
 
-    // gitignore（模板字符串，不区分语言）
-    if (entries.gitignore !== undefined) {
-      totalCount++;
-      const normD = entries.gitignore.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      const normS = gitignoreSource.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      if (normD !== normS) {
-        errors.push(`[${lang}] gitignore 内容不一致`);
-      }
-    } else {
-      errors.push(`[${lang}] 模板缺少 gitignore 键`);
-    }
   }
 
   return { ok: errors.length === 0, count: totalCount, errors };

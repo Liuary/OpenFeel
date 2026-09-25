@@ -3,12 +3,12 @@
  * 协调创建工作区、写入配置、初始化 flow.json、确保身份文件、
  * 生成 dev_core.md/current.md 模板。
  *
- * 注意：`.opencode/instructions/core.md` 由 update 命令创建（适配器层，
- * 非核心层），不在 init 阶段生成。
+ * 注意：框架约束 core.md 由 update 命令部署到全局
+ * `~/.config/opencode/openfeel/core.md`（适配器层，非核心层），不在 init 阶段生成。
  *
  * 变更摘要：
  * - stage-04: 新增 initDemo() 支持 --demo 标志
- * - stage-04 第二轮：移除了 .opencode/instructions/core.md 创建（移至 update.ts）
+ * - stage-37: deployOpencode 部署目标改为全局 ~/.config/opencode/，项目精简为 .openfeel/ + AGENTS.md + opencode.jsonc
  */
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join, basename } from 'node:path';
@@ -20,6 +20,10 @@ import { getDevCoreTemplate, getCurrentTemplate, getDecisionsTemplate } from './
 import { loadTemplate, loadOpencodeAgentTemplate, loadOpencodeSkillTemplate, loadOpencodeConfigTemplate, listOpencodeAgentIds, listOpencodeSkillNames } from './template-loader.js';
 import { t, getCliLang } from './i18n.js';
 import { DEFAULT_STAGE_VERSION } from './plan/path.js';
+import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { withFileLock, globalLockPath } from './fs/file-lock.js';
+import { getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalOpencodeJsoncPath } from './global-paths.js';
+import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './opencode-config.js';
 import readline from 'node:readline';
 
 /**
@@ -179,6 +183,20 @@ function writeTemplateIfMissing(
   return { created: true };
 }
 
+/**
+ * 全局文件写入：全局文件锁 + 原子写 + 已存在不覆盖
+ * 与 writeTemplateIfMissing 同语义，但针对跨项目共享的全局路径（~/.config/opencode/）。
+ */
+function writeGlobalFileIfMissing(filePath: string, content: string): { created: boolean } {
+  return withFileLock(globalLockPath('opencode-deploy'), () => {
+    if (existsSync(filePath)) {
+      return { created: false };
+    }
+    atomicWriteFileSync(filePath, content);
+    return { created: true };
+  });
+}
+
 /** opencode 部署结果 */
 export interface OpencodeDeployResult {
   created: number;
@@ -186,9 +204,9 @@ export interface OpencodeDeployResult {
 }
 
 /**
- * 部署 OpenCode 平台适配器到目标项目
- * 所有写入遵循"已存在不覆盖"原则
- * ⚠️ 不部署 package.json（REV-001）
+ * 部署 OpenCode 平台适配器到全局 ~/.config/opencode/（D1 全局化）
+ * 全局文件遵循"已存在不覆盖"；项目仅写最小 opencode.jsonc 覆盖。
+ * ⚠️ 不部署 package.json（REV-001）；不部署 ADAPTER/.gitignore（已随 .opencode/ 废弃）。
  * 导出供测试直接调用（不依赖交互流程）
  */
 export function deployOpencode(projectPath: string, lang: 'zh-CN' | 'en'): OpencodeDeployResult {
@@ -199,51 +217,44 @@ export function deployOpencode(projectPath: string, lang: 'zh-CN' | 'en'): Openc
     if (result.created) created++; else skipped++;
   };
 
-  // 1. 部署 Agent 定义（9 个）
+  // 1. Agent 定义（9 个）→ 全局 agents 目录
   const agentIds = listOpencodeAgentIds(lang);
   for (const agentId of agentIds) {
-    const content = loadOpencodeAgentTemplate(lang, agentId);
-    const filePath = resolve(projectPath, '.opencode', 'agents', `${agentId}.md`);
-    track(writeTemplateIfMissing(filePath, content));
+    track(writeGlobalFileIfMissing(
+      join(getGlobalAgentsDir(), `${agentId}.md`),
+      loadOpencodeAgentTemplate(lang, agentId),
+    ));
   }
 
-  // 2. 部署 Skill 定义（14 个）
+  // 2. Skill 定义（14 个）→ 全局 skills 目录
   const skillNames = listOpencodeSkillNames();
   for (const skillName of skillNames) {
-    const content = loadOpencodeSkillTemplate(skillName);
-    const skillDir = resolve(projectPath, '.opencode', 'skills', skillName);
-    const filePath = join(skillDir, 'SKILL.md');
-    track(writeTemplateIfMissing(filePath, content));
+    track(writeGlobalFileIfMissing(
+      join(getGlobalSkillsDir(), skillName, 'SKILL.md'),
+      loadOpencodeSkillTemplate(skillName),
+    ));
   }
 
-  // 3. 部署 instructions/core.md
-  track(writeTemplateIfMissing(
-    resolve(projectPath, '.opencode', 'instructions', 'core.md'),
+  // 3. 框架约束 core.md → 全局 ~/.config/opencode/openfeel/core.md
+  track(writeGlobalFileIfMissing(
+    getGlobalCoreMdPath(),
     loadOpencodeConfigTemplate(lang, 'instructions'),
   ));
 
-  // 4. 部署 opencode.jsonc（替换 {项目名称}）
-  const configContent = loadOpencodeConfigTemplate(lang, 'opencode_jsonc')
-    .replace(/\{项目名称\}/g, basename(projectPath));
-  track(writeTemplateIfMissing(
-    resolve(projectPath, 'opencode.jsonc'),
-    configContent,
+  // 4. 全局 opencode.jsonc：不存在则写框架级内容（REV-605：已存在则跳过，合并归 op-003）
+  track(writeGlobalFileIfMissing(
+    getGlobalOpencodeJsoncPath(),
+    mergeGlobalOpencodeJsonc('{}\n'),
   ));
 
-  // 5. 部署 ADAPTER.{lang}.md（文件名保留语言后缀）
-  const adapterSuffix = lang === 'en' ? 'en' : 'zh-CN';
-  track(writeTemplateIfMissing(
-    resolve(projectPath, '.opencode', `ADAPTER.${adapterSuffix}.md`),
-    loadOpencodeConfigTemplate(lang, 'adapter'),
-  ));
-
-  // 6. 部署 .gitignore
-  track(writeTemplateIfMissing(
-    resolve(projectPath, '.opencode', '.gitignore'),
-    loadOpencodeConfigTemplate(lang, 'gitignore'),
-  ));
-
-  // ⚠️ 不部署 package.json（REV-001）
+  // 5. 项目 opencode.jsonc：最小覆盖（仅 $schema），写入项目根（项目内原子写）
+  const projectJsoncPath = resolve(projectPath, 'opencode.jsonc');
+  if (existsSync(projectJsoncPath)) {
+    track({ created: false });
+  } else {
+    atomicWriteFileSync(projectJsoncPath, JSON.stringify(buildProjectOpencodeJsoncObj(), null, 2) + '\n');
+    track({ created: true });
+  }
 
   return { created, skipped };
 }
@@ -393,8 +404,8 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   if (opencodeResult && opencodeResult.created > 0 && process.stdout.isTTY) {
     console.log(
       selectedLang === 'en'
-        ? 'opencode configuration deployed. Please restart opencode to load the new configuration.'
-        : 'opencode 配置已部署，请重启 opencode 以加载新配置。'
+        ? 'opencode global configuration deployed. Please restart opencode to load the new global agents/skills/constraints.'
+        : 'opencode 全局配置已部署，请重启 opencode 以加载新的全局 agent/skill/约束。'
     );
   }
 

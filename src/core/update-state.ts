@@ -12,6 +12,8 @@ import { resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { getGlobalUpdateStatePath } from './global-paths.js';
+import { withFileLock, globalLockPath } from './fs/file-lock.js';
 
 // ─── Zod Schema ──────────────────────────────────────────────────────
 
@@ -103,6 +105,57 @@ export function saveUpdateState(
   const statePath = getStatePath(projectPath);
   // 路径不变（拆分属 stage-39）；仅替换写入机制为原子写
   atomicWriteFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+}
+
+/**
+ * 读取全局 update_state.json（~/.openfeel/update_state.json）
+ * 复用 UpdateStateSchema；不存在/校验失败 → null（降级为全量覆盖+重建，调用方防全量覆盖）
+ */
+export function loadGlobalUpdateState(): UpdateState | null {
+  const statePath = getGlobalUpdateStatePath();
+  if (!existsSync(statePath)) {
+    return null;
+  }
+  try {
+    const raw = readFileSync(statePath, 'utf-8');
+    const data = JSON.parse(raw);
+    const result = UpdateStateSchema.safeParse(data);
+    if (!result.success) {
+      console.warn(`[update] 全局 update_state.json schema 不匹配，视为首次更新: ${result.error.message}`);
+      return null;
+    }
+    return result.data;
+  } catch {
+    // 解析失败 → 降级
+    return null;
+  }
+}
+
+/** 写入全局 update_state.json（跨项目共享 → 加锁 + 原子写） */
+export function saveGlobalUpdateState(state: UpdateState): void {
+  const statePath = getGlobalUpdateStatePath();
+  withFileLock(globalLockPath('global-update-state'), () => {
+    atomicWriteFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+  });
+}
+
+/**
+ * 首次全局 update 创建初始全局 state。
+ * 全局资产 key 用绝对路径（机器本地 state，无歧义）。
+ */
+export function createGlobalUpdateState(files: Record<string, string>): UpdateState {
+  const fileEntries: Record<string, FileState> = {};
+  for (const [path, content] of Object.entries(files)) {
+    fileEntries[path] = { hash: hashContent(content), status: 'clean' };
+  }
+  // 移除冗余 mkdirSync：saveGlobalUpdateState → atomicWriteFileSync 已自动建目录，
+  // 与 createUpdateState 语义对称（本函数只组装 state，不触碰文件系统）。
+  return {
+    version: '1.0',
+    last_update: new Date().toISOString(),
+    openfeel_version: getOpenfeelVersion(),
+    files: fileEntries,
+  };
 }
 
 /**

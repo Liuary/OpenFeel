@@ -6,17 +6,24 @@
  * - 新增 instructions/core.md 创建（从 init.ts 迁移至此，职责归位适配器层）
  */
 import { writeFileSync, existsSync, readFileSync, mkdirSync, readdirSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
+import { resolve, dirname, join, basename, isAbsolute, relative } from 'node:path';
 import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader.js';
 import { recordProjectLang, getGlobalConfig, getLang } from './workspace/identity.js';
 import { getCliLang } from './i18n.js';
+import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalOpencodeJsoncPath, getGlobalUpdateStatePath } from './global-paths.js';
+import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './opencode-config.js';
+import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { withFileLock, globalLockPath } from './fs/file-lock.js';
 
-// 新增：update_state.json hash 比对与冲突检测
+// 新增：update_state.json hash 比对与冲突检测（项目 state + 全局 state）
 import {
   hashContent,
   loadUpdateState,
   saveUpdateState,
   createUpdateState,
+  loadGlobalUpdateState,
+  saveGlobalUpdateState,
+  createGlobalUpdateState,
   updateFileHash,
   markFileConflict,
   getOpenfeelVersion,
@@ -1203,19 +1210,6 @@ description: 交互式流水线向导，供 Agent 在终端中逐步推进流水
 };
 // AUTO-GENERATED-END: SKILL_DEFINITIONS
 
-// ─── 新增的 Skill 名称列表 ─────────────────────────────────────────
-
-const NEW_SKILL_NAMES = [
-  'openfeel-bug-acceptance',
-  'openfeel-check-kb',
-  'openfeel-get-bugs',
-  'openfeel-get-stage-status',
-  'openfeel-model-check',
-  'openfeel-search-kb',
-  'openfeel-sync-status',
-  'openfeel-update-stage-status',
-];
-
 // ─── 辅助函数 ──────────────────────────────────────────────────────
 
 /**
@@ -1279,269 +1273,6 @@ function writeWithMergeDetection(
   updated.push(relativePath);
 }
 
-/**
- * 解析 JSONC 文本为 JavaScript 对象
- * 先规范化换行符，再去除行注释（跳过字符串内部），最后解析
- */
-function parseJsonc(text: string): Record<string, unknown> {
-  // 去除 \r 控制字符（避免 Windows CRLF 导致 JSON 解析报 "bad control character"）
-  const normalized = text.replace(/\r/g, '');
-
-  // 逐字符处理，去除行注释（跳过字符串内部，避免匹配到 https:// 等 URL 中的 //）
-  let result = '';
-  let inString = false;
-  let inEscape = false;
-  let i = 0;
-
-  while (i < normalized.length) {
-    const ch = normalized[i];
-    const next = normalized[i + 1];
-
-    // 处理转义字符
-    if (inEscape) {
-      result += ch;
-      inEscape = false;
-      i++;
-      continue;
-    }
-
-    if (ch === '\\' && inString) {
-      result += ch;
-      inEscape = true;
-      i++;
-      continue;
-    }
-
-    // 字符串边界
-    if (ch === '"') {
-      inString = !inString;
-      result += ch;
-      i++;
-      continue;
-    }
-
-    // 行注释：不在字符串内时遇到 //
-    if (!inString && ch === '/' && next === '/') {
-      // 跳过直到行尾
-      i += 2; // 跳过 //
-      while (i < normalized.length && normalized[i] !== '\n') {
-        i++;
-      }
-      // 保留换行符
-      if (i < normalized.length && normalized[i] === '\n') {
-        result += '\n';
-        i++;
-      }
-      continue;
-    }
-
-    result += ch;
-    i++;
-  }
-
-  return JSON.parse(result);
-}
-
-/**
- * 获取 opencode.jsonc 更新后的完整内容
- * 读取现有文件（若存在），合并更新后生成新的 JSONC 文本
- */
-function buildUpdatedJsonc(projectPath: string): string {
-  const jsoncPath = resolve(projectPath, 'opencode.jsonc');
-  let jsoncObj: Record<string, unknown>;
-  let rawContent: string | undefined;
-
-  if (existsSync(jsoncPath)) {
-    // 已有文件 → 解析并合并，保留原始字符串用于后续补丁式更新
-    rawContent = readFileSync(jsoncPath, 'utf-8');
-    jsoncObj = parseJsonc(rawContent);
-  } else {
-    // 新文件 → 基础结构
-    jsoncObj = {
-      $schema: 'https://opencode.openfeel/config.json',
-      default_agent: 'feel',
-      instructions: ['AGENTS.md', '.opencode/instructions/core.md'],
-      skills: {},
-    };
-  }
-
-  // 更新 default_agent
-  jsoncObj.default_agent = 'feel';
-
-  // 确保 instructions 存在
-  if (!jsoncObj.instructions) {
-    jsoncObj.instructions = ['AGENTS.md', '.opencode/instructions/core.md'];
-  }
-
-  // 合并 skills：保留原有 skill，添加新的 openfeel-* skill
-  const skills = (jsoncObj.skills as Record<string, string>) || {};
-  for (const name of NEW_SKILL_NAMES) {
-    skills[name] = `.opencode/skills/${name}`;
-  }
-  jsoncObj.skills = skills;
-
-  // 格式化为 JSONC 输出：若有原始内容则基于它做补丁式替换，否则从头构建
-  return formatJsonc(jsoncObj, rawContent);
-}
-
-/**
- * 将对象格式化为美观的 JSONC 字符串
- * 若提供了 originalContent，基于原始字符串做补丁式替换，
- * 仅更新 default_agent 和 skills，其余字段（含注释和未识别字段）原样保留。
- */
-function formatJsonc(obj: Record<string, unknown>, originalContent?: string): string {
-  // 有原始内容 → 补丁模式：仅替换需要更新的字段，保留注释和未知字段
-  if (originalContent) {
-    let result = originalContent;
-
-    // 替换 "default_agent" 的值
-    result = result.replace(
-      /("default_agent"\s*:\s*)("[^"]*")/,
-      `$1"${obj.default_agent}"`,
-    );
-
-    // 替换 "skills" 块
-    const skills = obj.skills as Record<string, string>;
-    result = replaceSkillsFieldInJsonc(result, skills);
-
-    return result;
-  }
-
-  // 无原始内容 → 从头构建（新文件场景）
-  return buildJsoncFromObject(obj);
-}
-
-/**
- * 在 JSONC 原始字符串中查找并替换 "skills" 字段的整个对象块
- * 使用括号计数来正确处理嵌套对象，并自动处理末尾逗号
- */
-function replaceSkillsFieldInJsonc(content: string, skills: Record<string, string>): string {
-  // 查找 "skills" 键及冒号
-  const keyRegex = /("skills"\s*:\s*)\{/;
-  const keyMatch = content.match(keyRegex);
-
-  if (!keyMatch || keyMatch.index === undefined) {
-    // skills 字段不存在于原始文件中，不需要替换
-    return content;
-  }
-
-  const keyStart = keyMatch.index;
-  const openBraceIdx = keyStart + keyMatch[0].length - 1; // { 的位置
-
-  // 找到匹配的 }，处理字符串内的大括号
-  let depth = 1;
-  let closeBraceIdx = openBraceIdx;
-  let inString = false;
-  let inEscape = false;
-
-  for (let i = openBraceIdx + 1; i < content.length && depth > 0; i++) {
-    const ch = content[i];
-    if (inEscape) { inEscape = false; continue; }
-    if (ch === '\\' && inString) { inEscape = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
-    if (!inString) {
-      if (ch === '{') { depth++; }
-      else if (ch === '}') { depth--; }
-    }
-    if (depth === 0) {
-      closeBraceIdx = i;
-      break;
-    }
-  }
-
-  // 检查 } 后面是否有逗号：若 } 后紧跟（仅跳过空白）有逗号，则将逗号及其后空白纳入 endIdx
-  let endIdx = closeBraceIdx + 1;
-  let scanIdx = endIdx;
-  while (scanIdx < content.length && /[ \t]/.test(content[scanIdx])) {
-    scanIdx++;
-  }
-  if (scanIdx < content.length && content[scanIdx] === ',') {
-    scanIdx++; // 跳过逗号
-    // 跳过逗号后的空白（包括换行）
-    while (scanIdx < content.length && /[\s\n\r]/.test(content[scanIdx])) {
-      scanIdx++;
-    }
-    endIdx = scanIdx;
-  }
-
-  // 确定替换后是否需要末尾逗号：检查 skills 之后是否还有其他顶层字段
-  let hasMoreFields = false;
-  if (endIdx < content.length) {
-    // 从 endIdx 找到内容末尾前最后一个 }（根对象闭合）
-    const remaining = content.slice(endIdx);
-    const rootCloseIdx = remaining.lastIndexOf('}');
-    if (rootCloseIdx > 0) {
-      const between = remaining.slice(0, rootCloseIdx);
-      hasMoreFields = /[^\s]/.test(between);
-    }
-  }
-
-  // 构建新的 skills 块内容
-  const skillEntries = Object.entries(skills);
-  const skillLines = skillEntries.map(([key, value], idx) => {
-    const comma = idx < skillEntries.length - 1 ? ',' : '';
-    return `    "${key}": "${value}"${comma}`;
-  });
-
-  const blockContent = skillLines.join('\n');
-  const newBlock = `"skills": {\n${blockContent}\n  }${hasMoreFields ? ',' : ''}`;
-
-  return content.slice(0, keyStart) + newBlock + content.slice(endIdx);
-}
-
-/**
- * 从对象从头构建 JSONC（无原始内容时的回退路径）
- */
-function buildJsoncFromObject(obj: Record<string, unknown>): string {
-  const skills = obj.skills as Record<string, string>;
-
-  // 构建 skills 条目行
-  const skillEntries = Object.entries(skills);
-  const skillsLines = skillEntries.map(([key, value], index) => {
-    const comma = index < skillEntries.length - 1 ? ',' : '';
-    return `    "${key}": "${value}"${comma}`;
-  });
-
-  const instructions = obj.instructions as string[];
-  const instructionLines = instructions.map((inst, index) => {
-    const comma = index < instructions.length - 1 ? ',' : '';
-    return `    "${inst}"${comma}`;
-  });
-
-  // 构建完整 JSONC
-  const hasExperimental = typeof obj.experimental === 'object' && obj.experimental !== null;
-  const lines: string[] = [
-    '{',
-    '  "$schema": "https://opencode.openfeel/config.json",',
-    `  "default_agent": "${obj.default_agent}",`,
-    '  "instructions": [',
-    ...instructionLines,
-    '  ],',
-    '  "skills": {',
-    ...skillsLines,
-    hasExperimental ? '  },' : '  }',
-  ];
-
-  // 如果有 experimental 字段，保留它
-  if (hasExperimental) {
-    const exp = obj.experimental as Record<string, unknown>;
-    const expEntries = Object.entries(exp);
-    const expLines = expEntries.map(([key, value], index) => {
-      const comma = index < expEntries.length - 1 ? ',' : '';
-      const val = typeof value === 'string' ? `"${value}"` : String(value);
-      return `    "${key}": ${val}${comma}`;
-    });
-    lines.push('  "experimental": {');
-    lines.push(...expLines);
-    lines.push('  }');
-  }
-
-  lines.push('}');
-  lines.push(''); // 末尾换行符
-
-  return lines.join('\n');
-}
-
 // ─── 主函数 ────────────────────────────────────────────────────────
 
 /**
@@ -1561,26 +1292,37 @@ export function updateProject(
   const updated: string[] = [];
   const skipped: string[] = [];
 
-  // ── 增量更新：加载 update_state.json ──
+  // ── 增量更新：加载项目 state（AGENTS.md / 项目 opencode.jsonc）与全局 state（框架资产）──
   const state = loadUpdateState(projectPath);
+  const globalState = loadGlobalUpdateState();
   const conflicts: string[] = [];
-
-  const agentsDir = resolve(projectPath, '.opencode', 'agents');
-  const skillsDir = resolve(projectPath, '.opencode', 'skills');
-
-  // 确保目标目录存在
-  mkdirSync(agentsDir, { recursive: true });
-  mkdirSync(skillsDir, { recursive: true });
 
   // 过滤：仅处理选中的工具
   if (!selectedTools.includes('opencode')) {
     return { created: [], updated: [], skipped: [], conflicts: [] };
   }
 
+  // N8：检测项目内遗留 .opencode/{agents,skills,instructions}，只提示不迁移
+  const legacyDirs = ['agents', 'skills', 'instructions']
+    .filter((d) => existsSync(resolve(projectPath, '.opencode', d)));
+  if (legacyDirs.length > 0) {
+    console.warn(`[update] 检测到项目内旧布局 .opencode/{${legacyDirs.join(',')}}，请运行 openfeel migrate（stage-39 提供）迁移。`);
+  }
+
+  // 全局部署目标（D1）
+  const agentsDir = getGlobalAgentsDir();
+  const skillsDir = getGlobalSkillsDir();
+  // 项目内旧布局 agents 目录：仅用于 AGENTS.md 首次部署判定，保持原语义（项目级）
+  const projectLegacyAgentsDir = resolve(projectPath, '.opencode', 'agents');
+
+  // 确保全局目标目录存在
+  mkdirSync(agentsDir, { recursive: true });
+  mkdirSync(skillsDir, { recursive: true });
+
   // ── AGENTS.md 语言同步逻辑 ──
   let agentsDirHasContent = false;
   try {
-    agentsDirHasContent = existsSync(agentsDir) && readdirSync(agentsDir).length > 0;
+    agentsDirHasContent = existsSync(projectLegacyAgentsDir) && readdirSync(projectLegacyAgentsDir).length > 0;
   } catch {
     agentsDirHasContent = false;
   }
@@ -1654,89 +1396,124 @@ export function updateProject(
     // 记录失败不影响主流程
   }
 
-  // 0. 生成 instructions/core.md（适配器层核心指令，与 init 的核心层分离）
-  const instructionsDir = resolve(projectPath, '.opencode', 'instructions');
-  mkdirSync(instructionsDir, { recursive: true });
-  const coreInstructionsPath = join(instructionsDir, 'core.md');
-  const coreContent = loadTemplate(lang, 'core-instructions');
-  writeWithMergeDetection(coreInstructionsPath, coreContent, '.opencode/instructions/core.md', state, created, updated, skipped, conflicts);
+  // 全局 state 可写实例：首次 null → 降级重建（后续全量写入全局资产，防静默不部署）
+  const newGlobalState: UpdateState = globalState ?? createGlobalUpdateState({});
 
-  // 1. 生成 Agent 定义文件（从 template-loader 加载模板，按语言选择）
+  // 0. 生成全局框架约束 core.md（~/.config/opencode/openfeel/core.md）
+  const coreInstructionsPath = getGlobalCoreMdPath();
+  const coreContent = loadTemplate(lang, 'core-instructions');
+  writeWithMergeDetection(coreInstructionsPath, coreContent, coreInstructionsPath, newGlobalState, created, updated, skipped, conflicts);
+
+  // 1. 生成 Agent 定义文件到全局 agents 目录（绝对路径作 state key）
   for (const name of listAgentIds(lang)) {
     const content = loadAgentTemplate(lang, name);
     const filePath = join(agentsDir, `${name}.md`);
-    const relPath = `.opencode/agents/${name}.md`;
-    writeWithMergeDetection(filePath, content, relPath, state, created, updated, skipped, conflicts);
+    writeWithMergeDetection(filePath, content, filePath, newGlobalState, created, updated, skipped, conflicts);
   }
 
-  // 2. 生成 Skill 定义文件（每个 Skill 一个子目录，包含 SKILL.md）
+  // 2. 生成 Skill 定义文件到全局 skills 目录（每个 Skill 一个子目录，包含 SKILL.md）
   for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {
     const skillSubDir = join(skillsDir, name);
     mkdirSync(skillSubDir, { recursive: true });
-
     const filePath = join(skillSubDir, 'SKILL.md');
-    const relPath = `.opencode/skills/${name}/SKILL.md`;
-    writeWithMergeDetection(filePath, content, relPath, state, created, updated, skipped, conflicts);
+    writeWithMergeDetection(filePath, content, filePath, newGlobalState, created, updated, skipped, conflicts);
   }
 
-  // 3. 更新 opencode.jsonc
-  const jsoncPath = resolve(projectPath, 'opencode.jsonc');
-  const newContent = buildUpdatedJsonc(projectPath);
-  const relJsoncPath = 'opencode.jsonc';
-  writeWithMergeDetection(jsoncPath, newContent, relJsoncPath, state, created, updated, skipped, conflicts);
+  // 3. 全局 opencode.jsonc：深度合并（保留用户字段），加全局锁 + 原子写
+  const globalJsoncPath = getGlobalOpencodeJsoncPath();
+  // 合并可能因块注释 parse 失败抛异常（parseJsonc 边界）：降级为「跳过合并、保留原文件」并告警
+  let globalJsoncNew: string;
+  try {
+    globalJsoncNew = mergeGlobalOpencodeJsonc(
+      existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n',
+    );
+  } catch (err) {
+    console.warn(`[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
+    globalJsoncNew = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';
+  }
+  withFileLock(globalLockPath('global-opencode-jsonc'), () => {
+    atomicWriteFileSync(globalJsoncPath, globalJsoncNew);
+  });
+  updateFileHash(newGlobalState, globalJsoncPath, globalJsoncNew);
 
-  // 重启提醒（仅在 opencode agent 配置更新时，且为交互模式）
-  if (updated.some(f => f.startsWith('.opencode/agents/')) && process.stdout.isTTY) {
-    const lang = getCliLang(projectPath);
+  // 4. 项目 opencode.jsonc：不存在则写最小 { $schema }；已存在则保留（旧非法字段清理属 stage-39）
+  const projectJsoncPath = resolve(projectPath, 'opencode.jsonc');
+  if (!existsSync(projectJsoncPath)) {
+    atomicWriteFileSync(projectJsoncPath, JSON.stringify(buildProjectOpencodeJsoncObj(), null, 2) + '\n');
+    created.push('opencode.jsonc');
+  } else {
+    skipped.push('opencode.jsonc (use existing)');
+  }
+
+  // 重启提醒（仅在 opencode 全局 agent 配置更新时，且为交互模式）
+  if (updated.some((f) => f.startsWith(getGlobalAgentsDir())) && process.stdout.isTTY) {
+    const reminderLang = getCliLang(projectPath);
     console.log(
-      lang === 'en'
-        ? 'opencode agent configuration updated. Please restart opencode to load the new configuration.'
-        : 'opencode agent 配置已更新，请重启 opencode 以加载新配置。'
+      reminderLang === 'en'
+        ? 'opencode global configuration updated. Please restart opencode to load the new configuration.'
+        : 'opencode 全局配置已更新，请重启 opencode 以加载新配置。'
     );
   }
 
   // ── 写入冲突标记文件 ──
   if (conflicts.length > 0) {
     const openfeelVersion = getOpenfeelVersion();
-    for (const relPath of conflicts) {
-      const absPath = resolve(projectPath, relPath);
-      const currentContent = existsSync(absPath)
-        ? readFileSync(absPath, 'utf-8')
-        : '';
-      // 获取 incoming 内容：从模板/构建产物中重新读取
-      // 注意：由于 writeWithMergeDetection 未实际写入，需单独获取 incoming 内容
-      const incomingContent = getIncomingContent(projectPath, relPath, lang);
-      writeConflictFile(projectPath, relPath, currentContent, incomingContent, openfeelVersion);
+    for (const conflictPath of conflicts) {
+      // 全局冲突（绝对路径）写 ~/.openfeel/update_conflicts/；项目冲突写项目 .openfeel/update_conflicts/
+      if (isAbsolute(conflictPath)) {
+        const currentContent = existsSync(conflictPath) ? readFileSync(conflictPath, 'utf-8') : '';
+        const incomingContent = getIncomingContent(conflictPath, lang);
+        const relFromGlobal = relative(getOpencodeGlobalDir(), conflictPath);
+        // 全局冲突根目录 ~/.openfeel/update_conflicts/（与项目 .openfeel/update_conflicts/ 对称）
+        const globalConflictsBase = resolve(dirname(getGlobalUpdateStatePath()), 'update_conflicts');
+        writeConflictFile(projectPath, relFromGlobal, currentContent, incomingContent, openfeelVersion, globalConflictsBase);
+      } else {
+        const absPath = resolve(projectPath, conflictPath);
+        const currentContent = existsSync(absPath) ? readFileSync(absPath, 'utf-8') : '';
+        // 获取 incoming 内容：writeWithMergeDetection 未实际写入，需单独获取
+        const incomingContent = getIncomingContent(conflictPath, lang);
+        writeConflictFile(projectPath, conflictPath, currentContent, incomingContent, openfeelVersion);
+      }
     }
   }
 
-  // ── REV-001：统一更新 update_state.json ──
+  // ── REV-001：统一更新双 update_state.json ──
   // 规则：
   // 1. 无论有无冲突，所有 created/updated 文件的 hash 都必须更新到 state
   // 2. 有冲突时，额外标记冲突文件
   // 3. 首次 update（state === null）→ 创建新 state
-
   const newState: UpdateState = state ?? createUpdateState(projectPath, {});
 
-  // 更新所有非冲突文件的 hash（created 和 updated）
-  for (const relPath of [...created, ...updated]) {
-    const absPath = resolve(projectPath, relPath);
-    if (existsSync(absPath)) {
-      const content = readFileSync(absPath, 'utf-8');
-      updateFileHash(newState, relPath, content);
+  // 更新非冲突文件 hash：项目资产（相对路径）→ 项目 state；全局资产（绝对路径）→ 全局 state
+  for (const p of [...created, ...updated]) {
+    if (isAbsolute(p)) {
+      if (existsSync(p)) {
+        updateFileHash(newGlobalState, p, readFileSync(p, 'utf-8'));
+      }
+    } else {
+      const absPath = resolve(projectPath, p);
+      if (existsSync(absPath)) {
+        updateFileHash(newState, p, readFileSync(absPath, 'utf-8'));
+      }
     }
   }
 
-  // 标记冲突文件
-  for (const relPath of conflicts) {
-    markFileConflict(newState, relPath);
+  // 标记冲突文件（按绝对/相对路由到对应 state）
+  for (const p of conflicts) {
+    if (isAbsolute(p)) {
+      markFileConflict(newGlobalState, p);
+    } else {
+      markFileConflict(newState, p);
+    }
   }
 
   // 更新时间戳
   newState.last_update = new Date().toISOString();
+  newGlobalState.last_update = new Date().toISOString();
 
-  // 持久化
+  // 持久化双 state
   saveUpdateState(projectPath, newState);
+  saveGlobalUpdateState(newGlobalState);
 
   return { created, updated, skipped, conflicts };
 }
@@ -1753,11 +1530,13 @@ function writeConflictFile(
   currentContent: string,
   incomingContent: string,
   openfeelVersion: string,
+  conflictsBase?: string,
 ): void {
-  const conflictsBase = resolve(projectPath, '.openfeel', 'update_conflicts');
-  mkdirSync(conflictsBase, { recursive: true });
+  // 全局冲突传全局 base（~/.openfeel），项目冲突默认项目 .openfeel/update_conflicts
+  const base = conflictsBase ?? resolve(projectPath, '.openfeel', 'update_conflicts');
+  mkdirSync(base, { recursive: true });
 
-  const conflictPath = resolve(conflictsBase, relativePath);
+  const conflictPath = resolve(base, relativePath);
   mkdirSync(dirname(conflictPath), { recursive: true });
 
   const conflictContent = [
@@ -1772,44 +1551,41 @@ function writeConflictFile(
 }
 
 /**
- * 根据相对路径获取 incoming（openfeel 期望写入）内容
- * 与 updateProject() 中生成内容的逻辑一一对应：
- *  - .opencode/instructions/core.md → loadTemplate(lang, 'core-instructions')
- *  - .opencode/agents/{name}.md → loadAgentTemplate(lang, name)
- *  - .opencode/skills/{name}/SKILL.md → SKILL_DEFINITIONS[name]
- *  - opencode.jsonc → buildUpdatedJsonc(projectPath)
+ * 根据路径获取 incoming（openfeel 期望写入）内容
+ * relativePath 现为全局绝对路径（框架资产）或项目相对路径（AGENTS.md / opencode.jsonc）：
+ *  - getGlobalCoreMdPath() → loadTemplate(lang, 'core-instructions')
+ *  - getGlobalAgentsDir()/{name}.md → loadAgentTemplate(lang, name)
+ *  - getGlobalSkillsDir()/{name}/SKILL.md → SKILL_DEFINITIONS[name]
+ *  - opencode.jsonc → buildProjectOpencodeJsoncObj()
  *  - AGENTS.md → loadTemplate(lang, 'agents-md')
  */
 function getIncomingContent(
-  projectPath: string,
   relativePath: string,
   lang: 'zh-CN' | 'en',
 ): string {
-  // instructions/core.md
-  if (relativePath === '.opencode/instructions/core.md') {
+  // 全局框架约束 core.md
+  if (relativePath === getGlobalCoreMdPath()) {
     return loadTemplate(lang, 'core-instructions');
   }
 
-  // Agent 定义文件
-  const agentMatch = relativePath.match(/^\.opencode\/agents\/(.+)\.md$/);
-  if (agentMatch) {
-    const name = agentMatch[1];
+  // 全局 agent：位于 getGlobalAgentsDir() 下的 {name}.md
+  if (relativePath.startsWith(getGlobalAgentsDir())) {
+    const name = basename(relativePath, '.md');
     return loadAgentTemplate(lang, name);
   }
 
-  // Skill 定义文件
-  const skillMatch = relativePath.match(/^\.opencode\/skills\/(.+)\/SKILL\.md$/);
-  if (skillMatch) {
-    const name = skillMatch[1];
+  // 全局 skill：位于 getGlobalSkillsDir() 下的 {name}/SKILL.md（跨平台 basename 匹配）
+  if (relativePath.startsWith(getGlobalSkillsDir()) && basename(relativePath) === 'SKILL.md') {
+    const name = basename(dirname(relativePath));
     return SKILL_DEFINITIONS[name] ?? '';
   }
 
-  // opencode.jsonc
+  // 项目 opencode.jsonc
   if (relativePath === 'opencode.jsonc') {
-    return buildUpdatedJsonc(projectPath);
+    return JSON.stringify(buildProjectOpencodeJsoncObj(), null, 2) + '\n';
   }
 
-  // AGENTS.md
+  // 项目 AGENTS.md
   if (relativePath === 'AGENTS.md') {
     return loadTemplate(lang, 'agents-md');
   }

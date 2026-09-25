@@ -1,0 +1,103 @@
+# stage-37 操作方案依赖声明
+# 由 Planner 制定基础结构，Schemer 细化各 op 内容并更新
+# 阶段：v1.1.0-stage-37（全局部署架构）
+
+ops:
+  op-000:
+    file: "ops/op-000.md"
+    title: "instructions 合并语义 + ~ 展开 + core.md/AGENTS.md 加载 + agent_manager_tool 实测"
+    depends_on: []
+    stage: "v1.1.0-stage-37"
+    type: soft
+    produces:
+      - ".openfeel/plan/v1/stage-37/op-000-findings.md"
+    description: "验证/调研 op（无源码变更）。在隔离的真实 opencode CLI 子进程（环境变量 USERPROFILE/HOME 或 XDG_CONFIG_HOME，非 vi.mock）中实测 5 项：① instructions 数组合并语义（拼接+去重，REV-601-①）② ~ 路径是否展开为绝对路径（REV-601-②，已预验证未展开→op-004 用绝对路径）③ core.md 是否实际加载到 agent 上下文（opencode run 回显 marker，REV-601-③）④ 项目 opencode.jsonc 不含 instructions 且项目根有 AGENTS.md 时 AGENTS.md 是否自动加载（REV-602，若 NO 反馈 Feel 重裁项目 instructions 策略）⑤ agent_manager_tool 实测（REV-604，已预验证 schema 未定义+静默丢弃→N3 移除）。结论回填 P2/op-004；CLI 不可用则 N5 降级源码证据兜底，不阻塞流水线。soft 依赖（op-004 结论已由 op-001 以绝对路径落地）。"
+
+  op-001:
+    file: "ops/op-001.md"
+    title: "全局路径模块 + 全局 opencode 配置基础（global-paths.ts / opencode-config.ts）"
+    depends_on: []
+    stage: "v1.1.0-stage-37"
+    type: hard
+    produces:
+      - "src/core/global-paths.ts"
+      - "src/core/opencode-config.ts"
+      - "test/core/global-paths.test.ts"
+      - "test/core/opencode-config.test.ts"
+    description: "先导 op。① global-paths.ts：getOpencodeGlobalDir/getGlobalAgentsDir/getGlobalSkillsDir/getGlobalOpencodeJsoncPath/getGlobalCoreMdPath/getGlobalUpdateStatePath/getGlobalUpdateInfosPath 七函数，仅此模块 import node:os homedir（N4，测试 mock 一处即隔离）；不收纳既有 4 处 homedir（D37-1 默认否）。② opencode-config.ts：buildGlobalOpencodeFrameworkObj（$schema+default_agent feel+instructions 绝对 core.md+agent.{vision,reviewer}.model，无 skills/agent_manager_tool）、buildProjectOpencodeJsoncObj（仅 $schema）、parseJsonc（迁自 update.ts）、deepMergeJsonc（拼接去重/agent 补默认不覆盖/skills 保留/未知字段 passthrough）、mergeGlobalOpencodeJsonc（解析→深度合并→JSON.stringify，注释不保留）。序列化 = JSON.stringify(obj,null,2)+'\n'。hard 基础，op-002/003/004 均依赖。"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "init 改造 — deployOpencode 全局部署 + 项目精简"
+    depends_on: ["op-001"]
+    stage: "v1.1.0-stage-37"
+    type: hard
+    produces:
+      - "src/core/init.ts"
+    description: "deployOpencode（init.ts L194-249）部署目标从项目 .opencode/ 切全局：agents→getGlobalAgentsDir、skills→getGlobalSkillsDir、core.md→getGlobalCoreMdPath；新增 writeGlobalFileIfMissing（withFileLock(globalLockPath('opencode-deploy'))+atomicWriteFileSync+已存在不覆盖）；全局 opencode.jsonc 不存在则写框架级内容、已存在则跳过（REV-605 不做合并，合并归 op-003）；项目 opencode.jsonc 最小 { $schema }；停止部署 ADAPTER/.gitignore；initProject 重启文案改全局语义。N1 不删仓库 .opencode/、不改 build.js 步骤 8。hard 依赖 op-001。"
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "update 改造 — 全局部署 + 深度合并 + skills/$schema/agent_manager_tool 修正 + update_state 全局化"
+    depends_on: ["op-001"]
+    stage: "v1.1.0-stage-37"
+    type: hard
+    produces:
+      - "src/core/update-state.ts"
+      - "src/core/update.ts"
+    description: "updateProject（update.ts L1554-1743）部署目标改全局；全局 opencode.jsonc 用 op-001 mergeGlobalOpencodeJsonc 深度合并保留用户字段；删除 buildUpdatedJsonc/formatJsonc/replaceSkillsFieldInJsonc/buildJsoncFromObject/NEW_SKILL_NAMES/parseJsonc（parseJsonc 改 import op-001）；移除非法 skills {name:path}（N6 自动发现）、$schema 错误 URL 随函数删除消失（新写路径正确 opencode.ai）、agent_manager_tool 移除（N3 实测 schema 未定义+静默丢弃）；update-state.ts 新增 loadGlobalUpdateState/saveGlobalUpdateState/createGlobalUpdateState（REV-607 复用 UpdateStateSchema 不改 projectPath 签名），全局资产 hash 走 ~/.openfeel/update_state.json、项目资产走项目 state（N2，首次全局 null 降级防全量覆盖）；getIncomingContent 改全局绝对路径匹配；legacy 检测项目 .opencode/{agents,skills,instructions} 输出 openfeel migrate 提示不迁移（N8）。hard 依赖 op-001；与 op-002 并行（分属 update.ts/init.ts，无文件冲突）。"
+
+  op-004:
+    file: "ops/op-004.md"
+    title: "全局框架约束落地（P2）+ 死模板退役"
+    depends_on: ["op-001"]
+    soft_depends_on: ["op-000"]
+    stage: "v1.1.0-stage-37"
+    type: hard
+    produces:
+      - "build.js"
+      - "src/core/template-loader.ts"
+    description: "P2 落地校验 + 死模板退役。① 校验 core.md 全局部署（op-002/003）与全局 instructions 绝对路径引用（op-001）一致，不重写；② 退役 op-002/003 后无消费者的死模板：build.js 步骤 7（L341-404）移除 opencode_jsonc（L348-356/377-378）与 gitignore（L358/390-393）注入、validateOpencodeTemplates（L1010-1101）移除对应校验、git rm templates-data/opencode/opencode.jsonc + .gitignore、npm run build 重生成 template-loader.ts（OPENCODE_CONFIG_TEMPLATES 仅剩 instructions+adapter）；③ 项目 opencode.jsonc 不写 instructions（op-001 buildProjectOpencodeJsoncObj）校验 + AGENTS.md 项目级边界记录（裁剪留 stage-39）。REV-608：保留独立 op，核心产出=模板退役（build.js+模板源，op-002/003 不触碰），验收与 op-002/003 无重叠。hard 依赖 op-001；soft 依赖 op-000（结论已由 op-001 以绝对路径落地）。"
+
+  op-005:
+    file: "ops/op-005.md"
+    title: "测试改造 — 隔离 HOME + 全局路径断言 + schema/合并/legacy 断言"
+    depends_on: ["op-002", "op-003", "op-004"]
+    stage: "v1.1.0-stage-37"
+    type: hard
+    produces:
+      - "test/core/init.test.ts"
+      - "test/commands/init.test.ts"
+      - "test/core/update.test.ts"
+    description: "init/update 测试加 vi.mock('node:os',{homedir})（vi.hoisted 变体，参考 global-config.test.ts L11 / config.test.ts L13，REV-606），隔离真实 ~/.openfeel/ 与 ~/.config/opencode/；修复既有未 mock 污染缺陷（ensureGlobalConfig/recordProjectLang 写真实 config.json）。断言改全局路径 + 项目精简（无 .opencode/）+ 不写 instructions；$schema 断言 opencode.ai；skills 断言无 {name:path}；新增合并保留（用户字段保留/instructions 拼接去重/注释去除）、legacy 提示（openfeel migrate 且不迁移）、双 update_state（全局+项目）断言；created/skipped 计数按新清单重算。opencode-instance.test.ts 不动（N1）。hard 依赖 op-002/003/004。"
+
+# 依赖关系说明：
+# - op-000 无 hard 依赖（soft：结论在 op-004 定稿前，已由 op-001 以绝对路径落地，若 N5 降级不阻塞）。
+# - op-001 先导，无依赖，产出全局路径 + 配置基础（global-paths.ts / opencode-config.ts）。
+# - op-002 hard 依赖 op-001（init 用 global-paths + opencode-config）。
+# - op-003 hard 依赖 op-001（update 用 global-paths + opencode-config），与 op-002 并行（分属 init.ts/update.ts，无文件冲突）。
+# - op-004 hard 依赖 op-001（校验配置基础），soft 依赖 op-000（结论）。
+# - op-005 hard 依赖 op-002/003/004（断言其全局路径行为）。
+
+# 建议执行顺序：
+#   op-001 → op-000（可与 op-001 并行，产出结论）→ op-002 ∥ op-003（并行）→ op-004 → op-005
+#   实际批次：op-001 先（hard 基础）；op-000 独立可并行；op-002/op-003 并行；op-004 接 op-002/003 之后（模板退役依赖 init/update 已切走消费）；op-005 收尾全量回归。
+
+# 文件冲突域分析：
+# - op-001：src/core/global-paths.ts、src/core/opencode-config.ts、test/core/{global-paths,opencode-config}.test.ts
+# - op-002：src/core/init.ts（deployOpencode 重写 + writeGlobalFileIfMissing + 重启文案）
+# - op-003：src/core/update.ts、src/core/update-state.ts
+# - op-004：build.js（步骤 7 + validateOpencodeTemplates）、templates-data/opencode/opencode.jsonc（删）、
+#   templates-data/opencode/.gitignore（删）、src/core/template-loader.ts（重生成）、agents-md（可选微调）
+# - op-005：test/core/init.test.ts、test/commands/init.test.ts、test/core/update.test.ts
+#   冲突点：op-002 与 op-003 分属 init.ts/update.ts，无重叠（opencode-config.ts 由 op-001 统一产出，二者只 import 不修改）；
+#   op-004 触碰 build.js + template-loader.ts 生成段，独立于 op-002/003 的 src 代码；op-005 只改测试文件，排最后。
+
+# 关键风险（回填 stage-37 plan「风险点」）：
+# - 真实全局 ~/.config/opencode/ 被误写：op-000 用环境变量隔离、op-005 用 vi.mock homedir 隔离，部署前全局文件备份。
+# - 配置合并语义不符：源码已证拼接+去重（REV-001）+ P2 稳健设计（项目不写 instructions）+ op-000 实测兜底（~ 不展开→绝对路径）。
+# - agent_manager_tool 不确定：N3 实测（op-000 已预验证 schema 未定义+静默丢弃）→ 移除，留依据。
+# - update_state 全局化降级全量覆盖：全局 state 首次 null 防全量覆盖（kb troubleshooting 已知坑）。
+# - 项目精简误删仓库 .opencode/：N1 边界，op-002 只改 deployOpencode 目标、不动 build.js 步骤 8。
+# - 测试断言大范围误改：分 op 更新 + mock homedir 统一封装 + 全量回归。
+# - 全局 opencode.jsonc 深度合并丢注释/未知字段：序列化注释不保留（D3 既定），未知字段 passthrough 保留（测试覆盖）。

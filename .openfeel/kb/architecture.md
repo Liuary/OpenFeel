@@ -412,3 +412,37 @@ v1.1.0-stage-37（D1/P2 全量落地）将框架部署目标从「逐项目部�
 > `~` 虽在加载层可展开，但仍采用绝对路径（`getGlobalCoreMdPath()`）：配置值层可读、跨平台无歧义、不依赖 opencode 内部展开实现（「加固而非推翻」）。
 
 **参见：** v1.1.0-stage-37 op-000~005、`.openfeel/plan/v1/stage-37/op-000-findings.md`、kb/architecture.md #opencode 全局/项目 agent 与 skill 合并语义、kb/patterns.md #JSONC 深度合并模式、#全局/项目双 state 路由模式
+
+## [+] 控制区标记增量更新架构：managed-region 四策略 + 三态 + update_infos 双资产路径 (2026-09-25)
+
+v1.1.0-stage-38（D3 全量落地）用「控制区标记」替换/演进 stage-32 以来的「hash 四态」更新机制，实现「更新只覆盖受管区、区外用户内容零破坏」，并落地 `~/.openfeel/update_infos.md` 记录与「会话启动检查修复」约束。
+
+**四策略（按文件类型分派 `detectFileType`）：**
+
+| 文件类型 | 判定依据 | 策略 | 三态适用 |
+|---------|---------|------|---------|
+| Markdown 正文（agent/skill/AGENTS.md/core.md） | `.md` | `<!-- openfeel:begin/end -->` 包裹/替换 | 适用 |
+| Markdown frontmatter | `.md` + YAML frontmatter | 结构化字段合并（无标记） | 不适用（恒合并） |
+| JSONC（opencode.jsonc） | `.jsonc` | 解析 → deepMerge → 序列化（复用 opencode-config） | 不适用（恒合并） |
+| 纯文本（.gitignore） | `.gitignore` | `# openfeel:begin/end` | 适用 |
+
+**部署三态（+appended 四分类）：**
+
+| 文件存在？ | 含标记？ | hash 匹配？ | 动作 | 结果 |
+|:--:|:--:|:--:|:--|:--:|
+| ❌ | — | — | 写全文（frontmatter 结构化 + 正文标记包裹） | `created` |
+| ✅ | ✅ | — | frontmatter 合并 + 区内替换 → 全文比对 | `skipped` / `updated` |
+| ✅ | ❌ | ✅ | adopt 写带标记新框架内容 | `updated` |
+| ✅ | ❌ | ❌/无记录 | 末尾追加受管区 + 写 update_infos.md | `appended` |
+| ✅ | malformed | — | 不写盘，仅记 anomaly 条目 | `skipped` |
+
+**update_infos 双资产路径（N7 / REV-903）**：`~/.openfeel/update_infos.md` 全局共享，条目路径自包含无歧义——全局资产记**绝对路径**，项目资产记「项目根 + 相对路径」二元组（`AGENTS.md (项目: /abs/root)`），禁止只记相对路径（跨项目共享文件会归属歧义）。写入走 `withFileLock(globalLockPath('update-infos'))` + 原子写。
+
+**核心设计决策：**
+
+- **hash 降级为「无标记文件归属兜底」（N3）**：不再作为含标记文件的拒写依据；含标记文件无条件只覆盖区内（标记即「区内归框架、区外归用户」的契约）。
+- **追加即建区（N2）**：追加内容 = 标记包裹的受管区（非裸内容），杜绝无限重复追加。
+- **`generated` 与 `begin/end` 不冲突、不统一（N6）**：前者单行整文件声明（构建产物），后者成对区间包裹（增量更新），token 与形态均不同。
+- **会话启动修复规则落地 feel.md（主）+ core-instructions（辅）**，双语同步（N5）；修复动作用 edit 工具勾选条目（Feel 不能 import TS 模块），不新增 CLI。
+
+**参见：** v1.1.0-stage-38 op-001~004、kb/patterns.md #控制区标记模式、#malformed 降级防死循环模式、kb/troubleshooting.md #malformed 标记死循环排查

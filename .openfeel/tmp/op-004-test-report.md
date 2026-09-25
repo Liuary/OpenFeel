@@ -1,41 +1,43 @@
 # 自测报告 — op-004
 
-- **执行时间**：2026-09-25
+- **执行时间**：2026-09-25 19:05
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1
+- **重试次数**：第 1 次（frontmatter 合并用例自测失败一次后修正断言，属自测重试，计第 1 次执行内修正）
 
 ## 执行摘要
-退役死模板 `opencode.jsonc`/`.gitignore`，清理 build.js 步骤 7 与 validate 对应段；校验 P2（core.md 全局 + instructions 绝对路径 + 项目不写 instructions）。
+新增 `update-infos.test.ts`（9 用例）、`managed-region.test.ts`（28 用例）；`update.test.ts` 三态/幂等/REV-911 改造 + 新增用例（共 38）；`template-loader.test.ts` 新增模板静态断言（共 21）。全量回归 545 passed。
 
 ## 实施步骤完成情况
-- [x] 步骤 1：校验 P2 落地一致（只读）
-- [x] 步骤 2：build.js 步骤 7 移除 opencode_jsonc/gitignore 注入
-- [x] 步骤 3：validateOpencodeConfigTemplates 移除对应校验段
-- [x] 步骤 4：`git rm` 两死模板源文件
-- [x] 步骤 5：`npm run build` 重生成（OPENCODE_CONFIG_TEMPLATES 仅 instructions+adapter）
-- [x] 步骤 6：AGENTS.md 边界校验 + 过时表述微调（zh-CN/en 各 1 句）
+- [x] 步骤 1：新建 `test/core/update-infos.test.ts`（append/load/resolve/clear + 二元组 + 损坏降级 + 并发）
+- [x] 步骤 2：`test/core/update.test.ts` 扩展（三态组合 + appended + 幂等 + 区外保留 + malformed + frontmatter + REV-911 + 命令层警告）
+- [x] 步骤 3：`test/core/managed-region.test.ts` 回归（op-001）
+- [x] 步骤 4：会话启动修复模板静态断言（并入 `template-loader.test.ts`，REV-907）
+- [x] 步骤 5：全量回归
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 全局 instructions 绝对路径（非 ~） | ✅ | |
-| 项目 jsonc 仅 $schema | ✅ | |
-| build.js 步骤 7 不再注入 opencode_jsonc/gitignore | ✅ | |
-| 两死模板已删除 | ✅ | Test-Path False（git 已删） |
-| build 通过；config 模板仅 instructions+adapter（4 项） | ✅ | |
-| template-loader 生成段无 opencode_jsonc/gitignore | ✅ | |
-| 无残留调用 | ✅ | |
-| AGENTS.md 边界记录完成 | ✅ | 裁剪留 stage-39 |
-| 测试全绿 + lint kb 零错误 | ✅ | |
+| update-infos：append/load/resolve/clear + 二元组 + 损坏降级 + 并发 | ✅ | 9 passed |
+| update：created / 含标记 updated（区外保留）/ skipped / adopt / 追加 / malformed（不写盘+anomaly）/ 幂等 / malformed 二次幂等 | ✅ | |
+| `UpdateResult.appended` 非空且写 update_infos.md；conflicts 恒空 | ✅ | |
+| REV-911：state 损坏/丢失 → 全量追加不覆盖 + 命令层 n>10 警告 | ✅ | |
+| frontmatter 合并：框架覆盖 + 用户字段保留；AGENTS.md 落项目 state + 二元组 | ✅ | |
+| REV-907：函数单测 + 模板静态断言（feel.md 断言 edit 勾选措辞、不含 resolveUpdateInfo/clearUpdateInfos；无行为级 E2E） | ✅ | |
+| 测试隔离 HOME（mock homedir），不污染真实 ~/.openfeel/ 与 ~/.config/opencode/ | ✅ | 真实 update_infos.md 未生成 |
+| `npm run build && npm test` 全绿；lint i18n/kb 零错误 | ✅ | 545 passed；i18n 446；kb 0 stale |
 
 ## 产出文件
-- `build.js`、`src/core/template-loader.ts`（重生成）
-- 删除 `src/core/templates-data/opencode/opencode.jsonc`、`.gitignore`
-- `src/core/templates-data/agents-md/{zh-CN,en}.md`（微调）
+- `test/core/update-infos.test.ts`（新增）
+- `test/core/update.test.ts`（修改）
+- `test/core/managed-region.test.ts`（新增，op-001）
+- `test/core/template-loader.test.ts`（修改：模板静态断言）
 
 ## 前置校验结果
-- 方案完整性：通过 / Phase 合法性：通过 / 流转合法性：通过
+- 方案完整性：通过
+- Phase 合法性：通过（exec_running）
+- 流转合法性：通过
 
 ## 偏差记录
-- AGENTS.md 模板微调 2 处（REV-709 授权）：`.opencode/instructions/core.md` → `~/.config/opencode/openfeel/core.md`；仅过时表述等价替换，已记录原文→新文。
-- `build.js` 通用解析器 template-string 分支注释保留（无实际条目，无害）。
+- **已知覆盖空白（方案 REV-907 认可）**：不做「Feel 启动→读→修复→重启」行为级 E2E，仅函数单测 + 模板静态断言。
+- 原 `update.test.ts` 中 conflicts 相关用例按三态语义改写为 appended 断言（方案第 17/50 条要求）。
+- 命令层 n>10 警告通过 `program.parseAsync` 集成调用覆盖（原方案未指定实现细节）。

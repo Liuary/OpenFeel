@@ -2131,3 +2131,36 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.0-stage-37 op-003、kb/architecture.md #全局部署架构、kb/patterns.md #update 增量部署哈希追踪 + 冲突标记三态模式、#建议性文件锁模式
 
+## [+] 控制区标记模式：`<!-- openfeel:begin/end -->` 包裹受管内容 + 三态判定 (2026-09-25)
+
+增量更新时，用成对标记包裹框架受管内容，update 只覆盖区内，区外用户内容天然保留。三态判定核心：
+
+| 文件存在？ | 含标记？ | hash 匹配？ | 动作 | 结果 |
+|:--:|:--:|:--:|:--|:--:|
+| ❌ | — | — | 写全文（标记包裹） | `created` |
+| ✅ | ✅ | — | 构造新内容（frontmatter 合并 + 区内替换）→ 全文比对 | `skipped` / `updated` |
+| ✅ | ❌ | ✅ | adopt 写带标记新框架内容 | `updated` |
+| ✅ | ❌ | ❌/无记录 | 末尾追加受管区 + 写 update_infos | `appended` |
+| ✅ | malformed | — | 不写盘，仅记 anomaly | `skipped` |
+
+**关键要点：**
+
+- 标记识别**整行精确匹配**（`trim()` 后比对），与单行信号 `openfeel:generated` 天然区分（generated 单行、非成对、token 不同）。
+- 计数判定：0 begin 且 0 end → `none`；1 begin 且 1 end 且 begin 在 end 前 → `ok`；其余（数量不等、>1 对、end 在 begin 前）→ `malformed`。
+- `replaceRegion` 前先 `parseRegion` 判态，对 none/malformed 直接抛错（防误删用户内容）；区外内容逐字符保留，round-trip 幂等。
+- frontmatter 合并 = 浅合并 `{ ...existing, ...incoming }`：框架字段覆盖 + 用户字段 passthrough，嵌套对象（permission）整体覆盖。
+- 行尾归一化：标记识别与全文比对前 CRLF→LF，保证跨平台幂等。
+
+**参见：** v1.1.0-stage-38 op-001/op-002、kb/architecture.md #控制区标记增量更新架构
+
+## [+] malformed 降级防死循环模式：异常标记不写盘只记异常条目 (2026-09-25)
+
+控制区标记解析失败（多对 begin/end、不成对）时的降级策略：
+
+- **不写盘、不追加、不整文件覆盖**（防误删用户内容）——若追加，malformed 文件每次 update 仍判 malformed，会无限重复追加导致文件膨胀。
+- **仅写 update_infos.md 异常条目（kind=anomaly）**，待人工修复标记；修复后下次 update 走 ok（区内替换）/ none（hash 兜底）正常路径。
+- anomaly 条目按路径**去重**：同路径已有未修复（resolved=false）的 anomaly 条目则跳过，避免每次 update 无限累积重复提示。
+- 结果分类返回 `skipped`（文件未变、不进 hash 更新循环）。
+
+**参见：** v1.1.0-stage-38 op-002、kb/troubleshooting.md #malformed 标记死循环排查
+

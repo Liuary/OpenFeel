@@ -3,6 +3,8 @@
  * 验证中英文模板加载函数的正确性和回退逻辑
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   loadAgentTemplate,
   listAgentIds,
@@ -137,5 +139,52 @@ describe('loadTemplate', () => {
     const result = loadTemplate('fr', 'core-instructions');
     expect(result).toBeTruthy();
     expect(result).toContain('.openfeel');
+  });
+});
+
+/**
+ * op-003 模板静态断言（REV-907：仅静态断言，不做行为级 E2E）
+ * 读取模板源文件（src/core/templates-data/...），断言会话启动修复规则已落地。
+ */
+describe('update_infos 会话启动修复规则（模板静态断言）', () => {
+  const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf-8');
+
+  it('feel.md（zh-CN）含 update_infos 检查修复节 + edit 工具勾选措辞 + 重启提醒', () => {
+    const content = read('../../src/core/templates-data/opencode/agents/zh-CN/feel.md');
+    expect(content).toContain('update_infos');
+    expect(content).toContain('`- [ ]`');
+    expect(content).toContain('`- [x]`');
+    expect(content).toContain('edit 工具');
+    expect(content).toContain('重启会话');
+    // REV-1003：Feel 不能 import TS 模块，不得出现 resolveUpdateInfo/clearUpdateInfos 调用
+    expect(content).not.toContain('resolveUpdateInfo');
+    expect(content).not.toContain('clearUpdateInfos');
+  });
+
+  it('feel.md（en）含对应节 + edit 工具勾选措辞 + 重启提醒', () => {
+    const content = read('../../src/core/templates-data/opencode/agents/en/feel.md');
+    expect(content).toContain('update_infos');
+    expect(content).toContain('`- [ ]`');
+    expect(content).toContain('`- [x]`');
+    expect(content).toContain('edit tool');
+    expect(content).toContain('restart');
+    expect(content).not.toContain('resolveUpdateInfo');
+    expect(content).not.toContain('clearUpdateInfos');
+  });
+
+  it('core-instructions（zh-CN）含提示性约束且不自行修改（REV-902）', () => {
+    const content = read('../../src/core/templates-data/opencode/instructions/zh-CN.md');
+    expect(content).toContain('update_infos.md');
+    expect(content).toContain('不自行修改');
+    expect(content).not.toContain('resolveUpdateInfo');
+    expect(content).not.toContain('clearUpdateInfos');
+  });
+
+  it('core-instructions（en）含对应提示性约束', () => {
+    const content = read('../../src/core/templates-data/opencode/instructions/en.md');
+    expect(content).toContain('update_infos.md');
+    expect(content).toContain('must not modify');
+    expect(content).not.toContain('resolveUpdateInfo');
+    expect(content).not.toContain('clearUpdateInfos');
   });
 });

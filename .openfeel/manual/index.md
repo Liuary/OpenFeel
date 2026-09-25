@@ -10,6 +10,8 @@
   - [项目初始化](core/init.md)
   - [适配器更新编排](core/update.md)
   - [增量更新状态](core/update-state.md)
+  - [控制区标记](core/managed-region.md)
+  - [增量更新记录](core/update-infos.md)
   - [阶段路径映射](core/plan-path.md)
   - [并发保护工具](core/fs.md)
   - [模板加载](core/template-loader.md)
@@ -28,8 +30,10 @@
 | flow.json / 流水线推进 | `core/flow-manager.md` | 核心 API 或状态机变更 |
 | config.yaml / profile.yaml | `core/config.md` | 配置层级或读写方法变更 |
 | init.ts / 项目初始化 | `core/init.md` | 初始化流程、API 或部署逻辑变更 |
-| update.ts / 适配器更新编排 | `core/update.md` | 部署目标、合并逻辑、修正项变更 |
+| update.ts / 适配器更新编排 | `core/update.md` | 部署目标、合并逻辑、控制区三态、修正项变更 |
 | update-state.ts / update_state.json | `core/update-state.md` | hash 追踪、冲突标记或 update_state.json 结构变更 |
+| managed-region.ts / 控制区标记 | `core/managed-region.md` | 四策略、标记 token 或 parse/replace 语义变更 |
+| update-infos.ts / update_infos.md | `core/update-infos.md` | 条目结构、路径二元组或读写 API 变更 |
 | plan-path.ts / stageId↔目录映射 | `core/plan-path.md` | stageId 解析格式、目录映射规则或三级回退逻辑变更 |
 | fs/atomic-write.ts / file-lock.ts / sequence.ts | `core/fs.md` | 新增工具、并发机制、锁路径约定或接入范围变更 |
 | template-loader.ts / 模板运行时加载 | `core/template-loader.md` | 模板源结构、加载 API 或注入对象变更 |

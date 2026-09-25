@@ -35,6 +35,8 @@
 **私域文件**：
 - `.openfeel/users/{username}/dev_last.md`
 
+**增量更新复核**：检查 `~/.openfeel/update_infos.md`，若存在未修复条目（追加/异常），**提醒用户重启会话或委托 Feel 处理**；本 Agent 不自行修改该文件。
+
 ## 设计原则
 
 .openfeel 目录分为**公共域**与**私域**两部分：

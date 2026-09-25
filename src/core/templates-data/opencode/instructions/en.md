@@ -35,6 +35,8 @@ At the start of each session, the Agent must check the following directories and
 **Private domain files**:
 - `.openfeel/users/{username}/dev_last.md`
 
+**Incremental update review**: Check `~/.openfeel/update_infos.md`; if there are unrepaired entries (appended/anomaly), **remind the user to restart the session or delegate to Feel**; this Agent must not modify that file on its own.
+
 ## Design Principles
 
 The .openfeel directory is divided into **Public Domain** and **Private Domain**:

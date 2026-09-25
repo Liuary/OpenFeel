@@ -1,36 +1,47 @@
 # 自测报告 — op-002
 
-- **执行时间**：2026-09-25
+- **执行时间**：2026-09-25 19:05
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1
+- **重试次数**：第 1 次
 
 ## 执行摘要
-init.ts `deployOpencode` 改为部署全局 `~/.config/opencode/`，项目仅写最小 opencode.jsonc；重启文案更新。
+`update-infos.ts` 读写模块 + `update.ts` 三态（控制区优先 + hash 兜底）接入完成；命令层 + i18n 输出 appended（n>10 警告）。新增/改造测试全绿。
 
 ## 实施步骤完成情况
-- [x] 步骤 1：新增 import（fs 工具 / global-paths / opencode-config）
-- [x] 步骤 2：新增 `writeGlobalFileIfMissing`（全局锁 + 原子写 + 已存在不覆盖）
-- [x] 步骤 3：重写 `deployOpencode`（agents/skills/core.md/全局 jsonc 全局化；项目 jsonc 最小）
-- [x] 步骤 4：重启提醒文案改全局语义
-- [x] 步骤 5：确认 `initProject` 不再产生项目 `.opencode/`
+- [x] 步骤 1：新建 `src/core/update-infos.ts`（load/append/resolve/clear + 加锁 + 原子写 + 二元组 REV-903）
+- [x] 步骤 2：`update.ts` import 调整（managed-region 8 原语 + appendUpdateInfo）
+- [x] 步骤 3：`UpdateResult` 增加 `appended: string[]`
+- [x] 步骤 4：删除 `writeWithMergeDetection`，新增 `composeManagedContent` / `writeManagedFile` / `pushAction`
+- [x] 步骤 5：`updateProject` 接入（AGENTS.md 四分支 + 全局 core/agents/skills + hash 循环纳入 appended + 返回 appended；selectedTools 空过滤补 appended）
+- [x] 步骤 6：命令层 appended 输出 + i18n（zh-CN/en 各 3 key）
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 部署后项目无 .opencode/ | ✅ | init.test 断言 |
-| 全局出现 agents9/skills14/core.md/opencode.jsonc | ✅ | |
-| 全局 jsonc = 框架级（无 skills/agent_manager_tool） | ✅ | |
-| 项目 jsonc = `{ $schema }` 无 instructions/skills/default_agent | ✅ | |
-| 已存在全局 jsonc 再部署被跳过不覆盖 | ✅ | |
-| 二次部署全 skipped（26） | ✅ | |
-| 不再部署 ADAPTER/.gitignore/package.json | ✅ | |
-| build 通过 + init 测试全绿 | ✅ | |
+| 全局 agents/skills/core.md 不存在→写（含标记）→ created | ✅ | |
+| 含标记：区内相同→skipped；不同→只替换区内、区外保留→updated | ✅ | REV-901 |
+| 含标记 frontmatter：框架覆盖 + 用户字段保留 | ✅ | mergeFrontmatter |
+| 无标记 + hash 匹配 → adopt（写带标记新框架）→ updated | ✅ | |
+| 无标记 + hash 不匹配/无记录 → 追加 + 写 update_infos.md → appended | ✅ | |
+| malformed → 不写盘不追加、记 anomaly、结果 skipped；二次 update 幂等 | ✅ | REV-1001 |
+| `update_infos.md`：全局绝对路径 / 项目「相对路径 (项目: 根)」二元组 | ✅ | REV-903 |
+| 命令层输出「追加 N 个文件」+ n>10 警告 | ✅ | REV-911 |
+| 追加后 state 记录 clean + 新 hash | ✅ | D38-1 |
+| 全局 state 首次 null/损坏 → 存量全量追加（不覆盖） | ✅ | REV-911 |
+| `npm run build && npm test` 全绿 | ✅ | 545 passed |
 
 ## 产出文件
-- `src/core/init.ts`
+- `src/core/update-infos.ts`（新增）
+- `src/core/update.ts`（修改）
+- `src/commands/update.ts`（修改）
+- `src/core/i18n-data/zh-CN.ts`（修改）
+- `src/core/i18n-data/en.ts`（修改）
 
 ## 前置校验结果
-- 方案完整性：通过 / Phase 合法性：通过 / 流转合法性：通过
+- 方案完整性：通过
+- Phase 合法性：通过（exec_running）
+- 流转合法性：通过
 
 ## 偏差记录
-- 无（N1 仓库 `.opencode/` 未触碰）。
+- **conflicts 恒空语义**（方案已声明）：三态下无标记 hash 不匹配改为追加，`conflicts` 恒空；`writeConflictFile`/`markFileConflict` 保留不删未触发（兼容）。无超范围。
+- 无其他偏差。

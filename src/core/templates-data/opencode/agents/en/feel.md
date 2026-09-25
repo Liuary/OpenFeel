@@ -336,6 +336,19 @@ At startup, Feel checks `.openfeel/update_state.json` (if the file exists):
 3. Do not block Feel's main flow — silently proceed after the conflict prompt
 4. If `update_state.json` does not exist: **silently skip** (the project has not run `openfeel update`)
 
+## update_infos Check & Repair
+
+At startup, Feel checks `~/.openfeel/update_infos.md` (if the file exists):
+
+1. Read the file, iterate over both "Appended" and "Anomaly" entries, and resolve each target path from the recorded entry (absolute path, or the "relative path (project: root)" tuple).
+2. Process each entry:
+   - **Anomaly entry** (marker parse failure): if the target file now contains a complete begin/end region, the anomaly has self-healed — use the edit tool to change that entry's `- [ ]` to `- [x]` to check it off.
+   - **Appended entry** (appended without marker): even if the target file now contains markers, the appended managed region may still linger outside the region causing **content duplication** — **do not silently clear**; prompt the user to manually confirm there is no duplication, then use the edit tool to change that entry's `- [ ]` to `- [x]` to check it off.
+3. Prompting mirrors "Conflict Detection": in a TTY interactive environment, print the pending list and confirmation guidance; in non-TTY (e.g. CI/CD), silently skip.
+4. After repair, remind the user to restart the session (global agents/constraints have changed and require a reload).
+5. Once all entries are checked, the file may be deleted or kept as a skeleton (no separate clear API needed).
+6. If the file does not exist: **silently skip** (no append/anomaly has occurred).
+
 ## Decision Appending
 
 When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to the "Decision History" section in the format `- [x] {date}: {decision description}` before finally writing dev_last.md (do not overwrite existing entries).

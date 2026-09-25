@@ -9,19 +9,19 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 51 个 .ts 文件（src/） |
+| 源文件 | 55 个 .ts 文件（src/） |
 | Agent 数 | 9 个（feel + 8 个 openfeel-* 前缀：planner/schemer/executor/reviewer/feel-tester/utility/vision/archiver） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义，自举实例由 build 生成）、src/core/templates-data/opencode/（模板唯一权威源）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-09-25（stage-37 归档：全局部署架构，5 条知识沉淀至 architecture(1 新增) + patterns(2 新增) + troubleshooting(2 新增)） |
+| 最近更新 | 2026-09-25（stage-38 归档：控制区标记增量更新架构，4 条知识沉淀至 architecture(1 新增) + patterns(2 新增) + troubleshooting(1 新增)） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 19 | 2026-09-25 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构 |
-| 代码模式 | [patterns.md](patterns.md) | 73 | 2026-09-25 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 19 | 2026-09-25 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃 |
+| 架构决策 | [architecture.md](architecture.md) | 20 | 2026-09-25 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构、控制区标记增量更新架构 |
+| 代码模式 | [patterns.md](patterns.md) | 75 | 2026-09-25 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 20 | 2026-09-25 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-08-08 | 环境搭建、构建流程、依赖管理、Agent 模型配置、npm pack 发布验证、CI/CD npm 自动发布 |
 
 ## 各分类摘要
@@ -49,6 +49,7 @@
 | opencode 全局/项目 agent 与 skill 合并语义（源码验证） | 2026-09-12 | agent 按名 mergeDeep（项目覆盖同名、异名全局保留、项目不屏蔽全局）；skill 并集合并但同名覆盖非确定（须名唯一）；default_agent 合并后注册表解析。stage-37 全局部署关键前提 |
 | 模板单源架构：templates-data/opencode 唯一权威源 + 双注入对象 + 单源一致性断言 | 2026-09-25 | 三对双层模板源收敛为单源；删除 agents/core-instructions 冗余树；双注入对象不合并（消费方不同）仅加单源一致性断言；.opencode/ 降级为构建产物（步骤8 自举重生成 + 生成物标记）；行尾归一 LF |
 | 全局部署架构：框架资产全局化 + 项目精简 + 双 state | 2026-09-25 | D1/P2 全量落地；框架资产（9 agent/14 skill/core.md/opencode.jsonc）部署到 ~/.config/opencode/；项目精简为 .openfeel/ + AGENTS.md + opencode.jsonc；框架约束走 instructions（绝对路径）；全局/项目双 update_state；opencode 配置合并语义实测结论（instructions 拼接+去重、~ 加载层展开、core.md 实际加载、AGENTS.md 自动加载、agent_manager_tool 静默丢弃） |
+| 控制区标记增量更新架构：managed-region 四策略 + 三态 + update_infos 双资产路径 | 2026-09-25 | D3 全量落地；四策略（markdown begin/end、gitignore、frontmatter 结构化合并、jsonc 深合并）；部署三态（不存在写/无标记追加+记录/含标记覆盖区内）+ malformed 不写盘只记 anomaly；hash 降级为归属兜底；update_infos 双资产路径（绝对路径 / 项目根+相对路径）+ 加锁原子写 |
 
 ### patterns.md
 
@@ -116,6 +117,8 @@
 | P5 读取兼容模式 | 2026-09-25 | normalizeAgentName 归一化（toLowerCase + 幂等）+ 写入新名读取兼容旧名；接入点 = 所有展示 agent 名的路径；不迁移历史 flow.json |
 | JSONC 深度合并模式 | 2026-09-25 | parseJsonc 剥离 // 行注释（块注释失败降级）+ deepMergeJsonc 五类字段规则（instructions 拼接去重/agent 补缺/skills 保留/对象递归/标量覆盖）；用户未知字段 passthrough |
 | 全局/项目双 state 路由模式 | 2026-09-25 | isAbsolute 分流：绝对路径→全局 ~/.openfeel/update_state.json、相对路径→项目 .openfeel/update_state.json；全局 state 加锁+原子写、项目 state 仅原子写；冲突文件按绝对/相对路由到对应 update_conflicts |
+| 控制区标记模式：`<!-- openfeel:begin/end -->` 包裹受管内容 + 三态判定 | 2026-09-25 | 成对标记包裹受管内容；三态判定（不存在写/含标记替换区内/无标记 hash 兜底 adopt 或追加）；整行精确匹配区分 generated 单行信号；frontmatter 浅合并；行尾归一化幂等 |
+| malformed 降级防死循环模式：异常标记不写盘只记异常条目 | 2026-09-25 | 标记解析失败（多对/不成对）不写盘、不追加、不覆盖，仅写 update_infos.md 异常条目待人工修复；anomaly 按路径去重；结果 skipped |
 
 ### troubleshooting.md
 
@@ -139,6 +142,7 @@
 | 模型名错误导致 Agent 无法启动 | 2026-09-25 | deepseek-v4-flash 已下线 → deepseek-flash；症状 Model not found；修复须全链路（agent 文件 + 模板源 + 生成段 + config 常量），改后重启 opencode |
 | opencode instructions 路径 ~ 不展开 | 2026-09-25 | debug config 输出保留字面 ~/...（展示层不展开），但加载层实际展开可加载；仍采用绝对路径（配置值层可读、跨平台无歧义）；指令型探针验证文件是否加载进 agent 上下文 |
 | agent_manager_tool schema 未定义静默丢弃 | 2026-09-25 | experimental.agent_manager_tool 现行 schema 未定义，debug config 输出空且无报错 exit 0；静默丢弃比报错更危险；实测确认后移除该字段 + 删模板 experimental 块 |
+| malformed 标记死循环排查：多对/不成对标记的降级策略 | 2026-09-25 | malformed 状态无法定位唯一受管区，追加/替换会每次重触发判定形成死循环；修复为不写盘+记 anomaly 去重；手动修复成单对完整标记后自动走正常路径；none 与 malformed 降级路径不同 |
 
 ### setup.md
 
@@ -153,6 +157,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-09-25 | 归档 | stage-38 归档：控制区标记增量更新（managed-region 四策略 + 三态部署 + update_infos 双资产路径 + 会话启动修复规则 feel.md/core 双语），4 op（managed-region 工具 + 三态接入 writeManagedFile + 会话启动修复 + 测试），新增 managed-region.ts + update-infos.ts，writeWithMergeDetection → writeManagedFile，REV-1101~1104 已修复，545/545 测试通过，0 Bug，知识沉淀 4 条至 architecture(1 新增) + patterns(2 新增) + troubleshooting(1 新增) |
 | 2026-09-25 | 归档 | stage-37 归档：全局部署架构（框架资产部署到 ~/.config/opencode/ + 项目精简 + 双 state + JSONC 深度合并 + 框架约束走 instructions 绝对路径 + schema/$schema/agent_manager_tool 修正），6 op（op-000 实测验证 + 全局路径模块 + init/update 改造 + P2 落地 + 测试改造），新增 global-paths.ts + opencode-config.ts，REV-801/802 已清理，493/493 测试通过，0 Bug，知识沉淀 5 条至 architecture(1 新增) + patterns(2 新增) + troubleshooting(2 新增) |
 | 2026-09-12 | 归档 | stage-35 归档：并发保护基础设施（原子写 + 建议性文件锁 + 序号原子化三工具 + 高风险写入接入 + flow.json 乐观并发校验 meta.revision + .bak 语义修复），3 新增源码 + 13 修改源码 + 6 测试文件，457/457 测试通过（0 skipped），4 non-blocking REV 全闭合，0 Bug，知识沉淀 6 条至 architecture(2 新增) + patterns(3 新增) + troubleshooting(1 新增) |
 | 2026-08-15 | 归档 | stage-34 归档：plan 目录多级化与路径统一（path.ts 新模块 + 三级回退 + 写入迁移 + init 多级化 + 模板/skill 双语同步），6 op / 33 文件变更，0 REV，425/425 测试通过，0 Bug，知识沉淀 4 条至 architecture(更新) + patterns(2 新增) + troubleshooting(更新) |

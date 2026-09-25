@@ -1,42 +1,42 @@
 # 自测报告 — op-003
 
-- **执行时间**：2026-09-25
+- **执行时间**：2026-09-25 19:05
 - **执行 Agent**：openfeel-executor
-- **重试次数**：2（首次冲突目录传参修正）
+- **重试次数**：第 1 次
 
 ## 执行摘要
-update.ts 部署全局化 + 双 update_state + 删除 5 函数/常量 + 深度合并 + `$schema`/skills/agent_manager_tool 修正 + legacy 提示；update-state.ts 新增 global 三函数。
+feel.md（zh/en）新增「update_infos 检查修复」节；core-instructions（zh/en）会话启动自检节各加一条提示性约束；`npm run build` 重生成 template-loader.ts 注入段通过。
 
 ## 实施步骤完成情况
-- [x] 步骤 1：update-state.ts 新增 load/save/createGlobalUpdateState
-- [x] 步骤 2：update.ts import 调整
-- [x] 步骤 3：删除 parseJsonc/buildUpdatedJsonc/formatJsonc/replaceSkillsFieldInJsonc/buildJsoncFromObject/NEW_SKILL_NAMES
-- [x] 步骤 4：重写 updateProject（全局化 + 双 state + 合并 + 项目最小 jsonc）
-- [x] 步骤 5：getIncomingContent 改全局绝对路径匹配
-- [x] 步骤 6：legacy 布局识别提示
-- [x] 步骤 7：experimental/agent_manager_tool 不再由框架写入
+- [x] 步骤 1：feel.md（zh-CN）新增节（插于「冲突检测」后、「决策追加」前）
+- [x] 步骤 2：feel.md（en）新增对应节
+- [x] 步骤 3：instructions/zh-CN.md「会话启动自检」节加提示性条目（REV-902）
+- [x] 步骤 4：instructions/en.md 对应追加
+- [x] 步骤 5：`npm run build` 重生成 + 校验（模板一致性 4/4 + opencode 3/3 + 单源一致性通过）
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| update 后项目无 .opencode/，全局资产齐备 | ✅ | |
-| 全局 jsonc `$schema`=opencode.ai、无 skills 映射、无 agent_manager_tool、含 instructions 绝对路径 | ✅ | |
-| 5 函数/常量 grep 零命中 | ✅ | |
-| 合并保留用户字段 + default_agent 覆盖 + instructions 拼接去重 | ✅ | |
-| 项目 jsonc 不存在则写最小、已存在保留 | ✅ | |
-| 幂等（二次全 skipped） | ✅ | |
-| 双 state 落盘正确 | ✅ | |
-| 全局 state 首次 null 降级全量写入 + 重建 | ✅ | |
-| legacy 提示且不迁移 | ✅ | |
-| getIncomingContent 全局路径返回非空（含 Windows） | ✅ | basename 匹配 |
-| build 通过 + 测试全绿 | ✅ | |
+| feel.md（zh/en）含「检查修复」节四要素（异常自愈 / 追加人工确认 / TTY 对称 / 重启提醒） | ✅ | REV-909/REV-1003 |
+| feel.md 不含 resolveUpdateInfo/clearUpdateInfos 调用（改用 edit 工具勾选） | ✅ | REV-1003 |
+| core-instructions（zh/en）提示性约束「提醒重启/委托 Feel，不自行修改」 | ✅ | REV-902 |
+| 追加条目「人工确认」语义（不静默清除） | ✅ | REV-909 |
+| 双语对称（zh-CN/en 语义一致） | ✅ | |
+| `npm run build` 通过；template-loader.ts 注入段含新文案 | ✅ | grep 命中 4 处 |
+| `openfeel lint i18n` 零错误 | ✅ | 446 键一致 |
 
 ## 产出文件
-- `src/core/update-state.ts`、`src/core/update.ts`
+- `src/core/templates-data/opencode/agents/zh-CN/feel.md`（修改）
+- `src/core/templates-data/opencode/agents/en/feel.md`（修改）
+- `src/core/templates-data/opencode/instructions/zh-CN.md`（修改）
+- `src/core/templates-data/opencode/instructions/en.md`（修改）
+- `src/core/template-loader.ts`（build 重生成）
+- `.opencode/agents/feel.md`、`.opencode/instructions/core.md`（build 步骤 8 自举实例重生成，构建副产物）
 
 ## 前置校验结果
-- 方案完整性：通过 / Phase 合法性：通过 / 流转合法性：通过
+- 方案完整性：通过
+- Phase 合法性：通过（exec_running）
+- 流转合法性：通过
 
 ## 偏差记录
-1. AGENTS.md 首次部署判定新增 `projectLegacyAgentsDir`（保持项目级语义，防回归）。
-2. 全局冲突目录传 `~/.openfeel/update_conflicts`（满足 op-005 断言；文字指定 dirname 会平铺）。
+- build 步骤 8 从权威源重生成 `.opencode/` 自举实例，导致 `.opencode/agents/feel.md` 与 `.opencode/instructions/core.md` 变更（模板内容的生成副产物，非手工编辑），属构建预期行为，记录为超范围产出。

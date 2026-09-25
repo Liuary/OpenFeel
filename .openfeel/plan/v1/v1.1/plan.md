@@ -312,7 +312,7 @@ stage-35（并发保护）  ── soft ──→  stage-36（收敛 + 重命名
 | 项目 `.openfeel/update_state.json` | 混合记录项目 + 框架资产 | 拆分为全局 + 项目两份 | 迁移：框架资产条目移入 `~/.openfeel/update_state.json` 并重键为新路径/新名；项目资产条目保留 |
 | `flow.json` 中 `assignee` | 旧名（`planner` 等） | 兼容读取 | 不强制改写；读取归一化（P5） |
 | 项目 `AGENTS.md` | 含框架约束 + 项目约束混合 | 仅项目级约束 | 迁移时提示用户手工裁剪（框架约束已全局化），不做自动删改 |
-| 已有全局 `~/.config/opencode/opencode.jsonc` | 用户自定义 | 合并框架所需字段 | 部署时深度合并，保留用户字段；冲突项记录到 `update_infos.md` |
+| 已有全局 `~/.config/opencode/opencode.jsonc` | 用户自定义 | 合并框架所需字段 | 部署时深度合并，保留用户字段；JSONC 恒深度合并不产生冲突，无需记录 `update_infos.md`（REV-905 修订） |
 
 > **是否需要 `openfeel migrate` 命令**：**需要**（P6）。理由：旧布局清理不可逆、涉及跨项目全局状态、且需回滚能力。`openfeel update` 检测到 legacy 布局时只**提示**运行 migrate，不静默处理。
 

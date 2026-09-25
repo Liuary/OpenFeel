@@ -88,6 +88,19 @@ export function registerUpdateCommand(program: Command): void {
           console.log(t('update.conflictsHint', lang));
         }
 
+        // 追加文件报告（无控制区标记，已追加到末尾，待会话启动复核）
+        if (result.appended && result.appended.length > 0) {
+          console.log(t('update.appendedTitle', lang, { n: String(result.appended.length) }));
+          for (const item of result.appended) {
+            console.log(`  ⚠ ${item}`);
+          }
+          console.log(t('update.appendedHint', lang));
+          // REV-911：大量追加警告（state 损坏/丢失触发全量追加时提示）
+          if (result.appended.length > 10) {
+            console.warn(t('update.appendedManyWarning', lang, { n: String(result.appended.length) }));
+          }
+        }
+
         if (result.created.length === 0 && result.updated.length === 0) {
           console.log(t('update.alreadyUpToDate', lang));
         } else {

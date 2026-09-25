@@ -13,8 +13,8 @@ vi.mock('node:os', async (importOriginal) => {
 });
 
 import { updateProject, AgentsMdLangConflictError } from '../../src/core/update.js';
-import { createUpdateState, saveUpdateState } from '../../src/core/update-state.js';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
+import { createUpdateState, saveUpdateState, hashContent } from '../../src/core/update-state.js';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -37,6 +37,41 @@ function globalCoreMdPath(): string {
 /** 全局 opencode.jsonc 路径 */
 function globalJsoncPath(): string {
   return join(globalOpencodeDir(), 'opencode.jsonc');
+}
+/** 全局 update_infos.md 路径（基于 mock home） */
+function updateInfosPath(): string {
+  return join(mockHome.dir, '.openfeel', 'update_infos.md');
+}
+
+/** 去除文件中控制区标记行（模拟 stage-37 存量无标记文件） */
+function stripMarkers(filePath: string): void {
+  const content = readFileSync(filePath, 'utf-8');
+  const stripped = content
+    .split('\n')
+    .filter((l) => {
+      const t = l.trim();
+      return t !== '<!-- openfeel:begin -->' && t !== '<!-- openfeel:end -->';
+    })
+    .join('\n');
+  writeFileSync(filePath, stripped, 'utf-8');
+}
+
+/** 去除全部全局受管文件的控制区标记（agents + skills + core.md） */
+function stripAllGlobalMarkers(): void {
+  for (const dir of [globalAgentsDir(), globalSkillsDir()]) {
+    if (!existsSync(dir)) {
+      continue;
+    }
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const p = entry.isDirectory() ? join(dir, entry.name, 'SKILL.md') : join(dir, entry.name);
+      if (existsSync(p)) {
+        stripMarkers(p);
+      }
+    }
+  }
+  if (existsSync(globalCoreMdPath())) {
+    stripMarkers(globalCoreMdPath());
+  }
 }
 
 describe('updateProject', () => {
@@ -210,49 +245,48 @@ describe('updateProject', () => {
     expect(result2.skipped.length).toBe(26);
   });
 
-  it('手动修改全局 agent 内容后第二次 update 应标记冲突且不覆盖（REV-001）', () => {
+  it('手动修改全局 agent（无标记）第二次 update 追加受管区而非冲突（三态）', () => {
     updateProject(tmpDir);
 
-    // 手动修改全局 openfeel-planner.md（模拟用户本地修改）
+    // 手动改写全局 openfeel-planner.md（模拟用户本地修改，去除标记）
     const plannerPath = join(globalAgentsDir(), 'openfeel-planner.md');
-    const modified = 'modified content';
+    const modified = 'modified content\n';
     writeFileSync(plannerPath, modified, 'utf-8');
 
     const result2 = updateProject(tmpDir);
-    expect(result2.conflicts).toContain(plannerPath);
+    expect(result2.conflicts).not.toContain(plannerPath);
+    expect(result2.appended).toContain(plannerPath);
     expect(result2.updated).not.toContain(plannerPath);
 
-    // 用户修改内容未被覆盖
-    expect(readFileSync(plannerPath, 'utf-8')).toBe(modified);
+    // 用户内容保留在标记区外，框架内容以受管区追加
+    const content = readFileSync(plannerPath, 'utf-8');
+    expect(content.startsWith('modified content')).toBe(true);
+    expect(content).toContain('<!-- openfeel:begin -->');
+    expect(content).toContain('你是 openfeel-planner（计划官）');
   });
 
-  it('REV-001：有冲突时其他 updated 文件 hash 仍同步更新到全局 update_state.json', () => {
+  it('REV-001（三态）：追加后 hash 同步更新到全局 state，第三次走区内替换（updated）', () => {
     updateProject(tmpDir);
 
-    // 修改全局 openfeel-planner.md（冲突）
+    // 改写全局 openfeel-planner.md（无标记）→ 追加
     const plannerPath = join(globalAgentsDir(), 'openfeel-planner.md');
-    writeFileSync(plannerPath, 'user modified openfeel-planner', 'utf-8');
-
-    // 修改全局 openfeel-executor.md 并删除全局 state 中记录（降级 → 安全覆盖 → updated）
-    const executorPath = join(globalAgentsDir(), 'openfeel-executor.md');
-    writeFileSync(executorPath, 'user modified openfeel-executor', 'utf-8');
-    const globalStatePath = join(mockHome.dir, '.openfeel', 'update_state.json');
-    const state = JSON.parse(readFileSync(globalStatePath, 'utf-8'));
-    delete state.files[executorPath];
-    writeFileSync(globalStatePath, JSON.stringify(state), 'utf-8');
+    writeFileSync(plannerPath, 'user modified openfeel-planner\n', 'utf-8');
 
     const result2 = updateProject(tmpDir);
-    expect(result2.conflicts).toContain(plannerPath);
-    expect(result2.updated).toContain(executorPath);
+    expect(result2.appended).toContain(plannerPath);
 
-    // REV-001 核心：即使有冲突，updated 文件 hash 也更新到全局 state
-    const newState = JSON.parse(readFileSync(globalStatePath, 'utf-8'));
-    expect(newState.files[executorPath].status).toBe('clean');
-    expect(newState.files[plannerPath].status).toBe('conflict');
+    // 追加后 state 记录 clean + 新 hash（D38-1）
+    const globalStatePath = join(mockHome.dir, '.openfeel', 'update_state.json');
+    const state = JSON.parse(readFileSync(globalStatePath, 'utf-8'));
+    expect(state.files[plannerPath].status).toBe('clean');
 
-    // 第三次调用（无修改）→ executor 内容已与模板一致 → skipped
+    // 第三次：文件已含标记（追加即建区）→ 不再重复追加，走区内替换
     const result3 = updateProject(tmpDir);
-    expect(result3.updated).not.toContain(executorPath);
+    expect(result3.appended).not.toContain(plannerPath);
+    expect(result3.updated).toContain(plannerPath);
+    const content3 = readFileSync(plannerPath, 'utf-8');
+    expect(content3).toContain('你是 openfeel-planner（计划官）');
+    expect(content3).toContain('user modified openfeel-planner');
   });
 
   it('REV-003 场景 2：空全局 state 文件行为同首次 update', () => {
@@ -272,25 +306,26 @@ describe('updateProject', () => {
     expect(newState.files[join(globalAgentsDir(), 'feel.md')].status).toBe('clean');
   });
 
-  it('冲突时写入全局 ~/.openfeel/update_conflicts/ 标记文件（Git 风格）', () => {
+  it('无标记 hash 不匹配 → 追加 + 写 update_infos.md（不再写 update_conflicts）', () => {
     updateProject(tmpDir);
 
     const plannerPath = join(globalAgentsDir(), 'openfeel-planner.md');
-    writeFileSync(plannerPath, 'user modified openfeel-planner', 'utf-8');
+    writeFileSync(plannerPath, 'user modified openfeel-planner\n', 'utf-8');
 
     const result = updateProject(tmpDir);
-    expect(result.conflicts).toContain(plannerPath);
+    expect(result.appended).toContain(plannerPath);
+    expect(result.conflicts).toHaveLength(0);
 
-    // 全局冲突文件路径：~/.openfeel/update_conflicts/agents/openfeel-planner.md
-    const conflictPath = join(mockHome.dir, '.openfeel', 'update_conflicts', 'agents', 'openfeel-planner.md');
-    expect(existsSync(conflictPath)).toBe(true);
+    // update_infos.md 记录追加条目（绝对路径）
+    expect(existsSync(updateInfosPath())).toBe(true);
+    const infos = readFileSync(updateInfosPath(), 'utf-8');
+    expect(infos).toContain('## 追加');
+    expect(infos).toContain(plannerPath);
 
-    const content = readFileSync(conflictPath, 'utf-8');
-    expect(content).toContain('<<<<<<< CURRENT (用户修改版)');
-    expect(content).toContain('=======');
-    expect(content).toContain('>>>>>>> INCOMING');
-    expect(content).toContain('user modified openfeel-planner');
-    expect(content).toContain('你是 openfeel-planner（计划官）');
+    // 三态下不再产生 update_conflicts/ 标记文件
+    expect(existsSync(join(mockHome.dir, '.openfeel', 'update_conflicts'))).toBe(false);
+    // 区外用户内容保留
+    expect(readFileSync(plannerPath, 'utf-8').startsWith('user modified openfeel-planner')).toBe(true);
   });
 
   it('无冲突时不写入 update_conflicts/ 目录', () => {
@@ -422,7 +457,7 @@ describe('updateProject', () => {
     expect(err.message).toContain('en');
   });
 
-  it('语言相同但 AGENTS.md 内容与模板不一致时应覆盖部署（REV: 部署传播）', () => {
+  it('语言相同但 AGENTS.md 内容与模板不一致时按三态追加（无标记 + 无 state 记录）', () => {
     const infoDir = join(tmpDir, '.openfeel');
     mkdirSync(infoDir, { recursive: true });
     writeFileSync(join(infoDir, '.info.json'), JSON.stringify({ user: 'test', lang: 'zh-CN' }), 'utf-8');
@@ -431,17 +466,19 @@ describe('updateProject', () => {
 
     const result = updateProject(tmpDir, ['opencode'], 'zh-CN', { lang: 'zh-CN' });
 
-    expect(result.updated).toContain('AGENTS.md');
+    expect(result.appended).toContain('AGENTS.md');
     const content = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
+    expect(content.startsWith('# 旧版 AGENTS.md')).toBe(true);
     expect(content).toContain('9 Agent 体系总览');
+    expect(content).toContain('<!-- openfeel:begin -->');
   });
 
-  it('无 --lang 参数但 AGENTS.md 内容与模板不一致时应覆盖部署（REV: 部署传播）', () => {
+  it('无 --lang 参数但 AGENTS.md 内容与模板不一致时按三态追加', () => {
     writeFileSync(join(tmpDir, 'AGENTS.md'), '# 旧版 AGENTS.md\n\n缺少 9 Agent 体系总览', 'utf-8');
 
     const result = updateProject(tmpDir, ['opencode'], 'zh-CN', {});
 
-    expect(result.updated).toContain('AGENTS.md');
+    expect(result.appended).toContain('AGENTS.md');
     const content = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
     expect(content).toContain('9 Agent 体系总览');
   });
@@ -451,7 +488,8 @@ describe('updateProject', () => {
 
     const result = updateProject(tmpDir, ['opencode'], 'zh-CN', { lang: 'zh-CN' });
     expect(result.updated).not.toContain('AGENTS.md');
-    expect(result.skipped).toContain('AGENTS.md (language unchanged)');
+    expect(result.appended).not.toContain('AGENTS.md');
+    expect(result.skipped).toContain('AGENTS.md');
   });
 
   it('子命令正确注册（程序包含 update 命令）', async () => {
@@ -467,5 +505,209 @@ describe('updateProject', () => {
     const raw = readFileSync(join(tmpDir, '.openfeel', 'update_state.json'), 'utf-8');
     expect(raw.endsWith('\n')).toBe(true);
     expect(() => JSON.parse(raw)).not.toThrow();
+  });
+
+  // ── 三态（控制区标记 + hash 兜底）测试 ──
+
+  it('created：全局 agent/skill/core.md 与 AGENTS.md 均含控制区标记', () => {
+    const result = updateProject(tmpDir);
+
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    expect(result.created).toContain(feelPath);
+    const feel = readFileSync(feelPath, 'utf-8');
+    expect(feel).toContain('<!-- openfeel:begin -->');
+    expect(feel).toContain('<!-- openfeel:end -->');
+
+    expect(readFileSync(globalCoreMdPath(), 'utf-8')).toContain('<!-- openfeel:begin -->');
+    expect(readFileSync(join(globalSkillsDir(), 'openfeel-check-kb', 'SKILL.md'), 'utf-8')).toContain('<!-- openfeel:begin -->');
+    expect(readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8')).toContain('<!-- openfeel:begin -->');
+  });
+
+  it('含标记文件：篡改区内 + 区外用户内容 → 只替换区内、区外逐字符保留（updated）', () => {
+    updateProject(tmpDir);
+
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    const original = readFileSync(feelPath, 'utf-8');
+    const tampered =
+      original.replace('<!-- openfeel:begin -->\n', '<!-- openfeel:begin -->\nINJECTED_TAMPER\n') +
+      '\n## 用户自定义区外内容\n用户段落\n';
+    writeFileSync(feelPath, tampered, 'utf-8');
+
+    const result = updateProject(tmpDir);
+    expect(result.updated).toContain(feelPath);
+
+    const after = readFileSync(feelPath, 'utf-8');
+    expect(after).not.toContain('INJECTED_TAMPER');
+    expect(after).toContain('你是 Feel');
+    // 区外后缀逐字符保留
+    expect(after).toContain('\n## 用户自定义区外内容\n用户段落\n');
+  });
+
+  it('含标记且区内与 incoming 一致 → skipped（REV-901）', () => {
+    updateProject(tmpDir);
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    const before = readFileSync(feelPath, 'utf-8');
+
+    const result2 = updateProject(tmpDir);
+    expect(result2.skipped).toContain(feelPath);
+    expect(result2.updated).not.toContain(feelPath);
+    expect(readFileSync(feelPath, 'utf-8')).toBe(before);
+  });
+
+  it('无标记 + hash 匹配 → adopt（写带标记新框架内容，updated）', () => {
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    mkdirSync(globalAgentsDir(), { recursive: true });
+    const legacy = '# legacy feel\n用户旧内容\n';
+    writeFileSync(feelPath, legacy, 'utf-8');
+
+    // 预置合法全局 state，记录该文件 hash（模拟 stage-37 部署、框架上次写未改）
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(mockHome.dir, '.openfeel', 'update_state.json'),
+      JSON.stringify({
+        version: '1.0',
+        last_update: '',
+        openfeel_version: '1.0.9',
+        files: { [feelPath]: { hash: hashContent(legacy), status: 'clean' } },
+      }),
+      'utf-8',
+    );
+
+    const result = updateProject(tmpDir);
+    expect(result.updated).toContain(feelPath);
+    const content = readFileSync(feelPath, 'utf-8');
+    expect(content).toContain('<!-- openfeel:begin -->');
+    expect(content).toContain('你是 Feel');
+    // adopt 不写入 update_infos
+    expect(existsSync(updateInfosPath())).toBe(false);
+  });
+
+  it('无标记 + 无 state 记录 → 追加受管区 + update_infos.md；二次 update 幂等（N2）', () => {
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    mkdirSync(globalAgentsDir(), { recursive: true });
+    writeFileSync(feelPath, 'user only content\n', 'utf-8');
+
+    const result = updateProject(tmpDir);
+    expect(result.appended).toContain(feelPath);
+    const content = readFileSync(feelPath, 'utf-8');
+    expect(content.startsWith('user only content')).toBe(true);
+    expect(content).toContain('<!-- openfeel:begin -->');
+    expect(readFileSync(updateInfosPath(), 'utf-8')).toContain(feelPath);
+
+    // 幂等：追加即建区，二次 update 不再重复追加
+    const result2 = updateProject(tmpDir);
+    expect(result2.appended).not.toContain(feelPath);
+    expect(readFileSync(feelPath, 'utf-8').match(/<!-- openfeel:begin -->/g)?.length).toBe(1);
+  });
+
+  it('malformed（两对标记）→ 不写盘不追加，记 anomaly，结果 skipped（REV-1001）', () => {
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    mkdirSync(globalAgentsDir(), { recursive: true });
+    const malformed =
+      '<!-- openfeel:begin -->\na\n<!-- openfeel:end -->\n<!-- openfeel:begin -->\nb\n<!-- openfeel:end -->\n';
+    writeFileSync(feelPath, malformed, 'utf-8');
+
+    const result = updateProject(tmpDir);
+    expect(result.skipped).toContain(feelPath);
+    expect(result.appended).not.toContain(feelPath);
+    expect(readFileSync(feelPath, 'utf-8')).toBe(malformed);
+    const infos = readFileSync(updateInfosPath(), 'utf-8');
+    expect(infos).toContain('## 异常');
+    expect(infos).toContain(feelPath);
+
+    // 二次 update 幂等：仍不写盘、不追加
+    const result2 = updateProject(tmpDir);
+    expect(readFileSync(feelPath, 'utf-8')).toBe(malformed);
+    expect(result2.appended).not.toContain(feelPath);
+
+    // 手动修复为单对完整标记 → 第三次走含标记正常路径（updated），不再 skipped
+    writeFileSync(feelPath, '<!-- openfeel:begin -->\nold\n<!-- openfeel:end -->\n', 'utf-8');
+    const result3 = updateProject(tmpDir);
+    expect(result3.skipped).not.toContain(feelPath);
+    expect(result3.updated).toContain(feelPath);
+  });
+
+  it('conflicts 恒空（三态下无标记 hash 不匹配改为追加）', () => {
+    const result = updateProject(tmpDir);
+    expect(result.conflicts).toHaveLength(0);
+    expect(Array.isArray(result.appended)).toBe(true);
+  });
+
+  it('REV-911：全局 state 损坏 + 存量无标记全局文件 → 全量追加（不覆盖用户内容）', () => {
+    updateProject(tmpDir);
+    // 去除全部全局受管文件标记（模拟 stage-37 存量无标记文件）
+    stripAllGlobalMarkers();
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    const before = readFileSync(feelPath, 'utf-8');
+
+    // 损坏全局 state（非法 JSON）
+    writeFileSync(join(mockHome.dir, '.openfeel', 'update_state.json'), '{ not valid json', 'utf-8');
+
+    const result = updateProject(tmpDir);
+    expect(result.appended.length).toBeGreaterThan(10);
+    expect(result.appended).toContain(feelPath);
+    // 用户原内容保留在追加区之前
+    const after = readFileSync(feelPath, 'utf-8');
+    expect(after.startsWith(before)).toBe(true);
+    expect(after).toContain('<!-- openfeel:begin -->');
+  });
+
+  it('含标记 agent 文件：框架字段覆盖 + 用户自定义字段保留（frontmatter 合并）', () => {
+    updateProject(tmpDir);
+    const plannerPath = join(globalAgentsDir(), 'openfeel-planner.md');
+    const c = readFileSync(plannerPath, 'utf-8');
+    // 用户自定义字段 model（框架无）应保留；用户篡改框架字段 description 应被框架值覆盖
+    const tampered = c.replace(/^description:.*$/m, 'model: user/custom-model\ndescription: OLD-USER-DESCRIPTION');
+    writeFileSync(plannerPath, tampered, 'utf-8');
+
+    const result = updateProject(tmpDir);
+    expect(result.updated).toContain(plannerPath);
+    const after = readFileSync(plannerPath, 'utf-8');
+    // 用户自定义字段 passthrough 保留
+    expect(after).toContain('model: user/custom-model');
+    // 框架字段覆盖用户篡改值
+    expect(after).not.toContain('OLD-USER-DESCRIPTION');
+    expect(after).toMatch(/^description: openfeel-planner/m);
+  });
+
+  it('AGENTS.md 追加落项目 state + update_infos 二元组（REV-903）', () => {
+    writeFileSync(join(tmpDir, 'AGENTS.md'), '# 用户项目约束\n', 'utf-8');
+
+    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', {});
+    expect(result.appended).toContain('AGENTS.md');
+
+    // update_infos 记录「相对路径 (项目: 根)」二元组
+    const infos = readFileSync(updateInfosPath(), 'utf-8');
+    expect(infos).toContain(`AGENTS.md (项目: ${tmpDir})`);
+
+    // hash 落项目 state（非全局 state）
+    const projectState = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'update_state.json'), 'utf-8'));
+    expect(projectState.files['AGENTS.md']).toBeDefined();
+    expect(projectState.files['AGENTS.md'].status).toBe('clean');
+  });
+
+  it('REV-911 命令层：appended > 10 时输出大量追加警告', async () => {
+    // 首次部署生成全局文件 → 去标记 → 损坏 state
+    updateProject(tmpDir);
+    stripAllGlobalMarkers();
+    writeFileSync(join(mockHome.dir, '.openfeel', 'update_state.json'), '{ broken', 'utf-8');
+    // 项目已初始化（避免命令层 auto-init）
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+
+    const { Command } = await import('commander');
+    const { registerUpdateCommand } = await import('../../src/commands/update.js');
+    const program = new Command();
+    program.exitOverride();
+    registerUpdateCommand(program);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await program.parseAsync(['node', 'openfeel', 'update', tmpDir]);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('追加'));
+    } finally {
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    }
   });
 });

@@ -14,6 +14,8 @@ import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobal
 import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './opencode-config.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
+import { detectFileType, normalize, splitFrontmatter, parseRegion, wrapRegion, replaceRegion, mergeFrontmatter, serializeFrontmatter } from './managed-region.js';
+import { appendUpdateInfo } from './update-infos.js';
 
 // 新增：update_state.json hash 比对与冲突检测（项目 state + 全局 state）
 import {
@@ -35,7 +37,8 @@ export interface UpdateResult {
   created: string[];  // 新创建的文件列表
   updated: string[];  // 更新的文件列表
   skipped: string[];  // 跳过的文件（已存在且内容一致）
-  conflicts: string[];  // 冲突文件相对路径列表（用户手动修改，拒绝覆盖）
+  conflicts: string[];  // 冲突文件相对路径列表（本阶段三态下恒空，保留兼容命令层输出）
+  appended: string[];  // 追加的文件列表（无标记 → 末尾追加受管区，待会话启动复核；malformed 不追加，见 REV-1001）
 }
 
 /** AGENTS.md 语言冲突错误（由命令层捕获处理） */
@@ -1212,65 +1215,104 @@ description: 交互式流水线向导，供 Agent 在终端中逐步推进流水
 
 // ─── 辅助函数 ──────────────────────────────────────────────────────
 
+/** 写全文时的受管内容组合：frontmatter 序列化 + 正文标记包裹 */
+function composeManagedContent(content: string, type: 'markdown' | 'gitignore'): string {
+  const split = type === 'markdown' ? splitFrontmatter(content) : null;
+  if (split) {
+    return serializeFrontmatter(split.frontmatter) + wrapRegion(split.body, type);
+  }
+  return wrapRegion(content, type);
+}
+
+/** writeManagedFile 结果动作 */
+type ManagedAction = 'created' | 'updated' | 'skipped' | 'appended';
+
 /**
- * 带冲突检测的写入函数（替代原 writeIfChanged）
- *
- * 三态逻辑：
- *  - 文件不存在 → created
- *  - 文件已存在 + hash 匹配 update_state 中记录 → 安全覆盖 → updated
- *  - 文件已存在 + hash 不匹配 → 拒绝覆盖 → conflicts
- *  - 文件已存在 + 不在 update_state 管理中 → 安全覆盖 → updated（降级）
- *  - 文件已存在 + update_state 不存在或损坏 → 安全覆盖 → updated（降级为旧行为）
- *
- * REV-001：此函数仅负责分类（created/updated/skipped/conflicts），
- * hash 的实际更新在 updateProject() 末尾统一处理，
- * 确保"冲突路径非冲突文件 hash 同步更新"。
+ * 受管文件写入（控制区优先 + hash 兜底 三态）。
+ * 分派依据 detectFileType；jsonc 不走本函数（调用方走深度合并）。
+ * target 供 update_infos 路径记录：全局资产 { isGlobal: true }，项目资产 { isGlobal: false, projectRoot }。
  */
-function writeWithMergeDetection(
+function writeManagedFile(
   filePath: string,
   content: string,
-  relativePath: string,
+  stateKey: string,
   updateState: UpdateState | null,
-  created: string[],
-  updated: string[],
-  skipped: string[],
-  conflicts: string[],
-): void {
+  target: { isGlobal: boolean; projectRoot?: string },
+): ManagedAction {
+  const type = detectFileType(filePath);
+  if (type === null || type === 'jsonc') {
+    // 无策略 / JSONC：不应到达（jsonc 由 updateProject 单独走深度合并）
+    throw new Error(`writeManagedFile: 不支持的类型 ${filePath}`);
+  }
+
+  // 拆 incoming 的 frontmatter + 正文（gitignore 无 frontmatter，body=content）
+  const incomingSplit = type === 'markdown' ? splitFrontmatter(content) : null;
+  const incomingFm = incomingSplit?.frontmatter ?? null;
+  const incomingBody = incomingSplit?.body ?? content;
+
+  // 不存在 → created（写全文：frontmatter + 标记包裹正文）
   if (!existsSync(filePath)) {
-    // 文件不存在 → 新建
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, content, 'utf-8');
-    created.push(relativePath);
-    return;
+    atomicWriteFileSync(filePath, composeManagedContent(content, type));
+    return 'created';
   }
 
   const existing = readFileSync(filePath, 'utf-8');
+  const existingSplit = type === 'markdown' ? splitFrontmatter(existing) : null;
+  const existingFm = existingSplit?.frontmatter ?? null;
+  const existingBody = existingSplit?.body ?? existing;
 
-  // 内容相同 → skip（快速路径：全文比对，避免 hash 计算）
-  if (existing === content) {
-    skipped.push(relativePath);
-    return;
-  }
+  const region = parseRegion(existingBody, type);
 
-  // 检查 update_state 中是否有该文件的记录
-  const fileState = updateState?.files[relativePath];
-  if (fileState) {
-    // 有记录 → 比对 hash
-    const currentHash = hashContent(existing);
-    if (currentHash === fileState.hash) {
-      // hash 一致 → 用户未修改 → 安全覆盖
-      writeFileSync(filePath, content, 'utf-8');
-      updated.push(relativePath);
-      return;
+  if (region.status === 'ok') {
+    // 含标记：frontmatter 合并 + 正文区内替换，全文比对（REV-901 skip 判定）
+    // incoming 无 frontmatter（如 core.md/AGENTS.md 模板）时保留用户已有 frontmatter，避免写入丢失（REV-1101）
+    const newFm = existingFm && incomingFm ? mergeFrontmatter(existingFm, incomingFm) : (existingFm ?? incomingFm);
+    const newBody = replaceRegion(existingBody, incomingBody, type);
+    const newContent = newFm ? serializeFrontmatter(newFm) + newBody : newBody;
+    if (newContent === normalize(existing)) {
+      return 'skipped';
     }
-    // hash 不一致 → 用户已修改 → 冲突！
-    conflicts.push(relativePath);
-    return;
+    atomicWriteFileSync(filePath, newContent);
+    return 'updated';
   }
 
-  // 无记录（降级路径：update_state 损坏或旧版本）→ 安全覆盖
-  writeFileSync(filePath, content, 'utf-8');
-  updated.push(relativePath);
+  if (region.status === 'none') {
+    // 无标记：hash 兜底（N3）
+    const fileState = updateState?.files[stateKey];
+    if (fileState && hashContent(existing) === fileState.hash) {
+      // adopt：存量框架文件未改 → 直接写带标记的新框架内容（等价 created 记为 updated）
+      atomicWriteFileSync(filePath, composeManagedContent(content, type));
+      return 'updated';
+    }
+    // 追加受管区（标记包裹正文，不触碰 frontmatter），并记录待会话启动复核
+    const appendedRegion = wrapRegion(incomingBody, type);
+    const sep = existing.endsWith('\n') ? '' : '\n';
+    atomicWriteFileSync(filePath, `${existing}${sep}${appendedRegion}`);
+    appendUpdateInfo('appended', target.isGlobal ? { absolutePath: filePath } : { projectRoot: target.projectRoot, relativePath: stateKey });
+    return 'appended';
+  }
+
+  // malformed（>1 对 / 不成对）：不追加、不写盘，仅记录异常条目待人工修复标记；
+  // 修复后下次 update 走 ok（区内替换）/ none（hash 兜底）正常路径，杜绝重复追加死循环（REV-1001 修订）
+  appendUpdateInfo('anomaly', target.isGlobal ? { absolutePath: filePath } : { projectRoot: target.projectRoot, relativePath: stateKey });
+  return 'skipped';
+}
+
+/** 将 writeManagedFile 的动作分发到对应结果数组 */
+function pushAction(
+  action: ManagedAction,
+  stateKey: string,
+  created: string[],
+  updated: string[],
+  skipped: string[],
+  appended: string[],
+): void {
+  switch (action) {
+    case 'created': created.push(stateKey); break;
+    case 'updated': updated.push(stateKey); break;
+    case 'skipped': skipped.push(stateKey); break;
+    case 'appended': appended.push(stateKey); break;
+  }
 }
 
 // ─── 主函数 ────────────────────────────────────────────────────────
@@ -1291,6 +1333,7 @@ export function updateProject(
   const created: string[] = [];
   const updated: string[] = [];
   const skipped: string[] = [];
+  const appended: string[] = [];
 
   // ── 增量更新：加载项目 state（AGENTS.md / 项目 opencode.jsonc）与全局 state（框架资产）──
   const state = loadUpdateState(projectPath);
@@ -1299,7 +1342,7 @@ export function updateProject(
 
   // 过滤：仅处理选中的工具
   if (!selectedTools.includes('opencode')) {
-    return { created: [], updated: [], skipped: [], conflicts: [] };
+    return { created: [], updated: [], skipped: [], conflicts: [], appended: [] };
   }
 
   // N8：检测项目内遗留 .opencode/{agents,skills,instructions}，只提示不迁移
@@ -1331,17 +1374,17 @@ export function updateProject(
   const agentsMdExists = existsSync(agentsMdPath);
 
   if (!agentsDirHasContent && !agentsMdExists) {
-    // 情况 1：首次部署 → 使用全局默认语言部署 AGENTS.md
+    // 情况 1：首次部署 → 使用全局默认语言部署 AGENTS.md（受管区标记包裹）
     const globalConfig = getGlobalConfig();
     const deployLang = lang ?? globalConfig.lang ?? 'zh-CN';
     const agentsMdContent = loadTemplate(deployLang, 'agents-md');
-    writeFileSync(agentsMdPath, agentsMdContent, 'utf-8');
+    atomicWriteFileSync(agentsMdPath, composeManagedContent(agentsMdContent, 'markdown'));
     created.push('AGENTS.md');
   } else if (!agentsMdExists && options?.lang) {
     // 情况 2b：已有 agents 目录但 AGENTS.md 被手动删除 + --lang 指定
-    // → 用指定语言重新创建 AGENTS.md
+    // → 用指定语言重新创建 AGENTS.md（受管区标记包裹）
     const agentsMdContent = loadTemplate(options.lang, 'agents-md');
-    writeFileSync(agentsMdPath, agentsMdContent, 'utf-8');
+    atomicWriteFileSync(agentsMdPath, composeManagedContent(agentsMdContent, 'markdown'));
     created.push('AGENTS.md');
   } else if (agentsMdExists && options?.lang) {
     // 情况 2：已有项目 + --lang 参数指定了语言
@@ -1351,9 +1394,9 @@ export function updateProject(
     if (requestedLang !== projectLang) {
       // 语言不同 → 提示确认
       if (options?.force) {
-        // --force → 跳过确认，直接覆盖
+        // --force → 跳过确认，直接覆盖（受管区标记包裹）
         const agentsMdContent = loadTemplate(requestedLang, 'agents-md');
-        writeFileSync(agentsMdPath, agentsMdContent, 'utf-8');
+        atomicWriteFileSync(agentsMdPath, composeManagedContent(agentsMdContent, 'markdown'));
         updated.push('AGENTS.md');
       } else if (options?.interactive) {
         // 交互模式 → 输出冲突警告，跳过 AGENTS.md，继续执行后续框架更新
@@ -1365,26 +1408,16 @@ export function updateProject(
         skipped.push('AGENTS.md');
       }
     } else {
-      // 语言相同 → 比较内容，模板更新时传播部署
+      // 语言相同 → 走受管文件三态（含标记区内替换 / 无标记 hash 兜底 / 追加）
       const templateContent = loadTemplate(requestedLang, 'agents-md');
-      const existingContent = readFileSync(agentsMdPath, 'utf-8');
-      if (existingContent !== templateContent) {
-        writeFileSync(agentsMdPath, templateContent, 'utf-8');
-        updated.push('AGENTS.md');
-      } else {
-        skipped.push('AGENTS.md (language unchanged)');
-      }
+      const action = writeManagedFile(agentsMdPath, templateContent, 'AGENTS.md', state, { isGlobal: false, projectRoot: projectPath });
+      pushAction(action, 'AGENTS.md', created, updated, skipped, appended);
     }
   } else if (agentsMdExists) {
-    // 情况 3：已有项目 + 无 --lang 参数 → 比较内容，模板更新时传播部署
+    // 情况 3：已有项目 + 无 --lang 参数 → 走受管文件三态
     const templateContent = loadTemplate(lang, 'agents-md');
-    const existingContent = readFileSync(agentsMdPath, 'utf-8');
-    if (existingContent !== templateContent) {
-      writeFileSync(agentsMdPath, templateContent, 'utf-8');
-      updated.push('AGENTS.md');
-    } else {
-      skipped.push('AGENTS.md (use existing)');
-    }
+    const action = writeManagedFile(agentsMdPath, templateContent, 'AGENTS.md', state, { isGlobal: false, projectRoot: projectPath });
+    pushAction(action, 'AGENTS.md', created, updated, skipped, appended);
   }
 
   // 记录项目语言映射到全局配置
@@ -1402,13 +1435,17 @@ export function updateProject(
   // 0. 生成全局框架约束 core.md（~/.config/opencode/openfeel/core.md）
   const coreInstructionsPath = getGlobalCoreMdPath();
   const coreContent = loadTemplate(lang, 'core-instructions');
-  writeWithMergeDetection(coreInstructionsPath, coreContent, coreInstructionsPath, newGlobalState, created, updated, skipped, conflicts);
+  {
+    const action = writeManagedFile(coreInstructionsPath, coreContent, coreInstructionsPath, newGlobalState, { isGlobal: true });
+    pushAction(action, coreInstructionsPath, created, updated, skipped, appended);
+  }
 
   // 1. 生成 Agent 定义文件到全局 agents 目录（绝对路径作 state key）
   for (const name of listAgentIds(lang)) {
     const content = loadAgentTemplate(lang, name);
     const filePath = join(agentsDir, `${name}.md`);
-    writeWithMergeDetection(filePath, content, filePath, newGlobalState, created, updated, skipped, conflicts);
+    const action = writeManagedFile(filePath, content, filePath, newGlobalState, { isGlobal: true });
+    pushAction(action, filePath, created, updated, skipped, appended);
   }
 
   // 2. 生成 Skill 定义文件到全局 skills 目录（每个 Skill 一个子目录，包含 SKILL.md）
@@ -1416,7 +1453,8 @@ export function updateProject(
     const skillSubDir = join(skillsDir, name);
     mkdirSync(skillSubDir, { recursive: true });
     const filePath = join(skillSubDir, 'SKILL.md');
-    writeWithMergeDetection(filePath, content, filePath, newGlobalState, created, updated, skipped, conflicts);
+    const action = writeManagedFile(filePath, content, filePath, newGlobalState, { isGlobal: true });
+    pushAction(action, filePath, created, updated, skipped, appended);
   }
 
   // 3. 全局 opencode.jsonc：深度合并（保留用户字段），加全局锁 + 原子写
@@ -1470,7 +1508,7 @@ export function updateProject(
       } else {
         const absPath = resolve(projectPath, conflictPath);
         const currentContent = existsSync(absPath) ? readFileSync(absPath, 'utf-8') : '';
-        // 获取 incoming 内容：writeWithMergeDetection 未实际写入，需单独获取
+        // 获取 incoming 内容：冲突未实际写入，需单独获取
         const incomingContent = getIncomingContent(conflictPath, lang);
         writeConflictFile(projectPath, conflictPath, currentContent, incomingContent, openfeelVersion);
       }
@@ -1485,7 +1523,8 @@ export function updateProject(
   const newState: UpdateState = state ?? createUpdateState(projectPath, {});
 
   // 更新非冲突文件 hash：项目资产（相对路径）→ 项目 state；全局资产（绝对路径）→ 全局 state
-  for (const p of [...created, ...updated]) {
+  // appended 追加后同样记录 clean + 新 hash（D38-1：追加即建区，下次走区内替换而非误判无记录）
+  for (const p of [...created, ...updated, ...appended]) {
     if (isAbsolute(p)) {
       if (existsSync(p)) {
         updateFileHash(newGlobalState, p, readFileSync(p, 'utf-8'));
@@ -1515,7 +1554,7 @@ export function updateProject(
   saveUpdateState(projectPath, newState);
   saveGlobalUpdateState(newGlobalState);
 
-  return { created, updated, skipped, conflicts };
+  return { created, updated, skipped, conflicts, appended };
 }
 
 /**

@@ -4,7 +4,7 @@
 
 ## 职责
 
-`openfeel update` 的编排层：在**全局** `~/.config/opencode/` 生成/更新 Agent 定义、Skill 定义、框架约束 core.md，深度合并全局 opencode.jsonc，写入项目最小 opencode.jsonc 覆盖，并维护 AGENTS.md 语言同步 + 增量更新冲突检测。
+`openfeel update` 的编排层：在**全局** `~/.config/opencode/` 生成/更新 Agent 定义、Skill 定义、框架约束 core.md，深度合并全局 opencode.jsonc，写入项目最小 opencode.jsonc 覆盖，并维护 AGENTS.md 语言同步 + 控制区标记三态增量更新（`writeManagedFile`）+ 追加记录（`update_infos.md`）。
 
 ## 核心 API
 
@@ -38,12 +38,26 @@
 | `agent_manager_tool` | 移除（op-000 实测 schema 未定义 + 静默丢弃，N3） |
 | 深度合并 | `buildUpdatedJsonc`/`replaceSkillsFieldInJsonc`/`buildJsoncFromObject` → 统一 `mergeGlobalOpencodeJsonc`（保留用户字段） |
 
-## 冲突标记（writeWithMergeDetection）
+## 控制区标记三态（writeManagedFile）
 
-三态逻辑（stage-32 建立，stage-37 扩展全局）：文件不存在 → created；已存在 + hash 匹配 → 安全覆盖 updated；已存在 + hash 不匹配 → conflicts。全局资产 key 用绝对路径，项目资产用相对路径，按 `isAbsolute` 路由到对应 state。
+stage-38 用「控制区标记」替换 stage-32 的 `writeWithMergeDetection`（hash 四态）。`writeManagedFile` 按 `detectFileType` 分派：
+
+| 文件存在？ | 含标记？ | hash 匹配？ | 动作 | 结果 |
+|:--:|:--:|:--:|:--|:--:|
+| ❌ | — | — | 写全文（frontmatter 结构化 + 正文标记包裹） | `created` |
+| ✅ | ✅ | — | frontmatter 合并 + 区内替换 → 全文比对 | `skipped` / `updated` |
+| ✅ | ❌ | ✅ | adopt 写带标记新框架内容 | `updated` |
+| ✅ | ❌ | ❌/无记录 | 末尾追加受管区 + 写 update_infos.md | `appended` |
+| ✅ | malformed | — | 不写盘，仅记 anomaly 条目 | `skipped` |
+
+- 标记型文件（markdown 正文 / .gitignore）走三态；frontmatter / JSONC 结构化型文件恒走合并不进入三态（N1）。
+- 无标记追加「追加即建区」（N2）；hash 降级为「无标记文件归属兜底」（N3），不再作为含标记文件拒写依据。
+- `UpdateResult` 新增 `appended: string[]`（与 created/updated/skipped/conflicts 并列）；`conflicts` 本阶段恒空（语义变化）。
+- 追加/异常动作内联写 `~/.openfeel/update_infos.md`（见 `core/update-infos.md`），路径二元组（绝对路径 / 项目根+相对路径）。
 
 ## 变更历史
 
 | 阶段 | 变更 |
 |------|------|
 | stage-37 | 部署目标改全局 `~/.config/opencode/`；`$schema`/`skills`/`agent_manager_tool` 修正；全局 opencode.jsonc 深度合并；双 state 路由；legacy 提示（N8）；`parseJsonc` 迁移至 opencode-config.ts |
+| stage-38 | `writeWithMergeDetection` → `writeManagedFile` 控制区三态（+appended 四分类）；新增 `composeManagedContent`/`pushAction`；接入 `managed-region` + `update-infos`；conflicts 恒空语义变化 |

@@ -252,6 +252,9 @@ export const update: I18nDomain = {
   'langConflict':               { key: 'update.langConflict',               zh: '', en: '⚠️ AGENTS.md language mismatch: project is {projectLang}, requested is {requestedLang}. Use --force to override or adjust manually.' },
   'conflictsTitle':             { key: 'update.conflictsTitle',             zh: '', en: 'Conflicts detected (files have been manually modified, overwrite refused)' },
   'conflictsHint':              { key: 'update.conflictsHint',              zh: '', en: 'Conflict files written to .openfeel/update_conflicts/. Please merge manually, then re-run openfeel update.' },
+  'appendedTitle':              { key: 'update.appendedTitle',              zh: '', en: 'Appended {n} file(s) (no control-region marker; managed content appended to the end, pending session-start review)' },
+  'appendedHint':               { key: 'update.appendedHint',               zh: '', en: 'See ~/.openfeel/update_infos.md; each entry will be checked and prompted for repair at session start.' },
+  'appendedManyWarning':        { key: 'update.appendedManyWarning',        zh: '', en: '⚠️ Appending {n} files at once — possible update_state corruption or first migration. Run openfeel update then check ~/.openfeel/update_infos.md.' },
 };
 
 /* ==================== project ==================== */

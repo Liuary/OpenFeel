@@ -270,6 +270,9 @@ export const update: I18nDomain = {
   'langConflict':               { key: 'update.langConflict',               zh: '⚠️ AGENTS.md 语言差异：当前项目为 {projectLang}，请求部署为 {requestedLang}。使用 --force 覆盖或手动调整。', en: '' },
   'conflictsTitle':             { key: 'update.conflictsTitle',             zh: '检测到冲突（文件已被手动修改，拒绝覆盖）',        en: '' },
   'conflictsHint':              { key: 'update.conflictsHint',              zh: '冲突文件已写入 .openfeel/update_conflicts/，请手动合并后重新运行 openfeel update。', en: '' },
+  'appendedTitle':              { key: 'update.appendedTitle',              zh: '追加了 {n} 个文件（无控制区标记，受管内容已追加到末尾，待会话启动复核）', en: '' },
+  'appendedHint':               { key: 'update.appendedHint',               zh: '详见 ~/.openfeel/update_infos.md，会话启动时将逐条检查并提示修复。', en: '' },
+  'appendedManyWarning':        { key: 'update.appendedManyWarning',        zh: '⚠️ 一次追加 {n} 个文件，疑似 update_state 损坏或首次迁移，请运行 openfeel update 后检查 ~/.openfeel/update_infos.md。', en: '' },
 };
 
 /* ==================== project 域：项目概览命令 ==================== */

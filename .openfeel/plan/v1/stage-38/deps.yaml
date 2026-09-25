@@ -1,0 +1,80 @@
+# stage-38 操作方案依赖声明
+# 由 Planner 制定基础结构，Schemer 细化各 op 内容并更新
+# 阶段：v1.1.0-stage-38（增量部署三态：控制区标记 + hash 兜底 + update_infos 修复）
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "控制区标记工具 managed-region.ts（四策略：markdown / gitignore / frontmatter / jsonc）"
+    depends_on: []
+    stage: "v1.1.0-stage-38"
+    type: hard
+    produces:
+      - "src/core/managed-region.ts"
+      - "test/core/managed-region.test.ts"
+    description: "先导 op，产出受管区底层原语。detectFileType 四策略分派（.gitignore→gitignore / .jsonc→jsonc / .md→markdown / 其余 null，jsonc 仅分派不实现）；parseRegion 精确整行匹配 begin/end，计数判定 ok/none/malformed（REV-908：>1 对或不成对→malformed）；wrapRegion/extractRegion/replaceRegion 基于 trim 正文保证 round-trip 幂等；splitFrontmatter（REV-1005：indexOf 从 3 起正确处理空 frontmatter）/mergeFrontmatter（REV-904 字段级白名单浅合并）/serializeFrontmatter（REV-1008 显式末尾换行）；replaceRegion 加 parseRegion 判态 assert（REV-1007 防误用误删用户内容）；normalize 导出供 op-002 skip 归一化比对（REV-1006）。无 hard 依赖。"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "部署三态接入 + update_infos.md 读写（update-infos.ts + 重构 writeWithMergeDetection 为 writeManagedFile）"
+    depends_on: ["op-001"]
+    stage: "v1.1.0-stage-38"
+    type: hard
+    produces:
+      - "src/core/update-infos.ts"
+      - "src/core/update.ts"
+      - "src/commands/update.ts"
+      - "src/core/i18n-data/zh-CN.ts"
+      - "src/core/i18n-data/en.ts"
+    description: "writeWithMergeDetection 演进为「控制区优先 + hash 兜底」三态 + appended 第四分类。新增 update-infos.ts 读写 ~/.openfeel/update_infos.md（append/load/resolve/clear + 加锁 + 原子写 + 路径二元组 REV-903）；writeManagedFile：不存在→created / 含标记→区内替换（REV-901 skip 判定用 normalize(existing) 比对 REV-1006，frontmatter 恒合并）/ 无标记→hash 兜底（匹配 adopt，不匹配或无记录追加）/ malformed→不写盘不追加，仅记 anomaly 条目返回 skipped（REV-1001 修订，杜绝重复追加死循环）；AGENTS.md 语言同步两分支（L1367-1377 用 requestedLang / L1378-1388 用 lang）各自保留模板加载、分别调 writeManagedFile（REV-1004 修订）；命令层 + i18n 输出 appended（n>10 警告 REV-911）。hard 依赖 op-001（import managed-region 全部原语）。"
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "会话启动修复规则（feel.md 主 + core-instructions 辅，双语）"
+    depends_on: ["op-002"]
+    stage: "v1.1.0-stage-38"
+    type: hard
+    produces:
+      - "src/core/templates-data/opencode/agents/zh-CN/feel.md"
+      - "src/core/templates-data/opencode/agents/en/feel.md"
+      - "src/core/templates-data/opencode/instructions/zh-CN.md"
+      - "src/core/templates-data/opencode/instructions/en.md"
+      - "src/core/template-loader.ts"
+    description: "feel.md（zh/en）新增「update_infos 检查修复」节（REV-902：修复动作仅 feel.md，core-instructions 只加提示性约束）；异常条目自愈、追加条目人工确认（REV-909）；勾选动作用 edit 工具编辑 update_infos.md 的 `- [ ]`→`- [x]`，不调用 resolveUpdateInfo/clearUpdateInfos、不新增 CLI 命令（REV-1003：Feel 是 opencode primary agent 不能 import TS 模块）；TTY 对称冲突检测；npm run build 重生成 template-loader.ts。hard 依赖 op-002（update_infos.md 格式与条目标记语义已定稿）。"
+
+  op-004:
+    file: "ops/op-004.md"
+    title: "测试 — 标记/三态/update_infos 生命周期/启动修复 + 回归"
+    depends_on: ["op-001", "op-002", "op-003"]
+    stage: "v1.1.0-stage-38"
+    type: hard
+    produces:
+      - "test/core/update-infos.test.ts"
+      - "test/core/update.test.ts"
+      - "test/core/template-loader.test.ts"
+    description: "update-infos.test.ts（append/load/resolve/clear + 二元组 + 损坏降级 + 并发）；update.test.ts 三态组合全覆盖（created/含标记 updated 区外保留/skipped REV-901/adopt/追加/anomaly 不写盘/幂等/malformed 二次 update 幂等 REV-1001/conflicts 恒空/REV-911 全量追加/frontmatter 合并/AGENTS.md 项目 state）；managed-region.test.ts 回归（REV-1005/1007/1008 断言）；模板静态断言（REV-907 不做行为级 E2E；REV-1003 feel.md 断言 edit 工具勾选措辞、不含 resolveUpdateInfo/clearUpdateInfos）；mock homedir 隔离 + 全量回归。hard 依赖 op-001/002/003。"
+
+# 依赖关系说明：
+# - op-001 无依赖（先导，产出受管区底层原语 managed-region.ts）。
+# - op-002 hard 依赖 op-001（import detectFileType/normalize/splitFrontmatter/parseRegion/wrapRegion/replaceRegion/mergeFrontmatter/serializeFrontmatter）。
+# - op-003 hard 依赖 op-002（update_infos.md 格式与条目标记语义已定稿，feel.md 文案依赖其格式）。
+# - op-004 hard 依赖 op-001/002/003（测试断言依赖前三者全部落定）。
+
+# 建议执行顺序（严格串行）：
+#   op-001 → op-002 → op-003 → op-004
+#   （op-002 依赖 op-001 原语；op-003 依赖 op-002 的 update_infos 格式；op-004 覆盖前三者全部产物）
+
+# 文件冲突域分析：
+# - op-001：src/core/managed-region.ts、test/core/managed-region.test.ts
+# - op-002：src/core/update-infos.ts、src/core/update.ts、src/commands/update.ts、src/core/i18n-data/{zh-CN,en}.ts
+# - op-003：templates-data/opencode/{agents,instructions}/{zh-CN,en} 四模板 + src/core/template-loader.ts（build 重生成）
+# - op-004：test/core/{update-infos,update,template-loader}.test.ts
+#   冲突点：op-002 import op-001 原语（只读依赖）；op-003 改模板 + 重生成 template-loader.ts，与 op-002 改 update.ts 无重叠；
+#   op-004 只改测试文件，排最后。四者无 src 文件写冲突，严格串行保证顺序一致。
+
+# 关键风险（回填 stage-38 plan「风险点」）：
+# - malformed 重复追加死循环（REV-1001）：已改为不写盘、仅记 anomaly 条目；未修复前每次 update 重复记一条 anomaly 条目（update_infos.md 累积重复提示），由 feel 会话启动逐条勾选清理，源文件不再膨胀。
+# - Feel 不可 import TS（REV-1003）：feel.md 措辞统一为 edit 工具编辑 update_infos.md，resolveUpdateInfo/clearUpdateInfos 函数保留但 Feel 不调用。
+# - skip 判定 CRLF 失效（REV-1006）：newContent 为 LF（replaceRegion 内部归一化），比对前对 existing 归一化。
+# - replaceRegion 误用误删用户内容（REV-1007）：函数内先 parseRegion 判态，非 ok 直接抛错。
+# - AGENTS.md 项目 state 误传（op-002 风险）：stateKey='AGENTS.md'、updateState=项目 state，勿误传 newGlobalState。

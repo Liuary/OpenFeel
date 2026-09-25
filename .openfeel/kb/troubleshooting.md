@@ -385,3 +385,22 @@ OpenFeel 的模板部署存在**两层模板源**：
 - 判断「字段该保留还是移除」遵循「实测优先于猜测」（AGENTS.md 第 6 条）：schema 已定义→保留；未定义但运行时静默接受→记录依据后保守保留或移除；运行时报错→移除。本案例为「未定义 + 静默丢弃」→ 移除。
 
 **参见：** v1.1.0-stage-37 op-000/op-003、`.openfeel/plan/v1/stage-37/op-000-findings.md`、kb/architecture.md #全局部署架构
+
+## [+] malformed 标记死循环排查：多对/不成对标记的降级策略 (2026-09-25)
+
+**现象：** 目标文件含多对 `<!-- openfeel:begin/end -->` 或 begin/end 不成对时，若每次 update 都「追加受管区」，会导致每次 update 都判 malformed → 无限重复追加，文件持续膨胀。
+
+**根因：** malformed 状态下 `parseRegion` 返回 `status: 'malformed'`，无法定位唯一受管区，任何「区内替换」或「追加」都会在下次 update 重新触发相同判定，形成死循环。
+
+**修复（REV-1001 修订）：**
+
+- malformed 分支**不写盘、不追加、不覆盖**，仅写 `update_infos.md` 异常条目（kind=anomaly）待人工修复。
+- anomaly 条目按路径去重（同路径未修复的 anomaly 只记一条），杜绝 update_infos.md 无限累积。
+- 用户手动修复为「恰好一对完整标记」后，下次 update 自动走 ok（区内替换）/ none（hash 兜底）正常路径，不再记 anomaly。
+
+**排查经验：**
+
+- 「追加即建区」只适用于**无标记（none）**文件；**malformed 绝不追加**——二者降级路径不同（none→追加建区；malformed→不写盘 + 记 anomaly）。
+- 验证幂等：连续两次 update 后断言目标文件内容逐字符不变、update_infos.md 只多一条（或零条，去重后）anomaly 条目。
+
+**参见：** v1.1.0-stage-38 op-002/op-004、kb/patterns.md #malformed 降级防死循环模式

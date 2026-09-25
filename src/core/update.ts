@@ -107,7 +107,7 @@ export async function selectTools(): Promise<string[]> {
 // ─── Skill 定义内容 ─────────────────────────────────────────────────
 
 // AUTO-GENERATED-BEGIN: SKILL_DEFINITIONS
-const SKILL_DEFINITIONS: Record<string, string> = {
+export const SKILL_DEFINITIONS: Record<string, string> = {
   'openfeel-agent-model-check': `---
 name: openfeel-agent-model-check
 description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
@@ -1225,7 +1225,7 @@ function composeManagedContent(content: string, type: 'markdown' | 'gitignore'):
 }
 
 /** writeManagedFile 结果动作 */
-type ManagedAction = 'created' | 'updated' | 'skipped' | 'appended';
+export type ManagedAction = 'created' | 'updated' | 'skipped' | 'appended';
 
 /**
  * 受管文件写入（控制区优先 + hash 兜底 三态）。
@@ -1296,6 +1296,20 @@ function writeManagedFile(
   // 修复后下次 update 走 ok（区内替换）/ none（hash 兜底）正常路径，杜绝重复追加死循环（REV-1001 修订）
   appendUpdateInfo('anomaly', target.isGlobal ? { absolutePath: filePath } : { projectRoot: target.projectRoot, relativePath: stateKey });
   return 'skipped';
+}
+
+/**
+ * 写单个全局资产文件（REV-1205 最小侵入抽取，供 migrate 复用）。
+ * 等价 writeManagedFile(filePath, content, filePath, state, { isGlobal: true })，
+ * 即 stateKey = 绝对路径、target 为全局资产。
+ * @returns 动作分类，供调用方报告。
+ */
+export function deployGlobalAsset(
+  filePath: string,
+  content: string,
+  state: UpdateState,
+): ManagedAction {
+  return writeManagedFile(filePath, content, filePath, state, { isGlobal: true });
 }
 
 /** 将 writeManagedFile 的动作分发到对应结果数组 */
@@ -1436,7 +1450,7 @@ export function updateProject(
   const coreInstructionsPath = getGlobalCoreMdPath();
   const coreContent = loadTemplate(lang, 'core-instructions');
   {
-    const action = writeManagedFile(coreInstructionsPath, coreContent, coreInstructionsPath, newGlobalState, { isGlobal: true });
+    const action = deployGlobalAsset(coreInstructionsPath, coreContent, newGlobalState);
     pushAction(action, coreInstructionsPath, created, updated, skipped, appended);
   }
 
@@ -1444,7 +1458,7 @@ export function updateProject(
   for (const name of listAgentIds(lang)) {
     const content = loadAgentTemplate(lang, name);
     const filePath = join(agentsDir, `${name}.md`);
-    const action = writeManagedFile(filePath, content, filePath, newGlobalState, { isGlobal: true });
+    const action = deployGlobalAsset(filePath, content, newGlobalState);
     pushAction(action, filePath, created, updated, skipped, appended);
   }
 
@@ -1453,7 +1467,7 @@ export function updateProject(
     const skillSubDir = join(skillsDir, name);
     mkdirSync(skillSubDir, { recursive: true });
     const filePath = join(skillSubDir, 'SKILL.md');
-    const action = writeManagedFile(filePath, content, filePath, newGlobalState, { isGlobal: true });
+    const action = deployGlobalAsset(filePath, content, newGlobalState);
     pushAction(action, filePath, created, updated, skipped, appended);
   }
 

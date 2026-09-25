@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-25-Liuary-007.md](2026/09/25/2026-09-25-Liuary-007.md) | Liuary | 阶段 v1.1.0-stage-39 完成 |
 | [2026-09-25-Liuary-006.md](2026/09/25/2026-09-25-Liuary-006.md) | Archiver | **stage-38 归档完成**：控制区标记增量更新（managed-region 四策略 + 部署三态 writeManagedFile + update_infos 双资产路径 + 会话启动修复规则 feel.md/core 双语），545/545 测试，0 Bug，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/managed-region.md + core/update-infos.md + 更新 core/update.md |
 | [2026-09-25-Liuary-005.md](2026/09/25/2026-09-25-Liuary-005.md) | Liuary | 阶段 v1.1.0-stage-38 完成 |
 | [2026-09-25-Liuary-004.md](2026/09/25/2026-09-25-Liuary-004.md) | Archiver | **stage-37 归档完成**：全局部署架构（框架资产部署到 ~/.config/opencode/ + 项目精简 + 双 state + JSONC 深度合并 + P2 框架约束落地），493/493 测试，0 Bug，知识沉淀 5 条至 architecture(1) + patterns(2) + troubleshooting(2)，manual 新增 core/global-paths.md + core/opencode-config.md + core/update.md |
@@ -36,5 +37,4 @@
 | [2026-08-08-Liuary-002.md](2026/08/08/2026-08-08-Liuary-002.md) | Liuary | **npm 自动发布排查归档**：404 secret 名字不匹配 + 403 2FA 冲突 → Granular token + Bypass 2FA，知识沉淀 2 条至 troubleshooting(1) + setup(1) |
 | [2026-08-08-Liuary-001.md](2026/08/08/2026-08-08-Liuary-001.md) | Liuary | **Vision Agent 模型配置修复**：provider key 不匹配 + 模型不支持视觉，修复为 `alibaba-cn/qwen3-vl-plus` |
 | [2026-08-07-Liuary-008.md](2026/08/07/2026-08-07-Liuary-008.md) | Liuary | **v1.0.0 正式版全系列归档完成**：三阶段全部 done（质量加固+发布工程+文档完善），28 阶段全闭环，正式版发布就绪 |
-| [2026-08-07-Liuary-007.md](2026/08/07/2026-08-07-Liuary-007.md) | Liuary | 阶段 v1.0.0-stage-03 完成 |
 

@@ -1,0 +1,83 @@
+# stage-39 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.0-stage-39
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "openfeel migrate 命令（检测/备份/迁移/回滚 + --dry-run + --remap-assignee）"
+    produces:
+      - src/core/migrate.ts
+      - src/commands/migrate.ts
+      - src/cli/index.ts
+      - src/core/i18n.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/core/update.ts
+      - build.js
+      - test/fixtures/legacy-project/
+      - test/core/migrate.test.ts
+      - test/commands/migrate.test.ts
+    deps:
+      - op: op-002
+        type: soft
+        reason: "splitUpdateState 复用 update-state.ts 的 isLegacyFrameworkKey（旧框架 key 识别）；若 op-002 未先行，op-001 先用等价内联判断，op-004 回归时统一 import"
+
+  op-002:
+    file: op-002.md
+    title: "存量读取兼容收尾（P5 覆盖点验证 + update_state 旧格式降级补漏）"
+    produces:
+      - src/core/update-state.ts
+      - test/core/flow-manager.test.ts
+      - test/core/update-state.test.ts
+    deps: []
+
+  op-003:
+    file: op-003.md
+    title: "文档 + 版本 1.1.0 收口（6 处版本 + README/CHANGELOG + kb 引用检查）"
+    produces:
+      - package.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/template-loader.ts
+      - AGENTS.md
+      - CHANGELOG.md
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - test/core/update.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "migrate 逻辑定型后执行版本收口与文档更新，避免返工"
+      - op: op-002
+        type: hard
+        reason: "兼容收尾结论（旧 key 识别 + P5 验证）定型后收口"
+
+  op-004:
+    file: op-004.md
+    title: "全量回归（build + test + lint i18n/kb + 回归修复）"
+    produces: []
+    deps:
+      - op: op-001
+        type: hard
+        reason: "migrate 命令与测试须就绪"
+      - op: op-002
+        type: hard
+        reason: "兼容收尾测试须就绪"
+      - op: op-003
+        type: hard
+        reason: "版本 1.1.0 与文档收口须就绪，回归验证版本一致性"
+
+parallel_groups:
+  - group: [op-001, op-002]
+    desc: "并行层——migrate 命令（op-001）与存量兼容收尾（op-002）无 hard 依赖，可并行；op-001 对 op-002 仅 soft（isLegacyFrameworkKey）"
+  - group: [op-003]
+    desc: "收口层——依赖 op-001/op-002 定型后执行（版本 1.1.0 + 文档）"
+  - group: [op-004]
+    desc: "回归层——依赖 op-001/002/003 全部就绪后全量回归兜底"

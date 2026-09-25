@@ -2,6 +2,19 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0] - 2026-09-25
+
+### Added
+- 并发保护基础设施：统一原子写（唯一名 temp + fsync + rename）、跨进程文件锁（O_EXCL + 指数退避 + 陈旧锁抢占）、序号分配原子化，覆盖 flow.json/公共日志/status.md/update_state.json 等高风险写入点
+- 全局部署架构：框架资产（9 agent / 14 skill / core.md / opencode.jsonc）从项目内嵌升级为全局安装 `~/.config/opencode/` + 项目精简（项目仅 .openfeel/ + AGENTS.md + opencode.jsonc）；全局/项目双 update_state
+- 控制区标记增量更新：`<!-- openfeel:begin/end -->` 受管区 + 部署三态（不存在写 / 无标记追加 + 记录 update_infos.md / 含标记覆盖区内）
+- `openfeel migrate` 命令：存量旧布局项目一键迁移（检测/备份/迁移/回滚 + --dry-run + --remap-assignee），项目自定义资产保留
+
+### Changed
+- 模板单源收敛：templates-data/ 为唯一权威源，仓库 .opencode/ 降级为构建产物
+- 命名前缀统一：8 agent + 14 skill 加 `openfeel-` 前缀（feel 保留）；`/opfx:` 混合命名空间按真实类型引用并清零
+- 版本号 1.0.9 → 1.1.0 全链路同步（package.json / config.yaml / config.ts / agents-md 模板 / AGENTS.md / CHANGELOG）
+
 ## [1.0.9] - 2026-08-15
 
 ### Added

@@ -35,6 +35,7 @@ import { registerStageCommand } from '../commands/stage.js';
 import { registerProjectCommand } from '../commands/project.js';
 import { registerConfigCommand } from '../commands/config.js';
 import { registerLintCommand } from '../commands/lint.js';
+import { registerMigrateCommand } from '../commands/migrate.js';
 
 registerInitCommand(program);
 registerFlowCommand(program);
@@ -49,6 +50,7 @@ registerStageCommand(program);
 registerProjectCommand(program);
 registerConfigCommand(program);
 registerLintCommand(program);
+registerMigrateCommand(program);
 
 // ── --help 国际化注入 ──
 // 在所有命令注册完成后，遍历 Commander 命令树，

@@ -2164,3 +2164,33 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.0-stage-38 op-002、kb/troubleshooting.md #malformed 标记死循环排查
 
+## [+] 迁移命令模式：detect→backup→deploy→split→clean→report + rollback + --dry-run (2026-09-25)
+
+`openfeel migrate` 的可回滚迁移六步流程（顺序不可变，保证任一步失败可回滚）：
+
+1. **detect**：`detectLegacy` 五条判据（框架同源判定），无 legacy 直接「已是最新布局」退出。
+2. **backup**：备份将被删除/改写的文件到 `.openfeel/backup/{ts}/` + manifest.json（含 hash 快照）。
+3. **deploy**：复用 `deployGlobalAsset` 部署全局 core.md/agents/skills + 深度合并全局 opencode.jsonc。
+4. **split**：`splitUpdateState` 旧框架 key 重键移入全局 state，项目条目保留、无法映射记 unmapped。
+5. **clean**：逐项比对框架清单删框架同源文件（保留项目自定义）+ 清理项目 opencode.jsonc 非法字段。
+6. **report**：assignee 报告（默认仅报告，`--remap-assignee` 才改写）。
+
+配套机制：
+
+- `--dry-run` 全程不写盘（只预览检测/清理/保留/assignee 计划），前后文件快照一致。
+- `rollback` 子命令按最新 manifest 逆向恢复；`rollback --dry-run` 只预览 entries（source + op 类型）。
+- 任一步异常中止 → 输出「可 `openfeel migrate rollback` 回滚」提示（REV-1404），不让堆栈直接外泄。
+- 幂等：二次执行 `isLegacy=false`（框架同源判定保证），输出「已是最新布局」。
+
+**参见：** v1.1.0-stage-39 op-001、kb/architecture.md #存量项目迁移架构
+
+## [+] 回滚边界模式：全局资产幂等不还原，仅还原 manifest 记录 (2026-09-25)
+
+迁移回滚的边界划分（REV-1201）：
+
+- **全局框架资产（agents/skills/core.md/opencode.jsonc）幂等可重建**：`openfeel update` 随时可重建，回滚**不还原全局文件**——还原了反而破坏其他项目的全局部署状态。
+- **仅还原两处**：① 项目文件（按 `manifest.entries` 逆向 copy 回被删/改写的文件）；② 全局 update_state 的本次新增条目（以 `manifest.globalStateKeys` 为准逐 key `delete`，不触碰历史全局条目，REV-1302）。
+- **`--remap-assignee` 时 flow.json 必须纳入 manifest**（记录改写前 assignee 快照），否则 rollback 无法还原 assignee。
+
+**参见：** v1.1.0-stage-39 op-001、kb/architecture.md #存量项目迁移架构、kb/patterns.md #迁移命令模式
+

@@ -237,7 +237,7 @@ function generateSkillDefinitions() {
     entries.push(`  '${dir}': \`${escaped}\`,`);
   }
 
-  const objectBody = `const SKILL_DEFINITIONS: Record<string, string> = {\n${entries.join('\n')}\n};`;
+  const objectBody = `export const SKILL_DEFINITIONS: Record<string, string> = {\n${entries.join('\n')}\n};`;
   replaceBetweenAnchors(UPDATE_PATH, 'SKILL_DEFINITIONS', objectBody);
   console.log(`✓ ${entries.length} 个 Skill 定义已注入 update.ts`);
 }

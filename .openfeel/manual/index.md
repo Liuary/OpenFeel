@@ -18,6 +18,7 @@
   - [构建管线](core/build.md)
   - [全局路径](core/global-paths.md)
   - [全局 opencode 配置合并](core/opencode-config.md)
+  - [存量迁移](core/migrate.md)
 - CLI 层
   - [命令体系](cli/commands.md)
 - Agent 体系
@@ -40,6 +41,7 @@
 | build.js / 构建管线 | `core/build.md` | 源路径、构建步骤、校验断言或生成物标记变更 |
 | global-paths.ts / 全局路径解析 | `core/global-paths.md` | 全局路径函数、homedir 封装或新增路径 |
 | opencode-config.ts / 全局配置合并 | `core/opencode-config.md` | 框架内容对象、parseJsonc/deepMergeJsonc 合并规则变更 |
+| migrate.ts / 存量迁移 | `core/migrate.md` | legacy 判据、备份 manifest、state 拆分重键、回滚边界变更 |
 | 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更 |
 | Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更 |
 

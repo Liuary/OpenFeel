@@ -2337,3 +2337,26 @@ describe('读取兼容（P5）：旧 flow.json 可读且展示新名', () => {
     expect(normalizeAgentName(data!.stages['stage-01'].ops['op-001'].assignee)).toBe('openfeel-planner');
   });
 });
+
+// ═══════════════════════════════════════
+// normalizeAgentName 接入点补强（stage-39 op-002）
+// ═══════════════════════════════════════
+
+describe('normalizeAgentName 接入点补强（stage-39）', () => {
+  it('全部 8 个旧名映射到 openfeel-* 且新名幂等（不二次前缀化）', () => {
+    const legacy = ['planner', 'schemer', 'executor', 'reviewer', 'feel-tester', 'utility', 'vision', 'archiver'];
+    for (const old of legacy) {
+      const neu = normalizeAgentName(old);
+      expect(neu).toBe(`openfeel-${old}`);
+      // 二次归一化稳定（幂等链）
+      expect(normalizeAgentName(neu)).toBe(neu);
+    }
+  });
+
+  it('大小写归一 + 空值/非 agent 值原样保留', () => {
+    expect(normalizeAgentName('Planner')).toBe('openfeel-planner');
+    expect(normalizeAgentName('FEEL-TESTER')).toBe('openfeel-feel-tester');
+    expect(normalizeAgentName('feel')).toBe('feel');
+    expect(normalizeAgentName('')).toBe('');
+  });
+});

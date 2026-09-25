@@ -446,3 +446,15 @@ v1.1.0-stage-38（D3 全量落地）用「控制区标记」替换/演进 stage-
 - **会话启动修复规则落地 feel.md（主）+ core-instructions（辅）**，双语同步（N5）；修复动作用 edit 工具勾选条目（Feel 不能 import TS 模块），不新增 CLI。
 
 **参见：** v1.1.0-stage-38 op-001~004、kb/patterns.md #控制区标记模式、#malformed 降级防死循环模式、kb/troubleshooting.md #malformed 标记死循环排查
+
+## [+] 存量项目迁移架构：legacy 布局检测 + 备份回滚 + 全局部署迁移 (2026-09-25)
+
+v1.1.0-stage-39（P6 收口）新增顶层 `openfeel migrate` 命令，把存量旧布局项目（项目内 `.opencode/agents|skills|instructions`、旧 `opencode.jsonc` 非法 `skills` 映射、混合 `update_state.json`）迁移到 stage-37 的全局部署架构。核心决策：
+
+- **legacy 五条判据（M3）**：任一为 true 即视为 legacy；判据 ①/② 采用「框架同源判定」——文件/目录名经 `normalizeAgentName`（agent）/ `remapSkillName`（skill）归一化后命中框架清单（9 agent + 14 skill），项目自定义 agent/skill **不计**。此举保证 migrate 幂等（二次执行 `isLegacy=false`），否则项目自定义资产恒使项目判 legacy 形成「迁移-仍判 legacy」死循环（REV-007）。
+- **备份回滚（M2/D39-3）**：备份到 `.openfeel/backup/{yyyyMMddHHmmss}/` + `manifest.json`（每条 `{op, source, backupPath, hash}`）。回滚按 manifest 逆向恢复被删/改写的项目文件；`manifest.globalStateKeys` 记录本次写入的全局 state key，回滚仅删这些、不触碰历史全局条目（REV-1302）。
+- **全局部署迁移（D39-1）**：migrate 复用 update 的全局部署能力——最小侵入抽取 `deployGlobalAsset`（等价 `writeManagedFile(..., {isGlobal:true})`），migrate 与 update 共用，避免双份维护（REV-1205）。
+- **state 拆分重键（D39-2）**：旧项目 state 的框架条目（`.opencode/...` 相对 key）→ 归一化新名 → 移入全局 state（绝对路径 key）；无法映射的条目保留项目 state 并记 `unmapped` 待人工处理。
+- **回滚边界（REV-1201）**：全局框架资产（agents/skills/core.md/opencode.jsonc）幂等可重建，回滚**不还原全局文件**（可 `openfeel update` 重建），仅还原项目文件 + 全局 state 新增条目。
+
+**参见：** v1.1.0-stage-39 op-001~004、kb/patterns.md #迁移命令模式、#回滚边界模式、kb/troubleshooting.md #migrate 中途失败排查

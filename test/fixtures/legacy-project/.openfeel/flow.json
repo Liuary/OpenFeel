@@ -1,0 +1,12 @@
+{
+  "version": "4.1",
+  "stages": {
+    "stage-01": {
+      "name": "stage-01",
+      "phase": "exec_running",
+      "ops": {
+        "op-001": { "id": "op-001", "assignee": "planner", "state": "pending" }
+      }
+    }
+  }
+}

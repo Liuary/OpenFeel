@@ -1,0 +1,10 @@
+{
+  // 旧布局非法 skills 映射（{name: path} 对象形式）
+  "skills": {
+    "check-kb": ".opencode/skills/check-kb/SKILL.md"
+  },
+  // 旧布局 instructions 字段
+  "instructions": [".opencode/instructions/core.md"],
+  // 用户自定义字段（migrate 清理时须保留）
+  "custom_field": "keep-me"
+}

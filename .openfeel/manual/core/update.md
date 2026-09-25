@@ -61,3 +61,4 @@ stage-38 用「控制区标记」替换 stage-32 的 `writeWithMergeDetection`�
 |------|------|
 | stage-37 | 部署目标改全局 `~/.config/opencode/`；`$schema`/`skills`/`agent_manager_tool` 修正；全局 opencode.jsonc 深度合并；双 state 路由；legacy 提示（N8）；`parseJsonc` 迁移至 opencode-config.ts |
 | stage-38 | `writeWithMergeDetection` → `writeManagedFile` 控制区三态（+appended 四分类）；新增 `composeManagedContent`/`pushAction`；接入 `managed-region` + `update-infos`；conflicts 恒空语义变化 |
+| stage-39 | 最小侵入抽取 `deployGlobalAsset`（供 migrate 复用，等价 `writeManagedFile(..., {isGlobal:true})`，REV-1205）；`ManagedAction` 改 export；`SKILL_DEFINITIONS` 改 `export const`（build.js 生成模板同步，REV-1308） |

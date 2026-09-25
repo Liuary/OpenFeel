@@ -95,18 +95,18 @@ Roadmap
 
 `.openfeel/flow.json` is the single source of truth, recording all stages, operations, reviews, and logs. Agents read it for context and write back state after execution.
 
-### /opfx: Skill Mapping
+### Pipeline Commands & Agent Roles
 
-| Skill | Purpose |
+| Entry | Purpose |
 |-------|---------|
-| `/opfx:flow` | Pipeline status query & advancement |
-| `/opfx:plan` | Plan formulation |
-| `/opfx:scheme` | Scheme formulation |
-| `/opfx:code` | Code execution |
-| `/opfx:view` | Code review |
-| `/opfx:test` | Test acceptance |
-| `/opfx:archive` | Stage archiving |
-| `/opfx:kb` | Knowledge base operations |
+| `openfeel flow` | Pipeline status query & advancement |
+| `openfeel plan` | Plan formulation |
+| `openfeel plan scheme` | Scheme formulation |
+| `openfeel-executor` | Code execution |
+| `openfeel view` | Code review |
+| `openfeel-feel-tester` | Test acceptance |
+| `openfeel archive` | Stage archiving |
+| `openfeel knowledge` | Knowledge base operations |
 
 ## Architecture
 

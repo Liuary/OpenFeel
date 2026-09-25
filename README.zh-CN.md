@@ -95,18 +95,18 @@ Roadmap（分期大纲）
 
 `.openfeel/flow.json` 是项目流水线的唯一真相源，记录所有阶段、操作、审查条目和日志。Agent 通过读取它获取上下文，执行完毕后写回状态。
 
-### /opfx: 技能映射
+### 流水线命令与 Agent 分工
 
-| Skill | 用途 |
-|-------|------|
-| `/opfx:flow` | 流水线状态查询与推进 |
-| `/opfx:plan` | 制定分期大纲和工作阶段 |
-| `/opfx:scheme` | 制定细粒度操作方案 |
-| `/opfx:code` | 按方案编码实现 |
-| `/opfx:view` | 代码审查 |
-| `/opfx:test` | 测试验收 |
-| `/opfx:archive` | 归档操作记录 |
-| `/opfx:kb` | 知识库操作 |
+| 入口 | 用途 |
+|------|------|
+| `openfeel flow` | 流水线状态查询与推进 |
+| `openfeel plan` | 制定分期大纲和工作阶段 |
+| `openfeel plan scheme` | 制定细粒度操作方案 |
+| `openfeel-executor` | 按方案编码实现 |
+| `openfeel view` | 代码审查 |
+| `openfeel-feel-tester` | 测试验收 |
+| `openfeel archive` | 归档操作记录 |
+| `openfeel knowledge` | 知识库操作 |
 
 ## 架构
 

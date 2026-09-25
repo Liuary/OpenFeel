@@ -13,7 +13,7 @@ vi.mock('node:os', async (importOriginal) => {
 });
 
 import { updateProject, AgentsMdLangConflictError } from '../../src/core/update.js';
-import { createUpdateState, saveUpdateState, hashContent } from '../../src/core/update-state.js';
+import { createUpdateState, saveUpdateState, hashContent, getOpenfeelVersion } from '../../src/core/update-state.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -567,7 +567,7 @@ describe('updateProject', () => {
       JSON.stringify({
         version: '1.0',
         last_update: '',
-        openfeel_version: '1.0.9',
+        openfeel_version: getOpenfeelVersion(),
         files: { [feelPath]: { hash: hashContent(legacy), status: 'clean' } },
       }),
       'utf-8',

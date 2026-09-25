@@ -404,3 +404,23 @@ OpenFeel 的模板部署存在**两层模板源**：
 - 验证幂等：连续两次 update 后断言目标文件内容逐字符不变、update_infos.md 只多一条（或零条，去重后）anomaly 条目。
 
 **参见：** v1.1.0-stage-38 op-002/op-004、kb/patterns.md #malformed 降级防死循环模式
+
+## [+] migrate 中途失败排查：异常路径提示 + manifest 回填 + rollback 清理 (2026-09-25)
+
+**现象：** `openfeel migrate` 在全局部署/state 拆分中途抛异常（如首次 agent 部署 EEXIST）时，若让堆栈直接外泄，用户既不知道能回滚、也不知道已部署了哪些全局资产，陷入「半迁移」状态。
+
+**根因：** 迁移是多步写盘操作。步骤 2（全局部署）中途失败时，后续 manifest 回填与清理都不会执行，`manifest.globalStateKeys` 保持空，rollback 无法清理已写入的全局 state 记录。
+
+**修复（REV-1404 / REV-1405）：**
+
+- **命令层 try-catch**：`migrate` action 包裹 try-catch，失败输出 i18n `migrate.error.aborted`（含「可执行 `openfeel migrate rollback` 回滚」提示），`process.exit(1)`——不让堆栈直接外泄。
+- **manifest 回填纳入 finally**：全局部署 + state 拆分包在 `try/finally`，finally 中回填 `manifest.globalStateKeys`（已部署的全局 state key）并 atomicWrite manifest.json——中途异常也能记录已部署 key，rollback 据此清理。
+- **splitUpdateState 复用全局 state**：新增可选参数 `globalStateIn`，`migrateProject` 复用已加载的 globalState，消除重复 loadGlobalUpdateState IO（REV-1402）。
+
+**排查经验：**
+
+- 多步写盘操作的关键中间态（已部署 key 清单）必须**写入幂等可读的 manifest 并在 finally 回填**，否则异常路径无法回滚。
+- 异常提示要「可操作」：不只报错，要指出「可 `openfeel migrate rollback` 回滚」的下一步动作。
+- 验证：临时脚本注入首次部署失败，断言 stderr 含回滚提示 + `manifest.globalStateKeys.length === 1`（含已部署的 core.md）。
+
+**参见：** v1.1.0-stage-39 op-001、`.openfeel/tmp/op-rev-stage-39-test-report.md`、kb/architecture.md #存量项目迁移架构

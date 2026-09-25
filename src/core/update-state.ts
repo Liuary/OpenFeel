@@ -39,6 +39,19 @@ export type FileState = z.infer<typeof FileStateSchema>;
 /** update_state.json 在项目中的相对路径 */
 const STATE_FILE = '.openfeel/update_state.json';
 
+/** 旧框架 key 前缀（旧项目 state 的 .opencode/... 相对路径条目） */
+const LEGACY_STATE_PREFIX = '.opencode/';
+const LEGACY_STATE_PREFIX_WIN = '.opencode\\';
+
+/**
+ * 检测项目 update_state 的 key 是否为「旧框架 key」（.opencode/... 相对路径）。
+ * 供 stage-39 migrate 拆分重键使用（识别需移入全局 state 的框架条目）。
+ * 项目资产 key（AGENTS.md / opencode.jsonc）不匹配本前缀。
+ */
+export function isLegacyFrameworkKey(key: string): boolean {
+  return key.startsWith(LEGACY_STATE_PREFIX) || key.startsWith(LEGACY_STATE_PREFIX_WIN);
+}
+
 // ─── 公开 API ────────────────────────────────────────────────────────
 
 /**

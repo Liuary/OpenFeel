@@ -16,11 +16,12 @@ OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的
 npm install -g openfeel        # 安装（Node ≥ 20）
 openfeel init ./my-project     # 初始化新项目
 openfeel update                # 已有项目？一键部署平台适配器
+openfeel migrate               # 存量旧布局项目？一键迁移（检测/备份/回滚）
 openfeel flow status           # 查看流水线
 
 npm install -g openfeel@latest # 更新到最新版本
 ```
 
-> 💡 `init` 用于新项目首次部署，`update` 为已有项目增量更新（适用于 `init` 之后再引入 OpenFeel 的项目）。
+> 💡 `init` 用于新项目首次部署，`update` 为已有项目增量更新（适用于 `init` 之后再引入 OpenFeel 的项目）。存量旧布局项目（项目内 `.opencode/agents|skills|instructions`）用 `openfeel migrate` 迁移到全局部署。
 
 完整中文文档：[README.zh-CN.md](README.zh-CN.md)

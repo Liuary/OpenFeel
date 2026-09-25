@@ -525,6 +525,13 @@ export const help: I18nDomain = {
   'lint':                  { key: 'help.lint',                  zh: '', en: 'Project health checks (i18n key consistency, kb reference validity)' },
   'lint.i18n':             { key: 'help.lint.i18n',             zh: '', en: 'Validate i18n key consistency (empty values / zh-CN-only / en-only keys)' },
   'lint.kb':               { key: 'help.lint.kb',               zh: '', en: 'Detect stale file references in .openfeel/kb/' },
+
+  // migrate (legacy layout migration)
+  'migrate':               { key: 'help.migrate',               zh: '', en: 'Legacy layout migration (detect/backup/migrate/rollback existing project legacy layout)' },
+  'migrate.dryRun':        { key: 'help.migrate.dryRun',        zh: '', en: 'Detect and preview only, do not write' },
+  'migrate.remapAssignee': { key: 'help.migrate.remapAssignee', zh: '', en: 'Rewrite legacy flow.json assignee to new names (report only by default)' },
+  'migrate.rollback':      { key: 'help.migrate.rollback',      zh: '', en: 'Roll back the most recent migration' },
+  'migrate.rollback.dryRun': { key: 'help.migrate.rollback.dryRun', zh: '', en: 'Preview rollback plan only' },
 };
 
 /* ==================== config ==================== */
@@ -550,6 +557,31 @@ export const config: I18nDomain = {
   'set.globalAllowedKeys':   { key: 'config.set.globalAllowedKeys',   zh: '', en: 'Supported global config keys: {keys}' },
 };
 
+/* ==================== migrate domain: legacy layout migration command ==================== */
+export const migrate: I18nDomain = {
+  // legacy layout general
+  'legacy.alreadyLatest': { key: 'migrate.legacy.alreadyLatest', zh: '', en: '✓ Already up-to-date layout, no migration needed' },
+  'legacy.done':          { key: 'migrate.legacy.done',          zh: '', en: 'Migration complete' },
+  // detect report
+  'detect.title':         { key: 'migrate.detect.title',         zh: '', en: 'Legacy layout detection report:' },
+  'detect.dryRunTitle':   { key: 'migrate.detect.dryRunTitle',   zh: '', en: '[DRY-RUN Mode] The following migration plan will be applied (not written):' },
+  'detect.dryRunNote':    { key: 'migrate.detect.dryRunNote',    zh: '', en: '(No files modified, run without --dry-run to apply the migration)' },
+  // backup
+  'backup.dirTmpl':       { key: 'migrate.backup.dirTmpl',       zh: '', en: 'Backup directory: {dir} (last 5 kept, older ones cleaned)' },
+  // clean
+  'clean.keptCustom':     { key: 'migrate.clean.keptCustom',     zh: '', en: '(project custom, kept in place)' },
+  // assignee
+  'assignee.title':       { key: 'migrate.assignee.title',       zh: '', en: 'Legacy flow.json assignee entries (not rewritten by default):' },
+  'assignee.hint':        { key: 'migrate.assignee.hint',        zh: '', en: 'To rewrite, re-run with --remap-assignee' },
+  // rollback
+  'rollback.dryRunTitle': { key: 'migrate.rollback.dryRunTitle', zh: '', en: '[DRY-RUN Mode] Rollback will restore the following files (not written):' },
+  'rollback.done':        { key: 'migrate.rollback.done',        zh: '', en: '✓ Rollback complete, restored:' },
+  'rollback.failed':      { key: 'migrate.rollback.failed',      zh: '', en: '✗ Rollback failed: {message}' },
+  // error
+  'error.pathNotExist':   { key: 'migrate.error.pathNotExist',   zh: '', en: 'Path does not exist: {path}' },
+  'error.aborted':        { key: 'migrate.error.aborted',        zh: '', en: 'Migration aborted; run `openfeel migrate rollback` to roll back: {message}' },
+};
+
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
@@ -567,4 +599,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'instructions', domain: instructions },
   { name: 'lint',         domain: lint },
   { name: 'config',       domain: config },
+  { name: 'migrate',      domain: migrate },
 ];

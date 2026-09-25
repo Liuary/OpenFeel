@@ -557,6 +557,13 @@ export const help: I18nDomain = {
   'lint':                  { key: 'help.lint',                  zh: '项目健康检查（i18n 键一致性、kb 引用有效性）', en: '' },
   'lint.i18n':             { key: 'help.lint.i18n',             zh: '校验 i18n 键一致性（空值/中英独有键）', en: '' },
   'lint.kb':               { key: 'help.lint.kb',               zh: '检测 .openfeel/kb/ 中的过期文件引用', en: '' },
+
+  // migrate（legacy 布局迁移）
+  'migrate':               { key: 'help.migrate',               zh: 'Legacy 布局迁移（检测/备份/迁移/回滚存量项目旧布局）', en: '' },
+  'migrate.dryRun':        { key: 'help.migrate.dryRun',        zh: '仅检测预览，不写盘', en: '' },
+  'migrate.remapAssignee': { key: 'help.migrate.remapAssignee', zh: '改写 flow.json 旧 assignee 为新名（默认仅报告）', en: '' },
+  'migrate.rollback':      { key: 'help.migrate.rollback',      zh: '回滚最近一次迁移', en: '' },
+  'migrate.rollback.dryRun': { key: 'help.migrate.rollback.dryRun', zh: '仅预览回滚计划', en: '' },
 };
 
 /* ==================== config 域：配置管理命令 ==================== */
@@ -582,6 +589,31 @@ export const config: I18nDomain = {
   'set.globalAllowedKeys':   { key: 'config.set.globalAllowedKeys',   zh: '支持的全局配置键：{keys}',                en: '' },
 };
 
+/* ==================== migrate 域：legacy 布局迁移命令 ==================== */
+export const migrate: I18nDomain = {
+  // legacy 布局通用
+  'legacy.alreadyLatest': { key: 'migrate.legacy.alreadyLatest', zh: '✓ 已是最新布局，无需迁移', en: '' },
+  'legacy.done':          { key: 'migrate.legacy.done',          zh: '迁移完成', en: '' },
+  // detect 检测报告
+  'detect.title':         { key: 'migrate.detect.title',         zh: 'Legacy 布局检测报告：', en: '' },
+  'detect.dryRunTitle':   { key: 'migrate.detect.dryRunTitle',   zh: '[DRY-RUN 模式] 以下迁移计划将被执行（未写盘）：', en: '' },
+  'detect.dryRunNote':    { key: 'migrate.detect.dryRunNote',    zh: '（未实际修改文件，使用不带 --dry-run 执行以应用迁移）', en: '' },
+  // backup
+  'backup.dirTmpl':       { key: 'migrate.backup.dirTmpl',       zh: '备份目录：{dir}（保留最近 5 次，更早的已清理）', en: '' },
+  // clean
+  'clean.keptCustom':     { key: 'migrate.clean.keptCustom',     zh: '（项目自定义，保留原位）', en: '' },
+  // assignee
+  'assignee.title':       { key: 'migrate.assignee.title',       zh: 'flow.json 旧 assignee 条目（默认不改写）：', en: '' },
+  'assignee.hint':        { key: 'migrate.assignee.hint',        zh: '如需改写，请加 --remap-assignee 重新执行', en: '' },
+  // rollback
+  'rollback.dryRunTitle': { key: 'migrate.rollback.dryRunTitle', zh: '[DRY-RUN 模式] 回滚将恢复以下文件（未写盘）：', en: '' },
+  'rollback.done':        { key: 'migrate.rollback.done',        zh: '✓ 回滚完成，已恢复：', en: '' },
+  'rollback.failed':      { key: 'migrate.rollback.failed',      zh: '✗ 回滚失败：{message}', en: '' },
+  // error
+  'error.pathNotExist':   { key: 'migrate.error.pathNotExist',   zh: '路径不存在：{path}', en: '' },
+  'error.aborted':        { key: 'migrate.error.aborted',        zh: '迁移中止，可执行 `openfeel migrate rollback` 回滚：{message}', en: '' },
+};
+
 /* ==================== 聚合导出 ==================== */
 /** 所有功能域的聚合数组（供 i18n.ts 构建 Map 使用） */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
@@ -600,4 +632,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'instructions', domain: instructions },
   { name: 'lint',         domain: lint },
   { name: 'config',       domain: config },
+  { name: 'migrate',      domain: migrate },
 ];

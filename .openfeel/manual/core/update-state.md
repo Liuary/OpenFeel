@@ -20,6 +20,7 @@
 | `createGlobalUpdateState(files)` | 组装初始全局 state（不触碰文件系统） |
 | `updateFileHash(state, path, content)` | 原地更新文件 hash，status=clean |
 | `markFileConflict(state, path)` | 原地标记文件 status=conflict |
+| `isLegacyFrameworkKey(key)` | 检测 key 是否为「旧框架 key」（`.opencode/` 或 `.opencode\` 前缀，兼容 Windows 反斜杠），供 migrate 拆分重键识别 |
 
 ## 数据结构
 
@@ -84,3 +85,4 @@ src/commands/update.ts （命令层）
 |------|------|------|
 | v1.0.0-stage-32 | 2026-08-11 | 初始创建，含 hash 追踪 + 冲突标记 + Schema 校验 |
 | v1.1.0-stage-37 | 2026-09-25 | 双 state：新增 `loadGlobalUpdateState` / `saveGlobalUpdateState` / `createGlobalUpdateState`（全局 `~/.openfeel/update_state.json`）；全局 state 加锁 + 原子写；全局资产 key 用绝对路径 |
+| v1.1.0-stage-39 | 2026-09-25 | 新增 `isLegacyFrameworkKey`：识别旧项目 state 的 `.opencode/...` 旧框架 key，供 `openfeel migrate` 拆分重键（识别需移入全局 state 的框架条目）复用 |

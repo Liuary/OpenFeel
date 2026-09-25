@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "last_update": "2020-01-01T00:00:00.000Z",
+  "openfeel_version": "1.0.0",
+  "files": {
+    ".opencode/agents/planner.md": { "hash": "legacy-planner-hash", "status": "clean" },
+    ".opencode/skills/check-kb/SKILL.md": { "hash": "legacy-checkkb-hash", "status": "clean" },
+    ".opencode/instructions/core.md": { "hash": "legacy-core-hash", "status": "clean" },
+    "AGENTS.md": { "hash": "project-agents-hash", "status": "clean" }
+  }
+}

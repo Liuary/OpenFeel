@@ -9,20 +9,20 @@
 | 定位 | AI Agent 开发流程治理 CLI 工具 |
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
-| 源文件 | 57 个 .ts 文件（src/） |
+| 源文件 | 59 个 .ts 文件（src/） |
 | Agent 数 | 9 个（feel + 8 个 openfeel-* 前缀：planner/schemer/executor/reviewer/feel-tester/utility/vision/archiver） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义，自举实例由 build 生成）、src/core/templates-data/opencode/（模板唯一权威源）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-09-25（stage-39 归档：存量项目迁移架构 + migrate 命令，4 条知识沉淀至 architecture(1 新增) + patterns(2 新增) + troubleshooting(1 新增)） |
+| 最近更新 | 2026-09-25（stage-40 归档：模型配置三层级架构 + model 命令组 + REV-1606 优先级链实测勘误，3 条知识沉淀至 architecture(1 新增) + patterns(1 新增) + troubleshooting(1 新增)，另修正 setup.md/skill 优先级矛盾；v1.1.0 六阶段全部闭环） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 21 | 2026-09-25 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构、控制区标记增量更新架构、存量项目迁移架构 |
-| 代码模式 | [patterns.md](patterns.md) | 77 | 2026-09-25 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环、迁移命令模式、回滚边界模式 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 21 | 2026-09-25 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查、migrate 中途失败排查 |
-| 环境配置 | [setup.md](setup.md) | 6 | 2026-08-08 | 环境搭建、构建流程、依赖管理、Agent 模型配置、npm pack 发布验证、CI/CD npm 自动发布 |
+| 架构决策 | [architecture.md](architecture.md) | 22 | 2026-09-25 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构、控制区标记增量更新架构、存量项目迁移架构、模型配置三层级架构 |
+| 代码模式 | [patterns.md](patterns.md) | 78 | 2026-09-25 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环、迁移命令模式、回滚边界模式、模型配置命令模式 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 22 | 2026-09-25 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查、migrate 中途失败排查、opencode 模型解析优先级排查 |
+| 环境配置 | [setup.md](setup.md) | 6 | 2026-09-25 | 环境搭建、构建流程、依赖管理、Agent 模型配置（frontmatter 优先级已勘误）、npm pack 发布验证、CI/CD npm 自动发布 |
 
 ## 各分类摘要
 
@@ -51,6 +51,7 @@
 | 全局部署架构：框架资产全局化 + 项目精简 + 双 state | 2026-09-25 | D1/P2 全量落地；框架资产（9 agent/14 skill/core.md/opencode.jsonc）部署到 ~/.config/opencode/；项目精简为 .openfeel/ + AGENTS.md + opencode.jsonc；框架约束走 instructions（绝对路径）；全局/项目双 update_state；opencode 配置合并语义实测结论（instructions 拼接+去重、~ 加载层展开、core.md 实际加载、AGENTS.md 自动加载、agent_manager_tool 静默丢弃） |
 | 控制区标记增量更新架构：managed-region 四策略 + 三态 + update_infos 双资产路径 | 2026-09-25 | D3 全量落地；四策略（markdown begin/end、gitignore、frontmatter 结构化合并、jsonc 深合并）；部署三态（不存在写/无标记追加+记录/含标记覆盖区内）+ malformed 不写盘只记 anomaly；hash 降级为归属兜底；update_infos 双资产路径（绝对路径 / 项目根+相对路径）+ 加锁原子写 |
 | 存量项目迁移架构：legacy 布局检测 + 备份回滚 + 全局部署迁移 | 2026-09-25 | `openfeel migrate` 命令；legacy 五条判据（①/② 框架同源判定保证幂等）；备份 `.openfeel/backup/{ts}/` + manifest.json + globalStateKeys 精确回滚；复用 deployGlobalAsset 全局部署；state 拆分重键；回滚边界=全局资产幂等不还原、仅还原项目文件 + 全局 state 新增条目 |
+| 模型配置三层级架构：工具默认/全局/项目 + 优先级链 frontmatter>jsonc | 2026-09-25 | `openfeel model` 命令组 + `model-config.ts` 内部 API；三层级落点（default 改 frontmatter 双语 + opencode-config.ts / global·project 改 jsonc）；REV-1606 实测优先级链 frontmatter>jsonc（推翻计划初期相反假设）；provider 硬校验 + model-id 软校验；default 层多源不一致以 frontmatter 为准 |
 
 ### patterns.md
 
@@ -122,6 +123,7 @@
 | malformed 降级防死循环模式：异常标记不写盘只记异常条目 | 2026-09-25 | 标记解析失败（多对/不成对）不写盘、不追加、不覆盖，仅写 update_infos.md 异常条目待人工修复；anomaly 按路径去重；结果 skipped |
 | 迁移命令模式：detect→backup→deploy→split→clean→report + rollback + --dry-run | 2026-09-25 | `openfeel migrate` 六步可回滚流程；--dry-run 不写盘；rollback 按 manifest 逆向恢复；任一步异常中止输出「可 rollback 回滚」提示；框架同源判定保证幂等 |
 | 回滚边界模式：全局资产幂等不还原，仅还原 manifest 记录 | 2026-09-25 | 全局框架资产幂等可重建不还原；仅还原项目文件（manifest.entries 逆向）+ 全局 state 新增条目（manifest.globalStateKeys 精确删）；--remap-assignee 时 flow.json 须入 manifest |
+| 模型配置命令模式：model set/get/list + --scope + 校验 + 非 TTY 守卫 | 2026-09-25 | openfeel model 命令组（set/get/list + --scope default\|global\|project，默认 project）；非 TTY 下 --scope default 须 --force/--build 双重确认；isFrameworkSourceReady 复用 core 层路径推导；build 由 CLI 层触发；校验三段式错误提示；遮蔽提示（REV-1701）；内部 API 纯函数化 |
 
 ### troubleshooting.md
 
@@ -147,6 +149,7 @@
 | agent_manager_tool schema 未定义静默丢弃 | 2026-09-25 | experimental.agent_manager_tool 现行 schema 未定义，debug config 输出空且无报错 exit 0；静默丢弃比报错更危险；实测确认后移除该字段 + 删模板 experimental 块 |
 | malformed 标记死循环排查：多对/不成对标记的降级策略 | 2026-09-25 | malformed 状态无法定位唯一受管区，追加/替换会每次重触发判定形成死循环；修复为不写盘+记 anomaly 去重；手动修复成单对完整标记后自动走正常路径；none 与 malformed 降级路径不同 |
 | migrate 中途失败排查：异常路径提示 + manifest 回填 + rollback 清理 | 2026-09-25 | 全局部署中途异常致「半迁移」；修复=命令层 try-catch 输出「可 rollback 回滚」+ manifest.globalStateKeys 纳入 finally 回填 + splitUpdateState 复用全局 state；关键中间态须写入幂等可读 manifest |
+| opencode 模型解析优先级排查：frontmatter 覆盖 jsonc agent.model | 2026-09-25 | frontmatter 覆盖 opencode.jsonc agent.model（与「jsonc 更权威」直觉相反）；REV-1606 实测优先级链「项目 agents frontmatter > 全局 frontmatter > 项目 jsonc > 全局 jsonc > 默认」；只改 jsonc 会被 frontmatter 遮蔽；skill L43 旧说「声明性」已过时 |
 
 ### setup.md
 
@@ -161,6 +164,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-09-25 | 归档 | stage-40 归档（v1.1.0 收官）：模型配置接口（`openfeel model` 命令组 + `model-config.ts` 内部 API 三层级读写 default/global/project），2 新增源码 + 2 修改源码 + 2 测试文件，REV-1606 优先级链实测勘误（frontmatter>jsonc）+ REV-1701~1704 已修复，591/591 测试通过，0 Bug，知识沉淀 3 条至 architecture(1) + patterns(1) + troubleshooting(1) + 修正 setup.md/skill 优先级矛盾；manual 新增 core/model-config.md + cli/model.md + 更新 global-paths.md。**v1.1.0 六阶段（35~40）全部闭环** |
 | 2026-09-25 | 归档 | stage-39 归档：存量迁移与兼容收尾（`openfeel migrate` 命令 detectLegacy/备份/全局部署/state 拆分重键/清理/assignee/rollback + --dry-run + 存量读取兼容 P5/isLegacyFrameworkKey + 版本 1.1.0 收口），4 op（migrate 命令 + 存量读取兼容 + 文档/版本收口 + 全量回归），新增 migrate.ts + commands/migrate.ts，REV-1401~1405（1402/1404/1405 已修复，1401/1403 方案文档滞后已同步），569/569 测试通过，0 Bug，知识沉淀 4 条至 architecture(1 新增) + patterns(2 新增) + troubleshooting(1 新增) |
 | 2026-09-25 | 归档 | stage-38 归档：控制区标记增量更新（managed-region 四策略 + 三态部署 + update_infos 双资产路径 + 会话启动修复规则 feel.md/core 双语），4 op（managed-region 工具 + 三态接入 writeManagedFile + 会话启动修复 + 测试），新增 managed-region.ts + update-infos.ts，writeWithMergeDetection → writeManagedFile，REV-1101~1104 已修复，545/545 测试通过，0 Bug，知识沉淀 4 条至 architecture(1 新增) + patterns(2 新增) + troubleshooting(1 新增) |
 | 2026-09-25 | 归档 | stage-37 归档：全局部署架构（框架资产部署到 ~/.config/opencode/ + 项目精简 + 双 state + JSONC 深度合并 + 框架约束走 instructions 绝对路径 + schema/$schema/agent_manager_tool 修正），6 op（op-000 实测验证 + 全局路径模块 + init/update 改造 + P2 落地 + 测试改造），新增 global-paths.ts + opencode-config.ts，REV-801/802 已清理，493/493 测试通过，0 Bug，知识沉淀 5 条至 architecture(1 新增) + patterns(2 新增) + troubleshooting(2 新增) |

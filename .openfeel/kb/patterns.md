@@ -2194,3 +2194,17 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.0-stage-39 op-001、kb/architecture.md #存量项目迁移架构、kb/patterns.md #迁移命令模式
 
+## [+] 模型配置命令模式：model set/get/list + --scope + 校验 + 非 TTY 守卫 (2026-09-25)
+
+`openfeel model` 命令组（`src/commands/model.ts`）承载三层级 agent 模型读写，其命令面设计可复用为「层级配置读写 CLI」的通用模式：
+
+- **set/get/list 三命令 + `--scope default|global|project`**：默认 scope 取 `project`（改动最小、最安全）；非法 scope 在 `parseScope` 统一抛错退出 1。
+- **非 TTY 守卫（REV-1504）**：`--scope default`（改框架源码，影响未来所有部署）在非 TTY 下必须显式 `--force` 或 `--build` 双重确认，否则拒绝退出 1——防止脚本/CI 无人工审查误改框架默认。
+- **default 层源码就位预判（REV-1703）**：`isFrameworkSourceReady()` 复用 core 层路径推导（`resolveFrameworkRoot` 基于 `MODULE_DIR` 上溯两级），不受 `process.cwd()` 影响，子目录运行不误报。
+- **build 由 CLI 层触发（REV-1604）**：`setAgentModel` 返回 `needsBuild`（default 恒 true）但不消费 build 字段；CLI 层读取并 `execSync('npm run build')`，避免 core 层死参数。
+- **校验三段式错误提示**：provider 硬校验（auth.json key）+ model-id 软校验（格式 + `Did you mean` 提示）+ 错误输出含「原因 + 可用 provider 列表 + 合法示例」。
+- **遮蔽提示（REV-1701）**：get 时若 default 层有显式值且 project/global 也显式设置（effective 取 default），输出「project/global 被框架默认 frontmatter 遮蔽」提示，引导用户改 `--scope default`。
+- **内部 API 纯函数化**：`model-config.ts` 导出 `setAgentModel/getAgentModel/listAgentModels/validateModel/readAuthProviders`，返回结构化结果不 console 输出，供 CLI 与「Model not found 自动修复」共用。
+
+**参见：** v1.1.0-stage-40 op-002、kb/architecture.md #模型配置三层级架构
+

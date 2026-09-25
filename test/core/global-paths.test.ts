@@ -20,6 +20,7 @@ import {
   getGlobalCoreMdPath,
   getGlobalUpdateStatePath,
   getGlobalUpdateInfosPath,
+  getAuthJsonPath,
 } from '../../src/core/global-paths.js';
 
 describe('global-paths 全局路径解析', () => {
@@ -52,5 +53,9 @@ describe('global-paths 全局路径解析', () => {
 
   it('getGlobalUpdateInfosPath 应返回 ~/.openfeel/update_infos.md', () => {
     expect(getGlobalUpdateInfosPath()).toBe(join(home, '.openfeel', 'update_infos.md'));
+  });
+
+  it('getAuthJsonPath 应返回 ~/.local/share/opencode/auth.json', () => {
+    expect(getAuthJsonPath()).toBe(join(home, '.local', 'share', 'opencode', 'auth.json'));
   });
 });

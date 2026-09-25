@@ -532,6 +532,17 @@ export const help: I18nDomain = {
   'migrate.remapAssignee': { key: 'help.migrate.remapAssignee', zh: '', en: 'Rewrite legacy flow.json assignee to new names (report only by default)' },
   'migrate.rollback':      { key: 'help.migrate.rollback',      zh: '', en: 'Roll back the most recent migration' },
   'migrate.rollback.dryRun': { key: 'help.migrate.rollback.dryRun', zh: '', en: 'Preview rollback plan only' },
+
+  // model (model configuration)
+  'model':               { key: 'help.model',               zh: '', en: 'Model configuration (three scopes: set/get/list)' },
+  'model.set':           { key: 'help.model.set',           zh: '', en: 'Set the model of a given agent' },
+  'model.set.scope':     { key: 'help.model.set.scope',     zh: '', en: 'Scope (default|global|project, default project)' },
+  'model.set.build':     { key: 'help.model.set.build',     zh: '', en: 'Trigger npm run build after writing default scope to regenerate deploy artifacts' },
+  'model.set.force':     { key: 'help.model.set.force',     zh: '', en: 'Confirm modifying the framework default (required for --scope default in non-TTY)' },
+  'model.get':           { key: 'help.model.get',           zh: '', en: 'Read the model of a given agent' },
+  'model.get.scope':     { key: 'help.model.get.scope',     zh: '', en: 'Scope (omit to show effective value)' },
+  'model.list':          { key: 'help.model.list',          zh: '', en: 'List models of all agents' },
+  'model.list.scope':    { key: 'help.model.list.scope',    zh: '', en: 'Scope (omit to show effective value)' },
 };
 
 /* ==================== config ==================== */
@@ -582,6 +593,30 @@ export const migrate: I18nDomain = {
   'error.aborted':        { key: 'migrate.error.aborted',        zh: '', en: 'Migration aborted; run `openfeel migrate rollback` to roll back: {message}' },
 };
 
+/* ==================== model domain: model configuration (stage-40) ==================== */
+export const model: I18nDomain = {
+  // set
+  'set.ok':            { key: 'model.set.ok',            zh: '', en: '✓ Wrote model {model} for {agentId} (scope={scope})' },
+  'set.warning':       { key: 'model.set.warning',       zh: '', en: 'Note: {warning}' },
+  'set.needsBuild':    { key: 'model.set.needsBuild',    zh: '', en: 'default scope changed the framework source; run npm run build to regenerate deploy artifacts' },
+  'set.buildTriggered':{ key: 'model.set.buildTriggered',zh: '', en: 'Running npm run build ...' },
+  'set.needConfirm':   { key: 'model.set.needConfirm',   zh: '', en: 'Modifying the framework default affects all future deployments. In non-TTY you must explicitly pass --force or --build to confirm; execution refused' },
+  'set.noSourceRepo':  { key: 'model.set.noSourceRepo',  zh: '', en: 'default scope is only available in the OpenFeel source repo (src/core/templates-data not found). Use --scope global/project' },
+  'set.failed':        { key: 'model.set.failed',        zh: '', en: '✗ Write failed: {message}' },
+  'set.example':       { key: 'model.set.example',       zh: '', en: 'Example: openfeel model set openfeel-vision alibaba-cn/qwen3-vl-plus --scope global' },
+  // get
+  'get.effective':     { key: 'model.get.effective',     zh: '', en: 'Effective model: {value}' },
+  'get.byScope':       { key: 'model.get.byScope',       zh: '', en: '  {scope}: {value}' },
+  'get.none':          { key: 'model.get.none',          zh: '', en: '(not explicitly set, using opencode default)' },
+  'get.inconsistent':  { key: 'model.get.inconsistent',  zh: '', en: '⚠ default layer multi-source mismatch (frontmatter differs from opencode-config.ts); frontmatter takes precedence' },
+  'get.shadowed':      { key: 'model.get.shadowed',      zh: '', en: '⚠ project/global setting is shadowed by the framework default frontmatter (default takes precedence); use --scope default to change the effective value' },
+  'get.failed':        { key: 'model.get.failed',        zh: '', en: '✗ Read failed: {message}' },
+  // list
+  'list.title':        { key: 'model.list.title',        zh: '', en: 'Agent model list:' },
+  // error
+  'error.scope':       { key: 'model.error.scope',       zh: '', en: '✗ {message}' },
+};
+
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
@@ -600,4 +635,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'lint',         domain: lint },
   { name: 'config',       domain: config },
   { name: 'migrate',      domain: migrate },
+  { name: 'model',        domain: model },
 ];

@@ -52,7 +52,9 @@ model: zhipuai/glm-5.2            # 异种审查
 - ❌ `model: deepseek-v4-flash` → 缺 provider 前缀
 - ❌ `model: DeepSeek/` → provider 大小写敏感，dee 小写
 
-**缓存注意**：修改 frontmatter 后需重启 OpenCode/VSCode。config.yaml roles 不参与模型解析——模型完全由 frontmatter 直接指定。
+**缓存注意**：修改 frontmatter 后需重启 OpenCode/VSCode。config.yaml roles 不参与模型解析。
+
+> **更新于 2026-09-25（stage-40 REV-1606 实测勘误）**：上句「模型完全由 frontmatter 直接指定」不完整——实测优先级链为「项目 agents frontmatter > 全局 agents frontmatter > 项目 opencode.jsonc `agent.model` > 全局 opencode.jsonc `agent.model` > opencode 默认」，即 **frontmatter 生效且优先于 opencode.jsonc `agent.model`**（与「jsonc 覆盖 frontmatter」的直觉相反）。改模型不生效时先查各层显式值确认生效源，或用 `openfeel model set/get/list --scope default|global|project` 一键读写。详见 troubleshooting.md #opencode 模型解析优先级排查。
 
 ## [+] npm pack 发布验证与 files 字段一致性检查 (2026-08-07)
 

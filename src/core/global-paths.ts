@@ -41,3 +41,8 @@ export function getGlobalUpdateStatePath(): string {
 export function getGlobalUpdateInfosPath(): string {
   return join(homedir(), '.openfeel', 'update_infos.md');
 }
+
+/** 全局 auth.json 路径（~/.local/share/opencode/auth.json；模型 provider 校验依据，REV-1505） */
+export function getAuthJsonPath(): string {
+  return join(homedir(), '.local', 'share', 'opencode', 'auth.json');
+}

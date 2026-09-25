@@ -25,6 +25,7 @@ src/commands/project.ts     registerProjectCommand
 src/commands/config.ts      registerConfigCommand
 src/commands/lint.ts        registerLintCommand
 src/commands/migrate.ts     registerMigrateCommand
+src/commands/model.ts       registerModelCommand
 ```
 
 新增命令组：在 `src/commands/` 创建 `registerXxxCommand(program)` 模块，并在 `src/cli/index.ts` 末尾追加 import + register 调用。
@@ -60,3 +61,4 @@ src/commands/migrate.ts     registerMigrateCommand
 - `openfeel stage create <stageId>` — 创建新的工作阶段（复用 FlowManager.addStage，与 flow stage add 等价）
 - `openfeel migrate [path] [--dry-run] [--remap-assignee]` — 存量旧布局项目迁移（检测/备份/迁移/回滚），`--dry-run` 预览不写盘，`--remap-assignee` 改写 flow.json 旧 assignee（默认仅报告）
 - `openfeel migrate rollback [--dry-run]` — 回滚最近一次迁移（读 `.openfeel/backup/{latest}/manifest.json`），`--dry-run` 仅预览回滚计划
+- `openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]` — 三层级 agent 模型读写，详见 [model 命令组](cli/model.md)

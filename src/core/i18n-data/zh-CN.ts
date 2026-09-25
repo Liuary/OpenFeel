@@ -564,6 +564,17 @@ export const help: I18nDomain = {
   'migrate.remapAssignee': { key: 'help.migrate.remapAssignee', zh: '改写 flow.json 旧 assignee 为新名（默认仅报告）', en: '' },
   'migrate.rollback':      { key: 'help.migrate.rollback',      zh: '回滚最近一次迁移', en: '' },
   'migrate.rollback.dryRun': { key: 'help.migrate.rollback.dryRun', zh: '仅预览回滚计划', en: '' },
+
+  // model（模型配置）
+  'model':               { key: 'help.model',               zh: '模型配置（三层级 set/get/list）', en: '' },
+  'model.set':           { key: 'help.model.set',           zh: '设置指定 agent 的模型', en: '' },
+  'model.set.scope':     { key: 'help.model.set.scope',     zh: '层级（default|global|project，默认 project）', en: '' },
+  'model.set.build':     { key: 'help.model.set.build',     zh: 'default 层级写入后触发 npm run build 重生成部署产物', en: '' },
+  'model.set.force':     { key: 'help.model.set.force',     zh: '确认修改框架默认（非 TTY 下 --scope default 必须）', en: '' },
+  'model.get':           { key: 'help.model.get',           zh: '读取指定 agent 的模型', en: '' },
+  'model.get.scope':     { key: 'help.model.get.scope',     zh: '层级（缺省展示生效值）', en: '' },
+  'model.list':          { key: 'help.model.list',          zh: '列出所有 agent 的模型', en: '' },
+  'model.list.scope':    { key: 'help.model.list.scope',    zh: '层级（缺省展示生效值）', en: '' },
 };
 
 /* ==================== config 域：配置管理命令 ==================== */
@@ -614,6 +625,30 @@ export const migrate: I18nDomain = {
   'error.aborted':        { key: 'migrate.error.aborted',        zh: '迁移中止，可执行 `openfeel migrate rollback` 回滚：{message}', en: '' },
 };
 
+/* ==================== model 域：模型配置（stage-40） ==================== */
+export const model: I18nDomain = {
+  // set
+  'set.ok':            { key: 'model.set.ok',            zh: '✓ 已写入 {agentId} 模型 {model}（scope={scope}）', en: '' },
+  'set.warning':       { key: 'model.set.warning',       zh: '提示：{warning}', en: '' },
+  'set.needsBuild':    { key: 'model.set.needsBuild',    zh: 'default 层级已改框架源码，请运行 npm run build 重生成部署产物', en: '' },
+  'set.buildTriggered':{ key: 'model.set.buildTriggered',zh: '正在执行 npm run build ...', en: '' },
+  'set.needConfirm':   { key: 'model.set.needConfirm',   zh: '修改框架默认将影响未来所有部署。非 TTY 下必须显式 --force 或 --build 确认，已拒绝执行', en: '' },
+  'set.noSourceRepo':  { key: 'model.set.noSourceRepo',  zh: 'default 层级仅在 OpenFeel 源码仓可用（未找到 src/core/templates-data）。请用 --scope global/project', en: '' },
+  'set.failed':        { key: 'model.set.failed',        zh: '✗ 写入失败：{message}', en: '' },
+  'set.example':       { key: 'model.set.example',       zh: '示例：openfeel model set openfeel-vision alibaba-cn/qwen3-vl-plus --scope global', en: '' },
+  // get
+  'get.effective':     { key: 'model.get.effective',     zh: '生效模型：{value}', en: '' },
+  'get.byScope':       { key: 'model.get.byScope',       zh: '  {scope}：{value}', en: '' },
+  'get.none':          { key: 'model.get.none',          zh: '（未显式设置，走 opencode 默认）', en: '' },
+  'get.inconsistent':  { key: 'model.get.inconsistent',  zh: '⚠ default 层多源不一致（frontmatter 与 opencode-config.ts 值不同），以 frontmatter 为准', en: '' },
+  'get.shadowed':      { key: 'model.get.shadowed',      zh: '⚠ project/global 设置被框架默认 frontmatter 遮蔽（default 优先），如需修改生效值请用 --scope default', en: '' },
+  'get.failed':        { key: 'model.get.failed',        zh: '✗ 读取失败：{message}', en: '' },
+  // list
+  'list.title':        { key: 'model.list.title',        zh: 'Agent 模型列表：', en: '' },
+  // error
+  'error.scope':       { key: 'model.error.scope',       zh: '✗ {message}', en: '' },
+};
+
 /* ==================== 聚合导出 ==================== */
 /** 所有功能域的聚合数组（供 i18n.ts 构建 Map 使用） */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
@@ -633,4 +668,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'lint',         domain: lint },
   { name: 'config',       domain: config },
   { name: 'migrate',      domain: migrate },
+  { name: 'model',        domain: model },
 ];

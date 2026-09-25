@@ -483,7 +483,7 @@
     },
     "v1.1.0-stage-40": {
       "name": "v1.1.0-stage-40",
-      "phase": "archiving",
+      "phase": "done",
       "status": "archiving",
       "deps": [],
       "ops": {},

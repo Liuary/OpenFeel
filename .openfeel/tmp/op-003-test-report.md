@@ -1,53 +1,51 @@
 # 自测报告 — op-003
 
-- **执行时间**：2026-09-25 20:14
+- **执行时间**：2026-09-25 22:36
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（首轮全绿）
+- **重试次数**：第 1 次
 
 ## 执行摘要
-
-版本 6 处统一升至 1.1.0（package.json / config.yaml / config.ts×2 / agents-md×2 / AGENTS.md），`npm run build` 重生成 template-loader.ts 生成段同步 v1.1.0；CHANGELOG 新增 [1.1.0]；README `/opfx:` 残留清零并加 `openfeel migrate`；测试硬编码版本号改动态读取。
+三层级读写/校验/幂等/命令层测试补齐，`npm run build` 成功，`npm test` 全绿（591 passed / 37 files）。
 
 ## 实施步骤完成情况
-
-- [x] 步骤 1a-1e：package.json / config.yaml / config.ts L307、L364 / agents-md zh-CN+en / AGENTS.md 版本 1.1.0
-- [x] 步骤 1f：`npm run build` 重生成 template-loader.ts（生成段 L2786/L2934 = v1.1.0）
-- [x] 步骤 1g：`test/core/update.test.ts` L570 改动态 `getOpenfeelVersion()`
-- [x] 步骤 2：README.zh-CN.md / README.en.md `/opfx:` 表按 D36-1 改写为「流水线命令与 Agent 分工」
-- [x] 步骤 3：README.md 快速开始加 `openfeel migrate` 一行 + 存量迁移提示
-- [x] 步骤 4：CHANGELOG.md 新增 `## [1.1.0] - 2026-09-25`（Added/Changed）
-- [x] 步骤 5：`openfeel lint kb` / `lint i18n` 零错误
+- [x] 步骤 1：新建 `test/core/model-config.test.ts`（9 + 2 用例，含修正链断言）
+- [x] 步骤 2：新建 `test/commands/model.test.ts`（5 用例）
+- [x] 步骤 3：`test/core/global-paths.test.ts` 补 `getAuthJsonPath` 断言
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 版本 6 处一致 1.1.0（grep 1.0.9 清零） | ✅ | rg 在 package/config/agents-md/AGENTS.md/update.test 零命中 |
-| npm run build 通过；template-loader 生成段同步 v1.1.0 | ✅ | L2786/L2934 |
-| config.yaml UTF-8 无 BOM | ✅ | 首字节 `23 20 2E` |
-| README.zh-CN/en 无 `/opfx:` 残留 | ✅ | rg 零命中 |
-| README.md 快速开始含 openfeel migrate | ✅ | |
-| CHANGELOG 含 [1.1.0] 条目（Added/Changed） | ✅ | |
-| update.test.ts 无硬编码 '1.0.9' | ✅ | 改 getOpenfeelVersion() |
-| 历史文档 docs/phase-* 等未改动 | ✅ | git status docs/ 为空 |
-| lint i18n / lint kb 零错误 | ✅ | 464 键一致 / 118 引用无过期 |
-| npm test 全绿 | ✅ | |
+| `npm run build && npm test` 全绿（569 + 新增，无回归） | ✅ | build EXIT=0；test 591 passed |
+| `readAuthProviders` 缺文件 null / 三 provider | ✅ | |
+| `validateModel` provider 硬校验 / model-id 软校验 / 格式非法 | ✅ | |
+| default：executor 双语改写、其他字段与正文保留；vision 3 处不误伤 reviewer | ✅ | |
+| default：feel 抛错且无文件变更 | ✅ | |
+| global：只改 model 键、保留同 agent 其他字段 | ✅ | |
+| project：写项目 opencode.jsonc | ✅ | |
+| effective 解析（修正链 default > project > global） | ✅ | REV-1606 修正断言 |
+| default 多源不一致 → inconsistent=true 且 effective=frontmatter 值 | ✅ | REV-1606 修正断言 |
+| listAgentModels 9 条、byScope 完整 | ✅ | |
+| agent 名归一化（executor → openfeel-executor） | ✅ | |
+| 幂等：重复 set 同值不漂移（frontmatter + project jsonc） | ✅ | |
+| default 测试用 tmp frameworkRoot，测试后清理，不污染真实仓库 | ✅ | git status 确认无 templates-data/opencode-config.ts 改动 |
+| 不传 frameworkRoot 的 default 路径推导（REV-1601） | ✅ | `getAgentModel('executor','default',{})` 读到显式 model |
+| 命令层：非 TTY default 拒绝 / scope 非法 / list 9 条 | ✅ | 另加 set--scope project 写盘用例 |
+| HOME 全程隔离（mockHome 指向 tmp） | ✅ | |
+| `openfeel lint i18n` 零错误 | ✅ | 489 键一致 |
 
 ## 产出文件
-
-- `package.json`、`.openfeel/config.yaml`、`src/core/config.ts`、`src/core/templates-data/agents-md/{zh-CN,en}.md`、`src/core/template-loader.ts`（生成）、`AGENTS.md`、`CHANGELOG.md`、`README.md`、`README.{zh-CN,en}.md`、`test/core/update.test.ts`
+- `test/core/model-config.test.ts`（新增）
+- `test/commands/model.test.ts`（新增）
+- `test/core/global-paths.test.ts`（修改）
 
 ## 前置校验结果
-
 - 方案完整性：通过
 - Phase 合法性：通过
 - 流转合法性：通过
 
 ## 偏差记录
-
-1. **agents-md 版本声明保留系列号 v1.0.x**：按方案 1d 字面仅改括号内「当前 v1.1.0」，系列号 `v1.0.x` 未改（方案未明确要求改系列号）。
-2. **全局 openfeel 更新**：全局安装原为已发布 1.0.9（非本仓库链接），为满足「`openfeel --version` 输出 1.1.0」验证，执行了 `npm install -g .`（环境操作，非方案步骤）。
-
-## 遗留问题
-
-无。
+1. 命令层 `runModel` helper 修正为 `program.parse(['model', ...args], { from: 'user' })`；原方案示例用 `['node','openfeel','model',...]` 配 `{from:'user'}` 会触发 `unknown command 'node'`（commander `from:'user'` 不再剥离前缀）。
+2. effective/inconsistent 断言按 REV-1606 实测修正链调整（与 op-001 修正一致）。
+3. 命令层未对真实仓库跑 `--scope default` 写路径（避免污染源码）；default 写路径由单测 tmp frameworkRoot 覆盖。
+4. 未 git commit（任务要求）。
+5. 无跳步违规。

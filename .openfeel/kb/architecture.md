@@ -458,3 +458,30 @@ v1.1.0-stage-39（P6 收口）新增顶层 `openfeel migrate` 命令，把存量
 - **回滚边界（REV-1201）**：全局框架资产（agents/skills/core.md/opencode.jsonc）幂等可重建，回滚**不还原全局文件**（可 `openfeel update` 重建），仅还原项目文件 + 全局 state 新增条目。
 
 **参见：** v1.1.0-stage-39 op-001~004、kb/patterns.md #迁移命令模式、#回滚边界模式、kb/troubleshooting.md #migrate 中途失败排查
+
+## [+] 模型配置三层级架构：工具默认/全局/项目 + 优先级链 frontmatter>jsonc (2026-09-25)
+
+v1.1.0-stage-40（收官）新增 `openfeel model` 命令组 + `src/core/model-config.ts` 内部 API，统一三层级 agent 模型读写，解决「改 agent 模型要手动改多处文件 + 重启」的痛点。
+
+**三层级落点（agent 级，只改 model 键，不触碰同 agent 其他字段与其他 agent）：**
+
+| scope | 落点 | 写盘方式 |
+|-------|------|----------|
+| `default`（工具默认） | 有显式 model 的 4 agent（executor/utility/reviewer/vision）→ `templates-data/opencode/agents/{zh-CN,en}/*.md` frontmatter（双语）；vision/reviewer 额外改 `opencode-config.ts` `buildGlobalOpencodeFrameworkObj()`；无显式 model 的 5 agent（feel/planner/schemer/feel-tester/archiver）报错提示改用 global/project，不新增框架默认 | managed-region frontmatter 读写 + opencode-config 结构化定位；写后须 `npm run build` 重生成 |
+| `global`（全局） | `~/.config/opencode/opencode.jsonc` `agent.<name>.model` | parseJsonc + 文件锁 + 原子写 |
+| `project`（当前项目） | 项目根 `opencode.jsonc` `agent.<name>.model` | parseJsonc + 原子写（不加锁） |
+
+**解析优先级链（REV-1606 实测勘误，推翻计划初期的相反假设）：**
+
+```
+项目 agents/*.md frontmatter > 全局 agents/*.md frontmatter >
+项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > opencode 默认
+```
+
+opencode 官方配置源优先级为「project config < .opencode 目录（agents 等）」，故 **agent markdown frontmatter 覆盖 opencode.jsonc**（非 plan 初期 REV-1501 假设的「jsonc > frontmatter」）。`getAgentModel` effective 解析修正为 `default > project > global`（取首个非空显式值）；default 层多源不一致时以 frontmatter 为准并置 `inconsistent`。
+
+**模型名校验**：格式 `{provider}/{model-id}`；provider 硬校验（对照 `~/.local/share/opencode/auth.json` 顶层 key，路径走 `global-paths.ts` 新增 `getAuthJsonPath()`）；model-id 软校验（仅格式，提示以 `Did you mean` 为准）；auth.json 缺失降级为仅格式校验。
+
+**设计要点**：`model-config.ts` 纯函数化（不直接 console 输出，返回结构化结果），供 CLI 与「Model not found 自动修复」共用；agent 名复用 `normalizeAgentName` 归一化；`default` 层多源（frontmatter + opencode-config.ts）通过 `frameworkRoot` 可注入路径实现测试隔离。
+
+**参见：** v1.1.0-stage-40 op-001~003、kb/troubleshooting.md #opencode 模型解析优先级排查、kb/patterns.md #模型配置命令模式、kb/setup.md #OpenCode Agent 模型配置

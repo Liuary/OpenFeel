@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-25T14:49:11.460Z",
-    "revision": 19
+    "updated": "2026-09-25T14:42:58.941Z",
+    "revision": 16
   },
   "pipeline": {
     "phase": "active",
@@ -483,8 +483,8 @@
     },
     "v1.1.0-stage-40": {
       "name": "v1.1.0-stage-40",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "test_passed",
+      "status": "review_passed",
       "deps": [],
       "ops": {},
       "stats": {
@@ -4609,38 +4609,6 @@
         "stageName": "v1.1.0-stage-40",
         "from": "review_passed",
         "to": "test_pending"
-      }
-    },
-    {
-      "time": "2026-09-25T14:48:50.828Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.0-stage-40",
-        "from": "test_pending",
-        "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-09-25T14:48:51.077Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.0-stage-40",
-        "from": "test_passed",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-09-25T14:49:11.460Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.1.0-stage-40",
-        "opsCount": 0,
-        "reviewsCount": 0,
-        "knowledgeCount": 0,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.0-stage-40.md"
       }
     }
   ]

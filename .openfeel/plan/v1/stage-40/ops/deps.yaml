@@ -1,0 +1,52 @@
+# stage-40 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.0-stage-40
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "模型配置核心 API（model-config.ts + getAuthJsonPath + 前置实测）"
+    produces:
+      - src/core/model-config.ts
+      - src/core/global-paths.ts
+    deps: []
+
+  op-002:
+    file: op-002.md
+    title: "CLI 命令 model set/get/list + 注册 + i18n"
+    produces:
+      - src/commands/model.ts
+      - src/cli/index.ts
+      - src/core/i18n.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "commands/model.ts 依赖 model-config.ts 的 setAgentModel/getAgentModel/listAgentModels/validateModel/readAuthProviders 与 global-paths.ts 的 getAuthJsonPath"
+
+  op-003:
+    file: op-003.md
+    title: "三层级读写 + 校验 + 幂等测试"
+    produces:
+      - test/core/model-config.test.ts
+      - test/commands/model.test.ts
+      - test/core/global-paths.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "测试对象 model-config.ts 与 getAuthJsonPath 须就绪"
+      - op: op-002
+        type: hard
+        reason: "命令层测试依赖命令注册（cli/index.ts + i18n）完成"
+
+parallel_groups:
+  - group: [op-001]
+    desc: "核心 API 层——先定型 model-config.ts + getAuthJsonPath（无 hard 前置）"
+  - group: [op-002]
+    desc: "命令层——依赖 op-001 定型后注册 CLI + i18n"
+  - group: [op-003]
+    desc: "测试层——依赖 op-001/002 全部就绪后补测"

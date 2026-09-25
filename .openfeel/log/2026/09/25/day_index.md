@@ -11,3 +11,4 @@
 | [2026-09-25-Liuary-006.md](2026-09-25-Liuary-006.md) | Archiver | **stage-38 归档完成**：控制区标记增量更新（managed-region 四策略 + 部署三态 writeManagedFile + update_infos 双资产路径 + 会话启动修复规则），545/545 测试，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 managed-region/update-infos + 更新 update |
 | [2026-09-25-Liuary-007.md](2026-09-25-Liuary-007.md) | Liuary | 阶段 v1.1.0-stage-39 完成 |
 | [2026-09-25-Liuary-008.md](2026-09-25-Liuary-008.md) | openfeel-archiver | **stage-39 归档完成**：存量迁移与兼容收尾（openfeel migrate 命令 + 存量读取兼容 + 版本 1.1.0 收口），569/569 测试，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/migrate.md + 更新 cli/commands.md + update/update-state |
+| [2026-09-25-Liuary-009.md](2026-09-25-Liuary-009.md) | Liuary | 阶段 v1.1.0-stage-40 完成 |

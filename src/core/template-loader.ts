@@ -6322,6 +6322,8 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 
 > ⚠️ **配置修改后必须重启 opencode 才能生效**。运行中的会话使用启动时加载的配置。
 
+> 💡 **推荐**：可用 \`openfeel model set/get/list --scope default|global|project\` 一键读写三层级模型（工具默认 / 全局 / 当前项目），无需手工定位文件。
+
 ## 查找可用模型名
 
 当收到 \`"Model not found: xxx. Did you mean: aaa, bbb?"\` 错误时：
@@ -6331,11 +6333,15 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 
 ## Agent 定义文件中的 model 字段
 
-\`.opencode/agents/<name>.md\` 中的 \`model\` 字段是声明性的（供 Agent 自述），**不直接控制平台模型分配**。实际的模型绑定由 \`opencode.jsonc\` 的 \`agent.<name>.model\` 控制。
+\`.opencode/agents/<name>.md\` 的 frontmatter \`model:\` 字段**是生效的，且优先于** \`opencode.jsonc\` 的 \`agent.<name>.model\`（stage-40 REV-1606 实测）。opencode 模型解析优先级链：
 
-因此修改模型需要两步：
-1. 修改 \`opencode.jsonc\` 中的 \`agent.<name>.model\`
-2. （可选）同步修改 \`.opencode/agents/<name>.md\` 和模板文件 \`src/core/templates-data/agents/\` 中的 \`model\` 字段，保持一致性
+\`\`\`
+项目 agents frontmatter > 全局 agents frontmatter > 项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > opencode 默认
+\`\`\`
+
+因此修改模型时以 frontmatter 为准（只改 jsonc 会被 frontmatter 遮蔽），建议两处同步保持一致：
+1. 修改 \`.opencode/agents/<name>.md\` 的 frontmatter \`model:\`（模板源 \`src/core/templates-data/opencode/agents/\` 同步）
+2. （可选，保持一致）同步修改 \`opencode.jsonc\` 的 \`agent.<name>.model\`
 
 ## 多模态（openfeel-vision）模型特殊规则
 

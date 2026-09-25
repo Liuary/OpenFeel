@@ -424,3 +424,25 @@ OpenFeel 的模板部署存在**两层模板源**：
 - 验证：临时脚本注入首次部署失败，断言 stderr 含回滚提示 + `manifest.globalStateKeys.length === 1`（含已部署的 core.md）。
 
 **参见：** v1.1.0-stage-39 op-001、`.openfeel/tmp/op-rev-stage-39-test-report.md`、kb/architecture.md #存量项目迁移架构
+
+## [+] opencode 模型解析优先级排查：frontmatter 覆盖 opencode.jsonc agent.model（与直觉相反）(2026-09-25)
+
+**现象：** 改了 `opencode.jsonc` 的 `agent.<name>.model` 后 Agent 实际仍用旧模型；或改了 agent markdown frontmatter `model:` 后模型立即变化。
+
+**根因（REV-1606 实测勘误）：** opencode 官方配置源优先级为「project config < .opencode 目录（agents 等）」，故 **agent markdown frontmatter `model:` 覆盖 opencode.jsonc 的 `agent.<name>.model`**，真实优先级链：
+
+```
+项目 agents/*.md frontmatter > 全局 agents/*.md frontmatter >
+项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > opencode 默认
+```
+
+这与直觉（「jsonc 更权威、覆盖 frontmatter」）相反——stage-40 计划初期（REV-1501）曾假设「jsonc > frontmatter」，op-001 步骤 0 用隔离 HOME + opencode 1.18.30 `debug config` 实测推翻。
+
+**重要坑位：**
+- skill L43 旧说「frontmatter model 声明性、不直接控制平台模型分配，实际由 jsonc 控制」是**过时错误**；实测 frontmatter **生效且优先**。
+- 因此改模型时：若只改 jsonc 而 frontmatter 有显式值，改动被 frontmatter 遮蔽不生效；须改 frontmatter（或两处同步保持一致）。
+- 本阶段已在 `model-config.ts` 落地修正链：`effective = default > project > global`（default 层多源不一致时以 frontmatter 为准，置 `inconsistent`）；CLI get 输出遮蔽提示（REV-1701）。
+
+**排查动作：** 改模型不生效时，先 `openfeel model get <agent>`（或 `opencode debug config`）查各层显式值，确认生效源是 frontmatter 还是 jsonc，再定位应改的层。
+
+**参见：** v1.1.0-stage-40 op-001 步骤 0、kb/architecture.md #模型配置三层级架构、kb/setup.md #OpenCode Agent 模型配置

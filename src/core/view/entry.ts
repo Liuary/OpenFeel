@@ -42,14 +42,14 @@ export function createReviewEntry(
   // 自动生成 REV ID
   const revId = generateReviewId(projectPath);
 
-  // 创建 ReviewItem（status='open', filed_by='reviewer', filed_at=当前 ISO 时间）
+  // 创建 ReviewItem（status='open', filed_by='openfeel-reviewer', filed_at=当前 ISO 时间）
   const review: ReviewItem = {
     id: revId,
     op: opId,
     status: 'open',
     priority,
     title,
-    filed_by: 'reviewer',
+    filed_by: 'openfeel-reviewer',
     filed_at: new Date().toISOString(),
   };
 
@@ -59,7 +59,7 @@ export function createReviewEntry(
   // 追加日志
   mgr.appendLog({
     time: '',
-    agent: 'reviewer',
+    agent: 'openfeel-reviewer',
     action: 'review_add',
     detail: { reviewId: revId, opId, title, priority },
   });
@@ -126,7 +126,7 @@ export function acceptReview(projectPath: string, reviewId: string): ReviewItem 
   // 追加验收日志
   mgr.appendLog({
     time: '',
-    agent: 'reviewer',
+    agent: 'openfeel-reviewer',
     action: 'review_accept',
     detail: { reviewId },
   });

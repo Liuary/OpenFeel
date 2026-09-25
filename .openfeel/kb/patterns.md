@@ -577,7 +577,7 @@ configCmd
 | 2 | `new-agent.md`（部署到 `.opencode/agents/` 目录） | **新建** | 部署定义，内容与 zh-CN 模板同步 |
 | 3 | `AGENTS.md` | **修改** | 标题计数 + 总览表格 + 调度列表（三处同步） |
 | 4 | `.opencode/instructions/core.md` | **修改** | 路径自校验范围 + Feel 调度列表（两处补充） |
-| 5 | `.opencode/skills/model-check/SKILL.md` | **修改** | 角色映射回退表新增条目 |
+| 5 | `.opencode/skills/openfeel-model-check/SKILL.md` | **修改** | 角色映射回退表新增条目 |
 | 6 | `.openfeel/kb/architecture.md` | **修改** | 新增架构决策条目 |
 | 7 | `.openfeel/kb/index.md` | **修改** | Agent 计数 + 分类概览条目数 + 摘要表 |
 | 8 | `test/core/template-loader.test.ts` | **修改** | Agent 计数断言更新 |
@@ -1294,7 +1294,7 @@ Reviewer 返回审查结论后，Feel 根据结论决定推进 review_passed 或
 | `.opencode/agents/feel.md` | 插入 13 行 | 「审查不可跳过（硬性纪律）」节 |
 | `templates-data/agents/zh-CN/feel.md` | 插入 13 行 | 中文源模板，内容一致 |
 | `templates-data/agents/en/feel.md` | 插入 13 行 | 英文版「Review Must Not Be Skipped (Hard Discipline)」 |
-| `.opencode/agents/executor.md` | 插入 10 行 | 「审查移交（硬性纪律）」节 |
+| `.opencode/agents/openfeel-executor.md` | 插入 10 行 | 「审查移交（硬性纪律）」节 |
 | `templates-data/agents/zh-CN/executor.md` | 插入 10 行 | 中文源模板，内容一致 |
 | `templates-data/agents/en/executor.md` | 插入 10 行 | 英文版「Review Handover (Hard Discipline)」 |
 
@@ -1313,7 +1313,7 @@ Reviewer 返回审查结论后，Feel 根据结论决定推进 review_passed 或
 npm run build  # 模板一致性校验 4/4 通过
 # 然后比对部署版与源模板中的新增节内容：
 # git diff --no-index .opencode/agents/feel.md templates-data/agents/zh-CN/feel.md
-# git diff --no-index .opencode/agents/executor.md templates-data/agents/zh-CN/executor.md
+# git diff --no-index .opencode/agents/openfeel-executor.md templates-data/agents/zh-CN/openfeel-executor.md
 ```
 
 **参见：** v0.5.9-stage-01、kb/patterns.md #REV 闭环双路兜底+--force不可绕过模式、kb/patterns.md #新增 Agent 全链路更新清单模式
@@ -1856,7 +1856,7 @@ openfeel update
   "openfeel_version": "1.0.6",
   "files": {
     ".opencode/agents/feel.md": { "hash": "abc123...", "status": "clean" },
-    ".opencode/agents/reviewer.md": { "hash": "def456...", "status": "conflict" }
+    ".opencode/agents/openfeel-reviewer.md": { "hash": "def456...", "status": "conflict" }
   }
 }
 ```
@@ -2042,4 +2042,31 @@ catch: unlinkSync(tmp)（best-effort）→ throw      // 失败不留半成品
 **锁路径约定**：`projectLockPath(projectPath, name)` → `.openfeel/tmp/locks/{name}.lock`（项目级）；`globalLockPath(name)` → `~/.openfeel/locks/{name}.lock`（跨项目全局写入）。**锁不嵌套**——同一进程不可对同一 lockPath 嵌套调用（会自锁至超时），故 scheme/stage/merge 对 flow.json 的同步统一委托 `FlowManager.save()` 的 `flow.lock`，调用点自身不再取 flow 锁。
 
 **参见：** v1.1.0-stage-35 op-002、kb/architecture.md #跨进程并发保护架构、kb/troubleshooting.md #并发写入竞态排查
+
+## [+] 命名前缀统一与子串陷阱处理模式：openfeel- 前缀 + feel 例外 + 最长优先替换 + 词边界 (2026-09-25)
+
+v1.1.0-stage-36 将 8 个 agent + 14 个 skill 统一加 `openfeel-` 前缀（`feel` agent 保留原名，作为 primary/default_agent 例外）。大规模改名最大的坑是**子串误伤**：`feel` ⊂ `feel-tester` ⊂ `openfeel-feel-tester`，且 `openfeel` 项目名本身含 `feel`。处理纪律：
+
+- **文件级用 `git mv`**：文件名即新名，天然无子串误伤；先重命名文件/目录，再改正文引用。
+- **文本级「最长优先 + 负向断言」**：替换顺序最长优先——`feel-tester` → `openfeel-feel-tester` 必须先于其它；`feel` 一词**永不替换**；统一用负向 lookbehind `(?<!openfeel-)\b(...)\b` 守卫，杜绝把已是 `openfeel-*` 的串二次前缀化成 `openfeel-openfeel-*`。
+- **词边界 `\b` 兜底**：`\bplanner\b` 不会误伤 `planner-foo` 之类；但 `\b` 对含连字符词（`feel-tester`）须整体作为一个原子匹配，不能拆成两个词。
+- **技术术语误伤教训（Vision-Language）**：REV-501 发现 `agent-model-check` skill 里的「`vl` 表示 Vision-Language」被误替换为 `Vision-openfeel-...`——技术术语中的大写 `Vision`/`Language` 不是 agent 名，不能进「最长优先替换」的候选集。**教训：agent/skill 名的替换候选必须与人类可读称呼、技术术语、CLI 子命令严格区分，只替换「标识符引用」（`task(agent)`、`subagent_type:`、`[HANDOFF: agent]`、`default_agent`、`agent.<name>` 键、frontmatter `name:`），不替换叙述性文字与技术名词。**
+- **CLI 子命令与 skill 同名词区分（N6）**：`openfeel health` / `openfeel flow recover` / `openfeel roadmap` / `openfeel wizard` / `openfeel model-check` / `openfeel model-config` 是 **CLI 子命令**不改；仅 skill 名提及改。`roadmap` 同时是 CLI 与 skill，在 feel.md 表中**双列引用**（命令 `openfeel roadmap` + skill `openfeel-roadmap`）。
+- **幂等校验兜底**：改名后全库 grep 裸旧名（排除伪阳性清单）+ grep `openfeel-openfeel-` 断言无二次前缀化。
+
+**伪阳性清单（不得误改）**：`<utility>` 等 XML 转义标签、任务标签 `type: utility`（非 agent 名）、内部标识 `agent: 'flow-manager'`、`openfeel` 项目名本身、技术术语 `Vision-Language`。
+
+**参见：** v1.1.0-stage-36 op-002/op-003、kb/architecture.md #opencode 全局/项目 agent 与 skill 合并语义
+
+## [+] P5 读取兼容模式：normalizeAgentName 归一化 + 写入新名读取兼容 (2026-09-25)
+
+agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史数据风险大、收益低），采用「**读取兼容 + 写入新名**」的向后兼容策略：
+
+- **写入一律新名**：`mapPhaseToAgent` 返回 `openfeel-planner` / `-schemer` / `-executor` / `-reviewer` / `-feel-tester` / `-archiver`（`done → none`）；所有 `agent: '...'` / `filed_by` / `assignee` 写入点改新名。
+- **读取归一化**：新增模块级纯函数 `normalizeAgentName(name)`，内部 `toLowerCase()` 归一大小写（解决 `scheme.ts` 写大写 `'Executor'` 与 `mapPhaseToAgent` 返回小写 `'executor'` 的不一致）、幂等（已是 `openfeel-*` 原样返回）、非 agent 值（`feel` / `none` / `unknown` / `flow-manager`）原样保留。旧名→新名映射由 `LEGACY_AGENT_NAME_MAP` 常量承载。
+- **接入点 = 所有「读取并展示 agent 名」的路径**：`flow status --verbose`（`responsibleAgent` + 状态历史 `change.agent`）、`flow overview` / `flow log`（`entry.agent`）、`flow metrics`（`m.agentName`）、`view list`（`item.filed_by`）。展示处归一而非解析处归一，改动最小、不污染数据源。
+- **不迁移历史数据**：不批量改写 `flow.json` / 历史日志 / 旧 `status.md`；旧名经归一化后仍可正常展示。skill 名不写 `flow.json`，无需读取兼容。
+- **迁移分阶段**：本阶段只保证「读取兼容 + 写入新名」，存量 `flow.json` 的 assignee 重映射留给后续 `openfeel migrate`（stage-39）。
+
+**参见：** v1.1.0-stage-36 op-002、kb/architecture.md #模板单源架构
 

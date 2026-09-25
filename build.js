@@ -1,9 +1,9 @@
 /**
  * 构建脚本 — 三步管线：注入 core.md → 注入 Agent 定义 → 注入 Skill 定义 → TypeScript 编译
  *
- * 三步管线在 `rmSync` 清理 dist/ 之后、`npx tsc` 编译之前执行，
- * 自动将 .opencode/instructions/core.md 编码为 Base64 注入 templates.ts，
- * 以及将 agents 和 skills 目录下的 Markdown 文件注入 update.ts。
+ * 模板注入管线在 `rmSync` 清理 dist/ 之后、`npx tsc` 编译之前执行，
+ * 从唯一权威源 `templates-data/opencode/` 读取 instructions / agents / skills 等，
+ * 编码/转义后注入 template-loader.ts 与 update.ts。
  */
 import {
   rmSync,
@@ -11,6 +11,7 @@ import {
   readdirSync,
   writeFileSync,
   existsSync,
+  mkdirSync,
 } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
@@ -24,21 +25,16 @@ const UPDATE_PATH = resolve(__dirname, 'src', 'core', 'update.ts');
 const TEMPLATE_LOADER_PATH = resolve(__dirname, 'src', 'core', 'template-loader.ts');
 
 const TEMPLATES_DATA_DIR = resolve(__dirname, 'src', 'core', 'templates-data');
-const TEMPLATE_AGENTS_DIR = resolve(TEMPLATES_DATA_DIR, 'agents');
-const TEMPLATE_CORE_MD_PATH = resolve(TEMPLATES_DATA_DIR, 'core-instructions', 'zh-CN.md');
-const TEMPLATE_AGENTS_MD_PATH = resolve(TEMPLATES_DATA_DIR, 'agents-md', 'zh-CN.md');
-const TEMPLATE_CORE_INSTRUCTIONS_DIR = resolve(TEMPLATES_DATA_DIR, 'core-instructions');
 const TEMPLATE_AGENTS_MD_DIR = resolve(TEMPLATES_DATA_DIR, 'agents-md');
 
-const CORE_MD_PATH = resolve(__dirname, '.opencode', 'instructions', 'core.md');
-const AGENTS_DIR = resolve(__dirname, '.opencode', 'agents');
-const SKILLS_DIR = resolve(__dirname, '.opencode', 'skills');
-
-// opencode 模板数据源目录（templates-data/opencode/）
+// opencode 模板数据源目录（templates-data/opencode/）—— 唯一权威源
 const TEMPLATE_OPENCODE_DIR = resolve(TEMPLATES_DATA_DIR, 'opencode');
 const TEMPLATE_OPENCODE_AGENTS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'agents');
 const TEMPLATE_OPENCODE_SKILLS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'skills');
 const TEMPLATE_OPENCODE_INSTRUCTIONS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'instructions');
+
+// Skill 定义权威源：重指向 templates-data/opencode/skills（不再读 .opencode/skills）
+const SKILLS_DIR = TEMPLATE_OPENCODE_SKILLS_DIR;
 
 // ── 辅助函数 ──────────────────────────────────────────────────────────
 
@@ -96,23 +92,23 @@ function replaceBetweenAnchors(filePath, anchorName, newContent) {
 // ── 管线函数 ──────────────────────────────────────────────────────────
 
 /**
- * 步骤 1：读取 templates-data/core-instructions/ 下所有 .md 文件 → CRLF→LF 归一化 → Base64 编码 → 注入 template-loader.ts
+ * 步骤 1：读取 templates-data/opencode/instructions/ 下所有 .md 文件 → CRLF→LF 归一化 → Base64 编码 → 注入 template-loader.ts
  * 每个文件名（不含扩展名）作为语言键
  * [FIX] REV-003：读取后先归一化行尾（CRLF→LF），再 Base64 编码，确保跨平台可复现
  */
 function generateTemplateFromCoreMd() {
   console.log('⟳ 正在注入 core-instructions 模板 → template-loader.ts...');
-  if (!existsSync(TEMPLATE_CORE_INSTRUCTIONS_DIR)) {
-    console.warn('⚠ templates-data/core-instructions/ 目录不存在，跳过 core-instructions 注入');
+  if (!existsSync(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR)) {
+    console.warn('⚠ templates-data/opencode/instructions/ 目录不存在，跳过 core-instructions 注入');
     return;
   }
 
-  const mdFiles = readdirSync(TEMPLATE_CORE_INSTRUCTIONS_DIR).filter((f) => f.endsWith('.md'));
+  const mdFiles = readdirSync(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR).filter((f) => f.endsWith('.md'));
   const entries = [];
 
   for (const file of mdFiles) {
     const lang = file.replace(/\.md$/, '');
-    let content = safeReadFile(join(TEMPLATE_CORE_INSTRUCTIONS_DIR, file));
+    let content = safeReadFile(join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, file));
     // [FIX] REV-003：CRLF→LF 归一化，确保跨平台 B64 编码一致
     content = content.replace(/\r\n/g, '\n');
     const base64 = Buffer.from(content, 'utf-8').toString('base64');
@@ -131,31 +127,33 @@ function generateTemplateFromCoreMd() {
 }
 
 /**
- * 步骤 2：读取 templates-data/agents/ 下各语言子目录的 .md 文件 → 注入 template-loader.ts 的 AGENT_TEMPLATES
+ * 步骤 2：读取 templates-data/opencode/agents/ 下各语言子目录的 .md 文件 → 注入 template-loader.ts 的 AGENT_TEMPLATES
  * 数据结构为双层 Record: Record<string, Record<string, string>>
  * 每个语言子目录（如 zh-CN/、en/）作为一个顶层语言键
  */
 function generateAgentDefinitions() {
   console.log('⟳ 正在注入 Agent 模板 → template-loader.ts...');
-  if (!existsSync(TEMPLATE_AGENTS_DIR)) {
-    console.warn('⚠ templates-data/agents/ 目录不存在，跳过 Agent 模板注入');
+  if (!existsSync(TEMPLATE_OPENCODE_AGENTS_DIR)) {
+    console.warn('⚠ templates-data/opencode/agents/ 目录不存在，跳过 Agent 模板注入');
     return;
   }
 
-  const langDirs = readdirSync(TEMPLATE_AGENTS_DIR, { withFileTypes: true })
+  const langDirs = readdirSync(TEMPLATE_OPENCODE_AGENTS_DIR, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name);
   const langEntries = [];
   let totalAgentCount = 0;
 
   for (const lang of langDirs) {
-    const langPath = join(TEMPLATE_AGENTS_DIR, lang);
+    const langPath = join(TEMPLATE_OPENCODE_AGENTS_DIR, lang);
     const agentFiles = readdirSync(langPath).filter((f) => f.endsWith('.md'));
     const entries = [];
 
     for (const file of agentFiles) {
       const key = file.replace(/\.md$/, '');
-      const content = safeReadFile(join(langPath, file));
+      let content = safeReadFile(join(langPath, file));
+      // CRLF→LF 归一化，避免行尾泄漏进模板串（跨平台可复现）
+      content = content.replace(/\r\n/g, '\n');
       const escaped = escapeForTemplateString(content);
       // 含连字符的 key 需要引号
       const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
@@ -193,7 +191,9 @@ function generateAgentsMdTemplate() {
 
   for (const file of mdFiles) {
     const lang = file.replace(/\.md$/, '');
-    const content = safeReadFile(join(TEMPLATE_AGENTS_MD_DIR, file));
+    let content = safeReadFile(join(TEMPLATE_AGENTS_MD_DIR, file));
+    // CRLF→LF 归一化，避免行尾泄漏进模板串
+    content = content.replace(/\r\n/g, '\n');
     const escaped = escapeForTemplateString(content);
     // 含连字符的 lang 键需要引号
     const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang) ? lang : `'${lang}'`;
@@ -230,7 +230,9 @@ function generateSkillDefinitions() {
       console.warn(`⚠ ${dir}/SKILL.md 不存在，跳过`);
       continue;
     }
-    const content = safeReadFile(skillPath);
+    let content = safeReadFile(skillPath);
+    // CRLF→LF 归一化，避免行尾泄漏进模板串
+    content = content.replace(/\r\n/g, '\n');
     const escaped = escapeForTemplateString(content);
     entries.push(`  '${dir}': \`${escaped}\`,`);
   }
@@ -265,7 +267,9 @@ function generateOpencodeAgentTemplates() {
 
     for (const file of agentFiles) {
       const key = file.replace(/\.md$/, '');
-      const content = safeReadFile(join(langPath, file));
+      let content = safeReadFile(join(langPath, file));
+      // CRLF→LF 归一化，避免行尾泄漏进模板串
+      content = content.replace(/\r\n/g, '\n');
       const escaped = escapeForTemplateString(content);
       // 含连字符的 key（如 feel-tester）需要引号
       const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
@@ -310,7 +314,9 @@ function generateOpencodeSkillTemplates() {
       console.warn(`⚠ ${dir}/SKILL.md 不存在，跳过`);
       continue;
     }
-    const content = safeReadFile(skillPath);
+    let content = safeReadFile(skillPath);
+    // CRLF→LF 归一化，避免行尾泄漏进模板串
+    content = content.replace(/\r\n/g, '\n');
     const escaped = escapeForTemplateString(content);
     // 含连字符的 skill 名（如 agent-model-check）需要引号
     const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(dir)
@@ -493,7 +499,7 @@ function validateCoreInstruction() {
     const b64 = match[4];
     const decoded = Buffer.from(b64, 'base64').toString('utf-8');
 
-    const sourcePath = join(TEMPLATE_CORE_INSTRUCTIONS_DIR, `${langKey}.md`);
+    const sourcePath = join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, `${langKey}.md`);
     if (!existsSync(sourcePath)) {
       errors.push(`[${langKey}] 源文件不存在: ${sourcePath}`);
       continue;
@@ -744,7 +750,7 @@ function validateAgentDefinitions() {
     totalCount += Object.keys(templateEntries).length;
 
     // 读取对应语言目录的源文件
-    const langDir = join(TEMPLATE_AGENTS_DIR, langKey);
+    const langDir = join(TEMPLATE_OPENCODE_AGENTS_DIR, langKey);
     const sourceEntries = {};
     if (existsSync(langDir)) {
       const files = readdirSync(langDir).filter((f) => f.endsWith('.md'));
@@ -766,8 +772,8 @@ function validateAgentDefinitions() {
   }
 
   // 检查有源目录但模板中无对应语言键的情况
-  if (existsSync(TEMPLATE_AGENTS_DIR)) {
-    const dirs = readdirSync(TEMPLATE_AGENTS_DIR, { withFileTypes: true })
+  if (existsSync(TEMPLATE_OPENCODE_AGENTS_DIR)) {
+    const dirs = readdirSync(TEMPLATE_OPENCODE_AGENTS_DIR, { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
     for (const dir of dirs) {
@@ -1142,6 +1148,187 @@ function validateOpencodeTemplates() {
   }
 }
 
+// ── 单源一致性校验（N2：三对注入对象键集与内容一致）─────────────────────
+
+/**
+ * 断言两组键值对象的键集与归一化内容一致
+ * @param {string} nameA 对象 A 名称（报错用）
+ * @param {string} nameB 对象 B 名称
+ * @param {Object.<string, string>} entriesA 对象 A 条目
+ * @param {Object.<string, string>} entriesB 对象 B 条目
+ * @returns {string[]} 错误列表（空表示一致）
+ */
+function assertConsistent(nameA, nameB, entriesA, entriesB) {
+  const keysA = Object.keys(entriesA);
+  const keysB = Object.keys(entriesB);
+  const errors = [];
+  if (JSON.stringify(keysA) !== JSON.stringify(keysB)) {
+    errors.push(`${nameA} 键集(${keysA.join(',')}) ≠ ${nameB} 键集(${keysB.join(',')})`);
+  }
+  for (const k of keysA) {
+    const a = (entriesA[k] || '').replace(/\r\n/g, '\n');
+    const b = (entriesB[k] || '').replace(/\r\n/g, '\n');
+    if (a !== b) errors.push(`${nameA}.${k} 内容 ≠ ${nameB}.${k}`);
+  }
+  return errors;
+}
+
+/**
+ * 从 template-loader.ts 提取 agent 模板对象并 flatten 为 Record<`${lang}.${agentId}`, content>
+ * 复用 matchBraces + matchBraceAt + extractTemplatePairs，整体结构仿 validateAgentDefinitions
+ * @param {string} anchorName 锚点名（AGENT_TEMPLATES / OPENCODE_AGENT_TEMPLATES）
+ * @returns {Object.<string, string>} flatten 后的条目
+ */
+function extractAllAgentEntries(anchorName) {
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, anchorName);
+  const objText = matchBraces(section);
+  if (!objText) return {};
+  const flat = {};
+  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*\{/g;
+  let langMatch;
+  while ((langMatch = langRegex.exec(objText)) !== null) {
+    const langKey = langMatch[2] || langMatch[3];
+    const innerStart = objText.indexOf('{', langMatch.index);
+    const innerEnd = matchBraceAt(objText, innerStart);
+    if (innerStart === -1 || innerEnd === -1) continue;
+    const innerObj = objText.slice(innerStart, innerEnd + 1);
+    const pairs = extractTemplatePairs(innerObj);
+    for (const [agentId, content] of Object.entries(pairs)) {
+      flat[`${langKey}.${agentId}`] = content;
+    }
+    langRegex.lastIndex = innerEnd + 1;
+  }
+  return flat;
+}
+
+/**
+ * 断言 instructions 双源一致：
+ * CORE_INSTRUCTIONS_TEMPLATES（Record<lang, B64>）与 OPENCODE_CONFIG_TEMPLATES[lang].instructions（B64）
+ * 逐语言解码后归一化比对。复用 extractBetweenAnchors + matchBraces + extractOpencodeConfigLangEntries。
+ * @returns {string[]} 错误列表
+ */
+function assertInstructionsConsistent() {
+  const errors = [];
+  // 1) 提取 CORE_INSTRUCTIONS_TEMPLATES：锚点段 → matchBraces → langRegex 提取 lang→B64
+  const coreSection = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'CORE_INSTRUCTIONS_TEMPLATES');
+  const coreObjText = matchBraces(coreSection);
+  if (!coreObjText) return ['无法提取 CORE_INSTRUCTIONS_TEMPLATES 对象'];
+  const coreB64ByLang = {};
+  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*'([^']+)'/g;
+  let m;
+  while ((m = langRegex.exec(coreObjText)) !== null) {
+    coreB64ByLang[m[2] || m[3]] = m[4];
+  }
+  // 2) 提取 OPENCODE_CONFIG_TEMPLATES：锚点段 → matchBraces
+  const configSection = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_CONFIG_TEMPLATES');
+  const configObjText = matchBraces(configSection);
+  if (!configObjText) return ['无法提取 OPENCODE_CONFIG_TEMPLATES 对象'];
+  // 3) 逐语言解码比对（B64 → utf-8 → CRLF 归一 LF）
+  const norm = (s) => Buffer.from(s, 'base64').toString('utf-8').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (const lang of Object.keys(coreB64ByLang)) {
+    const configEntries = extractOpencodeConfigLangEntries(configObjText, lang);
+    if (!configEntries || configEntries.instructions === undefined) {
+      errors.push(`[${lang}] OPENCODE_CONFIG_TEMPLATES 缺少 instructions 键`);
+      continue;
+    }
+    if (norm(coreB64ByLang[lang]) !== norm(configEntries.instructions)) {
+      errors.push(`[${lang}] CORE_INSTRUCTIONS_TEMPLATES ≠ OPENCODE_CONFIG_TEMPLATES[${lang}].instructions`);
+    }
+  }
+  return errors;
+}
+
+/**
+ * 单源一致性校验：断言三对注入对象键集与归一化内容一致，
+ * 且冗余模板树（templates-data/agents、core-instructions）已删除
+ */
+function validateSingleSourceConsistency() {
+  const errors = [];
+  // 三对：agent / skill / instructions
+  errors.push(...assertConsistent('AGENT_TEMPLATES', 'OPENCODE_AGENT_TEMPLATES',
+    extractAllAgentEntries('AGENT_TEMPLATES'), extractAllAgentEntries('OPENCODE_AGENT_TEMPLATES')));
+  errors.push(...assertConsistent('SKILL_DEFINITIONS', 'OPENCODE_SKILL_DEFINITIONS',
+    extractTemplatePairs(matchBraces(extractBetweenAnchors(UPDATE_PATH, 'SKILL_DEFINITIONS'))),
+    extractTemplatePairs(matchBraces(extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_SKILL_DEFINITIONS')))));
+  // instructions：CORE_INSTRUCTIONS_TEMPLATES（B64） vs OPENCODE_CONFIG_TEMPLATES[*].instructions（B64）
+  errors.push(...assertInstructionsConsistent());
+  // 断言冗余模板树已删除
+  if (existsSync(resolve(TEMPLATES_DATA_DIR, 'agents')) || existsSync(resolve(TEMPLATES_DATA_DIR, 'core-instructions'))) {
+    errors.push('冗余模板树仍存在：templates-data/agents 或 core-instructions 未删除');
+  }
+  if (errors.length) {
+    console.error('  ✗ 单源一致性校验失败');
+    for (const e of errors) console.error(`      ${e}`);
+    process.exit(1);
+  }
+  console.log('  ✓ 单源一致性校验通过（三对对象键集与内容一致）');
+}
+
+// ── 步骤 8：.opencode/ 自举实例重生成（D36-3 / N4）──────────────────────
+
+/** 在 frontmatter 闭合 --- 之后插入生成物标记；无 frontmatter 则插首行 */
+function insertGeneratedMark(content, mark) {
+  const m = content.match(/^---\s*\n[\s\S]*?\n---\s*\n/);
+  if (m) {
+    return m[0] + mark + '\n' + content.slice(m[0].length);
+  }
+  return mark + '\n' + content;
+}
+
+/**
+ * 从权威源重生成 .opencode/ 自举实例（agents / skills / instructions / ADAPTER），
+ * 并插入生成物标记。须在 tsc 之后调用（依赖 dist/ 的 atomicWriteFileSync）。
+ * 采用「清空旧名 → 全量重写」策略，避免新旧并存的残留。
+ */
+async function regenerateOpencodeInstance() {
+  console.log('⟳ 正在重生成 .opencode/ 自举实例（含生成物标记）...');
+  const { atomicWriteFileSync } = await import('./dist/core/fs/atomic-write.js');
+  const MARK = '<!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->';
+  const lang = 'zh-CN';
+
+  // 1) 清空 .opencode/agents/*.md（删除旧名文件；feel.md 由下方全量覆盖）
+  const agentsOutDir = resolve(__dirname, '.opencode', 'agents');
+  if (existsSync(agentsOutDir)) {
+    for (const f of readdirSync(agentsOutDir).filter((f) => f.endsWith('.md'))) {
+      rmSync(join(agentsOutDir, f), { force: true });
+    }
+  }
+  // 2) 清空 .opencode/skills/ 全部旧目录（递归删除旧名目录）
+  const skillsOutDir = resolve(__dirname, '.opencode', 'skills');
+  if (existsSync(skillsOutDir)) {
+    for (const d of readdirSync(skillsOutDir, { withFileTypes: true }).filter((d) => d.isDirectory())) {
+      rmSync(join(skillsOutDir, d.name), { recursive: true, force: true });
+    }
+  }
+
+  // 3) agents：权威源 agents/{lang}/*.md → .opencode/agents/*.md（8 带前缀 + feel）
+  const agentDir = resolve(TEMPLATE_OPENCODE_AGENTS_DIR, lang);
+  for (const file of readdirSync(agentDir).filter((f) => f.endsWith('.md'))) {
+    let content = readFileSync(join(agentDir, file), 'utf-8').replace(/\r\n/g, '\n');
+    content = insertGeneratedMark(content, MARK);
+    atomicWriteFileSync(resolve(__dirname, '.opencode', 'agents', file), content);
+  }
+
+  // 4) skills：权威源 skills/*/SKILL.md → .opencode/skills/*/SKILL.md（14 带前缀）
+  for (const dir of readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory())) {
+    const src = join(TEMPLATE_OPENCODE_SKILLS_DIR, dir.name, 'SKILL.md');
+    let content = readFileSync(src, 'utf-8').replace(/\r\n/g, '\n');
+    content = insertGeneratedMark(content, MARK);
+    mkdirSync(resolve(__dirname, '.opencode', 'skills', dir.name), { recursive: true });
+    atomicWriteFileSync(resolve(__dirname, '.opencode', 'skills', dir.name, 'SKILL.md'), content);
+  }
+
+  // 5) instructions/core.md：权威源 instructions/{lang}.md → .opencode/instructions/core.md
+  const instr = readFileSync(join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, `${lang}.md`), 'utf-8').replace(/\r\n/g, '\n');
+  atomicWriteFileSync(resolve(__dirname, '.opencode', 'instructions', 'core.md'), MARK + '\n' + instr);
+
+  // 6) ADAPTER.md：权威源 ADAPTER.{lang}.md → .opencode/ADAPTER.md
+  const adapter = readFileSync(resolve(TEMPLATE_OPENCODE_DIR, `ADAPTER.${lang}.md`), 'utf-8').replace(/\r\n/g, '\n');
+  atomicWriteFileSync(resolve(__dirname, '.opencode', 'ADAPTER.md'), MARK + '\n' + adapter);
+
+  console.log('✓ .opencode/ 自举实例已重生成（含生成物标记）');
+}
+
 // ── 主流程 ────────────────────────────────────────────────────────────
 
 try {
@@ -1162,9 +1349,13 @@ try {
   execSync('npx tsc', { stdio: 'inherit' });
   console.log('✓ TypeScript 编译完成');
 
+  // 步骤 8：从权威源重生成 .opencode/ 自举实例（含生成物标记）
+  await regenerateOpencodeInstance();
+
   // 校验模板一致性
   validateTemplates();
   validateOpencodeTemplates();
+  validateSingleSourceConsistency();
 } catch (err) {
   console.error(`✗ 构建失败: ${err.message}`);
   process.exit(1);

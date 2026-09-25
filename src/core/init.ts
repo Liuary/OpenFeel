@@ -459,8 +459,8 @@ export function initDemo(projectPath: string, lang: 'zh-CN' | 'en' = 'zh-CN'): D
   // 示例阶段版本前缀抽为常量（path.ts DEFAULT_STAGE_VERSION），短名规范化与 init 保持一致
   const demoStageId = `${DEFAULT_STAGE_VERSION}-stage-01`; // v1.0.0-stage-01
   const statusMdContent = lang === 'en'
-    ? `# ${demoStageId} Status\n\n- **Status**: planned\n- **Current Agent**: executor\n- **Previous Agent**: none\n- **Updated**: ${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## Current Task\n\nInitialize project skeleton, create basic file structure.\n\n## Status Log\n\n| Time | Agent | Status Change | Description |\n|------|-------|---------------|-------------|\n| - | - | - | Sample stage |\n`
-    : `# ${demoStageId} 状态\n\n- **状态**：planned\n- **当前责任 Agent**：executor\n- **上一责任 Agent**：none\n- **更新时间**：${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## 当前任务\n\n初始化项目骨架，创建基础文件结构。\n\n## 状态记录\n\n| 时间 | Agent | 状态变化 | 说明 |\n|------|-------|----------|------|\n| - | - | - | 示例阶段 |\n`;
+    ? `# ${demoStageId} Status\n\n- **Status**: planned\n- **Current Agent**: openfeel-executor\n- **Previous Agent**: none\n- **Updated**: ${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## Current Task\n\nInitialize project skeleton, create basic file structure.\n\n## Status Log\n\n| Time | Agent | Status Change | Description |\n|------|-------|---------------|-------------|\n| - | - | - | Sample stage |\n`
+    : `# ${demoStageId} 状态\n\n- **状态**：planned\n- **当前责任 Agent**：openfeel-executor\n- **上一责任 Agent**：none\n- **更新时间**：${new Date().toISOString().substring(0, 16).replace('T', ' ')}\n\n## 当前任务\n\n初始化项目骨架，创建基础文件结构。\n\n## 状态记录\n\n| 时间 | Agent | 状态变化 | 说明 |\n|------|-------|----------|------|\n| - | - | - | 示例阶段 |\n`;
   ensureFile('.openfeel/plan/v1/stage-01/status.md', statusMdContent);
 
   // 确保 config.yaml 存在（含 models 节，根据语言）

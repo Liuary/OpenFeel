@@ -10,18 +10,18 @@
 | 语言 | TypeScript (Node.js ≥20) |
 | 核心依赖 | Commander, Zod, YAML, fast-glob |
 | 源文件 | 51 个 .ts 文件（src/） |
-| Agent 数 | 9 个（feel/planner/schemer/executor/reviewer/tester/archiver/事务官/vision） |
+| Agent 数 | 9 个（feel + 8 个 openfeel-* 前缀：planner/schemer/executor/reviewer/feel-tester/utility/vision/archiver） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
-| 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-09-12（stage-35 归档：并发保护基础设施，6 条知识沉淀至 architecture(2 新增) + patterns(3 新增) + troubleshooting(1 新增)） |
+| 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义，自举实例由 build 生成）、src/core/templates-data/opencode/（模板唯一权威源）、.openfeel/manual/（模块文档系统） |
+| 最近更新 | 2026-09-25（stage-36 归档：模板源收敛 + 命名前缀统一，4 条知识沉淀至 architecture(1 新增) + patterns(2 新增) + troubleshooting(1 新增)） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 17 | 2026-09-12 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义 |
-| 代码模式 | [patterns.md](patterns.md) | 69 | 2026-09-12 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 16 | 2026-09-12 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查 |
+| 架构决策 | [architecture.md](architecture.md) | 18 | 2026-09-25 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构 |
+| 代码模式 | [patterns.md](patterns.md) | 71 | 2026-09-25 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 17 | 2026-09-25 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-08-08 | 环境搭建、构建流程、依赖管理、Agent 模型配置、npm pack 发布验证、CI/CD npm 自动发布 |
 
 ## 各分类摘要
@@ -47,6 +47,7 @@
 | config.yaml meta.version 语义：OpenFeel 框架版本 | 2026-08-15 | meta.version = 框架版本（非配置格式版本），由 config.ts 双语言模板常量硬编码，版本升级须三处同步，flow.json meta.version 为内部格式不参与 |
 | 跨进程并发保护架构：原子写 + 建议性文件锁 + 序号原子化三层底座 | 2026-09-12 | `src/core/fs/` 三零依赖工具；同目录 temp+fsync+rename、O_EXCL 锁+退避+rename 抢占、O_EXCL 占号；TTL=3000ms 基于实测 P99≈8.14ms；仅接入高风险写入点 |
 | opencode 全局/项目 agent 与 skill 合并语义（源码验证） | 2026-09-12 | agent 按名 mergeDeep（项目覆盖同名、异名全局保留、项目不屏蔽全局）；skill 并集合并但同名覆盖非确定（须名唯一）；default_agent 合并后注册表解析。stage-37 全局部署关键前提 |
+| 模板单源架构：templates-data/opencode 唯一权威源 + 双注入对象 + 单源一致性断言 | 2026-09-25 | 三对双层模板源收敛为单源；删除 agents/core-instructions 冗余树；双注入对象不合并（消费方不同）仅加单源一致性断言；.opencode/ 降级为构建产物（步骤8 自举重生成 + 生成物标记）；行尾归一 LF |
 
 ### patterns.md
 
@@ -110,6 +111,8 @@
 | flow.json 乐观并发校验模式 | 2026-09-12 | meta.revision 单调递增 + 锁内比对 loadedRevision → 冲突抛 FlowConcurrentModificationError（不写盘）；命令层退出码 2；restoreCheckpoint 冲突返回 false；repair 不校验但写时递增 |
 | 原子写模式 | 2026-09-12 | 同目录唯一名 temp + fsync + rename；内容零改写；backup:true 写前复制 .bak、写后不覆盖；跨平台 temp 须同目录、Windows rename/unlink 容错 |
 | 建议性文件锁模式 | 2026-09-12 | O_EXCL 独占创建 + 指数退避（±20% 抖动）+ 陈旧锁 rename 原子抢占 + token 归属校验释放；Atomics.wait 同步睡眠；锁不嵌套 |
+| 命名前缀统一与子串陷阱处理模式 | 2026-09-25 | openfeel- 前缀 + feel 例外 + 最长优先替换 + 词边界 + 负向断言防二次前缀化；技术术语（Vision-Language）误伤教训；CLI 子命令与 skill 同名词区分；伪阳性清单 |
+| P5 读取兼容模式 | 2026-09-25 | normalizeAgentName 归一化（toLowerCase + 幂等）+ 写入新名读取兼容旧名；接入点 = 所有展示 agent 名的路径；不迁移历史 flow.json |
 
 ### troubleshooting.md
 
@@ -130,6 +133,7 @@
 | 双层模板源发散：init 与 update 部署内容不一致 | 2026-08-15 | agents + opencode/agents 两层模板源已发散（feel.md 21 行差、core.md Vision 差异），build 独立校验不报错，按节锚点定点编辑规避，遗留待后续 stage 收敛 |
 | npm publish 404/403 诊断链 | 2026-08-08 | secret 名字不匹配致 404 + automation token 与包级 2FA 冲突致 403；npm 404 实为认证失败，legacy token 已弃用改 Granular token + Bypass 2FA |
 | 并发写入竞态排查 | 2026-09-12 | 无锁 RMW 丢失更新、max+1 重号、.bak 被新内容覆盖、裸 writeFileSync 半写、Windows rename/unlink 容错；排查动作：共享写点加锁+原子写、parse 仅解析文件名、.bak 写前复制、并发子进程验证 |
+| 模型名错误导致 Agent 无法启动 | 2026-09-25 | deepseek-v4-flash 已下线 → deepseek-flash；症状 Model not found；修复须全链路（agent 文件 + 模板源 + 生成段 + config 常量），改后重启 opencode |
 
 ### setup.md
 
@@ -144,6 +148,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-09-25 | 归档 | stage-36 归档：模板源收敛 + 命名前缀统一（模板单源 templates-data/opencode/ + 8 agent/14 skill 加 openfeel- 前缀 + /opfx: 类型化 + normalizeAgentName 读取兼容 + build 单源断言与步骤8 自举重生成 + 附带修复 executor/utility 模型名），4 op / 大量重命名+删除，REV-301~308 计划 + REV-501~505 代码全闭环，470/470 测试通过，BUG-001 closed，知识沉淀 4 条至 architecture(1 新增) + patterns(2 新增) + troubleshooting(1 新增) |
 | 2026-09-12 | 归档 | stage-35 归档：并发保护基础设施（原子写 + 建议性文件锁 + 序号原子化三工具 + 高风险写入接入 + flow.json 乐观并发校验 meta.revision + .bak 语义修复），3 新增源码 + 13 修改源码 + 6 测试文件，457/457 测试通过（0 skipped），4 non-blocking REV 全闭合，0 Bug，知识沉淀 6 条至 architecture(2 新增) + patterns(3 新增) + troubleshooting(1 新增) |
 | 2026-08-15 | 归档 | stage-34 归档：plan 目录多级化与路径统一（path.ts 新模块 + 三级回退 + 写入迁移 + init 多级化 + 模板/skill 双语同步），6 op / 33 文件变更，0 REV，425/425 测试通过，0 Bug，知识沉淀 4 条至 architecture(更新) + patterns(2 新增) + troubleshooting(更新) |
 | 2026-08-15 | 归档 | stage-33 归档：Pantheogen 反馈 3 项规则改动（日志纪律解耦 + 任务类型路由 + 轻量决策边界）+ decisions.md 框架化 + 版本 1.0.8 全链路同步，5 op / 29 源码文件变更，0 REV，407/407 测试通过，0 Bug，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1) |

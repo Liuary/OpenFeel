@@ -421,7 +421,7 @@ export const help: I18nDomain = {
   'flow.status':           { key: 'help.flow.status',           zh: '', en: 'Show pipeline status summary' },
   'flow.status.verbose':   { key: 'help.flow.status.verbose',   zh: '', en: 'Enhanced output: config cascade, recent changes, downstream agent readiness' },
   'flow.status.lines':     { key: 'help.flow.status.lines',     zh: '', en: 'Number of recent status changes (default 5)' },
-  'flow.overview':         { key: 'help.flow.overview',         zh: '', en: 'Full status visualization (/opfx:status backend)' },
+  'flow.overview':         { key: 'help.flow.overview',         zh: '', en: 'Full status visualization (openfeel flow overview backend)' },
   'flow.current':          { key: 'help.flow.current',          zh: '', en: 'Show current stage and operation' },
   'flow.metrics':          { key: 'help.flow.metrics',          zh: '', en: 'Show Agent performance metrics' },
   'flow.stage':            { key: 'help.flow.stage',            zh: '', en: 'Stage management' },

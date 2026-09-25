@@ -7,6 +7,7 @@
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { normalizeAgentName } from './flow-manager.js';
 
 /** Agent 性能指标 */
 export interface AgentMetrics {
@@ -127,7 +128,7 @@ export class MetricsStore {
           : 'N/A';
 
       lines.push(
-        `\n${m.agentName}`,
+        `\n${normalizeAgentName(m.agentName)}`,
         `  总执行次数: ${m.totalRuns}`,
         `  成功 / 失败: ${m.successfulRuns} / ${m.failedRuns}`,
         `  成功率: ${successRate}`,

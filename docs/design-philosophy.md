@@ -18,7 +18,7 @@ OpenFeel 的核心命题是：**让多个特化 Agent 在流水线中接力**，
 
 ```
 推理模型 (deepseek-v4-pro)   → Feel、Planner、Schemer、Reviewer、Tester、Archiver
-快速模型 (deepseek-v4-flash) → Executor、事务官
+快速模型 (deepseek-flash) → Executor、事务官
 异种模型 (待引入)            → Reviewer（交叉审查去盲区）
 ```
 

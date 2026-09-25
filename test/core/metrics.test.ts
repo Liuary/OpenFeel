@@ -36,10 +36,10 @@ describe('MetricsStore', () => {
 
   it('recordRun 应记录成功运行（totalRuns/successfulRuns/duration）', () => {
     const store = MetricsStore.getInstance(tmpDir);
-    store.recordRun('executor', 120, 'success');
-    store.recordRun('executor', 80, 'success');
+    store.recordRun('openfeel-executor', 120, 'success');
+    store.recordRun('openfeel-executor', 80, 'success');
 
-    const metrics = store.getAgentMetrics('executor') as AgentMetrics;
+    const metrics = store.getAgentMetrics('openfeel-executor') as AgentMetrics;
     expect(metrics.totalRuns).toBe(2);
     expect(metrics.successfulRuns).toBe(2);
     expect(metrics.failedRuns).toBe(0);
@@ -50,9 +50,9 @@ describe('MetricsStore', () => {
 
   it('recordRun 应记录失败运行与重试次数', () => {
     const store = MetricsStore.getInstance(tmpDir);
-    store.recordRun('executor', 50, 'failure', 2);
+    store.recordRun('openfeel-executor', 50, 'failure', 2);
 
-    const metrics = store.getAgentMetrics('executor') as AgentMetrics;
+    const metrics = store.getAgentMetrics('openfeel-executor') as AgentMetrics;
     expect(metrics.totalRuns).toBe(1);
     expect(metrics.failedRuns).toBe(1);
     expect(metrics.totalRetries).toBe(2);
@@ -65,7 +65,7 @@ describe('MetricsStore', () => {
 
   it('getAgentMetrics 不带参数应返回全部指标', () => {
     const store = MetricsStore.getInstance(tmpDir);
-    store.recordRun('executor', 100, 'success');
+    store.recordRun('openfeel-executor', 100, 'success');
     store.recordRun('feel', 200, 'success');
 
     const all = store.getAgentMetrics() as AgentMetrics[];
@@ -74,11 +74,11 @@ describe('MetricsStore', () => {
 
   it('summary 应包含各 Agent 的执行统计与成功率', () => {
     const store = MetricsStore.getInstance(tmpDir);
-    store.recordRun('executor', 100, 'success');
-    store.recordRun('executor', 100, 'failure');
+    store.recordRun('openfeel-executor', 100, 'success');
+    store.recordRun('openfeel-executor', 100, 'failure');
 
     const text = store.summary();
-    expect(text).toContain('executor');
+    expect(text).toContain('openfeel-executor');
     expect(text).toContain('成功 / 失败: 1 / 1');
     expect(text).toContain('成功率: 50.0%');
   });
@@ -90,13 +90,13 @@ describe('MetricsStore', () => {
 
   it('save 应写入 metrics.json 并自动创建 .openfeel 目录', () => {
     const store = MetricsStore.getInstance(tmpDir);
-    store.recordRun('executor', 100, 'success');
+    store.recordRun('openfeel-executor', 100, 'success');
     store.save();
 
     const filePath = join(tmpDir, 'metrics.json');
     expect(existsSync(filePath)).toBe(true);
     const data = JSON.parse(readFileSync(filePath, 'utf-8'));
-    expect(data.agents['executor'].totalRuns).toBe(1);
+    expect(data.agents['openfeel-executor'].totalRuns).toBe(1);
   });
 
   it('load 应读取已有 metrics.json', () => {
@@ -127,14 +127,14 @@ describe('MetricsStore', () => {
 
   it('save 与 load 应能往返（持久化后新实例可恢复）', () => {
     const store = MetricsStore.getInstance(tmpDir);
-    store.recordRun('executor', 150, 'success', 1);
+    store.recordRun('openfeel-executor', 150, 'success', 1);
     store.save();
 
     // 模拟新进程：重置单例后从同一 dataDir 加载
     MetricsStore.resetInstance();
     const store2 = MetricsStore.getInstance(tmpDir);
     store2.load();
-    const metrics = store2.getAgentMetrics('executor') as AgentMetrics;
+    const metrics = store2.getAgentMetrics('openfeel-executor') as AgentMetrics;
     expect(metrics.totalRuns).toBe(1);
     expect(metrics.totalRetries).toBe(1);
     expect(metrics.avgDurationMs).toBe(150);

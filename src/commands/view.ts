@@ -1,9 +1,10 @@
 /**
  * view 命令组注册
- * openfeel view list|add|accept  — 审查条目管理（Reviewer 操作）
+ * openfeel view list|add|accept  — 审查条目管理（openfeel-reviewer 操作）
  */
 import { Command } from 'commander';
 import { createReviewEntry, listReviews, acceptReview } from '../core/view/entry.js';
+import { normalizeAgentName } from '../core/flow-manager.js';
 import { t, getCliLang } from '../core/i18n.js';
 
 export function registerViewCommand(program: Command): void {
@@ -28,7 +29,7 @@ export function registerViewCommand(program: Command): void {
 
         for (const item of items) {
           console.log(`${item.id} [${item.status}] ${item.priority} — ${item.title}`);
-          console.log(`  ${t('common.op', lang)}: ${item.op}  ${t('view.list.filedBy', lang)}: ${item.filed_by}  ${t('view.list.filedAt', lang)}: ${item.filed_at}`);
+          console.log(`  ${t('common.op', lang)}: ${item.op}  ${t('view.list.filedBy', lang)}: ${normalizeAgentName(item.filed_by)}  ${t('view.list.filedAt', lang)}: ${item.filed_at}`);
         }
       } catch (err) {
         console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));

@@ -145,7 +145,7 @@ v4.1 修复了 Agent frontmatter 的 model 字段（格式为 `provider/model-na
 | Agent | 模型 | 用途 |
 |:--|:--|:--|
 | Feel/Planner/Schemer/Tester/Archiver | deepseek-v4-pro | 默认推理 |
-| Executor / 事务官 | deepseek-v4-flash | 快速执行 |
+| Executor / 事务官 | deepseek-flash | 快速执行 |
 | Reviewer | zhipuai/glm-5.2 | 异种交叉审查 |
 
 ---

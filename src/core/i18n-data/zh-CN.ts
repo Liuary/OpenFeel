@@ -443,7 +443,7 @@ export const help: I18nDomain = {
   'flow.status':           { key: 'help.flow.status',           zh: '显示流水线状态摘要', en: '' },
   'flow.status.verbose':   { key: 'help.flow.status.verbose',   zh: '增强输出：配置级联、最近状态变更、下游 Agent 就绪状态', en: '' },
   'flow.status.lines':     { key: 'help.flow.status.lines',     zh: '最近状态变更条数（默认 5）', en: '' },
-  'flow.overview':         { key: 'help.flow.overview',         zh: '全状态可视化视图（/opfx:status 的后端实现）', en: '' },
+  'flow.overview':         { key: 'help.flow.overview',         zh: '全状态可视化视图（openfeel flow overview 的后端实现）', en: '' },
   'flow.current':          { key: 'help.flow.current',          zh: '显示当前阶段和操作', en: '' },
   'flow.metrics':          { key: 'help.flow.metrics',          zh: '展示 Agent 性能指标', en: '' },
   'flow.stage':            { key: 'help.flow.stage',            zh: '阶段管理', en: '' },

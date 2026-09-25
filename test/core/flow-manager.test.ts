@@ -3,7 +3,7 @@
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FlowManager, mapPhaseToStageStatus, FlowConcurrentModificationError, isFlowConcurrentError, type FlowData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, type FlowData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -28,7 +28,7 @@ function makeTestFlowData(overrides?: Partial<FlowData>): FlowData {
             id: 'op-001',
             title: '测试操作',
             state: 'pending' as OpState,
-            assignee: 'executor',
+            assignee: 'openfeel-executor',
             attempts: 0,
             max_attempts: 3,
             checkpoints: {
@@ -325,7 +325,7 @@ describe('FlowManager', () => {
                 id: 'op-001',
                 title: '待执行',
                 state: 'pending',
-                assignee: 'executor',
+                assignee: 'openfeel-executor',
                 attempts: 0,
                 max_attempts: 3,
                 checkpoints: {
@@ -340,7 +340,7 @@ describe('FlowManager', () => {
                 id: 'op-002',
                 title: '已完成',
                 state: 'done',
-                assignee: 'executor',
+                assignee: 'openfeel-executor',
                 attempts: 1,
                 max_attempts: 3,
                 checkpoints: {
@@ -355,7 +355,7 @@ describe('FlowManager', () => {
                 id: 'op-003',
                 title: '执行中',
                 state: 'executing',
-                assignee: 'executor',
+                assignee: 'openfeel-executor',
                 attempts: 0,
                 max_attempts: 3,
                 checkpoints: {
@@ -436,8 +436,8 @@ describe('FlowManager', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData({
         reviews: [
-          { id: 'REV-001', op: 'stage-01.op-001', status: 'open', priority: 'high', title: '问题1', filed_by: 'reviewer', filed_at: '2026-01-01T00:00:00Z' },
-          { id: 'REV-002', op: 'stage-01.op-001', status: 'resolved', priority: 'medium', title: '问题2', filed_by: 'reviewer', filed_at: '2026-01-01T00:00:00Z' },
+          { id: 'REV-001', op: 'stage-01.op-001', status: 'open', priority: 'high', title: '问题1', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z' },
+          { id: 'REV-002', op: 'stage-01.op-001', status: 'resolved', priority: 'medium', title: '问题2', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z' },
         ],
       }));
       expect(mgr.getReviewItems().length).toBe(2);
@@ -447,8 +447,8 @@ describe('FlowManager', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData({
         reviews: [
-          { id: 'REV-001', op: 'stage-01.op-001', status: 'open', priority: 'high', title: '问题1', filed_by: 'reviewer', filed_at: '2026-01-01T00:00:00Z' },
-          { id: 'REV-002', op: 'stage-02.op-001', status: 'open', priority: 'low', title: '问题2', filed_by: 'reviewer', filed_at: '2026-01-01T00:00:00Z' },
+          { id: 'REV-001', op: 'stage-01.op-001', status: 'open', priority: 'high', title: '问题1', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z' },
+          { id: 'REV-002', op: 'stage-02.op-001', status: 'open', priority: 'low', title: '问题2', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z' },
         ],
       }));
       expect(mgr.getReviewItems('stage-01.op-001').length).toBe(1);
@@ -875,7 +875,7 @@ describe('FlowManager', () => {
         status: 'open',
         priority: 'high',
         title: '测试问题',
-        filed_by: 'reviewer',
+        filed_by: 'openfeel-reviewer',
         filed_at: new Date().toISOString(),
       });
       expect(mgr.getReviewItems().length).toBe(1);
@@ -890,7 +890,7 @@ describe('FlowManager', () => {
         status: 'open',
         priority: 'high',
         title: '原问题',
-        filed_by: 'reviewer',
+        filed_by: 'openfeel-reviewer',
         filed_at: new Date().toISOString(),
       });
       mgr.addReview({
@@ -899,7 +899,7 @@ describe('FlowManager', () => {
         status: 'resolved',
         priority: 'high',
         title: '已修复问题',
-        filed_by: 'reviewer',
+        filed_by: 'openfeel-reviewer',
         filed_at: new Date().toISOString(),
       });
       expect(mgr.getReviewItems().length).toBe(1);
@@ -1315,7 +1315,7 @@ describe('FlowManager', () => {
             deps: ['stage-01'],
             ops: {
               'op-001': {
-                id: 'op-001', title: '待计划', state: 'pending', assignee: 'planner',
+                id: 'op-001', title: '待计划', state: 'pending', assignee: 'openfeel-planner',
                 attempts: 0, max_attempts: 3,
                 checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
               },
@@ -1859,7 +1859,7 @@ describe('FlowManager', () => {
 
 | 时间 | Agent | 状态变化 | 说明 |
 |------|-------|----------|------|
-| 2026-08-01 | Planner | plan_pending → plan_review | 计划提交 |
+| 2026-08-01 | openfeel-planner | plan_pending → plan_review | 计划提交 |
 | 2026-08-02 | Feel | plan_review → plan_passed | 计划通过 |
 `, 'utf-8');
 
@@ -1875,10 +1875,10 @@ describe('FlowManager', () => {
       expect(vs.cascade.configDefaults).toEqual({ execution_mode: 'auto' });
       expect(vs.cascade.statusOverrides).toEqual({ execution_mode: 'auto' });
       expect(vs.recentChanges.length).toBe(2);
-      expect(vs.recentChanges[0].agent).toBe('Planner');
+      expect(vs.recentChanges[0].agent).toBe('openfeel-planner');
       expect(vs.downstreamPhases.length).toBeGreaterThan(0);
-      // 下游 phase 应有负责 Agent 映射（plan_* → planner）
-      expect(vs.downstreamPhases[0].responsibleAgent).toBe('planner');
+      // 下游 phase 应有负责 Agent 映射（plan_* → openfeel-planner）
+      expect(vs.downstreamPhases[0].responsibleAgent).toBe('openfeel-planner');
     });
   });
 
@@ -2270,5 +2270,70 @@ describe('FlowManager', () => {
       expect(mapPhaseToStageStatus('plan_pending', 'in_progress')).toBe('in_progress');
       expect(mapPhaseToStageStatus('exec_running', 'planned')).toBe('planned');
     });
+  });
+});
+
+// ═══════════════════════════════════════
+// normalizeAgentName（P5 读取兼容，REV-303/304）
+// ═══════════════════════════════════════
+
+describe('normalizeAgentName', () => {
+  it('旧名（含大小写）均归一为新名', () => {
+    expect(normalizeAgentName('executor')).toBe('openfeel-executor');
+    expect(normalizeAgentName('Executor')).toBe('openfeel-executor');
+    expect(normalizeAgentName('EXECUTOR')).toBe('openfeel-executor');
+    expect(normalizeAgentName('planner')).toBe('openfeel-planner');
+    expect(normalizeAgentName('schemer')).toBe('openfeel-schemer');
+    expect(normalizeAgentName('reviewer')).toBe('openfeel-reviewer');
+    expect(normalizeAgentName('feel-tester')).toBe('openfeel-feel-tester');
+    expect(normalizeAgentName('utility')).toBe('openfeel-utility');
+    expect(normalizeAgentName('vision')).toBe('openfeel-vision');
+    expect(normalizeAgentName('archiver')).toBe('openfeel-archiver');
+  });
+
+  it('幂等：已是新名原样返回，不二次前缀化', () => {
+    expect(normalizeAgentName('openfeel-executor')).toBe('openfeel-executor');
+    expect(normalizeAgentName('openfeel-feel-tester')).toBe('openfeel-feel-tester');
+  });
+
+  it('feel / none / unknown / 非 agent 值原样保留', () => {
+    expect(normalizeAgentName('feel')).toBe('feel');
+    expect(normalizeAgentName('none')).toBe('none');
+    expect(normalizeAgentName('unknown')).toBe('unknown');
+    expect(normalizeAgentName('flow-manager')).toBe('flow-manager');
+  });
+
+  it('空值原样返回', () => {
+    expect(normalizeAgentName('')).toBe('');
+  });
+});
+
+describe('读取兼容（P5）：旧 flow.json 可读且展示新名', () => {
+  let tmpDir: string;
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-compat-'));
+  });
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('含旧 assignee: planner 的 flow.json 加载不报错，经 normalizeAgentName 展示新名', () => {
+    // 构造含旧名的旧版 flow.json（保留旧名 fixture，验证读取兼容）
+    const oldData = makeTestFlowData();
+    oldData.stages['stage-01'].ops['op-001'].assignee = 'planner';
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'flow.json'),
+      JSON.stringify(oldData, null, 2) + '\n',
+      'utf-8',
+    );
+
+    const mgr = new FlowManager(tmpDir);
+    const data = mgr.getData();
+    expect(data).not.toBeNull();
+    // 不迁移历史：磁盘旧名保持可读
+    expect(data!.stages['stage-01'].ops['op-001'].assignee).toBe('planner');
+    // 展示处归一为新名
+    expect(normalizeAgentName(data!.stages['stage-01'].ops['op-001'].assignee)).toBe('openfeel-planner');
   });
 });

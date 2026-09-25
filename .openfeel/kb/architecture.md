@@ -325,7 +325,7 @@ OpenFeel 多进程/多 Agent 并发写共享状态文件的统一安全底座，
 **设计选型理由：**
 - **零第三方依赖**：仅用 `node:fs`/`node:crypto`/`node:path`/`node:os`，契合项目「避免过度设计、不随意引第三方库」约束。
 - **同目录 temp 保证 rename 同卷原子**：跨卷 rename 会退化为「复制 + 删除」非原子操作。
-- **建议性锁（advisory）而非强制锁**：跨平台简单可靠；锁文件集中 `.openfeel/tmp/locks/`（项目级）与 `~/.openfeel/locks/`（全局级），不污染业务目录。
+- **建议性锁（advisory）而非强制锁**：跨平台简单可靠；锁文件集中 `.openfeel/tmp/locks/{name}.lock`（项目级）与 `~/.openfeel/locks/{name}.lock`（全局级），不污染业务目录。
 - **序号 `max+1` 降级为「候选起点快速路径」**：最终分配权归 O_EXCL 独占创建 + EEXIST 重试，单进程一次命中、并发绝不重号。
 - **锁 TTL=3000ms 基于实测**：最长临界区 P99 ≈ 8.14ms（94KB flow.json 原子写 5.22ms / 公共日志读改写 6.53ms），取 368×P99 大余量；`staleMs < timeoutMs`（3000 < 5000）保证崩溃残留可在等待窗口内被抢占。同步 API 下事件循环被阻塞，心跳续期不可行，故用静态大余量 TTL。
 
@@ -346,3 +346,33 @@ opencode 加载配置时，全局（`~/.config/opencode/`）与项目（`.openco
 > 注：本条描述 **agent / skill 的合并语义**，与 P2 / REV-001 已验证的 **`instructions` 拼接 + 去重**（`mergeConfigConcatArrays`）是不同维度的合并行为，勿混同。
 
 **参见：** `.openfeel/plan/v1/v1.1/plan.md` P2 / REV-001、v1.1.0-stage-35 计划阶段源码核实（general agent）
+
+## [+] 模板单源架构：templates-data/opencode 唯一权威源 + 双注入对象 + 单源一致性断言 (2026-09-25)
+
+v1.1.0-stage-36 根治了「双层模板源发散」（见 troubleshooting.md #双层模板源发散），把三对并存的双层模板源收敛为**单一权威树 + 两个独立注入对象**：
+
+```
+templates-data/opencode/                    ← 唯一权威源（人类编辑）
+├─ agents/{zh-CN,en}/openfeel-*.md          ← agent prompt（feel 保留原名，其余 8 个加 openfeel- 前缀）
+├─ skills/openfeel-*/SKILL.md               ← 14 个 skill（全部加前缀）
+├─ instructions/{zh-CN,en}.md               ← core 指令（含 Vision）
+├─ opencode.jsonc / ADAPTER.{lang}.md        ← 平台配置与适配器说明
+└─ agents-md/{zh-CN,en}.md                  ← 项目级 AGENTS.md 模板（部署目标不同，保留独立目录）
+        │
+        ▼ 构建时 (build.js)
+src/core/template-loader.ts                 ← AGENT_TEMPLATES / OPENCODE_AGENT_TEMPLATES / OPENCODE_SKILL_DEFINITIONS ...
+src/core/update.ts                          ← SKILL_DEFINITIONS
+        │
+        ▼ 运行时
+init.ts（deployOpencode 部署）  vs  update.ts（增量更新）
+```
+
+**关键设计决策：**
+
+- **单一权威树 = `templates-data/opencode/`**：删除 `templates-data/agents/` 与 `templates-data/core-instructions/`；build.js 全部源路径改指权威树（`SKILLS_DIR` 重指 `opencode/skills`，`generateAgentDefinitions` / `generateTemplateFromCoreMd` 等改读 `TEMPLATE_OPENCODE_*`），并删除改向后成为死常量的 6 个源目录常量。
+- **双注入对象不合并（D36-4 结论）**：`SKILL_DEFINITIONS`（update.ts，供 `openfeel update`）与 `OPENCODE_SKILL_DEFINITIONS`（template-loader.ts，供 `openfeel init`）消费方不同（增量更新 vs 首次部署），合并会牵连调用方大改且无净收益。故**保留两个对象，仅改源路径 + 加断言**。agent / instruction 同理。
+- **单源一致性断言（`validateSingleSourceConsistency`）**：build 新增断言，校验三对对象**键集 + 归一化内容**一致（`AGENT_TEMPLATES ≡ OPENCODE_AGENT_TEMPLATES`、`SKILL_DEFINITIONS ≡ OPENCODE_SKILL_DEFINITIONS`、`CORE_INSTRUCTIONS_TEMPLATES ≡ OPENCODE_CONFIG_TEMPLATES[*].instructions`），并断言冗余树（`agents` / `core-instructions`）已不存在。此断言让「再次漂移」在 `npm run build` 时即报错，弥补了旧实现「两层独立校验、无跨层比对」的盲区。
+- **`.opencode/` 降级为构建产物（自举实例）**：build 新增步骤 8（置于 `npx tsc` 之后，`await import('./dist/core/fs/atomic-write.js')` 复用 stage-35 原子写），从权威源重生成 `.opencode/{agents,skills,instructions,ADAPTER.md}` 并插入生成物标记 `<!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->`。标记插在 YAML frontmatter 闭合 `---` 之后（插之前会破坏 frontmatter 解析），与 stage-38 的 `<!-- openfeel:begin/end -->` 控制区标记语法不冲突。
+- **行尾归一 LF**：新增 `.gitattributes`（`src/core/templates-data/**` 与 `.opencode/**` `text eol=lf`）+ 各注入函数读文件后 `content.replace(/\r\n/g,'\n')`，防止 CRLF 泄漏进生成模板串造成跨平台不可复现。
+
+**参见：** v1.1.0-stage-36 op-001/op-004、kb/troubleshooting.md #双层模板源发散、kb/patterns.md #构建脚本多语言循环生成模式、#跨平台行尾归一化模式

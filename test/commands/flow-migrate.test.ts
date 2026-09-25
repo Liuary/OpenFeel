@@ -32,7 +32,7 @@ function makeOldFormatFlowData(overrides?: Partial<FlowData>): FlowData {
             id: 'op-001',
             title: '测试操作',
             state: 'pending',
-            assignee: 'executor',
+            assignee: 'openfeel-executor',
             attempts: 0,
             max_attempts: 3,
             checkpoints: {

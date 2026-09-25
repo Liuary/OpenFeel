@@ -107,6 +107,7 @@
 | [stage-37](#stage-37全局部署架构) | 全局部署架构 | init/update 部署到 `~/.config/opencode/`；项目精简；opencode.jsonc schema 修正 | P0 | hard: stage-36 | ~15 源码 + 模板 |
 | [stage-38](#stage-38控制区标记--增量更新) | 控制区标记 + 增量更新 | 控制区标记；`update_infos.md`；会话启动修复规则 | P1 | hard: stage-37 | ~8 文件 |
 | [stage-39](#stage-39存量迁移与兼容收尾) | 存量迁移与兼容收尾 | `openfeel migrate`；update_state 拆分；文档/版本/全量回归 | P0 | hard: stage-37；soft: stage-38 | ~12 文件 |
+| [stage-40](#stage-40模型配置接口) | 模型配置接口 | CLI `openfeel model` + 内部 API 改「工具默认/全局/项目」三层级 agent 模型 | P1 | hard: stage-37（前置 stage-36） | 待定（stage-40 新增，待细化） |
 
 ### 依赖图
 
@@ -116,14 +117,15 @@ stage-35（并发保护）  ── soft ──→  stage-36（收敛 + 重命名
                                    hard
                                       ▼
                                 stage-37（全局部署）
-                                   │        │
-                                 hard      hard
-                                   ▼        ▼
-                            stage-38 ──soft──→ stage-39
-                          （控制区标记）      （迁移 + 收尾）
+                                   │        │        │
+                                 hard      hard      hard
+                                   ▼        ▼        ▼
+                            stage-38  stage-39  stage-40
+                          （控制区标记）│（迁移 + 收尾）（模型配置接口）
+                                   └──soft──┘
 ```
 
-> 说明：stage-35 与 stage-36 无硬依赖，但**建议顺序执行**（36 会重命名并重写大量文件，先完成 35 可避免后续对同一批写入点二次改动）。stage-38 与 stage-39 之间存在 **soft 依赖（REV-010 统一：stage-39 为 hard: stage-37；soft: stage-38）**——migrate 复用标记感知的合并逻辑，故 39 排最后。
+> 说明：stage-35 与 stage-36 无硬依赖，但**建议顺序执行**（36 会重命名并重写大量文件，先完成 35 可避免后续对同一批写入点二次改动）。stage-38 与 stage-39 之间存在 **soft 依赖（REV-010 统一：stage-39 为 hard: stage-37；soft: stage-38）**——migrate 复用标记感知的合并逻辑，故 39 排最后。stage-40 为 **hard: stage-37**（依赖全局部署结构就绪）+ 前置 stage-36（agent `openfeel-` 前缀），与 stage-38/39 并列，排最后（P1，用户新需求追加）。
 
 ---
 
@@ -269,6 +271,35 @@ stage-35（并发保护）  ── soft ──→  stage-36（收敛 + 重命名
 
 ---
 
+## stage-40：模型配置接口
+
+> **硬性前置**：stage-37（全局部署结构就绪）；**前置**：stage-36（agent `openfeel-` 前缀）。**定位**：提供 CLI 命令 + 内部 API，快速修改「工具默认 / 全局 / 当前项目」三层级的指定 agent 使用模型，解决「改 agent 模型要手动改多处文件」的痛点。（stage-40 新增，待细化）
+
+### 关键裁定（用户已裁定，不可更改）
+
+- **接口形式**：CLI 命令（`openfeel model set/get/list <agent> <model> [--scope default|global|project]`）+ 内部 API（供 Agent/skill 在模型报错时自动调用）
+- **三层级落点**：
+  - 「工具默认」= 改框架默认模型源（`templates-data/*/agents/*.md` 的 `model:` frontmatter），影响以后 init/update 部署的默认值
+  - 「全局」= `~/.config/opencode/opencode.jsonc` 的 `agent.<name>.model`
+  - 「当前项目」= 项目 `opencode.jsonc` 的 `agent.<name>.model`
+- **模型名校验**：对照 `~/.local/share/opencode/auth.json` 的 provider key（当前 deepseek/zhipuai/alibaba-cn）
+
+### 任务清单（占位，待细化）
+
+> op 级规划留待推进到本 stage 时再展开。
+
+### 完成标准（占位，待细化）
+
+- CLI 可对三层级指定 agent 完成模型 `set/get/list`；内部 API 可在模型报错时被自动调用；模型名校验对照 auth.json provider key 生效
+
+### 涉及文件（预估）
+
+- CLI 命令层（命令注册）、模型配置读写模块（NEW）、`templates-data/*/agents/*.md` frontmatter、`~/.config/opencode/opencode.jsonc`、项目 `opencode.jsonc`、auth.json provider key 校验
+
+> 与知识库既有「模型配置三级体系」（`config.yaml` 的 default/agents/roles 覆盖，见 kb/architecture.md #模型配置三级体系）**不同域**：本阶段针对 opencode 侧 agent 的 `model` 字段落点（工具默认 / 全局 / 项目），两者分属不同配置域，细化时须明确区分，避免概念混淆（模型名格式遵循 `provider/model-name`，见 kb/setup.md #OpenCode Agent 模型配置）。
+
+---
+
 ## 六、兼容性策略（存量项目迁移）
 
 | 存量对象 | 迁移前状态 | 迁移后 | 处理方式 |
@@ -354,7 +385,7 @@ stage-35（并发保护）  ── soft ──→  stage-36（收敛 + 重命名
 | 类别 | 预估数量 | 说明 |
 |------|:--:|------|
 | 新增源码 | 5 | `fs/atomic-write.ts`、`fs/file-lock.ts`、`fs/sequence.ts`、`global-paths.ts`、`managed-region.ts` |
-| 新增命令 | 1 | `openfeel migrate` |
+| 新增命令 | 2 | `openfeel migrate`、`openfeel model`（stage-40，新增待细化） |
 | 新增测试 | 5+ | 对应上述模块 + 并发场景 |
 | 修改源码 | ~15 | init / update / update-state / config / identity / flow-manager / public-logger / stage / scheme / knowledge / merge / metrics / cli |
 | 重命名文件 | ~22 | 8 agent + 14 skill（模板源 + 部署实例 + 生成段） |

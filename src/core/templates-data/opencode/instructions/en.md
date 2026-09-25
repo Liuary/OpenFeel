@@ -46,7 +46,7 @@ All users (including single-person projects) follow this structure.
 
 ## Agent Tool Usage Conventions
 
-All Agents (including Feel, Planner, Schemer, Executor, Reviewer, Feel Tester, Archiver) should proactively use the platform's built-in tools during sessions. Do not rely solely on conversational text to complete complex tasks.
+All Agents (including Feel, openfeel-planner, openfeel-schemer, openfeel-executor, openfeel-reviewer, openfeel-feel-tester, openfeel-vision, openfeel-archiver) should proactively use the platform's built-in tools during sessions. Do not rely solely on conversational text to complete complex tasks.
 
 ### 1. todowrite — Task List Management
 
@@ -101,13 +101,13 @@ User: "Fix three bugs in flow.json, then run tests"
 ### 4. skill — Skill Loading
 
 **Trigger conditions**:
-- Need to understand current stage status → `get-stage-status`
-- Need to consult the project knowledge base → `check-kb`
-- Need to get the Bug list → `get-bugs`
+- Need to understand current stage status → `openfeel-get-stage-status`
+- Need to consult the project knowledge base → `openfeel-check-kb`
+- Need to get the Bug list → `openfeel-get-bugs`
 
 **Usage requirements**:
-- Load `check-kb` at session start to get project background
-- Load `get-stage-status` before handling stage tasks to confirm process status
+- Load `openfeel-check-kb` at session start to get project background
+- Load `openfeel-get-stage-status` before handling stage tasks to confirm process status
 - Must not skip skills and operate directly from memory
 
 ### 5. Tool Usage Priority
@@ -117,7 +117,7 @@ User: "Fix three bugs in flow.json, then run tests"
 | Multi-step tasks | `todowrite` | Executing step-by-step from memory |
 | Ambiguous requirements | `question` | Making assumptions and acting directly |
 | Code exploration | `task(explore)` | Manual grep/read one by one |
-| Getting status | `skill(get-stage-status)` | Inferring from memory |
+| Getting status | `skill(openfeel-get-stage-status)` | Inferring from memory |
 | Batch file operations | `task(general)` | Processing serially one by one |
 
 ## User Identity
@@ -138,7 +138,7 @@ Large models may inadvertently truncate or modify the username when constructing
 2. **Compare and correct**: Compare the currently used `username` with the value in `.openfeel/.info.json` character by character. If inconsistent, reconstruct the full path with the correct value and retry.
 3. **Escalate on consecutive failures**: If the retry still fails, report to the user that "Path `{failed path}` does not exist. Confirmed username is `{correct username}`", and wait for user confirmation before proceeding.
 
-This rule applies to all Agents (Feel / Planner / Schemer / Executor / Reviewer / Feel Tester / Archiver).
+This rule applies to all Agents (Feel / openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-vision / openfeel-archiver).
 
 ---
 
@@ -223,7 +223,7 @@ Each stage's state is jointly managed by `flow.json` and `status.md`. The Feel A
 Pipeline phase enumeration (flow.json PipelinePhase):
 plan_pending → plan_review → plan_passed → scheme_pending → scheme_review → scheme_passed → exec_running → review_pending → review_failed → review_passed → test_pending → test_failed → test_passed → archiving → done
 
-Manual process is the default mode. Feel dispatches downstream Agents (Planner / Schemer / Executor / Reviewer / Feel Tester / Archiver) based on flow.json state, without relying on legacy automated scheduling.
+Manual process is the default mode. Feel dispatches downstream Agents (openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-vision / openfeel-archiver) based on flow.json state, without relying on legacy automated scheduling.
 
 When the state is done or paused, do not continue automatic advancement. When encountering unplanned changes or consecutive failures, pause and wait for user decision.
 
@@ -358,8 +358,8 @@ The **primary location** for daily operations. Structure consistent with the pub
 Manages code review issues during the development stage (architecture, conventions, logic), organized by plan stage. Separated from Bug tracking.
 
 **Role division:**
-- **Reviewer**: Reviews code according to the plan stage, submits issues, verifies fix results.
-- **Executor**: Handles review issues, modifies code and updates status.
+- **openfeel-reviewer**: Reviews code according to the plan stage, submits issues, verifies fix results.
+- **openfeel-executor**: Handles review issues, modifies code and updates status.
 
 Review issues for each plan stage are consolidated in `REV-{plan_stage}.md`. Entry template:
 
@@ -367,7 +367,7 @@ Review issues for each plan stage are consolidated in `REV-{plan_stage}.md`. Ent
 ## REV-{NO}: {Brief Title}
 - **Status**: pending | fixing | resolved | closed
 - **Priority**: high | medium | low
-- **Author**: Reviewer
+- **Author**: openfeel-reviewer
 - **Created**: yyyy-mm-dd HH:MM
 
 ### Issue Description
@@ -378,7 +378,7 @@ Review issues for each plan stage are consolidated in `REV-{plan_stage}.md`. Ent
 |------|----------|-------------|--------|
 
 ### Acceptance Record
-| Time | Reviewer | Conclusion | Notes |
+| Time | openfeel-reviewer | Conclusion | Notes |
 |------|----------|------------|-------|
 ```
 
@@ -393,8 +393,8 @@ When a review issue is marked as `pending` with `high` priority, the issue detai
 Manages defects found during the testing phase, organized by module. Separated from code review.
 
 **Role division:**
-- **Tester**: Submits Bugs and performs final acceptance.
-- **Executor**: Fixes Bugs by module. On session start, uses `load skill get-bugs` to get pending Bugs for the responsible module.
+- **openfeel-feel-tester**: Submits Bugs and performs final acceptance.
+- **openfeel-executor**: Fixes Bugs by module. On session start, uses `load skill openfeel-get-bugs` to get pending Bugs for the responsible module.
 
 Bugs are organized in module subdirectories. Bug naming in each module directory: `BUG-{NNN}_{brief_title}.md` (NNN increments within the module):
 
@@ -423,10 +423,10 @@ pending/open  ──→  fixing  ──→  resolved  ──→  closed
 
 | State | Code Review | Bug Tracking | Operator |
 |-------|------------|-------------|----------|
-| Start | `pending` | `open` | Submitted by Reviewer / Tester |
-| Fixing | `fixing` | `fixing` | Assigned to Executor |
-| Ready for acceptance | `resolved` | `resolved` | Completed by Executor |
-| Closed | `closed` | `closed` | Accepted by Reviewer / Tester |
+| Start | `pending` | `open` | Submitted by openfeel-reviewer / openfeel-feel-tester |
+| Fixing | `fixing` | `fixing` | Assigned to openfeel-executor |
+| Ready for acceptance | `resolved` | `resolved` | Completed by openfeel-executor |
+| Closed | `closed` | `closed` | Accepted by openfeel-reviewer / openfeel-feel-tester |
 
 ### Personal Temporary Directory
 

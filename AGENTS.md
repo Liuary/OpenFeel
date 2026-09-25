@@ -18,7 +18,7 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 | 任务类型 | 处理路径 | 说明 |
 |----------|----------|------|
 | 调研/探索（读代码、查资料、定位问题） | Feel → research（general / explore Agent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
-| 编码实现（新增/修改源码） | 完整流水线（Planner → Schemer → Executor → Reviewer → Tester） | 有源码变更，须走完整审计链 |
+| 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester） | 有源码变更，须走完整审计链 |
 | 选型讨论（敲定技术方案/设计取舍） | Feel + `question` 工具 | 对话式决策，产出结论，不产出 plan.md |
 
 > 非编码任务（调研、选型讨论）不强制创建计划或推进流水线；仅当产生源码变更或正式计划文档时才接入流水线。
@@ -88,16 +88,16 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
    - `skill` > 凭记忆推断 — 获取状态、查阅知识库等操作必须通过 skill 加载
 
 3. **职责边界**：跨 Agent 协作时，每个 Agent 仅在自己的职责边界内操作，不得越界：
-   - Planner 制定计划，不写代码；不直写 flow.json（通过 Feel 写入）
-   - Executor 按计划实现，不自行改计划
-   - Reviewer 审查代码，不自查自改
-   - Feel Tester 提交 Bug 和验收，不修复代码
+   - openfeel-planner 制定计划，不写代码；不直写 flow.json（通过 Feel 写入）
+   - openfeel-executor 按计划实现，不自行改计划
+   - openfeel-reviewer 审查代码，不自查自改
+   - openfeel-feel-tester 提交 Bug 和验收，不修复代码
    - 事务官 执行文件机械操作，不参与设计决策
-   - Archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过 Feel 写入）
+   - openfeel-archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过 Feel 写入）
 
-4. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / 事务官 / Vision / Archiver），通过 `task` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
+4. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / 事务官 / openfeel-vision / openfeel-archiver），通过 `task` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
 
-5. **轻量决策边界**：对话式选型（Feel 与用户通过 `question` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由 Feel 直接处理，不委托 Planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到规划规模阈值时，才委托 Planner。避免"要么全亲为、要么全委托"的极端。
+5. **轻量决策边界**：对话式选型（Feel 与用户通过 `question` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由 Feel 直接处理，不委托 openfeel-planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到规划规模阈值时，才委托 openfeel-planner。避免"要么全亲为、要么全委托"的极端。
 
 偏离以上约束的行为视为违规，审查时将被标记。
 
@@ -106,16 +106,16 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 | Agent | 角色 | 驱动模型 | 调起方式 |
 |-------|------|----------|----------|
 | Feel | 总统领 | 主力推理模型 | primary |
-| Planner | 计划官 | 推理模型 | subagent |
-| Schemer | 方案官 | 主力推理模型 | subagent |
-| Executor | 执行官 | 快速模型 (Flash) | subagent |
-| Reviewer | 审查官 | 异种推理模型 (GLM) | subagent |
-| Feel Tester | 测试官 | 推理模型 | subagent |
-| 事务官 | 事务官 | 快速模型 (Flash) | subagent |
-| Vision | 视觉官 | 多模态模型 (qwen-vl-plus) | subagent |
-| Archiver | 归档官 | 推理模型 | subagent |
+| openfeel-planner | 计划官 | 推理模型 | subagent |
+| openfeel-schemer | 方案官 | 主力推理模型 | subagent |
+| openfeel-executor | 执行官 | 快速模型 (Flash) | subagent |
+| openfeel-reviewer | 审查官 | 异种推理模型 (GLM) | subagent |
+| openfeel-feel-tester | 测试官 | 推理模型 | subagent |
+| openfeel-utility | 事务官 | 快速模型 (Flash) | subagent |
+| openfeel-vision | 视觉官 | 多模态模型 (qwen-vl-plus) | subagent |
+| openfeel-archiver | 归档官 | 推理模型 | subagent |
 
-> **写入约束**：Planner 和 Archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 `edit` 或 `write` flow.json。
+> **写入约束**：openfeel-planner 和 openfeel-archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 `edit` 或 `write` flow.json。
 
 ## 动态规则
 

@@ -6,6 +6,8 @@ import { describe, it, expect } from 'vitest';
 import {
   loadAgentTemplate,
   listAgentIds,
+  listOpencodeAgentIds,
+  listOpencodeSkillNames,
   loadTemplate,
 } from '../../src/core/template-loader.js';
 
@@ -22,17 +24,17 @@ describe('loadAgentTemplate', () => {
     expect(result).toContain('Orchestrator');
   });
 
-  it('zh-CN archiver 返回中文 Archiver 模板', () => {
-    const result = loadAgentTemplate('zh-CN', 'archiver');
+  it('zh-CN openfeel-archiver 返回中文 openfeel-archiver 模板', () => {
+    const result = loadAgentTemplate('zh-CN', 'openfeel-archiver');
     expect(result).toBeTruthy();
     expect(result).toContain('归档官');
-    expect(result).toContain('Archiver');
+    expect(result).toContain('openfeel-archiver');
   });
 
-  it('en archiver 返回英文 Archiver 模板', () => {
-    const result = loadAgentTemplate('en', 'archiver');
+  it('en openfeel-archiver 返回英文 openfeel-archiver 模板', () => {
+    const result = loadAgentTemplate('en', 'openfeel-archiver');
     expect(result).toBeTruthy();
-    expect(result).toContain('Archiver');
+    expect(result).toContain('openfeel-archiver');
     expect(result).toContain('finalizer');
   });
 
@@ -54,14 +56,14 @@ describe('listAgentIds', () => {
     const ids = listAgentIds('zh-CN');
     expect(ids).toHaveLength(9);
     expect(ids).toContain('feel');
-    expect(ids).toContain('executor');
-    expect(ids).toContain('planner');
-    expect(ids).toContain('schemer');
-    expect(ids).toContain('reviewer');
-    expect(ids).toContain('feel-tester');
-    expect(ids).toContain('archiver');
-    expect(ids).toContain('utility');
-    expect(ids).toContain('vision');
+    expect(ids).toContain('openfeel-executor');
+    expect(ids).toContain('openfeel-planner');
+    expect(ids).toContain('openfeel-schemer');
+    expect(ids).toContain('openfeel-reviewer');
+    expect(ids).toContain('openfeel-feel-tester');
+    expect(ids).toContain('openfeel-archiver');
+    expect(ids).toContain('openfeel-utility');
+    expect(ids).toContain('openfeel-vision');
   });
 
   it('en 返回 9 个 Agent ID 数组（与 zh-CN 相同）', () => {
@@ -74,6 +76,31 @@ describe('listAgentIds', () => {
   it('fr 回退到 zh-CN，仍返回 9 个 ID', () => {
     const ids = listAgentIds('fr');
     expect(ids).toHaveLength(9);
+  });
+});
+
+describe('命名前缀完整性', () => {
+  it('listAgentIds 返回 9 项：feel 不带前缀、其余 8 项带 openfeel-', () => {
+    const ids = listAgentIds('zh-CN');
+    expect(ids).toHaveLength(9);
+    expect(ids).toContain('feel');
+    expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(8);
+    expect(ids.every((id) => id === 'feel' || id.startsWith('openfeel-'))).toBe(true);
+  });
+
+  it('listOpencodeAgentIds 双语均返回 9 项且 8 项带前缀', () => {
+    for (const lang of ['zh-CN', 'en']) {
+      const ids = listOpencodeAgentIds(lang);
+      expect(ids).toHaveLength(9);
+      expect(ids).toContain('feel');
+      expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(8);
+    }
+  });
+
+  it('listOpencodeSkillNames 返回 14 项全部带 openfeel- 前缀', () => {
+    const names = listOpencodeSkillNames();
+    expect(names).toHaveLength(14);
+    expect(names.every((n) => n.startsWith('openfeel-'))).toBe(true);
   });
 });
 

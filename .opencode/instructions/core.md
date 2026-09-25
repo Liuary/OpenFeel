@@ -1,3 +1,4 @@
+<!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->
 # .openfeel 工作区操作规范
 
 > 项目永久性行为约束与编码规范见项目根目录 `AGENTS.md`。本文件描述 `.openfeel/` 工作区的具体操作规则。
@@ -45,7 +46,7 @@
 
 ## Agent 工具使用规范
 
-所有 Agent（含 Feel、Planner、Schemer、Executor、Reviewer、Feel Tester、Archiver）在会话中应主动使用平台内置工具，不得仅凭对话文本完成复杂任务。
+所有 Agent（含 Feel、openfeel-planner、openfeel-schemer、openfeel-executor、openfeel-reviewer、openfeel-feel-tester、openfeel-vision、openfeel-archiver）在会话中应主动使用平台内置工具，不得仅凭对话文本完成复杂任务。
 
 ### 1. todowrite — 任务列表管理
 
@@ -100,13 +101,13 @@
 ### 4. skill — 技能加载
 
 **触发条件**：
-- 需要了解当前阶段状态 → `get-stage-status`
-- 需要查阅项目知识库 → `check-kb`
-- 需要获取 Bug 列表 → `get-bugs`
+- 需要了解当前阶段状态 → `openfeel-get-stage-status`
+- 需要查阅项目知识库 → `openfeel-check-kb`
+- 需要获取 Bug 列表 → `openfeel-get-bugs`
 
 **使用要求**：
-- 会话开始时加载 `check-kb` 获取项目背景
-- 处理阶段任务前加载 `get-stage-status` 确认流程状态
+- 会话开始时加载 `openfeel-check-kb` 获取项目背景
+- 处理阶段任务前加载 `openfeel-get-stage-status` 确认流程状态
 - 不得跳过技能直接凭记忆操作
 
 ### 5. 工具使用优先级
@@ -116,7 +117,7 @@
 | 多步骤任务 | `todowrite` | 凭记忆逐条执行 |
 | 需求不明确 | `question` | 自行假设后动手 |
 | 探索代码 | `task(explore)` | 手动逐个 grep/read |
-| 获取状态 | `skill(get-stage-status)` | 凭记忆推断 |
+| 获取状态 | `skill(openfeel-get-stage-status)` | 凭记忆推断 |
 | 批量文件操作 | `task(general)` | 串行逐个处理 |
 
 ## 用户身份
@@ -137,7 +138,7 @@
 2. **比对并修正**：将当前使用的 `username` 与 `.openfeel/.info.json` 中的值逐字符比对。若不一致，用正确值重建完整路径后重试。
 3. **连续失败上报**：重试仍失败时，向用户报告「路径 `{失败的路径}` 不存在，已确认用户名为 `{正确用户名}`」，由用户确认后再操作。
 
-此规则适用于所有 Agent（Feel / Planner / Schemer / Executor / Reviewer / Feel Tester / Vision / Archiver）。
+此规则适用于所有 Agent（Feel / openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-vision / openfeel-archiver）。
 
 ---
 
@@ -222,7 +223,7 @@
 流水线 phase 枚举（flow.json PipelinePhase）：
 plan_pending → plan_review → plan_passed → scheme_pending → scheme_review → scheme_passed → exec_running → review_pending → review_failed → review_passed → test_pending → test_failed → test_passed → archiving → done
 
-人工流程为默认模式。Feel 根据 flow.json 状态调度下游 Agent（Planner / Schemer / Executor / Reviewer / Feel Tester / Vision / Archiver），不依赖旧式自动化调度。
+人工流程为默认模式。Feel 根据 flow.json 状态调度下游 Agent（openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-vision / openfeel-archiver），不依赖旧式自动化调度。
 
 状态为 done 或 paused 时，不得继续自动推进。遇到计划外变更或连续失败时，必须暂停并等待用户决策。
 
@@ -357,8 +358,8 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 管理开发阶段的代码评审问题（架构、规范、逻辑），按计划阶段组织。与 Bug 追踪分离。
 
 **角色分工：**
-- **Reviewer**：根据计划阶段审查代码，提交问题，验收修复结果。
-- **Executor**：处理审查问题，修改代码并标记状态。
+- **openfeel-reviewer**：根据计划阶段审查代码，提交问题，验收修复结果。
+- **openfeel-executor**：处理审查问题，修改代码并标记状态。
 
 每个计划阶段的审查问题集中在 `REV-{plan_stage}.md`。条目模板：
 
@@ -366,7 +367,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 ## REV-{NO}: {简要标题}
 - **状态**：pending | fixing | resolved | closed
 - **优先级**：high | medium | low
-- **提出人**：Reviewer
+- **提出人**：openfeel-reviewer
 - **提出时间**：yyyy-mm-dd HH:MM
 
 ### 问题描述
@@ -392,8 +393,8 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 管理测试阶段发现的缺陷，按模块组织。与代码审查分离。
 
 **角色分工：**
-- **Tester**：提交 Bug 和最终验收。
-- **Executor**：按模块分工修复，会话启动时通过 `load skill get-bugs` 获取负责模块的待处理 Bug。
+- **openfeel-feel-tester**：提交 Bug 和最终验收。
+- **openfeel-executor**：按模块分工修复，会话启动时通过 `load skill openfeel-get-bugs` 获取负责模块的待处理 Bug。
 
 Bug 按模块子目录组织，每个模块目录下 Bug 命名 `BUG-{NNN}_{简略标题}.md`（NNN 模块内递增）：
 
@@ -422,10 +423,10 @@ pending/open  ──→  fixing  ──→  resolved  ──→  closed
 
 | 状态 | 代码审查 | Bug 追踪 | 操作者 |
 |------|---------|---------|--------|
-| 起始 | `pending` | `open` | Reviewer / Tester 提交 |
-| 修复中 | `fixing` | `fixing` | Executor 承接 |
-| 待验收 | `resolved` | `resolved` | Executor 完成 |
-| 关闭 | `closed` | `closed` | Reviewer / Tester 验收通过 |
+| 起始 | `pending` | `open` | openfeel-reviewer / openfeel-feel-tester 提交 |
+| 修复中 | `fixing` | `fixing` | openfeel-executor 承接 |
+| 待验收 | `resolved` | `resolved` | openfeel-executor 完成 |
+| 关闭 | `closed` | `closed` | openfeel-reviewer / openfeel-feel-tester 验收通过 |
 
 ### 个人临时目录
 

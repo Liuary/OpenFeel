@@ -326,3 +326,22 @@ OpenFeel 的模板部署存在**两层模板源**：
 5. Windows 释放锁失败属预期，靠 TTL 兜底；不要「重试释放 / 强制删除」（会与抢占者竞态）。
 
 **参见：** v1.1.0-stage-35 op-001~004、kb/patterns.md #原子写模式、#建议性文件锁模式、#flow.json 乐观并发校验模式、kb/architecture.md #跨进程并发保护架构
+
+## [+] 模型名错误导致 Agent 无法启动：deepseek-v4-flash 已下线 → deepseek-flash (2026-09-25)
+
+**症状：** opencode 会话中报 `Model not found: deepseek/deepseek-v4-flash. Did you mean: ...`，Executor / 事务官（utility）等快速模型 Agent 无法启动。
+
+**根因：** deepseek 平台的 `deepseek-v4-flash` 模型已下线/更名，正确的快速模型标识为 `deepseek-flash`。frontmatter 里残留旧名导致平台按字面模型名查找失败。
+
+**修复范围（改名须全链路同步，否则 build 重生成会把旧名带回来）：**
+
+1. **agent 文件 frontmatter**：`.opencode/agents/openfeel-executor.md`、`openfeel-utility.md` 的 `model: deepseek/deepseek-v4-flash` → `deepseek/deepseek-flash`。
+2. **模板源**：`src/core/templates-data/opencode/agents/{zh-CN,en}/openfeel-executor.md`、`openfeel-utility.md`（权威源，build 的读取对象）。
+3. **生成段**：`src/core/template-loader.ts`（9 处）、`src/core/update.ts` 的 `SKILL_DEFINITIONS` 段——这些是 `npm run build` 的产物，源改了之后须重新 build 才会清除。
+4. **硬编码模板常量**：`src/core/config.ts` 的 `CONFIG_TEMPLATE_ZH/EN` 中 `model_name: deepseek-flash`（L350/L407）；`.openfeel/config.yaml` 的 `models.roles` 同步。
+
+**关键坑点：** 若只改 agent 文件而不改模板源 + 重新 build，`openfeel init` / `openfeel update` 部署到新项目时仍会写入旧模型名，问题复发。改后须**重启 opencode 会话**（frontmatter 修改不热生效）。
+
+**排查方法：** `rg "deepseek-v4-flash"` 全库搜索（排除 `docs/` 历史记录、`.openfeel/tmp/` 测试 fixture），确认 `src/` 与 `.opencode/` 下清零。
+
+**参见：** v1.1.0-stage-36 op-004（附带修复）、kb/setup.md #OpenCode Agent 模型配置（model 格式 `provider/model-name`）

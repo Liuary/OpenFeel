@@ -24,7 +24,7 @@ function makeFlowWithStage(stageName: string, overrides?: Record<string, unknown
         ops: {
           'op-001': {
             id: 'op-001', title: '操作1', state: 'done' as const,
-            assignee: 'executor', attempts: 1, max_attempts: 3,
+            assignee: 'openfeel-executor', attempts: 1, max_attempts: 3,
             checkpoints: {
               plan: 'passed', scheme: 'passed',
               exec: { attempts: 1, self: 'passed' },
@@ -33,7 +33,7 @@ function makeFlowWithStage(stageName: string, overrides?: Record<string, unknown
           },
           'op-002': {
             id: 'op-002', title: '操作2', state: 'pending' as const,
-            assignee: 'executor', attempts: 0, max_attempts: 3,
+            assignee: 'openfeel-executor', attempts: 0, max_attempts: 3,
             checkpoints: {
               plan: 'pending', scheme: 'pending',
               exec: { attempts: 0, self: 'pending' },
@@ -84,23 +84,23 @@ describe('Archive Merge', () => {
           {
             id: 'REV-001', op: 'stage-06.op-001', status: 'closed',
             priority: 'high', title: '已解决: 类型推导优化',
-            filed_by: 'reviewer', filed_at: '2026-06-01T00:00:00Z',
+            filed_by: 'openfeel-reviewer', filed_at: '2026-06-01T00:00:00Z',
           },
           {
             id: 'REV-002', op: 'stage-06.op-002', status: 'resolved',
             priority: 'medium', title: '已修复: 空值处理',
-            filed_by: 'reviewer', filed_at: '2026-06-02T00:00:00Z',
+            filed_by: 'openfeel-reviewer', filed_at: '2026-06-02T00:00:00Z',
           },
           {
             id: 'REV-003', op: 'stage-06.op-001', status: 'open',
             priority: 'low', title: '待处理: 日志格式',
-            filed_by: 'reviewer', filed_at: '2026-06-03T00:00:00Z',
+            filed_by: 'openfeel-reviewer', filed_at: '2026-06-03T00:00:00Z',
           },
           {
             // 不同阶段的审查条目，不应被计入
             id: 'REV-004', op: 'stage-07.op-001', status: 'closed',
             priority: 'medium', title: '无关条目',
-            filed_by: 'reviewer', filed_at: '2026-06-01T00:00:00Z',
+            filed_by: 'openfeel-reviewer', filed_at: '2026-06-01T00:00:00Z',
           },
         ],
       }));
@@ -234,7 +234,7 @@ describe('Archive Merge', () => {
       expect(mgrAfter.getData()!.log.length).toBe(beforeCount + 1);
       const lastLog = mgrAfter.getData()!.log[beforeCount];
       expect(lastLog.action).toBe('archive_stage');
-      expect(lastLog.agent).toBe('archiver');
+      expect(lastLog.agent).toBe('openfeel-archiver');
     });
   });
 });

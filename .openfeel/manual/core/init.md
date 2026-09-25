@@ -67,14 +67,16 @@ interface DemoResult {
 
 | 类别 | 数量 | 目标路径 |
 |------|:--:|------|
-| Agent 定义 | 9 | `.opencode/agents/{agent}.md` |
-| Skill 定义 | 14 | `.opencode/skills/{name}/SKILL.md` |
+| Agent 定义 | 9 | `.opencode/agents/{agent}.md`（`feel` 原名 + 8 个 `openfeel-*` 前缀） |
+| Skill 定义 | 14 | `.opencode/skills/{name}/SKILL.md`（全部 `openfeel-*` 前缀） |
 | 操作规范 | 1 | `.opencode/instructions/core.md` |
 | 平台配置 | 1 | `opencode.jsonc`（含 `{项目名称}` 替换） |
 | 适配器说明 | 1 | `.opencode/ADAPTER.{zh-CN\|en}.md` |
 | 忽略规则 | 1 | `.opencode/.gitignore` |
 
 ⚠️ 不部署 `.opencode/package.json`（REV-001 设计决策：避免用户项目引入不必要的 `@opencode-ai/plugin` 依赖）。
+
+> **命名前缀（stage-36）**：8 个 agent 与 14 个 skill 均加 `openfeel-` 前缀（`feel` agent 保留原名，作为 primary/default_agent 例外），避免与 opencode 生态及用户自定义 agent/skill 命名冲突（见 kb/architecture.md #opencode 全局/项目 agent 与 skill 合并语义）。`deployOpencode` 通过 `listOpencodeAgentIds` / `listOpencodeSkillNames` 读模板源，键随 build 生成段自动带前缀，无需硬编码名。
 
 ## 语言回退
 
@@ -90,3 +92,4 @@ interface DemoResult {
 | stage-29 | 新增 `promptOpencodeDeploy()` + `deployOpencode()` + AGENTS.md `{项目名称}` 替换 + 重启提醒；`InitResult` 扩展 `opencode` 字段 |
 | stage-33 | 新增 decisions.md 生成步（6b 步，`getDecisionsTemplate`）；templates.ts 新增 `DECISIONS_TEMPLATE_ZH/EN` + `getDecisionsTemplate(lang)` |
 | stage-34 | 示例阶段多级化：部署路径 `plan/stage-01/status.md` → `plan/v1/stage-01/status.md`，flow.json 注册 `stage-01` → `v1.0.0-stage-01`，status.md 标题同步；路径映射统一走 `plan-path` 模块 |
+| stage-36 | agent/skill 命名加 `openfeel-` 前缀（`feel` 保留）；模板源收敛为 `templates-data/opencode/` 单源，`deployOpencode` 读模板源键自动带前缀；示例 status.md 的 `executor` 改 `openfeel-executor` |

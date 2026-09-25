@@ -344,11 +344,11 @@ models:
   #     model_name: deepseek-v4-pro
   # 角色级覆盖（可选）：按 Agent frontmatter model 字段匹配
   roles:
-    # 快速模型：Executor、事务官 等执行类 Agent
+    # 快速模型：openfeel-executor、事务官 等执行类 Agent
     fast:
       provider: deepseek
-      model_name: deepseek-v4-flash
-    # 异种模型：Reviewer 交叉审查用（GLM 系列，与 DeepSeek 不同架构）
+      model_name: deepseek-flash
+    # 异种模型：openfeel-reviewer 交叉审查用（GLM 系列，与 DeepSeek 不同架构）
     cross_model:
       provider: zhipu
       model_name: glm-5.1
@@ -401,11 +401,11 @@ models:
   #     model_name: deepseek-v4-pro
   # Role-level override (optional): matches by Agent frontmatter model field
   roles:
-    # Fast model: Executor, Utility Agent and other execution-type Agents
+    # Fast model: openfeel-executor, openfeel-utility Agent and other execution-type Agents
     fast:
       provider: deepseek
-      model_name: deepseek-v4-flash
-    # Cross-review model: Reviewer (GLM series, different architecture from DeepSeek)
+      model_name: deepseek-flash
+    # Cross-review model: openfeel-reviewer (GLM series, different architecture from DeepSeek)
     cross_model:
       provider: zhipu
       model_name: glm-5.1

@@ -48,12 +48,12 @@ describe('View Entry', () => {
         reviews: [
           {
             id: 'REV-001', op: 'stage-01.op-001', status: 'open',
-            priority: 'medium', title: '问题1', filed_by: 'reviewer',
+            priority: 'medium', title: '问题1', filed_by: 'openfeel-reviewer',
             filed_at: new Date().toISOString(),
           },
           {
             id: 'REV-002', op: 'stage-01.op-001', status: 'open',
-            priority: 'medium', title: '问题2', filed_by: 'reviewer',
+            priority: 'medium', title: '问题2', filed_by: 'openfeel-reviewer',
             filed_at: new Date().toISOString(),
           },
         ],
@@ -115,7 +115,7 @@ describe('View Entry', () => {
       expect(review.status).toBe('open');
       expect(review.priority).toBe('high');
       expect(review.title).toBe('测试审查问题');
-      expect(review.filed_by).toBe('reviewer');
+      expect(review.filed_by).toBe('openfeel-reviewer');
       expect(review.filed_at).toBeTruthy();
     });
 
@@ -211,17 +211,17 @@ describe('View Entry', () => {
         reviews: [
           {
             id: 'REV-001', op: 'stage-01.op-001', status: 'open',
-            priority: 'high', title: '最早', filed_by: 'reviewer',
+            priority: 'high', title: '最早', filed_by: 'openfeel-reviewer',
             filed_at: '2026-01-01T00:00:00Z',
           },
           {
             id: 'REV-002', op: 'stage-01.op-001', status: 'open',
-            priority: 'medium', title: '中间', filed_by: 'reviewer',
+            priority: 'medium', title: '中间', filed_by: 'openfeel-reviewer',
             filed_at: '2026-03-01T00:00:00Z',
           },
           {
             id: 'REV-003', op: 'stage-01.op-001', status: 'open',
-            priority: 'low', title: '最新', filed_by: 'reviewer',
+            priority: 'low', title: '最新', filed_by: 'openfeel-reviewer',
             filed_at: '2026-06-01T00:00:00Z',
           },
         ],
@@ -247,12 +247,12 @@ describe('View Entry', () => {
         reviews: [
           {
             id: 'REV-001', op: 'stage-01.op-001', status: 'open',
-            priority: 'high', title: '问题A', filed_by: 'reviewer',
+            priority: 'high', title: '问题A', filed_by: 'openfeel-reviewer',
             filed_at: '2026-01-01T00:00:00Z',
           },
           {
             id: 'REV-002', op: 'stage-02.op-001', status: 'open',
-            priority: 'medium', title: '问题B', filed_by: 'reviewer',
+            priority: 'medium', title: '问题B', filed_by: 'openfeel-reviewer',
             filed_at: '2026-01-02T00:00:00Z',
           },
         ],
@@ -292,7 +292,7 @@ describe('View Entry', () => {
         reviews: [
           {
             id: 'REV-001', op: 'stage-01.op-001', status: 'open',
-            priority: 'high', title: '待验收问题', filed_by: 'reviewer',
+            priority: 'high', title: '待验收问题', filed_by: 'openfeel-reviewer',
             filed_at: '2026-01-01T00:00:00Z',
           },
         ],
@@ -316,7 +316,7 @@ describe('View Entry', () => {
         reviews: [
           {
             id: 'REV-001', op: 'stage-01.op-001', status: 'closed',
-            priority: 'medium', title: '已关闭问题', filed_by: 'reviewer',
+            priority: 'medium', title: '已关闭问题', filed_by: 'openfeel-reviewer',
             filed_at: '2026-01-01T00:00:00Z',
           },
         ],
@@ -339,7 +339,7 @@ describe('View Entry', () => {
         reviews: [
           {
             id: 'REV-001', op: 'stage-01.op-001', status: 'open',
-            priority: 'low', title: '持久化测试', filed_by: 'reviewer',
+            priority: 'low', title: '持久化测试', filed_by: 'openfeel-reviewer',
             filed_at: '2026-01-01T00:00:00Z',
           },
         ],

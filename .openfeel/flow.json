@@ -2,12 +2,12 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-12T16:34:14.632Z"
+    "updated": "2026-09-25T06:48:02.531Z"
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.0-stage-35",
+      "stage": "v1.1.0-stage-36",
       "op": ""
     },
     "retry": 0
@@ -430,6 +430,18 @@
         "start_time": "2026-09-12T13:02:38.938Z",
         "end_time": "2026-09-12T16:34:14.625Z",
         "duration_ms": 12695687
+      }
+    },
+    "v1.1.0-stage-36": {
+      "name": "v1.1.0-stage-36",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "2026-09-25T04:58:16.372Z",
+        "end_time": "2026-09-25T06:48:02.510Z",
+        "duration_ms": 6586138
       }
     }
   },
@@ -3958,6 +3970,148 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.1.0-stage-35",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-09-25T04:58:16.372Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-09-25T05:21:08.515Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-09-25T05:21:08.818Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-09-25T05:40:05.335Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-09-25T05:40:05.657Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-09-25T06:16:51.628Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-09-25T06:23:41.891Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-09-25T06:33:57.818Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "review_failed",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-09-25T06:34:13.673Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-09-25T06:34:13.956Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-09-25T06:42:10.951Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-09-25T06:42:11.232Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-09-25T06:43:11.668Z",
+      "agent": "archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
+        "opsCount": 0,
+        "reviewsCount": 0,
+        "knowledgeCount": 0,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.0-stage-36.md"
+      }
+    },
+    {
+      "time": "2026-09-25T06:48:02.510Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.0-stage-36",
         "from": "archiving",
         "to": "done"
       }

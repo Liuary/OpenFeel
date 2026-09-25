@@ -115,7 +115,7 @@ ${reviewRows}
   // 追加归档日志到 flow.json
   mgr.appendLog({
     time: '',
-    agent: 'archiver',
+    agent: 'openfeel-archiver',
     action: 'archive_stage',
     detail: {
       stageName,

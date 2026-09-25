@@ -25,14 +25,14 @@ describe('updateProject', () => {
     const agentsDir = join(tmpDir, '.opencode', 'agents');
 
     expect(existsSync(join(agentsDir, 'feel.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'planner.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'schemer.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'executor.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'reviewer.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'feel-tester.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'archiver.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'utility.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'vision.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'openfeel-planner.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'openfeel-schemer.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'openfeel-executor.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'openfeel-reviewer.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'openfeel-feel-tester.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'openfeel-archiver.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'openfeel-utility.md'))).toBe(true);
+    expect(existsSync(join(agentsDir, 'openfeel-vision.md'))).toBe(true);
   });
 
   it('feel.md 应包含 mode: primary 和正确的 YAML frontmatter', () => {
@@ -54,14 +54,14 @@ describe('updateProject', () => {
     const skillsDir = join(tmpDir, '.opencode', 'skills');
 
     const expectedSkills = [
-      'bug-acceptance',
-      'check-kb',
-      'get-bugs',
-      'get-stage-status',
-      'model-check',
-      'search-kb',
-      'sync-status',
-      'update-stage-status',
+      'openfeel-bug-acceptance',
+      'openfeel-check-kb',
+      'openfeel-get-bugs',
+      'openfeel-get-stage-status',
+      'openfeel-model-check',
+      'openfeel-search-kb',
+      'openfeel-sync-status',
+      'openfeel-update-stage-status',
     ];
 
     for (const skillName of expectedSkills) {
@@ -73,11 +73,11 @@ describe('updateProject', () => {
   it('SKILL.md 应包含正确的 YAML frontmatter', () => {
     updateProject(tmpDir);
     const skillContent = readFileSync(
-      join(tmpDir, '.opencode', 'skills', 'bug-acceptance', 'SKILL.md'),
+      join(tmpDir, '.opencode', 'skills', 'openfeel-bug-acceptance', 'SKILL.md'),
       'utf-8',
     );
 
-    expect(skillContent).toContain('name: bug-acceptance');
+    expect(skillContent).toContain('name: openfeel-bug-acceptance');
     expect(skillContent).toContain('description: 标准化 Bug 验收流程');
   });
 
@@ -89,8 +89,8 @@ describe('updateProject', () => {
 
     const content = readFileSync(jsoncPath, 'utf-8');
     expect(content).toContain('"default_agent": "feel"');
-    expect(content).toContain('"bug-acceptance"');
-    expect(content).toContain('"check-kb"');
+    expect(content).toContain('"openfeel-bug-acceptance"');
+    expect(content).toContain('"openfeel-check-kb"');
   });
 
   it('应更新已有的 opencode.jsonc：修改 default_agent 和添加 skills', () => {
@@ -103,7 +103,7 @@ describe('updateProject', () => {
     ".opencode/instructions/core.md"
   ],
   "skills": {
-    "get-bugs": ".opencode/skills/get-bugs"
+    "openfeel-get-bugs": ".opencode/skills/openfeel-get-bugs"
   }
 }
 `;
@@ -113,8 +113,8 @@ describe('updateProject', () => {
 
     const content = readFileSync(join(tmpDir, 'opencode.jsonc'), 'utf-8');
     expect(content).toContain('"default_agent": "feel"');
-    expect(content).toContain('"get-bugs": ".opencode/skills/get-bugs"');
-    expect(content).toContain('"bug-acceptance": ".opencode/skills/bug-acceptance"');
+    expect(content).toContain('"openfeel-get-bugs": ".opencode/skills/openfeel-get-bugs"');
+    expect(content).toContain('"openfeel-bug-acceptance": ".opencode/skills/openfeel-bug-acceptance"');
   });
 
   it('保留已有 opencode.jsonc 中的 experimental 字段', () => {
@@ -158,15 +158,15 @@ describe('updateProject', () => {
     // 第一次创建
     updateProject(tmpDir);
 
-    // 手动修改 planner.md 的内容（模拟用户本地修改）
-    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
+    // 手动修改 openfeel-planner.md 的内容（模拟用户本地修改）
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'openfeel-planner.md');
     const modified = 'modified content';
     writeFileSync(plannerPath, modified, 'utf-8');
 
-    // 第二次调用 — planner.md hash 不匹配 → 冲突，拒绝覆盖
+    // 第二次调用 — openfeel-planner.md hash 不匹配 → 冲突，拒绝覆盖
     const result2 = updateProject(tmpDir);
-    expect(result2.conflicts).toContain('.opencode/agents/planner.md');
-    expect(result2.updated).not.toContain('.opencode/agents/planner.md');
+    expect(result2.conflicts).toContain('.opencode/agents/openfeel-planner.md');
+    expect(result2.updated).not.toContain('.opencode/agents/openfeel-planner.md');
 
     // 验证用户修改内容未被覆盖
     const kept = readFileSync(plannerPath, 'utf-8');
@@ -177,31 +177,31 @@ describe('updateProject', () => {
     // 第一次创建
     updateProject(tmpDir);
 
-    // 手动修改 planner.md（用户修改 → 冲突）
-    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
-    writeFileSync(plannerPath, 'user modified planner', 'utf-8');
+    // 手动修改 openfeel-planner.md（用户修改 → 冲突）
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'openfeel-planner.md');
+    writeFileSync(plannerPath, 'user modified openfeel-planner', 'utf-8');
 
-    // 手动修改 executor.md 并从 state 中删除其记录（模拟"不在管理范围"→ 降级为安全覆盖 → updated）
-    const executorPath = join(tmpDir, '.opencode', 'agents', 'executor.md');
-    writeFileSync(executorPath, 'user modified executor', 'utf-8');
+    // 手动修改 openfeel-executor.md 并从 state 中删除其记录（模拟"不在管理范围"→ 降级为安全覆盖 → updated）
+    const executorPath = join(tmpDir, '.opencode', 'agents', 'openfeel-executor.md');
+    writeFileSync(executorPath, 'user modified openfeel-executor', 'utf-8');
     const statePath = join(tmpDir, '.openfeel', 'update_state.json');
     const state = JSON.parse(readFileSync(statePath, 'utf-8'));
-    delete state.files['.opencode/agents/executor.md'];
+    delete state.files['.opencode/agents/openfeel-executor.md'];
     writeFileSync(statePath, JSON.stringify(state), 'utf-8');
 
-    // 第二次调用 — planner.md 冲突，executor.md 安全覆盖
+    // 第二次调用 — openfeel-planner.md 冲突，openfeel-executor.md 安全覆盖
     const result2 = updateProject(tmpDir);
-    expect(result2.conflicts).toContain('.opencode/agents/planner.md');
-    expect(result2.updated).toContain('.opencode/agents/executor.md');
+    expect(result2.conflicts).toContain('.opencode/agents/openfeel-planner.md');
+    expect(result2.updated).toContain('.opencode/agents/openfeel-executor.md');
 
     // REV-001 核心：即使有冲突，updated 文件的 hash 也必须更新到 state
     const newState = JSON.parse(readFileSync(statePath, 'utf-8'));
-    expect(newState.files['.opencode/agents/executor.md'].status).toBe('clean');
-    expect(newState.files['.opencode/agents/planner.md'].status).toBe('conflict');
+    expect(newState.files['.opencode/agents/openfeel-executor.md'].status).toBe('clean');
+    expect(newState.files['.opencode/agents/openfeel-planner.md'].status).toBe('conflict');
 
-    // 第三次调用（无修改）— executor.md 内容已与模板一致 → skipped，不再全量误报
+    // 第三次调用（无修改）— openfeel-executor.md 内容已与模板一致 → skipped，不再全量误报
     const result3 = updateProject(tmpDir);
-    expect(result3.updated).not.toContain('.opencode/agents/executor.md');
+    expect(result3.updated).not.toContain('.opencode/agents/openfeel-executor.md');
   });
 
   it('REV-003 场景 1：部分冲突解决后重跑，已解决的文件 hash 更新为 clean', () => {
@@ -209,26 +209,26 @@ describe('updateProject', () => {
     updateProject(tmpDir);
 
     // 手动修改两个 agent 文件 → 都冲突
-    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
-    const reviewerPath = join(tmpDir, '.opencode', 'agents', 'reviewer.md');
-    writeFileSync(plannerPath, 'user modified planner', 'utf-8');
-    writeFileSync(reviewerPath, 'user modified reviewer', 'utf-8');
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'openfeel-planner.md');
+    const reviewerPath = join(tmpDir, '.opencode', 'agents', 'openfeel-reviewer.md');
+    writeFileSync(plannerPath, 'user modified openfeel-planner', 'utf-8');
+    writeFileSync(reviewerPath, 'user modified openfeel-reviewer', 'utf-8');
 
     const result1 = updateProject(tmpDir);
-    expect(result1.conflicts).toContain('.opencode/agents/planner.md');
-    expect(result1.conflicts).toContain('.opencode/agents/reviewer.md');
+    expect(result1.conflicts).toContain('.opencode/agents/openfeel-planner.md');
+    expect(result1.conflicts).toContain('.opencode/agents/openfeel-reviewer.md');
 
-    // 解决 reviewer.md 冲突：恢复为模板内容后重跑 update
-    const restored = readFileSync(join(tmpDir, '.opencode', 'agents', 'reviewer.md'), 'utf-8');
-    expect(restored).toBe('user modified reviewer'); // 确认仍是用户版本
+    // 解决 openfeel-reviewer.md 冲突：恢复为模板内容后重跑 update
+    const restored = readFileSync(join(tmpDir, '.opencode', 'agents', 'openfeel-reviewer.md'), 'utf-8');
+    expect(restored).toBe('user modified openfeel-reviewer'); // 确认仍是用户版本
 
-    // 手动将 reviewer.md 恢复为"用户解决后接受的新内容"（此处模拟恢复为模板）
+    // 手动将 openfeel-reviewer.md 恢复为"用户解决后接受的新内容"（此处模拟恢复为模板）
     const result2 = updateProject(tmpDir);
-    expect(result2.conflicts).toContain('.opencode/agents/planner.md');
+    expect(result2.conflicts).toContain('.opencode/agents/openfeel-planner.md');
 
     const statePath = join(tmpDir, '.openfeel', 'update_state.json');
     const newState = JSON.parse(readFileSync(statePath, 'utf-8'));
-    expect(newState.files['.opencode/agents/planner.md'].status).toBe('conflict');
+    expect(newState.files['.opencode/agents/openfeel-planner.md'].status).toBe('conflict');
   });
 
   it('REV-003 场景 2：空 state 文件（files 为空）行为同首次 update', () => {
@@ -256,15 +256,15 @@ describe('updateProject', () => {
     // 第一次创建
     updateProject(tmpDir);
 
-    // 手动修改 planner.md → 触发冲突
-    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
-    writeFileSync(plannerPath, 'user modified planner', 'utf-8');
+    // 手动修改 openfeel-planner.md → 触发冲突
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'openfeel-planner.md');
+    writeFileSync(plannerPath, 'user modified openfeel-planner', 'utf-8');
 
     const result = updateProject(tmpDir);
-    expect(result.conflicts).toContain('.opencode/agents/planner.md');
+    expect(result.conflicts).toContain('.opencode/agents/openfeel-planner.md');
 
     // 冲突文件已写入 update_conflicts/，目录层级与相对路径一致
-    const conflictPath = join(tmpDir, '.openfeel', 'update_conflicts', '.opencode', 'agents', 'planner.md');
+    const conflictPath = join(tmpDir, '.openfeel', 'update_conflicts', '.opencode', 'agents', 'openfeel-planner.md');
     expect(existsSync(conflictPath)).toBe(true);
 
     const content = readFileSync(conflictPath, 'utf-8');
@@ -273,8 +273,8 @@ describe('updateProject', () => {
     expect(content).toContain('=======');
     expect(content).toContain('>>>>>>> INCOMING');
     // 双方内容都在
-    expect(content).toContain('user modified planner');
-    expect(content).toContain('你是 Planner（计划官）');
+    expect(content).toContain('user modified openfeel-planner');
+    expect(content).toContain('你是 openfeel-planner（计划官）');
   });
 
   it('无冲突时不写入 update_conflicts/ 目录', () => {
@@ -294,20 +294,20 @@ describe('updateProject', () => {
     updateProject(tmpDir);
 
     // 修改 1 个 agent → 冲突
-    const plannerPath = join(tmpDir, '.opencode', 'agents', 'planner.md');
-    writeFileSync(plannerPath, 'user modified planner', 'utf-8');
+    const plannerPath = join(tmpDir, '.opencode', 'agents', 'openfeel-planner.md');
+    writeFileSync(plannerPath, 'user modified openfeel-planner', 'utf-8');
 
     // 第二次 update：1 个冲突，其余全部 skipped（内容一致）
     const result = updateProject(tmpDir);
     expect(result.conflicts.length).toBe(1);
-    expect(result.conflicts).toContain('.opencode/agents/planner.md');
+    expect(result.conflicts).toContain('.opencode/agents/openfeel-planner.md');
     expect(result.created.length).toBe(0);
     // 其余文件内容一致 → skipped（含 AGENTS.md 与核心指令等）
     expect(result.skipped.length).toBeGreaterThan(20);
     // update_state.json 中冲突文件已标记
     const statePath = join(tmpDir, '.openfeel', 'update_state.json');
     const newState = JSON.parse(readFileSync(statePath, 'utf-8'));
-    expect(newState.files['.opencode/agents/planner.md'].status).toBe('conflict');
+    expect(newState.files['.opencode/agents/openfeel-planner.md'].status).toBe('conflict');
   });
 
   it('返回的 created 列表应包含正确的文件路径', () => {
@@ -315,12 +315,12 @@ describe('updateProject', () => {
 
     // Agent 文件
     expect(result.created).toContain('.opencode/agents/feel.md');
-    expect(result.created).toContain('.opencode/agents/planner.md');
-    expect(result.created).toContain('.opencode/agents/feel-tester.md');
+    expect(result.created).toContain('.opencode/agents/openfeel-planner.md');
+    expect(result.created).toContain('.opencode/agents/openfeel-feel-tester.md');
 
     // Skill 文件
-    expect(result.created).toContain('.opencode/skills/bug-acceptance/SKILL.md');
-    expect(result.created).toContain('.opencode/skills/check-kb/SKILL.md');
+    expect(result.created).toContain('.opencode/skills/openfeel-bug-acceptance/SKILL.md');
+    expect(result.created).toContain('.opencode/skills/openfeel-check-kb/SKILL.md');
 
     // opencode.jsonc
     expect(result.created).toContain('opencode.jsonc');
@@ -392,7 +392,7 @@ describe('updateProject', () => {
 
     // 其他文件正常创建（不因语言冲突中断）
     expect(existsSync(join(tmpDir, '.opencode', 'agents', 'feel.md'))).toBe(true);
-    expect(existsSync(join(tmpDir, '.opencode', 'skills', 'check-kb', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'skills', 'openfeel-check-kb', 'SKILL.md'))).toBe(true);
     expect(result.created.length).toBeGreaterThan(5);
   });
 

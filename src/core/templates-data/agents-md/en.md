@@ -15,7 +15,7 @@ Not all tasks must go through the full pipeline. Non-coding tasks and coding tas
 | Task Type | Handling Path | Notes |
 |-----------|---------------|-------|
 | Research/exploration (reading code, consulting references, locating issues) | Feel → research (general / explore Agent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
-| Coding implementation (adding/modifying source code) | Full pipeline (Planner → Schemer → Executor → Reviewer → Tester) | Involves source changes, must go through the full audit chain |
+| Coding implementation (adding/modifying source code) | Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester) | Involves source changes, must go through the full audit chain |
 | Selection discussion (settling a technical approach / design trade-off) | Feel + `question` tool | Conversational decision, produces a conclusion, no plan.md |
 
 > Non-coding tasks (research, selection discussion) do not require creating a plan or advancing the pipeline; the pipeline is engaged only when source changes or a formal plan document is produced.
@@ -84,16 +84,16 @@ When encountering technical issues, **the first action MUST be to consult the kn
    - `skill` > inferring from memory — getting status, consulting the knowledge base, etc. must be loaded via skill
 
 3. **Responsibility boundaries**: In cross-Agent collaboration, each Agent operates only within its own responsibility boundary and must not overstep:
-   - Planner formulates plans, does not write code; does not write flow.json directly (written via Feel)
-   - Executor implements per the plan, does not modify the plan on its own
-   - Reviewer reviews code, does not self-review or self-fix
-   - Feel Tester submits Bugs and accepts results, does not fix code
-   - Utility Agent performs mechanical file operations, does not participate in design decisions
-   - Archiver archives and distills knowledge, does not modify source code; does not write flow.json directly (written via Feel)
+   - openfeel-planner formulates plans, does not write code; does not write flow.json directly (written via Feel)
+   - openfeel-executor implements per the plan, does not modify the plan on its own
+   - openfeel-reviewer reviews code, does not self-review or self-fix
+   - openfeel-feel-tester submits Bugs and accepts results, does not fix code
+   - openfeel-utility Agent performs mechanical file operations, does not participate in design decisions
+   - openfeel-archiver archives and distills knowledge, does not modify source code; does not write flow.json directly (written via Feel)
 
-4. **Feel orchestration constraint**: Feel, as the overall commander, uniformly orchestrates downstream Agents (Planner / Schemer / Executor / Reviewer / Feel Tester / Utility Agent / Vision / Archiver), advancing serially via the `task` tool according to pipeline phases (plan → scheme → execute → review → test → archive). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
+4. **Feel orchestration constraint**: Feel, as the overall commander, uniformly orchestrates downstream Agents (openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-utility Agent / openfeel-vision / openfeel-archiver), advancing serially via the `task` tool according to pipeline phases (plan → scheme → execute → review → test → archive). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
 
-5. **Lightweight decision boundary**: Conversational selections (Feel and the user settle a technical direction or design trade-off via the `question` tool, producing a conclusion but no plan.md) are handled by Feel directly, without delegating to Planner; only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the planning scale threshold is reached, should Planner be delegated. Avoid the extremes of "handle everything personally" or "delegate everything".
+5. **Lightweight decision boundary**: Conversational selections (Feel and the user settle a technical direction or design trade-off via the `question` tool, producing a conclusion but no plan.md) are handled by Feel directly, without delegating to openfeel-planner; only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the planning scale threshold is reached, should openfeel-planner be delegated. Avoid the extremes of "handle everything personally" or "delegate everything".
 
 Deviating from the above constraints is considered a violation and will be flagged during review.
 
@@ -102,16 +102,16 @@ Deviating from the above constraints is considered a violation and will be flagg
 | Agent | Role | Driving Model | Invocation |
 |-------|------|---------------|------------|
 | Feel | Overall Commander | Flagship reasoning model | primary |
-| Planner | Planning Officer | Reasoning model | subagent |
-| Schemer | Scheme Officer | Flagship reasoning model | subagent |
-| Executor | Execution Officer | Fast model (Flash) | subagent |
-| Reviewer | Review Officer | Heterogeneous reasoning model (GLM) | subagent |
-| Feel Tester | Testing Officer | Reasoning model | subagent |
-| Utility Agent | Utility Officer | Fast model (Flash) | subagent |
-| Vision | Vision Officer | Multimodal model (qwen-vl-plus) | subagent |
-| Archiver | Archiving Officer | Reasoning model | subagent |
+| openfeel-planner | Planning Officer | Reasoning model | subagent |
+| openfeel-schemer | Scheme Officer | Flagship reasoning model | subagent |
+| openfeel-executor | Execution Officer | Fast model (Flash) | subagent |
+| openfeel-reviewer | Review Officer | Heterogeneous reasoning model (GLM) | subagent |
+| openfeel-feel-tester | Testing Officer | Reasoning model | subagent |
+| openfeel-utility Agent | Utility Officer | Fast model (Flash) | subagent |
+| openfeel-vision | Vision Officer | Multimodal model (qwen-vl-plus) | subagent |
+| openfeel-archiver | Archiving Officer | Reasoning model | subagent |
 
-> **Write constraint**: Planner and Archiver must operate on flow.json indirectly through Feel, and must not directly `edit` or `write` flow.json.
+> **Write constraint**: openfeel-planner and openfeel-archiver must operate on flow.json indirectly through Feel, and must not directly `edit` or `write` flow.json.
 
 ## Dynamic Rules
 

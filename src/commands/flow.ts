@@ -11,7 +11,7 @@
  * - 新增 flow health 子命令，全面健康检查
  *
  * 变更摘要 (stage-03: 流水线可视化):
- * - 新增 flow overview 子命令，实现 /opfx:status 全状态可视化
+ * - 新增 flow overview 子命令，实现 openfeel flow overview 全状态可视化
  *
  * 变更摘要 (stage-04: 体验补全):
  * - 新增 flow wizard 子命令，交互式推进流水线阶段
@@ -23,7 +23,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { MetricsStore } from '../core/metrics.js';
 import { t, getCliLang } from '../core/i18n.js';
@@ -116,7 +116,7 @@ export function registerFlowCommand(program: Command): void {
         console.log('───────────────────────────────────────────────────────');
         for (const change of v.recentChanges) {
           console.log(
-            `${change.time.padEnd(17)} ${change.agent.padEnd(14)} ${change.change.padEnd(20)} ${change.description}`,
+            `${change.time.padEnd(17)} ${normalizeAgentName(change.agent).padEnd(14)} ${change.change.padEnd(20)} ${change.description}`,
           );
         }
       }
@@ -130,7 +130,7 @@ export function registerFlowCommand(program: Command): void {
         console.log(t('flow.status.downstreamHeader', lang));
         console.log('──────────────────────────────────');
         for (const dp of v.downstreamPhases) {
-          console.log(`${dp.phase.padEnd(20)} ${dp.responsibleAgent}`);
+          console.log(`${dp.phase.padEnd(20)} ${normalizeAgentName(dp.responsibleAgent)}`);
         }
       }
       console.log('');
@@ -155,10 +155,10 @@ export function registerFlowCommand(program: Command): void {
       }
     });
 
-  // flow overview — 全状态可视化（/opfx:status 的后端实现）
+  // flow overview — 全状态可视化（openfeel flow overview 的后端实现）
   flow
     .command('overview')
-    .description('全状态可视化视图（/opfx:status 的后端实现）')
+    .description('全状态可视化视图（openfeel flow overview 的后端实现）')
     .action(() => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
@@ -268,7 +268,7 @@ export function registerFlowCommand(program: Command): void {
         const recentLogs = data.log.slice(-5).reverse();
         for (const entry of recentLogs) {
           const time = entry.time.substring(0, 19).replace('T', ' ');
-          console.log(`   [${time}] ${entry.agent}: ${entry.action}`);
+          console.log(`   [${time}] ${normalizeAgentName(entry.agent)}: ${entry.action}`);
         }
       }
       console.log('');
@@ -507,7 +507,7 @@ export function registerFlowCommand(program: Command): void {
       }
       console.log(t('flow.advance.okTmpl', lang, { stage: options.stage || '', to: options.to }));
 
-      // git 脏区检查（安全网）：Executor 未提交时输出醒目警告
+      // git 脏区检查（安全网）：openfeel-executor 未提交时输出醒目警告
       try {
         const gitStatus = execSync('git status --porcelain', {
           cwd: process.cwd(),
@@ -588,7 +588,7 @@ export function registerFlowCommand(program: Command): void {
       console.log(t('flow.log.recentTitleTmpl', lang, { n: String(recent.length) }) + ':\n');
       for (const entry of recent) {
         const time = entry.time.substring(0, 19).replace('T', ' ');
-        console.log(`[${time}] ${entry.agent} — ${entry.action}`);
+        console.log(`[${time}] ${normalizeAgentName(entry.agent)} — ${entry.action}`);
         if (Object.keys(entry.detail).length > 0) {
           console.log(`  ` + t('flow.log.detail', lang) + `: ${JSON.stringify(entry.detail)}`);
         }

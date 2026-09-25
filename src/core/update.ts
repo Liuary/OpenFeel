@@ -57,7 +57,7 @@ export const supportedTools: ToolEntry[] = [
   {
     id: 'opencode',
     name: 'OpenCode',
-    description: 'OpenCode AI 编码助手 — 生成 Agent 定义和 /opfx:* 技能',
+    description: 'OpenCode AI 编码助手 — 生成 Agent 定义和 openfeel-* 技能',
     enabled: true,
   },
   // 后续扩展：
@@ -98,12 +98,12 @@ export async function selectTools(): Promise<string[]> {
 
 // AUTO-GENERATED-BEGIN: SKILL_DEFINITIONS
 const SKILL_DEFINITIONS: Record<string, string> = {
-  'agent-model-check': `---
-name: agent-model-check
-description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验、provider key 匹配、模型能力确认、Vision 多模态专项指南。
+  'openfeel-agent-model-check': `---
+name: openfeel-agent-model-check
+description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
 ---
 
-# Skill: agent-model-check
+# Skill: openfeel-agent-model-check
 
 # Agent 模型检查与修复
 
@@ -112,7 +112,7 @@ description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或�
 - Agent 调度时报 \`Model not found: xxx\`
 - 需要验证某个 Agent 的模型是否可用
 - 新增 Agent 后需确认模型配置正确
-- 排查多模态（Vision）Agent 无法处理图片的问题
+- 排查多模态（openfeel-vision）Agent 无法处理图片的问题
 
 ## 排查流程
 
@@ -161,7 +161,7 @@ cat ~/.local/share/opencode/auth.json
 \`\`\`jsonc
 {
   "agent": {
-    "vision": {
+    "openfeel-vision": {
       "model": "{auth.json_key}/{model_id}"  // 格式：provider_key/model_id
     }
   }
@@ -192,9 +192,9 @@ cat ~/.local/share/opencode/auth.json
 | opencode.jsonc 语法 | 检查 JSON 格式 | 无语法错误 |
 | 重启生效 | 重启 opencode 后重新测试 | 无 Model not found 报错 |
 
-## 多模态（Vision）Agent 专项
+## 多模态（openfeel-vision）Agent 专项
 
-Vision Agent 必须配置多模态模型。Alibaba 系列视觉模型：
+openfeel-vision Agent 必须配置多模态模型。Alibaba 系列视觉模型：
 
 | 模型 ID | 完整引用（alibaba-cn） | 上下文 | 图像输入 |
 |---------|----------------------|--------|---------|
@@ -213,8 +213,8 @@ Vision Agent 必须配置多模态模型。Alibaba 系列视觉模型：
 | \`Model not found: xxx. Did you mean: yyy\` | 模型名拼写错误或不存在 | 使用 \`Did you mean\` 建议的名称 |
 | Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为带 \`vl\` 后缀的视觉模型 |
 `,
-  'bug-acceptance': `---
-name: bug-acceptance
+  'openfeel-bug-acceptance': `---
+name: openfeel-bug-acceptance
 description: 标准化 Bug 验收流程，供测试 Agent 或代码 Agent（自测后自查）调用。
 ---
 
@@ -266,8 +266,8 @@ description: 标准化 Bug 验收流程，供测试 Agent 或代码 Agent（自�
 
 验收通过后，核心结论写入 \`.openfeel/bugs/{module}.md\`，并在公共日志简要记录。
 `,
-  'check-kb': `---
-name: check-kb
+  'openfeel-check-kb': `---
+name: openfeel-check-kb
 description: 渐进式查阅 .openfeel/kb/ 项目知识库，按当前任务需求返回最相关的参考信息。精确匹配无结果时自动触发语义检索回退，避免一次加载全量内容。
 ---
 
@@ -317,7 +317,7 @@ description: 渐进式查阅 .openfeel/kb/ 项目知识库，按当前任务需�
 
 ### 5. 语义检索回退（自动）
 
-当精确匹配未找到任何相关条目（无 \`[+]\` 条目或所有条目与当前任务无关）时，**本技能自行执行语义检索**，无需调用方另行加载 \`search-kb\`：
+当精确匹配未找到任何相关条目（无 \`[+]\` 条目或所有条目与当前任务无关）时，**本技能自行执行语义检索**，无需调用方另行加载 \`openfeel-search-kb\`：
 
 1. **索引就绪检查**：检查 \`.openfeel/tmp/vectors/index.json\` 是否存在
 2. **索引缺失时**：输出以下提示后结束，不再继续回退：
@@ -356,7 +356,7 @@ description: 渐进式查阅 .openfeel/kb/ 项目知识库，按当前任务需�
    💡 如需确保索引为最新，可运行: python scripts/build_kb_index.py --dry-run
    \`\`\`
 
-> 注：语义检索是 \`check-kb\` 的内置回退能力。调用方只需 \`skill("check-kb")\` 一次，无需再手动调用 \`search-kb\`。
+> 注：语义检索是 \`openfeel-check-kb\` 的内置回退能力。调用方只需 \`skill("openfeel-check-kb")\` 一次，无需再手动调用 \`openfeel-search-kb\`。
 
 ### 6. 强制检索标记
 
@@ -368,8 +368,8 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 
 - **若步骤 3 无相关条目**：不追加强制提示，静默返回（已在步骤 4 输出"知识库中暂无相关记录，可继续执行"）。
 `,
-  'get-bugs': `---
-name: get-bugs
+  'openfeel-get-bugs': `---
+name: openfeel-get-bugs
 description: 获取当前模块下状态为 open 或 fixing 的 Bug 列表，供代码 Agent 会话启动或承接时使用。
 ---
 
@@ -405,9 +405,9 @@ description: 获取当前模块下状态为 open 或 fixing 的 Bug 列表，供
 
 输出：\`模块 [模块名] 当前无待处理 Bug。\`
 `,
-  'get-stage-status': `---
-name: get-stage-status
-description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 Reviewer/Executor/Feel Tester 在处理阶段任务前确认流程状态。
+  'openfeel-get-stage-status': `---
+name: openfeel-get-stage-status
+description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子计划状态、责任 Agent、是否允许自动推进以及下一步建议。用于 openfeel-reviewer/openfeel-executor/openfeel-feel-tester 在处理阶段任务前确认流程状态。
 ---
 
 # 获取子计划状态
@@ -512,29 +512,29 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 {若依赖就绪且可自动推进，列出同批次可并行启动的其他阶段}
 
 ## 下一步建议
-{根据状态给出下一步，例如：启动 Code、等待用户、启动 Tester、停止流程；若存在并行候选则建议批量启动}
+{根据状态给出下一步，例如：启动 Code、等待用户、启动 openfeel-feel-tester、停止流程；若存在并行候选则建议批量启动}
 \`\`\`
 
 ## 状态到下一步映射
 
 | 状态 | 下一步建议 |
 |------|------------|
-| \`planned\` | 等待用户确认或 Planner 细化计划 |
-| \`ready_for_code\` | Planner 可启动 Executor |
-| \`coding\` | Executor 正在开发 |
-| \`ready_for_review\` | Executor 可启动 Reviewer 审查，或等待用户触发 |
-| \`review_failed\` | Reviewer 可启动 Executor 修复审查问题 |
+| \`planned\` | 等待用户确认或 openfeel-planner 细化计划 |
+| \`ready_for_code\` | openfeel-planner 可启动 openfeel-executor |
+| \`coding\` | openfeel-executor 正在开发 |
+| \`ready_for_review\` | openfeel-executor 可启动 openfeel-reviewer 审查，或等待用户触发 |
+| \`review_failed\` | openfeel-reviewer 可启动 openfeel-executor 修复审查问题 |
 | \`review_passed\` | Feel 可推进到 ready_for_test |
-| \`ready_for_test\` | Feel 可启动 Feel Tester |
-| \`test_writing\` | Feel Tester 正在写测试 |
-| \`testing\` | Feel Tester 正在测试 |
-| \`bug_found\` | Feel Tester 可启动 Executor 修复 Bug |
-| \`bug_fixing\` | Executor 正在修复 Bug |
+| \`ready_for_test\` | Feel 可启动 openfeel-feel-tester |
+| \`test_writing\` | openfeel-feel-tester 正在写测试 |
+| \`testing\` | openfeel-feel-tester 正在测试 |
+| \`bug_found\` | openfeel-feel-tester 可启动 openfeel-executor 修复 Bug |
+| \`bug_fixing\` | openfeel-executor 正在修复 Bug |
 | \`done\` | 流程完成，停止 |
 | \`paused\` | 等待用户处理暂停原因 |
 `,
-  'health': `---
-name: health
+  'openfeel-health': `---
+name: openfeel-health
 description: 加载流水线健康检查结果，供 Agent 判断 flow.json 与工作区状态是否一致。
 ---
 
@@ -554,8 +554,8 @@ description: 加载流水线健康检查结果，供 Agent 判断 flow.json 与�
 
 健康检查摘要：通过项数、失败项列表及原因，失败时给出修复建议
 `,
-  'model-check': `---
-name: model-check
+  'openfeel-model-check': `---
+name: openfeel-model-check
 description: Feel 自检时检查所有 Agent 的模型配置状态，识别期望模型 vs 实际模型的差距，引导用户在目标工具中完成配置。首次配置后存储为部署模板，新项目可直接复用。
 ---
 
@@ -600,14 +600,14 @@ Feel Agent 在以下时机加载本 Skill：
 | Agent 文件 | 默认模型角色 |
 |------------|-------------|
 | \`feel.md\` | \`primary_reasoning\`（主力推理） |
-| \`planner.md\` | \`reasoning\`（推理） |
-| \`executor.md\` | \`fast\`（快速） |
-| \`reviewer.md\` | \`cross_model\`（异种推理） |
-| \`archiver.md\` | \`reasoning\`（推理） |
-| \`schemer.md\` | \`reasoning\`（推理） |
-| \`feel-tester.md\` | \`reasoning\`（推理） |
-| \`utility.md\` | \`fast\`（快速） |
-| \`vision.md\` | \`multimodal\`（多模态） |
+| \`openfeel-planner.md\` | \`reasoning\`（推理） |
+| \`openfeel-executor.md\` | \`fast\`（快速） |
+| \`openfeel-reviewer.md\` | \`cross_model\`（异种推理） |
+| \`openfeel-archiver.md\` | \`reasoning\`（推理） |
+| \`openfeel-schemer.md\` | \`reasoning\`（推理） |
+| \`openfeel-feel-tester.md\` | \`reasoning\`（推理） |
+| \`openfeel-utility.md\` | \`fast\`（快速） |
+| \`openfeel-vision.md\` | \`multimodal\`（多模态） |
 
 ### 3. 检查 config.yaml 模型配置
 
@@ -622,14 +622,14 @@ models:
     base_url: https://api.deepseek.com
     api_key_env: DEEPSEEK_API_KEY
   agents:            # Agent 级覆盖（可选）
-    reviewer:
+    openfeel-reviewer:
       provider: anthropic
       model_name: claude-sonnet-4-20250514
       base_url: https://api.anthropic.com
       api_key_env: ANTHROPIC_API_KEY
-    executor:
+    openfeel-executor:
       provider: deepseek
-      model_name: deepseek-v4-flash
+      model_name: deepseek-flash
   roles:             # 角色级覆盖（可选）
     cross_model:
       provider: openai
@@ -662,8 +662,8 @@ models:
 | Agent | 角色要求 | 实际模型 | 配置来源 | 状态 |
 |-------|----------|----------|----------|:--:|
 | Feel | 主力推理 | deepseek-v4-pro | default | ⚠️ |
-| Reviewer | **异种推理** | deepseek-v4-pro | default | ❌ 与主力相同！ |
-| Executor | 快速 | deepseek-v4-pro | default | ⚠️ 未使用快速模型 |
+| openfeel-reviewer | **异种推理** | deepseek-v4-pro | default | ❌ 与主力相同！ |
+| openfeel-executor | 快速 | deepseek-v4-pro | default | ⚠️ 未使用快速模型 |
 \`\`\`
 
 ### 5. 输出检查报告
@@ -706,8 +706,8 @@ models:
 | 触发条件 | 引导内容 |
 |----------|----------|
 | \`models\` 节不存在 | "未检测到模型配置。你需要为不同角色分配模型吗？" → 引导创建 |
-| Reviewer 使用与主力相同模型 | "⚠️ Reviewer 当前与 Feel 使用相同模型，异种交叉审查的核心优势无法发挥。建议为 Reviewer 配置不同的模型系列。" |
-| Executor 使用推理模型 | "⚠️ Executor 建议使用快速模型以节省成本。是否配置？" |
+| openfeel-reviewer 使用与主力相同模型 | "⚠️ openfeel-reviewer 当前与 Feel 使用相同模型，异种交叉审查的核心优势无法发挥。建议为 openfeel-reviewer 配置不同的模型系列。" |
+| openfeel-executor 使用推理模型 | "⚠️ openfeel-executor 建议使用快速模型以节省成本。是否配置？" |
 | 关键 Agent 无任何配置 | "以下 Agent 无模型配置：{列表}。请配置。" |
 
 ### 7. 写入配置
@@ -734,7 +734,7 @@ models:
     model_name: xxx
     ...
   agents:
-    reviewer:
+    openfeel-reviewer:
       provider: xxx
       ...
   roles:
@@ -751,12 +751,12 @@ models:
 - 报告语言：中文
 - 每次检查后将结果摘要写入 \`.openfeel/log/\`（仅首次发现关键问题时）
 `,
-  'model-config': `---
-name: model-config
-description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置、模型名查找方法、多模态模型（Vision）特殊注意事项。
+  'openfeel-model-config': `---
+name: openfeel-model-config
+description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
 ---
 
-# Skill: model-config
+# Skill: openfeel-model-config
 
 # Agent 模型查找与配置
 
@@ -765,7 +765,7 @@ description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或�
 - Agent 调用时报 \`Model not found: xxx\`
 - 需要为 Agent 更换或指定模型
 - 新增 Agent 后需要配置其模型
-- Vision / 多模态模型无法正常调用
+- openfeel-vision / 多模态模型无法正常调用
 
 ## 配置位置
 
@@ -774,7 +774,7 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 \`\`\`jsonc
 {
   "agent": {
-    "vision": {
+    "openfeel-vision": {
       "model": "qwen3-vl-plus"   // 模型名格式：provider/model-id 或 model-id
     }
   }
@@ -798,11 +798,11 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 1. 修改 \`opencode.jsonc\` 中的 \`agent.<name>.model\`
 2. （可选）同步修改 \`.opencode/agents/<name>.md\` 和模板文件 \`src/core/templates-data/agents/\` 中的 \`model\` 字段，保持一致性
 
-## 多模态（Vision）模型特殊规则
+## 多模态（openfeel-vision）模型特殊规则
 
 - Feel 的主力模型（DeepSeek V4 Pro）不支持图片输入
-- 遇到图片输入时 Feel 会自动委托 Vision Agent
-- Vision Agent 需要配置多模态模型（如 \`qwen-vl-plus\`、\`qwen3-vl-plus\`）
+- 遇到图片输入时 Feel 会自动委托 openfeel-vision Agent
+- openfeel-vision Agent 需要配置多模态模型（如 \`qwen-vl-plus\`、\`qwen3-vl-plus\`）
 - 模型名不要随意添加前缀（如 \`alibaba/\`），以平台提示的可用名为准
 - **模型引用格式**：\`{auth.json中的key}/{模型ID}\`，不是 \`provider.name\` 也不是 \`provider.id\`
 - 读取 \`~/.local/share/opencode/auth.json\` 确认实际 provider key（常见：\`alibaba-cn\`、\`deepseek\`、\`zhipuai\`）
@@ -813,17 +813,17 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 | Agent | 模型类型 | 备注 |
 |-------|---------|------|
 | Feel（总统领） | 推理模型 | DeepSeek V4 Pro — 不支持多模态 |
-| Planner | 推理模型 | — |
-| Schemer | 推理模型 | — |
-| Executor | 快速模型 (Flash) | — |
-| Reviewer | 异种推理模型 (GLM) | — |
-| Feel Tester | 推理模型 | — |
+| openfeel-planner | 推理模型 | — |
+| openfeel-schemer | 推理模型 | — |
+| openfeel-executor | 快速模型 (Flash) | — |
+| openfeel-reviewer | 异种推理模型 (GLM) | — |
+| openfeel-feel-tester | 推理模型 | — |
 | 事务官 | 快速模型 (Flash) | — |
-| Vision | 多模态模型 | 需配 qwen3-vl-plus |
-| Archiver | 推理模型 | — |
+| openfeel-vision | 多模态模型 | 需配 qwen3-vl-plus |
+| openfeel-archiver | 推理模型 | — |
 `,
-  'recover': `---
-name: recover
+  'openfeel-recover': `---
+name: openfeel-recover
 description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水线状态。
 ---
 
@@ -843,8 +843,8 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 
 恢复摘要：流水线状态 + 阻塞项 + 待处理任务列表
 `,
-  'roadmap': `---
-name: roadmap
+  'openfeel-roadmap': `---
+name: openfeel-roadmap
 description: 加载项目路线图，供 Agent 查看版本规划和里程碑。
 ---
 
@@ -864,8 +864,8 @@ description: 加载项目路线图，供 Agent 查看版本规划和里程碑。
 
 格式化路线图摘要：版本清单 + 各版本阶段进度
 `,
-  'search-kb': `---
-name: search-kb
+  'openfeel-search-kb': `---
+name: openfeel-search-kb
 description: 语义检索 .openfeel/kb/ 项目知识库。当精确匹配无结果或任务描述模糊时，通过向量相似度搜索语义相关的知识条目。支持图谱遍历返回关联条目。
 ---
 
@@ -984,16 +984,16 @@ description: 语义检索 .openfeel/kb/ 项目知识库。当精确匹配无结�
 
 - 向量索引是缓存层，文件系统始终是 single source of truth。若检索结果与预期不符，检查索引是否过期（运行 \`--dry-run\` 查看变更文件）
 - 图谱链接亦是缓存层，Markdown 文件中 \`[[wikilink]]\` 是真实数据源；图谱可随时通过 \`python scripts/build_kb_index.py --graph\` 重建
-- 语义检索适合模糊查询和探索性搜索，精确关键词匹配优先使用 \`check-kb\`
-- 此技能是 \`check-kb\` 的回退方案——当 \`check-kb\` 精确匹配无结果时可自动调用
+- 语义检索适合模糊查询和探索性搜索，精确关键词匹配优先使用 \`openfeel-check-kb\`
+- 此技能是 \`openfeel-check-kb\` 的回退方案——当 \`openfeel-check-kb\` 精确匹配无结果时可自动调用
 - 图遍历返回的关联条目仅基于已建立的 wikilink 链接，若条目未引用或被引用其他条目，图谱中不会出现对应关联
 `,
-  'sync-status': `---
-name: sync-status
+  'openfeel-sync-status': `---
+name: openfeel-sync-status
 description: 聚合所有成员的任务进度视图，供任意 Agent 快速了解项目整体协作状态。
 ---
 
-# Skill: sync-status
+# Skill: openfeel-sync-status
 
 # 聚合任务进度
 
@@ -1056,10 +1056,9 @@ description: 聚合所有成员的任务进度视图，供任意 Agent 快速了
 
 格式化后的 Markdown 进度摘要，不含文件修改。
 
-Base directory for this skill: file:///C:/Code/AI/AI_Prompt/.kilo/skills/sync-status
 `,
-  'update-stage-status': `---
-name: update-stage-status
+  'openfeel-update-stage-status': `---
+name: openfeel-update-stage-status
 description: 标准化更新 .openfeel/plan/{series}/{stage}/status.md 的子计划状态、责任 Agent 和状态记录，避免各 Agent 随意改写状态文件。适用于自动闭环和人工流程中的阶段状态变更。
 ---
 
@@ -1157,10 +1156,10 @@ planned | ready_for_code | coding | ready_for_review | review_failed | review_pa
 
 ### 6. 合并状态处理
 
-当子计划状态变为 \`done\` 或 \`review_passed\`（且 Reviewer 验收完毕）时，根据 \`.openfeel/config.yaml\` 中的 \`merge_mode\` 决定合并行为：
+当子计划状态变为 \`done\` 或 \`review_passed\`（且 openfeel-reviewer 验收完毕）时，根据 \`.openfeel/config.yaml\` 中的 \`merge_mode\` 决定合并行为：
 
 - **\`merge_mode=auto\`**：
-  1. 将 \`合并状态\` 更新为 \`merged\`（实际合并由 Executor 执行 git 操作，Skill 仅更新状态字段）
+  1. 将 \`合并状态\` 更新为 \`merged\`（实际合并由 openfeel-executor 执行 git 操作，Skill 仅更新状态字段）
   2. 将 \`合并状态\` 更新为 \`cleaned\`
   3. 在状态记录中注明"自动合并"
 - **\`merge_mode=manual\`**：
@@ -1178,8 +1177,8 @@ planned | ready_for_code | coding | ready_for_review | review_failed | review_pa
 - 自动推进：保持 {enabled/disabled}
 \`\`\`
 `,
-  'wizard': `---
-name: wizard
+  'openfeel-wizard': `---
+name: openfeel-wizard
 description: 交互式流水线向导，供 Agent 在终端中逐步推进流水线阶段。
 ---
 
@@ -1207,14 +1206,14 @@ description: 交互式流水线向导，供 Agent 在终端中逐步推进流水
 // ─── 新增的 Skill 名称列表 ─────────────────────────────────────────
 
 const NEW_SKILL_NAMES = [
-  'bug-acceptance',
-  'check-kb',
-  'get-bugs',
-  'get-stage-status',
-  'model-check',
-  'search-kb',
-  'sync-status',
-  'update-stage-status',
+  'openfeel-bug-acceptance',
+  'openfeel-check-kb',
+  'openfeel-get-bugs',
+  'openfeel-get-stage-status',
+  'openfeel-model-check',
+  'openfeel-search-kb',
+  'openfeel-sync-status',
+  'openfeel-update-stage-status',
 ];
 
 // ─── 辅助函数 ──────────────────────────────────────────────────────
@@ -1374,7 +1373,7 @@ function buildUpdatedJsonc(projectPath: string): string {
     jsoncObj.instructions = ['AGENTS.md', '.opencode/instructions/core.md'];
   }
 
-  // 合并 skills：保留原有 skill，添加新的 /opfx:* skill
+  // 合并 skills：保留原有 skill，添加新的 openfeel-* skill
   const skills = (jsoncObj.skills as Record<string, string>) || {};
   for (const name of NEW_SKILL_NAMES) {
     skills[name] = `.opencode/skills/${name}`;

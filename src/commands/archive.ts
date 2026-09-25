@@ -1,6 +1,6 @@
 /**
  * archive 命令注册
- * openfeel archive <stage>  — 阶段归档（Archiver 操作）
+ * openfeel archive <stage>  — 阶段归档（openfeel-archiver 操作）
  */
 import { Command } from 'commander';
 import { archiveStage } from '../core/archive/merge.js';

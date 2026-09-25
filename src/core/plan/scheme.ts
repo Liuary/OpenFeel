@@ -1,5 +1,5 @@
 /**
- * 操作方案管理（Schemer 产出层）
+ * 操作方案管理（openfeel-schemer 产出层）
  * 负责 .openfeel/plan/{series}/{stage}/ops/ 下的操作方案文件 CRUD
  * 创建后自动同步到 flow.json 的 stages/{stage}.ops 中
  */
@@ -34,7 +34,7 @@ function generateSchemeTemplate(opId: string, stageName: string, title: string):
 - **阶段**：${stageName}
 - **状态**：pending
 - **前置**：无
-- **负责 Agent**：Executor
+- **负责 Agent**：openfeel-executor
 - **最多重试**：3
 
 ## 目标
@@ -119,7 +119,7 @@ function syncToFlowJson(
       id: opId,
       title,
       state: 'pending',
-      assignee: 'Executor',
+      assignee: 'openfeel-executor',
       attempts: 0,
       max_attempts: 3,
       checkpoints: {

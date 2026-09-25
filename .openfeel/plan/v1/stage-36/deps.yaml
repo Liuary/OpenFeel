@@ -1,0 +1,120 @@
+# stage-36 操作方案依赖声明
+# 由 Planner 制定基础结构，Schemer 细化各 op 内容并更新
+# 阶段：v1.1.0-stage-36（模板源收敛 + 命名前缀统一）
+
+ops:
+  op-001:
+    file: "ops/op-001.md"
+    title: "双层模板源收敛为单源（templates-data/opencode/）"
+    depends_on: []
+    stage: "v1.1.0-stage-36"
+    type: hard
+    produces:
+      - "src/core/templates-data/opencode/agents/zh-CN/feel.md"
+      - "src/core/templates-data/opencode/agents/en/feel.md"
+      - "build.js"
+      - ".gitattributes"
+    description: "三对双层源（agent/instruction/skill）逐文件取较新合并到唯一权威树 templates-data/opencode/：feel.md 并入 agents/ 版的「冲突检测」节、instruction 取 opencode/instructions/ 版（含 Vision）；删除 templates-data/agents/（18）与 core-instructions/（2）；build.js 源路径改指权威树（SKILLS_DIR 重指、generateAgentDefinitions/generateTemplateFromCoreMd/validate* 改读 TEMPLATE_OPENCODE_*）、清理死常量（CORE_MD_PATH/AGENTS_DIR/TEMPLATE_CORE_MD_PATH/TEMPLATE_AGENTS_MD_PATH）；skill/agent/agents-md 注入前 CRLF→LF 归一 + 新增 .gitattributes；新增 validateSingleSourceConsistency 断言三对对象键集与内容一致；D36-5 reviewer 模型只读核对（保持 glm-5.2）。D36-4 定夺：不合并两套定义，保留 SKILL_DEFINITIONS/OPENCODE_SKILL_DEFINITIONS + AGENT_TEMPLATES/OPENCODE_AGENT_TEMPLATES 双对象 + 单源 + 一致性断言（N2）。先导 op，无依赖。"
+
+  op-002:
+    file: "ops/op-002.md"
+    title: "agent 重命名（8 个加 openfeel- 前缀 + P5 读取兼容 + normalizeAgentName）"
+    depends_on: ["op-001"]
+    stage: "v1.1.0-stage-36"
+    type: hard
+    produces:
+      - "src/core/flow-manager.ts"
+      - "src/core/archive/merge.ts"
+      - "src/core/view/entry.ts"
+      - "src/core/plan/scheme.ts"
+      - "src/core/init.ts"
+      - "src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md"
+      - "src/core/templates-data/opencode/agents/en/openfeel-planner.md"
+      - "src/core/templates-data/agents-md/zh-CN.md"
+      - "src/core/templates-data/agents-md/en.md"
+      - "src/core/templates-data/opencode/instructions/zh-CN.md"
+      - "src/core/templates-data/opencode/instructions/en.md"
+      - "AGENTS.md"
+      - "opencode.jsonc"
+      - "src/core/templates-data/opencode/opencode.jsonc"
+      - "src/commands/flow.ts"
+      - "src/core/metrics.ts"
+      - "src/commands/view.ts"
+    description: "8 agent 加 openfeel- 前缀（feel 保留）：① 权威源 templates-data/opencode/agents/{zh-CN,en}/ 16 文件 git mv 重命名；② flow-manager.mapPhaseToAgent 返回新名 + 新增导出 normalizeAgentName（内部 toLowerCase 归一大小写 REV-304、幂等、feel/none/unknown/非 agent 值原样保留）；③ 写入点改新名（flow-manager L1556/1575/1593 executor、merge L118 archiver、entry L52/62/129 reviewer、scheme L37/L122 Executor、init L462/463 executor）；④ 全库 markdown 引用同步（最长优先 + (?<!openfeel-) 负向断言，feel 不替换，区分 type:utility 任务标签 vs subagent_type:utility agent 名）；⑤ opencode.jsonc ×2：default_agent 保持 feel、agent.* 键带前缀；⑥ P5 读取兼容接入 normalizeAgentName 于 flow status --verbose（responsibleAgent L133 / change.agent L119）、flow overview（entry.agent L271）、flow log、flow metrics、view list（filed_by L31）所有读取展示点，不迁移 flow.json 历史。hard 依赖 op-001（收敛后单树重命名）。"
+
+  op-003:
+    file: "ops/op-003.md"
+    title: "skill 重命名（14 个加前缀）+ /opfx: 类型化统一"
+    depends_on: ["op-002"]
+    stage: "v1.1.0-stage-36"
+    type: hard
+    produces:
+      - "src/core/update.ts"
+      - "src/core/templates-data/opencode/skills/openfeel-check-kb/SKILL.md"
+      - "src/core/templates-data/opencode/agents/zh-CN/feel.md"
+      - "src/core/templates-data/opencode/agents/en/feel.md"
+      - "src/commands/flow.ts"
+      - "src/core/i18n-data/zh-CN.ts"
+      - "src/core/i18n-data/en.ts"
+      - "src/core/templates-data/agents-md/zh-CN.md"
+      - "src/core/templates-data/agents-md/en.md"
+      - "src/core/templates-data/opencode/instructions/zh-CN.md"
+      - "src/core/templates-data/opencode/instructions/en.md"
+      - "AGENTS.md"
+      - "opencode.jsonc"
+    description: "14 skill 加 openfeel- 前缀：① templates-data/opencode/skills/ 14 目录 git mv + SKILL.md frontmatter name: 同步；② update.ts NEW_SKILL_NAMES（L1209-1218）8 项加前缀（不扩列表）、buildUpdatedJsonc L1380 路径随名自动变化、getIncomingContent L1802 正则无需改（.+ 天然匹配）、L60/L1377 注释 /opfx:* → openfeel-*；③ feel.md（zh-CN+en）「/opfx: 技能」表按 D36-1 映射改为按类型分类引用（CLI 命令/agent/skill/文字），废除 /opfx: 前缀，code/test 改文字，补 status→openfeel flow overview（REV-305），/opfx:utility→openfeel-utility、/opfx:flow→openfeel flow；④ 源码 /opfx: 注释清理（flow.ts L14/158/161、i18n zh-CN L446 / en L424 的 /opfx:status→openfeel flow overview、update.ts L60）；⑤ 全库 skill 名引用同步（区分 CLI 子命令同名词 health/recover/roadmap/wizard/model-check/model-config）；⑥ 根版 opencode.jsonc skills 块手动更新为 14 条 openfeel- 前缀路径（REV-401 修订：手写块非 SKILLS_PLACEHOLDER，原 9 条补齐 health/recover/roadmap/search-kb/wizard 至 14 条对齐模板）。hard 依赖 op-002（feel.md/update.ts 冲突域重叠，串行）。"
+
+  op-004:
+    file: "ops/op-004.md"
+    title: "部署实例与构建产物重生成 + 测试断言同步 + 自举收尾"
+    depends_on: ["op-001", "op-002", "op-003"]
+    stage: "v1.1.0-stage-36"
+    type: hard
+    produces:
+      - "src/core/template-loader.ts"
+      - "src/core/update.ts"
+      - "build.js"
+      - ".opencode/ADAPTER.md"
+      - ".opencode/agents/openfeel-planner.md"
+      - ".opencode/skills/openfeel-check-kb/SKILL.md"
+      - "test/core/update.test.ts"
+      - "test/core/flow-manager.test.ts"
+      - "test/core/plan/roadmap.test.ts"
+      - "test/core/template-loader.test.ts"
+      - "test/core/metrics.test.ts"
+      - "test/core/view/entry.test.ts"
+      - "test/core/archive/merge.test.ts"
+      - "test/core/artifact-graph/instruction-loader.test.ts"
+      - "test/core/flow-concurrent.test.ts"
+      - "test/core/init.test.ts"
+      - "test/commands/flow-migrate.test.ts"
+    description: "① npm run build 重生成 template-loader.ts（AGENT_TEMPLATES/OPENCODE_AGENT_TEMPLATES/OPENCODE_SKILL_DEFINITIONS/OPENCODE_CONFIG_TEMPLATES/CORE_INSTRUCTIONS_TEMPLATES）与 update.ts（SKILL_DEFINITIONS）生成段，键带新名；② build.js 新增步骤 8（置于 tsc 之后，await import dist 的 atomicWriteFileSync；REV-402 修订：先 rmSync 清空 .opencode/agents 旧名 .md 与 .opencode/skills 旧目录、skills 写入前 mkdirSync，再全量重写，避免新旧并存）从权威源重生成 .opencode/{agents,skills,instructions,ADAPTER.md} 25 文件并插入 N3 生成物标记 openfeel:generated（frontmatter 闭合 --- 之后 / 无 frontmatter 首行），与 stage-38 begin/end 控制区标记契约兼容（generated 单行文件级信号）；③ 11 个测试文件断言同步，REV-306 二分：构造写入用新名 vs 读取兼容保留旧名+断言展示新名，伪阳性清单（<utility> XML / CLI 子命令 / type:utility / agent:'flow-manager' / openfeel 项目名）勿改；④ 收尾重启 opencode 提醒；⑤ npm run build && npm test + lint i18n/kb 全量回归。hard 依赖 op-001/002/003。"
+
+# 依赖关系说明：
+# - op-001 无依赖（先导，产出单一权威源 + 收敛后的 build.js）。
+# - op-002 hard 依赖 op-001（须在收敛后的单树上重命名）。
+# - op-003 hard 依赖 op-002（两者均编辑 feel.md 与 update.ts，文件冲突域重叠，须串行）。
+# - op-004 hard 依赖 op-001/op-002/op-003（重生成 + 测试依赖前三者全部落定）。
+
+# 建议执行顺序（严格串行）：
+#   op-001 → op-002 → op-003 → op-004
+#   （四者冲突域高度重叠：op-001 改 build.js/模板树，op-002 改 flow-manager/agents/AGENTS.md，
+#     op-003 改 update.ts/feel.md，op-004 重生成全部产物 + 测试；依赖图已标 hard，批次调度 = 单一串行批次）
+
+# 文件冲突域分析：
+# - op-001：templates-data/opencode/agents（feel.md 合并）、删除 agents/ 与 core-instructions/、build.js、.gitattributes
+# - op-002：templates-data/opencode/agents（重命名 + 正文）、flow-manager.ts、merge.ts、entry.ts、scheme.ts、init.ts、
+#   agents-md、instructions、AGENTS.md、opencode.jsonc ×2、flow.ts/metrics.ts/view.ts（读取归一）
+# - op-003：templates-data/opencode/skills（重命名）、update.ts、feel.md、agents-md/instructions/AGENTS.md（skill 引用）、
+#   flow.ts/i18n-data（/opfx: 清理）
+# - op-004：template-loader.ts/update.ts 生成段、build.js 步骤 8、.opencode/**、11 个测试文件
+#   重叠点：op-002 与 op-003 均触 feel.md（agent 名 vs skill 表）与 update.ts（executor 写入 vs NEW_SKILL_NAMES），
+#   故 op-003 hard 依赖 op-002；op-004 触碰前三者全部产物，故排最后。
+
+# 关键风险（回填 stage-36 plan「风险点」）：
+# - 自举风险：.opencode/ 重生成 + 改名改变本仓库运行中会话的 agent/skill 名，收尾必须重启 opencode；异常 git checkout -- .opencode/。
+# - build.js 仍从旧目录取源：op-001 强制改 SKILLS_DIR + 停用 .opencode/ 源常量 + 单源断言兜底。
+# - 合并丢内容：逐文件 diff + 已知差异清单 + 三对一致性校验兜底。
+# - 子串陷阱（feel ⊂ feel-tester ⊂ openfeel-feel-tester）：N6 最长优先 + (?<!openfeel-) 负向断言 + feel 不替换 + 幂等断言。
+# - 测试断言大范围误改：逐文件核对 + 伪阳性清单 + 全量回归；REV-306 二分防 fixture 自相矛盾。
+# - 行尾 CRLF 泄漏：.gitattributes + 注入前归一 + 生成串无 \r\n 断言。

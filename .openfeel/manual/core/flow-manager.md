@@ -17,6 +17,8 @@
 | `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查 |
 | `saveCheckpoint()` / `restoreCheckpoint()` | 阶段检查点保存与回滚 |
 | `autoCommitOnDone(stageName)` | 阶段 done 时自动 git 提交 |
+| `mapPhaseToAgent(phase)` | 将 PipelinePhase 映射为负责 Agent 标识（返回**新名** `openfeel-*`，`done → none`） |
+| `normalizeAgentName(name)` | 归一化 agent 名（旧名→新名，读取兼容 P5；`toLowerCase` 幂等；非 agent 值原样保留） |
 | `FlowConcurrentModificationError` / `isFlowConcurrentError(err)` | flow.json 乐观并发冲突错误类型与识别函数（命令层统一捕获） |
 
 ## 并发保护与乐观并发校验
@@ -60,3 +62,11 @@ plan_pending → plan_review → plan_passed
 ```
 
 stageId↔目录映射收敛到 `plan-path` 模块，flow-manager 不再自行 split 版本号或 resolve 目录（stage-34 变更）。
+
+## agent 命名与读取兼容（stage-36）
+
+v1.1.0-stage-36 统一 agent 命名为 `openfeel-` 前缀（`feel` 保留原名），并采用「写入新名 + 读取兼容旧名」策略：
+
+- **写入新名**：`mapPhaseToAgent` 返回 `openfeel-planner` / `openfeel-schemer` / `openfeel-executor` / `openfeel-reviewer` / `openfeel-feel-tester` / `openfeel-archiver`（`done → none`）；`flow-manager.ts` 内 `agent: 'executor'` 写入点全部改为 `agent: 'openfeel-executor'`。
+- **读取兼容**：模块级 `normalizeAgentName(name)`（配合 `LEGACY_AGENT_NAME_MAP`）在**所有读取并展示 agent 名**的路径归一化旧名→新名——`flow status --verbose`（`responsibleAgent` + `change.agent`）、`flow overview` / `flow log`（`entry.agent`）、`flow metrics`（`m.agentName`）、`view list`（`item.filed_by`）。内部 `toLowerCase()` 归一大小写；幂等（已是 `openfeel-*` 原样返回）；`feel` / `none` / `unknown` / 非 agent 值（`flow-manager`）原样保留。
+- **不迁移历史**：不批量改写历史 `flow.json` / 日志 / `status.md`，旧名经归一化后仍可正常读取展示；存量 assignee 重映射留给后续 `openfeel migrate`。

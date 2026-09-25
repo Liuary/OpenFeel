@@ -154,7 +154,7 @@ describe('initProject — opencode deployment', () => {
 
     // 验证关键文件存在
     expect(existsSync(join(tmpDir, '.opencode', 'agents', 'feel.md'))).toBe(true);
-    expect(existsSync(join(tmpDir, '.opencode', 'skills', 'check-kb', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'skills', 'openfeel-check-kb', 'SKILL.md'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'instructions', 'core.md'))).toBe(true);
     expect(existsSync(join(tmpDir, 'opencode.jsonc'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'ADAPTER.zh-CN.md'))).toBe(true);

@@ -6,21 +6,26 @@
     ".opencode/instructions/core.md"
   ],
   "skills": {
-    "get-bugs": ".opencode/skills/get-bugs",
-    "check-kb": ".opencode/skills/check-kb",
-    "bug-acceptance": ".opencode/skills/bug-acceptance",
-    "sync-status": ".opencode/skills/sync-status",
-    "get-stage-status": ".opencode/skills/get-stage-status",
-    "update-stage-status": ".opencode/skills/update-stage-status",
-    "model-check": ".opencode/skills/model-check",
-    "model-config": ".opencode/skills/model-config",
-    "agent-model-check": ".opencode/skills/agent-model-check"
+    "openfeel-agent-model-check": ".opencode/skills/openfeel-agent-model-check",
+    "openfeel-bug-acceptance": ".opencode/skills/openfeel-bug-acceptance",
+    "openfeel-check-kb": ".opencode/skills/openfeel-check-kb",
+    "openfeel-get-bugs": ".opencode/skills/openfeel-get-bugs",
+    "openfeel-get-stage-status": ".opencode/skills/openfeel-get-stage-status",
+    "openfeel-health": ".opencode/skills/openfeel-health",
+    "openfeel-model-check": ".opencode/skills/openfeel-model-check",
+    "openfeel-model-config": ".opencode/skills/openfeel-model-config",
+    "openfeel-recover": ".opencode/skills/openfeel-recover",
+    "openfeel-roadmap": ".opencode/skills/openfeel-roadmap",
+    "openfeel-search-kb": ".opencode/skills/openfeel-search-kb",
+    "openfeel-sync-status": ".opencode/skills/openfeel-sync-status",
+    "openfeel-update-stage-status": ".opencode/skills/openfeel-update-stage-status",
+    "openfeel-wizard": ".opencode/skills/openfeel-wizard"
   },
   "agent": {
-    "vision": {
+    "openfeel-vision": {
       "model": "alibaba-cn/qwen3-vl-plus"
     },
-    "reviewer": {
+    "openfeel-reviewer": {
       "model": "zhipuai/glm-5.2"
     }
   },

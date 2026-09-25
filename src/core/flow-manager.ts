@@ -64,7 +64,7 @@ export interface ReviewItem {
   title: string;
   filed_by: string;
   filed_at: string;
-  /** Reviewer 认为可直接修复时设为 true，跳过 Schemer 重新规划 */
+  /** openfeel-reviewer 认为可直接修复时设为 true，跳过 openfeel-schemer 重新规划 */
   canAutoFix?: boolean;
   /** 自动修复说明 */
   autoFixDetail?: string;
@@ -1500,22 +1500,22 @@ export class FlowManager {
     return result;
   }
 
-  /** 将 PipelinePhase 映射为负责 Agent 标识 */
+  /** 将 PipelinePhase 映射为负责 Agent 标识（返回新名，供新写入使用） */
   private mapPhaseToAgent(phase: PipelinePhase): string {
     const prefix = phase.split('_')[0];
     switch (prefix) {
       case 'plan':
-        return 'planner';
+        return 'openfeel-planner';
       case 'scheme':
-        return 'schemer';
+        return 'openfeel-schemer';
       case 'exec':
-        return 'executor';
+        return 'openfeel-executor';
       case 'review':
-        return 'reviewer';
+        return 'openfeel-reviewer';
       case 'test':
-        return 'feel-tester';
+        return 'openfeel-feel-tester';
       case 'archiving':
-        return 'archiver';
+        return 'openfeel-archiver';
       case 'done':
         return 'none';
       default:
@@ -1553,7 +1553,7 @@ export class FlowManager {
       this.data.pipeline.retry = 0;
       this.appendLog({
         time: '',
-        agent: 'executor',
+        agent: 'openfeel-executor',
         action: 'attempt_pass',
         detail: { opId, attempts: op.attempts },
       });
@@ -1572,7 +1572,7 @@ export class FlowManager {
       this.data.pipeline.retry += 1;
       this.appendLog({
         time: '',
-        agent: 'executor',
+        agent: 'openfeel-executor',
         action: 'attempt_fail_retry',
         detail: { opId, attempts: op.attempts, maxAttempts: op.max_attempts },
       });
@@ -1590,7 +1590,7 @@ export class FlowManager {
     this.data.pipeline.retry += 1;
     this.appendLog({
       time: '',
-      agent: 'executor',
+      agent: 'openfeel-executor',
       action: 'attempt_fail_exhausted',
       detail: { opId, attempts: op.attempts, maxAttempts: op.max_attempts },
     });
@@ -1637,7 +1637,7 @@ export class FlowManager {
 
   /**
    * 添加自动修复审查条目
-   * 当 Reviewer 认为问题可直接修复时调用，REV 条目状态直接设为 resolved，
+   * 当 openfeel-reviewer 认为问题可直接修复时调用，REV 条目状态直接设为 resolved，
    * pipeline.phase 跳过 review_failed→scheme_pending，直接推进到 exec_running。
    * @param item 审查条目（canAutoFix 自动设为 true）
    * @param opId 关联的操作 ID
@@ -2793,6 +2793,35 @@ export class FlowManager {
 }
 
 // ── 辅助函数 ──
+
+/** 旧 agent 名 → 新名映射（读取兼容用；skill 名不在此列） */
+const LEGACY_AGENT_NAME_MAP: Record<string, string> = {
+  planner: 'openfeel-planner',
+  schemer: 'openfeel-schemer',
+  executor: 'openfeel-executor',
+  reviewer: 'openfeel-reviewer',
+  'feel-tester': 'openfeel-feel-tester',
+  utility: 'openfeel-utility',
+  vision: 'openfeel-vision',
+  archiver: 'openfeel-archiver',
+};
+
+/**
+ * 归一化 agent 名：旧名 → 新名（读取兼容 P5）。
+ * 内部 toLowerCase() 归一大小写不一致（REV-304）。
+ * 幂等：已是 openfeel-* 原样返回；feel / none / unknown / 非 agent 值（如 flow-manager）原样保留。
+ */
+export function normalizeAgentName(name: string): string {
+  if (!name) {
+    return name;
+  }
+  const key = name.trim().toLowerCase();
+  // 已是新名（openfeel- 前缀）→ 原样返回，避免二次前缀化
+  if (key.startsWith('openfeel-')) {
+    return key;
+  }
+  return LEGACY_AGENT_NAME_MAP[key] ?? key;
+}
 
 /**
  * 将 PipelinePhase 映射为 stage 状态

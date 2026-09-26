@@ -135,7 +135,7 @@ describe('model-config', () => {
       const cfg = readFileSync(join(fw, 'src', 'core', 'opencode-config.ts'), 'utf-8');
       expect(cfg).toContain("'openfeel-vision': { model: 'deepseek/deepseek-flash' }");
       // reviewer 条目不变
-      expect(cfg).toContain("'openfeel-reviewer': { model: 'zhipuai/glm-5.2' }");
+      expect(cfg).toContain("'openfeel-reviewer': { model: 'zhipuai/glm-5.3-flash' }");
     });
 
     it('无显式 model 的 agent（feel）抛错，不产生文件变更', () => {

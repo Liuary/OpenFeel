@@ -960,7 +960,7 @@ openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). I
     'openfeel-reviewer': `---
 description: openfeel-reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
 mode: subagent
-model: zhipuai/glm-5.2
+model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
 color: "#D4A017"
 permission:
@@ -2276,7 +2276,7 @@ openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel �
     'openfeel-reviewer': `---
 description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
 mode: subagent
-model: zhipuai/glm-5.2
+model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
 color: "#D4A017"
 permission:
@@ -3952,7 +3952,7 @@ openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). I
     'openfeel-reviewer': `---
 description: openfeel-reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
 mode: subagent
-model: zhipuai/glm-5.2
+model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
 color: "#D4A017"
 permission:
@@ -5268,7 +5268,7 @@ openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel �
     'openfeel-reviewer': `---
 description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
 mode: subagent
-model: zhipuai/glm-5.2
+model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
 color: "#D4A017"
 permission:

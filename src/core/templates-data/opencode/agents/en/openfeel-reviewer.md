@@ -1,7 +1,7 @@
 ---
 description: openfeel-reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
 mode: subagent
-model: zhipuai/glm-5.2
+model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
 color: "#D4A017"
 permission:

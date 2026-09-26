@@ -18,7 +18,7 @@ export function buildGlobalOpencodeFrameworkObj(): Record<string, unknown> {
     instructions: [getGlobalCoreMdPath()],
     agent: {
       'openfeel-vision': { model: 'deepseek/deepseek-flash' },
-      'openfeel-reviewer': { model: 'zhipuai/glm-5.2' },
+      'openfeel-reviewer': { model: 'zhipuai/glm-5.3-flash' },
     },
     // N3：experimental.agent_manager_tool 已被移除（op-000 实测 schema 未定义 + 静默丢弃），故不写
   };

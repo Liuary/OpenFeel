@@ -1,6 +1,6 @@
 /**
  * init 命令用模板文件
- * 提供 dev_core.md、current.md、instructions/core.md 的默认模板内容。
+ * 提供 dev_core.md、current.md、decisions.md 的默认模板内容。
  */
 
 /** 中文版 dev_core.md 模板 */
@@ -95,4 +95,4 @@ export const CURRENT_TEMPLATE = CURRENT_TEMPLATE_ZH;
 export const DECISIONS_TEMPLATE = DECISIONS_TEMPLATE_ZH;
 
 // 以下常量已由 template-loader.ts 统一管理，此处保留 re-export 以兼容现有消费方
-export { CORE_INSTRUCTIONS_TEMPLATE_B64, AGENTS_MD_TEMPLATE } from './template-loader.js';
+export { AGENTS_MD_TEMPLATE } from './template-loader.js';

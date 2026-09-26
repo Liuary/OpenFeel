@@ -1,16 +1,17 @@
 /**
  * OpenCode 适配器更新编排
- * 在目标项目中生成 Agent 定义、Skill 定义、instructions/core.md，并更新 opencode.jsonc 配置。
+ * 增量部署全局资产（全局 AGENTS.md、agent、skill）并更新全局/项目 opencode.jsonc 配置。
  *
- * 变更摘要 (v3-stage-04 第二轮):
- * - 新增 instructions/core.md 创建（从 init.ts 迁移至此，职责归位适配器层）
+ * 变更摘要:
+ * - v3-stage-04: 新增 instructions/core.md 创建（从 init.ts 迁移）
+ * - v1.1.1: 拆除项目 AGENTS.md 部署；全局约束由 core.md 改为全局 AGENTS.md（收归 openfeel setup）
  */
-import { existsSync, readFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join, basename, isAbsolute, relative } from 'node:path';
 import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader.js';
-import { recordProjectLang, getGlobalConfig, getLang } from './workspace/identity.js';
+import { recordProjectLang } from './workspace/identity.js';
 import { getCliLang } from './i18n.js';
-import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalOpencodeJsoncPath, getGlobalUpdateStatePath } from './global-paths.js';
+import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalAgentsMdPath, getGlobalOpencodeJsoncPath, getGlobalUpdateStatePath } from './global-paths.js';
 import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './opencode-config.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
@@ -39,17 +40,6 @@ export interface UpdateResult {
   skipped: string[];  // 跳过的文件（已存在且内容一致）
   conflicts: string[];  // 冲突文件相对路径列表（本阶段三态下恒空，保留兼容命令层输出）
   appended: string[];  // 追加的文件列表（无标记 → 末尾追加受管区，待会话启动复核；malformed 不追加，见 REV-1001）
-}
-
-/** AGENTS.md 语言冲突错误（由命令层捕获处理） */
-export class AgentsMdLangConflictError extends Error {
-  constructor(
-    public projectLang: string,
-    public requestedLang: string,
-  ) {
-    super(`AGENTS.md language conflict: project=${projectLang}, requested=${requestedLang}`);
-    this.name = 'AgentsMdLangConflictError';
-  }
 }
 
 // ─── 支持的工具注册表 ──────────────────────────────────────────────
@@ -1074,6 +1064,40 @@ description: 聚合所有成员的任务进度视图，供任意 Agent 快速了
 格式化后的 Markdown 进度摘要，不含文件修改。
 
 `,
+  'openfeel-tool-usage': `---
+name: openfeel-tool-usage
+description: Agent 工具使用规范（todowrite/question/task/skill 四工具触发条件、使用要求、禁止行为 + 优先级表）。
+---
+
+# Agent 工具使用规范
+
+## 输入
+
+无
+
+## 执行步骤
+
+### 1. todowrite — 任务列表管理
+触发条件（任一即用）：≥3 独立步骤 / 多任务下达 / 跨文件修改。使用要求：执行前创建、单条 in_progress、完成即标 completed、新步骤追加末尾。
+
+### 2. question — 向用户提问
+触发条件（任一必问）：需求歧义 / 技术方案 ≥2 同等合理 / 不可逆后果 / 架构决策。使用要求：(Recommended) 标记、选项附后果、≤3 选项、高风险含"取消"。禁止：模糊时自行假设、多方案不选直接实施。
+
+### 3. task — 子 Agent 调度
+触发条件：并行探索多代码区 / 复杂多步委托 general / 下游 Agent（经 Feel）。使用要求：并行一条消息多 task、prompt 含任务描述+期望返回、明确只读/可写。
+
+### 4. skill — 技能加载
+触发条件：查阶段状态→openfeel-get-stage-status / 查知识库→openfeel-check-kb / 取 Bug→openfeel-get-bugs。使用要求：会话开始载 check-kb、处理阶段任务前载 get-stage-status、不凭记忆跳过。
+
+### 5. 工具使用优先级
+| 场景 | 优先工具 | 禁止做法 |
+|------|---------|----------|
+| 多步骤任务 | todowrite | 凭记忆逐条执行 |
+| 需求不明确 | question | 自行假设后动手 |
+| 探索代码 | task(explore) | 手动逐个 grep/read |
+| 获取状态 | skill(openfeel-get-stage-status) | 凭记忆推断 |
+| 批量文件操作 | task(general) | 串行逐个处理 |
+`,
   'openfeel-update-stage-status': `---
 name: openfeel-update-stage-status
 description: 标准化更新 .openfeel/plan/{series}/{stage}/status.md 的子计划状态、责任 Agent 和状态记录，避免各 Agent 随意改写状态文件。适用于自动闭环和人工流程中的阶段状态变更。
@@ -1216,6 +1240,39 @@ description: 交互式流水线向导，供 Agent 在终端中逐步推进流水
 向导推进结果：阶段 phase 变化（from → to），结束/退出提示
 
 > 注：需交互式终端（TTY），非交互环境请改用 \`openfeel flow advance --stage <id> --to <phase>\`
+`,
+  'openfeel-workspace': `---
+name: openfeel-workspace
+description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与空文件的标准化操作步骤（mkdir 哪些目录、创建哪些空文件、读 .info.json 取用户名）。
+---
+
+# 工作区启动自检
+
+## 输入
+
+无（自动按 .openfeel/.info.json 与 ~/.openfeel/update_infos.md 推断）
+
+## 执行步骤
+
+### 1. 读取用户名
+读 \`.openfeel/.info.json\` 的 \`user\` 字段；缺失则 \`git config user.name\`。
+
+### 2. 检查公共域目录（缺失则 mkdir -p）
+\`.openfeel/dev/note/\`、\`.openfeel/log/\`、\`.openfeel/code_review/\`、\`.openfeel/bugs/\`、\`.openfeel/plan/\`、\`.openfeel/kb/\`、\`.openfeel/tmp/\`
+
+### 3. 检查公共域文件（缺失则创建空文件）
+\`.openfeel/dev/dev_core.md\`、\`.openfeel/dev/current.md\`、\`.openfeel/dev/decisions.md\`、\`.openfeel/kb/index.md\`
+
+### 4. 检查私域目录（基于 {username}）
+\`.openfeel/users/{username}/log/\`、\`note/\`、\`code_review/\`、\`bugs/\`、\`tmp/\`
+
+### 5. 检查私域文件
+\`.openfeel/users/{username}/dev_last.md\`
+
+### 6. 增量更新复核
+检查 \`~/.openfeel/update_infos.md\`，若存在未修复条目（追加/异常），提醒用户重启会话或委托 Feel 处理；本 Agent 不自行修改该文件。
+
+> 目录结构语义、公共/私域分区、用户身份约束、路径自校验规则见全局 AGENTS.md（约束）；本 skill 仅承载操作步骤。
 `,
 };
 // AUTO-GENERATED-END: SKILL_DEFINITIONS
@@ -1376,70 +1433,10 @@ export function updateProject(
   // 全局部署目标（D1）
   const agentsDir = getGlobalAgentsDir();
   const skillsDir = getGlobalSkillsDir();
-  // 项目内旧布局 agents 目录：仅用于 AGENTS.md 首次部署判定，保持原语义（项目级）
-  const projectLegacyAgentsDir = resolve(projectPath, '.opencode', 'agents');
 
   // 确保全局目标目录存在
   mkdirSync(agentsDir, { recursive: true });
   mkdirSync(skillsDir, { recursive: true });
-
-  // ── AGENTS.md 语言同步逻辑 ──
-  let agentsDirHasContent = false;
-  try {
-    agentsDirHasContent = existsSync(projectLegacyAgentsDir) && readdirSync(projectLegacyAgentsDir).length > 0;
-  } catch {
-    agentsDirHasContent = false;
-  }
-
-  const agentsMdPath = resolve(projectPath, 'AGENTS.md');
-  const agentsMdExists = existsSync(agentsMdPath);
-
-  if (!agentsDirHasContent && !agentsMdExists) {
-    // 情况 1：首次部署 → 使用全局默认语言部署 AGENTS.md（受管区标记包裹）
-    const globalConfig = getGlobalConfig();
-    const deployLang = lang ?? globalConfig.lang ?? 'zh-CN';
-    const agentsMdContent = loadTemplate(deployLang, 'agents-md');
-    atomicWriteFileSync(agentsMdPath, composeManagedContent(agentsMdContent, 'markdown'));
-    created.push('AGENTS.md');
-  } else if (!agentsMdExists && options?.lang) {
-    // 情况 2b：已有 agents 目录但 AGENTS.md 被手动删除 + --lang 指定
-    // → 用指定语言重新创建 AGENTS.md（受管区标记包裹）
-    const agentsMdContent = loadTemplate(options.lang, 'agents-md');
-    atomicWriteFileSync(agentsMdPath, composeManagedContent(agentsMdContent, 'markdown'));
-    created.push('AGENTS.md');
-  } else if (agentsMdExists && options?.lang) {
-    // 情况 2：已有项目 + --lang 参数指定了语言
-    const projectLang = getLang(projectPath);
-    const requestedLang = options.lang;
-
-    if (requestedLang !== projectLang) {
-      // 语言不同 → 提示确认
-      if (options?.force) {
-        // --force → 跳过确认，直接覆盖（受管区标记包裹）
-        const agentsMdContent = loadTemplate(requestedLang, 'agents-md');
-        atomicWriteFileSync(agentsMdPath, composeManagedContent(agentsMdContent, 'markdown'));
-        updated.push('AGENTS.md');
-      } else if (options?.interactive) {
-        // 交互模式 → 输出冲突警告，跳过 AGENTS.md，继续执行后续框架更新
-        console.warn(`[update] AGENTS.md language mismatch: project=${projectLang}, requested=${requestedLang}. Skipped. Use --force to override.`);
-        skipped.push('AGENTS.md (language conflict)');
-      } else {
-        // 非交互模式 → 输出警告，不覆盖
-        console.warn(`[update] AGENTS.md language mismatch: project=${projectLang}, requested=${requestedLang}. Skipped. Use --force to override.`);
-        skipped.push('AGENTS.md');
-      }
-    } else {
-      // 语言相同 → 走受管文件三态（含标记区内替换 / 无标记 hash 兜底 / 追加）
-      const templateContent = loadTemplate(requestedLang, 'agents-md');
-      const action = writeManagedFile(agentsMdPath, templateContent, 'AGENTS.md', state, { isGlobal: false, projectRoot: projectPath });
-      pushAction(action, 'AGENTS.md', created, updated, skipped, appended);
-    }
-  } else if (agentsMdExists) {
-    // 情况 3：已有项目 + 无 --lang 参数 → 走受管文件三态
-    const templateContent = loadTemplate(lang, 'agents-md');
-    const action = writeManagedFile(agentsMdPath, templateContent, 'AGENTS.md', state, { isGlobal: false, projectRoot: projectPath });
-    pushAction(action, 'AGENTS.md', created, updated, skipped, appended);
-  }
 
   // 记录项目语言映射到全局配置
   // 使用 options?.lang（用户通过 --lang 显式指定的语言）优先，
@@ -1453,12 +1450,21 @@ export function updateProject(
   // 全局 state 可写实例：首次 null → 降级重建（后续全量写入全局资产，防静默不部署）
   const newGlobalState: UpdateState = globalState ?? createGlobalUpdateState({});
 
-  // 0. 生成全局框架约束 core.md（~/.config/opencode/openfeel/core.md）
-  const coreInstructionsPath = getGlobalCoreMdPath();
-  const coreContent = loadTemplate(lang, 'core-instructions');
+  // v1.1.1：存量全局 state 的 core.md key → 全局 AGENTS.md key（一次性重映射）
+  // 说明：在 newGlobalState 创建后执行（newGlobalState = globalState ?? createGlobalUpdateState({})；
+  // 非 null 时二者同引用，故直接改 globalState 即改 newGlobalState）。
+  const staleCoreKey = getGlobalCoreMdPath();
+  if (globalState && globalState.files[staleCoreKey] && !globalState.files[getGlobalAgentsMdPath()]) {
+    globalState.files[getGlobalAgentsMdPath()] = globalState.files[staleCoreKey];
+    delete globalState.files[staleCoreKey];
+  }
+
+  // 0. 生成全局框架约束 AGENTS.md（~/.config/opencode/AGENTS.md）
+  const agentsMdPath = getGlobalAgentsMdPath();
+  const agentsMdContent = loadTemplate(lang, 'agents-md');
   {
-    const action = deployGlobalAsset(coreInstructionsPath, coreContent, newGlobalState);
-    pushAction(action, coreInstructionsPath, created, updated, skipped, appended);
+    const action = deployGlobalAsset(agentsMdPath, agentsMdContent, newGlobalState);
+    pushAction(action, agentsMdPath, created, updated, skipped, appended);
   }
 
   // 1. 生成 Agent 定义文件到全局 agents 目录（绝对路径作 state key）
@@ -1613,20 +1619,19 @@ function writeConflictFile(
 
 /**
  * 根据路径获取 incoming（openfeel 期望写入）内容
- * relativePath 现为全局绝对路径（框架资产）或项目相对路径（AGENTS.md / opencode.jsonc）：
- *  - getGlobalCoreMdPath() → loadTemplate(lang, 'core-instructions')
+ * relativePath 现为全局绝对路径（框架资产）或项目相对路径（opencode.jsonc）：
+ *  - getGlobalAgentsMdPath() → loadTemplate(lang, 'agents-md')
  *  - getGlobalAgentsDir()/{name}.md → loadAgentTemplate(lang, name)
  *  - getGlobalSkillsDir()/{name}/SKILL.md → SKILL_DEFINITIONS[name]
  *  - opencode.jsonc → buildProjectOpencodeJsoncObj()
- *  - AGENTS.md → loadTemplate(lang, 'agents-md')
  */
 function getIncomingContent(
   relativePath: string,
   lang: 'zh-CN' | 'en',
 ): string {
-  // 全局框架约束 core.md
-  if (relativePath === getGlobalCoreMdPath()) {
-    return loadTemplate(lang, 'core-instructions');
+  // 全局框架约束 AGENTS.md（v1.1.1：约束唯一权威）
+  if (relativePath === getGlobalAgentsMdPath()) {
+    return loadTemplate(lang, 'agents-md');
   }
 
   // 全局 agent：位于 getGlobalAgentsDir() 下的 {name}.md
@@ -1644,11 +1649,6 @@ function getIncomingContent(
   // 项目 opencode.jsonc
   if (relativePath === 'opencode.jsonc') {
     return JSON.stringify(buildProjectOpencodeJsoncObj(), null, 2) + '\n';
-  }
-
-  // 项目 AGENTS.md
-  if (relativePath === 'AGENTS.md') {
-    return loadTemplate(lang, 'agents-md');
   }
 
   // 未知路径 → 空内容（不应发生）

@@ -13,7 +13,7 @@ vi.mock('node:os', async (importOriginal) => {
 });
 
 import {
-  detectLegacy, listLegacyFiles, migrateProject, rollbackMigration,
+  detectLegacy, detectDeprecatedCompat, listLegacyFiles, migrateProject, rollbackMigration,
   previewRollback, cleanOldBackups, remapAssignees,
 } from '../../src/core/migrate.js';
 import { loadUpdateState, loadGlobalUpdateState } from '../../src/core/update-state.js';
@@ -31,6 +31,7 @@ function globalOpencodeDir(): string { return join(mockHome.dir, '.config', 'ope
 function globalAgentsDir(): string { return join(globalOpencodeDir(), 'agents'); }
 function globalSkillsDir(): string { return join(globalOpencodeDir(), 'skills'); }
 function globalCoreMdPath(): string { return join(globalOpencodeDir(), 'openfeel', 'core.md'); }
+function globalAgentsMdPath(): string { return join(globalOpencodeDir(), 'AGENTS.md'); }
 function globalJsoncPath(): string { return join(globalOpencodeDir(), 'opencode.jsonc'); }
 
 /** 递归复制目录 */
@@ -185,9 +186,10 @@ describe('migrate', () => {
       expect('instructions' in jsonc).toBe(false);
       expect(jsonc.custom_field).toBe('keep-me');
 
-      // 全局部署文件落盘
+      // 全局部署文件落盘（v1.1.1：全局 AGENTS.md 承载约束，旧 core.md 不再生成）
       expect(existsSync(join(globalAgentsDir(), 'openfeel-planner.md'))).toBe(true);
-      expect(existsSync(globalCoreMdPath())).toBe(true);
+      expect(existsSync(globalAgentsMdPath())).toBe(true);
+      expect(existsSync(globalCoreMdPath())).toBe(false);
 
       // 项目 state：框架 key 移除，项目 key 保留
       const projState = loadUpdateState(proj)!;
@@ -200,6 +202,8 @@ describe('migrate', () => {
       expect(gState.files[join(globalSkillsDir(), 'openfeel-check-kb', 'SKILL.md')]).toBeDefined();
       expect(result.stateSplit.movedToGlobal).toContain(join(globalAgentsDir(), 'openfeel-planner.md'));
       expect(result.stateSplit.movedToGlobal).toContain(join(globalSkillsDir(), 'openfeel-check-kb', 'SKILL.md'));
+      // remapLegacyKey：.opencode/instructions/core.md → 全局 AGENTS.md（v1.1.1）
+      expect(result.stateSplit.movedToGlobal).toContain(globalAgentsMdPath());
     });
 
     it('合法 skills {paths,urls} 结构保留，不误删（REV-1305）', () => {
@@ -243,6 +247,42 @@ describe('migrate', () => {
       writeFileSync(globalJsoncPath(), original, 'utf-8');
       expect(() => migrateProject(proj)).not.toThrow();
       expect(readFileSync(globalJsoncPath(), 'utf-8')).toBe(original);
+    });
+  });
+
+  describe('detectDeprecatedCompat / --clean-global-core-md（v1.1.1）', () => {
+    it('空项目：globalCoreMdExists=false, projectAgentsMdExists=false', () => {
+      const empty = mkdtempSync(join(tmpdir(), 'openfeel-dep-'));
+      projects.push(empty);
+      expect(detectDeprecatedCompat(empty)).toEqual({ globalCoreMdExists: false, projectAgentsMdExists: false });
+    });
+
+    it('项目根 AGENTS.md / 全局 core.md 存在时分别检出', () => {
+      const proj = mkdtempSync(join(tmpdir(), 'openfeel-dep-'));
+      projects.push(proj);
+      writeFileSync(join(proj, 'AGENTS.md'), '# x\n', 'utf-8');
+      mkdirSync(join(globalOpencodeDir(), 'openfeel'), { recursive: true });
+      writeFileSync(globalCoreMdPath(), 'old\n', 'utf-8');
+      expect(detectDeprecatedCompat(proj)).toEqual({ globalCoreMdExists: true, projectAgentsMdExists: true });
+    });
+
+    it('migrate 默认保留全局 core.md；--clean-global-core-md 删除；dry-run 不删', () => {
+      const proj = mkdtempSync(join(tmpdir(), 'openfeel-dep-'));
+      projects.push(proj);
+      mkdirSync(join(globalOpencodeDir(), 'openfeel'), { recursive: true });
+      writeFileSync(globalCoreMdPath(), 'old\n', 'utf-8');
+
+      // 默认仅提示，不删
+      migrateProject(proj);
+      expect(existsSync(globalCoreMdPath())).toBe(true);
+
+      // dry-run + 标志：不删
+      migrateProject(proj, { dryRun: true, cleanGlobalCoreMd: true });
+      expect(existsSync(globalCoreMdPath())).toBe(true);
+
+      // 显式标志：删除
+      migrateProject(proj, { cleanGlobalCoreMd: true });
+      expect(existsSync(globalCoreMdPath())).toBe(false);
     });
   });
 

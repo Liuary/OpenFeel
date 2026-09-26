@@ -449,7 +449,7 @@ v1.1.0-stage-38（D3 全量落地）用「控制区标记」替换/演进 stage-
 
 ## [+] 存量项目迁移架构：legacy 布局检测 + 备份回滚 + 全局部署迁移 (2026-09-25)
 
-v1.1.0-stage-39（P6 收口）新增顶层 `openfeel migrate` 命令，把存量旧布局项目（项目内 `.opencode/agents|skills|instructions`、旧 `opencode.jsonc` 非法 `skills` 映射、混合 `update_state.json`）迁移到 stage-37 的全局部署架构。核心决策：
+v1.1.0-stage-39（P6 收口）新增顶层 `openfeel migrate` 命令，把存量旧布局项目（项目内 `.opencode/` 下的 agents/skills/instructions 旧目录、旧 `opencode.jsonc` 非法 `skills` 映射、混合 `update_state.json`）迁移到 stage-37 的全局部署架构。核心决策：
 
 - **legacy 五条判据（M3）**：任一为 true 即视为 legacy；判据 ①/② 采用「框架同源判定」——文件/目录名经 `normalizeAgentName`（agent）/ `remapSkillName`（skill）归一化后命中框架清单（9 agent + 14 skill），项目自定义 agent/skill **不计**。此举保证 migrate 幂等（二次执行 `isLegacy=false`），否则项目自定义资产恒使项目判 legacy 形成「迁移-仍判 legacy」死循环（REV-007）。
 - **备份回滚（M2/D39-3）**：备份到 `.openfeel/backup/{yyyyMMddHHmmss}/` + `manifest.json`（每条 `{op, source, backupPath, hash}`）。回滚按 manifest 逆向恢复被删/改写的项目文件；`manifest.globalStateKeys` 记录本次写入的全局 state key，回滚仅删这些、不触碰历史全局条目（REV-1302）。
@@ -485,3 +485,35 @@ opencode 官方配置源优先级为「project config < .opencode 目录（agent
 **设计要点**：`model-config.ts` 纯函数化（不直接 console 输出，返回结构化结果），供 CLI 与「Model not found 自动修复」共用；agent 名复用 `normalizeAgentName` 归一化；`default` 层多源（frontmatter + opencode-config.ts）通过 `frameworkRoot` 可注入路径实现测试隔离。
 
 **参见：** v1.1.0-stage-40 op-001~003、kb/troubleshooting.md #opencode 模型解析优先级排查、kb/patterns.md #模型配置命令模式、kb/setup.md #OpenCode Agent 模型配置
+
+## [+] 全局约束架构：约束统一全局 AGENTS.md + 约束/操作分离 + 项目级去约束化 (2026-09-26)
+
+v1.1.1-stage-01 将框架约束从「core.md 平台指令层」彻底收敛到「全局 AGENTS.md 约束层」，实现约束与操作分离的「全局化彻底化改造」：
+
+**核心变化：**
+
+| 项 | 改造前 | 改造后 |
+|----|--------|--------|
+| 约束载体 | core.md（项目 `.opencode/instructions/core.md` + 全局 `~/.config/opencode/openfeel/core.md`） | 仅全局 `~/.config/opencode/AGENTS.md` |
+| 操作步骤 | 混在 core.md | 拆为 skill（新增 `openfeel-workspace`、`openfeel-tool-usage` 2 个操作类） |
+| 全局部署 | init 顺带部署 | 收归 `openfeel setup`（纯全局） |
+| 项目初始化 | init 生成项目 AGENTS.md + 部署全局资产 | init 只建工作区（`--workspace-only`），不生成项目 AGENTS.md |
+
+**核心设计决策：**
+
+- **约束常驻全局 AGENTS.md**：行为约束/规范/原则属「每会话必读、跨项目统一」，放入全局 `~/.config/opencode/AGENTS.md`（opencode 约定自动加载）。
+- **操作拆 skill**：操作步骤/工作流属「触发时才读」，拆为 skill（`openfeel-workspace` 工作区操作、`openfeel-tool-usage` 工具使用规范），避免常驻噪音。
+- **项目级去约束化**：init 不再生成项目 AGENTS.md 骨架；update 不再部署项目 AGENTS.md；存量项目 AGENTS.md 属用户项目约束**保留不动**。
+- **state remap**：存量全局 state 的 core.md key 一次性重映射到全局 AGENTS.md key（`getGlobalAgentsMdPath()`），保证增量更新连续性。
+
+**op-000 实测结论（关键前提，真实 CLI 子进程 + 隔离 HOME）：**
+
+| 验证项 | 结论 |
+|--------|------|
+| 全局 `~/.config/opencode/AGENTS.md` 自动加载 | **YES**（项目 opencode.jsonc 为 `{}` 时仍加载） |
+| 全局 + 项目 AGENTS.md 并存 | **拼接**（不覆盖） |
+| 移除 instructions 后约束仍生效 | **YES** |
+
+**与 stage-37「全局部署架构」的关系**：stage-37 落地框架约束走 `instructions`（core.md 绝对路径引用）；本阶段进一步把约束载体从 instructions/core.md 迁到全局 AGENTS.md，消除「约束两处存放」（core.md + AGENTS.md）的冗余。移除 instructions 后约束仍生效（op-000 实测），证明该迁移安全。
+
+**参见：** v1.1.1-stage-01 op-000~005、kb/architecture.md #全局部署架构、kb/patterns.md #约束/操作分离模式、kb/troubleshooting.md #opencode 全局 AGENTS.md 加载排查

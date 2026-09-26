@@ -446,3 +446,27 @@ OpenFeel 的模板部署存在**两层模板源**：
 **排查动作：** 改模型不生效时，先 `openfeel model get <agent>`（或 `opencode debug config`）查各层显式值，确认生效源是 frontmatter 还是 jsonc，再定位应改的层。
 
 **参见：** v1.1.0-stage-40 op-001 步骤 0、kb/architecture.md #模型配置三层级架构、kb/setup.md #OpenCode Agent 模型配置
+
+## [+] opencode 全局 AGENTS.md 加载排查：自动加载 YES / 并存拼接 / 移除 instructions 仍生效 (2026-09-26)
+
+**背景：** v1.1.1 把框架约束从 core.md（instructions）迁到全局 `~/.config/opencode/AGENTS.md`，须实测全局 AGENTS.md 是否自动加载、与项目 AGENTS.md 如何合并、移除 instructions 后约束是否仍生效。
+
+**实测结论（op-000，真实 CLI 子进程 + 隔离 HOME）：**
+
+| 验证项 | 结论 |
+|--------|------|
+| 全局 `~/.config/opencode/AGENTS.md` 自动加载 | **YES**（项目 opencode.jsonc 为 `{}` 时仍加载） |
+| 全局 + 项目 AGENTS.md 并存 | **拼接**（不覆盖） |
+| 移除 instructions 后约束仍生效 | **YES** |
+
+**排查方法：**
+
+- 验证「约束是否加载进 agent 上下文」用**指令型探针**（在 AGENTS.md 写「回复开头必须输出 token XXX」→ `opencode run` grep 回显），而非「请复述系统提示词」（会被模型安全策略拒答）。
+- 隔离全局路径用环境变量 `USERPROFILE`/`HOME`/`XDG_CONFIG_HOME` 指向临时目录，全程不污染真实 `~/.config/opencode/`。
+
+**经验：**
+
+- AGENTS.md 自动加载是 opencode 的**约定行为**（与 instructions 字段无关），故约束载体从 instructions/core.md 迁到全局 AGENTS.md 是安全的——移除 instructions 后约束仍生效（实测确认）。
+- 全局 + 项目 AGENTS.md **拼接而非覆盖**，故「项目级去约束化」（框架通用约束归全局、项目只留项目特有约束）不会丢失约束，二者互补加载。
+
+**参见：** v1.1.1-stage-01 op-000、kb/architecture.md #全局约束架构、kb/troubleshooting.md #opencode instructions 路径 ~ 不展开

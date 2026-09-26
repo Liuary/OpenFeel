@@ -82,7 +82,7 @@ v3.2 最终确定的文档写入路径规范：
 - 所有写入路径使用**绝对路径形式**：`项目根目录下的 docs/phase-{N}/`
 - 知识库写入路径：`architecture.md` / `patterns.md` / `troubleshooting.md` / `setup.md`
 - 项目分析报告：`docs/phase-{N}/`
-- 禁止写入知识库的内容：行为约束（→ AGENTS.md）、操作流程（→ Instructions）、工作区维护规则（→ dev_core.md）
+- 禁止写入知识库的内容：行为约束、操作流程（→ 全局 AGENTS.md）、工作区维护规则（→ dev_core.md）
 
 ## [+] Schemer op 级依赖声明 (2026-06-28)
 
@@ -576,7 +576,7 @@ configCmd
 | 1 | `src/core/templates-data/agents/{lang}/new-agent.md` | **新建** | 中英双语源模板（zh-CN + en），结构对称 |
 | 2 | `new-agent.md`（部署到 `.opencode/agents/` 目录） | **新建** | 部署定义，内容与 zh-CN 模板同步 |
 | 3 | `AGENTS.md` | **修改** | 标题计数 + 总览表格 + 调度列表（三处同步） |
-| 4 | `.opencode/instructions/core.md` | **修改** | 路径自校验范围 + Feel 调度列表（两处补充） |
+| 4 | `~/.config/opencode/AGENTS.md` | **修改** | 路径自校验范围 + Feel 调度列表（两处补充） |
 | 5 | `.opencode/skills/openfeel-model-check/SKILL.md` | **修改** | 角色映射回退表新增条目 |
 | 6 | `.openfeel/kb/architecture.md` | **修改** | 新增架构决策条目 |
 | 7 | `.openfeel/kb/index.md` | **修改** | Agent 计数 + 分类概览条目数 + 摘要表 |
@@ -876,7 +876,7 @@ Agent A 返回 → 含 [HANDOFF: agent_name] 标记
 当通用规范（如工具使用准则、操作流程）在项目约束体系中的归属发生变化时，从一个文件迁移到另一个文件，遵循标准迁移四步法。
 
 **适用场景：**
-- 操作规范从 `dev_core.md`（项目约束层）迁移到 `.opencode/instructions/core.md`（平台指令层）
+- 操作规范从 `dev_core.md`（项目约束层）迁移到 `~/.config/opencode/AGENTS.md`（全局约束层）
 - 项目级约束收窄为仅行为准则，平台适配器承载操作规范
 
 **标准迁移步骤：**
@@ -2207,4 +2207,46 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 - **内部 API 纯函数化**：`model-config.ts` 导出 `setAgentModel/getAgentModel/listAgentModels/validateModel/readAuthProviders`，返回结构化结果不 console 输出，供 CLI 与「Model not found 自动修复」共用。
 
 **参见：** v1.1.0-stage-40 op-002、kb/architecture.md #模型配置三层级架构
+
+## [+] 约束/操作分离模式：目录结构语义决定归属（约束→AGENTS.md，操作→skill）(2026-09-26)
+
+按「内容性质」决定存放位置，而非按「谁写的」或「历史遗留」：约束（常驻、跨项目统一、描述「是什么/必须怎样」）→ 全局 AGENTS.md；操作步骤（按需加载、描述「怎么做」）→ skill。v1.1.1 用此模式收敛约束存放：
+
+| 内容类型 | 归属 | 加载方式 |
+|---------|------|---------|
+| 行为约束/规范/原则 | 全局 `~/.config/opencode/AGENTS.md` | 常驻自动加载（跨项目统一） |
+| 操作步骤/工作流 | skill（`openfeel-workspace`、`openfeel-tool-usage` 等） | 按需 skill 加载 |
+
+**判定依据：**
+
+- 需要「每会话必读、不可跳过」的内容 → 约束 → AGENTS.md。
+- 需要「触发时才读、避免常驻噪音」的内容 → 操作 → skill。
+
+**落地要点：**
+
+- **约束不两处存放**：移除 core.md（项目 + 全局），只留全局 AGENTS.md，消除 core.md 与 AGENTS.md 内容重复漂移的隐患（历史教训见 troubleshooting.md #双层模板源发散）。
+- **项目级去约束化**：项目 AGENTS.md 只放项目特有约束；框架通用约束全归全局 AGENTS.md（全局 + 项目并存时拼接不覆盖，op-000 实测确认）。
+
+**与既有「约束文件→指令文件迁移模式」的关系**：既有条目是「约束从 dev_core.md 迁到 core.md」的通用四步法；本条目是其终点演进——约束的最终归宿统一为全局 AGENTS.md（操作规范另立 skill），可视为该模式的「全局化收敛版」。
+
+**参见：** v1.1.1-stage-01 op-000~005、kb/architecture.md #全局约束架构、kb/patterns.md #约束文件→指令文件迁移模式
+
+## [+] 纯全局部署命令模式：setup 只部署全局资产，不建项目 .openfeel/ (2026-09-26)
+
+「纯全局部署」命令（`openfeel setup`）与「项目初始化」命令（`openfeel init`）职责分离：setup 只部署全局框架资产、不碰项目目录；init 只做项目初始化、不部署全局资产。
+
+| 命令 | 部署目标 | 建 `.openfeel/`？ |
+|------|---------|:--:|
+| `openfeel setup` | 全局 `~/.config/opencode/`（AGENTS.md + agent + skill + opencode.jsonc） | ❌ 不建 |
+| `openfeel init` | 项目工作区（`.openfeel/` + 项目 opencode.jsonc） | ✅ 建 |
+
+**设计要点：**
+
+- **幂等可重跑**：setup 复用 `deployGlobalAsset`（受管区三态，见 #控制区标记模式），重复执行不破坏用户已有全局配置。
+- **与 init 解耦**：全局部署从 init 拆除收归 setup；init 拆分后新增 `--workspace-only --non-interactive`，供 Feel 在空白项目（无 `.openfeel/`）启动时自动搭工作区。
+- **非 TTY 守卫**：部署完提示「请重启 opencode 以加载新的全局配置」（`isTTY` 守卫，非交互静默跳过）。
+
+**适用场景**：任何「框架资产全局部署」与「项目级初始化」本属两个关注点、却被塞进同一命令的场景——拆成两个命令（setup / init）+ 一个轻量子命令（`--workspace-only`）比一个命令加一堆 flag 更清晰。
+
+**参见：** v1.1.1-stage-01 op-000~005、kb/architecture.md #全局约束架构、kb/patterns.md #迁移命令模式、#init/update 重启提醒对称输出模式
 

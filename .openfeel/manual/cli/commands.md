@@ -26,6 +26,7 @@ src/commands/config.ts      registerConfigCommand
 src/commands/lint.ts        registerLintCommand
 src/commands/migrate.ts     registerMigrateCommand
 src/commands/model.ts       registerModelCommand
+src/commands/setup.ts       registerSetupCommand
 ```
 
 新增命令组：在 `src/commands/` 创建 `registerXxxCommand(program)` 模块，并在 `src/cli/index.ts` 末尾追加 import + register 调用。
@@ -59,6 +60,8 @@ src/commands/model.ts       registerModelCommand
 - `openfeel flow health --quick` — 流水线健康检查
 - `openfeel stage set <id> --status <v>` — 更新阶段状态
 - `openfeel stage create <stageId>` — 创建新的工作阶段（复用 FlowManager.addStage，与 flow stage add 等价）
-- `openfeel migrate [path] [--dry-run] [--remap-assignee]` — 存量旧布局项目迁移（检测/备份/迁移/回滚），`--dry-run` 预览不写盘，`--remap-assignee` 改写 flow.json 旧 assignee（默认仅报告）
+- `openfeel migrate [path] [--dry-run] [--remap-assignee] [--clean-global-core-md]` — 存量旧布局项目迁移（检测/备份/迁移/回滚），`--dry-run` 预览不写盘，`--remap-assignee` 改写 flow.json 旧 assignee（默认仅报告），`--clean-global-core-md` 删除已废弃的全局 core.md（默认仅提示不删）
 - `openfeel migrate rollback [--dry-run]` — 回滚最近一次迁移（读 `.openfeel/backup/{latest}/manifest.json`），`--dry-run` 仅预览回滚计划
+- `openfeel setup [--lang <zh-CN|en>]` — 纯全局部署（全局 AGENTS.md + agent + skill + 全局 opencode.jsonc），不建立项目 `.openfeel/`，幂等（详见 [setup 命令](cli/setup.md)）
+- `openfeel init [path] [--workspace-only] [--non-interactive]` — 项目初始化；`--workspace-only` 仅创建 `.openfeel/` 工作区（不建 AGENTS.md/opencode.jsonc），供 Feel 空白项目自动搭建
 - `openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]` — 三层级 agent 模型读写，详见 [model 命令组](cli/model.md)

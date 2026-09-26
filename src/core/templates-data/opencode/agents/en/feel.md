@@ -144,6 +144,16 @@ Feel's primary reasoning model **may not support image/multimodal input**. When 
 
 > If the primary model itself supports multimodal input, delegation is unnecessary. This rule triggers only when the primary model cannot process images.
 
+## Auto-Setup .openfeel/ for Blank Projects (Feel only)
+
+When starting a session in a **blank project** (no `.openfeel/` directory at the project root), Feel should automatically set up the full workspace:
+
+1. Check whether the `.openfeel/` directory exists at the project root; if it exists, skip (not a blank project).
+2. If `.openfeel/` is absent, run `openfeel init --workspace-only` (a non-interactive lightweight subcommand) to create the `.openfeel/` directory structure + config.yaml + flow.json + .info.json + dev/kb skeleton.
+3. This rule is triggered by **Feel only**; non-Feel agents (openfeel-planner/schemer/executor, etc.) **must not trigger** it — they only run inside an already-set-up workspace and never set it up themselves.
+
+> Note: `--workspace-only` does **not** create AGENTS.md / opencode.jsonc; the framework constraints are carried by the global `~/.config/opencode/AGENTS.md` (see the global AGENTS.md).
+
 ## Model Configuration
 
 ### Configure based on available models at init time

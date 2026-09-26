@@ -12,10 +12,10 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
-import { initProject, deployOpencode, initDemo } from '../../src/core/init.js';
+import { initProject, initWorkspaceOnly, initDemo } from '../../src/core/init.js';
 import { readConfig } from '../../src/core/config.js';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 /** 全局 opencode 目录（基于 mock home） */
@@ -142,7 +142,7 @@ describe('initProject', () => {
   });
 });
 
-describe('initProject — opencode deployment', () => {
+describe('initProject — workspace only（v1.1.1：全局部署收归 openfeel setup）', () => {
   let tmpDir: string;
   let homeDir: string;
 
@@ -157,83 +157,53 @@ describe('initProject — opencode deployment', () => {
     rmSync(homeDir, { recursive: true, force: true });
   });
 
-  it('应替换 AGENTS.md 中的 {项目名称} 占位符为目录名', async () => {
+  it('init 应写项目 opencode.jsonc（最小覆盖），不部署 agent/skill/AGENTS.md/core.md', async () => {
     await initProject(tmpDir, 'zh-CN');
-    const content = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
-    const dirName = basename(tmpDir);
-    expect(content).not.toContain('{项目名称}');
-    expect(content).toContain(dirName);
-  });
 
-  it('deployOpencode 首次部署应写全局框架资产并精简项目', () => {
-    // 直接调用导出的 deployOpencode（不依赖 initProject 交互流程）
-    const result = deployOpencode(tmpDir, 'zh-CN');
-
-    // 创建数：9 Agent + 14 Skill + 1 core.md + 1 全局 opencode.jsonc + 1 项目 opencode.jsonc = 26
-    expect(result.created).toBe(26);
-    expect(result.skipped).toBe(0);
-
-    const globalDir = globalOpencodeDir();
-
-    // 全局框架资产存在
-    expect(existsSync(join(globalDir, 'agents', 'feel.md'))).toBe(true);
-    expect(existsSync(join(globalDir, 'skills', 'openfeel-check-kb', 'SKILL.md'))).toBe(true);
-    expect(existsSync(join(globalDir, 'openfeel', 'core.md'))).toBe(true);
-    expect(existsSync(join(globalDir, 'opencode.jsonc'))).toBe(true);
-
-    // 全局 agent 数量 9 个
-    const agentFiles = readdirSync(join(globalDir, 'agents')).filter((f) => f.endsWith('.md'));
-    expect(agentFiles.length).toBe(9);
-
-    // 项目精简：无 .opencode/，仅项目根 opencode.jsonc（最小覆盖）
-    expect(existsSync(join(tmpDir, '.opencode'))).toBe(false);
-    const projectJsonc = JSON.parse(readFileSync(join(tmpDir, 'opencode.jsonc'), 'utf-8'));
-    expect(projectJsonc).toEqual({ $schema: 'https://opencode.ai/config.json' });
-
-    // 全局 opencode.jsonc 为框架级内容
-    const globalJsonc = JSON.parse(readFileSync(join(globalDir, 'opencode.jsonc'), 'utf-8'));
-    expect(globalJsonc.$schema).toBe('https://opencode.ai/config.json');
-    expect(globalJsonc.default_agent).toBe('feel');
-    expect(globalJsonc.instructions).toEqual([join(globalDir, 'openfeel', 'core.md')]);
-    expect(globalJsonc.skills).toBeUndefined();
-    expect(globalJsonc.experimental).toBeUndefined();
-
-    // 再次部署 → 全部 skipped（已存在不覆盖）
-    const result2 = deployOpencode(tmpDir, 'zh-CN');
-    expect(result2.created).toBe(0);
-    expect(result2.skipped).toBe(26);
-  });
-
-  it('全局已存在的 opencode.jsonc 再次部署时被跳过（不覆盖）', () => {
-    deployOpencode(tmpDir, 'zh-CN');
-    // 模拟用户自定义全局配置
-    const globalJsoncPath = join(globalOpencodeDir(), 'opencode.jsonc');
-    const custom = '{ "custom": true }\n';
-    writeFileSync(globalJsoncPath, custom, 'utf-8');
-
-    const result2 = deployOpencode(tmpDir, 'zh-CN');
-    expect(result2.created).toBe(0);
-    // 全局 jsonc 未被覆盖
-    expect(readFileSync(globalJsoncPath, 'utf-8')).toBe(custom);
-  });
-
-  it('非交互模式应跳过 opencode 部署', async () => {
-    // vitest 运行时 stdout.isTTY 为 false → promptOpencodeDeploy 返回 false
-    const result = await initProject(tmpDir, 'zh-CN');
-    expect(existsSync(join(tmpDir, '.opencode'))).toBe(false);
-    expect(result.opencode).toBeUndefined();
-  });
-
-  it('项目 opencode.jsonc 为最小覆盖，不含 instructions/skills/default_agent', () => {
-    deployOpencode(tmpDir, 'zh-CN');
+    // 项目 opencode.jsonc（仅 $schema）
     const opencodeJsonPath = join(tmpDir, 'opencode.jsonc');
     expect(existsSync(opencodeJsonPath)).toBe(true);
     const parsed = JSON.parse(readFileSync(opencodeJsonPath, 'utf-8'));
     expect(parsed).toEqual({ $schema: 'https://opencode.ai/config.json' });
-    expect(parsed.instructions).toBeUndefined();
-    expect(parsed.skills).toBeUndefined();
-    expect(parsed.default_agent).toBeUndefined();
-    expect(readFileSync(opencodeJsonPath, 'utf-8')).not.toContain('{项目名称}');
+
+    // 不产生项目 AGENTS.md / .opencode/
+    expect(existsSync(join(tmpDir, 'AGENTS.md'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.opencode'))).toBe(false);
+
+    // 不部署全局资产（收归 openfeel setup）
+    const globalDir = globalOpencodeDir();
+    expect(existsSync(join(globalDir, 'agents'))).toBe(false);
+    expect(existsSync(join(globalDir, 'skills'))).toBe(false);
+    expect(existsSync(join(globalDir, 'openfeel', 'core.md'))).toBe(false);
+    expect(existsSync(join(globalDir, 'AGENTS.md'))).toBe(false);
+  });
+
+  it('init 返回结果不含 opencode 字段（v1.1.1 移除）', async () => {
+    const result = await initProject(tmpDir, 'zh-CN');
+    expect('opencode' in result).toBe(false);
+  });
+
+  it('initWorkspaceOnly 仅创建工作区，不写 opencode.jsonc/AGENTS.md', () => {
+    const result = initWorkspaceOnly(tmpDir, 'zh-CN');
+
+    expect(existsSync(join(tmpDir, '.openfeel', 'config.yaml'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.openfeel', 'flow.json'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.openfeel', '.info.json'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.openfeel', 'dev', 'dev_core.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.openfeel', 'dev', 'current.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.openfeel', 'dev', 'decisions.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.openfeel', 'kb', 'index.md'))).toBe(true);
+
+    // 非交互轻量：不写项目 opencode.jsonc / AGENTS.md
+    expect(existsSync(join(tmpDir, 'opencode.jsonc'))).toBe(false);
+    expect(existsSync(join(tmpDir, 'AGENTS.md'))).toBe(false);
+    expect(result.created.length).toBeGreaterThan(0);
+  });
+
+  it('initWorkspaceOnly 语言缺省为 zh-CN', () => {
+    initWorkspaceOnly(tmpDir);
+    const info = JSON.parse(readFileSync(join(tmpDir, '.openfeel', '.info.json'), 'utf-8'));
+    expect(info.lang).toBe('zh-CN');
   });
 });
 

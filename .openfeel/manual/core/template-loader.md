@@ -8,7 +8,7 @@
 
 ## 单源架构（stage-36）
 
-v1.1.0-stage-36 前存在双层模板源（`templates-data/agents/` vs `templates-data/opencode/agents/` 等三对），已收敛为**单一权威树 `templates-data/opencode/`**。template-loader 持有的注入对象（`AGENT_TEMPLATES` / `OPENCODE_AGENT_TEMPLATES` / `OPENCODE_SKILL_DEFINITIONS` / `OPENCODE_CONFIG_TEMPLATES` / `CORE_INSTRUCTIONS_TEMPLATES` / `AGENTS_MD_TEMPLATES`）全部由该单源生成；build.js 的 `validateSingleSourceConsistency()` 断言三对对象键集与内容一致。
+v1.1.0-stage-36 前存在双层模板源（`templates-data/agents/` vs `templates-data/opencode/agents/` 等三对），已收敛为**单一权威树**（agent/skill/adapter 源自 `templates-data/opencode/`，全局 AGENTS.md 源自 `templates-data/agents-md/`）。template-loader 持有的注入对象（`AGENT_TEMPLATES` / `OPENCODE_AGENT_TEMPLATES` / `OPENCODE_SKILL_DEFINITIONS` / `OPENCODE_CONFIG_TEMPLATES` / `AGENTS_MD_TEMPLATES`）全部由该单源生成；build.js 的 `validateSingleSourceConsistency()` 断言两对对象键集与内容一致（v1.1.1 移除 instructions 双源断言；`CORE_INSTRUCTIONS_TEMPLATES` 已退役）。
 
 ## 核心 API
 
@@ -33,3 +33,4 @@ v1.1.0-stage-36 前存在双层模板源（`templates-data/agents/` vs `template
 | 阶段 | 变更 |
 |------|------|
 | stage-36 | 模板源收敛为 `templates-data/opencode/` 单源；agent/skill 键加 `openfeel-` 前缀（`feel` 保留）；生成段键随 build 重生成自动带前缀 |
+| v1.1.1 | 退役 `CORE_INSTRUCTIONS_TEMPLATES` 生成段与 `loadTemplate('core-instructions')`；`TemplateName` 收窄为 `'agents-md'`；`AGENTS_MD_TEMPLATE` 保留、移除 `CORE_INSTRUCTIONS_TEMPLATE_B64`；`OPENCODE_CONFIG_TEMPLATES` 仅保留 adapter |

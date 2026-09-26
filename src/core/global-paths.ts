@@ -27,9 +27,14 @@ export function getGlobalOpencodeJsoncPath(): string {
   return join(getOpencodeGlobalDir(), 'opencode.jsonc');
 }
 
-/** 全局框架约束 core.md 路径（~/.config/opencode/openfeel/core.md） */
+/** 全局框架约束 core.md 路径（~/.config/opencode/openfeel/core.md；v1.1.1 起废弃，仅兼容检测/清理） */
 export function getGlobalCoreMdPath(): string {
   return join(getOpencodeGlobalDir(), 'openfeel', 'core.md');
+}
+
+/** 全局 AGENTS.md 路径（~/.config/opencode/AGENTS.md；框架约束唯一权威，v1.1.1） */
+export function getGlobalAgentsMdPath(): string {
+  return join(getOpencodeGlobalDir(), 'AGENTS.md');
 }
 
 /** 全局 update_state.json 路径（~/.openfeel/update_state.json） */

@@ -1,0 +1,131 @@
+# stage-01 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.1-stage-01
+
+ops:
+  op-000:
+    file: op-000.md
+    title: "前置实测：全局 AGENTS.md 自动加载 + 全局/项目并存合并语义"
+    produces:
+      - .openfeel/plan/v1/stage-01/op-000-findings.md
+    deps: []
+
+  op-001:
+    file: op-001.md
+    title: "模板重构：agents-md → 全局 AGENTS.md + core.md 删除 + 2 新 skill + build.js 调整"
+    produces:
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/opencode/skills/openfeel-workspace/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-tool-usage/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/templates.ts
+      - src/core/update.ts
+      - src/core/migrate.ts
+      - build.js
+    deps:
+      - op: op-000
+        type: hard
+        reason: "AGENTS.md 模板形态依赖 op-000 加载机制结论（自动加载 vs instructions 引用）"
+
+  op-002:
+    file: op-002.md
+    title: "setup 命令 + init 拆全局部署 + workspace-only 子命令"
+    produces:
+      - src/core/setup.ts
+      - src/commands/setup.ts
+      - src/core/global-paths.ts
+      - src/core/init.ts
+      - src/commands/init.ts
+      - src/cli/index.ts
+      - src/core/i18n.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "setup 部署全局 AGENTS.md 依赖 op-001 的 agents-md 模板 + 2 新 skill"
+
+  op-003:
+    file: op-003.md
+    title: "update 收敛 + opencode-config instructions 调整 + state key remap"
+    produces:
+      - src/core/update.ts
+      - src/core/opencode-config.ts
+      - src/commands/update.ts
+      - src/core/migrate.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "移除 core-instructions 调用点依赖 op-001 已删模板管线"
+      - op: op-002
+        type: hard
+        reason: "getGlobalAgentsMdPath 依赖 op-002 新增"
+
+  op-004:
+    file: op-004.md
+    title: "feel 空白项目自动搭建 + migrate 清理旧 core.md + 兼容过渡"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/migrate.ts
+      - src/commands/migrate.ts
+      - src/core/i18n.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    deps:
+      - op: op-002
+        type: hard
+        reason: "feel.md 引用 openfeel init --workspace-only 依赖 op-002 子命令"
+      - op: op-003
+        type: hard
+        reason: "migrate 清理全局 core.md 依赖 op-003 已切换全局 AGENTS.md + state remap"
+
+  op-005:
+    file: op-005.md
+    title: "测试 + 文档收口（版本 1.1.1 同步）"
+    produces:
+      - test/core/setup.test.ts
+      - test/core/init.test.ts
+      - test/core/update.test.ts
+      - test/core/opencode-config.test.ts
+      - test/core/global-paths.test.ts
+      - test/core/migrate.test.ts
+      - test/core/template-loader.test.ts
+      - test/commands/init.test.ts
+      - test/commands/migrate.test.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - package.json
+      - CHANGELOG.md
+      - .openfeel/manual/index.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "测试对象（模板/skill）须就绪"
+      - op: op-002
+        type: hard
+        reason: "setup/init 行为测试依赖 op-002"
+      - op: op-003
+        type: hard
+        reason: "update 行为测试依赖 op-003"
+      - op: op-004
+        type: hard
+        reason: "migrate/feel 测试依赖 op-004"
+
+parallel_groups:
+  - group: [op-000]
+    desc: "调研实测——先定型 AGENTS.md 加载机制（无 hard 前置）"
+  - group: [op-001]
+    desc: "模板层——依赖 op-000 结论定型模板/skill/build.js"
+  - group: [op-002]
+    desc: "命令层 setup + init——依赖 op-001 模板就绪"
+  - group: [op-003]
+    desc: "update 收敛——依赖 op-001/002（getGlobalAgentsMdPath）"
+  - group: [op-004]
+    desc: "feel/migrate——依赖 op-002/003"
+  - group: [op-005]
+    desc: "测试收口——依赖 op-001~004 全部就绪"

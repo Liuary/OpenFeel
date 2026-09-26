@@ -14,7 +14,7 @@ import {
   updateFileHash, getOpenfeelVersion, isLegacyFrameworkKey, type UpdateState,
 } from './update-state.js';
 import {
-  getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalOpencodeJsoncPath,
+  getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalAgentsMdPath, getGlobalOpencodeJsoncPath,
 } from './global-paths.js';
 import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader.js';
 import { mergeGlobalOpencodeJsonc, parseJsonc } from './opencode-config.js';
@@ -66,6 +66,13 @@ export interface MigrateResult {
   jsoncCleaned: boolean;             // 项目 opencode.jsonc 是否清理了非法字段
   assigneeReport: { oldName: string; newName: string; count: number }[];
   remapped: boolean;                 // 是否执行了 assignee 改写
+  deprecated: DeprecatedCompatReport; // v1.1.1 兼容过渡检测（全局旧 core.md / 存量项目 AGENTS.md）
+}
+
+/** 兼容过渡检测报告（v1.1.1）：全局旧 core.md 与存量项目 AGENTS.md（均不强制删除，仅提示） */
+export interface DeprecatedCompatReport {
+  globalCoreMdExists: boolean;    // ~/.config/opencode/openfeel/core.md 旧资产
+  projectAgentsMdExists: boolean; // 项目根 AGENTS.md（已收归全局）
 }
 
 /** state 拆分结果 */
@@ -339,11 +346,22 @@ function remapLegacyKey(key: string, lang: 'zh-CN' | 'en'): string | null {
     if (!mapped) return null;  // 非 14 skill 旧名（项目自定义 skill）
     return join(getGlobalSkillsDir(), mapped, 'SKILL.md');
   }
-  // .opencode/instructions/core.md → 全局 core.md
+  // .opencode/instructions/core.md → 全局 AGENTS.md（v1.1.1）
   if (norm === '.opencode/instructions/core.md') {
-    return getGlobalCoreMdPath();
+    return getGlobalAgentsMdPath();
   }
   return null;
+}
+
+/**
+ * 兼容过渡检测（v1.1.1）：全局旧 core.md 与存量项目 AGENTS.md（均不强制删除，仅提示）。
+ * globalCoreMdExists 检测的是全局资产（跨项目），故仅作提示，删除须显式 --clean-global-core-md。
+ */
+export function detectDeprecatedCompat(projectPath: string): DeprecatedCompatReport {
+  return {
+    globalCoreMdExists: existsSync(getGlobalCoreMdPath()),
+    projectAgentsMdExists: existsSync(resolve(projectPath, 'AGENTS.md')),
+  };
 }
 
 // ─── 清理项目 opencode.jsonc ────────────────────────────────────
@@ -417,13 +435,15 @@ export function cleanOldBackups(projectPath: string, keep: number = 5): string[]
 /** 迁移主流程：检测→备份→全局部署→state 拆分→清理→assignee 报告 */
 export function migrateProject(
   projectPath: string,
-  opts?: { dryRun?: boolean; remapAssignee?: boolean; lang?: 'zh-CN' | 'en' },
+  opts?: { dryRun?: boolean; remapAssignee?: boolean; lang?: 'zh-CN' | 'en'; cleanGlobalCoreMd?: boolean },
 ): MigrateResult {
   const lang = opts?.lang ?? 'zh-CN';
   const dryRun = opts?.dryRun ?? false;
   const remap = opts?.remapAssignee ?? false;
+  const cleanGlobalCoreMd = opts?.cleanGlobalCoreMd ?? false;
 
   const legacy = detectLegacy(projectPath);
+  const deprecated = detectDeprecatedCompat(projectPath);
   const { framework, custom } = listLegacyFiles(projectPath, lang);
 
   // REV-1307：不论 remap 与否都先扫描报告（remapAssignees(..., true) 仅扫描不写）；
@@ -438,12 +458,18 @@ export function migrateProject(
     return {
       legacy, backupDir: null, deployed: [], stateSplit: { movedToGlobal: [], keptInProject: [], unmapped: [] },
       cleaned: framework, keptCustom: custom, jsoncCleaned: legacy.legacyJsoncSkillsMapping || legacy.legacyJsoncInstructions,
-      assigneeReport, remapped: false,
+      assigneeReport, remapped: false, deprecated,
     };
   }
 
   if (!legacy.isLegacy) {
-    return { legacy, backupDir: null, deployed: [], stateSplit: { movedToGlobal: [], keptInProject: [], unmapped: [] }, cleaned: [], keptCustom: [], jsoncCleaned: false, assigneeReport, remapped: false };
+    // v1.1.1：项目非 legacy 时仍可显式清理全局旧 core.md（独立于项目 legacy 状态）
+    if (cleanGlobalCoreMd && deprecated.globalCoreMdExists) {
+      rmSync(getGlobalCoreMdPath(), { force: true });
+      // REV-2101：删除成功后同步更新报告状态，避免提示「可运行 --clean-global-core-md 删除」
+      deprecated.globalCoreMdExists = false;
+    }
+    return { legacy, backupDir: null, deployed: [], stateSplit: { movedToGlobal: [], keptInProject: [], unmapped: [] }, cleaned: [], keptCustom: [], jsoncCleaned: false, assigneeReport, remapped: false, deprecated };
   }
 
   // 1. 备份
@@ -457,10 +483,10 @@ export function migrateProject(
   // REV-1405：全局部署 + state 拆分纳入 try/finally。步骤 2 中途抛异常时仍回填
   // manifest.globalStateKeys（已部署 key），避免 rollback 无法清理已写入的全局 state 记录。
   try {
-    const corePath = getGlobalCoreMdPath();
-    deployGlobalAsset(corePath, loadTemplate(lang, 'core-instructions'), globalState);
-    deployed.push(corePath);
-    globalStateKeys.push(corePath);
+    const agentsMdPath = getGlobalAgentsMdPath();
+    deployGlobalAsset(agentsMdPath, loadTemplate(lang, 'agents-md'), globalState);
+    deployed.push(agentsMdPath);
+    globalStateKeys.push(agentsMdPath);
     const agentsDir = getGlobalAgentsDir();
     for (const name of listAgentIds(lang)) {
       const p = join(agentsDir, `${name}.md`);
@@ -476,7 +502,7 @@ export function migrateProject(
       deployed.push(p);
       globalStateKeys.push(p);
     }
-    // REV-1804：框架资产（core.md / agents / skills）写盘后同步全局 state hash，与 update.ts 末尾循环一致；
+    // REV-1804：框架资产（全局 AGENTS.md / agents / skills）写盘后同步全局 state hash，与 update.ts 末尾循环一致；
     // 避免迁移后 hash 缺失导致下次 update 误判为外部修改。global jsonc 的 hash 在下方单独更新，不重复。
     for (const p of deployed) {
       if (existsSync(p)) {
@@ -531,13 +557,21 @@ export function migrateProject(
   let remapped = false;
   const finalAssigneeReport = remap ? (() => { const r = remapAssignees(projectPath, false); remapped = r.count > 0; return aggregateAssignee(r); })() : assigneeReport;
 
+  // 6b. 兼容过渡：全局旧 core.md 默认仅提示；显式 --clean-global-core-md 时删除
+  //（全局资产不备份、不还原，manifest 不记录该删除，REV-1201）
+  if (cleanGlobalCoreMd && deprecated.globalCoreMdExists) {
+    rmSync(getGlobalCoreMdPath(), { force: true });
+    // REV-2101：删除成功后同步更新报告状态，避免提示「可运行 --clean-global-core-md 删除」
+    deprecated.globalCoreMdExists = false;
+  }
+
   // 7. 备份清理（REV-1206）
   cleanOldBackups(projectPath, 5);
 
   return {
     legacy, backupDir, deployed, stateSplit,
     cleaned: framework, keptCustom: custom, jsoncCleaned,
-    assigneeReport: finalAssigneeReport, remapped,
+    assigneeReport: finalAssigneeReport, remapped, deprecated,
   };
 }
 

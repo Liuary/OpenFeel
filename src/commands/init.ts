@@ -1,13 +1,14 @@
 /**
  * init 命令注册
- * openfeel init [path] [--demo] — 初始化项目工作区
+ * openfeel init [path] [--demo] [--lang] — 初始化项目工作区
+ * openfeel init --workspace-only — 仅创建 .openfeel/ 工作区（非交互，供 feel 空白项目自动搭建）
  *
  * --demo 标志：在基础初始化之外，额外创建示例项目骨架
  */
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { initProject, initDemo } from '../core/init.js';
+import { initProject, initDemo, initWorkspaceOnly } from '../core/init.js';
 import { t, getCliLang } from '../core/i18n.js';
 
 export function registerInitCommand(program: Command): void {
@@ -16,7 +17,9 @@ export function registerInitCommand(program: Command): void {
     .description('初始化项目工作区，创建 .openfeel/ 目录结构和配置文件')
     .option('--demo', '创建带示例骨架的项目（NumKit 风格）')
     .option('--lang <lang>', 'Agent 提示词语言（zh-CN 或 en），非交互环境默认 zh-CN')
-    .action(async (path?: string, options?: { demo?: boolean; lang?: string }) => {
+    .option('--workspace-only', '仅创建 .openfeel/ 工作区（不建 AGENTS.md/opencode.jsonc），供 feel 空白项目自动搭建')
+    .option('--non-interactive', '非交互模式（配合 --workspace-only 使用）')
+    .action(async (path?: string, options?: { demo?: boolean; lang?: string; workspaceOnly?: boolean; nonInteractive?: boolean }) => {
       const targetPath = resolve(path ?? process.cwd());
       const lang = getCliLang(targetPath);
 
@@ -28,7 +31,10 @@ export function registerInitCommand(program: Command): void {
 
       console.log(t('init.initializingTmpl', lang, { path: targetPath }));
 
-      const result = await initProject(targetPath, options?.lang);
+      // --workspace-only：非交互，仅创建工作区
+      const result = options?.workspaceOnly
+        ? initWorkspaceOnly(targetPath, options?.lang)
+        : await initProject(targetPath, options?.lang);
 
       // 输出创建的目录
       if (result.created.length > 0) {

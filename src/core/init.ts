@@ -3,27 +3,25 @@
  * 协调创建工作区、写入配置、初始化 flow.json、确保身份文件、
  * 生成 dev_core.md/current.md 模板。
  *
- * 注意：框架约束 core.md 由 update 命令部署到全局
- * `~/.config/opencode/openfeel/core.md`（适配器层，非核心层），不在 init 阶段生成。
+ * 注意：全局框架约束（AGENTS.md + agent + skill）由 `openfeel setup` 部署到
+ * `~/.config/opencode/`（v1.1.1 起统一），项目级不再部署约束/agent/skill。
  *
  * 变更摘要：
  * - stage-04: 新增 initDemo() 支持 --demo 标志
- * - stage-37: deployOpencode 部署目标改为全局 ~/.config/opencode/，项目精简为 .openfeel/ + AGENTS.md + opencode.jsonc
+ * - stage-37: deployOpencode 部署目标改为全局 ~/.config/opencode/
+ * - v1.1.1: 拆除 deployOpencode 与项目 AGENTS.md 骨架；新增 initWorkspaceOnly（--workspace-only）
  */
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve, dirname, join, basename } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
 import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson, isFirstUse, getGlobalConfig, setGlobalConfig, DEFAULT_GLOBAL_CONFIG } from './workspace/identity.js';
 import { writeDefaultConfig } from './config.js';
 import { FlowManager } from './flow-manager.js';
 import { getDevCoreTemplate, getCurrentTemplate, getDecisionsTemplate } from './templates.js';
-import { loadTemplate, loadOpencodeAgentTemplate, loadOpencodeSkillTemplate, loadOpencodeConfigTemplate, listOpencodeAgentIds, listOpencodeSkillNames } from './template-loader.js';
 import { t, getCliLang } from './i18n.js';
 import { DEFAULT_STAGE_VERSION } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
-import { withFileLock, globalLockPath } from './fs/file-lock.js';
-import { getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalOpencodeJsoncPath } from './global-paths.js';
-import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './opencode-config.js';
+import { buildProjectOpencodeJsoncObj } from './opencode-config.js';
 import readline from 'node:readline';
 
 /**
@@ -56,31 +54,6 @@ async function promptLanguage(): Promise<'zh-CN' | 'en'> {
         // 默认 zh-CN（包含回车、2、zh、chinese 等情况）
         resolve('zh-CN');
       }
-    });
-  });
-}
-
-/**
- * 提示用户是否部署 OpenCode 平台适配器
- * 交互模式：提问 Y/n（默认 Y），非交互模式：静默返回 false
- */
-async function promptOpencodeDeploy(lang: 'zh-CN' | 'en'): Promise<boolean> {
-  if (!process.stdout.isTTY) {
-    return false; // 非交互模式，跳过
-  }
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-    const prompt = lang === 'en'
-      ? 'Deploy OpenCode platform adapter? [Y/n] '
-      : '是否部署 OpenCode 平台适配器？[Y/n] ';
-    rl.question(prompt, (answer) => {
-      rl.close();
-      const trimmed = answer.trim().toLowerCase();
-      // 默认 Y（仅显式 n/no 时拒绝）
-      resolve(trimmed !== 'n' && trimmed !== 'no');
     });
   });
 }
@@ -155,7 +128,6 @@ async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
 export interface InitResult {
   created: string[]; // 创建的目录列表
   updated: string[]; // 更新的文件列表
-  opencode?: OpencodeDeployResult; // 如部署了 opencode 则有此字段
 }
 
 /** 示例骨架创建结果 */
@@ -184,118 +156,25 @@ function writeTemplateIfMissing(
 }
 
 /**
- * 全局文件写入：全局文件锁 + 原子写 + 已存在不覆盖
- * 与 writeTemplateIfMissing 同语义，但针对跨项目共享的全局路径（~/.config/opencode/）。
+ * 仅创建工作区（目录 + config.yaml + flow.json + .info.json + dev/kb 模板），
+ * 不写项目 opencode.jsonc / AGENTS.md（v1.1.1：workspace-only 与 initProject 复用）。
+ * 语言由参数传入，不再内部 promptLanguage。
  */
-function writeGlobalFileIfMissing(filePath: string, content: string): { created: boolean } {
-  return withFileLock(globalLockPath('opencode-deploy'), () => {
-    if (existsSync(filePath)) {
-      return { created: false };
-    }
-    atomicWriteFileSync(filePath, content);
-    return { created: true };
-  });
-}
-
-/** opencode 部署结果 */
-export interface OpencodeDeployResult {
-  created: number;
-  skipped: number;
-}
-
-/**
- * 部署 OpenCode 平台适配器到全局 ~/.config/opencode/（D1 全局化）
- * 全局文件遵循"已存在不覆盖"；项目仅写最小 opencode.jsonc 覆盖。
- * ⚠️ 不部署 package.json（REV-001）；不部署 ADAPTER/.gitignore（已随 .opencode/ 废弃）。
- * 导出供测试直接调用（不依赖交互流程）
- */
-export function deployOpencode(projectPath: string, lang: 'zh-CN' | 'en'): OpencodeDeployResult {
-  let created = 0;
-  let skipped = 0;
-
-  const track = (result: { created: boolean }) => {
-    if (result.created) created++; else skipped++;
-  };
-
-  // 1. Agent 定义（9 个）→ 全局 agents 目录
-  const agentIds = listOpencodeAgentIds(lang);
-  for (const agentId of agentIds) {
-    track(writeGlobalFileIfMissing(
-      join(getGlobalAgentsDir(), `${agentId}.md`),
-      loadOpencodeAgentTemplate(lang, agentId),
-    ));
-  }
-
-  // 2. Skill 定义（14 个）→ 全局 skills 目录
-  const skillNames = listOpencodeSkillNames();
-  for (const skillName of skillNames) {
-    track(writeGlobalFileIfMissing(
-      join(getGlobalSkillsDir(), skillName, 'SKILL.md'),
-      loadOpencodeSkillTemplate(skillName),
-    ));
-  }
-
-  // 3. 框架约束 core.md → 全局 ~/.config/opencode/openfeel/core.md
-  track(writeGlobalFileIfMissing(
-    getGlobalCoreMdPath(),
-    loadOpencodeConfigTemplate(lang, 'instructions'),
-  ));
-
-  // 4. 全局 opencode.jsonc：不存在则写框架级内容（REV-605：已存在则跳过，合并归 op-003）
-  track(writeGlobalFileIfMissing(
-    getGlobalOpencodeJsoncPath(),
-    mergeGlobalOpencodeJsonc('{}\n'),
-  ));
-
-  // 5. 项目 opencode.jsonc：最小覆盖（仅 $schema），写入项目根（项目内原子写）
-  const projectJsoncPath = resolve(projectPath, 'opencode.jsonc');
-  if (existsSync(projectJsoncPath)) {
-    track({ created: false });
-  } else {
-    atomicWriteFileSync(projectJsoncPath, JSON.stringify(buildProjectOpencodeJsoncObj(), null, 2) + '\n');
-    track({ created: true });
-  }
-
-  return { created, skipped };
-}
-
-/**
- * 初始化项目工作区
- * 步骤：创建目录 → 写入 config.yaml → 初始化 flow.json → 创建 .info.json
- *       → 语言选择 → 生成 dev_core.md → 生成 current.md → 生成 decisions.md → 生成 AGENTS.md
- */
-export async function initProject(projectPath: string, cliLang?: string): Promise<InitResult> {
+function initWorkspaceCore(
+  projectPath: string,
+  lang: 'zh-CN' | 'en',
+): { created: string[]; updated: string[] } {
   const created: string[] = [];
   const updated: string[] = [];
-
-  // 0. 确保全局配置存在（首次使用时交互选择语言）
-  await ensureGlobalConfig();
 
   // 1. 创建 .openfeel/ 目录结构（含 plan/, roadmap/, dev/note/, 等）
   const dirs = createWorkspace(projectPath);
   created.push(...dirs);
 
-  // 1a. 语言选择：CLI --lang 参数 > 交互式选择 > 全局默认语言
-  //     提前选择，以便后续写入的模板文件使用正确语言
-  const globalLang = getGlobalConfig().lang;
-  let selectedLang: 'zh-CN' | 'en';
-  if (cliLang === 'en' || cliLang === 'zh-CN') {
-    selectedLang = cliLang;
-    console.log(t('init.agentLangTmpl', getCliLang(projectPath), { lang: selectedLang === 'en' ? 'English' : '中文' }));
-  } else if (cliLang) {
-    console.warn(t('init.invalidLangWarnTmpl', getCliLang(projectPath), { lang: cliLang }));
-    selectedLang = await promptLanguage();
-  } else {
-    selectedLang = await promptLanguage();
-  }
-
-  // 1b. OpenCode 部署确认
-  const deployOpencodeFlag = await promptOpencodeDeploy(selectedLang);
-
   // 2. 写入默认配置（根据所选语言）
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
   const configExisted = existsSync(configPath);
-  writeDefaultConfig(projectPath, selectedLang);
+  writeDefaultConfig(projectPath, lang);
   if (configExisted) {
     updated.push('.openfeel/config.yaml');
   } else {
@@ -323,56 +202,71 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   }
 
   // 4b. 将语言写入 .info.json
-  writeLang(projectPath, selectedLang);
+  writeLang(projectPath, lang);
 
   // 5. 生成 .openfeel/dev/dev_core.md 模板（双语）
   const devCorePath = resolve(projectPath, '.openfeel', 'dev', 'dev_core.md');
-  const devCoreResult = writeTemplateIfMissing(devCorePath, getDevCoreTemplate(selectedLang));
-  if (devCoreResult.created) {
+  if (writeTemplateIfMissing(devCorePath, getDevCoreTemplate(lang)).created) {
     created.push('.openfeel/dev/dev_core.md');
   }
 
   // 6. 生成 .openfeel/dev/current.md 模板（双语）
   const currentPath = resolve(projectPath, '.openfeel', 'dev', 'current.md');
-  const currentResult = writeTemplateIfMissing(currentPath, getCurrentTemplate(selectedLang));
-  if (currentResult.created) {
+  if (writeTemplateIfMissing(currentPath, getCurrentTemplate(lang)).created) {
     created.push('.openfeel/dev/current.md');
   }
 
   // 6b. 生成 .openfeel/dev/decisions.md 模板（ADR 格式）
   const decisionsPath = resolve(projectPath, '.openfeel', 'dev', 'decisions.md');
-  const decisionsResult = writeTemplateIfMissing(decisionsPath, getDecisionsTemplate(selectedLang));
-  if (decisionsResult.created) {
+  if (writeTemplateIfMissing(decisionsPath, getDecisionsTemplate(lang)).created) {
     created.push('.openfeel/dev/decisions.md');
   }
 
   // 7. 生成 .openfeel/kb/index.md 模板（双语）
   const kbIndexPath = resolve(projectPath, '.openfeel', 'kb', 'index.md');
-  const kbContent = selectedLang === 'en'
+  const kbContent = lang === 'en'
     ? '# Knowledge Base Index\n\n> No entries yet.\n'
     : '# 知识库索引\n\n> 暂无条目。\n';
-  const kbResult = writeTemplateIfMissing(kbIndexPath, kbContent);
-  if (kbResult.created) {
+  if (writeTemplateIfMissing(kbIndexPath, kbContent).created) {
     created.push('.openfeel/kb/index.md');
   }
 
-  // 7b. 部署 opencode 适配器（如用户确认）
-  let opencodeResult: OpencodeDeployResult | undefined;
-  if (deployOpencodeFlag) {
-    opencodeResult = deployOpencode(projectPath, selectedLang);
+  return { created, updated };
+}
+
+/**
+ * 初始化项目工作区
+ * 步骤：确保全局配置 → 语言选择 → 创建工作区 → 项目 opencode.jsonc → package.json vitest 检测
+ * （v1.1.1：拆除全局 agent/skill/core.md 部署与项目 AGENTS.md 骨架，收归 openfeel setup）
+ */
+export async function initProject(projectPath: string, cliLang?: string): Promise<InitResult> {
+  // 0. 确保全局配置存在（首次使用时交互选择语言）
+  await ensureGlobalConfig();
+
+  // 1. 语言选择：CLI --lang 参数 > 交互式选择 > 全局默认语言
+  let selectedLang: 'zh-CN' | 'en';
+  if (cliLang === 'en' || cliLang === 'zh-CN') {
+    selectedLang = cliLang;
+    console.log(t('init.agentLangTmpl', getCliLang(projectPath), { lang: selectedLang === 'en' ? 'English' : '中文' }));
+  } else if (cliLang) {
+    console.warn(t('init.invalidLangWarnTmpl', getCliLang(projectPath), { lang: cliLang }));
+    selectedLang = await promptLanguage();
+  } else {
+    selectedLang = await promptLanguage();
   }
 
-  // 8. 生成 AGENTS.md 骨架文件（项目根目录），根据语言选择加载模板
-  const agentsMdPath = resolve(projectPath, 'AGENTS.md');
-  const agentsMdContent = loadTemplate(selectedLang, 'agents-md');
-  const projectName = basename(projectPath);
-  const replacedContent = agentsMdContent.replace(/\{项目名称\}/g, projectName);
-  const agentsMdResult = writeTemplateIfMissing(agentsMdPath, replacedContent);
-  if (agentsMdResult.created) {
-    created.push('AGENTS.md');
+  // 2. 创建工作区（目录 + config.yaml + flow.json + .info.json + dev/kb 模板）
+  const { created, updated } = initWorkspaceCore(projectPath, selectedLang);
+
+  // 3. 项目 opencode.jsonc：最小覆盖（仅 $schema），不存在则写
+  //    （v1.1.1 REV-1905 从 deployOpencode 抽出到 initProject）
+  const projectJsoncPath = resolve(projectPath, 'opencode.jsonc');
+  if (!existsSync(projectJsoncPath)) {
+    atomicWriteFileSync(projectJsoncPath, JSON.stringify(buildProjectOpencodeJsoncObj(), null, 2) + '\n');
+    created.push('opencode.jsonc');
   }
 
-  // 9. 检测 package.json，若存在 vitest 则添加 @vitest/coverage-v8
+  // 4. 检测 package.json，若存在 vitest 则添加 @vitest/coverage-v8
   const pkgPath = resolve(projectPath, 'package.json');
   if (existsSync(pkgPath)) {
     const pkgContent = readFileSync(pkgPath, 'utf-8');
@@ -400,16 +294,16 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
     }
   }
 
-  // 10. 重启提醒（仅在 opencode 首次部署时，且为交互模式）
-  if (opencodeResult && opencodeResult.created > 0 && process.stdout.isTTY) {
-    console.log(
-      selectedLang === 'en'
-        ? 'opencode global configuration deployed. Please restart opencode to load the new global agents/skills/constraints.'
-        : 'opencode 全局配置已部署，请重启 opencode 以加载新的全局 agent/skill/约束。'
-    );
-  }
+  return { created, updated };
+}
 
-  return { created, updated, opencode: opencodeResult };
+/**
+ * 非交互轻量子命令：仅创建工作区（供 feel 空白项目自动搭建；不建 AGENTS.md/opencode.jsonc）
+ * 不做语言交互、不部署全局配置。
+ */
+export function initWorkspaceOnly(projectPath: string, lang?: string): { created: string[]; updated: string[] } {
+  const deployLang: 'zh-CN' | 'en' = (lang === 'en' || lang === 'zh-CN') ? lang : 'zh-CN';
+  return initWorkspaceCore(projectPath, deployLang);
 }
 
 /**

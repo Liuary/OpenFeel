@@ -29,9 +29,8 @@ describe('buildGlobalOpencodeFrameworkObj', () => {
     expect(obj.default_agent).toBe('feel');
   });
 
-  it('instructions 应为绝对路径（非 ~ 形式）且指向 core.md', () => {
-    expect(obj.instructions).toEqual([getGlobalCoreMdPath()]);
-    expect((obj.instructions as string[])[0].startsWith('~')).toBe(false);
+  it('不应包含 instructions（全局 AGENTS.md 由约定自动加载，op-000 实测 YES）', () => {
+    expect('instructions' in obj).toBe(false);
   });
 
   it('应包含 vision/reviewer 两个模型默认键', () => {
@@ -136,10 +135,23 @@ describe('mergeGlobalOpencodeJsonc', () => {
     expect((parsed.agent as Record<string, unknown>).custom).toEqual({ model: 'x/y' });
     expect((parsed.experimental as Record<string, unknown>).foo).toBe(true);
     expect(parsed.default_agent).toBe('feel');
-    expect(parsed.instructions).toEqual([getGlobalCoreMdPath()]);
+    expect('instructions' in parsed).toBe(false);
     expect('skills' in parsed).toBe(false);
     // 幂等：二次合并输出一致
     expect(mergeGlobalOpencodeJsonc(out1)).toBe(out1);
+  });
+
+  it('清理已废弃的全局 core.md instructions 引用，保留用户其他 instructions（v1.1.1）', () => {
+    const stale = getGlobalCoreMdPath();
+    const raw = JSON.stringify({ instructions: [stale, 'custom.md'] });
+    const parsed = JSON.parse(mergeGlobalOpencodeJsonc(raw)) as Record<string, unknown>;
+    expect(parsed.instructions).toEqual(['custom.md']);
+  });
+
+  it('仅含废弃 core.md 引用时删除 instructions 键', () => {
+    const raw = JSON.stringify({ instructions: [getGlobalCoreMdPath()] });
+    const parsed = JSON.parse(mergeGlobalOpencodeJsonc(raw)) as Record<string, unknown>;
+    expect('instructions' in parsed).toBe(false);
   });
 
   it('空对象输入可生成框架级配置', () => {

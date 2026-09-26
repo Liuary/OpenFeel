@@ -2,6 +2,24 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1] - 2026-09-26
+
+### Added
+- `openfeel setup` 命令：纯全局部署（全局 AGENTS.md + 9 agent + 16 skill + 全局 opencode.jsonc），不建立项目 `.openfeel/`，幂等可重跑
+- `openfeel init --workspace-only --non-interactive`：非交互轻量子命令，仅创建 `.openfeel/` 工作区（不建 AGENTS.md/opencode.jsonc），供 Feel 空白项目自动搭建
+- 新增 skill：`openfeel-workspace`（会话启动自检操作步骤）、`openfeel-tool-usage`（Agent 工具使用规范）；skill 总数 14 → 16
+- `openfeel migrate --clean-global-core-md`：显式删除已废弃的全局 core.md（默认仅提示不删）
+- `detectDeprecatedCompat`：检测全局旧 core.md / 存量项目 AGENTS.md 并提示
+
+### Changed
+- 全局化彻底化：所有约束统一到全局 `~/.config/opencode/AGENTS.md`（移除 core.md）；op-000 实测全局 AGENTS.md 自动加载 = YES，故全局 opencode.jsonc 移除 `instructions` 字段
+- 约束/操作分离：core.md 约束类并入全局 AGENTS.md，操作类拆为按需加载 skill（`openfeel-workspace` / `openfeel-tool-usage`）
+- AGENTS.md 模板改为「全局行为约束」（移除 `{项目名称}` 占位符；新增「项目特有约束（可选化）」声明节 + 「.openfeel 工作区结构（约束）」节）
+- init 收敛：拆除全局 agent/skill/core.md 部署与项目 AGENTS.md 骨架，仅做项目初始化（.openfeel/ 工作区 + 项目 opencode.jsonc）
+- update 收敛：拆除项目 AGENTS.md 部署；全局资产部署目标由 core.md 改为全局 AGENTS.md；存量全局 state 的 core.md key 一次性重映射
+- migrate：`remapLegacyKey` 目标与全局部署路径改全局 AGENTS.md
+- 版本号 1.1.0 → 1.1.1 全链路同步（package.json / agents-md 模板 / CHANGELOG）
+
 ## [1.1.0] - 2026-09-25
 
 ### Added

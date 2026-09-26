@@ -67,3 +67,4 @@
 | 阶段 | 变更 |
 |------|------|
 | stage-39 | 初始创建：`openfeel migrate` 命令核心（detectLegacy/backupLegacy/splitUpdateState/remapAssignees/migrateProject/rollbackMigration/previewRollback/cleanOldBackups） |
+| v1.1.1 | `remapLegacyKey` 的 `.opencode/instructions/core.md` 目标由 `getGlobalCoreMdPath()` 改 `getGlobalAgentsMdPath()`；全局部署 corePath → 全局 AGENTS.md；新增 `detectDeprecatedCompat`（全局旧 core.md / 存量项目 AGENTS.md 仅提示）与 `--clean-global-core-md`（显式删除，默认不删） |

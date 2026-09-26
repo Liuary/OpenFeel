@@ -1,8 +1,8 @@
 /**
- * 构建脚本 — 三步管线：注入 core.md → 注入 Agent 定义 → 注入 Skill 定义 → TypeScript 编译
+ * 构建脚本 — 管线：注入 Agent 定义 → agents-md 模板 → Skill 定义 → opencode 模板 → TypeScript 编译
  *
  * 模板注入管线在 `rmSync` 清理 dist/ 之后、`npx tsc` 编译之前执行，
- * 从唯一权威源 `templates-data/opencode/` 读取 instructions / agents / skills 等，
+ * 从唯一权威源 `templates-data/`（agents-md + opencode/）读取 agents / skills / adapter / AGENTS.md，
  * 编码/转义后注入 template-loader.ts 与 update.ts。
  */
 import {
@@ -31,7 +31,6 @@ const TEMPLATE_AGENTS_MD_DIR = resolve(TEMPLATES_DATA_DIR, 'agents-md');
 const TEMPLATE_OPENCODE_DIR = resolve(TEMPLATES_DATA_DIR, 'opencode');
 const TEMPLATE_OPENCODE_AGENTS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'agents');
 const TEMPLATE_OPENCODE_SKILLS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'skills');
-const TEMPLATE_OPENCODE_INSTRUCTIONS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'instructions');
 
 // Skill 定义权威源：重指向 templates-data/opencode/skills（不再读 .opencode/skills）
 const SKILLS_DIR = TEMPLATE_OPENCODE_SKILLS_DIR;
@@ -65,7 +64,7 @@ function safeReadFile(filePath) {
 /**
  * 替换文件中两个 AUTO-GENERATED-BEGIN/END 锚点之间的内容
  * @param {string} filePath - 文件路径
- * @param {string} anchorName - 锚点名（如 CORE_INSTRUCTIONS_TEMPLATE_B64）
+ * @param {string} anchorName - 锚点名（如 AGENTS_MD_TEMPLATES）
  * @param {string} newContent - 要写入锚点之间的新内容
  */
 function replaceBetweenAnchors(filePath, anchorName, newContent) {
@@ -90,41 +89,6 @@ function replaceBetweenAnchors(filePath, anchorName, newContent) {
 }
 
 // ── 管线函数 ──────────────────────────────────────────────────────────
-
-/**
- * 步骤 1：读取 templates-data/opencode/instructions/ 下所有 .md 文件 → CRLF→LF 归一化 → Base64 编码 → 注入 template-loader.ts
- * 每个文件名（不含扩展名）作为语言键
- * [FIX] REV-003：读取后先归一化行尾（CRLF→LF），再 Base64 编码，确保跨平台可复现
- */
-function generateTemplateFromCoreMd() {
-  console.log('⟳ 正在注入 core-instructions 模板 → template-loader.ts...');
-  if (!existsSync(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR)) {
-    console.warn('⚠ templates-data/opencode/instructions/ 目录不存在，跳过 core-instructions 注入');
-    return;
-  }
-
-  const mdFiles = readdirSync(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR).filter((f) => f.endsWith('.md'));
-  const entries = [];
-
-  for (const file of mdFiles) {
-    const lang = file.replace(/\.md$/, '');
-    let content = safeReadFile(join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, file));
-    // [FIX] REV-003：CRLF→LF 归一化，确保跨平台 B64 编码一致
-    content = content.replace(/\r\n/g, '\n');
-    const base64 = Buffer.from(content, 'utf-8').toString('base64');
-    // 含连字符的 lang 键需要引号
-    const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang) ? lang : `'${lang}'`;
-    entries.push(`  ${formattedLang}: '${base64}'`);
-  }
-
-  const objectBody = `const CORE_INSTRUCTIONS_TEMPLATES: Record<string, string> = {\n${entries.join(',\n')}\n};`;
-  replaceBetweenAnchors(
-    TEMPLATE_LOADER_PATH,
-    'CORE_INSTRUCTIONS_TEMPLATES',
-    objectBody,
-  );
-  console.log(`✓ ${mdFiles.length} 个语言的 core-instructions 模板已注入 template-loader.ts`);
-}
 
 /**
  * 步骤 2：读取 templates-data/opencode/agents/ 下各语言子目录的 .md 文件 → 注入 template-loader.ts 的 AGENT_TEMPLATES
@@ -333,9 +297,8 @@ function generateOpencodeSkillTemplates() {
 /**
  * 步骤 7：读取 opencode 配置类模板 → 注入 template-loader.ts 的 OPENCODE_CONFIG_TEMPLATES
  * 结构：Record<lang, Record<configName, string>>
- * - [lang].instructions ← templates-data/opencode/instructions/{lang}.md
  * - [lang].adapter ← templates-data/opencode/ADAPTER.{lang}.md
- * （opencode_jsonc / gitignore 已随全局部署退役，不再注入）
+ * （instructions 已退役：core.md 并入全局 AGENTS.md；opencode_jsonc / gitignore 已随全局部署退役）
  */
 function generateOpencodeConfigTemplates() {
   console.log('⟳ 正在注入 opencode 配置模板 → template-loader.ts...');
@@ -348,19 +311,8 @@ function generateOpencodeConfigTemplates() {
   const langs = ['zh-CN', 'en'];
 
   for (const lang of langs) {
-    const instructionsPath = join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, `${lang}.md`);
     const adapterPath = join(TEMPLATE_OPENCODE_DIR, `ADAPTER.${lang}.md`);
     const entries = [];
-
-    // instructions 模板（Base64 编码，与 core-instructions 一致的处理）
-    if (existsSync(instructionsPath)) {
-      let content = safeReadFile(instructionsPath);
-      content = content.replace(/\r\n/g, '\n');
-      const base64 = Buffer.from(content, 'utf-8').toString('base64');
-      entries.push(`    instructions: '${base64}',`);
-    } else {
-      console.warn(`⚠ ${instructionsPath} 不存在，跳过 instructions 注入`);
-    }
 
     // adapter 模板（Base64 编码）
     if (existsSync(adapterPath)) {
@@ -460,61 +412,6 @@ function matchBraces(str) {
  */
 function unescapeTemplateString(str) {
   return str.replace(/\\([\\`$])/g, (_, char) => char);
-}
-
-/**
- * 校验 core-instructions Base64 模板（从 template-loader.ts 提取）
- * 多语言支持：遍历所有语言键，逐语言与源文件比对
- */
-function validateCoreInstruction() {
-  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'CORE_INSTRUCTIONS_TEMPLATES');
-  const errors = [];
-  let totalCount = 0;
-
-  // 匹配所有语言条目: 'zh-CN': 'base64string' 或 en: 'base64string'
-  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*'([^']+)'/g;
-  let match;
-  while ((match = langRegex.exec(section)) !== null) {
-    const langKey = match[2] || match[3];
-    const b64 = match[4];
-    const decoded = Buffer.from(b64, 'base64').toString('utf-8');
-
-    const sourcePath = join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, `${langKey}.md`);
-    if (!existsSync(sourcePath)) {
-      errors.push(`[${langKey}] 源文件不存在: ${sourcePath}`);
-      continue;
-    }
-    const source = safeReadFile(sourcePath);
-
-    const normD = decoded.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const normS = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-    if (normD !== normS) {
-      const dLines = normD.split('\n');
-      const sLines = normS.split('\n');
-      for (let i = 0; i < Math.max(dLines.length, sLines.length) && errors.length < 5; i++) {
-        if (dLines[i] !== sLines[i]) {
-          const maxLen = 60;
-          const tmpl = (dLines[i] || '').length > maxLen
-            ? (dLines[i] || '').slice(0, maxLen) + '...'
-            : (dLines[i] || '');
-          const src = (sLines[i] || '').length > maxLen
-            ? (sLines[i] || '').slice(0, maxLen) + '...'
-            : (sLines[i] || '');
-          errors.push(`[${langKey}] 第 ${i + 1} 行: 模板="${tmpl}", 源文件="${src}"`);
-        }
-      }
-      if (dLines.length !== sLines.length) {
-        errors.push(`[${langKey}] 行数不同: 模板 ${dLines.length} 行, 源文件 ${sLines.length} 行`);
-      }
-    }
-    totalCount++;
-  }
-
-  if (totalCount === 0) {
-    return { ok: false, errors: ['无法在 template-loader.ts 中提取任何 core-instructions 语言条目'] };
-  }
-  return { ok: errors.length === 0, errors };
 }
 
 /**
@@ -801,20 +698,16 @@ function validateTemplates() {
   console.log('');
   console.log('⟳ 正在校验模板一致性...');
 
-  // 1. core-instructions Base64（从 template-loader.ts 校验）
-  const coreResult = validateCoreInstruction();
-
-  // 2. Agent 定义（从 template-loader.ts 校验，源为 templates-data）
+  // 1. Agent 定义（从 template-loader.ts 校验，源为 templates-data）
   const agentResult = validateAgentDefinitions();
 
-  // 3. agents-md 模板（从 template-loader.ts 校验，多语言）
+  // 2. agents-md 模板（从 template-loader.ts 校验，多语言）
   const agentsMdResult = validateAgentsMdTemplate();
 
-  // 4. Skill 定义（仍从 update.ts 校验）
+  // 3. Skill 定义（仍从 update.ts 校验）
   const skillResult = validateSkillDefinitions();
 
   const results = [
-    { name: `core-instructions (Base64, template-loader.ts)`, ok: coreResult.ok, errors: coreResult.errors },
     { name: `Agent 定义 (${agentResult.count} 个, template-loader.ts)`, ok: agentResult.ok, errors: agentResult.errors },
     { name: `agents-md (template-loader.ts)`, ok: agentsMdResult.ok, errors: agentsMdResult.errors },
     { name: `Skill 定义 (${skillResult.count} 个, update.ts)`, ok: skillResult.ok, errors: skillResult.errors },
@@ -1001,24 +894,6 @@ function validateOpencodeConfigTemplates() {
       continue;
     }
 
-    // instructions（Base64 编码）
-    if (entries.instructions !== undefined) {
-      totalCount++;
-      const decoded = Buffer.from(entries.instructions, 'base64').toString('utf-8');
-      const sourcePath = join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, `${lang}.md`);
-      if (!existsSync(sourcePath)) {
-        errors.push(`[${lang}] instructions 源文件不存在: ${sourcePath}`);
-      } else {
-        const normD = decoded.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        const normS = safeReadFile(sourcePath).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        if (normD !== normS) {
-          errors.push(`[${lang}] instructions 内容不一致`);
-        }
-      }
-    } else {
-      errors.push(`[${lang}] 模板缺少 instructions 键`);
-    }
-
     // adapter（Base64 编码）
     if (entries.adapter !== undefined) {
       totalCount++;
@@ -1139,56 +1014,17 @@ function extractAllAgentEntries(anchorName) {
 }
 
 /**
- * 断言 instructions 双源一致：
- * CORE_INSTRUCTIONS_TEMPLATES（Record<lang, B64>）与 OPENCODE_CONFIG_TEMPLATES[lang].instructions（B64）
- * 逐语言解码后归一化比对。复用 extractBetweenAnchors + matchBraces + extractOpencodeConfigLangEntries。
- * @returns {string[]} 错误列表
- */
-function assertInstructionsConsistent() {
-  const errors = [];
-  // 1) 提取 CORE_INSTRUCTIONS_TEMPLATES：锚点段 → matchBraces → langRegex 提取 lang→B64
-  const coreSection = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'CORE_INSTRUCTIONS_TEMPLATES');
-  const coreObjText = matchBraces(coreSection);
-  if (!coreObjText) return ['无法提取 CORE_INSTRUCTIONS_TEMPLATES 对象'];
-  const coreB64ByLang = {};
-  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*'([^']+)'/g;
-  let m;
-  while ((m = langRegex.exec(coreObjText)) !== null) {
-    coreB64ByLang[m[2] || m[3]] = m[4];
-  }
-  // 2) 提取 OPENCODE_CONFIG_TEMPLATES：锚点段 → matchBraces
-  const configSection = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_CONFIG_TEMPLATES');
-  const configObjText = matchBraces(configSection);
-  if (!configObjText) return ['无法提取 OPENCODE_CONFIG_TEMPLATES 对象'];
-  // 3) 逐语言解码比对（B64 → utf-8 → CRLF 归一 LF）
-  const norm = (s) => Buffer.from(s, 'base64').toString('utf-8').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  for (const lang of Object.keys(coreB64ByLang)) {
-    const configEntries = extractOpencodeConfigLangEntries(configObjText, lang);
-    if (!configEntries || configEntries.instructions === undefined) {
-      errors.push(`[${lang}] OPENCODE_CONFIG_TEMPLATES 缺少 instructions 键`);
-      continue;
-    }
-    if (norm(coreB64ByLang[lang]) !== norm(configEntries.instructions)) {
-      errors.push(`[${lang}] CORE_INSTRUCTIONS_TEMPLATES ≠ OPENCODE_CONFIG_TEMPLATES[${lang}].instructions`);
-    }
-  }
-  return errors;
-}
-
-/**
- * 单源一致性校验：断言三对注入对象键集与归一化内容一致，
+ * 单源一致性校验：断言两对注入对象键集与归一化内容一致，
  * 且冗余模板树（templates-data/agents、core-instructions）已删除
  */
 function validateSingleSourceConsistency() {
   const errors = [];
-  // 三对：agent / skill / instructions
+  // 两对：agent / skill（instructions 已退役，v1.1.1）
   errors.push(...assertConsistent('AGENT_TEMPLATES', 'OPENCODE_AGENT_TEMPLATES',
     extractAllAgentEntries('AGENT_TEMPLATES'), extractAllAgentEntries('OPENCODE_AGENT_TEMPLATES')));
   errors.push(...assertConsistent('SKILL_DEFINITIONS', 'OPENCODE_SKILL_DEFINITIONS',
     extractTemplatePairs(matchBraces(extractBetweenAnchors(UPDATE_PATH, 'SKILL_DEFINITIONS'))),
     extractTemplatePairs(matchBraces(extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_SKILL_DEFINITIONS')))));
-  // instructions：CORE_INSTRUCTIONS_TEMPLATES（B64） vs OPENCODE_CONFIG_TEMPLATES[*].instructions（B64）
-  errors.push(...assertInstructionsConsistent());
   // 断言冗余模板树已删除
   if (existsSync(resolve(TEMPLATES_DATA_DIR, 'agents')) || existsSync(resolve(TEMPLATES_DATA_DIR, 'core-instructions'))) {
     errors.push('冗余模板树仍存在：templates-data/agents 或 core-instructions 未删除');
@@ -1198,7 +1034,7 @@ function validateSingleSourceConsistency() {
     for (const e of errors) console.error(`      ${e}`);
     process.exit(1);
   }
-  console.log('  ✓ 单源一致性校验通过（三对对象键集与内容一致）');
+  console.log('  ✓ 单源一致性校验通过（两对对象键集与内容一致）');
 }
 
 // ── 步骤 8：.opencode/ 自举实例重生成（D36-3 / N4）──────────────────────
@@ -1255,11 +1091,7 @@ async function regenerateOpencodeInstance() {
     atomicWriteFileSync(resolve(__dirname, '.opencode', 'skills', dir.name, 'SKILL.md'), content);
   }
 
-  // 5) instructions/core.md：权威源 instructions/{lang}.md → .opencode/instructions/core.md
-  const instr = readFileSync(join(TEMPLATE_OPENCODE_INSTRUCTIONS_DIR, `${lang}.md`), 'utf-8').replace(/\r\n/g, '\n');
-  atomicWriteFileSync(resolve(__dirname, '.opencode', 'instructions', 'core.md'), MARK + '\n' + instr);
-
-  // 6) ADAPTER.md：权威源 ADAPTER.{lang}.md → .opencode/ADAPTER.md
+  // 5) ADAPTER.md：权威源 ADAPTER.{lang}.md → .opencode/ADAPTER.md
   const adapter = readFileSync(resolve(TEMPLATE_OPENCODE_DIR, `ADAPTER.${lang}.md`), 'utf-8').replace(/\r\n/g, '\n');
   atomicWriteFileSync(resolve(__dirname, '.opencode', 'ADAPTER.md'), MARK + '\n' + adapter);
 
@@ -1273,8 +1105,8 @@ try {
   rmSync('dist', { recursive: true, force: true });
   console.log('✓ dist/ 已清理');
 
-  // 七步管线：注入动态内容到 template-loader.ts（不再注入 templates.ts 和 update.ts 的模板段）
-  generateTemplateFromCoreMd();
+  // 六步管线：注入动态内容到 template-loader.ts（不再注入 templates.ts 和 update.ts 的模板段）
+  // core-instructions 模板管线已退役（v1.1.1：core.md 并入全局 AGENTS.md，AGENTS_MD_TEMPLATES 承载）
   generateAgentDefinitions();
   generateAgentsMdTemplate();
   generateSkillDefinitions();

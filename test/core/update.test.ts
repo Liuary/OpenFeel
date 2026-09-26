@@ -12,7 +12,7 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
-import { updateProject, AgentsMdLangConflictError } from '../../src/core/update.js';
+import { updateProject } from '../../src/core/update.js';
 import { createUpdateState, saveUpdateState, hashContent, getOpenfeelVersion } from '../../src/core/update-state.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -30,9 +30,13 @@ function globalAgentsDir(): string {
 function globalSkillsDir(): string {
   return join(globalOpencodeDir(), 'skills');
 }
-/** 全局 core.md 路径 */
+/** 全局旧 core.md 路径（v1.1.1 废弃，仅兼容检测/清理断言用） */
 function globalCoreMdPath(): string {
   return join(globalOpencodeDir(), 'openfeel', 'core.md');
+}
+/** 全局 AGENTS.md 路径（v1.1.1 约束唯一权威） */
+function globalAgentsMdPath(): string {
+  return join(globalOpencodeDir(), 'AGENTS.md');
 }
 /** 全局 opencode.jsonc 路径 */
 function globalJsoncPath(): string {
@@ -56,7 +60,7 @@ function stripMarkers(filePath: string): void {
   writeFileSync(filePath, stripped, 'utf-8');
 }
 
-/** 去除全部全局受管文件的控制区标记（agents + skills + core.md） */
+/** 去除全部全局受管文件的控制区标记（agents + skills + AGENTS.md） */
 function stripAllGlobalMarkers(): void {
   for (const dir of [globalAgentsDir(), globalSkillsDir()]) {
     if (!existsSync(dir)) {
@@ -69,8 +73,8 @@ function stripAllGlobalMarkers(): void {
       }
     }
   }
-  if (existsSync(globalCoreMdPath())) {
-    stripMarkers(globalCoreMdPath());
+  if (existsSync(globalAgentsMdPath())) {
+    stripMarkers(globalAgentsMdPath());
   }
 }
 
@@ -117,7 +121,7 @@ describe('updateProject', () => {
     expect(feelContent).toContain('你是 Feel');
   });
 
-  it('应创建全部 14 个 Skill 定义文件（全局）', () => {
+  it('应创建全部 16 个 Skill 定义文件（全局）', () => {
     updateProject(tmpDir);
     const skillsDir = globalSkillsDir();
 
@@ -136,6 +140,8 @@ describe('updateProject', () => {
       'openfeel-roadmap',
       'openfeel-health',
       'openfeel-wizard',
+      'openfeel-workspace',
+      'openfeel-tool-usage',
     ];
 
     for (const skillName of expectedSkills) {
@@ -155,18 +161,20 @@ describe('updateProject', () => {
     expect(skillContent).toContain('description: 标准化 Bug 验收流程');
   });
 
-  it('应创建全局 core.md 与全局/项目 opencode.jsonc（无前置文件时）', () => {
+  it('应创建全局 AGENTS.md 与全局/项目 opencode.jsonc（无前置文件时）', () => {
     updateProject(tmpDir);
 
-    // 全局 core.md
-    expect(existsSync(globalCoreMdPath())).toBe(true);
+    // 全局 AGENTS.md（约束唯一权威）
+    expect(existsSync(globalAgentsMdPath())).toBe(true);
+    // 全局旧 core.md 不再创建
+    expect(existsSync(globalCoreMdPath())).toBe(false);
 
-    // 全局 opencode.jsonc = 框架级
+    // 全局 opencode.jsonc = 框架级（无 instructions：全局 AGENTS.md 自动加载）
     expect(existsSync(globalJsoncPath())).toBe(true);
     const globalJsonc = JSON.parse(readFileSync(globalJsoncPath(), 'utf-8'));
     expect(globalJsonc.$schema).toBe('https://opencode.ai/config.json');
     expect(globalJsonc.default_agent).toBe('feel');
-    expect(globalJsonc.instructions).toEqual([globalCoreMdPath()]);
+    expect(globalJsonc.instructions).toBeUndefined();
     expect(globalJsonc.skills).toBeUndefined();
     expect(globalJsonc.experimental).toBeUndefined();
 
@@ -180,15 +188,15 @@ describe('updateProject', () => {
     expect(projectJsonc.default_agent).toBeUndefined();
   });
 
-  it('应合并已有全局 opencode.jsonc：保留用户字段 + 覆盖 default_agent + instructions 拼接去重 + 注释去除', () => {
-    // 预置含用户自定义字段与注释的全局 opencode.jsonc
+  it('应合并已有全局 opencode.jsonc：保留用户字段 + 覆盖 default_agent + 清理废弃 core.md 引用', () => {
+    // 预置含用户自定义字段、注释、废弃 core.md instructions 的全局 opencode.jsonc
     mkdirSync(join(globalOpencodeDir()), { recursive: true });
     const existing = `{
   // 用户注释
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "code",
   "permission": "allow",
-  "instructions": ["/user/custom.md"],
+  "instructions": ["${globalCoreMdPath().replace(/\\/g, '\\\\')}", "/user/custom.md"],
   "agent": { "custom": { "model": "x/y" } },
   "experimental": { "foo": true }
 }
@@ -206,10 +214,9 @@ describe('updateProject', () => {
     expect(parsed.experimental.foo).toBe(true);
     // default_agent 覆盖为 feel
     expect(parsed.default_agent).toBe('feel');
-    // instructions 拼接（框架 core.md 在前）+ 去重
-    expect(parsed.instructions[0]).toBe(globalCoreMdPath());
+    // 废弃 core.md 引用被清理，用户自定义 instructions 保留
     expect(parsed.instructions).toContain('/user/custom.md');
-    expect(new Set(parsed.instructions).size).toBe(parsed.instructions.length);
+    expect(parsed.instructions).not.toContain(globalCoreMdPath());
     // 框架不写 skills
     expect(parsed.skills).toBeUndefined();
     // 无 agent_manager_tool
@@ -232,7 +239,7 @@ describe('updateProject', () => {
     expect(parsed.skills).toBeUndefined();
   });
 
-  it('重复调用不重复创建，第二次全部 skipped（26）', () => {
+  it('重复调用不重复创建，第二次全部 skipped（27）', () => {
     const result1 = updateProject(tmpDir);
     expect(result1.created.length).toBeGreaterThan(0);
     expect(result1.updated.length).toBe(0);
@@ -240,9 +247,9 @@ describe('updateProject', () => {
     const result2 = updateProject(tmpDir);
     expect(result2.created.length).toBe(0);
     expect(result2.updated.length).toBe(0);
-    // 24 全局部署文件（9 agents + 14 skills + 1 core.md）+ 项目 opencode.jsonc + AGENTS.md = 26
+    // 26 全局部署文件（9 agents + 16 skills + 1 全局 AGENTS.md）+ 项目 opencode.jsonc = 27
     // （全局 opencode.jsonc 走 merge + state hash，不计入返回列表）
-    expect(result2.skipped.length).toBe(26);
+    expect(result2.skipped.length).toBe(27);
   });
 
   it('手动修改全局 agent（无标记）第二次 update 追加受管区而非冲突（三态）', () => {
@@ -364,7 +371,7 @@ describe('updateProject', () => {
     const globalState = JSON.parse(readFileSync(globalStatePath, 'utf-8'));
     // 全局 state key 为绝对路径
     expect(globalState.files[join(globalAgentsDir(), 'feel.md')]).toBeDefined();
-    expect(globalState.files[globalCoreMdPath()]).toBeDefined();
+    expect(globalState.files[globalAgentsMdPath()]).toBeDefined();
     expect(globalState.files[globalJsoncPath()]).toBeDefined();
 
     const projectState = JSON.parse(readFileSync(projectStatePath, 'utf-8'));
@@ -401,95 +408,47 @@ describe('updateProject', () => {
     expect(parsed.experimental?.agent_manager_tool).toBeUndefined();
   });
 
-  // ── AGENTS.md 语言同步逻辑测试（项目级资产） ──
+  // ── v1.1.1：update 收敛（不再部署项目 AGENTS.md；全局约束改全局 AGENTS.md） ──
 
-  it('首次部署 + --lang=en 应创建英文版 AGENTS.md', () => {
-    updateProject(tmpDir, ['opencode'], 'en', { lang: 'en' });
-    const agentsMdPath = join(tmpDir, 'AGENTS.md');
-    expect(existsSync(agentsMdPath)).toBe(true);
-    const content = readFileSync(agentsMdPath, 'utf-8');
-    expect(content).toContain('This document is the core constraint layer');
-    expect(content).not.toContain('核心约束层');
-  });
-
-  it('已有旧布局 agents 目录但 AGENTS.md 被删 + --lang 应重新创建 (REV-002)', () => {
-    // 模拟项目内旧布局 agents 目录（有内容）
-    const agentsDir = join(tmpDir, '.opencode', 'agents');
-    mkdirSync(agentsDir, { recursive: true });
-    writeFileSync(join(agentsDir, 'feel.md'), 'dummy', 'utf-8');
-
-    const result = updateProject(tmpDir, ['opencode'], 'en', { lang: 'en' });
-    const agentsMdPath = join(tmpDir, 'AGENTS.md');
-    expect(existsSync(agentsMdPath)).toBe(true);
-    expect(result.created).toContain('AGENTS.md');
-    const content = readFileSync(agentsMdPath, 'utf-8');
-    expect(content).toContain('This document is the core constraint layer');
-  });
-
-  it('语言冲突交互模式跳过 AGENTS.md 但继续更新其他文件 (REV-004)', () => {
-    const infoDir = join(tmpDir, '.openfeel');
-    mkdirSync(infoDir, { recursive: true });
-    writeFileSync(join(infoDir, '.info.json'), JSON.stringify({ user: 'test', lang: 'zh-CN' }), 'utf-8');
-
-    const agentsMdContent = '# 测试项目\n\n> 本文档为 测试项目 核心约束层';
-    writeFileSync(join(tmpDir, 'AGENTS.md'), agentsMdContent, 'utf-8');
-
-    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', {
-      lang: 'en',
-      interactive: true,
-    });
-
-    expect(readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8')).toBe(agentsMdContent);
-    expect(result.skipped).toContain('AGENTS.md (language conflict)');
-
-    // 其他文件正常创建（全局）
-    expect(existsSync(join(globalAgentsDir(), 'feel.md'))).toBe(true);
-    expect(existsSync(join(globalSkillsDir(), 'openfeel-check-kb', 'SKILL.md'))).toBe(true);
-    expect(result.created.length).toBeGreaterThan(5);
-  });
-
-  it('AgentsMdLangConflictError 应包含正确的语言信息', () => {
-    const err = new AgentsMdLangConflictError('zh-CN', 'en');
-    expect(err.name).toBe('AgentsMdLangConflictError');
-    expect(err.projectLang).toBe('zh-CN');
-    expect(err.requestedLang).toBe('en');
-    expect(err.message).toContain('zh-CN');
-    expect(err.message).toContain('en');
-  });
-
-  it('语言相同但 AGENTS.md 内容与模板不一致时按三态追加（无标记 + 无 state 记录）', () => {
-    const infoDir = join(tmpDir, '.openfeel');
-    mkdirSync(infoDir, { recursive: true });
-    writeFileSync(join(infoDir, '.info.json'), JSON.stringify({ user: 'test', lang: 'zh-CN' }), 'utf-8');
-
-    writeFileSync(join(tmpDir, 'AGENTS.md'), '# 旧版 AGENTS.md\n\n缺少 9 Agent 体系总览', 'utf-8');
-
-    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', { lang: 'zh-CN' });
-
-    expect(result.appended).toContain('AGENTS.md');
-    const content = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
-    expect(content.startsWith('# 旧版 AGENTS.md')).toBe(true);
-    expect(content).toContain('9 Agent 体系总览');
-    expect(content).toContain('<!-- openfeel:begin -->');
-  });
-
-  it('无 --lang 参数但 AGENTS.md 内容与模板不一致时按三态追加', () => {
-    writeFileSync(join(tmpDir, 'AGENTS.md'), '# 旧版 AGENTS.md\n\n缺少 9 Agent 体系总览', 'utf-8');
-
-    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', {});
-
-    expect(result.appended).toContain('AGENTS.md');
-    const content = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
-    expect(content).toContain('9 Agent 体系总览');
-  });
-
-  it('AGENTS.md 内容与模板一致时仍跳过（语言相同分支）', () => {
+  it('update 不写项目 AGENTS.md，全局部署目标为全局 AGENTS.md', () => {
     updateProject(tmpDir, ['opencode'], 'zh-CN', { lang: 'zh-CN' });
+    // 项目根不产生 AGENTS.md
+    expect(existsSync(join(tmpDir, 'AGENTS.md'))).toBe(false);
+    // 全局 AGENTS.md 已部署，旧 core.md 不存在
+    expect(existsSync(globalAgentsMdPath())).toBe(true);
+    expect(existsSync(globalCoreMdPath())).toBe(false);
+  });
 
-    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', { lang: 'zh-CN' });
+  it('存量项目 AGENTS.md 保留不动（属用户项目约束）', () => {
+    const existing = '# 用户项目约束\n\n> 本文档为 测试项目 核心约束层';
+    writeFileSync(join(tmpDir, 'AGENTS.md'), existing, 'utf-8');
+
+    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', { lang: 'en' });
+
+    expect(readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8')).toBe(existing);
+    expect(result.created).not.toContain('AGENTS.md');
     expect(result.updated).not.toContain('AGENTS.md');
     expect(result.appended).not.toContain('AGENTS.md');
-    expect(result.skipped).toContain('AGENTS.md');
+    // 全局资产正常更新
+    expect(existsSync(join(globalAgentsDir(), 'feel.md'))).toBe(true);
+  });
+
+  it('全局 state 的 core.md key → 全局 AGENTS.md key 一次性重映射（REV-1910）', () => {
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(mockHome.dir, '.openfeel', 'update_state.json'),
+      JSON.stringify({
+        version: '1.0', last_update: '', openfeel_version: getOpenfeelVersion(),
+        files: { [globalCoreMdPath()]: { hash: 'deadbeef', status: 'clean' } },
+      }),
+      'utf-8',
+    );
+
+    updateProject(tmpDir);
+
+    const state = JSON.parse(readFileSync(join(mockHome.dir, '.openfeel', 'update_state.json'), 'utf-8'));
+    expect(state.files[globalCoreMdPath()]).toBeUndefined();
+    expect(state.files[globalAgentsMdPath()]).toBeDefined();
   });
 
   it('子命令正确注册（程序包含 update 命令）', async () => {
@@ -509,7 +468,7 @@ describe('updateProject', () => {
 
   // ── 三态（控制区标记 + hash 兜底）测试 ──
 
-  it('created：全局 agent/skill/core.md 与 AGENTS.md 均含控制区标记', () => {
+  it('created：全局 agent/skill/AGENTS.md 均含控制区标记', () => {
     const result = updateProject(tmpDir);
 
     const feelPath = join(globalAgentsDir(), 'feel.md');
@@ -518,9 +477,8 @@ describe('updateProject', () => {
     expect(feel).toContain('<!-- openfeel:begin -->');
     expect(feel).toContain('<!-- openfeel:end -->');
 
-    expect(readFileSync(globalCoreMdPath(), 'utf-8')).toContain('<!-- openfeel:begin -->');
+    expect(readFileSync(globalAgentsMdPath(), 'utf-8')).toContain('<!-- openfeel:begin -->');
     expect(readFileSync(join(globalSkillsDir(), 'openfeel-check-kb', 'SKILL.md'), 'utf-8')).toContain('<!-- openfeel:begin -->');
-    expect(readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8')).toContain('<!-- openfeel:begin -->');
   });
 
   it('含标记文件：篡改区内 + 区外用户内容 → 只替换区内、区外逐字符保留（updated）', () => {
@@ -670,20 +628,15 @@ describe('updateProject', () => {
     expect(after).toMatch(/^description: openfeel-planner/m);
   });
 
-  it('AGENTS.md 追加落项目 state + update_infos 二元组（REV-903）', () => {
+  it('存量项目 AGENTS.md 不纳入 update state（update 不再管理项目 AGENTS.md）', () => {
     writeFileSync(join(tmpDir, 'AGENTS.md'), '# 用户项目约束\n', 'utf-8');
 
-    const result = updateProject(tmpDir, ['opencode'], 'zh-CN', {});
-    expect(result.appended).toContain('AGENTS.md');
+    updateProject(tmpDir, ['opencode'], 'zh-CN', {});
 
-    // update_infos 记录「相对路径 (项目: 根)」二元组
-    const infos = readFileSync(updateInfosPath(), 'utf-8');
-    expect(infos).toContain(`AGENTS.md (项目: ${tmpDir})`);
-
-    // hash 落项目 state（非全局 state）
     const projectState = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'update_state.json'), 'utf-8'));
-    expect(projectState.files['AGENTS.md']).toBeDefined();
-    expect(projectState.files['AGENTS.md'].status).toBe('clean');
+    expect(projectState.files['AGENTS.md']).toBeUndefined();
+    // 项目 opencode.jsonc 仍纳入项目 state
+    expect(projectState.files['opencode.jsonc']).toBeDefined();
   });
 
   it('REV-911 命令层：appended > 10 时输出大量追加警告', async () => {

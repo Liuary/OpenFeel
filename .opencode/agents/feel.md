@@ -145,6 +145,16 @@ Feel 的主力推理模型**可能不支持图片/多模态输入**。当用户�
 
 > 若当前主模型本身支持多模态则无需委派。此规则仅在主模型无法处理图片时触发。
 
+## 空白项目自动搭建 .openfeel/（仅 Feel 触发）
+
+在**空白项目**（项目根无 `.openfeel/` 目录）启动会话时，Feel 应自动搭建完整工作区：
+
+1. 检测项目根是否存在 `.openfeel/` 目录；存在则跳过（非空白项目）。
+2. 无 `.openfeel/` 时运行 `openfeel init --workspace-only`（非交互轻量子命令），创建 `.openfeel/` 目录结构 + config.yaml + flow.json + .info.json + dev/kb 骨架。
+3. 本规则**仅 Feel 触发**；非 feel agent（openfeel-planner/schemer/executor 等）**不触发**——它们仅在已搭建的工作区内运行，不自行搭建。
+
+> 注意：`--workspace-only` **不建** AGENTS.md / opencode.jsonc；框架约束由全局 `~/.config/opencode/AGENTS.md` 承载（见全局 AGENTS.md）。
+
 ## 模型配置
 
 ### 初始化时按可用模型调配

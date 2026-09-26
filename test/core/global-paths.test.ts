@@ -18,6 +18,7 @@ import {
   getGlobalSkillsDir,
   getGlobalOpencodeJsoncPath,
   getGlobalCoreMdPath,
+  getGlobalAgentsMdPath,
   getGlobalUpdateStatePath,
   getGlobalUpdateInfosPath,
   getAuthJsonPath,
@@ -45,6 +46,10 @@ describe('global-paths 全局路径解析', () => {
 
   it('getGlobalCoreMdPath 应返回 ~/.config/opencode/openfeel/core.md', () => {
     expect(getGlobalCoreMdPath()).toBe(join(opencodeDir, 'openfeel', 'core.md'));
+  });
+
+  it('getGlobalAgentsMdPath 应返回 ~/.config/opencode/AGENTS.md', () => {
+    expect(getGlobalAgentsMdPath()).toBe(join(opencodeDir, 'AGENTS.md'));
   });
 
   it('getGlobalUpdateStatePath 应返回 ~/.openfeel/update_state.json', () => {

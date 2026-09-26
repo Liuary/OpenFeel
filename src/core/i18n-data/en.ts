@@ -415,6 +415,11 @@ export const help: I18nDomain = {
   'init':                  { key: 'help.init',                  zh: '', en: 'Initialize project workspace, create .openfeel/ directory structure and config files' },
   'init.demo':             { key: 'help.init.demo',             zh: '', en: 'Create demo project skeleton (NumKit style)' },
   'init.lang':             { key: 'help.init.lang',             zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN in non-interactive mode' },
+  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '', en: 'Create the .openfeel/ workspace only (no AGENTS.md/opencode.jsonc); used by Feel to auto-setup blank projects' },
+  'init.nonInteractive':   { key: 'help.init.nonInteractive',   zh: '', en: 'Non-interactive mode (used together with --workspace-only)' },
+
+  'setup':                 { key: 'help.setup',                 zh: '', en: 'Deploy global OpenFeel framework config (global AGENTS.md + agents + skills + opencode.jsonc); does not create the project .openfeel/' },
+  'setup.lang':            { key: 'help.setup.lang',            zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN' },
 
   'update':                { key: 'help.update',                zh: '', en: 'Deploy OpenFeel adapter files to target project (interactive tool selection when no args)' },
   'update.lang':           { key: 'help.update.lang',           zh: '', en: 'Agent prompt language (zh-CN or en)' },
@@ -532,6 +537,7 @@ export const help: I18nDomain = {
   'migrate.remapAssignee': { key: 'help.migrate.remapAssignee', zh: '', en: 'Rewrite legacy flow.json assignee to new names (report only by default)' },
   'migrate.rollback':      { key: 'help.migrate.rollback',      zh: '', en: 'Roll back the most recent migration' },
   'migrate.rollback.dryRun': { key: 'help.migrate.rollback.dryRun', zh: '', en: 'Preview rollback plan only' },
+  'migrate.cleanGlobalCoreMd': { key: 'help.migrate.cleanGlobalCoreMd', zh: '', en: 'Delete the deprecated global core.md (~/.config/opencode/openfeel/core.md)' },
 
   // model (model configuration)
   'model':               { key: 'help.model',               zh: '', en: 'Model configuration (three scopes: set/get/list)' },
@@ -591,6 +597,10 @@ export const migrate: I18nDomain = {
   // error
   'error.pathNotExist':   { key: 'migrate.error.pathNotExist',   zh: '', en: 'Path does not exist: {path}' },
   'error.aborted':        { key: 'migrate.error.aborted',        zh: '', en: 'Migration aborted; run `openfeel migrate rollback` to roll back: {message}' },
+  // deprecated (v1.1.1 compatibility transition)
+  'deprecated.globalCoreMd':     { key: 'migrate.deprecated.globalCoreMd',     zh: '', en: '? Detected deprecated global core.md (~/.config/opencode/openfeel/core.md); its constraints are now merged into the global AGENTS.md' },
+  'deprecated.globalCoreMdHint': { key: 'migrate.deprecated.globalCoreMdHint', zh: '', en: 'Run openfeel migrate --clean-global-core-md to delete, or remove it manually' },
+  'deprecated.projectAgentsMd':  { key: 'migrate.deprecated.projectAgentsMd',  zh: '', en: 'i Detected project AGENTS.md (legacy project constraints, now consolidated into the global ~/.config/opencode/AGENTS.md); keep or remove manually' },
 };
 
 /* ==================== model domain: model configuration (stage-40) ==================== */
@@ -617,6 +627,14 @@ export const model: I18nDomain = {
   'error.scope':       { key: 'model.error.scope',       zh: '', en: '✗ {message}' },
 };
 
+/* ==================== setup domain: global deployment (v1.1.1) ==================== */
+export const setup: I18nDomain = {
+  'created':  { key: 'setup.created',  zh: '', en: 'Created global files:' },
+  'updated':  { key: 'setup.updated',  zh: '', en: 'Updated global files:' },
+  'appended': { key: 'setup.appended', zh: '', en: 'Global files needing manual confirmation (already exist and are unmanaged; not overwritten):' },
+  'complete': { key: 'setup.complete', zh: '', en: '? Global OpenFeel framework config deployed' },
+};
+
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
@@ -636,4 +654,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'config',       domain: config },
   { name: 'migrate',      domain: migrate },
   { name: 'model',        domain: model },
+  { name: 'setup',        domain: setup },
 ];

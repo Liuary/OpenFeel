@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const MARK = '<!-- openfeel:generated';
 
-/** 收集 .opencode/ 下全部受管文件（agents + skills + instructions/core.md + ADAPTER.md） */
+/** 收集 .opencode/ 下全部受管文件（agents + skills + ADAPTER.md；v1.1.1 移除 instructions/core.md） */
 function managedFiles(): string[] {
   const files: string[] = [];
   const agentsDir = join(ROOT, '.opencode', 'agents');
@@ -31,7 +31,6 @@ function managedFiles(): string[] {
       files.push(join(skillsDir, d.name, 'SKILL.md'));
     }
   }
-  files.push(join(ROOT, '.opencode', 'instructions', 'core.md'));
   files.push(join(ROOT, '.opencode', 'ADAPTER.md'));
   return files;
 }
@@ -47,17 +46,17 @@ describe('.opencode/ 自举实例', () => {
     }
   });
 
-  it('skills 目录含 14 个 openfeel-*，无旧名目录', () => {
+  it('skills 目录含 16 个 openfeel-*，无旧名目录', () => {
     const dirs = readdirSync(join(ROOT, '.opencode', 'skills'), { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
-    expect(dirs).toHaveLength(14);
+    expect(dirs).toHaveLength(16);
     expect(dirs.every((d) => d.startsWith('openfeel-'))).toBe(true);
   });
 
-  it('受管文件（25）均含 openfeel:generated 标记', () => {
+  it('受管文件（26）均含 openfeel:generated 标记', () => {
     const files = managedFiles();
-    expect(files).toHaveLength(25);
+    expect(files).toHaveLength(26);
     for (const f of files) {
       expect(readFileSync(f, 'utf-8')).toContain(MARK);
     }

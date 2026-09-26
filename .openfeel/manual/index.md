@@ -20,9 +20,11 @@
   - [全局 opencode 配置合并](core/opencode-config.md)
   - [存量迁移](core/migrate.md)
   - [模型配置核心](core/model-config.md)
+  - [全局部署（setup）](core/setup.md)
 - CLI 层
   - [命令体系](cli/commands.md)
   - [model 命令组](cli/model.md)
+  - [setup 命令](cli/setup.md)
 - Agent 体系
   - [Agent 设计](agents/feel.md)
 
@@ -46,6 +48,8 @@
 | migrate.ts / 存量迁移 | `core/migrate.md` | legacy 判据、备份 manifest、state 拆分重键、回滚边界变更 |
 | model-config.ts / 三层级模型配置 | `core/model-config.md` | 三层级落点、优先级链、校验规则或读写 API 变更 |
 | commands/model.ts / model 命令组 | `cli/model.md` | 命令面（set/get/list + --scope）、非 TTY 守卫或翻译机制变更 |
+| setup.ts / 全局部署 | `core/setup.md` | 全局部署目标、幂等语义或部署内容变更 |
+| commands/setup.ts / setup 命令 | `cli/setup.md` | 命令面（--lang）或输出行为变更 |
 | 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更 |
 | Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更 |
 

@@ -99,10 +99,12 @@ describe('命名前缀完整性', () => {
     }
   });
 
-  it('listOpencodeSkillNames 返回 14 项全部带 openfeel- 前缀', () => {
+  it('listOpencodeSkillNames 返回 16 项全部带 openfeel- 前缀', () => {
     const names = listOpencodeSkillNames();
-    expect(names).toHaveLength(14);
+    expect(names).toHaveLength(16);
     expect(names.every((n) => n.startsWith('openfeel-'))).toBe(true);
+    expect(names).toContain('openfeel-workspace');
+    expect(names).toContain('openfeel-tool-usage');
   });
 });
 
@@ -119,24 +121,26 @@ describe('loadTemplate', () => {
     expect(result).toContain('You should think in English');
   });
 
-  it('zh-CN core-instructions 返回 UTF-8 明文（非 Base64）', () => {
-    const result = loadTemplate('zh-CN', 'core-instructions');
+  it('zh-CN agents-md 含工作区结构约束（core.md 内容已并入）', () => {
+    const result = loadTemplate('zh-CN', 'agents-md');
     expect(result).toBeTruthy();
-    // 验证是明文而非 Base64（Base64 字符串只含 [A-Za-z0-9+/=]）
     expect(result).toContain('.openfeel');
-    // 验证不是 Base64（包含中文等非 Base64 字符）
+    expect(result).toContain('项目特有约束（可选化）');
     expect(result).toMatch(/[\u4e00-\u9fff]/);
+    expect(result).not.toContain('{项目名称}');
   });
 
-  it('en core-instructions 返回 UTF-8 明文英文模板', () => {
-    const result = loadTemplate('en', 'core-instructions');
+  it('en agents-md 含对应工作区结构约束', () => {
+    const result = loadTemplate('en', 'agents-md');
     expect(result).toBeTruthy();
     expect(result).toContain('Public Domain');
+    expect(result).toContain('Project-Specific Constraints');
     expect(result).toMatch(/[a-zA-Z]/);
+    expect(result).not.toContain('{项目名称}');
   });
 
-  it('fr core-instructions 回退到 zh-CN', () => {
-    const result = loadTemplate('fr', 'core-instructions');
+  it('fr agents-md 回退到 zh-CN', () => {
+    const result = loadTemplate('fr', 'agents-md');
     expect(result).toBeTruthy();
     expect(result).toContain('.openfeel');
   });
@@ -172,18 +176,17 @@ describe('update_infos 会话启动修复规则（模板静态断言）', () => 
     expect(content).not.toContain('clearUpdateInfos');
   });
 
-  it('core-instructions（zh-CN）含提示性约束且不自行修改（REV-902）', () => {
-    const content = read('../../src/core/templates-data/opencode/instructions/zh-CN.md');
+  it('openfeel-workspace skill 含提示性约束且不自行修改（REV-902）', () => {
+    const content = read('../../src/core/templates-data/opencode/skills/openfeel-workspace/SKILL.md');
     expect(content).toContain('update_infos.md');
     expect(content).toContain('不自行修改');
     expect(content).not.toContain('resolveUpdateInfo');
     expect(content).not.toContain('clearUpdateInfos');
   });
 
-  it('core-instructions（en）含对应提示性约束', () => {
-    const content = read('../../src/core/templates-data/opencode/instructions/en.md');
-    expect(content).toContain('update_infos.md');
-    expect(content).toContain('must not modify');
+  it('agents-md（en）为全局约束层且不含 update info 内部函数调用', () => {
+    const content = read('../../src/core/templates-data/agents-md/en.md');
+    expect(content).toContain('Global Behavioral Constraints');
     expect(content).not.toContain('resolveUpdateInfo');
     expect(content).not.toContain('clearUpdateInfos');
   });

@@ -6,7 +6,7 @@
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { updateProject, supportedTools, selectTools, AgentsMdLangConflictError } from '../core/update.js';
+import { updateProject, supportedTools, selectTools } from '../core/update.js';
 import { initProject } from '../core/init.js';
 import { t, getCliLang } from '../core/i18n.js';
 
@@ -107,15 +107,6 @@ export function registerUpdateCommand(program: Command): void {
           console.log(t('update.complete', lang));
         }
       } catch (err) {
-        if (err instanceof AgentsMdLangConflictError) {
-          // 语言冲突 → 输出警告但不阻塞后续流程
-          // updateProject 已在非交互模式下直接处理跳过，此处为安全兜底
-          console.warn(t('update.langConflict', getCliLang(targetPath), {
-            projectLang: (err as AgentsMdLangConflictError).projectLang,
-            requestedLang: (err as AgentsMdLangConflictError).requestedLang,
-          }));
-          return;
-        }
         console.error(t('update.errorDeployFailedTmpl', lang, { message: (err as Error).message }));
         process.exit(1);
       }

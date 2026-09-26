@@ -17,13 +17,14 @@ export function registerMigrateCommand(program: Command): void {
     .description('Legacy 布局迁移（检测/备份/迁移/回滚存量项目旧布局，与 flow migrate 不同域）')
     .option('--dry-run', '仅检测预览，不写盘')
     .option('--remap-assignee', '改写 flow.json 旧 assignee 为新名（默认仅报告不改写）')
-    .action((path?: string, options?: { dryRun?: boolean; remapAssignee?: boolean }) => {
+    .option('--clean-global-core-md', '删除已废弃的全局 core.md（~/.config/opencode/openfeel/core.md）')
+    .action((path?: string, options?: { dryRun?: boolean; remapAssignee?: boolean; cleanGlobalCoreMd?: boolean }) => {
       const targetPath = resolve(path ?? process.cwd());
       const lang = getCliLang(targetPath);
       if (!existsSync(targetPath)) { console.error(t('migrate.error.pathNotExist', lang, { path: targetPath })); process.exit(1); }
       // REV-1404：任一步迁移失败时输出「可 rollback 回滚」提示，避免未捕获堆栈直接外泄。
       try {
-        const result = migrateProject(targetPath, { dryRun: options?.dryRun, remapAssignee: options?.remapAssignee, lang });
+        const result = migrateProject(targetPath, { dryRun: options?.dryRun, remapAssignee: options?.remapAssignee, lang, cleanGlobalCoreMd: options?.cleanGlobalCoreMd });
         printMigrateReport(result, options?.dryRun ?? false, lang);
       } catch (err) {
         console.error(t('migrate.error.aborted', lang, { message: (err as Error).message }));
@@ -65,6 +66,14 @@ export function registerMigrateCommand(program: Command): void {
 }
 
 function printMigrateReport(result: MigrateResult, dryRun: boolean, lang: 'zh-CN' | 'en'): void {
+  // 兼容过渡提示（v1.1.1）：无论是否 legacy 均输出（全局旧 core.md / 存量项目 AGENTS.md）
+  if (result.deprecated.globalCoreMdExists) {
+    console.log(t('migrate.deprecated.globalCoreMd', lang));
+    console.log(t('migrate.deprecated.globalCoreMdHint', lang));
+  }
+  if (result.deprecated.projectAgentsMdExists) {
+    console.log(t('migrate.deprecated.projectAgentsMd', lang));
+  }
   // 已最新
   if (!result.legacy.isLegacy) { console.log(t('migrate.legacy.alreadyLatest', lang)); return; }
   if (dryRun) console.log(t('migrate.detect.dryRunTitle', lang));

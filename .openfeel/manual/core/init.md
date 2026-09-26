@@ -4,18 +4,19 @@
 
 ## 职责
 
-项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`、`AGENTS.md`），并提供 OpenCode 平台适配器全局部署、示例项目骨架（`--demo`）和一键 demo 模式。
+项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`）、写项目最小 `opencode.jsonc`，并提供示例项目骨架（`--demo`）与仅工作区（`--workspace-only`）轻量模式。
+
+> **v1.1.1 收敛**：全局约束/agent/skill 部署已从 init 拆除，收归 `openfeel setup`（见 `core/setup.md`）。init 只做项目初始化，不再产生项目 `AGENTS.md`、不部署任何全局资产。
 
 ## 核心 API
 
 | 函数 | 功能 |
 |------|------|
-| `initProject(projectPath, cliLang?)` | 主初始化流程：创建目录 → 写 config → init flow.json → 语言选择 → OpenCode 部署确认 → 生成模板文件 → AGENTS.md 变量替换 → 重启提醒 |
+| `initProject(projectPath, cliLang?)` | 主初始化流程：确保全局配置 → 语言选择 → `initWorkspaceCore` → 写项目 `opencode.jsonc` → package.json vitest 检测 |
+| `initWorkspaceOnly(projectPath, lang?)` | 非交互轻量子命令（`--workspace-only`）：仅创建工作区，不写 `opencode.jsonc`/`AGENTS.md`，供 Feel 空白项目自动搭建 |
+| `initWorkspaceCore(projectPath, lang)` | 内部函数：创建工作区（目录 + config.yaml + flow.json + .info.json + dev/kb 模板），被 initProject/initWorkspaceOnly 复用 |
 | `initDemo(projectPath, lang)` | 创建示例项目骨架（TS 项目 + vitest 配置 + 示例测试 + 示例阶段） |
-| `deployOpencode(projectPath, lang)` | 部署 OpenCode 平台适配器到**全局** `~/.config/opencode/`（Agents、Skills、框架约束 core.md、全局 opencode.jsonc）+ 项目最小 opencode.jsonc 覆盖，遵循"已存在不覆盖"原则 |
-| `promptOpencodeDeploy(lang)` | 交互式确认是否部署 OpenCode 适配器（Y/n，默认 Y），非交互模式返回 false |
 | `writeTemplateIfMissing(filePath, content)` | 底层工具：仅在目标不存在时写入，返回 `{ created: boolean }` |
-| `writeGlobalFileIfMissing(filePath, content)` | 全局文件写入：全局文件锁 + 原子写 + 已存在不覆盖（跨项目共享路径） |
 | `ensureGlobalConfig()` | 首次使用时的全局配置引导（语言选择），交互模式中英双语提示 |
 
 ## 类型定义
@@ -23,21 +24,14 @@
 ```typescript
 /** 初始化结果 */
 interface InitResult {
-  created: string[];                           // 创建的目录/文件列表
-  updated: string[];                           // 更新的文件列表
-  opencode?: OpencodeDeployResult;             // OpenCode 部署结果（仅部署时有）
-}
-
-/** OpenCode 部署结果 */
-interface OpencodeDeployResult {
-  created: number;                             // 新创建文件数
-  skipped: number;                             // 跳过文件数（已存在）
+  created: string[];   // 创建的目录/文件列表
+  updated: string[];   // 更新的文件列表
 }
 
 /** 示例骨架结果 */
 interface DemoResult {
-  created: string[];                           // 创建的文件列表
-  skipped: string[];                           // 跳过的文件列表
+  created: string[];
+  skipped: string[];
 }
 ```
 
@@ -45,46 +39,24 @@ interface DemoResult {
 
 ```
 步骤 0: ensureGlobalConfig() — 首次使用引导
-步骤 1: createWorkspace() — 创建 .openfeel/ 目录结构
-步骤 1a: promptLanguage() — 语言选择（CLI --lang > 交互式 > 全局默认）
-步骤 1b: promptOpencodeDeploy() — OpenCode 部署确认
-步骤 2: writeDefaultConfig() — 写入 config.yaml
-步骤 3: FlowManager.initFlow() — 初始化 flow.json
-步骤 4: ensureInfoJson() — 确保 .info.json 存在
-步骤 4b: writeLang() — 写入语言配置到 .info.json
-步骤 5: writeTemplateIfMissing(dev_core.md)
-步骤 6: writeTemplateIfMissing(current.md)
-步骤 6b: writeTemplateIfMissing(decisions.md) — 生成 ADR 决策记录骨架（getDecisionsTemplate）
-步骤 7: writeTemplateIfMissing(kb/index.md)
-步骤 7b: deployOpencode() — 部署 OpenCode 适配器（如确认）
-步骤 8: 生成 AGENTS.md（含 {项目名称} 替换）
-步骤 9: 检测 package.json → 添加 @vitest/coverage-v8（如有 vitest）
-步骤 10: 重启提醒（如 opencode 首次部署）
+步骤 1: 语言选择（CLI --lang > 交互式 > 全局默认）
+步骤 2: initWorkspaceCore() — 创建工作区
+          （createWorkspace → writeDefaultConfig → FlowManager.initFlow
+           → ensureInfoJson → writeLang → dev_core/current/decisions → kb/index）
+步骤 3: 写项目 opencode.jsonc（最小 { $schema }，不存在则写）
+步骤 4: 检测 package.json → 添加 @vitest/coverage-v8（如有 vitest）
 ```
 
-## OpenCode 部署内容（全局化，stage-37）
+## workspace-only 子命令（v1.1.1）
 
-`deployOpencode()` 部署到**全局** `~/.config/opencode/`，项目仅写最小覆盖：
+`openfeel init --workspace-only [--non-interactive]`：调用 `initWorkspaceOnly`，仅执行 `initWorkspaceCore`，**不写** 项目 `opencode.jsonc`/`AGENTS.md`、不检测 package.json、不做语言交互（`--lang` 或默认 zh-CN）。供 Feel 在空白项目（无 `.openfeel/`）启动时自动搭建工作区。
 
-| 类别 | 数量 | 目标路径 |
-|------|:--:|------|
-| Agent 定义 | 9 | `~/.config/opencode/agents/{agent}.md`（`feel` 原名 + 8 个 `openfeel-*` 前缀） |
-| Skill 定义 | 14 | `~/.config/opencode/skills/{name}/SKILL.md`（全部 `openfeel-*` 前缀） |
-| 框架约束 core.md | 1 | `~/.config/opencode/openfeel/core.md` |
-| 全局配置 | 1 | `~/.config/opencode/opencode.jsonc`（框架级，已存在则跳过，合并归 update） |
-| 项目覆盖 | 1 | 项目根 `opencode.jsonc`（最小 `{ $schema }`） |
+## v1.1.1 拆除的部署能力（收归 openfeel setup）
 
-⚠️ 不部署 `.opencode/package.json`（REV-001）；不部署 `.opencode/{ADAPTER,.gitignore,instructions}`（已随项目 `.opencode/` 布局废弃，见「项目精简」）。
-
-**项目精简（D1）**：`initProject` 不再产生项目 `.opencode/`，项目仅保留 `.openfeel/` 工作区 + 项目 `AGENTS.md`（项目级约束）+ 项目 `opencode.jsonc`（模型/语言覆盖，仅 `$schema`，不写 instructions/skills/default_agent）。
-
-> **命名前缀（stage-36）**：8 个 agent 与 14 个 skill 均加 `openfeel-` 前缀（`feel` agent 保留原名，作为 primary/default_agent 例外），避免与 opencode 生态及用户自定义 agent/skill 命名冲突。`deployOpencode` 通过 `listOpencodeAgentIds` / `listOpencodeSkillNames` 读模板源，键随 build 生成段自动带前缀。
->
-> **全局化（stage-37）**：部署目标从项目 `.opencode/` 切换到全局 `~/.config/opencode/`（D1）；全局文件写入走 `writeGlobalFileIfMissing`（全局锁 + 原子写 + 已存在不覆盖）；框架约束 core.md 部署到 `getGlobalCoreMdPath()`；重启提醒文案更新为「全局部署语义」。OpenFeel 仓库自身 `.opencode/` 仍保留为构建产物/自举实例（N1），本阶段不动。
+原 `deployOpencode` / `promptOpencodeDeploy` / `writeGlobalFileIfMissing` 已删除；全局 AGENTS.md + 9 agent + 16 skill + 全局 `opencode.jsonc` 由 `openfeel setup` 纯全局部署（见 `core/setup.md`）。`InitResult` 同步移除 `opencode` 字段。
 
 ## 语言回退
 
-- 所有 `loadOpencode*` 函数在 lang 不存在时回退 `zh-CN`
 - `initProject` 语言选择优先级：CLI `--lang` 参数 > 交互式选择 > 全局默认语言
 - 非交互模式（CI/CD）默认 `zh-CN`
 
@@ -94,7 +66,8 @@ interface DemoResult {
 |------|------|
 | stage-04 | 新增 `initDemo()` 支持 `--demo` 标志 |
 | stage-29 | 新增 `promptOpencodeDeploy()` + `deployOpencode()` + AGENTS.md `{项目名称}` 替换 + 重启提醒；`InitResult` 扩展 `opencode` 字段 |
-| stage-33 | 新增 decisions.md 生成步（6b 步，`getDecisionsTemplate`）；templates.ts 新增 `DECISIONS_TEMPLATE_ZH/EN` + `getDecisionsTemplate(lang)` |
-| stage-34 | 示例阶段多级化：部署路径 `plan/stage-01/status.md` → `plan/v1/stage-01/status.md`，flow.json 注册 `stage-01` → `v1.0.0-stage-01`，status.md 标题同步；路径映射统一走 `plan-path` 模块 |
-| stage-36 | agent/skill 命名加 `openfeel-` 前缀（`feel` 保留）；模板源收敛为 `templates-data/opencode/` 单源，`deployOpencode` 读模板源键自动带前缀；示例 status.md 的 `executor` 改 `openfeel-executor` |
-| stage-37 | 全局部署（D1）：`deployOpencode` 部署目标改全局 `~/.config/opencode/`；新增 `writeGlobalFileIfMissing`；项目精简为 `.openfeel/`+AGENTS.md+opencode.jsonc；不再部署 `.opencode/{ADAPTER,.gitignore,instructions}`；重启提醒文案全局化 |
+| stage-33 | 新增 decisions.md 生成步（6b 步，`getDecisionsTemplate`） |
+| stage-34 | 示例阶段多级化：`plan/stage-01/status.md` → `plan/v1/stage-01/status.md` |
+| stage-36 | agent/skill 命名加 `openfeel-` 前缀（`feel` 保留）；模板源收敛为 `templates-data/opencode/` 单源 |
+| stage-37 | 全局部署（D1）：`deployOpencode` 部署目标改全局 `~/.config/opencode/` |
+| v1.1.1 | 拆除 `deployOpencode`/`promptOpencodeDeploy`/`writeGlobalFileIfMissing` 与项目 AGENTS.md 骨架；新增 `initWorkspaceCore`/`initWorkspaceOnly`（`--workspace-only`）；`InitResult` 移除 `opencode`；全局部署收归 `openfeel setup` |

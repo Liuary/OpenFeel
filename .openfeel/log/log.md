@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-26-Liuary-002.md](2026/09/26/2026-09-26-Liuary-002.md) | Liuary | 阶段 v1.1.1-stage-01 完成 |
+| [2026-09-26-Liuary-001.md](2026/09/26/2026-09-26-Liuary-001.md) | Archiver | **stage-01 归档完成（v1.1.1 全局化彻底化改造）**：移除 core.md 约束统一全局 AGENTS.md + 约束/操作分离（2 skill）+ openfeel setup 纯全局部署 + init/update/migrate 拆分，597/597 测试，BUG-001 closed，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 cli/setup.md + core/setup.md + 更新 init/update/migrate/index |
 | [2026-09-25-Liuary-010.md](2026/09/25/2026-09-25-Liuary-010.md) | Archiver | **stage-40 归档完成（v1.1.0 收官）**：模型配置接口（`openfeel model` 命令组 + `model-config.ts` 三层级读写 + REV-1606 优先级链实测勘误 frontmatter>jsonc），591/591 测试，0 Bug，知识沉淀 3 条至 architecture(1) + patterns(1) + troubleshooting(1) + 修正 setup.md/skill 矛盾，manual 新增 core/model-config.md + cli/model.md + 更新 global-paths/commands |
 | [2026-09-25-Liuary-009.md](2026/09/25/2026-09-25-Liuary-009.md) | Liuary | 阶段 v1.1.0-stage-40 完成 |
 | [2026-09-25-Liuary-008.md](2026/09/25/2026-09-25-Liuary-008.md) | Archiver | **stage-39 归档完成**：存量迁移与兼容收尾（`openfeel migrate` 命令 + 存量读取兼容 P5/isLegacyFrameworkKey + 版本 1.1.0 收口），569/569 测试，0 Bug，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/migrate.md + 更新 cli/commands.md + core/update.md + core/update-state.md |
@@ -35,7 +37,4 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
-| [2026-08-08-Liuary-004.md](2026/08/08/2026-08-08-Liuary-004.md) | Liuary | **stage-29 归档完成**：init 增强 — AGENTS.md 项目名称替换 + opencode 适配器部署，2 patterns 知识沉淀 + manual/core/init.md 新增 |
-| [2026-08-08-Liuary-003.md](2026/08/08/2026-08-08-Liuary-003.md) | Liuary | 阶段 v1.0.0-stage-29 完成 |
-| [2026-08-08-Liuary-002.md](2026/08/08/2026-08-08-Liuary-002.md) | Liuary | **npm 自动发布排查归档**：404 secret 名字不匹配 + 403 2FA 冲突 → Granular token + Bypass 2FA，知识沉淀 2 条至 troubleshooting(1) + setup(1) |
 

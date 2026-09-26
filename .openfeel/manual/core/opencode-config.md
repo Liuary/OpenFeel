@@ -33,3 +33,4 @@
 | 阶段 | 变更 |
 |------|------|
 | stage-37 | 初始创建；`parseJsonc` 从 update.ts 迁移至此（op-003 删本地副本改 import）；新增 `deepMergeJsonc` / `mergeGlobalOpencodeJsonc` / 双构建对象（REV-605「已存在不覆盖」语义 + REV-703 agent 级合并粒度） |
+| v1.1.1 | `buildGlobalOpencodeFrameworkObj` 移除 `instructions`（op-000 实测全局 AGENTS.md 自动加载 = YES）；`mergeGlobalOpencodeJsonc` 清理已废弃的 `getGlobalCoreMdPath()` 引用（保留用户其他 instructions） |

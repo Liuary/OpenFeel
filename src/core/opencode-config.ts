@@ -10,17 +10,17 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-/** 框架级全局 opencode.jsonc 内容对象（N7；instructions 用绝对路径，见 op-000 结论） */
+/** 框架级全局 opencode.jsonc 内容对象（N7；全局 AGENTS.md 由约定自动加载承载约束，故不写 instructions） */
 export function buildGlobalOpencodeFrameworkObj(): Record<string, unknown> {
   return {
     $schema: 'https://opencode.ai/config.json',
     default_agent: 'feel',
-    instructions: [getGlobalCoreMdPath()],
     agent: {
       'openfeel-vision': { model: 'deepseek/deepseek-flash' },
       'openfeel-reviewer': { model: 'zhipuai/glm-5.3-flash' },
     },
     // N3：experimental.agent_manager_tool 已被移除（op-000 实测 schema 未定义 + 静默丢弃），故不写
+    // v1.1.1：instructions 已移除——op-000 实测全局 AGENTS.md 自动加载（YES），约束无需显式 instructions 引用
   };
 }
 
@@ -104,9 +104,20 @@ export function deepMergeJsonc(
   return result;
 }
 
-/** 合并全局 opencode.jsonc：解析→深度合并→序列化（保留用户字段，注释不保留） */
+/** 合并全局 opencode.jsonc：解析→深度合并→清理废弃 core.md 引用→序列化（保留用户字段，注释不保留） */
 export function mergeGlobalOpencodeJsonc(raw: string): string {
   const base = parseJsonc(raw);
   const merged = deepMergeJsonc(base, buildGlobalOpencodeFrameworkObj());
+  // 移除已废弃的 core.md instructions 引用（v1.1.1：core.md 已并入全局 AGENTS.md）
+  const instr = merged.instructions;
+  if (Array.isArray(instr)) {
+    const stale = getGlobalCoreMdPath();
+    const filtered = instr.filter((p) => p !== stale);
+    if (filtered.length === 0) {
+      delete merged.instructions;
+    } else {
+      merged.instructions = filtered;
+    }
+  }
   return JSON.stringify(merged, null, 2) + '\n';
 }

@@ -23,7 +23,7 @@
   },
   "agent": {
     "openfeel-vision": {
-      "model": "alibaba-cn/qwen3-vl-plus"
+      "model": "deepseek/deepseek-flash"
     },
     "openfeel-reviewer": {
       "model": "zhipuai/glm-5.2"

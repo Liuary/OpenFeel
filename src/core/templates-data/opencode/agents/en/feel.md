@@ -162,10 +162,10 @@ Agent model requirements reference:
 | Feel / openfeel-planner / openfeel-schemer | Deep reasoning | Large context + strong reasoning |
 | openfeel-executor / openfeel-utility | Fast execution | Low latency, tool calling |
 | openfeel-reviewer | Cross-review | Different architecture from primary model |
-| openfeel-vision | Multimodal | **Must support image input** (model name contains `vl`) |
+| openfeel-vision | Multimodal | **Must support image input** (currently `deepseek-flash`; alternative `qwen3-vl-plus`) |
 | openfeel-feel-tester / openfeel-archiver | Reasoning | Standard reasoning model |
 
-> Common pitfall: `qwen3.7-plus` is a text-only model, does not support image input; openfeel-vision needs `qwen3-vl-plus`. Model reference format: `{auth.json key}/{model ID}`.
+> Common pitfall: `qwen3.7-plus` is a text-only model, does not support image input; openfeel-vision currently uses `deepseek-flash` (supports multimodal image input), with `qwen3-vl-plus` as an alternative. Model reference format: `{auth.json key}/{model ID}`.
 
 ## Core Responsibilities
 

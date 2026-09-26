@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { withFileLock, LOCK_STALE_MS_DEFAULT } from '../../../src/core/fs/file-lock.js';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -73,18 +74,26 @@ describe('file-lock', () => {
   });
 
   it('跨进程互斥：N 个子进程各自 +1，总数不丢', () => {
-    const modulePath = join(tmpDir, 'file-lock.mjs');
-    const src = readSrc(join(process.cwd(), 'src', 'core', 'fs', 'file-lock.ts'), 'utf-8');
-    const out = ts.transpileModule(src, {
-      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-    }).outputText;
-    writeFileSync(modulePath, out, 'utf-8');
+    // REV-1801：file-lock 现依赖 ../global-paths，需按原相对布局一并转译到临时目录，
+    // 否则独立子进程无法解析依赖会静默跳过跨进程断言。
+    const fsDir = join(tmpDir, 'core', 'fs');
+    mkdirSync(fsDir, { recursive: true });
+    const transpile = (relPath: string): string => {
+      const src = readSrc(join(process.cwd(), ...relPath.split('/')), 'utf-8');
+      return ts.transpileModule(src, {
+        compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+      }).outputText;
+    };
+    writeFileSync(join(tmpDir, 'core', 'global-paths.mjs'), transpile('src/core/global-paths.ts'), 'utf-8');
+    // 将 .js 后缀重写为 .mjs，保持 ../global-paths 相对关系
+    const lockOut = transpile('src/core/fs/file-lock.ts').replace('global-paths.js', 'global-paths.mjs');
+    writeFileSync(join(fsDir, 'file-lock.mjs'), lockOut, 'utf-8');
 
     const counterPath = join(tmpDir, 'counter.txt');
     writeFileSync(counterPath, '0', 'utf-8');
     const workerPath = join(tmpDir, 'worker.mjs');
     writeFileSync(workerPath, `
-import { withFileLock } from './file-lock.mjs';
+import { withFileLock } from './core/fs/file-lock.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 const lock = ${JSON.stringify(join(tmpDir, 'counter.lock'))};
 const counter = ${JSON.stringify(counterPath)};

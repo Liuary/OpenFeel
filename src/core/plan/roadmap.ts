@@ -2,8 +2,9 @@
  * 分期大纲管理
  * 负责 .openfeel/roadmap/ 下的版本大纲文件创建与读取
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { atomicWriteFileSync } from '../fs/atomic-write.js';
 
 /** 分期大纲 */
 export interface Roadmap {
@@ -55,7 +56,7 @@ export function createRoadmap(projectPath: string, version: string): void {
 > 待补充
 `;
 
-  writeFileSync(filePath, content, 'utf-8');
+  atomicWriteFileSync(filePath, content);
   console.log(`已创建分期大纲: v${ver}.md`);
 }
 

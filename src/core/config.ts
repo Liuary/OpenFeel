@@ -4,10 +4,10 @@
  * 同时管理全局用户画像 ~/.config/openfeel/profile.yaml（跨项目共享偏好）。
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
-import { homedir } from 'node:os';
+import { getGlobalProfilePath } from './global-paths.js';
 import { z } from 'zod';
 import { parse as parseYaml, parseDocument, stringify as stringifyYaml } from 'yaml';
 import { getUserName } from './workspace/identity.js';
@@ -167,7 +167,8 @@ const DEFAULT_PROFILE: Profile = {
  * @returns ~/.config/openfeel/profile.yaml 的绝对路径
  */
 function getProfilePath(): string {
-  return join(homedir(), '.config', 'openfeel', 'profile.yaml');
+  // 委托 global-paths 作为全局路径唯一权威（N4 收口）
+  return getGlobalProfilePath();
 }
 
 /**

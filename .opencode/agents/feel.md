@@ -163,10 +163,10 @@ Agent 模型需求对照：
 | Feel / openfeel-planner / openfeel-schemer | 深度推理 | 大上下文 + 强推理能力 |
 | openfeel-executor / 事务官 | 快速执行 | 低延迟、工具调用 |
 | openfeel-reviewer | 交叉审查 | 异种模型（与主力不同架构） |
-| openfeel-vision | 多模态 | **必须支持图像输入**（模型名含 `vl`） |
+| openfeel-vision | 多模态 | **必须支持图像输入**（现用 `deepseek-flash`，备选 `qwen3-vl-plus`） |
 | openfeel-feel-tester / openfeel-archiver | 推理 | 标准推理模型 |
 
-> 常见陷阱：`qwen3.7-plus` 是纯文本模型，不支持图像输入；openfeel-vision 需要 `qwen3-vl-plus`。模型引用格式为 `{auth.json中的key}/{模型ID}`。
+> 常见陷阱：`qwen3.7-plus` 是纯文本模型，不支持图像输入；openfeel-vision 现用 `deepseek-flash`（已支持多模态图像输入），备选 `qwen3-vl-plus`。模型引用格式为 `{auth.json中的key}/{模型ID}`。
 
 ## 核心职责
 

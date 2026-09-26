@@ -36,7 +36,7 @@ describe('buildGlobalOpencodeFrameworkObj', () => {
 
   it('应包含 vision/reviewer 两个模型默认键', () => {
     expect(obj.agent).toEqual({
-      'openfeel-vision': { model: 'alibaba-cn/qwen3-vl-plus' },
+      'openfeel-vision': { model: 'deepseek/deepseek-flash' },
       'openfeel-reviewer': { model: 'zhipuai/glm-5.2' },
     });
   });
@@ -87,7 +87,7 @@ describe('deepMergeJsonc 字段规则', () => {
     const base = { agent: { 'openfeel-vision': { model: 'user/custom' } } };
     const overlay = {
       agent: {
-        'openfeel-vision': { model: 'alibaba-cn/qwen3-vl-plus' },
+        'openfeel-vision': { model: 'deepseek/deepseek-flash' },
         'openfeel-reviewer': { model: 'zhipuai/glm-5.2' },
       },
     };

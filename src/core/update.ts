@@ -5,7 +5,7 @@
  * 变更摘要 (v3-stage-04 第二轮):
  * - 新增 instructions/core.md 创建（从 init.ts 迁移至此，职责归位适配器层）
  */
-import { writeFileSync, existsSync, readFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { resolve, dirname, join, basename, isAbsolute, relative } from 'node:path';
 import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader.js';
 import { recordProjectLang, getGlobalConfig, getLang } from './workspace/identity.js';
@@ -156,15 +156,15 @@ cat ~/.local/share/opencode/auth.json
 
 | 能力需求 | 需确认的字段 | 示例 |
 |----------|-------------|------|
-| 视觉/图像分析 | Input = Yes | \`qwen3-vl-plus\` |
+| 视觉/图像分析 | Input = Yes | \`deepseek-flash\` |
 | 工具调用 | Tool Call = Yes | \`qwen3.7-plus\` |
 | 结构化输出 | Structured = Yes | \`qwen3.7-flash\` |
 | 推理/思考 | Reasoning = Yes | \`qwq-plus\` |
 
 **常见陷阱**：
 - \`qwen3.7-plus\` 是纯文本模型，不支持图像输入
-- \`qwen3-vl-plus\` 是视觉模型，支持图像分析
-- 模型名中的 \`vl\` 表示 Vision-Language
+- \`deepseek-flash\` 支持多模态图像输入（openfeel-vision 现用模型）
+- 备选视觉模型：\`qwen3-vl-plus\`（模型名中的 \`vl\` 表示 Vision-Language）
 
 ### 第四步：检查 opencode.jsonc 配置
 
@@ -204,15 +204,16 @@ cat ~/.local/share/opencode/auth.json
 
 ## 多模态（openfeel-vision）Agent 专项
 
-openfeel-vision Agent 必须配置多模态模型。Alibaba 系列视觉模型：
+openfeel-vision Agent 必须配置多模态模型。当前默认使用 \`deepseek/deepseek-flash\`（已支持多模态图像输入）：
 
-| 模型 ID | 完整引用（alibaba-cn） | 上下文 | 图像输入 |
-|---------|----------------------|--------|---------|
-| qwen3-vl-plus | \`alibaba-cn/qwen3-vl-plus\` | 262K | ✅ |
+| 模型 ID | 完整引用 | 上下文 | 图像输入 |
+|---------|---------|--------|---------|
+| deepseek-flash | \`deepseek/deepseek-flash\` | — | ✅ |
+| qwen3-vl-plus | \`alibaba-cn/qwen3-vl-plus\` | 262K | ✅（备选） |
 | qwen-vl-plus | \`alibaba-cn/qwen-vl-plus\` | 131K | ❌（旧版） |
 | qwen-vl-max | \`alibaba-cn/qwen-vl-max\` | 131K | ❌（旧版） |
 
-**推荐**：优先使用 \`qwen3-vl-plus\`，上下文最大且为最新视觉模型。
+**推荐**：优先使用 \`deepseek-flash\`（已内置多模态）；如需更大上下文可备选 \`qwen3-vl-plus\`。
 
 ## 常见错误与修复
 
@@ -221,7 +222,7 @@ openfeel-vision Agent 必须配置多模态模型。Alibaba 系列视觉模型�
 | \`Model not found: Alibaba(China)/xxx\` | 使用了自定义 provider name 而非 auth.json key | 改为 auth.json 中的实际 key |
 | \`Model not found: alibaba/xxx\` | 内置 key 与实际注册的 key 不一致 | 检查 auth.json，使用实际 key |
 | \`Model not found: xxx. Did you mean: yyy\` | 模型名拼写错误或不存在 | 使用 \`Did you mean\` 建议的名称 |
-| Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为带 \`vl\` 后缀的视觉模型 |
+| Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为支持图像输入的模型（如 \`deepseek-flash\`） |
 `,
   'openfeel-bug-acceptance': `---
 name: openfeel-bug-acceptance
@@ -785,7 +786,7 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 {
   "agent": {
     "openfeel-vision": {
-      "model": "qwen3-vl-plus"   // 模型名格式：provider/model-id 或 model-id
+      "model": "deepseek/deepseek-flash"   // 模型名格式：provider/model-id 或 model-id
     }
   }
 }
@@ -818,7 +819,7 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 
 - Feel 的主力模型（DeepSeek V4 Pro）不支持图片输入
 - 遇到图片输入时 Feel 会自动委托 openfeel-vision Agent
-- openfeel-vision Agent 需要配置多模态模型（如 \`qwen-vl-plus\`、\`qwen3-vl-plus\`）
+- openfeel-vision Agent 需要配置多模态模型（现用 \`deepseek-flash\`，备选 \`qwen3-vl-plus\`）
 - 模型名不要随意添加前缀（如 \`alibaba/\`），以平台提示的可用名为准
 - **模型引用格式**：\`{auth.json中的key}/{模型ID}\`，不是 \`provider.name\` 也不是 \`provider.id\`
 - 读取 \`~/.local/share/opencode/auth.json\` 确认实际 provider key（常见：\`alibaba-cn\`、\`deepseek\`、\`zhipuai\`）
@@ -835,7 +836,7 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 | openfeel-reviewer | 异种推理模型 (GLM) | — |
 | openfeel-feel-tester | 推理模型 | — |
 | 事务官 | 快速模型 (Flash) | — |
-| openfeel-vision | 多模态模型 | 需配 qwen3-vl-plus |
+| openfeel-vision | 多模态模型 | 需配 deepseek-flash |
 | openfeel-archiver | 推理模型 | — |
 `,
   'openfeel-recover': `---
@@ -1479,18 +1480,19 @@ export function updateProject(
 
   // 3. 全局 opencode.jsonc：深度合并（保留用户字段），加全局锁 + 原子写
   const globalJsoncPath = getGlobalOpencodeJsoncPath();
-  // 合并可能因块注释 parse 失败抛异常（parseJsonc 边界）：降级为「跳过合并、保留原文件」并告警
-  let globalJsoncNew: string;
-  try {
-    globalJsoncNew = mergeGlobalOpencodeJsonc(
-      existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n',
-    );
-  } catch (err) {
-    console.warn(`[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
-    globalJsoncNew = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';
-  }
-  withFileLock(globalLockPath('global-opencode-jsonc'), () => {
-    atomicWriteFileSync(globalJsoncPath, globalJsoncNew);
+  // REV-1805：read-merge-write 全部置于锁内，消除与 model-config 锁内读写的 TOCTOU 竞态
+  const globalJsoncNew = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
+    const current = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';
+    let merged: string;
+    // 合并可能因块注释 parse 失败抛异常（parseJsonc 边界）：降级为「跳过合并、保留原文件」并告警
+    try {
+      merged = mergeGlobalOpencodeJsonc(current);
+    } catch (err) {
+      console.warn(`[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
+      merged = current;
+    }
+    atomicWriteFileSync(globalJsoncPath, merged);
+    return merged;
   });
   updateFileHash(newGlobalState, globalJsoncPath, globalJsoncNew);
 
@@ -1606,7 +1608,7 @@ function writeConflictFile(
     `>>>>>>> INCOMING (openfeel v${openfeelVersion} 更新)`,
   ].join('\n');
 
-  writeFileSync(conflictPath, conflictContent, 'utf-8');
+  atomicWriteFileSync(conflictPath, conflictContent);
 }
 
 /**

@@ -11,7 +11,7 @@
  *   staleMs = 3000ms ≈ 368×P99，且 staleMs < timeoutMs 保证崩溃残留可在等待窗口内被抢占。
  *   心跳续期对同步临界区不可行（事件循环被阻塞），故采用静态大余量 TTL。
  *
- * 仅依赖 node:fs / node:path / node:os / node:crypto，不引入第三方依赖。
+ * 仅依赖 node:fs / node:path / node:crypto 与全局路径模块，不引入第三方依赖。
  */
 import {
   closeSync,
@@ -24,8 +24,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { getGlobalLockPath } from '../global-paths.js';
 
 /** 获取锁总超时（ms） */
 export const LOCK_TIMEOUT_MS_DEFAULT = 5000;
@@ -62,7 +62,8 @@ export function projectLockPath(projectPath: string, name: string): string {
 
 /** 全局锁文件路径：~/.openfeel/locks/{name}.lock（跨项目全局写入用） */
 export function globalLockPath(name: string): string {
-  return join(homedir(), '.openfeel', 'locks', `${name}.lock`);
+  // 委托 global-paths 作为全局路径唯一权威（N4 收口），签名不变供既有调用方复用
+  return getGlobalLockPath(name);
 }
 
 /** 同步睡眠（阻塞当前 JS 线程，不空转 CPU） */

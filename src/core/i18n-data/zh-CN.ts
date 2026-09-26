@@ -635,7 +635,7 @@ export const model: I18nDomain = {
   'set.needConfirm':   { key: 'model.set.needConfirm',   zh: '修改框架默认将影响未来所有部署。非 TTY 下必须显式 --force 或 --build 确认，已拒绝执行', en: '' },
   'set.noSourceRepo':  { key: 'model.set.noSourceRepo',  zh: 'default 层级仅在 OpenFeel 源码仓可用（未找到 src/core/templates-data）。请用 --scope global/project', en: '' },
   'set.failed':        { key: 'model.set.failed',        zh: '✗ 写入失败：{message}', en: '' },
-  'set.example':       { key: 'model.set.example',       zh: '示例：openfeel model set openfeel-vision alibaba-cn/qwen3-vl-plus --scope global', en: '' },
+  'set.example':       { key: 'model.set.example',       zh: '示例：openfeel model set openfeel-vision deepseek/deepseek-flash --scope global', en: '' },
   // get
   'get.effective':     { key: 'model.get.effective',     zh: '生效模型：{value}', en: '' },
   'get.byScope':       { key: 'model.get.byScope',       zh: '  {scope}：{value}', en: '' },

@@ -108,7 +108,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 | openfeel-reviewer | Review Officer | Heterogeneous reasoning model (GLM) | subagent |
 | openfeel-feel-tester | Testing Officer | Reasoning model | subagent |
 | openfeel-utility Agent | Utility Officer | Fast model (Flash) | subagent |
-| openfeel-vision | Vision Officer | Multimodal model (qwen-vl-plus) | subagent |
+| openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | subagent |
 | openfeel-archiver | Archiving Officer | Reasoning model | subagent |
 
 > **Write constraint**: openfeel-planner and openfeel-archiver must operate on flow.json indirectly through Feel, and must not directly `edit` or `write` flow.json.

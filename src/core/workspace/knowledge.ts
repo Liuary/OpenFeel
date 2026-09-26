@@ -2,7 +2,7 @@
  * 知识库核心模块
  * 管理 .openfeel/kb/ 目录，包含知识条目的增删查改、索引维护和解析。
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../fs/file-lock.js';
@@ -83,7 +83,7 @@ export function initKnowledgeBase(projectPath: string): string[] {
   // 创建 index.md（不覆盖已有）
   const indexPath = resolve(kbDir, 'index.md');
   if (!existsSync(indexPath)) {
-    writeFileSync(indexPath, INDEX_TEMPLATE, 'utf-8');
+    atomicWriteFileSync(indexPath, INDEX_TEMPLATE);
     created.push('.openfeel/kb/index.md');
   }
 
@@ -91,7 +91,7 @@ export function initKnowledgeBase(projectPath: string): string[] {
   for (const cat of CATEGORIES) {
     const filePath = resolve(kbDir, `${cat}.md`);
     if (!existsSync(filePath)) {
-      writeFileSync(filePath, `# ${CATEGORY_TITLES[cat]} (${cat})\n`, 'utf-8');
+      atomicWriteFileSync(filePath, `# ${CATEGORY_TITLES[cat]} (${cat})\n`);
       created.push(`.openfeel/kb/${cat}.md`);
     }
   }

@@ -130,10 +130,10 @@ describe('model-config', () => {
     it('openfeel-vision（frontmatter + opencode-config.ts）改 3 处且结构化定位不误伤 reviewer', () => {
       const fw = setupFrameworkTmp();
       fwRoots.push(fw);
-      const r = setAgentModel('default', 'openfeel-vision', 'alibaba-cn/qwen3-vl-plus-v2', { frameworkRoot: fw });
+      const r = setAgentModel('default', 'openfeel-vision', 'deepseek/deepseek-flash', { frameworkRoot: fw });
       expect(r.changedFiles).toHaveLength(3);
       const cfg = readFileSync(join(fw, 'src', 'core', 'opencode-config.ts'), 'utf-8');
-      expect(cfg).toContain("'openfeel-vision': { model: 'alibaba-cn/qwen3-vl-plus-v2' }");
+      expect(cfg).toContain("'openfeel-vision': { model: 'deepseek/deepseek-flash' }");
       // reviewer 条目不变
       expect(cfg).toContain("'openfeel-reviewer': { model: 'zhipuai/glm-5.2' }");
     });

@@ -4,7 +4,7 @@
  */
 import path from 'node:path';
 import { existsSync } from 'node:fs';
-import os from 'node:os';
+import { getGlobalSchemasDir } from '../global-paths.js';
 import { loadSchema, type Schema } from '../schema.js';
 
 /**
@@ -22,7 +22,7 @@ export async function resolveSchema(
     // 1. 项目本地 .openfeel/schemas/{name}/schema.yaml
     path.join(projectPath, '.openfeel', 'schemas', name, 'schema.yaml'),
     // 2. 用户家目录 ~/.openfeel/schemas/{name}/schema.yaml
-    path.join(os.homedir(), '.openfeel', 'schemas', name, 'schema.yaml'),
+    path.join(getGlobalSchemasDir(), name, 'schema.yaml'),
     // 3. 包内置 node_modules/openfeel/schemas/{name}/schema.yaml
     path.join(projectPath, 'node_modules', 'openfeel', 'schemas', name, 'schema.yaml'),
   ];

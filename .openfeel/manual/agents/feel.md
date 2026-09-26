@@ -17,7 +17,7 @@
 | Reviewer | 审查官 | 异种推理模型 (GLM) | subagent | medium |
 | Feel Tester | 测试官 | 推理模型 | subagent | medium |
 | 事务官 | 事务官 | 快速模型 (Flash) | subagent | low |
-| Vision | 视觉官 | 多模态模型 (qwen-vl-plus) | subagent | low |
+| Vision | 视觉官 | 多模态模型 (deepseek-flash) | subagent | low |
 | Archiver | 归档官 | 推理模型 | subagent | low |
 
 ## 调度模型

@@ -108,7 +108,7 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 | openfeel-reviewer | 审查官 | 异种推理模型 (GLM) | subagent |
 | openfeel-feel-tester | 测试官 | 推理模型 | subagent |
 | openfeel-utility | 事务官 | 快速模型 (Flash) | subagent |
-| openfeel-vision | 视觉官 | 多模态模型 (qwen-vl-plus) | subagent |
+| openfeel-vision | 视觉官 | 多模态模型 (deepseek-flash) | subagent |
 | openfeel-archiver | 归档官 | 推理模型 | subagent |
 
 > **写入约束**：openfeel-planner 和 openfeel-archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 `edit` 或 `write` flow.json。

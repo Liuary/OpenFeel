@@ -46,3 +46,23 @@ export function getGlobalUpdateInfosPath(): string {
 export function getAuthJsonPath(): string {
   return join(homedir(), '.local', 'share', 'opencode', 'auth.json');
 }
+
+/** 全局锁文件路径（~/.openfeel/locks/{name}.lock；跨项目全局写入用，REV-1801） */
+export function getGlobalLockPath(name: string): string {
+  return join(homedir(), '.openfeel', 'locks', `${name}.lock`);
+}
+
+/** 全局配置文件路径（~/.openfeel/config.json，跨平台兼容，REV-1801） */
+export function getGlobalOpenfeelConfigPath(): string {
+  return join(homedir(), '.openfeel', 'config.json');
+}
+
+/** 全局用户画像路径（~/.config/openfeel/profile.yaml，跨项目共享偏好，REV-1801） */
+export function getGlobalProfilePath(): string {
+  return join(homedir(), '.config', 'openfeel', 'profile.yaml');
+}
+
+/** 全局 Schema 目录（~/.openfeel/schemas，Schema 家目录查找层，REV-1801） */
+export function getGlobalSchemasDir(): string {
+  return join(homedir(), '.openfeel', 'schemas');
+}

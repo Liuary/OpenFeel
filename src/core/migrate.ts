@@ -476,6 +476,13 @@ export function migrateProject(
       deployed.push(p);
       globalStateKeys.push(p);
     }
+    // REV-1804：框架资产（core.md / agents / skills）写盘后同步全局 state hash，与 update.ts 末尾循环一致；
+    // 避免迁移后 hash 缺失导致下次 update 误判为外部修改。global jsonc 的 hash 在下方单独更新，不重复。
+    for (const p of deployed) {
+      if (existsSync(p)) {
+        updateFileHash(globalState, p, readFileSync(p, 'utf-8'));
+      }
+    }
     // 全局 opencode.jsonc 深度合并（REV-1306：复用 update.ts 的 try-catch 降级，parse 失败保留原文件+告警）
     const globalJsoncPath = getGlobalOpencodeJsoncPath();
     let merged: string;

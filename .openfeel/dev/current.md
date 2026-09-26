@@ -1,15 +1,16 @@
 # 当前进度
 
-> OpenFeel v1.0.0 正式版 — 全系列归档完成 ✅ | 发布就绪
+> OpenFeel v1.1.0 正式版 — v1.1 六阶段（stage-35 ~ stage-40）全部归档完成 ✅ | 发布就绪
 
-- **状态**：v1.0.0-stage-01 ~ stage-34 全部完成 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化 + update 增量冲突标记 + 反馈规则/decisions.md/1.0.8 + plan 目录多级化与路径统一）
+- **状态**：v1.1.0-stage-35 ~ stage-40 全部完成 ✅（并发保护基础设施 + 模板源收敛/命名前缀统一 + 全局部署架构 + 控制区标记增量更新 + 存量迁移与兼容收尾 + 模型配置接口）
+- **上一版本**：v1.0.0-stage-01 ~ stage-34 全部归档 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化 + update 增量冲突标记 + 反馈规则/decisions.md + plan 目录多级化与路径统一）
 - **旧版本**：v1.0.0-stage-04 ~ stage-28 全部归档 ✅（原 v0.4.2 ~ v0.5.11，共 25 个阶段）
-- **知识库**：architecture(15) + patterns(66) + troubleshooting(15) + setup(6) = 102 条目
+- **知识库**：architecture(22) + patterns(78) + troubleshooting(22) + setup(6) = 128 条目
 - **Agent 数**：9 个
-- **Skill 数**：14 个（全量对齐）
-- **源文件**：48 个 .ts 文件
-- **测试**：425/425 全通过（+18 新测试于 stage-34）
-- **版本**：v1.0.8（stage-34 发布版本号待定：1.0.9 vs 1.1.0，待 Feel 与用户确认）
+- **Skill 数**：14 个（全量 `openfeel-` 前缀对齐）
+- **源文件**：59 个 .ts 文件
+- **测试**：591/591 全通过
+- **版本**：v1.1.0
 
 ## v1.0.0 发布里程碑 🏆
 
@@ -24,6 +25,17 @@
 | stage-32 | update 增量冲突标记 | 新增 update-state.ts 模块 + writeWithMergeDetection 三态逻辑 + 冲突文件写入 + Feel 冲突检测（3 文件变更，406 测试，+7） | 2026-08-11 |
 | stage-33 | 反馈规则 + decisions.md + 1.0.8 | 日志纪律解耦 + 任务类型路由 + 轻量决策边界（三层）+ decisions.md ADR 框架化 + 版本 1.0.8 全链路（29 源码文件变更，407 测试，+1） | 2026-08-15 |
 | stage-34 | plan 目录多级化与路径统一 | path.ts 唯一权威（三格式解析 + 双向映射 + 三级回退）+ stage/scheme 写入迁移 + init 多级化 + 模板/skill 双语同步（33 文件变更，425 测试，+18） | 2026-08-15 |
+
+## v1.1.0 里程碑 🚀
+
+| 阶段 | 主题 | 关键产出 | 完成时间 |
+|------|------|------|------|
+| stage-35 | 并发保护基础设施 | 原子写 + 跨进程文件锁 + 原子序号三工具 + 高风险写入接入（457/457 测试） | 2026-09-12 |
+| stage-36 | 模板源收敛 + 命名前缀统一 | templates-data 单一源 + 8 agent/14 skill `openfeel-` 前缀 + `/opfx:` 清零 | 2026-09-25 |
+| stage-37 | 全局部署架构 | global-paths 模块 + init/update 部署至 `~/.config/opencode/` + 项目精简 + jsonc schema 修正 | 2026-09-25 |
+| stage-38 | 控制区标记 + 增量更新 | managed-region 四策略 + 部署三态 + update_infos.md + 会话启动修复规则 | 2026-09-25 |
+| stage-39 | 存量迁移与兼容收尾 | openfeel migrate（备份/回滚）+ update_state 全局/项目拆分 + 版本 1.1.0 全链路 | 2026-09-25 |
+| stage-40 | 模型配置接口 | CLI `openfeel model set/get/list` + 工具默认/全局/项目三层级模型读写 + auth.json provider 校验 | 2026-09-25 |
 
 ## 旧 v0.5 系列里程碑（重映射为 v1.0.0-stage-17 ~ 28）
 
@@ -45,9 +57,9 @@
 
 ## 整体统计
 
-- 阶段覆盖：v1.0.0-stage-01 ~ stage-34（34 个阶段，含 25 个历史重映射 + 9 个新阶段）
-- 知识库总量：102 条目（architecture 15 + patterns 66 + troubleshooting 15 + setup 6）
-- 源文件：48 个 .ts 文件
-- 测试：425/425 全通过
+- 阶段覆盖：v1.0.0-stage-01 ~ stage-34（34 个阶段）+ v1.1.0-stage-35 ~ stage-40（6 个阶段），共 40 个阶段
+- 知识库总量：128 条目（architecture 22 + patterns 78 + troubleshooting 22 + setup 6）
+- 源文件：59 个 .ts 文件
+- 测试：591/591 全通过
 
-**v1.0.8 已发布。** 34 个阶段全部完成，知识库 102 条目。stage-34 发布版本号（1.0.9 vs 1.1.0）待 Feel 与用户确认后递增，npm publish 待用户确认。
+**v1.1.0 已就绪。** v1.1 六阶段（35~40）全部闭环，知识库 128 条目，测试 591/591 全通过，npm publish 待用户确认。

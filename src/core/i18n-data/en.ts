@@ -603,7 +603,7 @@ export const model: I18nDomain = {
   'set.needConfirm':   { key: 'model.set.needConfirm',   zh: '', en: 'Modifying the framework default affects all future deployments. In non-TTY you must explicitly pass --force or --build to confirm; execution refused' },
   'set.noSourceRepo':  { key: 'model.set.noSourceRepo',  zh: '', en: 'default scope is only available in the OpenFeel source repo (src/core/templates-data not found). Use --scope global/project' },
   'set.failed':        { key: 'model.set.failed',        zh: '', en: '✗ Write failed: {message}' },
-  'set.example':       { key: 'model.set.example',       zh: '', en: 'Example: openfeel model set openfeel-vision alibaba-cn/qwen3-vl-plus --scope global' },
+  'set.example':       { key: 'model.set.example',       zh: '', en: 'Example: openfeel model set openfeel-vision deepseek/deepseek-flash --scope global' },
   // get
   'get.effective':     { key: 'model.get.effective',     zh: '', en: 'Effective model: {value}' },
   'get.byScope':       { key: 'model.get.byScope',       zh: '', en: '  {scope}: {value}' },

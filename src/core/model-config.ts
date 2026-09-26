@@ -34,6 +34,7 @@ import { parseJsonc } from './opencode-config.js';
 import { splitFrontmatter, mergeFrontmatter, serializeFrontmatter } from './managed-region.js';
 import { listAgentIds } from './template-loader.js';
 import { normalizeAgentName } from './flow-manager.js';
+import { loadGlobalUpdateState, saveGlobalUpdateState, createGlobalUpdateState, updateFileHash } from './update-state.js';
 
 // ─── 类型 ─────────────────────────────────────────────────────────
 
@@ -364,6 +365,12 @@ export function setAgentModel(
   if (scope === 'global') {
     const p = getGlobalOpencodeJsoncPath();
     withFileLock(globalLockPath('global-opencode-jsonc'), () => writeJsoncAgentModel(p, agentId, model));
+    // REV-1803：与 update.ts 写盘后逻辑一致，同步全局 update_state 的 hash，
+    // 避免后续 update 将本次 model 变更误判为用户外部修改
+    const globalState = loadGlobalUpdateState() ?? createGlobalUpdateState({});
+    updateFileHash(globalState, p, readFileSync(p, 'utf-8'));
+    globalState.last_update = new Date().toISOString();
+    saveGlobalUpdateState(globalState);
     changedFiles.push(p);
     return { ok: true, scope, agentId, model, changedFiles, warning: validation.warning };
   }

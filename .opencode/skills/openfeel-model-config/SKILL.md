@@ -23,7 +23,7 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 {
   "agent": {
     "openfeel-vision": {
-      "model": "qwen3-vl-plus"   // 模型名格式：provider/model-id 或 model-id
+      "model": "deepseek/deepseek-flash"   // 模型名格式：provider/model-id 或 model-id
     }
   }
 }
@@ -56,7 +56,7 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 
 - Feel 的主力模型（DeepSeek V4 Pro）不支持图片输入
 - 遇到图片输入时 Feel 会自动委托 openfeel-vision Agent
-- openfeel-vision Agent 需要配置多模态模型（如 `qwen-vl-plus`、`qwen3-vl-plus`）
+- openfeel-vision Agent 需要配置多模态模型（现用 `deepseek-flash`，备选 `qwen3-vl-plus`）
 - 模型名不要随意添加前缀（如 `alibaba/`），以平台提示的可用名为准
 - **模型引用格式**：`{auth.json中的key}/{模型ID}`，不是 `provider.name` 也不是 `provider.id`
 - 读取 `~/.local/share/opencode/auth.json` 确认实际 provider key（常见：`alibaba-cn`、`deepseek`、`zhipuai`）
@@ -73,5 +73,5 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 | openfeel-reviewer | 异种推理模型 (GLM) | — |
 | openfeel-feel-tester | 推理模型 | — |
 | 事务官 | 快速模型 (Flash) | — |
-| openfeel-vision | 多模态模型 | 需配 qwen3-vl-plus |
+| openfeel-vision | 多模态模型 | 需配 deepseek-flash |
 | openfeel-archiver | 推理模型 | — |

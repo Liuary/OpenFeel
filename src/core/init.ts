@@ -10,7 +10,7 @@
  * - stage-04: 新增 initDemo() 支持 --demo 标志
  * - stage-37: deployOpencode 部署目标改为全局 ~/.config/opencode/，项目精简为 .openfeel/ + AGENTS.md + opencode.jsonc
  */
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join, basename } from 'node:path';
 import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson, isFirstUse, getGlobalConfig, setGlobalConfig, DEFAULT_GLOBAL_CONFIG } from './workspace/identity.js';
@@ -94,7 +94,7 @@ function writeLang(projectPath: string, lang: 'zh-CN' | 'en'): void {
     const content = readFileSync(infoPath, 'utf-8');
     const info = JSON.parse(content);
     info.lang = lang;
-    writeFileSync(infoPath, JSON.stringify(info, null, 2) + '\n', 'utf-8');
+    atomicWriteFileSync(infoPath, JSON.stringify(info, null, 2) + '\n');
   } catch {
     // 文件不存在或解析失败，忽略
   }
@@ -179,7 +179,7 @@ function writeTemplateIfMissing(
   if (!existsSync(parentDir)) {
     mkdirSync(parentDir, { recursive: true });
   }
-  writeFileSync(filePath, content, 'utf-8');
+  atomicWriteFileSync(filePath, content);
   return { created: true };
 }
 
@@ -394,7 +394,7 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
         const majorMatch = vitestVersion.match(/^(?:[\^~]?)(\d+)/);
         const majorVersion = majorMatch ? majorMatch[1] : '3';
         pkg.devDependencies['@vitest/coverage-v8'] = `^${majorVersion}.0.0`;
-        writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+        atomicWriteFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
         updated.push('package.json');
       }
     }
@@ -430,7 +430,7 @@ export function initDemo(projectPath: string, lang: 'zh-CN' | 'en' = 'zh-CN'): D
     if (!existsSync(parentDir)) {
       mkdirSync(parentDir, { recursive: true });
     }
-    writeFileSync(fullPath, content, 'utf-8');
+    atomicWriteFileSync(fullPath, content);
     created.push(relPath);
   };
 

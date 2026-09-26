@@ -17,7 +17,7 @@ export function buildGlobalOpencodeFrameworkObj(): Record<string, unknown> {
     default_agent: 'feel',
     instructions: [getGlobalCoreMdPath()],
     agent: {
-      'openfeel-vision': { model: 'alibaba-cn/qwen3-vl-plus' },
+      'openfeel-vision': { model: 'deepseek/deepseek-flash' },
       'openfeel-reviewer': { model: 'zhipuai/glm-5.2' },
     },
     // N3：experimental.agent_manager_tool 已被移除（op-000 实测 schema 未定义 + 静默丢弃），故不写

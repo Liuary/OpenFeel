@@ -3,12 +3,12 @@
  * 管理项目下的 .openfeel/.info.json 文件。
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve } from 'node:path';
 import { execSync } from 'node:child_process';
-import { homedir } from 'node:os';
 import { VALID_LANGS } from '../i18n-data/types.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, globalLockPath } from '../fs/file-lock.js';
+import { getGlobalOpenfeelConfigPath } from '../global-paths.js';
 
 /** .info.json 的类型定义 */
 export interface InfoJson {
@@ -125,7 +125,8 @@ export function ensureInfoJson(projectPath: string): void {
 
 /** 获取全局配置文件路径（~/.openfeel/config.json，跨平台兼容） */
 function getGlobalConfigPath(): string {
-  return join(homedir(), '.openfeel', 'config.json');
+  // 委托 global-paths 作为全局路径唯一权威（N4 收口）
+  return getGlobalOpenfeelConfigPath();
 }
 
 /**

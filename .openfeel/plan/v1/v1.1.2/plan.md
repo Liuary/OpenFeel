@@ -163,7 +163,8 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | [stage-44](#stage-44权限模型修正) | 权限模型修正 | agent 模板 permission 补 `external_directory` + 覆盖语义文档化（O1~O5） | P1 | 无（与 45 串行） | 18 agent 模板 + 文档 + 测试 |
 | [stage-45](#stage-45平台强限定内容描述泛化) | 平台强限定内容「描述泛化」 | 模板/规则/注释/文档/手册去「唯一 harness」表述（零行为变更） | P1 | hard: stage-44 | ~20 文件文案 + 文档 + 回归 |
 | [stage-46](#stage-46部署覆盖前自动备份) | 部署覆盖前自动备份 | 写前备份到 `~/.openfeel/backup/{ts}/` + `update_infos.md` 新增「备份」类 + `feel.md` 检查规则（B1~B9） | P1 | hard: stage-45 | 1 新增源码 + ~5 修改 + 文档 + 测试 |
-| [stage-43](#stage-43cli-文档-skill-化与版本收口) | CLI 文档 skill 化与版本收口 | 新 skill + 文档 + 版本 1.1.2 + 全量回归 | P0 | hard: stage-41；soft: stage-42、stage-45、stage-46 | 1 新增 skill + ~6 文档 + 版本 8 处 |
+| [stage-47](#stage-47已登记缺陷集中清理) | 已登记缺陷集中清理 | 14 项已登记缺陷逐条裁定（11 修）+ 翻转清单 + 强隔离回归 | P0 | hard: stage-46 | ~13 源码/模板 + ~2 文档 + ~8 测试 |
+| [stage-43](#stage-43cli-文档-skill-化与版本收口) | CLI 文档 skill 化与版本收口 | 新 skill + 文档 + 版本 1.1.2 + 全量回归 | P0 | hard: stage-41；soft: stage-42、stage-45、stage-46、stage-47 | 1 新增 skill + ~6 文档 + 版本 8 处 |
 
 ### 依赖图
 
@@ -173,19 +174,24 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
      hard                                   soft
        │                                      │
        │      stage-44（权限模型）──hard──→ stage-45（描述泛化）──hard──→ stage-46（部署前备份）
-       │                    （44→45 强制串行）        （45→46 同改 init/setup/update，强制串行）      │
-       │                                                                                              │
-       └───────────────── hard ───────────────────────────────────────────────── soft ─────────────┴─→ stage-43（终点）
+       │                    （44→45 强制串行）        （45→46 同改 init/setup/update，强制串行）
+       │                                                                         │
+       │                                                                       hard
+       │                                                                         ▼
+       │                                                          stage-47（缺陷集中清理）
+       │                                                                         │
+       └───────────────── hard ──────────────────────────────────────── soft ────┴─→ stage-43（终点）
 ```
 
 ### 推荐执行顺序
 
-**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-43**。
+**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43**。
 
 **理由**：
 - stage-41 与 stage-42 均修改 `src/core/flow-manager.ts` 与 `src/i18n-data/{zh-CN,en}.ts`，顺序执行避免同文件冲突。
-- **stage-44 → stage-45 → stage-46 强制串行**：44/45 均改 `src/core/templates-data/opencode/agents/**`（44 改 permission 块、45 改描述文案）；45/46 均改 `src/core/{init,setup,update}.ts` 与 `global-paths.ts`（45 改注释/文案、46 改逻辑）。串行避免同文件写冲突，且让 46 的新代码直接采用 45 泛化后的平台中性表述。
-- **stage-43 为版本终点**（版本收口 U1 必须最后）。
+- **stage-44 → 45 → 46 → 47 强制串行**：44/45 均改 `src/core/templates-data/opencode/agents/**`；45/46 均改 `src/core/{init,setup,update}.ts` 与 `global-paths.ts`；**46/47 均改 `src/core/init.ts` 与 `flow-manager.ts`**（47 的 `config/BUG-002` 语义修复与 46 的备份接入点存在交互）。串行避免同文件写冲突。
+- **stage-47 先于 stage-43**：缺陷清理须在版本收口前完成，使发布无遗留脏点（含 `lint kb` 零错误、`config/BUG-002` high 收口）。
+- **stage-43 为版本终点**（版本收口必须最后）。
 
 ---
 
@@ -372,6 +378,39 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 
 ---
 
+## stage-47：已登记缺陷集中清理
+
+> **硬性前置**：stage-46（同改 `src/core/init.ts`/`flow-manager.ts`，且 `config/BUG-002` 语义修复与 46 备份接入点交互）。**下游**：stage-43。**定位**：发布前集中清理测试/审查登记的缺陷；**不新增功能、不做平台抽象层、不改版本号**。
+> **详细计划**：`.openfeel/plan/v1/stage-47/plan.md`。
+
+### 缺陷清单裁定（14 项）
+
+| 裁定 | 项 |
+|------|----|
+| **修（11）** | `cli/BUG-001`（`flow phases` 与 `advance` 集合不一致 → 方案 B 边界说明 + `--json.advanceAccepted`）；`cli/BUG-002`（冲突错误 i18n + 死键 → 结构化 `StageDirConflictError`）；`archive/BUG-001`（缺 `deps` TypeError → `merge.ts:85` 守卫）；`config/BUG-003`（无 profile 时来源 → 仅文件存在且显式设置才填 profile 层）；**`config/BUG-002`（high：`init` 无条件覆盖 `config.yaml` → 本阶段收口语义修复，存在即不覆盖）**；`templates/BUG-002`（`agents-md:112` 泛化）；`REV-41 REV-008`（`save()` 缺 meta 守卫）；`REV-41 REV-009`（`--purge` 移到 save 成功后）；`REV-46 REV-011`（**混合裁定**：setup/update 补 try/catch 对齐 B3，migrate 保留 fail-fast + 文档化）；`REV-43 REV-003`（2 处版本清单文本残留）；`lint kb` 过期引用（`architecture.md:497`） |
+| **不修（归属已定）** | `REV-44 REV-001` 已 closed；`REV-44 REV-002`→stage-43；`REV-44 REV-003`→归档官；`.openfeel/dev/current.md`、`plan/index.md`、`day_index.md`/`log.md` 陈旧→归档官 |
+| **已修复待关闭** | `config/BUG-001`（commander `config set lang` 已用连字符命令，缺陷不存在）→ 建议 feel-tester 复核后 closed |
+
+### 任务清单（op 级）
+
+| op | 主题 | 说明 | 涉及文件 |
+|----|------|------|----------|
+| op-001 | CLI 边界 + 冲突 i18n | `phases` 边界说明 + `--json.advanceAccepted`；`StageDirConflictError` + 命令层分流渲染 | `commands/{flow,plan,stage}.ts`、`core/flow-manager.ts`、`i18n-data/*` |
+| op-002 | 存量数据鲁棒性 | `archive/merge.ts:85` deps 守卫；`save()` meta 守卫 | `core/archive/merge.ts`、`core/flow-manager.ts` |
+| op-003 | config 语义与来源 | `init` 不再覆盖已存在 `config.yaml`；profile 来源修正 | `core/init.ts`、`core/config.ts`、`core/flow-manager.ts` |
+| op-004 | 事务顺序与失败一致性 | `--purge` 移到 save 后；jsonc 备份失败混合裁定 | `core/flow-manager.ts`、`commands/flow.ts`、`core/{setup,update}.ts`、manual |
+| op-005 | 模板泛化补漏 | `agents-md/{zh-CN,en}.md:112` + build | 模板权威源、生成段 |
+| op-006 | 文档残留清理 | kb 过期引用 + 2 处版本清单文本 | `kb/architecture.md`、版本级/ stage-43 计划 |
+| op-007 | 测试与回归 | 翻转清单 + 隔离 HOME + 全量 | 测试文件 |
+
+### 完成标准
+
+- 11 项修复验收通过；归属项记录在案；`config/BUG-002` 语义修复后 `init` 重跑不覆盖用户 `config.yaml`。
+- 翻转清单（`init.test.ts:165/:191`、`flow-manager.test.ts` builtin 断言等）全部同步。
+- `npm run build && npm test` 全绿（≥ 41 文件 / 685 用例）；`lint i18n` + `lint kb` 零错误；测试隔离 HOME。
+
+---
+
 ## stage-43：CLI 文档 skill 化与版本收口
 
 > **硬性前置**：stage-41（须文档化其新命令）。**软前置**：stage-42（文档化 `config effective`）。**对应需求**：第三节新增需求（U4）。
@@ -429,8 +468,9 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 描述泛化零行为变更 | 45 | `global-paths.test.ts:31-64`（路径硬断言）**不改**且全绿；Grep 断言无「唯一 harness」残留；`AGENTS.md:82` 已泛化；B 类内容未动 |
 | 部署前备份 | 46 | NEW `backup.test.ts`：不存在不备份 / 已存在备份成功 / 备份失败可识别 / manifest 记录 / `{ts}` 目录不复用；`update`/`setup` 覆盖写产生备份且 `created` 不备份；`init` package.json 改写前备份 |
 | `update_infos` 备份类 | 46 | `backed` 类写入与读取；旧格式文件向后兼容解析；`- [ ]`→`- [x]` 勾选；非 TTY 静默 |
+| 缺陷集中清理 | 47 | `flow phases` 自定义 phase 边界说明 + `--json.advanceAccepted`；冲突错误 en 文案；archive 缺 deps 不崩；`save()` 缺 meta 不崩；`init` 重跑 `config.yaml` 字节不变；无 profile 时 `config effective` source=`builtin`；`--purge` 无中间态；setup/update jsonc 备份失败走 skip+anomaly（migrate fail-fast）；`agents-md:112` 泛化；`lint kb` 零过期引用 |
 | 版本同步 | 43 | 按 §3.1 断言 A1~A8 均为 `1.1.2`（含 agents-md 权威源与 `package-lock`） |
-| 全量回归 | 43 | `npm run build && npm test`；`openfeel lint i18n` / `openfeel lint kb` |
+| 全量回归 | 47 / 43 | `npm run build && npm test`（stage-47 为发布前最后一次全量回归）；`openfeel lint i18n` / `openfeel lint kb` |
 
 **现有测试需同步/扩展**（调研）：
 
@@ -442,6 +482,7 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 - `test/core/plan/scheme.test.ts`、`test/core/plan/stage.test.ts`（stage-42 scheme 兜底冲突检测 / 审计日志）
 - `test/core/global-paths.test.ts`（**stage-45 不改**：未改路径逻辑，硬断言仍成立 —— 须在 op-004 说明理由）
 - `test/core/i18n.test.ts`（键对称，随新增/改动键自动校验）
+- **stage-47 翻转清单**（`test/core/init.test.ts:165/:191` stage-46「备份后仍覆盖」→ 新语义「存在即跳过」；`flow-manager.test.ts` builtin 来源断言；archive 缺 deps 正向用例；setup/update jsonc 失败跳过用例）
 
 ---
 
@@ -487,6 +528,7 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | M2.5 权限模型修正 | stage-44 done | 9 agent × 双语补 `external_directory`；覆盖语义文档化；op-000 实测记录 |
 | M2.6 平台描述泛化 | stage-45 done | 模板/规则/注释/文档/手册去「唯一 harness」表述（零行为变更）；`AGENTS.md:82` 泛化 |
 | M2.7 部署前备份 | stage-46 done | 写前备份到 `~/.openfeel/backup/{ts}/`；`update_infos.md`「备份」类；`feel.md` 检查规则 |
+| M2.8 缺陷集中清理 | stage-47 done | 11 项已登记缺陷修复（含 `config/BUG-002` high 语义修复）+ 翻转清单同步 + 发布前全量回归绿 |
 | M3 skill 化与发布 | stage-43 done | `openfeel-cli-usage` skill（全局可部署）、文档/手册同步、版本 1.1.2 **全部载体一致（清单见 §3.1）**、`npm test` 全绿 |
 | **v1.1.2 发布** | 全部 done | `npm publish` 就绪 + `CHANGELOG.md` 更新 |
 
@@ -504,7 +546,7 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 模板/文案 | 3 组 | ① `agents/{zh-CN,en}/feel.md` 的 `auto_advance` 表述（42）；② **9 agent × zh/en 的 `permission.external_directory`（44）**；③ agents-md / feel / archiver / utility / 3 个 model 系 skill 的平台表述泛化（45） |
 | 文档/手册 | ~6 | `docs/commands.md`、`manual/cli/commands.md`、`manual/core/plan-path.md`、`AGENTS.md`、`.openfeel/dev/dev_core.md`、`.openfeel/adapters/README.md`、`README{,.zh-CN,.en}.md`、`CHANGELOG.md`、`.openfeel/manual/**` |
 | i18n 键 | ~15 新增 + ~14 文案泛化 | 三个新命令 + 校验提示 + deprecated 提示（42/41）；i18n 平台表述泛化（45，zh `:438,442,573,634,636,653,654` / en `:418,421,540,601,603,620,621`） |
-| 测试 | ~11 文件 | path/stage/flow-manager/config/template-loader/update/setup/opencode-instance/global-paths + **NEW `backup.test.ts`**（46）+ `update-infos.test.ts`（46） |
+| 测试 | ~12 文件 | path/stage/flow-manager/config/template-loader/update/setup/opencode-instance/global-paths + **NEW `backup.test.ts`**（46）+ `update-infos.test.ts`（46）+ **stage-47 翻转清单**（`init.test.ts:165/:191` 等） |
 | 版本 | **8 处必改 + 生成段 + 传播** | 见 §3.1：`package.json:3`、`.openfeel/config.yaml:7`、`config.ts:308`/`:365`、`agents-md/{zh-CN,en}.md:130`（权威源）、`AGENTS.md:136`、`package-lock.json:3/:9`；`npm run build` 重生成 `template-loader.ts:2798/:3240`；`openfeel setup/update` 重传播全局 AGENTS.md |
 
 > 本计划引用知识库多条既有条目；完成后须由 openfeel-archiver 沉淀：「CLI 命令文档 skill 化模式」「阶段移除的安全校验与 current 兜底模式」「配置级联有效值与来源暴露模式」，并更新 `manual/cli/commands.md` + `manual/core/plan-path.md`。
@@ -526,5 +568,6 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 2026-09-28 | openfeel-planner | 阶段顺序调整（44/45 与 agent 模板冲突） | 阶段概览/依赖图/里程碑/执行顺序更新为 **41 → 42 → 44 → 45 → 43**；44→45 强制串行；45 先于版本收口 |
 | 2026-09-28 | openfeel-planner | 用户新增需求（部署覆盖前备份 + 全局状态提示） | **新增 stage-46（部署覆盖前自动备份）**：B1~B8 裁定 + op-001~op-005；新增 `plan/v1/stage-46/plan.md` 与 overview 依赖；执行顺序更新为 **41 → 42 → 44 → 45 → 46 → 43**（45→46 同改 init/setup/update，强制串行） |
 | 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-46 REV-001~006 | stage-46 节更新：**B9 覆盖写路径全景与豁免**（`.openfeel/config.yaml` 纳入，REV-001）；B7 改为「项目内不合并 + 全局写纳入」（REV-002）；B4 `command` 枚举扩 `migrate`、读侧 `:95-98` 同步（REV-003）；B3 失败返回 `'skipped'` + 可区分异常、B5 扩展异常分支（REV-004）；B2 锁临界区（REV-005）；B4 字段风格、`backupRel` 存在性检查（REV-006）；任务清单/完成标准同步 |
+| 2026-09-29 | openfeel-planner | 用户需求「stage-47 已登记缺陷集中清理」 | **新增 stage-47**：14 项缺陷逐条裁定（11 修 / 归属 / 已修复待关闭）+ op-001~007 + 翻转清单；阶段概览/依赖图/执行顺序更新为 **41 → 42 → 44 → 45 → 46 → 47 → 43**；里程碑 M2.8；测试策略新增缺陷清理行 |
 
 > 三处核心裁定保持不变：① #5 全局画像仅作最低优先级兜底；② #6 只修 `pipeline.phase` 全量 done 判定、不做 `current` 回退；③ 技能源为扁平单文件（16 个 `{name}/SKILL.md`）、无 `{lang}`、无 `NEW_SKILL_NAMES`。

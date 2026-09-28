@@ -41,6 +41,7 @@
 | update-state.ts / update_state.json | `core/update-state.md` | hash 追踪、冲突标记或 update_state.json 结构变更 |
 | managed-region.ts / 控制区标记 | `core/managed-region.md` | 四策略、标记 token 或 parse/replace 语义变更 |
 | update-infos.ts / update_infos.md | `core/update-infos.md` | 条目结构、路径二元组或读写 API 变更 |
+| backup.ts / 部署覆盖前备份 | `core/backup.md` | 备份根/分区结构、`manifest.json` 字段、`backupFileBeforeWrite` 签名或接入点清单、失败语义（`BackupError` / `skipped` / `note='backup_failed'`）、`BackupCommand` 枚举变更 |
 | plan-path.ts / stageId↔目录映射 | `core/plan-path.md` | stageId 解析/校验/建议名、目录映射规则、`(series, stageDir)` 冲突检测或三级回退逻辑变更 |
 | plan/scheme.ts / op 方案生成与兜底注册 | `core/flow-manager.md`（审计日志与兜底注册节） | 兜底注册路径、冲突检测（`validateStageId` + `findStageDirConflict`）或 `register_op` 审计日志变更 |
 | fs/atomic-write.ts / file-lock.ts / sequence.ts | `core/fs.md` | 新增工具、并发机制、锁路径约定或接入范围变更 |

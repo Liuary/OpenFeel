@@ -1,7 +1,7 @@
 # config 模块 Bug 归档
 
-> 来源阶段：`v1.1.2-stage-42`（配置口径与流水线状态正确性，实现 commit `6fffda9` ＋ `bed8493`）；BUG-001 为 v0.4.4 时期遗留登记
-> 登记人：openfeel-feel-tester ｜ 登记时间：2026-07-15（BUG-001）/ 2026-09-29（BUG-002、BUG-003）｜ 私域详细报告：`.openfeel/users/Liuary/bugs/config/`
+> 来源阶段：`v1.1.2-stage-42`（配置口径与流水线状态正确性，实现 commit `6fffda9` ＋ `bed8493`）；BUG-001 为 v0.4.4 时期遗留登记；BUG-002 于 `v1.1.2-stage-46`（commit `d5556a4`）追加**缓解记录**（状态仍 open）
+> 登记人：openfeel-feel-tester ｜ 登记时间：2026-07-15（BUG-001）/ 2026-09-29（BUG-002、BUG-003、BUG-002 缓解记录）｜ 私域详细报告：`.openfeel/users/Liuary/bugs/config/`
 
 ---
 
@@ -29,7 +29,7 @@ Commander 14.x 下 `.command('set lang <lang>')` 会把**无尖括号的路径�
 
 ## BUG-002：`openfeel init` 无条件整体覆盖已存在的 `.openfeel/config.yaml`，静默丢失用户配置
 
-- **优先级**：high ｜ **阻塞**：是（数据丢失）｜ **状态**：open（实现层修复归属 **stage-46 REV-001**）
+- **优先级**：high ｜ **阻塞**：是（数据丢失）｜ **状态**：open（**v1.1.2-stage-46 已落地「缓解」**；语义修复归 **stage-47**）
 
 ### 核心结论
 
@@ -54,6 +54,21 @@ Commander 14.x 下 `.command('set lang <lang>')` 会把**无尖括号的路径�
 覆写前走 `backupFileBeforeWrite`（`command='init'`）+ `backed` 条目，或「存在则备份 + 合并写入」；`readProfile` 解析失败不覆盖；子 Schema passthrough 或写回保留原始键。**已列为 stage-46 REV-001（high, blocking=true，op-003 接入备份 + op-005 补测试）**。
 
 > 沉淀：`kb/troubleshooting.md #writeDefaultConfig 无条件覆盖`、`kb/patterns.md #测试 cwd 隔离模式`
+
+### 缓解记录（v1.1.2-stage-46，commit `d5556a4`）
+
+**本阶段仅落地「缓解」，不构成语义修复，状态保持 `open`。**
+
+| 项 | 内容 |
+|----|------|
+| 缓解措施 | `init` 覆盖 `.openfeel/config.yaml` 前经 `backupFileBeforeWrite` 备份原件到 `~/.openfeel/backup/{ts}/project/<basename>-<hash8>/`；**备份失败则绝不再覆盖**（`BackupError` → `skipped.push` + `anomaly(note='backup_failed')`，`writeDefaultConfig` 不在 catch 之后）；项目 `package.json` 同构处理 |
+| 提示链 | 全局状态文件 `~/.openfeel/update_infos.md` 新增 `backed` 类条目（含 `backupRel` + 来源命令）+ TTY 提示 + `feel.md`（zh/en）启动检查规则第三类（含备份文件存在性检查） |
+| 已修复的部分 | 「静默」丢失变为「**可恢复 + 可发现**」——不再无备份覆盖；但**未取消「无条件覆盖」语义**（覆盖行为本身仍在，仅备份后仍覆盖） |
+| 实测证据 | 隔离 HOME 端到端：① 已存在 `config.yaml`（含用户自定义键）→ 备份副本保留自定义键、目标仍被覆盖；② 备份失败（备份根构造为文件触发 ENOTDIR）→ `config.yaml` 内容 MUST-SURVIVE（未被覆盖）+ `anomaly（原因: backup_failed）` + 命令 exit 0；③ 集成断言 `test/core/init.test.ts:191`（stage-46/REV-010）纳入全量回归（41 文件 / 685 用例全绿） |
+| 残留（**语义修复**，归 stage-47） | 期望行为：`init` 不再无条件整体覆盖，或覆盖前**必须**备份且显式提示/合并写入（保留用户 `defaults` 三值与 `models` 节的自定义）；`writeDefaultConfig`（`config.ts:420-425`）本身的覆盖语义未改 |
+| 同类残留 | `writeProfile`（`~/.config/openfeel/profile.yaml`）同为无备份整体覆盖 + 解析失败静默回退 `DEFAULT_PROFILE` → 未纳入 stage-46 缓解范围（`writeProfile` 调用方不在部署链路，见 `.openfeel/manual/core/backup.md` 豁免节） |
+
+> **归档纪律**：`BUG-002` 在 stage-46 归档时**不得**标注为已修复（`status` 保持 `open`）；关闭标准 = 「不再无条件覆盖」的语义修复落地并经测试官验收（stage-46 op-003「BUG-002 关闭标准」节）。
 
 ---
 
@@ -96,5 +111,5 @@ merge_mode：manual       [来源: builtin]
 | 编号 | 标题 | 优先级 | 阻塞 | 状态 | 来源阶段 |
 |------|------|:--:|:--:|:--:|----------|
 | [BUG-001](#bug-001config-set-lang-参数解析异常功能完全不可用) | `config set lang` 参数解析异常 | high | 否 | open | v0.4.4（遗留） |
-| [BUG-002](#bug-002openfeel-init-无条件整体覆盖已存在的-openfeelconfigyaml静默丢失用户配置) | `init` 无条件覆盖 `config.yaml` | high | 是 | open（stage-46 REV-001） | v1.1.2-stage-42 |
+| [BUG-002](#bug-002openfeel-init-无条件整体覆盖已存在的-openfeelconfigyaml静默丢失用户配置) | `init` 无条件覆盖 `config.yaml` | high | 是 | open（stage-46 已缓解，语义修复归 stage-47） | v1.1.2-stage-42 |
 | [BUG-003](#bug-003config-effective-在无-profileyaml-时-auto_advance-来源标为-profileyaml-而非-builtin) | `config effective` 无 profile 时来源标注偏差 | medium | 否 | open | v1.1.2-stage-42 |

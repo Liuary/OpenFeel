@@ -2406,3 +2406,69 @@ OpenFeel 面向多 harness 适配时，仓库中大量「平台强限定」内�
 **沉淀价值**：该三证法同时是「生成物非手改」的审计手段，可直接复用于任何含构建产物重生成的阶段。
 
 **参见：** v1.1.2-stage-45 op-004、`test-v1.1.2-stage-45-report-2026-09-29.md`、kb/architecture.md #模板单源架构
+
+## [+] 部署覆盖前自动备份机制：写前备份 + HOME 相对分区 + manifest + 单锁临界区 + 绝不覆盖既有备份 (2026-09-29)
+
+**适用**：部署类命令（`setup` / `update` / `init` / `migrate`）会覆盖用户既有文件，需要「可恢复」而非「拒绝覆盖」时（v1.1.2-stage-46 全量落地）。
+
+**核心结构**：
+
+```
+~/.openfeel/backup/{ts}/                      # ts = yyyyMMddTHHmmssSSS（本地时区）
+├── manifest.json                             # entries[源绝对路径] = { backupRel, hash, command, time }
+├── global/.config/opencode/AGENTS.md         # 全局资产：相对 HOME 的层级（自解释、可直接回拷）
+└── project/OpenFeel-3f2a1c9b/                # 项目资产：basename + sha256(projectPath).slice(0,8)
+    └── .openfeel/config.yaml
+```
+
+**六条实现要点**：
+
+1. **接入点唯一判据 = 目标已存在且本次将被写入/覆盖**：`writeManagedFile` 的 `updated`/adopt/`appended` 三分支 + 全局 `opencode.jsonc` 三处直写 + `init` 的 `config.yaml` 与 `package.json`；`created`（新建）、no-op `skipped`（内容一致）、`malformed`（不写盘）**均不备份**。判据按「是否真的会落到磁盘」而非「文件是否存在」定，避免为无效写产生噪音备份。
+2. **单锁临界区**：`{ts}` 探测 + `mkdir` + 备份副本写入 + `manifest.json` 读改写**全程在单一 `withFileLock(globalLockPath('backup'))` 内**——`{ts}` 撞名判定是 check-then-act、manifest 是 RMW，二者分离即产生跨进程 TOCTOU。副本落盘走 `atomicWriteFileSync`。
+3. **绝不覆盖既有备份**：同毫秒撞名依次 `-2` / `-3`；每次命令一个独立目录（保留「当时的原件」可审计）。
+4. **锁序**：jsonc 直写路径的备份放在 `global-opencode-jsonc` 锁**之外**（锁不嵌套）；backup 锁无反向依赖路径，故无死锁环。
+5. **失败语义 = 绝不无备份覆盖**：`BackupError` 上抛 → 调用方**跳过该文件写入**（复用既有 `'skipped'`，不新增第五值）+ `appendUpdateInfo('anomaly', { note: 'backup_failed' })` + `console.warn`。语义重载（`skipped` 既表「无变化」又表「备份失败跳过」）靠 anomaly 条目区分，须显式裁定。
+6. **不做 restore、不做自动清理**（范围裁定）：manifest 为人工还原的辅助（分组 + 相对路径 + 层级保留已使手拷可行），加 restore 命令属过度设计；备份累积由文档提示手工清理，避免引入保留策略复杂度。
+
+**验证方法（隔离 HOME 实测）**：新建不备份 / 已存在先备份（副本 hash == 源 hash）/ 撞名加序号 / 备份失败不覆盖 / 非 TTY 静默但条目落盘 / 旧格式条目兼容；执行前后核对真实 `~/.openfeel/` 零污染。
+
+**参见：** `.openfeel/manual/core/backup.md`、v1.1.2-stage-46 op-001/op-003、`REV-v1.1.2-stage-46` REV-005、kb/troubleshooting.md #备份失败绝不覆盖的 fail-fast 语义分叉
+
+## [+] 全局状态文件多类条目扩展与短前缀读侧分类：向后兼容的读侧改造 (2026-09-29)
+
+**场景**：`~/.openfeel/update_infos.md` 这类「人可读 + 机可解析」的状态文件新增条目类别时（v1.1.2-stage-46 新增第三类 `backed`）。
+
+**四条约定**：
+
+1. **类别语义先行**：`appended`（无控制区标记而追加）/ `anomaly`（`malformed` 或**备份失败** `note='backup_failed'`）/ `backed`（覆盖前已备份原件）。新增成因**优先复用既有 kind + `note` 哨兵**，而非新开第四 kind——独立 kind 需连带新增 `SECTION_TITLES`/`serialize`/`parseLine`/启动检查第四分支，成本不成比例。
+2. **字段风格随既有**：`UpdateInfoEntry` 既有字段为「必填 + 显式 `null`」，新增字段沿用同一风格（不混用 `?:` 可选标记），使 `serialize` 无分支、类型层强制补全。
+3. **序列化向后兼容**：新增信息放**尾部可选段**（如 `（备份: {backupRel}，来源: {command}）`），正则用 `[^（）]*` 之类**阻断贪婪**的字符类，保证旧行（无尾部段）解析后新字段为 `null`；`SECTION_TITLES` 用 `Record` 类型让 TS 编译器强制补全全部键。
+4. **读侧必须与写侧同批改（双源陷阱）**：`loadUpdateInfos` 原先是硬编码 `startsWith('## 追加' / '## 异常')` 判定当前节——**新增节若不同步改读侧，新节条目会被误归入前一类**（`currentKind` 残留）。改为 `SECTION_PREFIXES` 短前缀常量、与 `SECTION_TITLES` 同模块紧邻维护，并加迁移约束注释（改节标题文案须同步迁移存量文件）。
+
+**短前缀安全性论证模板**（改造前必做）：三前缀互不包含；条目行以 `- [` 开头、文件头说明行以 `>` 开头，均不以 `## ` 开头；存量文件无新节标题行（`git log -L` 可证格式自上次变更未动）。结论须写成「与现状硬编码语义等价且更稳健」，否则退回全标题匹配。
+
+**去重策略按类分化**：`anomaly` 按路径去重（防每次命令无限累积），`backed` **不去重**（一次命令内由调用方保证每文件仅一次；保留完整部署/备份审计轨迹）。
+
+**提示链闭合**：条目字段（`backupRel` + 来源命令）+ TTY 提示 + 会话启动检查规则（三类遍历，含 `backupRel` **存在性检查**与 `backup_failed` 成因分派）三者同批落地，才能形成「已被覆盖 + 备份在 X + 请检查」的可达语义链。
+
+**参见：** `.openfeel/manual/core/update-infos.md`、v1.1.2-stage-46 op-002/op-004、`REV-v1.1.2-stage-46` REV-003 / REV-009④
+
+## [+] 全局路径测试的单点 mock 隔离模式：vi.mock('node:os') 一处覆盖全部全局路径 (2026-09-29)
+
+**前提（收敛约定 N4）**：全仓**仅 `global-paths.ts` 一个模块** `import { homedir } from 'node:os'`，其余模块一律经 `global-paths` 的路径函数取全局路径。有此收敛后，测试只需 `vi.mock('node:os')` 覆写 `homedir()`，全部全局路径（含新增函数）自动纳入隔离。
+
+**做法**：
+
+```ts
+vi.mock('node:os', () => ({ homedir: () => tmpHome }));
+// beforeEach 建 tmpHome 结构；测试后核对真实 ~/.openfeel/ 无新增产物
+```
+
+**要点**：
+
+- 新增全局路径函数（如 `getGlobalBackupRootPath()`）**无需逐文件适配测试**——只要它经 `global-paths` 推导，既有 mock 即生效；这正是「收敛到单点」的收益。
+- **子进程用例 mock 不生效**：并发/多进程用例须改以 `USERPROFILE` + `HOME` **同时**指向隔离目录（Windows 上仅设其一无效）。
+- **与 stage-42 的 `process.cwd` spy + `REAL_CWD` 反向守卫互补**：前者隔离「全局路径（HOME）」，后者隔离「项目工作区（cwd）」；两者合起来才是「测试绝不真实写入」的双保险。
+- **实施前先取证**：`rg "process\.cwd|homedir"` 确认被测链路的取数点，排除「模块加载期捕获」导致 mock 静默失效。
+
+**参见：** v1.1.2-stage-46 op-005、`REV-v1.1.2-stage-46` 审查要点 7 建议③、kb/patterns.md #测试 cwd 隔离模式、kb/patterns.md #隔离 HOME 实测 opencode 行为的方法

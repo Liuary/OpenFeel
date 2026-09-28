@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 14 |
+| passed | 15 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -21,6 +21,8 @@
 | [v1.1.2-stage-44](v1.1.2-stage-44.md) | 权限模型修正 — 3 REV（REV-001/002/003 全部 closed，REV-003 low 转归档后闭环），658/658 测试（40 文件），18 模板补 `external_directory` + `write`→`edit` + 覆盖语义文档化 | passed |
 
 | [v1.1.2-stage-45](v1.1.2-stage-45.md) | 平台强限定内容「描述泛化」 — 1 REV（REV-001 low 复核 closed），659/659 测试（40 文件），零行为变更（注释/文案/文档/模板 + i18n 双语 7 键 + 泛化锁断言），Bug：templates/BUG-002（medium 非阻塞，归 stage-47） | passed |
+
+| [v1.1.2-stage-46](v1.1.2-stage-46.md) | 部署已有文件备份 + 全局状态文件提示 — 11 REV（REV-001~010 closed 含 3 blocking 修复闭环；REV-011 low 非阻塞 → 归 stage-47），685/685 测试（41 文件），新增 backup.ts（写前备份 + 分区 + manifest + 单锁临界区 + 绝不覆盖）+ update_infos 第三类 backed + 四链路接入 + deployGlobalAsset 破坏性签名变更（9 调用点全改），Bug：config/BUG-002 仅缓解（保持 open，语义修复归 stage-47） | passed |
 
 ## v5 系列审查
 

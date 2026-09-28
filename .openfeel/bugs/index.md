@@ -14,8 +14,9 @@
 
 > 说明：本目录常规收纳**已关闭** Bug 的核心结论。当前 7 条均为测试官显式要求归档沉淀（便于后续排期与追溯）的**未关闭**缺陷：
 > - `v1.1.2-stage-41`：cli × 2（low 非阻塞）+ archive × 1（low 非阻塞）；
-> - `v1.1.2-stage-42`：config × 2（`BUG-002` high 阻塞，实现层修复归 stage-46 REV-001；`BUG-003` medium 非阻塞）+ config × 1 遗留登记（`BUG-001` high，v0.4.4 时期的 `config set lang` 参数解析缺陷）；
-> - `v1.1.2-stage-45`：templates × 1（`BUG-002` medium 非阻塞，模板权威源权限部署路径行未泛化；**处置归属 stage-47 缺陷清理**）。
+> - `v1.1.2-stage-42`：config × 2（`BUG-002` high 阻塞，实现层归 stage-46 REV-001 → stage-46 已**缓解**、语义修复归 stage-47；`BUG-003` medium 非阻塞）+ config × 1 遗留登记（`BUG-001` high，v0.4.4 时期的 `config set lang` 参数解析缺陷）；
+> - `v1.1.2-stage-45`：templates × 1（`BUG-002` medium 非阻塞，模板权威源权限部署路径行未泛化；**处置归属 stage-47 缺陷清理**）；
+> - `v1.1.2-stage-46`：**0 新增 Bug**；`config/BUG-002` 追加**缓解记录**（`init` 覆盖 `config.yaml` 前备份 + 备份失败不覆盖 + 状态文件提示，commit `d5556a4`）——**状态仍为 open**，其「不再无条件覆盖」的语义修复归 **stage-47**。
 
 ## 模块索引
 
@@ -31,7 +32,7 @@
 | 编号 | 标题 | 优先级 | 状态 | 来源阶段 |
 |------|------|:--:|:--:|----------|
 | [BUG-001](config.md) | `config set lang` 参数解析异常，功能完全不可用（Commander 路径词被当作参数） | high | open | v0.4.4（遗留登记） |
-| [BUG-002](config.md) | `openfeel init` 无条件整体覆盖已存在的 `config.yaml`，静默丢失用户配置（实现层归 stage-46 REV-001） | high | open | v1.1.2-stage-42 |
+| [BUG-002](config.md) | `openfeel init` 无条件整体覆盖已存在的 `config.yaml`，静默丢失用户配置（stage-46 已**缓解**：覆盖前备份 + 失败不覆盖 + 提示；**语义修复归 stage-47**） | high | open | v1.1.2-stage-42 |
 | [BUG-003](config.md) | `config effective` 在无 `profile.yaml` 时 `auto_advance` 来源标为 `profile.yaml` 而非 `builtin` | medium | open | v1.1.2-stage-42 |
 
 ### archive

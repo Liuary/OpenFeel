@@ -40,3 +40,5 @@
 | [2026-09-29-Liuary-033.md](2026-09-29-Liuary-033.md) | Liuary | v1.1.2-stage-46.op-003 执行通过 |
 | [2026-09-29-Liuary-034.md](2026-09-29-Liuary-034.md) | Liuary | v1.1.2-stage-46.op-004 执行通过 |
 | [2026-09-29-Liuary-035.md](2026-09-29-Liuary-035.md) | Liuary | v1.1.2-stage-46.op-005 执行通过 |
+| [2026-09-29-Liuary-036.md](2026-09-29-Liuary-036.md) | Archiver | **stage-46 归档完成（v1.1.2 部署已有文件备份 + 全局状态文件提示）**：新增 `backup.ts`（`~/.openfeel/backup/{ts}/` 分区 + `manifest.json` + 单锁临界区 + 撞名绝不覆盖 + **备份失败绝不覆盖**）+ `update_infos.md` 第三类 `backed`（短前缀读侧分类、旧行兼容）+ 四链路接入（`writeManagedFile` 三分支 / 全局 `opencode.jsonc` 三处 / `init` 的 `config.yaml`、`package.json`）+ `deployGlobalAsset` 破坏性签名变更（增 `command`，9 调用点全改）+ `feel.md` 双语启动检查扩为三类；5 op，**685/685 测试全绿（41 文件）**、`lint i18n` 502 键、`tsc` 0、build 幂等；REV-001~010 closed、**REV-011（low 非阻塞）→ 归 stage-47**；Bug 0 新增，`config/BUG-002` 仅**缓解**（保持 open）；知识沉淀 4 条至 patterns(3)+troubleshooting(1)；manual 新增 `core/backup.md` |
+| [2026-09-29-Liuary-037.md](2026-09-29-Liuary-037.md) | Liuary | 阶段 v1.1.2-stage-46 完成 |

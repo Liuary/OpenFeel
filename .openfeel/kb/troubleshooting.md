@@ -600,3 +600,32 @@ rg -n "agents/\*\.md" src/core/templates-data/agents-md AGENTS.md
 - 归档/审查时把「模板源 vs 仓库根镜像」列入文案变更的固定检查项。
 
 **参见：** `templates/BUG-002`（本阶段）、`templates/BUG-001`（closed，同模式首次发生）、`.openfeel/bugs/templates.md`、kb/troubleshooting.md #双层模板源发散、kb/patterns.md #AGENTS.md 模板同步模式
+
+## [+] 「备份失败绝不覆盖」的失败路径语义分叉：受管文件跳过继续 vs jsonc 直写整体中止 (2026-09-29)
+
+**现象**：同一份「备份失败绝不覆盖」需求在不同接入链路表现不一致（v1.1.2-stage-46 实测）：
+
+| 链路 | 备份失败时行为 | 退出码 |
+|------|----------------|:--:|
+| 受管文件（`writeManagedFile` 三改写分支） / `init` 的 `config.yaml`、`package.json` | 跳过该文件写入 + `anomaly(note='backup_failed')` + `warn`（**命令继续**） | 0 |
+| 全局 `opencode.jsonc` 三处直写（`setup` / `update` / `migrate`） | `BackupError` 上抛，**整条命令中止** | 1 |
+
+**根因**：方案伪代码层面的缺口——受管路径分支写了 `try/catch`，jsonc 直写路径的伪代码未包 `try/catch`，执行方按方案如实实现（并在偏差记录披露）。**不是实现偏差，是设计缺口**。
+
+**为何可接受（可裁定为非阻塞 fail-fast）**：① **数据安全无损**——abort 路径下「无备份不覆盖」以最强形式成立（jsonc 原样保留）；② **状态可自愈**——三命令的 `saveGlobalUpdateState` 均在尾部，中止时全局 state 未落盘，重跑即重部署；`migrate` 另有 `finally` 回填 `manifest.globalStateKeys` + `rollbackMigration` 事务兜底；③ **失败响亮**——含路径 + 原因 + 非零退出，比 exit 0 的静默半完成更透明。
+
+**唯一实质偏差**：`setup`/`update` 执行顺序为「受管资产 → jsonc」，jsonc 备份失败时前面的资产**已写入** → 命令中止于**部分部署**状态（非数据不一致、非数据丢失，重跑收敛）。
+
+**排查动作**：
+
+```bash
+# 逐链路比对错误处理；对同一故障注入分别跑两条链路
+rg -n "backupFileBeforeWrite" src/core          # 找出全部接入点，逐个看是否在 try/catch 内
+# 故障注入：把备份根构造为文件 → ENOTDIR
+```
+
+分别断言「退出码」「目标文件是否被覆盖」「`anomaly(backup_failed)` 是否落盘」三项，即可暴露分叉。
+
+**对齐方向（二选一，须先确认「部分部署 + exit 1」在目标场景是否可接受）**：**A** 三处补 `try/catch` → `anomaly` + `warn` + 跳过 jsonc 写入继续（与受管路径口径统一）；**B** 在模块手册与计划文档中显式记录 fail-fast 为**有意设计**（零代码变更，与 migrate 事务回滚语义自洽）。禁止为「一致性」直接改成静默半完成。
+
+**参见：** `REV-v1.1.2-stage-46` REV-011、`test-v1.1.2-stage-46-report-2026-09-29.md` §4、`.openfeel/manual/core/backup.md`、kb/patterns.md #部署覆盖前自动备份机制

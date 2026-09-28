@@ -13,7 +13,7 @@
 | 函数 | 功能 |
 |------|------|
 | `updateProject(projectPath, selectedTools?, lang?, options?)` | 主更新流程：全局框架资产部署（含全局 AGENTS.md）→ 全局平台适配器配置（opencode.jsonc）深度合并 → 项目平台适配器配置文件（opencode.jsonc）最小覆盖 → 双 state 持久化 |
-| `deployGlobalAsset(filePath, content, state)` | 全局资产部署（受管区三态，等价 `writeManagedFile(..., {isGlobal:true})`），供 setup/migrate 复用 |
+| `deployGlobalAsset(filePath, content, state, command)` | 全局资产部署（受管区三态，等价 `writeManagedFile(..., { isGlobal: true }, command)`），供 setup/migrate 复用；**stage-46 起 `command: BackupCommand` 成必填参数**（覆盖前备份来源标记），9 处调用点（setup×3 / update×3 / migrate×3）均须传入 |
 | `selectTools()` | 交互式选择部署目标工具（`@inquirer/prompts` checkbox，非 TTY 回退默认） |
 | `supportedTools` | 支持的 AI 工具注册表（当前仅 opencode；作为平台适配器预留扩展点保留） |
 
@@ -57,7 +57,7 @@ stage-38 用「控制区标记」替换 stage-32 的 `writeWithMergeDetection`�
 - 无标记追加「追加即建区」（N2）；hash 降级为「无标记文件归属兜底」（N3），不再作为含标记文件拒写依据。
 - `UpdateResult` 新增 `appended: string[]`（与 created/updated/skipped/conflicts 并列）；`conflicts` 本阶段恒空（语义变化）。
 - 追加/异常动作内联写 `~/.openfeel/update_infos.md`（见 `core/update-infos.md`），路径二元组（绝对路径 / 项目根+相对路径）。
-- **覆盖前备份（stage-46）**：`updated`/adopt/`appended` 三分支及全局 `opencode.jsonc` 覆盖写前，经 `backupFileBeforeWrite` 备份原件到 `~/.openfeel/backup/{ts}/` 并记 `backed` 条目；备份失败 → 返回既有 `'skipped'` + `note='backup_failed'` 异常，不覆盖。详见 `core/backup.md`。
+- **覆盖前备份（stage-46）**：`updated`/adopt/`appended` 三分支及全局 `opencode.jsonc` 覆盖写前，经 `backupFileBeforeWrite` 备份原件到 `~/.openfeel/backup/{ts}/` 并记 `backed` 条目；备份失败 → 返回既有 `'skipped'` + `note='backup_failed'` 异常，不覆盖。详见 `core/backup.md`。**`writeManagedFile` 的 `command: BackupCommand` 为形参**（供 backed 条目记录来源命令）。
 
 ## 变更历史
 

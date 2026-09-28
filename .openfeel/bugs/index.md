@@ -7,14 +7,15 @@
 
 | 状态 | 数量 |
 |------|:--:|
-| open | 6 |
+| open | 7 |
 | fixed | 0 |
 | closed | 0 |
-| **合计** | **6** |
+| **合计** | **7** |
 
-> 说明：本目录常规收纳**已关闭** Bug 的核心结论。当前 6 条均为测试官显式要求归档沉淀（便于后续排期与追溯）的**未关闭**缺陷：
+> 说明：本目录常规收纳**已关闭** Bug 的核心结论。当前 7 条均为测试官显式要求归档沉淀（便于后续排期与追溯）的**未关闭**缺陷：
 > - `v1.1.2-stage-41`：cli × 2（low 非阻塞）+ archive × 1（low 非阻塞）；
-> - `v1.1.2-stage-42`：config × 2（`BUG-002` high 阻塞，实现层修复归 stage-46 REV-001；`BUG-003` medium 非阻塞）+ config × 1 遗留登记（`BUG-001` high，v0.4.4 时期的 `config set lang` 参数解析缺陷）。
+> - `v1.1.2-stage-42`：config × 2（`BUG-002` high 阻塞，实现层修复归 stage-46 REV-001；`BUG-003` medium 非阻塞）+ config × 1 遗留登记（`BUG-001` high，v0.4.4 时期的 `config set lang` 参数解析缺陷）；
+> - `v1.1.2-stage-45`：templates × 1（`BUG-002` medium 非阻塞，模板权威源权限部署路径行未泛化；**处置归属 stage-47 缺陷清理**）。
 
 ## 模块索引
 
@@ -38,3 +39,11 @@
 | 编号 | 标题 | 优先级 | 状态 | 来源阶段 |
 |------|------|:--:|:--:|----------|
 | [BUG-001](archive.md) | `openfeel archive` 对缺 `deps` 字段的存量阶段抛 TypeError（预存量缺陷） | low | open | v1.1.2-stage-41 |
+
+### templates
+
+| 编号 | 标题 | 优先级 | 状态 | 来源阶段 |
+|------|------|:--:|:--:|----------|
+| [BUG-002](templates.md) | 全局约束模板 `agents-md` 权限部署路径行未泛化（与仓库根 `AGENTS.md:122` 同类表述处理不一致；双源不同步） | medium | open | v1.1.2-stage-45 |
+
+> 注：templates 模块另有 `BUG-001`（事务官标识列未加前缀）已于 `v1.1.2-stage-41` 关闭，未纳入本目录（仅在私域 `.openfeel/users/Liuary/bugs/templates/` 保留详细报告）。

@@ -2,13 +2,13 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T20:19:02.211Z",
-    "revision": 155
+    "updated": "2026-09-28T20:17:53.922Z",
+    "revision": 147
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.2-stage-46",
+      "stage": "v1.1.2-stage-45",
       "op": "op-004"
     },
     "retry": 0
@@ -897,93 +897,7 @@
       "phase": "scheme_pending",
       "status": "planned",
       "deps": [],
-      "ops": {
-        "op-001": {
-          "title": "备份基础设施（global-paths 路径函数 + backup.ts + 锁临界区）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-002": {
-          "title": "update_infos 扩展「备份」类（含读侧节识别）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-003": {
-          "title": "四链路写入接入（setup、update、init、migrate 覆盖前备份）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-004": {
-          "title": "feel.md 检查规则扩展与 build 重生成",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-005": {
-          "title": "备份测试与全量回归",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        }
-      },
+      "ops": {},
       "stats": {
         "start_time": "2026-09-28T16:04:01.096Z",
         "end_time": "",
@@ -6183,79 +6097,6 @@
         "stageName": "v1.1.2-stage-45",
         "from": "test_passed",
         "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-09-28T20:17:54.201Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-46",
-        "from": "plan_passed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-09-28T20:18:49.137Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-46",
-        "opId": "op-001"
-      }
-    },
-    {
-      "time": "2026-09-28T20:18:49.423Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-46",
-        "opId": "op-002"
-      }
-    },
-    {
-      "time": "2026-09-28T20:18:49.983Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-46",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-09-28T20:18:50.248Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-46",
-        "opId": "op-004"
-      }
-    },
-    {
-      "time": "2026-09-28T20:19:01.720Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-46",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-09-28T20:19:01.958Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-46",
-        "opId": "op-004"
-      }
-    },
-    {
-      "time": "2026-09-28T20:19:02.210Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-46",
-        "opId": "op-005"
       }
     }
   ]

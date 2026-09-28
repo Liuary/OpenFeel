@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-29-Liuary-030.md](2026/09/29/2026-09-29-Liuary-030.md) | Liuary | 阶段 v1.1.2-stage-45 完成 |
+| [2026-09-29-Liuary-029.md](2026/09/29/2026-09-29-Liuary-029.md) | Archiver | **stage-45 归档完成（v1.1.2 平台强限定内容「描述泛化」）**：源码注释/命令文案/i18n 双语 7 键 + 模板权威源 + 规则/文档/手册 24 文件（含用户点名处 `AGENTS.md:82`）+ 泛化锁断言，全部描述泛化、**零行为变更**（`global-paths.ts` 8/8 全注释行 + build 幂等零 diff + worktree 命令输出逐字一致）；659/659 测试全绿（40 文件）、`lint i18n` 529 键；REV-001（low）closed、三段审查零阻塞；Bug：`templates/BUG-002`（medium 非阻塞，归 stage-47）；知识沉淀 3 条至 patterns(2)+troubleshooting(1) |
 | [2026-09-29-Liuary-028.md](2026/09/29/2026-09-29-Liuary-028.md) | Liuary | v1.1.2-stage-45.op-004 执行通过 |
 | [2026-09-29-Liuary-027.md](2026/09/29/2026-09-29-Liuary-027.md) | Liuary | v1.1.2-stage-45.op-003 执行通过 |
 | [2026-09-29-Liuary-026.md](2026/09/29/2026-09-29-Liuary-026.md) | Liuary | v1.1.2-stage-45.op-002 执行通过 |
@@ -30,8 +32,6 @@
 | [2026-09-28-Liuary-001.md](2026/09/28/2026-09-28-Liuary-001.md) | Liuary | **v1.1.2 ���׶μƻ����**��3 �׶�������ͨ����blocking=2 ��ȱ�ݣ��汾�տ��嵥��© agents-md Ȩ��Դ�汾�İ� / P2a auto_advance ʵΪ enabled �� disabled����skill ������߾�������ȷ����ʵ |
 | [2026-09-26-Liuary-002.md](2026/09/26/2026-09-26-Liuary-002.md) | Liuary | 阶段 v1.1.1-stage-01 完成 |
 | [2026-09-26-Liuary-001.md](2026/09/26/2026-09-26-Liuary-001.md) | Archiver | **stage-01 归档完成（v1.1.1 全局化彻底化改造）**：移�?core.md 约束统一全局 AGENTS.md + 约束/操作分离�? skill�? openfeel setup 纯全局部署 + init/update/migrate 拆分�?97/597 测试，BUG-001 closed，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 cli/setup.md + core/setup.md + 更新 init/update/migrate/index |
-| [2026-09-26-Liuary-002.md](2026/09/26/2026-09-26-Liuary-002.md) | Liuary | 阶段 v1.1.1-stage-01 完成 |
-| [2026-09-25-Liuary-010.md](2026/09/25/2026-09-25-Liuary-010.md) | Archiver | **stage-40 归档完成（v1.1.0 收官�?*：模型配置接口（`openfeel model` 命令�?+ `model-config.ts` 三层级读�?+ REV-1606 优先级链实测勘误 frontmatter>jsonc），591/591 测试�? Bug，知识沉淀 3 条至 architecture(1) + patterns(1) + troubleshooting(1) + 修正 setup.md/skill 矛盾，manual 新增 core/model-config.md + cli/model.md + 更新 global-paths/commands |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

@@ -575,3 +575,28 @@ CRLF 计数 > 0 即可疑；或直接对比「`findSimilarEntries` 命中的标�
 **避免再犯**：需求/根因类文档中的机制性断言须标注**实测版本**；据此设计的规避方案须**先证伪再落地**；「未复现」须如实记录（含成因未定的说明），不得为凑结论补白成因。
 
 **参见：** `.openfeel/plan/v1/stage-44/op-001-findings.md` §八、`docs/phase-5/07-openfeel-permission-issue.md` 勘误节、v1.1.2-stage-44 REV-003
+
+## [+] 多源文案同步陷阱：模板权威源与仓库根手维护文件双份同句易只改一处 (2026-09-29)
+
+**现象**：本仓库中同一语义句存在**两份存放**——模板权威源 `src/core/templates-data/agents-md/{zh-CN,en}.md`（经 `openfeel setup` 部署为**所有项目**的全局 `AGENTS.md`）与**仓库根 `AGENTS.md`**（手工维护、仅本仓库可见）。v1.1.2-stage-45 只泛化了仓库根 `AGENTS.md:122`，模板权威源 `agents-md:112` 未同步 → **用户可见度最高**的一份仍以「框架部署目标」口吻硬编码 opencode 全局绝对路径（`templates/BUG-002`，medium 非阻塞）。同类问题在 `templates/BUG-001` 已发生过一次，属**重复模式**。
+
+**根因**：`build.js:143` 对 agents-md **仅注入 `AGENTS_MD_TEMPLATES` 生成段，不写仓库根 `AGENTS.md`**；两者无单一源约束、无一致性断言 → 改一处**不会触发任何失败**（build 一致性校验、测试、lint 均绿）。
+
+**排查方法**：
+
+```bash
+# 双源比对：关键句片段同时搜索模板源与仓库根
+rg -n "关键句片段" src/core/templates-data AGENTS.md
+# 权限部署落点专项（本案例）
+rg -n "agents/\*\.md" src/core/templates-data/agents-md AGENTS.md
+```
+
+口诀：**「仓库根有 `AGENTS.md`，若与模板源同句，改一处必查两处」**；文案类改动收尾时应把「关键句全仓 `rg` 遍历」列为**必做步骤**（按行号盘点无法覆盖「同语义句的其它副本」——本案例即 A 类清单只登记了 `agents-md:3`，漏掉 stage-44 新增的 `:112`）。
+
+**避免再犯**：
+
+- 修改模板权威源后，`npm run build` 会自动传播到部署产物（生成段 + `.opencode/` 自举），但**仓库根 `AGENTS.md` 不在此链路** → 改任一侧时**同批核对另一侧**；
+- 可为「双份同句」加**一致性断言**（类似 stage-45 的泛化锁断言），把人工核对变成机器护栏；
+- 归档/审查时把「模板源 vs 仓库根镜像」列入文案变更的固定检查项。
+
+**参见：** `templates/BUG-002`（本阶段）、`templates/BUG-001`（closed，同模式首次发生）、`.openfeel/bugs/templates.md`、kb/troubleshooting.md #双层模板源发散、kb/patterns.md #AGENTS.md 模板同步模式

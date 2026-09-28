@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 13 |
+| passed | 14 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -19,6 +19,8 @@
 | [v1.1.2-stage-42](v1.1.2-stage-42.md) | 配置口径与流水线状态正确性 — 6 REV（REV-001~004/010/011 全部 closed，含 1 条 blocking 修复后闭环），652/652 测试 | passed |
 
 | [v1.1.2-stage-44](v1.1.2-stage-44.md) | 权限模型修正 — 3 REV（REV-001/002/003 全部 closed，REV-003 low 转归档后闭环），658/658 测试（40 文件），18 模板补 `external_directory` + `write`→`edit` + 覆盖语义文档化 | passed |
+
+| [v1.1.2-stage-45](v1.1.2-stage-45.md) | 平台强限定内容「描述泛化」 — 1 REV（REV-001 low 复核 closed），659/659 测试（40 文件），零行为变更（注释/文案/文档/模板 + i18n 双语 7 键 + 泛化锁断言），Bug：templates/BUG-002（medium 非阻塞，归 stage-47） | passed |
 
 ## v5 系列审查
 

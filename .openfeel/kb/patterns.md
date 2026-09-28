@@ -2361,3 +2361,48 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 **实践收益**：stage-44 借此推翻需求文档 §二.2 的根因判断（顶层 `permission:"allow"` 实际会覆盖 `external_directory`），且真实环境零污染（3689 文件 / mtime 前后一致）。
 
 **参见：** `.openfeel/plan/v1/stage-44/op-001-findings.md`、v1.1.2-stage-44 测试报告 §三
+
+## [+] 平台无关化「描述泛化」原则与边界：只改描述 + 适配器细节保留标注 + B 类清单 (2026-09-29)
+
+OpenFeel 面向多 harness 适配时，仓库中大量「平台强限定」内容须按**两类处置**（v1.1.2-stage-45 全量落地：源码注释 / 命令文案 / i18n 双语 / 模板权威源 / 规则 / 文档 / 手册）。
+
+**判定原则（唯一分界线）**：
+
+- 文字若在**断言「平台就是 opencode」**（描述性 / 用户可见）→ **泛化**；
+- 文字若在**说明 opencode 这个具体东西的用法 / 路径 / 命令**（实现细节）→ **保留并显式标注「（opencode 适配器）」**。
+
+**泛化词典（全阶段统一）**：
+
+| 原表述 | 泛化后 |
+|--------|--------|
+| 全局 opencode 配置目录 | 全局配置目录（opencode 适配器：`~/.config/opencode`） |
+| `opencode.jsonc`（框架部署产物） | 平台适配器配置文件（当前：`opencode.jsonc`） |
+| 重启 opencode | 重启当前 harness（opencode） |
+| 目前仅支持 opencode / 唯一 harness | 当前适配 harness：opencode（默认）；框架面向多 harness 适配（其余适配器预留） |
+| 模块内 opencode 引用密集 | **模块头一次性标注**「本模块属 opencode 适配器实现」，避免逐行噪声与误伤（`model-config.ts` 一处覆盖 38 处） |
+
+**B 类保留清单（不得泛化）**：`opencode.jsonc` 文件名与 `$schema`；opencode 配置字段（`instructions`/`skills`/`agent.*.model`/`permission`/`default_agent`）；适配器目录本体 `.opencode/`、`kilo/`、`claude/` 及其**操作指令**（如 `glob .opencode/agents/*.md`、`不修改 .opencode/agents/*.md`）；构建产物文件本体；`supportedTools` 注册表（预留扩展点）；历史归档与 fixture；模型 ID / provider key。
+
+**边界（零行为变更）**：不改路径解析逻辑与常量、不引入 harness 适配器抽象层、不改 `templates-data/opencode/` 目录树、不改 `$schema`、不回改历史归档。
+
+**实证（stage-45）**：`archiver.md:21/:46` 与 `utility.md:40` 的 `glob .opencode/agents/*.md` 经独立裁定属 B 类——它们是**对本仓库适配器目录的具体操作指令**，泛化会使命令失去可执行性；若按计划原稿纳入 A 类即造成失真。
+
+**验证方法**：`rg` 全仓遍历关键句（断言式表述清零、保留项均已标注）；i18n 键集不变仅改值 + `lint i18n`；`git diff --numstat` 确认改动行 = 注释/字符串行。
+
+**参见：** v1.1.2-stage-45 op-001 泛化词典、`REV-v1.1.2-stage-45` 归类修正裁定、kb/patterns.md #零行为变更改造的验证方法
+
+## [+] 零行为变更改造的验证方法：diff 归因 + build 幂等 + 命令输出对比 (2026-09-29)
+
+**适用**：一次改造声明「零行为变更」（如纯描述泛化、纯注释/文案/文档调整）时，**「测试全绿」不足以作证**——需三条互相独立的证据链（v1.1.2-stage-45 全量采用）。
+
+1. **diff 逐行归因**：`git diff --numstat <commit>^ <commit> -- <源码文件>`，改动行数应**等于**注释/字符串行数（stage-45 实测 `src/core/global-paths.ts` = 8/8 全为注释行）；再 `git diff` 逐行确认函数体、`join(homedir(), …)` 常量、控制流、锁名常量、文件名逻辑用法零改动。判定标准：**行为面改动行 = 0**。
+2. **build 幂等**：在 HEAD 工作区跑 `npm run build`（含单源一致性校验），随后 `git status --porcelain` 对 `src/`、`.opencode/`、`templates-data/` **零输出** → 同时证明两件事：① 提交的生成段/自举实例确为**权威源重生成结果（非手改）**；② build 链路可复现、无隐藏漂移。
+3. **命令输出对比**：用 **pre-commit worktree（或 `git worktree add` 检出改造前 commit）**运行真实命令并逐字比对 stdout——stage-45 对比 `config effective` / `flow phases` / `flow status` / `model get` / `project`，**输出完全一致，仅 4 个 `--help` 文案变化**（用户可见文案变化是「描述泛化」的正当面，须显式列出并归因为预期）。
+
+辅助门禁：`npm test` 全绿、`openfeel lint i18n` / `lint kb` 零错误、`npx tsc --noEmit` exit 0。
+
+**反模式**：仅凭「测试全绿」宣称零行为变更——既有测试往往不覆盖被改文案的断言，改错路径逻辑也可能不触发失败；**独立对比**（worktree 真实输出）才是终局判据。
+
+**沉淀价值**：该三证法同时是「生成物非手改」的审计手段，可直接复用于任何含构建产物重生成的阶段。
+
+**参见：** v1.1.2-stage-45 op-004、`test-v1.1.2-stage-45-report-2026-09-29.md`、kb/architecture.md #模板单源架构

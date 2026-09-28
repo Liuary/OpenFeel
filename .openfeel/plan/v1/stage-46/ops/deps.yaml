@@ -1,0 +1,131 @@
+# stage-46 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-46
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-45
+    type: hard
+    status: satisfied            # 实测已完成（commit 8e1e186）
+    reason: "46 与 45 同改 src/core/{init,setup,update}.ts 与 src/core/global-paths.ts（45 改注释/文案、46 改逻辑）→ 必须串行 45 → 46"
+  - after_stage: v1.1.2-stage-47
+    type: mutual_exclusion
+    reason: "46 → 47 串行（若 47 存在/后续阶段）：同为部署/配置热区（46 改 init/setup/update/global-paths/migrate；47 涉同族写入面）→ 避免同文件并发"
+  - before_stage: v1.1.2-stage-43
+    type: soft
+    reason: "43 为版本收口（U1 必在最后）；46 的备份/状态提示机制须在收口前定稿"
+
+# 【阶段性质提示】
+# 仅「部署覆盖前备份 + 全局状态提示」；不新增还原/回滚命令（B8）；
+# 不合并 migrate 项目内备份（B7，仅项目内不合并；migrate 全局写纳入）；
+# 明确裁定：备份成功后仍覆盖（需求为「备份 + 提示」，非「拒绝覆盖」）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "备份基础设施（global-paths 路径函数 + backup.ts + 锁临界区）"
+    produces:
+      - src/core/global-paths.ts
+      - src/core/backup.ts                 # 新建
+      - test/core/backup.test.ts           # 新建（op-005 落地）
+    deps: []
+    notes: "底座；ts 探测 + 每文件备份 + manifest 读改写全程在单一 withFileLock(globalLockPath('backup')) 临界区（REV-005）"
+
+  op-002:
+    file: op-002.md
+    title: "update_infos 扩展「备份」类（含读侧节识别）"
+    produces:
+      - src/core/update-infos.ts
+    deps: []
+    notes: "新增 kind='backed' + backupRel/command/note 字段；读侧改按 SECTION_TITLES 匹配（REV-003）；正则向后兼容"
+
+  op-003:
+    file: op-003.md
+    title: "四链路写入接入（setup、update、init、migrate 覆盖前备份）"
+    produces:
+      - src/core/update.ts
+      - src/core/setup.ts
+      - src/core/init.ts
+      - src/core/migrate.ts
+      - src/core/backup.ts                 # 追加 notifyBackupIfTTY
+    deps:
+      - op: op-001
+        type: hard
+        reason: "依赖 backupFileBeforeWrite / BackupError"
+      - op: op-002
+        type: hard
+        reason: "依赖 appendUpdateInfo('backed', …) 与 note 字段"
+    notes: >-
+      writeManagedFile 增 command 形参 + 三改写分支写前备份 + 失败返回既有 'skipped'（REV-004）；
+      全局 opencode.jsonc 三处直写备份（setup/update/migrate，备份移出 jsonc 锁避免嵌套）；
+      init config.yaml（REV-001）与 package.json 备份；deployGlobalAsset 增 command 透传；
+      REV-007①② 处置记录（initFlow 归属更正 + profile.yaml 豁免）；BUG-002 实现层修复归属（不重复开票）
+
+  op-004:
+    file: op-004.md
+    title: "feel.md 检查规则扩展与 build 重生成"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/template-loader.ts        # 生成段（build 重生成）
+      - .opencode/agents/feel.md           # 自举（build 重生成）
+      - .openfeel/manual/core/backup.md    # 新建
+      - .openfeel/manual/core/update-infos.md
+      - .openfeel/manual/index.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "条目格式（backed/note）须已定型"
+      - op: op-003
+        type: soft
+        reason: "提示口径与备份行为一致"
+    notes: "三类处理 + backupRel 存在性检查（REV-006④）+ backup_failed 分派（REV-004）；必须 npm run build"
+
+  op-005:
+    file: op-005.md
+    title: "备份测试与全量回归"
+    produces:
+      - test/core/update-infos.test.ts
+      - test/core/update.test.ts
+      - test/core/setup.test.ts
+      - test/core/init.test.ts
+      - test/core/global-paths.test.ts
+      - test/core/template-loader.test.ts
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+      - op: op-004
+        type: hard
+    notes: "N4 隔离硬要求：homedir 单点 mock + cwd mock，严禁触碰真实 ~/.openfeel/（含 backup/、update_infos.md）"
+
+mutual_exclusions:
+  - group: [op-001, op-002, op-003]
+    reason: "op-003 依赖二者；三者在写入链/格式定义上相邻（保守串行，避免 executor 单实例下的接口漂移）"
+  - group: [op-003, op-004]
+    reason: "op-004 的 `npm run build` 重写 src/core/template-loader.ts 生成段；与 op-003 的源码改动建议串行（build 前后一致）"
+
+parallel_groups:
+  - group: [op-001, op-002]
+    desc: "底座两件（文件不相交：global-paths+backup.ts vs update-infos.ts）——可并行，但 op-003 同时依赖二者"
+  - group: [op-003]
+    desc: "接入（依赖 op-001 + op-002）"
+  - group: [op-004]
+    desc: "feel.md + build + manual（依赖 op-002；soft 依赖 op-003）"
+  - group: [op-005]
+    desc: "测试 + 全量回归（依赖全部）"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-003
+  - op-004
+  - op-005
+rationale: "plan.md §九建议 op-001 → op-002 → op-003 → op-004 → op-005；op-001/op-002 为底座（可并行），op-003 依赖二者，op-004 依赖 op-002 的格式定型，op-005 最后回归。"

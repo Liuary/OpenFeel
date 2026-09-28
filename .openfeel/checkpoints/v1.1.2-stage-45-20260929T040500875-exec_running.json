@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T20:08:23.193Z",
-    "revision": 141
+    "updated": "2026-09-28T20:04:40.812Z",
+    "revision": 136
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-45",
-      "op": "op-004"
+      "op": "op-001"
     },
     "retry": 0
   },
@@ -836,9 +836,9 @@
         },
         "op-002": {
           "title": "模板权威源泛化与 build 重生成",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -853,9 +853,9 @@
         },
         "op-003": {
           "title": "工作区规则与文档手册泛化",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -5990,54 +5990,6 @@
       "detail": {
         "opId": "v1.1.2-stage-45.op-001",
         "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T20:05:00.882Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-45",
-        "from": "exec_running",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-09-28T20:05:49.718Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-45.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T20:05:50.018Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-45",
-        "from": "exec_running",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-09-28T20:08:22.867Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-45.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T20:08:23.193Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-45",
-        "from": "exec_running",
-        "to": "exec_running"
       }
     }
   ]

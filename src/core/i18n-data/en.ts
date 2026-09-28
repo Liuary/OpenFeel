@@ -433,10 +433,10 @@ export const help: I18nDomain = {
   'init':                  { key: 'help.init',                  zh: '', en: 'Initialize project workspace, create .openfeel/ directory structure and config files' },
   'init.demo':             { key: 'help.init.demo',             zh: '', en: 'Create demo project skeleton (NumKit style)' },
   'init.lang':             { key: 'help.init.lang',             zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN in non-interactive mode' },
-  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '', en: 'Create the .openfeel/ workspace only (no AGENTS.md/opencode.jsonc); used by Feel to auto-setup blank projects' },
+  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '', en: 'Create the .openfeel/ workspace only (no global rules / platform adapter config: AGENTS.md/opencode.jsonc); used by Feel to auto-setup blank projects' },
   'init.nonInteractive':   { key: 'help.init.nonInteractive',   zh: '', en: 'Non-interactive mode (used together with --workspace-only)' },
 
-  'setup':                 { key: 'help.setup',                 zh: '', en: 'Deploy global OpenFeel framework config (global AGENTS.md + agents + skills + opencode.jsonc); does not create the project .openfeel/' },
+  'setup':                 { key: 'help.setup',                 zh: '', en: 'Deploy global OpenFeel framework config (global AGENTS.md + agents + skills + platform adapter config: opencode.jsonc); does not create the project .openfeel/' },
   'setup.lang':            { key: 'help.setup.lang',            zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN' },
 
   'update':                { key: 'help.update',                zh: '', en: 'Deploy OpenFeel adapter files to target project (interactive tool selection when no args)' },
@@ -563,7 +563,7 @@ export const help: I18nDomain = {
   'migrate.remapAssignee': { key: 'help.migrate.remapAssignee', zh: '', en: 'Rewrite legacy flow.json assignee to new names (report only by default)' },
   'migrate.rollback':      { key: 'help.migrate.rollback',      zh: '', en: 'Roll back the most recent migration' },
   'migrate.rollback.dryRun': { key: 'help.migrate.rollback.dryRun', zh: '', en: 'Preview rollback plan only' },
-  'migrate.cleanGlobalCoreMd': { key: 'help.migrate.cleanGlobalCoreMd', zh: '', en: 'Delete the deprecated global core.md (~/.config/opencode/openfeel/core.md)' },
+  'migrate.cleanGlobalCoreMd': { key: 'help.migrate.cleanGlobalCoreMd', zh: '', en: 'Delete the deprecated global core.md (opencode adapter: ~/.config/opencode/openfeel/core.md)' },
 
   // model (model configuration)
   'model':               { key: 'help.model',               zh: '', en: 'Model configuration (three scopes: set/get/list)' },
@@ -627,9 +627,9 @@ export const migrate: I18nDomain = {
   'error.pathNotExist':   { key: 'migrate.error.pathNotExist',   zh: '', en: 'Path does not exist: {path}' },
   'error.aborted':        { key: 'migrate.error.aborted',        zh: '', en: 'Migration aborted; run `openfeel migrate rollback` to roll back: {message}' },
   // deprecated (v1.1.1 compatibility transition)
-  'deprecated.globalCoreMd':     { key: 'migrate.deprecated.globalCoreMd',     zh: '', en: '? Detected deprecated global core.md (~/.config/opencode/openfeel/core.md); its constraints are now merged into the global AGENTS.md' },
+  'deprecated.globalCoreMd':     { key: 'migrate.deprecated.globalCoreMd',     zh: '', en: '? Detected deprecated global core.md (opencode adapter: ~/.config/opencode/openfeel/core.md); its constraints are now merged into the global AGENTS.md' },
   'deprecated.globalCoreMdHint': { key: 'migrate.deprecated.globalCoreMdHint', zh: '', en: 'Run openfeel migrate --clean-global-core-md to delete, or remove it manually' },
-  'deprecated.projectAgentsMd':  { key: 'migrate.deprecated.projectAgentsMd',  zh: '', en: 'i Detected project AGENTS.md (legacy project constraints, now consolidated into the global ~/.config/opencode/AGENTS.md); keep or remove manually' },
+  'deprecated.projectAgentsMd':  { key: 'migrate.deprecated.projectAgentsMd',  zh: '', en: 'i Detected project AGENTS.md (legacy project constraints, now consolidated into the global rules file (opencode adapter: ~/.config/opencode/AGENTS.md)); keep or remove manually' },
 };
 
 /* ==================== model domain: model configuration (stage-40) ==================== */
@@ -646,8 +646,8 @@ export const model: I18nDomain = {
   // get
   'get.effective':     { key: 'model.get.effective',     zh: '', en: 'Effective model: {value}' },
   'get.byScope':       { key: 'model.get.byScope',       zh: '', en: '  {scope}: {value}' },
-  'get.none':          { key: 'model.get.none',          zh: '', en: '(not explicitly set, using opencode default)' },
-  'get.inconsistent':  { key: 'model.get.inconsistent',  zh: '', en: '⚠ default layer multi-source mismatch (frontmatter differs from opencode-config.ts); frontmatter takes precedence' },
+  'get.none':          { key: 'model.get.none',          zh: '', en: '(not explicitly set, using platform default; current adapter: opencode)' },
+  'get.inconsistent':  { key: 'model.get.inconsistent',  zh: '', en: '⚠ default layer multi-source mismatch (frontmatter differs from the adapter default config value); frontmatter takes precedence' },
   'get.shadowed':      { key: 'model.get.shadowed',      zh: '', en: '⚠ project/global setting is shadowed by the framework default frontmatter (default takes precedence); use --scope default to change the effective value' },
   'get.failed':        { key: 'model.get.failed',        zh: '', en: '✗ Read failed: {message}' },
   // list

@@ -455,11 +455,11 @@ export const help: I18nDomain = {
   'init':                  { key: 'help.init',                  zh: '初始化项目工作区，创建 .openfeel/ 目录结构和配置文件', en: '' },
   'init.demo':             { key: 'help.init.demo',             zh: '创建带示例骨架的项目（NumKit 风格）', en: '' },
   'init.lang':             { key: 'help.init.lang',             zh: 'Agent 提示词语言（zh-CN 或 en），非交互环境默认 zh-CN', en: '' },
-  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '仅创建 .openfeel/ 工作区（不建 AGENTS.md/opencode.jsonc），供 feel 空白项目自动搭建', en: '' },
+  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '仅创建 .openfeel/ 工作区（不建全局规则/平台适配器配置（AGENTS.md/opencode.jsonc）），供 feel 空白项目自动搭建', en: '' },
   'init.nonInteractive':   { key: 'help.init.nonInteractive',   zh: '非交互模式（配合 --workspace-only 使用）', en: '' },
 
   // setup
-  'setup':                 { key: 'help.setup',                 zh: '部署全局 OpenFeel 框架配置（全局 AGENTS.md + agent + skill + opencode.jsonc），不建立项目 .openfeel/', en: '' },
+  'setup':                 { key: 'help.setup',                 zh: '部署全局 OpenFeel 框架配置（全局 AGENTS.md + agent + skill + 平台适配器配置（opencode.jsonc）），不建立项目 .openfeel/', en: '' },
   'setup.lang':            { key: 'help.setup.lang',            zh: 'Agent 提示词语言（zh-CN 或 en），默认 zh-CN', en: '' },
 
   // update
@@ -598,7 +598,7 @@ export const help: I18nDomain = {
   'migrate.remapAssignee': { key: 'help.migrate.remapAssignee', zh: '改写 flow.json 旧 assignee 为新名（默认仅报告）', en: '' },
   'migrate.rollback':      { key: 'help.migrate.rollback',      zh: '回滚最近一次迁移', en: '' },
   'migrate.rollback.dryRun': { key: 'help.migrate.rollback.dryRun', zh: '仅预览回滚计划', en: '' },
-  'migrate.cleanGlobalCoreMd': { key: 'help.migrate.cleanGlobalCoreMd', zh: '删除已废弃的全局 core.md（~/.config/opencode/openfeel/core.md）', en: '' },
+  'migrate.cleanGlobalCoreMd': { key: 'help.migrate.cleanGlobalCoreMd', zh: '删除已废弃的全局 core.md（opencode 适配器：~/.config/opencode/openfeel/core.md）', en: '' },
 
   // model（模型配置）
   'model':               { key: 'help.model',               zh: '模型配置（三层级 set/get/list）', en: '' },
@@ -662,9 +662,9 @@ export const migrate: I18nDomain = {
   'error.pathNotExist':   { key: 'migrate.error.pathNotExist',   zh: '路径不存在：{path}', en: '' },
   'error.aborted':        { key: 'migrate.error.aborted',        zh: '迁移中止，可执行 `openfeel migrate rollback` 回滚：{message}', en: '' },
   // deprecated（v1.1.1 兼容过渡）
-  'deprecated.globalCoreMd':     { key: 'migrate.deprecated.globalCoreMd',     zh: '⚠ 检测到已废弃的全局 core.md（~/.config/opencode/openfeel/core.md），约束已并入全局 AGENTS.md', en: '' },
+  'deprecated.globalCoreMd':     { key: 'migrate.deprecated.globalCoreMd',     zh: '⚠ 检测到已废弃的全局 core.md（opencode 适配器：~/.config/opencode/openfeel/core.md），约束已并入全局 AGENTS.md', en: '' },
   'deprecated.globalCoreMdHint': { key: 'migrate.deprecated.globalCoreMdHint', zh: '可运行 openfeel migrate --clean-global-core-md 删除，或手动删除', en: '' },
-  'deprecated.projectAgentsMd':  { key: 'migrate.deprecated.projectAgentsMd',  zh: 'ℹ 检测到项目 AGENTS.md（存量项目约束，现已收归全局 ~/.config/opencode/AGENTS.md），可保留或手动删除', en: '' },
+  'deprecated.projectAgentsMd':  { key: 'migrate.deprecated.projectAgentsMd',  zh: 'ℹ 检测到项目 AGENTS.md（存量项目约束，现已收归全局规则文件（opencode 适配器：~/.config/opencode/AGENTS.md）），可保留或手动删除', en: '' },
 };
 
 /* ==================== model 域：模型配置（stage-40） ==================== */
@@ -681,8 +681,8 @@ export const model: I18nDomain = {
   // get
   'get.effective':     { key: 'model.get.effective',     zh: '生效模型：{value}', en: '' },
   'get.byScope':       { key: 'model.get.byScope',       zh: '  {scope}：{value}', en: '' },
-  'get.none':          { key: 'model.get.none',          zh: '（未显式设置，走 opencode 默认）', en: '' },
-  'get.inconsistent':  { key: 'model.get.inconsistent',  zh: '⚠ default 层多源不一致（frontmatter 与 opencode-config.ts 值不同），以 frontmatter 为准', en: '' },
+  'get.none':          { key: 'model.get.none',          zh: '（未显式设置，走平台默认；当前适配器 opencode）', en: '' },
+  'get.inconsistent':  { key: 'model.get.inconsistent',  zh: '⚠ default 层多源不一致（frontmatter 与适配器默认配置值不同），以 frontmatter 为准', en: '' },
   'get.shadowed':      { key: 'model.get.shadowed',      zh: '⚠ project/global 设置被框架默认 frontmatter 遮蔽（default 优先），如需修改生效值请用 --scope default', en: '' },
   'get.failed':        { key: 'model.get.failed',        zh: '✗ 读取失败：{message}', en: '' },
   // list

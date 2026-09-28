@@ -1,50 +1,45 @@
-# 自测报告 — op-002
+# 自测报告 — v1.1.2-stage-45.op-002
 
-- **执行时间**：2026-09-26 15:40
+- **执行时间**：2026-09-29 04:05
 - **执行 Agent**：openfeel-executor
 - **重试次数**：1
 
 ## 执行摘要
-
-新增 `openfeel setup` 纯全局部署命令；init 拆除全局部署与项目 AGENTS.md；新增 `--workspace-only --non-interactive`；i18n setup 域落地。build 全绿，隔离 HOME e2e 通过。
+模板权威源双语泛化完成，`npm run build` 通过且单源一致性校验通过、二次 build 幂等，自测通过。
 
 ## 实施步骤完成情况
-
-- [x] 步骤 1：global-paths.ts 新增 getGlobalAgentsMdPath()
-- [x] 步骤 2：新增 src/core/setup.ts（setupGlobalFramework）
-- [x] 步骤 3：新增 src/commands/setup.ts
-- [x] 步骤 4：cli/index.ts 注册 setup
-- [x] 步骤 5：init.ts 拆 deployOpencode/promptOpencodeDeploy/OpencodeDeployResult/writeGlobalFileIfMissing + InitResult 移除 opencode + 抽 initWorkspaceCore/initWorkspaceOnly
-- [x] 步骤 6：commands/init.ts 新增 --workspace-only/--non-interactive
-- [x] 步骤 7：i18n setup 域 + help.setup/init.workspaceOnly/init.nonInteractive
-- [x] 步骤 8：npm run build 通过
+- [x] `agents-md/{zh-CN,en}.md:3` 泛化（保留精确落点括号）
+- [x] `feel.md:156`（zh/en）泛化；`:164/:166` 保留 + 小节标题(:160)补「（opencode 适配器）」标注
+- [x] `archiver.md:21,46` / `utility.md:40` 未改（B 类，分类修正）
+- [x] 3 个 skill 首段/描述补标注；命令保留
+- [x] `npm run build` 通过且单一源一致性校验通过（6/6）
+- [x] `template-loader.ts` 生成段 / `.opencode/**` 自举含新文案；二次 build 幂等
+- [x] 未手改生成段/构建产物；未触 `$schema`
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| openfeel setup --help 显示命令与 --lang（双语） | ✅ | |
-| setup 隔离 HOME 部署全局 AGENTS.md + 9 agent + 16 skill + jsonc；不建项目 .openfeel/ | ✅ | e2e 实测 |
-| setup 二次运行幂等 | ✅ | 第二次 created 空 |
-| 全局 AGENTS.md 内容 == loadTemplate(agents-md) 含受管区标记 | ✅ | |
-| init（空项目）只建 .openfeel/ + 项目 opencode.jsonc | ✅ | e2e 实测 |
-| init 不产生 AGENTS.md/.opencode/ | ✅ | |
-| init --workspace-only 仅创建工作区（不建 jsonc/AGENTS.md） | ✅ | e2e 实测 |
-| getGlobalAgentsMdPath() == homedir/.config/opencode/AGENTS.md | ✅ | 单测通过 |
-| lint i18n 零错误（setup 域对称） | ✅ | 498→502 键一致 |
-| tsc --noEmit 无错误 | ✅ | build 内含 |
+| agents-md 双语 :3 泛化 | ✅ | 含「当前 harness / current harness」 |
+| feel.md :156 双语泛化 | ✅ | 保留精确落点 |
+| feel.md :164/:166 保留 + 标题标注 | ✅ | 命令未失真 |
+| archiver/utility 未改 | ✅ | B 类 |
+| build 通过 + 单源一致 | ✅ | exit 0，一致性 6/6 |
+| 生成段/自举含新文案 | ✅ | template-loader.ts 命中 6 处；.opencode/agents/feel.md 命中 |
+| 二次 build 幂等 | ✅ | 无新增变化 |
+| `npm test -- template-loader setup` | ✅ | 31 tests passed |
+| 未新增依赖 | ✅ | — |
 
 ## 产出文件
-
-- `src/core/setup.ts`、`src/commands/setup.ts`（新增）
-- `src/core/global-paths.ts`、`src/core/init.ts`、`src/commands/init.ts`、`src/cli/index.ts`、`src/core/i18n.ts`、`src/core/i18n-data/{zh-CN,en}.ts`
+- `src/core/templates-data/agents-md/{zh-CN,en}.md`
+- `src/core/templates-data/opencode/agents/{zh-CN,en}/feel.md`
+- `src/core/templates-data/opencode/skills/{openfeel-model-check,openfeel-model-config,openfeel-agent-model-check}/SKILL.md`
+- 生成产物：`src/core/template-loader.ts`、`src/core/update.ts`、`.opencode/agents/feel.md`、`.opencode/skills/*/SKILL.md`（均 build 重生成）
 
 ## 前置校验结果
-
 - 方案完整性：通过
-- Phase 合法性：通过
+- Phase 合法性：通过（exec_running / current.op=op-002）
 - 流转合法性：通过
 
 ## 偏差记录
-
-无。
+- 行号漂移复核：feel.md `155/163/165` → 实测 `156/164/166`（op 已记录）；archiver `20/45` → `21/46`；utility `~39` → `40`，与 op 标注一致。
+- 无跳步违规。

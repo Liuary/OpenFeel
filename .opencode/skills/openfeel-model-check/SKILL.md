@@ -21,7 +21,7 @@ Feel Agent 在以下时机加载本 Skill：
 
 | 配置文件 | 平台 |
 |----------|------|
-| `opencode.jsonc` | OpenCode |
+| `opencode.jsonc` | OpenCode（当前适配器） |
 | `kilo/kilo.json` | Kilo |
 | `claude/claude.json` | Claude |
 
@@ -118,7 +118,7 @@ models:
 ```markdown
 ## 🔍 模型配置检查报告
 
-**平台**：OpenCode
+**平台**：OpenCode（当前适配器）
 **配置文件**：.openfeel/config.yaml
 **检查时间**：yyyy-mm-dd HH:MM
 
@@ -171,7 +171,7 @@ models:
 # 或直接复制此文件到 .openfeel/ 并重命名为 config.yaml（需合并其他节）
 #
 # 最近配置时间：yyyy-mm-dd HH:MM
-# 平台：OpenCode
+# 平台：OpenCode（当前适配器）
 
 models:
   default:

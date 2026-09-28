@@ -163,11 +163,11 @@ When starting a session in a **blank project** (no \`.openfeel/\` directory at t
 2. If \`.openfeel/\` is absent, run \`openfeel init --workspace-only\` (a non-interactive lightweight subcommand) to create the \`.openfeel/\` directory structure + config.yaml + flow.json + .info.json + dev/kb skeleton.
 3. This rule is triggered by **Feel only**; non-Feel agents (openfeel-planner/schemer/executor, etc.) **must not trigger** it — they only run inside an already-set-up workspace and never set it up themselves.
 
-> Note: \`--workspace-only\` does **not** create AGENTS.md / opencode.jsonc; the framework constraints are carried by the global \`~/.config/opencode/AGENTS.md\` (see the global AGENTS.md).
+> Note: \`--workspace-only\` does **not** create AGENTS.md / opencode.jsonc; the framework constraints are carried by the **current harness's global rules file** (opencode adapter: \`~/.config/opencode/AGENTS.md\`; see the global rules file).
 
 ## Model Configuration
 
-### Configure based on available models at init time
+### Configure based on available models at init time (opencode adapter)
 
 When running \`openfeel init\` or first deployment, **do not assume the user has preset models configured**. Must execute the following flow:
 
@@ -1499,11 +1499,11 @@ Feel 的主力推理模型**可能不支持图片/多模态输入**。当用户�
 2. 无 \`.openfeel/\` 时运行 \`openfeel init --workspace-only\`（非交互轻量子命令），创建 \`.openfeel/\` 目录结构 + config.yaml + flow.json + .info.json + dev/kb 骨架。
 3. 本规则**仅 Feel 触发**；非 feel agent（openfeel-planner/schemer/executor 等）**不触发**——它们仅在已搭建的工作区内运行，不自行搭建。
 
-> 注意：\`--workspace-only\` **不建** AGENTS.md / opencode.jsonc；框架约束由全局 \`~/.config/opencode/AGENTS.md\` 承载（见全局 AGENTS.md）。
+> 注意：\`--workspace-only\` **不建** AGENTS.md / opencode.jsonc；框架约束由**当前 harness 的全局规则文件**承载（opencode 适配器：\`~/.config/opencode/AGENTS.md\`；见全局规则文件）。
 
 ## 模型配置
 
-### 初始化时按可用模型调配
+### 初始化时按可用模型调配（opencode 适配器）
 
 执行 \`openfeel init\` 或首次部署时，**不能假设用户已配置预设模型**。必须执行以下流程：
 
@@ -2686,7 +2686,7 @@ openfeel-vision 由**多模态模型**驱动，具备强大的图像理解和跨
 const AGENTS_MD_TEMPLATES: Record<string, string> = {
   en: `# OpenFeel Global Behavioral Constraints
 
-> This document is the global constraint layer of the OpenFeel framework, deployed to \`~/.config/opencode/AGENTS.md\` by \`openfeel setup\`, applicable uniformly across all OpenFeel projects.
+> This document is the global constraint layer of the OpenFeel framework, deployed by \`openfeel setup\` to the **current harness's global rules location** (opencode adapter: \`~/.config/opencode/AGENTS.md\`), applicable uniformly across all OpenFeel projects.
 
 Behavioral constraints and coding conventions for AI Agents. This document is a permanent constraint that applies to all AI Agent sessions within OpenFeel projects.
 
@@ -3139,7 +3139,7 @@ Stores temporary files for the current user, fully isolated from other users.
 `,
   'zh-CN': `# OpenFeel 全局行为约束
 
-> 本文档为 OpenFeel 框架全局约束层，由 \`openfeel setup\` 部署到 \`~/.config/opencode/AGENTS.md\`，对所有 OpenFeel 项目统一适用。
+> 本文档为 OpenFeel 框架全局约束层，由 \`openfeel setup\` 部署到**当前 harness 的全局规则位置**（opencode 适配器：\`~/.config/opencode/AGENTS.md\`），对所有 OpenFeel 项目统一适用。
 
 AI Agent 行为约束与编码规范。本文件为永久性约束，适用于所有 OpenFeel 项目的 AI Agent 会话。
 
@@ -3790,11 +3790,11 @@ When starting a session in a **blank project** (no \`.openfeel/\` directory at t
 2. If \`.openfeel/\` is absent, run \`openfeel init --workspace-only\` (a non-interactive lightweight subcommand) to create the \`.openfeel/\` directory structure + config.yaml + flow.json + .info.json + dev/kb skeleton.
 3. This rule is triggered by **Feel only**; non-Feel agents (openfeel-planner/schemer/executor, etc.) **must not trigger** it — they only run inside an already-set-up workspace and never set it up themselves.
 
-> Note: \`--workspace-only\` does **not** create AGENTS.md / opencode.jsonc; the framework constraints are carried by the global \`~/.config/opencode/AGENTS.md\` (see the global AGENTS.md).
+> Note: \`--workspace-only\` does **not** create AGENTS.md / opencode.jsonc; the framework constraints are carried by the **current harness's global rules file** (opencode adapter: \`~/.config/opencode/AGENTS.md\`; see the global rules file).
 
 ## Model Configuration
 
-### Configure based on available models at init time
+### Configure based on available models at init time (opencode adapter)
 
 When running \`openfeel init\` or first deployment, **do not assume the user has preset models configured**. Must execute the following flow:
 
@@ -5126,11 +5126,11 @@ Feel 的主力推理模型**可能不支持图片/多模态输入**。当用户�
 2. 无 \`.openfeel/\` 时运行 \`openfeel init --workspace-only\`（非交互轻量子命令），创建 \`.openfeel/\` 目录结构 + config.yaml + flow.json + .info.json + dev/kb 骨架。
 3. 本规则**仅 Feel 触发**；非 feel agent（openfeel-planner/schemer/executor 等）**不触发**——它们仅在已搭建的工作区内运行，不自行搭建。
 
-> 注意：\`--workspace-only\` **不建** AGENTS.md / opencode.jsonc；框架约束由全局 \`~/.config/opencode/AGENTS.md\` 承载（见全局 AGENTS.md）。
+> 注意：\`--workspace-only\` **不建** AGENTS.md / opencode.jsonc；框架约束由**当前 harness 的全局规则文件**承载（opencode 适配器：\`~/.config/opencode/AGENTS.md\`；见全局规则文件）。
 
 ## 模型配置
 
-### 初始化时按可用模型调配
+### 初始化时按可用模型调配（opencode 适配器）
 
 执行 \`openfeel init\` 或首次部署时，**不能假设用户已配置预设模型**。必须执行以下流程：
 
@@ -6312,7 +6312,7 @@ openfeel-vision 由**多模态模型**驱动，具备强大的图像理解和跨
 const OPENCODE_SKILL_DEFINITIONS: Record<string, string> = {
   'openfeel-agent-model-check': `---
 name: openfeel-agent-model-check
-description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
+description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验（opencode 适配器）、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
 ---
 
 # Skill: openfeel-agent-model-check
@@ -6789,7 +6789,7 @@ Feel Agent 在以下时机加载本 Skill：
 
 | 配置文件 | 平台 |
 |----------|------|
-| \`opencode.jsonc\` | OpenCode |
+| \`opencode.jsonc\` | OpenCode（当前适配器） |
 | \`kilo/kilo.json\` | Kilo |
 | \`claude/claude.json\` | Claude |
 
@@ -6886,7 +6886,7 @@ models:
 \`\`\`markdown
 ## 🔍 模型配置检查报告
 
-**平台**：OpenCode
+**平台**：OpenCode（当前适配器）
 **配置文件**：.openfeel/config.yaml
 **检查时间**：yyyy-mm-dd HH:MM
 
@@ -6939,7 +6939,7 @@ models:
 # 或直接复制此文件到 .openfeel/ 并重命名为 config.yaml（需合并其他节）
 #
 # 最近配置时间：yyyy-mm-dd HH:MM
-# 平台：OpenCode
+# 平台：OpenCode（当前适配器）
 
 models:
   default:
@@ -6966,7 +6966,7 @@ models:
 `,
   'openfeel-model-config': `---
 name: openfeel-model-config
-description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
+description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置（opencode 适配器）、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
 ---
 
 # Skill: openfeel-model-config

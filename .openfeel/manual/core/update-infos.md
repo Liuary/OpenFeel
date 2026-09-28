@@ -25,7 +25,7 @@ update_infos.md 存于全局 `~/.openfeel/`（跨项目共享），条目路径�
 
 | 资产类型 | 记录方式 |
 |----------|----------|
-| 全局资产（`~/.config/opencode/` 下） | 绝对路径 |
+| 全局资产（opencode 适配器：`~/.config/opencode/` 下） | 绝对路径 |
 | 项目资产（AGENTS.md / .gitignore 等） | 「项目根 + 相对路径」二元组（`AGENTS.md (项目: /abs/root)`） |
 
 禁止对项目资产只记相对路径（跨项目共享文件会归属歧义）。

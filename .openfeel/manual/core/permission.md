@@ -1,11 +1,11 @@
-# 权限模型（Agent permission）
+# 权限模型（Agent permission；opencode 适配器）
 
 > 模块文档，由归档官在归档时维护。对应交付：`src/core/templates-data/opencode/agents/{zh-CN,en}/*.md`（agent 模板 `permission` 块）；
 > 关联源码：`src/core/template-loader.ts`（部署源生成段）、`src/core/managed-region.ts`（frontmatter 浅合并）、`src/core/update.ts`（`writeManagedFile` 受管区写入）、`src/core/opencode-config.ts`（opencode.jsonc 构建/合并）。
 
 ## 职责
 
-说明 OpenFeel 9 个 agent 的 opencode `permission` 白名单构成、配置合并/优先级语义、项目级收紧入口，以及 `openfeel setup/update` 对用户自定义的保留边界。
+说明 OpenFeel 9 个 agent 在 **opencode 适配器**中的 `permission` 白名单构成、配置合并/优先级语义、项目级收紧入口，以及 `openfeel setup/update` 对用户自定义的保留边界。
 
 ## 9 个 agent 的 permission 键集（v1.1.2-stage-44 补键后）
 
@@ -73,7 +73,7 @@ permission:
 
 ## 生效时机
 
-opencode 仅在**启动时**读取配置；修改 agent 文件或 `opencode.jsonc` 后须**退出并重启** opencode 才生效。
+（opencode 适配器）opencode 仅在**启动时**读取配置；修改 agent 文件或 `opencode.jsonc` 后须**退出并重启** opencode 才生效。
 
 ## 变更历史
 

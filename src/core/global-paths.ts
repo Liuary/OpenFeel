@@ -1,38 +1,38 @@
 /**
  * 全局路径模块
- * 集中解析 opencode 与 openfeel 的全局路径（基于用户主目录），
+ * 集中解析「平台适配器」与 openfeel 的全局路径（基于用户主目录），
  * 作为 init/update 全局部署的路径基础。
  * 仅此模块 import node:os 的 homedir（N4）：测试 mock 一处即隔离全部全局路径。
  */
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
-/** 全局 opencode 配置根目录（~/.config/opencode） */
+/** 全局配置根目录（opencode 适配器：~/.config/opencode） */
 export function getOpencodeGlobalDir(): string {
   return join(homedir(), '.config', 'opencode');
 }
 
-/** 全局 opencode agents 目录 */
+/** 全局 agents 目录（opencode 适配器） */
 export function getGlobalAgentsDir(): string {
   return join(getOpencodeGlobalDir(), 'agents');
 }
 
-/** 全局 opencode skills 目录 */
+/** 全局 skills 目录（opencode 适配器） */
 export function getGlobalSkillsDir(): string {
   return join(getOpencodeGlobalDir(), 'skills');
 }
 
-/** 全局 opencode.jsonc 路径 */
+/** 全局平台适配器配置文件路径（opencode 适配器：opencode.jsonc） */
 export function getGlobalOpencodeJsoncPath(): string {
   return join(getOpencodeGlobalDir(), 'opencode.jsonc');
 }
 
-/** 全局框架约束 core.md 路径（~/.config/opencode/openfeel/core.md；v1.1.1 起废弃，仅兼容检测/清理） */
+/** 全局框架约束 core.md 路径（opencode 适配器遗留：~/.config/opencode/openfeel/core.md；v1.1.1 起废弃，仅兼容检测/清理） */
 export function getGlobalCoreMdPath(): string {
   return join(getOpencodeGlobalDir(), 'openfeel', 'core.md');
 }
 
-/** 全局 AGENTS.md 路径（~/.config/opencode/AGENTS.md；框架约束唯一权威，v1.1.1） */
+/** 全局规则文件路径（opencode 适配器：~/.config/opencode/AGENTS.md；框架约束唯一权威，v1.1.1） */
 export function getGlobalAgentsMdPath(): string {
   return join(getOpencodeGlobalDir(), 'AGENTS.md');
 }
@@ -47,7 +47,7 @@ export function getGlobalUpdateInfosPath(): string {
   return join(homedir(), '.openfeel', 'update_infos.md');
 }
 
-/** 全局 auth.json 路径（~/.local/share/opencode/auth.json；模型 provider 校验依据，REV-1505） */
+/** 全局 auth.json 路径（opencode 适配器：~/.local/share/opencode/auth.json；模型 provider 校验依据，REV-1505） */
 export function getAuthJsonPath(): string {
   return join(homedir(), '.local', 'share', 'opencode', 'auth.json');
 }

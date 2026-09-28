@@ -1,6 +1,6 @@
 ---
 name: openfeel-agent-model-check
-description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
+description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验（opencode 适配器）、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
 ---
 
 # Skill: openfeel-agent-model-check

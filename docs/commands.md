@@ -424,7 +424,7 @@ openfeel knowledge index
 
 ## update — 更新适配文件
 
-更新 OpenCode 适配文件（Agent 定义和 Skill 文件）。
+更新平台适配文件（当前：OpenCode 适配器）——Agent 定义和 Skill 文件。
 
 ```bash
 openfeel update [path]

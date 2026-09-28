@@ -2,7 +2,7 @@
 
 [English](README.en.md) | [更新日志](CHANGELOG.md) | [npm](https://www.npmjs.com/package/openfeel)
 
-> ⚡ **支持平台**：opencode ｜ **默认模型**：DeepSeek（主力推理）+ GLM（交叉审查）+ Alibaba-CN（多模态）
+> ⚡ **当前适配 harness**：opencode（框架面向多 harness 适配，其余适配器预留） ｜ **默认模型**：DeepSeek（主力推理）+ GLM（交叉审查）+ Alibaba-CN（多模态）
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
@@ -22,6 +22,6 @@ openfeel flow status           # 查看流水线
 npm install -g openfeel@latest # 更新到最新版本
 ```
 
-> 💡 `init` 用于新项目首次部署，`update` 为已有项目增量更新（适用于 `init` 之后再引入 OpenFeel 的项目）。存量旧布局项目（项目内 `.opencode/agents|skills|instructions`）用 `openfeel migrate` 迁移到全局部署。
+> 💡 `init` 用于新项目首次部署，`update` 为已有项目增量更新（适用于 `init` 之后再引入 OpenFeel 的项目）。存量旧布局项目（opencode 适配器：项目内 `.opencode/agents|skills|instructions`）用 `openfeel migrate` 迁移到全局部署。
 
 完整中文文档：[README.zh-CN.md](README.zh-CN.md)

@@ -1,6 +1,6 @@
 # Agent 体系设计（agents）
 
-> 模块文档，由归档官在归档时维护。对应源码：`src/core/templates-data/agents/{zh-CN,en}/*.md` + `.opencode/agents/*.md`。
+> 模块文档，由归档官在归档时维护。对应源码：`src/core/templates-data/agents/{zh-CN,en}/*.md` + `.opencode/agents/*.md`（opencode 适配器部署副本）。
 
 ## 职责
 
@@ -47,4 +47,4 @@
 
 ## 思考深度配置
 
-各 Agent frontmatter 含 `reasoning_effort` 字段（high/medium/low）：规划/方案类用 high，调度/审查/测试用 medium，执行/机械/归档/视觉用 low。模板与 `.opencode/agents/` 部署副本需保持同步。
+各 Agent frontmatter 含 `reasoning_effort` 字段（high/medium/low）：规划/方案类用 high，调度/审查/测试用 medium，执行/机械/归档/视觉用 low。模板与 `.opencode/agents/` 部署副本（opencode 适配器）需保持同步。

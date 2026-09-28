@@ -4,11 +4,11 @@
  * 生成 dev_core.md/current.md 模板。
  *
  * 注意：全局框架约束（AGENTS.md + agent + skill）由 `openfeel setup` 部署到
- * `~/.config/opencode/`（v1.1.1 起统一），项目级不再部署约束/agent/skill。
+ * 全局配置目录（opencode 适配器：`~/.config/opencode/`）（v1.1.1 起统一），项目级不再部署约束/agent/skill。
  *
  * 变更摘要：
  * - stage-04: 新增 initDemo() 支持 --demo 标志
- * - stage-37: deployOpencode 部署目标改为全局 ~/.config/opencode/
+ * - stage-37: deployOpencode 部署目标改为全局 ~/.config/opencode/（opencode 适配器）
  * - v1.1.1: 拆除 deployOpencode 与项目 AGENTS.md 骨架；新增 initWorkspaceOnly（--workspace-only）
  */
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -157,7 +157,7 @@ function writeTemplateIfMissing(
 
 /**
  * 仅创建工作区（目录 + config.yaml + flow.json + .info.json + dev/kb 模板），
- * 不写项目 opencode.jsonc / AGENTS.md（v1.1.1：workspace-only 与 initProject 复用）。
+ * 不写项目平台适配器配置文件（opencode.jsonc）/ AGENTS.md（v1.1.1：workspace-only 与 initProject 复用）。
  * 语言由参数传入，不再内部 promptLanguage。
  */
 function initWorkspaceCore(
@@ -236,7 +236,7 @@ function initWorkspaceCore(
 
 /**
  * 初始化项目工作区
- * 步骤：确保全局配置 → 语言选择 → 创建工作区 → 项目 opencode.jsonc → package.json vitest 检测
+ * 步骤：确保全局配置 → 语言选择 → 创建工作区 → 项目平台适配器配置文件（opencode.jsonc） → package.json vitest 检测
  * （v1.1.1：拆除全局 agent/skill/core.md 部署与项目 AGENTS.md 骨架，收归 openfeel setup）
  */
 export async function initProject(projectPath: string, cliLang?: string): Promise<InitResult> {
@@ -258,7 +258,7 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   // 2. 创建工作区（目录 + config.yaml + flow.json + .info.json + dev/kb 模板）
   const { created, updated } = initWorkspaceCore(projectPath, selectedLang);
 
-  // 3. 项目 opencode.jsonc：最小覆盖（仅 $schema），不存在则写
+  // 3. 项目平台适配器配置文件（opencode.jsonc）：最小覆盖（仅 $schema），不存在则写
   //    （v1.1.1 REV-1905 从 deployOpencode 抽出到 initProject）
   const projectJsoncPath = resolve(projectPath, 'opencode.jsonc');
   if (!existsSync(projectJsoncPath)) {
@@ -298,7 +298,7 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
 }
 
 /**
- * 非交互轻量子命令：仅创建工作区（供 feel 空白项目自动搭建；不建 AGENTS.md/opencode.jsonc）
+ * 非交互轻量子命令：仅创建工作区（供 feel 空白项目自动搭建；不建全局规则/平台适配器配置（AGENTS.md/opencode.jsonc））
  * 不做语言交互、不部署全局配置。
  */
 export function initWorkspaceOnly(projectPath: string, lang?: string): { created: string[]; updated: string[] } {

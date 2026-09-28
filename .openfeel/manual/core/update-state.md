@@ -20,7 +20,7 @@
 | `createGlobalUpdateState(files)` | 组装初始全局 state（不触碰文件系统） |
 | `updateFileHash(state, path, content)` | 原地更新文件 hash，status=clean |
 | `markFileConflict(state, path)` | 原地标记文件 status=conflict |
-| `isLegacyFrameworkKey(key)` | 检测 key 是否为「旧框架 key」（`.opencode/` 或 `.opencode\` 前缀，兼容 Windows 反斜杠），供 migrate 拆分重键识别 |
+| `isLegacyFrameworkKey(key)` | 检测 key 是否为「旧框架 key」（`.opencode/` 或 `.opencode\` 前缀——即 **opencode 适配器**的 legacy 项目目录，兼容 Windows 反斜杠），供 migrate 拆分重键识别 |
 
 ## 数据结构
 

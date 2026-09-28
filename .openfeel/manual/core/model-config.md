@@ -4,7 +4,7 @@
 
 ## 职责
 
-提供「工具默认 / 全局 / 当前项目」三层级 agent 模型的读写与校验，供 CLI（`openfeel model`）与内部 API（「Model not found」报错时自动修复）共用。纯函数实现，不直接 console 输出，返回结构化结果。
+本模块属 **opencode 适配器实现**（下文 `opencode` / `opencode.jsonc` / `auth.json` 均为该适配器细节）。提供「工具默认 / 全局 / 当前项目」三层级 agent 模型的读写与校验，供 CLI（`openfeel model`）与内部 API（「Model not found」报错时自动修复）共用。纯函数实现，不直接 console 输出，返回结构化结果。
 
 ## 核心 API
 
@@ -31,7 +31,7 @@
 
 ```
 项目 agents frontmatter > 全局 agents frontmatter >
-项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > opencode 默认
+项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > 平台默认（当前：opencode）
 ```
 
 frontmatter 覆盖 opencode.jsonc（与直觉相反）。`getAgentModel` effective 解析为 `default > project > global`；default 层多源（frontmatter + opencode-config.ts）不一致时以 frontmatter 为准，置 `inconsistent`。

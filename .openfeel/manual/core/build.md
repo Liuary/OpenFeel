@@ -11,6 +11,8 @@
 3. 调用 `npx tsc` 编译 TypeScript。
 4. 重生成 `.opencode/` 自举实例（步骤 8，含生成物标记）。
 
+> 说明：本文中 `templates-data/opencode/` 与 `.opencode/` 均为 **opencode 适配器**的目录名（属适配器实现细节，保留）；构建管线的部署目标由适配器层决定，框架面向多 harness 适配。
+
 ## 单源一致性断言（stage-36）
 
 `validateSingleSourceConsistency()` 断言三对注入对象**键集 + 归一化内容**一致：

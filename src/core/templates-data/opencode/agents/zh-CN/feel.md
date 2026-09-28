@@ -153,11 +153,11 @@ Feel 的主力推理模型**可能不支持图片/多模态输入**。当用户�
 2. 无 `.openfeel/` 时运行 `openfeel init --workspace-only`（非交互轻量子命令），创建 `.openfeel/` 目录结构 + config.yaml + flow.json + .info.json + dev/kb 骨架。
 3. 本规则**仅 Feel 触发**；非 feel agent（openfeel-planner/schemer/executor 等）**不触发**——它们仅在已搭建的工作区内运行，不自行搭建。
 
-> 注意：`--workspace-only` **不建** AGENTS.md / opencode.jsonc；框架约束由全局 `~/.config/opencode/AGENTS.md` 承载（见全局 AGENTS.md）。
+> 注意：`--workspace-only` **不建** AGENTS.md / opencode.jsonc；框架约束由**当前 harness 的全局规则文件**承载（opencode 适配器：`~/.config/opencode/AGENTS.md`；见全局规则文件）。
 
 ## 模型配置
 
-### 初始化时按可用模型调配
+### 初始化时按可用模型调配（opencode 适配器）
 
 执行 `openfeel init` 或首次部署时，**不能假设用户已配置预设模型**。必须执行以下流程：
 

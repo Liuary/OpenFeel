@@ -98,12 +98,12 @@ function outputProjectOverview(cwd: string): void {
   if (opencodeExists) {
     const agentFiles = fg.sync(['agents/*.md'], { cwd: opencodeDir }).length;
     const skillDirs = fg.sync(['skills/*'], { cwd: opencodeDir, onlyDirectories: true }).length;
-    console.log('   .opencode/');
+    console.log('   平台适配器目录（.opencode/）');
     console.log(`    ├─ agents/       ${t('project.dir.agentsTmpl', lang, { n: String(agentFiles) })}`);
     // skills 下可能有多个子目录，用 glob 统计
     console.log(`    └─ skills/       ${t('project.dir.skillsTmpl', lang, { n: String(skillDirs) })}`);
   } else {
-    console.log(`   .opencode/  ${t('project.overview.dirNotExist', lang)}`);
+    console.log(`   平台适配器目录（.opencode/）  ${t('project.overview.dirNotExist', lang)}`);
   }
 
   if (openfeelExists) {

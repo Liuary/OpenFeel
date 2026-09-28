@@ -17,7 +17,7 @@ export function registerInitCommand(program: Command): void {
     .description('初始化项目工作区，创建 .openfeel/ 目录结构和配置文件')
     .option('--demo', '创建带示例骨架的项目（NumKit 风格）')
     .option('--lang <lang>', 'Agent 提示词语言（zh-CN 或 en），非交互环境默认 zh-CN')
-    .option('--workspace-only', '仅创建 .openfeel/ 工作区（不建 AGENTS.md/opencode.jsonc），供 feel 空白项目自动搭建')
+    .option('--workspace-only', '仅创建 .openfeel/ 工作区（不建全局规则/平台适配器配置，当前为 AGENTS.md/opencode.jsonc），供 feel 空白项目自动搭建')
     .option('--non-interactive', '非交互模式（配合 --workspace-only 使用）')
     .action(async (path?: string, options?: { demo?: boolean; lang?: string; workspaceOnly?: boolean; nonInteractive?: boolean }) => {
       const targetPath = resolve(path ?? process.cwd());

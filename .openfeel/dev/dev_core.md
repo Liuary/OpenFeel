@@ -37,7 +37,7 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 
 ## [-] Agent 工具使用规范 (2026-06-27)
 
-> **已迁移到 `.opencode/instructions/core.md` (v0.5.2)**：完整工具规范（todowrite/question/task/skill + 优先级表）已迁移至 `.opencode/instructions/core.md`「Agent 工具使用规范」节，此处不再维护。历史内容保留备查。
+> **已迁移到全局框架约束层（AGENTS.md）(v0.5.2；v1.1.1 起 core.md 退役并入全局 AGENTS.md)**：完整工具规范（todowrite/question/task/skill + 优先级表）已迁移至全局框架约束层（AGENTS.md）的「Agent 工具使用规范」节（opencode 适配器历史路径：`.opencode/instructions/core.md`），此处不再维护。历史内容保留备查。
 
 所有 Agent（含 Feel、Planner、Schemer、Executor、Reviewer、Feel Tester、Archiver）在会话中应主动使用平台内置工具，不得仅凭对话文本完成复杂任务。
 
@@ -121,13 +121,13 @@ yyyy-mm-dd-NNN-{category}-{title}.md
 
 | 源文件 | 模板位置 | 编码方式 |
 |:--|:--|:--|
-| `.opencode/agents/*.md` | `src/core/update.ts` → `AGENT_DEFINITIONS` | 模板字符串 |
+| `.opencode/agents/*.md` | 同步链路见 `.openfeel/manual/core/{template-loader,update}.md`（`AGENT_DEFINITIONS` 已退役，不存在） | 模板字符串 |
 | `.opencode/skills/*/SKILL.md` | `src/core/update.ts` → `SKILL_DEFINITIONS` | 模板字符串 |
-| `.opencode/instructions/core.md` | `src/core/templates.ts` → `CORE_INSTRUCTIONS_TEMPLATE_B64` | Base64 |
+| `.opencode/instructions/core.md` | 已退役：`core.md` 已并入全局 AGENTS.md，`CORE_INSTRUCTIONS_TEMPLATE_B64` 已不存在 | — |
 
 **更新流程**：
 1. 修改源文件后，将新内容同步写入对应模板
-2. core.md 需先 Base64 编码：`[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))`
+2. core.md 需先 Base64 编码（历史，已退役；core.md 已并入全局 AGENTS.md）：`[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))`
 3. 更新后运行 `npm run build` 确认编译通过
 4. 用 `openfeel update` 测试部署验证
 

@@ -8,7 +8,7 @@
 openfeel setup [--lang <zh-CN|en>]
 ```
 
-纯全局部署 OpenFeel 框架配置（全局 `AGENTS.md` + agent + skill + 全局 `opencode.jsonc`），**不建立项目 `.openfeel/`**，幂等可重跑。
+纯全局部署 OpenFeel 框架配置（全局 `AGENTS.md` + agent + skill + 全局平台适配器配置（`opencode.jsonc`，当前适配器）），**不建立项目 `.openfeel/`**，幂等可重跑。
 
 ## 选项
 
@@ -18,8 +18,8 @@ openfeel setup [--lang <zh-CN|en>]
 
 ## 行为
 
-- 调用 `setupGlobalFramework(deployLang)`，输出创建的全局文件；末尾提示「请重启 opencode 以加载新的全局配置」。
-- 与 `init` 的区别：`setup` 纯全局（跨项目框架层）；`init` 只做项目初始化（工作区 + 项目 `opencode.jsonc`）。
+- 调用 `setupGlobalFramework(deployLang)`，输出创建的全局文件；末尾提示「请重启当前 harness（opencode）以加载新的全局配置」。
+- 与 `init` 的区别：`setup` 纯全局（跨项目框架层）；`init` 只做项目初始化（工作区 + 项目平台适配器配置文件 `opencode.jsonc`）。
 
 ## 调用关系
 

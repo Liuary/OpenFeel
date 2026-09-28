@@ -4,7 +4,7 @@
 
 ## 职责
 
-`openfeel update` 的编排层：在**全局** `~/.config/opencode/` 生成/更新 Agent 定义、Skill 定义、全局 `AGENTS.md`，深度合并全局 opencode.jsonc，写入项目最小 opencode.jsonc 覆盖，并维护控制区标记三态增量更新（`writeManagedFile`）+ 追加记录（`update_infos.md`）。
+`openfeel update` 的编排层：在**全局**配置目录（opencode 适配器：`~/.config/opencode/`）生成/更新 Agent 定义、Skill 定义、全局 `AGENTS.md`，深度合并全局平台适配器配置（`opencode.jsonc`），写入项目平台适配器配置文件（`opencode.jsonc`）覆盖，并维护控制区标记三态增量更新（`writeManagedFile`）+ 追加记录（`update_infos.md`）。
 
 > **v1.1.1 收敛**：update 不再部署**项目 AGENTS.md**（存量项目 AGENTS.md 属用户项目约束，保留不动）；全局约束部署目标由 core.md 改为全局 `AGENTS.md`（`getGlobalAgentsMdPath()`）；存量全局 state 的 core.md key 一次性重映射到全局 AGENTS.md key。
 
@@ -12,10 +12,10 @@
 
 | 函数 | 功能 |
 |------|------|
-| `updateProject(projectPath, selectedTools?, lang?, options?)` | 主更新流程：全局框架资产部署（含全局 AGENTS.md）→ 全局 opencode.jsonc 深度合并 → 项目 opencode.jsonc 最小覆盖 → 双 state 持久化 |
+| `updateProject(projectPath, selectedTools?, lang?, options?)` | 主更新流程：全局框架资产部署（含全局 AGENTS.md）→ 全局平台适配器配置（opencode.jsonc）深度合并 → 项目平台适配器配置文件（opencode.jsonc）最小覆盖 → 双 state 持久化 |
 | `deployGlobalAsset(filePath, content, state)` | 全局资产部署（受管区三态，等价 `writeManagedFile(..., {isGlobal:true})`），供 setup/migrate 复用 |
 | `selectTools()` | 交互式选择部署目标工具（`@inquirer/prompts` checkbox，非 TTY 回退默认） |
-| `supportedTools` | 支持的 AI 工具注册表（当前仅 opencode） |
+| `supportedTools` | 支持的 AI 工具注册表（当前仅 opencode；作为平台适配器预留扩展点保留） |
 
 ## 全局部署流程（v1.1.1）
 
@@ -27,8 +27,8 @@
 5. 全局 AGENTS.md → getGlobalAgentsMdPath()（绝对路径作 state key）
 6. agents → getGlobalAgentsDir()/{name}.md
 7. skills → getGlobalSkillsDir()/{name}/SKILL.md
-8. 全局 opencode.jsonc：mergeGlobalOpencodeJsonc（解析→深度合并→清理废弃 core.md 引用→序列化），加锁+原子写
-9. 项目 opencode.jsonc：不存在则写最小 { $schema }（已存在保留）
+8. 全局平台适配器配置（opencode.jsonc）：mergeGlobalOpencodeJsonc（解析→深度合并→清理废弃 core.md 引用→序列化），加锁+原子写
+9. 项目平台适配器配置文件（opencode.jsonc）：不存在则写最小 { $schema }（已存在保留）
 10. 双 state 持久化：saveUpdateState + saveGlobalUpdateState
 ```
 
@@ -37,7 +37,7 @@
 | 项 | 修正 |
 |----|------|
 | `$schema` URL | `https://opencode.openfeel/config.json` → `https://opencode.ai/config.json`（拼写错误） |
-| `skills` 字段 | 不再生成 `{name:path}` 映射；全局 skill 走自动发现，全局 opencode.jsonc 省略 `skills` 字段（N6） |
+| `skills` 字段 | 不再生成 `{name:path}` 映射；全局 skill 走自动发现，全局平台适配器配置（opencode.jsonc）省略 `skills` 字段（N6） |
 | `agent_manager_tool` | 移除（op-000 实测 schema 未定义 + 静默丢弃，N3） |
 | 深度合并 | `buildUpdatedJsonc`/`replaceSkillsFieldInJsonc`/`buildJsoncFromObject` → 统一 `mergeGlobalOpencodeJsonc`（保留用户字段） |
 

@@ -4,7 +4,7 @@
 
 ## 职责
 
-集中解析 opencode 与 openfeel 的全局路径（基于用户主目录），作为 init/update 全局部署的路径基础。**仅此模块 import `node:os` 的 `homedir()`**（N4）：测试 mock `node:os` 一处即隔离全部全局路径。
+集中解析「平台适配器」与 openfeel 的全局路径（基于用户主目录），作为 init/update 全局部署的路径基础。**仅此模块 import `node:os` 的 `homedir()`**（N4）：测试 mock `node:os` 一处即隔离全部全局路径。下表加粗标注的路径为 **opencode 适配器**版本（实现细节，保留）。
 
 ## 核心 API
 
@@ -14,7 +14,7 @@
 | `getGlobalAgentsDir()` | `~/.config/opencode/agents` |
 | `getGlobalSkillsDir()` | `~/.config/opencode/skills` |
 | `getGlobalOpencodeJsoncPath()` | `~/.config/opencode/opencode.jsonc` |
-| `getGlobalAgentsMdPath()` | `~/.config/opencode/AGENTS.md`（v1.1.1 框架约束唯一权威） |
+| `getGlobalAgentsMdPath()` | `~/.config/opencode/AGENTS.md`（v1.1.1 框架约束唯一权威；opencode 适配器） |
 | `getGlobalCoreMdPath()` | `~/.config/opencode/openfeel/core.md`（v1.1.1 起废弃，仅兼容检测/清理） |
 | `getGlobalUpdateStatePath()` | `~/.openfeel/update_state.json` |
 | `getGlobalUpdateInfosPath()` | `~/.openfeel/update_infos.md` |
@@ -24,7 +24,7 @@
 
 ## 设计要点
 
-- **homedir 单点封装**：既有代码中 `homedir()` 分散于 4 处（config.ts / identity.ts / file-lock.ts / resolver.ts）；本模块集中 opencode 相关路径，其余 4 处**默认不收纳**（D37-1：避免扩大范围、过度设计）。
+- **homedir 单点封装**：既有代码中 `homedir()` 分散于 4 处（config.ts / identity.ts / file-lock.ts / resolver.ts）；本模块集中平台适配器相关路径（当前：opencode 适配器），其余 4 处**默认不收纳**（D37-1：避免扩大范围、过度设计）。
 - **update_infos.md 仅解析路径**：其读写逻辑属 stage-38，本阶段仅提供路径解析函数。
 
 ## 调用关系

@@ -141,6 +141,12 @@ describe('loadTemplate', () => {
     expect(result).not.toContain('{项目名称}');
   });
 
+  it('agents-md 部署路径表述已泛化（stage-45）', () => {
+    // 锁定部署路径行已改为无平台限定表述，防止回退为「opencode 唯一 harness」
+    expect(loadTemplate('zh-CN', 'agents-md')).toContain('当前 harness');
+    expect(loadTemplate('en', 'agents-md')).toContain('current harness');
+  });
+
   it('fr agents-md 回退到 zh-CN', () => {
     const result = loadTemplate('fr', 'agents-md');
     expect(result).toBeTruthy();

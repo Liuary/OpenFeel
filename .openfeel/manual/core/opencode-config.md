@@ -1,17 +1,17 @@
-# 全局 opencode 配置合并模块（opencode-config）
+# 全局平台适配器配置合并模块（opencode 适配器；opencode-config）
 
 > 模块文档，由归档官在归档时维护。对应源码：`src/core/opencode-config.ts`。
 
 ## 职责
 
-提供框架级全局 opencode.jsonc 的内容对象、项目最小覆盖内容，以及 JSONC 解析 / 深度合并 / 序列化，供 init（首次写入）与 update（深度合并）共用。
+本模块属 **opencode 适配器实现**；提供框架级全局 opencode.jsonc 的内容对象、项目最小覆盖内容，以及 JSONC 解析 / 深度合并 / 序列化，供 init（首次写入）与 update（深度合并）共用。
 
 ## 核心 API
 
 | 函数 | 功能 |
 |------|------|
-| `buildGlobalOpencodeFrameworkObj()` | 框架级全局 opencode.jsonc 内容对象：`$schema` + `default_agent: 'feel'` + `instructions: [getGlobalCoreMdPath()]`（绝对路径）+ `agent.{openfeel-vision,openfeel-reviewer}.model` 框架默认模型。**不写** `experimental.agent_manager_tool`（schema 未定义，见 kb/troubleshooting） |
-| `buildProjectOpencodeJsoncObj()` | 项目 opencode.jsonc 最小覆盖：仅 `$schema`，不写 instructions/skills/default_agent（P2 稳健设计） |
+| `buildGlobalOpencodeFrameworkObj()` | 框架级全局平台适配器配置内容对象（当前：opencode）：`$schema` + `default_agent: 'feel'` + `instructions: [getGlobalCoreMdPath()]`（绝对路径）+ `agent.{openfeel-vision,openfeel-reviewer}.model` 框架默认模型。**不写** `experimental.agent_manager_tool`（schema 未定义，见 kb/troubleshooting） |
+| `buildProjectOpencodeJsoncObj()` | 项目平台适配器配置最小覆盖（当前：opencode）：仅 `$schema`，不写 instructions/skills/default_agent（P2 稳健设计） |
 | `parseJsonc(text)` | 剥离 `//` 行注释后 `JSON.parse`（状态机处理字符串/转义/注释三态；块注释会失败） |
 | `deepMergeJsonc(base, overlay)` | 深度合并（overlay=框架覆盖 base=用户），五类字段规则 |
 | `mergeGlobalOpencodeJsonc(raw)` | 组合：`parseJsonc` → `deepMergeJsonc(框架)` → `JSON.stringify` 序列化（注释不保留） |

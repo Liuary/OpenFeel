@@ -153,11 +153,11 @@ When starting a session in a **blank project** (no `.openfeel/` directory at the
 2. If `.openfeel/` is absent, run `openfeel init --workspace-only` (a non-interactive lightweight subcommand) to create the `.openfeel/` directory structure + config.yaml + flow.json + .info.json + dev/kb skeleton.
 3. This rule is triggered by **Feel only**; non-Feel agents (openfeel-planner/schemer/executor, etc.) **must not trigger** it — they only run inside an already-set-up workspace and never set it up themselves.
 
-> Note: `--workspace-only` does **not** create AGENTS.md / opencode.jsonc; the framework constraints are carried by the global `~/.config/opencode/AGENTS.md` (see the global AGENTS.md).
+> Note: `--workspace-only` does **not** create AGENTS.md / opencode.jsonc; the framework constraints are carried by the **current harness's global rules file** (opencode adapter: `~/.config/opencode/AGENTS.md`; see the global rules file).
 
 ## Model Configuration
 
-### Configure based on available models at init time
+### Configure based on available models at init time (opencode adapter)
 
 When running `openfeel init` or first deployment, **do not assume the user has preset models configured**. Must execute the following flow:
 

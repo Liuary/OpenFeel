@@ -6,7 +6,7 @@ OpenFeel 采用核心层 + 适配器层架构：
 位于 `.openfeel/` 下：
 - 流水线状态机（pipeline.yaml）
 - 核心约束（AGENTS.md）
-- 工作区规范（.opencode/instructions/core.md）
+- 全局框架约束（AGENTS.md；opencode 适配器历史路径：.opencode/instructions/core.md，已废弃）
 - 数据结构（flow.json）
 - 配置（config.yaml）
 - 知识库/日志/审查/Bug 体系
@@ -16,15 +16,15 @@ OpenFeel 采用核心层 + 适配器层架构：
 
 | 目录 | 平台 | 状态 |
 |------|------|------|
-| `.opencode/` | OpenCode | ✅ 当前使用 |
+| `.opencode/` | OpenCode（**当前默认适配器**） | ✅ 当前使用 |
 | `kilo/` | Kilo | 🔵 预留 |
 | `claude/` | Claude | 🔵 预留 |
 
 每个适配器目录至少包含：
-- 平台配置文件（opencode.jsonc / kilo.json / claude.json）
+- 平台配置文件（当前：opencode.jsonc；预留：kilo.json / claude.json）
 - `agents/` — Agent 定义
 - `skills/` — Skill 定义
-- `instructions/` — 平台特化指令
+- `instructions/` — 平台特化指令（各 harness 适配器）
 
 ## 扩展指南
 新增适配器：

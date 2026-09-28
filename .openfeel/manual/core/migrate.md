@@ -4,7 +4,7 @@
 
 ## 职责
 
-`openfeel migrate` 的核心编排层：将存量旧布局项目（项目内 `.opencode/agents|skills|instructions`、旧 `opencode.jsonc` 非法 `skills` 映射、混合 `update_state.json`）迁移到 stage-37 的全局部署架构。支持 `--dry-run` 预览与 `rollback` 回滚，全程可回滚。
+`openfeel migrate` 的核心编排层：将存量旧布局项目（项目内 `.opencode/agents|skills|instructions`、旧 `opencode.jsonc` 非法 `skills` 映射、混合 `update_state.json`）迁移到 stage-37 的全局部署架构。支持 `--dry-run` 预览与 `rollback` 回滚，全程可回滚。本模块处理的是 **opencode 适配器**的 legacy 布局（下文 `.opencode/...` 与 `opencode.jsonc` 均为该适配器历史路径/文件名，属实现细节，保留）。
 
 ## 核心 API
 
@@ -25,9 +25,9 @@
 ```
 1. 检测（detectLegacy）：五条判据，无 legacy →「已是最新布局」退出
 2. 备份（backupLegacy）：.openfeel/backup/{ts}/ + manifest.json（每条 {op, source, backupPath, hash}）
-3. 全局部署：复用 deployGlobalAsset（core.md/agents/skills）+ 深度合并全局 opencode.jsonc（加锁+原子写）
+3. 全局部署：复用 deployGlobalAsset（core.md/agents/skills）+ 深度合并全局平台适配器配置（opencode.jsonc，加锁+原子写）
 4. state 拆分/重键（splitUpdateState）：旧框架 key → 归一化新名 → 全局 state 绝对路径 key
-5. 清理 legacy 框架文件（listLegacyFiles 仅删框架同源，custom 保留原位）+ 清理项目 opencode.jsonc 非法字段
+5. 清理 legacy 框架文件（listLegacyFiles 仅删框架同源，custom 保留原位）+ 清理项目平台适配器配置文件（opencode.jsonc）非法字段
 6. assignee 报告（默认仅报告，--remap-assignee 才改写）
 7. 备份清理（cleanOldBackups 保留最近 5 次）
 ```

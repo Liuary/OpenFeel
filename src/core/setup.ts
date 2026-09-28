@@ -1,6 +1,6 @@
 /**
  * setup 命令核心模块（v1.1.1）
- * 纯全局部署：全局 AGENTS.md + 9 agent + 16 skill + 全局 opencode.jsonc。
+ * 纯全局部署：全局 AGENTS.md + 9 agent + 16 skill + 全局平台适配器配置文件（opencode.jsonc）。
  * 不建立项目 .openfeel/；复用 deployGlobalAsset（受管区三态，幂等可重跑）。
  */
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
@@ -56,7 +56,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
     push(deployGlobalAsset(p, content, globalState), p);
   }
 
-  // 4. 全局 opencode.jsonc：深度合并（保留用户字段），加全局锁 + 原子写
+  // 4. 全局平台适配器配置文件（opencode.jsonc）：深度合并（保留用户字段），加全局锁 + 原子写
   const jsoncPath = getGlobalOpencodeJsoncPath();
   const merged = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
     const current = existsSync(jsoncPath) ? readFileSync(jsoncPath, 'utf-8') : '{}\n';
@@ -65,7 +65,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
       out = mergeGlobalOpencodeJsonc(current);
     } catch (err) {
       // 解析失败时保留原文件，避免破坏用户配置
-      console.warn(`[setup] 全局 opencode.jsonc 解析失败，跳过合并保留原文件: ${(err as Error).message}`);
+      console.warn(`[setup] 全局平台适配器配置（opencode.jsonc）解析失败，跳过合并保留原文件: ${(err as Error).message}`);
       out = current;
     }
     atomicWriteFileSync(jsoncPath, out);

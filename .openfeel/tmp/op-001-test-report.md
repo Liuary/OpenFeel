@@ -1,49 +1,44 @@
-# 自测报告 — op-001
+# 自测报告 — v1.1.2-stage-45.op-001
 
-- **执行时间**：2026-09-26 15:10
+- **执行时间**：2026-09-29 04:00
 - **执行 Agent**：openfeel-executor
 - **重试次数**：1
 
 ## 执行摘要
-
-模板重构完成：agents-md → 全局 AGENTS.md 约束层（含工作区结构节 + 项目特有约束可选化）；core.md 源删除；新增 2 skill；build.js 移除 core-instructions 全链路；`npm run build` 全绿。
+全部 6 组改动点完成（源码注释/命令文案 + i18n 7 键双语），自测通过，零行为变更。
 
 ## 实施步骤完成情况
-
-- [x] 步骤 1：改造 agents-md/{zh-CN,en}.md（移除 {项目名称}；合并 core.md 约束类；新增工作区结构节；L78 引用改指 skill；版本声明文案改 setup）
-- [x] 步骤 2：删除 templates-data/opencode/instructions/{zh-CN,en}.md + 目录
-- [x] 步骤 3：新增 openfeel-workspace / openfeel-tool-usage 两个 SKILL.md
-- [x] 步骤 4：build.js 移除 core-instructions 注入/校验/自举生成/双源断言（4a-4h）
-- [x] 步骤 5：template-loader.ts 删除 CORE_INSTRUCTIONS_TEMPLATES 生成段 + 简化 loadTemplate + 移除兼容导出
-- [x] 步骤 6：update.ts×2 + migrate.ts×1 调用点 core-instructions → agents-md
-- [x] 步骤 7：templates.ts 移除 CORE_INSTRUCTIONS_TEMPLATE_B64 re-export
-- [x] 步骤 8：`npm run build` 通过
+- [x] `global-paths.ts` 8 处注释泛化/标注；代码行未动
+- [x] `opencode-config.ts` 模块头标注 + 4 处注释泛化；`$schema` 未动
+- [x] `model-config.ts` 模块头标注 + 2 处错误文案泛化；函数名/常量未动
+- [x] `init/setup/migrate.ts` 注释与 `console.warn` 泛化；`.opencode/...` legacy 路径保留
+- [x] `commands/{init,setup,migrate}.ts` 帮助文案泛化；`project.ts` 仅输出标签泛化、路径探测保留
+- [x] i18n 7 键 zh/en 成对改值；键集不变
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| npm run build 通过 | ✅ | 3/3 + 3/3 + 两对单源断言 |
-| grep core-instructions src/ build.js 无残留引用 | ✅ | 仅余注释与 legacy-tree 断言 |
-| grep CORE_INSTRUCTIONS_TEMPLATE src/ 无残留 | ✅ | |
-| AGENTS.md 含可选化节 + 工作区结构节 + 极简加载指引 | ✅ | |
-| 模板无 {项目名称}；L78 改指 openfeel-tool-usage | ✅ | |
-| core.md 章节覆盖比对（REV-1908 无遗漏/重复） | ✅ | 逐节映射：约束→AGENTS.md，操作→skill |
-| listOpencodeSkillNames() == 16 | ✅ | 新增 2 skill |
-| .opencode/instructions/ 已删除 | ✅ | build 不再生成 |
+| `global-paths.ts` 注释泛化、代码行未动 | ✅ | `git diff` 仅注释行 |
+| `opencode-config.ts` `$schema` 未动 | ✅ | diff 无 `$schema` 代码行 |
+| `model-config.ts` 函数名/常量未动 | ✅ | 仅模块头 + 2 错误文案 |
+| `commands/project.ts` 路径探测保留 | ✅ | :52/:56/:67 未动，仅 :101/:106 标签 |
+| i18n 7 键 zh/en 成对改值 | ✅ | `openfeel lint i18n` 502 键一致 |
+| 未改模板权威源/生成段 | ✅ | op-001 不触 templates-data |
+| `npx tsc --noEmit` 无错误 | ✅ | exit 0 |
+| `npm test -- global-paths` 通过 | ✅ | 9 tests passed |
+| 未新增依赖 | ✅ | — |
 
 ## 产出文件
-
-- `src/core/templates-data/agents-md/{zh-CN,en}.md`（改造）
-- `src/core/templates-data/opencode/skills/{openfeel-workspace,openfeel-tool-usage}/SKILL.md`（新增）
-- `src/core/template-loader.ts`、`src/core/templates.ts`、`src/core/update.ts`、`src/core/migrate.ts`、`build.js`
+- `src/core/global-paths.ts`、`src/core/opencode-config.ts`、`src/core/model-config.ts`、`src/core/init.ts`、`src/core/setup.ts`、`src/core/migrate.ts`
+- `src/commands/init.ts`、`src/commands/setup.ts`、`src/commands/migrate.ts`、`src/commands/project.ts`
+- `src/core/i18n-data/zh-CN.ts`、`src/core/i18n-data/en.ts`
 
 ## 前置校验结果
-
-- 方案完整性：通过
-- Phase 合法性：通过
-- 流转合法性：通过
+- 方案完整性：通过（6 项必填字段齐全）
+- Phase 合法性：通过（exec_running / current.op=op-001 匹配）
+- 流转合法性：通过（`openfeel flow health --quick` exit 0）
 
 ## 偏差记录
-
-无（过渡态 core-instructions 调用点已按方案切到 agents-md，路径函数切换归 op-003）。
+- `commands/project.ts:106` 的 `t('project.overview.dirNotExist')` 文案保持原值「（目录不存在）」——该键为 `src/` 与 `.opencode/` 共用且不含平台限定表述，泛化会误伤 `src/` 标签，故仅泛化硬编码标签 `.opencode/` → `平台适配器目录（.opencode/）`。
+- `migrate.ts` 除 `:74` 外的 `.opencode/...` / `opencode.jsonc` 均为 legacy 检测路径与字段名，按 B 类保留。
+- 无跳步违规。

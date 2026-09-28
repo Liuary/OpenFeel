@@ -1,6 +1,6 @@
 # OpenFeel Global Behavioral Constraints
 
-> This document is the global constraint layer of the OpenFeel framework, deployed to `~/.config/opencode/AGENTS.md` by `openfeel setup`, applicable uniformly across all OpenFeel projects.
+> This document is the global constraint layer of the OpenFeel framework, deployed by `openfeel setup` to the **current harness's global rules location** (opencode adapter: `~/.config/opencode/AGENTS.md`), applicable uniformly across all OpenFeel projects.
 
 Behavioral constraints and coding conventions for AI Agents. This document is a permanent constraint that applies to all AI Agent sessions within OpenFeel projects.
 

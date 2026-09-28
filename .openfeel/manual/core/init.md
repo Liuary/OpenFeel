@@ -4,7 +4,7 @@
 
 ## 职责
 
-项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`）、写项目最小 `opencode.jsonc`，并提供示例项目骨架（`--demo`）与仅工作区（`--workspace-only`）轻量模式。
+项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`）、写项目平台适配器配置文件（`opencode.jsonc`），并提供示例项目骨架（`--demo`）与仅工作区（`--workspace-only`）轻量模式。
 
 > **v1.1.1 收敛**：全局约束/agent/skill 部署已从 init 拆除，收归 `openfeel setup`（见 `core/setup.md`）。init 只做项目初始化，不再产生项目 `AGENTS.md`、不部署任何全局资产。
 
@@ -12,8 +12,8 @@
 
 | 函数 | 功能 |
 |------|------|
-| `initProject(projectPath, cliLang?)` | 主初始化流程：确保全局配置 → 语言选择 → `initWorkspaceCore` → 写项目 `opencode.jsonc` → package.json vitest 检测 |
-| `initWorkspaceOnly(projectPath, lang?)` | 非交互轻量子命令（`--workspace-only`）：仅创建工作区，不写 `opencode.jsonc`/`AGENTS.md`，供 Feel 空白项目自动搭建 |
+| `initProject(projectPath, cliLang?)` | 主初始化流程：确保全局配置 → 语言选择 → `initWorkspaceCore` → 写项目平台适配器配置文件（`opencode.jsonc`） → package.json vitest 检测 |
+| `initWorkspaceOnly(projectPath, lang?)` | 非交互轻量子命令（`--workspace-only`）：仅创建工作区，不写平台适配器配置文件（`opencode.jsonc`）/`AGENTS.md`，供 Feel 空白项目自动搭建 |
 | `initWorkspaceCore(projectPath, lang)` | 内部函数：创建工作区（目录 + config.yaml + flow.json + .info.json + dev/kb 模板），被 initProject/initWorkspaceOnly 复用 |
 | `initDemo(projectPath, lang)` | 创建示例项目骨架（TS 项目 + vitest 配置 + 示例测试 + 示例阶段） |
 | `writeTemplateIfMissing(filePath, content)` | 底层工具：仅在目标不存在时写入，返回 `{ created: boolean }` |
@@ -43,17 +43,17 @@ interface DemoResult {
 步骤 2: initWorkspaceCore() — 创建工作区
           （createWorkspace → writeDefaultConfig → FlowManager.initFlow
            → ensureInfoJson → writeLang → dev_core/current/decisions → kb/index）
-步骤 3: 写项目 opencode.jsonc（最小 { $schema }，不存在则写）
+步骤 3: 写项目平台适配器配置文件（opencode.jsonc）（最小 { $schema }，不存在则写）
 步骤 4: 检测 package.json → 添加 @vitest/coverage-v8（如有 vitest）
 ```
 
 ## workspace-only 子命令（v1.1.1）
 
-`openfeel init --workspace-only [--non-interactive]`：调用 `initWorkspaceOnly`，仅执行 `initWorkspaceCore`，**不写** 项目 `opencode.jsonc`/`AGENTS.md`、不检测 package.json、不做语言交互（`--lang` 或默认 zh-CN）。供 Feel 在空白项目（无 `.openfeel/`）启动时自动搭建工作区。
+`openfeel init --workspace-only [--non-interactive]`：调用 `initWorkspaceOnly`，仅执行 `initWorkspaceCore`，**不写** 项目平台适配器配置文件（`opencode.jsonc`）/`AGENTS.md`、不检测 package.json、不做语言交互（`--lang` 或默认 zh-CN）。供 Feel 在空白项目（无 `.openfeel/`）启动时自动搭建工作区。
 
 ## v1.1.1 拆除的部署能力（收归 openfeel setup）
 
-原 `deployOpencode` / `promptOpencodeDeploy` / `writeGlobalFileIfMissing` 已删除；全局 AGENTS.md + 9 agent + 16 skill + 全局 `opencode.jsonc` 由 `openfeel setup` 纯全局部署（见 `core/setup.md`）。`InitResult` 同步移除 `opencode` 字段。
+原 `deployOpencode` / `promptOpencodeDeploy` / `writeGlobalFileIfMissing` 已删除；全局 AGENTS.md + 9 agent + 16 skill + 全局平台适配器配置（`opencode.jsonc`）由 `openfeel setup` 纯全局部署（见 `core/setup.md`）。`InitResult` 同步移除 `opencode` 字段。
 
 ## 语言回退
 

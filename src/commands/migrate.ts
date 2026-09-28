@@ -17,7 +17,7 @@ export function registerMigrateCommand(program: Command): void {
     .description('Legacy 布局迁移（检测/备份/迁移/回滚存量项目旧布局，与 flow migrate 不同域）')
     .option('--dry-run', '仅检测预览，不写盘')
     .option('--remap-assignee', '改写 flow.json 旧 assignee 为新名（默认仅报告不改写）')
-    .option('--clean-global-core-md', '删除已废弃的全局 core.md（~/.config/opencode/openfeel/core.md）')
+    .option('--clean-global-core-md', '删除已废弃的全局 core.md（opencode 适配器：~/.config/opencode/openfeel/core.md）')
     .action((path?: string, options?: { dryRun?: boolean; remapAssignee?: boolean; cleanGlobalCoreMd?: boolean }) => {
       const targetPath = resolve(path ?? process.cwd());
       const lang = getCliLang(targetPath);

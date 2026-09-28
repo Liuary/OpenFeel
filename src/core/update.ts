@@ -100,7 +100,7 @@ export async function selectTools(): Promise<string[]> {
 export const SKILL_DEFINITIONS: Record<string, string> = {
   'openfeel-agent-model-check': `---
 name: openfeel-agent-model-check
-description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
+description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验（opencode 适配器）、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
 ---
 
 # Skill: openfeel-agent-model-check
@@ -577,7 +577,7 @@ Feel Agent 在以下时机加载本 Skill：
 
 | 配置文件 | 平台 |
 |----------|------|
-| \`opencode.jsonc\` | OpenCode |
+| \`opencode.jsonc\` | OpenCode（当前适配器） |
 | \`kilo/kilo.json\` | Kilo |
 | \`claude/claude.json\` | Claude |
 
@@ -674,7 +674,7 @@ models:
 \`\`\`markdown
 ## 🔍 模型配置检查报告
 
-**平台**：OpenCode
+**平台**：OpenCode（当前适配器）
 **配置文件**：.openfeel/config.yaml
 **检查时间**：yyyy-mm-dd HH:MM
 
@@ -727,7 +727,7 @@ models:
 # 或直接复制此文件到 .openfeel/ 并重命名为 config.yaml（需合并其他节）
 #
 # 最近配置时间：yyyy-mm-dd HH:MM
-# 平台：OpenCode
+# 平台：OpenCode（当前适配器）
 
 models:
   default:
@@ -754,7 +754,7 @@ models:
 `,
   'openfeel-model-config': `---
 name: openfeel-model-config
-description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
+description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置（opencode 适配器）、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
 ---
 
 # Skill: openfeel-model-config

@@ -4,7 +4,7 @@
 
 OpenFeel is a TypeScript CLI tool for end-to-end process governance in AI Agent development. Core philosophy: **"Slim prompts, process in tools"** — agents understand workflows by reading `flow.json` state, not long text documents.
 
-> **Supported Platform**: Currently only [opencode](https://opencode.ai).  
+> **Current adapter harness**: opencode (default); the framework targets multi-harness support (other adapters reserved).  
 > **Default Model Config**: DeepSeek V4 (primary reasoning) + GLM-5.3-flash (cross-review) + DeepSeek-flash (multimodal vision).  
 > `openfeel init` auto-detects registered models and guides configuration.
 
@@ -50,7 +50,7 @@ openfeel flow status
 
 | Command | Purpose |
 |---------|---------|
-| `openfeel init [path]` | Initialize new project with `.openfeel/` workspace and platform adapter (opencode) |
+| `openfeel init [path]` | Initialize new project with `.openfeel/` workspace and platform adapter (current: opencode) |
 | `openfeel update` | Incrementally deploy platform adapter to existing projects |
 | `openfeel flow` | Pipeline state management (status / current / advance / overview) |
 | `openfeel roadmap` | Version roadmap management (create / show) |

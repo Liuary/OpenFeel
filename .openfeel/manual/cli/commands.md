@@ -66,8 +66,8 @@ src/commands/setup.ts       registerSetupCommand
 - `openfeel stage create <stageId>` — 已弃用（注册层，与 `flow stage add` 等价；建议改用 `plan stage add` / `flow stage add`）
 - `openfeel migrate [path] [--dry-run] [--remap-assignee] [--clean-global-core-md]` — 存量旧布局项目迁移（检测/备份/迁移/回滚），`--dry-run` 预览不写盘，`--remap-assignee` 改写 flow.json 旧 assignee（默认仅报告），`--clean-global-core-md` 删除已废弃的全局 core.md（默认仅提示不删）
 - `openfeel migrate rollback [--dry-run]` — 回滚最近一次迁移（读 `.openfeel/backup/{latest}/manifest.json`），`--dry-run` 仅预览回滚计划
-- `openfeel setup [--lang <zh-CN|en>]` — 纯全局部署（全局 AGENTS.md + agent + skill + 全局 opencode.jsonc），不建立项目 `.openfeel/`，幂等（详见 [setup 命令](cli/setup.md)）
-- `openfeel init [path] [--workspace-only] [--non-interactive]` — 项目初始化；`--workspace-only` 仅创建 `.openfeel/` 工作区（不建 AGENTS.md/opencode.jsonc），供 Feel 空白项目自动搭建
+- `openfeel setup [--lang <zh-CN|en>]` — 纯全局部署（全局 AGENTS.md + agent + skill + 全局平台适配器配置（opencode.jsonc）），不建立项目 `.openfeel/`，幂等（详见 [setup 命令](cli/setup.md)）
+- `openfeel init [path] [--workspace-only] [--non-interactive]` — 项目初始化；`--workspace-only` 仅创建 `.openfeel/` 工作区（不建全局规则/平台适配器配置（AGENTS.md/opencode.jsonc）），供 Feel 空白项目自动搭建
 - `openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]` — 三层级 agent 模型读写，详见 [model 命令组](cli/model.md)
 - `openfeel config effective [key]` — 输出四个受管配置键的有效值 + 生效来源（`status.md > config.yaml > profile.yaml > builtin`）；复用 `FlowManager.resolveEffectiveConfig()` 单一权威，与 `flow status --verbose` 级联表同源；未知 key → stderr + exit 1（不静默）
 - `openfeel config get [key] [--global]` / `openfeel config set <key> <value> [--global]` — 原始值读写（不经级联解析）；`config get-lang` / `set-lang <lang>` / `list-projects` 为全局语言子命令

@@ -6,6 +6,8 @@
 
 运行时模板加载器，提供按语言 / 名称查表返回模板内容的能力。模板内容在 `npm run build` 时由 `build.js` 从唯一权威源 `src/core/templates-data/opencode/` 内联为 TS 字符串常量（`AUTO-GENERATED-BEGIN/END` 块），运行时零 fs 读取，消除跨平台路径解析风险。
 
+> 说明：本文中 `templates-data/opencode/` 与 `OPENCODE_*` 均为 **opencode 适配器**的目录/常量名（属适配器实现细节，保留）。
+
 ## 单源架构（stage-36）
 
 v1.1.0-stage-36 前存在双层模板源（`templates-data/agents/` vs `templates-data/opencode/agents/` 等三对），已收敛为**单一权威树**（agent/skill/adapter 源自 `templates-data/opencode/`，全局 AGENTS.md 源自 `templates-data/agents-md/`）。template-loader 持有的注入对象（`AGENT_TEMPLATES` / `OPENCODE_AGENT_TEMPLATES` / `OPENCODE_SKILL_DEFINITIONS` / `OPENCODE_CONFIG_TEMPLATES` / `AGENTS_MD_TEMPLATES`）全部由该单源生成；build.js 的 `validateSingleSourceConsistency()` 断言两对对象键集与内容一致（v1.1.1 移除 instructions 双源断言；`CORE_INSTRUCTIONS_TEMPLATES` 已退役）。

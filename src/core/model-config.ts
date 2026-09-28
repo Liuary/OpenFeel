@@ -3,6 +3,8 @@
  * 提供「工具默认 / 全局 / 当前项目」三层级 agent 模型的读写与校验，
  * 供 CLI（openfeel model）与内部 API（Model not found 报错时自动修复）共用。
  *
+ * 本模块属 opencode 适配器实现；下文 opencode / opencode.jsonc / ~/.config/opencode 均为该适配器细节。
+ *
  * 三层级落点：
  *  - default（工具默认）：有显式 model 的 4 个 agent（executor/utility/reviewer/vision）
  *    改 src/core/templates-data/opencode/agents/{zh-CN,en}/*.md frontmatter `model:`（双语）；
@@ -248,7 +250,7 @@ function writeOpencodeConfigAgentModel(agentId: string, model: string, opts?: Mo
   const escaped = agentId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(`(['"]${escaped}['"]\\s*:\\s*\\{\\s*model\\s*:\\s*)(['"])([^'"]*?)(\\2)`, 'g');
   if (!re.test(text)) {
-    throw new Error(`opencode-config.ts 无 agent.${agentId}.model 条目，无法更新工具默认模型`);
+    throw new Error(`适配器默认配置文件（opencode-config.ts）无 agent.${agentId}.model 条目，无法更新工具默认模型`);
   }
   re.lastIndex = 0;
   // 用 replacer 函数避免 model 值中的 `$` 被 String.replace 解释为特殊引用
@@ -293,7 +295,7 @@ function writeJsoncAgentModel(filePath: string, agentId: string, model: string):
   try {
     obj = parseJsonc(raw);
   } catch (err) {
-    throw new Error(`opencode.jsonc 解析失败（可能含 /* */ 块注释），已放弃写入保护原文件：${(err as Error).message}`);
+    throw new Error(`平台适配器配置文件（opencode.jsonc）解析失败（可能含 /* */ 块注释），已放弃写入保护原文件：${(err as Error).message}`);
   }
   const agentObj = isPlainObject(obj.agent) ? (obj.agent as Record<string, unknown>) : {};
   const existing = isPlainObject(agentObj[agentId]) ? (agentObj[agentId] as Record<string, unknown>) : {};

@@ -1,6 +1,6 @@
 ---
 name: openfeel-model-config
-description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
+description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置（opencode 适配器）、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
 ---
 
 <!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->

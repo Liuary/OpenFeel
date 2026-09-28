@@ -79,7 +79,7 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 
 ## 跨 Agent 工具使用约束
 
-1. **统一工具规范**：所有 Agent 必须遵循全局 `~/.config/opencode/AGENTS.md` 中「Agent 工具使用规范」，该规范定义了 `todowrite`、`question`、`task`、`skill` 四种核心工具的使用准则和触发条件。
+1. **统一工具规范**：所有 Agent 必须遵循**全局框架约束层中的「Agent 工具使用规范」**（由平台适配器部署到当前 harness 的全局规则文件；opencode 适配器为 `~/.config/opencode/AGENTS.md`），该规范定义了 `todowrite`、`question`、`task`、`skill` 四种核心工具的使用准则和触发条件。
 
 2. **工具使用优先级**（由高到低）：
    - `todowrite` > 凭记忆逐条执行 — 多步骤任务必须先创建 todo 列表
@@ -119,7 +119,7 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 
 ## 权限模型（Agent permission）
 
-9 个 agent 内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `openfeel setup` 部署为 `~/.config/opencode/agents/*.md`。
+9 个 agent 内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `openfeel setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）。
 
 - **合并语义**：agent `.md` frontmatter 与 `opencode.jsonc`（顶层 `permission` 与 `agent.<name>.permission`）**按权限键深合并**，**同名键以 agent `.md` 为准（配置文件无法覆盖已声明键）**。
 - **收紧入口**：项目内新建 `.opencode/agent/<name>.md` 覆盖同名 agent；**`opencode.jsonc` 的 `agent.<name>.permission` 无法收紧已声明键**。

@@ -29,3 +29,7 @@
 
 | [2026-09-29-Liuary-023.md](2026-09-29-Liuary-023.md) | Archiver | **stage-44 归档完成（权限模型修正）**：18 权威源模板补 `external_directory: "allow"`（单值，隔离实测裁定）+ `openfeel-utility` 的 `write` → `edit` + 覆盖/合并语义文档化（AGENTS.md + agents-md 双语 + `manual/core/permission.md`）+ 权限断言测试 + build 重生成；658/658 测试全绿（40 文件）、`lint i18n` 529 键；REV-001/002 closed + REV-003（low，归档处置）闭环；0 Bug；知识沉淀 3 条至 architecture(1)+patterns(1)+troubleshooting(1)；**实测推翻需求原文 §二.2**，需求文档 docs/07 已追加「勘误与实测补充（opencode 1.18.33）」节 |
 | [2026-09-29-Liuary-024.md](2026-09-29-Liuary-024.md) | Liuary | 阶段 v1.1.2-stage-44 完成 |
+| [2026-09-29-Liuary-025.md](2026-09-29-Liuary-025.md) | Liuary | v1.1.2-stage-45.op-001 执行通过 |
+| [2026-09-29-Liuary-026.md](2026-09-29-Liuary-026.md) | Liuary | v1.1.2-stage-45.op-002 执行通过 |
+| [2026-09-29-Liuary-027.md](2026-09-29-Liuary-027.md) | Liuary | v1.1.2-stage-45.op-003 执行通过 |
+| [2026-09-29-Liuary-028.md](2026-09-29-Liuary-028.md) | Liuary | v1.1.2-stage-45.op-004 执行通过 |

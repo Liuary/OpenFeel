@@ -71,7 +71,7 @@ export interface MigrateResult {
 
 /** 兼容过渡检测报告（v1.1.1）：全局旧 core.md 与存量项目 AGENTS.md（均不强制删除，仅提示） */
 export interface DeprecatedCompatReport {
-  globalCoreMdExists: boolean;    // ~/.config/opencode/openfeel/core.md 旧资产
+  globalCoreMdExists: boolean;    // ~/.config/opencode/openfeel/core.md 旧资产（opencode 适配器遗留）
   projectAgentsMdExists: boolean; // 项目根 AGENTS.md（已收归全局）
 }
 

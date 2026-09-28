@@ -1,6 +1,6 @@
 # OpenFeel 全局行为约束
 
-> 本文档为 OpenFeel 框架全局约束层，由 `openfeel setup` 部署到 `~/.config/opencode/AGENTS.md`，对所有 OpenFeel 项目统一适用。
+> 本文档为 OpenFeel 框架全局约束层，由 `openfeel setup` 部署到**当前 harness 的全局规则位置**（opencode 适配器：`~/.config/opencode/AGENTS.md`），对所有 OpenFeel 项目统一适用。
 
 AI Agent 行为约束与编码规范。本文件为永久性约束，适用于所有 OpenFeel 项目的 AI Agent 会话。
 

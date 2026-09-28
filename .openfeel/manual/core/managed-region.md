@@ -11,7 +11,7 @@
 - **markdown**：`<!-- openfeel:begin --> … <!-- openfeel:end -->`
 - **gitignore**：`# openfeel:begin … # openfeel:end`
 - **frontmatter**：无标记，结构化字段合并（框架字段覆盖 + 用户字段 passthrough）
-- **jsonc**：无标记，深度合并（本模块仅分派，复用 opencode-config.ts）
+- **jsonc**：无标记，深度合并（本模块仅分派，复用 opencode-config.ts；opencode 适配器）
 
 ## 核心 API
 

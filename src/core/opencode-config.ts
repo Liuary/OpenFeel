@@ -1,7 +1,8 @@
 /**
- * 全局 opencode 配置内容与合并逻辑
+ * opencode 适配器实现：全局 opencode 配置内容与合并逻辑
  * 提供框架级全局 opencode.jsonc 的内容对象、项目最小覆盖内容，
  * 以及 JSONC 解析 / 深度合并 / 序列化，供 init（首次写入）与 update（深度合并）共用。
+ * 本模块属 opencode 适配器实现；下文 opencode / opencode.jsonc / ~/.config/opencode 均为该适配器细节。
  */
 import { getGlobalCoreMdPath } from './global-paths.js';
 
@@ -10,7 +11,7 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-/** 框架级全局 opencode.jsonc 内容对象（N7；全局 AGENTS.md 由约定自动加载承载约束，故不写 instructions） */
+/** 框架级全局平台适配器配置内容对象（当前：opencode；N7；全局 AGENTS.md 由约定自动加载承载约束，故不写 instructions） */
 export function buildGlobalOpencodeFrameworkObj(): Record<string, unknown> {
   return {
     $schema: 'https://opencode.ai/config.json',
@@ -24,7 +25,7 @@ export function buildGlobalOpencodeFrameworkObj(): Record<string, unknown> {
   };
 }
 
-/** 项目 opencode.jsonc 最小覆盖内容（N7：仅 $schema，不写 instructions/skills/default_agent） */
+/** 项目平台适配器配置最小覆盖内容（当前：opencode；N7：仅 $schema，不写 instructions/skills/default_agent） */
 export function buildProjectOpencodeJsoncObj(): Record<string, unknown> {
   return { $schema: 'https://opencode.ai/config.json' };
 }
@@ -76,7 +77,7 @@ function mergeAgentDefaults(
 }
 
 /**
- * 深度合并两个 opencode 配置对象（overlay=框架 覆盖 base=用户）。
+ * 深度合并两个 opencode 配置对象（opencode 适配器；overlay=框架 覆盖 base=用户）。
  * 逐字段规则见 op-001 关键设计决策表；用户未知字段 passthrough 保留。
  */
 export function deepMergeJsonc(
@@ -104,7 +105,7 @@ export function deepMergeJsonc(
   return result;
 }
 
-/** 合并全局 opencode.jsonc：解析→深度合并→清理废弃 core.md 引用→序列化（保留用户字段，注释不保留） */
+/** 合并全局 opencode.jsonc（opencode 适配器）：解析→深度合并→清理废弃 core.md 引用→序列化（保留用户字段，注释不保留） */
 export function mergeGlobalOpencodeJsonc(raw: string): string {
   const base = parseJsonc(raw);
   const merged = deepMergeJsonc(base, buildGlobalOpencodeFrameworkObj());

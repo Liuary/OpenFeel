@@ -4,7 +4,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。
 
-> **支持平台**：目前仅支持 [opencode](https://opencode.ai)。  
+> **当前适配 harness**：opencode（默认）；框架面向多 harness 适配（其余适配器预留）。  
 > **默认模型配置**：DeepSeek V4（主力推理） + GLM-5.3-flash（交叉审查） + DeepSeek-flash（多模态视觉）。  
 > 首次 `openfeel init` 时会自动检测用户已注册的模型并引导配置。
 
@@ -50,7 +50,7 @@ openfeel flow status
 
 | 命令 | 用途 |
 |------|------|
-| `openfeel init [path]` | 初始化新项目，创建 `.openfeel/` 目录结构和平台适配器（opencode） |
+| `openfeel init [path]` | 初始化新项目，创建 `.openfeel/` 目录结构和平台适配器（当前：opencode） |
 | `openfeel update` | 为已有项目增量部署平台适配器（适用于 `init` 之后再引入 OpenFeel 的项目） |
 | `openfeel flow` | 流水线状态管理（status / current / advance / overview） |
 | `openfeel roadmap` | 分期大纲管理（create / show） |

@@ -47,8 +47,8 @@ export const flow: I18nDomain = {
   'status.reviewPending':       { key: 'flow.status.reviewPending',       zh: '', en: 'Pending Reviews' },
   'status.logTotal':            { key: 'flow.status.logTotal',            zh: '', en: 'Total Logs' },
   'status.cascadeTitle':        { key: 'flow.status.cascadeTitle',        zh: '', en: '── Config Cascade Status ──' },
-  'status.cascadeHeader':       { key: 'flow.status.cascadeHeader',       zh: '', en: 'Field              config.yaml  status.md  Effective' },
-  'status.cascadeNote':         { key: 'flow.status.cascadeNote',         zh: '', en: '(* status.md overrides config.yaml defaults)' },
+  'status.cascadeHeader':       { key: 'flow.status.cascadeHeader',       zh: '', en: 'Field              profile.yaml  config.yaml  status.md  Effective' },
+  'status.cascadeNote':         { key: 'flow.status.cascadeNote',         zh: '', en: '(* status.md overrides config.yaml defaults; falls back to the global profile when unset)' },
   'status.recentTitleTmpl':     { key: 'flow.status.recentTitleTmpl',     zh: '', en: '── Recent {n} Status Changes ──' },
   'status.recentHeader':        { key: 'flow.status.recentHeader',        zh: '', en: 'Time              Agent          Status Change       Note' },
   'status.downstreamTitle':     { key: 'flow.status.downstreamTitle',     zh: '', en: '── Downstream Agent Readiness ──' },
@@ -500,6 +500,7 @@ export const help: I18nDomain = {
   'config.get.global':     { key: 'help.config.get.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
   'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a config value (project config; --global writes global profile)' },
   'config.set.global':     { key: 'help.config.set.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
+  'config.effective':      { key: 'help.config.effective',      zh: '', en: 'Show effective config values and their source (status.md > config.yaml > profile.yaml > builtin)' },
 
   'project':               { key: 'help.project',               zh: '', en: 'Project management and overview' },
   'project.overview':      { key: 'help.project.overview',      zh: '', en: 'Scan project structure in real-time, output structured overview' },
@@ -597,6 +598,9 @@ export const config: I18nDomain = {
   'set.globalInvalidValue':  { key: 'config.set.globalInvalidValue',  zh: '', en: 'Invalid value "{val}". {key} only supports: {values}' },
   'set.globalValueOk':       { key: 'config.set.globalValueOk',       zh: '', en: '✓ Global config set: {key} = {value}' },
   'set.globalAllowedKeys':   { key: 'config.set.globalAllowedKeys',   zh: '', en: 'Supported global config keys: {keys}' },
+  'effective.title':         { key: 'config.effective.title',         zh: '', en: 'Effective config values and sources' },
+  'effective.row':           { key: 'config.effective.row',           zh: '', en: '{key}: {value}    [source: {source}]' },
+  'effective.unknownKey':    { key: 'config.effective.unknownKey',    zh: '', en: 'Unknown config key: {key} (managed keys: {keys})' },
 };
 
 /* ==================== migrate domain: legacy layout migration command ==================== */

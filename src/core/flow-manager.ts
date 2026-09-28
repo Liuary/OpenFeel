@@ -31,6 +31,7 @@ export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-
 import { findStageStatusPath, findStageDirConflict, parseStageId } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
+import { readProfile, DEFAULT_CONFIG } from './config.js';
 
 /** 操作执行状态 */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed';
@@ -141,10 +142,18 @@ export interface PipelineSummary {
 
 /** verbose 模式下的配置级联信息 */
 export interface CascadeConfig {
+  /** 最低优先级：全局画像 ~/.config/openfeel/profile.yaml 的 preferences（P2 兜底） */
+  profileDefaults: Record<string, string>;
   configDefaults: Record<string, string>;
   statusOverrides: Record<string, string>;
   effective: Record<string, string>;
 }
+
+/** 配置生效来源枚举（`config effective` 出口，P9） */
+export type ConfigSource = 'status.md' | 'config.yaml' | 'profile.yaml' | 'builtin';
+
+/** `openfeel config effective` 的四个受管键（与 DEFAULT_CONFIG 一致） */
+const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'test_enabled', 'merge_mode'] as const;
 
 /** verbose 模式下的状态变更记录 */
 export interface RecentChange {
@@ -734,6 +743,10 @@ export class FlowManager {
       deps,
       ops: {},
     };
+    // 审计日志（P7）：仅在实际新增时写入；同 stageId 幂等跳过时不写（保持「仅记录实际动作」）。
+    // 双轨说明（REV-42-002）：add_stage = 注册层（flow stage add / stage create，agent=flow-manager）；
+    // register_stage = 完整层（plan stage add，建目录 + overview/status + 注册，agent=cli）。入口不同，非重复。
+    this.appendLog({ time: '', agent: 'cli', action: 'register_stage', detail: { stageName, deps } });
   }
 
   // ═══ 阶段耗时统计 ═══
@@ -1074,8 +1087,11 @@ export class FlowManager {
       op: pendingOpEntry ? pendingOpEntry[0] : this.data.pipeline.current.op,
     };
 
-    // 同步更新 pipeline.phase 为 'active'
-    this.data.pipeline.phase = 'active' as MetaPhase;
+    // 同步更新 pipeline.phase：所有 stage 均 done 时置 'done'，否则 'active'（P3 全量 done 判定）
+    // 空集守卫：无 stage 时 [].every(...) 为 true（vacuous truth），须排除以免误置 done。
+    const allDone = Object.keys(this.data.stages).length > 0
+      && Object.values(this.data.stages).every((s) => s.phase === 'done');
+    this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 
     // 追加日志（使用实际触发者名，而非硬编码 'flow-manager'）
     this.appendLog({
@@ -1546,13 +1562,24 @@ export class FlowManager {
     return { basic, cascade, recentChanges, downstreamPhases };
   }
 
-  /** 构建配置级联信息 */
+  /**
+   * 构建配置级联信息（优先级：profileDefaults < configDefaults < statusOverrides）
+   * 全局画像仅作最低优先级兜底（P2），且只取 preferences.auto_advance 单值，
+   * 不对 preferences 做整体替换（与 config.yaml defaults 键集重叠的仅 auto_advance）。
+   */
   private buildCascadeConfig(): CascadeConfig {
+    const profileDefaults: Record<string, string> = {};
     const configDefaults: Record<string, string> = {};
     const statusOverrides: Record<string, string> = {};
-    const effective: Record<string, string> = {};
 
-    // 读取 config.yaml defaults
+    // 最低优先级：全局画像 ~/.config/openfeel/profile.yaml 的 preferences.auto_advance（P2 兜底）
+    // readProfile 内部异常安全：文件缺失/解析失败均回退 DEFAULT_PROFILE（安全降级，不抛错）
+    const profile = readProfile();
+    if (profile.preferences?.auto_advance) {
+      profileDefaults['auto_advance'] = profile.preferences.auto_advance;
+    }
+
+    // 中优先级：项目 .openfeel/config.yaml 的 defaults 块
     const configPath = resolve(this.projectPath, '.openfeel', 'config.yaml');
     if (existsSync(configPath)) {
       try {
@@ -1562,7 +1589,6 @@ export class FlowManager {
           const defaults = config.defaults as Record<string, unknown>;
           for (const [key, value] of Object.entries(defaults)) {
             configDefaults[key] = String(value);
-            effective[key] = String(value);
           }
         }
       } catch {
@@ -1570,7 +1596,7 @@ export class FlowManager {
       }
     }
 
-    // 读取当前 stage 的 status.md（如果存在）
+    // 最高优先级：当前 stage 的 status.md（如果存在）
     if (this.data && this.data.pipeline.current.stage) {
       const stageId = this.data.pipeline.current.stage;
       const statusPath = this.findStatusPath(stageId);
@@ -1582,11 +1608,9 @@ export class FlowManager {
           const autoMatch = content.match(/\*\*自动推进\*\*[：:]\s*(disabled|enabled)/);
           if (execMatch) {
             statusOverrides['execution_mode'] = execMatch[1];
-            effective['execution_mode'] = execMatch[1];
           }
           if (autoMatch) {
             statusOverrides['auto_advance'] = autoMatch[1];
-            effective['auto_advance'] = autoMatch[1];
           }
         } catch {
           // 读取失败则跳过
@@ -1594,7 +1618,34 @@ export class FlowManager {
       }
     }
 
-    return { configDefaults, statusOverrides, effective };
+    // 级联合并（后写覆盖前写）：全局画像兜底 < 项目 config < status.md 覆盖
+    const effective: Record<string, string> = { ...profileDefaults, ...configDefaults, ...statusOverrides };
+
+    return { profileDefaults, configDefaults, statusOverrides, effective };
+  }
+
+  /**
+   * 解析四个受管配置键的「有效值 + 生效来源」（`openfeel config effective`，P9）。
+   * 复用 buildCascadeConfig（单一权威，避免第二套解析），优先级：
+   * status.md > config.yaml > profile.yaml > builtin。
+   * @returns key → { value, source }
+   */
+  resolveEffectiveConfig(): Record<string, { value: string; source: ConfigSource }> {
+    const cascade = this.buildCascadeConfig();
+    const result: Record<string, { value: string; source: ConfigSource }> = {};
+    for (const key of EFFECTIVE_CONFIG_KEYS) {
+      if (cascade.statusOverrides[key] !== undefined) {
+        result[key] = { value: cascade.statusOverrides[key], source: 'status.md' };
+      } else if (cascade.configDefaults[key] !== undefined) {
+        result[key] = { value: cascade.configDefaults[key], source: 'config.yaml' };
+      } else if (cascade.profileDefaults[key] !== undefined) {
+        result[key] = { value: cascade.profileDefaults[key], source: 'profile.yaml' };
+      } else {
+        // 三层皆无 → 框架内置默认
+        result[key] = { value: String(DEFAULT_CONFIG[key]), source: 'builtin' };
+      }
+    }
+    return result;
   }
 
   /** 查找 status.md 的路径（三级回退：plan/{series}/ 精确 → plan 递归 → stages 兜底） */

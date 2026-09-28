@@ -119,8 +119,8 @@ export interface Config {
   [key: string]: unknown;
 }
 
-/** 默认配置值 */
-const DEFAULT_CONFIG: Config = {
+/** 默认配置值（导出供 flow-manager 作为级联 builtin 层取值，保持单一权威） */
+export const DEFAULT_CONFIG: Config = {
   execution_mode: 'manual',
   auto_advance: 'disabled',
   test_enabled: false,
@@ -311,7 +311,7 @@ meta:
 
 # ---- 工作流默认配置 ----
 # 所有阶段 status.md 的初始值由此处写入
-# 部署模板默认 auto+enabled，仓库自身默认 manual+disabled
+# 默认值来自框架 DEFAULT_CONFIG；项目可在 defaults 中覆盖（status.md 局部优先级更高）
 
 defaults:
   # 执行模式：manual=人工流程，agent 不自动接管
@@ -368,7 +368,7 @@ meta:
 
 # ---- Workflow Defaults ----
 # Initial values for all stage status.md are written from here
-# Deployment template defaults to auto+enabled, repo itself defaults to manual+disabled
+# Defaults come from framework DEFAULT_CONFIG; override per project (status.md wins locally)
 
 defaults:
   # Execution mode: manual=human workflow, agent does not automatically take over

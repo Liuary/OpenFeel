@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T17:12:56.642Z",
-    "revision": 85
+    "updated": "2026-09-28T17:04:47.729Z",
+    "revision": 80
   },
   "pipeline": {
     "phase": "active",
@@ -611,9 +611,9 @@
       "ops": {
         "op-001": {
           "title": "auto_advance 四级级联（项目优先 + 全局画像兜底）+ 模板文案与陈旧注释修正",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -628,9 +628,9 @@
         },
         "op-002": {
           "title": "openfeel config effective（有效值 + 生效来源）",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -645,9 +645,9 @@
         },
         "op-003": {
           "title": "pipeline.phase 全量 done 判定修正",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -662,9 +662,9 @@
         },
         "op-004": {
           "title": "审计日志补齐（register_stage 与 register_op）+ scheme.ts 兜底冲突检测",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -5328,52 +5328,6 @@
         "stageName": "v1.1.2-stage-42",
         "from": "scheme_review",
         "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-09-28T17:04:48.004Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-42",
-        "from": "scheme_passed",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-09-28T17:12:55.896Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-42.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T17:12:56.150Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-42.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T17:12:56.388Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-42.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T17:12:56.625Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-42.op-004",
-        "attempts": 1
       }
     }
   ]

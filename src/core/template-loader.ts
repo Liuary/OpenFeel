@@ -331,7 +331,7 @@ At startup, Feel must load the memory system in the following order:
      also update \`history.last_project\` and \`history.recent_projects\` (deduplicated, keep the latest 5).
 3. **Merge preferences**:
    - Language preference takes priority from \`user.lang\` in the global profile
-   - \`auto_advance\` takes priority from \`preferences.auto_advance\` in the global profile
+   - \`auto_advance\` follows the project \`config.yaml\`; the global profile \`preferences.auto_advance\` is only a fallback (status.md may override locally)
    - Communication style uses \`preferences.communication\` from the global profile (affects Feel's output verbosity)
    - Confirm threshold uses \`preferences.confirm_threshold\` from the global profile
 4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.
@@ -1658,7 +1658,7 @@ Feel 启动时必须按以下顺序加载记忆体系：
      并更新 \`history.last_project\` 与 \`history.recent_projects\`（去重保留最近 5 个）。
 3. **合并偏好**：
    - 语言偏好优先使用全局画像中的 \`user.lang\`
-   - \`auto_advance\` 优先使用全局画像中的 \`preferences.auto_advance\`
+   - \`auto_advance\` 以项目 \`config.yaml\` 为准，全局画像 \`preferences.auto_advance\` 仅作兜底（\`status.md\` 可局部覆盖）
    - 沟通风格使用全局画像中的 \`preferences.communication\`（影响 Feel 的输出详略程度）
    - 确认阈值使用全局画像中的 \`preferences.confirm_threshold\`
 4. **更新 dev_last.md**：将合并后的偏好写入「用户偏好」节。
@@ -3918,7 +3918,7 @@ At startup, Feel must load the memory system in the following order:
      also update \`history.last_project\` and \`history.recent_projects\` (deduplicated, keep the latest 5).
 3. **Merge preferences**:
    - Language preference takes priority from \`user.lang\` in the global profile
-   - \`auto_advance\` takes priority from \`preferences.auto_advance\` in the global profile
+   - \`auto_advance\` follows the project \`config.yaml\`; the global profile \`preferences.auto_advance\` is only a fallback (status.md may override locally)
    - Communication style uses \`preferences.communication\` from the global profile (affects Feel's output verbosity)
    - Confirm threshold uses \`preferences.confirm_threshold\` from the global profile
 4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.
@@ -5245,7 +5245,7 @@ Feel 启动时必须按以下顺序加载记忆体系：
      并更新 \`history.last_project\` 与 \`history.recent_projects\`（去重保留最近 5 个）。
 3. **合并偏好**：
    - 语言偏好优先使用全局画像中的 \`user.lang\`
-   - \`auto_advance\` 优先使用全局画像中的 \`preferences.auto_advance\`
+   - \`auto_advance\` 以项目 \`config.yaml\` 为准，全局画像 \`preferences.auto_advance\` 仅作兜底（\`status.md\` 可局部覆盖）
    - 沟通风格使用全局画像中的 \`preferences.communication\`（影响 Feel 的输出详略程度）
    - 确认阈值使用全局画像中的 \`preferences.confirm_threshold\`
 4. **更新 dev_last.md**：将合并后的偏好写入「用户偏好」节。

@@ -112,6 +112,18 @@ describe('stage', () => {
       const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
       expect(flow.stages['v1.0.0-stage-02'].deps).toEqual([]);
     });
+
+    it('addStage 应在 flow.json 末条写 register_stage 审计日志（P7，agent=cli）', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-01', ['dep-a']);
+
+      const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+      expect(flow.stages['v1.0.0-stage-01']).toBeDefined();
+      const last = flow.log[flow.log.length - 1];
+      expect(last.action).toBe('register_stage');
+      expect(last.agent).toBe('cli');
+      expect(last.detail.deps).toEqual(['dep-a']);
+    });
   });
 
   describe('listStages', () => {

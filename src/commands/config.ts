@@ -9,6 +9,7 @@
 import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
 import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema } from '../core/config.js';
+import { FlowManager } from '../core/flow-manager.js';
 import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
 
@@ -223,6 +224,35 @@ export function registerConfigCommand(program: Command): void {
         // 写入 config.yaml 失败（YAML 语法错误、权限问题等），输出实际错误原因
         console.error(t('config.set.error', lang, { err: (err as Error).message }));
         process.exit(1);
+      }
+    });
+
+  // openfeel config effective [key] — 输出有效值 + 生效来源（P9）
+  // 与 `config get`（原始值读取）语义不同：此处为级联解析结果（值 + 来源）。
+  configCmd
+    .command('effective [key]')
+    .description(t('help.config.effective'))
+    .action((key?: string) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = new FlowManager(process.cwd());
+      const resolved = mgr.resolveEffectiveConfig();
+      const keys = Object.keys(resolved);
+
+      if (key) {
+        // 未知受管键：报错并退出（不静默）
+        if (!resolved[key]) {
+          console.error(t('config.effective.unknownKey', lang, { key, keys: keys.join(', ') }));
+          process.exit(1);
+        }
+        const r = resolved[key];
+        console.log(t('config.effective.row', lang, { key, value: r.value, source: r.source }));
+        return;
+      }
+
+      console.log(t('config.effective.title', lang));
+      for (const k of keys) {
+        const r = resolved[k];
+        console.log(t('config.effective.row', lang, { key: k, value: r.value, source: r.source }));
       }
     });
 }

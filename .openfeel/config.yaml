@@ -10,7 +10,7 @@ meta:
 
 # ---- 工作流默认配置 ----
 # 所有阶段 status.md 的初始值由此处写入
-# 部署模板默认 auto+enabled，仓库自身默认 manual+disabled
+# 默认值来自框架 DEFAULT_CONFIG；项目可在 defaults 中覆盖（status.md 局部优先级更高）
 
 defaults:
   # 执行模式：manual=人工流程，agent 不自动接管

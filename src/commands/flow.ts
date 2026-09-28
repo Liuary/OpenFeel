@@ -89,6 +89,7 @@ export function registerFlowCommand(program: Command): void {
       // ── 配置级联状态 ──
       console.log(t('flow.status.cascadeTitle', lang));
       const allKeys = new Set([
+        ...Object.keys(v.cascade.profileDefaults),
         ...Object.keys(v.cascade.configDefaults),
         ...Object.keys(v.cascade.statusOverrides),
       ]);
@@ -98,11 +99,12 @@ export function registerFlowCommand(program: Command): void {
         console.log(t('flow.status.cascadeHeader', lang));
         console.log('─────────────────────────────────────────────────');
         for (const key of [...allKeys].sort()) {
+          const prof = v.cascade.profileDefaults[key] ?? '-';
           const def = v.cascade.configDefaults[key] ?? '-';
           const over = v.cascade.statusOverrides[key] ?? '-';
           const eff = v.cascade.effective[key] ?? '-';
           const overFlag = v.cascade.statusOverrides[key] ? '*' : ' ';
-          console.log(`${key.padEnd(18)} ${def.padEnd(12)} ${overFlag}${over.padEnd(11)} ${eff}`);
+          console.log(`${key.padEnd(18)} ${prof.padEnd(12)} ${def.padEnd(12)} ${overFlag}${over.padEnd(11)} ${eff}`);
         }
         console.log(t('flow.status.cascadeNote', lang));
       }

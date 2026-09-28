@@ -49,8 +49,8 @@ export const flow: I18nDomain = {
   'status.reviewPending':       { key: 'flow.status.reviewPending',       zh: '待处理审查',                              en: '' },
   'status.logTotal':            { key: 'flow.status.logTotal',            zh: '日志总数',                               en: '' },
   'status.cascadeTitle':        { key: 'flow.status.cascadeTitle',        zh: '── 配置级联状态 ──',                     en: '' },
-  'status.cascadeHeader':       { key: 'flow.status.cascadeHeader',       zh: '字段               config.yaml  status.md  生效值', en: '' },
-  'status.cascadeNote':         { key: 'flow.status.cascadeNote',         zh: '（* 表示 status.md 覆盖了 config.yaml 默认值）', en: '' },
+  'status.cascadeHeader':       { key: 'flow.status.cascadeHeader',       zh: '字段　　　　　　　profile.yaml　config.yaml　status.md　　生效值', en: '' },
+  'status.cascadeNote':         { key: 'flow.status.cascadeNote',         zh: '（* 表示 status.md 覆盖 config.yaml 默认值；config.yaml 未声明时取全局画像兜底）', en: '' },
   'status.recentTitleTmpl':     { key: 'flow.status.recentTitleTmpl',     zh: '── 最近 {n} 条状态变更 ──',             en: '' },
   'status.recentHeader':        { key: 'flow.status.recentHeader',        zh: '时间              Agent          状态变化            说明', en: '' },
   'status.downstreamTitle':     { key: 'flow.status.downstreamTitle',     zh: '── 下游 Agent 就绪状态 ──',             en: '' },
@@ -526,6 +526,7 @@ export const help: I18nDomain = {
   'config.get.global':     { key: 'help.config.get.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
   'config.set':            { key: 'help.config.set',            zh: '设置配置项的值（项目配置；--global 时写入全局 profile）', en: '' },
   'config.set.global':     { key: 'help.config.set.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
+  'config.effective':      { key: 'help.config.effective',      zh: '输出配置的有效值 + 生效来源（status.md > config.yaml > profile.yaml > builtin）', en: '' },
 
   // project
   'project':               { key: 'help.project',               zh: '项目管理与概览', en: '' },
@@ -632,6 +633,9 @@ export const config: I18nDomain = {
   'set.globalInvalidValue':  { key: 'config.set.globalInvalidValue',  zh: '无效的值 "{val}"。{key} 仅支持：{values}', en: '' },
   'set.globalValueOk':       { key: 'config.set.globalValueOk',       zh: '✓ 全局配置已设置：{key} = {value}',       en: '' },
   'set.globalAllowedKeys':   { key: 'config.set.globalAllowedKeys',   zh: '支持的全局配置键：{keys}',                en: '' },
+  'effective.title':         { key: 'config.effective.title',         zh: '配置有效值与来源',                        en: '' },
+  'effective.row':           { key: 'config.effective.row',           zh: '{key}：{value}    [来源: {source}]',      en: '' },
+  'effective.unknownKey':    { key: 'config.effective.unknownKey',    zh: '未知配置键：{key}（受管键：{keys}）',      en: '' },
 };
 
 /* ==================== migrate 域：legacy 布局迁移命令 ==================== */

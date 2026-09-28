@@ -2,7 +2,7 @@
  * scheme 单元测试
  * 测试 createScheme、getScheme 和 listSchemes 在临时目录中的行为
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createScheme, getScheme, listSchemes } from '../../../src/core/plan/scheme.js';
 import { addStage } from '../../../src/core/plan/stage.js';
 import { FlowManager } from '../../../src/core/flow-manager.js';
@@ -151,6 +151,45 @@ describe('scheme', () => {
       expect(() => {
         createScheme(tmpDir, 'stage-01', '无 flow');
       }).not.toThrow();
+    });
+
+    it('createScheme 应在 flow.json 末条写 register_op 审计日志（P7，agent=cli）', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-01');
+      createScheme(tmpDir, 'stage-01', 'T');
+
+      const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+      const last = flow.log[flow.log.length - 1];
+      expect(last.action).toBe('register_op');
+      expect(last.agent).toBe('cli');
+      expect(last.detail).toEqual({ stageName: 'v1.0.0-stage-01', opId: 'op-001' });
+    });
+
+    it('兜底自动注册遇 (series, stageDir) 冲突 → console.warn + 跳过注册 + 不抛错（P7 缺口补齐）', () => {
+      FlowManager.initFlow(tmpDir);
+      const flowMgr = new FlowManager(tmpDir);
+      // 直接写入一条 v4-stage-04，模拟 (series, stageDir) 冲突已存在（不经 addStage，避免建目录）
+      flowMgr.getData()!.stages['v4-stage-04'] = {
+        name: 'v4-stage-04',
+        phase: 'plan_pending',
+        status: 'planned',
+        deps: [],
+        ops: {},
+      };
+      flowMgr.save();
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      // createScheme('v4.0.0-stage-04')：stage 未注册 → 兜底注册前检测到与 v4-stage-04 冲突
+      const opId = createScheme(tmpDir, 'v4.0.0-stage-04', '冲突');
+      expect(opId).toBe('op-001'); // op 文件仍创建（不破坏既有契约）
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('映射同一 (series, stageDir)'));
+      warnSpy.mockRestore();
+
+      const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+      // 冲突 stageId 未被写入 flow.json（不产生脏键）
+      expect(flow.stages['v4.0.0-stage-04']).toBeUndefined();
+      // op 文件已创建
+      expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v4', 'stage-04', 'ops', 'op-001_冲突.md'))).toBe(true);
     });
   });
 

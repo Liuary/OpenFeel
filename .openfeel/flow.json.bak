@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T16:48:38.733Z",
-    "revision": 77
+    "updated": "2026-09-28T17:12:56.407Z",
+    "revision": 84
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.2-stage-41",
-      "op": ""
+      "stage": "v1.1.2-stage-42",
+      "op": "op-001"
     },
     "retry": 0
   },
@@ -507,8 +507,8 @@
     },
     "v1.1.2-stage-41": {
       "name": "v1.1.2-stage-41",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {
         "op-001": {
@@ -599,21 +599,21 @@
       },
       "stats": {
         "start_time": "2026-09-28T14:46:38.860Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-09-28T16:58:03.751Z",
+        "duration_ms": 7884891
       }
     },
     "v1.1.2-stage-42": {
       "name": "v1.1.2-stage-42",
-      "phase": "scheme_pending",
+      "phase": "exec_running",
       "status": "planned",
       "deps": [],
       "ops": {
         "op-001": {
           "title": "auto_advance 四级级联（项目优先 + 全局画像兜底）+ 模板文案与陈旧注释修正",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -628,9 +628,9 @@
         },
         "op-002": {
           "title": "openfeel config effective（有效值 + 生效来源）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -645,9 +645,9 @@
         },
         "op-003": {
           "title": "pipeline.phase 全量 done 判定修正",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -5298,6 +5298,73 @@
         "reviewsCount": 0,
         "knowledgeCount": 0,
         "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.2-stage-41.md"
+      }
+    },
+    {
+      "time": "2026-09-28T16:58:03.751Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-41",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-09-28T16:58:04.634Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-09-28T17:04:47.728Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-09-28T17:04:48.004Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-09-28T17:12:55.896Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-42.op-001",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T17:12:56.150Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-42.op-002",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T17:12:56.388Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-42.op-003",
+        "attempts": 1
       }
     }
   ]

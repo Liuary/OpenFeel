@@ -321,7 +321,7 @@ At startup, Feel must load the memory system in the following order:
      also update `history.last_project` and `history.recent_projects` (deduplicated, keep the latest 5).
 3. **Merge preferences**:
    - Language preference takes priority from `user.lang` in the global profile
-   - `auto_advance` takes priority from `preferences.auto_advance` in the global profile
+   - `auto_advance` follows the project `config.yaml`; the global profile `preferences.auto_advance` is only a fallback (status.md may override locally)
    - Communication style uses `preferences.communication` from the global profile (affects Feel's output verbosity)
    - Confirm threshold uses `preferences.confirm_threshold` from the global profile
 4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.

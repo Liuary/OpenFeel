@@ -8,6 +8,14 @@ import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 
+// mock homedir：隔离全局画像读写（stage-42 op-001/op-002），避免污染真实用户主目录
+// 沿用 test/core/config.test.ts 的既有惯例（vi.hoisted + importOriginal 保留其余 os 导出）
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
+
 /** 创建测试用 FlowData（带一个阶段和一个 op） */
 function makeTestFlowData(overrides?: Partial<FlowData>): FlowData {
   return {
@@ -774,6 +782,43 @@ describe('FlowManager', () => {
       const result = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
       expect(result).toBe(true);
       expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+      // P3 全量 done 判定：单阶段（该阶段即全部）推进到 done → pipeline.phase 置为 done
+      expect(mgr.getPhase()).toBe('done');
+    });
+
+    it('多阶段仅一个 done 时 pipeline.phase 仍为 active（P3 全量 done 判定）', () => {
+      const mgr = new FlowManager(tmpDir);
+      const base = makeTestFlowData();
+      mgr.setData({
+        ...base,
+        stages: {
+          A: { ...base.stages['stage-01'], name: 'A', phase: 'exec_running' as PipelinePhase },
+          B: { ...base.stages['stage-01'], name: 'B', phase: 'exec_running' as PipelinePhase, ops: {} },
+        },
+      });
+      mgr.advanceStagePhase('A', 'done' as PipelinePhase);
+      // 仅 A done，B 未 done → 全局仍 active
+      expect(mgr.getPhase()).toBe('active');
+    });
+
+    it('多阶段全部 done 时 pipeline.phase 为 done 且 validate 通过（P3）', () => {
+      const mgr = new FlowManager(tmpDir);
+      const base = makeTestFlowData();
+      mgr.setData({
+        ...base,
+        stages: {
+          A: { ...base.stages['stage-01'], name: 'A', phase: 'exec_running' as PipelinePhase },
+          B: { ...base.stages['stage-01'], name: 'B', phase: 'exec_running' as PipelinePhase, ops: {} },
+        },
+      });
+      mgr.advanceStagePhase('A', 'done' as PipelinePhase);
+      mgr.advanceStagePhase('B', 'done' as PipelinePhase);
+      // 全部 done → 全局置 done
+      expect(mgr.getPhase()).toBe('done');
+      // 'done' 为合法 MetaPhase：validate 通过且无 pipeline.phase 相关错误
+      const result = mgr.validate();
+      expect(result.valid).toBe(true);
+      expect(result.errors.some((e) => e.includes('pipeline.phase'))).toBe(false);
     });
 
     it('推进到非 done phase 应返回 false', () => {
@@ -1659,6 +1704,28 @@ describe('FlowManager', () => {
       expect(JSON.stringify(mgr.getData()!.stages['stage-01'])).toBe(before);
     });
 
+    it('registerStage 新增阶段应写 register_stage 审计日志（P7，agent=cli）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.registerStage('stage-02', ['stage-01']);
+
+      const log = mgr.getData()!.log;
+      const last = log[log.length - 1];
+      expect(last.action).toBe('register_stage');
+      expect(last.agent).toBe('cli');
+      expect(last.detail).toEqual({ stageName: 'stage-02', deps: ['stage-01'] });
+    });
+
+    it('registerStage 幂等跳过时不写日志（P7）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.registerStage('stage-02', ['stage-01']);
+      const before = mgr.getData()!.log.length;
+      // 已存在 → 幂等跳过，不新增日志
+      mgr.registerStage('stage-02');
+      expect(mgr.getData()!.log.length).toBe(before);
+    });
+
     it('startStage 应记录 start_time', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
@@ -2376,7 +2443,10 @@ describe('stageDir 冲突检测（stage-41 op-002）', () => {
     mgr.addStage('v4-stage-04');
     mgr.save();
     // 不同 id 映射同 (series, stageDir) → 抛错
+    const logBefore = mgr.getData()!.log.length;
     expect(() => mgr.registerStage('v4.0.0-stage-04')).toThrow(/阶段目录冲突/);
+    // 冲突不写日志（仅记录实际新增）
+    expect(mgr.getData()!.log.length).toBe(logBefore);
     // 同 id 重复注册 → 幂等静默，键内容不变
     const before = JSON.stringify(mgr.getData()!.stages['v4-stage-04']);
     expect(() => mgr.registerStage('v4-stage-04')).not.toThrow();
@@ -2618,5 +2688,147 @@ describe('getPipelinePhases & getPipelineTransitions（stage-41 op-001）', () =
     const transitions = mgr.getPipelineTransitions();
     transitions['plan_pending'] = ['__injected__'];
     expect(mgr.getPipelineTransitions()['plan_pending']).not.toEqual(['__injected__']);
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-42 op-001：auto_advance 四级级联（profile 兜底）
+// ═══════════════════════════════════════
+
+describe('配置级联（stage-42 op-001）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cascade-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    // 隔离 HOME 指向同一临时目录 → 全局画像落在 tmpDir/.config/openfeel/profile.yaml
+    mockHome.dir = tmpDir;
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  /** 写全局画像 preferences.auto_advance */
+  function writeGlobalProfile(autoAdvance: 'enabled' | 'disabled'): void {
+    const dir = join(tmpDir, '.config', 'openfeel');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'profile.yaml'), `preferences:\n  auto_advance: ${autoAdvance}\n`, 'utf-8');
+  }
+
+  /** 写项目 config.yaml（传 null 表示不创建） */
+  function writeProjectConfig(content: string | null): void {
+    if (content === null) {
+      return;
+    }
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), content, 'utf-8');
+  }
+
+  /** 写当前 stage 的 status.md */
+  function writeStageStatus(autoAdvance: 'enabled' | 'disabled'): void {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'status.md'), `# 状态\n\n- **自动推进**：${autoAdvance}\n`, 'utf-8');
+  }
+
+  /** 构造指向 v1.0.0-stage-01 的 FlowManager */
+  function makeMgr(): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      ...makeTestFlowData(),
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.0.0-stage-01', op: 'op-001' }, retry: 0 },
+    });
+    return mgr;
+  }
+
+  it('configDefaults 与 statusOverrides 保留；新增 profileDefaults', () => {
+    writeGlobalProfile('disabled');
+    const mgr = makeMgr();
+    const cascade = mgr.verboseSummary().cascade;
+    expect(cascade.configDefaults).toBeDefined();
+    expect(cascade.statusOverrides).toBeDefined();
+    expect(cascade.effective).toBeDefined();
+    expect(cascade.profileDefaults.auto_advance).toBe('disabled');
+  });
+
+  it('status.md 覆盖：status=enabled + config=disabled + profile=disabled → effective=enabled', () => {
+    writeGlobalProfile('disabled');
+    writeProjectConfig('defaults:\n  auto_advance: disabled\n');
+    writeStageStatus('enabled');
+    const cascade = makeMgr().verboseSummary().cascade;
+    expect(cascade.profileDefaults.auto_advance).toBe('disabled');
+    expect(cascade.configDefaults.auto_advance).toBe('disabled');
+    expect(cascade.statusOverrides.auto_advance).toBe('enabled');
+    expect(cascade.effective.auto_advance).toBe('enabled');
+  });
+
+  it('项目优先：无 status.md + config=disabled + profile=enabled → effective=disabled', () => {
+    writeGlobalProfile('enabled');
+    writeProjectConfig('defaults:\n  auto_advance: disabled\n');
+    const cascade = makeMgr().verboseSummary().cascade;
+    expect(cascade.effective.auto_advance).toBe('disabled');
+    expect(cascade.statusOverrides.auto_advance).toBeUndefined();
+  });
+
+  it('画像兜底：无 status.md + config 未声明 auto_advance + profile=enabled → effective=enabled', () => {
+    writeGlobalProfile('enabled');
+    // config 存在但 defaults 不含 auto_advance
+    writeProjectConfig('defaults:\n  execution_mode: manual\n');
+    const cascade = makeMgr().verboseSummary().cascade;
+    expect(cascade.configDefaults.auto_advance).toBeUndefined();
+    expect(cascade.effective.auto_advance).toBe('enabled');
+  });
+
+  it('全无 builtin：无 config / 无 profile → effective.auto_advance=disabled（DEFAULT_PROFILE）', () => {
+    // 画像文件不存在 → readProfile 回退 DEFAULT_PROFILE（auto_advance=disabled）
+    const cascade = makeMgr().verboseSummary().cascade;
+    expect(cascade.profileDefaults.auto_advance).toBe('disabled');
+    expect(cascade.configDefaults.auto_advance).toBeUndefined();
+    expect(cascade.effective.auto_advance).toBe('disabled');
+  });
+
+  // ── op-002：resolveEffectiveConfig（有效值 + 来源） ──
+
+  it('resolveEffectiveConfig：项目优先（config 覆盖 profile）', () => {
+    writeGlobalProfile('enabled');
+    writeProjectConfig('defaults:\n  auto_advance: disabled\n');
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.auto_advance).toEqual({ value: 'disabled', source: 'config.yaml' });
+    // 未声明于任何层的键 → builtin
+    expect(r.merge_mode).toEqual({ value: 'manual', source: 'builtin' });
+  });
+
+  it('resolveEffectiveConfig：config=enabled + profile=disabled → config.yaml', () => {
+    writeGlobalProfile('disabled');
+    writeProjectConfig('defaults:\n  auto_advance: enabled\n');
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.auto_advance).toEqual({ value: 'enabled', source: 'config.yaml' });
+  });
+
+  it('resolveEffectiveConfig：画像兜底（config 未声明 auto_advance + profile=enabled）', () => {
+    writeGlobalProfile('enabled');
+    writeProjectConfig('defaults:\n  execution_mode: manual\n');
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.auto_advance).toEqual({ value: 'enabled', source: 'profile.yaml' });
+  });
+
+  it('resolveEffectiveConfig：status.md 覆盖最高（enabled）', () => {
+    writeGlobalProfile('disabled');
+    writeProjectConfig('defaults:\n  auto_advance: disabled\n');
+    writeStageStatus('enabled');
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.auto_advance).toEqual({ value: 'enabled', source: 'status.md' });
+  });
+
+  it('resolveEffectiveConfig：无 config 文件时 test_enabled/merge_mode 来源为 builtin（不出现 profile.yaml）', () => {
+    // 无 profile 文件（readProfile 回退默认），auto_advance 由画像层兜底为 disabled；
+    // execution_mode/test_enabled/merge_mode 不在画像键集内 → builtin。
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.test_enabled).toEqual({ value: 'false', source: 'builtin' });
+    expect(r.merge_mode).toEqual({ value: 'manual', source: 'builtin' });
+    expect(r.execution_mode).toEqual({ value: 'manual', source: 'builtin' });
+    expect(r.test_enabled.source).not.toBe('profile.yaml');
+    expect(r.merge_mode.source).not.toBe('profile.yaml');
   });
 });

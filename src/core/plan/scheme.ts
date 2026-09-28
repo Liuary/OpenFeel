@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { FlowManager, isFlowConcurrentError, type PipelinePhase } from '../flow-manager.js';
-import { parseStageId } from './path.js';
+import { parseStageId, validateStageId, findStageDirConflict } from './path.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../fs/file-lock.js';
 import { reserveSequence } from '../fs/sequence.js';
@@ -105,6 +105,23 @@ function syncToFlowJson(
     // 检查 stage 是否存在
     // 若 stage 未在 flow.json 中注册，自动注册
     if (!flowData.stages[stageName]) {
+      // 兜底自动注册前先校验：非法 stageId / (series, stageDir) 冲突
+      // （补齐 stage-41 op-002 的绕过缺口，REV-v1.1.2-stage-41 REV-003）
+      const v = validateStageId(stageName);
+      if (!v.ok) {
+        // 不静默吞错（外层 try/catch 会吞非并发错误）：显式告警并跳过自动注册
+        console.warn(`[WARN] ${v.reason}；已跳过 flow.json 自动注册（op 文件已创建）。`);
+        return;
+      }
+      const conflict = findStageDirConflict(projectPath, stageName);
+      if (conflict) {
+        // 命中既有不同 stageId 映射同一目录：告警并跳过自动注册，避免写入脏键
+        console.warn(
+          `[WARN] 阶段 '${stageName}' 与 '${conflict}' 映射同一 (series, stageDir)；` +
+          `已跳过 flow.json 自动注册（op 文件已创建），请检查 stageId。`,
+        );
+        return;
+      }
       flowData.stages[stageName] = {
         name: stageName,
         phase: 'plan_pending' as PipelinePhase,
@@ -130,6 +147,9 @@ function syncToFlowJson(
         test: 'pending',
       },
     };
+
+    // 审计日志（P7）：op 注册成功，记录 register_op（agent=cli）
+    flowMgr.appendLog({ time: '', agent: 'cli', action: 'register_op', detail: { stageName, opId } });
 
     flowMgr.save();
   } catch (err) {

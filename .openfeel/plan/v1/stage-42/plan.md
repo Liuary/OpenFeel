@@ -17,7 +17,10 @@
 ### 关键裁定（沿用上级 P2/P2a/P3/P3a/P7）
 
 1. **#5 优先级链（P2）**：`status.md 局部 > .openfeel/config.yaml defaults > ~/.config/openfeel/profile.yaml preferences > 内置默认 disabled`。全局画像**仅作最低优先级兜底**（此前从未接入）。
-2. **#5 事实前提（P2a，经 REV-42-001 更正）**：本阶段要修的是**框架级「文档 vs 实现」不一致**——模板/文案宣称「`auto_advance` 优先取全局画像」，而 `buildCascadeConfig` 从不读全局画像。**不涉本项目具体生效值**：本项目 `config.yaml` 现为 `execution_mode: auto` / `auto_advance: enabled` / `test_enabled: true`，与 profile 一致、**无冲突**；该基线由用户决策设定，**非本阶段交付内容**（见「环境基线变更记录」）。
+   - **#5 事实前提（P2a，经 REV-42-001 更正）**：本阶段要修的是**框架级「文档 vs 实现」不一致**——模板/文案宣称「`auto_advance` 优先取全局画像」，而 `buildCascadeConfig` 从不读全局画像。**不涉本项目具体生效值**：本项目 `config.yaml` 现为 `execution_mode: auto` / `auto_advance: enabled` / `test_enabled: true`，与 profile 一致、**无冲突**；该基线由用户决策设定，**非本阶段交付内容**（见「环境基线变更记录」）。
+2. **#6（P3）**：`pipeline.phase = 所有 stage 均 done ? 'done' : 'active'`——**只修全量 done 判定**。
+3. **#6（P3a）**：**不实施** `current` 自动回退（核实为设计行为，非缺陷），不扩大范围。
+4. **#7（P7）**：仅补 `registerStage` 与 `plan scheme create` 两处缺失日志，**不重构**既有 10 处 `appendLog` 调用。
 
 ### 环境基线变更记录（非本阶段交付内容）
 
@@ -26,9 +29,6 @@
 - 当前实测：`.openfeel/config.yaml:18` `execution_mode: auto`、`:22` `auto_advance: enabled`、`:26` `test_enabled: true`；`~/.config/openfeel/profile.yaml` 的 `preferences.auto_advance` 亦为 `enabled`。
 - **约束**：本阶段各 op **不得覆写**上述三值（由用户基线决定）；如需验证非默认组合，一律在**测试 fixture / 临时 HOME** 中构造。
 - **连带修正**：`.openfeel/config.yaml:13` 与其权威源 `src/core/config.ts:314`(zh)/`:371`(en) 的注释「部署模板默认 auto+enabled，仓库自身默认 manual+disabled」中「仓库自身默认 manual+disabled」已不成立，op-001 须同步修正（仅改注释，不动三值）。
-2. **#6（P3）**：`pipeline.phase = 所有 stage 均 done ? 'done' : 'active'`——**只修全量 done 判定**。
-3. **#6（P3a）**：**不实施** `current` 自动回退（核实为设计行为，非缺陷），不扩大范围。
-4. **#7（P7）**：仅补 `registerStage` 与 `plan scheme create` 两处缺失日志，**不重构**既有 10 处 `appendLog` 调用。
 
 **边界**：反馈 #8（非 git 噪声）不在本阶段，且经核实无需改动。
 

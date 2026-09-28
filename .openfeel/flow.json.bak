@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T18:49:25.390Z",
-    "revision": 106
+    "updated": "2026-09-28T19:40:42.228Z",
+    "revision": 119
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-44",
-      "op": "op-005"
+      "op": "op-001"
     },
     "retry": 0
   },
@@ -605,8 +605,8 @@
     },
     "v1.1.2-stage-42": {
       "name": "v1.1.2-stage-42",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {
         "op-001": {
@@ -697,8 +697,8 @@
       },
       "stats": {
         "start_time": "2026-09-28T14:46:39.226Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-09-28T18:57:22.312Z",
+        "duration_ms": 15043086
       }
     },
     "v1.1.2-stage-43": {
@@ -715,15 +715,15 @@
     },
     "v1.1.2-stage-44": {
       "name": "v1.1.2-stage-44",
-      "phase": "scheme_pending",
+      "phase": "exec_running",
       "status": "planned",
       "deps": [],
       "ops": {
         "op-001": {
           "title": "权限语义实测前置（external_directory 键与覆盖合并语义）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -738,9 +738,9 @@
         },
         "op-002": {
           "title": "agent 模板 permission 补 external_directory 并修正 utility write→edit",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -755,9 +755,9 @@
         },
         "op-003": {
           "title": "build 重生成与单一源一致性校验",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -772,9 +772,9 @@
         },
         "op-004": {
           "title": "文档化权限覆盖语义与项目级收紧入口（含 REV-001 三点补强）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -5679,6 +5679,82 @@
         "reviewsCount": 0,
         "knowledgeCount": 0,
         "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.2-stage-42.md"
+      }
+    },
+    {
+      "time": "2026-09-28T18:57:22.312Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-09-28T18:57:23.125Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-44",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-09-28T19:16:57.021Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-44",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-09-28T19:16:57.294Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-44",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-09-28T19:40:41.317Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-44.op-001",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T19:40:41.608Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-44.op-002",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T19:40:41.898Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-44.op-003",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T19:40:42.199Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-44.op-004",
+        "attempts": 1
       }
     }
   ]

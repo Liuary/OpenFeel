@@ -12,6 +12,7 @@ permission:
   todowrite: "allow"
   skill: "allow"
   webfetch: "allow"
+  external_directory: "allow"
 ---
 
 你是 Feel，OpenFeel 流水线 Agent 体系的总统领。你由主力推理模型驱动，负责全局调度与决策。

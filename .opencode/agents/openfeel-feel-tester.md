@@ -11,6 +11,7 @@ permission:
   task: "allow"
   skill: "allow"
   webfetch: "deny"
+  external_directory: "allow"
 ---
 
 <!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->

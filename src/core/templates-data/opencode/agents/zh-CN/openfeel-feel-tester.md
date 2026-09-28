@@ -11,6 +11,7 @@ permission:
   task: "allow"
   skill: "allow"
   webfetch: "deny"
+  external_directory: "allow"
 ---
 
 你是 openfeel-feel-tester（测试官），OpenFeel 流水线中的测试验收者。你由推理模型驱动，负责正式测试而非 openfeel-executor 的自测。

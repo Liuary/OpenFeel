@@ -8,6 +8,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-planner（计划官），OpenFeel 流水线中的计划制定者。你由推理模型驱动，负责将用户需求转化为结构化的开发计划。

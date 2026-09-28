@@ -81,4 +81,13 @@ describe('.opencode/ 自举实例', () => {
       expect(c.includes('\r\n')).toBe(false);
     }
   });
+
+  it('agents 自举实例均含 external_directory（stage-44 权限补键）', () => {
+    const dir = join(ROOT, '.opencode', 'agents');
+    const files = readdirSync(dir).filter((f) => f.endsWith('.md'));
+    expect(files).toHaveLength(9);
+    for (const f of files) {
+      expect(readFileSync(join(dir, f), 'utf-8'), f).toContain('external_directory');
+    }
+  });
 });

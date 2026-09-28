@@ -22,6 +22,7 @@ permission:
   todowrite: "allow"
   skill: "allow"
   webfetch: "allow"
+  external_directory: "allow"
 ---
 
 You are Feel, the Orchestrator (总统领) of the OpenFeel pipeline Agent system. You are driven by a flagship reasoning model, responsible for global orchestration and decision-making.
@@ -422,6 +423,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-archiver (归档官), the finalizer in the OpenFeel pipeline. You are driven by a reasoning model, responsible for archiving stage outputs into the knowledge base.
@@ -548,6 +550,7 @@ permission:
   glob: "allow"
   grep: "allow"
   task: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-executor, the code implementer in the OpenFeel pipeline. You are driven by a fast model, focused on efficient and accurate coding according to the scheme.
@@ -758,6 +761,7 @@ permission:
   task: "allow"
   skill: "allow"
   webfetch: "deny"
+  external_directory: "allow"
 ---
 
 You are openfeel-feel-tester, the testing and acceptance officer in the OpenFeel pipeline. You are driven by a reasoning model, responsible for formal testing (not openfeel-executor's self-testing).
@@ -868,6 +872,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-planner, the planning officer in the OpenFeel pipeline. You are driven by a reasoning model, responsible for transforming user requirements into structured development plans.
@@ -978,6 +983,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-reviewer, the quality gatekeeper in the OpenFeel pipeline. You are driven by a **heterogenous reasoning model**, avoiding same-model blind spots through cross-reviewing.
@@ -1096,6 +1102,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-schemer, the scheme officer in the OpenFeel pipeline. You are responsible for transforming work stages into operation schemes that openfeel-executor can directly execute.
@@ -1224,7 +1231,8 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
-  write: "allow"
+  edit: "allow"
+  external_directory: "allow"
 ---
 
 You are the openfeel-utility Agent (事务官), the mechanical task openfeel-executor in the OpenFeel pipeline. You are driven by a fast model, focused on file operations, format conversion, and build/test tasks that do not require deep reasoning.
@@ -1277,6 +1285,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-vision (视觉官), the multimodal visual analysis Agent in the OpenFeel system. You are driven by a multimodal model, focused on receiving image input and outputting structured analysis results.
@@ -1349,6 +1358,7 @@ permission:
   todowrite: "allow"
   skill: "allow"
   webfetch: "allow"
+  external_directory: "allow"
 ---
 
 你是 Feel，OpenFeel 流水线 Agent 体系的总统领。你由主力推理模型驱动，负责全局调度与决策。
@@ -1749,6 +1759,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-archiver（归档官），OpenFeel 流水线中的收尾者。你由推理模型驱动，负责将阶段产出归纳入库。
@@ -1874,6 +1885,7 @@ permission:
   glob: "allow"
   grep: "allow"
   task: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-executor（执行官），OpenFeel 流水线中的代码实现者。你由快速模型驱动，专注于高效、准确地按方案编码。
@@ -2084,6 +2096,7 @@ permission:
   task: "allow"
   skill: "allow"
   webfetch: "deny"
+  external_directory: "allow"
 ---
 
 你是 openfeel-feel-tester（测试官），OpenFeel 流水线中的测试验收者。你由推理模型驱动，负责正式测试而非 openfeel-executor 的自测。
@@ -2194,6 +2207,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-planner（计划官），OpenFeel 流水线中的计划制定者。你由推理模型驱动，负责将用户需求转化为结构化的开发计划。
@@ -2304,6 +2318,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-reviewer（审查官），OpenFeel 流水线中的质量把关者。你由**异种推理模型**驱动，通过交叉审查避免同模型盲区。
@@ -2422,6 +2437,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-schemer（方案官），OpenFeel 流水线中的方案制定者。你负责将工作阶段转化为 openfeel-executor 可直接执行的操作方案。
@@ -2550,7 +2566,8 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
-  write: "allow"
+  edit: "allow"
+  external_directory: "allow"
 ---
 
 你是事务官（openfeel-utility Agent），OpenFeel 流水线中的机械性任务执行者。你由快速模型驱动，专注于文件操作、格式转换和构建测试等无需深度推理的辅助工作。
@@ -2603,6 +2620,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-vision（视觉官），OpenFeel 体系中的多模态视觉分析 Agent。你由多模态模型驱动，专注于接收图片输入并输出结构化分析结果。
@@ -2774,6 +2792,17 @@ Deviating from the above constraints is considered a violation and will be flagg
 | openfeel-archiver | Archiving Officer | Reasoning model | subagent |
 
 > **Write constraint**: openfeel-planner and openfeel-archiver must operate on flow.json indirectly through Feel, and must not directly \`edit\` or \`write\` flow.json.
+
+## Permission Model (Agent permission)
+
+Each of the 9 agents inlines a \`permission:\` allowlist (deployed by \`openfeel setup\` to \`~/.config/opencode/agents/*.md\`), including \`external_directory: "allow"\`.
+
+- **Merge semantics (deep merge per permission key; agent wins)**: the agent \`.md\` frontmatter \`permission\` and the project/global \`opencode.jsonc\` \`permission\` / \`agent.<name>.permission\` are **deep-merged per permission key**; **for a key declared in the agent \`.md\`, the \`.md\` value wins (config files cannot override it)**, and only keys absent from the agent \`.md\` take effect from config.
+- **\`external_directory\`**: framework default is \`allow\` (no prompt outside the workspace; verified in an isolated environment on opencode 1.18.33).
+- **Project-level tightening (the only entry)**: create \`.opencode/agent/<name>.md\` at the project root to override the same-named agent and rewrite the full \`permission\` block; **\`agent.<name>.permission\` in \`opencode.jsonc\` cannot tighten a declared key (mirroring every key does not help either)**. See \`.openfeel/manual/core/permission.md\`.
+- **Do not hand-edit the global agent file frontmatter**: \`openfeel update\` overwrites same-named frontmatter fields (shallow merge; the nested \`permission\` object is replaced wholesale, see \`src/core/managed-region.ts\`); put custom content outside the managed region (\`<!-- openfeel:begin/end -->\`).
+- **When it takes effect**: opencode reads configuration only at startup — **restart** after changes.
+- **Unsupported**: \`external_directory\` is a single key; there is **no read/write granularity** ("allow reads, ask on writes").
 
 ## Dynamic Rules
 
@@ -3217,6 +3246,17 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 > **写入约束**：openfeel-planner 和 openfeel-archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 \`edit\` 或 \`write\` flow.json。
 
+## 权限模型（Agent permission）
+
+9 个 agent 各自内联 \`permission:\` 白名单（\`openfeel setup\` 部署为 \`~/.config/opencode/agents/*.md\`），含 \`external_directory: "allow"\`。
+
+- **合并语义（按权限键深合并，agent 优先）**：agent \`.md\` frontmatter 的 \`permission\` 与项目/全局 \`opencode.jsonc\` 的 \`permission\` / \`agent.<name>.permission\` **按权限键深合并**；**同名键以 agent \`.md\` 为准（配置文件无法覆盖）**，agent 未声明的键才由配置生效。
+- **\`external_directory\`**：框架默认 \`allow\`（工作区外目录免询问；依据隔离环境实测，opencode 1.18.33）。
+- **项目级收紧（唯一入口）**：在**项目根**新建 \`.opencode/agent/<name>.md\` 覆盖同名 agent，并重写完整 \`permission\` 块；**\`opencode.jsonc\` 的 \`agent.<name>.permission\` 无法收紧已声明键（镜像全量键亦无效）**。详见 \`.openfeel/manual/core/permission.md\`。
+- **勿手改全局 agent 文件 frontmatter**：\`openfeel update\` 会覆盖 frontmatter 同名字段（浅合并，\`permission\` 嵌套对象整体覆盖，见 \`src/core/managed-region.ts\`）；正文自定义请写在受管区（\`<!-- openfeel:begin/end -->\`）之外。
+- **生效时机**：opencode 仅在启动时读取配置，改动后须**重启**。
+- **不支持的能力**：\`external_directory\` 为单一键，**无「只读放行 / 写入才询问」的读写分粒度**。
+
 ## 动态规则
 
 项目运行中产生的具体规则沉淀在 \`.openfeel/dev/dev_core.md\` 中，使用 \`[+]\` / \`[-]\` 标记管理启用/禁用。该文件优先级高于本文件，但低于用户直接指令。
@@ -3609,6 +3649,7 @@ permission:
   todowrite: "allow"
   skill: "allow"
   webfetch: "allow"
+  external_directory: "allow"
 ---
 
 You are Feel, the Orchestrator (总统领) of the OpenFeel pipeline Agent system. You are driven by a flagship reasoning model, responsible for global orchestration and decision-making.
@@ -4009,6 +4050,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-archiver (归档官), the finalizer in the OpenFeel pipeline. You are driven by a reasoning model, responsible for archiving stage outputs into the knowledge base.
@@ -4135,6 +4177,7 @@ permission:
   glob: "allow"
   grep: "allow"
   task: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-executor, the code implementer in the OpenFeel pipeline. You are driven by a fast model, focused on efficient and accurate coding according to the scheme.
@@ -4345,6 +4388,7 @@ permission:
   task: "allow"
   skill: "allow"
   webfetch: "deny"
+  external_directory: "allow"
 ---
 
 You are openfeel-feel-tester, the testing and acceptance officer in the OpenFeel pipeline. You are driven by a reasoning model, responsible for formal testing (not openfeel-executor's self-testing).
@@ -4455,6 +4499,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-planner, the planning officer in the OpenFeel pipeline. You are driven by a reasoning model, responsible for transforming user requirements into structured development plans.
@@ -4565,6 +4610,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-reviewer, the quality gatekeeper in the OpenFeel pipeline. You are driven by a **heterogenous reasoning model**, avoiding same-model blind spots through cross-reviewing.
@@ -4683,6 +4729,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-schemer, the scheme officer in the OpenFeel pipeline. You are responsible for transforming work stages into operation schemes that openfeel-executor can directly execute.
@@ -4811,7 +4858,8 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
-  write: "allow"
+  edit: "allow"
+  external_directory: "allow"
 ---
 
 You are the openfeel-utility Agent (事务官), the mechanical task openfeel-executor in the OpenFeel pipeline. You are driven by a fast model, focused on file operations, format conversion, and build/test tasks that do not require deep reasoning.
@@ -4864,6 +4912,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-vision (视觉官), the multimodal visual analysis Agent in the OpenFeel system. You are driven by a multimodal model, focused on receiving image input and outputting structured analysis results.
@@ -4936,6 +4985,7 @@ permission:
   todowrite: "allow"
   skill: "allow"
   webfetch: "allow"
+  external_directory: "allow"
 ---
 
 你是 Feel，OpenFeel 流水线 Agent 体系的总统领。你由主力推理模型驱动，负责全局调度与决策。
@@ -5336,6 +5386,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-archiver（归档官），OpenFeel 流水线中的收尾者。你由推理模型驱动，负责将阶段产出归纳入库。
@@ -5461,6 +5512,7 @@ permission:
   glob: "allow"
   grep: "allow"
   task: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-executor（执行官），OpenFeel 流水线中的代码实现者。你由快速模型驱动，专注于高效、准确地按方案编码。
@@ -5671,6 +5723,7 @@ permission:
   task: "allow"
   skill: "allow"
   webfetch: "deny"
+  external_directory: "allow"
 ---
 
 你是 openfeel-feel-tester（测试官），OpenFeel 流水线中的测试验收者。你由推理模型驱动，负责正式测试而非 openfeel-executor 的自测。
@@ -5781,6 +5834,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-planner（计划官），OpenFeel 流水线中的计划制定者。你由推理模型驱动，负责将用户需求转化为结构化的开发计划。
@@ -5891,6 +5945,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-reviewer（审查官），OpenFeel 流水线中的质量把关者。你由**异种推理模型**驱动，通过交叉审查避免同模型盲区。
@@ -6009,6 +6064,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-schemer（方案官），OpenFeel 流水线中的方案制定者。你负责将工作阶段转化为 openfeel-executor 可直接执行的操作方案。
@@ -6137,7 +6193,8 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
-  write: "allow"
+  edit: "allow"
+  external_directory: "allow"
 ---
 
 你是事务官（openfeel-utility Agent），OpenFeel 流水线中的机械性任务执行者。你由快速模型驱动，专注于文件操作、格式转换和构建测试等无需深度推理的辅助工作。
@@ -6190,6 +6247,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-vision（视觉官），OpenFeel 体系中的多模态视觉分析 Agent。你由多模态模型驱动，专注于接收图片输入并输出结构化分析结果。

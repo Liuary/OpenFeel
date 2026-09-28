@@ -8,10 +8,12 @@ import { fileURLToPath } from 'node:url';
 import {
   loadAgentTemplate,
   listAgentIds,
+  loadOpencodeAgentTemplate,
   listOpencodeAgentIds,
   listOpencodeSkillNames,
   loadTemplate,
 } from '../../src/core/template-loader.js';
+import { splitFrontmatter } from '../../src/core/managed-region.js';
 
 describe('loadAgentTemplate', () => {
   it('zh-CN feel 返回非空字符串，含中文内容', () => {
@@ -189,5 +191,81 @@ describe('update_infos 会话启动修复规则（模板静态断言）', () => 
     expect(content).toContain('Global Behavioral Constraints');
     expect(content).not.toContain('resolveUpdateInfo');
     expect(content).not.toContain('clearUpdateInfos');
+  });
+});
+
+/**
+ * stage-44 权限模型断言
+ * 锁定 9 agent × zh/en 权威源补键（external_directory）、双语键集一致、
+ * utility 键与 opencode schema 对齐（write → edit，依据 op-001 实测）、
+ * 部署源（OPENCODE_AGENT_TEMPLATES）与权威源双注入一致。
+ */
+describe('权限模型（stage-44）', () => {
+  const LANGS = ['zh-CN', 'en'] as const;
+
+  /** 值形式容错：单值 "allow" 或对象 { "*": "allow" } 均视为 allow 语义 */
+  const isAllow = (v: unknown): boolean =>
+    v === 'allow' ||
+    (typeof v === 'object' && v !== null && (v as Record<string, unknown>)['*'] === 'allow');
+
+  /** 取某 agent 模板 frontmatter 中 permission 的键集（排序后） */
+  const permKeys = (lang: string, id: string): string[] => {
+    const fm = splitFrontmatter(loadAgentTemplate(lang, id))?.frontmatter ?? {};
+    const perm = (fm.permission ?? {}) as Record<string, unknown>;
+    return Object.keys(perm).sort();
+  };
+
+  const permOf = (content: string): Record<string, unknown> => {
+    const fm = splitFrontmatter(content)?.frontmatter ?? {};
+    return (fm.permission ?? {}) as Record<string, unknown>;
+  };
+
+  it('9 agent × zh/en 权威源 permission 均含 external_directory 且值为 allow', () => {
+    for (const lang of LANGS) {
+      expect(listAgentIds(lang)).toHaveLength(9);
+      for (const id of listAgentIds(lang)) {
+        const perm = permOf(loadAgentTemplate(lang, id));
+        expect(perm, `${lang}/${id}`).toHaveProperty('external_directory');
+        expect(isAllow(perm.external_directory), `${lang}/${id} 值`).toBe(true);
+      }
+    }
+  });
+
+  it('zh/en permission 键集逐 agent 一致', () => {
+    for (const id of listAgentIds('zh-CN')) {
+      expect(permKeys('zh-CN', id), id).toEqual(permKeys('en', id));
+    }
+  });
+
+  it('utility 键与 schema 对齐（write 未识别 → 含 edit、不含 write）', () => {
+    for (const lang of LANGS) {
+      const keys = permKeys(lang, 'openfeel-utility');
+      expect(keys, lang).toContain('edit');
+      expect(keys, lang).not.toContain('write');
+      expect(keys, lang).toContain('external_directory');
+    }
+  });
+
+  it('feel-tester 保留 webfetch: deny（回归）', () => {
+    for (const lang of LANGS) {
+      const perm = permOf(loadAgentTemplate(lang, 'openfeel-feel-tester'));
+      expect(perm.webfetch, lang).toBe('deny');
+      expect(perm, lang).toHaveProperty('external_directory');
+    }
+  });
+
+  it('部署源 OPENCODE_AGENT_TEMPLATES 与权威源键集一致且含 external_directory', () => {
+    for (const lang of LANGS) {
+      expect(listOpencodeAgentIds(lang).sort()).toEqual(listAgentIds(lang).sort());
+      for (const id of listOpencodeAgentIds(lang)) {
+        const srcPerm = permOf(loadAgentTemplate(lang, id));
+        const depPerm = permOf(loadOpencodeAgentTemplate(lang, id));
+        expect(Object.keys(depPerm).sort(), `${lang}/${id} 部署源`).toEqual(
+          Object.keys(srcPerm).sort()
+        );
+        expect(depPerm, `${lang}/${id} 部署源`).toHaveProperty('external_directory');
+        expect(isAllow(depPerm.external_directory), `${lang}/${id} 部署源值`).toBe(true);
+      }
+    }
   });
 });

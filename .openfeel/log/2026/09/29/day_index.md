@@ -21,3 +21,8 @@
 | [2026-09-29-Liuary-015.md](2026-09-29-Liuary-015.md) | Liuary | v1.1.2-stage-42.op-005 执行通过 |
 | [2026-09-29-Liuary-016.md](2026-09-29-Liuary-016.md) | Archiver | **stage-42 归档完成（配置口径与流水线状态正确性）**：`auto_advance` 四级级联（status.md > 项目 config.yaml > 全局画像兜底）+ `openfeel config effective`（有效值 + 生效来源，单一 resolver 无第二信源）+ `pipeline.phase` 全量 done 判定 + 审计日志 `register_stage`/`register_op`；652/652 测试全绿（40 文件）、`lint i18n` 529 键；REV-001~004/010/011 全部 closed（含 blocking REV-011 修复闭环，hash 前后不变 + 致败实验）；`config` 模块首次建立公共 Bug 归档（BUG-002 high / BUG-003 medium）；知识沉淀 5 条至 architecture(1)+patterns(3)+troubleshooting(1)；两处「可疑待重验」标注如实保留 |
 | [2026-09-29-Liuary-017.md](2026-09-29-Liuary-017.md) | Liuary | 阶段 v1.1.2-stage-42 完成 |
+| [2026-09-29-Liuary-018.md](2026-09-29-Liuary-018.md) | Liuary | v1.1.2-stage-44.op-001 执行通过 |
+| [2026-09-29-Liuary-019.md](2026-09-29-Liuary-019.md) | Liuary | v1.1.2-stage-44.op-002 执行通过 |
+| [2026-09-29-Liuary-020.md](2026-09-29-Liuary-020.md) | Liuary | v1.1.2-stage-44.op-003 执行通过 |
+| [2026-09-29-Liuary-021.md](2026-09-29-Liuary-021.md) | Liuary | v1.1.2-stage-44.op-004 执行通过 |
+| [2026-09-29-Liuary-022.md](2026-09-29-Liuary-022.md) | Liuary | v1.1.2-stage-44.op-005 执行通过 |

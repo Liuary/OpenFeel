@@ -2,6 +2,11 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-29-Liuary-022.md](2026/09/29/2026-09-29-Liuary-022.md) | Liuary | v1.1.2-stage-44.op-005 执行通过 |
+| [2026-09-29-Liuary-021.md](2026/09/29/2026-09-29-Liuary-021.md) | Liuary | v1.1.2-stage-44.op-004 执行通过 |
+| [2026-09-29-Liuary-020.md](2026/09/29/2026-09-29-Liuary-020.md) | Liuary | v1.1.2-stage-44.op-003 执行通过 |
+| [2026-09-29-Liuary-019.md](2026/09/29/2026-09-29-Liuary-019.md) | Liuary | v1.1.2-stage-44.op-002 执行通过 |
+| [2026-09-29-Liuary-018.md](2026/09/29/2026-09-29-Liuary-018.md) | Liuary | v1.1.2-stage-44.op-001 执行通过 |
 | [2026-09-29-Liuary-017.md](2026/09/29/2026-09-29-Liuary-017.md) | Liuary | 阶段 v1.1.2-stage-42 完成 |
 | [2026-09-29-Liuary-015.md](2026/09/29/2026-09-29-Liuary-015.md) | Liuary | v1.1.2-stage-42.op-005 执行通过 |
 | [2026-09-29-Liuary-013.md](2026/09/29/2026-09-29-Liuary-013.md) | Liuary | v1.1.2-stage-42.op-004 执行通过 |
@@ -27,11 +32,6 @@
 | [2026-09-25-Liuary-007.md](2026/09/25/2026-09-25-Liuary-007.md) | Liuary | 阶段 v1.1.0-stage-39 完成 |
 | [2026-09-25-Liuary-006.md](2026/09/25/2026-09-25-Liuary-006.md) | Archiver | **stage-38 归档完成**：控制区标记增量更新（managed-region 四策�?+ 部署三�?writeManagedFile + update_infos 双资产路�?+ 会话启动修复规则 feel.md/core 双语），545/545 测试�? Bug，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/managed-region.md + core/update-infos.md + 更新 core/update.md |
 | [2026-09-25-Liuary-005.md](2026/09/25/2026-09-25-Liuary-005.md) | Liuary | 阶段 v1.1.0-stage-38 完成 |
-| [2026-09-25-Liuary-004.md](2026/09/25/2026-09-25-Liuary-004.md) | Archiver | **stage-37 归档完成**：全局部署架构（框架资产部署到 ~/.config/opencode/ + 项目精简 + �?state + JSONC 深度合并 + P2 框架约束落地），493/493 测试�? Bug，知识沉淀 5 条至 architecture(1) + patterns(2) + troubleshooting(2)，manual 新增 core/global-paths.md + core/opencode-config.md + core/update.md |
-| [2026-09-25-Liuary-003.md](2026/09/25/2026-09-25-Liuary-003.md) | Liuary | 阶段 v1.1.0-stage-37 完成 |
-| [2026-09-25-Liuary-002.md](2026/09/25/2026-09-25-Liuary-002.md) | Archiver | **stage-36 归档完成**：模板源收敛（templates-data/opencode/ 单源�? 命名前缀统一�? agent/14 skill �?openfeel- 前缀 + /opfx: 类型�?+ normalizeAgentName 读取兼容），470/470 测试，BUG-001 closed，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/template-loader.md + core/build.md |
-| [2026-09-25-Liuary-001.md](2026/09/25/2026-09-25-Liuary-001.md) | Liuary | 阶段 v1.1.0-stage-36 完成 |
-| [2026-09-13-Liuary-001.md](2026/09/13/2026-09-13-Liuary-001.md) | Liuary | 阶段 v1.1.0-stage-35 完成 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

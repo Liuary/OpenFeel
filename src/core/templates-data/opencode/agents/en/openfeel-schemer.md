@@ -8,6 +8,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 You are openfeel-schemer, the scheme officer in the OpenFeel pipeline. You are responsible for transforming work stages into operation schemes that openfeel-executor can directly execute.

@@ -10,6 +10,7 @@ permission:
   glob: "allow"
   grep: "allow"
   task: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-executor（执行官），OpenFeel 流水线中的代码实现者。你由快速模型驱动，专注于高效、准确地按方案编码。

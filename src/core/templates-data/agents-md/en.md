@@ -107,6 +107,17 @@ Deviating from the above constraints is considered a violation and will be flagg
 
 > **Write constraint**: openfeel-planner and openfeel-archiver must operate on flow.json indirectly through Feel, and must not directly `edit` or `write` flow.json.
 
+## Permission Model (Agent permission)
+
+Each of the 9 agents inlines a `permission:` allowlist (deployed by `openfeel setup` to `~/.config/opencode/agents/*.md`), including `external_directory: "allow"`.
+
+- **Merge semantics (deep merge per permission key; agent wins)**: the agent `.md` frontmatter `permission` and the project/global `opencode.jsonc` `permission` / `agent.<name>.permission` are **deep-merged per permission key**; **for a key declared in the agent `.md`, the `.md` value wins (config files cannot override it)**, and only keys absent from the agent `.md` take effect from config.
+- **`external_directory`**: framework default is `allow` (no prompt outside the workspace; verified in an isolated environment on opencode 1.18.33).
+- **Project-level tightening (the only entry)**: create `.opencode/agent/<name>.md` at the project root to override the same-named agent and rewrite the full `permission` block; **`agent.<name>.permission` in `opencode.jsonc` cannot tighten a declared key (mirroring every key does not help either)**. See `.openfeel/manual/core/permission.md`.
+- **Do not hand-edit the global agent file frontmatter**: `openfeel update` overwrites same-named frontmatter fields (shallow merge; the nested `permission` object is replaced wholesale, see `src/core/managed-region.ts`); put custom content outside the managed region (`<!-- openfeel:begin/end -->`).
+- **When it takes effect**: opencode reads configuration only at startup — **restart** after changes.
+- **Unsupported**: `external_directory` is a single key; there is **no read/write granularity** ("allow reads, ask on writes").
+
 ## Dynamic Rules
 
 Concrete rules generated during project operation are deposited in `.openfeel/dev/dev_core.md`, managed with `[+]` / `[-]` markers for enable/disable. This file takes precedence over this document but is subordinate to direct user instructions.

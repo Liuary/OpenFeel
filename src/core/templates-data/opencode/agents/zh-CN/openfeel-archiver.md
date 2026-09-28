@@ -8,6 +8,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  external_directory: "allow"
 ---
 
 你是 openfeel-archiver（归档官），OpenFeel 流水线中的收尾者。你由推理模型驱动，负责将阶段产出归纳入库。

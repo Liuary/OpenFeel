@@ -117,6 +117,15 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 
 > **写入约束**：openfeel-planner 和 openfeel-archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 `edit` 或 `write` flow.json。
 
+## 权限模型（Agent permission）
+
+9 个 agent 内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `openfeel setup` 部署为 `~/.config/opencode/agents/*.md`。
+
+- **合并语义**：agent `.md` frontmatter 与 `opencode.jsonc`（顶层 `permission` 与 `agent.<name>.permission`）**按权限键深合并**，**同名键以 agent `.md` 为准（配置文件无法覆盖已声明键）**。
+- **收紧入口**：项目内新建 `.opencode/agent/<name>.md` 覆盖同名 agent；**`opencode.jsonc` 的 `agent.<name>.permission` 无法收紧已声明键**。
+- **勿手改全局 agent 文件 frontmatter**（`openfeel update` 会覆盖同名字段）；改动须**重启** opencode 生效。
+- `external_directory` 为单一键，**无读写分粒度**。详见 `.openfeel/manual/core/permission.md`。
+
 ## 动态规则
 
 项目运行中产生的具体规则沉淀在 `.openfeel/dev/dev_core.md` 中，使用 `[+]` / `[-]` 标记管理启用/禁用。该文件优先级高于本文件，但低于用户直接指令。

@@ -21,6 +21,7 @@
   - [存量迁移](core/migrate.md)
   - [模型配置核心](core/model-config.md)
   - [全局部署（setup）](core/setup.md)
+  - [权限模型（Agent permission）](core/permission.md)
 - CLI 层
   - [命令体系](cli/commands.md)
   - [model 命令组](cli/model.md)
@@ -53,5 +54,6 @@
 | commands/setup.ts / setup 命令 | `cli/setup.md` | 命令面（--lang）或输出行为变更 |
 | 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更 |
 | Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更 |
+| agent 模板 permission / opencode 权限模型 | `core/permission.md` | 9 agent 白名单键集、合并/优先级语义、项目级收紧入口或受管区边界变更 |
 
 > 新增模块时在「模块树」中追加条目，并创建对应文档。

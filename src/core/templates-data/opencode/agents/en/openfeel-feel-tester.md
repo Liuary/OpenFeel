@@ -11,6 +11,7 @@ permission:
   task: "allow"
   skill: "allow"
   webfetch: "deny"
+  external_directory: "allow"
 ---
 
 You are openfeel-feel-tester, the testing and acceptance officer in the OpenFeel pipeline. You are driven by a reasoning model, responsible for formal testing (not openfeel-executor's self-testing).

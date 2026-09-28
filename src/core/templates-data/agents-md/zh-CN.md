@@ -107,6 +107,17 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 > **写入约束**：openfeel-planner 和 openfeel-archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 `edit` 或 `write` flow.json。
 
+## 权限模型（Agent permission）
+
+9 个 agent 各自内联 `permission:` 白名单（`openfeel setup` 部署为 `~/.config/opencode/agents/*.md`），含 `external_directory: "allow"`。
+
+- **合并语义（按权限键深合并，agent 优先）**：agent `.md` frontmatter 的 `permission` 与项目/全局 `opencode.jsonc` 的 `permission` / `agent.<name>.permission` **按权限键深合并**；**同名键以 agent `.md` 为准（配置文件无法覆盖）**，agent 未声明的键才由配置生效。
+- **`external_directory`**：框架默认 `allow`（工作区外目录免询问；依据隔离环境实测，opencode 1.18.33）。
+- **项目级收紧（唯一入口）**：在**项目根**新建 `.opencode/agent/<name>.md` 覆盖同名 agent，并重写完整 `permission` 块；**`opencode.jsonc` 的 `agent.<name>.permission` 无法收紧已声明键（镜像全量键亦无效）**。详见 `.openfeel/manual/core/permission.md`。
+- **勿手改全局 agent 文件 frontmatter**：`openfeel update` 会覆盖 frontmatter 同名字段（浅合并，`permission` 嵌套对象整体覆盖，见 `src/core/managed-region.ts`）；正文自定义请写在受管区（`<!-- openfeel:begin/end -->`）之外。
+- **生效时机**：opencode 仅在启动时读取配置，改动后须**重启**。
+- **不支持的能力**：`external_directory` 为单一键，**无「只读放行 / 写入才询问」的读写分粒度**。
+
 ## 动态规则
 
 项目运行中产生的具体规则沉淀在 `.openfeel/dev/dev_core.md` 中，使用 `[+]` / `[-]` 标记管理启用/禁用。该文件优先级高于本文件，但低于用户直接指令。

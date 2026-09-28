@@ -12,10 +12,26 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
+// 备份失败注入开关（op-005 集成层：备份失败 → 目标未写入 + anomaly）
+const backupMock = vi.hoisted(() => ({ failFor: null as string | null }));
+vi.mock('../../src/core/backup.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/backup.js')>();
+  return {
+    ...actual,
+    backupFileBeforeWrite: (absPath: string, opts: Parameters<typeof actual.backupFileBeforeWrite>[1]) => {
+      if (backupMock.failFor && absPath === backupMock.failFor) {
+        throw new actual.BackupError(absPath, new Error('injected backup failure'));
+      }
+      return actual.backupFileBeforeWrite(absPath, opts);
+    },
+  };
+});
+
 import { updateProject } from '../../src/core/update.js';
+import { resetBackupSetCache } from '../../src/core/backup.js';
 import { createUpdateState, saveUpdateState, hashContent, getOpenfeelVersion } from '../../src/core/update-state.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 
 /** 全局 opencode 目录（基于 mock home） */
@@ -86,6 +102,8 @@ describe('updateProject', () => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-update-test-'));
     homeDir = mkdtempSync(join(tmpdir(), 'openfeel-home-'));
     mockHome.dir = homeDir;
+    backupMock.failFor = null;
+    resetBackupSetCache();
   });
 
   afterEach(() => {
@@ -536,8 +554,76 @@ describe('updateProject', () => {
     const content = readFileSync(feelPath, 'utf-8');
     expect(content).toContain('<!-- openfeel:begin -->');
     expect(content).toContain('你是 Feel');
-    // adopt 不写入 update_infos
-    expect(existsSync(updateInfosPath())).toBe(false);
+    // stage-46：adopt 覆盖前备份 → update_infos 含 backed 条目（command='update'）
+    expect(existsSync(updateInfosPath())).toBe(true);
+    const infos = readFileSync(updateInfosPath(), 'utf-8');
+    expect(infos).toContain('## 备份');
+    expect(infos).toContain(feelPath);
+    expect(infos).toContain('来源: update');
+  });
+
+  // ── stage-46：部署覆盖前备份 + backed 条目 ──
+
+  it('stage-46：含标记文件内容变化 → 覆盖前备份落 global 分区 + backed 条目（command=update）', () => {
+    updateProject(tmpDir); // 首次部署（created，无备份）
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    const original = readFileSync(feelPath, 'utf-8');
+    const tampered = original.replace('<!-- openfeel:begin -->\n', '<!-- openfeel:begin -->\nTAMPER\n');
+    writeFileSync(feelPath, tampered, 'utf-8');
+
+    const result = updateProject(tmpDir);
+    expect(result.updated).toContain(feelPath);
+
+    const backupRootPath = join(mockHome.dir, '.openfeel', 'backup');
+    expect(existsSync(backupRootPath)).toBe(true);
+    const tsDirs = readdirSync(backupRootPath);
+    const rel = join('global', relative(mockHome.dir, feelPath));
+    expect(tsDirs.some((d) => existsSync(join(backupRootPath, d, rel)))).toBe(true);
+
+    const infos = readFileSync(updateInfosPath(), 'utf-8');
+    expect(infos).toContain('## 备份');
+    expect(infos).toContain('来源: update');
+    expect(infos).toContain(feelPath);
+  });
+
+  it('stage-46：全新 HOME 的 created 路径不产生备份', () => {
+    updateProject(tmpDir);
+    expect(existsSync(join(mockHome.dir, '.openfeel', 'backup'))).toBe(false);
+    if (existsSync(updateInfosPath())) {
+      expect(readFileSync(updateInfosPath(), 'utf-8')).not.toContain('## 备份');
+    }
+  });
+
+  it('stage-46：全局 opencode.jsonc 已存在 → 覆盖前备份 + backed（command=update）', () => {
+    updateProject(tmpDir); // 首次：jsonc 不存在，无备份
+    updateProject(tmpDir); // 二次：jsonc 存在 → 备份
+    const infos = readFileSync(updateInfosPath(), 'utf-8');
+    expect(infos).toContain('## 备份');
+    expect(infos).toContain('来源: update');
+    expect(infos).toContain(globalJsoncPath());
+  });
+
+  it('stage-46：备份失败 → 目标未写入 + anomaly(backup_failed) + skipped', () => {
+    updateProject(tmpDir);
+    const feelPath = join(globalAgentsDir(), 'feel.md');
+    const original = readFileSync(feelPath, 'utf-8');
+    const tampered = original.replace('<!-- openfeel:begin -->\n', '<!-- openfeel:begin -->\nTAMPER\n');
+    writeFileSync(feelPath, tampered, 'utf-8');
+
+    backupMock.failFor = feelPath;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const result = updateProject(tmpDir);
+      expect(result.skipped).toContain(feelPath);
+      expect(result.updated).not.toContain(feelPath);
+      // 目标文件未被覆盖
+      expect(readFileSync(feelPath, 'utf-8')).toBe(tampered);
+      const infos = readFileSync(updateInfosPath(), 'utf-8');
+      expect(infos).toContain('## 异常');
+      expect(infos).toContain('原因: backup_failed');
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('无标记 + 无 state 记录 → 追加受管区 + update_infos.md；二次 update 幂等（N2）', () => {

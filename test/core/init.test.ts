@@ -12,10 +12,27 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
+// 备份失败注入开关（op-005 / REV-010：init 备份失败 → 不覆盖 + anomaly）
+const backupMock = vi.hoisted(() => ({ failFor: null as string | null }));
+vi.mock('../../src/core/backup.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/backup.js')>();
+  return {
+    ...actual,
+    backupFileBeforeWrite: (absPath: string, opts: Parameters<typeof actual.backupFileBeforeWrite>[1]) => {
+      if (backupMock.failFor && absPath === backupMock.failFor) {
+        throw new actual.BackupError(absPath, new Error('injected backup failure'));
+      }
+      return actual.backupFileBeforeWrite(absPath, opts);
+    },
+  };
+});
+
 import { initProject, initWorkspaceOnly, initDemo } from '../../src/core/init.js';
+import { resetBackupSetCache } from '../../src/core/backup.js';
 import { readConfig } from '../../src/core/config.js';
-import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { join, basename, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 
 /** 全局 opencode 目录（基于 mock home） */
@@ -31,6 +48,8 @@ describe('initProject', () => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-init-test-'));
     homeDir = mkdtempSync(join(tmpdir(), 'openfeel-home-'));
     mockHome.dir = homeDir;
+    backupMock.failFor = null;
+    resetBackupSetCache();
   });
 
   afterEach(() => {
@@ -140,6 +159,56 @@ describe('initProject', () => {
     expect(content).toContain('日期');
     expect(content).toContain('状态');
   });
+
+  // ── stage-46：config.yaml 覆盖前备份 ──
+
+  it('stage-46：已存在 config.yaml（含用户自定义键）→ 备份保留原键 + backed + 仍覆盖', async () => {
+    const configPath = join(tmpDir, '.openfeel', 'config.yaml');
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(configPath, 'defaults:\n  auto_advance: enabled\n  execution_mode: auto\n', 'utf-8');
+
+    await initProject(tmpDir);
+
+    const backupRootPath = join(mockHome.dir, '.openfeel', 'backup');
+    expect(existsSync(backupRootPath)).toBe(true);
+    const proj = resolve(tmpDir);
+    const hash8 = createHash('sha256').update(proj).digest('hex').slice(0, 8);
+    const rel = join('project', `${basename(proj)}-${hash8}`, '.openfeel', 'config.yaml');
+    const foundDir = readdirSync(backupRootPath).find((d) => existsSync(join(backupRootPath, d, rel)));
+    expect(foundDir).toBeTruthy();
+    const backupContent = readFileSync(join(backupRootPath, foundDir!, rel), 'utf-8');
+    expect(backupContent).toContain('auto_advance: enabled');
+
+    const infos = readFileSync(join(mockHome.dir, '.openfeel', 'update_infos.md'), 'utf-8');
+    expect(infos).toContain('## 备份');
+    expect(infos).toContain('来源: init');
+    expect(infos).toContain('.openfeel/config.yaml');
+
+    // 裁定「备份后仍覆盖」：config.yaml 已被默认值覆盖
+    expect(readFileSync(configPath, 'utf-8')).toContain('auto_advance: disabled');
+  });
+
+  it('stage-46/REV-010：config.yaml 备份失败 → 不覆盖 + anomaly(backup_failed) + skipped', async () => {
+    const configPath = join(tmpDir, '.openfeel', 'config.yaml');
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    const userCfg = 'defaults:\n  auto_advance: enabled\n';
+    writeFileSync(configPath, userCfg, 'utf-8');
+
+    backupMock.failFor = configPath;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const result = await initProject(tmpDir);
+      // 目标未被覆盖（保护现有配置）
+      expect(readFileSync(configPath, 'utf-8')).toBe(userCfg);
+      // 归类 skipped 并透传
+      expect(result.skipped.some((s) => s.includes('config.yaml'))).toBe(true);
+      const infos = readFileSync(join(mockHome.dir, '.openfeel', 'update_infos.md'), 'utf-8');
+      expect(infos).toContain('原因: backup_failed');
+      expect(infos).toContain('.openfeel/config.yaml');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
 });
 
 describe('initProject — workspace only（v1.1.1：全局部署收归 openfeel setup）', () => {
@@ -150,6 +219,8 @@ describe('initProject — workspace only（v1.1.1：全局部署收归 openfeel 
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-init-opencode-test-'));
     homeDir = mkdtempSync(join(tmpdir(), 'openfeel-home-'));
     mockHome.dir = homeDir;
+    backupMock.failFor = null;
+    resetBackupSetCache();
   });
 
   afterEach(() => {

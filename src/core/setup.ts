@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import { listAgentIds, loadAgentTemplate, loadTemplate } from './template-loader.js';
 import { loadGlobalUpdateState, saveGlobalUpdateState, createGlobalUpdateState, updateFileHash, type UpdateState } from './update-state.js';
 import { deployGlobalAsset, SKILL_DEFINITIONS } from './update.js';
+import { appendUpdateInfo } from './update-infos.js';
+import { backupFileBeforeWrite, notifyBackupIfTTY } from './backup.js';
 import { mergeGlobalOpencodeJsonc } from './opencode-config.js';
 import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath } from './global-paths.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
@@ -37,14 +39,14 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
   const globalState: UpdateState = loadGlobalUpdateState() ?? createGlobalUpdateState({});
 
   // 1. 全局 AGENTS.md（框架约束唯一权威）
-  push(deployGlobalAsset(getGlobalAgentsMdPath(), loadTemplate(lang, 'agents-md'), globalState), getGlobalAgentsMdPath());
+  push(deployGlobalAsset(getGlobalAgentsMdPath(), loadTemplate(lang, 'agents-md'), globalState, 'setup'), getGlobalAgentsMdPath());
 
   // 2. 9 agent → 全局 agents 目录
   const agentsDir = getGlobalAgentsDir();
   mkdirSync(agentsDir, { recursive: true });
   for (const id of listAgentIds(lang)) {
     const p = join(agentsDir, `${id}.md`);
-    push(deployGlobalAsset(p, loadAgentTemplate(lang, id), globalState), p);
+    push(deployGlobalAsset(p, loadAgentTemplate(lang, id), globalState, 'setup'), p);
   }
 
   // 3. 16 skill → 全局 skills 目录
@@ -53,11 +55,17 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
   for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {
     mkdirSync(join(skillsDir, name), { recursive: true });
     const p = join(skillsDir, name, 'SKILL.md');
-    push(deployGlobalAsset(p, content, globalState), p);
+    push(deployGlobalAsset(p, content, globalState, 'setup'), p);
   }
 
   // 4. 全局平台适配器配置文件（opencode.jsonc）：深度合并（保留用户字段），加全局锁 + 原子写
   const jsoncPath = getGlobalOpencodeJsoncPath();
+  // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
+  const jsoncBackup = backupFileBeforeWrite(jsoncPath, { command: 'setup' });
+  if (jsoncBackup) {
+    appendUpdateInfo('backed', { absolutePath: jsoncPath, backupRel: jsoncBackup.backupRel, command: 'setup' });
+    notifyBackupIfTTY(jsoncBackup.backupRel);
+  }
   const merged = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
     const current = existsSync(jsoncPath) ? readFileSync(jsoncPath, 'utf-8') : '{}\n';
     let out: string;

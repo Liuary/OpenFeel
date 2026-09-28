@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T20:19:02.211Z",
-    "revision": 155
+    "updated": "2026-09-28T21:03:41.178Z",
+    "revision": 165
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-46",
-      "op": "op-004"
+      "op": "op-001"
     },
     "retry": 0
   },
@@ -813,8 +813,8 @@
     },
     "v1.1.2-stage-45": {
       "name": "v1.1.2-stage-45",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {
         "op-001": {
@@ -888,21 +888,21 @@
       },
       "stats": {
         "start_time": "2026-09-28T15:35:11.220Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-09-28T20:23:28.937Z",
+        "duration_ms": 17297717
       }
     },
     "v1.1.2-stage-46": {
       "name": "v1.1.2-stage-46",
-      "phase": "scheme_pending",
+      "phase": "exec_running",
       "status": "planned",
       "deps": [],
       "ops": {
         "op-001": {
           "title": "备份基础设施（global-paths 路径函数 + backup.ts + 锁临界区）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -917,9 +917,9 @@
         },
         "op-002": {
           "title": "update_infos 扩展「备份」类（含读侧节识别）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -934,9 +934,9 @@
         },
         "op-003": {
           "title": "四链路写入接入（setup、update、init、migrate 覆盖前备份）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -951,9 +951,9 @@
         },
         "op-004": {
           "title": "feel.md 检查规则扩展与 build 重生成",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -6256,6 +6256,102 @@
       "detail": {
         "stageName": "v1.1.2-stage-46",
         "opId": "op-005"
+      }
+    },
+    {
+      "time": "2026-09-28T20:23:28.936Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-45",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-09-28T20:23:30.103Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-46",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-09-28T20:49:11.013Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-46",
+        "from": "scheme_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-09-28T20:52:28.982Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-46",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-09-28T20:56:37.222Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-46",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-09-28T20:56:37.511Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-46",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-09-28T21:03:31.200Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-46.op-001",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T21:03:40.393Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-46.op-002",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T21:03:40.693Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-46.op-003",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T21:03:41.160Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-46.op-004",
+        "attempts": 1
       }
     }
   ]

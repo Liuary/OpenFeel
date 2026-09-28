@@ -71,3 +71,8 @@ export function getGlobalProfilePath(): string {
 export function getGlobalSchemasDir(): string {
   return join(homedir(), '.openfeel', 'schemas');
 }
+
+/** 全局备份根目录（~/.openfeel/backup；部署覆盖前备份统一根，stage-46） */
+export function getGlobalBackupRootPath(): string {
+  return join(homedir(), '.openfeel', 'backup');
+}

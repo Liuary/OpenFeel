@@ -19,6 +19,7 @@
 | `getGlobalUpdateStatePath()` | `~/.openfeel/update_state.json` |
 | `getGlobalUpdateInfosPath()` | `~/.openfeel/update_infos.md` |
 | `getAuthJsonPath()` | `~/.local/share/opencode/auth.json` |
+| `getGlobalBackupRootPath()` | `~/.openfeel/backup`（部署覆盖前备份统一根，stage-46） |
 
 所有函数基于 `homedir()`（`node:os`）+ `join`（`node:path`）拼接，返回绝对路径（不含 `~` 字面量）。
 
@@ -43,3 +44,4 @@ src/core/update-state.ts（全局 state 读写）
 | stage-37 | 初始创建，集中解析 opencode/opencode 全局路径（N4 homedir 单点封装）；op-001 落地，供 op-002/003/004 复用 |
 | stage-40 | 新增 `getAuthJsonPath()`（`~/.local/share/opencode/auth.json`），供模型 provider 校验读取 auth.json 顶层 key（REV-1505） |
 | v1.1.1 | 新增 `getGlobalAgentsMdPath()`（全局 AGENTS.md，框架约束唯一权威）；`getGlobalCoreMdPath()` 标记废弃（仅兼容检测/清理） |
+| stage-46 | 新增 `getGlobalBackupRootPath()`（`~/.openfeel/backup`，部署覆盖前备份统一根；零行为变更） |

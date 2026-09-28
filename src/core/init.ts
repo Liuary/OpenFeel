@@ -22,6 +22,8 @@ import { t, getCliLang } from './i18n.js';
 import { DEFAULT_STAGE_VERSION } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { buildProjectOpencodeJsoncObj } from './opencode-config.js';
+import { appendUpdateInfo } from './update-infos.js';
+import { backupFileBeforeWrite, BackupError, notifyBackupIfTTY } from './backup.js';
 import readline from 'node:readline';
 
 /**
@@ -128,6 +130,7 @@ async function ensureGlobalConfig(): Promise<'zh-CN' | 'en'> {
 export interface InitResult {
   created: string[]; // 创建的目录列表
   updated: string[]; // 更新的文件列表
+  skipped: string[]; // 因备份失败等原因跳过的文件（stage-46）
 }
 
 /** 示例骨架创建结果 */
@@ -163,9 +166,10 @@ function writeTemplateIfMissing(
 function initWorkspaceCore(
   projectPath: string,
   lang: 'zh-CN' | 'en',
-): { created: string[]; updated: string[] } {
+): { created: string[]; updated: string[]; skipped: string[] } {
   const created: string[] = [];
   const updated: string[] = [];
+  const skipped: string[] = [];
 
   // 1. 创建 .openfeel/ 目录结构（含 plan/, roadmap/, dev/note/, 等）
   const dirs = createWorkspace(projectPath);
@@ -174,10 +178,30 @@ function initWorkspaceCore(
   // 2. 写入默认配置（根据所选语言）
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
   const configExisted = existsSync(configPath);
-  writeDefaultConfig(projectPath, lang);
   if (configExisted) {
-    updated.push('.openfeel/config.yaml');
+    // 覆盖前备份（REV-001 / 裁定 #3；BUG-002 缓解，非语义修复）——备份成功后仍覆盖（需求为备份+提示，非拒绝）
+    try {
+      const bk = backupFileBeforeWrite(configPath, { command: 'init', projectPath });
+      if (bk) {
+        appendUpdateInfo('backed', { projectRoot: projectPath, relativePath: '.openfeel/config.yaml', backupRel: bk.backupRel, command: 'init' });
+        notifyBackupIfTTY(bk.backupRel);
+      }
+      // ✅ 仅备份成功后覆盖（同一 try 内，紧随备份；原件已留存于备份目录）
+      writeDefaultConfig(projectPath, lang);
+      updated.push('.openfeel/config.yaml');
+    } catch (err) {
+      if (err instanceof BackupError) {
+        // 备份失败 → 绝不覆盖；记可区分异常 + 归类 skipped（与 writeManagedFile 口径一致）
+        appendUpdateInfo('anomaly', { projectRoot: projectPath, relativePath: '.openfeel/config.yaml', note: 'backup_failed' });
+        console.warn(`[init] ${err.message}；已跳过 config.yaml 覆盖以保护现有配置`);
+        skipped.push('.openfeel/config.yaml (backup failed)');
+      } else {
+        throw err; // 非备份错误照旧上抛
+      }
+    }
   } else {
+    // 目标不存在 → 无需备份，直接新建
+    writeDefaultConfig(projectPath, lang);
     created.push('.openfeel/config.yaml');
   }
 
@@ -231,7 +255,7 @@ function initWorkspaceCore(
     created.push('.openfeel/kb/index.md');
   }
 
-  return { created, updated };
+  return { created, updated, skipped };
 }
 
 /**
@@ -256,7 +280,7 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
   }
 
   // 2. 创建工作区（目录 + config.yaml + flow.json + .info.json + dev/kb 模板）
-  const { created, updated } = initWorkspaceCore(projectPath, selectedLang);
+  const { created, updated, skipped } = initWorkspaceCore(projectPath, selectedLang);
 
   // 3. 项目平台适配器配置文件（opencode.jsonc）：最小覆盖（仅 $schema），不存在则写
   //    （v1.1.1 REV-1905 从 deployOpencode 抽出到 initProject）
@@ -288,20 +312,37 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
         const majorMatch = vitestVersion.match(/^(?:[\^~]?)(\d+)/);
         const majorVersion = majorMatch ? majorMatch[1] : '3';
         pkg.devDependencies['@vitest/coverage-v8'] = `^${majorVersion}.0.0`;
-        atomicWriteFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-        updated.push('package.json');
+        try {
+          // 写前备份（目标已存在且本次将实际写入）
+          const bkPkg = backupFileBeforeWrite(pkgPath, { command: 'init', projectPath });
+          if (bkPkg) {
+            appendUpdateInfo('backed', { projectRoot: projectPath, relativePath: 'package.json', backupRel: bkPkg.backupRel, command: 'init' });
+            notifyBackupIfTTY(bkPkg.backupRel);
+          }
+          atomicWriteFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+          updated.push('package.json');
+        } catch (err) {
+          if (err instanceof BackupError) {
+            // 备份失败 → 不写盘（磁盘 package.json 保持原样；pkg 仅在内存中被修改）
+            appendUpdateInfo('anomaly', { projectRoot: projectPath, relativePath: 'package.json', note: 'backup_failed' });
+            console.warn(`[init] ${err.message}；已跳过 package.json 改写`);
+            skipped.push('package.json (backup failed)');
+          } else {
+            throw err;
+          }
+        }
       }
     }
   }
 
-  return { created, updated };
+  return { created, updated, skipped };
 }
 
 /**
  * 非交互轻量子命令：仅创建工作区（供 feel 空白项目自动搭建；不建全局规则/平台适配器配置（AGENTS.md/opencode.jsonc））
  * 不做语言交互、不部署全局配置。
  */
-export function initWorkspaceOnly(projectPath: string, lang?: string): { created: string[]; updated: string[] } {
+export function initWorkspaceOnly(projectPath: string, lang?: string): { created: string[]; updated: string[]; skipped: string[] } {
   const deployLang: 'zh-CN' | 'en' = (lang === 'en' || lang === 'zh-CN') ? lang : 'zh-CN';
   return initWorkspaceCore(projectPath, deployLang);
 }

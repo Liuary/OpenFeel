@@ -198,6 +198,19 @@ describe('update_infos 会话启动修复规则（模板静态断言）', () => 
     expect(content).not.toContain('resolveUpdateInfo');
     expect(content).not.toContain('clearUpdateInfos');
   });
+
+  // stage-46 op-004：三类处理（含备份类 + backup_failed 分派）
+  it('feel.md（zh-CN/en）含「备份」类处理关键词（stage-46）', () => {
+    const zh = loadAgentTemplate('zh-CN', 'feel');
+    expect(zh).toContain('备份条目');
+    expect(zh).toContain('backup_failed');
+    expect(zh).toContain('三类');
+
+    const en = loadAgentTemplate('en', 'feel');
+    expect(en).toContain('Backup entries');
+    expect(en).toContain('backup_failed');
+    expect(en).toContain('three kinds');
+  });
 });
 
 /**

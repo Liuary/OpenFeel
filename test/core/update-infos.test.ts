@@ -19,7 +19,7 @@ import {
   resolveUpdateInfo,
   clearUpdateInfos,
 } from '../../src/core/update-infos.js';
-import { existsSync, readFileSync, mkdirSync, rmSync, mkdtempSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -134,5 +134,110 @@ describe('update-infos', () => {
     }
     await Promise.all(tasks);
     expect(loadUpdateInfos()).toHaveLength(10);
+  });
+
+  // ── stage-46：第三类「备份」+ note 成因 + 向后兼容 ──
+
+  it('backed（全局）→ 落备份节、往返 kind=backed（不被误归 anomaly，REV-003）', () => {
+    const abs = join(mockHome.dir, '.config', 'opencode', 'AGENTS.md');
+    appendUpdateInfo('backed', { absolutePath: abs, backupRel: 'global/.config/opencode/AGENTS.md', command: 'setup' });
+
+    const raw = readFileSync(infosPath(), 'utf-8');
+    expect(raw).toContain('## 备份');
+    expect(raw).toContain('（备份: `global/.config/opencode/AGENTS.md`，来源: setup）');
+
+    const entries = loadUpdateInfos();
+    expect(entries).toHaveLength(1);
+    expect(entries[0].kind).toBe('backed');
+    expect(entries[0].backupRel).toBe('global/.config/opencode/AGENTS.md');
+    expect(entries[0].command).toBe('setup');
+    expect(entries[0].note).toBeNull();
+  });
+
+  it('backed（项目二元组）→ 往返 path 与 backupRel/command 正确', () => {
+    const projectRoot = join(mockHome.dir, 'projects', 'p1');
+    appendUpdateInfo('backed', { projectRoot, relativePath: '.openfeel/config.yaml', backupRel: 'project/p1-abc12345/.openfeel/config.yaml', command: 'init' });
+
+    const raw = readFileSync(infosPath(), 'utf-8');
+    expect(raw).toContain(`.openfeel/config.yaml (项目: ${projectRoot})`);
+
+    const e = loadUpdateInfos()[0];
+    expect(e.kind).toBe('backed');
+    expect(e.projectRoot).toBe(projectRoot);
+    expect(e.relativePath).toBe('.openfeel/config.yaml');
+    expect(e.backupRel).toBe('project/p1-abc12345/.openfeel/config.yaml');
+    expect(e.command).toBe('init');
+  });
+
+  it('anomaly + note=backup_failed → 往返 note 正确', () => {
+    appendUpdateInfo('anomaly', { projectRoot: '/p', relativePath: '.openfeel/config.yaml', note: 'backup_failed' });
+
+    const raw = readFileSync(infosPath(), 'utf-8');
+    expect(raw).toContain('（原因: backup_failed）');
+
+    const e = loadUpdateInfos()[0];
+    expect(e.kind).toBe('anomaly');
+    expect(e.note).toBe('backup_failed');
+    expect(e.backupRel).toBeNull();
+    expect(e.command).toBeNull();
+  });
+
+  it('旧格式（仅追加/异常，无尾部段）→ 正常解析，新字段为 null（向后兼容）', () => {
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(infosPath(), [
+      '# OpenFeel 增量更新记录',
+      '',
+      '## 追加（无标记 → 末尾追加受管区）',
+      '- [ ] `/old/appended.md`（2026-01-01T00:00:00.000Z）',
+      '',
+      '## 异常（标记解析失败 → 未写入，需人工修复标记）',
+      '- [x] `old.md (项目: /proj)`（2026-01-02T00:00:00.000Z）',
+      '',
+    ].join('\n'), 'utf-8');
+
+    const entries = loadUpdateInfos();
+    expect(entries).toHaveLength(2);
+    expect(entries[0].kind).toBe('appended');
+    expect(entries[0].absolutePath).toBe('/old/appended.md');
+    expect(entries[0].backupRel).toBeNull();
+    expect(entries[0].command).toBeNull();
+    expect(entries[0].note).toBeNull();
+    expect(entries[1].kind).toBe('anomaly');
+    expect(entries[1].resolved).toBe(true);
+    expect(entries[1].projectRoot).toBe('/proj');
+  });
+
+  it('- [ ]→- [x] 勾选后三类均 resolved=true', () => {
+    appendUpdateInfo('appended', { absolutePath: join(mockHome.dir, 'a.md') });
+    appendUpdateInfo('anomaly', { absolutePath: join(mockHome.dir, 'b.md') });
+    appendUpdateInfo('backed', { absolutePath: join(mockHome.dir, 'c.md'), backupRel: 'global/c.md', command: 'update' });
+
+    const raw = readFileSync(infosPath(), 'utf-8')
+      .split('\n')
+      .map((l) => (l.startsWith('- [ ]') ? l.replace('- [ ]', '- [x]') : l))
+      .join('\n');
+    writeFileSync(infosPath(), raw, 'utf-8');
+
+    const entries = loadUpdateInfos();
+    expect(entries).toHaveLength(3);
+    expect(entries.every((e) => e.resolved)).toBe(true);
+  });
+
+  it('三节顺序稳定（appended → anomaly → backed）且 kind 归属正确', () => {
+    appendUpdateInfo('backed', { absolutePath: '/c.md', backupRel: 'r', command: 'setup' });
+    appendUpdateInfo('anomaly', { absolutePath: '/b.md' });
+    appendUpdateInfo('appended', { absolutePath: '/a.md' });
+
+    const raw = readFileSync(infosPath(), 'utf-8');
+    expect(raw.indexOf('## 追加')).toBeLessThan(raw.indexOf('## 异常'));
+    expect(raw.indexOf('## 异常')).toBeLessThan(raw.indexOf('## 备份'));
+
+    expect(loadUpdateInfos().map((e) => e.kind)).toEqual(['appended', 'anomaly', 'backed']);
+  });
+
+  it('backed 不去重：连续两条同路径 backed 均保留', () => {
+    appendUpdateInfo('backed', { absolutePath: '/x.md', backupRel: 'r1', command: 'setup' });
+    appendUpdateInfo('backed', { absolutePath: '/x.md', backupRel: 'r2', command: 'update' });
+    expect(loadUpdateInfos()).toHaveLength(2);
   });
 });

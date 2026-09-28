@@ -351,14 +351,17 @@ At startup, Feel checks `.openfeel/update_state.json` (if the file exists):
 
 At startup, Feel checks `~/.openfeel/update_infos.md` (if the file exists):
 
-1. Read the file, iterate over both "Appended" and "Anomaly" entries, and resolve each target path from the recorded entry (absolute path, or the "relative path (project: root)" tuple).
+1. Read the file, iterate over all three kinds (appended / anomaly / backup), and resolve each target path from the recorded entry (absolute path, or the "relative path (project: root)" tuple).
 2. Process each entry:
-   - **Anomaly entry** (marker parse failure): if the target file now contains a complete begin/end region, the anomaly has self-healed — use the edit tool to change that entry's `- [ ]` to `- [x]` to check it off.
+   - **Anomaly entry** (not written, pending repair) — dispatch by cause:
+     - Entry contains `原因: backup_failed` / `cause: backup_failed`: the write was skipped because the **backup failed** (**not a marker problem and will never self-heal**) → guide the user to **re-run `openfeel update` / `openfeel setup`** to retry deployment, then check it off;
+     - Otherwise (marker parse failure): if the target file now contains a complete begin/end region, the anomaly has **self-healed** — use the edit tool to change that entry's `- [ ]` to `- [x]` to check it off.
    - **Appended entry** (appended without marker): even if the target file now contains markers, the appended managed region may still linger outside the region causing **content duplication** — **do not silently clear**; prompt the user to manually confirm there is no duplication, then use the edit tool to change that entry's `- [ ]` to `- [x]` to check it off.
+   - **Backup entries** (existed before deployment → backed up): first check whether the file pointed by `备份:` / `backup:` exists — if it exists, the original file from that deployment has been safely preserved; **prompt the user in a TTY** that "the original file was backed up before overwrite at `{backupRel}`, please review"; **if the backup file is missing**, prompt "backup lost, check the current file carefully". After user confirmation, use the edit tool to change `- [ ]` to `- [x]`. **Silent in non-TTY** (the entry is already in the file and will be checked next session).
 3. Prompting mirrors "Conflict Detection": in a TTY interactive environment, print the pending list and confirmation guidance; in non-TTY (e.g. CI/CD), silently skip.
 4. After repair, remind the user to restart the session (global agents/constraints have changed and require a reload).
 5. Once all entries are checked, the file may be deleted or kept as a skeleton (no separate clear API needed).
-6. If the file does not exist: **silently skip** (no append/anomaly has occurred).
+6. If the file does not exist: **silently skip** (no append/anomaly/backup has occurred).
 
 ## Decision Appending
 

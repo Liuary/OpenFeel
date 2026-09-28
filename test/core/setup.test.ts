@@ -13,10 +13,26 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
+// 备份失败注入开关（op-005 集成层：备份失败 → 目标未写入 + anomaly）
+const backupMock = vi.hoisted(() => ({ failFor: null as string | null }));
+vi.mock('../../src/core/backup.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/backup.js')>();
+  return {
+    ...actual,
+    backupFileBeforeWrite: (absPath: string, opts: Parameters<typeof actual.backupFileBeforeWrite>[1]) => {
+      if (backupMock.failFor && absPath === backupMock.failFor) {
+        throw new actual.BackupError(absPath, new Error('injected backup failure'));
+      }
+      return actual.backupFileBeforeWrite(absPath, opts);
+    },
+  };
+});
+
 import { setupGlobalFramework } from '../../src/core/setup.js';
+import { resetBackupSetCache } from '../../src/core/backup.js';
 import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath } from '../../src/core/global-paths.js';
-import { existsSync, readFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 
 describe('setupGlobalFramework', () => {
@@ -25,6 +41,8 @@ describe('setupGlobalFramework', () => {
   beforeEach(() => {
     homeDir = mkdtempSync(join(tmpdir(), 'openfeel-setup-home-'));
     mockHome.dir = homeDir;
+    backupMock.failFor = null;
+    resetBackupSetCache();
   });
 
   afterEach(() => {
@@ -77,5 +95,52 @@ describe('setupGlobalFramework', () => {
 
   it('getGlobalAgentsMdPath 落点为 ~/.config/opencode/AGENTS.md', () => {
     expect(getGlobalAgentsMdPath()).toBe(join(homeDir, '.config', 'opencode', 'AGENTS.md'));
+  });
+
+  // ── stage-46：部署覆盖前备份 ──
+
+  it('stage-46：二次 setup（AGENTS.md 内容变化）→ 覆盖前备份 + backed（command=setup）', () => {
+    setupGlobalFramework('zh-CN');
+    const md = getGlobalAgentsMdPath();
+    const original = readFileSync(md, 'utf-8');
+    writeFileSync(md, original.replace('<!-- openfeel:begin -->\n', '<!-- openfeel:begin -->\nTAMPER\n'), 'utf-8');
+
+    const r = setupGlobalFramework('zh-CN');
+    expect(r.updated).toContain(md);
+
+    const backupRootPath = join(homeDir, '.openfeel', 'backup');
+    expect(existsSync(backupRootPath)).toBe(true);
+    const rel = join('global', relative(homeDir, md));
+    expect(readdirSync(backupRootPath).some((d) => existsSync(join(backupRootPath, d, rel)))).toBe(true);
+
+    const infos = readFileSync(join(homeDir, '.openfeel', 'update_infos.md'), 'utf-8');
+    expect(infos).toContain('## 备份');
+    expect(infos).toContain('来源: setup');
+  });
+
+  it('stage-46：首次 setup（created）不产生备份', () => {
+    setupGlobalFramework('zh-CN');
+    expect(existsSync(join(homeDir, '.openfeel', 'backup'))).toBe(false);
+  });
+
+  it('stage-46：备份失败 → AGENTS.md 未写入 + anomaly(backup_failed) + skipped', () => {
+    setupGlobalFramework('zh-CN');
+    const md = getGlobalAgentsMdPath();
+    const original = readFileSync(md, 'utf-8');
+    const tampered = original.replace('<!-- openfeel:begin -->\n', '<!-- openfeel:begin -->\nTAMPER\n');
+    writeFileSync(md, tampered, 'utf-8');
+
+    backupMock.failFor = md;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const r = setupGlobalFramework('zh-CN');
+      expect(r.skipped).toContain(md);
+      expect(r.updated).not.toContain(md);
+      expect(readFileSync(md, 'utf-8')).toBe(tampered);
+      const infos = readFileSync(join(homeDir, '.openfeel', 'update_infos.md'), 'utf-8');
+      expect(infos).toContain('原因: backup_failed');
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

@@ -22,6 +22,7 @@ import {
   getGlobalUpdateStatePath,
   getGlobalUpdateInfosPath,
   getAuthJsonPath,
+  getGlobalBackupRootPath,
 } from '../../src/core/global-paths.js';
 
 describe('global-paths 全局路径解析', () => {
@@ -62,5 +63,9 @@ describe('global-paths 全局路径解析', () => {
 
   it('getAuthJsonPath 应返回 ~/.local/share/opencode/auth.json', () => {
     expect(getAuthJsonPath()).toBe(join(home, '.local', 'share', 'opencode', 'auth.json'));
+  });
+
+  it('getGlobalBackupRootPath 应返回 ~/.openfeel/backup（stage-46）', () => {
+    expect(getGlobalBackupRootPath()).toBe(join(home, '.openfeel', 'backup'));
   });
 });

@@ -12,7 +12,7 @@ cross_stage_constraints:
     type: hard
     status: satisfied            # 实测已完成（commit 8e1e186）
     reason: "46 与 45 同改 src/core/{init,setup,update}.ts 与 src/core/global-paths.ts（45 改注释/文案、46 改逻辑）→ 必须串行 45 → 46"
-  - after_stage: v1.1.2-stage-47
+  - before_stage: v1.1.2-stage-47
     type: mutual_exclusion
     reason: "46 → 47 串行（若 47 存在/后续阶段）：同为部署/配置热区（46 改 init/setup/update/global-paths/migrate；47 涉同族写入面）→ 避免同文件并发"
   - before_stage: v1.1.2-stage-43
@@ -31,7 +31,6 @@ ops:
     produces:
       - src/core/global-paths.ts
       - src/core/backup.ts                 # 新建
-      - test/core/backup.test.ts           # 新建（op-005 落地）
     deps: []
     notes: "底座；ts 探测 + 每文件备份 + manifest 读改写全程在单一 withFileLock(globalLockPath('backup')) 临界区（REV-005）"
 
@@ -89,6 +88,7 @@ ops:
     file: op-005.md
     title: "备份测试与全量回归"
     produces:
+      - test/core/backup.test.ts           # 新建
       - test/core/update-infos.test.ts
       - test/core/update.test.ts
       - test/core/setup.test.ts

@@ -361,14 +361,17 @@ At startup, Feel checks \`.openfeel/update_state.json\` (if the file exists):
 
 At startup, Feel checks \`~/.openfeel/update_infos.md\` (if the file exists):
 
-1. Read the file, iterate over both "Appended" and "Anomaly" entries, and resolve each target path from the recorded entry (absolute path, or the "relative path (project: root)" tuple).
+1. Read the file, iterate over all three kinds (appended / anomaly / backup), and resolve each target path from the recorded entry (absolute path, or the "relative path (project: root)" tuple).
 2. Process each entry:
-   - **Anomaly entry** (marker parse failure): if the target file now contains a complete begin/end region, the anomaly has self-healed — use the edit tool to change that entry's \`- [ ]\` to \`- [x]\` to check it off.
+   - **Anomaly entry** (not written, pending repair) — dispatch by cause:
+     - Entry contains \`原因: backup_failed\` / \`cause: backup_failed\`: the write was skipped because the **backup failed** (**not a marker problem and will never self-heal**) → guide the user to **re-run \`openfeel update\` / \`openfeel setup\`** to retry deployment, then check it off;
+     - Otherwise (marker parse failure): if the target file now contains a complete begin/end region, the anomaly has **self-healed** — use the edit tool to change that entry's \`- [ ]\` to \`- [x]\` to check it off.
    - **Appended entry** (appended without marker): even if the target file now contains markers, the appended managed region may still linger outside the region causing **content duplication** — **do not silently clear**; prompt the user to manually confirm there is no duplication, then use the edit tool to change that entry's \`- [ ]\` to \`- [x]\` to check it off.
+   - **Backup entries** (existed before deployment → backed up): first check whether the file pointed by \`备份:\` / \`backup:\` exists — if it exists, the original file from that deployment has been safely preserved; **prompt the user in a TTY** that "the original file was backed up before overwrite at \`{backupRel}\`, please review"; **if the backup file is missing**, prompt "backup lost, check the current file carefully". After user confirmation, use the edit tool to change \`- [ ]\` to \`- [x]\`. **Silent in non-TTY** (the entry is already in the file and will be checked next session).
 3. Prompting mirrors "Conflict Detection": in a TTY interactive environment, print the pending list and confirmation guidance; in non-TTY (e.g. CI/CD), silently skip.
 4. After repair, remind the user to restart the session (global agents/constraints have changed and require a reload).
 5. Once all entries are checked, the file may be deleted or kept as a skeleton (no separate clear API needed).
-6. If the file does not exist: **silently skip** (no append/anomaly has occurred).
+6. If the file does not exist: **silently skip** (no append/anomaly/backup has occurred).
 
 ## Decision Appending
 
@@ -1697,14 +1700,17 @@ Feel 启动时检测 \`.openfeel/update_state.json\`（若文件存在）：
 
 Feel 启动时检查 \`~/.openfeel/update_infos.md\`（若文件存在）：
 
-1. 读取该文件，遍历「追加」与「异常」两类条目，按条目记录还原目标文件路径（绝对路径，或「相对路径 (项目: 根)」二元组）。
+1. 读取该文件，遍历「追加」「异常」「备份」三类条目，按条目记录还原目标文件路径（绝对路径，或「相对路径 (项目: 根)」二元组）。
 2. 逐条处理：
-   - **异常条目**（标记解析失败）：目标文件现已含完整 begin/end 标记 → 异常已自愈，用 edit 工具将对应条目的 \`- [ ]\` 改为 \`- [x]\` 勾选清除该条目。
+   - **异常条目**（未写入，待修复）——按成因分派：
+     - 条目含 \`原因: backup_failed\`：**备份失败**导致未写入（**非标记问题，不会自愈**）→ 引导用户**重跑 \`openfeel update\` / \`openfeel setup\`** 以重试部署，成功后勾选；
+     - 其余（标记解析失败）：目标文件现已含完整 begin/end 标记 → **已自愈**，用 edit 工具将对应条目的 \`- [ ]\` 改为 \`- [x]\` 勾选清除该条目。
    - **追加条目**（无标记追加）：即使目标文件现已含标记，追加的受管区可能仍残留在标记区外造成**内容重复**，**不静默清除**——提示用户人工确认是否存在重复内容，确认后用 edit 工具将对应条目 \`- [ ]\` 改为 \`- [x]\` 勾选。
+   - **备份条目**（部署覆盖前已存在 → 已备份）：先检查条目中 \`备份:\` 指向的备份文件**是否存在**——存在则该次部署的原始文件已安全留存，**在 TTY 下提示用户**「部署覆盖前已备份原文件至 \`{backupRel}\`，请检查」；**若备份文件缺失**，提示「备份已丢失，请谨慎检查当前文件」。用户确认后用 edit 工具将对应条目 \`- [ ]\` 改为 \`- [x]\` 勾选。**非 TTY 环境静默**（条目已在文件中，下次会话再检查）。
 3. 提示方式对称「冲突检测」：终端为 TTY 交互环境时输出待处理列表与确认引导；非 TTY（如 CI/CD）静默跳过。
 4. 修复完成后，提醒用户重启会话（全局 agent/约束已变更，需重启加载）。
 5. 全部条目勾选后，可删除该文件或保留骨架（无需单独清空 API）。
-6. 若文件不存在：**静默跳过**（尚未发生过追加/异常）。
+6. 若文件不存在：**静默跳过**（尚未发生过追加/异常/备份）。
 
 ## 决策追加
 
@@ -3988,14 +3994,17 @@ At startup, Feel checks \`.openfeel/update_state.json\` (if the file exists):
 
 At startup, Feel checks \`~/.openfeel/update_infos.md\` (if the file exists):
 
-1. Read the file, iterate over both "Appended" and "Anomaly" entries, and resolve each target path from the recorded entry (absolute path, or the "relative path (project: root)" tuple).
+1. Read the file, iterate over all three kinds (appended / anomaly / backup), and resolve each target path from the recorded entry (absolute path, or the "relative path (project: root)" tuple).
 2. Process each entry:
-   - **Anomaly entry** (marker parse failure): if the target file now contains a complete begin/end region, the anomaly has self-healed — use the edit tool to change that entry's \`- [ ]\` to \`- [x]\` to check it off.
+   - **Anomaly entry** (not written, pending repair) — dispatch by cause:
+     - Entry contains \`原因: backup_failed\` / \`cause: backup_failed\`: the write was skipped because the **backup failed** (**not a marker problem and will never self-heal**) → guide the user to **re-run \`openfeel update\` / \`openfeel setup\`** to retry deployment, then check it off;
+     - Otherwise (marker parse failure): if the target file now contains a complete begin/end region, the anomaly has **self-healed** — use the edit tool to change that entry's \`- [ ]\` to \`- [x]\` to check it off.
    - **Appended entry** (appended without marker): even if the target file now contains markers, the appended managed region may still linger outside the region causing **content duplication** — **do not silently clear**; prompt the user to manually confirm there is no duplication, then use the edit tool to change that entry's \`- [ ]\` to \`- [x]\` to check it off.
+   - **Backup entries** (existed before deployment → backed up): first check whether the file pointed by \`备份:\` / \`backup:\` exists — if it exists, the original file from that deployment has been safely preserved; **prompt the user in a TTY** that "the original file was backed up before overwrite at \`{backupRel}\`, please review"; **if the backup file is missing**, prompt "backup lost, check the current file carefully". After user confirmation, use the edit tool to change \`- [ ]\` to \`- [x]\`. **Silent in non-TTY** (the entry is already in the file and will be checked next session).
 3. Prompting mirrors "Conflict Detection": in a TTY interactive environment, print the pending list and confirmation guidance; in non-TTY (e.g. CI/CD), silently skip.
 4. After repair, remind the user to restart the session (global agents/constraints have changed and require a reload).
 5. Once all entries are checked, the file may be deleted or kept as a skeleton (no separate clear API needed).
-6. If the file does not exist: **silently skip** (no append/anomaly has occurred).
+6. If the file does not exist: **silently skip** (no append/anomaly/backup has occurred).
 
 ## Decision Appending
 
@@ -5324,14 +5333,17 @@ Feel 启动时检测 \`.openfeel/update_state.json\`（若文件存在）：
 
 Feel 启动时检查 \`~/.openfeel/update_infos.md\`（若文件存在）：
 
-1. 读取该文件，遍历「追加」与「异常」两类条目，按条目记录还原目标文件路径（绝对路径，或「相对路径 (项目: 根)」二元组）。
+1. 读取该文件，遍历「追加」「异常」「备份」三类条目，按条目记录还原目标文件路径（绝对路径，或「相对路径 (项目: 根)」二元组）。
 2. 逐条处理：
-   - **异常条目**（标记解析失败）：目标文件现已含完整 begin/end 标记 → 异常已自愈，用 edit 工具将对应条目的 \`- [ ]\` 改为 \`- [x]\` 勾选清除该条目。
+   - **异常条目**（未写入，待修复）——按成因分派：
+     - 条目含 \`原因: backup_failed\`：**备份失败**导致未写入（**非标记问题，不会自愈**）→ 引导用户**重跑 \`openfeel update\` / \`openfeel setup\`** 以重试部署，成功后勾选；
+     - 其余（标记解析失败）：目标文件现已含完整 begin/end 标记 → **已自愈**，用 edit 工具将对应条目的 \`- [ ]\` 改为 \`- [x]\` 勾选清除该条目。
    - **追加条目**（无标记追加）：即使目标文件现已含标记，追加的受管区可能仍残留在标记区外造成**内容重复**，**不静默清除**——提示用户人工确认是否存在重复内容，确认后用 edit 工具将对应条目 \`- [ ]\` 改为 \`- [x]\` 勾选。
+   - **备份条目**（部署覆盖前已存在 → 已备份）：先检查条目中 \`备份:\` 指向的备份文件**是否存在**——存在则该次部署的原始文件已安全留存，**在 TTY 下提示用户**「部署覆盖前已备份原文件至 \`{backupRel}\`，请检查」；**若备份文件缺失**，提示「备份已丢失，请谨慎检查当前文件」。用户确认后用 edit 工具将对应条目 \`- [ ]\` 改为 \`- [x]\` 勾选。**非 TTY 环境静默**（条目已在文件中，下次会话再检查）。
 3. 提示方式对称「冲突检测」：终端为 TTY 交互环境时输出待处理列表与确认引导；非 TTY（如 CI/CD）静默跳过。
 4. 修复完成后，提醒用户重启会话（全局 agent/约束已变更，需重启加载）。
 5. 全部条目勾选后，可删除该文件或保留骨架（无需单独清空 API）。
-6. 若文件不存在：**静默跳过**（尚未发生过追加/异常）。
+6. 若文件不存在：**静默跳过**（尚未发生过追加/异常/备份）。
 
 ## 决策追加
 

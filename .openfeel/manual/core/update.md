@@ -57,6 +57,7 @@ stage-38 用「控制区标记」替换 stage-32 的 `writeWithMergeDetection`�
 - 无标记追加「追加即建区」（N2）；hash 降级为「无标记文件归属兜底」（N3），不再作为含标记文件拒写依据。
 - `UpdateResult` 新增 `appended: string[]`（与 created/updated/skipped/conflicts 并列）；`conflicts` 本阶段恒空（语义变化）。
 - 追加/异常动作内联写 `~/.openfeel/update_infos.md`（见 `core/update-infos.md`），路径二元组（绝对路径 / 项目根+相对路径）。
+- **覆盖前备份（stage-46）**：`updated`/adopt/`appended` 三分支及全局 `opencode.jsonc` 覆盖写前，经 `backupFileBeforeWrite` 备份原件到 `~/.openfeel/backup/{ts}/` 并记 `backed` 条目；备份失败 → 返回既有 `'skipped'` + `note='backup_failed'` 异常，不覆盖。详见 `core/backup.md`。
 
 ## 变更历史
 

@@ -35,3 +35,8 @@
 | [2026-09-29-Liuary-028.md](2026-09-29-Liuary-028.md) | Liuary | v1.1.2-stage-45.op-004 执行通过 |
 | [2026-09-29-Liuary-029.md](2026-09-29-Liuary-029.md) | Archiver | **stage-45 归档完成（v1.1.2 平台强限定内容「描述泛化」）**：源码注释/命令文案/i18n 双语 7 键 + 模板权威源 + 规则/文档/手册 24 文件（含用户点名处 `AGENTS.md:82`）+ 泛化锁断言，全部描述泛化、**零行为变更**（`global-paths.ts` 8/8 全注释行 + build 幂等零 diff + worktree 命令输出逐字一致）；659/659 测试全绿（40 文件）、`lint i18n` 529 键；REV-001（low）closed、三段审查零阻塞；Bug：`templates/BUG-002`（medium 非阻塞，归 stage-47）；知识沉淀 3 条至 patterns(2)+troubleshooting(1) |
 | [2026-09-29-Liuary-030.md](2026-09-29-Liuary-030.md) | Liuary | 阶段 v1.1.2-stage-45 完成 |
+| [2026-09-29-Liuary-031.md](2026-09-29-Liuary-031.md) | Liuary | v1.1.2-stage-46.op-001 执行通过 |
+| [2026-09-29-Liuary-032.md](2026-09-29-Liuary-032.md) | Liuary | v1.1.2-stage-46.op-002 执行通过 |
+| [2026-09-29-Liuary-033.md](2026-09-29-Liuary-033.md) | Liuary | v1.1.2-stage-46.op-003 执行通过 |
+| [2026-09-29-Liuary-034.md](2026-09-29-Liuary-034.md) | Liuary | v1.1.2-stage-46.op-004 执行通过 |
+| [2026-09-29-Liuary-035.md](2026-09-29-Liuary-035.md) | Liuary | v1.1.2-stage-46.op-005 执行通过 |

@@ -20,6 +20,8 @@ import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader
 import { mergeGlobalOpencodeJsonc, parseJsonc } from './opencode-config.js';
 import { normalizeAgentName } from './flow-manager.js';
 import { deployGlobalAsset, SKILL_DEFINITIONS } from './update.js';
+import { appendUpdateInfo } from './update-infos.js';
+import { backupFileBeforeWrite, notifyBackupIfTTY } from './backup.js';
 
 // ─── 类型 ─────────────────────────────────────────────────────────
 
@@ -484,13 +486,13 @@ export function migrateProject(
   // manifest.globalStateKeys（已部署 key），避免 rollback 无法清理已写入的全局 state 记录。
   try {
     const agentsMdPath = getGlobalAgentsMdPath();
-    deployGlobalAsset(agentsMdPath, loadTemplate(lang, 'agents-md'), globalState);
+    deployGlobalAsset(agentsMdPath, loadTemplate(lang, 'agents-md'), globalState, 'migrate');
     deployed.push(agentsMdPath);
     globalStateKeys.push(agentsMdPath);
     const agentsDir = getGlobalAgentsDir();
     for (const name of listAgentIds(lang)) {
       const p = join(agentsDir, `${name}.md`);
-      deployGlobalAsset(p, loadAgentTemplate(lang, name), globalState);
+      deployGlobalAsset(p, loadAgentTemplate(lang, name), globalState, 'migrate');
       deployed.push(p);
       globalStateKeys.push(p);
     }
@@ -498,7 +500,7 @@ export function migrateProject(
     for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {
       mkdirSync(join(skillsDir, name), { recursive: true });
       const p = join(skillsDir, name, 'SKILL.md');
-      deployGlobalAsset(p, content, globalState);
+      deployGlobalAsset(p, content, globalState, 'migrate');
       deployed.push(p);
       globalStateKeys.push(p);
     }
@@ -517,6 +519,12 @@ export function migrateProject(
     } catch (err) {
       console.warn(`[migrate] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
       merged = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';
+    }
+    // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
+    const globalJsoncBackup = backupFileBeforeWrite(globalJsoncPath, { command: 'migrate' });
+    if (globalJsoncBackup) {
+      appendUpdateInfo('backed', { absolutePath: globalJsoncPath, backupRel: globalJsoncBackup.backupRel, command: 'migrate' });
+      notifyBackupIfTTY(globalJsoncBackup.backupRel);
     }
     withFileLock(globalLockPath('global-opencode-jsonc'), () => atomicWriteFileSync(globalJsoncPath, merged));
     updateFileHash(globalState, globalJsoncPath, merged);

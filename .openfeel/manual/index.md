@@ -12,6 +12,7 @@
   - [增量更新状态](core/update-state.md)
   - [控制区标记](core/managed-region.md)
   - [增量更新记录](core/update-infos.md)
+  - [部署覆盖前备份](core/backup.md)
   - [阶段路径映射](core/plan-path.md)
   - [并发保护工具](core/fs.md)
   - [模板加载](core/template-loader.md)

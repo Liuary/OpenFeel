@@ -17,6 +17,7 @@ import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
 import { detectFileType, normalize, splitFrontmatter, parseRegion, wrapRegion, replaceRegion, mergeFrontmatter, serializeFrontmatter } from './managed-region.js';
 import { appendUpdateInfo } from './update-infos.js';
+import { backupFileBeforeWrite, BackupError, notifyBackupIfTTY, type BackupCommand } from './backup.js';
 
 // 新增：update_state.json hash 比对与冲突检测（项目 state + 全局 state）
 import {
@@ -1302,6 +1303,7 @@ function writeManagedFile(
   stateKey: string,
   updateState: UpdateState | null,
   target: { isGlobal: boolean; projectRoot?: string },
+  command: BackupCommand,
 ): ManagedAction {
   const type = detectFileType(filePath);
   if (type === null || type === 'jsonc') {
@@ -1327,6 +1329,33 @@ function writeManagedFile(
 
   const region = parseRegion(existingBody, type);
 
+  // 写前备份（B3）：目标已存在且本次将实际改变内容时调用；备份失败 → 'skipped'（不覆盖）
+  const runPreWriteBackup = (): 'ok' | 'skipped' => {
+    try {
+      const backup = backupFileBeforeWrite(filePath, {
+        command,
+        projectPath: target.isGlobal ? undefined : target.projectRoot,
+      });
+      if (backup) {
+        appendUpdateInfo('backed', target.isGlobal
+          ? { absolutePath: filePath, backupRel: backup.backupRel, command }
+          : { projectRoot: target.projectRoot, relativePath: stateKey, backupRel: backup.backupRel, command });
+        notifyBackupIfTTY(backup.backupRel); // B6：仅 TTY
+      }
+      return 'ok';
+    } catch (err) {
+      if (err instanceof BackupError) {
+        // 备份失败 → 记可区分异常（REV-004）并跳过该文件写入，返回既有 'skipped'
+        appendUpdateInfo('anomaly', target.isGlobal
+          ? { absolutePath: filePath, note: 'backup_failed' }
+          : { projectRoot: target.projectRoot, relativePath: stateKey, note: 'backup_failed' });
+        console.warn(`[update] ${err.message}；已跳过该文件写入`);
+        return 'skipped';
+      }
+      throw err;
+    }
+  };
+
   if (region.status === 'ok') {
     // 含标记：frontmatter 合并 + 正文区内替换，全文比对（REV-901 skip 判定）
     // incoming 无 frontmatter（如 core.md/AGENTS.md 模板）时保留用户已有 frontmatter，避免写入丢失（REV-1101）
@@ -1334,6 +1363,9 @@ function writeManagedFile(
     const newBody = replaceRegion(existingBody, incomingBody, type);
     const newContent = newFm ? serializeFrontmatter(newFm) + newBody : newBody;
     if (newContent === normalize(existing)) {
+      return 'skipped';
+    }
+    if (runPreWriteBackup() === 'skipped') {
       return 'skipped';
     }
     atomicWriteFileSync(filePath, newContent);
@@ -1345,12 +1377,18 @@ function writeManagedFile(
     const fileState = updateState?.files[stateKey];
     if (fileState && hashContent(existing) === fileState.hash) {
       // adopt：存量框架文件未改 → 直接写带标记的新框架内容（等价 created 记为 updated）
+      if (runPreWriteBackup() === 'skipped') {
+        return 'skipped';
+      }
       atomicWriteFileSync(filePath, composeManagedContent(content, type));
       return 'updated';
     }
     // 追加受管区（标记包裹正文，不触碰 frontmatter），并记录待会话启动复核
     const appendedRegion = wrapRegion(incomingBody, type);
     const sep = existing.endsWith('\n') ? '' : '\n';
+    if (runPreWriteBackup() === 'skipped') {
+      return 'skipped';
+    }
     atomicWriteFileSync(filePath, `${existing}${sep}${appendedRegion}`);
     appendUpdateInfo('appended', target.isGlobal ? { absolutePath: filePath } : { projectRoot: target.projectRoot, relativePath: stateKey });
     return 'appended';
@@ -1372,8 +1410,9 @@ export function deployGlobalAsset(
   filePath: string,
   content: string,
   state: UpdateState,
+  command: BackupCommand,
 ): ManagedAction {
-  return writeManagedFile(filePath, content, filePath, state, { isGlobal: true });
+  return writeManagedFile(filePath, content, filePath, state, { isGlobal: true }, command);
 }
 
 /** 将 writeManagedFile 的动作分发到对应结果数组 */
@@ -1463,7 +1502,7 @@ export function updateProject(
   const agentsMdPath = getGlobalAgentsMdPath();
   const agentsMdContent = loadTemplate(lang, 'agents-md');
   {
-    const action = deployGlobalAsset(agentsMdPath, agentsMdContent, newGlobalState);
+    const action = deployGlobalAsset(agentsMdPath, agentsMdContent, newGlobalState, 'update');
     pushAction(action, agentsMdPath, created, updated, skipped, appended);
   }
 
@@ -1471,7 +1510,7 @@ export function updateProject(
   for (const name of listAgentIds(lang)) {
     const content = loadAgentTemplate(lang, name);
     const filePath = join(agentsDir, `${name}.md`);
-    const action = deployGlobalAsset(filePath, content, newGlobalState);
+    const action = deployGlobalAsset(filePath, content, newGlobalState, 'update');
     pushAction(action, filePath, created, updated, skipped, appended);
   }
 
@@ -1480,12 +1519,18 @@ export function updateProject(
     const skillSubDir = join(skillsDir, name);
     mkdirSync(skillSubDir, { recursive: true });
     const filePath = join(skillSubDir, 'SKILL.md');
-    const action = deployGlobalAsset(filePath, content, newGlobalState);
+    const action = deployGlobalAsset(filePath, content, newGlobalState, 'update');
     pushAction(action, filePath, created, updated, skipped, appended);
   }
 
   // 3. 全局 opencode.jsonc：深度合并（保留用户字段），加全局锁 + 原子写
   const globalJsoncPath = getGlobalOpencodeJsoncPath();
+  // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
+  const globalJsoncBackup = backupFileBeforeWrite(globalJsoncPath, { command: 'update' });
+  if (globalJsoncBackup) {
+    appendUpdateInfo('backed', { absolutePath: globalJsoncPath, backupRel: globalJsoncBackup.backupRel, command: 'update' });
+    notifyBackupIfTTY(globalJsoncBackup.backupRel);
+  }
   // REV-1805：read-merge-write 全部置于锁内，消除与 model-config 锁内读写的 TOCTOU 竞态
   const globalJsoncNew = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
     const current = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';

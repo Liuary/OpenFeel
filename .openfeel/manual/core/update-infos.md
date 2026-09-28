@@ -4,20 +4,28 @@
 
 ## 职责
 
-读写 `~/.openfeel/update_infos.md`，记录 `openfeel update` 因目标文件无控制区标记而追加的受管内容（appended），以及标记解析异常（malformed）未写入、待人工修复的文件（anomaly），供会话启动时检查并修复（feel.md 消费）。
+读写 `~/.openfeel/update_infos.md`，记录三类条目，供会话启动时检查并修复（feel.md 消费）：
+- **appended**：`openfeel update` 因目标文件无控制区标记而追加的受管内容；
+- **anomaly**：标记解析异常（malformed）或**备份失败**（`note='backup_failed'`）未写入、待人工修复/重试的文件；
+- **backed**（stage-46）：部署覆盖前已存在的原始文件已备份（记录备份相对路径与来源命令），待检查。
 
 ## 核心 API
 
 | 函数 | 功能 |
 |------|------|
-| `loadUpdateInfos()` | 读 update_infos.md 解析为条目列表；不存在/损坏 → []（降级，不中断） |
-| `appendUpdateInfo(kind, target)` | 加锁 + 原子写追加一条记录（kind: appended / anomaly） |
+| `loadUpdateInfos()` | 读 update_infos.md 解析为条目列表；不存在/损坏 → []（降级，不中断）；节识别按 `SECTION_PREFIXES`（短前缀）匹配 |
+| `appendUpdateInfo(kind, target)` | 加锁 + 原子写追加一条记录（kind: appended / anomaly / backed）；仅 anomaly 去重 |
 | `resolveUpdateInfo(target)` | 标记匹配条目为已复核（resolved） |
 | `clearUpdateInfos()` | 清空全部条目（写空骨架） |
 
 ## 数据结构
 
-条目 `UpdateInfoEntry`：`{ kind, absolutePath?, projectRoot?, relativePath?, timestamp, resolved }`。目标 `UpdateInfoTarget` 二选一：全局资产 `{ absolutePath }`，项目资产 `{ projectRoot, relativePath }`。
+条目 `UpdateInfoEntry`：`{ kind, absolutePath, projectRoot, relativePath, timestamp, resolved, backupRel, command, note }`（除 timestamp/resolved 外均为 `string | null`，必填 + 显式 null）。目标 `UpdateInfoTarget` 二选一：全局资产 `{ absolutePath }`，项目资产 `{ projectRoot, relativePath }`；backed 另传 `{ backupRel, command }`；anomaly 备份失败另传 `{ note: 'backup_failed' }`。
+
+行格式（尾部段可选，向后兼容旧行）：
+- backed：`` - [ ] `{displayPath}`（{timestamp}）（备份: `{backupRel}`，来源: {command}） ``
+- anomaly（备份失败）：`` - [ ] `{displayPath}`（{timestamp}）（原因: backup_failed） ``
+- appended / anomaly（malformed）：`` - [ ] `{displayPath}`（{timestamp}） ``（不变）
 
 ## 路径二元组（REV-903）
 
@@ -33,14 +41,17 @@ update_infos.md 存于全局 `~/.openfeel/`（跨项目共享），条目路径�
 ## 设计要点
 
 - **加锁 + 原子写**：写入走 `withFileLock(globalLockPath('update-infos'))` + `atomicWriteFileSync`（跨项目共享，须加锁）。
-- **anomaly 去重**：同路径已有未修复（resolved=false）的 anomaly 条目则跳过，避免每次 update 无限累积。
+- **anomaly 去重**：同路径已有未修复（resolved=false）的 anomaly 条目则跳过，避免每次 update 无限累积；**backed 不去重**（一次命令内由调用方保证每文件仅一次）。
+- **读侧节识别单一源（stage-46）**：`loadUpdateInfos` 按 `SECTION_PREFIXES`（`## 追加` / `## 异常` / `## 备份` 短前缀）匹配 `currentKind`，不再硬编码全标题。修改 `SECTION_TITLES` 节标题文案时须同步核对/迁移存量 `update_infos.md` 的节标题。
 - **降级不中断**：文件损坏时 `loadUpdateInfos()` 返回 []（警告），不抛错。
-- **会话启动消费方（Feel）不可 import TS 模块**：Feel 用 edit 工具直接编辑 `~/.openfeel/update_infos.md` 勾选条目，故 `resolveUpdateInfo`/`clearUpdateInfos` 保留供未来 CLI 或其他调用方使用。
+- **会话启动消费方（Feel）不可 import TS 模块**：Feel 用 edit 工具直接编辑 `~/.openfeel/update_infos.md` 勾选条目，故 `resolveUpdateInfo`/`clearUpdateInfos` 保留供未来 CLI 或其他调用方使用。备份类条目处理（含 `backupRel` 存在性检查与 `backup_failed` 分派）见 feel.md「update_infos 检查修复」。
 
 ## 调用关系
 
 ```
-src/core/update.ts（writeManagedFile 追加/异常动作内联写）
+src/core/update.ts（writeManagedFile 追加/异常/备份动作内联写）
+src/core/{setup,update,migrate}.ts（全局 opencode.jsonc 覆盖前备份）
+src/core/init.ts（项目 config.yaml / package.json 覆盖前备份）
   └─ src/core/update-infos.ts（读写）
        └─ ~/.openfeel/update_infos.md（经 global-paths.ts getGlobalUpdateInfosPath）
 ```
@@ -50,3 +61,4 @@ src/core/update.ts（writeManagedFile 追加/异常动作内联写）
 | 阶段 | 变更 |
 |------|------|
 | stage-38 | 初始创建，appended/anomaly 两类条目 + 路径二元组 + 加锁原子写 |
+| stage-46 | 新增第三类 backed（`backupRel`/`command` 字段）；anomaly 增 `note` 字段（`backup_failed`）；尾部段容错解析（向后兼容）；读侧改 `SECTION_PREFIXES` 短前缀匹配（消双源） |

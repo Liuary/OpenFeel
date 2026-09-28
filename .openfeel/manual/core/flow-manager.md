@@ -20,7 +20,7 @@
 | `mapPhaseToAgent(phase)` | 将 PipelinePhase 映射为负责 Agent 标识（返回**新名** `openfeel-*`，`done → none`） |
 | `normalizeAgentName(name)` | 归一化 agent 名（旧名→新名，读取兼容 P5；`toLowerCase` 幂等；非 agent 值原样保留） |
 | `checkRemovable(stageId, {force})` | 只读可移除性检查（`ops` 非空 / 当前活跃 / 被 `deps` 引用），`removeStage` 与 `--dry-run` 共用 |
-| `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、可选 `purge` 删目录、`remove_stage` 审计日志） |
+| `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、`remove_stage` 审计日志）；**不执行目录删除**，`purge` 时返回 `{ purgeTarget }` 由命令层在 `save()` 成功后删除（stage-47 事务顺序） |
 | `getPipelinePhases()` / `getPipelineTransitions()` | 自描述访问器：返回运行时 `pipelineConfig` 的 phase 列表与转移表**副本**（缺省回退默认表） |
 | `resolveEffectiveConfig()` | 解析四个受管配置键（`EFFECTIVE_CONFIG_KEYS`）的「有效值 + 生效来源」，输出 `key → { value, source }`；复用内部 `buildCascadeConfig`（单一权威，避免第二套解析） |
 | `FlowConcurrentModificationError` / `isFlowConcurrentError(err)` | flow.json 乐观并发冲突错误类型与识别函数（命令层统一捕获） |
@@ -38,9 +38,17 @@
 ## 自描述命令与破坏性命令支撑（stage-41）
 
 - **`getPipelinePhases(): string[]`** / **`getPipelineTransitions(): Record<string, string[]>`**：供 `openfeel flow phases [--json]` 展示。数据源为运行时 `pipelineConfig`（`.openfeel/pipeline.yaml`），缺省回退 `getDefaultPipelineConfig()`；**返回副本**（外部修改不污染内部状态）。与校验用的 `hasTransition()` / `getValidTargets()` 同读 `pipelineConfig.transitions`，杜绝「展示与实际不符」的第二信源。
+  - **两集合语义区分（stage-47 / `cli/BUG-001`）**：`phases` 为**存在视图**（运行时全部 phase，可含自定义如 `gate`）；`flow advance` 的 phase 白名单为 **`PIPELINE_PHASES` 内置 15**（推进白名单），`flow phases --json` 另增 `advanceAccepted: [...PIPELINE_PHASES]` 使差异可编程消费，人类输出在有差异时追加 `flow.phases.customPhaseNote` 边界说明。**不**把 `advance` 校验收敛到运行时 phases（会波及 `PipelinePhase` 类型与模糊修正链）。
 - **`checkRemovable(stageId, {force}): RemovalCheck`**：只读可移除性检查，供 `removeStage` 与 `flow stage remove --dry-run` 共用（消除骨架与验收标准矛盾）。三类校验——`ops` 非空 / 当前活跃阶段（`pipeline.current.stage`）/ 被其它阶段 `deps` 引用（`(series, stageDir)` 归一化匹配 + `Array.isArray` 守卫兼容存量缺 `deps` 字段）。`--force` 时 `ok` 恒 `true`，但 `opCount` / `isCurrent` / `referencing` 仍如实返回。
-- **`removeStage(stageId, {force, purge})`**：注销阶段。`current` 兜底——移除 `pipeline.current.stage` 后按 `stages` 插入序回退「首个非 done 阶段」，无可回退则清空为 `{stage:'', op:''}`（避免后续 `advance` 失败）；默认**不删** `plan/{series}/{stageDir}/` 目录（`purge: true` 才删）；审计日志 `detail = { stageId, purged, referencing, snapshot:{phase,status,deps,opKeys} }`。`--force` **不清理**引用方悬空 `deps`（保留 + 日志可审计）。
+- **`removeStage(stageId, {force, purge}): { purgeTarget?: string }`**：注销阶段。`current` 兜底——移除 `pipeline.current.stage` 后按 `stages` 插入序回退「首个非 done 阶段」，无可回退则清空为 `{stage:'', op:''}`（避免后续 `advance` 失败）；**不删除目录**：`purge: true` 时仅**计算并返回** `purgeTarget`（plan 目录绝对路径），审计日志 `detail = { stageId, purgeTarget, referencing, snapshot }`（记录**意图**而非已发生事实）。`--force` **不清理**引用方悬空 `deps`（保留 + 日志可审计）。
+  - **事务顺序（stage-47 / `REV-v1.1.2-stage-41` REV-009）**：命令层顺序固定为 `removeStage(...)` → `save()`（成功）→ `rmSync(purgeTarget)`（`commands/flow.ts`），消除「目录已删但注册未落盘」的中间态；core 层不产生任何不可逆副作用。契约变更已同步唯一调用方（`rg "removeStage("` 全域 1 处）。
 - **冲突检测接入**：`registerStage` / `addStage` 写入前调用 `findStageDirConflict`（来自 `plan/path.ts`）。
+
+## 存量数据鲁棒性与结构化错误（v1.1.2-stage-47）
+
+- **`save()` 缺 `meta` 守卫**（`REV-v1.1.2-stage-41` REV-008）：入口先 `this.data.meta ??= { version: '1.0', project: '', updated: '', revision: 0 }`（与 `defaultFlowData` 字段一致），仅补**整体缺失**、不覆盖既有字段，使存量 `flow.json` 不再抛 `TypeError`。
+- **`StageDirConflictError`（导出）**：`registerStage` / `addStage` 检测到两个不同 stageId 映射同一 `(series, stageDir)` 时抛该结构化错误（含 `stage` / `other` 字段；`message` 保留原中文文案以兼容既有断言）。命令层三入口（`plan stage add` / `flow stage add` / `stage create`）按错误类型分流用 `common.stageDirConflictTmpl` 渲染（zh/en 对称，消除死键）；与 `FlowConcurrentModificationError` 同级同构。
+- **`buildCascadeConfig` 画像层**：见「配置级联与有效值来源」——新增 `global-paths` 的 `getGlobalProfilePath` 依赖（`global-paths` 不反向依赖本模块，无循环）。
 
 ## 状态机
 
@@ -67,14 +75,14 @@ plan_pending → plan_review → plan_passed
 
 | 层 | 来源 | 说明 |
 |----|------|------|
-| `profileDefaults` | `~/.config/openfeel/profile.yaml` | **仅取 `preferences.auto_advance` 单值**（不做 `preferences` 整体替换）；`readProfile()` 异常安全，文件缺失/解析失败回退 `DEFAULT_PROFILE` |
+| `profileDefaults` | `~/.config/openfeel/profile.yaml` | **仅取 `preferences.auto_advance` 单值**（不做 `preferences` 整体替换）；**stage-47（`config/BUG-003`）起仅当画像文件真实存在且原始 YAML 显式声明 `preferences.auto_advance`（`enabled`/`disabled`）时填充**，文件缺失/解析失败/缺键或非枚举值 → 不填 → 落 `builtin`；`readProfile()` 自身异常安全行为不变 |
 | `configDefaults` | `.openfeel/config.yaml` `defaults` 块 | 全部键 `String(value)` 收集；文件不存在或解析失败则为空 |
 | `statusOverrides` | 当前 `pipeline.current.stage` 的 `status.md` | 正则提取 `**执行模式**` → `execution_mode`、`**自动推进**` → `auto_advance` |
 | `effective` | 浅合并 `{...profileDefaults, ...configDefaults, ...statusOverrides}` | 三层均为扁平 `Record<string,string>`，无嵌套覆盖风险 |
 
 来源判定与合并顺序逐字对应：`status.md > config.yaml > profile.yaml > builtin`（三层皆无 → `String(DEFAULT_CONFIG[key])` 标 `builtin`）。
 
-> **已知残留（`config/BUG-003`，medium 非阻塞）**：`DEFAULT_PROFILE` 使 `profileDefaults.auto_advance` 恒存在 → 无画像文件时来源误标 `profile.yaml`（值正确），`builtin` 分支对 `auto_advance` 永不命中。
+> **`config/BUG-003` 已修复（v1.1.2-stage-47，`buildCascadeConfig`）**：画像层改为「文件真实存在 + 原始 YAML 显式声明」双条件，无画像环境下来源正确落 `builtin`（`auto_advance: disabled [来源: builtin]`）；有 profile 且显式值时仍为 `profile.yaml`。**测试注意**：`effective` 是三层**显式声明值的浅合并**（无 builtin 回填），故无画像时 `effective.auto_advance` 为 `undefined`，而 `resolveEffectiveConfig()` 经 `DEFAULT_CONFIG` 回填后为 `{ value: 'disabled', source: 'builtin' }`——两者语义不同，断言不可互换。
 
 ## 审计日志 action 一览（stage-41 / stage-42）
 
@@ -85,7 +93,7 @@ plan_pending → plan_review → plan_passed
 | `add_stage` | `flow-manager` | `addStage`（`flow stage add` / `stage create`） | **仅注册层**：只落 flow.json |
 | `register_stage` | `cli` | `registerStage`（`plan stage add`） | **完整层**：建目录 + overview/status + 注册 + 依赖（`:747-749` 注释写明双轨差异） |
 | `register_op` | `cli` | `plan/scheme.ts` `createScheme` | op 注册（在 `save()` 之前写入，每次均记） |
-| `remove_stage` | `cli` | `removeStage` | 注销阶段（含 `snapshot`） |
+| `remove_stage` | `cli` | `removeStage` | 注销阶段（`detail = { stageId, purgeTarget, referencing, snapshot }`；目录删除由命令层在 `save()` 后执行） |
 | `archive_stage` | `openfeel-archiver` | `archiveStage` | 阶段归档 |
 
 - **幂等/冲突不写日志**：`registerStage` 的幂等早返回与冲突抛错均位于 `appendLog` **之前**，保证「日志 = 事实变更」。

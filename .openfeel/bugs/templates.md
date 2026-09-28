@@ -8,7 +8,7 @@
 
 ## BUG-002：全局约束模板 `agents-md` 权限部署路径行未泛化（与仓库根 `AGENTS.md` 同类表述处理不一致）
 
-- **优先级**：medium ｜ **阻塞**：否 ｜ **状态**：open（**处置归属：stage-47 缺陷清理**）
+- **优先级**：medium ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-47 `op-005` 权威源泛化 + build + 验收通过）
 
 ### 核心结论
 
@@ -49,3 +49,9 @@ en.md:112     Each of the 9 agents inlines a `permission:` allowlist (deployed b
 - `.openfeel/manual/core/setup.md:30-32` 部署落点表（`~/.config/opencode/AGENTS.md` / `agents/` / `skills/`）未逐行标注「opencode 适配器」（`:33` 配置行已标注）。该文档为内部模块手册、上下文即 opencode 适配器部署，判定为**可接受残留**；若 schemer 一并处置可提升一致性。
 
 > 沉淀：`kb/troubleshooting.md #多源文案同步陷阱`（本阶段新增）
+
+### 关闭记录（v1.1.2-stage-47，commit `2fb38fa`）
+
+修复：权威源 `templates-data/agents-md/{zh-CN,en}.md:112` 套用 `AGENTS.md:122` 口径（「部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）」/ 英文对应），`npm run build` 重生成 `template-loader.ts` 生成段与 `.opencode/` 自举实例。测试官实测：`rg -n "agents/\*\.md" src/core/templates-data/agents-md AGENTS.md` **三处口径一致**、zh/en 同步；二次 `npm run build` 退出 0 且 `git status -- src/` **零 diff**（生成段幂等）。**关闭**。
+
+**防再犯**：① **文案类改动收尾必做「关键句全仓 `rg`」**——同语义句存在多份副本（模板权威源 `templates-data/agents-md/*`、仓库根 `AGENTS.md`、手册/README），按行号盘点无法覆盖「其它副本」（本 Bug 即 A 类清单只登记 `agents-md:3`、漏掉 stage-44 新增的 `:112`；`templates/BUG-001` 已发生过一次，属**重复模式**）；② 只改**权威源**，生成段/自举实例一律由 `npm run build` 传播（禁手改 `AUTO-GENERATED` 锚点区），并以「二次 build 零 diff」自证幂等；③ 可为「双份同句」加一致性断言，把人工核对变成机器护栏。沉淀见 `kb/troubleshooting.md #多源文案同步陷阱`。

@@ -65,10 +65,11 @@
 - **不做自动清理（R1）**：备份会随每次部署累积，本阶段不加保留策略；如需清理请**手工删除** `~/.openfeel/backup/` 下旧 `{ts}` 目录。
 - **已接受残余风险（REV-009⑤）**：全局 `opencode.jsonc` 的备份在 `global-opencode-jsonc` 锁**之外**完成——并发写入者介入时，备份内容可能 ≠ 实际被覆盖内容；因 jsonc 合并在锁内保留用户字段、风险低，显式记录接受。
 - **失败路径语义分叉（REV-011，stage-47 定稿：混合裁定）**：全局 `opencode.jsonc` 三处直写路径的 `backupFileBeforeWrite` 失败（`BackupError`）按命令语义分流——① **`setup.ts` / `update.ts` → 跳过继续（对齐 B3）**：补 `try/catch` **仅捕获 `BackupError`**（锁超时等其余错误仍上抛），命中时 `appendUpdateInfo('anomaly', {note:'backup_failed'})` + `console.warn` + **跳过本次 jsonc 写入、继续其余步骤**；跳过写后 `updateFileHash` 不执行 → 下次 update 重跑自愈。② **`migrate.ts` → 有意 fail-fast**：`backupFileBeforeWrite` 直接上抛 → abort 整条命令；依据：migrate 为**可回滚事务**（`finally` 回填 + `rollbackMigration`），abort 比「部分部署」更干净。两分支各自自洽，已文档化。
-- **`BUG-002` 的语义修复已由 stage-47 落地**：`init` 不再覆盖已存在的 `.openfeel/config.yaml`（保留用户配置；`configExisted` 分支仅 `skipped.push` 提示，无写盘/无备份接入）——stage-46 的「备份 + 仍覆盖」缓解被取代，`config.yaml` 备份接入点已删除；待 feel-tester 验收后关闭 `config/BUG-002`。
+- **`BUG-002` 已关闭（stage-47 语义修复 + 测试官验收）**：`init` 不再覆盖已存在的 `.openfeel/config.yaml`（保留用户配置；`configExisted` 分支仅 `skipped.push` 提示，无写盘/无备份接入）——stage-46 的「备份 + 仍覆盖」缓解被取代，`config.yaml` 备份接入点已删除；隔离实测：用户自定义三值文件经两次重跑 `init` 哈希不变、无 `backed` 条目。
 
 ## 变更历史
 
 | 阶段 | 变更 |
 |------|------|
 | stage-46 | 初始创建：`backup.ts`（写前备份 + manifest + backup 锁临界区）+ `getGlobalBackupRootPath`；四链路（setup/update/init/migrate）覆盖写接入；`update_infos` 新增 backed 类 |
+| v1.1.2-stage-47 | 接入点清单收缩：项目 `.openfeel/config.yaml` **改为「不再覆盖」→ 删除其备份接入**（`config/BUG-002` 语义修复）；jsonc 三处失败路径定稿为 **A/B 分流**（`setup`/`update` 跳过继续 + `anomaly(backup_failed)`；`migrate` 有意 fail-fast）；`config.yaml` 与 `package.json` 分离处置（后者备份保留） |

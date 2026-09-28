@@ -7,7 +7,7 @@
 
 ## BUG-001：`flow phases` 自描述 phase 与 `flow advance` 接受集合不一致
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：open（待 openfeel-schemer 裁定排期）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-47 `op-001` 方案 B 修复 + 验收通过）
 
 ### 核心结论
 
@@ -37,11 +37,17 @@
 
 > 沉淀：`kb/troubleshooting.md #flow phases 自描述 phase 与 flow advance 接受集合不一致`、`kb/patterns.md #CLI 自描述命令模式`
 
+### 关闭记录（v1.1.2-stage-47，commit `2fb38fa`）
+
+采纳**方案 B**：`flow phases` 人类输出在运行时含内置 15 之外的 phase 时追加边界说明（i18n `flow.phases.customPhaseNote` zh/en）；`--json` 新增 `advanceAccepted`（= `PIPELINE_PHASES` 内置 15），使差异**可编程消费**。测试官隔离端到端实测：自定义 `pipeline.yaml`（含 `gate`）下 `phases`=16（含 gate）、`advanceAccepted`=15（不含 gate）；`flow advance --to gate` 与 `--force` 均按 advanceAccepted 拒绝（exit 1）→ 自描述边界与 `advance` 实际接受集合一致。**关闭**。
+
+**防再犯**：① **「存在视图」与「推进白名单」是不同的语义角色，不要强行合并数据源**——合并会波及 `PipelinePhase` 类型系统与模糊修正链（影响面远大于收益）；② 差异必须**同时**落到「人类可读边界说明」与「`--json` 可编程字段」，只写一句文档免责等于把风险转嫁给脚本；③ 新增/暴露集合时按「语义角色是否相同」判别：角色相同（如转移表展示 vs 校验）→ 必须同源；角色不同 → 显式化。沉淀见 `kb/patterns.md #CLI 自描述集合的「存在视图 vs 推进白名单」区分`。
+
 ---
 
 ## BUG-002：阶段目录冲突错误未走 i18n 键 + `common.stageDirConflictTmpl` 死键
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：open（待 openfeel-schemer 裁定排期）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-47 `op-001` 结构化错误 + i18n 分流修复 + 验收通过）
 
 ### 核心结论
 
@@ -69,3 +75,9 @@ Error: 阶段目录冲突：'v4.0.0-stage-04' 与 'v4-stage-04' 映射同一 (se
 2. 或最小改动：命令层 `catch` 按错误类型分流，命中冲突时用该键展示，并移除死键（或保留至接入后）。
 
 > 沉淀：`kb/troubleshooting.md #新增 i18n 键已定义却未接入（死键）`
+
+### 关闭记录（v1.1.2-stage-47，commit `2fb38fa`）
+
+新增结构化 `StageDirConflictError`（含 `stage`/`other`），`registerStage`/`addStage` 改抛该错误（message 文本不变，既有 `toThrow(/阶段目录冲突/)` 不破）；三入口命令层（`plan stage add` / `flow stage add` / `stage create`）按错误类型分流，命中时用 `common.stageDirConflictTmpl` 渲染 → **死键消除**。测试官隔离端到端实测：`lang=en` 下冲突 stderr 为纯英文 `Stage dir conflict: v4.0.0-stage-04 and v4-stage-04 map to the same directory`（**无中文残留**），`lang=zh-CN` 渲染同一中文模板。**关闭**。
+
+**防再犯**：① **`lint i18n` 只查对称性、不查引用**——新增键必须在**同一提交**内接入调用点，并以 `rg "<key>" src/` 引用校验兜底（本次 3 处使用点已断言）；② 需要独立渲染的错误场景，核心层应抛**结构化错误**（携带字段）而非中文文案字符串，命令层按类型分流——既消除硬编码文案，又不破坏既有 `toThrow` 断言；③ 误判校正留档：`zh-CN.ts` 内 `en: ''` 属「单语分文件」模式正常值（en 值在 `en.ts`），死键本质是**无使用点**而非值缺失。沉淀见 `kb/troubleshooting.md #新增 i18n 键已定义却未接入（死键）`（已更新）。

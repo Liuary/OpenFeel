@@ -7,7 +7,7 @@
 
 ## BUG-001：`openfeel archive` 对缺 `deps` 字段的存量阶段抛 TypeError
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：open（建议纳入后续阶段或独立补丁）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-47 `op-002` 最小修复 + 验收通过）
 
 ### 核心结论
 
@@ -45,3 +45,9 @@
 stage-41 自身的 `deps` 字段存在（值为 `[]`），故本轮 `openfeel archive v1.1.2-stage-41` **未触发**该缺陷。
 
 > 沉淀：`kb/patterns.md #破坏性命令安全校验清单模式`（`Array.isArray` 存量守卫的正面样本）
+
+### 关闭记录（v1.1.2-stage-47，commit `2fb38fa`）
+
+最小修复：`src/core/archive/merge.ts:85` 加 `Array.isArray(stage.deps) && stage.deps.length > 0` 守卫（唯一读取点）。测试官隔离端到端实测：构造缺 `deps` 字段的存量阶段（`flow.json` 中删除该键，`deps === undefined`）→ `openfeel archive v1.0.0-stage-01` **exit 0**，生成归档摘要且含「- **依赖阶段**：无」。**关闭**。
+
+**防再犯**：① **读取存量数据前先归一化判据**——可选字段（`deps`、`meta`）一律用 `Array.isArray` / `??=` 之类守卫，不假设「类型声明即存在」（存量 `flow.json` 由旧版本写入，字段可能整体缺失）；② 采取**最小修复**并记录范围裁定：仅守卫唯一读取点，**不做**加载路径全量归一化（后者会改变写回内容，范围更大，留观察）；③ 同类伴随缺陷（同阶段 `save()` 缺 `meta` 抛 `TypeError`，`REV-41` REV-008）以 `this.data.meta ??=` 同批修复，避免只修一半。沉淀见 `kb/patterns.md #破坏性命令安全校验清单模式`（`Array.isArray` 存量守卫的正面样本）。

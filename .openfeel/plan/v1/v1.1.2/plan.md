@@ -21,7 +21,7 @@
 | 构建脚本多语言循环生成模式 | kb/patterns.md #构建脚本多语言循环生成模式 | **必须遵循**。build 步骤 6 按目录枚举，新增 skill 应自动纳入 |
 | 控制区标记模式 / 部署传播内容哈希比对模式 | kb/patterns.md #控制区标记模式；#部署传播内容哈希比对模式 | **高度相关**。`update` 传播新 skill 走受管区三态；须确认哈希比对能识别新文件 |
 | 新增 Agent 全链路更新清单模式 | kb/patterns.md #新增 Agent 全链路更新清单模式 | 参考。新增 skill 可类比该「全链路清单」思路逐项核对，但没有对应的 skill 专项清单，须自行列全 |
-| 版本号语义管理与递增规范模式 | kb/patterns.md #版本号语义管理与递增规范模式 | **必须遵循**。版本 1.1.2 三处同步 |
+| 版本号语义管理与递增规范模式 | kb/patterns.md #版本号语义管理与递增规范模式 | **必须遵循**。版本 1.1.2 按 **§3.1 权威清单**收口（原「三处同步」表述已废弃） |
 | kb 条目与规则升级同步时点模式 | kb/patterns.md #kb 条目与规则升级同步时点模式 | 必须遵循。规则在 exec 实施、kb 在 archiving 同步 |
 | CLI 向导空状态交互式兜底模式 | kb/patterns.md #CLI 向导空状态交互式兜底模式 | 参考。`openfeel-wizard` 现状是「执行型向导」，与本计划新 skill 的「查询型参考」边界裁定相关 |
 | 约束/操作分离模式 | kb/patterns.md #约束/操作分离模式 | **直接命中**。新 skill 属「操作步骤→skill」，须与交互式 wizard 明确区分 |
@@ -61,7 +61,7 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 
 ### 3.1 版本收口清单（U1 权威清单，供 stage-43 op-003 逐条引用）
 
-> 依据 **REV-v1.1.2-stage-41 REV-001**。以全仓 grep（排除 `node_modules`/`dist`/`.git`）实测为准。
+> 依据 **REV-v1.1.2-stage-41 REV-001**。以全仓 grep（排除 `node_modules`/`dist`/`.git`）实测为准。**2026-09-29 复核（REV-43 REV-003 / stage-43 op-005）**：A5/A6/A7 与 B 的行号因 stage-44/45 改动模板而漂移，已更新；A1~A4、A8、E 结论不变。
 
 **A. 必改（当前版本号载体 → 期望值 `1.1.2`）**
 
@@ -71,16 +71,16 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | A2 | `.openfeel/config.yaml:7` | `version: 1.1.1` | `1.1.2` | **GBK/非 UTF-8 展示**，须仅增量替换该行，禁止整文件重写 |
 | A3 | `src/core/config.ts:308` | `version: 1.1.1` | `1.1.2` | zh `CONFIG_TEMPLATE_ZH` 常量 |
 | A4 | `src/core/config.ts:365` | `version: 1.1.1` | `1.1.2` | en `CONFIG_TEMPLATE_EN` 常量 |
-| A5 | `src/core/templates-data/agents-md/zh-CN.md:130` | 「当前 v1.1.1」 | 「当前 v1.1.2」 | **权威源**（build 后传播至全局 AGENTS.md） |
-| A6 | `src/core/templates-data/agents-md/en.md:130` | 「currently v1.1.1」 | 「currently v1.1.2」 | **权威源** |
-| A7 | `AGENTS.md:136` | 「当前版本 v1.1.0」 | 「当前版本 v1.1.2」 | **修正既有漂移**（仓库根 AGENTS.md 落后权威源两个 W） |
-| A8 | `package-lock.json:3`、`:9` | `"version": "1.0.7"` | `1.1.2` | **既有漂移**；建议 `npm install` 重生成，或手工同步 root version 字段 |
+| A5 | `src/core/templates-data/agents-md/zh-CN.md:141` | 「当前 v1.1.1」 | 「当前 v1.1.2」 | **权威源**（build 后传播至全局 AGENTS.md）；行号由 `:130` 更新（stage-45 改动） |
+| A6 | `src/core/templates-data/agents-md/en.md:141` | 「currently v1.1.1」 | 「currently v1.1.2」 | **权威源**；行号由 `:130` 更新 |
+| A7 | `AGENTS.md:145` | 「当前版本 v1.1.0」 | 「当前版本 v1.1.2」 | **修正既有漂移**；行号由 `:136` 更新（stage-45 改动） |
+| A8 | `package-lock.json:3`、`:9` | `"version": "1.0.7"` | `1.1.2` | **既有漂移仍在**；建议 `npm install` 重生成，或手工同步 root version 字段 |
 
 **B. 由 `npm run build` 自动重生成（禁手改）**
 
 | 文件:行号 | 说明 |
 |-----------|------|
-| `src/core/template-loader.ts:2798`（en）、`:3240`（zh） | `AGENTS_MD_TEMPLATES` 生成段，随 A5/A6 权威源改动重生成 |
+| `src/core/template-loader.ts:2833`（en）、`:3286`（zh） | `AGENTS_MD_TEMPLATES` 生成段，随 A5/A6 权威源改动重生成（行号由 `:2798`/`:3240` 更新） |
 
 **C. 发布与传播**
 
@@ -91,9 +91,11 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 
 **D. 明确**不得**修改（历史沿革说明，非当前版本载体）**
 
-`build.js:1022,1109`、`src/core/migrate.ts:69`、`src/core/init.ts:7,12,160,240,262`、`src/core/global-paths.ts:30,35`、`src/core/opencode-config.ts:23,111`、`src/core/setup.ts:2`、`src/core/update.ts:7,1453,1632`、`src/core/i18n-data/{zh-CN,en}.ts`（注释）、`.openfeel/manual/**`（各模块「变更历史」表）、`test/**`（注释）——均描述「v1.1.1 引入了什么」，属历史事实，改动会篡改审计链。另：`package-lock.json` 中**依赖自身版本**（如 `picocolors: 1.1.1`）不得修改。
+`build.js:1022,1109`、`src/core/migrate.ts:69`、`src/core/init.ts:7,12,160,240,262`、`src/core/global-paths.ts:30,35`、`src/core/opencode-config.ts:23,111`（另 `:24`、`:112` 为 stage-45 泛化后新增行）、`src/core/setup.ts:2`、`src/core/update.ts:7,1453,1632`、`src/core/i18n-data/{zh-CN,en}.ts`（注释）、`.openfeel/manual/**`（各模块「变更历史」表）、`test/**`（注释）——均描述「v1.1.1 引入了什么」，属历史事实，改动会篡改审计链。另：`package-lock.json` 中**依赖自身版本**（如 `picocolors: 1.1.1`）不得修改。
 
-**E. 经核实无版本载体**：`README.md`、`README.zh-CN.md`、`README.en.md`、`docs/**`（grep `1.1.[0-9]` 零匹配）。
+> 说明：D 类**行号为示意**（stage-41~47 多次改动这些文件，行号可能已漂移）；禁改规则以「文件 + 内容特征（`v1.1.x` 历史注释）」为准，执行时按内容判定，勿依赖行号。
+
+**E. 经核实无版本号载体**：`README.md`、`README.zh-CN.md`、`README.en.md`、`docs/**`——复核确认**无待改版本号载体**（实测命中项均为 **stage-id 示例**如 `v1.1.2-stage-41`（`docs/commands.md:219,226`）与 `docs/phase-5/**` 归档叙述，非版本号声明，不改）。
 
 ### 3.2 环境基线变更记录（非本版本交付内容）
 
@@ -428,7 +430,9 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 |----|------|------|----------|
 | op-001 | 新增 `openfeel-cli-usage` skill | ① 新建权威源 `SKILL.md`：frontmatter（`name` + `description`，description 用于自动发现，须含"CLI 命令用法/phase/stageId 约定"触发词）；正文含：命令清单（含 stage-41 新增 `flow phases`/`flow stage remove`/`plan stage add --deps` 与 stage-42 的 `config effective`）、phase 枚举 15 项与转移表、stageId 三格式与目录映射约定（引用 `manual/core/plan-path.md`）、典型场景（落地阶段/声明依赖/纠错移除/查询有效配置）、与 `openfeel-wizard` 边界说明；② 运行 `npm run build` 重生成生成段与 `.opencode/skills/` 自举实例；③ 确认 build 一致性断言通过、`.opencode/skills/openfeel-cli-usage/SKILL.md` 为构建产物（含生成标记，禁止手改） | NEW `src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`、`src/core/update.ts`（生成段）、`src/core/template-loader.ts`（生成段）、`.opencode/skills/openfeel-cli-usage/SKILL.md`（产物） |
 | op-002 | 文档与交叉引用同步 | ① `docs/commands.md` 补 `flow phases` / `flow stage remove` / `plan stage add --deps` / `config effective`，并加三入口关系表；② `.openfeel/manual/cli/commands.md` 同步；③ `.openfeel/manual/core/plan-path.md` 补「冲突检测/建议名」API；④ 全局 `AGENTS.md`（约束层）若列举命令/技能，同步 skill 名；⑤ `openfeel-wizard` skill 正文加交叉引用「静态命令参考见 `openfeel-cli-usage`」 | `docs/commands.md`、`.openfeel/manual/cli/commands.md`、`.openfeel/manual/core/plan-path.md`、`AGENTS.md`、`src/core/templates-data/opencode/skills/openfeel-wizard/SKILL.md` |
-| op-003 | 版本 1.1.2 收口 + 全量回归 | ① **版本收口按 §3.1 权威清单执行**（A1~A8 必改 + B 生成段 + C 全局传播 + D 禁改 + E 无载体）；② `CHANGELOG.md` 追加 `## [1.1.2] - 2026-09-28`；③ `npm run build && npm test` 全绿；④ `openfeel lint i18n` / `openfeel lint kb` 零错误；⑤ `manual` 引用一致性抽查 | `package.json`、`.openfeel/config.yaml`、`src/core/config.ts`、`src/core/templates-data/agents-md/{zh-CN,en}.md`、`src/core/template-loader.ts`（生成段）、`AGENTS.md`、`package-lock.json`、`CHANGELOG.md` |
+| op-003 | 版本 1.1.2 收口 + 全量回归 | ① **版本收口按 §3.1 权威清单执行**（A1~A8 必改 + B 生成段 + C 全局传播 + D 禁改 + E 无载体；**行号已按 stage-41~47 实盘更新**：A5/A6=`:141`、A7=`:145`、B=`:2833/:3286`）；② `CHANGELOG.md` 追加 `## [1.1.2] - <发布日>`；③ `npm run build && npm test` 全绿；④ `openfeel lint i18n` / `openfeel lint kb` 零错误；⑤ `manual` 引用一致性抽查 | `package.json`、`.openfeel/config.yaml`、`src/core/config.ts`、`src/core/templates-data/agents-md/{zh-CN,en}.md`、`src/core/template-loader.ts`（生成段）、`AGENTS.md`、`package-lock.json`、`CHANGELOG.md` |
+| op-004 | 测试隔离缺口修复（`config/BUG-004`） | `test/core/workspace/identity.test.ts` 加 `vi.mock('node:os')`（N4 单点）+ 删除保存/恢复直写逻辑 + 新增隔离守护用例（`importActual` 记录真实 `~/.openfeel/config.json` mtime/hash，运行前后断言不变）；455 条死映射**不自动清理**，仅文档化安全步骤 | `test/core/workspace/identity.test.ts`、`.openfeel/manual/core/global-paths.md`（或 kb） |
+| op-005 | 版本清单复核收口 + 文本残留闭环 | §3.1 行号复核更新（已落地）；收口 `v1.1.2/plan.md:24` 文本；`REV-43 REV-003` 闭环登记（`resolved`，不改状态）；`REV-46 REV-007` 复核（状态行 `pending` vs 验收 `closed` → 归 openfeel-reviewer 同步） | `.openfeel/plan/v1/v1.1.2/plan.md`、`REV-v1.1.2-stage-43.md`（处理记录） |
 
 ### 完成标准
 
@@ -529,7 +533,7 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | M2.6 平台描述泛化 | stage-45 done | 模板/规则/注释/文档/手册去「唯一 harness」表述（零行为变更）；`AGENTS.md:82` 泛化 |
 | M2.7 部署前备份 | stage-46 done | 写前备份到 `~/.openfeel/backup/{ts}/`；`update_infos.md`「备份」类；`feel.md` 检查规则 |
 | M2.8 缺陷集中清理 | stage-47 done | 11 项已登记缺陷修复（含 `config/BUG-002` high 语义修复）+ 翻转清单同步 + 发布前全量回归绿 |
-| M3 skill 化与发布 | stage-43 done | `openfeel-cli-usage` skill（全局可部署）、文档/手册同步、版本 1.1.2 **全部载体一致（清单见 §3.1）**、`npm test` 全绿 |
+| M3 skill 化与发布 | stage-43 done | `openfeel-cli-usage` skill（全局可部署）、文档/手册同步、版本 1.1.2 **全部载体一致（清单见 §3.1）**、`config/BUG-004` 测试隔离修复、`npm test` 全绿 |
 | **v1.1.2 发布** | 全部 done | `npm publish` 就绪 + `CHANGELOG.md` 更新 |
 
 ---
@@ -570,5 +574,6 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-46 REV-001~006 | stage-46 节更新：**B9 覆盖写路径全景与豁免**（`.openfeel/config.yaml` 纳入，REV-001）；B7 改为「项目内不合并 + 全局写纳入」（REV-002）；B4 `command` 枚举扩 `migrate`、读侧 `:95-98` 同步（REV-003）；B3 失败返回 `'skipped'` + 可区分异常、B5 扩展异常分支（REV-004）；B2 锁临界区（REV-005）；B4 字段风格、`backupRel` 存在性检查（REV-006）；任务清单/完成标准同步 |
 | 2026-09-29 | openfeel-planner | 用户需求「stage-47 已登记缺陷集中清理」 | **新增 stage-47**：14 项缺陷逐条裁定（11 修 / 归属 / 已修复待关闭）+ op-001~007 + 翻转清单；阶段概览/依赖图/执行顺序更新为 **41 → 42 → 44 → 45 → 46 → 47 → 43**；里程碑 M2.8；测试策略新增缺陷清理行 |
 | 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-47 REV-001~003 | stage-47 节 op-003 补「删除 stage-46 的 `config.yaml` 备份接入块 + 同步 manual」（REV-002）；计划 §九 并行组更正、op-006 行号更正 `:438`、`flow-manager.test.ts:2786` 翻转为 `toBeUndefined()`（REV-001/003） |
+| 2026-09-29 | openfeel-planner | 用户新增需求（`config/BUG-004` 纳入 stage-43；复核 §3.1 清单与 REV 状态） | **§3.1 行号复核更新**（A5/A6 `:130`→`:141`、A7 `:136`→`:145`、B `:2798/:3240`→`:2833/:3286`；A8 漂移仍在；D 行号改「示意/按内容判定」；E 澄清为「无版本号载体」）；`:24` 文本改为 §3.1 引用；stage-43 节新增 op-004（BUG-004）/op-005（复核闭环）；里程碑 M3 同步 |
 
 > 三处核心裁定保持不变：① #5 全局画像仅作最低优先级兜底；② #6 只修 `pipeline.phase` 全量 done 判定、不做 `current` 回退；③ 技能源为扁平单文件（16 个 `{name}/SKILL.md`）、无 `{lang}`、无 `NEW_SKILL_NAMES`。

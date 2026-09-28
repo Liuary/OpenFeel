@@ -1,16 +1,29 @@
 # 当前进度
 
-> OpenFeel v1.1.0 正式版 — v1.1 六阶段（stage-35 ~ stage-40）全部归档完成 ✅ | 发布就绪
+> OpenFeel v1.1.2（开发中）— v1.1.2 阶段 stage-41 / 42 / 44 / 45 / 46 / 47 全部归档完成 ✅ | 待 stage-43 版本收口发布
 
-- **状态**：v1.1.0-stage-35 ~ stage-40 全部完成 ✅（并发保护基础设施 + 模板源收敛/命名前缀统一 + 全局部署架构 + 控制区标记增量更新 + 存量迁移与兼容收尾 + 模型配置接口）
-- **上一版本**：v1.0.0-stage-01 ~ stage-34 全部归档 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化 + update 增量冲突标记 + 反馈规则/decisions.md + plan 目录多级化与路径统一）
-- **旧版本**：v1.0.0-stage-04 ~ stage-28 全部归档 ✅（原 v0.4.2 ~ v0.5.11，共 25 个阶段）
-- **知识库**：architecture(22) + patterns(78) + troubleshooting(22) + setup(6) = 128 条目
+- **状态**：v1.1.2-stage-41 / 42 / 44 / 45 / 46 / 47 全部完成 ✅（CLI 自描述与可纠错能力 + 配置口径与流水线状态正确性 + 权限模型修正 + 平台强限定内容描述泛化 + 部署覆盖前备份与全局状态提示 + 已登记缺陷集中清理）；**stage-43 版本收口待推进**（发布前清零点，另纳入 `config/BUG-004` 测试隔离缺口）
+- **上一版本**：v1.1.1-stage-01 已归档 ✅（全局化彻底化改造：约束统一全局 AGENTS.md + setup 纯全局部署 + 约束/操作分离）
+- **再上一版本**：v1.1.0-stage-35 ~ stage-40 全部归档 ✅（并发保护基础设施 + 模板源收敛/命名前缀统一 + 全局部署架构 + 控制区标记增量更新 + 存量迁移与兼容收尾 + 模型配置接口）
+- **更早版本**：v1.0.0-stage-01 ~ stage-34 全部归档 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化 + update 增量冲突标记 + 反馈规则/decisions.md + plan 目录多级化与路径统一）
+- **知识库**：architecture(25) + patterns(94) + troubleshooting(31) + setup(6) = 156 条目（截至 stage-47 归档）
 - **Agent 数**：9 个
-- **Skill 数**：14 个（全量 `openfeel-` 前缀对齐）
-- **源文件**：59 个 .ts 文件
-- **测试**：591/591 全通过
-- **版本**：v1.1.0
+- **Skill 数**：16 个（全量 `openfeel-` 前缀对齐）
+- **源文件**：62 个 .ts 文件
+- **测试**：693/693 全通过（41 个测试文件）
+- **版本**：v1.1.2（package.json；**版本号收口归属 stage-43**）
+
+## v1.1.2 里程碑 🚀
+
+| 阶段 | 主题 | 关键产出 | 完成时间 |
+|------|------|------|------|
+| stage-41 | CLI 自描述与可纠错能力 | `openfeel flow phases` + `flow stage remove`（`--force`/`--dry-run`/`--purge`）+ `plan stage add --deps` + stageId 校验/建议名/目录冲突检测 + 三入口分层 | 2026-09-29 |
+| stage-42 | 配置口径与流水线状态正确性 | `auto_advance` 四级级联 + `openfeel config effective`（有效值 + 来源）+ `pipeline.phase` 全量 done 判定 + 审计日志 register_stage/register_op | 2026-09-29 |
+| stage-44 | 权限模型修正 | 18 个权威源模板补 `external_directory: "allow"` + `openfeel-utility` `write`→`edit` + 权限合并/覆盖语义文档化（实测推翻需求文档 §二.2） | 2026-09-29 |
+| stage-45 | 平台强限定内容描述泛化 | 源码注释/命令文案/i18n 双语 7 键 + 模板权威源 + 规则/文档/手册 24 文件 + 泛化锁断言（**零行为变更**） | 2026-09-29 |
+| stage-46 | 部署覆盖前备份 + 全局状态提示 | 新增 `backup.ts`（写前备份 + 分区 + manifest + 单锁临界区）+ `update_infos` 第三类 `backed` + 四链路接入 | 2026-09-29 |
+| stage-47 | 已登记缺陷集中清理 | `config/BUG-002` 语义修复（`init` 不再覆盖 `config.yaml`）+ 画像层显式性 + CLI 边界/死键 + 事务顺序 + jsonc 备份 A/B + 泛化补漏；6 Bug closed、`config/BUG-004` 新登记 | 2026-09-29 |
+| stage-43 | 版本收口（**待推进**） | 版本号权威清单收口 + 发布前清零点（含 `config/BUG-004`） | — |
 
 ## v1.0.0 发布里程碑 🏆
 
@@ -57,9 +70,9 @@
 
 ## 整体统计
 
-- 阶段覆盖：v1.0.0-stage-01 ~ stage-34（34 个阶段）+ v1.1.0-stage-35 ~ stage-40（6 个阶段），共 40 个阶段
-- 知识库总量：128 条目（architecture 22 + patterns 78 + troubleshooting 22 + setup 6）
-- 源文件：59 个 .ts 文件
-- 测试：591/591 全通过
+- 阶段覆盖：v1.0.0-stage-01 ~ stage-34（34）+ v1.1.0-stage-35 ~ stage-40（6）+ v1.1.1-stage-01（1）+ v1.1.2-stage-41/42/44/45/46/47（6），共 47 个阶段已归档；**stage-43（版本收口）待推进**
+- 知识库总量：156 条目（architecture 25 + patterns 94 + troubleshooting 31 + setup 6）
+- 源文件：62 个 .ts 文件
+- 测试：693/693 全通过（41 文件）
 
-**v1.1.0 已就绪。** v1.1 六阶段（35~40）全部闭环，知识库 128 条目，测试 591/591 全通过，npm publish 待用户确认。
+**v1.1.2 收口就绪（待 stage-43）。** v1.1.2 六个阶段（41/42/44/45/46/47）全部闭环，已登记缺陷清零（仅余 `config/BUG-004` 测试隔离缺口，归 stage-43），测试 693/693 全通过，`lint i18n` / `lint kb` 零错误；版本号发布动作待 stage-43 统一收口。

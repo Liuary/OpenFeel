@@ -2267,6 +2267,8 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.2-stage-41 op-001
 
+> **更新于 2026-09-29**：上述「phase 合法性判定未收敛」的局限已由 **v1.1.2-stage-47 op-001（`cli/BUG-001`）显式化**，但**注意结论是「不收敛」**：`flow phases` 仍为存在视图（运行时 `pipeline.yaml` 全部 phase），仅新增 `--json.advanceAccepted`（= 内置 `PIPELINE_PHASES` 15 项，即 `advance` 的推进白名单）与人类可读边界说明 `flow.phases.customPhaseNote`，使差异**可编程消费**而非纯文字免责声明；未把 `advance` 校验收敛到运行时 phases（会波及 `PipelinePhase` 类型系统与模糊修正链）。参见本文件 #CLI 自描述集合与运行时校验集合的「存在视图 vs 推进白名单」区分。
+
 ## [+] 破坏性命令安全校验清单模式：默认拒绝 + 显式越权 + 可预览 + 可审计 (2026-09-29)
 
 为删除/覆盖类破坏性命令（如 `openfeel flow stage remove <stageId>`）建立完整安全校验清单，逐项落实：
@@ -2294,6 +2296,8 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.2-stage-41 op-003、kb/patterns.md #CLI --dry-run 安全预览模式、kb/patterns.md #CLI 错误诊断增强模式
 
+> **更新于 2026-09-29**：上述第三条反模式（「破坏动作（删目录）先于状态落盘」）已由 **v1.1.2-stage-47 op-004（`REV-v1.1.2-stage-41` REV-009）修正**：`removeStage` 不再执行 `rmSync`，改为返回 `{ purgeTarget?: string }`，命令层顺序固定 `removeStage → save() → rmSync(purgeTarget)`；审计日志字段由 `detail.purged` 改为 `detail.purgeTarget`（记**意图**而非已发生事实）。通用模式已独立沉淀为本文件 #事务顺序模式：先落盘再执行不可逆副作用。
+
 
 ## [+] 配置级联解析模式：单一 resolver + 四级优先级 + effective 展示出口 (2026-09-29)
 
@@ -2313,6 +2317,8 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 **验证方法**：四场景 fixture（status 覆盖 / 项目优先 / 画像兜底 / 全无 builtin）——**必须在测试 fixture 或临时 HOME 中构造**，不得改动项目真实 `config.yaml`（本阶段硬约束「不得覆写三值」）。测试用例不能只断言 `value`，「来源」偏差正是被漏掉的口径。
 
 **参见：** v1.1.2-stage-42 op-001/op-002、`manual/core/config.md`、`manual/core/flow-manager.md`
+
+> **更新于 2026-09-29**：上述「已知残留（BUG-003）」**已修复**（v1.1.2-stage-47 op-003）。画像层改为双条件判定——**仅当 `profile.yaml` 文件真实存在、且原始 YAML（`parseYaml(readFileSync(...))`）显式声明 `preferences.auto_advance`（值为 `enabled`/`disabled`）时**才填 `profileDefaults`；文件缺失 / 解析失败 / 缺键 / 非枚举值一律不填 → 来源落 `builtin`（`readProfile()` 自身降级行为不变，仍供其他调用方）。**测试断言注意**：`effective` 是三层显式声明值的浅合并（无 builtin 回填）→ 无画像时 `effective.auto_advance === undefined`；`resolveEffectiveConfig().auto_advance` 才因 `DEFAULT_CONFIG` 回填为 `{ value: 'disabled', source: 'builtin' }`——两者不可互换断言（原方案误称 effective 仍为 `disabled`，执行时按代码事实更正并如实登记偏差）。
 
 ## [+] 审计日志 action 命名与双轨语义模式 (2026-09-29)
 
@@ -2344,6 +2350,8 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 **防回归价值**：反向守卫随每次 `npm test` 自动生效，CI 跑测试即在守卫；验收时用「致败实验」证明守卫有效（移除 mock → 缺陷复发 → 守卫精确报错），比单纯「测试全绿」可信。
 
 **参见：** v1.1.2-stage-42 op-005、`REV-v1.1.2-stage-42` REV-011
+
+> **更新于 2026-09-29**：第 4 条末尾「`config.yaml` 则无守卫」**已过时**——`config/BUG-002` 语义修复（stage-47 op-003）后，`init` 对已存在的 `.openfeel/config.yaml` 不再调用 `writeDefaultConfig`（入 `skipped` 提示），`writeDefaultConfig` 亦在注释中声明「调用方须先守卫」；即**命令行为层 + 测试隔离层双防线**（原先同链路还有第二个守卫缺口：`identity.test.ts` 以保存/恢复模式直写真实 `~/.openfeel/config.json`，见 kb/troubleshooting.md #测试以保存恢复模式代替 homedir mock）。
 
 ## [+] 隔离 HOME 实测 opencode 行为的方法：双设 HOME/USERPROFILE + debug paths 断言 + 零污染核对 (2026-09-29)
 
@@ -2472,3 +2480,68 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 - **实施前先取证**：`rg "process\.cwd|homedir"` 确认被测链路的取数点，排除「模块加载期捕获」导致 mock 静默失效。
 
 **参见：** v1.1.2-stage-46 op-005、`REV-v1.1.2-stage-46` 审查要点 7 建议③、kb/patterns.md #测试 cwd 隔离模式、kb/patterns.md #隔离 HOME 实测 opencode 行为的方法
+
+> **更新于 2026-09-29**：补**反例与审计方法**（v1.1.2-stage-47 验收发现 `config/BUG-004`）：`test/core/workspace/identity.test.ts` 未 mock `node:os`，以「读原内容 → `afterEach` 写回」的**保存/恢复伪隔离**直写真实 `~/.openfeel/config.json`（哈希不变但 mtime 被改写，测试全绿无告警）。**审计动作**：`npm test` 前后比对真实全局目录的 **mtime + hash**（只比 hash 会漏掉伪隔离）。详见 kb/troubleshooting.md #测试以保存/恢复模式代替 homedir mock：隔离审计四步法。
+
+## [+] 写策略按资产归属二分：用户资产「不覆盖」vs 框架资产「备份后覆盖」 (2026-09-29)
+
+**适用**：部署/初始化类命令会写用户磁盘，且家族内**既有「备份后覆盖」也有「拒绝覆盖」**诉求时（v1.1.2-stage-47 op-003 落定，`config/BUG-002` 语义修复）。
+
+**判定与策略（先判归属，再谈策略）**：
+
+| 资产归属 | 判定 | 写策略 | 实例 |
+|----------|------|--------|------|
+| **用户资产**（用户会手工编辑的项目配置） | 文件已存在即视为用户所有 | **不覆盖**：跳过 + 用户可见提示 | `.openfeel/config.yaml`（`init`） |
+| **框架资产**（框架为唯一权威源的部署物） | 内容可幂等重建 | **备份后覆盖**（写前备份 + `backed` 条目 + 备份失败绝不覆盖） | 全局 `AGENTS.md` / agent 文件 / `opencode.jsonc` / `package.json` |
+
+**三条落地要求**：
+
+1. **「备份后覆盖」是覆盖的前置，不是覆盖的替代**：文件一旦改为「不覆盖」，其备份接入点必须**同批删除**——否则每条命令都产生 `backed` 条目却无覆盖事实（误导性审计条目 + 无意义 IO，且会让会话启动检查误报）。
+2. **不覆盖必须给出用户可见理由**：结果结构（`InitResult.skipped`）记录原因字符串（`'.openfeel/config.yaml (已存在，保留用户配置)'`），命令层汇总为提示（i18n `init.skipped`），禁止静默跳过。
+3. **函数契约写死在注释里**：`writeDefaultConfig` 声明「整体覆盖，调用方须先自行守卫」——把守卫责任上移到调用点，禁止「无守卫地用于既有用户配置」。
+
+**取舍（须显式裁定）**：`init` 不再把模板新增字段带给存量项目 = **有意取舍**（用户可编辑文件优先保护）；如需补全缺失键应另立「合并写入」能力，而非回退为整体覆盖（后者即原事故根因）。
+
+**验证方法（隔离 HOME + 临时项目）**：写入用户自定义三值 → 重跑 `init`（含 `--workspace-only` 与全量）→ 断言 ① 文件**哈希不变**、② 输出含 skipped 提示、③ `update_infos.md` **无该文件 `backed` 条目**、④ 备份目录无该文件；**反向回归**：`package.json` 备份块仍工作（生成备份 + `来源: init`），证明删除的是「该文件的备份接入」而非整条备份链路。
+
+**参见：** `manual/core/init.md`（用户配置不覆盖语义）、`manual/core/backup.md`（接入点清单）、v1.1.2-stage-47 op-003、`config/BUG-002`、kb/patterns.md #部署覆盖前自动备份机制
+
+## [+] CLI 自描述集合的「存在视图 vs 推进白名单」区分：差异显式化而非强行收敛 (2026-09-29)
+
+**适用**：自描述命令暴露的集合与命令**实际接受**的集合语义不同源时（v1.1.2-stage-47 op-001，`cli/BUG-001`）。
+
+**不要强行收敛为一个数据源**，而应把差异**显式化且可编程消费**：
+
+- **存在视图（`phases`）**：运行时 `pipeline.yaml` 声明的全部 phase（可含自定义，如 `gate`）——回答「当前项目有哪些 phase」；
+- **推进白名单（`advanceAccepted`）**：命令实际接受的 phase（内置 15，`PIPELINE_PHASES`）——回答「哪些 phase 可作推进目标」。
+
+**落地三件套**：
+
+1. 人类可读输出在有差异时追加**边界说明**（i18n 键 `flow.phases.customPhaseNote`；属运行时输出，不入 `--help` 文案域）；
+2. `--json` 增 `advanceAccepted: [...PIPELINE_PHASES]`，使差异**可编程消费**（脚本可据此预校验），而非纯文字免责声明；
+3. **不**把校验收敛到运行时 phases——推进白名单本应稳定，收敛会波及 `PipelinePhase` 类型系统与模糊修正链（影响面大）。
+
+**判别准则**：两集合**语义角色不同**（描述现状 vs 施加约束）→ 显式化；**角色相同**（如「转移表」的展示与校验）→ 必须同源（见 kb/patterns.md #CLI 自描述命令模式）。
+
+**验证**：fixture `pipeline.yaml` 加 `gate`（含 `plan_passed:[gate]`、`gate:[scheme_pending]`）→ `flow phases --json` 顶层键为 `phases,transitions,advanceAccepted`，`phases`=16 / `advanceAccepted`=15 且不含 `gate`；`flow advance --to gate`（含 `--force`）均拒绝 → 自描述边界与实际接受集合一致。
+
+**参见：** v1.1.2-stage-47 op-001、`manual/core/flow-manager.md`、`manual/cli/commands.md`、kb/troubleshooting.md #flow phases 自描述 phase 与 flow advance 接受集合不一致
+
+## [+] 事务顺序模式：先落盘状态、后执行不可逆副作用（副作用由调用方在 save 成功后执行） (2026-09-29)
+
+**适用**：任何「改状态 + 改外部世界」的复合操作（`REV-v1.1.2-stage-41` REV-009，v1.1.2-stage-47 op-004 落地）。
+
+**反模式（修复前）**：`removeStage` 内部先 `rmSync(dir)` 再 `save()` → `save()` 失败（乐观并发冲突 / 磁盘错误）时**目录已删但注册仍在** → 中间态（注册指向不存在的目录，后续命令读到幻影阶段）。
+
+**修正后的契约**：
+
+1. **core 只做内存操作**：注销注册 + **计算**待删目标，返回 `{ purgeTarget?: string }`，不执行任何不可逆副作用；
+2. **命令层顺序固定**：`removeStage(...)` → `save()`（成功）→ `rmSync(purgeTarget)`；
+3. **审计日志记意图而非事实**：`detail.purgeTarget`（计划删哪里）替代 `detail.purged`（是否已删），语义与「是否真删」解耦；
+4. **契约变更须同步调用方与测试**：`rg "<method>(" src` 确认唯一调用方；既有断言翻转（`purgeTarget` 非空且目录**仍在**），目录实际删除的断言下沉到命令层/集成用例。
+
+**判据**：副作用**不可逆**（删目录/覆盖文件/调用外部进程）→ 一律后置；**可逆或幂等**的写可容忍前置。等价检查：「若下一步失败，磁盘与状态会否自相矛盾」——不能自洽即需重排。
+
+**验证**：注入 `save()` 失败 → 断言目录未被删、`flow.json` 注册仍在（无中间态）；正常路径 e2e → 目录已删 + 注册已移除 + 输出提示。
+
+**参见：** v1.1.2-stage-47 op-004、`REV-v1.1.2-stage-41` REV-009、kb/patterns.md #破坏性命令安全校验清单模式、kb/patterns.md #原子写模式

@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-29-Liuary-046.md](2026/09/29/2026-09-29-Liuary-046.md) | Liuary | 阶段 v1.1.2-stage-47 完成 |
+| [2026-09-29-Liuary-045.md](2026/09/29/2026-09-29-Liuary-045.md) | Archiver | **stage-47 归档完成（v1.1.2 已登记缺陷集中清理）**：`config/BUG-002`（high）**语义修复**——`init` 对已存在 `.openfeel/config.yaml` **不再覆盖**（删除 stage-46 备份接入块 + `init.skipped` 用户可见提示）+ `config/BUG-003` 画像层「文件存在 + 原始 YAML 显式声明」双条件（来源落 `builtin`）+ `cli/BUG-001` `flow phases` 边界说明 + `--json.advanceAccepted`（存在视图 vs 推进白名单）+ `cli/BUG-002` `StageDirConflictError` + 三入口 i18n 分流（死键消除）+ `archive/BUG-001` `Array.isArray(deps)` 守卫 + `save()` `meta ??=` 守卫 + **`removeStage` 事务顺序**（返回 `purgeTarget`，命令层 `save()` 后删目录）+ jsonc 备份失败 **A/B 分流**（setup/update 跳过继续 + `anomaly(backup_failed)`；migrate 有意 fail-fast）+ `agents-md:112` 泛化 + `kb/architecture.md:497` 与计划文本收口（`lint kb` 0 过期引用）；7 op，**693/693 测试全绿（41 文件）**、`tsc` 0、`npm run build` 幂等、`lint i18n` 零错误；REV-001~005 全 closed（含 2 条 blocking：并行组修正 / BUG-002 修复指令补全）；**Bug 6 条 closed**（测试官隔离端到端验收，每条补「防再犯」）+ `config/BUG-001` 复核维持 closed + **新登记 `config/BUG-004`**（medium，测试隔离缺口，**裁定归 stage-43**）；知识沉淀 7 条至 patterns(3) + troubleshooting(1) + 既有条目 9 处「更新于」批注；manual 更新 `core/{init,flow-manager,config,backup}.md` + `cli/commands.md` + `index.md` |
 | [2026-09-29-Liuary-044.md](2026/09/29/2026-09-29-Liuary-044.md) | Liuary | v1.1.2-stage-47.op-007 执行通过 |
 | [2026-09-29-Liuary-043.md](2026/09/29/2026-09-29-Liuary-043.md) | Liuary | v1.1.2-stage-47.op-006 执行通过 |
 | [2026-09-29-Liuary-042.md](2026/09/29/2026-09-29-Liuary-042.md) | Liuary | v1.1.2-stage-47.op-005 执行通过 |
@@ -30,8 +32,6 @@
 | [2026-09-29-Liuary-018.md](2026/09/29/2026-09-29-Liuary-018.md) | Liuary | v1.1.2-stage-44.op-001 执行通过 |
 | [2026-09-29-Liuary-017.md](2026/09/29/2026-09-29-Liuary-017.md) | Liuary | 阶段 v1.1.2-stage-42 完成 |
 | [2026-09-29-Liuary-015.md](2026/09/29/2026-09-29-Liuary-015.md) | Liuary | v1.1.2-stage-42.op-005 执行通过 |
-| [2026-09-29-Liuary-013.md](2026/09/29/2026-09-29-Liuary-013.md) | Liuary | v1.1.2-stage-42.op-004 执行通过 |
-| [2026-09-29-Liuary-012.md](2026/09/29/2026-09-29-Liuary-012.md) | Liuary | v1.1.2-stage-42.op-003 执行通过 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

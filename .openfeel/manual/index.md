@@ -34,14 +34,14 @@
 
 | 模块 | 对应文档 | 归档时检查点 |
 |------|----------|--------------|
-| flow.json / 流水线推进 | `core/flow-manager.md` | 核心 API（含自描述访问器、`removeStage` 安全校验、`resolveEffectiveConfig` 级联解析）、状态机/转移表/全局状态聚合判定、审计日志 action 集合变更 |
+| flow.json / 流水线推进 | `core/flow-manager.md` | 核心 API（含自描述访问器、`removeStage` 安全校验与**返回值契约 `purgeTarget`**、`resolveEffectiveConfig` 级联解析）、状态机/转移表/全局状态聚合判定、审计日志 action 集合变更、**事务顺序（副作用后置）** |
 | config.yaml / profile.yaml | `core/config.md` | 配置层级、有效值级联（四级优先级与来源标注）、读写方法或默认值常量变更 |
 | init.ts / 项目初始化 | `core/init.md` | 初始化流程、API 或部署逻辑变更 |
 | update.ts / 适配器更新编排 | `core/update.md` | 部署目标、合并逻辑、控制区三态、修正项变更 |
 | update-state.ts / update_state.json | `core/update-state.md` | hash 追踪、冲突标记或 update_state.json 结构变更 |
 | managed-region.ts / 控制区标记 | `core/managed-region.md` | 四策略、标记 token 或 parse/replace 语义变更 |
 | update-infos.ts / update_infos.md | `core/update-infos.md` | 条目结构、路径二元组或读写 API 变更 |
-| backup.ts / 部署覆盖前备份 | `core/backup.md` | 备份根/分区结构、`manifest.json` 字段、`backupFileBeforeWrite` 签名或接入点清单、失败语义（`BackupError` / `skipped` / `note='backup_failed'`）、`BackupCommand` 枚举变更 |
+| backup.ts / 部署覆盖前备份 | `core/backup.md` | 备份根/分区结构、`manifest.json` 字段、`backupFileBeforeWrite` 签名或接入点清单（含「不覆盖故无接入」文件）、失败语义（`BackupError` / `skipped` / `note='backup_failed'`）、`BackupCommand` 枚举变更 |
 | plan-path.ts / stageId↔目录映射 | `core/plan-path.md` | stageId 解析/校验/建议名、目录映射规则、`(series, stageDir)` 冲突检测或三级回退逻辑变更 |
 | plan/scheme.ts / op 方案生成与兜底注册 | `core/flow-manager.md`（审计日志与兜底注册节） | 兜底注册路径、冲突检测（`validateStageId` + `findStageDirConflict`）或 `register_op` 审计日志变更 |
 | fs/atomic-write.ts / file-lock.ts / sequence.ts | `core/fs.md` | 新增工具、并发机制、锁路径约定或接入范围变更 |
@@ -54,7 +54,8 @@
 | commands/model.ts / model 命令组 | `cli/model.md` | 命令面（set/get/list + --scope）、非 TTY 守卫或翻译机制变更 |
 | setup.ts / 全局部署 | `core/setup.md` | 全局部署目标、幂等语义或部署内容变更 |
 | commands/setup.ts / setup 命令 | `cli/setup.md` | 命令面（--lang）或输出行为变更 |
-| 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更 |
+| 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更、自描述集合边界（`advanceAccepted`）、结构化错误分流（`StageDirConflictError`） |
+| init.ts `--workspace-only` / 用户可见跳过提示 | `core/init.md` + `cli/commands.md` | `InitResult.skipped` 语义（备份失败 / **已存在不覆盖**）或跳过提示输出变更 |
 | Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更 |
 | agent 模板 permission / opencode 权限模型（opencode 适配器） | `core/permission.md` | 9 agent 白名单键集、合并/优先级语义、项目级收紧入口或受管区边界变更 |
 

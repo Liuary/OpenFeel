@@ -489,6 +489,8 @@ OpenFeel 的模板部署存在**两层模板源**：
 
 **参见：** v1.1.2-stage-41 正式测试 cli/BUG-001、kb/patterns.md #CLI 自描述命令模式
 
+> **更新于 2026-09-29（已修复，v1.1.2-stage-47 op-001）**：采纳**方案 B（显式化而非收敛）**——`flow phases` 人类输出在运行时含内置 15 之外 phase 时追加边界说明（i18n `flow.phases.customPhaseNote` zh/en），`--json` 增 `advanceAccepted`（= `PIPELINE_PHASES` 内置 15）。实测（隔离项目 + 自定义 `pipeline.yaml` 含 `gate`）：`phases` 长度 16 / `advanceAccepted` 长度 15 且不含 `gate`；`flow advance --to gate`（含 `--force`）拒绝 → 自描述边界与 `advance` 实际接受集合一致。**保留的结论**：两集合语义角色不同（描述现状 vs 施加约束），不应强行同源（收敛会波及 `PipelinePhase` 类型与模糊修正链）。
+
 ## [+] 新增 i18n 键已定义却未接入（死键）：核心层抛中文错误绕过 t() 渲染 (2026-09-29)
 
 **现象**：新增键 `common.stageDirConflictTmpl` 在 `zh-CN.ts` / `en.ts` 双侧均已定义，但 en 语言下 `openfeel plan stage add` / `flow stage add` 的冲突错误仍输出中文——命令层实际走 `common.errorTmpl` + 核心层抛出的中文文案。
@@ -504,6 +506,8 @@ OpenFeel 的模板部署存在**两层模板源**：
 - 长期可为 `lint i18n` 增加「未引用键」检查（当前仅对称性检查）。
 
 **参见：** v1.1.2-stage-41 正式测试 cli/BUG-002、kb/patterns.md #CLI 国际化封装模式
+
+> **更新于 2026-09-29（已修复，v1.1.2-stage-47 op-001）**：采纳「核心层抛结构化错误 + 命令层按类型渲染」——新增 `StageDirConflictError`（含 `stage`/`other`，`message` 保留原中文文案以兼容既有 `toThrow` 断言），`registerStage`/`addStage` 改抛该错误，三入口（`plan stage add`/`flow stage add`/`stage create`）catch 分流命中时用 `common.stageDirConflictTmpl` 渲染 → **死键消除（3 处使用点）**。实测 `lang=en` 冲突 stderr 为纯英文 `Stage dir conflict: v4.0.0-stage-04 and v4-stage-04 map to the same directory`。**附带更正**：`zh-CN.ts` 内该键 `en: '` 属「单语分文件」模式正常值（en 值在 `en.ts:31`），原判「en 需补全」不成立——死键本质是**无使用点**而非值缺失。
 
 ## [+] kb-dedup 去重检索对 CRLF 行尾静默失效（归档官去重降级）(2026-09-29)
 
@@ -554,6 +558,8 @@ CRLF 计数 > 0 即可疑；或直接对比「`findSimilarEntries` 命中的标�
 **同类风险（顺带核验）**：`writeProfile`（`~/.config/openfeel/profile.yaml`）同为无备份整体覆盖，且 `readProfile` 解析失败静默回退 `DEFAULT_PROFILE`，随后的 `ensureProfileDefaults` 会用默认值写回——非法 YAML 时用户画像整体丢失（实测 `name: TestUser → unknown`）。
 
 **参见：** `config/BUG-002`、v1.1.2-stage-42 REV-011、stage-46 REV-001
+
+> **更新于 2026-09-29（实现层根因已消除，v1.1.2-stage-47 op-003）**：`init` 对**已存在**的 `.openfeel/config.yaml` **不再覆盖**（`configExisted` 分支仅 `skipped.push('.openfeel/config.yaml (已存在，保留用户配置)')` + 命令层 `init.skipped` 用户可见提示），并**删除 stage-46 的 `config.yaml` 备份接入块**（无覆盖则无「备份前置」语义，保留会产生误导性 `backed` 条目）；`writeDefaultConfig` 增注释声明「整体覆盖，调用方须先自行守卫」。隔离实测：用户自定义三值 + 自定义键经 `init --workspace-only` 与全量 `init` 两次重跑**哈希均不变**，`update_infos.md` 无该文件 `backed` 条目；`package.json` 备份块仍工作。**保留的同类风险**：`writeProfile`（`~/.config/openfeel/profile.yaml`）仍为无备份整体覆盖 + 解析失败静默回退（未修，见 kb/不修项）。
 
 ## [+] 需求/文档记载的根因判断须实测复核（opencode 权限「顶层 permission 不生效」误判） (2026-09-29)
 
@@ -628,4 +634,28 @@ rg -n "backupFileBeforeWrite" src/core          # 找出全部接入点，逐个
 
 **对齐方向（二选一，须先确认「部分部署 + exit 1」在目标场景是否可接受）**：**A** 三处补 `try/catch` → `anomaly` + `warn` + 跳过 jsonc 写入继续（与受管路径口径统一）；**B** 在模块手册与计划文档中显式记录 fail-fast 为**有意设计**（零代码变更，与 migrate 事务回滚语义自洽）。禁止为「一致性」直接改成静默半完成。
 
+> **更新于 2026-09-29（已定稿，v1.1.2-stage-47 op-004）**：上述「二选一」已按**混合裁定**落地——`setup`/`update` 取 **A**（补 `try/catch` **仅捕获 `BackupError`**：`anomaly(backup_failed)` + `console.warn` + **跳过本次 jsonc 写入、继续其余步骤**；跳过后 `updateFileHash` 不执行 → 下次 update 重跑自愈）；`migrate` 取 **B**（保持 fail-fast，零代码变更 + 文档化，依据其**可回滚事务**语义）。分流判据＝「幂等部署（部分完成可自愈）vs 可回滚事务（abort 更干净）」。已同步 `manual/core/backup.md`。
+
 **参见：** `REV-v1.1.2-stage-46` REV-011、`test-v1.1.2-stage-46-report-2026-09-29.md` §4、`.openfeel/manual/core/backup.md`、kb/patterns.md #部署覆盖前自动备份机制
+
+## [+] 测试以「保存/恢复」代替 homedir mock：直写真实全局目录的伪隔离（隔离审计四步法） (2026-09-29)
+
+**现象**：`npm test` 全量运行会**改写真实 `~/.openfeel/config.json` 的 mtime**（内容靠 `afterEach` 回滚还原、哈希不变），且**无任何测试失败**——伪隔离使污染长期不可见（v1.1.2-stage-47 验收发现，登记 `config/BUG-004`，medium 非阻塞）。
+
+**根因**：`test/core/workspace/identity.test.ts` 的 `recordProjectLang` 块未 `vi.mock('node:os')`，直接以真实 `homedir()` 读写全局配置（保存原内容 → 用例结束写回）。保存/恢复**不是隔离手段**，其失效窗口：进程被强杀（Ctrl+C/OOM/超时）→ 残留测试条目；并发跑测试 → 互相覆盖；且它对「写盘目标错误」零信号。
+
+**定位链（四步，可复用）**：
+
+1. 记录真实对象的 **mtime + SHA256** 基线（`~/.openfeel/config.json`、`~/.config/opencode/`、`~/.config/openfeel/profile.yaml`）；
+2. 跑全量 `npm test` → 复测：**哈希不变但 mtime 变化** = 「被写过又被还原」的铁证（只比 hash 会漏检）；
+3. **二分定位**：按目录二分 `npx vitest run test/core/<子目录>` 缩小到单文件（本案 `test/core` → `workspace` → 该文件唯一命中）；
+4. **反证**：`$env:USERPROFILE` 与 `$env:HOME` 同时重定向到隔离目录后复跑，若不再触碰真实文件 → 证明该用例走了**未被 mock 的 `os.homedir()`**。
+
+**避免再犯**：
+
+- 依赖全局路径的测试**必须** `vi.mock('node:os')`（前提：全仓仅 `global-paths.ts` 取 `homedir`，见 kb/patterns.md #全局路径测试的单点 mock 隔离模式）；
+- 把「`npm test` 前后真实全局目录 **mtime + hash** 比对」列为验收固定项（归档官/测试官均可执行）；
+- 发现历史残留（本案真实 `config.json` 有 **455 条** `…\\Temp\\openfeel-update-test-*` 死映射，为早期 `update.test.ts` 未隔离时遗留）→ **单独评估清理**，勿在修用例时顺手改动真实用户数据；
+- 该文件属**既有隔离缺口**（非 stage-47 引入），本轮 7 个 Bug 验收结论不受影响，已按裁定归属 **v1.1.2-stage-43**（发布前清零点）。
+
+**参见：** `config/BUG-004`、v1.1.2-stage-47 测试报告 §五（污染核验）、kb/patterns.md #全局路径测试的单点 mock 隔离模式、kb/patterns.md #测试 cwd 隔离模式

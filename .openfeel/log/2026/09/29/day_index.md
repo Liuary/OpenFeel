@@ -16,3 +16,5 @@
 | [2026-09-29-Liuary-011.md](2026-09-29-Liuary-011.md) | Liuary | v1.1.2-stage-42.op-002 执行通过 |
 | [2026-09-29-Liuary-012.md](2026-09-29-Liuary-012.md) | Liuary | v1.1.2-stage-42.op-003 执行通过 |
 | [2026-09-29-Liuary-013.md](2026-09-29-Liuary-013.md) | Liuary | v1.1.2-stage-42.op-004 执行通过 |
+| [2026-09-29-Liuary-014.md](2026-09-29-Liuary-014.md) | openfeel-reviewer | **stage-42 代码审查不通过（REV-011 high blocking）**：init.test.ts 未隔离 cwd → npm test 覆写真实 config.yaml 三值（复现 hash 5229455D→23F76595 后已还原）；四 op 与方案逐字吻合、652 测试全绿；REV 文件加可信度声明 + REV-004/010 验收补录，REV-005/006 引用标可疑 |
+| [2026-09-29-Liuary-015.md](2026-09-29-Liuary-015.md) | Liuary | v1.1.2-stage-42.op-005 执行通过 |

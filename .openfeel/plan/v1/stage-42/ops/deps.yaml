@@ -78,11 +78,22 @@ ops:
     deps: []
     notes: "复用 stage-41 已落地的 path.ts 导出与检查函数；无 hard 前置，仅同改 flow-manager.ts 故串行"
 
+  op-005:
+    file: op-005.md
+    title: "修复 init.test.ts cwd 未隔离致 npm test 覆写仓库 config.yaml（REV-011）"
+    produces:
+      - test/commands/init.test.ts
+    deps: []
+    notes: "REV-011（high/blocking）最小修复：仅改测试隔离，不动 writeDefaultConfig 实现（归属 stage-46 REV-001）；同源 BUG-002（config，high）仅关联不重复开票。仅触碰 test/commands/init.test.ts（与其余 op 无文件交集）→ 可并行"
+
 mutual_exclusions:
   - group: [op-001, op-002, op-003, op-004]
     reason: "四者均**改写** src/core/flow-manager.ts；op-001/op-002 另共享 i18n-data/{zh-CN,en}.ts。必须串行调度"
+    # op-005 不在本组：仅改 test/commands/init.test.ts，与源码热区无交集，可与任一 op 并行/穿插
 
 parallel_groups:
+  - group: [op-005]
+    desc: "REV-011 测试隔离修复（仅 test/commands/init.test.ts）——与源码热区无交集，**可立即并行**于任一 op（建议最先执行，先解除 blocking）"
   - group: [op-003]
     desc: "状态正确性点状修复（建议先行，快速收口；改动面最小）"
   - group: [op-004]
@@ -92,10 +103,11 @@ parallel_groups:
   - group: [op-002]
     desc: "config effective（硬依赖 op-001）"
 
-# 注：因四 op 共享 flow-manager.ts，本阶段无真正可并行的 op；上面的分组表意「推荐串行次序的批次」。
+# 注：op-001~op-004 共享 flow-manager.ts，四者无真正可并行；op-005 仅改测试文件，可并行穿插。
 recommended_order:
+  - op-005
   - op-003
   - op-004
   - op-001
   - op-002
-rationale: "计划 §七建议 op-003 → op-004 → op-001 → op-002：op-003/op-004 小而独立先行收口状态正确性；op-001→op-002 强关联（op-002 复用 op-001 的级联与来源）须依序。"
+rationale: "op-005（REV-011 blocking）优先修复以解除阻塞（仅测试文件、无冲突）；其后按计划 §七 op-003 → op-004 → op-001 → op-002 串行（op-001→op-002 强关联）。"

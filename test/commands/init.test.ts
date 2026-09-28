@@ -13,9 +13,12 @@ vi.mock('node:os', async (importOriginal) => {
 
 import { Command, CommanderError } from 'commander';
 import { registerInitCommand } from '../../src/commands/init.js';
-import { existsSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+
+// 真实仓库根（在 beforeEach mock process.cwd 之前于模块加载期捕获），用于 REV-011 反向守卫断言
+const REAL_CWD = process.cwd();
 
 describe('init 命令', () => {
   let tmpDir: string;
@@ -24,11 +27,15 @@ describe('init 命令', () => {
   let exitMock: ReturnType<typeof vi.fn>;
   let errorMock: ReturnType<typeof vi.fn>;
   let logMock: ReturnType<typeof vi.fn>;
+  let cwdMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-init-test-'));
     homeDir = mkdtempSync(join(tmpdir(), 'openfeel-home-'));
     mockHome.dir = homeDir;
+    // 隔离 cwd（REV-011）：init 不传路径时使用 process.cwd()，必须指向临时目录，
+    // 否则会经 writeDefaultConfig 无条件覆写仓库真实 .openfeel/config.yaml
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     // mock process.exit 防止测试中断（exitOverride 也会调用 process.exit）
     exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {
       // 不真正退出
@@ -48,6 +55,7 @@ describe('init 命令', () => {
     exitMock.mockRestore();
     errorMock.mockRestore();
     logMock.mockRestore();
+    cwdMock.mockRestore();
   });
 
   it('应在临时目录中创建 .openfeel/ 目录', async () => {
@@ -80,12 +88,21 @@ describe('init 命令', () => {
     );
   });
 
-  it('不传路径时应使用当前工作目录', async () => {
-    // 不传路径参数，init 命令会使用 process.cwd()
+  it('不传路径时应使用当前工作目录（且不触达真实仓库根）', async () => {
+    // 反向守卫（REV-011）：先记录真实仓库根 config.yaml 内容
+    const repoConfig = join(REAL_CWD, '.openfeel', 'config.yaml');
+    const repoBefore = existsSync(repoConfig) ? readFileSync(repoConfig, 'utf-8') : null;
+
+    // 不传路径参数，init 使用 process.cwd()（已 mock 为 tmpDir）
     await program.parseAsync(['init'], { from: 'user' });
 
-    // 当前工作目录（项目根目录）应已存在 .openfeel/，init 不会失败
-    // 验证没有触发 exit（即没有 CommanderError 抛出）
-    // 如果已存在工作区，initProject 只更新不报错
+    // 正向：init 确实作用于 mock 的 cwd（临时目录）
+    expect(existsSync(join(tmpDir, '.openfeel', 'config.yaml'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.openfeel', 'flow.json'))).toBe(true);
+
+    // 反向：真实仓库根 config.yaml 未被覆写（内容逐字不变）
+    if (repoBefore !== null) {
+      expect(readFileSync(repoConfig, 'utf-8')).toBe(repoBefore);
+    }
   });
 });

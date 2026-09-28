@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T17:12:56.642Z",
-    "revision": 85
+    "updated": "2026-09-28T18:38:10.186Z",
+    "revision": 94
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-42",
-      "op": "op-001"
+      "op": "op-005"
     },
     "retry": 0
   },
@@ -606,7 +606,7 @@
     "v1.1.2-stage-42": {
       "name": "v1.1.2-stage-42",
       "phase": "exec_running",
-      "status": "planned",
+      "status": "review_failed",
       "deps": [],
       "ops": {
         "op-001": {
@@ -676,6 +676,23 @@
             "review": "pending",
             "test": "pending"
           }
+        },
+        "op-005": {
+          "title": "修复 init.test.ts cwd 未隔离致 npm test 覆写仓库 config.yaml（REV-011）",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
         }
       },
       "stats": {
@@ -731,6 +748,13 @@
         "end_time": "",
         "duration_ms": 0
       }
+    },
+    "v1.1.2-stage-47": {
+      "name": "v1.1.2-stage-47",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [],
+      "ops": {}
     }
   },
   "reviews": [],
@@ -5373,6 +5397,84 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-42.op-004",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T17:58:49.959Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-09-28T18:30:25.342Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-09-28T18:31:05.345Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "opId": "op-005"
+      }
+    },
+    {
+      "time": "2026-09-28T18:32:16.510Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "review_failed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-09-28T18:32:16.764Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-09-28T18:37:00.146Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-09-28T18:37:00.411Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-09-28T18:38:10.166Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-42.op-005",
         "attempts": 1
       }
     }

@@ -470,3 +470,60 @@ OpenFeel 的模板部署存在**两层模板源**：
 - 全局 + 项目 AGENTS.md **拼接而非覆盖**，故「项目级去约束化」（框架通用约束归全局、项目只留项目特有约束）不会丢失约束，二者互补加载。
 
 **参见：** v1.1.1-stage-01 op-000、kb/architecture.md #全局约束架构、kb/troubleshooting.md #opencode instructions 路径 ~ 不展开
+## [+] `flow phases` 自描述 phase 与 `flow advance` 接受集合不一致（第二信源残留）(2026-09-29)
+
+**现象**：自定义 `.openfeel/pipeline.yaml` 在 `phases` 中新增内置 15 项之外的 phase（如 `gate`）后，`openfeel flow phases` 把 `gate` 宣称为合法且可达（列出 `plan_passed → [gate]`），但 `openfeel flow advance --to gate` 拒绝：`'gate' 不是合法的 PipelinePhase`；加 `--force` 亦失败（模糊修正基于硬编码枚举 → `非法 phase 'gate'，模糊修正失败`）。
+
+**根因**：phase **转移表**已统一到运行时 `pipelineConfig`（展示 `getPipelineTransitions()` 与校验 `hasTransition()`/`getValidTargets()` 同源），但 phase **合法性判定**（`PipelinePhaseSchema` / `PIPELINE_PHASES`）仍是硬编码，二者可能与自描述冲突；而 `pipeline.yaml` 头部却声明「新增/修改流水线阶段只需编辑此文件，不改 TS 源码」，使该缺口更具误导性。属**预存量缺陷**，新增自描述命令使其首次可见。
+
+**排查方法**：
+
+1. 构造含自定义 phase 的 `pipeline.yaml`，对比 `flow phases` 输出集合与 `advance --to` 接受集合；
+2. `rg -n "PIPELINE_PHASES" src/` 列出全部使用点，区分「展示源」与「校验源」——若存在两个不同来源即为第二信源。
+
+**避免再犯**：
+
+- 为自描述命令补说明行，标注数据来源与可用边界（如「`advance --to` 目前仅接受内置 15 个 phase」）；
+- 或将 `advance` 的 phase 合法性判定也收敛到运行时 `pipelineConfig.phases`，做到真正单一数据源；
+- 或在 `pipeline.yaml` 加载时对未知 phase 告警，避免「宣称支持却不生效」。
+
+**参见：** v1.1.2-stage-41 正式测试 cli/BUG-001、kb/patterns.md #CLI 自描述命令模式
+
+## [+] 新增 i18n 键已定义却未接入（死键）：核心层抛中文错误绕过 t() 渲染 (2026-09-29)
+
+**现象**：新增键 `common.stageDirConflictTmpl` 在 `zh-CN.ts` / `en.ts` 双侧均已定义，但 en 语言下 `openfeel plan stage add` / `flow stage add` 的冲突错误仍输出中文——命令层实际走 `common.errorTmpl` + 核心层抛出的中文文案。
+
+**根因**：核心层 `registerStage` / `addStage` 抛错文案为中文硬编码（项目既有惯例），命令层 `catch` 统一用 `common.errorTmpl({msg})` 渲染，专为该场景定义的键从未被任何调用点引用（死键）。**`openfeel lint i18n` 只校验 zh/en 键对称性，不校验键是否被引用，因此死键不报错。**
+
+**排查方法**：从本阶段 diff 提取新增 i18n 键清单，逐键 `rg -n "<key>" src/ test/`；仅出现在 `i18n-data/*.ts` 定义处、无消费点的即为死键。
+
+**避免再犯**：
+
+- 为「需要独立渲染」的错误场景定义键时，**同一提交内**改命令层 `catch` 按错误类型分流并接入该键，或改核心层抛结构化错误（含字段）+ 命令层渲染；
+- 新增键后以 `rg` 引用校验兜底，避免「已定义即已覆盖」的错觉；
+- 长期可为 `lint i18n` 增加「未引用键」检查（当前仅对称性检查）。
+
+**参见：** v1.1.2-stage-41 正式测试 cli/BUG-002、kb/patterns.md #CLI 国际化封装模式
+
+## [+] kb-dedup 去重检索对 CRLF 行尾静默失效（归档官去重降级）(2026-09-29)
+
+**现象**：归档官调用 `findSimilarEntries(newContent, category)`（`src/utils/kb-dedup.ts`）时返回的相似条目极少——`patterns.md` 的 80 个条目标题仅解析出 2 个，相似度普遍 < 8%，去重形同虚设、极易新增重复条目，且**不报错**。
+
+**根因**：`parseKbFile()` 用 `content.split('\n')` 切行，标题正则 `^##\s+\[([+-])\]\s+(.+?)\s+\((\d{4}-\d{2}-\d{2})\)$` 的 `$` 锚点在 CRLF 文件下无法匹配（行尾残留 `\r`），故仅 LF 行尾的条目被识别。实测：`patterns.md` 原始切分命中 2 条，`\r\n → \n` 归一后命中 75 条（文件共 80 行 `## [+/-]`）；`troubleshooting.md` 为全 CRLF → 命中 0 条。
+
+**排查方法**：
+
+```bash
+node -e "const b=require('fs').readFileSync('.openfeel/kb/patterns.md');let c=0,l=0;for(let i=0;i<b.length-1;i++)if(b[i]===13&&b[i+1]===10)c++;for(const x of b)if(x===10)l++;console.log('CRLF',c,'LF',l)"
+```
+
+CRLF 计数 > 0 即可疑；或直接对比「`findSimilarEntries` 命中的标题数」与「文件内 `## [+/-]` 行数」。
+
+**避免再犯**：
+
+- 去重检索降级时**改用手动关键词匹配**（提取 `## [+]` 条目标题做核心名词重叠判断，≥60% 标记「疑似重复」不新增，无匹配则标注「未去重，待人工复核」后新增）；
+- 根因修复：解析前统一 `content.replace(/\r\n/g, '\n')`，或按 `/\r?\n/` 分割行；
+- 归档官每次归档后可做一次「命中数 vs 标题数」比对，作为去重工具健康自检。
+
+**参见：** v1.1.2-stage-41 归档（4 条候选去重实测）、`src/utils/kb-dedup.ts`
+

@@ -13,15 +13,15 @@
 | Agent 数 | 9 个（feel + 8 个 openfeel-* 前缀：planner/schemer/executor/reviewer/feel-tester/utility/vision/archiver） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义，自举实例由 build 生成）、src/core/templates-data/opencode/（模板唯一权威源）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-09-26（stage-01 归档：全局化彻底化改造——移除 core.md 约束统一全局 AGENTS.md + 约束/操作分离 + openfeel setup 纯全局部署 + init 拆 workspace-only + update 拆项目 AGENTS.md + migrate 清理 core.md，4 条知识沉淀至 architecture(1) + patterns(2) + troubleshooting(1)） |
+| 最近更新 | 2026-09-29（stage-41 归档：CLI 自描述与可纠错能力——新增 `flow phases` / `flow stage remove` / `plan stage add --deps` / stageId 校验与冲突检测 / 三入口分层，5 条知识沉淀至 patterns(2) + troubleshooting(3)，manual 更新 flow-manager + plan-path） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
 | 架构决策 | [architecture.md](architecture.md) | 23 | 2026-09-26 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构、控制区标记增量更新架构、存量项目迁移架构、模型配置三层级架构、全局约束架构 |
-| 代码模式 | [patterns.md](patterns.md) | 80 | 2026-09-26 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环、迁移命令模式、回滚边界模式、模型配置命令模式、约束/操作分离、纯全局部署命令 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 23 | 2026-09-26 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查、migrate 中途失败排查、opencode 模型解析优先级排查、全局 AGENTS.md 加载排查 |
+| 代码模式 | [patterns.md](patterns.md) | 82 | 2026-09-29 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环、迁移命令模式、回滚边界模式、模型配置命令模式、约束/操作分离、纯全局部署命令、CLI自描述命令模式、破坏性命令安全校验清单 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 26 | 2026-09-29 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查、migrate 中途失败排查、opencode 模型解析优先级排查、全局 AGENTS.md 加载排查、flow phases 与 advance 校验集不一致、i18n 死键未接入、kb-dedup CRLF 去重失效 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-09-25 | 环境搭建、构建流程、依赖管理、Agent 模型配置（frontmatter 优先级已勘误）、npm pack 发布验证、CI/CD npm 自动发布 |
 
 ## 各分类摘要
@@ -127,6 +127,8 @@
 | 模型配置命令模式：model set/get/list + --scope + 校验 + 非 TTY 守卫 | 2026-09-25 | openfeel model 命令组（set/get/list + --scope default\|global\|project，默认 project）；非 TTY 下 --scope default 须 --force/--build 双重确认；isFrameworkSourceReady 复用 core 层路径推导；build 由 CLI 层触发；校验三段式错误提示；遮蔽提示（REV-1701）；内部 API 纯函数化 |
 | 约束/操作分离模式：目录结构语义决定归属（约束→AGENTS.md，操作→skill） | 2026-09-26 | 按内容性质决定归属：行为约束→全局 AGENTS.md（常驻自动加载），操作步骤→skill（按需加载）；移除 core.md 只留全局 AGENTS.md 消除约束两处存放；项目级去约束化 |
 | 纯全局部署命令模式：setup 只部署全局资产，不建项目 .openfeel/ | 2026-09-26 | openfeel setup（纯全局）与 openfeel init（项目初始化）职责分离；setup 幂等复用 deployGlobalAsset；init 拆 --workspace-only --non-interactive 供 Feel 空白项目自动搭工作区 |
+| CLI 自描述命令模式：phase 枚举与转移表复用运行时单一数据源 | 2026-09-29 | 自描述命令经 FlowManager 只读访问器（getPipelinePhases/getPipelineTransitions）读运行时 pipelineConfig，缺省回退默认表；展示与校验（hasTransition/getValidTargets）同读 transitions 杜绝第二信源；命令层禁硬编码 PIPELINE_PHASES；--json 稳定结构；局限=phase 合法性判定未收敛 |
+| 破坏性命令安全校验清单模式：默认拒绝 + 显式越权 + 可预览 + 可审计 | 2026-09-29 | 九项清单：存在性/子项非空/被引用（deps 归一化 + Array.isArray 守卫）/当前活跃/指针兜底/--force 留痕/--dry-run 复用只读校验/--purge 双重确认/审计快照；校验抽单个只读方法供 remove 与 dry-run 共用 |
 
 ### troubleshooting.md
 
@@ -154,6 +156,9 @@
 | migrate 中途失败排查：异常路径提示 + manifest 回填 + rollback 清理 | 2026-09-25 | 全局部署中途异常致「半迁移」；修复=命令层 try-catch 输出「可 rollback 回滚」+ manifest.globalStateKeys 纳入 finally 回填 + splitUpdateState 复用全局 state；关键中间态须写入幂等可读 manifest |
 | opencode 模型解析优先级排查：frontmatter 覆盖 jsonc agent.model | 2026-09-25 | frontmatter 覆盖 opencode.jsonc agent.model（与「jsonc 更权威」直觉相反）；REV-1606 实测优先级链「项目 agents frontmatter > 全局 frontmatter > 项目 jsonc > 全局 jsonc > 默认」；只改 jsonc 会被 frontmatter 遮蔽；skill L43 旧说「声明性」已过时 |
 | opencode 全局 AGENTS.md 加载排查：自动加载 YES / 并存拼接 / 移除 instructions 仍生效 | 2026-09-26 | 实测全局 AGENTS.md 自动加载 YES（项目 opencode.jsonc 为 {} 时仍加载）、全局+项目并存拼接不覆盖、移除 instructions 后约束仍生效；指令型探针验证加载；隔离 HOME 不污染真实配置 |
+| flow phases 自描述 phase 与 flow advance 接受集合不一致（第二信源残留） | 2026-09-29 | 转移表已同源但 phase 合法性判定仍硬编码 PIPELINE_PHASES；自定义 pipeline.yaml 新增 phase 时自描述宣称可达而 advance 拒绝；排查=对比两集合 + rg PIPELINE_PHASES 使用点；避免=补边界说明或收敛校验源 |
+| 新增 i18n 键已定义却未接入（死键） | 2026-09-29 | lint i18n 只查 zh/en 对称性不查引用；common.stageDirConflictTmpl 零引用致 en 下仍输出中文；排查=提取新增键逐键 rg；避免=同提交内接入调用点 + rg 引用兜底 |
+| kb-dedup 去重检索对 CRLF 行尾静默失效 | 2026-09-29 | parseKbFile 的标题正则 $ 锚点在 CRLF 下失配（patterns.md 80 个标题仅解析 2 条），去重静默降级；排查=比对 CRLF 计数与命中数；避免=解析前 \r\n 归一 + 降级时改手动关键词匹配 |
 
 ### setup.md
 
@@ -168,6 +173,8 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-09-29 | 归档 | stage-41 归档（v1.1.2 CLI 自描述与可纠错能力）：新增 `openfeel flow phases`（phase 枚举 + 运行时转移表，展示与校验同源）+ `openfeel flow stage remove`（ops/current/deps 三道校验 + `--force`/`--dry-run`/`--purge` + current 兜底 + 审计快照）+ `plan stage add --deps` + stageId 校验/建议名/`(series, stageDir)` 冲突检测 + 三入口分层（`stage create` deprecated）；631/631 测试通过（39 文件）、`lint i18n` 525 键；REV-001~007 closed、REV-008/009 low 跟踪、3 个 low 非阻塞 Bug 登记（cli×2 + archive×1）；知识沉淀 5 条至 patterns(2) + troubleshooting(3)；manual 更新 core/flow-manager.md + core/plan-path.md + manual/index.md |
+
 | 2026-09-26 | 归档 | stage-01 归档（v1.1.1 全局化彻底化改造）：移除 core.md 约束统一全局 AGENTS.md + 约束/操作分离（新增 openfeel-workspace/openfeel-tool-usage 2 skill）+ openfeel setup 纯全局部署 + init 拆 workspace-only + update 拆项目 AGENTS.md + migrate 清理 core.md（--clean-global-core-md），REV-2101 已修复，597/597 测试通过，BUG-001 已 closed，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 cli/setup.md + core/setup.md + 更新 init/update/migrate/index |
 | 2026-09-25 | 归档 | stage-40 归档（v1.1.0 收官）：模型配置接口（`openfeel model` 命令组 + `model-config.ts` 内部 API 三层级读写 default/global/project），2 新增源码 + 2 修改源码 + 2 测试文件，REV-1606 优先级链实测勘误（frontmatter>jsonc）+ REV-1701~1704 已修复，591/591 测试通过，0 Bug，知识沉淀 3 条至 architecture(1) + patterns(1) + troubleshooting(1) + 修正 setup.md/skill 优先级矛盾；manual 新增 core/model-config.md + cli/model.md + 更新 global-paths.md。**v1.1.0 六阶段（35~40）全部闭环** |
 | 2026-09-25 | 归档 | stage-39 归档：存量迁移与兼容收尾（`openfeel migrate` 命令 detectLegacy/备份/全局部署/state 拆分重键/清理/assignee/rollback + --dry-run + 存量读取兼容 P5/isLegacyFrameworkKey + 版本 1.1.0 收口），4 op（migrate 命令 + 存量读取兼容 + 文档/版本收口 + 全量回归），新增 migrate.ts + commands/migrate.ts，REV-1401~1405（1402/1404/1405 已修复，1401/1403 方案文档滞后已同步），569/569 测试通过，0 Bug，知识沉淀 4 条至 architecture(1 新增) + patterns(2 新增) + troubleshooting(1 新增) |

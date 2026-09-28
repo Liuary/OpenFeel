@@ -32,14 +32,14 @@
 
 | 模块 | 对应文档 | 归档时检查点 |
 |------|----------|--------------|
-| flow.json / 流水线推进 | `core/flow-manager.md` | 核心 API 或状态机变更 |
+| flow.json / 流水线推进 | `core/flow-manager.md` | 核心 API（含自描述访问器、`removeStage` 安全校验）、状态机或转移表变更 |
 | config.yaml / profile.yaml | `core/config.md` | 配置层级或读写方法变更 |
 | init.ts / 项目初始化 | `core/init.md` | 初始化流程、API 或部署逻辑变更 |
 | update.ts / 适配器更新编排 | `core/update.md` | 部署目标、合并逻辑、控制区三态、修正项变更 |
 | update-state.ts / update_state.json | `core/update-state.md` | hash 追踪、冲突标记或 update_state.json 结构变更 |
 | managed-region.ts / 控制区标记 | `core/managed-region.md` | 四策略、标记 token 或 parse/replace 语义变更 |
 | update-infos.ts / update_infos.md | `core/update-infos.md` | 条目结构、路径二元组或读写 API 变更 |
-| plan-path.ts / stageId↔目录映射 | `core/plan-path.md` | stageId 解析格式、目录映射规则或三级回退逻辑变更 |
+| plan-path.ts / stageId↔目录映射 | `core/plan-path.md` | stageId 解析/校验/建议名、目录映射规则、`(series, stageDir)` 冲突检测或三级回退逻辑变更 |
 | fs/atomic-write.ts / file-lock.ts / sequence.ts | `core/fs.md` | 新增工具、并发机制、锁路径约定或接入范围变更 |
 | template-loader.ts / 模板运行时加载 | `core/template-loader.md` | 模板源结构、加载 API 或注入对象变更 |
 | build.js / 构建管线 | `core/build.md` | 源路径、构建步骤、校验断言或生成物标记变更 |

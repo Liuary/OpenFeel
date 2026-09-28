@@ -13,6 +13,9 @@ stageId ↔ plan 目录双向映射的**唯一权威工具**，消除各处硬�
 | `parseStageId(stageId)` | 解析 stageId → `{ series, stageDir, fullStageId }`，支持完整/历史/短名三格式，无法解析返回 null |
 | `stageIdToPlanDir(stageId)` | stageId → `plan/{series}/stage-NN/` 相对目录 |
 | `normalizeStageId(stageId)` | 短名/完整 stageId → 规范化完整 stageId |
+| `validateStageId(input)` | 校验 stageId 格式（`stage-NN` / `vX.Y.Z-stage-NN` / `vX-stage-NN`），返回 `{ ok, reason? }`（失败附中文原因） |
+| `suggestStageId(projectPath, input)` | 为非法/非规范输入推导建议名（`NN = 目标 series 内 max+1`，严格限定 series、不跨 series 串号；统计来源 = flow.json `stages` + `plan/{series}/` 目录） |
+| `findStageDirConflict(projectPath, stageId)` | 检测 `(series, stageDir)` 冲突，返回映射同一目录的**其它** stageId（无冲突返回 `null`），供 `registerStage`/`addStage` 与三入口命令层复用 |
 | `planDirToStageId(projectPath, stageDir)` | 目录名 → 完整 stageId（回查 flow.json 反向映射 + 去歧义） |
 | `findStageStatusPath(projectPath, stageId)` | 三级回退查找 status.md 绝对路径 |
 
@@ -40,3 +43,4 @@ stageId ↔ plan 目录双向映射的**唯一权威工具**，消除各处硬�
 | 阶段 | 变更 |
 |------|------|
 | stage-34 | 新增本模块（stageId 三格式解析 + 双向映射 + 三级回退），收敛 init/plan/stage/scheme/flow-manager/commands 各处硬编码路径 |
+| stage-41 | 新增 `validateStageId` / `suggestStageId` / `findStageDirConflict`（三入口统一 stageId 校验 + 建议名 + `(series, stageDir)` 冲突检测） |

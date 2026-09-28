@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T16:25:53.393Z",
-    "revision": 64
+    "updated": "2026-09-28T16:58:03.767Z",
+    "revision": 78
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.2-stage-46",
-      "op": "op-001"
+      "stage": "v1.1.2-stage-41",
+      "op": ""
     },
     "retry": 0
   },
@@ -507,8 +507,8 @@
     },
     "v1.1.2-stage-41": {
       "name": "v1.1.2-stage-41",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {
         "op-001": {
@@ -599,16 +599,85 @@
       },
       "stats": {
         "start_time": "2026-09-28T14:46:38.860Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-09-28T16:58:03.751Z",
+        "duration_ms": 7884891
       }
     },
     "v1.1.2-stage-42": {
       "name": "v1.1.2-stage-42",
-      "phase": "plan_passed",
+      "phase": "scheme_pending",
       "status": "planned",
       "deps": [],
-      "ops": {},
+      "ops": {
+        "op-001": {
+          "title": "auto_advance 四级级联（项目优先 + 全局画像兜底）+ 模板文案与陈旧注释修正",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-002": {
+          "title": "openfeel config effective（有效值 + 生效来源）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-003": {
+          "title": "pipeline.phase 全量 done 判定修正",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-004": {
+          "title": "审计日志补齐（register_stage 与 register_op）+ scheme.ts 兜底冲突检测",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        }
+      },
       "stats": {
         "start_time": "2026-09-28T14:46:39.226Z",
         "end_time": "",
@@ -653,7 +722,7 @@
     },
     "v1.1.2-stage-46": {
       "name": "v1.1.2-stage-46",
-      "phase": "plan_review",
+      "phase": "plan_passed",
       "status": "planned",
       "deps": [],
       "ops": {},
@@ -5138,6 +5207,107 @@
       "detail": {
         "opId": "v1.1.2-stage-41.op-005",
         "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-28T16:26:37.804Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-41",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-09-28T16:33:50.467Z",
+      "agent": "flow-manager",
+      "action": "add_stage",
+      "detail": {
+        "stageId": "v1.1.2-stage-96",
+        "phase": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-09-28T16:40:12.679Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-41",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-09-28T16:40:12.941Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-41",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-09-28T16:40:13.192Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-46",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-09-28T16:40:13.434Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-42",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-09-28T16:47:34.239Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-41",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-09-28T16:47:34.489Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-41",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-09-28T16:48:38.733Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.1.2-stage-41",
+        "opsCount": 5,
+        "reviewsCount": 0,
+        "knowledgeCount": 0,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.2-stage-41.md"
+      }
+    },
+    {
+      "time": "2026-09-28T16:58:03.751Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-41",
+        "from": "archiving",
+        "to": "done"
       }
     }
   ]

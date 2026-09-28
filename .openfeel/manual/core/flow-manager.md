@@ -11,7 +11,7 @@
 | 方法 | 功能 |
 |------|------|
 | `load()` / `save()` | 读取 / 持久化 flow.json（save 含乐观并发校验、写前备份与原子写；load 含 ops 防御性类型守卫） |
-| `addStage(stageId, initialPhase)` | 注册新阶段 |
+| `addStage(stageId, deps?)` | 注册新阶段（写入前做 `(series, stageDir)` 冲突检测：不同 stageId 映射同目录时抛错，同 stageId 幂等静默） |
 | `advanceStagePhase(stageName, phase)` | 推进阶段到目标 phase（校验合法性） |
 | `getSummary()` / `summary(lang)` | 获取流水线摘要（结构化 / 文本） |
 | `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查 |
@@ -19,6 +19,9 @@
 | `autoCommitOnDone(stageName)` | 阶段 done 时自动 git 提交 |
 | `mapPhaseToAgent(phase)` | 将 PipelinePhase 映射为负责 Agent 标识（返回**新名** `openfeel-*`，`done → none`） |
 | `normalizeAgentName(name)` | 归一化 agent 名（旧名→新名，读取兼容 P5；`toLowerCase` 幂等；非 agent 值原样保留） |
+| `checkRemovable(stageId, {force})` | 只读可移除性检查（`ops` 非空 / 当前活跃 / 被 `deps` 引用），`removeStage` 与 `--dry-run` 共用 |
+| `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、可选 `purge` 删目录、`remove_stage` 审计日志） |
+| `getPipelinePhases()` / `getPipelineTransitions()` | 自描述访问器：返回运行时 `pipelineConfig` 的 phase 列表与转移表**副本**（缺省回退默认表） |
 | `FlowConcurrentModificationError` / `isFlowConcurrentError(err)` | flow.json 乐观并发冲突错误类型与识别函数（命令层统一捕获） |
 
 ## 并发保护与乐观并发校验
@@ -30,6 +33,13 @@
 - **恢复 / 修复**：`restoreCheckpoint()` 冲突时返回 `false` 并告警，成功时快照 revision 重定基为 `diskRevision+1`；`repair()` 为显式恢复工具**不做校验**，但写时递增 revision；`saveCheckpoint()` / `initFlow()` 原子写但**不加锁**（唯一文件名 / 首次创建）。
 - **写入路径审计**：flow.json 全部写入路径（`save` / `restoreCheckpoint` / `repair` / `initFlow` / `saveCheckpoint`）均已审计并标注是否加锁及理由。
 - **能力边界**：仅检测经 `FlowManager.save()` 维护 revision 的写入者；外部手工改写不递增 revision 无法检测。
+
+## 自描述命令与破坏性命令支撑（stage-41）
+
+- **`getPipelinePhases(): string[]`** / **`getPipelineTransitions(): Record<string, string[]>`**：供 `openfeel flow phases [--json]` 展示。数据源为运行时 `pipelineConfig`（`.openfeel/pipeline.yaml`），缺省回退 `getDefaultPipelineConfig()`；**返回副本**（外部修改不污染内部状态）。与校验用的 `hasTransition()` / `getValidTargets()` 同读 `pipelineConfig.transitions`，杜绝「展示与实际不符」的第二信源。
+- **`checkRemovable(stageId, {force}): RemovalCheck`**：只读可移除性检查，供 `removeStage` 与 `flow stage remove --dry-run` 共用（消除骨架与验收标准矛盾）。三类校验——`ops` 非空 / 当前活跃阶段（`pipeline.current.stage`）/ 被其它阶段 `deps` 引用（`(series, stageDir)` 归一化匹配 + `Array.isArray` 守卫兼容存量缺 `deps` 字段）。`--force` 时 `ok` 恒 `true`，但 `opCount` / `isCurrent` / `referencing` 仍如实返回。
+- **`removeStage(stageId, {force, purge})`**：注销阶段。`current` 兜底——移除 `pipeline.current.stage` 后按 `stages` 插入序回退「首个非 done 阶段」，无可回退则清空为 `{stage:'', op:''}`（避免后续 `advance` 失败）；默认**不删** `plan/{series}/{stageDir}/` 目录（`purge: true` 才删）；审计日志 `detail = { stageId, purged, referencing, snapshot:{phase,status,deps,opKeys} }`。`--force` **不清理**引用方悬空 `deps`（保留 + 日志可审计）。
+- **冲突检测接入**：`registerStage` / `addStage` 写入前调用 `findStageDirConflict`（来自 `plan/path.ts`）。
 
 ## 状态机
 

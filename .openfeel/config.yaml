@@ -15,15 +15,15 @@ meta:
 defaults:
   # 执行模式：manual=人工流程，agent 不自动接管
   #          auto=Agent 可按状态机自动推进
-  execution_mode: manual
+  execution_mode: auto
 
   # 自动推进：disabled=关闭自动闭环
   #          enabled=在 execution_mode=auto 时允许自动调度
-  auto_advance: disabled
+  auto_advance: enabled
 
   # 测试阶段：true=review_passed 后进入 test_writing→testing→bug_fixing 链路
   #          false=review_passed 直接转 done，跳过测试链路
-  test_enabled: false
+  test_enabled: true
 
   # Worktree 合并模式：manual=手动确认合并
   #                   auto=Feel 自动 git merge + cleanup

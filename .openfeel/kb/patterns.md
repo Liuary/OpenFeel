@@ -2250,3 +2250,47 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.1-stage-01 op-000~005、kb/architecture.md #全局约束架构、kb/patterns.md #迁移命令模式、#init/update 重启提醒对称输出模式
 
+## [+] CLI 自描述命令模式：phase 枚举与转移表复用运行时单一数据源 (2026-09-29)
+
+为「`--help` 不自描述」类反馈补自描述命令（如 `openfeel flow phases [--json]`：列出全部合法 phase + 流转映射），实现要点：
+
+- **数据源必须运行时**：展示层经 `FlowManager` 只读访问器 `getPipelinePhases()` / `getPipelineTransitions()` 读取 `pipelineConfig`（`.openfeel/pipeline.yaml`），缺省回退内置默认表（`getDefaultPipelineConfig()`）。
+- **命令层禁止硬编码**：action 内不得 `import PIPELINE_PHASES` 作输出源（该常量仅用于 `advance` 的 enum 校验/提示）。
+- **与校验同源**：展示用的 `getPipelineTransitions()` 与校验用的 `hasTransition()` / `getValidTargets()` 同读 `pipelineConfig.transitions`，杜绝「展示与实际不符」的第二信源。
+- **返回副本**：访问器返回数组/对象副本，防止调用方修改污染内部状态。
+- **交叉引用**：相关命令的选项描述指向自描述命令（`flow advance --to` → 「合法 phase 与转移表：openfeel flow phases」）。
+- **机器可读**：`--json` 输出稳定结构 `{ phases, transitions }`，便于自动化消费。
+
+**验证方法**：fixture 测试覆盖两条路径——自定义 `pipeline.yaml`（展示其键集，且不含默认表组合键 `review_passed|test_passed`）与缺省回退（含组合键）；另可实跑对比自描述输出的 transitions 键集与本仓 `pipeline.yaml` 键集是否相等。
+
+**局限（重要）**：本模式只保证「转移表」同源，未覆盖「phase **合法性判定**」（仍硬编码 `PipelinePhaseSchema`/`PIPELINE_PHASES`），自定义新增 phase 时仍会不一致——见 kb/troubleshooting.md #flow phases 自描述 phase 与 flow advance 接受集合不一致。
+
+**参见：** v1.1.2-stage-41 op-001
+
+## [+] 破坏性命令安全校验清单模式：默认拒绝 + 显式越权 + 可预览 + 可审计 (2026-09-29)
+
+为删除/覆盖类破坏性命令（如 `openfeel flow stage remove <stageId>`）建立完整安全校验清单，逐项落实：
+
+| # | 校验 | 实现要点 |
+|:--:|------|----------|
+| 1 | 存在性 | 目标不存在 → 报错 exit 1 |
+| 2 | 子项非空 | 含未完成子项的对象（如 `ops` 非空）默认拒绝 |
+| 3 | 被引用 | 扫描引用方（如其余 stage 的 `deps` 含被删 id）；匹配用「精确 或 `(series, stageDir)` 归一化」以兼容短名，用 `Array.isArray` 守卫兼容存量缺字段 |
+| 4 | 当前活跃 | 对象为 `pipeline.current` 指向者时默认拒绝 |
+| 5 | 指针兜底 | 删后引用指针不悬空——回退首个非 done，无可回退则清空（避免后续 `advance` 失败） |
+| 6 | 越权留痕 | `--force` 可越过校验，但审计日志如实记录（`detail.referencing` 引用方数组） |
+| 7 | 预览复用 | `--dry-run` 复用同一只读 `checkRemovable(id,{force})`，校验失败仍 exit 1，成功仅预览（不写盘/不写日志/不删目录） |
+| 8 | 双重确认 | 更重的破坏动作（`--purge` 删目录）TTY 二次确认 + 非 TTY 无 `--force` 拒绝 |
+| 9 | 审计快照 | 删除日志 `detail.snapshot = { phase, status, deps, opKeys }`，使误删可从日志重建 |
+
+**实现要求**：校验抽为**单个只读方法**（`checkRemovable`）供 `remove` 与 `dry-run` 共用——避免「代码骨架只打印、验收标准要求校验」的自相矛盾。
+
+**反模式**：
+- 校验只覆盖 `ops`/`current`，漏掉「被其它对象引用」→ 默认路径即可制造悬空引用，使刚建立的依赖图失真
+- `--force` 越过校验却不留痕 → 失真不可审计
+- 破坏动作（删目录）先于状态落盘 → `save()` 失败时产生「目录已删、注册仍在」中间态；应保证「落盘成功后执行外部副作用」
+
+**验证方法**：逐分支覆盖（不存在/子项非空/当前活跃/被引用/短名归一化/存量缺字段/`--force` 留痕/`--dry-run` 不写盘/`--purge` 非 TTY 拒绝），并断言 `--force` 后引用方悬空项**保留**（可审计）而非静默清理。
+
+**参见：** v1.1.2-stage-41 op-003、kb/patterns.md #CLI --dry-run 安全预览模式、kb/patterns.md #CLI 错误诊断增强模式
+

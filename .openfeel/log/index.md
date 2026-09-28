@@ -35,3 +35,5 @@
 
 - [29 日](2026/09/29/2026-09-29-Liuary-001.md) — Reviewer 审查 stage-46 计划（部署覆盖前备份，有条件通过：1 high + 2 medium blocking REV，config.yaml 覆盖路径漏备份上报）（末尾追加：文件含历史混合编码，避免整文件重写）
 | [2026-09-29](2026/09/29/day_index.md) | v1.1.2-stage-41.op-001 执行通过 |
+- [29 日](2026/09/29/2026-09-29-Liuary-007.md) — feel-tester 上报 BUG-002（high）：`openfeel init` 无条件覆盖 config.yaml 静默丢失用户配置（stage-41 事故根因，关联 stage-46 REV-001）
+- [29 日](2026/09/29/2026-09-29-Liuary-008.md) — Archiver 归档 stage-41（v1.1.2 CLI 自描述与可纠错能力：`flow phases` / `flow stage remove` / `plan stage add --deps` / stageId 校验与冲突检测 / 三入口分层，知识沉淀 5 条至 patterns(2) + troubleshooting(3)）

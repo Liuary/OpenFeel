@@ -2,6 +2,7 @@
 
 | 时间 | 操作者 | 变更描述 |
 |------|--------|----------|
+| 2026-09-29 | Archiver | **归档**：v1.1.2-stage-41 归档完成。CLI 自描述与可纠错能力（`flow phases` 自描述 phase/转移表 + `flow stage remove` 安全校验族 + `plan stage add --deps` + stageId 校验/建议名/`(series, stageDir)` 冲突检测 + 三入口分层），5 op / 6 源码 + 5 测试 + 2 文档，631/631 测试通过、`lint i18n` 525 键，REV-001~007 closed（REV-008/009 low 非阻塞跟踪），3 个 low 非阻塞 Bug 登记（cli/BUG-001、cli/BUG-002、archive/BUG-001），知识沉淀 5 条至 patterns(2) + troubleshooting(3)。 |
 | 2026-08-15 | Archiver | **归档**：v1.0.0-stage-34 归档完成。plan 目录多级化与路径统一（新增 path.ts 唯一权威 + flow-manager 三级回退 + stage/scheme 写入迁移 + commands/stage 反向映射 + init 多级化 + 模板/skill 双语同步 + docs 修正），6 op / 33 文件变更，0 REV，425/425 测试通过（+18 新测试），0 Bug，知识沉淀 4 条至 architecture(更新) + patterns(2 新增) + troubleshooting(更新)。发布版本号（1.0.9 vs 1.1.0）待 Feel 与用户确认，本 stage 未递增 package.json。 |
 | 2026-08-15 | Archiver | **归档**：v1.0.0-stage-33 归档完成。Pantheogen 反馈 3 项规则改动（feel.md 日志纪律解耦 + AGENTS.md 任务类型路由 + Feel/Planner/AGENTS 三层轻量决策边界）+ decisions.md 纳入框架标准（ADR 骨架 + templates.ts + init.ts + core.md 双层源自检 + init.test.ts 断言）+ 版本 1.0.8 全链路同步（package.json/config.yaml/config.ts/CHANGELOG/AGENTS 声明），5 op / 29 源码文件变更，0 REV，407/407 测试通过（+1 新测试），0 Bug，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)。 |
 | 2026-08-09 | Archiver | **归档**：v1.0.0-stage-31 归档完成。Pantheogen CLI 体验优化 4 项（--stage 缺失提示引导 + wizard 无阶段交互式创建 + 跳转失败增强诊断 + advance --dry-run 预览），3 文件变更，399/399 测试通过，441 i18n 键对称，1 non-blocking REV（特殊字符校验），知识沉淀 3 条至 patterns。 |

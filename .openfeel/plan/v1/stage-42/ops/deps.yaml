@@ -1,0 +1,101 @@
+# stage-42 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-42
+series: v1
+
+# 【互斥判定口径】
+# 互斥 = 两个 op 对**同一文件做改写**（非追加式键区域）。
+#   - src/core/i18n-data/{zh-CN,en}.ts 为追加式/改值式键区域，单独不构成互斥；
+#   - 但本阶段 op-001/op-002/op-003/op-004 **均改写 src/core/flow-manager.ts**
+#     （op-001 CascadeConfig+buildCascadeConfig；op-002 resolveEffectiveConfig；
+#      op-003 advanceStagePhase；op-004 registerStage），故四者互相串行。
+#   - op-001/op-002 另共享 i18n 两文件；op-004 另改 src/core/plan/scheme.ts（独有）。
+
+# 【外部前置】
+external_prerequisites:
+  - stage: v1.1.2-stage-41
+    status: satisfied   # 实测已执行完毕
+    provides:
+      - src/core/plan/path.ts 的 validateStageId / findStageDirConflict（op-004 ③ 复用）
+      - src/core/flow-manager.ts 的 removeStage / checkRemovable / getPipelinePhases / getPipelineTransitions
+    reason: "stage-42 soft 依赖 stage-41（同改 flow-manager.ts/i18n）；op-004 ③ 复用 stage-41 op-002 的 path.ts 导出"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "auto_advance 四级级联（项目优先 + 全局画像兜底）+ 模板文案与陈旧注释修正"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/template-loader.ts          # 生成段（npm run build 重生成，禁手改）
+      - src/core/config.ts                   # 仅注释 :314/:371
+      - .openfeel/config.yaml                # 仅注释 :13（三值不动）
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+    deps: []
+    notes: "级联底座；op-002 硬依赖本 op 的 buildCascadeConfig/profileDefaults。另处置 REV-004（plan.md 排版，仅文档）"
+
+  op-002:
+    file: op-002.md
+    title: "openfeel config effective（有效值 + 生效来源）"
+    produces:
+      - src/core/config.ts                   # export DEFAULT_CONFIG
+      - src/core/flow-manager.ts             # ConfigSource + resolveEffectiveConfig
+      - src/commands/config.ts               # effective 子命令
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/config.test.ts         # 新增（偏离声明见 op-002）
+    deps:
+      - op: op-001
+        type: hard
+        reason: "resolveEffectiveConfig 复用 buildCascadeConfig 的 profileDefaults/优先级链，保证级联单一权威"
+
+  op-003:
+    file: op-003.md
+    title: "pipeline.phase 全量 done 判定修正"
+    produces:
+      - src/core/flow-manager.ts             # :1077-1078
+      - test/core/flow-manager.test.ts
+    deps: []
+    notes: "点状修复，无逻辑前置；仅因同改 flow-manager.ts 而与其余 op 串行"
+
+  op-004:
+    file: op-004.md
+    title: "审计日志补齐（register_stage 与 register_op）+ scheme.ts 兜底冲突检测"
+    produces:
+      - src/core/flow-manager.ts             # registerStage 补日志
+      - src/core/plan/scheme.ts              # 兜底冲突检测 + register_op
+      - test/core/flow-manager.test.ts
+      - test/core/plan/scheme.test.ts
+      - test/core/plan/stage.test.ts
+    deps: []
+    notes: "复用 stage-41 已落地的 path.ts 导出与检查函数；无 hard 前置，仅同改 flow-manager.ts 故串行"
+
+mutual_exclusions:
+  - group: [op-001, op-002, op-003, op-004]
+    reason: "四者均**改写** src/core/flow-manager.ts；op-001/op-002 另共享 i18n-data/{zh-CN,en}.ts。必须串行调度"
+
+parallel_groups:
+  - group: [op-003]
+    desc: "状态正确性点状修复（建议先行，快速收口；改动面最小）"
+  - group: [op-004]
+    desc: "审计日志 + scheme.ts 兜底冲突检测（独立点状修复）"
+  - group: [op-001]
+    desc: "级联底座（改权威源 + build 重生成）"
+  - group: [op-002]
+    desc: "config effective（硬依赖 op-001）"
+
+# 注：因四 op 共享 flow-manager.ts，本阶段无真正可并行的 op；上面的分组表意「推荐串行次序的批次」。
+recommended_order:
+  - op-003
+  - op-004
+  - op-001
+  - op-002
+rationale: "计划 §七建议 op-003 → op-004 → op-001 → op-002：op-003/op-004 小而独立先行收口状态正确性；op-001→op-002 强关联（op-002 复用 op-001 的级联与来源）须依序。"

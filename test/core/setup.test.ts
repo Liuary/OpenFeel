@@ -1,6 +1,6 @@
 /**
  * setup 单元测试（v1.1.1）
- * 验证 setupGlobalFramework 纯全局部署：全局 AGENTS.md + 9 agent + 16 skill + 全局 opencode.jsonc，
+ * 验证 setupGlobalFramework 纯全局部署：全局 AGENTS.md + 9 agent + 17 skill + 全局 opencode.jsonc，
  * 不建立项目 .openfeel/，且幂等可重跑。
  * mock homedir 隔离，不污染真实主目录。
  */
@@ -49,7 +49,7 @@ describe('setupGlobalFramework', () => {
     rmSync(homeDir, { recursive: true, force: true });
   });
 
-  it('部署全局 AGENTS.md + 9 agent + 16 skill + 全局 opencode.jsonc', () => {
+  it('部署全局 AGENTS.md + 9 agent + 17 skill + 全局 opencode.jsonc', () => {
     const r = setupGlobalFramework('zh-CN');
 
     expect(existsSync(getGlobalAgentsMdPath())).toBe(true);
@@ -59,7 +59,7 @@ describe('setupGlobalFramework', () => {
     expect(agentFiles).toHaveLength(9);
 
     const skillDirs = readdirSync(getGlobalSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory());
-    expect(skillDirs).toHaveLength(16);
+    expect(skillDirs).toHaveLength(17);
 
     expect(existsSync(getGlobalOpencodeJsoncPath())).toBe(true);
     const jsonc = JSON.parse(readFileSync(getGlobalOpencodeJsoncPath(), 'utf-8'));
@@ -82,8 +82,8 @@ describe('setupGlobalFramework', () => {
 
     expect(r2.created).toHaveLength(0);
     expect(r2.updated).toHaveLength(0);
-    // 9 agents + 16 skills + 1 全局 AGENTS.md = 26（opencode.jsonc 走 merge，不计入返回列表）
-    expect(r2.skipped.length).toBe(26);
+    // 9 agents + 17 skills + 1 全局 AGENTS.md = 27（opencode.jsonc 走 merge，不计入返回列表）
+    expect(r2.skipped.length).toBe(27);
   });
 
   it('不建立项目 .openfeel/（setup 纯全局部署）', () => {

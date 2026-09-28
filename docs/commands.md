@@ -376,6 +376,52 @@ openfeel archive <stage>
 
 ---
 
+## config — 配置管理
+
+项目/全局配置读写与有效值查询。
+
+### config effective
+
+输出受管配置键的**有效值 + 生效来源**。
+
+```bash
+openfeel config effective [key]
+```
+
+| 参数 | 说明 |
+|------|------|
+| `key`（可选） | 单个受管键；省略时输出四键（`execution_mode` / `auto_advance` / `test_enabled` / `merge_mode`） |
+
+**来源优先级**：`status.md` > `config.yaml` > `profile.yaml` > `builtin`；未知 key → stderr + exit 1。
+
+### config get / set
+
+读取/写入项目 `config.yaml`（`--global` 时操作全局 `profile.yaml`）。
+
+```bash
+openfeel config get [key] [--global]
+openfeel config set <key> <value> [--global]
+```
+
+### config get-lang / set-lang
+
+读取/修改全局默认语言。
+
+```bash
+openfeel config get-lang
+openfeel config set-lang <zh-CN|en>
+```
+
+### config list-projects
+
+列出所有已记录的项目路径→语言映射。
+
+```bash
+openfeel config list-projects
+```
+
+---
+
 ## knowledge — 知识库管理
 
 ### knowledge list

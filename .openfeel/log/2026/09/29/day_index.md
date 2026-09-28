@@ -51,3 +51,8 @@
 | [2026-09-29-Liuary-044.md](2026-09-29-Liuary-044.md) | Liuary | v1.1.2-stage-47.op-007 执行通过 |
 | [2026-09-29-Liuary-045.md](2026-09-29-Liuary-045.md) | Archiver | **stage-47 归档完成（v1.1.2 已登记缺陷集中清理）**：`config/BUG-002`（high）**语义修复**——`init` 对已存在 `.openfeel/config.yaml` **不再覆盖**（删 stage-46 备份接入块 + `init.skipped` 可见提示）+ `config/BUG-003` 画像层双条件（来源落 `builtin`）+ `cli/BUG-001` `--json.advanceAccepted`（存在视图 vs 推进白名单）+ `cli/BUG-002` `StageDirConflictError` + 三入口 i18n 分流（死键消除）+ `archive/BUG-001` deps 守卫 + `save()` meta 守卫 + **`removeStage` 事务顺序**（`purgeTarget`，save 后删）+ jsonc 备份失败 **A/B 分流**（setup/update 跳过继续、migrate fail-fast）+ `agents-md:112` 泛化 + `lint kb` 0 过期引用；7 op，**693/693 测试全绿（41 文件）**、`tsc` 0、build 幂等；REV-001~005 全 closed（含 2 条 blocking）；**Bug 6 条 closed**（测试官隔离端到端验收）+ `config/BUG-001` 维持 closed + **新登记 `config/BUG-004`**（medium，测试隔离缺口，**归 stage-43**）；知识沉淀 7 条（patterns 新增 3 + troubleshooting 新增 1 + 既有条目 9 处批注更新）；manual 更新 6 文件 |
 | [2026-09-29-Liuary-046.md](2026-09-29-Liuary-046.md) | Liuary | 阶段 v1.1.2-stage-47 完成 |
+| [2026-09-29-Liuary-047.md](2026-09-29-Liuary-047.md) | Liuary | v1.1.2-stage-43.op-001 执行通过 |
+| [2026-09-29-Liuary-048.md](2026-09-29-Liuary-048.md) | Liuary | v1.1.2-stage-43.op-002 执行通过 |
+| [2026-09-29-Liuary-049.md](2026-09-29-Liuary-049.md) | Liuary | v1.1.2-stage-43.op-003 执行通过 |
+| [2026-09-29-Liuary-050.md](2026-09-29-Liuary-050.md) | Liuary | v1.1.2-stage-43.op-004 执行通过 |
+| [2026-09-29-Liuary-051.md](2026-09-29-Liuary-051.md) | Liuary | v1.1.2-stage-43.op-005 执行通过 |

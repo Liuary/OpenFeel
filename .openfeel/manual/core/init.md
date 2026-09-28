@@ -64,7 +64,7 @@ interface DemoResult {
 
 ## v1.1.1 拆除的部署能力（收归 openfeel setup）
 
-原 `deployOpencode` / `promptOpencodeDeploy` / `writeGlobalFileIfMissing` 已删除；全局 AGENTS.md + 9 agent + 16 skill + 全局平台适配器配置（`opencode.jsonc`）由 `openfeel setup` 纯全局部署（见 `core/setup.md`）。`InitResult` 同步移除 `opencode` 字段。
+原 `deployOpencode` / `promptOpencodeDeploy` / `writeGlobalFileIfMissing` 已删除；全局 AGENTS.md + 9 agent + 17 skill + 全局平台适配器配置（`opencode.jsonc`）由 `openfeel setup` 纯全局部署（见 `core/setup.md`）。`InitResult` 同步移除 `opencode` 字段。
 
 ## 语言回退
 

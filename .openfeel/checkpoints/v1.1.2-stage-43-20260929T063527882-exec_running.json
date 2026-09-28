@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T22:41:28.088Z",
-    "revision": 216
+    "updated": "2026-09-28T22:35:27.624Z",
+    "revision": 210
   },
   "pipeline": {
     "phase": "active",
@@ -709,9 +709,9 @@
       "ops": {
         "op-001": {
           "title": "新增 openfeel-cli-usage skill（CLI 用法按需加载）",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -726,9 +726,9 @@
         },
         "op-002": {
           "title": "文档与交叉引用同步（docs、manual、AGENTS.md、wizard）",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -743,9 +743,9 @@
         },
         "op-003": {
           "title": "版本 1.1.2 收口与全量回归（§3.1 权威清单）",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -760,9 +760,9 @@
         },
         "op-004": {
           "title": "config BUG-004 测试隔离修复与隔离守护用例",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -777,9 +777,9 @@
         },
         "op-005": {
           "title": "§3.1 清单复核收口与文本残留闭环",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -6993,61 +6993,6 @@
         "stageName": "v1.1.2-stage-43",
         "from": "scheme_review",
         "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-09-28T22:35:27.900Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-43",
-        "from": "scheme_passed",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-09-28T22:41:20.393Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-43.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T22:41:27.337Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-43.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T22:41:27.592Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-43.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T22:41:27.831Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-43.op-004",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-09-28T22:41:28.068Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-43.op-005",
-        "attempts": 1
       }
     }
   ]

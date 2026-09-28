@@ -1,0 +1,125 @@
+# stage-43 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-43
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-41
+    type: hard
+    status: satisfied
+    reason: "skill 须文档化 stage-41 新增命令（flow phases / flow stage remove / plan stage add --deps）与三入口分层结论"
+  - after_stage: v1.1.2-stage-47
+    type: hard
+    status: satisfied
+    reason: "版本收口清单的行号/内容以 stage-41~47 全部落地后的实盘为准；config/BUG-004 由 stage-47 验收发现"
+  - after_stage: v1.1.2-stage-46
+    type: soft
+    reason: "文档化部署前备份与 update_infos「备份」类提示（skill/manual 需同步）"
+  - after_stage: v1.1.2-stage-42
+    type: soft
+    reason: "文档化 config effective / pipeline.phase 语义"
+  - after_stage: v1.1.2-stage-44
+    type: soft
+    reason: "文档化权限模型（external_directory / 覆盖语义）"
+  - after_stage: v1.1.2-stage-45
+    type: soft
+    reason: "平台描述泛化后的措辞为文档/skill 基线"
+
+# 【阶段性质提示】
+# 版本终点：skill 化 + 文档同步 + 版本 1.1.2 收口 + BUG-004；产出 npm publish 就绪态。
+# 版本收口严格按上级计划 §3.1（A1~A8 + B 生成段 + C 传播 + D 禁改 + E 无载体）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "新增 openfeel-cli-usage skill（CLI 用法按需加载）"
+    produces:
+      - src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md
+      - src/core/update.ts                      # SKILL_DEFINITIONS 生成段（build 重生成）
+      - src/core/template-loader.ts             # OPENCODE_SKILL_DEFINITIONS 生成段（build 重生成）
+      - .opencode/skills/openfeel-cli-usage/SKILL.md   # 自举（构建产物）
+    deps: []
+    notes: "build.js 经 readdirSync(SKILLS_DIR) 自动纳入新 skill（实测：:186/:270/:680），无需改 build.js；既有「16 skill」断言 → 17"
+
+  op-002:
+    file: op-002.md
+    title: "文档与交叉引用同步（docs、manual、AGENTS.md、wizard）"
+    produces:
+      - docs/commands.md                        # 新增 config 节（effective）
+      - AGENTS.md                               # 命令清单补 4 条 + 指向 skill
+      - src/core/templates-data/opencode/skills/openfeel-wizard/SKILL.md
+      - src/core/update.ts                      # 生成段（build 传播 wizard 文案）
+    deps:
+      - op: op-001
+        type: hard
+        reason: "交叉引用需 openfeel-cli-usage 已存在"
+
+  op-003:
+    file: op-003.md
+    title: "版本 1.1.2 收口与全量回归（§3.1 权威清单）"
+    produces:
+      - package.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/template-loader.ts             # AGENTS_MD_TEMPLATES 生成段（build 重生成）
+      - AGENTS.md
+      - package-lock.json
+      - CHANGELOG.md
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-004
+        type: hard
+      - op: op-005
+        type: hard
+    notes: "U1 版本收口必须在所有代码/文档/skill 改动完成后执行；同时消费 op-005 复核结论"
+
+  op-004:
+    file: op-004.md
+    title: "config BUG-004 测试隔离修复与隔离守护用例"
+    produces:
+      - test/core/workspace/identity.test.ts
+      - .openfeel/manual/core/global-paths.md   # 455 死映射安全清理文档化
+    deps: []
+    notes: "与 op-001/op-002 无文件交集，可并行；N4 单点 mock + 隔离守护用例（只读）"
+
+  op-005:
+    file: op-005.md
+    title: "§3.1 清单复核收口与文本残留闭环"
+    produces:
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-43.md   # REV-003 处理记录（不改状态）
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-46.md   # REV-007 归属备注
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-44.md   # REV-001/002/003 处理记录（REV-004）
+      - .openfeel/plan/v1/stage-43/plan.md                          # §二 依赖描述按实盘更新（REV-44 REV-002 落地）
+    deps: []
+    notes: "与 op-001/op-002/op-004 无文件交集，可并行；结论须在 op-003 前完成；含 REV-44 三项归属处置（REV-002 本阶段落地 / REV-001+003 归归档官交接）"
+
+mutual_exclusions:
+  - group: [op-001, op-002, op-003]
+    reason: "三者均经 `npm run build` 重写 src/core/template-loader.ts / update.ts 生成段（skill 注入 / wizard 文案 / AGENTS_MD 版本段）→ 禁止并发 build；且 op-003 为最终收口"
+
+parallel_groups:
+  - group: [op-001]
+    desc: "skill 权威源 + build（先落地，供 op-002 交叉引用）"
+  - group: [op-002]
+    desc: "文档/交叉引用（依赖 op-001；其 wizard skill 改动的 build 可并入 op-003）"
+  - group: [op-004, op-005]
+    desc: "并行组：op-004（identity.test 隔离 + manual）与 op-005（REV 登记 + 清单复核）——与 op-001/002 零文件交集"
+  - group: [op-003]
+    desc: "收尾：版本收口 + 统一 build + 全量回归（依赖全部）"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-004
+  - op-005
+  - op-003
+rationale: "plan §七：op-001 → op-002，并行 op-004/op-005，最后 op-003（版本收口与全量回归必须在所有改动完成后执行）；op-005 结论须在 op-003 之前完成。"

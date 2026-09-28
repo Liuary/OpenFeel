@@ -142,7 +142,7 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-当前项目为 OpenFeel 正式版，当前版本 v1.1.0（见 package.json，W 级修订持续递增）。
+当前项目为 OpenFeel 正式版，当前版本 v1.1.2（见 package.json，W 级修订持续递增）。
 
 ## 模块手册
 
@@ -159,6 +159,12 @@ Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明
 - `openfeel stage status <id>` — 查看阶段状态
 - `openfeel stage set <id> --status <v>` — 更新阶段状态
 - `openfeel plan stage list` — 列出工作阶段
+- `openfeel flow phases` — 自描述全部合法 phase 与运行时转移表（`--json` 含 `advanceAccepted`）
+- `openfeel flow stage remove <id>` — 移除阶段（默认仅注销 flow.json；`--dry-run` 预览；`--purge` 删目录）
+- `openfeel plan stage add <name> --deps <ids...>` — 完整入口：建目录 + 注册 + 依赖落点
+- `openfeel config effective [key]` — 配置有效值 + 来源
 - `openfeel knowledge list` — 查看知识库
+
+> CLI 用法速查（命令清单、参数、15 个 phase 枚举与转移表、stageId 命名约定）见 `openfeel-cli-usage` skill。
 
 AGENTS.md 仅保留项目级行为约束，流程规则由工具动态注入，实现"提示词瘦身，流程入工具"。

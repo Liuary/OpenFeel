@@ -46,17 +46,17 @@ describe('.opencode/ 自举实例', () => {
     }
   });
 
-  it('skills 目录含 16 个 openfeel-*，无旧名目录', () => {
+  it('skills 目录含 17 个 openfeel-*，无旧名目录', () => {
     const dirs = readdirSync(join(ROOT, '.opencode', 'skills'), { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
-    expect(dirs).toHaveLength(16);
+    expect(dirs).toHaveLength(17);
     expect(dirs.every((d) => d.startsWith('openfeel-'))).toBe(true);
   });
 
-  it('受管文件（26）均含 openfeel:generated 标记', () => {
+  it('受管文件（27）均含 openfeel:generated 标记', () => {
     const files = managedFiles();
-    expect(files).toHaveLength(26);
+    expect(files).toHaveLength(27);
     for (const f of files) {
       expect(readFileSync(f, 'utf-8')).toContain(MARK);
     }

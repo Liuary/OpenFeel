@@ -139,7 +139,7 @@ describe('updateProject', () => {
     expect(feelContent).toContain('你是 Feel');
   });
 
-  it('应创建全部 16 个 Skill 定义文件（全局）', () => {
+  it('应创建全部 17 个 Skill 定义文件（全局）', () => {
     updateProject(tmpDir);
     const skillsDir = globalSkillsDir();
 
@@ -160,6 +160,7 @@ describe('updateProject', () => {
       'openfeel-wizard',
       'openfeel-workspace',
       'openfeel-tool-usage',
+      'openfeel-cli-usage',
     ];
 
     for (const skillName of expectedSkills) {
@@ -257,7 +258,7 @@ describe('updateProject', () => {
     expect(parsed.skills).toBeUndefined();
   });
 
-  it('重复调用不重复创建，第二次全部 skipped（27）', () => {
+  it('重复调用不重复创建，第二次全部 skipped（28）', () => {
     const result1 = updateProject(tmpDir);
     expect(result1.created.length).toBeGreaterThan(0);
     expect(result1.updated.length).toBe(0);
@@ -265,9 +266,9 @@ describe('updateProject', () => {
     const result2 = updateProject(tmpDir);
     expect(result2.created.length).toBe(0);
     expect(result2.updated.length).toBe(0);
-    // 26 全局部署文件（9 agents + 16 skills + 1 全局 AGENTS.md）+ 项目 opencode.jsonc = 27
+    // 27 全局部署文件（9 agents + 17 skills + 1 全局 AGENTS.md）+ 项目 opencode.jsonc = 28
     // （全局 opencode.jsonc 走 merge + state hash，不计入返回列表）
-    expect(result2.skipped.length).toBe(27);
+    expect(result2.skipped.length).toBe(28);
   });
 
   it('手动修改全局 agent（无标记）第二次 update 追加受管区而非冲突（三态）', () => {

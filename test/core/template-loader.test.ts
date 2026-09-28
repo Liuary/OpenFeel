@@ -101,12 +101,13 @@ describe('命名前缀完整性', () => {
     }
   });
 
-  it('listOpencodeSkillNames 返回 16 项全部带 openfeel- 前缀', () => {
+  it('listOpencodeSkillNames 返回 17 项全部带 openfeel- 前缀', () => {
     const names = listOpencodeSkillNames();
-    expect(names).toHaveLength(16);
+    expect(names).toHaveLength(17);
     expect(names.every((n) => n.startsWith('openfeel-'))).toBe(true);
     expect(names).toContain('openfeel-workspace');
     expect(names).toContain('openfeel-tool-usage');
+    expect(names).toContain('openfeel-cli-usage');
   });
 });
 

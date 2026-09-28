@@ -166,7 +166,7 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | [stage-45](#stage-45平台强限定内容描述泛化) | 平台强限定内容「描述泛化」 | 模板/规则/注释/文档/手册去「唯一 harness」表述（零行为变更） | P1 | hard: stage-44 | ~20 文件文案 + 文档 + 回归 |
 | [stage-46](#stage-46部署覆盖前自动备份) | 部署覆盖前自动备份 | 写前备份到 `~/.openfeel/backup/{ts}/` + `update_infos.md` 新增「备份」类 + `feel.md` 检查规则（B1~B9） | P1 | hard: stage-45 | 1 新增源码 + ~5 修改 + 文档 + 测试 |
 | [stage-47](#stage-47已登记缺陷集中清理) | 已登记缺陷集中清理 | 14 项已登记缺陷逐条裁定（11 修）+ 翻转清单 + 强隔离回归 | P0 | hard: stage-46 | ~13 源码/模板 + ~2 文档 + ~8 测试 |
-| [stage-43](#stage-43cli-文档-skill-化与版本收口) | CLI 文档 skill 化与版本收口 | 新 skill + 文档 + 版本 1.1.2 + 全量回归 | P0 | hard: stage-41；soft: stage-42、stage-45、stage-46、stage-47 | 1 新增 skill + ~6 文档 + 版本 8 处 |
+| [stage-43](#stage-43cli-文档-skill-化与版本收口) | CLI 文档 skill 化与版本收口 | 新 skill + 文档 + 版本 1.1.2 + 全量回归 | P0 | hard: stage-41、stage-47；soft: stage-42、stage-44、stage-45、stage-46 | 1 新增 skill + ~6 文档 + 版本 8 处 |
 
 ### 依赖图
 

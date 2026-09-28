@@ -1,6 +1,6 @@
 /**
  * setup 命令核心模块（v1.1.1）
- * 纯全局部署：全局 AGENTS.md + 9 agent + 16 skill + 全局平台适配器配置文件（opencode.jsonc）。
+ * 纯全局部署：全局 AGENTS.md + 9 agent + 17 skill + 全局平台适配器配置文件（opencode.jsonc）。
  * 不建立项目 .openfeel/；复用 deployGlobalAsset（受管区三态，幂等可重跑）。
  */
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
@@ -49,7 +49,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
     push(deployGlobalAsset(p, loadAgentTemplate(lang, id), globalState, 'setup'), p);
   }
 
-  // 3. 16 skill → 全局 skills 目录
+  // 3. 17 skill → 全局 skills 目录
   const skillsDir = getGlobalSkillsDir();
   mkdirSync(skillsDir, { recursive: true });
   for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {

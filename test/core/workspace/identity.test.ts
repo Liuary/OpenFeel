@@ -2,10 +2,20 @@
  * identity 单元测试
  * 测试 ensureInfoJson 和 getLang 的语言配置读写逻辑
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { tmpdir, homedir } from 'node:os';
+
+// N4 单点隔离（BUG-004）：homedir → 临时目录；禁用「保存/恢复」伪隔离
+// （global-paths.ts 为唯一 homedir 消费点，一处 mock 隔离全部全局路径）
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
+
+import { tmpdir } from 'node:os';   // tmpdir 仍为真实值（mock 展开 actual）
 import { ensureInfoJson, getLang, recordProjectLang, getGlobalConfig } from '../../../src/core/workspace/identity.js';
 
 describe('getLang', () => {
@@ -94,34 +104,19 @@ describe('ensureInfoJson', () => {
 describe('recordProjectLang', () => {
   let tmpDir: string;
   let globalConfigPath: string;
-  let savedConfig: string | null = null;
 
   beforeEach(() => {
+    // 隔离：mock HOME 下建立 .openfeel/，全局配置写入 mock HOME（不触碰真实 ~/.openfeel）
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-identity-home-'));
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-identity-record-'));
-    globalConfigPath = join(homedir(), '.openfeel', 'config.json');
-    // 保存现有的全局配置内容，测试后恢复
-    if (existsSync(globalConfigPath)) {
-      savedConfig = readFileSync(globalConfigPath, 'utf-8');
-    }
+    globalConfigPath = join(mockHome.dir, '.openfeel', 'config.json');   // 指向 mock HOME
   });
 
   afterEach(() => {
-    // 清理测试写入的全局配置
-    if (savedConfig !== null) {
-      writeFileSync(globalConfigPath, savedConfig, 'utf-8');
-    } else {
-      try {
-        const config = JSON.parse(readFileSync(globalConfigPath, 'utf-8'));
-        delete config.projects[tmpDir];
-        if (Object.keys(config.projects).length === 0) {
-          delete config.projects;
-        }
-        writeFileSync(globalConfigPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
-      } catch {
-        // 忽略清理失败
-      }
-    }
     rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
+    mockHome.dir = '';
   });
 
   it('应记录项目语言到全局配置', () => {
@@ -147,5 +142,40 @@ describe('recordProjectLang', () => {
     recordProjectLang(tmpDir, 'zh-CN');
     const config = getGlobalConfig();
     expect(config.projects[tmpDir]).toBe('zh-CN');
+  });
+});
+
+/**
+ * 隔离守护（BUG-004）
+ *
+ * 通过 `vi.importActual('node:os')` 取真实 homedir（绕过本文件 mock），
+ * 断言本文件运行前后真实 `~/.openfeel/config.json` 的 mtime 与内容 SHA-256 均不变——只读不写。
+ * 基线用**根级 `beforeAll`** 记录，确保先于本文件全部用例（describe 内 beforeAll 会晚于前置用例）。
+ *
+ * 局限声明：本守护覆盖「本文件」运行前后；vitest 多文件并行时其它文件不在本守卫范围
+ * （各自 N4 隔离已覆盖，见 setup.test.ts / update.test.ts）。
+ */
+let realConfigPath = '';
+let beforeMtime = 0;
+let beforeHash = '';
+
+beforeAll(async () => {
+  // 取真实 os 模块（绕过本文件 mock），仅读不写
+  const actualOs = await vi.importActual<typeof import('node:os')>('node:os');
+  realConfigPath = join(actualOs.homedir(), '.openfeel', 'config.json');
+  if (existsSync(realConfigPath)) {
+    beforeMtime = statSync(realConfigPath).mtimeMs;
+    beforeHash = createHash('sha256').update(readFileSync(realConfigPath)).digest('hex');
+  }
+});
+
+describe('隔离守护（BUG-004：本文件不得触碰真实 ~/.openfeel）', () => {
+  it('真实 ~/.openfeel/config.json 的 mtime 与内容 SHA-256 未被改写', () => {
+    // 运行前不存在 → 只要未新建即为通过（不写不建）
+    if (!existsSync(realConfigPath)) {
+      return;
+    }
+    expect(statSync(realConfigPath).mtimeMs).toBe(beforeMtime);   // mtime 未被改写
+    expect(createHash('sha256').update(readFileSync(realConfigPath)).digest('hex')).toBe(beforeHash);
   });
 });

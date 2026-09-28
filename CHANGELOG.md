@@ -2,6 +2,31 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.2] - 2026-09-29
+
+### Added
+- `openfeel flow phases [--json]`：自描述全部合法 phase 与运行时转移表（`--json` 含 `phases`/`transitions`/`advanceAccepted`）
+- `openfeel flow stage remove <stageId>`：安全移除阶段（ops 非空 / 当前活跃 / 被依赖时默认拒绝；`--force` 越过、`--dry-run` 预览、`--purge` 删目录）
+- `openfeel plan stage add <name> --deps <ids...>`：CLI 暴露依赖声明（写入 `flow.json.stages[].deps` + `overview.md`）
+- `openfeel config effective [key]`：输出配置有效值 + 生效来源（`status.md > config.yaml > profile.yaml > builtin`）
+- stageId 校验与冲突检测：`validateStageId` / `suggestStageId` / `findStageDirConflict`（`(series, stageDir)` 冲突阻止 + 建议名）
+- 部署覆盖前自动备份：全局根 `~/.openfeel/backup/{ts}/` + `update_infos.md` 新增「备份」类条目 + `feel.md` 检查规则
+- 新增 skill `openfeel-cli-usage`（CLI 命令/参数/phase/stageId 用法按需加载参考；skill 总数 16 → 17）
+
+### Changed
+- `auto_advance` 口径统一为「项目 `config.yaml` 优先、全局画像兜底」三级有效链
+- `pipeline.phase` 改为全量 done 判定（所有阶段均 done 时置 `done`）
+- 命令职责分层：`plan stage add`（完整入口）> `flow stage add`（仅注册）> `stage create`（弃用，运行时提示）
+- 成功注册阶段 / 操作补审计日志（`register_stage` / `register_op`）
+- 9 个 agent 模板补 `external_directory: "allow"`（opencode 适配器）；`openfeel-utility` 的 `write` 改回 `edit`
+- 平台强限定描述泛化（去「唯一 harness」表述，零行为变更）
+- 文档/手册与 CLI 同步（`docs/commands.md` 新增 `## config` 节等）
+- 版本号 1.1.0 → 1.1.2 全链路同步（`package.json` / `config.yaml` / `config.ts` 模板 / agents-md 模板 / `AGENTS.md` / `package-lock.json` / `CHANGELOG`）
+
+### Fixed
+- `config/BUG-004`：`identity.test.ts` 直写真实 `~/.openfeel/config.json` 的测试隔离缺口——改为 N4 单点 mock + 新增隔离守护用例（真实文件 mtime/SHA-256 前后不变）
+- 已登记缺陷集中清理：`cli/BUG-001`、`cli/BUG-002`（stageId 冲突 i18n）、`archive/BUG-001`、`config/BUG-002`（`config.yaml` 覆盖语义）、`config/BUG-003`、`templates/BUG-002`
+
 ## [1.1.1] - 2026-09-26
 
 ### Added

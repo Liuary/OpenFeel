@@ -21,9 +21,10 @@
 
 ## 二、前置依赖与上下游衔接
 
-- **hard 依赖 `v1.1.2-stage-41`**（skill 必须文档化其新增命令 `flow phases` / `flow stage remove` / `plan stage add --deps` 与三入口分层结论）与 **`v1.1.2-stage-47`**（版本收口清单的行号/内容以 stage-41~47 全部落地后的实盘为准；BUG-004 亦由 stage-47 验收发现）。
-- **soft 依赖 `v1.1.2-stage-42`、`stage-44`、`stage-45`、`stage-46`**（文档化 `config effective`/`pipeline.phase` 语义、权限模型、平台泛化、部署前备份；这些改动会改写本阶段需同步的 docs/手册与模板行号）。
+- **hard 依赖 `v1.1.2-stage-41`**（skill 必须文档化其新增命令 `flow phases` / `flow stage remove` / `plan stage add --deps` 与三入口分层结论）与 **`v1.1.2-stage-47`**（版本收口清单的行号/内容以 stage-41~47 全部落地后的实盘为准；BUG-004 亦由 stage-47 验收发现）——**均已 satisfied（已落地）**。
+- **soft 依赖 `v1.1.2-stage-42`、`stage-44`、`stage-45`、`stage-46`**（文档化 `config effective`/`pipeline.phase` 语义、权限模型、平台泛化、部署前备份；这些改动会改写本阶段需同步的 docs/手册与模板行号）——**均已 satisfied**。
 - **上下游衔接**：本阶段是版本终点——版本号收口与全量回归在此完成，产出 `npm publish` 就绪态。
+- 本节依赖均为**历史前置**：执行时点（stage-43 收口）全部满足；**最终顺序 `41 → 42 → 44 → 45 → 46 → 47 → 43`**。
 
 ### 关键裁定（沿用上级 P8，并经核实纠正）
 
@@ -123,5 +124,6 @@ op-003（版本 1.1.2 收口 + 全量回归；同时消费 op-005 的清单复�
 | 2026-09-28 | openfeel-planner | REV-v1.1.2-stage-43 REV-002（已 closed） | 无需修复；三处纠正（扁平单文件 / 无 `{lang}` / 无 `NEW_SKILL_NAMES`）经复核确认，维持不变 |
 | 2026-09-29 | openfeel-planner | 用户新增需求（`config/BUG-004` 测试隔离缺口必须纳入本阶段） | **新增 op-004**：`identity.test.ts` 加 `vi.mock('node:os')` + 删除保存/恢复直写逻辑 + 新增隔离守护用例（`importActual` 记录真实文件 mtime/hash）；455 条死映射**判定不自动清理**、仅文档化安全步骤；§一/§四/§五/§六/§七 同步 |
 | 2026-09-29 | openfeel-planner | 用户要求复核 §3.1 清单与 REV 状态 | **新增 op-005**：§3.1 行号复核更新（A5/A6 `:130`→`:141`、A7 `:136`→`:145`、B `:2798/:3240`→`:2833/:3286`），`package-lock` 1.0.7 漂移仍在、`README*/docs` 无载体；收口 `v1.1.2/plan.md:24` 文本；REV-43 REV-003 登记闭环（`resolved`，不改状态）；**REV-46 REV-007 复核结论：验收记录已 `closed` 但状态行仍 `pending` → 归 openfeel-reviewer 同步，本阶段不改状态**；§二 依赖补 `hard: stage-47` 与 soft: 42/44/45/46 |
+| 2026-09-29 | openfeel-executor | REV-44 REV-002（stage-47 §二第 12 项裁定归本阶段） | §二 依赖描述按实盘更新（hard `41`/`47`、soft `42`/`44`/`45`/`46` **均 satisfied**；补最终顺序 `41→42→44→45→46→47→43`）；版本级 `v1.1.2/plan.md` 阶段概览 stage-43 依赖列同步为「hard: 41、47；soft: 42、44、45、46」（消除 `:169` 陈旧表述） |
 
 > 三处核心裁定不变：① #5 全局画像仅作最低优先级兜底；② #6 只修 `pipeline.phase` 全量 done 判定、不做 `current` 回退；③ 技能源为扁平单文件（16 个 `{name}/SKILL.md`）、无 `{lang}`、无 `NEW_SKILL_NAMES`。

@@ -37,6 +37,21 @@ src/core/update-state.ts（全局 state 读写）
   └─ src/core/global-paths.ts（路径基础）
 ```
 
+## 历史残留：全局 `config.json` 死映射的安全清理
+
+`~/.openfeel/config.json` 的 `projects` 字段记录「项目绝对路径 → 语言」映射。历史上 `update.test.ts` 缺 `vi.mock('node:os')`、`identity.test.ts` 以「保存/恢复」伪隔离方式运行，曾向该文件写入大量 `openfeel-update-test-*`、`openfeel-identity-*` 临时项目键（实测约 **455 条**），形成指向已不存在目录的**死映射**。
+
+- **根因已修复**（v1.1.2-stage-43 op-004）：`identity.test.ts` 已改为 N4 单点 mock（`vi.mock('node:os')`），`update.test.ts` 早已隔离 → 死映射**不再增长**。
+- **本框架不自动清理、不新增清理 CLI**（裁定）：操作用户真实环境不可逆，且属历史残留、非发布阻塞。
+- 如需人工清理，按以下**安全步骤**执行（**先备份**）：
+
+  1. 备份：`Copy-Item "$env:USERPROFILE\.openfeel\config.json" "$env:USERPROFILE\.openfeel\config.json.bak"`
+  2. 过滤：用编辑器/脚本删除 `projects` 中以 `openfeel-update-test-`（或 `openfeel-identity-`）开头的键（均为已不存在的临时项目）；
+  3. 复核：`node -e "JSON.parse(require('fs').readFileSync(process.env.USERPROFILE+'\\.openfeel\\config.json','utf8'))"` 确认 JSON 合法；
+  4. 异常时用第 1 步备份还原（`Copy-Item "$env:USERPROFILE\.openfeel\config.json.bak" "$env:USERPROFILE\.openfeel\config.json" -Force`）。
+
+> 测试隔离三重防线：N4 单点 mock（代码） + `identity.test.ts` 隔离守护用例（只读断言真实文件 mtime/SHA-256 不变） + 本文档（人工清理指引）。
+
 ## 变更历史
 
 | 阶段 | 变更 |
@@ -45,3 +60,4 @@ src/core/update-state.ts（全局 state 读写）
 | stage-40 | 新增 `getAuthJsonPath()`（`~/.local/share/opencode/auth.json`），供模型 provider 校验读取 auth.json 顶层 key（REV-1505） |
 | v1.1.1 | 新增 `getGlobalAgentsMdPath()`（全局 AGENTS.md，框架约束唯一权威）；`getGlobalCoreMdPath()` 标记废弃（仅兼容检测/清理） |
 | stage-46 | 新增 `getGlobalBackupRootPath()`（`~/.openfeel/backup`，部署覆盖前备份统一根；零行为变更） |
+| v1.1.2-stage-43 | 文档化全局 `config.json` 死映射的安全清理步骤（BUG-004 收口：N4 隔离修复 + 不自动清理裁定） |

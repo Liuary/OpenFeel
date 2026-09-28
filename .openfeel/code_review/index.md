@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 12 |
+| passed | 13 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -17,6 +17,8 @@
 | [v1.1.2-stage-41](v1.1.2-stage-41.md) | CLI 自描述与可纠错能力 — 9 REV（7 closed + REV-008/009 low 非阻塞），631/631 测试 | passed |
 
 | [v1.1.2-stage-42](v1.1.2-stage-42.md) | 配置口径与流水线状态正确性 — 6 REV（REV-001~004/010/011 全部 closed，含 1 条 blocking 修复后闭环），652/652 测试 | passed |
+
+| [v1.1.2-stage-44](v1.1.2-stage-44.md) | 权限模型修正 — 3 REV（REV-001/002/003 全部 closed，REV-003 low 转归档后闭环），658/658 测试（40 文件），18 模板补 `external_directory` + `write`→`edit` + 覆盖语义文档化 | passed |
 
 ## v5 系列审查
 

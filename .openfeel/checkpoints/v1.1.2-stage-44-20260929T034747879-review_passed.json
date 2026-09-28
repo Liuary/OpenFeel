@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-28T19:58:23.557Z",
-    "revision": 132
+    "updated": "2026-09-28T19:41:28.760Z",
+    "revision": 121
   },
   "pipeline": {
     "phase": "active",
@@ -715,8 +715,8 @@
     },
     "v1.1.2-stage-44": {
       "name": "v1.1.2-stage-44",
-      "phase": "done",
-      "status": "done",
+      "phase": "review_passed",
+      "status": "planned",
       "deps": [],
       "ops": {
         "op-001": {
@@ -807,85 +807,16 @@
       },
       "stats": {
         "start_time": "2026-09-28T15:35:10.969Z",
-        "end_time": "2026-09-28T19:58:23.542Z",
-        "duration_ms": 15792573
+        "end_time": "",
+        "duration_ms": 0
       }
     },
     "v1.1.2-stage-45": {
       "name": "v1.1.2-stage-45",
-      "phase": "scheme_pending",
+      "phase": "plan_passed",
       "status": "planned",
       "deps": [],
-      "ops": {
-        "op-001": {
-          "title": "源码注释与命令文案描述泛化（含 i18n 双语）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-002": {
-          "title": "模板权威源泛化与 build 重生成",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-003": {
-          "title": "工作区规则与文档手册泛化",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-004": {
-          "title": "测试断言核对与全量回归",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        }
-      },
+      "ops": {},
       "stats": {
         "start_time": "2026-09-28T15:35:11.220Z",
         "end_time": "",
@@ -5843,114 +5774,6 @@
         "stageName": "v1.1.2-stage-44",
         "from": "exec_running",
         "to": "review_pending"
-      }
-    },
-    {
-      "time": "2026-09-28T19:47:47.887Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-44",
-        "from": "review_pending",
-        "to": "review_passed"
-      }
-    },
-    {
-      "time": "2026-09-28T19:47:48.190Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-44",
-        "from": "review_passed",
-        "to": "test_pending"
-      }
-    },
-    {
-      "time": "2026-09-28T19:52:57.228Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-44",
-        "from": "test_pending",
-        "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-09-28T19:52:57.495Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-44",
-        "from": "test_passed",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-09-28T19:52:57.754Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-45",
-        "from": "plan_passed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-09-28T19:53:52.536Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.1.2-stage-44",
-        "opsCount": 5,
-        "reviewsCount": 0,
-        "knowledgeCount": 0,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.2-stage-44.md"
-      }
-    },
-    {
-      "time": "2026-09-28T19:54:09.304Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-45",
-        "opId": "op-001"
-      }
-    },
-    {
-      "time": "2026-09-28T19:54:09.561Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-45",
-        "opId": "op-002"
-      }
-    },
-    {
-      "time": "2026-09-28T19:54:09.798Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-45",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-09-28T19:54:10.045Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-45",
-        "opId": "op-004"
-      }
-    },
-    {
-      "time": "2026-09-28T19:58:23.542Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-44",
-        "from": "archiving",
-        "to": "done"
       }
     }
   ]

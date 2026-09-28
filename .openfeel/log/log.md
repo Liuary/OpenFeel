@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-29-Liuary-024.md](2026/09/29/2026-09-29-Liuary-024.md) | Liuary | 阶段 v1.1.2-stage-44 完成 |
 | [2026-09-29-Liuary-022.md](2026/09/29/2026-09-29-Liuary-022.md) | Liuary | v1.1.2-stage-44.op-005 执行通过 |
 | [2026-09-29-Liuary-021.md](2026/09/29/2026-09-29-Liuary-021.md) | Liuary | v1.1.2-stage-44.op-004 执行通过 |
 | [2026-09-29-Liuary-020.md](2026/09/29/2026-09-29-Liuary-020.md) | Liuary | v1.1.2-stage-44.op-003 执行通过 |
@@ -31,7 +32,6 @@
 | [2026-09-25-Liuary-008.md](2026/09/25/2026-09-25-Liuary-008.md) | Archiver | **stage-39 归档完成**：存量迁移与兼容收尾（`openfeel migrate` 命令 + 存量读取兼容 P5/isLegacyFrameworkKey + 版本 1.1.0 收口），569/569 测试�? Bug，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/migrate.md + 更新 cli/commands.md + core/update.md + core/update-state.md |
 | [2026-09-25-Liuary-007.md](2026/09/25/2026-09-25-Liuary-007.md) | Liuary | 阶段 v1.1.0-stage-39 完成 |
 | [2026-09-25-Liuary-006.md](2026/09/25/2026-09-25-Liuary-006.md) | Archiver | **stage-38 归档完成**：控制区标记增量更新（managed-region 四策�?+ 部署三�?writeManagedFile + update_infos 双资产路�?+ 会话启动修复规则 feel.md/core 双语），545/545 测试�? Bug，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/managed-region.md + core/update-infos.md + 更新 core/update.md |
-| [2026-09-25-Liuary-005.md](2026/09/25/2026-09-25-Liuary-005.md) | Liuary | 阶段 v1.1.0-stage-38 完成 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

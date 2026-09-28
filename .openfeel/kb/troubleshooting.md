@@ -554,3 +554,24 @@ CRLF 计数 > 0 即可疑；或直接对比「`findSimilarEntries` 命中的标�
 **同类风险（顺带核验）**：`writeProfile`（`~/.config/openfeel/profile.yaml`）同为无备份整体覆盖，且 `readProfile` 解析失败静默回退 `DEFAULT_PROFILE`，随后的 `ensureProfileDefaults` 会用默认值写回——非法 YAML 时用户画像整体丢失（实测 `name: TestUser → unknown`）。
 
 **参见：** `config/BUG-002`、v1.1.2-stage-42 REV-011、stage-46 REV-001
+
+## [+] 需求/文档记载的根因判断须实测复核（opencode 权限「顶层 permission 不生效」误判） (2026-09-29)
+
+**现象**：`docs/phase-5/07-openfeel-permission-issue.md` §二.1/§二.2 断言「agent 级 `permission` 覆盖顶层 `permission`，故 `external_directory` 不继承顶层 `allow`、回落默认 `ask`」。按此判断制定的规避方案（项目 `agent.<name>.permission` **镜像全量键**）经实测**无效**。
+
+**实测（opencode 1.18.33，隔离 HOME，`opencode run` 判别器 R3/R7）**：
+
+- §二.2 **不成立**：顶层 `permission: "allow"`（`*:allow`）经 `findLast` + `*` 通配**对 `external_directory` 生效**，外部目录免询问 —— **含真实 9-agent 形态**。
+- §二.1 属**过度概括**：仅「**同名键** agent 优先」；未声明键由顶层/项目配置生效。
+- §五「镜像全量键」规避方案**无效**：合并是按权限键深合并、`.md` 优先，项目 `opencode.jsonc` 无法覆盖 `.md` 已声明的键（R5/R6 实证）。
+
+**排查动作（四步）**：
+
+1. 「文档结论」与「现场现象」矛盾时，**先隔离实测**（见 patterns「隔离 HOME 实测 opencode 行为的方法」），不按文档直接改代码；
+2. 用**行为级判别器**（`opencode run` 非 TTY 自动拒绝）+ **对照组**取因果闭环，而非仅看静态 ruleset；
+3. 结论与文档冲突时**停下上报**（不越界改他方文档），在 findings 记录「未复现 / 冲突」，**不把未验证结论写入框架文档**；
+4. 冲突项转审查/归档阶段统一勘误（本项 → REV-003 → 归档官在需求文档追加「勘误与实测补充」节并注明实测版本）。
+
+**避免再犯**：需求/根因类文档中的机制性断言须标注**实测版本**；据此设计的规避方案须**先证伪再落地**；「未复现」须如实记录（含成因未定的说明），不得为凑结论补白成因。
+
+**参见：** `.openfeel/plan/v1/stage-44/op-001-findings.md` §八、`docs/phase-5/07-openfeel-permission-issue.md` 勘误节、v1.1.2-stage-44 REV-003

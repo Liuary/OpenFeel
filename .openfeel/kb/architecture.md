@@ -538,3 +538,18 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 - **消费方核验清单**：`status` / `status --verbose` / `current` / `overview`（已独立计算 `allStagesDone`，去重一致化）、`wizard`（`metaPhase==='done' || allStagesDone` 双条件，行为不变）、`validate`、`migrate`（独立赋值）。
 
 **验证方法**：三场景测试——单阶段 done → 全局 done / 部分 done → active / 全 done → done + `validate()` 通过；并 `rg "phase = 'active'"` 确认无其它写入点残留。
+
+## [+] opencode agent permission 合并求值语义：findLast + 按键深合并 + 平台默认 ask (2026-09-29)
+
+**实测依据**：`.openfeel/plan/v1/stage-44/op-001-findings.md`（隔离 HOME + `opencode debug agent` / `opencode run`，opencode-ai 1.18.33；审查官独立复验 R-①/R-②/R-③ 一致）。
+
+1. **求值算法**：权限规则列表用 `findLast`（**最后匹配者胜**），规则 `permission` 字段按通配匹配（`"*"` 匹配**任意**权限名）⇒ 顶层 `permission: "allow"` 生成 `{permission:"*",action:"allow",pattern:"*"}`，位于内置默认之后，对 agent 未声明的键（含 `external_directory`）**生效**。
+2. **规则顺序**：`[opencode 内置默认]` → `[配置文件（顶层 permission / agent.<name>.permission）]` → `[agent .md frontmatter 的 permission]` → `[自动追加：opencode 自身 tool-output 目录 allow]`。
+3. **合并粒度**：按权限键**深合并**（非整体替换）；**同名键 agent `.md` 优先**，配置文件无法覆盖；仅 `.md` **未声明**的键才由配置生效。⇒ 补键后 `external_directory` 已被 `.md` 声明，项目 `opencode.jsonc` 与顶层 `permission` 均**无法再收紧**；**唯一项目级收紧入口 = 项目 `.opencode/agent/<name>.md`**（可整体覆盖全局同名 agent）。
+4. **平台默认值**：`external_directory` 默认 `ask`（内置 `{"*":"ask"}` + opencode 内部 `tool-output` / `%TEMP%\opencode` 目录 allow）；**不存在**「对所有 agent 追加 `external_directory:{"*":"allow"}`」的逻辑（实测追加项仅覆盖内部目录）。
+5. **键名有效性**：授权键为 **`edit`**；`write` 键**不被识别**（`write: "deny"` 不生效，write/patch 工具映射到 `edit` 权限）。
+6. **值形式**：单值 `external_directory: "allow"` 与对象 `{"*": "allow"}` 均被 schema 接受且**等价**（同一规则，仅序列化键序差异）；框架统一取单值。
+
+**设计取舍（v1.1.2-stage-44）**：9 agent 模板内联白名单 + 补 `external_directory: "allow"` ⇒ 「项目级全程免审」不再依赖顶层/项目配置；代价=框架 agent 豁免于项目顶层 `permission`，收紧须走项目级 agent `.md`。已文档化至根 `AGENTS.md` 权限模型节、`agents-md/{zh-CN,en}.md` 与 `manual/core/permission.md`。
+
+**局限**：结论**仅对 opencode 1.18.33 成立**（版本差异不可迁移）；`task` 委派子 agent 的 ruleset 继承未单独实测；配置热重载未单独实测。

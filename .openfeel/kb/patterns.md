@@ -2344,3 +2344,20 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 **防回归价值**：反向守卫随每次 `npm test` 自动生效，CI 跑测试即在守卫；验收时用「致败实验」证明守卫有效（移除 mock → 缺陷复发 → 守卫精确报错），比单纯「测试全绿」可信。
 
 **参见：** v1.1.2-stage-42 op-005、`REV-v1.1.2-stage-42` REV-011
+
+## [+] 隔离 HOME 实测 opencode 行为的方法：双设 HOME/USERPROFILE + debug paths 断言 + 零污染核对 (2026-09-29)
+
+**适用**：需确证 opencode 配置 / 权限 / 加载行为的**真实生效值**时，**禁止**在真实 `~/.config/opencode/` 上试验（stage-37 / 41 / 44 均用此法）。
+
+**四步法**：
+
+1. **双设环境变量**：`$env:USERPROFILE` 与 `$env:HOME` **同时**指向 `%TEMP%\<隔离根>\home`（Windows 上仅设其一不生效）。
+2. **断言隔离生效**：`opencode debug paths` 必须显示 `home` / `config`（及 `data` / `state`）全指向隔离目录；出现 `config dir mismatch` 立即 STOP。
+3. **构造 fixture 读 effective 值**：`opencode debug config`（解析后配置）/ `opencode debug agent <name>`（effective ruleset）；**行为级判别用 `opencode run`**（非 TTY 下 `ask` → 自动拒绝并打印 `permission requested: ...`，可区分 ask/allow/deny）。静态 ruleset 与行为判别须双向印证（仅静态会漏掉「规则出现但未生效」，如 `write: "deny"`）。
+4. **清理与零污染核对**：执行前记录真实 `~/.config/opencode/` 的**文件数 + 最新 mtime**，执行后逐项比对必须一致；真实 `~/.openfeel/`、`auth.json` mtime 一并核对；随后删除隔离目录与临时外部目录、还原环境变量。
+
+**工具局限（实测）**：`opencode debug agent --tool <id> --params <json>` **对 `ask` 自动放行、仅强制 `deny`** ⇒ 只能判别 deny，不能判别 ask/allow；ask 判别**必须**用 `opencode run`。凭证（`auth.json`）只复制进隔离目录，用后随目录删除、不外传。
+
+**实践收益**：stage-44 借此推翻需求文档 §二.2 的根因判断（顶层 `permission:"allow"` 实际会覆盖 `external_directory`），且真实环境零污染（3689 文件 / mtime 前后一致）。
+
+**参见：** `.openfeel/plan/v1/stage-44/op-001-findings.md`、v1.1.2-stage-44 测试报告 §三

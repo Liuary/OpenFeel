@@ -13,15 +13,15 @@
 | Agent 数 | 9 个（feel + 8 个 openfeel-* 前缀：planner/schemer/executor/reviewer/feel-tester/utility/vision/archiver） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义，自举实例由 build 生成）、src/core/templates-data/opencode/（模板唯一权威源）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-09-29（stage-42 归档：配置口径与流水线状态正确性——`auto_advance` 四级级联（status.md > 项目 config.yaml > 全局画像兜底 > builtin）+ `openfeel config effective`（有效值 + 生效来源）+ `pipeline.phase` 全量 done 判定（空集守卫）+ 审计日志（register_stage/register_op）与 scheme 兜底冲突检测，5 op / 652 用例全绿（40 文件）+ `lint i18n` 529 键，REV-001~004/010/011 全部 closed，知识沉淀 5 条至 architecture(1) + patterns(3) + troubleshooting(1)，manual 更新 flow-manager + config + commands） |
+| 2026-09-29 | 归档 | stage-44 归档（v1.1.2 权限模型修正）：9 agent × zh-CN/en 共 18 个权威源模板补 `external_directory: "allow"`（单值，隔离实测裁定）+ `openfeel-utility` 的 `write` → `edit`（实测 `write` 非授权键）+ 覆盖/合并语义文档化（根 AGENTS.md + agents-md 双语 + 新建 `manual/core/permission.md`）+ 权限断言测试（+6 例）+ build 重生成自举与生成段（零手改，二次 build 幂等）；5 op，658/658 测试全绿（40 文件）、`lint i18n` 529 键、`npm run build` 模板一致性 3/3；REV-001/002 closed、REV-003（low，归档处置）闭环；0 Bug；知识沉淀 3 条至 architecture(1) + patterns(1) + troubleshooting(1)。**实测（opencode 1.18.33）推翻需求原文 §二.2**：顶层 `permission: "allow"` 会覆盖 `external_directory`（`findLast` + `*` 通配），且 `write` 非授权键、`external_directory` 平台默认 `ask`、同名键 agent `.md` 优先（唯一项目级收紧入口=项目 `.opencode/agent/<name>.md`）；需求文档已追加「勘误与实测补充」节 |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 24 | 2026-09-29 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构、控制区标记增量更新架构、存量项目迁移架构、模型配置三层级架构、全局约束架构、全局宏观状态聚合语义 |
-| 代码模式 | [patterns.md](patterns.md) | 85 | 2026-09-29 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环、迁移命令模式、回滚边界模式、模型配置命令模式、约束/操作分离、纯全局部署命令、CLI自描述命令模式、破坏性命令安全校验清单、配置级联解析、审计日志双轨命名、测试 cwd 隔离与反向守卫 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 27 | 2026-09-29 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查、migrate 中途失败排查、opencode 模型解析优先级排查、全局 AGENTS.md 加载排查、flow phases 与 advance 校验集不一致、i18n 死键未接入、kb-dedup CRLF 去重失效、writeDefaultConfig 静默覆写真实配置 |
+| 架构决策 | [architecture.md](architecture.md) | 25 | 2026-09-29 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构、控制区标记增量更新架构、存量项目迁移架构、模型配置三层级架构、全局约束架构、全局宏观状态聚合语义、opencode 权限合并求值语义 |
+| 代码模式 | [patterns.md](patterns.md) | 86 | 2026-09-29 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环、迁移命令模式、回滚边界模式、模型配置命令模式、约束/操作分离、纯全局部署命令、CLI自描述命令模式、破坏性命令安全校验清单、配置级联解析、审计日志双轨命名、测试 cwd 隔离与反向守卫、隔离 HOME 实测法 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 28 | 2026-09-29 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查、migrate 中途失败排查、opencode 模型解析优先级排查、全局 AGENTS.md 加载排查、flow phases 与 advance 校验集不一致、i18n 死键未接入、kb-dedup CRLF 去重失效、writeDefaultConfig 静默覆写真实配置、文档根因须实测复核 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-09-25 | 环境搭建、构建流程、依赖管理、Agent 模型配置（frontmatter 优先级已勘误）、npm pack 发布验证、CI/CD npm 自动发布 |
 
 ## 各分类摘要
@@ -55,6 +55,8 @@
 | 全局约束架构：约束统一全局 AGENTS.md + 约束/操作分离 + 项目级去约束化 | 2026-09-26 | 移除 core.md 约束统一全局 AGENTS.md；约束常驻 AGENTS.md vs 操作拆 skill；项目级去约束化（init/update 不再生成/部署项目 AGENTS.md）；op-000 实测全局 AGENTS.md 自动加载 YES/并存拼接/移除 instructions 仍生效 |
 
 | 全局宏观状态聚合语义：全量 done 判定 + 空集守卫 + 不迁移历史 | 2026-09-29 | `pipeline.phase` 为派生宏观状态，由全部阶段聚合（`length > 0 && every(done)`，空集守卫防 vacuous truth）；单阶段 done 不改变全局；current 不回退属设计行为；不迁移历史（可由 stages 推导 + advance 自愈）；含 status/verbose/current/overview/wizard/validate/migrate 消费方核验清单 |
+
+| opencode agent permission 合并求值语义：findLast + 按键深合并 + 平台默认 ask | 2026-09-29 | 规则列表 `findLast`（最后匹配者胜）+ `permission` 字段通配匹配；顺序=内置默认 → 配置文件 → agent `.md` → 自动追加内部目录 allow；按权限键深合并、**同名键 `.md` 优先**（唯一项目级收紧入口=项目 `.opencode/agent/<name>.md`）；`external_directory` 默认 `ask`；`write` 非授权键、`edit` 才是；单值/对象形式等价。仅对 1.18.33 有效 |
 
 ### patterns.md
 
@@ -136,6 +138,8 @@
 | 审计日志 action 命名与双轨语义模式 | 2026-09-29 | add_stage（flow-manager，仅注册层）vs register_stage（cli，完整层）+ register_op；幂等早返回/冲突抛错须在 appendLog 之前；日志先于 save 属设计；审计查询须同时识别两种 action |
 | 测试 cwd 隔离模式：spyOn process.cwd + 模块期 REAL_CWD 反向守卫 | 2026-09-29 | 命令层测试须 mock `process.cwd`（前提＝被测代码运行时调用）+ 模块顶层捕获 REAL_CWD 断言真实工作区逐字不变；零断言高危用例必须补正向断言；致败实验证明守卫有效；writeDefaultConfig 无 existsSync 守卫须一并核对 |
 
+| 隔离 HOME 实测 opencode 行为的方法：双设 HOME/USERPROFILE + debug paths 断言 + 零污染核对 | 2026-09-29 | 四步法（双设环境变量 → `debug paths` 断言 home/config 全隔离 → fixture + `debug agent`/`run` 读 effective 值 → 清理与「文件数 + mtime」零污染核对）；`debug agent --tool` 对 ask 自动放行、只能判 deny，ask 必须用 `opencode run`（非 TTY 自动拒绝）；凭证只入隔离目录用后删除 |
+
 ### troubleshooting.md
 
 | 条目 | 日期 | 摘要 |
@@ -168,6 +172,8 @@
 
 | writeDefaultConfig 无条件覆盖：npm test 静默改写真实 config.yaml | 2026-09-29 | 实现层无 existsSync/备份整体覆写 + 测试层 init.test.ts 未 mock cwd → npm test 覆写仓库三值（hash 5229455D→23F76595）；诊断＝git log 该文件 + hash 前后比对 + 单文件复现；避免＝测试隔离 + 反向守卫 + 覆写前备份合并 |
 
+| 需求/文档记载的根因判断须实测复核（opencode 权限「顶层 permission 不生效」误判） | 2026-09-29 | 需求文档 §二.2「`external_directory` 不继承顶层 `allow`」在 1.18.33 上**不成立**（顶层 `*:allow` 经 `findLast` + 通配生效）；§二.1 属过度概括；§五镜像方案无效；排查=隔离实测 + 行为级判别器 + 对照组，冲突时停下上报并如实记录「未复现」，转审查/归档勘误 |
+
 ### setup.md
 
 | 条目 | 日期 | 摘要 |
@@ -181,6 +187,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-09-29 | 归档 | stage-44 归档（v1.1.2 权限模型修正）：9 agent × zh-CN/en 共 18 个权威源模板补 `external_directory: "allow"`（单值，隔离实测裁定）+ `openfeel-utility` 的 `write` → `edit`（实测 `write` 非授权键）+ 覆盖/合并语义文档化（根 AGENTS.md + agents-md 双语 + 新建 `manual/core/permission.md`）+ 权限断言测试（+6 例）+ build 重生成自举与生成段（零手改，二次 build 幂等）；5 op，658/658 测试全绿（40 文件）、`lint i18n` 529 键、`npm run build` 模板一致性 3/3；REV-001/002 closed、REV-003（low，归档处置）闭环；0 Bug；知识沉淀 3 条至 architecture(1) + patterns(1) + troubleshooting(1)。**实测（opencode 1.18.33）推翻需求原文 §二.2**：顶层 `permission: "allow"` 会覆盖 `external_directory`（`findLast` + `*` 通配），且 `write` 非授权键、`external_directory` 平台默认 `ask`、同名键 agent `.md` 优先（唯一项目级收紧入口=项目 `.opencode/agent/<name>.md`）；需求文档已追加「勘误与实测补充」节 |
 | 2026-09-29 | 归档 | stage-42 归档（v1.1.2 配置口径与流水线状态正确性）：`auto_advance` 四级级联（status.md > 项目 config.yaml > 全局画像兜底 > builtin）+ `openfeel config effective`（有效值 + 生效来源，单一 resolver 无第二信源）+ `pipeline.phase` 全量 done 判定（空集守卫）+ 审计日志 register_stage/register_op 与 plan/scheme.ts 兜底冲突检测；5 op（含 REV-011 修复 op-005），652/652 测试全绿（40 文件）、`lint i18n` 529 键、`npm run build` 模板一致性 3/3；REV-001~004/010/011 全部 closed（REV-011 为 blocking，修复后 hash 前后不变 + 致败实验实证守卫有效）；Bug：config/BUG-002（high，init 无条件覆盖 config.yaml，实现层归 stage-46 REV-001）、config/BUG-003（medium，无 profile 时来源应标 builtin）；审查文件两处「可疑待重验」标注如实保留；知识沉淀 5 条至 architecture(1) + patterns(3) + troubleshooting(1)；manual 更新 core/flow-manager.md + core/config.md + cli/commands.md + manual/index.md |
 | 2026-09-29 | 归档 | stage-41 归档（v1.1.2 CLI 自描述与可纠错能力）：新增 `openfeel flow phases`（phase 枚举 + 运行时转移表，展示与校验同源）+ `openfeel flow stage remove`（ops/current/deps 三道校验 + `--force`/`--dry-run`/`--purge` + current 兜底 + 审计快照）+ `plan stage add --deps` + stageId 校验/建议名/`(series, stageDir)` 冲突检测 + 三入口分层（`stage create` deprecated）；631/631 测试通过（39 文件）、`lint i18n` 525 键；REV-001~007 closed、REV-008/009 low 跟踪、3 个 low 非阻塞 Bug 登记（cli×2 + archive×1）；知识沉淀 5 条至 patterns(2) + troubleshooting(3)；manual 更新 core/flow-manager.md + core/plan-path.md + manual/index.md |
 

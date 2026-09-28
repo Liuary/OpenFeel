@@ -1,0 +1,116 @@
+# stage-45 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-45
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-44
+    type: hard
+    status: satisfied            # 实测已完成（commit 5fd976e）
+    reason: "stage-44 与 stage-45 均修改 src/core/templates-data/opencode/agents/**（44 改 permission 块、45 改描述文案）→ 必须串行 44 → 45"
+  - before_stage: v1.1.2-stage-46
+    type: mutual_exclusion
+    reason: "45 与 46 存在热区交集（src/core/i18n-data/{zh-CN,en}.ts 文案 + src/core/{init,setup}.ts 注释）；且 45 的文档/模板泛化须先定稿，避免 46 改配置覆盖写后回改 → 必须串行 45 → 46"
+
+# 【阶段性质提示】
+# 仅「描述泛化」：所有 op 只改注释/文案/文档/模板文本；零行为变更。
+# - 不改 global-paths.ts 路径逻辑/常量、不改 $schema、不引入适配器抽象、不改目录树、不回改历史归档。
+# - 判定原则：断言「平台=opencode」→ 泛化；说明 opencode 具体用法/路径 → 保留并标注「（opencode 适配器）」。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "源码注释与命令文案描述泛化（含 i18n 双语）"
+    produces:
+      - src/core/global-paths.ts
+      - src/core/opencode-config.ts
+      - src/core/model-config.ts
+      - src/core/init.ts
+      - src/core/setup.ts
+      - src/core/migrate.ts
+      - src/commands/init.ts
+      - src/commands/setup.ts
+      - src/commands/migrate.ts
+      - src/commands/project.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    deps: []
+    notes: "注释/帮助/日志/错误文案 + i18n 7 键双语改值（键集不变）；不改任何路径解析逻辑与常量"
+
+  op-002:
+    file: op-002.md
+    title: "模板权威源泛化与 build 重生成"
+    produces:
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/opencode/skills/openfeel-model-check/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-model-config/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-agent-model-check/SKILL.md
+      - src/core/template-loader.ts        # 生成段（build 重生成，禁手改）
+      - .opencode/agents/*.md              # 自举产物（build 重生成）
+      - .opencode/skills/**                # 自举产物（build 重生成）
+    deps:
+      - op: op-001
+        type: soft
+        reason: "措辞先定型，避免模板与源码术语不一致"
+    notes: "archiver.md:21,46 与 utility.md:40 经复核属 B 类（.opencode 适配器目录本体）→ 不改（归类修正）；必须 npm run build"
+
+  op-003:
+    file: op-003.md
+    title: "工作区规则与文档手册泛化"
+    produces:
+      - AGENTS.md
+      - .openfeel/dev/dev_core.md
+      - .openfeel/adapters/README.md
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/commands.md
+      - .openfeel/manual/index.md
+      - .openfeel/manual/**                # 相关模块文档（17 文件含 opencode）
+    deps:
+      - op: op-001
+        type: soft
+        reason: "沿用 op-001 的泛化词典，保持全仓术语一致"
+    notes: "用户点名处 AGENTS.md:82 必改；README 三份同步；docs/commands.md 实测漂移 :369→:427；不触发 build（仓库根 AGENTS.md ≠ 模板源）"
+
+  op-004:
+    file: op-004.md
+    title: "测试断言核对与全量回归"
+    produces:
+      - test/core/template-loader.test.ts   # 可选新增 1 条泛化锁断言
+    deps:
+      - op: op-002
+        type: hard
+        reason: "模板生成段/自举实例须已 build 同步，方可回归断言"
+      - op: op-003
+        type: hard
+        reason: "文档/规则改动完成后统一回归（lint kb 依赖文档引用一致）"
+    notes: "global-paths.test.ts:29-51 **不改**（路径逻辑未变）；其余测试逐项说明「为何无需改」"
+
+mutual_exclusions:
+  - group: [op-002, op-004]
+    reason: "两者各含一次 `npm run build`（op-004 回归前确认一致性）；build 重写 src/core/template-loader.ts 生成段与 .opencode/**，禁止并发"
+  - group: [op-001, op-002, op-003, op-004]
+    reason: "推荐全串行（措辞一致性 + 单一 build 入口）；op-002 与 op-003 文件不相交，如需压缩工期可在 op-001 后并行，但 op-004 必须在全部完成后"
+
+parallel_groups:
+  - group: [op-001]
+    desc: "源码/i18n 文案先行（术语定型）"
+  - group: [op-002, op-003]
+    desc: "模板泛化+build 与 文档/规则泛化（文件不相交；建议 op-002 先以统一措辞，且两者各自 build/lint 不并发写 template-loader）"
+  - group: [op-004]
+    desc: "最后：测试核对 + 全量回归（依赖 op-002/op-003）"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-003
+  - op-004
+rationale: "plan.md §七建议 op-001 → op-002 → op-003 → op-004：op-001 源码/i18n 文案先定型；op-002 依赖其措辞 + 强制 build；op-003 文档独立；op-004 最后回归。"

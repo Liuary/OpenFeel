@@ -1525,27 +1525,37 @@ export function updateProject(
 
   // 3. 全局 opencode.jsonc：深度合并（保留用户字段），加全局锁 + 原子写
   const globalJsoncPath = getGlobalOpencodeJsoncPath();
-  // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
-  const globalJsoncBackup = backupFileBeforeWrite(globalJsoncPath, { command: 'update' });
-  if (globalJsoncBackup) {
-    appendUpdateInfo('backed', { absolutePath: globalJsoncPath, backupRel: globalJsoncBackup.backupRel, command: 'update' });
-    notifyBackupIfTTY(globalJsoncBackup.backupRel);
-  }
-  // REV-1805：read-merge-write 全部置于锁内，消除与 model-config 锁内读写的 TOCTOU 竞态
-  const globalJsoncNew = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
-    const current = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';
-    let merged: string;
-    // 合并可能因块注释 parse 失败抛异常（parseJsonc 边界）：降级为「跳过合并、保留原文件」并告警
-    try {
-      merged = mergeGlobalOpencodeJsonc(current);
-    } catch (err) {
-      console.warn(`[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
-      merged = current;
+  try {
+    // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
+    const globalJsoncBackup = backupFileBeforeWrite(globalJsoncPath, { command: 'update' });
+    if (globalJsoncBackup) {
+      appendUpdateInfo('backed', { absolutePath: globalJsoncPath, backupRel: globalJsoncBackup.backupRel, command: 'update' });
+      notifyBackupIfTTY(globalJsoncBackup.backupRel);
     }
-    atomicWriteFileSync(globalJsoncPath, merged);
-    return merged;
-  });
-  updateFileHash(newGlobalState, globalJsoncPath, globalJsoncNew);
+    // REV-1805：read-merge-write 全部置于锁内，消除与 model-config 锁内读写的 TOCTOU 竞态
+    const globalJsoncNew = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
+      const current = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';
+      let merged: string;
+      // 合并可能因块注释 parse 失败抛异常（parseJsonc 边界）：降级为「跳过合并、保留原文件」并告警
+      try {
+        merged = mergeGlobalOpencodeJsonc(current);
+      } catch (err) {
+        console.warn(`[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
+        merged = current;
+      }
+      atomicWriteFileSync(globalJsoncPath, merged);
+      return merged;
+    });
+    updateFileHash(newGlobalState, globalJsoncPath, globalJsoncNew);
+  } catch (err) {
+    if (err instanceof BackupError) {
+      // 备份失败（REV-011-A）：跳过全局 jsonc 写入、记 anomaly、继续其余步骤（对齐 B3 幂等语义）
+      appendUpdateInfo('anomaly', { absolutePath: globalJsoncPath, note: 'backup_failed' });
+      console.warn(`[update] ${err.message}；已跳过全局 opencode.jsonc 写入，继续其余步骤`);
+    } else {
+      throw err; // 非备份错误照旧上抛（锁超时等不回退）
+    }
+  }
 
   // 4. 项目 opencode.jsonc：不存在则写最小 { $schema }；已存在则保留（旧非法字段清理属 stage-39）
   const projectJsoncPath = resolve(projectPath, 'opencode.jsonc');

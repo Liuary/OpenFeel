@@ -397,7 +397,7 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 |----|------|------|----------|
 | op-001 | CLI 边界 + 冲突 i18n | `phases` 边界说明 + `--json.advanceAccepted`；`StageDirConflictError` + 命令层分流渲染 | `commands/{flow,plan,stage}.ts`、`core/flow-manager.ts`、`i18n-data/*` |
 | op-002 | 存量数据鲁棒性 | `archive/merge.ts:85` deps 守卫；`save()` meta 守卫 | `core/archive/merge.ts`、`core/flow-manager.ts` |
-| op-003 | config 语义与来源 | `init` 不再覆盖已存在 `config.yaml`；profile 来源修正 | `core/init.ts`、`core/config.ts`、`core/flow-manager.ts` |
+| op-003 | config 语义与来源 | `init` 不再覆盖已存在 `config.yaml`（**并删除 stage-46 对该文件的备份接入块** + 同步 `manual/core/backup.md`）；profile 来源修正 | `core/init.ts`、`core/config.ts`、`core/flow-manager.ts`、`.openfeel/manual/core/backup.md` |
 | op-004 | 事务顺序与失败一致性 | `--purge` 移到 save 后；jsonc 备份失败混合裁定 | `core/flow-manager.ts`、`commands/flow.ts`、`core/{setup,update}.ts`、manual |
 | op-005 | 模板泛化补漏 | `agents-md/{zh-CN,en}.md:112` + build | 模板权威源、生成段 |
 | op-006 | 文档残留清理 | kb 过期引用 + 2 处版本清单文本 | `kb/architecture.md`、版本级/ stage-43 计划 |
@@ -435,7 +435,7 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 - `openfeel setup`/`openfeel update` 后全局 `~/.config/opencode/skills/openfeel-cli-usage/SKILL.md` 存在且内容与权威源一致；`update` 幂等
 - `listOpencodeSkillNames()`（`template-loader.ts:7502`）包含 `openfeel-cli-usage`；`SKILL_DEFINITIONS` 键集包含之
 - 新 skill 描述含明确触发词，Agent 可在需要 CLI 用法时自动加载
-- 版本号四处一致为 `1.1.2`；`npm test` 全绿；`lint i18n`/`lint kb` 零错误
+- 版本号收口按 **§3.1 权威清单**（A1~A8 + B/C/D/E）执行；`npm test` 全绿；`lint i18n`/`lint kb` 零错误
 - `docs/commands.md` 与 `manual/cli/commands.md` 与 CLI 实际行为一致（抽查新命令）
 
 ### 风险
@@ -569,5 +569,6 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 2026-09-28 | openfeel-planner | 用户新增需求（部署覆盖前备份 + 全局状态提示） | **新增 stage-46（部署覆盖前自动备份）**：B1~B8 裁定 + op-001~op-005；新增 `plan/v1/stage-46/plan.md` 与 overview 依赖；执行顺序更新为 **41 → 42 → 44 → 45 → 46 → 43**（45→46 同改 init/setup/update，强制串行） |
 | 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-46 REV-001~006 | stage-46 节更新：**B9 覆盖写路径全景与豁免**（`.openfeel/config.yaml` 纳入，REV-001）；B7 改为「项目内不合并 + 全局写纳入」（REV-002）；B4 `command` 枚举扩 `migrate`、读侧 `:95-98` 同步（REV-003）；B3 失败返回 `'skipped'` + 可区分异常、B5 扩展异常分支（REV-004）；B2 锁临界区（REV-005）；B4 字段风格、`backupRel` 存在性检查（REV-006）；任务清单/完成标准同步 |
 | 2026-09-29 | openfeel-planner | 用户需求「stage-47 已登记缺陷集中清理」 | **新增 stage-47**：14 项缺陷逐条裁定（11 修 / 归属 / 已修复待关闭）+ op-001~007 + 翻转清单；阶段概览/依赖图/执行顺序更新为 **41 → 42 → 44 → 45 → 46 → 47 → 43**；里程碑 M2.8；测试策略新增缺陷清理行 |
+| 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-47 REV-001~003 | stage-47 节 op-003 补「删除 stage-46 的 `config.yaml` 备份接入块 + 同步 manual」（REV-002）；计划 §九 并行组更正、op-006 行号更正 `:438`、`flow-manager.test.ts:2786` 翻转为 `toBeUndefined()`（REV-001/003） |
 
 > 三处核心裁定保持不变：① #5 全局画像仅作最低优先级兜底；② #6 只修 `pipeline.phase` 全量 done 判定、不做 `current` 回退；③ 技能源为扁平单文件（16 个 `{name}/SKILL.md`）、无 `{lang}`、无 `NEW_SKILL_NAMES`。

@@ -16,7 +16,7 @@ import { atomicWriteFileSync } from '../core/fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../core/fs/file-lock.js';
 import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
-import { FlowManager, isFlowConcurrentError } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, StageDirConflictError } from '../core/flow-manager.js';
 import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId } from '../core/plan/path.js';
 
 /** 状态字段键值对 */
@@ -432,6 +432,11 @@ export function registerStageCommand(program: Command): void {
           console.error(`[并发冲突] flow.json 已被其它进程修改（期望 revision=${err.expectedRevision}，磁盘=${err.actualRevision}）。`);
           console.error('本次修改未写入。请重新执行该命令重试。');
           process.exit(2);
+        }
+        // 阶段目录冲突：按类型分流走 i18n 模板（cli/BUG-002 死键消除）
+        if (err instanceof StageDirConflictError) {
+          console.error(t('common.stageDirConflictTmpl', lang, { stage: err.stage, other: err.other }));
+          process.exit(1);
         }
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));

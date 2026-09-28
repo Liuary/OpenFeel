@@ -21,9 +21,9 @@
  */
 import { Command } from 'commander';
 import { execSync } from 'node:child_process';
-import { existsSync, copyFileSync, readFileSync } from 'node:fs';
+import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, StageDirConflictError, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId } from '../core/plan/path.js';
 import { MetricsStore } from '../core/metrics.js';
@@ -341,7 +341,8 @@ export function registerFlowCommand(program: Command): void {
       const transitions = mgr.getPipelineTransitions();
 
       if (options.json) {
-        console.log(JSON.stringify({ phases, transitions }, null, 2));
+        // advanceAccepted = 内置 15 phase（flow advance 的推进白名单），与 phases（运行时存在视图，可含自定义）显式区分
+        console.log(JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES] }, null, 2));
         return;
       }
 
@@ -356,6 +357,11 @@ export function registerFlowCommand(program: Command): void {
         console.log(`  ${key} → [${targets.join(', ')}]`);
       }
       console.log('');
+      // 边界：运行时 pipeline.yaml 含内置 15 phase 之外的 phase 时提示差异（cli/BUG-001 方案 B）
+      const customPhases = phases.filter((p) => !(PIPELINE_PHASES as readonly string[]).includes(p));
+      if (customPhases.length > 0) {
+        console.log(t('flow.phases.customPhaseNote', lang, { phases: customPhases.join(', ') }));
+      }
       console.log(t('flow.phases.hint', lang));
     });
 
@@ -394,6 +400,11 @@ export function registerFlowCommand(program: Command): void {
           console.error(`[并发冲突] flow.json 已被其它进程修改（期望 revision=${err.expectedRevision}，磁盘=${err.actualRevision}）。`);
           console.error('本次修改未写入。请重新执行该命令重试。');
           process.exit(2);
+        }
+        // 阶段目录冲突：按类型分流走 i18n 模板（cli/BUG-002 死键消除）
+        if (err instanceof StageDirConflictError) {
+          console.error(t('common.stageDirConflictTmpl', lang, { stage: err.stage, other: err.other }));
+          process.exit(1);
         }
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));
@@ -457,12 +468,15 @@ export function registerFlowCommand(program: Command): void {
             return;
           }
         }
-        mgr.removeStage(stageId, { force: options.force, purge: options.purge });
+        // 事务顺序（REV-009）：先注销内存注册 → save() 落盘成功 → 再删目录。
+        // save() 失败则不会到达目录删除，杜绝「目录已删但注册仍在」的中间态。
+        const { purgeTarget } = mgr.removeStage(stageId, { force: options.force, purge: options.purge });
         mgr.save();
-        console.log(t('flow.stage.remove.okTmpl', lang, { stage: stageId }));
-        if (options.purge) {
+        if (purgeTarget) {
+          rmSync(purgeTarget, { recursive: true, force: true });
           console.log(t('flow.stage.remove.purgedTmpl', lang));
         }
+        console.log(t('flow.stage.remove.okTmpl', lang, { stage: stageId }));
       } catch (err: unknown) {
         // 并发冲突：本次未写入 flow.json，输出可重试提示并退出码 2
         if (isFlowConcurrentError(err)) {

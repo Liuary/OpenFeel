@@ -9,7 +9,7 @@
  * - advancePhase() 增加 to 参数的 PipelinePhaseSchema 校验
  * - 新增 repair() 方法，自动检测并修复 flow.json 常见问题
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
@@ -31,7 +31,8 @@ export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-
 import { findStageStatusPath, findStageDirConflict, parseStageId } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
-import { readProfile, DEFAULT_CONFIG } from './config.js';
+import { DEFAULT_CONFIG } from './config.js';
+import { getGlobalProfilePath } from './global-paths.js';
 
 /** 操作执行状态 */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed';
@@ -127,6 +128,21 @@ export class FlowConcurrentModificationError extends Error {
 export function isFlowConcurrentError(err: unknown): err is FlowConcurrentModificationError {
   return err instanceof FlowConcurrentModificationError
     || (typeof err === 'object' && err !== null && (err as { name?: string }).name === 'FlowConcurrentModificationError');
+}
+
+/** 阶段目录冲突：两个不同 stageId 映射同一 (series, stageDir)（cli/BUG-002） */
+export class StageDirConflictError extends Error {
+  /** 本次冲突检测的 stageId */
+  readonly stage: string;
+  /** 已存在、占用同一目录的其它 stageId */
+  readonly other: string;
+
+  constructor(stage: string, other: string) {
+    super(`阶段目录冲突：'${stage}' 与 '${other}' 映射同一 (series, stageDir)，请改用其它 stage-NN`);
+    this.name = 'StageDirConflictError';
+    this.stage = stage;
+    this.other = other;
+  }
 }
 
 /** 流水线摘要 */
@@ -336,6 +352,8 @@ export class FlowManager {
     if (!this.data) {
       return;
     }
+    // 存量 flow.json 可能缺 meta（REV-41 REV-008）：就地补齐，避免 save() 抛 TypeError（??= 仅补整体缺失，不覆盖既有字段）
+    this.data.meta ??= { version: '1.0', project: '', updated: '', revision: 0 };
     this.data.meta.updated = new Date().toISOString();
 
     // 创建清理后的副本：去除 op 中的 id 字段（id 由 stages.{stageId}.ops 的键名决定）
@@ -731,10 +749,10 @@ export class FlowManager {
     if (this.data.stages[stageName]) {
       return; // 已注册，跳过（幂等，保持既有行为）
     }
-    // 冲突检测：不同 stageId 映射同一 (series, stageDir) 时拒绝写入
+    // 冲突检测：不同 stageId 映射同一 (series, stageDir) 时拒绝写入（结构化错误，命令层按类型分流 i18n）
     const conflict = findStageDirConflict(this.projectPath, stageName);
     if (conflict) {
-      throw new Error(`阶段目录冲突：'${stageName}' 与 '${conflict}' 映射同一 (series, stageDir)，请改用其它 stage-NN`);
+      throw new StageDirConflictError(stageName, conflict);
     }
     this.data.stages[stageName] = {
       name: stageName,
@@ -1156,10 +1174,10 @@ export class FlowManager {
     if (this.data.stages[stageId]) {
       throw new Error(`Stage '${stageId}' already exists`);
     }
-    // 冲突检测：不同 stageId 映射同一 (series, stageDir) 时拒绝写入
+    // 冲突检测：不同 stageId 映射同一 (series, stageDir) 时拒绝写入（结构化错误，命令层按类型分流 i18n）
     const conflict = findStageDirConflict(this.projectPath, stageId);
     if (conflict) {
-      throw new Error(`阶段目录冲突：'${stageId}' 与 '${conflict}' 映射同一 (series, stageDir)，请改用其它 stage-NN`);
+      throw new StageDirConflictError(stageId, conflict);
     }
     this.data.stages[stageId] = {
       name: stageId,
@@ -1246,18 +1264,20 @@ export class FlowManager {
   }
 
   /**
-   * 移除流水线阶段（仅注销 flow.json 注册；--purge 时同时删除 plan 目录）。
+   * 移除流水线阶段（仅注销 flow.json 注册；**不删除目录**）。
    *
    * 安全校验复用 checkRemovable：ops 非空 / 当前活跃阶段 / 被其它阶段 deps 引用，默认拒绝，--force 越过。
    * --force 移除时**不清理**引用者 deps 中的悬空项（deps 为声明式引用；保留原样 + 日志 referencing/snapshot 使失真可审计）。
    * 移除后 current 兜底：若 current 指向被删阶段，按 stages 插入序回退首个非 done；无则清空 current。
+   * 目录删除由调用方在 `save()` 成功后执行（REV-41 REV-009 事务顺序：避免 save 失败但目录已删的中间态）。
    *
    * @param stageId 目标阶段 ID
-   * @param options.force 越过安全校验；options.purge 同时删除 plan 目录
+   * @param options.force 越过安全校验；options.purge 计算待删 plan 目录（不在此处删除）
+   * @returns purgeTarget：`--purge` 时待删除的 plan 目录绝对路径；否则 undefined
    */
-  removeStage(stageId: string, options: { force?: boolean; purge?: boolean } = {}): void {
+  removeStage(stageId: string, options: { force?: boolean; purge?: boolean } = {}): { purgeTarget?: string } {
     if (!this.data) {
-      return;
+      return {};
     }
     const check = this.checkRemovable(stageId, { force: options.force });
     if (!check.ok) {
@@ -1290,26 +1310,27 @@ export class FlowManager {
       }
     }
 
-    // ── --purge：删除 plan/{series}/{stageDir}/ 目录 ──
-    let purged = false;
+    // ── --purge：仅计算待删目录，不在此处删除（须 save() 成功后再删，REV-009 事务顺序） ──
+    let purgeTarget: string | undefined;
     if (options.purge) {
       const parsed = parseStageId(stageId);
       if (parsed) {
         const dir = resolve(this.projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir);
         if (existsSync(dir)) {
-          rmSync(dir, { recursive: true, force: true });
-          purged = true;
+          purgeTarget = dir;
         }
       }
     }
 
-    // ── 审计日志（含引用者与阶段快照，REV-004 / REV-006） ──
+    // ── 审计日志（含引用者与阶段快照，REV-004 / REV-006；purgeTarget 记录删除意图） ──
     this.appendLog({
       time: '',
       agent: 'cli',
       action: 'remove_stage',
-      detail: { stageId, purged, referencing: check.referencing, snapshot },
+      detail: { stageId, purgeTarget: purgeTarget ?? null, referencing: check.referencing, snapshot },
     });
+
+    return { purgeTarget };
   }
 
   /**
@@ -1573,10 +1594,18 @@ export class FlowManager {
     const statusOverrides: Record<string, string> = {};
 
     // 最低优先级：全局画像 ~/.config/openfeel/profile.yaml 的 preferences.auto_advance（P2 兜底）
-    // readProfile 内部异常安全：文件缺失/解析失败均回退 DEFAULT_PROFILE（安全降级，不抛错）
-    const profile = readProfile();
-    if (profile.preferences?.auto_advance) {
-      profileDefaults['auto_advance'] = profile.preferences.auto_advance;
+    // BUG-003（stage-47）：仅当画像文件真实存在且原始 YAML **显式声明**该键时兜底；否则落 builtin。
+    const profilePath = getGlobalProfilePath();
+    if (existsSync(profilePath)) {
+      try {
+        const raw = parseYaml(readFileSync(profilePath, 'utf-8')) as Record<string, unknown> | null;
+        const explicit = (raw?.preferences as Record<string, unknown> | undefined)?.auto_advance;
+        if (explicit === 'enabled' || explicit === 'disabled') {
+          profileDefaults['auto_advance'] = explicit;
+        }
+      } catch {
+        // 解析失败 → 不填 → 落 builtin（更贴近「无有效画像」）
+      }
     }
 
     // 中优先级：项目 .openfeel/config.yaml 的 defaults 块

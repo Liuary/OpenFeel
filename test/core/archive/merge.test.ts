@@ -146,6 +146,26 @@ describe('Archive Merge', () => {
       expect(result!.reviewsCount).toBe(0);
     });
 
+    it('阶段缺 deps 字段时归档不抛错且摘要为「依赖阶段：无」（archive BUG-001）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage('stage-nodeps', {
+        stages: {
+          'stage-nodeps': {
+            name: '无 deps 字段阶段',
+            status: 'pending',
+            // 故意不提供 deps（存量数据鲁棒性）
+            ops: {},
+          },
+        },
+      }));
+      mgr.save();
+
+      const result = archiveStage(tmpDir, 'stage-nodeps');
+      expect(result).not.toBeNull();
+      expect(result!.summary).toContain('依赖阶段**：无');
+    });
+
     it('归档文件应生成在 .openfeel/log/archive-{stage}.md', () => {
       FlowManager.initFlow(tmpDir);
       const mgr = new FlowManager(tmpDir);

@@ -97,6 +97,7 @@ export const flow: I18nDomain = {
   'phases.listLabel':           { key: 'flow.phases.listLabel',           zh: '合法 phase 列表',                          en: '' },
   'phases.transitionsLabel':    { key: 'flow.phases.transitionsLabel',    zh: 'phase 流转映射（from → [to...]）',          en: '' },
   'phases.hint':                { key: 'flow.phases.hint',                zh: '提示：`openfeel flow advance --stage <id> --to <phase>` 推进', en: '' },
+  'phases.customPhaseNote':     { key: 'flow.phases.customPhaseNote',     zh: '提示：运行时 pipeline.yaml 含内置 15 个 phase 之外的 phase（{phases}）；它们可被展示，但 openfeel flow advance 仅接受内置 phase。', en: '' },
 
   // flow stage remove
   'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '阶段不存在：{stage}',                             en: '' },
@@ -249,6 +250,7 @@ export const init: I18nDomain = {
   'initializingTmpl':           { key: 'init.initializingTmpl',           zh: '正在初始化 OpenFeel 工作区: {path}',        en: '' },
   'created':                    { key: 'init.created',                    zh: '已创建',                                  en: '' },
   'updated':                    { key: 'init.updated',                    zh: '已更新',                                  en: '' },
+  'skipped':                    { key: 'init.skipped',                    zh: '已跳过',                                  en: '' },
   'alreadyUpToDate':            { key: 'init.alreadyUpToDate',            zh: '工作区已是最新状态，无需变更。',            en: '' },
   'complete':                   { key: 'init.complete',                   zh: '✓ OpenFeel 工作区初始化完成',              en: '' },
   'demoCreating':               { key: 'init.demoCreating',               zh: '⚙ 创建示例项目骨架...',                   en: '' },

@@ -52,6 +52,14 @@ export function registerInitCommand(program: Command): void {
         }
       }
 
+      // 输出跳过项（用户可见提示；如已存在的 config.yaml 被保留，BUG-002 语义修复）
+      if (result.skipped.length > 0) {
+        console.log(t('init.skipped', lang));
+        for (const item of result.skipped) {
+          console.log(`  - ${item}`);
+        }
+      }
+
       if (result.created.length === 0 && result.updated.length === 0) {
         console.log(t('init.alreadyUpToDate', lang));
       } else {

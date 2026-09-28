@@ -43,7 +43,7 @@
 |------------|--------|:--:|
 | 全局资产（AGENTS.md / agents / skills） | `writeManagedFile`（updated / adopt / appended 三分支） | setup / update / migrate |
 | 全局 `opencode.jsonc` | setup.ts / update.ts / migrate.ts 三处直写（备份在 jsonc 锁**之外**） | setup / update / migrate |
-| 项目 `.openfeel/config.yaml` | `init.ts` `initWorkspaceCore`（`configExisted` 时，覆盖前） | init |
+| 项目 `.openfeel/config.yaml` | **不再覆盖**（stage-47 BUG-002 语义修复：已存在则保留用户配置），无备份接入 | — |
 | 项目 `package.json` | `init.ts` `initProject`（仅实际将写时，覆盖前） | init |
 
 **不备份**：`created`（新建）、`updated==skipped`（无变化）、`malformed`（不写盘）；项目 `flow.json`（`existsSync` 守卫不覆盖）、项目 `opencode.jsonc`（仅缺失时写）。
@@ -64,8 +64,8 @@
 - **豁免**：`~/.config/openfeel/profile.yaml`（`writeProfile` 调用方仅 Feel 启动与 profile 写命令，**不在部署链路**，符合需求「部署覆盖前」）；`~/.openfeel/{update_state.json,update_infos.md}`（框架状态文件，可重建）。
 - **不做自动清理（R1）**：备份会随每次部署累积，本阶段不加保留策略；如需清理请**手工删除** `~/.openfeel/backup/` 下旧 `{ts}` 目录。
 - **已接受残余风险（REV-009⑤）**：全局 `opencode.jsonc` 的备份在 `global-opencode-jsonc` 锁**之外**完成——并发写入者介入时，备份内容可能 ≠ 实际被覆盖内容；因 jsonc 合并在锁内保留用户字段、风险低，显式记录接受。
-- **失败路径语义分叉（REV-011，low，**归属 stage-47** 未定论）**：全局 `opencode.jsonc` 三处直写路径（`setup.ts` / `update.ts` / `migrate.ts`）的 `backupFileBeforeWrite` **未包 `try/catch`**——备份失败时 `BackupError` 上抛**中止整条命令**（exit 1，fail-fast），与受管文件路径（`writeManagedFile` / `init`）的「跳过该文件写入 + `anomaly(backup_failed)` + 命令继续」**语义不一致**，与 B3「其余文件继续」字面不符。经审查裁定为**可接受的非阻塞 fail-fast**（数据无损：中止即不覆盖；state 可自愈：`saveGlobalUpdateState` 在尾部，重跑收敛；失败响亮）；唯一实质偏差为 `setup`/`update` 中止于「部分部署」状态。对齐方向（A 三处补 `try/catch` 统一口径 / B 文档化为有意设计）**待 stage-47 裁定**，本阶段仅记录现状不改代码。
-- **`BUG-002` 为「缓解」非「语义修复」**：`init` 覆盖 `.openfeel/config.yaml` 前备份 + 失败不覆盖，属缓解（可恢复 + 提示）；其「不再无条件覆盖」的语义修复另立 `config/BUG-002`，本阶段不关闭。
+- **失败路径语义分叉（REV-011，stage-47 定稿：混合裁定）**：全局 `opencode.jsonc` 三处直写路径的 `backupFileBeforeWrite` 失败（`BackupError`）按命令语义分流——① **`setup.ts` / `update.ts` → 跳过继续（对齐 B3）**：补 `try/catch` **仅捕获 `BackupError`**（锁超时等其余错误仍上抛），命中时 `appendUpdateInfo('anomaly', {note:'backup_failed'})` + `console.warn` + **跳过本次 jsonc 写入、继续其余步骤**；跳过写后 `updateFileHash` 不执行 → 下次 update 重跑自愈。② **`migrate.ts` → 有意 fail-fast**：`backupFileBeforeWrite` 直接上抛 → abort 整条命令；依据：migrate 为**可回滚事务**（`finally` 回填 + `rollbackMigration`），abort 比「部分部署」更干净。两分支各自自洽，已文档化。
+- **`BUG-002` 的语义修复已由 stage-47 落地**：`init` 不再覆盖已存在的 `.openfeel/config.yaml`（保留用户配置；`configExisted` 分支仅 `skipped.push` 提示，无写盘/无备份接入）——stage-46 的「备份 + 仍覆盖」缓解被取代，`config.yaml` 备份接入点已删除；待 feel-tester 验收后关闭 `config/BUG-002`。
 
 ## 变更历史
 

@@ -51,12 +51,12 @@ v1.1.2 已完成 stage-41/42/44/45/46，测试与审查过程中登记了一批�
 
 | op | 主题 | 具体改动点（文件:行号 → 改动） / 验收要点 |
 |----|------|------------------------------------------|
-| op-001 | CLI 自描述边界 + 冲突 i18n（#1/#2） | ① `src/commands/flow.ts:332-360`（`phases` action）：当 `getPipelinePhases()` 含 `PIPELINE_PHASES` 之外的名字时，追加一行边界说明（i18n `flow.phases.customPhaseNote`）；`--json` 输出增 `advanceAccepted: [...PIPELINE_PHASES]`（`:343-346`）；② 新增 `StageDirConflictError`（`src/core/flow-manager.ts`，导出，含 `stage`/`other` 字段），`registerStage`（`:737`）与 `addStage`（`:1162`）由抛 `Error(中文字符串)` 改为抛该错误；③ 命令层 catch 分流：`src/commands/plan.ts:44-52`、`src/commands/flow.ts`（`stage add` catch 块）、`src/commands/stage.ts`（`create` catch 块）命中 `StageDirConflictError` 时用 `t('common.stageDirConflictTmpl', {stage, other})` 渲染（其余错误沿用 `common.errorTmpl`）；④ i18n 新增 `flow.phases.customPhaseNote`（zh/en 对称）。**验收**：自定义 `pipeline.yaml` 加 `gate` 后 `flow phases` 输出含边界提示；`--json | ConvertFrom-Json` 含 `advanceAccepted` 15 项；en 下 `plan stage add v4.0.0-stage-04`（与 `v4-stage-04` 冲突）stderr 为英文；`rg stageDirConflictTmpl src/` 有使用点（死键消除） |
+| op-001 | CLI 自描述边界 + 冲突 i18n（#1/#2） | ① `src/commands/flow.ts:332-360`（`phases` action）：当 `getPipelinePhases()` 含 `PIPELINE_PHASES` 之外的名字时，追加一行边界说明（i18n `flow.phases.customPhaseNote`）；`--json` 输出增 `advanceAccepted: [...PIPELINE_PHASES]`（`:343-346`）；② 新增 `StageDirConflictError`（`src/core/flow-manager.ts`，导出，含 `stage`/`other` 字段），`registerStage`（`:737`）与 `addStage`（`:1162`）由抛 `Error(中文字符串)` 改为抛该错误；③ 命令层 catch 分流：`src/commands/plan.ts:44-52`、`src/commands/flow.ts`（`stage add` catch 块）、`src/commands/stage.ts`（`create` catch 块）命中 `StageDirConflictError` 时用 `t('common.stageDirConflictTmpl', {stage, other})` 渲染（其余错误沿用 `common.errorTmpl`）；④ i18n：新增 `flow.phases.customPhaseNote`（zh/en 对称）；**`common.stageDirConflictTmpl` 复用既有键**——经实测该键已定义于 `src/core/i18n-data/zh-CN.ts:32`（zh 值）与 `src/core/i18n-data/en.ts:31`（en 值 `Stage dir conflict: {stage} and {other} map to the same directory`），**REV-003③ 所称「en 为空串」经核实不成立**（`zh-CN.ts` 的 `en: ''` 是既有「单语分文件」模式的正常值，en 由 `en.ts` 提供）；落地时仍 `rg` 校验两文件该键均非空。**验收**：自定义 `pipeline.yaml` 加 `gate` 后 `flow phases` 输出含边界提示；`--json | ConvertFrom-Json` 含 `advanceAccepted` 15 项；en 下 `plan stage add v4.0.0-stage-04`（与 `v4-stage-04` 冲突）stderr 为英文；`rg stageDirConflictTmpl src/` 有使用点（死键消除），且 zh-CN.ts/en.ts 该键值均非空 |
 | op-002 | 存量数据鲁棒性（#3/#7） | ① `src/core/archive/merge.ts:85` → `` `- **依赖阶段**：${Array.isArray(stage.deps) && stage.deps.length > 0 ? stage.deps.join(', ') : '无'}` ``；② `src/core/flow-manager.ts:339`（`save()` 内 `this.data.meta.updated = ...` 之前）加 `this.data.meta ??= { version: '1.0', project: '', updated: '', revision: 0 };`（与 `defaultFlowData` 字段一致）。**验收**：`openfeel archive v1.0.0-stage-04`（该阶段无 `deps`）exit 0 且摘要有「依赖阶段：无」；手工构造缺 `meta` 的 flow.json 后 `flow stage add <id>` 不再抛 TypeError（命令层正常完成或给出可读错误） |
-| op-003 | config 语义与来源（#4/#6） | ① **BUG-002 语义修复**：`src/core/init.ts:174-182` 改为——`configExisted === true` 时**不调用** `writeDefaultConfig`（保留用户配置），`updated.push` 改为提示「已存在，保留用户配置」（或新增 `skipped` 分类）；`configExisted === false` 时才写；同步更新 `writeDefaultConfig`（`src/core/config.ts:420-425`）的注释，声明「调用方须守卫，不无条件覆盖」；② **BUG-003**：`src/core/flow-manager.ts:1575-1580` 改为——仅当 `existsSync(getGlobalProfilePath())` 为真**且**原始 YAML（`parseYaml(readFileSync(...))`）中 `preferences.auto_advance` **显式存在**时，才写 `profileDefaults['auto_advance']`（解析失败/缺键 → 不填，落 `builtin`）；③ 确认 `flow.status --verbose` 级联表与 `config effective` 同源一致。**验收**：隔离 HOME 下 `init` **重跑**后 `config.yaml` 字节不变（哈希一致，三值保留）；无 `profile.yaml` 时 `openfeel config effective` 输出 `auto_advance：disabled [来源: builtin]`；存在 profile 且显式设 `enabled` 时来源仍为 `profile.yaml` |
+| op-003 | config 语义与来源（#4/#6） | ① **BUG-002 语义修复（REV-002 补全）**：`src/core/init.ts:178-206`——`configExisted === true` 分支**整段替换**为 `skipped.push('.openfeel/config.yaml (已存在，保留用户配置)')`（复用 stage-46 已扩展的 `InitResult.skipped`），**删除 stage-46 引入的整段备份接入块**（`backupFileBeforeWrite` + `appendUpdateInfo('backed', …)` + `notifyBackupIfTTY` + `BackupError` catch 全部移除——语义修复后文件不再被覆盖，保留该块会产生**误导性 `backed` 条目**与无意义 IO，违反 stage-46 B3「备份是覆盖的前置」）；`configExisted === false` 分支保持（`writeDefaultConfig` + `created.push`）；**清理随之变为未使用的 import**（`backupFileBeforeWrite`/`notifyBackupIfTTY`/`BackupError`，`appendUpdateInfo` 若 op-004 仍需保留则不动）；同步更新 `writeDefaultConfig`（`src/core/config.ts:420-425`）注释，声明「调用方须守卫，不无条件覆盖」；② **BUG-003**：`src/core/flow-manager.ts:1575-1580` 改为——仅当 `existsSync(getGlobalProfilePath())` 为真**且**原始 YAML（`parseYaml(readFileSync(...))`）中 `preferences.auto_advance` **显式存在**时，才写 `profileDefaults['auto_advance']`（解析失败/缺键 → 不填，落 `builtin`）；③ 确认 `flow.status --verbose` 级联表与 `config effective` 同源一致；④ **联动文档同步（REV-002）**：`.openfeel/manual/core/backup.md:46` 备份范围表的 `config.yaml` 行改为「不再覆盖，无备份接入」、`:68` 的 BUG-002 段改记「语义修复已由 stage-47 落地，BUG-002 待 feel-tester 验收关闭」。**验收**：隔离 HOME 下 `init` **重跑**后 `config.yaml` 字节不变（哈希一致，三值保留）+ 输出含「已存在，保留用户配置」的 skipped 提示 + **不产生 `backed` 条目**；无 `profile.yaml` 时 `openfeel config effective` 输出 `auto_advance：disabled [来源: builtin]`；存在 profile 且显式设 `enabled` 时来源仍为 `profile.yaml`；`rg -n "backupFileBeforeWrite\|notifyBackupIfTTY" src/core/init.ts` 零命中 |
 | op-004 | 部署事务顺序与失败一致性（#8/#9） | ① **REV-009**：`src/core/flow-manager.ts` `removeStage`（`:1258+`）改为**不执行目录删除**，改为返回 `{ purgeTarget?: string }`（或暴露 `getPurgeTarget(stageId)`）；`src/commands/flow.ts:460-464` 改为「`mgr.removeStage(...)` → `mgr.save()` → 成功后 `rmSync(purgeTarget)`」；② **REV-011**：`src/core/setup.ts`（jsonc 备份段，`:60-74` 附近）与 `src/core/update.ts`（jsonc 备份段，`:1488-1503` 附近）为 `backupFileBeforeWrite` 补 `try/catch` → 命中 `BackupError` 时 `appendUpdateInfo('anomaly', {…, note:'backup_failed'})` + `console.warn` + **跳过本次 jsonc 写入、继续其余步骤**（对齐 B3）；`src/core/migrate.ts`（`:512-524`）**保持 fail-fast**（不改代码），在 `.openfeel/manual/core/backup.md` 记录「migrate 事务语义下有意 fail-fast」。**验收**：`--purge` 场景注入 `save()` 失败后目录仍在、`flow.json` 注册仍在（无中间态）；setup/update 注入 jsonc 备份失败后命令继续且 `update_infos.md` 出现 `backup_failed` 异常条目 |
 | op-005 | 平台描述泛化补漏（#5） | `src/core/templates-data/agents-md/zh-CN.md:112` 与 `en.md:112`：套用 `AGENTS.md:122` 口径——「9 个 agent 内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `openfeel setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）」/ 英文对应；`npm run build` 重生成 `template-loader.ts` 生成段（`:2798` en / `:3251` zh 附近）与 `.opencode/` 自举实例。**验收**：`rg -n "agents/\*\.md" src/core/templates-data/agents-md AGENTS.md` 三处口径一致（均含「opencode 适配器」标注）；`npm run build` 幂等（build 后零 diff）；`npm run build` 一致性校验通过 |
-| op-006 | 文档/文本残留清理（#10/#11） | ① `.openfeel/kb/architecture.md:497`：将 `| 约束载体 | core.md（项目 `.opencode/instructions/core.md` + 全局 `~/.config/opencode/openfeel/core.md`） | …` 行改为**不触发 lint 过期引用**的写法（去掉已退役可解析路径，改为「历史 core.md（已退役）」历史语境描述，或拆分为不可解析的引号描述）；② 版本级 `.openfeel/plan/v1/v1.1.2/plan.md:399`「版本号四处一致」→ 改引用「§3.1 权威清单」；③ `.openfeel/plan/v1/stage-43/plan.md:16`「版本号三处同步（+AGENTS.md）」→ 改引用「§3.1 权威清单」。**验收**：`node bin/openfeel.js lint kb` 输出「✅ 未发现过期引用（共检查 N 个引用）」；两处计划文本不再出现「三处/四处」陈旧表述 |
+| op-006 | 文档/文本残留清理（#10/#11） | ① `.openfeel/kb/architecture.md:497`：将 `| 约束载体 | core.md（项目 `.opencode/instructions/core.md` + 全局 `~/.config/opencode/openfeel/core.md`） | …` 行改为**不触发 lint 过期引用**的写法（去掉已退役可解析路径，改为「历史 core.md（已退役）」历史语境描述，或拆分为不可解析的引号描述）；② 版本级 `.openfeel/plan/v1/v1.1.2/plan.md:438`（实测活残留行号＝`:438`，**REV-003① 更正**；原计划误写 `:399`，该行无匹配）「版本号四处一致为 `1.1.2`」→ 改引用「§3.1 权威清单」；③ `.openfeel/plan/v1/stage-43/plan.md:16`「版本号三处同步（+AGENTS.md）」→ 改引用「§3.1 权威清单」。**验收**：`node bin/openfeel.js lint kb` 输出「✅ 未发现过期引用（共检查 N 个引用）」；两处计划文本不再出现「三处/四处」陈旧表述 |
 | op-007 | 测试与全量回归 | ① 新增/调整测试（见 §六 翻转清单）；② 所有测试遵守**隔离 HOME / 临时目录**（历史事故：`npm test` 曾覆写真 `config.yaml`）——用 `vi.mock('node:os')` / `USERPROFILE`·`HOME` 环境变量隔离，**不触碰真实 `~/.openfeel/` 与仓库 `.openfeel/config.yaml`**；③ `npm run build && npm test` 全绿（基线 41 文件 / 685 用例，本阶段新增后须 ≥ 该数）；④ `openfeel lint i18n` + `openfeel lint kb` 零错误。**验收**：全绿 + 双 lint 零错误 |
 
 ---
@@ -67,13 +67,13 @@ v1.1.2 已完成 stage-41/42/44/45/46，测试与审查过程中登记了一批�
 |----|------|------|
 | op-001 | — | `src/commands/{flow,plan,stage}.ts`、`src/core/flow-manager.ts`（错误类型）、`src/core/i18n-data/{zh-CN,en}.ts` |
 | op-002 | — | `src/core/archive/merge.ts`、`src/core/flow-manager.ts` |
-| op-003 | — | `src/core/init.ts`、`src/core/config.ts`（注释/可选守卫）、`src/core/flow-manager.ts` |
+| op-003 | — | `src/core/init.ts`（删除 config.yaml 备份接入块 + 守卫 + 清理 import）、`src/core/config.ts`（注释）、`src/core/flow-manager.ts`、**`.openfeel/manual/core/backup.md`（`:46`/`:68` 同步，REV-002）** |
 | op-004 | — | `src/core/flow-manager.ts`（`removeStage` 拆分）、`src/commands/flow.ts`、`src/core/{setup,update}.ts`、`.openfeel/manual/core/backup.md` |
 | op-005 | `.opencode/agents-md` 生成段（重生成） | `src/core/templates-data/agents-md/{zh-CN,en}.md`、`src/core/template-loader.ts`（生成段） |
 | op-006 | — | `.openfeel/kb/architecture.md`、`.openfeel/plan/v1/v1.1.2/plan.md`、`.openfeel/plan/v1/stage-43/plan.md` |
 | op-007 | 新增测试用例 | `test/core/{flow-manager,init,config,archive/merge,template-loader,opencode-instance,setup,update}.test.ts`、`test/commands/{plan,config}.test.ts` 等 |
 
-> 合计约 **13 个源码/模板文件 + ~2 个文档文件 + ~8 个测试文件**。
+> 合计约 **13 个源码/模板文件 + ~3 个文档文件（含 `.openfeel/manual/core/backup.md`）+ ~8 个测试文件**。
 
 ---
 
@@ -85,7 +85,7 @@ v1.1.2 已完成 stage-41/42/44/45/46，测试与审查过程中登记了一批�
 | 冲突错误 i18n | 001 | `lang=en` fixture → 断言 `plan stage add`/`flow stage add`/`stage create` stderr 为英文模板；`rg` 断言 `stageDirConflictTmpl` 有引用 |
 | archive 缺 `deps` | 002 | fixture flow.json 阶段无 `deps` → `archive` exit 0 + 「依赖阶段：无」 |
 | `save()` 缺 `meta` | 002 | 构造无 `meta` 的 flow.json → 命令不抛 TypeError |
-| `init` 不再覆盖 `config.yaml` | 003 | 隔离 HOME + 临时项目：写入用户自定义三值 → 重跑 `init` → 断言文件**字节不变**（哈希一致）+ 提示输出 |
+| `init` 不再覆盖 `config.yaml` | 003 | 隔离 HOME + 临时项目：写入用户自定义三值 → 重跑 `init` → 断言文件**字节不变**（哈希一致）+ skipped 提示 + **无 `backed` 条目**；`init.test.ts:191` 备份失败用例删除 |
 | `config effective` 来源 `builtin` | 003 | 隔离 HOME（无 profile）+ 项目无 config.yaml → 断言 `auto_advance` source === `builtin`；有 profile 显式值时 source === `profile.yaml` |
 | `--purge` 事务顺序 | 004 | 注入 `save()` 失败 → 断言目录未被删、注册仍在 |
 | jsonc 备份失败对齐 | 004 | 注入 `backupFileBeforeWrite` 抛 `BackupError`（setup/update）→ 断言命令继续 + anomaly `backup_failed`；migrate 场景断言 fail-fast（中止） |
@@ -97,13 +97,14 @@ v1.1.2 已完成 stage-41/42/44/45/46，测试与审查过程中登记了一批�
 
 | 文件 | 位置 | 翻转内容 | 原因 |
 |------|------|----------|------|
-| `test/core/init.test.ts` | `:165`（stage-46「已存在 config.yaml → 备份 + backed + **仍覆盖**」） | 改为**新语义**：已存在 → **不覆盖**、**不产生 backed**、用户三值保留 | #6 BUG-002 语义修复（stage-46 的「备份后仍覆盖」裁定被本阶段取代） |
-| `test/core/init.test.ts` | `:191`（stage-46/REV-010「备份失败 → 不覆盖 + anomaly」） | 调整/删除：`init` 不再覆盖后该备份路径不再触发 | 同上 |
-| `test/core/flow-manager.test.ts` | 全无 builtin 用例（约 `:2783`） | 断言由「仅值 `disabled`」增补 `source === 'builtin'` | #4 BUG-003 |
-| `test/commands/plan.test.ts` / flow 测试 | 冲突消息断言 | 若断言中文硬编码文案 → 改为模板渲染结果 | #2 |
+| `test/core/init.test.ts` | `:165`（stage-46「已存在 config.yaml → 备份 + backed + **仍覆盖**」） | **改写**为「已存在 → **不覆盖**（文件字节不变、用户自定义键保留）+ **不产生 backed 条目** + `skipped` 含 `config.yaml`」 | #6 BUG-002 语义修复（stage-46 的「备份后仍覆盖」裁定被本阶段取代；备份接入块被删除） |
+| `test/core/init.test.ts` | `:191`（stage-46/REV-010「备份失败 → 不覆盖 + anomaly」） | **删除**：`config.yaml` 备份接入块移除后该路径不再存在（如需保留失败语义，迁移到受管层文件用例） | 同上（REV-002） |
+| `test/core/flow-manager.test.ts` | `:2783-2789`（用例标题「全无 builtin…（DEFAULT_PROFILE）」/ 断言 `:2786`） | **翻转**：`:2786` `expect(cascade.profileDefaults.auto_advance).toBeUndefined()`（原 `toBe('disabled')` 会失败）；`effective.auto_advance` 仍 `'disabled'`；**新增** `resolveEffectiveConfig().auto_advance.source === 'builtin'`；更新用例标题去掉「DEFAULT_PROFILE 兜底」语义 | #4 BUG-003（REV-003② 更正：非「仅增补」） |
+| `test/commands/plan.test.ts` / flow 测试 | 冲突消息断言 | 若断言中文硬编码文案 → 改为模板渲染结果（en 下英文） | #2 |
 | `test/core/archive/merge.test.ts` | deps 用例 | 新增「无 deps 字段」正向用例 | #3 |
 | `test/core/{setup,update}.test.ts` | jsonc 备份失败 | 新增「跳过并继续」断言 | #9 A |
 | `test/core/{template-loader,opencode-instance}.test.ts` | 生成段 | 随 build 重生成校验（通常无需改断言，需复核） | #5 |
+| `test/core/config.test.ts` | `config effective` 用例 | 复核「全无 → `disabled`/`builtin`」断言（BUG-003 后应通过；如原断言依赖 `profileDefaults` 存在须同步） | #4 BUG-003 |
 
 ---
 
@@ -113,7 +114,7 @@ v1.1.2 已完成 stage-41/42/44/45/46，测试与审查过程中登记了一批�
 2. `openfeel flow phases` 在自定义 phase 下给出边界说明；`--json.advanceAccepted` 存在。
 3. 目录冲突错误在 en 下为英文；`stageDirConflictTmpl` 死键消除。
 4. `openfeel archive <无deps阶段>` 正常退出；`save()` 对缺 `meta` 的 flow.json 不抛 TypeError。
-5. `openfeel init` 重跑**不再覆盖**用户 `config.yaml`（字节不变 + 提示）。
+5. `openfeel init` 重跑**不再覆盖**用户 `config.yaml`（字节不变 + skipped 提示）；**stage-46 的 `config.yaml` 备份接入块已删除**（`rg backupFileBeforeWrite src/core/init.ts` 零命中，无误导性 `backed` 条目）；`manual/core/backup.md:46/:68` 已同步（REV-002）。
 6. 无 `profile.yaml` 时 `config effective` 的 `auto_advance` 来源为 `builtin`。
 7. `--purge` 在 `save()` 失败时不留中间态；setup/update 的 jsonc 备份失败走「跳过 + anomaly」，migrate 保持 fail-fast 且文档化。
 8. `agents-md/{zh-CN,en}.md:112` 与 `AGENTS.md:122` 口径一致且经 build 传播。
@@ -140,23 +141,26 @@ v1.1.2 已完成 stage-41/42/44/45/46，测试与审查过程中登记了一批�
 ## 九、op 执行顺序与依赖
 
 ```
-op-001（CLI 边界 + i18n）      op-002（存量鲁棒性）      op-005（模板泛化）      op-006（文档残留）
-        │                          │                        │                      │
-        └──────────────┬───────────┴────────────────────────┴──────────────────────┘
-                       ▼
-                 op-003（config 语义与来源：BUG-002 + BUG-003）
-                       │
-                       ▼
-                 op-004（事务顺序 + 失败一致性：REV-009 + REV-011）
-                       │
-                       ▼
-                 op-007（测试 + 全量回归）
+【串行链 A：flow-manager.ts 相关（同文件，单执行流顺序触碰）】
+  op-001（CLI 边界 + StageDirConflictError，flow-manager.ts:737/:1162 + commands/flow.ts）
+     → op-002（save() meta 守卫，flow-manager.ts:339）
+     → op-003（级联 profile 层，flow-manager.ts:1575-1580 + init.ts + commands/flow.ts 不涉）
+     → op-004（removeStage 拆分 flow-manager.ts:1258 + commands/flow.ts:460-464）
+
+【并行组 B：与 A 无文件交集，可并行】
+  op-005（templates-data/agents-md + npm run build 生成段）
+  op-006（kb/architecture.md + 计划文本）
+
+【收尾】
+  op-007（测试 + 全量回归）
 ```
 
-**建议顺序**：op-001 / op-002 / op-005 / op-006（可并行，互不冲突）→ op-003 → op-004 → op-007。
+**建议顺序**：串行链 A（op-001 → op-002 → op-003 → op-004）∥ 并行组 B（op-005、op-006）→ op-007。
 
-- op-005 涉及 `npm run build`，与其他源码改动并行时须注意 build 时机（建议 build 在 op-003/op-004 完成后统一执行一次，避免重复重生成）。
-- op-003 与 op-004 均改 `flow-manager.ts`/`init.ts`，顺序执行避免同文件冲突。
+**并行/互斥依据（REV-001 更正）**：
+- ❌ **原表述「op-001 / op-002 / op-005 / op-006 可并行」错误**：`op-001` 与 `op-002` **同改 `src/core/flow-manager.ts`**（`:737`/`:1162` vs `:339`）→ 必须**串行**；且 `op-001` 与 `op-004` 还同改 `src/commands/flow.ts`（`stage add` catch vs `remove` 顺序），故 op-001/002/003/004 全部纳入同一条串行链 A（均由单执行流顺序触碰 `flow-manager.ts`）。
+- ✅ **op-005 与 op-006 与 A 无文件交集**，可并行：op-005 只改 `templates-data/agents-md/**` 并触发 `npm run build`（重生成 `template-loader.ts` 生成段与 `.opencode/`）；op-006 只改 `kb/architecture.md` 与两处计划文本——A 不触碰这两类文件。
+- **build 时机**：op-005 的 `npm run build` 与 A 并行时可能编译到 A 的中间态；稳妥做法是 **op-005 改完权威源后先不立即 build，待链 A 完成后于 op-007 统一 `npm run build`**（或 op-005 独立 build 后再由 op-007 复核零 diff）。
 - op-007 最后统一回归。
 
 ---
@@ -166,3 +170,6 @@ op-001（CLI 边界 + i18n）      op-002（存量鲁棒性）      op-005（模
 | 时间 | 修订人 | 依据 | 修订内容 |
 |------|--------|------|----------|
 | 2026-09-29 | openfeel-planner | 用户需求「v1.1.2-stage-47 已登记缺陷集中清理」 | 新建本阶段：14 项缺陷逐条裁定（11 修 / 2 归属 / 1 已修复待关闭）；op-001~007；翻转清单；强隔离测试要求 |
+| 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-47 REV-001（blocking, medium） | **§九 并行组更正**：op-001/002 同改 `flow-manager.ts`（`:737`/`:1162` vs `:339`）→ 并入串行链 A（op-001→002→003→004）；并行组仅保留 op-005/op-006；补并行/互斥依据与 build 时机 |
+| 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-47 REV-002（blocking, high） | **op-003① 补全**：明确**删除 stage-46 的 `config.yaml` 备份接入块**（`init.ts:181-201` 整段替换为 `skipped.push`）+ 清理未使用 import + 联动 `.openfeel/manual/core/backup.md:46/:68` 同步；§五 影响文件清单补 manual；`init.test.ts:165/:191` 处置明确（改写/删除） |
+| 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-47 REV-003（low） | ① op-006② 行号更正 `:399` → `:438`；② 翻转清单改为**翻转** `flow-manager.test.ts:2786`（`profileDefaults.auto_advance` → `toBeUndefined()`）+ 新增 `source==='builtin'` + 更新用例标题；③ `stageDirConflictTmpl` **经核实 en 值已存在**（`en.ts:31`），REV-003③ 的「en 空串」不成立，改为落地时 `rg` 校验两文件非空 |

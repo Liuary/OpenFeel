@@ -91,6 +91,7 @@ export const flow: I18nDomain = {
   'phases.listLabel':           { key: 'flow.phases.listLabel',           zh: '', en: 'Valid phases' },
   'phases.transitionsLabel':    { key: 'flow.phases.transitionsLabel',    zh: '', en: 'Phase transitions (from → [to...])' },
   'phases.hint':                { key: 'flow.phases.hint',                zh: '', en: 'Hint: advance with `openfeel flow advance --stage <id> --to <phase>`' },
+  'phases.customPhaseNote':     { key: 'flow.phases.customPhaseNote',     zh: '', en: 'Note: the runtime pipeline.yaml contains phase(s) outside the built-in 15 ({phases}); they are shown but openfeel flow advance only accepts built-in phases.' },
 
   'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '', en: 'Stage not found: {stage}' },
   'stage.remove.okTmpl':            { key: 'flow.stage.remove.okTmpl',            zh: '', en: '✓ Removed stage: {stage}' },
@@ -231,6 +232,7 @@ export const init: I18nDomain = {
   'initializingTmpl':           { key: 'init.initializingTmpl',           zh: '', en: 'Initializing OpenFeel workspace: {path}' },
   'created':                    { key: 'init.created',                    zh: '', en: 'Created' },
   'updated':                    { key: 'init.updated',                    zh: '', en: 'Updated' },
+  'skipped':                    { key: 'init.skipped',                    zh: '', en: 'Skipped' },
   'alreadyUpToDate':            { key: 'init.alreadyUpToDate',            zh: '', en: 'Workspace is already up-to-date, no changes needed.' },
   'complete':                   { key: 'init.complete',                   zh: '', en: '✓ OpenFeel workspace initialized' },
   'demoCreating':               { key: 'init.demoCreating',               zh: '', en: '⚙ Creating demo project skeleton...' },

@@ -626,6 +626,27 @@ describe('updateProject', () => {
     }
   });
 
+  it('stage-47/REV-011：全局 jsonc 备份失败 → 跳过 jsonc 写 + anomaly(backup_failed) + 继续其余步骤', () => {
+    updateProject(tmpDir);
+    const jsoncPath = globalJsoncPath();
+    const custom = '{\n  "$schema": "https://opencode.ai/config.json",\n  "user_field": "keep-me"\n}\n';
+    writeFileSync(jsoncPath, custom, 'utf-8');
+
+    backupMock.failFor = jsoncPath;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      updateProject(tmpDir); // 不应抛错（备份失败被捕获，命令继续）
+      expect(readFileSync(jsoncPath, 'utf-8')).toBe(custom); // jsonc 未被写入
+      const infos = readFileSync(updateInfosPath(), 'utf-8');
+      expect(infos).toContain('原因: backup_failed');
+      expect(infos).toContain('opencode.jsonc');
+      // 其余步骤继续：全局 agent 仍部署
+      expect(existsSync(join(globalAgentsDir(), 'feel.md'))).toBe(true);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('无标记 + 无 state 记录 → 追加受管区 + update_infos.md；二次 update 幂等（N2）', () => {
     const feelPath = join(globalAgentsDir(), 'feel.md');
     mkdirSync(globalAgentsDir(), { recursive: true });

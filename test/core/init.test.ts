@@ -160,51 +160,56 @@ describe('initProject', () => {
     expect(content).toContain('状态');
   });
 
-  // ── stage-46：config.yaml 覆盖前备份 ──
+  // ── stage-47：config.yaml 语义修复（不再覆盖）──
 
-  it('stage-46：已存在 config.yaml（含用户自定义键）→ 备份保留原键 + backed + 仍覆盖', async () => {
+  it('stage-47：已存在 config.yaml（含用户自定义键）→ 不覆盖（字节不变）+ 无 backed + skipped', async () => {
     const configPath = join(tmpDir, '.openfeel', 'config.yaml');
     mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
-    writeFileSync(configPath, 'defaults:\n  auto_advance: enabled\n  execution_mode: auto\n', 'utf-8');
+    const userCfg = 'defaults:\n  auto_advance: enabled\n  execution_mode: auto\n';
+    writeFileSync(configPath, userCfg, 'utf-8');
 
-    await initProject(tmpDir);
+    const result = await initProject(tmpDir);
 
+    // 语义修复：已存在 → 保留用户配置（字节不变）
+    expect(readFileSync(configPath, 'utf-8')).toBe(userCfg);
+    // 归类 skipped 并透传（含可读提示）
+    expect(result.skipped.some((s) => s.includes('config.yaml'))).toBe(true);
+    expect(result.skipped.some((s) => s.includes('保留用户配置'))).toBe(true);
+
+    // 无备份 IO、无 backed 条目（备份是覆盖的前置；不再覆盖故无备份接入）
     const backupRootPath = join(mockHome.dir, '.openfeel', 'backup');
-    expect(existsSync(backupRootPath)).toBe(true);
     const proj = resolve(tmpDir);
     const hash8 = createHash('sha256').update(proj).digest('hex').slice(0, 8);
     const rel = join('project', `${basename(proj)}-${hash8}`, '.openfeel', 'config.yaml');
-    const foundDir = readdirSync(backupRootPath).find((d) => existsSync(join(backupRootPath, d, rel)));
-    expect(foundDir).toBeTruthy();
-    const backupContent = readFileSync(join(backupRootPath, foundDir!, rel), 'utf-8');
-    expect(backupContent).toContain('auto_advance: enabled');
+    const foundDir = existsSync(backupRootPath)
+      ? readdirSync(backupRootPath).find((d) => existsSync(join(backupRootPath, d, rel)))
+      : undefined;
+    expect(foundDir).toBeUndefined();
 
-    const infos = readFileSync(join(mockHome.dir, '.openfeel', 'update_infos.md'), 'utf-8');
-    expect(infos).toContain('## 备份');
-    expect(infos).toContain('来源: init');
-    expect(infos).toContain('.openfeel/config.yaml');
-
-    // 裁定「备份后仍覆盖」：config.yaml 已被默认值覆盖
-    expect(readFileSync(configPath, 'utf-8')).toContain('auto_advance: disabled');
+    // update_infos 不应出现 config.yaml 的「已备份」条目（误导读者的 backed）
+    const infosPath = join(mockHome.dir, '.openfeel', 'update_infos.md');
+    const infos = existsSync(infosPath) ? readFileSync(infosPath, 'utf-8') : '';
+    expect(infos).not.toContain('.openfeel/config.yaml');
   });
 
-  it('stage-46/REV-010：config.yaml 备份失败 → 不覆盖 + anomaly(backup_failed) + skipped', async () => {
-    const configPath = join(tmpDir, '.openfeel', 'config.yaml');
-    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
-    const userCfg = 'defaults:\n  auto_advance: enabled\n';
-    writeFileSync(configPath, userCfg, 'utf-8');
+  it('stage-47：package.json 备份失败 → 不覆盖 package.json + anomaly(backup_failed) + skipped', async () => {
+    const pkgPath = join(tmpDir, 'package.json');
+    const userPkg = JSON.stringify({
+      name: 'probe', version: '1.0.0', type: 'module',
+      devDependencies: { vitest: '^3.0.0' },
+    }, null, 2) + '\n';
+    writeFileSync(pkgPath, userPkg, 'utf-8');
 
-    backupMock.failFor = configPath;
+    backupMock.failFor = pkgPath;
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const result = await initProject(tmpDir);
-      // 目标未被覆盖（保护现有配置）
-      expect(readFileSync(configPath, 'utf-8')).toBe(userCfg);
-      // 归类 skipped 并透传
-      expect(result.skipped.some((s) => s.includes('config.yaml'))).toBe(true);
+      // 备份失败 → 不写盘（package.json 保持原样）
+      expect(readFileSync(pkgPath, 'utf-8')).toBe(userPkg);
+      expect(result.skipped.some((s) => s.includes('package.json'))).toBe(true);
       const infos = readFileSync(join(mockHome.dir, '.openfeel', 'update_infos.md'), 'utf-8');
       expect(infos).toContain('原因: backup_failed');
-      expect(infos).toContain('.openfeel/config.yaml');
+      expect(infos).toContain('package.json');
     } finally {
       warnSpy.mockRestore();
     }

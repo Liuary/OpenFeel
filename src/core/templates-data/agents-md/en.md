@@ -109,7 +109,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 
 ## Permission Model (Agent permission)
 
-Each of the 9 agents inlines a `permission:` allowlist (deployed by `openfeel setup` to `~/.config/opencode/agents/*.md`), including `external_directory: "allow"`.
+Each of the 9 agents inlines a `permission:` allowlist (including `external_directory: "allow"`), deployed by `openfeel setup` to the **global agents directory** (opencode adapter: `~/.config/opencode/agents/*.md`).
 
 - **Merge semantics (deep merge per permission key; agent wins)**: the agent `.md` frontmatter `permission` and the project/global `opencode.jsonc` `permission` / `agent.<name>.permission` are **deep-merged per permission key**; **for a key declared in the agent `.md`, the `.md` value wins (config files cannot override it)**, and only keys absent from the agent `.md` take effect from config.
 - **`external_directory`**: framework default is `allow` (no prompt outside the workspace; verified in an isolated environment on opencode 1.18.33).

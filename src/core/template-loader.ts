@@ -2801,7 +2801,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 
 ## Permission Model (Agent permission)
 
-Each of the 9 agents inlines a \`permission:\` allowlist (deployed by \`openfeel setup\` to \`~/.config/opencode/agents/*.md\`), including \`external_directory: "allow"\`.
+Each of the 9 agents inlines a \`permission:\` allowlist (including \`external_directory: "allow"\`), deployed by \`openfeel setup\` to the **global agents directory** (opencode adapter: \`~/.config/opencode/agents/*.md\`).
 
 - **Merge semantics (deep merge per permission key; agent wins)**: the agent \`.md\` frontmatter \`permission\` and the project/global \`opencode.jsonc\` \`permission\` / \`agent.<name>.permission\` are **deep-merged per permission key**; **for a key declared in the agent \`.md\`, the \`.md\` value wins (config files cannot override it)**, and only keys absent from the agent \`.md\` take effect from config.
 - **\`external_directory\`**: framework default is \`allow\` (no prompt outside the workspace; verified in an isolated environment on opencode 1.18.33).
@@ -3254,7 +3254,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 ## 权限模型（Agent permission）
 
-9 个 agent 各自内联 \`permission:\` 白名单（\`openfeel setup\` 部署为 \`~/.config/opencode/agents/*.md\`），含 \`external_directory: "allow"\`。
+9 个 agent 各自内联 \`permission:\` 白名单（含 \`external_directory: "allow"\`），随 \`openfeel setup\` 部署到**全局 agents 目录**（opencode 适配器：\`~/.config/opencode/agents/*.md\`）。
 
 - **合并语义（按权限键深合并，agent 优先）**：agent \`.md\` frontmatter 的 \`permission\` 与项目/全局 \`opencode.jsonc\` 的 \`permission\` / \`agent.<name>.permission\` **按权限键深合并**；**同名键以 agent \`.md\` 为准（配置文件无法覆盖）**，agent 未声明的键才由配置生效。
 - **\`external_directory\`**：框架默认 \`allow\`（工作区外目录免询问；依据隔离环境实测，opencode 1.18.33）。

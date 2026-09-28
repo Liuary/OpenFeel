@@ -188,6 +188,24 @@ describe('FlowManager', () => {
       expect(JSON.parse(readFileSync(join(dir, 'flow.json'), 'utf-8')).meta.revision).toBe(1);
     });
 
+    it('缺 meta 的存量 flow.json：save() 补齐 meta 不抛 TypeError（REV-41 REV-008）', () => {
+      // 写一份完全不含 meta 的损坏/存量 flow.json
+      const dir = join(tmpDir, '.openfeel');
+      mkdirSync(dir, { recursive: true });
+      const noMeta = {
+        pipeline: { phase: 'active', current: { stage: '-', op: 'init' }, retry: 0 },
+        stages: {}, reviews: [], log: [],
+      };
+      writeFileSync(join(dir, 'flow.json'), JSON.stringify(noMeta, null, 2) + '\n', 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      expect(() => mgr.save()).not.toThrow();
+      const written = JSON.parse(readFileSync(join(dir, 'flow.json'), 'utf-8'));
+      expect(written.meta.version).toBe('1.0');
+      expect(typeof written.meta.updated).toBe('string');
+      expect(written.meta.updated.length).toBeGreaterThan(0);
+    });
+
     it('同进程两个实例：后写者抛冲突而非静默覆盖', () => {
       FlowManager.initFlow(tmpDir);
       const a = new FlowManager(tmpDir); // 均加载 revision=0
@@ -2615,27 +2633,29 @@ describe('checkRemovable & removeStage（stage-41 op-003）', () => {
     });
   });
 
-  it('--purge 删除 plan 目录并置 purged=true；无 purge 保留目录', () => {
+  it('--purge 仅返回 purgeTarget（不删目录）；无 purge 返回 undefined（REV-009 契约）', () => {
     const dir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-77');
-    // 无 purge：目录保留，purged=false
+    // 无 purge：目录保留，purgeTarget=undefined
     mkdirSync(dir, { recursive: true });
     let mgr = makeMgr(
       { 'v1.0.0-stage-77': makeStage41Stage({ name: 'A' }), 'B': makeStage41Stage({ name: 'B' }) },
       { stage: 'B', op: '' },
     );
-    mgr.removeStage('v1.0.0-stage-77', { force: true });
+    const noPurge = mgr.removeStage('v1.0.0-stage-77', { force: true });
+    expect(noPurge.purgeTarget).toBeUndefined();
     expect(existsSync(dir)).toBe(true);
-    expect(lastLog(mgr).detail.purged).toBe(false);
+    expect(lastLog(mgr).detail.purgeTarget).toBeNull();
 
-    // purge：目录删除，purged=true
+    // purge：返回 purgeTarget，但 core **不删目录**（删除由命令层在 save 成功后执行）
     mkdirSync(dir, { recursive: true });
     mgr = makeMgr(
       { 'v1.0.0-stage-77': makeStage41Stage({ name: 'A' }), 'B': makeStage41Stage({ name: 'B' }) },
       { stage: 'B', op: '' },
     );
-    mgr.removeStage('v1.0.0-stage-77', { force: true, purge: true });
-    expect(existsSync(dir)).toBe(false);
-    expect(lastLog(mgr).detail.purged).toBe(true);
+    const withPurge = mgr.removeStage('v1.0.0-stage-77', { force: true, purge: true });
+    expect(withPurge.purgeTarget).toBe(dir);
+    expect(existsSync(dir)).toBe(true);
+    expect(lastLog(mgr).detail.purgeTarget).toBe(dir);
   });
 });
 
@@ -2780,12 +2800,16 @@ describe('配置级联（stage-42 op-001）', () => {
     expect(cascade.effective.auto_advance).toBe('enabled');
   });
 
-  it('全无 builtin：无 config / 无 profile → effective.auto_advance=disabled（DEFAULT_PROFILE）', () => {
-    // 画像文件不存在 → readProfile 回退 DEFAULT_PROFILE（auto_advance=disabled）
+  it('全无 builtin：无 config / 无 profile → 不再填 profileDefaults；resolveEffectiveConfig 落 builtin', () => {
+    // BUG-003（stage-47）：画像文件不存在 → 不再回退 DEFAULT_PROFILE，profileDefaults 不填 auto_advance
     const cascade = makeMgr().verboseSummary().cascade;
-    expect(cascade.profileDefaults.auto_advance).toBe('disabled');
+    expect(cascade.profileDefaults.auto_advance).toBeUndefined();
     expect(cascade.configDefaults.auto_advance).toBeUndefined();
-    expect(cascade.effective.auto_advance).toBe('disabled');
+    // effective 为三层显式声明值的合并；三层皆无 → undefined（原 DEFAULT_PROFILE 兜底已移除）
+    expect(cascade.effective.auto_advance).toBeUndefined();
+    // 有效值来源落 builtin（框架内置默认 disabled）
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.auto_advance).toEqual({ value: 'disabled', source: 'builtin' });
   });
 
   // ── op-002：resolveEffectiveConfig（有效值 + 来源） ──
@@ -2822,9 +2846,10 @@ describe('配置级联（stage-42 op-001）', () => {
   });
 
   it('resolveEffectiveConfig：无 config 文件时 test_enabled/merge_mode 来源为 builtin（不出现 profile.yaml）', () => {
-    // 无 profile 文件（readProfile 回退默认），auto_advance 由画像层兜底为 disabled；
+    // 无 profile 文件（BUG-003 后不再回退默认值）→ auto_advance 亦落 builtin；
     // execution_mode/test_enabled/merge_mode 不在画像键集内 → builtin。
     const r = makeMgr().resolveEffectiveConfig();
+    expect(r.auto_advance).toEqual({ value: 'disabled', source: 'builtin' });
     expect(r.test_enabled).toEqual({ value: 'false', source: 'builtin' });
     expect(r.merge_mode).toEqual({ value: 'manual', source: 'builtin' });
     expect(r.execution_mode).toEqual({ value: 'manual', source: 'builtin' });

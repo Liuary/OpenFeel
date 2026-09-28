@@ -82,7 +82,7 @@ export function archiveStage(projectPath: string, stageName: string): ArchiveRes
 - **归档时间**：${archivedAt}
 - **阶段名称**：${stageName}
 - **阶段状态**：${stage.status}
-- **依赖阶段**：${stage.deps.length > 0 ? stage.deps.join(', ') : '无'}
+- **依赖阶段**：${Array.isArray(stage.deps) && stage.deps.length > 0 ? stage.deps.join(', ') : '无'}
 
 ## 操作产出
 

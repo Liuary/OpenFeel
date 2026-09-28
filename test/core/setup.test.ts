@@ -143,4 +143,29 @@ describe('setupGlobalFramework', () => {
       warnSpy.mockRestore();
     }
   });
+
+  // ── stage-47：jsonc 备份失败 → 跳过继续（REV-011-A）──
+
+  it('stage-47/REV-011：全局 jsonc 备份失败 → 跳过 jsonc 写 + anomaly(backup_failed) + 继续其余步骤', () => {
+    setupGlobalFramework('zh-CN');
+    const jsoncPath = getGlobalOpencodeJsoncPath();
+    const custom = '{\n  "$schema": "https://opencode.ai/config.json",\n  "user_field": "keep-me"\n}\n';
+    writeFileSync(jsoncPath, custom, 'utf-8');
+
+    backupMock.failFor = jsoncPath;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // 不应抛错（备份失败被捕获，命令继续）
+      setupGlobalFramework('zh-CN');
+      // jsonc 未被写入（原样保留）
+      expect(readFileSync(jsoncPath, 'utf-8')).toBe(custom);
+      const infos = readFileSync(join(homeDir, '.openfeel', 'update_infos.md'), 'utf-8');
+      expect(infos).toContain('原因: backup_failed');
+      expect(infos).toContain('opencode.jsonc');
+      // 其余步骤继续（全局 AGENTS.md 仍在）
+      expect(existsSync(getGlobalAgentsMdPath())).toBe(true);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
 });

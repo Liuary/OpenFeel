@@ -9,7 +9,7 @@ import { listAgentIds, loadAgentTemplate, loadTemplate } from './template-loader
 import { loadGlobalUpdateState, saveGlobalUpdateState, createGlobalUpdateState, updateFileHash, type UpdateState } from './update-state.js';
 import { deployGlobalAsset, SKILL_DEFINITIONS } from './update.js';
 import { appendUpdateInfo } from './update-infos.js';
-import { backupFileBeforeWrite, notifyBackupIfTTY } from './backup.js';
+import { backupFileBeforeWrite, notifyBackupIfTTY, BackupError } from './backup.js';
 import { mergeGlobalOpencodeJsonc } from './opencode-config.js';
 import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath } from './global-paths.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
@@ -60,26 +60,36 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
 
   // 4. 全局平台适配器配置文件（opencode.jsonc）：深度合并（保留用户字段），加全局锁 + 原子写
   const jsoncPath = getGlobalOpencodeJsoncPath();
-  // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
-  const jsoncBackup = backupFileBeforeWrite(jsoncPath, { command: 'setup' });
-  if (jsoncBackup) {
-    appendUpdateInfo('backed', { absolutePath: jsoncPath, backupRel: jsoncBackup.backupRel, command: 'setup' });
-    notifyBackupIfTTY(jsoncBackup.backupRel);
-  }
-  const merged = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
-    const current = existsSync(jsoncPath) ? readFileSync(jsoncPath, 'utf-8') : '{}\n';
-    let out: string;
-    try {
-      out = mergeGlobalOpencodeJsonc(current);
-    } catch (err) {
-      // 解析失败时保留原文件，避免破坏用户配置
-      console.warn(`[setup] 全局平台适配器配置（opencode.jsonc）解析失败，跳过合并保留原文件: ${(err as Error).message}`);
-      out = current;
+  try {
+    // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
+    const jsoncBackup = backupFileBeforeWrite(jsoncPath, { command: 'setup' });
+    if (jsoncBackup) {
+      appendUpdateInfo('backed', { absolutePath: jsoncPath, backupRel: jsoncBackup.backupRel, command: 'setup' });
+      notifyBackupIfTTY(jsoncBackup.backupRel);
     }
-    atomicWriteFileSync(jsoncPath, out);
-    return out;
-  });
-  updateFileHash(globalState, jsoncPath, merged);
+    const merged = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
+      const current = existsSync(jsoncPath) ? readFileSync(jsoncPath, 'utf-8') : '{}\n';
+      let out: string;
+      try {
+        out = mergeGlobalOpencodeJsonc(current);
+      } catch (err) {
+        // 解析失败时保留原文件，避免破坏用户配置
+        console.warn(`[setup] 全局平台适配器配置（opencode.jsonc）解析失败，跳过合并保留原文件: ${(err as Error).message}`);
+        out = current;
+      }
+      atomicWriteFileSync(jsoncPath, out);
+      return out;
+    });
+    updateFileHash(globalState, jsoncPath, merged);
+  } catch (err) {
+    if (err instanceof BackupError) {
+      // 备份失败（REV-011-A）：跳过全局 jsonc 写入、记 anomaly、继续其余步骤（对齐 B3 幂等语义）
+      appendUpdateInfo('anomaly', { absolutePath: jsoncPath, note: 'backup_failed' });
+      console.warn(`[setup] ${err.message}；已跳过全局 opencode.jsonc 写入，继续其余步骤`);
+    } else {
+      throw err; // 非备份错误照旧上抛（锁超时等不回退）
+    }
+  }
 
   // 5. 写盘全局 state + 记录已部署 hash
   for (const p of [...created, ...updated, ...appended]) {

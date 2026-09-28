@@ -494,7 +494,7 @@ v1.1.1-stage-01 将框架约束从「core.md 平台指令层」彻底收敛到�
 
 | 项 | 改造前 | 改造后 |
 |----|--------|--------|
-| 约束载体 | core.md（项目 `.opencode/instructions/core.md` + 全局 `~/.config/opencode/openfeel/core.md`） | 仅全局 `~/.config/opencode/AGENTS.md` |
+| 约束载体 | 历史 core.md（已退役；项目级与全局级各一份） | 全局框架约束文件（AGENTS.md） |
 | 操作步骤 | 混在 core.md | 拆为 skill（新增 `openfeel-workspace`、`openfeel-tool-usage` 2 个操作类） |
 | 全局部署 | init 顺带部署 | 收归 `openfeel setup`（纯全局） |
 | 项目初始化 | init 生成项目 AGENTS.md + 部署全局资产 | init 只建工作区（`--workspace-only`），不生成项目 AGENTS.md |

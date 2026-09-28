@@ -413,7 +413,9 @@ models:
 `;
 
 /**
- * 写入默认配置到 .openfeel/config.yaml
+ * 写入默认配置到 .openfeel/config.yaml（**整体覆盖**）。
+ * ⚠️ 契约：调用方须先自行守卫（如 `init` 已存在则不调用，见 stage-47 BUG-002 语义修复），
+ *    本函数不做「是否存在」判定，不应被无守卫地用于既有用户配置。
  * @param projectPath 项目路径
  * @param lang 语言，'zh-CN' 或 'en'，默认 'zh-CN'
  */

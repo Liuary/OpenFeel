@@ -7,6 +7,7 @@ import { addStage, listStages } from '../core/plan/stage.js';
 import { createScheme, listSchemes } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
+import { StageDirConflictError } from '../core/flow-manager.js';
 
 export function registerPlanCommand(program: Command): void {
   const plan = program
@@ -42,6 +43,11 @@ export function registerPlanCommand(program: Command): void {
       try {
         addStage(projectPath, name, deps.length > 0 ? deps : undefined);
       } catch (err: unknown) {
+        // 阶段目录冲突：按类型分流走 i18n 模板（cli/BUG-002 死键消除）
+        if (err instanceof StageDirConflictError) {
+          console.error(t('common.stageDirConflictTmpl', lang, { stage: err.stage, other: err.other }));
+          process.exit(1);
+        }
         // 阶段目录冲突等错误：命令层统一展示并退出码 1
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));

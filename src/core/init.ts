@@ -179,26 +179,9 @@ function initWorkspaceCore(
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
   const configExisted = existsSync(configPath);
   if (configExisted) {
-    // 覆盖前备份（REV-001 / 裁定 #3；BUG-002 缓解，非语义修复）——备份成功后仍覆盖（需求为备份+提示，非拒绝）
-    try {
-      const bk = backupFileBeforeWrite(configPath, { command: 'init', projectPath });
-      if (bk) {
-        appendUpdateInfo('backed', { projectRoot: projectPath, relativePath: '.openfeel/config.yaml', backupRel: bk.backupRel, command: 'init' });
-        notifyBackupIfTTY(bk.backupRel);
-      }
-      // ✅ 仅备份成功后覆盖（同一 try 内，紧随备份；原件已留存于备份目录）
-      writeDefaultConfig(projectPath, lang);
-      updated.push('.openfeel/config.yaml');
-    } catch (err) {
-      if (err instanceof BackupError) {
-        // 备份失败 → 绝不覆盖；记可区分异常 + 归类 skipped（与 writeManagedFile 口径一致）
-        appendUpdateInfo('anomaly', { projectRoot: projectPath, relativePath: '.openfeel/config.yaml', note: 'backup_failed' });
-        console.warn(`[init] ${err.message}；已跳过 config.yaml 覆盖以保护现有配置`);
-        skipped.push('.openfeel/config.yaml (backup failed)');
-      } else {
-        throw err; // 非备份错误照旧上抛
-      }
-    }
+    // BUG-002 语义修复（stage-47）：已存在的用户配置不再覆盖（保留用户 defaults）。
+    // stage-46 的「备份 + 仍覆盖」缓解被本语义修复取代 —— 备份是覆盖的前置，此处不再覆盖故无备份接入。
+    skipped.push('.openfeel/config.yaml (已存在，保留用户配置)');
   } else {
     // 目标不存在 → 无需备份，直接新建
     writeDefaultConfig(projectPath, lang);

@@ -126,4 +126,4 @@
 - **待测试官验收关闭**：上表 resolved 的 6 个 Bug（含 config/BUG-002）由 openfeel-feel-tester 验收后关闭；config/BUG-001 已按用户裁定 closed（如需运行时复核可在隔离 HOME 下补验 `config set-lang`）。
 - **归属他处（不在本阶段）**：`.openfeel/dev/current.md` 陈旧、`plan/index.md` 断档、`day_index.md`/`log.md` 撞号 → 归档官；REV-44 REV-002/003 → stage-43/归档官；`config/BUG-002` 顺带核验的 `profile.yaml` 同类风险（非法 YAML 覆盖 / 嵌套扩展字段剥离）未修，留观察。
 - **版本号**：本阶段未做版本号变更（归 stage-43）。
-- **Commit**：见下方 git 提交记录。
+- **Commit**：`2fb38fa`（fix: v1.1.2-stage-47 已登记缺陷集中清理…；工作树干净）。

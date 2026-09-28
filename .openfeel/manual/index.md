@@ -29,6 +29,8 @@
   - [setup 命令](cli/setup.md)
 - Agent 体系
   - [Agent 设计](agents/feel.md)
+- Skill 体系（按需加载，权威源 `src/core/templates-data/opencode/skills/{name}/SKILL.md`）
+  - `openfeel-cli-usage` — CLI 命令/参数/phase/stageId 用法参考（**查询型**，与执行型 `openfeel-wizard` 互引划界；v1.1.2-stage-43 新增）
 
 ## 维护规则
 
@@ -58,5 +60,6 @@
 | init.ts `--workspace-only` / 用户可见跳过提示 | `core/init.md` + `cli/commands.md` | `InitResult.skipped` 语义（备份失败 / **已存在不覆盖**）或跳过提示输出变更 |
 | Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更 |
 | agent 模板 permission / opencode 权限模型（opencode 适配器） | `core/permission.md` | 9 agent 白名单键集、合并/优先级语义、项目级收紧入口或受管区边界变更 |
+| skill 体系 / CLI 用法参考 | `cli/commands.md`（命令面）+ `openfeel-cli-usage` skill 权威源 | **skill 数量（当前 17）**——既有计数口诀见 `test/core/{setup,update}.test.ts`（`9 agent + 17 skill + 1 = 27`；+ 项目 jsonc = 28），新增/改名 skill 须同步**全仓写死计数与白名单数组**；`--help` 文案与自描述命令输出键集是否一致；**快照声明**的版本号是否随版本更新 |
 
 > 新增模块时在「模块树」中追加条目，并创建对应文档。

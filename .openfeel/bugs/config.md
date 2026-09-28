@@ -1,7 +1,7 @@
 # config 模块 Bug 归档
 
-> 来源阶段：`v1.1.2-stage-42`（配置口径与流水线状态正确性，实现 commit `6fffda9` ＋ `bed8493`）；BUG-001 为 v0.4.4 时期遗留登记；BUG-002 于 `v1.1.2-stage-46`（commit `d5556a4`）追加**缓解记录**，并于 `v1.1.2-stage-47`（commit `2fb38fa`）**语义修复并关闭**；BUG-004 于 `v1.1.2-stage-47` 验收新登记
-> 登记人：openfeel-feel-tester ｜ 登记时间：2026-07-15（BUG-001）/ 2026-09-29（BUG-002、BUG-003、BUG-002 缓解记录）｜ 私域详细报告：`.openfeel/users/Liuary/bugs/config/`
+> 来源阶段：`v1.1.2-stage-42`（配置口径与流水线状态正确性，实现 commit `6fffda9` ＋ `bed8493`）；BUG-001 为 v0.4.4 时期遗留登记；BUG-002 于 `v1.1.2-stage-46`（commit `d5556a4`）追加**缓解记录**，并于 `v1.1.2-stage-47`（commit `2fb38fa`）**语义修复并关闭**；BUG-004 于 `v1.1.2-stage-47` 验收新登记、于 `v1.1.2-stage-43`（commit `cbc606f`）**修复并关闭**
+> 登记人：openfeel-feel-tester ｜ 登记时间：2026-07-15（BUG-001）/ 2026-09-29（BUG-002、BUG-003、BUG-004）｜ 私域详细报告：`.openfeel/users/Liuary/bugs/config/`
 
 ---
 
@@ -125,7 +125,7 @@ merge_mode：manual       [来源: builtin]
 
 ## BUG-004：`test/core/workspace/identity.test.ts` 直写真实 `~/.openfeel/config.json`（测试隔离缺口）
 
-- **优先级**：medium ｜ **阻塞**：否 ｜ **状态**：open（**归档官裁定归属：`v1.1.2-stage-43`**，发布前清零点，已由 Feel 安排纳入）｜ **归因**：预存量缺陷（不在 stage-47 7 Bug 范围；本阶段验收中新登记）
+- **优先级**：medium ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-43 `op-004` 修复 + 测试官外部独立进程比对验收通过）｜ **归因**：预存量缺陷（不在 stage-47 7 Bug 范围；stage-47 验收中新登记，归档官裁定归属 stage-43）
 
 ### 核心结论
 
@@ -157,6 +157,16 @@ merge_mode：manual       [来源: builtin]
 
 > 沉淀建议：`kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock`（**已由归档官落地**，含隔离审计四步法）+ `kb/patterns.md #全局路径测试的单点 mock 隔离模式`（**已追加反例**）
 
+### 关闭记录（v1.1.2-stage-43，commit `cbc606f`）——隔离纪律恢复，关闭
+
+| 项 | 内容 |
+|----|------|
+| 修复 | `test/core/workspace/identity.test.ts`：① 顶部加 `vi.mock('node:os')`（`vi.hoisted` 的 `mockHome.dir` 返回临时 home，与 `setup.test.ts` / `update.test.ts` 同构——依赖全仓 `homedir` 收敛于 `global-paths.ts` 的「**N4 单点隔离**」设计）；② **删除** `savedConfig` 保存/恢复伪隔离逻辑（原 `:97`/`:103-125`），`recordProjectLang` 块改写为 mock HOME 下的临时全局配置；③ **新增只读隔离守护用例**（根级 `beforeAll` 用 `vi.importActual('node:os')` 取**真实** homedir，记录真实 `~/.openfeel/config.json` 的 `mtimeMs` + SHA-256，用例结束断言前后不变；真实文件不存在时直接 return 不新建）。 |
+| 文档化（不清理） | 455 条历史死映射裁定**不自动清理、不新增 CLI**（操作用户真实环境不可逆 / 属历史残留 / 非发布阻塞 / 根因已消除不再增长）→ 仅在 `.openfeel/manual/core/global-paths.md` 新增「历史残留：全局 `config.json` 死映射的安全清理」节（备份 → 过滤测试前缀键 → 复核 JSON）。 |
+| 验收（测试官，**外部独立进程比对**） | `npx vitest run test/core/workspace/identity.test.ts`（11/11 通过）与全量 `npm test`（41 文件 / **694 用例**）前后，真实 `~/.openfeel/config.json` 的 **mtime（`134351068856219814`）与 SHA-256（`7EF23228…A4BC`）均不变**。代码复核：`vi.mock('node:os')` 已加、`savedConfig` **零残留**（`rg "savedConfig"` 无命中）、守护用例只在 `importActual` 处引用 `homedir`。 |
+| 结论 | **关闭**（隔离纪律恢复：`npm test` 不再触碰真实 `~/.openfeel/`；且新增的守护用例成为**防退化闸门**）。 |
+| **防再犯** | ① **「保存/恢复」不是隔离手段**——依赖全局路径的测试一律 `vi.mock('node:os')`（本仓收敛：仅 `global-paths.ts` 取 `homedir`，一处 mock 覆盖全部全局路径）；② **把「真实全局目录 mtime + hash 双比对」列为验收固定项**——只比 hash 会漏检「被写过又还原」的伪隔离；③ 新增**只读守护用例**把纪律变成可执行断言（比注释/文档更强，任何人回退即失败）；④ 子进程用例 mock 不生效，须**双设 `USERPROFILE` + `HOME`** 才能隔离。沉淀见 `kb/patterns.md #全局路径测试的单点 mock 隔离模式`（已补反例）与 `kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock（隔离审计四步法）`（已补四步审计法）。 |
+
 ---
 
 ## 汇总
@@ -166,4 +176,4 @@ merge_mode：manual       [来源: builtin]
 | [BUG-001](#bug-001config-set-lang-参数解析异常功能完全不可用) | `config set lang` 参数解析异常 | high | 否 | closed | v0.4.4（遗留） |
 | [BUG-002](#bug-002openfeel-init-无条件整体覆盖已存在的-openfeelconfigyaml静默丢失用户配置) | `init` 无条件覆盖 `config.yaml` | high | 是 | **closed**（stage-47 语义修复验收通过） | v1.1.2-stage-42 |
 | [BUG-003](#bug-003config-effective-在无-profileyaml-时-auto_advance-来源标为-profileyaml-而非-builtin) | `config effective` 无 profile 时来源标注偏差 | medium | 否 | **closed**（stage-47 验收通过） | v1.1.2-stage-42 |
-| [BUG-004](#bug-004identitytestts-直写真实-openfeelconfigjson测试隔离缺口) | `identity.test.ts` 直写真实 `~/.openfeel/config.json`（测试隔离缺口） | medium | 否 | open（**归 `v1.1.2-stage-43`**） | v1.1.2-stage-47 |
+| [BUG-004](#bug-004identitytestts-直写真实-openfeelconfigjson测试隔离缺口) | `identity.test.ts` 直写真实 `~/.openfeel/config.json`（测试隔离缺口） | medium | 否 | **closed**（stage-43 N4 隔离修复验收通过） | v1.1.2-stage-47 |

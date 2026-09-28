@@ -1,6 +1,6 @@
 # cli 模块 Bug 归档
 
-> 来源阶段：`v1.1.2-stage-41`（CLI 自描述与可纠错能力，实现 commit `47a5462`）
+> 来源阶段：`v1.1.2-stage-41`（CLI 自描述与可纠错能力，实现 commit `47a5462`）；BUG-003 于 `v1.1.2-stage-43`（CLI 文档 skill 化与版本收口，commit `cbc606f`）验收新登记
 > 登记人：openfeel-feel-tester ｜ 登记时间：2026-09-29 ｜ 私域详细报告：`.openfeel/users/Liuary/bugs/cli/`
 
 ---
@@ -81,3 +81,49 @@ Error: 阶段目录冲突：'v4.0.0-stage-04' 与 'v4-stage-04' 映射同一 (se
 新增结构化 `StageDirConflictError`（含 `stage`/`other`），`registerStage`/`addStage` 改抛该错误（message 文本不变，既有 `toThrow(/阶段目录冲突/)` 不破）；三入口命令层（`plan stage add` / `flow stage add` / `stage create`）按错误类型分流，命中时用 `common.stageDirConflictTmpl` 渲染 → **死键消除**。测试官隔离端到端实测：`lang=en` 下冲突 stderr 为纯英文 `Stage dir conflict: v4.0.0-stage-04 and v4-stage-04 map to the same directory`（**无中文残留**），`lang=zh-CN` 渲染同一中文模板。**关闭**。
 
 **防再犯**：① **`lint i18n` 只查对称性、不查引用**——新增键必须在**同一提交**内接入调用点，并以 `rg "<key>" src/` 引用校验兜底（本次 3 处使用点已断言）；② 需要独立渲染的错误场景，核心层应抛**结构化错误**（携带字段）而非中文文案字符串，命令层按类型分流——既消除硬编码文案，又不破坏既有 `toThrow` 断言；③ 误判校正留档：`zh-CN.ts` 内 `en: ''` 属「单语分文件」模式正常值（en 值在 `en.ts`），死键本质是**无使用点**而非值缺失。沉淀见 `kb/troubleshooting.md #新增 i18n 键已定义却未接入（死键）`（已更新）。
+
+---
+
+## BUG-003：`flow phases --json` 的 help 文案只列 `{ phases, transitions }`，实际输出还含 `advanceAccepted`
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open**（**裁定归属：下一版本或由用户决定**——本阶段为 v1.1.2 最后阶段，不夹带修复；非发布阻塞）｜ **归因**：**预存量缺陷**（`cli/BUG-001` 修复时新增 `advanceAccepted` 输出，help 文案未同步）
+
+### 核心结论
+
+`flow phases --help` 的 `--json` 选项说明（`src/commands/flow.ts:336`，i18n 键 `flow.phases.json`）只写「以 JSON 输出 `{ phases, transitions }`」，而实际输出（`:345`）为**三个键**：
+
+```js
+JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES] }, ...)
+```
+
+实测（commit `cbc606f`）：`node bin/openfeel.js flow phases --help` → `--json  以 JSON 输出 { phases, transitions }`；`node bin/openfeel.js flow phases --json` → `{ "phases": [...], "transitions": {...}, "advanceAccepted": [...] }`。
+
+**根因**：`cli/BUG-001` 采纳方案 B 时**新增了 `advanceAccepted` 输出**（使「存在视图 vs 推进白名单」差异可编程消费），但 `--help` 文案（i18n 双语文案）未同步——属**同一变更内的收尾遗漏**。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 触发频率 | 每次 `flow phases --help` |
+| 直接后果 | 仅读 `--help` 的 Agent/用户会误判输出键集，可能忽略 `advanceAccepted`（`flow advance` 的**推进白名单**）字段——正是该字段的存在意义所在 |
+| 功能影响 | **无**（CLI 行为正确；`.openfeel/manual/cli/commands.md` 与 `openfeel-cli-usage` skill 均已正确记录三键） |
+| 关联 | `cli/BUG-001`（`flow phases` 自描述 phase 与 advance 接受集合不一致）修复的**收尾遗漏** |
+
+### 建议修复方向
+
+1. 同步 i18n 键 `flow.phases.json`（zh/en 对称）：`以 JSON 输出 { phases, transitions, advanceAccepted }` / `Output { phases, transitions, advanceAccepted } as JSON`；
+2. **或**改为不逐一列举键（如「以 JSON 输出完整结构」）——避免后续字段新增再次漂移（**推荐**：与 `kb/patterns.md #CLI 自描述命令模式`「展示与校验同源、减少第二信源」的精神一致，降低文案维护面积）。
+
+> 沉淀建议：`kb/patterns.md #CLI 自描述命令模式`（新增输出字段时须同批核对 `--help` 文案；**枚举式文案**是漂移源）
+
+### 处理记录
+
+| 时间 | 操作者 | 说明 | Commit |
+|------|--------|------|--------|
+| 2026-09-29 | openfeel-executor | **本阶段不修**（裁定）：`v1.1.2-stage-43` 为版本最后阶段，该缺陷 low/非阻塞且与版本收口无耦合；登记为**下一版本候选**或由用户决定是否即时修复。本阶段 skill 已正确描述三键，不构成发布阻塞 | — |
+
+### 验收记录
+
+| 时间 | 验收人 | 结论 | 备注 |
+|------|--------|------|------|
+| 2026-09-29 06:55 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-43 验收（**skill 内容准确性实测**）发现；源码交叉验证 `src/commands/flow.ts:336` 文案 vs `:345` 输出 |

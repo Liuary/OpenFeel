@@ -2545,3 +2545,47 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 **验证**：注入 `save()` 失败 → 断言目录未被删、`flow.json` 注册仍在（无中间态）；正常路径 e2e → 目录已删 + 注册已移除 + 输出提示。
 
 **参见：** v1.1.2-stage-47 op-004、`REV-v1.1.2-stage-41` REV-009、kb/patterns.md #破坏性命令安全校验清单模式、kb/patterns.md #原子写模式
+
+## [+] CLI 用法 skill 化模式：权威源单文件 + build 双注入 + 自举 + 「以 --help 为准」快照声明 (2026-09-29)
+
+**问题**：CLI 用法文档无处沉淀 → Agent 被迫翻包源码（Pantheogen 反馈 #2/#3）。手工维护的 `docs/commands.md` / `manual/cli/commands.md` 不会被按需加载，且极易与实现发散。
+
+**模式（新增一个文档载体，零代码改动）**：
+
+1. **唯一权威源**：`src/core/templates-data/opencode/skills/{name}/SKILL.md`——**扁平单文件、中文单语、无 `{lang}` 子目录**（与 agents 的双语目录结构**不同**）；frontmatter 仅 `name` + `description`。
+2. **触发可发现性**：`description` 必须含 Agent 实际会写的查询词（本案：CLI 命令 / 参数 / phase / stageId 命名），否则自动发现失败——skill 不被加载等于白写。
+3. **build 双注入 + 自举**：`npm run build` 步骤 4 注入 `update.ts` 的 `SKILL_DEFINITIONS`、步骤 6 注入 `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`、步骤 8 清空重生成 `.opencode/skills/**`；三者同读 `SKILLS_DIR` 权威源 → **新增 skill 目录自动纳入，`build.js` 零改动**；生成段与 `.opencode/skills/` 均为**构建产物，禁手改**。
+4. **快照声明（防「文档-实现」发散的关键）**：正文首节写明
+   `> 本文档为 v1.1.2 快照；命令/参数细节以 `openfeel <cmd> --help` 实时输出为准。`
+   ——承认文档必然滞后，把「实时真相」的权威指回 CLI 自身（与 `flow phases` 等**自描述命令**互补：自描述给机器，快照声明给读者划界）。
+5. **职责边界与互引**：**查询型参考手册**（本模式，只读不自执行）与**执行型交互向导**（`openfeel-wizard`）分离，正文互相交叉引用，避免「两个 skill 都在讲命令」。
+6. **翻转清单**：新增 skill 会使「N 个 skill」的断言失配——须**全仓扫描**写死计数与**白名单数组**（本案 14 处：`opencode-instance` / `template-loader` / `setup` / `update` 的用例标题、`toHaveLength`、`expectedSkills` 数组、`9+16+1=26` 派生计数）。**`expectedSkills` 是白名单而非计数，必须手工追加**，否则新 skill 不被断言覆盖（方案首版即漏此点，由审查官补出）。
+
+**验收三证**：① build 一致性断言通过 + `rg` 新 skill 名在两个注入对象与自举目录均命中；② `listOpencodeSkillNames()` 含新 skill（16→17）；③ 隔离 HOME 下 `setup`/`update` 后全局 `~/.config/opencode/skills/{name}/SKILL.md` 与权威源一致，并做**可用性实测**（「无需翻源码即完成真实任务」）。
+
+**参见：** kb/architecture.md #模板单源架构、kb/patterns.md #新增 Agent 全链路更新清单模式、#CLI 自描述命令模式、.openfeel/manual/core/build.md
+
+## [+] 版本号全链路收口清单模式：A 必改 / B 生成段 / C 传播 / D 禁改 / E 无载体 (2026-09-29)
+
+**问题**：版本号在多处重复出现，其中**部分是构建产物**、**部分命中是历史注释或依赖自身版本**——漏改会造成「权威源-部署产物」不一致（build 校验不报错，因为纯文案）；误改会污染无关依赖树。
+
+**五类清单（收口时逐类核对，放版本最后一个阶段统一执行）**：
+
+| 类 | 含义 | 本案（1.1.1 → 1.1.2，8 处 + 1 生成段） |
+|:--:|------|--------------------------------------|
+| **A 必改** | 手工维护的版本载体 | `package.json`；`.openfeel/config.yaml`（**混合编码，仅单行增量替换，禁整文件重写**）；`src/core/config.ts` 模板 zh/en 两处；`src/core/templates-data/agents-md/{zh-CN,en}.md`（**权威源，「当前 v…」双语文案**）；仓库根 `AGENTS.md`（**手工维护副本，最易漂移——本案实测仍停在 v1.1.0**）；`package-lock.json` root `version` **两行** |
+| **B 生成段** | 由 A 经 build 重生成 | `template-loader.ts` 的 `AGENTS_MD_TEMPLATES` 生成段（zh/en）——**禁手改**，跑 `npm run build` 并断言生成段含新版本、build 幂等 |
+| **C 传播** | 部署到用户环境 | `openfeel setup`/`update` 重传播全局 `~/.config/opencode/AGENTS.md` 版本行（**隔离 HOME 下验收，勿污染真实配置**）；`CHANGELOG.md` 追加 `## [x.y.z] - <日期>`——置于**上一版本条目之前**，历史条目不改 |
+| **D 禁改** | 命中但是历史事实/依赖自身 | 「vX.Y.Z 引入了…」历史注释（`build.js` / `src/core/*.ts` / `i18n-data` / `manual/**` 变更历史表 / `test/**` 注释）、`package-lock.json` 中**依赖自身**版本（如 `picocolors: 1.1.1`） |
+| **E 无载体** | 经核实无需改 | `README*`、`docs/**`（命中项均为 stage-id 示例 `v1.1.2-stage-43` 或归档叙述，非版本声明） |
+
+**关键判据与陷阱**：
+
+- **D 类判定用「内容特征＝是否历史事实陈述」，不依赖行号**——多阶段改动后行号必然漂移（本案旧「四处/三处同步」清单行号漂移 5 次，最终改为「引用 §3.1 权威清单」消除同文档新旧矛盾）。
+- **`package-lock.json` 只手工同步 root `version` 两行**，**禁止**用 `npm install` 重生成——后者按 `^semver` 重解析依赖树，产生与本版本无关的 `resolved`/`integrity` diff 并触碰 D 类；验收时 `git diff` 逐行确认「零依赖树变动」。
+- **A 类中「权威源 + 手工副本」成对存在**（`templates-data/agents-md/*` 权威源 vs 仓库根 `AGENTS.md`）：只改一处**不触发任何构建/测试失败**（纯文案），必须同批核对并做**关键句全仓 `rg`**。
+- 收口须由**独立 op 复核清单准确性**（行号漂移 + 旧表述收口），而非仅执行一次 grep。
+
+**验收**：A 逐条脚本化 `rg` 断言 = 新版本；B 生成段含新版本且 build 幂等（重跑后 `git status` 对本类文件零输出）；C 隔离 HOME 传播成功 + CHANGELOG 条目就位；D 抽检历史注释与依赖版本未变；E 确认未误改。
+
+**参见：** kb/patterns.md #版本号语义管理与递增规范模式、#版本号重映射边界判定模式、kb/troubleshooting.md #多源文案同步陷阱、kb/setup.md #CI/CD npm 自动发布配置

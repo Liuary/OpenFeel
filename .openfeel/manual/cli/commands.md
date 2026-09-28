@@ -73,3 +73,9 @@ src/commands/setup.ts       registerSetupCommand
 - `openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]` — 三层级 agent 模型读写，详见 [model 命令组](cli/model.md)
 - `openfeel config effective [key]` — 输出四个受管配置键的有效值 + 生效来源（`status.md > config.yaml > profile.yaml > builtin`）；复用 `FlowManager.resolveEffectiveConfig()` 单一权威，与 `flow status --verbose` 级联表同源；未知 key → stderr + exit 1（不静默）
 - `openfeel config get [key] [--global]` / `openfeel config set <key> <value> [--global]` — 原始值读写（不经级联解析）；`config get-lang` / `set-lang <lang>` / `list-projects` 为全局语言子命令
+
+## 相关 skill
+
+- **`openfeel-cli-usage`**（CLI 用法参考，**查询型**）：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 三格式与目录映射约定、典型场景、权限要点；含**快照声明**「本文档为 v1.1.2 快照，命令/参数细节以 `openfeel <cmd> --help` 实时输出为准」（防文档-实现发散）。与 `openfeel-wizard`（**执行型**交互向导）职责分离、正文互引。
+  - 权威源：`src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`（**扁平单文件、中文单语**）；经 `npm run build` 双注入（`update.ts` 的 `SKILL_DEFINITIONS` / `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`）并自举 `.opencode/skills/**`；部署至 `~/.config/opencode/skills/`（**生成物禁手改**）。skill 总数 **17**。
+  - 维护触发：新增/修改 CLI 命令、phase 枚举或 stageId 约定时，须同批更新该 skill 权威源 + 跑 build（详见 `manual/index.md` 维护规则「skill 体系」行）。

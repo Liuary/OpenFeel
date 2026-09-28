@@ -703,7 +703,7 @@
     },
     "v1.1.2-stage-43": {
       "name": "v1.1.2-stage-43",
-      "phase": "archiving",
+      "phase": "done",
       "status": "archiving",
       "deps": [],
       "ops": {

@@ -7,10 +7,12 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 16 |
+| passed | 17 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
+
+> **系列总结（v1.1.2，2026-09-28 ~ 2026-09-29）**：7 个阶段（41/42/44/45/46/47/43）**全部 `passed`**，共 **41 条 REV**（全部 `closed`，其中多条 `blocking`）——stage-41（9 REV）/ 42（6）/ 44（3）/ 45（1）/ 46（11）/ 47（5）/ 43（6）。交付主题：**CLI 自描述与可纠错** + **配置口径与流水线状态正确性** + **权限模型修正（实测推翻需求 §二.2）** + **平台描述泛化（零行为变更）** + **部署覆盖前自动备份** + **已登记缺陷集中清理** + **CLI 文档 skill 化与版本 1.1.2 收口**。测试口径 631 → 694 用例；`lint i18n` 525 → **531 键**（须以 `node bin/openfeel.js` 为准，PATH 全局旧版会给出错误口径）；`lint kb` **0 过期引用**。**v1.1.2 七阶段全部闭环，`npm publish` 就绪。**
 
 | 阶段 | 摘要 | 状态 |
 |------|------|------|
@@ -25,6 +27,7 @@
 | [v1.1.2-stage-46](v1.1.2-stage-46.md) | 部署已有文件备份 + 全局状态文件提示 — 11 REV（REV-001~010 closed 含 3 blocking 修复闭环；REV-011 low 非阻塞 → 归 stage-47），685/685 测试（41 文件），新增 backup.ts（写前备份 + 分区 + manifest + 单锁临界区 + 绝不覆盖）+ update_infos 第三类 backed + 四链路接入 + deployGlobalAsset 破坏性签名变更（9 调用点全改），Bug：config/BUG-002 仅缓解（保持 open，语义修复归 stage-47） | passed |
 
 | [v1.1.2-stage-47](v1.1.2-stage-47.md) | 已登记缺陷集中清理 — 5 REV（REV-001~005 全部 closed，含 2 条 blocking：并行组修正 / BUG-002 修复指令补全），693/693 测试（41 文件）；`config/BUG-002`（high）**语义修复**：`init` 不再覆盖已存在 `config.yaml`（删 stage-46 备份接入块）+ `config/BUG-003` 画像层显式性双条件 + `cli/BUG-001` `--json.advanceAccepted`（存在视图 vs 推进白名单）+ `cli/BUG-002` `StageDirConflictError` + 三入口 i18n 分流（死键消除）+ `archive/BUG-001` deps 守卫 + `save()` meta 守卫 + `removeStage` 事务顺序（`purgeTarget`）+ jsonc 备份失败 A/B 分流（setup/update 跳过继续、migrate fail-fast）+ `agents-md:112` 泛化 + kb 过期引用/版本文本收口；**Bug 6 条 closed**（测试官隔离端到端验收）+ `config/BUG-001` 维持 closed + 新登记 `config/BUG-004`（medium，测试隔离缺口，归 stage-43） | passed |
+| [v1.1.2-stage-43](v1.1.2-stage-43.md) | CLI 文档 skill 化与版本收口（**v1.1.2 最后阶段**）— 6 REV（REV-001~006 全 closed，含 1 条 blocking：REV-004 `REV-44` 三项归属遗漏），694/694 测试（41 文件）；新增 `openfeel-cli-usage` skill（权威源 + build 双注入 + 自举 + 快照声明，16→17）+ 版本 1.1.2 全链路收口（A1~A8 + B 生成段 + C `CHANGELOG` + D/E；`package-lock` 手工同步两行零依赖树变动）+ `docs/commands.md` config 节 + `AGENTS.md` 命令清单/skill 指向 + `config/BUG-004` 测试隔离修复（N4 mock + 删伪隔离 + 只读守护用例）+ skill 计数同步 14 处 + `REV-44` 归属闭环；`config/BUG-004` **closed**、新登记 `cli/BUG-003`（low 非阻塞，归下一版本）；**REV-006 终裁**：`lint i18n` 502 系 PATH 全局旧版 CLI 环境污染，撤销 stage-47「微瑕」判定 | passed |
 
 ## v5 系列审查
 

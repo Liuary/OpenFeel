@@ -2,6 +2,7 @@
 
 > 按日期组织，仅记录团队级重要事件�?
 ## 2026-09
+- [29 日](2026/09/29/2026-09-29-Liuary-052.md) — Archiver 归档 stage-43 + **v1.1.2 版本级收官**（CLI 文档 skill 化与版本收口）：新增 `openfeel-cli-usage` skill（权威源单文件 + build 双注入 + 自举 + 快照声明，16→17 skill）+ **版本 1.1.2 全链路收口**（A1~A8 + B 生成段 + C `CHANGELOG` + D/E；`package-lock` 手工两行零依赖树变动）+ `docs/commands.md` config 节 + `AGENTS.md` 命令清单/skill 指向 + `config/BUG-004` 测试隔离修复（N4 mock + 删伪隔离 + 只读守护用例）+ skill 计数同步 14 处 + `REV-44` 归属闭环；**41 文件 / 694 用例全绿**、`lint i18n` 531 键、`lint kb` 0 过期引用；REV-006 终裁「502 = PATH 全局旧版 CLI 环境污染」并撤销 stage-47 微瑕判定；知识沉淀 4 条（patterns 2 + troubleshooting 2）；**v1.1.2 七阶段全部闭环，`npm publish` 就绪**
 - [28 ��](2026/09/28/2026-09-28-Liuary-001.md) �� Reviewer �ƻ���� v1.1.2 ���׶Σ�������ͨ�����ϱ� 2 �� blocking ȱ�ݣ��汾�տ��嵥��© / P2a ��ʵǰ�����
 
 - [26 日](2026/09/26/2026-09-26-Liuary-001.md) �?Archiver 归档 stage-01（全局化彻底化改造：约束统一全局 AGENTS.md + setup 纯全局部署，知识沉淀 4 条）

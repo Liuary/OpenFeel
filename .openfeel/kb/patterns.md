@@ -2294,3 +2294,53 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.2-stage-41 op-003、kb/patterns.md #CLI --dry-run 安全预览模式、kb/patterns.md #CLI 错误诊断增强模式
 
+
+## [+] 配置级联解析模式：单一 resolver + 四级优先级 + effective 展示出口 (2026-09-29)
+
+新增「配置口径」时，把**取值**与**来源标注**收敛到同一个 resolver，杜绝第二信源（v1.1.2-stage-42 op-001/op-002）。
+
+**优先级链**：`status.md > 项目 config.yaml > 全局画像 profile.yaml（兜底） > builtin`
+
+- `buildCascadeConfig()`（`flow-manager.ts`）一次读取三层，产出 `profileDefaults` / `configDefaults` / `statusOverrides`，并**浅合并**得 `effective = {...profileDefaults, ...configDefaults, ...statusOverrides}`（三层均为扁平 `Record<string,string>`，无嵌套覆盖风险）；`profileDefaults` 只取 `preferences.auto_advance` **单值**，不做 `preferences` 整体替换。
+- `resolveEffectiveConfig()` 同方法输出 `{ value, source }`，source 判定链与合并顺序**逐字对应**：`status.md` → `config.yaml` → `profile.yaml` → `builtin`。
+- `openfeel config effective [key]` 与 `flow status --verbose` 级联表是**同一 resolver 的两个出口**（`rg` 实证调用方仅二者），因此不会互相矛盾。
+- 兜底默认值只保留一处：命令层引用导出的 `DEFAULT_CONFIG`（四键齐全，`String()` 不会输出 `undefined`）；未知 key → stderr + exit 1（不静默）。
+
+**反模式**（本阶段 #5 的根因）：模板文档宣称「优先取全局画像」而实现从未接入 `readProfile()` —— 文案与实现各说一套。做法与文案必须同批修改：接入画像后同步修正权威源 `templates-data/opencode/agents/{zh-CN,en}/feel.md` 的优先级表述，并 `rg` 残留（本次仅剩 3 处 `user.lang` 语言偏好句，属豁免）。
+
+**已知残留（BUG-003，medium 非阻塞）**：`readProfile()` 在画像文件不存在时返回 `DEFAULT_PROFILE`，使 `profileDefaults.auto_advance` **恒存在** → `builtin` 分支对 `auto_advance` 永不命中，无画像环境下来源误标 `profile.yaml`（值正确）；其余三键不受影响。修复方向：仅当画像文件**真实存在**时填充 `profileDefaults`，或在来源判定中把「来自 DEFAULT_PROFILE 的隐式兜底」归为 `builtin`。
+
+**验证方法**：四场景 fixture（status 覆盖 / 项目优先 / 画像兜底 / 全无 builtin）——**必须在测试 fixture 或临时 HOME 中构造**，不得改动项目真实 `config.yaml`（本阶段硬约束「不得覆写三值」）。测试用例不能只断言 `value`，「来源」偏差正是被漏掉的口径。
+
+**参见：** v1.1.2-stage-42 op-001/op-002、`manual/core/config.md`、`manual/core/flow-manager.md`
+
+## [+] 审计日志 action 命名与双轨语义模式 (2026-09-29)
+
+同类「注册」动作存在两条入口时，日志 action 须按**入口分层**命名，并把语义表写进代码注释，避免审计查询歧义（v1.1.2-stage-42 op-004，`flow-manager.ts:747-749`）：
+
+- `add_stage`（agent=`flow-manager`）＝ **仅注册层**：`flow stage add` / `stage create` 路径，只落 flow.json；
+- `register_stage`（agent=`cli`）＝ **完整层**：`plan stage add` 路径（经 `registerStage`），建目录 + overview/status + 注册 + 依赖；
+- `register_op`（agent=`cli`）＝ `plan scheme create` 的 op 注册（`plan/scheme.ts:151-152`）。
+
+两条硬性约束：
+
+1. **幂等早返回 / 冲突抛错必须在 `appendLog` 之前** —— 幂等重复注册与冲突失败不得写日志，保证「日志 = 事实变更」。实现顺序：校验 → 冲突检测 → 幂等早返回 → `appendLog` → 落盘。
+2. **日志先于 `save()` 不是 bug**：`register_op` 在 `save()` 之前写入，每次 `createScheme` 均记录（已在方案风险表显式声明）；`save()` 失败仍走 `isFlowConcurrentError` 分支不被吞。
+
+命名沿用既有蛇形风格（`advance_stage_phase` / `remove_stage`）。审计查询侧须同时识别两种 action，不能只 grep 其中一个。
+
+**参见：** v1.1.2-stage-42 op-004、`REV-v1.1.2-stage-42` REV-002
+
+## [+] 测试 cwd 隔离模式：spyOn process.cwd + 模块期 REAL_CWD 反向守卫 (2026-09-29)
+
+命令层测试若让被测命令以 vitest 进程 cwd（仓库根）执行，会**真实写入工作区**（v1.1.2-stage-42 REV-011：`npm test` 覆写仓库 `.openfeel/config.yaml`）。隔离与守卫须双管齐下：
+
+1. **隔离**：`beforeEach` 用 `vi.spyOn(process, 'cwd').mockReturnValue(tmpDir)` + `afterEach` restore（对齐既有 `config.test.ts` 惯例，弃 `process.chdir` 与显式传路径）。
+   **前提核验**：被测代码必须在**运行时**调用 `process.cwd()`（如 `.action` 回调内 `resolve(path ?? process.cwd())`）；若存在模块加载期捕获 cwd 的路径，spyOn 会失效 —— 实施前 `rg "process\.cwd"` 全链路确认。
+2. **反向守卫**：测试文件模块顶层捕获 `const REAL_CWD = process.cwd()`（先于 `beforeEach`），用例内断言「捕获时 cwd 下真实文件内容**逐字不变**」。语义自洽：无论隔离是否生效，守卫恒断言真实工作区未被改写；失败输出全文 diff，可直接定位被污染字段。
+3. **零断言高危用例必须补正向断言**：隔离生效后再加「tmpDir 下产物存在」的最小可观测断言；只注释「验证没有触发 exit」而无断言的用例，mock 失效时仍会全绿。
+4. **附带写盘目标一并核对**：同链路还会改 `.info.json`（`writeLang`）与工作区模板文件；`initFlow` / `writeTemplateIfMissing` 有 `existsSync` 守卫不覆盖，`config.yaml` 则**无守卫**（见 troubleshooting「writeDefaultConfig 无条件覆盖」）。
+
+**防回归价值**：反向守卫随每次 `npm test` 自动生效，CI 跑测试即在守卫；验收时用「致败实验」证明守卫有效（移除 mock → 缺陷复发 → 守卫精确报错），比单纯「测试全绿」可信。
+
+**参见：** v1.1.2-stage-42 op-005、`REV-v1.1.2-stage-42` REV-011

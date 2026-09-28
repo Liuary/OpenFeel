@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-29-Liuary-017.md](2026/09/29/2026-09-29-Liuary-017.md) | Liuary | 阶段 v1.1.2-stage-42 完成 |
 | [2026-09-29-Liuary-015.md](2026/09/29/2026-09-29-Liuary-015.md) | Liuary | v1.1.2-stage-42.op-005 执行通过 |
 | [2026-09-29-Liuary-013.md](2026/09/29/2026-09-29-Liuary-013.md) | Liuary | v1.1.2-stage-42.op-004 执行通过 |
 | [2026-09-29-Liuary-012.md](2026/09/29/2026-09-29-Liuary-012.md) | Liuary | v1.1.2-stage-42.op-003 执行通过 |
@@ -31,10 +32,7 @@
 | [2026-09-25-Liuary-002.md](2026/09/25/2026-09-25-Liuary-002.md) | Archiver | **stage-36 归档完成**：模板源收敛（templates-data/opencode/ 单源�? 命名前缀统一�? agent/14 skill �?openfeel- 前缀 + /opfx: 类型�?+ normalizeAgentName 读取兼容），470/470 测试，BUG-001 closed，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 core/template-loader.md + core/build.md |
 | [2026-09-25-Liuary-001.md](2026/09/25/2026-09-25-Liuary-001.md) | Liuary | 阶段 v1.1.0-stage-36 完成 |
 | [2026-09-13-Liuary-001.md](2026/09/13/2026-09-13-Liuary-001.md) | Liuary | 阶段 v1.1.0-stage-35 完成 |
-| [2026-09-12-Liuary-002.md](2026/09/12/2026-09-12-Liuary-002.md) | Archiver | **stage-35 归档完成**：并发保护基础设施（原子写 + 建议性文件锁 + 序号原子�?+ 高风险写入接�?+ flow.json 乐观并发校验），457/457 测试�? Bug，知识沉淀 6 条至 architecture(2) + patterns(3) + troubleshooting(1)，manual 新增 core/fs.md |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|
-
-

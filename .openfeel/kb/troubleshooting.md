@@ -527,3 +527,30 @@ CRLF 计数 > 0 即可疑；或直接对比「`findSimilarEntries` 命中的标�
 
 **参见：** v1.1.2-stage-41 归档（4 条候选去重实测）、`src/utils/kb-dedup.ts`
 
+
+## [+] `writeDefaultConfig` 无条件覆盖：`npm test` 静默改写真实 config.yaml (2026-09-29)
+
+**症状**：跑一次 `npm test`（或重复执行 `openfeel init`）后，仓库 `.openfeel/config.yaml` 的 `defaults` 三值被静默还原为模板默认 `manual / disabled / false`；无提示、无备份，且若 HEAD 恰为模板值，`git diff` 甚至为空（伪装成「没有变化」）。
+
+**根因（两层叠加）**：
+
+1. **实现层**：`writeDefaultConfig`（`src/core/config.ts`（420-425 行））无条件 `atomicWriteFileSync` 整体覆写，无 `existsSync` 判断、无备份。`initWorkspaceCore` 的 `existsSync` 只用于 created/updated 分类、**不阻止覆盖**；`initDemo` 有守卫，`update` 仅在 `.openfeel/` 不存在时触发，故 `init` / `init --workspace-only` / `init --demo` **每次必发**。
+2. **测试层**：`test/commands/init.test.ts` 的「不传路径时应使用当前工作目录」用例未 mock `process.cwd()`，`init` 以仓库根为 cwd 执行 → 真实文件被覆写（REV-011，high blocking，归 stage-46 REV-001 做实现层修复）。
+
+**诊断步骤**：
+
+1. 取实测值而非推测：`git log --oneline -- .openfeel/config.yaml` 看最后一次提交——若无任何「改回」提交而值却变了，即为代码覆写而非人为；
+2. hash 前后比对：记 SHA256 → 跑 `npm test` → 再取 hash（实测 `5229455D…` → `23F76595…`），最直观的证据链；
+3. 单文件复现：`npx vitest run test/commands/init.test.ts` 即可命中，无需全量测试；
+4. 与 `HEAD` 比对：`git show HEAD:.openfeel/config.yaml` 与工作区实测（本次实测工作区 = HEAD = `auto/enabled/true`）。
+
+**避免再犯（可操作结论）**：
+
+- 测试必须隔离 cwd + homedir（见 patterns「测试 cwd 隔离模式」），并加**反向守卫**断言真实工作区文件逐字不变，随每次 `npm test` 自动生效；
+- 覆写前一律走「存在则备份 + 合并写入」，而非整体覆写（`backupFileBeforeWrite` + `backed` 条目，见 stage-46 op-003）；
+- 零断言用例是本次的放大器：高危副作用路径必须有可观测断言；
+- 恢复手段：从 `%TEMP%\opencode\config.yaml.bug002-backup` 还原后 hash 回到基线（实测有效）。
+
+**同类风险（顺带核验）**：`writeProfile`（`~/.config/openfeel/profile.yaml`）同为无备份整体覆盖，且 `readProfile` 解析失败静默回退 `DEFAULT_PROFILE`，随后的 `ensureProfileDefaults` 会用默认值写回——非法 YAML 时用户画像整体丢失（实测 `name: TestUser → unknown`）。
+
+**参见：** `config/BUG-002`、v1.1.2-stage-42 REV-011、stage-46 REV-001

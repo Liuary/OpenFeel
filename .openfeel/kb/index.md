@@ -13,15 +13,15 @@
 | Agent 数 | 9 个（feel + 8 个 openfeel-* 前缀：planner/schemer/executor/reviewer/feel-tester/utility/vision/archiver） |
 | 模块入口 | src/index.ts → src/cli/index.ts |
 | 关键目录 | src/core/（流水线核心）、src/commands/（CLI 命令）、.opencode/agents/（Agent 定义，自举实例由 build 生成）、src/core/templates-data/opencode/（模板唯一权威源）、.openfeel/manual/（模块文档系统） |
-| 最近更新 | 2026-09-29（stage-41 归档：CLI 自描述与可纠错能力——新增 `flow phases` / `flow stage remove` / `plan stage add --deps` / stageId 校验与冲突检测 / 三入口分层，5 条知识沉淀至 patterns(2) + troubleshooting(3)，manual 更新 flow-manager + plan-path） |
+| 最近更新 | 2026-09-29（stage-42 归档：配置口径与流水线状态正确性——`auto_advance` 四级级联（status.md > 项目 config.yaml > 全局画像兜底 > builtin）+ `openfeel config effective`（有效值 + 生效来源）+ `pipeline.phase` 全量 done 判定（空集守卫）+ 审计日志（register_stage/register_op）与 scheme 兜底冲突检测，5 op / 652 用例全绿（40 文件）+ `lint i18n` 529 键，REV-001~004/010/011 全部 closed，知识沉淀 5 条至 architecture(1) + patterns(3) + troubleshooting(1)，manual 更新 flow-manager + config + commands） |
 
 ## 分类概览
 
 | 分类 | 文件 | 条目数 | 最近更新 | 用途 |
 |------|------|:--:|------|------|
-| 架构决策 | [architecture.md](architecture.md) | 23 | 2026-09-26 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构、控制区标记增量更新架构、存量项目迁移架构、模型配置三层级架构、全局约束架构 |
-| 代码模式 | [patterns.md](patterns.md) | 82 | 2026-09-29 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环、迁移命令模式、回滚边界模式、模型配置命令模式、约束/操作分离、纯全局部署命令、CLI自描述命令模式、破坏性命令安全校验清单 |
-| 排查经验 | [troubleshooting.md](troubleshooting.md) | 26 | 2026-09-29 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查、migrate 中途失败排查、opencode 模型解析优先级排查、全局 AGENTS.md 加载排查、flow phases 与 advance 校验集不一致、i18n 死键未接入、kb-dedup CRLF 去重失效 |
+| 架构决策 | [architecture.md](architecture.md) | 24 | 2026-09-29 | 技术选型、设计理由、并行策略、多语言模板管线、i18n基建、日志聚合、Vision视觉官、CLI质量门禁、模块文档系统、计划目录分组、config meta.version 语义、跨进程并发保护架构、opencode agent/skill 合并语义、模板单源架构、全局部署架构、控制区标记增量更新架构、存量项目迁移架构、模型配置三层级架构、全局约束架构、全局宏观状态聚合语义 |
+| 代码模式 | [patterns.md](patterns.md) | 85 | 2026-09-29 | 项目约定、最佳实践、反模式、YAML增量、审查子维度扩展、全局用户画像、记忆生命周期、归档git提交、提示词审计、agents-md同步、Handoff委派、约束迁移、Checkpoint快照、组合终止条件、lint子命令组、i18n校验、kb健康检测、skill对齐、部署传播内容哈希比对、版本号语义、推理深度分档、模板同步、WORKSPACE_DIRS同步、审查纪律嵌入Prompt、写盘降级、passthrough保留、路径规范化、版本号重映射全链路同步、AGENTS.md变量替换、init/update重启提醒、update增量哈希追踪三态判定、任务类型路由、轻量决策边界、decisions.md 决策存储、stageId三格式解析、点号分隔符锚定、乐观并发校验、原子写、建议性文件锁、命名前缀统一与子串陷阱处理、P5 读取兼容、JSONC 深度合并、全局/项目双 state 路由、控制区标记模式、malformed降级防死循环、迁移命令模式、回滚边界模式、模型配置命令模式、约束/操作分离、纯全局部署命令、CLI自描述命令模式、破坏性命令安全校验清单、配置级联解析、审计日志双轨命名、测试 cwd 隔离与反向守卫 |
+| 排查经验 | [troubleshooting.md](troubleshooting.md) | 27 | 2026-09-29 | 常见 Bug、调试流程、已知坑位、autoRepairInconsistency 干扰组合条件、npm publish 404/403 诊断链、update_state.json 降级风险排查、双层模板源发散、stages→plan 收敛、并发写入竞态排查、模型名错误导致 Agent 无法启动、opencode instructions 路径 ~ 不展开、agent_manager_tool schema 未定义静默丢弃、malformed 标记死循环排查、migrate 中途失败排查、opencode 模型解析优先级排查、全局 AGENTS.md 加载排查、flow phases 与 advance 校验集不一致、i18n 死键未接入、kb-dedup CRLF 去重失效、writeDefaultConfig 静默覆写真实配置 |
 | 环境配置 | [setup.md](setup.md) | 6 | 2026-09-25 | 环境搭建、构建流程、依赖管理、Agent 模型配置（frontmatter 优先级已勘误）、npm pack 发布验证、CI/CD npm 自动发布 |
 
 ## 各分类摘要
@@ -53,6 +53,8 @@
 | 存量项目迁移架构：legacy 布局检测 + 备份回滚 + 全局部署迁移 | 2026-09-25 | `openfeel migrate` 命令；legacy 五条判据（①/② 框架同源判定保证幂等）；备份 `.openfeel/backup/{ts}/` + manifest.json + globalStateKeys 精确回滚；复用 deployGlobalAsset 全局部署；state 拆分重键；回滚边界=全局资产幂等不还原、仅还原项目文件 + 全局 state 新增条目 |
 | 模型配置三层级架构：工具默认/全局/项目 + 优先级链 frontmatter>jsonc | 2026-09-25 | `openfeel model` 命令组 + `model-config.ts` 内部 API；三层级落点（default 改 frontmatter 双语 + opencode-config.ts / global·project 改 jsonc）；REV-1606 实测优先级链 frontmatter>jsonc（推翻计划初期相反假设）；provider 硬校验 + model-id 软校验；default 层多源不一致以 frontmatter 为准 |
 | 全局约束架构：约束统一全局 AGENTS.md + 约束/操作分离 + 项目级去约束化 | 2026-09-26 | 移除 core.md 约束统一全局 AGENTS.md；约束常驻 AGENTS.md vs 操作拆 skill；项目级去约束化（init/update 不再生成/部署项目 AGENTS.md）；op-000 实测全局 AGENTS.md 自动加载 YES/并存拼接/移除 instructions 仍生效 |
+
+| 全局宏观状态聚合语义：全量 done 判定 + 空集守卫 + 不迁移历史 | 2026-09-29 | `pipeline.phase` 为派生宏观状态，由全部阶段聚合（`length > 0 && every(done)`，空集守卫防 vacuous truth）；单阶段 done 不改变全局；current 不回退属设计行为；不迁移历史（可由 stages 推导 + advance 自愈）；含 status/verbose/current/overview/wizard/validate/migrate 消费方核验清单 |
 
 ### patterns.md
 
@@ -130,6 +132,10 @@
 | CLI 自描述命令模式：phase 枚举与转移表复用运行时单一数据源 | 2026-09-29 | 自描述命令经 FlowManager 只读访问器（getPipelinePhases/getPipelineTransitions）读运行时 pipelineConfig，缺省回退默认表；展示与校验（hasTransition/getValidTargets）同读 transitions 杜绝第二信源；命令层禁硬编码 PIPELINE_PHASES；--json 稳定结构；局限=phase 合法性判定未收敛 |
 | 破坏性命令安全校验清单模式：默认拒绝 + 显式越权 + 可预览 + 可审计 | 2026-09-29 | 九项清单：存在性/子项非空/被引用（deps 归一化 + Array.isArray 守卫）/当前活跃/指针兜底/--force 留痕/--dry-run 复用只读校验/--purge 双重确认/审计快照；校验抽单个只读方法供 remove 与 dry-run 共用 |
 
+| 配置级联解析模式：单一 resolver + 四级优先级 + effective 展示出口 | 2026-09-29 | `status.md > config.yaml > profile.yaml > builtin` 单一 resolver（buildCascadeConfig 浅合并 + resolveEffectiveConfig 同源标注）；`config effective` 与 `flow status --verbose` 同为该 resolver 的出口，无第二信源；文案与实现须同批修改；BUG-003 已知残留（无画像文件时来源误标 profile.yaml） |
+| 审计日志 action 命名与双轨语义模式 | 2026-09-29 | add_stage（flow-manager，仅注册层）vs register_stage（cli，完整层）+ register_op；幂等早返回/冲突抛错须在 appendLog 之前；日志先于 save 属设计；审计查询须同时识别两种 action |
+| 测试 cwd 隔离模式：spyOn process.cwd + 模块期 REAL_CWD 反向守卫 | 2026-09-29 | 命令层测试须 mock `process.cwd`（前提＝被测代码运行时调用）+ 模块顶层捕获 REAL_CWD 断言真实工作区逐字不变；零断言高危用例必须补正向断言；致败实验证明守卫有效；writeDefaultConfig 无 existsSync 守卫须一并核对 |
+
 ### troubleshooting.md
 
 | 条目 | 日期 | 摘要 |
@@ -160,6 +166,8 @@
 | 新增 i18n 键已定义却未接入（死键） | 2026-09-29 | lint i18n 只查 zh/en 对称性不查引用；common.stageDirConflictTmpl 零引用致 en 下仍输出中文；排查=提取新增键逐键 rg；避免=同提交内接入调用点 + rg 引用兜底 |
 | kb-dedup 去重检索对 CRLF 行尾静默失效 | 2026-09-29 | parseKbFile 的标题正则 $ 锚点在 CRLF 下失配（patterns.md 80 个标题仅解析 2 条），去重静默降级；排查=比对 CRLF 计数与命中数；避免=解析前 \r\n 归一 + 降级时改手动关键词匹配 |
 
+| writeDefaultConfig 无条件覆盖：npm test 静默改写真实 config.yaml | 2026-09-29 | 实现层无 existsSync/备份整体覆写 + 测试层 init.test.ts 未 mock cwd → npm test 覆写仓库三值（hash 5229455D→23F76595）；诊断＝git log 该文件 + hash 前后比对 + 单文件复现；避免＝测试隔离 + 反向守卫 + 覆写前备份合并 |
+
 ### setup.md
 
 | 条目 | 日期 | 摘要 |
@@ -173,6 +181,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-09-29 | 归档 | stage-42 归档（v1.1.2 配置口径与流水线状态正确性）：`auto_advance` 四级级联（status.md > 项目 config.yaml > 全局画像兜底 > builtin）+ `openfeel config effective`（有效值 + 生效来源，单一 resolver 无第二信源）+ `pipeline.phase` 全量 done 判定（空集守卫）+ 审计日志 register_stage/register_op 与 plan/scheme.ts 兜底冲突检测；5 op（含 REV-011 修复 op-005），652/652 测试全绿（40 文件）、`lint i18n` 529 键、`npm run build` 模板一致性 3/3；REV-001~004/010/011 全部 closed（REV-011 为 blocking，修复后 hash 前后不变 + 致败实验实证守卫有效）；Bug：config/BUG-002（high，init 无条件覆盖 config.yaml，实现层归 stage-46 REV-001）、config/BUG-003（medium，无 profile 时来源应标 builtin）；审查文件两处「可疑待重验」标注如实保留；知识沉淀 5 条至 architecture(1) + patterns(3) + troubleshooting(1)；manual 更新 core/flow-manager.md + core/config.md + cli/commands.md + manual/index.md |
 | 2026-09-29 | 归档 | stage-41 归档（v1.1.2 CLI 自描述与可纠错能力）：新增 `openfeel flow phases`（phase 枚举 + 运行时转移表，展示与校验同源）+ `openfeel flow stage remove`（ops/current/deps 三道校验 + `--force`/`--dry-run`/`--purge` + current 兜底 + 审计快照）+ `plan stage add --deps` + stageId 校验/建议名/`(series, stageDir)` 冲突检测 + 三入口分层（`stage create` deprecated）；631/631 测试通过（39 文件）、`lint i18n` 525 键；REV-001~007 closed、REV-008/009 low 跟踪、3 个 low 非阻塞 Bug 登记（cli×2 + archive×1）；知识沉淀 5 条至 patterns(2) + troubleshooting(3)；manual 更新 core/flow-manager.md + core/plan-path.md + manual/index.md |
 
 | 2026-09-26 | 归档 | stage-01 归档（v1.1.1 全局化彻底化改造）：移除 core.md 约束统一全局 AGENTS.md + 约束/操作分离（新增 openfeel-workspace/openfeel-tool-usage 2 skill）+ openfeel setup 纯全局部署 + init 拆 workspace-only + update 拆项目 AGENTS.md + migrate 清理 core.md（--clean-global-core-md），REV-2101 已修复，597/597 测试通过，BUG-001 已 closed，知识沉淀 4 条至 architecture(1) + patterns(2) + troubleshooting(1)，manual 新增 cli/setup.md + core/setup.md + 更新 init/update/migrate/index |

@@ -517,3 +517,24 @@ v1.1.1-stage-01 将框架约束从「core.md 平台指令层」彻底收敛到�
 **与 stage-37「全局部署架构」的关系**：stage-37 落地框架约束走 `instructions`（core.md 绝对路径引用）；本阶段进一步把约束载体从 instructions/core.md 迁到全局 AGENTS.md，消除「约束两处存放」（core.md + AGENTS.md）的冗余。移除 instructions 后约束仍生效（op-000 实测），证明该迁移安全。
 
 **参见：** v1.1.1-stage-01 op-000~005、kb/architecture.md #全局部署架构、kb/patterns.md #约束/操作分离模式、kb/troubleshooting.md #opencode 全局 AGENTS.md 加载排查
+
+## [+] 全局宏观状态聚合语义：全量 done 判定 + 空集守卫 + 不迁移历史 (2026-09-29)
+
+`pipeline.phase` 是**派生**的宏观状态（`META_PHASES`：`active` / `paused` / `done`），不由单次推进的目标 phase 直接决定，而由全部阶段聚合得出（v1.1.2-stage-42 op-003，`flow-manager.ts:1090-1094`）：
+
+```ts
+// 所有 stage 均 done 时置 'done'，否则 'active'（P3 全量 done 判定）
+const allDone = Object.values(this.data.stages).length > 0
+  && Object.values(this.data.stages).every((s) => s.phase === 'done');
+this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
+```
+
+四条配套语义（写入实现时须一并遵守）：
+
+- **空集守卫必须写**：`length > 0 && every(...)`。`every` 对空数组返回 `true`（vacuous truth），缺守卫会把「无阶段项目」误判为全局 `done`。
+- **单阶段 done 不改变全局**：「`targetPhase === 'done'` 即置全局 done」的简化实现（备选 A）在多阶段场景会误置全局 done，已否决。
+- **`current` 不回退是设计行为**：`advanceStagePhase` 无条件设置 `current.stage/op`；反馈「`flow status` 的 current 应回退」不属实，显式记录以免被审查误判为遗漏（P3a）。
+- **不做数据迁移**：`pipeline.phase` 可由 `stages` 重新推导、任一次 advance 自愈，迁移历史 flow.json 反而污染审计链；`validate()` 的 `MetaPhaseSchema`（含 `done`）通过路径已核实，`fuzzyCorrectMetaPhase` 不会把 `done` 误修正为 `active`。
+- **消费方核验清单**：`status` / `status --verbose` / `current` / `overview`（已独立计算 `allStagesDone`，去重一致化）、`wizard`（`metaPhase==='done' || allStagesDone` 双条件，行为不变）、`validate`、`migrate`（独立赋值）。
+
+**验证方法**：三场景测试——单阶段 done → 全局 done / 部分 done → active / 全 done → done + `validate()` 通过；并 `rg "phase = 'active'"` 确认无其它写入点残留。

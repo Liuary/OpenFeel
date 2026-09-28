@@ -37,3 +37,4 @@
 | [2026-09-29](2026/09/29/day_index.md) | v1.1.2-stage-41.op-001 执行通过 |
 - [29 日](2026/09/29/2026-09-29-Liuary-007.md) — feel-tester 上报 BUG-002（high）：`openfeel init` 无条件覆盖 config.yaml 静默丢失用户配置（stage-41 事故根因，关联 stage-46 REV-001）
 - [29 日](2026/09/29/2026-09-29-Liuary-008.md) — Archiver 归档 stage-41（v1.1.2 CLI 自描述与可纠错能力：`flow phases` / `flow stage remove` / `plan stage add --deps` / stageId 校验与冲突检测 / 三入口分层，知识沉淀 5 条至 patterns(2) + troubleshooting(3)）
+- [29 日](2026/09/29/2026-09-29-Liuary-016.md) — Archiver 归档 stage-42（v1.1.2 配置口径与流水线状态正确性：`auto_advance` 四级级联 + `openfeel config effective` + `pipeline.phase` 全量 done 判定 + 审计日志补齐；知识沉淀 5 条至 architecture(1) + patterns(3) + troubleshooting(1)；config 模块首次建公共 Bug 归档）

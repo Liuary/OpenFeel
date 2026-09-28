@@ -1,0 +1,114 @@
+# stage-44 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-44
+series: v1
+
+# 【编号映射说明】
+# `openfeel plan scheme create` 自 001 起编号，不产出 op-000（stage-37 的 op-000 为手工/特殊路径）。
+# 按用户裁定「以 CLI 行为为准」：本阶段采用 CLI 编号 op-001~op-005，与 flow.json 键、文件、本文件完全一致。
+#   本文件 opId | 计划编号 | 内容
+#   op-001      | op-000   | 权限语义实测前置（硬性）
+#   op-002      | op-001   | agent 模板补 external_directory（+ utility write→edit 条件改）
+#   op-003      | op-002   | npm run build 重生成 + 单一源一致性
+#   op-004      | op-003   | 文档化覆盖语义与项目级入口（含 REV-001 三点补强）
+#   op-005      | op-004   | 权限断言测试
+
+# 【跨阶段硬约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-45
+    type: mutual_exclusion
+    reason: "stage-44 与 stage-45 **均修改 src/core/templates-data/opencode/agents/**（44 改 permission 块、45 改描述文案）→ 必须串行 44 → 45（plan.md R6）"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "权限语义实测前置（external_directory 键与覆盖合并语义）"
+    produces:
+      - .openfeel/plan/v1/stage-44/op-001-findings.md
+    deps: []
+    notes: "调研性质（计划编号 op-000）；隔离 HOME 真实 CLI 实测；结论回填 op-002/op-004；不阻塞（降级兜底）"
+
+  op-002:
+    file: op-002.md
+    title: "agent 模板 permission 补 external_directory 并修正 utility write→edit"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/*.md   # 9
+      - src/core/templates-data/opencode/agents/en/*.md      # 9
+    deps:
+      - op: op-001
+        type: hard
+        reason: "值形式（单值 vs 对象）与 utility write→edit 以 op-001 findings 为唯一依据"
+
+  op-003:
+    file: op-003.md
+    title: "build 重生成与单一源一致性校验"
+    produces:
+      - src/core/template-loader.ts      # 生成段（AGENT_TEMPLATES / OPENCODE_AGENT_TEMPLATES）
+      - .opencode/agents/*.md            # 9 自举实例（构建产物）
+    deps:
+      - op: op-002
+        type: hard
+        reason: "须先改权威源再 build 重生成"
+
+  op-004:
+    file: op-004.md
+    title: "文档化权限覆盖语义与项目级收紧入口（含 REV-001 三点补强）"
+    produces:
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - AGENTS.md
+      - .openfeel/manual/core/permission.md
+      - .openfeel/manual/index.md
+      - src/core/template-loader.ts      # AGENTS_MD_TEMPLATES 生成段（本 op 内 build 重生成）
+    deps:
+      - op: op-001
+        type: hard
+        reason: "文档值形式/覆盖语义表述须与实测结论一致"
+      - op: op-003
+        type: soft
+        reason: "build 触达 template-loader.ts，串行以避免同文件并发；op-004 自身亦需一次 build（AGENTS_MD_TEMPLATES）"
+    notes: "REV-001（low）三点补强已纳入；REV-002（low，stage-43 依赖文本）仅记录归属，不改 stage-43 计划"
+
+  op-005:
+    file: op-005.md
+    title: "权限断言测试（9×2 补键、双语键集、生成段一致）"
+    produces:
+      - test/core/template-loader.test.ts
+      - test/core/opencode-instance.test.ts
+    deps:
+      - op: op-002
+        type: hard
+        reason: "断言对象为权威源补键"
+      - op: op-003
+        type: hard
+        reason: "断言部署源生成段与自举实例"
+      - op: op-004
+        type: soft
+        reason: "建议待 op-004 完成（其 build 会再触达 template-loader.ts），确保断言最终态"
+
+mutual_exclusions:
+  - group: [op-003, op-004]
+    reason: "两者均经 `npm run build` 重写 src/core/template-loader.ts 生成段（AGENT/OPENCODE_AGENT vs AGENTS_MD），并发 build 写冲突"
+  - group: [op-001, op-002, op-003, op-004, op-005]
+    reason: "推荐全串行（存在硬依赖链 op-001→op-002→op-003→op-004/op-005）；其中 op-004 与 op-005 文件不相交，可在 op-003 后并行（如需压缩工期）"
+
+parallel_groups:
+  - group: [op-001]
+    desc: "实测前置（无源码写入；仅产出 findings）——先跑以定值"
+  - group: [op-002]
+    desc: "权威源补键（依赖 op-001）"
+  - group: [op-003]
+    desc: "build 重生成 + 一致性（依赖 op-002）"
+  - group: [op-004, op-005]
+    desc: "文档化 与 测试（均在 op-003 后；文件不相交，可并行；若并行，op-005 断言以 op-004 的 build 后最终态为准，建议 op-004 先）"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-003
+  - op-004
+  - op-005
+rationale: "plan.md §八 建议顺序 op-000 → op-001 → op-002 → op-003 → op-004（本阶段 CLI 编号对应 op-001 → op-002 → op-003 → op-004 → op-005）。op-001 硬性前置定值；op-003 紧随 op-002 同步生成段；op-005 最后回归。"

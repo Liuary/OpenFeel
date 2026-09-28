@@ -22,6 +22,7 @@
 | `checkRemovable(stageId, {force})` | 只读可移除性检查（`ops` 非空 / 当前活跃 / 被 `deps` 引用），`removeStage` 与 `--dry-run` 共用 |
 | `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、可选 `purge` 删目录、`remove_stage` 审计日志） |
 | `getPipelinePhases()` / `getPipelineTransitions()` | 自描述访问器：返回运行时 `pipelineConfig` 的 phase 列表与转移表**副本**（缺省回退默认表） |
+| `resolveEffectiveConfig()` | 解析四个受管配置键（`EFFECTIVE_CONFIG_KEYS`）的「有效值 + 生效来源」，输出 `key → { value, source }`；复用内部 `buildCascadeConfig`（单一权威，避免第二套解析） |
 | `FlowConcurrentModificationError` / `isFlowConcurrentError(err)` | flow.json 乐观并发冲突错误类型与识别函数（命令层统一捕获） |
 
 ## 并发保护与乐观并发校验
@@ -54,8 +55,42 @@ plan_pending → plan_review → plan_passed
 ```
 
 - 全局宏观状态 `META_PHASES`：`active` / `paused` / `done`（仅元信息，调度基于阶段 phase）
+- **全局状态聚合（stage-42 P3）**：`advanceStagePhase` 结束时按「全部阶段聚合」推导 `pipeline.phase` —— `stages.length > 0 && every(s => s.phase === 'done')` 成立则置 `done`，否则置 `active`（空集守卫防 `every` 对空数组返回 `true` 的 vacuous truth）；单阶段 done **不**改变全局状态；`current` 不随之下沉/回退（设计行为，P3a）；历史 flow.json 不迁移（该字段可由 `stages` 推导 + 任一次 advance 自愈）
 - 合法流转由 `transitions` 表控制，key 可用 `|` 组合多个源 phase（并行场景）
 - 推进必须通过 CLI（`openfeel flow advance`），禁止手动编辑 flow.json
+
+## 配置级联与有效值来源（stage-42）
+
+`buildCascadeConfig()`（内部）+ `resolveEffectiveConfig()`（公开）构成**唯一解析权威**，供 `flow status --verbose` 级联表与 `openfeel config effective` 两个出口共用（`rg` 实证：`buildCascadeConfig` 调用方仅 `verboseSummary` 与 `resolveEffectiveConfig`）。
+
+优先级链（低 → 高）：`builtin` < `profile.yaml`（全局画像兜底）< `config.yaml defaults` < `status.md` 覆盖
+
+| 层 | 来源 | 说明 |
+|----|------|------|
+| `profileDefaults` | `~/.config/openfeel/profile.yaml` | **仅取 `preferences.auto_advance` 单值**（不做 `preferences` 整体替换）；`readProfile()` 异常安全，文件缺失/解析失败回退 `DEFAULT_PROFILE` |
+| `configDefaults` | `.openfeel/config.yaml` `defaults` 块 | 全部键 `String(value)` 收集；文件不存在或解析失败则为空 |
+| `statusOverrides` | 当前 `pipeline.current.stage` 的 `status.md` | 正则提取 `**执行模式**` → `execution_mode`、`**自动推进**` → `auto_advance` |
+| `effective` | 浅合并 `{...profileDefaults, ...configDefaults, ...statusOverrides}` | 三层均为扁平 `Record<string,string>`，无嵌套覆盖风险 |
+
+来源判定与合并顺序逐字对应：`status.md > config.yaml > profile.yaml > builtin`（三层皆无 → `String(DEFAULT_CONFIG[key])` 标 `builtin`）。
+
+> **已知残留（`config/BUG-003`，medium 非阻塞）**：`DEFAULT_PROFILE` 使 `profileDefaults.auto_advance` 恒存在 → 无画像文件时来源误标 `profile.yaml`（值正确），`builtin` 分支对 `auto_advance` 永不命中。
+
+## 审计日志 action 一览（stage-41 / stage-42）
+
+| action | agent | 写入点 | 语义 |
+|--------|-------|--------|------|
+| `advance_stage_phase` | `cli` | `advanceStagePhase` | 阶段 phase 推进 |
+| `attempt_pass` | `openfeel-executor` | op 尝试通过 | op 执行计数 |
+| `add_stage` | `flow-manager` | `addStage`（`flow stage add` / `stage create`） | **仅注册层**：只落 flow.json |
+| `register_stage` | `cli` | `registerStage`（`plan stage add`） | **完整层**：建目录 + overview/status + 注册 + 依赖（`:747-749` 注释写明双轨差异） |
+| `register_op` | `cli` | `plan/scheme.ts` `createScheme` | op 注册（在 `save()` 之前写入，每次均记） |
+| `remove_stage` | `cli` | `removeStage` | 注销阶段（含 `snapshot`） |
+| `archive_stage` | `openfeel-archiver` | `archiveStage` | 阶段归档 |
+
+- **幂等/冲突不写日志**：`registerStage` 的幂等早返回与冲突抛错均位于 `appendLog` **之前**，保证「日志 = 事实变更」。
+- **`plan/scheme.ts` 兜底注册（stage-42 op-004）**：`createScheme` 中 `syncToFlowJson` 的兜底注册路径改经 `validateStageId` + `findStageDirConflict` 校验，命中冲突时 `warn` 并 `return`（**不抛错**：外层 try/catch 会吞非并发错误，warn 显式可见且不破坏「op 文件已创建」契约）；注册成功后写 `register_op`，再由 `save()` 落盘。
+- 审计查询须同时识别 `add_stage` 与 `register_stage`（双轨非重复）。
 
 ## 数据位置
 

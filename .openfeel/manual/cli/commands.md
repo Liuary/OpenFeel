@@ -69,3 +69,5 @@ src/commands/setup.ts       registerSetupCommand
 - `openfeel setup [--lang <zh-CN|en>]` — 纯全局部署（全局 AGENTS.md + agent + skill + 全局 opencode.jsonc），不建立项目 `.openfeel/`，幂等（详见 [setup 命令](cli/setup.md)）
 - `openfeel init [path] [--workspace-only] [--non-interactive]` — 项目初始化；`--workspace-only` 仅创建 `.openfeel/` 工作区（不建 AGENTS.md/opencode.jsonc），供 Feel 空白项目自动搭建
 - `openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]` — 三层级 agent 模型读写，详见 [model 命令组](cli/model.md)
+- `openfeel config effective [key]` — 输出四个受管配置键的有效值 + 生效来源（`status.md > config.yaml > profile.yaml > builtin`）；复用 `FlowManager.resolveEffectiveConfig()` 单一权威，与 `flow status --verbose` 级联表同源；未知 key → stderr + exit 1（不静默）
+- `openfeel config get [key] [--global]` / `openfeel config set <key> <value> [--global]` — 原始值读写（不经级联解析）；`config get-lang` / `set-lang <lang>` / `list-projects` 为全局语言子命令

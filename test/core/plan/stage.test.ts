@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { addStage, listStages } from '../../../src/core/plan/stage.js';
+import { FlowManager } from '../../../src/core/flow-manager.js';
 import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -80,6 +81,36 @@ describe('stage', () => {
 
       const contentAfter = readFileSync(overviewPath, 'utf-8');
       expect(contentAfter).toBe(originalContent);
+    });
+  });
+
+  describe('addStage deps 落点（stage-41 op-004）', () => {
+    it('deps 写入 overview.md 与 flow.json.stages[full].deps', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-01', ['v1.0.0-stage-00']);
+
+      const overviewContent = readFileSync(
+        join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'overview.md'),
+        'utf-8',
+      );
+      expect(overviewContent).toContain('- v1.0.0-stage-00');
+
+      const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+      expect(flow.stages['v1.0.0-stage-01'].deps).toEqual(['v1.0.0-stage-00']);
+    });
+
+    it('不传 deps → overview 显示「无」且 flow.json.deps 为空数组', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-02');
+
+      const overviewContent = readFileSync(
+        join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-02', 'overview.md'),
+        'utf-8',
+      );
+      expect(overviewContent).toContain('无');
+
+      const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+      expect(flow.stages['v1.0.0-stage-02'].deps).toEqual([]);
     });
   });
 

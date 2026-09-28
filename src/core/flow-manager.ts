@@ -9,7 +9,7 @@
  * - advancePhase() 增加 to 参数的 PipelinePhaseSchema 校验
  * - 新增 repair() 方法，自动检测并修复 flow.json 常见问题
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync, rmSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
@@ -28,7 +28,7 @@ import {
 import { PublicLogger, formatDate } from './public-logger.js';
 import { t, getCliLang } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
-import { findStageStatusPath } from './plan/path.js';
+import { findStageStatusPath, findStageDirConflict, parseStageId } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 
@@ -195,6 +195,20 @@ export interface RepairResult {
   fixed: boolean;
   changes: string[];
   recovered: boolean;
+}
+
+/** 阶段可移除性检查结果（供 removeStage 与 flow stage remove --dry-run 共用，REV-005） */
+export interface RemovalCheck {
+  /** 是否允许移除（force=true 且阶段存在时恒 true） */
+  ok: boolean;
+  /** ok=false 时的拒绝原因（中文，供 CLI 直接展示） */
+  reason?: string;
+  /** 阶段 ops 数量 */
+  opCount: number;
+  /** 是否为 pipeline.current.stage */
+  isCurrent: boolean;
+  /** 引用该阶段的其它阶段（flow.json.stages[].deps 命中者，REV-004） */
+  referencing: string[];
 }
 
 /** 健康检查单项 */
@@ -706,7 +720,12 @@ export class FlowManager {
       return;
     }
     if (this.data.stages[stageName]) {
-      return; // 已注册，跳过
+      return; // 已注册，跳过（幂等，保持既有行为）
+    }
+    // 冲突检测：不同 stageId 映射同一 (series, stageDir) 时拒绝写入
+    const conflict = findStageDirConflict(this.projectPath, stageName);
+    if (conflict) {
+      throw new Error(`阶段目录冲突：'${stageName}' 与 '${conflict}' 映射同一 (series, stageDir)，请改用其它 stage-NN`);
     }
     this.data.stages[stageName] = {
       name: stageName,
@@ -1121,6 +1140,11 @@ export class FlowManager {
     if (this.data.stages[stageId]) {
       throw new Error(`Stage '${stageId}' already exists`);
     }
+    // 冲突检测：不同 stageId 映射同一 (series, stageDir) 时拒绝写入
+    const conflict = findStageDirConflict(this.projectPath, stageId);
+    if (conflict) {
+      throw new Error(`阶段目录冲突：'${stageId}' 与 '${conflict}' 映射同一 (series, stageDir)，请改用其它 stage-NN`);
+    }
     this.data.stages[stageId] = {
       name: stageId,
       phase: initialPhase,
@@ -1137,6 +1161,138 @@ export class FlowManager {
       agent: 'flow-manager',
       action: 'add_stage',
       detail: { stageId, phase: initialPhase },
+    });
+  }
+
+  /**
+   * 检查阶段是否可安全移除（只读，不写盘）。
+   *
+   * 判定顺序：ops 非空 → 当前活跃阶段 → 被其它阶段 deps 引用。
+   * force=true 时越过三项校验（ok 恒 true，阶段不存在除外），但 opCount/isCurrent/referencing 仍如实返回。
+   *
+   * deps 匹配：精确相等，或 dep/target 经 parseStageId 解析后 (series, stageDir) 相同（兼容短名）。
+   * 存量 stage 可能缺 deps 字段（StageData.deps 虽为必填，历史数据未必），以 Array.isArray 守卫。
+   *
+   * @param stageId 目标阶段 ID
+   * @param options.force 是否越权检查
+   * @returns 可移除性检查结果
+   */
+  checkRemovable(stageId: string, options: { force?: boolean } = {}): RemovalCheck {
+    if (!this.data) {
+      return { ok: false, reason: '流水线数据未加载', opCount: 0, isCurrent: false, referencing: [] };
+    }
+    const stage = this.data.stages[stageId];
+    if (!stage) {
+      return { ok: false, reason: `阶段不存在：'${stageId}'`, opCount: 0, isCurrent: false, referencing: [] };
+    }
+
+    const opCount = stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)
+      ? Object.keys(stage.ops).length
+      : 0;
+    const isCurrent = this.data.pipeline.current.stage === stageId;
+
+    // 引用者扫描：其余 stages 的 deps 命中该阶段者（REV-004）
+    const target = parseStageId(stageId);
+    const referencing: string[] = [];
+    for (const [otherId, otherStage] of Object.entries(this.data.stages)) {
+      if (otherId === stageId) {
+        continue;
+      }
+      // 存量 stage 可能缺 deps 字段，以 Array.isArray 守卫
+      const deps = Array.isArray(otherStage.deps) ? otherStage.deps : [];
+      const hit = deps.some((dep) => {
+        if (dep === stageId) {
+          return true;
+        }
+        const parsed = parseStageId(dep);
+        return !!parsed && !!target && parsed.series === target.series && parsed.stageDir === target.stageDir;
+      });
+      if (hit) {
+        referencing.push(otherId);
+      }
+    }
+
+    if (!options.force) {
+      // 错误路径：ops 非空（存在未归档操作方案）
+      if (opCount > 0) {
+        return { ok: false, reason: `阶段 '${stageId}' 仍有 ${opCount} 个未归档的 op；如需强制移除此阶段，请加 --force`, opCount, isCurrent, referencing };
+      }
+      // 错误路径：当前活跃阶段
+      if (isCurrent) {
+        return { ok: false, reason: `阶段 '${stageId}' 是当前活跃阶段；如需强制移除，请加 --force（将自动回退 current）`, opCount, isCurrent, referencing };
+      }
+      // 错误路径：被其它阶段 deps 引用（REV-004）
+      if (referencing.length > 0) {
+        return { ok: false, reason: `阶段 '${stageId}' 被其它阶段依赖：${referencing.join(', ')}；如需强制移除（将产生悬空依赖），请加 --force`, opCount, isCurrent, referencing };
+      }
+    }
+    return { ok: true, opCount, isCurrent, referencing };
+  }
+
+  /**
+   * 移除流水线阶段（仅注销 flow.json 注册；--purge 时同时删除 plan 目录）。
+   *
+   * 安全校验复用 checkRemovable：ops 非空 / 当前活跃阶段 / 被其它阶段 deps 引用，默认拒绝，--force 越过。
+   * --force 移除时**不清理**引用者 deps 中的悬空项（deps 为声明式引用；保留原样 + 日志 referencing/snapshot 使失真可审计）。
+   * 移除后 current 兜底：若 current 指向被删阶段，按 stages 插入序回退首个非 done；无则清空 current。
+   *
+   * @param stageId 目标阶段 ID
+   * @param options.force 越过安全校验；options.purge 同时删除 plan 目录
+   */
+  removeStage(stageId: string, options: { force?: boolean; purge?: boolean } = {}): void {
+    if (!this.data) {
+      return;
+    }
+    const check = this.checkRemovable(stageId, { force: options.force });
+    if (!check.ok) {
+      throw new Error(check.reason ?? `无法移除阶段 '${stageId}'`);
+    }
+
+    // 阶段快照（REV-006）：误删后可从审计日志重建
+    const stage = this.data.stages[stageId];
+    const snapshot = {
+      phase: stage.phase,
+      status: stage.status,
+      deps: Array.isArray(stage.deps) ? [...stage.deps] : [],
+      opKeys: Object.keys(stage.ops ?? {}),
+    };
+
+    // ── 注销 flow.json 注册 ──
+    delete this.data.stages[stageId];
+
+    // ── current 兜底：不悬空 ──
+    if (this.data.pipeline.current.stage === stageId) {
+      const remaining = Object.keys(this.data.stages);
+      const fallback = remaining.find((k) => this.data!.stages[k].phase !== 'done');
+      if (fallback) {
+        const pendingOp = Object.entries(this.data.stages[fallback].ops ?? {}).find(
+          ([, op]) => op.state === 'pending' || op.state === 'executing',
+        );
+        this.data.pipeline.current = { stage: fallback, op: pendingOp ? pendingOp[0] : '' };
+      } else {
+        this.data.pipeline.current = { stage: '', op: '' };
+      }
+    }
+
+    // ── --purge：删除 plan/{series}/{stageDir}/ 目录 ──
+    let purged = false;
+    if (options.purge) {
+      const parsed = parseStageId(stageId);
+      if (parsed) {
+        const dir = resolve(this.projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir);
+        if (existsSync(dir)) {
+          rmSync(dir, { recursive: true, force: true });
+          purged = true;
+        }
+      }
+    }
+
+    // ── 审计日志（含引用者与阶段快照，REV-004 / REV-006） ──
+    this.appendLog({
+      time: '',
+      agent: 'cli',
+      action: 'remove_stage',
+      detail: { stageId, purged, referencing: check.referencing, snapshot },
     });
   }
 
@@ -1277,6 +1433,25 @@ export class FlowManager {
     const currentPhase = this.resolveCurrentPhase(stageName);
     if (!currentPhase) return [];
     return this.getValidTargets(currentPhase) as PipelinePhase[];
+  }
+
+  /**
+   * 获取运行时生效的 phase 列表（供 flow phases 自描述）。
+   * 数据源 = this.pipelineConfig（构造时经 loadPipelineConfig 加载 .openfeel/pipeline.yaml）；
+   * 缺省/解析失败时回退内置默认配置。返回副本，避免调用方修改内部状态。
+   */
+  getPipelinePhases(): string[] {
+    const phases = this.pipelineConfig?.phases ?? this.getDefaultPipelineConfig().phases;
+    return [...phases];
+  }
+
+  /**
+   * 获取运行时生效的 phase 转移表（key 可含 '|' 组合条件）。
+   * 缺省/解析失败时回退内置默认配置。返回浅拷贝。
+   */
+  getPipelineTransitions(): Record<string, string[]> {
+    const transitions = this.pipelineConfig?.transitions ?? this.getDefaultPipelineConfig().transitions;
+    return Object.fromEntries(Object.entries(transitions).map(([k, v]) => [k, [...v]]));
   }
 
   /**

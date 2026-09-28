@@ -8,6 +8,9 @@ import {
   normalizeStageId,
   planDirToStageId,
   findStageStatusPath,
+  validateStageId,
+  suggestStageId,
+  findStageDirConflict,
   DEFAULT_SERIES,
 } from '../../../src/core/plan/path.js';
 import { FlowManager } from '../../../src/core/flow-manager.js';
@@ -138,5 +141,65 @@ describe('findStageStatusPath（三级回退）', () => {
 
   it('三级均未命中返回 null', () => {
     expect(findStageStatusPath(tmpDir, 'v9.9.9-stage-99')).toBeNull();
+  });
+});
+
+describe('validateStageId / suggestStageId / findStageDirConflict', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-path-test-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  /** 写入最小 flow.json（仅 stages 键参与校验） */
+  function writeFlowJson(stages: Record<string, unknown>): void {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'flow.json'),
+      JSON.stringify({ stages }, null, 2),
+      'utf-8',
+    );
+  }
+
+  it('validateStageId：空/非法输入返回 ok=false 且含 reason', () => {
+    expect(validateStageId('')).toEqual({ ok: false, reason: '阶段 ID 不能为空' });
+    expect(validateStageId('   ').ok).toBe(false);
+    expect(validateStageId('foo').ok).toBe(false);
+    expect(validateStageId('foo').reason).toContain('非法阶段 ID');
+    expect(validateStageId('v1').ok).toBe(false);
+  });
+
+  it('validateStageId：三类合法格式返回 ok=true', () => {
+    expect(validateStageId('stage-01')).toEqual({ ok: true });
+    expect(validateStageId('v4-stage-04')).toEqual({ ok: true });
+    expect(validateStageId('v1.0.0-stage-34')).toEqual({ ok: true });
+  });
+
+  it('suggestStageId：版本号输入限定该 series 内取号（不跨 series）', () => {
+    // flow.json 仅有 series v1 的 41，不影响 v0 建议名
+    writeFlowJson({ 'v1.1.2-stage-41': {} });
+    expect(suggestStageId(tmpDir, 'v0.0.1')).toBe('v0.0.1-stage-01');
+  });
+
+  it('suggestStageId：计入 plan/{series}/stage-NN/ 目录编号', () => {
+    writeFlowJson({ 'v1.1.2-stage-41': {} });
+    mkdirSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-10'), { recursive: true });
+    const suggested = suggestStageId(tmpDir, 'foo');
+    expect(suggested.startsWith('v1.0.0-stage-')).toBe(true);
+    const nn = parseInt(suggested.replace(/^.*-stage-/, ''), 10);
+    expect(nn).toBeGreaterThan(10);
+  });
+
+  it('findStageDirConflict：不同 id 映射同 (series, stageDir) 返回冲突者', () => {
+    writeFlowJson({ 'v4-stage-04': {} });
+    expect(findStageDirConflict(tmpDir, 'v4.0.0-stage-04')).toBe('v4-stage-04');
+  });
+
+  it('findStageDirConflict：自身与非法输入返回 null', () => {
+    writeFlowJson({ 'v4-stage-04': {} });
+    expect(findStageDirConflict(tmpDir, 'v4-stage-04')).toBeNull();
+    expect(findStageDirConflict(tmpDir, 'foo')).toBeNull();
+  });
+
+  it('findStageDirConflict：flow.json 不存在返回 null', () => {
+    expect(findStageDirConflict(tmpDir, 'v4.0.0-stage-04')).toBeNull();
   });
 });

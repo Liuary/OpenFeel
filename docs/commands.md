@@ -74,6 +74,25 @@ openfeel flow status
 openfeel flow current
 ```
 
+### flow phases
+
+自描述全部合法 phase 与**运行时生效的**流转映射（数据源为 `.openfeel/pipeline.yaml`，缺省回退内置默认表）。
+
+```bash
+openfeel flow phases [--json]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--json` | 以 JSON 输出 `{ phases, transitions }`，供自动化解析 |
+
+示例：
+
+```bash
+openfeel flow phases
+openfeel flow phases --json
+```
+
 ### flow advance
 
 推进流水线阶段。
@@ -85,9 +104,35 @@ openfeel flow advance --op <op-id> --to <phase>
 | 选项 | 说明 |
 |------|------|
 | `--op <op-id>` | 操作 ID（必填） |
-| `--to <phase>` | 目标阶段（必填） |
+| `--to <phase>` | 目标阶段（必填）。合法 phase 与转移表见 `openfeel flow phases` |
 
-支持的阶段（phase）：`plan_pending`、`plan_review`、`plan_passed`、`scheme_pending`、`scheme_review`、`scheme_passed`、`exec_running`、`review_pending`、`review_failed`、`test_pending`、`bug_fixing`、`done`
+支持的阶段（phase）：`plan_pending`、`plan_review`、`plan_passed`、`scheme_pending`、`scheme_review`、`scheme_passed`、`exec_running`、`review_pending`、`review_failed`、`review_passed`、`test_pending`、`test_failed`、`test_passed`、`archiving`、`done`（以运行时 `pipeline.yaml` 为准，用 `openfeel flow phases` 查看）
+
+### flow stage add
+
+新增流水线阶段（**注册层**：仅注册 `flow.json`，不创建 `plan/` 目录；通常应使用 `openfeel plan stage add`）。
+
+```bash
+openfeel flow stage add <stageId>
+```
+
+### flow stage remove
+
+移除流水线阶段（安全校验；默认仅注销 `flow.json` 注册，不删除 `plan/{series}/{stageDir}/` 目录）。
+
+```bash
+openfeel flow stage remove <stageId> [--force] [--dry-run] [--purge]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--force` | 越过安全校验（`ops` 非空 / 当前活跃阶段 / 被其它阶段 `deps` 引用） |
+| `--dry-run` | 仅预览（复用安全校验，呈现引用者），不写盘 |
+| `--purge` | 同时删除 `plan/{series}/{stageDir}/` 目录；TTY 下二次确认，非 TTY 须配 `--force` |
+
+默认拒绝条件：阶段仍有未归档 `op`、为当前活跃阶段、被其它阶段 `deps` 引用。移除当前阶段后 `pipeline.current.stage` 自动回退首个非 `done` 阶段（无则清空），并写入 `remove_stage` 审计日志。
+
+> 建议先 `--dry-run` 预览；`--force` 移除被依赖阶段**不会**清理引用方 `deps` 中的悬空项（保留 + 日志 `referencing`/`snapshot` 使失真可审计）。
 
 ### flow attempt
 
@@ -163,23 +208,36 @@ Plan 命令管理三层计划体系中的工作阶段（Stage）和操作方案�
 
 ### plan stage add
 
-添加工作阶段。
+添加工作阶段（**完整入口（推荐）**：创建目录 + `overview.md`/`status.md` + 注册 `flow.json`；仅需注册请用 `openfeel flow stage add`）。
 
 ```bash
-openfeel plan stage add <name>
+openfeel plan stage add <name> [--deps <ids...>]
 ```
 
 | 参数 | 说明 |
 |------|------|
-| `name` | 阶段名（如 stage-01） |
+| `name` | 阶段 ID（如 `stage-01`、`v1.1.2-stage-41`） |
+| `--deps <ids...>` | 依赖阶段 ID 列表（空格或逗号分隔，如 `--deps a b` 或 `--deps a,b`） |
 
 示例：
 
 ```bash
 openfeel plan stage add stage-01
+openfeel plan stage add v1.1.2-stage-41 --deps v1.1.2-stage-40
 ```
 
-创建 `plan/v1/stage-01/` 目录，包含 `overview.md` 和 `status.md`。
+创建 `plan/{series}/{stage-NN}/` 目录，包含 `overview.md`（含「## 依赖」）和 `status.md`，并写入 `flow.json.stages[fullStageId].deps`。非法 stageId 会报错并给出建议名。
+
+### 阶段创建入口关系
+
+| 入口 | 层级 | 行为 | 定位 |
+|------|------|------|------|
+| `openfeel plan stage add <name>` | **完整层（推荐）** | 建目录（`overview.md` + `status.md`）+ 注册 `flow.json` | 唯一建目录入口 |
+| `openfeel flow stage add <stageId>` | **注册层** | 仅注册 `flow.json`，不建目录 | 轻量注册 / 特殊场景 |
+| `openfeel stage create <stageId>` | **注册层（已弃用）** | 与 `flow stage add` 等价（均走 `FlowManager.addStage`） | 兼容保留，建议迁移 |
+
+- 三个入口均对非法 stageId 报错并给出建议名（`stage-NN` 或 `vX.Y.Z-stage-NN`）。
+- `stage create` 已弃用：功能保留，TTY 下输出 `[deprecated]` 提示（非 TTY 静默），正式移除不早于 v1.2。
 
 ### plan stage list
 

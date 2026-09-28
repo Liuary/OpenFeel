@@ -26,6 +26,9 @@ export const common: I18nDomain = {
   blockedBy:       { key: 'common.blockedBy',       zh: '', en: 'Blocked By' },
   retry:           { key: 'common.retry',           zh: '', en: 'Retry' },
   cancel:          { key: 'common.cancel',          zh: '', en: 'Cancel' },
+  stageIdInvalidTmpl:  { key: 'common.stageIdInvalidTmpl',  zh: '', en: '{input} → invalid stage ID (expected stage-NN or vX.Y.Z-stage-NN)' },
+  stageIdSuggestTmpl:  { key: 'common.stageIdSuggestTmpl',  zh: '', en: 'Suggested name: {suggest}' },
+  stageDirConflictTmpl:{ key: 'common.stageDirConflictTmpl', zh: '', en: 'Stage dir conflict: {stage} and {other} map to the same directory' },
 };
 
 /* ==================== flow ==================== */
@@ -83,6 +86,20 @@ export const flow: I18nDomain = {
   'current.retryCount':         { key: 'flow.current.retryCount',         zh: '', en: 'Retry Count' },
 
   'stage.addedTmpl':            { key: 'flow.stage.addedTmpl',            zh: '', en: '✓ Stage created: {stage} → plan_pending' },
+
+  'phases.title':               { key: 'flow.phases.title',               zh: '', en: 'OpenFeel pipeline phase reference' },
+  'phases.listLabel':           { key: 'flow.phases.listLabel',           zh: '', en: 'Valid phases' },
+  'phases.transitionsLabel':    { key: 'flow.phases.transitionsLabel',    zh: '', en: 'Phase transitions (from → [to...])' },
+  'phases.hint':                { key: 'flow.phases.hint',                zh: '', en: 'Hint: advance with `openfeel flow advance --stage <id> --to <phase>`' },
+
+  'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '', en: 'Stage not found: {stage}' },
+  'stage.remove.okTmpl':            { key: 'flow.stage.remove.okTmpl',            zh: '', en: '✓ Removed stage: {stage}' },
+  'stage.remove.purgedTmpl':        { key: 'flow.stage.remove.purgedTmpl',        zh: '', en: '✓ Deleted the plan directory' },
+  'stage.remove.purgeNeedForce':    { key: 'flow.stage.remove.purgeNeedForce',    zh: '', en: 'Purging needs confirmation; in non-TTY, pass --force explicitly' },
+  'stage.remove.purgeConfirm':      { key: 'flow.stage.remove.purgeConfirm',      zh: '', en: "Delete this stage's plan directory (irreversible)?" },
+  'stage.remove.dryRunTitle':       { key: 'flow.stage.remove.dryRunTitle',       zh: '', en: '─── Dry-run preview ───' },
+  'stage.remove.dryRunReferencing': { key: 'flow.stage.remove.dryRunReferencing', zh: '', en: 'Referenced by (deps)' },
+  'stage.remove.dryRunOk':          { key: 'flow.stage.remove.dryRunOk',          zh: '', en: '✓ Removable (not written); drop --dry-run to execute' },
 
   'advance.errorNoStage':       { key: 'flow.advance.errorNoStage',       zh: '', en: 'Error: --stage parameter must specify a stage ID (e.g. stage-03). If this is a new project, run openfeel stage create <id> first.' },
   'advance.warnAutoCorrect':    { key: 'flow.advance.warnAutoCorrect',    zh: '', en: '(Non-standard phase auto-corrected, proceeding)' },
@@ -324,8 +341,9 @@ export const stage: I18nDomain = {
   'task.taskItemTmpl':           { key: 'stage.task.taskItemTmpl',           zh: '', en: 'Task {number}: {desc}' },
   'task.blockedByTmpl':          { key: 'stage.task.blockedByTmpl',          zh: '', en: 'Blocked by: {reason}' },
   'task.actionLabelTmpl':        { key: 'stage.task.actionLabelTmpl',        zh: '', en: '{label} {stageId} Task {taskNo}' },
-  'create.desc':                 { key: 'stage.create.desc',                 zh: '', en: 'Create a new work stage' },
+  'create.desc':                 { key: 'stage.create.desc',                 zh: '', en: 'Create a stage (deprecated; use openfeel flow stage add)' },
   'create.addedTmpl':            { key: 'stage.create.addedTmpl',            zh: '', en: '✓ Stage created: {stage} → plan_pending' },
+  'create.deprecated':           { key: 'stage.create.deprecated',           zh: '', en: '[deprecated] `openfeel stage create` is deprecated; use `openfeel flow stage add <stageId>` (register only) or `openfeel plan stage add <name>` (full entry)' },
 };
 
 /* ==================== plan ==================== */
@@ -432,11 +450,17 @@ export const help: I18nDomain = {
   'flow.overview':         { key: 'help.flow.overview',         zh: '', en: 'Full status visualization (openfeel flow overview backend)' },
   'flow.current':          { key: 'help.flow.current',          zh: '', en: 'Show current stage and operation' },
   'flow.metrics':          { key: 'help.flow.metrics',          zh: '', en: 'Show Agent performance metrics' },
+  'flow.phases':           { key: 'help.flow.phases',           zh: '', en: 'List all valid phases and transitions (self-describing)' },
+  'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '', en: 'Output { phases, transitions } as JSON' },
   'flow.stage':            { key: 'help.flow.stage',            zh: '', en: 'Stage management' },
-  'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '', en: 'Add pipeline stage' },
+  'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '', en: 'Add a pipeline stage (registers flow.json only; usually use `openfeel plan stage add`)' },
+  'flow.stage.remove':     { key: 'help.flow.stage.remove',     zh: '', en: 'Remove a pipeline stage (with safety checks; default only unregisters flow.json)' },
+  'flow.stage.remove.force':   { key: 'help.flow.stage.remove.force',   zh: '', en: 'Bypass safety checks (non-empty ops / current active stage / depended upon)' },
+  'flow.stage.remove.dryRun':  { key: 'help.flow.stage.remove.dryRun',  zh: '', en: 'Preview only, do not write' },
+  'flow.stage.remove.purge':   { key: 'help.flow.stage.remove.purge',   zh: '', en: 'Also delete plan/{series}/{stageDir}/ (non-TTY requires --force)' },
   'flow.advance':          { key: 'help.flow.advance',          zh: '', en: 'Advance pipeline stage' },
   'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001), for logging/display only' },
-  'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '', en: 'Target phase (e.g. exec_running)' },
+  'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '', en: 'Target phase (e.g. exec_running). Valid phases & transitions: openfeel flow phases' },
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '', en: 'Stage ID (e.g. stage-03), required' },
   'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '', en: 'Force execution (skip invalid phase check and phase jump check, but not REV block check)' },
   'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '', en: 'Validate only without modifying (preview output). When combined with --force, skips validation but still does not modify' },
@@ -482,7 +506,8 @@ export const help: I18nDomain = {
 
   'plan':                  { key: 'help.plan',                  zh: '', en: 'Plan management' },
   'plan.stage':            { key: 'help.plan.stage',            zh: '', en: 'Work stage management' },
-  'plan.stage.add':        { key: 'help.plan.stage.add',        zh: '', en: 'Add work stage' },
+  'plan.stage.add':        { key: 'help.plan.stage.add',        zh: '', en: 'Add a work stage (full entry: creates dir + overview/status + registers flow.json)' },
+  'plan.stage.add.deps':   { key: 'help.plan.stage.add.deps',   zh: '', en: 'Dependency stage IDs (space- or comma-separated, e.g. --deps a b or --deps a,b)' },
   'plan.stage.list':       { key: 'help.plan.stage.list',       zh: '', en: 'List all work stages' },
   'plan.scheme':           { key: 'help.plan.scheme',           zh: '', en: 'Operation scheme management' },
   'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '', en: 'Create operation scheme' },
@@ -495,7 +520,7 @@ export const help: I18nDomain = {
   'stage.task':            { key: 'help.stage.task',            zh: '', en: 'Check or uncheck task checkbox' },
   'stage.task.done':       { key: 'help.stage.task.done',       zh: '', en: 'Mark task as done' },
   'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '', en: 'Mark task as not done' },
-  'stage.create':          { key: 'help.stage.create',          zh: '', en: 'Create a new work stage (writes to flow.json)' },
+  'stage.create':          { key: 'help.stage.create',          zh: '', en: 'Create a stage (deprecated; use openfeel flow stage add)' },
 
   'view':                  { key: 'help.view',                  zh: '', en: 'Review entry management' },
   'view.list':             { key: 'help.view.list',             zh: '', en: 'List review entries' },

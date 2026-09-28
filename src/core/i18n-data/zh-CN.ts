@@ -27,6 +27,9 @@ export const common: I18nDomain = {
   blockedBy:       { key: 'common.blockedBy',       zh: '阻塞原因',   en: '' },
   retry:           { key: 'common.retry',           zh: '重试',       en: '' },
   cancel:          { key: 'common.cancel',          zh: '取消',       en: '' },
+  stageIdInvalidTmpl:  { key: 'common.stageIdInvalidTmpl',  zh: '{input} → 非法阶段 ID（应为 stage-NN 或 vX.Y.Z-stage-NN）', en: '' },
+  stageIdSuggestTmpl:  { key: 'common.stageIdSuggestTmpl',  zh: '建议名称：{suggest}', en: '' },
+  stageDirConflictTmpl:{ key: 'common.stageDirConflictTmpl', zh: '阶段目录冲突：{stage} 与 {other} 映射同一目录', en: '' },
 };
 
 /* ==================== flow 域：流水线状态管理 ==================== */
@@ -88,6 +91,22 @@ export const flow: I18nDomain = {
 
   // flow stage add
   'stage.addedTmpl':            { key: 'flow.stage.addedTmpl',            zh: '✓ 已创建阶段: {stage} → plan_pending',   en: '' },
+
+  // flow phases（自描述）
+  'phases.title':               { key: 'flow.phases.title',               zh: 'OpenFeel 流水线 phase 自描述',             en: '' },
+  'phases.listLabel':           { key: 'flow.phases.listLabel',           zh: '合法 phase 列表',                          en: '' },
+  'phases.transitionsLabel':    { key: 'flow.phases.transitionsLabel',    zh: 'phase 流转映射（from → [to...]）',          en: '' },
+  'phases.hint':                { key: 'flow.phases.hint',                zh: '提示：`openfeel flow advance --stage <id> --to <phase>` 推进', en: '' },
+
+  // flow stage remove
+  'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '阶段不存在：{stage}',                             en: '' },
+  'stage.remove.okTmpl':            { key: 'flow.stage.remove.okTmpl',            zh: '✓ 已移除阶段: {stage}',                           en: '' },
+  'stage.remove.purgedTmpl':        { key: 'flow.stage.remove.purgedTmpl',        zh: '✓ 已删除对应 plan 目录',                          en: '' },
+  'stage.remove.purgeNeedForce':    { key: 'flow.stage.remove.purgeNeedForce',    zh: '删除目录需交互确认；非 TTY 环境请显式加 --force',    en: '' },
+  'stage.remove.purgeConfirm':      { key: 'flow.stage.remove.purgeConfirm',      zh: '确认删除该阶段的 plan 目录（不可撤销）？',           en: '' },
+  'stage.remove.dryRunTitle':       { key: 'flow.stage.remove.dryRunTitle',       zh: '─── Dry-run 预览 ───',                           en: '' },
+  'stage.remove.dryRunReferencing': { key: 'flow.stage.remove.dryRunReferencing', zh: '引用者 (deps)',                                   en: '' },
+  'stage.remove.dryRunOk':          { key: 'flow.stage.remove.dryRunOk',          zh: '✓ 预期可移除（未写盘）；去掉 --dry-run 正式执行',    en: '' },
 
   // flow advance
   'advance.errorNoStage':       { key: 'flow.advance.errorNoStage',       zh: '错误：--stage 参数必须指定阶段 ID（如 stage-03）。如果是新项目，请先运行 openfeel stage create <id> 创建阶段。', en: '' },
@@ -342,8 +361,9 @@ export const stage: I18nDomain = {
   'task.taskItemTmpl':           { key: 'stage.task.taskItemTmpl',           zh: '任务{number}: {desc}',                     en: '' },
   'task.blockedByTmpl':          { key: 'stage.task.blockedByTmpl',          zh: '阻塞原因: {reason}',                       en: '' },
   'task.actionLabelTmpl':        { key: 'stage.task.actionLabelTmpl',        zh: '{label} {stageId} 任务{taskNo}',           en: '' },
-  'create.desc':                 { key: 'stage.create.desc',                 zh: '创建新的工作阶段',                        en: '' },
+  'create.desc':                 { key: 'stage.create.desc',                 zh: '创建新阶段（已弃用，请改用 openfeel flow stage add）',                        en: '' },
   'create.addedTmpl':            { key: 'stage.create.addedTmpl',            zh: '✓ 已创建阶段: {stage} → plan_pending',    en: '' },
+  'create.deprecated':           { key: 'stage.create.deprecated',           zh: '[deprecated] `openfeel stage create` 已弃用；请改用 `openfeel flow stage add <stageId>`（仅注册）或 `openfeel plan stage add <name>`（完整入口）', en: '' },
 };
 
 /* ==================== plan 域：计划命令 ==================== */
@@ -455,11 +475,17 @@ export const help: I18nDomain = {
   'flow.overview':         { key: 'help.flow.overview',         zh: '全状态可视化视图（openfeel flow overview 的后端实现）', en: '' },
   'flow.current':          { key: 'help.flow.current',          zh: '显示当前阶段和操作', en: '' },
   'flow.metrics':          { key: 'help.flow.metrics',          zh: '展示 Agent 性能指标', en: '' },
+  'flow.phases':           { key: 'help.flow.phases',           zh: '列出全部合法 phase 及其流转映射（自描述）', en: '' },
+  'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '以 JSON 输出 { phases, transitions }', en: '' },
   'flow.stage':            { key: 'help.flow.stage',            zh: '阶段管理', en: '' },
-  'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '新增流水线阶段', en: '' },
+  'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '新增流水线阶段（仅注册 flow.json，不建目录；通常应使用 openfeel plan stage add）', en: '' },
+  'flow.stage.remove':     { key: 'help.flow.stage.remove',     zh: '移除流水线阶段（安全校验；默认仅注销 flow.json，不删目录）', en: '' },
+  'flow.stage.remove.force':   { key: 'help.flow.stage.remove.force',   zh: '越过安全校验（ops 非空 / 当前活跃阶段 / 被其它阶段依赖）', en: '' },
+  'flow.stage.remove.dryRun':  { key: 'help.flow.stage.remove.dryRun',  zh: '仅预览，不写盘', en: '' },
+  'flow.stage.remove.purge':   { key: 'help.flow.stage.remove.purge',   zh: '同时删除 plan/{series}/{stageDir}/ 目录（非 TTY 须配 --force）', en: '' },
   'flow.advance':          { key: 'help.flow.advance',          zh: '推进流水线阶段', en: '' },
   'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '操作 ID（如 stage-01.op-001），仅用于日志/展示', en: '' },
-  'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '目标阶段（如 exec_running）', en: '' },
+  'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '目标阶段（如 exec_running）。合法 phase 与转移表：openfeel flow phases', en: '' },
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '阶段 ID（如 stage-03），必须指定', en: '' },
   'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）', en: '' },
   'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改', en: '' },
@@ -508,7 +534,8 @@ export const help: I18nDomain = {
   // plan
   'plan':                  { key: 'help.plan',                  zh: '计划管理', en: '' },
   'plan.stage':            { key: 'help.plan.stage',            zh: '工作阶段管理', en: '' },
-  'plan.stage.add':        { key: 'help.plan.stage.add',        zh: '添加工作阶段', en: '' },
+  'plan.stage.add':        { key: 'help.plan.stage.add',        zh: '添加工作阶段（完整入口：建目录 + overview/status + 注册 flow.json；仅注册请用 openfeel flow stage add）', en: '' },
+  'plan.stage.add.deps':   { key: 'help.plan.stage.add.deps',   zh: '依赖阶段 ID 列表（空格或逗号分隔，如 --deps a b 或 --deps a,b）', en: '' },
   'plan.stage.list':       { key: 'help.plan.stage.list',       zh: '列出所有工作阶段', en: '' },
   'plan.scheme':           { key: 'help.plan.scheme',           zh: '操作方案管理', en: '' },
   'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '创建操作方案', en: '' },
@@ -522,7 +549,7 @@ export const help: I18nDomain = {
   'stage.task':            { key: 'help.stage.task',            zh: '勾选或取消任务 checkbox', en: '' },
   'stage.task.done':       { key: 'help.stage.task.done',       zh: '标记任务为已完成', en: '' },
   'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '标记任务为未完成', en: '' },
-  'stage.create':          { key: 'help.stage.create',          zh: '创建新的工作阶段（自动写入 flow.json）', en: '' },
+  'stage.create':          { key: 'help.stage.create',          zh: '创建新阶段（已弃用，请改用 openfeel flow stage add）', en: '' },
 
   // view
   'view':                  { key: 'help.view',                  zh: '审查条目管理', en: '' },

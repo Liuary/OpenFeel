@@ -15,6 +15,7 @@ describe('plan 命令', () => {
   let tmpDir: string;
   let program: Command;
   let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
   let cwdMock: ReturnType<typeof vi.fn>;
   let exitMock: ReturnType<typeof vi.fn>;
 
@@ -25,6 +26,8 @@ describe('plan 命令', () => {
 
     // mock console.log 捕获输出
     logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    // mock console.error 捕获错误输出
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
     // mock process.cwd() 指向临时目录
     cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     // mock process.exit 防止退出
@@ -39,6 +42,7 @@ describe('plan 命令', () => {
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
     logMock.mockRestore();
+    errorMock.mockRestore();
     cwdMock.mockRestore();
     exitMock.mockRestore();
   });
@@ -169,5 +173,57 @@ describe('plan 命令', () => {
     // op 标题应包含"实现核心功能"
     const firstOp = Object.values(ops)[0] as Record<string, unknown>;
     expect(firstOp.title).toBe('实现核心功能');
+  });
+
+  // ── stage-41：stageId 校验（op-002/op-005） ──
+
+  it('plan stage add 非法 id → stderr 报「非法阶段 ID」+「建议名称」并 exit 1', async () => {
+    await safeParse(['plan', 'stage', 'add', 'foo']);
+    const errOut = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errOut).toContain('非法阶段 ID');
+    expect(errOut).toContain('建议名称');
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  it('plan stage add v1.1 → 建议名限定版本前缀（v1.1-stage-）', async () => {
+    await safeParse(['plan', 'stage', 'add', 'v1.1']);
+    const errOut = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errOut).toContain('建议名称：v1.1-stage-');
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  // ── stage-41：plan stage add --deps（op-004） ──
+
+  it('plan stage add --deps a,b（逗号分隔）落 flow.json', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-03', '--deps', 'a,b']);
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-03'].deps).toEqual(['a', 'b']);
+  });
+
+  it('plan stage add --deps a b（空格分隔）等价', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-04', '--deps', 'a', 'b']);
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-04'].deps).toEqual(['a', 'b']);
+  });
+
+  it('plan stage add 不传 --deps → deps 为空数组', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-05']);
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-05'].deps).toEqual([]);
+  });
+
+  // ── stage-41：(series, stageDir) 冲突（op-002） ──
+
+  it('plan stage add (series, stageDir) 冲突 → 报错 + exit 1', async () => {
+    const flowMgr = new FlowManager(tmpDir);
+    flowMgr.addStage('v4-stage-04');
+    flowMgr.save();
+
+    errorMock.mockClear();
+    await safeParse(['plan', 'stage', 'add', 'v4.0.0-stage-04']);
+
+    const errOut = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errOut).toContain('阶段目录冲突');
+    expect(exitMock).toHaveBeenCalledWith(1);
   });
 });

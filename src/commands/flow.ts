@@ -25,6 +25,7 @@ import { existsSync, copyFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
+import { validateStageId, suggestStageId } from '../core/plan/path.js';
 import { MetricsStore } from '../core/metrics.js';
 import { t, getCliLang } from '../core/i18n.js';
 
@@ -326,6 +327,36 @@ export function registerFlowCommand(program: Command): void {
       console.log(store.summary());
     });
 
+  // flow phases — 自描述：列出全部合法 phase 与运行时转移表
+  flow
+    .command('phases')
+    .description('列出全部合法 phase 及其流转映射（自描述）')
+    .option('--json', '以 JSON 输出 { phases, transitions }')
+    .action((options: { json?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      const phases = mgr.getPipelinePhases();
+      const transitions = mgr.getPipelineTransitions();
+
+      if (options.json) {
+        console.log(JSON.stringify({ phases, transitions }, null, 2));
+        return;
+      }
+
+      console.log(t('flow.phases.title', lang));
+      console.log(t('flow.phases.listLabel', lang) + `: ${phases.length}`);
+      for (const p of phases) {
+        console.log(`  - ${p}`);
+      }
+      console.log('');
+      console.log(t('flow.phases.transitionsLabel', lang) + ':');
+      for (const [key, targets] of Object.entries(transitions)) {
+        console.log(`  ${key} → [${targets.join(', ')}]`);
+      }
+      console.log('');
+      console.log(t('flow.phases.hint', lang));
+    });
+
   // flow stage — 阶段管理子命令组
   const stageCmd = flow
     .command('stage')
@@ -334,10 +365,18 @@ export function registerFlowCommand(program: Command): void {
   // flow stage add <stageId>
   stageCmd
     .command('add')
-    .description('新增流水线阶段')
-    .argument('<stageId>', '阶段 ID（如 v4.3）')
+    .description('新增流水线阶段（仅注册 flow.json，不建目录；通常应使用 openfeel plan stage add）')
+    .argument('<stageId>', '阶段 ID（如 v1.1.2-stage-41）')
     .action((stageId: string) => {
-      const lang = getCliLang(process.cwd());
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      // 非法 stageId 统一报错 + 建议名（op-002 校验底座）
+      const v = validateStageId(stageId);
+      if (!v.ok) {
+        console.error(t('common.stageIdInvalidTmpl', lang, { input: stageId }));
+        console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, stageId) }));
+        process.exit(1);
+      }
       const mgr = createManager();
       if (!mgr.isLoaded()) {
         console.error(t('common.errorNoInit', lang));
@@ -360,12 +399,87 @@ export function registerFlowCommand(program: Command): void {
       }
     });
 
+  // flow stage remove <stageId> [--force] [--dry-run] [--purge]
+  stageCmd
+    .command('remove <stageId>')
+    .description('移除流水线阶段（安全校验；默认仅注销 flow.json，不删目录）')
+    .option('--force', '越过安全校验（ops 非空 / 当前活跃阶段 / 被其它阶段依赖）')
+    .option('--dry-run', '仅预览，不写盘')
+    .option('--purge', '同时删除 plan/{series}/{stageDir}/ 目录（非 TTY 须配 --force）')
+    .action(async (stageId: string, options: { force?: boolean; dryRun?: boolean; purge?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.error(t('common.errorNoInit', lang));
+        process.exit(1);
+      }
+      const data = mgr.getData();
+      if (!data?.stages[stageId]) {
+        console.error(t('flow.stage.remove.notFoundTmpl', lang, { stage: stageId }));
+        process.exit(1);
+        return;
+      }
+
+      // --dry-run：复用 checkRemovable 做安全校验，失败同样 exit 1（REV-005），并呈现引用者（REV-004）
+      if (options.dryRun) {
+        const info = mgr.checkRemovable(stageId, { force: options.force });
+        console.log(t('flow.stage.remove.dryRunTitle', lang));
+        console.log(`  ` + t('common.stage', lang) + `: ${stageId}`);
+        console.log(`  ops: ${info.opCount}`);
+        console.log(`  current: ${data.pipeline.current.stage}${info.isCurrent ? ' ←' : ''}`);
+        console.log(`  ` + t('flow.stage.remove.dryRunReferencing', lang) + `: ` +
+          (info.referencing.length > 0 ? info.referencing.join(', ') : t('common.none', lang)));
+        if (!info.ok) {
+          console.error(t('common.errorTmpl', lang, { msg: info.reason ?? '' }));
+          process.exit(1);
+          return;
+        }
+        console.log(t('flow.stage.remove.dryRunOk', lang));
+        return;
+      }
+
+      // --purge 非 TTY 守卫
+      if (options.purge && !options.force && !process.stdout.isTTY) {
+        console.error(t('flow.stage.remove.purgeNeedForce', lang));
+        process.exit(1);
+        return;
+      }
+
+      try {
+        // --purge TTY 二次确认（--force 跳过）
+        if (options.purge && !options.force) {
+          const { confirm } = await import('@inquirer/prompts');
+          const ok = await confirm({ message: t('flow.stage.remove.purgeConfirm', lang), default: false });
+          if (!ok) {
+            console.log(t('common.cancelled', lang));
+            return;
+          }
+        }
+        mgr.removeStage(stageId, { force: options.force, purge: options.purge });
+        mgr.save();
+        console.log(t('flow.stage.remove.okTmpl', lang, { stage: stageId }));
+        if (options.purge) {
+          console.log(t('flow.stage.remove.purgedTmpl', lang));
+        }
+      } catch (err: unknown) {
+        // 并发冲突：本次未写入 flow.json，输出可重试提示并退出码 2
+        if (isFlowConcurrentError(err)) {
+          console.error(`[并发冲突] flow.json 已被其它进程修改（期望 revision=${err.expectedRevision}，磁盘=${err.actualRevision}）。`);
+          console.error('本次修改未写入。请重新执行该命令重试。');
+          process.exit(2);
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(t('common.errorTmpl', lang, { msg }));
+        process.exit(1);
+      }
+    });
+
   // flow advance --stage <id> --to <phase> [--op <id>] [--force]
   flow
     .command('advance')
     .description('推进流水线阶段')
     .option('--op <id>', '操作 ID（如 stage-01.op-001），仅用于日志/展示')
-    .requiredOption('--to <phase>', '目标阶段（如 exec_running）')
+    .requiredOption('--to <phase>', '目标阶段（如 exec_running）。合法 phase 与转移表：openfeel flow phases')
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
     .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')

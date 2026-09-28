@@ -17,7 +17,7 @@ import { withFileLock, projectLockPath } from '../core/fs/file-lock.js';
 import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
 import { FlowManager, isFlowConcurrentError } from '../core/flow-manager.js';
-import { findStageStatusPath, planDirToStageId, parseStageId } from '../core/plan/path.js';
+import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId } from '../core/plan/path.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -409,6 +409,17 @@ export function registerStageCommand(program: Command): void {
       const mgr = new FlowManager(projectPath);
       if (!mgr.isLoaded()) {
         console.error(t('common.errorNoInit', lang));
+        process.exit(1);
+      }
+      // 弃用提示：仅 TTY 输出到 stderr，非 TTY 静默（避免污染 CI，对齐 init/update 对称静默惯例）
+      if (process.stdout.isTTY) {
+        console.error(t('stage.create.deprecated', lang));
+      }
+      // 非法 stageId 统一报错 + 建议名（op-002 校验底座）
+      const v = validateStageId(stageId);
+      if (!v.ok) {
+        console.error(t('common.stageIdInvalidTmpl', lang, { input: stageId }));
+        console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, stageId) }));
         process.exit(1);
       }
       try {

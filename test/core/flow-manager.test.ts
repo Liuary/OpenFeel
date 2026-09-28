@@ -3,7 +3,7 @@
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, type FlowData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -2358,5 +2358,265 @@ describe('normalizeAgentName 接入点补强（stage-39）', () => {
     expect(normalizeAgentName('FEEL-TESTER')).toBe('openfeel-feel-tester');
     expect(normalizeAgentName('feel')).toBe('feel');
     expect(normalizeAgentName('')).toBe('');
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-41 op-002：stageDir 冲突检测
+// ═══════════════════════════════════════
+
+describe('stageDir 冲突检测（stage-41 op-002）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-conflict-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  it('registerStage 对不同 id 同目录抛错；同 id 幂等', () => {
+    FlowManager.initFlow(tmpDir);
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v4-stage-04');
+    mgr.save();
+    // 不同 id 映射同 (series, stageDir) → 抛错
+    expect(() => mgr.registerStage('v4.0.0-stage-04')).toThrow(/阶段目录冲突/);
+    // 同 id 重复注册 → 幂等静默，键内容不变
+    const before = JSON.stringify(mgr.getData()!.stages['v4-stage-04']);
+    expect(() => mgr.registerStage('v4-stage-04')).not.toThrow();
+    expect(JSON.stringify(mgr.getData()!.stages['v4-stage-04'])).toBe(before);
+  });
+
+  it('addStage 对不同 id 同目录抛错', () => {
+    FlowManager.initFlow(tmpDir);
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v4-stage-04');
+    mgr.save();
+    expect(() => mgr.addStage('v4.0.0-stage-04')).toThrow(/阶段目录冲突/);
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-41 op-003：checkRemovable / removeStage
+// ═══════════════════════════════════════
+
+/** 构造一个阶段数据（默认无 ops、plan_pending、无 deps） */
+function makeStage41Stage(overrides?: Partial<StageData>): StageData {
+  return {
+    name: 'x',
+    phase: 'plan_pending' as PipelinePhase,
+    status: 'planned',
+    deps: [],
+    ops: {},
+    ...overrides,
+  };
+}
+
+/** 构造一个 op 数据 */
+function makeStage41Op(state: OpState = 'pending') {
+  return {
+    id: 'op-001',
+    title: 't',
+    state,
+    assignee: 'openfeel-executor',
+    attempts: 0,
+    max_attempts: 3,
+    checkpoints: {
+      plan: 'pending',
+      scheme: 'pending',
+      exec: { attempts: 0, self: 'pending' },
+      review: 'pending',
+      test: 'pending',
+    },
+  };
+}
+
+describe('checkRemovable & removeStage（stage-41 op-003）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-remove-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  /** 构造含指定 stages 的已加载管理器 */
+  function makeMgr(stages: Record<string, StageData>, current: { stage: string; op: string }): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      meta: { version: '1.0', project: 'T', updated: '2026-01-01T00:00:00Z' },
+      pipeline: { phase: 'active' as MetaPhase, current, retry: 0 },
+      stages,
+      reviews: [],
+      log: [],
+    });
+    return mgr;
+  }
+
+  /** 取最近一条日志 */
+  function lastLog(mgr: FlowManager) {
+    const log = mgr.getData()!.log;
+    return log[log.length - 1];
+  }
+
+  it('ops 非空默认拒绝；--force 越过并兜底 current', () => {
+    const stages: Record<string, StageData> = {
+      'A': makeStage41Stage({ name: 'A', ops: { 'op-001': makeStage41Op() } }),
+      'B': makeStage41Stage({ name: 'B', phase: 'done' as PipelinePhase }),
+    };
+    const mgr = makeMgr(stages, { stage: 'A', op: 'op-001' });
+    expect(() => mgr.removeStage('A')).toThrow(/仍有 1 个未归档的 op/);
+    mgr.removeStage('A', { force: true });
+    expect(mgr.getData()!.stages['A']).toBeUndefined();
+    // B 为 done → 无非 done 阶段 → 清空 current
+    expect(mgr.getData()!.pipeline.current).toEqual({ stage: '', op: '' });
+    expect(lastLog(mgr).action).toBe('remove_stage');
+    expect(lastLog(mgr).detail.stageId).toBe('A');
+  });
+
+  it('当前活跃阶段默认拒绝；--force 越过并回退首个非 done', () => {
+    const stages: Record<string, StageData> = {
+      'A': makeStage41Stage({ name: 'A' }),
+      'B': makeStage41Stage({ name: 'B', phase: 'exec_running' as PipelinePhase }),
+    };
+    const mgr = makeMgr(stages, { stage: 'A', op: '' });
+    expect(() => mgr.removeStage('A')).toThrow(/当前活跃阶段/);
+    mgr.removeStage('A', { force: true });
+    expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'B', op: '' });
+  });
+
+  it('非 current 且 ops 空默认可移除，current 不变', () => {
+    const stages: Record<string, StageData> = {
+      'A': makeStage41Stage({ name: 'A' }),
+      'C': makeStage41Stage({ name: 'C' }),
+    };
+    const mgr = makeMgr(stages, { stage: 'C', op: '' });
+    mgr.removeStage('A');
+    expect(mgr.getData()!.stages['A']).toBeUndefined();
+    expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'C', op: '' });
+  });
+
+  it('阶段不存在抛错', () => {
+    const mgr = makeMgr({ 'A': makeStage41Stage({ name: 'A' }) }, { stage: 'A', op: '' });
+    expect(() => mgr.removeStage('nope')).toThrow(/阶段不存在/);
+    expect(mgr.checkRemovable('nope').ok).toBe(false);
+  });
+
+  it('被其它阶段 deps 引用默认拒绝；--force 越过并记录 referencing（REV-004）', () => {
+    const stages: Record<string, StageData> = {
+      'A': makeStage41Stage({ name: 'A' }),
+      'B': makeStage41Stage({ name: 'B', deps: ['A'] }),
+    };
+    const mgr = makeMgr(stages, { stage: 'B', op: '' });
+    const check = mgr.checkRemovable('A');
+    expect(check.ok).toBe(false);
+    expect(check.referencing).toEqual(['B']);
+    expect(check.reason).toContain('被其它阶段依赖');
+    expect(() => mgr.removeStage('A')).toThrow(/被其它阶段依赖/);
+    mgr.removeStage('A', { force: true });
+    expect(lastLog(mgr).detail.referencing).toEqual(['B']);
+  });
+
+  it('deps 短名归一化匹配 (series, stageDir)', () => {
+    const stages: Record<string, StageData> = {
+      'v1.0.0-stage-05': makeStage41Stage({ name: 'A' }),
+      'B': makeStage41Stage({ name: 'B', deps: ['stage-05'] }),
+    };
+    const mgr = makeMgr(stages, { stage: 'B', op: '' });
+    expect(mgr.checkRemovable('v1.0.0-stage-05').referencing).toEqual(['B']);
+  });
+
+  it('存量 stage 缺 deps 字段不崩且不误判', () => {
+    const noDeps = makeStage41Stage({ name: 'A' });
+    delete (noDeps as { deps?: string[] }).deps;
+    const stages: Record<string, StageData> = { 'A': noDeps, 'B': makeStage41Stage({ name: 'B' }) };
+    const mgr = makeMgr(stages, { stage: 'B', op: '' });
+    const check = mgr.checkRemovable('A');
+    expect(check.ok).toBe(true);
+    expect(check.referencing).toEqual([]);
+  });
+
+  it('remove_stage 日志含被删阶段快照（REV-006）', () => {
+    const a = makeStage41Stage({
+      name: 'A',
+      phase: 'exec_running' as PipelinePhase,
+      status: 'in_progress',
+      deps: ['X'],
+    });
+    const mgr = makeMgr({ 'A': a, 'B': makeStage41Stage({ name: 'B' }) }, { stage: 'B', op: '' });
+    mgr.removeStage('A', { force: true });
+    expect(lastLog(mgr).detail.snapshot).toEqual({
+      phase: 'exec_running',
+      status: 'in_progress',
+      deps: ['X'],
+      opKeys: [],
+    });
+  });
+
+  it('--purge 删除 plan 目录并置 purged=true；无 purge 保留目录', () => {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-77');
+    // 无 purge：目录保留，purged=false
+    mkdirSync(dir, { recursive: true });
+    let mgr = makeMgr(
+      { 'v1.0.0-stage-77': makeStage41Stage({ name: 'A' }), 'B': makeStage41Stage({ name: 'B' }) },
+      { stage: 'B', op: '' },
+    );
+    mgr.removeStage('v1.0.0-stage-77', { force: true });
+    expect(existsSync(dir)).toBe(true);
+    expect(lastLog(mgr).detail.purged).toBe(false);
+
+    // purge：目录删除，purged=true
+    mkdirSync(dir, { recursive: true });
+    mgr = makeMgr(
+      { 'v1.0.0-stage-77': makeStage41Stage({ name: 'A' }), 'B': makeStage41Stage({ name: 'B' }) },
+      { stage: 'B', op: '' },
+    );
+    mgr.removeStage('v1.0.0-stage-77', { force: true, purge: true });
+    expect(existsSync(dir)).toBe(false);
+    expect(lastLog(mgr).detail.purged).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-41 op-001：运行时 pipeline 访问器
+// ═══════════════════════════════════════
+
+describe('getPipelinePhases & getPipelineTransitions（stage-41 op-001）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-pipeline-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  it('无 pipeline.yaml 时回退默认配置（15 phase + 组合 key）', () => {
+    const mgr = new FlowManager(tmpDir);
+    const phases = mgr.getPipelinePhases();
+    expect(phases).toHaveLength(15);
+    expect(phases).toContain('plan_pending');
+    expect(phases).toContain('done');
+    const transitions = mgr.getPipelineTransitions();
+    expect(transitions['review_passed|test_passed']).toEqual(['archiving']);
+  });
+
+  it('自定义 pipeline.yaml 时反映其 phase/转移表（证明数据源为运行时配置）', () => {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'pipeline.yaml'),
+      [
+        'phases:',
+        '  - custom_phase',
+        '  - done',
+        'transitions:',
+        '  custom_phase: [done]',
+        '  done: []',
+        'checkpoint_mapping: {}',
+        'phase_corrections: {}',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.getPipelinePhases()).toContain('custom_phase');
+    expect(mgr.getPipelineTransitions()['custom_phase']).toEqual(['done']);
+  });
+
+  it('返回值是副本，修改不影响下次读取', () => {
+    const mgr = new FlowManager(tmpDir);
+    const phases = mgr.getPipelinePhases();
+    phases.push('__injected__');
+    expect(mgr.getPipelinePhases()).not.toContain('__injected__');
+    const transitions = mgr.getPipelineTransitions();
+    transitions['plan_pending'] = ['__injected__'];
+    expect(mgr.getPipelineTransitions()['plan_pending']).not.toEqual(['__injected__']);
   });
 });

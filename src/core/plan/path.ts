@@ -7,7 +7,7 @@
  * - {stage} = 阶段目录名 = stage-{NN}（不含版本前缀）
  * - flow.json stageId 是权威标识（唯一键），目录名是派生组织单位
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import fastGlob from 'fast-glob';
 
@@ -83,6 +83,124 @@ export function stageIdToPlanDir(stageId: string): string | null {
 export function normalizeStageId(stageId: string): string | null {
   const parsed = parseStageId(stageId);
   return parsed ? parsed.fullStageId : null;
+}
+
+/** stageId 校验结果 */
+export interface StageIdValidation {
+  ok: boolean;
+  /** 校验失败原因（中文，供 CLI 直接展示） */
+  reason?: string;
+}
+
+/**
+ * 校验 stageId 是否为合法格式（stage-NN / vX.Y.Z-stage-NN / vX-stage-NN）。
+ * 空字符串、'foo'、'v1' 等无法被 parseStageId 解析者判为非法。
+ *
+ * @param input 待校验的阶段 ID
+ * @returns 校验结果；失败时附带中文原因
+ */
+export function validateStageId(input: string): StageIdValidation {
+  if (!input || !input.trim()) {
+    return { ok: false, reason: '阶段 ID 不能为空' };
+  }
+  if (!parseStageId(input)) {
+    return { ok: false, reason: `非法阶段 ID：「${input}」（应为 stage-NN 或 vX.Y.Z-stage-NN）` };
+  }
+  return { ok: true };
+}
+
+/**
+ * 为非法/非规范输入推导建议名。
+ *
+ * 规则：
+ * - 输入形如版本号（vX / vX.Y / vX.Y.Z，正则 /^v\d+(?:\.\d+)*$/）→ 建议 `{版本}-stage-{NN}`，
+ *   其中 series = 版本首段（vX），NN = 该 series 内已用编号 max+1（两位补零）。
+ * - 其它无法识别版本前缀的输入 → 回退 DEFAULT_STAGE_VERSION / DEFAULT_SERIES（v1.0.0 / v1）。
+ *
+ * NN 计算范围：flow.json.stages 键 ∪ .openfeel/plan/{series}/stage-NN/ 目录，**仅限目标 series**，不跨系列。
+ *
+ * @param projectPath 项目根路径
+ * @param input 原始输入（可为非法值）
+ * @returns 建议的规范化 stageId
+ */
+export function suggestStageId(projectPath: string, input: string): string {
+  const versionMatch = (input ?? '').trim().match(/^(v\d+(?:\.\d+)*)$/);
+  const version = versionMatch ? versionMatch[1] : DEFAULT_STAGE_VERSION;
+  const series = version.split('.')[0]; // v1 / v4
+
+  // 收集该 series 下已用的 NN
+  const used = new Set<number>();
+
+  // 来源 1：flow.json stages 键
+  const flowPath = resolve(projectPath, '.openfeel', 'flow.json');
+  if (existsSync(flowPath)) {
+    try {
+      const flowData = JSON.parse(readFileSync(flowPath, 'utf-8')) as { stages?: Record<string, unknown> };
+      for (const key of Object.keys(flowData.stages ?? {})) {
+        const parsed = parseStageId(key);
+        if (parsed && parsed.series === series) {
+          used.add(parseInt(parsed.stageDir.replace(/^stage-/, ''), 10));
+        }
+      }
+    } catch {
+      // flow.json 不可读时忽略该来源（建议名降级为目录来源 / 从 01 起）
+    }
+  }
+
+  // 来源 2：.openfeel/plan/{series}/stage-NN/ 目录
+  const seriesDir = resolve(projectPath, '.openfeel', 'plan', series);
+  if (existsSync(seriesDir)) {
+    try {
+      for (const name of readdirSync(seriesDir)) {
+        const m = name.match(/^stage-(\d+)$/);
+        if (m) {
+          used.add(parseInt(m[1], 10));
+        }
+      }
+    } catch {
+      // 目录不可读时忽略
+    }
+  }
+
+  const nextSeq = used.size > 0 ? Math.max(...used) + 1 : 1;
+  return `${version}-stage-${String(nextSeq).padStart(2, '0')}`;
+}
+
+/**
+ * 查找与给定 stageId 映射「同一 (series, stageDir)」的其它 stageId。
+ *
+ * 例：flow.json 已有 `v4-stage-04`，传入 `v4.0.0-stage-04` → 返回 'v4-stage-04'；
+ * 二者 stageId 不同但映射同一目录 .openfeel/plan/v4/stage-04/。
+ *
+ * @param projectPath 项目根路径
+ * @param stageId 待检查的阶段 ID
+ * @returns 冲突的其它 stageId；无冲突或输入无法解析时返回 null
+ */
+export function findStageDirConflict(projectPath: string, stageId: string): string | null {
+  const parsed = parseStageId(stageId);
+  if (!parsed) {
+    return null;
+  }
+  const flowPath = resolve(projectPath, '.openfeel', 'flow.json');
+  if (!existsSync(flowPath)) {
+    return null;
+  }
+  let flowData: { stages?: Record<string, unknown> };
+  try {
+    flowData = JSON.parse(readFileSync(flowPath, 'utf-8'));
+  } catch {
+    return null; // flow.json 不可读时不做冲突判定（不阻塞主流程）
+  }
+  for (const key of Object.keys(flowData.stages ?? {})) {
+    if (key === stageId) {
+      continue;
+    }
+    const other = parseStageId(key);
+    if (other && other.series === parsed.series && other.stageDir === parsed.stageDir) {
+      return key;
+    }
+  }
+  return null;
 }
 
 /**

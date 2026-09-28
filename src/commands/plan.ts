@@ -5,6 +5,7 @@
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
 import { createScheme, listSchemes } from '../core/plan/scheme.js';
+import { validateStageId, suggestStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 
 export function registerPlanCommand(program: Command): void {
@@ -20,12 +21,32 @@ export function registerPlanCommand(program: Command): void {
   // plan stage add <name>
   stageCmd
     .command('add')
-    .description('添加工作阶段')
+    .description('添加工作阶段（完整入口：建目录 + overview/status + 注册 flow.json；仅注册请用 openfeel flow stage add）')
     .argument('<name>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
-    .action((name: string) => {
+    .option('--deps <ids...>', '依赖阶段 ID 列表（空格或逗号分隔，如 --deps a b 或 --deps a,b）')
+    .action((name: string, options: { deps?: string[] }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
-      addStage(projectPath, name);
+      // 非法 stageId 统一报错 + 建议名（op-002 校验底座）
+      const v = validateStageId(name);
+      if (!v.ok) {
+        console.error(t('common.stageIdInvalidTmpl', lang, { input: name }));
+        console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, name) }));
+        process.exit(1);
+      }
+      // 兼容 --deps a,b 与 --deps a b：逐项按逗号再切分、去空
+      const deps = (options.deps ?? [])
+        .flatMap((d) => d.split(','))
+        .map((s) => s.trim())
+        .filter(Boolean);
+      try {
+        addStage(projectPath, name, deps.length > 0 ? deps : undefined);
+      } catch (err: unknown) {
+        // 阶段目录冲突等错误：命令层统一展示并退出码 1
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(t('common.errorTmpl', lang, { msg }));
+        process.exit(1);
+      }
       console.log(t('plan.stage.createdTmpl', lang, { name }));
     });
 

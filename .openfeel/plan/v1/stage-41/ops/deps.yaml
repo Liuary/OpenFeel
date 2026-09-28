@@ -1,0 +1,114 @@
+# stage-41 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-41
+series: v1
+
+# 【互斥判定口径】（REV-007 修正）
+# 互斥 = 两 op 对**同一文件做改写**（非追加式键区域）。据此：
+#   - src/core/i18n-data/{zh-CN,en}.ts 为「追加式不同区域键」，单独不构成互斥；
+#   - 各 op 均会追加各自 i18n 键（op-001: flow.phases.*；op-002: common.stageId*；
+#     op-003: flow.stage.remove.*；op-004: help.plan.stage.add.deps；op-005: help.plan.stage.add 等改值），
+#     故 i18n 仅在**其它同文件改写**存在时才并入该 op 的互斥依据。
+# 结论：真正驱动互斥的是 flow-manager.ts / flow.ts / plan.ts 等**改写型**文件。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "flow phases 子命令（phase 枚举 + 运行时转移表 + --json）"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+    deps: []
+    notes: "无 hard/soft 前置；与 op-002/op-003 同改 flow-manager.ts/flow.ts → mutual_exclusion（串行）。与 op-004 仅共享 i18n 追加式键 → 可并行"
+
+  op-002:
+    file: op-002.md
+    title: "stageId 校验 + 建议名 + (series, stageDir) 冲突检测"
+    produces:
+      - src/core/plan/path.ts
+      - src/core/flow-manager.ts
+      - src/commands/plan.ts
+      - src/commands/flow.ts
+      - src/commands/stage.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/plan/path.test.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/plan.test.ts
+    deps: []
+    notes: "校验/冲突底座；供 op-003 / op-005 复用。scheme.ts 兜底路径并入 stage-42 op-004（REV-41-003），本阶段不改"
+
+  op-003:
+    file: op-003.md
+    title: "flow stage remove 子命令（安全校验 + deps 引用校验 + current 兜底 + dry-run）"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+    deps:
+      - op: op-002
+        type: hard
+        reason: "复用 parseStageId 体系与校验文案；并串行以避免同改 flow-manager.ts / flow.ts"
+    notes: "与 op-001 同改 flow-manager.ts/flow.ts → 需串行（mutual_exclusion）。消费 flow.json.stages[].deps（本阶段首个读取方）→ 数据上与 op-004 相关，但代码不依赖 op-004（deps 亦可经 registerStage/手工写入，测试用 fixture 构造），故不声明 hard/soft 依赖"
+
+  op-004:
+    file: op-004.md
+    title: "plan stage add --deps 依赖透传"
+    produces:
+      - src/commands/plan.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/plan/stage.test.ts
+      - test/commands/plan.test.ts
+    deps: []
+    notes: "独立；与 op-005 同改 plan.ts → 需串行（mutual_exclusion，op-004 先）。写入的 flow.json.stages[].deps 成为 op-003 removeStage 的校验输入（消费方归一化匹配，见 op-004 决策 5）"
+
+  op-005:
+    file: op-005.md
+    title: "三入口职责分层与 stage create 弃用提示"
+    produces:
+      - src/commands/plan.ts
+      - src/commands/flow.ts
+      - src/commands/stage.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - docs/commands.md
+      - .openfeel/manual/cli/commands.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "三入口统一接入 validateStageId + suggestStageId"
+      - op: op-004
+        type: soft
+        reason: "同改 plan.ts 的 description 区域，建议 op-004 先完成以串行收口"
+
+mutual_exclusions:
+  - group: [op-001, op-002, op-003]
+    reason: "均**改写** src/core/flow-manager.ts 与 src/commands/flow.ts，并发写冲突"
+  - group: [op-004, op-005]
+    reason: "均**改写** src/commands/plan.ts"
+
+parallel_groups:
+  - group: [op-002]
+    desc: "底座：path.ts 校验/冲突 + flow-manager 接入（先定型）"
+  - group: [op-001, op-004]
+    desc: "两 op 仅共享 i18n-data/{zh-CN,en}.ts（追加式不同区域键：op-001 追加 flow.phases.*，op-004 追加 help.plan.stage.add.deps）；executor 单实例串行调度下无写冲突，可并行。测试文件不重叠（op-001: test/core/flow-manager.test.ts；op-004: test/core/plan/stage.test.ts + test/commands/plan.test.ts）"
+  - group: [op-003]
+    desc: "复用 op-002 校验；须在 op-001 之后（同改 flow-manager.ts/flow.ts）"
+  - group: [op-005]
+    desc: "收口：三入口 help + 弃用提示 + 文档；须在 op-002 之后、op-004 之后"
+
+recommended_order:
+  - op-002
+  - op-001
+  - op-003
+  - op-004
+  - op-005

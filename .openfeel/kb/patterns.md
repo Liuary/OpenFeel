@@ -2375,6 +2375,8 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.2-stage-48 op-001、`.openfeel/manual/core/code-review.md`、`REV-44~46` 可信度声明实践。
 
+> **更新于 2026-09-29**（stage-48 归档）：本条目已由事件 A 加固**上溯为前置规则**——① 四条纪律正式写入 `openfeel-reviewer` agent 模板（双语：工具异常即中止如实报告 / 可疑历史结论不得继承 / 命令行取证优先于 `read`·`glob` / 结论须「命令+版本+环境」三要素可复现）；② Feel 侧新增「审查会话健康探测」（首轮最小工具自检 `rg --version` + 读已知文件回报内容，异常即重开会话）——**前置拦截**优于事后可信度声明；③ 「可疑产出降级待复核」写入 `manual/core/code-review.md` 新节（H12/REV-48-005）。
+
 ## [+] 隔离 HOME 实测 opencode 行为的方法：双设 HOME/USERPROFILE + debug paths 断言 + 零污染核对 (2026-09-29)
 
 **适用**：需确证 opencode 配置 / 权限 / 加载行为的**真实生效值**时，**禁止**在真实 `~/.config/opencode/` 上试验（stage-37 / 41 / 44 均用此法）。
@@ -2611,3 +2613,34 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 **验收**：A 逐条脚本化 `rg` 断言 = 新版本；B 生成段含新版本且 build 幂等（重跑后 `git status` 对本类文件零输出）；C 隔离 HOME 传播成功 + CHANGELOG 条目就位；D 抽检历史注释与依赖版本未变；E 确认未误改。
 
 **参见：** kb/patterns.md #版本号语义管理与递增规范模式、#版本号重映射边界判定模式、kb/troubleshooting.md #多源文案同步陷阱、kb/setup.md #CI/CD npm 自动发布配置
+
+## [+] 测试隔离的「干净机器」验证法：模拟首次使用 + 对照实验证明 mock 是唯一屏障 (2026-09-29)
+
+**适用**：某测试隔离缺口**在本机未触发**（真实全局文件已存在），修复效果无法用「测试全绿」证明时（v1.1.2-stage-48 op-002 / 事件 B；`initProject → ensureGlobalConfig()` 为**条件写**：全局 `~/.openfeel/config.json` 不存在时才写）。
+
+**两步验证法（缺一不可）**：
+
+1. **「干净机器」模拟**：临时把真实全局文件**移出**（使 `isFirstUse()` 变为 `true`，等价 CI / 新开发者环境）→ 以隔离 HOME 运行目标测试 → 断言真实文件**未被重建**；随后 `try/finally` **复原**并校验 hash + mtime 与原始**逐位一致**。这一步回答「CI 上会不会写真实全局」。
+2. **对照实验（证明屏障有效）**：复制测试文件、**仅移除 `vi.mock('node:os')` 块**、其余逐字节同构 → 隔离 HOME 下运行 → 断言「未 mock 时**确会**写 `<HOME>/.openfeel/config.json`」。这一步排除「因为别的原因才没写」的**假通过**——把「修复有效」从相关性提升为因果性。
+
+**为什么需要第 2 步**：干净机器模拟只能证明「现在没写」，不能证明「是 mock 让它没写」。若触发链已因其它原因失效（如上游提前 return），第 1 步仍会通过而掩盖真正的缺口。
+
+**配套**：临时搬移/复原须包在 `try/finally`；对照实验的临时文件用后即删并核对 `git status` 干净；结论写成「触发链存在 + mock 是唯一有效屏障」的**因果陈述**，而非「测试通过」。
+
+**参见：** v1.1.2-stage-48 op-002、`REV-v1.1.2-stage-48`、`test-v1.1.2-stage-48-report-2026-09-29.md` §三、kb/patterns.md #测试全局路径隔离模式（禁用保存/恢复伪隔离）、kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock（隔离审计四步法）
+
+## [+] 环境哈希守卫（CI 层）：受测命令前后快照 + ABSENT→ABSENT 不误报 + 只比 hash 不比 mtime (2026-09-29)
+
+**适用**：要在 CI 上**长期保证**「测试/命令不触碰真实用户环境」（v1.1.2-stage-48 op-002 / 事件 B，落 `.github/workflows/ci.yml`）。
+
+**设计（快照 + diff）**：对 `~/.openfeel`、`~/.config/opencode`、`~/.config/openfeel` 在被测命令**前后**各做一次快照 —— **存在性 + 文件清单 + 逐文件 sha256** —— 前后 diff 不一致即 `exit 1`：
+
+- **目录不存在记 `ABSENT`**，`ABSENT→ABSENT` **视为通过**（干净 runner / ubuntu 上 `~/.config/opencode` 本就不存在，否则守卫一上线即误报）；
+- **只比对 sha256，不含 mtime** —— 否则「仅 touch（内容未变）」会误报。注意这与「mtime 是伪隔离铁证」并不矛盾：**检测污染用 mtime，守卫防误报则须排除 mtime**；
+- **三态可捕获**：内容变更 / 新增文件 / 目录被删（存在→ABSENT）——须逐场景演练证明。
+
+**窗口纪律**：快照点须**紧贴被测命令**（`snapshot → npm test → guard`）；窗口内的其它 step 若写全局则**漏检**（本案 `Version consistency guard` / `lint i18n` 实测只读，故可容忍；后续新增 step 须重新评估窗口）。
+
+**本地验证法**（GH Actions 无法本地实跑）：① `node -e "require('yaml').parse(...)"` **YAML 语法自检**；② 把守卫逻辑**逐字抽取**为脚本，在隔离路径演练 6 场景（全 ABSENT / 未变 / 改内容 / 新增 / 删目录 / 仅 touch）；③ 真实 runner 行为留交接项，推送 PR 后由 CI 实测。
+
+**参见：** v1.1.2-stage-48 op-002、`test-v1.1.2-stage-48-report-2026-09-29.md` §三 B-4/B-5、`REV-v1.1.2-stage-48` REV-009（覆盖窗口观察）、kb/patterns.md #全局路径测试的单点 mock 隔离模式、kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock（隔离审计四步法）

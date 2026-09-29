@@ -86,7 +86,7 @@ Error: 阶段目录冲突：'v4.0.0-stage-04' 与 'v4-stage-04' 映射同一 (se
 
 ## BUG-003：`flow phases --json` 的 help 文案只列 `{ phases, transitions }`，实际输出还含 `advanceAccepted`
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open**（**裁定归属：下一版本或由用户决定**——本阶段为 v1.1.2 最后阶段，不夹带修复；非发布阻塞）｜ **归因**：**预存量缺陷**（`cli/BUG-001` 修复时新增 `advanceAccepted` 输出，help 文案未同步）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-48 op-004 修复 + 测试官验收通过；遗留 #1）｜ **归因**：**预存量缺陷**（`cli/BUG-001` 修复时新增 `advanceAccepted` 输出，help 文案未同步）
 
 ### 核心结论
 
@@ -127,3 +127,12 @@ JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES] }, .
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
 | 2026-09-29 06:55 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-43 验收（**skill 内容准确性实测**）发现；源码交叉验证 `src/commands/flow.ts:336` 文案 vs `:345` 输出 |
+| 2026-09-29 22:15 | openfeel-feel-tester | **closed**（v1.1.2-stage-48 验收） | zh `flow phases --help` / `--json --help` 均含 `advanceAccepted`；en 环境同；`--json` 顶层键 `['phases','transitions','advanceAccepted']` 长度 15；回归断言 `i18n.test.ts:72-77` + `flow.test.ts:91-101` |
+
+### 关闭记录（v1.1.2-stage-48，commit `bbcd242`）
+
+修复（采纳**建议修复方向 1**——同步 i18n 键，未改为不列举键）：`flow.phases.json` 键值补第三键 `advanceAccepted`——真文案源 `src/core/i18n-data/zh-CN.ts:481`（`以 JSON 输出 { phases, transitions, advanceAccepted }（advanceAccepted = 内置 15 phase，即 flow advance 的推进白名单）`）+ `en.ts:456`；`src/commands/flow.ts:336` **fallback 硬编码**同步（防未走 `applyHelpI18n` 路径时缺词）。**未改行为**（实现 `:345` 早已输出三键，本项仅补文案）。测试官实测：zh/en 双语 `--help` 均含 `advanceAccepted`；`--json` 顶层键集与长度正确；`lint i18n` 531 键一致。**关闭**。
+
+**防再犯**：① **新增/暴露输出字段时，`--help` 文案必须同批核对**——本 Bug 正是 `cli/BUG-001`（stage-47）新增 `advanceAccepted` 输出后的**收尾遗漏**，与 `templates/BUG-002`（文案双源不同步）同族；② **枚举式 help 文案是漂移源**：逐一列举键集（`{ phases, transitions }`）注定在字段新增时滞后，可考虑改为「输出完整结构」类不枚举表述（本阶段按最小改动保留枚举并补全，该建议留待后续评估）；③ 文案源有「i18n 键（真源）+ 命令层 fallback（硬编码）」双处，须成对修改（`rg "phases, transitions" src/` 兜底）。沉淀见 `kb/patterns.md #CLI 自描述命令模式`。
+
+> 流程偏差（如实记录）：executor 修复时未按生命周期翻转 `fixing`/`resolved`，直接由测试官于验收时关闭。

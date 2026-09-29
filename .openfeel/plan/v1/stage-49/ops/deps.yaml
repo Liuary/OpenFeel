@@ -1,0 +1,146 @@
+# stage-49 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-49
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-48
+    type: hard
+    status: satisfied
+    reason: "48 提供稳定基线（隔离纪律落地、CI 守卫、执行口径统一）；49 在其基线上做整仓审查"
+  # 无下游：本阶段为 v1.1.2 追加收尾；非阻塞修复按流转归后续补丁阶段或归档官
+
+# 【阶段性质提示】
+# 纯审查阶段（范围不限 v1.1.2）：8 个审查单元 + 1 个汇总；**不改源码/版本号**；
+# 修复项按 op-009 流转裁定（blocking 当阶段修 / 其余归后续 / 文档归归档官 / 历史归档只读）。
+# 执行 Agent = openfeel-reviewer（方案由 schemer 制定，Feel 调度）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "审查单元 U1 核心流水线（flow-manager、plan、archive、view、artifact-graph）"
+    produces:
+      - .openfeel/tmp/review-stage-49-U1.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-u1.md
+    deps: []
+    notes: "18 文件；正确性/并发安全为重；预期 ≥12 条取证结论"
+
+  op-002:
+    file: op-002.md
+    title: "审查单元 U2 CLI 命令层（commands、cli、i18n）"
+    produces:
+      - .openfeel/tmp/review-stage-49-U2.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-u2.md
+    deps: []
+    notes: "23 文件；help×行为对照表 + 退出码/dry-run/force + i18n 对称；`index.ts:10 VERSION` 漂移交 U7"
+
+  op-003:
+    file: op-003.md
+    title: "审查单元 U3 配置与画像（config、global-paths、workspace）"
+    produces:
+      - .openfeel/tmp/review-stage-49-U3.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-u3.md
+    deps: []
+    notes: "7 文件；级联 4×N 矩阵 + N4 单点 + 非法 YAML 不覆盖复核；隔离 HOME"
+
+  op-004:
+    file: op-004.md
+    title: "审查单元 U4 模板与 agent 与 skill（单一源、双语、部署口径）"
+    produces:
+      - .openfeel/tmp/review-stage-49-U4.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-u4.md
+    deps: []
+    notes: "含必查 #7 部署口径；**纳入 BUG-003 + REV-48 REV-009②**（合并处置；修复归属=后续补丁阶段）"
+
+  op-005:
+    file: op-005.md
+    title: "审查单元 U5 测试体系（隔离纪律与断言质量）"
+    produces:
+      - .openfeel/tmp/review-stage-49-U5.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-u5.md
+    deps: []
+    notes: "横切；全量 41 测试文件隔离核对表；`npm test` 串行门控；与 U8 互引"
+
+  op-006:
+    file: op-006.md
+    title: "审查单元 U6 文档与手册与 kb（文档-实现对齐）"
+    produces:
+      - .openfeel/tmp/review-stage-49-U6.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-u6.md
+    deps: []
+    notes: "横切；manual 行号核对 + `lint kb` + README×3；**双口径区分**（仓库内 vs 部署模板）；历史归档只读"
+
+  op-007:
+    file: op-007.md
+    title: "审查单元 U7 构建与发布链路（build、CI、package）"
+    produces:
+      - .openfeel/tmp/review-stage-49-U7.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-u7.md
+    deps: []
+    notes: "build 幂等（串行）+ ci.yml + pack + 依赖漂移(1.0.7) + `VERSION` 死导出；**纳入 REV-48 REV-009①**"
+
+  op-008:
+    file: op-008.md
+    title: "审查单元 U8 部署与更新链路（update、setup、migrate、backup、managed-region、fs）"
+    produces:
+      - .openfeel/tmp/review-stage-49-U8.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-u8.md
+    deps: []
+    notes: "纵切重单元；五分支 + 事务边界 + 锁作用域 + 实现×断言矩阵；隔离实测"
+
+  op-009:
+    file: op-009.md
+    title: "汇总报告与 REV 索引登记与修复流转裁定"
+    produces:
+      - .openfeel/tmp/review-stage-49-summary.md
+      - .openfeel/code_review/stage-49.md
+      - .openfeel/users/Liuary/code_review/index.md
+      - .openfeel/plan/v1/v1.1.2/plan.md
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+      - op: op-004
+        type: hard
+      - op: op-005
+        type: hard
+      - op: op-006
+        type: hard
+      - op: op-007
+        type: hard
+      - op: op-008
+        type: hard
+    notes: "8 单元 REV 登记 index（一跳可达）+ 流转裁定四分支 + 第二轮仅对 blocking 深挖"
+
+mutual_exclusions:
+  - group: [op-004, op-005, op-007, op-008]
+    reason: "四者均可能触发 `npm run build` / `npm test`（同一工作区）→ **构建/测试串行门控**；只读命令可并行"
+  - group: [op-001, op-002, op-003, op-006]
+    reason: "弱约束备注：四者以只读为主（可真正并行）；如与 [op-004,005,007,008] 的构建/测试窗口重叠，建议错开"
+
+parallel_groups:
+  - group: [op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-008]
+    desc: "第一轮·广度：8 单元并行派发（各自独立产物，无写交集）；**其中 op-004/005/007/008 的 build/test 须串行门控**"
+  - group: [op-009]
+    desc: "第二轮·深挖 + 汇总 + index 登记 + 流转裁定（依赖全部 8 单元）"
+  - group: [（如有 blocking）新增修复 op]
+    desc: "由 op-009 裁定后追加（openfeel-executor 执行）→ 回归"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-003
+  - op-004
+  - op-005
+  - op-006
+  - op-007
+  - op-008
+  - op-009
+rationale: "plan §八：op-001~op-008 可并行（只读/独立产物；构建与测试串行门控）→ op-009 串行收口 → 如有 blocking 新增修复 op → 回归。"

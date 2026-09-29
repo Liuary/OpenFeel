@@ -698,3 +698,24 @@ node bin/openfeel.js --version  # → 1.1.2（本仓）
 **给后续版本的判决**：门禁与验收的**可信度优先于门禁数字**——凡「结论依赖某个信号」，该信号的取得方式必须能被第三方复现（命令 + 版本 + 环境三要素齐备），否则该结论在归档时只能标注「待复核」。
 
 **参见：** kb/troubleshooting.md #裸跑 openfeel 命中 PATH 全局旧版、#writeDefaultConfig 无条件覆盖：npm test 静默改写真实 config.yaml、#测试以「保存/恢复」代替 homedir mock（隔离审计四步法）、kb/patterns.md #测试 cwd 隔离模式
+
+## [+] 真实环境一次性数据清理规范：末段匹配 + 计数断言 + 四步保护（不可省） (2026-09-29)
+
+**场景**：清理 `~/.openfeel/config.json` 中历史累积的测试死映射（v1.1.2-stage-48 op-006，455 条 `openfeel-update-test-*`）。
+
+**陷阱一：匹配式必须是「末段匹配」而非字面前缀** —— `projects` 的**键是绝对路径**，测试前缀位于**路径末段**：
+
+```
+C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
+```
+
+- 正确：`k.split(/[\\/]/).pop().startsWith('openfeel-update-test-')`（实测 455/455 命中）；
+- 错误：`k.startsWith('openfeel-update-test-')`（字面前缀，实测 **0 命中**）。
+
+**陷阱二：0 命中会「假性通过」** —— 若只断言「无真实键被删」，0 命中时脚本什么都没删也会通过。**必须断言删除数恰为预期**（`dead.length === 455`，不符即 `exit 3`；留 `CLEAN_ALLOW_COUNT_MISMATCH=1` 逃生阀）。同理须同时断言**删后剩余键数 === 0**。
+
+**四步保护（不可省）**：① **隔离副本先行试跑**（`--target` 指向副本，先 `--dry-run` 再实跑，断言 455→0）；② **带时间戳备份**（`config.json.bak.{ISO ts}`，绝不覆盖）；③ **执行真实文件**；④ **执行后复核**：剩余键数 + JSON 合法性（`config list-projects` 可读）+ 备份**可解析且含原数据 → 可直接覆盖还原**。
+
+**其它约束**：JSON 解析失败 → **中止且不写盘**（保护原文件）；写出前 `JSON.stringify` → `JSON.parse` **自校验**；脚本置于 `.openfeel/tmp/`（不进 `src/`、不进 npm `files`）；**过程计数（455 → 0）与备份路径写入日志**，备份保留可还原性供后续核验。
+
+**参见：** v1.1.2-stage-48 op-006、`REV-v1.1.2-stage-48` REV-002、`.openfeel/tmp/clean-dead-lang-mappings.mjs`、`.openfeel/manual/core/global-paths.md`（死映射背景与人工清理指引）、kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock（隔离审计四步法）

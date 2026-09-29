@@ -9,14 +9,16 @@
 |------|:--:|
 | open | 1 |
 | fixed | 0 |
-| closed | 8 |
-| **合计** | **9** |
+| closed | 9 |
+| **合计** | **10** |
 
 > **v1.1.2-stage-43 收口（2026-09-29，commit `cbc606f`）**：`config/BUG-004`（medium，测试隔离缺口）经 openfeel-feel-tester **外部独立进程比对**验收**关闭**——`identity.test.ts`（11/11）与全量 `npm test`（41 文件 / 694 用例）前后真实 `~/.openfeel/config.json` 的 **mtime + SHA-256 均不变**；修复＝N4 单点 `vi.mock('node:os')` + 删除 `savedConfig` 伪隔离 + 新增只读隔离守护用例。**新登记 `cli/BUG-003`**（low，非阻塞）：`flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 修复的收尾遗漏）——**裁定归下一版本或由用户决定**，v1.1.2 不修。至此 v1.1.2 遗留缺陷清零（仅 1 条 low 非阻塞顺延）。
 >
 > **v1.1.2-stage-47 集中清理收口（2026-09-29，commit `2fb38fa`）**：6 个 `resolved` Bug 经 openfeel-feel-tester 隔离端到端验收**全部通过并关闭**（每条的根因 / 修法 / **防再犯** 三要素已写入对应模块文件）；`config/BUG-001` 复核维持 closed。验收中新登记 `config/BUG-004`（medium，测试隔离缺口，非阻塞，**归档官裁定归属 `v1.1.2-stage-43`**——发布前清零点，含 455 条历史死映射评估）。
 >
 > 本批共性防再犯（跨模块）：① **写策略按资产归属二分**（用户配置不覆盖 / 框架资产备份后覆盖，见 `config/BUG-002`）；② **文案变更收尾必做关键句全仓 `rg`**（见 `templates/BUG-002`，与 `templates/BUG-001` 同模式重复发生；`cli/BUG-003` 为同类「新增输出字段未同步 help 文案」变体）；③ **测试禁止直写真实全局目录**（保存/恢复≠隔离，见 `config/BUG-004`）；④ **验收/门禁命令用 `node bin/openfeel.js`**（PATH 全局旧版会给出错误口径）。
+>
+> **v1.1.2-stage-48 事件加固收口（2026-09-29，commits `afe93dd`~`b3b9b58`）**：① `cli/BUG-003`（low，`flow phases --json` help 缺 `advanceAccepted`，遗留 #1；即上方 stage-43 收口注中「顺延下一版本」者）经 op-004 修复（i18n 真源 + `flow.ts` fallback 双处）并由测试官验收**关闭**；② **新登记 `templates/BUG-003`**（low，非阻塞，open）——部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目无本仓 `bin/` 故不可执行，与 agent / agents-md「保留裸 `openfeel`」裁定口径相反；**建议与 `REV-v1.1.2-stage-48` REV-009 合并移交 `v1.1.2-stage-49`（U4/U6/U7）**。本阶段三大过程事件（审查官幻觉 / `npm test` 覆写真实环境 / 裸跑命中全局旧版）已机制加固，其防再犯条目见 `kb/patterns.md`（干净机器验证法 / 环境哈希守卫 / REV 可信度声明）、`kb/troubleshooting.md`（真实环境一次性数据清理规范）；`profile.yaml` 健壮性（非法 YAML 不覆盖）与 455 条死映射清理（455→0）为遗留 #7/#8/#13 落地点，均非 Bug 单（未开单）。
 
 ## 模块索引
 
@@ -26,7 +28,7 @@
 |------|------|:--:|:--:|----------|
 | [BUG-001](cli.md) | `flow phases` 自描述 phase 与 `advance` 接受集合不一致（自定义 `pipeline.yaml` 下的第二信源） | low | **closed** | v1.1.2-stage-41 |
 | [BUG-002](cli.md) | 阶段目录冲突错误未走 i18n 键（en 下为中文）+ `common.stageDirConflictTmpl` 死键 | low | **closed** | v1.1.2-stage-41 |
-| [BUG-003](cli.md) | `flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 收尾遗漏） | low | open（**归下一版本或用户决定**） | v1.1.2-stage-43 |
+| [BUG-003](cli.md) | `flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 收尾遗漏） | low | **closed** | v1.1.2-stage-48 |
 
 ### config
 
@@ -48,5 +50,6 @@
 | 编号 | 标题 | 优先级 | 状态 | 来源阶段 |
 |------|------|:--:|:--:|----------|
 | [BUG-002](templates.md) | 全局约束模板 `agents-md` 权限部署路径行未泛化（双源不同步） | medium | **closed** | v1.1.2-stage-45 |
+| [BUG-003](templates.md) | 部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目不可执行（与 agent / agents-md 保留裸 `openfeel` 的口径相反） | low | open（**非阻塞；建议与 `REV-009` 合并移交 stage-49**） | v1.1.2-stage-48 |
 
 > 注：templates 模块早期 `BUG-001`（事务官标识列未加前缀）已于 `v1.1.2-stage-41` 关闭、未纳入本目录（详见私域 `.openfeel/users/Liuary/bugs/templates/`）；`kb/BUG-001`（`lint kb` 过期引用）已于 stage-42 关闭，同见私域。

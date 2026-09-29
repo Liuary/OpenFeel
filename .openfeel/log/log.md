@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-29-Liuary-063.md](2026/09/29/2026-09-29-Liuary-063.md) | Liuary | 阶段 v1.1.2-stage-48 完成 |
+| [2026-09-29-Liuary-062.md](2026/09/29/2026-09-29-Liuary-062.md) | Archiver | **stage-48 归档完成（v1.1.2 事件加固 + 遗留问题修复）**：三大过程事件机制加固（A 审查官幻觉 / B `npm test` 覆写真实环境 / C 裸跑命中全局旧版）+ 13 项遗留全部落地（**455 条死映射 455→0** + `profile.yaml` 健壮性 + `cli/BUG-003` 收口）；7 op，**41 文件 / 706 用例全绿**、`lint i18n` 531 键、`lint kb` 0 过期；REV-001~008 closed（含 2 blocking）；新登记 `templates/BUG-003`（low 非阻塞，建议并入 stage-49）；知识沉淀 4 条；manual 更新 `core/{config,global-paths}.md` + `agents/feel.md` + `index.md` |
 | [2026-09-29-Liuary-061.md](2026/09/29/2026-09-29-Liuary-061.md) | Liuary | v1.1.2-stage-48.op-007 执行通过 |
 | [2026-09-29-Liuary-060.md](2026/09/29/2026-09-29-Liuary-060.md) | Liuary | v1.1.2-stage-48.op-006 执行通过 |
 | [2026-09-29-Liuary-059.md](2026/09/29/2026-09-29-Liuary-059.md) | Liuary | v1.1.2-stage-48.op-004 执行通过 |
@@ -30,8 +32,6 @@
 | [2026-09-29-Liuary-035.md](2026/09/29/2026-09-29-Liuary-035.md) | Liuary | v1.1.2-stage-46.op-005 执行通过 |
 | [2026-09-29-Liuary-034.md](2026/09/29/2026-09-29-Liuary-034.md) | Liuary | v1.1.2-stage-46.op-004 执行通过 |
 | [2026-09-29-Liuary-033.md](2026/09/29/2026-09-29-Liuary-033.md) | Liuary | v1.1.2-stage-46.op-003 执行通过 |
-| [2026-09-29-Liuary-032.md](2026/09/29/2026-09-29-Liuary-032.md) | Liuary | v1.1.2-stage-46.op-002 执行通过 |
-| [2026-09-29-Liuary-031.md](2026/09/29/2026-09-29-Liuary-031.md) | Liuary | v1.1.2-stage-46.op-001 执行通过 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

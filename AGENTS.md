@@ -5,7 +5,7 @@
 
 AI Agent 项目级行为约束与编码规范。本文件为永久性约束，适用于项目中所有 AI Agent 会话。
 
-详细流程规则由 `openfeel` CLI 工具管理（`openfeel flow` / `openfeel plan` 等）。
+详细流程规则由 `openfeel` CLI 工具管理（`node bin/openfeel.js flow` / `node bin/openfeel.js plan` 等）。
 
 ## 行为准则
 
@@ -119,11 +119,11 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 
 ## 权限模型（Agent permission）
 
-9 个 agent 内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `openfeel setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）。
+9 个 agent 内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `node bin/openfeel.js setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）。
 
 - **合并语义**：agent `.md` frontmatter 与 `opencode.jsonc`（顶层 `permission` 与 `agent.<name>.permission`）**按权限键深合并**，**同名键以 agent `.md` 为准（配置文件无法覆盖已声明键）**。
 - **收紧入口**：项目内新建 `.opencode/agent/<name>.md` 覆盖同名 agent；**`opencode.jsonc` 的 `agent.<name>.permission` 无法收紧已声明键**。
-- **勿手改全局 agent 文件 frontmatter**（`openfeel update` 会覆盖同名字段）；改动须**重启** opencode 生效。
+- **勿手改全局 agent 文件 frontmatter**（`node bin/openfeel.js update` 会覆盖同名字段）；改动须**重启** opencode 生效。
 - `external_directory` 为单一键，**无读写分粒度**。详见 `.openfeel/manual/core/permission.md`。
 
 ## 动态规则
@@ -152,18 +152,18 @@ Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明
 
 项目的详细流程规则（Agent 体系、开发流水线、三层计划、审查闭环、状态文件模板等）由 OpenFeel CLI 工具统一管理：
 
-- `openfeel flow status` — 查看流水线状态
-- `openfeel flow current` — 查看当前阶段和操作
-- `openfeel flow overview` — 流水线全景视图
-- `openfeel flow metrics` — Agent 性能指标
-- `openfeel stage status <id>` — 查看阶段状态
-- `openfeel stage set <id> --status <v>` — 更新阶段状态
-- `openfeel plan stage list` — 列出工作阶段
-- `openfeel flow phases` — 自描述全部合法 phase 与运行时转移表（`--json` 含 `advanceAccepted`）
-- `openfeel flow stage remove <id>` — 移除阶段（默认仅注销 flow.json；`--dry-run` 预览；`--purge` 删目录）
-- `openfeel plan stage add <name> --deps <ids...>` — 完整入口：建目录 + 注册 + 依赖落点
-- `openfeel config effective [key]` — 配置有效值 + 来源
-- `openfeel knowledge list` — 查看知识库
+- `node bin/openfeel.js flow status` — 查看流水线状态
+- `node bin/openfeel.js flow current` — 查看当前阶段和操作
+- `node bin/openfeel.js flow overview` — 流水线全景视图
+- `node bin/openfeel.js flow metrics` — Agent 性能指标
+- `node bin/openfeel.js stage status <id>` — 查看阶段状态
+- `node bin/openfeel.js stage set <id> --status <v>` — 更新阶段状态
+- `node bin/openfeel.js plan stage list` — 列出工作阶段
+- `node bin/openfeel.js flow phases` — 自描述全部合法 phase 与运行时转移表（`--json` 含 `advanceAccepted`）
+- `node bin/openfeel.js flow stage remove <id>` — 移除阶段（默认仅注销 flow.json；`--dry-run` 预览；`--purge` 删目录）
+- `node bin/openfeel.js plan stage add <name> --deps <ids...>` — 完整入口：建目录 + 注册 + 依赖落点
+- `node bin/openfeel.js config effective [key]` — 配置有效值 + 来源
+- `node bin/openfeel.js knowledge list` — 查看知识库
 
 > CLI 用法速查（命令清单、参数、15 个 phase 枚举与转移表、stageId 命名约定）见 `openfeel-cli-usage` skill。
 

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-29T13:53:52.909Z",
-    "revision": 250
+    "updated": "2026-09-29T13:56:15.576Z",
+    "revision": 251
   },
   "pipeline": {
     "phase": "active",
@@ -1233,9 +1233,9 @@
         },
         "op-002": {
           "title": "事件 B 测试隔离补齐与 CI 环境守卫（flow 与 plan 测试、kb 反例）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -7518,6 +7518,15 @@
         "stageName": "v1.1.2-stage-48",
         "from": "scheme_passed",
         "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-09-29T13:56:15.548Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-48.op-002",
+        "attempts": 1
       }
     }
   ]

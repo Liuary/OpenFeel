@@ -16,6 +16,16 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
+      - name: Version consistency guard
+        run: |
+          # 版本门禁（stage-48 op-003 / 遗留 #10）：CLI --version 必须与 package.json.version 一致
+          CLI_VERSION=$(node bin/openfeel.js --version)
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "CLI=$CLI_VERSION package.json=$PKG_VERSION"
+          if [ "$CLI_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::版本不一致：CLI=$CLI_VERSION package.json=$PKG_VERSION"; exit 1
+          fi
+      - run: node bin/openfeel.js lint i18n
       - name: Env snapshot (before test)
         run: |
           snapshot() {
@@ -74,5 +84,12 @@ jobs:
         if: steps.version.outputs.changed == 'true'
       - run: npm run build
         if: steps.version.outputs.changed == 'true'
+      - name: Version consistency guard
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          # 版本门禁（stage-48 op-003）：发布前再校验 CLI 与 package.json 版本一致
+          CLI_VERSION=$(node bin/openfeel.js --version)
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$CLI_VERSION" != "$PKG_VERSION" ]; then echo "::error::版本不一致 CLI=$CLI_VERSION pkg=$PKG_VERSION"; exit 1; fi
       - run: npm publish --access public --registry https://registry.npmjs.org
         if: steps.version.outputs.changed == 'true'

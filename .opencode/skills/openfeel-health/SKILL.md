@@ -12,8 +12,8 @@ description: 加载流水线健康检查结果，供 Agent 判断 flow.json 与�
 
 ## 执行步骤
 
-1. 运行 `openfeel flow health --quick` 检查关键项（phase/current 合法性）
-2. 需要全面检查时运行 `openfeel flow health`（含跨文件一致性、僵尸状态、config.yaml）
+1. 运行 `node bin/openfeel.js flow health --quick` 检查关键项（phase/current 合法性）
+2. 需要全面检查时运行 `node bin/openfeel.js flow health`（含跨文件一致性、僵尸状态、config.yaml）
 3. 解析输出中的 ✅ / ⚠️ / ❌ 项
 
 ## 输出

@@ -5,8 +5,10 @@
 ## 命令
 
 ```bash
-openfeel setup [--lang <zh-CN|en>]
+node bin/openfeel.js setup [--lang <zh-CN|en>]
 ```
+
+> ⚠️ 本仓执行一律用 `node bin/openfeel.js <cmd>`；全局 `openfeel` 可能命中旧版（如 1.1.1）。
 
 纯全局部署 OpenFeel 框架配置（全局 `AGENTS.md` + agent + skill + 全局平台适配器配置（`opencode.jsonc`，当前适配器）），**不建立项目 `.openfeel/`**，幂等可重跑。
 

@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-29-Liuary-056.md](2026/09/29/2026-09-29-Liuary-056.md) | Liuary | v1.1.2-stage-48.op-003 执行通过 |
 | [2026-09-29-Liuary-055.md](2026/09/29/2026-09-29-Liuary-055.md) | Liuary | v1.1.2-stage-48.op-002 执行通过 |
 | [2026-09-29-Liuary-053.md](2026/09/29/2026-09-29-Liuary-053.md) | Liuary | 阶段 v1.1.2-stage-43 完成 |
 | [2026-09-29-Liuary-052.md](2026/09/29/2026-09-29-Liuary-052.md) | Archiver | **stage-43 归档完成 + v1.1.2 版本级收官**：新增 `openfeel-cli-usage` skill（权威源单文件 + build 双注入 + 自举 + 快照声明，16→17 skill）+ **版本 1.1.2 全链路收口**（A1~A8 + B 生成段 + C `CHANGELOG` + D/E；`package-lock` 手工同步 root 两行，零依赖树变动）+ `docs/commands.md` 新增 `## config` 节 + `AGENTS.md` 命令清单补 4 条 + 指向 skill + `config/BUG-004` **测试隔离修复**（N4 `vi.mock('node:os')` + 删 `savedConfig` 伪隔离 + 只读隔离守护用例，真实 `config.json` mtime+SHA-256 前后不变）+ skill 计数同步 14 处（含 `expectedSkills` 白名单）+ `REV-44` 归属闭环；5 op，**41 文件 / 694 用例全绿**、`tsc` 0、`npm run build` 幂等、`lint i18n` **531 键**、`lint kb` **0 过期引用（归档后 224 引用；阶段内 195）**；REV-001~006 全 closed（含 blocking REV-004）；**REV-006 终裁**：`lint i18n` 502 系 **PATH 全局旧版 CLI 环境污染**（531 为本仓真实键数）→ 撤销 stage-47「微瑕」判定 + 落「门禁统一 `node bin/openfeel.js`」改进；Bug：`config/BUG-004` **closed** + 新登记 `cli/BUG-003`（low 非阻塞，归下一版本）；知识沉淀 **4 条新增**（patterns：CLI 用法 skill 化模式 / 版本号全链路收口清单；troubleshooting：PATH 全局旧版环境污染 / 版本级两类伪信号）；版本级收尾：`plan/index.md`（+14 行阶段对照闭合历史缺口）/ `roadmap/v1.1.2.md`（标记完成 + 收官摘要）/ `dev/current.md` / `log` 三索引 / `plan/v1/stage-43/status.md` → done。**v1.1.2 七阶段全部闭环，`npm publish` 就绪** |
@@ -31,7 +32,6 @@
 | [2026-09-29-Liuary-028.md](2026/09/29/2026-09-29-Liuary-028.md) | Liuary | v1.1.2-stage-45.op-004 执行通过 |
 | [2026-09-29-Liuary-027.md](2026/09/29/2026-09-29-Liuary-027.md) | Liuary | v1.1.2-stage-45.op-003 执行通过 |
 | [2026-09-29-Liuary-026.md](2026/09/29/2026-09-29-Liuary-026.md) | Liuary | v1.1.2-stage-45.op-002 执行通过 |
-| [2026-09-29-Liuary-025.md](2026/09/29/2026-09-29-Liuary-025.md) | Liuary | v1.1.2-stage-45.op-001 执行通过 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

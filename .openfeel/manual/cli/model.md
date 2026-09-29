@@ -9,10 +9,12 @@
 ## 命令面
 
 ```
-openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]
-openfeel model get <agent> [--scope default|global|project]   # 无 --scope 展示生效值
-openfeel model list [--scope default|global|project]          # 无 --scope 展示生效值
+node bin/openfeel.js model set <agent> <model> [--scope default|global|project] [--build] [--force]
+node bin/openfeel.js model get <agent> [--scope default|global|project]   # 无 --scope 展示生效值
+node bin/openfeel.js model list [--scope default|global|project]          # 无 --scope 展示生效值
 ```
+
+> ⚠️ 本仓执行一律用 `node bin/openfeel.js <cmd>`；全局 `openfeel` 可能命中旧版（如 1.1.1）。
 
 - 默认 `--scope`：`project`（改动最小、最安全）。
 - `set` 调用 `setAgentModel`；`get`/`list` 调用 `getAgentModel`/`listAgentModels`。

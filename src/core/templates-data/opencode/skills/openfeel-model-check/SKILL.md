@@ -10,7 +10,7 @@ description: Feel 自检时检查所有 Agent 的模型配置状态，识别期�
 Feel Agent 在以下时机加载本 Skill：
 - 会话启动自检（每次）
 - 用户请求检查模型配置（按需）
-- 新项目首次初始化后（`openfeel init`）
+- 新项目首次初始化后（`node bin/openfeel.js init`）
 
 ## 执行步骤
 
@@ -187,7 +187,7 @@ models:
       ...
 ```
 
-此模板在下次 `openfeel init` 或新项目部署时自动检测并建议复用。
+此模板在下次 `node bin/openfeel.js init` 或新项目部署时自动检测并建议复用。
 
 ## 输出规范
 

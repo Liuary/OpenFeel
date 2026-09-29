@@ -53,25 +53,25 @@ export const ConfigSchema = z.object({
 
 // ── 全局用户画像 Profile Schema（v5.0 记忆体系第一层） ──
 
-/** 用户基础信息 Schema：姓名 + 偏好语言 */
+/** 用户基础信息 Schema：姓名 + 偏好语言（passthrough：保全自定义扩展键，遗留 #7） */
 export const ProfileUserSchema = z.object({
   name: z.string().optional(),
   lang: z.enum(['zh-CN', 'en']).optional(),
-});
+}).passthrough();
 
-/** 用户偏好 Schema：工作流偏好（全部可选，缺失时使用默认值） */
+/** 用户偏好 Schema：工作流偏好（全部可选，缺失时使用默认值；passthrough：保全自定义扩展键，遗留 #7） */
 export const ProfilePreferencesSchema = z.object({
   auto_advance: z.enum(['enabled', 'disabled']).optional(),
   review_mode: z.enum(['full', 'skip_small_changes']).optional(),
   communication: z.enum(['concise', 'detailed']).optional(),
   confirm_threshold: z.enum(['low', 'medium', 'high']).optional(),
-});
+}).passthrough();
 
-/** 历史记录 Schema：最近项目信息 */
+/** 历史记录 Schema：最近项目信息（passthrough：保全自定义扩展键，遗留 #7） */
 export const ProfileHistorySchema = z.object({
   last_project: z.string().optional(),
   recent_projects: z.array(z.string()).optional(),
-});
+}).passthrough();
 
 /** 完整 Profile Schema：组合三块，全部可选，允许扩展字段 */
 export const ProfileSchema = z.object({
@@ -178,7 +178,7 @@ function getProfilePath(): string {
  * 缺失字段回填默认值，返回带完整默认值的 Profile。
  * @returns 带默认值的完整 Profile
  */
-export function readProfile(): Profile {
+export function readProfile(): Profile & { parseError?: string } {
   const profilePath = getProfilePath();
   if (!existsSync(profilePath)) {
     return { ...DEFAULT_PROFILE };
@@ -188,7 +188,8 @@ export function readProfile(): Profile {
     const content = readFileSync(profilePath, 'utf-8');
     const raw = parseYaml(content) as Record<string, unknown> | null;
     if (!raw || typeof raw !== 'object') {
-      return { ...DEFAULT_PROFILE };
+      // 错误路径：顶层非对象（含空文件 / 标量）→ 标记 parseError，供调用方跳过写回（遗留 #8）
+      return { ...DEFAULT_PROFILE, parseError: `profile.yaml 顶层非对象：${profilePath}` };
     }
     const parsed = ProfileSchema.parse(raw) as Profile;
     // 与默认值深度合并：缺失字段回填默认值，同时保留顶层 passthrough 扩展字段
@@ -199,9 +200,12 @@ export function readProfile(): Profile {
       preferences: { ...DEFAULT_PROFILE.preferences, ...(parsed.preferences ?? {}) },
       history: { ...DEFAULT_PROFILE.history, ...(parsed.history ?? {}) },
     };
-  } catch {
-    // YAML 解析失败或 Zod 校验失败时回退默认值（保持可用性）
-    return { ...DEFAULT_PROFILE };
+  } catch (err) {
+    // 错误路径：YAML 语法 / Zod 校验失败 → 标记 parseError（不写回），返回默认值保持可用性（遗留 #8）
+    return {
+      ...DEFAULT_PROFILE,
+      parseError: `profile.yaml 解析失败（${err instanceof Error ? err.message : String(err)}）：${profilePath}`,
+    };
   }
 }
 
@@ -234,6 +238,11 @@ export function ensureProfileDefaults(projectPath: string): void {
   // 路径规范化：统一分隔符、消除 . / ..，避免 recent_projects 因路径形式差异产生重复（REV-003）
   const normalizedPath = resolve(projectPath);
   const profile = readProfile();
+  // 错误路径：profile.yaml 非法 → 不覆盖用户文件（遗留 #8；解析失败属用户可修复态，覆盖才是不可逆伤害）
+  if (profile.parseError) {
+    console.warn(`[profile] ${profile.parseError}；已跳过自动填充写回以保护现有文件`);
+    return;
+  }
   let changed = false;
 
   // 1. user.name 为空时自动填充（.info.json → git config 回退）

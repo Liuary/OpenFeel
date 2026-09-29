@@ -191,6 +191,12 @@ export function registerConfigCommand(program: Command): void {
         try {
           // 读取 → 修改 → Zod 全量校验 → 写回
           const profile = readProfile();
+          // 错误路径：profile.yaml 非法 → 拒绝覆盖（遗留 #8），提示用户先修复
+          if (profile.parseError) {
+            console.error(`[profile] ${profile.parseError}；已拒绝写入以避免覆盖现有文件，请先修复 profile.yaml`);
+            process.exit(1);
+            return; // 防御：process.exit 被 mock 时不再继续写回
+          }
           const profileObj = profile as unknown as Record<string, unknown>;
           setNestedValue(profileObj, key, value);
           const validated = ProfileSchema.parse(profileObj) as Profile;

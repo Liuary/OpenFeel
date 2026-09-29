@@ -1,52 +1,53 @@
 # 自测报告 — op-005
 
-- **执行时间**：2026-09-26 17:10
+- **执行时间**：2026-09-29 22:03
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1
+- **重试次数**：第 1 次（含 1 次测试用例参数修正，非实现缺陷）
 
 ## 执行摘要
 
-测试收口 + 文档/版本同步完成：新增 setup.test.ts；修复 6 个测试文件共 26 处断言；版本 1.1.1 全链路同步；manual/ + CHANGELOG 更新。build 全绿，597 测试全通过，lint i18n/kb zero error。
+profile.yaml 健壮性加固完成：#7 三个子 Schema 补 `.passthrough()`、#8 非法 YAML 不覆盖（`parseError` + 跳过写回 + `console.warn`）+ `config set --global` 守卫；新增 5 个单测全绿，`tsc --noEmit` exit 0，未引入 `update-infos` 依赖边。
 
 ## 实施步骤完成情况
 
-- [x] 步骤 1：新增 test/core/setup.test.ts（5 用例）
-- [x] 步骤 2：改造 init/update/opencode-config/global-paths/migrate/template-loader/opencode-instance 测试
-- [x] 步骤 3：版本号同步（package.json 1.1.1 + agents-md 模板「当前 v1.1.1」+ config.ts 模板 1.1.1）
-- [x] 步骤 4：manual/（新增 core/setup.md、cli/setup.md；更新 init/update/global-paths/opencode-config/template-loader/migrate/commands + index.md）+ CHANGELOG
-- [x] 步骤 5：npm run build + npm test 全绿
+- [x] 步骤1：`ProfileUserSchema` / `ProfilePreferencesSchema` / `ProfileHistorySchema` 补 `.passthrough()`（保全 `user.*` / `preferences.*` / `history.*` 自定义键）
+- [x] 步骤2：`readProfile(): Profile & { parseError?: string }`（可选字段，结构兼容）；顶层非对象 / YAML 解析失败 / Zod 校验失败 → 标记 `parseError` 并返回默认值
+- [x] 步骤3：`ensureProfileDefaults` 见 `parseError` → `console.warn`（含路径）+ **跳过全部写回**
+- [x] 步骤4：`commands/config.ts` 的 `set --global` 见 `parseError` → `console.error` + `process.exit(1)` + `return`（防 mock 继续，不覆盖）
 
 ## 自测清单验证
 
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| npm run build 通过 | ✅ | 模板校验 + 两对单源断言 |
-| npm test 全量通过（0 回归） | ✅ | 38 文件 / 597 用例 |
-| setup.test.ts：幂等 + 不建项目 .openfeel + 部署全局 AGENTS.md | ✅ | |
-| init 空项目不产 AGENTS.md/.opencode，产 opencode.jsonc | ✅ | e2e + 单测 |
-| init --workspace-only 仅工作区 | ✅ | e2e + 单测 |
-| update 不写项目 AGENTS.md，全局部署 AGENTS.md | ✅ | e2e + 单测 |
-| package.json version == 1.1.1；模板「当前 v1.1.1」 | ✅ | |
-| getGlobalAgentsMdPath() 单测；listOpencodeSkillNames()==16 | ✅ | |
-| lint i18n + lint kb 零错误 | ✅ | i18n exit 0（502 键）；kb exit 0（3 warning） |
-| manual 反映新命令与职责边界 | ✅ | |
+| 三个子 Schema 加 `.passthrough()` | ✅ | user/preferences/history |
+| `readProfile` 增 `parseError?`（可选，结构兼容） | ✅ | `Profile & { parseError?: string }` |
+| `ensureProfileDefaults` 见 `parseError` → warn + 跳过写回 | ✅ | 文件字节不变断言通过 |
+| `config set --global` 见 `parseError` → 报错 + exit 1（不覆盖） | ✅ | 新增命令级用例通过 |
+| **未引入** `config.ts → update-infos.ts` 依赖边 | ✅ | `rg update-infos src/core/config.ts` 无输出 |
+| `npm test -- config` 全绿；`npx tsc --noEmit` 无错误 | ✅ | 5 文件 / 75 用例（含新增 5） |
+| 未新增依赖；未改版本号 | ✅ | 1.1.2 |
+
+### 用例明细
+
+- `test/core/config.test.ts`：33（+4）—— #7 往返保全（readProfile 保全 / ensureProfileDefaults 写回往返保全）、#8 非法 YAML 不覆盖 + warn + parseError、#8 顶层非对象标记 parseError
+- `test/commands/config.test.ts`：5（+1）—— `config set --global` 遇非法 profile → exit 1 + 文件字节不变
+- 既有「损坏的 profile.yaml 应回退默认值」用例仍通过（新增 `parseError` 不破坏原断言语义，无需翻转）
 
 ## 产出文件
 
-- `test/core/setup.test.ts`（新增）+ init/update/opencode-config/global-paths/migrate/template-loader/opencode-instance 测试（修改）
-- `package.json`、`src/core/config.ts`、`src/core/templates-data/agents-md/{zh-CN,en}.md`
-- `.openfeel/manual/index.md` + core/{init,update,global-paths,opencode-config,template-loader,migrate,setup}.md + cli/{commands,setup}.md
-- `CHANGELOG.md`
+- `src/core/config.ts`
+- `src/commands/config.ts`
+- `test/core/config.test.ts`（扩展）
+- `test/commands/config.test.ts`（扩展）
 
 ## 前置校验结果
 
 - 方案完整性：通过
-- Phase 合法性：通过
-- 流转合法性：通过
+- Phase 合法性：通过（`exec_running`）
+- 流转合法性：通过（`flow health --quick` exit 0）
 
 ## 偏差记录
 
-- op-005 产出文件列表未列 `test/core/opencode-instance.test.ts`，但因其断言 14 skill / 25 受管文件（含 core.md）随本次变更失效，一并调整至 16 skill / 26 受管文件（属回归修复必要范围）。
-- `test/core/setup.test.ts` 新增（超出「约 4~6 个测试文件」预估，因 setup 为全新模块需独立覆盖）。
-- lint kb 存在 3 条 kb 文档中 `.opencode/instructions/core.md` 历史路径引用（warning，exit 0）；KB 内容由归档官在归档阶段处理。
-- `flow.json` 未修改（任务要求）；未执行 git commit（任务要求）。
+- 测试用例在 op-005 落地（`test/core/config.test.ts` / `test/commands/config.test.ts`）——依据 op-005「测试计划」明确要求扩展；`deps.yaml` 的 produces 未列测试文件、op-007 亦列 config.test.ts，二者存在交叉登记（非实质冲突，op-007 将复核全量）。
+- 1 次测试修正：`config set --global` 的 key 白名单为 `preferences.auto_advance`（非 `auto_advance`），测试参数据代码事实更正（非实现偏差）。
+- 未在本地验证项：无（isolated HOME 单测 + tsc 已覆盖）。

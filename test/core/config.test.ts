@@ -294,6 +294,90 @@ describe('ensureProfileDefaults', () => {
 });
 
 // ═══════════════════════════════════════
+// profile 健壮性（v1.1.2-stage-48 op-005）
+// ═══════════════════════════════════════
+
+describe('profile 健壮性（op-005）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-profile-robust-'));
+    mockHome.dir = tmpDir;
+  });
+
+  afterEach(() => {
+    mockHome.dir = '';
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 把 profile 视为可访问任意嵌套键的松散结构（passthrough 保全断言用） */
+  type LooseProfile = { user: Record<string, unknown>; preferences: Record<string, unknown>; history: Record<string, unknown> };
+
+  it('#7 嵌套未知字段在 readProfile 中保全（子 Schema passthrough）', () => {
+    const profilePath = join(tmpDir, '.config', 'openfeel', 'profile.yaml');
+    mkdirSync(join(tmpDir, '.config', 'openfeel'), { recursive: true });
+    writeFileSync(
+      profilePath,
+      'user:\n  name: Alice\n  custom_ext: keep-me\npreferences:\n  custom_pref: 42\nhistory:\n  custom_hist:\n    - x\n',
+      'utf-8',
+    );
+
+    const profile = readProfile() as unknown as LooseProfile;
+    expect(profile.user.custom_ext).toBe('keep-me');
+    expect(profile.preferences.custom_pref).toBe(42);
+    expect(profile.history.custom_hist).toEqual(['x']);
+  });
+
+  it('#7 嵌套未知字段经 ensureProfileDefaults 写回往返仍保全', () => {
+    const profilePath = join(tmpDir, '.config', 'openfeel', 'profile.yaml');
+    mkdirSync(join(tmpDir, '.config', 'openfeel'), { recursive: true });
+    writeFileSync(
+      profilePath,
+      'user:\n  name: Alice\n  custom_ext: keep-me\npreferences:\n  custom_pref: 42\n',
+      'utf-8',
+    );
+
+    ensureProfileDefaults(tmpDir);
+
+    const profile = readProfile() as unknown as LooseProfile;
+    expect(profile.user.custom_ext).toBe('keep-me');
+    expect(profile.preferences.custom_pref).toBe(42);
+    expect(profile.user.name).toBe('Alice');
+  });
+
+  it('#8 非法 YAML：ensureProfileDefaults 不覆盖文件 + console.warn + parseError', () => {
+    const profilePath = join(tmpDir, '.config', 'openfeel', 'profile.yaml');
+    mkdirSync(join(tmpDir, '.config', 'openfeel'), { recursive: true });
+    const broken = '{{{{ broken: [unclosed\n';
+    writeFileSync(profilePath, broken, 'utf-8');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      ensureProfileDefaults(tmpDir);
+      // 告警含文件路径
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(profilePath));
+    } finally {
+      warnSpy.mockRestore();
+    }
+
+    // 文件字节不变（未被默认值整体覆写）
+    expect(readFileSync(profilePath, 'utf-8')).toBe(broken);
+    // readProfile 标记 parseError
+    expect(readProfile().parseError).toBeTruthy();
+  });
+
+  it('#8 顶层非对象标记 parseError', () => {
+    const profilePath = join(tmpDir, '.config', 'openfeel', 'profile.yaml');
+    mkdirSync(join(tmpDir, '.config', 'openfeel'), { recursive: true });
+    writeFileSync(profilePath, '- just\n- a list\n', 'utf-8');
+
+    const profile = readProfile();
+    expect(profile.parseError).toBeTruthy();
+    expect(profile.user!.lang).toBe('zh-CN');
+  });
+});
+
+// ═══════════════════════════════════════
 // getConfigValue & setConfigValue
 // ═══════════════════════════════════════
 

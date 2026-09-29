@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command, CommanderError } from 'commander';
 import { registerConfigCommand } from '../../src/commands/config.js';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -130,6 +130,31 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(stderr()).toMatch(/(未知配置键|Unknown config key)/);
     expect(stdout()).not.toContain('bogus');
+  });
+
+  it('config set --global 遇非法 profile.yaml → 拒绝覆盖（exit 1，文件字节不变）', async () => {
+    // stage-48 op-005 遗留 #8：非法 profile 不得被整体覆写
+    const dir = join(tmpDir, '.config', 'openfeel');
+    mkdirSync(dir, { recursive: true });
+    const broken = '{{{{ broken: [unclosed\n';
+    writeFileSync(join(dir, 'profile.yaml'), broken, 'utf-8');
+    // 还原真实终止语义：process.exit 抛哨兵，避免 mock no-op 后继续执行
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', 'preferences.auto_advance', 'enabled', '--global']);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toMatch(/profile/);
+    // 文件字节不变（未被覆盖）
+    expect(readFileSync(join(dir, 'profile.yaml'), 'utf-8')).toBe(broken);
   });
 
   it('画像兜底：项目无 auto_advance 声明 + 画像 enabled → 来源 profile.yaml', async () => {

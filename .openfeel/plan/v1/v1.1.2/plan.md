@@ -167,6 +167,8 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | [stage-46](#stage-46部署覆盖前自动备份) | 部署覆盖前自动备份 | 写前备份到 `~/.openfeel/backup/{ts}/` + `update_infos.md` 新增「备份」类 + `feel.md` 检查规则（B1~B9） | P1 | hard: stage-45 | 1 新增源码 + ~5 修改 + 文档 + 测试 |
 | [stage-47](#stage-47已登记缺陷集中清理) | 已登记缺陷集中清理 | 14 项已登记缺陷逐条裁定（11 修）+ 翻转清单 + 强隔离回归 | P0 | hard: stage-46 | ~13 源码/模板 + ~2 文档 + ~8 测试 |
 | [stage-43](#stage-43cli-文档-skill-化与版本收口) | CLI 文档 skill 化与版本收口 | 新 skill + 文档 + 版本 1.1.2 + 全量回归 | P0 | hard: stage-41、stage-47；soft: stage-42、stage-44、stage-45、stage-46 | 1 新增 skill + ~6 文档 + 版本 8 处 |
+| [stage-48](#stage-48事件加固--遗留问题修复) | 事件加固 + 遗留问题修复 | 三大事件机制加固（审查纪律/测试隔离+CI 守卫/执行口径+版本门禁）+ 13 项遗留清理 | P1 | hard: stage-43 | ~12 文件 + CI + manual/kb + 测试 |
+| [stage-49](#stage-49整仓全量审查) | 整仓全量审查 | 8 单元 × 6 维度全仓审查 → 报告 + REV + 修复流转（纯审查，默认不改源码） | P1 | hard: stage-48 | 8 报告 + 8 REV + 汇总（9 op） |
 
 ### 依赖图
 
@@ -182,18 +184,26 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
        │                                                                         ▼
        │                                                          stage-47（缺陷集中清理）
        │                                                                         │
-       └───────────────── hard ──────────────────────────────────────── soft ────┴─→ stage-43（终点）
+       └───────────────── hard ──────────────────────────────────────── soft ────┴─→ stage-43（版本终点）
+                                                                                       │
+                                                                                     hard
+                                                                                       ▼
+                                                                        stage-48（事件加固 + 遗留修复）
+                                                                                       │
+                                                                                     hard
+                                                                                       ▼
+                                                                        stage-49（整仓全量审查 · 收尾）
 ```
 
 ### 推荐执行顺序
 
-**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43**。
+**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49**。
 
 **理由**：
 - stage-41 与 stage-42 均修改 `src/core/flow-manager.ts` 与 `src/i18n-data/{zh-CN,en}.ts`，顺序执行避免同文件冲突。
-- **stage-44 → 45 → 46 → 47 强制串行**：44/45 均改 `src/core/templates-data/opencode/agents/**`；45/46 均改 `src/core/{init,setup,update}.ts` 与 `global-paths.ts`；**46/47 均改 `src/core/init.ts` 与 `flow-manager.ts`**（47 的 `config/BUG-002` 语义修复与 46 的备份接入点存在交互）。串行避免同文件写冲突。
-- **stage-47 先于 stage-43**：缺陷清理须在版本收口前完成，使发布无遗留脏点（含 `lint kb` 零错误、`config/BUG-002` high 收口）。
-- **stage-43 为版本终点**（版本收口必须最后）。
+- **stage-44 → 45 → 46 → 47 强制串行**：44/45 均改 `src/core/templates-data/opencode/agents/**`；45/46 均改 `src/core/{init,setup,update}.ts` 与 `global-paths.ts`；46/47 均改 `src/core/init.ts` 与 `flow-manager.ts`。串行避免同文件写冲突。
+- **stage-47 先于 stage-43**：缺陷清理须在版本收口前完成，使发布无遗留脏点。
+- **stage-43 为版本终点**（版本收口），**用户决定继续 v1.1.2**（不新建版本）→ 在 43 之后追加 **48（事件加固 + 遗留修复）→ 49（整仓全量审查）**；49 为收尾（纯审查），其非阻塞修复项按流转归后续补丁阶段或归档官。
 
 ---
 
@@ -451,6 +461,76 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 
 ---
 
+## stage-48：事件加固 + 遗留问题修复
+
+> **硬性前置**：stage-43（已 done；本阶段修改其创建的 skill 权威源与已收口版本号，**不改版本号**）。**下游**：stage-49。
+> **详细计划**：`.openfeel/plan/v1/stage-48/plan.md`。
+> **定位**：三大过程事件机制加固 + 13 项遗留清理。
+
+### 关键裁定（H1~H11）
+
+- **H1/H2**：审查纪律**入 reviewer agent 模板**（双语），四条——①工具异常即中止并如实报告；②可疑历史结论不得继承、须独立取证；③关键事实以命令行取证为准；④结论须「命令 + 版本 + 环境」第三方可复现。
+- **H3**：REV「可信度声明」规范入 manual + kb，**保留原文不删**。
+- **H4**：Feel 侧**审查会话健康探测**建议纳入（首轮最小工具自检，异常即重开会话）。
+- **H5**：`flow.test.ts`/`plan.test.ts` 补 `vi.mock('node:os')` + **CI 环境哈希守卫** + kb/patterns 反例。
+- **H6**：`ensureGlobalConfig` **不加** `NODE_ENV==='test'` 类守卫（生产代码不分支测试环境）——仅评估。
+- **H7/H8**：执行型指引统一 `node bin/openfeel.js <cmd>`（查询型保留 `openfeel` + 加注）；CI 增版本一致性断言 + `lint i18n`。
+- **H9**：`bin/openfeel.js` 全局旧版告警**判定不做**（可选增强，理由见 stage-48 §六 R5）。
+- **H10**：455 条死映射**执行清理**（脚本 + 隔离副本验证 + 备份 + 复核）。
+- **H11**：REV 状态滞后项**仅提请审查官同步**（planner 不自行改状态）。
+
+### 任务清单（op 级）
+
+| op | 主题 | 说明 | 涉及文件 |
+|----|------|------|----------|
+| op-001 | 事件 A：审查纪律 + 可信度规范 | reviewer/feel 模板双语新增纪律节 + manual/kb 规范 + build | `agents/{zh-CN,en}/{openfeel-reviewer,feel}.md`、`template-loader.ts`、`.opencode/agents/*`、manual、kb |
+| op-002 | 事件 B：隔离 + CI 守卫 | 两测试补 `vi.mock('node:os')`；ci.yml 环境快照守卫；kb 反例；H6 结论 | `test/commands/{flow,plan}.test.ts`、`.github/workflows/ci.yml`、kb |
+| op-003 | 事件 C：口径 + 版本门禁 | 执行型指引统一；ci.yml 版本一致性 + `lint i18n`；H9 结论 | skill 权威源、`AGENTS.md`、`manual/cli/*`、ci.yml |
+| op-004 | 遗留批：i18n + 措辞 + REV 提请 | `flow phases --json` help 文案（i18n 真源）；`agents-md:115`/`AGENTS.md:122` 补「平台默认 ask」限定；5 处 REV 状态提请 | `i18n-data/*`、`commands/flow.ts`、`agents-md/*`、`AGENTS.md`、REV 文件（不改状态） |
+| op-005 | profile.yaml 健壮性 | 子 Schema `.passthrough()`（#7）；非法 YAML 不覆盖 + 记异常（#8） | `src/core/config.ts` |
+| op-006 | 455 条死映射清理（#13） | 一次性脚本 + 隔离副本验证 + 备份 + 执行 + 复核 | `.openfeel/tmp/*.mjs`、真实 `~/.openfeel/config.json` |
+| op-007 | 测试与全量回归 | 新增/调整测试 + 隔离 HOME + 全量 | 测试文件 |
+
+### 完成标准
+
+- 事件 A/B/C 加固落地（模板纪律双语、隔离补齐 + CI 守卫、口径统一 + 版本门禁），H6/H9 结论记录。
+- 13 项遗留按分派处置；455 死映射清零且有备份；REV 状态行由审查官同步（本阶段仅提请）。
+- `npm run build && npm test` 全绿；`lint i18n`/`lint kb` 零错误；全程隔离 HOME。
+
+---
+
+## stage-49：整仓全量审查
+
+> **硬性前置**：stage-48。**定位**：**纯审查阶段**（默认不改源码），范围**不限 v1.1.2**。
+> **详细计划**：`.openfeel/plan/v1/stage-49/plan.md`。
+
+### 审查分区（8 单元 + 汇总）
+
+| 单元 | 领域 | 核心必查 |
+|:--:|------|----------|
+| U1 | 核心流水线 `flow-manager` | 状态机/并发/存量数据健壮性/日志覆盖 |
+| U2 | CLI 命令层 | help vs 行为/退出码/dry-run·force 一致性/i18n 覆盖/三入口 |
+| U3 | 配置与画像 | 级联来源正确性/profile 读写安全/全局状态文件锁 |
+| U4 | 模板·agent·skill | 单源与双注入断言/双语/frontmatter vs schema/受管区 |
+| U5 | 测试体系 | **全量逐一**核对隔离/伪隔离反例/断言有效性 |
+| U6 | 文档·手册·kb | 文档-实现对齐/kb 时效与 `lint kb`/历史归档只读 |
+| U7 | 构建与发布 | build 幂等/CI 充分性/pack 内容/依赖一致性 |
+| — | 汇总（op-008） | 报告 + REV 索引 + **修复流转裁定** |
+
+### 审查总则（要点）
+
+- 六维度：正确性 / 一致性 / 文档-实现对齐 / 边界与健壮性 / 安全面 / 过度设计。
+- 取证：`命令 + 工具版本 + 环境` 三要素；命令行取证优先（H2）。
+- 隔离：任何实测不得触碰真实全局目录与仓库 `config.yaml`。
+- 流转：`blocking` → 当阶段修；其余 → 后续补丁阶段 / 归档官；历史归档只读。
+
+### 完成标准
+
+- 8 单元报告 + REV 全覆盖；汇总报告 + 公共摘要 `code_review/stage-49.md`；**8 个单元 REV 已登记 `code_review/index.md`**；`blocking` 项有明确去处（本阶段修复或论证改判）。
+- 审查过程环境哈希前后一致；未回改历史归档；全量回归保持全绿。
+
+---
+
 ## 七、测试策略
 
 | 验证点 | 阶段 | 方式 |
@@ -534,6 +614,8 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | M2.7 部署前备份 | stage-46 done | 写前备份到 `~/.openfeel/backup/{ts}/`；`update_infos.md`「备份」类；`feel.md` 检查规则 |
 | M2.8 缺陷集中清理 | stage-47 done | 11 项已登记缺陷修复（含 `config/BUG-002` high 语义修复）+ 翻转清单同步 + 发布前全量回归绿 |
 | M3 skill 化与发布 | stage-43 done | `openfeel-cli-usage` skill（全局可部署）、文档/手册同步、版本 1.1.2 **全部载体一致（清单见 §3.1）**、`config/BUG-004` 测试隔离修复、`npm test` 全绿 |
+| M4 事件加固与遗留清零 | stage-48 done | 审查纪律/可信度规范入模板；测试隔离补齐 + CI 环境守卫；执行口径统一 + CI 版本门禁；13 项遗留清零（含 455 死映射） |
+| M5 整仓审查 | stage-49 done | 8 单元审查报告 + REV + 汇总；blocking 项闭合；基线全绿 |
 | **v1.1.2 发布** | 全部 done | `npm publish` 就绪 + `CHANGELOG.md` 更新 |
 
 ---
@@ -551,7 +633,9 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 文档/手册 | ~6 | `docs/commands.md`、`manual/cli/commands.md`、`manual/core/plan-path.md`、`AGENTS.md`、`.openfeel/dev/dev_core.md`、`.openfeel/adapters/README.md`、`README{,.zh-CN,.en}.md`、`CHANGELOG.md`、`.openfeel/manual/**` |
 | i18n 键 | ~15 新增 + ~14 文案泛化 | 三个新命令 + 校验提示 + deprecated 提示（42/41）；i18n 平台表述泛化（45，zh `:438,442,573,634,636,653,654` / en `:418,421,540,601,603,620,621`） |
 | 测试 | ~12 文件 | path/stage/flow-manager/config/template-loader/update/setup/opencode-instance/global-paths + **NEW `backup.test.ts`**（46）+ `update-infos.test.ts`（46）+ **stage-47 翻转清单**（`init.test.ts:165/:191` 等） |
-| 版本 | **8 处必改 + 生成段 + 传播** | 见 §3.1：`package.json:3`、`.openfeel/config.yaml:7`、`config.ts:308`/`:365`、`agents-md/{zh-CN,en}.md:130`（权威源）、`AGENTS.md:136`、`package-lock.json:3/:9`；`npm run build` 重生成 `template-loader.ts:2798/:3240`；`openfeel setup/update` 重传播全局 AGENTS.md |
+| 版本 | **8 处必改 + 生成段 + 传播** | 见 §3.1（A5/A6=`agents-md/{zh-CN,en}.md:141`、A7=`AGENTS.md:145`、B=`template-loader.ts:2833/:3286`；A8 `package-lock` 1.0.7 漂移仍在）；`npm run build` 重生成；`openfeel setup/update` 重传播全局 AGENTS.md |
+| 阶段 48 加固/遗留 | 7 op（13 项遗留编号化清单见 stage-48 §一） | 模板纪律（reviewer/feel 双语）+ manual/kb 规范；测试隔离补齐 + CI 环境守卫；执行型口径统一 + CI 版本门禁 + `lint i18n`；i18n help 文案 + 权限措辞精化 + 5 处 REV 状态提请；profile.yaml 子 Schema passthrough + 非法 YAML 不覆盖；455 死映射清理（脚本+备份） |
+| 阶段 49 审查 | 9 op | 8 单元审查报告 + 8 REV + 汇总报告 + 公共摘要 + index 登记；修复流转裁定 |
 
 > 本计划引用知识库多条既有条目；完成后须由 openfeel-archiver 沉淀：「CLI 命令文档 skill 化模式」「阶段移除的安全校验与 current 兜底模式」「配置级联有效值与来源暴露模式」，并更新 `manual/cli/commands.md` + `manual/core/plan-path.md`。
 
@@ -575,5 +659,8 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 2026-09-29 | openfeel-planner | 用户需求「stage-47 已登记缺陷集中清理」 | **新增 stage-47**：14 项缺陷逐条裁定（11 修 / 归属 / 已修复待关闭）+ op-001~007 + 翻转清单；阶段概览/依赖图/执行顺序更新为 **41 → 42 → 44 → 45 → 46 → 47 → 43**；里程碑 M2.8；测试策略新增缺陷清理行 |
 | 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-47 REV-001~003 | stage-47 节 op-003 补「删除 stage-46 的 `config.yaml` 备份接入块 + 同步 manual」（REV-002）；计划 §九 并行组更正、op-006 行号更正 `:438`、`flow-manager.test.ts:2786` 翻转为 `toBeUndefined()`（REV-001/003） |
 | 2026-09-29 | openfeel-planner | 用户新增需求（`config/BUG-004` 纳入 stage-43；复核 §3.1 清单与 REV 状态） | **§3.1 行号复核更新**（A5/A6 `:130`→`:141`、A7 `:136`→`:145`、B `:2798/:3240`→`:2833/:3286`；A8 漂移仍在；D 行号改「示意/按内容判定」；E 澄清为「无版本号载体」）；`:24` 文本改为 §3.1 引用；stage-43 节新增 op-004（BUG-004）/op-005（复核闭环）；里程碑 M3 同步 |
+| 2026-09-29 | openfeel-planner | 用户需求「v1.1.2 追加 stage-48/49（继续 v1.1.2，不新建版本）」 | 阶段概览新增 stage-48（事件加固 + 13 项遗留）/ stage-49（整仓全量审查）；依赖图与执行顺序追加 `43 → 48 → 49`；新增两节摘要（H1~H11 裁定、7 审查单元）；里程碑 M4/M5；变更汇总补两行 |
 
 > 三处核心裁定保持不变：① #5 全局画像仅作最低优先级兜底；② #6 只修 `pipeline.phase` 全量 done 判定、不做 `current` 回退；③ 技能源为扁平单文件（16 个 `{name}/SKILL.md`）、无 `{lang}`、无 `NEW_SKILL_NAMES`。
+
+| 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-48/49 计划审查（REV-001~003/001~003） | **stage-48**：13 项遗留**编号化清单**入 §一（#1~#13 ↔ op）；op-006 匹配式改**末段匹配** + 断言删除数 455/剩余 0；基线 693→**694**；CI 版本断言明确**两 job**；新增 **H12「可疑会话产出降级」**；op-003 ① 改**全仓扫描式**；op-005 ② **定案**用 parseError+跳过写回（不引入 update-infos 依赖）。**stage-49**：**新增 U8「部署与更新链路」**（MECE 补缺）+ 覆盖矩阵 + U5/U8 边界；op 扩为 001~008 单元 + 009 汇总；新增 index 登记与「先广度后深挖」分层策略 |

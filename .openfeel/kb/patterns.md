@@ -2353,6 +2353,16 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 > **更新于 2026-09-29**：第 4 条末尾「`config.yaml` 则无守卫」**已过时**——`config/BUG-002` 语义修复（stage-47 op-003）后，`init` 对已存在的 `.openfeel/config.yaml` 不再调用 `writeDefaultConfig`（入 `skipped` 提示），`writeDefaultConfig` 亦在注释中声明「调用方须先守卫」；即**命令行为层 + 测试隔离层双防线**（原先同链路还有第二个守卫缺口：`identity.test.ts` 以保存/恢复模式直写真实 `~/.openfeel/config.json`，见 kb/troubleshooting.md #测试以保存恢复模式代替 homedir mock）。
 
+## [+] 测试全局路径隔离模式（禁用保存/恢复伪隔离） (2026-09-29)
+
+**必须**：凡触碰全局路径的测试一律 `vi.mock('node:os', …)`（N4 单点，`global-paths` 是唯一 `homedir` 消费点）——用 `vi.hoisted` 建 `mockHome.dir`，`beforeEach` 指向 `mkdtempSync`，`afterEach` 删除；mock 回调保留 `...actual`，避免连带隔离 `tmpdir` 等其它 `os` API。
+
+**禁止**：以「保存 → 写入 → 事后恢复」替代隔离——mtime 已被改写、进程强杀残留、并发脏读，且恢复失败即造成真实环境损坏（伪隔离）。
+
+**反例来源**：`init.test.ts`（stage-42 op-005）、`identity.test.ts`（BUG-004）、`flow.test.ts`/`plan.test.ts`（stage-48 事件 B：`initProject` → `ensureGlobalConfig()` 在全局 `~/.openfeel/config.json` 不存在时会**条件写**真实全局文件，本机因文件已存在未触发，CI/新开发者环境必然触发）。
+
+**参见：** v1.1.2-stage-48 op-002、`REV-v1.1.2-stage-48`。
+
 ## [+] 隔离 HOME 实测 opencode 行为的方法：双设 HOME/USERPROFILE + debug paths 断言 + 零污染核对 (2026-09-29)
 
 **适用**：需确证 opencode 配置 / 权限 / 加载行为的**真实生效值**时，**禁止**在真实 `~/.config/opencode/` 上试验（stage-37 / 41 / 44 均用此法）。

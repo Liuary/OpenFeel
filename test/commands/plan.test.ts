@@ -3,6 +3,15 @@
  * 测试 openfeel plan stage add|list 和 scheme create|list 的 CLI 行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// N4 单点隔离（stage-48 op-002 / 事件 B）：homedir → 临时目录
+// 根因：initProject → ensureGlobalConfig() 在全局 ~/.openfeel/config.json 不存在时会写真实全局文件（CI/新开发者）
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
+
 import { Command, CommanderError } from 'commander';
 import { registerPlanCommand } from '../../src/commands/plan.js';
 import { initProject } from '../../src/core/init.js';
@@ -20,6 +29,8 @@ describe('plan 命令', () => {
   let exitMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    // mock HOME 指向临时目录，确保 initProject 的全局配置写入不触碰真实 ~/.openfeel/
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-plan-home-'));
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-plan-test-'));
     // 初始化工作区
     await initProject(tmpDir);
@@ -41,6 +52,7 @@ describe('plan 命令', () => {
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
     logMock.mockRestore();
     errorMock.mockRestore();
     cwdMock.mockRestore();

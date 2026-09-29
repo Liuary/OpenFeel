@@ -16,7 +16,37 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
+      - name: Env snapshot (before test)
+        run: |
+          snapshot() {
+            for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel"; do
+              key=$(echo "$d" | tr '/' '_')
+              if [ -e "$d" ]; then
+                find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort > "$RUNNER_TEMP/snap_before_$key"
+              else
+                echo "ABSENT" > "$RUNNER_TEMP/snap_before_$key"
+              fi
+            done
+          }
+          snapshot
       - run: npm test -- --reporter=verbose
+      - name: Env guard (after test — must be unchanged)
+        run: |
+          # 环境守卫（stage-48 op-002 / 遗留 #12）：测试前后比对全局目录，防止静默覆写真实环境
+          fail=0
+          for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel"; do
+            key=$(echo "$d" | tr '/' '_') ; f="$RUNNER_TEMP/snap_after_$key"
+            # 存在性分支：目录不存在时记 ABSENT（ABSENT→ABSENT 视为通过，避免 ubuntu runner 误报）
+            if [ -e "$d" ]; then
+              find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort > "$f"
+            else
+              echo "ABSENT" > "$f"
+            fi
+            if ! diff -u "$RUNNER_TEMP/snap_before_$key" "$f" >/dev/null; then
+              echo "::error::环境被测试改动：$d"; diff -u "$RUNNER_TEMP/snap_before_$key" "$f" || true; fail=1
+            fi
+          done
+          exit $fail
 
   publish:
     needs: build-and-test

@@ -1,0 +1,162 @@
+# stage-48 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-48
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-43
+    type: hard
+    status: satisfied
+    reason: "本阶段修改 stage-43 创建的 skill 权威源（openfeel-cli-usage / openfeel-wizard），并基于其已收口的版本号 1.1.2（本阶段不做版本号变更）"
+  - before_stage: v1.1.2-stage-49
+    type: hard
+    reason: "49 为整仓全量审查；须待本阶段提供稳定基线（隔离纪律落地 / CI 守卫 / 文档口径统一）"
+
+# 【阶段性质提示】
+# 事件加固（A 审查幻觉 / B 测试覆写真实环境 / C 裸跑旧版）+ 13 项遗留清理；继续 v1.1.2，不改版本号。
+# 唯一操作真实用户环境的 op = op-006（455 死映射清理，四步保护 + 备份）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "事件 A 审查官幻觉加固（reviewer 四条纪律、可信度规范、feel 健康探测）"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/template-loader.ts            # 生成段（build 重生成）
+      - .opencode/agents/*                     # 自举（构建产物）
+      - .openfeel/manual/core/code-review.md   # 新建
+      - .openfeel/manual/index.md
+      - .openfeel/kb/patterns.md
+    deps: []
+    notes: "H1~H4/H12 + REV-48-005；模板双语同步；须 npm run build"
+
+  op-002:
+    file: op-002.md
+    title: "事件 B 测试隔离补齐与 CI 环境守卫（flow 与 plan 测试、kb 反例）"
+    produces:
+      - test/commands/flow.test.ts
+      - test/commands/plan.test.ts
+      - .github/workflows/ci.yml               # 环境守卫 step
+      - .openfeel/kb/patterns.md
+    deps: []
+    notes: "遗留 #11/#12 + H5/H6；与 op-003 同改 ci.yml → 串行"
+
+  op-003:
+    file: op-003.md
+    title: "事件 C 执行口径统一与 CI 版本门禁"
+    produces:
+      - src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-wizard/SKILL.md
+      - AGENTS.md
+      - .openfeel/manual/cli/*.md
+      - src/core/update.ts                     # SKILL_DEFINITIONS 生成段（build 重生成）
+      - src/core/template-loader.ts            # 生成段（build 重生成）
+      - .opencode/skills/*                     # 自举（构建产物）
+      - .github/workflows/ci.yml               # 版本断言 ×2 + lint i18n step
+    deps:
+      - op: op-002
+        type: hard
+        reason: "同改 .github/workflows/ci.yml → 必须串行（op-002 先落地环境守卫，op-003 再改版本断言/门禁）"
+    notes: "遗留 #9/#10 + H7/H8/H9 + REV-48-004/006；全仓扫描兜底"
+
+  op-004:
+    file: op-004.md
+    title: "遗留批：i18n 补键与权限措辞精化、REV 状态提请"
+    produces:
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/commands/flow.ts                   # --json fallback 文案
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/template-loader.ts            # AGENTS_MD_TEMPLATES 生成段（build 重生成）
+      - AGENTS.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-44.md   # 提请行（不改状态）
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-46.md   # 提请行（不改状态）
+    deps:
+      - op: op-001
+        type: soft
+        reason: "模板 build 已落地，避免生成段行号混乱"
+      - op: op-003
+        type: soft
+        reason: "同上（skill/agents-md 生成段）"
+    notes: "遗留 #1~#6 + H11；REV 状态由审查官同步，本 op 仅提请"
+
+  op-005:
+    file: op-005.md
+    title: "profile.yaml 健壮性（子 Schema passthrough、非法 YAML 不覆盖）"
+    produces:
+      - src/core/config.ts
+      - src/commands/config.ts                 # set --global 的 parseError 守卫
+    deps: []
+    notes: "遗留 #7/#8 + REV-48-007（parseError + 跳过写回 + console.warn；禁引入 config.ts→update-infos.ts 依赖边）"
+
+  op-006:
+    file: op-006.md
+    title: "455 条死映射清理（脚本、隔离副本验证、备份、复核）"
+    produces:
+      - .openfeel/tmp/clean-dead-lang-mappings.mjs   # 一次性脚本（不入 src / npm files）
+    deps: []
+    notes: "遗留 #13 + H10 + REV-48-002；末段匹配 + 删除数断言 455 + 四步保护；唯一操作用户真实环境"
+
+  op-007:
+    file: op-007.md
+    title: "全量回归"
+    produces:
+      - test/core/config.test.ts
+      - test/core/i18n.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/opencode-instance.test.ts
+      - test/core/setup.test.ts
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+      - op: op-004
+        type: hard
+      - op: op-005
+        type: hard
+      - op: op-006
+        type: hard
+    notes: "统一 build + 全量回归（≥41 文件 / ≥694 用例）+ 双 lint + 环境隔离核对"
+
+mutual_exclusions:
+  - group: [op-002, op-003]
+    reason: "同改 .github/workflows/ci.yml（环境守卫 step vs 版本断言 + lint i18n step）→ 必须串行"
+  - group: [op-001, op-003, op-004]
+    reason: "三者均经 `npm run build` 重写 src/core/template-loader.ts / update.ts 生成段（agents 纪律 / skill 口径 / agents-md 措辞）→ 禁止并发 build"
+
+parallel_groups:
+  - group: [op-001]
+    desc: "事件 A（模板纪律 + manual/kb）"
+  - group: [op-002]
+    desc: "事件 B（测试隔离 + CI 环境守卫）"
+  - group: [op-003]
+    desc: "事件 C（口径统一 + CI 版本门禁）——须在 op-002 后（同改 ci.yml）"
+  - group: [op-005]
+    desc: "profile 健壮性（与 A/B/C 无文件交集）"
+  - group: [op-004]
+    desc: "遗留批（依赖 op-001/op-003 的 build 已落地）"
+  - group: [op-006]
+    desc: "455 清理（与代码改动零交集，可随时执行）"
+  - group: [op-007]
+    desc: "收尾：全量回归"
+
+recommended_order:
+  - op-002
+  - op-003
+  - op-001
+  - op-005
+  - op-004
+  - op-006
+  - op-007
+rationale: "plan §七：op-001/002/003/005 可并行（其中 op-002→op-003 因同改 ci.yml 串行）；op-004 依赖 op-001/003 的 build 落地后统一改文案；op-006 独立可随时执行；op-007 最后统一回归。"

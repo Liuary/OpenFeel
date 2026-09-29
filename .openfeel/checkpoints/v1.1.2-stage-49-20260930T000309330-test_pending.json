@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-29T16:08:29.611Z",
-    "revision": 292
+    "updated": "2026-09-29T16:03:09.083Z",
+    "revision": 288
   },
   "pipeline": {
     "phase": "active",
@@ -1342,8 +1342,8 @@
     },
     "v1.1.2-stage-49": {
       "name": "v1.1.2-stage-49",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "test_pending",
+      "status": "review_passed",
       "deps": [],
       "ops": {
         "op-001": {
@@ -8066,36 +8066,6 @@
         "stageName": "v1.1.2-stage-49",
         "from": "review_pending",
         "to": "review_passed"
-      }
-    },
-    {
-      "time": "2026-09-29T16:03:09.351Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "review_passed",
-        "to": "test_pending"
-      }
-    },
-    {
-      "time": "2026-09-29T16:08:29.311Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "test_pending",
-        "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-09-29T16:08:29.611Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "test_passed",
-        "to": "archiving"
       }
     }
   ]

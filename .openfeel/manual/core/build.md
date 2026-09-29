@@ -39,8 +39,16 @@
 
 置于 `npx tsc` 之后（`await import('./dist/core/fs/atomic-write.js')` 复用 stage-35 原子写），从权威源重生成 `.opencode/{agents,skills,instructions/core.md,ADAPTER.md}` 并插入生成物标记；采用「清空旧名残留目录 → 全量重写」策略（`rmSync` 而非 `git rm`，因 build 运行时无 git 依赖）。
 
+## 发布元数据与死导出清理（v1.1.2-stage-49）
+
+整仓审查（U7）发现两条**发布门禁**缺陷，随本阶段修复：
+
+- **B3 随包 `postinstall` 失效**：`scripts/patch-inquirer.js` 用 `rootDir=resolve(__dirname,'..')` 假设包根同级 `node_modules`，用户端依赖提升后目标多一层 → 实测「文件不存在，跳过」×2、**EXIT=0 静默**；且本包 `engines >=20.0.0` 放行 `@inquirer/core@11.2.1` 不支持的 20.0~20.16。**处置＝删除** `postinstall` 与 `scripts/patch-inquirer.js`、`files` 去 `scripts`、`engines` 收紧 `>=20.17.0`（`util.styleText` 自 Node 20.12 起内置，合法区间内补丁不必要）。包内 `.npmrc` 的 `engine-strict` 对消费者无效，故不加。
+- **B4 `src/index.ts` `VERSION` 死导出**：值为 `0.1.0`（与 `package.json` 1.1.2 漂移）、全仓零引用、经 `exports["."]` 对外暴露错误版本 → **删除**（非同步）+ `npm run build` 重生成 `dist`（步骤 3 `npx tsc`），`CHANGELOG` 记 Fixed。`dist/` 为 gitignore 构建产物，不入库；**`npm pack` 产物 259 文件**（无 `scripts/`，含 `dist`/`bin`/`schemas`）。
+
 ## 变更历史
 
 | 阶段 | 变更 |
 |------|------|
 | stage-36 | 源路径改指单源 + 删除 6 死常量 + 行尾归一 + `.gitattributes` + 单源一致性断言 + 步骤 8 自举重生成（生成物标记） |
+| stage-49 | 发布元数据清理（B3：删随包 `postinstall` + `scripts/patch-inquirer.js` + `files` 去 `scripts` + `engines >=20.17.0`；B4：删 `src/index.ts` `VERSION` 死导出 + dist 重建） |

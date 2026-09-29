@@ -2644,3 +2644,78 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 **本地验证法**（GH Actions 无法本地实跑）：① `node -e "require('yaml').parse(...)"` **YAML 语法自检**；② 把守卫逻辑**逐字抽取**为脚本，在隔离路径演练 6 场景（全 ABSENT / 未变 / 改内容 / 新增 / 删目录 / 仅 touch）；③ 真实 runner 行为留交接项，推送 PR 后由 CI 实测。
 
 **参见：** v1.1.2-stage-48 op-002、`test-v1.1.2-stage-48-report-2026-09-29.md` §三 B-4/B-5、`REV-v1.1.2-stage-48` REV-009（覆盖窗口观察）、kb/patterns.md #全局路径测试的单点 mock 隔离模式、kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock（隔离审计四步法）
+
+## [+] 整仓全量审查的单元划分与覆盖矩阵方法：以 src/**/*.ts 全量映射保证 MECE (2026-09-30)
+
+**适用**：对整个仓库做一次系统审查（不限当前版本），须证明「无遗漏、不重复」（v1.1.2-stage-49，8 单元）。
+
+**做法**：先 `Get-ChildItem src -Recurse -Filter *.ts` **实测**总数（62），再按职能把源码切成**纵切单元**（U1 核心流水线 18 / U2 CLI 命令层 23 / U3 配置画像 7 / U4 模板·agent·skill 2 / U8 部署更新链路 12）+ **横切单元**（U5 测试 / U6 文档·手册·kb / U7 构建与发布），输出「**全量映射自检表**」逐单元列文件清单并验证 `18+23+7+2+12 = 62` 全覆盖无重复。
+
+**要点**：① 横切（测试隔离/文档对齐/构建发布）与纵切（源码正确性）在报告中**互相引用**，同一文件被两单元触及时**切分边界**（如 `update.ts` 的**生成段**归 U4、**逻辑函数**归 U8）；② 计划审查阶段先核 MECE——stage-49 计划审查即因「部署与更新链路（update/setup/migrate/backup/managed-region）无单元归属」判 **blocking**，补出 U8；③ 覆盖矩阵漏点的**收口数字以实测为准**（REV-49-004 原文称 59，实测 62，以实测为准并补 4 个漏网文件）。
+
+**收益**：62 文件全覆盖，原始发现 73 条、blocking 仅 4 条（5.5%），无架构级返工项。
+
+**参见：** v1.1.2-stage-49、`REV-v1.1.2-stage-49` REV-001/004、`REV-v1.1.2-stage-49-U1..U8`、`v1.1.2-stage-49-全量审查总报告.md`
+
+## [+] 全量审查的发现分类与流转裁定：blocking 当阶段 / 非阻塞补丁 / 文档归归档官 / 历史只读 (2026-09-30)
+
+**适用**：审查发现量大（stage-49 去重后 68 条）时，须一次性把每条**明写去处**，否则「发现堆积、无人承接」（v1.1.2-stage-49 裁定表）。
+
+**四类流转**：① **blocking** → 本阶段新增修复 op 承接（blocking 判据＝可复现的**契约违反**或**数据缺陷**，如 `--dry-run` 违反 help 承诺写盘 / 悬空依赖静默入库 / 发布门禁失真）；② **non-blocking 代码/测试类** → 归后续补丁阶段，**建议按「内部模式一致性」分批打包**（op 分割写法统一 / 守卫收口 / 错误处理模式）而非零散修改；③ **文档/手册/kb 类** → 归 **openfeel-archiver**（归档阶段直接修，涉及生成段的须 `npm run build` 同步）；④ **历史归档勘误**（`CHANGELOG` / `docs/phase-*` / kb 历史条目）→ **只注记不改原文**。
+
+**去重与矛盾裁定**：跨单元重复发现**合并**并记编号映射（M1~M5，如 VERSION 死导出 U2+U7 合并、CI 守卫 U5+U7 合并）；同一主题**跨单元矛盾**须显式裁定谁为准——stage-49 中 U4 全量扫描（skill 部署口径 34 行违规）vs U6 抽查宣称「零残留」，**以 U4 为准**（U6 仅抽查了恰好带加注的 2 个 skill，抽样面偏差）。
+
+**不修项**：设计取舍（如锁双文件共用已文档化）、低收益观察项（eslint IDE-only）明确「**不修并附理由**」，避免「为闭环而改」。
+
+**参见：** v1.1.2-stage-49、`v1.1.2-stage-49-全量审查总报告.md` §二/§五、`REV-v1.1.2-stage-49-U4`/`U6`
+
+## [+] 全量审查的结论复核纪律：blocking 逐条独立复现 + 非阻塞随机抽验 (2026-09-30)
+
+**适用**：审查官（异种模型）产出大量结论，**不得直接采信**为真再流转（v1.1.2-stage-49 op-009 汇总会话）。
+
+**两条纪律**：① **blocking 逐条独立复现**——汇总会话用**隔离 fixture**（仓库外临时目录 + 隔离 HOME）对每条 blocking 重新构造并实测，不继承单元报告的「已成立」结论（stage-49 实测 4/4 成立：dry-run 前后 revision 2→3 / `--deps stage-99` EXIT=0 / postinstall 用户端布局模拟「文件不存在，跳过」×2 / `VERSION in exports` 全仓零引用）；② **非阻塞随机抽验**——随机抽若干条（如 6 条）独立核对，以样本可信度推断报告整体质量（U6「零残留」结论即由 U4 全量扫描推翻，属抽样偏差）。
+
+**配套**：每条结论附「命令 + 版本（node/opencode）+ 环境（OS/仓库 HEAD）」三要素；REV 文件加**可信度声明**且原文**保留不删**（可在后追加复核结论）；审查会话**工具调用异常即中止**（不臆造/续写）、可疑历史结论不继承。U8 审查中「真实路径即席实测遗漏隔离 env」的过程偏差**如实留痕 + 给整改要求**（写类实测前打印目标绝对路径并断言不含真实用户前缀）。
+
+**参见：** v1.1.2-stage-49 op-009、`v1.1.2-stage-49-全量审查总报告.md` §一.2/§七、kb/patterns.md #REV 可信度声明与独立复核、kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock
+
+## [+] --dry-run 必须字节级不写盘：含连带写盘点（autoRepair/checkpoint/log） (2026-09-30)
+
+**适用**：任何声明「仅验证不执行修改」的 `--dry-run`（v1.1.2-stage-49 B1，`flow advance --dry-run`）。
+
+**契约**：dry-run 后目标文件**字节与 mtime 完全不变**、`meta.revision` **不变**、phase/status 不变。
+
+**陷阱：dry-run 分支之前的副作用会先写盘**。`flow advance` 的 `autoRepairInconsistency` + `mgr.save()` 位于 dry-run 分支**之前**，导致 dry-run 实测 revision 2→3、phase 被改写——违反 help 的「仅验证」承诺。同类连带写盘点还可能有 checkpoint 快照、审计 `appendLog`、其它 `save()`。
+
+**修法**：① 核心方法增**可选** `options: { dryRun?: boolean }`，dry-run 时**只计算不赋值**（仅返回「将修复 X」的报告）；② 命令层仅在**非 dry-run** 时调用 `save()`；③ dry-run 用**预览专用文案键**（「正式执行将自动修复」）而非复用「已自动修复」+ 后缀（语义别扭）；④ 修复后**回归断言**「`--dry-run` 全场景 revision 不变」+「非 dry-run 仍正常修复写盘」（证明未削弱）。
+
+**判据**：同文件内其它 dry-run 命令（如 `flow stage remove --dry-run`）保持同义——dry-run 语义不一致本身即缺陷。
+
+**参见：** v1.1.2-stage-49 B1、`REV-v1.1.2-stage-49-U2` REV-001、`plan/v1/stage-49/ops/op-010.md`、kb/patterns.md #CLI --dry-run 安全预览模式、#破坏性命令安全校验清单模式
+
+## [+] 死导出/漂移 API 的清理判据：全仓零引用 + 对外暴露即修（删而非同步） (2026-09-30)
+
+**适用**：整仓审查发现某导出/常量疑似冗余（v1.1.2-stage-49 B4，`src/index.ts` `VERSION='0.1.0'`）。
+
+**三条判据（齐备即 blocking 发布门禁）**：① **全仓零引用**——`rg <符号> src test bin scripts` 仅命中**定义处**（无消费方）；② **值与真实状态漂移**（`VERSION='0.1.0'` 而 `package.json.version=1.1.2`，1.1.1 已发布版本亦携带）；③ **经 `package.json` `exports` 对外暴露**（下游 `import { VERSION } from 'openfeel'` 拿到错误值）。
+
+**处置：删除而非同步**。同步为运行时读取会引入一个**此前无人使用的公共 API 承诺**（需长期维护语义）；而**从未正确 + 零引用**的导出，删除属**修错**而非破坏性变更（`package.json` 无 `main`/`types` → 无类型契约）。落地＝一行删除 + 重生成 `dist` + `CHANGELOG` **Fixed** 记录 + 回归断言（`'VERSION' in exports === false`），**不升主版本**。
+
+**反例**：若导出**确被消费** → 同步；若仅为历史沿革注释 → 归 D 类（禁改）。
+
+**参见：** v1.1.2-stage-49 B4、`REV-v1.1.2-stage-49-U7` U7-02、`plan/v1/stage-49/ops/op-011.md`、kb/patterns.md #版本号全链路收口清单模式
+
+## [+] 部署语境 vs 本仓语境的命令口径二分：产物落点是唯一判据 (2026-09-30)
+
+**适用**：同一份模板/文档含 CLI 命令示例时，须按**产物落点**选择口径（v1.1.2 `templates/BUG-003` + stage-49 U4-REV-001）。
+
+**判据**：「**产物落点是否在用户项目之外**」。
+
+- **部署到用户全局环境**（`openfeel setup`/`update` 落 `~/.config/opencode/agents|skills`、`~/.config/opencode/AGENTS.md`）→ **用户视角口径 `openfeel <cmd>`**（npm 全局安装后可用；用户项目**无本仓 `bin/`**，写 `node bin/openfeel.js` 照抄即 `Cannot find module`）；
+- **本仓执行**的文档/指引（`manual/**`、根 `AGENTS.md`）→ **`node bin/openfeel.js <cmd>`**（避免 PATH 命中全局旧版，门禁口径）。
+
+**一致性要求**：同类产物**同口径**——agent / agents-md / skill **三者不可一改一留**（stage-48 事件 C 只改 skill，与已裁定「agent/agents-md 保留裸 `openfeel`」相反，即 `templates/BUG-003`）。部署型 skill 若确需二态，**文首统一声明**「用户环境 `openfeel <cmd>` / 本仓 `node bin/openfeel.js <cmd>`」，正文不再单列一种形态；判定「查询型 `openfeel <cmd>` / 执行型 `node bin/…`」时**查询/执行之分不得凌驾于部署语境**（同属部署产物须同口径）。
+
+**修复链**：改权威源 `templates-data/**` → `npm run build` 重生成注入段 + 自举实例；建议加轻量断言（`node bin/openfeel.js` 仅允许出现在二态加注行内）。
+
+**参见：** `.openfeel/bugs/templates.md` BUG-003、`REV-v1.1.2-stage-49-U4` REV-U4-001、kb/patterns.md #纯全局部署命令模式、kb/troubleshooting.md #裸跑 openfeel 命中 PATH 全局旧版

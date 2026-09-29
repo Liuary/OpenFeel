@@ -2,11 +2,11 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-29T15:54:00.321Z",
-    "revision": 286
+    "updated": "2026-09-29T16:17:45.707Z",
+    "revision": 293
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.1.2-stage-49",
       "op": "op-001"
@@ -1342,8 +1342,8 @@
     },
     "v1.1.2-stage-49": {
       "name": "v1.1.2-stage-49",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {
         "op-001": {
@@ -1536,8 +1536,8 @@
       },
       "stats": {
         "start_time": "2026-09-29T01:27:19.002Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-09-29T16:17:45.688Z",
+        "duration_ms": 53426686
       }
     }
   },
@@ -8046,6 +8046,66 @@
       "detail": {
         "opId": "v1.1.2-stage-49.op-011",
         "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-29T15:54:37.404Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-49",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-09-29T16:03:09.082Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-49",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-09-29T16:03:09.351Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-49",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-09-29T16:08:29.311Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-49",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-09-29T16:08:29.611Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-49",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-09-29T16:17:45.688Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-49",
+        "from": "archiving",
+        "to": "done"
       }
     }
   ]

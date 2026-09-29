@@ -60,7 +60,7 @@ en.md:112     Each of the 9 agents inlines a `permission:` allowlist (deployed b
 
 ## BUG-003：部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目不可执行（与同类部署模板处置相反）
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open**（非阻塞）｜ **归因**：**计划口径未覆盖部署语境**（实现与 op-003 ① 一致，非执行偏差）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open**（非阻塞；**stage-49 裁定：归后续补丁阶段**）｜ **归因**：**计划口径未覆盖部署语境**（实现与 op-003 ① 一致，非执行偏差）
 - **登记阶段**：v1.1.2-stage-48 正式测试验收（事件 C 全仓口径扫描）｜ **登记人**：openfeel-feel-tester
 - **私域详细报告**：`.openfeel/users/Liuary/bugs/templates/BUG-003_部署型skill模板改为node-bin口径在用户项目不可执行.md`
 
@@ -101,3 +101,11 @@ node bin/openfeel.js flow status
 | 2026-09-29 22:40 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-48 验收（事件 C 扫描）发现；证据：模板源 26/3 处、生成段 34/34 处、真实全局 skill（`~/.config/opencode/skills/openfeel-wizard/SKILL.md:14`）仍为旧形态「`openfeel flow wizard`」（待下一次 setup/update 传播） |
 
 > 沉淀：`kb/patterns.md`（本阶段待归档条目「查询型 vs 执行型」判据可扩展至**部署语境**——「部署到用户环境的模板」≠「本仓执行的文档」）。
+
+### 裁定记录（v1.1.2-stage-49，2026-09-30）
+
+- **合并处置已落地**：本 Bug 与 `REV-v1.1.2-stage-48` REV-009② **并入** `v1.1.2-stage-49` **U4-REV-001**（`REV-v1.1.2-stage-49-U4.md`），作为同一条目承接。
+- **范围扩围（U4 全量扫描）**：由 stage-48 上报的 **29 行 / 2 skill** 扩至 **34 行 / 5 skill**——新增 **`openfeel-health`（2 行）/ `openfeel-model-check`（2 行）/ `openfeel-recover`（1 行）** 三个 skill **连二态加注都没有**（cli-usage 26 行 / wizard 3 行原有加注）；生成段同源（`update.ts SKILL_DEFINITIONS` / `template-loader.ts OPENCODE_SKILL_DEFINITIONS` 各 34 处）。
+- **裁定**：**不修于 stage-49**（本阶段定位「整仓审查 + 4 条 blocking 修复」，仅 B1~B4，未夹带 non-blocking）；**归后续补丁阶段**，修复清单见 U4-REV-001 §五（逐文件 7 步：5 skill 改 `openfeel <cmd>` + 补二态加注 + `npm run build` 重注 + 建议加 lint 断言）。
+- **口径判据已沉淀**：`kb/patterns.md #部署语境 vs 本仓语境的命令口径二分：产物落点是唯一判据`（2026-09-30 新增）。
+- **状态维持 `open`**（已裁定去处，待补丁阶段执行）。

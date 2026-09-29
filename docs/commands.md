@@ -1,6 +1,8 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26 | 适用版本：0.1.0
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.2 快照** | 更新日期：2026-09-30
+>
+> 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，如 1.1.1）。
 
@@ -86,7 +88,7 @@ openfeel flow phases [--json]
 
 | 选项 | 说明 |
 |------|------|
-| `--json` | 以 JSON 输出 `{ phases, transitions }`，供自动化解析 |
+| `--json` | 以 JSON 输出 `{ phases, transitions, advanceAccepted }`，供自动化解析（`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15） |
 
 示例：
 
@@ -100,13 +102,16 @@ openfeel flow phases --json
 推进流水线阶段。
 
 ```bash
-openfeel flow advance --op <op-id> --to <phase>
+openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--dry-run] [--force]
 ```
 
 | 选项 | 说明 |
 |------|------|
-| `--op <op-id>` | 操作 ID（必填） |
+| `--stage <stage-id>` | 阶段 ID（**必填**，可用短名或完整名） |
 | `--to <phase>` | 目标阶段（必填）。合法 phase 与转移表见 `openfeel flow phases` |
+| `--op <op-id>` | 操作 ID（**可选**，仅用于日志/展示） |
+| `--dry-run` | 仅验证不修改（预览输出）；**字节级不写盘**（`revision`/phase 不变） |
+| `--force` | 跳过非法 phase 与阶段跳跃检查（仍受 REV 闭环守卫约束，不可绕过） |
 
 支持的阶段（phase）：`plan_pending`、`plan_review`、`plan_passed`、`scheme_pending`、`scheme_review`、`scheme_passed`、`exec_running`、`review_pending`、`review_failed`、`review_passed`、`test_pending`、`test_failed`、`test_passed`、`archiving`、`done`（以运行时 `pipeline.yaml` 为准，用 `openfeel flow phases` 查看）
 
@@ -155,11 +160,18 @@ openfeel flow attempt --op <op-id> --result <pass|fail>
 
 ```bash
 # 添加审查条目
-openfeel flow review add --op <op-id> --title <title>
+openfeel flow review add --op <op-id> --title <title> [--auto-fix] [--blocking <bool>]
 
 # 解决审查条目
 openfeel flow review resolve <rev-id>
 ```
+
+| 选项 | 说明 |
+|------|------|
+| `--op <op-id>` | 操作 ID（必填，如 `stage-01.op-001`） |
+| `--title <title>` | 审查标题（必填） |
+| `--auto-fix` | 标记为可自动修复 |
+| `--blocking <bool>` | 是否为阻塞项（**默认 `true`**，REV 阻塞闭环核心语义） |
 
 ### flow log
 
@@ -470,9 +482,60 @@ openfeel knowledge index
 
 ---
 
+## lint — 质量门禁检查
+
+```bash
+openfeel lint i18n [--fix]   # i18n 键对称性校验（zh/en 三向比对 + 空值检测）
+openfeel lint kb [--fix]     # kb 过期引用检测（扫描 kb 文件中的路径引用是否存在）
+```
+
+## stage — 阶段状态
+
+```bash
+openfeel stage status <id>              # 查看阶段状态
+openfeel stage set <id> --status <v>    # 更新阶段状态（写入 status.md 字段）
+openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stage add` 等价；建议用 `plan stage add`）
+```
+
+## model — 模型配置
+
+三层级 agent 模型读写（`default` / `global` / `project`），非 TTY 下 `--scope default` 须 `--force`/`--build` 双重确认。
+
+```bash
+openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]
+openfeel model get <agent> [--scope ...]
+openfeel model list
+```
+
+## setup — 全局部署
+
+纯全局部署（全局 `AGENTS.md` + agent + skill + 全局平台适配器配置），不建立项目 `.openfeel/`，幂等。
+
+```bash
+openfeel setup [--lang <zh-CN|en>]
+```
+
+## migrate — 存量迁移
+
+存量旧布局项目迁移（检测 / 备份 / 迁移 / 回滚）；`--dry-run` 预览不写盘。
+
+```bash
+openfeel migrate [path] [--dry-run] [--remap-assignee] [--clean-global-core-md]
+openfeel migrate rollback [--dry-run]     # 回滚最近一次迁移（读 manifest.json）
+```
+
+## project — 项目管理
+
+```bash
+openfeel project list                       # 列出已记录项目
+openfeel project info [path]                # 查看项目信息
+```
+
+> 说明：以上为 v1.1.2 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+
 ## update — 更新适配文件
 
-更新平台适配文件（当前：OpenCode 适配器）——Agent 定义和 Skill 文件。
+更新平台适配文件（当前：OpenCode 适配器）——Agent 定义、Skill 文件、`AGENTS.md`，以及**全局 `opencode.jsonc` 的深度合并**（`instructions` 拼接去重 / `agent` 补缺 / 其他对象递归 / 标量覆盖；用户未知字段 passthrough）。部署覆盖既有框架资产前自动备份（`~/.openfeel/backup/{ts}/`）。
 
 ```bash
 openfeel update [path]

@@ -19,6 +19,8 @@
 > 本批共性防再犯（跨模块）：① **写策略按资产归属二分**（用户配置不覆盖 / 框架资产备份后覆盖，见 `config/BUG-002`）；② **文案变更收尾必做关键句全仓 `rg`**（见 `templates/BUG-002`，与 `templates/BUG-001` 同模式重复发生；`cli/BUG-003` 为同类「新增输出字段未同步 help 文案」变体）；③ **测试禁止直写真实全局目录**（保存/恢复≠隔离，见 `config/BUG-004`）；④ **验收/门禁命令用 `node bin/openfeel.js`**（PATH 全局旧版会给出错误口径）。
 >
 > **v1.1.2-stage-48 事件加固收口（2026-09-29，commits `afe93dd`~`b3b9b58`）**：① `cli/BUG-003`（low，`flow phases --json` help 缺 `advanceAccepted`，遗留 #1；即上方 stage-43 收口注中「顺延下一版本」者）经 op-004 修复（i18n 真源 + `flow.ts` fallback 双处）并由测试官验收**关闭**；② **新登记 `templates/BUG-003`**（low，非阻塞，open）——部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目无本仓 `bin/` 故不可执行，与 agent / agents-md「保留裸 `openfeel`」裁定口径相反；**建议与 `REV-v1.1.2-stage-48` REV-009 合并移交 `v1.1.2-stage-49`（U4/U6/U7）**。本阶段三大过程事件（审查官幻觉 / `npm test` 覆写真实环境 / 裸跑命中全局旧版）已机制加固，其防再犯条目见 `kb/patterns.md`（干净机器验证法 / 环境哈希守卫 / REV 可信度声明）、`kb/troubleshooting.md`（真实环境一次性数据清理规范）；`profile.yaml` 健壮性（非法 YAML 不覆盖）与 455 条死映射清理（455→0）为遗留 #7/#8/#13 落地点，均非 Bug 单（未开单）。
+>
+> **v1.1.2-stage-49 收口（2026-09-30，commits `3f023e3`/`1a8546a`）**：**本轮无新 Bug 登记**——整仓全量审查的 4 条 blocking（dry-run 写盘 / 悬空依赖 / postinstall 失效+engines / VERSION 死导出）以 **REV** 形式登记（见 `code_review/v1.1.2-stage-49.md`）并经 `op-010`/`op-011` 修复闭环，未开 Bug 单。`templates/BUG-003`（low）经 **U4-REV-001** 合并处置：范围由 29 行/2 skill **扩至 34 行/5 skill**，**裁定归后续补丁阶段**（状态维持 `open`）。统计维持 **10 条（open 1 / closed 9）**。
 
 ## 模块索引
 

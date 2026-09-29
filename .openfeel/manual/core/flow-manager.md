@@ -14,7 +14,8 @@
 | `addStage(stageId, deps?)` | 注册新阶段（写入前做 `(series, stageDir)` 冲突检测：不同 stageId 映射同目录时抛错，同 stageId 幂等静默） |
 | `advanceStagePhase(stageName, phase)` | 推进阶段到目标 phase（校验合法性） |
 | `getSummary()` / `summary(lang)` | 获取流水线摘要（结构化 / 文本） |
-| `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查 |
+| `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查（**非 `--quick` 含第 7 项悬空依赖检测**，见下） |
+| `autoRepairInconsistency(stageName, options?)` | 自动修复 phase↔status 不一致（`status=done` 且 `phase≠done` → 同步 phase；反之同步 status）；**stage-49 B1 起增可选 `options: { dryRun?: boolean }`**——`dryRun` 时**只计算不赋值**（返回「将修复 X」的报告），供 `flow advance --dry-run` 预览（不再写盘） |
 | `saveCheckpoint()` / `restoreCheckpoint()` | 阶段检查点保存与回滚 |
 | `autoCommitOnDone(stageName)` | 阶段 done 时自动 git 提交 |
 | `mapPhaseToAgent(phase)` | 将 PipelinePhase 映射为负责 Agent 标识（返回**新名** `openfeel-*`，`done → none`） |
@@ -43,6 +44,11 @@
 - **`removeStage(stageId, {force, purge}): { purgeTarget?: string }`**：注销阶段。`current` 兜底——移除 `pipeline.current.stage` 后按 `stages` 插入序回退「首个非 done 阶段」，无可回退则清空为 `{stage:'', op:''}`（避免后续 `advance` 失败）；**不删除目录**：`purge: true` 时仅**计算并返回** `purgeTarget`（plan 目录绝对路径），审计日志 `detail = { stageId, purgeTarget, referencing, snapshot }`（记录**意图**而非已发生事实）。`--force` **不清理**引用方悬空 `deps`（保留 + 日志可审计）。
   - **事务顺序（stage-47 / `REV-v1.1.2-stage-41` REV-009）**：命令层顺序固定为 `removeStage(...)` → `save()`（成功）→ `rmSync(purgeTarget)`（`commands/flow.ts`），消除「目录已删但注册未落盘」的中间态；core 层不产生任何不可逆副作用。契约变更已同步唯一调用方（`rg "removeStage("` 全域 1 处）。
 - **冲突检测接入**：`registerStage` / `addStage` 写入前调用 `findStageDirConflict`（来自 `plan/path.ts`）。
+
+## dry-run 自动修复预览与悬空依赖检测（v1.1.2-stage-49）
+
+- **`autoRepairInconsistency(stageName, { dryRun? })`（B1）**：签名新增**可选** `options`（向后兼容）。`dryRun: true` 时两个修复分支**只计算 detail、不改内存**（`stage.phase` / `stage.status` 不变）→ 命令层据此在 `--dry-run` 下**不调用 `save()`**，使 `flow.json` 字节 / `revision` / phase 均不变（修复前实测 dry-run 会因 `autoRepair` + `save()` 先于 dry-run 分支执行而写盘 revision 2→3，违反 help「仅验证」承诺）。dry-run 输出用预览专用键 `flow.advance.autoRepairPreview`；非 dry-run 路径不变（仍修复并 `save()`）。
+- **`checkDanglingDeps(items)`（B2，私有）**：`healthCheck` 新增第 7 项「悬空依赖」检测（**仅 `!quick`**）——遍历 `stages[].deps`，以 `normalizeStageId` 归一化后比对已注册阶段集合，检出即 `warn`（列出前 5 条），无则 `pass`；**核心层仅 `warn` 宽松兜底**（不进 `ok` 判定、不阻断退出码），**强制校验点在命令层** `commands/plan.ts`（见 `cli/commands.md`）。为此 `flow-manager.ts` 新增 `normalizeStageId` import（并入既有 `./plan/path.js` 导入行）。
 
 ## 存量数据鲁棒性与结构化错误（v1.1.2-stage-47）
 

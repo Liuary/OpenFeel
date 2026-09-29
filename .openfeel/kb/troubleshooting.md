@@ -719,3 +719,17 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 **其它约束**：JSON 解析失败 → **中止且不写盘**（保护原文件）；写出前 `JSON.stringify` → `JSON.parse` **自校验**；脚本置于 `.openfeel/tmp/`（不进 `src/`、不进 npm `files`）；**过程计数（455 → 0）与备份路径写入日志**，备份保留可还原性供后续核验。
 
 **参见：** v1.1.2-stage-48 op-006、`REV-v1.1.2-stage-48` REV-002、`.openfeel/tmp/clean-dead-lang-mappings.mjs`、`.openfeel/manual/core/global-paths.md`（死映射背景与人工清理指引）、kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock（隔离审计四步法）
+
+## [+] 随包 postinstall 在用户端路径层级失效：包内脚本假设 rootDir 且静默跳过 (2026-09-30)
+
+**症状**：随包发布的 `postinstall` 补丁脚本在用户机器上「**文件不存在，跳过**」×2 并以 **EXIT=0 静默结束**——功能看似装上却不生效、且无任何报错（v1.1.2-stage-49 B3，补丁脚本 `patch-inquirer.js`）。
+
+**根因（两层）**：
+1. **路径层级错位**：脚本用 `rootDir = resolve(__dirname, '..')` 假设「包根的同级 `node_modules`」，但用户端**依赖提升（扁平化安装）**后目标实际位于 `<prefix>/node_modules/@inquirer/core/...`，比脚本假设的**多一层** → 找不到文件即跳过；
+2. **`engines` 与依赖要求不符**：本包 `engines.node >=20.0.0` 但 `@inquirer/core@11.2.1` 要求 `>=23.5.0 || ^22.13.0 || ^20.17.0` → 放行 20.0~20.16 的崩溃区间（`util.styleText` 自 Node 20.12 起才提供）。
+
+**排查**：构造**用户端扁平化布局模拟**（`<prefix>/node_modules/openfeel/scripts/...` + 依赖提升至 `<prefix>/node_modules/@inquirer/core/`）运行 postinstall，观察是否真改到目标（实测「跳过」×2、theme.js 未变）；`rg patch-inquirer` 复核引用点。
+
+**避免**：**删除**随包 `postinstall`（**就地改写第三方包属反模式**：升级即被覆盖、pnpm/yarn 不适用、随包发布无效），`engines` **收紧对齐**依赖实际要求（`>=20.17.0`），未来确需兼容改用 `overrides`/`patches`。**注意**：包内附带的 `.npmrc` 的 `engine-strict` 对消费者**无效**（npm 只读消费者自身项目/用户级 `.npmrc`），不要指望它生效。
+
+**参见：** v1.1.2-stage-49 B3、`REV-v1.1.2-stage-49-U7` U7-01、`plan/v1/stage-49/ops/op-011.md`、kb/setup.md #npm 超时与网络预检

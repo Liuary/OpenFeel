@@ -1,16 +1,16 @@
 # 当前进度
 
-> OpenFeel v1.1.2 **已收官** ✅ — 七阶段（41 / 42 / 44 / 45 / 46 / 47 / 43）全部归档完成 | **`npm publish` 就绪**，发布时机待用户决定
+> OpenFeel v1.1.2 **已收官** ✅ — 九阶段（41 / 42 / 44 / 45 / 46 / 47 / 43 / **48 / 49**）全部归档完成 | **`npm publish` 就绪**，发布时机待用户决定
 
 - **状态**：**v1.1.2 全部完成 ✅**（CLI 自描述与可纠错能力 + 配置口径与流水线状态正确性 + 权限模型修正 + 平台强限定内容描述泛化 + 部署覆盖前备份与全局状态提示 + 已登记缺陷集中清理 + **CLI 文档 skill 化与版本 1.1.2 全链路收口**）；版本号已收口为 `1.1.2`，测试与门禁全绿，**无阻塞项**
 - **上一版本**：v1.1.1-stage-01 已归档 ✅（全局化彻底化改造：约束统一全局 AGENTS.md + setup 纯全局部署 + 约束/操作分离）
 - **再上一版本**：v1.1.0-stage-35 ~ stage-40 全部归档 ✅（并发保护基础设施 + 模板源收敛/命名前缀统一 + 全局部署架构 + 控制区标记增量更新 + 存量迁移与兼容收尾 + 模型配置接口）
 - **更早版本**：v1.0.0-stage-01 ~ stage-34 全部归档 ✅（质量加固 + 发布工程 + 文档完善 + init 增强 + 历史阶段 + Pantheogen 兼容性修复 + CLI 体验优化 + update 增量冲突标记 + 反馈规则/decisions.md + plan 目录多级化与路径统一）
-- **知识库**：architecture(25) + patterns(96) + troubleshooting(33) + setup(6) = **160 条目**（截至 stage-43 归档）
+- **知识库**：architecture(25) + patterns(106) + troubleshooting(35) + setup(6) = **172 条目**（截至 stage-49 归档）
 - **Agent 数**：9 个
 - **Skill 数**：**17 个**（全量 `openfeel-` 前缀对齐；stage-43 新增 `openfeel-cli-usage`）
 - **源文件**：62 个 .ts 文件
-- **测试**：**694/694 全通过**（41 个测试文件）
+- **测试**：**716/716 全通过**（41 个测试文件）
 - **版本**：v1.1.2（`package.json` 等 A1~A8 载体全部收口；`package-lock.json` root 两行手工同步）
 
 ## v1.1.2 里程碑 🚀
@@ -24,6 +24,8 @@
 | stage-46 | 部署覆盖前备份 + 全局状态提示 | 新增 `backup.ts`（写前备份 + 分区 + manifest + 单锁临界区）+ `update_infos` 第三类 `backed` + 四链路接入 | 2026-09-29 |
 | stage-47 | 已登记缺陷集中清理 | `config/BUG-002` 语义修复（`init` 不再覆盖 `config.yaml`）+ 画像层显式性 + CLI 边界/死键 + 事务顺序 + jsonc 备份 A/B + 泛化补漏；6 Bug closed、`config/BUG-004` 新登记 | 2026-09-29 |
 | stage-43 | CLI 文档 skill 化与版本收口（**版本终点**） | 新增 `openfeel-cli-usage` skill（权威源 + build 双注入 + 自举 + 快照声明，17 skill）+ 版本 1.1.2 全链路收口（A1~A8 + B + C + D/E）+ `docs/commands.md` config 节 + `AGENTS.md` 命令清单/skill 指向 + `config/BUG-004` 测试隔离修复 + `REV-44` 归属闭环 | 2026-09-29 |
+| stage-48 | 事件加固 + 遗留问题修复 | 三大过程事件机制加固（A 审查官幻觉 / B `npm test` 覆写真实环境 / C 裸跑命中全局旧版）+ 13 项遗留清零（含 **455 条死映射 455→0**）；7 op，706 用例全绿 | 2026-09-29 |
+| stage-49 | 整仓全量审查 + 4 条 blocking 修复（**本轮收尾**） | 8 单元 MECE 覆盖 `src/**/*.ts` 全 62 文件；原始 73 条 → 去重 68 条；**blocking 4 条修复闭环**（dry-run 写盘 / 悬空依赖 / postinstall 失效+engines / VERSION 死导出，commits `3f023e3`/`1a8546a`）；41 文件 **716** 用例全绿、`lint i18n` 533 键、离线安装实测成功 | 2026-09-30 |
 
 ## v1.0.0 发布里程碑 🏆
 
@@ -70,9 +72,9 @@
 
 ## 整体统计
 
-- 阶段覆盖：v1.0.0-stage-01 ~ stage-34（34）+ v1.1.0-stage-35 ~ stage-40（6）+ v1.1.1-stage-01（1）+ v1.1.2-stage-41/42/44/45/46/47/43（7），**共 48 个阶段全部归档**
-- 知识库总量：**160 条目**（architecture 25 + patterns 96 + troubleshooting 33 + setup 6）
+- 阶段覆盖：v1.0.0-stage-01 ~ stage-34（34）+ v1.1.0-stage-35 ~ stage-40（6）+ v1.1.1-stage-01（1）+ v1.1.2-stage-41/42/44/45/46/47/43/48/49（9），**共 50 个阶段全部归档**
+- 知识库总量：**172 条目**（architecture 25 + patterns 106 + troubleshooting 35 + setup 6）
 - 源文件：62 个 .ts 文件 ｜ Agent 9 个 ｜ Skill **17 个**
-- 测试：**694/694 全通过**（41 文件）；`tsc` 0、`npm run build` 幂等、`lint i18n` 531 键、`lint kb` 0 过期引用
+- 测试：**716/716 全通过**（41 文件）；`tsc` 0、`npm run build` 幂等、`lint i18n` 533 键、`lint kb` 0 过期引用
 
-**v1.1.2 已收官 ✅。** 七个阶段（41/42/44/45/46/47/43）全部闭环，版本号 `1.1.2` 全链路收口（A1~A8 + 生成段 + 传播 + CHANGELOG），已归档缺陷清零（closed 8 / open 1——仅 `cli/BUG-003` low 非阻塞顺延），测试 694/694 全通过，`lint i18n` / `lint kb` 零错误。**`npm publish` 就绪，发布时机待用户决定。** 非阻塞遗留：`cli/BUG-003`（`flow phases --help` 文案缺 `advanceAccepted`）、`REV-44` REV-001/003（已登记归归档官）、`profile.yaml` 无备份覆盖语义（未修）、455 条历史死映射（裁不清理，仅文档化安全步骤）。
+**v1.1.2 已收官 ✅。** 九个阶段（41/42/44/45/46/47/43/48/49）全部闭环，版本号 `1.1.2` 全链路收口（A1~A8 + 生成段 + 传播 + CHANGELOG），已归档缺陷清零（closed 9 / open 1——仅 `templates/BUG-003` low 非阻塞），测试 **716/716** 全通过，`lint i18n` / `lint kb` 零错误。**`npm publish` 就绪，发布时机待用户决定。** 非阻塞遗留（裁定流入后续补丁阶段）：`templates/BUG-003`（部署型 skill 模板口径 **34 行/5 skill**）、stage-49 全量审查 **~40 条 non-blocking**（细节与清单见 `v1.1.2-stage-49-全量审查总报告.md` §四/§五 与 `dev_last.md`）。

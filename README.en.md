@@ -61,7 +61,13 @@ openfeel flow status
 | `openfeel config` | Configuration management (get / set / list, supports --global) |
 | `openfeel knowledge` | Knowledge base management (list / search) |
 | `openfeel archive <stage>` | Stage archiving with knowledge extraction |
-| `openfeel update` | Update Agent definitions and Skill files |
+| `openfeel setup` | Global-only deployment (global AGENTS.md + agents + skills + adapter config); no project `.openfeel/` |
+| `openfeel migrate` | Migrate legacy-layout projects (detect / backup / rollback) |
+| `openfeel model` | Three-tier agent model config (set / get / list, `--scope`) |
+| `openfeel stage` | Work stage status (status / set / create [deprecated]) |
+| `openfeel project` | Project management (list / info) |
+| `openfeel view` | Review item management (list / add / accept) |
+| `openfeel instructions` | Generate structured instructions (artifact → XML/JSON) |
 
 Details: [docs/commands.md](docs/commands.md)
 
@@ -140,7 +146,7 @@ Core Layer
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (395 cases)
+npm test           # Run tests (716 cases, 41 test files)
 ```
 
 ## Acknowledgments

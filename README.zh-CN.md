@@ -61,7 +61,13 @@ openfeel flow status
 | `openfeel config` | 配置管理（get / set / list，支持 --global） |
 | `openfeel knowledge` | 知识库管理（list / search） |
 | `openfeel archive <stage>` | 阶段归档，汇总产出、生成摘要、提取知识 |
-| `openfeel update` | 更新 Agent 定义和 Skill 文件到目标平台 |
+| `openfeel setup` | 纯全局部署（全局 AGENTS.md + agent + skill + 平台适配器配置），不建项目 `.openfeel/` |
+| `openfeel migrate` | 存量旧布局项目迁移（检测 / 备份 / 回滚） |
+| `openfeel model` | 三层级 agent 模型配置（set / get / list，`--scope`） |
+| `openfeel stage` | 阶段状态（status / set / create［已弃用］） |
+| `openfeel project` | 项目管理（list / info） |
+| `openfeel view` | 审查条目管理（list / add / accept） |
+| `openfeel instructions` | 生成结构化指令（artifact → XML/JSON） |
 
 详细参数见：[docs/commands.md](docs/commands.md)
 
@@ -81,7 +87,7 @@ Feel 是整个流程的调度中心，负责接收用户意图并调度下游 Ag
 | Executor | 执行官 | 按方案编码实现 |
 | Reviewer | 审查官 | 交叉审查代码 |
 | Feel Tester | 测试官 | 正式测试验收 |
-| 事务官 | 事务官 | 文件机械操作 |
+| Utility | 事务官 | 文件机械操作 |
 | Vision | 视觉官 | 多模态视觉分析 |
 | Archiver | 归档官 | 归档操作记录与知识提取 |
 
@@ -140,7 +146,7 @@ Core 层
 ```bash
 npm install        # 安装依赖
 npm run build      # 编译 TypeScript
-npm test           # 运行测试（395 用例）
+npm test           # 运行测试（716 用例，41 个测试文件）
 ```
 
 ## 致谢

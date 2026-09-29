@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-09-30-Liuary-002.md](2026/09/30/2026-09-30-Liuary-002.md) | Liuary | 阶段 v1.1.2-stage-49 完成 |
+| [2026-09-30-Liuary-001.md](2026/09/30/2026-09-30-Liuary-001.md) | Archiver | **stage-49 归档完成（v1.1.2 整仓全量审查 + blocking 修复）**：8 单元 MECE 覆盖 `src/**/*.ts` 全 62 文件；原始 73 条 → 去重 68 条；**blocking 4/4 独立复现成立并修复闭环**（B1 `flow advance --dry-run` 写盘 → 预览模式 + 预览专用键 / B2 `plan stage add --deps` 悬空依赖 → 归一化校验 exit 1 + `checkDanglingDeps` warn / B3 删 `postinstall`+`patch-inquirer.js`+`engines >=20.17.0` / B4 删 `VERSION` 死导出 + dist 重建；commits `3f023e3`/`1a8546a`）；**41 文件 / 716 用例全绿**、`tsc` 0、build 幂等、`lint i18n` 533 键、`lint kb` 0 过期；**离线安装实测成功**（`npm pack` 259 文件）、真实环境零污染；REV-001~007 全 closed、exec_review 零阻塞零新增 REV；知识沉淀 7 条（patterns 6 新增 + troubleshooting 1 新增）；文档类修复 `docs/commands.md`/`docs/GETTING_STARTED.md`/README×3 由归档官落地；~40 条 non-blocking 裁定流入后续补丁阶段 |
 | [2026-09-29-Liuary-066.md](2026/09/29/2026-09-29-Liuary-066.md) | Liuary | v1.1.2-stage-49.op-011 执行通过 |
 | [2026-09-29-Liuary-065.md](2026/09/29/2026-09-29-Liuary-065.md) | Liuary | v1.1.2-stage-49.op-010 执行通过 |
 | [2026-09-29-Liuary-064.md](2026/09/29/2026-09-29-Liuary-064.md) | Liuary | **stage-49 op-009 全量审查汇总完成**：8 单元 73 条发现去重为 68 条；**blocking 4/4 独立核实成立**（`flow advance --dry-run` 写盘实测 revision 2→3 / `plan stage add --deps` 悬空依赖 / postinstall 用户端布局模拟实测静默失效 / VERSION 死导出）；跨单元矛盾裁定（skill 口径以 U4 为准）；REV-49-005 closed；U8 过程偏差留痕 + 整改要求；stage-49 pending，blocking 闭环后可发布 1.1.2 |
@@ -30,8 +32,6 @@
 | [2026-09-29-Liuary-040.md](2026/09/29/2026-09-29-Liuary-040.md) | Liuary | v1.1.2-stage-47.op-003 执行通过 |
 | [2026-09-29-Liuary-039.md](2026/09/29/2026-09-29-Liuary-039.md) | Liuary | v1.1.2-stage-47.op-002 执行通过 |
 | [2026-09-29-Liuary-038.md](2026/09/29/2026-09-29-Liuary-038.md) | Liuary | v1.1.2-stage-47.op-001 执行通过 |
-| [2026-09-29-Liuary-037.md](2026/09/29/2026-09-29-Liuary-037.md) | Liuary | 阶段 v1.1.2-stage-46 完成 |
-| [2026-09-29-Liuary-036.md](2026/09/29/2026-09-29-Liuary-036.md) | Archiver | **stage-46 归档完成（v1.1.2 部署已有文件备份 + 全局状态文件提示）**：新增 `backup.ts`（写前备份 + `~/.openfeel/backup/{ts}/` 分区 + `manifest.json` + 单锁临界区 + 绝不覆盖既有备份 + **备份失败绝不覆盖**）+ `update_infos.md` 第三类 `backed`（短前缀读侧分类、旧行兼容）+ 四链路接入（`writeManagedFile` 三分支 / 全局 `opencode.jsonc` 三处 / `init` 的 `config.yaml`、`package.json`）+ `deployGlobalAsset` 破坏性签名变更（增 `command`，9 调用点全改）+ `feel.md` 双语启动检查扩为三类；5 op，685/685 测试全绿（41 文件）、`lint i18n` 502 键、`tsc` 0、build 幂等；REV-001~010 closed + REV-011（low 非阻塞，归 stage-47）；Bug 0 新增，`config/BUG-002` 仅缓解（保持 open）；知识沉淀 4 条至 patterns(3) + troubleshooting(1)；manual 新增 core/backup.md |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

@@ -2,6 +2,7 @@
 
 > 按日期组织，仅记录团队级重要事件�?
 ## 2026-09
+- [30 日](2026/09/30/2026-09-30-Liuary-001.md) — Archiver 归档 stage-49（**v1.1.2 整仓全量审查 + blocking 修复**）：8 单元 MECE 覆盖 `src/**/*.ts` 全 62 文件；原始 73 条 → 去重 68 条；**blocking 4/4 独立复现成立并修复闭环**（B1 dry-run 写盘 / B2 悬空依赖 / B3 postinstall 失效+engines / B4 VERSION 死导出；commits `3f023e3`/`1a8546a`）；**41 文件 / 716 用例全绿**、`tsc` 0、build 幂等、`lint i18n` 533 键、`lint kb` 0 过期；离线安装实测（`npm pack` 259 文件）、真实环境零污染；知识沉淀 7 条（patterns 6 + troubleshooting 1）；文档类修复 `docs/commands.md` + README×3 落地；~40 条 non-blocking 裁定流入后续补丁阶段
 - [29 日](2026/09/29/2026-09-29-Liuary-052.md) — Archiver 归档 stage-43 + **v1.1.2 版本级收官**（CLI 文档 skill 化与版本收口）：新增 `openfeel-cli-usage` skill（权威源单文件 + build 双注入 + 自举 + 快照声明，16→17 skill）+ **版本 1.1.2 全链路收口**（A1~A8 + B 生成段 + C `CHANGELOG` + D/E；`package-lock` 手工两行零依赖树变动）+ `docs/commands.md` config 节 + `AGENTS.md` 命令清单/skill 指向 + `config/BUG-004` 测试隔离修复（N4 mock + 删伪隔离 + 只读守护用例）+ skill 计数同步 14 处 + `REV-44` 归属闭环；**41 文件 / 694 用例全绿**、`lint i18n` 531 键、`lint kb` 0 过期引用；REV-006 终裁「502 = PATH 全局旧版 CLI 环境污染」并撤销 stage-47 微瑕判定；知识沉淀 4 条（patterns 2 + troubleshooting 2）；**v1.1.2 七阶段全部闭环，`npm publish` 就绪**
 - [29 日](2026/09/29/2026-09-29-Liuary-064.md) — **Reviewer 完成 stage-49 op-009 全量审查汇总**：8 单元（U1~U8）报告交叉核对 + 去重（73→68 条）+ blocking 独立抽验——**4/4 成立**（① `flow advance --dry-run` 校验前 autoRepair 写盘，隔离实测 revision 2→3；② `plan stage add --deps` 悬空依赖静默入库且 health 不告警；③ postinstall 用户端必然静默失效（布局模拟实测）+ engines `>=20.0.0` 与 `@inquirer/core ^20.17.0` 崩坏；④ `src/index.ts:10` VERSION='0.1.0' 死导出经 exports 暴露错误版本）；跨单元矛盾裁定 1 处（skill 部署口径 34 行违规以 U4 全量为准，U6 抽样偏差）；REV-49-005（基线 706）closed；U8 过程偏差（真实 update_state.json 内容不变重写）留痕 + 整改要求；**stage-49 pending，blocking 修复闭环后即可发布 1.1.2**
 - [29 日](2026/09/29/2026-09-29-Liuary-062.md) — Archiver 归档 stage-48（**v1.1.2 事件加固 + 遗留问题修复**）：三大过程事件机制加固（A 审查官幻觉：reviewer 模板四条纪律 + `feel.md` 健康探测 + H12 + 新建 `manual/core/code-review.md`；B `npm test` 覆写真实环境：两测试补 `vi.mock('node:os')` + 干净机器模拟 + 对照实验 + CI 环境哈希守卫；C 裸跑命中全局旧版：执行型口径统一 `node bin/openfeel.js` + CI 版本门禁双 job）+ 13 项遗留全部落地（含 **455 条死映射 455→0**、`profile.yaml` 健壮性、权限措辞「平台默认 ask」、`cli/BUG-003` 收口）；7 op，**41 文件 / 706 用例全绿**、`tsc` 0、build 幂等、`lint i18n` 531 键、`lint kb` 0 过期/226 引用；真实全局环境零污染（逐文件 SHA-256 全等）；REV-001~008 closed（含 2 blocking）、REV-009 转 stage-49；`cli/BUG-003` closed + 新登记 `templates/BUG-003`（low 非阻塞，建议并入 stage-49）；知识 4 条（patterns 2 + troubleshooting 1 + 1 批注）；manual 更新 4 文件
@@ -35,6 +36,7 @@
 | [2026-09-13](2026/09/13/day_index.md) | 阶段 v1.1.0-stage-35 完成 |
 | [2026-09-25](2026/09/25/day_index.md) | 阶段 v1.1.0-stage-36 完成 |
 | [2026-09-26](2026/09/26/day_index.md) | 阶段 v1.1.1-stage-01 完成 |
+| [2026-09-30](2026/09/30/day_index.md) | 阶段 v1.1.2-stage-49 完成 |
 
 - [29 日](2026/09/29/2026-09-29-Liuary-001.md) — Reviewer 审查 stage-46 计划（部署覆盖前备份，有条件通过：1 high + 2 medium blocking REV，config.yaml 覆盖路径漏备份上报）（末尾追加：文件含历史混合编码，避免整文件重写）
 | [2026-09-29](2026/09/29/day_index.md) | v1.1.2-stage-41.op-001 执行通过 |

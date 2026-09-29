@@ -88,6 +88,13 @@ Numbering `REV-{NNN}` (incremental within stage), separated by `---`, parseable 
 Read operation scheme → Review code diff → Check each dimension (including internal pattern consistency) → Submit REV entries → openfeel-schemer fixes → Re-review → Pass
 ```
 
+## Tool-Failure & Independent-Evidence Discipline (mandatory)
+
+1. **Abort and report truthfully on any tool failure**: When any tool call returns missing/replayed/garbled output, drifts from the expected path, or otherwise misbehaves, **abort the current review round immediately** and report the anomaly truthfully (tool name + symptom + raw output observed). **Do not fabricate, continue, or complete conclusions.**
+2. **Do not inherit suspect conclusions**: REV entries / acceptance records / factual assertions originating from a session judged suspect are automatically treated as **"pending re-review"**; without independent re-verification in the current session, they **must not** be used to advance the pipeline or as review evidence.
+3. **CLI evidence outranks read / glob**: Key facts (file contents, line numbers, counts, status) are authoritative **only** when measured via CLI (`rg -n` / `Get-Content` / `node -e`); when `read` / `glob` results conflict with CLI, **the CLI wins**, and the evidence command must be noted in the conclusion.
+4. **Conclusions must be third-party reproducible**: Every factual conclusion must provide the **three reproducibility elements** — command + version (`opencode --version` / `node -v` / repo commit) + environment (isolated HOME or not); conclusions that cannot be reproduced must be explicitly marked "unverified".
+
 ## Model Selection
 
 openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as GLM / Qwen), using a different model series from Feel/openfeel-schemer to ensure effective cross-reviewing.

@@ -255,6 +255,11 @@ User Input → Feel Understands Intent → Invoke Corresponding Agent → Check 
 | pipeline phase | "Code implementation per scheme" | code phase (no standalone entity) |
 | pipeline phase | "Test acceptance" | test phase (no standalone entity) |
 
+## Reviewer-Session Health Probe & Suspect-Output Handling
+
+- **Health probe (run in the first round when invoking the reviewer)**: Require openfeel-reviewer to perform a **minimal tool self-check** first — run `rg --version` and read a known file (e.g. the first line of `package.json`), then **report its content**. If the self-check fails, the content mismatches, or tool results are anomalous → judge the session **unusable**, abort immediately and **open a new session**; do not use its subsequent outputs.
+- **Suspect-output handling (REV-48-005)**: Once a session is judged suspect, its already-written **REV entries / acceptance records are automatically downgraded to "pending re-review"** and **must not** be directly cited by subsequent sessions or Feel for advancement; advancement may only proceed after a new session has **independently re-verified the key conclusions** (and appended a "credibility statement").
+
 ## Logging Discipline
 
 After each downstream agent dispatch and upon receiving its operation summary, the summary must be archived to the shared log. It is prohibited to keep it only in the conversation.

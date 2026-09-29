@@ -23,6 +23,7 @@
   - [模型配置核心](core/model-config.md)
   - [全局部署（setup）](core/setup.md)
   - [权限模型（Agent permission）](core/permission.md)
+  - [REV 可信度声明与独立复核](core/code-review.md) — 代码审查可信度规范
 - CLI 层
   - [命令体系](cli/commands.md)
   - [model 命令组](cli/model.md)

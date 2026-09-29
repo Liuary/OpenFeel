@@ -265,6 +265,11 @@ User Input → Feel Understands Intent → Invoke Corresponding Agent → Check 
 | pipeline phase | "Code implementation per scheme" | code phase (no standalone entity) |
 | pipeline phase | "Test acceptance" | test phase (no standalone entity) |
 
+## Reviewer-Session Health Probe & Suspect-Output Handling
+
+- **Health probe (run in the first round when invoking the reviewer)**: Require openfeel-reviewer to perform a **minimal tool self-check** first — run \`rg --version\` and read a known file (e.g. the first line of \`package.json\`), then **report its content**. If the self-check fails, the content mismatches, or tool results are anomalous → judge the session **unusable**, abort immediately and **open a new session**; do not use its subsequent outputs.
+- **Suspect-output handling (REV-48-005)**: Once a session is judged suspect, its already-written **REV entries / acceptance records are automatically downgraded to "pending re-review"** and **must not** be directly cited by subsequent sessions or Feel for advancement; advancement may only proceed after a new session has **independently re-verified the key conclusions** (and appended a "credibility statement").
+
 ## Logging Discipline
 
 After each downstream agent dispatch and upon receiving its operation summary, the summary must be archived to the shared log. It is prohibited to keep it only in the conversation.
@@ -1065,6 +1070,13 @@ Numbering \`REV-{NNN}\` (incremental within stage), separated by \`---\`, parsea
 Read operation scheme → Review code diff → Check each dimension (including internal pattern consistency) → Submit REV entries → openfeel-schemer fixes → Re-review → Pass
 \`\`\`
 
+## Tool-Failure & Independent-Evidence Discipline (mandatory)
+
+1. **Abort and report truthfully on any tool failure**: When any tool call returns missing/replayed/garbled output, drifts from the expected path, or otherwise misbehaves, **abort the current review round immediately** and report the anomaly truthfully (tool name + symptom + raw output observed). **Do not fabricate, continue, or complete conclusions.**
+2. **Do not inherit suspect conclusions**: REV entries / acceptance records / factual assertions originating from a session judged suspect are automatically treated as **"pending re-review"**; without independent re-verification in the current session, they **must not** be used to advance the pipeline or as review evidence.
+3. **CLI evidence outranks read / glob**: Key facts (file contents, line numbers, counts, status) are authoritative **only** when measured via CLI (\`rg -n\` / \`Get-Content\` / \`node -e\`); when \`read\` / \`glob\` results conflict with CLI, **the CLI wins**, and the evidence command must be noted in the conclusion.
+4. **Conclusions must be third-party reproducible**: Every factual conclusion must provide the **three reproducibility elements** — command + version (\`opencode --version\` / \`node -v\` / repo commit) + environment (isolated HOME or not); conclusions that cannot be reproduced must be explicitly marked "unverified".
+
 ## Model Selection
 
 openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as GLM / Qwen), using a different model series from Feel/openfeel-schemer to ensure effective cross-reviewing.
@@ -1603,6 +1615,11 @@ Agent 模型需求对照：
 | skill | \`openfeel-agent-model-check\` | Agent 模型排查与修复（auth.json / 模型能力校验 / openfeel-vision 专项） |
 | 流程阶段 | 「按方案编码实现」 | code 阶段（无独立实体） |
 | 流程阶段 | 「测试验收」 | test 阶段（无独立实体） |
+
+## 审查会话健康探测与可疑产出处置
+
+- **健康探测（唤起审查官首轮执行）**：要求 openfeel-reviewer 在首轮先做**最小工具自检**——执行 \`rg --version\` 并读取一个已知文件（如 \`package.json\` 首行）**回报内容**。若自检失败、内容不符或工具结果异常 → 判定该会话**不可用**，立即中止并**重开新会话**，不得沿用其后续产出。
+- **可疑产出处置（REV-48-005）**：一旦判定某会话可疑，其已写出的 **REV 条目 / 验收记录自动降级为「待复核」**，**不得**被后续会话或 Feel 直接引用推进；须由新会话**独立复核关键结论后**方可据此推进（并追加「可信度声明」）。
 
 ## 日志记录纪律
 
@@ -2402,6 +2419,13 @@ blocking: true | false
 \`\`\`
 读取操作方案 → 审查代码 diff → 逐维度检查（含内部模式一致性） → 提交 REV 条目 → openfeel-schemer 修正 → 再审 → 通过
 \`\`\`
+
+## 工具调用异常与独立取证纪律（硬性）
+
+1. **工具异常即中止并如实报告**：任一工具调用出现结果缺失、重放、乱码、路径漂移、与预期不符时，**立即中止本轮审查**，在返回中如实报告异常（工具名 + 现象 + 已观测到的原始输出），**不得臆造、续写或补全结论**。
+2. **可疑历史结论不得继承**：来自「被判定可疑」会话的 REV 条目 / 验收记录 / 事实断言，一律视为**「待复核」**；未经本会话独立复核，**不得**据此推进流水线或作为审查依据。
+3. **命令行取证优先于 read / glob**：关键事实（文件内容、行号、计数、状态）以命令行（\`rg -n\` / \`Get-Content\` / \`node -e\`）实测为**唯一权威**；当 \`read\` / \`glob\` 结果与命令行冲突时，**以命令行为准**，并在结论中标注取证命令。
+4. **结论须第三方可复现**：每条事实性结论须给出**可复现三要素**——命令 + 版本（\`opencode --version\` / \`node -v\` / 仓库 commit） + 环境（隔离 HOME 与否）；无法复现的结论须显式标注「未确证」。
 
 ## 模型选择
 
@@ -3898,6 +3922,11 @@ User Input → Feel Understands Intent → Invoke Corresponding Agent → Check 
 | pipeline phase | "Code implementation per scheme" | code phase (no standalone entity) |
 | pipeline phase | "Test acceptance" | test phase (no standalone entity) |
 
+## Reviewer-Session Health Probe & Suspect-Output Handling
+
+- **Health probe (run in the first round when invoking the reviewer)**: Require openfeel-reviewer to perform a **minimal tool self-check** first — run \`rg --version\` and read a known file (e.g. the first line of \`package.json\`), then **report its content**. If the self-check fails, the content mismatches, or tool results are anomalous → judge the session **unusable**, abort immediately and **open a new session**; do not use its subsequent outputs.
+- **Suspect-output handling (REV-48-005)**: Once a session is judged suspect, its already-written **REV entries / acceptance records are automatically downgraded to "pending re-review"** and **must not** be directly cited by subsequent sessions or Feel for advancement; advancement may only proceed after a new session has **independently re-verified the key conclusions** (and appended a "credibility statement").
+
 ## Logging Discipline
 
 After each downstream agent dispatch and upon receiving its operation summary, the summary must be archived to the shared log. It is prohibited to keep it only in the conversation.
@@ -4698,6 +4727,13 @@ Numbering \`REV-{NNN}\` (incremental within stage), separated by \`---\`, parsea
 Read operation scheme → Review code diff → Check each dimension (including internal pattern consistency) → Submit REV entries → openfeel-schemer fixes → Re-review → Pass
 \`\`\`
 
+## Tool-Failure & Independent-Evidence Discipline (mandatory)
+
+1. **Abort and report truthfully on any tool failure**: When any tool call returns missing/replayed/garbled output, drifts from the expected path, or otherwise misbehaves, **abort the current review round immediately** and report the anomaly truthfully (tool name + symptom + raw output observed). **Do not fabricate, continue, or complete conclusions.**
+2. **Do not inherit suspect conclusions**: REV entries / acceptance records / factual assertions originating from a session judged suspect are automatically treated as **"pending re-review"**; without independent re-verification in the current session, they **must not** be used to advance the pipeline or as review evidence.
+3. **CLI evidence outranks read / glob**: Key facts (file contents, line numbers, counts, status) are authoritative **only** when measured via CLI (\`rg -n\` / \`Get-Content\` / \`node -e\`); when \`read\` / \`glob\` results conflict with CLI, **the CLI wins**, and the evidence command must be noted in the conclusion.
+4. **Conclusions must be third-party reproducible**: Every factual conclusion must provide the **three reproducibility elements** — command + version (\`opencode --version\` / \`node -v\` / repo commit) + environment (isolated HOME or not); conclusions that cannot be reproduced must be explicitly marked "unverified".
+
 ## Model Selection
 
 openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as GLM / Qwen), using a different model series from Feel/openfeel-schemer to ensure effective cross-reviewing.
@@ -5236,6 +5272,11 @@ Agent 模型需求对照：
 | skill | \`openfeel-agent-model-check\` | Agent 模型排查与修复（auth.json / 模型能力校验 / openfeel-vision 专项） |
 | 流程阶段 | 「按方案编码实现」 | code 阶段（无独立实体） |
 | 流程阶段 | 「测试验收」 | test 阶段（无独立实体） |
+
+## 审查会话健康探测与可疑产出处置
+
+- **健康探测（唤起审查官首轮执行）**：要求 openfeel-reviewer 在首轮先做**最小工具自检**——执行 \`rg --version\` 并读取一个已知文件（如 \`package.json\` 首行）**回报内容**。若自检失败、内容不符或工具结果异常 → 判定该会话**不可用**，立即中止并**重开新会话**，不得沿用其后续产出。
+- **可疑产出处置（REV-48-005）**：一旦判定某会话可疑，其已写出的 **REV 条目 / 验收记录自动降级为「待复核」**，**不得**被后续会话或 Feel 直接引用推进；须由新会话**独立复核关键结论后**方可据此推进（并追加「可信度声明」）。
 
 ## 日志记录纪律
 
@@ -6035,6 +6076,13 @@ blocking: true | false
 \`\`\`
 读取操作方案 → 审查代码 diff → 逐维度检查（含内部模式一致性） → 提交 REV 条目 → openfeel-schemer 修正 → 再审 → 通过
 \`\`\`
+
+## 工具调用异常与独立取证纪律（硬性）
+
+1. **工具异常即中止并如实报告**：任一工具调用出现结果缺失、重放、乱码、路径漂移、与预期不符时，**立即中止本轮审查**，在返回中如实报告异常（工具名 + 现象 + 已观测到的原始输出），**不得臆造、续写或补全结论**。
+2. **可疑历史结论不得继承**：来自「被判定可疑」会话的 REV 条目 / 验收记录 / 事实断言，一律视为**「待复核」**；未经本会话独立复核，**不得**据此推进流水线或作为审查依据。
+3. **命令行取证优先于 read / glob**：关键事实（文件内容、行号、计数、状态）以命令行（\`rg -n\` / \`Get-Content\` / \`node -e\`）实测为**唯一权威**；当 \`read\` / \`glob\` 结果与命令行冲突时，**以命令行为准**，并在结论中标注取证命令。
+4. **结论须第三方可复现**：每条事实性结论须给出**可复现三要素**——命令 + 版本（\`opencode --version\` / \`node -v\` / 仓库 commit） + 环境（隔离 HOME 与否）；无法复现的结论须显式标注「未确证」。
 
 ## 模型选择
 

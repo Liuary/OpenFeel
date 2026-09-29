@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "version": "1.0",
+    "project": "F",
+    "updated": "",
+    "revision": 5
+  },
+  "pipeline": {
+    "phase": "active",
+    "current": {
+      "stage": "-",
+      "op": "init"
+    },
+    "retry": 0
+  },
+  "stages": {
+    "v1.0.0-stage-08": {
+      "name": "v1.0.0-stage-08",
+      "phase": "done",
+      "status": "archiving",
+      "deps": [],
+      "ops": {}
+    }
+  },
+  "reviews": [],
+  "log": []
+}

@@ -117,6 +117,7 @@ export const flow: I18nDomain = {
   'advance.okTmpl':             { key: 'flow.advance.okTmpl',             zh: '', en: '✓ Advanced: {stage} → {to}' },
   'advance.opLabelTmpl':        { key: 'flow.advance.opLabelTmpl',        zh: '', en: 'Op: {op}' },
   'advance.autoRepaired':       { key: 'flow.advance.autoRepaired',       zh: '', en: 'Stage data inconsistency detected, auto-repaired' },
+  'advance.autoRepairPreview':  { key: 'flow.advance.autoRepairPreview',  zh: '', en: 'Stage data inconsistency detected; a real run will auto-repair it' },
   'advance.saveError':          { key: 'flow.advance.saveError',          zh: '', en: 'flow.json save failed' },
   'advance.gitCommitOkTmpl':    { key: 'flow.advance.gitCommitOkTmpl',    zh: '', en: '✓ Stage {stage} auto git commit archived' },
   'advance.gitCommitSkipTmpl':  { key: 'flow.advance.gitCommitSkipTmpl',  zh: '', en: '(Skipped auto git commit: not a git repo or no changes) {stage}' },
@@ -351,6 +352,7 @@ export const stage: I18nDomain = {
 /* ==================== plan ==================== */
 export const plan: I18nDomain = {
   'stage.createdTmpl':           { key: 'plan.stage.createdTmpl',           zh: '', en: 'Stage created: {name}' },
+  'stage.invalidDepsTmpl':       { key: 'plan.stage.invalidDepsTmpl',       zh: '', en: 'Unknown dependency stage(s): {deps} (registered stages: {known})' },
   'stage.empty':                 { key: 'plan.stage.empty',                 zh: '', en: 'No working stages yet' },
   'scheme.createdTmpl':          { key: 'plan.scheme.createdTmpl',          zh: '', en: 'Op created: {opId} ({stage})' },
   'scheme.empty':                { key: 'plan.scheme.empty',                zh: '', en: 'No ops yet' },

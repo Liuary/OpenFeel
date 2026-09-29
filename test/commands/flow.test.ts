@@ -233,4 +233,48 @@ describe('flow 命令（stage-41）', () => {
       saveSpy.mockRestore();
     }
   });
+
+  // ── stage-49/B1：dry-run 不写盘（blocking B1） ──
+
+  it('B1: flow advance --dry-run 遇 phase/status 不一致不改写 flow.json', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-90');
+    mgr.getData()!.stages['v1.1.2-stage-90'].status = 'done';
+    mgr.getData()!.stages['v1.1.2-stage-90'].phase = 'exec_running';
+    mgr.save();
+
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    const revBefore = JSON.parse(before).meta.revision;
+    logMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-90', '--to', 'review_pending', '--dry-run']);
+
+    const after = readFileSync(flowPath, 'utf-8');
+    // 核心断言：dry-run 不写盘 → 文件字节、revision、phase 均不变
+    expect(after).toBe(before);
+    expect(JSON.parse(after).meta.revision).toBe(revBefore);
+    expect(JSON.parse(after).stages['v1.1.2-stage-90'].phase).toBe('exec_running');
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('正式执行将自动修复');
+  });
+
+  it('B1: flow advance 非 dry-run 仍修复并写盘', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-91');
+    mgr.getData()!.stages['v1.1.2-stage-91'].status = 'done';
+    mgr.getData()!.stages['v1.1.2-stage-91'].phase = 'exec_running';
+    mgr.save();
+
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const revBefore = JSON.parse(readFileSync(flowPath, 'utf-8')).meta.revision;
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-91', '--to', 'review_pending']);
+
+    const after = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    // 非 dry-run 仍能修复并写盘：revision 递增，且 phase 不再是原不一致值
+    // （autoRepair 先落盘为 done，随后同一命令继续推进至 review_pending）
+    expect(after.meta.revision).toBeGreaterThan(revBefore);
+    expect(after.stages['v1.1.2-stage-91'].phase).not.toBe('exec_running');
+  });
 });

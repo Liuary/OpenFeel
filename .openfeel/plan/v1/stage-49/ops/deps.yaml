@@ -117,11 +117,38 @@ ops:
         type: hard
       - op: op-008
         type: hard
-    notes: "8 单元 REV 登记 index（一跳可达）+ 流转裁定四分支 + 第二轮仅对 blocking 深挖"
+    notes: "8 单元 REV 登记 index（一跳可达）+ 流转裁定四分支 + 第二轮仅对 blocking 深挖；本阶段 4 条 blocking 由 op-010/op-011 承接修复"
+
+  op-010:
+    file: op-010.md
+    title: "修复 B1 dry-run 写盘与 B2 悬空依赖校验（CLI 契约）"
+    produces:
+      - src/core/flow-manager.ts          # autoRepairInconsistency 预览模式 + checkDanglingDeps
+      - src/commands/flow.ts              # dry-run 不写盘
+      - src/commands/plan.ts              # deps 存在性校验
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/commands/plan.test.ts
+    deps: []
+    notes: "blocking B1(U2-REV-001)/B2(U2-REV-002)；含翻转清单（plan.test.ts:209/215 需改用已注册阶段）与 dry-run revision 不变回归断言；**REV-006：验收含 build → 与 op-011 串行（同入 build 互斥组）**"
+
+  op-011:
+    file: op-011.md
+    title: "修复 B3 发布元数据与 B4 VERSION 死导出（发布门禁）"
+    produces:
+      - package.json                      # engines 收窄 + 删 postinstall + files 去 scripts
+      - scripts/patch-inquirer.js         # 删除
+      - src/index.ts                      # 删除死导出 VERSION
+      - CHANGELOG.md                      # Fixed 3 条
+      - dist/**                           # npm run build 重生成（tsc）
+      - test/core/opencode-instance.test.ts
+    deps: []
+    notes: "blocking B3(U7-01)/B4(U7-02=M1)；patch-inquirer 裁定=删除（20.12+ 已内置 styleText）；engine-strict 裁定=不做（消费者侧设置，包内 .npmrc 无效）；含 npm run build → 与其它 build 串行"
 
 mutual_exclusions:
-  - group: [op-004, op-005, op-007, op-008]
-    reason: "四者均可能触发 `npm run build` / `npm test`（同一工作区）→ **构建/测试串行门控**；只读命令可并行"
+  - group: [op-004, op-005, op-007, op-008, op-010, op-011]
+    reason: "六者均可能触发 `npm run build` / `npm test`（同一工作区）→ **构建/测试串行门控**；只读命令可并行。**REV-006 修正**：op-010 的验收含 `npm run build`，与 op-011 的 build 并发会竞态写 `dist/`（含/不含 VERSION）与 `template-loader.ts` 生成段 → 二者**不并行**（文件层面无交集，但构建层面互斥）"
   - group: [op-001, op-002, op-003, op-006]
     reason: "弱约束备注：四者以只读为主（可真正并行）；如与 [op-004,005,007,008] 的构建/测试窗口重叠，建议错开"
 
@@ -130,8 +157,8 @@ parallel_groups:
     desc: "第一轮·广度：8 单元并行派发（各自独立产物，无写交集）；**其中 op-004/005/007/008 的 build/test 须串行门控**"
   - group: [op-009]
     desc: "第二轮·深挖 + 汇总 + index 登记 + 流转裁定（依赖全部 8 单元）"
-  - group: [（如有 blocking）新增修复 op]
-    desc: "由 op-009 裁定后追加（openfeel-executor 执行）→ 回归"
+  - group: [op-010, op-011]
+    desc: "blocking 修复：**REV-006 修正为串行**——文件层面无交集，但二者验收均含 `npm run build` → 构建互斥（见 mutual_exclusions）。**建议 op-010 → op-011**（先契约后发布门禁，使 build 出口唯一）→ 全量回归"
 
 recommended_order:
   - op-001
@@ -143,4 +170,6 @@ recommended_order:
   - op-007
   - op-008
   - op-009
-rationale: "plan §八：op-001~op-008 可并行（只读/独立产物；构建与测试串行门控）→ op-009 串行收口 → 如有 blocking 新增修复 op → 回归。"
+  - op-010
+  - op-011
+rationale: "plan §八：op-001~op-008 可并行（只读/独立产物；构建与测试串行门控）→ op-009 串行收口 → **op-010（B1/B2）→ op-011（B3/B4）承接 4 条 blocking 修复（REV-006：二者构建互斥，不并行；推荐 op-010 先、op-011 后，使 build 出口唯一）** → 全量回归。"

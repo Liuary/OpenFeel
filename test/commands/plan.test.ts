@@ -207,21 +207,51 @@ describe('plan 命令', () => {
   // ── stage-41：plan stage add --deps（op-004） ──
 
   it('plan stage add --deps a,b（逗号分隔）落 flow.json', async () => {
-    await safeParse(['plan', 'stage', 'add', 'stage-03', '--deps', 'a,b']);
+    // B2 翻转：依赖阶段须先注册，否则命令层校验 exit 1
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    await safeParse(['plan', 'stage', 'add', 'stage-02']);
+    await safeParse(['plan', 'stage', 'add', 'stage-03', '--deps', 'stage-01,stage-02']);
     const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
-    expect(flow.stages['v1.0.0-stage-03'].deps).toEqual(['a', 'b']);
+    expect(flow.stages['v1.0.0-stage-03'].deps).toEqual(['stage-01', 'stage-02']);
   });
 
   it('plan stage add --deps a b（空格分隔）等价', async () => {
-    await safeParse(['plan', 'stage', 'add', 'stage-04', '--deps', 'a', 'b']);
+    // B2 翻转：依赖阶段须先注册
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    await safeParse(['plan', 'stage', 'add', 'stage-02']);
+    await safeParse(['plan', 'stage', 'add', 'stage-04', '--deps', 'stage-01', 'stage-02']);
     const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
-    expect(flow.stages['v1.0.0-stage-04'].deps).toEqual(['a', 'b']);
+    expect(flow.stages['v1.0.0-stage-04'].deps).toEqual(['stage-01', 'stage-02']);
   });
 
   it('plan stage add 不传 --deps → deps 为空数组', async () => {
     await safeParse(['plan', 'stage', 'add', 'stage-05']);
     const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
     expect(flow.stages['v1.0.0-stage-05'].deps).toEqual([]);
+  });
+
+  // ── stage-49/B2：--deps 存在性校验（blocking B2） ──
+
+  it('B2: plan stage add --deps 不存在 → exit 1 且列出无效项与已注册阶段', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-02', '--deps', 'stage-99']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const errOut = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errOut).toContain('stage-99');
+    expect(errOut).toContain('已注册阶段');
+  });
+
+  it('B2: 短名/完整名归一化均视为有效依赖 → exit 0', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    await safeParse(['plan', 'stage', 'add', 'stage-02', '--deps', 'v1.0.0-stage-01']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-02'].deps).toEqual(['v1.0.0-stage-01']);
+  });
+
+  it('B2: flow.json 未初始化时 --deps 一律 exit 1', async () => {
+    rmSync(join(tmpDir, '.openfeel', 'flow.json'), { force: true });
+    await safeParse(['plan', 'stage', 'add', 'stage-02', '--deps', 'stage-01']);
+    expect(exitMock).toHaveBeenCalledWith(1);
   });
 
   // ── stage-41：(series, stageDir) 冲突（op-002） ──

@@ -2175,6 +2175,25 @@ describe('FlowManager', () => {
       expect(result.fixed).toBe(false);
       expect(result.detail).toContain('不存在');
     });
+
+    it('B1: dryRun 预览返回 fixed=true 但不修改内存 phase', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        stages: {
+          'stage-01': {
+            ...makeTestFlowData().stages['stage-01'],
+            status: 'done',
+            phase: 'exec_running' as PipelinePhase,
+          },
+        },
+      });
+      const result = mgr.autoRepairInconsistency('stage-01', { dryRun: true });
+      expect(result.fixed).toBe(true);
+      expect(result.detail).toContain('→ done');
+      // dryRun 下不写内存
+      expect(mgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
+    });
   });
 
   // ═══════════════════════════════════════
@@ -2319,6 +2338,33 @@ describe('FlowManager', () => {
       const mgr = new FlowManager(tmpDir);
       const result = mgr.healthCheck(false);
       expect(result.items.some((i) => i.section === 'pipeline.yaml' && i.status === 'fail')).toBe(false);
+    });
+
+    it('B2: 悬空依赖应报告 warn，无悬空时报 pass', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        stages: {
+          'stage-01': {
+            ...makeTestFlowData().stages['stage-01'],
+            deps: ['stage-99'],
+          },
+        },
+      });
+      const dangling = mgr.healthCheck(false).items.find((i) => i.section === '悬空依赖');
+      expect(dangling?.status).toBe('warn');
+      expect(dangling?.message).toContain('stage-99');
+
+      // 依赖指向已注册阶段（短名归一化命中）→ pass
+      mgr.setData({
+        ...makeTestFlowData(),
+        stages: {
+          'stage-01': { ...makeTestFlowData().stages['stage-01'], deps: [] },
+          'stage-02': { ...makeTestFlowData().stages['stage-01'], deps: ['v1.0.0-stage-01'] },
+        },
+      });
+      const okItem = mgr.healthCheck(false).items.find((i) => i.section === '悬空依赖');
+      expect(okItem?.status).toBe('pass');
     });
   });
 

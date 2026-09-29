@@ -28,7 +28,7 @@ import {
 import { PublicLogger, formatDate } from './public-logger.js';
 import { t, getCliLang } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
-import { findStageStatusPath, findStageDirConflict, parseStageId } from './plan/path.js';
+import { findStageStatusPath, findStageDirConflict, parseStageId, normalizeStageId } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG } from './config.js';
@@ -2453,9 +2453,10 @@ export class FlowManager {
    * - status=done 但 phase≠done → 同步 phase 为 done
    * - phase=done 但 status≠done → 同步 status 为 done
    * @param stageName 阶段名（如 stage-01）
+   * @param options.dryRun 为 true 时仅计算并返回等价结果，不修改内存（供 --dry-run 预览用）
    * @returns 修复结果（是否修复 + 详情）
    */
-  autoRepairInconsistency(stageName: string): { fixed: boolean; detail: string } {
+  autoRepairInconsistency(stageName: string, options: { dryRun?: boolean } = {}): { fixed: boolean; detail: string } {
     if (!this.data) {
       return { fixed: false, detail: 'flow.json 未加载' };
     }
@@ -2464,18 +2465,22 @@ export class FlowManager {
       return { fixed: false, detail: `阶段 '${stageName}' 不存在` };
     }
 
-    // 修复: status=done 但 phase≠done 时，同步 phase 为 done
+    // 修复: status=done 但 phase≠done → 同步 phase 为 done（dryRun 时仅报告，不写内存）
     if (stage.status === 'done' && stage.phase !== 'done') {
-      const oldPhase = stage.phase;
-      stage.phase = 'done' as PipelinePhase;
-      return { fixed: true, detail: `phase ${oldPhase} → done (与 status 同步)` };
+      const detail = `phase ${stage.phase} → done (与 status 同步)`;
+      if (!options.dryRun) {
+        stage.phase = 'done' as PipelinePhase;
+      }
+      return { fixed: true, detail };
     }
 
-    // 修复: phase=done 但 status≠done 时，同步 status
+    // 修复: phase=done 但 status≠done → 同步 status（dryRun 时仅报告）
     if (stage.phase === 'done' && stage.status !== 'done') {
-      const oldStatus = stage.status;
-      stage.status = 'done';
-      return { fixed: true, detail: `status ${oldStatus} → done (与 phase 同步)` };
+      const detail = `status ${stage.status} → done (与 phase 同步)`;
+      if (!options.dryRun) {
+        stage.status = 'done';
+      }
+      return { fixed: true, detail };
     }
 
     return { fixed: false, detail: '未检测到不一致' };
@@ -2636,8 +2641,44 @@ export class FlowManager {
       this.checkDepsYaml(items);
     }
 
+    // ── 7. 悬空依赖检测 ──
+    if (!quick) {
+      this.checkDanglingDeps(items);
+    }
+
     const ok = items.every((i) => i.status !== 'fail');
     return { items, ok };
+  }
+
+  /**
+   * 7. 悬空依赖检测：stages[].deps 是否均指向已注册阶段（B2 存量防御）
+   * 仅作数据卫生告警（warn），不阻断；强制校验点在命令层 `commands/plan.ts`
+   * @param items 健康检查结果收集数组
+   */
+  private checkDanglingDeps(items: HealthCheckItem[]): void {
+    if (!this.data) {
+      return;
+    }
+    const known = new Set(Object.keys(this.data.stages).map((k) => normalizeStageId(k) ?? k));
+    const dangling: string[] = [];
+    // 逐阶段比对 deps 是否可归一化命中已注册阶段
+    for (const [stageId, stage] of Object.entries(this.data.stages)) {
+      const deps = Array.isArray(stage.deps) ? stage.deps : [];
+      for (const d of deps) {
+        if (!known.has(normalizeStageId(d) ?? d)) {
+          dangling.push(`${stageId} → ${d}`);
+        }
+      }
+    }
+    if (dangling.length > 0) {
+      items.push({
+        section: '悬空依赖',
+        status: 'warn',
+        message: `检出 ${dangling.length} 条悬空依赖：${dangling.slice(0, 5).join('; ')}${dangling.length > 5 ? ' …' : ''}`,
+      });
+      return;
+    }
+    items.push({ section: '悬空依赖', status: 'pass', message: '未检测到悬空依赖' });
   }
 
   /** 1. 检查 flow.json 合法性 */

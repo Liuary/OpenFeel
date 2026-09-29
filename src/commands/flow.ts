@@ -515,10 +515,17 @@ export function registerFlowCommand(program: Command): void {
 
       // 自动修复 phase/status 不一致（在 validate() 前执行）
       if (options.stage) {
-        const repairResult = mgr.autoRepairInconsistency(options.stage);
+        // B1 修复：dry-run 走预览模式（不写内存/不写盘），仅在非 dry-run 时 save()
+        const repairResult = mgr.autoRepairInconsistency(options.stage, { dryRun: options.dryRun });
         if (repairResult.fixed) {
-          console.log(t('flow.advance.autoRepaired', lang) + `: ${repairResult.detail}`);
-          mgr.save();
+          console.log(
+            options.dryRun
+              ? t('flow.advance.autoRepairPreview', lang) + `: ${repairResult.detail}`
+              : t('flow.advance.autoRepaired', lang) + `: ${repairResult.detail}`,
+          );
+          if (!options.dryRun) {
+            mgr.save();
+          }
         }
       }
 

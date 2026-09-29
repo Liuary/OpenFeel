@@ -5,9 +5,9 @@
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
 import { createScheme, listSchemes } from '../core/plan/scheme.js';
-import { validateStageId, suggestStageId } from '../core/plan/path.js';
+import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
-import { StageDirConflictError } from '../core/flow-manager.js';
+import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
 
 export function registerPlanCommand(program: Command): void {
   const plan = program
@@ -40,6 +40,24 @@ export function registerPlanCommand(program: Command): void {
         .flatMap((d) => d.split(','))
         .map((s) => s.trim())
         .filter(Boolean);
+
+      // B2 修复：校验 deps ⊆ 已注册 stages（短名/完整名按 normalizeStageId 归一化比较）
+      if (deps.length > 0) {
+        const fmCheck = new FlowManager(projectPath);
+        // flow.json 未初始化时 registered 为空 → 任何 deps 均判无效（无阶段可依赖）
+        const registered = fmCheck.isLoaded() ? Object.keys(fmCheck.getData()!.stages) : [];
+        const known = new Set(registered.map((k) => normalizeStageId(k) ?? k));
+        const invalid = deps.filter((d) => !known.has(normalizeStageId(d) ?? d));
+        if (invalid.length > 0) {
+          // 存在未注册的依赖阶段：列出无效项与已注册阶段后退出码 1
+          console.error(t('plan.stage.invalidDepsTmpl', lang, {
+            deps: invalid.join(', '),
+            known: registered.length > 0 ? registered.join(', ') : t('common.none', lang),
+          }));
+          process.exit(1);
+        }
+      }
+
       try {
         addStage(projectPath, name, deps.length > 0 ? deps : undefined);
       } catch (err: unknown) {

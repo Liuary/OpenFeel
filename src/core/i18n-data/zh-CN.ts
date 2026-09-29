@@ -125,6 +125,7 @@ export const flow: I18nDomain = {
   'advance.okTmpl':             { key: 'flow.advance.okTmpl',             zh: '✓ 已推进: {stage} → {to}',               en: '' },
   'advance.opLabelTmpl':        { key: 'flow.advance.opLabelTmpl',        zh: '操作: {op}',                              en: '' },
   'advance.autoRepaired':       { key: 'flow.advance.autoRepaired',       zh: '检测到阶段数据不一致，已自动修复',          en: '' },
+  'advance.autoRepairPreview':  { key: 'flow.advance.autoRepairPreview',  zh: '检测到阶段数据不一致，正式执行将自动修复',    en: '' },
   'advance.saveError':          { key: 'flow.advance.saveError',          zh: 'flow.json 保存失败',                      en: '' },
   'advance.gitCommitOkTmpl':    { key: 'flow.advance.gitCommitOkTmpl',    zh: '✓ 阶段 {stage} 已自动 git commit 归档',    en: '' },
   'advance.gitCommitSkipTmpl':  { key: 'flow.advance.gitCommitSkipTmpl',  zh: '（跳过自动 git commit：非 git 仓库或无变更）{stage}', en: '' },
@@ -371,6 +372,7 @@ export const stage: I18nDomain = {
 /* ==================== plan 域：计划命令 ==================== */
 export const plan: I18nDomain = {
   'stage.createdTmpl':           { key: 'plan.stage.createdTmpl',           zh: '已创建阶段: {name}',                       en: '' },
+  'stage.invalidDepsTmpl':       { key: 'plan.stage.invalidDepsTmpl',       zh: '依赖阶段不存在：{deps}（已注册阶段：{known}）', en: '' },
   'stage.empty':                 { key: 'plan.stage.empty',                 zh: '暂无工作阶段',                            en: '' },
   'scheme.createdTmpl':          { key: 'plan.scheme.createdTmpl',          zh: '已创建操作方案: {opId}（{stage}）',        en: '' },
   'scheme.empty':                { key: 'plan.scheme.empty',                zh: '暂无操作方案',                            en: '' },

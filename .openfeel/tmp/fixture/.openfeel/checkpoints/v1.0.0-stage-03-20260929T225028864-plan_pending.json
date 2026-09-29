@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": "1.0",
+    "project": "F",
+    "updated": "2026-09-29T14:50:28.855Z",
+    "revision": 6
+  },
+  "pipeline": {
+    "phase": "active",
+    "current": {
+      "stage": "-",
+      "op": "init"
+    },
+    "retry": 0
+  },
+  "stages": {
+    "v1.0.0-stage-03": {
+      "name": "v1.0.0-stage-03",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [],
+      "ops": {}
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-09-29T14:50:28.855Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.0.0-stage-03",
+        "deps": []
+      }
+    }
+  ]
+}

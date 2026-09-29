@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "version": "1.0",
+    "project": "F",
+    "updated": "",
+    "revision": 5
+  },
+  "pipeline": {
+    "phase": "active",
+    "current": {
+      "stage": "v1.0.0-stage-02",
+      "op": "op-009"
+    },
+    "retry": 0
+  },
+  "stages": {
+    "v1.0.0-stage-01": {
+      "name": "v1.0.0-stage-01",
+      "phase": "done",
+      "status": "review_passed",
+      "deps": [],
+      "ops": {
+        "op-001": {
+          "title": "A",
+          "state": "done",
+          "assignee": "x",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        }
+      }
+    },
+    "v1.0.0-stage-02": {
+      "name": "v1.0.0-stage-02",
+      "phase": "exec_running",
+      "status": "exec_running",
+      "deps": [],
+      "ops": {
+        "op-009": {
+          "title": "B",
+          "state": "executing",
+          "assignee": "x",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "running"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        }
+      }
+    }
+  },
+  "reviews": [],
+  "log": []
+}

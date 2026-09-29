@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-29T15:49:33.276Z",
-    "revision": 284
+    "updated": "2026-09-29T14:35:25.982Z",
+    "revision": 275
   },
   "pipeline": {
     "phase": "active",
@@ -1484,40 +1484,6 @@
         },
         "op-009": {
           "title": "汇总报告与 REV 索引登记与修复流转裁定",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-010": {
-          "title": "修复 B1 dry-run 写盘与 B2 悬空依赖校验（CLI 契约）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-011": {
-          "title": "修复 B3 发布元数据与 B4 VERSION 死导出（发布门禁）",
           "state": "pending",
           "assignee": "openfeel-executor",
           "attempts": 0,
@@ -7940,94 +7906,6 @@
         "stageName": "v1.1.2-stage-49",
         "from": "scheme_review",
         "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-09-29T14:35:26.264Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "scheme_passed",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-09-29T15:37:29.908Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "opId": "op-010"
-      }
-    },
-    {
-      "time": "2026-09-29T15:37:30.172Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "opId": "op-011"
-      }
-    },
-    {
-      "time": "2026-09-29T15:39:15.830Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "exec_running",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-09-29T15:39:16.119Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "scheme_pending",
-        "to": "scheme_review"
-      }
-    },
-    {
-      "time": "2026-09-29T15:45:24.207Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "scheme_review",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-09-29T15:47:27.506Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "scheme_pending",
-        "to": "scheme_review"
-      }
-    },
-    {
-      "time": "2026-09-29T15:49:32.996Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "scheme_review",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-09-29T15:49:33.276Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-49",
-        "from": "scheme_passed",
-        "to": "exec_running"
       }
     }
   ]

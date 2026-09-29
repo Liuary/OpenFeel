@@ -90,4 +90,10 @@ describe('.opencode/ 自举实例', () => {
       expect(readFileSync(join(dir, f), 'utf-8'), f).toContain('external_directory');
     }
   });
+
+  it('自举 openfeel-reviewer.md 含工具异常独立取证纪律节（stage-48 op-001）', () => {
+    const c = readFileSync(join(ROOT, '.opencode', 'agents', 'openfeel-reviewer.md'), 'utf-8');
+    expect(c).toContain('工具调用异常');
+    expect(c).toContain('独立取证');
+  });
 });

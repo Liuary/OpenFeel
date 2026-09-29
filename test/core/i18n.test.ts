@@ -67,3 +67,13 @@ describe('VALID_LANGS', () => {
     expect(VALID_LANGS).toEqual(['zh-CN', 'en']);
   });
 });
+
+describe('help.flow.phases.json（stage-48 op-004）', () => {
+  it('zh-CN 文案含 advanceAccepted', () => {
+    expect(t('help.flow.phases.json', 'zh-CN')).toContain('advanceAccepted');
+  });
+
+  it('en 文案含 advanceAccepted', () => {
+    expect(t('help.flow.phases.json', 'en')).toContain('advanceAccepted');
+  });
+});

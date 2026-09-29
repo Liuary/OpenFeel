@@ -289,3 +289,36 @@ describe('权限模型（stage-44）', () => {
     }
   });
 });
+
+/**
+ * stage-48 事件 A（审查纪律）+ op-004（权限措辞）静态断言
+ * 锁定 reviewer / feel 模板新纪律与 agents-md 措辞（防回退）。
+ */
+describe('事件 A 审查纪律与权限措辞（stage-48）', () => {
+  it('reviewer 模板（zh/en）含工具异常四纪律关键词', () => {
+    const zh = loadAgentTemplate('zh-CN', 'openfeel-reviewer');
+    expect(zh).toContain('工具调用异常');
+    expect(zh).toContain('独立取证');
+    expect(zh).toContain('第三方可复现');
+
+    const en = loadAgentTemplate('en', 'openfeel-reviewer');
+    expect(en).toContain('Tool-Failure');
+    expect(en).toContain('Independent-Evidence');
+    expect(en).toContain('reproducible');
+  });
+
+  it('feel 模板（zh/en）含审查会话健康探测与可疑产出处置', () => {
+    const zh = loadAgentTemplate('zh-CN', 'feel');
+    expect(zh).toContain('审查会话健康探测');
+    expect(zh).toContain('待复核');
+
+    const en = loadAgentTemplate('en', 'feel');
+    expect(en).toContain('Reviewer-Session Health Probe');
+    expect(en).toContain('pending re-review');
+  });
+
+  it('agents-md（zh/en）权限措辞含「opencode 平台默认为 ask」限定（op-004）', () => {
+    expect(loadTemplate('zh-CN', 'agents-md')).toContain('平台默认为 `ask`');
+    expect(loadTemplate('en', 'agents-md')).toContain('platform default is `ask`');
+  });
+});

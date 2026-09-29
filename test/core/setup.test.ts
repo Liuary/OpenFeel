@@ -168,4 +168,10 @@ describe('setupGlobalFramework', () => {
       warnSpy.mockRestore();
     }
   });
+
+  it('stage-48：全局 AGENTS.md 含 opencode 平台默认 ask 权限限定（op-004）', () => {
+    setupGlobalFramework('zh-CN');
+    const content = readFileSync(getGlobalAgentsMdPath(), 'utf-8');
+    expect(content).toContain('平台默认为 `ask`');
+  });
 });

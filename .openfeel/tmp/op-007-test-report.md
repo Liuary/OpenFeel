@@ -1,66 +1,90 @@
 # 自测报告 — op-007
 
-- **执行时间**：2026-08-15 15:46
-- **执行 Agent**：Executor
+- **执行时间**：2026-09-29 22:06
+- **执行 Agent**：openfeel-executor
 - **重试次数**：第 1 次
 
 ## 执行摘要
 
-全部 6 项步骤完成，自测通过。版本号 1.0.8 → 1.0.9 全链路同步（package.json / config.yaml / config.ts / CHANGELOG），`npm run build && npm test` 全绿（425/425）。
+全量回归完成：`npm run build` 幂等、`npm test` **41 文件 / 706 用例全绿**（基线 694 → +12）、`lint i18n` 531 键零错误、`lint kb` 0 过期引用（226 引用）、`npx tsc --noEmit` exit 0；真实全局目录 + 仓库 `.openfeel/config.yaml` 前后 **UNCHANGED**；遗留 13 项逐项覆盖核对通过。
 
 ## 实施步骤完成情况
 
-- [x] 步骤1：`package.json` `"version": "1.0.8"` → `"1.0.9"`（第 3 行）
-- [x] 步骤2：`.openfeel/config.yaml` `meta.version` → `1.0.9`（第 7 行），改后实测首字节 `23 20 2E`，无 BOM，UTF-8 无 BOM 保持
-- [x] 步骤3：`src/core/config.ts` `CONFIG_TEMPLATE_ZH`（第 304 行）与 `CONFIG_TEMPLATE_EN`（第 361 行）`meta:` 块下 `version: 1.0.9` 各 1 处；defaults 块 `${DEFAULT_CONFIG.xxx}` 插值（315/319/323/327/372/376/380/384 行）确认未动
-- [x] 步骤4：`CHANGELOG.md` 在 `## [1.0.8]` 前插入 `## [1.0.9] - 2026-08-15` 条目（Added/Changed 分类，概括 stage-34「plan 目录多级化与路径统一」主题）
-- [x] 步骤5：AGENTS.md 版本声明确认（见偏差记录）
-- [x] 步骤6：`npm run build && npm test` 全量通过
+- [x] 步骤1：新增/调整测试（见下 T1~T7）
+- [x] 步骤2：全程隔离 HOME/临时目录（`vi.mock('node:os')`），真实环境 + 仓库 config.yaml 未被触碰
+- [x] 步骤3：`npm run build && npm test` 全绿（41 文件 / 706 用例 ≥ 694）
+- [x] 步骤4：`node bin/openfeel.js lint i18n`（531 键）+ `lint kb`（0 过期引用）零错误
 
-## 自测清单验证
+## 测试改动汇总（归属 op）
 
-| 检查项 | 结果 | 备注 |
-|--------|:--:|------|
-| package.json `version` 为 `1.0.9` | ✅ | 第 3 行 |
-| config.yaml `meta.version` 为 `1.0.9` | ✅ | 第 7 行 |
-| config.yaml 仍为 UTF-8 无 BOM | ✅ | 首字节 `23 20 2E`，非 EF BB BF |
-| config.ts ZH/EN `version: 1.0.9` 各 1 处 | ✅ | 304/361 行，defaults 插值未动 |
-| CHANGELOG `## [1.0.9] - 2026-08-15` 条目已加 | ✅ | 含 Added/Changed 分类 |
-| AGENTS.md 未改动 | ✅ | 见偏差记录 |
-| `npm run build` 通过 | ✅ | openfeel@1.0.9，模板一致性校验 7/7 |
-| `npm test` 全量通过 | ✅ | 22 文件 / 425 tests 全绿 |
+| # | 文件 | 处置 | 结果 |
+|---|------|------|:--:|
+| T1 | `test/commands/flow.test.ts` | `vi.mock('node:os')` + mock HOME 建/清（op-002） | ✅ |
+| T2 | `test/commands/plan.test.ts` | 同上（op-002） | ✅ |
+| T3 | `test/core/template-loader.test.ts` | 新增「事件 A 审查纪律与权限措辞」3 例（reviewer/feel 纪律 + agents-md 措辞） | ✅ |
+| T4 | `test/core/opencode-instance.test.ts` | 新增「自举 reviewer 含独立取证节」1 例 | ✅ |
+| T5 | `test/core/i18n.test.ts` | 新增 `help.flow.phases.json` 含 `advanceAccepted` 2 例 | ✅ |
+| T6 | `test/core/config.test.ts` | profile passthrough 往返 + 非法 YAML 不覆盖（op-005，+4 例） | ✅ |
+| T7 | `test/core/setup.test.ts` | 新增「全局 AGENTS.md 含平台默认 ask 限定」1 例 | ✅ |
+| — | `test/commands/config.test.ts` | `config set --global` 守卫（op-005，+1 例） | ✅ |
+
+## 门禁结果
+
+| 门禁 | 命令 | 期望 | 实测 |
+|------|------|:--:|:--:|
+| 构建 | `npm run build` | 通过 + 幂等 | ✅ 一致性 3/3 + 6/6；幂等 |
+| 单测 | `npm test` | ≥41 文件 / ≥694 用例全绿 | ✅ **41 / 706** |
+| 类型 | `npx tsc --noEmit` | exit 0 | ✅ exit 0 |
+| i18n | `node bin/openfeel.js lint i18n` | 零错误 | ✅ 531 键一致 |
+| kb | `node bin/openfeel.js lint kb` | 0 过期引用 | ✅ 226 引用 0 过期 |
+| 环境 | 真实全局目录 + 仓库 config.yaml 前后哈希 | UNCHANGED | ✅ 全 UNCHANGED |
+
+## 真实环境隔离核对（跨一次完整 `npm test`）
+
+```
+UNCHANGED  C:\Users\Liuary\.openfeel
+UNCHANGED  C:\Users\Liuary\.config\opencode
+UNCHANGED  C:\Users\Liuary\.config\openfeel
+UNCHANGED  .openfeel/config.yaml        # 三值 auto / enabled / true
+```
+
+## 遗留 13 项覆盖核对（plan §一表 ↔ 产出）
+
+| # | 内容 | 归属 op | 核对命令/证据 | 结果 |
+|:--:|------|:--:|------|:--:|
+| #1 | `flow phases --json` help 补 `advanceAccepted` | op-004 | `rg advanceAccepted src/core/i18n-data/zh-CN.ts` → 1；`--help` 实测命中 | ✅ |
+| #2 | REV-44 REV-001 状态已 closed（失效，不追加） | op-004 | `REV-44:58 closed` | ✅ |
+| #3 | REV-44 REV-002 状态已 closed（失效，不追加） | op-004 | `REV-44:89 closed` | ✅ |
+| #4 | REV-44 REV-003 提请 + agents-md/AGENTS.md 措辞 | op-004 | `REV-44:236` 提请行；`rg 平台默认为 .ask` 命中 zh/en/AGENTS | ✅ |
+| #5 | REV-46 REV-007 状态已 closed（失效，不追加） | op-004 | `REV-46:280 closed` | ✅ |
+| #6 | REV-46 REV-011 提请补验收记录 | op-004 | `REV-46:541` 提请行 | ✅ |
+| #7 | 子 Schema passthrough 保全嵌套键 | op-005 | `rg passthrough src/core/config.ts`；单测 #7 往返保全 | ✅ |
+| #8 | 非法 YAML 不覆盖 | op-005 | `rg parseError src/core/config.ts`；单测 #8 + 命令级守卫 | ✅ |
+| #9 | 文档/skill 执行口径统一 | op-003 | 5 skill + AGENTS + manual 改 `node bin/openfeel.js`；扫描台账 | ✅ |
+| #10 | CI 版本门禁（两 job） | op-003 | `rg Version consistency guard ci.yml` → 2 | ✅ |
+| #11 | flow/plan 测试补 `vi.mock('node:os')` | op-002 | `rg` 各 1 命中 | ✅ |
+| #12 | CI 环境哈希守卫 | op-002 | `rg "Env snapshot\|Env guard" ci.yml` → 2 | ✅ |
+| #13 | 455 死映射清理 | op-006 | `projects` 455 → 0；备份存在 | ✅ |
+
+**13/13 有归属且已核实。**
+
+## H6 / H9 结论核对
+
+- **H6**（`ensureGlobalConfig` 不新增 `NODE_ENV==='test'` 分支）：**不做**，判定在 plan §六 R6 + op-002 报告；实测无 `NODE_ENV` 守卫引入。
+- **H9**（`bin/openfeel.js` 不新增全局旧版告警）：**不做**，判定在 plan §六 R5 + op-003 报告；实测 bin 未新增探测。
 
 ## 产出文件
 
-- `package.json`
-- `.openfeel/config.yaml`
-- `src/core/config.ts`
-- `CHANGELOG.md`
-- `.openfeel/plan/v1/stage-34/ops/op-007.md`（本次新建的方案文件，实际产出）
+- `test/commands/flow.test.ts`、`test/commands/plan.test.ts`、`test/commands/config.test.ts`
+- `test/core/config.test.ts`、`test/core/i18n.test.ts`、`test/core/template-loader.test.ts`、`test/core/opencode-instance.test.ts`、`test/core/setup.test.ts`
 
 ## 前置校验结果
 
-- 方案完整性：通过（op-007.md 含目标、6 实施步骤、产出文件、6 自测清单、阶段、最多重试 3）
-- Phase 合法性：通过（偏差记录）——flow.json `pipeline.phase="active"` 非流水线枚举值，stage-34 已 `done`，本任务为归档后版本号收尾（不推进流水线、不 commit/push），Feel 已明确指示执行，按「Feel 明确指示可继续但需注明 phase 偏差」处理
-- 流转合法性：通过（本任务不涉及阶段流转，无 FlowManager transitions 需求）
-
-## 方案一致性回写
-
-| 声明产出 | 实际产出 | 比对 |
-|----------|----------|:--:|
-| `package.json` | 已修改 version → 1.0.9 | 一致 |
-| `.openfeel/config.yaml` | 已修改 meta.version → 1.0.9 | 一致 |
-| `src/core/config.ts` | 已修改两处字面量 → 1.0.9 | 一致 |
-| `CHANGELOG.md` | 已新增 1.0.9 条目 | 一致 |
-
-无遗漏、无超范围（git status 仅 4 个声明文件 + op-007.md 新增；build 再生成的 template-loader.ts / update.ts 与现有内容一致，未产生 diff）。
+- 方案完整性：通过
+- Phase 合法性：通过（`exec_running`）
+- 流转合法性：通过（`flow health --quick` exit 0）
 
 ## 偏差记录
 
-1. **phase 偏差（前置校验）**：flow.json `pipeline.phase="active"` 非标准枚举，属归档后收尾场景，Feel 指示执行，已记录。
-2. **AGENTS.md 措辞确认**：任务背景称「AGENTS.md 版本声明已更新为『v1.0.x 已发布』措辞」，实测根目录 `AGENTS.md:136` 为「当前项目为 OpenFeel 正式版，当前版本 v1.0.8（见 package.json，W 级修订持续递增）」——是**具体版本号 v1.0.8** 而非「v1.0.x」泛化措辞（泛化措辞实际在 agents-md 模板源 zh-CN.md/en.md:132）。按任务指示**未修改 AGENTS.md**，但该行与 package.json 的 1.0.9 存在暂时不一致（其措辞注明「见 package.json」，且模板源为「v1.0.x」泛化表述），是否同步属 Feel 决策范围，此处如实披露。
-3. 无跳步违规。
-
-## 移交
-
-未 commit、未 push（按任务指示由 Feel 收尾统一提交）。请 Feel 安排 Reviewer 审查或直接收尾。
+- 无超范围/遗漏产出。
+- 未在本地验证项：CI workflow 在 GitHub Actions runner 的真实执行（依 op-002/op-003 交接：YAML 语法 + 等价 shell 逻辑 + 本地断言演练已过，runner 行为待 PR 实测）。

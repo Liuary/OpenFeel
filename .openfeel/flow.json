@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-29T14:04:30.008Z",
-    "revision": 256
+    "updated": "2026-09-29T14:06:24.913Z",
+    "revision": 257
   },
   "pipeline": {
     "phase": "active",
@@ -1318,9 +1318,9 @@
         },
         "op-007": {
           "title": "全量回归",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -7571,6 +7571,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-48.op-006",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-29T14:06:24.893Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-48.op-007",
         "attempts": 1
       }
     }

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-29T14:03:52.573Z",
-    "revision": 255
+    "updated": "2026-09-29T14:04:30.008Z",
+    "revision": 256
   },
   "pipeline": {
     "phase": "active",
@@ -1301,9 +1301,9 @@
         },
         "op-006": {
           "title": "455 条死映射清理（脚本、隔离副本验证、备份、复核）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -7562,6 +7562,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-48.op-004",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-29T14:04:29.977Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-48.op-006",
         "attempts": 1
       }
     }

@@ -64,3 +64,4 @@
 | [2026-09-29-Liuary-057.md](2026-09-29-Liuary-057.md) | Liuary | v1.1.2-stage-48.op-001 执行通过 |
 | [2026-09-29-Liuary-058.md](2026-09-29-Liuary-058.md) | Liuary | v1.1.2-stage-48.op-005 执行通过 |
 | [2026-09-29-Liuary-059.md](2026-09-29-Liuary-059.md) | Liuary | v1.1.2-stage-48.op-004 执行通过 |
+| [2026-09-29-Liuary-060.md](2026-09-29-Liuary-060.md) | Liuary | v1.1.2-stage-48.op-006 执行通过 |

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-29T15:52:44.814Z",
-    "revision": 285
+    "updated": "2026-09-29T15:54:00.321Z",
+    "revision": 286
   },
   "pipeline": {
     "phase": "active",
@@ -1518,9 +1518,9 @@
         },
         "op-011": {
           "title": "修复 B3 发布元数据与 B4 VERSION 死导出（发布门禁）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -8036,6 +8036,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-49.op-010",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-29T15:54:00.304Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-49.op-011",
         "attempts": 1
       }
     }

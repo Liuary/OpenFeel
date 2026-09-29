@@ -70,3 +70,4 @@
 | [2026-09-29-Liuary-063.md](2026-09-29-Liuary-063.md) | Liuary | 阶段 v1.1.2-stage-48 完成 |
 | [2026-09-29-Liuary-064.md](2026-09-29-Liuary-064.md) | openfeel-reviewer | **stage-49 op-009 全量审查汇总完成**：8 单元 73→68 条去重；blocking 4/4 独立核实成立（dry-run 写盘 / 悬空依赖 / postinstall 失效 / VERSION 死导出）；矛盾裁定 + REV-49-005 closed + U8 偏差留痕；blocking 闭环后可发布 1.1.2 |
 | [2026-09-29-Liuary-065.md](2026-09-29-Liuary-065.md) | Liuary | v1.1.2-stage-49.op-010 执行通过 |
+| [2026-09-29-Liuary-066.md](2026-09-29-Liuary-066.md) | Liuary | v1.1.2-stage-49.op-011 执行通过 |

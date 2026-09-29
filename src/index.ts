@@ -5,6 +5,3 @@
 
 // 占位：后续阶段将在此导出核心模块
 export {};
-
-// 版本号标识
-export const VERSION = '0.1.0';

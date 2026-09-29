@@ -9,9 +9,9 @@
  * 依赖 `npm run build` 已执行（.opencode/ 与生成文件为构建产物）。
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const MARK = '<!-- openfeel:generated';
@@ -95,5 +95,33 @@ describe('.opencode/ 自举实例', () => {
     const c = readFileSync(join(ROOT, '.opencode', 'agents', 'openfeel-reviewer.md'), 'utf-8');
     expect(c).toContain('工具调用异常');
     expect(c).toContain('独立取证');
+  });
+});
+
+describe('发布元数据（stage-49 B3/B4）', () => {
+  it('package.json 无 postinstall；engines.node 收窄；files 不含 scripts', () => {
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8')) as {
+      scripts: Record<string, string>;
+      engines: { node: string };
+      files: string[];
+    };
+    // B3：postinstall 补丁移除 + engines 对齐 @inquirer/core + files 去除 scripts
+    expect(pkg.scripts.postinstall).toBeUndefined();
+    expect(pkg.engines.node).toBe('>=20.17.0');
+    expect(pkg.files).not.toContain('scripts');
+  });
+
+  it('scripts/patch-inquirer.js 已删除', () => {
+    expect(existsSync(join(ROOT, 'scripts', 'patch-inquirer.js'))).toBe(false);
+  });
+
+  it('dist/index.js 不再导出 VERSION（B4 死导出移除）', async () => {
+    const distPath = join(ROOT, 'dist', 'index.js');
+    // build 未执行时跳过（dist 为构建产物）
+    if (!existsSync(distPath)) {
+      return;
+    }
+    const mod = await import(pathToFileURL(distPath).href);
+    expect('VERSION' in mod).toBe(false);
   });
 });

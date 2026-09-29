@@ -26,6 +26,9 @@
 ### Fixed
 - `config/BUG-004`：`identity.test.ts` 直写真实 `~/.openfeel/config.json` 的测试隔离缺口——改为 N4 单点 mock + 新增隔离守护用例（真实文件 mtime/SHA-256 前后不变）
 - 已登记缺陷集中清理：`cli/BUG-001`、`cli/BUG-002`（stageId 冲突 i18n）、`archive/BUG-001`、`config/BUG-002`（`config.yaml` 覆盖语义）、`config/BUG-003`、`templates/BUG-002`
+- 移除随包 `postinstall` 补丁（`scripts/patch-inquirer.js`）：该补丁在用户端 `node_modules` 布局下必然静默失效（`util.styleText` 自 Node 20.12 起已内置，允许区间内无需补丁）
+- `engines.node` 由 `>=20.0.0` 收窄为 `>=20.17.0`，与 `@inquirer/core` 要求一致，避免 Node 20.0~20.16 下交互命令崩溃
+- 移除 `src/index.ts` 中从未生效的死导出 `VERSION`（值恒为 `0.1.0`、全仓零引用；`exports["."]` 不再暴露错误版本号；CLI 版本仍取自 `package.json`）
 
 ## [1.1.1] - 2026-09-26
 

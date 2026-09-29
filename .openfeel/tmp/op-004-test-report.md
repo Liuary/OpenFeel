@@ -1,58 +1,58 @@
-# 自测报告 — v1.1.2-stage-45.op-004
+# 自测报告 — op-004
 
-- **执行时间**：2026-09-29 04:09
+- **执行时间**：2026-09-29 22:04
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1
+- **重试次数**：第 1 次（含 1 次措辞用词修正以满足验收 grep）
 
 ## 执行摘要
-新增 1 条泛化锁断言，全量回归 40 文件 / 659 用例全绿，B 类未动核验通过。
+
+遗留批完成：#1 `flow phases --json` help 文案补 `advanceAccepted`（i18n 双语 + fallback）、#4 权限措辞精化（agents-md 双语 + AGENTS.md，含「opencode 平台默认为 ask」限定）；#6/#4 有效项共 **2 处** REV 处理记录追加「提请」行（**不改状态**）；#2/#3/#5 已 closed 不追加。
 
 ## 实施步骤完成情况
-- [x] 新增泛化锁断言（`template-loader.test.ts` loadTemplate describe）
-- [x] `npm run build && npm test` 全绿
-- [x] `openfeel lint i18n` 零错误；`lint kb` 见偏差
-- [x] `global-paths.ts` 仅注释行（零行为变更）
-- [x] B 类未动核验
+
+- [x] 步骤1：#1 i18n `help.flow.phases.json`（zh-CN.ts:481 / en.ts:456）+ `flow.ts:336` fallback 补 `advanceAccepted`
+- [x] 步骤2：#4 权限措辞精化（`agents-md/{zh-CN,en}.md:115` + `AGENTS.md:122`，对照 `manual/core/permission.md:34`）+ build
+- [x] 步骤3：REV 提请（仅追加处理记录行，不改状态）——REV-44 REV-003、REV-46 REV-011 各 1 行；REV-44 REV-001/002、REV-46 REV-007 **未追加**（已 closed）
 
 ## 自测清单验证
+
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| `npm run build && npm test` 全绿 | ✅ | 40 files / 659 tests passed |
-| `lint i18n` 零错误 | ✅ | 502 键一致 |
-| `lint kb` 零错误 | ⚠️ | 1 项既有过期引用（kb 禁改） |
-| 新增泛化锁断言通过 | ✅ | 含于 659 |
-| `global-paths.test.ts` 未被修改 | ✅ | `git status` 无该文件 |
-| B 类内容未动 | ✅ | 无 opencode.jsonc/$schema/kilo/claude/CHANGELOG/docs/phase-*/kb/fixture 变更 |
-| `supportedTools` 保留 | ✅ | update.ts:56 仍在 |
-| `git diff global-paths.ts` 仅注释 | ✅ | 无 join/常量改动 |
-| 路径断言仍通过 | ✅ | global-paths 9 tests passed |
-| 未新增依赖 | ✅ | — |
+| `help.flow.phases.json` zh/en 补 `advanceAccepted`；`flow.ts` fallback 同步 | ✅ | 三处命中 |
+| `agents-md/{zh-CN,en}.md:115` + `AGENTS.md:122` 补「opencode 平台默认为 `ask`」（双语 + build） | ✅ | 源 + 生成段 |
+| **2 处**有效 REV 处理记录追加「提请」行（状态未改） | ✅ | REV-44:236 / REV-46:541 |
+| 3 处失效项未追加提请行（REV-008） | ✅ | REV-44 REV-001/002、REV-46 REV-007 无新增 |
+| `flow phases --json --help` 含 `advanceAccepted` | ✅ | 实测命中 |
+| `npm run build` 通过；`lint i18n` 零错误；`npm test -- i18n template-loader` 通过 | ✅ | 531 键一致；2 文件 / 39 用例 |
+| 未新增依赖；未改版本号 | ✅ | 1.1.2 |
 
-## 未改测试文件清单与理由
-| 测试文件 | 为何无需改 |
-|----------|-----------|
-| `test/core/global-paths.test.ts:29-51` | 断言路径函数返回值，路径逻辑未变 → 仍成立 |
-| `test/core/setup.test.ts:53-58,67,78-79` | 断言「部署内容 == loadTemplate(lang,'agents-md')」，模板已随 build 同步 |
-| `test/core/template-loader.test.ts:113-149,155-193` | 断言模板标记字符串，均非本阶段改动行 |
-| `test/core/managed-region.test.ts` | 断言文件类型与 frontmatter 浅合并语义，实现未变 |
-| `test/core/model-config.test.ts` | 断言路径/写入行为，路径逻辑未变 |
-| `test/core/update.test.ts` | 断言部署文件/state 键，`opencode.jsonc` 为文件名（B 类） |
-| `test/core/update-infos.test.ts`、`update-state.test.ts` | 断言路径/`isLegacyFrameworkKey`，实现未变 |
-| `test/core/migrate.test.ts` | 断言 legacy 路径/字段（B 类，未泛化） |
-| `test/core/opencode-instance.test.ts` | 断言自举产物文件/生成标记（非文案） |
-| `test/commands/model.test.ts`、`migrate.test.ts`、`init.test.ts` | 断言文件写入/命令输出，所依赖 i18n 键（`migrate.detect.*` 等）未改 |
+### 验收命令结果
+
+- `rg -n "advanceAccepted" src/core/i18n-data/{zh-CN,en}.ts src/commands/flow.ts` → 命中（zh:481 / en:456 / flow:336）
+- `node bin/openfeel.js flow phases --json --help` → `--json  以 JSON 输出 { phases, transitions, advanceAccepted }`
+- `rg -n "平台默认为 .ask|platform default is .ask" src/core/templates-data/agents-md AGENTS.md` → zh-CN:115 / en:115 / AGENTS:122 命中
+- `rg -n "提请" REV-44 REV-46` → **仅 2 行**（REV-44:236 新增 / REV-46:541 新增）
+- `rg -n "^- \*\*状态\*\*：" REV-44` → REV-001 `:58` closed、REV-002 `:89` closed、REV-003 `:212` **pending（未改）**
+- `node bin/openfeel.js lint i18n` → `✅ 531 键一致`
+- `npm test -- i18n template-loader` → 2 文件 / 39 用例通过
 
 ## 产出文件
-- `test/core/template-loader.test.ts`（新增 1 条断言）
 
-## B 类未动核验结论
-`git diff --name-only` 无 `opencode.jsonc` / `$schema` / `kilo/` / `claude/` / `CHANGELOG` / `docs/phase-*` / `.openfeel/kb/` / `test/fixtures` 变更；`.opencode/**` 仅 op-002 build 重生成的 agents/skills 自举产物（非手改）；`supportedTools` 保留。
+- `src/core/i18n-data/zh-CN.ts`、`src/core/i18n-data/en.ts`
+- `src/commands/flow.ts`
+- `src/core/templates-data/agents-md/zh-CN.md`、`src/core/templates-data/agents-md/en.md`
+- `AGENTS.md`
+- `src/core/template-loader.ts`（生成段）
+- `REV-v1.1.2-stage-44.md`、`REV-v1.1.2-stage-46.md`（处理记录追加，**状态未改**）
 
 ## 前置校验结果
+
 - 方案完整性：通过
-- Phase 合法性：通过（exec_running / current.op=op-004）
-- 流转合法性：通过
+- Phase 合法性：通过（`exec_running`）
+- 流转合法性：通过（`flow health --quick` exit 0）
 
 ## 偏差记录
-- `lint kb` 1 项既有过期引用（详见 op-003 报告），非本阶段引入且 kb 禁改。
-- 无跳步违规。
+
+- **1 次措辞修正**：zh 初稿用 scheme 表格原文「平台默认**实为** `ask`」→ 但 op-004/op-007 验收 grep 为「平台默认**为** .ask」；为使验收可执行，改用「平台默认为」，语义不变。属方案内部（表格正文 vs 验收命令）不一致，按**验收命令**对齐。
+- **生成段 grep 局限（非实现问题）**：`src/core/template-loader.ts` 内嵌中文/英文时以 `` \` `` 转义反引号，故验收命令 `rg "平台默认为 .ask|platform default is .ask" src/core/template-loader.ts` **字面不命中**（`\`+` 两字符无法被单字符通配 `.` 覆盖）；本 op 以 `rg "平台默认为|platform default is" src/core/template-loader.ts` 验证生成段确含新文案（:2831 en / :3284 zh），并 reliance build 单源一致性校验兜底。请在 op-007 复核时注意此局限。
+- 未在本地验证项：无（构建/单测/lint 均本地可验）。

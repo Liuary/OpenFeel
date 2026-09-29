@@ -453,7 +453,7 @@ export const help: I18nDomain = {
   'flow.current':          { key: 'help.flow.current',          zh: '', en: 'Show current stage and operation' },
   'flow.metrics':          { key: 'help.flow.metrics',          zh: '', en: 'Show Agent performance metrics' },
   'flow.phases':           { key: 'help.flow.phases',           zh: '', en: 'List all valid phases and transitions (self-describing)' },
-  'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '', en: 'Output { phases, transitions } as JSON' },
+  'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '', en: 'Output { phases, transitions, advanceAccepted } as JSON (advanceAccepted = the built-in 15 phases accepted by flow advance)' },
   'flow.stage':            { key: 'help.flow.stage',            zh: '', en: 'Stage management' },
   'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '', en: 'Add a pipeline stage (registers flow.json only; usually use `openfeel plan stage add`)' },
   'flow.stage.remove':     { key: 'help.flow.stage.remove',     zh: '', en: 'Remove a pipeline stage (with safety checks; default only unregisters flow.json)' },

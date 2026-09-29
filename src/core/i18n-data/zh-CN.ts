@@ -478,7 +478,7 @@ export const help: I18nDomain = {
   'flow.current':          { key: 'help.flow.current',          zh: '显示当前阶段和操作', en: '' },
   'flow.metrics':          { key: 'help.flow.metrics',          zh: '展示 Agent 性能指标', en: '' },
   'flow.phases':           { key: 'help.flow.phases',           zh: '列出全部合法 phase 及其流转映射（自描述）', en: '' },
-  'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '以 JSON 输出 { phases, transitions }', en: '' },
+  'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '以 JSON 输出 { phases, transitions, advanceAccepted }（advanceAccepted = 内置 15 phase，即 flow advance 的推进白名单）', en: '' },
   'flow.stage':            { key: 'help.flow.stage',            zh: '阶段管理', en: '' },
   'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '新增流水线阶段（仅注册 flow.json，不建目录；通常应使用 openfeel plan stage add）', en: '' },
   'flow.stage.remove':     { key: 'help.flow.stage.remove',     zh: '移除流水线阶段（安全校验；默认仅注销 flow.json，不删目录）', en: '' },

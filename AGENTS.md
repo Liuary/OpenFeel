@@ -119,7 +119,7 @@ AI Agent 项目级行为约束与编码规范。本文件为永久性约束，�
 
 ## 权限模型（Agent permission）
 
-9 个 agent 内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `node bin/openfeel.js setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）。
+9 个 agent 内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `node bin/openfeel.js setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）。其中 `external_directory` 的 **opencode 平台默认为 `ask`**，框架内联 `"allow"` 后生效值为 `allow`（详 `.openfeel/manual/core/permission.md`）。
 
 - **合并语义**：agent `.md` frontmatter 与 `opencode.jsonc`（顶层 `permission` 与 `agent.<name>.permission`）**按权限键深合并**，**同名键以 agent `.md` 为准（配置文件无法覆盖已声明键）**。
 - **收紧入口**：项目内新建 `.opencode/agent/<name>.md` 覆盖同名 agent；**`opencode.jsonc` 的 `agent.<name>.permission` 无法收紧已声明键**。

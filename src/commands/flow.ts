@@ -333,7 +333,7 @@ export function registerFlowCommand(program: Command): void {
   flow
     .command('phases')
     .description('列出全部合法 phase 及其流转映射（自描述）')
-    .option('--json', '以 JSON 输出 { phases, transitions }')
+    .option('--json', '以 JSON 输出 { phases, transitions, advanceAccepted }')
     .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();

@@ -112,7 +112,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 9 个 agent 各自内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `openfeel setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）。
 
 - **合并语义（按权限键深合并，agent 优先）**：agent `.md` frontmatter 的 `permission` 与项目/全局 `opencode.jsonc` 的 `permission` / `agent.<name>.permission` **按权限键深合并**；**同名键以 agent `.md` 为准（配置文件无法覆盖）**，agent 未声明的键才由配置生效。
-- **`external_directory`**：框架默认 `allow`（工作区外目录免询问；依据隔离环境实测，opencode 1.18.33）。
+- **`external_directory`**：框架内联配置 `"allow"` → agent 生效值 `allow`（工作区外目录免询问）；**opencode 平台默认为 `ask`**，补键是行为变更（ask→allow，依据隔离环境实测 opencode 1.18.33）。
 - **项目级收紧（唯一入口）**：在**项目根**新建 `.opencode/agent/<name>.md` 覆盖同名 agent，并重写完整 `permission` 块；**`opencode.jsonc` 的 `agent.<name>.permission` 无法收紧已声明键（镜像全量键亦无效）**。详见 `.openfeel/manual/core/permission.md`。
 - **勿手改全局 agent 文件 frontmatter**：`openfeel update` 会覆盖 frontmatter 同名字段（浅合并，`permission` 嵌套对象整体覆盖，见 `src/core/managed-region.ts`）；正文自定义请写在受管区（`<!-- openfeel:begin/end -->`）之外。
 - **生效时机**：opencode 仅在启动时读取配置，改动后须**重启**。

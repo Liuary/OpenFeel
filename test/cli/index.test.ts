@@ -16,6 +16,7 @@ vi.mock('node:os', async (importOriginal) => {
 
 import { applyHelpI18n } from '../../src/cli/index.js';
 import { registerStageCommand } from '../../src/commands/stage.js';
+import { registerViewCommand } from '../../src/commands/view.js';
 
 describe('applyHelpI18n（stage-50 op-004 T38）', () => {
   let tmpDir: string;
@@ -53,5 +54,24 @@ describe('applyHelpI18n（stage-50 op-004 T38）', () => {
     expect(arg.description).toBeTruthy();
     expect(arg.description).not.toMatch(/[\u4e00-\u9fff]/);
     expect(arg.description).toContain('Stage ID');
+  });
+
+  it('N2-4：view add 的 description 在 en 含 deprecated、zh 含已弃用（单键 help.view.add）', () => {
+    // en（beforeEach 已写入 en 的 .info.json）
+    const enProgram = new Command();
+    enProgram.name('openfeel').description('x');
+    registerViewCommand(enProgram);
+    applyHelpI18n(enProgram);
+    const enAdd = enProgram.commands.find((c) => c.name() === 'view')!.commands.find((c) => c.name() === 'add')!;
+    expect(enAdd.description()).toContain('deprecated');
+
+    // 切换为 zh-CN
+    writeFileSync(join(tmpDir, '.openfeel', '.info.json'), JSON.stringify({ user: 't', lang: 'zh-CN' }), 'utf-8');
+    const zhProgram = new Command();
+    zhProgram.name('openfeel').description('x');
+    registerViewCommand(zhProgram);
+    applyHelpI18n(zhProgram);
+    const zhAdd = zhProgram.commands.find((c) => c.name() === 'view')!.commands.find((c) => c.name() === 'add')!;
+    expect(zhAdd.description()).toContain('已弃用');
   });
 });

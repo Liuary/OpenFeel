@@ -25,7 +25,7 @@ import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
-import { validateStageId, suggestStageId } from '../core/plan/path.js';
+import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { MetricsStore } from '../core/metrics.js';
 import { addReviewEntry } from '../core/view/entry.js';
 import { handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
@@ -495,6 +495,67 @@ export function registerFlowCommand(program: Command): void {
       }
     });
 
+  // flow stage set <stageId> [--deps <ids...>]
+  stageCmd
+    .command('set <stageId>')
+    .description('设置阶段依赖（覆盖写入；未指定 --deps 视为清空）')
+    .option('--deps <ids...>', '依赖阶段 ID 列表（空格或逗号分隔；含变长参数，建议置于命令末尾）')
+    .action((stageId: string, options: { deps?: string[] }) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      // 非法 stageId 统一报错 + 建议名
+      const v = validateStageId(stageId);
+      if (!v.ok) {
+        console.error(t('common.stageIdInvalidTmpl', lang, { input: stageId }));
+        console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, stageId) }));
+        process.exit(1);
+      }
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.error(t('common.errorNoInit', lang));
+        process.exit(1);
+      }
+      const data = mgr.getData()!;
+      // 兼容 --deps a,b 与 --deps a b：逐项按逗号再切分、去空（与 plan stage add 对齐）
+      const deps = (options.deps ?? [])
+        .flatMap((d) => d.split(','))
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      // 悬空依赖：命令层强制校验（核心层仅 warn），非法一律 exit 1 且不写盘
+      const known = new Set(Object.keys(data.stages).map((k) => normalizeStageId(k) ?? k));
+      const invalid = deps.filter((d) => !known.has(normalizeStageId(d) ?? d));
+      if (invalid.length > 0) {
+        console.error(t('stage.set.depsDanglingTmpl', lang, { deps: invalid.join(', ') }));
+        process.exit(1);
+        return;
+      }
+
+      // 目标阶段必须存在
+      const target = normalizeStageId(stageId) ?? stageId;
+      if (!data.stages[target]) {
+        console.error(t('common.stageIdInvalidTmpl', lang, { input: stageId }));
+        process.exit(1);
+        return;
+      }
+
+      try {
+        mgr.setStageDeps(stageId, deps);
+      } catch (err: unknown) {
+        if (isFlowConcurrentError(err)) {
+          handleConcurrentConflict(err, lang);
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(t('common.errorTmpl', lang, { msg }));
+        process.exit(1);
+        return;
+      }
+      console.log(t('stage.set.depsOkTmpl', lang, {
+        stage: target,
+        deps: deps.length > 0 ? deps.join(', ') : t('common.none', lang),
+      }));
+    });
+
   // flow advance --stage <id> --to <phase> [--op <id>] [--force]
   flow
     .command('advance')
@@ -821,6 +882,92 @@ export function registerFlowCommand(program: Command): void {
         console.error(t('flow.review.notFoundTmpl', lang, { revId }));
         process.exit(1);
       }
+    });
+
+  // flow review update <rev-id> [--priority] [--title] [--blocking]
+  reviewCmd
+    .command('update <rev-id>')
+    .description('更新审查条目字段（至少提供一个选项）')
+    .option('--priority <level>', '优先级（high/medium/low）')
+    .option('--title <text>', '审查标题')
+    .option('--blocking <true|false>', '是否阻塞流水线（true/false）')
+    .action((revId: string, options: { priority?: string; title?: string; blocking?: string }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.error(t('common.errorNoInit', lang));
+        process.exit(1);
+      }
+
+      const patch: { priority?: 'high' | 'medium' | 'low'; title?: string; blocking?: boolean } = {};
+      let hasField = false;
+
+      if (options.priority !== undefined) {
+        // 枚举校验：非法优先级 exit 1
+        if (options.priority !== 'high' && options.priority !== 'medium' && options.priority !== 'low') {
+          console.error(t('view.add.errorInvalidPriorityTmpl', lang, { priority: options.priority }));
+          process.exit(1);
+          return;
+        }
+        patch.priority = options.priority;
+        hasField = true;
+      }
+      if (options.title !== undefined) {
+        patch.title = options.title;
+        hasField = true;
+      }
+      if (options.blocking !== undefined) {
+        // 布尔解析：非法值 exit 1
+        if (options.blocking !== 'true' && options.blocking !== 'false') {
+          console.error(t('flow.review.invalidBlockingTmpl', lang, { value: options.blocking }));
+          process.exit(1);
+          return;
+        }
+        patch.blocking = options.blocking === 'true';
+        hasField = true;
+      }
+
+      // 无字段可更新：exit 1
+      if (!hasField) {
+        console.error(t('flow.review.updateNoFieldTmpl', lang));
+        process.exit(1);
+        return;
+      }
+
+      const ok = mgr.updateReview(revId, patch);
+      if (!ok) {
+        console.error(t('flow.review.notFoundTmpl', lang, { revId }));
+        process.exit(1);
+        return;
+      }
+      console.log(t('flow.review.updateOkTmpl', lang, { revId }));
+    });
+
+  // flow review remove <rev-id>
+  reviewCmd
+    .command('remove <rev-id>')
+    .description('删除审查条目（留审计日志；打印被删条目标题）')
+    .action((revId: string) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.error(t('common.errorNoInit', lang));
+        process.exit(1);
+      }
+      // 先取标题供追溯（删除后不可得）
+      const item = mgr.getReviewItems().find((r) => r.id === revId);
+      if (!item) {
+        console.error(t('flow.review.notFoundTmpl', lang, { revId }));
+        process.exit(1);
+        return;
+      }
+      const ok = mgr.removeReview(revId);
+      if (!ok) {
+        console.error(t('flow.review.notFoundTmpl', lang, { revId }));
+        process.exit(1);
+        return;
+      }
+      console.log(t('flow.review.removeOkTmpl', lang, { revId, title: item.title }));
     });
 
   // flow retry --op <id>

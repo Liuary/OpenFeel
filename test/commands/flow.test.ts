@@ -429,4 +429,119 @@ describe('flow 命令（stage-41）', () => {
       process.exitCode = prevExitCode;
     }
   });
+
+  // ── stage-51/N2-1：flow stage set --deps ──
+
+  it('N2-1: flow stage set --deps 写入并留审计日志', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-60');
+    mgr.addStage('v1.1.2-stage-61');
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'stage', 'set', 'v1.1.2-stage-61', '--deps', 'v1.1.2-stage-60']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.1.2-stage-61'].deps).toEqual(['v1.1.2-stage-60']);
+    expect(flow.log.some((l: { action: string }) => l.action === 'stage_deps_set')).toBe(true);
+  });
+
+  it('N2-1: 悬空依赖 → exit 1 且不写盘', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-62');
+    mgr.save();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    errorMock.mockClear();
+
+    await safeParse(['flow', 'stage', 'set', 'v1.1.2-stage-62', '--deps', 'v9.9.9-stage-99']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('v9.9.9-stage-99');
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+  });
+
+  it('N2-1: 简写 stageId 归一（stage-02）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-01');
+    mgr.addStage('v1.0.0-stage-02');
+    mgr.save();
+
+    await safeParse(['flow', 'stage', 'set', 'stage-02', '--deps', 'stage-01']);
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-02'].deps).toEqual(['stage-01']);
+  });
+
+  it('N2-1: 未指定 --deps 视为清空', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-63');
+    mgr.getData()!.stages['v1.1.2-stage-63'].deps = ['x'];
+    mgr.save();
+
+    await safeParse(['flow', 'stage', 'set', 'v1.1.2-stage-63']);
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.1.2-stage-63'].deps).toEqual([]);
+  });
+
+  // ── stage-51/N2-2：flow review update / remove ──
+
+  /** 建立含一条 REV-001 的项目 */
+  function setupReview(): void {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-64');
+    mgr.getData()!.stages['v1.1.2-stage-64'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.getData()!.reviews.push({
+      id: 'REV-001', op: 'v1.1.2-stage-64.op-001', status: 'open', priority: 'medium',
+      title: 'old title', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z',
+    });
+    mgr.save();
+  }
+
+  it('N2-2: flow review update 更新 priority/title/blocking 并留日志', async () => {
+    setupReview();
+
+    await safeParse(['flow', 'review', 'update', 'REV-001', '--priority', 'high', '--title', 'new title', '--blocking', 'false']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    const rev = flow.reviews.find((r: { id: string }) => r.id === 'REV-001');
+    expect(rev.priority).toBe('high');
+    expect(rev.title).toBe('new title');
+    expect(rev.blocking).toBe(false);
+    expect(flow.log.some((l: { action: string }) => l.action === 'review_update')).toBe(true);
+  });
+
+  it('N2-2: 非法 priority / 无字段 / 未命中 → exit 1', async () => {
+    setupReview();
+
+    await safeParse(['flow', 'review', 'update', 'REV-001', '--priority', 'urgent']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+
+    exitMock.mockClear();
+    await safeParse(['flow', 'review', 'update', 'REV-001']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+
+    exitMock.mockClear();
+    await safeParse(['flow', 'review', 'update', 'REV-999', '--priority', 'high']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  it('N2-2: flow review remove 删除条目并打印标题；未命中 exit 1', async () => {
+    setupReview();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'review', 'remove', 'REV-001']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.reviews.find((r: { id: string }) => r.id === 'REV-001')).toBeUndefined();
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('old title');
+
+    exitMock.mockClear();
+    await safeParse(['flow', 'review', 'remove', 'REV-999']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
 });

@@ -2047,6 +2047,95 @@ export class FlowManager {
   }
 
   /**
+   * 更新审查条目的可编辑字段（N2-2）：仅覆盖 patch 中提供的键。
+   * 留审计日志 `review_update`，并 save()。
+   * @param revId 审查条目 ID
+   * @param patch 待覆盖字段（priority/title/blocking）
+   * @returns 是否命中条目
+   */
+  updateReview(
+    revId: string,
+    patch: { priority?: 'high' | 'medium' | 'low'; title?: string; blocking?: boolean },
+  ): boolean {
+    if (!this.data) {
+      return false;
+    }
+    const review = this.data.reviews.find((r) => r.id === revId);
+    if (!review) {
+      return false;
+    }
+    if (patch.priority !== undefined) {
+      review.priority = patch.priority;
+    }
+    if (patch.title !== undefined) {
+      review.title = patch.title;
+    }
+    if (patch.blocking !== undefined) {
+      review.blocking = patch.blocking;
+    }
+    this.appendLog({
+      time: '',
+      agent: 'openfeel-reviewer',
+      action: 'review_update',
+      detail: { revId, patch: patch as Record<string, unknown> },
+    });
+    this.save();
+    return true;
+  }
+
+  /**
+   * 删除审查条目（N2-2）：留审计日志 `review_remove`，并 save()。
+   * @param revId 审查条目 ID
+   * @returns 是否命中并删除
+   */
+  removeReview(revId: string): boolean {
+    if (!this.data) {
+      return false;
+    }
+    const idx = this.data.reviews.findIndex((r) => r.id === revId);
+    if (idx === -1) {
+      return false;
+    }
+    const removed = this.data.reviews[idx];
+    this.data.reviews.splice(idx, 1);
+    this.appendLog({
+      time: '',
+      agent: 'openfeel-reviewer',
+      action: 'review_remove',
+      detail: { revId, title: removed.title },
+    });
+    this.save();
+    return true;
+  }
+
+  /**
+   * 覆盖写入某阶段的 deps 列表（N2-1）。
+   * 悬空依赖的强制校验在命令层（核心层不静默，仅写入 + 审计日志 + save）。
+   * @param stageName 阶段 ID（简写或全称，经 normalizeStageId 归一）
+   * @param deps 依赖阶段 ID 列表
+   * @throws Error 阶段不存在时抛出（调用方决定退出码）
+   */
+  setStageDeps(stageName: string, deps: string[]): void {
+    if (!this.data) {
+      throw new Error('flow.json 未加载');
+    }
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const stage = this.data.stages[normalized] ?? this.data.stages[stageName];
+    if (!stage) {
+      throw new Error(`阶段 '${stageName}' 不存在`);
+    }
+    const next = [...deps];
+    stage.deps = next;
+    this.appendLog({
+      time: '',
+      agent: 'cli',
+      action: 'stage_deps_set',
+      detail: { stage: normalized, deps: next },
+    });
+    this.save();
+  }
+
+  /**
    * 添加自动修复审查条目
    * 当 openfeel-reviewer 认为问题可直接修复时调用，REV 条目状态直接设为 resolved，
    * pipeline.phase 跳过 review_failed→scheme_pending，直接推进到 exec_running。

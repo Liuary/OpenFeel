@@ -10,7 +10,9 @@ import { t, getCliLang } from '../core/i18n.js';
 export function registerViewCommand(program: Command): void {
   const view = program
     .command('view')
-    .description('审查条目管理');
+    .description('审查条目管理')
+    // N2-3：审查条目管理的唯一入口指引（本组不新增 update/remove，避免第二套实现）
+    .addHelpText('after', '\n' + t('help.view.note', getCliLang(process.cwd())) + '\n');
 
   // view list [--op <id>] — 列出审查条目
   view
@@ -40,7 +42,8 @@ export function registerViewCommand(program: Command): void {
   // view add --op <id> --title "..." [--priority high|medium|low]（已弃用；请改用 flow review add）
   view
     .command('add')
-    .description(t('view.add.desc', getCliLang(process.cwd())))
+    // N2-4：弃用文案单键化——此处为字面默认值，zh/en 两模式均由 help.view.add 统一覆盖
+    .description('添加审查条目（已弃用；请改用 openfeel flow review add）')
     .requiredOption('--op <id>', '操作 ID（如 stage-01.op-001）')
     .requiredOption('--title <title>', '审查标题')
     .option('--priority <priority>', '优先级（high/medium/low，默认 medium）', 'medium')

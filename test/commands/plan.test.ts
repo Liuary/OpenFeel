@@ -389,4 +389,24 @@ describe('plan 命令', () => {
 
     expect(readFileSync(statusPath, 'utf-8')).toBe('CUSTOM');
   });
+
+  // ── stage-51/N6-2：plan stage add --tasks ──
+
+  it('N6-2: plan stage add --tasks 生成任务行（格式与 stage task --add 一致）', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-12', '--tasks', 'a', 'b']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-12', 'status.md');
+    const content = readFileSync(statusPath, 'utf-8');
+    expect(content).toContain('- [ ] 任务1：a');
+    expect(content).toContain('- [ ] 任务2：b');
+    // 占位行被任务行替换
+    expect(content).not.toContain('> 待补充');
+  });
+
+  it('N6-2: 无 --tasks 时保持占位「> 待补充」（零破坏）', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-13']);
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-13', 'status.md');
+    expect(readFileSync(statusPath, 'utf-8')).toContain('> 待补充');
+  });
 });

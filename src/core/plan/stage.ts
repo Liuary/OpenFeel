@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { FlowManager } from '../flow-manager.js';
-import { parseStageId } from './path.js';
+import { parseStageId, findStageStatusPath } from './path.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 
 /** 工作阶段 */
@@ -18,15 +18,79 @@ export interface Stage {
   overview: string;
 }
 
+/** 折叠任务描述：去除首尾空白，内部换行折叠为空格（防结构破坏） */
+export function sanitizeTaskDesc(desc: string): string {
+  return desc.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+}
+
+/**
+ * 构建任务行块（`- [ ] 任务N：desc`，编号从 1 连续）。
+ * 供 `plan stage add --tasks`（初始化）与 `stage task --add`（追加）共用，保证两路径格式逐字节一致。
+ * @param tasks 任务描述列表
+ * @returns 多行任务块（\n 分隔，无尾换行）
+ */
+export function buildTaskLines(tasks: string[]): string {
+  return tasks.map((d, i) => `- [ ] 任务${i + 1}：${sanitizeTaskDesc(d)}`).join('\n');
+}
+
+/**
+ * 向 status.md 的「## 当前任务」小节追加一条任务行（编号 = 既有任务行最大编号 + 1，保证连续性）。
+ * @param projectPath 项目根路径
+ * @param stageId 阶段 ID
+ * @param desc 任务描述
+ * @returns 新任务的编号
+ * @throws Error 阶段 status.md 不存在（STATUS_NOT_FOUND）或缺少「## 当前任务」小节（TASK_SECTION_MISSING）
+ */
+export function appendStatusTask(projectPath: string, stageId: string, desc: string): number {
+  const statusPath = findStageStatusPath(projectPath, stageId);
+  if (!statusPath) {
+    throw new Error('STATUS_NOT_FOUND');
+  }
+  const content = readFileSync(statusPath, 'utf-8');
+  const headerMatch = content.match(/^##\s*当前任务\s*$/m);
+  if (!headerMatch || headerMatch.index === undefined) {
+    throw new Error('TASK_SECTION_MISSING');
+  }
+
+  // 既有任务最大编号（避免删除后重号）
+  let max = 0;
+  const taskRegex = /^-\s*\[[ x]\]\s*任务(\d+)[：:]/gm;
+  let tm: RegExpExecArray | null;
+  while ((tm = taskRegex.exec(content)) !== null) {
+    max = Math.max(max, parseInt(tm[1], 10));
+  }
+  const no = max + 1;
+  const newLine = `- [ ] 任务${no}：${sanitizeTaskDesc(desc)}`;
+
+  // 定位小节内容边界（下一个 `\n## ` 或文末）
+  const headerEnd = headerMatch.index + headerMatch[0].length;
+  const rest = content.slice(headerEnd);
+  const nextSection = rest.search(/\n##\s/);
+  const bodyEnd = nextSection === -1 ? content.length : headerEnd + nextSection;
+
+  // 清理空行与占位行 `> 待补充`，再追加新任务行
+  const body = content
+    .slice(headerEnd, bodyEnd)
+    .split('\n')
+    .map((l) => l.trimEnd())
+    .filter((l) => l.trim() !== '' && l.trim() !== '> 待补充');
+  body.push(newLine);
+
+  const updated = content.slice(0, headerEnd) + '\n' + body.join('\n') + '\n' + content.slice(bodyEnd);
+  atomicWriteFileSync(statusPath, updated);
+  return no;
+}
+
 /**
  * 确保阶段目录与 overview.md / status.md 骨架存在（幂等：已存在不覆盖）。
  * 从 addStage 抽出，供 addStage 与 plan scheme create 的隐式注册共用（单一实现，避免双份骨架文本）。
  * @param projectPath 项目根路径
  * @param name 阶段 ID（简写或全称）
  * @param deps 依赖阶段 ID 列表（仅用于新建 overview.md 时写入「依赖」段）
+ * @param tasks 初始任务列表（仅用于新建 status.md 时生成任务行；缺省写占位 `> 待补充`）
  * @returns 是否发生了创建（true = 补建了目录或骨架文件）
  */
-export function ensureStageSkeleton(projectPath: string, name: string, deps?: string[]): boolean {
+export function ensureStageSkeleton(projectPath: string, name: string, deps?: string[], tasks?: string[]): boolean {
   // 解析 stageId（短名/完整），无法解析时抛错
   const parsed = parseStageId(name);
   if (!parsed) {
@@ -69,6 +133,8 @@ ${depsText}
   // 创建 status.md（若不存在）— 标题用完整 stageId
   const statusPath = join(stageDir, 'status.md');
   if (!existsSync(statusPath)) {
+    // N6-2：有初始任务时生成任务行（与 stage task --add 共用 buildTaskLines）；否则占位 `> 待补充`
+    const tasksBlock = tasks && tasks.length > 0 ? buildTaskLines(tasks) : '> 待补充';
     const statusContent = `# ${parsed.fullStageId} 状态
 
 - **执行模式**：manual
@@ -88,7 +154,7 @@ ${depsText}
 
 ## 当前任务
 
-> 待补充
+${tasksBlock}
 
 ## 阻塞 / 暂停原因
 
@@ -113,8 +179,9 @@ ${depsText}
  * 并注册到 flow.json（键用完整 stageId）。
  * 骨架生成复用 ensureStageSkeleton（保持行为与文案一致）。
  * @param deps 依赖的阶段名列表（可选，写入 overview.md 与 flow.json）
+ * @param tasks 初始任务列表（可选，写入 status.md 的「## 当前任务」小节）
  */
-export function addStage(projectPath: string, name: string, deps?: string[]): void {
+export function addStage(projectPath: string, name: string, deps?: string[], tasks?: string[]): void {
   // 解析 stageId（短名/完整），无法解析时抛错
   const parsed = parseStageId(name);
   if (!parsed) {
@@ -122,7 +189,7 @@ export function addStage(projectPath: string, name: string, deps?: string[]): vo
   }
 
   // 目录 + overview.md + status.md 骨架（幂等）
-  ensureStageSkeleton(projectPath, name, deps);
+  ensureStageSkeleton(projectPath, name, deps, tasks);
 
   // 同步到 flow.json（若存在）— 键用完整 stageId
   const flowMgr = new FlowManager(projectPath);

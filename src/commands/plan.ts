@@ -25,7 +25,8 @@ export function registerPlanCommand(program: Command): void {
     .description('添加工作阶段（完整入口：建目录 + overview/status + 注册 flow.json；仅注册请用 openfeel flow stage add）')
     .argument('<name>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
     .option('--deps <ids...>', '依赖阶段 ID 列表（空格或逗号分隔，如 --deps a b 或 --deps a,b）')
-    .action((name: string, options: { deps?: string[] }) => {
+    .option('--tasks <items...>', '初始任务列表（空格或逗号分隔，生成到 status.md）')
+    .action((name: string, options: { deps?: string[]; tasks?: string[] }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       // 非法 stageId 统一报错 + 建议名（op-002 校验底座）
@@ -37,6 +38,11 @@ export function registerPlanCommand(program: Command): void {
       }
       // 兼容 --deps a,b 与 --deps a b：逐项按逗号再切分、去空
       const deps = (options.deps ?? [])
+        .flatMap((d) => d.split(','))
+        .map((s) => s.trim())
+        .filter(Boolean);
+      // N6-2：--tasks 解析与 --deps 对齐（空格/逗号两种写法）
+      const tasks = (options.tasks ?? [])
         .flatMap((d) => d.split(','))
         .map((s) => s.trim())
         .filter(Boolean);
@@ -59,7 +65,7 @@ export function registerPlanCommand(program: Command): void {
       }
 
       try {
-        addStage(projectPath, name, deps.length > 0 ? deps : undefined);
+        addStage(projectPath, name, deps.length > 0 ? deps : undefined, tasks.length > 0 ? tasks : undefined);
       } catch (err: unknown) {
         // 阶段目录冲突：按类型分流走 i18n 模板（cli/BUG-002 死键消除）
         if (err instanceof StageDirConflictError) {

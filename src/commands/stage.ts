@@ -19,6 +19,7 @@ import { t, getCliLang } from '../core/i18n.js';
 import { FlowManager } from '../core/flow-manager.js';
 import { handleAddStageError } from './shared/errors.js';
 import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId } from '../core/plan/path.js';
+import { appendStatusTask } from '../core/plan/stage.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -230,6 +231,32 @@ function setStatusField(
 }
 
 /**
+ * 探测字段写入结果（纯读，不写盘，N5-1）。
+ * - `not-found`：status.md 中不存在该字段行
+ * - `unchanged`：字段存在且值逐字符相同（同值 → no-op 成功）
+ * - `will-change`：字段存在且值不同（将发生变更）
+ * @param statusPath status.md 绝对路径
+ * @param field 字段名（如「状态」「执行模式」）
+ * @param value 目标值
+ */
+function probeStatusField(
+  statusPath: string,
+  field: string,
+  value: string,
+): 'not-found' | 'unchanged' | 'will-change' {
+  const content = readFileSync(statusPath, 'utf-8');
+  const fieldRegex = new RegExp(
+    `^(-\\s*(?:\\*\\*)?${escapeRegex(field)}(?:\\*\\*)?[：:]\\s*)(.*)$`,
+    'm',
+  );
+  const m = content.match(fieldRegex);
+  if (!m) {
+    return 'not-found';
+  }
+  return m[2] === value ? 'unchanged' : 'will-change';
+}
+
+/**
  * 切换任务的 checkbox 状态
  * 读-改-写整体在 status-{stageDir}.lock 临界区内完成
  * @param toDone true = 勾选，false = 取消勾选
@@ -325,13 +352,16 @@ export function registerStageCommand(program: Command): void {
       showStageStatus(statusPath, stageId);
     });
 
-  // ═══ stage set <stageId> --status <value> ═══
+  // ═══ stage set <stageId> [--status|--exec-mode|--auto-advance|--review-agent] ═══
   stage
     .command('set')
     .description('设置阶段状态字段（原子更新，保留其余内容不变）')
     .argument('<stageId>', '阶段 ID（如 v4-stage-04）')
-    .requiredOption('--status <value>', '状态值（如 exec_running）')
-    .action((stageId: string, options: { status: string }) => {
+    .option('--status <value>', '状态值（如 exec_running）')
+    .option('--exec-mode <mode>', '执行模式（manual | auto）')
+    .option('--auto-advance <value>', '自动推进（enabled | disabled）')
+    .option('--review-agent <agent>', '当前责任 Agent（如 openfeel-executor）')
+    .action((stageId: string, options: { status?: string; execMode?: string; autoAdvance?: string; reviewAgent?: string }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const statusPath = resolveStatusPath(projectPath, stageId);
@@ -341,28 +371,82 @@ export function registerStageCommand(program: Command): void {
         process.exit(1);
       }
 
-      // 写操作前备份
-      backupStatus(statusPath, stageId);
-
-      const ok = setStatusField(projectPath, statusPath, '状态', options.status);
-
-      if (!ok) {
-        console.error(t('stage.set.errorFieldNotFoundTmpl', lang, { stageId }));
-        process.exit(1);
+      // N7-1：字段白名单（A4）+ 固定写入顺序（状态 → 执行模式 → 自动推进 → 当前责任 Agent）
+      const jobs: { field: string; value: string; allowed?: string[] }[] = [];
+      if (options.status !== undefined) {
+        jobs.push({ field: '状态', value: options.status });
+      }
+      if (options.execMode !== undefined) {
+        jobs.push({ field: '执行模式', value: options.execMode, allowed: ['manual', 'auto'] });
+      }
+      if (options.autoAdvance !== undefined) {
+        jobs.push({ field: '自动推进', value: options.autoAdvance, allowed: ['enabled', 'disabled'] });
+      }
+      if (options.reviewAgent !== undefined) {
+        const agent = options.reviewAgent.trim();
+        if (!agent) {
+          // 空 agent：非法值 → exit 1 且不写盘
+          console.error(t('stage.set.invalidValueTmpl', lang, { field: '当前责任 Agent', value: options.reviewAgent, allowed: 'non-empty' }));
+          process.exit(1);
+          return;
+        }
+        jobs.push({ field: '当前责任 Agent', value: agent });
       }
 
-      console.log(t('stage.set.updatedTmpl', lang, { stageId, status: options.status }));
+      if (jobs.length === 0) {
+        console.error(t('stage.set.noOptionTmpl', lang));
+        process.exit(1);
+        return;
+      }
+
+      // 枚举校验：任一非法 → exit 1 且不写盘
+      for (const job of jobs) {
+        if (job.allowed && !job.allowed.includes(job.value)) {
+          console.error(t('stage.set.invalidValueTmpl', lang, { field: job.field, value: job.value, allowed: job.allowed.join(' / ') }));
+          process.exit(1);
+          return;
+        }
+      }
+
+      // N5-2：先探测后写（同值 no-op 成功；`.bak` 仅在确认变更后生成）
+      const applied: string[] = [];
+      for (const job of jobs) {
+        const probe = probeStatusField(statusPath, job.field, job.value);
+        if (probe === 'not-found') {
+          if (applied.length > 0) {
+            console.error(t('stage.set.multiPartialTmpl', lang, { done: applied.join(', '), field: job.field }));
+          }
+          console.error(t('stage.set.errorFieldNotFoundTmpl', lang, { stageId, field: job.field }));
+          process.exit(1);
+          return;
+        }
+        if (probe === 'unchanged') {
+          console.log(t('stage.set.noopTmpl', lang, { field: job.field }));
+          continue;
+        }
+        // will-change：备份 → 原子写
+        backupStatus(statusPath, stageId);
+        const ok = setStatusField(projectPath, statusPath, job.field, job.value);
+        if (!ok) {
+          console.error(t('stage.set.errorFieldNotFoundTmpl', lang, { stageId, field: job.field }));
+          process.exit(1);
+          return;
+        }
+        applied.push(job.field);
+        console.log(t('stage.set.updatedTmpl', lang, { stageId, field: job.field, value: job.value }));
+      }
     });
 
-  // ═══ stage task <stageId> <taskNo> --done|--undone ═══
+  // ═══ stage task <stageId> [taskNo] [--done|--undone] | --add <desc> ═══
   stage
     .command('task')
-    .description('勾选或取消任务 checkbox')
+    .description('勾选/取消任务 checkbox，或追加任务')
     .argument('<stageId>', '阶段 ID（如 v4-stage-04）')
-    .argument('<taskNo>', '任务编号（如 1）')
+    .argument('[taskNo]', '任务编号（如 1；--add 模式下可省略）')
+    .option('--add <desc>', '追加一条任务（与 --done/--undone 互斥）')
     .option('--done', '标记任务为已完成')
     .option('--undone', '标记任务为未完成')
-    .action((stageId: string, taskNoStr: string, options: { done?: boolean; undone?: boolean }) => {
+    .action((stageId: string, taskNoStr: string | undefined, options: { add?: string; done?: boolean; undone?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const statusPath = resolveStatusPath(projectPath, stageId);
@@ -370,6 +454,35 @@ export function registerStageCommand(program: Command): void {
       if (!statusPath) {
         console.error(t('stage.errorStageNotFoundTmpl', lang, { stageId }));
         process.exit(1);
+      }
+
+      // N6-1：--add 模式（与 --done/--undone 互斥）
+      if (options.add !== undefined) {
+        if (options.done || options.undone) {
+          console.error(t('stage.task.addMutualExclusiveTmpl', lang));
+          process.exit(1);
+          return;
+        }
+        try {
+          const no = appendStatusTask(projectPath, stageId, options.add);
+          console.log(t('stage.task.addOkTmpl', lang, { no: String(no), desc: options.add.trim() }));
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg === 'TASK_SECTION_MISSING') {
+            console.error(t('stage.task.sectionMissingTmpl', lang));
+          } else {
+            console.error(t('common.errorTmpl', lang, { msg }));
+          }
+          process.exit(1);
+        }
+        return;
+      }
+
+      // 既有勾选路径：缺 taskNo → 提示 --add 用法
+      if (!taskNoStr) {
+        console.error(t('stage.task.addUsageTmpl', lang));
+        process.exit(1);
+        return;
       }
 
       // 互斥校验

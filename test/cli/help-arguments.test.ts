@@ -20,6 +20,8 @@ import { registerViewCommand } from '../../src/commands/view.js';
 import { registerArchiveCommand } from '../../src/commands/archive.js';
 import { registerInstructionsCommand } from '../../src/commands/instructions.js';
 import { registerRoadmapCommand } from '../../src/commands/roadmap.js';
+import { registerStageCommand } from '../../src/commands/stage.js';
+import { registerPlanCommand } from '../../src/commands/plan.js';
 
 /** 从命令树按路径取命令 */
 function findCmd(program: Command, path: string[]): Command {
@@ -127,6 +129,25 @@ describe('BUG-004 / N2-5：en 模式 argument 描述无 CJK', () => {
       [['instructions'], 'artifactId'],
       [['roadmap', 'create'], 'version'],
       [['roadmap', 'show'], 'version'],
+    ]);
+  });
+
+  it('N7b：stage status/set/task、plan stage add、plan scheme create/list 的 argument 在 en 下无 CJK（op-005）', () => {
+    const program = new Command();
+    program.name('openfeel').description('x');
+    registerStageCommand(program);
+    registerPlanCommand(program);
+    applyHelpI18n(program);
+
+    expectArgsNoCjk(program, [
+      [['stage', 'status'], 'stageId'],
+      [['stage', 'set'], 'stageId'],
+      [['stage', 'task'], 'stageId'],
+      [['stage', 'task'], 'taskNo'],
+      [['plan', 'stage', 'add'], 'name'],
+      [['plan', 'scheme', 'create'], 'stage'],
+      [['plan', 'scheme', 'create'], 'title'],
+      [['plan', 'scheme', 'list'], 'stage'],
     ]);
   });
 });

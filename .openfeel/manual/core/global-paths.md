@@ -10,6 +10,7 @@
 
 | 函数 | 返回路径 |
 |------|----------|
+| `getHomedir()` | 用户主目录（`homedir()` 单点封装；T27 起供 `backup.ts` 等委托，避免直接 import `node:os`） |
 | `getOpencodeGlobalDir()` | `~/.config/opencode` |
 | `getGlobalAgentsDir()` | `~/.config/opencode/agents` |
 | `getGlobalSkillsDir()` | `~/.config/opencode/skills` |
@@ -25,7 +26,7 @@
 
 ## 设计要点
 
-- **homedir 单点封装**：既有代码中 `homedir()` 分散于 4 处（config.ts / identity.ts / file-lock.ts / resolver.ts）；本模块集中平台适配器相关路径（当前：opencode 适配器），其余 4 处**默认不收纳**（D37-1：避免扩大范围、过度设计）。
+- **homedir 单点封装（N4）**：`homedir()` 已**单点收敛**至本模块（实测 `rg "node:os" src/` 仅命中 `global-paths.ts`）；其余模块一律经 `global-paths` 的路径函数或 `getHomedir()` 委托，**禁止直接 `import 'node:os'`**（v1.1.2-stage-50 T27 补齐 `backup.ts` 的委托，`computeBackupRel` 越界守卫见 `manual/core/backup.md`）。测试 `vi.mock('node:os')` 一处即隔离全部全局路径。
 - **update_infos.md 仅解析路径**：其读写逻辑属 stage-38，本阶段仅提供路径解析函数。
 
 ## 调用关系
@@ -62,3 +63,4 @@ src/core/update-state.ts（全局 state 读写）
 | stage-46 | 新增 `getGlobalBackupRootPath()`（`~/.openfeel/backup`，部署覆盖前备份统一根；零行为变更） |
 | v1.1.2-stage-43 | 文档化全局 `config.json` 死映射的安全清理步骤（BUG-004 收口：N4 隔离修复 + 不自动清理裁定） |
 | v1.1.2-stage-48 | 死映射**已清理**（455→0，op-006，含备份 `config.json.bak.2026-09-29T14-04-13-412Z`）；清理指引升级为**四步保护**（末段匹配陷阱 + 删除数断言 + 备份 + 可还原复核） |
+| v1.1.2-stage-50 | 新增 `getHomedir()` 导出（T27，`backup.ts` 委托，消除直接 `node:os` 依赖）；**「homedir 分散 4 处」陈旧名单修正**（实测已单点收敛，仅本模块 import `node:os`；见 `kb` 与 U3-008 收口） |

@@ -88,7 +88,7 @@ openfeel flow phases [--json]
 
 | 选项 | 说明 |
 |------|------|
-| `--json` | 以 JSON 输出 `{ phases, transitions, advanceAccepted }`，供自动化解析（`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15） |
+| `--json` | 以 JSON 输出 `{ phases, transitions, advanceAccepted, transitionsDiff }`，供自动化解析（`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15；`transitionsDiff` = 运行时转移表与内置默认转移表的**差异报告**，`missing` 列出内置默认有而运行时缺失的 source，使 `pipeline.yaml` 漂移**可见而非静默**） |
 
 示例：
 
@@ -348,6 +348,8 @@ openfeel view list [--op <id>]
 
 ### view add
 
+> **已弃用（Deprecated）**：请改用 `openfeel flow review add`（单一数据源与审计口径）。本命令当前仍可用，运行时在 TTY 下于 stderr 输出弃用提示（非 TTY 静默）；**将于下一版本移除**。
+
 添加审查条目。
 
 ```bash
@@ -416,6 +418,10 @@ openfeel config effective [key]
 openfeel config get [key] [--global]
 openfeel config set <key> <value> [--global]
 ```
+
+- **支持全量 `defaults.*` 键**（schema 驱动）：`execution_mode` / `auto_advance` / `test_enabled` / `merge_mode` 等受管配置键均可通过 `config set`/`get` 读写（与 `config effective` 覆盖范围一致）。
+- **值类型归一**：布尔键（如 `test_enabled`）写入 `true`/`false` 会归一为布尔值，避免以字符串 `"true"` 落盘破坏配置校验。
+- **枚举校验 + 不写盘**：非法取值（如 `execution_mode bogus`）以非 0 退出并报错，**不修改目标文件**（文件 hash 与 mtime 不变）。
 
 ### config get-lang / set-lang
 
@@ -488,6 +494,8 @@ openfeel knowledge index
 openfeel lint i18n [--fix]   # i18n 键对称性校验（zh/en 三向比对 + 空值检测）
 openfeel lint kb [--fix]     # kb 过期引用检测（扫描 kb 文件中的路径引用是否存在）
 ```
+
+**退出码（门禁语义，v1.1.2）**：发现问题时**非 0 退出**（对齐 `flow health`），使 CI/脚本可直接以其作为门禁；无问题 `exit 0`。**未提供** `--warn-only`/`--no-fail` 逃生阀——若需忽略结果，请由调用方显式表达（如 `openfeel lint kb || true`）。
 
 ## stage — 阶段状态
 

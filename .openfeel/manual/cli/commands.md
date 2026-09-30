@@ -35,7 +35,7 @@ src/commands/setup.ts       registerSetupCommand
 
 - 翻译数据：`src/core/i18n-data/{zh-CN,en}.ts`，按域组织（common/flow/init/...）
 - 核心函数：`t(key, lang, vars)` 按 key 取翻译；`getCliLang(projectPath)` 确定当前语言
-- `applyHelpI18n(program)`：递归遍历 Commander 命令树，将 description / option 硬编码文本替换为当前语言翻译（`help.{命令}.{选项}` key 规则）
+- `applyHelpI18n(program)`：递归遍历 Commander 命令树，将 description / option 硬编码文本替换为当前语言翻译（`help.{命令}.{选项}` key 规则）。**v1.1.2-stage-50（T38）起**：`walkCmd` 增 **`arguments` 遍历**（键 `help.<path>.arg<name>`，以 `hasKey` 守卫避免缺失告警）——en 下位置参数描述同走 i18n；**当前仅 `stage.create` 补键，其余 22 处仍回退中文**（`cli/BUG-004`，建议归 stage-51）。并发冲突文案亦收敛至 `handleCliError` 单点。
 
 ## 错误处理与退出码
 
@@ -51,6 +51,8 @@ src/commands/setup.ts       registerSetupCommand
 | 通用错误 | `1` |
 | 成功 | `0` |
 
+**质量门禁退出码（v1.1.2-stage-50，R1/T17）**：`lint i18n` / `lint kb` **发现问题即 `exit 1`**（对齐 `flow health`），使 CI 可直接以其为门禁；用 `process.exitCode = 1` 而非 `process.exit(1)`（防 stdout 异步 flush 被截断）。**不新增** `--warn-only`/`--no-fail` 逃生阀——忽略结果应由调用方显式表达（`lint kb || true`）。
+
 已包裹 `mgr.save()` 的 catch 块（`flow stage add`、`stage create`、`flow wizard`）在 catch 首部增加 `isFlowConcurrentError` 分支，保证同样提示与退出码 2。
 
 **结构化错误分流（stage-47）**：`plan stage add` / `flow stage add` / `stage create` 三入口在通用 `common.errorTmpl` 之前增加 `err instanceof StageDirConflictError` 分支 → 用 `common.stageDirConflictTmpl`（zh/en 对称）渲染冲突信息（含 `stage` / `other`），杜绝「核心层抛中文错误绕过 `t()`」的死键问题（`cli/BUG-002`）。
@@ -60,7 +62,7 @@ src/commands/setup.ts       registerSetupCommand
 > ⚠️ 本仓执行一律用 `node bin/openfeel.js <cmd>`；全局 `openfeel` 可能命中旧版（如 1.1.1）。安装后的一般使用者用法 `openfeel <cmd>`（查询型）见 `manual/index` / skill 说明。
 
 - `node bin/openfeel.js flow advance --stage <id> --to <phase> [--dry-run] [--force]` — 推进阶段（经 FlowManager 校验）；`--dry-run` 预览不修改，`--force` 跳过非法 phase 和阶段跳跃检查。**`--dry-run` 字节级不写盘（stage-49 B1）**：目标阶段 phase/status 不一致时，`autoRepairInconsistency` 走**预览模式**（`{dryRun}` 只算不赋值），仅非 dry-run 才 `save()`；dry-run 输出用**预览专用键** `flow.advance.autoRepairPreview`（「正式执行将自动修复」），`flow.json` 字节 / `meta.revision` / phase 均不变（回归断言）
-- `node bin/openfeel.js flow phases [--json]` — 自描述全部合法 phase 与运行时流转映射（数据源 `.openfeel/pipeline.yaml`，缺省回退默认表）；运行时含内置 15 之外的 phase 时追加**边界说明**，`--json` 结构为 `{ phases, transitions, advanceAccepted }`（`advanceAccepted` = 内置 15，即 `flow advance` 的推进白名单；`phases` 为存在视图）
+- `node bin/openfeel.js flow phases [--json]` — 自描述全部合法 phase 与运行时流转映射（数据源 `.openfeel/pipeline.yaml`，缺省回退默认表）；运行时含内置 15 之外的 phase 时追加**边界说明**，`--json` 结构为 `{ phases, transitions, advanceAccepted, transitionsDiff }`（`advanceAccepted` = 内置 15，即 `flow advance` 的推进白名单；`phases` 为存在视图；**`transitionsDiff`（stage-50 T19）** = 运行时与内置默认转移表的差异报告，`missing` 列出内置默认有而运行时缺失的 source——使 `pipeline.yaml` 漂移**可见而非静默**，未修改 `pipeline.yaml`）
 - `node bin/openfeel.js flow stage add <stageId>` — 注册层：仅注册 flow.json，不建目录（通常应使用 `node bin/openfeel.js plan stage add`）
 - `node bin/openfeel.js flow stage remove <stageId> [--force] [--dry-run] [--purge]` — 移除阶段（安全校验：ops 非空 / 当前活跃 / 被 deps 引用；默认仅注销 flow.json，`--purge` 删目录且**在 `save()` 成功后**执行，避免「目录已删、注册仍在」中间态）
 - `node bin/openfeel.js flow wizard` — 交互式流水线向导，支持无阶段时自动引导创建首个阶段
@@ -68,13 +70,14 @@ src/commands/setup.ts       registerSetupCommand
 - `node bin/openfeel.js stage set <id> --status <v>` — 更新阶段状态
 - `node bin/openfeel.js plan stage add <name> [--deps <ids...>]` — 完整入口（推荐）：建目录 + overview/status + 注册 flow.json + 依赖落点；**`--deps` 校验依赖存在性（stage-49 B2）**：命令层用 `normalizeStageId` 归一化比对 `deps ⊆ 已注册 stages`，无效项列出已注册阶段并 **exit 1**；`flow.json` 未初始化（无阶段）时同样 exit 1（提示「已注册阶段：（无）」）；核心层 `addStage` 不做存在性校验（仅命令层强制）
 - `node bin/openfeel.js stage create <stageId>` — 已弃用（注册层，与 `flow stage add` 等价；建议改用 `plan stage add` / `flow stage add`）
+- `node bin/openfeel.js view add --op <id> --title <title>` — **已弃用（v1.1.2-stage-50，R4/T37）**：请改用 `node bin/openfeel.js flow review add`（单一数据源与审计口径）；运行时仅 TTY 下 stderr 输出弃用提示（非 TTY 静默），**将于下一版本移除**。两入口共用 `addReviewEntry` 单点实现 + `generateReviewId` 单点分配（取既有最大序号 +1，避免并发重号）
 - `node bin/openfeel.js migrate [path] [--dry-run] [--remap-assignee] [--clean-global-core-md]` — 存量旧布局项目迁移（检测/备份/迁移/回滚），`--dry-run` 预览不写盘，`--remap-assignee` 改写 flow.json 旧 assignee（默认仅报告），`--clean-global-core-md` 删除已废弃的全局 core.md（默认仅提示不删）
 - `node bin/openfeel.js migrate rollback [--dry-run]` — 回滚最近一次迁移（读 `.openfeel/backup/{latest}/manifest.json`），`--dry-run` 仅预览回滚计划
 - `node bin/openfeel.js setup [--lang <zh-CN|en>]` — 纯全局部署（全局 AGENTS.md + agent + skill + 全局平台适配器配置（opencode.jsonc）），不建立项目 `.openfeel/`，幂等（详见 [setup 命令](cli/setup.md)）
 - `node bin/openfeel.js init [path] [--workspace-only] [--non-interactive]` — 项目初始化；`--workspace-only` 仅创建 `.openfeel/` 工作区（不建全局规则/平台适配器配置（AGENTS.md/opencode.jsonc）），供 Feel 空白项目自动搭建；**已存在的 `.openfeel/config.yaml` 不覆盖**（保留用户配置，`InitResult.skipped` 经 `init.skipped` 输出用户可见提示，stage-47）
 - `node bin/openfeel.js model set <agent> <model> [--scope default|global|project] [--build] [--force]` — 三层级 agent 模型读写，详见 [model 命令组](cli/model.md)
 - `node bin/openfeel.js config effective [key]` — 输出四个受管配置键的有效值 + 生效来源（`status.md > config.yaml > profile.yaml > builtin`）；复用 `FlowManager.resolveEffectiveConfig()` 单一权威，与 `flow status --verbose` 级联表同源；未知 key → stderr + exit 1（不静默）
-- `node bin/openfeel.js config get [key] [--global]` / `node bin/openfeel.js config set <key> <value> [--global]` — 原始值读写（不经级联解析）；`config get-lang` / `set-lang <lang>` / `list-projects` 为全局语言子命令
+- `node bin/openfeel.js config get [key] [--global]` / `node bin/openfeel.js config set <key> <value> [--global]` — 原始值读写（不经级联解析）；**v1.1.2-stage-50（R3/T36）起支持全量 `defaults.*`**（键白名单由 Schema 驱动，与 `config effective` 覆盖范围一致）：值类型归一（boolean 键写布尔）+ 枚举校验（**非法报错且不写盘**）+ get/set/effective 三口径一致；`config get-lang` / `set-lang <lang>` / `list-projects` 为全局语言子命令
 
 ## 相关 skill
 

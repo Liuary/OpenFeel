@@ -39,7 +39,14 @@
 - 移除随包 `postinstall` 补丁（`scripts/patch-inquirer.js`）：该补丁在用户端 `node_modules` 布局下必然静默失效（`util.styleText` 自 Node 20.12 起已内置，允许区间内无需补丁）
 - `engines.node` 由 `>=20.0.0` 收窄为 `>=20.17.0`，与 `@inquirer/core` 要求一致，避免 Node 20.0~20.16 下交互命令崩溃
 - 移除 `src/index.ts` 中从未生效的死导出 `VERSION`（值恒为 `0.1.0`、全仓零引用；`exports["."]` 不再暴露错误版本号；CLI 版本仍取自 `package.json`）
-- [stage-50] 内部一致性 / 守卫 / 测试隔离 / 模板口径等集中清理（T1~T57：`syncCurrentOp` 单一 owner、`ops`/`deps` 守卫收口、metrics i18n、REV ID 最大序号、`checkpoint_mapping` 归档键、`execFileSync` 数组化、`getHomedir` 单点、profile 深拷贝、原型链防护、知识库表格转义、部署型 skill 双口径、REPL 存活等）——**完整条目由归档官按阶段实际收口补全**（本占位仅登记范围）
+- [stage-50] **内部模式一致性（批次 A，T1~T16）**：`pipeline.current.op` 改由 `FlowManager.syncCurrentOp` **单点同步**（修复推进无 pending op 的阶段时 `current.op` 跨阶段悬空）；`load()` 一处收口补 `ops={}`/`deps=[]`（存量缺字段不再 `TypeError`）；`fuzzyCorrectPhase` 后缀补唯一命中检查；`logMilestone` 保留 `MilestoneEvent` 全字段；`checkpoint_mapping` 补 `archiving` 键；`autoCommitOnDone` 改 `execFileSync('git', [...])`；`roadmap` core 层改抛 `Error`；`PublicLogger`/`MetricsStore` 单例键含路径；REV ID 取既有最大序号 +1；僵尸检测锚定 `stageId + '.'`；`metrics.summary` 走 i18n
+- [stage-50] **门禁与 CI 失效面（批次 B，T17~T21）**：`lint i18n`/`lint kb` 非 0 退出（**R1**，见 Changed）；`flow phases --json` 增 `transitionsDiff`（T19）；CI 守卫窗口前移 + 覆盖仓库 `.openfeel/config.yaml`；`.gitignore` 补 `.openfeel/tmp/`；`.gitattributes` 补生成物宿主 `template-loader.ts`/`update.ts` `eol=lf`
+- [stage-50] **死代码与配置面（批次 C，T22~T37）**：删除死模块 `src/utils/path.ts`（T22，全仓零 import/引用）；`atomicWriteJson` 加「预留」注释；`setup` 补 `skipped` 输出；`update_infos` **保守默认**（**R2**，T25）；`computeBackupRel` 越界抛 `BackupError`；`backup.ts` 委托 `getHomedir()`；`readProfile` 缺失分支改深拷贝（防 `DEFAULT_PROFILE` 被污染）；`buildCascadeConfig` 逐键 Zod 校验；`config set --global` 原型链防护（`Object.hasOwn` + `getNestedValue` 跳过 `__proto__`/`constructor`）；`config set/get` 支持**全量 `defaults.*`**（**R3**，T36，见 Added）；`view add` **弃用**（**R4**，T37，见 Deprecated）；`recent_projects` 去重大小写不敏感；`config get --global` 非法画像 stderr 提示；knowledge 标题写入前转义 `|` 与折叠换行
+- [stage-50] **i18n 与命令体验（批次 D，T38~T42）**：`applyHelpI18n` 遍历 `arguments`（en 下位置参数描述走 i18n）；并发冲突文案收敛至 `handleCliError` 单点；`flow wizard` 非 TTY 输出等价提示 + `exit 1`；REPL 不因命令错误退出 + help 动态生成；`init`/`roadmap` 补 try-catch（无堆栈外泄）；`model set --build` 的 `execSync` 加超时并捕获 `ETIMEDOUT`；`stage create`/`flow stage add` 错误处理抽 `handleAddStageError` helper
+- [stage-50] **测试质量与覆盖（批次 E，T43~T52）**：`i18n.test` 隔离（不再依赖真实 home/仓库 `.info.json`）；静默 `console.warn` 跳过改 `it.skipIf`（skipped 可见）；`model.test` get 强断言；补 anomaly 去重 / migrate 失败语义 / `update-state` 全局函数断言；`backupLegacy` 改本地时区 + 毫秒 + 撞名后缀（见 Changed）；jsonc 降级安全读取；`saveUpdateState` 加锁 + 原子写；`migrate rollback` 非项目根明确报错；补 `stage`/`update`/`setup` + `repl` smoke **4 项覆盖**（**R5**，其余 7 族登记归后续）
+- [stage-50] **模板与文档口径（批次 F，T53~T57）**：5 个部署型 skill 模板改**双口径**（用户环境主口径 `openfeel <cmd>` + 本仓自举加注 `node bin/openfeel.js <cmd>`；`templates/BUG-003` **关闭**）；`agents-md/en.md` 图注改中英并列；`openfeel-cli-usage` skill 枚举补 `phases`/`stage` 与 5 命令族；`build.js` 注释计数修正（「两对」「9/17 带前缀」）
+
+> 完整逐条处置与验证证据见 `.openfeel/code_review/v1.1.2-stage-50.md` 与 `.openfeel/users/Liuary/log/op-v1.1.2-stage-50-report-2026-09-30.md`（T1~T57 覆盖表）。
 
 ## [1.1.1] - 2026-09-26
 

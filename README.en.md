@@ -57,8 +57,8 @@ openfeel flow status
 | `openfeel flow` | Pipeline state management (status / current / advance / overview) |
 | `openfeel roadmap` | Version roadmap management (create / show) |
 | `openfeel plan` | Stage and scheme management (stage add/list, scheme create/list) |
-| `openfeel lint` | Quality gate checks (i18n key symmetry / kb stale references) |
-| `openfeel config` | Configuration management (get / set / list, supports --global) |
+| `openfeel lint` | Quality gate checks (i18n key symmetry / kb stale references; **non-zero exit on findings**, no escape hatch) |
+| `openfeel config` | Configuration management (get / set[**all `defaults.*`**] / effective / get-lang / list-projects, supports --global) |
 | `openfeel knowledge` | Knowledge base management (list / search) |
 | `openfeel archive <stage>` | Stage archiving with knowledge extraction |
 | `openfeel setup` | Global-only deployment (global AGENTS.md + agents + skills + adapter config); no project `.openfeel/` |
@@ -66,7 +66,7 @@ openfeel flow status
 | `openfeel model` | Three-tier agent model config (set / get / list, `--scope`) |
 | `openfeel stage` | Work stage status (status / set / create [deprecated]) |
 | `openfeel project` | Project management (list / info) |
-| `openfeel view` | Review item management (list / add / accept) |
+| `openfeel view` | Review item management (list / add [**deprecated, use `flow review add`**] / accept) |
 | `openfeel instructions` | Generate structured instructions (artifact → XML/JSON) |
 
 Details: [docs/commands.md](docs/commands.md)
@@ -146,7 +146,7 @@ Core Layer
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (716 cases, 41 test files)
+npm test           # Run tests (790 cases, 54 test files)
 ```
 
 ## Acknowledgments

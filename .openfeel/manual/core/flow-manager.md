@@ -13,6 +13,7 @@
 | `load()` / `save()` | 读取 / 持久化 flow.json（save 含乐观并发校验、写前备份与原子写；load 含 ops 防御性类型守卫） |
 | `addStage(stageId, deps?)` | 注册新阶段（写入前做 `(series, stageDir)` 冲突检测：不同 stageId 映射同目录时抛错，同 stageId 幂等静默） |
 | `advanceStagePhase(stageName, phase)` | 推进阶段到目标 phase（校验合法性） |
+| `syncCurrentOp(stageName)` | **`pipeline.current.op` 单一 owner（stage-50 T1）**：按 pending op 计算并同步 `current.op`，未命中置 `''`（不碰 phase、无 IO）；`advanceStagePhase` 与 `recordAttempt` 共用（禁止第二实现，供 stage-51 N4 复用）。修复「推进无 pending op 的阶段时 `current.op` 跨阶段悬空」 |
 | `getSummary()` / `summary(lang)` | 获取流水线摘要（结构化 / 文本） |
 | `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查（**非 `--quick` 含第 7 项悬空依赖检测**，见下） |
 | `autoRepairInconsistency(stageName, options?)` | 自动修复 phase↔status 不一致（`status=done` 且 `phase≠done` → 同步 phase；反之同步 status）；**stage-49 B1 起增可选 `options: { dryRun?: boolean }`**——`dryRun` 时**只计算不赋值**（返回「将修复 X」的报告），供 `flow advance --dry-run` 预览（不再写盘） |
@@ -55,6 +56,22 @@
 - **`save()` 缺 `meta` 守卫**（`REV-v1.1.2-stage-41` REV-008）：入口先 `this.data.meta ??= { version: '1.0', project: '', updated: '', revision: 0 }`（与 `defaultFlowData` 字段一致），仅补**整体缺失**、不覆盖既有字段，使存量 `flow.json` 不再抛 `TypeError`。
 - **`StageDirConflictError`（导出）**：`registerStage` / `addStage` 检测到两个不同 stageId 映射同一 `(series, stageDir)` 时抛该结构化错误（含 `stage` / `other` 字段；`message` 保留原中文文案以兼容既有断言）。命令层三入口（`plan stage add` / `flow stage add` / `stage create`）按错误类型分流用 `common.stageDirConflictTmpl` 渲染（zh/en 对称，消除死键）；与 `FlowConcurrentModificationError` 同级同构。
 - **`buildCascadeConfig` 画像层**：见「配置级联与有效值来源」——新增 `global-paths` 的 `getGlobalProfilePath` 依赖（`global-paths` 不反向依赖本模块，无循环）。
+
+## 内部一致性与门禁支撑（v1.1.2-stage-50，T1~T19）
+
+- **T1 `syncCurrentOp(stageName)`**：见核心 API（`current.op` 单一 owner，供 stage-51 N4 复用）。
+- **T2 `load()` normalize 收口**：存量缺 `ops`/`deps` 时统一补 `ops = {}` / `deps = []`（一处收口），修复 `advance`/`save` 双 `TypeError` 与 `validate()` 漏检。
+- **T4 `fuzzyCorrectPhase` 后缀唯一性**：后缀匹配补齐唯一命中检查（对齐 prefix/contains），`--force` 下任意尾串不再误命中枚举首个。
+- **T5 `logMilestone` extra 展开**：公共日志里程碑不再丢弃 `MilestoneEvent` 除 title 外的字段（`extra: { title, ...event }`，保留耗时数据）。
+- **T6 `paused` 软语义**：`pipeline.phase` 覆写前对 `paused` 打 WARN 或注释声明语义（零行为变更）。
+- **T9 `testEnabled` 注入**：`canAdvance` / `mapPhaseToStageStatus` 的 test 分支由 CLI 传入 `test_enabled`（`buildCascadeConfig`）闭环，消除生产不可达分支。
+- **T10 core 层不 `process.exit`**：`plan/roadmap.ts` 改抛 `Error`，退出码由命令层决定。
+- **T11 单例键含路径**：`PublicLogger` / `MetricsStore` 单例键含 `projectPath`/`dataDir`（不同 key → 不同实例），避免跨项目复用进程写错目录。
+- **T12 `checkpoint_mapping`**：补 `archiving` 主用键（`archive` 保留为历史键），使 `archiving` 阶段更新 checkpoint。
+- **T14 僵尸检测锚定**：`checkZombieStates` 统一 `startsWith(stageId + '.')`（与 `:1064` 锚定写法一致），杜绝前缀重叠 stageId 误报。
+- **T16 `autoCommitOnDone`**：git 提交改 `execFileSync('git', [...])` 数组形式（stageName 不再拼入 shell 串）。
+- **T19 `transitionsDiff`**：`flow phases --json` 增运行时与内置默认转移表的差异报告（`missing` 列出内置默认有而运行时缺失的 source），使 `pipeline.yaml` 漂移可见而非静默；**未修改 `pipeline.yaml`**（不补组合键，避免削弱 `test_enabled` 门禁）。
+
 
 ## 状态机
 

@@ -1,0 +1,322 @@
+# stage-51 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-51
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-50
+    type: hard
+    status: satisfied
+    reason: "stage-50（T1~T57 清理，已 done）为本阶段热区基线：`flow-manager.ts`/`commands/flow.ts`/`core/plan/scheme.ts`/`i18n-data` 均为其改动区，必须串行其后；且提供两项跨阶段契约（见 upstream_contracts）。"
+  - after_stage: v1.1.2-stage-41
+    type: soft
+    status: satisfied
+    reason: "`plan scheme create` / `flow stage remove` / `plan stage add --deps` 为本阶段扩展的基线能力。"
+
+# 【消费的上游契约（stage-50 提供，本阶段必须复用，禁另写实现）】
+upstream_contracts:
+  - from_stage: v1.1.2-stage-50
+    provider_op: op-001
+    item: T1
+    consumer_op: op-004
+    item_local: N4
+    type: hard
+    contract: "FlowManager.syncCurrentOp(stageName: string): { stage: string; op: string } —— `pipeline.current.op` 生命周期**唯一 owner**；stage-51 的 N4 仅新增 `recordAttempt` 调用点，**不得**自建指针维护逻辑。注意：本阶段 op-004 实施前须先 `rg` 核验该函数存在（不存在则停止并登记 REV）。"
+  - from_stage: v1.1.2-stage-50
+    provider_op: op-001
+    item: T8
+    consumer_op: op-007
+    item_local: N9
+    type: hard
+    contract: "kb-dedup.findSimilarEntries(target, category, basePath?) —— basePath = `.openfeel/kb` 绝对路径、**调用时**解析；stage-51 的 `openfeel knowledge dedup` 命令层**只允许传参**（`resolve(projectPath, '.openfeel', 'kb')`），**禁各自实现路径解析**。"
+
+# 【阶段性质提示】
+# 反馈二（docs/phase-5/08）修复阶段：N1~N11（3 批次 H1~H3）→ 9 个 op；A1~A8 全部经用户裁定（2026-09-30，不可推翻）。
+# 另**纳入 stage-50 交接的两项 low 缺陷**：REV-004（`help.view.add` 未同步弃用文案）、BUG-004（en 模式 `.argument()` 描述仍为中文）。
+# 本阶段**不改版本号**（继续 v1.1.2）。执行 Agent = openfeel-executor。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "孤儿 op 回收与检测（N1）"
+    produces:
+      - src/commands/plan.ts
+      - src/core/plan/scheme.ts
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/plan.test.ts
+      - test/commands/flow.test.ts
+      - test/core/flow-manager.test.ts
+    deps: []
+    notes: "N1 三子项：`plan scheme remove <stage> <opId>`（保护：done/checkpoint 默认拒绝 + `--force`；孤儿直删；**不删模板文件**）+ `flow repair` op↔opsDir 对账（**A2：默认只报告**、`--prune-orphans` 仅清键孤儿、fileOrphans 永不自动删）+ `flow health` 孤儿 warn（不改变退出码）。**共用 `findOrphanOps` 单一判定**。**主串行链首环**。"
+
+  op-002:
+    file: op-002.md
+    title: "结构字段 CLI deps 与 reviews（N2）及交接缺陷 REV-004 与 BUG-004"
+    produces:
+      - src/commands/flow.ts
+      - src/commands/view.ts
+      - src/core/flow-manager.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/cli/help-arguments.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "N2：`flow stage set <id> --deps <ids...>`（悬空 → 命令层强制 `exit 1` 不写盘）+ `flow review update/remove` + `view` 侧**不新增**实现（help 指引）。**交接缺陷**：REV-004（`help.view.add` 改弃用文案并与 `view.add.desc` **合并单键**）+ BUG-004 **5 处** argument 键（flow.ts:396/807/1007/1029 + view.ts:91）。"
+
+  op-003:
+    file: op-003.md
+    title: "scheme create 注册语义统一（N3）"
+    produces:
+      - src/core/plan/scheme.ts
+      - src/core/plan/stage.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/plan.test.ts
+      - test/core/plan/stage.test.ts
+    deps:
+      - op: op-002
+        type: hard
+    notes: "N3（**A1 已裁定 = 方案②**）：隐式注册时**补建 `overview.md`/`status.md` 骨架**——抽 `ensureStageSkeleton` 供 `addStage` 与 `scheme.ts` 共用（幂等）；非法 stageId/(series,stageDir) 冲突分支**不建骨架**（既有跳过语义不变）；新增隐式注册提示。附**二选一裁定与下游影响评估**（采纳②：零破坏、治本、复用、与 `plan stage add` 一致）。"
+
+  op-004:
+    file: op-004.md
+    title: "current.op 生命周期单一 owner（N4）"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+    deps:
+      - op: op-003
+        type: hard
+    notes: "N4：`recordAttempt` pass/fail-retry 分支后调用 stage-50 的 `syncCurrentOp`（**复用，禁自建**）；`advanceStagePhase` 侧仅核对不重复改；命令层增「当前指针」提示。**N4-0 前置核验**：`syncCurrentOp` 不存在则停止并登记 REV。"
+
+  op-005:
+    file: op-005.md
+    title: "stage set 幂等与字段扩展及 task add（N5 N6 N7）"
+    produces:
+      - src/commands/stage.ts
+      - src/core/plan/stage.ts
+      - src/commands/plan.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/stage.test.ts
+      - test/commands/plan.test.ts
+      - test/cli/help-arguments.test.ts
+    deps: []
+    notes: "N5（**A3**：三态探测 + 同值 no-op 成功 + `.bak` 仅在确认变更后生成）+ N7（**A4**：`--exec-mode/--auto-advance/--review-agent` + 字段白名单 `状态/执行模式/自动推进/当前责任 Agent/上一责任 Agent`）+ N6（`stage task --add` + `plan stage add --tasks`，**共用** `appendStatusTask`/`buildTaskLines`）。**BUG-004 8 处**（stage.ts:288/332/361/362 + plan.ts:26/105/106/118）。**与主链并行**（文件面无交叠）。"
+
+  op-006:
+    file: op-006.md
+    title: "op 文件名固定 op-NNN.md（N8）"
+    produces:
+      - src/core/plan/scheme.ts
+      - test/core/plan/scheme.test.ts
+      - test/commands/plan.test.ts
+    deps:
+      - op: op-004
+        type: hard
+    notes: "N8（**A5 已裁定**）：`candidate` 改 `${opIdOf(seq)}.md`（删 `safeTitle`）；标题入内容；`extractTitle` 兼容回退（新命名读内容、历史命名读文件名）；`listSchemes`/`getScheme` 适配；**不做迁移命令**；manual/kb 迁移说明**移交归档官**（登记 op-009 文档同步清单）。"
+
+  op-007:
+    file: op-007.md
+    title: "knowledge 宽容解析与 knowledge dedup 子命令（N9）"
+    produces:
+      - src/core/workspace/knowledge.ts
+      - src/commands/knowledge.ts
+      - src/utils/kb-dedup.ts
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/en/openfeel-archiver.md
+      - src/core/template-loader.ts
+      - .opencode/agents/**
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/workspace/knowledge.test.ts
+      - test/commands/knowledge.test.ts
+    deps: []
+    notes: "N9：① index.md 宽容解析（段头/表头/**列数自适应**）+ `add` 去硬编码 3 列分隔行；② **A6：新增 `openfeel knowledge dedup [content] [--project] [--category] [--threshold]`**（**只读建议**，复用 stage-50 T8 的 `basePath`，命令层只传参）；③ i18n 双语 help；④ **模板引用更新**（archiver zh/en「kb-dedup 模块不可用 → 降级手工去重」改为「用 `openfeel knowledge dedup`」）+ `npm run build`；⑤ manual 正文归归档官。**BUG-004 3 处 + 新增 `dedup [content]` 1 处**（knowledge.ts:62/63/106）。**与主链并行**。"
+
+  op-008:
+    file: op-008.md
+    title: "日志未来写入统一与 git 警告降噪（N10 N11）"
+    produces:
+      - src/core/public-logger.ts
+      - src/core/init.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/public-logger.test.ts
+      - test/commands/flow.test.ts
+      - test/cli/help-arguments.test.ts
+    deps:
+      - op: op-006
+        type: hard
+    notes: "N10（**A7**：确认/统一**未来写入**为嵌套 `log/{yyyy}/{MM}/{dd}/`；索引**同时反映**历史扁平 `log/{yyyy-mm-dd}/` 与嵌套两套布局；**不新增历史迁移命令**；历史目录零改写）+ N11（**A8**：`advance` 默认仅 `--to done` 提示 + `--quiet` 完全静默；不做源码变更过滤）。**BUG-004 4 处**（archive.ts:14 / instructions.ts:17 / roadmap.ts:18/34）。**主串行链末环**。"
+
+  op-009:
+    file: op-009.md
+    title: "全量回归与门禁收口"
+    produces:
+      - .openfeel/users/Liuary/log/2026-09-30-006.md
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+      - op: op-004
+        type: hard
+      - op: op-005
+        type: hard
+      - op: op-006
+        type: hard
+      - op: op-007
+        type: hard
+      - op: op-008
+        type: hard
+    notes: "四门禁（build+test / lint i18n〔**R1 后非 0 即失败**〕/ lint kb / flow health）+ 环境 hash+mtime 双快照零 diff + N1~N11 覆盖表 + **两项交接缺陷核对**（REV-004 双语言弃用文案；**BUG-004 en `--help` Arguments 段 CJK 零命中的运行时动态枚举门禁**）+ 文档同步清单 + 登记项 7 条。**仅当 8 个 op 全部完成才启动**。"
+
+# 【互斥（禁止并行）】
+mutual_exclusions:
+  - group: [op-001, op-002, op-003, op-004, op-006, op-008]
+    reason: "**热区源码互斥（主串行链）**：`src/core/flow-manager.ts`（op-001/002/004）、`src/commands/flow.ts`（op-001/002/004/008）、`src/core/plan/scheme.ts`（op-001/003/006）三者被多 op 共享 → 必须由**单执行流按序**触碰。"
+  - group: [op-001, op-002, op-003, op-004, op-005, op-007, op-008]
+    reason: "**`src/core/i18n-data/{zh-CN,en}.ts` 互斥写面**：七个 op 均新增/改写 i18n 键（键互不重叠，但**同文件写入必须串行**，否则互相覆盖）。→ 并行组（op-005/op-007）与主链的 **i18n 编辑窗口不得重叠**；建议实施顺序：先完成主链 op-001~004 的 i18n 编辑，再放行 op-005/op-007 集中补键，最后 op-006→op-008。"
+  - group: [op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-008, op-009]
+    reason: "**构建/测试互斥**：九个 op 的验收均含 `npm run build` 或 `npm test`（同一工作区）→ 任一时刻仅一个 op 处于 build/test 窗口；并发会竞态写 `dist/**`、`src/core/template-loader.ts` 生成段与 `.opencode/**` 自举副本。"
+  - group: [op-005, op-007]
+    reason: "**弱约束**：二者与主链文件面无交叠（可并行），但均修改 `i18n-data/*`（见上组）→ 建议将二者的 **i18n 编辑**串行化；且 op-007 的 `npm run build` 会重建 `dist/**`，与 op-005 的测试窗口重叠时测试可能读到半新 dist → **建议错开**。"
+  - group: [op-001, op-003, op-006]
+    reason: "**`core/plan/scheme.ts` 三方共享**：op-001（removeScheme 同文件）、op-003（ensureStageSkeleton 调用）、op-006（命名/extractTitle）→ 主串行链内已按 op-001→003→006 排序，禁止并行。"
+
+# 【可并行组】
+parallel_groups:
+  - group: [op-005, op-007]
+    desc: "**主链并行组**：op-005（`commands/stage.ts` + `core/plan/stage.ts` + `commands/plan.ts`）与 op-007（`commands/knowledge.ts` + `core/workspace/knowledge.ts` + `utils/kb-dedup.ts` + 模板）与主链文件面无交叠，可并行派发；**但 i18n 编辑与 build/test 窗口须串行/错开**。"
+  - group: [op-009]
+    desc: "收口：依赖全部 8 个 op（hard），单独运行。"
+
+# 【串行链（顺序固定）】
+serial_chain:
+  - chain: [op-001, op-002, op-003, op-004, op-006, op-008]
+    desc: "**主串行链**（plan §十一）：op-001（N1）→ op-002（N2 + 交接缺陷）→ op-003（N3）→ op-004（N4）→ op-006（N8）→ op-008（N10/N11）。理由：共享 `flow-manager.ts` / `commands/flow.ts` / `plan/scheme.ts` 热区。"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-003
+  - op-004
+  - op-006
+  - op-008
+  - op-005
+  - op-007
+  - op-009
+rationale: "plan §十一 建议顺序：`op-001 → op-002 → op-003 → op-004 → op-006 → op-008`（主串行链，热区单流）∥ `op-005` ∥ `op-007`（文件面无交叠）→ `op-009`（全量回归 + 四门禁 + 环境双快照 + N1~N11/交接缺陷覆盖核对）。**本官增补硬约束**：因 `i18n-data/{zh-CN,en}.ts` 被 7 个 op 共享，`recommended_order` 将 **op-005/op-007 排在主链之后**（先主链含 i18n 编辑，再并行组集中补键，避免同文件并发写）；若执行环境确能保证 i18n 编辑串行，亦可恢复 plan 的「三线并行」。"
+
+# 【用户裁定（A1~A8，2026-09-30，不可推翻）】
+decisions_taken:
+  decided_by: user
+  decided_at: "2026-09-30"
+  items:
+    - id: A1
+      item: N3
+      scope: op-003
+      user_decision: "采纳方案②：隐式注册时补齐 overview.md/status.md 骨架"
+      landed: "op-003（抽 ensureStageSkeleton 共用；零破坏）"
+    - id: A2
+      item: N1
+      scope: op-001
+      user_decision: "孤儿 op：默认只报告 + `--prune-orphans` 显式清理；`flow health` 增孤儿检测（warn）"
+      landed: "op-001 N1-2/N1-3"
+    - id: A3
+      item: N5
+      scope: op-005
+      user_decision: "同值 → no-op 成功 + 提示；.bak 仅在确认变更后生成"
+      landed: "op-005 N5-1/N5-2（行为变更：报错→成功）"
+    - id: A4
+      item: N7
+      scope: op-005
+      user_decision: "字段白名单 = 状态/执行模式/自动推进/当前责任 Agent/上一责任 Agent"
+      landed: "op-005 N7-1"
+    - id: A5
+      item: N8
+      scope: op-006
+      user_decision: "改命名为 op-NNN.md + 不做迁移命令；历史文件名保持原样；extractTitle 兼容回退"
+      landed: "op-006 N8-1/N8-2/N8-3"
+    - id: A6
+      item: N9
+      scope: op-007
+      user_decision: "kb-dedup 暴露为 `openfeel knowledge dedup` 子命令并随包分发（不删除）"
+      landed: "op-007 N9-2/N9-4（+ i18n + 模板引用 + build）"
+      supersedes: "原 Planner 建议「删除 kb-dedup」被推翻"
+    - id: A7
+      item: N10
+      scope: op-008
+      user_decision: "日志布局仅统一未来写入（嵌套 log/{yyyy}/{MM}/{dd}/）；不新增历史迁移命令；历史扁平目录不动；索引反映两套布局共存"
+      landed: "op-008 N10-1/N10-2/N10-3"
+      supersedes: "原 Planner 建议「纳入 migrate 迁移」被推翻"
+    - id: A8
+      item: N11
+      scope: op-008
+      user_decision: "advance 默认仅 --to done 提示 + 新增 --quiet；不做源码变更路径过滤"
+      landed: "op-008 N11-1"
+
+# 【stage-50 交接缺陷（本阶段纳入）】
+handover_items:
+  - id: REV-v1.1.2-stage-50/REV-004
+    severity: low
+    origin: "stage-50 exec_review（help.view.add 未同步弃用文案）"
+    owner_op: op-002
+    landed: "op-002 N2-4（help.view.add 改弃用文案 + 与 view.add.desc 合并单键）"
+    verification: "op-009 步骤 5：`view add --help`（zh/en）均显示弃用"
+  - id: BUG-004
+    module: cli
+    severity: low
+    status_in: open
+    origin: "stage-50 正式测试验收发现：en 模式 `.argument()` 描述仍为中文（T38 只落地遍历机制，仅 stage.create 补键）"
+    owner_ops: [op-002, op-005, op-007, op-008]
+    split: "按**文件所有权单一 owner** 切分（避免跨 op 并发改同一命令文件）"
+    counts:
+      measured_total_argument_calls: 21
+      already_keyed: 1
+      remaining: 20
+      op-002: 5
+      op-005: 8
+      op-007: 3
+      op-007_new_subcommand: 1
+      op-008: 4
+      discrepancy_note: "BUG-004 记「23 处、仅 1 处已补」；Schemer 实测 21 处（`rg --count-matches \"\\.argument\\(\" src`）→ 待补 20 处。执行前以**运行时枚举**复核（op-009 步骤 5 的动态门禁），差异处按所属命令文件归对应 op。"
+    verification: "op-009：遍历命令树，en 下每个含位置参数命令的 `--help` Arguments 段 **CJK 零命中**（自动化断言）；BUG-004 关闭结论交测试官"
+  - id: lint-exit-code
+    note: "stage-50 R1 已使 `lint i18n`/`lint kb` 发现问题**非 0 退出** → 本阶段所有 op 的 i18n 门禁验收均按「退出码 0」执行（失败 = 键不对称）。"
+
+# 【N 项 ↔ op 映射】
+n_item_map:
+  N1: op-001
+  N2: op-002
+  N3: op-003
+  N4: op-004
+  N5: op-005
+  N6: op-005
+  N7: op-005
+  N8: op-006
+  N9: op-007
+  N10: op-008
+  N11: op-008
+  excluded:
+    - item: "反馈 #6 的 config set 白名单扩展"
+      reason: "归 stage-50 T36 + R3（stage-50 已按用户裁定扩为全量 defaults.*）；避免重复修"
+    - item: "反馈 #3(b) advance 报错回显"
+      reason: "实测 commands/flow.ts:566-576 已输出真实 phase + 合法目标（已闭环）"

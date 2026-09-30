@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-01-Liuary-001.md](2026/10/01/2026-10-01-Liuary-001.md) | Liuary | 阶段 v1.1.2-stage-50 完成 |
+| [2026-09-30-Liuary-010.md](2026/09/30/2026-09-30-Liuary-010.md) | Archiver | **stage-50 归档完成（v1.1.2 全量审查 non-blocking 集中清理·第二批）**：承接 stage-49 总报告 §五 流转裁定，**T1~T57**（6 批次 A~F）7 op（commits `feae65e`~`def6a33`）；**用户裁定 R1~R6 全落地**（R1 `lint` 非 0 退出〔无逃生阀〕/ R3 `config set/get` 扩全量 `defaults.*`〔schema 驱动 + 枚举校验不写盘 + 值类型归一〕/ R4 审查条目收敛单入口〔`view add` deprecated，下版本删除〕/ R2 `update_infos` 保守默认 / R5 覆盖补 4 项 / R6 coverage 报告不阻断）；关键实现 `syncCurrentOp` 单一 owner（T1，供 stage-51 N4）/ `kb-dedup` `basePath` 参数化（T8，供 stage-51 N9）/ lint 退出码（T17）/ `transitionsDiff`（T19）/ 死代码删除（T22）/ config 白名单（T36）/ 双入口收敛（T37）/ 部署型 skill 双口径（T53，`templates/BUG-003` 关闭）；**54 文件 / 790 用例全绿（0 skipped）**、`tsc` 0、build 幂等、`lint i18n` 560 键、`lint kb` 0 过期；环境零污染；REV-001 closed / REV-002·003 resolved / REV-004（low）归下版本；新登记 `cli/BUG-004`（low）；知识沉淀 5 条（patterns 4 + troubleshooting 1）；文档/manual/CHANGELOG 同步由归档官落地 |
 | [2026-09-30-Liuary-009.md](2026/09/30/2026-09-30-Liuary-009.md) | Liuary | v1.1.2-stage-50.op-007 执行通过 |
 | [2026-09-30-Liuary-008.md](2026/09/30/2026-09-30-Liuary-008.md) | Liuary | v1.1.2-stage-50.op-006 执行通过 |
 | [2026-09-30-Liuary-007.md](2026/09/30/2026-09-30-Liuary-007.md) | Liuary | v1.1.2-stage-50.op-005 执行通过 |
@@ -30,8 +32,6 @@
 | [2026-09-29-Liuary-049.md](2026/09/29/2026-09-29-Liuary-049.md) | Liuary | v1.1.2-stage-43.op-003 执行通过 |
 | [2026-09-29-Liuary-048.md](2026/09/29/2026-09-29-Liuary-048.md) | Liuary | v1.1.2-stage-43.op-002 执行通过 |
 | [2026-09-29-Liuary-047.md](2026/09/29/2026-09-29-Liuary-047.md) | Liuary | v1.1.2-stage-43.op-001 执行通过 |
-| [2026-09-29-Liuary-046.md](2026/09/29/2026-09-29-Liuary-046.md) | Liuary | 阶段 v1.1.2-stage-47 完成 |
-| [2026-09-29-Liuary-045.md](2026/09/29/2026-09-29-Liuary-045.md) | Archiver | **stage-47 归档完成（v1.1.2 已登记缺陷集中清理）**：`config/BUG-002`（high）**语义修复**——`init` 对已存在 `.openfeel/config.yaml` **不再覆盖**（删除 stage-46 备份接入块 + `init.skipped` 用户可见提示）+ `config/BUG-003` 画像层「文件存在 + 原始 YAML 显式声明」双条件（来源落 `builtin`）+ `cli/BUG-001` `flow phases` 边界说明 + `--json.advanceAccepted`（存在视图 vs 推进白名单）+ `cli/BUG-002` `StageDirConflictError` + 三入口 i18n 分流（死键消除）+ `archive/BUG-001` `Array.isArray(deps)` 守卫 + `save()` `meta ??=` 守卫 + **`removeStage` 事务顺序**（返回 `purgeTarget`，命令层 `save()` 后删目录）+ jsonc 备份失败 **A/B 分流**（setup/update 跳过继续 + `anomaly(backup_failed)`；migrate 有意 fail-fast）+ `agents-md:112` 泛化 + `kb/architecture.md:497` 与计划文本收口（`lint kb` 0 过期引用）；7 op，**693/693 测试全绿（41 文件）**、`tsc` 0、`npm run build` 幂等、`lint i18n` 零错误；REV-001~005 全 closed（含 2 条 blocking：并行组修正 / BUG-002 修复指令补全）；**Bug 6 条 closed**（测试官隔离端到端验收，每条补「防再犯」）+ `config/BUG-001` 复核维持 closed + **新登记 `config/BUG-004`**（medium，测试隔离缺口，**裁定归 stage-43**）；知识沉淀 7 条至 patterns(3) + troubleshooting(1) + 既有条目 9 处「更新于」批注；manual 更新 `core/{init,flow-manager,config,backup}.md` + `cli/commands.md` + `index.md` |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

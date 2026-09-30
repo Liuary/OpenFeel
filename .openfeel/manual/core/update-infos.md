@@ -44,6 +44,7 @@ update_infos.md 存于全局 `~/.openfeel/`（跨项目共享），条目路径�
 - **anomaly 去重**：同路径已有未修复（resolved=false）的 anomaly 条目则跳过，避免每次 update 无限累积；**backed 不去重**（一次命令内由调用方保证每文件仅一次）。
 - **读侧节识别单一源（stage-46）**：`loadUpdateInfos` 按 `SECTION_PREFIXES`（`## 追加` / `## 异常` / `## 备份` 短前缀）匹配 `currentKind`，不再硬编码全标题。修改 `SECTION_TITLES` 节标题文案时须同步核对/迁移存量 `update_infos.md` 的节标题。
 - **降级不中断**：文件损坏时 `loadUpdateInfos()` 返回 []（警告），不抛错。
+- **条目只增不减（v1.1.2-stage-50，R2/T25，按保守默认）**：`update_infos.md` 条目**只增不减**——`clearUpdateInfos` 为预留 API（生产零调用），backed 不去重（保留审计轨迹）。**不新增**自动清理命令、**不**自动归档 resolved 条目（用户未要求）。条目的收敛依赖 Feel 会话启动检查勾选（`resolveUpdateInfo`/edit 勾选）；若需人工清理，**直接编辑 `~/.openfeel/update_infos.md`**（删除已完成/已复核条目，保留文件骨架节标题），或调用预留的 `clearUpdateInfos()` 写空骨架。**判据**：`~/.openfeel/update_infos.md` 无限增长的治理留待用户显式诉求，避免引入无实证需求的命令面。
 - **会话启动消费方（Feel）不可 import TS 模块**：Feel 用 edit 工具直接编辑 `~/.openfeel/update_infos.md` 勾选条目，故 `resolveUpdateInfo`/`clearUpdateInfos` 保留供未来 CLI 或其他调用方使用。备份类条目处理（含 `backupRel` 存在性检查与 `backup_failed` 分派）见 feel.md「update_infos 检查修复」。
 
 ## 调用关系
@@ -62,3 +63,4 @@ src/core/init.ts（项目 config.yaml / package.json 覆盖前备份）
 |------|------|
 | stage-38 | 初始创建，appended/anomaly 两类条目 + 路径二元组 + 加锁原子写 |
 | stage-46 | 新增第三类 backed（`backupRel`/`command` 字段）；anomaly 增 `note` 字段（`backup_failed`）；尾部段容错解析（向后兼容）；读侧改 `SECTION_PREFIXES` 短前缀匹配（消双源） |
+| v1.1.2-stage-50 | 文档化「条目只增不减」现状与人工清理建议（**R2 保守默认**：不新增自动清理/命令）；`clearUpdateInfos` 维持预留 API |

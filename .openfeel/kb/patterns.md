@@ -2719,3 +2719,67 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 **修复链**：改权威源 `templates-data/**` → `npm run build` 重生成注入段 + 自举实例；建议加轻量断言（`node bin/openfeel.js` 仅允许出现在二态加注行内）。
 
 **参见：** `.openfeel/bugs/templates.md` BUG-003、`REV-v1.1.2-stage-49-U4` REV-U4-001、kb/patterns.md #纯全局部署命令模式、kb/troubleshooting.md #裸跑 openfeel 命中 PATH 全局旧版
+
+## [+] 全量审查发现的批量清理方法论：主题分批 + T 编号化 + 裁定回写 (2026-09-30)
+
+**适用**：全量审查（或长期增量演进）累积数十条 non-blocking 发现，零散修改会破坏一致性、且易在收口时遗漏（v1.1.2-stage-50，T1~T57）。
+
+**方法（四步）**：
+
+1. **主题分批**：按「**同类机制内部模式不一致**」聚类，而非按文件或严重度。stage-50 六批 A~F —— 内部模式一致性 / 门禁与 CI 失效面 / 死代码与配置面 / i18n 与命令体验 / 测试质量与覆盖 / 模板与文档口径。同批改动**同质**，审查与回归可复用同一验证范式。
+2. **编号化**：每条发现给**阶段内唯一 T 编号**，登记五列 —— `来源（U*-N*/REV-*）→ 证据（文件:行号）→ 影响面 → 建议修法 → 优先级`。编号与来源列构成**双向可追溯**；统计须闭合（stage-50：57 = 44 来源 + 5 合并 + 4 用户指定 + 4 阶段内新增）。
+3. **裁定回写**：涉及行为变更/策略选择的项单独编号（R1~R6）与 T 交叉引用；用户裁定**先回写入 op 文件与 `deps.yaml`（`decisions_taken`）**再实施——避免「执行时凭记忆」。
+4. **收口零空格子**：收口 op 逐条核对，每条**要么有断言/命令证据，要么显式「不修 / 归档 / 登记」留痕**（不静默遗漏）。
+
+**批次落点**：1 批 1 op；**同热区文件强制串行**（stage-50 的 `flow-manager.ts` / `commands/flow.ts` 由单链 A 顺序触碰），无交集批次（`test/**` 与 `templates-data/**`）并行。
+
+**实证**：stage-50 T1~T57（52 修 + 6 裁定 + 3 不修）由 7 op 落地，`npm test` 54 文件 / 790 用例全绿。
+
+**参见：** v1.1.2-stage-50、`.openfeel/plan/v1/stage-50/{plan.md, ops/op-001~007.md}`、`REV-v1.1.2-stage-50.md`、kb/patterns.md #全量审查的发现分类与流转裁定
+
+## [+] 跨阶段「契约先行」协同：单一 owner + 事前接口约束（禁各自实现） (2026-09-30)
+
+**适用**：两阶段先后改动**同一语义**（如 `pipeline.current.op` 生命周期、kb 去重路径解析）时，后落地方易各自实现 → 双份逻辑漂移（v1.1.2-stage-50 ↔ stage-51）。
+
+**四点约束**：
+
+1. **单一 owner**：由**先落地阶段**定义唯一实现（`FlowManager.syncCurrentOp(stageName): {stage, op}`）并明确「未命中置 `op: ''`、不碰 phase、无 IO」；后续阶段**只调用不重写**（stage-51 N4 复用 `advanceStagePhase`/`recordAttempt` 共用实现）。
+2. **接口形态写到签名级**：在方案阶段把可复用接口写成**函数签名 + 语义约束**，而非「加个可选参数」。例：`findSimilarEntries(target, category, basePath?)` —— `basePath` 为 `.openfeel/kb` **绝对路径**、**缺省在调用时刻** `resolve('.openfeel/kb')`（**禁模块加载期固化**）、返回结构不变、下游**只允许传参、禁各自实现路径解析**。
+3. **事前登记硬约束**：同步写入 `ops/deps.yaml` 的 `downstream_contracts`（`target_stage` / `item` / `provider_op` / `type: hard`），形成 **provider → consumer 的事前约束**，优于事后「双向登记机制」兜底。
+4. **收口 `rg` 自证**：收口 op 以 `rg` 验证「**定义 1 处 + 调用 ≥2 处**」证明无双实现（stage-50 实测 `syncCurrentOp` 共 4 处，`resolve('.openfeel/kb')` 全仓**仅 1 处**）。
+
+**判据**：接口形态若**无法写成签名级**，说明尚未收敛，**不应进入下游复用**。
+
+**参见：** v1.1.2-stage-50 §三 REV-001、`ops/op-001.md` §2「接口与签名变更（跨阶段契约）」、`ops/deps.yaml` `downstream_contracts`、`.openfeel/roadmap/v1.1.2.md` 备注（stage-51）
+
+## [+] CLI 退出码语义：发现问题即非 0 退出 + 不设逃生阀 + 用 process.exitCode (2026-09-30)
+
+**契约**：门禁/校验类命令（`lint i18n` / `lint kb`）**发现问题必须非 0 退出**——否则 CI 无法以其作门禁，**静默通过（exit 0）是最危险的失败模式**（v1.1.2-stage-50 T17 / R1）。
+
+**三条设计裁定**：
+
+1. **不设逃生阀**：**不新增** `--warn-only` / `--no-fail`。理由：把「忽略」内建进命令，**调用方意图不可见**；忽略应由调用方**显式表达**（`lint kb || true`）。逃生阀是**双开关**，增加长期维护面而无实证需求。
+2. **用 `process.exitCode = 1` 而非 `process.exit(1)`**：后者**立即终止**进程，管道或大量输出时可能在 stdout **异步 flush 完成前退出** → 输出截断（CI 日志丢错误详情）。置 `exitCode` 让事件循环自然收尾、输出完整刷出。
+3. **与既有退出码语义对齐**：并发冲突 `2`（`EXIT_CONCURRENT`，可重试）、通用错误 `1`、成功 `0`（见 `cli/index.ts` `handleCliError`）。
+
+**行为变更须明示**：外部可见（脚本/CI 忽略退出码将受影响）→ `CHANGELOG` Changed/Breaking + `docs/`·`manual/`·`README` 同步；**「本仓当前不触发」≠「外部脚本不受影响」**。
+
+**验证范式**：**双证据** —— 本仓正常态 `exit 0` + **构造缺陷 fixture**（临时 `.openfeel/kb` 含过期引用）`exit 1`（fixture 用后即删，`git status` 复核无泄漏）。
+
+**参见：** v1.1.2-stage-50 T17（R1）、`plan/v1/stage-50/plan.md` §九 R-1、`docs/commands.md` lint 节、kb/patterns.md #CLI lint 子命令组扩展与 --fix 自动修复模式
+
+## [+] 命令面收敛与弃用策略：单入口 + TTY 提示 + 下版本删除登记 (2026-09-30)
+
+**适用**：同一数据源存在两条命令（`view add` vs `flow review add`），行为细节不一致 → 用户困惑 + 审计口径不一（v1.1.2-stage-50 T37 / R4）。
+
+**收敛**：保留**语义更完整**的一方（`flow review add`），弃用方实现收敛为**单点函数**（`addReviewEntry`）+ **ID 单点分配**（`generateReviewId` 取既有最大序号 +1，避免并发重号）。
+
+**弃用三要件**：
+
+1. **仅 TTY 输出 stderr**：非 TTY **静默**（避免污染 CI/脚本输出），对齐 `stage.create` 既有惯例；`process.stdout.isTTY` 守卫。
+2. **删除须登记**：`CHANGELOG` `Deprecated` 显式写「**将于下一版本移除**」+ 收口 op 的**登记项清单成文**（防遗忘）；命令本体**本版本保留**（仅弃用）。
+3. **文档同步**：manual/README 注明弃用与迁移目标。
+
+**陷阱（双轨复发）**：`applyHelpI18n` 用 `help.<path>` **域键覆盖** `.description()`——改 `view.add.desc` 键**不够**，`help.view.add` 域键须**同批改**，否则 `--help` 仍显示旧文案（stage-50 REV-004 即此残留，与下版本删除合并修）。**判据**：凡「desc 键 + help 域键」双轨，文案变更收尾必 `rg "help\.<path>"` 核对。
+
+**参见：** v1.1.2-stage-50 T37（R4）+ REV-004、`plan/v1/stage-50/ops/op-003.md`、`CHANGELOG.md` `[1.1.2]` Deprecated、kb/troubleshooting.md #多源文案同步陷阱

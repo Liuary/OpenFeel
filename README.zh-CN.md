@@ -57,8 +57,8 @@ openfeel flow status
 | `openfeel flow` | 流水线状态管理（status / current / advance / overview） |
 | `openfeel roadmap` | 分期大纲管理（create / show） |
 | `openfeel plan` | 工作阶段与操作方案管理（stage add/list、scheme create/list） |
-| `openfeel lint` | 质量门禁检查（i18n 键对称性 / kb 过期引用） |
-| `openfeel config` | 配置管理（get / set / list，支持 --global） |
+| `openfeel lint` | 质量门禁检查（i18n 键对称性 / kb 过期引用；**发现问题非 0 退出**，无逃生阀） |
+| `openfeel config` | 配置管理（get / set[**全量 `defaults.*`**] / effective / get-lang / list-projects，支持 --global） |
 | `openfeel knowledge` | 知识库管理（list / search） |
 | `openfeel archive <stage>` | 阶段归档，汇总产出、生成摘要、提取知识 |
 | `openfeel setup` | 纯全局部署（全局 AGENTS.md + agent + skill + 平台适配器配置），不建项目 `.openfeel/` |
@@ -66,7 +66,7 @@ openfeel flow status
 | `openfeel model` | 三层级 agent 模型配置（set / get / list，`--scope`） |
 | `openfeel stage` | 阶段状态（status / set / create［已弃用］） |
 | `openfeel project` | 项目管理（list / info） |
-| `openfeel view` | 审查条目管理（list / add / accept） |
+| `openfeel view` | 审查条目管理（list / add［**已弃用，改用 `flow review add`**］/ accept） |
 | `openfeel instructions` | 生成结构化指令（artifact → XML/JSON） |
 
 详细参数见：[docs/commands.md](docs/commands.md)
@@ -146,7 +146,7 @@ Core 层
 ```bash
 npm install        # 安装依赖
 npm run build      # 编译 TypeScript
-npm test           # 运行测试（716 用例，41 个测试文件）
+npm test           # 运行测试（790 用例，54 个测试文件）
 ```
 
 ## 致谢

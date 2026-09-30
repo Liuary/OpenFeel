@@ -30,11 +30,22 @@
 |------|------|
 | `readConfig(projectPath)` | 读取项目配置（yaml.parse + Zod 校验，缺失用默认值） |
 | `writeDefaultConfig(projectPath, lang)` | 写入默认项目配置（**整体覆盖，无 `existsSync` 守卫、无备份**）。**契约（stage-47）**：调用方须先自行守卫——`init` 对已存在的 `config.yaml` 不再调用本函数（保留用户配置 + `skipped` 提示）；本函数不应被无守卫地用于既有用户配置 |
-| `getConfigValue(projectPath, key)` / `setConfigValue(...)` | 读取 / 修改单个配置项 |
+| `getConfigValue(projectPath, key)` / `setConfigValue(...)` | 读取 / 修改单个配置项。**v1.1.2-stage-50 起**：`setConfigValue` 写入前**按字段 Schema 归一值类型**（boolean 键把 `"true"`/`"false"` 解析为布尔，逐层解包后 `instanceof z.ZodBoolean`；**zod v4 无 `_def.typeName`**）——归一是白名单扩至全量 `defaults.*` 的前提（否则 boolean 键首次可达即 `ZodError` 崩溃） |
 | `readProfile()` / `writeProfile(profile)` | 读取 / 写入全局用户画像（`readProfile` 异常安全：缺失/非法 YAML 回退 `DEFAULT_PROFILE`）。**v1.1.2-stage-48 起**：返回类型为 `Profile & { parseError?: string }`——解析/校验失败（YAML 语法错误、顶层非对象/空文件）时**标记 `parseError`**；非法态下 `ensureProfileDefaults` **跳过写回** + `console.warn`（含路径与原因），`config set --global` 直接报错 `exit 1`（**不覆盖**用户文件） |
 | `CONFIG_TEMPLATE_ZH` / `CONFIG_TEMPLATE_EN` / `DEFAULT_CONFIG` / `DEFAULT_PROFILE` | 模板与默认值常量（`DEFAULT_CONFIG` 为级联 `builtin` 层权威值） |
 
 > **写入安全（v1.1.0-stage-35）**：`writeProfile()` 与 `setGlobalConfig()`（`workspace/identity.ts`）为跨项目全局写入，均在 `global-config` 锁（`~/.openfeel/locks/global-config.lock`）内 + 原子写；`writeDefaultConfig()` / `setConfigValue()` / `ensureInfoJson()` 仅原子写（不加锁，低风险）。详见 `manual/core/fs.md`。
+
+## 健壮性补强（v1.1.2-stage-50）
+
+| 项 | 变更 |
+|----|------|
+| `readProfile()` 深拷贝（T28） | 缺失/异常分支返回**结构化深拷贝**而非浅拷贝，避免调用方原位修改污染模块级 `DEFAULT_PROFILE`（同进程后续读取被污染） |
+| `recent_projects` 去重（T32） | 去重比较**大小写不敏感**（`c:\x` 与 `C:\x` 视为同一项），修复 Windows 盘符大小写不归一导致的重复条目 |
+| `config set/get` 全量 `defaults.*`（R3/T36） | 键白名单**由 `ConfigDefaultsSchema` 驱动**（不硬编码），与 `config effective` 覆盖范围一致；写入值经类型归一 + 枚举校验；**枚举非法报错且不写盘**（hash + mtime 不变） |
+| 级联逐键 Zod 校验（T29） | `buildCascadeConfig`（`flow-manager`）不再自行 `parseYaml` 绕过 Zod——按 `ConfigDefaultsSchema` **逐键校验**（非法跳过 + warn），使 `config effective` 与 `config get` 口径一致 |
+| 读路径 parseError 提示（T33） | `config get --global` 在画像非法时于 stderr 输出 `parseError` 警告（读写路径对称，避免「误判未设置」） |
+
 
 ## 模型配置
 

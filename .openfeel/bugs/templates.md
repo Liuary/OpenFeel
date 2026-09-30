@@ -60,7 +60,7 @@ en.md:112     Each of the 9 agents inlines a `permission:` allowlist (deployed b
 
 ## BUG-003：部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目不可执行（与同类部署模板处置相反）
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open**（非阻塞；**stage-49 裁定：归后续补丁阶段**）｜ **归因**：**计划口径未覆盖部署语境**（实现与 op-003 ① 一致，非执行偏差）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-50 `op-006` T53 双口径修复 + `npm run build` 幂等验收通过）｜ **归因**：**计划口径未覆盖部署语境**（实现与 op-003 ① 一致，非执行偏差）
 - **登记阶段**：v1.1.2-stage-48 正式测试验收（事件 C 全仓口径扫描）｜ **登记人**：openfeel-feel-tester
 - **私域详细报告**：`.openfeel/users/Liuary/bugs/templates/BUG-003_部署型skill模板改为node-bin口径在用户项目不可执行.md`
 
@@ -109,3 +109,12 @@ node bin/openfeel.js flow status
 - **裁定**：**不修于 stage-49**（本阶段定位「整仓审查 + 4 条 blocking 修复」，仅 B1~B4，未夹带 non-blocking）；**归后续补丁阶段**，修复清单见 U4-REV-001 §五（逐文件 7 步：5 skill 改 `openfeel <cmd>` + 补二态加注 + `npm run build` 重注 + 建议加 lint 断言）。
 - **口径判据已沉淀**：`kb/patterns.md #部署语境 vs 本仓语境的命令口径二分：产物落点是唯一判据`（2026-09-30 新增）。
 - **状态维持 `open`**（已裁定去处，待补丁阶段执行）。
+
+### 关闭记录（v1.1.2-stage-50，op-006 T53，commit `f50960f`）
+
+采纳**期望 B（双口径）**：5 个部署型 skill 模板（权威源 `src/core/templates-data/opencode/skills/{openfeel-cli-usage,openfeel-wizard,openfeel-health,openfeel-model-check,openfeel-recover}/SKILL.md`）**用户环境主口径 `openfeel <cmd>`**，文首统一加注「本仓自举用 `node bin/openfeel.js <cmd>`」；其中 health/model-check/recover 3 个原**无任何二态加注**的 skill 一并补齐。
+
+验收证据（op-007 收口 + 测试官抽验）：`rg -c "node bin/openfeel.js" src/core/templates-data/opencode/skills/**` 五文件**计数均为 1**（各仅加注行）、其余 skill 为 0；`npm run build` 重生成 `SKILL_DEFINITIONS`/`OPENCODE_SKILL_DEFINITIONS`/`AGENTS_MD_TEMPLATES` 与 `.opencode/` 自举且**重跑零 diff（幂等）**；新增 `test/core/templates.test.ts` 轻量断言（`node bin` 仅许出现在加注行）。满足与 `U4-001` 的关闭条件。
+
+**防再犯**：① **判据用「产物落点」而非「查询型/执行型」**——部署到用户全局的 skill 属部署产物，须与 agent/agents-md 同口径（沉淀 `kb/patterns.md #部署语境 vs 本仓语境的命令口径二分`）；② 模板权威源改动**必跑 `npm run build`**，以「二次 build 零 diff」自证幂等；③ 加轻量断言把人工核对变为机器护栏。
+

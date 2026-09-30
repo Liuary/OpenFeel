@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-30T16:05:59.466Z",
-    "revision": 333
+    "updated": "2026-09-30T15:56:14.618Z",
+    "revision": 322
   },
   "pipeline": {
     "phase": "active",
@@ -1543,8 +1543,8 @@
     },
     "v1.1.2-stage-50": {
       "name": "v1.1.2-stage-50",
-      "phase": "done",
-      "status": "done",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {
         "op-001": {
@@ -1669,8 +1669,8 @@
       },
       "stats": {
         "start_time": "2026-09-29T18:43:33.742Z",
-        "end_time": "2026-09-30T16:05:59.442Z",
-        "duration_ms": 76945700
+        "end_time": "",
+        "duration_ms": 0
       }
     },
     "v1.1.2-stage-51": {
@@ -1678,161 +1678,7 @@
       "phase": "scheme_pending",
       "status": "planned",
       "deps": [],
-      "ops": {
-        "op-001": {
-          "title": "孤儿 op 回收与检测（N1）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-002": {
-          "title": "结构字段 CLI deps 与 reviews（N2）及交接缺陷 REV-004 与 BUG-004",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-003": {
-          "title": "scheme create 注册语义统一（N3）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-004": {
-          "title": "current.op 生命周期单一 owner（N4）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-005": {
-          "title": "stage set 幂等与字段扩展及 task add（N5 N6 N7）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-006": {
-          "title": "op 文件名固定 op-NNN.md（N8）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-007": {
-          "title": "knowledge 宽容解析与 knowledge dedup 子命令（N9）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-008": {
-          "title": "日志未来写入统一与 git 警告降噪（N10 N11）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-009": {
-          "title": "全量回归与门禁收口",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        }
-      },
+      "ops": {},
       "stats": {
         "start_time": "2026-09-29T18:47:00.715Z",
         "end_time": "",
@@ -8679,107 +8525,6 @@
         "stageName": "v1.1.2-stage-50",
         "from": "test_passed",
         "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-09-30T15:56:14.909Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "from": "plan_passed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:11.090Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-001"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:11.371Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-002"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:11.647Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:11.930Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-004"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:12.218Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-005"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:12.502Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-006"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:12.819Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-007"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:13.129Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-008"
-      }
-    },
-    {
-      "time": "2026-09-30T15:57:13.415Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "opId": "op-009"
-      }
-    },
-    {
-      "time": "2026-09-30T16:05:59.438Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "from": "archiving",
-        "to": "done"
       }
     }
   ]

@@ -733,3 +733,26 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 **避免**：**删除**随包 `postinstall`（**就地改写第三方包属反模式**：升级即被覆盖、pnpm/yarn 不适用、随包发布无效），`engines` **收紧对齐**依赖实际要求（`>=20.17.0`），未来确需兼容改用 `overrides`/`patches`。**注意**：包内附带的 `.npmrc` 的 `engine-strict` 对消费者**无效**（npm 只读消费者自身项目/用户级 `.npmrc`），不要指望它生效。
 
 **参见：** v1.1.2-stage-49 B3、`REV-v1.1.2-stage-49-U7` U7-01、`plan/v1/stage-49/ops/op-011.md`、kb/setup.md #npm 超时与网络预检
+
+## [+] 配置键白名单须 schema 驱动 + 值类型归一：避免字符串 "true" 写入破坏配置 (2026-09-30)
+
+**症状**：`config set test_enabled true` 后配置校验失败（写入字符串 `"true"`），或扩白名单后 boolean 键**首次可达** → `ZodError` 崩溃（v1.1.2-stage-50 T36 / R3）。
+
+**根因（两层）**：
+
+1. **白名单硬编码单键**（`['auto_advance']`）时，`test_enabled` 等 boolean 键被命令层**先行拦截**（不可达）→ **掩盖**了「值以字符串原样写入」的缺陷；
+2. **扩到全量 `defaults.*` 后 boolean 键首次可达** `setConfigValue`，若**不先归一值类型**，`z.boolean().parse("true")` 直接 `ZodError` 崩溃。
+
+> 描述修正：现状是「**白名单拦截不可达**」，而非「已写坏配置」；**归一因此是扩白名单的前置条件**，不是可选项（stage-50 REV-002）。
+
+**排查**：`rg` 白名单数组（`commands/config.ts`）+ `setConfigValue` 值写入路径（`config.ts`）；确认 parse/归一发生在**写盘之前**。
+
+**修法三件套**：
+
+1. **白名单 schema 驱动**：从 `ConfigDefaultsSchema` 取 keys，**不硬编码**（新增配置键自动纳入）；
+2. **写入前按字段 schema 归一值类型**：boolean 键把 `"true"`/`"false"` 解析为布尔 —— **逐层解包后 `instanceof z.ZodBoolean`**（**zod v4 无 `_def.typeName`**，勿按 v3 写法判断）；
+3. **枚举非法值报错且不写盘**：`execution_mode bogus` 等 → 报错 + **目标文件 hash 与 mtime 不变**（不写盘是验收硬断言）。
+
+**三口径一致**：`config set` / `get` / `effective` 对同一键的**值与来源**一致（`rg notAdjustableHint src/` 应零命中）。
+
+**参见：** v1.1.2-stage-50 T36（R3）/ REV-002、`plan/v1/stage-50/ops/op-003.md`、`REV-v1.1.2-stage-50.md`、kb/patterns.md #配置级联解析模式

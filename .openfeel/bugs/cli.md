@@ -136,3 +136,45 @@ JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES] }, .
 **防再犯**：① **新增/暴露输出字段时，`--help` 文案必须同批核对**——本 Bug 正是 `cli/BUG-001`（stage-47）新增 `advanceAccepted` 输出后的**收尾遗漏**，与 `templates/BUG-002`（文案双源不同步）同族；② **枚举式 help 文案是漂移源**：逐一列举键集（`{ phases, transitions }`）注定在字段新增时滞后，可考虑改为「输出完整结构」类不枚举表述（本阶段按最小改动保留枚举并补全，该建议留待后续评估）；③ 文案源有「i18n 键（真源）+ 命令层 fallback（硬编码）」双处，须成对修改（`rg "phases, transitions" src/` 兜底）。沉淀见 `kb/patterns.md #CLI 自描述命令模式`。
 
 > 流程偏差（如实记录）：executor 修复时未按生命周期翻转 `fixing`/`resolved`，直接由测试官于验收时关闭。
+
+---
+
+## BUG-004：en 模式下 `--help` 的 Arguments 描述仍为中文（T38 只落地遍历机制，未补齐翻译键）
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open**（**非阻塞；建议归 `v1.1.2-stage-51`**）｜ **来源阶段**：`v1.1.2-stage-50`（正式测试验收发现）
+
+### 核心结论
+
+`T38`（U2-REV-003）修复了 `applyHelpI18n` 的 `arguments` **遍历机制**（`cli/index.ts` `walkCmd` 增 arguments 遍历，`hasKey` 防缺失告警），但 23 处 `.argument()` 中**仅 1 处**（`stage.create`）补了 `help.<path>.arg<name>` 键，其余 **22 处 en 下回退中文**。
+
+实测（2026-09-30，commit `def6a33`，隔离 fixture `lang=en`）：
+
+- `stage create --help` → `stageId  Stage ID (e.g. v1.0.0-stage-30)` ✅ 英文（T38 已覆盖）；
+- `knowledge add --help` → `category 分类（...）` / `title 条目标题` ❌ **中文泄漏**；
+- `view accept --help` → `rev-id  审查条目 ID（如 REV-001）` ❌ **中文泄漏**。
+
+**行为 vs 实现**：op-004 验收要点「en 下 `--help` 的 Arguments 行为英文」实际仅 **1/23** 达成——属**验收口径与实现范围不一致**（机制已通，键未补全）。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 触发频率 | en 用户查询任一含位置参数的命令 `--help` |
+| 直接后果 | en 读者对参数说明语义不可达（Options 已英文，Arguments 仍中文） |
+| 功能影响 | **无**（命令执行、退出码、参数校验均正确） |
+| 关联 | T38 / U2-REV-003（stage-49 全量审查）；与 **REV-004**（`help.view.add` 未同步弃用文案）同源「双轨/漏键」 |
+
+### 建议修复方向
+
+1. 按 `help.<path>.arg<name>` 约定**补齐 22 处** `.argument()` 的 zh/en 双语键（`lint i18n` 自动强制中英对称）；
+2. 或改为「argument 注册即取 `description` 翻译」的机制级方案（减少逐键维护与漂移面）；
+3. 用 `stage.create`（已补）作样板——**建议归 `v1.1.2-stage-51`**（该阶段大量触及 CLI/i18n，天然合并；与 REV-004 下版本 `view add` 移除一并收口）。
+
+> 沉淀：`kb/troubleshooting.md #新增 i18n 键已定义却未接入（死键）`、`kb/patterns.md #命令面收敛与弃用策略`（双轨陷阱：`desc` 键 vs `help` 域键须同批改）。
+
+### 验收记录
+
+| 时间 | 验收人 | 结论 | 备注 |
+|------|--------|------|------|
+| 2026-09-30 23:58 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-50 正式验收发现；隔离 fixture 实测 23 处 `.argument()` 仅 1 处英文；已登记私域 `bugs/cli/` 并更新 index/log |
+

@@ -59,7 +59,7 @@ ${title}
 
 /**
  * 从文件名中提取 opId
- * 文件名格式：op-NNN_{title}.md
+ * 文件名格式：op-NNN.md（新）或 op-NNN_{title}.md（历史）
  */
 function extractOpId(fileName: string): string | null {
   const match = fileName.match(/^(op-\d+)/);
@@ -67,13 +67,31 @@ function extractOpId(fileName: string): string | null {
 }
 
 /**
- * 从文件名中提取标题
- * 文件名格式：op-NNN_{title}.md
+ * 读取 op 标题（兼容两种命名，N8-2）。
+ * - 历史命名 `op-NNN_{title}.md`：沿用文件名解析（原行为，零变化）
+ * - 新命名 `op-NNN.md`：读文件内容首个 `# op-NNN：{title}` 行（标题权威来源）
+ * IO 失败 / 无标题行 → 回退文件名（去 `.md`），不抛错（列表命令需健壮）。
+ * @param filePath op 文件的绝对路径
+ * @param fileName 文件名（历史命名解析与回退用）
  */
-function extractTitle(fileName: string): string {
-  // 去掉 op-NNN_ 前缀和 .md 后缀
-  const noPrefix = fileName.replace(/^op-\d+_?/, '');
-  return noPrefix.replace(/\.md$/, '').replace(/_/g, ' ');
+function extractTitle(filePath: string, fileName: string): string {
+  // ① 历史命名：op-NNN_标题.md → 文件名解析（原行为）
+  const legacy = fileName.match(/^op-\d+_(.+)\.md$/);
+  if (legacy) {
+    return legacy[1].replace(/_/g, ' ');
+  }
+  // ② 新命名 op-NNN.md：读内容首行标题（模板首行为 `# {opId}：{title}`）
+  try {
+    const content = readFileSync(filePath, 'utf-8');
+    const m = content.match(/^#\s*op-\d+[：:]\s*(.+)$/m);
+    if (m) {
+      return m[1].trim();
+    }
+  } catch {
+    // IO 失败静默回退文件名（列表命令不应因单个坏文件中断）
+  }
+  // ③ 回退：文件名去扩展（op-NNN）
+  return fileName.replace(/\.md$/, '');
 }
 
 /** 序号 → opId（3 位补零） */
@@ -221,12 +239,16 @@ export function createScheme(
   }
 
   // 2. 锁内：原子占号 + 原子写 op 文件（临界区仅含占号与写文件，不含 flow 同步）
-  const safeTitle = title.replace(/\s+/g, '_');
+  //
+  // 命名约定（N8-1 / A5）：新建 op 固定 `op-NNN.md`——**标题不再参与命名**（写入文件内容首行
+  // `# op-NNN：{title}`，模板已含），彻底规避标题含 `/` 等路径字符导致的 ENOENT 创建失败。
+  // 历史 `op-NNN_{title}.md` 不迁移、不改名；读取端 extractTitle 兼容回退（N8-2）。
+  // parse 正则 /^op-(\d+)/ 未改 → 历史命名仍占号，序号分配不受影响（新旧共存不撞号）。
   const lockPath = projectLockPath(projectPath, `scheme-${parsed.stageDir}`);
   const opId = withFileLock(lockPath, () => {
     const reserved = reserveSequence({
       dir: opsDir,
-      candidate: (seq) => `${opIdOf(seq)}_${safeTitle}.md`,
+      candidate: (seq) => `${opIdOf(seq)}.md`,
       parse: (fileName) => {
         const m = fileName.match(/^op-(\d+)/);
         return m ? parseInt(m[1], 10) : null;
@@ -487,7 +509,7 @@ export function listSchemes(projectPath: string, stageName?: string): Scheme[] {
         result.push({
           opId,
           stage: stageEntry.name,
-          title: extractTitle(fileName),
+          title: extractTitle(filePath, fileName),
           content,
           filePath: `.openfeel/plan/${seriesEntry.name}/${stageEntry.name}/ops/${fileName}`,
         });

@@ -22,7 +22,7 @@ describe('scheme', () => {
   });
 
   describe('createScheme', () => {
-    it('应在 stage-01 下创建 op-001_{title}.md 文件', () => {
+    it('应在 stage-01 下创建固定命名 op-001.md 文件（N8-1）', () => {
       // 先创建阶段
       addStage(tmpDir, 'stage-01');
 
@@ -30,7 +30,7 @@ describe('scheme', () => {
 
       expect(opId).toBe('op-001');
 
-      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001_实现登录功能.md');
+      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001.md');
       expect(existsSync(filePath)).toBe(true);
     });
 
@@ -46,7 +46,7 @@ describe('scheme', () => {
 
       createScheme(tmpDir, 'stage-01', '配置数据库');
 
-      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001_配置数据库.md');
+      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001.md');
       const content = readFileSync(filePath, 'utf-8');
 
       expect(content).toContain('# op-001：配置数据库');
@@ -86,19 +86,35 @@ describe('scheme', () => {
 
       expect(opId).toBe('op-001');
 
-      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-03', 'ops', 'op-001_自动创建.md');
+      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-03', 'ops', 'op-001.md');
       expect(existsSync(filePath)).toBe(true);
     });
 
-    it('标题含空格时文件名使用下划线', () => {
+    it('N8-1：标题含 / 、空格、中文均可创建（不再 ENOENT），文件名为 op-NNN.md', () => {
       addStage(tmpDir, 'stage-01');
 
-      createScheme(tmpDir, 'stage-01', '实现 登录 功能');
+      // 旧实现：safeTitle 仅替换空白 → 标题含 '/' 时文件名多一级 → openSync 抛 ENOENT
+      expect(() => createScheme(tmpDir, 'stage-01', 'feat/目录 与 中文')).not.toThrow();
 
       const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
-      // 文件名中空格应替换为下划线
-      const filePath = join(opsDir, 'op-001_实现_登录_功能.md');
+      const filePath = join(opsDir, 'op-001.md');
       expect(existsSync(filePath)).toBe(true);
+      // 标题完整保留在内容首行
+      expect(readFileSync(filePath, 'utf-8')).toContain('# op-001：feat/目录 与 中文');
+      // 无标题片段文件
+      expect(existsSync(join(opsDir, 'op-001_feat_目录 与 中文.md'))).toBe(false);
+    });
+
+    it('N8-1：历史命名文件仍占号（序号分配不受影响）', () => {
+      addStage(tmpDir, 'stage-01');
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      writeFileSync(join(opsDir, 'op-001.md'), '# op-001：旧\n', 'utf-8');
+      writeFileSync(join(opsDir, 'op-002_旧标题.md'), '# op-002：旧标题\n', 'utf-8');
+
+      const opId = createScheme(tmpDir, 'stage-01', '新方案');
+      expect(opId).toBe('op-003');
+      expect(existsSync(join(opsDir, 'op-003.md'))).toBe(true);
     });
 
     it('应同步到 flow.json（若 flow.json 存在且包含该阶段）', () => {
@@ -211,8 +227,66 @@ describe('scheme', () => {
       const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
       // 冲突 stageId 未被写入 flow.json（不产生脏键）
       expect(flow.stages['v4.0.0-stage-04']).toBeUndefined();
-      // op 文件已创建
-      expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v4', 'stage-04', 'ops', 'op-001_冲突.md'))).toBe(true);
+      // op 文件已创建（固定命名）
+      expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v4', 'stage-04', 'ops', 'op-001.md'))).toBe(true);
+    });
+  });
+
+  // ── stage-51/N8-2：标题读取兼容回退 ──
+
+  describe('N8-2 extractTitle 兼容（stage-51 op-006）', () => {
+    /** 在 stage-01/ops 下直接放置给定文件 */
+    function placeOps(files: Record<string, string>): string {
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      for (const [name, content] of Object.entries(files)) {
+        writeFileSync(join(opsDir, name), content, 'utf-8');
+      }
+      return opsDir;
+    }
+
+    it('N8-2：新命名 op-NNN.md → 读取内容首行标题', () => {
+      placeOps({ 'op-001.md': '# op-001：内容里的标题\n\n## 目标\n' });
+      const schemes = listSchemes(tmpDir, 'stage-01');
+      expect(schemes).toHaveLength(1);
+      expect(schemes[0].opId).toBe('op-001');
+      expect(schemes[0].title).toBe('内容里的标题');
+    });
+
+    it('N8-2：历史命名 op-NNN_标题.md → 文件名解析（原行为零变化）', () => {
+      placeOps({ 'op-004_历史标题.md': '无首行标题\n' });
+      const schemes = listSchemes(tmpDir, 'stage-01');
+      const s = schemes.find((x) => x.opId === 'op-004');
+      expect(s?.title).toBe('历史标题');
+    });
+
+    it('N8-2：新命名内容无标题行 → 回退文件名（不抛错）', () => {
+      placeOps({ 'op-005.md': '没有标题行\n' });
+      const schemes = listSchemes(tmpDir, 'stage-01');
+      const s = schemes.find((x) => x.opId === 'op-005');
+      expect(s?.title).toBe('op-005');
+    });
+
+    it('N8-2：新旧命名混存 → 二者均可列出且标题正确', () => {
+      placeOps({
+        'op-001.md': '# op-001：新标题\n',
+        'op-002_旧标题.md': '# op-002：旧标题\n',
+      });
+      const schemes = listSchemes(tmpDir, 'stage-01');
+      expect(schemes).toHaveLength(2);
+      expect(schemes.find((x) => x.opId === 'op-001')?.title).toBe('新标题');
+      expect(schemes.find((x) => x.opId === 'op-002')?.title).toBe('旧标题');
+    });
+
+    it('N8-3：plan scheme 无 rename/migrate 子命令（A5：不做迁移命令）', async () => {
+      const { registerPlanCommand } = await import('../../../src/commands/plan.js');
+      const { Command } = await import('commander');
+      const program = new Command();
+      registerPlanCommand(program);
+      const scheme = program.commands.find((c) => c.name() === 'plan')!.commands.find((c) => c.name() === 'scheme')!;
+      const names = scheme.commands.map((c) => c.name());
+      expect(names).not.toContain('rename');
+      expect(names).not.toContain('migrate');
     });
   });
 

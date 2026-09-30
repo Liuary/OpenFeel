@@ -379,6 +379,8 @@ export const plan: I18nDomain = {
   'scheme.remove.reasonDone':    { key: 'plan.scheme.remove.reasonDone',    zh: '', en: 'Refused: {opId} is done; use --force to remove anyway' },
   'scheme.remove.reasonCheckpoint': { key: 'plan.scheme.remove.reasonCheckpoint', zh: '', en: 'Refused: {opId} has checkpoint progress; use --force to remove anyway' },
   'scheme.remove.notFoundTmpl':  { key: 'plan.scheme.remove.notFoundTmpl',  zh: '', en: 'Not found: stage {stage} or scheme {opId}' },
+  'scheme.implicitRegisterTmpl': { key: 'plan.scheme.implicitRegisterTmpl', zh: '', en: 'Stage {stage} was not registered; stage skeleton created (overview.md / status.md)' },
+  'scheme.skeletonWarnTmpl':     { key: 'plan.scheme.skeletonWarnTmpl',     zh: '', en: 'Failed to create stage skeleton ({err}); skipped. Please create overview.md / status.md manually' },
 };
 
 /* ==================== knowledge ==================== */

@@ -351,4 +351,42 @@ describe('plan 命令', () => {
     expect(readFileSync(flowPath, 'utf-8')).toBe(before);
     expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('DRY-RUN');
   });
+
+  // ── stage-51/N3：scheme create 注册语义统一 ──
+
+  it('N3-1: 空项目隐式注册补齐阶段骨架（overview/status/ops 齐备）', async () => {
+    logMock.mockClear();
+    await safeParse(['plan', 'scheme', 'create', 'stage-09', 'T']);
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-09']).toBeDefined();
+    expect(flow.stages['v1.0.0-stage-09'].phase).toBe('plan_pending');
+
+    const stageDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-09');
+    expect(existsSync(join(stageDir, 'overview.md'))).toBe(true);
+    expect(existsSync(join(stageDir, 'status.md'))).toBe(true);
+    expect(existsSync(join(stageDir, 'ops'))).toBe(true);
+
+    // N3-2：隐式注册提示
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('未注册');
+  });
+
+  it('N3-2: 已注册阶段不输出隐式注册提示', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-10']);
+    logMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'create', 'stage-10', 'T']);
+
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).not.toContain('未注册');
+  });
+
+  it('N3-1: 重复执行不覆盖既有骨架（幂等）', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-11', 'T']);
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-11', 'status.md');
+    writeFileSync(statusPath, 'CUSTOM', 'utf-8');
+
+    await safeParse(['plan', 'scheme', 'create', 'stage-11', 'T2']);
+
+    expect(readFileSync(statusPath, 'utf-8')).toBe('CUSTOM');
+  });
 });

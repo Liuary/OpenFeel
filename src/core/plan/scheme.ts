@@ -7,6 +7,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { FlowManager, isFlowConcurrentError, type PipelinePhase, type Op } from '../flow-manager.js';
 import { parseStageId, validateStageId, findStageDirConflict, normalizeStageId } from './path.js';
+import { ensureStageSkeleton } from './stage.js';
+import { t, getCliLang } from '../i18n.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../fs/file-lock.js';
 import { reserveSequence } from '../fs/sequence.js';
@@ -84,11 +86,20 @@ function opIdOf(seq: number): string {
  * 若 flow.json 不存在或对应 stage 不存在，跳过同步（不报错）
  * @param stageName 完整 stageId（如 v1.0.0-stage-01，调用方已规范化）
  */
+/** 隐式注册回调信息（N3-2） */
+export interface ImplicitRegisterInfo {
+  /** 被隐式注册的阶段（完整 stageId） */
+  stage: string;
+  /** 是否补建了阶段骨架（overview.md / status.md） */
+  skeletonCreated: boolean;
+}
+
 function syncToFlowJson(
   projectPath: string,
   stageName: string,
   opId: string,
   title: string,
+  onImplicitRegister?: (info: ImplicitRegisterInfo) => void,
 ): void {
   const flowJsonPath = resolve(projectPath, '.openfeel', 'flow.json');
   if (!existsSync(flowJsonPath)) {
@@ -129,6 +140,22 @@ function syncToFlowJson(
         deps: [],
         ops: {},
       };
+
+      // N3-1：隐式注册时按注册语义补齐阶段骨架（复用 ensureStageSkeleton，幂等）
+      // 注意：此处位于「非法 stageId / (series,stageDir) 冲突 → 跳过注册」分支之后，
+      // 跳过分支已 return，故不会为其建骨架（与跳过语义一致）。
+      let skeletonCreated = false;
+      try {
+        skeletonCreated = ensureStageSkeleton(projectPath, stageName);
+      } catch (err) {
+        // 骨架创建失败（权限/IO）：告警但不中止（op 文件与 flow.json 条目已写）
+        console.warn(
+          t('plan.scheme.skeletonWarnTmpl', getCliLang(projectPath), {
+            err: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
+      onImplicitRegister?.({ stage: stageName, skeletonCreated });
     }
 
     // 将 op 注册到 stages.{stageName}.ops 中
@@ -170,11 +197,17 @@ function syncToFlowJson(
  * 在 .openfeel/plan/{series}/{stage}/ops/ 下创建 op-NNN_{title}.md
  * NNN 自动递增（从该阶段的已有方案中计算）
  * 必须按固定模板生成，包含：目标、实施步骤（checkbox）、产出文件、自测清单、修正记录
- * 创建后自动同步到 flow.json（如果存在）
+ * 创建后自动同步到 flow.json（如果存在）；阶段未注册时按注册语义补齐阶段骨架（N3）
  * @param stageName 阶段名（短名 stage-01 或完整 v1.0.0-stage-01 均可）
+ * @param options.onImplicitRegister 隐式注册回调（阶段未注册时触发，供命令层输出提示）
  * @returns opId（如 op-001）
  */
-export function createScheme(projectPath: string, stageName: string, title: string): string {
+export function createScheme(
+  projectPath: string,
+  stageName: string,
+  title: string,
+  options?: { onImplicitRegister?: (info: ImplicitRegisterInfo) => void },
+): string {
   // 解析 stageId（短名/完整）得到 series + stageDir + 完整 ID
   const parsed = parseStageId(stageName);
   if (!parsed) {
@@ -205,7 +238,7 @@ export function createScheme(projectPath: string, stageName: string, title: stri
   });
 
   // 3. 同步到 flow.json（键用完整 stageId；由 FlowManager.save 的 flow.lock 保护）
-  syncToFlowJson(projectPath, parsed.fullStageId, opId, title);
+  syncToFlowJson(projectPath, parsed.fullStageId, opId, title, options?.onImplicitRegister);
 
   return opId;
 }

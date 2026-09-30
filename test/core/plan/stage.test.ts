@@ -3,9 +3,9 @@
  * 测试 addStage 和 listStages 在临时目录中的行为
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { addStage, listStages } from '../../../src/core/plan/stage.js';
+import { addStage, listStages, ensureStageSkeleton } from '../../../src/core/plan/stage.js';
 import { FlowManager } from '../../../src/core/flow-manager.js';
-import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -123,6 +123,54 @@ describe('stage', () => {
       expect(last.action).toBe('register_stage');
       expect(last.agent).toBe('cli');
       expect(last.detail.deps).toEqual(['dep-a']);
+    });
+  });
+
+  describe('ensureStageSkeleton（stage-51 op-003 N3）', () => {
+    it('N3-1：首次调用补建目录 + overview.md + status.md 并返回 true', () => {
+      const created = ensureStageSkeleton(tmpDir, 'stage-05');
+      expect(created).toBe(true);
+      const stageDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-05');
+      expect(existsSync(join(stageDir, 'overview.md'))).toBe(true);
+      expect(existsSync(join(stageDir, 'status.md'))).toBe(true);
+    });
+
+    it('N3-1 幂等：已存在时不覆盖且返回 false', () => {
+      ensureStageSkeleton(tmpDir, 'stage-06');
+      const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-06', 'status.md');
+      writeFileSync(statusPath, 'CUSTOM CONTENT', 'utf-8');
+
+      const created = ensureStageSkeleton(tmpDir, 'stage-06');
+      expect(created).toBe(false);
+      expect(readFileSync(statusPath, 'utf-8')).toBe('CUSTOM CONTENT');
+    });
+
+    it('N3-1：deps 写入 overview.md「依赖」段', () => {
+      ensureStageSkeleton(tmpDir, 'stage-07', ['stage-01']);
+      const overview = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-07', 'overview.md'), 'utf-8');
+      expect(overview).toContain('- stage-01');
+    });
+
+    it('N3-1：非法阶段名抛错', () => {
+      expect(() => ensureStageSkeleton(tmpDir, 'foo')).toThrow();
+    });
+
+    it('N3-1：addStage 与 ensureStageSkeleton 骨架文本一致（共用实现）', () => {
+      FlowManager.initFlow(tmpDir);
+      ensureStageSkeleton(tmpDir, 'stage-08');
+      addStage(tmpDir, 'stage-09');
+
+      const overview8 = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-08', 'overview.md'), 'utf-8')
+        .replace('v1.0.0-stage-08', 'STAGE');
+      const overview9 = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-09', 'overview.md'), 'utf-8')
+        .replace('v1.0.0-stage-09', 'STAGE');
+      expect(overview8).toBe(overview9);
+
+      const status8 = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-08', 'status.md'), 'utf-8')
+        .replace('v1.0.0-stage-08', 'STAGE').replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/g, 'TS');
+      const status9 = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-09', 'status.md'), 'utf-8')
+        .replace('v1.0.0-stage-09', 'STAGE').replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/g, 'TS');
+      expect(status8).toBe(status9);
     });
   });
 

@@ -165,6 +165,29 @@ describe('scheme', () => {
       expect(last.detail).toEqual({ stageName: 'v1.0.0-stage-01', opId: 'op-001' });
     });
 
+    it('stage-51 N3-1：隐式注册补齐骨架；冲突跳过分支不建骨架', () => {
+      FlowManager.initFlow(tmpDir);
+      // 正常隐式注册 → 补齐 overview.md / status.md
+      createScheme(tmpDir, 'stage-06', 'T');
+      const dir6 = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-06');
+      expect(existsSync(join(dir6, 'overview.md'))).toBe(true);
+      expect(existsSync(join(dir6, 'status.md'))).toBe(true);
+
+      // 冲突：v4-stage-04 已占目录 → v4.0.0-stage-04 跳过注册，不建骨架
+      const mgr = new FlowManager(tmpDir);
+      mgr.getData()!.stages['v4-stage-04'] = {
+        name: 'v4-stage-04', phase: 'plan_pending', status: 'planned', deps: [], ops: {},
+      };
+      mgr.save();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      createScheme(tmpDir, 'v4.0.0-stage-04', 'T');
+      warnSpy.mockRestore();
+
+      const dir4 = join(tmpDir, '.openfeel', 'plan', 'v4', 'stage-04');
+      expect(existsSync(join(dir4, 'overview.md'))).toBe(false);
+      expect(existsSync(join(dir4, 'status.md'))).toBe(false);
+    });
+
     it('兜底自动注册遇 (series, stageDir) 冲突 → console.warn + 跳过注册 + 不抛错（P7 缺口补齐）', () => {
       FlowManager.initFlow(tmpDir);
       const flowMgr = new FlowManager(tmpDir);

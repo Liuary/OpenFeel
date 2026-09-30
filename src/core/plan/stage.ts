@@ -19,11 +19,14 @@ export interface Stage {
 }
 
 /**
- * 添加工作阶段
- * 在 .openfeel/plan/{series}/ 下创建 {stage}/ 目录，包含 overview.md 和 status.md 骨架
- * @param deps 依赖的阶段名列表（可选，写入 overview.md）
+ * 确保阶段目录与 overview.md / status.md 骨架存在（幂等：已存在不覆盖）。
+ * 从 addStage 抽出，供 addStage 与 plan scheme create 的隐式注册共用（单一实现，避免双份骨架文本）。
+ * @param projectPath 项目根路径
+ * @param name 阶段 ID（简写或全称）
+ * @param deps 依赖阶段 ID 列表（仅用于新建 overview.md 时写入「依赖」段）
+ * @returns 是否发生了创建（true = 补建了目录或骨架文件）
  */
-export function addStage(projectPath: string, name: string, deps?: string[]): void {
+export function ensureStageSkeleton(projectPath: string, name: string, deps?: string[]): boolean {
   // 解析 stageId（短名/完整），无法解析时抛错
   const parsed = parseStageId(name);
   if (!parsed) {
@@ -31,10 +34,12 @@ export function addStage(projectPath: string, name: string, deps?: string[]): vo
   }
 
   const stageDir = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir);
+  let created = false;
 
   // 确保阶段目录存在
   if (!existsSync(stageDir)) {
     mkdirSync(stageDir, { recursive: true });
+    created = true;
   }
 
   // 若目录已存在，不覆盖已有文件，只创建缺失的
@@ -58,6 +63,7 @@ ${depsText}
 > 待补充
 `;
     atomicWriteFileSync(overviewPath, overviewContent);
+    created = true;
   }
 
   // 创建 status.md（若不存在）— 标题用完整 stageId
@@ -95,7 +101,28 @@ ${depsText}
 | ${new Date().toISOString().replace('T', ' ').substring(0, 16)} | user | planned | 阶段已创建 |
 `;
     atomicWriteFileSync(statusPath, statusContent);
+    created = true;
   }
+
+  return created;
+}
+
+/**
+ * 添加工作阶段
+ * 在 .openfeel/plan/{series}/ 下创建 {stage}/ 目录，包含 overview.md 和 status.md 骨架，
+ * 并注册到 flow.json（键用完整 stageId）。
+ * 骨架生成复用 ensureStageSkeleton（保持行为与文案一致）。
+ * @param deps 依赖的阶段名列表（可选，写入 overview.md 与 flow.json）
+ */
+export function addStage(projectPath: string, name: string, deps?: string[]): void {
+  // 解析 stageId（短名/完整），无法解析时抛错
+  const parsed = parseStageId(name);
+  if (!parsed) {
+    throw new Error(`非法阶段名: ${name}（应为 stage-NN 或 vX.Y.Z.W-stage-NN）`);
+  }
+
+  // 目录 + overview.md + status.md 骨架（幂等）
+  ensureStageSkeleton(projectPath, name, deps);
 
   // 同步到 flow.json（若存在）— 键用完整 stageId
   const flowMgr = new FlowManager(projectPath);

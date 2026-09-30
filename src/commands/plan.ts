@@ -107,7 +107,12 @@ export function registerPlanCommand(program: Command): void {
     .action((stage: string, title: string) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
-      const opId = createScheme(projectPath, stage, title);
+      const opId = createScheme(projectPath, stage, title, {
+        // N3-2：阶段未注册时提示已按注册语义补齐阶段骨架
+        onImplicitRegister: (info) => {
+          console.log(t('plan.scheme.implicitRegisterTmpl', lang, { stage: info.stage }));
+        },
+      });
       console.log(t('plan.scheme.createdTmpl', lang, { opId, stage }));
     });
 

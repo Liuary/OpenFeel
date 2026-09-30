@@ -399,6 +399,8 @@ export const plan: I18nDomain = {
   'scheme.remove.reasonDone':    { key: 'plan.scheme.remove.reasonDone',    zh: '拒绝删除：{opId} 状态为 done；如需强制删除请加 --force', en: '' },
   'scheme.remove.reasonCheckpoint': { key: 'plan.scheme.remove.reasonCheckpoint', zh: '拒绝删除：{opId} 存在 checkpoint 进展；如需强制删除请加 --force', en: '' },
   'scheme.remove.notFoundTmpl':  { key: 'plan.scheme.remove.notFoundTmpl',  zh: '未找到：阶段 {stage} 或操作方案 {opId}', en: '' },
+  'scheme.implicitRegisterTmpl': { key: 'plan.scheme.implicitRegisterTmpl', zh: '阶段 {stage} 未注册，已按注册语义补齐阶段骨架（overview.md / status.md）', en: '' },
+  'scheme.skeletonWarnTmpl':     { key: 'plan.scheme.skeletonWarnTmpl',     zh: '阶段骨架补建失败（{err}），已跳过；请手动创建 overview.md / status.md', en: '' },
 };
 
 /* ==================== knowledge 域：知识库命令 ==================== */

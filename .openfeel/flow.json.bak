@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-30T16:16:59.224Z",
-    "revision": 337
+    "updated": "2026-09-30T16:20:24.339Z",
+    "revision": 338
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-51",
-      "op": "op-002"
+      "op": "op-003"
     },
     "retry": 0
   },
@@ -1698,9 +1698,9 @@
         },
         "op-002": {
           "title": "结构字段 CLI deps 与 reviews（N2）及交接缺陷 REV-004 与 BUG-004",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -8818,6 +8818,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-51.op-001",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-30T16:20:24.319Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-51.op-002",
         "attempts": 1
       }
     }

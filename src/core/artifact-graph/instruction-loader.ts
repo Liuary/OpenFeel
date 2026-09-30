@@ -8,10 +8,9 @@
  * 4. 提供 JSON 格式备选输出
  */
 import type { Schema, Artifact } from '../schema.js';
-import { ArtifactGraph } from './graph.js';
+import { ArtifactGraph, collectHardDeps } from './graph.js';
 import { detectCompletedArtifacts } from './state.js';
 import { readConfig, type Config } from '../config.js';
-import { FlowManager } from '../flow-manager.js';
 import { existsSync } from 'node:fs';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -140,8 +139,8 @@ function generateDependenciesBlock(
   schema: Schema,
   completed: Set<string>
 ): string {
-  // 收集 target artifact 的所有 hard 依赖 ID
-  const hardDepIds = collectHardDepIds(artifact);
+  // 收集 target artifact 的所有 hard 依赖 ID（复用 graph 模块的 collectHardDeps，单一实现，T7）
+  const hardDepIds = collectHardDeps(artifact);
 
   if (hardDepIds.length === 0) {
     return '  <dependencies></dependencies>';
@@ -204,29 +203,6 @@ function generateUnlocks(
 }
 
 /**
- * 收集 artifact 的所有 hard 依赖 ID（复用 ArtifactGraph 内部逻辑）
- */
-function collectHardDepIds(artifact: Artifact): string[] {
-  const hardDeps: string[] = [];
-
-  // dependsOn 简写：全部视为 hard
-  if (artifact.dependsOn) {
-    hardDeps.push(...artifact.dependsOn);
-  }
-
-  // requires 数组：按 type 过滤
-  if (artifact.requires) {
-    for (const dep of artifact.requires) {
-      if (dep.type !== 'soft') {
-        hardDeps.push(dep.artifact);
-      }
-    }
-  }
-
-  return [...new Set(hardDeps)];
-}
-
-/**
  * 为 instruction 字段为空时自动生成分步指导
  */
 function generateFallbackInstruction(artifact: Artifact): string {
@@ -274,16 +250,6 @@ export async function generateInstructions(
 
   // 3. 读取项目配置
   const config = readConfig(projectPath);
-
-  // 4. 验证 flow.json 存在（项目已初始化）
-  const flowPath = resolve(projectPath, '.openfeel', 'flow.json');
-  if (!existsSync(flowPath)) {
-    // flow.json 不存在时仅警告，不阻断指令生成
-    // FlowManager 会在构造函数中记录数据未加载
-  }
-  // 初始化 FlowManager（验证流水线初始化状态）
-  const flowManager = new FlowManager(projectPath);
-  const flowInitialized = flowManager.isLoaded();
 
   // 5. 构建依赖图
   const graph = new ArtifactGraph(schema);
@@ -362,7 +328,7 @@ export async function generateInstructionsJson(
   const graph = new ArtifactGraph(schema);
 
   // 依赖列表
-  const hardDepIds = collectHardDepIds(artifact);
+  const hardDepIds = collectHardDeps(artifact);
   const dependencies = hardDepIds.map((depId) => {
     const depArtifact = schema.artifacts.find((a) => a.id === depId);
     return {

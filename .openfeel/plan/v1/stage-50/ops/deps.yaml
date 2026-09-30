@@ -1,0 +1,290 @@
+# stage-50 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-50
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-49
+    type: hard
+    status: satisfied
+    reason: "stage-49（整仓全量审查，已 done/归档）产出总报告 §五 + 8 份单元 REV；本阶段 T1~T57 全部为其流转裁定的承接。stage-49 单元 REV 条目状态 pending，本阶段实施即为其处置。"
+  - after_stage: v1.1.2-stage-48
+    type: soft
+    status: satisfied
+    reason: "templates/BUG-003 与 U4-001 为事件 C 口径治理续作（stage-48 已统一「本仓自举」口径，本阶段补「用户环境」口径）。"
+
+# 【与 stage-51 的双向契约（本阶段为提供方，事前约束）】
+downstream_contracts:
+  - target_stage: v1.1.2-stage-51
+    item: N4
+    provider_op: op-001
+    type: hard
+    contract: "FlowManager.syncCurrentOp(stageName: string): { stage: string; op: string } —— pipeline.current.op 生命周期的**唯一 owner**；advanceStagePhase 与 recordAttempt 共用，禁双实现；未命中（阶段内无 pending/executing op）时 op 置 ''（修复 T1 悬空）。stage-51 复用同一方法。"
+  - target_stage: v1.1.2-stage-51
+    item: N9
+    provider_op: op-001
+    type: hard
+    contract: "kb-dedup.findSimilarEntries(target, category, basePath?) —— basePath 语义 = 知识库根目录（.openfeel/kb）绝对路径，非 projectPath；缺省在**调用时刻** resolve('.openfeel/kb')（无模块加载期固化）；stage-51 `knowledge dedup --project <path>` 只允许传参注入 resolve(projectPath,'.openfeel/kb')，禁各自实现路径解析。"
+    notes: "REV-001（plan_review, low）要求该接口形态**事前**写入本阶段方案 → 已落 op-001 §2.2"
+
+# 【阶段性质提示】
+# 修复型阶段（承接 stage-49 non-blocking）：6 批次 A~F / 57 条 T 编号 → 7 个 op；
+# 6 条决策项（R1~R6）**已由用户裁定（2026-09-30，不可推翻）**，结论见文末 `decisions_taken`（已按裁定回写 op-002/op-003/op-005/op-006）；本阶段**不改版本号**（继续 v1.1.2）。
+# 执行 Agent = openfeel-executor（方案由 schemer 制定，Feel 调度）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "批次 A 内部模式一致性（T1-T16）"
+    produces:
+      - src/core/flow-manager.ts
+      - src/core/archive/merge.ts
+      - src/core/public-logger.ts
+      - src/core/metrics.ts
+      - src/core/artifact-graph/instruction-loader.ts
+      - src/core/plan/roadmap.ts
+      - src/core/view/entry.ts
+      - src/utils/kb-dedup.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+      - test/core/public-logger.test.ts
+      - test/core/metrics.test.ts
+      - test/core/archive-merge.test.ts
+      - test/utils/kb-dedup.test.ts
+    deps: []
+    notes: "16 条（T1~T16）。**含两条跨阶段契约**：T1 syncCurrentOp（stage-51 N4 复用，单一 owner）、T8 findSimilarEntries(basePath)（stage-51 N9 事前约束 / REV-001）。T6 裁定方案 B（仅注释，零行为变更）；T9/T12 使既有分支可达；T15 新增 metrics.summary.* i18n 键（预计 4~6）。**串行链首环**。"
+
+  op-002:
+    file: op-002.md
+    title: "批次 B 门禁与 CI 失效面（T17-T21）"
+    produces:
+      - .github/workflows/ci.yml
+      - src/commands/lint.ts
+      - src/commands/flow.ts
+      - src/core/flow-manager.ts   # T19 新增 public getDefaultTransitions()（方案微调，plan §六 未列）
+      - .gitignore
+      - .gitattributes
+      - package.json               # test:coverage script（R6 已裁定：仅报告）
+      - vitest.config.ts           # R6：coverage provider/reporter，**无 thresholds**（不阻断）
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/commands/lint.test.ts  # R1 已裁定采纳 → 本 op 创建（双 owner 规避）
+      - test/core/flow-manager.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "5 条（T17~T21）。**R1 用户已裁定：lint 发现问题改为非 0 退出**（`process.exitCode`；已补兼容影响说明 + 受影响断言清单〔既有零命中〕+ 逃生阀裁定＝**不新增 `--no-fail`/`--warn-only`**）。**R6 用户已裁定：coverage 仅报告不阻断**（新增 `test:coverage` + CI 报告步骤；`vitest.config.ts` 不设 `thresholds`；已写明后续收紧路径）。T19 追加 `transitionsDiff`（不改 pipeline.yaml）；T18 新增触及 flow-manager.ts（微调，串行链内无冲突）。"
+
+  op-003:
+    file: op-003.md
+    title: "批次 C 死代码与配置面（T22-T37）"
+    produces:
+      - src/utils/path.ts          # T22 删除
+      - src/core/fs/atomic-write.ts
+      - src/commands/setup.ts
+      - src/core/update-infos.ts
+      - src/core/backup.ts
+      - src/core/global-paths.ts
+      - src/core/config.ts
+      - src/core/flow-manager.ts
+      - src/commands/config.ts
+      - src/commands/stage.ts
+      - src/core/workspace/identity.ts
+      - src/core/workspace/knowledge.ts
+      - src/commands/flow.ts
+      - src/commands/view.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/backup.test.ts
+      - test/core/config.test.ts
+      - test/commands/config.test.ts
+      - test/commands/view.test.ts   # R4：弃用行为最小断言（1 用例）
+      - test/core/view/entry.test.ts # T13/R4：REV ID 单点
+    deps:
+      - op: op-001
+        type: hard
+    notes: "16 条（T22~T37）。**R2 用户已裁定：按保守默认执行**（仅代码注释，不新增自动清理；manual 归归档官）。**R3 用户已裁定：扩展为全量 `defaults.*`**（原「不扩白名单仅改文案」被推翻）→ 白名单 schema 驱动全量 4 键 + 枚举非法报错不写盘 + **`setConfigValue` 值类型归一**（boolean 键写布尔，修复 `\"true\"` 字符串损坏）+ get/set/effective 三口径一致；**删除** i18n 键 `config.set.notAdjustableHint`。**R4 用户已裁定：收敛为单入口**（原「对齐不删除」被推翻）→ `flow review add` 为唯一入口、**共享 `addReviewEntry` 单点**、`view add` 标 deprecated（**仅 TTY** stderr 提示 + help 标注）、**REV ID 单点唯一分配**、**下一版本删除**（本阶段不删，已登记）。T22 删除前须 `rg` 双重核验；**与 op-001 同改 flow-manager.ts → 串行**。"
+
+  op-004:
+    file: op-004.md
+    title: "批次 D i18n 与命令体验（T38-T42）"
+    produces:
+      - src/cli/index.ts
+      - src/cli/repl.ts
+      - src/commands/flow.ts
+      - src/commands/stage.ts
+      - src/commands/init.ts
+      - src/commands/roadmap.ts
+      - src/commands/model.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/cli/repl.test.ts
+      - test/commands/model.test.ts
+    deps:
+      - op: op-002
+        type: hard
+    notes: "5 条（T38~T42）。T41 依赖 op-001 T10（core roadmap 抛错 → 命令层 catch 收口）。与 op-002/op-003 同改 commands/flow.ts → 串行链末环。i18n 键与 op-001/002/003 同文件 → 必须串行。"
+
+  op-005:
+    file: op-005.md
+    title: "批次 E 测试质量与覆盖（T43-T52）"
+    produces:
+      - test/core/i18n.test.ts
+      - test/core/backup.test.ts
+      - test/commands/model.test.ts
+      - test/core/update-infos.test.ts
+      - test/core/migrate.test.ts
+      - test/core/update-state.test.ts
+      - test/commands/stage.test.ts   # R5 建议方案
+      - test/commands/update.test.ts  # R5 建议方案
+      - test/commands/setup.test.ts   # R5 建议方案
+      - src/core/migrate.ts           # T49/T50 生产修复
+      - src/core/update-state.ts      # T51 统一加锁
+      - src/commands/migrate.ts       # T52
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    deps: []
+    notes: "10 条（T43~T52）。**R5 用户已裁定：按方案默认**（补 stage/update/setup + repl smoke 4 项；其余 **7 族仅登记**，归后续版本）。**非纯测试 op**：含 T49/T50/T51/T52 生产修复。与源码链可并行（test/** 无交集），但**其 build/test 窗口与其它 op 串行门控**。**双 owner 规避**：`lint` 属登记族，本 op 不创建 `test/commands/lint.test.ts`（由 op-002 创建）。"
+
+  op-006:
+    file: op-006.md
+    title: "批次 F 模板与文档口径（T53-T57）"
+    produces:
+      - src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-wizard/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-health/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-model-check/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-recover/SKILL.md
+      - src/core/templates-data/agents-md/en.md
+      - build.js
+      - CHANGELOG.md
+      - src/core/update.ts            # 生成段（npm run build 产物）
+      - src/core/template-loader.ts   # 生成段（npm run build 产物）
+      - .opencode/**                  # 自举副本（npm run build 产物）
+    deps: []
+    notes: "5 条（T53~T57）。T53 双口径（用户环境 `openfeel <cmd>` + 本仓自举加注），**只改 templates-data 权威源 → npm run build**，禁手改生成段；templates/BUG-003 关闭。T57 补 stage-48/49 + stage-50 占位（条目由归档官收口）。与源码链可并行（文件面无交集）。"
+
+  op-007:
+    file: op-007.md
+    title: "全量回归与门禁收口"
+    produces:
+      - .openfeel/users/Liuary/log/2026-09-30-001.md   # 收口报告（实际编号以执行日为准）
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+      - op: op-004
+        type: hard
+      - op: op-005
+        type: hard
+      - op: op-006
+        type: hard
+    notes: "四门禁（build+test / lint i18n / lint kb / flow phases --json）+ 环境 hash+mtime 双快照零 diff + T1~T57 覆盖表（含 **R1~R6 用户裁定（2026-09-30）落地留痕**）+ 跨阶段契约登记 + **登记项清单（步骤 7，含下一版本移除 `view add`）**。**仅当 6 个 op 全部完成才启动**。"
+
+# 【互斥（禁止并行）】
+mutual_exclusions:
+  - group: [op-001, op-002, op-003, op-004]
+    reason: "**热区源码互斥（串行链）**：op-001/002/003 同改 `src/core/flow-manager.ts`；op-002/003/004 同改 `src/commands/flow.ts`；op-001/002/003/004 同改 `src/core/i18n-data/{zh-CN,en}.ts`。四者**必须由单执行流按序触碰**。"
+  - group: [op-001, op-002, op-003, op-004, op-005, op-006, op-007]
+    reason: "**构建/测试互斥**：七个 op 的验收均含 `npm run build` 或 `npm test`（同一工作区）→ 任一时刻只允许一个 op 处于 build/test 窗口；并发会竞态写 `dist/**`、`src/core/template-loader.ts` 生成段与 `.opencode/**` 自举副本。"
+  - group: [op-005, op-006]
+    reason: "**弱约束**：二者可与源码链并行（文件面无交集），但 op-006 的 `npm run build` 会重生成 dist/**，与 op-005 的测试窗口重叠时可能导致测试读到被重建的 dist → 建议**错开**（先 op-005 后 op-006，或反之，不在同窗口）。"
+  - group: [op-002, op-005]
+    reason: "`test/commands/lint.test.ts` 的**双 owner 规避**：**R1 已裁定采纳**（lint 非 0 退出）→ 该文件**由 op-002 创建**；op-005（R5）将 `lint` 列入**仅登记族**、**不创建**该文件。文件级无交集，仅避免职责重叠。"
+
+# 【可并行组】
+parallel_groups:
+  - group: [op-005, op-006]
+    desc: "**源码链并行组**：op-005（`test/**` + 4 条生产修复）与 op-006（`templates-data/**` + `build.js` + `CHANGELOG.md`）与串行链文件面无交集，可并行派发；但二者 build/test 窗口须彼此错开（见 mutual_exclusions）。"
+  - group: [op-007]
+    desc: "收口：依赖全部 6 个 op（hard），单独运行。"
+
+# 【串行链（顺序固定）】
+serial_chain:
+  - chain: [op-001, op-003, op-002, op-004]
+    desc: "**源码热区串行链**（plan §十）：op-001 → op-003 → op-002 → op-004。理由：op-001/003 同改 flow-manager.ts；op-003/004 与 op-002/004 同改 commands/flow.ts；i18n-data 四者共享。"
+
+recommended_order:
+  - op-001
+  - op-003
+  - op-002
+  - op-004
+  - op-005
+  - op-006
+  - op-007
+rationale: "plan §十 建议顺序：`op-001 → op-003 → op-002 → op-004`（源码热区单流串行，避免 flow-manager.ts / commands/flow.ts / i18n-data 写冲突）∥ `op-005` ∥ `op-006`（文件面无交集，build/test 窗口错开）→ `op-007`（全量回归 + 四门禁 + 环境双快照 + T1~T57 覆盖核对）。op-005 建议在 op-004 之后启动（断言对象涉及 op-001~004 实现）。"
+
+# 【决策项（R1~R6）——已由用户裁定（2026-09-30），不可推翻】
+decisions_taken:
+  decided_by: user
+  decided_at: "2026-09-30"
+  supersedes: "plan §三 待裁定表（Planner 建议方案）；R1/R3/R4 的原「建议方案」已被用户裁定推翻（见各条 superseded）"
+  items:
+    - id: R1
+      item: T17
+      scope: op-002
+      type: 行为变更（外部可见）
+      user_decision: "改为非 0 退出（发现问题即非 0；对齐 flow health）"
+      landed: "op-002 §二 T17 整体改写"
+      extras_required: "兼容影响说明（4 类受影响方 + 用户迁移路径）+ 受影响断言清单（既有零命中；本 op 新增 3 条）+ 逃生阀裁定"
+      escape_valve: "**不新增 `--no-fail` / `--warn-only`**（理由：门禁语义应由调用方表达 `|| true`；与 flow health 一致；减少命令面）；后续如需另案评估（op-007 登记项 3）"
+      superseded: "原「建议采纳」方向一致，但原方案的『条件项』状态与「同步更新 docs/manual（归归档官）」表述已按裁定落实为确定实施"
+    - id: R2
+      item: T25
+      scope: op-003
+      type: 策略选择
+      user_decision: "按方案保守默认执行（不新增自动清理；仅代码注释 + 文档说明『条目只增不减』现状与人工清理建议）"
+      landed: "op-003 T25（显式标注「按保守默认执行」）"
+      extras_required: "显式标注便于追溯；manual 归归档官"
+    - id: R3
+      item: T36
+      scope: op-003
+      type: 策略/行为（**推翻原建议**）
+      user_decision: "白名单扩展为**全量 `defaults.*`**（execution_mode/test_enabled/merge_mode 等全部纳入 config set/get）"
+      landed: "op-003 T36 整体改写 + §三/§四/§五/§六/§七/§八 同步"
+      extras_required: "键白名单（schema 驱动）+ 取值校验（枚举非法须报错且不写盘）+ `setConfigValue` 值类型归一（boolean 键写布尔）+ get/set/effective 三口径一致 + i18n 双语文案"
+      superseded: "**原 plan §三 R3「建议不扩白名单，仅改进报错文案」被用户推翻**；原拟新增 i18n 键 `config.set.notAdjustableHint` **不再新增**（已从 op-003 §四 删除）"
+    - id: R4
+      item: T37
+      scope: op-003
+      type: 命令面收敛（**推翻原建议**）
+      user_decision: "收敛为单入口：保留 `flow review`（`flow review add`）；`view add` 标记 deprecated 并在**下一版本删除**"
+      landed: "op-003 T37 整体改写 + §三/§四/§五/§六/§七/§八 同步"
+      extras_required: "弃用提示（TTY 输出 stderr / 非 TTY 静默，对齐 stage.create 惯例）+ 文档与 manual 更新（归归档官）+ 既有测试调整 + REV ID 归属（归一后由单一写入方分配，避免竞态）"
+      superseded: "**原 plan §三 R4「建议对齐不删除」被用户推翻**"
+      next_version: "下一版本移除 `view add`（已登记 op-007 步骤 7 登记项 1 + CHANGELOG Deprecated）"
+    - id: R5
+      item: T46
+      scope: op-005
+      type: 覆盖范围
+      user_decision: "按方案默认：补 4 项高价值覆盖，其余 7 族**仅登记**"
+      landed: "op-005 T46（显式标注「按方案默认」）"
+      extras_required: "显式标注；与 R4 的边界澄清（view 仅 1 条弃用断言）；双 owner 规避（lint 测试归 op-002）"
+    - id: R6
+      item: T18③
+      scope: op-002
+      type: CI 门槛
+      user_decision: "报告不阻断：CI 增 coverage 报告（仅观测基线，不设阈值失败）"
+      landed: "op-002 T18③ 改写 + §六 验收 12/13 + §七 风险"
+      extras_required: "写明「后续可收紧」路径（观测 → 单维 lines → 逐维收紧 → 阻断开关）"
+      superseded: "原「阈值宽松（line ≥ 60）或仅加 script」→ 现为**仅报告**（`vitest.config.ts` 不设 thresholds）"
+
+# 【REV 承接（承接 stage-49 单元与 plan_review）】
+rev_intake:
+  - rev: REV-v1.1.2-stage-50/REV-001
+    from: plan_review（openfeel-reviewer，通过 + 1 low）
+    handled_by: op-001
+    disposition: "T8 的 basePath 接口形态**事前**写入 op-001 §2.2（供 stage-51 N9 复用）；状态仍 pending，由审查官验收"
+  - rev: REV-v1.1.2-stage-49-U1~U8
+    from: stage-49 全量审查单元报告
+    handled_by: op-001~op-006
+    disposition: "按 T1~T57 编号映射承接（见 plan §二 来源列）；未纳入项（U3-008/U1-N7/U8-011/U8-012/M5 文案侧）归归档官，U3-009/010 不修"

@@ -16,6 +16,10 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
+// mock child_process：断言 autoCommitOnDone 以数组参数调用 git（T16），避免真实 git 操作
+const mockedChild = vi.hoisted(() => ({ execFileSync: vi.fn() }));
+vi.mock('node:child_process', () => ({ execFileSync: mockedChild.execFileSync }));
+
 /** 创建测试用 FlowData（带一个阶段和一个 op） */
 function makeTestFlowData(overrides?: Partial<FlowData>): FlowData {
   return {
@@ -2901,5 +2905,147 @@ describe('配置级联（stage-42 op-001）', () => {
     expect(r.execution_mode).toEqual({ value: 'manual', source: 'builtin' });
     expect(r.test_enabled.source).not.toBe('profile.yaml');
     expect(r.merge_mode.source).not.toBe('profile.yaml');
+  });
+
+  // ═══════════════════════════════════════
+  // stage-50 op-001：内部模式一致性（T1/T2/T4/T9/T12/T14/T16）
+  // ═══════════════════════════════════════
+
+  describe('批次 A 内部模式一致性（stage-50 op-001）', () => {
+    it('T1：无 pending op 时 advanceStagePhase 将 current.op 置空（悬空修复）', () => {
+      const stages: Record<string, StageData> = {
+        'A': makeStage41Stage({ name: 'A', ops: { 'op-001': makeStage41Op('done') } }),
+      };
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'prev', op: 'op-999' }, retry: 0 },
+        stages,
+      });
+      mgr.advanceStagePhase('A', 'exec_running' as PipelinePhase);
+      // 未命中 → 置空，绝不保留上一阶段旧 op
+      expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'A', op: '' });
+    });
+
+    it('T1：syncCurrentOp 命中/未命中两分支；recordAttempt pass 后指向下一个 pending', () => {
+      const stages: Record<string, StageData> = {
+        'A': makeStage41Stage({
+          name: 'A',
+          ops: { 'op-001': makeStage41Op('executing'), 'op-002': makeStage41Op('pending') },
+        }),
+      };
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: '', op: '' }, retry: 0 },
+        stages,
+      });
+
+      // 命中分支
+      expect(mgr.syncCurrentOp('A')).toEqual({ stage: 'A', op: 'op-001' });
+      expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'A', op: 'op-001' });
+      // 未命中分支：阶段不存在时不改动 current
+      expect(mgr.syncCurrentOp('nope')).toEqual({ stage: 'A', op: 'op-001' });
+      expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'A', op: 'op-001' });
+
+      // recordAttempt pass → op-001 done → current 指向下一个 pending op-002
+      mgr.recordAttempt('A.op-001', 'pass');
+      expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'A', op: 'op-002' });
+    });
+
+    it('T2：load 对缺 ops/deps 的存量数据补齐且不抛错', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      const broken = {
+        meta: { version: '1.0', project: 'T', updated: '2026-01-01T00:00:00Z' },
+        pipeline: { phase: 'active', current: { stage: 'stage-X', op: '' }, retry: 0 },
+        stages: { 'stage-X': { name: 'stage-X', phase: 'exec_running', status: 'planned' } },
+        reviews: [],
+        log: [],
+      };
+      writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(broken), 'utf-8');
+      const mgr = new FlowManager(tmpDir);
+      expect(mgr.isLoaded()).toBe(true);
+      const stage = mgr.getData()!.stages['stage-X'];
+      expect(stage.ops).toEqual({});
+      expect(stage.deps).toEqual([]);
+      // advance / save 不再 TypeError
+      expect(() => {
+        mgr.advanceStagePhase('stage-X', 'review_pending' as PipelinePhase);
+        mgr.save();
+      }).not.toThrow();
+    });
+
+    it('T4：fuzzyCorrectPhase 后缀多重命中返回 null（不再落枚举首个）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const anyMgr = mgr as unknown as { fuzzyCorrectPhase(s: string): PipelinePhase | null };
+      // 'ing' 同时是多个 *_pending / exec_running / archiving 的后缀 → 多重命中 → null
+      expect(anyMgr.fuzzyCorrectPhase('ing')).toBeNull();
+    });
+
+    it('T9：mapPhaseToStageStatus testEnabled 两分支', () => {
+      expect(mapPhaseToStageStatus('review_passed', 'x', true)).toBe('review_passed');
+      expect(mapPhaseToStageStatus('review_passed', 'x', false)).toBe('done');
+    });
+
+    it('T9：canAdvance 合法/非法目标两分支', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      expect(mgr.canAdvance('stage-01.op-001', 'plan_review' as PipelinePhase)).toBe(true);
+      expect(mgr.canAdvance('stage-01.op-001', 'done' as PipelinePhase)).toBe(false);
+    });
+
+    it('T12：checkpoint_mapping 含 archiving 主用键与 archive 历史键，且 archiving 更新 checkpoint', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const anyMgr = mgr as unknown as {
+        getDefaultPipelineConfig(): { checkpoint_mapping: Record<string, string> };
+      };
+      const map = anyMgr.getDefaultPipelineConfig().checkpoint_mapping;
+      expect(map.archiving).toBe('archiving');
+      expect(map.archive).toBe('archive');
+
+      mgr.advancePhase('stage-01.op-001', 'archiving');
+      const cp = mgr.getOpCheckpoints('stage-01.op-001') as unknown as Record<string, string>;
+      expect(cp.archiving).toBe('pending');
+    });
+
+    it('T14：checkZombieStates 锚定 stageId，stage-1 不误计 stage-10 的 REV', () => {
+      const stages: Record<string, StageData> = {
+        'stage-1': makeStage41Stage({ name: 'stage-1', status: 'review_failed', phase: 'review_failed' as PipelinePhase }),
+        'stage-10': makeStage41Stage({ name: 'stage-10', status: 'review_failed', phase: 'review_failed' as PipelinePhase }),
+      };
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        stages,
+        reviews: [
+          { id: 'REV-001', op: 'stage-10.op-001', status: 'closed', priority: 'low', title: 'x', filed_by: 'r', filed_at: 't' },
+        ],
+      });
+      const msgs = mgr.healthCheck().items
+        .filter((i) => i.section === '僵尸状态')
+        .map((i) => i.message)
+        .join('\n');
+      // stage-1 不应因 stage-10 的 REV 被判僵尸；stage-10 应命中
+      expect(msgs).not.toContain('stage-1:');
+      expect(msgs).toContain('stage-10:');
+    });
+
+    it('T16：autoCommitOnDone 以 execFileSync 数组参数调用 git（无 shell 解析）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mockedChild.execFileSync.mockClear();
+      mgr.autoCommitOnDone('stage;1 & rm -rf /');
+      const calls = mockedChild.execFileSync.mock.calls as unknown as Array<[string, string[]]>;
+      expect(calls.length).toBeGreaterThan(0);
+      expect(calls[0][0]).toBe('git');
+      expect(Array.isArray(calls[0][1])).toBe(true);
+      expect(calls[0][1]).toContain('add');
+      const commitCall = calls.find((c) => Array.isArray(c[1]) && c[1].includes('commit'));
+      expect(commitCall).toBeDefined();
+      // stageName 仅作为单个数组元素（commit -m 消息）出现，未被 shell 解析
+      expect(commitCall![1].some((a) => a.includes('stage;1 & rm -rf /'))).toBe(true);
+    });
   });
 });

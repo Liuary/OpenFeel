@@ -139,4 +139,34 @@ describe('MetricsStore', () => {
     expect(metrics.totalRetries).toBe(1);
     expect(metrics.avgDurationMs).toBe(150);
   });
+
+  it('T11：不同 dataDir 返回不同实例，相同 dataDir 返回同一实例', () => {
+    const dirA = mkdtempSync(join(tmpdir(), 'openfeel-metrics-a-'));
+    const dirB = mkdtempSync(join(tmpdir(), 'openfeel-metrics-b-'));
+    try {
+      const a1 = MetricsStore.getInstance(dirA);
+      const a2 = MetricsStore.getInstance(dirA);
+      const b = MetricsStore.getInstance(dirB);
+      expect(a1).toBe(a2);
+      expect(a1).not.toBe(b);
+    } finally {
+      rmSync(dirA, { recursive: true, force: true });
+      rmSync(dirB, { recursive: true, force: true });
+    }
+  });
+
+  it('T15：summary("en") 不含 CJK，summary()（默认 zh-CN）与现状一致', () => {
+    const store = MetricsStore.getInstance(tmpDir);
+    store.recordRun('openfeel-executor', 100, 'success');
+    store.recordRun('openfeel-executor', 100, 'failure');
+
+    const en = store.summary('en');
+    expect(en).not.toMatch(/[\u4e00-\u9fff]/);
+    expect(en).toContain('openfeel-executor');
+    expect(en).toContain('Success / Failure: 1 / 1');
+
+    // 默认 zh-CN 输出保持现行为
+    const zh = store.summary();
+    expect(zh).toContain('成功率: 50.0%');
+  });
 });

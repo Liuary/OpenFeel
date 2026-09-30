@@ -64,6 +64,34 @@ describe('View Entry', () => {
       const id = generateReviewId(tmpDir);
       expect(id).toBe('REV-003');
     });
+
+    it('T13：取既有最大序号 + 1（删除中间条目后不重号）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'Test', updated: new Date().toISOString() },
+        pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
+        stages: {},
+        reviews: [
+          {
+            id: 'REV-001', op: 'stage-01.op-001', status: 'open',
+            priority: 'medium', title: '问题1', filed_by: 'openfeel-reviewer',
+            filed_at: new Date().toISOString(),
+          },
+          {
+            // REV-002 已被删除（数组长度法会得 REV-003，与既有最大序号冲突）
+            id: 'REV-005', op: 'stage-01.op-001', status: 'open',
+            priority: 'medium', title: '问题5', filed_by: 'openfeel-reviewer',
+            filed_at: new Date().toISOString(),
+          },
+        ],
+        log: [],
+      });
+      mgr.save();
+
+      const id = generateReviewId(tmpDir);
+      expect(id).toBe('REV-006');
+    });
   });
 
   // ═══════════════════════════════════════

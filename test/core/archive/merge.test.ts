@@ -256,5 +256,32 @@ describe('Archive Merge', () => {
       expect(lastLog.action).toBe('archive_stage');
       expect(lastLog.agent).toBe('openfeel-archiver');
     });
+
+    it('T3：含点 stageId（v1.0.0-stage-04）的审查条目应被计入（lastIndexOf 分割）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage('v1.0.0-stage-04', {
+        reviews: [
+          {
+            id: 'REV-001', op: 'v1.0.0-stage-04.op-001', status: 'closed',
+            priority: 'high', title: '含点阶段审查记录',
+            filed_by: 'openfeel-reviewer', filed_at: '2026-06-01T00:00:00Z',
+          },
+          {
+            // 不同阶段，不应被计入
+            id: 'REV-002', op: 'v1.0.0-stage-05.op-001', status: 'closed',
+            priority: 'low', title: '无关条目',
+            filed_by: 'openfeel-reviewer', filed_at: '2026-06-01T00:00:00Z',
+          },
+        ],
+      }));
+      mgr.save();
+
+      const result = archiveStage(tmpDir, 'v1.0.0-stage-04');
+      expect(result).not.toBeNull();
+      expect(result!.reviewsCount).toBe(1);
+      expect(result!.summary).toContain('含点阶段审查记录');
+      expect(result!.summary).not.toContain('无关条目');
+    });
   });
 });

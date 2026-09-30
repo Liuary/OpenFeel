@@ -2,13 +2,13 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-30T13:04:58.978Z",
-    "revision": 310
+    "updated": "2026-09-29T18:47:00.715Z",
+    "revision": 297
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.2-stage-50",
+      "stage": "v1.1.2-stage-51",
       "op": "op-001"
     },
     "retry": 0
@@ -1542,130 +1542,10 @@
     },
     "v1.1.2-stage-50": {
       "name": "v1.1.2-stage-50",
-      "phase": "exec_running",
+      "phase": "plan_passed",
       "status": "planned",
       "deps": [],
-      "ops": {
-        "op-001": {
-          "title": "批次A 内部模式一致性（T1-T16）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-002": {
-          "title": "批次B 门禁与CI失效面（T17-T21）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-003": {
-          "title": "批次C 死代码与配置面（T22-T37）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-004": {
-          "title": "批次D i18n与命令体验（T38-T42）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-005": {
-          "title": "批次E 测试质量与覆盖（T43-T52）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-006": {
-          "title": "批次F 模板与文档口径（T53-T57）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-007": {
-          "title": "全量回归与门禁收口",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        }
-      },
+      "ops": {},
       "stats": {
         "start_time": "2026-09-29T18:43:33.742Z",
         "end_time": "",
@@ -1674,7 +1554,7 @@
     },
     "v1.1.2-stage-51": {
       "name": "v1.1.2-stage-51",
-      "phase": "plan_passed",
+      "phase": "plan_review",
       "status": "planned",
       "deps": [],
       "ops": {},
@@ -8288,129 +8168,6 @@
         "stageName": "v1.1.2-stage-51",
         "from": "plan_pending",
         "to": "plan_review"
-      }
-    },
-    {
-      "time": "2026-09-29T18:52:44.884Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "from": "plan_review",
-        "to": "plan_passed"
-      }
-    },
-    {
-      "time": "2026-09-29T18:52:45.120Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-51",
-        "from": "plan_review",
-        "to": "plan_passed"
-      }
-    },
-    {
-      "time": "2026-09-29T18:52:45.358Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "from": "plan_passed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-09-29T18:53:56.751Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "opId": "op-001"
-      }
-    },
-    {
-      "time": "2026-09-29T18:53:56.999Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "opId": "op-002"
-      }
-    },
-    {
-      "time": "2026-09-29T18:53:57.240Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-09-29T18:53:57.487Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "opId": "op-004"
-      }
-    },
-    {
-      "time": "2026-09-29T18:53:57.727Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "opId": "op-005"
-      }
-    },
-    {
-      "time": "2026-09-29T18:53:57.974Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "opId": "op-006"
-      }
-    },
-    {
-      "time": "2026-09-29T18:53:58.233Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "opId": "op-007"
-      }
-    },
-    {
-      "time": "2026-09-30T12:56:30.279Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "from": "scheme_pending",
-        "to": "scheme_review"
-      }
-    },
-    {
-      "time": "2026-09-30T13:04:58.617Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "from": "scheme_review",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-09-30T13:04:58.978Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-50",
-        "from": "scheme_passed",
-        "to": "exec_running"
       }
     }
   ]

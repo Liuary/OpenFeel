@@ -52,9 +52,9 @@ export function archiveStage(projectPath: string, stageName: string): ArchiveRes
   const opsCount = ops.length;
 
   // 收集该阶段相关审查条目：op 字段格式为 "stageName.opXxx"
-  // 提取 op 的 stage 部分（'.' 前），与 stageName 比较
+  // 用 lastIndexOf 分割：stageId 自身可含 '.'（如 v1.0.0-stage-04），indexOf 会取错段（T3）
   const relatedReviews = data.reviews.filter((r) => {
-    const dotIdx = r.op.indexOf('.');
+    const dotIdx = r.op.lastIndexOf('.');
     if (dotIdx === -1) {
       return false;
     }

@@ -326,7 +326,7 @@ export function registerFlowCommand(program: Command): void {
       const lang = getCliLang(process.cwd());
       const store = MetricsStore.getInstance();
       store.load();
-      console.log(store.summary());
+      console.log(store.summary(lang));
     });
 
   // flow phases — 自描述：列出全部合法 phase 与运行时转移表
@@ -891,7 +891,8 @@ export function registerFlowCommand(program: Command): void {
     .option('--backup', '修复前备份为 .bak')
     .action((options: { dryRun?: boolean; backup?: boolean }) => {
       const lang = getCliLang(process.cwd());
-      const mgr = new FlowManager(process.cwd());
+      // 复用统一构造入口 createManager()，避免第二处 new FlowManager（T13）
+      const mgr = createManager();
 
       // --backup 选项：修复前手动备份
       if (options.backup) {

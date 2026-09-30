@@ -75,8 +75,8 @@ export function showRoadmap(projectPath: string, version?: string): string {
     const ver = normalizeVersion(version);
     const filePath = join(roadmapDir, `v${ver}.md`);
     if (!existsSync(filePath)) {
-      console.error(`错误：大纲文件不存在 — v${ver}.md`);
-      process.exit(1);
+      // 文件不存在：core 层不直接 process.exit，抛错由命令层决定退出码（T10）
+      throw new Error(`错误：大纲文件不存在 — v${ver}.md`);
     }
     return readFileSync(filePath, 'utf-8');
   }

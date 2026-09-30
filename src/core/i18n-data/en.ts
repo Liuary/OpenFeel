@@ -668,6 +668,18 @@ export const setup: I18nDomain = {
   'complete': { key: 'setup.complete', zh: '', en: '? Global OpenFeel framework config deployed' },
 };
 
+/* ==================== metrics domain: agent performance summary (T15) ==================== */
+export const metrics: I18nDomain = {
+  'summary.noData':       { key: 'metrics.summary.noData',       zh: '', en: 'No agent metrics data yet.' },
+  'summary.title':        { key: 'metrics.summary.title',        zh: '', en: 'Agent Metrics Summary' },
+  'summary.totalRuns':    { key: 'metrics.summary.totalRuns',    zh: '', en: '  Total runs: {n}' },
+  'summary.successFail':  { key: 'metrics.summary.successFail',  zh: '', en: '  Success / Failure: {ok} / {fail}' },
+  'summary.successRate':  { key: 'metrics.summary.successRate',  zh: '', en: '  Success rate: {rate}' },
+  'summary.totalRetries': { key: 'metrics.summary.totalRetries', zh: '', en: '  Total retries: {n}' },
+  'summary.totalDuration':{ key: 'metrics.summary.totalDuration',zh: '', en: '  Total duration: {n}ms' },
+  'summary.avgDuration':  { key: 'metrics.summary.avgDuration',  zh: '', en: '  Avg duration: {n}ms' },
+};
+
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
@@ -688,4 +700,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'migrate',      domain: migrate },
   { name: 'model',        domain: model },
   { name: 'setup',        domain: setup },
+  { name: 'metrics',      domain: metrics },
 ];

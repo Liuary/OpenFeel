@@ -15,6 +15,32 @@
 import type { Schema, Artifact, Dependency } from '../schema.js';
 import type { BuildOrder, BlockedInfo, BlockedArtifacts } from './types.js';
 
+/**
+ * 收集 artifact 的所有 hard 依赖 ID（唯一实现，公开导出供 instruction-loader 复用，T7）
+ * 来源：dependsOn 字段（全 hard）+ requires 中 type='hard' 的条目
+ */
+export function collectHardDeps(artifact: Artifact): string[] {
+  const hardDeps: string[] = [];
+
+  // dependsOn 简写：全部视为 hard
+  if (artifact.dependsOn) {
+    hardDeps.push(...artifact.dependsOn);
+  }
+
+  // requires 数组：按 type 过滤
+  if (artifact.requires) {
+    for (const dep of artifact.requires) {
+      // 默认 type 为 'hard'，只有显式 'soft' 才跳过
+      if (dep.type !== 'soft') {
+        hardDeps.push(dep.artifact);
+      }
+    }
+  }
+
+  // 去重：dependsOn 和 requires 可能包含相同的依赖 ID
+  return [...new Set(hardDeps)];
+}
+
 export class ArtifactGraph {
   /** artifact ID → Artifact 对象的映射 */
   private artifacts: Map<string, Artifact>;
@@ -39,7 +65,7 @@ export class ArtifactGraph {
 
     // 2. 构建邻接表和入度
     for (const artifact of schema.artifacts) {
-      const hardDeps = this.collectHardDeps(artifact);
+      const hardDeps = collectHardDeps(artifact);
 
       for (const depId of hardDeps) {
         // 验证依赖目标存在
@@ -56,29 +82,11 @@ export class ArtifactGraph {
   }
 
   /**
-   * 收集 artifact 的所有 hard 依赖 ID
+   * 收集 artifact 的所有 hard 依赖 ID（委托模块级 collectHardDeps，单一实现）
    * 来源：dependsOn 字段（全 hard）+ requires 中 type='hard' 的条目
    */
   private collectHardDeps(artifact: Artifact): string[] {
-    const hardDeps: string[] = [];
-
-    // dependsOn 简写：全部视为 hard
-    if (artifact.dependsOn) {
-      hardDeps.push(...artifact.dependsOn);
-    }
-
-    // requires 数组：按 type 过滤
-    if (artifact.requires) {
-      for (const dep of artifact.requires) {
-        // 默认 type 为 'hard'，只有显式 'soft' 才跳过
-        if (dep.type !== 'soft') {
-          hardDeps.push(dep.artifact);
-        }
-      }
-    }
-
-    // 去重：dependsOn 和 requires 可能包含相同的依赖 ID
-    return [...new Set(hardDeps)];
+    return collectHardDeps(artifact);
   }
 
   /**

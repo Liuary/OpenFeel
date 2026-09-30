@@ -169,6 +169,8 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | [stage-43](#stage-43cli-文档-skill-化与版本收口) | CLI 文档 skill 化与版本收口 | 新 skill + 文档 + 版本 1.1.2 + 全量回归 | P0 | hard: stage-41、stage-47；soft: stage-42、stage-44、stage-45、stage-46 | 1 新增 skill + ~6 文档 + 版本 8 处 |
 | [stage-48](#stage-48事件加固--遗留问题修复) | 事件加固 + 遗留问题修复 | 三大事件机制加固（审查纪律/测试隔离+CI 守卫/执行口径+版本门禁）+ 13 项遗留清理 | P1 | hard: stage-43 | ~12 文件 + CI + manual/kb + 测试 |
 | [stage-49](#stage-49整仓全量审查) | 整仓全量审查 | 8 单元 × 6 维度全仓审查 → 报告 + REV + 修复流转（纯审查，默认不改源码） | P1 | hard: stage-48 | 8 报告 + 8 REV + 汇总（9 op） |
+| [stage-50](#stage-50全量审查-non-blocking-集中清理第二批) | 全量审查 non-blocking 集中清理（第二批） | T1~T57（6 批次 A~F）一致性/门禁/死代码/i18n/测试/模板口径集中收敛 | P1 | hard: stage-49 | ~28 源码 + ~6 测试 + ~10 模板/文档 |
+| [stage-51](#stage-51流水线状态维护与-cli-可维护性反馈二) | 流水线状态维护与 CLI 可维护性（反馈二） | N1~N11（3 批次 H1~H3）纠正/清理侧 CLI 补齐：孤儿 op 回收/结构字段 CLI/注册语义/`current.op` 生命周期/stage set 幂等与字段/op 文件名/**新增 `openfeel knowledge dedup` 子命令**/日志布局（仅未来）/git 降噪 | P1 | hard: stage-50 | ~22~27 文件 + 900~1300 行 |
 
 ### 依赖图
 
@@ -192,12 +194,20 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
                                                                                        │
                                                                                      hard
                                                                                        ▼
-                                                                        stage-49（整仓全量审查 · 收尾）
+                                                                        stage-49（整仓全量审查）
+                                                                                       │
+                                                                                     hard
+                                                                                       ▼
+                                                          stage-50（non-blocking 集中清理 · 第二批）
+                                                                                        │
+                                                                                      hard
+                                                                                        ▼
+                                                          stage-51（流水线状态维护与 CLI 可维护性 · 反馈二 · 收尾）
 ```
 
 ### 推荐执行顺序
 
-**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49**。
+**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51**。
 
 **理由**：
 - stage-41 与 stage-42 均修改 `src/core/flow-manager.ts` 与 `src/i18n-data/{zh-CN,en}.ts`，顺序执行避免同文件冲突。
@@ -531,6 +541,68 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 
 ---
 
+## stage-50：全量审查 non-blocking 集中清理（第二批）
+
+> **硬性前置**：stage-49（已 done/归档；本阶段清单全部来自其总报告 §五 流转裁定）。**定位**：v1.1.2 收尾的清零批次。
+> **详细计划**：`.openfeel/plan/v1/stage-50/plan.md`。
+
+### 待修清单（T1~T57 · 6 批次）
+
+| 批次 | 主题 | 条目 | op |
+|:--:|------|------|:--:|
+| **A** | 内部模式一致性 | T1~T16（current.op 悬空/缺 ops 守卫/`indexOf` 分割/fuzzy 唯一性/logMilestone 丢字段/paused 覆盖/instruction-loader 复制/单例固化/checkpoint 死键/REV ID 竞态/zombie 无锚/shell 拼接） | op-001 |
+| **B** | 门禁与 CI 失效面 | T17~T21（`lint` 退出码★/CI 守卫窗口+覆盖+coverage★/transitions 差异显式化/`.gitignore` tmp/`.gitattributes`） | op-002 |
+| **C** | 死代码与配置面 | T22~T37（`utils/path.ts` 删除/`atomicWriteJson`/`setup` skipped/`update_infos` 清理★/`computeBackupRel` 越界/backup homedir/profile 深拷贝/级联 Zod/原型链/projects 校验/盘符大小写/profile 读静默/knowledge `\|`/config description/`config set` 对称★/双入口★） | op-003 |
+| **D** | i18n 与命令体验 | T38~T42（arguments 泄漏/并发文案/wizard 非 TTY/REPL/init·roadmap try-catch/catch 复制） | op-004 |
+| **E** | 测试质量与覆盖 | T43~T52（环境依赖测试/静默 skip/弱断言/覆盖缺口★/anomaly 去重/migrate 失败语义/backup ts 撞名/jsonc 降级/state 无锁/rollback cwd） | op-005 |
+| **F** | 模板与文档口径 | T53~T57（**`templates/BUG-003` 部署型 skill 34 行/5 skill**/`agents-md/en.md:438`/`cli-usage` 枚举/`build.js` 注释/CHANGELOG） | op-006 |
+| — | 回归收口 | 四门禁 + 环境双快照 | op-007 |
+
+> ★ = 待裁定项（R1~R6，涉行为变更/策略选择）；详见 stage-50 plan §三。
+
+### 完成标准
+
+- T1~T57 全部处置（52 修 / 6 待裁定按用户裁定或建议实施 / 3 不修 + 归档与已闭环显式记录）。
+- 门禁全绿：`npm run build && npm test`（基线 **41 文件 / 716 用例**）；`lint i18n`（**533 键**）；`lint kb`（**0 过期**）。
+- 测试隔离硬要求（hash+mtime 双快照零 diff）；`templates/BUG-003` 满足关闭条件；生成段/自举经 build 同步且幂等。
+
+---
+
+## stage-51：流水线状态维护与 CLI 可维护性（反馈二）
+
+> **硬性前置**：stage-50（热区串行 + T1↔N4 协同 + T8↔N9 协同）。**来源**：`docs/phase-5/08-openfeel-workflow-feedback.md`。
+> **详细计划**：`.openfeel/plan/v1/stage-51/plan.md`。
+> **定位**：补齐「纠正/清理」侧 CLI（创建侧齐备、纠正侧空白）。
+
+### 编号化清单（N1~N11 · 3 批次）
+
+| 批次 | 主题 | 条目 | op |
+|:--:|------|------|:--:|
+| **H1** | 纠正/清理能力骨架 | **N1** 孤儿 op 回收与检测（`plan scheme remove` + `flow repair` 对账 + `flow health` warn）／**N2** 结构字段 CLI（`flow stage set --deps`、reviews update/remove）／**N3** `scheme create` 注册语义统一（隐式注册时补 overview/status 骨架） | op-001~003 |
+| **H2** | 状态维护可用性 | **N4** `flow attempt` 同步 `current.op`（**与 stage-50 T1 共用 `syncCurrentOp`**）／**N5** `stage set` 幂等化 + 按需备份／**N6** `stage task --add`、`plan stage add --tasks`／**N7** `stage set` 字段扩展（`--exec-mode/--auto-advance/--review-agent`）／**N8** op 文件名固定 `op-NNN.md`（读取端兼容回退） | op-004~006 |
+| **H3** | 布局与噪声 | **N9** knowledge index 宽容解析 + **新增 `openfeel knowledge dedup` 子命令**（A6 用户裁定：暴露而非删除）／**N10** 日志布局**仅统一未来写入 + 索引共存说明（不迁移历史）**（A7 用户裁定）／**N11** git 脏区警告降噪（`--quiet` / 仅 done 提示） | op-007~008 |
+| — | 回归收口 | 四门禁 + 环境双快照 | op-009 |
+
+### 协同约束（跨阶段）
+
+- **T1 ↔ N4**：`current.op` 生命周期必须**单一 owner**（新增 `syncCurrentOp(stageName)`，被 `advanceStagePhase` 与 `recordAttempt` 共用）；任一侧先实施须在另一侧登记。
+- **T8 ↔ N9**：**stage-50 T8 的 `basePath` 参数化是 N9「新增 `openfeel knowledge dedup` 子命令」的基础（A6 用户裁定后 T8 不再作废）**；子命令须复用 T8 的 `basePath`，两侧禁各自实现路径解析。
+- **不纳入**：反馈 #6 的 `config set` 白名单（归 stage-50 T36/R3）；#3(b) 报错回显（已修）。
+
+### 裁定项（**用户已裁定 2026-09-30**）
+
+**A1** `scheme create` 补骨架（零破坏）／**A2 孤儿 op 默认只报告 + `--prune-orphans`**／A3 `stage set` 同值 no-op／A4 `stage set` 字段白名单／**A5 op 文件名改 `op-NNN.md` 且不做迁移命令**／**A6 暴露 `openfeel knowledge dedup` 子命令（不删除；T8 为其基础）**／**A7 仅统一未来写入 + 不新增历史迁移命令 + 索引共存说明**／A8 git 警告默认仅 `--to done` + `--quiet`。**A2/A5 与 Planner 建议一致；A6/A7 与建议相反，已按用户裁定落地**（详见 `plan/v1/stage-51/plan.md` §五）。
+
+### 拆阶段结论
+
+**建议不拆**（单 stage-51 / 9 op）；可选拆分点：若认为过大，将 **H3（N9/N10/N11）** 拆为 stage-52（含新增公开子命令与布局/索引约定，原「历史数据迁移」已按 A7 裁定取消）。
+
+### 完成标准
+
+- N1~N11 处置完毕（10 条按建议 + A2/A5/A6/A7 按用户裁定）；门禁全绿（716 用例 / 533 键 / kb 0 过期）；测试隔离零污染；`current.op` 单一 owner 落地。
+
+---
+
 ## 七、测试策略
 
 | 验证点 | 阶段 | 方式 |
@@ -616,6 +688,8 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | M3 skill 化与发布 | stage-43 done | `openfeel-cli-usage` skill（全局可部署）、文档/手册同步、版本 1.1.2 **全部载体一致（清单见 §3.1）**、`config/BUG-004` 测试隔离修复、`npm test` 全绿 |
 | M4 事件加固与遗留清零 | stage-48 done | 审查纪律/可信度规范入模板；测试隔离补齐 + CI 环境守卫；执行口径统一 + CI 版本门禁；13 项遗留清零（含 455 死映射） |
 | M5 整仓审查 | stage-49 done | 8 单元审查报告 + REV + 汇总；blocking 项闭合；基线全绿 |
+| M6 非阻塞清零 | stage-50 done | T1~T57 处置完毕（52 修 + 6 裁定 + 3 不修留痕）；四门禁全绿；环境零污染 |
+| M7 纠正侧 CLI 补齐 | stage-51 done | N1~N11：孤儿 op 回收 / 结构字段 CLI / 注册语义 / `current.op` 单一 owner / stage set 幂等与字段 / op 文件名 / knowledge / 日志布局 / git 降噪 |
 | **v1.1.2 发布** | 全部 done | `npm publish` 就绪 + `CHANGELOG.md` 更新 |
 
 ---
@@ -636,6 +710,8 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 版本 | **8 处必改 + 生成段 + 传播** | 见 §3.1（A5/A6=`agents-md/{zh-CN,en}.md:141`、A7=`AGENTS.md:145`、B=`template-loader.ts:2833/:3286`；A8 `package-lock` 1.0.7 漂移仍在）；`npm run build` 重生成；`openfeel setup/update` 重传播全局 AGENTS.md |
 | 阶段 48 加固/遗留 | 7 op（13 项遗留编号化清单见 stage-48 §一） | 模板纪律（reviewer/feel 双语）+ manual/kb 规范；测试隔离补齐 + CI 环境守卫；执行型口径统一 + CI 版本门禁 + `lint i18n`；i18n help 文案 + 权限措辞精化 + 5 处 REV 状态提请；profile.yaml 子 Schema passthrough + 非法 YAML 不覆盖；455 死映射清理（脚本+备份） |
 | 阶段 49 审查 | 9 op | 8 单元审查报告 + 8 REV + 汇总报告 + 公共摘要 + index 登记；修复流转裁定 |
+| 阶段 50 清理 | 7 op | T1~T57 六批次（A 一致性 / B 门禁 / C 死代码与配置 / D i18n / E 测试 / F 模板口径）≈ 35~40 文件、600~900 行；含 `templates/BUG-003` 关闭 |
+| 阶段 51 纠正侧 | 9 op | N1~N11 三批次（H1 纠正/清理骨架 / H2 状态维护可用性 / H3 布局与噪声）≈ 20~25 文件、800~1200 行；含 3~4 新命令/子命令；T1↔N4 单一 owner |
 
 > 本计划引用知识库多条既有条目；完成后须由 openfeel-archiver 沉淀：「CLI 命令文档 skill 化模式」「阶段移除的安全校验与 current 兜底模式」「配置级联有效值与来源暴露模式」，并更新 `manual/cli/commands.md` + `manual/core/plan-path.md`。
 
@@ -664,3 +740,6 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 > 三处核心裁定保持不变：① #5 全局画像仅作最低优先级兜底；② #6 只修 `pipeline.phase` 全量 done 判定、不做 `current` 回退；③ 技能源为扁平单文件（16 个 `{name}/SKILL.md`）、无 `{lang}`、无 `NEW_SKILL_NAMES`。
 
 | 2026-09-29 | openfeel-planner | REV-v1.1.2-stage-48/49 计划审查（REV-001~003/001~003） | **stage-48**：13 项遗留**编号化清单**入 §一（#1~#13 ↔ op）；op-006 匹配式改**末段匹配** + 断言删除数 455/剩余 0；基线 693→**694**；CI 版本断言明确**两 job**；新增 **H12「可疑会话产出降级」**；op-003 ① 改**全仓扫描式**；op-005 ② **定案**用 parseError+跳过写回（不引入 update-infos 依赖）。**stage-49**：**新增 U8「部署与更新链路」**（MECE 补缺）+ 覆盖矩阵 + U5/U8 边界；op 扩为 001~008 单元 + 009 汇总；新增 index 登记与「先广度后深挖」分层策略 |
+| 2026-09-30 | openfeel-planner | 用户需求「v1.1.2-stage-50：全量审查 non-blocking 集中清理（第二批）」 | 阶段概览新增 stage-50；依赖图与执行顺序追加 49 → 50；新增 stage-50 摘要节（T1~T57 六批次 + 待裁定 R1~R6）；里程碑 M6；变更汇总补一行 |
+| 2026-09-30 | openfeel-planner | 用户需求「v1.1.2-stage-51（反馈二：流水线状态维护与 CLI 可维护性）」 | 阶段概览新增 stage-51；依赖图与执行顺序追加「50 → 51」；新增 stage-51 摘要节（N1~N11 三批次 + 协同约束 T1↔N4 / T8↔N9 + 裁定项 A1~A8 + 拆阶段结论「不拆」）；里程碑 M7；变更汇总补一行 |
+| 2026-09-30 | openfeel-planner | **用户对 A1~A8 的裁定**（不可推翻） | A2/A5 与建议一致；**A6 改为「暴露 `openfeel knowledge dedup` 子命令（不删除）」→ T8 由「或将作废」改为「N9 的基础」**；**A7 改为「仅统一未来写入 + 不新增迁移命令 + 索引共存」→ 删除历史迁移内容**。stage-51 摘要节（H3 行、裁定项、协同约束、拆阶段结论）与阶段概览规模估算（`~22~27 文件 + 900~1300 行`）同步更新 |

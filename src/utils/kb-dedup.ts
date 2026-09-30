@@ -30,9 +30,6 @@ export interface SimilarityResult {
 /** 相似度阈值，超过此值视为重复 */
 const SIMILARITY_THRESHOLD = 0.8;
 
-/** 知识库分类文件所在的基础目录 */
-const KB_BASE_DIR = resolve('.openfeel/kb');
-
 /** 分类名 → 文件名映射 */
 const CATEGORY_FILES: Record<string, string> = {
   architecture: 'architecture.md',
@@ -152,15 +149,25 @@ function jaccardSimilarity(tokensA: Set<string>, tokensB: Set<string>): number {
  *
  * @param target - 新待归档的内容文本
  * @param category - 知识库分类名（architecture | patterns | troubleshooting | setup）
+ * @param basePath - 【可选】知识库根目录（即 `.openfeel/kb` 的**绝对路径**）。
+ *                   缺省时在**调用时刻**解析 `resolve('.openfeel/kb')`（避免模块加载期固化 cwd，T8）。
+ *                   供 stage-51 `knowledge dedup --project <path>` 注入
+ *                   `resolve(projectPath, '.openfeel/kb')` 复用（禁各自实现路径解析）。
  * @returns 相似度 > 0 的条目列表，按相似度降序排列
  */
-export function findSimilarEntries(target: string, category: string): SimilarityResult[] {
+export function findSimilarEntries(
+  target: string,
+  category: string,
+  basePath?: string,
+): SimilarityResult[] {
   const fileName = CATEGORY_FILES[category];
   if (fileName === undefined) {
     return [];
   }
 
-  const filePath = resolve(KB_BASE_DIR, fileName);
+  // 默认值在调用时解析（不保留模块加载期常量）
+  const base = basePath ?? resolve('.openfeel/kb');
+  const filePath = resolve(base, fileName);
   const existingEntries = parseKbFile(filePath);
 
   if (existingEntries.length === 0) {

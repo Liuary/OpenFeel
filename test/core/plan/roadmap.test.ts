@@ -71,20 +71,13 @@ describe('roadmap', () => {
       expect(result).toContain('## 目标');
     });
 
-    it('不存在的版本应报错退出', () => {
-      // showRoadmap 对不存在的版本会调用 process.exit(1)
-      // 这里用一个包装函数捕获错误
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-        throw new Error(`process.exit(${code})`);
-      });
-
+    it('不存在的版本应抛错（core 层不直接 process.exit，T10）', () => {
+      // showRoadmap 对不存在的版本抛 Error（退出码由命令层决定）
       createRoadmap(tmpDir, '1.0');
 
       expect(() => {
         showRoadmap(tmpDir, '999.0');
-      }).toThrow('process.exit(1)');
-
-      mockExit.mockRestore();
+      }).toThrow('错误：大纲文件不存在 — v999.0.md');
     });
   });
 });

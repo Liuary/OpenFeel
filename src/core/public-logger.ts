@@ -44,7 +44,8 @@ export interface LogEventDetail {
  * 构造时从 .openfeel/.info.json 加载用户名。
  */
 export class PublicLogger {
-  private static instance: PublicLogger | null = null;
+  /** 按 projectPath 缓存单例，避免跨项目复用首次固化的路径（T11） */
+  private static instances = new Map<string, PublicLogger>();
   private projectPath: string;
   private username: string;
 
@@ -54,21 +55,23 @@ export class PublicLogger {
   }
 
   /**
-   * 获取或创建 PublicLogger 单例
+   * 获取或创建 PublicLogger 单例（按 projectPath 为键）
    * @param projectPath 项目根路径
    */
   static getInstance(projectPath: string): PublicLogger {
-    if (!PublicLogger.instance) {
-      PublicLogger.instance = new PublicLogger(projectPath);
+    let instance = PublicLogger.instances.get(projectPath);
+    if (!instance) {
+      instance = new PublicLogger(projectPath);
+      PublicLogger.instances.set(projectPath, instance);
     }
-    return PublicLogger.instance;
+    return instance;
   }
 
   /**
    * 重置单例（仅供测试使用）
    */
   static resetInstance(): void {
-    PublicLogger.instance = null;
+    PublicLogger.instances.clear();
   }
 
   // ── 公开方法 ──
@@ -100,10 +103,13 @@ export class PublicLogger {
   /**
    * 记录里程碑事件（阶段完成、测试通过、归档完成等）
    * 此类重要事件逐条记录，不参与批量聚合
+   * @param title 里程碑标题（渲染到补充信息 title 字段）
+   * @param extra 事件附加字段（durationMs/status 等），全部并入补充信息；含 action 时作为日志 action
    */
-  logMilestone(title: string, event: MilestoneEvent): void {
-    // 确保 title 参数被传递到日志内容的 extra.title 字段中
-    this.writeLog('里程碑', { ...event, action: event.action, extra: { title } } as LogEventDetail);
+  logMilestone(title: string, extra?: Record<string, unknown>): void {
+    // 里程碑事件除 title 外的字段全部并入 extra 渲染（原实现只保留 title，丢弃其余字段，T5）
+    const action = typeof extra?.action === 'string' ? extra.action : 'milestone';
+    this.writeLog('里程碑', { action, extra: { title, ...extra } });
   }
 
   // ═══ 私有方法 ═══

@@ -703,6 +703,18 @@ export const setup: I18nDomain = {
   'complete': { key: 'setup.complete', zh: '✓ 全局 OpenFeel 框架配置部署完成', en: '' },
 };
 
+/* ==================== metrics 域：Agent 性能摘要（T15） ==================== */
+export const metrics: I18nDomain = {
+  'summary.noData':       { key: 'metrics.summary.noData',       zh: '暂无 Agent 性能数据。', en: '' },
+  'summary.title':        { key: 'metrics.summary.title',        zh: 'Agent 性能指标摘要', en: '' },
+  'summary.totalRuns':    { key: 'metrics.summary.totalRuns',    zh: '  总执行次数: {n}', en: '' },
+  'summary.successFail':  { key: 'metrics.summary.successFail',  zh: '  成功 / 失败: {ok} / {fail}', en: '' },
+  'summary.successRate':  { key: 'metrics.summary.successRate',  zh: '  成功率: {rate}', en: '' },
+  'summary.totalRetries': { key: 'metrics.summary.totalRetries', zh: '  总重试次数: {n}', en: '' },
+  'summary.totalDuration':{ key: 'metrics.summary.totalDuration',zh: '  总耗时: {n}ms', en: '' },
+  'summary.avgDuration':  { key: 'metrics.summary.avgDuration',  zh: '  平均耗时: {n}ms', en: '' },
+};
+
 /* ==================== 聚合导出 ==================== */
 /** 所有功能域的聚合数组（供 i18n.ts 构建 Map 使用） */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
@@ -724,4 +736,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'migrate',      domain: migrate },
   { name: 'model',        domain: model },
   { name: 'setup',        domain: setup },
+  { name: 'metrics',      domain: metrics },
 ];

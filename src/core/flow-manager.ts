@@ -11,7 +11,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
 import {
   PipelineConfigSchema,
@@ -333,6 +333,9 @@ export class FlowManager {
       // 从 stages 的键名恢复 op 的 id 字段（运行时便利字段，磁盘不存储）
       if (this.data && this.data.stages) {
         for (const [, stage] of Object.entries(this.data.stages)) {
+          // T2 一处收口：存量/外部损坏数据缺 ops/deps 时补齐，避免下游 Object.entries(undefined) 崩溃
+          if (!stage.ops) { stage.ops = {}; }
+          if (!stage.deps) { stage.deps = []; }
           // 类型守卫：仅当 ops 为普通对象时才遍历（跳过 null/undefined/数组）
           if (stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)) {
             for (const [opKey, op] of Object.entries(stage.ops)) {
@@ -1025,6 +1028,35 @@ export class FlowManager {
   // ═══ 推进 ═══
 
   /**
+   * 同步 pipeline.current 到指定阶段中首个 pending / executing 的 op。
+   * 单一 owner：被 advanceStagePhase 与 recordAttempt 共用，禁止各自实现。
+   * @param stageName 目标阶段 ID（如 'v1.1.2-stage-50'）
+   * @returns 同步后的 current 快照（便于调用方复用，不写盘）
+   */
+  syncCurrentOp(stageName: string): { stage: string; op: string } {
+    // 防御：阶段不存在时不改动 pipeline.current，直接返回当前快照
+    const stage = this.data?.stages[stageName];
+    if (!stage) {
+      return {
+        stage: this.data?.pipeline.current.stage ?? '',
+        op: this.data?.pipeline.current.op ?? '',
+      };
+    }
+
+    // 取首个 pending / executing 的 op
+    const pendingOpEntry = Object.entries(stage.ops ?? {}).find(
+      ([, op]) => op.state === 'pending' || op.state === 'executing',
+    );
+    // 命中 → 指向该 op；未命中（ops 全 done / 为空）→ 置空 op，绝不保留旧 op（T1 缺陷修复点）
+    const synced = { stage: stageName, op: pendingOpEntry ? pendingOpEntry[0] : '' };
+    if (this.data) {
+      // 不触碰 pipeline.phase / pipeline.retry，也不做 IO（由调用方 save()）
+      this.data.pipeline.current = synced;
+    }
+    return synced;
+  }
+
+  /**
    * 推进指定阶段到目标流水线阶段（新 API）
    * @param stageName 阶段名（如 stage-01）
    * @param phase 目标流水线阶段（PipelinePhase）
@@ -1096,16 +1128,12 @@ export class FlowManager {
       this.createLogSkeleton(stageName, targetPhase);
     }
 
-    // 同步更新 pipeline.current：从该 stage 的 ops 中找到第一个 pending/executing 的 op
-    const pendingOpEntry = Object.entries(stage.ops).find(
-      ([, op]) => op.state === 'pending' || op.state === 'executing',
-    );
-    this.data.pipeline.current = {
-      stage: stageName,
-      op: pendingOpEntry ? pendingOpEntry[0] : this.data.pipeline.current.op,
-    };
+    // 同步更新 pipeline.current：单一 owner syncCurrentOp（未命中置空 op，修复跨阶段悬空 T1）
+    this.syncCurrentOp(stageName);
 
     // 同步更新 pipeline.phase：所有 stage 均 done 时置 'done'，否则 'active'（P3 全量 done 判定）
+    // 说明（T6）：pipeline.phase 无条件覆写，手工 `paused` 属**软状态** —— 阶段推进即视为恢复，
+    // 覆写为 active/done 属预期语义。如需硬暂停，请勿推进阶段（保持 paused 且不调用 advance）。
     // 空集守卫：无 stage 时 [].every(...) 为 true（vacuous truth），须排除以免误置 done。
     const allDone = Object.keys(this.data.stages).length > 0
       && Object.values(this.data.stages).every((s) => s.phase === 'done');
@@ -1124,7 +1152,10 @@ export class FlowManager {
 
     // 同步 stage status（调用已有 mapPhaseToStageStatus）
     const prevStatus = stage.status;
-    const newStatus = mapPhaseToStageStatus(targetPhase, prevStatus);
+    // test_enabled 由 buildCascadeConfig（config.yaml/status.md/profile 级联，无反向依赖）取真实值，
+    // 使 mapPhaseToStageStatus 的 testEnabled 分支可达（T9）
+    const testEnabled = this.buildCascadeConfig().effective['test_enabled'] !== 'false';
+    const newStatus = mapPhaseToStageStatus(targetPhase, prevStatus, testEnabled);
     stage.status = newStatus;
 
     // 自动记录阶段计时：首次状态变更时启动
@@ -1154,7 +1185,9 @@ export class FlowManager {
     try {
       const msg = `chore: 阶段归档 ${stageName}`;
       // cwd 指向项目根，确保 git 在 flow.json 所在仓库执行而非进程工作目录
-      execSync(`git add -A && git commit -m "${msg}"`, { stdio: 'pipe', cwd: this.projectPath });
+      // 使用 execFileSync 数组参数（无 shell 解析），避免 stageName 注入 shell（T16）
+      execFileSync('git', ['add', '-A'], { stdio: 'pipe', cwd: this.projectPath });
+      execFileSync('git', ['commit', '-m', msg], { stdio: 'pipe', cwd: this.projectPath });
       console.log(t('flow.advance.gitCommitOkTmpl', lang, { stage: stageName }));
     } catch {
       // 不在 git 仓库 / git 不可用 / 无变更时静默跳过，不阻塞 done 推进
@@ -1803,8 +1836,12 @@ export class FlowManager {
 
     op.attempts += 1;
 
+    // current.op 生命周期单一 owner：state 变更后同步（T1，禁双实现）
+    const stageIdOfOp = this.parseOpId(opId)?.stageId;
+
     if (result === 'pass') {
       op.state = 'done';
+      if (stageIdOfOp) { this.syncCurrentOp(stageIdOfOp); }
       this.data.pipeline.retry = 0;
       this.appendLog({
         time: '',
@@ -1824,6 +1861,7 @@ export class FlowManager {
     // result === 'fail'
     if (op.attempts < op.max_attempts) {
       op.state = 'pending'; // 回到 pending 等待重试
+      if (stageIdOfOp) { this.syncCurrentOp(stageIdOfOp); }
       this.data.pipeline.retry += 1;
       this.appendLog({
         time: '',
@@ -2053,6 +2091,10 @@ export class FlowManager {
     } else {
       // 遍历每个 stage，校验其 phase 字段为合法 PipelinePhase
       for (const [stageId, stage] of Object.entries(this.data.stages)) {
+        // T2：normalize 已补 ops 则不报；仅对无法识别的结构（非普通对象）报错
+        if (typeof stage.ops !== 'object' || stage.ops === null || Array.isArray(stage.ops)) {
+          errors.push(`stages.${stageId}.ops 缺失或不是有效对象`);
+        }
         if (!stage.phase) {
           warnings.push(`stages.${stageId}.phase 缺失，设为默认 'plan_pending'`);
           stage.phase = 'plan_pending' as PipelinePhase;
@@ -2144,11 +2186,12 @@ export class FlowManager {
       return containsMatches[0] as PipelinePhase;
     }
 
-    // 后缀匹配: 查找 normalized 是否为某合法值的后缀
-    for (const phase of PIPELINE_PHASES) {
-      if (phase.endsWith('_' + normalized) || phase.endsWith(normalized)) {
-        return phase;
-      }
+    // 后缀匹配（唯一命中时采用；多重命中返回 null，与 prefix/contains 分支语义对齐，T4）
+    const suffixMatches = (PIPELINE_PHASES as readonly string[]).filter(
+      (p) => p.endsWith('_' + normalized) || p.endsWith(normalized),
+    );
+    if (suffixMatches.length === 1) {
+      return suffixMatches[0] as PipelinePhase;
     }
 
     // 常见拼写修正（硬编码扩展）
@@ -2804,7 +2847,10 @@ export class FlowManager {
     for (const [stageId, stage] of Object.entries(this.data.stages)) {
       // 所有 REV 已 closed 但 stage 仍为 review_failed
       if (stage.status === 'review_failed') {
-        const stageReviews = this.data.reviews.filter((r) => r.op.startsWith(stageId));
+        // 锚定 stageId + '.'（对齐 :1064），避免前缀重叠（如 stage-1 与 stage-10）误报 zombie（T14）
+        const stageReviews = this.data.reviews.filter(
+          (r) => r.op.startsWith(stageId + '.') || r.op === stageId,
+        );
         const allClosed = stageReviews.length > 0 && stageReviews.every((r) => r.status === 'closed');
         if (allClosed) {
           items.push({ section: '僵尸状态', status: 'warn', message: `${stageId}: 所有 REV 已 closed 但 stage 仍为 review_failed` });
@@ -3076,7 +3122,8 @@ export class FlowManager {
         exec: 'exec',
         review: 'review',
         test: 'test',
-        archive: 'archive',
+        archiving: 'archiving',   // 主用：使 archiving 阶段更新 checkpoint（T12）
+        archive: 'archive',       // 历史键，兼容自定义 pipeline 中 phase 名为 archive 的场景
       },
       phase_corrections: {
         completed: 'done',

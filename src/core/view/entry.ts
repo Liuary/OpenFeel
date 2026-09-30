@@ -8,13 +8,24 @@ import { FlowManager, type ReviewItem } from '../flow-manager.js';
 export type { ReviewItem };
 
 /**
- * 辅助函数：基于已有审查条目数量，自动生成 REV-ID（如 REV-001）
+ * 辅助函数：扫描既有 REV-(\d+) 取最大序号 + 1 生成 REV-ID（如 REV-001）
+ * 不依赖数组长度，避免并发创建或删除后重号（T13）
  * 无论 flow.json 是否加载，始终可生成 REV-001 作为起始 ID
  */
 export function generateReviewId(projectPath: string): string {
   const mgr = new FlowManager(projectPath);
   const existingReviews = mgr.getReviewItems();
-  return `REV-${String(existingReviews.length + 1).padStart(3, '0')}`;
+  let maxSeq = 0;
+  for (const r of existingReviews) {
+    const m = /^REV-(\d+)$/.exec(r.id);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > maxSeq) {
+        maxSeq = n;
+      }
+    }
+  }
+  return `REV-${String(maxSeq + 1).padStart(3, '0')}`;
 }
 
 /**

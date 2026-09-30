@@ -8,6 +8,7 @@ import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { normalizeAgentName } from './flow-manager.js';
+import { t } from './i18n.js';
 
 /** Agent 性能指标 */
 export interface AgentMetrics {
@@ -43,7 +44,8 @@ function createDefaultMetrics(agentName: string): AgentMetrics {
  * 管理所有 Agent 的性能指标，支持持久化读写
  */
 export class MetricsStore {
-  private static instance: MetricsStore | null = null;
+  /** 按 dataDir 缓存单例，避免跨项目复用首次固化的 dataDir（T11） */
+  private static instances = new Map<string, MetricsStore>();
   private agents: Map<string, AgentMetrics> = new Map();
   private dataDir: string;
 
@@ -51,19 +53,20 @@ export class MetricsStore {
     this.dataDir = dataDir;
   }
 
-  /** 获取单例实例（默认 dataDir = CWD/.openfeel） */
+  /** 获取单例实例（按 dataDir 为键；缺省 dataDir = CWD/.openfeel） */
   static getInstance(dataDir?: string): MetricsStore {
-    if (!MetricsStore.instance) {
-      MetricsStore.instance = new MetricsStore(
-        dataDir ?? resolve(process.cwd(), '.openfeel'),
-      );
+    const key = dataDir ?? resolve(process.cwd(), '.openfeel');
+    let instance = MetricsStore.instances.get(key);
+    if (!instance) {
+      instance = new MetricsStore(key);
+      MetricsStore.instances.set(key, instance);
     }
-    return MetricsStore.instance;
+    return instance;
   }
 
   /** 重置单例（仅测试用） */
   static resetInstance(): void {
-    MetricsStore.instance = null;
+    MetricsStore.instances.clear();
   }
 
   /**
@@ -111,15 +114,16 @@ export class MetricsStore {
   }
 
   /**
-   * 生成人类可读的性能摘要字符串
+   * 生成人类可读的性能摘要字符串（i18n 化，T15）
    * 包含每个 Agent 的总执行次数、成功率、重试次数、耗时统计
+   * @param lang 语言标识（'zh-CN' | 'en'），默认 'zh-CN' 保持现行为
    */
-  summary(): string {
+  summary(lang: string = 'zh-CN'): string {
     if (this.agents.size === 0) {
-      return '暂无 Agent 性能数据。';
+      return t('metrics.summary.noData', lang);
     }
 
-    const lines: string[] = ['Agent 性能指标摘要', '═══════════════════'];
+    const lines: string[] = [t('metrics.summary.title', lang), '═══════════════════'];
 
     for (const m of this.agents.values()) {
       const successRate =
@@ -129,12 +133,12 @@ export class MetricsStore {
 
       lines.push(
         `\n${normalizeAgentName(m.agentName)}`,
-        `  总执行次数: ${m.totalRuns}`,
-        `  成功 / 失败: ${m.successfulRuns} / ${m.failedRuns}`,
-        `  成功率: ${successRate}`,
-        `  总重试次数: ${m.totalRetries}`,
-        `  总耗时: ${m.totalDurationMs}ms`,
-        `  平均耗时: ${m.avgDurationMs}ms`,
+        t('metrics.summary.totalRuns', lang, { n: String(m.totalRuns) }),
+        t('metrics.summary.successFail', lang, { ok: String(m.successfulRuns), fail: String(m.failedRuns) }),
+        t('metrics.summary.successRate', lang, { rate: successRate }),
+        t('metrics.summary.totalRetries', lang, { n: String(m.totalRetries) }),
+        t('metrics.summary.totalDuration', lang, { n: String(m.totalDurationMs) }),
+        t('metrics.summary.avgDuration', lang, { n: String(m.avgDurationMs) }),
       );
     }
 

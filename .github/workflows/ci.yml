@@ -16,6 +16,20 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
+      - name: Env snapshot (before test)
+        run: |
+          # 守卫窗口起点：build 之后（build 之前无环境写入步骤）
+          snapshot() {
+            for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "./.openfeel/config.yaml"; do
+              key=$(echo "$d" | tr '/.' '__')
+              if [ -e "$d" ]; then
+                find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort > "$RUNNER_TEMP/snap_before_$key"
+              else
+                echo "ABSENT" > "$RUNNER_TEMP/snap_before_$key"
+              fi
+            done
+          }
+          snapshot
       - name: Version consistency guard
         run: |
           # 版本门禁（stage-48 op-003 / 遗留 #10）：CLI --version 必须与 package.json.version 一致
@@ -26,26 +40,15 @@ jobs:
             echo "::error::版本不一致：CLI=$CLI_VERSION package.json=$PKG_VERSION"; exit 1
           fi
       - run: node bin/openfeel.js lint i18n
-      - name: Env snapshot (before test)
-        run: |
-          snapshot() {
-            for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel"; do
-              key=$(echo "$d" | tr '/' '_')
-              if [ -e "$d" ]; then
-                find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort > "$RUNNER_TEMP/snap_before_$key"
-              else
-                echo "ABSENT" > "$RUNNER_TEMP/snap_before_$key"
-              fi
-            done
-          }
-          snapshot
       - run: npm test -- --reporter=verbose
+      - name: Coverage report (baseline observation; non-blocking)
+        run: npm run test:coverage
       - name: Env guard (after test — must be unchanged)
         run: |
-          # 环境守卫（stage-48 op-002 / 遗留 #12）：测试前后比对全局目录，防止静默覆写真实环境
+          # 环境守卫（stage-48 op-002 / 遗留 #12）：测试前后比对全局目录 + 仓库项目配置，防止静默覆写真实环境
           fail=0
-          for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel"; do
-            key=$(echo "$d" | tr '/' '_') ; f="$RUNNER_TEMP/snap_after_$key"
+          for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "./.openfeel/config.yaml"; do
+            key=$(echo "$d" | tr '/.' '__') ; f="$RUNNER_TEMP/snap_after_$key"
             # 存在性分支：目录不存在时记 ABSENT（ABSENT→ABSENT 视为通过，避免 ubuntu runner 误报）
             if [ -e "$d" ]; then
               find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort > "$f"
@@ -66,8 +69,6 @@ jobs:
       NODE_AUTH_TOKEN: ${{ secrets.OPENFEEL_AUTO_NPM }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - name: Check if version changed
         id: version
         run: |

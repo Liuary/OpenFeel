@@ -3077,4 +3077,33 @@ describe('配置级联（stage-42 op-001）', () => {
       }
     });
   });
+
+  // ═══════════════════════════════════════
+  // stage-50 op-002：门禁与 CI 失效面（T19 core 访问器）
+  // ═══════════════════════════════════════
+
+  describe('批次 B 门禁（stage-50 op-002）', () => {
+    it('T19：getDefaultTransitions 返回内置默认（含组合键）、不受项目 pipeline.yaml 影响且为深拷贝', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), JSON.stringify({
+        phases: ['plan_pending', 'done'],
+        transitions: { plan_pending: ['done'] },
+        checkpoint_mapping: {},
+        phase_corrections: {},
+      }), 'utf-8');
+
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+
+      // 运行时表受项目 pipeline.yaml 影响
+      expect(mgr.getPipelineTransitions()['plan_pending']).toEqual(['done']);
+      // 默认表不受影响，含组合键
+      const def = mgr.getDefaultTransitions();
+      expect(def['plan_pending']).toEqual(['plan_review', 'plan_passed']);
+      expect(def['review_passed|test_passed']).toEqual(['archiving']);
+      // 深拷贝：改动返回值不影响内部
+      def['plan_pending'].push('X');
+      expect(mgr.getDefaultTransitions()['plan_pending']).not.toContain('X');
+    });
+  });
 });

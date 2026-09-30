@@ -92,6 +92,10 @@ export const flow: I18nDomain = {
   'phases.transitionsLabel':    { key: 'flow.phases.transitionsLabel',    zh: '', en: 'Phase transitions (from → [to...])' },
   'phases.hint':                { key: 'flow.phases.hint',                zh: '', en: 'Hint: advance with `openfeel flow advance --stage <id> --to <phase>`' },
   'phases.customPhaseNote':     { key: 'flow.phases.customPhaseNote',     zh: '', en: 'Note: the runtime pipeline.yaml contains phase(s) outside the built-in 15 ({phases}); they are shown but openfeel flow advance only accepts built-in phases.' },
+  'phases.transitionsDiffNote':    { key: 'flow.phases.transitionsDiffNote',    zh: '', en: 'Runtime transition table differs from built-in defaults: {detail}' },
+  'phases.transitionsDiffMissing': { key: 'flow.phases.transitionsDiffMissing', zh: '', en: 'missing keys {keys}' },
+  'phases.transitionsDiffExtra':   { key: 'flow.phases.transitionsDiffExtra',   zh: '', en: 'extra keys {keys}' },
+  'phases.transitionsDiffChanged': { key: 'flow.phases.transitionsDiffChanged', zh: '', en: 'differing targets {keys}' },
 
   'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '', en: 'Stage not found: {stage}' },
   'stage.remove.okTmpl':            { key: 'flow.stage.remove.okTmpl',            zh: '', en: '✓ Removed stage: {stage}' },

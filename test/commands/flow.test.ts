@@ -74,6 +74,33 @@ describe('flow 命令（stage-41）', () => {
 
   // ── flow phases ──
 
+  /** 写入缺组合键的 pipeline.yaml（模拟本仓现状；15 phase + 单键 transitions） */
+  function writePipelineNoComposite(): void {
+    const transitions: Record<string, string[]> = {
+      plan_pending: ['plan_review', 'plan_passed'],
+      plan_review: ['plan_passed', 'plan_pending'],
+      plan_passed: ['scheme_pending'],
+      scheme_pending: ['scheme_review', 'scheme_passed'],
+      scheme_review: ['scheme_passed', 'scheme_pending'],
+      scheme_passed: ['exec_running'],
+      exec_running: ['review_pending', 'scheme_pending'],
+      review_pending: ['review_failed', 'review_passed'],
+      review_failed: ['review_pending', 'scheme_pending'],
+      review_passed: ['test_pending'],
+      test_pending: ['test_failed', 'test_passed'],
+      test_failed: ['test_pending', 'scheme_pending'],
+      test_passed: ['archiving'],
+      archiving: ['done'],
+      done: [],
+    };
+    writeFileSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), JSON.stringify({
+      phases: Object.keys(transitions),
+      transitions,
+      checkpoint_mapping: {},
+      phase_corrections: {},
+    }), 'utf-8');
+  }
+
   it('flow phases 默认输出含全部 15 个 phase 与转移表', async () => {
     await safeParse(['flow', 'phases']);
 
@@ -88,17 +115,26 @@ describe('flow 命令（stage-41）', () => {
     expect(out).toContain('plan_pending → [plan_review, plan_passed]');
   });
 
-  it('flow phases --json 可 JSON.parse，顶层键为 phases / transitions / advanceAccepted', async () => {
+  it('flow phases --json 可 JSON.parse，顶层键为 phases / transitions / advanceAccepted（+ T19 transitionsDiff）', async () => {
+    writePipelineNoComposite();
     await safeParse(['flow', 'phases', '--json']);
 
     const raw = logMock.mock.calls[0][0] as string;
-    const obj = JSON.parse(raw) as { phases: string[]; transitions: Record<string, string[]>; advanceAccepted: string[] };
-    expect(Object.keys(obj)).toEqual(['phases', 'transitions', 'advanceAccepted']);
+    const obj = JSON.parse(raw) as {
+      phases: string[];
+      transitions: Record<string, string[]>;
+      advanceAccepted: string[];
+      transitionsDiff: { missing: string[]; extra: string[]; changed: string[] };
+    };
+    // 既有三字段保留 + 追加 transitionsDiff（T19，向后兼容）
+    expect(Object.keys(obj)).toEqual(expect.arrayContaining(['phases', 'transitions', 'advanceAccepted', 'transitionsDiff']));
     expect(obj.phases).toHaveLength(15);
     expect(obj.transitions['plan_pending']).toEqual(['plan_review', 'plan_passed']);
     // advanceAccepted = 内置 15 phase 推进白名单（cli/BUG-001 方案 B）
     expect(obj.advanceAccepted).toHaveLength(15);
     expect(obj.advanceAccepted).toContain('exec_running');
+    // T19：本仓 pipeline.yaml 缺组合键 → transitionsDiff.missing 含之
+    expect(obj.transitionsDiff.missing).toContain('review_passed|test_passed');
   });
 
   it('flow phases 在自定义 phase（pipeline.yaml 含 gate）下输出边界提示', async () => {
@@ -136,6 +172,24 @@ describe('flow 命令（stage-41）', () => {
     await safeParse(['flow', 'phases']);
     const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
     expect(out).not.toContain('内置 15 个 phase 之外');
+  });
+
+  it('T19：无项目 pipeline.yaml 时 transitionsDiff 为空（运行时=内置默认）', async () => {
+    rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
+    await safeParse(['flow', 'phases', '--json']);
+    const raw = logMock.mock.calls[0][0] as string;
+    const obj = JSON.parse(raw) as { transitionsDiff: { missing: string[]; extra: string[]; changed: string[] } };
+    expect(obj.transitionsDiff.missing).toEqual([]);
+    expect(obj.transitionsDiff.extra).toEqual([]);
+    expect(obj.transitionsDiff.changed).toEqual([]);
+  });
+
+  it('T19：默认输出在存在漂移时打印差异提示（pipeline.yaml 缺组合键）', async () => {
+    writePipelineNoComposite();
+    await safeParse(['flow', 'phases']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('转移表与内置默认存在差异');
+    expect(out).toContain('review_passed|test_passed');
   });
 
   // ── flow stage add 冲突 i18n（cli/BUG-002）──

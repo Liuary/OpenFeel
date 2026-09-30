@@ -340,10 +340,19 @@ export function registerFlowCommand(program: Command): void {
       const mgr = createManager();
       const phases = mgr.getPipelinePhases();
       const transitions = mgr.getPipelineTransitions();
+      // 运行时 vs 内置默认 transitions 差异（T19：使漂移可见，不补组合键）
+      const defaults = mgr.getDefaultTransitions();
+      const missingKeys = Object.keys(defaults).filter((k) => !(k in transitions));
+      const extraKeys = Object.keys(transitions).filter((k) => !(k in defaults));
+      const changedKeys = Object.keys(defaults).filter(
+        (k) => k in transitions && JSON.stringify(defaults[k]) !== JSON.stringify(transitions[k]),
+      );
+      const transitionsDiff = { missing: missingKeys, extra: extraKeys, changed: changedKeys };
 
       if (options.json) {
         // advanceAccepted = 内置 15 phase（flow advance 的推进白名单），与 phases（运行时存在视图，可含自定义）显式区分
-        console.log(JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES] }, null, 2));
+        // 追加 transitionsDiff 字段（向后兼容，既有三字段保留）
+        console.log(JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff }, null, 2));
         return;
       }
 
@@ -358,6 +367,14 @@ export function registerFlowCommand(program: Command): void {
         console.log(`  ${key} → [${targets.join(', ')}]`);
       }
       console.log('');
+      // 差异提示（非空时输出）——T19
+      if (missingKeys.length + extraKeys.length + changedKeys.length > 0) {
+        const parts: string[] = [];
+        if (missingKeys.length > 0) { parts.push(t('flow.phases.transitionsDiffMissing', lang, { keys: missingKeys.join(', ') })); }
+        if (extraKeys.length > 0) { parts.push(t('flow.phases.transitionsDiffExtra', lang, { keys: extraKeys.join(', ') })); }
+        if (changedKeys.length > 0) { parts.push(t('flow.phases.transitionsDiffChanged', lang, { keys: changedKeys.join(', ') })); }
+        console.log(t('flow.phases.transitionsDiffNote', lang, { detail: parts.join('; ') }));
+      }
       // 边界：运行时 pipeline.yaml 含内置 15 phase 之外的 phase 时提示差异（cli/BUG-001 方案 B）
       const customPhases = phases.filter((p) => !(PIPELINE_PHASES as readonly string[]).includes(p));
       if (customPhases.length > 0) {

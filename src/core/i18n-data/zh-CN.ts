@@ -98,6 +98,10 @@ export const flow: I18nDomain = {
   'phases.transitionsLabel':    { key: 'flow.phases.transitionsLabel',    zh: 'phase 流转映射（from → [to...]）',          en: '' },
   'phases.hint':                { key: 'flow.phases.hint',                zh: '提示：`openfeel flow advance --stage <id> --to <phase>` 推进', en: '' },
   'phases.customPhaseNote':     { key: 'flow.phases.customPhaseNote',     zh: '提示：运行时 pipeline.yaml 含内置 15 个 phase 之外的 phase（{phases}）；它们可被展示，但 openfeel flow advance 仅接受内置 phase。', en: '' },
+  'phases.transitionsDiffNote':    { key: 'flow.phases.transitionsDiffNote',    zh: '检测到运行时转移表与内置默认存在差异：{detail}', en: '' },
+  'phases.transitionsDiffMissing': { key: 'flow.phases.transitionsDiffMissing', zh: '缺失键 {keys}', en: '' },
+  'phases.transitionsDiffExtra':   { key: 'flow.phases.transitionsDiffExtra',   zh: '新增键 {keys}', en: '' },
+  'phases.transitionsDiffChanged': { key: 'flow.phases.transitionsDiffChanged', zh: '目标集不同 {keys}', en: '' },
 
   // flow stage remove
   'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '阶段不存在：{stage}',                             en: '' },

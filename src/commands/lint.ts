@@ -25,7 +25,11 @@ export function registerLintCommand(program: Command): void {
     .description('校验 i18n 键一致性（空值/中英独有键）')
     .action(() => {
       const lang = getCliLang(process.cwd());
-      runLintI18n(lang);
+      const problems = runLintI18n(lang);
+      // R1（用户已裁定）：发现问题即非 0 退出，对齐 flow health（用 process.exitCode 保证输出刷出且可测试）
+      if (problems > 0) {
+        process.exitCode = 1;
+      }
     });
 
   // lint kb — 检测知识库过期文件引用
@@ -34,7 +38,11 @@ export function registerLintCommand(program: Command): void {
     .description('检测 .openfeel/kb/ 中的过期文件引用')
     .action(() => {
       const lang = getCliLang(process.cwd());
-      runLintKb(process.cwd(), lang);
+      const stale = runLintKb(process.cwd(), lang);
+      // R1（用户已裁定）：存在过期引用即非 0 退出
+      if (stale > 0) {
+        process.exitCode = 1;
+      }
     });
 }
 
@@ -42,8 +50,9 @@ export function registerLintCommand(program: Command): void {
  * 校验 zh-CN.ts 与 en.ts 的键一致性。
  * 检测项：目标语言字段为空（zh-CN 表中 zh 为空 / en 表中 en 为空）、
  * 中文版独有键、英文版独有键。
+ * @returns 问题条数（> 0 供命令层设置非 0 退出码，R1）
  */
-function runLintI18n(lang: string): void {
+function runLintI18n(lang: string): number {
   // 构建 key → 目标语言字段 映射（zh 表取 zh 字段，en 表取 en 字段）
   const zhMap = new Map<string, string>();
   const enMap = new Map<string, string>();
@@ -85,7 +94,7 @@ function runLintI18n(lang: string): void {
 
   if (problems.length === 0) {
     console.log(t('lint.i18n.okTmpl', lang, { n: String(consistentCount) }));
-    return;
+    return 0;
   }
 
   console.log(t('lint.i18n.failTitleTmpl', lang, { m: String(problems.length) }));
@@ -93,18 +102,20 @@ function runLintI18n(lang: string): void {
     console.log(`  ${p}`);
   }
   console.log(t('lint.i18n.consistentTmpl', lang, { n: String(consistentCount), total: String(total) }));
+  return problems.length;
 }
 
 /**
  * 扫描 .openfeel/kb/*.md 中的文件引用，检测过期引用（引用的文件已不存在）。
  * 提取来源：markdown 链接 `[text](path)` 与行内代码引用 `` `path` ``。
+ * @returns 过期引用条数（> 0 供命令层设置非 0 退出码，R1）
  */
-function runLintKb(projectPath: string, lang: string): void {
+function runLintKb(projectPath: string, lang: string): number {
   const kbDir = resolve(projectPath, '.openfeel', 'kb');
 
   if (!existsSync(kbDir)) {
     console.log(t('lint.kb.noDir', lang));
-    return;
+    return 0;
   }
 
   const files = readdirSync(kbDir).filter((f) => f.endsWith('.md'));
@@ -135,13 +146,14 @@ function runLintKb(projectPath: string, lang: string): void {
 
   if (stale.length === 0) {
     console.log(t('lint.kb.okTmpl', lang, { n: String(checkedCount) }));
-    return;
+    return 0;
   }
 
   console.log(t('lint.kb.staleTmpl', lang, { n: String(stale.length) }));
   for (const s of stale) {
     console.log(t('lint.kb.staleItemTmpl', lang, { file: s.file, ref: s.ref, line: String(s.line) }));
   }
+  return stale.length;
 }
 
 /** 引用候选：原始文本 + 来源类型 */

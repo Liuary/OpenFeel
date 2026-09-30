@@ -1525,6 +1525,17 @@ export class FlowManager {
   }
 
   /**
+   * 获取内置默认 phase 转移表（不受项目 pipeline.yaml 影响）。
+   * 供 `flow phases` 做「运行时 vs 默认」差异报告（T19）。
+   * @returns 默认 transitions 的深拷贝
+   */
+  getDefaultTransitions(): Record<string, string[]> {
+    return Object.fromEntries(
+      Object.entries(this.getDefaultPipelineConfig().transitions).map(([k, v]) => [k, [...v]]),
+    );
+  }
+
+  /**
    * 解析当前阶段 phase：优先使用传入的 stageName，其次 current.stage，最后 fallback
    */
   private resolveCurrentPhase(stageName?: string): PipelinePhase | null {

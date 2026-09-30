@@ -12,6 +12,24 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
+// 备份失败注入开关（T48：对照 setup.test.ts 的 backupMock 范式；默认透传真实实现）
+const backupMock = vi.hoisted(() => ({ failFor: null as string | null }));
+vi.mock('../../src/core/backup.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/backup.js')>();
+  return {
+    ...actual,
+    backupFileBeforeWrite: (absPath: string, opts: Parameters<typeof actual.backupFileBeforeWrite>[1]) => {
+      if (backupMock.failFor && absPath === backupMock.failFor) {
+        throw new actual.BackupError(absPath, new Error('injected backup failure'));
+      }
+      return actual.backupFileBeforeWrite(absPath, opts);
+    },
+  };
+});
+
+import { backupLegacy } from '../../src/core/migrate.js';
+import { resetBackupSetCache } from '../../src/core/backup.js';
+
 import {
   detectLegacy, detectDeprecatedCompat, listLegacyFiles, migrateProject, rollbackMigration,
   previewRollback, cleanOldBackups, remapAssignees,
@@ -69,6 +87,7 @@ describe('migrate', () => {
     homeDir = mkdtempSync(join(tmpdir(), 'openfeel-migrate-home-'));
     mockHome.dir = homeDir;
     projects = [];
+    resetBackupSetCache();
   });
 
   afterEach(() => {
@@ -347,6 +366,53 @@ describe('migrate', () => {
       const remain = readdirSync(root).sort();
       expect(remain.length).toBe(5);
       expect(remain).not.toContain('20260101000000');
+    });
+  });
+
+  // ── 备份健壮性（stage-50 op-005 T48/T49） ──
+
+  describe('备份健壮性（T48/T49）', () => {
+    it('T48：全局 jsonc 备份失败 → fail-fast（后续步骤未执行）且 finally 回填 manifest.globalStateKeys', () => {
+      const proj = makeProject();
+      // 预置全局 jsonc（触发备份尝试）
+      mkdirSync(globalOpencodeDir(), { recursive: true });
+      writeFileSync(globalJsoncPath(), '{}\n', 'utf-8');
+      backupMock.failFor = globalJsoncPath();
+      try {
+        // fail-fast：备份失败 → BackupError 上抛（migrate 层捕获边界）
+        expect(() => migrateProject(proj)).toThrow();
+      } finally {
+        backupMock.failFor = null;
+      }
+      // finally 回填：manifest 存在且含 globalStateKeys 数组
+      const root = join(proj, '.openfeel', 'backup');
+      const dirs = readdirSync(root).filter((d) => /^(\d{14}|\d{17}(-\d+)?)$/.test(d));
+      expect(dirs.length).toBeGreaterThan(0);
+      const manifest = JSON.parse(readFileSync(join(root, dirs[0], 'manifest.json'), 'utf-8'));
+      expect(Array.isArray(manifest.globalStateKeys)).toBe(true);
+      // rollback 收敛：可回滚且不抛错
+      expect(() => rollbackMigration(proj)).not.toThrow();
+    });
+
+    it('T49：同毫秒两次 backupLegacy → 生成不同备份目录（撞名 -N，无覆盖）', () => {
+      const proj = makeProject();
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-30T12:00:00.123Z'));
+      try {
+        const report = detectLegacy(proj);
+        const r1 = backupLegacy(proj, report);
+        const r2 = backupLegacy(proj, report);
+        expect(r1.backupDir).not.toBe(r2.backupDir);
+        expect(existsSync(r1.backupDir)).toBe(true);
+        expect(existsSync(r2.backupDir)).toBe(true);
+        const name1 = r1.backupDir.split(/[\\/]/).pop()!;
+        const name2 = r2.backupDir.split(/[\\/]/).pop()!;
+        // 本地时间戳（17 位，含毫秒）；第二次撞名 → -2 后缀
+        expect(name1).toMatch(/^\d{17}$/);
+        expect(name2).toMatch(/^\d{17}-\d+$/);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

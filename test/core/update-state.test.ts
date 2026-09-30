@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { isLegacyFrameworkKey, loadUpdateState, saveUpdateState } from '../../src/core/update-state.js';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -73,5 +73,25 @@ describe('loadUpdateState 旧格式降级', () => {
     });
     const roundTrip = loadUpdateState(tmpDir);
     expect(roundTrip!.files['AGENTS.md']).toEqual({ hash: 'h', status: 'clean' });
+  });
+
+  it('T51：saveUpdateState 经项目锁路径写入（加锁 + 原子写，连续写最终一致）', () => {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    saveUpdateState(tmpDir, {
+      version: '1.0',
+      last_update: '2020-01-01T00:00:00.000Z',
+      openfeel_version: '1.0.0',
+      files: { 'AGENTS.md': { hash: 'h1', status: 'clean' } },
+    });
+    // 与 global 级一致：项目锁目录被创建（锁文件释放后留存目录）
+    expect(existsSync(join(tmpDir, '.openfeel', 'tmp', 'locks'))).toBe(true);
+
+    saveUpdateState(tmpDir, {
+      version: '1.0',
+      last_update: '2020-01-02T00:00:00.000Z',
+      openfeel_version: '1.0.0',
+      files: { 'AGENTS.md': { hash: 'h2', status: 'clean' } },
+    });
+    expect(loadUpdateState(tmpDir)!.files['AGENTS.md'].hash).toBe('h2');
   });
 });

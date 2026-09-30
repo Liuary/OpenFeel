@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 import { z } from 'zod';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { getGlobalUpdateStatePath } from './global-paths.js';
-import { withFileLock, globalLockPath } from './fs/file-lock.js';
+import { withFileLock, globalLockPath, projectLockPath } from './fs/file-lock.js';
 
 // ─── Zod Schema ──────────────────────────────────────────────────────
 
@@ -116,8 +116,10 @@ export function saveUpdateState(
   state: UpdateState,
 ): void {
   const statePath = getStatePath(projectPath);
-  // 路径不变（拆分属 stage-39）；仅替换写入机制为原子写
-  atomicWriteFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+  // T51：与 saveGlobalUpdateState 统一为「加锁 + 原子写」，消除两处并发模式不一致
+  withFileLock(projectLockPath(projectPath, 'update-state'), () => {
+    atomicWriteFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+  });
 }
 
 /**

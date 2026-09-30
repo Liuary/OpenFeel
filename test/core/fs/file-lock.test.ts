@@ -73,7 +73,7 @@ describe('file-lock', () => {
     expect(foreignStillExists).toBe(true); // 未误删他人锁
   });
 
-  it('跨进程互斥：N 个子进程各自 +1，总数不丢', () => {
+  it('跨进程互斥：N 个子进程各自 +1，总数不丢', (ctx) => {
     // REV-1801：file-lock 现依赖 ../global-paths，需按原相对布局一并转译到临时目录，
     // 否则独立子进程无法解析依赖会静默跳过跨进程断言。
     const fsDir = join(tmpDir, 'core', 'fs');
@@ -109,7 +109,8 @@ for (let i = 0; i < 25; i++) {
     const procs = [0, 1, 2, 3].map(() => spawnSync(process.execPath, [workerPath], { encoding: 'utf-8', timeout: 30000 }));
     for (const p of procs) {
       if (p.status !== 0) {
-        console.warn('[skip] 子进程不可用，跳过跨进程断言:', p.stderr);
+        // 运行期子进程不可用 → 显式 skip（可见），不再以 return 冒充 passed
+        ctx.skip();
         return;
       }
     }

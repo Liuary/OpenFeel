@@ -675,6 +675,7 @@ export const migrate: I18nDomain = {
   'rollback.dryRunTitle': { key: 'migrate.rollback.dryRunTitle', zh: '[DRY-RUN 模式] 回滚将恢复以下文件（未写盘）：', en: '' },
   'rollback.done':        { key: 'migrate.rollback.done',        zh: '✓ 回滚完成，已恢复：', en: '' },
   'rollback.failed':      { key: 'migrate.rollback.failed',      zh: '✗ 回滚失败：{message}', en: '' },
+  'rollback.wrongDir':    { key: 'migrate.rollback.wrongDir',    zh: '当前目录不是项目根（未发现迁移标记）；请在项目根执行 migrate rollback', en: '' },
   // error
   'error.pathNotExist':   { key: 'migrate.error.pathNotExist',   zh: '路径不存在：{path}', en: '' },
   'error.aborted':        { key: 'migrate.error.aborted',        zh: '迁移中止，可执行 `openfeel migrate rollback` 回滚：{message}', en: '' },

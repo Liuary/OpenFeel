@@ -13,6 +13,7 @@ import { backupFileBeforeWrite, notifyBackupIfTTY, BackupError } from './backup.
 import { mergeGlobalOpencodeJsonc } from './opencode-config.js';
 import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath } from './global-paths.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { readJsoncFile } from './fs/safe-read.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
 
 /** setup 部署结果 */
@@ -68,7 +69,11 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
       notifyBackupIfTTY(jsoncBackup.backupRel);
     }
     const merged = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
-      const current = existsSync(jsoncPath) ? readFileSync(jsoncPath, 'utf-8') : '{}\n';
+      // 安全读取（T50）：目录占位/不可读 → null，跳过合并与写入，按空配置继续
+      const current = readJsoncFile(jsoncPath);
+      if (current === null) {
+        return null;
+      }
       let out: string;
       try {
         out = mergeGlobalOpencodeJsonc(current);
@@ -80,7 +85,9 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
       atomicWriteFileSync(jsoncPath, out);
       return out;
     });
-    updateFileHash(globalState, jsoncPath, merged);
+    if (merged !== null) {
+      updateFileHash(globalState, jsoncPath, merged);
+    }
   } catch (err) {
     if (err instanceof BackupError) {
       // 备份失败（REV-011-A）：跳过全局 jsonc 写入、记 anomaly、继续其余步骤（对齐 B3 幂等语义）

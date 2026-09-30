@@ -96,4 +96,31 @@ describe('migrate 命令', () => {
     // dry-run 未恢复：framework 文件仍缺失
     expect(existsSync(join(proj, '.opencode', 'agents', 'planner.md'))).toBe(false);
   });
+
+  it('T52：非项目根执行 rollback → wrongDir 文案 + exit 1（不静默指向 cwd）', async () => {
+    const empty = mkdtempSync(join(tmpdir(), 'openfeel-cmd-empty-'));
+    const prevCwd = process.cwd();
+    let thrown: unknown;
+    const errLines: string[] = [];
+    const errSpy = vi.spyOn(console, 'error').mockImplementation((...a: unknown[]) => { errLines.push(a.map(String).join(' ')); });
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new Error(`__EXIT__${code ?? 0}`);
+    }) as never);
+    process.chdir(empty);
+    try {
+      const cmd = makeCli();
+      try {
+        await cmd.parseAsync(['node', 'openfeel', 'migrate', 'rollback']);
+      } catch (err) {
+        thrown = err;
+      }
+    } finally {
+      process.chdir(prevCwd);
+      errSpy.mockRestore();
+      exitSpy.mockRestore();
+      rmSync(empty, { recursive: true, force: true });
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__1');
+    expect(errLines.join('\n')).toContain(t('migrate.rollback.wrongDir', 'zh-CN'));
+  });
 });

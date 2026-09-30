@@ -18,6 +18,7 @@ import { withFileLock, globalLockPath } from './fs/file-lock.js';
 import { detectFileType, normalize, splitFrontmatter, parseRegion, wrapRegion, replaceRegion, mergeFrontmatter, serializeFrontmatter } from './managed-region.js';
 import { appendUpdateInfo } from './update-infos.js';
 import { backupFileBeforeWrite, BackupError, notifyBackupIfTTY, type BackupCommand } from './backup.js';
+import { readJsoncFile } from './fs/safe-read.js';
 
 // 新增：update_state.json hash 比对与冲突检测（项目 state + 全局 state）
 import {
@@ -1654,7 +1655,11 @@ export function updateProject(
     }
     // REV-1805：read-merge-write 全部置于锁内，消除与 model-config 锁内读写的 TOCTOU 竞态
     const globalJsoncNew = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
-      const current = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';
+      // 安全读取（T50）：目录占位/不可读 → null，跳过合并与写入，按空配置继续
+      const current = readJsoncFile(globalJsoncPath);
+      if (current === null) {
+        return null;
+      }
       let merged: string;
       // 合并可能因块注释 parse 失败抛异常（parseJsonc 边界）：降级为「跳过合并、保留原文件」并告警
       try {
@@ -1666,7 +1671,9 @@ export function updateProject(
       atomicWriteFileSync(globalJsoncPath, merged);
       return merged;
     });
-    updateFileHash(newGlobalState, globalJsoncPath, globalJsoncNew);
+    if (globalJsoncNew !== null) {
+      updateFileHash(newGlobalState, globalJsoncPath, globalJsoncNew);
+    }
   } catch (err) {
     if (err instanceof BackupError) {
       // 备份失败（REV-011-A）：跳过全局 jsonc 写入、记 anomaly、继续其余步骤（对齐 B3 幂等语义）

@@ -11,13 +11,11 @@ import { tmpdir } from 'node:os';
 
 const REPO_ROOT = process.cwd();
 const BIN_PATH = join(REPO_ROOT, 'bin', 'openfeel.js');
+/** 依赖构建产物 dist/cli/index.js（T44 同族：skipIf 显式 skip，不用「警告+return」掩盖） */
+const HAS_DIST_CLI = existsSync(join(REPO_ROOT, 'dist', 'cli', 'index.js'));
 
 describe('REPL smoke（stage-50 op-004 T40）', () => {
-  it('错误命令后 REPL 不中途退出；exit 输出再见；help 列表不含不存在命令', () => {
-    if (!existsSync(join(REPO_ROOT, 'dist', 'cli', 'index.js'))) {
-      console.warn('[skip] dist/cli/index.js 不存在（需先 npm run build），跳过 REPL smoke');
-      return;
-    }
+  it.skipIf(!HAS_DIST_CLI)('错误命令后 REPL 不中途退出；exit 输出再见；help 列表不含不存在命令', () => {
     const home = mkdtempSync(join(tmpdir(), 'openfeel-repl-home-'));
     try {
       const r = spawnSync(process.execPath, [BIN_PATH], {

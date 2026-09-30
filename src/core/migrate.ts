@@ -22,6 +22,7 @@ import { normalizeAgentName } from './flow-manager.js';
 import { deployGlobalAsset, SKILL_DEFINITIONS } from './update.js';
 import { appendUpdateInfo } from './update-infos.js';
 import { backupFileBeforeWrite, notifyBackupIfTTY } from './backup.js';
+import { readJsoncFile } from './fs/safe-read.js';
 
 // ─── 类型 ─────────────────────────────────────────────────────────
 
@@ -88,6 +89,31 @@ export interface SplitStateResult {
 
 /** 备份目录相对项目根的前缀 */
 const BACKUP_DIR = '.openfeel/backup';
+
+/** 备份目录名匹配：兼容历史 14 位（yyyyMMddHHmmss）与新版 17 位（+毫秒）及撞名后缀 -N（T49） */
+const BACKUP_TS_RE = /^(\d{14}|\d{17}(-\d+)?)$/;
+
+/** 生成本地时区时间戳 yyyyMMddHHmmssSSS（对齐 backup.ts 的本地时区 + 毫秒策略，T49） */
+function legacyStamp(): string {
+  const d = new Date();
+  const p = (n: number, w = 2) => String(n).padStart(w, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}${p(d.getMilliseconds(), 3)}`;
+}
+
+/** 计算并创建本次备份目录（撞名时递增 -N，绝不覆盖前一次备份，T49） */
+function resolveLegacyBackupDir(projectPath: string): string {
+  const root = resolve(projectPath, BACKUP_DIR);
+  const base = legacyStamp();
+  let candidate = base;
+  let n = 1;
+  while (existsSync(join(root, candidate))) {
+    n += 1;
+    candidate = `${base}-${n}`;
+  }
+  const dir = join(root, candidate);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
 
 // ─── 检测 ─────────────────────────────────────────────────────────
 // 注：isLegacyFrameworkKey（旧框架 key 识别）由 op-002 在 update-state.ts 提供；
@@ -204,9 +230,7 @@ export function backupLegacy(
   report: LegacyReport,
   opts?: { remapAssignee?: boolean },
 ): { backupDir: string; manifest: Manifest } {
-  const ts = new Date().toISOString().replace(/[-:T]/g, '').replace(/\..*$/, '').replace(/Z$/, '');
-  const backupDir = resolve(projectPath, BACKUP_DIR, ts);
-  mkdirSync(backupDir, { recursive: true });
+  const backupDir = resolveLegacyBackupDir(projectPath);
 
   const { framework } = listLegacyFiles(projectPath);
   const entries: ManifestEntry[] = [];
@@ -422,7 +446,7 @@ export function remapAssignees(projectPath: string, dryRun: boolean): { changes:
 export function cleanOldBackups(projectPath: string, keep: number = 5): string[] {
   const root = resolve(projectPath, BACKUP_DIR);
   if (!existsSync(root)) return [];
-  const dirs = readdirSync(root).filter((d) => /^\d{14}$/.test(d)).sort();
+  const dirs = readdirSync(root).filter((d) => BACKUP_TS_RE.test(d)).sort();
   const removed: string[] = [];
   while (dirs.length > keep) {
     const oldest = dirs.shift()!;
@@ -513,23 +537,27 @@ export function migrateProject(
     }
     // 全局 opencode.jsonc 深度合并（REV-1306：复用 update.ts 的 try-catch 降级，parse 失败保留原文件+告警）
     const globalJsoncPath = getGlobalOpencodeJsoncPath();
-    let merged: string;
-    try {
-      merged = mergeGlobalOpencodeJsonc(existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n');
-    } catch (err) {
-      console.warn(`[migrate] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
-      merged = existsSync(globalJsoncPath) ? readFileSync(globalJsoncPath, 'utf-8') : '{}\n';
+    // 安全读取（T50）：目录占位/不可读 → null，跳过 jsonc 步骤按空配置继续，避免 EISDIR 二次抛错
+    const jsoncRaw = readJsoncFile(globalJsoncPath);
+    if (jsoncRaw !== null) {
+      let merged: string;
+      try {
+        merged = mergeGlobalOpencodeJsonc(jsoncRaw);
+      } catch (err) {
+        console.warn(`[migrate] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
+        merged = jsoncRaw;
+      }
+      // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
+      const globalJsoncBackup = backupFileBeforeWrite(globalJsoncPath, { command: 'migrate' });
+      if (globalJsoncBackup) {
+        appendUpdateInfo('backed', { absolutePath: globalJsoncPath, backupRel: globalJsoncBackup.backupRel, command: 'migrate' });
+        notifyBackupIfTTY(globalJsoncBackup.backupRel);
+      }
+      withFileLock(globalLockPath('global-opencode-jsonc'), () => atomicWriteFileSync(globalJsoncPath, merged));
+      updateFileHash(globalState, globalJsoncPath, merged);
+      globalStateKeys.push(globalJsoncPath);
     }
-    // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
-    const globalJsoncBackup = backupFileBeforeWrite(globalJsoncPath, { command: 'migrate' });
-    if (globalJsoncBackup) {
-      appendUpdateInfo('backed', { absolutePath: globalJsoncPath, backupRel: globalJsoncBackup.backupRel, command: 'migrate' });
-      notifyBackupIfTTY(globalJsoncBackup.backupRel);
-    }
-    withFileLock(globalLockPath('global-opencode-jsonc'), () => atomicWriteFileSync(globalJsoncPath, merged));
-    updateFileHash(globalState, globalJsoncPath, merged);
     saveGlobalUpdateState(globalState);
-    globalStateKeys.push(globalJsoncPath);
 
     // 3. state 拆分/重键（REV-1402：复用上面已加载的 globalState，避免重复 IO）
     stateSplit = splitUpdateState(projectPath, lang, globalState);
@@ -605,7 +633,7 @@ export function rollbackMigration(projectPath: string, backupTs?: string): { res
   if (backupTs) {
     backupDir = join(root, backupTs);
   } else {
-    const dirs = readdirSync(root).filter((d) => /^\d{14}$/.test(d)).sort();
+    const dirs = readdirSync(root).filter((d) => BACKUP_TS_RE.test(d)).sort();
     if (dirs.length === 0) throw new Error('无可回滚的备份');
     backupDir = join(root, dirs[dirs.length - 1]);
   }
@@ -645,7 +673,7 @@ export function previewRollback(projectPath: string, backupTs?: string): { op: '
   if (backupTs) {
     backupDir = join(root, backupTs);
   } else {
-    const dirs = readdirSync(root).filter((d) => /^\d{14}$/.test(d)).sort();
+    const dirs = readdirSync(root).filter((d) => BACKUP_TS_RE.test(d)).sort();
     if (dirs.length === 0) throw new Error('无可回滚的备份');
     backupDir = join(root, dirs[dirs.length - 1]);
   }

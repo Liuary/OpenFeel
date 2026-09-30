@@ -39,6 +39,11 @@ export function registerMigrateCommand(program: Command): void {
     .action((options: { dryRun?: boolean }, command: Command) => {
       const targetPath = resolve(process.cwd());
       const lang = getCliLang(targetPath);
+      // T52：非项目根（无迁移备份标记）时给出明确错误，避免静默指向 cwd
+      if (!existsSync(resolve(targetPath, '.openfeel', 'backup'))) {
+        console.error(t('migrate.rollback.wrongDir', lang));
+        process.exit(1);
+      }
       // commander 在「可选位置参数 + 子命令」下会把 --dry-run 挂到父 migrate 命令，
       // 故回退读取父命令 opts（否则 dry-run 失效）
       const dryRun = options?.dryRun ?? (command?.parent?.opts()?.dryRun as boolean | undefined) ?? false;

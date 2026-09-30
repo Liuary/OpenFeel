@@ -2,7 +2,18 @@
  * i18n 引擎快速验证（用于 op-002 自测）
  * op-006 会创建正式测试文件替代本文件
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+// mock homedir：隔离 getCliLang 对真实 ~/.openfeel/config.json 的读取（T43）
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
+
 import { t, getCliLang, VALID_LANGS } from '../../src/core/i18n.js';
 
 describe('t() - 基础查表', () => {
@@ -56,9 +67,38 @@ describe('t() - 变量插值', () => {
   });
 });
 
-describe('getCliLang()', () => {
-  it('无配置时返回 zh-CN', () => {
-    expect(getCliLang('.')).toBe('zh-CN');
+describe('getCliLang()（T43：隔离，不依赖仓库/真实 home）', () => {
+  let tmpDir: string;
+  let tmpHome: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-i18n-proj-'));
+    tmpHome = mkdtempSync(join(tmpdir(), 'openfeel-i18n-home-'));
+    mockHome.dir = tmpHome;
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(tmpHome, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  it('无项目配置且无全局配置时返回 zh-CN', () => {
+    expect(getCliLang(tmpDir)).toBe('zh-CN');
+  });
+
+  it('项目 .info.json lang=en 时返回 en', () => {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(join(tmpDir, '.openfeel', '.info.json'), JSON.stringify({ user: 't', lang: 'en' }), 'utf-8');
+    expect(getCliLang(tmpDir)).toBe('en');
+  });
+
+  it('项目 .info.json 优先于全局配置（项目 zh-CN + 全局 en → zh-CN）', () => {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(join(tmpDir, '.openfeel', '.info.json'), JSON.stringify({ user: 't', lang: 'zh-CN' }), 'utf-8');
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(join(mockHome.dir, '.openfeel', 'config.json'), JSON.stringify({ lang: 'en', projects: {} }), 'utf-8');
+    expect(getCliLang(tmpDir)).toBe('zh-CN');
   });
 });
 

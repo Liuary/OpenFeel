@@ -70,7 +70,7 @@ describe('sequence', () => {
     expect(r.fileName).toBe('op-012.md');
   });
 
-  it('并发子进程各自取得不同序号', () => {
+  it('并发子进程各自取得不同序号', (ctx) => {
     const modulePath = join(tmpDir, 'sequence.mjs');
     const src = readFileSync(join(process.cwd(), 'src', 'core', 'fs', 'sequence.ts'), 'utf-8');
     const out = ts.transpileModule(src, {
@@ -97,7 +97,8 @@ for (let i = 0; i < 20; i++) {
     const procs = [0, 1, 2, 3].map(() => spawnSync(process.execPath, [workerPath], { encoding: 'utf-8', timeout: 30000 }));
     for (const p of procs) {
       if (p.status !== 0) {
-        console.warn('[skip] 子进程不可用，跳过并发断言:', p.stderr);
+        // 运行期子进程不可用 → 显式 skip（可见），不再以 return 冒充 passed
+        ctx.skip();
         return;
       }
     }

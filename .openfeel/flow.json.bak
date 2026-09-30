@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-30T14:36:56.775Z",
-    "revision": 313
+    "updated": "2026-09-30T15:17:42.164Z",
+    "revision": 314
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-50",
-      "op": "op-004"
+      "op": "op-005"
     },
     "retry": 0
   },
@@ -1600,9 +1600,9 @@
         },
         "op-004": {
           "title": "批次D i18n与命令体验（T38-T42）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -8438,6 +8438,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-50.op-002",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-30T15:17:42.145Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-50.op-004",
         "attempts": 1
       }
     }

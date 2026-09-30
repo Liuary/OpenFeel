@@ -240,4 +240,27 @@ describe('update-infos', () => {
     appendUpdateInfo('backed', { absolutePath: '/x.md', backupRel: 'r2', command: 'update' });
     expect(loadUpdateInfos()).toHaveLength(2);
   });
+
+  it('T47：anomaly 同路径二次 append 跳过（不重复累积，REV-1103）', () => {
+    appendUpdateInfo('anomaly', { absolutePath: '/same.md' });
+    appendUpdateInfo('anomaly', { absolutePath: '/same.md' });
+    expect(loadUpdateInfos()).toHaveLength(1);
+  });
+
+  it('T47：anomaly 被 resolved 后可再次记录（不永久屏蔽）', () => {
+    appendUpdateInfo('anomaly', { absolutePath: '/again.md' });
+    resolveUpdateInfo({ absolutePath: '/again.md' });
+    appendUpdateInfo('anomaly', { absolutePath: '/again.md' });
+    // 旧条已 resolved 不再算重复 → 新增一条，共 2 条
+    expect(loadUpdateInfos().filter((e) => e.absolutePath === '/again.md')).toHaveLength(2);
+  });
+
+  it('T47：anomaly 项目二元组同路径二次 append 跳过；不同相对路径各自记录', () => {
+    const projectRoot = join(mockHome.dir, 'p');
+    appendUpdateInfo('anomaly', { projectRoot, relativePath: 'a.md' });
+    appendUpdateInfo('anomaly', { projectRoot, relativePath: 'a.md' });
+    expect(loadUpdateInfos()).toHaveLength(1);
+    appendUpdateInfo('anomaly', { projectRoot, relativePath: 'b.md' });
+    expect(loadUpdateInfos()).toHaveLength(2);
+  });
 });

@@ -31,6 +31,9 @@ function backupRoot(): string {
   return join(mockHome.dir, '.openfeel', 'backup');
 }
 
+/** 并发子进程用例依赖构建产物 dist/core/backup.js（T44：以 skipIf 显式 skip，不用「警告+return」掩盖未执行） */
+const HAS_DIST_BACKUP = existsSync(join(process.cwd(), 'dist', 'core', 'backup.js'));
+
 /** 全局 AGENTS.md 源路径（基于 mock home） */
 function globalAgentsMd(): string {
   return join(mockHome.dir, '.config', 'opencode', 'AGENTS.md');
@@ -163,12 +166,8 @@ describe('backupFileBeforeWrite', () => {
     }
   });
 
-  it('并发：两进程同时备份同一源 → 各自独立 ts 目录，manifest 均完整（REV-005）', () => {
+  it.skipIf(!HAS_DIST_BACKUP)('并发：两进程同时备份同一源 → 各自独立 ts 目录，manifest 均完整（REV-005）', (ctx) => {
     const distBackup = join(process.cwd(), 'dist', 'core', 'backup.js');
-    if (!existsSync(distBackup)) {
-      console.warn('[skip] dist/core/backup.js 不存在（需先 npm run build），跳过并发断言');
-      return;
-    }
     const src = globalAgentsMd();
     mkdirSync(join(homeDir, '.config', 'opencode'), { recursive: true });
     writeFileSync(src, 'concurrent', 'utf-8');
@@ -189,7 +188,8 @@ describe('backupFileBeforeWrite', () => {
     );
     for (const p of procs) {
       if (p.status !== 0) {
-        console.warn('[skip] 子进程不可用，跳过并发断言:', p.stderr);
+        // 运行期子进程不可用 → 显式标记 skipped（可见），不再以 return 冒充 passed
+        ctx.skip();
         return;
       }
     }

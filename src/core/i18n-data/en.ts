@@ -640,6 +640,7 @@ export const migrate: I18nDomain = {
   'rollback.dryRunTitle': { key: 'migrate.rollback.dryRunTitle', zh: '', en: '[DRY-RUN Mode] Rollback will restore the following files (not written):' },
   'rollback.done':        { key: 'migrate.rollback.done',        zh: '', en: '✓ Rollback complete, restored:' },
   'rollback.failed':      { key: 'migrate.rollback.failed',      zh: '', en: '✗ Rollback failed: {message}' },
+  'rollback.wrongDir':    { key: 'migrate.rollback.wrongDir',    zh: '', en: "Not a project root (no migration marker found); run 'migrate rollback' in the project root" },
   // error
   'error.pathNotExist':   { key: 'migrate.error.pathNotExist',   zh: '', en: 'Path does not exist: {path}' },
   'error.aborted':        { key: 'migrate.error.aborted',        zh: '', en: 'Migration aborted; run `openfeel migrate rollback` to roll back: {message}' },

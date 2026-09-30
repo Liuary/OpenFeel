@@ -9,7 +9,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { registerModelCommand } from '../../src/commands/model.js';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -89,10 +89,24 @@ describe('openfeel model 命令', () => {
     expect(lines.length).toBeGreaterThanOrEqual(9);
   });
 
-  it('get 指定 scope 仅展示该 scope 值', () => {
-    const r = runModel(['get', 'openfeel-executor', '--scope', 'project']);
-    expect(r.exitCode).toBe(0);
-    expect(r.stdout).toBeTruthy();
+  it('get 指定 scope 仅展示该 scope 值（T45：强断言 agent 名 + model 值，cwd 隔离）', () => {
+    const proj = mkdtempSync(join(tmpdir(), 'model-cmd-get-'));
+    const prevCwd = process.cwd();
+    process.chdir(proj);
+    try {
+      writeFileSync(join(proj, 'opencode.jsonc'), JSON.stringify({
+        agent: { 'openfeel-executor': { model: 'deepseek/deepseek-flash' } },
+      }, null, 2) + '\n', 'utf-8');
+      const r = runModel(['get', 'openfeel-executor', '--scope', 'project']);
+      expect(r.exitCode).toBe(0);
+      // 强断言：精确到 profile 值 + scope 标签（get 仅输出 scope: value 形态）
+      expect(r.stdout).toContain('project');
+      expect(r.stdout).toContain('deepseek/deepseek-flash');
+      expect(r.stdout).not.toContain('undefined');
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(proj, { recursive: true, force: true });
+    }
   });
 
   it('T41：--build 的 execSync 带 timeout；超时（ETIMEDOUT）→ 错误文案 + exitCode 1', () => {

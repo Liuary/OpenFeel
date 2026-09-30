@@ -14,6 +14,7 @@ import { resolve, relative } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { reserveSequence } from './fs/sequence.js';
+import { t, getCliLang } from './i18n.js';
 
 /** 里程碑事件 */
 export interface MilestoneEvent {
@@ -166,7 +167,11 @@ export class PublicLogger {
     }
   }
 
-  /** 确保年/月/日目录存在，返回日目录路径 */
+  /**
+   * 确保年/月/日目录存在，返回日目录路径。
+   * 布局约定（N10-1 / A7）：**未来写入唯一约定 = 嵌套 `log/{yyyy}/{MM}/{dd}/`**；
+   * 历史扁平目录 `log/{yyyy-mm-dd}/` 不迁移、不删除，仅由根索引反映其共存（见 updateRootIndex）。
+   */
   private ensureDateDir(now: Date): string {
     const yyyy = now.getFullYear().toString();
     const MM = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -271,36 +276,64 @@ export class PublicLogger {
     atomicWriteFileSync(indexPath, content);
   }
 
-  /** 更新根级 index.md（日期索引） */
+  /**
+   * 更新根级 index.md（日期索引）。
+   * N10-2（A7）：索引**同时反映**两套布局共存——
+   * - 嵌套 `log/{yyyy}/{MM}/{dd}/day_index.md`（当日条目，既有行为）
+   * - 历史扁平 `log/{yyyy-mm-dd}/`（仅读扫描，携带布局标注；无 day_index.md 时仍登记兜底条目）
+   * **不迁移、不删除、不改写**任何历史目录；仅为索引可检索性服务。
+   */
   private updateRootIndex(now: Date, desc: string): void {
-    const indexPath = resolve(this.projectPath, '.openfeel', 'log', 'index.md');
+    const logRoot = resolve(this.projectPath, '.openfeel', 'log');
+    const indexPath = resolve(logRoot, 'index.md');
+    const lang = getCliLang(this.projectPath);
     const dateStr = formatDate(now);
     const yyyy = now.getFullYear().toString();
     const MM = (now.getMonth() + 1).toString().padStart(2, '0');
     const dd = now.getDate().toString().padStart(2, '0');
     const dayRelPath = `${yyyy}/${MM}/${dd}/day_index.md`;
-    const entry = `| [${dateStr}](${dayRelPath}) | ${desc} |`;
+
+    const nestedTag = t('flow.log.layoutNestedTag', lang);
+    const legacyTag = t('flow.log.layoutLegacyTag', lang);
+    const entries: string[] = [`| [${dateStr}](${dayRelPath}) | ${desc} ${nestedTag} |`];
+
+    // 历史扁平目录（log/{yyyy-mm-dd}/）：只读扫描（不递归进入子目录），不迁移、不补建
+    try {
+      for (const name of readdirSync(logRoot)) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) {
+          continue;
+        }
+        if (existsSync(resolve(logRoot, name, 'day_index.md'))) {
+          entries.push(`| [${name}](${name}/day_index.md) | ${t('flow.log.legacyDirNoteTmpl', lang, { date: name })} ${legacyTag} |`);
+        } else {
+          entries.push(`| ${name} | ${t('flow.log.legacyDirTmpl', lang, { date: name })} ${legacyTag} |`);
+        }
+      }
+    } catch {
+      // logRoot 不可读（防御）：忽略历史扫描
+    }
 
     if (!existsSync(indexPath)) {
-      const content = `# 日志索引\n\n## 日期索引\n\n| 日期 | 摘要 |\n|------|------|\n${entry}\n`;
-      atomicWriteFileSync(indexPath, content);
+      const header = `# 日志索引\n\n## 日期索引\n\n| 日期 | 摘要 |\n|------|------|\n`;
+      atomicWriteFileSync(indexPath, header + entries.join('\n') + '\n');
       return;
     }
 
     let content = readFileSync(indexPath, 'utf-8');
-    // 检查该日期是否已存在，存在则更新摘要；否则插入新行
-    if (content.includes(`[${dateStr}]`)) {
-      // 日期已存在，不重复添加
+    // 逐条判重（嵌套与历史条目分别幂等），仅追加缺失项
+    const missing = entries.filter((e) => !content.includes(e));
+    if (missing.length === 0) {
       return;
     }
 
-    // 在表格末尾追加（在下一个 ## 或文件末尾之前）
+    // 在既有日期表末尾追加（沿用原插入逻辑）；无表格时追加到文件末尾
     const tableEndMatch = content.match(/\| [^\n]+\n(?=\n|##|$)/);
+    const block = missing.join('\n') + '\n';
     if (tableEndMatch) {
       const insertPos = content.indexOf(tableEndMatch[0]) + tableEndMatch[0].length;
-      content = content.slice(0, insertPos) + entry + '\n' + content.slice(insertPos);
+      content = content.slice(0, insertPos) + block + content.slice(insertPos);
     } else {
-      content = content.replace(/\s*$/, '') + '\n' + entry + '\n';
+      content = content.replace(/\s*$/, '') + '\n' + block;
     }
     atomicWriteFileSync(indexPath, content);
   }

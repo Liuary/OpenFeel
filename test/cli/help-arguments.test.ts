@@ -17,6 +17,32 @@ vi.mock('node:os', async (importOriginal) => {
 import { applyHelpI18n } from '../../src/cli/index.js';
 import { registerFlowCommand } from '../../src/commands/flow.js';
 import { registerViewCommand } from '../../src/commands/view.js';
+import { registerArchiveCommand } from '../../src/commands/archive.js';
+import { registerInstructionsCommand } from '../../src/commands/instructions.js';
+import { registerRoadmapCommand } from '../../src/commands/roadmap.js';
+
+/** 从命令树按路径取命令 */
+function findCmd(program: Command, path: string[]): Command {
+  let cur: Command | undefined = program;
+  for (const p of path) {
+    cur = cur.commands.find((c) => c.name() === p);
+    if (!cur) {
+      throw new Error(`missing command: ${path.join(' ')}`);
+    }
+  }
+  return cur;
+}
+
+/** 断言若干 (命令路径, arg.name()) 在 en 下 argument 描述无 CJK */
+function expectArgsNoCjk(program: Command, checks: Array<[string[], string]>): void {
+  for (const [path, argName] of checks) {
+    const c = findCmd(program, path);
+    const arg = c.registeredArguments.find((a) => a.name() === argName);
+    expect(arg, `${path.join(' ')} arg ${argName}`).toBeDefined();
+    expect(arg!.description, `${path.join(' ')} arg ${argName}`).toBeTruthy();
+    expect(arg!.description, `${path.join(' ')} arg ${argName}`).not.toMatch(/[\u4e00-\u9fff]/);
+  }
+}
 
 describe('BUG-004 / N2-5：en 模式 argument 描述无 CJK', () => {
   let tmpDir: string;
@@ -86,5 +112,21 @@ describe('BUG-004 / N2-5：en 模式 argument 描述无 CJK', () => {
     view!.outputHelp();
     const out = writeSpy.mock.calls.map((c) => String(c[0])).join('');
     expect(out).toContain('openfeel flow review add|update|remove');
+  });
+
+  it('N11b：archive/instructions/roadmap 的 argument 在 en 下无 CJK（op-008）', () => {
+    const program = new Command();
+    program.name('openfeel').description('x');
+    registerArchiveCommand(program);
+    registerInstructionsCommand(program);
+    registerRoadmapCommand(program);
+    applyHelpI18n(program);
+
+    expectArgsNoCjk(program, [
+      [['archive'], 'stage'],
+      [['instructions'], 'artifactId'],
+      [['roadmap', 'create'], 'version'],
+      [['roadmap', 'show'], 'version'],
+    ]);
   });
 });

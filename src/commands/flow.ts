@@ -565,7 +565,8 @@ export function registerFlowCommand(program: Command): void {
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
     .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')
-    .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean }) => {
+    .option('--quiet', '静默非错误输出（成功确认与 Git 警告均不打印）')
+    .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean; quiet?: boolean }) => {
       const lang = getCliLang(process.cwd());
       // 自定义 --stage 必选校验（提供中文错误提示）
       if (!options.stage) {
@@ -708,26 +709,31 @@ export function registerFlowCommand(program: Command): void {
       if (archived) {
         mgr.autoCommitOnDone(options.stage);
       }
-      console.log(t('flow.advance.okTmpl', lang, { stage: options.stage || '', to: options.to }));
-
-      // git 脏区检查（安全网）：openfeel-executor 未提交时输出醒目警告
-      try {
-        const gitStatus = execSync('git status --porcelain', {
-          cwd: process.cwd(),
-          encoding: 'utf-8',
-          timeout: 5000,
-        }).trim();
-        if (gitStatus) {
-          console.warn('[!] ╔════════════════════════════════════════╗');
-          console.warn('[!] ║  ⚠ Git 脏区警告：存在未提交的变更     ║');
-          console.warn('[!] ║  请确认 Executor 已完成 git commit    ║');
-          console.warn('[!] ╚════════════════════════════════════════╝');
-        }
-      } catch {
-        // git 不可用（无 .git 目录或 git 未安装）时静默跳过
+      // N11-1（A8）：--quiet 完全静默（成功确认行亦不打印）；错误路径不受影响（stderr + exit 1）
+      if (!options.quiet) {
+        console.log(t('flow.advance.okTmpl', lang, { stage: options.stage || '', to: options.to }));
       }
 
-      if (options.op) {
+      // git 脏区检查（安全网）：默认仅 --to done 时提示；--quiet / 非 done → 完全跳过（含跳过 git 子进程）
+      if (!options.quiet && (options.to === 'done' || archived)) {
+        try {
+          const gitStatus = execSync('git status --porcelain', {
+            cwd: process.cwd(),
+            encoding: 'utf-8',
+            timeout: 5000,
+          }).trim();
+          if (gitStatus) {
+            console.warn('[!] ╔════════════════════════════════════════╗');
+            console.warn('[!] ║  ⚠ Git 脏区警告：存在未提交的变更     ║');
+            console.warn('[!] ║  请确认 Executor 已完成 git commit    ║');
+            console.warn('[!] ╚════════════════════════════════════════╝');
+          }
+        } catch {
+          // git 不可用（无 .git 目录或 git 未安装）时静默跳过
+        }
+      }
+
+      if (options.op && !options.quiet) {
         console.log(t('flow.advance.opLabelTmpl', lang, { op: options.op }));
       }
     });

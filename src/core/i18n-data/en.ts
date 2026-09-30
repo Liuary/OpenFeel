@@ -144,6 +144,10 @@ export const flow: I18nDomain = {
   'log.noLogs':                 { key: 'flow.log.noLogs',                 zh: '', en: 'No operation logs' },
   'log.recentTitleTmpl':        { key: 'flow.log.recentTitleTmpl',        zh: '', en: 'Recent {n} operation logs' },
   'log.detail':                 { key: 'flow.log.detail',                 zh: '', en: 'Details' },
+  'log.layoutNestedTag':        { key: 'flow.log.layoutNestedTag',        zh: '', en: '(nested)' },
+  'log.layoutLegacyTag':        { key: 'flow.log.layoutLegacyTag',        zh: '', en: '(legacy flat)' },
+  'log.legacyDirTmpl':          { key: 'flow.log.legacyDirTmpl',          zh: '', en: 'Legacy flat directory ({date}): no day_index.md' },
+  'log.legacyDirNoteTmpl':      { key: 'flow.log.legacyDirNoteTmpl',      zh: '', en: 'Legacy flat directory ({date})' },
 
   'checkpoint.listTitle':           { key: 'flow.checkpoint.listTitle',           zh: '', en: 'Checkpoint Snapshots' },
   'checkpoint.noSnapshots':         { key: 'flow.checkpoint.noSnapshots',         zh: '', en: '(No checkpoint snapshots yet)' },
@@ -500,6 +504,7 @@ export const help: I18nDomain = {
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '', en: 'Stage ID (e.g. stage-03), required' },
   'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '', en: 'Force execution (skip invalid phase check and phase jump check, but not REV block check)' },
   'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '', en: 'Validate only without modifying (preview output). When combined with --force, skips validation but still does not modify' },
+  'flow.advance.quiet':    { key: 'help.flow.advance.quiet',    zh: '', en: 'Silence non-error output (no success confirmation or Git warning)' },
   'flow.attempt':          { key: 'help.flow.attempt',          zh: '', en: 'Record operation execution result' },
   'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },
   'flow.attempt.result':   { key: 'help.flow.attempt.result',   zh: '', en: 'Execution result (pass or fail)' },
@@ -599,12 +604,16 @@ export const help: I18nDomain = {
   'knowledge.index':       { key: 'help.knowledge.index',       zh: '', en: 'Show knowledge base index overview' },
 
   'archive':               { key: 'help.archive',               zh: '', en: 'Archive stage (summarize output, generate summary, extract knowledge)' },
+  'archive.argstage':      { key: 'help.archive.argstage',      zh: '', en: 'Stage name (e.g. stage-06)' },
 
   'roadmap':               { key: 'help.roadmap',               zh: '', en: 'Roadmap management' },
   'roadmap.create':        { key: 'help.roadmap.create',        zh: '', en: 'Create roadmap (version number like 1.0, 2.0)' },
+  'roadmap.create.argversion': { key: 'help.roadmap.create.argversion', zh: '', en: 'Version number' },
   'roadmap.show':          { key: 'help.roadmap.show',          zh: '', en: 'Show roadmap content (list all if no version)' },
+  'roadmap.show.argversion': { key: 'help.roadmap.show.argversion', zh: '', en: 'Version number (optional)' },
 
   'instructions':          { key: 'help.instructions',          zh: '', en: 'Generate structured instructions (XML or JSON) for an artifact' },
+  'instructions.argartifactId': { key: 'help.instructions.argartifactId', zh: '', en: 'Target artifact ID (e.g. proposal, implementation)' },
   'instructions.change':   { key: 'help.instructions.change',   zh: '', en: 'Change name (e.g. feat-login)' },
   'instructions.json':     { key: 'help.instructions.json',     zh: '', en: 'Output JSON format instead of XML' },
   'instructions.schema':   { key: 'help.instructions.schema',   zh: '', en: 'Schema name (default spec-driven)' },

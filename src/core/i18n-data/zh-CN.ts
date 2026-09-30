@@ -154,6 +154,10 @@ export const flow: I18nDomain = {
   'log.noLogs':                 { key: 'flow.log.noLogs',                 zh: '暂无操作日志',                            en: '' },
   'log.recentTitleTmpl':        { key: 'flow.log.recentTitleTmpl',        zh: '最近 {n} 条操作日志',                     en: '' },
   'log.detail':                 { key: 'flow.log.detail',                 zh: '详情',                                   en: '' },
+  'log.layoutNestedTag':        { key: 'flow.log.layoutNestedTag',        zh: '（嵌套）',                               en: '' },
+  'log.layoutLegacyTag':        { key: 'flow.log.layoutLegacyTag',        zh: '（历史扁平）',                           en: '' },
+  'log.legacyDirTmpl':          { key: 'flow.log.legacyDirTmpl',          zh: '历史扁平目录（{date}）：无 day_index.md', en: '' },
+  'log.legacyDirNoteTmpl':      { key: 'flow.log.legacyDirNoteTmpl',      zh: '历史扁平目录（{date}）',                 en: '' },
 
   // flow checkpoint
   'checkpoint.listTitle':           { key: 'flow.checkpoint.listTitle',           zh: 'Checkpoint 快照',                        en: '' },
@@ -525,6 +529,7 @@ export const help: I18nDomain = {
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '阶段 ID（如 stage-03），必须指定', en: '' },
   'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）', en: '' },
   'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改', en: '' },
+  'flow.advance.quiet':    { key: 'help.flow.advance.quiet',    zh: '静默非错误输出（成功确认与 Git 警告均不打印）', en: '' },
   'flow.attempt':          { key: 'help.flow.attempt',          zh: '记录操作执行结果', en: '' },
   'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '操作 ID（如 stage-01.op-001）', en: '' },
   'flow.attempt.result':   { key: 'help.flow.attempt.result',   zh: '执行结果（pass 或 fail）', en: '' },
@@ -631,14 +636,18 @@ export const help: I18nDomain = {
 
   // archive
   'archive':               { key: 'help.archive',               zh: '归档指定阶段（汇总产出、生成摘要、提取知识）', en: '' },
+  'archive.argstage':      { key: 'help.archive.argstage',      zh: '阶段名称（如 stage-06）', en: '' },
 
   // roadmap
   'roadmap':               { key: 'help.roadmap',               zh: '分期大纲管理', en: '' },
   'roadmap.create':        { key: 'help.roadmap.create',        zh: '创建分期大纲（版本号如 1.0、2.0）', en: '' },
+  'roadmap.create.argversion': { key: 'help.roadmap.create.argversion', zh: '版本号', en: '' },
   'roadmap.show':          { key: 'help.roadmap.show',          zh: '显示分期大纲内容（不传版本则列出所有）', en: '' },
+  'roadmap.show.argversion': { key: 'help.roadmap.show.argversion', zh: '版本号（可选）', en: '' },
 
   // instructions
   'instructions':          { key: 'help.instructions',          zh: '为指定 artifact 生成结构化指令（XML 或 JSON）', en: '' },
+  'instructions.argartifactId': { key: 'help.instructions.argartifactId', zh: '目标 artifact ID（如 proposal、implementation）', en: '' },
   'instructions.change':   { key: 'help.instructions.change',   zh: '变更名称（如 feat-login）', en: '' },
   'instructions.json':     { key: 'help.instructions.json',     zh: '输出 JSON 格式而非 XML', en: '' },
   'instructions.schema':   { key: 'help.instructions.schema',   zh: 'Schema 名称（默认 spec-driven）', en: '' },

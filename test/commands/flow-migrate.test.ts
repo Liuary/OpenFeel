@@ -244,4 +244,14 @@ describe('flow migrate', () => {
     // stage-02 不是第一个，应设为 "done"
     expect(data.stages['stage-02'].phase).toBe('done');
   });
+
+  it('stage-51 N10-3：migrate 不含日志布局迁移项（A7：仅统一未来写入）', () => {
+    const mgr = createManager(makeOldFormatFlowData());
+
+    const result = mgr.migrate(true);
+
+    const joined = result.changes.join('\n');
+    expect(joined).not.toContain('日志');
+    expect(joined).not.toContain('log/');
+  });
 });

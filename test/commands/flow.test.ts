@@ -12,6 +12,13 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
+// mock child_process：断言 advance 的 git 脏区检查是否被调用（N11-1），并避免真实 git
+const mockedChild = vi.hoisted(() => ({ execSync: vi.fn(), execFileSync: vi.fn() }));
+vi.mock('node:child_process', () => ({
+  execSync: mockedChild.execSync,
+  execFileSync: mockedChild.execFileSync,
+}));
+
 import { Command, CommanderError } from 'commander';
 import { registerFlowCommand } from '../../src/commands/flow.js';
 import { initProject } from '../../src/core/init.js';
@@ -574,5 +581,48 @@ describe('flow 命令（stage-41）', () => {
     await safeParse(['flow', 'attempt', '--op', 'v1.1.2-stage-75.op-001', '--result', 'pass']);
 
     expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('无待执行 op');
+  });
+
+  // ── stage-51/N11-1：advance git 警告降噪 + --quiet ──
+
+  it('N11-1: 非 done 的 advance 不打印 Git 警告且不调用 git', async () => {
+    mockedChild.execSync.mockClear();
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-76');
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-76', '--to', 'plan_passed']);
+
+    expect(mockedChild.execSync).not.toHaveBeenCalled();
+  });
+
+  it('N11-1: --to done 打印 Git 脏区警告（工作区脏）', async () => {
+    mockedChild.execFileSync.mockClear();
+    mockedChild.execSync.mockClear();
+    mockedChild.execSync.mockReturnValue(' M x.ts\n');
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-77');
+    mgr.save();
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-77', '--to', 'done', '--force']);
+
+    expect(mockedChild.execSync).toHaveBeenCalled();
+    expect(warnMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('Git 脏区警告');
+    warnMock.mockRestore();
+  });
+
+  it('N11-1: --quiet 完全静默（stdout 为空）且不调用 git', async () => {
+    mockedChild.execSync.mockClear();
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-78');
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-78', '--to', 'plan_passed', '--quiet']);
+
+    expect(logMock).not.toHaveBeenCalled();
+    expect(mockedChild.execSync).not.toHaveBeenCalled();
   });
 });

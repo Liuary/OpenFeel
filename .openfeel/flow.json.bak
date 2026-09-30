@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-30T16:23:34.817Z",
-    "revision": 340
+    "updated": "2026-09-30T16:26:37.293Z",
+    "revision": 341
   },
   "pipeline": {
     "phase": "active",
@@ -1766,9 +1766,9 @@
         },
         "op-006": {
           "title": "op 文件名固定 op-NNN.md（N8）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -8845,6 +8845,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-51.op-004",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-30T16:26:37.275Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-51.op-006",
         "attempts": 1
       }
     }

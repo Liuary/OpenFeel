@@ -482,17 +482,17 @@ changes are performed atomically through Feel + CLI commands.
 ### Must Trigger Dedup (before each new knowledge entry extraction)
 - New architecture decisions, code patterns, or troubleshooting experience extracted from operation records
 - Entry title or content involves known topics in existing categories
-### Can Skip Dedup (no need to call \`findSimilarEntries\` in the following scenarios)
+### Can Skip Dedup (no need to run \`openfeel knowledge dedup\` in the following scenarios)
 - Pure bug record archiving (BUG → \`.openfeel/bugs/\`, not involving kb/)
 - Log summary operations (log archiving, not involving knowledge extraction)
 - Completely new domain (title keywords have no matches in kb/index.md → skip retrieval and add directly)
 ### Judgment Flow
 Extract entry → Consult kb/index.md category summary → Keyword match found → Trigger dedup → Similarity judgment → Update or add
 ### Step 2: Retrieve Existing Entries
-**Must call dedup logic before archiving**, using the \`findSimilarEntries(newContent, category)\` function from \`src/utils/kb-dedup.ts\`. This function reads the corresponding category file (e.g., \`.openfeel/kb/patterns.md\`), uses Jaccard bag-of-words similarity calculation, and returns results sorted by similarity in descending order.
+**Must run the dedup command before archiving**: \`openfeel knowledge dedup "<new content>" --category <category>\` (in-repo bootstrap: \`node bin/openfeel.js knowledge dedup ...\`). It reads the corresponding category file (e.g., \`.openfeel/kb/patterns.md\`), uses Jaccard bag-of-words similarity calculation, and prints suggestions sorted by similarity in descending order (**read-only**; does not modify kb).
 ### Step 3: Judgment
 
-Take the highest similarity result returned by \`findSimilarEntries\`, call \`shouldUpdate(similarity)\` to decide:
+Take the highest similarity result printed by \`openfeel knowledge dedup\`, compare against the threshold (default 80%) to decide:
 - **> 80%** → Execute **update** (merge content)
 - **≤ 80%** or no result → Execute **add** new entry
 ### Step 4a: Update Existing Entry
@@ -509,7 +509,7 @@ Create a new entry in standard format and append it to the end of the category f
 
 ## Dedup Failure Fallback Strategy
 
-When the \`kb-dedup\` module is unavailable (\`import\` fails, Node environment incompatible):
+When the \`openfeel knowledge dedup\` command is unavailable (not installed / environment issue):
 
 1. **Manual retrieval**: Read the complete content of the corresponding category file (e.g., \`architecture.md\`)
 2. **Keyword extraction**: Extract all \`## [+]\` entry titles, perform keyword matching with the new entry title (remove dates, numbers, extract core nouns)
@@ -1833,17 +1833,17 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 ### 必须触发去重（每次提取新知识条目前）
 - 从操作记录中提取了新的架构决策、代码模式、排查经验
 - 知识条目标题或内容涉及已有分类中的已知领域
-### 可跳过去重（以下场景无需调用 \`findSimilarEntries\`）
+### 可跳过去重（以下场景无需运行 \`openfeel knowledge dedup\`）
 - 纯 Bug 记录归档（BUG → \`.openfeel/bugs/\`，不涉及 kb/）
 - 日志汇总类操作（log 归档，不涉及知识提取）
 - 完全新领域（标题关键词在 kb/index.md 中无任何匹配 → 跳过检索直接新增）
 ### 判断流程
 提取条目 → 查阅 kb/index.md 分类摘要 → 有关键词匹配 → 触发去重 → 相似度判断 → 更新或新增
 ### 步骤 2：检索现有条目
-**归档前必须调用去重逻辑**，使用 \`src/utils/kb-dedup.ts\` 中的 \`findSimilarEntries(newContent, category)\` 函数。该函数读取对应分类文件（如 \`.openfeel/kb/patterns.md\`），使用 Jaccard 词袋相似度计算，返回按相似度降序排列的结果列表。
+**归档前必须运行去重命令**：\`openfeel knowledge dedup "<新内容>" --category <category>\`（本仓自举：\`node bin/openfeel.js knowledge dedup ...\`）。该命令读取对应分类文件（如 \`.openfeel/kb/patterns.md\`），使用 Jaccard 词袋相似度计算，输出按相似度降序排列的建议（**只读**，不修改 kb）。
 ### 步骤 3：判断
 
-取 \`findSimilarEntries\` 返回的最高相似度结果，调用 \`shouldUpdate(similarity)\` 判断：
+取 \`openfeel knowledge dedup\` 输出的最高相似度结果，按阈值（默认 80%）判断：
 - **> 80%** → 执行**更新**（合并内容）
 - **≤ 80%** 或无结果 → 执行**新增**条目
 ### 步骤 4a：更新现有条目
@@ -1859,7 +1859,7 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 > 💡 去重计算中 \`[+]\`/\`[-]\` 标记不参与相似度计算。
 ## 去重失败降级策略
 
-当 \`kb-dedup\` 模块不可用时（\`import\` 失败、Node 环境不兼容）：
+当 \`openfeel knowledge dedup\` 命令不可用时（未安装/环境异常）：
 
 1. **手动检索**：读取对应分类文件（如 \`architecture.md\`）的完整内容
 2. **关键词提取**：提取所有 \`## [+]\` 条目标题，与新条目标题做关键词匹配（去除日期、编号，提取核心名词）
@@ -4139,17 +4139,17 @@ changes are performed atomically through Feel + CLI commands.
 ### Must Trigger Dedup (before each new knowledge entry extraction)
 - New architecture decisions, code patterns, or troubleshooting experience extracted from operation records
 - Entry title or content involves known topics in existing categories
-### Can Skip Dedup (no need to call \`findSimilarEntries\` in the following scenarios)
+### Can Skip Dedup (no need to run \`openfeel knowledge dedup\` in the following scenarios)
 - Pure bug record archiving (BUG → \`.openfeel/bugs/\`, not involving kb/)
 - Log summary operations (log archiving, not involving knowledge extraction)
 - Completely new domain (title keywords have no matches in kb/index.md → skip retrieval and add directly)
 ### Judgment Flow
 Extract entry → Consult kb/index.md category summary → Keyword match found → Trigger dedup → Similarity judgment → Update or add
 ### Step 2: Retrieve Existing Entries
-**Must call dedup logic before archiving**, using the \`findSimilarEntries(newContent, category)\` function from \`src/utils/kb-dedup.ts\`. This function reads the corresponding category file (e.g., \`.openfeel/kb/patterns.md\`), uses Jaccard bag-of-words similarity calculation, and returns results sorted by similarity in descending order.
+**Must run the dedup command before archiving**: \`openfeel knowledge dedup "<new content>" --category <category>\` (in-repo bootstrap: \`node bin/openfeel.js knowledge dedup ...\`). It reads the corresponding category file (e.g., \`.openfeel/kb/patterns.md\`), uses Jaccard bag-of-words similarity calculation, and prints suggestions sorted by similarity in descending order (**read-only**; does not modify kb).
 ### Step 3: Judgment
 
-Take the highest similarity result returned by \`findSimilarEntries\`, call \`shouldUpdate(similarity)\` to decide:
+Take the highest similarity result printed by \`openfeel knowledge dedup\`, compare against the threshold (default 80%) to decide:
 - **> 80%** → Execute **update** (merge content)
 - **≤ 80%** or no result → Execute **add** new entry
 ### Step 4a: Update Existing Entry
@@ -4166,7 +4166,7 @@ Create a new entry in standard format and append it to the end of the category f
 
 ## Dedup Failure Fallback Strategy
 
-When the \`kb-dedup\` module is unavailable (\`import\` fails, Node environment incompatible):
+When the \`openfeel knowledge dedup\` command is unavailable (not installed / environment issue):
 
 1. **Manual retrieval**: Read the complete content of the corresponding category file (e.g., \`architecture.md\`)
 2. **Keyword extraction**: Extract all \`## [+]\` entry titles, perform keyword matching with the new entry title (remove dates, numbers, extract core nouns)
@@ -5490,17 +5490,17 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 ### 必须触发去重（每次提取新知识条目前）
 - 从操作记录中提取了新的架构决策、代码模式、排查经验
 - 知识条目标题或内容涉及已有分类中的已知领域
-### 可跳过去重（以下场景无需调用 \`findSimilarEntries\`）
+### 可跳过去重（以下场景无需运行 \`openfeel knowledge dedup\`）
 - 纯 Bug 记录归档（BUG → \`.openfeel/bugs/\`，不涉及 kb/）
 - 日志汇总类操作（log 归档，不涉及知识提取）
 - 完全新领域（标题关键词在 kb/index.md 中无任何匹配 → 跳过检索直接新增）
 ### 判断流程
 提取条目 → 查阅 kb/index.md 分类摘要 → 有关键词匹配 → 触发去重 → 相似度判断 → 更新或新增
 ### 步骤 2：检索现有条目
-**归档前必须调用去重逻辑**，使用 \`src/utils/kb-dedup.ts\` 中的 \`findSimilarEntries(newContent, category)\` 函数。该函数读取对应分类文件（如 \`.openfeel/kb/patterns.md\`），使用 Jaccard 词袋相似度计算，返回按相似度降序排列的结果列表。
+**归档前必须运行去重命令**：\`openfeel knowledge dedup "<新内容>" --category <category>\`（本仓自举：\`node bin/openfeel.js knowledge dedup ...\`）。该命令读取对应分类文件（如 \`.openfeel/kb/patterns.md\`），使用 Jaccard 词袋相似度计算，输出按相似度降序排列的建议（**只读**，不修改 kb）。
 ### 步骤 3：判断
 
-取 \`findSimilarEntries\` 返回的最高相似度结果，调用 \`shouldUpdate(similarity)\` 判断：
+取 \`openfeel knowledge dedup\` 输出的最高相似度结果，按阈值（默认 80%）判断：
 - **> 80%** → 执行**更新**（合并内容）
 - **≤ 80%** 或无结果 → 执行**新增**条目
 ### 步骤 4a：更新现有条目
@@ -5516,7 +5516,7 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 > 💡 去重计算中 \`[+]\`/\`[-]\` 标记不参与相似度计算。
 ## 去重失败降级策略
 
-当 \`kb-dedup\` 模块不可用时（\`import\` 失败、Node 环境不兼容）：
+当 \`openfeel knowledge dedup\` 命令不可用时（未安装/环境异常）：
 
 1. **手动检索**：读取对应分类文件（如 \`architecture.md\`）的完整内容
 2. **关键词提取**：提取所有 \`## [+]\` 条目标题，与新条目标题做关键词匹配（去除日期、编号，提取核心名词）

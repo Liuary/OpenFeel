@@ -59,17 +59,17 @@ changes are performed atomically through Feel + CLI commands.
 ### Must Trigger Dedup (before each new knowledge entry extraction)
 - New architecture decisions, code patterns, or troubleshooting experience extracted from operation records
 - Entry title or content involves known topics in existing categories
-### Can Skip Dedup (no need to call `findSimilarEntries` in the following scenarios)
+### Can Skip Dedup (no need to run `openfeel knowledge dedup` in the following scenarios)
 - Pure bug record archiving (BUG → `.openfeel/bugs/`, not involving kb/)
 - Log summary operations (log archiving, not involving knowledge extraction)
 - Completely new domain (title keywords have no matches in kb/index.md → skip retrieval and add directly)
 ### Judgment Flow
 Extract entry → Consult kb/index.md category summary → Keyword match found → Trigger dedup → Similarity judgment → Update or add
 ### Step 2: Retrieve Existing Entries
-**Must call dedup logic before archiving**, using the `findSimilarEntries(newContent, category)` function from `src/utils/kb-dedup.ts`. This function reads the corresponding category file (e.g., `.openfeel/kb/patterns.md`), uses Jaccard bag-of-words similarity calculation, and returns results sorted by similarity in descending order.
+**Must run the dedup command before archiving**: `openfeel knowledge dedup "<new content>" --category <category>` (in-repo bootstrap: `node bin/openfeel.js knowledge dedup ...`). It reads the corresponding category file (e.g., `.openfeel/kb/patterns.md`), uses Jaccard bag-of-words similarity calculation, and prints suggestions sorted by similarity in descending order (**read-only**; does not modify kb).
 ### Step 3: Judgment
 
-Take the highest similarity result returned by `findSimilarEntries`, call `shouldUpdate(similarity)` to decide:
+Take the highest similarity result printed by `openfeel knowledge dedup`, compare against the threshold (default 80%) to decide:
 - **> 80%** → Execute **update** (merge content)
 - **≤ 80%** or no result → Execute **add** new entry
 ### Step 4a: Update Existing Entry
@@ -86,7 +86,7 @@ Create a new entry in standard format and append it to the end of the category f
 
 ## Dedup Failure Fallback Strategy
 
-When the `kb-dedup` module is unavailable (`import` fails, Node environment incompatible):
+When the `openfeel knowledge dedup` command is unavailable (not installed / environment issue):
 
 1. **Manual retrieval**: Read the complete content of the corresponding category file (e.g., `architecture.md`)
 2. **Keyword extraction**: Extract all `## [+]` entry titles, perform keyword matching with the new entry title (remove dates, numbers, extract core nouns)

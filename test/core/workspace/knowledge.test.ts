@@ -10,7 +10,7 @@ import {
   searchKnowledge,
   getKnowledgeIndex,
 } from '../../../src/core/workspace/knowledge.js';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -283,5 +283,69 @@ describe('index.md 表格污染防护（stage-50 op-003 T34）', () => {
     expect(idx).not.toContain('含|竖线\n换行标题');
     // 转义后的单行标题出现
     expect(idx).toContain('含\\|竖线 换行标题');
+  });
+});
+
+describe('index.md 宽容解析与列数自适应（stage-51 op-007 N9-1）', () => {
+  let tmpDir: string;
+  let kbDir: string;
+  let indexPath: string;
+
+  beforeEach(() => {
+    tmpDir = setupTempDir();
+    kbDir = join(tmpDir, '.openfeel', 'kb');
+    mkdirSync(kbDir, { recursive: true });
+    indexPath = join(kbDir, 'index.md');
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('N9-1：自定义段头（## Categories / ## Recent Updates）可解析', () => {
+    writeFileSync(indexPath, `# Custom\n\n## Categories\n\n| Category | Description |\n|------|------|\n| architecture | 架构 |\n\n## Recent Updates\n\n| Date | Category | Title |\n|------|------|------|\n| 2026-06-27 | patterns | 标题X |\n`, 'utf-8');
+
+    const idx = getKnowledgeIndex(tmpDir);
+    expect(idx.categories.length).toBe(1);
+    expect(idx.categories[0].name).toBe('architecture');
+    expect(idx.recentUpdates.length).toBe(1);
+    expect(idx.recentUpdates[0].title).toBe('标题X');
+  });
+
+  it('N9-1：列数差异（分类 3 列、更新 2 列）解析不抛错，缺失列返回空串', () => {
+    writeFileSync(indexPath, `# Custom\n\n## 分类概览\n\n| 分类 | 描述 | 备注 |\n|------|------|------|\n| patterns | 代码模式 | x |\n\n## 最近更新\n\n| 日期 | 标题 |\n|------|------|\n| 2026-06-27 | 仅标题 |\n`, 'utf-8');
+
+    expect(() => getKnowledgeIndex(tmpDir)).not.toThrow();
+    const idx = getKnowledgeIndex(tmpDir);
+    expect(idx.categories[0]).toEqual({ name: 'patterns', description: '代码模式' });
+    expect(idx.recentUpdates[0]).toEqual({ date: '2026-06-27', category: '', title: '仅标题' });
+  });
+
+  it('N9-1：无法识别表格 → 返回空数组（降级不抛错）', () => {
+    writeFileSync(indexPath, '# x\n\n## 分类概览\n\n没有表格内容\n', 'utf-8');
+    const idx = getKnowledgeIndex(tmpDir);
+    expect(idx.categories).toEqual([]);
+    expect(idx.recentUpdates).toEqual([]);
+  });
+
+  it('N9-1：addKnowledgeEntry 对 3 列 index 分隔行仍为 3 列（回归，输出不变）', () => {
+    initKnowledgeBase(tmpDir);
+    addKnowledgeEntry(tmpDir, 'patterns', '回归标题', '内容。');
+    const idx = readFileSync(indexPath, 'utf-8');
+    expect(idx).toContain('|------|------|------|');
+    expect(idx).toContain('回归标题');
+  });
+
+  it('N9-1：4 列表头的索引 → add 生成 4 列分隔行 + 4 列数据行', () => {
+    writeFileSync(indexPath, '# Custom\n\n## 最近更新\n\n| 日期 | 分类 | 标题 | 备注 |\n', 'utf-8');
+    writeFileSync(join(kbDir, 'patterns.md'), '# patterns\n', 'utf-8');
+
+    addKnowledgeEntry(tmpDir, 'patterns', '四列', '内容。');
+
+    const idx = readFileSync(indexPath, 'utf-8');
+    // 按实际表头列数（4）生成分隔行
+    expect(idx).toContain('|------|------|------|------|');
+    // 数据行按 4 列补齐（前 3 列为 日期 | 分类 | 标题）
+    expect(idx).toMatch(/\| \d{4}-\d{2}-\d{2} \| patterns \| 四列 \| {2}\|/);
   });
 });

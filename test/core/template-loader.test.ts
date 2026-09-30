@@ -322,3 +322,23 @@ describe('事件 A 审查纪律与权限措辞（stage-48）', () => {
     expect(loadTemplate('en', 'agents-md')).toContain('platform default is `ask`');
   });
 });
+
+/**
+ * stage-51 op-007 N9-4：archiver 模板去重口径改为 CLI 命令（A6）
+ */
+describe('stage-51 op-007 N9-4：模板去重口径（A6）', () => {
+  const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf-8');
+
+  it('openfeel-archiver（zh/en）不含 kb-dedup 源码路径表述，改为 openfeel knowledge dedup', () => {
+    for (const lang of ['zh-CN', 'en']) {
+      const content = read(`../../src/core/templates-data/opencode/agents/${lang}/openfeel-archiver.md`);
+      expect(content, lang).not.toContain('kb-dedup');
+      expect(content, lang).toContain('openfeel knowledge dedup');
+    }
+  });
+
+  it('生成的 agent 模板（loadAgentTemplate）与权威源一致（无 kb-dedup 残留）', () => {
+    expect(loadAgentTemplate('zh-CN', 'openfeel-archiver')).not.toContain('kb-dedup');
+    expect(loadAgentTemplate('en', 'openfeel-archiver')).not.toContain('kb-dedup');
+  });
+});

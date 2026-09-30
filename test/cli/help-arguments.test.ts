@@ -22,6 +22,7 @@ import { registerInstructionsCommand } from '../../src/commands/instructions.js'
 import { registerRoadmapCommand } from '../../src/commands/roadmap.js';
 import { registerStageCommand } from '../../src/commands/stage.js';
 import { registerPlanCommand } from '../../src/commands/plan.js';
+import { registerKnowledgeCommand } from '../../src/commands/knowledge.js';
 
 /** 从命令树按路径取命令 */
 function findCmd(program: Command, path: string[]): Command {
@@ -148,6 +149,20 @@ describe('BUG-004 / N2-5：en 模式 argument 描述无 CJK', () => {
       [['plan', 'scheme', 'create'], 'stage'],
       [['plan', 'scheme', 'create'], 'title'],
       [['plan', 'scheme', 'list'], 'stage'],
+    ]);
+  });
+
+  it('N9-5：knowledge add/search/dedup 的 argument 在 en 下无 CJK（op-007）', () => {
+    const program = new Command();
+    program.name('openfeel').description('x');
+    registerKnowledgeCommand(program);
+    applyHelpI18n(program);
+
+    expectArgsNoCjk(program, [
+      [['knowledge', 'add'], 'category'],
+      [['knowledge', 'add'], 'title'],
+      [['knowledge', 'search'], 'query'],
+      [['knowledge', 'dedup'], 'content'],
     ]);
   });
 });

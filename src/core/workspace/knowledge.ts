@@ -125,10 +125,10 @@ export function addKnowledgeEntry(
 
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   // 标题净化（T34）：'|' 转义避免污染 index.md 表格；换行折叠为空格避免破坏条目头/表格行
-  const safeTitle = title.replace(/\|/g, '\\|').replace(/\s*[\r\n]+\s*/g, ' ').trim();
+  const entryTitle = title.replace(/\|/g, '\\|').replace(/\s*[\r\n]+\s*/g, ' ').trim();
   const catPath = resolve(kbDir, `${category}.md`);
   const indexPath = resolve(kbDir, 'index.md');
-  const entryText = `\n## [+] ${safeTitle} (${today})\n\n${content}\n`;
+  const entryText = `\n## [+] ${entryTitle} (${today})\n\n${content}\n`;
 
   const lockPath = projectLockPath(projectPath, 'kb');
   withFileLock(lockPath, () => {
@@ -141,15 +141,35 @@ export function addKnowledgeEntry(
       return; // index.md 不存在时跳过（与既有行为一致）
     }
     const indexContent = readFileSync(indexPath, 'utf-8');
-    const sepLine = '|------|------|------|';
-    const sepIdx = indexContent.indexOf(sepLine);
-    if (sepIdx === -1) {
-      return; // 格式异常时不修改（与既有行为一致）
+    // N9-1：段头/列数宽容——定位「最近更新」段，并按实际表头列数生成分隔行（缺省 3 列，保持既有行为）
+    const section = extractSection(indexContent, ['最近更新', 'Recent Updates']);
+    if (section === null) {
+      return; // 无「最近更新」段 → 不修改（与既有降级一致）
     }
-    const insertPos = sepIdx + sepLine.length;
-    const newRow = `| ${today} | ${category} | ${safeTitle} |`;
-    const updated = indexContent.slice(0, insertPos) + '\n' + newRow + indexContent.slice(insertPos);
-    atomicWriteFileSync(indexPath, updated);
+    const { headers } = parseMarkdownTable(section.body);
+    const cols = headers.length > 0 ? headers.length : 3;
+    const sepLine = '|' + '------|'.repeat(cols);
+    const cells = [today, category, entryTitle];
+    while (cells.length < cols) {
+      cells.push('');
+    }
+    const newRow = `| ${cells.slice(0, cols).join(' | ')} |`;
+
+    const sepInBody = section.body.match(/^\|[\s:|-]+\|\s*$/m);
+    if (sepInBody && sepInBody.index !== undefined) {
+      // 已有分隔行：在其后插入数据行
+      const insertPos = section.start + sepInBody.index + sepInBody[0].length;
+      atomicWriteFileSync(indexPath, indexContent.slice(0, insertPos) + '\n' + newRow + indexContent.slice(insertPos));
+      return;
+    }
+    // 无分隔行：按表头列数生成分隔行 + 数据行，插入到表头行之后
+    const headerLine = section.body.split('\n').map((l) => l.trim()).find((l) => l.startsWith('|'));
+    if (!headerLine) {
+      return; // 无表头 → 不修改（降级）
+    }
+    const headerOffset = section.body.indexOf(headerLine);
+    const insertPos = section.start + headerOffset + headerLine.length;
+    atomicWriteFileSync(indexPath, indexContent.slice(0, insertPos) + '\n' + sepLine + '\n' + newRow + indexContent.slice(insertPos));
   });
 }
 
@@ -287,28 +307,123 @@ function parseEntryFile(fileContent: string, category: string): KnowledgeEntry[]
   return entries;
 }
 
-/**
- * 从 index.md 中解析分类概览表格
- */
-function parseCategoriesTable(content: string): { name: string; description: string }[] {
-  const section = content.match(/## 分类概览\n\n([\s\S]*?)(?=\n## |$)/);
-  if (!section) {
-    return [];
-  }
+/** 转义正则特殊字符 */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-  const rows = [...section[1].matchAll(/\| ([a-z_]+) \| ([^|]+) \|/g)];
-  return rows.map((r) => ({ name: r[1].trim(), description: r[2].trim() }));
+/** 段落截取结果（body 为段头行之后到下一个 `^## ` 或文末；start 为 body 在原文中的起始偏移） */
+interface Section {
+  body: string;
+  start: number;
 }
 
 /**
- * 从 index.md 中解析最近更新表格
+ * 段头宽容匹配（N9-1）：容忍前后空白与中英别名，截取「段头行 → 下一个 `^## ` 行或文末」。
+ * @param content 全文
+ * @param aliases 段头别名（如 ['分类概览', 'Categories', 'Category Overview']）
+ * @returns 段落（body + 绝对起始偏移）；未命中返回 null
  */
-function parseRecentUpdatesTable(content: string): { date: string; category: string; title: string }[] {
-  const section = content.match(/## 最近更新\n\n([\s\S]*?)(?=\n## |$)/);
-  if (!section) {
+function extractSection(content: string, aliases: string[]): Section | null {
+  const aliasGroup = aliases.map((a) => escapeRegex(a)).join('|');
+  const headerRegex = new RegExp(`^##\\s*(?:${aliasGroup})\\s*$`, 'im');
+  const m = headerRegex.exec(content);
+  if (!m || m.index === undefined) {
+    return null;
+  }
+  const start = m.index + m[0].length;
+  const rest = content.slice(start);
+  const next = rest.search(/\n##\s/);
+  return { body: next === -1 ? rest : rest.slice(0, next), start };
+}
+
+/** 将 markdown 表格文本解析为「表头 + 数据行」 */
+function parseMarkdownTable(section: string): { headers: string[]; rows: string[][] } {
+  const lines = section
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('|'));
+  if (lines.length < 1) {
+    return { headers: [], rows: [] };
+  }
+  const cells = (line: string): string[] =>
+    line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+
+  const headers = cells(lines[0]);
+  const rows: string[][] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cs = cells(lines[i]);
+    // 跳过分隔行（--- / :--- 等）
+    if (cs.every((c) => c === '' || /^:?-{2,}:?$/.test(c))) {
+      continue;
+    }
+    rows.push(cs);
+  }
+  return { headers, rows };
+}
+
+/** 按表头别名定位列索引（先精确后包含匹配）；未命中返回 -1 */
+function colIndex(headers: string[], aliases: string[]): number {
+  const lower = headers.map((h) => h.toLowerCase());
+  const aliasLower = aliases.map((a) => a.toLowerCase());
+  for (let i = 0; i < lower.length; i++) {
+    if (aliasLower.includes(lower[i])) {
+      return i;
+    }
+  }
+  for (let i = 0; i < lower.length; i++) {
+    if (aliasLower.some((a) => lower[i].includes(a))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * 从 index.md 中解析分类概览表格（N9-1：段头/表头/列数宽容）。
+ * 无法识别表头 → 返回空数组（降级不抛错）。
+ */
+function parseCategoriesTable(content: string): { name: string; description: string }[] {
+  const section = extractSection(content, ['分类概览', 'Categories', 'Category Overview']);
+  if (section === null) {
     return [];
   }
+  const { headers, rows } = parseMarkdownTable(section.body);
+  if (headers.length === 0) {
+    return [];
+  }
+  const nameIdx = colIndex(headers, ['分类', '名称', 'category', 'name']);
+  const descIdx = colIndex(headers, ['描述', '说明', 'description']);
+  if (nameIdx === -1) {
+    return [];
+  }
+  return rows
+    .map((r) => ({
+      name: (r[nameIdx] ?? '').trim(),
+      description: descIdx === -1 ? '' : (r[descIdx] ?? '').trim(),
+    }))
+    .filter((c) => c.name.length > 0);
+}
 
-  const rows = [...section[1].matchAll(/\| (\d{4}-\d{2}-\d{2}) \| ([a-z_]+) \| ([^|]+) \|/g)];
-  return rows.map((r) => ({ date: r[1], category: r[2].trim(), title: r[3].trim() }));
+/**
+ * 从 index.md 中解析最近更新表格（N9-1：段头/表头/列数宽容）。
+ * 无法识别表头 → 返回空数组（降级不抛错）。
+ */
+function parseRecentUpdatesTable(content: string): { date: string; category: string; title: string }[] {
+  const section = extractSection(content, ['最近更新', 'Recent Updates']);
+  if (section === null) {
+    return [];
+  }
+  const { headers, rows } = parseMarkdownTable(section.body);
+  if (headers.length === 0) {
+    return [];
+  }
+  const dateIdx = colIndex(headers, ['日期', 'date']);
+  const catIdx = colIndex(headers, ['分类', 'category']);
+  const titleIdx = colIndex(headers, ['标题', 'title']);
+  return rows.map((r) => ({
+    date: dateIdx === -1 ? '' : (r[dateIdx] ?? '').trim(),
+    category: catIdx === -1 ? '' : (r[catIdx] ?? '').trim(),
+    title: titleIdx === -1 ? '' : (r[titleIdx] ?? '').trim(),
+  }));
 }

@@ -60,17 +60,17 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 ### 必须触发去重（每次提取新知识条目前）
 - 从操作记录中提取了新的架构决策、代码模式、排查经验
 - 知识条目标题或内容涉及已有分类中的已知领域
-### 可跳过去重（以下场景无需调用 `findSimilarEntries`）
+### 可跳过去重（以下场景无需运行 `openfeel knowledge dedup`）
 - 纯 Bug 记录归档（BUG → `.openfeel/bugs/`，不涉及 kb/）
 - 日志汇总类操作（log 归档，不涉及知识提取）
 - 完全新领域（标题关键词在 kb/index.md 中无任何匹配 → 跳过检索直接新增）
 ### 判断流程
 提取条目 → 查阅 kb/index.md 分类摘要 → 有关键词匹配 → 触发去重 → 相似度判断 → 更新或新增
 ### 步骤 2：检索现有条目
-**归档前必须调用去重逻辑**，使用 `src/utils/kb-dedup.ts` 中的 `findSimilarEntries(newContent, category)` 函数。该函数读取对应分类文件（如 `.openfeel/kb/patterns.md`），使用 Jaccard 词袋相似度计算，返回按相似度降序排列的结果列表。
+**归档前必须运行去重命令**：`openfeel knowledge dedup "<新内容>" --category <category>`（本仓自举：`node bin/openfeel.js knowledge dedup ...`）。该命令读取对应分类文件（如 `.openfeel/kb/patterns.md`），使用 Jaccard 词袋相似度计算，输出按相似度降序排列的建议（**只读**，不修改 kb）。
 ### 步骤 3：判断
 
-取 `findSimilarEntries` 返回的最高相似度结果，调用 `shouldUpdate(similarity)` 判断：
+取 `openfeel knowledge dedup` 输出的最高相似度结果，按阈值（默认 80%）判断：
 - **> 80%** → 执行**更新**（合并内容）
 - **≤ 80%** 或无结果 → 执行**新增**条目
 ### 步骤 4a：更新现有条目
@@ -86,7 +86,7 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 > 💡 去重计算中 `[+]`/`[-]` 标记不参与相似度计算。
 ## 去重失败降级策略
 
-当 `kb-dedup` 模块不可用时（`import` 失败、Node 环境不兼容）：
+当 `openfeel knowledge dedup` 命令不可用时（未安装/环境异常）：
 
 1. **手动检索**：读取对应分类文件（如 `architecture.md`）的完整内容
 2. **关键词提取**：提取所有 `## [+]` 条目标题，与新条目标题做关键词匹配（去除日期、编号，提取核心名词）

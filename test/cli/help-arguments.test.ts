@@ -14,7 +14,7 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
-import { applyHelpI18n } from '../../src/cli/index.js';
+import { applyHelpI18n, program as rootProgram } from '../../src/cli/index.js';
 import { registerFlowCommand } from '../../src/commands/flow.js';
 import { registerViewCommand } from '../../src/commands/view.js';
 import { registerArchiveCommand } from '../../src/commands/archive.js';
@@ -164,5 +164,38 @@ describe('BUG-004 / N2-5：en 模式 argument 描述无 CJK', () => {
       [['knowledge', 'search'], 'query'],
       [['knowledge', 'dedup'], 'content'],
     ]);
+  });
+
+  it('op-009 门禁：en 下全命令 --help 的 Arguments 段 CJK 零命中（运行时动态枚举）', () => {
+    // 使用 CLI 启动时的全量命令树（cli/index.ts 已注册全部命令）
+    applyHelpI18n(rootProgram);
+
+    const checked: string[] = [];
+    const offenders: string[] = [];
+
+    const walk = (cmd: Command, path: string[]): void => {
+      for (const sub of cmd.commands) {
+        const subPath = [...path, sub.name()];
+        if (sub.registeredArguments.length > 0) {
+          const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+          sub.outputHelp();
+          const help = writeSpy.mock.calls.map((c) => String(c[0])).join('');
+          writeSpy.mockRestore();
+
+          const m = help.match(/\nArguments:\n([\s\S]*?)(?:\n\n|$)/);
+          if (m) {
+            checked.push(subPath.join(' '));
+            if (/[\u4e00-\u9fff]/.test(m[1])) {
+              offenders.push(subPath.join(' '));
+            }
+          }
+        }
+        walk(sub, subPath);
+      }
+    };
+    walk(rootProgram, ['openfeel']);
+
+    expect(checked.length).toBeGreaterThanOrEqual(20);
+    expect(offenders, `Arguments 段 CJK 残留：${offenders.join(', ')}`).toEqual([]);
   });
 });

@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-30T16:36:57.624Z",
-    "revision": 344
+    "updated": "2026-09-30T16:38:53.310Z",
+    "revision": 345
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-51",
-      "op": "op-009"
+      "op": ""
     },
     "retry": 0
   },
@@ -1817,9 +1817,9 @@
         },
         "op-009": {
           "title": "全量回归与门禁收口",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -8881,6 +8881,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-51.op-007",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-30T16:38:53.228Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-51.op-009",
         "attempts": 1
       }
     }

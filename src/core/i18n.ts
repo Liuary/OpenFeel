@@ -25,13 +25,13 @@ import { common as zhCommon, help as zhHelp, flow as zhFlow, init as zhInit, upd
          project as zhProject, stage as zhStage, plan as zhPlan, knowledge as zhKnowledge,
          archive as zhArchive, roadmap as zhRoadmap, view as zhView, instructions as zhInstructions,
          lint as zhLint, config as zhConfig, migrate as zhMigrate, model as zhModel, setup as zhSetup,
-         metrics as zhMetrics }
+         metrics as zhMetrics, repl as zhRepl }
   from './i18n-data/zh-CN.js';
 import { common as enCommon, help as enHelp, flow as enFlow, init as enInit, update as enUpdate,
          project as enProject, stage as enStage, plan as enPlan, knowledge as enKnowledge,
          archive as enArchive, roadmap as enRoadmap, view as enView, instructions as enInstructions,
          lint as enLint, config as enConfig, migrate as enMigrate, model as enModel, setup as enSetup,
-         metrics as enMetrics }
+         metrics as enMetrics, repl as enRepl }
   from './i18n-data/en.js';
 
 import { VALID_LANGS, type SupportedLang } from './i18n-data/types.js';
@@ -44,13 +44,13 @@ type DomainImport = Record<string, { key: string; zh: string; en: string }>;
 /** 所有域的列表（zh-CN） */
 const zhDomains: DomainImport[] = [
   zhCommon, zhHelp, zhFlow, zhInit, zhUpdate, zhProject,
-  zhStage, zhPlan, zhKnowledge, zhArchive, zhRoadmap, zhView, zhInstructions, zhLint, zhConfig, zhMigrate, zhModel, zhSetup, zhMetrics,
+  zhStage, zhPlan, zhKnowledge, zhArchive, zhRoadmap, zhView, zhInstructions, zhLint, zhConfig, zhMigrate, zhModel, zhSetup, zhMetrics, zhRepl,
 ];
 
 /** 所有域的列表（en） */
 const enDomains: DomainImport[] = [
   enCommon, enHelp, enFlow, enInit, enUpdate, enProject,
-  enStage, enPlan, enKnowledge, enArchive, enRoadmap, enView, enInstructions, enLint, enConfig, enMigrate, enModel, enSetup, enMetrics,
+  enStage, enPlan, enKnowledge, enArchive, enRoadmap, enView, enInstructions, enLint, enConfig, enMigrate, enModel, enSetup, enMetrics, enRepl,
 ];
 
 /** 语言→字符串映射表（模块级缓存，惰性初始化） */
@@ -131,6 +131,17 @@ export function t(key: string, lang: string = 'zh-CN', vars?: Record<string, str
 
   // 5. 仍缺失 → 返回原始 key
   return key;
+}
+
+/**
+ * 判断指定键是否存在（不触发缺失告警）。
+ * 供 applyHelpI18n 遍历 arguments 等「可选键」场景使用（T38）。
+ * @param key  i18n 键名
+ * @param lang 语言标识
+ * @returns 存在返回 true
+ */
+export function hasKey(key: string, lang: string = 'zh-CN'): boolean {
+  return getStringMap(lang).has(key) || getStringMap('zh-CN').has(key);
 }
 
 /**

@@ -23,70 +23,76 @@ export function registerInitCommand(program: Command): void {
       const targetPath = resolve(path ?? process.cwd());
       const lang = getCliLang(targetPath);
 
-      // 校验路径是否存在
-      if (!existsSync(targetPath)) {
-        console.error(t('init.errorPathNotExistTmpl', lang, { path: targetPath }));
-        process.exit(1);
-      }
-
-      console.log(t('init.initializingTmpl', lang, { path: targetPath }));
-
-      // --workspace-only：非交互，仅创建工作区
-      const result = options?.workspaceOnly
-        ? initWorkspaceOnly(targetPath, options?.lang)
-        : await initProject(targetPath, options?.lang);
-
-      // 输出创建的目录
-      if (result.created.length > 0) {
-        console.log(t('init.created', lang));
-        for (const item of result.created) {
-          console.log(`  + ${item}`);
+      try {
+        // 校验路径是否存在
+        if (!existsSync(targetPath)) {
+          console.error(t('init.errorPathNotExistTmpl', lang, { path: targetPath }));
+          process.exit(1);
         }
-      }
 
-      // 输出更新的文件
-      if (result.updated.length > 0) {
-        console.log(t('init.updated', lang));
-        for (const item of result.updated) {
-          console.log(`  ~ ${item}`);
-        }
-      }
+        console.log(t('init.initializingTmpl', lang, { path: targetPath }));
 
-      // 输出跳过项（用户可见提示；如已存在的 config.yaml 被保留，BUG-002 语义修复）
-      if (result.skipped.length > 0) {
-        console.log(t('init.skipped', lang));
-        for (const item of result.skipped) {
-          console.log(`  - ${item}`);
-        }
-      }
+        // --workspace-only：非交互，仅创建工作区
+        const result = options?.workspaceOnly
+          ? initWorkspaceOnly(targetPath, options?.lang)
+          : await initProject(targetPath, options?.lang);
 
-      if (result.created.length === 0 && result.updated.length === 0) {
-        console.log(t('init.alreadyUpToDate', lang));
-      } else {
-        console.log(t('init.complete', lang));
-      }
-
-      // --demo 标志：创建示例项目骨架
-      if (options?.demo) {
-        console.log(t('init.demoCreating', lang));
-        const demoLang = (options?.lang === 'en' || options?.lang === 'zh-CN') ? options.lang : 'zh-CN';
-        const demoResult = initDemo(targetPath, demoLang);
-
-        if (demoResult.created.length > 0) {
-          console.log(t('init.demoCreated', lang));
-          for (const item of demoResult.created) {
+        // 输出创建的目录
+        if (result.created.length > 0) {
+          console.log(t('init.created', lang));
+          for (const item of result.created) {
             console.log(`  + ${item}`);
           }
         }
 
-        if (demoResult.skipped.length > 0) {
-          console.log(t('init.demoSkipped', lang));
-          for (const item of demoResult.skipped) {
+        // 输出更新的文件
+        if (result.updated.length > 0) {
+          console.log(t('init.updated', lang));
+          for (const item of result.updated) {
+            console.log(`  ~ ${item}`);
+          }
+        }
+
+        // 输出跳过项（用户可见提示；如已存在的 config.yaml 被保留，BUG-002 语义修复）
+        if (result.skipped.length > 0) {
+          console.log(t('init.skipped', lang));
+          for (const item of result.skipped) {
             console.log(`  - ${item}`);
           }
         }
 
-        console.log(t('init.demoComplete', lang));
+        if (result.created.length === 0 && result.updated.length === 0) {
+          console.log(t('init.alreadyUpToDate', lang));
+        } else {
+          console.log(t('init.complete', lang));
+        }
+
+        // --demo 标志：创建示例项目骨架
+        if (options?.demo) {
+          console.log(t('init.demoCreating', lang));
+          const demoLang = (options?.lang === 'en' || options?.lang === 'zh-CN') ? options.lang : 'zh-CN';
+          const demoResult = initDemo(targetPath, demoLang);
+
+          if (demoResult.created.length > 0) {
+            console.log(t('init.demoCreated', lang));
+            for (const item of demoResult.created) {
+              console.log(`  + ${item}`);
+            }
+          }
+
+          if (demoResult.skipped.length > 0) {
+            console.log(t('init.demoSkipped', lang));
+            for (const item of demoResult.skipped) {
+              console.log(`  - ${item}`);
+            }
+          }
+
+          console.log(t('init.demoComplete', lang));
+        }
+      } catch (err) {
+        // 异常统一出口：错误模板 + 非 0 退出码，避免堆栈外泄（T41）
+        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
+        process.exitCode = 1;
       }
     });
 }

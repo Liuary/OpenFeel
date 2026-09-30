@@ -15,6 +15,9 @@ import { t, getCliLang } from '../core/i18n.js';
 /** 合法 scope 集合 */
 const SCOPES: ModelScope[] = ['default', 'global', 'project'];
 
+/** 构建超时上限（10 分钟；从常量声明便于调整，T41） */
+const MODEL_BUILD_TIMEOUT_MS = 600000;
+
 /** 校验 scope 参数合法性；非法抛错 */
 function parseScope(raw: string): ModelScope {
   if (!(SCOPES as string[]).includes(raw)) {
@@ -93,7 +96,20 @@ export function registerModelCommand(program: Command): void {
           console.log(t('model.set.needsBuild', lang));
         } else if (options.build) {
           console.log(t('model.set.buildTriggered', lang));
-          execSync('npm run build', { stdio: 'inherit' });
+          try {
+            // 加超时，避免构建无限挂起（T41）
+            execSync('npm run build', { stdio: 'inherit', timeout: MODEL_BUILD_TIMEOUT_MS });
+          } catch (buildErr) {
+            // 超时（ETIMEDOUT / SIGTERM）→ 明确文案 + 非 0 退出码；其余上抛给外层统一处理
+            const isTimeout = (buildErr as { code?: string }).code === 'ETIMEDOUT'
+              || (buildErr as { signal?: string }).signal === 'SIGTERM';
+            if (isTimeout) {
+              console.error(t('common.errorTmpl', lang, { msg: `build timeout (${MODEL_BUILD_TIMEOUT_MS / 60000}min)` }));
+              process.exitCode = 1;
+            } else {
+              throw buildErr;
+            }
+          }
         }
       } catch (err) {
         console.error(t('model.set.failed', lang, { message: (err as Error).message }));

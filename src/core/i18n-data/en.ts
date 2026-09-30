@@ -9,6 +9,7 @@ import type { I18nEntry, I18nDomain } from './types.js';
 export const common: I18nDomain = {
   error:           { key: 'common.error',           zh: '', en: 'Error' },
   errorTmpl:       { key: 'common.errorTmpl',       zh: '', en: 'Error: {msg}' },
+  concurrentConflict: { key: 'common.concurrentConflict', zh: '', en: '[concurrent conflict] flow.json was modified by another process (expected revision={expected}, on-disk={actual}); this change was not written, please retry.' },
   ok:              { key: 'common.ok',              zh: '', en: '✓' },
   none:            { key: 'common.none',            zh: '', en: '(none)' },
   noData:          { key: 'common.noData',          zh: '', en: '(no records)' },
@@ -206,6 +207,7 @@ export const flow: I18nDomain = {
   'recover.statusNoCurrentStage':  { key: 'flow.recover.statusNoCurrentStage',    zh: '', en: 'No current stage' },
 
   'wizard.done':                    { key: 'flow.wizard.done',                    zh: '', en: '🎉 Pipeline is complete!' },
+  'wizard.nonTtyHint':              { key: 'flow.wizard.nonTtyHint',              zh: '', en: "Non-interactive environment; use non-interactive commands such as 'flow advance'" },
   'wizard.noStages':                { key: 'flow.wizard.noStages',                zh: '', en: 'No stages available.' },
   'wizard.selectStage':             { key: 'flow.wizard.selectStage',             zh: '', en: 'Select stage to advance' },
   'wizard.currentLabel':            { key: 'flow.wizard.currentLabel',            zh: '', en: '(current)' },
@@ -532,6 +534,7 @@ export const help: I18nDomain = {
   'stage.task.done':       { key: 'help.stage.task.done',       zh: '', en: 'Mark task as done' },
   'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '', en: 'Mark task as not done' },
   'stage.create':          { key: 'help.stage.create',          zh: '', en: 'Create a stage (deprecated; use openfeel flow stage add)' },
+  'stage.create.argstageId': { key: 'help.stage.create.argstageId', zh: '', en: 'Stage ID (e.g. v1.0.0-stage-30)' },
 
   'view':                  { key: 'help.view',                  zh: '', en: 'Review entry management' },
   'view.list':             { key: 'help.view.list',             zh: '', en: 'List review entries' },
@@ -690,6 +693,15 @@ export const metrics: I18nDomain = {
   'summary.avgDuration':  { key: 'metrics.summary.avgDuration',  zh: '', en: '  Avg duration: {n}ms' },
 };
 
+/* ==================== repl domain: interactive mode (T40) ==================== */
+export const repl: I18nDomain = {
+  'prompt':      { key: 'repl.prompt',      zh: '', en: 'openfeel> ' },
+  'welcome':     { key: 'repl.welcome',     zh: '', en: 'OpenFeel REPL interactive mode (type exit to quit, help for commands)' },
+  'bye':         { key: 'repl.bye',         zh: '', en: 'Bye!' },
+  'helpTitle':   { key: 'repl.helpTitle',   zh: '', en: 'Available commands:' },
+  'errorPrefix': { key: 'repl.errorPrefix', zh: '', en: 'Error: ' },
+};
+
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
@@ -711,4 +723,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'model',        domain: model },
   { name: 'setup',        domain: setup },
   { name: 'metrics',      domain: metrics },
+  { name: 'repl',         domain: repl },
 ];

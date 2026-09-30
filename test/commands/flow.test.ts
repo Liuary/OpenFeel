@@ -192,6 +192,20 @@ describe('flow 命令（stage-41）', () => {
     expect(out).toContain('review_passed|test_passed');
   });
 
+  it('T39：flow wizard 非 TTY → 输出 nonTtyHint 且 process.exitCode = 1', async () => {
+    // beforeEach 已强制 process.stdout.isTTY = false
+    const prev = process.exitCode;
+    process.exitCode = undefined;
+    try {
+      await safeParse(['flow', 'wizard']);
+      const err = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(err).toContain('非交互式');
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = prev;
+    }
+  });
+
   // ── flow stage add 冲突 i18n（cli/BUG-002）──
 
   it('flow stage add 目录冲突：en 下输出英文模板（stageDirConflictTmpl）', async () => {

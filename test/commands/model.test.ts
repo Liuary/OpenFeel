@@ -13,6 +13,13 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
+// mock child_process.execSync：断言 --build 带 timeout 且超时路径可控（T41），避免真实构建
+const cpMock = vi.hoisted(() => ({ execSync: vi.fn() }));
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return { ...actual, execSync: cpMock.execSync };
+});
+
 /** 执行 model 命令组并捕获退出码与输出 */
 function runModel(args: string[]): { stdout: string; stderr: string; exitCode: number } {
   const program = new Command();
@@ -86,5 +93,44 @@ describe('openfeel model 命令', () => {
     const r = runModel(['get', 'openfeel-executor', '--scope', 'project']);
     expect(r.exitCode).toBe(0);
     expect(r.stdout).toBeTruthy();
+  });
+
+  it('T41：--build 的 execSync 带 timeout；超时（ETIMEDOUT）→ 错误文案 + exitCode 1', () => {
+    const proj = mkdtempSync(join(tmpdir(), 'model-build-timeout-'));
+    const prevCwd = process.cwd();
+    const prevExitCode = process.exitCode;
+    process.chdir(proj);
+    process.exitCode = undefined;
+    cpMock.execSync.mockImplementation(() => {
+      const e = new Error('build timeout') as Error & { code?: string };
+      e.code = 'ETIMEDOUT';
+      throw e;
+    });
+
+    const program = new Command();
+    registerModelCommand(program);
+    program.exitOverride();
+    const stderrLines: string[] = [];
+    const errSpy = vi.spyOn(console, 'error').mockImplementation((...a: unknown[]) => { stderrLines.push(a.join(' ')); });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    try {
+      try {
+        program.parse(['model', 'set', 'executor', 'deepseek/x', '--scope', 'project', '--build'], { from: 'user' });
+      } catch {
+        // 忽略退出异常
+      }
+      expect(cpMock.execSync).toHaveBeenCalledWith('npm run build', expect.objectContaining({ timeout: 600000 }));
+      expect(process.exitCode).toBe(1);
+      expect(stderrLines.join('\n')).toBeTruthy();
+    } finally {
+      process.exitCode = prevExitCode;
+      process.chdir(prevCwd);
+      errSpy.mockRestore();
+      logSpy.mockRestore();
+      exitSpy.mockRestore();
+      cpMock.execSync.mockReset();
+      rmSync(proj, { recursive: true, force: true });
+    }
   });
 });

@@ -5,8 +5,9 @@
  */
 import { Command } from 'commander';
 import { createRequire } from 'node:module';
-import { t, getCliLang } from '../core/i18n.js';
+import { t, getCliLang, hasKey } from '../core/i18n.js';
 import { isFlowConcurrentError } from '../core/flow-manager.js';
+import { handleConcurrentConflict } from '../commands/shared/errors.js';
 
 // 读取 package.json 获取版本号
 const require = createRequire(import.meta.url);
@@ -87,6 +88,15 @@ export function applyHelpI18n(program: Command): void {
       }
     }
 
+    // 替换当前命令的 arguments 描述（键约定 help.<commandPath>.arg<name>，T38）
+    // 仅命中既有键时替换，避免对未补键的 argument 触发缺失告警
+    for (const arg of cmd.registeredArguments ?? []) {
+      const argKey = `${keyPrefix}.arg${arg.name()}`;
+      if (hasKey(argKey, lang)) {
+        arg.description = t(argKey, lang);
+      }
+    }
+
     // 替换当前命令的 option 描述
     for (const opt of cmd.options) {
       // 跳过 Commander 自动生成的 --no- 选项（negate 标记为 true）
@@ -131,21 +141,18 @@ export function applyHelpI18n(program: Command): void {
   }
 }
 
-/** 并发冲突退出码：与通用错误 1 区分，便于自动化识别「可重试」冲突 */
+/** 并发写冲突退出码：与通用错误 1 区分，便于自动化识别「可重试」冲突 */
 export const EXIT_CONCURRENT = 2;
 
-/** 统一 CLI 错误处理：识别 flow.json 并发冲突并输出可重试提示 */
+/** 统一 CLI 错误处理：识别 flow.json 并发写冲突并输出可重试提示（单点，T38） */
 export function handleCliError(err: unknown): never {
   if (isFlowConcurrentError(err)) {
-    console.error(`[并发冲突] flow.json 已被其它进程修改（期望 revision=${err.expectedRevision}，磁盘=${err.actualRevision}）。`);
-    console.error('本次修改未写入。请重新执行该命令（将基于最新 flow.json 重试）。');
-    console.error('若多 Agent 并发推进，请串行化 flow.json 写入后重试。');
-    process.exit(EXIT_CONCURRENT);
+    handleConcurrentConflict(err, getCliLang(process.cwd()));
   }
   throw err;
 }
 
-/** CLI 启动入口：包裹 program.parse，统一处理并发冲突 */
+/** CLI 启动入口：包裹 program.parse，统一处理并发写冲突 */
 export function runCli(): void {
   try {
     program.parse();

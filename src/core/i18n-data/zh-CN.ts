@@ -10,6 +10,7 @@ import type { I18nEntry, I18nDomain } from './types.js';
 export const common: I18nDomain = {
   error:           { key: 'common.error',           zh: '错误',       en: '' },
   errorTmpl:       { key: 'common.errorTmpl',       zh: '错误：{msg}', en: '' },
+  concurrentConflict: { key: 'common.concurrentConflict', zh: '[并发冲突] flow.json 已被其它进程修改（期望 revision={expected}，磁盘={actual}）；本次修改未写入，请重新执行该命令重试。', en: '' },
   ok:              { key: 'common.ok',              zh: '✓',         en: '' },
   none:            { key: 'common.none',            zh: '(无)',      en: '' },
   noData:          { key: 'common.noData',          zh: '（无记录）',  en: '' },
@@ -224,6 +225,7 @@ export const flow: I18nDomain = {
 
   // flow wizard
   'wizard.done':                    { key: 'flow.wizard.done',                    zh: '🎉 流水线已完成！',                       en: '' },
+  'wizard.nonTtyHint':              { key: 'flow.wizard.nonTtyHint',              zh: '当前环境非交互式；请改用 flow advance 等非交互命令', en: '' },
   'wizard.noStages':                { key: 'flow.wizard.noStages',                zh: '无可用阶段。',                            en: '' },
   'wizard.selectStage':             { key: 'flow.wizard.selectStage',             zh: '选择要推进的阶段',                        en: '' },
   'wizard.currentLabel':            { key: 'flow.wizard.currentLabel',            zh: '(当前)',                                 en: '' },
@@ -561,6 +563,7 @@ export const help: I18nDomain = {
   'stage.task.done':       { key: 'help.stage.task.done',       zh: '标记任务为已完成', en: '' },
   'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '标记任务为未完成', en: '' },
   'stage.create':          { key: 'help.stage.create',          zh: '创建新阶段（已弃用，请改用 openfeel flow stage add）', en: '' },
+  'stage.create.argstageId': { key: 'help.stage.create.argstageId', zh: '阶段 ID（如 v1.0.0-stage-30）', en: '' },
 
   // view
   'view':                  { key: 'help.view',                  zh: '审查条目管理', en: '' },
@@ -725,6 +728,15 @@ export const metrics: I18nDomain = {
   'summary.avgDuration':  { key: 'metrics.summary.avgDuration',  zh: '  平均耗时: {n}ms', en: '' },
 };
 
+/* ==================== repl 域：交互模式（T40） ==================== */
+export const repl: I18nDomain = {
+  'prompt':      { key: 'repl.prompt',      zh: 'openfeel> ', en: '' },
+  'welcome':     { key: 'repl.welcome',     zh: 'OpenFeel REPL 交互模式（输入 exit 退出，help 查看命令）', en: '' },
+  'bye':         { key: 'repl.bye',         zh: '再见！', en: '' },
+  'helpTitle':   { key: 'repl.helpTitle',   zh: '可用命令：', en: '' },
+  'errorPrefix': { key: 'repl.errorPrefix', zh: '错误：', en: '' },
+};
+
 /* ==================== 聚合导出 ==================== */
 /** 所有功能域的聚合数组（供 i18n.ts 构建 Map 使用） */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
@@ -747,4 +759,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'model',        domain: model },
   { name: 'setup',        domain: setup },
   { name: 'metrics',      domain: metrics },
+  { name: 'repl',         domain: repl },
 ];

@@ -141,7 +141,7 @@ JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES] }, .
 
 ## BUG-004：en 模式下 `--help` 的 Arguments 描述仍为中文（T38 只落地遍历机制，未补齐翻译键）
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open**（**非阻塞；建议归 `v1.1.2-stage-51`**）｜ **来源阶段**：`v1.1.2-stage-50`（正式测试验收发现）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-51 op-002/005/007/008 分派补齐 20 处（+1 新增）+ op-009 运行时全量门禁；测试官验收通过）｜ **来源阶段**：`v1.1.2-stage-50`（正式测试验收发现）｜ **归因**：`cli/BUG-001` 同族「双轨/漏键」——T38 只落地机制、未补键
 
 ### 核心结论
 
@@ -177,4 +177,20 @@ JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES] }, .
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
 | 2026-09-30 23:58 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-50 正式验收发现；隔离 fixture 实测 23 处 `.argument()` 仅 1 处英文；已登记私域 `bugs/cli/` 并更新 index/log |
+| 2026-10-01 | openfeel-feel-tester | **closed**（v1.1.2-stage-51 验收） | 隔离 HOME + en 项目下**运行时枚举 23 个含 `Arguments:` 段的命令**，逐命令实测 **CJK 零命中**；`test/cli/help-arguments.test.ts` 6 用例全绿；`lint i18n` 649 键中英对称、exit 0 |
+
+### 关闭记录（v1.1.2-stage-51，commits `5ebd114`/`b538bdc`/`1aba277`/`b59705a`/`34385a4`）
+
+本阶段将 BUG-004 纳入范围，按**文件所有权单一 owner** 分派补齐 `help.<命令路径点分>.arg<arg.name()>` 双语键（键约定实测于 `src/cli/index.ts:94`，`arg.name()` 原样含连字符，`hasKey` 守卫静默回退）：
+
+| op | 分担处数 | 命令 |
+|:--:|:--:|------|
+| op-002 | 5 处 | `flow stage add`（`stageId`）/ `flow review resolve`（`rev-id`）/ `flow checkpoint list`（`stage`）/ `flow checkpoint restore`（`checkpoint-file`）/ `view accept`（`rev-id`） |
+| op-005 | 8 处 | `stage status/set/task`（`stageId`、`taskNo`）/ `plan stage add`（`name`）/ `plan scheme create`（`stage`/`title`）/ `plan scheme list`（`stage`） |
+| op-007 | 3 处 + 新增 1 处 | `knowledge add`（`category`/`title`）/ `knowledge search`（`query`）/ **新增** `knowledge dedup`（`content`） |
+| op-008 | 4 处 | `archive`（`stage`）/ `instructions`（`artifactId`）/ `roadmap create/show`（`version`） |
+
+op-009 增**运行时全量枚举门禁**（`test/cli/help-arguments.test.ts`）：动态遍历 CLI 命令树，对**每个含位置参数的命令**以 `lang=en` 渲染 `--help`，断言 `Arguments:` 段 `/[\u4e00-\u9fff]/` **零命中**（**33 个含位置参数的命令**，新增命令自动纳入，防未来漂移）。
+
+**口径澄清**：BUG 原文记「23 处、仅 1 处已补」的「23」为**记录时点静态 `.argument()` 计数**；本次修复面 = 存量 **20 处** + 本阶段新增子命令 **1 处**（`knowledge.dedup`）+ 已补 **1 处**（`stage.create`，T38）。运行时枚举（33 命令）多于静态计数，差异来自 `.command('remove <stageId>')` 形式的声明（Commander 同样注册为 argument）——**以运行时门禁为准**。**关闭**。
 

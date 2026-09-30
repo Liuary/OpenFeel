@@ -511,6 +511,8 @@ OpenFeel 的模板部署存在**两层模板源**：
 
 ## [+] kb-dedup 去重检索对 CRLF 行尾静默失效（归档官去重降级）(2026-09-29)
 
+> **更新于 2026-10-01（v1.1.2-stage-51 op-007，A6）**：该缺陷对**新暴露的 `openfeel knowledge dedup` 子命令同样生效**——命令复用同一 `findSimilarEntries`/`parseKbFile`，CRLF 分类文件（`patterns.md` CRLF 2730 / `troubleshooting.md` CRLF 758）仍只解析出极少条目，去重建议**静默漏检**。**归档期绕过法（实证有效）**：把 `.openfeel/kb/*.md` 复制到临时目录并做 `\r\n → \n` 归一，再 `node bin/openfeel.js knowledge dedup "<内容>" --project <tmp>`（`basePath` = `<tmp>/.openfeel/kb`）→ 归一后 `patterns.md` 可解析条目恢复为完整集（本次 5 条候选最高相似度 < 4%，全判新增）。**根因修复建议**：在 `parseKbFile` 内做行尾归一（一行改动），可同时修复归档去重与 `knowledge dedup`。
+
 **现象**：归档官调用 `findSimilarEntries(newContent, category)`（`src/utils/kb-dedup.ts`）时返回的相似条目极少——`patterns.md` 的 80 个条目标题仅解析出 2 个，相似度普遍 < 8%，去重形同虚设、极易新增重复条目，且**不报错**。
 
 **根因**：`parseKbFile()` 用 `content.split('\n')` 切行，标题正则 `^##\s+\[([+-])\]\s+(.+?)\s+\((\d{4}-\d{2}-\d{2})\)$` 的 `$` 锚点在 CRLF 文件下无法匹配（行尾残留 `\r`），故仅 LF 行尾的条目被识别。实测：`patterns.md` 原始切分命中 2 条，`\r\n → \n` 归一后命中 75 条（文件共 80 行 `## [+/-]`）；`troubleshooting.md` 为全 CRLF → 命中 0 条。

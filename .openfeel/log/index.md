@@ -1,6 +1,11 @@
 # 公共日志索引
 
 > 按日期组织，仅记录团队级重要事件�?
+## 2026-10
+
+> **布局说明（v1.1.2-stage-51，A7 用户裁定）**：自本阶段起**新日志统一写入嵌套目录** `log/{yyyy}/{MM}/{dd}/`；历史**扁平目录** `log/{yyyy-mm-dd}/`（如 `2026-08-07`/`2026-08-09`/`2026-08-11`）保持原状、**不迁移**；两套布局的条目在本索引与 `day_index.md` 中**并存可检索**（根索引由代码生成时附 `（嵌套）`/`（历史扁平）` 布局标注）。
+- [01 日](2026/10/01/2026-10-01-Liuary-011.md) — Archiver 归档 stage-51（**v1.1.2 流水线状态维护与 CLI 可维护性·反馈 08**）：承接 `docs/phase-5/08-openfeel-workflow-feedback.md`（11 条），编号化 **N1~N11**（3 批次 H1~H3）/ **9 op**（commits `a008f69`~`34385a4`）；补齐「**纠正/清理侧**」CLI——`plan scheme remove` + `findOrphanOps` 对账（默认只报告 / `--prune-orphans` 仅清键孤儿 / 文件孤儿永不自动删）/ `flow stage set --deps`（悬空 exit 1）/ `flow review update·remove` / `ensureStageSkeleton` 消除半注册 / `syncCurrentOp` 单一 owner 复用 / `stage set` 三态幂等 + 字段白名单 / `stage task --add` + `plan stage add --tasks` / op 命名 `op-NNN.md` + 兼容回退 / knowledge 宽容解析 + **`openfeel knowledge dedup`**（随包分发、只读建议）/ 日志未来写入统一 + 索引共存 / `advance --quiet` 降噪；**用户裁定 A2/A5/A6/A7 全落地**；**56 文件 / 869 用例全绿（0 skipped）**、`tsc` 0、build 幂等、`lint i18n` **649 键**、`lint kb` 0 过期（242 引用）、`npm pack` 263 文件含 `dist/utils/kb-dedup.js`、环境零污染；三段审查零阻塞零新增 REV、**REV-004 closed**、**`cli/BUG-004` 关闭**（en `--help` Arguments 段 CJK 零命中，运行时 33 命令）；知识沉淀 **5 条**（architecture 1 + patterns 4 + troubleshooting 1 更新）；**v1.1.2 十一阶段（41~51）全部闭环**，`npm publish` 待用户决定
+
 ## 2026-09
 - [30 日](2026/09/30/2026-09-30-Liuary-010.md) — Archiver 归档 stage-50（**v1.1.2 全量审查 non-blocking 集中清理·第二批**）：承接 stage-49 总报告 §五 流转裁定，**T1~T57**（6 批次 A~F）7 op（commits `feae65e`~`def6a33`）；**用户裁定 R1~R6 全落地**（R1 `lint` 非 0 退出〔无逃生阀〕/ R3 `config set/get` 扩全量 `defaults.*`〔schema 驱动 + 枚举校验不写盘 + 值类型归一〕/ R4 审查条目收敛单入口〔`view add` deprecated，下版本删除〕/ R2 `update_infos` 保守默认 / R5 覆盖补 4 项 / R6 coverage 报告不阻断）；关键实现 `syncCurrentOp` 单一 owner（T1）/ `kb-dedup` `basePath` 参数化（T8）/ lint 退出码（T17）/ `transitionsDiff`（T19）/ 死代码删除（T22）/ config 白名单（T36）/ 双入口收敛（T37）/ 部署型 skill 双口径（T53）；**54 文件 / 790 用例全绿（0 skipped）**、`tsc` 0、build 幂等、`lint i18n` **560 键**、`lint kb` 0 过期；环境零污染；REV-001 closed / REV-002·003 resolved / REV-004（low）归下版本；`templates/BUG-003` **关闭** + 新登记 `cli/BUG-004`；知识沉淀 5 条（patterns 4 + troubleshooting 1）；文档/manual/CHANGELOG 同步由归档官落地
 - [30 日](2026/09/30/2026-09-30-Liuary-001.md) — Archiver 归档 stage-49（**v1.1.2 整仓全量审查 + blocking 修复**）：8 单元 MECE 覆盖 `src/**/*.ts` 全 62 文件；原始 73 条 → 去重 68 条；**blocking 4/4 独立复现成立并修复闭环**（B1 dry-run 写盘 / B2 悬空依赖 / B3 postinstall 失效+engines / B4 VERSION 死导出；commits `3f023e3`/`1a8546a`）；**41 文件 / 716 用例全绿**、`tsc` 0、build 幂等、`lint i18n` 533 键、`lint kb` 0 过期；离线安装实测（`npm pack` 259 文件）、真实环境零污染；知识沉淀 7 条（patterns 6 + troubleshooting 1）；文档类修复 `docs/commands.md` + README×3 落地；~40 条 non-blocking 裁定流入后续补丁阶段
@@ -46,6 +51,7 @@
 | [2026-10-01](2026/10/01/day_index.md) | v1.1.2-stage-51.op-005 执行通过 （嵌套） |
 | [2026-10-01](2026/10/01/day_index.md) | v1.1.2-stage-51.op-007 执行通过 （嵌套） |
 | [2026-10-01](2026/10/01/day_index.md) | v1.1.2-stage-51.op-009 执行通过 （嵌套） |
+| [2026-10-01](2026/10/01/day_index.md) | 阶段 v1.1.2-stage-51 完成 （嵌套） |
 
 - [29 日](2026/09/29/2026-09-29-Liuary-001.md) — Reviewer 审查 stage-46 计划（部署覆盖前备份，有条件通过：1 high + 2 medium blocking REV，config.yaml 覆盖路径漏备份上报）（末尾追加：文件含历史混合编码，避免整文件重写）
 | [2026-09-29](2026/09/29/day_index.md) | v1.1.2-stage-41.op-001 执行通过 |

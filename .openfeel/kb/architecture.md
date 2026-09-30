@@ -553,3 +553,23 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **设计取舍（v1.1.2-stage-44）**：9 agent 模板内联白名单 + 补 `external_directory: "allow"` ⇒ 「项目级全程免审」不再依赖顶层/项目配置；代价=框架 agent 豁免于项目顶层 `permission`，收紧须走项目级 agent `.md`。已文档化至根 `AGENTS.md` 权限模型节、`agents-md/{zh-CN,en}.md` 与 `manual/core/permission.md`。
 
 **局限**：结论**仅对 opencode 1.18.33 成立**（版本差异不可迁移）；`task` 委派子 agent 的 ruleset 继承未单独实测；配置热重载未单独实测。
+
+## [+] 纠正侧能力对称原则：创建侧齐备 → 补齐纠正/清理侧 CLI（可维护性架构）（2026-10-01）
+
+**反模式（v1.1.2-stage-51 核心命题）**：CLI 在「创建侧」能力齐备（建阶段、建 op、推进相位），却在「纠正/清理侧」近乎空白（不能删除 op、不能设置阶段依赖、不能改审查条目）→ 一旦误建条目，**无任何合法手段回收**，只能永久残留或违规手改状态文件（`flow.json`）——使硬性纪律「禁止手动编辑 flow.json」在**故障恢复场景下无解**。
+
+**架构结论**：任何「声明式状态文件 + 禁止手改 + 全由 CLI 写入」的治理体系，必须为**每一种可写结构**提供对称的**增 / 删 / 改 / 查**命令面，否则「禁止手改」纪律在异常路径上不可满足。补齐按**能力三分类**：
+
+| 能力 | 语义 | v1.1.2-stage-51 落地 |
+|------|------|------|
+| **删除** | 注销错误条目 | `plan scheme remove <stage> <opId>`（done/checkpoint 保护 + `--force`/`--dry-run`） |
+| **修正** | 改结构字段的值 | `flow stage set --deps <ids...>`（悬空校验 exit 1）、`flow review update/remove <revId>` |
+| **对账** | 检出「声明 ↔ 实体」漂移 | `flow repair` 的 op↔文件对账（默认只报告 + `--prune-orphans`）、`flow health` 孤儿 `warn` |
+
+**配套原则**：
+1. **对账能力先于自动清理**：新增可写结构时同步新增「漂移检测」；清理默认只报告、显式开关（见 kb/patterns.md #孤儿检测与安全清理模式）。
+2. **单一语义**：同一概念只保留一条权威路径——如 `scheme create` 隐式注册必须补齐 `overview.md`/`status.md` 骨架（消除「半注册」），抽 `ensureStageSkeleton` 供 `addStage` 共用，两路径产物**逐字节一致**。
+3. **单一 owner**：跨命令共享的生命周期（`pipeline.current.op`）由**一个函数**维护（`syncCurrentOp`），禁止各命令各写一份（见 kb/patterns.md #跨阶段「契约先行」协同）。
+4. **不做历史迁移**：结构变更（文件名/布局）以「未来写入统一 + 读取端兼容」收敛，不背历史迁移包袱（见 kb/patterns.md #「未来写入统一 + 历史共存」渐进收敛策略）。
+
+**参见：** v1.1.2-stage-51（反馈 08，N1~N11，9 op）；`plan/v1/stage-51/plan.md`；`.openfeel/manual/cli/commands.md`、`.openfeel/manual/core/flow-manager.md`

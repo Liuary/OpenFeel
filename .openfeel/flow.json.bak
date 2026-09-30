@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-30T16:36:57.624Z",
-    "revision": 344
+    "updated": "2026-09-30T16:54:14.585Z",
+    "revision": 350
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-51",
-      "op": "op-009"
+      "op": ""
     },
     "retry": 0
   },
@@ -1675,8 +1675,8 @@
     },
     "v1.1.2-stage-51": {
       "name": "v1.1.2-stage-51",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {
         "op-001": {
@@ -1817,9 +1817,9 @@
         },
         "op-009": {
           "title": "全量回归与门禁收口",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -8882,6 +8882,65 @@
       "detail": {
         "opId": "v1.1.2-stage-51.op-007",
         "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-30T16:38:53.228Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-51.op-009",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-09-30T16:39:30.931Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-51",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-09-30T16:45:34.759Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-51",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-09-30T16:45:35.030Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-51",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-09-30T16:54:14.300Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-51",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-09-30T16:54:14.582Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-51",
+        "from": "test_passed",
+        "to": "archiving"
       }
     }
   ]

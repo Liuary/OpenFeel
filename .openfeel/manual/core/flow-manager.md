@@ -13,7 +13,7 @@
 | `load()` / `save()` | 读取 / 持久化 flow.json（save 含乐观并发校验、写前备份与原子写；load 含 ops 防御性类型守卫） |
 | `addStage(stageId, deps?)` | 注册新阶段（写入前做 `(series, stageDir)` 冲突检测：不同 stageId 映射同目录时抛错，同 stageId 幂等静默） |
 | `advanceStagePhase(stageName, phase)` | 推进阶段到目标 phase（校验合法性） |
-| `syncCurrentOp(stageName)` | **`pipeline.current.op` 单一 owner（stage-50 T1）**：按 pending op 计算并同步 `current.op`，未命中置 `''`（不碰 phase、无 IO）；`advanceStagePhase` 与 `recordAttempt` 共用（禁止第二实现，供 stage-51 N4 复用）。修复「推进无 pending op 的阶段时 `current.op` 跨阶段悬空」 |
+| `syncCurrentOp(stageName)` | **`pipeline.current.op` 单一 owner（stage-50 T1）**：按 pending op 计算并同步 `current.op`，未命中置 `''`（不碰 phase、无 IO）；`advanceStagePhase` 与 `recordAttempt` 共用（禁止第二实现；**stage-51 N4 起 `recordAttempt` 的 pass / fail-retry 两分支亦调用**）。修复「推进无 pending op 的阶段时 `current.op` 跨阶段悬空」 |
 | `getSummary()` / `summary(lang)` | 获取流水线摘要（结构化 / 文本） |
 | `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查（**非 `--quick` 含第 7 项悬空依赖检测**，见下） |
 | `autoRepairInconsistency(stageName, options?)` | 自动修复 phase↔status 不一致（`status=done` 且 `phase≠done` → 同步 phase；反之同步 status）；**stage-49 B1 起增可选 `options: { dryRun?: boolean }`**——`dryRun` 时**只计算不赋值**（返回「将修复 X」的报告），供 `flow advance --dry-run` 预览（不再写盘） |
@@ -72,6 +72,16 @@
 - **T16 `autoCommitOnDone`**：git 提交改 `execFileSync('git', [...])` 数组形式（stageName 不再拼入 shell 串）。
 - **T19 `transitionsDiff`**：`flow phases --json` 增运行时与内置默认转移表的差异报告（`missing` 列出内置默认有而运行时缺失的 source），使 `pipeline.yaml` 漂移可见而非静默；**未修改 `pipeline.yaml`**（不补组合键，避免削弱 `test_enabled` 门禁）。
 
+
+## 纠正侧能力与孤儿对账（v1.1.2-stage-51，反馈 08）
+
+- **`removeScheme(projectPath, stageName, opId, {force?, dryRun?}): RemoveSchemeResult`**（`core/plan/scheme.ts`，导出）：从 `flow.json` 注销一个 op **注册键**（**不删除 op 模板文件**——删键后文件转列 fileOrphan，由 `flow repair` 报告）。默认拒绝 `state=done`（`reason='op-done'`）或**存在 checkpoint 进展**（`reason='has-checkpoint'`）的 op（`--force` 覆盖）；孤儿可直删（`orphan: true`）。经 `FlowManager` 加锁 + `save()` + `appendLog({ action:'scheme_remove', detail:{ stage, opId, force, orphan } })`。
+- **`findOrphanOps(projectPath): { keyOrphans, fileOrphans }`**（`core/flow-manager.ts`，模块级导出）：对账 `stages[].ops` 键 ↔ `ops/` 目录文件。**唯一对账实现**，`repair()` 与 `healthCheck()` 共用（禁止第二套）。文件存在性判定**同时匹配** `op-NNN.md` 与 `op-NNN_*.md`（防历史命名误判为键孤儿）。
+- **`repair(dryRun)` 集成**：`RepairResult` 增可选 `orphans`；**默认只报告**（命令层打印清单，flow.json 零变更）；`--prune-orphans` **仅清理 keyOrphans**（删键 + `appendLog`），**fileOrphans 永不自动删除**；与 `--dry-run` 组合仍只预览。
+- **`healthCheck` 第 8 项**：私有 `checkOrphanOps(items)`（**仅 `!quick`**，与 `checkDanglingDeps` 一致）——键/文件孤儿 → `warn`（detail 列前 5 + 总数），**不设 `fail`、不改变退出码**。
+- **`scheme create` 注册语义统一（N3/A1）**：`core/plan/stage.ts` 抽 **`ensureStageSkeleton(projectPath, name, deps?)`**（幂等「不存在才写」），`addStage` 改为复用；`scheme.ts` 隐式注册分支在写 `flow.json` 条目后调用之，**消除「半注册」**（`plan/…/{stage}/` 缺 `overview.md`/`status.md`）；`addStage` 与 `scheme create` 两路径骨架**逐字节一致**；骨架创建失败仅 `warn` 不中止。
+- **op 文件命名（N8/A5）**：`createScheme` 的 `candidate` 改为 `${opIdOf(seq)}.md`（**删除 `safeTitle`**，标题不再进文件名——修复标题含 `/` 时 `openSync(path,'wx')` ENOENT）；序号分配 `parse`（`/^op-(\d+)/`）**未改**（新旧命名均占号，避免撞号）；`extractTitle(filePath, fileName)` 兼容回退（文件名含 `_` 走历史解析，否则读内容首行 `# {opId}：{title}`，IO 失败回退文件名不抛错）。
+- **`recordAttempt` 同步 `current.op`（N4）**：pass / fail-retry 两分支在改 `op.state` 后**复用** `syncCurrentOp(stageId)`（stage-50 T1 落地，**不重复实现**，`rg syncCurrentOp` = 定义 1 + 调用 3）；`flow attempt` 输出「当前指针」行（`flow.attempt.currentOpTmpl`）。
 
 ## 状态机
 

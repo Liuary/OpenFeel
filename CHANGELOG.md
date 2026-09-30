@@ -46,6 +46,11 @@
 - [stage-50] **测试质量与覆盖（批次 E，T43~T52）**：`i18n.test` 隔离（不再依赖真实 home/仓库 `.info.json`）；静默 `console.warn` 跳过改 `it.skipIf`（skipped 可见）；`model.test` get 强断言；补 anomaly 去重 / migrate 失败语义 / `update-state` 全局函数断言；`backupLegacy` 改本地时区 + 毫秒 + 撞名后缀（见 Changed）；jsonc 降级安全读取；`saveUpdateState` 加锁 + 原子写；`migrate rollback` 非项目根明确报错；补 `stage`/`update`/`setup` + `repl` smoke **4 项覆盖**（**R5**，其余 7 族登记归后续）
 - [stage-50] **模板与文档口径（批次 F，T53~T57）**：5 个部署型 skill 模板改**双口径**（用户环境主口径 `openfeel <cmd>` + 本仓自举加注 `node bin/openfeel.js <cmd>`；`templates/BUG-003` **关闭**）；`agents-md/en.md` 图注改中英并列；`openfeel-cli-usage` skill 枚举补 `phases`/`stage` 与 5 命令族；`build.js` 注释计数修正（「两对」「9/17 带前缀」）
 
+- [stage-51] **纠正/清理侧 CLI 补齐（反馈 08，N1~N11）**：
+  - **Added**：`openfeel knowledge dedup [content] [--project <path>] [--category <name>] [--threshold <n>]`（检索相似知识条目，**只读建议**，随包分发）；`openfeel plan scheme remove <stage> <opId>`（注销 op 注册键，done/checkpoint 保护 + `--force`/`--dry-run`）；`openfeel flow stage set <stageId> --deps <ids...>`（悬空校验 exit 1）；`openfeel flow review update <revId>` / `flow review remove <revId>`；`openfeel stage task <id> --add "<描述>"`；`openfeel plan stage add <name> --tasks "<t1>" "<t2>"`；`openfeel flow advance --quiet`；`stage set` 字段扩展 `--exec-mode`/`--auto-advance`/`--review-agent`；`flow repair --prune-orphans`（仅清理键孤儿）
+  - **Changed（行为变更）**：op 文件名固定 `op-NNN.md`（标题写入内容首行；历史 `op-NNN_标题.md` **不迁移**，读取端 `extractTitle` 兼容回退）；公共日志未来写入统一为嵌套 `log/{yyyy}/{MM}/{dd}/`（**不迁移历史**，根索引同时反映两套布局 + 布局标注）；`flow advance` 默认仅在 `--to done` 提示 git 脏区（非 done 不再调用 `git status`）；`stage set` 同值由「报错」改为「**no-op 成功 exit 0**」且 `.bak` 仅在确认变更后生成；`flow repair` 输出新增孤儿 op 对账（默认只报告，零写盘）；`plan scheme create` 隐式注册时补建 `overview.md`/`status.md` 骨架（消除「半注册」）；`knowledge index`/`add` 放宽段头/表头/列数解析（标准格式输出不变）
+  - **Fixed**：`cli/BUG-004`（en 模式 `--help` 的 Arguments 描述仍为中文）——补齐 20 处（+1 新增）`help.<path>.arg<name>` 双语键 + 运行时全量枚举门禁；`REV-004`（`help.view.add` 未同步弃用文案）——单键合并（删 `view.add.desc`）；op 标题含 `/` 时创建失败（ENOENT）已修复；`flow health` 新增孤儿 op `warn`（**非 `fail`，不改变退出码**）
+
 > 完整逐条处置与验证证据见 `.openfeel/code_review/v1.1.2-stage-50.md` 与 `.openfeel/users/Liuary/log/op-v1.1.2-stage-50-report-2026-09-30.md`（T1~T57 覆盖表）。
 
 ## [1.1.1] - 2026-09-26

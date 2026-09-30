@@ -12,6 +12,9 @@
 - stageId 校验与冲突检测：`validateStageId` / `suggestStageId` / `findStageDirConflict`（`(series, stageDir)` 冲突阻止 + 建议名）
 - 部署覆盖前自动备份：全局根 `~/.openfeel/backup/{ts}/` + `update_infos.md` 新增「备份」类条目 + `feel.md` 检查规则
 - 新增 skill `openfeel-cli-usage`（CLI 命令/参数/phase/stageId 用法按需加载参考；skill 总数 16 → 17）
+- [stage-50] CI 环境守卫与版本门禁（stage-48）：测试前后对全局目录 + 仓库项目配置做 sha256 快照比对（守卫窗口前移），`--version` 与 `package.json.version` 一致性门禁
+- [stage-50] **Added（R3）**：`openfeel config set`/`get` 支持**全量 `defaults.*`** 键（`execution_mode` / `test_enabled` / `merge_mode` 等），含枚举值校验与布尔类型归一
+- [stage-50] **Added（R6）**：`npm run test:coverage` 与 CI 覆盖率**报告**（仅观测基线，不阻断）
 
 ### Changed
 - `auto_advance` 口径统一为「项目 `config.yaml` 优先、全局画像兜底」三级有效链
@@ -22,6 +25,13 @@
 - 平台强限定描述泛化（去「唯一 harness」表述，零行为变更）
 - 文档/手册与 CLI 同步（`docs/commands.md` 新增 `## config` 节等）
 - 版本号 1.1.0 → 1.1.2 全链路同步（`package.json` / `config.yaml` / `config.ts` 模板 / agents-md 模板 / `AGENTS.md` / `package-lock.json` / `CHANGELOG`）
+- [stage-50] CI 加固（stage-49，commit `afe93dd`）：环境守卫覆盖仓库项目配置、coverage 报告步骤、`fetch-depth` 清理
+- [stage-50] **Changed（行为变更，R1）**：`openfeel lint i18n` / `lint kb` 发现问题改为**非 0 退出**（门禁语义，对齐 `flow health`；外部脚本若忽略退出码将受影响）
+- [stage-50] **Changed（行为变更）**：`openfeel migrate` 备份目录名改为**本地时区 + 毫秒 + 撞名后缀**（T49，防同秒两次备份互相覆盖）
+- [stage-50] `openfeel flow phases --json` 追加 `transitionsDiff` 字段（T19，运行时与内置默认转移表差异可见；既有 `phases`/`transitions`/`advanceAccepted` 保留）
+
+### Deprecated
+- [stage-50] **Deprecated（R4）**：`openfeel view add` 已弃用，**将于下一版本移除**；请迁移至 `openfeel flow review add`（本版本仅弃用 + 运行时提示）
 
 ### Fixed
 - `config/BUG-004`：`identity.test.ts` 直写真实 `~/.openfeel/config.json` 的测试隔离缺口——改为 N4 单点 mock + 新增隔离守护用例（真实文件 mtime/SHA-256 前后不变）
@@ -29,6 +39,7 @@
 - 移除随包 `postinstall` 补丁（`scripts/patch-inquirer.js`）：该补丁在用户端 `node_modules` 布局下必然静默失效（`util.styleText` 自 Node 20.12 起已内置，允许区间内无需补丁）
 - `engines.node` 由 `>=20.0.0` 收窄为 `>=20.17.0`，与 `@inquirer/core` 要求一致，避免 Node 20.0~20.16 下交互命令崩溃
 - 移除 `src/index.ts` 中从未生效的死导出 `VERSION`（值恒为 `0.1.0`、全仓零引用；`exports["."]` 不再暴露错误版本号；CLI 版本仍取自 `package.json`）
+- [stage-50] 内部一致性 / 守卫 / 测试隔离 / 模板口径等集中清理（T1~T57：`syncCurrentOp` 单一 owner、`ops`/`deps` 守卫收口、metrics i18n、REV ID 最大序号、`checkpoint_mapping` 归档键、`execFileSync` 数组化、`getHomedir` 单点、profile 深拷贝、原型链防护、知识库表格转义、部署型 skill 双口径、REPL 存活等）——**完整条目由归档官按阶段实际收口补全**（本占位仅登记范围）
 
 ## [1.1.1] - 2026-09-26
 

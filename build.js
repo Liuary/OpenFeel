@@ -960,7 +960,7 @@ function validateOpencodeTemplates() {
   }
 }
 
-// ── 单源一致性校验（N2：三对注入对象键集与内容一致）─────────────────────
+// ── 单源一致性校验（N2：两对注入对象键集与内容一致）─────────────────────
 
 /**
  * 断言两组键值对象的键集与归一化内容一致
@@ -1074,7 +1074,7 @@ async function regenerateOpencodeInstance() {
     }
   }
 
-  // 3) agents：权威源 agents/{lang}/*.md → .opencode/agents/*.md（8 带前缀 + feel）
+  // 3) agents：权威源 agents/{lang}/*.md → .opencode/agents/*.md（9 带前缀：8 个 openfeel-* + feel）
   const agentDir = resolve(TEMPLATE_OPENCODE_AGENTS_DIR, lang);
   for (const file of readdirSync(agentDir).filter((f) => f.endsWith('.md'))) {
     let content = readFileSync(join(agentDir, file), 'utf-8').replace(/\r\n/g, '\n');
@@ -1082,7 +1082,7 @@ async function regenerateOpencodeInstance() {
     atomicWriteFileSync(resolve(__dirname, '.opencode', 'agents', file), content);
   }
 
-  // 4) skills：权威源 skills/*/SKILL.md → .opencode/skills/*/SKILL.md（14 带前缀）
+  // 4) skills：权威源 skills/*/SKILL.md → .opencode/skills/*/SKILL.md（17 带前缀）
   for (const dir of readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory())) {
     const src = join(TEMPLATE_OPENCODE_SKILLS_DIR, dir.name, 'SKILL.md');
     let content = readFileSync(src, 'utf-8').replace(/\r\n/g, '\n');

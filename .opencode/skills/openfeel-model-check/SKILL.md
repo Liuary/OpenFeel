@@ -6,12 +6,14 @@ description: Feel 自检时检查所有 Agent 的模型配置状态，识别期�
 <!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->
 # 模型配置检查
 
+> ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
+
 ## 触发时机
 
 Feel Agent 在以下时机加载本 Skill：
 - 会话启动自检（每次）
 - 用户请求检查模型配置（按需）
-- 新项目首次初始化后（`node bin/openfeel.js init`）
+- 新项目首次初始化后（`openfeel init`）
 
 ## 执行步骤
 
@@ -188,7 +190,7 @@ models:
       ...
 ```
 
-此模板在下次 `node bin/openfeel.js init` 或新项目部署时自动检测并建议复用。
+此模板在下次 `openfeel init` 或新项目部署时自动检测并建议复用。
 
 ## 输出规范
 

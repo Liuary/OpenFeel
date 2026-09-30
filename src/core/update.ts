@@ -381,40 +381,45 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 ## 说明
 
 - 定位：**查询型参考手册**（只读，不自执行）。回答「命令是什么、参数怎么给、phase/stageId 规则如何」。
-- 边界：**执行型交互向导**请用 \`openfeel-wizard\` skill（跑 \`node bin/openfeel.js flow wizard\` 推进流水线）；本 skill 只承载静态知识查阅。
+- 边界：**执行型交互向导**请用 \`openfeel-wizard\` skill（跑 \`openfeel flow wizard\` 推进流水线）；本 skill 只承载静态知识查阅。
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 
-> 本文档为 v1.1.2 快照；命令/参数细节以 \`node bin/openfeel.js <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.1.2 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
-> ⚠️ **旧版风险**：安装后的一般使用者用法 \`openfeel <cmd>\`（查询型）可能命中全局旧版（如 1.1.1）；**在本仓开发/执行一律用 \`node bin/openfeel.js <cmd>\`**（= 本仓 1.1.2，与 \`package.json.version\` 一致，由 CI 版本门禁校验）。
+> ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
 ## 命令速查
 
 | 命令 | 用途 | 关键参数 |
 |------|------|----------|
-| \`node bin/openfeel.js init [path]\` | 初始化项目工作区 | \`--lang <zh-CN\\|en>\`、\`--demo\`、\`--workspace-only\`、\`--non-interactive\` |
-| \`node bin/openfeel.js setup\` | 部署全局框架配置（不建项目 \`.openfeel/\`） | \`--lang <zh-CN\\|en>\` |
-| \`node bin/openfeel.js update [path]\` | 部署适配文件到目标项目 | \`--lang\`、\`--force\` |
-| \`node bin/openfeel.js migrate [path]\` | Legacy 布局迁移（检测/备份/迁移/回滚） | \`--dry-run\`、\`--remap-assignee\`、\`--clean-global-core-md\`；\`migrate rollback\` |
-| \`node bin/openfeel.js flow ...\` | 流水线状态管理 | 见下「flow 子命令」 |
-| \`node bin/openfeel.js plan stage add\\|list\` | 工作阶段管理 | \`add <name> --deps <ids...>\` |
-| \`node bin/openfeel.js plan scheme create\\|list\` | 操作方案管理 | \`create <stage> <title>\` |
-| \`node bin/openfeel.js stage status\\|set\\|task\` | \`status.md\` 原子操作 | \`set <id> --status <v>\`、\`task <id> <no>\`（\`stage create\` 已弃用） |
-| \`node bin/openfeel.js config ...\` | 配置管理 | \`get\\|set [--global]\`、\`get-lang\\|set-lang\`、\`list-projects\`、\`effective [key]\` |
-| \`node bin/openfeel.js model set\\|get\\|list\` | 模型三层级配置 | \`set <agent> <model>\` |
-| \`node bin/openfeel.js lint i18n\\|kb\` | 健康检查（i18n 键一致性 / kb 过期引用） | — |
-| \`node bin/openfeel.js knowledge ...\` | 知识库管理 | \`list\` 等 |
+| \`openfeel init [path]\` | 初始化项目工作区 | \`--lang <zh-CN\\|en>\`、\`--demo\`、\`--workspace-only\`、\`--non-interactive\` |
+| \`openfeel setup\` | 部署全局框架配置（不建项目 \`.openfeel/\`） | \`--lang <zh-CN\\|en>\` |
+| \`openfeel update [path]\` | 部署适配文件到目标项目 | \`--lang\`、\`--force\` |
+| \`openfeel migrate [path]\` | Legacy 布局迁移（检测/备份/迁移/回滚） | \`--dry-run\`、\`--remap-assignee\`、\`--clean-global-core-md\`；\`migrate rollback\` |
+| \`openfeel flow ...\` | 流水线状态管理 | 见下「flow 子命令」 |
+| \`openfeel plan stage add\\|list\` | 工作阶段管理 | \`add <name> --deps <ids...>\` |
+| \`openfeel plan scheme create\\|list\` | 操作方案管理 | \`create <stage> <title>\` |
+| \`openfeel stage status\\|set\\|task\` | \`status.md\` 原子操作 | \`set <id> --status <v>\`、\`task <id> <no>\`（\`stage create\` 已弃用） |
+| \`openfeel config ...\` | 配置管理 | \`get\\|set [--global]\`、\`get-lang\\|set-lang\`、\`list-projects\`、\`effective [key]\` |
+| \`openfeel model set\\|get\\|list\` | 模型三层级配置 | \`set <agent> <model>\` |
+| \`openfeel lint i18n\\|kb\` | 健康检查（i18n 键一致性 / kb 过期引用） | — |
+| \`openfeel knowledge ...\` | 知识库管理 | \`list\` 等 |
+| \`openfeel archive <stage>\` | 归档指定阶段（汇总产出、生成摘要、提取知识） | \`<stage>\` |
+| \`openfeel view list\\|add\\|accept\` | 审查条目管理（**\`view add\` 已弃用**，改用 \`flow review add\`） | \`--op\`、\`--title\`、\`--priority\` |
+| \`openfeel project ...\` | 项目管理与概览 | \`list\` 等 |
+| \`openfeel roadmap create\\|show\` | 分期大纲管理 | \`create <version>\`、\`show [version]\` |
+| \`openfeel instructions <artifactId>\` | 为指定 artifact 生成结构化指令 | \`--json\` |
 
-**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`checkpoint\` / \`health\` / \`recover\` / \`wizard\`。
+**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`stage\` / \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`checkpoint\` / \`health\` / \`recover\` / \`wizard\`。
 
 **本版本（v1.1.2）新增**：
 
 | 命令 | 说明 |
 |------|------|
-| \`node bin/openfeel.js flow phases [--json]\` | 自描述全部合法 phase 与运行时转移表；\`--json\` 输出 \`{ phases, transitions, advanceAccepted }\` |
-| \`node bin/openfeel.js flow stage remove <stageId> [--force] [--dry-run] [--purge]\` | 移除阶段。安全校验：\`ops\` 非空 / 当前活跃阶段 / 被其它阶段依赖时默认拒绝；\`--force\` 越过；\`--dry-run\` 仅预览；\`--purge\` 于 \`save()\` 成功后删除 \`plan/{series}/{stageDir}/\` 目录 |
-| \`node bin/openfeel.js plan stage add <name> [--deps <ids...>]\` | **完整入口**：建目录 + \`overview.md\`/\`status.md\` + 注册 \`flow.json\`；\`--deps\` 支持空格或逗号分隔 |
-| \`node bin/openfeel.js config effective [key]\` | 输出配置**有效值 + 来源**；省略 key 时输出四键（\`execution_mode\` / \`auto_advance\` / \`test_enabled\` / \`merge_mode\`） |
+| \`openfeel flow phases [--json]\` | 自描述全部合法 phase 与运行时转移表；\`--json\` 输出 \`{ phases, transitions, advanceAccepted }\` |
+| \`openfeel flow stage remove <stageId> [--force] [--dry-run] [--purge]\` | 移除阶段。安全校验：\`ops\` 非空 / 当前活跃阶段 / 被其它阶段依赖时默认拒绝；\`--force\` 越过；\`--dry-run\` 仅预览；\`--purge\` 于 \`save()\` 成功后删除 \`plan/{series}/{stageDir}/\` 目录 |
+| \`openfeel plan stage add <name> [--deps <ids...>]\` | **完整入口**：建目录 + \`overview.md\`/\`status.md\` + 注册 \`flow.json\`；\`--deps\` 支持空格或逗号分隔 |
+| \`openfeel config effective [key]\` | 输出配置**有效值 + 来源**；省略 key 时输出四键（\`execution_mode\` / \`auto_advance\` / \`test_enabled\` / \`merge_mode\`） |
 
 > 命令职责分层：\`plan stage add\`（完整，推荐）> \`flow stage add\`（仅注册 \`flow.json\`，不建目录）> \`stage create\`（已弃用）。
 
@@ -446,8 +451,8 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 | \`archiving\` | \`done\` |
 | \`done\` | （终态） |
 
-- 转移表以**运行时** \`.openfeel/pipeline.yaml\` 为准；\`node bin/openfeel.js flow phases\` 查看当前生效值。
-- 推进：\`node bin/openfeel.js flow advance --stage <id> --to <phase>\`（组合条件路径另见 \`advanceAccepted\`）。
+- 转移表以**运行时** \`.openfeel/pipeline.yaml\` 为准；\`openfeel flow phases\` 查看当前生效值。
+- 推进：\`openfeel flow advance --stage <id> --to <phase>\`（组合条件路径另见 \`advanceAccepted\`）。
 - 参考：\`.openfeel/manual/**\`（CLI/flow 模块文档）。
 
 ## stageId 命名与目录映射
@@ -464,10 +469,10 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 ## 典型场景
 
-1. **落地新阶段**：\`node bin/openfeel.js plan stage add v1.1.2-stage-43\`（建目录 + 注册）→ \`node bin/openfeel.js flow advance --stage v1.1.2-stage-43 --to plan_pending\` 起步。
-2. **声明依赖**：\`node bin/openfeel.js plan stage add v1.1.2-stage-43 --deps v1.1.2-stage-41 v1.1.2-stage-47\`（写入 \`overview.md\`「## 依赖」+ \`flow.json.stages[].deps\`）。
-3. **纠错移除误建阶段**：\`node bin/openfeel.js flow stage remove v1.1.2-stage-43 --dry-run\` 预览 → 确认后 \`--force\`（必要时 \`--purge\` 删目录）。
-4. **查询有效配置**：\`node bin/openfeel.js config effective auto_advance\`（来源优先级 \`status.md\` > \`config.yaml\` > \`profile.yaml\` > \`builtin\`）。
+1. **落地新阶段**：\`openfeel plan stage add v1.1.2-stage-43\`（建目录 + 注册）→ \`openfeel flow advance --stage v1.1.2-stage-43 --to plan_pending\` 起步。
+2. **声明依赖**：\`openfeel plan stage add v1.1.2-stage-43 --deps v1.1.2-stage-41 v1.1.2-stage-47\`（写入 \`overview.md\`「## 依赖」+ \`flow.json.stages[].deps\`）。
+3. **纠错移除误建阶段**：\`openfeel flow stage remove v1.1.2-stage-43 --dry-run\` 预览 → 确认后 \`--force\`（必要时 \`--purge\` 删目录）。
+4. **查询有效配置**：\`openfeel config effective auto_advance\`（来源优先级 \`status.md\` > \`config.yaml\` > \`profile.yaml\` > \`builtin\`）。
 5. **部署前备份**：\`setup\`/\`update\`/\`init\`/\`migrate\` 覆盖写入前自动备份至 \`~/.openfeel/backup/{ts}/\`；\`update_infos.md\` 会新增「备份」类条目，Agent 须按 \`feel.md\` 检查规则核对（存在性 + 失败重跑）。
 
 ## 权限模型要点
@@ -481,7 +486,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 | 维度 | \`openfeel-cli-usage\`（本 skill） | \`openfeel-wizard\` |
 |------|--------------------------------|-------------------|
-| 定位 | 查询型**参考手册**（只读静态知识） | 执行型**交互向导**（跑 \`node bin/openfeel.js flow wizard\`） |
+| 定位 | 查询型**参考手册**（只读静态知识） | 执行型**交互向导**（跑 \`openfeel flow wizard\`） |
 | 动作 | 回答「命令/参数/phase/stageId 是什么」 | 逐步选择并推进阶段 phase |
 | 前置 | 无 | 需交互式 TTY（非 TTY 用 \`flow advance --stage <id> --to <phase>\`） |
 
@@ -659,14 +664,16 @@ description: 加载流水线健康检查结果，供 Agent 判断 flow.json 与�
 
 # 流水线健康检查
 
+> ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
+
 ## 输入
 
 无
 
 ## 执行步骤
 
-1. 运行 \`node bin/openfeel.js flow health --quick\` 检查关键项（phase/current 合法性）
-2. 需要全面检查时运行 \`node bin/openfeel.js flow health\`（含跨文件一致性、僵尸状态、config.yaml）
+1. 运行 \`openfeel flow health --quick\` 检查关键项（phase/current 合法性）
+2. 需要全面检查时运行 \`openfeel flow health\`（含跨文件一致性、僵尸状态、config.yaml）
 3. 解析输出中的 ✅ / ⚠️ / ❌ 项
 
 ## 输出
@@ -680,12 +687,14 @@ description: Feel 自检时检查所有 Agent 的模型配置状态，识别期�
 
 # 模型配置检查
 
+> ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
+
 ## 触发时机
 
 Feel Agent 在以下时机加载本 Skill：
 - 会话启动自检（每次）
 - 用户请求检查模型配置（按需）
-- 新项目首次初始化后（\`node bin/openfeel.js init\`）
+- 新项目首次初始化后（\`openfeel init\`）
 
 ## 执行步骤
 
@@ -862,7 +871,7 @@ models:
       ...
 \`\`\`
 
-此模板在下次 \`node bin/openfeel.js init\` 或新项目部署时自动检测并建议复用。
+此模板在下次 \`openfeel init\` 或新项目部署时自动检测并建议复用。
 
 ## 输出规范
 
@@ -954,13 +963,15 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 
 # 跨会话上下文恢复
 
+> ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
+
 ## 输入
 
 无
 
 ## 执行步骤
 
-1. 运行 \`node bin/openfeel.js flow recover\` 获取全局状态、流水线阶段、当前操作、阻塞原因与待处理任务
+1. 运行 \`openfeel flow recover\` 获取全局状态、流水线阶段、当前操作、阻塞原因与待处理任务
 2. 读取 \`.openfeel/users/{username}/dev_last.md\` 恢复上次操作状态与待续事项
 3. 将两者合并为当前会话起点
 
@@ -1349,7 +1360,7 @@ description: 交互式流水线向导，供 Agent 在终端中逐步推进流水
 
 ## 执行步骤
 
-1. 运行 \`node bin/openfeel.js flow wizard\` 启动交互式向导
+1. 运行 \`openfeel flow wizard\` 启动交互式向导
 2. 按提示选择要推进的阶段和下一步 phase（基于当前阶段的可达 transitions）
 3. 确认后执行推进，循环直至阶段 done 或退出
 
@@ -1357,9 +1368,9 @@ description: 交互式流水线向导，供 Agent 在终端中逐步推进流水
 
 向导推进结果：阶段 phase 变化（from → to），结束/退出提示
 
-> 注：需交互式终端（TTY），非交互环境请改用 \`node bin/openfeel.js flow advance --stage <id> --to <phase>\`
+> 注：需交互式终端（TTY），非交互环境请改用 \`openfeel flow advance --stage <id> --to <phase>\`
 >
-> ⚠️ 全局 \`openfeel\` 可能命中旧版（如 1.1.1）；**本仓执行请用 \`node bin/openfeel.js <cmd>\`**（= 本仓 1.1.2）。
+> ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 >
 > 静态命令/参数/phase/stageId 参考见 \`openfeel-cli-usage\` skill（本 skill 负责交互式执行推进）。
 `,

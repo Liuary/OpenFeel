@@ -765,6 +765,16 @@ export function registerFlowCommand(program: Command): void {
         mgr.save();
         console.log(t('flow.attempt.autoReplan', lang));
       }
+
+      // N4-2：输出当前指针（只读，与 flow current 同源；attempt 后 current.op 已由 syncCurrentOp 同步）
+      const cur = mgr.getData()?.pipeline.current;
+      if (cur && cur.stage) {
+        if (cur.op) {
+          console.log(t('flow.attempt.currentOpTmpl', lang, { stage: cur.stage, op: cur.op }));
+        } else {
+          console.log(t('flow.attempt.currentOpEmptyTmpl', lang, { stage: cur.stage }));
+        }
+      }
     });
 
   // flow log [--last <n>]

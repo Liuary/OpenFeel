@@ -2433,6 +2433,56 @@ describe('FlowManager', () => {
   });
 
   // ═══════════════════════════════════════
+  // N4 current.op 生命周期（stage-51 op-004）
+  // ═══════════════════════════════════════
+
+  describe('N4 current.op 生命周期（stage-51 op-004）', () => {
+    const baseStage = makeTestFlowData().stages['stage-01'];
+    const baseOp = baseStage.ops['op-001'];
+    const op2 = { ...baseOp, id: 'op-002', title: 'o2' };
+
+    it('N4-1：recordAttempt pass 复用 syncCurrentOp（单一 owner）并指向下一 pending', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        stages: { 'stage-01': { ...baseStage, ops: { 'op-001': baseOp, 'op-002': op2 } } },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      }));
+      const spy = vi.spyOn(mgr, 'syncCurrentOp');
+
+      mgr.recordAttempt('stage-01.op-001', 'pass');
+
+      expect(spy).toHaveBeenCalledWith('stage-01');
+      expect(mgr.getData()!.pipeline.current.op).toBe('op-002');
+    });
+
+    it('N4-1：recordAttempt fail-retry 复用 syncCurrentOp，current.op 稳定指向该 op', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        stages: { 'stage-01': { ...baseStage, ops: { 'op-001': { ...baseOp, state: 'executing' } } } },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      }));
+      const spy = vi.spyOn(mgr, 'syncCurrentOp');
+
+      mgr.recordAttempt('stage-01.op-001', 'fail');
+
+      expect(spy).toHaveBeenCalledWith('stage-01');
+      expect(mgr.getData()!.pipeline.current.op).toBe('op-001');
+    });
+
+    it('N4-1：pass 末位 op → current.op 置空（与 T1 语义一致）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      }));
+
+      mgr.recordAttempt('stage-01.op-001', 'pass');
+
+      expect(mgr.getData()!.pipeline.current.op).toBe('');
+      expect(mgr.getData()!.pipeline.current.stage).toBe('stage-01');
+    });
+  });
+
+  // ═══════════════════════════════════════
   // mapPhaseToStageStatus（独立辅助函数）
   // ═══════════════════════════════════════
 

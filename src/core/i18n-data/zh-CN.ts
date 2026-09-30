@@ -146,6 +146,8 @@ export const flow: I18nDomain = {
   'attempt.failRetryTmpl':      { key: 'flow.attempt.failRetryTmpl',      zh: '⚠ {op} 执行失败，将重试（可重试）',         en: '' },
   'attempt.failReplanTmpl':     { key: 'flow.attempt.failReplanTmpl',     zh: '✗ {op} 重试耗尽，需要重新规划',            en: '' },
   'attempt.autoReplan':         { key: 'flow.attempt.autoReplan',         zh: '→ 已自动回退到 scheme_pending，请重新规划方案', en: '' },
+  'attempt.currentOpTmpl':      { key: 'flow.attempt.currentOpTmpl',      zh: '当前指针：{stage}.{op}',                en: '' },
+  'attempt.currentOpEmptyTmpl': { key: 'flow.attempt.currentOpEmptyTmpl', zh: '当前指针：{stage}.（无待执行 op）',      en: '' },
 
   // flow log
   'log.noInit':                 { key: 'flow.log.noInit',                 zh: '流水线未初始化，无日志',                   en: '' },

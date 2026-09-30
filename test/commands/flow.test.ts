@@ -544,4 +544,35 @@ describe('flow 命令（stage-41）', () => {
     await safeParse(['flow', 'review', 'remove', 'REV-999']);
     expect(exitMock).toHaveBeenCalledWith(1);
   });
+
+  // ── stage-51/N4-2：flow attempt 当前指针提示 ──
+
+  it('N4-2: flow attempt 输出当前指针（指向下一 pending）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-74');
+    mgr.getData()!.stages['v1.1.2-stage-74'].ops = {
+      'op-001': makeOp('op-001') as never,
+      'op-002': makeOp('op-002') as never,
+    };
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'attempt', '--op', 'v1.1.2-stage-74.op-001', '--result', 'pass']);
+
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('当前指针');
+    expect(out).toContain('v1.1.2-stage-74.op-002');
+  });
+
+  it('N4-2: attempt 末位 op → 输出无待执行 op 文案', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-75');
+    mgr.getData()!.stages['v1.1.2-stage-75'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'attempt', '--op', 'v1.1.2-stage-75.op-001', '--result', 'pass']);
+
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('无待执行 op');
+  });
 });

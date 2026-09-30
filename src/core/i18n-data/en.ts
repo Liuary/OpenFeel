@@ -137,6 +137,8 @@ export const flow: I18nDomain = {
   'attempt.failRetryTmpl':      { key: 'flow.attempt.failRetryTmpl',      zh: '', en: '⚠ {op} failed, will retry (retriable)' },
   'attempt.failReplanTmpl':     { key: 'flow.attempt.failReplanTmpl',     zh: '', en: '✗ {op} retries exhausted, needs re-planning' },
   'attempt.autoReplan':         { key: 'flow.attempt.autoReplan',         zh: '', en: '→ Auto reverted to scheme_pending, please re-plan' },
+  'attempt.currentOpTmpl':      { key: 'flow.attempt.currentOpTmpl',      zh: '', en: 'Current pointer: {stage}.{op}' },
+  'attempt.currentOpEmptyTmpl': { key: 'flow.attempt.currentOpEmptyTmpl', zh: '', en: 'Current pointer: {stage}. (no pending op)' },
 
   'log.noInit':                 { key: 'flow.log.noInit',                 zh: '', en: 'Pipeline not initialized, no logs' },
   'log.noLogs':                 { key: 'flow.log.noLogs',                 zh: '', en: 'No operation logs' },

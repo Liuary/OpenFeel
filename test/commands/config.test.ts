@@ -167,4 +167,97 @@ describe('config 命令（stage-42 op-002）', () => {
 
     expect(stdout()).toMatch(/auto_advance.*profile\.yaml/);
   });
+
+  // ═══ stage-50 op-003：配置面一致性（T30/T33/T35/T36） ═══
+
+  it('T30：config set --global __proto__ 不崩溃且明确报错（原型链穿透防护）', async () => {
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', '__proto__', 'x', '--global']);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toMatch(/(无效的全局配置键|Invalid global config key)/);
+  });
+
+  it('T33：config get --global 遇非法 profile → stderr 警告，退出码不变（0）', async () => {
+    const dir = join(tmpDir, '.config', 'openfeel');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'profile.yaml'), '{{{{ broken: [unclosed\n', 'utf-8');
+
+    await safeParse(['config', 'get', 'user.name', '--global']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(stderr()).toMatch(/(解析失败|Failed to parse)/);
+  });
+
+  it('T35：config 组与 get-lang 使用独立 help 键（无占位符泄漏）', () => {
+    const cfg = program.commands.find((c) => c.name() === 'config');
+    expect(cfg).toBeDefined();
+    expect(cfg!.description()).toBeTruthy();
+    expect(cfg!.description()).not.toContain('{lang}');
+    const gl = cfg!.commands.find((c) => c.name() === 'get-lang');
+    expect(gl).toBeDefined();
+    expect(gl!.description()).not.toContain('{lang}');
+  });
+
+  it('T36：4 键 round-trip（set → get 回读同值）', async () => {
+    const cases: Array<[string, string]> = [
+      ['execution_mode', 'auto'],
+      ['auto_advance', 'enabled'],
+      ['test_enabled', 'true'],
+      ['merge_mode', 'auto'],
+    ];
+    for (const [k, v] of cases) {
+      await safeParse(['config', 'set', k, v]);
+    }
+    for (const [k, v] of cases) {
+      logMock.mockClear();
+      await safeParse(['config', 'get', k]);
+      expect(stdout()).toContain(v);
+    }
+  });
+
+  it('T36：枚举非法报错（exit 1）且不写盘', async () => {
+    writeProjectConfig('manual');
+    const before = readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8');
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', 'execution_mode', 'foo']);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toMatch(/(无效的值|Invalid value)/);
+    // 文件未变
+    expect(readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8')).toBe(before);
+  });
+
+  it('T36：未知键报 invalidKey 且 exit 1', async () => {
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', 'bogus_key', 'x']);
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toMatch(/(无效的配置键|Invalid config key)/);
+  });
 });

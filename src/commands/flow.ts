@@ -27,6 +27,7 @@ import { FlowManager, isFlowConcurrentError, normalizeAgentName, StageDirConflic
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId } from '../core/plan/path.js';
 import { MetricsStore } from '../core/metrics.js';
+import { addReviewEntry } from '../core/view/entry.js';
 import { t, getCliLang } from '../core/i18n.js';
 
 export function registerFlowCommand(program: Command): void {
@@ -748,65 +749,50 @@ export function registerFlowCommand(program: Command): void {
     .option('--blocking [boolean]', '是否阻塞流水线（默认 true）', 'true')
     .action((options: { op: string; title?: string; autoFix?: string; blocking?: string | boolean }) => {
       const lang = getCliLang(process.cwd());
-      const mgr = createManager();
-      if (!mgr.isLoaded()) {
-        console.error(t('common.errorNoInit', lang));
+      // 单点实现：解析 / 校验 / REV ID 分配 / 写入均由 addReviewEntry 统一处理（T37/R4）
+      const blocking = options.blocking !== undefined
+        ? !(options.blocking === 'false' || options.blocking === false)
+        : true;
+      const result = addReviewEntry(process.cwd(), {
+        opId: options.op,
+        title: options.title || t('flow.review.detail', lang) + `: ${options.op}`,
+        priority: 'medium',
+        autoFixDetail: options.autoFix,
+        blocking,
+      });
+
+      if (result.error) {
+        // 错误路径：按错误码分流 i18n 文案（单点返回 code，命令层只负责呈现）
+        switch (result.error.code) {
+          case 'notLoaded':
+            console.error(t('common.errorNoInit', lang));
+            break;
+          case 'invalidOpId':
+            console.error(t('common.invalidOpId', lang));
+            break;
+          case 'stageNotFound':
+            console.error(t('flow.review.errorStageNotFoundTmpl', lang, { opId: result.error.opId, stage: result.error.stage }));
+            break;
+          case 'opNotFound':
+            console.error(t('flow.review.errorOpNotFoundTmpl', lang, { opId: result.error.opId, op: result.error.op, stage: result.error.stage }));
+            break;
+          case 'invalidPriority':
+            console.error(t('view.add.errorInvalidPriorityTmpl', lang, { priority: result.error.priority }));
+            break;
+        }
         process.exit(1);
+        return;
       }
 
-      // 自动生成 REV ID（基于已有审查条目数量递增）
-      const existingReviews = mgr.getReviewItems();
-      const revId = `REV-${String(existingReviews.length + 1).padStart(3, '0')}`;
-
-      const reviewItem = {
-        id: revId,
-        op: options.op,
-        status: 'open' as const,
-        priority: 'medium' as const,
-        title: options.title || t('flow.review.detail', lang) + `: ${options.op}`,
-        filed_by: 'cli',
-        filed_at: new Date().toISOString(),
-        canAutoFix: !!options.autoFix,
-        autoFixDetail: options.autoFix,
-        blocking: options.blocking !== undefined ? (options.blocking === 'false' || options.blocking === false ? false : true) : true,
-      };
-
+      const review = result.review!;
+      const blockingLabel = review.blocking !== false ? t('flow.review.labelBlocking', lang) : t('flow.review.labelNonBlocking', lang);
       if (options.autoFix) {
-        // opId 格式校验（来自 REV-011：命令层校验，避免无效 opId 穿透到 addAutoFixReview）
-        const dotIdx = options.op.lastIndexOf('.');
-        if (dotIdx === -1) {
-          console.error(t('common.invalidOpId', lang));
-          process.exit(1);
-        }
-        const stageId = options.op.substring(0, dotIdx);
-        const opLocalId = options.op.substring(dotIdx + 1);
-
-        // 校验 stage 是否存在于 flow.json
-        const data = mgr.getData();
-        if (!data || !data.stages[stageId]) {
-          console.error(t('flow.review.errorStageNotFoundTmpl', lang, { opId: options.op, stage: stageId }));
-          process.exit(1);
-        }
-
-        // 校验 op 是否存在于对应 stage 中
-        if (!data.stages[stageId].ops[opLocalId]) {
-          console.error(t('flow.review.errorOpNotFoundTmpl', lang, { opId: options.op, op: opLocalId, stage: stageId }));
-          process.exit(1);
-        }
-
-        // 自动修复路径：记录 REV 条目（状态直接 resolved），跳过 review_failed → scheme_pending
-        mgr.addAutoFixReview(reviewItem, options.op);
-        mgr.save();
-        const blockingLabel = reviewItem.blocking !== false ? t('flow.review.labelBlocking', lang) : t('flow.review.labelNonBlocking', lang);
-        console.log(t('flow.review.addedAutoFixTmpl', lang, { label: blockingLabel, revId }));
+        console.log(t('flow.review.addedAutoFixTmpl', lang, { label: blockingLabel, revId: review.id }));
         console.log(`  ` + t('common.op', lang) + `: ${options.op}`);
         console.log(`  ` + t('flow.review.detail', lang) + `: ${options.autoFix}`);
         console.log(t('flow.review.autoFixPhase', lang));
       } else {
-        mgr.addReview(reviewItem);
-        mgr.save();
-        const blockingLabel = reviewItem.blocking !== false ? t('flow.review.labelBlocking', lang) : t('flow.review.labelNonBlocking', lang);
-        console.log(t('flow.review.addedTmpl', lang, { label: blockingLabel, revId, op: options.op }) + (options.title ? ` — ${options.title}` : ''));
+        console.log(t('flow.review.addedTmpl', lang, { label: blockingLabel, revId: review.id, op: options.op }) + (options.title ? ` — ${options.title}` : ''));
       }
     });
 

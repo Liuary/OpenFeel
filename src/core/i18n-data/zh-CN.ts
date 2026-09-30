@@ -364,7 +364,6 @@ export const stage: I18nDomain = {
   'task.taskItemTmpl':           { key: 'stage.task.taskItemTmpl',           zh: '任务{number}: {desc}',                     en: '' },
   'task.blockedByTmpl':          { key: 'stage.task.blockedByTmpl',          zh: '阻塞原因: {reason}',                       en: '' },
   'task.actionLabelTmpl':        { key: 'stage.task.actionLabelTmpl',        zh: '{label} {stageId} 任务{taskNo}',           en: '' },
-  'create.desc':                 { key: 'stage.create.desc',                 zh: '创建新阶段（已弃用，请改用 openfeel flow stage add）',                        en: '' },
   'create.addedTmpl':            { key: 'stage.create.addedTmpl',            zh: '✓ 已创建阶段: {stage} → plan_pending',    en: '' },
   'create.deprecated':           { key: 'stage.create.deprecated',           zh: '[deprecated] `openfeel stage create` 已弃用；请改用 `openfeel flow stage add <stageId>`（仅注册）或 `openfeel plan stage add <name>`（完整入口）', en: '' },
 };
@@ -424,6 +423,8 @@ export const view: I18nDomain = {
   'list.empty':                    { key: 'view.list.empty',                    zh: '暂无审查条目',                            en: '' },
   'list.filedBy':                  { key: 'view.list.filedBy',                  zh: '提交人',                                 en: '' },
   'list.filedAt':                  { key: 'view.list.filedAt',                  zh: '时间',                                   en: '' },
+  'add.desc':                      { key: 'view.add.desc',                       zh: '添加审查条目（已弃用；请改用 `openfeel flow review add`）', en: '' },
+  'add.deprecated':                { key: 'view.add.deprecated',                 zh: '[deprecated] `openfeel view add` 已弃用；请改用 `openfeel flow review add`（将于下一版本移除）', en: '' },
   'add.errorInvalidPriorityTmpl':  { key: 'view.add.errorInvalidPriorityTmpl',  zh: '错误：无效的优先级 "{priority}"，可选值：high / medium / low', en: '' },
   'add.okTmpl':                    { key: 'view.add.okTmpl',                    zh: '✓ 审查条目已添加: {id} ({op}) — {title}', en: '' },
   'accept.okTmpl':                 { key: 'view.accept.okTmpl',                 zh: '✓ 审查条目已验收: {id} → closed',         en: '' },
@@ -526,6 +527,7 @@ export const help: I18nDomain = {
   'config.get-lang':       { key: 'help.config.get-lang',       zh: '显示全局默认语言', en: '' },
   'config.set-lang':       { key: 'help.config.set-lang',       zh: '修改全局默认语言（zh-CN 或 en）', en: '' },
   'config.list-projects':  { key: 'help.config.list-projects',  zh: '列出所有已记录的项目路径→语言映射', en: '' },
+  'config':                { key: 'help.config',                zh: '查看或修改项目配置', en: '' },
   'config.get':            { key: 'help.config.get',            zh: '读取配置项的值（项目配置；--global 时读取全局 profile）', en: '' },
   'config.get.global':     { key: 'help.config.get.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
   'config.set':            { key: 'help.config.set',            zh: '设置配置项的值（项目配置；--global 时写入全局 profile）', en: '' },
@@ -618,6 +620,10 @@ export const help: I18nDomain = {
 
 /* ==================== config 域：配置管理命令 ==================== */
 export const config: I18nDomain = {
+  'desc':                    { key: 'config.desc',                    zh: '查看或修改项目配置',                   en: '' },
+  'getLang.desc':            { key: 'config.getLang.desc',            zh: '查看 CLI 语言设置',                    en: '' },
+  'get.parseErrorWarn':      { key: 'config.get.parseErrorWarn',      zh: '配置文件解析失败，已按空值处理：{path}', en: '' },
+  'effective.invalidValueSkipped': { key: 'config.effective.invalidValueSkipped', zh: '配置项 {key} 取值非法，已跳过：{reason}', en: '' },
   'get.lang':                { key: 'config.get.lang',                zh: '全局语言：{lang}',                     en: '' },
   'set.ok':                  { key: 'config.set.ok',                  zh: '全局语言已设置为：{lang}',              en: '' },
   'set.invalidLang':         { key: 'config.set.invalidLang',         zh: '无效的语言值 "{val}"，仅支持 zh-CN 和 en', en: '' },

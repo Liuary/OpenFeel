@@ -3048,4 +3048,33 @@ describe('配置级联（stage-42 op-001）', () => {
       expect(commitCall![1].some((a) => a.includes('stage;1 & rm -rf /'))).toBe(true);
     });
   });
+
+  // ═══════════════════════════════════════
+  // stage-50 op-003：配置面健壮性（T29）
+  // ═══════════════════════════════════════
+
+  describe('批次 C 配置面（stage-50 op-003）', () => {
+    it('T29：config.yaml 非法值被跳过并触发 warn，合法键照常采纳', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(
+        join(tmpDir, '.openfeel', 'config.yaml'),
+        'defaults:\n  execution_mode: bogus\n  auto_advance: enabled\n',
+        'utf-8',
+      );
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const mgr = new FlowManager(tmpDir);
+        mgr.setData(makeTestFlowData());
+        const cascade = mgr.verboseSummary().cascade;
+        // 非法值被跳过（不进 configDefaults）
+        expect(cascade.configDefaults.execution_mode).toBeUndefined();
+        // 合法值照常采纳
+        expect(cascade.configDefaults.auto_advance).toBe('enabled');
+        // 触发告警且文案含非法键名
+        expect(warn.mock.calls.some((c) => String(c[0]).includes('execution_mode'))).toBe(true);
+      } finally {
+        warn.mockRestore();
+      }
+    });
+  });
 });

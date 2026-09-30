@@ -29,6 +29,38 @@ export const ConfigDefaultsSchema = z.object({
   merge_mode: z.enum(['manual', 'auto']).optional().default('manual'),
 }).passthrough();
 
+/** 逐层解包 ZodDefault / ZodOptional / ZodNullable，取得底层类型（schema 驱动的类型判定用） */
+function unwrapSchema(schema: unknown): unknown {
+  let current: unknown = schema;
+  for (let i = 0; i < 8 && current; i++) {
+    const unwrap = (current as { unwrap?: unknown }).unwrap;
+    if (typeof unwrap !== 'function') {
+      break;
+    }
+    current = (unwrap as () => unknown).call(current);
+  }
+  return current;
+}
+
+/**
+ * 从 ConfigDefaultsSchema 派生某键的合法字符串值集合（T36/R3）。
+ * enum → options；boolean → ['true','false']；未知键或无限定类型 → null。
+ */
+export function getConfigFieldLegalValues(key: string): string[] | null {
+  const fieldSchema = ConfigDefaultsSchema.shape[key as keyof typeof ConfigDefaultsSchema.shape];
+  if (!fieldSchema) {
+    return null;
+  }
+  const inner = unwrapSchema(fieldSchema);
+  if (inner instanceof z.ZodEnum) {
+    return [...(inner.options as string[])];
+  }
+  if (inner instanceof z.ZodBoolean) {
+    return ['true', 'false'];
+  }
+  return null;
+}
+
 /** 单个模型配置 Schema */
 export const ModelConfigSchema = z.object({
   provider: z.string(),      // deepseek / openai / anthropic / zhipu / qwen
@@ -172,6 +204,17 @@ function getProfilePath(): string {
 }
 
 /**
+ * 深拷贝 DEFAULT_PROFILE，确保返回值与模块级常量完全隔离（T28）。
+ * structuredClone 不可用时回退 JSON 深拷贝。
+ */
+function cloneDefaultProfile(): Profile {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(DEFAULT_PROFILE);
+  }
+  return JSON.parse(JSON.stringify(DEFAULT_PROFILE)) as Profile;
+}
+
+/**
  * 读取全局用户画像 ~/.config/openfeel/profile.yaml
  * 文件不存在时返回默认 Profile（空用户名、zh-CN、disabled、full、concise、medium、空数组）。
  * 文件存在时用 yaml.parse() 解析 + ProfileSchema.parse() 校验，
@@ -181,7 +224,8 @@ function getProfilePath(): string {
 export function readProfile(): Profile & { parseError?: string } {
   const profilePath = getProfilePath();
   if (!existsSync(profilePath)) {
-    return { ...DEFAULT_PROFILE };
+    // 深拷贝：避免调用方原位修改污染模块级 DEFAULT_PROFILE（T28）
+    return cloneDefaultProfile();
   }
 
   try {
@@ -189,7 +233,7 @@ export function readProfile(): Profile & { parseError?: string } {
     const raw = parseYaml(content) as Record<string, unknown> | null;
     if (!raw || typeof raw !== 'object') {
       // 错误路径：顶层非对象（含空文件 / 标量）→ 标记 parseError，供调用方跳过写回（遗留 #8）
-      return { ...DEFAULT_PROFILE, parseError: `profile.yaml 顶层非对象：${profilePath}` };
+      return { ...cloneDefaultProfile(), parseError: `profile.yaml 顶层非对象：${profilePath}` };
     }
     const parsed = ProfileSchema.parse(raw) as Profile;
     // 与默认值深度合并：缺失字段回填默认值，同时保留顶层 passthrough 扩展字段
@@ -203,7 +247,7 @@ export function readProfile(): Profile & { parseError?: string } {
   } catch (err) {
     // 错误路径：YAML 语法 / Zod 校验失败 → 标记 parseError（不写回），返回默认值保持可用性（遗留 #8）
     return {
-      ...DEFAULT_PROFILE,
+      ...cloneDefaultProfile(),
       parseError: `profile.yaml 解析失败（${err instanceof Error ? err.message : String(err)}）：${profilePath}`,
     };
   }
@@ -258,8 +302,11 @@ export function ensureProfileDefaults(projectPath: string): void {
   }
 
   // 3. recent_projects 去重追加（新项目置顶，保留最近 5 个）
+  // 去重比较大小写不敏感 + 分隔符归一（T32：Windows 下 c:\x 与 C:\x 视为同一；存储保留原样）
+  const normalizeKey = (p: string): string => p.replace(/\\/g, '/').toLowerCase();
+  const normalizedKey = normalizeKey(normalizedPath);
   const recent = profile.history?.recent_projects ?? [];
-  const deduped = [normalizedPath, ...recent.filter((p) => p !== normalizedPath)].slice(0, 5);
+  const deduped = [normalizedPath, ...recent.filter((p) => normalizeKey(p) !== normalizedKey)].slice(0, 5);
   if (deduped.length !== recent.length || deduped.some((p, i) => p !== recent[i])) {
     profile.history = { ...(profile.history ?? {}), recent_projects: deduped };
     changed = true;
@@ -468,17 +515,22 @@ export function setConfigValue(projectPath: string, key: string, value: string):
   if (!fieldSchema) {
     throw new Error(`Unknown config key: ${key}`);
   }
-  // 对 enum 字段尝试直接解析值（如 'enabled'/'disabled' → Zod enum 通过）
-  fieldSchema.parse(value);
+  // 2. 按 schema 归一值类型：boolean 键把 'true'/'false' 转真布尔，enum 键保持字符串（R3）
+  //    否则 test_enabled 会写成字符串 "true"，后续 ConfigDefaultsSchema.parse 语义错误
+  const isBooleanField = unwrapSchema(fieldSchema) instanceof z.ZodBoolean;
+  const coerced: unknown = isBooleanField ? (value === 'true') : value;
 
-  // 2. 读取原始 YAML（绕过 normalizeConfig，保留注释与原始结构；文件不存在则创建空文档）
+  // 3. 校验归一后的值
+  fieldSchema.parse(coerced);
+
+  // 4. 读取原始 YAML（绕过 normalizeConfig，保留注释与原始结构；文件不存在则创建空文档）
   const doc = existsSync(configPath)
     ? parseDocument(readFileSync(configPath, 'utf-8'))
     : parseDocument('');
 
-  // 3. 写入 defaults[key]（setIn 原地修改，路径不存在时自动创建节点）
-  doc.setIn(['defaults', key], value);
+  // 5. 写入 defaults[key]（setIn 原地修改，路径不存在时自动创建节点；写入归一后的布尔/字符串）
+  doc.setIn(['defaults', key], coerced);
 
-  // 4. 序列化并写回
+  // 6. 序列化并写回
   atomicWriteFileSync(configPath, doc.toString());
 }

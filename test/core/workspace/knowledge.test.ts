@@ -263,3 +263,25 @@ describe('getKnowledgeIndex', () => {
     expect(idx.recentUpdates.length).toBe(0);
   });
 });
+
+describe('index.md 表格污染防护（stage-50 op-003 T34）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = setupTempDir();
+    initKnowledgeBase(tmpDir);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('标题含 | 与换行时 index.md 行为单行表格行且 | 已转义', () => {
+    addKnowledgeEntry(tmpDir, 'patterns', '含|竖线\n换行标题', '内容。');
+    const idx = readFileSync(join(tmpDir, '.openfeel', 'kb', 'index.md'), 'utf-8');
+    // 原始换行标题不应出现（已折叠）
+    expect(idx).not.toContain('含|竖线\n换行标题');
+    // 转义后的单行标题出现
+    expect(idx).toContain('含\\|竖线 换行标题');
+  });
+});

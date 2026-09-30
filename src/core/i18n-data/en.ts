@@ -344,7 +344,6 @@ export const stage: I18nDomain = {
   'task.taskItemTmpl':           { key: 'stage.task.taskItemTmpl',           zh: '', en: 'Task {number}: {desc}' },
   'task.blockedByTmpl':          { key: 'stage.task.blockedByTmpl',          zh: '', en: 'Blocked by: {reason}' },
   'task.actionLabelTmpl':        { key: 'stage.task.actionLabelTmpl',        zh: '', en: '{label} {stageId} Task {taskNo}' },
-  'create.desc':                 { key: 'stage.create.desc',                 zh: '', en: 'Create a stage (deprecated; use openfeel flow stage add)' },
   'create.addedTmpl':            { key: 'stage.create.addedTmpl',            zh: '', en: '✓ Stage created: {stage} → plan_pending' },
   'create.deprecated':           { key: 'stage.create.deprecated',           zh: '', en: '[deprecated] `openfeel stage create` is deprecated; use `openfeel flow stage add <stageId>` (register only) or `openfeel plan stage add <name>` (full entry)' },
 };
@@ -404,6 +403,8 @@ export const view: I18nDomain = {
   'list.empty':                    { key: 'view.list.empty',                    zh: '', en: 'No review entries' },
   'list.filedBy':                  { key: 'view.list.filedBy',                  zh: '', en: 'Filed By' },
   'list.filedAt':                  { key: 'view.list.filedAt',                  zh: '', en: 'Time' },
+  'add.desc':                      { key: 'view.add.desc',                       zh: '', en: 'Add a review entry (deprecated; use `openfeel flow review add`)' },
+  'add.deprecated':                { key: 'view.add.deprecated',                 zh: '', en: '[deprecated] `openfeel view add` is deprecated; use `openfeel flow review add` instead (will be removed in the next version)' },
   'add.errorInvalidPriorityTmpl':  { key: 'view.add.errorInvalidPriorityTmpl',  zh: '', en: 'Error: Invalid priority "{priority}", options: high / medium / low' },
   'add.okTmpl':                    { key: 'view.add.okTmpl',                    zh: '', en: '✓ Review entry added: {id} ({op}) — {title}' },
   'accept.okTmpl':                 { key: 'view.accept.okTmpl',                 zh: '', en: '✓ Review entry accepted: {id} → closed' },
@@ -500,6 +501,7 @@ export const help: I18nDomain = {
   'config.get-lang':       { key: 'help.config.get-lang',       zh: '', en: 'Show global default language' },
   'config.set-lang':       { key: 'help.config.set-lang',       zh: '', en: 'Change global default language (zh-CN or en)' },
   'config.list-projects':  { key: 'help.config.list-projects',  zh: '', en: 'List all recorded project path→language mappings' },
+  'config':                { key: 'help.config',                zh: '', en: 'View or modify project config' },
   'config.get':            { key: 'help.config.get',            zh: '', en: 'Read a config value (project config; --global reads global profile)' },
   'config.get.global':     { key: 'help.config.get.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
   'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a config value (project config; --global writes global profile)' },
@@ -583,6 +585,10 @@ export const help: I18nDomain = {
 
 /* ==================== config ==================== */
 export const config: I18nDomain = {
+  'desc':                    { key: 'config.desc',                    zh: '', en: 'View or modify project config' },
+  'getLang.desc':            { key: 'config.getLang.desc',            zh: '', en: 'View CLI language setting' },
+  'get.parseErrorWarn':      { key: 'config.get.parseErrorWarn',      zh: '', en: 'Failed to parse config file, treated as empty: {path}' },
+  'effective.invalidValueSkipped': { key: 'config.effective.invalidValueSkipped', zh: '', en: 'Invalid config value for {key}, skipped: {reason}' },
   'get.lang':                { key: 'config.get.lang',                zh: '', en: 'Global language: {lang}' },
   'set.ok':                  { key: 'config.set.ok',                  zh: '', en: 'Global language set to: {lang}' },
   'set.invalidLang':         { key: 'config.set.invalidLang',         zh: '', en: 'Invalid language "{val}". Supported: zh-CN and en' },

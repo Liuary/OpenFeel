@@ -124,9 +124,11 @@ export function addKnowledgeEntry(
   }
 
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  // 标题净化（T34）：'|' 转义避免污染 index.md 表格；换行折叠为空格避免破坏条目头/表格行
+  const safeTitle = title.replace(/\|/g, '\\|').replace(/\s*[\r\n]+\s*/g, ' ').trim();
   const catPath = resolve(kbDir, `${category}.md`);
   const indexPath = resolve(kbDir, 'index.md');
-  const entryText = `\n## [+] ${title} (${today})\n\n${content}\n`;
+  const entryText = `\n## [+] ${safeTitle} (${today})\n\n${content}\n`;
 
   const lockPath = projectLockPath(projectPath, 'kb');
   withFileLock(lockPath, () => {
@@ -145,7 +147,7 @@ export function addKnowledgeEntry(
       return; // 格式异常时不修改（与既有行为一致）
     }
     const insertPos = sepIdx + sepLine.length;
-    const newRow = `| ${today} | ${category} | ${title} |`;
+    const newRow = `| ${today} | ${category} | ${safeTitle} |`;
     const updated = indexContent.slice(0, insertPos) + '\n' + newRow + indexContent.slice(insertPos);
     atomicWriteFileSync(indexPath, updated);
   });

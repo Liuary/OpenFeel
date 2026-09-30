@@ -401,7 +401,7 @@ export function registerStageCommand(program: Command): void {
   // ═══ stage create <stageId> ═══
   stage
     .command('create')
-    .description(t('stage.create.desc', getCliLang(process.cwd())))
+    .description(t('help.stage.create', getCliLang(process.cwd())))
     .argument('<stageId>', '阶段 ID（如 v1.0.0-stage-30）')
     .action((stageId: string) => {
       const projectPath = process.cwd();

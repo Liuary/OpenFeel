@@ -202,4 +202,23 @@ describe('backupFileBeforeWrite', () => {
       expect(readFileSync(join(backupRoot(), d, manifest.entries[src].backupRel), 'utf-8')).toBe('concurrent');
     }
   }, 40000);
+
+  it('T26：越界路径（project / HOME 之外）抛 BackupError', () => {
+    const outside = join(projectDir, '..', 'outside-t26.txt');
+    writeFileSync(outside, 'x', 'utf-8');
+    try {
+      // project 分区：逃出项目根
+      expect(() => backupFileBeforeWrite(outside, { command: 'init', projectPath: projectDir })).toThrow(BackupError);
+      // global 分区：逃出 HOME
+      expect(() => backupFileBeforeWrite(outside, { command: 'init' })).toThrow(BackupError);
+    } finally {
+      rmSync(outside, { force: true });
+    }
+  });
+
+  it('T27：backup.ts 不再直接 import node:os 的 homedir（委托 getHomedir 单点）', () => {
+    const src = readFileSync(join(process.cwd(), 'src', 'core', 'backup.ts'), 'utf-8');
+    expect(src).not.toMatch(/from ['"]node:os['"]/);
+    expect(src).toContain('getHomedir');
+  });
 });

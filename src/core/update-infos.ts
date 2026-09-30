@@ -5,6 +5,12 @@
  *
  * 路径二元组（REV-903）：全局资产记绝对路径；项目资产记「项目根 + 相对路径」。
  * 写入走全局文件锁 + 原子写（跨项目共享，N7）。
+ *
+ * 持久化策略（T25 / R2「按保守默认执行」）：
+ * - 条目 **只增不减**：resolved 后不再自动移出（历史记录保留，便于审计）；
+ * - `clearUpdateInfos` 当前 **仅测试/预留** 引用，未接入 CLI；
+ * - 人工清理入口 = 直接编辑 `~/.openfeel/update_infos.md`（删除已 resolved 条目），
+ *   或后续版本评估自动化。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
@@ -218,7 +224,12 @@ export function resolveUpdateInfo(target: UpdateInfoTarget): void {
   });
 }
 
-/** 清空全部条目（写空骨架） */
+/**
+ * 清空全部条目（写空骨架）
+ *
+ * 预留 / 仅测试引用：生产零调用（T25 / R2「按保守默认执行」）。
+ * 条目「只增不减」为当前设计；如需清理请直接编辑 `~/.openfeel/update_infos.md`。
+ */
 export function clearUpdateInfos(): void {
   withFileLock(globalLockPath('update-infos'), () => {
     atomicWriteFileSync(getGlobalUpdateInfosPath(), serialize([]));

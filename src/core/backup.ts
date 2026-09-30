@@ -4,12 +4,11 @@
  * 并更新当次 manifest.json。整次会话在单一 backup 文件锁临界区内，消除 ts 探测 / manifest 读改写的 TOCTOU。
  */
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
-import { homedir } from 'node:os';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
-import { getGlobalBackupRootPath } from './global-paths.js';
+import { getGlobalBackupRootPath, getHomedir } from './global-paths.js';
 import { getCliLang } from './i18n.js';
 
 /** 会触发部署覆盖写的调用方（B4 枚举） */
@@ -51,10 +50,18 @@ function computeBackupRel(absPath: string, projectPath?: string): { zone: 'globa
   if (projectPath) {
     const proj = resolve(projectPath);
     const rel = relative(proj, absPath);
+    // 越界防御（T26）：相对化结果逃出项目根（含 '..' 或绝对路径）时拒绝，避免写任意路径
+    if (rel.startsWith('..') || isAbsolute(rel)) {
+      throw new BackupError(absPath, `路径逃出项目根（projectPath=${proj}）`);
+    }
     const hash8 = createHash('sha256').update(proj).digest('hex').slice(0, 8);
     return { zone: 'project', rel: join('project', `${basename(proj)}-${hash8}`, rel) };
   }
-  const rel = relative(homedir(), absPath);
+  const rel = relative(getHomedir(), absPath);
+  // 越界防御（T26）：相对化结果逃出 HOME（含 '..' 或绝对路径）时拒绝
+  if (rel.startsWith('..') || isAbsolute(rel)) {
+    throw new BackupError(absPath, `路径逃出用户主目录（HOME=${getHomedir()}）`);
+  }
   return { zone: 'global', rel: join('global', rel) };
 }
 

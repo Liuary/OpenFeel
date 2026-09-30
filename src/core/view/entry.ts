@@ -82,6 +82,99 @@ export function createReviewEntry(
 }
 
 /**
+ * 添加审查条目的统一入参（T37/R4 单点）
+ */
+export interface AddReviewOptions {
+  /** 关联的操作 ID（格式 "stageId.opId"） */
+  opId: string;
+  /** 审查标题（缺省时以 opId 兜底；命令层负责传入本地化标题） */
+  title?: string;
+  /** 优先级（默认 medium） */
+  priority?: string;
+  /** 自动修复说明（提供时走 addAutoFixReview） */
+  autoFixDetail?: string;
+  /** 是否阻塞流水线（默认 true） */
+  blocking?: boolean;
+  /** 提交者标识（默认 'cli'） */
+  filedBy?: string;
+}
+
+/** 添加审查条目失败原因（供命令层按 code 分流 i18n 文案） */
+export type AddReviewError =
+  | { code: 'notLoaded' }
+  | { code: 'invalidPriority'; priority: string }
+  | { code: 'invalidOpId'; opId: string }
+  | { code: 'stageNotFound'; opId: string; stage: string }
+  | { code: 'opNotFound'; opId: string; op: string; stage: string };
+
+/** 添加审查条目结果 */
+export interface AddReviewResult {
+  /** 成功时返回创建的审查条目，失败时为 null */
+  review: ReviewItem | null;
+  /** 失败原因（成功时为 null） */
+  error: AddReviewError | null;
+}
+
+/**
+ * 添加审查条目的单点实现（T37/R4）：解析 / 校验 / REV ID 分配 / 写入口归一。
+ * `flow review add` 与 `view add` 均调用本函数，禁止各自维护第二套校验与 ID 生成。
+ * @param projectPath 项目路径
+ * @param opts 入参（见 AddReviewOptions）
+ * @returns 结果对象（成功含 review；失败含 error.code）
+ */
+export function addReviewEntry(projectPath: string, opts: AddReviewOptions): AddReviewResult {
+  const mgr = new FlowManager(projectPath);
+  if (!mgr.isLoaded()) {
+    return { review: null, error: { code: 'notLoaded' } };
+  }
+
+  // 优先级校验
+  const priority = opts.priority ?? 'medium';
+  if (!['high', 'medium', 'low'].includes(priority)) {
+    return { review: null, error: { code: 'invalidPriority', priority } };
+  }
+
+  // opId 格式校验（用 lastIndexOf 分割，兼容含点 stageId）
+  const dotIdx = opts.opId.lastIndexOf('.');
+  if (dotIdx === -1) {
+    return { review: null, error: { code: 'invalidOpId', opId: opts.opId } };
+  }
+  const stageId = opts.opId.substring(0, dotIdx);
+  const opLocalId = opts.opId.substring(dotIdx + 1);
+  const data = mgr.getData();
+  if (!data || !data.stages[stageId]) {
+    return { review: null, error: { code: 'stageNotFound', opId: opts.opId, stage: stageId } };
+  }
+  if (!data.stages[stageId].ops[opLocalId]) {
+    return { review: null, error: { code: 'opNotFound', opId: opts.opId, op: opLocalId, stage: stageId } };
+  }
+
+  // REV ID 由单点按「既有最大序号 + 1」分配（T13），两入口不得自行生成
+  const revId = generateReviewId(projectPath);
+  const review: ReviewItem = {
+    id: revId,
+    op: opts.opId,
+    status: 'open',
+    priority: priority as 'high' | 'medium' | 'low',
+    title: opts.title || opts.opId,
+    filed_by: opts.filedBy ?? 'cli',
+    filed_at: new Date().toISOString(),
+    canAutoFix: !!opts.autoFixDetail,
+    autoFixDetail: opts.autoFixDetail,
+    blocking: opts.blocking ?? true,
+  };
+
+  if (opts.autoFixDetail) {
+    mgr.addAutoFixReview(review, opts.opId);
+  } else {
+    mgr.addReview(review);
+  }
+  mgr.save();
+
+  return { review, error: null };
+}
+
+/**
  * 列出审查条目
  * @param projectPath 项目路径
  * @param opId 可选操作 ID 过滤

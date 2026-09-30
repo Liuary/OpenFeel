@@ -9,6 +9,7 @@ import {
   createReviewEntry,
   listReviews,
   acceptReview,
+  addReviewEntry,
   type ReviewItem,
 } from '../../../src/core/view/entry.js';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -383,6 +384,53 @@ describe('View Entry', () => {
       const items = mgr2.getReviewItems();
       expect(items.length).toBe(1);
       expect(items[0].status).toBe('closed');
+    });
+  });
+
+  describe('addReviewEntry（stage-50 op-003 T37 单点）', () => {
+    it('单点分配 REV ID：连续写入严格递增、无重号', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'Test', updated: new Date().toISOString() },
+        pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
+        stages: {
+          'stage-01': {
+            name: 'stage-01', phase: 'exec_running', status: 'planned', deps: [],
+            ops: {
+              'op-001': {
+                id: 'op-001', title: 't', state: 'pending', assignee: 'x', attempts: 0, max_attempts: 3,
+                checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+              },
+            },
+          },
+        },
+        reviews: [],
+        log: [],
+      });
+      mgr.save();
+
+      const r1 = addReviewEntry(tmpDir, { opId: 'stage-01.op-001', title: 'a' });
+      const r2 = addReviewEntry(tmpDir, { opId: 'stage-01.op-001', title: 'b' });
+      expect(r1.error).toBeNull();
+      expect(r2.error).toBeNull();
+      expect(r1.review!.id).toBe('REV-001');
+      expect(r2.review!.id).toBe('REV-002');
+    });
+
+    it('无效 opId / 不存在的 stage 返回结构化错误', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'Test', updated: new Date().toISOString() },
+        pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
+        stages: {},
+        reviews: [],
+        log: [],
+      });
+      mgr.save();
+      expect(addReviewEntry(tmpDir, { opId: 'bad' }).error?.code).toBe('invalidOpId');
+      expect(addReviewEntry(tmpDir, { opId: 'nope.op-001' }).error?.code).toBe('stageNotFound');
     });
   });
 });

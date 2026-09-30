@@ -102,6 +102,9 @@ export function atomicWriteFileSync(
 
 /**
  * 原子写入 JSON（缩进 2 + 末尾换行，与项目既有 JSON 写盘格式一致）
+ *
+ * **预留 API**：供 backup 类后续复用；当前仅测试引用（atomic-write.test.ts）。
+ * 如需移除，须同步删除对应自测（T23）。
  */
 export function atomicWriteJson(
   filePath: string,

@@ -7,6 +7,14 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
+/**
+ * 获取当前用户主目录（单点入口）。
+ * 测试通过 vi.mock('node:os') 隔离，禁止其他模块直接调用 os.homedir()（T27）。
+ */
+export function getHomedir(): string {
+  return homedir();
+}
+
 /** 全局配置根目录（opencode 适配器：~/.config/opencode） */
 export function getOpencodeGlobalDir(): string {
   return join(homedir(), '.config', 'opencode');

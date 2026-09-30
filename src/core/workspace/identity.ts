@@ -19,6 +19,11 @@ export interface InfoJson {
 /** 默认语言 */
 const DEFAULT_LANG: 'zh-CN' = 'zh-CN';
 
+/** 判断是否为普通对象（排除 null / 数组 / 标量，T31 鲁棒性校验） */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /** 全局配置类型（~/.openfeel/config.json） */
 export interface GlobalConfig {
   /** 用户全局默认语言偏好 */
@@ -143,10 +148,13 @@ export function getGlobalConfig(): GlobalConfig {
   try {
     const content = readFileSync(path, 'utf-8');
     const config = JSON.parse(content) as Partial<GlobalConfig>;
-    // 合并默认值保证缺失字段兜底
+    // 合并默认值保证缺失字段兜底；projects 非对象（损坏数据）时视为空，避免下游 TypeError（T31）
+    const projects = isPlainObject(config.projects)
+      ? (config.projects as Record<string, 'zh-CN' | 'en'>)
+      : {};
     return {
       lang: config.lang && ['zh-CN', 'en'].includes(config.lang) ? config.lang : DEFAULT_GLOBAL_CONFIG.lang,
-      projects: config.projects ?? {},
+      projects,
     };
   } catch {
     // JSON 解析失败
@@ -184,12 +192,14 @@ export function isFirstUse(): boolean {
  * @param lang 项目使用的语言
  */
 export function recordProjectLang(projectPath: string, lang: 'zh-CN' | 'en'): void {
+  // 路径规范化（T31）：统一分隔符/消除 . 与 ..，避免同项目因路径形式差异产生多条映射
+  const normalizedPath = resolve(projectPath);
   const config = getGlobalConfig();
-  const existing = config.projects[projectPath];
+  const existing = config.projects[normalizedPath];
   if (existing === lang) {
     // 映射已存在且语言一致，跳过写入
     return;
   }
-  config.projects[projectPath] = lang;
+  config.projects[normalizedPath] = lang;
   setGlobalConfig(config);
 }

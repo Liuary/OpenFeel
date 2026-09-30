@@ -31,7 +31,7 @@ export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-
 import { findStageStatusPath, findStageDirConflict, parseStageId, normalizeStageId } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
-import { DEFAULT_CONFIG } from './config.js';
+import { DEFAULT_CONFIG, ConfigDefaultsSchema } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
 
 /** 操作执行状态 */
@@ -1649,8 +1649,24 @@ export class FlowManager {
         const config = parseYaml(raw) as Record<string, unknown>;
         if (config && typeof config === 'object' && config.defaults) {
           const defaults = config.defaults as Record<string, unknown>;
+          const lang = getCliLang(this.projectPath);
           for (const [key, value] of Object.entries(defaults)) {
-            configDefaults[key] = String(value);
+            // 逐键用 ConfigDefaultsSchema 校验（T29）：非法值跳过并告警，保持「有效配置」语义可用
+            const fieldSchema = ConfigDefaultsSchema.shape[
+              key as keyof typeof ConfigDefaultsSchema.shape
+            ] as { safeParse: (v: unknown) => { success: boolean; error?: { issues: Array<{ message: string }> } } } | undefined;
+            if (!fieldSchema) {
+              // 非受管扩展键：保持原行为纳入
+              configDefaults[key] = String(value);
+              continue;
+            }
+            const parsed = fieldSchema.safeParse(value);
+            if (parsed.success) {
+              configDefaults[key] = String(value);
+            } else {
+              const reason = parsed.error?.issues[0]?.message ?? 'invalid';
+              console.warn(t('config.effective.invalidValueSkipped', lang, { key, reason }));
+            }
           }
         }
       } catch {

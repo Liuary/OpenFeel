@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 // N4 单点隔离（BUG-004）：homedir → 临时目录；禁用「保存/恢复」伪隔离
 // （global-paths.ts 为唯一 homedir 消费点，一处 mock 隔离全部全局路径）
@@ -142,6 +142,34 @@ describe('recordProjectLang', () => {
     recordProjectLang(tmpDir, 'zh-CN');
     const config = getGlobalConfig();
     expect(config.projects[tmpDir]).toBe('zh-CN');
+  });
+});
+
+describe('全局配置鲁棒性（stage-50 op-003 T31）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-identity-t31-'));
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-identity-home-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  it('projects 非对象时不抛 TypeError，返回空映射', () => {
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(join(mockHome.dir, '.openfeel', 'config.json'), JSON.stringify({ lang: 'zh-CN', projects: 'corrupt' }), 'utf-8');
+    const cfg = getGlobalConfig();
+    expect(cfg.projects).toEqual({});
+  });
+
+  it('recordProjectLang 写入前规范化路径（同项目不产生多条目）', () => {
+    recordProjectLang(join(tmpDir, '.'), 'en');
+    const cfg = getGlobalConfig();
+    expect(cfg.projects[resolve(tmpDir)]).toBe('en');
   });
 });
 

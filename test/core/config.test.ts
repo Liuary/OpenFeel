@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, type Profile } from '../../src/core/config.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 // mock homedir：隔离 profile 读写，避免污染真实用户主目录
@@ -468,5 +468,63 @@ describe('writeDefaultConfig', () => {
     expect(config.auto_advance).toBe('disabled');
     expect(config.test_enabled).toBe(false);
     expect(config.merge_mode).toBe('manual');
+  });
+
+  // ═══ stage-50 op-003：配置面健壮性（T28/T32/T36） ═══
+
+  it('T28：readProfile 缺失分支返回深拷贝（原位修改不污染模块常量）', () => {
+    // 指向不存在的主目录 → 命中缺失分支
+    mockHome.dir = join(tmpDir, 'no-such-home');
+    const first = readProfile();
+    expect(first.user.name).toBe('');
+    // 原位修改返回值
+    first.user.name = 'POLLUTED';
+    first.preferences.auto_advance = 'enabled';
+    first.history.recent_projects.push('/x');
+    // 二次读取不被污染
+    const second = readProfile();
+    expect(second.user.name).toBe('');
+    expect(second.preferences.auto_advance).toBe('disabled');
+    expect(second.history.recent_projects).toEqual([]);
+    mockHome.dir = '';
+  });
+
+  it('T36：setConfigValue 对 test_enabled 写入真布尔（无引号字符串）', () => {
+    setConfigValue(tmpDir, 'test_enabled', 'true');
+    const yaml = readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8');
+    expect(yaml).toMatch(/test_enabled:\s*true/);
+    expect(yaml).not.toMatch(/test_enabled:\s*["']true["']/);
+    expect(readConfig(tmpDir).test_enabled).toBe(true);
+
+    setConfigValue(tmpDir, 'test_enabled', 'false');
+    const yaml2 = readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8');
+    expect(yaml2).toMatch(/test_enabled:\s*false/);
+    expect(readConfig(tmpDir).test_enabled).toBe(false);
+  });
+
+  it('T36：setConfigValue 对 enum 键写字符串，非法枚举抛错', () => {
+    setConfigValue(tmpDir, 'execution_mode', 'auto');
+    expect(readConfig(tmpDir).execution_mode).toBe('auto');
+    // 非法枚举值 → schema 校验抛错
+    expect(() => setConfigValue(tmpDir, 'execution_mode', 'bogus')).toThrow();
+    // 未知键 → 抛错
+    expect(() => setConfigValue(tmpDir, 'nope', 'x')).toThrow(/Unknown config key/);
+  });
+
+  it('T32：recent_projects 去重大小写不敏感（c:\\x 与 C:\\x 视为同一）', () => {
+    mockHome.dir = join(tmpDir, 'home-t32');
+    mkdirSync(join(mockHome.dir, '.config', 'openfeel'), { recursive: true });
+    // 预置一条不同大小写/分隔符形式的历史记录
+    writeProfile({
+      user: { name: 'U', lang: 'zh-CN' },
+      preferences: { auto_advance: 'disabled', review_mode: 'full', communication: 'concise', confirm_threshold: 'medium' },
+      history: { last_project: '', recent_projects: ['c:/proj/x'] },
+    });
+    ensureProfileDefaults('C:\\Proj\\X');
+    const recent = readProfile().history.recent_projects;
+    // 归一后视为同一条 → 只保留 1 条
+    expect(recent).toHaveLength(1);
+    expect(recent[0]).toBe(resolve('C:\\Proj\\X'));
+    mockHome.dir = '';
   });
 });

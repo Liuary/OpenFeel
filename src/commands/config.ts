@@ -8,7 +8,7 @@
  */
 import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
-import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema } from '../core/config.js';
+import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues } from '../core/config.js';
 import { FlowManager } from '../core/flow-manager.js';
 import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
@@ -33,6 +33,10 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   const keys = path.split('.');
   let current: unknown = obj;
   for (const key of keys) {
+    // 原型链防护（T30）：命中危险键直接返回 undefined，避免穿透 __proto__/constructor
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      return undefined;
+    }
     if (current === null || current === undefined || typeof current !== 'object') {
       return undefined;
     }
@@ -67,12 +71,13 @@ function setNestedValue(obj: Record<string, unknown>, path: string, value: strin
  * @param program Commander 主程序实例
  */
 export function registerConfigCommand(program: Command): void {
-  const configCmd = program.command('config');
+  const configCmd = program.command('config')
+    .description(t('config.desc', getCliLang(process.cwd())));
 
   // openfeel config get-lang — 显示全局默认语言
   configCmd
     .command('get-lang')
-    .description(t('config.get.lang'))
+    .description(t('config.getLang.desc', getCliLang(process.cwd())))
     .action(() => {
       const lang = getCliLang(process.cwd());
       const config = getGlobalConfig();
@@ -125,6 +130,11 @@ export function registerConfigCommand(program: Command): void {
       // 全局模式：操作 ~/.config/openfeel/profile.yaml
       if (opts.global) {
         const profile = readProfile() as unknown as Record<string, unknown>;
+        // 读路径解析失败：向 stderr 输出警告，仍按空值继续（T33，不改变退出码）
+        const parseError = (profile as { parseError?: string }).parseError;
+        if (parseError) {
+          console.error(t('config.get.parseErrorWarn', lang, { path: parseError }));
+        }
         // 无 key：输出完整 Profile
         if (!key) {
           console.log(t('config.get.globalResult', lang, { key: 'user.name', value: String(getNestedValue(profile, 'user.name') ?? '') }));
@@ -175,8 +185,8 @@ export function registerConfigCommand(program: Command): void {
 
       // 全局模式：操作 ~/.config/openfeel/profile.yaml
       if (opts.global) {
-        // key 白名单校验
-        if (!(key in GLOBAL_ALLOWED_KEYS)) {
+        // key 白名单校验（Object.hasOwn 防原型链穿透，T30）
+        if (!Object.hasOwn(GLOBAL_ALLOWED_KEYS, key)) {
           console.error(t('config.set.globalInvalidKey', lang, { val: key }));
           console.error(t('config.set.globalAllowedKeys', lang, { keys: Object.keys(GLOBAL_ALLOWED_KEYS).join(', ') }));
           process.exit(1);
@@ -211,16 +221,20 @@ export function registerConfigCommand(program: Command): void {
       }
 
       // 项目模式（原行为）
-      const allowedKeys = ['auto_advance'];
+      // 白名单 = ConfigDefaultsSchema 全量键（schema 驱动，schema 新增键自动纳入，T36/R3）
+      const allowedKeys = Object.keys(ConfigDefaultsSchema.shape);
       if (!allowedKeys.includes(key)) {
         console.error(t('config.set.invalidKey', lang, { val: key, keys: allowedKeys.join(', ') }));
         process.exit(1);
+        return;
       }
 
-      // value 白名单校验
-      if (key === 'auto_advance' && !['enabled', 'disabled'].includes(value)) {
-        console.error(t('config.set.invalidValue', lang, { val: value, key, values: 'enabled, disabled' }));
+      // 取值校验 schema 驱动（枚举非法须报错且不写盘，T36/R3）
+      const legalValues = getConfigFieldLegalValues(key);
+      if (legalValues && !legalValues.includes(value)) {
+        console.error(t('config.set.invalidValue', lang, { val: value, key, values: legalValues.join(', ') }));
         process.exit(1);
+        return;
       }
 
       try {

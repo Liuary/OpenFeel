@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-09-30T16:05:59.466Z",
-    "revision": 333
+    "updated": "2026-09-30T16:16:59.224Z",
+    "revision": 337
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.2-stage-50",
-      "op": ""
+      "stage": "v1.1.2-stage-51",
+      "op": "op-002"
     },
     "retry": 0
   },
@@ -1675,15 +1675,15 @@
     },
     "v1.1.2-stage-51": {
       "name": "v1.1.2-stage-51",
-      "phase": "scheme_pending",
+      "phase": "exec_running",
       "status": "planned",
       "deps": [],
       "ops": {
         "op-001": {
           "title": "孤儿 op 回收与检测（N1）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -8780,6 +8780,45 @@
         "stageName": "v1.1.2-stage-50",
         "from": "archiving",
         "to": "done"
+      }
+    },
+    {
+      "time": "2026-09-30T16:06:00.393Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-51",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-09-30T16:09:55.717Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-51",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-09-30T16:09:56.010Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-51",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-09-30T16:16:59.199Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-51.op-001",
+        "attempts": 1
       }
     }
   ]

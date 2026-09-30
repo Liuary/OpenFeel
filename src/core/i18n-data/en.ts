@@ -178,6 +178,10 @@ export const flow: I18nDomain = {
   'repair.fixFailed':               { key: 'flow.repair.fixFailed',               zh: '', en: '✗ Some issues could not be auto-fixed, please check flow.json manually' },
   'repair.migrationHint':           { key: 'flow.repair.migrationHint',           zh: '', en: '💡 Legacy flow.json format detected (global phase), consider running:' },
   'repair.migrationPreview':        { key: 'flow.repair.migrationPreview',        zh: '', en: '   Preview migration: openfeel flow migrate --dry-run' },
+  'repair.orphansTitle':            { key: 'flow.repair.orphansTitle',            zh: '', en: 'Orphan op reconciliation:' },
+  'repair.orphanKeyTmpl':           { key: 'flow.repair.orphanKeyTmpl',           zh: '', en: '  Key orphans (registered, file missing): {items}' },
+  'repair.orphanFileTmpl':          { key: 'flow.repair.orphanFileTmpl',          zh: '', en: '  File orphans (file present, not registered): {items}' },
+  'repair.pruneOkTmpl':             { key: 'flow.repair.pruneOkTmpl',             zh: '', en: 'Pruned {n} key orphans (files not deleted)' },
 
   'migrate.alreadyNew':             { key: 'flow.migrate.alreadyNew',             zh: '', en: '✓ Already up-to-date format, no migration needed' },
   'migrate.dryRunTitle':            { key: 'flow.migrate.dryRunTitle',            zh: '', en: '[DRY-RUN Mode] The following changes will be applied:' },
@@ -190,6 +194,8 @@ export const flow: I18nDomain = {
   'health.pass':                    { key: 'flow.health.pass',                    zh: '', en: '🎉 Health check passed' },
   'health.hasFailures':             { key: 'flow.health.hasFailures',             zh: '', en: '⚠️  There are failures, please check errors above' },
   'health.quickMode':               { key: 'flow.health.quickMode',               zh: '', en: '(Quick mode: key checks only)' },
+  'health.orphanOps':               { key: 'flow.health.orphanOps',               zh: '', en: 'Orphan operations' },
+  'health.orphanOpsDetail':         { key: 'flow.health.orphanOpsDetail',         zh: '', en: '{n} key orphans, {m} file orphans; run `flow repair` for details' },
 
   'recover.title':                  { key: 'flow.recover.title',                  zh: '', en: '═══ Cross-Session Context Recovery ═══' },
   'recover.globalStatus':           { key: 'flow.recover.globalStatus',           zh: '', en: 'Global Status' },
@@ -361,6 +367,12 @@ export const plan: I18nDomain = {
   'stage.empty':                 { key: 'plan.stage.empty',                 zh: '', en: 'No working stages yet' },
   'scheme.createdTmpl':          { key: 'plan.scheme.createdTmpl',          zh: '', en: 'Op created: {opId} ({stage})' },
   'scheme.empty':                { key: 'plan.scheme.empty',                zh: '', en: 'No ops yet' },
+  'scheme.remove.okTmpl':        { key: 'plan.scheme.remove.okTmpl',        zh: '', en: 'Scheme removed: {opId} (stage {stage})' },
+  'scheme.remove.dryRunTmpl':    { key: 'plan.scheme.remove.dryRunTmpl',    zh: '', en: 'Preview removing scheme: {opId} (stage {stage}) [DRY-RUN, not written]' },
+  'scheme.remove.orphanNote':    { key: 'plan.scheme.remove.orphanNote',    zh: '', en: 'This op was an orphan (no template file); its registry key has been removed' },
+  'scheme.remove.reasonDone':    { key: 'plan.scheme.remove.reasonDone',    zh: '', en: 'Refused: {opId} is done; use --force to remove anyway' },
+  'scheme.remove.reasonCheckpoint': { key: 'plan.scheme.remove.reasonCheckpoint', zh: '', en: 'Refused: {opId} has checkpoint progress; use --force to remove anyway' },
+  'scheme.remove.notFoundTmpl':  { key: 'plan.scheme.remove.notFoundTmpl',  zh: '', en: 'Not found: stage {stage} or scheme {opId}' },
 };
 
 /* ==================== knowledge ==================== */
@@ -492,6 +504,7 @@ export const help: I18nDomain = {
   'flow.repair':           { key: 'help.flow.repair',           zh: '', en: 'Auto-detect and fix common issues in flow.json' },
   'flow.repair.dryRun':    { key: 'help.flow.repair.dryRun',    zh: '', en: 'Detect only, do not fix' },
   'flow.repair.backup':    { key: 'help.flow.repair.backup',    zh: '', en: 'Backup as .bak before repair' },
+  'flow.repair.pruneOrphans': { key: 'help.flow.repair.pruneOrphans', zh: '', en: 'Prune key orphans (flow.json op keys with no ops/ file; files are not deleted)' },
   'flow.migrate':          { key: 'help.flow.migrate',          zh: '', en: 'Migrate legacy flow.json (v4.0 global phase) to new format (v4.1 stage-level phase)' },
   'flow.migrate.dryRun':   { key: 'help.flow.migrate.dryRun',   zh: '', en: 'Preview only, do not write files' },
   'flow.migrate.noBackup': { key: 'help.flow.migrate.noBackup', zh: '', en: 'Skip .bak file generation (default generates flow.json.v4.0.bak)' },
@@ -525,6 +538,11 @@ export const help: I18nDomain = {
   'plan.scheme':           { key: 'help.plan.scheme',           zh: '', en: 'Operation scheme management' },
   'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '', en: 'Create operation scheme' },
   'plan.scheme.list':      { key: 'help.plan.scheme.list',      zh: '', en: 'List operation schemes (optionally filter by stage)' },
+  'plan.scheme.remove':    { key: 'help.plan.scheme.remove',    zh: '', en: 'Remove an operation scheme (deregisters the flow.json key only; does not delete the op template file)' },
+  'plan.scheme.remove.force':  { key: 'help.plan.scheme.remove.force',  zh: '', en: 'Bypass protection (op done / has checkpoint progress)' },
+  'plan.scheme.remove.dryRun': { key: 'help.plan.scheme.remove.dryRun', zh: '', en: 'Preview only, do not write' },
+  'plan.scheme.remove.argstage': { key: 'help.plan.scheme.remove.argstage', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
+  'plan.scheme.remove.argopId':  { key: 'help.plan.scheme.remove.argopId',  zh: '', en: 'Scheme ID (e.g. op-001 or stage.op-001)' },
 
   'stage':                 { key: 'help.stage',                 zh: '', en: 'Work stage status management (status.md atomic operations)' },
   'stage.status':          { key: 'help.stage.status',          zh: '', en: 'View stage status (list all stages when no arg)' },

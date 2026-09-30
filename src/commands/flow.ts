@@ -879,7 +879,8 @@ export function registerFlowCommand(program: Command): void {
     .description('自动检测并修复 flow.json 中的常见问题')
     .option('--dry-run', '仅检测不修复')
     .option('--backup', '修复前备份为 .bak')
-    .action((options: { dryRun?: boolean; backup?: boolean }) => {
+    .option('--prune-orphans', '清理键孤儿（flow.json 中已注册但 ops/ 无文件的 op 键；不删除文件）')
+    .action((options: { dryRun?: boolean; backup?: boolean; pruneOrphans?: boolean }) => {
       const lang = getCliLang(process.cwd());
       // 复用统一构造入口 createManager()，避免第二处 new FlowManager（T13）
       const mgr = createManager();
@@ -895,7 +896,7 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
-      const result = mgr.repair(options.dryRun ?? false);
+      const result = mgr.repair(options.dryRun ?? false, { pruneOrphans: options.pruneOrphans ?? false });
 
       if (options.dryRun) {
         console.log(t('flow.repair.dryRunTitle', lang));
@@ -931,6 +932,26 @@ export function registerFlowCommand(program: Command): void {
         console.log('\n' + t('flow.repair.migrationHint', lang));
         console.log('   openfeel flow migrate');
         console.log('   ' + t('flow.repair.migrationPreview', lang));
+      }
+
+      // N1-2：孤儿 op 对账报告（A2：默认只报告，不删任何条目）
+      const orphans = result.orphans;
+      if (orphans && orphans.keyOrphans.length + orphans.fileOrphans.length > 0) {
+        console.log('\n' + t('flow.repair.orphansTitle', lang));
+        if (orphans.keyOrphans.length > 0) {
+          console.log(t('flow.repair.orphanKeyTmpl', lang, {
+            items: orphans.keyOrphans.map((o) => `${o.stage}.${o.opId}`).join(', '),
+          }));
+        }
+        if (orphans.fileOrphans.length > 0) {
+          console.log(t('flow.repair.orphanFileTmpl', lang, {
+            items: orphans.fileOrphans.map((o) => `${o.stage}.${o.opId}`).join(', '),
+          }));
+        }
+        // --prune-orphans：仅清理 keyOrphans（正式执行才输出）
+        if (options.pruneOrphans && !options.dryRun && orphans.keyOrphans.length > 0) {
+          console.log(t('flow.repair.pruneOkTmpl', lang, { n: String(orphans.keyOrphans.length) }));
+        }
       }
     });
 

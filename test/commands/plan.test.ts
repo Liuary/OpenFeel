@@ -16,7 +16,7 @@ import { Command, CommanderError } from 'commander';
 import { registerPlanCommand } from '../../src/commands/plan.js';
 import { initProject } from '../../src/core/init.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
-import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, rmSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -267,5 +267,88 @@ describe('plan 命令', () => {
     const errOut = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
     expect(errOut).toContain('阶段目录冲突');
     expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  // ── stage-51/N1-1：plan scheme remove ──
+
+  /** 建立 stage-01 + op-001（经 CLI） */
+  async function setupStageAndOp(): Promise<void> {
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '待删']);
+    logMock.mockClear();
+    errorMock.mockClear();
+  }
+
+  it('N1-1: plan scheme remove 成功注销 op 键且保留模板文件 + 审计日志', async () => {
+    await setupStageAndOp();
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-001']).toBeUndefined();
+    expect(flow.log.some((l: { action: string }) => l.action === 'scheme_remove')).toBe(true);
+    // op 模板文件仍在
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+    expect(readdirSync(opsDir).some((f) => f.startsWith('op-001'))).toBe(true);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('已注销操作方案');
+  });
+
+  it('N1-1: done 的 op 默认拒绝，--force 可删除', async () => {
+    await setupStageAndOp();
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.stages['v1.0.0-stage-01'].ops['op-001'].state = 'done';
+    mgr.save();
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('done');
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001', '--force']);
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-001']).toBeUndefined();
+  });
+
+  it('N1-1: 存在含该 op 的 checkpoint 快照时默认拒绝，--force 可删除', async () => {
+    await setupStageAndOp();
+    const cpDir = join(tmpDir, '.openfeel', 'checkpoints');
+    mkdirSync(cpDir, { recursive: true });
+    writeFileSync(
+      join(cpDir, 'v1.0.0-stage-01-20260101T000000-000-exec_running.json'),
+      JSON.stringify({ stages: { 'v1.0.0-stage-01': { ops: { 'op-001': {} } } }, pipeline: { current: { op: 'op-001' } } }),
+      'utf-8',
+    );
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('checkpoint');
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001', '--force']);
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-001']).toBeUndefined();
+  });
+
+  it('N1-1: 孤儿（无模板文件）可直接删除并输出 orphanNote', async () => {
+    await setupStageAndOp();
+    // 删除模板文件，仅保留 flow.json 键
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+    for (const f of readdirSync(opsDir)) {
+      rmSync(join(opsDir, f), { force: true });
+    }
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001']);
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('孤儿');
+  });
+
+  it('N1-1: --dry-run 不写盘', async () => {
+    await setupStageAndOp();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001', '--dry-run']);
+
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('DRY-RUN');
   });
 });

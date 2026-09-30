@@ -215,11 +215,21 @@ export interface ValidationResult {
   warnings: string[];
 }
 
+/** 孤儿操作方案描述（flow.json 注册键 与 ops/ 目录文件不一致，N1） */
+export interface OrphanOp {
+  /** 所属阶段（完整 stageId） */
+  stage: string;
+  /** 操作方案 ID（如 op-001） */
+  opId: string;
+}
+
 /** 修复结果 */
 export interface RepairResult {
   fixed: boolean;
   changes: string[];
   recovered: boolean;
+  /** 孤儿 op 对账结果（N1-2；键孤儿/文件孤儿），供命令层报告与 --prune-orphans 使用 */
+  orphans?: { keyOrphans: OrphanOp[]; fileOrphans: OrphanOp[] };
 }
 
 /** 阶段可移除性检查结果（供 removeStage 与 flow stage remove --dry-run 共用，REV-005） */
@@ -286,6 +296,87 @@ function defaultFlowData(): FlowData {
 function extractRevision(data: FlowData | null): number {
   const rev = data?.meta?.revision;
   return typeof rev === 'number' && Number.isInteger(rev) ? rev : 0;
+}
+
+/**
+ * 对账 flow.json 的 op 键与 ops/ 目录文件（N1-2 单一实现，repair/health 共用）。
+ *
+ * 判定规则（R1）：op 模板文件同时匹配 `op-NNN.md`（新命名）与 `op-NNN_*.md`（历史命名），
+ * 两种命名都算「文件存在」，避免把历史命名误判为键孤儿。
+ * 无法解析 stageId 的阶段（非标准键）跳过对账。
+ *
+ * @param projectPath 项目根路径
+ * @param stages flow.json 的 stages 映射
+ * @returns keyOrphans（有注册键无文件）/ fileOrphans（有文件无注册键）
+ */
+function reconcileOrphans(
+  projectPath: string,
+  stages: Record<string, { ops?: Record<string, unknown> }> | undefined,
+): { keyOrphans: OrphanOp[]; fileOrphans: OrphanOp[] } {
+  const keyOrphans: OrphanOp[] = [];
+  const fileOrphans: OrphanOp[] = [];
+
+  for (const [stageId, stage] of Object.entries(stages ?? {})) {
+    // 非标准 stageId 无法定位 ops/ 目录，跳过（不误报）
+    const parsed = parseStageId(stageId);
+    if (!parsed) {
+      continue;
+    }
+    const keys = Object.keys(stage?.ops ?? {});
+
+    const opsDir = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'ops');
+    const fileIds = new Set<string>();
+    if (existsSync(opsDir)) {
+      let entries: string[] = [];
+      try {
+        entries = readdirSync(opsDir);
+      } catch {
+        entries = [];
+      }
+      for (const name of entries) {
+        const m = name.match(/^(op-\d+)/);
+        if (m) {
+          fileIds.add(m[1]);
+        }
+      }
+    }
+
+    // 键孤儿：有注册键但 ops/ 无对应文件
+    for (const key of keys) {
+      if (!fileIds.has(key)) {
+        keyOrphans.push({ stage: stageId, opId: key });
+      }
+    }
+    // 文件孤儿：有文件但无注册键
+    for (const fileId of fileIds) {
+      if (!keys.includes(fileId)) {
+        fileOrphans.push({ stage: stageId, opId: fileId });
+      }
+    }
+  }
+
+  return { keyOrphans, fileOrphans };
+}
+
+/**
+ * 对账 flow.json 的 op 键与 ops/ 目录文件（N1-2 公开入口）。
+ * @param projectPath 项目根路径
+ * @returns keyOrphans（有键无文件）/ fileOrphans（有文件无键）；flow.json 缺失/损坏时返回空
+ */
+export function findOrphanOps(projectPath: string): { keyOrphans: OrphanOp[]; fileOrphans: OrphanOp[] } {
+  const fp = resolve(projectPath, '.openfeel', 'flow.json');
+  if (!existsSync(fp)) {
+    return { keyOrphans: [], fileOrphans: [] };
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(fp, 'utf-8')) as {
+      stages?: Record<string, { ops?: Record<string, unknown> }>;
+    };
+    return reconcileOrphans(projectPath, parsed.stages ?? {});
+  } catch {
+    // flow.json 不可解析时不做对账（不阻塞主流程）
+    return { keyOrphans: [], fileOrphans: [] };
+  }
 }
 
 /** opId 解析结果 */
@@ -2272,7 +2363,7 @@ export class FlowManager {
    * @param dryRun true 时仅检测不修复
    * @returns 修复结果（修改列表 + 是否从 .bak 恢复）
    */
-  repair(dryRun: boolean = false): RepairResult {
+  repair(dryRun: boolean = false, options: { pruneOrphans?: boolean } = {}): RepairResult {
     const changes: string[] = [];
     let recovered = false;
 
@@ -2476,6 +2567,36 @@ export class FlowManager {
       modified = true;
     }
 
+    // ── N1-2：op 键 ↔ ops/ 目录对账（A2：默认只报告，不删任何条目）──
+    const orphans = reconcileOrphans(
+      this.projectPath,
+      flowData.stages as unknown as Record<string, { ops?: Record<string, unknown> }> | undefined,
+    );
+    // --prune-orphans：仅清理 keyOrphans（flow.json 孤儿键）；fileOrphans 永不自动删除
+    if (options.pruneOrphans && !dryRun && orphans.keyOrphans.length > 0) {
+      for (const orphan of orphans.keyOrphans) {
+        const targetStage = flowData.stages?.[orphan.stage];
+        if (targetStage && targetStage.ops && orphan.opId in targetStage.ops) {
+          delete targetStage.ops[orphan.opId];
+        }
+      }
+      // 审计日志写入 flowData（repair 以 flowData 序列化落盘，而非 this.data）
+      if (!Array.isArray(flowData.log)) {
+        flowData.log = [];
+      }
+      flowData.log.push({
+        time: new Date().toISOString(),
+        agent: 'cli',
+        action: 'prune_orphan_ops',
+        detail: {
+          count: orphans.keyOrphans.length,
+          ops: orphans.keyOrphans.map((o) => `${o.stage}.${o.opId}`),
+        },
+      });
+      changes.push(`已清理 ${orphans.keyOrphans.length} 个键孤儿（文件未删除）`);
+      modified = true;
+    }
+
     // 写入修复后的数据（recovered 场景下磁盘文件仍损坏，即使无字段修改也必须写回恢复内容）
     if ((modified || recovered) && !dryRun) {
       // （乐观并发修订）恢复/修复亦视为一次写入：先在源对象上递增 revision，
@@ -2515,7 +2636,7 @@ export class FlowManager {
 
     // changes 在无问题时保持空数组，CLI 层通过 changes.length === 0 判断"没问题"
 
-    return { fixed: modified || recovered, changes, recovered };
+    return { fixed: modified || recovered, changes, recovered, orphans };
   }
 
   /**
@@ -2716,6 +2837,11 @@ export class FlowManager {
       this.checkDanglingDeps(items);
     }
 
+    // ── 8. 孤儿 op 检测（N1-3）──
+    if (!quick) {
+      this.checkOrphanOps(items);
+    }
+
     const ok = items.every((i) => i.status !== 'fail');
     return { items, ok };
   }
@@ -2749,6 +2875,29 @@ export class FlowManager {
       return;
     }
     items.push({ section: '悬空依赖', status: 'pass', message: '未检测到悬空依赖' });
+  }
+
+  /**
+   * 8. 孤儿 op 检测：flow.json 的 op 键与 ops/ 目录文件是否一致（N1-3）
+   * 仅作数据卫生告警（warn），不阻断；退出码不受影响（仅 fail 决定）。
+   * 无孤儿时不产生条目（保持输出精简）。
+   * @param items 健康检查结果收集数组
+   */
+  private checkOrphanOps(items: HealthCheckItem[]): void {
+    const { keyOrphans, fileOrphans } = findOrphanOps(this.projectPath);
+    if (keyOrphans.length === 0 && fileOrphans.length === 0) {
+      return;
+    }
+    const base = t('flow.health.orphanOpsDetail', 'zh-CN', {
+      n: String(keyOrphans.length),
+      m: String(fileOrphans.length),
+    });
+    // keyOrphans 详情列出前 5 条 + 总数
+    const sample = keyOrphans.slice(0, 5).map((o) => `${o.stage}.${o.opId}`).join('; ');
+    const message = sample
+      ? `${base} [${sample}${keyOrphans.length > 5 ? ' …' : ''}]`
+      : base;
+    items.push({ section: t('flow.health.orphanOps'), status: 'warn', message });
   }
 
   /** 1. 检查 flow.json 合法性 */

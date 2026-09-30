@@ -5,8 +5,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { FlowManager, isFlowConcurrentError, type PipelinePhase } from '../flow-manager.js';
-import { parseStageId, validateStageId, findStageDirConflict } from './path.js';
+import { FlowManager, isFlowConcurrentError, type PipelinePhase, type Op } from '../flow-manager.js';
+import { parseStageId, validateStageId, findStageDirConflict, normalizeStageId } from './path.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../fs/file-lock.js';
 import { reserveSequence } from '../fs/sequence.js';
@@ -208,6 +208,149 @@ export function createScheme(projectPath: string, stageName: string, title: stri
   syncToFlowJson(projectPath, parsed.fullStageId, opId, title);
 
   return opId;
+}
+
+/** 删除（注销）结果（N1-1） */
+export interface RemoveSchemeResult {
+  /** 是否已删除 flow.json 中的 op 键 */
+  removed: boolean;
+  /** 未删除时的原因（错误码，供命令层映射 i18n） */
+  reason?: 'stage-not-found' | 'op-not-found' | 'op-done' | 'has-checkpoint';
+  /** 该 op 是否本已是「键孤儿」（opsDir 无对应文件） */
+  orphan?: boolean;
+}
+
+/**
+ * 判断 ops/ 目录是否存在该 op 的模板文件。
+ * R1：同时匹配 `op-NNN.md` 与历史 `op-NNN_*.md` 两种命名（避免历史命名被误判为键孤儿）。
+ */
+function hasOpTemplateFile(projectPath: string, stageId: string, opId: string): boolean {
+  const parsed = parseStageId(stageId);
+  if (!parsed) {
+    return false;
+  }
+  const opsDir = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'ops');
+  if (!existsSync(opsDir)) {
+    return false;
+  }
+  try {
+    return readdirSync(opsDir).some((f) => f === `${opId}.md` || f.startsWith(`${opId}_`));
+  } catch {
+    // 目录不可读时视为无文件（不误判为存在）
+    return false;
+  }
+}
+
+/**
+ * 判断该 op 是否存在 checkpoint 进展（默认拒绝删除的保护依据）。
+ * 判据：① op.checkpoints 含任一非 pending 值；② 阶段 checkpoint 快照含该 op 或 current 指向该 op。
+ */
+function hasCheckpointProgress(projectPath: string, stageId: string, opId: string, op: Op): boolean {
+  const c = op.checkpoints;
+  if (c) {
+    const untouched =
+      c.plan === 'pending' &&
+      c.scheme === 'pending' &&
+      c.review === 'pending' &&
+      c.test === 'pending' &&
+      (c.exec?.attempts ?? 0) === 0 &&
+      (c.exec?.self ?? 'pending') === 'pending';
+    if (!untouched) {
+      return true;
+    }
+  }
+
+  // 阶段快照目录：.openfeel/checkpoints/{stageId}-*.json
+  const cpDir = resolve(projectPath, '.openfeel', 'checkpoints');
+  if (!existsSync(cpDir)) {
+    return false;
+  }
+  try {
+    for (const f of readdirSync(cpDir)) {
+      if (!f.startsWith(`${stageId}-`) || !f.endsWith('.json')) {
+        continue;
+      }
+      try {
+        const snap = JSON.parse(readFileSync(resolve(cpDir, f), 'utf-8')) as {
+          stages?: Record<string, { ops?: Record<string, unknown> }>;
+          pipeline?: { current?: { op?: string } };
+        };
+        if (snap?.stages?.[stageId]?.ops && opId in snap.stages[stageId].ops) {
+          return true;
+        }
+        if (snap?.pipeline?.current?.op === opId) {
+          return true;
+        }
+      } catch {
+        // 单个快照损坏忽略
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+/**
+ * 从 flow.json 注销一个 op 键（不删除 op 模板文件），并留审计日志（N1-1）。
+ * 默认对「已 done」或「存在 checkpoint 进展」的 op 拒绝删除（--force 覆盖）。
+ * @param projectPath 项目根路径
+ * @param stageName 阶段 ID（简写或全称，经 normalizeStageId 归一）
+ * @param opId op ID（op-001 或 完整 stage.op-001）
+ * @param options.force 跳过保护校验；options.dryRun 仅预览不写盘
+ * @returns 删除结果（成功/原因码/是否孤儿）
+ */
+export function removeScheme(
+  projectPath: string,
+  stageName: string,
+  opId: string,
+  options?: { force?: boolean; dryRun?: boolean },
+): RemoveSchemeResult {
+  const normalized = normalizeStageId(stageName) ?? stageName;
+  const localOpId = opId.includes('.') ? opId.substring(opId.lastIndexOf('.') + 1) : opId;
+
+  const mgr = new FlowManager(projectPath);
+  if (!mgr.isLoaded()) {
+    return { removed: false, reason: 'stage-not-found' };
+  }
+  const data = mgr.getData()!;
+  const stage = data.stages[normalized] ?? data.stages[stageName];
+  if (!stage) {
+    return { removed: false, reason: 'stage-not-found' };
+  }
+  const op = stage.ops[localOpId];
+  if (!op) {
+    return { removed: false, reason: 'op-not-found' };
+  }
+  const stageKey = data.stages[normalized] ? normalized : stageName;
+  // 孤儿（opsDir 无对应文件）：这正是回收场景，允许直接删除
+  const orphan = !hasOpTemplateFile(projectPath, stageKey, localOpId);
+
+  if (!options?.force) {
+    // 保护已完成进度
+    if (op.state === 'done') {
+      return { removed: false, reason: 'op-done', orphan };
+    }
+    // 保护含 checkpoint 进展的 op
+    if (hasCheckpointProgress(projectPath, stageKey, localOpId, op)) {
+      return { removed: false, reason: 'has-checkpoint', orphan };
+    }
+  }
+
+  // --dry-run：仅预览，不写盘
+  if (options?.dryRun) {
+    return { removed: true, orphan };
+  }
+
+  delete stage.ops[localOpId];
+  mgr.appendLog({
+    time: '',
+    agent: 'cli',
+    action: 'scheme_remove',
+    detail: { stage: stageKey, opId: localOpId, force: !!options?.force, orphan },
+  });
+  mgr.save();
+  return { removed: true, orphan };
 }
 
 /**

@@ -3,7 +3,7 @@
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -2369,6 +2369,66 @@ describe('FlowManager', () => {
       });
       const okItem = mgr.healthCheck(false).items.find((i) => i.section === '悬空依赖');
       expect(okItem?.status).toBe('pass');
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // 孤儿 op 对账（stage-51 N1）
+  // ═══════════════════════════════════════
+
+  describe('孤儿 op 对账（stage-51 N1）', () => {
+    it('N1-2：findOrphanOps 区分 keyOrphans / fileOrphans（两种命名均算文件存在）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const baseOp = makeTestFlowData().stages['stage-01'].ops['op-001'];
+      mgr.setData(makeTestFlowData({
+        stages: {
+          'stage-01': {
+            ...makeTestFlowData().stages['stage-01'],
+            ops: {
+              'op-001': baseOp,
+              'op-002': { ...baseOp, id: 'op-002', title: 'o2' },
+            },
+          },
+        },
+      }));
+      mgr.save();
+      // ops 目录：op-002 存在（对应键），op-003 无键（文件孤儿）
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      writeFileSync(join(opsDir, 'op-002_x.md'), '', 'utf-8');
+      writeFileSync(join(opsDir, 'op-003_y.md'), '', 'utf-8');
+
+      const { keyOrphans, fileOrphans } = findOrphanOps(tmpDir);
+      expect(keyOrphans).toEqual([{ stage: 'stage-01', opId: 'op-001' }]);
+      expect(fileOrphans).toEqual([{ stage: 'stage-01', opId: 'op-003' }]);
+    });
+
+    it('N1-3：healthCheck 含孤儿时出现 warn（detail 含数量），无孤儿时不产生该 warn', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.save();
+
+      // 无 ops 文件 → op-001 为键孤儿
+      const warnItem = mgr.healthCheck(false).items.find((i) => i.section === '孤儿操作方案');
+      expect(warnItem?.status).toBe('warn');
+      expect(warnItem?.message).toContain('1');
+
+      // 补齐模板文件 → 无孤儿（不产生 warn 项）
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      writeFileSync(join(opsDir, 'op-001_a.md'), '', 'utf-8');
+      const none = mgr.healthCheck(false).items.find((i) => i.section === '孤儿操作方案');
+      expect(none).toBeUndefined();
+    });
+
+    it('N1-3：仅孤儿（无 fail）时 healthCheck.ok 仍为 true（退出码不变）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.save();
+      expect(mgr.healthCheck(false).ok).toBe(true);
     });
   });
 

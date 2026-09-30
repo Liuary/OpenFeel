@@ -4,7 +4,7 @@
  */
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
-import { createScheme, listSchemes } from '../core/plan/scheme.js';
+import { createScheme, listSchemes, removeScheme } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
@@ -128,6 +128,50 @@ export function registerPlanCommand(program: Command): void {
 
       for (const scheme of schemes) {
         console.log(`[${scheme.stage}] ${scheme.opId} — ${scheme.title}`);
+      }
+    });
+
+  // plan scheme remove <stage> <opId> [--force] [--dry-run]
+  schemeCmd
+    .command('remove')
+    .description('注销操作方案（仅从 flow.json 删除注册键，不删除 op 模板文件）')
+    .argument('<stage>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
+    .argument('<opId>', '操作方案 ID（如 op-001 或完整 stage.op-001）')
+    .option('--force', '越过保护校验（op 已 done / 存在 checkpoint 进展）')
+    .option('--dry-run', '仅预览，不写盘')
+    .action((stage: string, opId: string, options: { force?: boolean; dryRun?: boolean }) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      const result = removeScheme(projectPath, stage, opId, {
+        force: options.force,
+        dryRun: options.dryRun,
+      });
+
+      if (!result.removed) {
+        // 错误路径：按原因码分流 i18n 文案
+        switch (result.reason) {
+          case 'op-done':
+            console.error(t('plan.scheme.remove.reasonDone', lang, { opId }));
+            break;
+          case 'has-checkpoint':
+            console.error(t('plan.scheme.remove.reasonCheckpoint', lang, { opId }));
+            break;
+          default:
+            console.error(t('plan.scheme.remove.notFoundTmpl', lang, { stage, opId }));
+            break;
+        }
+        process.exit(1);
+        return;
+      }
+
+      // dry-run 与正式执行分别输出
+      console.log(
+        options.dryRun
+          ? t('plan.scheme.remove.dryRunTmpl', lang, { opId, stage })
+          : t('plan.scheme.remove.okTmpl', lang, { opId, stage }),
+      );
+      if (result.orphan) {
+        console.log(t('plan.scheme.remove.orphanNote', lang));
       }
     });
 }

@@ -345,4 +345,88 @@ describe('flow 命令（stage-41）', () => {
     expect(after.meta.revision).toBeGreaterThan(revBefore);
     expect(after.stages['v1.1.2-stage-91'].phase).not.toBe('exec_running');
   });
+
+  // ── stage-51/N1-2：flow repair 孤儿 op 对账 ──
+
+  /** 构造一个 pending op 对象 */
+  function makeOp(id: string): Record<string, unknown> {
+    return {
+      id, title: 't', state: 'pending', assignee: 'openfeel-executor', attempts: 0, max_attempts: 3,
+      checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+    };
+  }
+
+  it('N1-2: flow repair 默认只报告孤儿且 flow.json 零变更', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-70');
+    mgr.getData()!.stages['v1.1.2-stage-70'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'repair']);
+
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('孤儿');
+    expect(out).toContain('v1.1.2-stage-70.op-001');
+  });
+
+  it('N1-2: flow repair --prune-orphans 清理键孤儿且不删文件', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-71');
+    mgr.getData()!.stages['v1.1.2-stage-71'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+    // 构造 fileOrphan：ops 目录有 op-002 文件但无对应键
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-71', 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    writeFileSync(join(opsDir, 'op-002_keep.md'), 'x', 'utf-8');
+
+    await safeParse(['flow', 'repair', '--prune-orphans']);
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.1.2-stage-71'].ops['op-001']).toBeUndefined();
+    expect(existsSync(join(opsDir, 'op-002_keep.md'))).toBe(true);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('已清理');
+  });
+
+  it('N1-2: flow repair --dry-run --prune-orphans 零变更', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-72');
+    mgr.getData()!.stages['v1.1.2-stage-72'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'repair', '--dry-run', '--prune-orphans']);
+
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('孤儿');
+  });
+
+  it('N1-3: 仅孤儿（无 fail）时 flow health 不 fail 且退出码不变', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-73');
+    mgr.getData()!.stages['v1.1.2-stage-73'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+    logMock.mockClear();
+
+    const prevExitCode = process.exitCode;
+    process.exitCode = undefined;
+    try {
+      await safeParse(['flow', 'health']);
+      const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(out).toContain('孤儿操作方案');
+      // 仅 warn，无 fail → 退出码不变（仍为 0/undefined）
+      expect(process.exitCode ?? 0).toBe(0);
+    } finally {
+      process.exitCode = prevExitCode;
+    }
+  });
 });

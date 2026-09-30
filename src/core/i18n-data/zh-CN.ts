@@ -192,6 +192,10 @@ export const flow: I18nDomain = {
   'repair.fixFailed':               { key: 'flow.repair.fixFailed',               zh: '✗ 部分问题无法自动修复，请手动检查 flow.json', en: '' },
   'repair.migrationHint':           { key: 'flow.repair.migrationHint',           zh: '💡 检测到旧版 flow.json 格式（全局 phase），建议运行:', en: '' },
   'repair.migrationPreview':        { key: 'flow.repair.migrationPreview',        zh: '查看迁移预览: openfeel flow migrate --dry-run', en: '' },
+  'repair.orphansTitle':            { key: 'flow.repair.orphansTitle',            zh: '孤儿 op 对账：',                          en: '' },
+  'repair.orphanKeyTmpl':           { key: 'flow.repair.orphanKeyTmpl',           zh: '  键孤儿（有注册无文件）：{items}',        en: '' },
+  'repair.orphanFileTmpl':          { key: 'flow.repair.orphanFileTmpl',          zh: '  文件孤儿（有文件无注册）：{items}',      en: '' },
+  'repair.pruneOkTmpl':             { key: 'flow.repair.pruneOkTmpl',             zh: '已清理 {n} 个键孤儿（文件未删除）',        en: '' },
 
   // flow migrate
   'migrate.alreadyNew':             { key: 'flow.migrate.alreadyNew',             zh: '✓ 已是新版格式，无需迁移',                en: '' },
@@ -206,6 +210,8 @@ export const flow: I18nDomain = {
   'health.pass':                    { key: 'flow.health.pass',                    zh: '🎉 健康检查通过',                         en: '' },
   'health.hasFailures':             { key: 'flow.health.hasFailures',             zh: '⚠️  存在不通过项，请检查上述错误',         en: '' },
   'health.quickMode':               { key: 'flow.health.quickMode',               zh: '（快速模式：仅检查关键项）',              en: '' },
+  'health.orphanOps':               { key: 'flow.health.orphanOps',               zh: '孤儿操作方案',                            en: '' },
+  'health.orphanOpsDetail':         { key: 'flow.health.orphanOpsDetail',         zh: '键孤儿 {n} 个、文件孤儿 {m} 个；运行 flow repair 查看详情', en: '' },
 
   // flow recover
   'recover.title':                  { key: 'flow.recover.title',                  zh: '═══ 跨会话上下文恢复 ═══',               en: '' },
@@ -381,6 +387,12 @@ export const plan: I18nDomain = {
   'stage.empty':                 { key: 'plan.stage.empty',                 zh: '暂无工作阶段',                            en: '' },
   'scheme.createdTmpl':          { key: 'plan.scheme.createdTmpl',          zh: '已创建操作方案: {opId}（{stage}）',        en: '' },
   'scheme.empty':                { key: 'plan.scheme.empty',                zh: '暂无操作方案',                            en: '' },
+  'scheme.remove.okTmpl':        { key: 'plan.scheme.remove.okTmpl',        zh: '已注销操作方案：{opId}（阶段 {stage}）',   en: '' },
+  'scheme.remove.dryRunTmpl':    { key: 'plan.scheme.remove.dryRunTmpl',    zh: '已预览注销操作方案：{opId}（阶段 {stage}）[DRY-RUN，未写盘]', en: '' },
+  'scheme.remove.orphanNote':    { key: 'plan.scheme.remove.orphanNote',    zh: '该 op 为孤儿（无对应模板文件），已注销其注册键', en: '' },
+  'scheme.remove.reasonDone':    { key: 'plan.scheme.remove.reasonDone',    zh: '拒绝删除：{opId} 状态为 done；如需强制删除请加 --force', en: '' },
+  'scheme.remove.reasonCheckpoint': { key: 'plan.scheme.remove.reasonCheckpoint', zh: '拒绝删除：{opId} 存在 checkpoint 进展；如需强制删除请加 --force', en: '' },
+  'scheme.remove.notFoundTmpl':  { key: 'plan.scheme.remove.notFoundTmpl',  zh: '未找到：阶段 {stage} 或操作方案 {opId}', en: '' },
 };
 
 /* ==================== knowledge 域：知识库命令 ==================== */
@@ -517,6 +529,7 @@ export const help: I18nDomain = {
   'flow.repair':           { key: 'help.flow.repair',           zh: '自动检测并修复 flow.json 中的常见问题', en: '' },
   'flow.repair.dryRun':    { key: 'help.flow.repair.dryRun',    zh: '仅检测不修复', en: '' },
   'flow.repair.backup':    { key: 'help.flow.repair.backup',    zh: '修复前备份为 .bak', en: '' },
+  'flow.repair.pruneOrphans': { key: 'help.flow.repair.pruneOrphans', zh: '清理键孤儿（flow.json 中已注册但 ops/ 无文件的 op 键；不删除文件）', en: '' },
   'flow.migrate':          { key: 'help.flow.migrate',          zh: '将旧版 flow.json（v4.0 全局 phase）迁移到新版格式（v4.1 阶段级 phase）', en: '' },
   'flow.migrate.dryRun':   { key: 'help.flow.migrate.dryRun',   zh: '仅检测预览，不实际写入文件', en: '' },
   'flow.migrate.noBackup': { key: 'help.flow.migrate.noBackup', zh: '跳过 .bak 文件生成（默认生成 flow.json.v4.0.bak）', en: '' },
@@ -553,6 +566,11 @@ export const help: I18nDomain = {
   'plan.scheme':           { key: 'help.plan.scheme',           zh: '操作方案管理', en: '' },
   'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '创建操作方案', en: '' },
   'plan.scheme.list':      { key: 'help.plan.scheme.list',      zh: '列出操作方案（可选按阶段过滤）', en: '' },
+  'plan.scheme.remove':    { key: 'help.plan.scheme.remove',    zh: '注销操作方案（仅从 flow.json 删除注册键，不删除 op 模板文件）', en: '' },
+  'plan.scheme.remove.force':  { key: 'help.plan.scheme.remove.force',  zh: '越过保护校验（op 已 done / 存在 checkpoint 进展）', en: '' },
+  'plan.scheme.remove.dryRun': { key: 'help.plan.scheme.remove.dryRun', zh: '仅预览，不写盘', en: '' },
+  'plan.scheme.remove.argstage': { key: 'help.plan.scheme.remove.argstage', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
+  'plan.scheme.remove.argopId':  { key: 'help.plan.scheme.remove.argopId',  zh: '操作方案 ID（如 op-001 或完整 stage.op-001）', en: '' },
 
   // stage
   'stage':                 { key: 'help.stage',                 zh: '工作阶段状态管理（status.md 原子操作）', en: '' },

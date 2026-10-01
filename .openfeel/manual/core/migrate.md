@@ -59,7 +59,7 @@
 | `deployGlobalAsset` 抽取 | 从 update.ts 最小侵入抽取（等价 `writeManagedFile(..., {isGlobal:true})`），migrate 与 update 共用（REV-1205） |
 | manifest 回填 | 全局部署 + state 拆分包在 `try/finally`，finally 回填 `manifest.globalStateKeys`（REV-1405） |
 | splitUpdateState 复用 state | 新增 `globalStateIn` 可选参数，复用已加载全局 state，消除重复 IO（REV-1402） |
-| skill 旧名重键 | `remapSkillName` 旧无前缀名 → openfeel- 前缀（全 14 skill，REV-1303） |
+| skill 旧名重键 | `remapSkillName` 旧无前缀名 → openfeel- 前缀（全部 skill，REV-1303） |
 | assignee 遍历 | 用 `Object.values` 遍历 stages/ops 对象（非数组），`for...of` 对象会抛 TypeError（REV-1301） |
 
 ## 变更历史

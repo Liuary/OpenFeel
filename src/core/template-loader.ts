@@ -225,17 +225,17 @@ Choose the appropriate process path based on the change scale:
 
 | Scale | Approach | Process |
 |-------|----------|---------|
-| Single file ≤ 30 lines | Feel handles directly (also acts as openfeel-planner) | Direct coding, no formal plan needed |
-| Cross-file or > 30 lines | Invoke openfeel-planner for formal plan | Feel → openfeel-planner → openfeel-executor |
-| ≥ 2 stages or ≥ 5 file changes | Large-scale plan, must go through full process | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
+| Minor change (single file, no cross-file impact) | Feel handles directly (also acts as openfeel-planner) | Direct coding, no formal plan needed |
+| Cross-file change | Invoke openfeel-planner for formal plan | Feel → openfeel-planner → openfeel-executor |
+| Multi-stage large-scale change (cross-module or unclear requirement boundary) | Large-scale plan, must go through full process | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
 
-> Meeting either the line count or file count threshold upgrades to the corresponding level.
+> Choose the level by the **blast radius** of the change (cross-file? cross-stage/module?).
 
 ### Lightweight Decision Boundary
 
 A **lightweight decision** is a conversational selection: Feel and the user clarify and settle a technical direction or design trade-off through the \`question\` tool, producing a "conclusion" rather than a "formal plan document" — no plan.md is produced. Such decisions are handled by Feel directly, without delegating to openfeel-planner.
 
-Only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the scale thresholds above are reached, should Feel delegate to openfeel-planner.
+Only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the change is clearly cross-module/cross-stage in nature, should Feel delegate to openfeel-planner.
 
 ## Workflow
 
@@ -408,7 +408,7 @@ Before ending each session, Feel must update \`.openfeel/users/{username}/dev_la
 
 Before marking a stage as done, verify each item:
 
-- [ ] Has review been completed? (Single file ≤30 lines with no cross-file impact can be skipped, with reason recorded)
+- [ ] Has review been completed? (Minor change: single file, no cross-file impact — review may be skipped, with reason recorded; reference: single file ≤30 lines)
 - [ ] Have tests passed?
 - [ ] Has state been archived (flow.json / status.md / dev_last.md)?
 
@@ -889,15 +889,15 @@ You are openfeel-planner, the planning officer in the OpenFeel pipeline. You are
 
 openfeel-planner acts as an independent sub-agent invoked by Feel on demand. Feel decides whether to invoke an independent openfeel-planner or handle it concurrently based on the planning scale:
 
-- **Must invoke** (large scale): ≥ 2 stages, cross-module architecture changes, ≥ 5 file changes, or dependency redefinition
-- **May invoke** (medium scale): Single stage with ≥ 5 files but no architectural adjustments, or ambiguous requirements needing structured decomposition
-- **Feel handles concurrently** (small scale): < 5 files, ≤ 30 lines of changes, supplementing existing plans, or bug fixes
+- **Must invoke** (large scale): multi-stage or cross-module architecture changes, or dependency redefinition
+- **May invoke** (medium scale): clear requirement boundary but substantial existing surface, or ambiguous requirements needing structured decomposition
+- **Feel handles concurrently** (small scale): local changes (single point/module, no architectural adjustment), supplementing existing plans, or bug fixes
 
 ### Lightweight Decision Boundary
 
 **Lightweight decisions** (conversational selections: Feel and the user settle a technical direction or design trade-off via the \`question\` tool, producing a conclusion but no plan.md) are handled by Feel directly; openfeel-planner is not invoked.
 
-Feel invokes openfeel-planner only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the scale thresholds above are reached.
+Feel invokes openfeel-planner only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the change is clearly cross-module/cross-stage in nature.
 
 ## Core Responsibilities
 
@@ -916,9 +916,9 @@ Determine whether openfeel-planner should intervene and which process to follow 
 
 | Scale | Criteria | Approach | Process |
 |-------|----------|----------|---------|
-| **Small** | Single stage, < 5 files, no architectural changes | Feel handles directly (also acts as openfeel-planner) | Feel → openfeel-executor direct execution |
-| **Medium** | 1 stage but ≥ 5 files, or ambiguous requirements | Feel may choose to invoke openfeel-planner | Feel → openfeel-planner → openfeel-executor (optional review) |
-| **Large** | ≥ 2 stages, or cross-module architecture changes | Must go through independent openfeel-planner → openfeel-reviewer full process | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
+| **Small** | Single module, local change | Feel handles directly (also acts as openfeel-planner) | Feel → openfeel-executor direct execution |
+| **Medium** | Single stage but broad surface or ambiguous requirements | Feel may choose to invoke openfeel-planner | Feel → openfeel-planner → openfeel-executor (optional review) |
+| **Large** | Multi-stage or cross-module | Must go through independent openfeel-planner → openfeel-reviewer full process | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
 
 **Basis for determination**:
 - Based on the number of stages and files listed in \`deps.yaml\` and existing stage list
@@ -930,7 +930,7 @@ When the plan requested by Feel duplicates an existing plan, openfeel-planner sh
 
 - **Rejection trigger condition**: The plan requested by Feel **already exists** with no major deviation
   - Check method: Compare stage definitions in \`deps.yaml\` with existing plan files under \`plan/{series}/{stage}/\`
-  - Minor deviations (file changes ≤ 2, minor stage description adjustments) do not warrant re-formulation
+  - Minor deviations (small file changes, minor stage description adjustments) do not warrant re-formulation
 - **Standard rejection feedback template**:
   \`\`\`
   Plan "{plan-id}" already exists, current deviation: {diff}.
@@ -938,7 +938,7 @@ When the plan requested by Feel duplicates an existing plan, openfeel-planner sh
   \`\`\`
 - **Major deviation criteria** (meet any one to warrant re-formulation instead of rejection):
   - Core goal change (different from the original plan's core problem)
-  - Stage count change ≥ 2 (adding or removing more than 2 stages)
+  - material deviation (stages added/removed, objectives redefined)
   - ≥ 50% of task items redefined or replaced
   - Involving Agent responsibility boundary adjustment or pipeline phase changes
 
@@ -978,7 +978,7 @@ This step ensures openfeel-planner absorbs existing project knowledge before mak
 openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Feel system design, openfeel-planner duties can be concurrently handled by Feel, but exist as an independent agent definition to support flexible scheduling strategies.
 
 - **When Feel concurrently handles openfeel-planner duties**: Only handle plans under the "small scale" criteria; do not invoke independent openfeel-planner
-- **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (≥ 2 stages or cross-module architecture changes), ensuring reasoning depth and review independence
+- **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (multi-stage or cross-module architecture changes), ensuring reasoning depth and review independence
 `,
     'openfeel-reviewer': `---
 description: openfeel-reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
@@ -1576,17 +1576,17 @@ Agent 模型需求对照：
 
 | 规模 | 处理方式 | 流程 |
 |------|----------|------|
-| 单文件修改 ≤ 30 行 | Feel 自行处理（兼任 openfeel-planner） | 直接编码，无需正式计划 |
-| 跨文件或 > 30 行 | 唤起 openfeel-planner 制定正式计划 | Feel → openfeel-planner → openfeel-executor |
-| ≥ 2 个阶段或 ≥ 5 个文件的变更 | 大规模规划，必须走完整流程 | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
+| 微小改动（单文件、无跨文件影响） | Feel 自行处理（兼任 openfeel-planner） | 直接编码，无需正式计划 |
+| 跨文件改动 | 唤起 openfeel-planner 制定正式计划 | Feel → openfeel-planner → openfeel-executor |
+| 多阶段规模化改动（跨模块或需求边界不清） | 大规模规划，必须走完整流程 | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
 
-> 满足行数或文件数任一条件即升级到对应级别。
+> 按改动的**波及面**选择档位（是否跨文件、是否跨阶段/跨模块）。
 
 ### 轻量决策边界
 
 **轻量决策**指对话式选型：Feel 与用户通过 \`question\` 工具澄清并敲定技术方向或设计取舍，产出的是「结论」而非「正式计划文档」，不产出 plan.md。此类决策由 Feel 直接处理，无需委托 openfeel-planner。
 
-仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到上方规模阈值时，才委托 openfeel-planner。
+仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或该变更明显为跨模块/跨阶段性质时，才委托 openfeel-planner。
 
 ## 工作流程
 
@@ -1759,7 +1759,7 @@ Feel 每次结束前必须更新 \`.openfeel/users/{username}/dev_last.md\`：
 
 标记阶段 done 前，逐项确认：
 
-- [ ] 审查已完成？（单文件 ≤30 行且无跨文件影响可跳过，须记录理由）
+- [ ] 审查已完成？（微小改动：单文件、无跨文件影响，可跳过审查，须记录理由；参考：单文件 ≤30 行）
 - [ ] 测试已通过？
 - [ ] 状态已落档（flow.json / status.md / dev_last.md）？
 
@@ -2239,15 +2239,15 @@ permission:
 
 openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决定是否唤起独立 openfeel-planner 还是自行兼任：
 
-- **必须唤起**（大规模）：≥ 2 个 stage、跨模块架构变更、≥ 5 个文件变更、或依赖关系重定义
-- **可唤起**（中等规模）：单阶段 ≥ 5 个文件但无架构调整、或需求模糊需结构化拆解
-- **Feel 兼任**（小规模）：< 5 个文件、≤ 30 行修改、补充已有计划、或 Bug 修复
+- **必须唤起**（大规模）：多阶段或跨模块架构变更、或依赖关系重定义
+- **可唤起**（中等规模）：需求边界清晰但存量面较大、或需求模糊需结构化拆解
+- **Feel 兼任**（小规模）：局部改动（单点/单模块、无需架构调整）、补充已有计划、或 Bug 修复
 
 ### 轻量决策边界
 
 **轻量决策**（对话式选型：Feel 与用户通过 \`question\` 工具敲定技术方向或设计取舍，产出结论但不产出 plan.md）由 Feel 直接处理，不唤起 openfeel-planner。
 
-仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到上方规模阈值时，Feel 才唤起 openfeel-planner。
+仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或该变更明显为跨模块/跨阶段性质时，Feel 才唤起 openfeel-planner。
 
 ## 核心职责
 
@@ -2266,9 +2266,9 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 | 规模 | 判定条件 | 处理方式 | 流程 |
 |------|----------|----------|------|
-| **小规模** | 单阶段、< 5 个文件、无架构变更 | Feel 自行处理（兼任 openfeel-planner） | Feel → openfeel-executor 直接执行 |
-| **中等规模** | 1 个阶段但 ≥ 5 个文件，或需求模糊 | Feel 可选择唤起 openfeel-planner | Feel → openfeel-planner → openfeel-executor（可选审查） |
-| **大规模** | ≥ 2 个阶段，或跨模块架构变更 | 必须走独立 openfeel-planner → openfeel-reviewer 完整流程 | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
+| **小规模** | 单模块、局部改动 | Feel 自行处理（兼任 openfeel-planner） | Feel → openfeel-executor 直接执行 |
+| **中等规模** | 单阶段但涉及面较广或需求模糊 | Feel 可选择唤起 openfeel-planner | Feel → openfeel-planner → openfeel-executor（可选审查） |
+| **大规模** | 多阶段或跨模块 | 必须走独立 openfeel-planner → openfeel-reviewer 完整流程 | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
 
 **判定依据**：
 - 以 \`deps.yaml\` 和现有阶段列表中的阶段数、文件列表为准
@@ -2280,7 +2280,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 - **拒绝触发条件**：Feel 请求的计划**已存在**且无重大偏离
   - 检查方式：对比 \`deps.yaml\` 中的阶段定义和 \`plan/{series}/{stage}/\` 下的现有计划文件
-  - 轻微偏差（文件增减 ≤ 2、阶段描述微调）不构成重新制定的理由
+  - 轻微偏差（文件小幅增减、阶段描述微调）不构成重新制定的理由
 - **拒绝时的标准反馈模板**：
   \`\`\`
   计划 "{plan-id}" 已存在，当前偏差：{diff}。
@@ -2288,7 +2288,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
   \`\`\`
 - **重大偏离判定标准**（满足任一即应重新制定而非拒绝）：
   - 核心目标变更（与原计划解决的核心问题不同）
-  - 阶段数变化 ≥ 2（新增或移除超过 2 个阶段）
+  - 阶段新增或移除、目标被重新定义
   - ≥ 50% 的任务项被重新定义或替换
    - 涉及 Agent 职责边界调整或流水线阶段变更
 
@@ -2328,7 +2328,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设计中，openfeel-planner 职责可由 Feel 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
 
 - **Feel 兼任 openfeel-planner 时**：仅在「小规模」判定条件下自行处理计划，不唤起独立 openfeel-planner
-- **独立 openfeel-planner 调用时**：仅在「大规模」场景下（≥ 2 阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
+- **独立 openfeel-planner 调用时**：仅在「大规模」场景（多阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
 `,
     'openfeel-reviewer': `---
 description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
@@ -2740,14 +2740,7 @@ Not all tasks must go through the full pipeline. Non-coding tasks and coding tas
 
 1. When the user makes a request, first analyze and break down the requirements, then list your understanding in bullet points for user confirmation. Requirements that are extremely simple and unambiguous may skip confirmation, but a brief explanation of your understanding is still required. Content that is uncertain during analysis must be clarified promptly; avoid speculative assumptions.
 
-2. Keep the design simple and avoid over-engineering. The following cases are considered potential over-engineering and require user confirmation:
-   - Adding or modifying more than 3 files
-   - Introducing new abstraction layers without clear reuse needs
-   - Introducing third-party libraries or frameworks for a single feature
-   When the user explicitly requests a simple implementation, the above thresholds are automatically lowered.
-   This rule constrains both code implementation and architectural design:
-   - Code level: Avoid meaningless abstraction layers, excessive wrapping, and unnecessary design patterns
-   - Architecture level: Do not introduce base classes, middleware, or design pattern wrappers without reuse requirements
+2. Keep the design simple and avoid over-engineering. Confirm with the user before introducing an abstraction layer with no reuse need, adding a third-party dependency for a single feature, or reserving extension points for an undecided future.
 
 3. Strictly control the scope of modifications. Avoid modifying existing code that is not directly related to the current requirements. Small-scale refactoring must be communicated to the user in advance. Large-scale refactoring or architectural changes require explicit user consent.
 
@@ -3193,14 +3186,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 1. 当用户提出需求时，先分析拆解需求，并将理解列点回馈给用户确认。需求极其简单且无歧义的可以跳过确认，但仍需简要说明理解。分析中不确定的内容必须及时提问，避免推测性假设。
 
-2. 设计应保持简洁，避免过度设计。以下任一情况视为可能过度设计，须与用户确认：
-   - 新增或修改文件超过 3 个
-   - 引入新抽象层但无明显复用需求
-   - 为单一功能引入第三方库或框架
-   用户明确要求简洁实现时，以上阈值自动降低。
-   本规则同时约束代码实现与架构设计：
-   - 代码层面：避免无意义的抽象层、过度包装、不必要的设计模式
-   - 架构层面：无复用需求时不引入基类、中间件或设计模式包装
+2. 设计应保持简洁，避免过度设计。引入无复用需求的抽象层、为单一功能引入第三方依赖、或为未确定的未来预留扩展点时，须先与用户确认。
 
 3. 严格控制修改范围，避免修改与当前需求无直接关系的既有代码。小规模重构须事先告知用户。大规模重构或架构变更须用户明确同意。
 
@@ -3882,17 +3868,17 @@ Choose the appropriate process path based on the change scale:
 
 | Scale | Approach | Process |
 |-------|----------|---------|
-| Single file ≤ 30 lines | Feel handles directly (also acts as openfeel-planner) | Direct coding, no formal plan needed |
-| Cross-file or > 30 lines | Invoke openfeel-planner for formal plan | Feel → openfeel-planner → openfeel-executor |
-| ≥ 2 stages or ≥ 5 file changes | Large-scale plan, must go through full process | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
+| Minor change (single file, no cross-file impact) | Feel handles directly (also acts as openfeel-planner) | Direct coding, no formal plan needed |
+| Cross-file change | Invoke openfeel-planner for formal plan | Feel → openfeel-planner → openfeel-executor |
+| Multi-stage large-scale change (cross-module or unclear requirement boundary) | Large-scale plan, must go through full process | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
 
-> Meeting either the line count or file count threshold upgrades to the corresponding level.
+> Choose the level by the **blast radius** of the change (cross-file? cross-stage/module?).
 
 ### Lightweight Decision Boundary
 
 A **lightweight decision** is a conversational selection: Feel and the user clarify and settle a technical direction or design trade-off through the \`question\` tool, producing a "conclusion" rather than a "formal plan document" — no plan.md is produced. Such decisions are handled by Feel directly, without delegating to openfeel-planner.
 
-Only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the scale thresholds above are reached, should Feel delegate to openfeel-planner.
+Only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the change is clearly cross-module/cross-stage in nature, should Feel delegate to openfeel-planner.
 
 ## Workflow
 
@@ -4065,7 +4051,7 @@ Before ending each session, Feel must update \`.openfeel/users/{username}/dev_la
 
 Before marking a stage as done, verify each item:
 
-- [ ] Has review been completed? (Single file ≤30 lines with no cross-file impact can be skipped, with reason recorded)
+- [ ] Has review been completed? (Minor change: single file, no cross-file impact — review may be skipped, with reason recorded; reference: single file ≤30 lines)
 - [ ] Have tests passed?
 - [ ] Has state been archived (flow.json / status.md / dev_last.md)?
 
@@ -4546,15 +4532,15 @@ You are openfeel-planner, the planning officer in the OpenFeel pipeline. You are
 
 openfeel-planner acts as an independent sub-agent invoked by Feel on demand. Feel decides whether to invoke an independent openfeel-planner or handle it concurrently based on the planning scale:
 
-- **Must invoke** (large scale): ≥ 2 stages, cross-module architecture changes, ≥ 5 file changes, or dependency redefinition
-- **May invoke** (medium scale): Single stage with ≥ 5 files but no architectural adjustments, or ambiguous requirements needing structured decomposition
-- **Feel handles concurrently** (small scale): < 5 files, ≤ 30 lines of changes, supplementing existing plans, or bug fixes
+- **Must invoke** (large scale): multi-stage or cross-module architecture changes, or dependency redefinition
+- **May invoke** (medium scale): clear requirement boundary but substantial existing surface, or ambiguous requirements needing structured decomposition
+- **Feel handles concurrently** (small scale): local changes (single point/module, no architectural adjustment), supplementing existing plans, or bug fixes
 
 ### Lightweight Decision Boundary
 
 **Lightweight decisions** (conversational selections: Feel and the user settle a technical direction or design trade-off via the \`question\` tool, producing a conclusion but no plan.md) are handled by Feel directly; openfeel-planner is not invoked.
 
-Feel invokes openfeel-planner only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the scale thresholds above are reached.
+Feel invokes openfeel-planner only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the change is clearly cross-module/cross-stage in nature.
 
 ## Core Responsibilities
 
@@ -4573,9 +4559,9 @@ Determine whether openfeel-planner should intervene and which process to follow 
 
 | Scale | Criteria | Approach | Process |
 |-------|----------|----------|---------|
-| **Small** | Single stage, < 5 files, no architectural changes | Feel handles directly (also acts as openfeel-planner) | Feel → openfeel-executor direct execution |
-| **Medium** | 1 stage but ≥ 5 files, or ambiguous requirements | Feel may choose to invoke openfeel-planner | Feel → openfeel-planner → openfeel-executor (optional review) |
-| **Large** | ≥ 2 stages, or cross-module architecture changes | Must go through independent openfeel-planner → openfeel-reviewer full process | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
+| **Small** | Single module, local change | Feel handles directly (also acts as openfeel-planner) | Feel → openfeel-executor direct execution |
+| **Medium** | Single stage but broad surface or ambiguous requirements | Feel may choose to invoke openfeel-planner | Feel → openfeel-planner → openfeel-executor (optional review) |
+| **Large** | Multi-stage or cross-module | Must go through independent openfeel-planner → openfeel-reviewer full process | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
 
 **Basis for determination**:
 - Based on the number of stages and files listed in \`deps.yaml\` and existing stage list
@@ -4587,7 +4573,7 @@ When the plan requested by Feel duplicates an existing plan, openfeel-planner sh
 
 - **Rejection trigger condition**: The plan requested by Feel **already exists** with no major deviation
   - Check method: Compare stage definitions in \`deps.yaml\` with existing plan files under \`plan/{series}/{stage}/\`
-  - Minor deviations (file changes ≤ 2, minor stage description adjustments) do not warrant re-formulation
+  - Minor deviations (small file changes, minor stage description adjustments) do not warrant re-formulation
 - **Standard rejection feedback template**:
   \`\`\`
   Plan "{plan-id}" already exists, current deviation: {diff}.
@@ -4595,7 +4581,7 @@ When the plan requested by Feel duplicates an existing plan, openfeel-planner sh
   \`\`\`
 - **Major deviation criteria** (meet any one to warrant re-formulation instead of rejection):
   - Core goal change (different from the original plan's core problem)
-  - Stage count change ≥ 2 (adding or removing more than 2 stages)
+  - material deviation (stages added/removed, objectives redefined)
   - ≥ 50% of task items redefined or replaced
   - Involving Agent responsibility boundary adjustment or pipeline phase changes
 
@@ -4635,7 +4621,7 @@ This step ensures openfeel-planner absorbs existing project knowledge before mak
 openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Feel system design, openfeel-planner duties can be concurrently handled by Feel, but exist as an independent agent definition to support flexible scheduling strategies.
 
 - **When Feel concurrently handles openfeel-planner duties**: Only handle plans under the "small scale" criteria; do not invoke independent openfeel-planner
-- **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (≥ 2 stages or cross-module architecture changes), ensuring reasoning depth and review independence
+- **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (multi-stage or cross-module architecture changes), ensuring reasoning depth and review independence
 `,
     'openfeel-reviewer': `---
 description: openfeel-reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
@@ -5233,17 +5219,17 @@ Agent 模型需求对照：
 
 | 规模 | 处理方式 | 流程 |
 |------|----------|------|
-| 单文件修改 ≤ 30 行 | Feel 自行处理（兼任 openfeel-planner） | 直接编码，无需正式计划 |
-| 跨文件或 > 30 行 | 唤起 openfeel-planner 制定正式计划 | Feel → openfeel-planner → openfeel-executor |
-| ≥ 2 个阶段或 ≥ 5 个文件的变更 | 大规模规划，必须走完整流程 | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
+| 微小改动（单文件、无跨文件影响） | Feel 自行处理（兼任 openfeel-planner） | 直接编码，无需正式计划 |
+| 跨文件改动 | 唤起 openfeel-planner 制定正式计划 | Feel → openfeel-planner → openfeel-executor |
+| 多阶段规模化改动（跨模块或需求边界不清） | 大规模规划，必须走完整流程 | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
 
-> 满足行数或文件数任一条件即升级到对应级别。
+> 按改动的**波及面**选择档位（是否跨文件、是否跨阶段/跨模块）。
 
 ### 轻量决策边界
 
 **轻量决策**指对话式选型：Feel 与用户通过 \`question\` 工具澄清并敲定技术方向或设计取舍，产出的是「结论」而非「正式计划文档」，不产出 plan.md。此类决策由 Feel 直接处理，无需委托 openfeel-planner。
 
-仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到上方规模阈值时，才委托 openfeel-planner。
+仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或该变更明显为跨模块/跨阶段性质时，才委托 openfeel-planner。
 
 ## 工作流程
 
@@ -5416,7 +5402,7 @@ Feel 每次结束前必须更新 \`.openfeel/users/{username}/dev_last.md\`：
 
 标记阶段 done 前，逐项确认：
 
-- [ ] 审查已完成？（单文件 ≤30 行且无跨文件影响可跳过，须记录理由）
+- [ ] 审查已完成？（微小改动：单文件、无跨文件影响，可跳过审查，须记录理由；参考：单文件 ≤30 行）
 - [ ] 测试已通过？
 - [ ] 状态已落档（flow.json / status.md / dev_last.md）？
 
@@ -5896,15 +5882,15 @@ permission:
 
 openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决定是否唤起独立 openfeel-planner 还是自行兼任：
 
-- **必须唤起**（大规模）：≥ 2 个 stage、跨模块架构变更、≥ 5 个文件变更、或依赖关系重定义
-- **可唤起**（中等规模）：单阶段 ≥ 5 个文件但无架构调整、或需求模糊需结构化拆解
-- **Feel 兼任**（小规模）：< 5 个文件、≤ 30 行修改、补充已有计划、或 Bug 修复
+- **必须唤起**（大规模）：多阶段或跨模块架构变更、或依赖关系重定义
+- **可唤起**（中等规模）：需求边界清晰但存量面较大、或需求模糊需结构化拆解
+- **Feel 兼任**（小规模）：局部改动（单点/单模块、无需架构调整）、补充已有计划、或 Bug 修复
 
 ### 轻量决策边界
 
 **轻量决策**（对话式选型：Feel 与用户通过 \`question\` 工具敲定技术方向或设计取舍，产出结论但不产出 plan.md）由 Feel 直接处理，不唤起 openfeel-planner。
 
-仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到上方规模阈值时，Feel 才唤起 openfeel-planner。
+仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或该变更明显为跨模块/跨阶段性质时，Feel 才唤起 openfeel-planner。
 
 ## 核心职责
 
@@ -5923,9 +5909,9 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 | 规模 | 判定条件 | 处理方式 | 流程 |
 |------|----------|----------|------|
-| **小规模** | 单阶段、< 5 个文件、无架构变更 | Feel 自行处理（兼任 openfeel-planner） | Feel → openfeel-executor 直接执行 |
-| **中等规模** | 1 个阶段但 ≥ 5 个文件，或需求模糊 | Feel 可选择唤起 openfeel-planner | Feel → openfeel-planner → openfeel-executor（可选审查） |
-| **大规模** | ≥ 2 个阶段，或跨模块架构变更 | 必须走独立 openfeel-planner → openfeel-reviewer 完整流程 | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
+| **小规模** | 单模块、局部改动 | Feel 自行处理（兼任 openfeel-planner） | Feel → openfeel-executor 直接执行 |
+| **中等规模** | 单阶段但涉及面较广或需求模糊 | Feel 可选择唤起 openfeel-planner | Feel → openfeel-planner → openfeel-executor（可选审查） |
+| **大规模** | 多阶段或跨模块 | 必须走独立 openfeel-planner → openfeel-reviewer 完整流程 | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
 
 **判定依据**：
 - 以 \`deps.yaml\` 和现有阶段列表中的阶段数、文件列表为准
@@ -5937,7 +5923,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 - **拒绝触发条件**：Feel 请求的计划**已存在**且无重大偏离
   - 检查方式：对比 \`deps.yaml\` 中的阶段定义和 \`plan/{series}/{stage}/\` 下的现有计划文件
-  - 轻微偏差（文件增减 ≤ 2、阶段描述微调）不构成重新制定的理由
+  - 轻微偏差（文件小幅增减、阶段描述微调）不构成重新制定的理由
 - **拒绝时的标准反馈模板**：
   \`\`\`
   计划 "{plan-id}" 已存在，当前偏差：{diff}。
@@ -5945,7 +5931,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
   \`\`\`
 - **重大偏离判定标准**（满足任一即应重新制定而非拒绝）：
   - 核心目标变更（与原计划解决的核心问题不同）
-  - 阶段数变化 ≥ 2（新增或移除超过 2 个阶段）
+  - 阶段新增或移除、目标被重新定义
   - ≥ 50% 的任务项被重新定义或替换
    - 涉及 Agent 职责边界调整或流水线阶段变更
 
@@ -5985,7 +5971,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设计中，openfeel-planner 职责可由 Feel 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
 
 - **Feel 兼任 openfeel-planner 时**：仅在「小规模」判定条件下自行处理计划，不唤起独立 openfeel-planner
-- **独立 openfeel-planner 调用时**：仅在「大规模」场景下（≥ 2 阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
+- **独立 openfeel-planner 调用时**：仅在「大规模」场景（多阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
 `,
     'openfeel-reviewer': `---
 description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
@@ -7477,10 +7463,10 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 ## 执行步骤
 
 ### 1. todowrite — 任务列表管理
-触发条件（任一即用）：≥3 独立步骤 / 多任务下达 / 跨文件修改。使用要求：执行前创建、单条 in_progress、完成即标 completed、新步骤追加末尾。
+触发条件（任一即用）：多个独立步骤（多文件改动、需跨会话跟踪等） / 多任务下达 / 跨文件修改。使用要求：执行前创建、单条 in_progress、完成即标 completed、新步骤追加末尾。
 
 ### 2. question — 向用户提问
-触发条件（任一必问）：需求歧义 / 技术方案 ≥2 同等合理 / 不可逆后果 / 架构决策。使用要求：(Recommended) 标记、选项附后果、≤3 选项、高风险含"取消"。禁止：模糊时自行假设、多方案不选直接实施。
+触发条件（任一必问）：需求歧义 / 多个同等合理方案 / 不可逆后果 / 架构决策。使用要求：(Recommended) 标记、选项附后果、≤3 选项、高风险含"取消"。禁止：模糊时自行假设、多方案不选直接实施。
 
 ### 3. task — 子 Agent 调度
 触发条件：并行探索多代码区 / 复杂多步委托 general / 下游 Agent（经 Feel）。使用要求：并行一条消息多 task、prompt 含任务描述+期望返回、明确只读/可写。
@@ -7683,10 +7669,10 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 // AUTO-GENERATED-BEGIN: OPENCODE_CONFIG_TEMPLATES
 const OPENCODE_CONFIG_TEMPLATES: Record<string, Record<string, string>> = {
   'zh-CN': {
-    adapter: 'IyBPcGVuQ29kZSDlubPlj7DpgILphY3lmagKCui/meaYryBPcGVuQ29kZSDlubPlj7DpgILphY3lmajvvIzljIXlkKsgOSDkuKogQWdlbnQg5a6a5LmJ5ZKMIDE0IOS4qiBTa2lsbOOAggoK6YOo572y5ZCO5bCG5Zyo55uu5qCH6aG555uu5Lit55Sf5oiQ77yaCgotIGBvcGVuY29kZS5qc29uY2Ag4oCUIE9wZW5Db2RlIOW5s+WPsOmFjee9ru+8iEFnZW50IOaooeWei+OAgVNraWxscyDliJfooajnrYnvvIkKLSBgLm9wZW5jb2RlL2FnZW50cy9gIOKAlCA5IOS4qiBBZ2VudCDlrprkuYnvvIhmZWVs44CBb3BlbmZlZWwtcGxhbm5lcuOAgW9wZW5mZWVsLXNjaGVtZXLjgIFvcGVuZmVlbC1leGVjdXRvcuOAgW9wZW5mZWVsLXJldmlld2Vy44CBb3BlbmZlZWwtZmVlbC10ZXN0ZXLjgIFvcGVuZmVlbC12aXNpb27jgIFvcGVuZmVlbC1hcmNoaXZlcuOAgW9wZW5mZWVsLXV0aWxpdHnvvIkKLSBgLm9wZW5jb2RlL3NraWxscy9gIOKAlCAxNCDkuKogU2tpbGwg5a6a5LmJ77yIb3BlbmZlZWwtYWdlbnQtbW9kZWwtY2hlY2vjgIFvcGVuZmVlbC1idWctYWNjZXB0YW5jZeOAgW9wZW5mZWVsLWNoZWNrLWti44CBb3BlbmZlZWwtZ2V0LWJ1Z3PjgIFvcGVuZmVlbC1nZXQtc3RhZ2Utc3RhdHVz44CBb3BlbmZlZWwtaGVhbHRo44CBb3BlbmZlZWwtbW9kZWwtY2hlY2vjgIFvcGVuZmVlbC1tb2RlbC1jb25maWfjgIFvcGVuZmVlbC1yZWNvdmVy44CBb3BlbmZlZWwtcm9hZG1hcOOAgW9wZW5mZWVsLXNlYXJjaC1rYuOAgW9wZW5mZWVsLXN5bmMtc3RhdHVz44CBb3BlbmZlZWwtdXBkYXRlLXN0YWdlLXN0YXR1c+OAgW9wZW5mZWVsLXdpemFyZO+8iQotIGAub3BlbmNvZGUvQURBUFRFUi5tZGAg4oCUIOacrOmAgumFjeWZqOivtOaYjgotIGAub3BlbmNvZGUvLmdpdGlnbm9yZWAg4oCUIOW/veeVpeinhOWImQoKPiDms6jvvJrmnKzpobnnm67kuI3pg6jnvbIgYHBhY2thZ2UuanNvbmDvvIjnlLHnlKjmiLfpobnnm67oh6rooYznrqHnkIbvvInjgIIK',
+    adapter: 'IyBPcGVuQ29kZSDlubPlj7DpgILphY3lmagKCui/meaYryBPcGVuQ29kZSDlubPlj7DpgILphY3lmajvvIzljIXlkKsgOSDkuKogQWdlbnQg5a6a5LmJ5ZKMIDE3IOS4qiBTa2lsbOOAggoK6YOo572y5ZCO5bCG5Zyo55uu5qCH6aG555uu5Lit55Sf5oiQ77yaCgotIGBvcGVuY29kZS5qc29uY2Ag4oCUIE9wZW5Db2RlIOW5s+WPsOmFjee9ru+8iEFnZW50IOaooeWei+OAgVNraWxscyDliJfooajnrYnvvIkKLSBgLm9wZW5jb2RlL2FnZW50cy9gIOKAlCA5IOS4qiBBZ2VudCDlrprkuYnvvIhmZWVs44CBb3BlbmZlZWwtcGxhbm5lcuOAgW9wZW5mZWVsLXNjaGVtZXLjgIFvcGVuZmVlbC1leGVjdXRvcuOAgW9wZW5mZWVsLXJldmlld2Vy44CBb3BlbmZlZWwtZmVlbC10ZXN0ZXLjgIFvcGVuZmVlbC12aXNpb27jgIFvcGVuZmVlbC1hcmNoaXZlcuOAgW9wZW5mZWVsLXV0aWxpdHnvvIkKLSBgLm9wZW5jb2RlL3NraWxscy9gIOKAlCAxNyDkuKogU2tpbGwg5a6a5LmJ77yIb3BlbmZlZWwtYWdlbnQtbW9kZWwtY2hlY2vjgIFvcGVuZmVlbC1idWctYWNjZXB0YW5jZeOAgW9wZW5mZWVsLWNoZWNrLWti44CBb3BlbmZlZWwtY2xpLXVzYWdl44CBb3BlbmZlZWwtZ2V0LWJ1Z3PjgIFvcGVuZmVlbC1nZXQtc3RhZ2Utc3RhdHVz44CBb3BlbmZlZWwtaGVhbHRo44CBb3BlbmZlZWwtbW9kZWwtY2hlY2vjgIFvcGVuZmVlbC1tb2RlbC1jb25maWfjgIFvcGVuZmVlbC1yZWNvdmVy44CBb3BlbmZlZWwtcm9hZG1hcOOAgW9wZW5mZWVsLXNlYXJjaC1rYuOAgW9wZW5mZWVsLXN5bmMtc3RhdHVz44CBb3BlbmZlZWwtdG9vbC11c2FnZeOAgW9wZW5mZWVsLXVwZGF0ZS1zdGFnZS1zdGF0dXPjgIFvcGVuZmVlbC13aXphcmTjgIFvcGVuZmVlbC13b3Jrc3BhY2XvvIkKLSBgLm9wZW5jb2RlL0FEQVBURVIubWRgIOKAlCDmnKzpgILphY3lmajor7TmmI4KLSBgLm9wZW5jb2RlLy5naXRpZ25vcmVgIOKAlCDlv73nlaXop4TliJkKCj4g5rOo77ya5pys6aG555uu5LiN6YOo572yIGBwYWNrYWdlLmpzb25g77yI55Sx55So5oi36aG555uu6Ieq6KGM566h55CG77yJ44CCCg==',
   },
   en: {
-    adapter: 'IyBPcGVuQ29kZSBQbGF0Zm9ybSBBZGFwdGVyCgpUaGlzIGlzIHRoZSBPcGVuQ29kZSBwbGF0Zm9ybSBhZGFwdGVyLCBjb250YWluaW5nIDkgQWdlbnQgZGVmaW5pdGlvbnMgYW5kIDE0IFNraWxscy4KCkFmdGVyIGRlcGxveW1lbnQsIHRoZSBmb2xsb3dpbmcgZmlsZXMgd2lsbCBiZSBnZW5lcmF0ZWQgaW4gdGhlIHRhcmdldCBwcm9qZWN0OgoKLSBgb3BlbmNvZGUuanNvbmNgIOKAlCBPcGVuQ29kZSBwbGF0Zm9ybSBjb25maWd1cmF0aW9uIChBZ2VudCBtb2RlbHMsIFNraWxscyBsaXN0LCBldGMuKQotIGAub3BlbmNvZGUvYWdlbnRzL2Ag4oCUIDkgQWdlbnQgZGVmaW5pdGlvbnMgKGZlZWwsIG9wZW5mZWVsLXBsYW5uZXIsIG9wZW5mZWVsLXNjaGVtZXIsIG9wZW5mZWVsLWV4ZWN1dG9yLCBvcGVuZmVlbC1yZXZpZXdlciwgb3BlbmZlZWwtZmVlbC10ZXN0ZXIsIG9wZW5mZWVsLXZpc2lvbiwgb3BlbmZlZWwtYXJjaGl2ZXIsIG9wZW5mZWVsLXV0aWxpdHkpCi0gYC5vcGVuY29kZS9za2lsbHMvYCDigJQgMTQgU2tpbGwgZGVmaW5pdGlvbnMgKG9wZW5mZWVsLWFnZW50LW1vZGVsLWNoZWNrLCBvcGVuZmVlbC1idWctYWNjZXB0YW5jZSwgb3BlbmZlZWwtY2hlY2sta2IsIG9wZW5mZWVsLWdldC1idWdzLCBvcGVuZmVlbC1nZXQtc3RhZ2Utc3RhdHVzLCBvcGVuZmVlbC1oZWFsdGgsIG9wZW5mZWVsLW1vZGVsLWNoZWNrLCBvcGVuZmVlbC1tb2RlbC1jb25maWcsIG9wZW5mZWVsLXJlY292ZXIsIG9wZW5mZWVsLXJvYWRtYXAsIG9wZW5mZWVsLXNlYXJjaC1rYiwgb3BlbmZlZWwtc3luYy1zdGF0dXMsIG9wZW5mZWVsLXVwZGF0ZS1zdGFnZS1zdGF0dXMsIG9wZW5mZWVsLXdpemFyZCkKLSBgLm9wZW5jb2RlL0FEQVBURVIubWRgIOKAlCBUaGlzIGFkYXB0ZXIgZG9jdW1lbnRhdGlvbgotIGAub3BlbmNvZGUvLmdpdGlnbm9yZWAg4oCUIElnbm9yZSBydWxlcwoKPiBOb3RlOiBUaGlzIHByb2plY3QgZG9lcyBub3QgZGVwbG95IGBwYWNrYWdlLmpzb25gIChtYW5hZ2VkIGJ5IHRoZSB1c2VyJ3MgcHJvamVjdCBpdHNlbGYpLgo=',
+    adapter: 'IyBPcGVuQ29kZSBQbGF0Zm9ybSBBZGFwdGVyCgpUaGlzIGlzIHRoZSBPcGVuQ29kZSBwbGF0Zm9ybSBhZGFwdGVyLCBjb250YWluaW5nIDkgQWdlbnQgZGVmaW5pdGlvbnMgYW5kIDE3IFNraWxscy4KCkFmdGVyIGRlcGxveW1lbnQsIHRoZSBmb2xsb3dpbmcgZmlsZXMgd2lsbCBiZSBnZW5lcmF0ZWQgaW4gdGhlIHRhcmdldCBwcm9qZWN0OgoKLSBgb3BlbmNvZGUuanNvbmNgIOKAlCBPcGVuQ29kZSBwbGF0Zm9ybSBjb25maWd1cmF0aW9uIChBZ2VudCBtb2RlbHMsIFNraWxscyBsaXN0LCBldGMuKQotIGAub3BlbmNvZGUvYWdlbnRzL2Ag4oCUIDkgQWdlbnQgZGVmaW5pdGlvbnMgKGZlZWwsIG9wZW5mZWVsLXBsYW5uZXIsIG9wZW5mZWVsLXNjaGVtZXIsIG9wZW5mZWVsLWV4ZWN1dG9yLCBvcGVuZmVlbC1yZXZpZXdlciwgb3BlbmZlZWwtZmVlbC10ZXN0ZXIsIG9wZW5mZWVsLXZpc2lvbiwgb3BlbmZlZWwtYXJjaGl2ZXIsIG9wZW5mZWVsLXV0aWxpdHkpCi0gYC5vcGVuY29kZS9za2lsbHMvYCDigJQgMTcgU2tpbGwgZGVmaW5pdGlvbnMgKG9wZW5mZWVsLWFnZW50LW1vZGVsLWNoZWNrLCBvcGVuZmVlbC1idWctYWNjZXB0YW5jZSwgb3BlbmZlZWwtY2hlY2sta2IsIG9wZW5mZWVsLWNsaS11c2FnZSwgb3BlbmZlZWwtZ2V0LWJ1Z3MsIG9wZW5mZWVsLWdldC1zdGFnZS1zdGF0dXMsIG9wZW5mZWVsLWhlYWx0aCwgb3BlbmZlZWwtbW9kZWwtY2hlY2ssIG9wZW5mZWVsLW1vZGVsLWNvbmZpZywgb3BlbmZlZWwtcmVjb3Zlciwgb3BlbmZlZWwtcm9hZG1hcCwgb3BlbmZlZWwtc2VhcmNoLWtiLCBvcGVuZmVlbC1zeW5jLXN0YXR1cywgb3BlbmZlZWwtdG9vbC11c2FnZSwgb3BlbmZlZWwtdXBkYXRlLXN0YWdlLXN0YXR1cywgb3BlbmZlZWwtd2l6YXJkLCBvcGVuZmVlbC13b3Jrc3BhY2UpCi0gYC5vcGVuY29kZS9BREFQVEVSLm1kYCDigJQgVGhpcyBhZGFwdGVyIGRvY3VtZW50YXRpb24KLSBgLm9wZW5jb2RlLy5naXRpZ25vcmVgIOKAlCBJZ25vcmUgcnVsZXMKCj4gTm90ZTogVGhpcyBwcm9qZWN0IGRvZXMgbm90IGRlcGxveSBgcGFja2FnZS5qc29uYCAobWFuYWdlZCBieSB0aGUgdXNlcidzIHByb2plY3QgaXRzZWxmKS4K',
   }
 };
 // AUTO-GENERATED-END: OPENCODE_CONFIG_TEMPLATES

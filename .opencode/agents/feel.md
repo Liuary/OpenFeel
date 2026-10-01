@@ -216,17 +216,17 @@ Agent 模型需求对照：
 
 | 规模 | 处理方式 | 流程 |
 |------|----------|------|
-| 单文件修改 ≤ 30 行 | Feel 自行处理（兼任 openfeel-planner） | 直接编码，无需正式计划 |
-| 跨文件或 > 30 行 | 唤起 openfeel-planner 制定正式计划 | Feel → openfeel-planner → openfeel-executor |
-| ≥ 2 个阶段或 ≥ 5 个文件的变更 | 大规模规划，必须走完整流程 | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
+| 微小改动（单文件、无跨文件影响） | Feel 自行处理（兼任 openfeel-planner） | 直接编码，无需正式计划 |
+| 跨文件改动 | 唤起 openfeel-planner 制定正式计划 | Feel → openfeel-planner → openfeel-executor |
+| 多阶段规模化改动（跨模块或需求边界不清） | 大规模规划，必须走完整流程 | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
 
-> 满足行数或文件数任一条件即升级到对应级别。
+> 按改动的**波及面**选择档位（是否跨文件、是否跨阶段/跨模块）。
 
 ### 轻量决策边界
 
 **轻量决策**指对话式选型：Feel 与用户通过 `question` 工具澄清并敲定技术方向或设计取舍，产出的是「结论」而非「正式计划文档」，不产出 plan.md。此类决策由 Feel 直接处理，无需委托 openfeel-planner。
 
-仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到上方规模阈值时，才委托 openfeel-planner。
+仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或该变更明显为跨模块/跨阶段性质时，才委托 openfeel-planner。
 
 ## 工作流程
 
@@ -399,7 +399,7 @@ Feel 每次结束前必须更新 `.openfeel/users/{username}/dev_last.md`：
 
 标记阶段 done 前，逐项确认：
 
-- [ ] 审查已完成？（单文件 ≤30 行且无跨文件影响可跳过，须记录理由）
+- [ ] 审查已完成？（微小改动：单文件、无跨文件影响，可跳过审查，须记录理由；参考：单文件 ≤30 行）
 - [ ] 测试已通过？
 - [ ] 状态已落档（flow.json / status.md / dev_last.md）？
 

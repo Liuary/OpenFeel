@@ -17,15 +17,15 @@ permission:
 
 openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划规模决定是否唤起独立 openfeel-planner 还是自行兼任：
 
-- **必须唤起**（大规模）：≥ 2 个 stage、跨模块架构变更、≥ 5 个文件变更、或依赖关系重定义
-- **可唤起**（中等规模）：单阶段 ≥ 5 个文件但无架构调整、或需求模糊需结构化拆解
-- **Feel 兼任**（小规模）：< 5 个文件、≤ 30 行修改、补充已有计划、或 Bug 修复
+- **必须唤起**（大规模）：多阶段或跨模块架构变更、或依赖关系重定义
+- **可唤起**（中等规模）：需求边界清晰但存量面较大、或需求模糊需结构化拆解
+- **Feel 兼任**（小规模）：局部改动（单点/单模块、无需架构调整）、补充已有计划、或 Bug 修复
 
 ### 轻量决策边界
 
 **轻量决策**（对话式选型：Feel 与用户通过 `question` 工具敲定技术方向或设计取舍，产出结论但不产出 plan.md）由 Feel 直接处理，不唤起 openfeel-planner。
 
-仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到上方规模阈值时，Feel 才唤起 openfeel-planner。
+仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或该变更明显为跨模块/跨阶段性质时，Feel 才唤起 openfeel-planner。
 
 ## 核心职责
 
@@ -44,9 +44,9 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 | 规模 | 判定条件 | 处理方式 | 流程 |
 |------|----------|----------|------|
-| **小规模** | 单阶段、< 5 个文件、无架构变更 | Feel 自行处理（兼任 openfeel-planner） | Feel → openfeel-executor 直接执行 |
-| **中等规模** | 1 个阶段但 ≥ 5 个文件，或需求模糊 | Feel 可选择唤起 openfeel-planner | Feel → openfeel-planner → openfeel-executor（可选审查） |
-| **大规模** | ≥ 2 个阶段，或跨模块架构变更 | 必须走独立 openfeel-planner → openfeel-reviewer 完整流程 | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
+| **小规模** | 单模块、局部改动 | Feel 自行处理（兼任 openfeel-planner） | Feel → openfeel-executor 直接执行 |
+| **中等规模** | 单阶段但涉及面较广或需求模糊 | Feel 可选择唤起 openfeel-planner | Feel → openfeel-planner → openfeel-executor（可选审查） |
+| **大规模** | 多阶段或跨模块 | 必须走独立 openfeel-planner → openfeel-reviewer 完整流程 | Feel → openfeel-planner → openfeel-reviewer → openfeel-schemer → ... |
 
 **判定依据**：
 - 以 `deps.yaml` 和现有阶段列表中的阶段数、文件列表为准
@@ -58,7 +58,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 - **拒绝触发条件**：Feel 请求的计划**已存在**且无重大偏离
   - 检查方式：对比 `deps.yaml` 中的阶段定义和 `plan/{series}/{stage}/` 下的现有计划文件
-  - 轻微偏差（文件增减 ≤ 2、阶段描述微调）不构成重新制定的理由
+  - 轻微偏差（文件小幅增减、阶段描述微调）不构成重新制定的理由
 - **拒绝时的标准反馈模板**：
   ```
   计划 "{plan-id}" 已存在，当前偏差：{diff}。
@@ -66,7 +66,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
   ```
 - **重大偏离判定标准**（满足任一即应重新制定而非拒绝）：
   - 核心目标变更（与原计划解决的核心问题不同）
-  - 阶段数变化 ≥ 2（新增或移除超过 2 个阶段）
+  - 阶段新增或移除、目标被重新定义
   - ≥ 50% 的任务项被重新定义或替换
    - 涉及 Agent 职责边界调整或流水线阶段变更
 
@@ -106,4 +106,4 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设计中，openfeel-planner 职责可由 Feel 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
 
 - **Feel 兼任 openfeel-planner 时**：仅在「小规模」判定条件下自行处理计划，不唤起独立 openfeel-planner
-- **独立 openfeel-planner 调用时**：仅在「大规模」场景下（≥ 2 阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
+- **独立 openfeel-planner 调用时**：仅在「大规模」场景（多阶段或跨模块架构变更）唤起，确保推理深度和审查独立性

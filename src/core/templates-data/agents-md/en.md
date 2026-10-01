@@ -24,14 +24,7 @@ Not all tasks must go through the full pipeline. Non-coding tasks and coding tas
 
 1. When the user makes a request, first analyze and break down the requirements, then list your understanding in bullet points for user confirmation. Requirements that are extremely simple and unambiguous may skip confirmation, but a brief explanation of your understanding is still required. Content that is uncertain during analysis must be clarified promptly; avoid speculative assumptions.
 
-2. Keep the design simple and avoid over-engineering. The following cases are considered potential over-engineering and require user confirmation:
-   - Adding or modifying more than 3 files
-   - Introducing new abstraction layers without clear reuse needs
-   - Introducing third-party libraries or frameworks for a single feature
-   When the user explicitly requests a simple implementation, the above thresholds are automatically lowered.
-   This rule constrains both code implementation and architectural design:
-   - Code level: Avoid meaningless abstraction layers, excessive wrapping, and unnecessary design patterns
-   - Architecture level: Do not introduce base classes, middleware, or design pattern wrappers without reuse requirements
+2. Keep the design simple and avoid over-engineering. Confirm with the user before introducing an abstraction layer with no reuse need, adding a third-party dependency for a single feature, or reserving extension points for an undecided future.
 
 3. Strictly control the scope of modifications. Avoid modifying existing code that is not directly related to the current requirements. Small-scale refactoring must be communicated to the user in advance. Large-scale refactoring or architectural changes require explicit user consent.
 

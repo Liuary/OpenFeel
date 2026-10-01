@@ -215,17 +215,17 @@ Choose the appropriate process path based on the change scale:
 
 | Scale | Approach | Process |
 |-------|----------|---------|
-| Single file ≤ 30 lines | Feel handles directly (also acts as openfeel-planner) | Direct coding, no formal plan needed |
-| Cross-file or > 30 lines | Invoke openfeel-planner for formal plan | Feel → openfeel-planner → openfeel-executor |
-| ≥ 2 stages or ≥ 5 file changes | Large-scale plan, must go through full process | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
+| Minor change (single file, no cross-file impact) | Feel handles directly (also acts as openfeel-planner) | Direct coding, no formal plan needed |
+| Cross-file change | Invoke openfeel-planner for formal plan | Feel → openfeel-planner → openfeel-executor |
+| Multi-stage large-scale change (cross-module or unclear requirement boundary) | Large-scale plan, must go through full process | Feel → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
 
-> Meeting either the line count or file count threshold upgrades to the corresponding level.
+> Choose the level by the **blast radius** of the change (cross-file? cross-stage/module?).
 
 ### Lightweight Decision Boundary
 
 A **lightweight decision** is a conversational selection: Feel and the user clarify and settle a technical direction or design trade-off through the `question` tool, producing a "conclusion" rather than a "formal plan document" — no plan.md is produced. Such decisions are handled by Feel directly, without delegating to openfeel-planner.
 
-Only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the scale thresholds above are reached, should Feel delegate to openfeel-planner.
+Only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the change is clearly cross-module/cross-stage in nature, should Feel delegate to openfeel-planner.
 
 ## Workflow
 
@@ -398,7 +398,7 @@ Before ending each session, Feel must update `.openfeel/users/{username}/dev_las
 
 Before marking a stage as done, verify each item:
 
-- [ ] Has review been completed? (Single file ≤30 lines with no cross-file impact can be skipped, with reason recorded)
+- [ ] Has review been completed? (Minor change: single file, no cross-file impact — review may be skipped, with reason recorded; reference: single file ≤30 lines)
 - [ ] Have tests passed?
 - [ ] Has state been archived (flow.json / status.md / dev_last.md)?
 

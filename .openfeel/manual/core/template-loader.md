@@ -22,7 +22,7 @@ v1.1.0-stage-36 前存在双层模板源（`templates-data/agents/` vs `template
 | `loadOpencodeAgentTemplate(lang, agentId)` | 按语言 + agentId 返回 init 用 agent 模板（`OPENCODE_AGENT_TEMPLATES`，`openfeel-*` 前缀） |
 | `listOpencodeAgentIds(lang)` | 列出 init 用 agent 模板的 agentId（`feel` + 8 个 `openfeel-*`） |
 | `loadOpencodeSkillTemplate(skillName)` | 按 skill 名返回 init 用 skill 模板（`OPENCODE_SKILL_DEFINITIONS`，`openfeel-*` 前缀） |
-| `listOpencodeSkillNames()` | 列出全部 skill 名（14 个，均带 `openfeel-` 前缀） |
+| `listOpencodeSkillNames()` | 列出全部 skill 名（17 个，均带 `openfeel-` 前缀） |
 | `loadOpencodeConfigTemplate(lang, configName)` | 按语言 + 配置名返回 opencode 配置模板（`OPENCODE_CONFIG_TEMPLATES`） |
 
 ## 语言回退

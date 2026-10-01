@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T01:39:32.581Z",
-    "revision": 395
+    "updated": "2026-10-01T01:42:05.988Z",
+    "revision": 396
   },
   "pipeline": {
     "phase": "active",
@@ -2000,9 +2000,9 @@
         },
         "op-011": {
           "title": "C1-C4 约束体系精简与阈值定性化",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -9573,6 +9573,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-52.op-009",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-01T01:42:05.952Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-52.op-011",
         "attempts": 1
       }
     }

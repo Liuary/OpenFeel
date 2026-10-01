@@ -81,6 +81,12 @@
   - **Fixed（文档口径）**：`flow phases --json` **5 键**（`schemaVersion`/`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`）全链路同步（`docs/commands.md` / `.openfeel/manual/cli/commands.md` / `CHANGELOG` / 生成段）；`templates/BUG-005`（low，部署型 skill 模板 `flow phases --json` 输出说明缺 `transitionsDiff`）**关闭**；`cli/BUG-007`（low，`docs/commands.md` 的 `project list`/`info` 子命令已不存在）——归档官就地修正为 `openfeel project overview` 并**关闭**。
   - **内部（非随包行为）**：`agents-md/en.md` 图注 CJK 归零（`acceptance rejected`）；`managed-region.ts:182` 注释校准（incoming 全字段覆盖 + existing 独有 passthrough）；`manual/core/backup.md` 措辞（每进程（通常即每命令））；公域 Bug 索引补齐至 **17**（新建 `bugs/kb.md`）。**v1.1.2 累计 18 条 Bug 全部关闭（open 0 / closed 18）。**
 
+- [stage-57] **发布收尾（CI 修复 + CI 可观测性 + README 更新）**：
+  - **Fixed（CI）**：`test/core/config.test.ts` 的 T32 盘符用例平台化——拆为「跨平台用例」（前置断言 `expect(preset).not.toBe(target)` 防假绿）与「Windows 专属用例」（`it.skipIf(process.platform !== 'win32')`，Linux skip 不计 failure）。根因（POSIX 下 `C:\Proj\X` 非绝对路径）在**测试侧**，`src/core/config.ts` 无改动；修复后 CI 两个 matrix job 恢复通过（此前 run #51 在 `npm test` 步骤失败、`publish` 被 skip）。
+  - **Added（CI 可观测性）**：`.github/workflows/ci.yml` 测试步骤改 `set -o pipefail` + `npm test -- --reporter=verbose --no-color 2>&1 | tee "$RUNNER_TEMP/test.log"`；新增 `if: failure()` 注解步骤（`sed` 剥 ANSI 色码 → `grep` 提取失败用例 → `echo "::error::"`，上限 20、`exit 0`、零写盘、不改 job 判定），失败用例名可经 GitHub `check-runs/{id}/annotations` API 自助读取。
+  - **Fixed（文档）**：三份 README 与 `docs/commands.md` 版本快照对齐（测试数 **986 用例 / 59 文件** + Linux 跳过说明、`v1.1.2 新增能力` 节、命令表修正、全局部署架构图注与分层小节、zh/en 逐节对等、旧版本号零残留）；归档官就地修正 README 架构图 Core 层 `backup/` → **`backup.ts`**（REV-005，粒度与真实单文件一致）并清理 `docs/GETTING_STARTED.md` 旧版本号残留。
+  - **内部（非随包行为）**：本轮无新登记 Bug（公域 18 全 closed）；知识沉淀 3 条（patterns）。
+
 > 说明：本仓库 `.openfeel/dev/current.md` / `.openfeel/users/{username}/dev_last.md` 为工作区数据（非随包分发产物），格式约定经 `openfeel setup` 部署到全局约束层后生效。
 
 

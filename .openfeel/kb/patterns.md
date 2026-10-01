@@ -3099,3 +3099,57 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 **判据**：凡「源头」与「部署产物」的**结构不同**（加了 markers / 重排了 frontmatter / 注入了生成标记）时，**不得用全文件哈希判等**，须先**剥壳到同一层**（正文对正文）再比。全文件哈希只适用于「结构完全同构」的副本比对。
 
 **参见：** v1.1.2-stage-56 op-004（S5 门⑤ 内容级判据）；kb/patterns.md #真实全局目录操作的安全程序、#控制区标记模式；kb/architecture.md #控制区标记增量更新架构
+
+## [+] 跨平台测试的平台专属用例处理原则：「跨平台断言 + 平台专属断言」二分 + `it.skipIf` 守卫 + 防假绿前置断言 (2026-10-02)
+
+**问题**：测试断言依赖某平台专属语义时（典型＝Windows 盘符 `C:\Proj\X` 在 POSIX 下**不是绝对路径**，`path.resolve` 会拼成 `<cwd>/C:\Proj\X`，去重 key ≠ `c:/proj/x`），在另一平台必然失败——CI（Linux）与本地（Windows）之一必红。
+
+**判据（何时拆）**：断言是否「仅在某平台成立」——是则该用例须**二分**，而非改实现迁就测试：
+1. **跨平台用例**：把平台无关的部分抽出，用**平台无关构造**（如 `resolve(tmpDir,'proj','x')` 在两平台都绝对、都经同一 `normalizeKey` 归一）断言核心行为（去重命中 `toHaveLength(1)`）；
+2. **平台专属用例**：保留原平台语义（`C:\Proj\X` 盘符大小写去重），加 `it.skipIf(process.platform !== 'win32')(...)` 守卫 → Linux **skip**（不计 failure、exit 0），Windows 实跑。
+
+**防假绿前置断言（关键）**：跨平台用例若靠「受控变体」制造大小写差异（`target.replace(/proj([\\/])x$/, 'PROJ$1X')`），一旦替换因任何未来原因失配（resolve 行为变化 / 正则不匹配），`preset === target` → 退化为**同串去重**，`toHaveLength(1)` **仍通过**——假绿。必须在断言区**前置**一行成本的自检：
+```ts
+expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
+```
+
+**验证法**：`it.skipIf` 的 skip 语义独立于 failure（实测：以 `it.skipIf(process.platform !== 'linux')` 探针在本机 → `1 skipped / exit 0`）；无本地 Linux 时以 `path.posix` 模拟路径语义 + 双解析片段（临时文件方式，规避 shell 插值）独立复算 `normalizeKey` 恒等，不以「本地绿」代替跨平台验证。
+
+**实证**：v1.1.2-stage-57 op-001（`test/core/config.test.ts` T32 拆为跨平台 + `T32win`，`:524` 前置断言 + `:539` `it.skipIf`；`src/core/config.ts` **零 diff**——证明根因在测试侧；Windows 单文件 38 passed，Linux 预推 37 passed / 1 skipped；CI run #52 转绿）。
+
+**参见：** v1.1.2-stage-57 op-001、REV-001/REV-005；kb/troubleshooting.md #PATH 全局旧版 CLI 环境污染（门禁口径）；kb/patterns.md #测试 cwd 隔离模式、#环境哈希守卫（CI 层）
+
+## [+] CI 失败可观测性模式：`--no-color` + `sed` 剥色 + `set -o pipefail` + `if: failure()` 注解（不改判定、零写盘） (2026-10-02)
+
+**问题**：GitHub Actions 运行日志需认证，外部（Agent/API）无法直接读失败详情；需把失败用例名转成**可经 `check-runs/{id}/annotations` API 自助读取**的注解。
+
+**四个必要件（缺一即失效）**：
+1. **`set -o pipefail`**：`npm test ... 2>&1 | tee "$RUNNER_TEMP/test.log"` 中 `tee` 会吞掉 `npm test` 退出码；`pipefail` 使管道退出码 = 测试退出码，失败步骤仍正确 fail（实测 `false | tee` → `with-pipefail exit=1` / `without exit=0`）。
+2. **`--no-color`**：**vitest 3.2.7 在非 TTY 重定向下仍输出 ANSI 色码**（`FORCE_COLOR=0` 实测**无效**）；失败用例行真实字节为 ` \x1b[31m×\x1b[39m ...`，`^\s*(×|FAIL)` 因下一字符是 ESC 而**失配**，原 grep 只能命中无色的 `Failed Tests` 分隔标题 → 失败用例名**一条都提不出**。加 `--no-color` 后状态行/详情行无色，原模式三路径全命中。
+3. **`sed` 剥色兜底**：`sed 's/\x1b\[[0-9;]*m//g' "$LOG" | grep -E '^\s*(×|FAIL)|Failed Tests' | head -n 20`——防 vitest 未来版本行为漂移的双保险（实测默认流剥色后命中 3 条含失败用例名）。
+4. **`if: failure()` 注解步骤 + 结尾 `exit 0`**：注解步骤**不设** pipefail（`grep` 无命中 exit 1 不触发 `-e`），`head -n 20` 限流，`echo "::error::$line"`；**不改 job 判定**（失败仍由测试退出码决定），`sed` 无 `-i` **零写盘**，`test.log` 落 `$RUNNER_TEMP`（Env guard 四路径之外）。
+
+**判据**：日志可观测性须以「**真实合并流字节级复现**」验证（`spawnSync` buffer 合并 stdout+stderr = CI `2>&1` 语义），不得凭「本地终端看着有色」推断；注解是**附加信息通道**，绝不承担判定职责。
+
+**实证**：v1.1.2-stage-57 op-001 + REV-004（blocking，字节级实测原模式仅命中标题、失败名 0 条；`--no-color` 与 sed 剥色均独立证实有效，双保险不冲突）；YAML `yaml.parse` + 9 项结构断言全 true。
+
+**参见：** v1.1.2-stage-57 op-001、REV-004；kb/troubleshooting.md #PATH 全局旧版 CLI；kb/patterns.md #CLI 退出码语义、#环境哈希守卫（CI 层）
+
+## [+] README 与实现同步的检查清单：测试数 / 命令表 / 架构图 / 部署口径 / 版本残留五面核对 (2026-10-02)
+
+**问题**：README 无测试/构建断言守护（`lint i18n` 只查 i18n，`build` 不管 README），实现演进后最易整体滞后；一旦版本发布公告引用陈旧数字即误导使用者。
+
+**五面核查清单（逐项以 `--help` / 实跑为准，不得凭记忆）**：
+1. **测试数**：`npm test` 实测（文件数 / 用例数 / `0 skipped`），并说明平台差异（如「Linux CI 跳过 1 个 Windows 专属用例」）；数字来源须为实跑而非上一版快照。
+2. **命令表**：逐命令 `node bin/openfeel.js <cmd> --help` 核对子命令集合（如 `project` 实测仅 `overview`、`view` 组 `add` 已移除改 `flow review add`、`knowledge` 含 `add/index/dedup`）——**命令面收敛/新增均须同步**。
+3. **架构图**：核对图示条目与真实文件/目录**粒度一致**（`src/core` 实测：`backup` 为**单文件 `backup.ts`**，其余 `fs/`·`view/`·`archive/`·`workspace/`·`artifact-graph/` 为目录）——目录与单文件混标最易失真。
+4. **部署口径**：反映当前架构（框架资产全局部署到 `~/.config/opencode/`、仓库不保留项目级 `.opencode` 部署实例、`current.md`/`dev_last.md` 分层、备份机制）。
+5. **版本残留**：`rg "1\.1\.1"` 等**旧版本号零残留**（四文件 `README.md`/`README.zh-CN.md`/`README.en.md`/`docs/commands.md` 为锚点；同类免责声明散落文档亦须同批清——本阶段补修 `docs/GETTING_STARTED.md` 第 5 行）。
+
+**zh/en 对等**：双语 README 须逐节同构（行数一致 + 标题行号一致 + 同处变更）——一侧漏改即失同步。
+
+**判据**：README 属于「无 build 传播、无一致性断言」的手写多载体，收尾**必须以真实命令输出为准逐面抽查**（本阶段抽查 14 处），并在阶段门禁中登记 `1.1.1` 零残留为放行锚点。
+
+**实证**：v1.1.2-stage-57 op-002（README×3 + `docs/commands.md` 共 29 处；986/59、命令表、v1.1.2 能力节、全局部署图注、zh/en 各 178 行；`rg "1\.1\.1"` 四文件零命中）；归档补修 `docs/GETTING_STARTED.md` 第 5 行同类残留。
+
+**参见：** v1.1.2-stage-57 op-002、REV-002/REV-003/REV-005；kb/patterns.md #部署型资产变更的多载体同步面清单、#部署语境 vs 本仓语境的命令口径二分；kb/troubleshooting.md #多源文案同步陷阱

@@ -154,7 +154,7 @@ Core Layer
   ├── artifact-graph/ — Dependency graph & instruction generation
   ├── view/ — Review item CRUD
   ├── archive/ — Archive consolidation
-  ├── backup/ — pre-overwrite backup (~/.openfeel/backup/{ts}/)
+  ├── backup.ts — pre-overwrite backup (~/.openfeel/backup/{ts}/)
   ├── fs/ — atomic writes + advisory file locks
   └── workspace/ — Directory structure & knowledge base
 ```

@@ -2,7 +2,7 @@
 
 > 适用版本：**v1.1.2 快照** | 更新日期：2026-09-30 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
-> ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，如 1.1.1）。
+> ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
 ## 1. 简介
 

@@ -1,0 +1,85 @@
+# stage-58 op 依赖声明
+# 由 openfeel-schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-58
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-02"
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-57
+    type: hard
+    status: satisfied
+    reason: "stage-58 计划声明 hard 依赖 stage-57（发布收尾）。"
+  - downstream: git push / CI / npm publish
+    type: hard
+    note: "**本阶段不代 Feel 推送、不执行 `npm publish`、不改 `flow.json`**。op-003 仅产出「可推送」结论；推送与发布由 Feel/用户执行。"
+
+# 【阶段性质提示】
+# CLI 输出编码自适应 + 运行日志（A+C+D / B+E / F+门禁）→ **3 op，全串行**；
+# **op-001/op-002 同改 `src/cli/index.ts` 与 `bin/openfeel.js` → 强制串行**；
+# **关键不变量**：① `--json` 恒 UTF-8（resolve 第 1 步，最高优先）；② 两个 install 均无 `VITEST`/env 守卫（REV-001/004 方案 b）；
+# ③ 日志恒 UTF-8、默认开、库侧默认 disabled；④ 解析期错误不入日志（REV-002）；⑤ string chunk 忽略非默认 encoding（REV-003）；
+# ⑥ 新增依赖仅 `iconv-lite@^0.7.2`；⑦ 门禁基线以开工实盘校准（59 文件 / 986 用例 0 skipped；REV-006）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "输出编码自适应 + --json 恒 UTF-8 + 依赖"
+    produces:
+      - src/cli/output-encoding.ts
+      - bin/openfeel.js
+      - src/cli/index.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - package.json
+      - package-lock.json
+      - test/cli/output-encoding.test.ts
+      - test/cli/repl.test.ts
+    deps: []
+    notes: "**A（A-1~A-7）+ C（C-1~C-3）+ D（D-1~D-4）**。新增 `src/cli/output-encoding.ts`：导出 `OutputEncoding`/`normalizeEncoding`/`codepageToIconv`/`detectConsoleCodepage`/`resolveTargetEncoding(ctx)`（纯函数，注入 argv/env/platform/isTTY/codepage?）/`installOutputEncoding({stdout?,stderr?})`（幂等，**无 VITEST 守卫**，**无 force**）。`resolveTargetEncoding` 5 步：① `argv.includes('--json')`→utf8（**最高优先**）② 显式 `--encoding`（`=` 与空格两形）③ `OPENFEEL_ENCODING` ④ 非 win32/TTY→utf8 ⑤ win32 非 TTY→chcp 映射（936→gbk/54936→gb18030/950→big5/932→cp932/949→cp949/65001→utf8/未知→utf8）。`chcp` 用 `spawnSync` + `stdout.toString('latin1')` 提取数字、进程内缓存。包装仅字符串 chunk 转码（iconv-lite，`中文⚠`→`d6d0cec43f`，降 `?` 不告警），Buffer 直通，保留 callback/返回值；**注释明示仅支持 UTF-8 字符串语义**（REV-003）。`bin/openfeel.js` 在 `applyHelpI18n` 前 `installOutputEncoding()`。`src/cli/index.ts` 注册 `--encoding <encoding>`（默认 auto）。i18n 加 `global.encoding`（727 键）。`package.json`+`package-lock.json` 加 `iconv-lite@^0.7.2`（lock 仅根 dependencies +1 行）。新增 `test/cli/output-encoding.test.ts`（E-1 全分支 + 字节 + 回调 + Buffer 直通 + utf8 不包装 + 幂等 + **静态断言无 process.env.VITEST**；C-1 冲突单测 `--json`+`--encoding gbk`+env gbk→utf8）。**E-4 编码前置**：`test/cli/repl.test.ts:25` 加 `OPENFEEL_ENCODING:'utf8'`（A-4+build 后 win32 非 TTY 会破坏该用例，破坏点就近修复；plan 原列 op-002）。"
+
+  op-002:
+    file: op-002.md
+    title: "运行日志 + 测试收尾"
+    produces:
+      - src/core/global-paths.ts
+      - src/core/runtime-log.ts
+      - src/cli/index.ts
+      - bin/openfeel.js
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/runtime-log.test.ts
+      - test/cli/output-encoding.test.ts
+      - test/cli/repl.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "**B（B-1~B-8）+ E（E-2/E-3/E-4/E-5；E-1 已由 op-001 落地）**。`global-paths.ts` 新增 `getCliLogsDir()`（`~/.openfeel/cli/logs`）。新增 `src/core/runtime-log.ts`：`RuntimeLogLevel`/`RuntimeLogConfig`/`resolveRuntimeLogConfig(env,argv)`（纯）/`installRuntimeLog({env?,argv?})`（幂等，**无 VITEST 守卫**，与 A-1 统一，REV-004）/`runtimeLog(level,msg)`/`getRuntimeLogPath(date?)`；模块内默认 `config=null`→no-op；落盘 `mkdirSync` + `withFileLock(globalLockPath('runtime-log'), ()=>appendFileSync(file,line,{encoding:'utf-8'}))`；行 `[ISO][LEVEL][pid] msg`；**try/catch 吞异常**（best-effort）。`src/cli/index.ts` 注册 `--log-file <path>`/`--no-log`/`--debug`；`runCli` 记 `cli start`（argv）+ `cli done exit=`；`handleCliError` 记 error（**REV-002 边界注释：解析期错误经 program.error() 直接 exit 不入日志**）；不记 stdout 内容。`bin/openfeel.js` 在 `installOutputEncoding()` 后 `installRuntimeLog()`。i18n 加 `global.logFile`/`global.noLog`/`global.debug`（730 键）。新增 `test/core/runtime-log.test.ts`（`vi.mock('node:os')` 隔离 HOME；未安装 no-op/格式/UTF-8/级别/开关/路径覆盖/静态断言无 VITEST）。`test/cli/output-encoding.test.ts` 追加 E-2 spawn：**正控**（非 json `flow phases` + `OPENFEEL_ENCODING=gbk` → GBK 字节 `c1f7cbaecfdf` 且 utf-8 fatal 解码抛错，**不可恒绿**）+ C-2 旁路回归（`--json`+gbk→合法 UTF-8/JSON.parse/5 键）+ 基线对照。`test/cli/repl.test.ts:25` 加 `OPENFEEL_LOG:'0'`（E-4 日志部分）。"
+
+  op-003:
+    file: op-003.md
+    title: "文档 + 回归门禁 + 阶段报告"
+    produces:
+      - .openfeel/manual/cli/output-encoding.md
+      - .openfeel/manual/core/runtime-log.md
+      - .openfeel/manual/index.md
+      - .openfeel/manual/core/global-paths.md
+      - .openfeel/manual/cli/commands.md
+      - README.zh-CN.md
+      - README.en.md
+      - CHANGELOG.md
+      - docs/commands.md
+      - .openfeel/users/Liuary/log/2026-10-02-NNN.md
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+    notes: "**F（F-1~F-5）+ §六门禁（9 项）+ 阶段报告**。F-1 新增 `manual/cli/output-encoding.md`（auto 规则/`--json` 旁路/映射表/值域/降级**不告警**/与 NO_COLOR 解耦/**REV-003 仅 UTF-8 字符串语义**）与 `manual/core/runtime-log.md`（**B-8 并入**：路径/格式/级别/开关/锁/best-effort/四类日志边界/**REV-002 error 边界**）。F-2 更新 `manual/index.md` + `core/global-paths.md` + `cli/commands.md`。F-3 README ×2（zh/en；`README.md` 落地页不改，REV-007③）；F-4 `CHANGELOG.md` `[1.1.2] Added` 三条；F-5 `docs/commands.md`。门禁：`npm run build`（幂等不复活 `.opencode/**`）/`npx tsc --noEmit` 0/`npm test`（61 文件全绿 **0 skipped**，基线 986+新增）/`lint i18n` 730 exit 0/`lint kb` 0/`flow phases --json` 5 键/**编码 E2E 含正控**/**日志 E2E 隔离 HOME**/`npm pack --dry-run` 文件数不变。报告写私域日志。**一律 `node bin/openfeel.js` 口径；不代 Feel 推送、不 npm publish、不改 flow.json**。"
+
+# 【下游契约】（本阶段无可复用公共接口形态变更；`output-encoding`/`runtime-log` 为 CLI 进程内部模块，不写入 `src/index.ts`）
+downstream_contracts: []

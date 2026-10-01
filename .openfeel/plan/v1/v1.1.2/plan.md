@@ -176,6 +176,9 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | [stage-54](#stage-54收尾遗留缺陷清理发布前清账) | 收尾：遗留缺陷清理（发布前清账） | E1~E12 实测（需修 3：`cli/BUG-005` 整行锚定 / `cli/BUG-006` en 文案 i18n / `cli/BUG-003` help 补 `transitionsDiff`；已解决 5 仅登记；登记类 4）+ `bugs/index.md` 统计修正 + **清账层 42 条 pending REV** 核实清单（REV-001 修正后分层统计） | P0 | hard: stage-53 | 3 op |
 | [stage-55](#stage-55清掉项目级约束与-agent发布前收口) | 清掉项目级约束与 Agent（发布前收口） | 删根 `AGENTS.md`/`opencode.jsonc`/`.opencode/{agents,skills,ADAPTER.md}` + 删 `build.js` 自举步骤（防复活）；「模块手册」迁入全局模板（双语）；**先刷新全局（`setup`）后删**；supersede N1；`docs/manual/kb` 引用同步；新会话验证 | P0 | hard: stage-54 | 4 op |
 | **stage-56** | 发布前收尾（遗留清理 + skill 全量对齐 + 全局刷新 + 发布就绪） | S1 `flow phases --json` 5 键文案同步；S2 `openfeel-cli-usage` skill 全量对齐（16 项 + `:82` 修正 + 过时表重写）；S3 5 条 trivial REV（2 已解决仅登记 / 3 修）；S4 Bug 索引计数一致；S5 build + 备份 + `setup` 全局刷新；S6 回归门禁 + 发布就绪复核（**不含 `npm publish`**） | P0 | hard: stage-55 | 4 op |
+| **stage-57** | 发布收尾（CI 修复 + CI 可观测性 + README 更新） | C1 T32 盘符用例平台化（拆「跨平台」+「Windows 专属 `it.skipIf`」，**不改实现语义**）；C2 `ci.yml` 失败注解（`set -o pipefail` + `tee` + `if: failure()` 提取，经 API 可读）；C3 三份 README 更新（28 处：测试数 / v1.1.2 新增能力 / 命令表 / 全局部署架构 / 免责声明）；C4 回归 + 「可推送」结论（**不代 Feel 推送、不含 `npm publish`**） | P0 | hard: stage-56 | 3 op |
+| **stage-58** | CLI 输出编码自适应 + 运行日志 | A 输出编码自适应（`bin` 单一咽喉包装 stdout/stderr、`auto` 按 `chcp` 转码、`--encoding`/`OPENFEEL_ENCODING`；隔离=bin 单一 install + 库侧默认 no-op，**不设 `VITEST` 守卫**）+ C `--json` 恒 UTF-8 旁路 + B 运行日志（`~/.openfeel/cli/logs/`、恒 UTF-8、默认 on、`--log-file`/`--no-log`/`--debug`；解析期错误仅文档化）+ D `iconv-lite` 提升直接依赖 + E 测试（新单测 + 修复 `repl.test.ts`〔win32 非 TTY 下必要〕+ **E2E 正控防恒绿**；基线实盘校准）+ F 文档 | P1 | hard: stage-57 | 3 op |
+
 
 ### 依赖图
 
@@ -227,12 +230,20 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
                                                                                         │
                                                                                       hard
                                                                                         ▼
-                                                          stage-56（发布前收尾：遗留清理 + skill 对齐 + 全局刷新）──→  `npm publish`
+                                                          stage-56（发布前收尾：遗留清理 + skill 对齐 + 全局刷新）
+                                                                                         │
+                                                                                       hard
+                                                                                         ▼
+                                                          stage-57（发布收尾：CI 修复 + 可观测性 + README）
+                                                                                        │
+                                                                                      hard
+                                                                                        ▼
+                                                          stage-58（输出编码自适应 + 运行日志）──→  `npm publish`
 ```
 
 ### 推荐执行顺序
 
-**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51 → stage-52 → stage-53 → stage-54 → stage-55 → stage-56**（→ `npm publish`，由用户决定）。
+**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51 → stage-52 → stage-53 → stage-54 → stage-55 → stage-56 → stage-57 → stage-58**（→ `npm publish`，由用户决定）。
 
 **理由**：
 - stage-41 与 stage-42 均修改 `src/core/flow-manager.ts` 与 `src/i18n-data/{zh-CN,en}.ts`，顺序执行避免同文件冲突。
@@ -832,6 +843,52 @@ A1（F2 先于 F1，刷新仍严格早于删除）/ A2（版本管理节不迁�
 
 ---
 
+## stage-57：发布收尾（CI 修复 + CI 可观测性 + README 更新）
+
+> **定位**：stage-56 判定「达到可发布状态」并推送 `f178600` → **CI run #51 失败**（两个 `build-and-test` matrix job 均在 `npm test` fail；`publish` skip），**1.1.2 实际未发布**。本阶段修 CI 失败 + 补失败注解可观测性 + 更新 README + 回归；`npm publish` 在其后由用户决定。详计划见 `plan/v1/stage-57/plan.md`（C1~C4 / 3 op）。
+
+### 关键事实（实测）
+
+| 项 | 实测 |
+|----|------|
+| CI run #51 | `build-and-test`（Node 20.x/22.x）**failure**，失败步骤 `npm test -- --reporter=verbose`；`publish` **skipped** |
+| 本机 Windows | `npm test` **985 全绿 / 0 skipped**；`config.test.ts` **37 passed** |
+| 根因 | `test/core/config.test.ts:514-529` **T32** 用 `ensureProfileDefaults('C:\\Proj\\X')`；POSIX 下 `C:\Proj\X` 非绝对 → `resolve` 解析为 `<cwd>/C:\Proj\X` → `normalizeKey` 去重 key ≠ 预置 `c:/proj/x` → 失败。**Windows 盘符专属** |
+| 实现 | `src/core/config.ts:284`（`resolve`）/ `:307`（`normalizeKey`） | 
+| README | `README.zh-CN.md:149` / `README.en.md:149` 记「790 用例 / 54 文件」（实测 59 文件）；命令表 `project` 写 `(list / info)`（实测仅 `overview`）；架构未反映全局部署 |
+
+### 工作项（op 级）
+
+| op | 主题 | 覆盖 | 关键产出 |
+|----|------|------|----------|
+| op-001 | **CI 修复 + 可观测性** | C1 / C2 | `test/core/config.test.ts` T32 拆「跨平台」+「Windows 专属 `it.skipIf`」；`ci.yml` `set -o pipefail` + `tee` + `if: failure()` 失败注解；YAML 自检 + 单文件 38 passed |
+| op-002 | **README ×3** | C3 | `README.md` / `README.zh-CN.md` / `README.en.md` 共 **28 处**（测试数 / v1.1.2 新增能力 / 命令表修正 / 全局部署架构 / 免责声明） |
+| op-003 | **回归 + 推送验证** | C4 | 门禁实跑（`build` 幂等不复活 / `npm test` / `tsc` 0 / `lint i18n` 726 / `lint kb` 0 / `flow phases --json` 5 键）+ 「可推送」结论与命令 |
+
+**顺序**：`op-001 → op-002 → op-003`（op-002 依赖 op-001 的拆分后实测测试数）。
+
+### 完成标准
+
+1. T32 已平台化，`src/core/config.ts` **零 diff**；跨平台用例 win32/posix 双解析均成立；Windows 单文件 38 passed。
+2. `ci.yml` 测试失败时注解可经 `GET /repos/{owner}/{repo}/check-runs/{id}/annotations` 读取失败用例名；判定语义仍以 `npm test` 退出码为准。
+3. 三份 README 更新且 zh-CN/en 对等；命令示例与 `--help` 实测一致。
+4. 五门禁全绿；给出「可推送」结论与命令（**不代 Feel 推送、不含 `npm publish`**）；未改 `flow.json`、未改实现语义。
+
+### 风险
+
+| # | 风险 | 缓解 |
+|---|------|------|
+| R-1 | 跨平台用例仍失败 | 受控尾段变体 + 双解析论证 + 本机单文件验证；CI 注解兜底诊断 |
+| R-2 | YAML 语法错误 | `node -e yaml.parse` 自检（+ 可选 actionlint） |
+| R-3 | `tee` 吞退出码 | `set -o pipefail` 强制保留 |
+| R-4 | 注解步骤改变结论 | `if: failure()` + `exit 0` |
+
+### 裁定
+
+A-C1-1（拆分实现 = 受控尾段变体 + `it.skipIf`）/ A-C2-1（注解提取 `×`/`FAIL`/`Failed Tests`，上限 20 条）/ A-C3-1（README 测试数「986 用例 + Linux 跳过 1 个」口径）/ A-C3-2（免责声明旧版示例改「可能滞后于本仓」）/ A-C3-3（不加版本徽标）→ **planner 建议 + 待确认**；**A-C4-1**（不代 Feel 推送）= 已由用户指令确定；A-C4-2（`publish` 逻辑不动）= planner 建议 + 待确认。
+
+---
+
 ## 八、风险点与回滚
 
 | # | 风险 | 影响 | 缓解 |
@@ -944,3 +1001,4 @@ A1（F2 先于 F1，刷新仍严格早于删除）/ A2（版本管理节不迁�
 | 2026-10-01 | openfeel-planner | 用户需求「v1.1.2-stage-54：收尾（遗留缺陷清理）」+ 用户指令「先收尾，然后清掉项目级别的约束和 Agent，之后发布」 | 阶段概览新增 stage-54；依赖图与执行顺序追加「53 → 54」（并注明后续 stage-55 清项目级约束与 Agent → 发布）；新增 stage-54 摘要节（E1~E12 实测：仍存在 2 / 部分存在 1 / 已解决 5 / 登记 4 / 门禁 1；3 op；裁定 A1~A8）；变更汇总补一行 |
 | 2026-10-01 | openfeel-planner | **REV-v1.1.2-stage-54 REV-001/002**（REV-001 medium **blocking**） | **REV-001**：E6 改**分层统计**（总 **267** / pending **132** / closed **112** / resolved **23**；**清账层（v1.1.2 内）42** / 历史层 88）+ 固化可复现扫描脚本（兼容 `REV-U2/U3/U4/U8` 混合编号）——原 `^## (REV-\d+):` 漏 35+ 条为根因；**事实更正**：stage-52 REV-005~008 状态行实测仍 `pending`（REV 述「已 closed」不实）；新增 **R-9**。**REV-002**：新增 **E1-补**——实测 `readOpTemplate` **短 opId HIT / 全名 null**，`health` 与 `ops list` **同源（非分叉）**；真实缺口 = `null` 语义分歧 → 裁定 **A9 登记为已知边界**（不改 `detectFillState` 契约）+ 注释 + manual + 断言④；新增 **R-10**。stage-54 仍 3 op（断言 4→5） |
 | 2026-10-01 | openfeel-planner | 用户需求「v1.1.2-stage-55：清掉项目级约束与 Agent」 | 阶段概览新增 stage-55；依赖图改「54 → 55 → `npm publish`」、执行顺序追加「54 → 55」；新增 stage-55 摘要节（用户裁定删除范围 6 项 + 关键事实表 + F1~F7 / 4 op + 完成标准 + 风险 + 裁定 A1~A8）；变更汇总补一行 |
+| 2026-10-02 | openfeel-planner | CI run #51（`f178600`）失败实测 + 用户需求「v1.1.2-stage-57：发布收尾（CI 修复 + CI 可观测性 + README 更新）」 | 阶段概览新增 stage-57；依赖图改「stage-56 → stage-57 → `npm publish`」、执行顺序追加「56 → 57」；新增 stage-57 摘要节（CI 失败证据 + T32 根因 + C1~C4 / 3 op + 完成标准 + 风险 + 裁定 A-C1-1~A-C4-2） |

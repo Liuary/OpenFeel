@@ -154,7 +154,7 @@ Core 层
   ├── artifact-graph/ — 依赖图与指令生成
   ├── view/ — 审查条目 CRUD
   ├── archive/ — 归档合并
-  ├── backup/ — 覆盖写前备份（~/.openfeel/backup/{ts}/）
+  ├── backup.ts — 覆盖写前备份（~/.openfeel/backup/{ts}/）
   ├── fs/ — 原子写 + 建议性文件锁
   └── workspace/ — 目录结构和知识库
 ```

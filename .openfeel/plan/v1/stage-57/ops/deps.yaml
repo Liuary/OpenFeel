@@ -1,0 +1,63 @@
+# stage-57 op 依赖声明
+# 由 openfeel-schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-57
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-02"
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-56
+    type: hard
+    status: satisfied
+    reason: "stage-57 计划声明 hard 依赖 stage-56（已归档，目标 commit f178600）。"
+  - downstream: git push / CI run
+    type: hard
+    note: "**本阶段不代 Feel 推送、不执行 `npm publish`**。op-003 仅产出「可推送」结论与 `git push origin master` 命令；推送与推送后 CI/注解 API 验证（C4-3）由 Feel/用户执行。"
+
+# 【阶段性质提示】
+# 发布收尾阶段（CI 修复 + CI 可观测性 + README 对齐）→ **3 op，全串行**；
+# **关键不变量**：① 不改实现语义（`src/core/config.ts:284/307` 零 diff）；② 不改 `flow.json`；③ 不代 Feel 推送、不 `npm publish`；
+# **op-002 晚于 op-001**（README 测试数依赖 C1 拆分后实测 986）；**op-003 收口全部门禁**。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "CI 修复（T32 平台化）+ CI 失败注解可观测性"
+    produces:
+      - test/core/config.test.ts
+      - .github/workflows/ci.yml
+      - .openfeel/plan/v1/stage-57/plan.md
+    deps: []
+    notes: "**C1（C1-1~C1-5）+ C2（C2-1~C2-5）**。**C1**：`test/core/config.test.ts:514-529` 单条 T32 拆为「跨平台绝对路径」（目标 `resolve(tmpDir,'proj','x')` + 受控 ASCII 尾段大写/正斜杠变体 + **REV-001 前置断言 `expect(preset).not.toBe(target)`** 防假绿 + `toHaveLength(1)`）与「Windows 专属」（原盘符用例 + `it.skipIf(process.platform !== 'win32')`）两条 `it`；**不改实现**（`config.ts:284/307` 零 diff）；**REV-001** 同步修正 `plan.md:114` §2.1 论证要点 2 措辞（前缀仅**大小写**逐字符不变，前缀**分隔符**经 `\\→/` 归一与 `normalizeKey` 幂等）。**C2**：`ci.yml:43` 改命名多行步骤 `Test`（`set -o pipefail` + `npm test -- --reporter=verbose --no-color 2>&1 | tee \"$RUNNER_TEMP/test.log\"`）+ 紧随新增 `Test failure annotations`（`if: failure()`，**先 `sed 's/\\x1b\\[[0-9;]*m//g'` 剥 ANSI 色码兜底**再 `grep -E '^\\s*(×|FAIL)|Failed Tests'` → `echo \"::error::\"`，`head -n 20`，结尾 `exit 0`）；`test.log` 落 `$RUNNER_TEMP`（不污染 Env guard 四路径）；判定语义不变；YAML 自检 `node -e require('yaml').parse(...)`。单文件 Windows 38 passed。**REV-004（blocking）已处置**：`--no-color`（主）+ `sed` 剥色（兜底）双保险，修复 vitest 3.2.7 非 TTY 重定向下 ANSI 色码致 `×` 失败用例行被 ESC 字节挡住、grep 仅命中 `Failed Tests` 标题的问题；验收锚点 = 模拟 CI 合并流（`2>&1` 重定向到文件）下剥色后 grep 命中**失败用例名 ≥1 条**（op-001 §七第 10/11 项）。"
+
+  op-002:
+    file: op-002.md
+    title: "README ×3 与 docs/commands.md 版本快照对齐（28 处 + REV-003）"
+    produces:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/commands.md
+    deps:
+      - op: op-001
+        type: hard
+    notes: "**C3（C3-T / C3-N / C3-C / C3-A / C3-M）+ REV-003**，28 处（README.md 4 + zh-CN 12 + en 12）+ `docs/commands.md:7` 1 处。测试数口径 **986 用例 / 59 文件（Windows）+ Linux CI 跳过 1 个 Windows 专属用例**；新增 `## v1.1.2 新增能力` / `## What's New in v1.1.2`（6 条要点）；命令表修正 7 处（`flow` 补 phases/ops/health/checkpoint/migrate + --json；`plan` 补 scheme publish/rename/remove + create --draft；`knowledge` 补 add/index/dedup；`stage` 补 task；**`project` 仅 `overview`** 对齐 `cli/BUG-007`）；**REV-002**：`flow review add|update|remove` 指引落**命令表 `:69`**（C6a），`:114` **分工表**仅改职责描述「审查条目验收」（C6b）；架构图补 CLI/Core 层 + 全局部署图注；新增 `全局部署与工作区分层` 小节（9 agent / 17 skill 全局部署；仓库不保留项目级 `.opencode/agents|skills`；`current.md`/`dev_last.md` 分层；写前自动备份）；**REV-003**：三份 README + `docs/commands.md:7` 免责声明统一改为**不写死版本号**「可能滞后于本仓」；zh/en 逐处对等。"
+
+  op-003:
+    file: op-003.md
+    title: "回归门禁 + 可推送结论（不代 Feel 推送）"
+    produces:
+      - .openfeel/users/Liuary/log/2026-10-02-NNN.md
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+    notes: "**C4（C4-1~C4-4）**。**C4-1 门禁**：`npm run build`（幂等 + `git status` **无 `.opencode/**` 复活**）｜ `npm test`（**986 用例 / 59 文件 0 skipped**，按实测）｜ `npx tsc --noEmit` 0 ｜ `node bin/openfeel.js lint i18n` **726 键 exit 0** ｜ `node bin/openfeel.js lint kb` **0 过期 exit 0** ｜ `flow phases --json` **5 键**。**C4-2**：产出「**可推送**」结论 + `git push origin master` 命令（**本 op 不执行推送**）。**C4-3**：推送后 CI/注解 API 验证命令登记（`gh api .../check-runs`、`/annotations`、`/actions/runs`），**Feel 执行**。**C4-4**：阶段报告写入私域日志（改动清单 / 门禁实测 / T32 验证 / 注解方案 / README 计数 / 可推送结论）。一律用 `node bin/openfeel.js` 口径。**未改 flow.json / 未推送 / 未 npm publish**。"
+
+# 【下游契约】（本阶段无可复用接口形态变更）
+downstream_contracts: []

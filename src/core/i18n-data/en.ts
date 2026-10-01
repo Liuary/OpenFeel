@@ -527,6 +527,7 @@ export const lint: I18nDomain = {
 /* ==================== help ==================== */
 export const help: I18nDomain = {
   'openfeel':              { key: 'help.openfeel',              zh: '', en: 'AI Agent development workflow governance CLI tool' },
+  'global.noColor':        { key: 'help.global.noColor',        zh: '', en: 'Disable colored output (also via NO_COLOR=1)' },
   'openfeel.version':      { key: 'help.openfeel.version',      zh: '', en: 'Output version number' },
 
   'init':                  { key: 'help.init',                  zh: '', en: 'Initialize project workspace, create .openfeel/ directory structure and config files' },

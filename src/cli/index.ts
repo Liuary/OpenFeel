@@ -19,7 +19,32 @@ const program = new Command();
 program
   .name('openfeel')
   .description('AI Agent 开发流程治理 CLI 工具')
-  .version(pkg.version, '-v, --version', '输出版本号');
+  .version(pkg.version, '-v, --version', '输出版本号')
+  // B7-2：全局 --no-color（negate 选项；描述在注册时按当前语言求值，applyHelpI18n 会跳过 negate）
+  .option('--no-color', t('help.global.noColor', getCliLang(process.cwd())));
+
+/**
+ * 是否启用彩色输出（B7-1，单一判定入口）。
+ * 优先级：`--no-color`（显式关闭，commander 解析为 color=false） > `NO_COLOR` 环境变量（存在且**非空**即关闭，
+ * 遵循 no-color.org，**不解析其值**） > 默认（允许彩色）。
+ *
+ * 注：当前实现**无着色逻辑**，故实际输出恒无 ANSI；本函数为**契约与未来保护**——
+ * 将来引入着色时必须经此判定（禁止绕过）。
+ * @param options commander 解析结果（`color === false` 表示显式 --no-color）
+ */
+export function shouldUseColor(options?: { color?: boolean }): boolean {
+  // 显式 --no-color → 关闭
+  if (options?.color === false) {
+    return false;
+  }
+  // NO_COLOR 存在且非空 → 关闭（空串按未设置处理）
+  const noColor = process.env.NO_COLOR;
+  if (typeof noColor === 'string' && noColor.length > 0) {
+    return false;
+  }
+  // 默认允许彩色（当前无着色实现 → 零可见变化）
+  return true;
+}
 
 // ── 静态导入命令模块（新增命令在此追加） ──
 

@@ -553,6 +553,7 @@ export const lint: I18nDomain = {
 export const help: I18nDomain = {
   // openfeel 顶层
   'openfeel':              { key: 'help.openfeel',              zh: 'AI Agent 开发流程治理 CLI 工具', en: '' },
+  'global.noColor':        { key: 'help.global.noColor',        zh: '禁用彩色输出（亦可通过环境变量 NO_COLOR=1）', en: '' },
   'openfeel.version':      { key: 'help.openfeel.version',      zh: '输出版本号',                      en: '' },
 
   // init

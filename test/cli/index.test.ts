@@ -14,7 +14,7 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
-import { applyHelpI18n } from '../../src/cli/index.js';
+import { applyHelpI18n, shouldUseColor, program as rootProgram } from '../../src/cli/index.js';
 import { registerStageCommand } from '../../src/commands/stage.js';
 import { registerViewCommand } from '../../src/commands/view.js';
 
@@ -73,5 +73,29 @@ describe('applyHelpI18n（stage-50 op-004 T38）', () => {
     applyHelpI18n(zhProgram);
     const zhAdd = zhProgram.commands.find((c) => c.name() === 'view')!.commands.find((c) => c.name() === 'add')!;
     expect(zhAdd.description()).toContain('已弃用');
+  });
+});
+
+// ── stage-52/op-002：B7 颜色开关（shouldUseColor / --no-color） ──
+
+describe('op-002 B7 颜色开关', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('默认允许彩色；--no-color 关闭；NO_COLOR 非空关闭；空串不视为设置', () => {
+    vi.stubEnv('NO_COLOR', '');
+    expect(shouldUseColor()).toBe(true); // 空串 → 不关闭
+    expect(shouldUseColor({ color: false })).toBe(false); // 显式 --no-color
+
+    vi.stubEnv('NO_COLOR', '1');
+    expect(shouldUseColor()).toBe(false); // 非空 → 关闭（不解析值）
+
+    vi.unstubAllEnvs();
+    expect(shouldUseColor()).toBe(true); // 未设置 → 默认允许
+  });
+
+  it('根程序注册了全局 --no-color 选项', () => {
+    expect(rootProgram.options.some((o) => o.long === '--no-color')).toBe(true);
   });
 });

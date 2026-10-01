@@ -511,10 +511,34 @@ describe('writeDefaultConfig', () => {
     expect(() => setConfigValue(tmpDir, 'nope', 'x')).toThrow(/Unknown config key/);
   });
 
-  it('T32：recent_projects 去重大小写不敏感（c:\\x 与 C:\\x 视为同一）', () => {
+  // T32：recent_projects 去重大小写/分隔符不敏感 —— 拆分为跨平台 + Windows 专属（stage-57 C1）
+
+  it('T32：recent_projects 去重大小写不敏感（跨平台，绝对路径）', () => {
     mockHome.dir = join(tmpDir, 'home-t32');
     mkdirSync(join(mockHome.dir, '.config', 'openfeel'), { recursive: true });
-    // 预置一条不同大小写/分隔符形式的历史记录
+    // 目标路径在 Windows/Linux 均为绝对路径；预置其「大写 + 正斜杠」变体
+    // 仅大写受控 ASCII 尾段（proj/x → PROJ/X），避免 tmp 前缀含非 ASCII 用户名的 toUpperCase/toLowerCase 往返风险
+    const target = resolve(tmpDir, 'proj', 'x');
+    const preset = target.replace(/proj([\\/])x$/, 'PROJ$1X').replace(/\\/g, '/');
+    // 防假绿：变体替换必须真实生效，否则本用例退化为「同串去重」而非「大小写不敏感去重」（REV-001）
+    expect(preset).not.toBe(target);
+    writeProfile({
+      user: { name: 'U', lang: 'zh-CN' },
+      preferences: { auto_advance: 'disabled', review_mode: 'full', communication: 'concise', confirm_threshold: 'medium' },
+      history: { last_project: '', recent_projects: [preset] },
+    });
+    ensureProfileDefaults(target);
+    const recent = readProfile().history.recent_projects;
+    // 归一后视为同一条 → 只保留 1 条
+    expect(recent).toHaveLength(1);
+    expect(recent[0]).toBe(target);
+    mockHome.dir = '';
+  });
+
+  // 盘符 + 反斜杠为 Windows 专属语义；POSIX 下 `C:\Proj\X` 非绝对路径，故跳过
+  it.skipIf(process.platform !== 'win32')('T32win：recent_projects 去重（盘符大小写与分隔符，Windows 专属）', () => {
+    mockHome.dir = join(tmpDir, 'home-t32win');
+    mkdirSync(join(mockHome.dir, '.config', 'openfeel'), { recursive: true });
     writeProfile({
       user: { name: 'U', lang: 'zh-CN' },
       preferences: { auto_advance: 'disabled', review_mode: 'full', communication: 'concise', confirm_threshold: 'medium' },
@@ -522,7 +546,6 @@ describe('writeDefaultConfig', () => {
     });
     ensureProfileDefaults('C:\\Proj\\X');
     const recent = readProfile().history.recent_projects;
-    // 归一后视为同一条 → 只保留 1 条
     expect(recent).toHaveLength(1);
     expect(recent[0]).toBe(resolve('C:\\Proj\\X'));
     mockHome.dir = '';

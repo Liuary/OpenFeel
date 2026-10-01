@@ -40,7 +40,32 @@ jobs:
             echo "::error::版本不一致：CLI=$CLI_VERSION package.json=$PKG_VERSION"; exit 1
           fi
       - run: node bin/openfeel.js lint i18n
-      - run: npm test -- --reporter=verbose
+      - name: Test
+        run: |
+          # 保退出码（pipefail）：tee 不得吞掉 npm test 失败码；日志落 $RUNNER_TEMP（不污染 Env guard 四路径）
+          # REV-004：--no-color 关闭 vitest 3.x 在非 TTY 重定向下仍输出的 ANSI 色码（FORCE_COLOR=0 对该 reporter 无效）
+          set -o pipefail
+          npm test -- --reporter=verbose --no-color 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      - name: Test failure annotations
+        if: failure()
+        run: |
+          # 失败时把失败用例名转成可经 GitHub API 读取的注解（只读诊断；不改判定语义）
+          LOG="$RUNNER_TEMP/test.log"
+          if [ ! -f "$LOG" ]; then
+            echo "::warning::未找到测试日志 $LOG，无法生成失败注解"
+            exit 0
+          fi
+          # REV-004：首选 --no-color；此处再以 sed 剥 ANSI 色码兜底，防 vitest 未来版本行为漂移。
+          # GNU sed 的 ESC 转义 \x1b 在 ubuntu-latest（GNU sed）可用；windows runner 不涉及（本 workflow 仅 ubuntu）。
+          # 剥色后失败用例行形如 "× test/... > 用例名 Nms"，原 grep 模式命中。
+          sed 's/\x1b\[[0-9;]*m//g' "$LOG" \
+            | grep -E '^\s*(×|FAIL)|Failed Tests' \
+            | head -n 20 \
+            | while IFS= read -r line; do
+                echo "::error::$line"
+              done
+          exit 0
       - name: Coverage report (baseline observation; non-blocking)
         run: npm run test:coverage
       - name: Env guard (after test — must be unchanged)

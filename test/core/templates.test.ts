@@ -25,8 +25,8 @@ describe('模板口径（stage-50 op-006 T53/T54/T55）', () => {
   it('T54：agents-md en 图注并列英文；zh/en 图体行数一致', () => {
     const en = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'agents-md', 'en.md'), 'utf-8');
     const zh = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'agents-md', 'zh-CN.md'), 'utf-8');
-    // en 图注含并列英文（不再仅中文）
-    expect(en).toContain('review failed');
+    // en 图注为纯英文（stage-56：旧中英并列「验收不通过 / review failed」→ 纯英文 acceptance rejected）
+    expect(en).toContain('acceptance rejected');
     // 抽取含 pending/open 的代码块，zh/en 图体行数一致（图示未错位）
     const block = (text: string): string[] => {
       const lines = text.split('\n');

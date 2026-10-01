@@ -179,7 +179,7 @@ export function splitFrontmatter(content: string): FrontmatterSplit | null {
 }
 
 /**
- * 合并 frontmatter（REV-904：字段级白名单，浅合并）。
+ * 合并 frontmatter（REV-904）：incoming 全字段覆盖 + existing 独有字段 passthrough（浅合并，无白名单过滤）。
  * incoming（框架模板字段）覆盖同名 existing 字段；existing 独有字段 passthrough 保留。
  */
 export function mergeFrontmatter(

@@ -491,7 +491,7 @@ Both share the same state flow model (only the starting state name differs):
 ```
 pending/open  ──→  fixing  ──→  resolved  ──→  closed
       ↑                         │
-      └─────── 验收不通过 / review failed ───────┘
+      └─────── acceptance rejected ───────┘
 ```
 
 | State | Code Review | Bug Tracking | Operator |

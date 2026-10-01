@@ -88,7 +88,7 @@ openfeel flow phases [--json]
 
 | 选项 | 说明 |
 |------|------|
-| `--json` | 以 JSON 输出 `{ phases, transitions, advanceAccepted, transitionsDiff }`，供自动化解析（`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15；`transitionsDiff` = 运行时转移表与内置默认转移表的**差异报告**，`missing` 列出内置默认有而运行时缺失的 source，使 `pipeline.yaml` 漂移**可见而非静默**） |
+| `--json` | 以 JSON 输出 `{ schemaVersion, phases, transitions, advanceAccepted, transitionsDiff }`，供自动化解析（`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15；`transitionsDiff` = 运行时转移表与内置默认转移表的**差异报告**，`missing` 列出内置默认有而运行时缺失的 source，使 `pipeline.yaml` 漂移**可见而非静默**） |
 
 示例：
 

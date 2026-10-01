@@ -5,7 +5,7 @@
 ## [1.1.2] - 2026-09-29
 
 ### Added
-- `openfeel flow phases [--json]`：自描述全部合法 phase 与运行时转移表（`--json` 含 `phases`/`transitions`/`advanceAccepted`）
+- `openfeel flow phases [--json]`：自描述全部合法 phase 与运行时转移表（`--json` 含 `schemaVersion`/`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`）
 - `openfeel flow stage remove <stageId>`：安全移除阶段（ops 非空 / 当前活跃 / 被依赖时默认拒绝；`--force` 越过、`--dry-run` 预览、`--purge` 删目录）
 - `openfeel plan stage add <name> --deps <ids...>`：CLI 暴露依赖声明（写入 `flow.json.stages[].deps` + `overview.md`）
 - `openfeel config effective [key]`：输出配置有效值 + 生效来源（`status.md > config.yaml > profile.yaml > builtin`）

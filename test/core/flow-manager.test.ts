@@ -1877,6 +1877,71 @@ describe('FlowManager', () => {
   });
 
   // ═══════════════════════════════════════
+  // op-004 findPhasePath（BFS 唯一路径）
+  // ═══════════════════════════════════════
+
+  describe('op-004 findPhasePath（BFS 唯一路径）', () => {
+    it('唯一路径 ok / 已到达 already-at-target / 无路径 no-path（只读）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const ok = mgr.findPhasePath('stage-01', 'exec_running');
+      expect(ok.reason).toBe('ok');
+      expect(ok.path).toEqual(['plan_passed', 'scheme_pending', 'scheme_passed', 'exec_running']);
+      expect(mgr.findPhasePath('stage-01', 'plan_pending')).toEqual({ path: [], reason: 'already-at-target' });
+      // 不存在的阶段 → no-path
+      expect(mgr.findPhasePath('stage-99', 'exec_running').reason).toBe('no-path');
+
+      // done 无出边 → no-path
+      const doneData = makeTestFlowData();
+      doneData.stages['stage-01'].phase = 'done';
+      const mgr2 = new FlowManager(tmpDir);
+      mgr2.setData(doneData);
+      expect(mgr2.findPhasePath('stage-01', 'exec_running').reason).toBe('no-path');
+    });
+
+    it('多义路径（等长两条）→ ambiguous', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), JSON.stringify({
+        phases: ['plan_pending', 'plan_review', 'plan_passed', 'scheme_pending', 'scheme_passed', 'exec_running'],
+        transitions: {
+          plan_pending: ['plan_review', 'plan_passed'],
+          plan_review: ['scheme_pending'],
+          plan_passed: ['scheme_pending'],
+          scheme_pending: ['exec_running'],
+          scheme_passed: ['exec_running'],
+          exec_running: [],
+        },
+        checkpoint_mapping: {},
+        phase_corrections: {},
+      }), 'utf-8');
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      expect(mgr.findPhasePath('stage-01', 'scheme_pending').reason).toBe('ambiguous');
+    });
+
+    it('深度超限 → depth-exceeded', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      const transitions: Record<string, string[]> = {};
+      for (let i = 1; i <= 9; i++) {
+        transitions[`p${i}`] = [`p${i + 1}`];
+      }
+      transitions['p10'] = [];
+      writeFileSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), JSON.stringify({
+        phases: Object.keys(transitions),
+        transitions,
+        checkpoint_mapping: {},
+        phase_corrections: {},
+      }), 'utf-8');
+      const mgr = new FlowManager(tmpDir);
+      const data = makeTestFlowData();
+      data.stages['stage-01'].phase = 'p1' as unknown as PipelinePhase;
+      mgr.setData(data);
+      // p1 → p10 为 9 跳，超过上限 8 → depth-exceeded
+      expect(mgr.findPhasePath('stage-01', 'p10').reason).toBe('depth-exceeded');
+    });
+  });
+
+  // ═══════════════════════════════════════
   // recoverContext（跨会话上下文恢复）
   // ═══════════════════════════════════════
 

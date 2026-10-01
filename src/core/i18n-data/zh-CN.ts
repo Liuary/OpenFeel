@@ -141,6 +141,15 @@ export const flow: I18nDomain = {
   'advance.dryRunFrom':         { key: 'flow.advance.dryRunFrom',         zh: '当前阶段',                                 en: '' },
   'advance.dryRunTo':           { key: 'flow.advance.dryRunTo',           zh: '目标阶段',                                 en: '' },
   'advance.dryRunOk':           { key: 'flow.advance.dryRunOk',           zh: '✓ 合法性验证通过，未实际修改 flow.json。去掉 --dry-run 后正式执行。', en: '' },
+  'advance.pathTitle':          { key: 'flow.advance.pathTitle',          zh: '推进路径：',                               en: '' },
+  'advance.pathArrow':          { key: 'flow.advance.pathArrow',          zh: ' → ',                                     en: '' },
+  'advance.stepOkTmpl':         { key: 'flow.advance.stepOkTmpl',         zh: '已推进：{stage} {from} → {to}',            en: '' },
+  'advance.ambiguousTmpl':      { key: 'flow.advance.ambiguousTmpl',      zh: '存在多条等价路径，已拒绝；请逐步显式指定 --to', en: '' },
+  'advance.noPathTmpl':         { key: 'flow.advance.noPathTmpl',         zh: '无法从 {from} 到达 {to}；当前可达目标：{targets}', en: '' },
+  'advance.depthExceededTmpl':  { key: 'flow.advance.depthExceededTmpl',  zh: '路径深度超过上限（{max}），已拒绝',          en: '' },
+  'advance.partialFailTmpl':    { key: 'flow.advance.partialFailTmpl',    zh: '已完成到 {done}；失败于 {failed}；剩余路径：{remaining}', en: '' },
+  'advance.blockedByRevTmpl':   { key: 'flow.advance.blockedByRevTmpl',   zh: '存在阻塞中的审查条目，已停止推进：{revs}；剩余路径：{remaining}', en: '' },
+  'advance.alreadyAtTargetTmpl':{ key: 'flow.advance.alreadyAtTargetTmpl',zh: '已在目标阶段：{stage} → {to}（无操作）',     en: '' },
 
   // flow attempt
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '错误：--result 必须为 pass 或 fail',       en: '' },

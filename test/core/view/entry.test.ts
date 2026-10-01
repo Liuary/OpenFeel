@@ -432,5 +432,35 @@ describe('View Entry', () => {
       expect(addReviewEntry(tmpDir, { opId: 'bad' }).error?.code).toBe('invalidOpId');
       expect(addReviewEntry(tmpDir, { opId: 'nope.op-001' }).error?.code).toBe('stageNotFound');
     });
+
+    it('op-004/B5-3 等价性：autoFixDetail → canAutoFix=true 且 status=resolved（恒不可能成为 blocking open）', () => {
+      // 等价论证（REV-52-001）：addAutoFixReview 在 addReview 前强制 status='resolved'，
+      // 恒不满足阻塞过滤 r.blocking!==false && status==='open' → 不可能引入新的 blocking open。
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'Test', updated: new Date().toISOString() },
+        pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
+        stages: {
+          'stage-01': {
+            name: 'stage-01', phase: 'review_failed', status: 'review_failed', deps: [],
+            ops: {
+              'op-001': {
+                id: 'op-001', title: 't', state: 'pending', assignee: 'x', attempts: 0, max_attempts: 3,
+                checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+              },
+            },
+          },
+        },
+        reviews: [],
+        log: [],
+      });
+      mgr.save();
+
+      const result = addReviewEntry(tmpDir, { opId: 'stage-01.op-001', title: 't', autoFixDetail: 'auto' });
+      expect(result.error).toBeNull();
+      expect(result.review!.canAutoFix).toBe(true);
+      expect(result.review!.status).toBe('resolved');
+    });
   });
 });

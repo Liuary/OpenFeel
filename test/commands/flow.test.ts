@@ -871,4 +871,145 @@ describe('flow 命令（stage-41）', () => {
     // 无删除行为：ops/ 目录文件清单完全不变
     expect(readdirSync(opsDir).sort()).toEqual(filesBefore);
   });
+
+  // ── stage-52/op-004：B5 多步推进 + REV 复检（REV-52-001） ──
+
+  /** 写入「两条等长路径」的 pipeline.yaml（plan_pending 经 plan_review 或 plan_passed 均到 scheme_pending） */
+  function writePipelineAmbiguous(): void {
+    const transitions: Record<string, string[]> = {
+      plan_pending: ['plan_review', 'plan_passed'],
+      plan_review: ['scheme_pending'],
+      plan_passed: ['scheme_pending'],
+      scheme_pending: ['exec_running'],
+      exec_running: ['review_pending', 'scheme_pending'],
+      review_pending: ['review_failed', 'review_passed'],
+      review_failed: ['review_pending', 'scheme_pending'],
+      review_passed: ['test_pending'],
+      test_pending: ['test_failed', 'test_passed'],
+      test_failed: ['test_pending', 'scheme_pending'],
+      test_passed: ['archiving'],
+      archiving: ['done'],
+      done: [],
+    };
+    writeFileSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), JSON.stringify({
+      phases: Object.keys(transitions),
+      transitions,
+      checkpoint_mapping: {},
+      phase_corrections: {},
+    }), 'utf-8');
+  }
+
+  it('op-004/B5: advance --to 唯一路径自动逐步（每步一条日志）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-88');
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-88', '--to', 'exec_running']);
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.1.2-stage-88'].phase).toBe('exec_running');
+    const stepLogs = flow.log.filter(
+      (l: { action: string; detail: { stageName?: string } }) =>
+        l.action === 'advance_stage_phase' && l.detail.stageName === 'v1.1.2-stage-88',
+    );
+    expect(stepLogs).toHaveLength(4);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('已推进：v1.1.2-stage-88');
+  });
+
+  it('op-004/B5: advance --dry-run 打印完整路径且零写盘', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-87');
+    mgr.save();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-87', '--to', 'exec_running', '--dry-run']);
+
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('推进路径');
+    expect(out).toContain('plan_pending → plan_passed → scheme_pending → scheme_passed → exec_running');
+  });
+
+  it('op-004/B5: 无路径 → exit 1 + 可达目标', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-86');
+    mgr.getData()!.stages['v1.1.2-stage-86'].phase = 'done';
+    mgr.getData()!.stages['v1.1.2-stage-86'].status = 'done';
+    mgr.save();
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-86', '--to', 'exec_running']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('无法从 done 到达 exec_running');
+  });
+
+  it('op-004/B5: 多义路径 → exit 1 + ambiguousTmpl', async () => {
+    writePipelineAmbiguous();
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-85');
+    mgr.save();
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-85', '--to', 'scheme_pending']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('多条等价路径');
+  });
+
+  it('op-004/B5: 已在目标 → no-op 成功', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-84');
+    mgr.getData()!.stages['v1.1.2-stage-84'].phase = 'exec_running';
+    mgr.save();
+    exitMock.mockClear();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-84', '--to', 'exec_running']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('已在目标阶段');
+  });
+
+  it('op-004/B5-3: 存量 blocking REV 在多步 --to done 被拦截（exit 1 + revision 不变）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-83');
+    const st = mgr.getData()!.stages['v1.1.2-stage-83'];
+    st.phase = 'test_passed';
+    st.status = 'testing';
+    mgr.getData()!.reviews.push({
+      id: 'REV-BLK', op: 'v1.1.2-stage-83.op-001', status: 'open', priority: 'high',
+      title: 'blocking', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z', blocking: true,
+    });
+    mgr.save();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const revBefore = JSON.parse(readFileSync(flowPath, 'utf-8')).meta.revision;
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-83', '--to', 'done']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const after = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    expect(after.meta.revision).toBe(revBefore);
+    expect(after.stages['v1.1.2-stage-83'].phase).toBe('test_passed');
+  });
+
+  it('op-004/B5-3: 多步 advance 不创建 review', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-82');
+    mgr.save();
+    const reviewsBefore = mgr.getData()!.reviews.length;
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-82', '--to', 'exec_running']);
+
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(after.reviews.length).toBe(reviewsBefore);
+  });
 });

@@ -397,6 +397,17 @@ interface OpIdParts {
   opLocalId: string;
 }
 
+/** findPhasePath 的路径查找结果（B5-1） */
+export interface PhasePathResult {
+  /** 唯一可达路径（含起点后的逐跳目标）；不存在/多义时为 [] */
+  path: string[];
+  /** 结果原因 */
+  reason: 'ok' | 'already-at-target' | 'no-path' | 'ambiguous' | 'depth-exceeded';
+}
+
+/** findPhasePath BFS 深度上限（B5-1；超出按拒绝处理） */
+export const PHASE_PATH_MAX_DEPTH = 8;
+
 // ── 核心类 ──
 
 export class FlowManager {
@@ -1606,6 +1617,65 @@ export class FlowManager {
     const currentPhase = this.resolveCurrentPhase(stageName);
     if (!currentPhase) return [];
     return this.getValidTargets(currentPhase) as PipelinePhase[];
+  }
+
+  /**
+   * 在运行时 transitions 上求 stageName 当前 phase → to 的**唯一**可达路径（B5-1）。
+   * BFS（深度上限 PHASE_PATH_MAX_DEPTH）；最短深度上存在多条路径 → ambiguous（拒绝，不猜测）。
+   * 纯只读：不写盘、不改内存。
+   * @param stageName 阶段 ID
+   * @param to 目标 phase
+   * @returns 路径与原因（no-path/ambiguous/depth-exceeded 供命令层报错；already-at-target 按 no-op）
+   */
+  findPhasePath(stageName: string, to: string): PhasePathResult {
+    const start = this.data?.stages[stageName]?.phase;
+    if (!start) {
+      return { path: [], reason: 'no-path' };
+    }
+    if (start === to) {
+      return { path: [], reason: 'already-at-target' };
+    }
+
+    // BFS 逐层扩展；visitedDepth 记录各 phase 首次到达的最小深度（剪枝，避免重复/环）
+    const visitedDepth = new Map<string, number>();
+    visitedDepth.set(start, 0);
+    let layer: Array<{ phase: PipelinePhase; path: string[] }> = [{ phase: start, path: [] }];
+
+    while (layer.length > 0) {
+      const hits: string[][] = [];
+      const nextLayer: Array<{ phase: PipelinePhase; path: string[] }> = [];
+      for (const node of layer) {
+        // 深度已达上限 → 不再扩展（超限在下方统一判定）
+        if (node.path.length >= PHASE_PATH_MAX_DEPTH) {
+          continue;
+        }
+        for (const target of this.getValidTargets(node.phase)) {
+          const path = [...node.path, target];
+          if (target === to) {
+            hits.push(path);
+            continue;
+          }
+          const prevDepth = visitedDepth.get(target);
+          if (prevDepth !== undefined && prevDepth <= path.length) {
+            continue; // 已在更浅/等深访问过 → 剪枝
+          }
+          visitedDepth.set(target, path.length);
+          nextLayer.push({ phase: target as PipelinePhase, path });
+        }
+      }
+      if (hits.length > 1) {
+        return { path: [], reason: 'ambiguous' }; // 最短深度多条等价路径 → 拒绝
+      }
+      if (hits.length === 1) {
+        return { path: hits[0], reason: 'ok' };
+      }
+      // 本层已到深度上限但未命中 → 拒绝（depth-exceeded）
+      if (layer[0]?.path.length !== undefined && layer[0].path.length + 1 > PHASE_PATH_MAX_DEPTH) {
+        return { path: [], reason: 'depth-exceeded' };
+      }
+      layer = nextLayer;
+    }
+    return { path: [], reason: 'no-path' };
   }
 
   /**

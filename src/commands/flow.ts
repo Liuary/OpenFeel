@@ -23,7 +23,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { MetricsStore } from '../core/metrics.js';
@@ -674,15 +674,29 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
-      // 阶段跳跃保护：基于 stage phase 检查当前 phase 到目标 phase 是否存在直接路径
+      // 阶段路径解析（B5-1）：非 --force 时求「当前 phase → to」的唯一可达路径
+      // - 唯一路径（含单步）→ 沿路径逐步推进；单步时与既有行为完全一致
+      // - 无路径 / 多义 / 超深 → 拒绝（exit 1 + 可达目标；保留既有跳转诊断）
+      // - 已在 to → no-op 成功
+      let phasePath: string[] = [options.to];
       if (!options.force) {
-        const phaseResult = PipelinePhaseSchema.safeParse(options.to);
-        if (phaseResult.success && !mgr.hasTransition(options.to, options.stage)) {
-          // 获取当前 phase 和合法目标列表（增强诊断信息）
+        const pathResult = mgr.findPhasePath(options.stage, options.to);
+        if (pathResult.reason === 'no-path' || pathResult.reason === 'ambiguous' || pathResult.reason === 'depth-exceeded') {
           const data = mgr.getData();
           const currentPhase = data?.stages[options.stage || '']?.phase ?? t('common.unknown', lang);
           const availableTargets = mgr.getAvailablePhases(options.stage);
-
+          if (pathResult.reason === 'ambiguous') {
+            console.error(t('flow.advance.ambiguousTmpl', lang));
+          } else if (pathResult.reason === 'depth-exceeded') {
+            console.error(t('flow.advance.depthExceededTmpl', lang, { max: String(PHASE_PATH_MAX_DEPTH) }));
+          } else {
+            console.error(t('flow.advance.noPathTmpl', lang, {
+              from: currentPhase,
+              to: options.to,
+              targets: availableTargets.length > 0 ? `[${availableTargets.join(', ')}]` : t('common.none', lang),
+            }));
+          }
+          // 保留既有跳转诊断（可达目标）——与现状一致
           console.error(t('flow.advance.errorPhaseJumpTmpl', lang, { stage: options.stage || '', to: options.to }));
           console.error(t('flow.advance.currentPhaseTmpl', lang, { phase: currentPhase }));
           if (availableTargets.length > 0) {
@@ -692,10 +706,19 @@ export function registerFlowCommand(program: Command): void {
           }
           console.error(t('flow.advance.hintUseForce', lang));
           process.exit(1);
+          return;
         }
+        if (pathResult.reason === 'already-at-target') {
+          // 已在目标 phase → no-op 成功
+          if (!options.quiet) {
+            console.log(t('flow.advance.alreadyAtTargetTmpl', lang, { stage: options.stage || '', to: options.to }));
+          }
+          return;
+        }
+        phasePath = pathResult.path;
       }
 
-      // 安全提示：跳过审查直接 done
+      // 安全提示：跳过审查直接 done（保持既有条件）
       const SKIP_WARN_PHASES: PipelinePhase[] = ['exec_running', 'review_pending'];
       if (options.to === 'done' && options.stage) {
         const stage = (mgr.getData()?.stages || {})[options.stage];
@@ -704,67 +727,99 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
-      // REV 闭环（命令层兜底）：推进到 done 时检查 blocking REV
+      // REV 闭环（命令层兜底）：推进到 done 时检查 blocking REV（单步入口；多步循环每步后另复检，B5-3）
       if (options.to === 'done' && options.stage) {
-        const allReviews = mgr.getReviewItems();
-        const stageReviews = allReviews.filter(
-          (r) => r.op.startsWith(options.stage!) || r.op === options.stage,
-        );
-        const blockingOpen = stageReviews.filter(
-          (r) => r.blocking !== false && r.status === 'open',
-        );
+        const blockingOpen = assertNoBlockingOpenRev(mgr, options.stage, lang);
         if (blockingOpen.length > 0) {
-          console.warn(`[!] 检测到 ${blockingOpen.length} 个未解决的阻塞 REV：`);
-          for (const rev of blockingOpen) {
-            console.warn(`    ${rev.id}: ${rev.title} (priority=${rev.priority})`);
-          }
           if (options.force) {
             console.warn('[!] --force 已指定，但 REV 安全检查不可绕过。拒绝推进。');
           }
           console.error('错误：blocking REV 未解决前禁止推进到 done。');
           console.error('请先解决上述 REV 或通过 flow review resolve 标记为非阻塞。');
           process.exit(1);
+          return;
         }
       }
 
-      // --dry-run：仅验证合法性，不实际修改 flow.json
-      if (options.dryRun) {
-        const data = mgr.getData();
-        const fromPhase = data?.stages[options.stage!]?.phase ?? t('common.unknown', lang);
-        const toPhase = options.to;
+      // 起始 phase（供多步逐步输出）
+      const startPhase = mgr.getData()?.stages[options.stage]?.phase ?? t('common.unknown', lang);
 
+      // --dry-run：仅验证合法性，不实际修改 flow.json（B5-2：多步时打印完整路径）
+      if (options.dryRun) {
         if (options.force) {
           console.warn(t('flow.advance.dryRunForceWarn', lang));
         }
         console.log(t('flow.advance.dryRunTitle', lang));
         console.log(`  ` + t('common.stage', lang) + `: ${options.stage}`);
-        console.log(`  ` + t('flow.advance.dryRunFrom', lang) + `: ${fromPhase}`);
-        console.log(`  ` + t('flow.advance.dryRunTo', lang) + `: ${toPhase}`);
+        console.log(`  ` + t('flow.advance.dryRunFrom', lang) + `: ${startPhase}`);
+        console.log(`  ` + t('flow.advance.dryRunTo', lang) + `: ${options.to}`);
+        if (phasePath.length > 1) {
+          const fullPath = [startPhase, ...phasePath].join(t('flow.advance.pathArrow', lang));
+          console.log(`  ` + t('flow.advance.pathTitle', lang) + ` ${fullPath}`);
+        }
         console.log('');
         console.log(t('flow.advance.dryRunOk', lang));
         return;
       }
 
-      let archived = false;
-      try {
-        archived = mgr.advanceStagePhase(options.stage, options.to as PipelinePhase, 'cli');
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(t('common.errorTmpl', lang, { msg }));
-        process.exit(1);
+      // 逐步推进（B5-2 / A3）：唯一路径 → 依次调用 advanceStagePhase（保留每步校验/日志/checkpoint）
+      // 中间态不回滚（A3）；失败 → 输出「已完成 / 失败点 / 剩余路径」+ exit 1
+      const totalSteps = phasePath.length;
+      let archivedAny = false;
+      for (let i = 0; i < totalSteps; i++) {
+        const next = phasePath[i];
+        let archived = false;
+        try {
+          archived = mgr.advanceStagePhase(options.stage, next as PipelinePhase, 'cli');
+        } catch (err: unknown) {
+          if (totalSteps > 1) {
+            const remaining = phasePath.slice(i).join(t('flow.advance.pathArrow', lang));
+            const doneTo = i > 0 ? phasePath[i - 1] : t('common.none', lang);
+            console.error(t('flow.advance.partialFailTmpl', lang, { done: doneTo, failed: next, remaining }));
+          }
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(t('common.errorTmpl', lang, { msg }));
+          process.exit(1);
+          return;
+        }
+        archivedAny = archivedAny || archived;
+        mgr.save();
+        // 归档 commit 必须在 flow.json save 之后执行，确保 commit 包含本次 phase 变更
+        if (archived) {
+          mgr.autoCommitOnDone(options.stage);
+        }
+        // 多步时逐步输出（单步保持既有静默，不新增输出）
+        if (totalSteps > 1 && !options.quiet) {
+          console.log(t('flow.advance.stepOkTmpl', lang, {
+            stage: options.stage || '',
+            from: i > 0 ? phasePath[i - 1] : startPhase,
+            to: next,
+          }));
+        }
+        // B5-3（REV-52-001）：多步路径每步完成后复检 blocking open REV（至少进入 done 前一次）
+        // 等价论证：addAutoFixReview 强制 status='resolved'（恒非 blocking open）且 advance 路径不创建 review，
+        // 故此复检为**防御性加固**（防未来语义漂移）。
+        if (totalSteps > 1) {
+          const blockingOpen = assertNoBlockingOpenRev(mgr, options.stage, lang);
+          if (blockingOpen.length > 0) {
+            const remainingPath = phasePath.slice(i + 1);
+            console.error(t('flow.advance.blockedByRevTmpl', lang, {
+              revs: blockingOpen.map((r) => r.id).join(', '),
+              remaining: remainingPath.length > 0 ? remainingPath.join(t('flow.advance.pathArrow', lang)) : t('common.none', lang),
+            }));
+            process.exit(1);
+            return;
+          }
+        }
       }
-      mgr.save();
-      // 归档 commit 必须在 flow.json save 之后执行，确保 commit 包含本次 phase 变更
-      if (archived) {
-        mgr.autoCommitOnDone(options.stage);
-      }
-      // N11-1（A8）：--quiet 完全静默（成功确认行亦不打印）；错误路径不受影响（stderr + exit 1）
+
+      // 成功确认（单步与多步统一）；--quiet 完全静默
       if (!options.quiet) {
         console.log(t('flow.advance.okTmpl', lang, { stage: options.stage || '', to: options.to }));
       }
 
       // git 脏区检查（安全网）：默认仅 --to done 时提示；--quiet / 非 done → 完全跳过（含跳过 git 子进程）
-      if (!options.quiet && (options.to === 'done' || archived)) {
+      if (!options.quiet && (options.to === 'done' || archivedAny)) {
         try {
           const gitStatus = execSync('git status --porcelain', {
             cwd: process.cwd(),
@@ -1625,6 +1680,31 @@ export function registerFlowCommand(program: Command): void {
 /** 创建 FlowManager 实例（使用当前工作目录） */
 function createManager(): FlowManager {
   return new FlowManager(process.cwd());
+}
+
+/**
+ * 断言不存在阻塞中的 open REV（REV 闭环兜底，B5-3 / REV-52-001）。
+ * 命中 → 打印列出并返回命中的 REV 列表（调用方决定退出码与文案）；无命中 → 空数组。
+ * 单步 advance 与多步循环共用（禁止双实现）。
+ * @param mgr FlowManager 实例
+ * @param stage 阶段 ID（可选；未提供时返回空）
+ * @param lang 语言标识（保留参数，供后续 i18n 化）
+ */
+function assertNoBlockingOpenRev(mgr: FlowManager, stage: string | undefined, lang: string): ReviewItem[] {
+  if (!stage) {
+    return [];
+  }
+  const stageReviews = mgr.getReviewItems().filter(
+    (r) => r.op.startsWith(stage) || r.op === stage,
+  );
+  const blockingOpen = stageReviews.filter((r) => r.blocking !== false && r.status === 'open');
+  if (blockingOpen.length > 0) {
+    console.warn(`[!] 检测到 ${blockingOpen.length} 个未解决的阻塞 REV：`);
+    for (const rev of blockingOpen) {
+      console.warn(`    ${rev.id}: ${rev.title} (priority=${rev.priority})`);
+    }
+  }
+  return blockingOpen;
 }
 
 /** 格式化毫秒时长为人类可读形式 */

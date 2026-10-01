@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T01:42:05.988Z",
-    "revision": 396
+    "updated": "2026-10-01T01:47:49.649Z",
+    "revision": 397
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-52",
-      "op": "op-010"
+      "op": ""
     },
     "retry": 0
   },
@@ -1983,9 +1983,9 @@
         },
         "op-010": {
           "title": "L2 补 3 族测试与全量回归门禁",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -9582,6 +9582,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-52.op-011",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-01T01:47:49.610Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-52.op-010",
         "attempts": 1
       }
     }

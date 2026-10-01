@@ -175,6 +175,7 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | **stage-53**（补登记） | current.md / dev_last.md 职能与格式重构 | 两条设计目的 + 三层分层写入全局约束；`current.md` 团队文件新格式（≤5 条 + `current_archive/`）；`dev_last.md` 索引 + 同名主题目录（R1~R6） | P1 | hard: stage-52 | D1~D10 / 5 op |
 | [stage-54](#stage-54收尾遗留缺陷清理发布前清账) | 收尾：遗留缺陷清理（发布前清账） | E1~E12 实测（需修 3：`cli/BUG-005` 整行锚定 / `cli/BUG-006` en 文案 i18n / `cli/BUG-003` help 补 `transitionsDiff`；已解决 5 仅登记；登记类 4）+ `bugs/index.md` 统计修正 + **清账层 42 条 pending REV** 核实清单（REV-001 修正后分层统计） | P0 | hard: stage-53 | 3 op |
 | [stage-55](#stage-55清掉项目级约束与-agent发布前收口) | 清掉项目级约束与 Agent（发布前收口） | 删根 `AGENTS.md`/`opencode.jsonc`/`.opencode/{agents,skills,ADAPTER.md}` + 删 `build.js` 自举步骤（防复活）；「模块手册」迁入全局模板（双语）；**先刷新全局（`setup`）后删**；supersede N1；`docs/manual/kb` 引用同步；新会话验证 | P0 | hard: stage-54 | 4 op |
+| **stage-56** | 发布前收尾（遗留清理 + skill 全量对齐 + 全局刷新 + 发布就绪） | S1 `flow phases --json` 5 键文案同步；S2 `openfeel-cli-usage` skill 全量对齐（16 项 + `:82` 修正 + 过时表重写）；S3 5 条 trivial REV（2 已解决仅登记 / 3 修）；S4 Bug 索引计数一致；S5 build + 备份 + `setup` 全局刷新；S6 回归门禁 + 发布就绪复核（**不含 `npm publish`**） | P0 | hard: stage-55 | 4 op |
 
 ### 依赖图
 
@@ -222,12 +223,16 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
                                                                                          │
                                                                                        hard
                                                                                          ▼
-                                                          stage-55（清项目级约束与 Agent · 发布前收口）──→  `npm publish`
+                                                          stage-55（清项目级约束与 Agent · 发布前收口）
+                                                                                        │
+                                                                                      hard
+                                                                                        ▼
+                                                          stage-56（发布前收尾：遗留清理 + skill 对齐 + 全局刷新）──→  `npm publish`
 ```
 
 ### 推荐执行顺序
 
-**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51 → stage-52 → stage-53 → stage-54 → stage-55**（→ `npm publish`，由用户决定）。
+**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51 → stage-52 → stage-53 → stage-54 → stage-55 → stage-56**（→ `npm publish`，由用户决定）。
 
 **理由**：
 - stage-41 与 stage-42 均修改 `src/core/flow-manager.ts` 与 `src/i18n-data/{zh-CN,en}.ts`，顺序执行避免同文件冲突。

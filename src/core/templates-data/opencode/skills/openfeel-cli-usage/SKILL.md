@@ -1,6 +1,6 @@
 ---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、本版本新增能力（flow phases、flow stage remove、plan stage add --deps、config effective、部署备份）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -24,31 +24,34 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | `openfeel update [path]` | 部署适配文件到目标项目 | `--lang`、`--force` |
 | `openfeel migrate [path]` | Legacy 布局迁移（检测/备份/迁移/回滚） | `--dry-run`、`--remap-assignee`、`--clean-global-core-md`；`migrate rollback` |
 | `openfeel flow ...` | 流水线状态管理 | 见下「flow 子命令」 |
-| `openfeel plan stage add\|list` | 工作阶段管理 | `add <name> --deps <ids...>` |
-| `openfeel plan scheme create\|list` | 操作方案管理 | `create <stage> <title>` |
-| `openfeel stage status\|set\|task` | `status.md` 原子操作 | `set <id> --status <v>`、`task <id> <no>`（`stage create` 已弃用） |
-| `openfeel config ...` | 配置管理 | `get\|set [--global]`、`get-lang\|set-lang`、`list-projects`、`effective [key]` |
+| `openfeel plan stage add\|list` | 工作阶段管理 | `add <name> --deps <ids...> --tasks <items...>` |
+| `openfeel plan scheme create\|publish\|rename\|list\|remove` | 操作方案管理 | `create <stage> <title> [--draft]`、`publish <stage> <opId>`、`rename <stage> <opId> --title <text>`、`remove <stage> <opId> [--force] [--dry-run]` |
+| `openfeel stage status\|set\|task` | `status.md` 原子操作 | `set <id> --status/--exec-mode/--auto-advance/--review-agent`、`task <id> [no] --add/--done/--undone`（`stage create` 已弃用） |
+| `openfeel config ...` | 配置管理 | `get\|set <key> <value> [--global]`（支持全量 `defaults.*`）、`get-lang\|set-lang`、`list-projects`、`effective [key]` |
 | `openfeel model set\|get\|list` | 模型三层级配置 | `set <agent> <model>` |
-| `openfeel lint i18n\|kb` | 健康检查（i18n 键一致性 / kb 过期引用） | — |
-| `openfeel knowledge ...` | 知识库管理 | `list` 等 |
+| `openfeel lint i18n\|kb` | 健康检查（i18n 键一致性 / kb 过期引用） | 发现问题**非 0 退出** |
+| `openfeel knowledge ...` | 知识库管理 | `list` / `add` / `search` / `index` / `dedup` |
 | `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识） | `<stage>` |
-| `openfeel view list\|accept` | 审查条目管理（`add` 已移除，改用 `flow review add`） | — |
-| `openfeel project ...` | 项目管理与概览 | `list` 等 |
+| `openfeel view list\|accept` | 审查条目验收（`add` 已移除，改用 `flow review add`） | — |
+| `openfeel project overview` | 项目结构概览 | `overview`（无 `list`/`info` 子命令） |
 | `openfeel roadmap create\|show` | 分期大纲管理 | `create <version>`、`show [version]` |
-| `openfeel instructions <artifactId>` | 为指定 artifact 生成结构化指令 | `--json` |
+| `openfeel instructions <artifactId>` | 为指定 artifact 生成结构化指令 | `--change <name>`、`--schema <name>`、`--json` |
 
-**flow 子命令**：`status` / `current` / `overview` / `phases` / `stage` / `metrics` / `advance`（`--stage <id> --to <phase>`、`--op`、`--force`、`--dry-run`）/ `attempt` / `log` / `review` / `retry` / `repair` / `checkpoint` / `health` / `recover` / `wizard`。
+**flow 子命令**：`status` / `current` / `overview` / `phases` / `stage` / `metrics` / `advance`（`--stage <id> --to <phase>`、`--op`、`--force`、`--dry-run`、`--quiet`）/ `attempt` / `log` / `review` / `retry` / `repair` / `ops` / `migrate` / `checkpoint` / `health` / `recover` / `wizard`。
 
-**本版本（v1.1.2）新增**：
-
-| 命令 | 说明 |
-|------|------|
-| `openfeel flow phases [--json]` | 自描述全部合法 phase 与运行时转移表；`--json` 输出 `{ phases, transitions, advanceAccepted }` |
-| `openfeel flow stage remove <stageId> [--force] [--dry-run] [--purge]` | 移除阶段。安全校验：`ops` 非空 / 当前活跃阶段 / 被其它阶段依赖时默认拒绝；`--force` 越过；`--dry-run` 仅预览；`--purge` 于 `save()` 成功后删除 `plan/{series}/{stageDir}/` 目录 |
-| `openfeel plan stage add <name> [--deps <ids...>]` | **完整入口**：建目录 + `overview.md`/`status.md` + 注册 `flow.json`；`--deps` 支持空格或逗号分隔 |
-| `openfeel config effective [key]` | 输出配置**有效值 + 来源**；省略 key 时输出四键（`execution_mode` / `auto_advance` / `test_enabled` / `merge_mode`） |
+**纠错/清理侧补充**：`flow review add|resolve|update|remove`；`flow ops list [--stage <id>] [--json]`（操作方案视图，draft 分组展示）；`flow repair [--prune-orphans]`（默认只报告，`--prune-orphans` 仅清键孤儿，单向不删文件）。
 
 > 命令职责分层：`plan stage add`（完整，推荐）> `flow stage add`（仅注册 `flow.json`，不建目录）> `stage create`（已弃用）。
+
+## v1.1.2 新增能力（stage-41~55）
+
+> 以下为 v1.1.2 相对上版的增量能力（分组摘要，细节以 `<cmd> --help` 为准）。
+
+- **A. 自描述与可纠错（stage-41）**：`flow phases [--json]`（**5 键**：`schemaVersion`/`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`）、`flow stage remove [--force] [--dry-run] [--purge]`、stageId 校验/冲突检测（`validateStageId` / `suggestStageId` / `findStageDirConflict`）、`plan stage add --deps`。
+- **B. 状态与口径（stage-42）**：`config effective [key]`（有效值 + 生效来源 `status.md > config.yaml > profile.yaml > builtin`）、`pipeline.phase` 全量 done 判定、审计日志 `register_stage` / `register_op`。
+- **C. 部署与备份（stage-46）**：覆盖写前自动备份 `~/.openfeel/backup/{ts}/` + `update_infos.md`「备份」类条目（Agent 按 `feel.md` 检查规则核对）。
+- **D. 纠正/清理侧命令面（stage-51/52）**：`plan scheme remove`（仅删 `flow.json` 注册键，不删 op 文件；done/checkpoint 保护）、`plan scheme rename --title`（必填，空标题报错）、`plan scheme publish` + `create --draft`（draft→pending，空模板拒绝）、`flow stage set --deps`（覆盖写入；**不带 `--deps` 视为清空**）、`flow review update|remove`、`stage set`（**幂等**：同值 no-op + 同值不生成 `.bak`；`--exec-mode <manual\|auto>` / `--auto-advance <enabled\|disabled>` / `--review-agent <agent>`）、`stage task --add|--done|--undone`、`plan stage add --tasks`、`flow repair --prune-orphans`、`flow health --fix [--dry-run]`（默认只报告；`--fix` **仅回写 status.md「状态」字段**；`--dry-run` 预览零写盘）、`flow ops list`、`flow advance --quiet` + `--to <远距 phase>`（存在唯一路径时自动逐步；`--dry-run` 展示完整路径）、`knowledge dedup`（检索相似条目，**只读建议，不修改 kb**）。`flow attempt` 对 **draft op 拒绝**。
+- **E. 输出/门禁/约定（stage-50/52）**：`flow status/current/health/metrics/overview --json`（纯 JSON 单文档，含 `schemaVersion`）、`lint i18n`/`lint kb` **非 0 退出**（门禁语义，无逃生阀）、`config set/get` 支持**全量 `defaults.*`**（Schema 驱动键白名单 + 值类型归一 + 枚举校验，非法报错不写盘）、`view add` **已移除**（改用 `flow review add`）、`NO_COLOR` 环境变量 / `--no-color`。
 
 ## phase 枚举与转移表
 
@@ -79,7 +82,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 | `done` | （终态） |
 
 - 转移表以**运行时** `.openfeel/pipeline.yaml` 为准；`openfeel flow phases` 查看当前生效值。
-- 推进：`openfeel flow advance --stage <id> --to <phase>`（组合条件路径另见 `advanceAccepted`）。
+- 推进：`openfeel flow advance --stage <id> --to <phase>`。**`advanceAccepted` = 内置 15 个 phase 的「推进白名单」**（`flow advance` 只接受这 15 个值），**不是**组合式条件键的替代品（旧文案曾误述，此处已更正）。**组合式条件差异**（如内置默认含 `review_passed|test_passed`，本仓 `pipeline.yaml` 未列）经 `--json.transitionsDiff.missing` **显式可见**（stage-50 裁定：**不补组合键**，改以 `transitionsDiff` 显式化）。
 - 参考：`.openfeel/manual/**`（CLI/flow 模块文档）。
 
 ## stageId 命名与目录映射

@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T10:36:10.307Z",
-    "revision": 509
+    "updated": "2026-10-01T10:03:49.340Z",
+    "revision": 499
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "v1.1.2-stage-56",
-      "op": "op-001"
+      "stage": "v1.1.2-stage-55",
+      "op": ""
     },
     "retry": 0
   },
@@ -2358,86 +2358,12 @@
     },
     "v1.1.2-stage-56": {
       "name": "v1.1.2-stage-56",
-      "phase": "exec_running",
+      "phase": "plan_review",
       "status": "planned",
       "deps": [
         "v1.1.2-stage-55"
       ],
-      "ops": {
-        "op-001": {
-          "title": "S2 openfeel-cli-usage skill 全量对齐 v1.1.2",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-002": {
-          "title": "S1 键数同步与 REV-U4-002 REV-U8-011 顺带清理",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-003": {
-          "title": "S3 剩余与 S4 公域 Bug 索引补齐至 17",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-004": {
-          "title": "S5 S6 build 传播 全局备份刷新与回归门禁",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        }
-      },
-      "stats": {
-        "start_time": "2026-10-01T10:08:41.367Z",
-        "end_time": "",
-        "duration_ms": 0
-      }
+      "ops": {}
     }
   },
   "reviews": [],
@@ -10966,102 +10892,6 @@
         "deps": [
           "v1.1.2-stage-55"
         ]
-      }
-    },
-    {
-      "time": "2026-10-01T10:08:41.362Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "from": "plan_pending",
-        "to": "plan_review"
-      }
-    },
-    {
-      "time": "2026-10-01T10:19:37.239Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "from": "plan_review",
-        "to": "plan_passed"
-      }
-    },
-    {
-      "time": "2026-10-01T10:19:37.575Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "from": "plan_passed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-10-01T10:20:35.735Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "opId": "op-001"
-      }
-    },
-    {
-      "time": "2026-10-01T10:20:36.038Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "opId": "op-002"
-      }
-    },
-    {
-      "time": "2026-10-01T10:20:36.351Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-10-01T10:20:36.656Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "opId": "op-004"
-      }
-    },
-    {
-      "time": "2026-10-01T10:23:11.102Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "from": "scheme_pending",
-        "to": "scheme_review"
-      }
-    },
-    {
-      "time": "2026-10-01T10:36:09.964Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "from": "scheme_review",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-10-01T10:36:10.303Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-56",
-        "from": "scheme_passed",
-        "to": "exec_running"
       }
     }
   ]

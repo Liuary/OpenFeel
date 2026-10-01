@@ -1,0 +1,81 @@
+# stage-56 op 依赖声明
+# 由 openfeel-schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-56
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-01"
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-55
+    type: hard
+    status: satisfied
+    reason: "stage-56 计划声明 hard 依赖 stage-55（已全部闭环，全局 phase = done）。"
+  - downstream: npm publish
+    type: hard
+    note: "**本阶段不含 `npm publish`**（A7 = 用户指令：本阶段为发布前最后一轮收尾，实际发布由用户在本阶段之后决定）；仅做 `npm pack --dry-run` / `npm publish --dry-run` 复核。"
+
+# 【阶段性质提示】
+# 发布前收尾阶段（遗留清理 + skill 全量对齐 + 全局刷新 + 发布就绪）→ **4 op，全串行**；
+# **关键不变量**：**build 与本地门禁严格早于备份 + `setup`**（op-004 内步骤 ①→⑥ 显式固化，REV-002）；
+# **唯一真实全局目录操作** = op-004 步骤 ③④⑤（备份先行 + 内容级判据门 + 回滚；禁用全文件哈希，REV-004）；
+# **范围**：不改业务源码（限 templates-data / docs / .openfeel / manual / CHANGELOG / 注释）；禁改 flow.json；禁创建 op 文件；禁 npm publish。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "S2 openfeel-cli-usage skill 全量对齐 v1.1.2"
+    produces:
+      - src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md
+    deps: []
+    notes: "**S2 + S1-1**：唯一权威源 skill 全量对齐 v1.1.2——补 **16 项**遗漏（`flow ops list` / `plan scheme remove|rename|publish` + `create --draft` / `flow stage set --deps` / `stage set --exec-mode|--auto-advance|--review-agent` + 幂等 / `stage task --add|--done|--undone` / `plan stage add --tasks` / `flow health --fix|--quick|--json` / `flow advance --quiet` + `--to` 自动逐步 / 5 命令 `--json` / `knowledge dedup` + `index`·`add` 宽容解析 / `lint` 非 0 退出 / `config set|get` 全量 `defaults.*` / flow 子命令补 `ops`·`migrate` + `repair --prune-orphans` / `flow review update|remove` + `view add` 已移除）+ 修正 `:82` 对 `advanceAccepted` 的**误称**（实为内置 15 phase 推进白名单；组合键 `review_passed|test_passed` 缺失经 `transitionsDiff.missing` 显式化；stage-50 裁定不补）+ 重写「本版本新增」为 **v1.1.2 新增能力（stage-41~55）** A~E 分组 + frontmatter `description` 更新；**两段式**；篇幅 **≤200 行 / ~14KB**；**保留**双口径声明 / 快照声明 / wizard 互引边界。**REV-003**：S2-16 半项（`view add` 已移除）SKILL.md:35 已有 → 不重复改写，仅补 `flow review update|remove`；3 项顺带完善按需；行号以实测为准。**禁手改生成段**（`update.ts`/`template-loader.ts` 由 op-004 build 传播）。"
+
+  op-002:
+    file: op-002.md
+    title: "S1 键数同步与 REV-U4-002 REV-U8-011 顺带清理"
+    produces:
+      - docs/commands.md
+      - .openfeel/manual/cli/commands.md
+      - CHANGELOG.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/managed-region.ts
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-U4.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-U8.md
+    deps: []
+    notes: "**S1-2/3/4 + S3-1 + S3-4**，与 op-001/003 文件互不相交。**S1 链分工**：S1-1（`SKILL.md:46` 5 键）归 op-001；本 op 负责 `docs/commands.md:91`、`.openfeel/manual/cli/commands.md:65`、`CHANGELOG.md:8` 三处手写载体补 `schemaVersion`（→5 键）；S1-5 生成段由 op-004 build 传播。**S3-1（REV-U4-002）**：`agents-md/en.md:494` 图注 `验收不通过 / review failed` → 纯英文 `acceptance rejected`（en 侧唯一 CJK；**以实际行号为准**）。**S3-4（REV-U8-011）**：`managed-region.ts:182` 注释「字段级白名单」→「incoming 全字段覆盖 + existing 独有字段 passthrough（浅合并，无白名单过滤）」（仅注释，实现不动）。REV 留痕：U4-002/U8-011 追加处理记录并置 `resolved`（待验收）。**禁手改生成段**。"
+
+  op-003:
+    file: op-003.md
+    title: "S3 剩余与 S4 公域 Bug 索引补齐至 17"
+    produces:
+      - .openfeel/manual/core/backup.md
+      - .openfeel/bugs/kb.md
+      - .openfeel/bugs/index.md
+      - .openfeel/plan/v1/stage-56/plan.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-U4.md
+      - .openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-U8.md
+    deps: []
+    notes: "**S3-5 + S4 + REV-001 + 已解决项登记**。**S3-5（REV-U8-012③）**：`manual/core/backup.md:36`「每次命令一个独立目录」→「每进程（通常即每命令）一个独立目录（`cachedTs` 为进程级缓存）」；①② 历史 `op-008.md` 不改仅登记。**S4（REV-001/A4 落实）**：公域 `.openfeel/bugs/kb.md` **新建**（`kb/BUG-001` 结论+根因+修复）；公域 `index.md` 补 `### kb` 段 + `templates/BUG-001` 行 + 统计改 **open 1 / closed 16 / 合计 17** + 尾部注记改写（二者已补齐）；与私域/实测文件数 17 一致。**REV-001**：`plan.md` §八 A4 状态「待裁定」→「已裁定（补齐至 17）」+ §S4 备选标注移除 + §九第 4 条去歧义（**裁定状态同步，非计划内容变更**）。**S3-2/S3-3**（`REV-U4-004`/`REV-U8-003`）实测已解决 → **仅登记 closed**，不改代码。REV-003：行号以实测为准。"
+
+  op-004:
+    file: op-004.md
+    title: "S5 S6 build 传播 全局备份刷新与回归门禁"
+    produces:
+      - src/core/update.ts
+      - src/core/template-loader.ts
+      - dist/**
+      - .openfeel/users/Liuary/log/2026-10-01-NNN.md
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+    notes: "**S1-5 + S5 + S6（本阶段唯一操作真实全局目录的 op）**。**步骤序显式固化（REV-002，硬约束，任一步失败即停；③ 之前不得触碰 `~/.config/opencode/`）**：**①** `npm run build`（幂等；生成段含 5 键 + `:82` 修正；**不复活** `.opencode/**`）→ **②** 本地全量门禁（`tsc` 0 / `npm test` 59 文件 985 用例 / `lint i18n` 726 键 exit 0 / `lint kb` 0 过期）**全部通过** → **③** 备份 `~/.config/opencode/` → `%TEMP%\\opencode\\stage56-global-backup` + SHA256 清单（`Test-Path` 真 + 计数 >0，失败即停）→ **④** `node bin/openfeel.js setup` → **⑤** 内容级门判据（① skills=17 / ② **skill 正文逐行比对 CONTENT-EQUAL（REV-004 可执行 node 命令：去 frontmatter vs begin/end 之间正文，CRLF 归一 + 剥 markers）** / ③ AGENTS.md 受管区一致 / ④ agents=9 / ⑤ jsonc 保留 `default_agent`+`$schema` / ⑥ 备份存在）→ **⑥** 全量回归（`--version` 1.1.2 / `npm pack --dry-run` / `publish --dry-run` 不实际发布 / 门禁复跑 / `git status` 零变化）。**回滚**：整目录恢复（首选）+ `~/.openfeel/backup/{ts}/` 逐文件（次选）。**禁用全文件哈希**（全局含 markers + YAML 折叠）。"
+
+# 【下游契约】（本阶段无可复用接口形态变更）
+downstream_contracts: []

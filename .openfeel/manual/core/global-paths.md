@@ -21,6 +21,7 @@
 | `getGlobalUpdateInfosPath()` | `~/.openfeel/update_infos.md` |
 | `getAuthJsonPath()` | `~/.local/share/opencode/auth.json` |
 | `getGlobalBackupRootPath()` | `~/.openfeel/backup`（部署覆盖前备份统一根，stage-46） |
+| `getCliLogsDir()` | `~/.openfeel/cli/logs`（CLI 跨项目诊断运行日志目录，stage-58） |
 
 所有函数基于 `homedir()`（`node:os`）+ `join`（`node:path`）拼接，返回绝对路径（不含 `~` 字面量）。
 
@@ -64,3 +65,4 @@ src/core/update-state.ts（全局 state 读写）
 | v1.1.2-stage-43 | 文档化全局 `config.json` 死映射的安全清理步骤（BUG-004 收口：N4 隔离修复 + 不自动清理裁定） |
 | v1.1.2-stage-48 | 死映射**已清理**（455→0，op-006，含备份 `config.json.bak.2026-09-29T14-04-13-412Z`）；清理指引升级为**四步保护**（末段匹配陷阱 + 删除数断言 + 备份 + 可还原复核） |
 | v1.1.2-stage-50 | 新增 `getHomedir()` 导出（T27，`backup.ts` 委托，消除直接 `node:os` 依赖）；**「homedir 分散 4 处」陈旧名单修正**（实测已单点收敛，仅本模块 import `node:os`；见 `kb` 与 U3-008 收口） |
+| v1.1.2-stage-58 | 新增 `getCliLogsDir()`（`~/.openfeel/cli/logs`，供 `runtime-log.ts`） |

@@ -12,6 +12,15 @@
 |------|------|
 | `-v, --version` | 输出版本号 |
 | `-h, --help` | 显示命令帮助信息 |
+| `--no-color` | 禁用彩色输出（亦可通过 `NO_COLOR=1`；与编码解耦） |
+| `--encoding <encoding>` | 输出编码（`utf8\|gbk\|auto`，默认 `auto`） |
+| `--log-file <path>` | 运行日志文件路径（默认 `~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log`） |
+| `--no-log` | 关闭运行日志（亦可通过 `OPENFEEL_LOG=0` / `OPENFEEL_NO_LOG=1`） |
+| `--debug` | 记录 debug 级运行日志（默认仅 info/warn/error） |
+
+**输出编码自适应（v1.1.2-stage-58）**：`auto` 在 Windows 非 TTY（管道/重定向）下按控制台 `chcp` 映射转码，TTY / POSIX 直通 UTF-8；`--json` **恒 UTF-8**（覆盖显式 `--encoding` / `OPENFEEL_ENCODING` / auto）；不可编码字符降 `?` 且**不告警**；**仅支持 UTF-8 字符串语义**（非默认 encoding 的直接 write 不受支持）。
+
+**运行日志（v1.1.2-stage-58）**：默认**开启**、恒 UTF-8、按日一文件（不自动清理）；`info`/`warn`/`error` 默认记录、`debug` 默认关；best-effort（写失败不阻塞 CLI）；与 `.openfeel/log/**`（工作区审计）、`flow.json.log[]`（状态审计）、`update_infos.md`（部署记录）四类日志**语义分离**；`error` 仅记「命令处理中抛出的异常」，commander 解析期错误（未知命令/选项/缺参）经 `program.error()` 直接退出、**不入日志**。
 
 ---
 

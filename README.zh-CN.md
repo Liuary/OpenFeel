@@ -56,6 +56,8 @@ openfeel flow status
 - **结构化输出**：`flow status/current/health/metrics/overview --json`（纯 JSON + `schemaVersion`）。
 - **纠正/清理侧命令面**：`plan scheme remove/rename/publish`、`flow ops list`、`flow health --fix`、`knowledge dedup`、`lint` 发现问题非 0 退出。
 - **部署与备份**：部署覆盖前自动备份 `~/.openfeel/backup/{ts}/`；新增 skill `openfeel-cli-usage`（skill 16 → 17）。
+- **输出编码自适应（stage-58）**：Windows 非 TTY（管道/重定向）下按控制台 `chcp` 自动转码，TTY / POSIX 直通 UTF-8；`--json` **恒 UTF-8**；`--encoding utf8|gbk` 或 `OPENFEEL_ENCODING` 可覆盖；不可编码字符降 `?` 不告警。
+- **运行日志（stage-58）**：默认写入 `~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log`（UTF-8，按日一文件）；`--log-file <path>` 改路径，`--no-log` / `OPENFEEL_LOG=0` 关闭，`--debug` 记录 debug 级。
 
 ## 命令参考
 
@@ -166,7 +168,7 @@ Core 层
 ```bash
 npm install        # 安装依赖
 npm run build      # 编译 TypeScript
-npm test           # 运行测试（986 用例 / 59 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
+npm test           # 运行测试（1018 用例 / 61 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
 ```
 
 ## 致谢

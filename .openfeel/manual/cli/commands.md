@@ -31,11 +31,27 @@ src/commands/setup.ts       registerSetupCommand
 
 新增命令组：在 `src/commands/` 创建 `registerXxxCommand(program)` 模块，并在 `src/cli/index.ts` 末尾追加 import + register 调用。
 
+## 全局选项
+
+除 Commander 内置 `-v, --version` / `-h, --help` 外，根程序注册以下**全局选项**（v1.1.2-stage-58 新增 `--encoding`/`--log-file`/`--no-log`/`--debug`）：
+
+| 选项 | 说明 |
+|------|------|
+| `--no-color` | 禁用彩色输出（亦可通过 `NO_COLOR=1`；当前无着色实现，与编码解耦） |
+| `--encoding <encoding>` | 输出编码（`utf8\|gbk\|auto`，默认 `auto`） |
+| `--log-file <path>` | 运行日志文件路径（默认 `~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log`） |
+| `--no-log` | 关闭运行日志（亦可通过 `OPENFEEL_LOG=0` / `OPENFEEL_NO_LOG=1`） |
+| `--debug` | 记录 debug 级日志（默认仅 info/warn/error） |
+
+**输出编码自适应（stage-58）**：`auto` 在 Windows 非 TTY（管道/重定向）下按 `chcp` 映射转码，TTY/POSIX 直通 UTF-8；`--json` **恒 UTF-8**（解析第 1 步最高优先，覆盖显式 `--encoding`/`OPENFEEL_ENCODING`/auto）；不可编码字符降 `?` 且**不告警**；**仅支持 UTF-8 字符串语义**（非默认 encoding 的直接 write 不受支持）。详见 [输出编码自适应](output-encoding.md)。
+
+**运行日志（stage-58）**：默认**开启**，恒 UTF-8，按日一文件（不自动清理）；`info`/`warn`/`error` 默认记录、`debug` 默认关；best-effort（写失败不阻塞 CLI）；与 `.openfeel/log/**` / `flow.json.log[]` / `update_infos.md` 四类日志**语义分离**；`error` 仅记「命令处理中抛出的异常」，**commander 解析期错误不入日志**（REV-002）。详见 [CLI 运行日志](../core/runtime-log.md)。
+
 ## i18n 集成
 
 - 翻译数据：`src/core/i18n-data/{zh-CN,en}.ts`，按域组织（common/flow/init/...）
 - 核心函数：`t(key, lang, vars)` 按 key 取翻译；`getCliLang(projectPath)` 确定当前语言
-- `applyHelpI18n(program)`：递归遍历 Commander 命令树，将 description / option 硬编码文本替换为当前语言翻译（`help.{命令}.{选项}` key 规则）。**v1.1.2-stage-50（T38）起**：`walkCmd` 增 **`arguments` 遍历**（键 `help.<path>.arg<name>`，以 `hasKey` 守卫避免缺失告警）——en 下位置参数描述同走 i18n；**v1.1.2-stage-51 起全量补齐**（`cli/BUG-004` **closed**）：存量 20 处 + 新增子命令 `knowledge dedup` 1 处 + 已补 `stage.create` 1 处，均有 `help.<path>.arg<name>` 双语键；op-009 增**运行时全量枚举门禁**（`test/cli/help-arguments.test.ts`：动态遍历命令树，en 下 `Arguments:` 段 CJK 零命中，**33 个含位置参数的命令**，新增命令自动纳入）。并发冲突文案亦收敛至 `handleCliError` 单点。
+- `applyHelpI18n(program)`：递归遍历 Commander 命令树，将 description / option 硬编码文本替换为当前语言翻译（`help.{命令}.{选项}` key 规则）。**v1.1.2-stage-50（T38）起**：`walkCmd` 增 **`arguments` 遍历**（键 `help.<path>.arg<name>`，以 `hasKey` 守卫避免缺失告警）——en 下位置参数描述同走 i18n；**选项遍历亦以 `hasKey` 守卫（v1.1.2-stage-58：`--encoding` 等根选项无 `help.openfeel.<opt>` 键，避免每命令缺失告警）**；**v1.1.2-stage-51 起全量补齐**（`cli/BUG-004` **closed**）：存量 20 处 + 新增子命令 `knowledge dedup` 1 处 + 已补 `stage.create` 1 处，均有 `help.<path>.arg<name>` 双语键；op-009 增**运行时全量枚举门禁**（`test/cli/help-arguments.test.ts`：动态遍历命令树，en 下 `Arguments:` 段 CJK 零命中，**33 个含位置参数的命令**，新增命令自动纳入）。并发冲突文案亦收敛至 `handleCliError` 单点。
 
 ## 错误处理与退出码
 

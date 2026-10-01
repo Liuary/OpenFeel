@@ -56,6 +56,8 @@ openfeel flow status
 - **Structured output**: `flow status/current/health/metrics/overview --json` (pure JSON + `schemaVersion`).
 - **Correction/cleanup CLI surface**: `plan scheme remove/rename/publish`, `flow ops list`, `flow health --fix`, `knowledge dedup`, `lint` non-zero exit on findings.
 - **Deployment & backup**: automatic backup before overwrite at `~/.openfeel/backup/{ts}/`; new skill `openfeel-cli-usage` (skills 16 → 17).
+- **Output encoding adaptation (stage-58)**: on Windows non-TTY (pipe/redirect), output is transcoded to the console `chcp` codepage; TTY / POSIX pass through UTF-8; `--json` is **always UTF-8**; override with `--encoding utf8|gbk` or `OPENFEEL_ENCODING`; unencodable chars degrade to `?` without warning.
+- **Runtime log (stage-58)**: written by default to `~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log` (UTF-8, one file per day); `--log-file <path>` changes the path, `--no-log` / `OPENFEEL_LOG=0` disables it, `--debug` enables debug-level entries.
 
 ## Command Reference
 
@@ -166,7 +168,7 @@ Core Layer
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (986 cases / 59 test files; Linux CI skips 1 Windows-only case)
+npm test           # Run tests (1018 cases / 61 test files; Linux CI skips 1 Windows-only case)
 ```
 
 ## Acknowledgments

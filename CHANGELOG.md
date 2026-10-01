@@ -15,6 +15,9 @@
 - [stage-50] CI 环境守卫与版本门禁（stage-48）：测试前后对全局目录 + 仓库项目配置做 sha256 快照比对（守卫窗口前移），`--version` 与 `package.json.version` 一致性门禁
 - [stage-50] **Added（R3）**：`openfeel config set`/`get` 支持**全量 `defaults.*`** 键（`execution_mode` / `test_enabled` / `merge_mode` 等），含枚举值校验与布尔类型归一
 - [stage-50] **Added（R6）**：`npm run test:coverage` 与 CI 覆盖率**报告**（仅观测基线，不阻断）
+- [stage-58] **Added**：输出编码自适应——`--encoding <utf8|gbk|auto>` / `OPENFEEL_ENCODING`；Windows 非 TTY（管道/重定向）按控制台 `chcp` 转码；`--json` **恒 UTF-8**（第 1 步最高优先）；不可编码字符降 `?` 不告警
+- [stage-58] **Added**：CLI 运行日志——`~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log`（**恒 UTF-8、默认开启**）；`--log-file <path>` / `--no-log` / `--debug`；与 `.openfeel/log/**`、`flow.json.log[]`、`update_infos.md` 四类日志**语义分离**；`error` 仅记命令处理中抛出的异常（解析期错误不入日志）
+- [stage-58] **Added**：直接依赖 `iconv-lite@^0.7.2`（MIT；原已经由 `@inquirer` 间接在 prod 依赖树中，本阶段提升为直接依赖）
 
 ### Changed
 - `auto_advance` 口径统一为「项目 `config.yaml` 优先、全局画像兜底」三级有效链

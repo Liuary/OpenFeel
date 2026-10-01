@@ -739,8 +739,8 @@ export function registerFlowCommand(program: Command): void {
           if (options.force) {
             console.warn(t('flow.advance.forceRevRefused', lang));
           }
-          console.error('错误：blocking REV 未解决前禁止推进到 done。');
-          console.error('请先解决上述 REV 或通过 flow review resolve 标记为非阻塞。');
+          console.error(t('flow.advance.blockingRevRefused', lang));
+          console.error(t('flow.advance.blockingRevHint', lang));
           process.exit(1);
           return;
         }

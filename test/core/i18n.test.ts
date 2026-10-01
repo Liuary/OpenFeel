@@ -116,4 +116,12 @@ describe('help.flow.phases.json（stage-48 op-004）', () => {
   it('en 文案含 advanceAccepted', () => {
     expect(t('help.flow.phases.json', 'en')).toContain('advanceAccepted');
   });
+
+  it('zh-CN 文案含 transitionsDiff（stage-54 E3）', () => {
+    expect(t('help.flow.phases.json', 'zh-CN')).toContain('transitionsDiff');
+  });
+
+  it('en 文案含 transitionsDiff（stage-54 E3）', () => {
+    expect(t('help.flow.phases.json', 'en')).toContain('transitionsDiff');
+  });
 });

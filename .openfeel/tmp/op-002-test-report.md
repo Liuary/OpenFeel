@@ -1,53 +1,54 @@
-# 自测报告 — op-002
+# 自测报告 — op-002（v1.1.2-stage-54）
 
-- **执行时间**：2026-10-01 10:45
+- **执行时间**：2026-10-01 16:45
 - **执行 Agent**：openfeel-executor
-- **重试次数**：第 1 次
+- **重试次数**：1（首次通过）
 
 ## 执行摘要
-D3（dev_last 索引化规则 R1~R6 + 索引/主题骨架）+ D4（Feel 行为改写，zh/en）全部完成，自测通过。
+E2 en 泄漏收敛（新增 2 i18n 键）、E3 help 文案补 `transitionsDiff`、E12 门禁 724→726 全部落地；新增断言 ⑤/⑤b/⑥ 全绿；JSON 契约未动。
 
 ## 实施步骤完成情况
-- [x] D3-1：zh dev_last 规则块（团队/索引说明 + R1~R6 表）+ 主题文件名映射（A10）
-- [x] D3-2：旧 7 节模板 → 索引骨架 + 主题骨架 + 写入说明（与 op-002 §三 逐字一致）
-- [x] D3-3：en 侧逐段对齐（Topic Index / Converged Topics / Public Handoff Section / Never archive / merge similar topics first / 英文主题文件名 / 加锁协议）
-- [x] D4-1：Feel 启动读取改「索引 + 按需主题 + 旧格式惰性迁移」
-- [x] D4-2：偏好写入不整文件覆盖
-- [x] D4-3：决策写入 `dev_last/decisions.md`
-- [x] D4-4：会话结束 4 步 → 5 步（前置加锁临界区 A9）
-- [x] D4-5：阶段结束检查补注（索引 + 主题文件）
-- [x] D4-6：en 侧逐段对齐
-- [x] D4-7：文本保持串全部保留
+- [x] E2-① `flow.ts:742-743` 改走 `t('flow.advance.blockingRevRefused'/'blockingRevHint')`；`:740` 不变
+- [x] E2-② zh/en 各 +2 键（同键同序；zh 与原中文逐字一致；en 语义对称）
+- [x] E2-③ A4 4 处 `console.log` 中文未改并登记
+- [x] E3-① `help.flow.phases.json` zh/en 文案补 `transitionsDiff`（JSON 未动）
+- [x] E3-② `i18n.test.ts` 追加 2 条断言（`advanceAccepted` 既有断言保留）
+- [x] E12 验收 3 使用 726 键
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 验收 5：「对话末尾覆盖写入」零命中 | ✅ | |
-| 验收 6：en 旧串零命中 | ✅ | |
-| 验收 7：文本保持串（update_infos 2/2、edit 工具、重启会话、edit tool、restart）+ resolveUpdateInfo 零 | ✅ | |
-| 验收 8：zh 三节（主题索引/已收敛主题/公共交接区） | ✅ | 5 |
-| 验收 9：en 三节（Topic Index/Converged Topics/Public Handoff Section） | ✅ | 5 |
-| 验收 10：feel.md zh/en 含 `dev_last/` | ✅ | 各 4 |
-| 验收 11：不归档/Never archive | ✅ | zh 6 / en 2（已对齐大写精确串） |
-| 验收 12：`dev_last/decisions.md` 在 feel.md | ✅ | 各 2 |
-| 验收 13：withFileLock 四文件各 ≥1 | ✅ | zh/en agents-md 各 2；feel.md 各 1 |
-| 验收 14：锁名 `dev-last-` + `.openfeel/tmp/locks/` | ✅ | 四文件命中 |
-| 验收 15：5 个英文主题文件名 | ✅ | zh/en 各 3 行含全部 5 名 |
-| 验收 16：中文文件名零命中 | ✅ | node 机检 hits=0 |
-| 验收 17：并发 fixture 无丢失/无覆盖 | ✅ | 2 写者均保留；无锁对照复现覆盖 |
-| build | ✅ | 一致性校验通过 |
-| npm test | ✅ | 59 文件 / 942 用例 |
-| lint i18n / kb | ✅ | 724 键 exit 0 / 0 过期 |
-| config.yaml 零 diff | ✅ | |
+| 验收 5 `flow.ts` 裸中文 console 零命中 | ✅ | `rg` exit 1（无匹配） |
+| 断言⑤ en 模式 blocking REV CJK 零命中 | ✅ | exit 1 + `Error: cannot advance to done` + 无 CJK |
+| 断言⑤b zh 语义不变 | ✅ | 输出含原两句中文（逐字） |
+| 断言⑥ help 文案含 transitionsDiff（zh/en） | ✅ | i18n.test 17 例全绿 |
+| 断言⑥b JSON 5 键回归 | ✅ | 既有 `op-001/B1-6` 覆盖（phases/transitions/advanceAccepted/transitionsDiff/schemaVersion） |
+| 翻转清单（强制翻转 0 项） | ✅ | 追加式；原 `advanceAccepted` 断言保留 |
+| E2-③ A4 登记 | ✅ | `project.ts:101`、`core/init.ts:48/110`、`core/update.ts:93`，未改 |
+| `npm run build` / `npm test` | ✅ | 59 文件 / **987 用例**（983 + 4） |
+| `lint i18n` / `lint kb` / `tsc` | ✅ | **726 键** exit 0 / 0 过期 265 引用 / 0 错误 |
+| 隔离与零污染 | ✅ | config.yaml hash+mtime 前后一致 |
 
 ## 产出文件
-- `src/core/templates-data/agents-md/zh-CN.md` / `en.md`
-- `src/core/templates-data/opencode/agents/zh-CN/feel.md` / `en/feel.md`
-- `src/core/template-loader.ts`（build 生成段）
+- `src/commands/flow.ts`（E2-① 两行迁 i18n）
+- `src/core/i18n-data/zh-CN.ts`（+2 键；help 文案）
+- `src/core/i18n-data/en.ts`（+2 键；help 文案）
+- `test/core/i18n.test.ts`（断言⑥）
+- `test/commands/flow.test.ts`（断言⑤/⑤b）
 
 ## 前置校验结果
-- 方案完整性/Phase 合法性/流转合法性：均通过（同 op-001）
+- 方式：`openfeel flow health --quick` → 通过
+- 方案完整性：通过
+- Phase 合法性：通过（stage-54.phase=exec_running）
+- 流转合法性：通过
 
 ## 偏差记录
-- en 侧初稿用「never archived」，为对齐验收 11 的精确串 `Never archive` 改为大写形式（R3 + 引言 + 骨架），无功能影响。
-- 6 主题 fixture 的运行验证在本阶段以**模板文本断言**替代（本阶段无运行时逻辑）——按 op-002 §七说明记录该局限。
+无超范围产出；无跳步。**未改** `flow.json`（仅 CLI op 状态推进）；**未改** `docs/`/`manual/`（要点归 op-003）；无新增依赖。
+
+## E2-③/A4 已登记未修（4 处，实测命中，最小范围原则）
+| 位点 | 内容 |
+|------|------|
+| `src/commands/project.ts:101` | `console.log('   平台适配器目录（.opencode/）')` |
+| `src/core/init.ts:48` | `console.log('  2. 中文 (zh-CN) [default]')`（语言菜单双语可保留） |
+| `src/core/init.ts:110` | `console.log('   2. 中文 (zh-CN)')`（同上） |
+| `src/core/update.ts:93` | `console.log('（非交互环境，使用默认工具列表）')` |

@@ -1001,6 +1001,61 @@ describe('flow 命令（stage-41）', () => {
     expect(after.stages['v1.1.2-stage-83'].phase).toBe('test_passed');
   });
 
+  // ── stage-54/op-002：E2 blocking REV 拒绝文案 i18n（cli/BUG-006） ──
+
+  it('op-002/E2: en 模式 blocking REV 拒绝路径 CJK 零命中', async () => {
+    // 项目语言切为 en（.info.json 优先级最高）
+    writeFileSync(join(tmpDir, '.openfeel', '.info.json'), JSON.stringify({ user: 'test', lang: 'en' }), 'utf-8');
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-84');
+    const st = mgr.getData()!.stages['v1.1.2-stage-84'];
+    st.phase = 'test_passed';
+    st.status = 'testing';
+    mgr.getData()!.reviews.push({
+      id: 'REV-BLK2', op: 'v1.1.2-stage-84.op-001', status: 'open', priority: 'high',
+      title: 'blocking', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z', blocking: true,
+    });
+    mgr.save();
+    errorMock.mockClear();
+    exitMock.mockClear();
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-84', '--to', 'done']);
+
+      expect(exitMock).toHaveBeenCalledWith(1);
+      const out = [
+        ...errorMock.mock.calls.map((c) => c[0] as string),
+        ...warnMock.mock.calls.map((c) => c[0] as string),
+      ].join('\n');
+      expect(out).toContain('Error: cannot advance to done');
+      expect(out).not.toMatch(/[\u4e00-\u9fff]/);
+    } finally {
+      warnMock.mockRestore();
+    }
+  });
+
+  it('op-002/E2: zh 模式 blocking REV 拒绝文案逐字不变', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-85');
+    const st = mgr.getData()!.stages['v1.1.2-stage-85'];
+    st.phase = 'test_passed';
+    st.status = 'testing';
+    mgr.getData()!.reviews.push({
+      id: 'REV-BLK3', op: 'v1.1.2-stage-85.op-001', status: 'open', priority: 'high',
+      title: 'blocking', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z', blocking: true,
+    });
+    mgr.save();
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-85', '--to', 'done']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const errOut = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errOut).toContain('错误：blocking REV 未解决前禁止推进到 done。');
+    expect(errOut).toContain('请先解决上述 REV 或通过 flow review resolve 标记为非阻塞。');
+  });
+
   it('op-004/B5-3: 多步 advance 不创建 review', async () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.1.2-stage-82');

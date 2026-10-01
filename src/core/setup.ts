@@ -11,6 +11,7 @@ import { deployGlobalAsset, SKILL_DEFINITIONS } from './update.js';
 import { appendUpdateInfo } from './update-infos.js';
 import { backupFileBeforeWrite, notifyBackupIfTTY, BackupError } from './backup.js';
 import { mergeGlobalOpencodeJsonc } from './opencode-config.js';
+import { t } from './i18n.js';
 import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath } from './global-paths.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { readJsoncFile } from './fs/safe-read.js';
@@ -79,7 +80,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
         out = mergeGlobalOpencodeJsonc(current);
       } catch (err) {
         // 解析失败时保留原文件，避免破坏用户配置
-        console.warn(`[setup] 全局平台适配器配置（opencode.jsonc）解析失败，跳过合并保留原文件: ${(err as Error).message}`);
+        console.warn(t('setup.globalJsoncParseSkipTmpl', lang, { err: (err as Error).message }));
         out = current;
       }
       atomicWriteFileSync(jsoncPath, out);
@@ -92,7 +93,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
     if (err instanceof BackupError) {
       // 备份失败（REV-011-A）：跳过全局 jsonc 写入、记 anomaly、继续其余步骤（对齐 B3 幂等语义）
       appendUpdateInfo('anomaly', { absolutePath: jsoncPath, note: 'backup_failed' });
-      console.warn(`[setup] ${err.message}；已跳过全局 opencode.jsonc 写入，继续其余步骤`);
+      console.warn(t('setup.globalJsoncWriteSkipTmpl', lang, { err: err.message }));
     } else {
       throw err; // 非备份错误照旧上抛（锁超时等不回退）
     }

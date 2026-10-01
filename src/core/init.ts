@@ -308,7 +308,7 @@ export async function initProject(projectPath: string, cliLang?: string): Promis
           if (err instanceof BackupError) {
             // 备份失败 → 不写盘（磁盘 package.json 保持原样；pkg 仅在内存中被修改）
             appendUpdateInfo('anomaly', { projectRoot: projectPath, relativePath: 'package.json', note: 'backup_failed' });
-            console.warn(`[init] ${err.message}；已跳过 package.json 改写`);
+            console.warn(t('init.pkgBackupSkipTmpl', getCliLang(projectPath), { err: err.message }));
             skipped.push('package.json (backup failed)');
           } else {
             throw err;

@@ -8,6 +8,7 @@ import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync, copyFileSync 
 import { resolve, join, dirname, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { t } from './i18n.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
 import {
   loadUpdateState, saveUpdateState, loadGlobalUpdateState, saveGlobalUpdateState,
@@ -544,7 +545,7 @@ export function migrateProject(
       try {
         merged = mergeGlobalOpencodeJsonc(jsoncRaw);
       } catch (err) {
-        console.warn(`[migrate] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
+        console.warn(t('migrate.globalJsoncParseSkipTmpl', lang, { err: (err as Error).message }));
         merged = jsoncRaw;
       }
       // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套

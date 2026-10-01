@@ -140,16 +140,13 @@ function syncToFlowJson(
       const v = validateStageId(stageName);
       if (!v.ok) {
         // 不静默吞错（外层 try/catch 会吞非并发错误）：显式告警并跳过自动注册
-        console.warn(`[WARN] ${v.reason}；已跳过 flow.json 自动注册（op 文件已创建）。`);
+        console.warn(t('plan.scheme.skipAutoRegisterTmpl', getCliLang(projectPath), { reason: v.reason ?? '' }));
         return;
       }
       const conflict = findStageDirConflict(projectPath, stageName);
       if (conflict) {
         // 命中既有不同 stageId 映射同一目录：告警并跳过自动注册，避免写入脏键
-        console.warn(
-          `[WARN] 阶段 '${stageName}' 与 '${conflict}' 映射同一 (series, stageDir)；` +
-          `已跳过 flow.json 自动注册（op 文件已创建），请检查 stageId。`,
-        );
+        console.warn(t('plan.scheme.dirConflictSkipTmpl', getCliLang(projectPath), { stage: stageName, other: conflict }));
         return;
       }
       flowData.stages[stageName] = {
@@ -206,10 +203,7 @@ function syncToFlowJson(
   } catch (err) {
     // 并发冲突：op 文件已创建，但 flow.json 注册失败；不静默吞错，告警并提示兜底
     if (isFlowConcurrentError(err)) {
-      console.warn(
-        `[WARN] op ${opId} 已创建，但 flow.json 同步因并发冲突失败；` +
-        `请执行 openfeel flow repair 兜底或重新注册该 op。`,
-      );
+      console.warn(t('plan.scheme.concurrentSkipTmpl', getCliLang(projectPath), { opId }));
       return;
     }
     // 其它同步失败不阻塞方案创建（既有语义：静默忽略）

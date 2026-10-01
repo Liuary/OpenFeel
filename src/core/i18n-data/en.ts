@@ -172,6 +172,7 @@ export const flow: I18nDomain = {
   'log.noLogs':                 { key: 'flow.log.noLogs',                 zh: '', en: 'No operation logs' },
   'log.recentTitleTmpl':        { key: 'flow.log.recentTitleTmpl',        zh: '', en: 'Recent {n} operation logs' },
   'log.detail':                 { key: 'flow.log.detail',                 zh: '', en: 'Details' },
+  'log.writeFailedTmpl':        { key: 'flow.log.writeFailedTmpl',        zh: '', en: '[WARN] Failed to write public log: {err}' },
   'log.layoutNestedTag':        { key: 'flow.log.layoutNestedTag',        zh: '', en: '(nested)' },
   'log.layoutLegacyTag':        { key: 'flow.log.layoutLegacyTag',        zh: '', en: '(legacy flat)' },
   'log.legacyDirTmpl':          { key: 'flow.log.legacyDirTmpl',          zh: '', en: 'Legacy flat directory ({date}): no day_index.md' },
@@ -305,6 +306,7 @@ export const init: I18nDomain = {
   'prompt.bilingual':           { key: 'init.prompt.bilingual',           zh: '', en: 'Select Agent prompt language / 选择 Agent 提示词语言:' },
   'agentLangTmpl':              { key: 'init.agentLangTmpl',              zh: '', en: 'Agent prompt language: {lang}' },
   'invalidLangWarnTmpl':        { key: 'init.invalidLangWarnTmpl',        zh: '', en: 'Invalid --lang value "{lang}", falling back to interactive selection' },
+  'pkgBackupSkipTmpl':          { key: 'init.pkgBackupSkipTmpl',          zh: '', en: '[init] {err}; skipped package.json rewrite' },
   // ensureGlobalConfig 非交互环境消息（REV-006）
   'firstUse.nonInteractive':    { key: 'init.firstUse.nonInteractive',    zh: '', en: 'First time using OpenFeel: Non-interactive environment detected, global default language set to zh-CN.' },
   'firstUse.changeHint':        { key: 'init.firstUse.changeHint',        zh: '', en: 'Use openfeel config set-lang <zh-CN|en> to change.' },
@@ -336,6 +338,10 @@ export const update: I18nDomain = {
   'appendedTitle':              { key: 'update.appendedTitle',              zh: '', en: 'Appended {n} file(s) (no control-region marker; managed content appended to the end, pending session-start review)' },
   'appendedHint':               { key: 'update.appendedHint',               zh: '', en: 'See ~/.openfeel/update_infos.md; each entry will be checked and prompted for repair at session start.' },
   'appendedManyWarning':        { key: 'update.appendedManyWarning',        zh: '', en: '⚠️ Appending {n} files at once — possible update_state corruption or first migration. Run openfeel update then check ~/.openfeel/update_infos.md.' },
+  'fileWriteSkipTmpl':          { key: 'update.fileWriteSkipTmpl',          zh: '', en: '[update] {err}; skipped writing this file' },
+  'legacyLayoutWarnTmpl':       { key: 'update.legacyLayoutWarnTmpl',       zh: '', en: '[update] Detected legacy in-project layout .opencode/{dirs}; run openfeel migrate (provided since stage-39) to migrate.' },
+  'globalJsoncParseSkipTmpl':   { key: 'update.globalJsoncParseSkipTmpl',   zh: '', en: '[update] Failed to parse global opencode.jsonc (may contain block comments); skipping merge and keeping the original file: {err}' },
+  'globalJsoncWriteSkipTmpl':   { key: 'update.globalJsoncWriteSkipTmpl',   zh: '', en: '[update] {err}; skipped global opencode.jsonc write, continuing with remaining steps' },
 };
 
 /* ==================== project ==================== */
@@ -434,6 +440,9 @@ export const plan: I18nDomain = {
   'scheme.remove.notFoundTmpl':  { key: 'plan.scheme.remove.notFoundTmpl',  zh: '', en: 'Not found: stage {stage} or scheme {opId}' },
   'scheme.implicitRegisterTmpl': { key: 'plan.scheme.implicitRegisterTmpl', zh: '', en: 'Stage {stage} was not registered; stage skeleton created (overview.md / status.md)' },
   'scheme.skeletonWarnTmpl':     { key: 'plan.scheme.skeletonWarnTmpl',     zh: '', en: 'Failed to create stage skeleton ({err}); skipped. Please create overview.md / status.md manually' },
+  'scheme.skipAutoRegisterTmpl': { key: 'plan.scheme.skipAutoRegisterTmpl', zh: '', en: '[WARN] {reason}; skipped flow.json auto-registration (op file created).' },
+  'scheme.dirConflictSkipTmpl':  { key: 'plan.scheme.dirConflictSkipTmpl',  zh: '', en: "[WARN] Stage '{stage}' and '{other}' map to the same (series, stageDir); skipped flow.json auto-registration (op file created); please check the stageId." },
+  'scheme.concurrentSkipTmpl':   { key: 'plan.scheme.concurrentSkipTmpl',   zh: '', en: '[WARN] op {opId} was created, but flow.json sync failed due to a concurrent conflict; run openfeel flow repair or re-register the op.' },
   'scheme.publish.okTmpl':       { key: 'plan.scheme.publish.okTmpl',       zh: '', en: 'Published {opId} (draft → pending)' },
   'scheme.publish.emptyTmpl':    { key: 'plan.scheme.publish.emptyTmpl',    zh: '', en: 'Template not filled; publish refused: {opId}' },
   'scheme.publish.notDraftTmpl': { key: 'plan.scheme.publish.notDraftTmpl', zh: '', en: '{opId} is not in draft state' },
@@ -777,6 +786,7 @@ export const migrate: I18nDomain = {
   // legacy layout general
   'legacy.alreadyLatest': { key: 'migrate.legacy.alreadyLatest', zh: '', en: '✓ Already up-to-date layout, no migration needed' },
   'legacy.done':          { key: 'migrate.legacy.done',          zh: '', en: 'Migration complete' },
+  'globalJsoncParseSkipTmpl': { key: 'migrate.globalJsoncParseSkipTmpl', zh: '', en: '[migrate] Failed to parse global opencode.jsonc (may contain block comments); skipping merge and keeping the original file: {err}' },
   // detect report
   'detect.title':         { key: 'migrate.detect.title',         zh: '', en: 'Legacy layout detection report:' },
   'detect.dryRunTitle':   { key: 'migrate.detect.dryRunTitle',   zh: '', en: '[DRY-RUN Mode] The following migration plan will be applied (not written):' },
@@ -829,6 +839,8 @@ export const model: I18nDomain = {
 /* ==================== setup domain: global deployment (v1.1.1) ==================== */
 export const setup: I18nDomain = {
   'created':  { key: 'setup.created',  zh: '', en: 'Created global files:' },
+  'globalJsoncParseSkipTmpl': { key: 'setup.globalJsoncParseSkipTmpl', zh: '', en: '[setup] Failed to parse global adapter config (opencode.jsonc); skipping merge and keeping the original file: {err}' },
+  'globalJsoncWriteSkipTmpl': { key: 'setup.globalJsoncWriteSkipTmpl', zh: '', en: '[setup] {err}; skipped global opencode.jsonc write, continuing with remaining steps' },
   'updated':  { key: 'setup.updated',  zh: '', en: 'Updated global files:' },
   'appended': { key: 'setup.appended', zh: '', en: 'Global files needing manual confirmation (already exist and are unmanaged; not overwritten):' },
   'complete': { key: 'setup.complete', zh: '', en: '? Global OpenFeel framework config deployed' },

@@ -136,7 +136,8 @@ export function loadGlobalUpdateState(): UpdateState | null {
     const data = JSON.parse(raw);
     const result = UpdateStateSchema.safeParse(data);
     if (!result.success) {
-      console.warn(`[update] 全局 update_state.json schema 不匹配，视为首次更新: ${result.error.message}`);
+      // 无 projectPath/lang 上下文（全局状态文件）：使用 [WARN] + 英文中性文案
+      console.warn('[WARN] Global update_state.json schema mismatch; treating as first update: ' + result.error.message);
       return null;
     }
     return result.data;

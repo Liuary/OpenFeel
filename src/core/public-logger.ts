@@ -163,7 +163,7 @@ export class PublicLogger {
         this.updateLogMd(fileName, now, getShortDesc(detail, eventType));
       });
     } catch (err) {
-      console.warn(`[WARN] 公共日志写入失败: ${(err as Error).message}`);
+      console.warn(t('flow.log.writeFailedTmpl', getCliLang(this.projectPath), { err: (err as Error).message }));
     }
   }
 

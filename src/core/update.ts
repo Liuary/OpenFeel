@@ -10,7 +10,7 @@ import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join, basename, isAbsolute, relative } from 'node:path';
 import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader.js';
 import { recordProjectLang } from './workspace/identity.js';
-import { getCliLang } from './i18n.js';
+import { t, getCliLang } from './i18n.js';
 import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalAgentsMdPath, getGlobalOpencodeJsoncPath, getGlobalUpdateStatePath } from './global-paths.js';
 import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './opencode-config.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
@@ -1481,7 +1481,7 @@ function writeManagedFile(
         appendUpdateInfo('anomaly', target.isGlobal
           ? { absolutePath: filePath, note: 'backup_failed' }
           : { projectRoot: target.projectRoot, relativePath: stateKey, note: 'backup_failed' });
-        console.warn(`[update] ${err.message}；已跳过该文件写入`);
+        console.warn(t('update.fileWriteSkipTmpl', getCliLang(target.projectRoot ?? process.cwd()), { err: err.message }));
         return 'skipped';
       }
       throw err;
@@ -1598,7 +1598,7 @@ export function updateProject(
   const legacyDirs = ['agents', 'skills', 'instructions']
     .filter((d) => existsSync(resolve(projectPath, '.opencode', d)));
   if (legacyDirs.length > 0) {
-    console.warn(`[update] 检测到项目内旧布局 .opencode/{${legacyDirs.join(',')}}，请运行 openfeel migrate（stage-39 提供）迁移。`);
+    console.warn(t('update.legacyLayoutWarnTmpl', getCliLang(projectPath), { dirs: legacyDirs.join(',') }));
   }
 
   // 全局部署目标（D1）
@@ -1676,7 +1676,7 @@ export function updateProject(
       try {
         merged = mergeGlobalOpencodeJsonc(current);
       } catch (err) {
-        console.warn(`[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: ${(err as Error).message}`);
+        console.warn(t('update.globalJsoncParseSkipTmpl', getCliLang(projectPath), { err: (err as Error).message }));
         merged = current;
       }
       atomicWriteFileSync(globalJsoncPath, merged);
@@ -1689,7 +1689,7 @@ export function updateProject(
     if (err instanceof BackupError) {
       // 备份失败（REV-011-A）：跳过全局 jsonc 写入、记 anomaly、继续其余步骤（对齐 B3 幂等语义）
       appendUpdateInfo('anomaly', { absolutePath: globalJsoncPath, note: 'backup_failed' });
-      console.warn(`[update] ${err.message}；已跳过全局 opencode.jsonc 写入，继续其余步骤`);
+      console.warn(t('update.globalJsoncWriteSkipTmpl', getCliLang(projectPath), { err: err.message }));
     } else {
       throw err; // 非备份错误照旧上抛（锁超时等不回退）
     }

@@ -187,6 +187,7 @@ export const flow: I18nDomain = {
   'log.noLogs':                 { key: 'flow.log.noLogs',                 zh: '暂无操作日志',                            en: '' },
   'log.recentTitleTmpl':        { key: 'flow.log.recentTitleTmpl',        zh: '最近 {n} 条操作日志',                     en: '' },
   'log.detail':                 { key: 'flow.log.detail',                 zh: '详情',                                   en: '' },
+  'log.writeFailedTmpl':        { key: 'flow.log.writeFailedTmpl',        zh: '[WARN] 公共日志写入失败: {err}',          en: '' },
   'log.layoutNestedTag':        { key: 'flow.log.layoutNestedTag',        zh: '（嵌套）',                               en: '' },
   'log.layoutLegacyTag':        { key: 'flow.log.layoutLegacyTag',        zh: '（历史扁平）',                           en: '' },
   'log.legacyDirTmpl':          { key: 'flow.log.legacyDirTmpl',          zh: '历史扁平目录（{date}）：无 day_index.md', en: '' },
@@ -330,6 +331,7 @@ export const init: I18nDomain = {
   // init.ts 中 initProject 里额外的 console 字符串
   'agentLangTmpl':              { key: 'init.agentLangTmpl',              zh: 'Agent 提示词语言: {lang}',                  en: '' },
   'invalidLangWarnTmpl':        { key: 'init.invalidLangWarnTmpl',        zh: '无效的 --lang 值 "{lang}"，回退到交互式选择', en: '' },
+  'pkgBackupSkipTmpl':          { key: 'init.pkgBackupSkipTmpl',          zh: '[init] {err}；已跳过 package.json 改写', en: '' },
   // ensureGlobalConfig 非交互环境消息（REV-006）
   'firstUse.nonInteractive':    { key: 'init.firstUse.nonInteractive',    zh: '首次使用 OpenFeel：检测到非交互环境，全局默认语言设置为 zh-CN。', en: 'First time using OpenFeel: Non-interactive environment detected, global default language set to zh-CN.' },
   'firstUse.changeHint':        { key: 'init.firstUse.changeHint',        zh: '使用 openfeel config set-lang <zh-CN|en> 可修改。', en: 'Use openfeel config set-lang <zh-CN|en> to change.' },
@@ -361,6 +363,10 @@ export const update: I18nDomain = {
   'appendedTitle':              { key: 'update.appendedTitle',              zh: '追加了 {n} 个文件（无控制区标记，受管内容已追加到末尾，待会话启动复核）', en: '' },
   'appendedHint':               { key: 'update.appendedHint',               zh: '详见 ~/.openfeel/update_infos.md，会话启动时将逐条检查并提示修复。', en: '' },
   'appendedManyWarning':        { key: 'update.appendedManyWarning',        zh: '⚠️ 一次追加 {n} 个文件，疑似 update_state 损坏或首次迁移，请运行 openfeel update 后检查 ~/.openfeel/update_infos.md。', en: '' },
+  'fileWriteSkipTmpl':          { key: 'update.fileWriteSkipTmpl',          zh: '[update] {err}；已跳过该文件写入', en: '' },
+  'legacyLayoutWarnTmpl':       { key: 'update.legacyLayoutWarnTmpl',       zh: '[update] 检测到项目内旧布局 .opencode/{dirs}，请运行 openfeel migrate（stage-39 提供）迁移。', en: '' },
+  'globalJsoncParseSkipTmpl':   { key: 'update.globalJsoncParseSkipTmpl',   zh: '[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: {err}', en: '' },
+  'globalJsoncWriteSkipTmpl':   { key: 'update.globalJsoncWriteSkipTmpl',   zh: '[update] {err}；已跳过全局 opencode.jsonc 写入，继续其余步骤', en: '' },
 };
 
 /* ==================== project 域：项目概览命令 ==================== */
@@ -459,6 +465,9 @@ export const plan: I18nDomain = {
   'scheme.remove.notFoundTmpl':  { key: 'plan.scheme.remove.notFoundTmpl',  zh: '未找到：阶段 {stage} 或操作方案 {opId}', en: '' },
   'scheme.implicitRegisterTmpl': { key: 'plan.scheme.implicitRegisterTmpl', zh: '阶段 {stage} 未注册，已按注册语义补齐阶段骨架（overview.md / status.md）', en: '' },
   'scheme.skeletonWarnTmpl':     { key: 'plan.scheme.skeletonWarnTmpl',     zh: '阶段骨架补建失败（{err}），已跳过；请手动创建 overview.md / status.md', en: '' },
+  'scheme.skipAutoRegisterTmpl': { key: 'plan.scheme.skipAutoRegisterTmpl', zh: '[WARN] {reason}；已跳过 flow.json 自动注册（op 文件已创建）。', en: '' },
+  'scheme.dirConflictSkipTmpl':  { key: 'plan.scheme.dirConflictSkipTmpl',  zh: "[WARN] 阶段 '{stage}' 与 '{other}' 映射同一 (series, stageDir)；已跳过 flow.json 自动注册（op 文件已创建），请检查 stageId。", en: '' },
+  'scheme.concurrentSkipTmpl':   { key: 'plan.scheme.concurrentSkipTmpl',   zh: '[WARN] op {opId} 已创建，但 flow.json 同步因并发冲突失败；请执行 openfeel flow repair 兜底或重新注册该 op。', en: '' },
   'scheme.publish.okTmpl':       { key: 'plan.scheme.publish.okTmpl',       zh: '已发布 {opId}（draft → pending）',         en: '' },
   'scheme.publish.emptyTmpl':    { key: 'plan.scheme.publish.emptyTmpl',    zh: '模板未填充，禁止发布：{opId}（请先补全「- [ ] 待补充」）', en: '' },
   'scheme.publish.notDraftTmpl': { key: 'plan.scheme.publish.notDraftTmpl', zh: '{opId} 不是 draft 状态，无需发布',          en: '' },
@@ -818,6 +827,7 @@ export const migrate: I18nDomain = {
   // legacy 布局通用
   'legacy.alreadyLatest': { key: 'migrate.legacy.alreadyLatest', zh: '✓ 已是最新布局，无需迁移', en: '' },
   'legacy.done':          { key: 'migrate.legacy.done',          zh: '迁移完成', en: '' },
+  'globalJsoncParseSkipTmpl': { key: 'migrate.globalJsoncParseSkipTmpl', zh: '[migrate] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: {err}', en: '' },
   // detect 检测报告
   'detect.title':         { key: 'migrate.detect.title',         zh: 'Legacy 布局检测报告：', en: '' },
   'detect.dryRunTitle':   { key: 'migrate.detect.dryRunTitle',   zh: '[DRY-RUN 模式] 以下迁移计划将被执行（未写盘）：', en: '' },
@@ -870,6 +880,8 @@ export const model: I18nDomain = {
 /* ==================== setup 域：全局部署（v1.1.1） ==================== */
 export const setup: I18nDomain = {
   'created':  { key: 'setup.created',  zh: '已创建全局文件：', en: '' },
+  'globalJsoncParseSkipTmpl': { key: 'setup.globalJsoncParseSkipTmpl', zh: '[setup] 全局平台适配器配置（opencode.jsonc）解析失败，跳过合并保留原文件: {err}', en: '' },
+  'globalJsoncWriteSkipTmpl': { key: 'setup.globalJsoncWriteSkipTmpl', zh: '[setup] {err}；已跳过全局 opencode.jsonc 写入，继续其余步骤', en: '' },
   'updated':  { key: 'setup.updated',  zh: '已更新全局文件：', en: '' },
   'appended': { key: 'setup.appended', zh: '需人工确认的全局文件（已存在且非受管，未覆盖）：', en: '' },
   'complete': { key: 'setup.complete', zh: '✓ 全局 OpenFeel 框架配置部署完成', en: '' },

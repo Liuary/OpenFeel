@@ -33,7 +33,7 @@
     └── package.json
 ```
 
-- **`{ts}` 语义（B2）**：`yyyyMMddTHHmmssSSS`（本地时区），进程内首次生成后缓存；同毫秒撞名依次 `-2`、`-3`；**绝不覆盖**既有备份（每次命令一个独立目录）。
+- **`{ts}` 语义（B2）**：`yyyyMMddTHHmmssSSS`（本地时区），进程内首次生成后缓存；同毫秒撞名依次 `-2`、`-3`；**绝不覆盖**既有备份（**每进程（通常即每命令）一个独立目录**——`cachedTs` 为进程级缓存，REPL/同进程多命令共享同一 `{ts}`）。
 - **原子性与并发（B3/REV-005）**：备份写入走 `atomicWriteFileSync`；**整次备份会话（ts 探测 + mkdir + 备份副本写入 + manifest 读改写）全程在单一 `withFileLock(globalLockPath('backup'))` 临界区内**，消除跨进程 TOCTOU。
 - **失败不覆盖（B3）**：`readFileSync` / `mkdirSync` / `atomicWriteFileSync` 任一异常 → `BackupError`，调用方跳过该文件写入并记 `note='backup_failed'` 异常。
 

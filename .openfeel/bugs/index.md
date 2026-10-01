@@ -9,8 +9,8 @@
 |------|:--:|
 | open | 1 |
 | fixed | 0 |
-| closed | 14 |
-| **合计** | **15** |
+| closed | 16 |
+| **合计** | **17** |
 
 > **v1.1.2-stage-43 收口（2026-09-29，commit `cbc606f`）**：`config/BUG-004`（medium，测试隔离缺口）经 openfeel-feel-tester **外部独立进程比对**验收**关闭**——`identity.test.ts`（11/11）与全量 `npm test`（41 文件 / 694 用例）前后真实 `~/.openfeel/config.json` 的 **mtime + SHA-256 均不变**；修复＝N4 单点 `vi.mock('node:os')` + 删除 `savedConfig` 伪隔离 + 新增只读隔离守护用例。**新登记 `cli/BUG-003`**（low，非阻塞）：`flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 修复的收尾遗漏）——**裁定归下一版本或由用户决定**，v1.1.2 不修。至此 v1.1.2 遗留缺陷清零（仅 1 条 low 非阻塞顺延）。
 >
@@ -33,6 +33,8 @@
 > **v1.1.2-stage-54 收口（2026-10-01，commits `740a79d`/`8fd49af`/`35278b4`）**：**存量 2 条 `cli/BUG-005`/`cli/BUG-006` 收口关闭**——op-001 将 `isTemplateEmpty` 由纯子串改为**整行锚定**正则并令 `scheme.ts` 复用（单一来源），op-002 将 blocking REV 拒绝文案迁 i18n（+2 键）。测试官隔离 fixture 实测：真实独占行空模板 → `publish` exit 1 / `health` 仅报其；正文行内引用 → `publish` exit 0 / `ops list (filled)` / `health` 不报；仓库自身 `flow health` 空模板告警归零；en 拒绝路径 CJK=0、zh 逐字不变。**`templates/BUG-003` 复核关闭**（`cli-usage`/`wizard` 各 1 处顶部双态声明，用户主口径为裸 `openfeel`）。**stage-52 起的 2 条非阻塞缺陷（`cli/BUG-005`/`cli/BUG-006`）全部清零**；`templates/BUG-003` 复核维持 closed。**测试中新登记 1 条非阻塞**：`templates/BUG-005`（low，部署型 skill 模板 `flow phases --json` 输出说明缺 `transitionsDiff`）→ open；公共域统计 **15 条（open 1 / closed 14）**。防再犯（承接 stage-52）：① 占位符/标记类检测以**整行锚定**为默认（行内引用不误报）；② 状态行与实测**以脚本实时重跑为准**，历史快照数字不得沿用；③ **新增 JSON 输出键的同步面须含部署型 skill 模板**（`BUG-005` 因该面遗漏而生）。
 
 > **v1.1.2-stage-55 收口（2026-10-01，commits `9e0a978`/`a646573`/`ebac4ea`/`0ad0b8e`/`17ff5be`）**：**本轮无新增缺陷**——阶段为「删除项目级资产（根 `AGENTS.md`/`opencode.jsonc`/`.opencode/{agents,skills,ADAPTER.md}`）+ 删 `build.js` 自举步骤 8（防复活）+ 「模块手册」迁入全局模板 + 全局刷新」，测试官端到端 + 全局刷新核验 + 环境零污染全通过，零阻塞缺陷。**`templates/BUG-005`（low）维持 `open`**——本阶段未触及部署型 skill 模板的 `flow phases --json` 输出说明，且删除动作不涉及该同步面；如实登记备查（建议随下次模板/文档同步收口）。统计维持 **15 条（open 1 / closed 14）**。
+
+> **v1.1.2-stage-56 收口（2026-10-01，op-003）**：**公域索引补齐至 17**（A4 裁定，见 `REV-v1.1.2-stage-56` REV-001）——补入此前遗漏的 **2 条**：`kb/BUG-001`（新建 `### kb` 模块段 + `kb.md`，模块首次建立）与 `templates/BUG-001`（`### templates` 段补首行，zh-CN 双语不同步）。至此公域统计与私域 `index.md`（open 1 / closed 16 / 合计 17）及私域 `BUG-*.md` 实测文件数（17）**三者一致**；公域模块条目 6(cli)+4(config)+1(archive)+5(templates)+1(kb)=**17**。本次**不改历史注记原文**。
 
 ## 模块索引
 
@@ -62,13 +64,20 @@
 |------|------|:--:|:--:|----------|
 | [BUG-001](archive.md) | `openfeel archive` 对缺 `deps` 字段的存量阶段抛 TypeError（预存量缺陷） | low | **closed** | v1.1.2-stage-41 |
 
+### kb
+
+| 编号 | 标题 | 优先级 | 状态 | 来源阶段 |
+|------|------|:--:|:--:|----------|
+| [BUG-001](kb.md) | `lint kb` 过期引用未清理（`core.md` 残留 + `|` 列举误解析） | medium | **closed**（stage-42 修复验收通过） | v1.1.2-stage-42 |
+
 ### templates
 
 | 编号 | 标题 | 优先级 | 状态 | 来源阶段 |
 |------|------|:--:|:--:|----------|
+| [BUG-001](templates.md) | 事务官标识列未加前缀（zh-CN 双语不同步） | medium | **closed** | v1.1.2-stage-41 |
 | [BUG-002](templates.md) | 全局约束模板 `agents-md` 权限部署路径行未泛化（双源不同步） | medium | **closed** | v1.1.2-stage-45 |
 | [BUG-003](templates.md) | 部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目不可执行（与 agent / agents-md 保留裸 `openfeel` 的口径相反） | low | **closed**（stage-50 op-006 T53 双口径 + build 幂等验收通过） | v1.1.2-stage-48 |
 | [BUG-004](templates.md) | 迁移后 `current.md` 统计行沿用「执行中」快照、用例数陈旧（942 vs 实测 949）+ 措辞扞格 | low | **closed**（stage-53 归档官就地修正：942→949 + kb 计数刷新 + 记录措辞改为「归档完成」） | v1.1.2-stage-53 |
 | [BUG-005](templates.md) | `openfeel-cli-usage` skill 的 `flow phases --json` 输出说明缺 `transitionsDiff`（与实测 5 键不一致，`transitionsDiff` 同步面遗漏 skill 模板） | low | **open** | v1.1.2-stage-54 |
 
-> 注：templates 模块早期 `BUG-001`（事务官标识列未加前缀）已于 `v1.1.2-stage-41` 关闭、未纳入本目录（详见私域 `.openfeel/users/Liuary/bugs/templates/`）；`kb/BUG-001`（`lint kb` 过期引用）已于 stage-42 关闭，同见私域。
+> 注：`templates/BUG-001`（事务官标识列未加前缀）与 `kb/BUG-001`（`lint kb` 过期引用）此前仅存私域，已于 **`v1.1.2-stage-56` 补齐**——分别见本目录 `templates.md` / `kb.md`。至此公域计数与私域一致（17）。

@@ -1,46 +1,47 @@
-# 自测报告 — op-003（v1.1.2-stage-54）
+# 自测报告 — op-003
 
-- **执行时间**：2026-10-01 17:05
+- **执行时间**：2026-10-01 18:42
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（首次通过）
+- **重试次数**：1
 
 ## 执行摘要
-E4~E11 登记收口完成；`bugs/index.md` 统计修正为 open 3 / closed 13；E6 分层实时脚本落值（清账层 38 / 历史层 88 / 无法判定 3）；全量门禁全绿、零污染。
+S3-5 措辞修正 + S4 公域 Bug 索引补齐至 17（新建 `kb.md` + index 补段补行 + 统计 17）+ REV-001 A4 裁定状态回写 + S3-2/S3-3 已解决项登记 closed 完成；门 A 十项通过。
 
 ## 实施步骤完成情况
-- [x] E4 登记（cli-usage=1、wizard=1）+ 提请 tester 关闭 templates/BUG-003
-- [x] E5 登记 + `bugs/index.md` 统计修正（open 3 / closed 13；low 2；templates/BUG-004 行 closed）
-- [x] E6 实时重跑脚本 + 核实清单覆盖清账层全量（38 条，含 U3-011 非连续编号）；历史层仅登记；无法判定单列（3 条）
-- [x] E7 (a) 并入 op-002；(b)(c) 登记（含 `flow health` 31/31 复跑证据）
-- [x] E8 8 条出处 rg 可检索；未改对应代码
-- [x] E9 四条路径 CRLF 复核证据 + 复跑命令（命中 2/2）
-- [x] E10 并入 E8#5 登记
-- [x] E11 仅登记 + A6（未改 flow.json；stage-49 op 全 pending）
+- [x] `manual/core/backup.md:36` 措辞改「每进程（通常即每命令）」
+- [x] `.openfeel/bugs/kb.md` 新建（`kb/BUG-001` 结论 + 根因 + 修复 + 关闭记录）
+- [x] 公域 `index.md` 补 `### kb` 段 + `templates/BUG-001` 行 + 统计 17 + 尾部注记改写 + stage-56 收口注记
+- [x] plan.md A4 已裁定 + §S4 备选移除标注 + §九第 4 条去歧义
+- [x] `REV-U4-004` / `REV-U8-003` 已登记 closed；`REV-U8-012`(③) 置 resolved
+- [x] 门 A 十项通过；`lint kb` 0 exit 0；`npm test` 985 全绿；`tsc` 0
+- [x] **未改** `flow.json`；未改业务源码；无新增依赖
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 验收 1 build 幂等 | ✅ | exit 0；重跑零 diff |
-| 验收 2 npm test | ✅ | 59 文件 / 987 用例 |
-| 验收 3 lint i18n | ✅ | 726 键 exit 0 |
-| 验收 4 lint kb | ✅ | 0 过期（265 引用） |
-| 验收 5 flow health 空模板归零 | ✅ | 无空模板行；31/31 一致；孤儿 62 保留 |
-| 验收 6 tsc | ✅ | 0 错误 |
-| 验收 7 E6 脚本实时重跑 | ✅ | TOTAL 270 / pending 126 / closed 118 / resolved 23 / MISSING 3 |
-| 验收 8 index 统计 vs frontmatter | ✅ | open 3 / closed 13 一致 |
-| 验收 9 index 最小 diff | ✅ | 仅 4 数字 + 1 行状态（私域，无 git diff） |
-| 验收 10 `git diff flow.json` | ✅ | 空（A6；stage-49 op-001~009 全 pending） |
-| 验收 11 零污染 | ✅ | config.yaml hash+mtime 前后一致 |
+| `每进程`（backup.md） | ✅ | 1 |
+| `bugs/kb.md` 存在 | ✅ | True |
+| 私域 BUG-*.md 计数 | ✅ | 17（未变） |
+| 公域统计 | ✅ | open 1 / fixed 0 / closed 16 / 合计 17 |
+| `[BUG-001](kb.md)` / `[BUG-001](templates.md)` | ✅ | 各 1 |
+| `已裁定`（plan.md） | ✅ | 2 |
+| `lint kb` | ✅ | 0 过期（248 引用）exit 0 |
+| `npm test` | ✅ | 59 文件 / 985 用例 |
+| `lint i18n` | ✅ | 726 键 exit 0 |
+| `npx tsc --noEmit` | ✅ | 0 |
 
 ## 产出文件
-- `.openfeel/users/Liuary/bugs/index.md`（统计修正，私域）
-- `.openfeel/users/Liuary/log/op-v1.1.2-stage-54-report-2026-10-01.md`（收口报告，私域）
+- `.openfeel/manual/core/backup.md`
+- `.openfeel/bugs/kb.md`（新建）
+- `.openfeel/bugs/index.md`
+- `.openfeel/plan/v1/stage-56/plan.md`
+- `.openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-U4.md`
+- `.openfeel/users/Liuary/code_review/REV-v1.1.2-stage-49-U8.md`
 
 ## 前置校验结果
-- 方式：`openfeel flow health --quick` → 通过
-- 方案完整性：通过｜Phase 合法性：通过（exec_running）｜流转合法性：通过
+- 方案完整性：通过
+- Phase 合法性：通过（exec_running，current.op 由 op-002 推进至 op-003）
+- 流转合法性：通过
 
 ## 偏差记录
-- E6 清账层实时值 **38**（plan v2 快照 42；stage-52×4 已 closed，时点差异，R-9 以实时为准）。
-- `bugs/index.md` 与报告均在私域（gitignored），不在版本控制；op-003 提交以 flow.json 状态推进为主。
-- 无跳步、无超范围产出。
+- 无超范围/遗漏产出。（REV-007：本 op 与 op-002 均追加同一 REV 文件，串行执行下无并发风险。）

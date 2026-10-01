@@ -137,7 +137,7 @@
 - S4-1：新建 `.openfeel/bugs/kb.md`（模块摘要：`kb/BUG-001` 结论 + 根因 + 修复要点），并在公域 `index.md` 新增「### kb」段 + `kb/BUG-001` 行。
 - S4-2：公域 `index.md` 的「### templates」段补 `templates/BUG-001` 行；删除/改写尾部注记中「templates BUG-001 未收录」表述。
 - S4-3：公域 `index.md` 统计表改为 **open 1 / closed 16 / 合计 17**，与私域及实测文件数一致。
-- **备选方案（保留设计）**：维持 15，但把尾部注记改写为显式「公域为**核心结论摘要**，`kb/BUG-001` 与 `templates/BUG-001` **有意不收录**（仅私域），故公域计数 = 实际 − 2」——**列为待裁定 A4**。
+- **备选方案（保留设计）**：维持 15，但把尾部注记改写为显式「公域为**核心结论摘要**，`kb/BUG-001` 与 `templates/BUG-001` **有意不收录**（仅私域），故公域计数 = 实际 − 2」。——**已裁定：采用推荐方案（补齐至 17）；备选方案不采用**（见 §八 A4）。
 - **验收**：公域统计 = open 1 / closed 16 / 合计 17（或备选方案注记显式说明）；`node bin/openfeel.js lint kb` 0 过期（`kb.md` 新增引用须有效）。
 
 ### S5 — `npm run build` 传播 + 全局副本刷新（**唯一真实全局目录操作**）
@@ -260,7 +260,7 @@
 | **A1** | 生成段传播归属 | 生成段 `update.ts`/`template-loader.ts` **禁手改**，统一由 op-004 `npm run build` 从权威源重生成 | 单源架构 + 零行为变更验证法 | planner 建议 + **待确认** |
 | **A2** | `REV-U4-002` 处置 | en.md:494 改为**纯英文** `acceptance rejected`（而非保留中英并列） | en 侧唯一 CJK，双语对齐 | planner 建议 + **待确认** |
 | **A3** | `REV-U4-004` / `REV-U8-003` | **已解决 → 仅登记 + 置 closed**，不改代码 | 用户长期指示「已解决仅登记」；实测证据 | planner 建议 + **待确认** |
-| **A4** | 公域 Bug 索引 | **推荐补齐至 17**（新建 `bugs/kb.md` + `templates/BUG-001` 行 + 统计 open1/closed16）；**备选**保留 15 并改写注记显式说明 2 条有意排除 | 用户「补齐使其与实际一致」 vs 公域「核心摘要」设计 | **待裁定**（需用户/Feel 定） |
+| **A4** | 公域 Bug 索引 | **推荐补齐至 17**（新建 `bugs/kb.md` + `templates/BUG-001` 行 + 统计 open1/closed16）；**备选**保留 15 并改写注记显式说明 2 条有意排除 | 用户「补齐使其与实际一致」 vs 公域「核心摘要」设计 | **已裁定**（Feel/用户：**补齐至 17**） |
 | **A5** | skill 篇幅上限 | **≤ 200 行 / ~14 KB**，超出改「分类 + 一行摘要」 | 查询型手册可读性 | planner 建议 + **待确认** |
 | **A6** | `setup` 作为全局刷新命令 | **采用 `openfeel setup`**（纯全局、幂等、带写前备份）；不用 `update` | stage-55 同裁定 | planner 建议 + **待确认** |
 | **A7** | `npm publish` | 本阶段**不含实际发布**；仅做 `--dry-run` 复核 | 用户明确指令 | **已由用户指令确定** |
@@ -273,7 +273,7 @@
 1. **S1**：`flow phases --json` 5 键与 `SKILL.md:46` / `docs/commands.md:91` / `manual/cli/commands.md:65` / `CHANGELOG.md:8` 逐字一致；生成段由 build 重生成（`rg` 命中 5 键）。
 2. **S2**：`SKILL.md` 覆盖 16 项遗漏 + `:82` 准确 + 过时表重写 + description 更新；保留双口径与快照声明；篇幅 ≤ 200 行；`rg "组合条件路径" SKILL.md` 零命中。
 3. **S3**：`REV-U4-002`/`REV-U8-011`/`REV-U8-012`(③) 已修；`REV-U4-004`/`REV-U8-003` 登记已解决；5 条状态在 REV 文件中留痕。
-4. **S4**：公域 bug 索引与实测一致（推荐 17）或注记显式说明差异；`lint kb` 0 过期。
+4. **S4**：公域 bug 索引与实测一致（**=17**）；`lint kb` 0 过期。
 5. **S5**：全局备份快照存在；`setup` 执行成功；门判据（skills 17 / skill 正文一致 / AGENTS.md / agents 9 / jsonc 保留键 / 备份存在）全过；仓库 `git status` 无变化。
 6. **S6**：`build` 幂等且不复活；`npm test` 59/985 全绿；`tsc` 0；`lint i18n` 726；`lint kb` 0；`--version` 1.1.2；`npm pack`/`publish --dry-run` 通过。
 7. **无越界**：未改 `flow.json`；未创建 op 文件；未执行 `npm publish`；未改业务源码（限模板/文档/注释/skill）。

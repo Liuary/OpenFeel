@@ -133,6 +133,10 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
 The OpenFeel framework has released the official v1.0.x (currently v1.1.2). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
+### Module Manuals
+
+`.openfeel/manual/` is a hierarchical module documentation system recording each major module's responsibilities, core APIs, and structure (see the module tree in `manual/index.md`). When archiving, the archiver must review the modules touched by the stage and update the corresponding module docs in `manual/` if their APIs, structure, or responsibilities changed.
+
 ### Project Flow Tools
 
 The detailed process rules for the project (Agent system, development pipeline, three-tier planning, review loop, status file templates, etc.) are uniformly managed by the OpenFeel CLI tool:

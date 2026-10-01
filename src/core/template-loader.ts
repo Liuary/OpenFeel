@@ -2861,6 +2861,10 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
 The OpenFeel framework has released the official v1.0.x (currently v1.1.2). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
+### Module Manuals
+
+\`.openfeel/manual/\` is a hierarchical module documentation system recording each major module's responsibilities, core APIs, and structure (see the module tree in \`manual/index.md\`). When archiving, the archiver must review the modules touched by the stage and update the corresponding module docs in \`manual/\` if their APIs, structure, or responsibilities changed.
+
 ### Project Flow Tools
 
 The detailed process rules for the project (Agent system, development pipeline, three-tier planning, review loop, status file templates, etc.) are uniformly managed by the OpenFeel CLI tool:
@@ -3365,6 +3369,10 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
 OpenFeel 框架已发布正式版 v1.0.x（当前 v1.1.2）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+
+### 模块手册
+
+\`.openfeel/manual/\` 为分级模块文档系统，记录项目主要模块的职责、核心 API 与结构（见 \`manual/index.md\` 模块树）。归档官在归档时必须检查本阶段涉及的模块，若其 API、结构或职责发生变更，须同步更新 \`manual/\` 中对应模块文档。
 
 ### 项目流程工具
 

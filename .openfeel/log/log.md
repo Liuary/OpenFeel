@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-01-Liuary-041.md](2026/10/01/2026-10-01-Liuary-041.md) | Liuary | v1.1.2-stage-55.op-001 执行通过 |
 | [2026-10-01-Liuary-040.md](2026/10/01/2026-10-01-Liuary-040.md) | Liuary | 阶段 v1.1.2-stage-54 完成 |
 | [2026-10-01-Liuary-039.md](2026/10/01/2026-10-01-Liuary-039.md) | Archiver | **stage-54 归档完成（收尾 — 遗留缺陷清理（发布前清账），3 op）**——**E1 `cli/BUG-005`** 空模板检测改**整行锚定**（`EMPTY_TEMPLATE_LINE_RE` + `scheme.ts` 复用；`publish` 误拒 / `health`·`ops list` 误报消除、仓库空模板告警归零）；**E2 `cli/BUG-006`** en blocking REV 拒绝文案 i18n；**E3 `cli/BUG-003`** help 补 `transitionsDiff`（JSON 未变）；**E6 分层统计**（总 270 / 清账层 38 / 历史层 88 / 无法判定 3）+ 清账层收口 closed 31 / 维持 pending 7；**59 文件 / 987 用例全绿**、`tsc` 0、build 幂等、`lint i18n` **726 键**、`lint kb` 0 过期（265 引用）、`flow health` 空模板 0；三段审查零阻塞（REV-001 medium blocking / REV-002 low 全 closed）；`cli/BUG-005`/`cli/BUG-006`/`templates/BUG-003` 关闭 + 新登记 `templates/BUG-005`（low）；知识沉淀 4 条 |
 | [2026-10-01-Liuary-038.md](2026/10/01/2026-10-01-Liuary-038.md) | Liuary | v1.1.2-stage-54.op-003 执行通过 |
@@ -31,7 +32,6 @@
 | [2026-10-01-Liuary-014.md](2026/10/01/2026-10-01-Liuary-014.md) | Liuary | v1.1.2-stage-52.op-003 执行通过 |
 | [2026-10-01-Liuary-013.md](2026/10/01/2026-10-01-Liuary-013.md) | Liuary | v1.1.2-stage-52.op-001 执行通过 |
 | [2026-10-01-Liuary-012.md](2026/10/01/2026-10-01-Liuary-012.md) | Liuary | 阶段 v1.1.2-stage-51 完成 |
-| [2026-10-01-Liuary-011.md](2026/10/01/2026-10-01-Liuary-011.md) | Archiver | **stage-51 归档完成（流水线状态维护与 CLI 可维护性·反馈 08，N1~N11 / 9 op）**——承接 `docs/phase-5/08-openfeel-workflow-feedback.md`（11 条）；补齐「**纠正/清理侧**」CLI（`plan scheme remove` + `findOrphanOps` 对账 / `flow stage set --deps` / `flow review update·remove` / `ensureStageSkeleton` / `syncCurrentOp` 复用 / `stage set` 三态幂等 + 字段白名单 + `stage task --add` / `op-NNN.md` + 兼容回退 / knowledge 宽容解析 + **`openfeel knowledge dedup`**〔随包分发〕/ 日志未来写入统一 + `advance --quiet`）；**用户裁定 A2/A5/A6/A7 全落地**；**56 文件 / 869 用例全绿（0 skipped）**、`tsc` 0、build 幂等、`lint i18n` **649 键**、`lint kb` 0 过期、`npm pack` 263 文件；环境零污染；**REV-004 closed、`cli/BUG-004` 关闭**（en `--help` Arguments 段 CJK 零命中，33 命令）；知识沉淀 **5 条**（architecture 1 + patterns 4 + troubleshooting 1 更新）；**v1.1.2 十一阶段（41~51）全部闭环** |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

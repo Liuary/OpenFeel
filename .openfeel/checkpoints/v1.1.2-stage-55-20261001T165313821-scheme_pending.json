@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T09:00:58.677Z",
-    "revision": 480
+    "updated": "2026-10-01T08:53:13.014Z",
+    "revision": 471
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.2-stage-55",
-      "op": "op-002"
+      "stage": "v1.1.2-stage-54",
+      "op": ""
     },
     "retry": 0
   },
@@ -2258,81 +2258,12 @@
     },
     "v1.1.2-stage-55": {
       "name": "v1.1.2-stage-55",
-      "phase": "exec_running",
+      "phase": "scheme_pending",
       "status": "planned",
       "deps": [
         "v1.1.2-stage-54"
       ],
-      "ops": {
-        "op-001": {
-          "title": "F2 模块手册节迁入全局模板（zh en 双语 + build）",
-          "state": "done",
-          "assignee": "openfeel-executor",
-          "attempts": 1,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-002": {
-          "title": "F1 刷新全局部署（备份 + setup + 门B 判据）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-003": {
-          "title": "F3 F4 删除项目级资产与防复活（含测试迁移）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-004": {
-          "title": "F5 F6 F7 引用同步 supersede 与验证门禁",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        }
-      },
+      "ops": {},
       "stats": {
         "start_time": "2026-10-01T08:08:28.658Z",
         "end_time": "",
@@ -10596,91 +10527,6 @@
         "stageName": "v1.1.2-stage-54",
         "from": "archiving",
         "to": "done"
-      }
-    },
-    {
-      "time": "2026-10-01T08:53:13.831Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-55",
-        "from": "plan_passed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-10-01T08:54:11.260Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-55",
-        "opId": "op-001"
-      }
-    },
-    {
-      "time": "2026-10-01T08:54:11.562Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-55",
-        "opId": "op-002"
-      }
-    },
-    {
-      "time": "2026-10-01T08:54:11.909Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-55",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-10-01T08:54:12.238Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.2-stage-55",
-        "opId": "op-004"
-      }
-    },
-    {
-      "time": "2026-10-01T08:56:22.722Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-55",
-        "from": "scheme_pending",
-        "to": "scheme_review"
-      }
-    },
-    {
-      "time": "2026-10-01T08:59:23.757Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-55",
-        "from": "scheme_review",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-10-01T08:59:24.083Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-55",
-        "from": "scheme_passed",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-10-01T09:00:58.651Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-55.op-001",
-        "attempts": 1
       }
     }
   ]

@@ -1,0 +1,196 @@
+# stage-55 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-55
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-54
+    type: hard
+    status: satisfied
+    reason: "stage-55 计划声明 hard 依赖 stage-54，且 `flow.json` 实测 `stages['v1.1.2-stage-55'].deps = ['v1.1.2-stage-54']`。"
+  - downstream: npm publish
+    type: hard
+    note: "**本阶段不含 `npm publish`**（A8 = 用户指令：收尾 → 清项目级约束/Agent → **之后**发布）；发布由用户在本阶段之后决定。"
+
+# 【阶段性质提示】
+# 发布前收尾阶段（清项目级约束与 Agent）：F1~F7 → **4 op，全串行**；
+# **关键不变量（用户裁定）**：**刷新全局严格早于删除项目资产**（op-002 必须早于 op-003）；
+# **唯一真实全局目录操作** = op-002（备份先行 + 判据留痕）；
+# **删除范围（用户裁定）**：根 `AGENTS.md` + `.opencode/agents/**` + `.opencode/skills/**` + `.opencode/ADAPTER.md` + 根 `opencode.jsonc` + **`build.js` 自举步骤（防复活）**；
+# **保留**：`.opencode/{node_modules,package.json,package-lock.json,.gitignore}`（opencode 运行时目录）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "F2 模块手册节迁入全局模板（zh en 双语 + build）"
+    produces:
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/template-loader.ts
+      - dist/**
+    deps: []
+    notes: "**F2**：把根 `AGENTS.md:139-141` 独有的「模块手册」节迁入模板权威源——zh 在 `### 项目流程工具`（实测 `:136`）之前插入 `### 模块手册`（归入 `## 项目特有约束（可选化）`）：`.openfeel/manual/` 为分级模块文档系统，记录职责/核心 API/结构（见 `manual/index.md` 模块树），归档官须在归档时检查并同步更新；en 对应插入 `### Module Manuals`（语义对等）。**不迁移**：根 `AGENTS.md:1-123`（框架级，模板已有）/ `:125-137`（版本管理，信息已在 package.json/CHANGELOG/roadmap，**A2**）/ `:143-162`（项目流程工具，模板已有）。`npm run build` 传播（禁手改生成段）。**门 A**：模板含双语节 + build 幂等。**必须先于 op-002**（否则 setup 刷出的全局缺该节）。"
+
+  op-002:
+    file: op-002.md
+    title: "F1 刷新全局部署（备份 + setup + 门B 判据）"
+    produces:
+      - .openfeel/users/Liuary/log/2026-10-01-NNN.md
+    deps:
+      - op: op-001
+        type: hard
+    notes: "**F1（本流水线唯一操作本机真实全局目录的 op）**：① `npm run build`（dist 与模板一致）；② **人工整目录备份** `Copy-Item -Recurse ~/.config/opencode → $env:TEMP\\opencode\\stage55-global-backup`（+ 可选 SHA256 清单；如需省时可排除 `node_modules`，**须记录**）；③ 执行 **`node bin/openfeel.js setup`**（`src/core/setup.ts:29-110` 纯全局/幂等/`deployGlobalAsset` 写前备份）——**不用 `update`**（`update.ts:1572+` 会触碰项目侧 legacy 检测，与即将删除的资产交叠）。**门 B（B1~B6）**：全局 skills **17**（含 `openfeel-cli-usage`；现状 16）/ 全局 `AGENTS.md` 含**模块手册**节 + **权限模型**节（现状 443 行且缺该节）/ agents **9** / 全局 `opencode.jsonc` 保留 `default_agent`+`$schema`（用户字段不丢）/ 备份快照存在。**失败拦截**：备份未成或任一判据未过 → **回滚后停止，不得进入 op-003**。**回滚**：整目录恢复为**首选**（`Remove-Item` + `Copy-Item` 自备份）、`~/.openfeel/backup/{ts}/` 逐文件为次选。**仓库零改动**（验收含 `git status` 无变化）。"
+
+  op-003:
+    file: op-003.md
+    title: "F3 F4 删除项目级资产与防复活（含测试迁移）"
+    produces:
+      - build.js
+      - .gitattributes
+      - test/core/release-metadata.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/templates.test.ts
+    deps:
+      - op: op-002
+        type: hard
+    notes: "**F3（前置门 C）**：`git rm` 删除 5 项——根 `AGENTS.md` / 根 `opencode.jsonc` / `.opencode/agents/**`（9）/ `.opencode/skills/**`（17）/ `.opencode/ADAPTER.md`；**保留** `.opencode/{node_modules,package.json,package-lock.json,.gitignore}`（运行时）；**仅 `git rm`**（不误伤未跟踪文件）。**F4（门 D）**：`build.js` 删 **步骤 8**（`:1040` 分区注释、`:1043-1049` `insertGeneratedMark`、`:1056-1099` `regenerateOpencodeInstance`、`:1121-1122` 调用；**以内容锚定**）→ **防复活**；`.gitattributes:3` 去 `.opencode/**` 行；根 `.gitignore` **不改**。**测试（REV-002 更正：该文件实为 10 个 `it`）**：删除 `test/core/opencode-instance.test.ts` 的 `describe('.opencode/ 自举实例')`（**7 it**）；**迁移** `describe('发布元数据（stage-49 B3/B4）')`（**3 it**）→ **新文件** `test/core/release-metadata.test.ts`（**不得随文件丢弃**）；另迁移 3 组仍有效断言到**模板源**（CRLF / `external_directory` / reviewer 纪律节）；新增 2 条防回归断言（仓库无项目级受管资产 / `build.js` 无 `regenerateOpencodeInstance`）。**门 C/D 实证**：五项 `Test-Path` 全 False + 运行时 4 项 True + **build 后不复活**。"
+
+  op-004:
+    file: op-004.md
+    title: "F5 F6 F7 引用同步 supersede 与验证门禁"
+    produces:
+      - docs/GETTING_STARTED.md
+      - .openfeel/manual/core/build.md
+      - .openfeel/kb/architecture.md
+      - .openfeel/kb/index.md
+      - .openfeel/dev/decisions.md
+    deps:
+      - op: op-003
+        type: hard
+    notes: "**F5**：`docs/GETTING_STARTED.md:127` **删死链行**（A4，不得留 `../AGENTS.md`）；`manual/core/build.md:12/28/34/38-40` 同步（步骤 8 标注**已移除（stage-55）**+ 原因、`.opencode` 表述、`.gitattributes` 行）；`kb/index.md:15,51` **追加**说明（不改历史行）；`kb/patterns.md` 历史条目**不改**（如被判过期 → **去反引号/占位**，不删内容）。**F6**：`kb/architecture.md:398` 的 **N1**（仓库自身 `.opencode/` 不清理）**追加式 supersede**（理由 + `2026-10-01` + `v1.1.2-stage-55` + **适用边界：目标项目不受影响** + 回滚）；`kb/index.md` 索引追加；`dev/decisions.md` ADR（存在则追加，不新建机制）。**F7**：静态验证①五项不存在 ②build 后**不复活** ③全局齐备（B1~B5 复跑）+ 五门禁（build 幂等 / `npm test` **按实测记录** / `tsc` 0 / `lint i18n` **726** / `lint kb` **0 过期**）+ 环境零污染 + **新会话验证指引 6 步**（重启会话 → skill 可用 → 9 agent 冒烟 → 全局约束含模块手册节 → `feel` 为默认 → 异常回滚）。"
+
+# 【互斥（禁止并行）】——本阶段为**全串行链**，任一 op 均不得并行
+mutual_exclusions:
+  - group: [op-001, op-002, op-003, op-004]
+    reason: "**全串行 + 顺序不变量（用户裁定）**：① op-001（模板就绪）必须早于 op-002（刷新全局），否则刷出的全局缺「模块手册」节需二次刷新；② **op-002（刷新全局）严格早于 op-003（删除项目资产）**——避免降级运行（门 B 未过不得删）；③ op-003（门 D：不复活）早于 op-004（引用同步/验证）。任一门（A~E）失败即停止。"
+  - group: [op-002, op-003]
+    reason: "**安全隔离**：op-002 是**唯一**操作本机真实全局目录的 op；op-003 为项目资产删除。二者**必须先刷新后删除**，且 op-003 的执行前提是 op-002 的 B1~B5 判据全部通过（含备份存在）。"
+
+# 【可并行组】
+parallel_groups:
+  - group: [op-004]
+    desc: "收口：依赖 op-003（hard），单独运行（F5/F6/F7 串行于同 op 内）。"
+
+# 【串行链（顺序固定）】
+serial_chain:
+  - chain: [op-001, op-002, op-003, op-004]
+    desc: "**全串行**（plan §四/§五）：F2（op-001）→[门A]→ F1（op-002）→[门B]→ F3+F4（op-003）→[门C/D]→ F5+F6+F7（op-004）→[门E]。**硬约束：op-002 必须早于 op-003**。"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-003
+  - op-004
+rationale: "plan §五 建议：`op-001 → op-002 → op-003 → op-004`（**硬约束：op-002 必须早于 op-003**，即「先刷新全局、后删项目资产」）。**门 A~E 为可验证中断点**，任一门失败即停止（此时项目资产尚未删除，**零回滚成本**）；**op-002 为本流水线唯一真实全局操作**（备份先行 + 判据留痕 + 失败回滚）。**本阶段不含 `npm publish`**。"
+
+# 【裁定（可追溯；依据 plan §八，**不虚构确认来源**）】
+decisions_taken:
+  traceability_rule: "A1/A2/A3/A4/A5/A7 = **planner 建议 + 待 Feel/用户确认**（本方案按其执行并留痕）；**A6 = 由用户删除范围推定**；**A8 = 已由用户指令确定**。"
+  items:
+    - id: A1
+      scope: op-001, op-002
+      status: planner 建议 + 待确认
+      decision: "执行顺序微调（**F2 先于 F1**）：模板迁入 → 刷新全局 → 删除；**不变量**：刷新严格早于删除"
+      landed: "serial_chain + 互斥组（op-002 早于 op-003）"
+    - id: A2
+      scope: op-001
+      status: planner 建议 + 待确认
+      decision: "根 `AGENTS.md:125-137` **版本管理**节**不迁移**（信息已在 `package.json`/`CHANGELOG`/`roadmap`；模板已有通用版本管理节）"
+      landed: "op-001 F2-④"
+    - id: A3
+      scope: op-002
+      status: planner 建议 + 待确认
+      decision: "全局刷新用 **`openfeel setup`**（纯全局、幂等、带写前备份），**不用 `update`**（会触碰项目侧 legacy 检测）"
+      landed: "op-002 F1-③"
+    - id: A4
+      scope: op-004
+      status: planner 建议 + 待确认
+      decision: "`docs/GETTING_STARTED.md:127` **删除死链行**（或改无链接文字）——不得留死链"
+      landed: "op-004 F5#1"
+    - id: A5
+      scope: op-003
+      status: planner 建议 + 待确认
+      decision: "`test/core/opencode-instance.test.ts` **删除文件 + 迁移仍有效断言**（CRLF / `external_directory` / reviewer 纪律节 → 模板源）+ 新增防回归断言"
+      landed: "op-003 F4-②（**本方案细化：10 it = 7 删除 + 3 迁移**）"
+    - id: A6
+      scope: op-003
+      status: 由用户删除范围推定
+      decision: "`.opencode/` 运行时 4 项（`node_modules`/`package.json`/`package-lock.json`/`.gitignore`）**保留**"
+      landed: "op-003 F3（保留段 + 验收 2）"
+    - id: A7
+      scope: op-004
+      status: planner 建议 + 待确认
+      decision: "kb 历史条目的 `.opencode/**` 引用**只读不改写**（追加 supersede；必要时**去反引号**满足 `lint kb`）"
+      landed: "op-004 F5#7/#8 + F6"
+    - id: A8
+      scope: (阶段边界)
+      status: "**已由用户指令确定**"
+      decision: "本阶段**不含 `npm publish`**（顺序：收尾 → 清项目级 → 之后发布）"
+      landed: "阶段范围提示（各 op 不含 publish）"
+
+# 【F 项 → op 映射】
+item_map:
+  F1: op-002
+  F2: op-001
+  F3: op-003
+  F4: op-003
+  F5: op-004
+  F6: op-004
+  F7: op-004
+
+# 【安全门（A~E）→ 可执行判据】
+gates:
+  A:
+    after: op-001
+    criteria: "模板含「模块手册」（zh）/「Module Manuals」（en）+ `npm run build` 幂等"
+    commands: "rg -c '### 模块手册' src/core/templates-data/agents-md/zh-CN.md ; rg -c '### Module Manuals' src/core/templates-data/agents-md/en.md ; npm run build（重跑零 diff）"
+  B:
+    after: op-002
+    criteria: "全局 skills **17**（含 `openfeel-cli-usage`）/ 全局 `AGENTS.md` 含**模块手册**节 + **权限模型**节 / agents **9** / 全局 `opencode.jsonc` 保留 `default_agent`+`$schema` / **备份快照存在**"
+    commands: "node -e（skills/agents 计数 + AGENTS.md 关键字 + jsonc 关键字）; Test-Path $env:TEMP\\opencode\\stage55-global-backup"
+    blocker: "**未过禁止 op-003**"
+  C:
+    after: op-003（F3）
+    criteria: "5 项资产 `Test-Path` 全 False；`.opencode/` 运行时 4 项 True；`git ls-files .opencode` = 0"
+  D:
+    after: op-003（F4）
+    criteria: "`rg regenerateOpencodeInstance|insertGeneratedMark build.js` 零命中；`npm run build` 幂等**且不复活**（5 项 `Test-Path` 仍 False）；`.gitattributes` 无 `.opencode`"
+  E:
+    after: op-004
+    criteria: "`docs/` 无 `../AGENTS.md` 死链；`kb/architecture.md` 含 supersede（2026-10-01）；`manual/core/build.md` 步骤 8 标注已移除；`lint kb` 0 过期"
+
+# 【REV 承接】
+rev_intake:
+  - rev: REV-v1.1.2-stage-55/REV-002
+    severity: low
+    status: open（审查条目，plan_review 内联；无独立状态行）
+    handled_by: op-003
+    disposition: "plan §六.2 称 `test/core/opencode-instance.test.ts`「7 个 it」，**实测 10 个 `it(`**（无 each/skip）→ **本方案已更正并细化**：该文件 = `describe('.opencode/ 自举实例')` **7 it**（对象消失 → **删除**）+ `describe('发布元数据（stage-49 B3/B4）')` **3 it**（对象**仍有效** → **整体迁移**至新文件 `test/core/release-metadata.test.ts`，**不得随文件丢弃**）；门禁数字以**实测记录**（**不得沿用 987 快照**）。"
+  - rev: REV-v1.1.2-stage-55/REV-003
+    severity: low
+    status: open（审查条目，plan_review 内联）
+    handled_by: (plan 层；op 侧无关联)
+    disposition: "B9 场景残留（审查摘要所述）——本阶段 op 不涉 B9；如需处置由 plan/归档侧承接。"
+
+# 【门禁基线（2026-10-01 实测）】
+gates_baseline:
+  build: "npm run build 幂等（重跑零 diff）+（op-003 后）**不再生成** `.opencode/agents|skills|ADAPTER.md`"
+  test: "npm test —— **按实测记录文件/用例数**（实测基线 **59 文件 / 987 用例**；op-003 删除 7 it + 迁移 3 it + 新增 2 断言 → **不得沿用 987**）"
+  tsc: "npx tsc --noEmit = 0"
+  lint_i18n: "node bin/openfeel.js lint i18n = **726 键**、problems = 0、**exit 0**（R1 后失败非 0 退出）"
+  lint_kb: "node bin/openfeel.js lint kb = **0 过期**（实测 267 引用；历史 `.opencode/**` 引用按「只读不改写」处置）、exit 0"
+  isolation: "测试隔离硬要求（vi.mock('node:os') + mkdtemp）；仓库 `.openfeel/config.yaml` hash/mtime 前后一致"

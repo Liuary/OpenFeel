@@ -21,7 +21,9 @@ program
   .description('AI Agent 开发流程治理 CLI 工具')
   .version(pkg.version, '-v, --version', '输出版本号')
   // B7-2：全局 --no-color（negate 选项；描述在注册时按当前语言求值，applyHelpI18n 会跳过 negate）
-  .option('--no-color', t('help.global.noColor', getCliLang(process.cwd())));
+  .option('--no-color', t('help.global.noColor', getCliLang(process.cwd())))
+  // stage-58 A-5：全局 --encoding（默认 auto；仅用于 --help 展示 + 防 commander 未知选项报错；实际解析从 argv/env 读取）
+  .option('--encoding <encoding>', t('help.global.encoding', getCliLang(process.cwd())), 'auto');
 
 /**
  * 是否启用彩色输出（B7-1，单一判定入口）。
@@ -131,9 +133,9 @@ export function applyHelpI18n(program: Command): void {
       if (!flag) continue;
       const optName = toCamelCase(flag);
       const optKey = `${keyPrefix}.${optName}`;
-      const optTranslated = t(optKey, lang);
-      if (optTranslated !== optKey) {
-        opt.description = optTranslated;
+      // 仅命中既有键时替换，避免对未补键的选项触发缺失告警（与 argument 同策略）
+      if (hasKey(optKey, lang)) {
+        opt.description = t(optKey, lang);
       }
     }
 
@@ -155,9 +157,9 @@ export function applyHelpI18n(program: Command): void {
     if (!flag) continue;
     const optName = toCamelCase(flag);
     const optKey = `help.${program.name()}.${optName}`;
-    const optTranslated = t(optKey, lang);
-    if (optTranslated !== optKey) {
-      opt.description = optTranslated;
+    // 仅命中既有键时替换，避免对未补键的选项（如 help.openfeel.encoding）触发每命令缺失告警
+    if (hasKey(optKey, lang)) {
+      opt.description = t(optKey, lang);
     }
   }
   // 子命令路径从命令名开始（不含 root），与 help 域 key 命名对齐

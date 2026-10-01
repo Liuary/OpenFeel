@@ -537,6 +537,7 @@ export const lint: I18nDomain = {
 export const help: I18nDomain = {
   'openfeel':              { key: 'help.openfeel',              zh: '', en: 'AI Agent development workflow governance CLI tool' },
   'global.noColor':        { key: 'help.global.noColor',        zh: '', en: 'Disable colored output (also via NO_COLOR=1)' },
+  'global.encoding':       { key: 'help.global.encoding',       zh: '', en: 'Output encoding (utf8|gbk|auto; default auto: adapts to chcp on Windows non-TTY; --json is always UTF-8)' },
   'openfeel.version':      { key: 'help.openfeel.version',      zh: '', en: 'Output version number' },
 
   'init':                  { key: 'help.init',                  zh: '', en: 'Initialize project workspace, create .openfeel/ directory structure and config files' },

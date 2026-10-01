@@ -1090,4 +1090,25 @@ describe('flow 命令（stage-41）', () => {
     expect(flow.stages['v1.1.2-stage-77'].ops['op-001'].state).toBe('draft');
     expect(flow.stages['v1.1.2-stage-77'].ops['op-001'].attempts).toBe(0);
   });
+
+  // ── stage-52/op-007：L5 warn i18n 化 ──
+
+  it('op-007/L5: Git 脏区 warn 走 i18n（zh）；en 模板无 CJK', async () => {
+    mockedChild.execSync.mockClear();
+    mockedChild.execSync.mockReturnValue(' M x.ts\n');
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-71');
+    mgr.save();
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    logMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-71', '--to', 'done', '--force']);
+
+    const warns = warnMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(warns).toContain('Git 脏区警告');
+    const { t } = await import('../../src/core/i18n.js');
+    expect(/[\u4e00-\u9fff]/.test(t('flow.advance.gitDirtyBoxMsg', 'en'))).toBe(false);
+    expect(/[\u4e00-\u9fff]/.test(t('flow.advance.gitDirtyBoxHint', 'en'))).toBe(false);
+    warnMock.mockRestore();
+  });
 });

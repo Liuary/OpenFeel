@@ -158,7 +158,8 @@ export function getGlobalConfig(): GlobalConfig {
     };
   } catch {
     // JSON 解析失败
-    console.warn('[i18n] 全局配置 JSON 解析失败，使用默认值');
+    // 无 lang 上下文（identity 被 i18n.ts 依赖，不可反向 import t）：使用 [WARN] + 英文中性文案
+    console.warn('[WARN] Failed to parse global config JSON; using defaults');
     return { ...DEFAULT_GLOBAL_CONFIG, projects: { ...DEFAULT_GLOBAL_CONFIG.projects } };
   }
 }

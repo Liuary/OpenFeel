@@ -150,6 +150,13 @@ export const flow: I18nDomain = {
   'advance.partialFailTmpl':    { key: 'flow.advance.partialFailTmpl',    zh: '已完成到 {done}；失败于 {failed}；剩余路径：{remaining}', en: '' },
   'advance.blockedByRevTmpl':   { key: 'flow.advance.blockedByRevTmpl',   zh: '存在阻塞中的审查条目，已停止推进：{revs}；剩余路径：{remaining}', en: '' },
   'advance.alreadyAtTargetTmpl':{ key: 'flow.advance.alreadyAtTargetTmpl',zh: '已在目标阶段：{stage} → {to}（无操作）',     en: '' },
+  'advance.forceRevRefused':    { key: 'flow.advance.forceRevRefused',    zh: '[!] --force 已指定，但 REV 安全检查不可绕过。拒绝推进。', en: '' },
+  'advance.gitDirtyBoxTop':     { key: 'flow.advance.gitDirtyBoxTop',     zh: '[!] ╔════════════════════════════════════════╗', en: '' },
+  'advance.gitDirtyBoxMsg':     { key: 'flow.advance.gitDirtyBoxMsg',     zh: '[!] ║  ⚠ Git 脏区警告：存在未提交的变更     ║', en: '' },
+  'advance.gitDirtyBoxHint':    { key: 'flow.advance.gitDirtyBoxHint',    zh: '[!] ║  请确认 Executor 已完成 git commit    ║', en: '' },
+  'advance.gitDirtyBoxBottom':  { key: 'flow.advance.gitDirtyBoxBottom',  zh: '[!] ╚════════════════════════════════════════╝', en: '' },
+  'advance.revBlockedTitleTmpl':{ key: 'flow.advance.revBlockedTitleTmpl',zh: '[!] 检测到 {n} 个未解决的阻塞 REV：',          en: '' },
+  'advance.revBlockedItemTmpl': { key: 'flow.advance.revBlockedItemTmpl', zh: '    {id}: {title} (priority={priority})',       en: '' },
 
   // flow attempt
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '错误：--result 必须为 pass 或 fail',       en: '' },
@@ -166,6 +173,14 @@ export const flow: I18nDomain = {
   'ops.emptyWarningTmpl':       { key: 'flow.ops.emptyWarningTmpl',       zh: '  ⚠️ {opId} 模板未填充（存在「- [ ] 待补充」）', en: '' },
   'ops.groupDraft':             { key: 'flow.ops.groupDraft',             zh: '未发布（draft）：',                        en: '' },
   'ops.groupActive':            { key: 'flow.ops.groupActive',            zh: '已发布：',                                en: '' },
+
+  // flow manager warnings（L5：core 层 warn i18n 化，均为 this.projectPath 上下文）
+  'manager.snapshotRestoreRefused': { key: 'flow.manager.snapshotRestoreRefused', zh: '[WARN] flow.json 已被其它进程修改，拒绝从快照恢复（请重新加载后重试）', en: '' },
+  'manager.phaseAutoCorrectTmpl':   { key: 'flow.manager.phaseAutoCorrectTmpl',   zh: "[WARN] advanceStagePhase: Phase '{phase}' 自动修正为 '{corrected}'", en: '' },
+  'manager.advancePhaseDeprecated': { key: 'flow.manager.advancePhaseDeprecated', zh: '[DEPRECATED] advancePhase() 已弃用，请使用 advanceStagePhase(stageName, phase) 替代', en: '' },
+  'manager.phaseAutoCorrectShortTmpl': { key: 'flow.manager.phaseAutoCorrectShortTmpl', zh: "[WARN] Phase '{to}' 自动修正为 '{corrected}'", en: '' },
+  'manager.advancePhaseNoStageId':  { key: 'flow.manager.advancePhaseNoStageId',  zh: '[DEPRECATED] advancePhase: 无法解析 stageId，跳过', en: '' },
+  'manager.autoFixPhaseGuardTmpl':  { key: 'flow.manager.autoFixPhaseGuardTmpl',  zh: '[WARN] addAutoFixReview 仅允许从 review_failed 状态调用，当前 stage {stage} phase 为 {phase}', en: '' },
 
   // flow log
   'log.noInit':                 { key: 'flow.log.noInit',                 zh: '流水线未初始化，无日志',                   en: '' },
@@ -798,6 +813,9 @@ export const config: I18nDomain = {
   'effective.title':         { key: 'config.effective.title',         zh: '配置有效值与来源',                        en: '' },
   'effective.row':           { key: 'config.effective.row',           zh: '{key}：{value}    [来源: {source}]',      en: '' },
   'effective.unknownKey':    { key: 'config.effective.unknownKey',    zh: '未知配置键：{key}（受管键：{keys}）',      en: '' },
+  // config profile warn（L5：ensureProfileDefaults，projectPath 上下文）
+  'profile.parseErrorSkipTmpl': { key: 'config.profile.parseErrorSkipTmpl', zh: '[profile] {err}；已跳过自动填充写回以保护现有文件', en: '' },
+  'profile.writeFailSkipTmpl':  { key: 'config.profile.writeFailSkipTmpl',  zh: '[profile] 自动填充写盘失败，已跳过：{err}', en: '' },
 };
 
 /* ==================== migrate 域：legacy 布局迁移命令 ==================== */

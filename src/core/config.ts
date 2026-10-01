@@ -11,6 +11,7 @@ import { getGlobalProfilePath } from './global-paths.js';
 import { z } from 'zod';
 import { parse as parseYaml, parseDocument, stringify as stringifyYaml } from 'yaml';
 import { getUserName } from './workspace/identity.js';
+import { t, getCliLang } from './i18n.js';
 
 // ── Zod Schema ──
 
@@ -284,7 +285,7 @@ export function ensureProfileDefaults(projectPath: string): void {
   const profile = readProfile();
   // 错误路径：profile.yaml 非法 → 不覆盖用户文件（遗留 #8；解析失败属用户可修复态，覆盖才是不可逆伤害）
   if (profile.parseError) {
-    console.warn(`[profile] ${profile.parseError}；已跳过自动填充写回以保护现有文件`);
+    console.warn(t('config.profile.parseErrorSkipTmpl', getCliLang(projectPath), { err: profile.parseError }));
     return;
   }
   let changed = false;
@@ -317,7 +318,7 @@ export function ensureProfileDefaults(projectPath: string): void {
       writeProfile(profile);
     } catch (err) {
       // 写盘失败（权限不足、磁盘满、只读挂载等）时静默降级：仅告警，不阻断 Feel 启动（REV-001）
-      console.warn(`[profile] 自动填充写盘失败，已跳过：${err instanceof Error ? err.message : String(err)}`);
+      console.warn(t('config.profile.writeFailSkipTmpl', getCliLang(projectPath), { err: err instanceof Error ? err.message : String(err) }));
     }
   }
 }

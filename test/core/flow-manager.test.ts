@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { t } from '../../src/core/i18n.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -1559,6 +1560,22 @@ describe('FlowManager', () => {
       } finally {
         console.warn = origWarn;
       }
+    });
+
+    it('op-007/L5：deprecated warn 走 i18n（zh 含 DEPRECATED）；en 模板无 CJK', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+
+      const warnings: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (msg: string) => { warnings.push(msg); };
+      try {
+        mgr.advancePhase('stage-01.op-001', 'exec_running');
+      } finally {
+        console.warn = origWarn;
+      }
+      expect(warnings.some((w) => w.includes('DEPRECATED'))).toBe(true);
+      expect(/[\u4e00-\u9fff]/.test(t('flow.manager.advancePhaseDeprecated', 'en'))).toBe(false);
     });
   });
 

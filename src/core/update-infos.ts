@@ -162,7 +162,8 @@ export function loadUpdateInfos(): UpdateInfoEntry[] {
     return entries;
   } catch {
     // 读取失败（损坏/权限）：降级为空条目，不中断
-    console.warn('[update] update_infos.md 解析失败，视为无条目');
+    // 无 lang 上下文（全局 update_infos.md）：使用 [WARN] + 英文中性文案；如需本地化请注入 projectPath
+    console.warn('[WARN] Failed to parse update_infos.md; treated as no entries');
     return [];
   }
 }

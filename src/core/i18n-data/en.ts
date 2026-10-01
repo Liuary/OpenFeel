@@ -141,6 +141,13 @@ export const flow: I18nDomain = {
   'advance.partialFailTmpl':    { key: 'flow.advance.partialFailTmpl',    zh: '', en: 'Completed up to {done}; failed at {failed}; remaining path: {remaining}' },
   'advance.blockedByRevTmpl':   { key: 'flow.advance.blockedByRevTmpl',   zh: '', en: 'Blocking review entries found; stopped: {revs}; remaining path: {remaining}' },
   'advance.alreadyAtTargetTmpl':{ key: 'flow.advance.alreadyAtTargetTmpl',zh: '', en: 'Already at target: {stage} → {to} (no-op)' },
+  'advance.forceRevRefused':    { key: 'flow.advance.forceRevRefused',    zh: '', en: '[!] --force specified, but the REV safety check cannot be bypassed. Refusing to advance.' },
+  'advance.gitDirtyBoxTop':     { key: 'flow.advance.gitDirtyBoxTop',     zh: '', en: '[!] ╔════════════════════════════════════════╗' },
+  'advance.gitDirtyBoxMsg':     { key: 'flow.advance.gitDirtyBoxMsg',     zh: '', en: '[!] ║  ⚠ Git dirty: uncommitted changes     ║' },
+  'advance.gitDirtyBoxHint':    { key: 'flow.advance.gitDirtyBoxHint',    zh: '', en: '[!] ║  Ensure the executor has committed  ║' },
+  'advance.gitDirtyBoxBottom':  { key: 'flow.advance.gitDirtyBoxBottom',  zh: '', en: '[!] ╚════════════════════════════════════════╝' },
+  'advance.revBlockedTitleTmpl':{ key: 'flow.advance.revBlockedTitleTmpl',zh: '', en: '[!] {n} unresolved blocking REV(s) detected:' },
+  'advance.revBlockedItemTmpl': { key: 'flow.advance.revBlockedItemTmpl', zh: '', en: '    {id}: {title} (priority={priority})' },
 
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '', en: 'Error: --result must be pass or fail' },
   'attempt.passTmpl':           { key: 'flow.attempt.passTmpl',           zh: '', en: '✓ {op} completed successfully' },
@@ -154,6 +161,12 @@ export const flow: I18nDomain = {
   'ops.emptyWarningTmpl':       { key: 'flow.ops.emptyWarningTmpl',       zh: '', en: '  ⚠️ {opId} template not filled ("- [ ] 待补充" still present)' },
   'ops.groupDraft':             { key: 'flow.ops.groupDraft',             zh: '', en: 'Unpublished (draft):' },
   'ops.groupActive':            { key: 'flow.ops.groupActive',            zh: '', en: 'Published:' },
+  'manager.snapshotRestoreRefused': { key: 'flow.manager.snapshotRestoreRefused', zh: '', en: '[WARN] flow.json was modified by another process; refusing to restore from snapshot (reload and retry)' },
+  'manager.phaseAutoCorrectTmpl':   { key: 'flow.manager.phaseAutoCorrectTmpl',   zh: '', en: "[WARN] advanceStagePhase: phase '{phase}' auto-corrected to '{corrected}'" },
+  'manager.advancePhaseDeprecated': { key: 'flow.manager.advancePhaseDeprecated', zh: '', en: '[DEPRECATED] advancePhase() is deprecated; use advanceStagePhase(stageName, phase) instead' },
+  'manager.phaseAutoCorrectShortTmpl': { key: 'flow.manager.phaseAutoCorrectShortTmpl', zh: '', en: "[WARN] phase '{to}' auto-corrected to '{corrected}'" },
+  'manager.advancePhaseNoStageId':  { key: 'flow.manager.advancePhaseNoStageId',  zh: '', en: '[DEPRECATED] advancePhase: cannot parse stageId; skipped' },
+  'manager.autoFixPhaseGuardTmpl':  { key: 'flow.manager.autoFixPhaseGuardTmpl',  zh: '', en: '[WARN] addAutoFixReview is only allowed from review_failed; current stage {stage} phase is {phase}' },
 
   'log.noInit':                 { key: 'flow.log.noInit',                 zh: '', en: 'Pipeline not initialized, no logs' },
   'log.noLogs':                 { key: 'flow.log.noLogs',                 zh: '', en: 'No operation logs' },
@@ -760,6 +773,8 @@ export const config: I18nDomain = {
   'effective.title':         { key: 'config.effective.title',         zh: '', en: 'Effective config values and sources' },
   'effective.row':           { key: 'config.effective.row',           zh: '', en: '{key}: {value}    [source: {source}]' },
   'effective.unknownKey':    { key: 'config.effective.unknownKey',    zh: '', en: 'Unknown config key: {key} (managed keys: {keys})' },
+  'profile.parseErrorSkipTmpl': { key: 'config.profile.parseErrorSkipTmpl', zh: '', en: '[profile] {err}; skipped auto-fill write-back to protect the existing file' },
+  'profile.writeFailSkipTmpl':  { key: 'config.profile.writeFailSkipTmpl',  zh: '', en: '[profile] auto-fill write failed; skipped: {err}' },
 };
 
 /* ==================== migrate domain: legacy layout migration command ==================== */

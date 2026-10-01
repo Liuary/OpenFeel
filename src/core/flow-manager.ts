@@ -625,7 +625,7 @@ export class FlowManager {
         atomicWriteFileSync(this.filePath, restoredContent, { backup: true });
       });
       if (conflict) {
-        console.warn('[WARN] flow.json 已被其它进程修改，拒绝从快照恢复（请重新加载后重试）');
+        console.warn(t('flow.manager.snapshotRestoreRefused', getCliLang(this.projectPath)));
         return false;
       }
 
@@ -1221,7 +1221,7 @@ export class FlowManager {
     if (!phaseResult.success) {
       const corrected = this.fuzzyCorrectPhase(phase as unknown as string);
       if (corrected) {
-        console.warn(`[WARN] advanceStagePhase: Phase '${phase}' 自动修正为 '${corrected}'`);
+        console.warn(t('flow.manager.phaseAutoCorrectTmpl', getCliLang(this.projectPath), { phase: String(phase), corrected }));
         targetPhase = corrected;
       } else {
         throw new Error(`非法 phase '${phase}'，模糊修正失败`);
@@ -1515,7 +1515,7 @@ export class FlowManager {
    * @deprecated 请使用 advanceStagePhase(stageName, phase) 替代。内部保留 op 级逻辑后委托给 advanceStagePhase。
    */
   advancePhase(opId: string | null, to: string, stageId?: string, force?: boolean): void {
-    console.warn('[DEPRECATED] advancePhase() 已弃用，请使用 advanceStagePhase(stageName, phase) 替代');
+    console.warn(t('flow.manager.advancePhaseDeprecated', getCliLang(this.projectPath)));
 
     // ── 1. 校验目标 phase ──
     let targetPhase: PipelinePhase;
@@ -1524,7 +1524,7 @@ export class FlowManager {
       if (force) {
         const corrected = this.fuzzyCorrectPhase(to);
         if (corrected) {
-          console.warn(`[WARN] Phase '${to}' 自动修正为 '${corrected}'`);
+          console.warn(t('flow.manager.phaseAutoCorrectShortTmpl', getCliLang(this.projectPath), { to: String(to), corrected }));
           targetPhase = corrected;
         } else {
           console.error(`错误: '${to}' 不是合法的 PipelinePhase 值，且无法自动修正`);
@@ -1546,7 +1546,7 @@ export class FlowManager {
     // ── 2. 解析 stageId ──
     const resolvedStageId = stageId || (opId ? this.parseOpId(opId)?.stageId : this.data.pipeline.current.stage);
     if (!resolvedStageId) {
-      console.warn('[DEPRECATED] advancePhase: 无法解析 stageId，跳过');
+      console.warn(t('flow.manager.advancePhaseNoStageId', getCliLang(this.projectPath)));
       return;
     }
 
@@ -2281,7 +2281,7 @@ export class FlowManager {
 
     // 前置条件：仅允许从 review_failed 状态调用，检查对应 stage 的 phase
     if (stage.phase !== 'review_failed') {
-      console.warn(`[WARN] addAutoFixReview 仅允许从 review_failed 状态调用，当前 stage ${stageId} phase 为 ${stage.phase}`);
+      console.warn(t('flow.manager.autoFixPhaseGuardTmpl', getCliLang(this.projectPath), { stage: stageId, phase: String(stage.phase) }));
       return;
     }
 

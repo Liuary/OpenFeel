@@ -732,7 +732,7 @@ export function registerFlowCommand(program: Command): void {
         const blockingOpen = assertNoBlockingOpenRev(mgr, options.stage, lang);
         if (blockingOpen.length > 0) {
           if (options.force) {
-            console.warn('[!] --force 已指定，但 REV 安全检查不可绕过。拒绝推进。');
+            console.warn(t('flow.advance.forceRevRefused', lang));
           }
           console.error('错误：blocking REV 未解决前禁止推进到 done。');
           console.error('请先解决上述 REV 或通过 flow review resolve 标记为非阻塞。');
@@ -827,10 +827,10 @@ export function registerFlowCommand(program: Command): void {
             timeout: 5000,
           }).trim();
           if (gitStatus) {
-            console.warn('[!] ╔════════════════════════════════════════╗');
-            console.warn('[!] ║  ⚠ Git 脏区警告：存在未提交的变更     ║');
-            console.warn('[!] ║  请确认 Executor 已完成 git commit    ║');
-            console.warn('[!] ╚════════════════════════════════════════╝');
+            console.warn(t('flow.advance.gitDirtyBoxTop', lang));
+            console.warn(t('flow.advance.gitDirtyBoxMsg', lang));
+            console.warn(t('flow.advance.gitDirtyBoxHint', lang));
+            console.warn(t('flow.advance.gitDirtyBoxBottom', lang));
           }
         } catch {
           // git 不可用（无 .git 目录或 git 未安装）时静默跳过
@@ -1786,9 +1786,13 @@ function assertNoBlockingOpenRev(mgr: FlowManager, stage: string | undefined, la
   );
   const blockingOpen = stageReviews.filter((r) => r.blocking !== false && r.status === 'open');
   if (blockingOpen.length > 0) {
-    console.warn(`[!] 检测到 ${blockingOpen.length} 个未解决的阻塞 REV：`);
+    console.warn(t('flow.advance.revBlockedTitleTmpl', lang, { n: String(blockingOpen.length) }));
     for (const rev of blockingOpen) {
-      console.warn(`    ${rev.id}: ${rev.title} (priority=${rev.priority})`);
+      console.warn(t('flow.advance.revBlockedItemTmpl', lang, {
+        id: rev.id,
+        title: rev.title,
+        priority: rev.priority,
+      }));
     }
   }
   return blockingOpen;

@@ -54,3 +54,5 @@
 | [2026-10-01-Liuary-049.md](2026-10-01-Liuary-049.md) | Liuary | v1.1.2-stage-56.op-002 执行通过 |
 | [2026-10-01-Liuary-050.md](2026-10-01-Liuary-050.md) | Liuary | v1.1.2-stage-56.op-003 执行通过 |
 | [2026-10-01-Liuary-051.md](2026-10-01-Liuary-051.md) | Liuary | v1.1.2-stage-56.op-004 执行通过 |
+| [2026-10-01-Liuary-052.md](2026-10-01-Liuary-052.md) | openfeel-archiver | **stage-56 归档完成（发布前最后一轮收尾 → v1.1.2 发布就绪，4 op）**——S2 skill 全量对齐（16 项 + `advanceAccepted` 修正 + `transitionsDiff` 注记）/ S1 键数 5 键全链 / S3+S4（en.md CJK 归零 + 公域 Bug 索引补齐 17）/ S5+S6（build + 备份 3690 文件 + `setup` + 门⑤ `CONTENT-EQUAL` + 回归）；`templates/BUG-005` closed + `cli/BUG-007` 归档官就地修正 closed（**18 条 Bug 全部 closed**）；`npm test` 59/985、`lint i18n` 726 键、`lint kb` 0 过期；知识沉淀 3 条新增 + 1 更新；**十六阶段全部闭环，达到可发布状态；⚠️ 须重启 harness；`npm publish` 由用户执行** |
+| [2026-10-01-Liuary-053.md](2026-10-01-Liuary-053.md) | Liuary | 阶段 v1.1.2-stage-56 完成 |

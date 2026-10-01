@@ -156,7 +156,7 @@ node bin/openfeel.js flow status
 
 ## BUG-005：`openfeel-cli-usage` skill 的 `flow phases --json` 输出说明缺 `transitionsDiff`（与实测 5 键不一致）
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.2-stage-54`（正式测试，E3 复核 `flow phases --help` 与 JSON 契约时顺带扫描部署型 skill 模板）｜ **归因**：**文档漂移**（stage-52 新增 `transitionsDiff` 时未纳入 skill 模板同步面）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（`v1.1.2-stage-56` op-001 修复，测试官全链路验收通过） ｜ **来源阶段**：`v1.1.2-stage-54`（正式测试，E3 复核 `flow phases --help` 与 JSON 契约时顺带扫描部署型 skill 模板）｜ **归因**：**文档漂移**（stage-52 新增 `transitionsDiff` 时未纳入 skill 模板同步面）
 - **私域详细报告**：`.openfeel/users/Liuary/bugs/templates/BUG-005_cli-usage-skill的flow-phases-json输出说明缺transitionsDiff.md`
 
 ### 核心结论
@@ -187,6 +187,11 @@ node bin/openfeel.js flow status
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
 | 2026-10-01 17:30 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-54 正式测试验收发现；`flow phases --json` 实测 5 键 vs `SKILL.md:46` 记 3 键；归 templates 模块，建议随 stage-55+ 文档/模板同步收口 |
+| 2026-10-01 19:20 | openfeel-feel-tester | **通过，closed** | v1.1.2-stage-56 正式测试验收全链路独立复测：权威源 `SKILL.md:50` 已记 5 键、生成段 `update.ts:423`/`template-loader.ts:6829` 同步、全局副本 `~/.config/opencode/skills/openfeel-cli-usage/SKILL.md` 与权威源正文 **CONTENT-EQUAL**；实测 `flow phases --json` 顶层键 = 5 键、`transitionsDiff.missing=["review_passed\|test_passed"]`。缺陷已被 op-001 消解 |
+
+### 修复记录（v1.1.2-stage-56 op-001）
+
+`templates-data/opencode/skills/openfeel-cli-usage/SKILL.md` 重写为 v1.1.2 全量对齐版，`## 命令速查`/「v1.1.2 新增能力」A 组均写明 `flow phases [--json]` 的 **5 键**（含 `transitionsDiff`）；`npm run build` 传播生成段（`update.ts:423` / `template-loader.ts:6829`），`openfeel setup` 刷新全局副本。**防再犯落地**：同步面清单新增「部署型 skill 模板」一环已由本次修复实践验证（权威源 → 生成段 → 全局副本三处一致）。
 
 > 沉淀：`kb/troubleshooting.md #新增输出键/契约的同步面清单`（i18n help + docs + manual + kb + 部署型 skill 模板，易漏最后一环）。
 

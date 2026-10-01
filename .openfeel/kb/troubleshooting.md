@@ -854,6 +854,8 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 
 **参见：** v1.1.2-stage-54 E3（i18n help 修复）与 `templates/BUG-005`（skill 模板遗漏）；`cli/BUG-003`（stage-48，同族首次）；kb/troubleshooting.md #多源文案同步陷阱、#新增 i18n 键已定义却未接入（死键）
 
+> **更新于 2026-10-01（v1.1.2-stage-56）**：本条目所述「部署型 skill 模板」一环已**收口并实证**——`templates/BUG-005` 由 op-001 修复（`openfeel-cli-usage/SKILL.md` 补齐 `flow phases --json` **5 键**），并完成「权威源 → `npm run build` 生成段 → `openfeel setup` 全局副本」**全链路一致**验证（全局副本正文与权威源 **CONTENT-EQUAL**）。同步面清单在原文基础上**扩展为 9 载体的可操作表**（含生成段、CHANGELOG、全局副本），见 kb/patterns.md #部署型资产变更的多载体同步面清单；同族新例 `cli/BUG-007`（`docs/commands.md` 手写文档残留已删子命令 `project list`/`info`，由归档官就地更正）。
+
 ## [+] 自举实例移除须连带删除 build 生成步骤（否则 `npm run build` 复活）(2026-10-01)
 
 **症状**：把「构建产物型」受管文件（`.opencode/{agents,skills,ADAPTER.md}` 等）用 `git rm` 删除后，跑一次 `npm run build`（或 CI 构建），这些文件**全部回来了**——删除只在当前工作树生效，生成步骤每次构建都重建。
@@ -893,3 +895,22 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 **实证**：v1.1.2-stage-55 op-005——`loadOpencodeAgentTemplate`（`template-loader.ts`）实测读 `OPENCODE_AGENT_TEMPLATES[lang][agentId]`（build 注入常量）；修正验证法为「改源 + build → 红（2 failed）→ 恢复 + 重建 → 绿（41 passed）」；REV-003 评估「正常工作流下纪律节丢失必被拦」成立并关闭。
 
 **参见：** v1.1.2-stage-55 op-005（REV-003）；`src/core/template-loader.ts`（`loadOpencodeAgentTemplate` / `OPENCODE_AGENT_TEMPLATES`）；kb/patterns.md #模板单源架构
+
+## [+] `advanceAccepted` 被误述为「组合条件路径」：字段语义须与实现对齐（内置 15 phase 推进白名单）(2026-10-01)
+
+**症状**：`openfeel-cli-usage` skill 把 `flow phases --json` 的 `advanceAccepted` 解释为「**组合条件路径**另见 `advanceAccepted`」——**语义错误**，误导读者以为它是 `transitions` 的组合源（如 `review_passed|test_passed`）。
+
+**实测真相**（stage-56 复核）：
+- `advanceAccepted: [...PIPELINE_PHASES]`（`src/commands/flow.ts` 的 `flow phases` action）= **内置 15 个 phase 名的「推进白名单」**——即 `flow advance --to` **实际接受**的取值集合，**不是**组合条件路径；
+- 组合条件差异（内置默认含 `review_passed|test_passed`，而本仓 `pipeline.yaml` 未列）由 **`transitionsDiff.missing` 显式可见**（实测 `missing=["review_passed|test_passed"]`、`extra=changed=[]`）；
+- `phases` 是**存在视图**（运行时 `pipeline.yaml` 声明的全部 phase），三者语义不同（见 kb/patterns.md #CLI 自描述集合的「存在视图 vs 推进白名单」区分）。
+
+**根因**：`advanceAccepted` 与 `transitions` 同属自描述 JSON，但**语义角色不同**；撰写文档时按「名字相邻」误把它归为转移表的组合条件，未回读实现（`advanceAccepted: [...PIPELINE_PHASES]`）。
+
+**修复（stage-56 op-001）**：skill 改为准确表述——「`advanceAccepted` = 内置 15 phase 的推进白名单（`flow advance` 只接受这 15 个值），**不是**组合条件路径；组合条件差异经 `--json.transitionsDiff.missing` 显式可见（stage-50 裁定：不补组合键，改以 `transitionsDiff` 显式化）」；`rg "组合条件路径" SKILL.md` **零命中**。
+
+**避免再犯**：① 文档写「某字段是什么」前，**回读实现取真值**（`rg <field> src/` 看赋值表达式），勿按字段名猜测；② 自描述 JSON 的字段**语义角色**须各自标注（存在视图 / 推进白名单 / 差异报告），name-adjacency ≠ semantic-adjacency；③ 判据：能回答「它约束什么/解释什么」才算写清语义。
+
+**实证**：v1.1.2-stage-56 REV-005（方案审查发现 `project` 陈旧 + 表述失实）、op-001 修正；测试官实测 `advanceAccepted.length=15`、`transitionsDiff.missing=["review_passed|test_passed"]` 与注记逐字吻合。
+
+**参见：** v1.1.2-stage-56 op-001 / REV-005 / REV-008；kb/patterns.md #CLI 自描述集合的「存在视图 vs 推进白名单」区分、#CLI 自描述命令模式；kb/troubleshooting.md #`flow phases` 自描述 phase 与 `flow advance` 接受集合不一致

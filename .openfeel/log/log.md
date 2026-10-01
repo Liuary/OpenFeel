@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-01-Liuary-053.md](2026/10/01/2026-10-01-Liuary-053.md) | Liuary | 阶段 v1.1.2-stage-56 完成 |
+| [2026-10-01-Liuary-052.md](2026/10/01/2026-10-01-Liuary-052.md) | Archiver | **stage-56 归档完成（发布前最后一轮收尾 → v1.1.2 发布就绪，4 op）**——**S2** `openfeel-cli-usage` skill 全量对齐 v1.1.2（补 **16 项** + 修正 `advanceAccepted` 误称〔内置 15 phase 推进白名单〕+ `transitionsDiff` 注记 + 重写「新增能力」，123 行/11001B）；**S1** 键数全链同步（`docs`/`manual`/`CHANGELOG`/生成段 → 5 键）；**S3/S4**（`agents-md/en.md` CJK 归零、`managed-region.ts` 注释校准、`backup.md` 措辞、新建 `bugs/kb.md` + 公域索引补齐 17）；**S5/S6**（build → 备份 **3690 文件** + `setup` → 门⑤ `CONTENT-EQUAL`〔17 skill〕→ 回归）；`templates/BUG-005` **closed** + `cli/BUG-007`（归档官就地修正 **closed**）→ **18 条 Bug 全部 closed（open 0）**；`npm test` **59 文件 / 985 用例**、`lint i18n` 726 键、`lint kb` 0 过期；知识沉淀 3 条新增 + 1 更新；**十六阶段全部闭环，⚠️ 须重启 harness；`npm publish` 由用户执行** |
 | [2026-10-01-Liuary-051.md](2026/10/01/2026-10-01-Liuary-051.md) | Liuary | v1.1.2-stage-56.op-004 执行通过 |
 | [2026-10-01-Liuary-050.md](2026/10/01/2026-10-01-Liuary-050.md) | Liuary | v1.1.2-stage-56.op-003 执行通过 |
 | [2026-10-01-Liuary-049.md](2026/10/01/2026-10-01-Liuary-049.md) | Liuary | v1.1.2-stage-56.op-002 执行通过 |
@@ -30,8 +32,6 @@
 | [2026-10-01-Liuary-026.md](2026/10/01/2026-10-01-Liuary-026.md) | Liuary | v1.1.2-stage-53.op-002 执行通过 |
 | [2026-10-01-Liuary-025.md](2026/10/01/2026-10-01-Liuary-025.md) | Liuary | v1.1.2-stage-53.op-001 执行通过 |
 | [2026-10-01-Liuary-024.md](2026/10/01/2026-10-01-Liuary-024.md) | Liuary | v1.1.2-stage-52.op-012 执行通过 |
-| [2026-10-01-Liuary-023.md](2026/10/01/2026-10-01-Liuary-023.md) | Liuary | v1.1.2-stage-52.op-010 执行通过 |
-| [2026-10-01-Liuary-022.md](2026/10/01/2026-10-01-Liuary-022.md) | Liuary | v1.1.2-stage-52.op-011 执行通过 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

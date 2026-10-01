@@ -7,10 +7,10 @@
 
 | 状态 | 数量 |
 |------|:--:|
-| open | 1 |
+| open | 0 |
 | fixed | 0 |
-| closed | 16 |
-| **合计** | **17** |
+| closed | 18 |
+| **合计** | **18** |
 
 > **v1.1.2-stage-43 收口（2026-09-29，commit `cbc606f`）**：`config/BUG-004`（medium，测试隔离缺口）经 openfeel-feel-tester **外部独立进程比对**验收**关闭**——`identity.test.ts`（11/11）与全量 `npm test`（41 文件 / 694 用例）前后真实 `~/.openfeel/config.json` 的 **mtime + SHA-256 均不变**；修复＝N4 单点 `vi.mock('node:os')` + 删除 `savedConfig` 伪隔离 + 新增只读隔离守护用例。**新登记 `cli/BUG-003`**（low，非阻塞）：`flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 修复的收尾遗漏）——**裁定归下一版本或由用户决定**，v1.1.2 不修。至此 v1.1.2 遗留缺陷清零（仅 1 条 low 非阻塞顺延）。
 >
@@ -48,6 +48,7 @@
 | [BUG-004](cli.md) | en 模式下 `--help` 的 Arguments 描述仍为中文（T38 只落地遍历机制，23 处 `.argument()` 仅 1 处补键） | low | **closed**（stage-51 补齐 20 处 + 新增 1 处 + 运行时 CJK 门禁验收通过） | v1.1.2-stage-50 |
 | [BUG-005](cli.md) | 空模板检测为纯子串匹配，op 正文引用占位标记被误判「未填充」（`publish` 误拒 + health/ops list 误报） | medium | **closed**（stage-54 op-001 整行锚定；隔离 fixture 端到端验收通过） | v1.1.2-stage-52 |
 | [BUG-006](cli.md) | en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`；op-007 仅覆盖 `console.warn`） | low | **closed**（stage-54 op-002 i18n 补键；en CJK=0 验收通过） | v1.1.2-stage-52 |
+| [BUG-007](cli.md) | `docs/commands.md` 的 `project` 子命令参考陈旧（`list`/`info` 已不存在，实测仅 `overview`） | low | **closed**（stage-56 归档官**就地修正** `docs/commands.md`：改 `project overview`；`rg "project (list\|info)"` 零命中） | v1.1.2-stage-56 |
 
 ### config
 
@@ -78,6 +79,10 @@
 | [BUG-002](templates.md) | 全局约束模板 `agents-md` 权限部署路径行未泛化（双源不同步） | medium | **closed** | v1.1.2-stage-45 |
 | [BUG-003](templates.md) | 部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目不可执行（与 agent / agents-md 保留裸 `openfeel` 的口径相反） | low | **closed**（stage-50 op-006 T53 双口径 + build 幂等验收通过） | v1.1.2-stage-48 |
 | [BUG-004](templates.md) | 迁移后 `current.md` 统计行沿用「执行中」快照、用例数陈旧（942 vs 实测 949）+ 措辞扞格 | low | **closed**（stage-53 归档官就地修正：942→949 + kb 计数刷新 + 记录措辞改为「归档完成」） | v1.1.2-stage-53 |
-| [BUG-005](templates.md) | `openfeel-cli-usage` skill 的 `flow phases --json` 输出说明缺 `transitionsDiff`（与实测 5 键不一致，`transitionsDiff` 同步面遗漏 skill 模板） | low | **open** | v1.1.2-stage-54 |
+| [BUG-005](templates.md) | `openfeel-cli-usage` skill 的 `flow phases --json` 输出说明缺 `transitionsDiff`（与实测 5 键不一致，`transitionsDiff` 同步面遗漏 skill 模板） | low | **closed**（stage-56 op-001 全链路对齐 5 键；权威源→生成段→全局副本 content-equal 验收通过） | v1.1.2-stage-54 |
 
 > 注：`templates/BUG-001`（事务官标识列未加前缀）与 `kb/BUG-001`（`lint kb` 过期引用）此前仅存私域，已于 **`v1.1.2-stage-56` 补齐**——分别见本目录 `templates.md` / `kb.md`。至此公域计数与私域一致（17）。
+
+> **v1.1.2-stage-56 收口（2026-10-01，测试官验收）**：`templates/BUG-005`（low）经 openfeel-feel-tester 全链路独立复测**验收通过并关闭**——部署型 skill 模板 `openfeel-cli-usage/SKILL.md` 的 `flow phases --json` 输出说明已由 op-001 补齐为实测 **5 键**（`schemaVersion`/`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`），且「权威源 → `npm run build` 生成段（`update.ts`/`template-loader.ts`）→ 全局 `~/.config/opencode` 副本」三处一致（全局副本正文与权威源 **CONTENT-EQUAL**）。核心结论见本目录 `templates.md`。**同阶段测试中新登记 1 条非阻塞**：`cli/BUG-007`（low，`docs/commands.md:522-523` 的 `project list`/`info` 子命令已被移除仍记于文档）。
+
+> **v1.1.2-stage-56 归档收口（2026-10-01，openfeel-archiver）**：`cli/BUG-007`（low，文档漂移）经**归档官就地修正并关闭**——`docs/commands.md` 的 `## project — 项目管理` 节删除 `openfeel project list` / `openfeel project info [path]` 两行，改为实测存在的 `openfeel project overview`（+ 更正注记）；`project --help` 实测仅 `overview`，`rg "project (list|info)" docs/commands.md` 零命中。**至此 v1.1.2 累计 18 条 Bug 全部 `closed`（open 0 / closed 18）**，与私域 `index.md` 及实测 `BUG-*.md` 文件数（18）三者一致；公共域模块条目 = cli(7) + config(4) + archive(1) + templates(5) + kb(1) = **18**。防再犯沉淀：命令面**收敛**同样须走多载体同步面清单（手写 `docs/commands.md` 不经 build，最易漏）。

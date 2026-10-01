@@ -76,6 +76,11 @@
   - **Fixed（内部）**：`REV-003`（low，覆盖回归）补齐 reviewer 纪律节的**模板源断言**（zh/en 各 1 it，经 `loadOpencodeAgentTemplate`）；`REV-002`（low，it 计数表述）登记更正。
   - **生效**：全局刷新（`openfeel setup`）**须重启 opencode 会话**方生效（本仓不再提供项目级 `.opencode/**`；项目级约束/配置改由全局提供）。
 
+- [stage-56] **发布前最后一轮收尾（发布就绪）**：
+  - **Changed（部署产物）**：`openfeel-cli-usage` skill 权威源全量对齐 v1.1.2——补齐 **16 项**命令/参数（`flow ops list`、`plan scheme remove`/`rename`/`publish` + `create --draft`、`flow review update`/`remove`、`flow stage set --deps`、`stage set --exec-mode`/`--auto-advance`/`--review-agent`、`stage task --add`/`--done`/`--undone`、`plan stage add --tasks`、`flow health --fix`、`flow advance --quiet` + `--to` 自动逐步、`flow status`/`current`/`health`/`metrics`/`overview --json`、`knowledge dedup`、`lint` 非 0 退出、`config set`/`get` 全量 `defaults.*`、flow 子命令补 `ops`/`migrate`、`view add` 已移除），修正 `advanceAccepted` 误称（**内置 15 phase 推进白名单**，非组合条件路径）+ 补 `transitionsDiff` 注记；`npm run build` 传播生成段 + `openfeel setup` 刷新全局副本（**须重启 harness 会话生效**）。
+  - **Fixed（文档口径）**：`flow phases --json` **5 键**（`schemaVersion`/`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`）全链路同步（`docs/commands.md` / `.openfeel/manual/cli/commands.md` / `CHANGELOG` / 生成段）；`templates/BUG-005`（low，部署型 skill 模板 `flow phases --json` 输出说明缺 `transitionsDiff`）**关闭**；`cli/BUG-007`（low，`docs/commands.md` 的 `project list`/`info` 子命令已不存在）——归档官就地修正为 `openfeel project overview` 并**关闭**。
+  - **内部（非随包行为）**：`agents-md/en.md` 图注 CJK 归零（`acceptance rejected`）；`managed-region.ts:182` 注释校准（incoming 全字段覆盖 + existing 独有 passthrough）；`manual/core/backup.md` 措辞（每进程（通常即每命令））；公域 Bug 索引补齐至 **17**（新建 `bugs/kb.md`）。**v1.1.2 累计 18 条 Bug 全部关闭（open 0 / closed 18）。**
+
 > 说明：本仓库 `.openfeel/dev/current.md` / `.openfeel/users/{username}/dev_last.md` 为工作区数据（非随包分发产物），格式约定经 `openfeel setup` 部署到全局约束层后生效。
 
 

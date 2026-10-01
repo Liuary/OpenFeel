@@ -3054,3 +3054,48 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 **实证**：v1.1.2-stage-55 `kb/architecture.md` N1 原行保留（L398），L400 追加 supersede 块（含三条理由 + 边界 + 回滚）；`kb/index.md` 追加摘要行；`dev/decisions.md` 追加 ADR-002；`manual/core/build.md` 步骤 8 节标注已移除；`rg supersede` 可检索（`lint kb` 0 过期）。
 
 **参见：** v1.1.2-stage-55 op-004（F6）；kb/architecture.md #仓库自身不再保留项目级部署资产（L400 supersede 注记）；`plan/v1/stage-55/op-004` §三 F6
+
+## [+] 部署型资产变更的多载体同步面清单：权威源 skill → build 生成段 → 全局副本（+ 手写文档）(2026-10-01)
+
+**问题**：新增/变更**命令面、参数、输出键、文案**时，变更须落到**多个载体**，且载体间**无单一源、无一致性断言**——`npm run build` 只传播生成段，`lint i18n` 只校验 zh/en 对称，均不校验「文档是否覆盖全部真实能力」。任一载体遗漏都不触发失败（同族反复发生：`cli/BUG-001/003` 缺 `advanceAccepted`、stage-52 缺 `transitionsDiff`、`templates/BUG-005` 部署型 skill 模板缺 `transitionsDiff`、`cli/BUG-007` 手写 docs 残留已删子命令）。
+
+**同步面清单（新增/变更命令面、参数、输出键、文案时逐项打勾）**：
+
+| # | 载体 | 落点 | 是否单一源 | 校验方式 |
+|:-:|------|------|:--:|----------|
+| 1 | 源码实现 | `src/**` | 是 | 实测 `node bin/openfeel.js <cmd> --help` / `--json` |
+| 2 | **权威源 skill 模板** | `templates-data/opencode/skills/*/SKILL.md` | **是（唯一权威源）** | 人工，`rg` |
+| 3 | build 生成段 | `update.ts` / `template-loader.ts` | **否（禁手改）** | `npm run build` 后 `rg`（幂等） |
+| 4 | i18n help 文案 | `src/core/i18n-data/{zh-CN,en}.ts` | 是 | `lint i18n` + 断言键名 |
+| 5 | 手写文档 | `docs/commands.md` | 是（不经 build） | 人工 `rg` |
+| 6 | 模块手册 | `.openfeel/manual/**` | 是 | 人工 `rg` |
+| 7 | 变更日志 | `CHANGELOG.md` | 是 | 人工 |
+| 8 | 知识库 | `.openfeel/kb/**` | 是 | `rg`（`lint kb` 查引用存在性，不查内容） |
+| 9 | **全局副本** | `~/.config/opencode/skills/*/SKILL.md` | **否（setup 产物）** | `openfeel setup` + 内容级判据（见下条） |
+
+**判据与收口**：① 新增输出键/命令面 = **一次多点同步**（非单点改动）；② 收尾以「**关键键名/命令名全仓 `rg`**」为准（按行号盘点必漏副本）；③ 生成段与全局副本**禁手改**，一律由 `npm run build` / `openfeel setup` 从权威源传播；④ 部署型 skill 模板（#2）因**不在 build 一致性校验链路上**最易漏（见 kb/troubleshooting.md #新增输出键/契约的同步面清单）。
+
+**实证**：v1.1.2-stage-56 op-001 将 `openfeel-cli-usage/SKILL.md` 补齐 **16 项**命令面（`flow ops list` / `plan scheme remove·rename·publish` / `flow stage set --deps` / `stage set` 字段 / `stage task --add` / `health --fix` / `advance --quiet` / `knowledge dedup` / 5 命令 `--json` / `config set defaults.*` / `lint` 非 0 退出 / `view add` 已移除 等）并同步 `docs/commands.md` + `manual/cli/commands.md` + `CHANGELOG.md`（`flow phases --json` **5 键**全链一致），随后 `npm run build` + `openfeel setup` 传播至生成段与全局副本，门⑤ 判据 `CONTENT-EQUAL`。
+
+**参见：** v1.1.2-stage-56 op-001/op-002/op-004；kb/troubleshooting.md #新增输出键/契约的同步面清单、#多源文案同步陷阱；kb/patterns.md #CLI 用法 skill 化模式、#部署语境 vs 本仓语境的命令口径二分
+
+## [+] 全局副本刷新的内容级判据：markers + YAML 折叠致全文件哈希天然不等 (2026-10-01)
+
+**问题**：验证「`openfeel setup` 刷新后的全局副本与仓库权威源一致」时，直觉做法是**逐字节哈希比对**（`Get-FileHash` / `sha256`）——但**必然失败**，不是刷新错误，而是两侧**结构本就不同**。
+
+**为何全文件哈希不等（正常且预期）**：
+1. 全局副本由受管区机制写入，正文被 `<!-- openfeel:begin -->` / `<!-- openfeel:end -->` **markers 包裹**（+2 行）；
+2. 全局副本的 YAML frontmatter 经部署流程**重新序列化**（description 折叠）（如 +3 行）；
+3. 因此 stage-56 实测：权威源 `SKILL.md` 123 行 / 11001 B vs 全局副本 126 行 / 11050 B——**差异 = markers + YAML 折叠**，正文本身相同。
+
+**正确判据（内容级，逐行）**：
+- **「权威源正文」** = 源码 skill 去掉 YAML frontmatter（首个 `---` … 第二个 `---`）后的全文；
+- **「全局受管区正文」** = 全局副本 `<!-- openfeel:begin -->` 与 `<!-- openfeel:end -->` 之间的内容；
+- **归一化** = CRLF→LF 统一 + 剥离 markers + 去首尾空行 + `trimEnd`；
+- **期望输出** = `CONTENT-EQUAL`（不等时打印首个差异行 + 两侧内容便于定位）。
+
+**可执行形态**（仓库根，node 一行，见 stage-56 op-004 §六 ⑤-主判据）：去 frontmatter 与取受管区正文两个纯函数 + 归一化 + 逐行比对。此命令对**全部 17 个全局 skill** 同法比对，stage-56 实测全部 `content-equal`；`AGENTS.md` 同法比对输出 `AGENTS-EQUAL`。
+
+**判据**：凡「源头」与「部署产物」的**结构不同**（加了 markers / 重排了 frontmatter / 注入了生成标记）时，**不得用全文件哈希判等**，须先**剥壳到同一层**（正文对正文）再比。全文件哈希只适用于「结构完全同构」的副本比对。
+
+**参见：** v1.1.2-stage-56 op-004（S5 门⑤ 内容级判据）；kb/patterns.md #真实全局目录操作的安全程序、#控制区标记模式；kb/architecture.md #控制区标记增量更新架构

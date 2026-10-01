@@ -265,3 +265,33 @@ en 模式下 `flow advance --stage <id> --to done` 首行检测信息为英文�
 | 2026-10-01 12:06 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-52 验证 op-007 时顺带发现；`rg "console\.(warn\|error)\(.*[\x{4e00}-\x{9fff}]"` 命中 flow.ts:742-743 |
 | 2026-10-01 17:20 | openfeel-feel-tester（stage-54 验收） | 通过，closed | `flow.ts:742-743` 改走 `t('flow.advance.blockingRevRefused'/'blockingRevHint')`（`zh-CN.ts:154-155`/`en.ts:145-146` 双键对称）。**en 环境端到端**（隔离 fixture lang=en + blocking REV + `--to done --force`）：**CJK=0**，输出含 `Error: cannot advance to done while blocking REVs remain unresolved.`；**zh 逐字不变**。`lint i18n` 726 键 exit 0；`flow.ts` 内裸中文 `console.*` 零命中。 |
 
+---
+
+## BUG-007：`docs/commands.md` 的 `project` 子命令参考陈旧（`list` / `info` 已不存在）
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.2-stage-56 归档官**就地修正**并留痕）｜ **来源阶段**：`v1.1.2-stage-56`（正式测试验收发现）｜ **归因**：**手写文档未纳入命令面收敛同步面**（`REV-v1.1.2-stage-56` REV-005 已指出同源陈旧，op 范围仅修权威源 skill）
+
+### 核心结论
+
+手写文档 `docs/commands.md` 的 `## project — 项目管理` 节记载 `openfeel project list`（列出已记录项目）与 `openfeel project info [path]`（查看项目信息），但**实测 `openfeel project --help` 仅含 `overview` 子命令**——`project list` / `info` 均报 `error: unknown command`（exit 1）。与权威源 skill（op-001 已改为「`project overview`（无 `list`/`info` 子命令）」）**同源漂移**，但 skill 已修、手写文档未纳入 op。
+
+**根因**：`docs/commands.md` **不经 `npm run build`**，与权威源 skill / 生成段 / i18n 无一致性断言链路；命令面收敛（`project` 组由多子命令收敛为单一 `overview`）时，同步面清单遗漏了此手写文档。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 触发条件 | 用户/Agent 查阅 `docs/commands.md` 了解 `project` 组命令时 |
+| 直接后果 | 按文档执行 `project list` / `project info` 报 `unknown command`（**无数据风险、无运行时行为影响**） |
+| 范围 | 手写文档 `docs/commands.md`（不经 build，须手工同步） |
+
+### 处置（v1.1.2-stage-56 归档，openfeel-archiver）
+
+- **归属裁定**：**文档类漂移**（载体为工作区文档、可本地修正）→ **归档官就地修正**（参照 `templates/BUG-004` 先例）。
+- **修正**：`docs/commands.md` `## project — 项目管理` 节删除 `project list` / `project info [path]` 两行，改为 `openfeel project overview`（实时扫描项目结构，输出结构化概览）+ 更正注记。
+- **验收**：`node bin/openfeel.js project --help` → Commands 仅 `overview` / `help`；`rg "project (list|info)" docs/commands.md` **零命中**。
+
+### 防再犯
+
+① 命令面**收敛**（增删子命令）与新增命令同样须走「**同步面清单**」——**手写文档 `docs/commands.md` 不经 build，是最易漏的一环**（与 `templates/BUG-005` 的「部署型 skill 模板」并列）；② 沉淀见 `kb/patterns.md #部署型资产变更的多载体同步面清单`、`kb/troubleshooting.md #新增输出键/契约的同步面清单`（已扩展为 9 载体表）。
+

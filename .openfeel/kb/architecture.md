@@ -616,3 +616,22 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：旧 `current.md` 的「非阻塞遗留清单（登记项 7 条）」本质为私域待续，迁移时**移入 `dev_last/pending.md`** 而非留在公共 `current`；`current.md` 82 行 → 14 行、`dev_last.md` 53 行 → 34 行索引 + 5 主题文件。
 
 **参见：** v1.1.2-stage-53 D2/D3/D7、A8；`plan/v1/stage-53/plan.md` §三 职能划分；kb/architecture.md #上下文预算治理架构
+
+## [+] 仓库自身不再保留项目级部署资产：框架资产全局化后的项目级精简（supersede N1）(2026-10-01)
+
+**背景**：框架资产（9 agent / 17 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc`）在 v1.1.1 起已由 `openfeel setup` 统一部署到全局 `~/.config/opencode/`，但 OpenFeel 仓库自身仍保留一套**项目级部署实例**——根 `AGENTS.md`、根 `opencode.jsonc`、`.opencode/{agents,skills,ADAPTER.md}`（共 27 个受管文件），由 `build.js` 步骤 8「自举重生成」产出。由此形成**双份资产**：同一批 agent/skill/约束在项目级与全局各有一份，二者可漂移且需人工维持同步。
+
+**决策（v1.1.2-stage-55）**：仓库自身**不再保留**项目级部署资产——删除根 `AGENTS.md`、根 `opencode.jsonc`、`.opencode/{agents,skills,ADAPTER.md}`，并删除 `build.js` 步骤 8（防复活）；`.opencode/` 仅保留 opencode 运行时目录（`node_modules`/`package.json`/`package-lock.json`/`.gitignore`）。本决策 **supersede** 原「全局部署架构（stage-37）N1：仓库自身 `.opencode/` 不动」（见本文档 #全局部署架构 条目 L400 追加的 supersede 注记）。
+
+**关键不变量（顺序）**：**刷新全局严格早于删除项目资产**。执行顺序为「模板迁入 → 刷新全局（`setup`）→ 删除」。若顺序颠倒，删除后即出现「项目级已删、全局仍旧」的**降级运行**窗口；顺序正确则删除时全局已就绪，可无缝接管（生效仅需重启会话）。
+
+**设计理由**：
+1. **全局部署已完备**——`setup` 幂等、走受管区三态 + 写前备份，可随时重建全局资产；
+2. **消除双份资产漂移**——同一语义句/同一 agent 定义不再两处存放（历史教训：`templates/BUG-001`/`002` 双源不同步）；
+3. **消除 build 复活负担**——自举实例是构建产物，删除生成步骤后 `npm run build` 不再复活它们。
+
+**适用边界**：本决策**仅针对 OpenFeel 仓库自身**；**目标项目**（`openfeel init` 部署的项目）的 `.opencode/` 相关语义、legacy 检测（`migrate`）与保留清单**不受影响**。
+
+**可操作结论**：判断「某项目级受管资产能否退役」的判据＝① 是否已有**幂等的全局/公共部署源**可接管；② 删除是否**受 git 跟踪可恢复**（`git checkout <sha> -- <paths>`）；③ 是否有**构建步骤会复活**它（有则须连同删除）。三者齐备再动手，并把「刷新早于删除」写为显式不变量。
+
+**参见：** v1.1.2-stage-55（op-002 门 B / op-003 删除 + 防复活 / op-004 supersede）；`plan/v1/stage-55/plan.md` §四 安全门；`.openfeel/manual/core/build.md` #步骤 8；kb/patterns.md #真实全局目录操作的安全程序、#supersede 历史决策的追加式记录；kb/troubleshooting.md #自举实例移除须连带删除 build 生成步骤

@@ -49,7 +49,7 @@
 | plan/scheme.ts / op 方案生成与兜底注册 | `core/flow-manager.md`（审计日志与兜底注册节） | 兜底注册路径、冲突检测（`validateStageId` + `findStageDirConflict`）或 `register_op` 审计日志变更；**stage-51 起含 op 命名 `op-NNN.md`、`ensureStageSkeleton` 补骨架、`removeScheme`** |
 | fs/atomic-write.ts / file-lock.ts / sequence.ts | `core/fs.md` | 新增工具、并发机制、锁路径约定或接入范围变更 |
 | template-loader.ts / 模板运行时加载 | `core/template-loader.md` | 模板源结构、加载 API 或注入对象变更 |
-| build.js / 构建管线 | `core/build.md` | 源路径、构建步骤、校验断言或生成物标记变更；**发布元数据**（`files`/`engines`/`postinstall`）与主入口死导出清理也归此 |
+| build.js / 构建管线 | `core/build.md` | 源路径、构建步骤、校验断言或生成物标记变更；**发布元数据**（`files`/`engines`/`postinstall`）与主入口死导出清理也归此；**自举步骤 8 已于 stage-55 移除（防复活，仓库自身不再保留项目级 `.opencode/**` 受管实例）** |
 | global-paths.ts / 全局路径解析 | `core/global-paths.md` | 全局路径函数、homedir 封装或新增路径；**`getHomedir()` 导出与「homedir 单点收敛」纪律（T27/U3-008）**；**全局 `config.json` 死映射清理指引与四步保护** |
 | opencode-config.ts / 全局平台适配器配置合并（opencode 适配器） | `core/opencode-config.md` | 框架内容对象、parseJsonc/deepMergeJsonc 合并规则变更 |
 | migrate.ts / 存量迁移 | `core/migrate.md` | legacy 判据、备份 manifest、state 拆分重键、回滚边界变更 |

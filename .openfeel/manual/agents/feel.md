@@ -1,6 +1,6 @@
 # Agent 体系设计（agents）
 
-> 模块文档，由归档官在归档时维护。对应源码：`src/core/templates-data/agents/{zh-CN,en}/*.md` + `.opencode/agents/*.md`（opencode 适配器部署副本）。
+> 模块文档，由归档官在归档时维护。对应源码：`src/core/templates-data/opencode/agents/{zh-CN,en}/*.md`（**唯一权威源**）+ 全局部署副本 `~/.config/opencode/agents/*.md`（opencode 适配器，由 `openfeel setup` 部署）。**stage-55 起仓库自身不再保留项目级 `.opencode/agents/` 副本**（自举实例与 `build.js` 步骤 8 一并移除）。
 
 ## 职责
 
@@ -65,4 +65,4 @@
 
 ## 思考深度配置
 
-各 Agent frontmatter 含 `reasoning_effort` 字段（high/medium/low）：规划/方案类用 high，调度/审查/测试用 medium，执行/机械/归档/视觉用 low。模板与 `.opencode/agents/` 部署副本（opencode 适配器）需保持同步。
+各 Agent frontmatter 含 `reasoning_effort` 字段（high/medium/low）：规划/方案类用 high，调度/审查/测试用 medium，执行/机械/归档/视觉用 low。**权威源**（`templates-data/opencode/agents/**`）改动经 `npm run build` 传播后，由 `openfeel setup` 部署到全局 `~/.config/opencode/agents/`（opencode 适配器）；**仓库自身不再保留项目级 `.opencode/agents/` 副本**（stage-55 起）。

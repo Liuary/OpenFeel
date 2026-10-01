@@ -54,3 +54,4 @@
 |------|------|
 | stage-36 | 源路径改指单源 + 删除 6 死常量 + 行尾归一 + `.gitattributes` + 单源一致性断言 + 步骤 8 自举重生成（生成物标记） |
 | stage-49 | 发布元数据清理（B3：删随包 `postinstall` + `scripts/patch-inquirer.js` + `files` 去 `scripts` + `engines >=20.17.0`；B4：删 `src/index.ts` `VERSION` 死导出 + dist 重建） |
+| stage-55 | **移除步骤 8 `.opencode/` 自举重生成**（`regenerateOpencodeInstance` 函数 + 调用 + 分区注释 + 仅其使用的 `insertGeneratedMark` + 因此失效的 `mkdirSync` import）；`.gitattributes` 去 `.opencode/** text eol=lf` 行；仓库自身不再保留项目级部署实例（防复活，详「步骤 8」节） |

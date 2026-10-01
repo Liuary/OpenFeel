@@ -69,6 +69,13 @@
   - **登记（非阻塞）**：`templates/BUG-005`（low，部署型 skill 模板 `openfeel-cli-usage/SKILL.md` 的 `flow phases --json` 输出说明记 3 键、实测 5 键，**新增输出键的同步面遗漏 skill 模板**）
   - **内部（非随包行为）**：全仓 REV pending **分层统计**（清账层 38 / 历史层 88 / 无法判定 3）+ 清账层收口（**closed 31 / 维持 pending 7**）；`bugs/index.md` 统计修正（open 3 / closed 13）；门禁 `lint i18n` 724 → **726 键**（E2 新增 2 键）
 
+- [stage-55] **清掉项目级约束与 Agent（发布前最后阶段）**：
+  - **Removed（仓库自身，非随包行为）**：不再保留**项目级部署资产**——删除根 `AGENTS.md`、根 `opencode.jsonc`、`.opencode/agents/**`（9）、`.opencode/skills/**`（17）、`.opencode/ADAPTER.md`（opencode 适配器构建产物），并删除 `build.js` **自举步骤 8**（`.opencode/` 自举重生成，含 `regenerateOpencodeInstance` / `insertGeneratedMark` 与失效 import，**防 `npm run build` 复活**）；`.opencode/` 仅保留 opencode 运行时目录。框架资产（9 agent / 17 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc`）统一由 `openfeel setup` 部署到全局 `~/.config/opencode/`。
+  - **Changed**：全局约束模板新增「**模块手册 / Module Manuals**」节（`templates-data/agents-md/{zh-CN,en}.md`，双语）——原仓库根 `AGENTS.md` 独有内容迁入全局模板，删除根文件后该约束仍随全局生效；`kb/architecture.md` 原「全局部署架构 N1（仓库自身 `.opencode/` 不动）」决策**追加式 supersede**（原行保留 + 注记块），`dev/decisions.md` 补 ADR-002；`docs/GETTING_STARTED.md` 死链处置；`.openfeel/manual/{core/build,agents/feel,cli/commands,index}.md` 引用同步。
+  - **Changed（内部/非随包）**：测试迁移——删除 `test/core/opencode-instance.test.ts`（4 it 随对象消失 / 3 组断言迁至模板源 / 3 it 发布元数据整体迁至**新文件** `test/core/release-metadata.test.ts`）+ 新增「仓库无项目级受管资产」「`build.js` 源码无自举函数」防回归断言；用例 987 → **985**；`npm run build` 不再生成 `.opencode/**` 受管文件。
+  - **Fixed（内部）**：`REV-003`（low，覆盖回归）补齐 reviewer 纪律节的**模板源断言**（zh/en 各 1 it，经 `loadOpencodeAgentTemplate`）；`REV-002`（low，it 计数表述）登记更正。
+  - **生效**：全局刷新（`openfeel setup`）**须重启 opencode 会话**方生效（本仓不再提供项目级 `.opencode/**`；项目级约束/配置改由全局提供）。
+
 > 说明：本仓库 `.openfeel/dev/current.md` / `.openfeel/users/{username}/dev_last.md` 为工作区数据（非随包分发产物），格式约定经 `openfeel setup` 部署到全局约束层后生效。
 
 

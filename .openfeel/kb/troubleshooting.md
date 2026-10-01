@@ -853,3 +853,43 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 - 长期可为 `lint` 增加「输出契约 ↔ 文案列举键集合」一致性断言（当前无）。
 
 **参见：** v1.1.2-stage-54 E3（i18n help 修复）与 `templates/BUG-005`（skill 模板遗漏）；`cli/BUG-003`（stage-48，同族首次）；kb/troubleshooting.md #多源文案同步陷阱、#新增 i18n 键已定义却未接入（死键）
+
+## [+] 自举实例移除须连带删除 build 生成步骤（否则 `npm run build` 复活）(2026-10-01)
+
+**症状**：把「构建产物型」受管文件（`.opencode/{agents,skills,ADAPTER.md}` 等）用 `git rm` 删除后，跑一次 `npm run build`（或 CI 构建），这些文件**全部回来了**——删除只在当前工作树生效，生成步骤每次构建都重建。
+
+**根因**：这些文件不是源，而是 `build.js` 某步骤（stage-55 前为**步骤 8**「`.opencode/` 自举重生成」）的产物——该步骤先 `rmSync` 旧目录再**从权威源全量重生成**。只删产物不改生成器 → 下次构建必然复活。
+
+**排查**：删除前先定位生成逻辑——`rg -n "<产物文件名>|<生成函数名>" build.js`，确认「生成函数 + 调用点 + 分区注释 + 仅被其使用的辅助函数」。若只删了文件而 `rg` 仍命中生成函数，则复活是必然。
+
+**修复（内容锚定，非行号）**：
+1. **整函数删除**生成器（如 `regenerateOpencodeInstance`）；
+2. **删调用点**（如 build 末尾 `await regenerateOpencodeInstance();`）；
+3. **连带删辅助函数**（如仅被步骤 8 使用的 `insertGeneratedMark`）与因此变为未使用的 `import`（如 `mkdirSync`）——否则 `tsc`/lint 报未使用；
+4. 分区注释改写为说明「已于 <阶段> 移除（防复活）」，保留**原因**便于后来者理解；
+5. **加防复活断言**：静态断言 `build.js` 源码不含生成函数名；并**实测**「`npm run build` 后 `Test-Path <产物>` 仍为 `False`」。
+
+**判据**：凡「受管文件是构建产物」的删除任务，**先删生成器再删产物**（或同批），并以「构建后不复活」为验收实证；只删文件 = 未完成。
+
+**实证**：v1.1.2-stage-55 op-003——删 `build.js` 步骤 8（函数 + 调用 + 分区注释 + `insertGeneratedMark` + `mkdirSync` import）；验收：`rg "regenerateOpencodeInstance|insertGeneratedMark" build.js` 零命中，连续 3 次 `npm run build` 后 5 项资产 `Test-Path` 全 `False`。
+
+**参见：** v1.1.2-stage-55 op-003（F4）、门 D；`build.js`（步骤 8 分区注释）；`.openfeel/manual/core/build.md` #步骤 8（已移除）；kb/architecture.md #仓库自身不再保留项目级部署资产
+
+## [+] 模板断言的保护边界：build 注入常量 vs 源文件直读（「改源忘 build」窗口）(2026-10-01)
+
+**症状/困惑**：为「防模板内容意外丢失」新增的断言（如 reviewer 纪律节断言），在**故意删掉模板源中的目标节**后**并未变红**——断言看似失效（REV-v1.1.2-stage-55 REV-003 的验证方法修正即源于此）。
+
+**根因**：断言调用的 loader（`loadOpencodeAgentTemplate`）在运行时读的是 **build 注入的 AUTO-GENERATED 常量**（如 `OPENCODE_AGENT_TEMPLATES`，其源为 `templates-data/**`，由 `build.js` 注入），**并非直读 `templates-data/**` 文件**。因此「只改模板源、不重跑 build」时，常量保持旧内容 → 基于 loader 的断言**不会变红**。
+
+**正确的断言有效性验证法**：改模板源 **→ `npm run build`**（把源变更传播到注入常量）**→ 跑断言**（此时才应红）→ `git checkout` 恢复源 + 重建 → 复跑应绿。**仅改源不 build** 的验证是**假阴性验证**，会误导为「断言无效」。
+
+**保护边界（据此评估断言价值）**：
+- **能拦**：改源 → build → 纪律节丢失（**CI 与正常 build 流程必拦**——build 单向从源生成，最终态与源一致，断言反映真实交付物）；
+- **不能拦**：改源**未 build** 的本地中间态（生成段仍旧）——该窗口由 **push 后 CI 必跑 build+test** 兜底；
+- **结论**：缺口属**所有「经 loader/build 注入」的模板断言的共性**（非某条断言特有），在正常工作流下保护目标达成。
+
+**避免/加固**：① 若需堵「改源忘 build」的本地窗口，可**另加「源文件直读」锚点断言**（直接读 `templates-data/**` 文件，与 loader 断言互补双保险）；② 验证断言「真的会红」时，务必先把变更传播到断言实际读取的载体；③ 锚点取**语义稳定**者（如 H2 标题 + 核心子要点），避免取易随措辞调整的句子。
+
+**实证**：v1.1.2-stage-55 op-005——`loadOpencodeAgentTemplate`（`template-loader.ts`）实测读 `OPENCODE_AGENT_TEMPLATES[lang][agentId]`（build 注入常量）；修正验证法为「改源 + build → 红（2 failed）→ 恢复 + 重建 → 绿（41 passed）」；REV-003 评估「正常工作流下纪律节丢失必被拦」成立并关闭。
+
+**参见：** v1.1.2-stage-55 op-005（REV-003）；`src/core/template-loader.ts`（`loadOpencodeAgentTemplate` / `OPENCODE_AGENT_TEMPLATES`）；kb/patterns.md #模板单源架构

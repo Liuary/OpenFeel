@@ -48,3 +48,5 @@
 | [2026-10-01-Liuary-043.md](2026-10-01-Liuary-043.md) | Liuary | v1.1.2-stage-55.op-003 执行通过 |
 | [2026-10-01-Liuary-044.md](2026-10-01-Liuary-044.md) | Liuary | v1.1.2-stage-55.op-004 执行通过 |
 | [2026-10-01-Liuary-045.md](2026-10-01-Liuary-045.md) | Liuary | v1.1.2-stage-55.op-005 执行通过 |
+| [2026-10-01-Liuary-046.md](2026-10-01-Liuary-046.md) | openfeel-archiver | **stage-55 归档完成（清掉项目级约束与 Agent（发布前最后阶段），5 op）**——删除 6 项项目级资产（根 `AGENTS.md`/`opencode.jsonc`/`.opencode/{agents,skills,ADAPTER.md}`）+ 删 `build.js` 自举步骤 8（**防复活**），`.opencode/` 仅留运行时 4 项；「模块手册」迁入全局模板（zh/en）+ 刷新全局部署（唯一真实全局目录操作：skills 16→17、全局 AGENTS.md 293→509 行、备份 3689 文件）；测试迁移（`opencode-instance.test.ts` 删：4 删 / 3 迁模板源 / 3 迁 `release-metadata.test.ts` + 防回归）；引用同步 + supersede N1（追加式）+ ADR-002 + 新会话验证指引；**59 文件 / 985 用例全绿**、`tsc` 0、build 幂等**不复活**、`lint i18n` 726 键、`lint kb` 0 过期；三段审查零阻塞（REV-002/003 low 全 closed）；**无新增缺陷**（templates/BUG-005 low 维持 open）；知识沉淀 5 条；**M11 done → v1.1.2 十五阶段全部闭环，发布就绪（⚠️ 须重启会话；`npm publish` 待用户决定）** |
+| [2026-10-01-Liuary-047.md](2026-10-01-Liuary-047.md) | Liuary | 阶段 v1.1.2-stage-55 完成 |

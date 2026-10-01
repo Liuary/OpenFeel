@@ -32,6 +32,8 @@
 
 > **v1.1.2-stage-54 收口（2026-10-01，commits `740a79d`/`8fd49af`/`35278b4`）**：**存量 2 条 `cli/BUG-005`/`cli/BUG-006` 收口关闭**——op-001 将 `isTemplateEmpty` 由纯子串改为**整行锚定**正则并令 `scheme.ts` 复用（单一来源），op-002 将 blocking REV 拒绝文案迁 i18n（+2 键）。测试官隔离 fixture 实测：真实独占行空模板 → `publish` exit 1 / `health` 仅报其；正文行内引用 → `publish` exit 0 / `ops list (filled)` / `health` 不报；仓库自身 `flow health` 空模板告警归零；en 拒绝路径 CJK=0、zh 逐字不变。**`templates/BUG-003` 复核关闭**（`cli-usage`/`wizard` 各 1 处顶部双态声明，用户主口径为裸 `openfeel`）。**stage-52 起的 2 条非阻塞缺陷（`cli/BUG-005`/`cli/BUG-006`）全部清零**；`templates/BUG-003` 复核维持 closed。**测试中新登记 1 条非阻塞**：`templates/BUG-005`（low，部署型 skill 模板 `flow phases --json` 输出说明缺 `transitionsDiff`）→ open；公共域统计 **15 条（open 1 / closed 14）**。防再犯（承接 stage-52）：① 占位符/标记类检测以**整行锚定**为默认（行内引用不误报）；② 状态行与实测**以脚本实时重跑为准**，历史快照数字不得沿用；③ **新增 JSON 输出键的同步面须含部署型 skill 模板**（`BUG-005` 因该面遗漏而生）。
 
+> **v1.1.2-stage-55 收口（2026-10-01，commits `9e0a978`/`a646573`/`ebac4ea`/`0ad0b8e`/`17ff5be`）**：**本轮无新增缺陷**——阶段为「删除项目级资产（根 `AGENTS.md`/`opencode.jsonc`/`.opencode/{agents,skills,ADAPTER.md}`）+ 删 `build.js` 自举步骤 8（防复活）+ 「模块手册」迁入全局模板 + 全局刷新」，测试官端到端 + 全局刷新核验 + 环境零污染全通过，零阻塞缺陷。**`templates/BUG-005`（low）维持 `open`**——本阶段未触及部署型 skill 模板的 `flow phases --json` 输出说明，且删除动作不涉及该同步面；如实登记备查（建议随下次模板/文档同步收口）。统计维持 **15 条（open 1 / closed 14）**。
+
 ## 模块索引
 
 ### cli

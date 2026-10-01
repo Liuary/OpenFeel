@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T08:59:24.086Z",
-    "revision": 479
+    "updated": "2026-10-01T09:00:58.677Z",
+    "revision": 480
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-55",
-      "op": "op-001"
+      "op": "op-002"
     },
     "retry": 0
   },
@@ -2266,9 +2266,9 @@
       "ops": {
         "op-001": {
           "title": "F2 模块手册节迁入全局模板（zh en 双语 + build）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -10672,6 +10672,15 @@
         "stageName": "v1.1.2-stage-55",
         "from": "scheme_passed",
         "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-01T09:00:58.651Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-55.op-001",
+        "attempts": 1
       }
     }
   ]

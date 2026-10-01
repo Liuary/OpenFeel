@@ -145,6 +145,21 @@ export class MetricsStore {
     return lines.join('\n');
   }
 
+  /**
+   * 结构化指标摘要（B1-4：供 `flow metrics --json` 消费）。
+   * 键名与 summary() 语义一致；新增 successRate 百分比（无数据时为 null）。
+   * 不改变 summary() 既有签名与输出。
+   */
+  getSummaryData(): { agents: Array<AgentMetrics & { successRate: number | null }> } {
+    const agents = Array.from(this.agents.values()).map((m) => ({
+      ...m,
+      successRate: m.totalRuns > 0
+        ? Number(((m.successfulRuns / m.totalRuns) * 100).toFixed(1))
+        : null,
+    }));
+    return { agents };
+  }
+
   /** metrics.json 文件完整路径 */
   private get metricsPath(): string {
     return resolve(this.dataDir, 'metrics.json');

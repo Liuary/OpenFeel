@@ -296,6 +296,18 @@ describe('FlowManager', () => {
       const current = mgr.getCurrent();
       expect(current).toEqual({ stage: 'stage-01', op: 'op-001' });
     });
+
+    it('op-001/B8 契约：stage 存在但 op 为空时仍返回 null（B8 在命令层回退，不改契约）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        pipeline: {
+          phase: 'active' as MetaPhase,
+          current: { stage: 'stage-01', op: '' },
+          retry: 0,
+        },
+      }));
+      expect(mgr.getCurrent()).toBeNull();
+    });
   });
 
   describe('getOpState', () => {

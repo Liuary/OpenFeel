@@ -625,4 +625,119 @@ describe('flow 命令（stage-41）', () => {
     expect(logMock).not.toHaveBeenCalled();
     expect(mockedChild.execSync).not.toHaveBeenCalled();
   });
+
+  // ── stage-52/op-001：B1 结构化输出（--json）+ B8 current 无 op 显示 ──
+
+  /** 解析第 n 次 console.log 输出为 JSON（断言纯 JSON 单文档） */
+  function parseJsonLog(index = 0): Record<string, unknown> {
+    const raw = logMock.mock.calls[index][0] as string;
+    // 纯 JSON：无 ANSI、可 JSON.parse
+    expect(raw.includes('\u001b[')).toBe(false);
+    return JSON.parse(raw) as Record<string, unknown>;
+  }
+
+  it('op-001/B1-1: flow status --json 输出纯 JSON 且含 schemaVersion=1', async () => {
+    await safeParse(['flow', 'status', '--json']);
+    const obj = parseJsonLog();
+    expect(obj.schemaVersion).toBe(1);
+    expect(obj.pipeline).toBeDefined();
+    expect(obj.stages).toBeInstanceOf(Array);
+    expect(obj.counts).toBeDefined();
+    // 未加 --json 时人类可读输出含标题（互斥）
+    logMock.mockClear();
+    await safeParse(['flow', 'status']);
+    const human = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(human).toContain('OpenFeel 流水线状态');
+  });
+
+  it('op-001/B1-2: flow current --json 含 stage/op/phase 且 schemaVersion=1', async () => {
+    await safeParse(['flow', 'current', '--json']);
+    const obj = parseJsonLog();
+    expect(obj.schemaVersion).toBe(1);
+    expect(obj).toHaveProperty('stage');
+    expect(obj).toHaveProperty('op');
+    expect(obj).toHaveProperty('phase');
+  });
+
+  it('op-001/B1-3: flow health --json 含 ok/items 且 schemaVersion=1', async () => {
+    await safeParse(['flow', 'health', '--json']);
+    const obj = parseJsonLog();
+    expect(obj.schemaVersion).toBe(1);
+    expect(typeof obj.ok).toBe('boolean');
+    expect(obj.items).toBeInstanceOf(Array);
+  });
+
+  it('op-001/B1-4: flow metrics --json 含 schemaVersion=1', async () => {
+    await safeParse(['flow', 'metrics', '--json']);
+    const obj = parseJsonLog();
+    expect(obj.schemaVersion).toBe(1);
+    expect(obj.agents).toBeInstanceOf(Array);
+  });
+
+  it('op-001/B1-5: flow overview --json 含 schemaVersion=1', async () => {
+    await safeParse(['flow', 'overview', '--json']);
+    const obj = parseJsonLog();
+    expect(obj.schemaVersion).toBe(1);
+    expect(obj.current).toBeDefined();
+    expect(obj.health).toBeDefined();
+  });
+
+  it('op-001/B1-6: flow phases --json 既有键零变化仅追加 schemaVersion', async () => {
+    writePipelineNoComposite();
+    await safeParse(['flow', 'phases', '--json']);
+    const obj = parseJsonLog();
+    expect(Object.keys(obj)).toEqual(expect.arrayContaining([
+      'phases', 'transitions', 'advanceAccepted', 'transitionsDiff', 'schemaVersion',
+    ]));
+    expect(obj.schemaVersion).toBe(1);
+    expect((obj.phases as string[])).toHaveLength(15);
+  });
+
+  it('op-001/B1-3: flow health --json 有 fail 时退出码非 0', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.pipeline.phase = 'bogus' as never;
+    mgr.save();
+    logMock.mockClear();
+    exitMock.mockClear();
+    process.exitCode = undefined;
+
+    await safeParse(['flow', 'health', '--json']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    process.exitCode = undefined;
+  });
+
+  it('op-001/B8: 无 op 时 flow current 显示 stage + 「无 op」；--json 的 op 为空串', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-95');
+    mgr.getData()!.pipeline.current = { stage: 'v1.1.2-stage-95', op: '' };
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'current']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('v1.1.2-stage-95（无 op）');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'current', '--json']);
+    const obj = parseJsonLog();
+    expect(obj.stage).toBe('v1.1.2-stage-95');
+    expect(obj.op).toBe('');
+  });
+
+  it('op-001/B8: stage 亦为空时保持既有「(无)」文案', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.pipeline.current = { stage: '', op: '' };
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'current']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('(无)');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'current', '--json']);
+    const obj = parseJsonLog();
+    expect(obj.stage).toBe('');
+  });
 });

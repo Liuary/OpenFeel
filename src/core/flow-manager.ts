@@ -2936,6 +2936,23 @@ export class FlowManager {
   }
 
   /**
+   * 结构化健康报告访问器（B1-3：供 `flow health --json` 消费）。
+   * 复用 healthCheck() 结果，仅做字段别名映射（section→name / message→detail），不改判定。
+   * @param quick 是否快速模式（仅检查关键项）
+   * @returns { ok, items: [{ name, status, detail }] }
+   */
+  getHealthReport(quick: boolean = false): {
+    ok: boolean;
+    items: Array<{ name: string; status: 'pass' | 'warn' | 'fail'; detail: string }>;
+  } {
+    const result = this.healthCheck(quick);
+    return {
+      ok: result.ok,
+      items: result.items.map((i) => ({ name: i.section, status: i.status, detail: i.message })),
+    };
+  }
+
+  /**
    * 7. 悬空依赖检测：stages[].deps 是否均指向已注册阶段（B2 存量防御）
    * 仅作数据卫生告警（warn），不阻断；强制校验点在命令层 `commands/plan.ts`
    * @param items 健康检查结果收集数组

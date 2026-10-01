@@ -42,9 +42,15 @@ export function registerFlowCommand(program: Command): void {
     .description('显示流水线状态摘要')
     .option('--verbose', '增强输出：配置级联、最近状态变更、下游 Agent 就绪状态')
     .option('-n, --lines <n>', '最近状态变更条数（默认 5）', '5')
-    .action((options: { verbose?: boolean; lines: string }) => {
+    .option('--json', 'Output as JSON (machine-readable, single JSON document)')
+    .action((options: { verbose?: boolean; lines: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
+      // B1-1：--json 分支须为首行输出且纯 JSON 单文档（不打印标题/颜色/提示行）
+      if (options.json) {
+        console.log(JSON.stringify(buildStatusJson(mgr), null, 2));
+        return;
+      }
       if (!options.verbose) {
         console.log(mgr.summary(lang));
 
@@ -164,11 +170,23 @@ export function registerFlowCommand(program: Command): void {
   flow
     .command('overview')
     .description('全状态可视化视图（openfeel flow overview 的后端实现）')
-    .action(() => {
+    .option('--json', 'Output as JSON')
+    .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
+        // B1 契约：--json 时仍输出纯 JSON 单文档
+        if (options.json) {
+          console.log(JSON.stringify({ schemaVersion: 1, initialized: false }));
+          return;
+        }
         console.log(t('common.noInit', lang));
+        return;
+      }
+
+      // B1-5：--json 分支纯 JSON 单文档（不打印任何标题/颜色/提示行）
+      if (options.json) {
+        console.log(JSON.stringify(buildOverviewJson(mgr), null, 2));
         return;
       }
 
@@ -299,24 +317,48 @@ export function registerFlowCommand(program: Command): void {
   flow
     .command('current')
     .description('显示当前阶段和操作')
-    .action(() => {
+    .option('--json', 'Output as JSON')
+    .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
+        // B1 契约：--json 时仍输出纯 JSON 单文档（未初始化 → 空串字段）
+        if (options.json) {
+          console.log(JSON.stringify({ schemaVersion: 1, stage: '', op: '', phase: '' }));
+          return;
+        }
         console.log(t('common.noInit', lang));
         return;
       }
       const phase = mgr.getPhase();     // MetaPhase: active/paused/done
       const current = mgr.getCurrent();
-      const summary = mgr.getSummary();
       const data = mgr.getData();
-      const stagePhase = current?.stage && data?.stages[current.stage]
-        ? data.stages[current.stage].phase
+      // B8：getCurrent() 在 op 为空时返回 null（契约不变）；命令层回退读取 pipeline.current 展示 stage + 「（无 op）」
+      const rawCurrent = data?.pipeline.current;
+      const displayStage = current?.stage ?? rawCurrent?.stage ?? '';
+      const displayOp = current?.op ?? rawCurrent?.op ?? '';
+
+      // B1-2：--json 分支纯 JSON 单文档（op 为空串而非 null，便于机器消费）
+      if (options.json) {
+        console.log(JSON.stringify({ schemaVersion: 1, stage: displayStage, op: displayOp, phase: phase ?? '' }));
+        return;
+      }
+
+      const summary = mgr.getSummary();
+      const stagePhase = displayStage && data?.stages[displayStage]
+        ? data.stages[displayStage].phase
         : t('common.none', lang);
       console.log(t('flow.current.globalStatus', lang) + `: ${phase}`);
-      console.log(t('common.stage', lang) + `: ${current?.stage ?? t('common.none', lang)}`);
+      // B8：stage 存在但无 op → `{stage}（无 op）`；stage 亦空 → 保持既有「(无)」文案
+      if (!displayStage) {
+        console.log(t('common.stage', lang) + `: ${t('common.none', lang)}`);
+      } else if (!displayOp) {
+        console.log(t('common.stage', lang) + `: ` + t('flow.current.noOpTmpl', lang, { stage: displayStage }));
+      } else {
+        console.log(t('common.stage', lang) + `: ${displayStage}`);
+      }
       console.log(t('flow.current.stagePhase', lang) + `: ${stagePhase}`);
-      console.log(t('flow.current.currentOp', lang) + `: ${current ? `${current.stage}.${current.op}` : t('common.none', lang)}`);
+      console.log(t('flow.current.currentOp', lang) + `: ${displayOp ? `${displayStage}.${displayOp}` : t('common.none', lang)}`);
       console.log(t('flow.current.retryCount', lang) + `: ${summary.retryCount}`);
     });
 
@@ -324,10 +366,16 @@ export function registerFlowCommand(program: Command): void {
   flow
     .command('metrics')
     .description('展示 Agent 性能指标')
-    .action(() => {
+    .option('--json', 'Output as JSON')
+    .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const store = MetricsStore.getInstance();
       store.load();
+      // B1-4：--json 输出结构化指标（顶层对象 + schemaVersion），不输出人类可读表格
+      if (options.json) {
+        console.log(JSON.stringify({ schemaVersion: 1, ...store.getSummaryData() }, null, 2));
+        return;
+      }
       console.log(store.summary(lang));
     });
 
@@ -335,7 +383,7 @@ export function registerFlowCommand(program: Command): void {
   flow
     .command('phases')
     .description('列出全部合法 phase 及其流转映射（自描述）')
-    .option('--json', '以 JSON 输出 { phases, transitions, advanceAccepted }')
+    .option('--json', 'Output { phases, transitions, advanceAccepted, schemaVersion } as JSON')
     .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
@@ -352,8 +400,9 @@ export function registerFlowCommand(program: Command): void {
 
       if (options.json) {
         // advanceAccepted = 内置 15 phase（flow advance 的推进白名单），与 phases（运行时存在视图，可含自定义）显式区分
-        // 追加 transitionsDiff 字段（向后兼容，既有三字段保留）
-        console.log(JSON.stringify({ phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff }, null, 2));
+        // 既有三字段（phases/transitions/advanceAccepted）+ transitionsDiff 逐字保留；仅追加 schemaVersion:1（B1-6）
+        // 注：schemaVersion 未来变更须递增版本号
+        console.log(JSON.stringify({ schemaVersion: 1, phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff }, null, 2));
         return;
       }
 
@@ -1234,9 +1283,20 @@ export function registerFlowCommand(program: Command): void {
     .command('health')
     .description('全面健康检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml 等')
     .option('--quick', '仅检查关键项（phase/current 合法性，跳过其他检查）')
-    .action((options: { quick?: boolean }) => {
+    .option('--json', 'Output as JSON')
+    .action((options: { quick?: boolean; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
+
+      // B1-3：--json 分支纯 JSON 单文档；退出码语义不变（有 fail → 非 0）
+      if (options.json) {
+        const report = mgr.getHealthReport(options.quick ?? false);
+        console.log(JSON.stringify({ schemaVersion: 1, ok: report.ok, items: report.items }, null, 2));
+        if (!report.ok) {
+          process.exit(1);
+        }
+        return;
+      }
 
       console.log(t('flow.health.title', lang) + '\n');
 
@@ -1534,4 +1594,106 @@ function formatDuration(ms: number): string {
     return `${minutes}m`;
   }
   return `${minutes}m ${seconds}s`;
+}
+
+/**
+ * 归一化 stage.ops 为 [opId, state] 映射（类型守卫：跳过 null/undefined/数组）。
+ * 供 flow status/overview 的 --json 结构化输出共用。
+ */
+function collectOpStates(stage: { ops?: unknown }): Record<string, string> {
+  const opsMap = stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)
+    ? (stage.ops as Record<string, { state?: string }>)
+    : {};
+  const result: Record<string, string> = {};
+  for (const [opId, op] of Object.entries(opsMap)) {
+    result[opId] = op?.state ?? '';
+  }
+  return result;
+}
+
+/**
+ * 构建 `flow status --json` 的结构化输出（B1-1）。
+ * 顶层对象 + schemaVersion:1；stages 为数组，ops 为 opId→state 映射；counts 为阶段计数。
+ */
+function buildStatusJson(mgr: FlowManager): Record<string, unknown> {
+  const data = mgr.getData();
+  if (!data) {
+    return {
+      schemaVersion: 1,
+      pipeline: { phase: '', current: { stage: '', op: '' } },
+      stages: [],
+      counts: { total: 0, done: 0, active: 0 },
+    };
+  }
+  const stages = Object.entries(data.stages).map(([id, stage]) => ({
+    id,
+    phase: stage.phase,
+    status: stage.status,
+    deps: stage.deps ?? [],
+    ops: collectOpStates(stage),
+  }));
+  const total = stages.length;
+  const done = stages.filter((s) => s.phase === 'done').length;
+  return {
+    schemaVersion: 1,
+    pipeline: {
+      phase: data.pipeline.phase,
+      current: { stage: data.pipeline.current.stage, op: data.pipeline.current.op },
+    },
+    stages,
+    counts: { total, done, active: total - done },
+  };
+}
+
+/**
+ * 构建 `flow overview --json` 的结构化输出（B1-5）。
+ * 顶层对象 + schemaVersion:1；含阶段计数、审查统计、健康统计、日志数等。
+ */
+function buildOverviewJson(mgr: FlowManager): Record<string, unknown> {
+  const data = mgr.getData();
+  const phase = mgr.getPhase();
+  const summary = mgr.getSummary();
+  const health = mgr.healthCheck(true); // quick mode（与人类可读分支一致）
+
+  const stages = data
+    ? Object.entries(data.stages).map(([id, stage]) => {
+        const ops = collectOpStates(stage);
+        const states = Object.values(ops);
+        return {
+          id,
+          phase: stage.phase,
+          status: stage.status,
+          opsTotal: states.length,
+          opsDone: states.filter((s) => s === 'done').length,
+        };
+      })
+    : [];
+
+  const reviews = data?.reviews ?? [];
+  const openReviews = reviews.filter((r) => r.status === 'open');
+
+  return {
+    schemaVersion: 1,
+    phase: phase ?? '',
+    current: {
+      stage: data?.pipeline.current.stage ?? '',
+      op: data?.pipeline.current.op ?? '',
+    },
+    summary,
+    stages,
+    reviews: {
+      open: openReviews.length,
+      blockingOpen: openReviews.filter((r) => r.blocking !== false).length,
+      nonBlockingOpen: openReviews.filter((r) => r.blocking === false).length,
+      resolved: reviews.filter((r) => r.status === 'resolved').length,
+      closed: reviews.filter((r) => r.status === 'closed').length,
+    },
+    health: {
+      ok: health.ok,
+      pass: health.items.filter((i) => i.status === 'pass').length,
+      warn: health.items.filter((i) => i.status === 'warn').length,
+      fail: health.items.filter((i) => i.status === 'fail').length,
+    },
+    logs: data?.log.length ?? 0,
+  };
 }

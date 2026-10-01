@@ -89,6 +89,8 @@ export const flow: I18nDomain = {
   'current.stagePhase':         { key: 'flow.current.stagePhase',         zh: '阶段状态',                               en: '' },
   'current.currentOp':          { key: 'flow.current.currentOp',          zh: '当前操作',                               en: '' },
   'current.retryCount':         { key: 'flow.current.retryCount',         zh: '重试次数',                               en: '' },
+  // B8：无 op 时的回退文案（{stage}（无 op））
+  'current.noOpTmpl':           { key: 'flow.current.noOpTmpl',           zh: '{stage}（无 op）',                       en: '' },
 
   // flow stage add
   'stage.addedTmpl':            { key: 'flow.stage.addedTmpl',            zh: '✓ 已创建阶段: {stage} → plan_pending',   en: '' },
@@ -524,11 +526,15 @@ export const help: I18nDomain = {
   'flow.status':           { key: 'help.flow.status',           zh: '显示流水线状态摘要', en: '' },
   'flow.status.verbose':   { key: 'help.flow.status.verbose',   zh: '增强输出：配置级联、最近状态变更、下游 Agent 就绪状态', en: '' },
   'flow.status.lines':     { key: 'help.flow.status.lines',     zh: '最近状态变更条数（默认 5）', en: '' },
+  'flow.status.json':      { key: 'help.flow.status.json',      zh: '以 JSON 输出（机器可读，纯 JSON 单文档）', en: '' },
   'flow.overview':         { key: 'help.flow.overview',         zh: '全状态可视化视图（openfeel flow overview 的后端实现）', en: '' },
+  'flow.overview.json':    { key: 'help.flow.overview.json',    zh: '以 JSON 输出', en: '' },
   'flow.current':          { key: 'help.flow.current',          zh: '显示当前阶段和操作', en: '' },
+  'flow.current.json':     { key: 'help.flow.current.json',     zh: '以 JSON 输出', en: '' },
   'flow.metrics':          { key: 'help.flow.metrics',          zh: '展示 Agent 性能指标', en: '' },
+  'flow.metrics.json':     { key: 'help.flow.metrics.json',     zh: '以 JSON 输出', en: '' },
   'flow.phases':           { key: 'help.flow.phases',           zh: '列出全部合法 phase 及其流转映射（自描述）', en: '' },
-  'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '以 JSON 输出 { phases, transitions, advanceAccepted }（advanceAccepted = 内置 15 phase，即 flow advance 的推进白名单）', en: '' },
+  'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '以 JSON 输出 { phases, transitions, advanceAccepted, schemaVersion }（advanceAccepted = 内置 15 phase，即 flow advance 的推进白名单）', en: '' },
   'flow.stage':            { key: 'help.flow.stage',            zh: '阶段管理', en: '' },
   'flow.stage.add':        { key: 'help.flow.stage.add',        zh: '新增流水线阶段（仅注册 flow.json，不建目录；通常应使用 openfeel plan stage add）', en: '' },
   'flow.stage.add.argstageId': { key: 'help.flow.stage.add.argstageId', zh: '阶段 ID（如 v1.1.2-stage-41）', en: '' },
@@ -577,6 +583,7 @@ export const help: I18nDomain = {
   'flow.migrate.noBackup': { key: 'help.flow.migrate.noBackup', zh: '跳过 .bak 文件生成（默认生成 flow.json.v4.0.bak）', en: '' },
   'flow.health':           { key: 'help.flow.health',           zh: '全面健康检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml 等', en: '' },
   'flow.health.quick':     { key: 'help.flow.health.quick',     zh: '仅检查关键项（phase/current 合法性，跳过其他检查）', en: '' },
+  'flow.health.json':      { key: 'help.flow.health.json',      zh: '以 JSON 输出', en: '' },
   'flow.checkpoint':       { key: 'help.flow.checkpoint',       zh: 'Checkpoint 快照管理（phase 推进时自动保存 flow.json 快照）', en: '' },
   'flow.checkpoint.list':  { key: 'help.flow.checkpoint.list',  zh: '列出所有（或指定阶段的）Checkpoint 快照', en: '' },
   'flow.checkpoint.list.argstage': { key: 'help.flow.checkpoint.list.argstage', zh: '阶段 ID（可选），如 v5.3-stage-01', en: '' },

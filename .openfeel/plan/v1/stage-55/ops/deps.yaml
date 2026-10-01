@@ -73,16 +73,28 @@ ops:
         type: hard
     notes: "**F5**：`docs/GETTING_STARTED.md:127` **删死链行**（A4，不得留 `../AGENTS.md`）；`manual/core/build.md:12/28/34/38-40` 同步（步骤 8 标注**已移除（stage-55）**+ 原因、`.opencode` 表述、`.gitattributes` 行）；`kb/index.md:15,51` **追加**说明（不改历史行）；`kb/patterns.md` 历史条目**不改**（如被判过期 → **去反引号/占位**，不删内容）。**F6**：`kb/architecture.md:398` 的 **N1**（仓库自身 `.opencode/` 不清理）**追加式 supersede**（理由 + `2026-10-01` + `v1.1.2-stage-55` + **适用边界：目标项目不受影响** + 回滚）；`kb/index.md` 索引追加；`dev/decisions.md` ADR（存在则追加，不新建机制）。**F7**：静态验证①五项不存在 ②build 后**不复活** ③全局齐备（B1~B5 复跑）+ 五门禁（build 幂等 / `npm test` **按实测记录** / `tsc` 0 / `lint i18n` **726** / `lint kb` **0 过期**）+ 环境零污染 + **新会话验证指引 6 步**（重启会话 → skill 可用 → 9 agent 冒烟 → 全局约束含模块手册节 → `feel` 为默认 → 异常回滚）。"
 
+  op-005:
+    file: op-005.md
+    title: "REV-003 reviewer 纪律节模板源断言补齐"
+    produces:
+      - test/core/template-loader.test.ts
+    deps:
+      - op: op-003
+        type: hard
+      - op: op-004
+        type: soft
+    notes: "**REV-003（low，覆盖回归）修复**：op-003 F4 的三组断言迁移中，**#7「reviewer 纪律节」的模板源断言未落地**（F4 条件句「若既有未覆盖则新增 1 条」未执行；`rg 工具异常独立取证|stage-48 op-001 test/core/` 零命中）。**补齐**：在 `test/core/template-loader.test.ts` **末尾追加 2 it**（zh/en 各一，各 2 断言）——zh：`loadOpencodeAgentTemplate('zh-CN','openfeel-reviewer')` 含 `工具调用异常与独立取证纪律` + `命令行取证优先于 read / glob`；en：含 `Tool-Failure & Independent-Evidence Discipline` + `CLI evidence outranks read / glob`（**双语锚点均实测于 `templates-data/opencode/agents/{zh-CN,en}/openfeel-reviewer.md:91` 节**）。**既有范例**：`template-loader.test.ts:11`（loader 已导入）、`:282`（`loadOpencodeAgentTemplate` 用法）、`:411-425`（stage-55 CRLF 迁移块，同文件同风格）。**不依赖已删对象**（断言对象为**模板源**，不涉 `.opencode/**`/根 `AGENTS.md`/build 步骤 8）。**验收含**「修复前 `rg` 零命中」对照 + 「临时破坏模板 → 断言红 → 恢复 → 绿」的**断言有效性验证** + build 幂等**不复活**。用例数 983 → **985**（+2）。"
+
 # 【互斥（禁止并行）】——本阶段为**全串行链**，任一 op 均不得并行
 mutual_exclusions:
-  - group: [op-001, op-002, op-003, op-004]
+  - group: [op-001, op-002, op-003, op-004, op-005]
     reason: "**全串行 + 顺序不变量（用户裁定）**：① op-001（模板就绪）必须早于 op-002（刷新全局），否则刷出的全局缺「模块手册」节需二次刷新；② **op-002（刷新全局）严格早于 op-003（删除项目资产）**——避免降级运行（门 B 未过不得删）；③ op-003（门 D：不复活）早于 op-004（引用同步/验证）。任一门（A~E）失败即停止。"
   - group: [op-002, op-003]
     reason: "**安全隔离**：op-002 是**唯一**操作本机真实全局目录的 op；op-003 为项目资产删除。二者**必须先刷新后删除**，且 op-003 的执行前提是 op-002 的 B1~B5 判据全部通过（含备份存在）。"
 
 # 【可并行组】
 parallel_groups:
-  - group: [op-004]
+  - group: [op-005]
     desc: "收口：依赖 op-003（hard），单独运行（F5/F6/F7 串行于同 op 内）。"
 
 # 【串行链（顺序固定）】
@@ -95,6 +107,7 @@ recommended_order:
   - op-002
   - op-003
   - op-004
+  - op-005
 rationale: "plan §五 建议：`op-001 → op-002 → op-003 → op-004`（**硬约束：op-002 必须早于 op-003**，即「先刷新全局、后删项目资产」）。**门 A~E 为可验证中断点**，任一门失败即停止（此时项目资产尚未删除，**零回滚成本**）；**op-002 为本流水线唯一真实全局操作**（备份先行 + 判据留痕 + 失败回滚）。**本阶段不含 `npm publish`**。"
 
 # 【裁定（可追溯；依据 plan §八，**不虚构确认来源**）】
@@ -151,6 +164,7 @@ item_map:
   F5: op-004
   F6: op-004
   F7: op-004
+  F4_residual_reviewer_discipline: op-005（REV-003）
 
 # 【安全门（A~E）→ 可执行判据】
 gates:
@@ -182,9 +196,9 @@ rev_intake:
     disposition: "plan §六.2 称 `test/core/opencode-instance.test.ts`「7 个 it」，**实测 10 个 `it(`**（无 each/skip）→ **本方案已更正并细化**：该文件 = `describe('.opencode/ 自举实例')` **7 it**（对象消失 → **删除**）+ `describe('发布元数据（stage-49 B3/B4）')` **3 it**（对象**仍有效** → **整体迁移**至新文件 `test/core/release-metadata.test.ts`，**不得随文件丢弃**）；门禁数字以**实测记录**（**不得沿用 987 快照**）。"
   - rev: REV-v1.1.2-stage-55/REV-003
     severity: low
-    status: open（审查条目，plan_review 内联）
-    handled_by: (plan 层；op 侧无关联)
-    disposition: "B9 场景残留（审查摘要所述）——本阶段 op 不涉 B9；如需处置由 plan/归档侧承接。"
+    status: pending（low，**覆盖回归**；op-005 补齐后待审查官复验关闭）
+    handled_by: op-005
+    disposition: "**编号不一致更正（留痕）**：`REV-v1.1.2-stage-55.md` **第 10 行**的结论摘要写作「REV-003 **B9 场景残留**」，而**独立 REV-003 小节（`:80`）**与 **exec_review 终局结论（`:111/:155`）**均以「**reviewer 纪律节的模板源断言未按 F4 条件句新增（覆盖回归）**」为准 → 本 deps **按后者**更正（B9 场景自此不再作为 REV-003 的处置对象）。**处置**：op-005 在 `test/core/template-loader.test.ts` **追加 2 it**（zh/en 双语锚点：`工具调用异常与独立取证纪律` / `Tool-Failure & Independent-Evidence Discipline`，子要点 `命令行取证优先于 read / glob` / `CLI evidence outranks read / glob`——均实测于模板源 `:91` 节）；**既有范例** `:11`/`:282`/`:411-425`；**不依赖已删对象**；验收含「修复前零命中」对照 + 「临时破坏 → 红 → 恢复 → 绿」有效性验证 + build 幂等不复活。**状态由审查官复验后置 closed**。"
 
 # 【门禁基线（2026-10-01 实测）】
 gates_baseline:

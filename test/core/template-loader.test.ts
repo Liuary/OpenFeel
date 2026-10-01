@@ -423,3 +423,26 @@ describe('stage-55 迁移：生成模板串无 CRLF（跨平台可复现）', ()
     }
   });
 });
+
+/**
+ * stage-55 op-005 补齐：reviewer 纪律节模板源断言（REV-003）
+ * 背景：原 opencode-instance.test.ts 的 it#7 断言对象（仓库自举实例）已于 stage-55 移除；
+ *       F4 条件句「若既有模板源测试未覆盖则新增 1 条」当时未落地 → 本 op 补齐。
+ * 对象：权威源 templates-data/opencode/agents/{zh-CN,en}/openfeel-reviewer.md（:91 节）。
+ * 目的：防止未来模板编辑误删该纪律节而无测试拦截（覆盖回归修复）。
+ */
+describe('stage-55 op-005 迁移：reviewer 纪律节（模板源，REV-003）', () => {
+  it('zh-CN reviewer 模板含工具调用异常与独立取证纪律节', () => {
+    const zh = loadOpencodeAgentTemplate('zh-CN', 'openfeel-reviewer');
+    expect(zh).toBeTruthy();
+    expect(zh).toContain('工具调用异常与独立取证纪律');
+    expect(zh).toContain('命令行取证优先于 read / glob');
+  });
+
+  it('en reviewer 模板含 Tool-Failure & Independent-Evidence Discipline 节', () => {
+    const en = loadOpencodeAgentTemplate('en', 'openfeel-reviewer');
+    expect(en).toBeTruthy();
+    expect(en).toContain('Tool-Failure & Independent-Evidence Discipline');
+    expect(en).toContain('CLI evidence outranks read / glob');
+  });
+});

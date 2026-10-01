@@ -330,7 +330,7 @@ At startup, Feel must load the memory system in the following order:
 
 1. **Global profile**: Call \`readProfile()\` (src/core/config.ts) to read \`~/.config/openfeel/profile.yaml\`.
    If the file does not exist, use defaults (zh-CN / disabled / full / concise / medium).
-2. **Project memory**: Read \`.openfeel/users/{username}/dev_last.md\` and extract "Last Operation Status", "Key Decisions", and "Pending Items".
+2. **Project memory**: Read \`.openfeel/users/{username}/dev_last.md\` (an **index**): first take "User Preferences", "Topic Index", and "Public Handoff Section"; read \`dev_last/{english-name}.md\` details **on demand**; **legacy format** (no \`## Topic Index\` section) → trigger **lazy migration** (split into \`dev_last/\` + index per the mapping; **keep the original text**, prompt once only, do not block the session).
    Skip if the file does not exist (first session).
 2.5. **Auto-fill profile**: Call \`ensureProfileDefaults(projectPath)\` (src/core/config.ts).
      When \`user.name\` is empty, read the username from \`.openfeel/.info.json\` or fall back to \`git config user.name\`;
@@ -340,7 +340,7 @@ At startup, Feel must load the memory system in the following order:
    - \`auto_advance\` follows the project \`config.yaml\`; the global profile \`preferences.auto_advance\` is only a fallback (status.md may override locally)
    - Communication style uses \`preferences.communication\` from the global profile (affects Feel's output verbosity)
    - Confirm threshold uses \`preferences.confirm_threshold\` from the global profile
-4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.
+4. **Update dev_last.md (index)**: Write the merged preferences into the index "User Preferences" section (**do not overwrite the whole file**; Read → merge → write back first).
 
 ## Conflict Detection
 
@@ -380,9 +380,9 @@ At startup, Feel checks \`~/.openfeel/update_infos.md\` (if the file exists):
 
 ## Decision Appending
 
-When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to the "Decision History" section in the format \`- [x] {date}: {decision description}\` before finally writing dev_last.md (do not overwrite existing entries).
+When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to **\`dev_last/decisions.md\`** (topic file "Decision Log") in the format \`- [x] {date}: {decision description}\` before the final write (do not overwrite existing entries; update the index's matching ≤100-char summary only when the topic summary changes).
 
-**Decision ownership**: Long-term decisions (technology selection, architecture direction, cross-session design trade-offs) must be synced to \`.openfeel/dev/decisions.md\` in ADR format in addition to being appended to the dev_last.md "Decision History" section; session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded only in the dev_last.md "Decision History" section.
+**Decision ownership**: Long-term decisions (technology selection, architecture direction, cross-session design trade-offs) must be synced to \`.openfeel/dev/decisions.md\` in ADR format in addition to being appended to **\`dev_last/decisions.md\`**; session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded only in **\`dev_last/decisions.md\`**.
 
 Decision criteria (record when any applies):
 - Involves introducing a new dependency or version choice
@@ -394,15 +394,21 @@ Non-decisions are not recorded: routine code progress, Bug fix choices, filling 
 
 ## Information Archiving
 
-Critical operations must be committed to files, not kept only in conversations: stage state → CLI commands, progress → dev_last.md, experience → kb/, reviews/Bugs → private directories. Do not "complete without recording".
+Critical operations must be committed to files, not kept only in conversations: stage state → CLI commands, progress → dev_last.md (index + topic files), experience → kb/, reviews/Bugs → private directories. Do not "complete without recording".
 
 ### End-of-Session Write
 
-Before ending each session, Feel must update \`.openfeel/users/{username}/dev_last.md\`:
-1. Fill the "User Preferences" section (read current values from the global profile)
-2. Append this session's new decisions to the "Decision History" section (\`- [x] {date}: {description}\`)
-3. Update the "Context Snapshot" section (current pipeline phase, active stages, last operation summary)
-4. Update the "Last Operation Status" and "Pending Items" sections (keep existing logic)
+Before ending each session, Feel must update \`.openfeel/users/{username}/dev_last.md\` (index) and \`dev_last/*.md\` (topic files):
+
+> **Critical section (A9, single entry/exit)**: the "read → merge → write back" in ①~④ below must be performed inside \`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })\` (**reads included**; see the agents-md "Concurrent-write lock protocol"); when \`dist\` is unavailable, degrade to "read-merge-write" and mark "unlocked".
+
+1. Update the index "User Preferences" (**do not overwrite the whole file**; Read → merge → write back);
+2. Update/create topic files (**English filenames**; **when a single entry >300 chars or >10 entries, offload to \`tmp/\` per R2 and record the path**);
+3. Refresh the index "Topic Index" summaries (**≤5 active topics × ≤5 entries × ≤100 chars**); **if a new topic pushes the count >5 → merge similar topics first per R4; if nothing can be merged, move the oldest completed topic into "Converged Topics" (no archiving, no file movement)**;
+4. Update the "Public Handoff Section" (**document location + core summary only**);
+5. (If it is a cross-user overall progress item) update \`dev/current.md\` per the current.md rules and rotate the archive.
+
+> **Note**: \`dev/current.md\` (step 5) is a **public domain** file and is **not covered by this lock** (it is updated only on personal submission; its concurrency surface is smaller than dev_last's).
 
 ### End-of-Stage Checklist
 
@@ -410,7 +416,7 @@ Before marking a stage as done, verify each item:
 
 - [ ] Has review been completed? (Minor change: single file, no cross-file impact — review may be skipped, with reason recorded; reference: single file ≤30 lines)
 - [ ] Have tests passed?
-- [ ] Has state been archived (flow.json / status.md / dev_last.md)?
+- [ ] Has state been archived (flow.json / status.md / dev_last.md [index + topic files])?
 
 Only proceed to advance when all checks pass.
 
@@ -1681,7 +1687,7 @@ Feel 启动时必须按以下顺序加载记忆体系：
 
 1. **全局画像**：调用 \`readProfile()\`（src/core/config.ts），读取 \`~/.config/openfeel/profile.yaml\`。
    文件不存在时使用默认值（zh-CN / disabled / full / concise / medium）。
-2. **项目记忆**：读取 \`.openfeel/users/{username}/dev_last.md\`，提取「上次操作状态」「关键决策」「待续事项」。
+2. **项目记忆**：读取 \`.openfeel/users/{username}/dev_last.md\`（**索引**）：先取「用户偏好」「主题索引」「公共交接区」；**按需**再读 \`dev_last/{english-name}.md\` 详情；**旧格式**（无 \`## 主题索引\` 节）→ 触发**惰性迁移**（按映射拆分生成 \`dev_last/\` + 索引，**原文保留**，仅提示一次，不阻塞会话）。
    文件不存在时跳过（首次会话）。
 2.5. **自动填充画像**：调用 \`ensureProfileDefaults(projectPath)\`（src/core/config.ts），
      \`user.name\` 为空时自动从 \`.openfeel/.info.json\` 或 git config 读取用户名，
@@ -1691,7 +1697,7 @@ Feel 启动时必须按以下顺序加载记忆体系：
    - \`auto_advance\` 以项目 \`config.yaml\` 为准，全局画像 \`preferences.auto_advance\` 仅作兜底（\`status.md\` 可局部覆盖）
    - 沟通风格使用全局画像中的 \`preferences.communication\`（影响 Feel 的输出详略程度）
    - 确认阈值使用全局画像中的 \`preferences.confirm_threshold\`
-4. **更新 dev_last.md**：将合并后的偏好写入「用户偏好」节。
+4. **更新 dev_last.md（索引）**：将合并后的偏好写入索引「用户偏好」节（**不整文件覆盖**；先 Read → 合并 → 写回）。
 
 ## 冲突检测
 
@@ -1731,9 +1737,9 @@ Feel 启动时检查 \`~/.openfeel/update_infos.md\`（若文件存在）：
 
 ## 决策追加
 
-会话中做出技术/架构决策（包括：选择技术方案、拒绝备选方案、调整设计方向、接受 trade-off）时，Feel 必须在最终写入 dev_last.md 前，以 \`- [x] {date}：{决策描述}\` 格式将新决策追加到「决策历史」节（不覆盖已有条目）。
+会话中做出技术/架构决策（包括：选择技术方案、拒绝备选方案、调整设计方向、接受 trade-off）时，Feel 必须在最终写入前，按 \`- [x] {date}：{决策描述}\` 格式将新决策追加到 **\`dev_last/decisions.md\`（主题文件「决策记录」）**（不覆盖已有条目；索引仅在主题摘要变化时更新对应 ≤100 字摘要）。
 
-**决策归属区分**：长期决策（技术选型、架构方向、跨会话有效的设计取舍）除追加到 dev_last.md「决策历史」节外，还须以 ADR 格式同步写入 \`.openfeel/dev/decisions.md\`；会话临时决策（流程调整、单次取舍）仅记录在 dev_last.md「决策历史」节。
+**决策归属区分**：长期决策（技术选型、架构方向、跨会话有效的设计取舍）除追加到 **\`dev_last/decisions.md\`** 外，还须以 ADR 格式同步写入 \`.openfeel/dev/decisions.md\`；会话临时决策（流程调整、单次取舍）仅记录在 **\`dev_last/decisions.md\`**。
 
 决策判断标准（满足任一即记录）：
 - 涉及新依赖引入或版本抉择
@@ -1745,15 +1751,21 @@ Feel 启动时检查 \`~/.openfeel/update_infos.md\`（若文件存在）：
 
 ## 信息落档
 
-关键操作必须落文件，不可仅存于对话中：阶段状态→CLI命令、进度→dev_last.md、经验→kb/、审查/Bug→私域目录。禁止"做完不记录"。
+关键操作必须落文件，不可仅存于对话中：阶段状态→CLI命令、进度→dev_last.md（索引 + 主题文件）、经验→kb/、审查/Bug→私域目录。禁止"做完不记录"。
 
 ### 会话结束写入
 
-Feel 每次结束前必须更新 \`.openfeel/users/{username}/dev_last.md\`：
-1. 填充「用户偏好」节（从全局画像读取当前值）
-2. 追加本会话新决策到「决策历史」节（\`- [x] {date}：{描述}\`）
-3. 更新「上下文快照」节（当前流水线阶段、活跃阶段、上次操作摘要）
-4. 更新「上次操作状态」和「待续事项」节（保持现有逻辑）
+Feel 每次结束前必须更新 \`.openfeel/users/{username}/dev_last.md\`（索引）与 \`dev_last/*.md\`（主题文件）：
+
+> **临界区（A9，一次进出）**：以下 ①~④ 的「读 → 合并 → 写回」须在 \`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })\` 内完成（**含读取**；见 agents-md「并发写加锁协议」）；\`dist\` 不可用时退化为「读-合并-写」并标注「未加锁」。
+
+1. 更新索引「用户偏好」（**不整文件覆盖**，Read → 合并 → 写回）；
+2. 更新/新建主题文件（**文件名英文**；**单条 >300 字或 >10 条时按 R2 转 \`tmp/\` 并记地址**）；
+3. 刷新索引「主题索引」摘要（**≤5 活跃主题 × ≤5 条 × ≤100 字**）；**若新增主题致 >5 → 按 R4 先合并同类，无可合并则把最旧已完结主题移入「已收敛主题」（不归档、不移动文件）**；
+4. 更新「公共交接区」（**仅文档位置 + 核心摘要**）；
+5. （若属跨用户整体进度）按 current.md 规则更新 \`dev/current.md\` 并轮换归档。
+
+> **注**：\`dev/current.md\`（第 5 步）为**公共域**文件，**不在本锁范围内**（仅个人提交时更新，并发面小于 dev_last）。
 
 ### 阶段结束检查
 
@@ -1761,7 +1773,7 @@ Feel 每次结束前必须更新 \`.openfeel/users/{username}/dev_last.md\`：
 
 - [ ] 审查已完成？（微小改动：单文件、无跨文件影响，可跳过审查，须记录理由；参考：单文件 ≤30 行）
 - [ ] 测试已通过？
-- [ ] 状态已落档（flow.json / status.md / dev_last.md）？
+- [ ] 状态已落档（flow.json / status.md / dev_last.md〔索引 + 主题文件〕）？
 
 全部通过方可推进。
 
@@ -3062,47 +3074,67 @@ The private domain directory. Each time the Agent obtains the current username f
 
 > .openfeel/users/{username}/dev_last.md
 
-Records the brief state at the end of the last operation, overwritten at the end of each conversation. At the next startup, read it first to restore context. If the content contradicts the current conversation, mark it as "may be outdated" and confirm with the user.
+**Index file + sibling directory**: \`dev_last.md\` is an **index**; details live in **topic files** under the \`dev_last/\` directory (**filenames are always English kebab-case**; display topic names in the index may be Chinese). Records **local state recovery and operation history**; **Never archive stale files**.
 
-**Template**:
+**Rules (R1~R6)**:
+
+| Rule | Content |
+|------|---------|
+| R1 | Topic index has **≤5 active topics**; each topic summary has **≤5 entries**, each **≤100 chars** |
+| R2 | Each topic file has **≤300 chars per entry** and **≤10 entries**; overflow → write to \`.openfeel/users/{username}/tmp/\` and record the **path** in the topic file |
+| R3 | **Never archive stale records** — keep in place, or let the user clean up manually |
+| R4 | **When topics >5**: ① **merge similar topics first** (fold into the closest topic file as one entry; index summaries stay ≤5 entries); ② if nothing can be merged, downgrade the **oldest completed** topic to a one-line summary, moving it from "Topic Index" into the "**Converged Topics**" section (≤100 chars + file path + convergence date); ③ that topic file **stays in place — never moved, never archived** |
+| R5 | The "Converged Topics" section has **no hard entry limit** (one line each), but **must not** carry details (one line ≤100 chars only) |
+| R6 | **Concurrent-write lock protocol (A9)**: the index and all topic files **share one lock** (one per user, named \`dev-last-{username}\`); lock path = \`projectLockPath(projectPath,'dev-last-{username}')\` → **\`.openfeel/tmp/locks/dev-last-{username}.lock\`**; critical section = **\`withFileLock(lockPath, () => { read index + read topic files → merge → atomicWriteFileSync })\`** (single entry/exit, **reads included inside the lock**); timeout/stale use defaults (5000/3000ms); **lock + merge as double insurance** (the lock prevents concurrent overwrite; the merge prevents cross-session/out-of-lock read loss and carries the keep-both-sides conflict semantics); degraded path (\`dist\` unavailable) → at least "read-merge-write" and mark "unlocked" |
+
+**Topic filename mapping (A10, always English)**: Pending Items→\`dev_last/pending.md\`, Decision Log→\`dev_last/decisions.md\`, Pipeline State→\`dev_last/pipeline-state.md\`, Last Operation→\`dev_last/last-operation.md\`, Experience Staging→\`dev_last/experience.md\` (new topics likewise, English kebab-case).
+
+**Index skeleton**:
 \`\`\`markdown
-# Last Operation Status
-- Time: yyyy-mm-dd HH:MM
-- Stage: {current plan stage}
-- Operation: {one-sentence description}
-- Files: {key files added or modified}
-- Current State: {stage progress, e.g., 3/7 tasks completed}
+# dev_last — Index ({username})
+
+> This file is an **index**: it lists only topics and core summaries. Details are in \`dev_last/{english-name}.md\` (≤10 entries per topic, ≤300 chars each); overflow details go to \`.openfeel/users/{username}/tmp/\` with the path recorded in the topic file. Stale files are **never archived**.
 
 ## User Preferences
-- Language: {lang}
-- Auto Advance: {auto_advance}
-- Review Mode: {review_mode}
-- Communication: {communication}
-- Confirm Threshold: {confirm_threshold}
+- Language: {lang} | Auto Advance: {auto_advance} | Review Mode: {review_mode}
+- Communication: {communication} | Confirm Threshold: {confirm_threshold}
 
-## Context Snapshot
-- Current Pipeline Phase: {phase}
-- Active Stages: {active_stages}
-- Last Operation Summary: {one sentence}
+## Topic Index (max 5)
 
-## Pending Items
-- [ ] {unfinished tasks}
-- [ ] {blockers}
+> Each entry: \`**{display name (may be Chinese)}** (\`dev_last/{english-name}.md\`)\` + ≤5 summaries (≤100 chars each). Filenames are always English.
 
-## Key Decisions
-- {important architecture or design decisions from this session}
+- **Pending Items** (\`dev_last/pending.md\`)
+  - {recent work core content, ≤100 chars}
+  - {...max 5}
+- **Decision Log** (\`dev_last/decisions.md\`)
+  - {...}
 
-## Decision History
-(New decisions from this session are appended here in the format \`- [x] {date}: {decision description}\`)
+## Converged Topics (not counted toward the 5 above; one line each, files stay in place)
 
-## Experience Staging
-- [ ] \`architecture\`: {architecture decisions pending archiving}
-- [ ] \`patterns\`: {code patterns pending archiving}
-- [ ] \`troubleshooting\`: {troubleshooting experience pending archiving}
-- [ ] \`setup\`: {environment configuration pending archiving}
+- **{display name}** (\`dev_last/{english-name}.md\`, converged on {yyyy-mm-dd}): {≤100 chars summary}
+
+## Public Handoff Section (cross-session information transfer)
+
+> List **handoff document location + core summary** only; do not describe details.
+
+- Handoff document: \`{path (may be dev_last/{english-name}.md or a tmp document)}\`
+- Core summary: {one sentence}
 \`\`\`
 
-This template ensures that cross-session context is restored to a level sufficient to execute the next task, while also supporting the experience staging function that underpins the automatic knowledge base writing mechanism. **Write instructions**: Feel fills the "User Preferences" section from \`readProfile()\` global preferences at startup; appends technical/architecture decisions to "Decision History" during the session; updates the "Context Snapshot" section every time it writes dev_last.md.
+**Topic file skeleton** (\`dev_last/{english-name}.md\`, English filename):
+\`\`\`markdown
+# Topic: {display name (may be Chinese)}
+
+> Detail records: ≤10 entries, ≤300 chars each. Overflow goes to a \`tmp/\` document with the path recorded here. Stale records are never archived.
+
+- **{yyyy-mm-dd}** {recent work core content (≤300 chars)}
+- **{yyyy-mm-dd}** {...}
+
+> Overflow details: \`{tmp document path}\` (e.g., \`.openfeel/users/{username}/tmp/{file}.md\`)
+> Stale records: **never archived** (keep in place or let the user clean up manually).
+\`\`\`
+
+**Write instructions**: At startup Feel fills the index "User Preferences" section from \`readProfile()\` global preferences. At session end, **do not overwrite the whole file**: \`Read → merge → write back the index\`; locate/create topic files **by English filename** (see the mapping above); **when a new topic pushes the count >5, merge or converge per R4 — never move into an archive directory** (\`dev_last/archive/\` **does not exist**); **both reads and writes of the index and topic files happen inside the \`withFileLock\` critical section (R6/A9)**, completing "read-merge-write" in one pass.
 
 #### Personal Notes
 
@@ -3546,47 +3578,67 @@ AGENTS.md 仅保留行为约束，流程规则由工具动态注入，实现"提
 
 > .openfeel/users/{username}/dev_last.md
 
-记录上一次操作结束时的简要状态，对话末尾覆盖写入。下次启动时先读取以恢复上下文。若内容与当前对话矛盾则标记"可能过期"并向用户确认。
+**索引文件 + 同名目录**：\`dev_last.md\` 为**索引**，详情在 \`dev_last/\` 目录下的**主题文件**（**文件名一律英文 kebab-case**；索引中的显示主题名可中文）。记录**本地状态恢复与操作记录**；**超期文件不做归档**。
 
-**模板**：
+**规则（R1~R6）**：
+
+| 规则 | 内容 |
+|------|------|
+| R1 | 主题索引**活跃主题 ≤5 个**；每主题摘要 **≤5 条**、每条 **≤100 字** |
+| R2 | 主题文件每条 **≤300 字**、**≤10 条**；超量 → 写入 \`.openfeel/users/{username}/tmp/\` 文档，并在主题文件记**地址** |
+| R3 | **超期记录不做归档处理**——就地保留，或由用户手动清理 |
+| R4 | **主题数 >5 时**：① **优先合并同类主题**（并入最相近主题文件作为一条记录，索引摘要仍 ≤5 条）；② 无可合并时，将**最旧且已完结**主题降级为一行摘要，从「主题索引」移入「**已收敛主题**」小节（≤100 字 + 文件路径 + 收敛日期）；③ 该主题文件**就地保留，不迁移、不归档** |
+| R5 | 「已收敛主题」小节**不设条数硬限**（一行一条），但**不得**承载细节（仅 1 行 ≤100 字） |
+| R6 | **并发写加锁协议（A9）**：索引与全部主题文件**共用一把锁**（每用户一把，名 \`dev-last-{username}\`）；锁路径 = \`projectLockPath(projectPath,'dev-last-{username}')\` → **\`.openfeel/tmp/locks/dev-last-{username}.lock\`**；临界区 = **\`withFileLock(lockPath, () => { 读索引 + 读主题文件 → 合并 → atomicWriteFileSync })\`**（一次进出、**读也在锁内**）；超时/陈旧沿用默认（5000/3000ms）；**锁 + 合并双保险**（锁防并发覆盖；合并防跨会话/锁外读取丢失 + 承担冲突双侧保留语义）；降级（\`dist\` 不可用）→ 至少「读-合并-写」并标注「未加锁」 |
+
+**主题文件名映射（A10，一律英文）**：待续事项→\`dev_last/pending.md\`、决策记录→\`dev_last/decisions.md\`、流水线状态→\`dev_last/pipeline-state.md\`、上次操作→\`dev_last/last-operation.md\`、经验暂存→\`dev_last/experience.md\`（新主题同理，英文 kebab-case）。
+
+**索引骨架**：
 \`\`\`markdown
-# 上次操作状态
-- 时间: yyyy-mm-dd HH:MM
-- 阶段: {当前计划阶段}
-- 操作: {一句话描述上次操作}
-- 文件: {新增或修改的关键文件列表}
-- 当前状态: {阶段进度，如 3/7 任务完成}
+# dev_last — 索引（{username}）
+
+> 本文件为**索引**：只列主题与核心摘要。详情在 \`dev_last/{english-name}.md\`（每主题 ≤10 条、每条 ≤300 字）；超量详情写入 \`.openfeel/users/{username}/tmp/\`，并在主题文件记录其地址。超期文件**不做归档**。
 
 ## 用户偏好
-- 语言：{lang}
-- 自动推进：{auto_advance}
-- 审查模式：{review_mode}
-- 沟通风格：{communication}
-- 确认阈值：{confirm_threshold}
+- 语言：{lang} ｜ 自动推进：{auto_advance} ｜ 审查模式：{review_mode}
+- 沟通风格：{communication} ｜ 确认阈值：{confirm_threshold}
 
-## 上下文快照
-- 当前流水线阶段：{phase}
-- 活跃阶段：{active_stages}
-- 上次操作摘要：{一句话}
+## 主题索引（最多 5 个）
 
-## 待续事项
-- [ ] {未完成的任务}
-- [ ] {阻塞项}
+> 每条：\`**{显示主题名（可中文）}**（\`dev_last/{english-name}.md\`）\` + ≤5 条摘要（每条 ≤100 字）。文件名一律英文。
 
-## 关键决策
-- {本次会话中的重要架构或设计决策}
+- **待续事项**（\`dev_last/pending.md\`）
+  - {近期工作核心内容，≤100 字}
+  - {…最多 5 条}
+- **决策记录**（\`dev_last/decisions.md\`）
+  - {…}
 
-## 决策历史
-（本会话新增的决策以 \`- [x] {date}：{决策描述}\` 格式追加于此）
+## 已收敛主题（不计入上方 5 个上限；仅一行，文件就地保留）
 
-## 经验暂存
-- [ ] \`architecture\`：{待归档的架构决策}
-- [ ] \`patterns\`：{待归档的代码模式}
-- [ ] \`troubleshooting\`：{待归档的排查经验}
-- [ ] \`setup\`：{待归档的环境配置}
+- **{显示主题名}**（\`dev_last/{english-name}.md\`，收敛于 {yyyy-mm-dd}）：{≤100 字摘要}
+
+## 公共交接区（跨会话传递信息）
+
+> 仅列**交接文档位置 + 核心摘要**，不描述细节。
+
+- 交接文档：\`{路径（可为 dev_last/{english-name}.md 或 tmp 文档）}\`
+- 核心摘要：{一句话}
 \`\`\`
 
-此模板确保跨会话上下文恢复到足够执行下一个任务的程度，同时承载经验暂存功能，支撑知识库自动写入机制。**写入说明**：Feel 启动时从 \`readProfile()\` 读取全局偏好填充「用户偏好」；会话中做技术/架构决策时自动追加到「决策历史」；每次写入 dev_last.md 时更新「上下文快照」。
+**主题文件骨架**（\`dev_last/{english-name}.md\`，文件名英文）：
+\`\`\`markdown
+# 主题：{显示主题名（可中文）}
+
+> 详情记录：近期 ≤10 条、每条 ≤300 字。超出则写入 \`tmp/\` 文档并在此记录地址。超期记录不归档。
+
+- **{yyyy-mm-dd}** {近期工作核心内容（≤300 字）}
+- **{yyyy-mm-dd}** {…}
+
+> 超量详情：\`{tmp 文档路径}\`（如 \`.openfeel/users/{username}/tmp/{file}.md\`）
+> 超期记录：**不归档**（就地保留或由用户手动清理）。
+\`\`\`
+
+**写入说明**：Feel 启动时从 \`readProfile()\` 读取全局偏好填充索引「用户偏好」节。会话末尾**不整文件覆盖**：\`Read → 合并 → 写回索引\`；主题文件**按英文文件名定位/新建**（见上方映射）；**新增主题致 >5 时按 R4 合并或收敛，不移入归档目录**（\`dev_last/archive/\` **不存在**）；**索引与主题文件的读写均在 \`withFileLock\` 临界区内（R6/A9）**，一次性完成「读-合并-写」。
 
 #### 个人笔记
 
@@ -4051,7 +4103,7 @@ At startup, Feel must load the memory system in the following order:
 
 1. **Global profile**: Call \`readProfile()\` (src/core/config.ts) to read \`~/.config/openfeel/profile.yaml\`.
    If the file does not exist, use defaults (zh-CN / disabled / full / concise / medium).
-2. **Project memory**: Read \`.openfeel/users/{username}/dev_last.md\` and extract "Last Operation Status", "Key Decisions", and "Pending Items".
+2. **Project memory**: Read \`.openfeel/users/{username}/dev_last.md\` (an **index**): first take "User Preferences", "Topic Index", and "Public Handoff Section"; read \`dev_last/{english-name}.md\` details **on demand**; **legacy format** (no \`## Topic Index\` section) → trigger **lazy migration** (split into \`dev_last/\` + index per the mapping; **keep the original text**, prompt once only, do not block the session).
    Skip if the file does not exist (first session).
 2.5. **Auto-fill profile**: Call \`ensureProfileDefaults(projectPath)\` (src/core/config.ts).
      When \`user.name\` is empty, read the username from \`.openfeel/.info.json\` or fall back to \`git config user.name\`;
@@ -4061,7 +4113,7 @@ At startup, Feel must load the memory system in the following order:
    - \`auto_advance\` follows the project \`config.yaml\`; the global profile \`preferences.auto_advance\` is only a fallback (status.md may override locally)
    - Communication style uses \`preferences.communication\` from the global profile (affects Feel's output verbosity)
    - Confirm threshold uses \`preferences.confirm_threshold\` from the global profile
-4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.
+4. **Update dev_last.md (index)**: Write the merged preferences into the index "User Preferences" section (**do not overwrite the whole file**; Read → merge → write back first).
 
 ## Conflict Detection
 
@@ -4101,9 +4153,9 @@ At startup, Feel checks \`~/.openfeel/update_infos.md\` (if the file exists):
 
 ## Decision Appending
 
-When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to the "Decision History" section in the format \`- [x] {date}: {decision description}\` before finally writing dev_last.md (do not overwrite existing entries).
+When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to **\`dev_last/decisions.md\`** (topic file "Decision Log") in the format \`- [x] {date}: {decision description}\` before the final write (do not overwrite existing entries; update the index's matching ≤100-char summary only when the topic summary changes).
 
-**Decision ownership**: Long-term decisions (technology selection, architecture direction, cross-session design trade-offs) must be synced to \`.openfeel/dev/decisions.md\` in ADR format in addition to being appended to the dev_last.md "Decision History" section; session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded only in the dev_last.md "Decision History" section.
+**Decision ownership**: Long-term decisions (technology selection, architecture direction, cross-session design trade-offs) must be synced to \`.openfeel/dev/decisions.md\` in ADR format in addition to being appended to **\`dev_last/decisions.md\`**; session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded only in **\`dev_last/decisions.md\`**.
 
 Decision criteria (record when any applies):
 - Involves introducing a new dependency or version choice
@@ -4115,15 +4167,21 @@ Non-decisions are not recorded: routine code progress, Bug fix choices, filling 
 
 ## Information Archiving
 
-Critical operations must be committed to files, not kept only in conversations: stage state → CLI commands, progress → dev_last.md, experience → kb/, reviews/Bugs → private directories. Do not "complete without recording".
+Critical operations must be committed to files, not kept only in conversations: stage state → CLI commands, progress → dev_last.md (index + topic files), experience → kb/, reviews/Bugs → private directories. Do not "complete without recording".
 
 ### End-of-Session Write
 
-Before ending each session, Feel must update \`.openfeel/users/{username}/dev_last.md\`:
-1. Fill the "User Preferences" section (read current values from the global profile)
-2. Append this session's new decisions to the "Decision History" section (\`- [x] {date}: {description}\`)
-3. Update the "Context Snapshot" section (current pipeline phase, active stages, last operation summary)
-4. Update the "Last Operation Status" and "Pending Items" sections (keep existing logic)
+Before ending each session, Feel must update \`.openfeel/users/{username}/dev_last.md\` (index) and \`dev_last/*.md\` (topic files):
+
+> **Critical section (A9, single entry/exit)**: the "read → merge → write back" in ①~④ below must be performed inside \`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })\` (**reads included**; see the agents-md "Concurrent-write lock protocol"); when \`dist\` is unavailable, degrade to "read-merge-write" and mark "unlocked".
+
+1. Update the index "User Preferences" (**do not overwrite the whole file**; Read → merge → write back);
+2. Update/create topic files (**English filenames**; **when a single entry >300 chars or >10 entries, offload to \`tmp/\` per R2 and record the path**);
+3. Refresh the index "Topic Index" summaries (**≤5 active topics × ≤5 entries × ≤100 chars**); **if a new topic pushes the count >5 → merge similar topics first per R4; if nothing can be merged, move the oldest completed topic into "Converged Topics" (no archiving, no file movement)**;
+4. Update the "Public Handoff Section" (**document location + core summary only**);
+5. (If it is a cross-user overall progress item) update \`dev/current.md\` per the current.md rules and rotate the archive.
+
+> **Note**: \`dev/current.md\` (step 5) is a **public domain** file and is **not covered by this lock** (it is updated only on personal submission; its concurrency surface is smaller than dev_last's).
 
 ### End-of-Stage Checklist
 
@@ -4131,7 +4189,7 @@ Before marking a stage as done, verify each item:
 
 - [ ] Has review been completed? (Minor change: single file, no cross-file impact — review may be skipped, with reason recorded; reference: single file ≤30 lines)
 - [ ] Have tests passed?
-- [ ] Has state been archived (flow.json / status.md / dev_last.md)?
+- [ ] Has state been archived (flow.json / status.md / dev_last.md [index + topic files])?
 
 Only proceed to advance when all checks pass.
 
@@ -5402,7 +5460,7 @@ Feel 启动时必须按以下顺序加载记忆体系：
 
 1. **全局画像**：调用 \`readProfile()\`（src/core/config.ts），读取 \`~/.config/openfeel/profile.yaml\`。
    文件不存在时使用默认值（zh-CN / disabled / full / concise / medium）。
-2. **项目记忆**：读取 \`.openfeel/users/{username}/dev_last.md\`，提取「上次操作状态」「关键决策」「待续事项」。
+2. **项目记忆**：读取 \`.openfeel/users/{username}/dev_last.md\`（**索引**）：先取「用户偏好」「主题索引」「公共交接区」；**按需**再读 \`dev_last/{english-name}.md\` 详情；**旧格式**（无 \`## 主题索引\` 节）→ 触发**惰性迁移**（按映射拆分生成 \`dev_last/\` + 索引，**原文保留**，仅提示一次，不阻塞会话）。
    文件不存在时跳过（首次会话）。
 2.5. **自动填充画像**：调用 \`ensureProfileDefaults(projectPath)\`（src/core/config.ts），
      \`user.name\` 为空时自动从 \`.openfeel/.info.json\` 或 git config 读取用户名，
@@ -5412,7 +5470,7 @@ Feel 启动时必须按以下顺序加载记忆体系：
    - \`auto_advance\` 以项目 \`config.yaml\` 为准，全局画像 \`preferences.auto_advance\` 仅作兜底（\`status.md\` 可局部覆盖）
    - 沟通风格使用全局画像中的 \`preferences.communication\`（影响 Feel 的输出详略程度）
    - 确认阈值使用全局画像中的 \`preferences.confirm_threshold\`
-4. **更新 dev_last.md**：将合并后的偏好写入「用户偏好」节。
+4. **更新 dev_last.md（索引）**：将合并后的偏好写入索引「用户偏好」节（**不整文件覆盖**；先 Read → 合并 → 写回）。
 
 ## 冲突检测
 
@@ -5452,9 +5510,9 @@ Feel 启动时检查 \`~/.openfeel/update_infos.md\`（若文件存在）：
 
 ## 决策追加
 
-会话中做出技术/架构决策（包括：选择技术方案、拒绝备选方案、调整设计方向、接受 trade-off）时，Feel 必须在最终写入 dev_last.md 前，以 \`- [x] {date}：{决策描述}\` 格式将新决策追加到「决策历史」节（不覆盖已有条目）。
+会话中做出技术/架构决策（包括：选择技术方案、拒绝备选方案、调整设计方向、接受 trade-off）时，Feel 必须在最终写入前，按 \`- [x] {date}：{决策描述}\` 格式将新决策追加到 **\`dev_last/decisions.md\`（主题文件「决策记录」）**（不覆盖已有条目；索引仅在主题摘要变化时更新对应 ≤100 字摘要）。
 
-**决策归属区分**：长期决策（技术选型、架构方向、跨会话有效的设计取舍）除追加到 dev_last.md「决策历史」节外，还须以 ADR 格式同步写入 \`.openfeel/dev/decisions.md\`；会话临时决策（流程调整、单次取舍）仅记录在 dev_last.md「决策历史」节。
+**决策归属区分**：长期决策（技术选型、架构方向、跨会话有效的设计取舍）除追加到 **\`dev_last/decisions.md\`** 外，还须以 ADR 格式同步写入 \`.openfeel/dev/decisions.md\`；会话临时决策（流程调整、单次取舍）仅记录在 **\`dev_last/decisions.md\`**。
 
 决策判断标准（满足任一即记录）：
 - 涉及新依赖引入或版本抉择
@@ -5466,15 +5524,21 @@ Feel 启动时检查 \`~/.openfeel/update_infos.md\`（若文件存在）：
 
 ## 信息落档
 
-关键操作必须落文件，不可仅存于对话中：阶段状态→CLI命令、进度→dev_last.md、经验→kb/、审查/Bug→私域目录。禁止"做完不记录"。
+关键操作必须落文件，不可仅存于对话中：阶段状态→CLI命令、进度→dev_last.md（索引 + 主题文件）、经验→kb/、审查/Bug→私域目录。禁止"做完不记录"。
 
 ### 会话结束写入
 
-Feel 每次结束前必须更新 \`.openfeel/users/{username}/dev_last.md\`：
-1. 填充「用户偏好」节（从全局画像读取当前值）
-2. 追加本会话新决策到「决策历史」节（\`- [x] {date}：{描述}\`）
-3. 更新「上下文快照」节（当前流水线阶段、活跃阶段、上次操作摘要）
-4. 更新「上次操作状态」和「待续事项」节（保持现有逻辑）
+Feel 每次结束前必须更新 \`.openfeel/users/{username}/dev_last.md\`（索引）与 \`dev_last/*.md\`（主题文件）：
+
+> **临界区（A9，一次进出）**：以下 ①~④ 的「读 → 合并 → 写回」须在 \`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })\` 内完成（**含读取**；见 agents-md「并发写加锁协议」）；\`dist\` 不可用时退化为「读-合并-写」并标注「未加锁」。
+
+1. 更新索引「用户偏好」（**不整文件覆盖**，Read → 合并 → 写回）；
+2. 更新/新建主题文件（**文件名英文**；**单条 >300 字或 >10 条时按 R2 转 \`tmp/\` 并记地址**）；
+3. 刷新索引「主题索引」摘要（**≤5 活跃主题 × ≤5 条 × ≤100 字**）；**若新增主题致 >5 → 按 R4 先合并同类，无可合并则把最旧已完结主题移入「已收敛主题」（不归档、不移动文件）**；
+4. 更新「公共交接区」（**仅文档位置 + 核心摘要**）；
+5. （若属跨用户整体进度）按 current.md 规则更新 \`dev/current.md\` 并轮换归档。
+
+> **注**：\`dev/current.md\`（第 5 步）为**公共域**文件，**不在本锁范围内**（仅个人提交时更新，并发面小于 dev_last）。
 
 ### 阶段结束检查
 
@@ -5482,7 +5546,7 @@ Feel 每次结束前必须更新 \`.openfeel/users/{username}/dev_last.md\`：
 
 - [ ] 审查已完成？（微小改动：单文件、无跨文件影响，可跳过审查，须记录理由；参考：单文件 ≤30 行）
 - [ ] 测试已通过？
-- [ ] 状态已落档（flow.json / status.md / dev_last.md）？
+- [ ] 状态已落档（flow.json / status.md / dev_last.md〔索引 + 主题文件〕）？
 
 全部通过方可推进。
 

@@ -346,47 +346,67 @@ The private domain directory. Each time the Agent obtains the current username f
 
 > .openfeel/users/{username}/dev_last.md
 
-Records the brief state at the end of the last operation, overwritten at the end of each conversation. At the next startup, read it first to restore context. If the content contradicts the current conversation, mark it as "may be outdated" and confirm with the user.
+**Index file + sibling directory**: `dev_last.md` is an **index**; details live in **topic files** under the `dev_last/` directory (**filenames are always English kebab-case**; display topic names in the index may be Chinese). Records **local state recovery and operation history**; **Never archive stale files**.
 
-**Template**:
+**Rules (R1~R6)**:
+
+| Rule | Content |
+|------|---------|
+| R1 | Topic index has **≤5 active topics**; each topic summary has **≤5 entries**, each **≤100 chars** |
+| R2 | Each topic file has **≤300 chars per entry** and **≤10 entries**; overflow → write to `.openfeel/users/{username}/tmp/` and record the **path** in the topic file |
+| R3 | **Never archive stale records** — keep in place, or let the user clean up manually |
+| R4 | **When topics >5**: ① **merge similar topics first** (fold into the closest topic file as one entry; index summaries stay ≤5 entries); ② if nothing can be merged, downgrade the **oldest completed** topic to a one-line summary, moving it from "Topic Index" into the "**Converged Topics**" section (≤100 chars + file path + convergence date); ③ that topic file **stays in place — never moved, never archived** |
+| R5 | The "Converged Topics" section has **no hard entry limit** (one line each), but **must not** carry details (one line ≤100 chars only) |
+| R6 | **Concurrent-write lock protocol (A9)**: the index and all topic files **share one lock** (one per user, named `dev-last-{username}`); lock path = `projectLockPath(projectPath,'dev-last-{username}')` → **`.openfeel/tmp/locks/dev-last-{username}.lock`**; critical section = **`withFileLock(lockPath, () => { read index + read topic files → merge → atomicWriteFileSync })`** (single entry/exit, **reads included inside the lock**); timeout/stale use defaults (5000/3000ms); **lock + merge as double insurance** (the lock prevents concurrent overwrite; the merge prevents cross-session/out-of-lock read loss and carries the keep-both-sides conflict semantics); degraded path (`dist` unavailable) → at least "read-merge-write" and mark "unlocked" |
+
+**Topic filename mapping (A10, always English)**: Pending Items→`dev_last/pending.md`, Decision Log→`dev_last/decisions.md`, Pipeline State→`dev_last/pipeline-state.md`, Last Operation→`dev_last/last-operation.md`, Experience Staging→`dev_last/experience.md` (new topics likewise, English kebab-case).
+
+**Index skeleton**:
 ```markdown
-# Last Operation Status
-- Time: yyyy-mm-dd HH:MM
-- Stage: {current plan stage}
-- Operation: {one-sentence description}
-- Files: {key files added or modified}
-- Current State: {stage progress, e.g., 3/7 tasks completed}
+# dev_last — Index ({username})
+
+> This file is an **index**: it lists only topics and core summaries. Details are in `dev_last/{english-name}.md` (≤10 entries per topic, ≤300 chars each); overflow details go to `.openfeel/users/{username}/tmp/` with the path recorded in the topic file. Stale files are **never archived**.
 
 ## User Preferences
-- Language: {lang}
-- Auto Advance: {auto_advance}
-- Review Mode: {review_mode}
-- Communication: {communication}
-- Confirm Threshold: {confirm_threshold}
+- Language: {lang} | Auto Advance: {auto_advance} | Review Mode: {review_mode}
+- Communication: {communication} | Confirm Threshold: {confirm_threshold}
 
-## Context Snapshot
-- Current Pipeline Phase: {phase}
-- Active Stages: {active_stages}
-- Last Operation Summary: {one sentence}
+## Topic Index (max 5)
 
-## Pending Items
-- [ ] {unfinished tasks}
-- [ ] {blockers}
+> Each entry: `**{display name (may be Chinese)}** (`dev_last/{english-name}.md`)` + ≤5 summaries (≤100 chars each). Filenames are always English.
 
-## Key Decisions
-- {important architecture or design decisions from this session}
+- **Pending Items** (`dev_last/pending.md`)
+  - {recent work core content, ≤100 chars}
+  - {...max 5}
+- **Decision Log** (`dev_last/decisions.md`)
+  - {...}
 
-## Decision History
-(New decisions from this session are appended here in the format `- [x] {date}: {decision description}`)
+## Converged Topics (not counted toward the 5 above; one line each, files stay in place)
 
-## Experience Staging
-- [ ] `architecture`: {architecture decisions pending archiving}
-- [ ] `patterns`: {code patterns pending archiving}
-- [ ] `troubleshooting`: {troubleshooting experience pending archiving}
-- [ ] `setup`: {environment configuration pending archiving}
+- **{display name}** (`dev_last/{english-name}.md`, converged on {yyyy-mm-dd}): {≤100 chars summary}
+
+## Public Handoff Section (cross-session information transfer)
+
+> List **handoff document location + core summary** only; do not describe details.
+
+- Handoff document: `{path (may be dev_last/{english-name}.md or a tmp document)}`
+- Core summary: {one sentence}
 ```
 
-This template ensures that cross-session context is restored to a level sufficient to execute the next task, while also supporting the experience staging function that underpins the automatic knowledge base writing mechanism. **Write instructions**: Feel fills the "User Preferences" section from `readProfile()` global preferences at startup; appends technical/architecture decisions to "Decision History" during the session; updates the "Context Snapshot" section every time it writes dev_last.md.
+**Topic file skeleton** (`dev_last/{english-name}.md`, English filename):
+```markdown
+# Topic: {display name (may be Chinese)}
+
+> Detail records: ≤10 entries, ≤300 chars each. Overflow goes to a `tmp/` document with the path recorded here. Stale records are never archived.
+
+- **{yyyy-mm-dd}** {recent work core content (≤300 chars)}
+- **{yyyy-mm-dd}** {...}
+
+> Overflow details: `{tmp document path}` (e.g., `.openfeel/users/{username}/tmp/{file}.md`)
+> Stale records: **never archived** (keep in place or let the user clean up manually).
+```
+
+**Write instructions**: At startup Feel fills the index "User Preferences" section from `readProfile()` global preferences. At session end, **do not overwrite the whole file**: `Read → merge → write back the index`; locate/create topic files **by English filename** (see the mapping above); **when a new topic pushes the count >5, merge or converge per R4 — never move into an archive directory** (`dev_last/archive/` **does not exist**); **both reads and writes of the index and topic files happen inside the `withFileLock` critical section (R6/A9)**, completing "read-merge-write" in one pass.
 
 #### Personal Notes
 

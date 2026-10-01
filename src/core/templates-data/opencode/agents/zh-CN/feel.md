@@ -320,7 +320,7 @@ Feel 启动时必须按以下顺序加载记忆体系：
 
 1. **全局画像**：调用 `readProfile()`（src/core/config.ts），读取 `~/.config/openfeel/profile.yaml`。
    文件不存在时使用默认值（zh-CN / disabled / full / concise / medium）。
-2. **项目记忆**：读取 `.openfeel/users/{username}/dev_last.md`，提取「上次操作状态」「关键决策」「待续事项」。
+2. **项目记忆**：读取 `.openfeel/users/{username}/dev_last.md`（**索引**）：先取「用户偏好」「主题索引」「公共交接区」；**按需**再读 `dev_last/{english-name}.md` 详情；**旧格式**（无 `## 主题索引` 节）→ 触发**惰性迁移**（按映射拆分生成 `dev_last/` + 索引，**原文保留**，仅提示一次，不阻塞会话）。
    文件不存在时跳过（首次会话）。
 2.5. **自动填充画像**：调用 `ensureProfileDefaults(projectPath)`（src/core/config.ts），
      `user.name` 为空时自动从 `.openfeel/.info.json` 或 git config 读取用户名，
@@ -330,7 +330,7 @@ Feel 启动时必须按以下顺序加载记忆体系：
    - `auto_advance` 以项目 `config.yaml` 为准，全局画像 `preferences.auto_advance` 仅作兜底（`status.md` 可局部覆盖）
    - 沟通风格使用全局画像中的 `preferences.communication`（影响 Feel 的输出详略程度）
    - 确认阈值使用全局画像中的 `preferences.confirm_threshold`
-4. **更新 dev_last.md**：将合并后的偏好写入「用户偏好」节。
+4. **更新 dev_last.md（索引）**：将合并后的偏好写入索引「用户偏好」节（**不整文件覆盖**；先 Read → 合并 → 写回）。
 
 ## 冲突检测
 
@@ -370,9 +370,9 @@ Feel 启动时检查 `~/.openfeel/update_infos.md`（若文件存在）：
 
 ## 决策追加
 
-会话中做出技术/架构决策（包括：选择技术方案、拒绝备选方案、调整设计方向、接受 trade-off）时，Feel 必须在最终写入 dev_last.md 前，以 `- [x] {date}：{决策描述}` 格式将新决策追加到「决策历史」节（不覆盖已有条目）。
+会话中做出技术/架构决策（包括：选择技术方案、拒绝备选方案、调整设计方向、接受 trade-off）时，Feel 必须在最终写入前，按 `- [x] {date}：{决策描述}` 格式将新决策追加到 **`dev_last/decisions.md`（主题文件「决策记录」）**（不覆盖已有条目；索引仅在主题摘要变化时更新对应 ≤100 字摘要）。
 
-**决策归属区分**：长期决策（技术选型、架构方向、跨会话有效的设计取舍）除追加到 dev_last.md「决策历史」节外，还须以 ADR 格式同步写入 `.openfeel/dev/decisions.md`；会话临时决策（流程调整、单次取舍）仅记录在 dev_last.md「决策历史」节。
+**决策归属区分**：长期决策（技术选型、架构方向、跨会话有效的设计取舍）除追加到 **`dev_last/decisions.md`** 外，还须以 ADR 格式同步写入 `.openfeel/dev/decisions.md`；会话临时决策（流程调整、单次取舍）仅记录在 **`dev_last/decisions.md`**。
 
 决策判断标准（满足任一即记录）：
 - 涉及新依赖引入或版本抉择
@@ -384,15 +384,21 @@ Feel 启动时检查 `~/.openfeel/update_infos.md`（若文件存在）：
 
 ## 信息落档
 
-关键操作必须落文件，不可仅存于对话中：阶段状态→CLI命令、进度→dev_last.md、经验→kb/、审查/Bug→私域目录。禁止"做完不记录"。
+关键操作必须落文件，不可仅存于对话中：阶段状态→CLI命令、进度→dev_last.md（索引 + 主题文件）、经验→kb/、审查/Bug→私域目录。禁止"做完不记录"。
 
 ### 会话结束写入
 
-Feel 每次结束前必须更新 `.openfeel/users/{username}/dev_last.md`：
-1. 填充「用户偏好」节（从全局画像读取当前值）
-2. 追加本会话新决策到「决策历史」节（`- [x] {date}：{描述}`）
-3. 更新「上下文快照」节（当前流水线阶段、活跃阶段、上次操作摘要）
-4. 更新「上次操作状态」和「待续事项」节（保持现有逻辑）
+Feel 每次结束前必须更新 `.openfeel/users/{username}/dev_last.md`（索引）与 `dev_last/*.md`（主题文件）：
+
+> **临界区（A9，一次进出）**：以下 ①~④ 的「读 → 合并 → 写回」须在 `withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })` 内完成（**含读取**；见 agents-md「并发写加锁协议」）；`dist` 不可用时退化为「读-合并-写」并标注「未加锁」。
+
+1. 更新索引「用户偏好」（**不整文件覆盖**，Read → 合并 → 写回）；
+2. 更新/新建主题文件（**文件名英文**；**单条 >300 字或 >10 条时按 R2 转 `tmp/` 并记地址**）；
+3. 刷新索引「主题索引」摘要（**≤5 活跃主题 × ≤5 条 × ≤100 字**）；**若新增主题致 >5 → 按 R4 先合并同类，无可合并则把最旧已完结主题移入「已收敛主题」（不归档、不移动文件）**；
+4. 更新「公共交接区」（**仅文档位置 + 核心摘要**）；
+5. （若属跨用户整体进度）按 current.md 规则更新 `dev/current.md` 并轮换归档。
+
+> **注**：`dev/current.md`（第 5 步）为**公共域**文件，**不在本锁范围内**（仅个人提交时更新，并发面小于 dev_last）。
 
 ### 阶段结束检查
 
@@ -400,7 +406,7 @@ Feel 每次结束前必须更新 `.openfeel/users/{username}/dev_last.md`：
 
 - [ ] 审查已完成？（微小改动：单文件、无跨文件影响，可跳过审查，须记录理由；参考：单文件 ≤30 行）
 - [ ] 测试已通过？
-- [ ] 状态已落档（flow.json / status.md / dev_last.md）？
+- [ ] 状态已落档（flow.json / status.md / dev_last.md〔索引 + 主题文件〕）？
 
 全部通过方可推进。
 

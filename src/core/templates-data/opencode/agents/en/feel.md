@@ -320,7 +320,7 @@ At startup, Feel must load the memory system in the following order:
 
 1. **Global profile**: Call `readProfile()` (src/core/config.ts) to read `~/.config/openfeel/profile.yaml`.
    If the file does not exist, use defaults (zh-CN / disabled / full / concise / medium).
-2. **Project memory**: Read `.openfeel/users/{username}/dev_last.md` and extract "Last Operation Status", "Key Decisions", and "Pending Items".
+2. **Project memory**: Read `.openfeel/users/{username}/dev_last.md` (an **index**): first take "User Preferences", "Topic Index", and "Public Handoff Section"; read `dev_last/{english-name}.md` details **on demand**; **legacy format** (no `## Topic Index` section) → trigger **lazy migration** (split into `dev_last/` + index per the mapping; **keep the original text**, prompt once only, do not block the session).
    Skip if the file does not exist (first session).
 2.5. **Auto-fill profile**: Call `ensureProfileDefaults(projectPath)` (src/core/config.ts).
      When `user.name` is empty, read the username from `.openfeel/.info.json` or fall back to `git config user.name`;
@@ -330,7 +330,7 @@ At startup, Feel must load the memory system in the following order:
    - `auto_advance` follows the project `config.yaml`; the global profile `preferences.auto_advance` is only a fallback (status.md may override locally)
    - Communication style uses `preferences.communication` from the global profile (affects Feel's output verbosity)
    - Confirm threshold uses `preferences.confirm_threshold` from the global profile
-4. **Update dev_last.md**: Write the merged preferences into the "User Preferences" section.
+4. **Update dev_last.md (index)**: Write the merged preferences into the index "User Preferences" section (**do not overwrite the whole file**; Read → merge → write back first).
 
 ## Conflict Detection
 
@@ -370,9 +370,9 @@ At startup, Feel checks `~/.openfeel/update_infos.md` (if the file exists):
 
 ## Decision Appending
 
-When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to the "Decision History" section in the format `- [x] {date}: {decision description}` before finally writing dev_last.md (do not overwrite existing entries).
+When making technical/architecture decisions during a session (including: choosing a technical approach, rejecting alternatives, adjusting design direction, accepting trade-offs), Feel must append the new decision to **`dev_last/decisions.md`** (topic file "Decision Log") in the format `- [x] {date}: {decision description}` before the final write (do not overwrite existing entries; update the index's matching ≤100-char summary only when the topic summary changes).
 
-**Decision ownership**: Long-term decisions (technology selection, architecture direction, cross-session design trade-offs) must be synced to `.openfeel/dev/decisions.md` in ADR format in addition to being appended to the dev_last.md "Decision History" section; session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded only in the dev_last.md "Decision History" section.
+**Decision ownership**: Long-term decisions (technology selection, architecture direction, cross-session design trade-offs) must be synced to `.openfeel/dev/decisions.md` in ADR format in addition to being appended to **`dev_last/decisions.md`**; session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded only in **`dev_last/decisions.md`**.
 
 Decision criteria (record when any applies):
 - Involves introducing a new dependency or version choice
@@ -384,15 +384,21 @@ Non-decisions are not recorded: routine code progress, Bug fix choices, filling 
 
 ## Information Archiving
 
-Critical operations must be committed to files, not kept only in conversations: stage state → CLI commands, progress → dev_last.md, experience → kb/, reviews/Bugs → private directories. Do not "complete without recording".
+Critical operations must be committed to files, not kept only in conversations: stage state → CLI commands, progress → dev_last.md (index + topic files), experience → kb/, reviews/Bugs → private directories. Do not "complete without recording".
 
 ### End-of-Session Write
 
-Before ending each session, Feel must update `.openfeel/users/{username}/dev_last.md`:
-1. Fill the "User Preferences" section (read current values from the global profile)
-2. Append this session's new decisions to the "Decision History" section (`- [x] {date}: {description}`)
-3. Update the "Context Snapshot" section (current pipeline phase, active stages, last operation summary)
-4. Update the "Last Operation Status" and "Pending Items" sections (keep existing logic)
+Before ending each session, Feel must update `.openfeel/users/{username}/dev_last.md` (index) and `dev_last/*.md` (topic files):
+
+> **Critical section (A9, single entry/exit)**: the "read → merge → write back" in ①~④ below must be performed inside `withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })` (**reads included**; see the agents-md "Concurrent-write lock protocol"); when `dist` is unavailable, degrade to "read-merge-write" and mark "unlocked".
+
+1. Update the index "User Preferences" (**do not overwrite the whole file**; Read → merge → write back);
+2. Update/create topic files (**English filenames**; **when a single entry >300 chars or >10 entries, offload to `tmp/` per R2 and record the path**);
+3. Refresh the index "Topic Index" summaries (**≤5 active topics × ≤5 entries × ≤100 chars**); **if a new topic pushes the count >5 → merge similar topics first per R4; if nothing can be merged, move the oldest completed topic into "Converged Topics" (no archiving, no file movement)**;
+4. Update the "Public Handoff Section" (**document location + core summary only**);
+5. (If it is a cross-user overall progress item) update `dev/current.md` per the current.md rules and rotate the archive.
+
+> **Note**: `dev/current.md` (step 5) is a **public domain** file and is **not covered by this lock** (it is updated only on personal submission; its concurrency surface is smaller than dev_last's).
 
 ### End-of-Stage Checklist
 
@@ -400,7 +406,7 @@ Before marking a stage as done, verify each item:
 
 - [ ] Has review been completed? (Minor change: single file, no cross-file impact — review may be skipped, with reason recorded; reference: single file ≤30 lines)
 - [ ] Have tests passed?
-- [ ] Has state been archived (flow.json / status.md / dev_last.md)?
+- [ ] Has state been archived (flow.json / status.md / dev_last.md [index + topic files])?
 
 Only proceed to advance when all checks pass.
 

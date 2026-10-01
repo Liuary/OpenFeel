@@ -1,0 +1,409 @@
+# stage-52 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-52
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-51
+    type: hard
+    status: satisfied
+    reason: "stage-51（反馈二 N1~N11，已 done/归档）为本阶段热区基线：`flow-manager.ts` / `commands/flow.ts` / `commands/plan.ts` / `core/plan/scheme.ts` 均为其改动区，必须串行其后；且 B3/B4 建立在 stage-51 N8（op 命名 `op-NNN.md`）与 N1（op↔opsDir 对账 `findOrphanOps`）之上。"
+  - after_stage: v1.1.2-stage-50
+    type: soft
+    status: satisfied
+    reason: "stage-50 的 `lint` 退出码（R1）已落地 → 本阶段 `lint i18n`/`lint kb` 失败**非 0 退出**，各 op 门禁须按「problems = 0 且退出码 0」执行。"
+
+# 【沿用的跨阶段契约（禁自建/禁破坏）】
+carried_contracts:
+  - name: syncCurrentOp
+    provider_stage: v1.1.2-stage-50
+    provider_op: op-001
+    consumer_stage: v1.1.2-stage-51
+    consumer_op: op-004
+    constraint: "`pipeline.current.op` 生命周期**唯一 owner**（`FlowManager.syncCurrentOp`）。本阶段**不得**另写指针维护逻辑；op-004 不触碰该 owner（只验证 `rg` 计数 ≥3）。"
+  - name: findSimilarEntries
+    provider_stage: v1.1.2-stage-50
+    provider_op: op-001
+    consumer_stage: v1.1.2-stage-51
+    consumer_op: op-007
+    constraint: "`findSimilarEntries(target, category, basePath?)`：`basePath` = `.openfeel/kb` 绝对路径、调用时解析；命令层**只允许传参**。本阶段 op-008 **只修内部解析（CRLF 归一化）**，**不改签名/不改路径语义**。"
+  - name: addReviewEntry
+    provider_stage: v1.1.2-stage-50
+    provider_op: op-003
+    consumer_stage: v1.1.2-stage-51
+    consumer_op: op-002
+    constraint: "`addReviewEntry` 为审查条目**单点实现**（被 `flow review add` 独占使用）。op-009 移除 `view add` 时**必须保留**该单点（`rg` 验收：定义 1 + 使用 1）。"
+
+# 【阶段性质提示】
+# 反馈 09（可编排性/可观测性）+ v1.1.2 遗留清账 + 约束体系精简：11 个 op；
+# F1~F8 与 L1~L8 **逐条先在当前代码实测**（已解决的仅登记）；A1~A4 与 C1~C4 经用户裁定（2026-10-01，不可推翻）；
+# A5/A6 按 Planner 建议执行；A7（编码方案）**待 B9 实测**后定案（op-002 内部前置）。
+# 本阶段**不改版本号**（继续 v1.1.2）；**含 1 项破坏性变更**（A4 移除 `view add`）。执行 Agent = openfeel-executor。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "B1 结构化输出与 B8 current 显示"
+    produces:
+      - src/commands/flow.ts
+      - src/core/flow-manager.ts
+      - src/core/metrics.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/core/flow-manager.test.ts
+    deps: []
+    notes: "B1：`flow status/current/health/metrics/overview` 增 `--json`（顶层对象 + `schemaVersion:1`、纯 JSON 单文档、与人类可读互斥）；`flow phases --json` **仅追加** `schemaVersion`（三键 + transitionsDiff 保留）。B8：`current` 无 op 时命令层回退显示 `{stage}（无 op）`（**不改 `getCurrent()` 契约**）。**主串行链首环**。"
+
+  op-002:
+    file: op-002.md
+    title: "B7 编码保障与 B9 实测"
+    produces:
+      - src/cli/index.ts
+      - bin/openfeel.js
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/cli/index.test.ts
+    deps: []
+    notes: "B9-1（**必须最先执行**）：真实 PS5.1（`chcp 936`）TTY vs 管道 + pwsh 7 + `--json` 四组合实测 → 定案 A7；禁止 `chcp` 调用/平台 hack。B7：`NO_COLOR` 尊重（no-color.org 语义）+ 全局 `--no-color` + `--json` 无 ANSI 契约。**与主链并行**（文件面无交叠）。"
+
+  op-003:
+    file: op-003.md
+    title: "B2 状态对账自愈与 L7 文件孤儿报告"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/core/flow-manager.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "B2（**A2**）：`reconcileStatusMd({dryRun})` + `flow health --fix`（**仅回写「状态」字段**，其余字段字节不变；`--dry-run` 预览；`draft` 跳过）。L7（**A6**）：`repair` 增文件孤儿**只读统计 + 说明**，**不加清理入口**（复用 stage-51 `findOrphanOps`）。"
+
+  op-004:
+    file: op-004.md
+    title: "B5 多步推进与路径预览"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/core/flow-manager.test.ts
+      - test/core/view/entry.test.ts
+    deps:
+      - op: op-003
+        type: hard
+    notes: "B5（**A3**）：`findPhasePath`（BFS ≤8、唯一路径；`no-path`/`ambiguous`/`depth-exceeded` 拒绝）+ `advance --to` 自动逐步（每步日志）+ `--dry-run` 打印完整路径（不写盘）+ **不回滚中间态**。**REV-52-001 加固**：抽取 `assertNoBlockingOpenRev(mgr, stage, lang)`，多步循环每步后（至少 done 前）调用；等价论证（`addAutoFixReview` 恒 `resolved`）写入注释；**单步行为不变**。"
+
+  op-005:
+    file: op-005.md
+    title: "B3 op 列表与 draft 两阶段"
+    produces:
+      - src/commands/flow.ts
+      - src/commands/plan.ts
+      - src/core/plan/scheme.ts
+      - src/core/flow-manager.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/commands/plan.test.ts
+      - test/core/flow-manager.test.ts
+    deps:
+      - op: op-004
+        type: hard
+    notes: "B3：`flow ops list [--stage] [--json]`（state + 填充度 empty/partial/filled + 空模板 warning + draft 分组）。B4（**A1**）：`createScheme({draft})` + `publishScheme`（空模板禁止发布）+ `plan scheme create --draft` / `publish`；**窄兼容 5 条**（health 不报 draft 空模板 / advance·统计·归档不计入 / ops list 分组 / 存量零影响 / **`flow attempt` 对 draft 双层守卫 → exit 1 + 提示 publish**，REV-52-002）。空模板标记**单一来源**。"
+
+  op-006:
+    file: op-006.md
+    title: "B6 plan scheme rename"
+    produces:
+      - src/commands/plan.ts
+      - src/core/plan/scheme.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/plan.test.ts
+      - test/core/plan/scheme.test.ts
+    deps:
+      - op: op-005
+        type: hard
+    notes: "B6：`renameScheme`（同步 `flow.json` 标题 + op 文件首行 `# {opId}：{title}`；**文件名不含标题 → 无需重命名文件**）+ `plan scheme rename <stage> <opId> --title`；`title-unchanged` no-op、`not-found`/`file-missing` 报错；审计日志 `scheme_rename`。**不改文件名**（含历史命名）。"
+
+  op-007:
+    file: op-007.md
+    title: "L5 console.warn 文案 i18n 化"
+    produces:
+      - src/commands/flow.ts
+      - src/core/flow-manager.ts
+      - src/core/config.ts
+      - src/core/update-infos.ts
+      - src/core/workspace/identity.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/core/flow-manager.test.ts
+    deps:
+      - op: op-006
+        type: hard
+    notes: "L5：命令层 warn（`flow.ts:673,727-729` 等）→ `t()`；core 层 warn **分流**（有 projectPath → `t()` + `getCliLang(projectPath)`；确无上下文 → `[WARN]` + 英文，移除中文）。**告警触发条件/次数/退出码不变**；`rg` 扫描零裸中文 warn。**主串行链末环**。"
+
+  op-008:
+    file: op-008.md
+    title: "L8 kb-dedup CRLF 修复"
+    produces:
+      - src/utils/kb-dedup.ts
+      - test/utils/kb-dedup.test.ts
+    deps: []
+    notes: "L8（**高价值**）：`:53-54` 读取后**单点归一化** `replace(/\\r\\n?/g,'\\n')`（**不在正则加 `\\r?`**）；核对 `:62` 正则与 `tokenize` 无需改；**默认阈值 0.8 不变**，连带评估噪声（A5：解析量 2→105 / 0→31）+ manual 要点移交。补 CRLF 单测。**与主链并行**；其 build 与 op-011 串行。"
+
+  op-009:
+    file: op-009.md
+    title: "A4 移除 view add"
+    produces:
+      - src/commands/view.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - docs/commands.md
+      - .openfeel/manual/cli/commands.md
+      - README.zh-CN.md
+      - README.en.md
+      - CHANGELOG.md
+      - test/commands/view.test.ts
+    deps: []
+    notes: "A4（**破坏性**，用户裁定）：删除 `view add`（`view.ts:44-88`）+ import 调整（保留 `normalizeAgentName`）+ i18n **删 7 键 ×2 语言**（649 → **642**）+ docs/manual/README 清理 + CHANGELOG **`Removed`** + 迁移指引（`flow review add`）+ 测试删除。**保留** `view list`/`view accept`/`view` 组/`help.view.note`/`addReviewEntry` 单点。**i18n 与主链共享 → 建议排 op-007 之后**。"
+
+  op-010:
+    file: op-010.md
+    title: "L2 补 3 族测试与全量回归门禁"
+    produces:
+      - test/commands/archive.test.ts
+      - test/commands/instructions.test.ts
+      - test/commands/project.test.ts
+      - .openfeel/users/Liuary/log/2026-10-01-001.md
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+      - op: op-004
+        type: hard
+      - op: op-005
+        type: hard
+      - op: op-006
+        type: hard
+      - op: op-007
+        type: hard
+      - op: op-008
+        type: hard
+      - op: op-009
+        type: hard
+      - op: op-011
+        type: hard
+    notes: "L2：新增 `archive`/`instructions`/`project` 三族命令层测试（**7 族 → 3 族**）+ 四门禁（build+test / **lint i18n 642 键** / lint kb / flow health）+ 环境 hash+mtime 双快照 + **F/L/A/C 覆盖表** + 文档同步清单 + 部署说明（用户运行 `openfeel setup`）+ 登记项 7 条。**仅当 10 个 op 全部完成才启动**。"
+
+  op-011:
+    file: op-011.md
+    title: "C1-C4 约束体系精简与阈值定性化"
+    produces:
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - AGENTS.md
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/en/openfeel-planner.md
+      - src/core/templates-data/opencode/skills/openfeel-tool-usage/SKILL.md
+      - src/core/templates-data/opencode/ADAPTER.zh-CN.md
+      - src/core/templates-data/opencode/ADAPTER.en.md
+      - .openfeel/manual/core/template-loader.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .opencode/**
+    deps: []
+    notes: "C1（简洁约束 zh/en 各 **1 行**）+ C3（根 `AGENTS.md:30-38` **逐字对齐**模板源，删多余 bullet/括号）+ C2（B 组 **13 处**定性化；**C2-11 dev_core `[-]` 不动**、**C2-12 保留 30 行参考**、**C2-13 D 组工程阈值保留**）+ C4（「14 → 17」**5 处**+ ADAPTER 枚举补 3 名）。**零运行时逻辑**；`npm run build` 传播（禁手改生成段）；**6 条 `rg` 零残留**验收；部署产物需用户 `openfeel setup`（本阶段不自动执行）。**与主链并行**；其 build 与 op-008 串行。"
+
+  op-012:
+    file: op-012.md
+    title: "REV-005 短名 stage 归一化修复（B5 多步推进）"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+    deps:
+      - op: op-004
+        type: hard
+      - op: op-011
+        type: soft
+    notes: "**REV-005（high, blocking）修复**：短名（help 推荐格式 `stage-01`）调用 `flow advance --to` 完全失效（「phase: 未知」+ 空可达目标 + exit 1）。**独立复核后确认 5 处同类缺陷**（F1 `findPhasePath:1657`〔根因〕/ F2 `resolveCurrentPhase:1744`〔`:687 getAvailablePhases` 根因〕/ F3 `autoRepairInconsistency:2863`〔`:635` 疑点〕/ **F4 `advanceStagePhase:1213`**〔多步循环逐步调用，不修则短名仍不可用〕/ F5 `commands/flow.ts:635/683/686/687/700`〔命令层归一化 + 用户可见文案〕）；**统一复用 `normalizeStageId`**（core/命令层均已 import，无需新增）；**stage-51 新命令（`flow stage set --deps` / `plan scheme remove·rename·publish` / `flow ops list`）复核为无缺陷**；登记项：`addStage` 短名建键（N-1）、`getOp` 短名前缀（N-2）。**测试**：短名/全名等价断言（findPhasePath / getAvailablePhases / autoRepair / advanceStagePhase / `--dry-run` 输出等价）+ 隔离 fixture **短名多步推进实测**。**位置**：在 op-004 之后、op-010（收口门禁）之前执行。"
+
+# 【互斥（禁止并行）】
+mutual_exclusions:
+  - group: [op-001, op-003, op-004, op-005, op-006, op-007]
+    reason: "**热区源码互斥（主串行链）**：`src/core/flow-manager.ts`（op-001/003/004/005/007）、`src/commands/flow.ts`（op-001/003/004/005/007）、`src/commands/plan.ts`（op-005/006）、`src/core/plan/scheme.ts`（op-005/006）→ 必须由**单执行流按序**触碰。"
+  - group: [op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-009]
+    reason: "**`src/core/i18n-data/{zh-CN,en}.ts` 互斥写面**：八个 op 均新增/删除/改写 i18n 键（键基本不重叠，但**同文件写入必须串行**）。→ op-009（删 7 键）与主链并行时须串行合并；**建议排在 op-007 之后**。"
+  - group: [op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-008, op-009, op-010, op-011, op-012]
+    reason: "**构建/测试互斥**：12 个 op 的验收均含 `npm run build` 或 `npm test`（同一工作区）→ 任一时刻仅一个 op 处于 build/test 窗口（竞态写 `dist/**`、`template-loader.ts` 生成段、`.opencode/**` 自举）。"
+  - group: [op-004, op-012]
+    reason: "**REV-005 修复面互斥**：op-012 修复的正是 op-004 引入的 `findPhasePath` 与 `advance` 命令层 stage 解析（同处 `flow-manager.ts` + `commands/flow.ts` 区段）→ 必须**在 op-004 之后**（已满足），且不得与该区段的其它编辑并发。"
+  - group: [op-008, op-011]
+    reason: "**build 串行（计划 §十二 明确）**：op-008（kb-dedup）与 op-011（templates + build）均需 `npm run build` → 建议合并为一次 build 或串行门控。"
+  - group: [op-010, op-012, op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-008, op-009, op-011]
+    reason: "op-010 为收口（门禁依赖 op-009 的 `lint i18n` 649 → 642）；**op-012（REV-005 blocking 修复）须在 op-010 之前完成**，使 op-010 的门禁覆盖修复后的代码 → 二者均**最后执行**且 op-012 先于 op-010。"
+
+# 【可并行组】
+parallel_groups:
+  - group: [op-002, op-008, op-011]
+    desc: "**与主链并行组**（文件面无交叠）：op-002（`src/cli/index.ts` + `bin/openfeel.js`）、op-008（`src/utils/kb-dedup.ts` + 其单测）、op-011（`templates-data/**` + 根 `AGENTS.md` + `manual/core/template-loader.md`）。**约束**：op-008/op-011 的 `npm run build` 须串行；op-002 的 `i18n-data` 写入须与主链串行。"
+  - group: [op-009]
+    desc: "A4 移除 `view add`（`src/commands/view.ts` + docs/README + i18n 删键 + CHANGELOG + 测试）——与主链源码面无交叠，可并行；**但其 i18n 删键须与主链串行（建议排 op-007 之后）**。"
+  - group: [op-010]
+    desc: "收口：依赖全部 10 个 op（hard），单独运行。"
+
+# 【串行链（顺序固定）】
+serial_chain:
+  - chain: [op-001, op-003, op-004, op-005, op-006, op-007]
+    desc: "**主串行链**（plan §十二）：op-001（B1/B8）→ op-003（B2/L7）→ op-004（B5 + REV 加固）→ op-005（B3/B4）→ op-006（B6）→ op-007（L5）。理由：共享 `flow-manager.ts` / `commands/flow.ts` / `commands/plan.ts` / `core/plan/scheme.ts` 热区。"
+
+recommended_order:
+  - op-001
+  - op-003
+  - op-004
+  - op-005
+  - op-006
+  - op-007
+  - op-002
+  - op-008
+  - op-009
+  - op-011
+  - op-012
+  - op-010
+rationale: "plan §十二 建议：`op-001 → op-003 → op-004 → op-005 → op-006 → op-007`（主串行链）∥ `op-002` ∥ `op-008` ∥ `op-009` ∥ `op-011` → `op-010`（收口）。**本官增补硬约束**：① `i18n-data/{zh-CN,en}.ts` 被 8 个 op 共享 → 主链 i18n 编辑完成后放行 op-002/op-009（故 recommended_order 把 op-002/op-009 置后）；② `op-008` 与 `op-011` 的 `npm run build` 串行（置相邻）；③ **`op-012`（REV-005 blocking 修复）须在 op-004 之后、`op-010`（收口门禁）之前完成** —— 使收口门禁覆盖修复后的代码（故置于 op-011 之后、op-010 之前）；④ op-010 最后（门禁依赖 op-009 的 642 键）。若执行环境确能保证 i18n/build 串行，亦可恢复 plan 的「五线并行」。**执行优先级建议**：op-008（L8 高价值，直接决定 `knowledge dedup` 可用性）可**最先**单独执行；**op-012 一旦执行完即应立刻复验短名多步推进（REV-005 验收）**。"
+
+# 【用户裁定（2026-10-01，不可推翻）与既定裁定】
+decisions_taken:
+  decided_by: user
+  decided_at: "2026-10-01"
+  items:
+    - id: A1
+      item: B4 draft
+      scope: op-005
+      user_decision: "引入 draft（窄兼容）；含第 5 条：`flow attempt` 对 draft op → exit 1 + 提示 `plan scheme publish`（命令层 + 核心层**双层守卫**）"
+      landed: "op-005 B4-1~B4-5（+ REV-52-002）"
+    - id: A2
+      item: B2 --fix
+      scope: op-003
+      user_decision: "`flow health --fix` **仅回写 status.md「状态」字段**（以 flow.json 为权威）"
+      landed: "op-003 B2-1/B2-2/B2-3（其余字段字节不变断言）"
+    - id: A3
+      item: B5 多步推进
+      scope: op-004
+      user_decision: "`advance --to` 支持自动逐步（内部循环单步、保留非法目标拒绝、不回滚中间态、`--dry-run` 打印完整路径）"
+      landed: "op-004 B5-1/B5-2（+ REV-52-001 加固 B5-3）"
+    - id: A4
+      item: L1 view add
+      scope: op-009
+      user_decision: "**本阶段直接删除 `view add`**（保留 `view` 组与 `view list`/`view accept`；保留 `addReviewEntry` 单点；CHANGELOG `Removed` + 迁移指引）"
+      landed: "op-009（破坏性；7 键删除 → lint i18n 649 → 642）"
+      supersedes: "原 Planner「下版本移除」建议被推翻"
+    - id: A5
+      item: L8 CRLF
+      scope: op-008
+      user_decision: "按 Planner 建议：归一化修复 + 显式标注解析量（2→105 / 0→31）+ 连带评估阈值噪声"
+      landed: "op-008 L8-1~L8-4（默认阈值 0.8 不变）"
+    - id: A6
+      item: L7 文件孤儿
+      scope: op-003
+      user_decision: "按 Planner 建议：**不加清理入口**，仅完善报告 + manual 说明"
+      landed: "op-003 L7-1"
+    - id: A7
+      item: B7 编码方案
+      scope: op-002
+      user_decision: "**待实测**（B9：PS5.1/`chcp 936` 交互终端 vs 管道）→ 实测后定案"
+      landed: "op-002 B9-1 前置实测 + B9-2 决策树（禁止平台 hack）"
+      open: true
+    - id: C1
+      scope: op-011
+      user_decision: "「简洁约束」按精简草案改写（zh 单行 + en 语义对等单行）"
+      landed: "op-011 C1-1/C1-2（+ C1-3/C3 根 AGENTS.md 对齐）"
+    - id: C2
+      scope: op-011
+      user_decision: "B 组 13 处阈值**定性化**；D 组工程阈值**保留**"
+      landed: "op-011 C2-1~C2-13（含 C2-12 30 行降为参考）"
+    - id: C3
+      scope: op-011
+      user_decision: "根 `AGENTS.md` 对齐模板源并删多余 bullet"
+      landed: "op-011 C1-3（逐字一致 + 无受管区直接编辑）"
+    - id: C4
+      scope: op-011
+      user_decision: "「14 个 Skill」→ 17（5 处）"
+      landed: "op-011 C4-1~C4-6"
+  registered_decisions:
+    - "L3 `lint --warn-only` 逃生阀：用户已裁定**不加**（登记）"
+    - "L4 coverage 阈值：用户已裁定**暂不设**（仅报告；登记）"
+    - "L6 历史日志布局：**不迁移**（A7 既定；登记）"
+    - "F3 主体 / F7 / F8：**已解决，仅登记不修**"
+
+# 【F/L → op 映射（本阶段工作项）】
+item_map:
+  F1: [op-001, op-002]
+  F2: [op-003]
+  F3: "已解决（主体）；附带发现 B8 → op-001"
+  F4: [op-005]
+  F5: [op-004]
+  F6: [op-006]
+  F7: "已解决（stage-51 N8）→ 仅登记"
+  F8: "已解决（stage-51 A7）→ 仅登记"
+  L1: [op-009]
+  L2: [op-010]
+  L3: "不修（登记）"
+  L4: "不修（登记）"
+  L5: [op-007]
+  L6: "不修（登记）"
+  L7: [op-003]
+  L8: [op-008]
+  B1: [op-001]
+  B2: [op-003]
+  B3: [op-005]
+  B4: [op-005]
+  B5: [op-004]
+  B6: [op-006]
+  B7: [op-002]
+  B8: [op-001]
+  B9: [op-002]
+  C1: [op-011]
+  C2: [op-011]
+  C3: [op-011]
+  C4: [op-011]
+
+# 【REV 承接】
+rev_intake:
+  - rev: REV-v1.1.2-stage-52/REV-001
+    severity: medium
+    status: closed
+    handled_by: op-004
+    disposition: "B5 多步推进的 REV 阻塞复检：裁定「论证等价为主（`addAutoFixReview` 恒 `status='resolved'`；advance 不创建 review）+ 进入 done 前复检加固（`assertNoBlockingOpenRev` 多步循环每步后调用）」→ 已写入 op-004 B5-3（含 2 条组合验收 + 局限声明）"
+  - rev: REV-v1.1.2-stage-52/REV-002
+    severity: low
+    status: closed
+    handled_by: op-005
+    disposition: "draft 的 `attempt` 行为未定义 → 窄兼容新增第 5 条（双层守卫，exit 1 + 提示 publish）→ 已写入 op-005 B4-4/B4-5（含双侧单测）"
+  - rev: REV-v1.1.2-stage-52/REV-003
+    severity: low
+    status: closed
+    handled_by: (plan 修订，无 op)
+    disposition: "§5.6 后孤立 A7 表行已由 Planner 删除（编辑残留）；本阶段 op 无关联改动"
+  - rev: REV-v1.1.2-stage-52/REV-005
+    severity: high
+    status: pending（**blocking**）
+    handled_by: op-012
+    disposition: "B5 多步推进 stage 解析缺 `normalizeStageId`（短名 `stage-01` → 「phase: 未知」+ 空可达目标 + exit 1，功能失效；全名正常）→ **op-012** 设计：core 层 4 处归一化（F1 `findPhasePath`〔根因〕/ F2 `resolveCurrentPhase`〔`:687` 根因〕/ F3 `autoRepairInconsistency`〔`:635` 疑点〕/ **F4 `advanceStagePhase`**〔多步逐步调用，复核新增〕）+ 命令层 1 处（F5 `flow.ts:635/683/686/687/700` 统一 `stageArg`，含用户可见文案）；**统一复用 `normalizeStageId`**；**独立复核确认 stage-51 新命令无同类缺陷**（`flow stage set --deps` / `plan scheme remove·rename·publish` / `flow ops list` 均已归一化）；登记项 N-1（`addStage` 短名建键）、N-2（`getOp` 短名前缀）不纳入；测试=短名/全名等价断言 + 隔离 fixture **短名多步推进实测**。**状态由审查官在复验通过后置 closed**。"

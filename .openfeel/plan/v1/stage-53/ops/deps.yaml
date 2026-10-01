@@ -1,0 +1,244 @@
+# stage-53 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-53
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-52
+    type: hard
+    status: satisfied
+    reason: "stage-53 计划声明 hard 依赖 stage-52（`flow.json` 已由 Feel 执行 `flow stage set v1.1.2-stage-53 --deps v1.1.2-stage-52` 落点，REV-52 核验通过）。stage-52 为本阶段门禁基线来源（59 文件 / 936 用例 / 724 键）。"
+  - after_stage: v1.1.2-stage-50
+    type: soft
+    status: satisfied
+    reason: "stage-50 的 `lint` 退出码（R1）已落地 → 本阶段 `lint i18n`/`lint kb` 失败**非 0 退出**，各 op 门禁须按「problems = 0 且退出码 0」执行。"
+
+# 【阶段性质提示】
+# 规划型阶段（current.md / dev_last.md 职能与格式重构）：D1~D10 → 5 个 op；
+# **范围约束**：不改业务源码逻辑（允许改：`templates-data/**` 权威源、`src/core/templates.ts` init 文案常量、
+# `src/core/workspace/structure.ts` 目录常量、`manual/**`、仓库根文档、本仓 `.openfeel/**` 存量数据）；
+# **本阶段不增删 i18n 键**（纯模板/文档/常量/存量数据）；**含 1 项库存数据迁移**（op-004）。
+# 本阶段**不改版本号**（继续 v1.1.2）。执行 Agent = openfeel-executor。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "D1+D2 两条目的与 current.md 规则及模板"
+    produces:
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates.ts
+      - src/core/template-loader.ts   # AUTO-GENERATED 段（npm run build 产物）
+    deps: []
+    notes: "D1：两条设计目的（保存核心信息便于恢复 / 避免无关信息污染上下文）+ 索引/主题/详情三层分层表 → 写入全局约束权威源（zh/en 逐段对齐）。D2：current.md 规则块（团队文件/仅个人提交时更新/整体信息/无 agent 细节/无 @成员段/自动归档 `current_archive/` /留近期 5 条）+ 内联新模板骨架；`current_archive/` 目录说明段；「自动计划化」口径收窄；`CURRENT_TEMPLATE_ZH/EN` 换新骨架（`getCurrentTemplate`/`CURRENT_TEMPLATE` 签名不变）；`init.ts` **不改**。**A7（Feel 裁定）：仓库根 `AGENTS.md` 不改**。**主串行链首环**。"
+
+  op-002:
+    file: op-002.md
+    title: "D3+D4 dev_last 索引化与 Feel 行为改写"
+    produces:
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/template-loader.ts
+      - .opencode/agents/**
+    deps:
+      - op: op-001
+        type: hard
+    notes: "D3：dev_last 由「单会话覆盖写 7 节」→「**索引 + `dev_last/{english-name}.md` 主题文件**」（**A10：文件名英文**），规则 **R1~R6**（R4 主题数 >5 就地收敛：合并优先 → 「已收敛主题」一行摘要 → 文件**不迁移不归档**；**R6 = A9 加锁协议**：`withFileLock` + `dev-last-{username}` + `atomicWriteFileSync`，每用户一把锁、索引与主题文件共用、临界区含读取）+ 索引骨架 + 主题骨架 + 写入说明（与 §三 逐字一致）。D4：Feel 启动读取（索引 + 按需主题（英文名）+ **旧格式惰性迁移**）/偏好不覆盖写/决策写入 `dev_last/decisions.md`/会话结束 **5 步（前置加锁临界区）**（含 R2 转 `tmp/` 记地址、R4 收敛）。**文本保持约束**：`update_infos`/`- [ ]`/`- [x]`/`edit 工具`/`重启会话` 等串**必须保留**（`template-loader.test.ts:166-201`）。**与 op-001 同文件 → 顺序编辑**。"
+
+  op-003:
+    file: op-003.md
+    title: "D5+D6 skill 同步与目录常量"
+    produces:
+      - src/core/templates-data/opencode/skills/openfeel-workspace/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-recover/SKILL.md
+      - src/core/templates-data/opencode/skills/openfeel-sync-status/SKILL.md
+      - src/core/workspace/structure.ts
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .opencode/skills/**
+    deps:
+      - op: op-002
+        type: hard
+    notes: "D5：workspace skill 增 `current_archive/` 与 `dev_last/`；recover 改读索引 + 按需主题；**sync-status 按 A6 裁定改写**（成员进度 → 各用户 `dev_last` 索引主题 + `flow.json` 阶段状态；「遗漏登记」对比 active stages；**保留 skill，17 不变**）。D6：`DEV_SUB_DIRS` 增 `'current_archive'`（`createWorkspace` 自动创建；`init.ts` 不改）；**裁定：不新增**用户私域 `dev_last/` 源码常量（随用随建，由 workspace skill 指示 mkdir）；`.gitignore` **不改**。"
+
+  op-004:
+    file: op-004.md
+    title: "D7 本仓存量迁移"
+    produces:
+      - .openfeel/dev/current.md
+      - .openfeel/dev/current_archive/current-2026-10-01-001.md
+      - .openfeel/users/Liuary/dev_last.md
+      - .openfeel/users/Liuary/dev_last/last-operation.md
+      - .openfeel/users/Liuary/dev_last/pipeline-state.md
+      - .openfeel/users/Liuary/dev_last/pending.md
+      - .openfeel/users/Liuary/dev_last/decisions.md
+      - .openfeel/users/Liuary/dev_last/experience.md
+    deps:
+      - op: op-003
+        type: hard
+    notes: "D7：`current.md`（**82 行**）→ 总进度 1 行 + 统计 1 行（**取实测现值 59/936/724**）+ 近期 5 条记录；`:16-81`（三张里程碑表 + 旧 v0.5 表 + 整体统计）**整体归档**至 `current_archive/current-2026-10-01-001.md`（**A8：仅归档，不迁入 roadmap**）；`:82` 遗留 7 条 → `dev_last/pending.md`。`dev_last.md`（**53 行**）7 节 → **5 主题文件**（**A10 英文文件名**：`last-operation.md` / `pipeline-state.md` / `pending.md` / `decisions.md` / `experience.md`；索引显示名保持中文）+ 索引保留「用户偏好」并新增「公共交接区」（交接文档 = `pending.md`）。**逐区间映射表**（op-004 §四）确保**无信息丢失**；**归档先写后改** + `git diff` 逐行复核；行尾/编码保持一致；`task_claim.md`/`todo-current.md` **不处理**（仅登记观察项）；**后续写入遵守 op-002 §三.4 加锁协议（A9）**。"
+
+  op-005:
+    file: op-005.md
+    title: "D8+D9+D10 手册同步与 build 门禁测试"
+    produces:
+      - .openfeel/manual/agents/feel.md
+      - .openfeel/manual/core/init.md
+      - test/core/init.test.ts
+      - test/core/templates.test.ts
+      - test/core/template-loader.test.ts
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .opencode/**
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+      - op: op-004
+        type: hard
+    notes: "D8：`manual/agents/feel.md:54` 「决策历史」→ `dev_last/decisions.md`（**A10 英文文件名**）；`manual/core/init.md:7` 补 `dev/current_archive/`；其余 manual 按实测（**不扩大范围**）；`docs`/`README`/`CHANGELOG` **不改**。D9：`npm run build` 传播 + **幂等**（二次零新增 diff）。D10：复核「**强制翻转 0 项**」（init 目录创建 + 模板断言）+ 补 4 类新增断言 + **文本保持串**逐串核验 + 四门禁收口（含 `tsc` 0）。**收口环**。"
+
+# 【互斥（禁止并行）】
+mutual_exclusions:
+  - group: [op-001, op-002]
+    reason: "**同文件互斥**：二者均改 `src/core/templates-data/agents-md/{zh-CN,en}.md`（op-001 改工作区结构节 + 开发目录 current 段；op-002 改私域 dev_last 段）→ 必须**顺序编辑**（op-001 → op-002），否则行号漂移/内容互相覆盖。"
+  - group: [op-001, op-002, op-003]
+    reason: "**`templates-data/**` 权威源共享**：三者的改动最终同经一次 `npm run build` 传播（`template-loader.ts` 生成段 + `update.ts` 注入 + `.opencode/**` 自举）→ 禁止并发编辑权威源。"
+  - group: [op-001, op-002, op-003, op-004, op-005]
+    reason: "**构建/测试互斥 + 顺序收口**：op-005 的 `npm run build` 必须在 op-001~003 的权威源改动**全部落定后**执行（避免重复重生成）；op-004 为数据迁移（不涉 build，但须在格式定稿后执行）。"
+  - group: [op-004, op-005]
+    reason: "**数据依赖**：op-005 的 `templates.test.ts` 断言（current 模板不含 `团队成员进度`）与 op-004 的迁移成果需一致；且 op-004 若因格式回退而重做，op-005 的断言须同步。"
+
+# 【可并行组】
+parallel_groups:
+  - group: [op-004]
+    desc: "op-004（本仓存量迁移，纯 `.openfeel/**` 数据）与 op-003（skills/常量）**文件面无交叠**，可在 op-003 之后与 op-005 之前单独执行；本阶段建议**仍串行**（降低 review 成本）。"
+  - group: [op-005]
+    desc: "收口：依赖 op-001~004（hard），单独运行。"
+
+# 【串行链（顺序固定）】
+serial_chain:
+  - chain: [op-001, op-002, op-003, op-004, op-005]
+    desc: "**全串行链**（plan §十一）：op-001（D1+D2）→ op-002（D3+D4）→ op-003（D5+D6）→ op-004（D7）→ op-005（D8+D9+D10）。理由：op-001/002 同改 `agents-md`；op-003/004 依赖格式定稿；op-005 为 build/门禁收口。"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-003
+  - op-004
+  - op-005
+rationale: "plan §十一 建议顺序：`op-001 → op-002 → op-003 → op-004 → op-005`（op-003/004 在格式落定后可并行，**建议仍串行以降低 review 成本**）。**热区**：`agents-md/{zh-CN,en}.md`（op-001/002）、`templates-data/**`（op-001/002/003，统一经一次 build）、`.openfeel/**` 存量数据（op-004）、门禁（op-005）。**本阶段不涉 i18n 键增删**（724 键恒定），无 i18n 写面冲突。"
+
+# 【裁定（可追溯）】
+decisions_taken:
+  traceability_rule: "A1~A4 引**需求原文**（可追溯）；A7/A8/A11 标注「**已由 Feel 裁定**」并附事实依据；**A5/A6/A9/A10 已由用户裁定（2026-10-01）**——A5/A6 与 planner 建议**一致**，**A9/A10 推翻 planner 建议**（A9：加锁；A10：英文文件名），已按裁定回写 op-002/op-003/op-004/op-005 与 plan.md 裁定表。"
+  items:
+    - id: A1
+      scope: op-004
+      status: 需求原文
+      decision: "`Pantheogen/.openfeel/dev/current.md`（123 行）= **反面参照**（问题样本），不作模板来源"
+    - id: A2
+      scope: op-001, op-003, op-004
+      status: 需求原文
+      decision: "旧记录归档位置 = **`.openfeel/dev/current_archive/`**（公共域，纳入版本管理）"
+    - id: A3
+      scope: op-002, op-004
+      status: 需求原文
+      decision: "dev_last 现有 7 节拆分：「用户偏好」「公共交接区」**留索引**；其余按主题拆入 `dev_last/*.md`"
+    - id: A4
+      scope: (阶段载体)
+      status: 需求原文
+      decision: "新开 `v1.1.2-stage-53` 实施"
+    - id: A5
+      scope: op-001, op-004
+      status: 已由用户裁定（2026-10-01）· 与建议一致
+      decision: "current 记录内**保留单行内联 `@{username}`** 作为**提交者标识**（非「成员进度段」，仍**无 agent 细节**）"
+      landed: "op-001 D2-1 规则块（已按此落地，本轮复核无改动）"
+    - id: A6
+      scope: op-003
+      status: 已由用户裁定（2026-10-01）· 与建议一致
+      decision: "`openfeel-sync-status` skill **改写并保留**（成员进度改由各用户 `dev_last` 索引主题 + `flow.json` 阶段状态聚合）；**skill 总数仍 17**"
+      landed: "op-003 D5-3（已按此落地，本轮复核无改动）"
+    - id: A7
+      scope: op-001
+      status: 已由 Feel 裁定
+      decision: "仓库根 `AGENTS.md` **不改**（实测 `rg \"current\\.md|dev_last\" AGENTS.md` **0 命中**；权威源为 `templates-data/agents-md/{zh-CN,en}.md`）。**回退条件**：若该文件后续新增 current/dev_last 类节 → 一并同步；折中备选：仅增一行指引"
+    - id: A8
+      scope: op-004
+      status: 已由 Feel 裁定
+      decision: "本仓 current 历史里程碑表（v1.1.2 / v1.0.0 / v1.1.0 / 旧 v0.5）**仅归档**至 `current_archive/current-2026-10-01-001.md`，**不迁入 roadmap**"
+    - id: A9
+      scope: op-002, op-003, op-004
+      status: 已由用户裁定（2026-10-01）· **推翻 planner「不加锁」建议**
+      decision: "多会话并发写 dev_last **加锁保护**：复用 `withFileLock`（`src/core/fs/file-lock.ts:122`）+ `atomicWriteFileSync`；**锁粒度 = 每用户一把**（`dev-last-{username}`，索引与全部主题文件共用，视为同一逻辑事务）；**锁路径 = `projectLockPath(projectPath,'dev-last-{username}')` → `.openfeel/tmp/locks/dev-last-{username}.lock`**（`.openfeel/tmp/` 已被 `.gitignore` 忽略 → 不污染版本库，且不侵入 `users/` 私域）；**临界区一次进出（读也在锁内）**；超时/陈旧沿用默认（5000/3000ms）；**保留「读-合并-写 + 冲突双侧保留」作为锁内的第二道保险**（锁防并发覆盖；合并防跨会话/锁外读取丢失 + 承担冲突取舍语义）；降级（`dist` 不可用）= 至少读-合并-写并标注「未加锁」"
+      landed: "op-002 新增 **R6 + §三.4 并发协议**、D4-4 前置临界区、行为变更/测试（**并发 fixture 用例**）/验收（13/14/17）/风险（R-2/R-2b）；op-003 D5-2 加锁提示；op-004 行为变更与验收 17"
+    - id: A10
+      scope: op-002, op-003, op-004, op-005
+      status: 已由用户裁定（2026-10-01）· **推翻 planner「中文名」建议**
+      decision: "`dev_last/{english-name}.md` **文件名一律英文 kebab-case**；**索引中的显示主题名可中文**；zh/en 共用同一套英文名。映射：待续事项→`pending.md`、决策记录→`decisions.md`、流水线状态→`pipeline-state.md`、上次操作→`last-operation.md`、经验暂存→`experience.md`（新主题同理）"
+      landed: "op-002 新增 **§三.5 命名映射** + 索引/主题骨架 + D4-3/D4-6 + §六 + 验收 15/16；op-004 produces/映射表/交接文档（`pending.md`）/验收 15/16；op-005 D8-1（`dev_last/decisions.md`）"
+    - id: A11
+      scope: op-002
+      status: 已由 Feel 裁定
+      decision: "**主题数 >5 → 就地收敛，不归档**（R4：优先合并同类 → 最旧已完结主题降为「已收敛主题」一行摘要 ≤100 字 + 路径；文件**不迁移不归档**）；REV-002 原建议「移入 `tmp/` 归档」与用户约束「**超期文件不做归档处理**」冲突 → **以用户约束为准**"
+
+# 【目录常量裁定（需求项 5）】
+directory_constants:
+  - dir: ".openfeel/dev/current_archive/"
+    decision: "**纳入 `DEV_SUB_DIRS`**（`structure.ts:32` → `['note', 'current_archive']`）"
+    reason: "公共域项目级目录，`createWorkspace` 统一创建；`init` 后 `Test-Path` 为真且二次 init 幂等"
+    op: op-003
+  - dir: ".openfeel/users/{username}/dev_last/"
+    decision: "**不新增源码常量**（随用随建）；**文件名一律英文（A10）**"
+    reason: "① `WORKSPACE_DIRS`/`DEV_SUB_DIRS` 语义为「项目级公共目录清单」；② 该目录在**私域**且随 username 而异，无统一初始化场景；③ 创建由 workspace skill 的会话启动自检 mkdir 覆盖（与 `log/`/`note/`/`bugs/` 同）；④ 新增常量为单一场景造抽象（全局约束 2）。**A10**：主题文件名为英文 kebab-case（`pending.md` 等，见 `decisions_taken.A10`）"
+    fallback: "若后续出现「CLI 统一初始化用户私域」需求（如 `openfeel user init`），再评估纳入"
+    op: op-003
+  - dir: ".openfeel/tmp/locks/（A9 锁文件目录）"
+    decision: "**沿用既有约定，无需新增常量/无需改 `.gitignore`**"
+    reason: "`projectLockPath(projectPath, name)` 产出的锁路径恒为 `.openfeel/tmp/locks/{name}.lock`（`src/core/fs/file-lock.ts:59-61`）；`.openfeel/tmp/` 已被 `.gitignore` 忽略 → **锁文件不污染版本库**；dev_last 锁命名 `dev-last-{username}`（每用户一把），**不落在 `users/` 私域目录内**"
+    op: op-002
+  - dir: ".gitignore"
+    decision: "**不改**"
+    reason: "`.openfeel/users/` 与 `.openfeel/tmp/` 已忽略 → `dev_last/` 天然不入库；`current_archive/`（公共域）未被忽略 → 入库（`git check-ignore` 双向实证）"
+    op: op-003
+
+# 【D 项 → op 映射】
+item_map:
+  D1: op-001
+  D2: op-001
+  D3: op-002
+  D4: op-002
+  D5: op-003
+  D6: op-003
+  D7: op-004
+  D8: op-005
+  D9: op-005
+  D10: op-005
+  U6_note: "需求 U6（两条设计目的写入整体约束）→ D1（op-001）"
+
+# 【REV 承接】
+rev_intake:
+  - rev: REV-v1.1.2-stage-53/REV-001
+    severity: medium
+    status: closed
+    handled_by: (plan 修订，无 op 变更)
+    disposition: "A7/A8 无据「用户已裁定」→ 改写为「已由 Feel 裁定 + 事实依据 + 回退条件」；D1 显式留痕指令层冲突；本阶段 op-001 已据此落地（A7 = 根 `AGENTS.md` 不改）"
+  - rev: REV-v1.1.2-stage-53/REV-002
+    severity: low
+    status: closed
+    handled_by: op-002
+    disposition: "主题数 >5 规则缺失 → §五.2 新增 **R1~R5**（R4 就地收敛、不归档、不迁移）+ 索引「已收敛主题」小节 + 边界显式区分（R2 内容外置 ≠ R4 索引收敛）→ op-002 D3-1/D3-2 与 §三 骨架落地。**v4（2026-10-01 用户裁定 A9）追加 R6 加锁协议** → 规则集现为 **R1~R6**"
+  - rev: REV-v1.1.2-stage-53/REV-003
+    severity: low
+    status: closed
+    handled_by: (plan 修订，无 op 变更)
+    disposition: "两处陈旧交叉引用（§四 D1 的 A3→A7、§五.1 的 A4→A5）已在 plan v3 修正；本阶段 op-001 采用 A7/A5 正确引用"

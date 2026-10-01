@@ -1,61 +1,44 @@
 # 自测报告 — op-006
 
-- **执行时间**：2026-09-29 22:05
+- **执行时间**：2026-10-01 09:35
 - **执行 Agent**：openfeel-executor
-- **重试次数**：第 1 次
+- **重试次数**：1
 
 ## 执行摘要
-
-455 条死映射清理完成（唯一操作用户真实环境的 op）：末段匹配脚本 + 隔离副本先行验证 + 备份 + 执行 + 复核，四步齐全。**删除数 === 455、执行后 `projects` === 0**（断言满足），顶层 `lang` 未变，JSON 合法，备份存在且含 455 条原映射。
+B6 `plan scheme rename`（flow.json 标题 + 文件首行同步、不改文件名）落地，自测通过。
 
 ## 实施步骤完成情况
-
-- [x] 步骤0（只读复核）：真实文件 `projects=455 / dead(末段匹配)=455 / 字面前缀=0 / keep=0 / 顶层键=lang,projects / lang="zh-CN"`
-- [x] 步骤1（隔离副本验证）：`--dry-run` → `projects=455 dead=455 keep=0`；执行 → 删除 455、剩余 0、生成备份；复核 topKeys/lang 不变
-- [x] 步骤2（备份）：真实文件备份 `config.json.bak.2026-09-29T14-04-13-412Z`（38546 bytes，内容含 455 条）
-- [x] 步骤3（执行）：真实文件删除 455、剩余 0
-- [x] 步骤4（复核）：JSON 合法、`projects` 键数 0、`lang="zh-CN"` 未变、`config list-projects` 可读
-
-## 关键断言
-
-| 断言 | 期望 | 实测 | 结果 |
-|------|:--:|:--:|:--:|
-| 隔离副本删除数 | 455 | 455 | ✅ |
-| 真实删除数 | 455 | 455 | ✅ |
-| 执行后 `projects` 剩余键数（隔离副本） | 0 | 0 | ✅ |
-| 执行后 `projects` 剩余键数（真实） | 0 | 0 | ✅ |
-| 顶层 `lang` 未改动 | `zh-CN` | `zh-CN` | ✅ |
-| 顶层键集未扩/缩 | `lang,projects` | `lang,projects` | ✅ |
-| 备份存在 | 是 | `config.json.bak.2026-09-29T14-04-13-412Z` | ✅ |
-| 字面前缀匹配命中（反例佐证） | 0（说明必须末段匹配） | 0 | ✅ |
-| `config list-projects` 可读 | 是 | 「暂无记录的项目」 | ✅ |
+- [x] B6-1 `renameScheme` + `RenameSchemeResult`（缺省/未命中/文件缺失/标题未变分流；首行替换或头部插入；审计日志 `scheme_rename`；先文件后 flow.json）
+- [x] B6-2 `plan scheme rename <stage> <opId> --title`（空标题 exit 1；not-found/file-missing exit 1；unchanged no-op）
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 脚本使用**末段匹配** | ✅ | `k.split(/[\\/]/).pop().startsWith(PREFIX)` |
-| 脚本含「JSON 解析失败即中止不写盘」与「删除数断言 455」 | ✅ | exit 2 / exit 3 |
-| 隔离副本试跑：455 → 0，其余键不变，JSON 合法 | ✅ | |
-| 备份生成（带时间戳）后执行真实文件 | ✅ | |
-| 执行后真实 `projects` 剩余 0；JSON 合法；`config list-projects` 可读 | ✅ | |
-| 清理前后计数与备份路径记入日志 | ✅ | 本报告 + 私域日志 |
-| 脚本未进入 `src/` 与 package.json `files` | ✅ | `files=["dist","bin","schemas","scripts"]` |
-| 未改版本号 | ✅ | 1.1.2 |
+| 同步 flow.json 标题与文件首行；除首行外不变 | ✅ | plan.test 断言其余行逐字节相等 |
+| 无首行模式 → 头部插入 | ✅ | scheme.test |
+| 标题未变 → no-op；不存在/文件缺失 → 明确原因+退出码 | ✅ | 用例覆盖 |
+| 不改文件名（含历史命名） | ✅ | scheme.test 历史命名用例 |
+| 审计日志 `scheme_rename`（含 from/to） | ✅ | 用例断言 |
+| `plan scheme list` 反映新标题 | ✅ | plan.test |
+| i18n 同键同序；lint i18n problems=0 退出码 0 | ✅ | 702 键一致 |
+| build + test 全绿；§六 翻转清单完成 | ✅ | scheme.test N8-3 翻转为包含 rename |
+| 测试隔离；config.yaml 三值零 diff | ✅ | auto/enabled/true |
+| 未改真实 flow.json/pipeline.yaml/docs/manual；无新增依赖 | ✅ | — |
 
 ## 产出文件
-
-- `.openfeel/tmp/clean-dead-lang-mappings.mjs`（一次性脚本，不入 src / npm files）
-- 真实 `~/.openfeel/config.json`（清理后 `projects` 空）+ 备份 `~/.openfeel/config.json.bak.2026-09-29T14-04-13-412Z`
+- `src/core/plan/scheme.ts`
+- `src/commands/plan.ts`
+- `src/core/i18n-data/zh-CN.ts`
+- `src/core/i18n-data/en.ts`
+- `test/commands/plan.test.ts`
+- `test/core/plan/scheme.test.ts`
 
 ## 前置校验结果
-
 - 方案完整性：通过
-- Phase 合法性：通过（`exec_running`）
-- 流转合法性：通过（`flow health --quick` exit 0）
+- Phase 合法性：通过
+- 流转合法性：通过
 
 ## 偏差记录
-
-- 无超范围/遗漏产出。
-- 隔离副本与真实文件均满足 455→0 断言；仅 `~/.openfeel/config.json` 与其备份被写入，未触碰 `~/.openfeel/` 下其它文件（脚本逻辑仅写 target + `target.bak.{ts}`）。
-- 未在本地验证项：无。
+- `RenameSchemeResult` 在方案定义的三字段外**新增可选 `path?`**：`fileMissingTmpl` 文案含 `{path}`，需回传模板路径。
+- help 键新增 4 个（方案列 2 个）：额外 `help.plan.scheme.rename.argstage` / `argopId`（命令参数 help 机制所需）。
+- 翻转：`test/core/plan/scheme.test.ts` N8-3「plan scheme 无 rename 子命令」→ 改为「含 rename，仍无 migrate」（方案 §六 翻转清单的落点实际在该文件而非 plan.test.ts）。

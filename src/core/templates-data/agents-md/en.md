@@ -154,7 +154,21 @@ AGENTS.md retains only behavioral constraints; process rules are dynamically inj
 
 At the start of each session, check the .openfeel directory under the project path and its contents. This directory is the single source of truth for ensuring development consistency, and you must maintain its integrity and accuracy.
 
+> **Two design goals (the axioms behind every format rule)**:
+> ① **Preserve the core information needed for recovery** — at any moment, opening an index (`dev/current.md` / `users/{username}/dev_last.md`) restores enough context to continue working within a limited context budget.
+> ② **Avoid polluting the context with irrelevant information** — the index layer holds only "conclusions and locations"; details sink into topic files / `tmp/` documents; the index does not carry process details.
+>
+> **Layering principle**:
+>
+> | Layer | Carrier | Granularity limit | Reader |
+> |-------|---------|-------------------|--------|
+> | Index layer | `.openfeel/dev/current.md`, `.openfeel/users/{username}/dev_last.md` | Hard cap on entries + characters | User / session startup |
+> | Topic layer | `.openfeel/users/{username}/dev_last/{english-name}.md` | ≤10 entries, ≤300 chars each | On-demand |
+> | Detail layer | `.openfeel/users/{username}/tmp/` documents | Unlimited (record the **path** only) | Read only when explicitly specified |
+
 ### Design Principles
+
+**Layering principle**: index layer (`dev/current.md` / `users/{username}/dev_last.md`) → topic layer (`users/{username}/dev_last/{english-name}.md`) → detail layer (`users/{username}/tmp/` documents). See the introduction above for the three-layer division of labor.
 
 The .openfeel directory is divided into **Public Domain** and **Private Domain**:
 
@@ -199,7 +213,32 @@ Stores long-term valid rules. Priority: user instructions > this document > sess
 
 > .openfeel/dev/current.md
 
-Records work currently in progress. Follows the `@{username} description of ongoing work` paradigm to track each member's progress. The top maintains overall progress status.
+**Team file (user-level view)**: records **cross-user operations** and **overall information**.
+- **Update only on personal submission** (one submission = one record);
+- Write **overall information** only (what was done, current state); **no** agent details; **no** `## @member` sections (itemized logs go to `dev_last` topic files);
+- Keep only the **latest 5** records (newest first);
+- When a new record pushes the count > 5: move the **oldest** one out to `.openfeel/dev/current_archive/` (archived, **never deleted**; public domain, tracked in version control);
+- Archive filename `current-{yyyy-mm-dd}-{NNN}.md` (NNN increments within the same day).
+
+```markdown
+# Current Progress
+
+> {one-line overall progress} (overall information, user-level view)
+
+## Recent Submissions (max 5, newest first)
+
+- **{yyyy-mm-dd HH:MM}** @{username}: {overall information: what was done, current state (no agent details, no itemized log)}
+- **{yyyy-mm-dd HH:MM}** @{username}: {...}
+
+> Earlier records: see `.openfeel/dev/current_archive/` (each submission auto-archives the oldest; this file keeps only the latest 5).
+```
+
+> **Note on `@{username}` (A5)**: keep the inline `@{username}` in records (identifies the submitter in cross-user scenarios; this is **not** an "@member section" — an inline identifier is not a section). If the user asks to remove it, simply delete the inline identifier (the rest of the rules are unaffected).
+
+> .openfeel/dev/current_archive/
+
+Archives old records rotated out of `current.md`. **Public domain → tracked in version control** (`.gitignore` only ignores `users/` and `tmp/`).
+Naming convention: `current-{yyyy-mm-dd}-{NNN}.md`; content = the moved-out record line + a `>` meta line (original date, move-out time). Archives are **append-only**.
 
 > .openfeel/dev/note/dev_note.md
 
@@ -240,7 +279,7 @@ Organized by module, corresponding to the private Bug directory. The root mainta
 
 > .openfeel/plan
 
-**Automated planning**: When the user proposes a task with the following characteristics, the Agent should proactively create an entry in `plan.md` or update `current.md`, without waiting for manual user trigger:
+**Automated planning**: When the user proposes a task with the following characteristics, the Agent should proactively update `plan.md`; **only update `current.md` when the change is a cross-user overall progress item**, without waiting for manual user trigger:
 - Involves multi-step operations
 - Requires cross-session progress tracking
 - May affect multiple modules or files

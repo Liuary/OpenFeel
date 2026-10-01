@@ -1,49 +1,63 @@
-# 自测报告 — op-011（B3 发布元数据 / B4 VERSION 死导出）
+# 自测报告 — op-011
 
-- **执行时间**：2026-09-29 23:5x
+- **执行时间**：2026-10-01 09:42
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（一次通过）
+- **重试次数**：1
 
 ## 执行摘要
-B3（删 postinstall/scripts、收窄 engines、files 去 scripts）与 B4（删死导出 VERSION、重生成 dist）全部落地；4 项新增回归断言通过；门禁全绿（41 文件 / 716 用例，i18n 533 键，kb 0 过期）。
+C1~C4 全量落地（简洁约束单行化 / B 组 13 处定性化 / 根 AGENTS.md 对齐 / 14→17 计数修正）+ build 传播，6 条 rg 零残留通过，自测通过。
 
 ## 实施步骤完成情况
-- [x] §B3.1 `package.json`：删除 `postinstall` 行；`engines.node` → `>=20.17.0`；`files` 去除 `scripts`
-- [x] §B3.2 删除 `scripts/patch-inquirer.js`（并清理空目录）
-- [x] §B3.3 `CHANGELOG.md` [1.1.2] Fixed 追加 2 条（postinstall 移除 / engines 收窄）
-- [x] §B4.1 `src/index.ts`：删除 `export const VERSION` 及其注释（保留 `export {}`）
-- [x] §B4.2 `npm run build` 重生成 `dist`；`dist/index.js` 导出不含 VERSION
-- [x] §B4.3 `CHANGELOG.md` Fixed 追加 1 条（VERSION 死导出移除）
-- [x] 未做 `engine-strict`（裁定：消费者侧设置，包内 .npmrc 无效）
+- [x] C1-1 `agents-md/zh-CN.md` 第 2 条 → **单行**
+- [x] C1-2 `agents-md/en.md` 第 2 条 → **单行**（无 `more than 3 files` / `thresholds are automatically lowered`）
+- [x] C1-3/C3 根 `AGENTS.md` 第 2 条 → 逐字对齐 C1-1（删多余 bullet「计划中包含过多未来扩展点」+ 删括号差异）
+- [x] C2-1 feel.md 分档表定性化（zh/en）
+- [x] C2-2 feel.md 档位选择说明 → 波及面
+- [x] C2-3/C2-4/C2-5/C2-6/C2-7 planner.md（唤起条件/三档表/偏差判据/大规模括号/en 阈值句）
+- [x] C2-8 feel.md 228 规模阈值句（zh/en）
+- [x] C2-9/C2-10 tool-usage SKILL.md（≥3 独立步骤 / ≥2 同等合理 → 定性）
+- [x] C2-11 `dev_core.md` `[-]` 条目**未动**（保持历史）
+- [x] C2-12 feel.md:401 审查豁免（定性主判据 + 「参考：单文件 ≤30 行」）
+- [x] C2-13 D 组工程阈值**未动**（`≤10 行摘要`/覆盖率/嵌套/重试/日志/相似度）
+- [x] C4-1~C4-5 「14 → 17」5 处 + ADAPTER 枚举补 3 名（cli-usage/tool-usage/workspace）
+- [x] `npm run build` 传播（生成段 + `.opencode/**` 自举）
+
+## 验收（6 条 rg 零残留 + 补充）
+| # | 检查 | 结果 |
+|---|------|------|
+| 1 | `rg "超过 3 个" src/core/templates-data AGENTS.md` | **零命中** |
+| 2 | `rg "more than 3 files" …` | **零命中** |
+| 3 | `rg "阈值自动降低\|thresholds are automatically lowered" …` | **零命中** |
+| 4 | `rg "计划中包含过多未来扩展点" …` | **零命中** |
+| 5 | `rg -in "14\s*个?\s*skills?\|14 个 Skill\|14 skills" src/core/templates-data .openfeel/manual` | **零命中** |
+| 6 | B 组数值判据残留 | 仅 C2-12 参考值 + D 组 `≤10 行摘要`（保留） |
+| 7 | build 幂等 | 重跑零 diff（`template-loader.ts`/`update.ts` hash 一致） |
+| 8 | zh/en C1 段行数 | 均 **1 行** |
+| 9 | 根 AGENTS.md 第 2 条 vs 模板 zh-CN 第 2 条 | **逐字一致**（脚本比对 equal=true） |
+| 10 | `git diff --name-only` 范围 | 仅本 op 声明文件 + build 产物；`docs/**` 历史与 `dev_core.md` 未动 |
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| package.json 无 postinstall；engines=`>=20.17.0`；files 不含 scripts | ✅ | 实测 postinstall=undefined |
-| scripts/patch-inquirer.js 已删除；`rg patch-inquirer` 零残留 | ✅ | 仅 CHANGELOG/新断言提及 |
-| src/index.ts 无 VERSION 导出；`export {}` 保留 | ✅ | |
-| build 后 dist/index.js 导出不含 VERSION；`--version`=1.1.2 | ✅ | `'VERSION' in m === false` |
-| CHANGELOG 含 3 条 Fixed | ✅ | postinstall / engines / VERSION |
-| 新增回归断言（元数据 + 脚本不存在 + dist 无导出）通过 | ✅ | opencode-instance.test.ts 新增 describe |
-| 翻转清单 `rg` 零命中（测试未引用旧字段） | ✅ | 旧断言无残留，仅新增反断言 |
-| `npm run build && npm test` 全绿；lint 零错误 | ✅ | 41 文件 / 716 用例 |
-| 未新增依赖；未改版本号；未改 flow.json（手工） | ✅ | |
-| `npm pack --dry-run` 不再含 scripts/ | ✅ | 0 条 scripts/ 条目 |
+| C1 zh/en 单行且语义对等 | ✅ | — |
+| C3 根 AGENTS.md 逐字对齐 | ✅ | — |
+| C2 13 处逐处定性化；C2-11/12/13 按裁定 | ✅ | — |
+| C4 「14→17」5 处 + 枚举补 3 名 | ✅ | — |
+| build 幂等；未手改生成段 | ✅ | — |
+| §六 翻转清单 | ✅ | 无强制翻转（templates/setup/instance/loader 全绿） |
+| lint i18n problems=0 退出码 0；lint kb 0 过期 | ✅ | 712 键 |
+| config.yaml 三值不变；无新增依赖 | ✅ | auto/enabled/true |
 
 ## 产出文件
-- `package.json`
-- `scripts/patch-inquirer.js`（删除）
-- `src/index.ts`
-- `CHANGELOG.md`
-- `dist/**`（构建产物，gitignore）
-- `test/core/opencode-instance.test.ts`
+`src/core/templates-data/agents-md/{zh-CN,en}.md`、`AGENTS.md`、`src/core/templates-data/opencode/agents/{zh-CN,en}/{feel,openfeel-planner}.md`、`.../skills/openfeel-tool-usage/SKILL.md`、`.../ADAPTER.{zh-CN,en}.md`、`.openfeel/manual/core/{template-loader,migrate}.md` + build 产物（`src/core/template-loader.ts`、`src/core/update.ts`、`.opencode/**`）
+
+## 部署说明
+`~/.config/opencode/AGENTS.md`（部署产物）**未更新**——需用户运行 **`openfeel setup`** 方生效；本阶段**不自动执行**（未触碰真实全局目录）。
 
 ## 前置校验结果
-- 方案完整性：通过（字段以等价形式齐备）
-- Phase 合法性：通过（stage-49 phase=exec_running）
-- 流转合法性：通过（`flow health --quick` 通过）
-- 偏差：`pipeline.current.op` 为 op-001（审查阶段遗留），Feel 已明确指示执行。
+- 方案完整性：通过
+- Phase 合法性：通过
+- 流转合法性：通过
 
 ## 偏差记录
-- `scripts/` 空目录已一并删除（方案允许「保留空目录或删除」）。
-- 未产生超范围文件。
+- **范围微增**：验收 5（零残留）扫描发现方案 C4-6 遗漏的 `.openfeel/manual/core/migrate.md:62`（「全 14 skill」）→ 改为「全部 skill」（count-agnostic，避免断言错误数字）。方案 §八 仅列 `manual/core/template-loader.md`。

@@ -1,53 +1,52 @@
 # 自测报告 — op-005
 
-- **执行时间**：2026-09-29 22:03
+- **执行时间**：2026-10-01 09:30
 - **执行 Agent**：openfeel-executor
-- **重试次数**：第 1 次（含 1 次测试用例参数修正，非实现缺陷）
+- **重试次数**：1
 
 ## 执行摘要
-
-profile.yaml 健壮性加固完成：#7 三个子 Schema 补 `.passthrough()`、#8 非法 YAML 不覆盖（`parseError` + 跳过写回 + `console.warn`）+ `config set --global` 守卫；新增 5 个单测全绿，`tsc --noEmit` exit 0，未引入 `update-infos` 依赖边。
+B3 `flow ops list` + B4 `draft` 两阶段（create --draft / publish）+ 窄兼容 5 条 + attempt 双层守卫全部落地，自测通过。
 
 ## 实施步骤完成情况
-
-- [x] 步骤1：`ProfileUserSchema` / `ProfilePreferencesSchema` / `ProfileHistorySchema` 补 `.passthrough()`（保全 `user.*` / `preferences.*` / `history.*` 自定义键）
-- [x] 步骤2：`readProfile(): Profile & { parseError?: string }`（可选字段，结构兼容）；顶层非对象 / YAML 解析失败 / Zod 校验失败 → 标记 `parseError` 并返回默认值
-- [x] 步骤3：`ensureProfileDefaults` 见 `parseError` → `console.warn`（含路径）+ **跳过全部写回**
-- [x] 步骤4：`commands/config.ts` 的 `set --global` 见 `parseError` → `console.error` + `process.exit(1)` + `return`（防 mock 继续，不覆盖）
+- [x] B3-1 `flow ops list [--stage] [--json]`（state + 填充度 empty/partial/filled + 空模板 warning + draft 分组）
+- [x] B4-1 `createScheme(..., {draft})` → state='draft'；缺省 pending 不变；draft 留 `scheme_create` 日志
+- [x] B4-2 `publishScheme`（空模板禁止发布；单一来源标记）
+- [x] B4-3 `plan scheme create --draft` + `plan scheme publish`；`scheme list` 行尾追加 `[draft]`
+- [x] B4-4 窄兼容 5 条（health 跳过 draft / advance·统计·归档不计入 / ops list 分组 / 存量零影响 / attempt 拒绝）
+- [x] B4-5 `flow attempt` draft 双层守卫（命令层 exit 1 + 核心层 recordAttempt 兜底 + appendLog）
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 三个子 Schema 加 `.passthrough()` | ✅ | user/preferences/history |
-| `readProfile` 增 `parseError?`（可选，结构兼容） | ✅ | `Profile & { parseError?: string }` |
-| `ensureProfileDefaults` 见 `parseError` → warn + 跳过写回 | ✅ | 文件字节不变断言通过 |
-| `config set --global` 见 `parseError` → 报错 + exit 1（不覆盖） | ✅ | 新增命令级用例通过 |
-| **未引入** `config.ts → update-infos.ts` 依赖边 | ✅ | `rg update-infos src/core/config.ts` 无输出 |
-| `npm test -- config` 全绿；`npx tsc --noEmit` 无错误 | ✅ | 5 文件 / 75 用例（含新增 5） |
-| 未新增依赖；未改版本号 | ✅ | 1.1.2 |
-
-### 用例明细
-
-- `test/core/config.test.ts`：33（+4）—— #7 往返保全（readProfile 保全 / ensureProfileDefaults 写回往返保全）、#8 非法 YAML 不覆盖 + warn + parseError、#8 顶层非对象标记 parseError
-- `test/commands/config.test.ts`：5（+1）—— `config set --global` 遇非法 profile → exit 1 + 文件字节不变
-- 既有「损坏的 profile.yaml 应回退默认值」用例仍通过（新增 `parseError` 不破坏原断言语义，无需翻转）
+| ops list 显示 state/填充度/warning/--json | ✅ | 用例覆盖 |
+| createScheme({draft})/publishScheme；缺省 pending 不变 | ✅ | plan.test 覆盖 |
+| --draft / publish 可用；空模板发布 exit 1 | ✅ | plan.test 覆盖 |
+| 窄兼容 5 条 | ✅ | health/syncCurrentOp/summary/ops list/attempt 各有用例 |
+| attempt 双层守卫；正常 op 不变 | ✅ | flow + core 用例 |
+| 空模板标记单一来源 | ✅ | rg：scheme.ts 用 EMPTY_TEMPLATE_MARKER；定义唯一于 flow-manager.ts |
+| i18n 同键同序；lint i18n problems=0 退出码 0 | ✅ | 693 键一致 |
+| build + test 全绿 | ✅ | flow 55 / plan 31 / flow-manager 全绿 |
+| 测试隔离；config.yaml 三值零 diff | ✅ | auto/enabled/true |
+| 未改真实 flow.json/pipeline.yaml/docs/manual；无新增依赖 | ✅ | — |
 
 ## 产出文件
-
-- `src/core/config.ts`
-- `src/commands/config.ts`
-- `test/core/config.test.ts`（扩展）
-- `test/commands/config.test.ts`（扩展）
+- `src/core/flow-manager.ts`
+- `src/core/plan/scheme.ts`
+- `src/commands/flow.ts`
+- `src/commands/plan.ts`
+- `src/core/i18n-data/zh-CN.ts`
+- `src/core/i18n-data/en.ts`
+- `test/commands/flow.test.ts`
+- `test/commands/plan.test.ts`
+- `test/core/flow-manager.test.ts`
 
 ## 前置校验结果
-
 - 方案完整性：通过
-- Phase 合法性：通过（`exec_running`）
-- 流转合法性：通过（`flow health --quick` exit 0）
+- Phase 合法性：通过
+- 流转合法性：通过
 
 ## 偏差记录
-
-- 测试用例在 op-005 落地（`test/core/config.test.ts` / `test/commands/config.test.ts`）——依据 op-005「测试计划」明确要求扩展；`deps.yaml` 的 produces 未列测试文件、op-007 亦列 config.test.ts，二者存在交叉登记（非实质冲突，op-007 将复核全量）。
-- 1 次测试修正：`config set --global` 的 key 白名单为 `preferences.auto_advance`（非 `auto_advance`），测试参数据代码事实更正（非实现偏差）。
-- 未在本地验证项：无（isolated HOME 单测 + tsc 已覆盖）。
+- 方案 i18n 表列 11~12 键，实际新增 19 键。额外项：`help.flow.ops.list.json`、`help.flow.ops.list.stage`、`help.plan.scheme.create.draft`、`help.plan.scheme.publish.argstage/argopId`（help 机制按命令路径+选项/参数名查键，缺失会触发 missing-key 告警）；`flow.health.emptyTemplate/emptyTemplateDetail`（B4-4 第 1 条要求 healthCheck 新增空模板检查，该检查需 i18n 文案）。
+- help 键命名：方案列 `help.flow.ops.stage`，实际子命令结构为 `flow ops list`，机制键为 `help.flow.ops.list.stage`（以机制为准）。
+- 空模板定义置于 `flow-manager.ts`（而非 scheme.ts）以保持既有单向依赖（scheme→flow-manager），避免循环 import；scheme.ts/commands 均引用该常量，单一来源不破。
+- `flow ops list` 填充度通过 `mgr.readOpTemplate` 直接读模板文件（与 `listSchemes().content` 等价），保证 full stageId↔文件定位可靠。

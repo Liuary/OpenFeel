@@ -2870,7 +2870,21 @@ AGENTS.md retains only behavioral constraints; process rules are dynamically inj
 
 At the start of each session, check the .openfeel directory under the project path and its contents. This directory is the single source of truth for ensuring development consistency, and you must maintain its integrity and accuracy.
 
+> **Two design goals (the axioms behind every format rule)**:
+> ① **Preserve the core information needed for recovery** — at any moment, opening an index (\`dev/current.md\` / \`users/{username}/dev_last.md\`) restores enough context to continue working within a limited context budget.
+> ② **Avoid polluting the context with irrelevant information** — the index layer holds only "conclusions and locations"; details sink into topic files / \`tmp/\` documents; the index does not carry process details.
+>
+> **Layering principle**:
+>
+> | Layer | Carrier | Granularity limit | Reader |
+> |-------|---------|-------------------|--------|
+> | Index layer | \`.openfeel/dev/current.md\`, \`.openfeel/users/{username}/dev_last.md\` | Hard cap on entries + characters | User / session startup |
+> | Topic layer | \`.openfeel/users/{username}/dev_last/{english-name}.md\` | ≤10 entries, ≤300 chars each | On-demand |
+> | Detail layer | \`.openfeel/users/{username}/tmp/\` documents | Unlimited (record the **path** only) | Read only when explicitly specified |
+
 ### Design Principles
+
+**Layering principle**: index layer (\`dev/current.md\` / \`users/{username}/dev_last.md\`) → topic layer (\`users/{username}/dev_last/{english-name}.md\`) → detail layer (\`users/{username}/tmp/\` documents). See the introduction above for the three-layer division of labor.
 
 The .openfeel directory is divided into **Public Domain** and **Private Domain**:
 
@@ -2915,7 +2929,32 @@ Stores long-term valid rules. Priority: user instructions > this document > sess
 
 > .openfeel/dev/current.md
 
-Records work currently in progress. Follows the \`@{username} description of ongoing work\` paradigm to track each member's progress. The top maintains overall progress status.
+**Team file (user-level view)**: records **cross-user operations** and **overall information**.
+- **Update only on personal submission** (one submission = one record);
+- Write **overall information** only (what was done, current state); **no** agent details; **no** \`## @member\` sections (itemized logs go to \`dev_last\` topic files);
+- Keep only the **latest 5** records (newest first);
+- When a new record pushes the count > 5: move the **oldest** one out to \`.openfeel/dev/current_archive/\` (archived, **never deleted**; public domain, tracked in version control);
+- Archive filename \`current-{yyyy-mm-dd}-{NNN}.md\` (NNN increments within the same day).
+
+\`\`\`markdown
+# Current Progress
+
+> {one-line overall progress} (overall information, user-level view)
+
+## Recent Submissions (max 5, newest first)
+
+- **{yyyy-mm-dd HH:MM}** @{username}: {overall information: what was done, current state (no agent details, no itemized log)}
+- **{yyyy-mm-dd HH:MM}** @{username}: {...}
+
+> Earlier records: see \`.openfeel/dev/current_archive/\` (each submission auto-archives the oldest; this file keeps only the latest 5).
+\`\`\`
+
+> **Note on \`@{username}\` (A5)**: keep the inline \`@{username}\` in records (identifies the submitter in cross-user scenarios; this is **not** an "@member section" — an inline identifier is not a section). If the user asks to remove it, simply delete the inline identifier (the rest of the rules are unaffected).
+
+> .openfeel/dev/current_archive/
+
+Archives old records rotated out of \`current.md\`. **Public domain → tracked in version control** (\`.gitignore\` only ignores \`users/\` and \`tmp/\`).
+Naming convention: \`current-{yyyy-mm-dd}-{NNN}.md\`; content = the moved-out record line + a \`>\` meta line (original date, move-out time). Archives are **append-only**.
 
 > .openfeel/dev/note/dev_note.md
 
@@ -2956,7 +2995,7 @@ Organized by module, corresponding to the private Bug directory. The root mainta
 
 > .openfeel/plan
 
-**Automated planning**: When the user proposes a task with the following characteristics, the Agent should proactively create an entry in \`plan.md\` or update \`current.md\`, without waiting for manual user trigger:
+**Automated planning**: When the user proposes a task with the following characteristics, the Agent should proactively update \`plan.md\`; **only update \`current.md\` when the change is a cross-user overall progress item**, without waiting for manual user trigger:
 - Involves multi-step operations
 - Requires cross-session progress tracking
 - May affect multiple modules or files
@@ -3316,7 +3355,21 @@ AGENTS.md 仅保留行为约束，流程规则由工具动态注入，实现"提
 
 在每次对话启动时，检查项目路径下的 .openfeel 目录及其内容。该目录是确保开发一致性的唯一数据源，你必须维护其完整性和准确性。
 
+> **两条设计目的（一切格式规则的推导总纲）**：
+> ① **保存核心信息便于恢复**——任何时刻打开索引（\`dev/current.md\` / \`users/{username}/dev_last.md\`）即可在有限上下文内恢复到可继续工作的程度。
+> ② **避免无关信息污染上下文**——索引层只放「结论与位置」，细节下沉到主题文件 / \`tmp/\` 文档；索引不承载过程性明细。
+>
+> **分层原则**：
+>
+> | 层 | 载体 | 粒度上限 | 读者 |
+> |----|------|----------|------|
+> | 索引层 | \`.openfeel/dev/current.md\`、\`.openfeel/users/{username}/dev_last.md\` | 条数硬限 + 字数硬限 | 用户 / 会话启动 |
+> | 主题层 | \`.openfeel/users/{username}/dev_last/{english-name}.md\` | ≤10 条、≤300 字/条 | 按需读取 |
+> | 详情层 | \`.openfeel/users/{username}/tmp/\` 文档 | 不限（仅记**地址**） | 显式指定时读取 |
+
 ### 设计原则
+
+**分层原则**：索引层（\`dev/current.md\` / \`users/{username}/dev_last.md\`）→ 主题层（\`users/{username}/dev_last/{english-name}.md\`）→ 详情层（\`users/{username}/tmp/\` 文档）三层分工见上方引言段。
 
 .openfeel 目录分为**公共域**与**私域**两部分：
 - 公共域：直接位于 \`.openfeel/\` 下，存放项目级共享内容（核心规则、计划、团队日志、知识库等），纳入版本管理。
@@ -3360,7 +3413,32 @@ AGENTS.md 仅保留行为约束，流程规则由工具动态注入，实现"提
 
 > .openfeel/dev/current.md
 
-记录当前正在进行的工作，按 \`@{username} 描述正在进行的工作\` 范式维护各成员进度，顶部维护总进度状态。
+**团队文件（用户级视图）**：记录**跨用户操作**与**整体信息**。
+- **仅个人提交时更新**（一次提交 = 一条记录）；
+- 只写**整体信息**（做了什么、处于什么状态）；**禁止** agent 细节；**禁止** \`## @成员\` 段（逐条流水改放 \`dev_last\` 主题文件）；
+- 仅保留**近期 5 条**记录（最新在上）；
+- 新增记录致条数 > 5 时：把**最旧一条**移出至 \`.openfeel/dev/current_archive/\`（归档**不删除**，属公共域纳入版本管理）；
+- 归档文件名 \`current-{yyyy-mm-dd}-{NNN}.md\`（同日多份 NNN 递增）。
+
+\`\`\`markdown
+# 当前进度
+
+> {一句话整体进度}（整体信息，用户级视图）
+
+## 近期提交记录（最多 5 条，最新在上）
+
+- **{yyyy-mm-dd HH:MM}** @{username}：{整体信息：做了什么、处于什么状态（不写 agent 细节、不写逐条流水）}
+- **{yyyy-mm-dd HH:MM}** @{username}：{…}
+
+> 更早记录见 \`.openfeel/dev/current_archive/\`（每次提交自动归档最旧一条；本文件仅保留近期 5 份）。
+\`\`\`
+
+> **\`@{username}\` 说明（A5）**：记录内**保留单行内联 \`@{username}\`**（用于跨用户场景标识提交者，**不是**「@成员段」——行内标识 ≠ 分节）。如用户要求去掉，删除该内联标识即可（不影响其余规则）。
+
+> .openfeel/dev/current_archive/
+
+归档被轮换出的 \`current.md\` 旧记录。**公共域 → 纳入版本管理**（\`.gitignore\` 仅忽略 \`users/\` 与 \`tmp/\`）。
+命名约定：\`current-{yyyy-mm-dd}-{NNN}.md\`；内容 = 被移出的记录行 + \`>\` 元信息行（原日期、移出时间）。历史归档**只增不删**。
 
 > .openfeel/dev/note/dev_note.md
 
@@ -3401,7 +3479,7 @@ AGENTS.md 仅保留行为约束，流程规则由工具动态注入，实现"提
 
 > .openfeel/plan
 
-**自动计划化**：当用户提出包含以下特征的任务时，Agent 应主动在 \`plan.md\` 中创建对应条目或更新 \`current.md\`，无需等待用户手动触发：
+**自动计划化**：当用户提出包含以下特征的任务时，Agent 应主动更新 \`plan.md\`；**仅当属跨用户整体进度时才更新 \`current.md\`**，无需等待用户手动触发：
 - 涉及多步骤操作
 - 需要跨会话跟踪进度
 - 可能影响多个模块或文件

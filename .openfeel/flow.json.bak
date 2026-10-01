@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T02:29:10.788Z",
-    "revision": 411
+    "updated": "2026-10-01T02:36:38.898Z",
+    "revision": 415
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.2-stage-52",
-      "op": "op-012"
+      "stage": "v1.1.2-stage-53",
+      "op": "op-001"
     },
     "retry": 0
   },
@@ -1841,7 +1841,7 @@
     },
     "v1.1.2-stage-52": {
       "name": "v1.1.2-stage-52",
-      "phase": "exec_running",
+      "phase": "review_pending",
       "status": "review_failed",
       "deps": [],
       "ops": {
@@ -2034,9 +2034,9 @@
         },
         "op-012": {
           "title": "REV-005 短名 stage 归一化修复（B5 多步推进）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -2058,7 +2058,7 @@
     },
     "v1.1.2-stage-53": {
       "name": "v1.1.2-stage-53",
-      "phase": "scheme_review",
+      "phase": "exec_running",
       "status": "planned",
       "deps": [
         "v1.1.2-stage-52"
@@ -9827,6 +9827,45 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.1.2-stage-52",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-01T02:36:11.750Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-52.op-012",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-01T02:36:38.160Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-01T02:36:38.522Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-53",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-10-01T02:36:38.894Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-53",
         "from": "scheme_passed",
         "to": "exec_running"
       }

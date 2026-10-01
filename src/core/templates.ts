@@ -13,24 +13,28 @@ const DEV_CORE_TEMPLATE_EN = `# Dynamic Rules
 > Use [+] / [-] markers to manage enabled/disabled status. Only disable, do not delete.
 `;
 
-/** 中文版 current.md 模板 */
-const CURRENT_TEMPLATE_ZH = `# 当前工作进度
+/** 中文版 current.md 模板（团队文件 / 用户级视图：≤5 条近期记录 + 自动归档） */
+const CURRENT_TEMPLATE_ZH = `# 当前进度
 
 > 总进度：初始化完成，等待计划创建。
 
-## 团队成员进度
+## 近期提交记录（最多 5 条，最新在上）
 
-暂无活跃成员。
+<!-- 示例：- **{yyyy-mm-dd HH:MM}** @{username}：{整体信息：做了什么、处于什么状态} -->
+
+> 更早记录见 \`.openfeel/dev/current_archive/\`（每次提交自动归档最旧一条；本文件仅保留近期 5 份）。
 `;
 
-/** 英文版 current.md 模板 */
+/** 英文版 current.md 模板（team file / user-level view: latest 5 records + auto archive） */
 const CURRENT_TEMPLATE_EN = `# Current Progress
 
 > Overall progress: Initialization complete, waiting for plan creation.
 
-## Team Member Progress
+## Recent Submissions (max 5, newest first)
 
-No active members yet.
+<!-- Example: - **{yyyy-mm-dd HH:MM}** @{username}: {overall information: what was done, current state} -->
+
+> Earlier records: see \`.openfeel/dev/current_archive/\` (each submission auto-archives the oldest; this file keeps only the latest 5).
 `;
 
 /** 中文版 decisions.md 模板（ADR 轻量格式：决策+理由+日期+状态） */

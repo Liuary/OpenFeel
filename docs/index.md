@@ -21,7 +21,7 @@
 | [phase-3/](phase-3/index.md) | 三期：生产加固验证（5 项目全流水线测试） |
 | &nbsp;&nbsp;├─ [DateKit](phase-3/datekit/) | v3.2 终验（auto模式、路径修正、零Bug） |
 | [phase-4/](phase-4/suggestions.md) | 四期：改进建议（12 条增强项，按需推动） |
-| [phase-5/](phase-5/index.md) | 五期：外部实践反馈归档（下游项目反馈原文，CLI 工具链 + 权限模型 + 流水线状态维护） |
+| [phase-5/](phase-5/index.md) | 五期：外部实践反馈归档（下游项目反馈原文，CLI 工具链 + 权限模型 + 流水线状态维护 + 可编排性） |
 
 ## 研究文档
 

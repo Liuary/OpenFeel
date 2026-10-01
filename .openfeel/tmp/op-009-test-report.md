@@ -1,48 +1,60 @@
 # 自测报告 — op-009
 
-- **执行时间**：2026-08-07 00:25
-- **执行 Agent**：Executor
-- **重试次数**：第 1 次
+- **执行时间**：2026-10-01 09:39
+- **执行 Agent**：openfeel-executor
+- **重试次数**：1
 
 ## 执行摘要
-
-3 条 REV 全部修复完成：REV-001（kb/index.md 补 Vision 摘要行，blocking）、REV-002（vision 权限顺序统一）、REV-003（bash 权限用途说明）。构建通过、模板一致性 4/4、测试 298/298 无回归。
+A4 破坏性变更落地：`view add` 命令 + 7 键×2 语言 + 文档/README/manual/模板/测试全量清理；CHANGELOG `Removed` + 迁移指引；`view list`/`accept` 保留可用。
 
 ## 实施步骤完成情况
+- [x] A4-1 删除 `view add` 命令段（`view.ts`）；import 改 `{ listReviews, acceptReview }`；`normalizeAgentName` 保留
+- [x] A4-2 i18n 删 7 键×2 语言（`view.add.deprecated`/`errorInvalidPriorityTmpl`/`okTmpl`/`help.view.add`/`.op`/`.title`/`.priority`）
+- [x] A4-3 文档清理：`docs/commands.md` 删节；`manual/cli/commands.md:73` 删条目 + `:89` 改「已移除」；`manual/index.md` 同步；README×2 改 `list / accept`
+- [x] A4-4 CHANGELOG `### Removed` 显著标注 + 迁移指引（`flow review add`）
+- [x] A4-5 测试：`view.test.ts` 重写为 list/accept 覆盖；`cli/index.test.ts` 删 N2-4 用例
+- [x] A4-6 残留核验（见下）
+- [x] 附加：`flow.ts` 两处 `view.add.errorInvalidPriorityTmpl` → 新键 `flow.review.errorInvalidPriorityTmpl`（否则删键会破坏 `flow review add|update`）
+- [x] 附加：cli-usage skill 模板行去 `view add` + `npm run build` 重生成（`template-loader.ts`/`update.ts`/`.opencode` 自举）
 
-- [x] 步骤1：REV-001 — `.openfeel/kb/index.md` 的 `### architecture.md` 摘要表追加 Vision 摘要行，条目数 10→11 与分类概览表对齐
-- [x] 步骤2：REV-002 — 3 个 vision 文件（zh-CN / en / .opencode）permission 顺序调整为 `bash → read → glob → grep`
-- [x] 步骤3：REV-003 — 3 个 vision 文件「能力边界」节补充 bash 权限只读用途说明（中文/英文措辞）
-- [x] 步骤4：`npm run build` 通过（模板一致性校验 4/4），`npm test` 298/298 通过
-- [x] 步骤5：Git 提交（见提交记录）
+## 键数变化
+- 基线 **718** → 删 7 键 + 迁移新增 1 键（`flow.review.errorInvalidPriorityTmpl`）→ **712 键**，problems = 0，退出码 0。
+- 说明：op-009 方案基于旧基线 649→642（−7）；本次因主链新增键基线为 718，且需保留 `flow review` 的优先级错误文案（原键名带 `view.add.` 前缀被删），故净变化 −6 → **712**。
+
+## 残留核验（精确模式）
+| # | 检查 | 结果 |
+|---|------|------|
+| 1 | `rg --pcre2 "(?<!re)view\.add" src/ test/` | **零命中** |
+| 2 | `rg --pcre2 "(?<!re)view add\|'view',\s*'add'" src/ test/` | **零命中** |
+| 3 | `rg --pcre2 "(?<!re)view add" docs/ README*.md .openfeel/manual/` | **零命中** |
+| 4 | `addReviewEntry` | 定义 1（`entry.ts`）+ 使用 1（`flow.ts`），单点未破坏 |
+| 5 | CLI `view add --op x` | `error: unknown command 'add'`，退出码 1 |
+| 6 | CLI `view --help` | 仅 `list`/`accept` + `help.view.note`，无 `add` |
+
+> **方案验收口径校正（重要）**：方案 A4-6/§七 的 `rg "view.add"` / `rg "view add"` 会被合法串 **`flow.review.add*`／`flow review add`** 误命中（子串 "view.add"/"view add"）。故本报告采用负向后顾 `(?<!re)` 精确口径，结果为**零命中**；字面口径永远无法为零（除非删除 `flow review add`）。
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| kb/index.md 的 `### architecture.md` 摘要表包含 Vision 摘要行，条目数与分类概览表一致（11 条） | ✅ | grep 确认第 43 行含 `8→9 Agent 体系扩展：Vision 视觉官` |
-| 3 个 vision 文件 permission 顺序均为 `bash → read → glob → grep` | ✅ | Select-String 确认 3 文件 frontmatter 均为 bash 在前 |
-| 3 个 vision 文件「能力边界」节补充 bash 权限只读用途说明 | ✅ | zh-CN/.opencode 含中文说明，en 含英文说明 |
-| `npm run build` 退出码为 0，模板一致性校验通过 | ✅ | 构建成功，一致性校验 4/4 通过 |
-| `npm test` 全部通过，无回归 | ✅ | 20 文件 / 298 测试全部通过 |
-| 变更已通过 `git commit` 纳入版本管理 | ✅ | 见提交记录 |
+| 命令段删除；import 仅移除未用符号 | ✅ | normalizeAgentName 保留 |
+| list/accept/view 组/help.view.note 保留可用 | ✅ | 用例覆盖 |
+| 7 键×2 成对删除；lint i18n 0 且退出码 0 | ✅ | 712 键 |
+| docs/manual/README 清理 | ✅ | 精确零残留 |
+| CHANGELOG Removed + 迁移指引 | ✅ | 见 CHANGELOG [1.1.2] |
+| 测试删除/重写；flow review add 等价覆盖 | ✅ | flow.test 既有用例 |
+| build + test 全绿 | ✅ | view 5 / cli 3 / flow 56 passed |
+| 测试 mkdtemp；config.yaml 零 diff | ✅ | auto/enabled/true |
+| 未改真实 flow.json（除 CLI 推进）/pipeline.yaml；无新增依赖 | ✅ | — |
 
 ## 产出文件
-
-- `.openfeel/kb/index.md`（REV-001 修复）
-- `src/core/templates-data/agents/zh-CN/vision.md`（REV-002/003 修复）
-- `src/core/templates-data/agents/en/vision.md`（REV-002/003 修复）
-- `.opencode/agents/vision.md`（REV-002/003 修复）
-- `src/core/template-loader.ts`（构建自动重新注入，超范围但属预期产物）
-- `.openfeel/plan/v4.6/ops/op-009.md`（方案文件，含修正记录回写）
+`src/commands/view.ts`、`src/commands/flow.ts`、`src/core/view/entry.ts`、`src/core/i18n-data/{zh-CN,en}.ts`、`test/commands/view.test.ts`、`test/cli/index.test.ts`、`docs/commands.md`、`.openfeel/manual/cli/commands.md`、`.openfeel/manual/index.md`、`README.zh-CN.md`、`README.en.md`、`CHANGELOG.md`、`src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`（+ build 产物 `template-loader.ts`/`update.ts`/`.opencode/**`）
 
 ## 前置校验结果
-
-- 方案完整性：通过（op-009.md 含目标 / 实施步骤 / 产出文件 / 自测清单 / 阶段 / 最多重试 6 项必填字段）
-- Phase 合法性：通过（`pipeline.current.stage` = v4.6-stage-01，`stages.v4.6-stage-01.phase` = `exec_running`，合法枚举）
-- 流转合法性：通过（CLI 方式：`openfeel flow health --quick` 正常退出，全绿）
+- 方案完整性：通过
+- Phase 合法性：通过
+- 流转合法性：通过
 
 ## 偏差记录
-
-- 无跳步违规。
-- 超范围说明：`src/core/template-loader.ts` 被构建自动更新（vision 模板内容变化后的重新注入），属 `npm run build` 预期行为，已在方案修正记录表中标记。
+- **范围扩展（必要）**：`flow.ts` 复用了 `view.add.errorInvalidPriorityTmpl`（2 处），删键会破坏 `flow review add|update` → 迁移为 `flow.review.errorInvalidPriorityTmpl`（新增 1 键）。
+- **验收口径校正**：`rg "view.add"`/`rg "view add"` 与 `flow.review.add*`/`flow review add` 子串冲突，改用 `(?<!re)` 精确口径（零命中）。
+- 附加清理 `cli-usage` skill 模板中的 `view add`（方案 §八 未列，但属 src/ 残留核验所需）+ build 重生成。

@@ -41,7 +41,7 @@ const CURRENT_TEMPLATE_EN = `# Current Progress
 const DECISIONS_TEMPLATE_ZH = `# 决策记录（ADR）
 
 > 长期技术/架构决策（技术选型、架构方向、跨会话有效的设计取舍）以 ADR 轻量格式记录于此。
-> 会话临时决策（流程调整、单次取舍）记录在 .openfeel/users/{username}/dev_last.md 的「决策历史」节，不写入本文件。
+> 会话临时决策（流程调整、单次取舍）记录在 .openfeel/users/{username}/dev_last/decisions.md（主题文件「决策记录」），不写入本文件。
 > 写入时机：Feel 做出长期技术/架构决策时，同步追加一条 ADR 记录。
 
 ## ADR 模板
@@ -57,7 +57,7 @@ const DECISIONS_TEMPLATE_ZH = `# 决策记录（ADR）
 const DECISIONS_TEMPLATE_EN = `# Decision Log (ADR)
 
 > Long-term technical/architecture decisions (technology selection, architecture direction, cross-session design trade-offs) are recorded here in lightweight ADR format.
-> Session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded in the "Decision History" section of .openfeel/users/{username}/dev_last.md, not in this file.
+> Session-scoped temporary decisions (process adjustments, one-off trade-offs) are recorded in .openfeel/users/{username}/dev_last/decisions.md (topic file "Decision Log"), not in this file.
 > Write timing: When Feel makes a long-term technical/architecture decision, append an ADR entry synchronously.
 
 ## ADR Template

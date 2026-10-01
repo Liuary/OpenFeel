@@ -28,8 +28,12 @@ const WORKSPACE_DIRS = [
   'update_conflicts',  // 新增：update 冲突文件目录
 ];
 
-/** dev/ 下的子目录清单 */
-const DEV_SUB_DIRS = ['note'];
+/**
+ * dev/ 下的子目录清单
+ * - `note`：团队共享开发笔记
+ * - `current_archive`：`current.md` 轮换归档目录（**公共域**，纳入版本管理；承载被轮换出的旧记录）
+ */
+const DEV_SUB_DIRS = ['note', 'current_archive'];
 
 /**
  * 创建 .openfeel/ 完整目录结构

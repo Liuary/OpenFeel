@@ -1,42 +1,49 @@
 # 自测报告 — op-003
 
-- **执行时间**：2026-10-01 09:20
+- **执行时间**：2026-10-01 10:48
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1
+- **重试次数**：第 1 次
 
 ## 执行摘要
-B2 `flow health --fix`（仅回写「状态」字段）+ L7 文件孤儿报告完善全部落地，自测通过。
+D5（3 skill 同步，含 sync-status A6 改写）+ D6（DEV_SUB_DIRS 增 current_archive）全部完成；自测通过，四门禁全绿。
 
 ## 实施步骤完成情况
-- [x] B2-1 `reconcileStatusMd({dryRun})` + `StatusReconcileItem`（core；跳过 draft；字段缺失 skipped-not-found；定向替换 + 原子写 + 加锁；审计日志 `status_reconcile`）
-- [x] B2-2 `flow health --fix` / `--dry-run`（可组合；写盘失败 exit 1；与 `--json` 合并 `reconciled` 字段）
-- [x] B2-3 差异预览 + 「其余字段字节不变」断言
-- [x] L7-1 `repair` 文件孤儿只读统计（条数 + 前 5 条 + 说明）+ health warn 文案补说明；复用 `findOrphanOps`；无清理行为
+- [x] D5-1：workspace skill 公共目录增 `current_archive/`；私域目录增 `dev_last/`；`dev_last.md` 标注为索引（同名目录存英文名主题文件）
+- [x] D5-2：recover skill 改读「索引 + 按需主题文件 + 旧格式惰性迁移」，补 A9 只读说明
+- [x] D5-3：sync-status skill 按 A6 改写（改读各用户 dev_last 索引主题 + flow.json 阶段状态聚合；`@{username}` 零残留；skill 保留，17 不变）
+- [x] D5-4：根 AGENTS.md 未改（A7 一致）
+- [x] D6-1：`DEV_SUB_DIRS = ['note', 'current_archive']`（含职责注释）；init 自动创建
+- [x] D6-2：未新增用户私域 `dev_last/` 源码常量（随用随建）
+- [x] D6-3：`.gitignore` 未改；双向 `git check-ignore` 实证
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 仅「状态」字段（其余字段字节不变） | ✅ | 用例断言仅 1 行变化 |
-| dry-run 零写盘（hash 断言）；--fix 幂等 | ✅ | 用例覆盖 applied=0 |
-| 执行模式/自动推进/当前任务/状态记录表未触碰 | ✅ | 定向替换仅该字段行 |
-| draft 阶段跳过对账 | ✅ | 代码显式跳过 |
-| L7 报告完善且无清理；条数与 health 一致 | ✅ | health=repair=62；用例断言目录不变 |
-| i18n 同键同序；lint i18n problems=0 退出码 0 | ✅ | 665 键一致 |
-| build + test 全绿 | ✅ | flow.test 45 passed |
-| 测试隔离；config.yaml 三值零 diff | ✅ | auto/enabled/true |
-| 未改真实 flow.json/pipeline.yaml/docs/manual；无新增依赖 | ✅ | — |
+| 验收 5：临时 init 创建 `dev/current_archive/` | ✅ | Test-Path True |
+| 验收 6：二次 init 幂等 | ✅ | 无新增 created（仅 updated） |
+| 验收 7：workspace skill 含 current_archive | ✅ | 1 |
+| 验收 8：workspace/recover 含 `dev_last/` | ✅ | 2 / 1 |
+| 验收 9：sync-status `@{username}` 零命中 | ✅ | |
+| 验收 10：`rg dev_last src/core -g *.ts` 零命中 | ⚠️ | **见偏差 2**（生成文件天然含模板文案；结构意图达成） |
+| 验收 11：current_archive 非忽略 | ✅ | exit=1 无输出 |
+| 验收 12：users/dev_last 被忽略 | ✅ | exit=0 命中 |
+| 验收 13：根 AGENTS.md 零命中 | ✅ | |
+| build / test / lint i18n / lint kb | ✅ | 59/942、724 键 exit0、0 过期 |
+| config.yaml 零 diff | ✅ | |
 
 ## 产出文件
-- `src/core/flow-manager.ts`
-- `src/commands/flow.ts`
-- `src/core/i18n-data/zh-CN.ts`
-- `src/core/i18n-data/en.ts`
-- `test/commands/flow.test.ts`
+- `src/core/templates-data/opencode/skills/openfeel-workspace/SKILL.md`
+- `src/core/templates-data/opencode/skills/openfeel-recover/SKILL.md`
+- `src/core/templates-data/opencode/skills/openfeel-sync-status/SKILL.md`
+- `src/core/workspace/structure.ts`
+- `src/core/templates.ts`（见偏差 1）
+- `src/core/update.ts` / `src/core/template-loader.ts`（build 生成/注入段）
+- `.opencode/skills/**`（build 自举）
 
 ## 前置校验结果
-- 方案完整性：通过
-- Phase 合法性：通过
-- 流转合法性：通过
+- 均通过（同 op-001）
 
 ## 偏差记录
-- 方案 i18n 表列 9 键，实际新增 10 键：额外补 `help.flow.health.dryRun`。理由：`--dry-run` 为新增选项，help i18n 机制（`applyHelpI18n`）按 `help.<path>.<opt>` 查键，缺失会触发 `[i18n] Missing key` 告警；既有 `flow.stage.remove.dryRun` 即遵循此约定。属机制必需的最小扩展。
+1. **超范围修正（一致性必需）**：`src/core/templates.ts` 的 `DECISIONS_TEMPLATE_ZH/EN` 原指向已废弃的 `dev_last.md「决策历史」节`，与本阶段新 feel.md（会话决策写入 `dev_last/decisions.md`）**内部矛盾**。依 plan §一 范围约束「允许改 `src/core/templates.ts` 的 init 文案模板」予以修正为 `dev_last/decisions.md`（主题文件「决策记录」）。属格式重构直接后果，最小改动（2 行）。
+2. **验收 10 口径修正**：`rg "dev_last" src/core/ --glob '*.ts'` 在基线即非零（`template-loader.ts`/`update.ts` 为**build 生成段**，必然含模板文案；`templates.ts` 亦为允许改的 init 文案）。该验收预期不可达 → 实际意图（**源码不含 dev_last 目录常量**）已由结构与行为验收 5/6 覆盖；`structure.ts` 无 dev_last 常量。
+3. `templates.test.ts:19-20` 实为「本仓自举」断言（非计划所述「程序自检」）；5 个受检 skill 全含 `本仓自举`，sync-status 不在受检列表 → 无红。

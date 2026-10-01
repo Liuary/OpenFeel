@@ -972,8 +972,10 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 ## 执行步骤
 
 1. 运行 \`openfeel flow recover\` 获取全局状态、流水线阶段、当前操作、阻塞原因与待处理任务
-2. 读取 \`.openfeel/users/{username}/dev_last.md\` 恢复上次操作状态与待续事项
+2. 读取**索引** \`.openfeel/users/{username}/dev_last.md\`（「用户偏好」「主题索引」「公共交接区」）→ **按需**再读主题文件（**文件名英文，如 \`decisions.md\`/\`pending.md\`**）恢复详情；**旧格式**（无 \`## 主题索引\` 节）→ 触发惰性迁移（按英文命名映射拆分生成 \`dev_last/\` + 索引，原文保留）
 3. 将两者合并为当前会话起点
+
+> **加锁提示（A9）**：恢复流程为**只读**，无需加锁；仅**会话末尾写入**走 \`withFileLock\` 临界区（见 agents-md「并发写加锁协议」）。
 
 ## 输出
 
@@ -1126,7 +1128,7 @@ description: 语义检索 .openfeel/kb/ 项目知识库。当精确匹配无结�
 `,
   'openfeel-sync-status': `---
 name: openfeel-sync-status
-description: 聚合所有成员的任务进度视图，供任意 Agent 快速了解项目整体协作状态。
+description: 聚合所有成员的任务进度视图（各用户 dev_last 索引主题 + flow.json 阶段状态），供任意 Agent 快速了解项目整体协作状态。
 ---
 
 # Skill: openfeel-sync-status
@@ -1135,63 +1137,57 @@ description: 聚合所有成员的任务进度视图，供任意 Agent 快速了
 
 ## 输入
 
-无（自动从 \`.openfeel/dev/current.md\` 提取）
+无（**自动**：各用户 \`.openfeel/users/*/dev_last.md\` 索引「主题索引」+ \`flow.json\` 阶段状态 \`stages[].phase/status\`）
 
 ## 执行步骤
 
-### 1. 读取进度文件
+### 1. 读取进度来源
 
-读取 \`.openfeel/dev/current.md\`，提取所有 \`@{username}\` 行。
+读取 \`.openfeel/users/*/dev_last.md\` 的「主题索引」摘要 + \`flow.json\` 的 active stages；**按用户聚合**展示。
 
-### 2. 解析任务条目
+### 2. 解析条目
 
-对每行提取：
-- **成员**：\`@{username}\` 后的用户名
-- **模块**：\`[模块名]\` 或 \`[-]\`
-- **状态**：\`进行中\` / \`阻塞\` / \`已完成\`
-- **描述**：状态后的任务描述文本
-- **锁定**：若有 \`🔒\` 标记，列出锁定的文件
+对每个用户提取：
+- **成员**：用户目录名（\`.openfeel/users/{username}/\`）
+- **主题**：\`dev_last.md\`「主题索引」中的显示主题名（附英文文件名 \`dev_last/{english-name}.md\`）
+- **摘要**：各主题下 ≤5 条核心摘要（≤100 字）
+- **阶段**：\`flow.json\` 中与该用户相关的阶段 \`phase\` / \`status\`
 
 ### 3. 查漏补缺
 
-- 对比 \`.openfeel/users/\` 下的所有用户目录，检查是否有成员在 \`current.md\` 中无记录
+- 对比 **\`flow.json\` active stages** 与各用户 \`dev_last\` 索引覆盖的 stage，检查是否存在**无任何用户索引覆盖的活跃阶段**
 - 若有，标记为「未同步」
 
 ### 4. 格式化输出
 
-按状态分组输出（进行中 → 阻塞 → 已完成 → 未同步），格式：
+按阶段/用户分组输出，格式：
 
 \`\`\`
 📊 项目协作进度
 
-🟢 进行中（N 人）
-  @alice  [auth] 登录模块重构
-    🔒 src/auth/login.py
-  @bob    [db]   数据库迁移脚本编写
-    🔒 migrations/v2.sql
+🟢 {stage-id} [{phase}]
+  {username}
+    - {主题显示名}（\`dev_last/{english-name}.md\`）：{摘要（≤100 字）}
 
-🟡 阻塞（M 人）
-  @charlie [api] 等待第三方 OAuth 审批
+🟡 阻塞
+  {username} — {阻塞原因（若 dev_last 索引标注）}
 
-🔵 已完成（K 人）
-  @dave [config] 环境变量模板补充
-
-⚪ 未同步（L 人）
-  @eve — 尚未在 current.md 中声明任务
+⚪ 未同步
+  {username} — 尚无主题索引条目
+  {stage-id} — 无用户索引覆盖
 \`\`\`
 
 ### 5. 偏离告警
 
-若发现同一模块有 2 人同时标记为「进行中」且无 🔒 区分，输出告警：
+若同一 stage 在 \`flow.json\` 标记为活跃，但**所有用户索引均未覆盖**，输出告警：
 
 \`\`\`
-⚠️ 模块 [module_name] 多人同时活跃，请确认无冲突
+⚠️ 阶段 {stage_id} 处于活跃状态但无用户索引覆盖，请确认存在负责成员
 \`\`\`
 
 ## 输出
 
 格式化后的 Markdown 进度摘要，不含文件修改。
-
 `,
   'openfeel-tool-usage': `---
 name: openfeel-tool-usage
@@ -1391,16 +1387,16 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 读 \`.openfeel/.info.json\` 的 \`user\` 字段；缺失则 \`git config user.name\`。
 
 ### 2. 检查公共域目录（缺失则 mkdir -p）
-\`.openfeel/dev/note/\`、\`.openfeel/log/\`、\`.openfeel/code_review/\`、\`.openfeel/bugs/\`、\`.openfeel/plan/\`、\`.openfeel/kb/\`、\`.openfeel/tmp/\`
+\`.openfeel/dev/note/\`、\`.openfeel/dev/current_archive/\`、\`.openfeel/log/\`、\`.openfeel/code_review/\`、\`.openfeel/bugs/\`、\`.openfeel/plan/\`、\`.openfeel/kb/\`、\`.openfeel/tmp/\`
 
 ### 3. 检查公共域文件（缺失则创建空文件）
 \`.openfeel/dev/dev_core.md\`、\`.openfeel/dev/current.md\`、\`.openfeel/dev/decisions.md\`、\`.openfeel/kb/index.md\`
 
 ### 4. 检查私域目录（基于 {username}）
-\`.openfeel/users/{username}/log/\`、\`note/\`、\`code_review/\`、\`bugs/\`、\`tmp/\`
+\`.openfeel/users/{username}/log/\`、\`note/\`、\`code_review/\`、\`bugs/\`、\`tmp/\`、\`dev_last/\`（主题记录目录；**主题文件名英文**，如 \`pending.md\`/\`decisions.md\`）
 
 ### 5. 检查私域文件
-\`.openfeel/users/{username}/dev_last.md\`
+\`.openfeel/users/{username}/dev_last.md\`（**索引**；同名目录 \`dev_last/\` 存主题文件，**文件名英文**）
 
 ### 6. 增量更新复核
 检查 \`~/.openfeel/update_infos.md\`，若存在未修复条目（追加/异常），提醒用户重启会话或委托 Feel 处理；本 Agent 不自行修改该文件。

@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T01:34:29.048Z",
-    "revision": 393
+    "updated": "2026-10-01T01:36:22.879Z",
+    "revision": 394
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-52",
-      "op": "op-008"
+      "op": "op-009"
     },
     "retry": 0
   },
@@ -1949,9 +1949,9 @@
         },
         "op-008": {
           "title": "L8 kb-dedup CRLF 修复",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -9555,6 +9555,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-52.op-002",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-01T01:36:22.852Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-52.op-008",
         "attempts": 1
       }
     }

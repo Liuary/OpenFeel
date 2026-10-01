@@ -50,7 +50,9 @@ function parseKbFile(filePath: string): KbEntry[] {
     return [];
   }
 
-  const content = readFileSync(filePath, 'utf-8');
+  // 归一化行结束符（CRLF/CR → LF），避免行尾 \r 致行头正则 `$` 不匹配（L8 根因）
+  // 量化影响（修复前 → 修复后，本仓）：patterns.md 2 → 105 条；troubleshooting.md 0 → 31 条
+  const content = readFileSync(filePath, 'utf-8').replace(/\r\n?/g, '\n');
   const lines = content.split('\n');
   const entries: KbEntry[] = [];
 

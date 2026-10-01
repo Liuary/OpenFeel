@@ -16,6 +16,7 @@ import { Command, CommanderError } from 'commander';
 import { registerPlanCommand } from '../../src/commands/plan.js';
 import { initProject } from '../../src/core/init.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
+import { publishScheme } from '../../src/core/plan/scheme.js';
 import { existsSync, readFileSync, mkdtempSync, rmSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -459,6 +460,22 @@ describe('plan 命令', () => {
 
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('不是 draft');
+  });
+
+  it('op-001/stage-54 E1: publishScheme 对「行内引用」published:true；对「独占行」empty-template', async () => {
+    // 行内引用标记（非独占行）→ 不再误拒（cli/BUG-005 修复）
+    await safeParse(['plan', 'scheme', 'create', 'stage-26', 'T', '--draft']);
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-26', 'ops');
+    writeFileSync(join(opsDir, 'op-001.md'), '# op-001：T\n\n正文引用：仍含 `- [ ] 待补充`；\n', 'utf-8');
+    expect(publishScheme(tmpDir, 'stage-26', 'op-001')).toEqual({ published: true });
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-26'].ops['op-001'].state).toBe('pending');
+
+    // 独占行 → empty-template 拒绝
+    await safeParse(['plan', 'scheme', 'create', 'stage-27', 'T', '--draft']);
+    const opsDir2 = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-27', 'ops');
+    writeFileSync(join(opsDir2, 'op-001.md'), '# op-001：T\n\n- [ ] 待补充\n', 'utf-8');
+    expect(publishScheme(tmpDir, 'stage-27', 'op-001')).toEqual({ published: false, reason: 'empty-template' });
   });
 
   it('op-005/B4: scheme list 对 draft op 追加 [draft] 标记', async () => {

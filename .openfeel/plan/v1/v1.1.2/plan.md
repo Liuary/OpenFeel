@@ -172,6 +172,9 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | [stage-50](#stage-50全量审查-non-blocking-集中清理第二批) | 全量审查 non-blocking 集中清理（第二批） | T1~T57（6 批次 A~F）一致性/门禁/死代码/i18n/测试/模板口径集中收敛 | P1 | hard: stage-49 | ~28 源码 + ~6 测试 + ~10 模板/文档 |
 | [stage-51](#stage-51流水线状态维护与-cli-可维护性反馈二) | 流水线状态维护与 CLI 可维护性（反馈二） | N1~N11（3 批次 H1~H3）纠正/清理侧 CLI 补齐：孤儿 op 回收/结构字段 CLI/注册语义/`current.op` 生命周期/stage set 幂等与字段/op 文件名/**新增 `openfeel knowledge dedup` 子命令**/日志布局（仅未来）/git 降噪 | P1 | hard: stage-50 | ~22~27 文件 + 900~1300 行 |
 | [stage-52](#stage-52反馈-09可编排性可观测性--遗留项清账) | 反馈 09（可编排性/可观测性）+ 遗留项清账 + 约束体系精简 | F1~F8 逐条实测（3 已解决仅登记）+ B1~B9（`--json`/`health --fix`/`ops list`/`draft`/多步推进/`scheme rename`/编码）+ L1（**本阶段移除 `view add`**）·L2·L5·L7·L8 + **C1~C4 约束精简/阈值定性化/计数漂移** | P1 | hard: stage-51 | ~22~27 文件 + 1050~1600 行 |
+| **stage-53**（补登记） | current.md / dev_last.md 职能与格式重构 | 两条设计目的 + 三层分层写入全局约束；`current.md` 团队文件新格式（≤5 条 + `current_archive/`）；`dev_last.md` 索引 + 同名主题目录（R1~R6） | P1 | hard: stage-52 | D1~D10 / 5 op |
+| [stage-54](#stage-54收尾遗留缺陷清理发布前清账) | 收尾：遗留缺陷清理（发布前清账） | E1~E12 实测（需修 3：`cli/BUG-005` 整行锚定 / `cli/BUG-006` en 文案 i18n / `cli/BUG-003` help 补 `transitionsDiff`；已解决 5 仅登记；登记类 4）+ `bugs/index.md` 统计修正 + **清账层 42 条 pending REV** 核实清单（REV-001 修正后分层统计） | P0 | hard: stage-53 | 3 op |
+| [stage-55](#stage-55清掉项目级约束与-agent发布前收口) | 清掉项目级约束与 Agent（发布前收口） | 删根 `AGENTS.md`/`opencode.jsonc`/`.opencode/{agents,skills,ADAPTER.md}` + 删 `build.js` 自举步骤（防复活）；「模块手册」迁入全局模板（双语）；**先刷新全局（`setup`）后删**；supersede N1；`docs/manual/kb` 引用同步；新会话验证 | P0 | hard: stage-54 | 4 op |
 
 ### 依赖图
 
@@ -208,11 +211,23 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
                                                                                       hard
                                                                                         ▼
                                                           stage-52（反馈 09 可编排性/可观测性 + 遗留清账 · 收尾）
+                                                                                         │
+                                                                                       hard
+                                                                                         ▼
+                                                          stage-53（current/dev_last 职能与格式重构）
+                                                                                         │
+                                                                                       hard
+                                                                                         ▼
+                                                          stage-54（收尾：遗留缺陷清理 · 发布前清账）
+                                                                                         │
+                                                                                       hard
+                                                                                         ▼
+                                                          stage-55（清项目级约束与 Agent · 发布前收口）──→  `npm publish`
 ```
 
 ### 推荐执行顺序
 
-**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51 → stage-52**。
+**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51 → stage-52 → stage-53 → stage-54 → stage-55**（→ `npm publish`，由用户决定）。
 
 **理由**：
 - stage-41 与 stage-42 均修改 `src/core/flow-manager.ts` 与 `src/i18n-data/{zh-CN,en}.ts`，顺序执行避免同文件冲突。
@@ -701,6 +716,117 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 
 ---
 
+## stage-53：current.md / dev_last.md 职能与格式重构（补登记，已归档）
+
+> 详计划见 `plan/v1/stage-53/plan.md`（D1~D10 / 5 op）。要点：两条设计目的（保存核心信息便于恢复 / 避免无关信息污染上下文）+ 索引层/主题层/详情层三层分层写入全局约束（`templates-data/agents-md/{zh-CN,en}.md`）；`current.md` 改**团队文件**格式（仅个人提交时更新 / 整体信息 / 无 agent 细节 / 无 @成员段 / ≤5 条 + 旧记录归档 `current_archive/`）；`dev_last.md` 改**索引 + 同名主题目录**（R1~R6，含 R4 主题超限就地收敛、R6 加锁）；存量迁移零丢失；**59 文件 / 949 用例全绿**。
+
+---
+
+## stage-54：收尾（遗留缺陷清理 · 发布前清账）
+
+> **定位**：用户指令「**先收尾**，然后清掉项目级别的约束和 Agent，之后发布」→ 本阶段清掉**已登记的遗留缺陷**，为 stage-55（清项目级约束与 Agent）与 `npm publish` 做准备。详计划见 `plan/v1/stage-54/plan.md`（E1~E12 / 3 op）。
+
+### 实测验证结论（E1~E12）
+
+| 结论 | 条目 |
+|------|------|
+| **仍存在（修）** | **E1** `cli/BUG-005`（medium）空模板检测**纯子串**误报 → 改**整行锚定**（`flow-manager.ts:3754-3756`；`scheme.ts:455` 复用 `isTemplateEmpty`）；**E2** `cli/BUG-006`（low）en 模式 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`）→ 2 个 i18n 键 |
+| **部分存在（修）** | **E3** `cli/BUG-003`（low）`flow phases --json` 实际 5 键（含 `transitionsDiff`）而 i18n help 文案仅 4 键 → 补文案 + 断言 |
+| **已解决（仅登记）** | **E4** `templates/BUG-003`（部署型 skill 双口径已落地，各 1 处顶部声明）｜**E5** `templates/BUG-004`（已 closed；**另发现 `bugs/index.md` 统计陈旧**）｜**E7b** gb2312 管道捕获已入 manual｜**E7c** stage-52 `status.md` 漂移已收口（health 31/31）｜**E9** `kb-dedup` CRLF 已修 + 另 3 处解析路径实测安全 |
+| **登记类（不修/待裁定）** | **E6** 全仓 REV pending **80** 条（v1.1.2 内 17 / 历史 63，后者仅登记）｜**E8** 登记不修 8 项（含 `lint --warn-only`、coverage 阈值、历史日志、文件孤儿治理入口、`setStatusField` 下沉合并、N-1/N-2、公开 API 归一化）｜**E11** stage-49 op-001~009 状态陈旧（待裁定） |
+| **门禁** | **E12** `lint i18n` 724 → **726**（E2 新增 2 键） |
+
+### 任务清单（op 级）
+
+| op | 主题 | 覆盖 | 关键产出 |
+|----|------|------|----------|
+| op-001 | 空模板检测收紧 | E1 | `flow-manager.ts:3751-3772`（整行锚定 + 注释）、`scheme.ts:455`（复用单一来源）、回归断言 4 条 |
+| op-002 | en 泄漏收敛与文案一致 | E2 / E3 / E12 | `flow.ts:742-743`（2 新 i18n 键）、`i18n-data/{zh-CN,en}.ts`（+2 键、help 补 `transitionsDiff`）、`test/core/i18n.test.ts` 断言 |
+| op-003 | 登记收口 + 工作区数据一致性 + 全量门禁 | E4~E11 | `bugs/index.md` 统计修正（open 3 / closed 13）、`templates/BUG-003` 与 v1.1.2 REV-17 条**核实清单**（提请 tester 关闭）、登记记录、全量门禁复跑 |
+
+**顺序**：op-001 → op-002 → op-003。
+
+### 完成标准
+
+1. E1/E2/E3 修复落地且新增断言全绿；**`flow health` 空模板告警归零**。
+2. 门禁：`npm run build` 幂等 ｜ `npm test` ≥ **59 文件 / 979 用例** ｜ `tsc` 0 ｜ `lint i18n` **726 键** ｜ `lint kb` 0 过期（265 引用）。
+3. 已解决 5 项 + 登记类 4 项均有可核实证据记录；`bugs/index.md` 统计与 frontmatter 实测一致。
+4. 零污染（真实 `~/.openfeel/`、`~/.config/opencode/`、`~/.config/openfeel/`、仓库 `.openfeel/config.yaml` 前后 hash/mtime 一致）；未改 `flow.json`。
+
+### 风险
+
+| # | 风险 | 缓解 |
+|---|------|------|
+| R-1 | E1 收紧致**漏检**真实空模板 | 模板骨架实测为列 0 独占行；补「独占行 → empty（含 CRLF）」断言 |
+| R-2 | 修复后 health 仍有其它误报 | 修复后必须复跑 `flow health` 并确认空模板节归零 |
+| R-5 | E6 误关闭/误判 pending REV | 仅产出核实清单，状态变更由 tester 执行；历史 63 条不清理 |
+
+### 裁定
+
+A1（E1 整行锚定，代码围栏内独占行记为已知边界）/ A2（E3 只改 i18n 文案不动 JSON）/ A3（E2 键名 `flow.advance.blockingRevRefused`·`blockingRevHint`）/ A4（其它 `console.log` 中文本阶段不改）/ A5（历史 63 条 pending 仅登记）/ A7（`bugs/index.md` 最小 diff）——**planner 建议 + 待 Feel/用户确认**；**A6**（E11 stage-49 op 状态是否修正）= 待 Feel/用户裁定；**A8**（本阶段不含 `npm publish`）= 已由用户指令确定。
+
+---
+
+## stage-55：清掉项目级约束与 Agent（发布前收口）
+
+> **定位**：用户指令「先收尾 → **清掉项目级别的约束和 Agent** → 发布」→ 本阶段删除仓库自身项目级资产，**先刷新全局再删**；`npm publish` 在其后。详计划见 `plan/v1/stage-55/plan.md`（F1~F7 / 4 op）。
+
+### 用户裁定（2026-10-01，不可推翻）
+
+- **删除范围**：根 `AGENTS.md` + `.opencode/agents/**` + `.opencode/skills/**` + `.opencode/ADAPTER.md` + 根 `opencode.jsonc` + **`build.js` 自举步骤（防复活）**
+- **「模块手册」节** → 迁入全局约束模板 `templates-data/agents-md/{zh-CN,en}.md`
+- **先刷新全局再删**；**删除后开新会话验证** agent/skill/约束加载
+- `npm publish` **不在本阶段**
+
+### 关键事实（实测）
+
+| 项 | 实测 |
+|----|------|
+| 根 `AGENTS.md` | 162 行；`139-141` 模块手册为**全局模板所无**（独有）；`125-137` 版本管理（项目级）；**非 build 产物** |
+| `.opencode` 受管 | agents 9 + skills 17 + ADAPTER.md = **27**（`git ls-files`），**均为 `build.js` 步骤 8 产物**（`build.js:1056-1099` / 调用 `:1121-1122`）→ **不改 build 会复活** |
+| 唯一依赖测试 | `test/core/opencode-instance.test.ts`（7 it） |
+| 全局现状 | `AGENTS.md` 442 行（缺模块手册）｜skills **16**（缺 `openfeel-cli-usage`）｜agents 9 |
+| 全局 jsonc | 已有 `default_agent` + 2 处模型覆盖；**v1.1.1 起全局 AGENTS.md 自动加载**（不设 `instructions`） |
+| 冲突 | `kb/architecture.md:398` N1「仓库自身 `.opencode/` 不清理」→ **supersede** |
+| 包内 | 根 `AGENTS.md`/`opencode.jsonc`/`.opencode/**` **不在** `package.json files`（无 `npm pack` 影响） |
+
+### 任务清单（op 级）
+
+| op | 主题 | 覆盖 | 关键产出 |
+|----|------|------|----------|
+| op-001 | 模板迁移 | F2 | `templates-data/agents-md/{zh-CN,en}.md` 新增「模块手册 / Module Manuals」节 + build 传播 |
+| op-002 | **刷新全局部署** | F1 | 全局备份 + `node bin/openfeel.js setup` + 判据 5 条（skills 17 / 含模块手册 / agents 9 / jsonc / 备份存在） |
+| op-003 | 删除 + 防复活 + 测试翻转 | F3 / F4 | 删 5 项资产；删 `build.js` 步骤 8（函数/调用/注释/`insertGeneratedMark`）；删 `opencode-instance.test.ts` 并**迁移 3 组断言**；`.gitattributes` 去 `.opencode/**` 行 |
+| op-004 | 引用同步 + supersede + 验证 | F5 / F6 / F7 | `docs/GETTING_STARTED.md:127`、`manual/core/build.md`、`kb/{index,architecture}`（追加式）、`dev/decisions.md` ADR；静态验证 + 五门禁 + **新会话验证指引** |
+
+**顺序**：`op-001 → op-002 → op-003 → op-004`（**硬约束：刷新全局（op-002）严格早于删除（op-003）**）。
+
+### 完成标准
+
+1. 全局已最新（skills **17**、`AGENTS.md` 含「模块手册」、agents 9、备份快照存在）。
+2. 5 项项目级资产**已删除**；`.opencode/` 4 项运行时目录**保留**。
+3. `build.js` 无 `regenerateOpencodeInstance`/`insertGeneratedMark`；**`npm run build` 后受管文件不复活**。
+4. `docs/` 无死链；`manual/core/build.md` 步骤 8 标注已移除；`lint kb` 0 过期；supersede 可检索。
+5. 门禁：`build` 幂等 ｜ `npm test` 全绿（**按实测记录文件/用例数**，删除 7 个 `it` 后不得沿用 979 快照）｜ `tsc` 0 ｜ `lint i18n` **726 键** ｜ `lint kb` 0 过期。
+6. **新会话验证**指引已交付（agent / skill / 约束 / `default_agent` 四项确认）。
+
+### 风险
+
+| # | 风险 | 缓解 |
+|---|------|------|
+| R-1 | 全局刷新失败/降级 | 备份先行 + `setup` 写前备份 + **门 B 未过不进 F3** |
+| R-2 | 误删不可回退 | 全部受 git 跟踪 → `git checkout <sha> -- <paths>` |
+| R-3 | build 复活 | **F4 消除** + 门 D 实证 |
+| R-4 | 丢 `permission: "allow"` | agent `.md` 同键优先；F7 新会话验证 |
+| R-5 | 全局约束未自动加载 | v1.1.1 实测自动加载；F7 为权威判据 |
+| R-7 | 覆盖缺口 | 3 组断言迁移留痕 |
+
+### 裁定
+
+A1（F2 先于 F1，刷新仍严格早于删除）/ A2（版本管理节不迁移）/ A3（用 `setup` 而非 `update`）/ A4（删死链行）/ A5（删测试 + 迁移 3 组断言 + 防回归断言）/ A7（kb 历史只读不改写）→ **planner 建议 + 待 Feel/用户确认**；A6（保留 `.opencode/` 运行时 4 项）= 由用户删除范围推定；A8（不含 `npm publish`）= 已由用户指令确定。
+
+---
+
 ## 八、风险点与回滚
 
 | # | 风险 | 影响 | 缓解 |
@@ -766,6 +892,7 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 模板/文案 | 3 组 | ① `agents/{zh-CN,en}/feel.md` 的 `auto_advance` 表述（42）；② **9 agent × zh/en 的 `permission.external_directory`（44）**；③ agents-md / feel / archiver / utility / 3 个 model 系 skill 的平台表述泛化（45） |
 | 文档/手册 | ~6 | `docs/commands.md`、`manual/cli/commands.md`、`manual/core/plan-path.md`、`AGENTS.md`、`.openfeel/dev/dev_core.md`、`.openfeel/adapters/README.md`、`README{,.zh-CN,.en}.md`、`CHANGELOG.md`、`.openfeel/manual/**` |
 | i18n 键 | ~15 新增 + ~14 文案泛化 | 三个新命令 + 校验提示 + deprecated 提示（42/41）；i18n 平台表述泛化（45，zh `:438,442,573,634,636,653,654` / en `:418,421,540,601,603,620,621`） |
+| **stage-54 变更** | **3 op** | ① `src/core/flow-manager.ts:3751-3772`（`isTemplateEmpty` 改**整行锚定** + 注释）、`src/core/plan/scheme.ts:455`（复用单一来源）；② `src/commands/flow.ts:742-743`（改 i18n）+ `i18n-data/{zh-CN,en}.ts`（**+2 键 → 726**、help 文案补 `transitionsDiff`）；③ `.openfeel/users/Liuary/bugs/index.md` 统计修正（open 3 / closed 13）+ 测试断言 6 组 |
 | 测试 | ~12 文件 | path/stage/flow-manager/config/template-loader/update/setup/opencode-instance/global-paths + **NEW `backup.test.ts`**（46）+ `update-infos.test.ts`（46）+ **stage-47 翻转清单**（`init.test.ts:165/:191` 等） |
 | 版本 | **8 处必改 + 生成段 + 传播** | 见 §3.1（A5/A6=`agents-md/{zh-CN,en}.md:141`、A7=`AGENTS.md:145`、B=`template-loader.ts:2833/:3286`；A8 `package-lock` 1.0.7 漂移仍在）；`npm run build` 重生成；`openfeel setup/update` 重传播全局 AGENTS.md |
 | 阶段 48 加固/遗留 | 7 op（13 项遗留编号化清单见 stage-48 §一） | 模板纪律（reviewer/feel 双语）+ manual/kb 规范；测试隔离补齐 + CI 环境守卫；执行型口径统一 + CI 版本门禁 + `lint i18n`；i18n help 文案 + 权限措辞精化 + 5 处 REV 状态提请；profile.yaml 子 Schema passthrough + 非法 YAML 不覆盖；455 死映射清理（脚本+备份） |
@@ -808,3 +935,7 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
 | 2026-10-01 | openfeel-planner | **用户对 stage-52 A1~A4 的裁定**（不可推翻） | A1/A2/A3 与建议一致（draft 窄兼容 / --fix 仅「状态」字段 / --to 自动逐步）；**A4 改为「本阶段直接移除 iew add」**（与建议相反）→ 阶段概览与摘要节新增 **op-009（A4 移除 iew add，破坏性）**、原 op-009 顺延 **op-010**（**共 10 op**）；裁定项表改「用户已裁定 2026-10-01」，A5/A6 按建议、A7 待 B9 实测；变更汇总行同步（10 op / 20~25 文件 / A4 破坏性 + 删 7 i18n 键） |
 | 2026-10-01 | openfeel-planner | **用户裁定 C1~C4**（约束体系精简 + 硬编码阈值定性化） | 阶段概览 stage-52 行与摘要节新增 **op-011（C1~C4）**（**11 op**）；变更汇总行同步（22~27 文件 / 1050~1600 行 / C1 文案单行中英对等 / C2 B 组定性化保留 D 组 / C3 根 AGENTS.md 对齐 / C4 14→17）；完成标准补六条 rg 零残留 + build 幂等 + 部署产物由用户 setup 更新 |
 | 2026-10-01 | openfeel-planner | **REV-v1.1.2-stage-52 REV-001~003** | REV-001（blocking, medium，B5 REV 复检）→ stage-52 新增 §5.3a「论证等价（ddAutoFixReview 恒 esolved）为主 + 进入 done 前复检加固（ssertNoBlockingOpenRev）」+ 风险 R-14；REV-002（low，draft 的 ttempt）→ §5.2 第 5 条「exit 1 + 提示先 publish」+ R-15；REV-003（low，编辑残留）→ 删除孤立 A7 表行。op 数仍 **11** |
+| 2026-10-01 | openfeel-planner | **补登记 stage-53**（current.md / dev_last.md 职能与格式重构，已归档） | 阶段概览新增 stage-53 行；依赖图与执行顺序追加「52 → 53」；新增 stage-53 摘要节（两条设计目的 + 三层分层 + `current`/`dev_last` 新格式 + 迁移零丢失）；修订记录补登记 |
+| 2026-10-01 | openfeel-planner | 用户需求「v1.1.2-stage-54：收尾（遗留缺陷清理）」+ 用户指令「先收尾，然后清掉项目级别的约束和 Agent，之后发布」 | 阶段概览新增 stage-54；依赖图与执行顺序追加「53 → 54」（并注明后续 stage-55 清项目级约束与 Agent → 发布）；新增 stage-54 摘要节（E1~E12 实测：仍存在 2 / 部分存在 1 / 已解决 5 / 登记 4 / 门禁 1；3 op；裁定 A1~A8）；变更汇总补一行 |
+| 2026-10-01 | openfeel-planner | **REV-v1.1.2-stage-54 REV-001/002**（REV-001 medium **blocking**） | **REV-001**：E6 改**分层统计**（总 **267** / pending **132** / closed **112** / resolved **23**；**清账层（v1.1.2 内）42** / 历史层 88）+ 固化可复现扫描脚本（兼容 `REV-U2/U3/U4/U8` 混合编号）——原 `^## (REV-\d+):` 漏 35+ 条为根因；**事实更正**：stage-52 REV-005~008 状态行实测仍 `pending`（REV 述「已 closed」不实）；新增 **R-9**。**REV-002**：新增 **E1-补**——实测 `readOpTemplate` **短 opId HIT / 全名 null**，`health` 与 `ops list` **同源（非分叉）**；真实缺口 = `null` 语义分歧 → 裁定 **A9 登记为已知边界**（不改 `detectFillState` 契约）+ 注释 + manual + 断言④；新增 **R-10**。stage-54 仍 3 op（断言 4→5） |
+| 2026-10-01 | openfeel-planner | 用户需求「v1.1.2-stage-55：清掉项目级约束与 Agent」 | 阶段概览新增 stage-55；依赖图改「54 → 55 → `npm publish`」、执行顺序追加「54 → 55」；新增 stage-55 摘要节（用户裁定删除范围 6 项 + 关键事实表 + F1~F7 / 4 op + 完成标准 + 风险 + 裁定 A1~A8）；变更汇总补一行 |

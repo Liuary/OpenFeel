@@ -3750,22 +3750,30 @@ function readStatusFieldValue(content: string, key: string): string | null {
  */
 export const EMPTY_TEMPLATE_MARKER = '- [ ] 待补充';
 
-/** 模板是否仍含空模板标记（未填充） */
+/**
+ * 空模板标记的**整行锚定**正则（单一来源）：
+ * 行首可含缩进（[ \t]*）、`-` 与 `[ ]` 之间允许空白、行尾允许空白并容忍 CRLF；
+ * 仅当标记**独占一行**（含缩进）时判为未填充——避免正文**行内引用**该字面导致误报（cli/BUG-005，stage-54 E1）。
+ * **已知边界**：代码围栏（```）内的独占行仍判为 empty（不引入围栏解析，见 stage-54 A1）。
+ */
+const EMPTY_TEMPLATE_LINE_RE = /(?:^|\n)[ \t]*-\s*\[\s*\]\s*待补充[ \t]*(?=\r?\n|$)/;
+
+/** 模板是否仍含空模板标记（未填充；**整行锚定**，非子串） */
 export function isTemplateEmpty(content: string): boolean {
-  return content.includes(EMPTY_TEMPLATE_MARKER);
+  return EMPTY_TEMPLATE_LINE_RE.test(content);
 }
 
 /**
  * 判定 op 模板填充度（B3-1）。
- * - empty：仍含空模板标记 `- [ ] 待补充`
- * - partial：已删除该标记但存在其它未勾选 `- [ ]`
+ * - empty：仍含空模板标记 `- [ ] 待补充`（**整行锚定**，行内引用不误报）
+ * - partial：已删除该标记但存在其它未勾选 `- [ ]`（行首 `[ \t]*` 锚定，口径与 empty 统一）
  * - filled：无未完成标记
  */
 export function detectFillState(content: string): 'empty' | 'partial' | 'filled' {
   if (isTemplateEmpty(content)) {
     return 'empty';
   }
-  if (/(?:^|\n)\s*-\s*\[ \]/.test(content)) {
+  if (/(?:^|\n)[ \t]*-\s*\[\s*\]/.test(content)) {
     return 'partial';
   }
   return 'filled';

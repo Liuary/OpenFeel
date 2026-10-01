@@ -932,7 +932,10 @@ export function registerFlowCommand(program: Command): void {
         }
         const opsMap = stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops) ? stage.ops : {};
         for (const [opId, op] of Object.entries(opsMap)) {
-          // 填充度：复用 flow-manager 的单一标记判定；无文件视为 filled（无法检测）
+          // 填充度：复用 flow-manager 的单一标记判定。
+          // 已知边界（stage-54 E1-补 / A9）：content 为 null（op 文件缺失 / 命名不含前缀 / 目录不可读）时视为 filled，
+          // 与 health 的「null 跳过不报」为同向漏检（非分叉）；现行数据短名命中故不可复现，
+          // 不扩展 detectFillState 返回域与 --json 契约。
           const content = mgr.readOpTemplate(stageId, opId);
           const fill = content === null ? 'filled' : detectFillState(content);
           items.push({

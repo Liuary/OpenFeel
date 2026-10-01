@@ -3,7 +3,7 @@
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, isTemplateEmpty, detectFillState, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { t } from '../../src/core/i18n.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
@@ -3731,5 +3731,71 @@ describe('REV-009 stage 解析归一化（stage-52 op-014）', () => {
 
     const mgr = new FlowManager(tmpDir);
     expect(mgr.listCheckpoints('stage-01')).toEqual([legacy]);
+  });
+
+  // ═══════════════════════════════════════
+  // stage-54 E1：空模板检测整行锚定（cli/BUG-005）+ E1-补/A9
+  // ═══════════════════════════════════════
+
+  describe('stage-54 E1 空模板检测整行锚定', () => {
+    it('① isTemplateEmpty / detectFillState 双向（行内引用不误报；独占行/CRLF/缩进仍检出）', () => {
+      // 行内引用该字面（非独占行）→ 不再误判 empty
+      const inlineRef = '本文档说明：仍含 `- [ ] 待补充` 的模板需填充。\n';
+      expect(isTemplateEmpty(inlineRef)).toBe(false);
+      expect(detectFillState(inlineRef)).toBe('filled');
+
+      // 独占行 LF → empty
+      expect(isTemplateEmpty('- [ ] 待补充\n')).toBe(true);
+      expect(detectFillState('- [ ] 待补充\n')).toBe('empty');
+
+      // 独占行 CRLF 容错 → empty
+      expect(isTemplateEmpty('- [ ] 待补充\r\n')).toBe(true);
+      expect(detectFillState('- [ ] 待补充\r\n')).toBe('empty');
+
+      // 缩进 + 行尾空白 → empty
+      expect(isTemplateEmpty('  - [ ] 待补充  \n')).toBe(true);
+
+      // 文件末尾无换行 → empty
+      expect(isTemplateEmpty('x\n- [ ] 待补充')).toBe(true);
+
+      // partial 口径统一（行首锚定）：行内引用 `- [ ]` 不进 partial；行首未勾选项进 partial
+      expect(detectFillState('说明：存在 `- [ ]` 未勾选项；\n')).toBe('filled');
+      expect(detectFillState('  - [ ] 某任务\n')).toBe('partial');
+    });
+
+    it('③ healthCheck 对「行内引用」模板不报空模板 warn（回归 cli/BUG-005）；draft 跳过不变', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.save();
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      // 行内引用标记，非独占行 → 不应报空模板 warn
+      writeFileSync(join(opsDir, 'op-001.md'), '# op-001：t\n\n正文引用：仍含 `- [ ] 待补充`；\n', 'utf-8');
+      expect(mgr.healthCheck(false).items.find((i) => i.section === '空模板')).toBeUndefined();
+
+      // 对照：独占行 → 报 warn
+      const mgr2 = new FlowManager(tmpDir);
+      mgr2.setData(makeTestFlowData());
+      mgr2.save();
+      writeFileSync(join(opsDir, 'op-001.md'), '# op-001：t\n\n- [ ] 待补充\n', 'utf-8');
+      expect(mgr2.healthCheck(false).items.find((i) => i.section === '空模板')?.status).toBe('warn');
+    });
+
+    it('④（E1-补/A9）readOpTemplate 短 opId HIT / 全名 null，锁定 ops list 短名路径', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      writeFileSync(join(opsDir, 'op-005.md'), '# op-005：t\n\n- [ ] 待补充\n', 'utf-8');
+
+      // 短 opId（与 flow.json 的 stage.ops 键形式一致）→ HIT
+      const shortContent = mgr.readOpTemplate('stage-01', 'op-005');
+      expect(shortContent).not.toBeNull();
+      expect(detectFillState(shortContent!)).toBe('empty');
+
+      // 全 opId → null（既有语义，A9 登记为已知边界，不改契约）
+      expect(mgr.readOpTemplate('stage-01', 'stage-01.op-005')).toBeNull();
+    });
   });
 });

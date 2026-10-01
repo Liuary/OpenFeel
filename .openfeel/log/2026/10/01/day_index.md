@@ -38,3 +38,4 @@
 | [2026-10-01-Liuary-033.md](2026-10-01-Liuary-033.md) | Liuary | v1.1.2-stage-52.op-014 执行通过 |
 | [2026-10-01-Liuary-034.md](2026-10-01-Liuary-034.md) | openfeel-archiver | **stage-52 归档完成（反馈 09 可编排性/可观测性 + 遗留清账 + 约束体系精简，14 op）**——B1~B9 全落地（`--json`×6 / `health --fix` 仅「状态」字段 / `ops list` 填充度 / `draft` 两阶段 / `advance --to` 自动逐步 + 每步 REV 复检 / `scheme rename` / `NO_COLOR` / `kb-dedup` CRLF 修复〔2→105 / 0→31〕）；A4 移除 `view add`（破坏性）+ C1~C4 约束精简（14→17 Skill）；修复轮 op-012/013/014 归一化闭包 10 处收口（无第 11 处）；**59 文件 / 979 用例全绿**、`lint i18n` 724 键、`lint kb` 0 过期；三段审查零阻塞（REV-005~009 全 closed）；新登记 `cli/BUG-005`（medium）/ `cli/BUG-006`（low）；知识沉淀 8 条；**v1.1.2 十三阶段全部闭环** |
 | [2026-10-01-Liuary-035.md](2026-10-01-Liuary-035.md) | Liuary | 阶段 v1.1.2-stage-52 完成 |
+| [2026-10-01-Liuary-036.md](2026-10-01-Liuary-036.md) | Liuary | v1.1.2-stage-54.op-001 执行通过 |

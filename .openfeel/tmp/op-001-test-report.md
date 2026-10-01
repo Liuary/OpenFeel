@@ -1,50 +1,47 @@
-# 自测报告 — op-001
+# 自测报告 — op-001（v1.1.2-stage-54）
 
-- **执行时间**：2026-10-01 10:40
+- **执行时间**：2026-10-01 16:30
 - **执行 Agent**：openfeel-executor
-- **重试次数**：第 1 次
+- **重试次数**：1（首次通过）
 
 ## 执行摘要
-全部子项（D1-1/D1-2/D2-1~D2-6）完成，自测通过；build 传播成功，四门禁全绿。
+E1 空模板检测由纯子串改整行锚定（含 E1-补/A9 边界登记）完成，新增 4 断言全绿；`flow health` 空模板告警 **1 → 0**；全量门禁 59 文件 / 983 用例全绿。
 
 ## 实施步骤完成情况
-- [x] D1-1：zh-CN.md 工作区结构节插入「两条设计目的 + 三层分层表」引言段；`### 设计原则` 内加一行「分层原则」指引
-- [x] D1-2：en.md 逐段对齐（Two design goals / Layering principle）
-- [x] D2-1：zh current.md 规则块（团队文件 / 仅个人提交时更新 / 整体信息 / 无 agent 细节 / 无 @成员段 / 仅留近期 5 条 / 归档）+ 内联新模板骨架
-- [x] D2-2：新增 `> .openfeel/dev/current_archive/` 说明段
-- [x] D2-3：自动计划化口径收窄（仅跨用户整体进度才更新 current.md）
-- [x] D2-4：en 侧 D2 逐段对齐
-- [x] D2-5：CURRENT_TEMPLATE_ZH/EN 换新骨架（`# 当前进度` + 近期提交记录 + current_archive），getCurrentTemplate/CURRENT_TEMPLATE 签名不变
-- [x] D2-6：init.ts 未改（目录创建归 op-003）
+- [x] E1-① `isTemplateEmpty` 改整行锚定（`EMPTY_TEMPLATE_LINE_RE`，CRLF/缩进/尾空白容错）；注释补「整行锚定 + 围栏内独占行=已知边界」
+- [x] E1-② `detectFillState` 的 `partial` 口径统一为 `/(?:^|\n)[ \t]*-\s*\[\s*\]/`；返回域不变
+- [x] E1-③ `scheme.ts` 改调 `isTemplateEmpty`（import +），`EMPTY_TEMPLATE_MARKER` import 保留
+- [x] E1-④ `flow.ts:935-937` 注释登记 A9 边界（manual 要点归 op-003 文档同步清单）
+- [x] 验收 8：`rg "content\.includes\(EMPTY_TEMPLATE_MARKER\)" src/` **零命中**
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 验收 5：`@{username} 描述正在进行的工作` 零命中 | ✅ | src/ 无 |
-| 验收 6：「团队成员进度」零命中 | ✅ | templates.ts + agents-md 无 |
-| 验收 7：zh 含「避免无关信息污染上下文」 | ✅ | 1 |
-| 验收 8：en 含「Avoid polluting the context」 | ✅ | 1 |
-| 验收 9：current_archive/ 命中 | ✅ | zh 3 / en 3 / templates.ts 2 |
-| 验收 10：init 产物含「近期提交记录（最多 5 条，最新在上）」、不含「团队成员进度」「暂无活跃成员」 | ✅ | 临时项目实测 |
-| 验收 11：「当前工作进度」零命中 | ✅ | templates.ts |
-| 验收 12：根 AGENTS.md 零命中（A7 不改） | ✅ | 与裁定一致 |
-| build 退出码 0 | ✅ | template-loader 生成段/自举已传播 |
-| npm test | ✅ | 59 文件 / 942 用例 |
-| lint i18n | ✅ | 724 键，exit 0 |
-| lint kb | ✅ | 0 过期 |
-| 翻转清单（预期 0 强制翻转） | ✅ | init/templates/setup 断言均未翻 |
-| 测试隔离（config.yaml 零 diff） | ✅ | 三值 auto/enabled/true 前后一致 |
+| E1-① 整行锚定 + 容错 | ✅ | 独占行/CRLF/缩进/末尾无换行 → true；行内引用 → false |
+| E1-② partial 口径统一、返回域不变 | ✅ | 行内 `- [ ]` → filled；行首 `- [ ]` → partial |
+| E1-③ scheme.ts 复用单一来源 | ✅ | import `isTemplateEmpty` 新增；`EMPTY_TEMPLATE_MARKER` 保留 |
+| E1-④ A9 注释登记 | ✅ | 契约（detectFillState / --json）未改 |
+| 断言①②③④ | ✅ | ①③④ flow-manager.test（3 例）；② plan.test（1 例） |
+| 翻转清单（强制翻转 0 项） | ✅ | 既有独占行 fixture 全部仍真，无翻转 |
+| 验收 5 `flow health` 空模板行归零 | ✅ | 程序化：空模板告警条目 0（原 1） |
+| 验收 6 `ops list` 无误报 | ✅ | stage-52.op-005 由 `(empty)` → `(partial)`，无 warning |
+| 验收 7 修复前后对照 | ✅ | op-005.md：旧子串 `true`（误报）→ 新整行 `false` |
+| `npm run build` / `npm test` | ✅ | 59 文件 / **983 用例**（979 + 4） |
+| `lint i18n` / `lint kb` / `tsc` | ✅ | 724 键 exit 0 / 0 过期 265 引用 / 0 错误 |
+| 隔离与零污染 | ✅ | config.yaml hash+mtime 前后一致；未触碰真实全局目录 |
 
 ## 产出文件
-- `src/core/templates-data/agents-md/zh-CN.md`
-- `src/core/templates-data/agents-md/en.md`
-- `src/core/templates.ts`
-- `src/core/template-loader.ts`（build 生成段）
+- `src/core/flow-manager.ts`（isTemplateEmpty 整行锚定 + detectFillState partial 口径）
+- `src/core/plan/scheme.ts`（import + publishScheme 复用 isTemplateEmpty）
+- `src/commands/flow.ts`（E1-④ 注释登记）
+- `test/core/flow-manager.test.ts`（断言①③④）
+- `test/commands/plan.test.ts`（断言②）
 
 ## 前置校验结果
-- 方案完整性：通过（语义等价节：变更目标/D 子项清单/验收标准/自测清单 + deps.yaml produces）
-- Phase 合法性：通过（stage-53 phase=exec_running，current.op=op-001 匹配）
-- 流转合法性：通过（`openfeel flow health --quick` exit 0）
+- 方式：`openfeel flow health --quick`（首选 CLI）→ 通过
+- 方案完整性：通过（含目标/子项清单/自测清单/阶段/最多重试；标题命名为「一、变更目标」「二、子项清单」变体，内容要素齐全）
+- Phase 合法性：通过（stage-54.phase=exec_running；pipeline.phase=active 经 CLI 判定合法）
+- 流转合法性：通过（flow health --quick exit 0）
 
 ## 偏差记录
-- 无功能偏差。op 文件节名与标准模板（`## 目标`/`## 实施步骤`/`## 产出文件`）命名不同，属语义等价，方案内容完整。
+无超范围产出；无跳步。**未改** `flow.json`（CLI `flow attempt` 属正常 op 状态推进）；无新增依赖。

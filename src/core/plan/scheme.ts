@@ -5,7 +5,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { FlowManager, isFlowConcurrentError, EMPTY_TEMPLATE_MARKER, type PipelinePhase, type Op } from '../flow-manager.js';
+import { FlowManager, isFlowConcurrentError, isTemplateEmpty, EMPTY_TEMPLATE_MARKER, type PipelinePhase, type Op } from '../flow-manager.js';
 import { parseStageId, validateStageId, findStageDirConflict, normalizeStageId } from './path.js';
 import { ensureStageSkeleton } from './stage.js';
 import { t, getCliLang } from '../i18n.js';
@@ -446,13 +446,13 @@ export function publishScheme(projectPath: string, stageName: string, opId: stri
   }
   const stageKey = data.stages[normalized] ? normalized : stageName;
 
-  // 空模板校验（单一来源：EMPTY_TEMPLATE_MARKER）
+  // 空模板校验（单一来源：isTemplateEmpty / EMPTY_TEMPLATE_MARKER）
   const content = mgr.readOpTemplate(stageKey, localOpId);
   if (content === null) {
     // 文件缺失 → 无法校验填充度，保守拒绝
     return { published: false, reason: 'not-found' };
   }
-  if (content.includes(EMPTY_TEMPLATE_MARKER)) {
+  if (isTemplateEmpty(content)) {
     return { published: false, reason: 'empty-template' };
   }
 

@@ -1,0 +1,174 @@
+# stage-54 op 依赖声明
+# 由 Schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-54
+series: v1
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-53
+    type: hard
+    status: satisfied
+    reason: "stage-54 计划声明 hard 依赖 stage-53，且 `flow.json` 实测 `stages['v1.1.2-stage-54'].deps = ['v1.1.2-stage-53']`（Feel 已落点）。本阶段建立在其 `current/dev_last` 新格式与工作区数据之上。"
+  - downstream: v1.1.2-stage-55
+    type: soft
+    note: "stage-55（清项目级约束与 Agent）依赖本阶段；本阶段**不含 `npm publish`**（A8 = 用户指令：收尾 → stage-55 → 发布）。"
+
+# 【阶段性质提示】
+# 收尾阶段（发布前清账）：E1~E12 逐条实测 → **需修 3 条（E1/E2/E3）**，其余为「已解决（仅登记）」「登记不修」「门禁类」。
+# **范围**：含空模板检测收紧、en 泄漏收敛、help 文案补键、工作区数据一致性、E6 分层清单；
+# **不含** `npm publish`；**不改 `flow.json`**（E11/A6）；**不含 bug/REV 状态变更**（属 openfeel-feel-tester）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "E1 空模板检测整行锚定收紧（含 E1-补 已知边界登记）"
+    produces:
+      - src/core/flow-manager.ts
+      - src/core/plan/scheme.ts
+      - src/commands/flow.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/plan.test.ts
+      - test/commands/flow.test.ts
+    deps: []
+    notes: "**E1（`cli/BUG-005`，medium）**：`isTemplateEmpty` 由**纯子串** `content.includes('- [ ] 待补充')` → **整行锚定** `/(?:^|\\n)[ \\t]*-\\s*\\[\\s*\\]\\s*待补充[ \\t]*(?=\\r?\\n|$)/`（缩进/CRLF/尾空白容错）；`detectFillState` 的 `empty` 自动复用、`partial` 口径统一（**返回域不变**）；`scheme.ts:455` 改调 `isTemplateEmpty`（消除第二处子串判断，**`EMPTY_TEMPLATE_MARKER` import 保留**）；注释补「整行锚定 + 围栏内独占行 = 已知边界」。**预验证（实测）**：`stage-52/ops/op-005.md` 旧子串 `true`（误报）→ 新整行 `false`；模板独占行 LF/CRLF/缩进 → `true`；行内引用 → `false`。**E1-补（REV-54-002 / A9）**：`ops list` 的 `null → filled` **登记为已知边界**（`flow.ts:935-937` 注释 + manual 要点 + 断言④锁定**短 opId HIT / 全名 null**），**不改 `detectFillState` 契约与 `--json` 契约**。**断言 ①~④（4 条）**；**强制翻转 0 项**（既有 fixture 均为独占行）。验收含 **`flow health` 空模板告警归零** + 修复前后对照。"
+
+  op-002:
+    file: op-002.md
+    title: "E2 en 泄漏收敛与 E3 help 文案补键（E12 门禁 726）"
+    produces:
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/i18n.test.ts
+      - test/commands/flow.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "**E2（`cli/BUG-006`，low）**：`flow.ts:742-743` 硬编码中文 → `t('flow.advance.blockingRevRefused' / 'flow.advance.blockingRevHint')`（A3 命名，与既有 `flow.advance.forceRevRefused` 同族；`:740` 已 i18n）；zh 文案**逐字不变**，en 对称；**A4**：`project.ts:101`/`init.ts:48·110`/`update.ts:93` 的 `console.log` 中文**登记不改**。**E3（`cli/BUG-003`，low，复发）**：`help.flow.phases.json`（`zh-CN.ts:595`/`en.ts:565`）**文案补 `transitionsDiff`**（**A2：JSON 契约不动**——实际仍 5 键）；`test/core/i18n.test.ts:111-119` **追加** zh/en 两条断言（既有 `advanceAccepted` 断言保留）。**E12**：`lint i18n` **724 → 726**。断言 ⑤/⑤b/⑥/⑥b；**强制翻转 0 项**。"
+
+  op-003:
+    file: op-003.md
+    title: "E4-E11 登记收口与工作区数据一致性（全量门禁）"
+    produces:
+      - .openfeel/users/Liuary/bugs/index.md
+    deps:
+      - op: op-002
+        type: hard
+    notes: "**E4/E5/E7/E9/E10 登记**（已解决 → 仅登记，附可复跑证据）；**E5 连带**：修正 `bugs/index.md` 统计（现状 `open 4 / closed 12 / low 3` → 实测 **`open 3 / closed 13`** + 优先级按实测；**最小 diff**，仅统计表数字）；**E6 分层清单**（**实时重跑**可复现脚本，兼容混合编号 `REV-U2/U3/U4/U8` 与 `（注记）`；口径：清账层 / 历史层 / **无法判定单列**）→ 覆盖 v1.1.2 清账层**全量**，附证据与建议状态，**状态由 tester 收口**；**E8** 8 条**不修**项出处 `rg` 复核；**E11** 仅登记 + **A6 裁定 = 不改 `flow.json`**；**全量门禁**（build 幂等 / ≥59 文件 ≥979 用例 / **lint i18n 726 退出码 0** / lint kb 0 过期 265 引用 / **flow health 空模板归零** / tsc 0）+ 零污染双快照。**不含 bug/REV 状态变更**（tester 职责）。**收口报告**写入 `.openfeel/users/Liuary/log/{日期}-{NNN}.md`（**执行时取下一个可用编号**；不入 `produces` 的 glob 校验）"
+
+# 【互斥（禁止并行）】
+mutual_exclusions:
+  - group: [op-001, op-002]
+    reason: "**同文件热区**：二者均改 `src/commands/flow.ts`（op-001 改 `:935-937` 注释 / op-002 改 `:742-743` 文案）→ 必须**顺序**（op-001 → op-002）。"
+  - group: [op-001, op-002, op-003]
+    reason: "**构建/测试互斥**：三者验收均含 `npm run build` 或 `npm test`（同一工作区）→ 任一时刻仅一个 op 处于 build/test 窗口。"
+  - group: [op-003, op-001, op-002]
+    reason: "**收口顺序**：op-003 的门禁（`lint i18n` **726**、`flow health` 空模板归零）依赖 op-001/op-002 的代码改动 → **必须最后执行**。"
+
+# 【可并行组】
+parallel_groups:
+  - group: [op-003]
+    desc: "收口：依赖 op-001、op-002（hard），单独运行。"
+
+# 【串行链（顺序固定）】
+serial_chain:
+  - chain: [op-001, op-002, op-003]
+    desc: "**全串行**（plan §三）：op-001（E1）→ op-002（E2/E3/E12）→ op-003（E4~E11 + 门禁）。理由：op-001/002 同改 `commands/flow.ts`；op-003 门禁依赖前两者。"
+
+recommended_order:
+  - op-001
+  - op-002
+  - op-003
+rationale: "plan §三 建议：`op-001 → op-002 → op-003`（同仓串行，降低 review 成本与 i18n 文件冲突）。**本阶段仅 op-002 触及 `i18n-data/*`** → 无 i18n 写面并发问题；`commands/flow.ts` 由 op-001/002 依次编辑 → 已入互斥组。"
+
+# 【裁定（可追溯；依据 plan §六，**不虚构确认来源**）】
+decisions_taken:
+  traceability_rule: "A1/A2/A3/A4/A5/A7/A9 = **planner 建议 + 待 Feel/用户确认**（本方案按其执行，标注留痕）；**A6 = 待 Feel/用户裁定**；**A8 = 已由用户指令确定**（收尾 → stage-55 → 发布，本阶段不含 publish）。"
+  items:
+    - id: A1
+      scope: op-001
+      status: planner 建议 + 待确认
+      decision: "E1 检测收紧粒度 = **整行锚定**（最小修复）；**代码围栏内独占行仍判 `empty`** 记为已知边界（不引入围栏解析，避免过度设计）"
+      landed: "op-001 E1-①（含注释登记）"
+    - id: A2
+      scope: op-002
+      status: planner 建议 + 待确认
+      decision: "E3 处置方向 = **只改 i18n help 文案**补 `transitionsDiff`，**不动 JSON**"
+      landed: "op-002 E3-①"
+    - id: A3
+      scope: op-002
+      status: planner 建议 + 待确认
+      decision: "E2 键名 = `flow.advance.blockingRevRefused` / `flow.advance.blockingRevHint`（与既有 `flow.advance.forceRevRefused` 同族）"
+      landed: "op-002 E2-②"
+    - id: A4
+      scope: op-002
+      status: planner 建议 + 待确认
+      decision: "其它 `console.log` 中文（`project.ts:101`、`init.ts:48/110`、`update.ts:93`）**本阶段不改**（登记；`init.ts` 为语言菜单双语可保留）"
+      landed: "op-002 E2-③（登记）"
+    - id: A5
+      scope: op-003
+      status: planner 建议 + 待确认
+      decision: "E6 **历史层 pending 仅登记不清理**；**清账层（v1.1.2 内）核实后提请 tester 关闭**"
+      landed: "op-003 E6"
+    - id: A6
+      scope: op-003
+      status: "**待 Feel/用户裁定**"
+      decision: "E11 stage-49 op 状态陈旧 = **仅登记**（**不改 `flow.json`**）；如需修正由 Feel 统一处理"
+      landed: "op-003 E11（验收 10：`git diff .openfeel/flow.json` 为空）"
+    - id: A7
+      scope: op-003
+      status: planner 建议 + 待确认
+      decision: "E5 索引统计修正范围 = 仅 `bugs/index.md` 统计行（+ 如需 `templates/BUG-004` 状态行）——**最小 diff**"
+      landed: "op-003 E5"
+    - id: A8
+      scope: (阶段边界)
+      status: "**已由用户指令确定**"
+      decision: "本阶段**不含 `npm publish`**（顺序：收尾 → stage-55（清项目级约束/Agent）→ 发布）"
+      landed: "阶段范围提示（各 op 不含 publish）"
+    - id: A9
+      scope: op-001
+      status: planner 建议 + 待确认（REV-54-002 处置）
+      decision: "`ops list` 的 `null → filled` 兜底语义 = **维持现状 + 登记为已知边界**（**不改** `detectFillState` 返回域 / `--json` 契约；补注释 + manual 登记 + 断言④锁定短 opId 路径）"
+      landed: "op-001 E1-④ + 断言④"
+
+# 【E 项 → op 映射】
+item_map:
+  E1: op-001
+  E1_补: op-001
+  E2: op-002
+  E3: op-002
+  E4: op-003（仅登记）
+  E5: op-003（仅登记 + 索引统计修正）
+  E6: op-003（分层清单）
+  E7: op-003（(a) 并入 op-002 E3）
+  E8: op-003（登记确认不修）
+  E9: op-003（仅登记）
+  E10: op-003（并入 E8#5）
+  E11: op-003（仅登记 + A6）
+  E12: op-002（门禁 724 → 726）
+
+# 【REV 承接】
+rev_intake:
+  - rev: REV-v1.1.2-stage-54/REV-001
+    severity: medium
+    status: closed
+    handled_by: (plan v2 修订；op-003 E6 落地)
+    disposition: "E6 计数与实测分歧（扫描正则漏计混合编号）→ plan v2 改为**分层统计**并固化**可复现脚本**（兼容 `REV-U2/U3/U4/U8` 与 `（注记）`）；口径 3 条（正则兼容 / 状态行双冒号 / 分层定义）+ **执行时重跑取实时值** + **无法判定单列**。**本方案按 v2 分层口径执行**（清账层 / 历史层 / 无法判定），**不回退旧 17 条口径**；op-003 E6 要求覆盖清账层全量。"
+  - rev: REV-v1.1.2-stage-54/REV-002
+    severity: low
+    status: closed
+    handled_by: op-001
+    disposition: "E1 修法未覆盖 `readOpTemplate` 的 opId 形式缺口 → plan v2 新增 **E1-补**：实测 `readOpTemplate` **短 opId HIT / 全名 null**（`health` 与 `ops list` **同源**，真实缺口 = `null` 语义分歧）→ **A9 登记为已知边界**（不改 `detectFillState` / `--json` 契约）+ 注释 + manual + **断言④**；op-001 断言数 4→5 同步。"
+
+# 【门禁基线（2026-10-01 实测）】
+gates:
+  build: "npm run build（幂等：重跑零 diff）"
+  test: "npm test ≥ 59 文件 / ≥ 979 用例（本阶段新增后递增；实测基线 59/979）"
+  tsc: "npx tsc --noEmit = 0"
+  lint_i18n: "node bin/openfeel.js lint i18n = 726 键（724 + op-002 的 2 键）、problems = 0、**exit 0**（R1 后失败非 0 退出）"
+  lint_kb: "node bin/openfeel.js lint kb = 0 过期（265 引用）、exit 0"
+  health: "node bin/openfeel.js flow health = **空模板告警归零**（op-001 后）、exit 0；文件孤儿 62 条 warn 按裁定保留"
+  isolation: "测试隔离硬要求（vi.mock('node:os') + mkdtemp）；仓库 `.openfeel/config.yaml` 与真实全局目录 hash/mtime 前后一致"

@@ -335,7 +335,7 @@ OpenFeel 的模板部署存在**两层模板源**：
 
 **修复范围（改名须全链路同步，否则 build 重生成会把旧名带回来）：**
 
-1. **agent 文件 frontmatter**：`.opencode/agents/openfeel-executor.md`、`openfeel-utility.md` 的 `model: deepseek/deepseek-v4-flash` → `deepseek/deepseek-flash`。
+1. **agent 文件 frontmatter**：.opencode/agents/openfeel-executor.md、`openfeel-utility.md` 的 `model: deepseek/deepseek-v4-flash` → `deepseek/deepseek-flash`。
 2. **模板源**：`src/core/templates-data/opencode/agents/{zh-CN,en}/openfeel-executor.md`、`openfeel-utility.md`（权威源，build 的读取对象）。
 3. **生成段**：`src/core/template-loader.ts`（9 处）、`src/core/update.ts` 的 `SKILL_DEFINITIONS` 段——这些是 `npm run build` 的产物，源改了之后须重新 build 才会清除。
 4. **硬编码模板常量**：`src/core/config.ts` 的 `CONFIG_TEMPLATE_ZH/EN` 中 `model_name: deepseek-flash`（L350/L407）；`.openfeel/config.yaml` 的 `models.roles` 同步。

@@ -124,6 +124,6 @@ openfeel lint
 ## 相关文档
 
 - [命令参考](commands.md) — CLI 命令详细用法
-- [项目行为约束](../AGENTS.md) — AI Agent 协作核心规范
+- 框架行为约束 — 由 `openfeel setup` 部署到全局（见 README）
 - [文档索引](index.md) — 设计文档与研发分期归档
 - [变更日志](../CHANGELOG.md) — 版本历史与重要变更

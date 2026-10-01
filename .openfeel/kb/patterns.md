@@ -574,10 +574,10 @@ configCmd
 | 序号 | 文件 | 操作 | 说明 |
 |:--:|------|:--:|------|
 | 1 | `src/core/templates-data/agents/{lang}/new-agent.md` | **新建** | 中英双语源模板（zh-CN + en），结构对称 |
-| 2 | `new-agent.md`（部署到 `.opencode/agents/` 目录） | **新建** | 部署定义，内容与 zh-CN 模板同步 |
+| 2 | `new-agent.md`（部署到 .opencode/agents/ 目录） | **新建** | 部署定义，内容与 zh-CN 模板同步 |
 | 3 | `AGENTS.md` | **修改** | 标题计数 + 总览表格 + 调度列表（三处同步） |
 | 4 | `~/.config/opencode/AGENTS.md` | **修改** | 路径自校验范围 + Feel 调度列表（两处补充） |
-| 5 | `.opencode/skills/openfeel-model-check/SKILL.md` | **修改** | 角色映射回退表新增条目 |
+| 5 | .opencode/skills/openfeel-model-check/SKILL.md | **修改** | 角色映射回退表新增条目 |
 | 6 | `.openfeel/kb/architecture.md` | **修改** | 新增架构决策条目 |
 | 7 | `.openfeel/kb/index.md` | **修改** | Agent 计数 + 分类概览条目数 + 摘要表 |
 | 8 | `test/core/template-loader.test.ts` | **修改** | Agent 计数断言更新 |
@@ -597,7 +597,7 @@ configCmd
 2. **权限声明顺序**：统一使用 `bash → read → glob → grep`（bash-first 惯例），与现有 8 个 Agent 保持一致
 3. **颜色选型**：从现有 9 色中选未被占用的色值，语义与 Agent 角色关联
 4. **正文结构**：核心职责（3-4 项）/ 调起方式 / 输出规范 / 能力边界（能做 + 不做）/ 模型选择 / 注意事项
-5. **部署同步**：`.opencode/agents/` 下的部署定义内容须与 `zh-CN` 源模板**逐字符一致**
+5. **部署同步**：.opencode/agents/ 下的部署定义内容须与 `zh-CN` 源模板**逐字符一致**
 
 ### 构建验证流程
 
@@ -804,7 +804,7 @@ private autoCommitOnDone(stageName: string): void {
 
 **关键要点：**
 - 修复在源模板层（templates-data/）而非构建产物或部署目录——确保修复不被后续构建覆盖
-- 构建后校验：`npm run build` 自动传播修改，然后对比 `.opencode/agents/` 部署文件确认一致性
+- 构建后校验：`npm run build` 自动传播修改，然后对比 .opencode/agents/ 部署文件确认一致性
 - 多语言同步：zh-CN 和 en 模板编号结构必须完全对应，修改一处须同步另一处
 
 **参见：** v0.5.1-stage-01、kb/patterns.md #构建脚本多语言循环生成模式
@@ -865,7 +865,7 @@ Agent A 返回 → 含 [HANDOFF: agent_name] 标记
 **关键约束：**
 - Handoff 不修改职责边界——委派前须确认目标 Agent 确实具备对应能力
 - 标记格式固定为 `[HANDOFF: agent_name]`，Feel 按正则 `\[HANDOFF:\s*(\w+)\]` 解析
-- 中英双语模板（`.opencode/agents/` + `templates-data/agents/{zh-CN,en}/`）同步维护
+- 中英双语模板（.opencode/agents/ + `templates-data/agents/{zh-CN,en}/`）同步维护
 
 **设计理由：** 若走 CLI 方案（新增 `openfeel handoff` 命令）则需修改解析器、flow-manager 和测试，且与现有 Agent 体系耦合度高。Prompt 级标记方案零基础设施成本，符合 OpenFeel "提示词瘦身，流程入工具"的设计理念中关于 Agent 间协作应尽量轻量的原则。
 
@@ -1086,7 +1086,7 @@ v0.5.4 在引入 `openfeel lint kb` 质量检查的同时，补充了 CLI-Agent 
 
 ### CLI-Agent skill 映射全量对齐
 
-**背景：** v0.5.4 之前 CLI 有 12 个命令组（flow/stage/plan/knowledge/archive/init/update/project/instructions/lint/config/roadmap），但 `.opencode/skills/` 仅 8 个 skill，导致 `roadmap`、`health`、`recover`、`wizard` 四个 CLI 能力对 Agent 不可见。
+**背景：** v0.5.4 之前 CLI 有 12 个命令组（flow/stage/plan/knowledge/archive/init/update/project/instructions/lint/config/roadmap），但 .opencode/skills/ 仅 8 个 skill，导致 `roadmap`、`health`、`recover`、`wizard` 四个 CLI 能力对 Agent 不可见。
 
 **对齐步骤：**
 1. 为缺失命令组创建对应 skill：`roadmap/SKILL.md`、`health/SKILL.md`、`recover/SKILL.md`、`wizard/SKILL.md`
@@ -1163,7 +1163,7 @@ v0.5.6 在 AGENTS.md 和 feel.md 中写入版本号管理规范，将版本推�
 
 **实施位置：**
 - `AGENTS.md` — 「版本管理」节：语义定义 + 团队可见的永久性规范
-- `.opencode/agents/feel.md` — 调度逻辑：新版本递增规则由 Feel 在执行时遵循
+- .opencode/agents/feel.md — 调度逻辑：新版本递增规则由 Feel 在执行时遵循
 - `templates-data/agents/{zh-CN,en}/feel.md` — 中英双语模板同步
 
 **参见：** v0.5.6-stage-01 op-001（AGENTS.md 版本管理 + feel.md 递增规则）、v0.5.11-stage-01 op-001（四级版本号 + v0 重映射）
@@ -1291,10 +1291,10 @@ Reviewer 返回审查结论后，Feel 根据结论决定推进 review_passed 或
 
 | 文件 | 操作 | 内容 |
 |------|:--:|------|
-| `.opencode/agents/feel.md` | 插入 13 行 | 「审查不可跳过（硬性纪律）」节 |
+| .opencode/agents/feel.md | 插入 13 行 | 「审查不可跳过（硬性纪律）」节 |
 | `templates-data/agents/zh-CN/feel.md` | 插入 13 行 | 中文源模板，内容一致 |
 | `templates-data/agents/en/feel.md` | 插入 13 行 | 英文版「Review Must Not Be Skipped (Hard Discipline)」 |
-| `.opencode/agents/openfeel-executor.md` | 插入 10 行 | 「审查移交（硬性纪律）」节 |
+| .opencode/agents/openfeel-executor.md | 插入 10 行 | 「审查移交（硬性纪律）」节 |
 | `templates-data/agents/zh-CN/executor.md` | 插入 10 行 | 中文源模板，内容一致 |
 | `templates-data/agents/en/executor.md` | 插入 10 行 | 英文版「Review Handover (Hard Discipline)」 |
 
@@ -2578,7 +2578,7 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 
 1. **唯一权威源**：`src/core/templates-data/opencode/skills/{name}/SKILL.md`——**扁平单文件、中文单语、无 `{lang}` 子目录**（与 agents 的双语目录结构**不同**）；frontmatter 仅 `name` + `description`。
 2. **触发可发现性**：`description` 必须含 Agent 实际会写的查询词（本案：CLI 命令 / 参数 / phase / stageId 命名），否则自动发现失败——skill 不被加载等于白写。
-3. **build 双注入 + 自举**：`npm run build` 步骤 4 注入 `update.ts` 的 `SKILL_DEFINITIONS`、步骤 6 注入 `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`、步骤 8 清空重生成 `.opencode/skills/**`；三者同读 `SKILLS_DIR` 权威源 → **新增 skill 目录自动纳入，`build.js` 零改动**；生成段与 `.opencode/skills/` 均为**构建产物，禁手改**。
+3. **build 双注入 + 自举**：`npm run build` 步骤 4 注入 `update.ts` 的 `SKILL_DEFINITIONS`、步骤 6 注入 `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`、步骤 8 清空重生成 .opencode/skills/**；三者同读 `SKILLS_DIR` 权威源 → **新增 skill 目录自动纳入，`build.js` 零改动**；生成段与 .opencode/skills/ 均为**构建产物，禁手改**。
 4. **快照声明（防「文档-实现」发散的关键）**：正文首节写明
    `> 本文档为 v1.1.2 快照；命令/参数细节以 `openfeel <cmd> --help` 实时输出为准。`
    ——承认文档必然滞后，把「实时真相」的权威指回 CLI 自身（与 `flow phases` 等**自描述命令**互补：自描述给机器，快照声明给读者划界）。

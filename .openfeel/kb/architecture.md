@@ -397,6 +397,8 @@ v1.1.0-stage-37（D1/P2 全量落地）将框架部署目标从「逐项目部�
 - **legacy 布局识别（N8）**：update 检测项目内遗留 `.opencode/{agents,skills,instructions}` 时仅提示「请运行 openfeel migrate（stage-39 提供）」，不静默迁移/删除。存量旧 state 重键迁移、项目自定义资产保留均属 stage-39。
 - **仓库自身 `.opencode/` 不动（N1）**：「项目精简」仅指 init 部署的新项目；OpenFeel 仓库自身的 `.opencode/` 仍是构建产物/自举实例（stage-36 步骤 8），本阶段不删除、不改 build.js。
 
+> **【supersede｜2026-10-01｜v1.1.2-stage-55】** 本决策已变更：仓库自身不再保留项目级 `.opencode/` 受管实例（`agents`/`skills`/`ADAPTER.md`）与根 `AGENTS.md`/`opencode.jsonc`。理由：① 全局部署已完备（`openfeel setup` 幂等刷新，含 17 skill / 9 agent / 全局 `AGENTS.md`）；② 消除「项目级与全局」双份资产漂移；③ 移除 `build.js` 步骤 8 以消除复活负担（防复活）。**适用边界**：**目标项目**的 `.opencode/` 相关语义与保留清单**不受影响**（本决策仅针对 OpenFeel 仓库自身）。回滚：`git checkout <sha> -- AGENTS.md opencode.jsonc .opencode/` + 恢复 `build.js` 步骤 8。
+
 **opencode 全局/项目配置合并语义实测结论（op-000，真实 CLI 子进程 + 隔离 HOME）：**
 
 | 验证项 | 结论 |

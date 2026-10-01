@@ -9,7 +9,7 @@
 1. 从唯一权威源 `src/core/templates-data/opencode/` 读取 agent / skill / instructions / AGENTS.md 模板，内联为 TS 字符串常量写入 `src/core/template-loader.ts` 与 `src/core/update.ts` 的 `AUTO-GENERATED-BEGIN/END` 块。
 2. 校验模板有效性（`validateTemplates()` / `validateOpencodeTemplates()` / `validateSingleSourceConsistency()`）。
 3. 调用 `npx tsc` 编译 TypeScript。
-4. 重生成 `.opencode/` 自举实例（步骤 8，含生成物标记）。
+4. **（stage-55 已移除）** 原步骤 8 `.opencode/` 自举重生——仓库自身不再保留项目级部署实例（防复活：`build.js` 步骤 8 已删除）。
 
 > 说明：本文中 `templates-data/opencode/` 与 `.opencode/` 均为 **opencode 适配器**的目录名（属适配器实现细节，保留）；构建管线的部署目标由适配器层决定，框架面向多 harness 适配。
 
@@ -25,19 +25,21 @@
 
 ## 源路径约定（stage-36）
 
-- 唯一权威源 = `templates-data/opencode/`；`.opencode/` 降级为构建产物（自举实例），不再作为源。
+- 唯一权威源 = `templates-data/opencode/`；`.opencode/` **不再作为受管构建产物**（stage-55 起仓库自身不再保留项目级部署实例，仅保留 opencode 运行时目录），不再作为源。
 - `SKILLS_DIR` 重指 `templates-data/opencode/skills`；`generateAgentDefinitions` / `generateTemplateFromCoreMd` 等改读 `TEMPLATE_OPENCODE_*` 目录。
 - 改向后成为死常量的 6 个源目录常量（`TEMPLATE_AGENTS_DIR` / `TEMPLATE_CORE_MD_PATH` / `TEMPLATE_AGENTS_MD_PATH` / `TEMPLATE_CORE_INSTRUCTIONS_DIR` / `CORE_MD_PATH` / `AGENTS_DIR`）已删除；`TEMPLATE_AGENTS_MD_DIR`（agents-md，项目级 AGENTS.md 模板）保留。
 
 ## 行尾归一 + 生成物标记
 
-- `.gitattributes`：`src/core/templates-data/**` 与 `.opencode/**` 统一 `text eol=lf`。
+- `.gitattributes`：`src/core/templates-data/**` 统一 `text eol=lf`（原 `.opencode/**` 行已于 stage-55 随受管实例移除而删除）。
 - 各注入函数读文件后 `content.replace(/\r\n/g, '\n')`，防止 CRLF 泄漏进生成模板串（跨平台不可复现）。
-- 生成物标记 `<!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->`：有 YAML frontmatter 的文件插在闭合 `---` 之后（插之前破坏 frontmatter 解析），无 frontmatter 的插首行。
+- 生成物标记 `<!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->` 的插入逻辑（`insertGeneratedMark`）随步骤 8 于 stage-55 一并移除；生成段宿主文件（`template-loader.ts` / `update.ts`）仍由 build 重生成，其 CRLF 归一仍有效。
 
-## 步骤 8：`.opencode/` 自举重生成
+## 步骤 8：`.opencode/` 自举重生成（**已移除（stage-55）**）
 
-置于 `npx tsc` 之后（`await import('./dist/core/fs/atomic-write.js')` 复用 stage-35 原子写），从权威源重生成 `.opencode/{agents,skills,instructions/core.md,ADAPTER.md}` 并插入生成物标记；采用「清空旧名残留目录 → 全量重写」策略（`rmSync` 而非 `git rm`，因 build 运行时无 git 依赖）。
+原步骤 8 置于 `npx tsc` 之后（`await import('./dist/core/fs/atomic-write.js')` 复用 stage-35 原子写），从权威源重生成 `.opencode/{agents,skills,instructions/core.md,ADAPTER.md}` 并插入生成物标记；采用「清空旧名残留目录 → 全量重写」策略（`rmSync` 而非 `git rm`，因 build 运行时无 git 依赖）。
+
+> **移除原因（v1.1.2-stage-55）**：仓库自身不再保留项目级部署实例——全局资产已由 `openfeel setup` 幂等部署（17 skill / 9 agent / 全局 `AGENTS.md`），删除步骤 8 以消除「项目级与全局」双份资产漂移与 build 复活负担（**防复活**）。相关：`kb/architecture.md` N1 决策已被 supersede（2026-10-01）、`dev/decisions.md` 对应 ADR。
 
 ## 发布元数据与死导出清理（v1.1.2-stage-49）
 

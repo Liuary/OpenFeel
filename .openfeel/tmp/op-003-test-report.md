@@ -1,49 +1,46 @@
-# 自测报告 — op-003
+# 自测报告 — op-003（v1.1.2-stage-54）
 
-- **执行时间**：2026-10-01 10:48
+- **执行时间**：2026-10-01 17:05
 - **执行 Agent**：openfeel-executor
-- **重试次数**：第 1 次
+- **重试次数**：1（首次通过）
 
 ## 执行摘要
-D5（3 skill 同步，含 sync-status A6 改写）+ D6（DEV_SUB_DIRS 增 current_archive）全部完成；自测通过，四门禁全绿。
+E4~E11 登记收口完成；`bugs/index.md` 统计修正为 open 3 / closed 13；E6 分层实时脚本落值（清账层 38 / 历史层 88 / 无法判定 3）；全量门禁全绿、零污染。
 
 ## 实施步骤完成情况
-- [x] D5-1：workspace skill 公共目录增 `current_archive/`；私域目录增 `dev_last/`；`dev_last.md` 标注为索引（同名目录存英文名主题文件）
-- [x] D5-2：recover skill 改读「索引 + 按需主题文件 + 旧格式惰性迁移」，补 A9 只读说明
-- [x] D5-3：sync-status skill 按 A6 改写（改读各用户 dev_last 索引主题 + flow.json 阶段状态聚合；`@{username}` 零残留；skill 保留，17 不变）
-- [x] D5-4：根 AGENTS.md 未改（A7 一致）
-- [x] D6-1：`DEV_SUB_DIRS = ['note', 'current_archive']`（含职责注释）；init 自动创建
-- [x] D6-2：未新增用户私域 `dev_last/` 源码常量（随用随建）
-- [x] D6-3：`.gitignore` 未改；双向 `git check-ignore` 实证
+- [x] E4 登记（cli-usage=1、wizard=1）+ 提请 tester 关闭 templates/BUG-003
+- [x] E5 登记 + `bugs/index.md` 统计修正（open 3 / closed 13；low 2；templates/BUG-004 行 closed）
+- [x] E6 实时重跑脚本 + 核实清单覆盖清账层全量（38 条，含 U3-011 非连续编号）；历史层仅登记；无法判定单列（3 条）
+- [x] E7 (a) 并入 op-002；(b)(c) 登记（含 `flow health` 31/31 复跑证据）
+- [x] E8 8 条出处 rg 可检索；未改对应代码
+- [x] E9 四条路径 CRLF 复核证据 + 复跑命令（命中 2/2）
+- [x] E10 并入 E8#5 登记
+- [x] E11 仅登记 + A6（未改 flow.json；stage-49 op 全 pending）
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 验收 5：临时 init 创建 `dev/current_archive/` | ✅ | Test-Path True |
-| 验收 6：二次 init 幂等 | ✅ | 无新增 created（仅 updated） |
-| 验收 7：workspace skill 含 current_archive | ✅ | 1 |
-| 验收 8：workspace/recover 含 `dev_last/` | ✅ | 2 / 1 |
-| 验收 9：sync-status `@{username}` 零命中 | ✅ | |
-| 验收 10：`rg dev_last src/core -g *.ts` 零命中 | ⚠️ | **见偏差 2**（生成文件天然含模板文案；结构意图达成） |
-| 验收 11：current_archive 非忽略 | ✅ | exit=1 无输出 |
-| 验收 12：users/dev_last 被忽略 | ✅ | exit=0 命中 |
-| 验收 13：根 AGENTS.md 零命中 | ✅ | |
-| build / test / lint i18n / lint kb | ✅ | 59/942、724 键 exit0、0 过期 |
-| config.yaml 零 diff | ✅ | |
+| 验收 1 build 幂等 | ✅ | exit 0；重跑零 diff |
+| 验收 2 npm test | ✅ | 59 文件 / 987 用例 |
+| 验收 3 lint i18n | ✅ | 726 键 exit 0 |
+| 验收 4 lint kb | ✅ | 0 过期（265 引用） |
+| 验收 5 flow health 空模板归零 | ✅ | 无空模板行；31/31 一致；孤儿 62 保留 |
+| 验收 6 tsc | ✅ | 0 错误 |
+| 验收 7 E6 脚本实时重跑 | ✅ | TOTAL 270 / pending 126 / closed 118 / resolved 23 / MISSING 3 |
+| 验收 8 index 统计 vs frontmatter | ✅ | open 3 / closed 13 一致 |
+| 验收 9 index 最小 diff | ✅ | 仅 4 数字 + 1 行状态（私域，无 git diff） |
+| 验收 10 `git diff flow.json` | ✅ | 空（A6；stage-49 op-001~009 全 pending） |
+| 验收 11 零污染 | ✅ | config.yaml hash+mtime 前后一致 |
 
 ## 产出文件
-- `src/core/templates-data/opencode/skills/openfeel-workspace/SKILL.md`
-- `src/core/templates-data/opencode/skills/openfeel-recover/SKILL.md`
-- `src/core/templates-data/opencode/skills/openfeel-sync-status/SKILL.md`
-- `src/core/workspace/structure.ts`
-- `src/core/templates.ts`（见偏差 1）
-- `src/core/update.ts` / `src/core/template-loader.ts`（build 生成/注入段）
-- `.opencode/skills/**`（build 自举）
+- `.openfeel/users/Liuary/bugs/index.md`（统计修正，私域）
+- `.openfeel/users/Liuary/log/op-v1.1.2-stage-54-report-2026-10-01.md`（收口报告，私域）
 
 ## 前置校验结果
-- 均通过（同 op-001）
+- 方式：`openfeel flow health --quick` → 通过
+- 方案完整性：通过｜Phase 合法性：通过（exec_running）｜流转合法性：通过
 
 ## 偏差记录
-1. **超范围修正（一致性必需）**：`src/core/templates.ts` 的 `DECISIONS_TEMPLATE_ZH/EN` 原指向已废弃的 `dev_last.md「决策历史」节`，与本阶段新 feel.md（会话决策写入 `dev_last/decisions.md`）**内部矛盾**。依 plan §一 范围约束「允许改 `src/core/templates.ts` 的 init 文案模板」予以修正为 `dev_last/decisions.md`（主题文件「决策记录」）。属格式重构直接后果，最小改动（2 行）。
-2. **验收 10 口径修正**：`rg "dev_last" src/core/ --glob '*.ts'` 在基线即非零（`template-loader.ts`/`update.ts` 为**build 生成段**，必然含模板文案；`templates.ts` 亦为允许改的 init 文案）。该验收预期不可达 → 实际意图（**源码不含 dev_last 目录常量**）已由结构与行为验收 5/6 覆盖；`structure.ts` 无 dev_last 常量。
-3. `templates.test.ts:19-20` 实为「本仓自举」断言（非计划所述「程序自检」）；5 个受检 skill 全含 `本仓自举`，sync-status 不在受检列表 → 无红。
+- E6 清账层实时值 **38**（plan v2 快照 42；stage-52×4 已 closed，时点差异，R-9 以实时为准）。
+- `bugs/index.md` 与报告均在私域（gitignored），不在版本控制；op-003 提交以 flow.json 状态推进为主。
+- 无跳步、无超范围产出。

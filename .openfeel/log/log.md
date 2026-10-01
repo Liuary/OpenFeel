@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-01-Liuary-038.md](2026/10/01/2026-10-01-Liuary-038.md) | Liuary | v1.1.2-stage-54.op-003 执行通过 |
 | [2026-10-01-Liuary-037.md](2026/10/01/2026-10-01-Liuary-037.md) | Liuary | v1.1.2-stage-54.op-002 执行通过 |
 | [2026-10-01-Liuary-036.md](2026/10/01/2026-10-01-Liuary-036.md) | Liuary | v1.1.2-stage-54.op-001 执行通过 |
 | [2026-10-01-Liuary-035.md](2026/10/01/2026-10-01-Liuary-035.md) | Liuary | 阶段 v1.1.2-stage-52 完成 |
@@ -31,7 +32,6 @@
 | [2026-10-01-Liuary-011.md](2026/10/01/2026-10-01-Liuary-011.md) | Archiver | **stage-51 归档完成（流水线状态维护与 CLI 可维护性·反馈 08，N1~N11 / 9 op）**——承接 `docs/phase-5/08-openfeel-workflow-feedback.md`（11 条）；补齐「**纠正/清理侧**」CLI（`plan scheme remove` + `findOrphanOps` 对账 / `flow stage set --deps` / `flow review update·remove` / `ensureStageSkeleton` / `syncCurrentOp` 复用 / `stage set` 三态幂等 + 字段白名单 + `stage task --add` / `op-NNN.md` + 兼容回退 / knowledge 宽容解析 + **`openfeel knowledge dedup`**〔随包分发〕/ 日志未来写入统一 + `advance --quiet`）；**用户裁定 A2/A5/A6/A7 全落地**；**56 文件 / 869 用例全绿（0 skipped）**、`tsc` 0、build 幂等、`lint i18n` **649 键**、`lint kb` 0 过期、`npm pack` 263 文件；环境零污染；**REV-004 closed、`cli/BUG-004` 关闭**（en `--help` Arguments 段 CJK 零命中，33 命令）；知识沉淀 **5 条**（architecture 1 + patterns 4 + troubleshooting 1 更新）；**v1.1.2 十一阶段（41~51）全部闭环** |
 | [2026-10-01-Liuary-010.md](2026/10/01/2026-10-01-Liuary-010.md) | Liuary | v1.1.2-stage-51.op-009 执行通过 |
 | [2026-10-01-Liuary-009.md](2026/10/01/2026-10-01-Liuary-009.md) | Liuary | v1.1.2-stage-51.op-007 执行通过 |
-| [2026-10-01-Liuary-008.md](2026/10/01/2026-10-01-Liuary-008.md) | Liuary | v1.1.2-stage-51.op-005 执行通过 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

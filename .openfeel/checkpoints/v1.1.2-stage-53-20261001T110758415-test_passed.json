@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T03:16:00.522Z",
-    "revision": 432
+    "updated": "2026-10-01T03:07:58.097Z",
+    "revision": 429
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-52",
-      "op": ""
+      "op": "op-013"
     },
     "retry": 0
   },
@@ -2051,9 +2051,9 @@
         },
         "op-013": {
           "title": "REV-007 stage 解析归一化闭包补全（remove attempt parseOpId）",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -2075,8 +2075,8 @@
     },
     "v1.1.2-stage-53": {
       "name": "v1.1.2-stage-53",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "test_passed",
+      "status": "review_passed",
       "deps": [
         "v1.1.2-stage-52"
       ],
@@ -10019,35 +10019,6 @@
         "stageName": "v1.1.2-stage-52",
         "from": "scheme_passed",
         "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-10-01T03:07:58.435Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-53",
-        "from": "test_pending",
-        "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-10-01T03:07:58.778Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-53",
-        "from": "test_passed",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-10-01T03:16:00.501Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-013",
-        "attempts": 1
       }
     }
   ]

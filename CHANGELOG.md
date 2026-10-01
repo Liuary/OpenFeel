@@ -54,6 +54,13 @@
   - **Changed（行为变更）**：op 文件名固定 `op-NNN.md`（标题写入内容首行；历史 `op-NNN_标题.md` **不迁移**，读取端 `extractTitle` 兼容回退）；公共日志未来写入统一为嵌套 `log/{yyyy}/{MM}/{dd}/`（**不迁移历史**，根索引同时反映两套布局 + 布局标注）；`flow advance` 默认仅在 `--to done` 提示 git 脏区（非 done 不再调用 `git status`）；`stage set` 同值由「报错」改为「**no-op 成功 exit 0**」且 `.bak` 仅在确认变更后生成；`flow repair` 输出新增孤儿 op 对账（默认只报告，零写盘）；`plan scheme create` 隐式注册时补建 `overview.md`/`status.md` 骨架（消除「半注册」）；`knowledge index`/`add` 放宽段头/表头/列数解析（标准格式输出不变）
   - **Fixed**：`cli/BUG-004`（en 模式 `--help` 的 Arguments 描述仍为中文）——补齐 20 处（+1 新增）`help.<path>.arg<name>` 双语键 + 运行时全量枚举门禁；`REV-004`（`help.view.add` 未同步弃用文案）——单键合并（删 `view.add.desc`）；op 标题含 `/` 时创建失败（ENOENT）已修复；`flow health` 新增孤儿 op `warn`（**非 `fail`，不改变退出码**）
 
+- [stage-53] **记忆/状态文件职能与格式重构（current.md / dev_last.md）**：
+  - **Changed**：全局约束写入**两条设计目的**（保存核心信息便于恢复 / 避免无关信息污染上下文）+ 索引层/主题层/详情层**三层分层**；**`current.md` 改团队文件格式**——仅个人提交时更新、只描述整体信息、**无 agent 细节、无 `## @成员` 段**、仅留近期 **5** 条记录，旧记录自动归档 `.openfeel/dev/current_archive/`（`openfeel init` 自动创建该目录，`DEV_SUB_DIRS` 新增 `current_archive`）；**`dev_last.md` 改为索引 + 同名主题目录**（活跃主题 ≤5、索引摘要 ≤5 条 ×≤100 字、主题文件 ≤10 条 ×≤300 字、超量详情转 `users/{username}/tmp/` 并记地址、**超期记录不归档**；主题数 >5 时**就地收敛**不迁移文件；主题文件名一律英文 kebab-case）；`feel.md` 记忆加载与会话写入同步改写；`openfeel-sync-status` skill 改读各用户 `dev_last` 主题索引 + `flow.json` 聚合（skill 总数仍 17）
+  - **Fixed**：`templates/BUG-004`（迁移后本仓 `current.md` 统计行沿用「执行中」快照、用例数陈旧）——归档时就地修正（942→949 + kb 计数刷新 + stage-53 记录措辞改为「归档完成」）
+
+> 说明：本仓库 `.openfeel/dev/current.md` / `.openfeel/users/{username}/dev_last.md` 为工作区数据（非随包分发产物），格式约定经 `openfeel setup` 部署到全局约束层后生效。
+
+
 > 完整逐条处置与验证证据见 `.openfeel/code_review/v1.1.2-stage-50.md` 与 `.openfeel/users/Liuary/log/op-v1.1.2-stage-50-report-2026-09-30.md`（T1~T57 覆盖表）。
 
 ## [1.1.1] - 2026-09-26

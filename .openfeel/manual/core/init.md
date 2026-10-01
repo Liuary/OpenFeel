@@ -84,3 +84,4 @@ interface DemoResult {
 | v1.1.1 | 拆除 `deployOpencode`/`promptOpencodeDeploy`/`writeGlobalFileIfMissing` 与项目 AGENTS.md 骨架；新增 `initWorkspaceCore`/`initWorkspaceOnly`（`--workspace-only`）；`InitResult` 移除 `opencode`；全局部署收归 `openfeel setup` |
 | v1.1.2-stage-46 | `InitResult` 扩展 `skipped`；`config.yaml` / `package.json` 覆盖前接入备份（`backupFileBeforeWrite` + `backed` 条目；备份失败绝不覆盖） |
 | v1.1.2-stage-47 | **`config.yaml` 语义修复：已存在则不覆盖**（仅 `skipped.push` 提示，命令层新增 `init.skipped` 用户可见输出）；删除 stage-46 的 `config.yaml` 备份接入块（`package.json` 备份块保留）；`writeDefaultConfig` 增调用方守卫契约注释 |
+| v1.1.2-stage-53 | `DEV_SUB_DIRS` 增 `current_archive`（`createWorkspace` 自动创建 `.openfeel/dev/current_archive/`，供 `current.md` 旧记录轮换归档）；`CURRENT_TEMPLATE_ZH/EN` 改为**团队文件新骨架**（「近期提交记录（最多 5 条，最新在上）」+ `current_archive/` 指引；**移除**「团队成员进度」「@{username} 描述正在进行的工作」）；`DECISIONS_TEMPLATE` 引用改 `dev_last/decisions.md`（主题文件）。**私域 `dev_last/` 不新增源码目录常量**（随用随建，由 workspace skill 覆盖） |

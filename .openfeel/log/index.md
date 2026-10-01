@@ -4,6 +4,7 @@
 ## 2026-10
 
 > **布局说明（v1.1.2-stage-51，A7 用户裁定）**：自本阶段起**新日志统一写入嵌套目录** `log/{yyyy}/{MM}/{dd}/`；历史**扁平目录** `log/{yyyy-mm-dd}/`（如 `2026-08-07`/`2026-08-09`/`2026-08-11`）保持原状、**不迁移**；两套布局的条目在本索引与 `day_index.md` 中**并存可检索**（根索引由代码生成时附 `（嵌套）`/`（历史扁平）` 布局标注）。
+- [01 日](2026/10/01/2026-10-01-Liuary-030.md) — Archiver 归档 stage-53（**v1.1.2 current.md / dev_last.md 职能与格式重构**）：承接 stage-52，**两条设计目的**（保存核心信息便于恢复 / 避免无关信息污染上下文）+ **索引层/主题层/详情层三层分层**写入全局框架约束层；`current.md` 改**团队文件**新格式（仅个人提交时更新 / 整体信息 / 无 agent 细节与 @成员段 / ≤5 条记录 + 旧记录自动归档 `current_archive/`）；`dev_last.md` 改**索引 + 同名主题目录**（活跃主题 ≤5 / 索引 ≤5 条 ≤100 字 / 主题文件 ≤10 条 ≤300 字 / 超量转 `tmp/` 记地址 / **超期不归档** / **R1~R6** 含 R4 就地收敛与 R6 加锁）；**用户裁定 A5/A6/A9/A10 全落地**（A5 内联 `@{username}`、A6 `openfeel-sync-status` 改写保留 17 skill、**A9 dev_last 写入加锁** `withFileLock`+`dev-last-{username}.lock` 读写均在锁内、A10 主题文件英文名）；**存量迁移零丢失**（`current_archive/current-2026-10-01-001.md` 全文超集、current 82→14 行、dev_last 53→34 行 + 5 主题、`DEV_SUB_DIRS` +`current_archive`）；5 op（commits `627805e`/`3792b77`/`ae0d6e2`/`4377822`/`27ce06e`）；**59 文件 / 949 用例 0 skipped**、`tsc` 0、build 幂等、`lint i18n` **724 键**、`lint kb` 0 过期；三段审查零阻塞（**REV-003 closed**）；测试官端到端 + 数量约束机检 + 并发（含无锁对照）+ 迁移零丢失全通过；新登记 `templates/BUG-004`（low，**归档官就地修正关闭**）；知识沉淀 **5 条**（architecture 2 + patterns 2 + troubleshooting 1）；**v1.1.2 十三阶段（41~53）全部闭环**，全局产物须用户运行 `openfeel setup` 生效
 - [01 日](2026/10/01/2026-10-01-Liuary-011.md) — Archiver 归档 stage-51（**v1.1.2 流水线状态维护与 CLI 可维护性·反馈 08**）：承接 `docs/phase-5/08-openfeel-workflow-feedback.md`（11 条），编号化 **N1~N11**（3 批次 H1~H3）/ **9 op**（commits `a008f69`~`34385a4`）；补齐「**纠正/清理侧**」CLI——`plan scheme remove` + `findOrphanOps` 对账（默认只报告 / `--prune-orphans` 仅清键孤儿 / 文件孤儿永不自动删）/ `flow stage set --deps`（悬空 exit 1）/ `flow review update·remove` / `ensureStageSkeleton` 消除半注册 / `syncCurrentOp` 单一 owner 复用 / `stage set` 三态幂等 + 字段白名单 / `stage task --add` + `plan stage add --tasks` / op 命名 `op-NNN.md` + 兼容回退 / knowledge 宽容解析 + **`openfeel knowledge dedup`**（随包分发、只读建议）/ 日志未来写入统一 + 索引共存 / `advance --quiet` 降噪；**用户裁定 A2/A5/A6/A7 全落地**；**56 文件 / 869 用例全绿（0 skipped）**、`tsc` 0、build 幂等、`lint i18n` **649 键**、`lint kb` 0 过期（242 引用）、`npm pack` 263 文件含 `dist/utils/kb-dedup.js`、环境零污染；三段审查零阻塞零新增 REV、**REV-004 closed**、**`cli/BUG-004` 关闭**（en `--help` Arguments 段 CJK 零命中，运行时 33 命令）；知识沉淀 **5 条**（architecture 1 + patterns 4 + troubleshooting 1 更新）；**v1.1.2 十一阶段（41~51）全部闭环**，`npm publish` 待用户决定
 
 ## 2026-09
@@ -69,6 +70,8 @@
 | [2026-10-01](2026/10/01/day_index.md) | v1.1.2-stage-53.op-003 执行通过 （嵌套） |
 | [2026-10-01](2026/10/01/day_index.md) | v1.1.2-stage-53.op-004 执行通过 （嵌套） |
 | [2026-10-01](2026/10/01/day_index.md) | v1.1.2-stage-53.op-005 执行通过 （嵌套） |
+| [2026-10-01](2026/10/01/day_index.md) | v1.1.2-stage-52.op-013 执行通过 （嵌套） |
+| [2026-10-01](2026/10/01/day_index.md) | 阶段 v1.1.2-stage-53 完成 （嵌套） |
 
 - [29 日](2026/09/29/2026-09-29-Liuary-001.md) — Reviewer 审查 stage-46 计划（部署覆盖前备份，有条件通过：1 high + 2 medium blocking REV，config.yaml 覆盖路径漏备份上报）（末尾追加：文件含历史混合编码，避免整文件重写）
 | [2026-09-29](2026/09/29/day_index.md) | v1.1.2-stage-41.op-001 执行通过 |

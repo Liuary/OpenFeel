@@ -758,3 +758,24 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 **三口径一致**：`config set` / `get` / `effective` 对同一键的**值与来源**一致（`rg notAdjustableHint src/` 应零命中）。
 
 **参见：** v1.1.2-stage-50 T36（R3）/ REV-002、`plan/v1/stage-50/ops/op-003.md`、`REV-v1.1.2-stage-50.md`、kb/patterns.md #配置级联解析模式
+
+## [+] prompt 级协议 vs 代码级强制：自动归档/就地收敛/加锁无运行时强制，可靠性依赖模型 (2026-10-01)
+
+**现象**：`current.md` 的自动归档轮换、`dev_last` 主题超限就地收敛、`dev_last` 写入加锁（`withFileLock` + `atomicWriteFileSync`）等规则，**只写在 agent 模板与 skill（prompt 层）**，产品源码 `src/**` 中**无对应运行时实现**（v1.1.2-stage-53 scope 明确「不改业务源码」）。
+
+**风险**：
+- 规则可靠性**依赖 Feel 遵循 prompt**；模型不遵从时**静默失效**且无告警（不会报错，只是没归档/没加锁）。
+- 测试无法端到端验证——只能以「模板文本断言」替代运行时演练（如 6 主题 fixture 收敛用文本断言，非目录级运行时演练）。
+- 迁移类数据的零丢失亦无 git 基线可对比（`dev_last.md` 在 `.gitignore` 内），只能内容映射核对。
+
+**排查/识别**：确认某规则是否强制，用 `rg "关键词" src/**` 检查有无实现；若仅命中 `templates-data/**` 与 `agents-md`，即属 **prompt 级协议**（本阶段实测 `src/**` 仅 `structure.ts` 的 `DEV_SUB_DIRS` 常量）。
+
+**缓解（设计边界须明示，非修复）**：
+1. 在计划/报告中**显式声明该边界**（「会话协议而非运行时强制」）；
+2. 关键规则尽量落**代码护栏**：如加锁以 `withFileLock` 的并发 fixture（2 写者 + 无锁对照复现覆盖）证明机制有效；
+3. 模板改动**以文本断言守护**（模板含 `withFileLock`/`dev-last-`/`.openfeel/tmp/locks/`/`atomicWriteFileSync` 等关键串）；
+4. 首次触发复杂协议（如 R4 收敛）时由人工**复核留痕**。
+
+**判据**：凡「禁止手改 X、由 Agent 按协议维护」的治理规则，须区分**代码强制**与**prompt 约定**；后者必在文档中标注边界，并对高风险动作补代码护栏或人工复核点。
+
+**参见：** v1.1.2-stage-53 §八 R-2c / 测试报告 §八观察项 1；kb/architecture.md #跨进程并发保护架构；kb/patterns.md #建议性文件锁模式

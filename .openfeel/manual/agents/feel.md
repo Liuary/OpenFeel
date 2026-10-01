@@ -53,6 +53,16 @@
 
 长期决策（技术选型、架构方向、跨会话有效的设计取舍）以 ADR 格式同步写入 `.openfeel/dev/decisions.md`；会话临时决策（流程调整、单次取舍）仅记录在 `dev_last/decisions.md`（主题文件「决策记录」；A10 英文文件名）。
 
+## 记忆/状态文件结构（v1.1.2-stage-53）
+
+> 落点（权威源）：`src/core/templates-data/agents-md/{zh-CN,en}.md` 工作区结构节 + `.../opencode/agents/{zh-CN,en}/feel.md` 记忆加载与会话写入节；对应 skill：`openfeel-workspace` / `openfeel-recover` / `openfeel-sync-status`。
+
+- **两条设计目的**（总纲）：① **保存核心信息便于恢复**（打开索引即可在有限上下文内恢复工作）；② **避免无关信息污染上下文**（索引只放结论与位置，细节下沉）。
+- **三层分层**：索引层（`dev/current.md`、`dev_last.md`）→ 主题层（`dev_last/{english-name}.md`，≤10 条 × ≤300 字）→ 详情层（`users/{username}/tmp/`，仅记地址）。
+- **`dev/current.md` = 团队文件**：仅**个人提交时**更新、只描述整体信息、**无 agent 细节、无 `## @成员` 段**，仅留近期 **5** 条；旧记录自动归档 `.openfeel/dev/current_archive/`（公共域、纳入版本管理）。
+- **`users/{username}/dev_last.md` = 本地文件（索引）**：会话末尾**更新**（非整文件覆盖）；「用户偏好 / 主题索引（活跃 ≤5）/ 已收敛主题 / 公共交接区」；主题文件写入遵守 **R1~R6**（R2 超量转 `tmp/` 记地址、R3 超期**不归档**、R4 主题超限**就地收敛**、R6 **加锁**：`withFileLock` + `.openfeel/tmp/locks/dev-last-{username}.lock`，索引与全部主题共用一把锁、**读写均在临界区内**）。
+- **主题文件命名**：一律**英文 kebab-case**（`pending`/`decisions`/`pipeline-state`/`last-operation`/`experience`），索引显示名可中文并给出路径。
+
 ## 思考深度配置
 
 各 Agent frontmatter 含 `reasoning_effort` 字段（high/medium/low）：规划/方案类用 high，调度/审查/测试用 medium，执行/机械/归档/视觉用 low。模板与 `.opencode/agents/` 部署副本（opencode 适配器）需保持同步。

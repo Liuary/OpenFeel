@@ -63,5 +63,6 @@
 | 代码审查可信度 / REV 独立复核 | `core/code-review.md` | 可信度声明写法、**可疑会话产出的处置**（降级「待复核」）、取证纪律（异常即中止 / 不继承 / 命令行优先 / 三要素可复现） |
 | agent 模板 permission / opencode 权限模型（opencode 适配器） | `core/permission.md` | 9 agent 白名单键集、合并/优先级语义、项目级收紧入口或受管区边界变更 |
 | skill 体系 / CLI 用法参考 | `cli/commands.md`（命令面）+ `openfeel-cli-usage` skill 权威源 | **skill 数量（当前 17）**——既有计数口诀见 `test/core/{setup,update}.test.ts`（`9 agent + 17 skill + 1 = 27`；+ 项目 jsonc = 28），新增/改名 skill 须同步**全仓写死计数与白名单数组**；`--help` 文案与自描述命令输出键集是否一致；**快照声明**的版本号是否随版本更新 |
+| 记忆/状态文件格式（`dev/current.md` + `users/{username}/dev_last.md`） | `templates-data/agents-md/{zh-CN,en}.md` 工作区结构节 + `opencode/agents/{zh-CN,en}/feel.md` 记忆加载/会话写入节 | **两条设计目的**（保存核心信息便于恢复 / 避免无关信息污染上下文）与**三层分层**（索引/主题/详情）；`current.md` = 团队文件（仅个人提交时更新、整体信息、无 agent 细节与 @成员段、≤5 条、旧记录归档 `current_archive/`）；`dev_last.md` = 索引 + 同名主题目录（活跃主题 ≤5、索引 ≤5×100 字、主题 ≤10×300 字、超量转 `tmp/` 记地址、**超期不归档**、R1~R6 含 R4 就地收敛 + R6 加锁）；主题文件名英文 kebab-case；同步 workspace/recover/sync-status 三 skill |
 
 > 新增模块时在「模块树」中追加条目，并创建对应文档。

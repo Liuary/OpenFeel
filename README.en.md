@@ -8,7 +8,7 @@ OpenFeel is a TypeScript CLI tool for end-to-end process governance in AI Agent 
 > **Default Model Config**: DeepSeek V4 (primary reasoning) + GLM-5.3-flash (cross-review) + DeepSeek-flash (multimodal vision).  
 > `openfeel init` auto-detects registered models and guides configuration.
 >
-> ⚠️ The `openfeel <cmd>` examples below are the **installed-package usage**; when developing/running **inside this source repository**, use `node bin/openfeel.js <cmd>` instead (the global `openfeel` may resolve to an older version, e.g. 1.1.1).
+> ⚠️ The `openfeel <cmd>` examples below are the **installed-package usage**; when developing/running **inside this source repository**, use `node bin/openfeel.js <cmd>` instead (the global `openfeel` may lag behind this repository — it is not synced with the source here).
 
 ## What Problem Does It Solve
 
@@ -48,25 +48,34 @@ openfeel plan scheme create stage-01 "Implement core features"
 openfeel flow status
 ```
 
+## What's New in v1.1.2
+
+- **Self-description**: `flow phases [--json]` lists all valid phases and the transition table (5 top-level JSON keys: `schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff`).
+- **Stage governance**: `flow stage remove` / `plan stage add --deps` / `stageId` validation and directory-conflict detection.
+- **Effective config**: `config effective` prints the resolved value plus its source (`status.md > config.yaml > profile.yaml > builtin`).
+- **Structured output**: `flow status/current/health/metrics/overview --json` (pure JSON + `schemaVersion`).
+- **Correction/cleanup CLI surface**: `plan scheme remove/rename/publish`, `flow ops list`, `flow health --fix`, `knowledge dedup`, `lint` non-zero exit on findings.
+- **Deployment & backup**: automatic backup before overwrite at `~/.openfeel/backup/{ts}/`; new skill `openfeel-cli-usage` (skills 16 → 17).
+
 ## Command Reference
 
 | Command | Purpose |
 |---------|---------|
 | `openfeel init [path]` | Initialize new project with `.openfeel/` workspace and platform adapter (current: opencode) |
 | `openfeel update` | Incrementally deploy platform adapter to existing projects |
-| `openfeel flow` | Pipeline state management (status / current / advance / overview) |
+| `openfeel flow` | Pipeline state management (status / phases / overview / current / advance / attempt / ops list / health [--fix] / checkpoint / migrate; status·current·health·metrics·overview support --json) |
 | `openfeel roadmap` | Version roadmap management (create / show) |
-| `openfeel plan` | Stage and scheme management (stage add/list, scheme create/list) |
+| `openfeel plan` | Stage and scheme management (stage add/list [--deps/--tasks], scheme create [--draft] / publish / rename / remove / list) |
 | `openfeel lint` | Quality gate checks (i18n key symmetry / kb stale references; **non-zero exit on findings**, no escape hatch) |
 | `openfeel config` | Configuration management (get / set[**all `defaults.*`**] / effective / get-lang / list-projects, supports --global) |
-| `openfeel knowledge` | Knowledge base management (list / search) |
+| `openfeel knowledge` | Knowledge base management (list / add / search / index / dedup) |
 | `openfeel archive <stage>` | Stage archiving with knowledge extraction |
 | `openfeel setup` | Global-only deployment (global AGENTS.md + agents + skills + adapter config); no project `.openfeel/` |
 | `openfeel migrate` | Migrate legacy-layout projects (detect / backup / rollback) |
 | `openfeel model` | Three-tier agent model config (set / get / list, `--scope`) |
-| `openfeel stage` | Work stage status (status / set / create [deprecated]) |
-| `openfeel project` | Project management (list / info) |
-| `openfeel view` | Review item management (list / accept) |
+| `openfeel stage` | Work stage status (status / set / task / create [deprecated]) |
+| `openfeel project` | Project management (overview) |
+| `openfeel view` | Review item management (list / accept; add/update/remove via `flow review add|update|remove`) |
 | `openfeel instructions` | Generate structured instructions (artifact → XML/JSON) |
 
 Details: [docs/commands.md](docs/commands.md)
@@ -91,6 +100,12 @@ Feel is the command center, receiving user intent and dispatching downstream Age
 | Vision | Vision Agent | Multimodal visual analysis |
 | Archiver | Archiver | Operation archiving and knowledge extraction |
 
+### Global Deployment and Workspace Layering
+
+Framework assets (9 agents / 17 skills / global `AGENTS.md` / global `opencode.jsonc`) are deployed to `~/.config/opencode/` via `openfeel setup`; **the repository itself keeps no project-level `.opencode/agents|skills`** (since stage-55).
+
+Workspace state is layered into two files: `current.md` (team file, cross-user overall progress, ≤5 entries + auto-archiving) and `dev_last.md` (local index + topic directory, cross-session recovery). Framework assets are **automatically backed up** before deployment overwrite to `~/.openfeel/backup/{ts}/`.
+
 ### Three-Tier Planning
 
 ```
@@ -111,7 +126,7 @@ Roadmap
 | `openfeel plan` | Plan formulation |
 | `openfeel plan scheme` | Scheme formulation |
 | `openfeel-executor` | Code execution |
-| `openfeel view` | Code review |
+| `openfeel view` | Review item acceptance |
 | `openfeel-feel-tester` | Test acceptance |
 | `openfeel archive` | Stage archiving |
 | `openfeel knowledge` | Knowledge base operations |
@@ -120,7 +135,8 @@ Roadmap
 
 ```
 CLI Layer (Commander)
-  ├── init / update
+  ├── init / update / setup / migrate
+  ├── stage / project / model
   ├── flow         ← FlowManager (state machine core)
   ├── roadmap      ← Roadmap module
   ├── plan         ← Stage / Scheme module
@@ -138,15 +154,19 @@ Core Layer
   ├── artifact-graph/ — Dependency graph & instruction generation
   ├── view/ — Review item CRUD
   ├── archive/ — Archive consolidation
+  ├── backup/ — pre-overwrite backup (~/.openfeel/backup/{ts}/)
+  ├── fs/ — atomic writes + advisory file locks
   └── workspace/ — Directory structure & knowledge base
 ```
+
+> **Global asset deployment**: 9 agents / 17 skills / global `AGENTS.md` / global `opencode.jsonc` are deployed to `~/.config/opencode/` via `openfeel setup`; the repository itself keeps no project-level `.opencode/agents|skills` (since stage-55).
 
 ## Development
 
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (790 cases, 54 test files)
+npm test           # Run tests (986 cases / 59 test files; Linux CI skips 1 Windows-only case)
 ```
 
 ## Acknowledgments

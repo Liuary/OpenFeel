@@ -954,3 +954,27 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 **实证**：v1.1.2-stage-58 REV-001（blocking，裁定方案 b 删除 `VITEST` 守卫）、REV-004（两 install 策略统一）；E-4 `repl.test.ts` 加 `OPENFEEL_ENCODING:'utf8'` + `OPENFEEL_LOG:'0'`。
 
 **参见：** v1.1.2-stage-58 REV-001/REV-004、E-3/E-4/E-5；kb/patterns.md #库侧默认 no-op + 进程入口 install、#测试全局路径隔离模式（禁用保存/恢复伪隔离）；kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock
+
+## [+] CI 同一 push 多 run 并发发布同版本 → npm registry 409；job 级 concurrency 组串行化（必要但不充分） (2026-10-02)
+
+**症状/现象**：CI `publish` job 偶发 `npm publish` 失败 `409 Cannot publish over previously staged version`，但同一版本随后又「自动」成功（**假失败**）。
+
+**根因（实测）**：同一 push（`25689d4`）仅 1 个 PushEvent，GitHub 却为该 commit 调度了 **2 个 workflow run**（run #53 success / #54 failure，同 `head_sha`、同 `created_at`）；两 run 的 `publish` job 时间窗**重叠**（#53 `19:22:03→19:22:28` success；#54 `19:22:08→19:22:31` 409）。两 run 都通过 `Check if version changed`（暂存期远端 `npm view openfeel version` 仍为旧版 `1.1.1`）→ 并发 PUT 同一版本 `1.1.2` → 先者成功并由 registry 置 *staged* 态，后者被拒 409。属 npm registry 已知竞态（[npm/cli#9889](https://github.com/npm/cli/issues/9889)）。
+
+**处置（方案 A，用户裁定）**：在 `publish` job 加 **job 级 `concurrency`**：
+
+```yaml
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+```
+
+同一 ref 的 run 串行化（排队）；发布为不可逆副作用，故 `cancel-in-progress: false`（避免取消进行中的发布）。
+
+**边界（必要但不充分）**：串行化只保证第二个 run 在第一个 run **结束后**开始，**不保证** registry 已完成 staged→finalize（本次实测 stage `19:22` → finalize `19:29`，窗口约 7 分钟）。若 GitHub 再次把同一 push 调度成 2 个 run，第二个 run 的 `Check if version changed` 若在 finalize 前执行仍读到旧版本 → 再次 publish → 再次 409。要彻底消除需幂等/重试语义（publish 后置重试 / provenance-oidc）或接受手动重跑；本轮按裁定不做兜底。
+
+**判据**：CI 中任何「受远端外部状态（registry / *staged* 态）影响的并发不可逆写」都应显式指定 job/工作流级 `concurrency`；对发布类 job 用 `cancel-in-progress: false`。
+
+**实证**：v1.1.2-stage-60（op-001 `7e09eac`，`.github/workflows/ci.yml` +3 行）；REV-001（low 非阻塞，挂起观察，若再现 409 应升级 medium）。
+
+**参见：** 私域 `.openfeel/users/Liuary/code_review/REV-v1.1.2-stage-60.md`；公域 `.openfeel/code_review/v1.1.2-stage-60.md`；kb/troubleshooting.md #npm publish 404/403 诊断链；npm/cli#9889

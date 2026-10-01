@@ -23,7 +23,7 @@ import { Command, CommanderError } from 'commander';
 import { registerFlowCommand } from '../../src/commands/flow.js';
 import { initProject } from '../../src/core/init.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
-import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -739,5 +739,136 @@ describe('flow 命令（stage-41）', () => {
     await safeParse(['flow', 'current', '--json']);
     const obj = parseJsonLog();
     expect(obj.stage).toBe('');
+  });
+
+  // ── stage-52/op-003：B2 health --fix 状态对账 + L7 文件孤儿报告 ──
+
+  /** 构造一个含 status.md 的阶段（flowStatus = flow.json 权威值；mdStatus=null 表示不含「状态」字段） */
+  function setupReconcileStage(stageSuffix: string, flowStatus: string, mdStatus: string | null): { stageId: string; statusPath: string } {
+    const stageId = `v1.1.2-${stageSuffix}`;
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage(stageId);
+    const st = mgr.getData()!.stages[stageId];
+    st.phase = 'exec_running';
+    st.status = flowStatus;
+    mgr.save();
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', stageSuffix);
+    mkdirSync(dir, { recursive: true });
+    const statusPath = join(dir, 'status.md');
+    const statusLine = mdStatus === null ? '' : `- **状态**：${mdStatus}\n`;
+    writeFileSync(
+      statusPath,
+      `# ${stageId} 状态\n\n- **执行模式**：manual\n- **自动推进**：disabled\n${statusLine}\n` +
+        `## 状态记录\n\n| 时间 | Agent | 状态变化 | 说明 |\n|------|-------|----------|------|\n`,
+      'utf-8',
+    );
+    return { stageId, statusPath };
+  }
+
+  it('op-003/B2: health --fix --dry-run 列出差异且两文件零写盘', async () => {
+    const { statusPath } = setupReconcileStage('stage-95', 'active', 'planned');
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const flowBefore = readFileSync(flowPath, 'utf-8');
+    const mdBefore = readFileSync(statusPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health', '--fix', '--dry-run']);
+
+    expect(readFileSync(flowPath, 'utf-8')).toBe(flowBefore);
+    expect(readFileSync(statusPath, 'utf-8')).toBe(mdBefore);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('planned');
+    expect(out).toContain('仅预览');
+  });
+
+  it('op-003/B2: health --fix 仅改「状态」行，其余字节不变', async () => {
+    const { statusPath } = setupReconcileStage('stage-96', 'active', 'planned');
+    const mdBefore = readFileSync(statusPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health', '--fix']);
+
+    const mdAfter = readFileSync(statusPath, 'utf-8');
+    expect(mdAfter).not.toBe(mdBefore);
+    expect(mdAfter).toContain('- **状态**：active');
+    const beforeLines = mdBefore.split('\n');
+    const afterLines = mdAfter.split('\n');
+    expect(afterLines.length).toBe(beforeLines.length);
+    const changedIdx = beforeLines
+      .map((l, i) => (l === afterLines[i] ? -1 : i))
+      .filter((i) => i !== -1);
+    // 仅 1 行变化，且为「状态」字段行
+    expect(changedIdx).toHaveLength(1);
+    expect(beforeLines[changedIdx[0]]).toContain('状态');
+  });
+
+  it('op-003/B2: 字段缺失 → skipped-not-found 且不新建字段', async () => {
+    const { statusPath } = setupReconcileStage('stage-97', 'active', null);
+    const mdBefore = readFileSync(statusPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health', '--fix']);
+
+    expect(readFileSync(statusPath, 'utf-8')).toBe(mdBefore);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('跳过 1');
+  });
+
+  it('op-003/B2: 已一致 → applied=0 且零写盘（幂等）', async () => {
+    const { statusPath } = setupReconcileStage('stage-98', 'active', 'active');
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const flowBefore = readFileSync(flowPath, 'utf-8');
+    const mdBefore = readFileSync(statusPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health', '--fix']);
+
+    expect(readFileSync(flowPath, 'utf-8')).toBe(flowBefore);
+    expect(readFileSync(statusPath, 'utf-8')).toBe(mdBefore);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('已回写 0');
+  });
+
+  it('op-003/B2: 写盘失败 → exit 1 + 明确错误', async () => {
+    setupReconcileStage('stage-99', 'active', 'planned');
+    const proto = FlowManager.prototype as unknown as { writeStatusField: () => boolean };
+    const spy = vi.spyOn(proto, 'writeStatusField').mockImplementation(() => {
+      throw new Error('disk full');
+    });
+    errorMock.mockClear();
+    exitMock.mockClear();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health', '--fix']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('disk full');
+    spy.mockRestore();
+  });
+
+  it('op-003/L7: 文件孤儿只读统计且无删除；health 与 repair 数量一致', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-93');
+    mgr.getData()!.stages['v1.1.2-stage-93'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-93', 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    writeFileSync(join(opsDir, 'op-002.md'), 'x', 'utf-8');
+    const filesBefore = readdirSync(opsDir).sort();
+
+    logMock.mockClear();
+    await safeParse(['flow', 'health']);
+    const healthOut = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(healthOut).toContain('文件孤儿 1');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'repair', '--dry-run']);
+    const repairOut = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(repairOut).toContain('文件孤儿');
+    expect(repairOut).toContain('v1.1.2-stage-93.op-002');
+    expect(repairOut).toContain('不提供自动清理');
+
+    // 无删除行为：ops/ 目录文件清单完全不变
+    expect(readdirSync(opsDir).sort()).toEqual(filesBefore);
   });
 });

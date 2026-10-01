@@ -10,7 +10,7 @@
  * - 新增 repair() 方法，自动检测并修复 flow.json 常见问题
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
 import {
@@ -230,6 +230,18 @@ export interface RepairResult {
   recovered: boolean;
   /** 孤儿 op 对账结果（N1-2；键孤儿/文件孤儿），供命令层报告与 --prune-orphans 使用 */
   orphans?: { keyOrphans: OrphanOp[]; fileOrphans: OrphanOp[] };
+}
+
+/** 状态对账单条差异（B2-1；status.md「状态」字段 ↔ flow.json 权威值） */
+export interface StatusReconcileItem {
+  /** 阶段 ID */
+  stage: string;
+  /** status.md 当前「状态」值（'' = 字段缺失/文件缺失） */
+  from: string;
+  /** flow.json 权威值（mapPhaseToStageStatus 派生） */
+  to: string;
+  /** 处理结果：planned（dry-run 预览）/ applied（已回写）/ skipped-not-found（字段或文件缺失） */
+  result: 'planned' | 'applied' | 'skipped-not-found';
 }
 
 /** 阶段可移除性检查结果（供 removeStage 与 flow stage remove --dry-run 共用，REV-005） */
@@ -2953,6 +2965,81 @@ export class FlowManager {
   }
 
   /**
+   * 以 flow.json 为权威，对账并回写各阶段 status.md 的「状态」字段（B2-1 / A2）。
+   * 仅处理「状态」字段；**绝不**触碰执行模式/自动推进/当前任务/状态记录表（独立字段）。
+   * 与 `commands/stage.ts:setStatusField` 同语义（定向替换，其余字节不变）；后续可下沉合并。
+   * @param options.dryRun true 时只计算差异、不写盘
+   * @returns 差异清单（含 dry-run 预览结果）；已一致项不入清单（保证幂等 applied=0）
+   */
+  reconcileStatusMd(options?: { dryRun?: boolean }): StatusReconcileItem[] {
+    const out: StatusReconcileItem[] = [];
+    if (!this.data) {
+      return out;
+    }
+    const testEnabled = this.buildCascadeConfig().effective['test_enabled'] !== 'false';
+    for (const [stageId, stage] of Object.entries(this.data.stages)) {
+      // 跳过 draft（未发布不参与对账，与 op-005 窄兼容一致）
+      if ((stage.phase as string) === 'draft') {
+        continue;
+      }
+      const authoritative = mapPhaseToStageStatus(stage.phase, stage.status, testEnabled);
+      const statusPath = this.findStatusPath(stageId);
+      if (!statusPath || !existsSync(statusPath)) {
+        // status.md 缺失 → 安全跳过，不新建文件/字段
+        out.push({ stage: stageId, from: '', to: authoritative, result: 'skipped-not-found' });
+        continue;
+      }
+      const current = readStatusFieldValue(readFileSync(statusPath, 'utf-8'), '状态');
+      if (current === null) {
+        // 字段缺失 → 记为 skipped-not-found（不新建字段，避免扩大写入面）
+        out.push({ stage: stageId, from: '', to: authoritative, result: 'skipped-not-found' });
+        continue;
+      }
+      if (current === authoritative) {
+        // 已一致 → 不入清单（无差异，零写入）
+        continue;
+      }
+      if (options?.dryRun) {
+        out.push({ stage: stageId, from: current, to: authoritative, result: 'planned' });
+        continue;
+      }
+      // 定向替换「状态」字段行（其余字节不变），并留审计日志
+      this.writeStatusField(statusPath, '状态', authoritative);
+      this.appendLog({
+        time: '',
+        agent: 'openfeel-executor',
+        action: 'status_reconcile',
+        detail: { stage: stageId, from: current, to: authoritative },
+      });
+      out.push({ stage: stageId, from: current, to: authoritative, result: 'applied' });
+    }
+    return out;
+  }
+
+  /**
+   * status.md「状态」字段定向写（原子写 + 按阶段目录加锁）。
+   * 仅替换首个匹配的 `- **{key}**：{value}` 行的值，其余内容逐字节保留。
+   * 与 `commands/stage.ts:setStatusField` 同语义。
+   */
+  private writeStatusField(statusPath: string, key: string, newValue: string): boolean {
+    const stageDir = basename(dirname(statusPath));
+    const lockPath = projectLockPath(this.projectPath, `status-${stageDir}`);
+    return withFileLock(lockPath, () => {
+      const content = readFileSync(statusPath, 'utf-8');
+      const fieldRegex = new RegExp(
+        `^(-\\s*(?:\\*\\*)?${escapeRegex(key)}(?:\\*\\*)?[：:]\\s*)(.*)$`,
+        'gm',
+      );
+      const updated = content.replace(fieldRegex, `$1${newValue}`);
+      if (updated === content) {
+        return false; // 未命中字段
+      }
+      atomicWriteFileSync(statusPath, updated);
+      return true;
+    });
+  }
+
+  /**
    * 7. 悬空依赖检测：stages[].deps 是否均指向已注册阶段（B2 存量防御）
    * 仅作数据卫生告警（warn），不阻断；强制校验点在命令层 `commands/plan.ts`
    * @param items 健康检查结果收集数组
@@ -3446,6 +3533,28 @@ export function normalizeAgentName(name: string): string {
     return key;
   }
   return LEGACY_AGENT_NAME_MAP[key] ?? key;
+}
+
+/**
+ * 转义正则元字符（供 status.md 字段名匹配使用）。
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 读取 status.md 中 `- **{key}**：{value}` 字段值（首个匹配）。
+ * @param content status.md 全文
+ * @param key 字段名（如「状态」）
+ * @returns 字段值；未命中返回 null
+ */
+function readStatusFieldValue(content: string, key: string): string | null {
+  const fieldRegex = new RegExp(
+    `^-\\s*(?:\\*\\*)?${escapeRegex(key)}(?:\\*\\*)?[：:]\\s*(.*)$`,
+    'm',
+  );
+  const m = content.match(fieldRegex);
+  return m ? m[1] : null;
 }
 
 /**

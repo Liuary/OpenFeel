@@ -207,6 +207,8 @@ export const flow: I18nDomain = {
   'repair.orphansTitle':            { key: 'flow.repair.orphansTitle',            zh: '孤儿 op 对账：',                          en: '' },
   'repair.orphanKeyTmpl':           { key: 'flow.repair.orphanKeyTmpl',           zh: '  键孤儿（有注册无文件）：{items}',        en: '' },
   'repair.orphanFileTmpl':          { key: 'flow.repair.orphanFileTmpl',          zh: '  文件孤儿（有文件无注册）：{items}',      en: '' },
+  'repair.fileOrphanTitle':         { key: 'flow.repair.fileOrphanTitle',         zh: '文件孤儿（有文件无注册）：',               en: '' },
+  'repair.fileOrphanNote':          { key: 'flow.repair.fileOrphanNote',          zh: '按裁定不提供自动清理（避免误删历史源码）；请人工确认后处理', en: '' },
   'repair.pruneOkTmpl':             { key: 'flow.repair.pruneOkTmpl',             zh: '已清理 {n} 个键孤儿（文件未删除）',        en: '' },
 
   // flow migrate
@@ -223,7 +225,13 @@ export const flow: I18nDomain = {
   'health.hasFailures':             { key: 'flow.health.hasFailures',             zh: '⚠️  存在不通过项，请检查上述错误',         en: '' },
   'health.quickMode':               { key: 'flow.health.quickMode',               zh: '（快速模式：仅检查关键项）',              en: '' },
   'health.orphanOps':               { key: 'flow.health.orphanOps',               zh: '孤儿操作方案',                            en: '' },
-  'health.orphanOpsDetail':         { key: 'flow.health.orphanOpsDetail',         zh: '键孤儿 {n} 个、文件孤儿 {m} 个；运行 flow repair 查看详情', en: '' },
+  'health.orphanOpsDetail':         { key: 'flow.health.orphanOpsDetail',         zh: '键孤儿 {n} 个、文件孤儿 {m} 个；运行 flow repair 查看详情（按裁定不提供自动清理）', en: '' },
+  'health.fixTitle':                { key: 'flow.health.fixTitle',                zh: '状态对账：',                              en: '' },
+  'health.fixItemTmpl':             { key: 'flow.health.fixItemTmpl',             zh: '  {stage}: {from} → {to}（{result}）',     en: '' },
+  'health.fixAppliedTmpl':          { key: 'flow.health.fixAppliedTmpl',          zh: '已回写 {n} 个阶段的状态字段',              en: '' },
+  'health.fixSkippedTmpl':          { key: 'flow.health.fixSkippedTmpl',          zh: '跳过 {n} 个阶段（status.md 中「状态」字段缺失）', en: '' },
+  'health.fixDryRunNote':           { key: 'flow.health.fixDryRunNote',           zh: '仅预览，未写入任何文件',                   en: '' },
+  'health.fixOnlyStatusNote':       { key: 'flow.health.fixOnlyStatusNote',       zh: '仅同步「状态」字段；执行模式/自动推进/当前任务等不受影响', en: '' },
 
   // flow recover
   'recover.title':                  { key: 'flow.recover.title',                  zh: '═══ 跨会话上下文恢复 ═══',               en: '' },
@@ -584,6 +592,8 @@ export const help: I18nDomain = {
   'flow.health':           { key: 'help.flow.health',           zh: '全面健康检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml 等', en: '' },
   'flow.health.quick':     { key: 'help.flow.health.quick',     zh: '仅检查关键项（phase/current 合法性，跳过其他检查）', en: '' },
   'flow.health.json':      { key: 'help.flow.health.json',      zh: '以 JSON 输出', en: '' },
+  'flow.health.fix':       { key: 'help.flow.health.fix',       zh: '以 flow.json 为权威，回写 status.md 的「状态」字段（仅该字段）', en: '' },
+  'flow.health.dryRun':    { key: 'help.flow.health.dryRun',    zh: '仅预览（与 --fix 组合）；不写入任何文件', en: '' },
   'flow.checkpoint':       { key: 'help.flow.checkpoint',       zh: 'Checkpoint 快照管理（phase 推进时自动保存 flow.json 快照）', en: '' },
   'flow.checkpoint.list':  { key: 'help.flow.checkpoint.list',  zh: '列出所有（或指定阶段的）Checkpoint 快照', en: '' },
   'flow.checkpoint.list.argstage': { key: 'help.flow.checkpoint.list.argstage', zh: '阶段 ID（可选），如 v5.3-stage-01', en: '' },

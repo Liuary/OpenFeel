@@ -23,7 +23,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { MetricsStore } from '../core/metrics.js';
@@ -1156,9 +1156,13 @@ export function registerFlowCommand(program: Command): void {
           }));
         }
         if (orphans.fileOrphans.length > 0) {
+          // L7-1：文件孤儿只读统计（条数 + 前 5 条清单 + 说明）；按 A6 不提供清理入口
+          console.log(t('flow.repair.fileOrphanTitle', lang) + ` ${orphans.fileOrphans.length}`);
+          const sample = orphans.fileOrphans.slice(0, 5).map((o) => `${o.stage}.${o.opId}`).join(', ');
           console.log(t('flow.repair.orphanFileTmpl', lang, {
-            items: orphans.fileOrphans.map((o) => `${o.stage}.${o.opId}`).join(', '),
+            items: sample + (orphans.fileOrphans.length > 5 ? ' …' : ''),
           }));
+          console.log(t('flow.repair.fileOrphanNote', lang));
         }
         // --prune-orphans：仅清理 keyOrphans（正式执行才输出）
         if (options.pruneOrphans && !options.dryRun && orphans.keyOrphans.length > 0) {
@@ -1284,18 +1288,64 @@ export function registerFlowCommand(program: Command): void {
     .description('全面健康检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml 等')
     .option('--quick', '仅检查关键项（phase/current 合法性，跳过其他检查）')
     .option('--json', 'Output as JSON')
-    .action((options: { quick?: boolean; json?: boolean }) => {
+    .option('--fix', 'Reconcile status.md "Status" field against flow.json (that field only)')
+    .option('--dry-run', 'Preview only (combine with --fix); nothing is written')
+    .action((options: { quick?: boolean; json?: boolean; fix?: boolean; dryRun?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
+
+      // B2-2：--fix 状态对账（仅回写 status.md「状态」字段；--dry-run 预览不写盘）
+      let reconciled: StatusReconcileItem[] | undefined;
+      if (options.fix) {
+        try {
+          reconciled = mgr.reconcileStatusMd({ dryRun: options.dryRun });
+        } catch (err: unknown) {
+          // 写盘失败 → 明确错误 + 非 0 退出
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(t('common.errorTmpl', lang, { msg }));
+          process.exit(1);
+          return;
+        }
+      }
 
       // B1-3：--json 分支纯 JSON 单文档；退出码语义不变（有 fail → 非 0）
       if (options.json) {
         const report = mgr.getHealthReport(options.quick ?? false);
-        console.log(JSON.stringify({ schemaVersion: 1, ok: report.ok, items: report.items }, null, 2));
+        const payload: Record<string, unknown> = { schemaVersion: 1, ok: report.ok, items: report.items };
+        // 与 op-001 的 health --json 合并字段（--fix 时追加 reconciled）
+        if (reconciled) {
+          payload.reconciled = reconciled;
+        }
+        console.log(JSON.stringify(payload, null, 2));
         if (!report.ok) {
           process.exit(1);
         }
         return;
+      }
+
+      // 人类可读：先打印对账结果（仅 --fix 时）
+      if (reconciled) {
+        console.log(t('flow.health.fixTitle', lang));
+        for (const item of reconciled) {
+          console.log(t('flow.health.fixItemTmpl', lang, {
+            stage: item.stage,
+            from: item.from || '-',
+            to: item.to,
+            result: item.result,
+          }));
+        }
+        if (options.dryRun) {
+          console.log(t('flow.health.fixDryRunNote', lang));
+        } else {
+          const applied = reconciled.filter((i) => i.result === 'applied').length;
+          console.log(t('flow.health.fixAppliedTmpl', lang, { n: String(applied) }));
+        }
+        const skipped = reconciled.filter((i) => i.result === 'skipped-not-found').length;
+        if (skipped > 0) {
+          console.log(t('flow.health.fixSkippedTmpl', lang, { n: String(skipped) }));
+        }
+        console.log(t('flow.health.fixOnlyStatusNote', lang));
+        console.log('');
       }
 
       console.log(t('flow.health.title', lang) + '\n');

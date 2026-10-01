@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T01:24:57.880Z",
-    "revision": 390
+    "updated": "2026-10-01T01:27:32.444Z",
+    "revision": 391
   },
   "pipeline": {
     "phase": "active",
@@ -1915,9 +1915,9 @@
         },
         "op-006": {
           "title": "B6 plan scheme rename",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -9528,6 +9528,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-52.op-005",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-01T01:27:32.410Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-52.op-006",
         "attempts": 1
       }
     }

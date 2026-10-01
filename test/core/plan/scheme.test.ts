@@ -3,7 +3,7 @@
  * 测试 createScheme、getScheme 和 listSchemes 在临时目录中的行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createScheme, getScheme, listSchemes } from '../../../src/core/plan/scheme.js';
+import { createScheme, getScheme, listSchemes, renameScheme } from '../../../src/core/plan/scheme.js';
 import { addStage } from '../../../src/core/plan/stage.js';
 import { FlowManager } from '../../../src/core/flow-manager.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
@@ -285,7 +285,8 @@ describe('scheme', () => {
       registerPlanCommand(program);
       const scheme = program.commands.find((c) => c.name() === 'plan')!.commands.find((c) => c.name() === 'scheme')!;
       const names = scheme.commands.map((c) => c.name());
-      expect(names).not.toContain('rename');
+      // op-006 翻转：新增 rename 子命令（仍无 migrate，A5）
+      expect(names).toContain('rename');
       expect(names).not.toContain('migrate');
     });
   });
@@ -369,6 +370,56 @@ describe('scheme', () => {
     it('plan 目录不存在时应返回空数组', () => {
       const schemes = listSchemes(tmpDir);
       expect(schemes).toEqual([]);
+    });
+  });
+
+  describe('op-006 renameScheme（B6）', () => {
+    it('无首行模式 → 头部插入标题行，其余内容保留', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-01');
+      createScheme(tmpDir, 'stage-01', 'T');
+      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001.md');
+      writeFileSync(filePath, '正文第一行\n第二行\n', 'utf-8');
+
+      const r = renameScheme(tmpDir, 'stage-01', 'op-001', '新标题');
+
+      expect(r.renamed).toBe(true);
+      const content = readFileSync(filePath, 'utf-8');
+      expect(content.startsWith('# op-001：新标题\n\n正文第一行')).toBe(true);
+    });
+
+    it('标题未变 → title-unchanged 且不写盘', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-01');
+      createScheme(tmpDir, 'stage-01', '同标题');
+      const filePath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001.md');
+      const before = readFileSync(filePath, 'utf-8');
+
+      const r = renameScheme(tmpDir, 'stage-01', 'op-001', '同标题');
+
+      expect(r.reason).toBe('title-unchanged');
+      expect(readFileSync(filePath, 'utf-8')).toBe(before);
+    });
+
+    it('历史命名 op-002_旧标题.md → 首行更新且文件名不变（A5）', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-01');
+      createScheme(tmpDir, 'stage-01', 'T'); // 注册 op-001（占号 1）
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      const mgr = new FlowManager(tmpDir);
+      mgr.getData()!.stages['v1.0.0-stage-01'].ops['op-002'] = {
+        id: 'op-002', title: '旧', state: 'pending', assignee: 'x', attempts: 0, max_attempts: 3,
+        checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+      } as never;
+      mgr.save();
+      const legacyPath = join(opsDir, 'op-002_旧标题.md');
+      writeFileSync(legacyPath, '# op-002：旧标题\n\n内容\n', 'utf-8');
+
+      const r = renameScheme(tmpDir, 'stage-01', 'op-002', '新标题');
+
+      expect(r.renamed).toBe(true);
+      expect(existsSync(legacyPath)).toBe(true); // 文件名不变
+      expect(readFileSync(legacyPath, 'utf-8').split('\n')[0]).toBe('# op-002：新标题');
     });
   });
 });

@@ -447,6 +447,11 @@ export const plan: I18nDomain = {
   'scheme.publish.emptyTmpl':    { key: 'plan.scheme.publish.emptyTmpl',    zh: '模板未填充，禁止发布：{opId}（请先补全「- [ ] 待补充」）', en: '' },
   'scheme.publish.notDraftTmpl': { key: 'plan.scheme.publish.notDraftTmpl', zh: '{opId} 不是 draft 状态，无需发布',          en: '' },
   'scheme.publish.notFoundTmpl': { key: 'plan.scheme.publish.notFoundTmpl', zh: '未找到：阶段 {stage} 或操作方案 {opId}',    en: '' },
+  'scheme.rename.okTmpl':        { key: 'plan.scheme.rename.okTmpl',        zh: '已重命名 {opId}：{from} → {to}',            en: '' },
+  'scheme.rename.unchangedTmpl': { key: 'plan.scheme.rename.unchangedTmpl', zh: '标题未变化：{opId}',                       en: '' },
+  'scheme.rename.notFoundTmpl':  { key: 'plan.scheme.rename.notFoundTmpl',  zh: '未找到：阶段 {stage} 或操作方案 {opId}',    en: '' },
+  'scheme.rename.fileMissingTmpl': { key: 'plan.scheme.rename.fileMissingTmpl', zh: '未找到 {opId} 的模板文件（{path}）；flow.json 未修改', en: '' },
+  'scheme.rename.emptyTitleTmpl': { key: 'plan.scheme.rename.emptyTitleTmpl', zh: '标题不能为空',                            en: '' },
 };
 
 /* ==================== knowledge 域：知识库命令 ==================== */
@@ -667,6 +672,10 @@ export const help: I18nDomain = {
   'plan.scheme.publish':    { key: 'help.plan.scheme.publish',    zh: '将 draft 操作方案发布为执行态（draft → pending）', en: '' },
   'plan.scheme.publish.argstage': { key: 'help.plan.scheme.publish.argstage', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
   'plan.scheme.publish.argopId':  { key: 'help.plan.scheme.publish.argopId',  zh: '操作方案 ID（如 op-001 或完整 stage.op-001）', en: '' },
+  'plan.scheme.rename':     { key: 'help.plan.scheme.rename',     zh: '更新操作方案标题', en: '' },
+  'plan.scheme.rename.title': { key: 'help.plan.scheme.rename.title', zh: '新标题（必填）', en: '' },
+  'plan.scheme.rename.argstage': { key: 'help.plan.scheme.rename.argstage', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
+  'plan.scheme.rename.argopId':  { key: 'help.plan.scheme.rename.argopId',  zh: '操作方案 ID（如 op-001 或完整 stage.op-001）', en: '' },
 
   // stage
   'stage':                 { key: 'help.stage',                 zh: '工作阶段状态管理（status.md 原子操作）', en: '' },

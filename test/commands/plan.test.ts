@@ -469,4 +469,69 @@ describe('plan 命令', () => {
 
     expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('[draft]');
   });
+
+  // ── stage-52/op-006：B6 plan scheme rename ──
+
+  it('op-006/B6: rename 同步 flow.json 标题与文件首行，其余内容不变 + 审计日志', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-30', '旧标题']);
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-30', 'ops');
+    const filePath = join(opsDir, 'op-001.md');
+    const before = readFileSync(filePath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'rename', 'stage-30', 'op-001', '--title', '新标题']);
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-30'].ops['op-001'].title).toBe('新标题');
+    const after = readFileSync(filePath, 'utf-8');
+    expect(after.split('\n')[0]).toBe('# op-001：新标题');
+    // 除首行外逐字节不变
+    expect(after.split('\n').slice(1).join('\n')).toBe(before.split('\n').slice(1).join('\n'));
+    expect(flow.log.some((l: { action: string }) => l.action === 'scheme_rename')).toBe(true);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('已重命名');
+  });
+
+  it('op-006/B6: list 反映新标题（读首行）', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-32', '旧标题']);
+    await safeParse(['plan', 'scheme', 'rename', 'stage-32', 'op-001', '--title', '超新标题']);
+    logMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'list', 'stage-32']);
+
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('超新标题');
+  });
+
+  it('op-006/B6: 不存在 op → exit 1；空标题 → exit 1', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-31', 'T']);
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'rename', 'stage-31', 'op-999', '--title', 'x']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('未找到');
+
+    exitMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['plan', 'scheme', 'rename', 'stage-31', 'op-001', '--title', '   ']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('标题不能为空');
+  });
+
+  it('op-006/B6: 文件缺失 → exit 1 且 flow.json 未改写', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-33', 'T']);
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-33', 'ops');
+    for (const f of readdirSync(opsDir)) {
+      rmSync(join(opsDir, f), { force: true });
+    }
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'rename', 'stage-33', 'op-001', '--title', 'x']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('模板文件');
+  });
 });

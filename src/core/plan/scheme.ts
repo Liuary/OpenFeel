@@ -468,6 +468,99 @@ export function publishScheme(projectPath: string, stageName: string, opId: stri
   return { published: true };
 }
 
+/** 重命名结果（B6-1） */
+export interface RenameSchemeResult {
+  /** 是否已重命名 */
+  renamed: boolean;
+  /** 未重命名原因 */
+  reason?: 'not-found' | 'title-unchanged' | 'file-missing';
+  /** 旧标题（用于输出与审计） */
+  previousTitle?: string;
+  /** 未命中文件时的模板路径（file-missing 报告用） */
+  path?: string;
+}
+
+/**
+ * 替换内容中首个 `# op-NNN：title` 行为新标题；无匹配则头部插入。
+ * 仅替换首个匹配行（R2），其余内容逐字节保留。
+ */
+function replaceOrInsertTitleLine(content: string, opId: string, title: string): string {
+  const titleLine = `# ${opId}：${title}`;
+  const re = /^#\s*op-\d+[：:]\s*.*$/m;
+  if (re.test(content)) {
+    return content.replace(re, titleLine);
+  }
+  // 无首行模式 → 文件头部插入标题行（保持其余内容不变）
+  return `${titleLine}\n\n${content}`;
+}
+
+/**
+ * 更新 op 标题（B6-1）：同步 flow.json 的 `ops[opId].title` 与 op 文件内容首行的 `# {opId}：{title}`。
+ * 文件名为 op-NNN.md（不含标题）→ **无需重命名文件**（含历史命名 `op-NNN_{title}.md` 亦不改文件名）。
+ * 顺序：先校验（存在/文件可读）→ 写文件首行 → 写 flow.json；`file-missing` 时不写 flow.json。
+ * @param title 新标题（非空；首尾空白折叠）
+ */
+export function renameScheme(
+  projectPath: string,
+  stageName: string,
+  opId: string,
+  title: string,
+): RenameSchemeResult {
+  const normalized = normalizeStageId(stageName) ?? stageName;
+  const localOpId = opId.includes('.') ? opId.substring(opId.lastIndexOf('.') + 1) : opId;
+  const newTitle = title.trim();
+
+  const mgr = new FlowManager(projectPath);
+  if (!mgr.isLoaded()) {
+    return { renamed: false, reason: 'not-found' };
+  }
+  const data = mgr.getData()!;
+  const stage = data.stages[normalized] ?? data.stages[stageName];
+  if (!stage) {
+    return { renamed: false, reason: 'not-found' };
+  }
+  const op = stage.ops[localOpId];
+  if (!op) {
+    return { renamed: false, reason: 'not-found' };
+  }
+  const stageKey = data.stages[normalized] ? normalized : stageName;
+  const previousTitle = op.title;
+
+  // 定位模板文件（兼容 op-NNN.md 与历史 op-NNN_*.md）
+  const parsed = parseStageId(stageKey);
+  if (!parsed) {
+    return { renamed: false, reason: 'not-found' };
+  }
+  const opsDir = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'ops');
+  const fileName = existsSync(opsDir)
+    ? readdirSync(opsDir).find((f) => f === `${localOpId}.md` || f.startsWith(`${localOpId}_`))
+    : undefined;
+  if (!fileName) {
+    // 文件缺失 → 不改写 flow.json（原子性前移）
+    return { renamed: false, reason: 'file-missing', previousTitle, path: `.openfeel/plan/${parsed.series}/${parsed.stageDir}/ops/${localOpId}.md` };
+  }
+  const filePath = resolve(opsDir, fileName);
+
+  // 标题未变 → no-op（无写盘）
+  if (previousTitle === newTitle) {
+    return { renamed: false, reason: 'title-unchanged', previousTitle, path: filePath };
+  }
+
+  // 先写文件首行，再写 flow.json（顺序明确；失败点写入错误文案由命令层呈现）
+  const content = readFileSync(filePath, 'utf-8');
+  atomicWriteFileSync(filePath, replaceOrInsertTitleLine(content, localOpId, newTitle));
+
+  op.title = newTitle;
+  mgr.appendLog({
+    time: '',
+    agent: 'cli',
+    action: 'scheme_rename',
+    detail: { opId: localOpId, from: previousTitle, to: newTitle },
+  });
+  mgr.save();
+  return { renamed: true, previousTitle, path: filePath };
+}
+
 /**
  * 读取操作方案
  * @param opId 操作ID（如 op-001）或完整 opId（如 stage-01.op-001 / v1.0.0-stage-01.op-001）

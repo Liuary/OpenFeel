@@ -4,7 +4,7 @@
  */
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
-import { createScheme, listSchemes, removeScheme, publishScheme } from '../core/plan/scheme.js';
+import { createScheme, listSchemes, removeScheme, publishScheme, renameScheme } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
@@ -152,6 +152,46 @@ export function registerPlanCommand(program: Command): void {
           break;
       }
       process.exit(1);
+    });
+
+  // plan scheme rename <stage> <opId> --title "…" — 更新 op 标题（B6-2）
+  schemeCmd
+    .command('rename')
+    .description('更新操作方案标题')
+    .argument('<stage>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
+    .argument('<opId>', '操作方案 ID（如 op-001 或完整 stage.op-001）')
+    .requiredOption('--title <text>', '新标题（必填）')
+    .action((stage: string, opId: string, options: { title: string }) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      // 空标题（含全空白）→ 报错 + exit 1
+      if (!options.title || options.title.trim() === '') {
+        console.error(t('plan.scheme.rename.emptyTitleTmpl', lang));
+        process.exit(1);
+        return;
+      }
+      const result = renameScheme(projectPath, stage, opId, options.title);
+      if (result.renamed) {
+        console.log(t('plan.scheme.rename.okTmpl', lang, {
+          opId,
+          from: result.previousTitle ?? '',
+          to: options.title.trim(),
+        }));
+        return;
+      }
+      switch (result.reason) {
+        case 'title-unchanged':
+          console.log(t('plan.scheme.rename.unchangedTmpl', lang, { opId }));
+          return;
+        case 'file-missing':
+          console.error(t('plan.scheme.rename.fileMissingTmpl', lang, { opId, path: result.path ?? '' }));
+          process.exit(1);
+          return;
+        default:
+          console.error(t('plan.scheme.rename.notFoundTmpl', lang, { stage, opId }));
+          process.exit(1);
+          return;
+      }
     });
 
   // plan scheme list [stage]

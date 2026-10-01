@@ -424,6 +424,11 @@ export const plan: I18nDomain = {
   'scheme.publish.emptyTmpl':    { key: 'plan.scheme.publish.emptyTmpl',    zh: '', en: 'Template not filled; publish refused: {opId}' },
   'scheme.publish.notDraftTmpl': { key: 'plan.scheme.publish.notDraftTmpl', zh: '', en: '{opId} is not in draft state' },
   'scheme.publish.notFoundTmpl': { key: 'plan.scheme.publish.notFoundTmpl', zh: '', en: 'Not found: stage {stage} or scheme {opId}' },
+  'scheme.rename.okTmpl':        { key: 'plan.scheme.rename.okTmpl',        zh: '', en: 'Renamed {opId}: {from} → {to}' },
+  'scheme.rename.unchangedTmpl': { key: 'plan.scheme.rename.unchangedTmpl', zh: '', en: 'Title unchanged: {opId}' },
+  'scheme.rename.notFoundTmpl':  { key: 'plan.scheme.rename.notFoundTmpl',  zh: '', en: 'Not found: stage {stage} or scheme {opId}' },
+  'scheme.rename.fileMissingTmpl': { key: 'plan.scheme.rename.fileMissingTmpl', zh: '', en: 'Template file for {opId} not found ({path}); flow.json unchanged' },
+  'scheme.rename.emptyTitleTmpl': { key: 'plan.scheme.rename.emptyTitleTmpl', zh: '', en: 'Title must not be empty' },
 };
 
 /* ==================== knowledge ==================== */
@@ -636,6 +641,10 @@ export const help: I18nDomain = {
   'plan.scheme.publish':    { key: 'help.plan.scheme.publish',    zh: '', en: 'Publish a draft scheme (draft → pending)' },
   'plan.scheme.publish.argstage': { key: 'help.plan.scheme.publish.argstage', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
   'plan.scheme.publish.argopId':  { key: 'help.plan.scheme.publish.argopId',  zh: '', en: 'Scheme ID (e.g. op-001 or stage.op-001)' },
+  'plan.scheme.rename':     { key: 'help.plan.scheme.rename',     zh: '', en: 'Rename a scheme' },
+  'plan.scheme.rename.title': { key: 'help.plan.scheme.rename.title', zh: '', en: 'New title (required)' },
+  'plan.scheme.rename.argstage': { key: 'help.plan.scheme.rename.argstage', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
+  'plan.scheme.rename.argopId':  { key: 'help.plan.scheme.rename.argopId',  zh: '', en: 'Scheme ID (e.g. op-001 or stage.op-001)' },
 
   'stage':                 { key: 'help.stage',                 zh: '', en: 'Work stage status management (status.md atomic operations)' },
   'stage.status':          { key: 'help.stage.status',          zh: '', en: 'View stage status (list all stages when no arg)' },

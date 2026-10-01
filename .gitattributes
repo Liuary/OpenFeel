@@ -1,6 +1,5 @@
 # 模板与生成目录统一 LF，避免 CRLF 泄漏进模板串/生成物（跨平台可复现）
 src/core/templates-data/** text eol=lf
-.opencode/** text eol=lf
 # 生成段宿主文件：强制 LF，避免 EOL 漂移导致 build 非幂等
 src/core/template-loader.ts text eol=lf
 src/core/update.ts text eol=lf

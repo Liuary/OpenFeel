@@ -3,7 +3,7 @@
  * 断言部署型 skill 双口径、agents-md 图注英文化、cli-usage 枚举/命令表补齐。
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { getCurrentTemplate } from '../../src/core/templates.js';
 
@@ -68,5 +68,30 @@ describe('stage-53 D2：current.md 模板迭代', () => {
     expect(en).not.toContain('Team Member Progress');
     expect(en).toContain('Recent Submissions');
     expect(en).toContain('current_archive');
+  });
+});
+
+/**
+ * stage-55 op-003：项目级受管资产移除防回归
+ * ① 仓库根不再保留项目级部署资产（AGENTS.md / opencode.jsonc / .opencode/{agents,skills,ADAPTER.md}）；
+ * ② build.js 源码不含自举重生成函数（防复活静态断言）。
+ */
+describe('stage-55：项目级受管资产移除（防回归）', () => {
+  it('仓库根不存在项目级受管资产（AGENTS.md / opencode.jsonc / .opencode/{agents,skills,ADAPTER.md}）', () => {
+    for (const rel of [
+      'AGENTS.md',
+      'opencode.jsonc',
+      '.opencode/agents',
+      '.opencode/skills',
+      '.opencode/ADAPTER.md',
+    ]) {
+      expect(existsSync(join(ROOT, rel)), rel).toBe(false);
+    }
+  });
+
+  it('build.js 源码不含自举重生成函数与生成物标记助手（防复活静态断言）', () => {
+    const src = readFileSync(join(ROOT, 'build.js'), 'utf-8');
+    expect(src).not.toContain('regenerateOpencodeInstance');
+    expect(src).not.toContain('insertGeneratedMark');
   });
 });

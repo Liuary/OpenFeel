@@ -407,3 +407,19 @@ describe('stage-53：工作区结构节与 dev_last 索引化（静态断言）'
     expect(rc).toContain('dev_last/');
   });
 });
+
+/**
+ * stage-55 op-003 迁移：生成模板串无 CRLF（跨平台可复现）
+ * 迁移自 test/core/opencode-instance.test.ts（原 #5）——断言对象为生成段宿主文件
+ * `src/core/template-loader.ts` / `src/core/update.ts`，其对象仍成立（仓库根受管实例移除不影响）。
+ */
+describe('stage-55 迁移：生成模板串无 CRLF（跨平台可复现）', () => {
+  const readRel = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf-8');
+
+  it('template-loader.ts 与 update.ts 无 CRLF', () => {
+    for (const rel of ['../../src/core/template-loader.ts', '../../src/core/update.ts']) {
+      const c = readRel(rel);
+      expect(c.includes('\r\n'), rel).toBe(false);
+    }
+  });
+});

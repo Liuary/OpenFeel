@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T09:00:58.677Z",
-    "revision": 480
+    "updated": "2026-10-01T09:01:58.352Z",
+    "revision": 481
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-55",
-      "op": "op-002"
+      "op": "op-003"
     },
     "retry": 0
   },
@@ -2283,9 +2283,9 @@
         },
         "op-002": {
           "title": "F1 刷新全局部署（备份 + setup + 门B 判据）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -10680,6 +10680,15 @@
       "action": "attempt_pass",
       "detail": {
         "opId": "v1.1.2-stage-55.op-001",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-01T09:01:58.323Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-55.op-002",
         "attempts": 1
       }
     }

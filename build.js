@@ -11,7 +11,6 @@ import {
   readdirSync,
   writeFileSync,
   existsSync,
-  mkdirSync,
 } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
@@ -1037,66 +1036,11 @@ function validateSingleSourceConsistency() {
   console.log('  ✓ 单源一致性校验通过（两对对象键集与内容一致）');
 }
 
-// ── 步骤 8：.opencode/ 自举实例重生成（D36-3 / N4）──────────────────────
+// ── 步骤 8：.opencode/ 自举实例重生成（已于 stage-55 移除）──────────────
+// 仓库自身不再保留项目级部署实例（agents/skills/ADAPTER.md）。
+// 全局资产由 `openfeel setup` 从 templates-data/opencode/** 部署；
+// 原自举重生成函数与生成物标记插入助手已删除（防复活）。
 
-/** 在 frontmatter 闭合 --- 之后插入生成物标记；无 frontmatter 则插首行 */
-function insertGeneratedMark(content, mark) {
-  const m = content.match(/^---\s*\n[\s\S]*?\n---\s*\n/);
-  if (m) {
-    return m[0] + mark + '\n' + content.slice(m[0].length);
-  }
-  return mark + '\n' + content;
-}
-
-/**
- * 从权威源重生成 .opencode/ 自举实例（agents / skills / instructions / ADAPTER），
- * 并插入生成物标记。须在 tsc 之后调用（依赖 dist/ 的 atomicWriteFileSync）。
- * 采用「清空旧名 → 全量重写」策略，避免新旧并存的残留。
- */
-async function regenerateOpencodeInstance() {
-  console.log('⟳ 正在重生成 .opencode/ 自举实例（含生成物标记）...');
-  const { atomicWriteFileSync } = await import('./dist/core/fs/atomic-write.js');
-  const MARK = '<!-- openfeel:generated — 本文件由 npm run build 生成，请勿手工编辑 -->';
-  const lang = 'zh-CN';
-
-  // 1) 清空 .opencode/agents/*.md（删除旧名文件；feel.md 由下方全量覆盖）
-  const agentsOutDir = resolve(__dirname, '.opencode', 'agents');
-  if (existsSync(agentsOutDir)) {
-    for (const f of readdirSync(agentsOutDir).filter((f) => f.endsWith('.md'))) {
-      rmSync(join(agentsOutDir, f), { force: true });
-    }
-  }
-  // 2) 清空 .opencode/skills/ 全部旧目录（递归删除旧名目录）
-  const skillsOutDir = resolve(__dirname, '.opencode', 'skills');
-  if (existsSync(skillsOutDir)) {
-    for (const d of readdirSync(skillsOutDir, { withFileTypes: true }).filter((d) => d.isDirectory())) {
-      rmSync(join(skillsOutDir, d.name), { recursive: true, force: true });
-    }
-  }
-
-  // 3) agents：权威源 agents/{lang}/*.md → .opencode/agents/*.md（9 带前缀：8 个 openfeel-* + feel）
-  const agentDir = resolve(TEMPLATE_OPENCODE_AGENTS_DIR, lang);
-  for (const file of readdirSync(agentDir).filter((f) => f.endsWith('.md'))) {
-    let content = readFileSync(join(agentDir, file), 'utf-8').replace(/\r\n/g, '\n');
-    content = insertGeneratedMark(content, MARK);
-    atomicWriteFileSync(resolve(__dirname, '.opencode', 'agents', file), content);
-  }
-
-  // 4) skills：权威源 skills/*/SKILL.md → .opencode/skills/*/SKILL.md（17 带前缀）
-  for (const dir of readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory())) {
-    const src = join(TEMPLATE_OPENCODE_SKILLS_DIR, dir.name, 'SKILL.md');
-    let content = readFileSync(src, 'utf-8').replace(/\r\n/g, '\n');
-    content = insertGeneratedMark(content, MARK);
-    mkdirSync(resolve(__dirname, '.opencode', 'skills', dir.name), { recursive: true });
-    atomicWriteFileSync(resolve(__dirname, '.opencode', 'skills', dir.name, 'SKILL.md'), content);
-  }
-
-  // 5) ADAPTER.md：权威源 ADAPTER.{lang}.md → .opencode/ADAPTER.md
-  const adapter = readFileSync(resolve(TEMPLATE_OPENCODE_DIR, `ADAPTER.${lang}.md`), 'utf-8').replace(/\r\n/g, '\n');
-  atomicWriteFileSync(resolve(__dirname, '.opencode', 'ADAPTER.md'), MARK + '\n' + adapter);
-
-  console.log('✓ .opencode/ 自举实例已重生成（含生成物标记）');
-}
 
 // ── 主流程 ────────────────────────────────────────────────────────────
 
@@ -1118,8 +1062,7 @@ try {
   execSync('npx tsc', { stdio: 'inherit' });
   console.log('✓ TypeScript 编译完成');
 
-  // 步骤 8：从权威源重生成 .opencode/ 自举实例（含生成物标记）
-  await regenerateOpencodeInstance();
+  // 步骤 8（.opencode/ 自举实例重生成）已于 stage-55 移除（防复活）
 
   // 校验模板一致性
   validateTemplates();

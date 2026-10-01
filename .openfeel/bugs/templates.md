@@ -99,6 +99,7 @@ node bin/openfeel.js flow status
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
 | 2026-09-29 22:40 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-48 验收（事件 C 扫描）发现；证据：模板源 26/3 处、生成段 34/34 处、真实全局 skill（`~/.config/opencode/skills/openfeel-wizard/SKILL.md:14`）仍为旧形态「`openfeel flow wizard`」（待下一次 setup/update 传播） |
+| 2026-10-01 17:20 | openfeel-feel-tester（stage-54 复核） | 通过，维持 closed | stage-54 E4 独立复跑：`rg -c "node bin/openfeel\.js" src/core/templates-data/opencode/skills/**` → `openfeel-cli-usage`=**1**、`openfeel-wizard`=**1**（顶部双态声明），其余 skill 各 1（health/model-check/recover 已补加注）→ **期望 B 已落地**，无残留。私有 frontmatter 与公共索引已同步为 `closed`。 |
 
 > 沉淀：`kb/patterns.md`（本阶段待归档条目「查询型 vs 执行型」判据可扩展至**部署语境**——「部署到用户环境的模板」≠「本仓执行的文档」）。
 
@@ -150,4 +151,42 @@ node bin/openfeel.js flow status
 ① **统计行 = 快照，末次提交必回写**：校验计数类改动（新增断言、新增知识条目）后须同步刷新 `current.md` 统计行，避免「迁移时点快照」被误当终值；② **记录措辞与总进度行须一致**（阶段进入归档即刷新记录表述）；③ 归档官在归档收尾核对统计行（本阶段已纳入归档清单）。
 
 > 沉淀：本条目为 `current.md` 新格式（团队文件）下的**首个统计准确性 Bug**——新格式引入「自动归档轮换 + ≤5 条记录」后，统计行的时效性由「末次提交回写」承载，须作为归档固定检查点。
+
+---
+
+## BUG-005：`openfeel-cli-usage` skill 的 `flow phases --json` 输出说明缺 `transitionsDiff`（与实测 5 键不一致）
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.2-stage-54`（正式测试，E3 复核 `flow phases --help` 与 JSON 契约时顺带扫描部署型 skill 模板）｜ **归因**：**文档漂移**（stage-52 新增 `transitionsDiff` 时未纳入 skill 模板同步面）
+- **私域详细报告**：`.openfeel/users/Liuary/bugs/templates/BUG-005_cli-usage-skill的flow-phases-json输出说明缺transitionsDiff.md`
+
+### 核心结论
+
+`src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md:46` 将 `flow phases --json` 的输出记为 `{ phases, transitions, advanceAccepted }`（**3 键**），而实测为 **5 键**（`schemaVersion, phases, transitions, advanceAccepted, transitionsDiff`）——缺 `transitionsDiff`。
+
+**对照（已同步者）**：`docs/commands.md:91`、`.openfeel/manual/cli/commands.md`、`.openfeel/manual/core/flow-manager.md`、`.openfeel/kb/patterns.md` 均已含该键；i18n help 文案（`zh-CN.ts`/`en.ts`）亦已于 stage-54（op-002 / E3）补齐——**唯部署型 skill 模板仍为旧表述**。
+
+**性质**：与已关闭的 `cli/BUG-003`（i18n help 缺 `advanceAccepted`）/ stage-52 observations「`transitionsDiff` 第 4 键」**同族**——新增输出键未同步到**模板文档**。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 触发条件 | Agent/用户查阅 `openfeel-cli-usage` skill 了解 `flow phases --json` 契约时 |
+| 直接后果 | 文档少列 1 键（`transitionsDiff`），可能与实际解析预期不符（**无运行时错误**） |
+| 数据风险 | 无 |
+| 范围 | 模板权威源 + 生成段（`npm run build` 后注入 `.opencode/skills/` 自举与部署产物） |
+
+### 建议修复方向（供 openfeel-schemer 裁定）
+
+1. `openfeel-cli-usage/SKILL.md:46` 文案补 `transitionsDiff`（与 i18n help / docs / manual / kb 口径一致）；
+2. `npm run build` 同步生成段与 `.opencode/skills/` 自举；
+3. **防再犯**：新增 JSON 输出键时，**同步面清单**应含「i18n help + `docs/commands.md` + manual + kb + **部署型 skill 模板**」——本次即因 skill 模板未纳入同步面而遗漏（与 stage-52 `transitionsDiff` / `cli/BUG-003` 同源）。
+
+### 验收记录
+
+| 时间 | 验收人 | 结论 | 备注 |
+|------|--------|------|------|
+| 2026-10-01 17:30 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-54 正式测试验收发现；`flow phases --json` 实测 5 键 vs `SKILL.md:46` 记 3 键；归 templates 模块，建议随 stage-55+ 文档/模板同步收口 |
+
+> 沉淀：`kb/troubleshooting.md #新增输出键/契约的同步面清单`（i18n help + docs + manual + kb + 部署型 skill 模板，易漏最后一环）。
 

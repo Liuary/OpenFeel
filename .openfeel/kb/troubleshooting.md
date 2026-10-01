@@ -794,6 +794,8 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 
 **参见：** v1.1.2-stage-52 测试验收 `cli/BUG-005`；`src/core/flow-manager.ts` / `src/core/plan/scheme.ts`；kb/patterns.md #CLI 自描述命令模式
 
+> **更新于 2026-10-01（已修复，v1.1.2-stage-54 op-001）**：`isTemplateEmpty` 改为**整行锚定**正则 `/(?:^|\n)[ \t]*-\s*\[\s*\]\s*待补充[ \t]*(?=\r?\n|$)/`（`EMPTY_TEMPLATE_LINE_RE`，单一来源），`detectFillState` 的 `partial` 分支同口径收紧（行首仅 `[ \t]*`），`plan/scheme.ts:455` 改调 `isTemplateEmpty`（消除第二处子串判断）；`rg "content.includes(EMPTY_TEMPLATE_MARKER)" src/` 零命中。**端到端实测**：真实独占行空模板 `publish` exit 1 / `health` 仅报其；正文**行内引用** → `publish` exit 0 / `ops list (filled)` / `health` 不报；**本仓 `flow health` 空模板告警归零**（`stage-52.op-005` 由 `(empty)`→`(partial)`）。**14 形态边界终测**：10 类真实空模板全检出（独占行 LF/CRLF/缩进/末尾无换行/仅标记/无空格变体/部分填充/多行缩进/全角空格/围栏内），4 类误报源全排除（行内引用/表格/已勾选/行内代码后随内容）。**已知边界**：代码围栏内独占行仍判 `empty`（不引入围栏解析，avoid 过度设计）。**判据升级**：占位符/标记类检测**默认整行锚定**（行内引用不应误报）；「是否要求独占结构位」是纯子串与结构匹配的分水岭。
+
 ## [+] 即席实测误在仓库 cwd 执行真实命令：fixture 前须显式断言 cwd (2026-10-01)
 
 **事故**：executor 在 T3 实测中，本应在隔离 fixture 内运行 `openfeel archive`，却在**仓库 cwd** 执行真实命令 → `flow.json` 被写（+1 日志 / rev 441）+ 误生成归档文件。即时回滚（rev 440、删误产物）后经审查官独立核验**数据无损坏**（rev/log/文件一致、`git status` 无残留、config 三值未变）。
@@ -822,3 +824,32 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 **判据**：收到一条「同族缺陷」报告时，默认动作是**扫描整个缺陷类**，而非仅修报告点；收口以「全量扫描无残留」为准，不以「报告条目 all closed」为准。
 
 **参见：** v1.1.2-stage-52 REV-005/007/009 + op-012/013/014；kb/patterns.md #短名/全名 stage 解析归一化的统一范式
+
+## [+] 新增输出键/契约的同步面清单：i18n help + docs + manual + kb + 部署型 skill 模板（易漏最后一环） (2026-10-01)
+
+**症状（同族反复发生，三次）**：CLI 输出新增字段后，**文档面**未同步，且每次遗漏的载体不同：
+1. `cli/BUG-003`（stage-48）：`flow phases --json` 实际含 `advanceAccepted`，`--help` 文案只列 `{ phases, transitions }`；
+2. stage-52 observation：又新增 `transitionsDiff`（第 5 键），plan 表述仍陈旧；
+3. `cli/BUG-003` **复发** + `templates/BUG-005`（stage-54）：实测 **5 键**（`schemaVersion/phases/transitions/advanceAccepted/transitionsDiff`），而 **i18n help 文案**（`zh-CN.ts`/`en.ts`）与**部署型 skill 模板**（`openfeel-cli-usage/SKILL.md:46`）分别记 **4 键 / 3 键**。
+
+**根因**：新增输出键的**同步面是一个多载体集合**，且各载体**无单一源、无一致性断言**——`lint i18n` 只校验 zh/en 键**对称性**、不校验「文案内列举的键集合」与实现是否一致；`npm run build` 只传播生成段，**不会校验文案内容**。任一载体遗漏都不触发失败。
+
+**同步面清单（新增/变更 JSON 输出键时逐项打勾）**：
+
+| 载体 | 落点示例 | 校验方式 |
+|------|----------|----------|
+| i18n help 文案 | `src/core/i18n-data/{zh-CN,en}.ts`（`help.<path>`） | 断言 `t('help...')` 含新键名 |
+| 人类可读 `--help` | 命令 `.description()` / `addHelpText` | 实跑 `--help` |
+| `docs/commands.md` | 命令参考 | 人工/rg |
+| `.openfeel/manual/**` | 模块手册（如 `cli/commands.md`、`core/flow-manager.md`） | 人工/rg |
+| `.openfeel/kb/**` | patterns 约定条目 | `rg` |
+| **部署型 skill 模板** | `src/core/templates-data/opencode/skills/*/SKILL.md` | `rg` + `npm run build` |
+
+**排查方法**：从实现里取出真实键集合（`node -e "...Object.keys(JSON.parse(stdout))"`），对上述**每个载体** `rg` 关键键名（如 `transitionsDiff`），零命中处即遗漏。参考 stage-54 op-002 对 i18n help 的修复与 `templates/BUG-005` 对 skill 模板的登记。
+
+**避免再犯**：
+- 把「新增输出键」视为**一次多点同步**，按上表逐项收口；**部署型 skill 模板**因不在 build 一致性校验链路上，是最易漏的一环；
+- 收尾以**关键键名全仓 `rg`**为准（同类教训另见「多源文案同步陷阱」——按行号盘点必漏副本）；
+- 长期可为 `lint` 增加「输出契约 ↔ 文案列举键集合」一致性断言（当前无）。
+
+**参见：** v1.1.2-stage-54 E3（i18n help 修复）与 `templates/BUG-005`（skill 模板遗漏）；`cli/BUG-003`（stage-48，同族首次）；kb/troubleshooting.md #多源文案同步陷阱、#新增 i18n 键已定义却未接入（死键）

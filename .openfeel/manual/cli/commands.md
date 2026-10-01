@@ -99,7 +99,7 @@ src/commands/setup.ts       registerSetupCommand
 
 - **`--json` 结构化输出（B1）**：`flow status|current|health|metrics|overview --json` 输出**顶层对象 + `schemaVersion:1`**，纯 JSON 单文档（无 ANSI/标题，与人类可读互斥）；`flow phases --json` 保持既有键（`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`）并**追加** `schemaVersion`。
 - **`flow health --fix`（B2）**：以 `flow.json` 为权威，**仅回写 `status.md` 的「状态」字段**（执行模式/自动推进/当前任务/状态记录等独立字段绝不触碰）；`--fix --dry-run` 预览零写盘；幂等（已一致 applied=0）。**L7 文件孤儿仅报告**（本仓 62 条，无清理入口，A6）。
-- **`flow ops list [--stage] [--json]`（B3）**：展示每 op 的 `state` + 模板填充度（`(filled)`/`(empty)`）+ 空模板 warning；**`draft` 单独分组**。
+- **`flow ops list [--stage] [--json]`（B3）**：展示每 op 的 `state` + 模板填充度（`(filled)`/`(empty)`）+ 空模板 warning；**`draft` 单独分组**。**（stage-54）** 填充度判定为**整行锚定**（正文行内引用占位标记不误报）；**已知边界（A9）**：`readOpTemplate` 返回 `null`（op 文件缺失 / 命名不含前缀 / 目录不可读）时按 `filled` 处理，与 `health` 的「`null` 跳过不报」为**同向漏检**（非分叉，两者同源 `opsMap`）——**不扩展** `detectFillState` 返回域与 `--json` 的 `fill` 取值集合。
 - **`plan scheme create --draft` + `plan scheme publish <stage> <opId>`（B4）**：draft→pending 两阶段；`publish` 校验模板非空（否则 exit 1）；**窄兼容**：health 不报 draft 空模板 / advance·统计·归档不计入 draft / **`flow attempt --op <draft>` 拒绝**（exit 1 + 提示先 `publish`，命令层 + core 双层守卫）。
 - **`flow advance --stage <id> --to <phase>`（B5）**：沿 transitions **自动逐步**（BFS 唯一路径，深度 ≤8）；`--dry-run` 打印**完整路径**（`A → B → C`）；非法/多义目标 exit 1 + 列可达目标；**每步 `assertNoBlockingOpenRev` 复检**（blocking open REV 拦截，exit 1 + `revision` 不变）；未提供 `--to` 的单步行为不变。
 - **`plan scheme rename <stage> <opId> --title "<title>"`（B6）**：同步 `flow.json` 标题与 op 文件内容首行；不存在 op → exit 1。
@@ -107,7 +107,7 @@ src/commands/setup.ts       registerSetupCommand
 - **`view add` 已移除（A4，破坏性）**：改用 `flow review add`（`addReviewEntry` 单点等价）；**保留** `view list`/`view accept`；`CHANGELOG` `Removed` 含迁移指引。
 - **`flow current` 无 op（B8）**：回退显示 `current.stage` + 「(无 op)」。
 
-> ⚠️ **已登记缺陷（非阻塞）**：`cli/BUG-005`（medium）空模板检测为**纯子串**匹配，op 正文引用占位标记会被误判未填充（`publish` 误拒 / `ops list` 误报 / `health` 误报）；待修。`cli/BUG-006`（low）en 模式下 blocking REV 拒绝文案仍硬编码中文（`flow.ts:742-743`）。
+> ✅ **已关闭缺陷（v1.1.2-stage-54）**：`cli/BUG-005`（medium）空模板检测**已由纯子串改为整行锚定**（`EMPTY_TEMPLATE_LINE_RE`，`isTemplateEmpty`/`detectFillState`/`publishScheme` 单一来源）——op 正文行内引用占位标记不再误判（`publish` 不再误拒 / `ops list` 不误报 `(empty)` / `health` 不误报），仓库空模板告警归零。`cli/BUG-006`（low）en 模式 blocking REV 拒绝文案**已迁 i18n**（`flow.advance.blockingRevRefused`/`blockingRevHint`，en CJK=0、zh 逐字不变）。`cli/BUG-003`（low）`flow phases --help` 已补 `transitionsDiff`（JSON 契约未变）。
 
 ## 相关 skill
 

@@ -64,6 +64,10 @@
 - [stage-53] **记忆/状态文件职能与格式重构（current.md / dev_last.md）**：
   - **Changed**：全局约束写入**两条设计目的**（保存核心信息便于恢复 / 避免无关信息污染上下文）+ 索引层/主题层/详情层**三层分层**；**`current.md` 改团队文件格式**——仅个人提交时更新、只描述整体信息、**无 agent 细节、无 `## @成员` 段**、仅留近期 **5** 条记录，旧记录自动归档 `.openfeel/dev/current_archive/`（`openfeel init` 自动创建该目录，`DEV_SUB_DIRS` 新增 `current_archive`）；**`dev_last.md` 改为索引 + 同名主题目录**（活跃主题 ≤5、索引摘要 ≤5 条 ×≤100 字、主题文件 ≤10 条 ×≤300 字、超量详情转 `users/{username}/tmp/` 并记地址、**超期记录不归档**；主题数 >5 时**就地收敛**不迁移文件；主题文件名一律英文 kebab-case）；`feel.md` 记忆加载与会话写入同步改写；`openfeel-sync-status` skill 改读各用户 `dev_last` 主题索引 + `flow.json` 聚合（skill 总数仍 17）
   - **Fixed**：`templates/BUG-004`（迁移后本仓 `current.md` 统计行沿用「执行中」快照、用例数陈旧）——归档时就地修正（942→949 + kb 计数刷新 + stage-53 记录措辞改为「归档完成」）
+- [stage-54] **收尾：遗留缺陷清理（发布前清账）**：
+  - **Fixed**：`cli/BUG-005`（medium，空模板检测**纯子串**误报——正文行内引用占位标记即被误判未填充，导致 `plan scheme publish` 误拒 / `flow ops list` 误报 `(empty)` / `flow health` 误报）——`isTemplateEmpty` 改**整行锚定**（`EMPTY_TEMPLATE_LINE_RE`，容错缩进/CRLF/行尾空白）+ `detectFillState` 的 `partial` 分支同口径收紧 + `plan/scheme.ts` 复用 `isTemplateEmpty`（**单一来源**）；`cli/BUG-006`（low，en 模式 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文）——迁 i18n（`flow.advance.blockingRevRefused` / `blockingRevHint`，zh 逐字不变 / en 对称）；`cli/BUG-003`（low **复发**，`flow phases --help` 文案缺 `transitionsDiff`）——仅补 i18n help 文案（**JSON 输出契约未变**）
+  - **登记（非阻塞）**：`templates/BUG-005`（low，部署型 skill 模板 `openfeel-cli-usage/SKILL.md` 的 `flow phases --json` 输出说明记 3 键、实测 5 键，**新增输出键的同步面遗漏 skill 模板**）
+  - **内部（非随包行为）**：全仓 REV pending **分层统计**（清账层 38 / 历史层 88 / 无法判定 3）+ 清账层收口（**closed 31 / 维持 pending 7**）；`bugs/index.md` 统计修正（open 3 / closed 13）；门禁 `lint i18n` 724 → **726 键**（E2 新增 2 键）
 
 > 说明：本仓库 `.openfeel/dev/current.md` / `.openfeel/users/{username}/dev_last.md` 为工作区数据（非随包分发产物），格式约定经 `openfeel setup` 部署到全局约束层后生效。
 

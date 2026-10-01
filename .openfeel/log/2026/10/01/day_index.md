@@ -41,3 +41,5 @@
 | [2026-10-01-Liuary-036.md](2026-10-01-Liuary-036.md) | Liuary | v1.1.2-stage-54.op-001 执行通过 |
 | [2026-10-01-Liuary-037.md](2026-10-01-Liuary-037.md) | Liuary | v1.1.2-stage-54.op-002 执行通过 |
 | [2026-10-01-Liuary-038.md](2026-10-01-Liuary-038.md) | Liuary | v1.1.2-stage-54.op-003 执行通过 |
+| [2026-10-01-Liuary-039.md](2026-10-01-Liuary-039.md) | openfeel-archiver | **stage-54 归档完成（收尾 — 遗留缺陷清理（发布前清账），3 op）**——E1~E12 逐条实测（需修 3）；**E1 `cli/BUG-005`** 空模板检测改**整行锚定**（`publish` 误拒 / `health`·`ops list` 误报消除、仓库空模板告警归零）；**E2 `cli/BUG-006`** en blocking REV 拒绝文案 i18n；**E3 `cli/BUG-003`** help 补 `transitionsDiff`（JSON 未变）；**E6 分层统计**（总 270 / 清账层 38 / 历史层 88 / 无法判定 3）+ 清账层收口 closed 31 / 维持 pending 7；**59 文件 / 987 用例全绿**、`tsc` 0、build 幂等、`lint i18n` **726 键**、`lint kb` 0 过期（265 引用）、`flow health` 空模板 0；三段审查零阻塞（REV-001 medium blocking / REV-002 low 全 closed）；`cli/BUG-005`/`cli/BUG-006`/`templates/BUG-003` 关闭 + 新登记 `templates/BUG-005`（low）；知识沉淀 4 条 |
+| [2026-10-01-Liuary-040.md](2026-10-01-Liuary-040.md) | Liuary | 阶段 v1.1.2-stage-54 完成 |

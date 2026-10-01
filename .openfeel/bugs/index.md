@@ -7,10 +7,10 @@
 
 | 状态 | 数量 |
 |------|:--:|
-| open | 2 |
+| open | 1 |
 | fixed | 0 |
-| closed | 12 |
-| **合计** | **14** |
+| closed | 14 |
+| **合计** | **15** |
 
 > **v1.1.2-stage-43 收口（2026-09-29，commit `cbc606f`）**：`config/BUG-004`（medium，测试隔离缺口）经 openfeel-feel-tester **外部独立进程比对**验收**关闭**——`identity.test.ts`（11/11）与全量 `npm test`（41 文件 / 694 用例）前后真实 `~/.openfeel/config.json` 的 **mtime + SHA-256 均不变**；修复＝N4 单点 `vi.mock('node:os')` + 删除 `savedConfig` 伪隔离 + 新增只读隔离守护用例。**新登记 `cli/BUG-003`**（low，非阻塞）：`flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 修复的收尾遗漏）——**裁定归下一版本或由用户决定**，v1.1.2 不修。至此 v1.1.2 遗留缺陷清零（仅 1 条 low 非阻塞顺延）。
 >
@@ -30,6 +30,8 @@
 >
 > **v1.1.2-stage-52 收口（2026-10-01，commits `c6d89f6`~`facf825` + `6abd4fb`/`820855b`/`9e56c45`）**：**新登记 2 条非阻塞**——`cli/BUG-005`（medium）空模板检测为纯子串匹配，op 正文引用占位标记 `- [ ] 待补充` 即被误判未填充（① `plan scheme publish` **误拒**〔功能性〕；② `flow ops list` 误报 `(empty)`；③ `flow health` 误报空模板〔本仓实测 op-005〕）；建议检测收紧为整行/列表项匹配。`cli/BUG-006`（low）en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`，未走 `t(...)`）——**预存量缺陷**（源自更早 `98fd2dd` op-002），op-007 范围为 `console.warn`（已全量清零），本处为 `console.error`，与 `cli/BUG-004` 同族（en 泄漏）。二者均**不阻塞阶段收尾**，登记备查。统计 **14 条（open 2 / closed 12）**。防再犯：① **占位符检测须结构判定（整行/列表项），纯子串命中即误报**——凡「标记字符串 vs 内容」，先问「是否要求独占结构位」；② **i18n 覆盖面按输出通道枚举**（`console.warn` 清零不等于 `console.error`/`console.log` 全覆盖），`rg "console\.(warn|error|log)\(.*[\x{4e00}-\x{9fff}]"` 三类同查。
 
+> **v1.1.2-stage-54 收口（2026-10-01，commits `740a79d`/`8fd49af`/`35278b4`）**：**存量 2 条 `cli/BUG-005`/`cli/BUG-006` 收口关闭**——op-001 将 `isTemplateEmpty` 由纯子串改为**整行锚定**正则并令 `scheme.ts` 复用（单一来源），op-002 将 blocking REV 拒绝文案迁 i18n（+2 键）。测试官隔离 fixture 实测：真实独占行空模板 → `publish` exit 1 / `health` 仅报其；正文行内引用 → `publish` exit 0 / `ops list (filled)` / `health` 不报；仓库自身 `flow health` 空模板告警归零；en 拒绝路径 CJK=0、zh 逐字不变。**`templates/BUG-003` 复核关闭**（`cli-usage`/`wizard` 各 1 处顶部双态声明，用户主口径为裸 `openfeel`）。**stage-52 起的 2 条非阻塞缺陷（`cli/BUG-005`/`cli/BUG-006`）全部清零**；`templates/BUG-003` 复核维持 closed。**测试中新登记 1 条非阻塞**：`templates/BUG-005`（low，部署型 skill 模板 `flow phases --json` 输出说明缺 `transitionsDiff`）→ open；公共域统计 **15 条（open 1 / closed 14）**。防再犯（承接 stage-52）：① 占位符/标记类检测以**整行锚定**为默认（行内引用不误报）；② 状态行与实测**以脚本实时重跑为准**，历史快照数字不得沿用；③ **新增 JSON 输出键的同步面须含部署型 skill 模板**（`BUG-005` 因该面遗漏而生）。
+
 ## 模块索引
 
 ### cli
@@ -40,8 +42,8 @@
 | [BUG-002](cli.md) | 阶段目录冲突错误未走 i18n 键（en 下为中文）+ `common.stageDirConflictTmpl` 死键 | low | **closed** | v1.1.2-stage-41 |
 | [BUG-003](cli.md) | `flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 收尾遗漏） | low | **closed** | v1.1.2-stage-48 |
 | [BUG-004](cli.md) | en 模式下 `--help` 的 Arguments 描述仍为中文（T38 只落地遍历机制，23 处 `.argument()` 仅 1 处补键） | low | **closed**（stage-51 补齐 20 处 + 新增 1 处 + 运行时 CJK 门禁验收通过） | v1.1.2-stage-50 |
-| [BUG-005](cli.md) | 空模板检测为纯子串匹配，op 正文引用占位标记被误判「未填充」（`publish` 误拒 + health/ops list 误报） | medium | **open** | v1.1.2-stage-52 |
-| [BUG-006](cli.md) | en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`；op-007 仅覆盖 `console.warn`） | low | **open** | v1.1.2-stage-52 |
+| [BUG-005](cli.md) | 空模板检测为纯子串匹配，op 正文引用占位标记被误判「未填充」（`publish` 误拒 + health/ops list 误报） | medium | **closed**（stage-54 op-001 整行锚定；隔离 fixture 端到端验收通过） | v1.1.2-stage-52 |
+| [BUG-006](cli.md) | en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`；op-007 仅覆盖 `console.warn`） | low | **closed**（stage-54 op-002 i18n 补键；en CJK=0 验收通过） | v1.1.2-stage-52 |
 
 ### config
 
@@ -65,5 +67,6 @@
 | [BUG-002](templates.md) | 全局约束模板 `agents-md` 权限部署路径行未泛化（双源不同步） | medium | **closed** | v1.1.2-stage-45 |
 | [BUG-003](templates.md) | 部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目不可执行（与 agent / agents-md 保留裸 `openfeel` 的口径相反） | low | **closed**（stage-50 op-006 T53 双口径 + build 幂等验收通过） | v1.1.2-stage-48 |
 | [BUG-004](templates.md) | 迁移后 `current.md` 统计行沿用「执行中」快照、用例数陈旧（942 vs 实测 949）+ 措辞扞格 | low | **closed**（stage-53 归档官就地修正：942→949 + kb 计数刷新 + 记录措辞改为「归档完成」） | v1.1.2-stage-53 |
+| [BUG-005](templates.md) | `openfeel-cli-usage` skill 的 `flow phases --json` 输出说明缺 `transitionsDiff`（与实测 5 键不一致，`transitionsDiff` 同步面遗漏 skill 模板） | low | **open** | v1.1.2-stage-54 |
 
 > 注：templates 模块早期 `BUG-001`（事务官标识列未加前缀）已于 `v1.1.2-stage-41` 关闭、未纳入本目录（详见私域 `.openfeel/users/Liuary/bugs/templates/`）；`kb/BUG-001`（`lint kb` 过期引用）已于 stage-42 关闭，同见私域。

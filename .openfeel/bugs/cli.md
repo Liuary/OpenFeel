@@ -198,7 +198,7 @@ op-009 增**运行时全量枚举门禁**（`test/cli/help-arguments.test.ts`）
 
 ## BUG-005：空模板检测为纯子串匹配，op 正文引用占位标记被误判「未填充」
 
-- **优先级**：medium ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.2-stage-52`（正式测试验收发现）｜ **归因**：stage-52 op-005（B3 `detectFillState` / B4 `publishScheme` 校验）**新引入**
+- **优先级**：medium ｜ **阻塞**：否 ｜ **状态**：**closed** ｜ **来源阶段**：`v1.1.2-stage-52`（正式测试验收发现）｜ **归因**：stage-52 op-005（B3 `detectFillState` / B4 `publishScheme` 校验）**新引入** ｜ **修复阶段**：`v1.1.2-stage-54` op-001
 
 ### 核心结论
 
@@ -231,12 +231,13 @@ op-009 增**运行时全量枚举门禁**（`test/cli/help-arguments.test.ts`）
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
 | 2026-10-01 12:05 | openfeel-feel-tester | open（medium，非阻塞） | v1.1.2-stage-52 正式测试发现；隔离 fixture 复现 publish 误拒；本仓 `flow health` 误报 op-005 |
+| 2026-10-01 17:20 | openfeel-feel-tester（stage-54 验收） | 通过，closed | 修法＝`isTemplateEmpty` **整行锚定**正则（`/(?:^|\n)[ \t]*-\s*\[\s*\]\s*待补充[ \t]*(?=\r?\n|$)/`）+ `scheme.ts:455` 复用（单一来源）。**隔离 fixture 端到端**：真实独占行空模板 → `health` 仅报其 / `ops list (empty)` + warning / `publish` exit 1；正文行内引用 → `health` 不报 / `ops list (filled)` / `publish` exit 0。**本仓 `flow health` 空模板告警归零**，`stage-52.op-005` 由 `(empty)`→`(partial)` 无 warning。`rg "content.includes(EMPTY_TEMPLATE_MARKER)" src/` 零命中；59 文件/987 用例全绿。 |
 
 ---
 
 ## BUG-006：en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.2-stage-52`（正式测试，op-007 L5 同域残留）｜ **归因**：**预存量缺陷**（源自更早 `98fd2dd` op-002「实现 REV 闭环」，**非 stage-52 引入**）
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed** ｜ **来源阶段**：`v1.1.2-stage-52`（正式测试，op-007 L5 同域残留）｜ **归因**：**预存量缺陷**（源自更早 `98fd2dd` op-002「实现 REV 闭环」，**非 stage-52 引入**）｜ **修复阶段**：`v1.1.2-stage-54` op-002
 
 ### 核心结论
 
@@ -262,4 +263,5 @@ en 模式下 `flow advance --stage <id> --to done` 首行检测信息为英文�
 | 时间 | 验收人 | 结论 | 备注 |
 |------|--------|------|------|
 | 2026-10-01 12:06 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-52 验证 op-007 时顺带发现；`rg "console\.(warn\|error)\(.*[\x{4e00}-\x{9fff}]"` 命中 flow.ts:742-743 |
+| 2026-10-01 17:20 | openfeel-feel-tester（stage-54 验收） | 通过，closed | `flow.ts:742-743` 改走 `t('flow.advance.blockingRevRefused'/'blockingRevHint')`（`zh-CN.ts:154-155`/`en.ts:145-146` 双键对称）。**en 环境端到端**（隔离 fixture lang=en + blocking REV + `--to done --force`）：**CJK=0**，输出含 `Error: cannot advance to done while blocking REVs remain unresolved.`；**zh 逐字不变**。`lint i18n` 726 键 exit 0；`flow.ts` 内裸中文 `console.*` 零命中。 |
 

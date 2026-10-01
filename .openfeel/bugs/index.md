@@ -7,10 +7,10 @@
 
 | 状态 | 数量 |
 |------|:--:|
-| open | 0 |
+| open | 1 |
 | fixed | 0 |
 | closed | 18 |
-| **合计** | **18** |
+| **合计** | **19** |
 
 > **v1.1.2-stage-43 收口（2026-09-29，commit `cbc606f`）**：`config/BUG-004`（medium，测试隔离缺口）经 openfeel-feel-tester **外部独立进程比对**验收**关闭**——`identity.test.ts`（11/11）与全量 `npm test`（41 文件 / 694 用例）前后真实 `~/.openfeel/config.json` 的 **mtime + SHA-256 均不变**；修复＝N4 单点 `vi.mock('node:os')` + 删除 `savedConfig` 伪隔离 + 新增只读隔离守护用例。**新登记 `cli/BUG-003`**（low，非阻塞）：`flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 修复的收尾遗漏）——**裁定归下一版本或由用户决定**，v1.1.2 不修。至此 v1.1.2 遗留缺陷清零（仅 1 条 low 非阻塞顺延）。
 >
@@ -49,6 +49,7 @@
 | [BUG-005](cli.md) | 空模板检测为纯子串匹配，op 正文引用占位标记被误判「未填充」（`publish` 误拒 + health/ops list 误报） | medium | **closed**（stage-54 op-001 整行锚定；隔离 fixture 端到端验收通过） | v1.1.2-stage-52 |
 | [BUG-006](cli.md) | en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`；op-007 仅覆盖 `console.warn`） | low | **closed**（stage-54 op-002 i18n 补键；en CJK=0 验收通过） | v1.1.2-stage-52 |
 | [BUG-007](cli.md) | `docs/commands.md` 的 `project` 子命令参考陈旧（`list`/`info` 已不存在，实测仅 `overview`） | low | **closed**（stage-56 归档官**就地修正** `docs/commands.md`：改 `project overview`；`rg "project (list\|info)"` 零命中） | v1.1.2-stage-56 |
+| [BUG-008](cli.md) | `--debug`/`OPENFEEL_DEBUG=1` 开关机制正确，但全仓 `runtimeLog()` 仅 info/error 3 处调用、无 debug/warn 生产者 → 真实 CLI 无可观测 `[DEBUG]`（不违反「debug 默认关」裁定） | low | **open**（归档官边界：不改源码，待下阶段/用户裁定） | v1.1.2-stage-58 |
 
 ### config
 
@@ -88,3 +89,5 @@
 > **v1.1.2-stage-56 归档收口（2026-10-01，openfeel-archiver）**：`cli/BUG-007`（low，文档漂移）经**归档官就地修正并关闭**——`docs/commands.md` 的 `## project — 项目管理` 节删除 `openfeel project list` / `openfeel project info [path]` 两行，改为实测存在的 `openfeel project overview`（+ 更正注记）；`project --help` 实测仅 `overview`，`rg "project (list|info)" docs/commands.md` 零命中。**至此 v1.1.2 累计 18 条 Bug 全部 `closed`（open 0 / closed 18）**，与私域 `index.md` 及实测 `BUG-*.md` 文件数（18）三者一致；公共域模块条目 = cli(7) + config(4) + archive(1) + templates(5) + kb(1) = **18**。防再犯沉淀：命令面**收敛**同样须走多载体同步面清单（手写 `docs/commands.md` 不经 build，最易漏）。
 
 > **v1.1.2-stage-57 归档收口（2026-10-02，openfeel-archiver）**：**本轮无新登记 Bug**——CI 失败根因（T32 盘符用例 POSIX 下必失败）与 CI 日志可观测性（ANSI 色码致 grep 失配）均以 **REV** 形式登记（`code_review/v1.1.2-stage-57.md` REV-004 blocking）并经 op-001 修复闭环；REV-005（README 架构图 `backup/` 粒度失真）由归档官就地修正后 closed。统计维持 **18（open 0 / closed 18）**，与私域 `index.md` 及实测 `BUG-*.md` 文件数三者一致。防再犯沉淀（并入 patterns）：① 平台敏感断言须**二分 + `it.skipIf` + 防假绿前置断言**，不以本地绿代跨平台；② CI 日志可观测性须以**真实合并流字节级复现**验证（`--no-color` + sed 剥色兜底），注解通道绝不承担判定职责。
+
+> **v1.1.2-stage-58 收口（2026-10-02，openfeel-archiver）**：**新登记 `cli/BUG-008`（low, open，非阻塞）**——`--debug`/`OPENFEEL_DEBUG=1` 的级别过滤与开关机制经注入验证**完全正确**，但全仓 `runtimeLog()` 仅 info/error 3 处调用、**无 debug/warn 生产者** → 真实 CLI 无可观测 `[DEBUG]`（不违反锁定裁定「debug 默认关」，非回归）。**归档官不改源码**（边界），维持 open 待下阶段/用户裁定（建议「仅文档化」）。统计 **19（open 1 / closed 18）**；公域模块条目 = cli(8) + config(4) + archive(1) + templates(5) + kb(1) = **19**，与私域 `index.md` 及实测 `BUG-*.md` 文件数三者一致。防再犯沉淀（并入 kb）：① install 型能力的 E2E 须含**正控** + 静态断言无 `process.env.VITEST`（vitest 设置并让 spawn 子进程继承）；② 新增「默认开启」能力时，测试/子进程须显式 `OPENFEEL_LOG=0` 隔离（真实用户目录 mtime+SHA256 前后零变化为验收固定项）。

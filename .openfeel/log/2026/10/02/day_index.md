@@ -9,3 +9,8 @@
 | [2026-10-02-Liuary-003.md](2026-10-02-Liuary-003.md) | Liuary | v1.1.2-stage-57.op-003 执行通过 |
 | [2026-10-02-Liuary-005.md](2026-10-02-Liuary-005.md) | Archiver | v1.1.2-stage-57 归档完成（发布收尾：CI 修复 + CI 可观测性 + README 更新，3 op） |
 | [2026-10-02-Liuary-006.md](2026-10-02-Liuary-006.md) | Liuary | 阶段 v1.1.2-stage-57 完成 |
+| [2026-10-02-Liuary-007.md](2026-10-02-Liuary-007.md) | Liuary | v1.1.2-stage-58.op-001 执行通过 |
+| [2026-10-02-Liuary-008.md](2026-10-02-Liuary-008.md) | Liuary | v1.1.2-stage-58.op-002 执行通过 |
+| [2026-10-02-Liuary-009.md](2026-10-02-Liuary-009.md) | Liuary | v1.1.2-stage-58.op-003 执行通过 |
+| [2026-10-02-Liuary-010.md](2026-10-02-Liuary-010.md) | Archiver | v1.1.2-stage-58 归档完成（CLI 输出编码自适应 + 运行日志，3 op） |
+| [2026-10-02-Liuary-011.md](2026-10-02-Liuary-011.md) | Liuary | 阶段 v1.1.2-stage-58 完成 |

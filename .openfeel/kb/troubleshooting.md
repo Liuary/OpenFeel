@@ -914,3 +914,43 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 **实证**：v1.1.2-stage-56 REV-005（方案审查发现 `project` 陈旧 + 表述失实）、op-001 修正；测试官实测 `advanceAccepted.length=15`、`transitionsDiff.missing=["review_passed|test_passed"]` 与注记逐字吻合。
 
 **参见：** v1.1.2-stage-56 op-001 / REV-005 / REV-008；kb/patterns.md #CLI 自描述集合的「存在视图 vs 推进白名单」区分、#CLI 自描述命令模式；kb/troubleshooting.md #`flow phases` 自描述 phase 与 `flow advance` 接受集合不一致
+
+## [+] Node 无内建 GBK 编码能力：`TextEncoder` 静默忽略、`Buffer.transcode` 抛错 → 必须第三方编码器 (2026-10-02)
+
+**症状/困惑**：Windows 传统 CJK 代码页下要把人类可读文本转成 GBK 字节，直觉上应可用 Node 内建 API，实际两条路都不通——且**一条静默、一条报错**，易误判为「代码写错」。
+
+**实测（Node ≥20，win32）**：
+- `new TextEncoder('gbk')` → **静默忽略**参数、仍按 UTF-8 编码（**不报错**，最危险，产出错误字节还以为是 GBK）；
+- `Buffer.transcode(src, from, 'gbk')` → **抛错**（不支持 GBK）；
+- `TextDecoder('gbk'/'gb18030')` 可**解码**（仅解码方向，非本需求重点）。
+
+**结论/操作**：Node 标准库**无 GBK/GB18030/Big5 等传统 CJK 编码能力**，必须引入第三方编码器（本项目选 `iconv-lite`）。`iconv.encode('中文⚠','gbk')` → `d6d0 cec4 3f`（不可编码字符降 `?`，与预期一致）。
+
+**依赖评估路径（MIT）**：选型时先查包是否**已在 prod 依赖树**（本项目 `iconv-lite@0.7.2` 已随 `@inquirer/prompts → @inquirer/editor → @inquirer/external-editor` 传递安装、**非 dev**）→ 提为**直接依赖**只改 `package.json` + `package-lock.json` 根 `dependencies` 各 1 行，**不改依赖树**（`npm ls iconv-lite` 显示直接依赖）；自带 `lib/index.d.ts`（**无需 @types**）；MIT 许可、由 npm 解析安装、**不打入 tarball**（`npm pack` 文件数不变）。
+
+**避免**：① 用 `chcp` 探测代码页时**勿按 UTF-8 解码整串**——`spawnSync('chcp',...)` 输出用 `stdout.toString('latin1')` 再 `/\d+/` 提取数字；② 不可编码字符降级 `?` 是 iconv 默认行为，**不额外告警**（避免日志噪声/编码递归）。
+
+**实证**：v1.1.2-stage-58 D-1~D-4（`package-lock.json` +1 行；`npm ls iconv-lite` = 0.7.2 直接依赖）；`.openfeel/manual/cli/output-encoding.md` 记录降级策略。
+
+**参见：** v1.1.2-stage-58 D、A-7；kb/patterns.md #CLI 输出编码自适应单一咽喉模式；`src/cli/output-encoding.ts`
+
+## [+] 默认开启写真实用户目录的副作用防护：`VITEST` 会被 spawn 子进程继承、不能作隔离守卫 (2026-10-02)
+
+**症状/困惑**：默认开启的运行日志使 `npm test` 疑似写真实 `~/.openfeel/cli/logs/`；同时「用 `process.env.VITEST` 守卫跳过安装」的方案看似安全，却让经 `bin/` 的 E2E **恒绿零覆盖**。
+
+**实测事实**：
+- vitest 主进程设置 `process.env.VITEST="true"`（`node_modules/vitest/.../cli-api.*.js`），且 `spawnSync/spawn` 子进程以 `{...process.env}` **继承**该变量；
+- 因此 `test/cli/repl.test.ts` 的 spawn 子进程必带 `VITEST=true`；若 `installOutputEncoding`/`installRuntimeLog` 首行 `if (process.env.VITEST) return;`，则**经 `bin` 的真实 CLI 子进程**也被短路 → 被测转码/日志链路根本不运行 → 输出「本来正确」→ 断言恒绿。
+
+**正确防护（不设 env 守卫）**：
+1. **库侧默认 no-op**：能力模块内部默认「未安装」，`install*` 仅由 `bin/openfeel.js` 调用；in-process 测试从不 install → 零写盘（`kb/patterns.md #库侧默认 no-op + 进程入口 install`）；
+2. **测试自身隔离**：`vi.mock('node:os')` + 子进程双设 `USERPROFILE`/`HOME`/`XDG_CONFIG_HOME`；spawn 真实 CLI 的用例显式 `OPENFEEL_LOG:'0'`（关日志降噪）；
+3. **E2E 正控**：断言「若 install 被短路则必失败」（如 GBK 字节 + fatal UTF-8 抛错），消除恒绿。
+
+**审计法（铁证）**：跑全量 `npm test` 前后比对真实用户目录的 **mtime + SHA256**——「hash 不变但 mtime 变化」= 被写过又还原（伪隔离铁证）；本阶段实测真实 `~/.openfeel/cli/logs/openfeel-2026-10-02.log` 在 `npm test` 前后**零变化**（同 Length / 同 LastWriteTimeTicks）→ 测试不写真实 HOME。
+
+**避免**：① 默认开启写盘能力时，**测试/子进程须显式关闭或隔离**；② 任何「用 vitest 环境变量做守卫」的方案先问「子进程是否继承」；③ 库侧默认关闭 + 入口 install 是比 env 守卫更可靠的隔离范式。
+
+**实证**：v1.1.2-stage-58 REV-001（blocking，裁定方案 b 删除 `VITEST` 守卫）、REV-004（两 install 策略统一）；E-4 `repl.test.ts` 加 `OPENFEEL_ENCODING:'utf8'` + `OPENFEEL_LOG:'0'`。
+
+**参见：** v1.1.2-stage-58 REV-001/REV-004、E-3/E-4/E-5；kb/patterns.md #库侧默认 no-op + 进程入口 install、#测试全局路径隔离模式（禁用保存/恢复伪隔离）；kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock

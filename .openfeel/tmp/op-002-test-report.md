@@ -1,69 +1,69 @@
-# 自测报告 — op-002（v1.1.2-stage-57）
+# 自测报告 — op-002
 
-- **执行时间**：2026-10-02
+- **执行时间**：2026-10-02 02:02
 - **执行 Agent**：openfeel-executor
-- **重试次数**：第 1 次
-- **op 主题**：README ×3 与 docs/commands.md 版本快照对齐（28 处 + REV-003）
+- **重试次数**：1（首次门禁手动运行暴露真实日志写入，改用隔离后通过）
 
 ## 执行摘要
-README.md 4 处、README.zh-CN.md 12 处、README.en.md 12 处（逐处对等）+ `docs/commands.md:7` 1 处全部落地，自测通过。
+op-002（B+E）全部完成：新增运行日志模块并接入 CLI；`npm test` 全绿 61 文件 / 1018 用例 / 0 skipped。
 
 ## 实施步骤完成情况
-- [x] C3-M：`README.md` 4 处（M1 第 3 行追加入门指南 / M2 免责声明去版本号 / N1 第 11 行新增 v1.1.2 引用块 / A3 快速开始补 `flow phases` + 全局部署说明）
-- [x] C3-T：测试数改 **986 用例 / 59 文件 + Linux 跳过 1 个 Windows 专属用例**（zh `:149` / en `:149`）
-- [x] C3-N：新增 `## v1.1.2 新增能力`（zh :51）/ `## What's New in v1.1.2`（en :51），各 6 条要点
-- [x] C3-C1：`flow` 补 phases/overview/attempt/ops list/health [--fix]/checkpoint/migrate + --json 说明
-- [x] C3-C2：`plan` 补 stage add/list [--deps/--tasks]、scheme create [--draft]/publish/rename/remove/list
-- [x] C3-C3：`knowledge` 补 add/index/dedup
-- [x] C3-C4：`stage` 补 task
-- [x] C3-C5：`project` 改为仅 `overview`（对齐 cli/BUG-007）
-- [x] C3-C6a：命令表 `view` 行追加 `flow review add|update|remove` 指引（REV-002）
-- [x] C3-C6b：分工表 `view` 行职责描述改「审查条目验收」（REV-002）
-- [x] C3-A1：架构图 CLI 层补 `setup/migrate/stage/project/model`；Core 层补 `backup/`、`fs/`；图注补全局部署
-- [x] C3-A2：新增 `### 全局部署与工作区分层` / `### Global Deployment and Workspace Layering`
-- [x] REV-003：`docs/commands.md:7` 免责声明改为不写死版本号
-- [x] REV-001 补充：`plan.md` 修订记录措辞去「逐字符保持不变」使验收锚点零命中
+- [x] B-1：`global-paths.ts` 新增 `getCliLogsDir()`（`~/.openfeel/cli/logs`）
+- [x] B-2/B-3：新建 `src/core/runtime-log.ts`（导出 API 与 §三一致；无 `process.env.VITEST` 分支）
+- [x] B-4：`src/cli/index.ts` 注册 `--log-file`/`--no-log`/`--debug`
+- [x] B-5：`bin/openfeel.js` 安装 `installRuntimeLog()`（在 `installOutputEncoding()` 后、`applyHelpI18n` 前）
+- [x] B-6：`runCli` 记 start/done；`handleCliError` 记 error（REV-002 边界注释）；不记 stdout
+- [x] B-8：边界文档并入 op-003 F-1（本 op 仅 B-6 代码注释）
+- [x] E-2：`output-encoding.test.ts` 追加 3 组 spawn（正控 + 旁路回归 + 基线）
+- [x] E-3：新建 `test/core/runtime-log.test.ts`（8 用例，mock homedir 隔离）
+- [x] E-4：`repl.test.ts:25` 加 `OPENFEEL_LOG:'0'`
+- [x] i18n `global.logFile`/`global.noLog`/`global.debug` 双语 → 730 键
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| README.md 4 处落地，篇幅 ≤ ~35 行 | ✅ | 32 行 |
-| zh 12 处 / en 12 处逐处对等（行号同构） | ✅ | 均 178 行，标题逐行同号 |
-| 测试数口径 986 / 59 + Linux 跳过 1 | ✅ | — |
-| v1.1.2 新增能力节 6 条要点齐备 | ✅ | zh/en 语义对等 |
-| 命令表修正与 `--help` 实测一致（`project` 仅 overview） | ✅ | 实测 project/flow/plan scheme |
-| REV-002：指引落命令表；分工表仅改职责描述 | ✅ | — |
-| REV-003：`docs/commands.md:7` 去版本号 | ✅ | — |
-| 免责声明无「1.1.1」残留 | ✅ | 四文件 `rg "1\.1\.1"` 零命中 |
-| 架构图补 CLI/Core 层 + 全局部署图注；新增分层小节 | ✅ | — |
-| `lint kb` 0 过期 | ✅ | 260 引用，exit 0 |
-| `lint i18n` 726 键 exit 0 | ✅ | README/docs 非 i18n 键 |
-| 未改 flow.json；未改实现源码 | ✅ | — |
-
-## 门禁实测
-- `node bin/openfeel.js lint i18n` → **726 键一致**，exit 0
-- `node bin/openfeel.js lint kb` → 0 过期（260 引用），exit 0
-- 行数：README.md 32 / README.zh-CN.md 178 / README.en.md 178
-- `rg "1\.1\.1"` 四文件零命中
+| `getCliLogsDir()` | ✅ | 返回 `~/.openfeel/cli/logs` |
+| runtime-log 导出 API 一致；无 VITEST | ✅ | `rg` 零命中 |
+| 模块内默认 `config=null` | ✅ | 未安装 no-op 用例通过 |
+| 行格式/UTF-8/withFileLock | ✅ | 正则 + 中文 UTF-8 断言 |
+| 注册 3 选项 | ✅ | `--help` 含 log-file/no-log/debug |
+| runCli/handleCliError 接入 | ✅ | 不记 stdout |
+| runtime-log.test 覆盖 §5.1 | ✅ | 8 用例 |
+| E-2 三组（正控含 fatal 抛错） | ✅ | 均实跑未 skip |
+| repl.test 加 OPENFEEL_LOG:0 | ✅ | |
+| i18n 730 exit 0 | ✅ | |
+| tsc 0；build 不复活；npm test 全绿 | ✅ | 61 文件 / 1018 |
+| 未改 flow.json；无新增依赖；无额外 op 文件 | ✅ | |
 
 ## 产出文件
-- `README.md`（4 处）
-- `README.zh-CN.md`（12 处）
-- `README.en.md`（12 处）
-- `docs/commands.md`（`:7` 一行）
-
-## 方案一致性回写
-- 声明产出（4 文件）与实际产出**一致**，无遗漏、无超范围。
-- 计数：README.md 4 + zh 12 + en 12 = 28 + `docs/commands.md` 1 = 29（与 op-002 方案一致）。
+- `src/core/global-paths.ts`
+- `src/core/runtime-log.ts`（新建）
+- `src/cli/index.ts`
+- `bin/openfeel.js`
+- `src/core/i18n-data/zh-CN.ts` / `en.ts`
+- `test/core/runtime-log.test.ts`（新建）
+- `test/cli/output-encoding.test.ts`
+- `test/cli/repl.test.ts`
 
 ## 前置校验结果
 - 方案完整性：通过
-- Phase 合法性：通过（stage-57 / exec_running / op-002）
-- 流转合法性：通过（`flow health --quick` exit 0）
+- Phase 合法性：通过（stage phase=exec_running；current.op=op-002 匹配）
+- 流转合法性：通过
 
-## 测试隔离核对
-- `.openfeel/config.yaml` 三值 `auto/enabled/true` 未变更
-- 未触碰真实全局目录
+## 门禁实测
+| 门禁 | 结果 |
+|------|------|
+| `npx tsc --noEmit` | 0 |
+| `npm run build` | 成功，`.opencode/**` 未复活 |
+| 定向 vitest（runtime-log + output-encoding + repl） | 33 通过 |
+| `node bin/openfeel.js lint i18n` | 730 键 exit 0 |
+| `node bin/openfeel.js lint kb` | 0 过期 exit 0 |
+| `npm test` | 61 文件 / 1018 / 0 skipped |
+| 日志 E2E（隔离 HOME，不设 OPENFEEL_LOG=0） | 生成 `openfeel-2026-10-02.log`，含 `[INFO][pid]`，UTF-8 |
+| `flow phases --json` | 5 键 |
+| `rg process.env.VITEST src/core/runtime-log.ts` | 零命中 |
 
 ## 偏差记录
-- 无。`plan.md` 修订记录措辞调整属 op-001 REV-001 验收锚点（零命中）的闭环，非范围外。
+1. **真实日志目录污染与清理（重要）**：op-002 门禁手动运行 `node bin/openfeel.js lint i18n`/`lint kb`/`--help` 时未设 `OPENFEEL_LOG=0`，因日志**默认开启**写入了真实 `~/.openfeel/cli/logs/openfeel-2026-10-02.log`（仅含本会话 3 条 dev 命令）。已删除该文件及空目录 `~/.openfeel/cli/`，恢复原始状态；后续门禁一律 `OPENFEEL_LOG=0`。**测试侧隔离完好**：`rg` 核查确认仅 `repl.test.ts` 与 `output-encoding.test.ts` 经 bin 的 spawn 均带 `OPENFEEL_LOG:'0'`（其余 spawn 不经 bin）；全量 `npm test` 后真实目录不存在（已验证）。
+2. **E-2 cwd 口径**：按方案 §5.2 声明采用 `cwd=REPO_ROOT`（与 plan「临时目录」偏差，方案已声明等效）。
+3. **git 提交范围**：仅提交 op-002 产出；CLI 产生的 `.openfeel/log/**` 审计条目与 `flow.json`/`checkpoints` 未纳入提交。

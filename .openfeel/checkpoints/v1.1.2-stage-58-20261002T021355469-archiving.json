@@ -2,11 +2,11 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T18:21:24.689Z",
-    "revision": 565
+    "updated": "2026-10-01T18:13:55.135Z",
+    "revision": 563
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-58",
       "op": ""
@@ -2507,8 +2507,8 @@
     },
     "v1.1.2-stage-58": {
       "name": "v1.1.2-stage-58",
-      "phase": "done",
-      "status": "done",
+      "phase": "archiving",
+      "status": "testing",
       "deps": [
         "v1.1.2-stage-57"
       ],
@@ -2567,8 +2567,8 @@
       },
       "stats": {
         "start_time": "2026-10-01T16:57:58.394Z",
-        "end_time": "2026-10-01T18:21:24.669Z",
-        "duration_ms": 5006275
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
@@ -11718,26 +11718,6 @@
         "stageName": "v1.1.2-stage-58",
         "from": "test_pending",
         "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-10-01T18:13:55.490Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-58",
-        "from": "test_passed",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-10-01T18:21:24.666Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-58",
-        "from": "archiving",
-        "to": "done"
       }
     }
   ]

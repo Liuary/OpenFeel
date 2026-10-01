@@ -295,3 +295,41 @@ en 模式下 `flow advance --stage <id> --to done` 首行检测信息为英文�
 
 ① 命令面**收敛**（增删子命令）与新增命令同样须走「**同步面清单**」——**手写文档 `docs/commands.md` 不经 build，是最易漏的一环**（与 `templates/BUG-005` 的「部署型 skill 模板」并列）；② 沉淀见 `kb/patterns.md #部署型资产变更的多载体同步面清单`、`kb/troubleshooting.md #新增输出键/契约的同步面清单`（已扩展为 9 载体表）。
 
+---
+
+## BUG-008：`--debug` / `OPENFEEL_DEBUG=1` 开关机制正确，但全仓无 debug/warn 生产者 → 真实 CLI 下无可观测 debug 输出
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.2-stage-58`（正式测试验收发现）｜ **归因**：**新引入能力的设计缺口**（op-002 定义 switch/minLevel，但未接入任何 debug 级生产者）｜ **处置**：归档官**不改源码**（边界），维持 open 待下阶段/用户裁定
+
+### 核心结论
+
+`resolveRuntimeLogConfig` 已将 `minLevel` 正确切到 `debug`（`--debug`/`OPENFEEL_DEBUG=1`），级别过滤亦正确（注入 `runtimeLog('debug',…)` 后 `[DEBUG]` 正常落盘），但 `src/` 全仓 `runtimeLog()` 调用仅 **3 处**（`src/cli/index.ts:183` error、`:194`/`:200` info），**无任何 debug 级（乃至 warn 级）生产者** → minLevel 虽降为 debug，却无条目可记 → 真实 CLI 下开关**无可观测效果**。
+
+| 项 | 说明 |
+|----|------|
+| 触发条件 | 任意命令附加 `--debug` 或设 `OPENFEEL_DEBUG=1` |
+| 功能影响 | **无功能损毁**：日志模块（info/error）正常工作；级别过滤 / 开关 / 路径覆盖 / 并发 / UTF-8 均实测通过 |
+| 预期落差 | `--help` 宣称「记录 debug 级日志」，但真实 CLI 无任何 debug 输出 → 「开关无效」观感 |
+| 同类 | `warn` 级亦无生产者（模块支持 warn，注入验证可写） |
+| 边界 | **不违反**用户锁定裁定（仅要求 info/warn/error 记录、debug 默认关）与 plan §2.4/B-7（仅要求 minLevel 切换）；单元测试 `test/core/runtime-log.test.ts:63-72` 已覆盖 debug 门控，故**非回归** |
+
+### 验证（openfeel-feel-tester 实测，2026-10-02）
+
+- 直接注入（`installRuntimeLog({argv:['--debug']})` + `runtimeLog('debug', ...)`）→ 日志出现 `[DEBUG]`（机制正确）；
+- 默认配置注入 `warn`/`error`/`debug` → `[WARN]`/`[ERROR]` 落盘、`[DEBUG]` 被过滤（级别过滤正确）；
+- 真实 CLI `--debug` / `OPENFEEL_DEBUG=1` → 无 `[DEBUG]`。
+
+### 修复方向（供后续裁定，二选一）
+
+1. **补生产者**：在关键诊断路径（如 `chcp` 探测结果、`--log-file` 解析、`install*` 生效状态）增加 `runtimeLog('debug', ...)`，使开关可观测（注意避免过度设计/噪声）；
+2. **仅文档化**：在 `manual/core/runtime-log.md` 与 `--help` 描述中注明「debug 级当前为预留能力，暂无生产者；`--debug` 仅降低过滤阈值」。
+
+> 建议倾向方案 2（最小改动、符合 AGENTS.md 过度设计约束）。
+> 沉淀：`kb/patterns.md #库侧默认 no-op + 进程入口 install 的副作用隔离模式`、`kb/architecture.md #四类日志边界`
+
+### 验收记录
+
+| 时间 | 验收人 | 结论 | 备注 |
+|------|--------|------|------|
+| 2026-10-02 02:12 | openfeel-feel-tester | open（low，非阻塞） | 机制正确，缺口 = 无 debug/warn 生产者；不阻塞本阶段验收；**归档官不改源码，维持 open** |
+

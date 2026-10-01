@@ -635,3 +635,24 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **可操作结论**：判断「某项目级受管资产能否退役」的判据＝① 是否已有**幂等的全局/公共部署源**可接管；② 删除是否**受 git 跟踪可恢复**（`git checkout <sha> -- <paths>`）；③ 是否有**构建步骤会复活**它（有则须连同删除）。三者齐备再动手，并把「刷新早于删除」写为显式不变量。
 
 **参见：** v1.1.2-stage-55（op-002 门 B / op-003 删除 + 防复活 / op-004 supersede）；`plan/v1/stage-55/plan.md` §四 安全门；`.openfeel/manual/core/build.md` #步骤 8；kb/patterns.md #真实全局目录操作的安全程序、#supersede 历史决策的追加式记录；kb/troubleshooting.md #自举实例移除须连带删除 build 生成步骤
+
+## [+] 四类日志边界：CLI 进程运行日志 / 工作区审计 / 流水线状态审计 / 部署更新记录 (2026-10-02)
+
+**问题**：项目内已存在三种「日志/记录」，stage-58 新增 CLI 进程运行日志后易与三者混淆——四者都叫「日志」，但**归属、载体、语义、消费者**完全不同，混用会造成治理混乱与错误排查。
+
+**四类边界（stage-58 裁定）**：
+
+| 类别 | 载体 | 归属 | 语义 | 消费者 |
+|------|------|------|------|--------|
+| **CLI 进程运行日志** | `~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log` | **全局（跨项目）** | CLI 进程的命令/结果/错误（`[ISO][LEVEL][pid] msg`，恒 UTF-8，默认 on） | 开发者诊断 CLI 行为 |
+| **项目工作区审计日志** | `.openfeel/log/**`（`public-logger`） | **项目** | 团队级重要事件（里程碑、阶段闭环、Bug/REV 严重问题） | 团队查阅 |
+| **流水线状态审计** | `flow.json.log[]` | **项目** | 结构化状态事件（阶段注册/推进、op 注册、attempt） | 工具/Agent 追踪状态 |
+| **部署更新记录** | `update_infos.md` | **全局/项目双资产** | setup/update/migrate 的部署/备份/异常条目 | 用户/Agent 查部署沿革 |
+
+**判据（写入前先判「这条信息属于谁」）**：按**归属层级**（全局 vs 项目）与**语义**（进程诊断 / 团队事件 / 状态事件 / 部署沿革）两维二分；**不共用载体、不互相追加**。新增日志类能力时先回答「它是否已有归属」，避免第四类无边界生长。
+
+**关键设计约束（stage-58）**：CLI 运行日志**恒 UTF-8**（与 console 输出编码完全解耦，见 kb/patterns.md #CLI 输出编码自适应单一咽喉模式）、**不记录 stdout 内容**（仅 argv + 状态 + 错误，防隐私/体积）、**best-effort**（写失败吞掉不中断 CLI）、`error` 语义 = 「命令处理中抛出的异常」（解析期错误经 `program.error()` 直接 exit、不入日志，仅文档化）。
+
+**实证**：v1.1.2-stage-58 B-1~B-8（`src/core/runtime-log.ts` + `global-paths.getCliLogsDir()`）；manual `core/runtime-log.md` 写明四类边界与 REV-002 error 边界；`bin/openfeel.js` 单一咽喉 install（库侧默认 no-op）；真实 `~/.openfeel/cli/logs/` 在 `npm test` 前后零变化（测试不写真实日志）。
+
+**参见：** v1.1.2-stage-58 B-1~B-8、REV-002；`.openfeel/manual/core/runtime-log.md`；kb/patterns.md #CLI 输出编码自适应单一咽喉模式、#库侧默认 no-op + 进程入口 install

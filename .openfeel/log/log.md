@@ -2,6 +2,11 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-02-Liuary-011.md](2026/10/02/2026-10-02-Liuary-011.md) | Liuary | 阶段 v1.1.2-stage-58 完成 |
+| [2026-10-02-Liuary-010.md](2026/10/02/2026-10-02-Liuary-010.md) | Archiver | **stage-58 归档完成（CLI 输出编码自适应 + 运行日志，3 op）**——**A** 输出编码自适应（`src/cli/output-encoding.ts` + `bin` 单一咽喉，**不设 `VITEST` 守卫**；auto 5 步优先序；Buffer 直通 / 回调保留 / 不可编码降 `?`）+ **C** `--json` 恒 UTF-8 最高优先 + **B** 运行日志（`src/core/runtime-log.ts` + `getCliLogsDir()` → `~/.openfeel/cli/logs/`，恒 UTF-8、默认 on、info/warn/error、debug 默认关、`withFileLock` + best-effort、不记 stdout）+ **D** `iconv-lite@^0.7.2` 提直接依赖（MIT）+ **E** 测试 +32 用例（含正控）+ **F** manual×2 新建 + ×3 更新、README×2、CHANGELOG、docs；`npm test` **61 文件 / 1018 用例 0 skipped**、`tsc` 0、build 幂等不复活、`lint i18n` **730 键**、`lint kb` 0、真实 `~/.openfeel/cli/logs/` 测试前后零变化；**REV-001~008 全 closed**；**新登记 `cli/BUG-008`（low, open）**；知识沉淀 5 条；**v1.1.2 十八阶段（41~58）全部闭环，发布就绪**（待 Feel 统一 push → CI → 自动 `npm publish`） |
+| [2026-10-02-Liuary-009.md](2026/10/02/2026-10-02-Liuary-009.md) | Liuary | v1.1.2-stage-58.op-003 执行通过 |
+| [2026-10-02-Liuary-008.md](2026/10/02/2026-10-02-Liuary-008.md) | Liuary | v1.1.2-stage-58.op-002 执行通过 |
+| [2026-10-02-Liuary-007.md](2026/10/02/2026-10-02-Liuary-007.md) | Liuary | v1.1.2-stage-58.op-001 执行通过 |
 | [2026-10-02-Liuary-006.md](2026/10/02/2026-10-02-Liuary-006.md) | Liuary | 阶段 v1.1.2-stage-57 完成 |
 | [2026-10-02-Liuary-005.md](2026/10/02/2026-10-02-Liuary-005.md) | Archiver | **stage-57 归档完成（发布收尾：CI 修复 + CI 可观测性 + README 更新，3 op）**——**C1** T32 平台化（跨平台 + Windows `it.skipIf`，前置断言防假绿，`src/core/config.ts` 零 diff）；**C2** CI 失败注解（`pipefail` + `--no-color` + sed 剥色 + `if: failure()`，REV-004 blocking 修复闭环）；**C3** README×3（28 处）+ `docs/commands.md`（986/59、v1.1.2 能力节、命令表、全局部署架构、zh/en 178 行对等、`1.1.1` 零残留）；`npm test` **59 文件 / 986 用例**、build 幂等不复活、`lint i18n` 726 键、`lint kb` 0 过期；Linux 预览 985 passed / 1 skipped → CI 将转绿；REV-001~004 closed + **REV-005（README `backup/` 粒度）归档官就地修正 `backup.ts` 关闭**；无新 Bug（18 全 closed）；知识沉淀 3 条；**十七阶段全部闭环，可推送 / 发布** |
 | [2026-10-02-Liuary-004.md](2026/10/02/2026-10-02-Liuary-004.md) | Liuary | stage-58 方案审查：REV-006（blocking，high）门禁测试基线过期 985→986 实测上报 |
@@ -27,11 +32,6 @@
 | [2026-10-01-Liuary-037.md](2026/10/01/2026-10-01-Liuary-037.md) | Liuary | v1.1.2-stage-54.op-002 执行通过 |
 | [2026-10-01-Liuary-036.md](2026/10/01/2026-10-01-Liuary-036.md) | Liuary | v1.1.2-stage-54.op-001 执行通过 |
 | [2026-10-01-Liuary-035.md](2026/10/01/2026-10-01-Liuary-035.md) | Liuary | 阶段 v1.1.2-stage-52 完成 |
-| [2026-10-01-Liuary-034.md](2026/10/01/2026-10-01-Liuary-034.md) | Archiver | **stage-52 归档完成（反馈 09 可编排性/可观测性 + 遗留清账 + 约束体系精简，14 op）**——B1~B9 全落地（`--json`×6 / `health --fix` 仅「状态」字段 / `ops list` 填充度 / `draft` 两阶段 / `advance --to` 自动逐步 + REV 复检 / `scheme rename` / `NO_COLOR` / `kb-dedup` CRLF 修复〔2→105 / 0→31〕）；A4 移除 `view add`（破坏性）+ C1~C4 约束精简（14→17 Skill）；修复轮 op-012/013/014 归一化闭包 10 处收口（无第 11 处）；**59 文件 / 979 用例全绿**、`lint i18n` 724 键、`lint kb` 0 过期；三段审查零阻塞（REV-005~009 全 closed）；新登记 `cli/BUG-005`（medium）/ `cli/BUG-006`（low）；知识沉淀 8 条；**v1.1.2 十三阶段全部闭环** |
-| [2026-10-01-Liuary-033.md](2026/10/01/2026-10-01-Liuary-033.md) | Liuary | v1.1.2-stage-52.op-014 执行通过 |
-| [2026-10-01-Liuary-032.md](2026/10/01/2026-10-01-Liuary-032.md) | Liuary | 阶段 v1.1.2-stage-53 完成 |
-| [2026-10-01-Liuary-031.md](2026/10/01/2026-10-01-Liuary-031.md) | Liuary | v1.1.2-stage-52.op-013 执行通过 |
-| [2026-10-01-Liuary-030.md](2026/10/01/2026-10-01-Liuary-030.md) | Archiver | **stage-53 归档完成（current.md / dev_last.md 职能与格式重构，D1~D10 / 5 op）**——两条设计目的 + 三层分层写入全局约束；current 团队文件新格式（≤5 条 + 自动归档 `current_archive/`）；dev_last 索引 + 同名主题目录（R1~R6 含 R4 就地收敛 + R6 加锁）；用户裁定 A5/A6/A9/A10 全落地；存量迁移零丢失（current 82→14、dev_last 53→34 + 5 英文主题）；**59 文件 / 949 用例全绿**、`lint i18n` 724 键、`lint kb` 0 过期；三段审查零阻塞（REV-003 closed）；`templates/BUG-004`（low）就地修正关闭；知识沉淀 5 条；**v1.1.2 十三阶段（41~53）全部闭环** |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

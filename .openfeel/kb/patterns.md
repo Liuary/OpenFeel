@@ -3153,3 +3153,43 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.2-stage-57 op-002（README×3 + `docs/commands.md` 共 29 处；986/59、命令表、v1.1.2 能力节、全局部署图注、zh/en 各 178 行；`rg "1\.1\.1"` 四文件零命中）；归档补修 `docs/GETTING_STARTED.md` 第 5 行同类残留。
 
 **参见：** v1.1.2-stage-57 op-002、REV-002/REV-003/REV-005；kb/patterns.md #部署型资产变更的多载体同步面清单、#部署语境 vs 本仓语境的命令口径二分；kb/troubleshooting.md #多源文案同步陷阱
+
+## [+] CLI 输出编码自适应的「单一咽喉」模式：进程入口包装 stdout/stderr.write + `--json` 恒 UTF-8 旁路 (2026-10-02)
+
+**问题**：Windows 传统 CJK 代码页（如 936/GBK）下，CLI 被重定向/管道（非 TTY）时人类可读文本按下游代码页消费 → 中文乱码；但全仓 `console.*` 调用达 690 处、`process.stdout.write` 直调为 0，逐点改造不可行。
+
+**方案（单一咽喉）**：只在**进程入口** `bin/openfeel.js` 安装一次包装器——`installOutputEncoding()` 保存 `orig = stream.write` 并替换为「**仅当 `typeof chunk === 'string'`** 时用 iconv 编码为 Buffer 后写回；Buffer/二进制直通；保留 callback/返回值」。**不改 690 处调用点**，库/测试侧未 install 即零副作用。
+
+**`auto` 5 步优先序**（`resolveTargetEncoding`，纯函数注入 argv/env/platform/isTTY/codepage）：
+
+| 步 | 条件 | 结果 |
+|:--:|------|------|
+| ① | argv 含 `--json` | `utf8`（**机器合同，最高优先**，覆盖 ②③⑤） |
+| ② | 显式 `--encoding`（`=` 或空格两形） | 归一化值 |
+| ③ | env `OPENFEEL_ENCODING` | 归一化值 |
+| ④ | 非 win32 **或** `isTTY` | `utf8`（TTY 走控制台宽字符 API，与 chcp 无关） |
+| ⑤ | win32 且非 TTY | `chcp` 探测 → 代码页映射（936→gbk…），未知/失败降 `utf8` |
+
+**设计要点与陷阱**：① **TTY 与管道必须二分**——Windows TTY 下 Node 走 `WriteConsoleW`，CJK 显示与 chcp 无关；仅非 TTY（重定向/管道）才需转码。② `--json` 是**机器可读单文档合同**（消费端按 UTF-8 `JSON.parse`），**必须最高优先旁路**，否则中文/emoji 失真。③ `chcp` 探测：`spawnSync('chcp', [], {stdio:['ignore','pipe','ignore'],windowsHide:true})` 从 `stdout.toString('latin1')` 提取数字（**勿按 UTF-8 解码整串**），进程内缓存一次，失败降 `utf8`。④ 不可编码字符由 iconv-lite 降级 `?`，**不额外告警**（避免日志噪声 + 编码递归）。⑤ 仅支持 **UTF-8 字符串语义**：string 分支丢弃调用方 `encoding`（全仓直调为 0，现实风险 ≈0）。⑥ `target==='utf8'` **不包装**（零行为变更）。
+
+**验证（防恒绿）**：E2E 必须有**正控**——非 json 命令 + `OPENFEEL_ENCODING=gbk` → 断言确为 GBK 字节且 `TextDecoder('utf-8',{fatal:true})` 抛错（install 被短路则输出 UTF-8、fatal 不抛 → 断言失败）；`--json` 旁路的权威证明在**纯函数单测**（`resolveTargetEncoding({argv:['--json','--encoding','gbk'],env:{OPENFEEL_ENCODING:'gbk'}})==='utf8'`），因 `flow phases --json` 输出全 ASCII、GBK 转码对其字节无影响。
+
+**实证**：v1.1.2-stage-58 A/C/D（`src/cli/output-encoding.ts` 197 行；`中文⚠`→`d6d0cec43f`、`流水线`→`c1f7cbaecfdf`；`--json` + GBK env → 合法 UTF-8 + `JSON.parse` 成功）；用户裁定「`--json` 恒 UTF-8 最高优先」。
+
+**参见：** v1.1.2-stage-58 A-1~A-7/C-1~C-3/D、REV-001/REV-003；`.openfeel/manual/cli/output-encoding.md`；kb/patterns.md #库侧默认 no-op + 进程入口 install
+
+## [+] 库侧默认 no-op + 进程入口 install 的副作用隔离模式：不设 `VITEST` 守卫 (2026-10-02)
+
+**问题**：新增「生产默认开启」的能力（输出编码包装、运行日志）时，如何既保证生产生效、又保证**测试零污染**（不写真实用户目录/不改真实输出流）？
+
+**模式**：**能力模块内部默认为「未安装」状态**（编码模块不包装任何流、日志模块 config=null），**install 只由进程入口 `bin/openfeel.js` 单一咽喉调用**。→ 生产：bin 调用后默认 on；测试：30 个 in-process 测试 import 模块但**从不 install** → 全 no-op，天然零污染。测试隔离另由**测试自身 cwd/HOME 隔离**承担（`vi.mock('node:os')` + 子进程双设 `USERPROFILE`/`HOME`）。
+
+**关键反模式：不要设 `process.env.VITEST` 守卫**。实测 vitest 主进程会设置 `process.env.VITEST="true"`，且 `spawnSync/spawn` 子进程以 `{...process.env}` **继承**该变量 → 守卫会把**经 `bin` 的真实 CLI 子进程**也误判为测试进程而短路 install → spawn E2E **恒绿零覆盖**（假阳性）。正确做法：不设 env 守卫，E2E 加**正控**（若 install 被短路则断言必失败），并加**静态断言**源码不含 `process.env.VITEST`（防回归）。
+
+**两个 install 的隔离策略须统一**（避免「编码不装、日志照装」的不对称）：均无 env 守卫、均幂等、均支持注入 `opts` 供单测。
+
+**默认开启的连带防护**：默认开启写盘能力时，任何 spawn 真实 CLI 的用例须显式 `OPENFEEL_LOG:'0'` 关日志（否则在隔离 HOME 内产生噪声；若隔离失效则写真实用户目录）；in-process 单测一律注入 fake stream / `vi.mock('node:os')`。验收固定项：真实用户目录在 `npm test` **前后零变化**（mtime + hash 双比对）。
+
+**实证**：v1.1.2-stage-58 A-1/B-2（`rg "process\.env\.VITEST" src/` 零命中；`repl.test.ts` 加 `OPENFEEL_ENCODING:'utf8'` + `OPENFEEL_LOG:'0'`；测试官确认真实 `~/.openfeel/cli/logs/` 在 `npm test` 前后零变化）；REV-001/REV-004 裁定方案 b。
+
+**参见：** v1.1.2-stage-58 A-4/B-5、REV-001/REV-004；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护；kb/patterns.md #测试全局路径隔离模式（禁用保存/恢复伪隔离）

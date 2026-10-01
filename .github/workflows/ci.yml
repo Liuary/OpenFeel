@@ -98,6 +98,9 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
+    concurrency:
+      group: publish-${{ github.ref }}
+      cancel-in-progress: false
     env:
       NODE_AUTH_TOKEN: ${{ secrets.OPENFEEL_AUTO_NPM }}
     steps:

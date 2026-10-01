@@ -117,7 +117,7 @@ export interface AddReviewResult {
 
 /**
  * 添加审查条目的单点实现（T37/R4）：解析 / 校验 / REV ID 分配 / 写入口归一。
- * `flow review add` 与 `view add` 均调用本函数，禁止各自维护第二套校验与 ID 生成。
+ * `flow review add` 调用本函数（A4：`view` 组的 `add` 子命令已移除），禁止另维护第二套校验与 ID 生成。
  * @param projectPath 项目路径
  * @param opts 入参（见 AddReviewOptions）
  * @returns 结果对象（成功含 review；失败含 error.code）

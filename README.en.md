@@ -66,7 +66,7 @@ openfeel flow status
 | `openfeel model` | Three-tier agent model config (set / get / list, `--scope`) |
 | `openfeel stage` | Work stage status (status / set / create [deprecated]) |
 | `openfeel project` | Project management (list / info) |
-| `openfeel view` | Review item management (list / add [**deprecated, use `flow review add`**] / accept) |
+| `openfeel view` | Review item management (list / accept) |
 | `openfeel instructions` | Generate structured instructions (artifact → XML/JSON) |
 
 Details: [docs/commands.md](docs/commands.md)

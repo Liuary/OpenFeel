@@ -66,7 +66,7 @@ openfeel flow status
 | `openfeel model` | 三层级 agent 模型配置（set / get / list，`--scope`） |
 | `openfeel stage` | 阶段状态（status / set / create［已弃用］） |
 | `openfeel project` | 项目管理（list / info） |
-| `openfeel view` | 审查条目管理（list / add［**已弃用，改用 `flow review add`**］/ accept） |
+| `openfeel view` | 审查条目管理（list / accept） |
 | `openfeel instructions` | 生成结构化指令（artifact → XML/JSON） |
 
 详细参数见：[docs/commands.md](docs/commands.md)

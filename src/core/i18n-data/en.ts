@@ -187,6 +187,7 @@ export const flow: I18nDomain = {
 
   'review.errorStageNotFoundTmpl':  { key: 'flow.review.errorStageNotFoundTmpl',  zh: '', en: 'Error: Stage "{stage}" in opId "{opId}" not found in flow.json' },
   'review.errorOpNotFoundTmpl':     { key: 'flow.review.errorOpNotFoundTmpl',     zh: '', en: 'Error: Op "{op}" in opId "{opId}" not found in stage "{stage}"' },
+  'review.errorInvalidPriorityTmpl': { key: 'flow.review.errorInvalidPriorityTmpl', zh: '', en: 'Error: Invalid priority "{priority}", options: high / medium / low' },
   'review.labelBlocking':           { key: 'flow.review.labelBlocking',           zh: '', en: '[Blocking]' },
   'review.labelNonBlocking':        { key: 'flow.review.labelNonBlocking',        zh: '', en: '[Non-blocking]' },
   'review.addedAutoFixTmpl':        { key: 'flow.review.addedAutoFixTmpl',        zh: '', en: '✓ {label} [AUTO_FIX] Review entry added and auto-fixed: {revId}' },
@@ -498,9 +499,6 @@ export const view: I18nDomain = {
   'list.empty':                    { key: 'view.list.empty',                    zh: '', en: 'No review entries' },
   'list.filedBy':                  { key: 'view.list.filedBy',                  zh: '', en: 'Filed By' },
   'list.filedAt':                  { key: 'view.list.filedAt',                  zh: '', en: 'Time' },
-  'add.deprecated':                { key: 'view.add.deprecated',                 zh: '', en: '[deprecated] `openfeel view add` is deprecated; use `openfeel flow review add` instead (will be removed in the next version)' },
-  'add.errorInvalidPriorityTmpl':  { key: 'view.add.errorInvalidPriorityTmpl',  zh: '', en: 'Error: Invalid priority "{priority}", options: high / medium / low' },
-  'add.okTmpl':                    { key: 'view.add.okTmpl',                    zh: '', en: '✓ Review entry added: {id} ({op}) — {title}' },
   'accept.okTmpl':                 { key: 'view.accept.okTmpl',                 zh: '', en: '✓ Review entry accepted: {id} → closed' },
   'accept.errorNotFoundTmpl':      { key: 'view.accept.errorNotFoundTmpl',      zh: '', en: 'Error: Review entry {id} not found' },
 };
@@ -682,10 +680,6 @@ export const help: I18nDomain = {
   'view.list':             { key: 'help.view.list',             zh: '', en: 'List review entries' },
   'view.list.op':          { key: 'help.view.list.op',          zh: '', en: 'Filter by operation ID' },
   'view.note':             { key: 'help.view.note',             zh: '', en: 'Use `openfeel flow review add|update|remove` to add/modify/remove review entries' },
-  'view.add':              { key: 'help.view.add',              zh: '', en: 'Add a review entry (deprecated; use `openfeel flow review add`)' },
-  'view.add.op':           { key: 'help.view.add.op',           zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },
-  'view.add.title':        { key: 'help.view.add.title',        zh: '', en: 'Review title' },
-  'view.add.priority':     { key: 'help.view.add.priority',     zh: '', en: 'Priority (high/medium/low, default medium)' },
   'view.accept':           { key: 'help.view.accept',           zh: '', en: 'Accept review entry (mark as closed)' },
   'view.accept.argrev-id': { key: 'help.view.accept.argrev-id', zh: '', en: 'Review entry ID (e.g. REV-001)' },
 

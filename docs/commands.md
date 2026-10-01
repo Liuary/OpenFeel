@@ -346,22 +346,6 @@ openfeel view list [--op <id>]
 |------|------|
 | `--op <id>` | 按操作 ID 过滤 |
 
-### view add
-
-> **已弃用（Deprecated）**：请改用 `openfeel flow review add`（单一数据源与审计口径）。本命令当前仍可用，运行时在 TTY 下于 stderr 输出弃用提示（非 TTY 静默）；**将于下一版本移除**。
-
-添加审查条目。
-
-```bash
-openfeel view add --op <id> --title <title> [--priority <high|medium|low>]
-```
-
-| 选项 | 说明 |
-|------|------|
-| `--op <id>` | 操作 ID（必填，如 stage-01.op-001） |
-| `--title <title>` | 审查标题（必填） |
-| `--priority <priority>` | 优先级（high/medium/low，默认 medium） |
-
 ### view accept
 
 验收审查条目。

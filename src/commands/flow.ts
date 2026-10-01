@@ -1049,7 +1049,7 @@ export function registerFlowCommand(program: Command): void {
             console.error(t('flow.review.errorOpNotFoundTmpl', lang, { opId: result.error.opId, op: result.error.op, stage: result.error.stage }));
             break;
           case 'invalidPriority':
-            console.error(t('view.add.errorInvalidPriorityTmpl', lang, { priority: result.error.priority }));
+            console.error(t('flow.review.errorInvalidPriorityTmpl', lang, { priority: result.error.priority }));
             break;
         }
         process.exit(1);
@@ -1112,7 +1112,7 @@ export function registerFlowCommand(program: Command): void {
       if (options.priority !== undefined) {
         // 枚举校验：非法优先级 exit 1
         if (options.priority !== 'high' && options.priority !== 'medium' && options.priority !== 'low') {
-          console.error(t('view.add.errorInvalidPriorityTmpl', lang, { priority: options.priority }));
+          console.error(t('flow.review.errorInvalidPriorityTmpl', lang, { priority: options.priority }));
           process.exit(1);
           return;
         }

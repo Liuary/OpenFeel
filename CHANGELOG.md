@@ -33,6 +33,9 @@
 ### Deprecated
 - [stage-50] **Deprecated（R4）**：`openfeel view add` 已弃用，**将于下一版本移除**；请迁移至 `openfeel flow review add`（本版本仅弃用 + 运行时提示）
 
+### Removed
+- **`openfeel view add` 子命令已移除**（v1.1.2-stage-52，A4，**破坏性变更**）。迁移：改用 `openfeel flow review add`（同一单点实现 `addReviewEntry`，行为等价，支持 `--priority` / `--blocking` / `--auto-fix`）。保留 `openfeel view list` 与 `openfeel view accept`（列出与验收，与 `flow review` 无重叠语义）。
+
 ### Fixed
 - `config/BUG-004`：`identity.test.ts` 直写真实 `~/.openfeel/config.json` 的测试隔离缺口——改为 N4 单点 mock + 新增隔离守护用例（真实文件 mtime/SHA-256 前后不变）
 - 已登记缺陷集中清理：`cli/BUG-001`、`cli/BUG-002`（stageId 冲突 i18n）、`archive/BUG-001`、`config/BUG-002`（`config.yaml` 覆盖语义）、`config/BUG-003`、`templates/BUG-002`

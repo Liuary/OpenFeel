@@ -1,12 +1,11 @@
 /**
- * view 命令测试（stage-50 op-003 T37/R4 弃用行为最小断言）
- * 仅 1 用例：TTY 下 stderr 含 deprecated；非 TTY 静默（对齐 stage.create 惯例）。
+ * view 命令测试（A4 后：list / accept 保留；add 已移除）
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command, CommanderError } from 'commander';
 import { registerViewCommand } from '../../src/commands/view.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -17,7 +16,7 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
-describe('view 命令（stage-50 op-003 T37/R4）', () => {
+describe('view 命令（A4：list / accept 保留，add 已移除）', () => {
   let tmpDir: string;
   let program: Command;
   let logMock: ReturnType<typeof vi.fn>;
@@ -33,7 +32,7 @@ describe('view 命令（stage-50 op-003 T37/R4）', () => {
     cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
 
-    // 构造含 stage-01.op-001 的 flow.json（供 addReviewEntry 校验通过）
+    // 构造含 stage-01.op-001 + 一条 open REV-001 的 flow.json
     FlowManager.initFlow(tmpDir);
     const mgr = new FlowManager(tmpDir);
     const data = mgr.getData()!;
@@ -46,6 +45,10 @@ describe('view 命令（stage-50 op-003 T37/R4）', () => {
         },
       },
     };
+    data.reviews.push({
+      id: 'REV-001', op: 'stage-01.op-001', status: 'open', priority: 'medium',
+      title: '测试审查', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z',
+    });
     mgr.save();
 
     program = new Command();
@@ -73,25 +76,40 @@ describe('view 命令（stage-50 op-003 T37/R4）', () => {
     }
   }
 
-  function stderr(): string {
-    return errorMock.mock.calls.map((c) => c[0] as string).join('\n');
-  }
+  it('view 组仅含 list / accept（无 add）', () => {
+    const view = program.commands.find((c) => c.name() === 'view');
+    expect(view).toBeDefined();
+    expect(view!.commands.map((c) => c.name()).sort()).toEqual(['accept', 'list']);
+  });
 
-  it('TTY 下 stderr 含 deprecated 文案；非 TTY 静默', async () => {
-    const orig = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
-    try {
-      Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
-      await safeParse(['view', 'add', '--op', 'stage-01.op-001', '--title', 'x']);
-      expect(stderr()).toContain('deprecated');
+  it('view list 列出审查条目（含 normalizeAgentName 生效）', async () => {
+    logMock.mockClear();
+    await safeParse(['view', 'list']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('REV-001');
+    expect(out).toContain('openfeel-reviewer');
+  });
 
-      errorMock.mockClear();
-      Object.defineProperty(process.stdout, 'isTTY', { value: undefined, configurable: true });
-      await safeParse(['view', 'add', '--op', 'stage-01.op-001', '--title', 'y']);
-      expect(stderr()).not.toContain('deprecated');
-    } finally {
-      if (orig) {
-        Object.defineProperty(process.stdout, 'isTTY', orig);
-      }
-    }
+  it('view list --op 过滤生效', async () => {
+    logMock.mockClear();
+    await safeParse(['view', 'list', '--op', 'stage-01.op-001']);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('REV-001');
+
+    logMock.mockClear();
+    await safeParse(['view', 'list', '--op', 'stage-99.op-999']);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('暂无审查条目');
+  });
+
+  it('view accept <rev-id> 标记 closed', async () => {
+    await safeParse(['view', 'accept', 'REV-001']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.reviews.find((r: { id: string }) => r.id === 'REV-001').status).toBe('closed');
+  });
+
+  it('view accept 未命中 → exit 1', async () => {
+    exitMock.mockClear();
+    await safeParse(['view', 'accept', 'REV-999']);
+    expect(exitMock).toHaveBeenCalledWith(1);
   });
 });

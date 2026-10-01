@@ -32,7 +32,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | `openfeel lint i18n\|kb` | 健康检查（i18n 键一致性 / kb 过期引用） | — |
 | `openfeel knowledge ...` | 知识库管理 | `list` 等 |
 | `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识） | `<stage>` |
-| `openfeel view list\|add\|accept` | 审查条目管理（**`view add` 已弃用**，改用 `flow review add`） | `--op`、`--title`、`--priority` |
+| `openfeel view list\|accept` | 审查条目管理（`add` 已移除，改用 `flow review add`） | — |
 | `openfeel project ...` | 项目管理与概览 | `list` 等 |
 | `openfeel roadmap create\|show` | 分期大纲管理 | `create <version>`、`show [version]` |
 | `openfeel instructions <artifactId>` | 为指定 artifact 生成结构化指令 | `--json` |

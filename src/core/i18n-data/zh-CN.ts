@@ -204,6 +204,7 @@ export const flow: I18nDomain = {
   // flow review
   'review.errorStageNotFoundTmpl':  { key: 'flow.review.errorStageNotFoundTmpl',  zh: '错误：opId "{opId}" 中的阶段 "{stage}" 在 flow.json 中不存在', en: '' },
   'review.errorOpNotFoundTmpl':     { key: 'flow.review.errorOpNotFoundTmpl',     zh: '错误：opId "{opId}" 中的操作 "{op}" 在阶段 "{stage}" 中不存在', en: '' },
+  'review.errorInvalidPriorityTmpl': { key: 'flow.review.errorInvalidPriorityTmpl', zh: '错误：无效的优先级 "{priority}"，可选值：high / medium / low', en: '' },
   'review.labelBlocking':           { key: 'flow.review.labelBlocking',           zh: '[阻塞]',                             en: '' },
   'review.labelNonBlocking':        { key: 'flow.review.labelNonBlocking',        zh: '[非阻塞]',                            en: '' },
   'review.addedAutoFixTmpl':        { key: 'flow.review.addedAutoFixTmpl',        zh: '✓ {label} [AUTO_FIX] 审查条目已添加并自动修复: {revId}', en: '' },
@@ -523,9 +524,6 @@ export const view: I18nDomain = {
   'list.empty':                    { key: 'view.list.empty',                    zh: '暂无审查条目',                            en: '' },
   'list.filedBy':                  { key: 'view.list.filedBy',                  zh: '提交人',                                 en: '' },
   'list.filedAt':                  { key: 'view.list.filedAt',                  zh: '时间',                                   en: '' },
-  'add.deprecated':                { key: 'view.add.deprecated',                 zh: '[deprecated] `openfeel view add` 已弃用；请改用 `openfeel flow review add`（将于下一版本移除）', en: '' },
-  'add.errorInvalidPriorityTmpl':  { key: 'view.add.errorInvalidPriorityTmpl',  zh: '错误：无效的优先级 "{priority}"，可选值：high / medium / low', en: '' },
-  'add.okTmpl':                    { key: 'view.add.okTmpl',                    zh: '✓ 审查条目已添加: {id} ({op}) — {title}', en: '' },
   'accept.okTmpl':                 { key: 'view.accept.okTmpl',                 zh: '✓ 审查条目已验收: {id} → closed',         en: '' },
   'accept.errorNotFoundTmpl':      { key: 'view.accept.errorNotFoundTmpl',      zh: '错误：未找到审查条目 {id}',                en: '' },
 };
@@ -717,10 +715,6 @@ export const help: I18nDomain = {
   'view.list':             { key: 'help.view.list',             zh: '列出审查条目', en: '' },
   'view.list.op':          { key: 'help.view.list.op',          zh: '按操作 ID 过滤', en: '' },
   'view.note':             { key: 'help.view.note',             zh: '新增/修改/删除审查条目请使用 `openfeel flow review add|update|remove`', en: '' },
-  'view.add':              { key: 'help.view.add',              zh: '添加审查条目（已弃用；请改用 `openfeel flow review add`）', en: '' },
-  'view.add.op':           { key: 'help.view.add.op',           zh: '操作 ID（如 stage-01.op-001）', en: '' },
-  'view.add.title':        { key: 'help.view.add.title',        zh: '审查标题', en: '' },
-  'view.add.priority':     { key: 'help.view.add.priority',     zh: '优先级（high/medium/low，默认 medium）', en: '' },
   'view.accept':           { key: 'help.view.accept',           zh: '验收审查条目（标记为 closed）', en: '' },
   'view.accept.argrev-id': { key: 'help.view.accept.argrev-id', zh: '审查条目 ID（如 REV-001）', en: '' },
 

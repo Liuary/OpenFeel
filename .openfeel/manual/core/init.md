@@ -4,7 +4,7 @@
 
 ## 职责
 
-项目初始化编排，协调创建 `.openfeel/` 工作区目录、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`）、写项目平台适配器配置文件（`opencode.jsonc`），并提供示例项目骨架（`--demo`）与仅工作区（`--workspace-only`）轻量模式。
+项目初始化编排，协调创建 `.openfeel/` 工作区目录（含 `.openfeel/dev/current_archive/` 归档目录，见 `DEV_SUB_DIRS`）、写入配置、初始化 `flow.json`、确保身份文件、生成模板文件（`dev_core.md`、`current.md`、`decisions.md`、`kb/index.md`）、写项目平台适配器配置文件（`opencode.jsonc`），并提供示例项目骨架（`--demo`）与仅工作区（`--workspace-only`）轻量模式。
 
 > **v1.1.1 收敛**：全局约束/agent/skill 部署已从 init 拆除，收归 `openfeel setup`（见 `core/setup.md`）。init 只做项目初始化，不再产生项目 `AGENTS.md`、不部署任何全局资产。
 

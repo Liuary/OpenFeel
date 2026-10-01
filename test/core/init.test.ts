@@ -65,6 +65,9 @@ describe('initProject', () => {
     expect(existsSync(join(base, 'plan'))).toBe(true);
     expect(existsSync(join(base, 'kb'))).toBe(true);
     expect(existsSync(join(base, 'dev'))).toBe(true);
+    // stage-53 D6：DEV_SUB_DIRS 增 current_archive（current.md 轮换归档目录）
+    expect(existsSync(join(base, 'dev', 'note'))).toBe(true);
+    expect(existsSync(join(base, 'dev', 'current_archive'))).toBe(true);
     expect(existsSync(join(base, 'log'))).toBe(true);
     expect(existsSync(join(base, 'code_review'))).toBe(true);
     expect(existsSync(join(base, 'bugs'))).toBe(true);

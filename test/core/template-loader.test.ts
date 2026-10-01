@@ -342,3 +342,68 @@ describe('stage-51 op-007 N9-4：模板去重口径（A6）', () => {
     expect(loadAgentTemplate('en', 'openfeel-archiver')).not.toContain('kb-dedup');
   });
 });
+
+/**
+ * stage-53（op-005 D10-2）：两条设计目的 + dev_last 索引化 + A6/A9/A10 静态断言
+ */
+describe('stage-53：工作区结构节与 dev_last 索引化（静态断言）', () => {
+  const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf-8');
+
+  it('agents-md（zh/en）含两条设计目的 + 分层原则', () => {
+    const zh = read('../../src/core/templates-data/agents-md/zh-CN.md');
+    const en = read('../../src/core/templates-data/agents-md/en.md');
+    expect(zh).toContain('保存核心信息便于恢复');
+    expect(zh).toContain('避免无关信息污染上下文');
+    expect(en).toContain('Preserve the core information needed for recovery');
+    expect(en).toContain('Avoid polluting the context');
+  });
+
+  it('agents-md（zh/en）含 dev_last 索引骨架 + R4/R6 + A9/A10', () => {
+    const zh = read('../../src/core/templates-data/agents-md/zh-CN.md');
+    const en = read('../../src/core/templates-data/agents-md/en.md');
+    for (const s of ['主题索引（最多 5 个）', '已收敛主题', '公共交接区', '优先合并同类主题']) {
+      expect(zh, `zh 缺 ${s}`).toContain(s);
+    }
+    for (const s of ['Topic Index', 'Converged Topics', 'Public Handoff Section', 'merge similar topics first']) {
+      expect(en, `en 缺 ${s}`).toContain(s);
+    }
+    // A9 加锁协议
+    for (const s of ['withFileLock', 'dev-last-', '.openfeel/tmp/locks/', 'atomicWriteFileSync']) {
+      expect(zh, `zh 缺 ${s}`).toContain(s);
+      expect(en, `en 缺 ${s}`).toContain(s);
+    }
+    // A10：5 个英文主题文件名
+    for (const n of ['pending.md', 'decisions.md', 'pipeline-state.md', 'last-operation.md', 'experience.md']) {
+      expect(zh, `zh 缺 dev_last/${n}`).toContain(`dev_last/${n}`);
+      expect(en, `en 缺 dev_last/${n}`).toContain(`dev_last/${n}`);
+    }
+  });
+
+  it('feel.md（zh/en）含索引口径 + dev_last 主题文件 + 公共交接区 + 加锁', () => {
+    const zh = read('../../src/core/templates-data/opencode/agents/zh-CN/feel.md');
+    const en = read('../../src/core/templates-data/opencode/agents/en/feel.md');
+    for (const [name, c] of [['zh', zh], ['en', en]] as const) {
+      expect(c, `${name} 缺 dev_last/`).toContain('dev_last/');
+      expect(c, `${name} 缺 withFileLock`).toContain('withFileLock');
+      expect(c, `${name} 缺 dev-last-`).toContain('dev-last-');
+    }
+    expect(zh).toContain('公共交接区');
+    expect(en).toContain('Public Handoff');
+    expect(zh).toContain('dev_last/decisions.md');
+    expect(en).toContain('dev_last/decisions.md');
+  });
+
+  it('sync-status skill 无 @{username} 提取依赖，改读 flow.json（A6）', () => {
+    const c = read('../../src/core/templates-data/opencode/skills/openfeel-sync-status/SKILL.md');
+    expect(c).not.toContain('@{username}');
+    expect(c).toContain('flow.json');
+  });
+
+  it('workspace/recover skill 含 dev_last/ 与 current_archive', () => {
+    const ws = read('../../src/core/templates-data/opencode/skills/openfeel-workspace/SKILL.md');
+    const rc = read('../../src/core/templates-data/opencode/skills/openfeel-recover/SKILL.md');
+    expect(ws).toContain('current_archive');
+    expect(ws).toContain('dev_last/');
+    expect(rc).toContain('dev_last/');
+  });
+});

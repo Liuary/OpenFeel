@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { getCurrentTemplate } from '../../src/core/templates.js';
 
 const ROOT = process.cwd();
 const SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'opencode', 'skills');
@@ -46,5 +47,26 @@ describe('模板口径（stage-50 op-006 T53/T54/T55）', () => {
     for (const fam of ['archive', 'view', 'project', 'roadmap', 'instructions']) {
       expect(c, `缺少命令族 ${fam}`).toContain(`openfeel ${fam}`);
     }
+  });
+});
+
+/**
+ * stage-53 D2（op-005 D10-2）：current.md 模板迭代
+ * 新骨架：用户级整体信息 + 近期提交记录（≤5）+ current_archive 自动归档。
+ */
+describe('stage-53 D2：current.md 模板迭代', () => {
+  it('zh 模板不含旧「团队成员进度」「暂无活跃成员」，含「近期提交记录」与 current_archive', () => {
+    const zh = getCurrentTemplate('zh-CN');
+    expect(zh).not.toContain('团队成员进度');
+    expect(zh).not.toContain('暂无活跃成员');
+    expect(zh).toContain('近期提交记录');
+    expect(zh).toContain('current_archive');
+  });
+
+  it('en 模板不含 Team Member Progress，含 Recent Submissions 与 current_archive', () => {
+    const en = getCurrentTemplate('en');
+    expect(en).not.toContain('Team Member Progress');
+    expect(en).toContain('Recent Submissions');
+    expect(en).toContain('current_archive');
   });
 });

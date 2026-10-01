@@ -16,30 +16,37 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
-      - name: Env snapshot (before test)
-        run: |
-          # 守卫窗口起点：build 之后（build 之前无环境写入步骤）
-          snapshot() {
-            for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "./.openfeel/config.yaml"; do
-              key=$(echo "$d" | tr '/.' '__')
-              if [ -e "$d" ]; then
-                find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort > "$RUNNER_TEMP/snap_before_$key"
-              else
-                echo "ABSENT" > "$RUNNER_TEMP/snap_before_$key"
-              fi
-            done
-          }
-          snapshot
       - name: Version consistency guard
+        env:
+          OPENFEEL_LOG: '0'
         run: |
           # 版本门禁（stage-48 op-003 / 遗留 #10）：CLI --version 必须与 package.json.version 一致
+          # stage-59 M1：注入 OPENFEEL_LOG=0，使 --version 不写 ~/.openfeel（守卫窗口内零副作用）
           CLI_VERSION=$(node bin/openfeel.js --version)
           PKG_VERSION=$(node -p "require('./package.json').version")
           echo "CLI=$CLI_VERSION package.json=$PKG_VERSION"
           if [ "$CLI_VERSION" != "$PKG_VERSION" ]; then
             echo "::error::版本不一致：CLI=$CLI_VERSION package.json=$PKG_VERSION"; exit 1
           fi
-      - run: node bin/openfeel.js lint i18n
+      - env:
+          OPENFEEL_LOG: '0'
+        run: node bin/openfeel.js lint i18n
+      - name: Env snapshot (before test)
+        run: |
+          # 守卫窗口起点：紧贴 Test 之前（stage-59 M4 下移）；此前 Version consistency guard / lint i18n 均已注入 OPENFEEL_LOG=0
+          # 快照三态（stage-59 M5）：ABSENT（不存在）/ EXISTS-EMPTY（存在但无文件）/ 逐文件 sha256 清单
+          snapshot() {
+            for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "./.openfeel/config.yaml"; do
+              key=$(echo "$d" | tr '/.' '__')
+              if [ -e "$d" ]; then
+                manifest=$(find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort)
+                if [ -n "$manifest" ]; then printf '%s\n' "$manifest" > "$RUNNER_TEMP/snap_before_$key"; else echo "EXISTS-EMPTY" > "$RUNNER_TEMP/snap_before_$key"; fi
+              else
+                echo "ABSENT" > "$RUNNER_TEMP/snap_before_$key"
+              fi
+            done
+          }
+          snapshot
       - name: Test
         run: |
           # 保退出码（pipefail）：tee 不得吞掉 npm test 失败码；日志落 $RUNNER_TEMP（不污染 Env guard 四路径）
@@ -74,9 +81,10 @@ jobs:
           fail=0
           for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "./.openfeel/config.yaml"; do
             key=$(echo "$d" | tr '/.' '__') ; f="$RUNNER_TEMP/snap_after_$key"
-            # 存在性分支：目录不存在时记 ABSENT（ABSENT→ABSENT 视为通过，避免 ubuntu runner 误报）
+            # 三态表示与 before 快照一致（stage-59 M6）：ABSENT / EXISTS-EMPTY / 逐文件 sha256 清单
             if [ -e "$d" ]; then
-              find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort > "$f"
+              manifest=$(find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort)
+              if [ -n "$manifest" ]; then printf '%s\n' "$manifest" > "$f"; else echo "EXISTS-EMPTY" > "$f"; fi
             else
               echo "ABSENT" > "$f"
             fi
@@ -112,8 +120,11 @@ jobs:
         if: steps.version.outputs.changed == 'true'
       - name: Version consistency guard
         if: steps.version.outputs.changed == 'true'
+        env:
+          OPENFEEL_LOG: '0'
         run: |
           # 版本门禁（stage-48 op-003）：发布前再校验 CLI 与 package.json 版本一致
+          # stage-59 M3：注入 OPENFEEL_LOG=0，保持与 build-and-test 一致、避免写真实 HOME
           CLI_VERSION=$(node bin/openfeel.js --version)
           PKG_VERSION=$(node -p "require('./package.json').version")
           if [ "$CLI_VERSION" != "$PKG_VERSION" ]; then echo "::error::版本不一致 CLI=$CLI_VERSION pkg=$PKG_VERSION"; exit 1; fi

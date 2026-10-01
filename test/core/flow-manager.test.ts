@@ -3428,3 +3428,173 @@ describe('配置级联（stage-42 op-001）', () => {
     });
   });
 });
+
+// ═══════════════════════════════════════
+// stage-52 op-013：REV-007 stage 解析归一化闭包补全
+// ═══════════════════════════════════════
+
+describe('REV-007 stage 解析归一化（stage-52 op-013）', () => {
+  let tmpDir: string;
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-op013-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+  });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  /** 构造 op（checkpoints 全 pending） */
+  function mkOp(opId: string, state: OpState = 'pending') {
+    return {
+      id: opId,
+      title: 't',
+      state,
+      assignee: 'openfeel-executor',
+      attempts: 0,
+      max_attempts: 3,
+      checkpoints: {
+        plan: 'pending',
+        scheme: 'pending',
+        exec: { attempts: 0, self: 'pending' },
+        review: 'pending',
+        test: 'pending',
+      },
+    };
+  }
+
+  /** 构造阶段（默认无 ops、plan_pending、无 deps） */
+  function mkStage(name: string, overrides?: Partial<StageData>): StageData {
+    return {
+      name,
+      phase: 'plan_pending' as PipelinePhase,
+      status: 'planned',
+      deps: [],
+      ops: {},
+      ...overrides,
+    };
+  }
+
+  /** 构造已加载（内存注入）管理器 */
+  function makeMgr(
+    stages: Record<string, StageData>,
+    current: { stage: string; op: string } = { stage: '', op: '' },
+  ): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      meta: { version: '1.0', project: 'T', updated: '2026-01-01T00:00:00Z' },
+      pipeline: { phase: 'active' as MetaPhase, current, retry: 0 },
+      stages,
+      reviews: [],
+      log: [],
+    });
+    return mgr;
+  }
+
+  it('T2: parseOpId 出口归一化 → getOpState 短名前缀命中且与全名一致', () => {
+    const mgr = makeMgr({
+      'v1.0.0-stage-01': mkStage('v1.0.0-stage-01', { ops: { 'op-001': mkOp('op-001') } }),
+    });
+    expect(mgr.getOpState('stage-01.op-001')).toBe('pending');
+    expect(mgr.getOpState('stage-01.op-001')).toBe(mgr.getOpState('v1.0.0-stage-01.op-001'));
+  });
+
+  it('T2: recordAttempt 短名前缀 → 状态变更且 syncCurrentOp 命中（current.op 指向下一 pending）', () => {
+    const mgr = makeMgr(
+      { 'v1.0.0-stage-01': mkStage('v1.0.0-stage-01', { ops: { 'op-001': mkOp('op-001'), 'op-002': mkOp('op-002') } }) },
+      { stage: 'v1.0.0-stage-01', op: 'op-001' },
+    );
+    const outcome = mgr.recordAttempt('stage-01.op-001', 'pass');
+    expect(outcome.shouldRetry).toBe(false);
+    expect(mgr.getData()!.stages['v1.0.0-stage-01'].ops['op-001'].state).toBe('done');
+    expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'v1.0.0-stage-01', op: 'op-002' });
+  });
+
+  it('T2: canAdvance 短名前缀与全名结果一致（不再误判 false）', () => {
+    const mgr = makeMgr({
+      'v1.0.0-stage-01': mkStage('v1.0.0-stage-01', {
+        phase: 'exec_running' as PipelinePhase,
+        ops: { 'op-001': mkOp('op-001') },
+      }),
+    });
+    expect(mgr.canAdvance('stage-01.op-001', 'review_pending')).toBe(true);
+    expect(mgr.canAdvance('stage-01.op-001', 'review_pending')).toBe(
+      mgr.canAdvance('v1.0.0-stage-01.op-001', 'review_pending'),
+    );
+  });
+
+  it('T2: advancePhase（deprecated）短名前缀不写脏名 → pipeline.current.stage 为全名', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const mgr = makeMgr(
+        {
+          'v1.0.0-stage-01': mkStage('v1.0.0-stage-01', {
+            phase: 'review_pending' as PipelinePhase,
+            ops: { 'op-001': mkOp('op-001') },
+          }),
+        },
+        { stage: 'v1.0.0-stage-01', op: 'op-001' },
+      );
+      mgr.advancePhase('stage-01.op-001', 'review_passed');
+      expect(mgr.getData()!.pipeline.current.stage).toBe('v1.0.0-stage-01');
+      expect(mgr.getData()!.stages['stage-01']).toBeUndefined();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('T2: removeStage/checkRemovable 短名与全名一致，注销全名键', () => {
+    const mgr = makeMgr(
+      {
+        'v1.0.0-stage-01': mkStage('v1.0.0-stage-01'),
+        'v1.0.0-stage-02': mkStage('v1.0.0-stage-02', { phase: 'exec_running' as PipelinePhase }),
+      },
+      { stage: 'v1.0.0-stage-02', op: '' },
+    );
+    expect(mgr.checkRemovable('stage-01').ok).toBe(true);
+    expect(mgr.checkRemovable('stage-01').ok).toBe(mgr.checkRemovable('v1.0.0-stage-01').ok);
+    mgr.removeStage('stage-01');
+    expect(mgr.getData()!.stages['v1.0.0-stage-01']).toBeUndefined();
+    expect(mgr.getData()!.stages['v1.0.0-stage-02']).toBeDefined();
+  });
+
+  it('T3: 双键并存 → setStageDeps 改全名键、短名键逐字节不变', () => {
+    const mgr = makeMgr(
+      {
+        'stage-01': mkStage('stage-01', { ops: { 'op-001': mkOp('op-001') } }),
+        'v1.0.0-stage-01': mkStage('v1.0.0-stage-01'),
+        'v1.0.0-stage-09': mkStage('v1.0.0-stage-09', { phase: 'done' as PipelinePhase }),
+      },
+      { stage: 'v1.0.0-stage-01', op: '' },
+    );
+    const shortBefore = JSON.stringify(mgr.getData()!.stages['stage-01']);
+    mgr.setStageDeps('stage-01', ['v1.0.0-stage-09']);
+    expect(mgr.getData()!.stages['v1.0.0-stage-01'].deps).toEqual(['v1.0.0-stage-09']);
+    expect(JSON.stringify(mgr.getData()!.stages['stage-01'])).toBe(shortBefore);
+  });
+
+  it('T3: 双键并存 → removeStage 注销全名键、短名键保留', () => {
+    const mgr = makeMgr(
+      {
+        'stage-01': mkStage('stage-01', { ops: { 'op-001': mkOp('op-001') } }),
+        'v1.0.0-stage-01': mkStage('v1.0.0-stage-01'),
+        'v1.0.0-stage-02': mkStage('v1.0.0-stage-02', { phase: 'exec_running' as PipelinePhase }),
+      },
+      { stage: 'v1.0.0-stage-02', op: '' },
+    );
+    const shortBefore = JSON.stringify(mgr.getData()!.stages['stage-01']);
+    mgr.removeStage('stage-01');
+    expect(mgr.getData()!.stages['v1.0.0-stage-01']).toBeUndefined();
+    expect(JSON.stringify(mgr.getData()!.stages['stage-01'])).toBe(shortBefore);
+  });
+
+  it('T3: 仅短名键（无全名键）→ 双键回退命中，不误报不存在', () => {
+    const mgr = makeMgr(
+      {
+        'stage-01': mkStage('stage-01'),
+        'v1.0.0-stage-02': mkStage('v1.0.0-stage-02', { phase: 'exec_running' as PipelinePhase }),
+      },
+      { stage: 'v1.0.0-stage-02', op: '' },
+    );
+    expect(mgr.checkRemovable('stage-01').ok).toBe(true);
+    mgr.removeStage('stage-01', { force: true });
+    expect(mgr.getData()!.stages['stage-01']).toBeUndefined();
+  });
+});

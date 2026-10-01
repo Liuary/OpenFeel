@@ -245,20 +245,34 @@ ops:
         type: soft
     notes: "**REV-005（high, blocking）修复**：短名（help 推荐格式 `stage-01`）调用 `flow advance --to` 完全失效（「phase: 未知」+ 空可达目标 + exit 1）。**独立复核后确认 5 处同类缺陷**（F1 `findPhasePath:1657`〔根因〕/ F2 `resolveCurrentPhase:1744`〔`:687 getAvailablePhases` 根因〕/ F3 `autoRepairInconsistency:2863`〔`:635` 疑点〕/ **F4 `advanceStagePhase:1213`**〔多步循环逐步调用，不修则短名仍不可用〕/ F5 `commands/flow.ts:635/683/686/687/700`〔命令层归一化 + 用户可见文案〕）；**统一复用 `normalizeStageId`**（core/命令层均已 import，无需新增）；**stage-51 新命令（`flow stage set --deps` / `plan scheme remove·rename·publish` / `flow ops list`）复核为无缺陷**；登记项：`addStage` 短名建键（N-1）、`getOp` 短名前缀（N-2）。**测试**：短名/全名等价断言（findPhasePath / getAvailablePhases / autoRepair / advanceStagePhase / `--dry-run` 输出等价）+ 隔离 fixture **短名多步推进实测**。**位置**：在 op-004 之后、op-010（收口门禁）之前执行。"
 
+  op-013:
+    file: op-013.md
+    title: "REV-007 stage 解析归一化闭包补全（remove attempt parseOpId）"
+    produces:
+      - src/commands/flow.ts
+      - src/core/flow-manager.ts
+      - test/commands/flow.test.ts
+      - test/core/flow-manager.test.ts
+      - test/core/plan/scheme.test.ts
+    deps:
+      - op: op-012
+        type: hard
+    notes: "**REV-007（high, blocking）修复**：stage 解析归一化**闭包残留**——`flow stage remove <短名>`（`:486`）与 `flow attempt --op <短名前缀>`（`:1212`）仍失效。**独立复核确认 5 处缺陷 + 1 顺带**：F1/F2 `stage remove`（`:486/:487/:494/:496` + remove/purge 路径）、F3 `attempt`（`:1204-1212` 前缀）、**F4 `core parseOpId:703-715` 出口归一化（收口点：覆盖 `getOp:726`/`advancePhase:1551·1561·1567`〔短名污染 flow.json〕/`recordAttempt:2090`/`hasTransition:2362`）**、F5 `core removeStage:1455-1477` + `checkRemovable`、F6（顺带）`:1788` `startsWith(stage)` 缺 `.` 分隔符（与 core `:1236`/`:3385` 不一致 → 前缀重叠误匹配）。**范式**：`normalizeStageId(x) ?? x` + **双键回退** `stages[key] ?? stages[raw]`（REV-007 要求**补固化断言**）。**复核为无缺陷**：`:71`（数据派生统计）、`:59/61/83/348`（current 派生）、`:1625/1672/1677`（wizard 用 `Object.keys`）、`:585/689/748/924`（已归一化）。**登记不修**：N-1 `addStage` 短名建键、N-2 attempt 显示形态。**测试**：T1 短名/全名等价（remove `--dry-run` 逐字相等、attempt 前缀）、T2 core 归一化（parseOpId/remove/checkRemovable/hasTransition）、**T3 双键回退固化**、T4 REV 前缀重叠、**T5 修复前后对照实测**。**位置**：op-012 之后、op-010（收口门禁）之前；**门禁基线 59 文件 / 949 用例 / 724 键**（已实测确认）。**实施修订（op-013 执行，2026-10-01）**：F4 `parseOpId` 出口归一化**并补双键回退**（`stages[normalized] ? normalized : (stages[raw] ? raw : normalized)`）——实测纯归一化会破坏以短名键注册的阶段（N-1，如 `stages['stage-01']` + `opId='stage-01.op-001'`）及 32 条既有用例；此修订与 F3/F5 同范式（归一化键优先、原始键回退），全名输入恒等、短名前缀可命中。**时序说明（REV-008）**：`op-010`（facf825）已于计划审查后先行执行，op-013 实为**收口后的后置 blocking 补丁**；执行后已复跑全量门禁（build / test 59 文件 965 用例 / lint i18n 724 键 / lint kb / tsc）= **等效收口覆盖**（§九 验收 8~12）。"
+
 # 【互斥（禁止并行）】
 mutual_exclusions:
   - group: [op-001, op-003, op-004, op-005, op-006, op-007]
     reason: "**热区源码互斥（主串行链）**：`src/core/flow-manager.ts`（op-001/003/004/005/007）、`src/commands/flow.ts`（op-001/003/004/005/007）、`src/commands/plan.ts`（op-005/006）、`src/core/plan/scheme.ts`（op-005/006）→ 必须由**单执行流按序**触碰。"
   - group: [op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-009]
     reason: "**`src/core/i18n-data/{zh-CN,en}.ts` 互斥写面**：八个 op 均新增/删除/改写 i18n 键（键基本不重叠，但**同文件写入必须串行**）。→ op-009（删 7 键）与主链并行时须串行合并；**建议排在 op-007 之后**。"
-  - group: [op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-008, op-009, op-010, op-011, op-012]
-    reason: "**构建/测试互斥**：12 个 op 的验收均含 `npm run build` 或 `npm test`（同一工作区）→ 任一时刻仅一个 op 处于 build/test 窗口（竞态写 `dist/**`、`template-loader.ts` 生成段、`.opencode/**` 自举）。"
-  - group: [op-004, op-012]
-    reason: "**REV-005 修复面互斥**：op-012 修复的正是 op-004 引入的 `findPhasePath` 与 `advance` 命令层 stage 解析（同处 `flow-manager.ts` + `commands/flow.ts` 区段）→ 必须**在 op-004 之后**（已满足），且不得与该区段的其它编辑并发。"
+  - group: [op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-008, op-009, op-010, op-011, op-012, op-013]
+    reason: "**构建/测试互斥**：13 个 op 的验收均含 `npm run build` 或 `npm test`（同一工作区）→ 任一时刻仅一个 op 处于 build/test 窗口（竞态写 `dist/**`、`template-loader.ts` 生成段、`.opencode/**` 自举）。"
+  - group: [op-004, op-012, op-013]
+    reason: "**REV-005/REV-007 修复面互斥**：三者均改 `findPhasePath`/`advanceStagePhase`/`advance` 命令层/`parseOpId` 等同区段（`flow-manager.ts` + `commands/flow.ts`）→ **必须严格顺序 op-004 → op-012 → op-013**，不得并发编辑该区段。"
   - group: [op-008, op-011]
     reason: "**build 串行（计划 §十二 明确）**：op-008（kb-dedup）与 op-011（templates + build）均需 `npm run build` → 建议合并为一次 build 或串行门控。"
-  - group: [op-010, op-012, op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-008, op-009, op-011]
-    reason: "op-010 为收口（门禁依赖 op-009 的 `lint i18n` 649 → 642）；**op-012（REV-005 blocking 修复）须在 op-010 之前完成**，使 op-010 的门禁覆盖修复后的代码 → 二者均**最后执行**且 op-012 先于 op-010。"
+  - group: [op-010, op-012, op-013, op-001, op-002, op-003, op-004, op-005, op-006, op-007, op-008, op-009, op-011]
+    reason: "op-010 为收口（门禁依赖 op-009 的 `lint i18n` 649 → 642）；**op-012（REV-005）与 op-013（REV-007）两条 blocking 修复须在 op-010 之前完成**（使收口门禁覆盖修复后的代码），且 op-012 先于 op-013。**时序倒置说明（REV-008）**：实际执行中 `op-010` 已先行（facf825），`op-013` 为后置 blocking 补丁；本组「先于 op-010」的原始约束已不适用，改由 op-013 执行后复跑全量门禁等效覆盖（§九 验收 8~12）。"
 
 # 【可并行组】
 parallel_groups:
@@ -286,8 +300,9 @@ recommended_order:
   - op-009
   - op-011
   - op-012
+  - op-013
   - op-010
-rationale: "plan §十二 建议：`op-001 → op-003 → op-004 → op-005 → op-006 → op-007`（主串行链）∥ `op-002` ∥ `op-008` ∥ `op-009` ∥ `op-011` → `op-010`（收口）。**本官增补硬约束**：① `i18n-data/{zh-CN,en}.ts` 被 8 个 op 共享 → 主链 i18n 编辑完成后放行 op-002/op-009（故 recommended_order 把 op-002/op-009 置后）；② `op-008` 与 `op-011` 的 `npm run build` 串行（置相邻）；③ **`op-012`（REV-005 blocking 修复）须在 op-004 之后、`op-010`（收口门禁）之前完成** —— 使收口门禁覆盖修复后的代码（故置于 op-011 之后、op-010 之前）；④ op-010 最后（门禁依赖 op-009 的 642 键）。若执行环境确能保证 i18n/build 串行，亦可恢复 plan 的「五线并行」。**执行优先级建议**：op-008（L8 高价值，直接决定 `knowledge dedup` 可用性）可**最先**单独执行；**op-012 一旦执行完即应立刻复验短名多步推进（REV-005 验收）**。"
+rationale: "plan §十二 建议：`op-001 → op-003 → op-004 → op-005 → op-006 → op-007`（主串行链）∥ `op-002` ∥ `op-008` ∥ `op-009` ∥ `op-011` → `op-010`（收口）。**本官增补硬约束**：① `i18n-data/{zh-CN,en}.ts` 被 8 个 op 共享 → 主链 i18n 编辑完成后放行 op-002/op-009（故 recommended_order 把 op-002/op-009 置后）；② `op-008` 与 `op-011` 的 `npm run build` 串行（置相邻）；③ **两条 blocking 修复（`op-012` REV-005 → `op-013` REV-007）须在 `op-004` 之后、`op-010`（收口门禁）之前依次完成** —— 使收口门禁覆盖修复后的代码；④ op-010 最后（门禁依赖 op-009 的 642 键）。若执行环境确能保证 i18n/build 串行，亦可恢复 plan 的「五线并行」。**执行优先级建议**：op-008（L8 高价值，直接决定 `knowledge dedup` 可用性）可**最先**单独执行；**op-012/op-013 执行完应立即复验各自 REV（短名多步推进 / 短名 remove·attempt）**。"
 
 # 【用户裁定（2026-10-01，不可推翻）与既定裁定】
 decisions_taken:
@@ -407,3 +422,18 @@ rev_intake:
     status: pending（**blocking**）
     handled_by: op-012
     disposition: "B5 多步推进 stage 解析缺 `normalizeStageId`（短名 `stage-01` → 「phase: 未知」+ 空可达目标 + exit 1，功能失效；全名正常）→ **op-012** 设计：core 层 4 处归一化（F1 `findPhasePath`〔根因〕/ F2 `resolveCurrentPhase`〔`:687` 根因〕/ F3 `autoRepairInconsistency`〔`:635` 疑点〕/ **F4 `advanceStagePhase`**〔多步逐步调用，复核新增〕）+ 命令层 1 处（F5 `flow.ts:635/683/686/687/700` 统一 `stageArg`，含用户可见文案）；**统一复用 `normalizeStageId`**；**独立复核确认 stage-51 新命令无同类缺陷**（`flow stage set --deps` / `plan scheme remove·rename·publish` / `flow ops list` 均已归一化）；登记项 N-1（`addStage` 短名建键）、N-2（`getOp` 短名前缀）不纳入；测试=短名/全名等价断言 + 隔离 fixture **短名多步推进实测**。**状态由审查官在复验通过后置 closed**。"
+  - rev: REV-v1.1.2-stage-52/REV-006
+    severity: low
+    status: closed
+    handled_by: op-012
+    disposition: "op-012 F5 清单遗漏 `flow.ts:745`（advance 多步输出 `startPhase` 显示点）→ 已并入 op-012 F5 的归一化范围（`stages[stageArg]`）；审查官验收已 closed"
+  - rev: REV-v1.1.2-stage-52/REV-007
+    severity: high
+    status: pending（**blocking**）
+    handled_by: op-013
+    disposition: "stage 解析归一化**闭包残留**——`flow stage remove <短名>`（`flow.ts:486`）→「阶段不存在」exit 1；`flow attempt --op <短名前缀>`（`flow.ts:1212`）同缺陷（`:71` 为数据派生遍历统计，**非缺陷**）。→ **op-013** 设计：F1/F2 命令层 `stage remove` 归一化（`:486/:487/:494/:496` + remove/purge 路径）、F3 `attempt` 前缀归一化 + 双键回退、**F4 core `parseOpId` 出口收口归一化**（一处覆盖 `getOp`/`advancePhase`〔短名污染 flow.json 隐患〕/`recordAttempt`/`hasTransition`）、F5 core `removeStage`+`checkRemovable` 归一化、F6（顺带）`assertNoBlockingOpenRev:1788` 补 `.` 分隔符（与 core `:1236`/`:3385` 一致）；**并按要求补「双键回退」固化断言**（T3：同名双键并存 → 归一化键优先、短名键不被误改）+ **修复前后对照实测**（T5/验收 3~4）。复核结论：**除 remove/attempt 外无其它未归一化点**。**注**：F3 位点 `flow.ts:1204-1212` 实为 `flow retry` 子命令（`attempt` 命令在 `:850`，经 core `parseOpId` 覆盖）；两者分别由 F3/F4 闭环。**状态由审查官在复验通过后置 closed**。"
+  - rev: REV-v1.1.2-stage-52/REV-008
+    severity: low
+    status: pending
+    handled_by: op-013
+    disposition: "deps.yaml 时序表述与实际执行倒置——`op-010`（facf825）已先行执行，op-013 为**后置 blocking 补丁**。澄清：已在 op-013 notes 与收口互斥组补注「op-010 已先行；op-013 执行后复跑全量门禁 = 等效收口覆盖（§九 验收 8~12）」。纯文字澄清，非阻塞。"

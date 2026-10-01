@@ -483,17 +483,19 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
       }
       const data = mgr.getData();
-      if (!data?.stages[stageId]) {
-        console.error(t('flow.stage.remove.notFoundTmpl', lang, { stage: stageId }));
+      // REV-007：命令层归一化（短名 → 全名），与 stage set / ops list / op-012 advance 同范式
+      const stageArg = normalizeStageId(stageId) ?? stageId;
+      if (!data?.stages[stageArg]) {
+        console.error(t('flow.stage.remove.notFoundTmpl', lang, { stage: stageArg }));
         process.exit(1);
         return;
       }
 
       // --dry-run：复用 checkRemovable 做安全校验，失败同样 exit 1（REV-005），并呈现引用者（REV-004）
       if (options.dryRun) {
-        const info = mgr.checkRemovable(stageId, { force: options.force });
+        const info = mgr.checkRemovable(stageArg, { force: options.force });
         console.log(t('flow.stage.remove.dryRunTitle', lang));
-        console.log(`  ` + t('common.stage', lang) + `: ${stageId}`);
+        console.log(`  ` + t('common.stage', lang) + `: ${stageArg}`);
         console.log(`  ops: ${info.opCount}`);
         console.log(`  current: ${data.pipeline.current.stage}${info.isCurrent ? ' ←' : ''}`);
         console.log(`  ` + t('flow.stage.remove.dryRunReferencing', lang) + `: ` +
@@ -526,13 +528,13 @@ export function registerFlowCommand(program: Command): void {
         }
         // 事务顺序（REV-009）：先注销内存注册 → save() 落盘成功 → 再删目录。
         // save() 失败则不会到达目录删除，杜绝「目录已删但注册仍在」的中间态。
-        const { purgeTarget } = mgr.removeStage(stageId, { force: options.force, purge: options.purge });
+        const { purgeTarget } = mgr.removeStage(stageArg, { force: options.force, purge: options.purge });
         mgr.save();
         if (purgeTarget) {
           rmSync(purgeTarget, { recursive: true, force: true });
           console.log(t('flow.stage.remove.purgedTmpl', lang));
         }
-        console.log(t('flow.stage.remove.okTmpl', lang, { stage: stageId }));
+        console.log(t('flow.stage.remove.okTmpl', lang, { stage: stageArg }));
       } catch (err: unknown) {
         // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；其余走通用错误
         if (isFlowConcurrentError(err)) {
@@ -1206,10 +1208,12 @@ export function registerFlowCommand(program: Command): void {
         console.error(t('common.invalidOpId', lang));
         process.exit(1);
       }
-      const stageId = options.op.substring(0, dotIdx);
+      const rawStageId = options.op.substring(0, dotIdx);
       const opLocalId = options.op.substring(dotIdx + 1);
 
-      const stage = data.stages[stageId];
+      // REV-007：短名前缀归一化（与 op-012 advance 同范式）+ 双键回退（归一化键优先）
+      const stageId = normalizeStageId(rawStageId) ?? rawStageId;
+      const stage = data.stages[stageId] ?? data.stages[rawStageId];
       if (!stage) {
         console.error(t('flow.retry.errorStageNotFoundTmpl', lang, { stage: stageId }));
         process.exit(1);
@@ -1784,8 +1788,9 @@ function assertNoBlockingOpenRev(mgr: FlowManager, stage: string | undefined, la
   if (!stage) {
     return [];
   }
+  // REV-007：补 `.` 分隔符（与 core flow-manager.ts 的 stageId + '.' 范式一致），避免 stageId 前缀重叠误拦
   const stageReviews = mgr.getReviewItems().filter(
-    (r) => r.op.startsWith(stage) || r.op === stage,
+    (r) => r.op === stage || r.op.startsWith(stage + '.'),
   );
   const blockingOpen = stageReviews.filter((r) => r.blocking !== false && r.status === 'open');
   if (blockingOpen.length > 0) {

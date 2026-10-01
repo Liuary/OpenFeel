@@ -1061,6 +1061,110 @@ describe('flow 命令（stage-41）', () => {
     expect(fullLogs).toHaveLength(4);
   });
 
+  // ── stage-52/op-013：REV-007 stage remove / retry 短名归一化 ──
+
+  it('op-013/T1: stage remove 短名与全名 --dry-run 输出逐字相等（exit 0）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-88');
+    mgr.addStage('v1.0.0-stage-89'); // current = stage-89，使 stage-88 非活跃
+    mgr.save();
+
+    logMock.mockClear();
+    exitMock.mockClear();
+    await safeParse(['flow', 'stage', 'remove', 'stage-88', '--dry-run']);
+    const shortOut = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(shortOut).toContain('v1.0.0-stage-88');
+    expect(shortOut).not.toContain('阶段不存在');
+
+    logMock.mockClear();
+    exitMock.mockClear();
+    await safeParse(['flow', 'stage', 'remove', 'v1.0.0-stage-88', '--dry-run']);
+    const fullOut = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(fullOut).toBe(shortOut);
+  });
+
+  it('op-013/T1: stage remove 不存在阶段 → 短名/全名一致 exit 1', async () => {
+    exitMock.mockClear();
+    await safeParse(['flow', 'stage', 'remove', 'stage-99', '--dry-run']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+
+    exitMock.mockClear();
+    await safeParse(['flow', 'stage', 'remove', 'v1.0.0-stage-99', '--dry-run']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  it('op-013/T1: retry --op 短名前缀可命中（F3）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-86');
+    mgr.getData()!.stages['v1.0.0-stage-86'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+
+    logMock.mockClear();
+    errorMock.mockClear();
+    exitMock.mockClear();
+    await safeParse(['flow', 'retry', '--op', 'stage-86.op-001']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).not.toContain('阶段不存在');
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('op-001');
+  });
+
+  it('op-013/T1: attempt --op 短名前缀等价（F4）+ draft 守卫回归', async () => {
+    // 短名前缀 attempt pass → exit 0，指针指向下一 pending
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-85');
+    mgr.getData()!.stages['v1.0.0-stage-85'].ops = {
+      'op-001': makeOp('op-001') as never,
+      'op-002': makeOp('op-002') as never,
+    };
+    mgr.save();
+    exitMock.mockClear();
+    await safeParse(['flow', 'attempt', '--op', 'stage-85.op-001', '--result', 'pass']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-85'].ops['op-001'].state).toBe('done');
+    expect(flow.pipeline.current).toEqual({ stage: 'v1.0.0-stage-85', op: 'op-002' });
+
+    // draft 守卫回归：短名前缀 draft op → 仍 exit 1 + draft 提示
+    const mgr2 = new FlowManager(tmpDir);
+    mgr2.addStage('v1.0.0-stage-84');
+    mgr2.getData()!.stages['v1.0.0-stage-84'].ops = {
+      'op-001': { ...(makeOp('op-001') as object), state: 'draft' } as never,
+    };
+    mgr2.save();
+    exitMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['flow', 'attempt', '--op', 'stage-84.op-001', '--result', 'pass']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('draft');
+  });
+
+  it('op-013/T4: REV 前缀重叠不误拦（F6 双向往返）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-5');
+    mgr.getData()!.stages['v1.1.2-stage-5'].phase = 'test_passed';
+    mgr.addStage('v1.1.2-stage-52');
+    mgr.getData()!.stages['v1.1.2-stage-52'].phase = 'test_passed';
+    // blocking open REV 挂在 stage-52（stage-5 是其前缀）
+    mgr.getData()!.reviews.push({
+      id: 'REV-OVL', op: 'v1.1.2-stage-52.op-001', status: 'open', priority: 'high',
+      title: 'blocking', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z', blocking: true,
+    });
+    mgr.save();
+
+    // 查询 stage-5：stage-52 的 REV 不应因前缀重叠被误捕（修复前 startsWith(stage-5) 会误拦）
+    exitMock.mockClear();
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-5', '--to', 'done']);
+    expect(exitMock).not.toHaveBeenCalled();
+
+    // 查询 stage-52：自身 blocking REV 仍应拦截
+    exitMock.mockClear();
+    await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-52', '--to', 'done']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
   // ── stage-52/op-005：B3 flow ops list + B4-5 attempt draft 守卫 ──
 
   it('op-005/B3: flow ops list 显示 state + 填充度', async () => {

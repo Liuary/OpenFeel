@@ -3,7 +3,7 @@
  * 测试 createScheme、getScheme 和 listSchemes 在临时目录中的行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createScheme, getScheme, listSchemes, renameScheme } from '../../../src/core/plan/scheme.js';
+import { createScheme, getScheme, listSchemes, renameScheme, removeScheme, publishScheme } from '../../../src/core/plan/scheme.js';
 import { addStage } from '../../../src/core/plan/stage.js';
 import { FlowManager } from '../../../src/core/flow-manager.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
@@ -421,5 +421,88 @@ describe('scheme', () => {
       expect(existsSync(legacyPath)).toBe(true); // 文件名不变
       expect(readFileSync(legacyPath, 'utf-8').split('\n')[0]).toBe('# op-002：新标题');
     });
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-52 op-013：双键回退范式固化（REV-007 T3）
+// 同名短名键 + 全名键并存 → scheme 三函数一律作用于全名键，短名键逐字节不变
+// ═══════════════════════════════════════
+
+describe('REV-007 双键回退固化（stage-52 op-013）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-scheme-op013-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  const flowPath = () => join(tmpDir, '.openfeel', 'flow.json');
+  const templatePath = () => join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001.md');
+
+  /** 构造 op 对象（checkpoints 全 pending） */
+  function mkOp(opId: string, state: string, title: string) {
+    return {
+      id: opId, title, state, assignee: 'x', attempts: 0, max_attempts: 3,
+      checkpoints: {
+        plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' },
+        review: 'pending', test: 'pending',
+      },
+    };
+  }
+
+  /**
+   * 构造「短名键 stage-01」与「全名键 v1.0.0-stage-01」并存的双键 flow.json。
+   * 全名键经 createScheme 注册（含模板文件）；短名键手工注入 sentinel op。
+   * @param fullState 全名键 op-001 的 state
+   * @param shortState 短名键 op-001 的 state
+   * @returns 短名键注入后的 JSON 字符串（供逐字节比对）
+   */
+  function setupBothKeys(fullState: string, shortState = 'pending'): string {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'v1.0.0-stage-01');
+    createScheme(tmpDir, 'stage-01', '目标标题'); // 注册全名键 op-001 + 写模板文件
+    const mgr = new FlowManager(tmpDir);
+    const fullOp = mgr.getData()!.stages['v1.0.0-stage-01'].ops['op-001'];
+    fullOp.state = fullState as never;
+    mgr.getData()!.stages['stage-01'] = {
+      name: 'stage-01', phase: 'plan_pending', status: 'planned', deps: [],
+      ops: { 'op-001': mkOp('op-001', shortState, '短名哨兵') },
+    } as never;
+    mgr.save();
+    return JSON.stringify(JSON.parse(readFileSync(flowPath(), 'utf-8')).stages['stage-01']);
+  }
+
+  it('T3: removeScheme 作用于全名键，短名键逐字节不变', () => {
+    const shortBefore = setupBothKeys('pending');
+
+    const r = removeScheme(tmpDir, 'stage-01', 'op-001');
+
+    expect(r.removed).toBe(true);
+    const data = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+    expect(data.stages['v1.0.0-stage-01'].ops['op-001']).toBeUndefined();
+    expect(JSON.stringify(data.stages['stage-01'])).toBe(shortBefore);
+  });
+
+  it('T3: publishScheme 作用于全名键，短名键逐字节不变', () => {
+    const shortBefore = setupBothKeys('draft');
+    // 覆盖模板为「已填充」（无空模板标记）
+    writeFileSync(templatePath(), '# op-001：目标标题\n\n- [x] 已完成\n', 'utf-8');
+
+    const r = publishScheme(tmpDir, 'stage-01', 'op-001');
+
+    expect(r.published).toBe(true);
+    const data = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+    expect(data.stages['v1.0.0-stage-01'].ops['op-001'].state).toBe('pending');
+    expect(JSON.stringify(data.stages['stage-01'])).toBe(shortBefore);
+  });
+
+  it('T3: renameScheme 作用于全名键，短名键逐字节不变', () => {
+    const shortBefore = setupBothKeys('pending');
+    writeFileSync(templatePath(), '# op-001：目标标题\n\n内容\n', 'utf-8');
+
+    const r = renameScheme(tmpDir, 'stage-01', 'op-001', '新标题');
+
+    expect(r.renamed).toBe(true);
+    const data = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+    expect(data.stages['v1.0.0-stage-01'].ops['op-001'].title).toBe('新标题');
+    expect(JSON.stringify(data.stages['stage-01'])).toBe(shortBefore);
   });
 });

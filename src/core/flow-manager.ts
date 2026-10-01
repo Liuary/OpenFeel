@@ -705,12 +705,20 @@ export class FlowManager {
     if (dotIdx === -1) {
       return null;
     }
-    const stageId = opId.substring(0, dotIdx);
+    const rawStageId = opId.substring(0, dotIdx);
     const opLocalId = opId.substring(dotIdx + 1);
     // 排除空字符串情况
-    if (!stageId || !opLocalId) {
+    if (!rawStageId || !opLocalId) {
       return null;
     }
+    // REV-007：出口归一化（短名前缀 → 全名），一处收口覆盖 getOp/advancePhase/recordAttempt/hasTransition。
+    // 仅归一化 stageId 段，opLocalId 保持原值（不影响 pipeline.current.op 写入值）；无法解析回退原值。
+    // 双键回退（与 setStageDeps/removeStage/removeScheme 同范式）：归一化键优先；
+    // 归一化键不存在而原始键存在时回退原始键（兼容以短名注册的阶段，N-1），避免误判「阶段不存在」。
+    const normalized = normalizeStageId(rawStageId) ?? rawStageId;
+    const stageId = this.data?.stages[normalized]
+      ? normalized
+      : (this.data?.stages[rawStageId] ? rawStageId : normalized);
     return { stageId, opLocalId };
   }
 
@@ -1392,27 +1400,31 @@ export class FlowManager {
     if (!this.data) {
       return { ok: false, reason: '流水线数据未加载', opCount: 0, isCurrent: false, referencing: [] };
     }
-    const stage = this.data.stages[stageId];
+    // REV-007：入口归一化（短名 → 全名）+ 双键回退（归一化键优先，短名键不被误改）
+    const key = normalizeStageId(stageId) ?? stageId;
+    const raw = this.data.stages[stageId];
+    const stageKey = this.data.stages[key] ? key : (raw ? stageId : key);
+    const stage = this.data.stages[stageKey];
     if (!stage) {
-      return { ok: false, reason: `阶段不存在：'${stageId}'`, opCount: 0, isCurrent: false, referencing: [] };
+      return { ok: false, reason: `阶段不存在：'${stageKey}'`, opCount: 0, isCurrent: false, referencing: [] };
     }
 
     const opCount = stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)
       ? Object.keys(stage.ops).length
       : 0;
-    const isCurrent = this.data.pipeline.current.stage === stageId;
+    const isCurrent = this.data.pipeline.current.stage === stageKey;
 
     // 引用者扫描：其余 stages 的 deps 命中该阶段者（REV-004）
-    const target = parseStageId(stageId);
+    const target = parseStageId(stageKey);
     const referencing: string[] = [];
     for (const [otherId, otherStage] of Object.entries(this.data.stages)) {
-      if (otherId === stageId) {
+      if (otherId === stageKey) {
         continue;
       }
       // 存量 stage 可能缺 deps 字段，以 Array.isArray 守卫
       const deps = Array.isArray(otherStage.deps) ? otherStage.deps : [];
       const hit = deps.some((dep) => {
-        if (dep === stageId) {
+        if (dep === stageKey) {
           return true;
         }
         const parsed = parseStageId(dep);
@@ -1426,15 +1438,15 @@ export class FlowManager {
     if (!options.force) {
       // 错误路径：ops 非空（存在未归档操作方案）
       if (opCount > 0) {
-        return { ok: false, reason: `阶段 '${stageId}' 仍有 ${opCount} 个未归档的 op；如需强制移除此阶段，请加 --force`, opCount, isCurrent, referencing };
+        return { ok: false, reason: `阶段 '${stageKey}' 仍有 ${opCount} 个未归档的 op；如需强制移除此阶段，请加 --force`, opCount, isCurrent, referencing };
       }
       // 错误路径：当前活跃阶段
       if (isCurrent) {
-        return { ok: false, reason: `阶段 '${stageId}' 是当前活跃阶段；如需强制移除，请加 --force（将自动回退 current）`, opCount, isCurrent, referencing };
+        return { ok: false, reason: `阶段 '${stageKey}' 是当前活跃阶段；如需强制移除，请加 --force（将自动回退 current）`, opCount, isCurrent, referencing };
       }
       // 错误路径：被其它阶段 deps 引用（REV-004）
       if (referencing.length > 0) {
-        return { ok: false, reason: `阶段 '${stageId}' 被其它阶段依赖：${referencing.join(', ')}；如需强制移除（将产生悬空依赖），请加 --force`, opCount, isCurrent, referencing };
+        return { ok: false, reason: `阶段 '${stageKey}' 被其它阶段依赖：${referencing.join(', ')}；如需强制移除（将产生悬空依赖），请加 --force`, opCount, isCurrent, referencing };
       }
     }
     return { ok: true, opCount, isCurrent, referencing };
@@ -1456,13 +1468,18 @@ export class FlowManager {
     if (!this.data) {
       return {};
     }
-    const check = this.checkRemovable(stageId, { force: options.force });
+    // REV-007：入口归一化（短名 → 全名）+ 双键回退（归一化键优先，短名键不被误改），以 stageKey 贯穿
+    const key = normalizeStageId(stageId) ?? stageId;
+    const raw = this.data.stages[stageId];
+    const stageKey = this.data.stages[key] ? key : (raw ? stageId : key);
+    const check = this.checkRemovable(stageKey, { force: options.force });
     if (!check.ok) {
+      // 错误路径：安全校验未通过 → 保留既有文案（用户输入原样）
       throw new Error(check.reason ?? `无法移除阶段 '${stageId}'`);
     }
 
     // 阶段快照（REV-006）：误删后可从审计日志重建
-    const stage = this.data.stages[stageId];
+    const stage = this.data.stages[stageKey];
     const snapshot = {
       phase: stage.phase,
       status: stage.status,
@@ -1471,10 +1488,10 @@ export class FlowManager {
     };
 
     // ── 注销 flow.json 注册 ──
-    delete this.data.stages[stageId];
+    delete this.data.stages[stageKey];
 
     // ── current 兜底：不悬空 ──
-    if (this.data.pipeline.current.stage === stageId) {
+    if (this.data.pipeline.current.stage === stageKey) {
       const remaining = Object.keys(this.data.stages);
       const fallback = remaining.find((k) => this.data!.stages[k].phase !== 'done');
       if (fallback) {
@@ -1490,7 +1507,7 @@ export class FlowManager {
     // ── --purge：仅计算待删目录，不在此处删除（须 save() 成功后再删，REV-009 事务顺序） ──
     let purgeTarget: string | undefined;
     if (options.purge) {
-      const parsed = parseStageId(stageId);
+      const parsed = parseStageId(stageKey);
       if (parsed) {
         const dir = resolve(this.projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir);
         if (existsSync(dir)) {
@@ -1504,7 +1521,7 @@ export class FlowManager {
       time: '',
       agent: 'cli',
       action: 'remove_stage',
-      detail: { stageId, purgeTarget: purgeTarget ?? null, referencing: check.referencing, snapshot },
+      detail: { stageId: stageKey, purgeTarget: purgeTarget ?? null, referencing: check.referencing, snapshot },
     });
 
     return { purgeTarget };

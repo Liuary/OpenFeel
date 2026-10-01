@@ -1,0 +1,54 @@
+# stage-59 op 依赖声明
+# 由 openfeel-schemer 自动生成，Feel 调度前 glob 校验存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.2-stage-59
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-02"
+
+# 【跨阶段约束】
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-58
+    type: hard
+    status: satisfied
+    reason: "stage-59 计划声明 hard 依赖 stage-58（已归档）；本阶段修复其「运行日志默认开启」在 CI 守卫窗口内产生的副作用。"
+  - downstream: git push / CI / npm publish
+    type: hard
+    note: "**本阶段不代 Feel 推送、不执行 `npm publish`、不改 `flow.json`**。op-002 仅产出「可推送」结论与 CI 侧确认命令；推送与发布由 Feel/用户执行。仅当 CI 转绿 + `npm publish` 完成后，方由归档官回填 roadmap/plan 的 done/发布就绪。"
+
+# 【阶段性质提示】
+# CI 环境守卫误报修复（仅改 `.github/workflows/ci.yml` 单文件）→ **2 op，全串行**（op-001 → op-002）。
+# **关键不变量**：
+# ① 三处 bin 调用步骤注入 `env: OPENFEEL_LOG: '0'`（M1/M2/M3）→ 守卫窗口内零写盘；
+# ② `Env snapshot (before test)` 下移至 `lint i18n` 之后、`Test` 之前（M4）；`Env guard` after 仍在 Test+Coverage 之后；
+# ③ 快照三态加固（M5/M6）：`ABSENT` / `EXISTS-EMPTY` / sha256 清单，两处逻辑逐字一致、不引入新依赖；
+# ④ 演练脚本命名/标记与 ci.yml 逐字一致（`snap_before_$key`/`snap_after_$key` + 裸 `ABSENT`/`EXISTS-EMPTY`）——落实 REV-001；
+# ⑤ roadmap 状态回正为「进行中 / 待 CI 验证」——落实 REV-002；
+# ⑥ 不改 `src/**`/`test/**`/`package.json`/`flow.json`/实现语义（运行日志默认开启为用户裁定，保留）；
+# ⑦ 门禁基线（开工复跑校准）：`npm test` 61 文件 / 1018 用例 0 skipped、`tsc` 0、`lint i18n` 730 键、`lint kb` 0、YAML 自检 `YAML OK`。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "CI 修复（守卫误报）"
+    produces:
+      - .github/workflows/ci.yml
+      - .openfeel/users/Liuary/tmp/stage-59-guard-drill.sh
+      - .openfeel/plan/v1/stage-59/plan.md
+    deps: []
+    notes: "**M1~M6 + YAML 自检 + WSL/Linux 三场景演练（S1/S2/S3）**。**M1** `build-and-test` 的 `Version consistency guard` 注入 `env: OPENFEEL_LOG: '0'`；**M2** `lint i18n`（保持匿名 `run`）注入同 env；**M3** `publish` 的 `Version consistency guard` 注入同 env；**M4** `Env snapshot (before test)` 整步下移至 `lint i18n` 后、`Test` 前；**M5/M6** `snapshot()` 与 `Env guard` 三态加固（空清单写 `EXISTS-EMPTY`，非空写 `printf '%s\\n'` sha256 清单），两处逐字一致。产出完整改后 `ci.yml`（权威对照）。演练脚本落私域 `tmp/`（`snap_before_$key`/`snap_after_$key` 分文件 + 裸标记，杜绝命名不一致）；三场景预期 **S1 PASS / S2 PASS / S3 FAIL（非空，复现 run #52）**。**REV-001**：`plan.md` §5.1 措辞由「完全一致」改为「三态判定逻辑等价 + 正式演练以 op-001 §三为准」。**不改 `src/**`/`test/**`/`flow.json`；不代推送；不 `npm publish`；不新增依赖**。"
+  op-002:
+    file: op-002.md
+    title: "回归 + 可推送结论 + 阶段报告"
+    produces:
+      - .openfeel/users/Liuary/log/2026-10-02-015.md
+      - .openfeel/roadmap/v1.1.2.md
+    deps:
+      - op: op-001
+        type: hard
+    notes: "**阶段级回归门禁 + 「可推送」结论与 CI 侧确认命令 + 阶段报告 + REV-002**。门禁：`npm run build`（成功，`git status` **不复活 `.opencode/**`**；`.openfeel/**` 由 git status 全量断言兜底，双口径并存）／`npx tsc --noEmit` 0／`npm test` **61 文件 / 1018 用例 0 skipped**／`node bin/openfeel.js lint i18n` **730 键** exit 0／`node bin/openfeel.js lint kb` **0 过期**／YAML 自检 `YAML OK`；汇总 op-001 演练 S1/S2/S3。**REV-002**：`roadmap/v1.1.2.md` 状态语态回正（L3/L52/L76/L77/L83/L91）——`done`→`进行中`、`已归档/全部归档`→`…；stage-59 进行中`、`发布就绪`→`待 CI 验证`；不删阶段登记、不改历史修订记录。产出「可推送」结论 + `gh api` CI 确认命令（**不代 Feel 推送**）+ 私域报告 `2026-10-02-015.md`。**本 op 零源码变更；不 `npm publish`；不改 `flow.json`**。"
+
+# 【下游契约】（本阶段无公共接口形态变更；`.github/workflows/ci.yml` 不随包分发）
+downstream_contracts: []

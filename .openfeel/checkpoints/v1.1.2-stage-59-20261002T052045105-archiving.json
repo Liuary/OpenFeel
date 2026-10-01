@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T21:22:18.543Z",
-    "revision": 598
+    "updated": "2026-10-01T21:20:44.799Z",
+    "revision": 596
   },
   "pipeline": {
     "phase": "active",
@@ -2574,7 +2574,7 @@
     "v1.1.2-stage-59": {
       "name": "v1.1.2-stage-59",
       "phase": "archiving",
-      "status": "archiving",
+      "status": "testing",
       "deps": [
         "v1.1.2-stage-58"
       ],
@@ -12116,28 +12116,6 @@
         "stageName": "v1.1.2-stage-59",
         "from": "test_pending",
         "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-10-01T21:20:45.123Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.2-stage-59",
-        "from": "test_passed",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-10-01T21:22:18.542Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.1.2-stage-59",
-        "opsCount": 2,
-        "reviewsCount": 0,
-        "knowledgeCount": 0,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.2-stage-59.md"
       }
     }
   ]

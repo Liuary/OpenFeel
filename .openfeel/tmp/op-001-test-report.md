@@ -1,68 +1,56 @@
-# 自测报告 — op-001
+# 自测报告 — op-001（v1.1.2-stage-59）
 
-- **执行时间**：2026-10-02 01:59
+- **执行时间**：2026-10-02
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（首次定向测试 2 红，修复后通过）
+- **重试次数**：1（首次即通过）
 
 ## 执行摘要
-op-001（A+C+D）全部完成：新增输出编码自适应模块 + `--json` 恒 UTF-8 + iconv-lite 直接依赖；`npm test` 全绿 60 文件 / 1007 用例 / 0 skipped。
+
+全部 M1~M6 落地，YAML 自检 `YAML OK`；WSL 三场景演练 **S1 PASS / S2 PASS / S3 FAIL（非空，复现 CI run #52）**；自测通过。
 
 ## 实施步骤完成情况
-- [x] A：新建 `src/cli/output-encoding.ts`（导出 API 与方案 §三一致；无 `process.env.VITEST` 分支）
-- [x] A-4：`bin/openfeel.js` 安装 `installOutputEncoding()`（在 `applyHelpI18n` 前）
-- [x] A-5：`src/cli/index.ts` 注册 `--encoding <encoding>`（默认 `'auto'`）
-- [x] A-6：i18n `global.encoding` 双语（zh-CN.ts + en.ts）
-- [x] C-1：`resolveTargetEncoding` 第 1 步 `argv.includes('--json')` → `'utf8'`
-- [x] D-1/D-2：`package.json` + `package-lock.json` 加 `iconv-lite@^0.7.2`（lock 仅根 dependencies +1 行）
-- [x] E-1：新建 `test/cli/output-encoding.test.ts`（21 用例：全分支 + 字节 + 回调 + Buffer 直通 + utf8 不包装 + 幂等 + 静态断言）
-- [x] E-4（编码前置）：`test/cli/repl.test.ts:25` 加 `OPENFEEL_ENCODING:'utf8'`
+
+- [x] M1：`build-and-test` 的 `Version consistency guard` 注入 `env: OPENFEEL_LOG: '0'`（步骤名/body 不变）
+- [x] M2：`lint i18n` 注入同 env（保持匿名 `run`）
+- [x] M3：`publish` 的 `Version consistency guard` 注入同 env（`if:`/`needs:`/`env: NODE_AUTH_TOKEN` 不变）
+- [x] M4：`Env snapshot (before test)` 整步下移至 `lint i18n` 之后、`Test` 之前
+- [x] M5/M6：`snapshot()` 与 `Env guard` 三态化加固（`ABSENT`/`EXISTS-EMPTY`/sha256 清单），两处逐字一致
+- [x] YAML 自检 + 演练脚本 + REV-001 措辞修正
 
 ## 自测清单验证
+
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 文件导出 API 与 §三一致 | ✅ | tsc 0，测试可直接 import |
-| 无 `process.env.VITEST` 分支 | ✅ | `rg` 零命中（源码注释已改写避免字面量） |
-| install 幂等；opts 仅 stdout?/stderr? | ✅ | 测试断言二次 install 不接管新流 |
-| bin 在 applyHelpI18n 前 install | ✅ | |
-| `--encoding` 注册（默认 auto） | ✅ | `--help` 含 `--encoding` |
-| i18n `global.encoding` 双语 | ✅ | `lint i18n` 727 键 exit 0 |
-| package.json/lock 加 iconv-lite | ✅ | `npm ls` 直接依赖；lock diff +1 行 |
-| `--json` 旁路在第 1 步 | ✅ | C-1：`--json`+`--encoding gbk`+env gbk+cp936 → utf8 |
-| tsc 0；build 不复活 `.opencode/**` | ✅ | |
-| npm test 全绿 0 skipped | ✅ | 60 文件 / 1007 用例 |
-| 未改 flow.json；无其它依赖；无额外 op 文件 | ✅ | flow.json 变更由 CLI attempt 记录 |
+| `yaml.parse` 自检 | ✅ | `YAML OK` |
+| 步骤数不变 | ✅ | build-and-test 11 / publish 7（与改前一致） |
+| `OPENFEEL_LOG: '0'` 恰 3 处（string） | ✅ | node 解析确认 3 处，`typeof === 'string'` |
+| `EXISTS-EMPTY` 计数 | ⚠️ | 实测 4（2 代码 + 2 注释）；见「偏差记录」 |
+| M4 顺序：lint i18n < Env snapshot < Test | ✅ | L33 < L34 < L50 |
+| `Env guard` 在 `Test`+`Coverage` 之后 | ✅ | L78 |
+| `Test failure annotations` 零改动 | ✅ | diff 未出现该块 |
+| publish `needs/if/NODE_AUTH_TOKEN` 不变 | ✅ | `build-and-test` / `refs/heads/master` / `${{ secrets.OPENFEEL_AUTO_NPM }}` |
+| WSL S1 | ✅ | PASS（diff 空）；全量 `61 files / 1016 passed \| 2 skipped` |
+| WSL S2 | ✅ | PASS（diff 空） |
+| WSL S3 | ✅ | FAIL（diff 非空，复现 run #52） |
+| 演练脚本落私域 tmp、命名与 ci.yml 一致 | ✅ | `snap_before_$key`/`snap_after_$key` + 裸标记 |
+| REV-001 措辞修正 | ✅ | `plan.md` §5.1 改「三态判定逻辑等价 + 以 op-001 §三为准」 |
+| 未改 `src/**`/`test/**`/`package.json`/`flow.json` | ✅ | git status 确认 |
+| 未 push / 未 npm publish / 无新依赖 | ✅ | — |
 
 ## 产出文件
-- `src/cli/output-encoding.ts`（新建）
-- `bin/openfeel.js`
-- `src/cli/index.ts`
-- `src/core/i18n-data/zh-CN.ts`
-- `src/core/i18n-data/en.ts`
-- `package.json`
-- `package-lock.json`
-- `test/cli/output-encoding.test.ts`（新建）
-- `test/cli/repl.test.ts`
+
+- `.github/workflows/ci.yml`（M1~M6，132 行；commit `7d84f15`）
+- `.openfeel/plan/v1/stage-59/plan.md`（REV-001，随 op-001 commit）
+- `.openfeel/users/Liuary/tmp/stage-59-guard-drill.sh`（私域临时，不入版本管理）
+- `.openfeel/users/Liuary/tmp/stage-59-guard-drill.out`（演练实测输出留档）
 
 ## 前置校验结果
-- 方案完整性：通过（6 项必填字段齐备）
-- Phase 合法性：通过（stage phase=exec_running；current.op=op-001 匹配）
-- 流转合法性：通过（`openfeel flow health --quick` 🎉）
-- 基线复核：`npm test` 实测 59 文件 / 986 用例 / 0 skipped（与方案一致）
 
-## 门禁实测
-| 门禁 | 结果 |
-|------|------|
-| `npx tsc --noEmit` | 0 错误 |
-| `npm run build` | 成功，`.opencode/**` 未复活 |
-| `npx vitest run output-encoding + repl` | 22 通过 |
-| `node bin/openfeel.js --help` | 含 `--encoding`，无 i18n 告警 |
-| `node bin/openfeel.js lint i18n` | 727 键 exit 0 |
-| `npm test` | 60 文件 / 1007 / 0 skipped |
-| `npm ls iconv-lite` | openfeel@1.1.2 → iconv-lite@0.7.2 直接依赖 |
-| `git diff --stat package-lock.json` | 1 file changed, 1 insertion(+) |
-| `node bin/openfeel.js flow phases --json` | 5 键 |
+- 方案完整性：通过（目标/实施步骤/产出文件/自测清单/阶段/最多重试 6 项齐备）
+- Phase 合法性：通过（stage `v1.1.2-stage-59` phase=`exec_running`；全局 phase=`active`）
+- 流转合法性：通过（`openfeel flow health --quick` 全部通过、0 warnings；`flow current` = op-001）
 
 ## 偏差记录
-1. **源码注释改写（防静态断言误命中）**：方案 §三提供的 `output-encoding.ts` 头注释含字面量 `process.env.VITEST=true`，与 §6.1「静态断言 `/process\.env\.VITEST/` 零命中」自相矛盾。按 REV-001 意图改写为「vitest 主进程会设置 VITEST 环境变量为真」，保留语义、去除字面量，零命中达成。
-2. **`applyHelpI18n` 选项循环加 `hasKey` 守卫（必要修复）**：注册正选项 `--encoding` 后，根遍历查 `help.openfeel.encoding`（未定义）导致 `t()` 在**每次 CLI 调用**向 stderr 告警 `[i18n] Missing key`。按同函数 argument 分支既有范式（注释明写「避免对未补键的 argument 触发缺失告警」）为 option 循环加 `hasKey` 守卫；行为等价（原逻辑已跳过覆盖），消除告警噪声。非方案显式要求，属必要质量修复。
-3. **git 提交范围**：仅提交 op-001 产出文件；`flow.json`/`checkpoints` 未纳入提交（沿用既往 op 提交口径，flow.json 由 Feel/CLI 管理）。
+
+1. **`EXISTS-EMPTY` 计数与方案 §六.3 期望不符**（非功能偏差）：方案 §六.3 期望 `rg "EXISTS-EMPTY"` 恰 2 处，实测 4 处。原因是方案 §二.7（权威完整 `ci.yml`）的 M5/M6 注释行本身含该字符串（2 处注释 + 2 处代码）。本 op **严格照 §二.7 落地**，未改动注释，故为方案内部（§二.7 vs §六.3）计数口径不一致，非实现问题。代码级实现恰 2 处。
+2. **`plan.md` §5.1 的 REV-001 修正随 op-001 提交**；stage-59 目录整体为未跟踪（首次提交），按仓库惯例其余阶段产物由阶段归档提交。

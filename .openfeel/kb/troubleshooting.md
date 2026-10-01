@@ -978,3 +978,22 @@ concurrency:
 **实证**：v1.1.2-stage-60（op-001 `7e09eac`，`.github/workflows/ci.yml` +3 行）；REV-001（low 非阻塞，挂起观察，若再现 409 应升级 medium）。
 
 **参见：** 私域 `.openfeel/users/Liuary/code_review/REV-v1.1.2-stage-60.md`；公域 `.openfeel/code_review/v1.1.2-stage-60.md`；kb/troubleshooting.md #npm publish 404/403 诊断链；npm/cli#9889
+
+## [+] CI 环境守卫误报：守卫窗口混入「默认写盘」的非测试 CLI 步骤（stage-58 运行日志默认开启后 ABSENT→存在） (2026-10-02)
+
+**症状/现象**：CI `build-and-test` 稳定失败 `::error::环境被测试改动：/home/runner/.openfeel`，但本地 `npm test` 前后真实 `~/.openfeel` 零变化——看似「测试污染」，实为**非测试步骤**在守卫窗口内写盘。
+
+**根因（决定性复现）**：stage-58 令运行日志「默认开启」后，`bin/openfeel.js` 每次运行都写 `~/.openfeel/cli/logs/*.log` + `~/.openfeel/locks/`。而守卫窗口（`Env snapshot` → `Env guard`）内包含两条**非测试** bin 调用：`Version consistency guard`（`node bin/openfeel.js --version`）与 `lint i18n`。干净 runner 上 `~/.openfeel` 由 `ABSENT` 变「存在」→ diff 非空 → 误报。
+
+**正确处置（双保险）**：
+1. **隔离被检步骤副作用**：给窗口内非测试 bin 步骤注入 `env: OPENFEEL_LOG: '0'`（YAML 中**必须带引号**；`resolveRuntimeLogConfig` 以 `=== '0'` 严格比较，不带引号会被解析为数字 `0` 而失配）——`build-and-test` 的 `Version consistency guard`/`lint i18n` + `publish` 的 `Version guard` 共 **3 处**；
+2. **收紧窗口**：把 `Env snapshot` 下移到 `lint i18n` 后、`Test` 前，使窗口恰为目标范围（测试）；`Env guard` after 仍在 `Test`+`Coverage` 之后；
+3. **快照三态加固**：exists 分支空清单不再落「空文件」，改写固定标记 `EXISTS-EMPTY`（与 `ABSENT` 区分），避免「空目录」与「不存在」表示混淆。
+
+**三场景决定性验证（WSL/Linux 隔离 HOME + 仓库副本）**：S1（修复后，注入 env + 快照下移）= PASS(diff 空)；S2（仅快照下移、不注入 env）= PASS → **下移窗口独立有效**；S3（修复前：快照在 CLI 调用之前、不注入 env）= FAIL(非空，含 `cli/logs/*.log`) → **复现 CI #52**。S3 diff 出现 `-ABSENT` / `+<sha256> …/cli/logs/…` 即铁证。
+
+**判据/避免**：任何「默认开启写盘」的副作用，都会让「守卫窗口内的只读步骤」不再只读；**窗口内每个 step 都必须显式隔离（关写盘）或证明无副作用**，且快照点须紧贴被测对象。此为 stage-48「环境哈希守卫」窗口纪律的具体勘误（原判 `--version`/`lint i18n` 实测只读，已被 stage-58 默认日志推翻）。
+
+**实证**：v1.1.2-stage-59（CI run #52 `cacbefb` 失败 → 修复后 run #53 `25689d4` build-and-test 双 success + `Env guard` success）；commits `7d84f15`/`25689d4`；仅改 `.github/workflows/ci.yml` 单文件；门禁 `npm test` 61 文件 / 1018 用例 0 skipped、`lint i18n` 730 键、`lint kb` 0。
+
+**参见：** v1.1.2-stage-59；kb/patterns.md #环境哈希守卫（CI 层）（**已更新**：窗口纪律勘误 + 三态）；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护；kb/patterns.md #库侧默认 no-op + 进程入口 install

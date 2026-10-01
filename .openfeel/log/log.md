@@ -2,6 +2,13 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-02-Liuary-018.md](2026/10/02/2026-10-02-Liuary-018.md) | Liuary | 阶段 v1.1.2-stage-59 完成 |
+| [2026-10-02-Liuary-017.md](2026/10/02/2026-10-02-Liuary-017.md) | Archiver | **stage-59 归档完成（修复 CI 环境守卫误报 → 让 CI 转绿并发布，2 op）**——根因＝stage-58 运行日志默认开启使守卫窗口内非测试步骤（`Version consistency guard`/`lint i18n`）写 `~/.openfeel` → 干净 runner `ABSENT→存在` 误报（CI #52 `cacbefb`）；**M1~M3** 三处 `env: OPENFEEL_LOG: '0'` + **M4** `Env snapshot` 下移 + **M5/M6** 三态加固（**仅改 `.github/workflows/ci.yml` 单文件**）；WSL 三场景 S1/S2 PASS、S3 FAIL 复现；门禁 **61 文件 / 1018 用例 0 skipped**、`tsc` 0、`lint i18n` 730 键、`lint kb` 0、环境四路径 NO_DIFF；**CI run #53（`25689d4`）build-and-test 双 success + `Env guard` success**；`openfeel@1.1.2` 已发布（registry `2026-10-01T19:29:49Z`）；审查 0 blocking（REV-001~005 resolved/closed）；无新 Bug；知识沉淀 1 条（troubleshooting）+ 1 条 patterns 更新；manual 无需更新；**十九阶段（41~59）全部闭环** |
+| [2026-10-02-Liuary-015.md](2026/10/02/2026-10-02-Liuary-015.md) | Liuary | 阶段 v1.1.2-stage-60 完成 |
+| [2026-10-02-Liuary-016.md](2026/10/02/2026-10-02-Liuary-016.md) | Archiver | **stage-60 归档完成（CI publish 并发控制 — 方案 A，1 op）**——`publish` job 加 `concurrency`（`group: publish-${{ github.ref }}`、`cancel-in-progress: false`）消除「同一 push 调度成多个并行 run → 并发发布同版本 → npm registry `409`」假失败（npm/cli#9889；实测 #53 success / #54 409、publish job 时间窗重叠）；**仅改 `.github/workflows/ci.yml` +3 行**（commit `7e09eac`）；`npm test` **61 文件 / 1018 用例 0 skipped / 0 failed**、`build`/`tsc` 0、环境零污染；审查 **passed（0 blocking + REV-001 low 非阻塞，挂起观察）**；无新增 Bug；知识沉淀 1 条；manual 无需更新；**未 push / 未 `npm publish`** |
+| [2026-10-02-Liuary-014.md](2026/10/02/2026-10-02-Liuary-014.md) | Liuary | v1.1.2-stage-60.op-001 执行通过 |
+| [2026-10-02-Liuary-013.md](2026/10/02/2026-10-02-Liuary-013.md) | Liuary | v1.1.2-stage-59.op-002 执行通过 |
+| [2026-10-02-Liuary-012.md](2026/10/02/2026-10-02-Liuary-012.md) | Liuary | v1.1.2-stage-59.op-001 执行通过 |
 | [2026-10-02-Liuary-011.md](2026/10/02/2026-10-02-Liuary-011.md) | Liuary | 阶段 v1.1.2-stage-58 完成 |
 | [2026-10-02-Liuary-010.md](2026/10/02/2026-10-02-Liuary-010.md) | Archiver | **stage-58 归档完成（CLI 输出编码自适应 + 运行日志，3 op）**——**A** 输出编码自适应（`src/cli/output-encoding.ts` + `bin` 单一咽喉，**不设 `VITEST` 守卫**；auto 5 步优先序；Buffer 直通 / 回调保留 / 不可编码降 `?`）+ **C** `--json` 恒 UTF-8 最高优先 + **B** 运行日志（`src/core/runtime-log.ts` + `getCliLogsDir()` → `~/.openfeel/cli/logs/`，恒 UTF-8、默认 on、info/warn/error、debug 默认关、`withFileLock` + best-effort、不记 stdout）+ **D** `iconv-lite@^0.7.2` 提直接依赖（MIT）+ **E** 测试 +32 用例（含正控）+ **F** manual×2 新建 + ×3 更新、README×2、CHANGELOG、docs；`npm test` **61 文件 / 1018 用例 0 skipped**、`tsc` 0、build 幂等不复活、`lint i18n` **730 键**、`lint kb` 0、真实 `~/.openfeel/cli/logs/` 测试前后零变化；**REV-001~008 全 closed**；**新登记 `cli/BUG-008`（low, open）**；知识沉淀 5 条；**v1.1.2 十八阶段（41~58）全部闭环，发布就绪**（待 Feel 统一 push → CI → 自动 `npm publish`） |
 | [2026-10-02-Liuary-009.md](2026/10/02/2026-10-02-Liuary-009.md) | Liuary | v1.1.2-stage-58.op-003 执行通过 |
@@ -25,13 +32,6 @@
 | [2026-10-01-Liuary-044.md](2026/10/01/2026-10-01-Liuary-044.md) | Liuary | v1.1.2-stage-55.op-004 执行通过 |
 | [2026-10-01-Liuary-043.md](2026/10/01/2026-10-01-Liuary-043.md) | Liuary | v1.1.2-stage-55.op-003 执行通过 |
 | [2026-10-01-Liuary-042.md](2026/10/01/2026-10-01-Liuary-042.md) | Liuary | v1.1.2-stage-55.op-002 执行通过 |
-| [2026-10-01-Liuary-041.md](2026/10/01/2026-10-01-Liuary-041.md) | Liuary | v1.1.2-stage-55.op-001 执行通过 |
-| [2026-10-01-Liuary-040.md](2026/10/01/2026-10-01-Liuary-040.md) | Liuary | 阶段 v1.1.2-stage-54 完成 |
-| [2026-10-01-Liuary-039.md](2026/10/01/2026-10-01-Liuary-039.md) | Archiver | **stage-54 归档完成（收尾 — 遗留缺陷清理（发布前清账），3 op）**——**E1 `cli/BUG-005`** 空模板检测改**整行锚定**（`EMPTY_TEMPLATE_LINE_RE` + `scheme.ts` 复用；`publish` 误拒 / `health`·`ops list` 误报消除、仓库空模板告警归零）；**E2 `cli/BUG-006`** en blocking REV 拒绝文案 i18n；**E3 `cli/BUG-003`** help 补 `transitionsDiff`（JSON 未变）；**E6 分层统计**（总 270 / 清账层 38 / 历史层 88 / 无法判定 3）+ 清账层收口 closed 31 / 维持 pending 7；**59 文件 / 987 用例全绿**、`tsc` 0、build 幂等、`lint i18n` **726 键**、`lint kb` 0 过期（265 引用）、`flow health` 空模板 0；三段审查零阻塞（REV-001 medium blocking / REV-002 low 全 closed）；`cli/BUG-005`/`cli/BUG-006`/`templates/BUG-003` 关闭 + 新登记 `templates/BUG-005`（low）；知识沉淀 4 条 |
-| [2026-10-01-Liuary-038.md](2026/10/01/2026-10-01-Liuary-038.md) | Liuary | v1.1.2-stage-54.op-003 执行通过 |
-| [2026-10-01-Liuary-037.md](2026/10/01/2026-10-01-Liuary-037.md) | Liuary | v1.1.2-stage-54.op-002 执行通过 |
-| [2026-10-01-Liuary-036.md](2026/10/01/2026-10-01-Liuary-036.md) | Liuary | v1.1.2-stage-54.op-001 执行通过 |
-| [2026-10-01-Liuary-035.md](2026/10/01/2026-10-01-Liuary-035.md) | Liuary | 阶段 v1.1.2-stage-52 完成 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

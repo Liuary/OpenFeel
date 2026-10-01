@@ -2573,7 +2573,7 @@
     },
     "v1.1.2-stage-59": {
       "name": "v1.1.2-stage-59",
-      "phase": "archiving",
+      "phase": "done",
       "status": "archiving",
       "deps": [
         "v1.1.2-stage-58"

@@ -178,6 +178,7 @@ Pantheogen 项目使用 OpenFeel CLI 将正式计划落地为 `flow.json` 阶段
 | **stage-56** | 发布前收尾（遗留清理 + skill 全量对齐 + 全局刷新 + 发布就绪） | S1 `flow phases --json` 5 键文案同步；S2 `openfeel-cli-usage` skill 全量对齐（16 项 + `:82` 修正 + 过时表重写）；S3 5 条 trivial REV（2 已解决仅登记 / 3 修）；S4 Bug 索引计数一致；S5 build + 备份 + `setup` 全局刷新；S6 回归门禁 + 发布就绪复核（**不含 `npm publish`**） | P0 | hard: stage-55 | 4 op |
 | **stage-57** | 发布收尾（CI 修复 + CI 可观测性 + README 更新） | C1 T32 盘符用例平台化（拆「跨平台」+「Windows 专属 `it.skipIf`」，**不改实现语义**）；C2 `ci.yml` 失败注解（`set -o pipefail` + `tee` + `if: failure()` 提取，经 API 可读）；C3 三份 README 更新（28 处：测试数 / v1.1.2 新增能力 / 命令表 / 全局部署架构 / 免责声明）；C4 回归 + 「可推送」结论（**不代 Feel 推送、不含 `npm publish`**） | P0 | hard: stage-56 | 3 op |
 | **stage-58** | CLI 输出编码自适应 + 运行日志 | A 输出编码自适应（`bin` 单一咽喉包装 stdout/stderr、`auto` 按 `chcp` 转码、`--encoding`/`OPENFEEL_ENCODING`；隔离=bin 单一 install + 库侧默认 no-op，**不设 `VITEST` 守卫**）+ C `--json` 恒 UTF-8 旁路 + B 运行日志（`~/.openfeel/cli/logs/`、恒 UTF-8、默认 on、`--log-file`/`--no-log`/`--debug`；解析期错误仅文档化）+ D `iconv-lite` 提升直接依赖 + E 测试（新单测 + 修复 `repl.test.ts`〔win32 非 TTY 下必要〕+ **E2E 正控防恒绿**；基线实盘校准）+ F 文档 | P1 | hard: stage-57 | 3 op |
+| **stage-59** | 修复 CI 环境守卫误报（让 CI 转绿并发布） | **根因**：stage-58 运行日志默认开启使 `bin/openfeel.js` 写 `~/.openfeel/cli/logs/`，而守卫窗口含**非测试步骤** `Version consistency guard`/`lint i18n` → 干净 runner 上 `ABSENT→存在` 误报（**非测试污染**）。**M1~M3** 三处注入 `env: OPENFEEL_LOG: '0'`；**M4** `Env snapshot` 下移至 `lint i18n` 后、`Test` 前（防御性收紧窗口）；**M5/M6** 快照三态加固（空清单写 `EXISTS-EMPTY`）。**仅改 `.github/workflows/ci.yml` 单文件**，零实现语义变更 | P0 | hard: stage-58 | 2 op |
 
 
 ### 依赖图
@@ -238,12 +239,19 @@ stage-41（自描述 + 可纠错）  ──soft──→  stage-42（口径 + �
                                                                                         │
                                                                                       hard
                                                                                         ▼
-                                                          stage-58（输出编码自适应 + 运行日志）──→  `npm publish`
+                                                          stage-58（输出编码自适应 + 运行日志）
+                                                                                        │
+                                                                                      hard
+                                                                                        ▼
+                                                          stage-59（修复 CI 环境守卫误报）
+                                                                                        │
+                                                                                        ▼
+                                                          Feel 推送 → CI（转绿）→ `npm publish`
 ```
 
 ### 推荐执行顺序
 
-**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51 → stage-52 → stage-53 → stage-54 → stage-55 → stage-56 → stage-57 → stage-58**（→ `npm publish`，由用户决定）。
+**stage-41 → stage-42 → stage-44 → stage-45 → stage-46 → stage-47 → stage-43 → stage-48 → stage-49 → stage-50 → stage-51 → stage-52 → stage-53 → stage-54 → stage-55 → stage-56 → stage-57 → stage-58 → stage-59**（→ Feel 推送 → CI 转绿 → `npm publish`）。
 
 **理由**：
 - stage-41 与 stage-42 均修改 `src/core/flow-manager.ts` 与 `src/i18n-data/{zh-CN,en}.ts`，顺序执行避免同文件冲突。
@@ -1002,3 +1010,4 @@ A-C1-1（拆分实现 = 受控尾段变体 + `it.skipIf`）/ A-C2-1（注解提�
 | 2026-10-01 | openfeel-planner | **REV-v1.1.2-stage-54 REV-001/002**（REV-001 medium **blocking**） | **REV-001**：E6 改**分层统计**（总 **267** / pending **132** / closed **112** / resolved **23**；**清账层（v1.1.2 内）42** / 历史层 88）+ 固化可复现扫描脚本（兼容 `REV-U2/U3/U4/U8` 混合编号）——原 `^## (REV-\d+):` 漏 35+ 条为根因；**事实更正**：stage-52 REV-005~008 状态行实测仍 `pending`（REV 述「已 closed」不实）；新增 **R-9**。**REV-002**：新增 **E1-补**——实测 `readOpTemplate` **短 opId HIT / 全名 null**，`health` 与 `ops list` **同源（非分叉）**；真实缺口 = `null` 语义分歧 → 裁定 **A9 登记为已知边界**（不改 `detectFillState` 契约）+ 注释 + manual + 断言④；新增 **R-10**。stage-54 仍 3 op（断言 4→5） |
 | 2026-10-01 | openfeel-planner | 用户需求「v1.1.2-stage-55：清掉项目级约束与 Agent」 | 阶段概览新增 stage-55；依赖图改「54 → 55 → `npm publish`」、执行顺序追加「54 → 55」；新增 stage-55 摘要节（用户裁定删除范围 6 项 + 关键事实表 + F1~F7 / 4 op + 完成标准 + 风险 + 裁定 A1~A8）；变更汇总补一行 |
 | 2026-10-02 | openfeel-planner | CI run #51（`f178600`）失败实测 + 用户需求「v1.1.2-stage-57：发布收尾（CI 修复 + CI 可观测性 + README 更新）」 | 阶段概览新增 stage-57；依赖图改「stage-56 → stage-57 → `npm publish`」、执行顺序追加「56 → 57」；新增 stage-57 摘要节（CI 失败证据 + T32 根因 + C1~C4 / 3 op + 完成标准 + 风险 + 裁定 A-C1-1~A-C4-2） |
+| 2026-10-02 | openfeel-planner | CI run #52（`cacbefb`）失败实测（**已决定性复现**）+ 用户需求「v1.1.2-stage-59：修复 CI 环境守卫误报」 | 阶段概览新增 stage-59；依赖图改「stage-58 → stage-59 → Feel 推送 → CI 转绿 → `npm publish`」、执行顺序追加「58 → 59」；新增 `plan/v1/stage-59/plan.md`（根因：stage-58 运行日志使守卫窗口内 `--version`/`lint i18n` 写 `~/.openfeel` → 误报；M1~M6 精确改动：3 处 `OPENFEEL_LOG=0` + `Env snapshot` 下移 + 三态加固；2 op；WSL 三场景对照验证；裁定 A-1~A-8） |

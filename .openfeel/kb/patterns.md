@@ -2641,6 +2641,8 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 
 **窗口纪律**：快照点须**紧贴被测命令**（`snapshot → npm test → guard`）；窗口内的其它 step 若写全局则**漏检**（本案 `Version consistency guard` / `lint i18n` 实测只读，故可容忍；后续新增 step 须重新评估窗口）。
 
+> **更新于 2026-10-02（v1.1.2-stage-59）**：上句「`Version consistency guard` / `lint i18n` 实测只读，故可容忍」**已被推翻**——stage-58 令运行日志「默认开启」后，二者每次运行都写 `~/.openfeel/cli/logs/`+`locks/`，窗口内 `ABSENT→存在` → CI `Env guard` **误报**（run #52）。窗口纪律升级为：① 窗口**内每个 step 必须显式隔离（如注入 `env: OPENFEEL_LOG: '0'`）或证明无副作用**，不能仅凭一次「只读」观测容忍；② `Env snapshot` 下移使其**紧贴 `Test`**（窗口恰为目标范围），after 快照仍在 `Test`+`Coverage` 之后；③ 快照**三态化**——`ABSENT`（不存在）/ `EXISTS-EMPTY`（存在但空清单，固定标记，不再落空文件）/ 逐文件 sha256 清单，消除「空目录 vs 不存在」表示混淆。三场景对照（S1 修复后 PASS / S2 仅下移 PASS / S3 修复前 FAIL 复现 #52）缺一不可。详见 kb/troubleshooting.md #CI 环境守卫误报。
+
 **本地验证法**（GH Actions 无法本地实跑）：① `node -e "require('yaml').parse(...)"` **YAML 语法自检**；② 把守卫逻辑**逐字抽取**为脚本，在隔离路径演练 6 场景（全 ABSENT / 未变 / 改内容 / 新增 / 删目录 / 仅 touch）；③ 真实 runner 行为留交接项，推送 PR 后由 CI 实测。
 
 **参见：** v1.1.2-stage-48 op-002、`test-v1.1.2-stage-48-report-2026-09-29.md` §三 B-4/B-5、`REV-v1.1.2-stage-48` REV-009（覆盖窗口观察）、kb/patterns.md #全局路径测试的单点 mock 隔离模式、kb/troubleshooting.md #测试以「保存/恢复」代替 homedir mock（隔离审计四步法）

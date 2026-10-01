@@ -5,8 +5,10 @@
  * 隔离：install 用例全部注入 fake stream，不触碰真实流；动态 import + resetModules 隔离模块级 installed 状态。
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import iconv from 'iconv-lite';
 import {
   normalizeEncoding,
@@ -16,6 +18,13 @@ import {
 
 const REPO_ROOT = process.cwd();
 const SRC_PATH = join(REPO_ROOT, 'src', 'cli', 'output-encoding.ts');
+const BIN_PATH = join(REPO_ROOT, 'bin', 'openfeel.js');
+/** 依赖构建产物 dist/cli/output-encoding.js（缺则显式 skip，门禁须核对 0 skipped） */
+const HAS_DIST_ENCODING = existsSync(join(REPO_ROOT, 'dist', 'cli', 'output-encoding.js'));
+/** GBK 编码的「流水线」字节 */
+const GBK_LIUSHUIXIAN = Buffer.from('c1f7cbaecfdf', 'hex');
+/** 严格 UTF-8 解码器（非法字节抛错） */
+const FATAL_UTF8 = new TextDecoder('utf-8', { fatal: true });
 
 /** fake 输出流：记录 write 调用的原始参数 */
 interface FakeStream {
@@ -258,4 +267,86 @@ describe('C-1 冲突单测（--json 旁路权威）', () => {
       }),
     ).toBe('utf8');
   });
+});
+
+describe('E-2 spawn E2E（真实子进程，防恒绿）', () => {
+  /**
+   * 构造隔离 spawn 环境：HOME 隔离 + 关闭运行日志（避免写真实 ~/.openfeel）。
+   * cwd=仓库根（与 plan E-2「临时目录」口径的偏差已声明；保证 flow.json 可用）。
+   */
+  function spawnEnv(home: string, encoding: string): NodeJS.ProcessEnv {
+    return {
+      ...process.env,
+      USERPROFILE: home,
+      HOME: home,
+      XDG_CONFIG_HOME: home,
+      OPENFEEL_LOG: '0',
+      OPENFEEL_ENCODING: encoding,
+    };
+  }
+
+  /** 运行 bin 子进程并以 Buffer 捕获 stdout */
+  function runBin(home: string, args: string[], encoding: string) {
+    return spawnSync(process.execPath, [BIN_PATH, ...args], {
+      cwd: REPO_ROOT,
+      timeout: 30000,
+      env: spawnEnv(home, encoding),
+    });
+  }
+
+  it.skipIf(!HAS_DIST_ENCODING)(
+    'E-2① 正控：非 json flow phases + GBK → GBK 字节且非合法 UTF-8',
+    () => {
+      const home = mkdtempSync(join(tmpdir(), 'openfeel-enc-home-'));
+      try {
+        const r = runBin(home, ['flow', 'phases'], 'gbk');
+        expect(r.status).toBe(0);
+        const out = r.stdout as Buffer;
+        expect(Buffer.isBuffer(out)).toBe(true);
+        // 真实转码链运行 → 含 GBK「流水线」字节
+        expect(out.includes(GBK_LIUSHUIXIAN)).toBe(true);
+        // 非法 UTF-8（若被短路为 UTF-8 则 fatal 不抛 → 断言失败，不可恒绿）
+        expect(() => FATAL_UTF8.decode(out)).toThrow();
+      } finally {
+        rmSync(home, { recursive: true, force: true });
+      }
+    },
+    40000,
+  );
+
+  it.skipIf(!HAS_DIST_ENCODING)(
+    'E-2② C-2 旁路回归：--json + GBK env → 合法 UTF-8 / JSON.parse / 5 键',
+    () => {
+      const home = mkdtempSync(join(tmpdir(), 'openfeel-enc-home-'));
+      try {
+        const r = runBin(home, ['flow', 'phases', '--json'], 'gbk');
+        expect(r.status).toBe(0);
+        const out = r.stdout as Buffer;
+        const text = FATAL_UTF8.decode(out); // 合法 UTF-8 不抛
+        const j = JSON.parse(text) as { schemaVersion: number };
+        expect(j.schemaVersion).toBe(1);
+        expect(Object.keys(j).length).toBe(5);
+      } finally {
+        rmSync(home, { recursive: true, force: true });
+      }
+    },
+    40000,
+  );
+
+  it.skipIf(!HAS_DIST_ENCODING)(
+    'E-2③ 基线：flow phases + utf8 env → 合法 UTF-8 含「流水线」',
+    () => {
+      const home = mkdtempSync(join(tmpdir(), 'openfeel-enc-home-'));
+      try {
+        const r = runBin(home, ['flow', 'phases'], 'utf8');
+        expect(r.status).toBe(0);
+        const out = r.stdout as Buffer;
+        const text = FATAL_UTF8.decode(out);
+        expect(text).toContain('流水线');
+      } finally {
+        rmSync(home, { recursive: true, force: true });
+      }
+    },
+    40000,
+  );
 });

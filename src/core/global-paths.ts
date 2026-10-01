@@ -84,3 +84,8 @@ export function getGlobalSchemasDir(): string {
 export function getGlobalBackupRootPath(): string {
   return join(homedir(), '.openfeel', 'backup');
 }
+
+/** CLI 运行日志目录（~/.openfeel/cli/logs；跨项目诊断日志，stage-58） */
+export function getCliLogsDir(): string {
+  return join(homedir(), '.openfeel', 'cli', 'logs');
+}

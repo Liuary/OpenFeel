@@ -564,6 +564,9 @@ export const help: I18nDomain = {
   'openfeel':              { key: 'help.openfeel',              zh: 'AI Agent 开发流程治理 CLI 工具', en: '' },
   'global.noColor':        { key: 'help.global.noColor',        zh: '禁用彩色输出（亦可通过环境变量 NO_COLOR=1）', en: '' },
   'global.encoding':       { key: 'help.global.encoding',       zh: '输出编码（utf8|gbk|auto，默认 auto：Windows 非 TTY 下按 chcp 自适应；--json 恒 UTF-8）', en: '' },
+  'global.logFile':        { key: 'help.global.logFile',        zh: '运行日志文件路径（默认 ~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log）', en: '' },
+  'global.noLog':          { key: 'help.global.noLog',          zh: '关闭运行日志（亦可通过 OPENFEEL_LOG=0 / OPENFEEL_NO_LOG=1）', en: '' },
+  'global.debug':          { key: 'help.global.debug',          zh: '记录 debug 级日志（默认仅 info/warn/error）', en: '' },
   'openfeel.version':      { key: 'help.openfeel.version',      zh: '输出版本号',                      en: '' },
 
   // init

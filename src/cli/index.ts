@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import { t, getCliLang, hasKey } from '../core/i18n.js';
 import { isFlowConcurrentError } from '../core/flow-manager.js';
 import { handleConcurrentConflict } from '../commands/shared/errors.js';
+import { runtimeLog } from '../core/runtime-log.js';
 
 // 读取 package.json 获取版本号
 const require = createRequire(import.meta.url);
@@ -23,7 +24,11 @@ program
   // B7-2：全局 --no-color（negate 选项；描述在注册时按当前语言求值，applyHelpI18n 会跳过 negate）
   .option('--no-color', t('help.global.noColor', getCliLang(process.cwd())))
   // stage-58 A-5：全局 --encoding（默认 auto；仅用于 --help 展示 + 防 commander 未知选项报错；实际解析从 argv/env 读取）
-  .option('--encoding <encoding>', t('help.global.encoding', getCliLang(process.cwd())), 'auto');
+  .option('--encoding <encoding>', t('help.global.encoding', getCliLang(process.cwd())), 'auto')
+  // stage-58 B-4：运行日志全局选项
+  .option('--log-file <path>', t('help.global.logFile', getCliLang(process.cwd())))
+  .option('--no-log', t('help.global.noLog', getCliLang(process.cwd())))
+  .option('--debug', t('help.global.debug', getCliLang(process.cwd())));
 
 /**
  * 是否启用彩色输出（B7-1，单一判定入口）。
@@ -173,6 +178,9 @@ export const EXIT_CONCURRENT = 2;
 
 /** 统一 CLI 错误处理：识别 flow.json 并发写冲突并输出可重试提示（单点，T38） */
 export function handleCliError(err: unknown): never {
+  // stage-58 B-6：记录「命令处理中抛出的异常」。error 级语义边界（REV-002）：
+  // commander 解析期错误（未知命令/未知选项/缺参）经 program.error() 直接 process.exit(1)，不抛异常、不达此处 → 不入日志。
+  runtimeLog('error', 'cli error: ' + (err instanceof Error ? err.message : String(err)));
   if (isFlowConcurrentError(err)) {
     handleConcurrentConflict(err, getCliLang(process.cwd()));
   }
@@ -181,11 +189,15 @@ export function handleCliError(err: unknown): never {
 
 /** CLI 启动入口：包裹 program.parse，统一处理并发写冲突 */
 export function runCli(): void {
+  // stage-58 B-6：命令（argv）+ 结果入运行日志；不记录 stdout 内容。
+  // 注：--help/--version 由 commander 输出后直接 exit → 不记「cli done」；错误路径经 handleCliError 抛出 → 亦不记「cli done」。
+  runtimeLog('info', 'cli start: ' + process.argv.slice(2).join(' '));
   try {
     program.parse();
   } catch (err) {
     handleCliError(err);
   }
+  runtimeLog('info', 'cli done exit=' + (process.exitCode ?? 0));
 }
 
 export { program };

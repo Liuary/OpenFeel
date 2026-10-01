@@ -1210,7 +1210,11 @@ export class FlowManager {
     const actualTrigger = triggeredBy ?? 'flow-manager';
 
     // 校验 stageName 存在
-    const stage = this.data.stages[stageName];
+    // REV-005：归一化 stageId（短名 → 全名）；此后函数体内一律使用 key（防半归一化）
+    // 双键回退：兼容以短名建键的存量 / 测试数据（归一化键不存在时回退原始键）
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const key = this.data.stages[normalized] ? normalized : stageName;
+    const stage = this.data.stages[key];
     if (!stage) {
       throw new Error(`阶段 '${stageName}' 不存在`);
     }
@@ -1233,7 +1237,7 @@ export class FlowManager {
     // REV 闭环：blocking REV > 0 时拒绝推进到 done（--force 仅降级警告）
     if (targetPhase === 'done') {
       const stageReviews = this.data!.reviews.filter(
-        (r) => r.op.startsWith(stageName + '.') || r.op === stageName,
+        (r) => r.op.startsWith(key + '.') || r.op === key,
       );
       const blockingOpen = stageReviews.filter(
         (r) => r.blocking !== false && r.status === 'open',
@@ -1252,10 +1256,10 @@ export class FlowManager {
     const fromPhase = stage.phase;
 
     // 更新 stage phase
-    this.data.stages[stageName].phase = targetPhase;
+    this.data.stages[key].phase = targetPhase;
 
     // Checkpoint 自动快照：phase 推进成功后保存 flow.json 快照到 .openfeel/checkpoints/（失败不阻塞推进）
-    this.saveCheckpoint(stageName, targetPhase);
+    this.saveCheckpoint(key, targetPhase);
 
     // 日志强制落档骨架：关键 phase 节点自动创建骨架文件
     const SKELETON_PHASES: PipelinePhase[] = [
@@ -1265,11 +1269,11 @@ export class FlowManager {
       'archiving',
     ];
     if (SKELETON_PHASES.includes(targetPhase)) {
-      this.createLogSkeleton(stageName, targetPhase);
+      this.createLogSkeleton(key, targetPhase);
     }
 
     // 同步更新 pipeline.current：单一 owner syncCurrentOp（未命中置空 op，修复跨阶段悬空 T1）
-    this.syncCurrentOp(stageName);
+    this.syncCurrentOp(key);
 
     // 同步更新 pipeline.phase：所有 stage 均 done 时置 'done'，否则 'active'（P3 全量 done 判定）
     // 说明（T6）：pipeline.phase 无条件覆写，手工 `paused` 属**软状态** —— 阶段推进即视为恢复，
@@ -1284,7 +1288,7 @@ export class FlowManager {
       time: '',
       agent: actualTrigger,
       action: 'advance_stage_phase',
-      detail: { stageName, from: fromPhase, to: targetPhase },
+      detail: { stageName: key, from: fromPhase, to: targetPhase },
     });
 
     // REV-003: advance_stage_phase 改为 endStage 时批量聚合，取消逐条写入
@@ -1300,12 +1304,12 @@ export class FlowManager {
 
     // 自动记录阶段计时：首次状态变更时启动
     if (!stage.stats || !stage.stats.start_time) {
-      this.startStage(stageName);
+      this.startStage(key);
     }
 
     // 阶段完成时自动结束计时
     if (targetPhase === 'done' && prevStatus !== 'done') {
-      this.endStage(stageName);
+      this.endStage(key);
       // 归档 git commit 移出本方法：必须在 flow.json save 之后执行（否则 commit 不含本次 phase 变更）。
       // 返回 true 由命令层在 save 后调用 autoCommitOnDone。
       return true;
@@ -1654,7 +1658,11 @@ export class FlowManager {
    * @returns 路径与原因（no-path/ambiguous/depth-exceeded 供命令层报错；already-at-target 按 no-op）
    */
   findPhasePath(stageName: string, to: string): PhasePathResult {
-    const start = this.data?.stages[stageName]?.phase;
+    // REV-005：归一化 stageId（短名 → 全名），与 setStageDeps / plan scheme * 同范式
+    // 双键回退：兼容以短名建键的存量 / 测试数据（归一化键不存在时回退原始键）
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const key = this.data?.stages[normalized] ? normalized : stageName;
+    const start = this.data?.stages[key]?.phase;
     if (!start) {
       return { path: [], reason: 'no-path' };
     }
@@ -1741,7 +1749,11 @@ export class FlowManager {
     if (!this.data) return null;
     const targetStageName = stageName || this.data.pipeline.current.stage;
     if (!targetStageName) return null;
-    const stage = this.data.stages[targetStageName];
+    // REV-005：归一化 stageId（短名 → 全名）；current.stage 本身为全名时归一化为恒等
+    // 双键回退：兼容以短名建键的存量 / 测试数据
+    const normalized = normalizeStageId(targetStageName) ?? targetStageName;
+    const key = this.data.stages[normalized] ? normalized : targetStageName;
+    const stage = this.data.stages[key];
     return stage?.phase ?? null;
   }
 
@@ -2860,7 +2872,11 @@ export class FlowManager {
     if (!this.data) {
       return { fixed: false, detail: 'flow.json 未加载' };
     }
-    const stage = this.data.stages[stageName];
+    // REV-005：归一化 stageId（短名 → 全名），否则短名调用会静默返回「不存在」
+    // 双键回退：兼容以短名建键的存量 / 测试数据
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const key = this.data.stages[normalized] ? normalized : stageName;
+    const stage = this.data.stages[key];
     if (!stage) {
       return { fixed: false, detail: `阶段 '${stageName}' 不存在` };
     }

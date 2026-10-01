@@ -1959,6 +1959,66 @@ describe('FlowManager', () => {
   });
 
   // ═══════════════════════════════════════
+  // op-012 REV-005：短名 stage 归一化修复
+  // ═══════════════════════════════════════
+
+  describe('op-012 REV-005 短名归一化', () => {
+    /** 构造以全名 v1.0.0-stage-01 建键的 flow 数据（模拟真实 flow.json） */
+    const fullKeyData = (phase: PipelinePhase = 'plan_pending'): FlowData => {
+      const base = makeTestFlowData();
+      return {
+        ...base,
+        pipeline: { ...base.pipeline, current: { stage: 'v1.0.0-stage-01', op: '' } },
+        stages: {
+          'v1.0.0-stage-01': { ...base.stages['stage-01'], name: 'v1.0.0-stage-01', phase },
+        },
+      };
+    };
+
+    it('C1: findPhasePath 短名与全名返回完全一致（reason=ok，8 跳）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(fullKeyData());
+      const short = mgr.findPhasePath('stage-01', 'done');
+      const full = mgr.findPhasePath('v1.0.0-stage-01', 'done');
+      expect(short).toEqual(full);
+      expect(short.reason).toBe('ok');
+      expect(short.path).toHaveLength(8);
+    });
+
+    it('C2: getAvailablePhases 短名与全名数组相等且非空', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(fullKeyData());
+      const short = mgr.getAvailablePhases('stage-01');
+      const full = mgr.getAvailablePhases('v1.0.0-stage-01');
+      expect(short).toEqual(full);
+      expect(short.length).toBeGreaterThan(0);
+    });
+
+    it('C3: autoRepairInconsistency 短名可触发修复且与全名一致', () => {
+      const mgr = new FlowManager(tmpDir);
+      const data = fullKeyData('exec_running');
+      data.stages['v1.0.0-stage-01'].status = 'done';
+      mgr.setData(data);
+      const short = mgr.autoRepairInconsistency('stage-01', { dryRun: true });
+      const full = mgr.autoRepairInconsistency('v1.0.0-stage-01', { dryRun: true });
+      expect(short).toEqual(full);
+      expect(short.fixed).toBe(true);
+    });
+
+    it('C4: advanceStagePhase 短名不抛错且与全名结果一致', () => {
+      const shortMgr = new FlowManager(tmpDir);
+      shortMgr.setData(fullKeyData('plan_pending'));
+      expect(() => shortMgr.advanceStagePhase('stage-01', 'plan_passed' as PipelinePhase)).not.toThrow();
+      expect(shortMgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('plan_passed');
+
+      const fullMgr = new FlowManager(tmpDir);
+      fullMgr.setData(fullKeyData('plan_pending'));
+      fullMgr.advanceStagePhase('v1.0.0-stage-01', 'plan_passed' as PipelinePhase);
+      expect(fullMgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('plan_passed');
+    });
+  });
+
+  // ═══════════════════════════════════════
   // op-005 draft（B4 窄兼容）
   // ═══════════════════════════════════════
 

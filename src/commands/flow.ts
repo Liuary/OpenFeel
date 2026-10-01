@@ -629,10 +629,13 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
       }
 
+      // REV-005：命令层归一化（短名 → 全名），与 plan.ts / flow.ts 其它 stage 解析点同范式
+      const stageArg = normalizeStageId(options.stage) ?? options.stage;
+
       // 自动修复 phase/status 不一致（在 validate() 前执行）
       if (options.stage) {
         // B1 修复：dry-run 走预览模式（不写内存/不写盘），仅在非 dry-run 时 save()
-        const repairResult = mgr.autoRepairInconsistency(options.stage, { dryRun: options.dryRun });
+        const repairResult = mgr.autoRepairInconsistency(stageArg, { dryRun: options.dryRun });
         if (repairResult.fixed) {
           console.log(
             options.dryRun
@@ -680,11 +683,11 @@ export function registerFlowCommand(program: Command): void {
       // - 已在 to → no-op 成功
       let phasePath: string[] = [options.to];
       if (!options.force) {
-        const pathResult = mgr.findPhasePath(options.stage, options.to);
+        const pathResult = mgr.findPhasePath(stageArg, options.to);
         if (pathResult.reason === 'no-path' || pathResult.reason === 'ambiguous' || pathResult.reason === 'depth-exceeded') {
           const data = mgr.getData();
-          const currentPhase = data?.stages[options.stage || '']?.phase ?? t('common.unknown', lang);
-          const availableTargets = mgr.getAvailablePhases(options.stage);
+          const currentPhase = data?.stages[stageArg]?.phase ?? t('common.unknown', lang);
+          const availableTargets = mgr.getAvailablePhases(stageArg);
           if (pathResult.reason === 'ambiguous') {
             console.error(t('flow.advance.ambiguousTmpl', lang));
           } else if (pathResult.reason === 'depth-exceeded') {
@@ -697,7 +700,7 @@ export function registerFlowCommand(program: Command): void {
             }));
           }
           // 保留既有跳转诊断（可达目标）——与现状一致
-          console.error(t('flow.advance.errorPhaseJumpTmpl', lang, { stage: options.stage || '', to: options.to }));
+          console.error(t('flow.advance.errorPhaseJumpTmpl', lang, { stage: stageArg, to: options.to }));
           console.error(t('flow.advance.currentPhaseTmpl', lang, { phase: currentPhase }));
           if (availableTargets.length > 0) {
             console.error(t('flow.advance.availableTargets', lang) + `: [${availableTargets.join(', ')}]`);
@@ -711,7 +714,7 @@ export function registerFlowCommand(program: Command): void {
         if (pathResult.reason === 'already-at-target') {
           // 已在目标 phase → no-op 成功
           if (!options.quiet) {
-            console.log(t('flow.advance.alreadyAtTargetTmpl', lang, { stage: options.stage || '', to: options.to }));
+            console.log(t('flow.advance.alreadyAtTargetTmpl', lang, { stage: stageArg, to: options.to }));
           }
           return;
         }
@@ -721,7 +724,7 @@ export function registerFlowCommand(program: Command): void {
       // 安全提示：跳过审查直接 done（保持既有条件）
       const SKIP_WARN_PHASES: PipelinePhase[] = ['exec_running', 'review_pending'];
       if (options.to === 'done' && options.stage) {
-        const stage = (mgr.getData()?.stages || {})[options.stage];
+        const stage = (mgr.getData()?.stages || {})[stageArg];
         if (stage && SKIP_WARN_PHASES.includes(stage.phase as PipelinePhase)) {
           console.warn(t('flow.advance.warnSkipReview', lang));
         }
@@ -729,7 +732,7 @@ export function registerFlowCommand(program: Command): void {
 
       // REV 闭环（命令层兜底）：推进到 done 时检查 blocking REV（单步入口；多步循环每步后另复检，B5-3）
       if (options.to === 'done' && options.stage) {
-        const blockingOpen = assertNoBlockingOpenRev(mgr, options.stage, lang);
+        const blockingOpen = assertNoBlockingOpenRev(mgr, stageArg, lang);
         if (blockingOpen.length > 0) {
           if (options.force) {
             console.warn(t('flow.advance.forceRevRefused', lang));
@@ -741,8 +744,8 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
-      // 起始 phase（供多步逐步输出）
-      const startPhase = mgr.getData()?.stages[options.stage]?.phase ?? t('common.unknown', lang);
+      // 起始 phase（供多步逐步输出）；REV-005/REV-006：以归一化后的 stageArg 索引
+      const startPhase = mgr.getData()?.stages[stageArg]?.phase ?? t('common.unknown', lang);
 
       // --dry-run：仅验证合法性，不实际修改 flow.json（B5-2：多步时打印完整路径）
       if (options.dryRun) {
@@ -750,7 +753,7 @@ export function registerFlowCommand(program: Command): void {
           console.warn(t('flow.advance.dryRunForceWarn', lang));
         }
         console.log(t('flow.advance.dryRunTitle', lang));
-        console.log(`  ` + t('common.stage', lang) + `: ${options.stage}`);
+        console.log(`  ` + t('common.stage', lang) + `: ${stageArg}`);
         console.log(`  ` + t('flow.advance.dryRunFrom', lang) + `: ${startPhase}`);
         console.log(`  ` + t('flow.advance.dryRunTo', lang) + `: ${options.to}`);
         if (phasePath.length > 1) {
@@ -770,7 +773,7 @@ export function registerFlowCommand(program: Command): void {
         const next = phasePath[i];
         let archived = false;
         try {
-          archived = mgr.advanceStagePhase(options.stage, next as PipelinePhase, 'cli');
+          archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli');
         } catch (err: unknown) {
           if (totalSteps > 1) {
             const remaining = phasePath.slice(i).join(t('flow.advance.pathArrow', lang));
@@ -786,12 +789,12 @@ export function registerFlowCommand(program: Command): void {
         mgr.save();
         // 归档 commit 必须在 flow.json save 之后执行，确保 commit 包含本次 phase 变更
         if (archived) {
-          mgr.autoCommitOnDone(options.stage);
+          mgr.autoCommitOnDone(stageArg);
         }
         // 多步时逐步输出（单步保持既有静默，不新增输出）
         if (totalSteps > 1 && !options.quiet) {
           console.log(t('flow.advance.stepOkTmpl', lang, {
-            stage: options.stage || '',
+            stage: stageArg,
             from: i > 0 ? phasePath[i - 1] : startPhase,
             to: next,
           }));
@@ -800,7 +803,7 @@ export function registerFlowCommand(program: Command): void {
         // 等价论证：addAutoFixReview 强制 status='resolved'（恒非 blocking open）且 advance 路径不创建 review，
         // 故此复检为**防御性加固**（防未来语义漂移）。
         if (totalSteps > 1) {
-          const blockingOpen = assertNoBlockingOpenRev(mgr, options.stage, lang);
+          const blockingOpen = assertNoBlockingOpenRev(mgr, stageArg, lang);
           if (blockingOpen.length > 0) {
             const remainingPath = phasePath.slice(i + 1);
             console.error(t('flow.advance.blockedByRevTmpl', lang, {
@@ -815,7 +818,7 @@ export function registerFlowCommand(program: Command): void {
 
       // 成功确认（单步与多步统一）；--quiet 完全静默
       if (!options.quiet) {
-        console.log(t('flow.advance.okTmpl', lang, { stage: options.stage || '', to: options.to }));
+        console.log(t('flow.advance.okTmpl', lang, { stage: stageArg, to: options.to }));
       }
 
       // git 脏区检查（安全网）：默认仅 --to done 时提示；--quiet / 非 done → 完全跳过（含跳过 git 子进程）

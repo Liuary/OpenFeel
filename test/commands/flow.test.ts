@@ -1013,6 +1013,54 @@ describe('flow 命令（stage-41）', () => {
     expect(after.reviews.length).toBe(reviewsBefore);
   });
 
+  // ── stage-52/op-012：REV-005 短名 stage 归一化（短名 = 全名） ──
+
+  it('op-012/REV-005: 短名与全名 advance --dry-run 输出逐字相等（8 跳，exit 0）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-01');
+    mgr.save();
+
+    logMock.mockClear();
+    exitMock.mockClear();
+    await safeParse(['flow', 'advance', '--stage', 'stage-01', '--to', 'done', '--dry-run']);
+    const shortOut = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(shortOut).toContain(
+      'plan_pending → plan_passed → scheme_pending → scheme_passed → exec_running → review_pending → review_passed → archiving → done',
+    );
+
+    logMock.mockClear();
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'done', '--dry-run']);
+    const fullOut = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(fullOut).toBe(shortOut);
+  });
+
+  it('op-012/REV-005: 短名多步推进实测（每步一条日志，与全名一致）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-02');
+    mgr.addStage('v1.0.0-stage-03');
+    mgr.save();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'stage-02', '--to', 'exec_running']);
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-03', '--to', 'exec_running']);
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(flow.stages['v1.0.0-stage-02'].phase).toBe('exec_running');
+    expect(flow.stages['v1.0.0-stage-03'].phase).toBe('exec_running');
+    const shortLogs = flow.log.filter(
+      (l: { action: string; detail: { stageName?: string } }) =>
+        l.action === 'advance_stage_phase' && l.detail.stageName === 'v1.0.0-stage-02',
+    );
+    const fullLogs = flow.log.filter(
+      (l: { action: string; detail: { stageName?: string } }) =>
+        l.action === 'advance_stage_phase' && l.detail.stageName === 'v1.0.0-stage-03',
+    );
+    expect(shortLogs).toHaveLength(4);
+    expect(fullLogs).toHaveLength(4);
+  });
+
   // ── stage-52/op-005：B3 flow ops list + B4-5 attempt draft 守卫 ──
 
   it('op-005/B3: flow ops list 显示 state + 填充度', async () => {

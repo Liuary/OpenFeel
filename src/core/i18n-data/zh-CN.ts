@@ -159,6 +159,13 @@ export const flow: I18nDomain = {
   'attempt.autoReplan':         { key: 'flow.attempt.autoReplan',         zh: '→ 已自动回退到 scheme_pending，请重新规划方案', en: '' },
   'attempt.currentOpTmpl':      { key: 'flow.attempt.currentOpTmpl',      zh: '当前指针：{stage}.{op}',                en: '' },
   'attempt.currentOpEmptyTmpl': { key: 'flow.attempt.currentOpEmptyTmpl', zh: '当前指针：{stage}.（无待执行 op）',      en: '' },
+  'attempt.draftRefusedTmpl':   { key: 'flow.attempt.draftRefusedTmpl',   zh: '{opId} 处于 draft（未发布），无法记录执行结果；请先运行 openfeel plan scheme publish {stage} {opId}', en: '' },
+
+  // flow ops（B3-1）
+  'ops.title':                  { key: 'flow.ops.title',                  zh: '操作方案：',                              en: '' },
+  'ops.emptyWarningTmpl':       { key: 'flow.ops.emptyWarningTmpl',       zh: '  ⚠️ {opId} 模板未填充（存在「- [ ] 待补充」）', en: '' },
+  'ops.groupDraft':             { key: 'flow.ops.groupDraft',             zh: '未发布（draft）：',                        en: '' },
+  'ops.groupActive':            { key: 'flow.ops.groupActive',            zh: '已发布：',                                en: '' },
 
   // flow log
   'log.noInit':                 { key: 'flow.log.noInit',                 zh: '流水线未初始化，无日志',                   en: '' },
@@ -234,6 +241,8 @@ export const flow: I18nDomain = {
   'health.hasFailures':             { key: 'flow.health.hasFailures',             zh: '⚠️  存在不通过项，请检查上述错误',         en: '' },
   'health.quickMode':               { key: 'flow.health.quickMode',               zh: '（快速模式：仅检查关键项）',              en: '' },
   'health.orphanOps':               { key: 'flow.health.orphanOps',               zh: '孤儿操作方案',                            en: '' },
+  'health.emptyTemplate':           { key: 'flow.health.emptyTemplate',           zh: '空模板',                                  en: '' },
+  'health.emptyTemplateDetail':     { key: 'flow.health.emptyTemplateDetail',     zh: '{n} 个操作方案模板未填充：{items}',        en: '' },
   'health.orphanOpsDetail':         { key: 'flow.health.orphanOpsDetail',         zh: '键孤儿 {n} 个、文件孤儿 {m} 个；运行 flow repair 查看详情（按裁定不提供自动清理）', en: '' },
   'health.fixTitle':                { key: 'flow.health.fixTitle',                zh: '状态对账：',                              en: '' },
   'health.fixItemTmpl':             { key: 'flow.health.fixItemTmpl',             zh: '  {stage}: {from} → {to}（{result}）',     en: '' },
@@ -434,6 +443,10 @@ export const plan: I18nDomain = {
   'scheme.remove.notFoundTmpl':  { key: 'plan.scheme.remove.notFoundTmpl',  zh: '未找到：阶段 {stage} 或操作方案 {opId}', en: '' },
   'scheme.implicitRegisterTmpl': { key: 'plan.scheme.implicitRegisterTmpl', zh: '阶段 {stage} 未注册，已按注册语义补齐阶段骨架（overview.md / status.md）', en: '' },
   'scheme.skeletonWarnTmpl':     { key: 'plan.scheme.skeletonWarnTmpl',     zh: '阶段骨架补建失败（{err}），已跳过；请手动创建 overview.md / status.md', en: '' },
+  'scheme.publish.okTmpl':       { key: 'plan.scheme.publish.okTmpl',       zh: '已发布 {opId}（draft → pending）',         en: '' },
+  'scheme.publish.emptyTmpl':    { key: 'plan.scheme.publish.emptyTmpl',    zh: '模板未填充，禁止发布：{opId}（请先补全「- [ ] 待补充」）', en: '' },
+  'scheme.publish.notDraftTmpl': { key: 'plan.scheme.publish.notDraftTmpl', zh: '{opId} 不是 draft 状态，无需发布',          en: '' },
+  'scheme.publish.notFoundTmpl': { key: 'plan.scheme.publish.notFoundTmpl', zh: '未找到：阶段 {stage} 或操作方案 {opId}',    en: '' },
 };
 
 /* ==================== knowledge 域：知识库命令 ==================== */
@@ -572,6 +585,10 @@ export const help: I18nDomain = {
   'flow.attempt':          { key: 'help.flow.attempt',          zh: '记录操作执行结果', en: '' },
   'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '操作 ID（如 stage-01.op-001）', en: '' },
   'flow.attempt.result':   { key: 'help.flow.attempt.result',   zh: '执行结果（pass 或 fail）', en: '' },
+  'flow.ops':              { key: 'help.flow.ops',              zh: '操作方案视图', en: '' },
+  'flow.ops.list':         { key: 'help.flow.ops.list',         zh: '列出操作方案（含状态与模板填充度）', en: '' },
+  'flow.ops.list.stage':   { key: 'help.flow.ops.list.stage',   zh: '仅列出指定阶段', en: '' },
+  'flow.ops.list.json':    { key: 'help.flow.ops.list.json',    zh: '以 JSON 输出', en: '' },
   'flow.log':              { key: 'help.flow.log',              zh: '显示最近操作日志', en: '' },
   'flow.log.last':         { key: 'help.flow.log.last',         zh: '显示最近 n 条（默认 10）', en: '' },
   'flow.review':           { key: 'help.flow.review',           zh: '管理审查条目', en: '' },
@@ -639,6 +656,7 @@ export const help: I18nDomain = {
   'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '创建操作方案', en: '' },
   'plan.scheme.create.argstage': { key: 'help.plan.scheme.create.argstage', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
   'plan.scheme.create.argtitle': { key: 'help.plan.scheme.create.argtitle', zh: '方案标题', en: '' },
+  'plan.scheme.create.draft': { key: 'help.plan.scheme.create.draft', zh: '以 draft（未发布）状态创建；填充后需 plan scheme publish 发布', en: '' },
   'plan.scheme.list':      { key: 'help.plan.scheme.list',      zh: '列出操作方案（可选按阶段过滤）', en: '' },
   'plan.scheme.list.argstage': { key: 'help.plan.scheme.list.argstage', zh: '阶段名（可选）', en: '' },
   'plan.scheme.remove':    { key: 'help.plan.scheme.remove',    zh: '注销操作方案（仅从 flow.json 删除注册键，不删除 op 模板文件）', en: '' },
@@ -646,6 +664,9 @@ export const help: I18nDomain = {
   'plan.scheme.remove.dryRun': { key: 'help.plan.scheme.remove.dryRun', zh: '仅预览，不写盘', en: '' },
   'plan.scheme.remove.argstage': { key: 'help.plan.scheme.remove.argstage', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
   'plan.scheme.remove.argopId':  { key: 'help.plan.scheme.remove.argopId',  zh: '操作方案 ID（如 op-001 或完整 stage.op-001）', en: '' },
+  'plan.scheme.publish':    { key: 'help.plan.scheme.publish',    zh: '将 draft 操作方案发布为执行态（draft → pending）', en: '' },
+  'plan.scheme.publish.argstage': { key: 'help.plan.scheme.publish.argstage', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
+  'plan.scheme.publish.argopId':  { key: 'help.plan.scheme.publish.argopId',  zh: '操作方案 ID（如 op-001 或完整 stage.op-001）', en: '' },
 
   // stage
   'stage':                 { key: 'help.stage',                 zh: '工作阶段状态管理（status.md 原子操作）', en: '' },

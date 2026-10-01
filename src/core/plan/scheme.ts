@@ -5,7 +5,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { FlowManager, isFlowConcurrentError, type PipelinePhase, type Op } from '../flow-manager.js';
+import { FlowManager, isFlowConcurrentError, EMPTY_TEMPLATE_MARKER, type PipelinePhase, type Op } from '../flow-manager.js';
 import { parseStageId, validateStageId, findStageDirConflict, normalizeStageId } from './path.js';
 import { ensureStageSkeleton } from './stage.js';
 import { t, getCliLang } from '../i18n.js';
@@ -43,13 +43,13 @@ function generateSchemeTemplate(opId: string, stageName: string, title: string):
 ${title}
 
 ## 实施步骤
-- [ ] 待补充
+${EMPTY_TEMPLATE_MARKER}
 
 ## 产出文件
 - 待补充
 
 ## 自测清单
-- [ ] 待补充
+${EMPTY_TEMPLATE_MARKER}
 
 ## 修正记录
 | 次数 | 时间 | 问题 | 修正内容 |
@@ -118,6 +118,7 @@ function syncToFlowJson(
   opId: string,
   title: string,
   onImplicitRegister?: (info: ImplicitRegisterInfo) => void,
+  draft?: boolean,
 ): void {
   const flowJsonPath = resolve(projectPath, '.openfeel', 'flow.json');
   if (!existsSync(flowJsonPath)) {
@@ -177,10 +178,11 @@ function syncToFlowJson(
     }
 
     // 将 op 注册到 stages.{stageName}.ops 中
+    // B4-1：draft=true → 以 draft（未发布）状态注册；缺省/ false → pending（现行为，零破坏）
     flowData.stages[stageName].ops[opId] = {
       id: opId,
       title,
-      state: 'pending',
+      state: draft ? 'draft' : 'pending',
       assignee: 'openfeel-executor',
       attempts: 0,
       max_attempts: 3,
@@ -195,6 +197,10 @@ function syncToFlowJson(
 
     // 审计日志（P7）：op 注册成功，记录 register_op（agent=cli）
     flowMgr.appendLog({ time: '', agent: 'cli', action: 'register_op', detail: { stageName, opId } });
+    // B4-1：draft 创建额外留痕（scheme_create + draft:true），便于识别未发布来源
+    if (draft) {
+      flowMgr.appendLog({ time: '', agent: 'cli', action: 'scheme_create', detail: { stageName, opId, draft: true } });
+    }
 
     flowMgr.save();
   } catch (err) {
@@ -218,13 +224,14 @@ function syncToFlowJson(
  * 创建后自动同步到 flow.json（如果存在）；阶段未注册时按注册语义补齐阶段骨架（N3）
  * @param stageName 阶段名（短名 stage-01 或完整 v1.0.0-stage-01 均可）
  * @param options.onImplicitRegister 隐式注册回调（阶段未注册时触发，供命令层输出提示）
+ * @param options.draft true → 以 draft（未发布）状态注册；false/缺省 → pending（现行为）
  * @returns opId（如 op-001）
  */
 export function createScheme(
   projectPath: string,
   stageName: string,
   title: string,
-  options?: { onImplicitRegister?: (info: ImplicitRegisterInfo) => void },
+  options?: { draft?: boolean; onImplicitRegister?: (info: ImplicitRegisterInfo) => void },
 ): string {
   // 解析 stageId（短名/完整）得到 series + stageDir + 完整 ID
   const parsed = parseStageId(stageName);
@@ -260,7 +267,7 @@ export function createScheme(
   });
 
   // 3. 同步到 flow.json（键用完整 stageId；由 FlowManager.save 的 flow.lock 保护）
-  syncToFlowJson(projectPath, parsed.fullStageId, opId, title, options?.onImplicitRegister);
+  syncToFlowJson(projectPath, parsed.fullStageId, opId, title, options?.onImplicitRegister, options?.draft);
 
   return opId;
 }
@@ -406,6 +413,59 @@ export function removeScheme(
   });
   mgr.save();
   return { removed: true, orphan };
+}
+
+/** 发布（draft → pending）结果（B4-2） */
+export interface PublishSchemeResult {
+  /** 是否已发布（draft → pending） */
+  published: boolean;
+  /** 未发布原因码（供命令层映射 i18n） */
+  reason?: 'not-found' | 'not-draft' | 'empty-template';
+}
+
+/**
+ * 将 draft op 发布为 pending（B4-2 / A1）。
+ * 校验模板已填充（无空模板标记残留，单一来源 EMPTY_TEMPLATE_MARKER）。
+ * @param projectPath 项目根路径
+ * @param stageName 阶段 ID（简写或全称）
+ * @param opId op ID（op-001 或 完整 stage.op-001）
+ */
+export function publishScheme(projectPath: string, stageName: string, opId: string): PublishSchemeResult {
+  const normalized = normalizeStageId(stageName) ?? stageName;
+  const localOpId = opId.includes('.') ? opId.substring(opId.lastIndexOf('.') + 1) : opId;
+
+  const mgr = new FlowManager(projectPath);
+  if (!mgr.isLoaded()) {
+    return { published: false, reason: 'not-found' };
+  }
+  const data = mgr.getData()!;
+  const stage = data.stages[normalized] ?? data.stages[stageName];
+  if (!stage) {
+    return { published: false, reason: 'not-found' };
+  }
+  const op = stage.ops[localOpId];
+  if (!op) {
+    return { published: false, reason: 'not-found' };
+  }
+  if (op.state !== 'draft') {
+    return { published: false, reason: 'not-draft' };
+  }
+  const stageKey = data.stages[normalized] ? normalized : stageName;
+
+  // 空模板校验（单一来源：EMPTY_TEMPLATE_MARKER）
+  const content = mgr.readOpTemplate(stageKey, localOpId);
+  if (content === null) {
+    // 文件缺失 → 无法校验填充度，保守拒绝
+    return { published: false, reason: 'not-found' };
+  }
+  if (content.includes(EMPTY_TEMPLATE_MARKER)) {
+    return { published: false, reason: 'empty-template' };
+  }
+
+  op.state = 'pending';
+  mgr.appendLog({ time: '', agent: 'cli', action: 'scheme_publish', detail: { stage: stageKey, opId: localOpId } });
+  mgr.save();
+  return { published: true };
 }
 
 /**

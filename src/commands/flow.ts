@@ -23,7 +23,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { MetricsStore } from '../core/metrics.js';
@@ -861,6 +861,16 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
       }
 
+      // B4-5（A1 第 5 条）/ REV-52-002：draft op 拒绝记录执行结果（命令层守卫；核心层 recordAttempt 另有兜底）
+      if (mgr.getOpState(options.op) === 'draft') {
+        const dotIdx = options.op.lastIndexOf('.');
+        const stageId = dotIdx >= 0 ? options.op.substring(0, dotIdx) : '';
+        const localOpId = dotIdx >= 0 ? options.op.substring(dotIdx + 1) : options.op;
+        console.error(t('flow.attempt.draftRefusedTmpl', lang, { stage: stageId, opId: localOpId }));
+        process.exit(1);
+        return;
+      }
+
       const outcome = mgr.recordAttempt(options.op, options.result as 'pass' | 'fail');
       mgr.save();
 
@@ -885,6 +895,83 @@ export function registerFlowCommand(program: Command): void {
           console.log(t('flow.attempt.currentOpEmptyTmpl', lang, { stage: cur.stage }));
         }
       }
+    });
+
+  // flow ops list [--stage <id>] [--json] — B3-1：操作方案视图（状态 + 模板填充度 + draft 分组）
+  const opsCmd = flow
+    .command('ops')
+    .description('操作方案视图');
+
+  opsCmd
+    .command('list')
+    .description('列出操作方案（含状态与模板填充度）')
+    .option('--stage <id>', '仅列出指定阶段')
+    .option('--json', 'Output as JSON')
+    .action((options: { stage?: string; json?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        if (options.json) {
+          console.log(JSON.stringify({ schemaVersion: 1, ops: [] }));
+          return;
+        }
+        console.log(t('common.noInit', lang));
+        return;
+      }
+      const filterStage = options.stage ? (normalizeStageId(options.stage) ?? options.stage) : undefined;
+      const data = mgr.getData()!;
+      const items: Array<{ stage: string; opId: string; title: string; state: string; fill: 'empty' | 'partial' | 'filled' }> = [];
+      for (const [stageId, stage] of Object.entries(data.stages)) {
+        if (filterStage && stageId !== filterStage) {
+          continue;
+        }
+        const opsMap = stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops) ? stage.ops : {};
+        for (const [opId, op] of Object.entries(opsMap)) {
+          // 填充度：复用 flow-manager 的单一标记判定；无文件视为 filled（无法检测）
+          const content = mgr.readOpTemplate(stageId, opId);
+          const fill = content === null ? 'filled' : detectFillState(content);
+          items.push({
+            stage: stageId,
+            opId,
+            title: (op as { title?: string }).title ?? '',
+            state: (op as { state?: string }).state ?? '',
+            fill,
+          });
+        }
+      }
+
+      if (options.json) {
+        // 复用 op-001 口径：顶层对象 + schemaVersion:1
+        const ops = items.map((it) => ({
+          stage: it.stage,
+          opId: it.opId,
+          title: it.title,
+          state: it.state,
+          fill: it.fill,
+          ...(it.fill === 'empty' ? { warning: t('flow.ops.emptyWarningTmpl', lang, { opId: it.opId }) } : {}),
+        }));
+        console.log(JSON.stringify({ schemaVersion: 1, ops }, null, 2));
+        return;
+      }
+
+      console.log(t('flow.ops.title', lang));
+      const published = items.filter((i) => i.state !== 'draft');
+      const drafts = items.filter((i) => i.state === 'draft');
+      const printGroup = (label: string, list: typeof items): void => {
+        if (list.length === 0) {
+          return;
+        }
+        console.log(label);
+        for (const it of list) {
+          console.log(`  ${it.stage}.${it.opId} [${it.state}] (${it.fill}) ${it.title}`);
+          // 空模板 warning（draft 亦提示，引导 publish 前先填充）
+          if (it.fill === 'empty') {
+            console.log(t('flow.ops.emptyWarningTmpl', lang, { opId: it.opId }));
+          }
+        }
+      };
+      printGroup(t('flow.ops.groupActive', lang), published);
+      printGroup(t('flow.ops.groupDraft', lang), drafts);
     });
 
   // flow log [--last <n>]

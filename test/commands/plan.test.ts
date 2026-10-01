@@ -409,4 +409,64 @@ describe('plan 命令', () => {
     const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-13', 'status.md');
     expect(readFileSync(statusPath, 'utf-8')).toContain('> 待补充');
   });
+
+  // ── stage-52/op-005：B4 draft 两阶段 + publish ──
+
+  it('op-005/B4: create --draft → state=draft；缺省 → pending（回归）', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-20', 'T', '--draft']);
+    let flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-20'].ops['op-001'].state).toBe('draft');
+    expect(flow.log.some((l: { action: string; detail?: { draft?: boolean } }) =>
+      l.action === 'scheme_create' && l.detail?.draft === true)).toBe(true);
+
+    await safeParse(['plan', 'scheme', 'create', 'stage-21', 'T2']);
+    flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-21'].ops['op-001'].state).toBe('pending');
+  });
+
+  it('op-005/B4: publish 空模板 → exit 1 且 state 仍 draft', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-22', 'T', '--draft']);
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'publish', 'stage-22', 'op-001']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('模板未填充');
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-22'].ops['op-001'].state).toBe('draft');
+  });
+
+  it('op-005/B4: 填充模板后 publish → pending + 日志 scheme_publish', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-23', 'T', '--draft']);
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-23', 'ops');
+    writeFileSync(join(opsDir, 'op-001.md'), '# op-001：T\n\n## 实施步骤\n- [x] 已完成\n', 'utf-8');
+
+    await safeParse(['plan', 'scheme', 'publish', 'stage-23', 'op-001']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-23'].ops['op-001'].state).toBe('pending');
+    expect(flow.log.some((l: { action: string }) => l.action === 'scheme_publish')).toBe(true);
+  });
+
+  it('op-005/B4: publish 非 draft → exit 1 + notDraft', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-24', 'T']);
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'publish', 'stage-24', 'op-001']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('不是 draft');
+  });
+
+  it('op-005/B4: scheme list 对 draft op 追加 [draft] 标记', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-25', 'T', '--draft']);
+    logMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'list']);
+
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('[draft]');
+  });
 });

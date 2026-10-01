@@ -34,8 +34,8 @@ import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG, ConfigDefaultsSchema } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
 
-/** 操作执行状态 */
-export type OpState = 'pending' | 'executing' | 'done' | 'failed';
+/** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
+export type OpState = 'pending' | 'executing' | 'done' | 'failed' | 'draft';
 
 /** 检查点结构 */
 export interface Checkpoints {
@@ -775,6 +775,32 @@ export class FlowManager {
     return this.data.reviews.filter((r) => r.op === opId);
   }
 
+  /**
+   * 读取 op 模板文件内容（兼容 `op-NNN.md` 与历史 `op-NNN_{title}.md` 两种命名）。
+   * B3-1 填充度检测与 healthCheck 空模板检查共用。
+   * @returns 文件内容；未找到/不可读返回 null
+   */
+  readOpTemplate(stageId: string, opId: string): string | null {
+    const parsed = parseStageId(stageId);
+    if (!parsed) {
+      return null;
+    }
+    const opsDir = resolve(this.projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'ops');
+    if (!existsSync(opsDir)) {
+      return null;
+    }
+    try {
+      const name = readdirSync(opsDir).find((f) => f === `${opId}.md` || f.startsWith(`${opId}_`));
+      if (!name) {
+        return null;
+      }
+      return readFileSync(resolve(opsDir, name), 'utf-8');
+    } catch {
+      // 目录/文件不可读视为未找到（不误判）
+      return null;
+    }
+  }
+
   /** 获取指定 op 的重试次数 */
   getRetryCount(opId: string): number {
     const op = this.getOp(opId);
@@ -790,9 +816,9 @@ export class FlowManager {
     const stagesCount = Object.keys(this.data.stages).length;
     let opsCount = 0;
     for (const stage of Object.values(this.data.stages)) {
-      // 类型守卫：仅统计普通对象 ops（跳过 null/undefined/数组）
+      // 类型守卫：仅统计普通对象 ops（跳过 null/undefined/数组）；draft 不计入完成度统计（A1 窄兼容第 2 条）
       if (stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)) {
-        opsCount += Object.keys(stage.ops).length;
+        opsCount += Object.values(stage.ops).filter((o) => (o as Op).state !== 'draft').length;
       }
     }
 
@@ -835,9 +861,9 @@ export class FlowManager {
 
     let opsCount = 0;
     for (const stage of Object.values(this.data.stages)) {
-      // 类型守卫：仅统计普通对象 ops（跳过 null/undefined/数组）
+      // 类型守卫：仅统计普通对象 ops（跳过 null/undefined/数组）；draft 不计入完成度统计（A1 窄兼容第 2 条）
       if (stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops)) {
-        opsCount += Object.keys(stage.ops).length;
+        opsCount += Object.values(stage.ops).filter((o) => (o as Op).state !== 'draft').length;
       }
     }
 
@@ -2034,6 +2060,18 @@ export class FlowManager {
       return { shouldRetry: false, shouldReplan: false };
     }
 
+    // B4-5（A1 第 5 条）/ REV-52-002：draft op 拒绝记录执行结果（双层守卫之**核心层兜底**）。
+    // 命令层已先行守卫；此处保证 API 调用方亦被拦截。返回既有结构，不抛错（不改返回契约）。
+    if (op.state === 'draft') {
+      this.appendLog({
+        time: '',
+        agent: 'openfeel-executor',
+        action: 'attempt_refused_draft',
+        detail: { opId },
+      });
+      return { shouldRetry: false, shouldReplan: false };
+    }
+
     op.attempts += 1;
 
     // current.op 生命周期单一 owner：state 变更后同步（T1，禁双实现）
@@ -3013,6 +3051,11 @@ export class FlowManager {
       this.checkOrphanOps(items);
     }
 
+    // ── 9. 空模板检测（B3/B4-4；显式跳过 draft）──
+    if (!quick) {
+      this.checkEmptyTemplates(items);
+    }
+
     const ok = items.every((i) => i.status !== 'fail');
     return { items, ok };
   }
@@ -3161,6 +3204,41 @@ export class FlowManager {
       ? `${base} [${sample}${keyOrphans.length > 5 ? ' …' : ''}]`
       : base;
     items.push({ section: t('flow.health.orphanOps'), status: 'warn', message });
+  }
+
+  /**
+   * 9. 空模板检测：op 模板仍含 `- [ ] 待补充` 时告警（B3/B4）。
+   * 窄兼容（A1 第 1 条）：**显式跳过 `draft`** op（draft 本就允许空模板）。
+   * 仅作数据卫生告警（warn），不阻断。
+   * @param items 健康检查结果收集数组
+   */
+  private checkEmptyTemplates(items: HealthCheckItem[]): void {
+    if (!this.data) {
+      return;
+    }
+    const empties: string[] = [];
+    for (const [stageId, stage] of Object.entries(this.data.stages)) {
+      const opsMap = stage.ops && typeof stage.ops === 'object' && !Array.isArray(stage.ops) ? stage.ops : {};
+      for (const [opId, op] of Object.entries(opsMap)) {
+        if ((op as Op).state === 'draft') {
+          continue; // 窄兼容：draft 允许空模板
+        }
+        const content = this.readOpTemplate(stageId, opId);
+        if (content !== null && isTemplateEmpty(content)) {
+          empties.push(`${stageId}.${opId}`);
+        }
+      }
+    }
+    if (empties.length > 0) {
+      items.push({
+        section: t('flow.health.emptyTemplate', 'zh-CN'),
+        status: 'warn',
+        message: t('flow.health.emptyTemplateDetail', 'zh-CN', {
+          n: String(empties.length),
+          items: empties.slice(0, 5).join(', ') + (empties.length > 5 ? ' …' : ''),
+        }),
+      });
+    }
   }
 
   /** 1. 检查 flow.json 合法性 */
@@ -3625,6 +3703,33 @@ function readStatusFieldValue(content: string, key: string): string | null {
   );
   const m = content.match(fieldRegex);
   return m ? m[1] : null;
+}
+
+/**
+ * 空模板标记（**单一来源**）：B3 填充度检测、B4 publish 校验、healthCheck 空模板检查共用。
+ * 见 op-005 验收 12（无第二套判定）。
+ */
+export const EMPTY_TEMPLATE_MARKER = '- [ ] 待补充';
+
+/** 模板是否仍含空模板标记（未填充） */
+export function isTemplateEmpty(content: string): boolean {
+  return content.includes(EMPTY_TEMPLATE_MARKER);
+}
+
+/**
+ * 判定 op 模板填充度（B3-1）。
+ * - empty：仍含空模板标记 `- [ ] 待补充`
+ * - partial：已删除该标记但存在其它未勾选 `- [ ]`
+ * - filled：无未完成标记
+ */
+export function detectFillState(content: string): 'empty' | 'partial' | 'filled' {
+  if (isTemplateEmpty(content)) {
+    return 'empty';
+  }
+  if (/(?:^|\n)\s*-\s*\[ \]/.test(content)) {
+    return 'partial';
+  }
+  return 'filled';
 }
 
 /**

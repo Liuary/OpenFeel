@@ -1942,6 +1942,63 @@ describe('FlowManager', () => {
   });
 
   // ═══════════════════════════════════════
+  // op-005 draft（B4 窄兼容）
+  // ═══════════════════════════════════════
+
+  describe('op-005 draft（B4 窄兼容）', () => {
+    it('B4-5 核心层：recordAttempt 对 draft op 返回 {false,false} 且 attempts 不变', () => {
+      const mgr = new FlowManager(tmpDir);
+      const data = makeTestFlowData();
+      data.stages['stage-01'].ops['op-001'].state = 'draft';
+      mgr.setData(data);
+
+      const outcome = mgr.recordAttempt('stage-01.op-001', 'pass');
+
+      expect(outcome).toEqual({ shouldRetry: false, shouldReplan: false });
+      expect(mgr.getData()!.stages['stage-01'].ops['op-001'].attempts).toBe(0);
+      expect(mgr.getData()!.stages['stage-01'].ops['op-001'].state).toBe('draft');
+      expect(mgr.getData()!.log.some((l) => l.action === 'attempt_refused_draft')).toBe(true);
+    });
+
+    it('B4-4：healthCheck 不报 draft 空模板 warning；pending 空模板报 warn', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const data = makeTestFlowData();
+      data.stages['stage-01'].ops['op-001'].state = 'draft';
+      mgr.setData(data);
+      mgr.save();
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      writeFileSync(join(opsDir, 'op-001.md'), '# op-001：t\n\n- [ ] 待补充\n', 'utf-8');
+      // draft + 空模板 → 不报「空模板」warn
+      expect(mgr.healthCheck(false).items.find((i) => i.section === '空模板')).toBeUndefined();
+
+      // 对照：pending + 空模板 → 报 warn
+      const mgr2 = new FlowManager(tmpDir);
+      const data2 = makeTestFlowData();
+      mgr2.setData(data2);
+      mgr2.save();
+      writeFileSync(join(opsDir, 'op-001.md'), '# op-001：t\n\n- [ ] 待补充\n', 'utf-8');
+      expect(mgr2.healthCheck(false).items.find((i) => i.section === '空模板')?.status).toBe('warn');
+    });
+
+    it('B4-4：advance 选 op 时跳过 draft（draft 不被选为 current.op）', () => {
+      const mgr = new FlowManager(tmpDir);
+      const data = makeTestFlowData();
+      const baseOp = data.stages['stage-01'].ops['op-001'];
+      data.stages['stage-01'].ops = {
+        'op-001': { ...baseOp, state: 'draft' },
+        'op-002': { ...baseOp, id: 'op-002', state: 'pending' },
+      };
+      mgr.setData(data);
+
+      const synced = mgr.syncCurrentOp('stage-01');
+
+      expect(synced.op).toBe('op-002');
+    });
+  });
+
+  // ═══════════════════════════════════════
   // recoverContext（跨会话上下文恢复）
   // ═══════════════════════════════════════
 

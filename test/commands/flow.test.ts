@@ -1012,4 +1012,82 @@ describe('flow 命令（stage-41）', () => {
     const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
     expect(after.reviews.length).toBe(reviewsBefore);
   });
+
+  // ── stage-52/op-005：B3 flow ops list + B4-5 attempt draft 守卫 ──
+
+  it('op-005/B3: flow ops list 显示 state + 填充度', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-79');
+    mgr.getData()!.stages['v1.1.2-stage-79'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-79', 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    writeFileSync(join(opsDir, 'op-001.md'), '# op-001：t\n\n- [x] done\n', 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'ops', 'list']);
+
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('v1.1.2-stage-79.op-001');
+    expect(out).toContain('[pending]');
+    expect(out).toContain('(filled)');
+
+    // --stage 过滤：不匹配的阶段不出现
+    const mgr2 = new FlowManager(tmpDir);
+    mgr2.addStage('v1.1.2-stage-80');
+    mgr2.getData()!.stages['v1.1.2-stage-80'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr2.save();
+    logMock.mockClear();
+    await safeParse(['flow', 'ops', 'list', '--stage', 'v1.1.2-stage-79']);
+    const out2 = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out2).toContain('v1.1.2-stage-79.op-001');
+    expect(out2).not.toContain('v1.1.2-stage-80.op-001');
+  });
+
+  it('op-005/B3: 空模板 warning + draft 分组 + --json', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-78');
+    mgr.getData()!.stages['v1.1.2-stage-78'].ops = {
+      'op-001': { ...(makeOp('op-001') as object), state: 'pending' } as never,
+      'op-002': { ...(makeOp('op-002') as object), state: 'draft' } as never,
+    };
+    mgr.save();
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-78', 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    writeFileSync(join(opsDir, 'op-001.md'), '# op-001：t\n\n- [ ] 待补充\n', 'utf-8');
+    writeFileSync(join(opsDir, 'op-002.md'), '# op-002：t\n\n- [ ] 待补充\n', 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'ops', 'list']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('未发布（draft）');
+    expect(out).toContain('(empty)');
+    expect(out).toContain('模板未填充');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'ops', 'list', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(obj.schemaVersion).toBe(1);
+    expect(obj.ops).toHaveLength(2);
+    expect(obj.ops.every((o: { fill: string }) => ['empty', 'partial', 'filled'].includes(o.fill))).toBe(true);
+  });
+
+  it('op-005/B4-5: attempt --op <draft op> → exit 1 且 attempts 未递增', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-77');
+    mgr.getData()!.stages['v1.1.2-stage-77'].ops = {
+      'op-001': { ...(makeOp('op-001') as object), state: 'draft' } as never,
+    };
+    mgr.save();
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'attempt', '--op', 'v1.1.2-stage-77.op-001', '--result', 'pass']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('draft');
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.1.2-stage-77'].ops['op-001'].state).toBe('draft');
+    expect(flow.stages['v1.1.2-stage-77'].ops['op-001'].attempts).toBe(0);
+  });
 });

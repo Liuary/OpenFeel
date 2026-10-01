@@ -4,7 +4,7 @@
  */
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
-import { createScheme, listSchemes, removeScheme } from '../core/plan/scheme.js';
+import { createScheme, listSchemes, removeScheme, publishScheme } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
@@ -105,21 +105,53 @@ export function registerPlanCommand(program: Command): void {
     .description('操作方案管理');
 
   // plan scheme create <stage> <title>
+  // plan scheme create <stage> <title> [--draft]
   schemeCmd
     .command('create')
     .description('创建操作方案')
     .argument('<stage>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
     .argument('<title>', '方案标题')
-    .action((stage: string, title: string) => {
+    .option('--draft', '以 draft（未发布）状态创建；填充后需 plan scheme publish 发布')
+    .action((stage: string, title: string, options: { draft?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const opId = createScheme(projectPath, stage, title, {
+        draft: options.draft,
         // N3-2：阶段未注册时提示已按注册语义补齐阶段骨架
         onImplicitRegister: (info) => {
           console.log(t('plan.scheme.implicitRegisterTmpl', lang, { stage: info.stage }));
         },
       });
       console.log(t('plan.scheme.createdTmpl', lang, { opId, stage }));
+    });
+
+  // plan scheme publish <stage> <opId> — draft → pending（B4-3）
+  schemeCmd
+    .command('publish')
+    .description('将 draft 操作方案发布为执行态（draft → pending）')
+    .argument('<stage>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
+    .argument('<opId>', '操作方案 ID（如 op-001 或完整 stage.op-001）')
+    .action((stage: string, opId: string) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      const result = publishScheme(projectPath, stage, opId);
+      if (result.published) {
+        console.log(t('plan.scheme.publish.okTmpl', lang, { opId }));
+        return;
+      }
+      // 错误路径：按原因码分流 i18n 文案 + exit 1
+      switch (result.reason) {
+        case 'empty-template':
+          console.error(t('plan.scheme.publish.emptyTmpl', lang, { opId }));
+          break;
+        case 'not-draft':
+          console.error(t('plan.scheme.publish.notDraftTmpl', lang, { opId }));
+          break;
+        default:
+          console.error(t('plan.scheme.publish.notFoundTmpl', lang, { stage, opId }));
+          break;
+      }
+      process.exit(1);
     });
 
   // plan scheme list [stage]
@@ -137,8 +169,23 @@ export function registerPlanCommand(program: Command): void {
         return;
       }
 
+      // B4-3：draft 标记（便于识别未发布；仅在行尾追加，保持既有字段顺序/输出）
+      const draftIds = new Set<string>();
+      const fm = new FlowManager(projectPath);
+      if (fm.isLoaded()) {
+        for (const st of Object.values(fm.getData()!.stages)) {
+          const opsMap = st.ops && typeof st.ops === 'object' && !Array.isArray(st.ops) ? st.ops : {};
+          for (const [opId, op] of Object.entries(opsMap)) {
+            if ((op as { state?: string }).state === 'draft') {
+              draftIds.add(opId);
+            }
+          }
+        }
+      }
+
       for (const scheme of schemes) {
-        console.log(`[${scheme.stage}] ${scheme.opId} — ${scheme.title}`);
+        const suffix = draftIds.has(scheme.opId) ? ' [draft]' : '';
+        console.log(`[${scheme.stage}] ${scheme.opId} — ${scheme.title}${suffix}`);
       }
     });
 

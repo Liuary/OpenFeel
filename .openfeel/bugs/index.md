@@ -7,10 +7,10 @@
 
 | 状态 | 数量 |
 |------|:--:|
-| open | 0 |
+| open | 2 |
 | fixed | 0 |
 | closed | 12 |
-| **合计** | **12** |
+| **合计** | **14** |
 
 > **v1.1.2-stage-43 收口（2026-09-29，commit `cbc606f`）**：`config/BUG-004`（medium，测试隔离缺口）经 openfeel-feel-tester **外部独立进程比对**验收**关闭**——`identity.test.ts`（11/11）与全量 `npm test`（41 文件 / 694 用例）前后真实 `~/.openfeel/config.json` 的 **mtime + SHA-256 均不变**；修复＝N4 单点 `vi.mock('node:os')` + 删除 `savedConfig` 伪隔离 + 新增只读隔离守护用例。**新登记 `cli/BUG-003`**（low，非阻塞）：`flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 修复的收尾遗漏）——**裁定归下一版本或由用户决定**，v1.1.2 不修。至此 v1.1.2 遗留缺陷清零（仅 1 条 low 非阻塞顺延）。
 >
@@ -27,6 +27,8 @@
 > **v1.1.2-stage-53 收口（2026-10-01，commits `627805e`/`3792b77`/`ae0d6e2`/`4377822`/`27ce06e`）**：**新登记 `templates/BUG-004`（low）并就地关闭**——迁移后本仓 `current.md` 统计行沿用「stage-53 执行中」快照、用例数陈旧（**942 vs 实测 949**），且「执行中」与总进度行「已收官 ✅」措辞扞格；**归属裁定**：载体为本仓 `.openfeel/dev/current.md`（可本地修正，非模板权威源）→ **归档官就地修正**（用例数 942→949 + kb 计数随归档刷新 182→187 + stage-53 记录「执行中」→「归档完成」）并写入 `.openfeel/bugs/templates.md`。统计 **12 条（open 0 / closed 12）**。防再犯：统计行 = 快照，末次提交必回写 + 记录措辞与总进度行一致，归档纳入固定检查点。
 >
 > **v1.1.2-stage-51 收口（2026-10-01，commits `5ebd114`/`b538bdc`/`1aba277`/`b59705a`/`34385a4`）**：**`cli/BUG-004`（low）关闭**——en 模式下 `--help` 的 Arguments 描述仍为中文的问题，由 op-002（5）/ op-005（8）/ op-007（3 + 新增 1）/ op-008（4）分派补齐 **20 处（+1 新增）** `help.<path>.arg<name>` 双语键，op-009 增**运行时全量枚举门禁**（en 下 `Arguments:` 段 CJK 零命中，**33 个含位置参数的命令**）；测试官隔离 HOME + en 项目验收通过（6 用例全绿、`lint i18n` 649 键对称）。口径澄清：「23 处」为记录时点静态计数，实际修复面 = 20 存量 + 1 新增 + 1 已补（`stage.create`）。**自 v1.1.2 起累计 Bug 全部清零：11 条（open 0 / closed 11）**。
+>
+> **v1.1.2-stage-52 收口（2026-10-01，commits `c6d89f6`~`facf825` + `6abd4fb`/`820855b`/`9e56c45`）**：**新登记 2 条非阻塞**——`cli/BUG-005`（medium）空模板检测为纯子串匹配，op 正文引用占位标记 `- [ ] 待补充` 即被误判未填充（① `plan scheme publish` **误拒**〔功能性〕；② `flow ops list` 误报 `(empty)`；③ `flow health` 误报空模板〔本仓实测 op-005〕）；建议检测收紧为整行/列表项匹配。`cli/BUG-006`（low）en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`，未走 `t(...)`）——**预存量缺陷**（源自更早 `98fd2dd` op-002），op-007 范围为 `console.warn`（已全量清零），本处为 `console.error`，与 `cli/BUG-004` 同族（en 泄漏）。二者均**不阻塞阶段收尾**，登记备查。统计 **14 条（open 2 / closed 12）**。防再犯：① **占位符检测须结构判定（整行/列表项），纯子串命中即误报**——凡「标记字符串 vs 内容」，先问「是否要求独占结构位」；② **i18n 覆盖面按输出通道枚举**（`console.warn` 清零不等于 `console.error`/`console.log` 全覆盖），`rg "console\.(warn|error|log)\(.*[\x{4e00}-\x{9fff}]"` 三类同查。
 
 ## 模块索引
 
@@ -38,6 +40,8 @@
 | [BUG-002](cli.md) | 阶段目录冲突错误未走 i18n 键（en 下为中文）+ `common.stageDirConflictTmpl` 死键 | low | **closed** | v1.1.2-stage-41 |
 | [BUG-003](cli.md) | `flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 收尾遗漏） | low | **closed** | v1.1.2-stage-48 |
 | [BUG-004](cli.md) | en 模式下 `--help` 的 Arguments 描述仍为中文（T38 只落地遍历机制，23 处 `.argument()` 仅 1 处补键） | low | **closed**（stage-51 补齐 20 处 + 新增 1 处 + 运行时 CJK 门禁验收通过） | v1.1.2-stage-50 |
+| [BUG-005](cli.md) | 空模板检测为纯子串匹配，op 正文引用占位标记被误判「未填充」（`publish` 误拒 + health/ops list 误报） | medium | **open** | v1.1.2-stage-52 |
+| [BUG-006](cli.md) | en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`；op-007 仅覆盖 `console.warn`） | low | **open** | v1.1.2-stage-52 |
 
 ### config
 

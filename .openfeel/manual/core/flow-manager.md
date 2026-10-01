@@ -83,6 +83,16 @@
 - **op 文件命名（N8/A5）**：`createScheme` 的 `candidate` 改为 `${opIdOf(seq)}.md`（**删除 `safeTitle`**，标题不再进文件名——修复标题含 `/` 时 `openSync(path,'wx')` ENOENT）；序号分配 `parse`（`/^op-(\d+)/`）**未改**（新旧命名均占号，避免撞号）；`extractTitle(filePath, fileName)` 兼容回退（文件名含 `_` 走历史解析，否则读内容首行 `# {opId}：{title}`，IO 失败回退文件名不抛错）。
 - **`recordAttempt` 同步 `current.op`（N4）**：pass / fail-retry 两分支在改 `op.state` 后**复用** `syncCurrentOp(stageId)`（stage-50 T1 落地，**不重复实现**，`rg syncCurrentOp` = 定义 1 + 调用 3）；`flow attempt` 输出「当前指针」行（`flow.attempt.currentOpTmpl`）。
 
+## 可编排性与自愈能力（v1.1.2-stage-52，反馈 09）
+
+- **`reconcileStatusMd({ dryRun? })`**：遍历 stages，比对 `flow.json` 的 `status` 与 `status.md` 的「状态」行，**仅回写差异项**（定向替换「状态」行，**非整文件重写**）；字段缺失 `skipped-not-found`（不新建文件）；`dryRun` 只报告不写盘。命令出口 `flow health --fix`；与 `stage set` 的 `setStatusField` 同语义（标注防重复实现）。
+- **结构化访问器（供 `--json`）**：`getHealthReport()`（items 数组）、`getMetricsSummary()` 等，供 `flow status/current/health/metrics/overview --json` 输出**领域对象 + `schemaVersion:1`**（纯 JSON 单文档）。
+- **`findPhasePath(stageName, to)`**：沿 transitions 做 **BFS 求唯一可达路径**（深度 ≤8；多义/无路径返回原因），供 `flow advance --to` 自动逐步与 `--dry-run` 完整路径；命令层多步循环**每步调用 `assertNoBlockingOpenRev`**（blocking open REV 拦截、exit 1 + `revision` 不变）。
+- **`draft` 状态（窄兼容）**：`scheme create --draft` → `op.state='draft'`；`publishScheme()` 校验非空转 `pending`；`recordAttempt`（core）对 draft op **守卫拒绝**（与命令层双层，返回契约不变）；health 跳过 draft 空模板 warning、归档/统计不计入 draft。
+- **`listCheckpoints(stageId?)`**：短名归一化 + **短名旧文件 `||` 兜底**（无参行为不变）。
+- **stage 解析归一化闭包（op-012/013/014，共 10 处）**：统一范式 `normalizeStageId(x) ?? x` + **双键回退** `stages[normalized] ?? stages[raw]`（详见 `kb/patterns.md #短名/全名 stage 解析归一化的统一范式`）；覆盖 `findPhasePath` / `resolveCurrentPhase` / `autoRepairInconsistency` / `advanceStagePhase`（体内 `key` 贯穿，含 checkpoint 命名）/ `parseOpId` 出口 / `removeStage`+`checkRemovable` / `addAutoFixReview` / `addReviewEntry`（`core/view/entry.ts`）/ `archiveStage`（`core/archive/merge.ts`）/ `listCheckpoints`。独立全量扫描确认**无第 11 处**，闭包正式收口。
+- **`autoRepairInconsistency` / `findPhasePath` 等 stage 入参**：均支持短名（归一化恒等；全名路径行为不变）。
+
 ## 状态机
 
 阶段 phase 枚举（`src/core/pipeline-schema.ts` 的 `PIPELINE_PHASES`）：
@@ -128,6 +138,8 @@ plan_pending → plan_review → plan_passed
 | `register_op` | `cli` | `plan/scheme.ts` `createScheme` | op 注册（在 `save()` 之前写入，每次均记） |
 | `remove_stage` | `cli` | `removeStage` | 注销阶段（`detail = { stageId, purgeTarget, referencing, snapshot }`；目录删除由命令层在 `save()` 后执行） |
 | `archive_stage` | `openfeel-archiver` | `archiveStage` | 阶段归档 |
+| `scheme_rename` | `cli` | `plan/scheme.ts` `renameScheme` | op 标题重命名（v1.1.2-stage-52 op-006，同步 flow.json 标题 + op 文件首行） |
+| `scheme_publish` | `cli` | `plan/scheme.ts` `publishScheme` | draft op 发布（v1.1.2-stage-52 op-005，`draft`→`pending`） |
 
 - **幂等/冲突不写日志**：`registerStage` 的幂等早返回与冲突抛错均位于 `appendLog` **之前**，保证「日志 = 事实变更」。
 - **`plan/scheme.ts` 兜底注册（stage-42 op-004）**：`createScheme` 中 `syncToFlowJson` 的兜底注册路径改经 `validateStageId` + `findStageDirConflict` 校验，命中冲突时 `warn` 并 `return`（**不抛错**：外层 try/catch 会吞非并发错误，warn 显式可见且不破坏「op 文件已创建」契约）；注册成功后写 `register_op`，再由 `save()` 落盘。

@@ -2,6 +2,9 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-01-Liuary-035.md](2026/10/01/2026-10-01-Liuary-035.md) | Liuary | 阶段 v1.1.2-stage-52 完成 |
+| [2026-10-01-Liuary-034.md](2026/10/01/2026-10-01-Liuary-034.md) | Archiver | **stage-52 归档完成（反馈 09 可编排性/可观测性 + 遗留清账 + 约束体系精简，14 op）**——B1~B9 全落地（`--json`×6 / `health --fix` 仅「状态」字段 / `ops list` 填充度 / `draft` 两阶段 / `advance --to` 自动逐步 + REV 复检 / `scheme rename` / `NO_COLOR` / `kb-dedup` CRLF 修复〔2→105 / 0→31〕）；A4 移除 `view add`（破坏性）+ C1~C4 约束精简（14→17 Skill）；修复轮 op-012/013/014 归一化闭包 10 处收口（无第 11 处）；**59 文件 / 979 用例全绿**、`lint i18n` 724 键、`lint kb` 0 过期；三段审查零阻塞（REV-005~009 全 closed）；新登记 `cli/BUG-005`（medium）/ `cli/BUG-006`（low）；知识沉淀 8 条；**v1.1.2 十三阶段全部闭环** |
+| [2026-10-01-Liuary-033.md](2026/10/01/2026-10-01-Liuary-033.md) | Liuary | v1.1.2-stage-52.op-014 执行通过 |
 | [2026-10-01-Liuary-032.md](2026/10/01/2026-10-01-Liuary-032.md) | Liuary | 阶段 v1.1.2-stage-53 完成 |
 | [2026-10-01-Liuary-031.md](2026/10/01/2026-10-01-Liuary-031.md) | Liuary | v1.1.2-stage-52.op-013 执行通过 |
 | [2026-10-01-Liuary-030.md](2026/10/01/2026-10-01-Liuary-030.md) | Archiver | **stage-53 归档完成（current.md / dev_last.md 职能与格式重构，D1~D10 / 5 op）**——两条设计目的 + 三层分层写入全局约束；current 团队文件新格式（≤5 条 + 自动归档 `current_archive/`）；dev_last 索引 + 同名主题目录（R1~R6 含 R4 就地收敛 + R6 加锁）；用户裁定 A5/A6/A9/A10 全落地；存量迁移零丢失（current 82→14、dev_last 53→34 + 5 英文主题）；**59 文件 / 949 用例全绿**、`lint i18n` 724 键、`lint kb` 0 过期；三段审查零阻塞（REV-003 closed）；`templates/BUG-004`（low）就地修正关闭；知识沉淀 5 条；**v1.1.2 十三阶段（41~53）全部闭环** |
@@ -29,9 +32,6 @@
 | [2026-10-01-Liuary-008.md](2026/10/01/2026-10-01-Liuary-008.md) | Liuary | v1.1.2-stage-51.op-005 执行通过 |
 | [2026-10-01-Liuary-007.md](2026/10/01/2026-10-01-Liuary-007.md) | Liuary | v1.1.2-stage-51.op-008 执行通过 |
 | [2026-10-01-Liuary-006.md](2026/10/01/2026-10-01-Liuary-006.md) | Liuary | v1.1.2-stage-51.op-006 执行通过 |
-| [2026-10-01-Liuary-005.md](2026/10/01/2026-10-01-Liuary-005.md) | Liuary | v1.1.2-stage-51.op-004 执行通过 |
-| [2026-10-01-Liuary-004.md](2026/10/01/2026-10-01-Liuary-004.md) | Liuary | v1.1.2-stage-51.op-003 执行通过 |
-| [2026-10-01-Liuary-003.md](2026/10/01/2026-10-01-Liuary-003.md) | Liuary | v1.1.2-stage-51.op-002 执行通过 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

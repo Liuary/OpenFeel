@@ -194,3 +194,72 @@ op-009 增**运行时全量枚举门禁**（`test/cli/help-arguments.test.ts`）
 
 **口径澄清**：BUG 原文记「23 处、仅 1 处已补」的「23」为**记录时点静态 `.argument()` 计数**；本次修复面 = 存量 **20 处** + 本阶段新增子命令 **1 处**（`knowledge.dedup`）+ 已补 **1 处**（`stage.create`，T38）。运行时枚举（33 命令）多于静态计数，差异来自 `.command('remove <stageId>')` 形式的声明（Commander 同样注册为 argument）——**以运行时门禁为准**。**关闭**。
 
+---
+
+## BUG-005：空模板检测为纯子串匹配，op 正文引用占位标记被误判「未填充」
+
+- **优先级**：medium ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.2-stage-52`（正式测试验收发现）｜ **归因**：stage-52 op-005（B3 `detectFillState` / B4 `publishScheme` 校验）**新引入**
+
+### 核心结论
+
+`EMPTY_TEMPLATE_MARKER = '- [ ] 待补充'`，而 `isTemplateEmpty()` / `detectFillState()`（`flow-manager.ts`）与 `publishScheme()` 校验（`plan/scheme.ts`）三处均为 **`content.includes(marker)` 纯子串匹配**——未要求标记**独占整行/列表项**。因此 op 方案**正文引用**该字面量（如说明「填充后将 `- [ ] 待补充` 改为 `- [x]`」）时被误判未填充：
+
+| 后果 | 说明 |
+|------|------|
+| ① `plan scheme publish` **误拒（exit 1）** | **功能性**——完整方案无法发布（阻塞 draft→pending 工作流） |
+| ② `flow ops list` 显示 `(empty)` + warning | 误导（模板实为已填充） |
+| ③ `flow health` 误报空模板 | 健康检查不可信 |
+
+**实证**：仓库 `flow health` 报 `空模板: 1 个… v1.1.2-stage-52.op-005`，而 `op-005.md` 为 **17112 字节完整方案**（正文含标记字面量）；隔离 fixture 复现 `publish` 误拒。
+
+### 影响范围
+
+- 触发条件：op 正文（任一位置）出现 `- [ ] 待补充` 字面量——含引用示例、说明性文字。
+- 涉及文件：`src/core/flow-manager.ts`（`isTemplateEmpty` / `detectFillState`）、`src/core/plan/scheme.ts`（`publishScheme` 校验）。
+- 数据风险：**无**（误报不影响写盘正确性，仅拒绝发布）。
+
+### 建议修复方向（供 openfeel-schemer 拟定）
+
+1. 将 `EMPTY_TEMPLATE_MARKER` 的**子串**判定收紧为**整行/列表项**匹配（同一来源单一实现，供 `isTemplateEmpty` / `detectFillState` / `publishScheme` / health 共用），例如锚定行首 `- [ ] 待补充` 且行内无其它有效内容；
+2. 补回归断言：正文引用该标记 → `filled`；真实 `- [ ] 待补充` 独占一行 → `empty`；
+3. 人工核查 `op-005.md` 等存量文件，修复后 `flow health` 空模板告警应归零。
+
+> 沉淀：`kb/troubleshooting.md #空模板检测子串匹配误报`、`kb/patterns.md #结构化占位符检测`
+
+### 验收记录
+
+| 时间 | 验收人 | 结论 | 备注 |
+|------|--------|------|------|
+| 2026-10-01 12:05 | openfeel-feel-tester | open（medium，非阻塞） | v1.1.2-stage-52 正式测试发现；隔离 fixture 复现 publish 误拒；本仓 `flow health` 误报 op-005 |
+
+---
+
+## BUG-006：en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.2-stage-52`（正式测试，op-007 L5 同域残留）｜ **归因**：**预存量缺陷**（源自更早 `98fd2dd` op-002「实现 REV 闭环」，**非 stage-52 引入**）
+
+### 核心结论
+
+en 模式下 `flow advance --stage <id> --to done` 首行检测信息为英文，但**拒绝文案仍为硬编码中文**——`src/commands/flow.ts:742-743` 直接 `console.error('检测到 blocking REV 未解决，禁止推进到 done…')` / `console.error('请先解决阻塞 REV 或通过 flow review resolve 标记为已解决…')`，**未走 `t(...)`**。op-004 抽取 `assertNoBlockingOpenRev` 时未一并 i18n 化。
+
+**性质辨析**：op-007 声明范围为 `console.warn`（已全量清零），本处为 **`console.error`**，故未被 op-007 覆盖；与 `cli/BUG-004`（en `--help` Arguments 段中文）**同族（en 泄漏）**，属同域残留。
+
+### 影响范围
+
+- 触发频率：en 用户在多步/单步推进 `done` 且存在 blocking open REV 时。
+- 直接后果：该错误路径 en 模式泄漏中文（i18n 不一致）；功能与退出码**正确**。
+- 关联：`cli/BUG-004`（同族 en 泄漏）；另 `init.ts:48/110`、`project.ts:101`、`update.ts:93` 的 `console.log` 中文为语言菜单/可接受范围（**一并评估**）。
+
+### 建议修复方向（供 openfeel-schemer 拟定）
+
+1. `flow.ts:742-743` 迁 i18n 键（如 `flow.advance.blockingRevRefused` / `flow.advance.blockingRevHint`，zh/en 对称，`lint i18n` 门禁守护）；
+2. 顺带评估 `project.ts:101`、`update.ts:93` 的 `console.log` 中文是否纳入 i18n。
+
+> 沉淀：`kb/troubleshooting.md #新增 i18n 键已定义却未接入（死键）`、`kb/patterns.md #命令面收敛与弃用策略`（en 泄漏同族：`console.warn` 覆盖后须同查 `console.error`/`console.log`）
+
+### 验收记录
+
+| 时间 | 验收人 | 结论 | 备注 |
+|------|--------|------|------|
+| 2026-10-01 12:06 | openfeel-feel-tester | open（low，非阻塞） | v1.1.2-stage-52 验证 op-007 时顺带发现；`rg "console\.(warn\|error)\(.*[\x{4e00}-\x{9fff}]"` 命中 flow.ts:742-743 |
+

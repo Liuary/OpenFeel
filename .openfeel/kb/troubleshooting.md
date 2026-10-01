@@ -779,3 +779,46 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 **判据**：凡「禁止手改 X、由 Agent 按协议维护」的治理规则，须区分**代码强制**与**prompt 约定**；后者必在文档中标注边界，并对高风险动作补代码护栏或人工复核点。
 
 **参见：** v1.1.2-stage-53 §八 R-2c / 测试报告 §八观察项 1；kb/architecture.md #跨进程并发保护架构；kb/patterns.md #建议性文件锁模式
+
+## [+] 空模板检测纯子串匹配误报：正文引用占位标记即被误判未填充 (2026-10-01)
+
+**症状**：`plan scheme publish` 对**完整方案**误拒（exit 1「模板未填充」）；`flow ops list` 显示 `(empty)`；`flow health` 误报空模板（本仓实测报 `v1.1.2-stage-52.op-005`，而该文件 17112 字节）。
+
+**根因**：`EMPTY_TEMPLATE_MARKER='- [ ] 待补充'`，`isTemplateEmpty()` / `detectFillState()` / `publishScheme` 校验三处均为 `content.includes(marker)` **纯子串**匹配——op 正文**引用**该字面量（说明性文字）即命中。
+
+**排查**：定位所有使用占位标记常量的判定点（`rg "EMPTY_TEMPLATE_MARKER|待补充"`），检查是 `includes` 还是结构匹配。
+
+**修法**：判定收紧为**整行/列表项**匹配（单一来源，供 health/publish/ops list 共用），补回归断言「正文引用 → filled / 独占一行 → empty」。
+
+**判据**：凡「标记字符串 vs 内容」判定，先问「是否要求独占结构位」；纯子串命中即误报源（同族：`view.add` 用词边界而非裸子串）。
+
+**参见：** v1.1.2-stage-52 测试验收 `cli/BUG-005`；`src/core/flow-manager.ts` / `src/core/plan/scheme.ts`；kb/patterns.md #CLI 自描述命令模式
+
+## [+] 即席实测误在仓库 cwd 执行真实命令：fixture 前须显式断言 cwd (2026-10-01)
+
+**事故**：executor 在 T3 实测中，本应在隔离 fixture 内运行 `openfeel archive`，却在**仓库 cwd** 执行真实命令 → `flow.json` 被写（+1 日志 / rev 441）+ 误生成归档文件。即时回滚（rev 440、删误产物）后经审查官独立核验**数据无损坏**（rev/log/文件一致、`git status` 无残留、config 三值未变）。
+
+**裁定**：误跑 = **违反测试隔离硬要求**（违规）；回滚 = **合规的应急处置**（数据完整性恢复优先，非违规手改）；数据损坏风险 = 无。
+
+**整改（可操作）**：
+1. **fixture 实测前显式切换工作目录并断言**（`Push-Location <fixture>` + 断言 `Get-Location`/`process.cwd()`）；禁止「默认在仓库根跑命令」。
+2. **误写后即时报告 + 留痕**（在报告/REV 披露），并优先用 `git checkout -- .openfeel/flow.json` 或 `.bak` 恢复，减少手工编辑（本次为手工回滚，已补核前后 hash）。
+
+**判据**：任何会写盘的命令，运行前必须回答「cwd 是否为隔离目录」；`flow.json` 是全局共享状态，误写成本高。
+
+**参见：** v1.1.2-stage-52 op-014 exec_review 偏差裁定；kb/patterns.md #测试 cwd 隔离模式、#隔离 HOME 实测法
+
+## [+] 同类缺陷须一次全量扫描而非逐个暴露：stage 解析归一化三轮修复教训 (2026-10-01)
+
+**过程**：stage-52 的 stage 解析归一化缺陷**分三轮**才收口——op-012（REV-005，修 F1~F5）→ op-013（REV-007，补 remove/attempt）→ op-014（REV-009，补 `addAutoFixReview` + 独立扫描又发现第 8/9/10 处）。每轮审查/扫描都「又发现一处」，共 10 处。
+
+**教训**：**同族缺陷若按「点状报告」逐个修，必然留尾**——因为触发路径分散（命令层 + 核心层 + 多个消费点），单点修复不改变「同类索引点仍在」的事实。
+
+**可操作方法（一次性闭包）**：
+1. 先界定**缺陷类的判据**（如「入参可能为短名的 `stages[...]` 索引点 / `startsWith(stageId)` 前缀比较」）；
+2. 用 `rg` **全量枚举**所有候选点（`rg -n "stages\[" src/`、`rg -n "startsWith\(" src/`），逐点判定「数据派生 / 已归一化 / 缺陷」；
+3. 缺陷点**同批修复**，并给出**闭包收口证据**（「无第 N+1 处」的独立全量扫描结论），而非等审查再发现。
+
+**判据**：收到一条「同族缺陷」报告时，默认动作是**扫描整个缺陷类**，而非仅修报告点；收口以「全量扫描无残留」为准，不以「报告条目 all closed」为准。
+
+**参见：** v1.1.2-stage-52 REV-005/007/009 + op-012/013/014；kb/patterns.md #短名/全名 stage 解析归一化的统一范式

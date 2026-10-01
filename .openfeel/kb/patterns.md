@@ -2898,3 +2898,77 @@ vi.mock('node:os', () => ({ homedir: () => tmpHome }));
 **判据**：当「淘汰旧内容」与「禁止归档」冲突时，取「**索引收敛 + 文件原地保留**」——既压缩工作面（目的：避免污染上下文），又保住可恢复性（目的：核心信息可恢复）。收敛条数不设硬限（一行一条），但不得承载细节。
 
 **参见：** v1.1.2-stage-53 D3、REV-002（§五.2 R4 + 边界注）；`plan/v1/stage-53/plan.md`；kb/patterns.md #索引 + 主题文件的分层记录模式
+
+## [+] 短名/全名 stage 解析归一化的统一范式：调用点归一化 + 双键回退 + 闭包式全量扫描 (2026-10-01)
+
+**背景**：`stageId` 存在三种格式（完整 `v1.0.0-stage-52` / 历史 `v4-stage-04` / 短名 `stage-01`），而 `flow.json` 的 `stages` 键为完整名。help 推荐的短名（如 `stage-03`）一旦被直接用于 `stages[stage]` 索引，即得 `undefined` → 功能静默失效（本仓实测 `flow advance --stage stage-01` 报「phase: 未知」+ exit 1）。
+
+**统一范式**（唯一来源 `core/plan/path.ts` 的 `normalizeStageId`）：
+1. **调用点归一化**：任何接收**用户输入 stage 名**的函数入口，先 `const key = normalizeStageId(input) ?? input;`（无法解析则回退原值，保持「报错而非静默」语义）。
+2. **双键回退**：`const stage = stages[key] ?? stages[raw];`——归一化键优先；当存量/测试 fixture 以短名建键（`stages['stage-01']`）时，回退命中短名键，**不误报「不存在」且不误改短名键**。
+3. **一处收口优于多点修补**：命令层归一化用于**用户可见文案**与防御；核心层（如 `parseOpId` 出口）归一化一次即覆盖 `getOp`/`advancePhase`/`recordAttempt`/`hasTransition` 多个消费点。
+4. **禁止自写解析**（正则/startsWith 猜全名），必须复用 `normalizeStageId`。
+
+**覆盖点清单（stage-52 实证，10 处）**：`findPhasePath` / `resolveCurrentPhase` / `autoRepairInconsistency` / `advanceStagePhase`（体内 `key` 贯穿含 checkpoint 命名）/ `flow advance` 命令层 / `flow stage remove` / `flow attempt` / `parseOpId` 出口 / `removeStage`+`checkRemovable` / `addAutoFixReview` / `addReviewEntry` / `archiveStage` / `listCheckpoints`（短名旧文件 `||` 兜底）。
+
+**判据**：凡 `stages[...]` 索引点或 `startsWith(stageId...)` 前缀比较，其入参若可能来自**用户输入/短名 opId 前缀**，即须归一化；`pipeline.current.stage`、`Object.keys(stages)` 等**数据派生**点无需归一化（恒为全名）。
+
+**参见：** v1.1.2-stage-52 op-012/013/014、REV-005/007/009；`src/core/plan/path.ts` `normalizeStageId`；kb/troubleshooting.md #同类缺陷须一次全量扫描而非逐个暴露
+
+## [+] CLI --json 结构化输出约定：顶层对象 + schemaVersion + 纯 JSON 单文档 (2026-10-01)
+
+**约定**：
+1. **顶层对象 + `schemaVersion`**：新增 `--json` 命令（`flow status/current/health/metrics/overview`）各自输出**领域对象**，均含 `schemaVersion: 1`；不强行同构（各命令输出自身领域结构即可）。
+2. **兼容增强**：既有 `flow phases --json`（`{ phases, transitions, advanceAccepted, transitionsDiff }`）**保持不变**，仅**追加** `schemaVersion`。
+3. **纯 JSON 单文档**：`--json` 输出无 ANSI、无前置提示行；与人类可读输出**互斥**（`--json` 时不打印标题/彩色）。
+4. **文案入 i18n**：`--json` 相关 help 文本仍走 i18n（`lint i18n` 门禁）。
+
+**消费端注意（B9 实证）**：产品输出为合法 UTF-8；但 Windows PowerShell 5.1（`chcp 936` / `[Console]::OutputEncoding=gb2312`）**直接管道捕获**（`| ConvertFrom-Json`）会因消费端编码误判字节而断裂——**属消费端问题，非产品缺陷**。建议：重定向到文件 / 用 `JSON.parse` / pwsh 7 设 UTF-8。
+
+**判据**：机器可读入口须带**结构版本号**以便脚本感知破坏性变更；新增字段只追加不改既有键；人机输出严格互斥。
+
+**参见：** v1.1.2-stage-52 op-001（B1）；`src/commands/flow.ts`；kb/patterns.md #CLI 自描述命令模式
+
+## [+] 「只报告型」与「修复型」命令的边界：默认零写盘 + 显式 --fix 仅回写可对账字段 (2026-10-01)
+
+**问题**：状态文件（`status.md`）与权威源（`flow.json`）可能漂移（manual 模式下系统性滞后）；批量校正应提供入口，但不得扩大写盘面。
+
+**设计（stage-52 实证，`flow health --fix`）**：
+1. **默认只报告**：`flow health` 默认零写盘；仅显式 `--fix` 才回写——「检查」与「修复」是两个语义。
+2. **只回写可对账字段**：`--fix` **仅**回写 `status.md` 的「状态」字段（与 flow.json `stages[].status` 同语义、由 `mapPhaseToStageStatus` 派生）；执行模式/自动推进/当前任务/状态记录等**独立字段绝不触碰**。
+3. **`--fix --dry-run` 可组合**：预览将修改的阶段与新旧值，零写盘；`--fix` 幂等（已一致则 applied=0）。
+4. **不做「advance 自动同步」**：批量校正覆盖**存量**，而 advance 自动同步只覆盖未来每一次推进——存量缺口才是反馈诉求；且避免扩大 advance 的多文件写入面与失败中间态。
+
+**判据**：「以 X 为权威回写 Y」仅对**同语义派生字段**成立；独立维护字段不可由对账覆盖。修复型命令须可枚举「将改哪些行」，并以 `--dry-run` 证明零写盘、以幂等证明可重复执行。
+
+**参见：** v1.1.2-stage-52 op-003（B2，A2 用户裁定）；`FlowManager.reconcileStatusMd`；kb/patterns.md #幂等写入模式、#`--dry-run` 必须字节级不写盘
+
+## [+] 两阶段状态 draft/publish 的窄兼容设计：扩取值域 + 未发布隔离 (2026-10-01)
+
+**问题**：`plan scheme create` 直接注册 `pending`，中断/未完成方案与成熟方案无法区分；反馈要求「先起草、填充后发布」。
+
+**窄兼容设计（stage-52 实证，A1 用户裁定）**：
+1. **扩取值域**：`op.state` 增加 `draft`（既有 `pending`/`executing`/`done` 不变）——**向后兼容**（既有数据零影响）。
+2. **未发布隔离**：`health` **不报** draft 的「空模板」warning（draft 本就允许空）；`advance` / 完成度统计 / 归档**不计入** draft；`ops list` 将 draft **单独分组**展示；**`attempt` 对 draft op 拒绝**（exit 1 + 提示先 `publish`）——未发布即记录执行结果语义矛盾；**双层守卫**（命令层 + core 层）便于 API 调用方亦被拦截。
+3. **发布路径**：`scheme publish <stage> <opId>` 校验模板非空（无占位标记残留）→ 置 `pending`；空模板 → exit 1。
+4. **发布前守卫**：`scheme create --draft` 仍创建 op 文件与注册键（`state='draft'`），仅跳过「视为可执行」。
+
+**判据**：新增状态值优先「扩取值域 + 隔离未发布态」，而非改动既有状态语义；每新增一个状态，须逐一回答「统计/推进/归档/列表/attempt 各如何对待它」。
+
+**参见：** v1.1.2-stage-52 op-005（B4）、REV-002；`src/core/plan/scheme.ts`；kb/troubleshooting.md #空模板检测纯子串匹配误报
+
+## [+] 多步推进的 REV 阻塞复检：论证等价为主 + 每步复检加固 (2026-10-01)
+
+**问题**：`flow advance --to done` 的 REV 阻塞检查位于**命令层且仅 `--to done` 时**生效；多步推进若「一次跑到底」中途新增 blocking REV，可能绕过保护（单步场景下用户下一步会再查）。
+
+**处置（stage-52 实证，REV-052-001）**：
+1. **论证等价（主）**：`addAutoFixReview`（`flow review add --auto-fix` 的单点实现）在 `addReview` 前**强制 `item.status='resolved'`** → 恒不满足阻塞过滤 `blocking !== false && status === 'open'`；且 `addAutoFixReview` **仅由** `addReviewEntry` 调用，**`advance` 路径不创建任何 review** → 多步推进不会带入新 blocking。
+2. **防御性加固（辅）**：把命令层 REV 复检抽取为本地函数 `assertNoBlockingOpenRev(mgr, stage, lang)`，多步循环**每一步后调用（至少进入 done 前）**；命中即停止并报告剩余路径（exit 1 + revision 不变）。
+
+**取舍理由**：论证证明「当前」等价，但依赖 `addAutoFixReview` 恒置 resolved 这一**实现细节**；复检下沉成本极低（复用既有逻辑、无新语义），可防未来语义漂移。**单步行为不变**。
+
+**局限（诚实声明）**：「中间步注入 blocking」在**当前实现下不可构造**（advance 不创建 review + autoFix 恒 resolved）→ 以「存量拦截 + 等价性单测断言」组合替代，不虚构 fixture。
+
+**判据**：当「保护正确性依赖某实现细节」时，论证等价 + 低成本复检**双落地**优于二选一；复检点放在**状态跃迁循环内**而非仅入口。
+
+**参见：** v1.1.2-stage-52 op-004、REV-052-001（§5.3a）；`src/commands/flow.ts` `assertNoBlockingOpenRev`；kb/patterns.md #REV blocking 标记模式

@@ -44,3 +44,4 @@ stageId ↔ plan 目录双向映射的**唯一权威工具**，消除各处硬�
 |------|------|
 | stage-34 | 新增本模块（stageId 三格式解析 + 双向映射 + 三级回退），收敛 init/plan/stage/scheme/flow-manager/commands 各处硬编码路径 |
 | stage-41 | 新增 `validateStageId` / `suggestStageId` / `findStageDirConflict`（三入口统一 stageId 校验 + 建议名 + `(series, stageDir)` 冲突检测） |
+| stage-52 | 本模块**未改**——`normalizeStageId` 被 op-012/013/014 共 **10 处**调用点复用（统一范式 `normalizeStageId(x) ?? x` + 双键回退，见 `kb/patterns.md #短名/全名 stage 解析归一化的统一范式`）。归档核对确认无需变更 |

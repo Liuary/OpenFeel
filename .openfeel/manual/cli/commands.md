@@ -93,6 +93,22 @@ src/commands/setup.ts       registerSetupCommand
 - `node bin/openfeel.js knowledge dedup [content] [--project <path>] [--category <architecture|patterns|troubleshooting|setup>] [--threshold <0~1>]` — **检索相似知识条目（只读建议，不修改 kb）**；未传 `content` 时从 stdin 读取；`--project` 注入 `basePath`（默认 `process.cwd()`）；输出相似度 + 「建议合并/更新」标注 + 只读尾注；正常 exit 0、参数错误 exit 1；随包分发（`npm pack` 含 `dist/utils/kb-dedup.js`）。模板引用已同步为「用 `openfeel knowledge dedup` 获取去重建议」（A6）。
 - **op 文件命名（v1.1.2-stage-51，N8/A5）**：新建 op 固定 `op-NNN.md`（**标题写入内容首行** `# {opId}：{title}`，不再进文件名）——标题含 `/`/空格/中文均可创建（修复含 `/` 时 ENOENT 创建失败）；**历史 `op-NNN_标题.md` 不迁移**，读取端 `extractTitle` **兼容回退**（文件名含 `_` 走原解析，否则读内容首行）；**不提供** `rename`/`migrate` 命令。
 
+### 可编排性与可观测性命令面（v1.1.2-stage-52，反馈 09）
+
+> 面向「长时间、多阶段自动推进」：**批量编排**（一次到位/批量校正）、**机器可读**（`--json`/UTF-8）、**自愈恢复**（`--fix`/空模板检测）。核心设计见 `kb/patterns.md`（`--json` 约定 / 只报告型 vs 修复型边界 / draft 两阶段 / 多步 REV 复检）。
+
+- **`--json` 结构化输出（B1）**：`flow status|current|health|metrics|overview --json` 输出**顶层对象 + `schemaVersion:1`**，纯 JSON 单文档（无 ANSI/标题，与人类可读互斥）；`flow phases --json` 保持既有键（`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`）并**追加** `schemaVersion`。
+- **`flow health --fix`（B2）**：以 `flow.json` 为权威，**仅回写 `status.md` 的「状态」字段**（执行模式/自动推进/当前任务/状态记录等独立字段绝不触碰）；`--fix --dry-run` 预览零写盘；幂等（已一致 applied=0）。**L7 文件孤儿仅报告**（本仓 62 条，无清理入口，A6）。
+- **`flow ops list [--stage] [--json]`（B3）**：展示每 op 的 `state` + 模板填充度（`(filled)`/`(empty)`）+ 空模板 warning；**`draft` 单独分组**。
+- **`plan scheme create --draft` + `plan scheme publish <stage> <opId>`（B4）**：draft→pending 两阶段；`publish` 校验模板非空（否则 exit 1）；**窄兼容**：health 不报 draft 空模板 / advance·统计·归档不计入 draft / **`flow attempt --op <draft>` 拒绝**（exit 1 + 提示先 `publish`，命令层 + core 双层守卫）。
+- **`flow advance --stage <id> --to <phase>`（B5）**：沿 transitions **自动逐步**（BFS 唯一路径，深度 ≤8）；`--dry-run` 打印**完整路径**（`A → B → C`）；非法/多义目标 exit 1 + 列可达目标；**每步 `assertNoBlockingOpenRev` 复检**（blocking open REV 拦截，exit 1 + `revision` 不变）；未提供 `--to` 的单步行为不变。
+- **`plan scheme rename <stage> <opId> --title "<title>"`（B6）**：同步 `flow.json` 标题与 op 文件内容首行；不存在 op → exit 1。
+- **`NO_COLOR` / `--no-color`（B7）**：尊重环境变量与全局选项，输出无 ANSI 转义。**B9 实测**：真实 PS5.1 / `chcp 936` 下输出为合法 UTF-8（**不复现乱码**）→ 不引入编码 hack；但 PowerShell **直接管道捕获** `--json` 可能因消费端编码（gb2312）失真——建议重定向到文件 / 用 `JSON.parse` / pwsh 7 设 UTF-8。
+- **`view add` 已移除（A4，破坏性）**：改用 `flow review add`（`addReviewEntry` 单点等价）；**保留** `view list`/`view accept`；`CHANGELOG` `Removed` 含迁移指引。
+- **`flow current` 无 op（B8）**：回退显示 `current.stage` + 「(无 op)」。
+
+> ⚠️ **已登记缺陷（非阻塞）**：`cli/BUG-005`（medium）空模板检测为**纯子串**匹配，op 正文引用占位标记会被误判未填充（`publish` 误拒 / `ops list` 误报 / `health` 误报）；待修。`cli/BUG-006`（low）en 模式下 blocking REV 拒绝文案仍硬编码中文（`flow.ts:742-743`）。
+
 ## 相关 skill
 
 - **`openfeel-cli-usage`**（CLI 用法参考，**查询型**）：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 三格式与目录映射约定、典型场景、权限要点；含**快照声明**「本文档为 v1.1.2 快照，命令/参数细节以 `node bin/openfeel.js <cmd> --help` 实时输出为准」（防文档-实现发散）。与 `openfeel-wizard`（**执行型**交互向导）职责分离、正文互引。

@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T03:27:26.776Z",
-    "revision": 440
+    "updated": "2026-10-01T03:47:56.047Z",
+    "revision": 446
   },
   "pipeline": {
     "phase": "active",
     "current": {
       "stage": "v1.1.2-stage-52",
-      "op": "op-014"
+      "op": ""
     },
     "retry": 0
   },
@@ -1841,8 +1841,8 @@
     },
     "v1.1.2-stage-52": {
       "name": "v1.1.2-stage-52",
-      "phase": "exec_running",
-      "status": "review_failed",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {
         "op-002": {
@@ -2068,9 +2068,9 @@
         },
         "op-014": {
           "title": "REV-009 stage 归一化最终收尾（addAutoFixReview 等闭包补全）",
-          "state": "pending",
+          "state": "done",
           "assignee": "openfeel-executor",
-          "attempts": 0,
+          "attempts": 1,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -10144,6 +10144,65 @@
         "stageName": "v1.1.2-stage-52",
         "from": "scheme_passed",
         "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-01T03:33:06.814Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-52.op-014",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-01T03:34:22.663Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-01T03:38:23.312Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-10-01T03:38:23.699Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-10-01T03:47:55.435Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-10-01T03:47:56.042Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "test_passed",
+        "to": "archiving"
       }
     }
   ]

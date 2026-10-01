@@ -3,6 +3,7 @@
  * 负责创建、查询、验收审查条目，通过 FlowManager 操作 flow.json
  */
 import { FlowManager, type ReviewItem } from '../flow-manager.js';
+import { normalizeStageId } from '../plan/path.js';
 
 // 重新导出类型，方便外部引用
 export type { ReviewItem };
@@ -139,13 +140,16 @@ export function addReviewEntry(projectPath: string, opts: AddReviewOptions): Add
   if (dotIdx === -1) {
     return { review: null, error: { code: 'invalidOpId', opId: opts.opId } };
   }
-  const stageId = opts.opId.substring(0, dotIdx);
+  const rawStageId = opts.opId.substring(0, dotIdx);
   const opLocalId = opts.opId.substring(dotIdx + 1);
+  // REV-009：短名前缀归一化 + 双键回退（单点实现，禁第二套校验）
+  const stageId = normalizeStageId(rawStageId) ?? rawStageId;
   const data = mgr.getData();
-  if (!data || !data.stages[stageId]) {
+  const stage = data ? (data.stages[stageId] ?? data.stages[rawStageId]) : undefined;
+  if (!data || !stage) {
     return { review: null, error: { code: 'stageNotFound', opId: opts.opId, stage: stageId } };
   }
-  if (!data.stages[stageId].ops[opLocalId]) {
+  if (!stage.ops[opLocalId]) {
     return { review: null, error: { code: 'opNotFound', opId: opts.opId, op: opLocalId, stage: stageId } };
   }
 

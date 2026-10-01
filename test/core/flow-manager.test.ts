@@ -3598,3 +3598,138 @@ describe('REV-007 stage 解析归一化（stage-52 op-013）', () => {
     expect(mgr.getData()!.stages['stage-01']).toBeUndefined();
   });
 });
+
+// ═══════════════════════════════════════
+// stage-52 op-014：REV-009 stage 解析归一化最终收尾
+// ═══════════════════════════════════════
+
+describe('REV-009 stage 解析归一化（stage-52 op-014）', () => {
+  let tmpDir: string;
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-op014-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+  });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  /** 构造 op（checkpoints 全 pending） */
+  function mkOp(opId: string, state: OpState = 'pending') {
+    return {
+      id: opId,
+      title: 't',
+      state,
+      assignee: 'openfeel-executor',
+      attempts: 0,
+      max_attempts: 3,
+      checkpoints: {
+        plan: 'pending',
+        scheme: 'pending',
+        exec: { attempts: 0, self: 'pending' },
+        review: 'pending',
+        test: 'pending',
+      },
+    };
+  }
+
+  /** 构造阶段（默认无 ops、plan_pending、无 deps） */
+  function mkStage(name: string, overrides?: Partial<StageData>): StageData {
+    return {
+      name,
+      phase: 'plan_pending' as PipelinePhase,
+      status: 'planned',
+      deps: [],
+      ops: {},
+      ...overrides,
+    };
+  }
+
+  /** 构造已加载（内存注入）管理器 */
+  function makeMgr(stages: Record<string, StageData>): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      meta: { version: '1.0', project: 'T', updated: '2026-01-01T00:00:00Z' },
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: '', op: '' }, retry: 0 },
+      stages,
+      reviews: [],
+      log: [],
+    });
+    return mgr;
+  }
+
+  it('T1: addAutoFixReview 短名前缀命中全名键（REV-009 核心）', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const mgr = makeMgr({
+        'v1.0.0-stage-01': mkStage('v1.0.0-stage-01', {
+          phase: 'review_failed' as PipelinePhase,
+          status: 'review_failed',
+          ops: { 'op-001': mkOp('op-001') },
+        }),
+      });
+      mgr.addAutoFixReview(
+        { id: 'REV-001', title: 't', op: 'stage-01.op-001', status: 'open', priority: 'medium', blocking: false },
+        'stage-01.op-001',
+      );
+      expect(err).not.toHaveBeenCalled();
+      const d = mgr.getData()!;
+      expect(d.reviews).toHaveLength(1);
+      expect(d.reviews[0].status).toBe('resolved');
+      expect(d.reviews[0].canAutoFix).toBe(true);
+      expect(d.stages['v1.0.0-stage-01'].phase).toBe('exec_running');
+    } finally {
+      warn.mockRestore();
+      err.mockRestore();
+    }
+  });
+
+  it('T2: 双键并存 → addAutoFixReview 作用于全名键、短名键逐字节不变', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const mgr = makeMgr({
+        'stage-01': mkStage('stage-01', { ops: {} }),
+        'v1.0.0-stage-01': mkStage('v1.0.0-stage-01', {
+          phase: 'review_failed' as PipelinePhase,
+          status: 'review_failed',
+          ops: { 'op-001': mkOp('op-001') },
+        }),
+      });
+      const shortBefore = JSON.stringify(mgr.getData()!.stages['stage-01']);
+      mgr.addAutoFixReview(
+        { id: 'REV-001', title: 't', op: 'stage-01.op-001', status: 'open', priority: 'medium', blocking: false },
+        'stage-01.op-001',
+      );
+      expect(err).not.toHaveBeenCalled();
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('exec_running');
+      expect(JSON.stringify(mgr.getData()!.stages['stage-01'])).toBe(shortBefore);
+    } finally {
+      warn.mockRestore();
+      err.mockRestore();
+    }
+  });
+
+  it('T1: listCheckpoints 短名列出全名快照，无参回归与全名一致', () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData());
+    mgr.saveCheckpoint('v1.0.0-stage-01', 'exec_running' as PipelinePhase);
+
+    const full = mgr.listCheckpoints('v1.0.0-stage-01');
+    const short = mgr.listCheckpoints('stage-01');
+    expect(full.length).toBe(1);
+    expect(short).toEqual(full);
+    // 无参行为不变：列出全部快照
+    expect(mgr.listCheckpoints()).toEqual(full);
+    // 不存在阶段 → 空数组（不抛错）
+    expect(mgr.listCheckpoints('stage-99')).toEqual([]);
+  });
+
+  it('T2: listCheckpoints 短名旧文件由 || 兜底可见', () => {
+    const cpDir = join(tmpDir, '.openfeel', 'checkpoints');
+    mkdirSync(cpDir, { recursive: true });
+    const legacy = 'stage-01-20260101T000000000-plan_passed.json';
+    writeFileSync(join(cpDir, legacy), '{}', 'utf-8');
+
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.listCheckpoints('stage-01')).toEqual([legacy]);
+  });
+});

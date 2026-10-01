@@ -579,8 +579,11 @@ export class FlowManager {
       if (!existsSync(dir)) {
         return [];
       }
+      // REV-009：短名归一化（快照文件名前缀为全名）；`||` 兜底兼容历史上以短名存的快照
+      const key = stageId ? (normalizeStageId(stageId) ?? stageId) : undefined;
       return readdirSync(dir)
-        .filter((f) => f.endsWith('.json') && (!stageId || f.startsWith(stageId + '-')))
+        .filter((f) => f.endsWith('.json')
+          && (!key || f.startsWith(key + '-') || (stageId !== undefined && stageId !== key && f.startsWith(stageId + '-'))))
         .sort();
     } catch {
       return [];
@@ -2301,10 +2304,13 @@ export class FlowManager {
       console.error(`错误：opId 格式不正确 "${opId}"，应为 stage-xx.op-xxx`);
       return;
     }
-    const stageId = opId.substring(0, opId.lastIndexOf('.'));
-    const stage = this.data.stages[stageId];
+    const rawStageId = opId.substring(0, opId.lastIndexOf('.'));
+    // REV-009：短名前缀归一化 + 双键回退（与 parseOpId / setStageDeps 同范式）
+    const stageId = normalizeStageId(rawStageId) ?? rawStageId;
+    const stage = this.data.stages[stageId] ?? this.data.stages[rawStageId];
     if (!stage) {
-      console.error(`错误：opId "${opId}" 中的 stage "${stageId}" 不存在`);
+      // 诊断文案显示用户输入的原始 stage 名（便于定位）
+      console.error(`错误：opId "${opId}" 中的 stage "${rawStageId}" 不存在`);
       return;
     }
 

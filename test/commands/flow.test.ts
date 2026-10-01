@@ -1263,4 +1263,105 @@ describe('flow 命令（stage-41）', () => {
     expect(/[\u4e00-\u9fff]/.test(t('flow.advance.gitDirtyBoxHint', 'en'))).toBe(false);
     warnMock.mockRestore();
   });
+
+  // ── stage-52/op-014：REV-009 stage 解析归一化最终收尾 ──
+
+  /** 构造 full-name 阶段（review_failed + op-001），用于 --auto-fix 短名前缀场景 */
+  function makeReviewFailedStage(stageName: string): void {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage(stageName);
+    const st = mgr.getData()!.stages[stageName];
+    st.phase = 'review_failed';
+    st.status = 'review_failed';
+    st.ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+  }
+
+  it('op-014/T1: review add --auto-fix 短名前缀创建成功（REV-009 核心）且与全名等价', async () => {
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // 短名前缀（tmpDir，键为全名）
+      makeReviewFailedStage('v1.0.0-stage-01');
+      exitMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'review', 'add', '--op', 'stage-01.op-001', '--title', 't', '--auto-fix', 'x']);
+      expect(exitMock).not.toHaveBeenCalled();
+      const shortFlow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+      expect(shortFlow.reviews).toHaveLength(1);
+      expect(shortFlow.reviews[0].status).toBe('resolved');
+      expect(shortFlow.reviews[0].canAutoFix).toBe(true);
+      expect(shortFlow.stages['v1.0.0-stage-01'].phase).toBe('exec_running');
+
+      // 全名对照（独立 fixture）
+      const dir2 = mkdtempSync(join(tmpdir(), 'openfeel-op014-full-'));
+      try {
+        await initProject(dir2);
+        cwdMock.mockReturnValue(dir2);
+        const mgr2 = new FlowManager(dir2);
+        mgr2.addStage('v1.0.0-stage-01');
+        const st2 = mgr2.getData()!.stages['v1.0.0-stage-01'];
+        st2.phase = 'review_failed';
+        st2.status = 'review_failed';
+        st2.ops = { 'op-001': makeOp('op-001') as never };
+        mgr2.save();
+        exitMock.mockClear();
+        errorMock.mockClear();
+        await safeParse(['flow', 'review', 'add', '--op', 'v1.0.0-stage-01.op-001', '--title', 't', '--auto-fix', 'x']);
+        expect(exitMock).not.toHaveBeenCalled();
+        const fullFlow = JSON.parse(readFileSync(join(dir2, '.openfeel', 'flow.json'), 'utf-8'));
+        expect(fullFlow.reviews).toHaveLength(1);
+        // 短名与全名结果一致（除 review.op 字面值）
+        expect(shortFlow.reviews[0].status).toBe(fullFlow.reviews[0].status);
+        expect(shortFlow.reviews[0].canAutoFix).toBe(fullFlow.reviews[0].canAutoFix);
+        expect(shortFlow.stages['v1.0.0-stage-01'].phase).toBe(fullFlow.stages['v1.0.0-stage-01'].phase);
+      } finally {
+        cwdMock.mockReturnValue(tmpDir);
+        rmSync(dir2, { recursive: true, force: true });
+      }
+    } finally {
+      warnMock.mockRestore();
+    }
+  });
+
+  it('op-014/T1: review add 短名前缀（无 auto-fix）不再 stageNotFound', async () => {
+    makeReviewFailedStage('v1.0.0-stage-02');
+    exitMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['flow', 'review', 'add', '--op', 'stage-02.op-001', '--title', 't']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.reviews).toHaveLength(1);
+    expect(flow.reviews[0].status).toBe('open');
+    // 错误码契约保持：op 不存在 → opNotFound（exit 1 且不新增条目）
+    exitMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['flow', 'review', 'add', '--op', 'stage-02.op-999', '--title', 't']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(after.reviews).toHaveLength(1);
+  });
+
+  it('op-014/T1: checkpoint list 短名列出全名快照（修复前静默空）+ 无参回归', async () => {
+    const cpDir = join(tmpDir, '.openfeel', 'checkpoints');
+    mkdirSync(cpDir, { recursive: true });
+    const snap = 'v1.0.0-stage-01-20260101T000000000-plan_review.json';
+    writeFileSync(join(cpDir, snap), '{}', 'utf-8');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'checkpoint', 'list', 'stage-01']);
+    const shortOut = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(shortOut).toContain(snap);
+    expect(shortOut).not.toContain('暂无');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'checkpoint', 'list', 'v1.0.0-stage-01']);
+    const fullOut = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(fullOut).toContain(snap);
+    expect(fullOut).not.toContain('暂无');
+
+    // 无参回归：仍列出全部快照
+    logMock.mockClear();
+    await safeParse(['flow', 'checkpoint', 'list']);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain(snap);
+  });
 });

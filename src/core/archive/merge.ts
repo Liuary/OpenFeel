@@ -3,6 +3,7 @@
  * 负责汇总阶段产出、生成归档摘要、提取知识条目，通过 FlowManager 操作 flow.json
  */
 import { FlowManager } from '../flow-manager.js';
+import { normalizeStageId } from '../plan/path.js';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
@@ -42,7 +43,9 @@ export function archiveStage(projectPath: string, stageName: string): ArchiveRes
   }
 
   // 查找 stageName 对应的阶段
-  const stage = data.stages[stageName];
+  // REV-009：短名归一化 + 双键回退（openfeel archive <stage> 的 help 示例为短名）
+  const key = normalizeStageId(stageName) ?? stageName;
+  const stage = data.stages[key] ?? data.stages[stageName];
   if (!stage) {
     return null;
   }
@@ -59,7 +62,8 @@ export function archiveStage(projectPath: string, stageName: string): ArchiveRes
       return false;
     }
     const opStage = r.op.substring(0, dotIdx);
-    return opStage === stageName;
+    // 双键归属比较：归一化键优先，短名（原始输入）键回退，兼容存量短名键数据
+    return opStage === key || opStage === stageName;
   });
   const reviewsCount = relatedReviews.length;
 

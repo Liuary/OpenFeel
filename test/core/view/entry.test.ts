@@ -462,5 +462,65 @@ describe('View Entry', () => {
       expect(result.review!.canAutoFix).toBe(true);
       expect(result.review!.status).toBe('resolved');
     });
+
+    it('op-014/T1: 短名前缀命中全名键（此前 stageNotFound）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'Test', updated: new Date().toISOString() },
+        pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
+        stages: {
+          'v1.0.0-stage-01': {
+            name: 'v1.0.0-stage-01', phase: 'exec_running', status: 'planned', deps: [],
+            ops: {
+              'op-001': {
+                id: 'op-001', title: 't', state: 'pending', assignee: 'x', attempts: 0, max_attempts: 3,
+                checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+              },
+            },
+          },
+        },
+        reviews: [], log: [],
+      });
+      mgr.save();
+
+      const r = addReviewEntry(tmpDir, { opId: 'stage-01.op-001', title: 't' });
+      expect(r.error).toBeNull();
+      // 契约：review.op 仍写入用户输入字面值
+      expect(r.review!.op).toBe('stage-01.op-001');
+      // op 不存在 → 仍 opNotFound（错误码契约保持）
+      expect(addReviewEntry(tmpDir, { opId: 'stage-01.op-999' }).error?.code).toBe('opNotFound');
+    });
+
+    it('op-014/T2: 双键并存 → 作用于全名键、短名键逐字节不变（G2）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'Test', updated: new Date().toISOString() },
+        pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
+        stages: {
+          'stage-01': { name: 'stage-01', phase: 'plan_pending', status: 'planned', deps: [], ops: {} },
+          'v1.0.0-stage-01': {
+            name: 'v1.0.0-stage-01', phase: 'exec_running', status: 'planned', deps: [],
+            ops: {
+              'op-001': {
+                id: 'op-001', title: 't', state: 'pending', assignee: 'x', attempts: 0, max_attempts: 3,
+                checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+              },
+            },
+          },
+        },
+        reviews: [], log: [],
+      });
+      mgr.save();
+      const shortBefore = JSON.stringify(mgr.getData()!.stages['stage-01']);
+
+      const r = addReviewEntry(tmpDir, { opId: 'stage-01.op-001', title: 't' });
+      expect(r.error).toBeNull();
+
+      const after = new FlowManager(tmpDir).getData()!;
+      expect(after.reviews).toHaveLength(1);
+      expect(JSON.stringify(after.stages['stage-01'])).toBe(shortBefore);
+    });
   });
 });

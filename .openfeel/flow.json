@@ -2,13 +2,13 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-01T03:17:00.920Z",
-    "revision": 433
+    "updated": "2026-10-01T03:33:06.838Z",
+    "revision": 441
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.2-stage-53",
+      "stage": "v1.1.2-stage-52",
       "op": ""
     },
     "retry": 0
@@ -2051,6 +2051,23 @@
         },
         "op-013": {
           "title": "REV-007 stage 解析归一化闭包补全（remove attempt parseOpId）",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-014": {
+          "title": "REV-009 stage 归一化最终收尾（addAutoFixReview 等闭包补全）",
           "state": "done",
           "assignee": "openfeel-executor",
           "attempts": 1,
@@ -10058,6 +10075,84 @@
         "stageName": "v1.1.2-stage-53",
         "from": "archiving",
         "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-01T03:17:02.052Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-01T03:20:32.341Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-10-01T03:20:32.660Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "review_failed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-10-01T03:21:47.611Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "opId": "op-014"
+      }
+    },
+    {
+      "time": "2026-10-01T03:24:22.326Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-10-01T03:27:26.469Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-10-01T03:27:26.773Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.2-stage-52",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-01T03:33:06.814Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.1.2-stage-52.op-014",
+        "attempts": 1
       }
     }
   ]

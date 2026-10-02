@@ -712,7 +712,7 @@ export const help: I18nDomain = {
   'stage.status.argstageId': { key: 'help.stage.status.argstageId', zh: '阶段 ID（如 v4-stage-04）', en: '' },
   'stage.set':             { key: 'help.stage.set',             zh: '设置阶段状态字段（原子更新，保留其余内容不变）', en: '' },
   'stage.set.argstageId':  { key: 'help.stage.set.argstageId',  zh: '阶段 ID（如 v4-stage-04）', en: '' },
-  'stage.set.status':      { key: 'help.stage.set.status',      zh: '状态值（如 exec_running）', en: '' },
+  'stage.set.status':      { key: 'help.stage.set.status',      zh: '状态值（粗粒度：planned/review_failed/review_passed/testing/archiving/done）', en: '' },
   'stage.set.execMode':    { key: 'help.stage.set.execMode',    zh: '执行模式（manual | auto）', en: '' },
   'stage.set.autoAdvance': { key: 'help.stage.set.autoAdvance', zh: '自动推进（enabled | disabled）', en: '' },
   'stage.set.reviewAgent': { key: 'help.stage.set.reviewAgent', zh: '当前责任 Agent（如 openfeel-executor）', en: '' },

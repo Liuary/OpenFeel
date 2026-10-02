@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, isTemplateEmpty, detectFillState, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { PIPELINE_PHASES } from '../../src/core/pipeline-schema.js';
 import { t } from '../../src/core/i18n.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
@@ -2332,7 +2333,7 @@ describe('FlowManager', () => {
   // ═══════════════════════════════════════
 
   describe('autoRepairInconsistency', () => {
-    it('status=done 但 phase≠done 时应同步 phase 为 done', () => {
+    it('status=done 但 phase≠done 时以 phase 为权威（不再前推 phase 为 done）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData({
         ...makeTestFlowData(),
@@ -2340,14 +2341,16 @@ describe('FlowManager', () => {
           'stage-01': {
             ...makeTestFlowData().stages['stage-01'],
             status: 'done',
-            phase: 'exec_running' as PipelinePhase,
+            phase: 'review_passed' as PipelinePhase,
           },
         },
       });
       const result = mgr.autoRepairInconsistency('stage-01');
       expect(result.fixed).toBe(true);
-      expect(result.detail).toContain('→ done');
-      expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+      expect(result.detail).toContain('以 phase 为权威');
+      // 新语义：绝不把 phase 前推为 done；改为撤销非法 status=done
+      expect(mgr.getData()!.stages['stage-01'].phase).toBe('review_passed');
+      expect(mgr.getData()!.stages['stage-01'].status).toBe('review_passed');
     });
 
     it('phase=done 但 status≠done 时应同步 status 为 done', () => {
@@ -2702,12 +2705,8 @@ describe('FlowManager', () => {
       expect(mapPhaseToStageStatus('review_failed', 'anything')).toBe('review_failed');
     });
 
-    it('review_passed 且 testEnabled 时应映射为 review_passed', () => {
-      expect(mapPhaseToStageStatus('review_passed', 'x', true)).toBe('review_passed');
-    });
-
-    it('review_passed 且 testEnabled=false 时应映射为 done', () => {
-      expect(mapPhaseToStageStatus('review_passed', 'x', false)).toBe('done');
+    it('review_passed 恒映射为 review_passed（中间相位不投影为终态）', () => {
+      expect(mapPhaseToStageStatus('review_passed', 'x')).toBe('review_passed');
     });
 
     it('test_passed 应映射为中间状态 testing', () => {
@@ -2725,6 +2724,77 @@ describe('FlowManager', () => {
     it('其他阶段应保持当前状态不变', () => {
       expect(mapPhaseToStageStatus('plan_pending', 'in_progress')).toBe('in_progress');
       expect(mapPhaseToStageStatus('exec_running', 'planned')).toBe('planned');
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // mapPhaseToStageStatus 不变量 / auto-repair 方向（op-001 T6）
+  // ═══════════════════════════════════════
+
+  describe('mapPhaseToStageStatus 不变量（op-001 T6.1）', () => {
+    it('全相位扫描：所有非 done 相位返回值 ≠ done；review_passed 恒为 review_passed', () => {
+      for (const p of PIPELINE_PHASES) {
+        if (p === 'done') {
+          continue;
+        }
+        // 不变量：任何非 done 相位都不得投影为终态 done
+        expect(mapPhaseToStageStatus(p as PipelinePhase, 'x')).not.toBe('done');
+      }
+      expect(mapPhaseToStageStatus('review_passed', 'x')).toBe('review_passed');
+    });
+  });
+
+  describe('autoRepairInconsistency 方向反转（op-001 T6.2/6.4/6.5）', () => {
+    /** 构造单阶段 FlowManager（指定 phase/status） */
+    function makeMgr(phase: PipelinePhase, status: string): FlowManager {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...makeTestFlowData(),
+        stages: {
+          'stage-01': {
+            ...makeTestFlowData().stages['stage-01'],
+            phase,
+            status,
+          },
+        },
+      });
+      return mgr;
+    }
+
+    it('T6.2 锁复现：phase=review_passed, status=done → status 撤销为 review_passed，phase 不变', () => {
+      const mgr = makeMgr('review_passed', 'done');
+      const result = mgr.autoRepairInconsistency('stage-01');
+      expect(result.fixed).toBe(true);
+      expect(mgr.getData()!.stages['stage-01'].phase).toBe('review_passed');
+      expect(mgr.getData()!.stages['stage-01'].status).toBe('review_passed');
+    });
+
+    it('T6.4 合法方向：phase=done, status=planned → status 同步为 done', () => {
+      const mgr = makeMgr('done', 'planned');
+      const result = mgr.autoRepairInconsistency('stage-01');
+      expect(result.fixed).toBe(true);
+      expect(mgr.getData()!.stages['stage-01'].status).toBe('done');
+      expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+    });
+
+    it('T6.5 dry-run 零写盘：仅报告 fixed=true，内存 phase/status 均不变', () => {
+      const mgr = makeMgr('review_passed', 'done');
+      const result = mgr.autoRepairInconsistency('stage-01', { dryRun: true });
+      expect(result.fixed).toBe(true);
+      expect(mgr.getData()!.stages['stage-01'].status).toBe('done');
+      expect(mgr.getData()!.stages['stage-01'].phase).toBe('review_passed');
+    });
+  });
+
+  describe('端到端：review_passed 不再锁死 done（op-001 T6.3）', () => {
+    it('advance review_passed 后 status≠done，且 test_pending 可达', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mgr.advanceStagePhase('stage-01', 'review_passed' as PipelinePhase);
+      expect(mgr.getData()!.stages['stage-01'].status).toBe('review_passed');
+      expect(mgr.getData()!.stages['stage-01'].status).not.toBe('done');
+      // 相位仍为 review_passed → test_pending 路径可达
+      expect(mgr.findPhasePath('stage-01', 'test_pending').reason).not.toBe('no-path');
     });
   });
 });
@@ -3304,9 +3374,8 @@ describe('配置级联（stage-42 op-001）', () => {
       expect(anyMgr.fuzzyCorrectPhase('ing')).toBeNull();
     });
 
-    it('T9：mapPhaseToStageStatus testEnabled 两分支', () => {
-      expect(mapPhaseToStageStatus('review_passed', 'x', true)).toBe('review_passed');
-      expect(mapPhaseToStageStatus('review_passed', 'x', false)).toBe('done');
+    it('T9：mapPhaseToStageStatus review_passed 单分支恒为 review_passed', () => {
+      expect(mapPhaseToStageStatus('review_passed', 'x')).toBe('review_passed');
     });
 
     it('T9：canAdvance 合法/非法目标两分支', () => {

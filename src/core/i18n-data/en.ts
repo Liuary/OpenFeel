@@ -678,7 +678,7 @@ export const help: I18nDomain = {
   'stage.status.argstageId': { key: 'help.stage.status.argstageId', zh: '', en: 'Stage ID (e.g. v4-stage-04)' },
   'stage.set':             { key: 'help.stage.set',             zh: '', en: 'Set stage status field (atomic update, preserve rest)' },
   'stage.set.argstageId':  { key: 'help.stage.set.argstageId',  zh: '', en: 'Stage ID (e.g. v4-stage-04)' },
-  'stage.set.status':      { key: 'help.stage.set.status',      zh: '', en: 'Status value (e.g. exec_running)' },
+  'stage.set.status':      { key: 'help.stage.set.status',      zh: '', en: 'Status value (coarse-grained: planned/review_failed/review_passed/testing/archiving/done)' },
   'stage.set.execMode':    { key: 'help.stage.set.execMode',    zh: '', en: 'Execution mode (manual | auto)' },
   'stage.set.autoAdvance': { key: 'help.stage.set.autoAdvance', zh: '', en: 'Auto advance (enabled | disabled)' },
   'stage.set.reviewAgent': { key: 'help.stage.set.reviewAgent', zh: '', en: 'Current responsible agent (e.g. openfeel-executor)' },

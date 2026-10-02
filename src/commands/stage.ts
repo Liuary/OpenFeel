@@ -16,7 +16,7 @@ import { atomicWriteFileSync } from '../core/fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../core/fs/file-lock.js';
 import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
-import { FlowManager } from '../core/flow-manager.js';
+import { FlowManager, STAGE_STATUS_VALUES } from '../core/flow-manager.js';
 import { handleAddStageError } from './shared/errors.js';
 import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId } from '../core/plan/path.js';
 import { appendStatusTask } from '../core/plan/stage.js';
@@ -374,7 +374,7 @@ export function registerStageCommand(program: Command): void {
       // N7-1：字段白名单（A4）+ 固定写入顺序（状态 → 执行模式 → 自动推进 → 当前责任 Agent）
       const jobs: { field: string; value: string; allowed?: string[] }[] = [];
       if (options.status !== undefined) {
-        jobs.push({ field: '状态', value: options.status });
+        jobs.push({ field: '状态', value: options.status, allowed: [...STAGE_STATUS_VALUES] });
       }
       if (options.execMode !== undefined) {
         jobs.push({ field: '执行模式', value: options.execMode, allowed: ['manual', 'auto'] });

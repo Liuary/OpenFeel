@@ -1307,10 +1307,7 @@ export class FlowManager {
 
     // 同步 stage status（调用已有 mapPhaseToStageStatus）
     const prevStatus = stage.status;
-    // test_enabled 由 buildCascadeConfig（config.yaml/status.md/profile 级联，无反向依赖）取真实值，
-    // 使 mapPhaseToStageStatus 的 testEnabled 分支可达（T9）
-    const testEnabled = this.buildCascadeConfig().effective['test_enabled'] !== 'false';
-    const newStatus = mapPhaseToStageStatus(targetPhase, prevStatus, testEnabled);
+    const newStatus = mapPhaseToStageStatus(targetPhase, prevStatus);
     stage.status = newStatus;
 
     // 自动记录阶段计时：首次状态变更时启动
@@ -2884,9 +2881,10 @@ export class FlowManager {
   }
 
   /**
-   * 自动修复指定阶段的 phase/status 不一致
-   * - status=done 但 phase≠done → 同步 phase 为 done
-   * - phase=done 但 status≠done → 同步 status 为 done
+   * 自动修复指定阶段的 phase/status 不一致（phase 为唯一事实源）
+   * - status=done 且 phase≠done → 以 phase 为权威，将 status 修正为 phase 投影（撤销非法 done）
+   * - phase=done 且 status≠done → 将 status 同步为 done
+   * **禁止任何 phase ← status 前推**（绝不把 phase 改为 done 来迁就 status）。
    * @param stageName 阶段名（如 stage-01）
    * @param options.dryRun 为 true 时仅计算并返回等价结果，不修改内存（供 --dry-run 预览用）
    * @returns 修复结果（是否修复 + 详情）
@@ -2904,11 +2902,12 @@ export class FlowManager {
       return { fixed: false, detail: `阶段 '${stageName}' 不存在` };
     }
 
-    // 修复: status=done 但 phase≠done → 同步 phase 为 done（dryRun 时仅报告，不写内存）
+    // 修复: status=done 但 phase≠done → 以 phase 为权威修正 status（撤销非法 done；dryRun 时仅报告，不写内存）
     if (stage.status === 'done' && stage.phase !== 'done') {
-      const detail = `phase ${stage.phase} → done (与 status 同步)`;
+      const projected = mapPhaseToStageStatus(stage.phase, stage.status);
+      const detail = `status ${stage.status} → ${projected} (以 phase 为权威，撤销非法 done)`;
       if (!options.dryRun) {
-        stage.phase = 'done' as PipelinePhase;
+        stage.status = projected;
       }
       return { fixed: true, detail };
     }
@@ -3128,13 +3127,12 @@ export class FlowManager {
     if (!this.data) {
       return out;
     }
-    const testEnabled = this.buildCascadeConfig().effective['test_enabled'] !== 'false';
     for (const [stageId, stage] of Object.entries(this.data.stages)) {
       // 跳过 draft（未发布不参与对账，与 op-005 窄兼容一致）
       if ((stage.phase as string) === 'draft') {
         continue;
       }
-      const authoritative = mapPhaseToStageStatus(stage.phase, stage.status, testEnabled);
+      const authoritative = mapPhaseToStageStatus(stage.phase, stage.status);
       const statusPath = this.findStatusPath(stageId);
       if (!statusPath || !existsSync(statusPath)) {
         // status.md 缺失 → 安全跳过，不新建文件/字段
@@ -3780,22 +3778,30 @@ export function detectFillState(content: string): 'empty' | 'partial' | 'filled'
 }
 
 /**
+ * 粗粒度阶段状态枚举：status = phase 投影的可能取值 ∪ 初始值。
+ * 供 `stage set --status` 值域校验复用（单一事实源，禁止在命令层硬编码）。
+ * 注意：不含自由文本/历史相位值；`mapPhaseToStageStatus` 的 default 分支返回 currentStatus，
+ * 但对外可写值域收敛为本集合（D-status 裁定）。
+ */
+export const STAGE_STATUS_VALUES = ['planned', 'review_failed', 'review_passed', 'testing', 'archiving', 'done'] as const;
+
+/**
  * 将 PipelinePhase 映射为 stage 状态
+ * status 为 phase 的粗粒度投影，phase 为唯一事实源；
+ * `review_passed` 恒映射 `'review_passed'`，中间相位不投影为终态。
  * @param phase 流水线阶段
  * @param currentStatus 当前 stage 状态（用于不做变更的 phase）
- * @param testEnabled 是否启用测试（false 时 review_passed 直接映射为 done）
  * @returns stage 状态字符串
  */
 export function mapPhaseToStageStatus(
   phase: PipelinePhase,
   currentStatus: string,
-  testEnabled: boolean = true,
 ): string {
   switch (phase) {
     case 'review_failed':
       return 'review_failed';
     case 'review_passed':
-      return testEnabled ? 'review_passed' : 'done';
+      return 'review_passed';
     case 'test_passed':
       // status=done 是 phase=done 的专属状态：test_passed 映射为中间状态 testing，
       // 避免 autoRepairInconsistency 在 flow advance 时把 phase 误修正为 done，截断 test_passed→archiving 路径

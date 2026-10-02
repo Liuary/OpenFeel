@@ -123,10 +123,10 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
   it('N5：变更 stage set → 写入成功 + 生成 .bak（旧内容）', async () => {
     const p = writeStatus('stage-91');
 
-    await safeParse(['stage', 'set', 'stage-91', '--status', 'exec_running']);
+    await safeParse(['stage', 'set', 'stage-91', '--status', 'review_passed']);
 
     expect(exitMock).not.toHaveBeenCalled();
-    expect(readFileSync(p, 'utf-8')).toContain('- **状态**：exec_running');
+    expect(readFileSync(p, 'utf-8')).toContain('- **状态**：review_passed');
     expect(existsSync(bakPath('stage-91'))).toBe(true);
     expect(readFileSync(bakPath('stage-91'), 'utf-8')).toContain('- **状态**：planned');
   });
@@ -173,6 +173,29 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(stderr()).toContain('非法');
     expect(readFileSync(p, 'utf-8')).toBe(before);
+  });
+
+  // ── op-001 T6.6：--status 粗粒度值域校验 ──
+
+  it('T6.6：--status 传相位值（review_pending）→ exit 1 且不写盘、无 .bak', async () => {
+    const p = writeStatus('stage-99');
+    const before = readFileSync(p, 'utf-8');
+
+    await safeParse(['stage', 'set', 'stage-99', '--status', 'review_pending']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('非法');
+    expect(readFileSync(p, 'utf-8')).toBe(before);
+    expect(existsSync(bakPath('stage-99'))).toBe(false);
+  });
+
+  it('T6.6：--status done 为合法粗粒度值 → 成功写入', async () => {
+    const p = writeStatus('stage-89');
+
+    await safeParse(['stage', 'set', 'stage-89', '--status', 'done']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(p, 'utf-8')).toContain('- **状态**：done');
   });
 
   // ── stage-51 N6-1：stage task --add ──

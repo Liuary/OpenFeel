@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.2 快照** | 更新日期：2026-09-30
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.3 快照** | 更新日期：2026-10-02
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -18,7 +18,7 @@
 | `--no-log` | 关闭运行日志（亦可通过 `OPENFEEL_LOG=0` / `OPENFEEL_NO_LOG=1`） |
 | `--debug` | 记录 debug 级运行日志（默认仅 info/warn/error） |
 
-**输出编码自适应（v1.1.2-stage-58）**：`auto` 在 Windows 非 TTY（管道/重定向）下按控制台 `chcp` 映射转码，TTY / POSIX 直通 UTF-8；`--json` **恒 UTF-8**（覆盖显式 `--encoding` / `OPENFEEL_ENCODING` / auto）；不可编码字符降 `?` 且**不告警**；**仅支持 UTF-8 字符串语义**（非默认 encoding 的直接 write 不受支持）。
+**输出编码自适应（v1.1.3-stage-61）**：`auto` 在 Windows 非 TTY（管道/重定向）下**直通 UTF-8**（对齐 Node 默认与管道/CI 消费者）；TTY / POSIX 直通 UTF-8；**GBK 需显式** `--encoding gbk` / `OPENFEEL_ENCODING=gbk`；`--json` **恒 UTF-8**（覆盖显式 `--encoding` / `OPENFEEL_ENCODING` / auto）；不可编码字符降 `?` 且**不告警**；**仅支持 UTF-8 字符串语义**（非默认 encoding 的直接 write 不受支持）。
 
 **运行日志（v1.1.2-stage-58）**：默认**开启**、恒 UTF-8、按日一文件（不自动清理）；`info`/`warn`/`error` 默认记录、`debug` 默认关；best-effort（写失败不阻塞 CLI）；与 `.openfeel/log/**`（工作区审计）、`flow.json.log[]`（状态审计）、`update_infos.md`（部署记录）四类日志**语义分离**；`error` 仅记「命令处理中抛出的异常」，commander 解析期错误（未知命令/选项/缺参）经 `program.error()` 直接退出、**不入日志**。
 

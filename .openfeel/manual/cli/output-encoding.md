@@ -4,18 +4,16 @@
 
 ## 职责
 
-在 CLI 进程入口（`bin/openfeel.js`）单一咽喉安装 `process.stdout` / `process.stderr` 的写包装，把**人类可读文本**按目标编码转码，解决 Windows 传统 CJK 代码页（**非 TTY / 管道**）下的乱码；`--json` 机器合同**恒 UTF-8**，不受转码影响。
+在 CLI 进程入口（`bin/openfeel.js`）单一咽喉安装 `process.stdout` / `process.stderr` 的写包装，把**人类可读文本**按目标编码转码；win32 非 TTY 默认直通 UTF-8；GBK 仅显式生效；`--json` 机器合同**恒 UTF-8**，不受转码影响。
 
 ## 核心 API
 
 | 导出 | 签名 | 用途 |
 |------|------|------|
 | `OutputEncoding` | `type` | 目标编码联合：`utf8 \| gbk \| gb18030 \| big5 \| cp932 \| cp949` |
-| `ResolveTargetEncodingContext` | `interface` | resolve 输入（`argv/env/platform/isTTY` + 测试注入 `codepage?`） |
+| `ResolveTargetEncodingContext` | `interface` | resolve 输入（`argv/env/platform/isTTY`） |
 | `InstallOutputEncodingOptions` | `interface` | install 输出流注入（`stdout?/stderr?`，**无 `force`**） |
 | `normalizeEncoding` | `(value) => OutputEncoding \| null` | 编码别名归一 |
-| `codepageToIconv` | `(cp: number) => OutputEncoding` | 代码页映射 |
-| `detectConsoleCodepage` | `() => number \| null` | `chcp` 探测（进程内缓存） |
 | `resolveTargetEncoding` | `(ctx) => OutputEncoding` | 优先级解析（**纯函数**） |
 | `installOutputEncoding` | `(opts?) => void` | 幂等安装（**仅 `bin` 调用**） |
 
@@ -29,25 +27,12 @@
 | ② | 显式 `--encoding <v>`（空格或 `=`） | 归一化 v |
 | ③ | 环境变量 `OPENFEEL_ENCODING` | 归一化 v |
 | ④ | `platform !== 'win32'` **或** `isTTY` | `'utf8'`（现代终端由 Node 控制台 API 直通） |
-| ⑤ | `win32 && !isTTY` | `chcp` 探测 → 代码页映射；未知 → `'utf8'` |
+| ⑤ | `win32 && !isTTY` | **`'utf8'`**（对齐 Node 默认与管道/CI 消费者） |
 
-- **逐流判定**：stdout / stderr 各按**本流** `isTTY` 独立解析；`chcp` 结果进程内缓存一次。
+- **GBK 仅显式生效**：`--encoding gbk`（②）或 `OPENFEEL_ENCODING=gbk`（③）；无隐式代码页推断。`--json`（①）**恒 UTF-8**。
+- **逐流判定**：stdout / stderr 各按**本流** `isTTY` 独立解析，无进程级缓存。
 - **`--json` 恒 UTF-8（C-1）**：第 1 步旁路，**优先于**显式 `--encoding`、`OPENFEEL_ENCODING` 与 auto。权威证明在纯函数单测（`--json` + `--encoding gbk` + env gbk + cp936 → `utf8`）。
 - **`--encoding` 值域**：CLI 文档值 `utf8 | gbk | auto`（默认 `auto`）；env 额外接受别名 `utf-8` / `gb2312`（→`gbk`）/ `gb18030` / `big5` / `shift_jis` / `sjis` / `cp932` / `euc-kr` / `cp949`；`auto` / 空 / 未知 → 继续回退。
-
-### 代码页 → iconv 映射
-
-| 代码页 | 编码 |
-|:--:|:--:|
-| 936 | `gbk` |
-| 54936 | `gb18030` |
-| 950 | `big5` |
-| 932 | `cp932` |
-| 949 | `cp949` |
-| 65001 | `utf8` |
-| 其它 / 探测失败 | `utf8`（安全默认） |
-
-> `chcp` 探测：`spawnSync('chcp', [], { stdio: ['ignore','pipe','ignore'], windowsHide: true })`，从 **latin1** 串提取首个数字（**勿按 UTF-8 解码整串**）；失败/无匹配 → `null` → `utf8`。
 
 ## 转码语义与边界
 
@@ -69,3 +54,4 @@
 | 阶段 | 变更 |
 |------|------|
 | v1.1.2-stage-58 | 初始创建：新增 `installOutputEncoding`（单一咽喉）+ `--json` 恒 UTF-8 旁路 + `--encoding` 全局选项 + `iconv-lite` 直接依赖 |
+| v1.1.3-stage-61 | auto 第⑤步 win32 非 TTY 改为直通 UTF-8（修正 stage-58 对 UTF-8 管道消费者的回归）；删除 chcp 探测与代码页映射死代码 |

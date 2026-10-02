@@ -2,6 +2,12 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3] - 2026-10-02
+
+### Fixed
+- [stage-61] `auto` 输出编码对 UTF-8 管道消费者是回归——Windows 非 TTY 改为**直通 UTF-8**（对齐 Node 默认与管道/CI）；GBK 仅经 `--encoding gbk` / `OPENFEEL_ENCODING=gbk` 显式生效
+- [stage-61] 删除 `chcp` 探测与代码页映射死代码（`detectConsoleCodepage` / `codepageToIconv` / `cachedCodepage` / `spawnSync` 导入 / `codepage?` 字段）
+
 ## [1.1.2] - 2026-09-29
 
 ### Added

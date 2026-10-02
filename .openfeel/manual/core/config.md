@@ -11,14 +11,16 @@
 | 层级 | 路径 | 内容 |
 |------|------|------|
 | 全局画像 | `~/.config/openfeel/profile.yaml` | `user`（name/lang）、`preferences`（auto_advance/review_mode/communication/confirm_threshold）、`history`（recent_projects） |
-| 项目配置 | `.openfeel/config.yaml` | `meta`（version/project/tech_stack）、`defaults`（execution_mode/auto_advance/test_enabled/merge_mode）、`models`（default/agents/roles） |
+| 项目配置 | `.openfeel/config.yaml` | `meta`（version/project/tech_stack）、`defaults`（execution_mode/auto_advance/merge_mode）、`models`（default/agents/roles） |
 
 优先级：项目配置覆盖全局默认，`readProfile()` 兜底默认值（zh-CN / disabled / full / concise / medium）。
 
 **有效值级联（stage-42，口径权威）**：`builtin < profile.yaml < 项目 config.yaml defaults < 当前阶段 status.md`。解析器位于 `flow-manager`（`buildCascadeConfig` + 公开的 `resolveEffectiveConfig()`，详见 `manual/core/flow-manager.md`），命令出口为 `openfeel config effective [key]`。`config.ts` 侧只提供被级联复用的常量与读取函数：
 
-- `DEFAULT_CONFIG`（导出，四键齐全：`execution_mode` / `auto_advance` / `test_enabled` / `merge_mode`）：级联最底层的 `builtin` 值来源，命令层不另写默认值。
+- `DEFAULT_CONFIG`（导出，**三键齐全**：`execution_mode` / `auto_advance` / `merge_mode`）：级联最底层的 `builtin` 值来源，命令层不另写默认值。
 - `DEFAULT_PROFILE`：画像是缺失时的安全降级画像。**v1.1.2-stage-47 起**：级联解析不再以 `readProfile()` 的返回值填充 `profileDefaults`，而是「画像文件真实存在 + 原始 YAML 显式声明 `preferences.auto_advance`」双条件判定（`config/BUG-003` 已修复 → 无画像环境来源落 `builtin`）；`DEFAULT_PROFILE` 仅作为 `readProfile()` 自身的异常安全兜底值保留。
+
+**布尔测试门禁键移除（v1.1.4-stage-62）**：原布尔测试门禁配置键（键名见 `CHANGELOG.md` 与 v1.1.4 迁移记录）已移除——15 相位模型下 phase 图与该键无关，保留即误导。存量 `.openfeel/config.yaml` 中的残留行按**非受管扩展键**兼容：`ConfigDefaultsSchema` 的 `.passthrough()` 在**读侧原样保留**（不报错、不崩溃、不参与级联）；对该键执行 `config set` 会被判定为**无效键**并报错（预期）。受管配置键收敛为 `execution_mode` / `auto_advance` / `merge_mode` 三个。
 
 **子 Schema 未知键保全（v1.1.2-stage-48）**：`ProfileUserSchema` / `ProfilePreferencesSchema` / `ProfileHistorySchema` 三个子 Schema 均补 `.passthrough()`（顶层 `ProfileSchema` 早已 `.passthrough()`）——使 `user.*` / `preferences.*` / `history.*` 下的**用户自定义扩展键**在 `readProfile()` → `writeProfile()` 往返中**不被 Zod 剥离**。仅影响序列化往返（保全），不改变读取语义（默认值合并不变）。
 

@@ -194,6 +194,23 @@ openfeel flow log [--last <n>]
 |------|------|
 | `--last <n>` | 显示最近 n 条日志（默认 20） |
 
+### flow health
+
+流水线健康检查（`flow.json` / 跨文件一致性 / 僵尸状态 / `config.yaml` 等）。
+
+```bash
+openfeel flow health [--quick] [--json] [--fix] [--dry-run]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--quick` | 仅检查关键项（phase/current 合法性），跳过其余检查 |
+| `--json` | JSON 单文档输出（`schemaVersion:1`；`--fix` 时追加 `reconciled`） |
+| `--fix` | 状态对账：以 phase 投影为权威，仅回写 `status.md` 的「状态」字段 |
+| `--dry-run` | 与 `--fix` 组合，仅预览不写盘 |
+
+**`--fix` 权威口径（v1.1.4-stage-62）**：权威值 = `mapPhaseToStageStatus(phase)`（`phase` 为单一事实源，`status` 是其**粗粒度投影**）；**仅回写 `status.md` 的「状态」行**（执行模式/自动推进/当前任务/状态记录等独立字段绝不触碰），**批量遍历全部阶段**；`--fix --dry-run` 零写盘；幂等（已一致不写）。`flow advance` **不回写** `status.md`，故 `--fix` 为**唯一批量对账/回写入口**（D3）。
+
 ---
 
 ## roadmap — 分期大纲管理
@@ -399,7 +416,7 @@ openfeel config effective [key]
 
 | 参数 | 说明 |
 |------|------|
-| `key`（可选） | 单个受管键；省略时输出四键（`execution_mode` / `auto_advance` / `test_enabled` / `merge_mode`） |
+| `key`（可选） | 单个受管键；省略时输出三键（`execution_mode` / `auto_advance` / `merge_mode`） |
 
 **来源优先级**：`status.md` > `config.yaml` > `profile.yaml` > `builtin`；未知 key → stderr + exit 1。
 
@@ -412,8 +429,8 @@ openfeel config get [key] [--global]
 openfeel config set <key> <value> [--global]
 ```
 
-- **支持全量 `defaults.*` 键**（schema 驱动）：`execution_mode` / `auto_advance` / `test_enabled` / `merge_mode` 等受管配置键均可通过 `config set`/`get` 读写（与 `config effective` 覆盖范围一致）。
-- **值类型归一**：布尔键（如 `test_enabled`）写入 `true`/`false` 会归一为布尔值，避免以字符串 `"true"` 落盘破坏配置校验。
+- **支持全量 `defaults.*` 键**（schema 驱动）：`execution_mode` / `auto_advance` / `merge_mode` 等受管配置键均可通过 `config set`/`get` 读写（与 `config effective` 覆盖范围一致）。**注意**：原布尔测试门禁键已于 v1.1.4-stage-62 移除，`config set` 该键将被判定为**无效键**（报错、不写盘）。
+- **值类型归一**：写入前按字段 Schema 归一值类型（枚举键按枚举校验；Schema 中若存在布尔键则 `true`/`false` 归一为布尔值），避免以字符串落盘破坏配置校验。当前受管三键均为枚举型。
 - **枚举校验 + 不写盘**：非法取值（如 `execution_mode bogus`）以非 0 退出并报错，**不修改目标文件**（文件 hash 与 mtime 不变）。
 
 ### config get-lang / set-lang
@@ -497,6 +514,8 @@ openfeel stage status <id>              # 查看阶段状态
 openfeel stage set <id> --status <v>    # 更新阶段状态（写入 status.md 字段）
 openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stage add` 等价；建议用 `plan stage add`）
 ```
+
+**`stage set --status` 值域（v1.1.4-stage-62）**：仅接受**粗粒度状态枚举** `planned` / `review_failed` / `review_passed` / `testing` / `archiving` / `done`（单一来源 `STAGE_STATUS_VALUES`，与 `status = phase` 投影的取值域一致）；传入**相位值**（如 `review_pending`）或**任意值** → **exit 1 且不写盘**（不生成 `.bak`）。
 
 ## model — 模型配置
 

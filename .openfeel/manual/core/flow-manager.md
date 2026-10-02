@@ -16,7 +16,7 @@
 | `syncCurrentOp(stageName)` | **`pipeline.current.op` 单一 owner（stage-50 T1）**：按 pending op 计算并同步 `current.op`，未命中置 `''`（不碰 phase、无 IO）；`advanceStagePhase` 与 `recordAttempt` 共用（禁止第二实现；**stage-51 N4 起 `recordAttempt` 的 pass / fail-retry 两分支亦调用**）。修复「推进无 pending op 的阶段时 `current.op` 跨阶段悬空」 |
 | `getSummary()` / `summary(lang)` | 获取流水线摘要（结构化 / 文本） |
 | `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查（**非 `--quick` 含第 7 项悬空依赖检测**，见下） |
-| `autoRepairInconsistency(stageName, options?)` | 自动修复 phase↔status 不一致（`status=done` 且 `phase≠done` → 同步 phase；反之同步 status）；**stage-49 B1 起增可选 `options: { dryRun?: boolean }`**——`dryRun` 时**只计算不赋值**（返回「将修复 X」的报告），供 `flow advance --dry-run` 预览（不再写盘） |
+| `autoRepairInconsistency(stageName, options?)` | 自动修复 phase↔status 不一致（**phase 为唯一事实源，v1.1.4-stage-62 起单向**：`status=done` 且 `phase≠done` → 将 `status` 修正为 phase 投影、**绝不反向改 `phase`**；`phase=done` 且 `status≠done` → 同步 `status='done'`）；**stage-49 B1 起增可选 `options: { dryRun?: boolean }`**——`dryRun` 时**只计算不赋值**（返回「将修复 X」的报告），供 `flow advance --dry-run` 预览（不再写盘） |
 | `saveCheckpoint()` / `restoreCheckpoint()` | 阶段检查点保存与回滚 |
 | `autoCommitOnDone(stageName)` | 阶段 done 时自动 git 提交 |
 | `mapPhaseToAgent(phase)` | 将 PipelinePhase 映射为负责 Agent 标识（返回**新名** `openfeel-*`，`done → none`） |
@@ -24,7 +24,7 @@
 | `checkRemovable(stageId, {force})` | 只读可移除性检查（`ops` 非空 / 当前活跃 / 被 `deps` 引用），`removeStage` 与 `--dry-run` 共用 |
 | `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、`remove_stage` 审计日志）；**不执行目录删除**，`purge` 时返回 `{ purgeTarget }` 由命令层在 `save()` 成功后删除（stage-47 事务顺序） |
 | `getPipelinePhases()` / `getPipelineTransitions()` | 自描述访问器：返回运行时 `pipelineConfig` 的 phase 列表与转移表**副本**（缺省回退默认表） |
-| `resolveEffectiveConfig()` | 解析四个受管配置键（`EFFECTIVE_CONFIG_KEYS`）的「有效值 + 生效来源」，输出 `key → { value, source }`；复用内部 `buildCascadeConfig`（单一权威，避免第二套解析） |
+| `resolveEffectiveConfig()` | 解析**三个**受管配置键（`execution_mode` / `auto_advance` / `merge_mode`，`EFFECTIVE_CONFIG_KEYS`）的「有效值 + 生效来源」，输出 `key → { value, source }`；复用内部 `buildCascadeConfig`（单一权威，避免第二套解析）。**v1.1.4-stage-62 起布尔测试门禁键已移除**，不再属受管键 |
 | `FlowConcurrentModificationError` / `isFlowConcurrentError(err)` | flow.json 乐观并发冲突错误类型与识别函数（命令层统一捕获） |
 
 ## 并发保护与乐观并发校验
@@ -64,13 +64,13 @@
 - **T4 `fuzzyCorrectPhase` 后缀唯一性**：后缀匹配补齐唯一命中检查（对齐 prefix/contains），`--force` 下任意尾串不再误命中枚举首个。
 - **T5 `logMilestone` extra 展开**：公共日志里程碑不再丢弃 `MilestoneEvent` 除 title 外的字段（`extra: { title, ...event }`，保留耗时数据）。
 - **T6 `paused` 软语义**：`pipeline.phase` 覆写前对 `paused` 打 WARN 或注释声明语义（零行为变更）。
-- **T9 `testEnabled` 注入**：`canAdvance` / `mapPhaseToStageStatus` 的 test 分支由 CLI 传入 `test_enabled`（`buildCascadeConfig`）闭环，消除生产不可达分支。
+- **T9 `testEnabled` 注入**：`canAdvance` / `mapPhaseToStageStatus` 的 test 分支由 CLI 传入布尔测试门禁键（`buildCascadeConfig`）闭环，消除生产不可达分支。**v1.1.4-stage-62 已移除**：`mapPhaseToStageStatus` 不再接收该形参，`review_passed` 恒投影 `'review_passed'`（详见「状态/相位单一事实源」节）。
 - **T10 core 层不 `process.exit`**：`plan/roadmap.ts` 改抛 `Error`，退出码由命令层决定。
 - **T11 单例键含路径**：`PublicLogger` / `MetricsStore` 单例键含 `projectPath`/`dataDir`（不同 key → 不同实例），避免跨项目复用进程写错目录。
 - **T12 `checkpoint_mapping`**：补 `archiving` 主用键（`archive` 保留为历史键），使 `archiving` 阶段更新 checkpoint。
 - **T14 僵尸检测锚定**：`checkZombieStates` 统一 `startsWith(stageId + '.')`（与 `:1064` 锚定写法一致），杜绝前缀重叠 stageId 误报。
 - **T16 `autoCommitOnDone`**：git 提交改 `execFileSync('git', [...])` 数组形式（stageName 不再拼入 shell 串）。
-- **T19 `transitionsDiff`**：`flow phases --json` 增运行时与内置默认转移表的差异报告（`missing` 列出内置默认有而运行时缺失的 source），使 `pipeline.yaml` 漂移可见而非静默；**未修改 `pipeline.yaml`**（不补组合键，避免削弱 `test_enabled` 门禁）。
+- **T19 `transitionsDiff`**：`flow phases --json` 增运行时与内置默认转移表的差异报告（`missing` 列出内置默认有而运行时缺失的 source），使 `pipeline.yaml` 漂移可见而非静默；**未修改 `pipeline.yaml`**（不补组合键，避免削弱布尔测试门禁；该门禁键已于 v1.1.4-stage-62 移除，phase 图与其无关）。
 
 
 ## 纠正侧能力与孤儿对账（v1.1.2-stage-51，反馈 08）
@@ -85,7 +85,7 @@
 
 ## 可编排性与自愈能力（v1.1.2-stage-52，反馈 09）
 
-- **`reconcileStatusMd({ dryRun? })`**：遍历 stages，比对 `flow.json` 的 `status` 与 `status.md` 的「状态」行，**仅回写差异项**（定向替换「状态」行，**非整文件重写**）；字段缺失 `skipped-not-found`（不新建文件）；`dryRun` 只报告不写盘。命令出口 `flow health --fix`；与 `stage set` 的 `setStatusField` 同语义（标注防重复实现）。
+- **`reconcileStatusMd({ dryRun? })`**：遍历 stages，比对 `flow.json` 的 `status` 与 `status.md` 的「状态」行，**仅回写差异项**（定向替换「状态」行，**非整文件重写**）；字段缺失 `skipped-not-found`（不新建文件）；`dryRun` 只报告不写盘。命令出口 `flow health --fix`（**唯一批量回写入口**），与 `stage set` 的 `setStatusField` 同语义（标注防重复实现）。**权威口径（v1.1.4-stage-62）**：权威值 = `mapPhaseToStageStatus(phase, status)`（即 **phase 的粗粒度投影**，phase 为单一事实源），**仅回写 `status.md` 的「状态」行**（执行模式/自动推进/当前任务/状态记录等独立字段绝不触碰），遍历**全部** stages；`flow advance` **不回写** `status.md`（保持 `--fix` 为唯一批量对账/回写入口，D3）。
 - **结构化访问器（供 `--json`）**：`getHealthReport()`（items 数组）、`getMetricsSummary()` 等，供 `flow status/current/health/metrics/overview --json` 输出**领域对象 + `schemaVersion:1`**（纯 JSON 单文档）。
 - **`findPhasePath(stageName, to)`**：沿 transitions 做 **BFS 求唯一可达路径**（深度 ≤8；多义/无路径返回原因），供 `flow advance --to` 自动逐步与 `--dry-run` 完整路径；命令层多步循环**每步调用 `assertNoBlockingOpenRev`**（blocking open REV 拦截、exit 1 + `revision` 不变）。
 - **`draft` 状态（窄兼容）**：`scheme create --draft` → `op.state='draft'`；`publishScheme()` 校验非空转 `pending`；`recordAttempt`（core）对 draft op **守卫拒绝**（与命令层双层，返回契约不变）；health 跳过 draft 空模板 warning、归档/统计不计入 draft。
@@ -110,6 +110,17 @@ plan_pending → plan_review → plan_passed
 - **全局状态聚合（stage-42 P3）**：`advanceStagePhase` 结束时按「全部阶段聚合」推导 `pipeline.phase` —— `stages.length > 0 && every(s => s.phase === 'done')` 成立则置 `done`，否则置 `active`（空集守卫防 `every` 对空数组返回 `true` 的 vacuous truth）；单阶段 done **不**改变全局状态；`current` 不随之下沉/回退（设计行为，P3a）；历史 flow.json 不迁移（该字段可由 `stages` 推导 + 任一次 advance 自愈）
 - 合法流转由 `transitions` 表控制，key 可用 `|` 组合多个源 phase（并行场景）
 - 推进必须通过 CLI（`openfeel flow advance`），禁止手动编辑 flow.json
+
+## 状态/相位单一事实源（v1.1.4-stage-62）
+
+- **`status` 语义**：`stage.status` 是 `stage.phase` 的**粗粒度投影**，**单一事实源 = `phase`**。任何 `status` 都可由 `phase` 重新投影得到，故对账/修正只允许 `phase → status` 单向。
+- **`mapPhaseToStageStatus(phase, currentStatus)`（v1.1.4-stage-62）**：**不含 `testEnabled` 形参**（该键已移除）；`review_passed` **恒返回 `'review_passed'`**（**中间相位不投影终态 `done`**）；`review_failed → 'review_failed'`、`test_passed → 'testing'`、`archiving → 'archiving'`、`done → 'done'`，其余相位 `default → currentStatus`。**不变量**：任何**非 `done`** 相位都不得投影为 `'done'`（防止 `flow advance` 前置 auto-repair 误锁 `done`）。
+- **`autoRepairInconsistency` 方向（单向，phase 权威）**：
+  - `status==='done' && phase!=='done'` → **以 `phase` 为权威**，将 `status` 修正为投影值（**撤销非法 `done`**）；
+  - `phase==='done' && status!=='done'` → 同步 `status='done'`（合法方向）。
+  - **禁止任何 `status → phase` 前推**（绝不把 `phase` 改成 `done` 迁就 `status`）。
+- **锁根因链与修复**（原布尔测试门禁键关闭场景）：该键关闭 → `advance --to review_passed` 时映射提前把 `status` 投影为终态 `done` → 下一步 `advance --to test_pending` 入口 auto-repair **反向**把 `phase` 锁成 `done` → `findPhasePath(done → test_pending)` 返回 `no-path`，确定性报错（6/6 复发）。**修复**：① 映射去 `testEnabled` 形参（`review_passed` 恒 `'review_passed'`）；② auto-repair 方向反转为仅 `phase → status`。
+- **`STAGE_STATUS_VALUES`（导出）**：粗粒度状态枚举 `['planned','review_failed','review_passed','testing','archiving','done']`，由 `mapPhaseToStageStatus` 全部返回值 ∪ 初始值 `planned` 派生，供 `stage set --status` 值域校验复用（单一事实源，禁止命令层硬编码）。
 
 ## 配置级联与有效值来源（stage-42）
 

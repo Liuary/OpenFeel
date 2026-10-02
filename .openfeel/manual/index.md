@@ -29,7 +29,7 @@
   - [命令体系](cli/commands.md)
   - [model 命令组](cli/model.md)
   - [setup 命令](cli/setup.md)
-  - [输出编码自适应](cli/output-encoding.md) — Windows 非 TTY 输出转码 + `--json` 恒 UTF-8（stage-58）
+  - [输出编码自适应](cli/output-encoding.md) — win32 非 TTY **直通 UTF-8**（GBK 仅显式）+ `--json` 恒 UTF-8（stage-58 引入 / **stage-61 修正 auto 第⑤步语义**）
 - Agent 体系
   - [Agent 设计](agents/feel.md)
 - Skill 体系（按需加载，权威源 `src/core/templates-data/opencode/skills/{name}/SKILL.md`）
@@ -66,7 +66,7 @@
 | agent 模板 permission / opencode 权限模型（opencode 适配器） | `core/permission.md` | 9 agent 白名单键集、合并/优先级语义、项目级收紧入口或受管区边界变更 |
 | skill 体系 / CLI 用法参考 | `cli/commands.md`（命令面）+ `openfeel-cli-usage` skill 权威源 | **skill 数量（当前 17）**——既有计数口诀见 `test/core/{setup,update}.test.ts`（`9 agent + 17 skill + 1 = 27`；+ 项目 jsonc = 28），新增/改名 skill 须同步**全仓写死计数与白名单数组**；`--help` 文案与自描述命令输出键集是否一致；**快照声明**的版本号是否随版本更新 |
 | runtime-log.ts / CLI 运行日志 | `core/runtime-log.md` | 路径/编码/行格式/级别/开关/路径覆盖/`withFileLock(globalLockPath('runtime-log'))`/best-effort/**四类日志边界**/**REV-002 解析期错误不入日志**/不记 stdout；安装点（`bin` 单一咽喉、无 `VITEST` 守卫） |
-| output-encoding.ts / 输出编码自适应 | `cli/output-encoding.md` | `auto` 5 步优先序（`--json` 第 1 步最高优先）/代码页映射/`--encoding` 值域与 env 别名/逐流判定/**REV-003 仅 UTF-8 字符串语义**/降级 `?` 不告警/与 `NO_COLOR` 解耦/安装点（`bin` 单一咽喉、无 `VITEST` 守卫） |
+| output-encoding.ts / 输出编码自适应 | `cli/output-encoding.md` | `auto` 5 步优先序（`--json` 第 1 步最高优先）/**第⑤步 win32 非 TTY 直通 UTF-8（GBK 仅显式，无代码页映射；stage-61 修正 stage-58 回归）**/`--encoding` 值域与 env 别名/逐流判定/**REV-003 仅 UTF-8 字符串语义**/降级 `?` 不告警/与 `NO_COLOR` 解耦/安装点（`bin` 单一咽喉、无 `VITEST` 守卫）/**死代码已清零（`detectConsoleCodepage`/`codepageToIconv`/`cachedCodepage`/`spawnSync`/`codepage?`）** |
 | 记忆/状态文件格式（`dev/current.md` + `users/{username}/dev_last.md`） | `templates-data/agents-md/{zh-CN,en}.md` 工作区结构节 + `opencode/agents/{zh-CN,en}/feel.md` 记忆加载/会话写入节 | **两条设计目的**（保存核心信息便于恢复 / 避免无关信息污染上下文）与**三层分层**（索引/主题/详情）；`current.md` = 团队文件（仅个人提交时更新、整体信息、无 agent 细节与 @成员段、≤5 条、旧记录归档 `current_archive/`）；`dev_last.md` = 索引 + 同名主题目录（活跃主题 ≤5、索引 ≤5×100 字、主题 ≤10×300 字、超量转 `tmp/` 记地址、**超期不归档**、R1~R6 含 R4 就地收敛 + R6 加锁）；主题文件名英文 kebab-case；同步 workspace/recover/sync-status 三 skill |
 
 > 新增模块时在「模块树」中追加条目，并创建对应文档。

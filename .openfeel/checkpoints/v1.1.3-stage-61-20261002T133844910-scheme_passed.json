@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-02T06:02:43.406Z",
-    "revision": 621
+    "updated": "2026-10-02T05:36:40.728Z",
+    "revision": 604
   },
   "pipeline": {
     "phase": "active",
@@ -2654,17 +2654,17 @@
     },
     "v1.1.3-stage-61": {
       "name": "v1.1.3-stage-61",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "scheme_passed",
+      "status": "planned",
       "deps": [
         "v1.1.2-stage-60"
       ],
       "ops": {
         "op-001": {
           "title": "输出编码 auto 第⑤步改 UTF-8 + 死代码清理 + 单测 + i18n",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -2679,26 +2679,9 @@
         },
         "op-002": {
           "title": "文档同步 + 版本 1.1.3 收口 + 门禁 + 阶段报告",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-003": {
-          "title": "修复 REV-001：package-lock.json 两处 version 缩进",
-          "state": "done",
-          "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -12263,174 +12246,6 @@
       "detail": {
         "stageName": "v1.1.3-stage-61",
         "opId": "op-002"
-      }
-    },
-    {
-      "time": "2026-10-02T05:38:44.919Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "scheme_pending",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-10-02T05:38:45.262Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "scheme_passed",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-10-02T05:41:31.605Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.3-stage-61.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-02T05:44:24.620Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.3-stage-61.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-02T05:44:53.887Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "exec_running",
-        "to": "review_pending"
-      }
-    },
-    {
-      "time": "2026-10-02T05:51:02.999Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "review_pending",
-        "to": "review_failed"
-      }
-    },
-    {
-      "time": "2026-10-02T05:51:03.346Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "review_failed",
-        "to": "scheme_pending"
-      }
-    },
-    {
-      "time": "2026-10-02T05:51:34.844Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-10-02T05:52:28.067Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "scheme_pending",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-10-02T05:52:28.629Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "scheme_passed",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-10-02T05:52:56.038Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.3-stage-61.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-02T05:53:08.650Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "exec_running",
-        "to": "review_pending"
-      }
-    },
-    {
-      "time": "2026-10-02T05:55:43.730Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "review_pending",
-        "to": "review_passed"
-      }
-    },
-    {
-      "time": "2026-10-02T05:55:44.090Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "review_passed",
-        "to": "test_pending"
-      }
-    },
-    {
-      "time": "2026-10-02T06:00:57.788Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "test_pending",
-        "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-10-02T06:00:58.129Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "from": "test_passed",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-10-02T06:02:43.406Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.1.3-stage-61",
-        "opsCount": 3,
-        "reviewsCount": 0,
-        "knowledgeCount": 0,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.3-stage-61.md"
       }
     }
   ]

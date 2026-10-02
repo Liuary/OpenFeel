@@ -1,0 +1,67 @@
+# stage-61 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.3-stage-61
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-02"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - after_stage: v1.1.2-stage-60
+    type: hard
+    status: satisfied
+    reason: "stage-61 计划声明 hard 依赖 stage-60（已归档）；本阶段修正 stage-58 引入的 auto 编码回归。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 `flow.json`**；op-002 仅跑构建与门禁，发布由 Feel/用户执行。push + 发布完成后方可归档并把 roadmap/plan 置 done。"
+
+# 本阶段 3 op：op-001 → op-002（依赖 op-001 构建产物与实测结果）→ op-003（修正复核 REV-001，依赖 op-002 产出）。
+# 行为变更局部化于 `src/cli/output-encoding.ts` 第⑤步；GBK 仅显式生效。
+# op-003 为 review_failed 后修正复案，仅修 `package-lock.json:3,9` 前导空白，不重生成依赖树。
+ops:
+  op-001:
+    file: op-001.md
+    title: "输出编码 auto 第⑤步改 UTF-8 + 死代码清理 + 单测 + i18n"
+    produces:
+      - src/cli/output-encoding.ts
+      - test/cli/output-encoding.test.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    deps: []
+    notes: "覆盖 plan T1 + T2 + T4。**第⑤步（win32 && !isTTY）直接 `return 'utf8'`**（删除 chcp 探测映射）；删死代码 `spawnSync` 导入 / `cachedCodepage` / `ResolveTargetEncodingContext.codepage?` / `export codepageToIconv` / `export detectConsoleCodepage`；更新模块头注释与 JSDoc。测试删 `codepageToIconv`/`detectConsoleCodepage` 两 describe、去各处 `codepage:936` 注入、重写第⑤/auto 用例、新增回归断言 `{platform:'win32',isTTY:false,argv:[],env:{}} → 'utf8'` 并保留 `--encoding gbk → 'gbk'`，**不新增 platform-skipped 用例**（保 0 skipped）。i18n 仅改 `global.encoding` zh/en 文案，键数 730 不变。门禁：`npm run build` + `tsc` 0 + `npm test` 0 skipped（预期 ≈1017）+ `lint i18n` 730 + `lint kb` 0 + win32 本地实测。"
+
+  op-002:
+    file: op-002.md
+    title: "文档同步 + 版本 1.1.3 收口 + 门禁 + 阶段报告"
+    produces:
+      - .openfeel/manual/cli/output-encoding.md
+      - docs/commands.md
+      - README.zh-CN.md
+      - README.en.md
+      - CHANGELOG.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 plan T3 + T5 + T6。**文档**：manual（删 chcp 映射/探测段、改第⑤步、删两 API 行、加变更历史）、`docs/commands.md`（快照 v1.1.3 + 自适应段）、`README×2:59`、`CHANGELOG [1.1.3] - 2026-10-02 ### Fixed`。**版本 A 类载体**：`package.json:3`、`package-lock.json:3,:9`（手工两行，禁 npm install 重生成）、`.openfeel/config.yaml:7`（**仅单行增量 edit**）、`src/core/config.ts` zh/en CONFIG_TEMPLATE、`agents-md/{zh-CN,en}.md:134`；**B 类生成段禁手改**（`npm run build` 重生成）。**T6**：`npm run build` + 门禁（`tsc`/`npm test`/`lint i18n`/`lint kb`）+ 确认 `.opencode/**` 不复活 + 阶段报告 + 复核 roadmap/大计划与 1.1.3 一致。**不改** `openfeel-cli-usage` skill 快照版本。"
+
+  op-003:
+    file: op-003.md
+    title: "修复 REV-001：package-lock.json 两处 version 缩进"
+    produces:
+      - package-lock.json
+    deps:
+      - op: op-002
+        type: soft
+    notes: "覆盖 **REV-001**（medium，blocking=false，格式缺陷）。仅修 `package-lock.json:3,9` 前导空白：第 3 行 6→2 空格、第 9 行 2→6 空格，值不变（仍 1.1.3）。**禁** `npm install`/`npm ci` 重生成、**禁**改任何其它行/值、不 commit/push/publish。自测：`JSON.stringify(version)`==\"1.1.3\" + `packages[''].version`==1.1.3 + `git diff` 仅两行仅前导空白 + `JSON.parse` OK + 行首空格数校验。回滚 `git checkout -- package-lock.json`。"
+
+# 下游契约（本阶段无对外接口形态变更）
+downstream_contracts: []

@@ -997,3 +997,19 @@ concurrency:
 **实证**：v1.1.2-stage-59（CI run #52 `cacbefb` 失败 → 修复后 run #53 `25689d4` build-and-test 双 success + `Env guard` success）；commits `7d84f15`/`25689d4`；仅改 `.github/workflows/ci.yml` 单文件；门禁 `npm test` 61 文件 / 1018 用例 0 skipped、`lint i18n` 730 键、`lint kb` 0。
 
 **参见：** v1.1.2-stage-59；kb/patterns.md #环境哈希守卫（CI 层）（**已更新**：窗口纪律勘误 + 三态）；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护；kb/patterns.md #库侧默认 no-op + 进程入口 install
+
+## [+] CLI 输出编码 `auto` 对 UTF-8 管道消费者是回归：win32 非 TTY 曾按 `chcp` 映射 GBK (2026-10-02)
+
+**症状/现象**：stage-58 引入输出编码自适应后，在**本 harness / IDE / CI 等 UTF-8 管道消费者**下，`node bin/openfeel.js flow current`（无 `--encoding`/`OPENFEEL_ENCODING`/`--json`）输出**乱码**；而 pre-stage-58 的 bin（`ae79c4e^`，无 `installOutputEncoding`）中文**可读（UTF-8）**。
+
+**根因（实测）**：`resolveTargetEncoding` 第⑤步 `win32 && !isTTY` 用 `chcp` 探测（本机 cp936）→ 映射 **GBK**；GBK 字节被管道消费者按 UTF-8 解码即乱码。**控制台代码页 ≠ 管道消费者的解码约定**——非 TTY 输出实际流向 harness/IDE/CI，普遍按 UTF-8 消费。
+
+**修法（方案 A，用户裁定）**：第⑤步 `win32 && !isTTY` → **直接 `return 'utf8'`**（对齐 Node 默认与管道/CI 消费者）；**GBK 仅显式** `--encoding gbk` / `OPENFEEL_ENCODING=gbk`；① `--json` 恒 UTF-8、②显式 `--encoding`、③env、④非 win32/TTY → utf8 **全部不变**。删除随之失效的死代码（`detectConsoleCodepage` / `codepageToIconv` / `cachedCodepage` / `spawnSync` 导入 / `codepage?` 字段）。
+
+**误导点**：`chcp 65001` **无效**——它不改变子进程 `chcp` 探测结果，**不能**作为修复或绕过手段。
+
+**判据/避免**：默认编码应对齐「**消费端的解码约定**」——管道 / CI / harness 按 UTF-8，而非宿主控制台代码页；需要传统代码页时提供**显式逃生阀**，不做隐式代码页推断。另：把「chcp 探测默认 GBK」当作 Windows 友好特性是**反直觉的回归**，实测管道消费者优先。
+
+**实证**：v1.1.3-stage-61（op-001 `ae98397`）——win32 实测 `auto` → 合法 UTF-8 中文可读；`--encoding gbk` → GBK；`--json` 旁路**逐字节相同**；`npm test` 61 文件 / 1016 用例 0 skipped / 0 failed；`lint i18n` 730；`lint kb` 0；`tsc` 0；build 成功且 `.opencode` 零复活。
+
+**参见：** v1.1.3-stage-61（op-001 `ae98397` / REV-001 closed）/ v1.1.2-stage-58（回归引入）；`.openfeel/manual/cli/output-encoding.md`；kb/troubleshooting.md #Node 无内建 GBK 编码能力；kb/patterns.md #CLI 输出编码单一咽喉模式

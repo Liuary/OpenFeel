@@ -2,6 +2,11 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-02-Liuary-023.md](2026/10/02/2026-10-02-Liuary-023.md) | Liuary | 阶段 v1.1.3-stage-61 完成 |
+| [2026-10-02-Liuary-022.md](2026/10/02/2026-10-02-Liuary-022.md) | Archiver | **stage-61 归档完成（CLI 输出编码 auto 语义修正 — 方案 A，v1.1.3，3 op）**——`resolveTargetEncoding` 第⑤步 win32 非 TTY 改为**直接 utf8**（对齐 Node 默认与 UTF-8 管道/CI 消费者，修正 stage-58 回归）；GBK 仅显式；删 chcp 死代码 5 项；版本 1.1.2→1.1.3 全链路收口；门禁 **61 文件 / 1016 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` 730、`lint kb` 0、build 成功 `.opencode` 零复活；审查 **passed（REV-001 closed）**；无新 Bug；知识沉淀 1 条；**未 push** |
+| [2026-10-02-Liuary-021.md](2026/10/02/2026-10-02-Liuary-021.md) | Liuary | v1.1.3-stage-61.op-003 执行通过 |
+| [2026-10-02-Liuary-020.md](2026/10/02/2026-10-02-Liuary-020.md) | Liuary | v1.1.3-stage-61.op-002 执行通过 |
+| [2026-10-02-Liuary-019.md](2026/10/02/2026-10-02-Liuary-019.md) | Liuary | v1.1.3-stage-61.op-001 执行通过 |
 | [2026-10-02-Liuary-018.md](2026/10/02/2026-10-02-Liuary-018.md) | Liuary | 阶段 v1.1.2-stage-59 完成 |
 | [2026-10-02-Liuary-017.md](2026/10/02/2026-10-02-Liuary-017.md) | Archiver | **stage-59 归档完成（修复 CI 环境守卫误报 → 让 CI 转绿并发布，2 op）**——根因＝stage-58 运行日志默认开启使守卫窗口内非测试步骤（`Version consistency guard`/`lint i18n`）写 `~/.openfeel` → 干净 runner `ABSENT→存在` 误报（CI #52 `cacbefb`）；**M1~M3** 三处 `env: OPENFEEL_LOG: '0'` + **M4** `Env snapshot` 下移 + **M5/M6** 三态加固（**仅改 `.github/workflows/ci.yml` 单文件**）；WSL 三场景 S1/S2 PASS、S3 FAIL 复现；门禁 **61 文件 / 1018 用例 0 skipped**、`tsc` 0、`lint i18n` 730 键、`lint kb` 0、环境四路径 NO_DIFF；**CI run #53（`25689d4`）build-and-test 双 success + `Env guard` success**；`openfeel@1.1.2` 已发布（registry `2026-10-01T19:29:49Z`）；审查 0 blocking（REV-001~005 resolved/closed）；无新 Bug；知识沉淀 1 条（troubleshooting）+ 1 条 patterns 更新；manual 无需更新；**十九阶段（41~59）全部闭环** |
 | [2026-10-02-Liuary-015.md](2026/10/02/2026-10-02-Liuary-015.md) | Liuary | 阶段 v1.1.2-stage-60 完成 |
@@ -27,11 +32,6 @@
 | [2026-10-01-Liuary-049.md](2026/10/01/2026-10-01-Liuary-049.md) | Liuary | v1.1.2-stage-56.op-002 执行通过 |
 | [2026-10-01-Liuary-048.md](2026/10/01/2026-10-01-Liuary-048.md) | Liuary | v1.1.2-stage-56.op-001 执行通过 |
 | [2026-10-01-Liuary-047.md](2026/10/01/2026-10-01-Liuary-047.md) | Liuary | 阶段 v1.1.2-stage-55 完成 |
-| [2026-10-01-Liuary-046.md](2026/10/01/2026-10-01-Liuary-046.md) | Archiver | **stage-55 归档完成（清掉项目级约束与 Agent·发布前最后阶段，5 op）**——删 6 项项目级资产（根 `AGENTS.md`/`opencode.jsonc`/`.opencode/{agents,skills,ADAPTER.md}`）+ 删 `build.js` 自举步骤 8（**防复活**）；「模块手册」迁入全局模板 + 刷新全局部署（唯一真实全局目录操作：skills 16→17、AGENTS.md 293→509 行、备份 3689 文件）；测试迁移 + 引用同步 + supersede N1 + 新会话验证指引；**59 文件 / 985 用例全绿**、build 幂等**不复活**、`lint i18n` 726 键、`lint kb` 0 过期；三段审查零阻塞（REV-002/003 low closed）；**无新增缺陷**；知识沉淀 5 条；**十五阶段全部闭环，发布就绪（⚠️ 须重启会话）** |
-| [2026-10-01-Liuary-045.md](2026/10/01/2026-10-01-Liuary-045.md) | Liuary | v1.1.2-stage-55.op-005 执行通过 |
-| [2026-10-01-Liuary-044.md](2026/10/01/2026-10-01-Liuary-044.md) | Liuary | v1.1.2-stage-55.op-004 执行通过 |
-| [2026-10-01-Liuary-043.md](2026/10/01/2026-10-01-Liuary-043.md) | Liuary | v1.1.2-stage-55.op-003 执行通过 |
-| [2026-10-01-Liuary-042.md](2026/10/01/2026-10-01-Liuary-042.md) | Liuary | v1.1.2-stage-55.op-002 执行通过 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

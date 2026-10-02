@@ -21,3 +21,8 @@
 | [2026-10-02-Liuary-015.md](2026-10-02-Liuary-015.md) | Liuary | 阶段 v1.1.2-stage-60 完成 |
 | [2026-10-02-Liuary-017.md](2026-10-02-Liuary-017.md) | Archiver | v1.1.2-stage-59 归档完成（修复 CI 环境守卫误报 → 让 CI 转绿并发布，2 op） |
 | [2026-10-02-Liuary-018.md](2026-10-02-Liuary-018.md) | Liuary | 阶段 v1.1.2-stage-59 完成 |
+| [2026-10-02-Liuary-019.md](2026-10-02-Liuary-019.md) | Liuary | v1.1.3-stage-61.op-001 执行通过 |
+| [2026-10-02-Liuary-020.md](2026-10-02-Liuary-020.md) | Liuary | v1.1.3-stage-61.op-002 执行通过 |
+| [2026-10-02-Liuary-021.md](2026-10-02-Liuary-021.md) | Liuary | v1.1.3-stage-61.op-003 执行通过 |
+| [2026-10-02-Liuary-022.md](2026-10-02-Liuary-022.md) | Archiver | v1.1.3-stage-61 归档完成（CLI 输出编码 auto 语义修正 — 方案 A，v1.1.3，3 op） |
+| [2026-10-02-Liuary-023.md](2026-10-02-Liuary-023.md) | Liuary | 阶段 v1.1.3-stage-61 完成 |

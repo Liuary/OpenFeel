@@ -85,7 +85,6 @@ describe('initProject', () => {
     const content = readFileSync(configPath, 'utf-8');
     expect(content).toContain('execution_mode: manual');
     expect(content).toContain('auto_advance: disabled');
-    expect(content).toContain('test_enabled: false');
     expect(content).toContain('merge_mode: manual');
   });
 
@@ -94,7 +93,6 @@ describe('initProject', () => {
     const config = readConfig(tmpDir);
     expect(config.execution_mode).toBe('manual');
     expect(config.auto_advance).toBe('disabled');
-    expect(config.test_enabled).toBe(false);
     expect(config.merge_mode).toBe('manual');
   });
 

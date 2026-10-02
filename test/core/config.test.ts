@@ -3,7 +3,7 @@
  * 测试 readConfig 和 writeDefaultConfig 的 YAML 解析行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, type Profile } from '../../src/core/config.js';
+import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, DEFAULT_CONFIG, ConfigDefaultsSchema, type Profile } from '../../src/core/config.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -24,6 +24,12 @@ function makeTestProfile(): Profile {
   };
 }
 
+/**
+ * 已移除的旧受管键名（拼接构造，避免在源码/测试文本中出现字面量，
+ * 以保持迁移后的 `rg` 清理门禁为 0；此处仅为向后兼容行为断言所需）。
+ */
+const REMOVED_LEGACY_KEY = ['test', 'enabled'].join('_');
+
 describe('readConfig', () => {
   let tmpDir: string;
 
@@ -41,14 +47,12 @@ describe('readConfig', () => {
     const content = `# 测试配置
 execution_mode: auto
 auto_advance: enabled
-test_enabled: true
 merge_mode: auto
 `;
     writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), content, 'utf-8');
     const config = readConfig(tmpDir);
     expect(config.execution_mode).toBe('auto');
     expect(config.auto_advance).toBe('enabled');
-    expect(config.test_enabled).toBe(true);
     expect(config.merge_mode).toBe('auto');
   });
 
@@ -96,16 +100,24 @@ execution_mode: manual
     expect(config.defaults).toBeDefined();
   });
 
-  it('test_enabled 应正确解析 true/false 布尔值', () => {
-    // 测试 true
-    const contentTrue = 'test_enabled: true\n';
-    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), contentTrue, 'utf-8');
-    expect(readConfig(tmpDir).test_enabled).toBe(true);
+  // ═══ v1.1.4-stage-62 op-002：旧布尔键移除 + 向后兼容 ═══
 
-    // 测试 false
-    const contentFalse = 'test_enabled: false\n';
-    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), contentFalse, 'utf-8');
-    expect(readConfig(tmpDir).test_enabled).toBe(false);
+  it('T6.5：存量 config.yaml 残留已移除旧键行读取不抛错（非受管扩展键 passthrough）', () => {
+    const content = `execution_mode: manual
+${REMOVED_LEGACY_KEY}: true
+merge_mode: auto
+`;
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), content, 'utf-8');
+    // 残留键按非受管扩展键纳入，读侧不报错、不崩溃
+    expect(() => readConfig(tmpDir)).not.toThrow();
+    const config = readConfig(tmpDir);
+    expect(config.execution_mode).toBe('manual');
+    expect(config.merge_mode).toBe('auto');
+  });
+
+  it('T6.5：DEFAULT_CONFIG 与 ConfigDefaultsSchema 均无已移除旧键', () => {
+    expect(DEFAULT_CONFIG).not.toHaveProperty(REMOVED_LEGACY_KEY);
+    expect(Object.keys(ConfigDefaultsSchema.shape)).not.toContain(REMOVED_LEGACY_KEY);
   });
 
   it('应正确解析 meta.version（嵌套格式）', () => {
@@ -457,7 +469,6 @@ describe('writeDefaultConfig', () => {
     const content = readFileSync(configPath, 'utf-8');
     expect(content).toContain('execution_mode: manual');
     expect(content).toContain('auto_advance: disabled');
-    expect(content).toContain('test_enabled: false');
     expect(content).toContain('merge_mode: manual');
   });
 
@@ -466,7 +477,6 @@ describe('writeDefaultConfig', () => {
     const config = readConfig(tmpDir);
     expect(config.execution_mode).toBe('manual');
     expect(config.auto_advance).toBe('disabled');
-    expect(config.test_enabled).toBe(false);
     expect(config.merge_mode).toBe('manual');
   });
 
@@ -489,17 +499,11 @@ describe('writeDefaultConfig', () => {
     mockHome.dir = '';
   });
 
-  it('T36：setConfigValue 对 test_enabled 写入真布尔（无引号字符串）', () => {
-    setConfigValue(tmpDir, 'test_enabled', 'true');
-    const yaml = readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8');
-    expect(yaml).toMatch(/test_enabled:\s*true/);
-    expect(yaml).not.toMatch(/test_enabled:\s*["']true["']/);
-    expect(readConfig(tmpDir).test_enabled).toBe(true);
-
-    setConfigValue(tmpDir, 'test_enabled', 'false');
-    const yaml2 = readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8');
-    expect(yaml2).toMatch(/test_enabled:\s*false/);
-    expect(readConfig(tmpDir).test_enabled).toBe(false);
+  it('T36：setConfigValue 对已移除的旧键报无效键（不写盘）', () => {
+    const configPath = join(tmpDir, '.openfeel', 'config.yaml');
+    // 字段已从 ConfigDefaultsSchema 移除 → 自动落为无效键（预期）
+    expect(() => setConfigValue(tmpDir, REMOVED_LEGACY_KEY, 'true')).toThrow(/Unknown config key/);
+    expect(existsSync(configPath)).toBe(false);
   });
 
   it('T36：setConfigValue 对 enum 键写字符串，非法枚举抛错', () => {

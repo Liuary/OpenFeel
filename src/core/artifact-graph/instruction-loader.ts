@@ -90,9 +90,6 @@ function generateProjectContext(config: Config): string {
   if (config.auto_advance) {
     configParts.push(`自动推进: ${config.auto_advance}`);
   }
-  if (config.test_enabled !== undefined) {
-    configParts.push(`测试启用: ${config.test_enabled}`);
-  }
   if (config.merge_mode) {
     configParts.push(`合并模式: ${config.merge_mode}`);
   }
@@ -379,7 +376,6 @@ export async function generateInstructionsJson(
       config: {
         execution_mode: config.execution_mode ?? null,
         auto_advance: config.auto_advance ?? null,
-        test_enabled: config.test_enabled ?? null,
         merge_mode: config.merge_mode ?? null,
       },
     },

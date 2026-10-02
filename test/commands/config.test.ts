@@ -80,17 +80,16 @@ describe('config 命令（stage-42 op-002）', () => {
     return errorMock.mock.calls.map((c) => c[0] as string).join('\n');
   }
 
-  it('config effective 输出四键，且 auto_advance 来源为 config.yaml（项目优先于画像）', async () => {
+  it('config effective 输出三键，且 auto_advance 来源为 config.yaml（项目优先于画像）', async () => {
     writeGlobalProfile('enabled');
     writeProjectConfig('disabled');
 
     await safeParse(['config', 'effective']);
 
     const out = stdout();
-    // 四键齐全
+    // 三键齐全
     expect(out).toContain('execution_mode');
     expect(out).toContain('auto_advance');
-    expect(out).toContain('test_enabled');
     expect(out).toContain('merge_mode');
     // auto_advance 有效值取项目 config（disabled），来源标注 config.yaml
     expect(out).toContain('disabled');
@@ -108,7 +107,7 @@ describe('config 命令（stage-42 op-002）', () => {
     const out = lines.join('\n');
     expect(out).toContain('auto_advance');
     expect(out).toContain('config.yaml');
-    // 单键模式：不出现标题行（四键表格才打印标题）
+    // 单键模式：不出现标题行（三键表格才打印标题）
     expect(out).not.toContain('merge_mode');
   });
 
@@ -208,11 +207,10 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(gl!.description()).not.toContain('{lang}');
   });
 
-  it('T36：4 键 round-trip（set → get 回读同值）', async () => {
+  it('T36：3 键 round-trip（set → get 回读同值）', async () => {
     const cases: Array<[string, string]> = [
       ['execution_mode', 'auto'],
       ['auto_advance', 'enabled'],
-      ['test_enabled', 'true'],
       ['merge_mode', 'auto'],
     ];
     for (const [k, v] of cases) {

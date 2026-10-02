@@ -168,8 +168,8 @@ export interface CascadeConfig {
 /** 配置生效来源枚举（`config effective` 出口，P9） */
 export type ConfigSource = 'status.md' | 'config.yaml' | 'profile.yaml' | 'builtin';
 
-/** `openfeel config effective` 的四个受管键（与 DEFAULT_CONFIG 一致） */
-const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'test_enabled', 'merge_mode'] as const;
+/** `openfeel config effective` 的三个受管键（与 DEFAULT_CONFIG 一致） */
+const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'merge_mode'] as const;
 
 /** verbose 模式下的状态变更记录 */
 export interface RecentChange {
@@ -1942,7 +1942,7 @@ export class FlowManager {
   }
 
   /**
-   * 解析四个受管配置键的「有效值 + 生效来源」（`openfeel config effective`，P9）。
+   * 解析三个受管配置键的「有效值 + 生效来源」（`openfeel config effective`，P9）。
    * 复用 buildCascadeConfig（单一权威，避免第二套解析），优先级：
    * status.md > config.yaml > profile.yaml > builtin。
    * @returns key → { value, source }

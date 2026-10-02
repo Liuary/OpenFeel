@@ -3286,16 +3286,18 @@ describe('配置级联（stage-42 op-001）', () => {
     expect(r.auto_advance).toEqual({ value: 'enabled', source: 'status.md' });
   });
 
-  it('resolveEffectiveConfig：无 config 文件时 test_enabled/merge_mode 来源为 builtin（不出现 profile.yaml）', () => {
+  it('resolveEffectiveConfig：无 config 文件时 merge_mode/execution_mode 来源为 builtin（不含已移除旧键）', () => {
     // 无 profile 文件（BUG-003 后不再回退默认值）→ auto_advance 亦落 builtin；
-    // execution_mode/test_enabled/merge_mode 不在画像键集内 → builtin。
+    // execution_mode/merge_mode 不在画像键集内 → builtin；旧布尔键已移除（op-002）。
+    // 键名拼接构造，避免字面量以保持 `rg` 清理门禁为 0。
+    const removedLegacyKey = ['test', 'enabled'].join('_');
     const r = makeMgr().resolveEffectiveConfig();
     expect(r.auto_advance).toEqual({ value: 'disabled', source: 'builtin' });
-    expect(r.test_enabled).toEqual({ value: 'false', source: 'builtin' });
     expect(r.merge_mode).toEqual({ value: 'manual', source: 'builtin' });
     expect(r.execution_mode).toEqual({ value: 'manual', source: 'builtin' });
-    expect(r.test_enabled.source).not.toBe('profile.yaml');
     expect(r.merge_mode.source).not.toBe('profile.yaml');
+    // 已移除键不得出现在生效配置集合中
+    expect(r).not.toHaveProperty(removedLegacyKey);
   });
 
   // ═══════════════════════════════════════

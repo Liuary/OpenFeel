@@ -26,7 +26,6 @@ export const ConfigMetaSchema = z.object({
 export const ConfigDefaultsSchema = z.object({
   execution_mode: z.enum(['manual', 'auto']).optional().default('manual'),
   auto_advance: z.enum(['disabled', 'enabled']).optional().default('disabled'),
-  test_enabled: z.boolean().optional().default(false),
   merge_mode: z.enum(['manual', 'auto']).optional().default('manual'),
 }).passthrough();
 
@@ -142,12 +141,11 @@ export interface ModelsConfig {
 /** 配置文件结构（backward-compatible: 扁平字段 + 嵌套结构并存） */
 export interface Config {
   meta?: { version?: string; project?: string; tech_stack?: string; [key: string]: unknown };
-  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; test_enabled?: boolean; merge_mode?: 'manual' | 'auto'; [key: string]: unknown };
+  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; merge_mode?: 'manual' | 'auto'; [key: string]: unknown };
   models?: ModelsConfig;
   // 向后兼容：扁平字段（由 normalizeConfig 从 defaults 提升）
   execution_mode?: 'manual' | 'auto';
   auto_advance?: 'disabled' | 'enabled';
-  test_enabled?: boolean;
   merge_mode?: 'manual' | 'auto';
   [key: string]: unknown;
 }
@@ -156,7 +154,6 @@ export interface Config {
 export const DEFAULT_CONFIG: Config = {
   execution_mode: 'manual',
   auto_advance: 'disabled',
-  test_enabled: false,
   merge_mode: 'manual',
 };
 
@@ -379,10 +376,6 @@ defaults:
   #          enabled=在 execution_mode=auto 时允许自动调度
   auto_advance: ${DEFAULT_CONFIG.auto_advance}
 
-  # 测试阶段：true=review_passed 后进入 test_writing→testing→bug_fixing 链路
-  #          false=review_passed 直接转 done，跳过测试链路
-  test_enabled: ${String(DEFAULT_CONFIG.test_enabled)}
-
   # Worktree 合并模式：manual=手动确认合并
   #                   auto=Feel 自动 git merge + cleanup
   merge_mode: ${DEFAULT_CONFIG.merge_mode}
@@ -435,10 +428,6 @@ defaults:
   # Auto advance: disabled=auto-closed-loop off
   #              enabled=allows auto-scheduling when execution_mode=auto
   auto_advance: ${DEFAULT_CONFIG.auto_advance}
-
-  # Test enabled: true=after review_passed, enters test_writing→testing→bug_fixing chain
-  #               false=review_passed directly transitions to done, skipping test chain
-  test_enabled: ${String(DEFAULT_CONFIG.test_enabled)}
 
   # Worktree merge mode: manual=manually confirm merge
   #                      auto=Feel auto git merge + cleanup
@@ -517,7 +506,7 @@ export function setConfigValue(projectPath: string, key: string, value: string):
     throw new Error(`Unknown config key: ${key}`);
   }
   // 2. 按 schema 归一值类型：boolean 键把 'true'/'false' 转真布尔，enum 键保持字符串（R3）
-  //    否则 test_enabled 会写成字符串 "true"，后续 ConfigDefaultsSchema.parse 语义错误
+  //    否则布尔键会被写成字符串 "true"，后续 ConfigDefaultsSchema.parse 语义错误
   const isBooleanField = unwrapSchema(fieldSchema) instanceof z.ZodBoolean;
   const coerced: unknown = isBooleanField ? (value === 'true') : value;
 

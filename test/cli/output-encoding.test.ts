@@ -1,6 +1,6 @@
 /**
  * 输出编码自适应单测（stage-58 op-001 / E-1 + C-1）
- * 覆盖 resolveTargetEncoding 全分支、normalizeEncoding、codepageToIconv、
+ * 覆盖 resolveTargetEncoding 全分支、normalizeEncoding、
  * installOutputEncoding 字节/回调/Buffer 直通/utf8 不包装/幂等，及「无 VITEST 守卫」静态断言。
  * 隔离：install 用例全部注入 fake stream，不触碰真实流；动态 import + resetModules 隔离模块级 installed 状态。
  */
@@ -12,7 +12,6 @@ import { tmpdir } from 'node:os';
 import iconv from 'iconv-lite';
 import {
   normalizeEncoding,
-  codepageToIconv,
   resolveTargetEncoding,
 } from '../../src/cli/output-encoding.js';
 
@@ -46,7 +45,7 @@ function makeFakeStream(isTTY = false): FakeStream {
   };
 }
 
-/** resetModules 后动态导入全新模块实例（隔离 installed / cachedCodepage） */
+/** resetModules 后动态导入全新模块实例（隔离模块级 installed 状态） */
 async function freshModule() {
   vi.resetModules();
   return import('../../src/cli/output-encoding.js');
@@ -59,14 +58,13 @@ afterEach(() => {
 describe('resolveTargetEncoding（E-1 全分支）', () => {
   const base = { argv: [] as string[], env: {} as NodeJS.ProcessEnv, platform: 'linux' as NodeJS.Platform, isTTY: false };
 
-  it('① --json 优先于一切（含 --encoding/env/codepage）', () => {
+  it('① --json 优先于一切（含 --encoding/env）', () => {
     expect(
       resolveTargetEncoding({
         argv: ['--json', '--encoding', 'gbk'],
         env: { OPENFEEL_ENCODING: 'gbk' },
         platform: 'win32',
         isTTY: false,
-        codepage: 936,
       }),
     ).toBe('utf8');
   });
@@ -92,33 +90,20 @@ describe('resolveTargetEncoding（E-1 全分支）', () => {
 
   it('④ win32 + TTY → utf8（控制台 API 直通）', () => {
     expect(
-      resolveTargetEncoding({ ...base, platform: 'win32', isTTY: true, codepage: 936 }),
+      resolveTargetEncoding({ ...base, platform: 'win32', isTTY: true }),
     ).toBe('utf8');
   });
 
-  it('⑤ win32 非 TTY → codepage 映射（936/950/54936/932/949/65001/未知）', () => {
-    const at = (codepage: number | null) =>
-      resolveTargetEncoding({ ...base, platform: 'win32', isTTY: false, codepage });
-    expect(at(936)).toBe('gbk');
-    expect(at(950)).toBe('big5');
-    expect(at(54936)).toBe('gb18030');
-    expect(at(932)).toBe('cp932');
-    expect(at(949)).toBe('cp949');
-    expect(at(65001)).toBe('utf8');
-    expect(at(437)).toBe('utf8');
-    expect(at(null)).toBe('utf8');
+  it('⑤ win32 非 TTY 无显式（argv 空/env 空/无 --json）→ utf8（回归）', () => {
+    expect(
+      resolveTargetEncoding({ platform: 'win32', isTTY: false, argv: [], env: {} }),
+    ).toBe('utf8');
   });
 
-  it('--encoding auto 视为未知 → 继续回退（win32 非 TTY 落到 codepage）', () => {
+  it('--encoding auto 视为未知 → 继续回退（win32 非 TTY → utf8；非 win32 → utf8）', () => {
     expect(
-      resolveTargetEncoding({
-        ...base,
-        argv: ['--encoding', 'auto'],
-        platform: 'win32',
-        isTTY: false,
-        codepage: 936,
-      }),
-    ).toBe('gbk');
+      resolveTargetEncoding({ ...base, argv: ['--encoding', 'auto'], platform: 'win32', isTTY: false }),
+    ).toBe('utf8');
     expect(resolveTargetEncoding({ ...base, argv: ['--encoding', 'auto'] })).toBe('utf8');
   });
 
@@ -143,26 +128,6 @@ describe('normalizeEncoding（E-1 别名）', () => {
     expect(normalizeEncoding('')).toBeNull();
     expect(normalizeEncoding('bogus')).toBeNull();
     expect(normalizeEncoding(undefined)).toBeNull();
-  });
-});
-
-describe('codepageToIconv（E-1 映射）', () => {
-  it('6 映射 + 未知 → utf8', () => {
-    expect(codepageToIconv(936)).toBe('gbk');
-    expect(codepageToIconv(54936)).toBe('gb18030');
-    expect(codepageToIconv(950)).toBe('big5');
-    expect(codepageToIconv(932)).toBe('cp932');
-    expect(codepageToIconv(949)).toBe('cp949');
-    expect(codepageToIconv(65001)).toBe('utf8');
-    expect(codepageToIconv(12345)).toBe('utf8');
-  });
-});
-
-describe('detectConsoleCodepage（E-1 探测）', () => {
-  it.skipIf(process.platform !== 'win32')('实测不抛异常，返回 number 或 null', async () => {
-    const mod = await freshModule();
-    const cp = mod.detectConsoleCodepage();
-    expect(cp === null || typeof cp === 'number').toBe(true);
   });
 });
 
@@ -256,14 +221,13 @@ describe('静态断言（REV-001 防回归）', () => {
 });
 
 describe('C-1 冲突单测（--json 旁路权威）', () => {
-  it('--json + --encoding gbk + env gbk + win32 非 TTY + cp936 → utf8', () => {
+  it('--json + --encoding gbk + env gbk + win32 非 TTY → utf8', () => {
     expect(
       resolveTargetEncoding({
         argv: ['--json', '--encoding', 'gbk'],
         env: { OPENFEEL_ENCODING: 'gbk' },
         platform: 'win32',
         isTTY: false,
-        codepage: 936,
       }),
     ).toBe('utf8');
   });

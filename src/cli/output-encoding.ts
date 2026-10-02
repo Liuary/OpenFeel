@@ -1,8 +1,9 @@
 /**
  * CLI 输出编码自适应模块（stage-58 op-001）
  *
- * 职责：在 CLI 进程入口（bin/openfeel.js）安装 stdout/stderr 写包装，把人类可读文本按目标编码转码，
- * 解决 Windows 传统 CJK 代码页（非 TTY/管道）下的乱码。
+ * 职责：在 CLI 进程入口（bin/openfeel.js）安装 stdout/stderr 写包装，把人类可读文本按目标编码转码。
+ * win32 非 TTY 默认直通 UTF-8（对齐 Node 默认与管道/CI 消费者）；GBK 仅经显式
+ * `--encoding gbk` / `OPENFEEL_ENCODING=gbk` 生效。
  *
  * 设计边界：
  * - **库侧默认 no-op**：未调用 installOutputEncoding 时不包装任何流（测试 import 零副作用）。
@@ -13,7 +14,6 @@
  *   直接 write（如 write(str, 'latin1', cb)）不受支持。当前全仓 process.stdout/stderr.write 直调为 0。
  * - 不可编码字符由 iconv-lite 降级为 '?'，**不额外告警**。
  */
-import { spawnSync } from 'node:child_process';
 import iconv from 'iconv-lite';
 
 /** 目标编码（iconv-lite 支持的编码名） */
@@ -29,8 +29,6 @@ export interface ResolveTargetEncodingContext {
   platform: NodeJS.Platform;
   /** 该输出流是否为 TTY */
   isTTY: boolean;
-  /** 已探测的控制台代码页（测试注入；undefined 表示需真实调用 detectConsoleCodepage） */
-  codepage?: number | null;
 }
 
 /** 安装选项（仅注入输出流，便于单测；不含 force——无 env 守卫可绕） */
@@ -41,9 +39,6 @@ export interface InstallOutputEncodingOptions {
 
 /** 已安装标志（幂等） */
 let installed = false;
-
-/** chcp 探测结果进程内缓存（undefined=未探测，null=探测失败） */
-let cachedCodepage: number | null | undefined;
 
 /** 编码别名 → iconv 编码名（'auto'/空/未知返回 null → 调用方继续回退） */
 const ENCODING_ALIASES: Record<string, OutputEncoding> = {
@@ -83,53 +78,10 @@ function readEncodingArg(argv: string[]): string | undefined {
   return undefined;
 }
 
-/** 代码页 → iconv 编码名；未知代码页回退 utf8 */
-export function codepageToIconv(cp: number): OutputEncoding {
-  switch (cp) {
-    case 936:
-      return 'gbk';
-    case 54936:
-      return 'gb18030';
-    case 950:
-      return 'big5';
-    case 932:
-      return 'cp932';
-    case 949:
-      return 'cp949';
-    case 65001:
-      return 'utf8';
-    default:
-      return 'utf8';
-  }
-}
-
-/**
- * 探测当前控制台代码页（仅 win32 非 TTY 场景调用）。
- * 从 chcp 输出按 latin1 提取首个数字（**勿按 UTF-8 解码整串**）；失败/无匹配返回 null。
- */
-export function detectConsoleCodepage(): number | null {
-  if (cachedCodepage !== undefined) {
-    return cachedCodepage;
-  }
-  try {
-    const r = spawnSync('chcp', [], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
-    if (r.status !== 0 || !r.stdout) {
-      cachedCodepage = null;
-      return cachedCodepage;
-    }
-    const m = /\d+/.exec(r.stdout.toString('latin1'));
-    cachedCodepage = m ? Number(m[0]) : null;
-  } catch {
-    // chcp 不可用（非 Windows / 命令缺失）→ 安全降级
-    cachedCodepage = null;
-  }
-  return cachedCodepage;
-}
-
 /**
  * 解析目标输出编码（纯函数）。
  * 优先级：① --json→utf8（最高） ② 显式 --encoding ③ OPENFEEL_ENCODING ④ 非 win32/TTY→utf8
- * ⑤ win32 非 TTY→chcp 探测映射（未知→utf8）。
+ * ⑤ win32 非 TTY→utf8。
  */
 export function resolveTargetEncoding(ctx: ResolveTargetEncodingContext): OutputEncoding {
   const { argv, env, platform, isTTY } = ctx;
@@ -151,9 +103,8 @@ export function resolveTargetEncoding(ctx: ResolveTargetEncodingContext): Output
   if (platform !== 'win32' || isTTY) {
     return 'utf8';
   }
-  // ⑤ win32 非 TTY：按控制台代码页映射
-  const cp = ctx.codepage !== undefined ? ctx.codepage : detectConsoleCodepage();
-  return cp === null ? 'utf8' : codepageToIconv(cp);
+  // ⑤ win32 非 TTY：直接 UTF-8（对齐 Node 默认与管道/CI 消费者；GBK 仅显式 ②/③）
+  return 'utf8';
 }
 
 /** 包装单个输出流：仅字符串 chunk 转码，Buffer 直通，保留 callback/返回值 */

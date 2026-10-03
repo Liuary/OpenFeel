@@ -70,6 +70,20 @@ export function nextSequence(
 }
 
 /**
+ * 纯计算：返回「文件序号集合 ∪ 注册序号集合」中的**最小未用正整数**（1 基）。
+ * 空集 → 1。用于 `plan scheme create` 的序号起点（空位回填，防注册键与文件序列脱节跳号）。
+ * 仅计算起点；实际占号仍由 reserveSequence 的 O_EXCL 决定（竞态兜底）。
+ */
+export function nextSchemeSequence(fileSeqs: Set<number>, registeredSeqs: Set<number>): number {
+  const used = new Set<number>([...fileSeqs, ...registeredSeqs]);
+  let n = 1;
+  while (used.has(n)) {
+    n++;
+  }
+  return n;
+}
+
+/**
  * 原子分配一个序号（O_EXCL 独占创建空文件占位）。
  *
  * @param options 目录 / 候选名生成器 / 解析器 / 起点 / 尝试上限

@@ -2,7 +2,7 @@
  * sequence 单元测试 — O_EXCL 原子序号分配
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { reserveSequence, nextSequence } from '../../../src/core/fs/sequence.js';
+import { reserveSequence, nextSequence, nextSchemeSequence } from '../../../src/core/fs/sequence.js';
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -107,4 +107,26 @@ for (let i = 0; i < 20; i++) {
     expect(new Set(seqs).size).toBe(80); // 无重号
     expect(readdirSync(dir).filter((f) => f.endsWith('.md'))).toHaveLength(80);
   }, 40000);
+});
+
+// ═══════════════════════════════════════
+// stage-64 op-001：序号「注册 ∪ 文件」最小未用（空位回填）
+// ═══════════════════════════════════════
+
+describe('nextSchemeSequence（stage-64 T1）', () => {
+  it('空集 → 1', () => {
+    expect(nextSchemeSequence(new Set<number>(), new Set<number>())).toBe(1);
+  });
+
+  it('fileSeqs={1,2} → 3', () => {
+    expect(nextSchemeSequence(new Set([1, 2]), new Set<number>())).toBe(3);
+  });
+
+  it('registeredSeqs={1,3} → 2（空位回填）', () => {
+    expect(nextSchemeSequence(new Set<number>(), new Set([1, 3]))).toBe(2);
+  });
+
+  it('fileSeqs={2}, registeredSeqs={1,3} → 4（并集）', () => {
+    expect(nextSchemeSequence(new Set([2]), new Set([1, 3]))).toBe(4);
+  });
 });

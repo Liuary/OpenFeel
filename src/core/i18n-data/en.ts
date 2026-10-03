@@ -445,6 +445,7 @@ export const plan: I18nDomain = {
   'scheme.skipAutoRegisterTmpl': { key: 'plan.scheme.skipAutoRegisterTmpl', zh: '', en: '[WARN] {reason}; skipped flow.json auto-registration (op file created).' },
   'scheme.dirConflictSkipTmpl':  { key: 'plan.scheme.dirConflictSkipTmpl',  zh: '', en: "[WARN] Stage '{stage}' and '{other}' map to the same (series, stageDir); skipped flow.json auto-registration (op file created); please check the stageId." },
   'scheme.concurrentSkipTmpl':   { key: 'plan.scheme.concurrentSkipTmpl',   zh: '', en: '[WARN] op {opId} was created, but flow.json sync failed due to a concurrent conflict; run openfeel flow repair or re-register the op.' },
+  'scheme.unregisteredFilesWarnTmpl': { key: 'plan.scheme.unregisteredFilesWarnTmpl', zh: '', en: '[WARN] {count} unregistered op file(s): {ops} (stage {stage}); run openfeel plan scheme register {stage} to register.' },
   'scheme.publish.okTmpl':       { key: 'plan.scheme.publish.okTmpl',       zh: '', en: 'Published {opId} (draft → pending)' },
   'scheme.publish.emptyTmpl':    { key: 'plan.scheme.publish.emptyTmpl',    zh: '', en: 'Template not filled; publish refused: {opId}' },
   'scheme.publish.notDraftTmpl': { key: 'plan.scheme.publish.notDraftTmpl', zh: '', en: '{opId} is not in draft state' },

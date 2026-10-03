@@ -5,13 +5,13 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { FlowManager, isFlowConcurrentError, isTemplateEmpty, EMPTY_TEMPLATE_MARKER, type PipelinePhase, type Op } from '../flow-manager.js';
+import { FlowManager, isFlowConcurrentError, isTemplateEmpty, EMPTY_TEMPLATE_MARKER, findOrphanOps, type PipelinePhase, type Op } from '../flow-manager.js';
 import { parseStageId, validateStageId, findStageDirConflict, normalizeStageId } from './path.js';
 import { ensureStageSkeleton } from './stage.js';
 import { t, getCliLang } from '../i18n.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../fs/file-lock.js';
-import { reserveSequence } from '../fs/sequence.js';
+import { reserveSequence, nextSchemeSequence } from '../fs/sequence.js';
 
 /** 操作方案 */
 export interface Scheme {
@@ -97,6 +97,51 @@ function extractTitle(filePath: string, fileName: string): string {
 /** 序号 → opId（3 位补零） */
 function opIdOf(seq: number): string {
   return `op-${String(seq).padStart(3, '0')}`;
+}
+
+/** 扫描 ops/ 目录文件名，收集序号集合（仅解析文件名，兼容历史命名，与 reserveSequence.parse 同口径）。 */
+function scanOpFileSeqs(opsDir: string): Set<number> {
+  const seqs = new Set<number>();
+  try {
+    for (const name of readdirSync(opsDir)) {
+      const m = name.match(/^op-(\d+)/);
+      if (m) {
+        seqs.add(parseInt(m[1], 10));
+      }
+    }
+  } catch {
+    // 目录不存在/不可读 → 空集（从 1 起，不误判）
+  }
+  return seqs;
+}
+
+/**
+ * 读取 flow.json 中目标阶段的已注册 op 序号集合（`op-NNN` 键 → NNN）。
+ * flow.json/stage 缺失或不可解析 → 空集（不抛错，序号起点退化为仅文件口径）。
+ */
+function readRegisteredOpSeqs(projectPath: string, fullStageId: string): Set<number> {
+  const seqs = new Set<number>();
+  try {
+    const flowJsonPath = resolve(projectPath, '.openfeel', 'flow.json');
+    if (!existsSync(flowJsonPath)) {
+      return seqs;
+    }
+    const data = JSON.parse(readFileSync(flowJsonPath, 'utf-8')) as {
+      stages?: Record<string, { ops?: Record<string, unknown> }>;
+    };
+    const ops = data?.stages?.[fullStageId]?.ops;
+    if (ops && typeof ops === 'object' && !Array.isArray(ops)) {
+      for (const key of Object.keys(ops)) {
+        const m = key.match(/^op-(\d+)$/);
+        if (m) {
+          seqs.add(parseInt(m[1], 10));
+        }
+      }
+    }
+  } catch {
+    // 解析失败 → 空集（保持 create 不因 flow.json 异常而中断）
+  }
+  return seqs;
 }
 
 /**
@@ -211,6 +256,33 @@ function syncToFlowJson(
 }
 
 /**
+ * 检测目标阶段未注册的 op 文件（fileOrphans）并输出 stderr 告警（D2：非破坏性，不中断创建）。
+ * 复用 findOrphanOps 单一口径；仅取前 5 条避免刷屏；告警失败静默（不阻塞创建）。
+ */
+function warnUnregisteredFiles(projectPath: string, fullStageId: string): void {
+  try {
+    const { fileOrphans } = findOrphanOps(projectPath);
+    const mine = fileOrphans.filter((o) => o.stage === fullStageId);
+    if (mine.length === 0) {
+      return;
+    }
+    const ops = mine
+      .slice(0, 5)
+      .map((o) => o.opId)
+      .join(', ');
+    console.warn(
+      t('plan.scheme.unregisteredFilesWarnTmpl', getCliLang(projectPath), {
+        count: String(mine.length),
+        ops,
+        stage: fullStageId,
+      }),
+    );
+  } catch {
+    // 告警为辅助功能，任何失败均不得影响 op 创建
+  }
+}
+
+/**
  * 创建操作方案
  * 在 .openfeel/plan/{series}/{stage}/ops/ 下创建 op-NNN_{title}.md
  * NNN 自动递增（从该阶段的已有方案中计算）
@@ -247,6 +319,9 @@ export function createScheme(
   // parse 正则 /^op-(\d+)/ 未改 → 历史命名仍占号，序号分配不受影响（新旧共存不撞号）。
   const lockPath = projectLockPath(projectPath, `scheme-${parsed.stageDir}`);
   const opId = withFileLock(lockPath, () => {
+    const fileSeqs = scanOpFileSeqs(opsDir);
+    const registeredSeqs = readRegisteredOpSeqs(projectPath, parsed.fullStageId);
+    const start = nextSchemeSequence(fileSeqs, registeredSeqs);
     const reserved = reserveSequence({
       dir: opsDir,
       candidate: (seq) => `${opIdOf(seq)}.md`,
@@ -254,6 +329,7 @@ export function createScheme(
         const m = fileName.match(/^op-(\d+)/);
         return m ? parseInt(m[1], 10) : null;
       },
+      start,
     });
     const content = generateSchemeTemplate(opIdOf(reserved.seq), parsed.fullStageId, title);
     atomicWriteFileSync(reserved.path, content);
@@ -262,6 +338,9 @@ export function createScheme(
 
   // 3. 同步到 flow.json（键用完整 stageId；由 FlowManager.save 的 flow.lock 保护）
   syncToFlowJson(projectPath, parsed.fullStageId, opId, title, options?.onImplicitRegister, options?.draft);
+
+  // T3：创建成功后检测未注册文件并告警（此时新 op 已注册，不会把自己算作孤儿）
+  warnUnregisteredFiles(projectPath, parsed.fullStageId);
 
   return opId;
 }

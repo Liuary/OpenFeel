@@ -506,3 +506,101 @@ describe('REV-007 双键回退固化（stage-52 op-013）', () => {
     expect(JSON.stringify(data.stages['stage-01'])).toBe(shortBefore);
   });
 });
+
+// ═══════════════════════════════════════
+// stage-64 op-001：序号「注册 ∪ 文件」+ 空位回填 + create 未注册告警
+// ═══════════════════════════════════════
+
+describe('序号注册 ∪ 文件（stage-64）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-scheme-stage64-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  /** 构造最小 op 对象（仅用于手工注入注册键，无对应文件） */
+  function mkBareOp(opId: string) {
+    return {
+      id: opId,
+      title: opId,
+      state: 'pending',
+      assignee: 'openfeel-executor',
+      attempts: 0,
+      max_attempts: 3,
+      checkpoints: {
+        plan: 'pending',
+        scheme: 'pending',
+        exec: { attempts: 0, self: 'pending' },
+        review: 'pending',
+        test: 'pending',
+      },
+    };
+  }
+
+  it('用例 A（T5.1 空阶段 ×3）：create ×3 → 001/002/003 且均注册为 pending', () => {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+
+    const ids = [
+      createScheme(tmpDir, 'stage-01', '方案一'),
+      createScheme(tmpDir, 'stage-01', '方案二'),
+      createScheme(tmpDir, 'stage-01', '方案三'),
+    ];
+    expect(ids).toEqual(['op-001', 'op-002', 'op-003']);
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    const ops = flow.stages['v1.0.0-stage-01'].ops;
+    for (const id of ['op-001', 'op-002', 'op-003']) {
+      expect(ops[id]).toBeDefined();
+      expect(ops[id].state).toBe('pending');
+    }
+  });
+
+  it('用例 B（T5.2 注册空洞）：注册 {001,003} → create 回填 002', () => {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+    const mgr = new FlowManager(tmpDir);
+    const ops = mgr.getData()!.stages['v1.0.0-stage-01'].ops;
+    ops['op-001'] = mkBareOp('op-001') as never;
+    ops['op-003'] = mkBareOp('op-003') as never;
+    mgr.save();
+
+    const opId = createScheme(tmpDir, 'stage-01', '回填空位');
+    expect(opId).toBe('op-002');
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-002']).toBeDefined();
+  });
+
+  it('用例 C（T5.3 文件孤儿 001~004 + create）：序号=005、告警、既有文件不改', () => {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    const before: Record<string, string> = {};
+    for (const n of [1, 2, 3, 4]) {
+      const id = `op-00${n}`;
+      const content = `# ${id}：标题${n}\n\n## 目标\n手动方案\n`;
+      writeFileSync(join(opsDir, `${id}.md`), content, 'utf-8');
+      before[id] = content;
+    }
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const opId = createScheme(tmpDir, 'stage-01', '新方案');
+    expect(opId).toBe('op-005');
+
+    // 告警输出（含未注册提示与补注册指引）
+    expect(warnSpy).toHaveBeenCalled();
+    const warned = warnSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(warned).toContain('未注册');
+    expect(warned).toContain('plan scheme register');
+    warnSpy.mockRestore();
+
+    // 既有 001~004 内容未被覆盖
+    for (const n of [1, 2, 3, 4]) {
+      const id = `op-00${n}`;
+      expect(readFileSync(join(opsDir, `${id}.md`), 'utf-8')).toBe(before[id]);
+    }
+    // flow.json 仅新增 op-005，001~004 仍未注册
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(Object.keys(flow.stages['v1.0.0-stage-01'].ops)).toEqual(['op-005']);
+  });
+});

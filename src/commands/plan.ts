@@ -5,7 +5,7 @@
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
 import type { StageSkeletonOverrides } from '../core/plan/stage.js';
-import { createScheme, listSchemes, removeScheme, publishScheme, renameScheme } from '../core/plan/scheme.js';
+import { createScheme, listSchemes, removeScheme, publishScheme, renameScheme, registerSchemes } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
@@ -310,5 +310,45 @@ export function registerPlanCommand(program: Command): void {
       if (result.orphan) {
         console.log(t('plan.scheme.remove.orphanNote', lang));
       }
+    });
+
+  // plan scheme register <stage> [opId] [--dry-run] — 补注册未注册的 op 文件（fileOrphans）
+  schemeCmd
+    .command('register')
+    .description('补注册 ops/ 目录中未注册到 flow.json 的操作方案（fileOrphans）')
+    .argument('<stage>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
+    .argument('[opId]', '操作方案 ID（可选；缺省补注册该阶段全部未注册文件）')
+    .option('--dry-run', '仅预览，不写盘')
+    .action((stage: string, opId: string | undefined, options: { dryRun?: boolean }) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      const result = registerSchemes(projectPath, stage, opId, { dryRun: options.dryRun });
+
+      if (!result.ok) {
+        // 阶段未找到 → 复用既有「未找到」键
+        console.error(t('plan.scheme.publish.notFoundTmpl', lang, { stage, opId: opId ?? '' }));
+        process.exit(1);
+        return;
+      }
+      if (result.skipped.length > 0) {
+        // 指定 opId 无对应文件 → 未找到 + exit 1
+        console.error(t('plan.scheme.publish.notFoundTmpl', lang, { stage, opId: result.skipped.join(', ') }));
+        process.exit(1);
+        return;
+      }
+      if (result.registered.length > 0) {
+        const vars = { count: String(result.registered.length), ops: result.registered.join(', '), stage: result.stage };
+        console.log(
+          result.dryRun
+            ? t('plan.scheme.register.dryRunTmpl', lang, vars)
+            : t('plan.scheme.register.okTmpl', lang, vars),
+        );
+        return;
+      }
+      if (result.noop.length > 0) {
+        console.log(t('plan.scheme.register.noopTmpl', lang, { opId: result.noop.join(', ') }));
+        return;
+      }
+      console.log(t('plan.scheme.register.noneTmpl', lang, { stage: result.stage }));
     });
 }

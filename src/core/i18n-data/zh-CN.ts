@@ -471,6 +471,10 @@ export const plan: I18nDomain = {
   'scheme.dirConflictSkipTmpl':  { key: 'plan.scheme.dirConflictSkipTmpl',  zh: "[WARN] 阶段 '{stage}' 与 '{other}' 映射同一 (series, stageDir)；已跳过 flow.json 自动注册（op 文件已创建），请检查 stageId。", en: '' },
   'scheme.concurrentSkipTmpl':   { key: 'plan.scheme.concurrentSkipTmpl',   zh: '[WARN] op {opId} 已创建，但 flow.json 同步因并发冲突失败；请执行 openfeel flow repair 兜底或重新注册该 op。', en: '' },
   'scheme.unregisteredFilesWarnTmpl': { key: 'plan.scheme.unregisteredFilesWarnTmpl', zh: '[WARN] 检测到 {count} 个未注册的 op 文件：{ops}（阶段 {stage}）；可执行 openfeel plan scheme register {stage} 补注册。', en: '' },
+  'scheme.register.okTmpl':     { key: 'plan.scheme.register.okTmpl',     zh: '已补注册 {count} 个操作方案：{ops}（阶段 {stage}）', en: '' },
+  'scheme.register.dryRunTmpl': { key: 'plan.scheme.register.dryRunTmpl', zh: '[DRY-RUN] 将补注册 {count} 个操作方案：{ops}（阶段 {stage}）', en: '' },
+  'scheme.register.noneTmpl':   { key: 'plan.scheme.register.noneTmpl',   zh: '阶段 {stage} 无待补注册的操作方案', en: '' },
+  'scheme.register.noopTmpl':   { key: 'plan.scheme.register.noopTmpl',   zh: '{opId} 已注册，无需补注册', en: '' },
   'scheme.publish.okTmpl':       { key: 'plan.scheme.publish.okTmpl',       zh: '已发布 {opId}（draft → pending）',         en: '' },
   'scheme.publish.emptyTmpl':    { key: 'plan.scheme.publish.emptyTmpl',    zh: '模板未填充，禁止发布：{opId}（请先补全「- [ ] 待补充」）', en: '' },
   'scheme.publish.notDraftTmpl': { key: 'plan.scheme.publish.notDraftTmpl', zh: '{opId} 不是 draft 状态，无需发布',          en: '' },
@@ -706,6 +710,10 @@ export const help: I18nDomain = {
   'plan.scheme.rename.title': { key: 'help.plan.scheme.rename.title', zh: '新标题（必填）', en: '' },
   'plan.scheme.rename.argstage': { key: 'help.plan.scheme.rename.argstage', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
   'plan.scheme.rename.argopId':  { key: 'help.plan.scheme.rename.argopId',  zh: '操作方案 ID（如 op-001 或完整 stage.op-001）', en: '' },
+  'plan.scheme.register':           { key: 'help.plan.scheme.register',           zh: '补注册未注册的操作方案（fileOrphans）', en: '' },
+  'plan.scheme.register.argstage':  { key: 'help.plan.scheme.register.argstage',  zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
+  'plan.scheme.register.argopId':   { key: 'help.plan.scheme.register.argopId',   zh: '操作方案 ID（可选）', en: '' },
+  'plan.scheme.register.dryRun':    { key: 'help.plan.scheme.register.dryRun',    zh: '仅预览，不写盘', en: '' },
 
   // stage
   'stage':                 { key: 'help.stage',                 zh: '工作阶段状态管理（status.md 原子操作）', en: '' },

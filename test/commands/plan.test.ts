@@ -587,4 +587,55 @@ describe('plan 命令', () => {
     const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-15', 'status.md');
     expect(readFileSync(statusPath, 'utf-8')).toContain('- **执行模式**：auto');
   });
+
+  // ── v1.1.4-stage-64 op-002：plan scheme register 补注册（T5.9） ──
+
+  it('stage-64 T5.9: plan scheme register <stage> 正向补注册 → 输出「已补注册」+ flow.json 出现键', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-40']);
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-40', 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    writeFileSync(join(opsDir, 'op-001.md'), '# op-001：手动方案\n', 'utf-8');
+    writeFileSync(join(opsDir, 'op-002.md'), '# op-002：手动方案二\n', 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'register', 'stage-40']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('已补注册');
+    expect(out).toContain('op-001');
+    expect(out).toContain('op-002');
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-40'].ops['op-001']).toBeDefined();
+    expect(flow.stages['v1.0.0-stage-40'].ops['op-002']).toBeDefined();
+  });
+
+  it('stage-64 T5.9: plan scheme register --dry-run → 输出 DRY-RUN 且 flow.json 不变', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-41']);
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-41', 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    writeFileSync(join(opsDir, 'op-001.md'), '# op-001：T\n', 'utf-8');
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'register', 'stage-41', '--dry-run']);
+
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('DRY-RUN');
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+  });
+
+  it('stage-64 T5.9: 阶段不存在 → console.error + exit 1', async () => {
+    errorMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'register', 'stage-99']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('未找到');
+  });
+
+  it('stage-64 T5.9: plan scheme 子命令树含 register', () => {
+    const scheme = program.commands.find((c) => c.name() === 'plan')!.commands.find((c) => c.name() === 'scheme')!;
+    expect(scheme.commands.map((c) => c.name())).toContain('register');
+  });
 });

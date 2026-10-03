@@ -377,6 +377,18 @@ function hasOpTemplateFile(projectPath: string, stageId: string, opId: string): 
 }
 
 /**
+ * 在 ops/ 目录定位 op-NNN 的模板文件名（`op-NNN.md` 或历史 `op-NNN_*.md`）；未命中返回 null。
+ */
+function findOpFileInDir(opsDir: string, opId: string): string | null {
+  try {
+    return readdirSync(opsDir).find((f) => f === `${opId}.md` || f.startsWith(`${opId}_`)) ?? null;
+  } catch {
+    // 目录不可读 → 视为无文件（不误判）
+    return null;
+  }
+}
+
+/**
  * 判断该 op 是否存在 checkpoint 进展（默认拒绝删除的保护依据）。
  * 判据：① op.checkpoints 含任一非 pending 值；② 阶段 checkpoint 快照含该 op 或 current 指向该 op。
  */
@@ -486,6 +498,115 @@ export function removeScheme(
   });
   mgr.save();
   return { removed: true, orphan };
+}
+
+/** 补注册结果（借鉴 removeScheme 的「结果对象 + 原因码」风格，供命令层映射 i18n） */
+export interface RegisterSchemesResult {
+  /** 阶段是否找到（false 时 registered/noop/skipped 均为空） */
+  ok: boolean;
+  /** 归一后的阶段 ID */
+  stage: string;
+  /** 本次新注册的 opId 列表 */
+  registered: string[];
+  /** 已注册、无需处理的 opId（仅显式指定 opId 时有值） */
+  noop: string[];
+  /** 显式指定但 ops/ 无对应文件的 opId */
+  skipped: string[];
+  /** 是否 dry-run（零写盘） */
+  dryRun: boolean;
+}
+
+/** 注册默认 op 对象（与 createScheme 的 syncToFlowJson 注册 shape 语义逐字一致） */
+function defaultOpForRegister(opId: string, title: string): Op {
+  return {
+    id: opId,
+    title,
+    state: 'pending',
+    assignee: 'openfeel-executor',
+    attempts: 0,
+    max_attempts: 3,
+    checkpoints: {
+      plan: 'pending',
+      scheme: 'pending',
+      exec: { attempts: 0, self: 'pending' },
+      review: 'pending',
+      test: 'pending',
+    },
+  };
+}
+
+/**
+ * 补注册 ops/ 目录中的 fileOrphans 到 flow.json（`plan scheme register` 核心）。
+ * - 未指定 opId：补注册目标阶段全部 fileOrphans；
+ * - 指定 opId：仅处理该项（已注册 → noop；无文件 → skipped）；
+ * - dryRun：仅计算零写盘（flow.json revision 不变）。
+ * @returns 结构化结果（registered/noop/skipped/dryRun）
+ */
+export function registerSchemes(
+  projectPath: string,
+  stageName: string,
+  opId?: string,
+  options?: { dryRun?: boolean },
+): RegisterSchemesResult {
+  const dryRun = !!options?.dryRun;
+  const normalized = normalizeStageId(stageName) ?? stageName;
+  const empty: RegisterSchemesResult = { ok: false, stage: normalized, registered: [], noop: [], skipped: [], dryRun };
+
+  const mgr = new FlowManager(projectPath);
+  if (!mgr.isLoaded()) {
+    return empty;
+  }
+  const data = mgr.getData()!;
+  const stage = data.stages[normalized] ?? data.stages[stageName];
+  if (!stage) {
+    return empty;
+  }
+  const stageKey = data.stages[normalized] ? normalized : stageName;
+  const parsed = parseStageId(stageKey);
+  if (!parsed) {
+    return empty;
+  }
+  const opsDir = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'ops');
+
+  // 文件孤儿（有文件无注册键）：复用 findOrphanOps 单一口径，过滤目标阶段
+  const { fileOrphans } = findOrphanOps(projectPath);
+  const orphanIds = new Set(fileOrphans.filter((o) => o.stage === stageKey).map((o) => o.opId));
+
+  const localOpId = opId && opId.includes('.') ? opId.substring(opId.lastIndexOf('.') + 1) : opId;
+  const targets = localOpId ? [localOpId] : [...orphanIds].sort();
+
+  const registered: string[] = [];
+  const noop: string[] = [];
+  const skipped: string[] = [];
+
+  for (const id of targets) {
+    if (stage.ops[id]) {
+      // 已注册 → no-op（不覆盖既有条目）
+      noop.push(id);
+      continue;
+    }
+    if (!orphanIds.has(id)) {
+      // 无对应文件（或文件名非 op-\d+）→ 跳过
+      skipped.push(id);
+      continue;
+    }
+    const fileName = findOpFileInDir(opsDir, id);
+    if (!fileName) {
+      skipped.push(id);
+      continue;
+    }
+    const title = extractTitle(resolve(opsDir, fileName), fileName);
+    if (!dryRun) {
+      stage.ops[id] = defaultOpForRegister(id, title);
+      mgr.appendLog({ time: '', agent: 'cli', action: 'register_op', detail: { stageName: stageKey, opId: id } });
+    }
+    registered.push(id);
+  }
+
+  if (!dryRun && registered.length > 0) {
+    mgr.save();
+  }
+  return { ok: true, stage: stageKey, registered, noop, skipped, dryRun };
 }
 
 /** 发布（draft → pending）结果（B4-2） */

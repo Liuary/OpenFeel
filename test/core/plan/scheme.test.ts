@@ -3,9 +3,9 @@
  * 测试 createScheme、getScheme 和 listSchemes 在临时目录中的行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createScheme, getScheme, listSchemes, renameScheme, removeScheme, publishScheme } from '../../../src/core/plan/scheme.js';
+import { createScheme, getScheme, listSchemes, renameScheme, removeScheme, publishScheme, registerSchemes } from '../../../src/core/plan/scheme.js';
 import { addStage } from '../../../src/core/plan/stage.js';
-import { FlowManager } from '../../../src/core/flow-manager.js';
+import { FlowManager, findOrphanOps } from '../../../src/core/flow-manager.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -602,5 +602,114 @@ describe('序号注册 ∪ 文件（stage-64）', () => {
     // flow.json 仅新增 op-005，001~004 仍未注册
     const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
     expect(Object.keys(flow.stages['v1.0.0-stage-01'].ops)).toEqual(['op-005']);
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-64 op-002：plan scheme register 补注册（T2 + T5.4~T5.8）
+// ═══════════════════════════════════════
+
+describe('registerSchemes（stage-64）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-scheme-register-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  const opsDir = () => join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+  const flowPath = () => join(tmpDir, '.openfeel', 'flow.json');
+
+  /** 构造「有文件无注册键」场景：initFlow + addStage + 写 op-001..op-00N 文件（首行标题） */
+  function setupOrphans(count: number): void {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+    mkdirSync(opsDir(), { recursive: true });
+    for (let n = 1; n <= count; n++) {
+      const id = `op-00${n}`;
+      writeFileSync(join(opsDir(), `${id}.md`), `# ${id}：标题${n}\n\n## 目标\n手动方案\n`, 'utf-8');
+    }
+  }
+
+  it('T5.4 全量补注册：001~004 → pending 且 title 正确', () => {
+    setupOrphans(4);
+
+    const r = registerSchemes(tmpDir, 'stage-01');
+
+    expect(r.ok).toBe(true);
+    expect(r.registered).toEqual(['op-001', 'op-002', 'op-003', 'op-004']);
+    expect(r.noop).toEqual([]);
+    expect(r.skipped).toEqual([]);
+    expect(r.dryRun).toBe(false);
+
+    const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+    const ops = flow.stages['v1.0.0-stage-01'].ops;
+    for (const n of [1, 2, 3, 4]) {
+      const id = `op-00${n}`;
+      expect(ops[id].state).toBe('pending');
+      expect(ops[id].title).toBe(`标题${n}`);
+      expect(ops[id].assignee).toBe('openfeel-executor');
+      expect(ops[id].attempts).toBe(0);
+      expect(ops[id].max_attempts).toBe(3);
+    }
+    // 补注册后该阶段不再有文件孤儿
+    const { fileOrphans } = findOrphanOps(tmpDir);
+    expect(fileOrphans.filter((o) => o.stage === 'v1.0.0-stage-01')).toHaveLength(0);
+  });
+
+  it('T5.5 单项补注册：仅 op-002，其余仍未注册', () => {
+    setupOrphans(4);
+
+    const r = registerSchemes(tmpDir, 'stage-01', 'op-002');
+
+    expect(r.registered).toEqual(['op-002']);
+    const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+    expect(Object.keys(flow.stages['v1.0.0-stage-01'].ops)).toEqual(['op-002']);
+  });
+
+  it('T5.6 dry-run 零写盘：registered 4 但 revision/ops 不变', () => {
+    setupOrphans(4);
+    const before = readFileSync(flowPath(), 'utf-8');
+
+    const r = registerSchemes(tmpDir, 'stage-01', undefined, { dryRun: true });
+
+    expect(r.registered).toHaveLength(4);
+    expect(r.dryRun).toBe(true);
+    // 文件逐字节不变（revision 不变）
+    expect(readFileSync(flowPath(), 'utf-8')).toBe(before);
+    const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].ops).toEqual({});
+  });
+
+  it('T5.7 已注册 no-op：既有条目不被覆盖', () => {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.stages['v1.0.0-stage-01'].ops['op-001'] = {
+      id: 'op-001', title: '自定义标题', state: 'pending', assignee: 'x', attempts: 0, max_attempts: 3,
+      checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+    } as never;
+    mgr.save();
+
+    const r = registerSchemes(tmpDir, 'stage-01', 'op-001');
+
+    expect(r.noop).toEqual(['op-001']);
+    expect(r.registered).toEqual([]);
+    expect(r.skipped).toEqual([]);
+    const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+    // 既有 title 逐字不变（未被默认注册覆盖）
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-001'].title).toBe('自定义标题');
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-001'].assignee).toBe('x');
+  });
+
+  it('T5.8 历史命名 op-001_{旧标题}.md → title 文件名回退', () => {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+    mkdirSync(opsDir(), { recursive: true });
+    // 无首行标题 + 文件名含 `_` → extractTitle 走历史命名解析
+    writeFileSync(join(opsDir(), 'op-001_旧标题.md'), '无首行标题\n', 'utf-8');
+
+    const r = registerSchemes(tmpDir, 'stage-01', 'op-001');
+
+    expect(r.registered).toEqual(['op-001']);
+    const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-001'].title).toBe('旧标题');
   });
 });

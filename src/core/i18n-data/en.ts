@@ -108,6 +108,12 @@ export const flow: I18nDomain = {
   'stage.remove.dryRunReferencing': { key: 'flow.stage.remove.dryRunReferencing', zh: '', en: 'Referenced by (deps)' },
   'stage.remove.dryRunOk':          { key: 'flow.stage.remove.dryRunOk',          zh: '', en: '✓ Removable (not written); drop --dry-run to execute' },
 
+  // flow stage reset (stage-65 op-002)
+  'stage.reset.previewTitle':       { key: 'flow.stage.reset.previewTitle',       zh: '', en: '─── Reset preview (nothing written) ───' },
+  'stage.reset.previewTmpl':        { key: 'flow.stage.reset.previewTmpl',        zh: '', en: '  {stage}: {from} → {to} (status → {status})' },
+  'stage.reset.okTmpl':             { key: 'flow.stage.reset.okTmpl',             zh: '', en: '✓ Stage {stage} reset: {from} → {to}' },
+  'stage.reset.noopTmpl':           { key: 'flow.stage.reset.noopTmpl',           zh: '', en: 'Stage {stage} is already at {phase}; nothing to reset' },
+
   'advance.errorNoStage':       { key: 'flow.advance.errorNoStage',       zh: '', en: 'Error: --stage parameter must specify a stage ID (e.g. stage-03). If this is a new project, run openfeel stage create <id> first.' },
   'advance.warnAutoCorrect':    { key: 'flow.advance.warnAutoCorrect',    zh: '', en: '(Non-standard phase auto-corrected, proceeding)' },
   'advance.errorInvalidFormat': { key: 'flow.advance.errorInvalidFormat', zh: '', en: 'Error: flow.json format is invalid' },
@@ -588,6 +594,10 @@ export const help: I18nDomain = {
   'flow.stage.set':        { key: 'help.flow.stage.set',        zh: '', en: 'Set stage dependencies (overwrite; no --deps means clear)' },
   'flow.stage.set.argstageId': { key: 'help.flow.stage.set.argstageId', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
   'flow.stage.set.deps':   { key: 'help.flow.stage.set.deps',   zh: '', en: 'Dependency stage IDs (space- or comma-separated; variadic, place at end of command)' },
+  'flow.stage.reset':      { key: 'help.flow.stage.reset',      zh: '', en: 'Reset a stage phase (rollback allowed; bounded by valid phase values and the to=done blocking REV check)' },
+  'flow.stage.reset.argstageId': { key: 'help.flow.stage.reset.argstageId', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
+  'flow.stage.reset.to':   { key: 'help.flow.stage.reset.to',   zh: '', en: 'Target phase (e.g. review_pending / test_pending / done); valid values: openfeel flow phases' },
+  'flow.stage.reset.dryRun': { key: 'help.flow.stage.reset.dryRun', zh: '', en: 'Preview only; nothing is written' },
   'flow.advance':          { key: 'help.flow.advance',          zh: '', en: 'Advance pipeline stage' },
   'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001), for logging/display only' },
   'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '', en: 'Target phase (e.g. exec_running). Valid phases & transitions: openfeel flow phases' },

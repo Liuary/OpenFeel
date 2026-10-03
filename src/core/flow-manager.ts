@@ -284,6 +284,18 @@ export interface RemovalCheck {
   referencing: string[];
 }
 
+/** 阶段 phase 复位结果（resetStagePhase 返回；供命令层回显/预览） */
+export interface ResetStageResult {
+  /** 是否产生实际变更（phase 或 status 变化）；false = no-op */
+  changed: boolean;
+  /** 复位前 phase */
+  from: PipelinePhase;
+  /** 复位目标 phase（= 传入的合法 to） */
+  to: PipelinePhase;
+  /** 投影后的 status（mapPhaseToStageStatus(to, 原 status)） */
+  status: string;
+}
+
 /** 健康检查单项 */
 export interface HealthCheckItem {
   section: string;
@@ -1479,6 +1491,91 @@ export class FlowManager {
       return true;
     }
     return false;
+  }
+
+  /**
+   * 复位指定阶段的 phase（允许越过正向转移表回退/前进）。
+   * 约束：
+   * - `to` 必须为合法 PipelinePhase（PipelinePhaseSchema；非法直接抛错，不模糊修正）；
+   * - `to === 'done'` 复用 advanceStagePhase 的阻塞 REV 检查（--force 不可绕过）；
+   * - 写入 phase 后按 mapPhaseToStageStatus 同步 status（phase 为唯一事实源）；
+   * - 仅当 pipeline.current 指向该阶段时同步 current.op；重算宏观 pipeline.phase；
+   * - 留审计日志 reset_stage_phase；**不触发归档 commit**、**不写 checkpoint 快照**。
+   * @param stageName 阶段 ID（短名/全名）
+   * @param to 目标 phase 字符串
+   * @param options.dryRun 仅计算不修改内存（命令层不 save）
+   * @returns 复位结果（from/to/status/changed）
+   */
+  resetStagePhase(stageName: string, to: string, options: { dryRun?: boolean } = {}): ResetStageResult {
+    if (!this.data) {
+      throw new Error('flow.json 未加载');
+    }
+    // REV-005：归一化 stageId（短名 → 全名）+ 双键回退（与 advanceStagePhase 同范式）
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const key = this.data.stages[normalized] ? normalized : stageName;
+    const stage = this.data.stages[key];
+    if (!stage) {
+      throw new Error(`阶段 '${stageName}' 不存在`);
+    }
+
+    // 值域校验：复用 PipelinePhaseSchema（reset 须显式合法值，不做模糊修正）
+    const parsed = PipelinePhaseSchema.safeParse(to);
+    if (!parsed.success) {
+      throw new Error(`非法 phase '${to}'`);
+    }
+    const targetPhase: PipelinePhase = parsed.data;
+    const fromPhase = stage.phase;
+    const projectedStatus = mapPhaseToStageStatus(targetPhase, stage.status);
+
+    // to=done：复用 advanceStagePhase 的 REV 阻塞检查（同语义，--force 不可绕过）
+    if (targetPhase === 'done') {
+      const stageReviews = this.data.reviews.filter(
+        (r) => r.op.startsWith(key + '.') || r.op === key,
+      );
+      const blockingOpen = stageReviews.filter(
+        (r) => r.blocking !== false && r.status === 'open',
+      );
+      if (blockingOpen.length > 0) {
+        const revList = blockingOpen
+          .map((r) => `  ${r.id}: ${r.title} (priority=${r.priority})`)
+          .join('\n');
+        throw new Error(
+          `无法复位到 done：存在 ${blockingOpen.length} 个未解决的阻塞 REV：\n${revList}`,
+        );
+      }
+    }
+
+    // 幂等：phase 与投影 status 均无变化 → no-op（dryRun 与真实路径一致）
+    const changed = fromPhase !== targetPhase || stage.status !== projectedStatus;
+    if (options.dryRun || !changed) {
+      return { changed, from: fromPhase, to: targetPhase, status: projectedStatus };
+    }
+
+    // 写入（phase 权威 + status 投影）
+    stage.phase = targetPhase;
+    stage.status = projectedStatus;
+
+    // 审计日志：reset 为修复而非里程碑推进
+    this.appendLog({
+      time: '',
+      agent: 'flow-manager',
+      action: 'reset_stage_phase',
+      detail: { stageName: key, from: fromPhase, to: targetPhase },
+    });
+
+    // 仅当 current 指向该阶段时同步 op 指针（其它阶段的 current 不被动）
+    const curStage = this.data.pipeline.current.stage;
+    const normCur = curStage ? (normalizeStageId(curStage) ?? curStage) : '';
+    if (normCur === key) {
+      this.syncCurrentOp(key);
+    }
+
+    // 宏观 pipeline.phase 派生：全量 done → done，否则 active（与 advanceStagePhase 一致）
+    const allDone = Object.keys(this.data.stages).length > 0
+      && Object.values(this.data.stages).every((s) => s.phase === 'done');
+    this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
+
+    return { changed, from: fromPhase, to: targetPhase, status: projectedStatus };
   }
 
   /**

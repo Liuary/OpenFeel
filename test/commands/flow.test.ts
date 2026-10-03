@@ -1491,4 +1491,87 @@ describe('flow 命令（stage-41）', () => {
     await safeParse(['flow', 'checkpoint', 'restore', '../evil.json', '--force']);
     expect(exitMock).toHaveBeenCalledWith(1);
   });
+
+  // ── op-002：flow stage reset ──
+
+  /** op-002 夹具：单阶段（全名键）flow.json + 可选 blocking REV */
+  function setupResetStage(
+    phase: PipelinePhase,
+    status: string,
+    reviews: FlowData['reviews'] = [],
+  ): void {
+    const mgr = new FlowManager(tmpDir);
+    const data: FlowData = {
+      meta: { version: '1.0', project: 'CmdReset', updated: '2026-01-01T00:00:00Z' },
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.0.0-stage-01', op: '' }, retry: 0 },
+      stages: {
+        'v1.0.0-stage-01': { name: 'v1.0.0-stage-01', phase, status, deps: [], ops: {} },
+      },
+      reviews,
+      log: [],
+    };
+    mgr.setData(data);
+    mgr.save();
+  }
+
+  it('op-002 T6.4: flow stage reset 回退成功且 status 按投影同步（exit 0）', async () => {
+    setupResetStage('review_passed' as PipelinePhase, 'review_passed');
+    logMock.mockClear();
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-01', '--to', 'review_pending']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('已复位');
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as FlowData;
+    expect(after.stages['v1.0.0-stage-01'].phase).toBe('review_pending');
+    // mapPhaseToStageStatus('review_pending', 'review_passed') → default 保持原 status
+    expect(after.stages['v1.0.0-stage-01'].status).toBe('review_passed');
+    const last = after.log[after.log.length - 1];
+    expect(last.action).toBe('reset_stage_phase');
+  });
+
+  it('op-002 T6.5: reset --to done + blocking REV → exit 1 且 phase 不变', async () => {
+    setupResetStage('test_passed' as PipelinePhase, 'testing', [
+      {
+        id: 'REV-001',
+        op: 'v1.0.0-stage-01.op-001',
+        title: 't',
+        status: 'open',
+        blocking: true,
+        priority: 'high',
+        filed_by: 'openfeel-reviewer',
+        filed_at: '2026-01-01T00:00:00Z',
+      },
+    ]);
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-01', '--to', 'done']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as FlowData;
+    expect(after.stages['v1.0.0-stage-01'].phase).toBe('test_passed');
+  });
+
+  it('op-002 T6.6: reset --dry-run 零写盘', async () => {
+    setupResetStage('done' as PipelinePhase, 'done');
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    logMock.mockClear();
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-01', '--to', 'review_passed', '--dry-run']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('复位预览');
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+  });
+
+  it('op-002 T6.7: reset 复位后 advance --to test_pending 不被锁（exit 0）', async () => {
+    setupResetStage('done' as PipelinePhase, 'done');
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-01', '--to', 'review_passed']);
+    expect(exitMock).not.toHaveBeenCalled();
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'test_pending']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as FlowData;
+    expect(after.stages['v1.0.0-stage-01'].phase).toBe('test_pending');
+  });
+
+  it('op-002: flow stage 子命令含 reset', () => {
+    const flowCmd = program.commands.find((c) => c.name() === 'flow');
+    const stageCmd = flowCmd!.commands.find((c) => c.name() === 'stage');
+    expect(stageCmd!.commands.map((c) => c.name())).toContain('reset');
+  });
 });

@@ -2947,6 +2947,154 @@ describe('FlowManager', () => {
       expect(mgr.findPhasePath('stage-01', 'test_pending').reason).not.toBe('no-path');
     });
   });
+
+  // ═══════════════════════════════════════
+  // resetStagePhase（stage-65 op-002）
+  // ═══════════════════════════════════════
+  describe('resetStagePhase（stage-65 op-002）', () => {
+    /** 构造以全名 v1.0.0-stage-01 建键的单阶段数据（对齐 plan 用例中的 stageId） */
+    function makeResetMgr(
+      phase: PipelinePhase,
+      status: string,
+      overrides?: Partial<FlowData>,
+    ): FlowManager {
+      const base = makeTestFlowData();
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        ...base,
+        pipeline: { ...base.pipeline, current: { stage: 'v1.0.0-stage-01', op: 'op-001' } },
+        stages: {
+          'v1.0.0-stage-01': {
+            ...base.stages['stage-01'],
+            name: 'v1.0.0-stage-01',
+            phase,
+            status,
+          },
+        },
+        ...overrides,
+      });
+      return mgr;
+    }
+
+    it('T6.4 回退成功：phase 回退且 status 按 mapPhaseToStageStatus 投影', () => {
+      const mgr = makeResetMgr('review_passed', 'review_passed');
+      const r = mgr.resetStagePhase('v1.0.0-stage-01', 'review_pending');
+      expect(r.changed).toBe(true);
+      expect(r.from).toBe('review_passed');
+      expect(r.to).toBe('review_pending');
+      const stage = mgr.getData()!.stages['v1.0.0-stage-01'];
+      expect(stage.phase).toBe('review_pending');
+      // mapPhaseToStageStatus('review_pending', 'review_passed') → default 分支保持原 status
+      expect(stage.status).toBe('review_passed');
+      const log = mgr.getData()!.log;
+      expect(log[log.length - 1].action).toBe('reset_stage_phase');
+    });
+
+    it('T6.4 前进允许：不受正向转移表限制（plan_pending → exec_running）', () => {
+      const mgr = makeResetMgr('plan_pending', 'planned');
+      const r = mgr.resetStagePhase('v1.0.0-stage-01', 'exec_running');
+      expect(r.changed).toBe(true);
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('exec_running');
+    });
+
+    it('T6.4 done 投影：phase=done, status=archiving → status 同步为 done（幂等路径仍算 changed）', () => {
+      const mgr = makeResetMgr('done', 'archiving');
+      const r = mgr.resetStagePhase('v1.0.0-stage-01', 'done');
+      expect(r.changed).toBe(true);
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].status).toBe('done');
+    });
+
+    it('T6.5 to=done + blocking REV → 拒绝且 phase 不变', () => {
+      const mgr = makeResetMgr('test_passed', 'testing', {
+        reviews: [
+          {
+            id: 'REV-001',
+            op: 'v1.0.0-stage-01.op-001',
+            title: 't',
+            status: 'open',
+            blocking: true,
+            priority: 'high',
+            filed_by: 'openfeel-reviewer',
+            filed_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+      });
+      expect(() => mgr.resetStagePhase('v1.0.0-stage-01', 'done')).toThrow(/阻塞 REV/);
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('test_passed');
+    });
+
+    it('T6.5 非阻塞 REV 放行：blocking=false 的 open REV 不阻断', () => {
+      const mgr = makeResetMgr('test_passed', 'testing', {
+        reviews: [
+          {
+            id: 'REV-002',
+            op: 'v1.0.0-stage-01.op-001',
+            title: 't',
+            status: 'open',
+            blocking: false,
+            priority: 'low',
+            filed_by: 'openfeel-reviewer',
+            filed_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+      });
+      expect(() => mgr.resetStagePhase('v1.0.0-stage-01', 'done')).not.toThrow();
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('done');
+    });
+
+    it('T6.5 非法 phase → 抛错且不写盘', () => {
+      const mgr = makeResetMgr('review_passed', 'review_passed');
+      expect(() => mgr.resetStagePhase('v1.0.0-stage-01', 'bogus')).toThrow(/非法 phase/);
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('review_passed');
+    });
+
+    it('T6.5 阶段不存在 → 抛错', () => {
+      const mgr = makeResetMgr('review_passed', 'review_passed');
+      expect(() => mgr.resetStagePhase('v9.9.9-stage-99', 'done')).toThrow(/不存在/);
+    });
+
+    it('T6.6 dry-run 零写：内存 phase/status 不变、磁盘字节不变、无新日志', () => {
+      const mgr = makeResetMgr('done', 'done');
+      mgr.save();
+      const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+      const before = readFileSync(flowPath, 'utf-8');
+      const logCountBefore = mgr.getData()!.log.length;
+
+      const r = mgr.resetStagePhase('v1.0.0-stage-01', 'review_passed', { dryRun: true });
+      expect(r.changed).toBe(true);
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('done');
+      expect(mgr.getData()!.log.length).toBe(logCountBefore);
+      expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+    });
+
+    it('T6.6 no-op 幂等：phase 与投影 status 均未变 → changed=false 且不追加日志', () => {
+      const mgr = makeResetMgr('review_pending', 'review_passed');
+      const logCountBefore = mgr.getData()!.log.length;
+      const r = mgr.resetStagePhase('v1.0.0-stage-01', 'review_pending');
+      expect(r.changed).toBe(false);
+      expect(mgr.getData()!.log.length).toBe(logCountBefore);
+    });
+
+    it('T6.7 复位后 auto-repair 不锁 done，advance test_pending 通过', () => {
+      const mgr = makeResetMgr('done', 'done');
+      const r = mgr.resetStagePhase('v1.0.0-stage-01', 'review_passed');
+      expect(r.changed).toBe(true);
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].status).toBe('review_passed');
+      expect(mgr.autoRepairInconsistency('v1.0.0-stage-01').fixed).toBe(false);
+      expect(() => mgr.advanceStagePhase('v1.0.0-stage-01', 'test_pending')).not.toThrow();
+      expect(mgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('test_pending');
+    });
+
+    it('T6.4 短名归一化：短名与全名复位结果一致', () => {
+      const shortMgr = makeResetMgr('review_passed', 'review_passed');
+      shortMgr.resetStagePhase('stage-01', 'review_pending');
+      expect(shortMgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('review_pending');
+
+      const fullMgr = makeResetMgr('review_passed', 'review_passed');
+      fullMgr.resetStagePhase('v1.0.0-stage-01', 'review_pending');
+      expect(fullMgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('review_pending');
+    });
+  });
 });
 
 // ═══════════════════════════════════════

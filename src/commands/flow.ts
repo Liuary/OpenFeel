@@ -607,6 +607,54 @@ export function registerFlowCommand(program: Command): void {
       }));
     });
 
+  // flow stage reset <stageId> --to <phase> [--dry-run]
+  stageCmd
+    .command('reset <stageId>')
+    .description('复位阶段 phase（允许回退；受合法值域与 to=done 的 REV 阻塞约束）')
+    .requiredOption('--to <phase>', '目标 phase（如 review_pending / test_pending / done）；合法值见 openfeel flow phases')
+    .option('--dry-run', '仅预览，不写盘')
+    .action((stageId: string, options: { to: string; dryRun?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        console.error(t('common.errorNoInit', lang));
+        process.exit(1);
+      }
+      const stageArg = normalizeStageId(stageId) ?? stageId;
+      try {
+        const result = mgr.resetStagePhase(stageArg, options.to, { dryRun: options.dryRun });
+        if (options.dryRun) {
+          console.log(t('flow.stage.reset.previewTitle', lang));
+          console.log(t('flow.stage.reset.previewTmpl', lang, {
+            stage: stageArg,
+            from: result.from,
+            to: result.to,
+            status: result.status,
+          }));
+          return;
+        }
+        if (!result.changed) {
+          console.log(t('flow.stage.reset.noopTmpl', lang, { stage: stageArg, phase: result.to }));
+          return;
+        }
+        // 核心层仅改内存；命令层 save()（与 advance 同范式）
+        mgr.save();
+        console.log(t('flow.stage.reset.okTmpl', lang, {
+          stage: stageArg,
+          from: result.from,
+          to: result.to,
+        }));
+      } catch (err: unknown) {
+        // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；其余走通用错误
+        if (isFlowConcurrentError(err)) {
+          handleConcurrentConflict(err, lang);
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(t('common.errorTmpl', lang, { msg }));
+        process.exit(1);
+      }
+    });
+
   // flow advance --stage <id> --to <phase> [--op <id>] [--force]
   flow
     .command('advance')

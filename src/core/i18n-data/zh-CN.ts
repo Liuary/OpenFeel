@@ -116,6 +116,12 @@ export const flow: I18nDomain = {
   'stage.remove.dryRunReferencing': { key: 'flow.stage.remove.dryRunReferencing', zh: '引用者 (deps)',                                   en: '' },
   'stage.remove.dryRunOk':          { key: 'flow.stage.remove.dryRunOk',          zh: '✓ 预期可移除（未写盘）；去掉 --dry-run 正式执行',    en: '' },
 
+  // flow stage reset（stage-65 op-002）
+  'stage.reset.previewTitle':       { key: 'flow.stage.reset.previewTitle',       zh: '─── 复位预览（未写盘）───',                        en: '' },
+  'stage.reset.previewTmpl':        { key: 'flow.stage.reset.previewTmpl',        zh: '  {stage}: {from} → {to}（status → {status}）',    en: '' },
+  'stage.reset.okTmpl':             { key: 'flow.stage.reset.okTmpl',             zh: '✓ 已复位阶段 {stage}: {from} → {to}',              en: '' },
+  'stage.reset.noopTmpl':           { key: 'flow.stage.reset.noopTmpl',           zh: '阶段 {stage} 已处于 {phase}，无需复位',             en: '' },
+
   // flow advance
   'advance.errorNoStage':       { key: 'flow.advance.errorNoStage',       zh: '错误：--stage 参数必须指定阶段 ID（如 stage-03）。如果是新项目，请先运行 openfeel stage create <id> 创建阶段。', en: '' },
   'advance.warnAutoCorrect':    { key: 'flow.advance.warnAutoCorrect',    zh: '（非标准 phase 已自动修正，继续推进）',     en: '' },
@@ -618,6 +624,10 @@ export const help: I18nDomain = {
   'flow.stage.set':        { key: 'help.flow.stage.set',        zh: '设置阶段依赖（覆盖写入；未指定 --deps 视为清空）', en: '' },
   'flow.stage.set.argstageId': { key: 'help.flow.stage.set.argstageId', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
   'flow.stage.set.deps':   { key: 'help.flow.stage.set.deps',   zh: '依赖阶段 ID 列表（空格或逗号分隔；含变长参数，建议置于命令末尾）', en: '' },
+  'flow.stage.reset':      { key: 'help.flow.stage.reset',      zh: '复位阶段 phase（允许回退；受合法值域与 to=done 的 REV 阻塞约束）', en: '' },
+  'flow.stage.reset.argstageId': { key: 'help.flow.stage.reset.argstageId', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
+  'flow.stage.reset.to':   { key: 'help.flow.stage.reset.to',   zh: '目标 phase（如 review_pending / test_pending / done）；合法值见 openfeel flow phases', en: '' },
+  'flow.stage.reset.dryRun': { key: 'help.flow.stage.reset.dryRun', zh: '仅预览，不写盘', en: '' },
   'flow.advance':          { key: 'help.flow.advance',          zh: '推进流水线阶段', en: '' },
   'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '操作 ID（如 stage-01.op-001），仅用于日志/展示', en: '' },
   'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '目标阶段（如 exec_running）。合法 phase 与转移表：openfeel flow phases', en: '' },

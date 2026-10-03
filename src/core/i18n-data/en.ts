@@ -637,9 +637,9 @@ export const help: I18nDomain = {
   'config.set-lang':       { key: 'help.config.set-lang',       zh: '', en: 'Change global default language (zh-CN or en)' },
   'config.list-projects':  { key: 'help.config.list-projects',  zh: '', en: 'List all recorded project path→language mappings' },
   'config':                { key: 'help.config',                zh: '', en: 'View or modify project config' },
-  'config.get':            { key: 'help.config.get',            zh: '', en: 'Read a config value (project config; --global reads global profile)' },
+  'config.get':            { key: 'help.config.get',            zh: '', en: 'Read a config value (project config; --global reads global profile; keys accept defaults.X, equivalent to X)' },
   'config.get.global':     { key: 'help.config.get.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
-  'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a config value (project config; --global writes global profile)' },
+  'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a config value (project config; --global writes global profile; keys accept defaults.X, equivalent to X)' },
   'config.set.global':     { key: 'help.config.set.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
   'config.effective':      { key: 'help.config.effective',      zh: '', en: 'Show effective config values and their source (status.md > config.yaml > profile.yaml > builtin)' },
 

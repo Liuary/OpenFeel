@@ -668,9 +668,9 @@ export const help: I18nDomain = {
   'config.set-lang':       { key: 'help.config.set-lang',       zh: '修改全局默认语言（zh-CN 或 en）', en: '' },
   'config.list-projects':  { key: 'help.config.list-projects',  zh: '列出所有已记录的项目路径→语言映射', en: '' },
   'config':                { key: 'help.config',                zh: '查看或修改项目配置', en: '' },
-  'config.get':            { key: 'help.config.get',            zh: '读取配置项的值（项目配置；--global 时读取全局 profile）', en: '' },
+  'config.get':            { key: 'help.config.get',            zh: '读取配置项的值（项目配置；--global 时读取全局 profile；键支持 defaults.X，与 X 等价）', en: '' },
   'config.get.global':     { key: 'help.config.get.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
-  'config.set':            { key: 'help.config.set',            zh: '设置配置项的值（项目配置；--global 时写入全局 profile）', en: '' },
+  'config.set':            { key: 'help.config.set',            zh: '设置配置项的值（项目配置；--global 时写入全局 profile；键支持 defaults.X，与 X 等价）', en: '' },
   'config.set.global':     { key: 'help.config.set.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
   'config.effective':      { key: 'help.config.effective',      zh: '输出配置的有效值 + 生效来源（status.md > config.yaml > profile.yaml > builtin）', en: '' },
 

@@ -157,6 +157,57 @@ export const DEFAULT_CONFIG: Config = {
   merge_mode: 'manual',
 };
 
+/** 配置默认值解析结果（三键；不返回已移除的 test_enabled） */
+export interface ResolvedConfigDefaults {
+  execution_mode: 'manual' | 'auto';
+  auto_advance: 'disabled' | 'enabled';
+  merge_mode: 'manual' | 'auto';
+}
+
+/**
+ * 配置键名归一：剥离 `defaults.` 前缀，使 `defaults.X` 与 `X` 等价（单一来源）。
+ * 仅剥离一次前缀；`defaults.` 单独出现归一为空串（由白名单拒绝）。
+ * 供 commands/config.ts 与 resolveConfigDefaults 共用；`--global` 的 profile 键域不受影响。
+ */
+export function normalizeConfigKey(key: string): string {
+  const prefix = 'defaults.';
+  return key.startsWith(prefix) ? key.slice(prefix.length) : key;
+}
+
+/**
+ * 解析项目 config.yaml 的 defaults 块为**骨架初值**（不读 status.md、不做 effective 合并）。
+ * 逐键经 ConfigDefaultsSchema 校验；缺失/非法逐键回退 DEFAULT_CONFIG。
+ * @param projectPath 项目根路径
+ * @returns 三键默认值（execution_mode / auto_advance / merge_mode）
+ */
+export function resolveConfigDefaults(projectPath: string): ResolvedConfigDefaults {
+  const result: ResolvedConfigDefaults = {
+    execution_mode: DEFAULT_CONFIG.execution_mode as ResolvedConfigDefaults['execution_mode'],
+    auto_advance: DEFAULT_CONFIG.auto_advance as ResolvedConfigDefaults['auto_advance'],
+    merge_mode: DEFAULT_CONFIG.merge_mode as ResolvedConfigDefaults['merge_mode'],
+  };
+  const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
+  if (!existsSync(configPath)) {
+    return result; // 无 config.yaml → 全默认
+  }
+  try {
+    const raw = parseYaml(readFileSync(configPath, 'utf-8')) as Record<string, unknown> | null;
+    const defaults = (raw?.defaults ?? {}) as Record<string, unknown>;
+    // 以字符串记录表赋值，规避 TS 联合键索引赋值推导为 never 的限制
+    const target = result as unknown as Record<string, string>;
+    for (const key of ['execution_mode', 'auto_advance', 'merge_mode'] as const) {
+      const parsed = ConfigDefaultsSchema.shape[key].safeParse(defaults[key]);
+      // 仅接受 schema 校验通过的字符串值；失败/非字符串保持 DEFAULT_CONFIG
+      if (parsed.success && typeof parsed.data === 'string') {
+        target[key] = parsed.data;
+      }
+    }
+  } catch {
+    // 错误路径：YAML 语法/读取失败 → 保持全默认（骨架初值安全回退）
+  }
+  return result;
+}
+
 // ── 工具函数 ──
 
 /**

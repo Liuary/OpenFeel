@@ -8,7 +8,7 @@
  */
 import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
-import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues } from '../core/config.js';
+import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey } from '../core/config.js';
 import { FlowManager } from '../core/flow-manager.js';
 import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
@@ -161,7 +161,9 @@ export function registerConfigCommand(program: Command): void {
         process.exit(1);
       }
       try {
-        const value = getConfigValue(process.cwd(), key);
+        // 键名归一：`defaults.X` 与 `X` 等价（输出回显用户输入原键以保留可识别性）
+        const normalized = normalizeConfigKey(key);
+        const value = getConfigValue(process.cwd(), normalized);
         if (value === null) {
           console.log(t('config.get.result', lang, { key, value: t('common.noConfig', lang) }));
         } else {
@@ -221,25 +223,29 @@ export function registerConfigCommand(program: Command): void {
       }
 
       // 项目模式（原行为）
+      // 键名归一：`defaults.X` 与 `X` 等价（单一来源 normalizeConfigKey）
+      const normalizedKey = normalizeConfigKey(key);
       // 白名单 = ConfigDefaultsSchema 全量键（schema 驱动，schema 新增键自动纳入，T36/R3）
       const allowedKeys = Object.keys(ConfigDefaultsSchema.shape);
-      if (!allowedKeys.includes(key)) {
-        console.error(t('config.set.invalidKey', lang, { val: key, keys: allowedKeys.join(', ') }));
+      if (!allowedKeys.includes(normalizedKey)) {
+        // 错误文案回显支持键清单与 `defaults.` 等价说明（不新增 i18n 键）
+        const keysHint = allowedKeys.map((k) => `${k}（或 defaults.${k}）`).join(', ');
+        console.error(t('config.set.invalidKey', lang, { val: key, keys: keysHint }));
         process.exit(1);
         return;
       }
 
       // 取值校验 schema 驱动（枚举非法须报错且不写盘，T36/R3）
-      const legalValues = getConfigFieldLegalValues(key);
+      const legalValues = getConfigFieldLegalValues(normalizedKey);
       if (legalValues && !legalValues.includes(value)) {
-        console.error(t('config.set.invalidValue', lang, { val: value, key, values: legalValues.join(', ') }));
+        console.error(t('config.set.invalidValue', lang, { val: value, key: normalizedKey, values: legalValues.join(', ') }));
         process.exit(1);
         return;
       }
 
       try {
-        setConfigValue(process.cwd(), key, value);
-        console.log(t('config.set.valueOk', lang, { key, value }));
+        setConfigValue(process.cwd(), normalizedKey, value);
+        console.log(t('config.set.valueOk', lang, { key: normalizedKey, value }));
       } catch (err) {
         // 写入 config.yaml 失败（YAML 语法错误、权限问题等），输出实际错误原因
         console.error(t('config.set.error', lang, { err: (err as Error).message }));

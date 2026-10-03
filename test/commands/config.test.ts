@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command, CommanderError } from 'commander';
 import { registerConfigCommand } from '../../src/commands/config.js';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -25,10 +25,14 @@ describe('config 命令（stage-42 op-002）', () => {
   let errorMock: ReturnType<typeof vi.fn>;
   let cwdMock: ReturnType<typeof vi.fn>;
   let exitMock: ReturnType<typeof vi.fn>;
+  let prevLogEnv: string | undefined;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-config-test-'));
     mockHome.dir = tmpDir;
+    // 隔离运行时日志副作用（防写入真实用户目录）
+    prevLogEnv = process.env.OPENFEEL_LOG;
+    process.env.OPENFEEL_LOG = '0';
     logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
     errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
     cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
@@ -42,6 +46,12 @@ describe('config 命令（stage-42 op-002）', () => {
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
     mockHome.dir = '';
+    // 还原运行时日志环境变量
+    if (prevLogEnv === undefined) {
+      delete process.env.OPENFEEL_LOG;
+    } else {
+      process.env.OPENFEEL_LOG = prevLogEnv;
+    }
     logMock.mockRestore();
     errorMock.mockRestore();
     cwdMock.mockRestore();
@@ -257,5 +267,88 @@ describe('config 命令（stage-42 op-002）', () => {
     expect((thrown as Error)?.message).toBe('__EXIT__');
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(stderr()).toMatch(/(无效的配置键|Invalid config key)/);
+  });
+
+  // ═══ v1.1.4-stage-63 op-001：键名归一（defaults.X ≡ X） ═══
+
+  const configPath = (): string => join(tmpDir, '.openfeel', 'config.yaml');
+
+  it('T6.4c：config set defaults.execution_mode 与 bare 键写盘等价', async () => {
+    await safeParse(['config', 'set', 'defaults.execution_mode', 'auto']);
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(configPath(), 'utf-8')).toContain('execution_mode: auto');
+
+    // 归一后 bare 键写同一 defaults 键（结果等价）
+    await safeParse(['config', 'set', 'execution_mode', 'auto']);
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(configPath(), 'utf-8')).toContain('execution_mode: auto');
+  });
+
+  it('T6.5：config get defaults.execution_mode 返回 config 默认值（与 bare 等价）', async () => {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(configPath(), 'defaults:\n  execution_mode: auto\n', 'utf-8');
+
+    await safeParse(['config', 'get', 'defaults.execution_mode']);
+    const viaPrefix = stdout();
+    expect(viaPrefix).toContain('auto');
+
+    logMock.mockClear();
+    await safeParse(['config', 'get', 'execution_mode']);
+    const viaBare = stdout();
+    expect(viaBare).toContain('auto');
+    // 值等价（键名回显不同：一个含 defaults. 前缀）
+    expect(viaPrefix).toContain('auto');
+    expect(viaBare).toContain('auto');
+  });
+
+  it('T6.6：config set test_enabled true → 无效键 exit 1 且不写盘（跨阶段回归）', async () => {
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', 'test_enabled', 'true']);
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toMatch(/(无效的配置键|Invalid config key)/);
+    // 文件未被写入（不存在）
+    expect(existsSync(configPath())).toBe(false);
+  });
+
+  it('T6.4d：非法值 defaults.execution_mode bogus → exit 1 且不写盘', async () => {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(configPath(), 'defaults:\n  execution_mode: manual\n', 'utf-8');
+    const before = readFileSync(configPath(), 'utf-8');
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', 'defaults.execution_mode', 'bogus']);
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(readFileSync(configPath(), 'utf-8')).toBe(before);
+  });
+
+  it('T6.4d：未知键 defaults.bogus → 白名单拒绝 exit 1，错误含 defaults. 等价提示', async () => {
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', 'defaults.bogus', 'x']);
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    // 错误文案回显 defaults. 等价说明
+    expect(stderr()).toContain('defaults.');
   });
 });

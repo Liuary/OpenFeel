@@ -3,7 +3,7 @@
  * 测试 readConfig 和 writeDefaultConfig 的 YAML 解析行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, DEFAULT_CONFIG, ConfigDefaultsSchema, type Profile } from '../../src/core/config.js';
+import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, DEFAULT_CONFIG, ConfigDefaultsSchema, normalizeConfigKey, resolveConfigDefaults, type Profile } from '../../src/core/config.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -553,5 +553,83 @@ describe('writeDefaultConfig', () => {
     expect(recent).toHaveLength(1);
     expect(recent[0]).toBe(resolve('C:\\Proj\\X'));
     mockHome.dir = '';
+  });
+});
+
+// ═══════════════════════════════════════
+// normalizeConfigKey & resolveConfigDefaults（v1.1.4-stage-63 op-001）
+// ═══════════════════════════════════════
+
+describe('normalizeConfigKey', () => {
+  it('T6.4a：剥离 defaults. 前缀', () => {
+    expect(normalizeConfigKey('defaults.execution_mode')).toBe('execution_mode');
+  });
+
+  it('T6.4a：无前缀键原样返回', () => {
+    expect(normalizeConfigKey('execution_mode')).toBe('execution_mode');
+  });
+
+  it('T6.4a：defaults. 单独出现归一为空串（由白名单拒绝）', () => {
+    expect(normalizeConfigKey('defaults.')).toBe('');
+  });
+
+  it('T6.4a：仅剥离 defaults.，不误伤其它点号键', () => {
+    expect(normalizeConfigKey('meta.version')).toBe('meta.version');
+  });
+});
+
+describe('resolveConfigDefaults', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-config-defaults-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('T6.4b：读取 defaults 块，缺失键回退默认', () => {
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'config.yaml'),
+      'defaults:\n  execution_mode: auto\n  auto_advance: enabled\n',
+      'utf-8',
+    );
+    expect(resolveConfigDefaults(tmpDir)).toEqual({
+      execution_mode: 'auto',
+      auto_advance: 'enabled',
+      merge_mode: 'manual',
+    });
+  });
+
+  it('T6.4b：无 config.yaml → 返回 DEFAULT_CONFIG 三键', () => {
+    expect(resolveConfigDefaults(tmpDir)).toEqual({
+      execution_mode: 'manual',
+      auto_advance: 'disabled',
+      merge_mode: 'manual',
+    });
+  });
+
+  it('T6.4b：非法值逐键回退，其它键不受影响', () => {
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'config.yaml'),
+      'defaults:\n  execution_mode: bogus\n  auto_advance: enabled\n',
+      'utf-8',
+    );
+    expect(resolveConfigDefaults(tmpDir)).toEqual({
+      execution_mode: 'manual',
+      auto_advance: 'enabled',
+      merge_mode: 'manual',
+    });
+  });
+
+  it('T6.4b：defaults 块缺失（仅 meta）→ 全默认', () => {
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'meta:\n  version: "1.0"\n', 'utf-8');
+    expect(resolveConfigDefaults(tmpDir)).toEqual({
+      execution_mode: 'manual',
+      auto_advance: 'disabled',
+      merge_mode: 'manual',
+    });
   });
 });

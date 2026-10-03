@@ -2,6 +2,25 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4] - 2026-10-03
+
+### Added
+- [stage-65] `openfeel flow checkpoint restore <file> --stage <id>`：按阶段选择性恢复（仅回退目标阶段子树，其它阶段与 pipeline 其余字段不动）
+- [stage-65] `openfeel flow checkpoint restore <file> --dry-run`：恢复差异预览（列出 `阶段: fromPhase → toPhase`），**零写盘**
+- [stage-65] `openfeel flow stage reset <stageId> --to <phase> [--dry-run]`：精准阶段复位（允许回退；受合法 phase 值域与 `to=done` 阻塞 REV 检查约束；status 按 phase 投影同步）
+- [stage-64] `openfeel plan scheme create` 序号改为「注册 ∪ 文件」最小未用（空位回填）；新增 `openfeel plan scheme register <stage> [opId] [--dry-run]` 补注册；`create` 对未注册文件告警
+- [stage-63] `openfeel plan stage add --exec-mode/--auto-advance` 显式初值；`openfeel config set/get` 支持 `defaults.X ≡ X`；新增 `openfeel config set --sync-stages`
+- [stage-62] `openfeel flow status` 语义收敛：`status` 为 `phase` 的粗粒度投影（消除 `test_enabled=false` 触发 `phase` 锁 `done` 的确定性缺陷）
+
+### Changed
+- [stage-62] `test_enabled` 移除（15 相位模型下 phase 图不再依赖）；`flow advance` 的 auto-repair 仅 `phase→status` 单向
+
+### Fixed
+- [stage-65] checkpoint 恢复新增选择性/预览；新增 `flow stage reset` 作为 `flow advance` 的对称复位能力，将全量 restore 降为最后手段
+- [stage-62] 修复第四轮反馈问题 4/5/7（`phase` 单向锁 `done`，6/6 复发）
+- [stage-63] 修复问题 1/6（新阶段初值硬编码、`config set defaults.*` 被拒）
+- [stage-64] 修复问题 2（op 序号与注册脱节、无法补注册）
+
 ## [1.1.3] - 2026-10-02
 
 ### Fixed

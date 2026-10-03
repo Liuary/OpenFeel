@@ -131,7 +131,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.1.3). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.1.4). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 

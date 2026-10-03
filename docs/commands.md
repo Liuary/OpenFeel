@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.3 快照** | 更新日期：2026-10-02
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.4 快照** | 更新日期：2026-10-03
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -150,6 +150,21 @@ openfeel flow stage remove <stageId> [--force] [--dry-run] [--purge]
 
 > 建议先 `--dry-run` 预览；`--force` 移除被依赖阶段**不会**清理引用方 `deps` 中的悬空项（保留 + 日志 `referencing`/`snapshot` 使失真可审计）。
 
+### flow stage reset
+
+**精准复位**阶段 phase（v1.1.4-stage-65）。允许**回退**（不受正向 `transitions` 限制），受**合法 phase 值域**与 `to=done` 的**阻塞 REV 检查**约束；写 `phase` 后按 `mapPhaseToStageStatus` 投影同步 `status`，审计 `reset_stage_phase`，不触发归档 commit、不写 checkpoint 快照。
+
+```bash
+openfeel flow stage reset <stageId> --to <phase> [--dry-run]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--to <phase>` | 目标 phase（**必填**，须为合法 phase，如 `review_pending` / `test_pending` / `done`；合法值见 `openfeel flow phases`） |
+| `--dry-run` | 仅预览（零写盘），打印 `阶段: from → to`（含投影 `status`） |
+
+> `flow advance` 是正向推进，`flow stage reset` 是其**对称复位**能力（可回退）；`to=done` 时同样受 blocking open REV 拦截。
+
 ### flow attempt
 
 记录执行结果。
@@ -211,7 +226,38 @@ openfeel flow health [--quick] [--json] [--fix] [--dry-run]
 
 **`--fix` 权威口径（v1.1.4-stage-62）**：权威值 = `mapPhaseToStageStatus(phase)`（`phase` 为单一事实源，`status` 是其**粗粒度投影**）；**仅回写 `status.md` 的「状态」行**（执行模式/自动推进/当前任务/状态记录等独立字段绝不触碰），**批量遍历全部阶段**；`--fix --dry-run` 零写盘；幂等（已一致不写）。`flow advance` **不回写** `status.md`，故 `--fix` 为**唯一批量对账/回写入口**（D3）。
 
+### flow checkpoint restore
+
+从 Checkpoint 快照恢复 `flow.json`（v1.1.4-stage-65）。**无 `--stage` 为全量覆盖**（需 `--force`，**最后手段**）；**`--stage <id>` 仅回退该阶段子树**（其它阶段与 `pipeline` 其余字段不动）；**`--dry-run` 只读差异预览**（零写盘）。
+
+```bash
+openfeel flow checkpoint restore <checkpoint-file> [--force] [--stage <id>] [--dry-run]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--force` | 确认恢复（覆盖 `flow.json`）；执行恢复时必填，`--dry-run` 不需要 |
+| `--stage <id>` | 仅回退指定阶段子树（选择性恢复；缺省=全量覆盖） |
+| `--dry-run` | 仅预览差异（列出 `阶段: fromPhase(fromStatus) → toPhase(toStatus)`），**零写盘**，不要求 `--force` |
+
+- 快照文件名仅允许纯文件名（**拒绝路径分隔符 / `..`**，防路径穿越）；恢复前将当前 `flow.json` 备份为 `.bak`；乐观并发 `revision` 校验（磁盘被并发修改时拒绝）。
+- 选择性恢复时子树 `status` 按 `phase` 投影（单一事实源），且**仅当 `pipeline.current.stage` 指向该阶段时**同步 `current.op`。
+
+### 故障恢复路径
+
+> **顺序即优先级**。`flow stage reset` / `checkpoint restore` 改写 `flow.json`；`flow health --fix` 仅回写 `status.md` 的「状态」字段。
+
+```
+① flow health（诊断，只报告）
+② flow stage reset <id> --to <phase>（精准复位单阶段）       ← 首选
+③ checkpoint restore <file> --stage <id> --dry-run（预览）→ 去 --dry-run 执行（按阶段回退）
+④ checkpoint restore <file>（无 --stage，全量覆盖）          ← 最后手段
+⑤ flow health --fix（对账 status.md「状态」，仅该字段）
+```
+
 ---
+
+## roadmap — 分期大纲管理
 
 ## roadmap — 分期大纲管理
 

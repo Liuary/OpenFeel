@@ -373,7 +373,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -384,7 +384,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 边界：**执行型交互向导**请用 \`openfeel-wizard\` skill（跑 \`openfeel flow wizard\` 推进流水线）；本 skill 只承载静态知识查阅。
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 
-> 本文档为 v1.1.2 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.1.4 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -397,6 +397,8 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel update [path]\` | 部署适配文件到目标项目 | \`--lang\`、\`--force\` |
 | \`openfeel migrate [path]\` | Legacy 布局迁移（检测/备份/迁移/回滚） | \`--dry-run\`、\`--remap-assignee\`、\`--clean-global-core-md\`；\`migrate rollback\` |
 | \`openfeel flow ...\` | 流水线状态管理 | 见下「flow 子命令」 |
+| \`openfeel flow checkpoint restore\` | Checkpoint 恢复（全量 / 选择性 / 预览） | \`<file> [--force] [--stage <id>] [--dry-run]\`（无 \`--stage\`=全量覆盖，最后手段；\`--stage\`=按阶段回退；\`--dry-run\`=零写盘预览） |
+| \`openfeel flow stage reset\` | 精准复位阶段 phase（\`flow advance\` 的对称复位，允许回退） | \`<stageId> --to <phase> [--dry-run]\`（受合法值域 + \`to=done\` 阻塞 REV 约束） |
 | \`openfeel plan stage add\\|list\` | 工作阶段管理 | \`add <name> --deps <ids...> --tasks <items...> --exec-mode <manual\\|auto> --auto-advance <enabled\\|disabled>\`（初值取 \`config.yaml.defaults\`；显式选项优先） |
 | \`openfeel plan scheme create\\|publish\\|rename\\|list\\|remove\\|register\` | 操作方案管理 | \`create <stage> <title> [--draft]\`、\`publish <stage> <opId>\`、\`rename <stage> <opId> --title <text>\`、\`remove <stage> <opId> [--force] [--dry-run]\`、\`register <stage> [opId] [--dry-run]\`（补注册 fileOrphans） |
 | \`openfeel stage status\\|set\\|task\` | \`status.md\` 原子操作 | \`set <id> --status/--exec-mode/--auto-advance/--review-agent\`、\`task <id> [no] --add/--done/--undone\`（\`stage create\` 已弃用） |
@@ -410,9 +412,9 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel roadmap create\\|show\` | 分期大纲管理 | \`create <version>\`、\`show [version]\` |
 | \`openfeel instructions <artifactId>\` | 为指定 artifact 生成结构化指令 | \`--change <name>\`、\`--schema <name>\`、\`--json\` |
 
-**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`stage\` / \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\` / \`health\` / \`recover\` / \`wizard\`。
+**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\`。
 
-**纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）。
+**纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
 > 命令职责分层：\`plan stage add\`（完整，推荐）> \`flow stage add\`（仅注册 \`flow.json\`，不建目录）> \`stage create\`（已弃用）。
 
@@ -477,6 +479,15 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 3. **纠错移除误建阶段**：\`openfeel flow stage remove v1.1.2-stage-43 --dry-run\` 预览 → 确认后 \`--force\`（必要时 \`--purge\` 删目录）。
 4. **查询有效配置**：\`openfeel config effective auto_advance\`（来源优先级 \`status.md\` > \`config.yaml\` > \`profile.yaml\` > \`builtin\`）。
 5. **部署前备份**：\`setup\`/\`update\`/\`init\`/\`migrate\` 覆盖写入前自动备份至 \`~/.openfeel/backup/{ts}/\`；\`update_infos.md\` 会新增「备份」类条目，Agent 须按 \`feel.md\` 检查规则核对（存在性 + 失败重跑）。
+6. **故障恢复路径（v1.1.4-stage-65，顺序即优先级）**：
+   \`\`\`
+   ① flow health（诊断，只报告）
+   ② flow stage reset <id> --to <phase>（精准复位单阶段）       ← 首选
+   ③ checkpoint restore <file> --stage <id> --dry-run（预览）→ 去 --dry-run 执行（按阶段回退）
+   ④ checkpoint restore <file>（无 --stage，全量覆盖）          ← 最后手段
+   ⑤ flow health --fix（对账 status.md「状态」，仅该字段）
+   \`\`\`
+   **「全量 restore 为最后手段」**（多阶段并行时跨阶段连带回退）；\`flow stage reset\`/\`checkpoint restore\` 改写 \`flow.json\`，\`flow health --fix\` 仅回写 \`status.md\` 的「状态」字段。
 
 ## 权限模型要点
 

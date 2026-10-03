@@ -17,7 +17,7 @@
 | `getSummary()` / `summary(lang)` | 获取流水线摘要（结构化 / 文本） |
 | `validate()` / `repair()` / `healthCheck()` | 校验、自动修复（含 ops 字段补全）、健康检查（**非 `--quick` 含第 7 项悬空依赖检测**，见下） |
 | `autoRepairInconsistency(stageName, options?)` | 自动修复 phase↔status 不一致（**phase 为唯一事实源，v1.1.4-stage-62 起单向**：`status=done` 且 `phase≠done` → 将 `status` 修正为 phase 投影、**绝不反向改 `phase`**；`phase=done` 且 `status≠done` → 同步 `status='done'`）；**stage-49 B1 起增可选 `options: { dryRun?: boolean }`**——`dryRun` 时**只计算不赋值**（返回「将修复 X」的报告），供 `flow advance --dry-run` 预览（不再写盘） |
-| `saveCheckpoint()` / `restoreCheckpoint()` | 阶段检查点保存与回滚 |
+| `saveCheckpoint()` / `restoreCheckpoint()` | 阶段检查点保存与恢复。**v1.1.4-stage-65 起**：`restoreCheckpoint(filename, { stage?, dryRun? })` 支持选择性（`--stage`）与预览（`--dryRun`，零写盘）；无 `stage` 时为**全量覆盖**（向后兼容，逐字节不变）。配套只读 `previewRestore(filename, { stage? })` 与精准复位 `resetStagePhase(stageName, to, { dryRun? })`（详见「Checkpoint 恢复与阶段复位」节） |
 | `autoCommitOnDone(stageName)` | 阶段 done 时自动 git 提交 |
 | `mapPhaseToAgent(phase)` | 将 PipelinePhase 映射为负责 Agent 标识（返回**新名** `openfeel-*`，`done → none`） |
 | `normalizeAgentName(name)` | 归一化 agent 名（旧名→新名，读取兼容 P5；`toLowerCase` 幂等；非 agent 值原样保留） |
@@ -94,6 +94,46 @@
 - **`listCheckpoints(stageId?)`**：短名归一化 + **短名旧文件 `||` 兜底**（无参行为不变）。
 - **stage 解析归一化闭包（op-012/013/014，共 10 处）**：统一范式 `normalizeStageId(x) ?? x` + **双键回退** `stages[normalized] ?? stages[raw]`（详见 `kb/patterns.md #短名/全名 stage 解析归一化的统一范式`）；覆盖 `findPhasePath` / `resolveCurrentPhase` / `autoRepairInconsistency` / `advanceStagePhase`（体内 `key` 贯穿，含 checkpoint 命名）/ `parseOpId` 出口 / `removeStage`+`checkRemovable` / `addAutoFixReview` / `addReviewEntry`（`core/view/entry.ts`）/ `archiveStage`（`core/archive/merge.ts`）/ `listCheckpoints`。独立全量扫描确认**无第 11 处**，闭包正式收口。
 - **`autoRepairInconsistency` / `findPhasePath` 等 stage 入参**：均支持短名（归一化恒等；全名路径行为不变）。
+
+## Checkpoint 恢复与阶段复位（v1.1.4-stage-65）
+
+> 把 checkpoint `restore` 从「全量快照覆盖」升级为「**按阶段选择性、可预览、可精准复位**」的一等恢复手段，并为「禁止手改 `flow.json`」在故障场景下提供可解的恢复路径。
+
+### 核心 API（选择性恢复 / 预览 / 精准复位）
+
+- **`restoreCheckpoint(filename, options?: { stage?: string; dryRun?: boolean }): boolean`**（签名扩展，向后兼容）：
+  - **无 `stage`** → **全量覆盖**（与改前逐字节一致），恢复前将当前 `flow.json` 备份为 `.bak`；
+  - **`stage`** → **仅替换 `flow.json.stages[stage]` 子树**，其它阶段与 `pipeline` 其余字段**不动**；子树 `status` 按 `phase` 投影（stage-62 单一事实源）；**仅当 `pipeline.current.stage` 指向该阶段时**同步 `current.op`（否则不动）；
+  - **`dryRun`** → 复用 `previewRestore` 只读预览，**零写盘**（不 `atomicWrite`、不改内存 `revision`、不写 `.bak`），返回「是否可恢复」；
+  - 安全校验与改前逐字一致：拒绝路径分隔符 / `..`（路径穿越）、乐观并发 `revision` 校验（不一致拒绝）、`.bak` 写前备份。
+- **`previewRestore(filename, options?: { stage?: string }): RestorePreview`**：**只读差异**（不加锁、不写盘）。返回 `{ ok, reason?, conflicts, diffs }`；`conflicts` 为「磁盘 `revision` ≠ 已加载 `revision`」的并发冲突提示。
+- **`resetStagePhase(stageName, to, options?: { dryRun?: boolean }): ResetStageResult`**（`flow stage reset` 的 core 实现）：
+  - **允许回退**（不受正向 `transitions` 限制，受**合法 phase 值域**约束：`PipelinePhaseSchema`，非法直接抛错，**不做模糊修正**）；
+  - **`to === 'done'`** 时**复用** `advanceStagePhase` 的**阻塞 REV 检查**（存在 blocking 且 `status=open` 的 REV → 拒绝，不可绕过）；
+  - 写入 `phase` 后按 `mapPhaseToStageStatus(to, 原 status)` **同步 `status`**（phase 权威）；幂等（phase 与投影 status 均无变化 → `changed=false` no-op）；
+  - 仅当 `pipeline.current` 指向该阶段时同步 `current.op`；重算宏观 `pipeline.phase`（全量 done→`done`，否则 `active`）；
+  - 留审计日志 `reset_stage_phase`；**不触发归档 commit**（区别于 `advance`）、**不写 checkpoint 快照**；
+  - `dryRun` 时仅计算不修改内存（命令层不 `save()`），零写盘。
+
+### 接口字段
+
+- **`RestoreDiffEntry`**：单条恢复差异 —— `stage`（阶段 ID）、`fromPhase`/`fromStatus`（磁盘当前值，无该阶段时哨兵 `'(absent)'`）、`toPhase`/`toStatus`（快照待恢复值，快照无该阶段时哨兵 `'(removed)'`）。
+- **`RestorePreview`**：`ok`（文件名/内容/阶段校验是否通过）、`reason?`（`invalid-name` | `missing` | `bad-content` | `stage-not-in-snapshot`）、`conflicts`（乐观并发冲突）、`diffs: RestoreDiffEntry[]`（计划变更清单；全量模式含全部变动阶段，`--stage` 仅该阶段）。
+- **`ResetStageResult`**：`changed`（是否产生实际变更；`false`=no-op）、`from`（复位前 phase）、`to`（复位目标 phase）、`status`（投影后的 status）。
+
+### 故障恢复路径（顺序即优先级）
+
+```
+① flow health（诊断，只报告）
+② flow stage reset <id> --to <phase>（精准复位单阶段）       ← 首选
+③ checkpoint restore <file> --stage <id> --dry-run（预览）→ 去 --dry-run 执行（按阶段回退）
+④ checkpoint restore <file>（无 --stage，全量覆盖）          ← 最后手段
+⑤ flow health --fix（对账 status.md「状态」，仅该字段）
+```
+
+> **「全量 restore 为最后手段」**：多阶段并行时全量覆盖会跨阶段连带回退；优先用 `flow stage reset`（精准复位单阶段）或 `checkpoint restore --stage`（按阶段回退），并以 `--dry-run` 先行预览。
+>
+> **职责边界**：`flow stage reset` 与 `checkpoint restore` **改写 `flow.json`**（phase/status/revision）；`flow health --fix` **仅回写 `status.md` 的「状态」字段**（不改 `flow.json`）。诊断（`flow health`）只报告，不修复。
 
 ## 状态机
 

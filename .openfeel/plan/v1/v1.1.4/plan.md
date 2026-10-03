@@ -78,7 +78,7 @@
 
 ## 七、全局验收标准（版本级）
 
-1. **门禁**：`npm test` 全绿（基线 **61 文件 / 1016 用例 / 0 skipped** → 因新增用例而增加，`0 failed`）；`npx tsc --noEmit` = **0**；`node bin/openfeel.js lint i18n` = **739 键**（= 730 + stage-64 新增 9 键：`plan.scheme.unregisteredFilesWarnTmpl` 1 + `plan.scheme.register.{ok,dryRun,none,noop}Tmpl` 4 + `help.plan.scheme.register{,.argstage,.argopId,.dryRun}` 4；**D-i18n 显式登记新基线**）；`node bin/openfeel.js lint kb` = **0 过期**。
+1. **门禁**：`npm test` 全绿（基线 **61 文件 / 1016 用例 / 0 skipped** → 因新增用例而增加，`0 failed`）；`npx tsc --noEmit` = **0**；`node bin/openfeel.js lint i18n` = **753 键**（= 730 + stage-64 新增 9 键：`plan.scheme.unregisteredFilesWarnTmpl` 1 + `plan.scheme.register.{ok,dryRun,none,noop}Tmpl` 4 + `help.plan.scheme.register{,.argstage,.argopId,.dryRun}` 4 + **stage-65 新增 14 键**：恢复预览 4 + 帮助 2 + reset 预览/回显 4 + 帮助 4；**D-i18n 显式登记新基线**）；`node bin/openfeel.js lint kb` = **0 过期**。
 2. **锁 `phase` 消失（决定性）**：构造 `test_enabled=false` 场景，`advance --to review_passed` 后 `flow.json.status` **不得为 `done`**；随后 `advance --to test_pending` **不被锁**、正常进入 `test_pending`。
 3. **auto-repair 方向**：预置 `phase=review_passed, status=done`（旧损坏）→ `autoRepairInconsistency` 将 `status` 修正为 `review_passed`（**不得**把 `phase` 前推为 `done`）。
 4. **创建继承**：`config.yaml.defaults.auto_advance: enabled` 下 `plan stage add` 生成的 status.md = `自动推进: enabled`（非 `disabled`）。

@@ -81,6 +81,8 @@ src/commands/setup.ts       registerSetupCommand
 - `node bin/openfeel.js flow phases [--json]` — 自描述全部合法 phase 与运行时流转映射（数据源 `.openfeel/pipeline.yaml`，缺省回退默认表）；运行时含内置 15 之外的 phase 时追加**边界说明**，`--json` 结构为 `{ schemaVersion, phases, transitions, advanceAccepted, transitionsDiff }`（`advanceAccepted` = 内置 15，即 `flow advance` 的推进白名单；`phases` 为存在视图；**`transitionsDiff`（stage-50 T19）** = 运行时与内置默认转移表的差异报告，`missing` 列出内置默认有而运行时缺失的 source——使 `pipeline.yaml` 漂移**可见而非静默**，未修改 `pipeline.yaml`）
 - `node bin/openfeel.js flow stage add <stageId>` — 注册层：仅注册 flow.json，不建目录（通常应使用 `node bin/openfeel.js plan stage add`）
 - `node bin/openfeel.js flow stage remove <stageId> [--force] [--dry-run] [--purge]` — 移除阶段（安全校验：ops 非空 / 当前活跃 / 被 deps 引用；默认仅注销 flow.json，`--purge` 删目录且**在 `save()` 成功后**执行，避免「目录已删、注册仍在」中间态）
+- `node bin/openfeel.js flow stage reset <stageId> --to <phase> [--dry-run]` — **精准复位**阶段 phase（**允许回退**，不受正向 `transitions` 限制；受**合法 phase 值域** + `to=done` 的**阻塞 REV 检查**约束）；写 `phase` 后按 `mapPhaseToStageStatus` 投影同步 `status`（phase 权威）；审计 `reset_stage_phase`；**不触发归档 commit**、不写 checkpoint；`--dry-run` 零写盘（v1.1.4-stage-65）
+- `node bin/openfeel.js flow checkpoint restore <file> [--force] [--stage <id>] [--dry-run]` — Checkpoint 恢复：**无 `--stage` = 全量覆盖**（需 `--force` 确认；**最后手段**）；**`--stage <id>` = 仅回退该阶段子树**（其它阶段与 pipeline 其余字段不动）；**`--dry-run` = 只读差异预览**（列出 `阶段: fromPhase(fromStatus) → toPhase(toStatus)`，**零写盘**，不要求 `--force`）；快照文件名仅允许纯文件名（拒绝路径穿越），乐观并发 `revision` 校验 + 写前 `.bak`（v1.1.4-stage-65）
 - `node bin/openfeel.js flow wizard` — 交互式流水线向导，支持无阶段时自动引导创建首个阶段
 - `node bin/openfeel.js flow health --quick` — 流水线健康检查；**非 `--quick` 时含第 7 项「悬空依赖」检测**（`checkDanglingDeps`：`stages[].deps` 指向未注册阶段时 `warn`；仅数据卫生提示，`ok` 判定只看 `fail`，不阻塞退出码，stage-49 B2）+ **第 8 项「孤儿操作方案」检测（v1.1.2-stage-51，N1-3）**：键孤儿/文件孤儿计数 `warn`（**非 `fail`，不改变退出码**；与 `flow repair` 共用 `findOrphanOps`）
 - `node bin/openfeel.js stage set <id> --status <v>` — 更新阶段状态（**v1.1.2-stage-51 起幂等 + 字段扩展**：同值 no-op + 按需 `.bak` + `--exec-mode`/`--auto-advance`/`--review-agent`，详见下「纠正/清理侧命令面」；**v1.1.4-stage-62 起 `--status` 值域校验**：仅接受粗粒度状态枚举，相位值/任意值 → exit 1 零写盘）
@@ -125,6 +127,24 @@ src/commands/setup.ts       registerSetupCommand
 - **`flow current` 无 op（B8）**：回退显示 `current.stage` + 「(无 op)」。
 
 > ✅ **已关闭缺陷（v1.1.2-stage-54）**：`cli/BUG-005`（medium）空模板检测**已由纯子串改为整行锚定**（`EMPTY_TEMPLATE_LINE_RE`，`isTemplateEmpty`/`detectFillState`/`publishScheme` 单一来源）——op 正文行内引用占位标记不再误判（`publish` 不再误拒 / `ops list` 不误报 `(empty)` / `health` 不误报），仓库空模板告警归零。`cli/BUG-006`（low）en 模式 blocking REV 拒绝文案**已迁 i18n**（`flow.advance.blockingRevRefused`/`blockingRevHint`，en CJK=0、zh 逐字不变）。`cli/BUG-003`（low）`flow phases --help` 已补 `transitionsDiff`（JSON 契约未变）。
+
+### 故障恢复路径（v1.1.4-stage-65）
+
+> 为「禁止手改 `flow.json`」在**故障场景**下提供可解路径。**顺序即优先级**；`flow stage reset`/`checkpoint restore` 改写 `flow.json`，`flow health --fix` 仅回写 `status.md`。
+
+```
+① flow health（诊断，只报告）
+② flow stage reset <id> --to <phase>（精准复位单阶段）       ← 首选
+③ checkpoint restore <file> --stage <id> --dry-run（预览）→ 去 --dry-run 执行（按阶段回退）
+④ checkpoint restore <file>（无 --stage，全量覆盖）          ← 最后手段
+⑤ flow health --fix（对账 status.md「状态」，仅该字段）
+```
+
+- **① 诊断**：`flow health`（可加 `--quick`/`--json`）只报告问题，**不修复**。
+- **② 精准复位（首选）**：`flow stage reset <id> --to <phase>` 直接改 `flow.json` 目标阶段的 `phase`（并按投影同步 `status`），不影响其它阶段；先 `--dry-run` 预览。
+- **③ 按阶段回退**：`checkpoint restore <file> --stage <id> --dry-run` 预览差异（零写盘）→ 确认后去掉 `--dry-run` 执行（同样需 `--force` 确认；**`--force` 对 dry-run 非必需**）。
+- **④ 全量 restore（最后手段）**：`checkpoint restore <file> --force`（无 `--stage`）整份覆盖 `flow.json`；多阶段并行时会**跨阶段连带回退**，故列为最后手段。
+- **⑤ 对账**：`flow health --fix`（`--fix --dry-run` 预览）以 phase 投影为权威，**仅回写 `status.md` 的「状态」行**（不改 `flow.json`），为唯一批量对账入口。
 
 ## 相关 skill
 

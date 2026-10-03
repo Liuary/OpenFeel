@@ -3,11 +3,24 @@
  * 管道输入「错误命令 + help + exit」→ 进程不中途退出、输出再见文案、help 列表由命令树动态生成。
  * 隔离 HOME（USERPROFILE/HOME/XDG_CONFIG_HOME 指向临时目录），禁止触碰真实环境。
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+
+// ── stage-67 op-001：startRepl 接入被动部署检测（T5.B2） ──
+// 保留 readline 真实导出，仅替换 createInterface（避免 inquirer 等加载期缺导出）
+const fakeRl = vi.hoisted(() => ({ prompt: vi.fn(), on: vi.fn(), close: vi.fn() }));
+vi.mock('../../src/cli/deploy-check-output.js', () => ({ emitGlobalDeployCheck: vi.fn() }));
+vi.mock('node:readline', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:readline')>();
+  return { ...actual, createInterface: () => fakeRl };
+});
+
+import { startRepl } from '../../src/cli/repl.js';
+import { program } from '../../src/cli/index.js';
+import { emitGlobalDeployCheck } from '../../src/cli/deploy-check-output.js';
 
 const REPO_ROOT = process.cwd();
 const BIN_PATH = join(REPO_ROOT, 'bin', 'openfeel.js');
@@ -34,4 +47,16 @@ describe('REPL smoke（stage-50 op-004 T40）', () => {
       rmSync(home, { recursive: true, force: true });
     }
   }, 40000);
+});
+
+describe('stage-67 op-001 REPL 接入被动部署检测', () => {
+  it('T5.B2：startRepl 在 welcome 后调用一次 emitGlobalDeployCheck', () => {
+    const emit = vi.mocked(emitGlobalDeployCheck);
+    emit.mockClear();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    startRepl(program);
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(logSpy.mock.invocationCallOrder[0]).toBeLessThan(emit.mock.invocationCallOrder[0]);
+    logSpy.mockRestore();
+  });
 });

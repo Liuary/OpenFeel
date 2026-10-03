@@ -14,7 +14,10 @@ vi.mock('node:os', async (importOriginal) => {
   return { ...actual, homedir: () => mockHome.dir };
 });
 
-import { applyHelpI18n, shouldUseColor, program as rootProgram } from '../../src/cli/index.js';
+vi.mock('../../src/cli/deploy-check-output.js', () => ({ emitGlobalDeployCheck: vi.fn() }));
+
+import { applyHelpI18n, shouldUseColor, program as rootProgram, runCli } from '../../src/cli/index.js';
+import { emitGlobalDeployCheck } from '../../src/cli/deploy-check-output.js';
 import { registerStageCommand } from '../../src/commands/stage.js';
 
 describe('applyHelpI18n（stage-50 op-004 T38）', () => {
@@ -77,5 +80,30 @@ describe('op-002 B7 颜色开关', () => {
 
   it('根程序注册了全局 --no-color 选项', () => {
     expect(rootProgram.options.some((o) => o.long === '--no-color')).toBe(true);
+  });
+});
+
+// ── stage-67 op-001：runCli 接入被动部署检测（T5.B1） ──
+
+describe('stage-67 op-001 runCli 接入被动部署检测', () => {
+  it('T5.B1：runCli 在 parse 前调用一次 emitGlobalDeployCheck', () => {
+    const emit = vi.mocked(emitGlobalDeployCheck);
+    emit.mockClear();
+    const parseSpy = vi.spyOn(rootProgram, 'parse').mockImplementation(() => rootProgram);
+    vi.stubEnv('OPENFEEL_LOG', '0'); // 防运行日志写真实 HOME（隔离旁路）
+    const prevArgv = process.argv;
+    process.argv = ['node', 'openfeel', 'flow', 'status'];
+    try {
+      runCli();
+      expect(emit).toHaveBeenCalledTimes(1);
+      // 调用序：emit 在 parse 之前
+      const emitOrder = emit.mock.invocationCallOrder[0];
+      const parseOrder = parseSpy.mock.invocationCallOrder[0];
+      expect(emitOrder).toBeLessThan(parseOrder);
+    } finally {
+      process.argv = prevArgv;
+      vi.unstubAllEnvs();
+      parseSpy.mockRestore();
+    }
   });
 });

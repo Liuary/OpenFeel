@@ -9,6 +9,7 @@
 import * as readline from 'node:readline';
 import type { Command } from 'commander';
 import { t, getCliLang } from '../core/i18n.js';
+import { emitGlobalDeployCheck } from './deploy-check-output.js';
 
 /** REPL 内拦截 process.exit 抛出的哨兵（表示命令请求退出，但不终止主循环） */
 class ReplExitSignal extends Error {
@@ -40,6 +41,8 @@ export function startRepl(program: Command): void {
   });
 
   console.log(t('repl.welcome', lang));
+  // stage-67：REPL 启动时检测一次（每进程一次；REPL 内命令不重复触发）
+  emitGlobalDeployCheck();
   rl.prompt();
 
   rl.on('line', (line: string) => {

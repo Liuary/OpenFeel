@@ -76,7 +76,7 @@ export interface DeployCheckGateInput {
 /** 部署修复类命令白名单：避免「提示用户去做他正在做的事」 */
 const DEPLOY_COMMANDS = new Set(['setup', 'update', 'init', 'migrate']);
 
-/** 环境变量真值判定（既有 CI 约定：'1' / 'true'，大小写与首尾空白不敏感） */
+/** 环境变量真值判定：仅识别 '1' / 'true'（大小写与首尾空白不敏感）；CI=yes 等其它值不识别，由门控的 !isTTY 兜底（REV-003） */
 function isTruthyEnv(value: string | undefined): boolean {
   if (value === undefined) { return false; }
   const v = value.trim().toLowerCase();

@@ -379,6 +379,8 @@ export const update: I18nDomain = {
   'legacyLayoutWarnTmpl':       { key: 'update.legacyLayoutWarnTmpl',       zh: '[update] 检测到项目内旧布局 .opencode/{dirs}，请运行 openfeel migrate（stage-39 提供）迁移。', en: '' },
   'globalJsoncParseSkipTmpl':   { key: 'update.globalJsoncParseSkipTmpl',   zh: '[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: {err}', en: '' },
   'globalJsoncWriteSkipTmpl':   { key: 'update.globalJsoncWriteSkipTmpl',   zh: '[update] {err}；已跳过全局 opencode.jsonc 写入，继续其余步骤', en: '' },
+  'globalStaleWarnTmpl':        { key: 'update.globalStaleWarnTmpl',        zh: '[openfeel] 全局 OpenFeel 部署版本 {deployed} 与当前 CLI 版本 {cli} 不一致；请运行 openfeel setup 并重启 harness（opencode）以加载最新全局配置。', en: '' },
+  'globalMissingWarnTmpl':      { key: 'update.globalMissingWarnTmpl',      zh: '[openfeel] 未检测到全局 OpenFeel 部署；请运行 openfeel setup 完成部署并重启 harness（opencode）。', en: '' },
 };
 
 /* ==================== project 域：项目概览命令 ==================== */

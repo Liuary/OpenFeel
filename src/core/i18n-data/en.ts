@@ -354,6 +354,8 @@ export const update: I18nDomain = {
   'legacyLayoutWarnTmpl':       { key: 'update.legacyLayoutWarnTmpl',       zh: '', en: '[update] Detected legacy in-project layout .opencode/{dirs}; run openfeel migrate (provided since stage-39) to migrate.' },
   'globalJsoncParseSkipTmpl':   { key: 'update.globalJsoncParseSkipTmpl',   zh: '', en: '[update] Failed to parse global opencode.jsonc (may contain block comments); skipping merge and keeping the original file: {err}' },
   'globalJsoncWriteSkipTmpl':   { key: 'update.globalJsoncWriteSkipTmpl',   zh: '', en: '[update] {err}; skipped global opencode.jsonc write, continuing with remaining steps' },
+  'globalStaleWarnTmpl':        { key: 'update.globalStaleWarnTmpl',        zh: '', en: '[openfeel] Global OpenFeel deployment version {deployed} differs from CLI version {cli}; run `openfeel setup` and restart the harness (opencode) to load the latest global configuration.' },
+  'globalMissingWarnTmpl':      { key: 'update.globalMissingWarnTmpl',      zh: '', en: '[openfeel] No global OpenFeel deployment detected; run `openfeel setup` and restart the harness (opencode).' },
 };
 
 /* ==================== project ==================== */

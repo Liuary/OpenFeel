@@ -187,6 +187,10 @@ export const flow: I18nDomain = {
   'checkpoint.restoreNeedForce':    { key: 'flow.checkpoint.restoreNeedForce',    zh: '', en: 'Error: Restore will overwrite the current flow.json, use --force to confirm' },
   'checkpoint.restoreOkTmpl':       { key: 'flow.checkpoint.restoreOkTmpl',       zh: '', en: '✓ flow.json restored from snapshot {file} (current file backed up as flow.json.bak)' },
   'checkpoint.restoreFailTmpl':     { key: 'flow.checkpoint.restoreFailTmpl',     zh: '', en: 'Error: Cannot restore from snapshot {file} (missing, invalid name, or bad content)' },
+  'checkpoint.restoreDryRunTitle':  { key: 'flow.checkpoint.restoreDryRunTitle',  zh: '', en: 'Checkpoint restore preview (nothing written)' },
+  'checkpoint.restoreDiffTmpl':     { key: 'flow.checkpoint.restoreDiffTmpl',     zh: '', en: '  {stage}: {fromPhase}({fromStatus}) → {toPhase}({toStatus})' },
+  'checkpoint.restoreNoDiff':       { key: 'flow.checkpoint.restoreNoDiff',       zh: '', en: '  (no differences)' },
+  'checkpoint.restoreStageMissingTmpl': { key: 'flow.checkpoint.restoreStageMissingTmpl', zh: '', en: 'Error: stage {stage} not found in snapshot' },
 
   'review.errorStageNotFoundTmpl':  { key: 'flow.review.errorStageNotFoundTmpl',  zh: '', en: 'Error: Stage "{stage}" in opId "{opId}" not found in flow.json' },
   'review.errorOpNotFoundTmpl':     { key: 'flow.review.errorOpNotFoundTmpl',     zh: '', en: 'Error: Op "{op}" in opId "{opId}" not found in stage "{stage}"' },
@@ -635,6 +639,8 @@ export const help: I18nDomain = {
   'flow.checkpoint.restore':      { key: 'help.flow.checkpoint.restore',      zh: '', en: 'Restore flow.json from a checkpoint snapshot (overwrites current file, requires --force)' },
   'flow.checkpoint.restore.argcheckpoint-file': { key: 'help.flow.checkpoint.restore.argcheckpoint-file', zh: '', en: 'Checkpoint file name (e.g. v5.3-stage-01-20260807T162300-exec_running.json)' },
   'flow.checkpoint.restore.force':{ key: 'help.flow.checkpoint.restore.force', zh: '', en: 'Confirm restore operation (overwrites current flow.json)' },
+  'flow.checkpoint.restore.stage':  { key: 'help.flow.checkpoint.restore.stage',  zh: '', en: 'Restore only the given stage subtree (selective; default full overwrite)' },
+  'flow.checkpoint.restore.dryRun': { key: 'help.flow.checkpoint.restore.dryRun', zh: '', en: 'Preview differences only; nothing is written' },
   'flow.recover':          { key: 'help.flow.recover',          zh: '', en: 'Cross-session context recovery: pipeline status, blockers, and pending tasks' },
   'flow.wizard':           { key: 'help.flow.wizard',           zh: '', en: 'Interactive pipeline wizard, advance stage by stage' },
 

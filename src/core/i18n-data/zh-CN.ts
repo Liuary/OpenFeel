@@ -203,6 +203,10 @@ export const flow: I18nDomain = {
   'checkpoint.restoreNeedForce':    { key: 'flow.checkpoint.restoreNeedForce',    zh: '错误：恢复操作将覆盖当前 flow.json，请使用 --force 确认', en: '' },
   'checkpoint.restoreOkTmpl':       { key: 'flow.checkpoint.restoreOkTmpl',       zh: '✓ 已从快照 {file} 恢复 flow.json（当前文件已备份为 flow.json.bak）', en: '' },
   'checkpoint.restoreFailTmpl':     { key: 'flow.checkpoint.restoreFailTmpl',     zh: '错误：无法从快照 {file} 恢复（文件不存在、名称非法或内容无效）', en: '' },
+  'checkpoint.restoreDryRunTitle':  { key: 'flow.checkpoint.restoreDryRunTitle',  zh: 'Checkpoint 恢复预览（未写盘）', en: '' },
+  'checkpoint.restoreDiffTmpl':     { key: 'flow.checkpoint.restoreDiffTmpl',     zh: '  {stage}: {fromPhase}({fromStatus}) → {toPhase}({toStatus})', en: '' },
+  'checkpoint.restoreNoDiff':       { key: 'flow.checkpoint.restoreNoDiff',       zh: '  （无差异）', en: '' },
+  'checkpoint.restoreStageMissingTmpl': { key: 'flow.checkpoint.restoreStageMissingTmpl', zh: '错误：快照中不存在阶段 {stage}', en: '' },
 
   // flow review
   'review.errorStageNotFoundTmpl':  { key: 'flow.review.errorStageNotFoundTmpl',  zh: '错误：opId "{opId}" 中的阶段 "{stage}" 在 flow.json 中不存在', en: '' },
@@ -665,6 +669,8 @@ export const help: I18nDomain = {
   'flow.checkpoint.restore':      { key: 'help.flow.checkpoint.restore',      zh: '从 Checkpoint 快照恢复 flow.json（覆盖当前文件，需 --force 确认）', en: '' },
   'flow.checkpoint.restore.argcheckpoint-file': { key: 'help.flow.checkpoint.restore.argcheckpoint-file', zh: '快照文件名（如 v5.3-stage-01-20260807T162300-exec_running.json）', en: '' },
   'flow.checkpoint.restore.force':{ key: 'help.flow.checkpoint.restore.force', zh: '确认恢复操作（覆盖当前 flow.json）', en: '' },
+  'flow.checkpoint.restore.stage':  { key: 'help.flow.checkpoint.restore.stage',  zh: '仅回退指定阶段子树（选择性恢复；缺省为全量覆盖）', en: '' },
+  'flow.checkpoint.restore.dryRun': { key: 'help.flow.checkpoint.restore.dryRun', zh: '仅预览差异，不写盘', en: '' },
   'flow.recover':          { key: 'help.flow.recover',          zh: '跨会话上下文恢复：输出流水线状态、阻塞原因和待处理任务', en: '' },
   'flow.wizard':           { key: 'help.flow.wizard',           zh: '交互式流水线向导，逐步推进阶段', en: '' },
 

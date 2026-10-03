@@ -1729,6 +1729,156 @@ describe('FlowManager', () => {
       // 磁盘未被快照覆盖
       expect(readFileSync(p, 'utf-8')).toBe(afterExternal);
     });
+
+    /**
+     * op-001 测试夹具：构造含 3 阶段（A/B/C）的 FlowData。
+     * A 为选择性命中目标；meta/pipeline 用于验证「其余字段不动」。
+     */
+    function makeSelectiveData(
+      aPhase: PipelinePhase,
+      aStatus: string,
+    ): FlowData {
+      return {
+        meta: { version: '1.0', project: 'SelectiveProject', updated: '2026-01-01T00:00:00Z' },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.0.0-stage-A', op: 'op-001' }, retry: 7 },
+        stages: {
+          'v1.0.0-stage-A': { name: 'A', phase: aPhase, status: aStatus, deps: [], ops: {} },
+          'v1.0.0-stage-B': { name: 'B', phase: 'plan_passed' as PipelinePhase, status: 'planned', deps: [], ops: {} },
+          'v1.0.0-stage-C': { name: 'C', phase: 'scheme_passed' as PipelinePhase, status: 'planned', deps: [], ops: {} },
+        },
+        reviews: [],
+        log: [],
+      };
+    }
+
+    it('op-001 T6.1: restoreCheckpoint --stage 仅回退指定子树，其它阶段与 pipeline 不变', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeSelectiveData('exec_running' as PipelinePhase, 'testing'));
+      mgr.save();
+      mgr.saveCheckpoint('v1.0.0-stage-A', 'exec_running' as PipelinePhase);
+      const snap = mgr.listCheckpoints('v1.0.0-stage-A')[0];
+      expect(snap).toBeDefined();
+
+      // 改动磁盘 A/B/C（B/C 不应被选择性恢复触碰）
+      const d = mgr.getData()!;
+      d.stages['v1.0.0-stage-A'].phase = 'done';
+      d.stages['v1.0.0-stage-A'].status = 'done';
+      d.stages['v1.0.0-stage-B'].phase = 'exec_running';
+      d.stages['v1.0.0-stage-C'].phase = 'review_passed';
+      mgr.save();
+
+      expect(mgr.restoreCheckpoint(snap, { stage: 'v1.0.0-stage-A' })).toBe(true);
+
+      const after = mgr.getData()!;
+      expect(after.stages['v1.0.0-stage-A'].phase).toBe('exec_running');
+      // B/C 与改动后的磁盘值一致，未被回退
+      expect(after.stages['v1.0.0-stage-B'].phase).toBe('exec_running');
+      expect(after.stages['v1.0.0-stage-C'].phase).toBe('review_passed');
+      // pipeline 其余字段不动
+      expect(after.pipeline.retry).toBe(7);
+      expect(after.pipeline.phase).toBe('active');
+      // current 指向 A 且快照 current 亦指向 A → op 指针与快照同步
+      expect(after.pipeline.current).toEqual({ stage: 'v1.0.0-stage-A', op: 'op-001' });
+    });
+
+    it('op-001 T6.2: previewRestore/dry-run 零写盘且差异正确', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeSelectiveData('exec_running' as PipelinePhase, 'testing'));
+      mgr.save();
+      mgr.saveCheckpoint('v1.0.0-stage-A', 'exec_running' as PipelinePhase);
+      const snap = mgr.listCheckpoints('v1.0.0-stage-A')[0];
+
+      const d = mgr.getData()!;
+      d.stages['v1.0.0-stage-A'].phase = 'done';
+      d.stages['v1.0.0-stage-A'].status = 'done';
+      mgr.save();
+
+      const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+      const before = readFileSync(flowPath, 'utf-8');
+      const bakPath = flowPath + '.bak';
+      const hadBak = existsSync(bakPath);
+      const bakBefore = hadBak ? readFileSync(bakPath, 'utf-8') : '';
+
+      const preview = mgr.previewRestore(snap, { stage: 'v1.0.0-stage-A' });
+      expect(preview.ok).toBe(true);
+      expect(preview.conflicts).toBe(false);
+      expect(preview.diffs.length).toBe(1);
+      expect(preview.diffs[0].stage).toBe('v1.0.0-stage-A');
+      expect(preview.diffs[0].fromPhase).toBe('done');
+      expect(preview.diffs[0].toPhase).toBe('exec_running');
+      expect(preview.diffs[0].fromStatus).toBe('done');
+      expect(preview.diffs[0].toStatus).toBe('testing');
+
+      // dry-run 返回「可恢复」且零写盘
+      expect(mgr.restoreCheckpoint(snap, { stage: 'v1.0.0-stage-A', dryRun: true })).toBe(true);
+      expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+      if (hadBak) {
+        expect(readFileSync(bakPath, 'utf-8')).toBe(bakBefore);
+      } else {
+        expect(existsSync(bakPath)).toBe(false);
+      }
+    });
+
+    it('op-001 T6.3: 全量 restore（无 options）写入与快照逐字段一致', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeSelectiveData('exec_running' as PipelinePhase, 'testing'));
+      mgr.save();
+      mgr.saveCheckpoint('v1.0.0-stage-A', 'exec_running' as PipelinePhase);
+      const snap = mgr.listCheckpoints('v1.0.0-stage-A')[0];
+
+      const d = mgr.getData()!;
+      d.pipeline.retry = 99;
+      d.stages['v1.0.0-stage-A'].phase = 'done';
+      mgr.save();
+
+      expect(mgr.restoreCheckpoint(snap)).toBe(true);
+
+      const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+      const snapPath = join(tmpDir, '.openfeel', 'checkpoints', snap);
+      const onDisk = JSON.parse(readFileSync(flowPath, 'utf-8')) as FlowData;
+      const s = JSON.parse(readFileSync(snapPath, 'utf-8')) as FlowData;
+      // revision 重定基，比对时归一化；其余字段逐字段一致
+      onDisk.meta.revision = s.meta.revision;
+      expect(JSON.stringify(onDisk)).toBe(JSON.stringify(s));
+    });
+
+    it('op-001 S4: 被恢复子树 status 按 phase 投影（stage-62）', () => {
+      const mgr = new FlowManager(tmpDir);
+      // 快照 A 为 test_passed 但 status 为陈旧的 done
+      mgr.setData(makeSelectiveData('test_passed' as PipelinePhase, 'done'));
+      mgr.save();
+      mgr.saveCheckpoint('v1.0.0-stage-A', 'test_passed' as PipelinePhase);
+      const snap = mgr.listCheckpoints('v1.0.0-stage-A')[0];
+
+      const d = mgr.getData()!;
+      d.stages['v1.0.0-stage-A'].phase = 'exec_running';
+      d.stages['v1.0.0-stage-A'].status = 'planned';
+      mgr.save();
+
+      expect(mgr.restoreCheckpoint(snap, { stage: 'v1.0.0-stage-A' })).toBe(true);
+      const after = mgr.getData()!;
+      expect(after.stages['v1.0.0-stage-A'].phase).toBe('test_passed');
+      // test_passed 投影为中间态 testing（不得为 done）
+      expect(after.stages['v1.0.0-stage-A'].status).toBe('testing');
+    });
+
+    it('op-001 T6.8: selective/预览下路径穿越、缺文件、阶段不存在仍拒绝', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeSelectiveData('exec_running' as PipelinePhase, 'testing'));
+      mgr.save();
+      mgr.saveCheckpoint('v1.0.0-stage-A', 'exec_running' as PipelinePhase);
+      const snap = mgr.listCheckpoints('v1.0.0-stage-A')[0];
+
+      // 路径穿越
+      expect(mgr.restoreCheckpoint('../evil.json', { stage: 'v1.0.0-stage-A' })).toBe(false);
+      expect(mgr.previewRestore('../evil.json').ok).toBe(false);
+      expect(mgr.previewRestore('../evil.json').reason).toBe('invalid-name');
+      // 缺文件
+      expect(mgr.previewRestore('nope.json').reason).toBe('missing');
+      // 阶段不在快照
+      expect(mgr.previewRestore(snap, { stage: 'v9.9.9-stage-99' }).reason).toBe('stage-not-in-snapshot');
+      expect(mgr.restoreCheckpoint(snap, { stage: 'v9.9.9-stage-99' })).toBe(false);
+    });
   });
 
   // ═══════════════════════════════════════

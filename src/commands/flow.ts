@@ -1411,21 +1411,58 @@ export function registerFlowCommand(program: Command): void {
       console.log(t('flow.checkpoint.listCountTmpl', lang, { n: String(snapshots.length) }));
     });
 
-  // flow checkpoint restore <checkpoint-file> [--force]
+  // flow checkpoint restore <checkpoint-file> [--force] [--stage <id>] [--dry-run]
   checkpointCmd
     .command('restore')
-    .description('从 Checkpoint 快照恢复 flow.json（覆盖当前文件，需 --force 确认）')
+    .description('从 Checkpoint 快照恢复 flow.json（默认全量覆盖，需 --force 确认；--stage 选择性、--dry-run 预览）')
     .argument('<checkpoint-file>', '快照文件名（如 v5.3-stage-01-20260807T162300-exec_running.json）')
     .option('--force', '确认恢复操作（覆盖当前 flow.json）')
-    .action((file: string, options: { force?: boolean }) => {
+    .option('--stage <id>', '仅回退指定阶段子树（选择性恢复；缺省为全量覆盖）')
+    .option('--dry-run', '仅预览差异，不写盘')
+    .action((file: string, options: { force?: boolean; stage?: string; dryRun?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
+
+      // --dry-run：只读预览（零写盘），不要求 --force
+      if (options.dryRun) {
+        const preview = mgr.previewRestore(file, { stage: options.stage });
+        if (preview.ok && preview.conflicts) {
+          console.error(t('flow.manager.snapshotRestoreRefused', lang));
+          process.exit(1);
+          return;
+        }
+        if (!preview.ok) {
+          if (preview.reason === 'stage-not-in-snapshot') {
+            console.error(t('flow.checkpoint.restoreStageMissingTmpl', lang, { stage: options.stage ?? '' }));
+          } else {
+            console.error(t('flow.checkpoint.restoreFailTmpl', lang, { file }));
+          }
+          process.exit(1);
+          return;
+        }
+        console.log(t('flow.checkpoint.restoreDryRunTitle', lang) + (options.stage ? ` [${options.stage}]` : ''));
+        if (preview.diffs.length === 0) {
+          console.log(t('flow.checkpoint.restoreNoDiff', lang));
+        } else {
+          for (const d of preview.diffs) {
+            console.log(t('flow.checkpoint.restoreDiffTmpl', lang, {
+              stage: d.stage,
+              fromPhase: d.fromPhase,
+              toPhase: d.toPhase,
+              fromStatus: d.fromStatus,
+              toStatus: d.toStatus,
+            }));
+          }
+        }
+        return;
+      }
+
       // 安全确认：恢复会覆盖当前 flow.json，必须显式 --force
       if (!options.force) {
         console.error(t('flow.checkpoint.restoreNeedForce', lang));
         process.exit(1);
       }
-      const ok = mgr.restoreCheckpoint(file);
+      const ok = mgr.restoreCheckpoint(file, { stage: options.stage });
       if (ok) {
         console.log(t('flow.checkpoint.restoreOkTmpl', lang, { file }));
       } else {

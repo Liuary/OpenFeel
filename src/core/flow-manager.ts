@@ -244,6 +244,32 @@ export interface StatusReconcileItem {
   result: 'planned' | 'applied' | 'skipped-not-found';
 }
 
+/** Checkpoint 恢复差异单条（选择性/预览用；`(absent)`/`(removed)` 为哨兵值） */
+export interface RestoreDiffEntry {
+  /** 阶段 ID */
+  stage: string;
+  /** 磁盘当前 phase（无该阶段时 '(absent)'） */
+  fromPhase: string;
+  /** 待恢复 phase（快照无该阶段时 '(removed)'） */
+  toPhase: string;
+  /** 磁盘当前 status（无该阶段时 '(absent)'） */
+  fromStatus: string;
+  /** 待恢复 status（快照无该阶段时 '(removed)'） */
+  toStatus: string;
+}
+
+/** Checkpoint 恢复预览结果（read-only，零写盘） */
+export interface RestorePreview {
+  /** 是否可恢复（文件名/内容/阶段校验通过） */
+  ok: boolean;
+  /** ok=false 时原因：invalid-name | missing | bad-content | stage-not-in-snapshot */
+  reason?: 'invalid-name' | 'missing' | 'bad-content' | 'stage-not-in-snapshot';
+  /** 乐观并发冲突（磁盘 revision ≠ 已加载 revision） */
+  conflicts: boolean;
+  /** 计划变更清单（全量模式含全部变动阶段；--stage 仅该阶段） */
+  diffs: RestoreDiffEntry[];
+}
+
 /** 阶段可移除性检查结果（供 removeStage 与 flow stage remove --dry-run 共用，REV-005） */
 export interface RemovalCheck {
   /** 是否允许移除（force=true 且阶段存在时恒 true） */
@@ -591,26 +617,156 @@ export class FlowManager {
   }
 
   /**
-   * 从 Checkpoint 快照恢复 flow.json
-   * 恢复前将当前 flow.json 备份为 .bak；恢复成功后重新加载数据。
-   * @param filename 快照文件名（仅允许纯文件名，防路径穿越）
-   * @returns 是否恢复成功
+   * 解析并校验快照文件与选择性目标阶段（只读，不写盘、不加锁）。
+   * 安全校验与旧 restoreCheckpoint 逐字一致（拒绝路径分隔符/`..`）。
+   * @param filename 快照文件名（仅纯文件名）
+   * @param stage 可选，选择性恢复的目标阶段 ID
+   * @returns 校验结果（ok=false 时附 reason）；成功时含快照数据与归一化后的阶段键
    */
-  restoreCheckpoint(filename: string): boolean {
+  private resolveRestoreTarget(
+    filename: string,
+    stage?: string,
+  ): { ok: boolean; reason?: 'invalid-name' | 'missing' | 'bad-content' | 'stage-not-in-snapshot'; snapshot?: FlowData; stageKey?: string } {
     // 安全校验：拒绝含路径分隔符或 '..' 的文件名，防止路径穿越
     if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+      return { ok: false, reason: 'invalid-name' };
+    }
+    const dir = resolve(this.projectPath, '.openfeel', 'checkpoints');
+    const filePath = resolve(dir, filename);
+    if (!existsSync(filePath)) {
+      return { ok: false, reason: 'missing' };
+    }
+    let snapshot: FlowData;
+    try {
+      snapshot = JSON.parse(readFileSync(filePath, 'utf-8')) as FlowData;
+    } catch {
+      return { ok: false, reason: 'bad-content' };
+    }
+    let stageKey: string | undefined;
+    if (stage) {
+      // 归一化短名，双键回退兼容以短名建键的存量/测试数据
+      const norm = normalizeStageId(stage) ?? stage;
+      const key = snapshot.stages?.[norm] ? norm : (snapshot.stages?.[stage] ? stage : undefined);
+      if (!key) {
+        return { ok: false, reason: 'stage-not-in-snapshot' };
+      }
+      stageKey = key;
+    }
+    return { ok: true, snapshot, stageKey };
+  }
+
+  /**
+   * 构造待写入的完整 flow.json 数据（只读，不写盘）。
+   * - 无 stageKey：返回快照数据本身 → 全量覆盖语义与改前逐字节一致。
+   * - 有 stageKey：以当前磁盘数据为基底，仅替换 stages[stageKey] 子树；
+   *   子树 status 按 phase 投影（stage-62 单一事实源）；
+   *   仅当 current 指向被恢复阶段时同步 current.op 指针，pipeline 其余字段不动。
+   * @param snapshot 已解析的快照数据
+   * @param stageKey 选择性恢复的阶段键（缺省=全量）
+   * @returns 待写入的完整数据
+   */
+  private buildRestoreData(snapshot: FlowData, stageKey: string | undefined): FlowData {
+    if (!stageKey) {
+      return snapshot;
+    }
+    const base = JSON.parse(readFileSync(this.filePath, 'utf-8')) as FlowData;
+    const restoredStage = snapshot.stages?.[stageKey];
+    if (restoredStage) {
+      // status 为 phase 的粗粒度投影：以快照 phase 为权威重投影（stage-62）
+      if (restoredStage.phase) {
+        restoredStage.status = mapPhaseToStageStatus(restoredStage.phase, restoredStage.status);
+      }
+      base.stages[stageKey] = restoredStage;
+    }
+    // 协调：仅当 pipeline.current 指向被恢复阶段（且快照 current 亦指向该阶段）时同步 op 指针
+    const curStage = base.pipeline?.current?.stage;
+    const normCur = curStage ? (normalizeStageId(curStage) ?? curStage) : '';
+    if (normCur === stageKey && snapshot.pipeline?.current) {
+      const snapCur = snapshot.pipeline.current.stage;
+      const normSnapCur = snapCur ? (normalizeStageId(snapCur) ?? snapCur) : '';
+      if (normSnapCur === stageKey) {
+        base.pipeline.current = { stage: stageKey, op: snapshot.pipeline.current.op ?? '' };
+      }
+    }
+    return base;
+  }
+
+  /**
+   * 计算恢复差异清单（只读）：对比磁盘当前与待恢复数据。
+   * 全量模式列 union(磁盘阶段, 快照阶段) 的变动项；stageKey 指定时仅列该阶段。
+   * @param snapshot 已解析的快照数据
+   * @param stageKey 选择性恢复的阶段键（缺省=全量）
+   * @returns 差异条目列表（无变动则为空）
+   */
+  private computeRestoreDiffs(snapshot: FlowData, stageKey: string | undefined): RestoreDiffEntry[] {
+    const diffs: RestoreDiffEntry[] = [];
+    let disk: FlowData | null = null;
+    try {
+      disk = JSON.parse(readFileSync(this.filePath, 'utf-8')) as FlowData;
+    } catch {
+      disk = null;
+    }
+    const diskStages = disk?.stages ?? {};
+    const snapStages = snapshot.stages ?? {};
+    const keys = stageKey
+      ? [stageKey]
+      : Array.from(new Set([...Object.keys(diskStages), ...Object.keys(snapStages)]));
+    for (const stage of keys) {
+      const d = diskStages[stage];
+      const s = snapStages[stage];
+      if (!d && !s) {
+        continue;
+      }
+      const fromPhase = d?.phase ?? '(absent)';
+      const fromStatus = d?.status ?? '(absent)';
+      const toPhase = s?.phase ?? '(removed)';
+      const toStatus = s?.status ?? '(removed)';
+      if (fromPhase === toPhase && fromStatus === toStatus) {
+        continue;
+      }
+      diffs.push({ stage, fromPhase, toPhase, fromStatus, toStatus });
+    }
+    return diffs;
+  }
+
+  /**
+   * 预览 Checkpoint 恢复差异（read-only，零写盘，不加锁）。
+   * @param filename 快照文件名（仅纯文件名）
+   * @param options.stage 可选，仅预览该阶段子树
+   * @returns 预览结果（ok/conflicts/diffs）
+   */
+  previewRestore(filename: string, options: { stage?: string } = {}): RestorePreview {
+    const resolved = this.resolveRestoreTarget(filename, options.stage);
+    if (!resolved.ok || !resolved.snapshot) {
+      return { ok: false, reason: resolved.reason, conflicts: false, diffs: [] };
+    }
+    // 并发冲突仅报告（预览不加锁、不写盘）
+    const conflicts = this.readDiskRevision() !== this.loadedRevision;
+    const diffs = this.computeRestoreDiffs(resolved.snapshot, resolved.stageKey);
+    return { ok: true, conflicts, diffs };
+  }
+
+  /**
+   * 从 Checkpoint 快照恢复 flow.json
+   * - 缺省（无 options.stage）：全量覆盖（与改前逐字节一致），恢复前将当前 flow.json 备份为 .bak。
+   * - options.stage：仅替换该阶段子树，其它阶段与 pipeline 其余字段不动。
+   * - options.dryRun：零写盘（复用 previewRestore）。
+   * @param filename 快照文件名（仅允许纯文件名，防路径穿越）
+   * @param options.stage 选择性恢复的阶段 ID（可选；缺省=全量）
+   * @param options.dryRun 仅预览不写盘（可选）
+   * @returns 是否恢复成功（dryRun 时为「是否可恢复」）
+   */
+  restoreCheckpoint(filename: string, options: { stage?: string; dryRun?: boolean } = {}): boolean {
+    // dry-run：复用只读预览，零写盘（不 atomicWrite / 不改内存 revision / 不写 .bak）
+    if (options.dryRun) {
+      return this.previewRestore(filename, { stage: options.stage }).ok;
+    }
+    const resolved = this.resolveRestoreTarget(filename, options.stage);
+    const snapshot = resolved.snapshot;
+    if (!resolved.ok || !snapshot) {
       return false;
     }
     try {
-      const dir = resolve(this.projectPath, '.openfeel', 'checkpoints');
-      const filePath = resolve(dir, filename);
-      if (!existsSync(filePath)) {
-        return false;
-      }
-      const content = readFileSync(filePath, 'utf-8');
-      // 校验快照 JSON 合法性，非法内容拒绝恢复
-      JSON.parse(content);
-
       const lockPath = projectLockPath(this.projectPath, 'flow');
       let conflict = false;
       withFileLock(lockPath, () => {
@@ -620,8 +776,9 @@ export class FlowManager {
           conflict = true;
           return;
         }
+        // 构造待写数据（全量=快照本身；选择性=磁盘基底+单阶段替换）
+        const restored = this.buildRestoreData(snapshot, resolved.stageKey);
         // 快照 revision 重定基为 diskRevision+1，保证单调递增
-        const restored = JSON.parse(content) as FlowData;
         restored.meta.revision = diskRevision + 1;
         const restoredContent = JSON.stringify(restored, null, 2) + '\n';
         // REV-002：与 save() 同锁、同 S5 语义（写前复制旧文件为 .bak，写后不覆盖）
@@ -631,7 +788,6 @@ export class FlowManager {
         console.warn(t('flow.manager.snapshotRestoreRefused', getCliLang(this.projectPath)));
         return false;
       }
-
       this.load();
       return true;
     } catch {

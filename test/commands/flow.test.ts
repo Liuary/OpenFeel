@@ -22,7 +22,7 @@ vi.mock('node:child_process', () => ({
 import { Command, CommanderError } from 'commander';
 import { registerFlowCommand } from '../../src/commands/flow.js';
 import { initProject } from '../../src/core/init.js';
-import { FlowManager } from '../../src/core/flow-manager.js';
+import { FlowManager, type FlowData, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -1429,5 +1429,66 @@ describe('flow 命令（stage-41）', () => {
     logMock.mockClear();
     await safeParse(['flow', 'checkpoint', 'list']);
     expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain(snap);
+  });
+
+  /** op-001 夹具：写入含 A/B/C 三阶段的 flow.json 并生成 A 阶段快照，返回快照文件名 */
+  function setupSelectiveSnapshot(): string {
+    const mgr = new FlowManager(tmpDir);
+    const data: FlowData = {
+      meta: { version: '1.0', project: 'CmdSelective', updated: '2026-01-01T00:00:00Z' },
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.0.0-stage-A', op: 'op-001' }, retry: 0 },
+      stages: {
+        'v1.0.0-stage-A': { name: 'A', phase: 'exec_running' as PipelinePhase, status: 'testing', deps: [], ops: {} },
+        'v1.0.0-stage-B': { name: 'B', phase: 'plan_passed' as PipelinePhase, status: 'planned', deps: [], ops: {} },
+        'v1.0.0-stage-C': { name: 'C', phase: 'scheme_passed' as PipelinePhase, status: 'planned', deps: [], ops: {} },
+      },
+      reviews: [],
+      log: [],
+    };
+    mgr.setData(data);
+    mgr.save();
+    mgr.saveCheckpoint('v1.0.0-stage-A', 'exec_running' as PipelinePhase);
+    // 先对 A=exec_running 生成快照，再改动磁盘 A/B/C，使 A 有明显可回退差异
+    const d = mgr.getData()!;
+    d.stages['v1.0.0-stage-A'].phase = 'done';
+    d.stages['v1.0.0-stage-A'].status = 'done';
+    d.stages['v1.0.0-stage-B'].phase = 'exec_running';
+    mgr.save();
+    return mgr.listCheckpoints('v1.0.0-stage-A')[0];
+  }
+
+  it('op-001 T6.2: checkpoint restore --dry-run 零写盘且输出差异', async () => {
+    const snap = setupSelectiveSnapshot();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'checkpoint', 'restore', snap, '--stage', 'v1.0.0-stage-A', '--dry-run']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('Checkpoint 恢复预览');
+    expect(out).toContain('v1.0.0-stage-A');
+    expect(out).toContain('exec_running');
+    // 零写盘
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+  });
+
+  it('op-001 T6.1: checkpoint restore --stage 仅回退指定阶段', async () => {
+    const snap = setupSelectiveSnapshot();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'checkpoint', 'restore', snap, '--stage', 'v1.0.0-stage-A', '--force']);
+    expect(exitMock).not.toHaveBeenCalled();
+
+    const after = JSON.parse(readFileSync(flowPath, 'utf-8')) as FlowData;
+    expect(after.stages['v1.0.0-stage-A'].phase).toBe('exec_running');
+    // B 保留改动后的磁盘值，未被回退
+    expect(after.stages['v1.0.0-stage-B'].phase).toBe('exec_running');
+    expect(after.stages['v1.0.0-stage-C'].phase).toBe('scheme_passed');
+  });
+
+  it('op-001 T6.8: checkpoint restore 路径穿越仍拒绝（exit 1）', async () => {
+    await safeParse(['flow', 'checkpoint', 'restore', '../evil.json', '--force']);
+    expect(exitMock).toHaveBeenCalledWith(1);
   });
 });

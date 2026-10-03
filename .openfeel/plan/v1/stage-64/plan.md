@@ -99,7 +99,7 @@
 | T6.2 | `.openfeel/manual/cli/commands.md`、`docs/commands.md` | 同步 |
 | T6.3 | `i18n-data/{zh-CN,en}.ts` | 新增告警/命令文案（**允许键数 +少量**，须同步更新验收基线与双语句对；优先复用既有键减少新增） |
 
-> i18n 键数：若必须新增，则本阶段后基线从 730 变为 73X，须在其他阶段验收口径中显式登记；否则 `lint i18n` 以实际值为准。
+> i18n 键数（D-i18n 显式登记）：本阶段新增 **9 键**（op-001 新增 1 键 `plan.scheme.unregisteredFilesWarnTmpl`；op-002 新增 8 键 `plan.scheme.register.{ok,dryRun,none,noop}Tmpl` + `help.plan.scheme.register{,.argstage,.argopId,.dryRun}`），基线从 **730 变为 739**，须在本阶段验收口径中显式登记；`lint i18n` 以实际值 739 为准。
 
 ---
 
@@ -168,3 +168,4 @@
 | 时间 | 制定人 | 说明 |
 |------|--------|------|
 | 2026-10-03 | openfeel-planner | 初稿：T1~T6；3 op；验收 9 条；裁定 D2/D-reg/D-i18n；说明观察场景正解为 register |
+| 2026-10-03 | openfeel-executor | D-i18n 落地：新增 9 键，基线 730→739（op-001 1 / op-002 8）；T6.3 只做基线登记与对称性验证（不在 op-003 新增键，属正向偏差） |

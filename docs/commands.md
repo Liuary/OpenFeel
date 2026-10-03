@@ -303,13 +303,14 @@ openfeel plan stage list
 创建操作方案。
 
 ```bash
-openfeel plan scheme create <stage> <title>
+openfeel plan scheme create <stage> <title> [--draft]
 ```
 
-| 参数 | 说明 |
+| 参数/选项 | 说明 |
 |------|------|
 | `stage` | 阶段名（如 stage-01） |
 | `title` | 方案标题 |
+| `--draft` | 创建为 draft（未发布态），须经 `plan scheme publish <stage> <opId>` 发布为执行态 |
 
 示例：
 
@@ -318,6 +319,39 @@ openfeel plan scheme create stage-01 "实现核心功能"
 ```
 
 在 `plan/v1/stage-01/ops/` 下创建 `op-001_实现核心功能.md`，按固定模板生成内容（目标、实施步骤、产出文件、自测清单、修正记录），并同步到 `flow.json`。
+
+**序号与告警（v1.1.4-stage-64）**：新 op 序号取**「ops/ 目录文件 ∪ flow.json 注册键」的最小未用正整数**（空位回填——若注册键存在空洞则复用最小空洞，防止注册键与文件序列脱节导致的跳号）；创建后若目标阶段存在**未注册的 op 文件**（fileOrphans），向 stderr 输出告警并提示 `openfeel plan scheme register <stage>` 补注册（**告警不阻断创建**，正解为补注册而非覆盖既有文件）。
+
+### plan scheme register
+
+补注册 `ops/` 中**未注册的 op 文件**（fileOrphans：有 op 文件、`flow.json` 无对应注册键）。
+
+```bash
+openfeel plan scheme register <stage> [opId] [--dry-run]
+```
+
+| 参数/选项 | 说明 |
+|------|------|
+| `stage` | 阶段名（如 stage-01） |
+| `opId` | 操作方案 ID（可选）；省略则补注册该阶段**全部** fileOrphans |
+| `--dry-run` | 仅预览将注册的条目，**零写盘** |
+
+示例：
+
+```bash
+# 预览该阶段全部待补注册项
+openfeel plan scheme register stage-01 --dry-run
+
+# 补注册指定 op
+openfeel plan scheme register stage-01 op-002
+
+# 补注册全部
+openfeel plan scheme register stage-01
+```
+
+- **注册默认**：`state=pending`、`assignee=openfeel-executor`、`attempts=0`、`max_attempts=3`，`title` 取自文件内容首行（回退文件名），审计动作 `register_op`。
+- **对称关系**：`plan scheme remove` 从 `flow.json` 删除注册键（不删文件）；`plan scheme register` 反向补全（不新写文件），两者构成对账闭环。与 `flow repair --prune-orphans`（仅清**键孤儿**）方向相反——文件孤儿的补注册出口为 `plan scheme register`。
+- `opId` 已注册时报 no-op；`opId` 对应文件不存在时报错。
 
 ### plan scheme list
 

@@ -417,6 +417,17 @@ describe('flow 命令（stage-41）', () => {
     expect(out).toContain('孤儿');
   });
 
+  it('T4: flow repair 选项含 prune-orphans 且不含 register-ops', () => {
+    // 锁定 T4/D-reg：补注册由 plan scheme register 承接，flow repair 不新增 --register-ops 别名
+    const flowCmd = program.commands.find((c) => c.name() === 'flow');
+    expect(flowCmd).toBeDefined();
+    const repairCmd = flowCmd!.commands.find((c) => c.name() === 'repair');
+    expect(repairCmd).toBeDefined();
+    const names = repairCmd!.options.map((o) => o.name());
+    expect(names).toContain('prune-orphans');
+    expect(names).not.toContain('register-ops');
+  });
+
   it('N1-3: 仅孤儿（无 fail）时 flow health 不 fail 且退出码不变', async () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.1.2-stage-73');

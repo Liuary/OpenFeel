@@ -509,6 +509,8 @@ OpenFeel 的模板部署存在**两层模板源**：
 
 **参见：** v1.1.2-stage-41 正式测试 cli/BUG-002、kb/patterns.md #CLI 国际化封装模式
 
+> **更新于 2026-10-03（豁免口径登记）**：**`help.*` 域键属文档预留**——`help.plan.scheme.*` 等键由 CLI 帮助体系（`--help`）承载/预留，`src` 中零 `t()` 引用是其**既有域模式**（`remove`/`create`/`publish` 等 help 键同样如此），**不判定为死键**。判定死键须限定在「应与运行时输出绑定」的域（如 `common.*` / `flow.*` 的错误与提示文案）；`help.*` 域在未接入 `--help` 国际化前允许无 `t()` 消费点。本口径由 v1.1.4-stage-64 REV-001 触发登记（该阶段新增 4 个 `help.plan.scheme.register*` 预留键，与既有模式一致，非本阶段引入）。
+
 > **更新于 2026-09-29（已修复，v1.1.2-stage-47 op-001）**：采纳「核心层抛结构化错误 + 命令层按类型渲染」——新增 `StageDirConflictError`（含 `stage`/`other`，`message` 保留原中文文案以兼容既有 `toThrow` 断言），`registerStage`/`addStage` 改抛该错误，三入口（`plan stage add`/`flow stage add`/`stage create`）catch 分流命中时用 `common.stageDirConflictTmpl` 渲染 → **死键消除（3 处使用点）**。实测 `lang=en` 冲突 stderr 为纯英文 `Stage dir conflict: v4.0.0-stage-04 and v4-stage-04 map to the same directory`。**附带更正**：`zh-CN.ts` 内该键 `en: '` 属「单语分文件」模式正常值（en 值在 `en.ts:31`），原判「en 需补全」不成立——死键本质是**无使用点**而非值缺失。
 
 ## [+] kb-dedup 去重检索对 CRLF 行尾静默失效（归档官去重降级）(2026-09-29)

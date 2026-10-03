@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-03T01:29:02.253Z",
-    "revision": 688
+    "updated": "2026-10-03T01:24:23.020Z",
+    "revision": 687
   },
   "pipeline": {
     "phase": "active",
@@ -2849,7 +2849,7 @@
     "v1.1.4-stage-64": {
       "name": "v1.1.4-stage-64",
       "phase": "done",
-      "status": "done",
+      "status": "archiving",
       "deps": [],
       "ops": {
         "op-001": {
@@ -2906,8 +2906,8 @@
       },
       "stats": {
         "start_time": "2026-10-03T01:00:34.039Z",
-        "end_time": "2026-10-03T01:29:02.233Z",
-        "duration_ms": 1708194
+        "end_time": "",
+        "duration_ms": 0
       }
     },
     "v1.1.4-stage-65": {
@@ -13364,16 +13364,6 @@
         "reviewsCount": 0,
         "knowledgeCount": 0,
         "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.4-stage-64.md"
-      }
-    },
-    {
-      "time": "2026-10-03T01:29:02.229Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.4-stage-64",
-        "from": "archiving",
-        "to": "done"
       }
     }
   ]

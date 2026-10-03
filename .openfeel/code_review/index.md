@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 33 |
+| passed | 34 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -33,6 +33,8 @@
 **追加 stage-62（状态/相位单一事实源收敛 — v1.1.4 首阶段）`passed`**：把 `status` 明确为 `phase` 的**粗粒度投影**（单一事实源 = `phase`），消除 `test_enabled=false` 触发的 `phase` 单向锁 `done` 确定性缺陷（`docs/08` 问题 12，本轮 **6/6 复发**）。3 op（`26629e6` 核心修复 / `abcab76` test_enabled 移除 / `fa7f4f8` 文档+KB 备注+门禁）：① `mapPhaseToStageStatus` 去 `testEnabled`、`review_passed` 恒 `'review_passed'`；② `autoRepairInconsistency` 方向反转仅 `phase→status`；③ `stage set --status` 粗粒度值域校验（`STAGE_STATUS_VALUES`）；④ `test_enabled` 全链移除（存量残留守非受管扩展键兼容）；⑤ manual/docs 同步。**61 文件 / 1023 用例全绿（0 skipped / 0 failed）**、`tsc` 0、`lint i18n` 730 键、`lint kb` 0（311 引用）、build 不复活。审查 **passed**（REV-001 medium / REV-002·003 low，全非阻塞 open；REV-001 边界 KB 注记）；**无新增 Bug**；知识沉淀 4 条（supersede 1 + 补沉 1 + 新增 2）；**v1.1.4 首阶段闭环（未推进 flow 至 done，由 Feel 执行）**。
 
 **追加 stage-63（配置默认值解析与阶段创建继承 — 问题 1/6，v1.1.4 第二阶段）`passed`**：新阶段 `status.md` 的 `执行模式`/`自动推进` 初值由**硬编码**改为取 `config.yaml.defaults`（新增 `resolveConfigDefaults`，只读 defaults、不读 status.md、不做级联）；`plan stage add --exec-mode/--auto-advance` 显式覆盖（值域非法 exit 1 不建阶段）；`config set/get` 支持 **`defaults.X ≡ X`**（`normalizeConfigKey` 单一来源，先归一再校验）；新增 **`config set --sync-stages`** 批量同步既有阶段（同值 no-op、无阶段字段跳过报告、`--global` 组合拒绝）。3 op（`e280ec0` 键归一+解析助手 / `04c121d` 创建继承+显式选项+批量同步 / `1d22bf4` 文档+skill+build 传播+门禁）。**有效值级联优先序零触碰**（`buildCascadeConfig`/`resolveEffectiveConfig` 3 commits 零 diff）。**61 文件 / 1046 用例全绿（0 skipped / 0 failed）**、`tsc` 0、`lint i18n` 730 键、`lint kb` 0（312 引用）、build 幂等不复活。审查 **passed**（REV-001/002/003 全 **low 非阻塞 open**）；**无新增 Bug**；知识沉淀 **2 条**（patterns）；manual 补改 `core/flow-manager.md`；**未推进 flow 至 done（由 Feel 执行）**。
+
+**追加 stage-64（op 注册一致性 — 问题 2，v1.1.4 第三阶段）`passed`**：使 `plan scheme create` 序号与 `flow.json` 注册一致——序号起点改为 **「ops/ 文件 ∪ flow.json 注册」的最小未用正整数（空位回填）**（`nextSchemeSequence` 纯函数 + `reserveSequence({start})` O_EXCL 兜底，核心零改）；新增 **`plan scheme register <stage> [opId] [--dry-run]`** 补注册 fileOrphans（复用 `findOrphanOps` 单一口径、no-op 不覆盖、文件不存在 exit 1、dry-run 逐字节零写盘、审计 `register_op`）；`create` 后对未注册文件输出 **stderr 告警**并提示补注册（D2 告警继续）；`flow repair --prune-orphans` 单向语义与 `findOrphanOps` 零改动。3 op（`abc6a59` 序号∪文件+告警 / `d276a4c` register / `ee5ae2e` 文档+skill+i18n 基线+门禁）。i18n 基线 **730→739**（+9 键，计划/验收双处显式登记）。**61 文件 / 1063 用例全绿（0 skipped / 0 failed）**、`tsc` 0、`lint i18n` 739 键、`lint kb` 0（321 引用）、build ×2 幂等且 `.opencode/**` 不复活。审查 **passed**（**REV-001/002/003 全 low 非阻塞 open**——help 域预留键无 `t()` 消费点 / 审计命名 `register_op` 与 `scheme_{verb}` 不同构 / op frontmatter 状态未同步）；**无新增 Bug**；知识沉淀 **patterns 新增 2 + 更新 1 + troubleshooting 更新 1**；manual/docs/skill 三载体复核一致；**未推进 flow 至 done（由 Feel 执行）**。
 
 | 阶段 | 摘要 | 状态 |
 |------|------|------|
@@ -64,6 +66,7 @@
 
 | [v1.1.4-stage-62](v1.1.4-stage-62.md) | 状态/相位单一事实源收敛（v1.1.4 首阶段）— 3 op（`26629e6`/`abcab76`/`fa7f4f8`）；`status` = `phase` 粗粒度投影（单一事实源 = `phase`）；映射去 `testEnabled`（`review_passed` 恒 `'review_passed'`）+ auto-repair 仅 `phase→status` 单向 + `stage set --status` 值域校验 + `test_enabled` 全链移除；**锁根因消除**（fixture `{review_passed, done}` → `advance --to test_pending` exit 0）；61 文件 / **1023 用例** 0 skipped、`tsc` 0、`lint i18n` 730、`lint kb` 0；**REV-001 medium / REV-002·003 low 全非阻塞 open**（REV-001 边界 KB 注记）；无新 Bug；知识沉淀 4 条（supersede 1 + 补沉 1 + 新增 2） | passed |
 | [v1.1.4-stage-63](v1.1.4-stage-63.md) | 配置默认值解析与阶段创建继承（问题 1/6，v1.1.4 第二阶段）— 3 op（`e280ec0`/`04c121d`/`1d22bf4`）；新阶段骨架初值取 `config.yaml.defaults`（`resolveConfigDefaults`，不读 status.md、不做级联）+ `plan stage add --exec-mode/--auto-advance` 显式覆盖 + `config set/get` `defaults.X ≡ X`（`normalizeConfigKey`）+ `config set --sync-stages` 批量同步；**级联口径零触碰**；61 文件 / **1046 用例** 0 skipped、`tsc` 0、`lint i18n` 730、`lint kb` 0；**REV-001/002/003 全 low 非阻塞 open**（含一次已回滚 cwd 误操作事故披露）；无新 Bug；知识沉淀 2 条（patterns） | passed |
+| [v1.1.4-stage-64](v1.1.4-stage-64.md) | op 注册一致性（问题 2，v1.1.4 第三阶段）— 3 op（`abc6a59`/`d276a4c`/`ee5ae2e`）；`create` 序号 = 「ops/ 文件 ∪ flow.json 注册」最小未用正整数（空位回填）+ 新增 `plan scheme register <stage> [opId] [--dry-run]` 补注册 fileOrphans（no-op 不覆盖、dry-run 逐字节零写盘、审计 `register_op`）+ 未注册文件 stderr 告警；`--prune-orphans`/`findOrphanOps` 零改动；i18n 730→**739**；61 文件 / **1063 用例** 0 skipped、`tsc` 0、`lint i18n` 739、`lint kb` 0、build 幂等不复活；**REV-001/002/003 全 low 非阻塞 open**（help 预留键 / 审计命名 / op frontmatter 状态，归档官已登记口径）；无新 Bug；知识沉淀 patterns 新增 2 + 更新 1 + troubleshooting 更新 1 | passed |
 
 ## v5 系列审查
 

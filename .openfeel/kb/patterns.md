@@ -2337,6 +2337,8 @@ agent 大规模改名后，为避免强制迁移历史 `flow.json`（改历史�
 
 **参见：** v1.1.2-stage-42 op-004、`REV-v1.1.2-stage-42` REV-002
 
+> **更新于 2026-10-03**：新增 `plan scheme register` 时，审计 action 采用 **`register_op`**（`{verb}_op` 模式，`plan/scheme.ts` 补注册路径），与既有 `scheme_create` / `scheme_remove`（`scheme_{verb}` 模式）**不同构**（v1.1.4-stage-64 REV-002，low 非阻塞）。方案 T2 明确规定名称 `register_op`（executor 忠实执行、manual/docs 同步登记），**非执行偏差**；但同类 scheme 操作的审计命名现存两套模式，未来易混淆。**约定**：新增 scheme 类审计优先沿用 `scheme_{verb}`（如 `scheme_register`）；`register_op` 属历史命名，保留不迁移（追加式）。审计查询侧须同时识别两类模式。
+
 ## [+] 测试 cwd 隔离模式：spyOn process.cwd + 模块期 REAL_CWD 反向守卫 (2026-09-29)
 
 命令层测试若让被测命令以 vitest 进程 cwd（仓库根）执行，会**真实写入工作区**（v1.1.2-stage-42 REV-011：`npm test` 覆写仓库 `.openfeel/config.yaml`）。隔离与守卫须双管齐下：
@@ -3254,3 +3256,30 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.4-stage-63（`config set defaults.execution_mode auto` exit 0 且写 `execution_mode: auto`，与 bare 等价；`config get defaults.execution_mode` = `auto`；`defaults.bogus`/`defaults.` → 白名单拒绝 exit 1；`config set defaults.execution_mode bogus` exit 1 且 config.yaml SHA256 不变；`test_enabled` 仍无效键 exit 1 不写盘）。
 
 **参见：** v1.1.4-stage-63（op-001 `e280ec0`）；`src/core/config.ts` `normalizeConfigKey`；`.openfeel/manual/core/config.md`；kb/troubleshooting.md #配置键白名单须 schema 驱动 + 值类型归一
+
+## [+] 创建时检测未注册 op 文件 + `plan scheme register` 对称补全：每可写结构须有增删改查对称能力 (2026-10-03)
+
+**背景（v1.1.4-stage-64，问题 2）**：`plan scheme create` 的 op 序号原仅据 `ops/` 目录**文件**（`reserveSequence` = max+1），不读 `flow.json` 注册键。当方案官手写 `op-001~004.md` 而未注册时：`create` 生成 `op-005`（序号与注册脱节）、`flow ops list` 为空、`flow attempt` 无法记录 001~004；且全仓无「补注册」入口（`flow repair --prune-orphans` 只删**键孤儿**，方向相反）。
+
+**模式：声明↔实体漂移须双向可修，「创建侧」须有「补注册侧」对称出口**：
+
+- **序号起点 = 注册 ∪ 文件的最小未用正整数（空位回填）**：纯函数 `nextSchemeSequence(fileSeqs, registeredSeqs)`（`fs/sequence.ts`）计算 `start`，注入既有 `reserveSequence({start})`（O_EXCL 兜底占号，**核心零改**）；`fileSeqs` 由 `scanOpFileSeqs`（正则 `/^op-(\d+)/`，兼容历史命名）锁内扫描，`registeredSeqs` 由 `readRegisteredOpSeqs`（读 `flow.json` `stages[id].ops` 键）锁内读取。防「某号仅注册无文件 / 删文件留空洞」导致跳号。
+- **补注册 = `plan scheme register <stage> [opId] [--dry-run]`**：复用 `findOrphanOps().fileOrphans` **单一口径**（不引第二套孤儿判定），按 `createScheme` 注册默认（`state=pending` / `assignee=openfeel-executor` / `max_attempts=3` / `checkpoints` 默认）写入 `flow.json`，`title` 由 `extractTitle`（内容首行→文件名回退）。已注册 → no-op **不覆盖**；文件不存在 → 报错 exit 1；`--dry-run` 逐字节零写盘。审计 `register_op`。与 `plan scheme remove`（删键不删文件）构成对账闭环。
+- **未注册文件告警（D2：告警继续，非破坏性）**：`create` 经 `syncToFlowJson` 后调 `warnUnregisteredFiles`（`console.warn`→stderr、前 5 条、文案含 `plan scheme register <stage>` 指引）；`try/catch` 全包不阻塞创建；**正解是 `register` 补注册，而非让 create 复用/覆盖既有文件**。
+- **判据（上溯原则）**：声明式状态文件 + 禁止手改 + 全由 CLI 写入的治理体系，须为**每种可写结构提供对称的增/删/改/查命令面**（呼应 kb/architecture.md #纠正侧能力对称原则）。本阶段补齐 `create`（增）↔ `register`（补注册）↔ `remove`（删键不删文件）。
+
+**陷阱**：① 序号起点须在既有 `scheme-{stageDir}` 锁内计算 + 读 `flow.json`，写仍由 flow.lock 保护（R-1）；② 空位回填仅针对「既无文件又无注册」的空洞——注册键计入占用**不回收**（union 语义），避免旧引用断链；③ 复用 `findOrphanOps` 单实现，防第二套孤儿判定漂移。
+
+**实证**：v1.1.4-stage-64（空阶段 create×3 → 001/002/003 均注册；注册空洞 {001,003} → 回填 002；文件孤儿 001~004 + create → op-005 且 001~004 逐字节不变 + 未注册告警；`register` 全量/单项/no-op/exit 1/dry-run 逐字节零写盘；历史命名解析兼容）。
+
+**参见：** v1.1.4-stage-64（op-001 `abc6a59` / op-002 `d276a4c` / op-003 `ee5ae2e`）；`src/core/plan/scheme.ts` `createScheme`/`registerSchemes`/`warnUnregisteredFiles`；`src/core/fs/sequence.ts` `nextSchemeSequence`；kb/architecture.md #纠正侧能力对称原则；kb/patterns.md #审计日志 action 命名与双轨语义模式
+
+## [+] op frontmatter 状态为文档副本、权威源为 `flow.json`（由 `flow attempt` 维护） (2026-10-03)
+
+**背景（v1.1.4-stage-64 REV-003）**：`ops/op-001~003.md` frontmatter 的 `- **状态**：pending` 在 op 完成后仍为 `pending`，而 `flow.json` 权威状态已 `done`（`flow ops list` 佐证）。属文档层面小瑕疵，非功能缺陷。
+
+**口径**：op 文件的 frontmatter `状态` 是**展示用副本**，**唯一权威源为 `flow.json` `stages[id].ops[opId].state`**；状态由流水线动作（`flow attempt` 记录、`advance` 推进）维护，**不依赖手工编辑 op 文件**。审查/归档时若二者不一致，**以 `flow.json` 为准**，不为「frontmatter 未同步」开 Bug。
+
+**判据**：声明式状态文件 + CLI 单一写入入口的治理体系下，凡「同一事实存在于状态文件与展示载体两处」的场景，须显式声明权威源并约定不一致时的取舍方向（本仓统一：`flow.json` > 文档副本），避免把展示副本的滞后误判为数据不一致。
+
+**参见：** v1.1.4-stage-64 REV-003（low 非阻塞）；kb/patterns.md #审计日志 action 命名与双轨语义模式；`src/core/plan/scheme.ts` `generateSchemeTemplate`

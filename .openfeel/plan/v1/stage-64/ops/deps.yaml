@@ -1,0 +1,80 @@
+# stage-64 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.4-stage-64
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-03"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.4-stage-62
+    type: soft
+    status: done
+    reason: "stage-62 已把 status 收敛为 phase 投影并反转 auto-repair 方向；本阶段不改 phase/status 语义，仅动 op 序号与注册入口。"
+  - downstream: v1.1.4-stage-65
+    type: soft
+    note: "版本号 1.1.3→1.1.4 收口归 stage-65；本阶段不改版本载体（package.json/CHANGELOG/roadmap）。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不直写 `flow.json`**；phase 推进由 Feel 调度。"
+
+# 本阶段 3 op：op-001 → op-002（hard）→ op-003（hard，文档须反映已落地命令面）。
+# 覆盖问题 2（op 注册一致性）。不变量：不改 createScheme 模板/注册默认、不改 --prune-orphans、
+# 不新增 flow repair --register-ops、不迁移/重命名既有 op 文件、不删注册键、不新增依赖。
+ops:
+  op-001:
+    file: op-001.md
+    title: "序号「注册 ∪ 文件」+ 空位回填 + create 告警"
+    produces:
+      - src/core/fs/sequence.ts
+      - src/core/plan/scheme.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/fs/sequence.test.ts
+      - test/core/plan/scheme.test.ts
+    deps: []
+    notes: "覆盖 T1 + T3 + T5.1~T5.3。**T1** `sequence.ts` 新增纯函数 `nextSchemeSequence(fileSeqs, registeredSeqs)`（并集最小未用正整数，空集→1）；`scheme.ts` 新增 `scanOpFileSeqs`（op-(\d+) 文件名解析，兼容历史命名）/`readRegisteredOpSeqs`（只读 flow.json `stages[fullId].ops` 键）；`createScheme` 锁内以 `start = nextSchemeSequence(...)` 注入 `reserveSequence`（O_EXCL 兜底保留，parse/候选名逐字不变）。**T3** `warnUnregisteredFiles` 在 `syncToFlowJson` 后复用 `findOrphanOps().fileOrphans` 过滤目标阶段，非空 → `console.warn`（前 5 条 + `plan scheme register <stage>` 指引，D2 告警继续）；新增 i18n 键 `plan.scheme.unregisteredFilesWarnTmpl`（1 键）。**T5** sequence 单测（空/并集/空洞）+ scheme 用例（空阶段×3、注册空洞回填 002、文件孤儿 001~004→005 + 告警且不覆盖既有）。门禁：tsc 0 + npm test 0 skipped + lint i18n 731 + lint kb 0。"
+
+  op-002:
+    file: op-002.md
+    title: "plan scheme register 补注册"
+    produces:
+      - src/core/plan/scheme.ts
+      - src/commands/plan.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/plan/scheme.test.ts
+      - test/commands/plan.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T2 + T5.4~T5.8。**T2** `scheme.ts` 新增 `RegisterSchemesResult` + `findOpFileInDir`（`op-NNN.md`/历史 `op-NNN_*.md`）+ `defaultOpForRegister`（与 createScheme 注册 shape 逐字一致）+ `registerSchemes(projectPath, stage, opId?, {dryRun})`：复用 `findOrphanOps().fileOrphans` 过滤阶段；未指定→补全量，指定→noop（已注册）/skipped（无文件）/registered；`extractTitle` 兼容历史命名回退；dryRun 零写盘；非 dryRun 逐条 `appendLog('register_op')` + `save()`。**命令层** `commands/plan.ts` 新增 `plan scheme register <stage> [opId] [--dry-run]`，按 ok/dryRun/none/noop/not-found 分流 i18n（not-found 复用 `plan.scheme.publish.notFoundTmpl`）。**i18n** 新增 4 运行键 + 4 help 键（8 键）。**T5** scheme 核心测（全量/单项/dry-run revision 不变/已注册 noop 不覆盖/历史命名）+ 命令测 + 命令树含 register。**D-reg**：不新增 `flow repair --register-ops`。门禁：tsc 0 + npm test 0 skipped + lint i18n 739 + lint kb 0。"
+
+  op-003:
+    file: op-003.md
+    title: "文档 + skill + i18n + 门禁"
+    produces:
+      - src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md
+      - src/core/update.ts
+      - src/core/template-loader.ts
+      - .openfeel/manual/cli/commands.md
+      - docs/commands.md
+      - .openfeel/plan/v1/v1.1.4/plan.md
+      - .openfeel/plan/v1/stage-64/plan.md
+      - test/commands/flow.test.ts
+    deps:
+      - op: op-002
+        type: hard
+    notes: "覆盖 T4 + T6 + 全门禁。**T6.1** skill 权威源 `templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`：速查表补 `register`、纠正/清理侧补 `plan scheme register` + create 序号「注册 ∪ 文件」与告警；**不改快照版本行**。**T6.2** `.openfeel/manual/cli/commands.md` + `docs/commands.md` 同步（双载体，防只改一处）；docs 新增 `plan scheme register` 小节。**T6.3/D-i18n** 9 新键已在 op-001（1）/op-002（8）随代码落地；本 op **显式登记新基线 730→739**（v1.1.4 plan §七 + stage-64 plan §三/§九）并以 rg 复核无死键。**T4** 核验 `flow repair` 无 `--register-ops`、`--prune-orphans` 零改动、`findOrphanOps` 单一实现；`test/commands/flow.test.ts` 加回归断言。**G** 全门禁：build 传播 + 二次幂等 + `.opencode/**` 不复活 + tsc 0 + npm test 0 skipped + lint i18n 739 + lint kb 0。"
+
+# 下游契约（新增补注册命令；序号语义变更；不改转移表 / flow phases 5 键 / advance 合法路径与 REV 检查）
+downstream_contracts:
+  - name: "openfeel plan scheme create"
+    change: "序号由「仅文件 max+1」改为「ops/ 文件 ∪ flow.json 注册」最小未用正整数（空位回填）；创建后对目标阶段未注册文件输出 stderr 告警"
+  - name: "openfeel plan scheme register"
+    change: "**新增**：补注册 fileOrphans 到 flow.json（全量/单项/--dry-run）"
+  - name: "openfeel flow repair --prune-orphans"
+    change: "**不改**（仍单向清键孤儿；文件孤儿补注册出口为 `plan scheme register`）"

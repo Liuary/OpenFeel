@@ -1,56 +1,57 @@
-# 自测报告 — op-001（v1.1.2-stage-59）
+# 自测报告 — v1.1.4-stage-63.op-001
 
-- **执行时间**：2026-10-02
+- **执行时间**：2026-10-03 08:30
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（首次即通过）
+- **重试次数**：1（首次 tsc 联合键索引 `never` 报错，已修正）
 
 ## 执行摘要
-
-全部 M1~M6 落地，YAML 自检 `YAML OK`；WSL 三场景演练 **S1 PASS / S2 PASS / S3 FAIL（非空，复现 CI run #52）**；自测通过。
+全部实施步骤（T1+T4+T6.4/T6.5/T6.6）完成，自测通过；四道门禁全绿（tsc=0 / test 1036 passed / i18n=730 / kb=0）。
 
 ## 实施步骤完成情况
-
-- [x] M1：`build-and-test` 的 `Version consistency guard` 注入 `env: OPENFEEL_LOG: '0'`（步骤名/body 不变）
-- [x] M2：`lint i18n` 注入同 env（保持匿名 `run`）
-- [x] M3：`publish` 的 `Version consistency guard` 注入同 env（`if:`/`needs:`/`env: NODE_AUTH_TOKEN` 不变）
-- [x] M4：`Env snapshot (before test)` 整步下移至 `lint i18n` 之后、`Test` 之前
-- [x] M5/M6：`snapshot()` 与 `Env guard` 三态化加固（`ABSENT`/`EXISTS-EMPTY`/sha256 清单），两处逐字一致
-- [x] YAML 自检 + 演练脚本 + REV-001 措辞修正
+- [x] T1.1/T1.2：`src/core/config.ts` 新增 `ResolvedConfigDefaults` + `normalizeConfigKey` + `resolveConfigDefaults`（只读 `config.yaml.defaults`，不读 status.md，不做 effective 合并）
+- [x] T4.1~T4.3：`commands/config.ts` import 追加 `normalizeConfigKey`；`get`/`set` 项目模式入口先归一后走既有白名单/取值校验；错误文案附 `defaults.X` 等价
+- [x] T4.4：`--global` profile 分支未改动（回归通过）
+- [x] T4.5：`zh-CN.ts` / `en.ts` 的 `help.config.get` / `help.config.set` 值补 `defaults.X ≡ X` 说明（**不增键**，键数仍 730）
+- [x] T4.6：CLI 实测 `config set bogus 1` → stderr 含 `defaults.` 等价提示、exit 1
+- [x] T6.4a/T6.4b：`test/core/config.test.ts` 新增 `normalizeConfigKey`（4 例）/ `resolveConfigDefaults`（4 例）
+- [x] T6.4c/T6.4d/T6.5/T6.6：`test/commands/config.test.ts` 新增键等价、非法值/非法键不写盘、`test_enabled` 跨阶段回归
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| `yaml.parse` 自检 | ✅ | `YAML OK` |
-| 步骤数不变 | ✅ | build-and-test 11 / publish 7（与改前一致） |
-| `OPENFEEL_LOG: '0'` 恰 3 处（string） | ✅ | node 解析确认 3 处，`typeof === 'string'` |
-| `EXISTS-EMPTY` 计数 | ⚠️ | 实测 4（2 代码 + 2 注释）；见「偏差记录」 |
-| M4 顺序：lint i18n < Env snapshot < Test | ✅ | L33 < L34 < L50 |
-| `Env guard` 在 `Test`+`Coverage` 之后 | ✅ | L78 |
-| `Test failure annotations` 零改动 | ✅ | diff 未出现该块 |
-| publish `needs/if/NODE_AUTH_TOKEN` 不变 | ✅ | `build-and-test` / `refs/heads/master` / `${{ secrets.OPENFEEL_AUTO_NPM }}` |
-| WSL S1 | ✅ | PASS（diff 空）；全量 `61 files / 1016 passed \| 2 skipped` |
-| WSL S2 | ✅ | PASS（diff 空） |
-| WSL S3 | ✅ | FAIL（diff 非空，复现 run #52） |
-| 演练脚本落私域 tmp、命名与 ci.yml 一致 | ✅ | `snap_before_$key`/`snap_after_$key` + 裸标记 |
-| REV-001 措辞修正 | ✅ | `plan.md` §5.1 改「三态判定逻辑等价 + 以 op-001 §三为准」 |
-| 未改 `src/**`/`test/**`/`package.json`/`flow.json` | ✅ | git status 确认 |
-| 未 push / 未 npm publish / 无新依赖 | ✅ | — |
+| `normalizeConfigKey` 仅剥离 `defaults.` 前缀，其它点号键不动 | ✅ | `meta.version` 原样 |
+| `resolveConfigDefaults` 无 config.yaml / defaults 缺失 → `DEFAULT_CONFIG` 三键 | ✅ | 2 用例覆盖 |
+| 非法值逐键回退，其它键不受影响 | ✅ | `execution_mode: bogus` → manual，auto_advance 保留 |
+| `resolveConfigDefaults` 不读 status.md | ✅ | `rg status src/core/config.ts` 仅注释/模板命中，无新增读取 |
+| `config set/get defaults.X ≡ X`，非法键/值 exit 1 且不写盘 | ✅ | T6.4c/d |
+| `config set test_enabled` → 无效键 exit 1 | ✅ | T6.6，config.yaml 未创建 |
+| `--global` profile 键域回归 | ✅ | `config set --global user.lang en` → exit 0 |
+| `lint i18n` = 730（键数不变） | ✅ | 实盘 730 |
 
 ## 产出文件
+- `src/core/config.ts`
+- `src/commands/config.ts`
+- `src/core/i18n-data/zh-CN.ts`
+- `src/core/i18n-data/en.ts`
+- `test/core/config.test.ts`
+- `test/commands/config.test.ts`
+- `.openfeel/plan/v1/stage-63/ops/op-001.md`（动作清单）
 
-- `.github/workflows/ci.yml`（M1~M6，132 行；commit `7d84f15`）
-- `.openfeel/plan/v1/stage-59/plan.md`（REV-001，随 op-001 commit）
-- `.openfeel/users/Liuary/tmp/stage-59-guard-drill.sh`（私域临时，不入版本管理）
-- `.openfeel/users/Liuary/tmp/stage-59-guard-drill.out`（演练实测输出留档）
+## 门禁实测
+| 门禁 | 结果 |
+|------|------|
+| `npx tsc --noEmit` | 0 |
+| `npm test` | 61 files / 1036 passed / 0 failed / 0 skipped |
+| `node bin/openfeel.js lint i18n` | ✅ 730 键一致 |
+| `node bin/openfeel.js lint kb` | ✅ 0 过期（312 引用） |
+| `npm run build` | ✅ 成功；生成源文件零漂移（template-loader.ts / update.ts 无 diff） |
 
 ## 前置校验结果
-
-- 方案完整性：通过（目标/实施步骤/产出文件/自测清单/阶段/最多重试 6 项齐备）
-- Phase 合法性：通过（stage `v1.1.2-stage-59` phase=`exec_running`；全局 phase=`active`）
-- 流转合法性：通过（`openfeel flow health --quick` 全部通过、0 warnings；`flow current` = op-001）
+- 方案完整性：通过（6 项必填字段齐备）
+- Phase 合法性：通过（`flow current` → 阶段 `exec_running`，op 匹配 `v1.1.4-stage-63.op-001`）
+- 流转合法性：通过（`flow health --quick` 健康检查通过）
+- 补充：`rg normalizeConfigKey|resolveConfigDefaults src` = 0；`ConfigDefaultsSchema` 三键无 `test_enabled`；`rg test_enabled src/core/config.ts src/commands/config.ts` = 0
 
 ## 偏差记录
-
-1. **`EXISTS-EMPTY` 计数与方案 §六.3 期望不符**（非功能偏差）：方案 §六.3 期望 `rg "EXISTS-EMPTY"` 恰 2 处，实测 4 处。原因是方案 §二.7（权威完整 `ci.yml`）的 M5/M6 注释行本身含该字符串（2 处注释 + 2 处代码）。本 op **严格照 §二.7 落地**，未改动注释，故为方案内部（§二.7 vs §六.3）计数口径不一致，非实现问题。代码级实现恰 2 处。
-2. **`plan.md` §5.1 的 REV-001 修正随 op-001 提交**；stage-59 目录整体为未跟踪（首次提交），按仓库惯例其余阶段产物由阶段归档提交。
+- 无跳步违规。
+- 偏差：① `resolveConfigDefaults` 实现中联合键索引赋值触发 tsc `never`，改用字符串记录表赋值（语义等价，最小实现修正）；② 为验证 T4.6 CLI 实际行为执行了 `npm run build`（plan 门禁项之一），dist 为 gitignore，生成源文件零漂移；③ 新增 i18n 值修改未增键，键数 730 不变。

@@ -2,6 +2,11 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-03-Liuary-011.md](2026/10/03/2026-10-03-Liuary-011.md) | Liuary | 阶段 v1.1.4-stage-63 完成 |
+| [2026-10-03-Liuary-010.md](2026/10/03/2026-10-03-Liuary-010.md) | Archiver | **v1.1.4-stage-63 归档完成（配置默认值解析与阶段创建继承，问题 1/6，3 op）**——新阶段 status.md 初值由硬编码改为取 `config.yaml.defaults`（`resolveConfigDefaults`，只读 defaults、不读 status.md、不做级联）+ `plan stage add --exec-mode/--auto-advance` 显式覆盖 + `config set/get` `defaults.X ≡ X`（`normalizeConfigKey` 单一来源）+ `config set --sync-stages` 批量同步；**有效值级联优先序零触碰**；门禁 **61 文件 / 1046 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` 730、`lint kb` 0（312 引用）、build 幂等不复活；审查 **passed**（REV-001/002/003 全 low 非阻塞 open；含一次已回滚 cwd 误操作事故披露）；无新 Bug；知识沉淀 2 条（patterns）；**未推进 flow 至 done（由 Feel 执行）／未 push** |
+| [2026-10-03-Liuary-009.md](2026/10/03/2026-10-03-Liuary-009.md) | Liuary | v1.1.4-stage-63.op-003 执行通过 |
+| [2026-10-03-Liuary-008.md](2026/10/03/2026-10-03-Liuary-008.md) | Liuary | v1.1.4-stage-63.op-002 执行通过 |
+| [2026-10-03-Liuary-007.md](2026/10/03/2026-10-03-Liuary-007.md) | Liuary | v1.1.4-stage-63.op-001 执行通过 |
 | [2026-10-03-Liuary-006.md](2026/10/03/2026-10-03-Liuary-006.md) | Liuary | 阶段 v1.1.4-stage-62 完成 |
 | [2026-10-03-Liuary-005.md](2026/10/03/2026-10-03-Liuary-005.md) | Archiver | **v1.1.4-stage-62 归档完成（状态/相位单一事实源收敛，v1.1.4 首阶段，3 op）**——`status` 明确为 `phase` 粗粒度投影（单一事实源=phase）；映射去 `testEnabled`（`review_passed` 恒 `'review_passed'`）+ auto-repair 仅 `phase→status` 单向 + `stage set --status` 值域校验 + `test_enabled` 全链移除；**锁根因消除**（fixture `{review_passed, done}` → `advance --to test_pending` exit 0）；门禁 **61 文件 / 1023 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` 730、`lint kb` 0（312 引用）；审查 **passed**（REV-001 medium / REV-002·003 low 非阻塞 open）；无新 Bug；知识沉淀 4 条（supersede 1 + 补沉 1 + 新增 2）；**未推进 flow 至 done（由 Feel 执行）／未 push** |
 | [2026-10-03-Liuary-004.md](2026/10/03/2026-10-03-Liuary-004.md) | Liuary | v1.1.4-stage-62.op-003 执行通过 |
@@ -27,11 +32,6 @@
 | [2026-10-02-Liuary-007.md](2026/10/02/2026-10-02-Liuary-007.md) | Liuary | v1.1.2-stage-58.op-001 执行通过 |
 | [2026-10-02-Liuary-006.md](2026/10/02/2026-10-02-Liuary-006.md) | Liuary | 阶段 v1.1.2-stage-57 完成 |
 | [2026-10-02-Liuary-005.md](2026/10/02/2026-10-02-Liuary-005.md) | Archiver | **stage-57 归档完成（发布收尾：CI 修复 + CI 可观测性 + README 更新，3 op）**——**C1** T32 平台化（跨平台 + Windows `it.skipIf`，前置断言防假绿，`src/core/config.ts` 零 diff）；**C2** CI 失败注解（`pipefail` + `--no-color` + sed 剥色 + `if: failure()`，REV-004 blocking 修复闭环）；**C3** README×3（28 处）+ `docs/commands.md`（986/59、v1.1.2 能力节、命令表、全局部署架构、zh/en 178 行对等、`1.1.1` 零残留）；`npm test` **59 文件 / 986 用例**、build 幂等不复活、`lint i18n` 726 键、`lint kb` 0 过期；Linux 预览 985 passed / 1 skipped → CI 将转绿；REV-001~004 closed + **REV-005（README `backup/` 粒度）归档官就地修正 `backup.ts` 关闭**；无新 Bug（18 全 closed）；知识沉淀 3 条；**十七阶段全部闭环，可推送 / 发布** |
-| [2026-10-02-Liuary-004.md](2026/10/02/2026-10-02-Liuary-004.md) | Liuary | stage-58 方案审查：REV-006（blocking，high）门禁测试基线过期 985→986 实测上报 |
-| [2026-10-02-Liuary-003.md](2026/10/02/2026-10-02-Liuary-003.md) | Liuary | v1.1.2-stage-57.op-003 执行通过 |
-| [2026-10-02-Liuary-002.md](2026/10/02/2026-10-02-Liuary-002.md) | Liuary | v1.1.2-stage-57.op-002 执行通过 |
-| [2026-10-02-Liuary-001.md](2026/10/02/2026-10-02-Liuary-001.md) | Liuary | v1.1.2-stage-57.op-001 执行通过 |
-| [2026-10-01-Liuary-053.md](2026/10/01/2026-10-01-Liuary-053.md) | Liuary | 阶段 v1.1.2-stage-56 完成 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

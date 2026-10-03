@@ -1,68 +1,78 @@
-# 自测报告 — op-003（v1.1.4-stage-62）
+# 自测报告 — v1.1.4-stage-63.op-003
 
-- **执行时间**：2026-10-03 07:47
+- **执行时间**：2026-10-03 08:32
 - **执行 Agent**：openfeel-executor
 - **重试次数**：第 1 次
 
 ## 执行摘要
-T7.1~T7.4 文档同步 + T5.1 KB 备注登记（不直改 kb）+ 全门禁实跑通过；无代码行为改动。
+T7.1~T7.3 全部完成：权威源 skill + 3 份 manual/docs 同步，`npm run build` 双注入传播生效且幂等，全门禁通过（build 成功、tsc=0、1046 用例全绿 0 skipped/0 failed、lint i18n=730、lint kb=0、`.opencode/**` 未复活）。
 
 ## 实施步骤完成情况
-- [x] T7.1.1 flow-manager.md 新增「状态/相位单一事实源」节（投影/单一事实源/auto-repair 单向/锁根因/枚举）
-- [x] T7.1.2 `resolveEffectiveConfig` 描述四键→三键
-- [x] T7.1.3 `reconcileStatusMd` 追加 `--fix` 权威口径（仅状态行/批量/唯一入口/D3）
-- [x] T7.1.4 配置级联节与 statusOverrides 保留（无 `test_enabled`）
-- [x] T7.2.1 config.md `defaults` 键列去布尔测试门禁键
-- [x] T7.2.2 `DEFAULT_CONFIG` 三键齐全
-- [x] T7.2.3 新增移除说明（passthrough 兼容 + `config set` 无效键）
-- [x] T7.3.1 manual/cli/commands.md `stage set --status` 值域校验
-- [x] T7.3.2 同文件 `flow health --fix` 权威口径
-- [x] T7.3.3 docs/commands.md 三键/去布尔键/归一示例通用化
-- [x] T7.3.4 docs/commands.md 增补值域 + `--fix` 权威口径
-- [x] T7.3.5 未改版本快照/CHANGELOG/历史文档
-- [x] T5.1 新建 kb-notes.md（supersede / 补沉 / 新增 三项）
-- [x] T5.2 未直改 `.openfeel/kb/**`
-- [x] G.1~G.9 门禁与 fixture 实跑
+- [x] T7.1a：skill 第 27 行 `plan stage add|list` 补 `--exec-mode`/`--auto-advance` + 「初值取 `config.yaml.defaults`；显式选项优先」
+- [x] T7.1b：skill 第 30 行 `config` 补 `defaults.X ≡ X` 与 `set ... --sync-stages`
+- [x] T7.1c：skill D 段补 `plan stage add --tasks/--exec-mode/--auto-advance`；E 段补 `defaults.` 等价 + `--sync-stages` 适用键/跳过语义
+- [x] T7.1d：skill 快照版本标注（v1.1.2 快照/`## v1.1.2 新增能力`）**未改**
+- [x] T7.2a：`.openfeel/manual/cli/commands.md` 第 87/95/108 行同步命令面与键等价
+- [x] T7.2b：`.openfeel/manual/core/config.md` 补 `normalizeConfigKey`/`resolveConfigDefaults`/`STAGE_FIELD_BY_CONFIG_KEY`/`syncConfigFieldToStages`
+- [x] T7.2c：`docs/commands.md` 第 249-266 `plan stage add` 与第 423-436 `config get/set` 同步；未动第 3 行版本快照
+- [x] T7.3a：`npm run build` 成功（17 Skill 定义双注入）
+- [x] T7.3b：生成段 grep 命中新文案（`template-loader.ts:6806/6809/6832/6833`、`update.ts:400/403/426/427`）
+- [x] T7.3c：`.opencode/**` 未复活（`git status` 零 `.opencode/` 条目）
+- [x] T7.3d：二次 build 后 `template-loader.ts`/`update.ts` SHA256 不变（幂等）
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| manual flow-manager 含「status=phase 投影/单一事实源/auto-repair 单向/锁根因」 | ✅ | 新增节 line 114-123 |
-| `rg "test_enabled\|四个受管配置键\|四键" .openfeel/manual docs/commands.md` = 0 | ✅ | rg 无输出（exit 1）；键名精确记录于 kb-notes.md |
-| docs/commands.md 支持键列表无布尔测试门禁键；值域 + `--fix` 口径已写 | ✅ | line 212/518 |
-| kb-notes.md 三项归档交付完整 | ✅ | supersede/补沉/新增 |
-| npm test / tsc / lint i18n=730 / lint kb=0 | ✅ | 见下 |
-| flow health fixture 无 projection 噪声 | ✅ | G.6 一致 1/1 |
-| `.opencode/**` 未复活 | ✅ | git status 0 |
-| 未直改 kb/、未改版本快照/CHANGELOG/历史 | ✅ | — |
+| skill 权威源含 `--sync-stages`/`--exec-mode`/`--auto-advance`/`defaults.X ≡ X` | ✅ | rg 命中 |
+| `template-loader.ts`/`update.ts` 生成段含上述文案 | ✅ | build 传播生效 |
+| 生成段未手改（仅 build 产物 diff） | ✅ | 仅 `npm run build` 重生成 |
+| `.opencode/**` 不复活 | ✅ | git status 零条目 |
+| manual/docs 与新命令面一致 | ✅ | 三份文件对齐 op-001/002 实盘 `--help` |
+| `lint i18n`=730（键数不增）；`lint kb`=0 | ✅ | 实测 730 / 0 |
+| `npm run build` 幂等（二次无新 diff） | ✅ | SHA256 不变 |
+| `npm test` 全绿 0 skipped/0 failed；`tsc`=0 | ✅ | 61 文件 / 1046 用例；tsc=0 |
 
 ## 门禁实测数字
-- `npm run build`：成功；模板一致性 3/3
-- `npx tsc --noEmit`：0
-- `npm test`：61 文件 / 1023 用例，0 failed / 0 skipped
-- `lint i18n`：730 键一致（未新增键）
-- `lint kb`：0 过期（307 引用）
-- `flow health --quick`：全 pass
+- `npm run build`：成功（模板一致性校验 3/3 + opencode 3/3）
+- `npx tsc --noEmit`：exit 0
+- `npm test`：61 test files passed，1046 tests passed，**0 skipped / 0 failed**
+- `node bin/openfeel.js lint i18n`：✅ 730 键一致（不新增键）
+- `node bin/openfeel.js lint kb`：✅ 0 过期（检查 312 引用）
+- `git status --short`：无 `.opencode/**`；未手改 `flow.json`（其 M 状态为 CLI 流水线自身写入，非本 Agent 编辑）
 
 ## 产出文件
-- `.openfeel/manual/core/flow-manager.md`
-- `.openfeel/manual/core/config.md`
+- `src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`
+- `src/core/template-loader.ts`（build 生成段）
+- `src/core/update.ts`（build 生成段）
 - `.openfeel/manual/cli/commands.md`
+- `.openfeel/manual/core/config.md`
 - `docs/commands.md`
-- `.openfeel/plan/v1/stage-62/kb-notes.md`
-- `.openfeel/users/Liuary/log/2026-10-03-004.md`
+- `.openfeel/plan/v1/stage-63/ops/op-003.md`（动作清单回写）
+
+## 方案一致性回写
+| 声明产出 | 实际 | 结论 |
+|----------|------|------|
+| SKILL.md | 已改 | 一致 |
+| template-loader.ts | build 重生成 | 一致 |
+| update.ts | build 重生成 | 一致 |
+| manual/cli/commands.md | 已改 | 一致 |
+| manual/core/config.md | 已改 | 一致 |
+| docs/commands.md | 已改 | 一致 |
+
+无遗漏、无超范围。
 
 ## 前置校验结果
-- 方案完整性：通过（6 必填字段齐）
-- Phase 合法性：通过（`exec_running`，current.op=op-003 匹配）
-- 流转合法性：通过（`flow health --quick` 全 pass）
-- 方式：CLI `openfeel flow health --quick`
-
-## Fixture 证据（G.6/G.7）
-- G.6：`s62-a`（phase=review_passed/status=review_passed）→ `flow health` 「跨文件一致性：一致 (1/1 stages)」无 warn。
-- G.7：`s62-b`（phase=review_passed/status=done）→ repair 前 `{review_passed,done}`、后 `{review_passed,review_passed}`；`stage set --status review_pending` exit 1、hash 不变、无 `.bak`。
+- 方案完整性：通过（6 项必填字段齐全）
+- Phase 合法性：通过（`exec_running`，`current.op=v1.1.4-stage-63.op-003`）
+- 流转合法性：通过（`openfeel flow health --quick` 健康检查通过）
 
 ## 偏差记录
-- **方案内部张力**：自测 `rg test_enabled ... → 0` 与 T7.2.3「命名 `test_enabled`」冲突 → 取硬门禁优先，manual/docs 不落 `test_enabled` 字面量，改以「原布尔测试门禁键」表述；键名记录于 `kb-notes.md`。已在 op-003.md 修正记录登记。
-- 未编辑/未推进 `flow.json`（遵循 D3 与边界）。
-- 无跳步违规。
+无跳步、无超范围、无遗漏。
+
+## KB 备注（供归档官补沉，本 op 未直改 `kb/`）
+1. 「新建阶段骨架初值取 config defaults」——单一 resolver `resolveConfigDefaults(projectPath)`，**只读 config.yaml defaults，不读 status.md、不做 effective 合并**；缺失/非法逐键回退 `DEFAULT_CONFIG`。
+2. 「`defaults.X ≡ X` 键归一」——单一来源 `normalizeConfigKey`（剥离一次 `defaults.` 前缀）；`config set/get` 项目模式先归一再走白名单/枚举校验；`--global` profile 键域不受影响。
+
+## 阶段收口说明
+- 全门禁通过后**不自行推进 flow phase**，由 Feel 调度 openfeel-reviewer 审查。
+- `openfeel flow attempt --op v1.1.4-stage-63.op-003 --result pass` 已执行。

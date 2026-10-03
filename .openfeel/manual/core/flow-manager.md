@@ -25,6 +25,7 @@
 | `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、`remove_stage` 审计日志）；**不执行目录删除**，`purge` 时返回 `{ purgeTarget }` 由命令层在 `save()` 成功后删除（stage-47 事务顺序） |
 | `getPipelinePhases()` / `getPipelineTransitions()` | 自描述访问器：返回运行时 `pipelineConfig` 的 phase 列表与转移表**副本**（缺省回退默认表） |
 | `resolveEffectiveConfig()` | 解析**三个**受管配置键（`execution_mode` / `auto_advance` / `merge_mode`，`EFFECTIVE_CONFIG_KEYS`）的「有效值 + 生效来源」，输出 `key → { value, source }`；复用内部 `buildCascadeConfig`（单一权威，避免第二套解析）。**v1.1.4-stage-62 起布尔测试门禁键已移除**，不再属受管键 |
+| `syncConfigFieldToStages(configKey, value)` | **v1.1.4-stage-63 新增**（`config set --sync-stages`）：将受管配置键批量同步到**所有已注册阶段**的 `status.md` 对应字段。适用键由 `STAGE_FIELD_BY_CONFIG_KEY`（`config.ts` 单一来源）映射（`auto_advance → 自动推进`、`execution_mode → 执行模式`）；复用 `writeStatusField` 定向写 + 按阶段锁 + `readStatusFieldValue` 判同值（**同值 no-op 零写盘**），字段/文件缺失 → `skipped-no-field` / `skipped-no-status` 逐条报告；**只读** `flow.json.stages` 枚举、**不写 flow.json**；审计 action `config_sync_stage` |
 | `FlowConcurrentModificationError` / `isFlowConcurrentError(err)` | flow.json 乐观并发冲突错误类型与识别函数（命令层统一捕获） |
 
 ## 并发保护与乐观并发校验
@@ -138,6 +139,8 @@ plan_pending → plan_review → plan_passed
 来源判定与合并顺序逐字对应：`status.md > config.yaml > profile.yaml > builtin`（三层皆无 → `String(DEFAULT_CONFIG[key])` 标 `builtin`）。
 
 > **`config/BUG-003` 已修复（v1.1.2-stage-47，`buildCascadeConfig`）**：画像层改为「文件真实存在 + 原始 YAML 显式声明」双条件，无画像环境下来源正确落 `builtin`（`auto_advance: disabled [来源: builtin]`）；有 profile 且显式值时仍为 `profile.yaml`。**测试注意**：`effective` 是三层**显式声明值的浅合并**（无 builtin 回填），故无画像时 `effective.auto_advance` 为 `undefined`，而 `resolveEffectiveConfig()` 经 `DEFAULT_CONFIG` 回填后为 `{ value: 'disabled', source: 'builtin' }`——两者语义不同，断言不可互换。
+
+> **新建阶段初值不同于级联（v1.1.4-stage-63）**：新阶段 `status.md` 的 `执行模式`/`自动推进` 初值取自 `core/config.ts` 的 `resolveConfigDefaults(projectPath)`（**只读 `config.yaml.defaults`、不做 effective 合并、不读 status.md**，见 `manual/core/config.md`），再经 `ensureStageSkeleton`/`addStage` 的 `overrides` 显式覆盖。**级联解析链（本节的 `buildCascadeConfig` / `resolveEffectiveConfig`）零改动**：`status.md > config.yaml > profile.yaml > builtin` 的有效值优先序不变。存量阶段批量回填由 `syncConfigFieldToStages`（上表）承担，与新建继承分工不重叠。
 
 ## 审计日志 action 一览（stage-41 / stage-42）
 

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-03T00:55:18.661Z",
-    "revision": 667
+    "updated": "2026-10-03T00:22:29.132Z",
+    "revision": 654
   },
   "pipeline": {
     "phase": "active",
@@ -2784,15 +2784,15 @@
     },
     "v1.1.4-stage-63": {
       "name": "v1.1.4-stage-63",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "scheme_passed",
+      "status": "planned",
       "deps": [],
       "ops": {
         "op-001": {
           "title": "键归一 + 默认值解析助手",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -2807,9 +2807,9 @@
         },
         "op-002": {
           "title": "创建继承 + 显式选项 + 批量同步",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -2824,9 +2824,9 @@
         },
         "op-003": {
           "title": "文档 + skill + 构建传播 + 门禁",
-          "state": "done",
+          "state": "pending",
           "assignee": "openfeel-executor",
-          "attempts": 1,
+          "attempts": 0,
           "max_attempts": 3,
           "checkpoints": {
             "plan": "pending",
@@ -12950,140 +12950,6 @@
       "detail": {
         "stage": "v1.1.4-stage-63",
         "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-10-03T00:23:23.163Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.4-stage-63",
-        "from": "scheme_pending",
-        "to": "scheme_passed"
-      }
-    },
-    {
-      "time": "2026-10-03T00:23:23.187Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.4-stage-63",
-        "from": "scheme_passed",
-        "to": "exec_running"
-      }
-    },
-    {
-      "time": "2026-10-03T00:26:17.477Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.4-stage-63.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-03T00:30:36.269Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.4-stage-63.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-03T00:32:52.623Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.4-stage-63.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-03T00:33:19.126Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.4-stage-63",
-        "from": "exec_running",
-        "to": "review_pending"
-      }
-    },
-    {
-      "time": "2026-10-03T00:40:13.333Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.0.0-stage-90",
-        "deps": []
-      }
-    },
-    {
-      "time": "2026-10-03T00:42:03.134Z",
-      "agent": "cli",
-      "action": "remove_stage",
-      "detail": {
-        "stageId": "v1.0.0-stage-90",
-        "purgeTarget": null,
-        "referencing": [],
-        "snapshot": {
-          "phase": "plan_pending",
-          "status": "planned",
-          "deps": [],
-          "opKeys": []
-        }
-      }
-    },
-    {
-      "time": "2026-10-03T00:50:14.290Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.4-stage-63",
-        "from": "review_pending",
-        "to": "review_passed"
-      }
-    },
-    {
-      "time": "2026-10-03T00:50:14.315Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.4-stage-63",
-        "from": "review_passed",
-        "to": "test_pending"
-      }
-    },
-    {
-      "time": "2026-10-03T00:55:01.232Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.4-stage-63",
-        "from": "test_pending",
-        "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-10-03T00:55:01.255Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.4-stage-63",
-        "from": "test_passed",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-10-03T00:55:18.661Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.1.4-stage-63",
-        "opsCount": 3,
-        "reviewsCount": 0,
-        "knowledgeCount": 0,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.4-stage-63.md"
       }
     }
   ]

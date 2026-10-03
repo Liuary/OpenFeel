@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 32 |
+| passed | 33 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -31,6 +31,8 @@
 **追加 stage-61（CLI 输出编码 `auto` 语义修正 — 方案 A，v1.1.3）`passed`**：用户裁定方案 A——`resolveTargetEncoding` 第⑤步 `win32 && !isTTY` 由「`chcp` 探测→GBK」改为**直接 `utf8`**（对齐 Node 默认与 UTF-8 管道/CI 消费者，修正 stage-58 回归）；**GBK 仅显式**（`--encoding gbk`/`OPENFEEL_ENCODING=gbk`）；`--json` 恒 UTF-8 与 5 步优先序不变；删 chcp 死代码 5 项。3 op（`ae98397`〔op-001 行为+死代码+单测+i18n〕/`a6be03f`〔op-002 文档+版本收口+门禁〕/`c4cc5af`〔op-003 REV-001 修正〕）；版本 **1.1.2→1.1.3** 全链路收口（A 类 6 处 + B 类 build 重生成）。**门禁**：`npm test` **61 文件 / 1016 用例 / 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **730 键**、`lint kb` 0、build 成功 `.opencode` 零复活、环境零污染；win32 实测 `auto`→合法 UTF-8、`--encoding gbk`→GBK、`--json` 旁路**逐字节相同**。**REV-001（medium 非阻塞，`package-lock.json` 两处缩进）由 op-003 纯空白修正后 `closed`**；**无新增 Bug**；知识沉淀 **1 条**（troubleshooting）。**v1.1.3 单阶段闭环，发布就绪（未 push）**。
 
 **追加 stage-62（状态/相位单一事实源收敛 — v1.1.4 首阶段）`passed`**：把 `status` 明确为 `phase` 的**粗粒度投影**（单一事实源 = `phase`），消除 `test_enabled=false` 触发的 `phase` 单向锁 `done` 确定性缺陷（`docs/08` 问题 12，本轮 **6/6 复发**）。3 op（`26629e6` 核心修复 / `abcab76` test_enabled 移除 / `fa7f4f8` 文档+KB 备注+门禁）：① `mapPhaseToStageStatus` 去 `testEnabled`、`review_passed` 恒 `'review_passed'`；② `autoRepairInconsistency` 方向反转仅 `phase→status`；③ `stage set --status` 粗粒度值域校验（`STAGE_STATUS_VALUES`）；④ `test_enabled` 全链移除（存量残留守非受管扩展键兼容）；⑤ manual/docs 同步。**61 文件 / 1023 用例全绿（0 skipped / 0 failed）**、`tsc` 0、`lint i18n` 730 键、`lint kb` 0（311 引用）、build 不复活。审查 **passed**（REV-001 medium / REV-002·003 low，全非阻塞 open；REV-001 边界 KB 注记）；**无新增 Bug**；知识沉淀 4 条（supersede 1 + 补沉 1 + 新增 2）；**v1.1.4 首阶段闭环（未推进 flow 至 done，由 Feel 执行）**。
+
+**追加 stage-63（配置默认值解析与阶段创建继承 — 问题 1/6，v1.1.4 第二阶段）`passed`**：新阶段 `status.md` 的 `执行模式`/`自动推进` 初值由**硬编码**改为取 `config.yaml.defaults`（新增 `resolveConfigDefaults`，只读 defaults、不读 status.md、不做级联）；`plan stage add --exec-mode/--auto-advance` 显式覆盖（值域非法 exit 1 不建阶段）；`config set/get` 支持 **`defaults.X ≡ X`**（`normalizeConfigKey` 单一来源，先归一再校验）；新增 **`config set --sync-stages`** 批量同步既有阶段（同值 no-op、无阶段字段跳过报告、`--global` 组合拒绝）。3 op（`e280ec0` 键归一+解析助手 / `04c121d` 创建继承+显式选项+批量同步 / `1d22bf4` 文档+skill+build 传播+门禁）。**有效值级联优先序零触碰**（`buildCascadeConfig`/`resolveEffectiveConfig` 3 commits 零 diff）。**61 文件 / 1046 用例全绿（0 skipped / 0 failed）**、`tsc` 0、`lint i18n` 730 键、`lint kb` 0（312 引用）、build 幂等不复活。审查 **passed**（REV-001/002/003 全 **low 非阻塞 open**）；**无新增 Bug**；知识沉淀 **2 条**（patterns）；manual 补改 `core/flow-manager.md`；**未推进 flow 至 done（由 Feel 执行）**。
 
 | 阶段 | 摘要 | 状态 |
 |------|------|------|
@@ -61,6 +63,7 @@
 | [v1.1.2-stage-58](v1.1.2-stage-58.md) | CLI 输出编码自适应 + 运行日志 — 3 op（`ae79c4e`/`e9036e1`/`91da64c`）；**A** 输出编码自适应（`src/cli/output-encoding.ts` + `bin` 单一咽喉，**不设 `VITEST` 守卫**；`--encoding <utf8\|gbk\|auto>` 默认 auto + `OPENFEEL_ENCODING`；auto 5 步优先序；Buffer 直通 / 回调保留 / 不可编码降 `?`）；**C** `--json` 恒 UTF-8 最高优先；**B** 运行日志（`src/core/runtime-log.ts` + `getCliLogsDir()` → `~/.openfeel/cli/logs/`，恒 UTF-8、默认 on、info/warn/error、debug 默认关；`withFileLock('runtime-log')` + best-effort；不记 stdout；库侧默认 no-op）；**D** `iconv-lite@^0.7.2` 提直接依赖（MIT）；**E** 测试 +32 用例（编码 24 含**正控** + 日志 8）；**F** manual×2 新建 + ×3 更新、README×2、CHANGELOG、docs；**61 文件 / 1018 用例 0 skipped**、`tsc` 0、build 幂等不复活、`lint i18n` 730 键、`lint kb` 0、真实 `~/.openfeel/cli/logs/` 测试前后零变化；**REV-001~008 全 closed**；**新登记 `cli/BUG-008`（low, open）**；知识沉淀 5 条（architecture 1 + patterns 2 + troubleshooting 2） | passed |
 
 | [v1.1.4-stage-62](v1.1.4-stage-62.md) | 状态/相位单一事实源收敛（v1.1.4 首阶段）— 3 op（`26629e6`/`abcab76`/`fa7f4f8`）；`status` = `phase` 粗粒度投影（单一事实源 = `phase`）；映射去 `testEnabled`（`review_passed` 恒 `'review_passed'`）+ auto-repair 仅 `phase→status` 单向 + `stage set --status` 值域校验 + `test_enabled` 全链移除；**锁根因消除**（fixture `{review_passed, done}` → `advance --to test_pending` exit 0）；61 文件 / **1023 用例** 0 skipped、`tsc` 0、`lint i18n` 730、`lint kb` 0；**REV-001 medium / REV-002·003 low 全非阻塞 open**（REV-001 边界 KB 注记）；无新 Bug；知识沉淀 4 条（supersede 1 + 补沉 1 + 新增 2） | passed |
+| [v1.1.4-stage-63](v1.1.4-stage-63.md) | 配置默认值解析与阶段创建继承（问题 1/6，v1.1.4 第二阶段）— 3 op（`e280ec0`/`04c121d`/`1d22bf4`）；新阶段骨架初值取 `config.yaml.defaults`（`resolveConfigDefaults`，不读 status.md、不做级联）+ `plan stage add --exec-mode/--auto-advance` 显式覆盖 + `config set/get` `defaults.X ≡ X`（`normalizeConfigKey`）+ `config set --sync-stages` 批量同步；**级联口径零触碰**；61 文件 / **1046 用例** 0 skipped、`tsc` 0、`lint i18n` 730、`lint kb` 0；**REV-001/002/003 全 low 非阻塞 open**（含一次已回滚 cwd 误操作事故披露）；无新 Bug；知识沉淀 2 条（patterns） | passed |
 
 ## v5 系列审查
 

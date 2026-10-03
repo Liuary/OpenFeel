@@ -3213,3 +3213,44 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.4-stage-62（`STAGE_STATUS_VALUES` 导出供 `stage set --status` 值域校验；`rg "stage\.phase =" src/core/flow-manager.ts` 仅 `validate` 自身模糊修正，无 `status → phase` 路径）；fixture `{phase:review_passed, status:done}` → auto-repair 输出「status done → review_passed (以 phase 为权威，撤销非法 done)」，`advance --to test_pending` exit 0；`flow health --fix` 回写后跨文件一致性 pass。
 
 **参见：** v1.1.4-stage-62（D3 裁定；op-001 commit `26629e6` / op-003 commit `fa7f4f8`）；`src/core/flow-manager.ts` `autoRepairInconsistency`；`src/commands/stage.ts`；kb/architecture.md #状态/相位单一事实源
+
+## [+] 新建阶段骨架初值取 config 默认：`resolveConfigDefaults` 只读 defaults、不读 status.md (2026-10-03)
+
+**背景（v1.1.4-stage-63，问题 1）**：新建阶段的 `status.md` 初值原为**硬编码**字面量 `执行模式: manual` / `自动推进: disabled`（`ensureStageSkeleton`，`src/core/plan/stage.ts`）——既不读项目 `config.yaml` 的 `defaults`，更谈不上「继承」。结果是项目配 `defaults.auto_advance: enabled` 时，`plan stage add` 生成的新阶段仍是 `disabled`（每次都要手工校正）。（注：反馈文档称「取创建瞬间 effective 值」，经源码核验为**硬编码**，比文档描述更简单——根因收窄。）
+
+**模式：新增「默认值解析」助手，只读配置默认、不做级联**：
+
+- `resolveConfigDefaults(projectPath)`（`src/core/config.ts` 导出）：读 `.openfeel/config.yaml` 的 `defaults` 块，逐键经 `ConfigDefaultsSchema.shape[key].safeParse` 校验，缺失/非法逐键回退 `DEFAULT_CONFIG`；无 `config.yaml` → 全默认。
+- **硬边界**：**不读取 `status.md`、不做 effective 合并**（区别于 `buildCascadeConfig`）。`buildCascadeConfig` 绑定 `this.data`/current stage，**不可直接复用**；`resolveConfigDefaults` 是独立的、无状态的「骨架初值来源」，不构成第二套 effective resolver。
+- 接入 `ensureStageSkeleton(projectPath, name, deps?, tasks?, overrides?)`：`executionMode = overrides?.executionMode ?? configDefaults.execution_mode`，`autoAdvance` 同理；`addStage` 透传 `overrides`；`plan stage add --exec-mode/--auto-advance` 显式覆盖（值域经 `getConfigFieldLegalValues` 派生，非法 → exit 1 且**不建阶段**）；隐式注册路径（`scheme.ts`）不传 overrides，同样继承 config 默认。
+- **不变量**：`status.md` 局部覆盖 > config 默认的**有效值优先序不变**（`config effective`/`flow status` 级联口径零触碰）；本模式只影响**新建骨架初值**与显式批量同步。幂等不变：初值计算在 `!existsSync(statusPath)` 守卫**内部**，已存在不覆盖。
+
+**边界效应（配套 `--sync-stages`）**：已存在阶段的批量回填由 `config set <key> <v> --sync-stages` 承担（`FlowManager.syncConfigFieldToStages` 复用 `writeStatusField` 定向写 + 按阶段锁；同值 no-op 零写盘；无阶段字段的键 `skipped-no-field` 跳过报告；`--global` 组合拒绝）。新建继承（默认）与存量同步（显式）**分工不重叠**。
+
+**反模式/陷阱**：
+- 让 `resolveConfigDefaults` 复用 `readConfig`/`normalizeConfig`（后者会把 defaults 提升到顶层），会引入顶层键参与，破坏「只取 defaults」语义；
+- 把 `--sync-stages` 设为默认行为（会批量覆盖用户有意设置的阶段级覆盖）——须显式 opt-in + 同值 no-op + 逐条输出。
+
+**实证**：v1.1.4-stage-63（`config set defaults.auto_advance enabled` → `plan stage add` 生成 `自动推进: enabled`；无 `config.yaml` 回退 `manual`/`disabled`；`--auto-advance disabled` 显式覆盖；`--exec-mode bogus` exit 1 且目录不存在；`buildCascadeConfig`/`resolveEffectiveConfig` 在 3 commits 中零触碰）。
+
+**参见：** v1.1.4-stage-63（op-001 `e280ec0` / op-002 `04c121d`）；`src/core/plan/stage.ts` `ensureStageSkeleton`；`src/core/config.ts` `resolveConfigDefaults`；`.openfeel/manual/core/config.md`、`manual/core/flow-manager.md`；kb/patterns.md #配置级联解析模式（对照：同为配置面，本条**不做级联**）
+
+## [+] `defaults.X ≡ X` 键归一：`normalizeConfigKey` 单一来源 + 归一再校验 (2026-10-03)
+
+**背景（v1.1.4-stage-63，问题 6）**：skill/docs 宣称 `config set/get` 支持全量 `defaults.*`，但 `config set` 白名单 = `Object.keys(ConfigDefaultsSchema.shape)`（bare keys），故 `config set defaults.execution_mode auto` 被拒——**文档不实**（源码为准）。需要让 `defaults.X` 与 `X` 等价，而不引入第二套解析。
+
+**模式：键归一到单一来源，然后走原有白名单/校验**：
+
+- `normalizeConfigKey(key)`（`src/core/config.ts` 导出，单一来源）：`key.startsWith('defaults.') ? key.slice(8) : key`——**仅剥离一次**前缀；`defaults.` 单独出现归一为空串（由白名单拒绝）；不误伤其它点号键（`meta.version` 原样返回）。
+- 命令层（`config set`/`config get` **项目模式**）入口先归一，**再**走既有 `ConfigDefaultsSchema` 白名单 + `getConfigFieldLegalValues` 枚举校验 + `setConfigValue` 写盘——**归一不改变校验强度**，非法键/非法值仍拒绝且不写盘。错误文案 keys 列表附 `defaults.X` 等价（复用既有 `config.set.invalidKey`，**不新增 i18n 键**）。
+- **`--global` 分支完全不变**（profile 键域不同，不受影响）。
+- `get` 输出回显**用户输入原键**（保留可识别性）；`set` 回显归一后键。
+
+**设计要点/陷阱**：
+- 归一函数置于 core（单一来源），供命令层与 `resolveConfigDefaults` 共用，**避免第二套前缀解析**（裁定 D-prefix）；
+- 归一必须**发生在校验之前**——先归一后校验使「归一等价」与「白名单/枚举」正交，新增受管键无需改命令层；
+- 归一为空串是**可达输入**（`config set defaults. x`），须由白名单兜住（exit 1），不能静默写入。
+
+**实证**：v1.1.4-stage-63（`config set defaults.execution_mode auto` exit 0 且写 `execution_mode: auto`，与 bare 等价；`config get defaults.execution_mode` = `auto`；`defaults.bogus`/`defaults.` → 白名单拒绝 exit 1；`config set defaults.execution_mode bogus` exit 1 且 config.yaml SHA256 不变；`test_enabled` 仍无效键 exit 1 不写盘）。
+
+**参见：** v1.1.4-stage-63（op-001 `e280ec0`）；`src/core/config.ts` `normalizeConfigKey`；`.openfeel/manual/core/config.md`；kb/troubleshooting.md #配置键白名单须 schema 驱动 + 值类型归一

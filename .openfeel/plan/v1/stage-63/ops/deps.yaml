@@ -1,0 +1,79 @@
+# stage-63 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.4-stage-63
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-03"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.4-stage-62
+    type: soft
+    status: done
+    reason: "stage-62 已移除 test_enabled（ConfigDefaultsSchema 收敛为三键）；本阶段配置键范围据此锁定 execution_mode/auto_advance/merge_mode，不得引入 test_enabled。"
+  - downstream: v1.1.4-stage-65
+    type: soft
+    note: "版本号 1.1.3→1.1.4 收口（package.json/CHANGELOG/config 模板/roadmap）归 stage-65；本阶段不改版本载体。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不直写 `flow.json`**；phase 推进由 Feel 调度。"
+
+# 本阶段 3 op：op-001 → op-002（hard）→ op-003（hard，文档须反映已落地命令面）。
+# 覆盖问题 1（创建继承）+ 问题 6（defaults. 键等价）。不变量：status.md 局部覆盖优先序不变。
+ops:
+  op-001:
+    file: op-001.md
+    title: "键归一 + 默认值解析助手"
+    produces:
+      - src/core/config.ts
+      - src/commands/config.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/config.test.ts
+      - test/commands/config.test.ts
+    deps: []
+    notes: "覆盖 T1 + T4 + T6.4/T6.5/T6.6。**T1** `config.ts` 新增 `normalizeConfigKey`（`defaults.` 前缀剥离，单一来源）+ `resolveConfigDefaults`（只读 config.yaml.defaults，逐键 ConfigDefaultsSchema 校验，缺失/非法回退 DEFAULT_CONFIG，**不读 status.md、不做 effective 合并**；三键，无 test_enabled）。**T4** `commands/config.ts` 项目模式 `get`/`set` 入口先归一，`defaults.X ≡ X`，白名单/取值校验/写盘用归一后键；错误文案 keys 列表附 `defaults.` 等价（复用 `config.set.invalidKey`，不增键）；`--global` 分支不变；改 `help.config.get/set` 值（键数仍 730）。**T6.4/T6.5/T6.6** config 单测 + 命令测（键归一、resolve 回退、defaults.X 等价、test_enabled 无效键 exit 1 不写盘）。门禁：tsc 0 + npm test 0 skipped + lint i18n 730 + lint kb 0。"
+
+  op-002:
+    file: op-002.md
+    title: "创建继承 + 显式选项 + 批量同步"
+    produces:
+      - src/core/plan/stage.ts
+      - src/commands/plan.ts
+      - src/core/config.ts
+      - src/core/flow-manager.ts
+      - src/commands/config.ts
+      - test/core/plan/stage.test.ts
+      - test/commands/plan.test.ts
+      - test/commands/config.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T2 + T3 + T5 + T6.1/T6.2/T6.3/T6.7/T6.8。**T2** `plan/stage.ts` `ensureStageSkeleton`/`addStage` 初值由硬编码 `manual`/`disabled`（`stage.ts:140-141`）改为 `resolveConfigDefaults(projectPath)`，新增 `StageSkeletonOverrides` 显式覆盖；幂等不变。**T3** `commands/plan.ts` `plan stage add` 增 `--exec-mode`/`--auto-advance`，值域由 `getConfigFieldLegalValues` 派生（复用 `stage.set.invalidValueTmpl`），非法 exit 1 且不建阶段。**T5** `config.ts` 新增 `STAGE_FIELD_BY_CONFIG_KEY`；`flow-manager.ts` 新增 public `syncConfigFieldToStages`（复用 `writeStatusField` 定向写 + 按阶段锁、`readStatusFieldValue` 区分 noop、`appendLog` 审计）；`commands/config.ts` `config set --sync-stages`（仅项目模式，适用 auto_advance/execution_mode，其它键跳过报告，同值 no-op；复用 stage.set.* 文案，不增键）。**T6** TDD：stage.test（继承/覆盖/回退）、plan.test（非法不建阶段/正控）、config.test（批量同步/noop/跳过/--global 组合）。门禁：tsc 0 + npm test 0 skipped + lint i18n 730 + lint kb 0。"
+
+  op-003:
+    file: op-003.md
+    title: "文档 + skill + 构建传播 + 门禁"
+    produces:
+      - src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .openfeel/manual/cli/commands.md
+      - .openfeel/manual/core/config.md
+      - docs/commands.md
+    deps:
+      - op: op-002
+        type: hard
+    notes: "覆盖 T7 + 全门禁。**T7.1** 权威源 `templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`：`plan stage add` 补 `--exec-mode/--auto-advance`；`config` 补 `--sync-stages` 与 `defaults.X ≡ X`；**不改快照版本行**。**T7.2** `.openfeel/manual/cli/commands.md`、`.openfeel/manual/core/config.md`、`docs/commands.md` 同步命令面与键等价说明（不动版本快照/CHANGELOG）。**T7.3** `npm run build` 从权威源传播至 `template-loader.ts`/`update.ts` 生成段（禁手改）；`.opencode/**` 不复活；二次 build 幂等。**G** 全门禁：build + tsc 0 + npm test 0 skipped + lint i18n 730 + lint kb 0 + git status 校验。阶段收口：不自行推 phase（由 Feel 调度）；归档官补沉两条 patterns。"
+
+# 下游契约（本阶段无对外接口形态变更；不改 pipeline.yaml 转移表 / flow phases 5 键 / advance 合法路径与 REV 检查；不改有效值级联优先序）
+downstream_contracts:
+  - name: "openfeel config set/get"
+    change: "新增 `defaults.X ≡ X` 键等价（归一后走同一白名单/校验）"
+  - name: "openfeel config set"
+    change: "新增 `--sync-stages`（仅项目模式；适用 auto_advance/execution_mode）"
+  - name: "openfeel plan stage add"
+    change: "新增 `--exec-mode` / `--auto-advance`；骨架初值默认取 config.yaml.defaults"

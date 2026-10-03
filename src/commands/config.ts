@@ -8,7 +8,7 @@
  */
 import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
-import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey } from '../core/config.js';
+import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey, STAGE_FIELD_BY_CONFIG_KEY } from '../core/config.js';
 import { FlowManager } from '../core/flow-manager.js';
 import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
@@ -181,9 +181,17 @@ export function registerConfigCommand(program: Command): void {
     .command('set <key> <value>')
     .description(t('help.config.set'))
     .option('-g, --global', '操作全局 profile（~/.config/openfeel/profile.yaml）')
+    .option('--sync-stages', '将配置值同步写入所有已注册阶段的 status.md 对应字段（仅项目模式）')
     .action(function (key: string, value: string) {
-      const opts = this.opts() as { global?: boolean };
+      const opts = this.opts() as { global?: boolean; syncStages?: boolean };
       const lang = getCliLang(process.cwd());
+
+      // --sync-stages 仅项目模式可用（与 --global 组合 → exit 1）
+      if (opts.global && opts.syncStages) {
+        console.error(t('common.errorTmpl', lang, { msg: '--sync-stages 仅项目模式可用（不能与 --global 组合）' }));
+        process.exit(1);
+        return;
+      }
 
       // 全局模式：操作 ~/.config/openfeel/profile.yaml
       if (opts.global) {
@@ -250,6 +258,33 @@ export function registerConfigCommand(program: Command): void {
         // 写入 config.yaml 失败（YAML 语法错误、权限问题等），输出实际错误原因
         console.error(t('config.set.error', lang, { err: (err as Error).message }));
         process.exit(1);
+      }
+
+      // --sync-stages：将目标键批量同步到所有已注册阶段 status.md 对应字段（仅项目模式）
+      if (opts.syncStages) {
+        const field = STAGE_FIELD_BY_CONFIG_KEY[normalizedKey];
+        const mgr = new FlowManager(process.cwd());
+        const results = mgr.isLoaded() ? mgr.syncConfigFieldToStages(normalizedKey, value) : [];
+        let updated = 0;
+        for (const r of results) {
+          switch (r.result) {
+            case 'updated':
+              updated++;
+              console.log(t('stage.set.updatedTmpl', lang, { stageId: r.stage, field: field ?? normalizedKey, value }));
+              break;
+            case 'noop':
+              console.log(t('stage.set.noopTmpl', lang, { field: field ?? normalizedKey }));
+              break;
+            case 'skipped-no-status':
+              console.error(t('stage.errorStageNotFoundTmpl', lang, { stageId: r.stage }));
+              break;
+            default: // skipped-no-field
+              console.error(t('stage.set.errorFieldNotFoundTmpl', lang, { stageId: r.stage, field: field ?? normalizedKey }));
+              break;
+          }
+        }
+        // 汇总：同步 N / 跳过 M（跳过含 no-op 与无字段/无 status；退出码保持 0）
+        console.log(`同步 ${updated} / 跳过 ${results.length - updated}`);
       }
     });
 

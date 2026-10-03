@@ -31,7 +31,7 @@ export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-
 import { findStageStatusPath, findStageDirConflict, parseStageId, normalizeStageId } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
-import { DEFAULT_CONFIG, ConfigDefaultsSchema } from './config.js';
+import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
 
 /** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
@@ -3187,6 +3187,55 @@ export class FlowManager {
       atomicWriteFileSync(statusPath, updated);
       return true;
     });
+  }
+
+  /**
+   * 将受管配置键批量同步到所有已注册阶段的 status.md 对应字段（`config set --sync-stages`）。
+   * 仅 auto_advance→「自动推进」、execution_mode→「执行模式」有阶段级字段；
+   * 其它键无阶段字段 → 全部 skipped-no-field（D-config 裁定，跳过并报告）。
+   * 复用 writeStatusField 的定向写 + 按阶段锁；同值 → noop（零写盘）。
+   * 只读 flow.json 的阶段枚举，不写 flow.json。
+   * @param configKey 已归一的受管配置键（如 auto_advance）
+   * @param value 目标值
+   * @returns 每阶段一条结果（updated/noop/skipped-no-field/skipped-no-status）
+   */
+  syncConfigFieldToStages(
+    configKey: string,
+    value: string,
+  ): Array<{ stage: string; result: 'updated' | 'noop' | 'skipped-no-field' | 'skipped-no-status' }> {
+    const out: Array<{ stage: string; result: 'updated' | 'noop' | 'skipped-no-field' | 'skipped-no-status' }> = [];
+    if (!this.data) {
+      return out;
+    }
+    const field = STAGE_FIELD_BY_CONFIG_KEY[configKey];
+    for (const stageId of Object.keys(this.data.stages)) {
+      // 错误路径：该 config 键无阶段级字段 → 跳过并报告
+      if (!field) {
+        out.push({ stage: stageId, result: 'skipped-no-field' });
+        continue;
+      }
+      const statusPath = this.findStatusPath(stageId);
+      // 错误路径：status.md 缺失 → 跳过（不新建文件）
+      if (!statusPath || !existsSync(statusPath)) {
+        out.push({ stage: stageId, result: 'skipped-no-status' });
+        continue;
+      }
+      const current = readStatusFieldValue(readFileSync(statusPath, 'utf-8'), field);
+      // 错误路径：字段行缺失 → 跳过（不新建字段）
+      if (current === null) {
+        out.push({ stage: stageId, result: 'skipped-no-field' });
+        continue;
+      }
+      // 同值 → no-op，零写盘
+      if (current === value) {
+        out.push({ stage: stageId, result: 'noop' });
+        continue;
+      }
+      this.writeStatusField(statusPath, field, value);
+      this.appendLog({ time: '', agent: 'cli', action: 'config_sync_stage', detail: { stage: stageId, field, value } });
+      out.push({ stage: stageId, result: 'updated' });
+    }
+    return out;
   }
 
   /**

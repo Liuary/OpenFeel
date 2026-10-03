@@ -28,11 +28,15 @@ describe('plan 命令', () => {
   let errorMock: ReturnType<typeof vi.fn>;
   let cwdMock: ReturnType<typeof vi.fn>;
   let exitMock: ReturnType<typeof vi.fn>;
+  let prevLogEnv: string | undefined;
 
   beforeEach(async () => {
     // mock HOME 指向临时目录，确保 initProject 的全局配置写入不触碰真实 ~/.openfeel/
     mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-plan-home-'));
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-plan-test-'));
+    // 隔离运行时日志副作用（防写入真实用户目录）
+    prevLogEnv = process.env.OPENFEEL_LOG;
+    process.env.OPENFEEL_LOG = '0';
     // 初始化工作区
     await initProject(tmpDir);
 
@@ -54,6 +58,12 @@ describe('plan 命令', () => {
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
     rmSync(mockHome.dir, { recursive: true, force: true });
+    // 还原运行时日志环境变量
+    if (prevLogEnv === undefined) {
+      delete process.env.OPENFEEL_LOG;
+    } else {
+      process.env.OPENFEEL_LOG = prevLogEnv;
+    }
     logMock.mockRestore();
     errorMock.mockRestore();
     cwdMock.mockRestore();
@@ -550,5 +560,31 @@ describe('plan 命令', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(readFileSync(flowPath, 'utf-8')).toBe(before);
     expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('模板文件');
+  });
+
+  // ── v1.1.4-stage-63 op-002：plan stage add 显式初值选项（T6.8） ──
+
+  it('T6.8: --exec-mode bogus 非法值 → exit 1 且不建阶段目录', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-13', '--exec-mode', 'bogus']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-13'))).toBe(false);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('取值非法');
+  });
+
+  it('T6.8: --auto-advance enabled 覆盖 initProject 默认 disabled', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-14', '--auto-advance', 'enabled']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-14', 'status.md');
+    expect(readFileSync(statusPath, 'utf-8')).toContain('- **自动推进**：enabled');
+  });
+
+  it('T6.8: --exec-mode auto 覆盖 initProject 默认 manual', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-15', '--exec-mode', 'auto']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-15', 'status.md');
+    expect(readFileSync(statusPath, 'utf-8')).toContain('- **执行模式**：auto');
   });
 });

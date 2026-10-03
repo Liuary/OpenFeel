@@ -7,6 +7,7 @@ import { resolve, join } from 'node:path';
 import { FlowManager } from '../flow-manager.js';
 import { parseStageId, findStageStatusPath } from './path.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
+import { resolveConfigDefaults } from '../config.js';
 
 /** 工作阶段 */
 export interface Stage {
@@ -16,6 +17,14 @@ export interface Stage {
   path: string;
   /** overview.md 内容 */
   overview: string;
+}
+
+/** 阶段骨架初值显式覆盖（`plan stage add` 透传；缺省时取 config 默认） */
+export interface StageSkeletonOverrides {
+  /** 执行模式覆盖值 */
+  executionMode?: 'manual' | 'auto';
+  /** 自动推进覆盖值 */
+  autoAdvance?: 'disabled' | 'enabled';
 }
 
 /** 折叠任务描述：去除首尾空白，内部换行折叠为空格（防结构破坏） */
@@ -88,9 +97,10 @@ export function appendStatusTask(projectPath: string, stageId: string, desc: str
  * @param name 阶段 ID（简写或全称）
  * @param deps 依赖阶段 ID 列表（仅用于新建 overview.md 时写入「依赖」段）
  * @param tasks 初始任务列表（仅用于新建 status.md 时生成任务行；缺省写占位 `> 待补充`）
+ * @param overrides 骨架初值显式覆盖（执行模式/自动推进；缺省取 config defaults）
  * @returns 是否发生了创建（true = 补建了目录或骨架文件）
  */
-export function ensureStageSkeleton(projectPath: string, name: string, deps?: string[], tasks?: string[]): boolean {
+export function ensureStageSkeleton(projectPath: string, name: string, deps?: string[], tasks?: string[], overrides?: StageSkeletonOverrides): boolean {
   // 解析 stageId（短名/完整），无法解析时抛错
   const parsed = parseStageId(name);
   if (!parsed) {
@@ -135,10 +145,14 @@ ${depsText}
   if (!existsSync(statusPath)) {
     // N6-2：有初始任务时生成任务行（与 stage task --add 共用 buildTaskLines）；否则占位 `> 待补充`
     const tasksBlock = tasks && tasks.length > 0 ? buildTaskLines(tasks) : '> 待补充';
+    // 初值取 config defaults（不读 status.md / 不做 effective 合并）；overrides 显式优先
+    const configDefaults = resolveConfigDefaults(projectPath);
+    const executionMode = overrides?.executionMode ?? configDefaults.execution_mode;
+    const autoAdvance = overrides?.autoAdvance ?? configDefaults.auto_advance;
     const statusContent = `# ${parsed.fullStageId} 状态
 
-- **执行模式**：manual
-- **自动推进**：disabled
+- **执行模式**：${executionMode}
+- **自动推进**：${autoAdvance}
 - **状态**：planned
 - **当前责任 Agent**：user
 - **上一责任 Agent**：none
@@ -180,8 +194,9 @@ ${tasksBlock}
  * 骨架生成复用 ensureStageSkeleton（保持行为与文案一致）。
  * @param deps 依赖的阶段名列表（可选，写入 overview.md 与 flow.json）
  * @param tasks 初始任务列表（可选，写入 status.md 的「## 当前任务」小节）
+ * @param overrides 骨架初值显式覆盖（可选，透传 ensureStageSkeleton）
  */
-export function addStage(projectPath: string, name: string, deps?: string[], tasks?: string[]): void {
+export function addStage(projectPath: string, name: string, deps?: string[], tasks?: string[], overrides?: StageSkeletonOverrides): void {
   // 解析 stageId（短名/完整），无法解析时抛错
   const parsed = parseStageId(name);
   if (!parsed) {
@@ -189,7 +204,7 @@ export function addStage(projectPath: string, name: string, deps?: string[], tas
   }
 
   // 目录 + overview.md + status.md 骨架（幂等）
-  ensureStageSkeleton(projectPath, name, deps, tasks);
+  ensureStageSkeleton(projectPath, name, deps, tasks, overrides);
 
   // 同步到 flow.json（若存在）— 键用完整 stageId
   const flowMgr = new FlowManager(projectPath);

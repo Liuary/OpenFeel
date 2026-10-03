@@ -4,10 +4,12 @@
  */
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
+import type { StageSkeletonOverrides } from '../core/plan/stage.js';
 import { createScheme, listSchemes, removeScheme, publishScheme, renameScheme } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
+import { getConfigFieldLegalValues } from '../core/config.js';
 
 export function registerPlanCommand(program: Command): void {
   const plan = program
@@ -26,7 +28,9 @@ export function registerPlanCommand(program: Command): void {
     .argument('<name>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
     .option('--deps <ids...>', '依赖阶段 ID 列表（空格或逗号分隔，如 --deps a b 或 --deps a,b）')
     .option('--tasks <items...>', '初始任务列表（空格或逗号分隔，生成到 status.md）')
-    .action((name: string, options: { deps?: string[]; tasks?: string[] }) => {
+    .option('--exec-mode <mode>', '执行模式（manual | auto），覆盖 config 默认')
+    .option('--auto-advance <value>', '自动推进（enabled | disabled），覆盖 config 默认')
+    .action((name: string, options: { deps?: string[]; tasks?: string[]; execMode?: string; autoAdvance?: string }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       // 非法 stageId 统一报错 + 建议名（op-002 校验底座）
@@ -35,7 +39,27 @@ export function registerPlanCommand(program: Command): void {
         console.error(t('common.stageIdInvalidTmpl', lang, { input: name }));
         console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, name) }));
         process.exit(1);
+        return;
       }
+
+      // 显式初值值域校验（schema 派生；非法 → exit 1 且不建阶段）
+      if (options.execMode !== undefined) {
+        const allowed = getConfigFieldLegalValues('execution_mode') ?? [];
+        if (!allowed.includes(options.execMode)) {
+          console.error(t('stage.set.invalidValueTmpl', lang, { field: '执行模式', value: options.execMode, allowed: allowed.join(', ') }));
+          process.exit(1);
+          return;
+        }
+      }
+      if (options.autoAdvance !== undefined) {
+        const allowed = getConfigFieldLegalValues('auto_advance') ?? [];
+        if (!allowed.includes(options.autoAdvance)) {
+          console.error(t('stage.set.invalidValueTmpl', lang, { field: '自动推进', value: options.autoAdvance, allowed: allowed.join(', ') }));
+          process.exit(1);
+          return;
+        }
+      }
+
       // 兼容 --deps a,b 与 --deps a b：逐项按逗号再切分、去空
       const deps = (options.deps ?? [])
         .flatMap((d) => d.split(','))
@@ -64,8 +88,23 @@ export function registerPlanCommand(program: Command): void {
         }
       }
 
+      // 构造显式覆盖（缺省键不置入，保持「取 config 默认」语义）
+      const overrides: StageSkeletonOverrides = {};
+      if (options.execMode !== undefined) {
+        overrides.executionMode = options.execMode as 'manual' | 'auto';
+      }
+      if (options.autoAdvance !== undefined) {
+        overrides.autoAdvance = options.autoAdvance as 'disabled' | 'enabled';
+      }
+
       try {
-        addStage(projectPath, name, deps.length > 0 ? deps : undefined, tasks.length > 0 ? tasks : undefined);
+        addStage(
+          projectPath,
+          name,
+          deps.length > 0 ? deps : undefined,
+          tasks.length > 0 ? tasks : undefined,
+          Object.keys(overrides).length > 0 ? overrides : undefined,
+        );
       } catch (err: unknown) {
         // 阶段目录冲突：按类型分流走 i18n 模板（cli/BUG-002 死键消除）
         if (err instanceof StageDirConflictError) {

@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { addStage, listStages, ensureStageSkeleton } from '../../../src/core/plan/stage.js';
 import { FlowManager } from '../../../src/core/flow-manager.js';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -171,6 +171,43 @@ describe('stage', () => {
       const status9 = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-09', 'status.md'), 'utf-8')
         .replace('v1.0.0-stage-09', 'STAGE').replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/g, 'TS');
       expect(status8).toBe(status9);
+    });
+  });
+
+  // ── v1.1.4-stage-63 op-002：骨架初值取 config 默认 + overrides ──
+
+  describe('骨架初值取 config 默认（stage-63 op-002）', () => {
+    const configPath = (): string => join(tmpDir, '.openfeel', 'config.yaml');
+    const statusPath = (stage: string): string => join(tmpDir, '.openfeel', 'plan', 'v1', stage, 'status.md');
+
+    it('T6.1：defaults.auto_advance=enabled / execution_mode=auto → 新建骨架继承', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(configPath(), 'defaults:\n  auto_advance: enabled\n  execution_mode: auto\n', 'utf-8');
+
+      addStage(tmpDir, 'stage-10');
+
+      const content = readFileSync(statusPath('stage-10'), 'utf-8');
+      expect(content).toContain('- **自动推进**：enabled');
+      expect(content).toContain('- **执行模式**：auto');
+    });
+
+    it('T6.2：overrides 显式优先于 config 默认', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(configPath(), 'defaults:\n  auto_advance: enabled\n  execution_mode: auto\n', 'utf-8');
+
+      addStage(tmpDir, 'stage-11', undefined, undefined, { autoAdvance: 'disabled', executionMode: 'manual' });
+
+      const content = readFileSync(statusPath('stage-11'), 'utf-8');
+      expect(content).toContain('- **自动推进**：disabled');
+      expect(content).toContain('- **执行模式**：manual');
+    });
+
+    it('T6.3：无 config.yaml → 回退 DEFAULT_CONFIG（disabled/manual）', () => {
+      addStage(tmpDir, 'stage-12');
+
+      const content = readFileSync(statusPath('stage-12'), 'utf-8');
+      expect(content).toContain('- **自动推进**：disabled');
+      expect(content).toContain('- **执行模式**：manual');
     });
   });
 

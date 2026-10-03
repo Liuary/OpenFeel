@@ -61,6 +61,16 @@ export function getConfigFieldLegalValues(key: string): string[] | null {
   return null;
 }
 
+/**
+ * 受管配置键 → 阶段 status.md 字段名映射（单一来源）。
+ * 仅包含**阶段级字段**键；无阶段字段的键（如 merge_mode）不在此表，
+ * 批量同步时按 skipped-no-field 跳过并报告（D-config 裁定）。
+ */
+export const STAGE_FIELD_BY_CONFIG_KEY: Record<string, string> = {
+  auto_advance: '自动推进',
+  execution_mode: '执行模式',
+};
+
 /** 单个模型配置 Schema */
 export const ModelConfigSchema = z.object({
   provider: z.string(),      // deepseek / openai / anthropic / zhipu / qwen

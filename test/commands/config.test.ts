@@ -7,6 +7,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command, CommanderError } from 'commander';
 import { registerConfigCommand } from '../../src/commands/config.js';
+import { FlowManager } from '../../src/core/flow-manager.js';
+import { addStage } from '../../src/core/plan/stage.js';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -350,5 +352,73 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
     // 错误文案回显 defaults. 等价说明
     expect(stderr()).toContain('defaults.');
+  });
+
+  // ═══ v1.1.4-stage-63 op-002：config set --sync-stages 批量同步（T6.7 / T6.9） ═══
+
+  const stageStatusPath = (stage: string): string =>
+    join(tmpDir, '.openfeel', 'plan', 'v1', stage, 'status.md');
+
+  /** 建两阶段（flow.json 注册 + status.md 骨架） */
+  function setupTwoStages(): void {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+    addStage(tmpDir, 'stage-02');
+  }
+
+  it('T6.7：--sync-stages 写 auto_advance=自动推进；同值 no-op 逐字节不变', async () => {
+    setupTwoStages();
+
+    await safeParse(['config', 'set', 'auto_advance', 'enabled', '--sync-stages']);
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **自动推进**：enabled');
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toContain('- **自动推进**：enabled');
+    expect(stdout()).toContain('已更新');
+
+    // 同值再执行 → 两 status.md 逐字节不变 + noop 输出
+    const before1 = readFileSync(stageStatusPath('stage-01'), 'utf-8');
+    const before2 = readFileSync(stageStatusPath('stage-02'), 'utf-8');
+    logMock.mockClear();
+    await safeParse(['config', 'set', 'auto_advance', 'enabled', '--sync-stages']);
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toBe(before1);
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toBe(before2);
+    expect(stdout()).toContain('已是目标值');
+  });
+
+  it('T6.7：--sync-stages 写 execution_mode=执行模式为 auto', async () => {
+    setupTwoStages();
+
+    await safeParse(['config', 'set', 'execution_mode', 'auto', '--sync-stages']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **执行模式**：auto');
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toContain('- **执行模式**：auto');
+  });
+
+  it('T6.7：--sync-stages merge_mode 无阶段字段 → exit 0 且 stderr 报告未找到', async () => {
+    setupTwoStages();
+    errorMock.mockClear();
+
+    await safeParse(['config', 'set', 'merge_mode', 'auto', '--sync-stages']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(stderr()).toContain('未找到');
+  });
+
+  it('T6.9：--global --sync-stages 组合 → exit 1 且明确报错', async () => {
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', 'auto_advance', 'enabled', '--global', '--sync-stages']);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('--sync-stages');
   });
 });

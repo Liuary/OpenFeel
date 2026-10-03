@@ -28,3 +28,27 @@
 - **理由**：① 全局部署已完备（`setup` 幂等，含 `openfeel-cli-usage` skill 与全部纪律节）；② 消除「项目级与全局」双份资产漂移；③ 移除 `build.js` 步骤 8 以消除复活负担。备选（保留双份）被否，因漂移与维护成本高于收益。
 - **后果 / 适用边界**：**缓解**——`.opencode/` 运行时目录（`node_modules`/`package.json`/`package-lock.json`/`.gitignore`）**保留**；项目级约束由全局 `AGENTS.md` 承载（重启会话生效）；各 agent `.md` 自带 `external_directory: "allow"` 不受根 `opencode.jsonc` 删除影响。**适用边界**：**目标项目**的 `.opencode/` 相关语义与 B 类保留清单**不受影响**（本决策仅针对 OpenFeel 仓库自身）。
 - **回滚**：`git checkout <sha> -- AGENTS.md opencode.jsonc .opencode/` 恢复项目级资产 + `git revert` 恢复 `build.js` 步骤 8，随后 `npm run build` 复活受管实例；全局无需回滚（`setup` 向后兼容）。
+
+### ADR-003：`status` 定义为 `phase` 的粗粒度投影（单一事实源 = `phase`），移除 `test_enabled`
+- **日期**：2026-10-03
+- **状态**：accepted
+- **决策**：`flow.json` 的 `status` 字段定义为 `phase`（15 相位）的**粗粒度投影**，`phase` 为唯一事实源；`mapPhaseToStageStatus` 对任何**非 `done`** 相位**不得**返回 `'done'`（`review_passed` 恒返回 `'review_passed'`）；`autoRepairInconsistency` 仅允许 **phase→status** 修正，**绝不**由 `status` 前推 `phase`；移除已被 15 相位模型架空的 `test_enabled` 配置键。
+- **理由**：根因链——`test_enabled=false` → `mapPhaseToStageStatus('review_passed')='done'` → 下一步 `advance --to test_pending` 入口 `autoRepairInconsistency` 强制 `phase='done'` → `no-path` 锁死（确定性，Pantheogen 整周期 6/6 复发）。`test_enabled` 仅影响 status 投影、与 phase 转移图无关，保留即制造终态假象与误导线。备选「保留为 deprecated no-op」被否（字段仍误导且无消费点）。
+- **后果 / 适用边界**：存量 `config.yaml` 残留 `test_enabled` 行按非受管扩展键读入、不报错不崩溃；`config set test_enabled` 报无效键。`stage set --status` 增加值域校验（拒绝相位值）。
+- **回滚**：`git revert` 对应 stage-62 commits；存量键无需迁移。
+
+### ADR-004：故障恢复分层 —— 精准复位优先、全量快照回退为最后手段
+- **日期**：2026-10-03
+- **状态**：accepted
+- **决策**：把恢复能力分层——① `flow stage reset <id> --to <phase>`（**允许回退**，受合法 phase 值域 + `to=done` 的 blocking REV 检查约束，不触发归档 commit）；② `flow checkpoint restore <file> --stage <id>`（**仅回退该阶段子树**，其它阶段逐字节不动）+ `--dry-run` 差异预览（零写盘）；③ 无 `--stage` 的全量 `checkpoint restore` 保留为**最后手段**；④ `flow advance` **不**回写 `status.md`，`flow health --fix` 为唯一批量对账回写入口。
+- **理由**：原 `restore` 为全量覆盖，多阶段并行时存在跨阶段连带回退风险且无差异预览（Pantheogen 6 次锁故障全靠全量 restore 兜底）。分层后日常用精准复位、必要时用选择性快照回退、全量仅兜底。`advance` 不回写 status.md 以避免双写入口耦合（status.md 与 flow.json 的漂移由 `health --fix` 统一对账）。
+- **后果 / 适用边界**：`reset` 是 `advance` 的对称复位能力，不受正向转移表限制但受值域/REV 约束；快照生成/命名/清理（20 上限）不变。
+- **回滚**：`git revert` 对应 stage-65 commits；无数据迁移。
+
+### ADR-005：新建阶段骨架初值取 `config.yaml` 默认值（`defaults`）
+- **日期**：2026-10-03
+- **状态**：accepted
+- **决策**：`plan stage add` / `ensureStageSkeleton` 生成的 `status.md` 中 `执行模式`/`自动推进` 初值取 `config.yaml.defaults`（缺失回退内置 `DEFAULT_CONFIG`），并提供 `--exec-mode/--auto-advance` 显式覆盖；同时 `config set/get` 接受 `defaults.X ≡ X`，`config set <key> <v> --sync-stages` 支持批量同步既有阶段。
+- **理由**：原实现**硬编码** `manual`/`disabled`（非文档推断的「取运行时 effective 值」），导致每个新建阶段都需手工 `stage set --auto-advance enabled` 校正。取项目默认即可消除逐个校正。
+- **后果 / 适用边界**：**不改**有效值级联优先序（`status.md 局部 > config 默认 > profile > builtin`）；本决策仅影响**骨架初值**与**显式批量同步**。
+- **回滚**：`git revert` 对应 stage-63 commits；无数据迁移。

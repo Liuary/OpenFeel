@@ -2,6 +2,11 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-03-Liuary-026.md](2026/10/03/2026-10-03-Liuary-026.md) | Liuary | 阶段 v1.1.5-stage-66 完成 |
+| [2026-10-03-Liuary-025.md](2026/10/03/2026-10-03-Liuary-025.md) | Archiver | **stage-66 归档完成（全局部署版本事实源与检测核心 — D-A/D-D，v1.1.5 首阶段）**——写入侧刷新 `openfeel_version`（`setup`/`update` save 之前，消除升级后永久假漂移根因）+ `deployment-check.ts` 只读四态检测（`ok`/`mismatch`/`missing`/`unknown`）+ 门控纯函数；隔离 HOME 端到端（检测前后全局 state 字节 + mtime 不变）；**本阶段不接 CLI**（归 stage-67）；门禁 **63 文件 / 1113 用例 0 skipped**、`tsc` 0、`lint i18n` **753**、`lint kb` 0、build ×2 幂等不复活；审查 **passed**（REV-001~004 全 low 非阻塞 open，REV-002 归档官就地调序，REV-003/004 为 stage-67 须知）；无新 Bug；知识沉淀 1 条（patterns）；**M22 done**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
+| [2026-10-03-Liuary-024.md](2026/10/03/2026-10-03-Liuary-024.md) | Liuary | v1.1.5-stage-66.op-003 执行通过 |
+| [2026-10-03-Liuary-023.md](2026/10/03/2026-10-03-Liuary-023.md) | Liuary | v1.1.5-stage-66.op-002 执行通过 |
+| [2026-10-03-Liuary-022.md](2026/10/03/2026-10-03-Liuary-022.md) | Liuary | v1.1.5-stage-66.op-001 执行通过 |
 | [2026-10-03-Liuary-021.md](2026/10/03/2026-10-03-Liuary-021.md) | Liuary | 阶段 v1.1.4-stage-65 完成 |
 | [2026-10-03-Liuary-020.md](2026/10/03/2026-10-03-Liuary-020.md) | Archiver | **v1.1.4 版本收官** — stage-65 归档完成（checkpoint 选择性恢复与阶段复位 + 版本 1.1.4 收口，问题 3）：选择性 restore + `flow stage reset` + 恢复路径三件套；审查 passed（REV-001/002/003 low open，含跨阶段 stage-62 REV-001）；无新 Bug；知识沉淀 2 条；**v1.1.4 四阶段全部闭环，7 问题全修复** |
 | [2026-10-03-Liuary-019.md](2026/10/03/2026-10-03-Liuary-019.md) | Liuary | v1.1.4 版本收口（1.1.3 → 1.1.4）里程碑：A/B/C/D/E 全链路同步 + 门禁全绿（--version=1.1.4） |
@@ -27,11 +32,6 @@
 | [2026-10-02-Liuary-022.md](2026/10/02/2026-10-02-Liuary-022.md) | Archiver | **stage-61 归档完成（CLI 输出编码 auto 语义修正 — 方案 A，v1.1.3，3 op）**——`resolveTargetEncoding` 第⑤步 win32 非 TTY 改为**直接 utf8**（对齐 Node 默认与 UTF-8 管道/CI 消费者，修正 stage-58 回归）；GBK 仅显式；删 chcp 死代码 5 项；版本 1.1.2→1.1.3 全链路收口；门禁 **61 文件 / 1016 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` 730、`lint kb` 0、build 成功 `.opencode` 零复活；审查 **passed（REV-001 closed）**；无新 Bug；知识沉淀 1 条；**未 push** |
 | [2026-10-02-Liuary-021.md](2026/10/02/2026-10-02-Liuary-021.md) | Liuary | v1.1.3-stage-61.op-003 执行通过 |
 | [2026-10-02-Liuary-020.md](2026/10/02/2026-10-02-Liuary-020.md) | Liuary | v1.1.3-stage-61.op-002 执行通过 |
-| [2026-10-02-Liuary-019.md](2026/10/02/2026-10-02-Liuary-019.md) | Liuary | v1.1.3-stage-61.op-001 执行通过 |
-| [2026-10-02-Liuary-018.md](2026/10/02/2026-10-02-Liuary-018.md) | Liuary | 阶段 v1.1.2-stage-59 完成 |
-| [2026-10-02-Liuary-017.md](2026/10/02/2026-10-02-Liuary-017.md) | Archiver | **stage-59 归档完成（修复 CI 环境守卫误报 → 让 CI 转绿并发布，2 op）**——根因＝stage-58 运行日志默认开启使守卫窗口内非测试步骤（`Version consistency guard`/`lint i18n`）写 `~/.openfeel` → 干净 runner `ABSENT→存在` 误报（CI #52 `cacbefb`）；**M1~M3** 三处 `env: OPENFEEL_LOG: '0'` + **M4** `Env snapshot` 下移 + **M5/M6** 三态加固（**仅改 `.github/workflows/ci.yml` 单文件**）；WSL 三场景 S1/S2 PASS、S3 FAIL 复现；门禁 **61 文件 / 1018 用例 0 skipped**、`tsc` 0、`lint i18n` 730 键、`lint kb` 0、环境四路径 NO_DIFF；**CI run #53（`25689d4`）build-and-test 双 success + `Env guard` success**；`openfeel@1.1.2` 已发布（registry `2026-10-01T19:29:49Z`）；审查 0 blocking（REV-001~005 resolved/closed）；无新 Bug；知识沉淀 1 条（troubleshooting）+ 1 条 patterns 更新；manual 无需更新；**十九阶段（41~59）全部闭环** |
-| [2026-10-02-Liuary-015.md](2026/10/02/2026-10-02-Liuary-015.md) | Liuary | 阶段 v1.1.2-stage-60 完成 |
-| [2026-10-02-Liuary-016.md](2026/10/02/2026-10-02-Liuary-016.md) | Archiver | **stage-60 归档完成（CI publish 并发控制 — 方案 A，1 op）**——`publish` job 加 `concurrency`（`group: publish-${{ github.ref }}`、`cancel-in-progress: false`）消除「同一 push 调度成多个并行 run → 并发发布同版本 → npm registry `409`」假失败（npm/cli#9889；实测 #53 success / #54 409、publish job 时间窗重叠）；**仅改 `.github/workflows/ci.yml` +3 行**（commit `7e09eac`）；`npm test` **61 文件 / 1018 用例 0 skipped / 0 failed**、`build`/`tsc` 0、环境零污染；审查 **passed（0 blocking + REV-001 low 非阻塞，挂起观察）**；无新增 Bug；知识沉淀 1 条；manual 无需更新；**未 push / 未 `npm publish`** |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

@@ -187,6 +187,14 @@ export function shouldRunDeployCheck(input: DeployCheckGateInput): boolean;
 | **D-D** | 检测粒度 | **版本不一致 + 部署缺失**；不做逐文件哈希 | 成本/噪音权衡；conflicts 机制已覆盖文件级 |
 | **D-F(部分)** | state 损坏 | **`unknown` 静默**（不提示） | 避免 Schema 演进误报 |
 
+## 九、修订记录
+
+| 时间 | 制定人 | 说明 |
+|------|--------|------|
+| 2026-10-03 | openfeel-planner | 初稿：T1~T5；3 op；验收 7 条；裁定 D-A/D-D/D-F(部分)；锁定「写入侧刷新」为该阶段决定性交付 |
+| 2026-10-03 | openfeel-executor | stage-66 交付：写入侧刷新（setup/update）+ `deployment-check.ts` 四态检测 + 门控纯函数；新增「集成契约」供 stage-67 复用（R-4） |
+| 2026-10-03 | openfeel-archiver | 归档复核：按 REV-002 **就地调序**恢复正文节序为 八→九→十（executor 依 op-003 方案 T5.2a 将「集成契约」插入修订记录之前，致 八→十→九）；内容零改动，仅节序调整 |
+
 ## 十、交付给 stage-67 的集成契约（stage-66 落地）
 
 > 由 op-003 固化；stage-67 **复用同一函数**，不得另行定义检测/门控。
@@ -200,10 +208,3 @@ export function shouldRunDeployCheck(input: DeployCheckGateInput): boolean;
     首 token ∈ {setup,update,init,migrate} / `CI` 真值 / `OPENFEEL_NO_UPDATE_CHECK` 真值。
 - **接入点（stage-67）**：`runCli()` / `startRepl()`（**非** `cli/index.ts` 顶层钩子）。
 - **触发语义**：仅 `mismatch`/`missing` 提示；`ok`/`unknown` 静默；提示走 stderr；每进程一次。
-
-## 九、修订记录
-
-| 时间 | 制定人 | 说明 |
-|------|--------|------|
-| 2026-10-03 | openfeel-planner | 初稿：T1~T5；3 op；验收 7 条；裁定 D-A/D-D/D-F(部分)；锁定「写入侧刷新」为该阶段决定性交付 |
-| 2026-10-03 | openfeel-executor | stage-66 交付：写入侧刷新（setup/update）+ `deployment-check.ts` 四态检测 + 门控纯函数；新增「十、集成契约」供 stage-67 复用（R-4） |

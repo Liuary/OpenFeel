@@ -3330,3 +3330,20 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.4-stage-65——`done/done → stage reset --to review_passed`（status 投影 `review_passed`）→ `advance --to test_pending` exit 0、不被 auto-repair 锁（与 stage-62 协同）；`reset`/`restore` 的 `--dry-run` 均零写盘；三载体恢复路径组合一致。
 
 **参见：** v1.1.4-stage-65（op-002 `516a1d1` / op-003 `c0b8414`）；manual/core/flow-manager.md、manual/cli/commands.md「故障恢复路径」；`src/core/flow-manager.ts` `resetStagePhase`；kb/architecture.md #纠正侧能力对称原则、#状态/相位单一事实源；kb/patterns.md #按阶段选择性 checkpoint restore + `--dry-run` 差异预览、#「只报告型」与「修复型」命令的边界
+
+## [+] 全局部署版本一致性检测模式：写入侧刷新 + 读取侧四态 + 门控纯函数（「刷新+读取」成对） (2026-10-03)
+
+**背景（v1.1.5-stage-66，D-A/D-D）**：`~/.openfeel/update_state.json.openfeel_version` 原为「首次创建时写入一次、之后只写不读」——`setup`（`core/setup.ts`）与 `update`（`core/update.ts`）后续执行**从不刷新**该字段，全仓无任何读取/比较消费。若直接拿它作「已部署版本」基准，已安装用户每次 `npm i -g openfeel@X` 升级后（甚至重跑 `setup` 后）都会**永久误报漂移**（陈旧值甚至早于上次 setup）。故事实源改造必须「**写入侧刷新 + 读取侧检测**」成对落地，缺一不可。
+
+**模式：把一个只写不读的陈旧字段改造成可信事实源，须三件套齐备——写入侧刷新点、读取侧结构化检测、纯函数门控**：
+
+- **① 写入侧刷新（决定性根因修复，D-A）**：在 `saveGlobalUpdateState(...)` **之前**赋值 `globalState.openfeel_version = getOpenfeelVersion()`（`setup.ts` 的 `setupGlobalFramework()` 与 `update.ts` 的 `updateProject()` 各一处；`getOpenfeelVersion()` 读工具自身 `package.json`）。语义：无论 state 既有（`newGlobalState = globalState ?? create...` 同引用）还是首次创建，部署结束后 `openfeel_version` **恒等于当前 CLI 版本**。**陷阱**：赋值必须在 `save` **之前**（否则仍写旧值，R-1）；不得依赖 `createGlobalUpdateState` 的首次赋值路径。
+- **② 读取侧四态结构化检测（`checkGlobalDeployment({ currentVersion? })`）**：返回 `{ status: 'ok'|'mismatch'|'missing'|'unknown'; cliVersion: string; deployedVersion: string|null }`。**只读、不加锁、不写盘**（imports 仅 `existsSync`/`getGlobalUpdateStatePath`/`loadGlobalUpdateState`/`getOpenfeelVersion`）。**`missing` 与 `unknown` 必须分离**——`loadGlobalUpdateState()` 对「文件缺失」与「Schema 非法/解析失败」**均返回 `null`**，检测层须先用 `existsSync(globalPath)` 判缺失（→`missing`，`deployedVersion=null`），存在但 load 为 `null` → `unknown`。版本 `!==`（含**降级**：部署版本 > CLI 亦按 `!=`）→ `mismatch`（带 `deployedVersion`）；相等 → `ok`。读异常（权限/占用/EISDIR 目录占位）`try/catch` → `unknown` **静默不抛**。**`unknown` 不提示**，避免 Schema 演进误报（D-F 部分裁定）。
+- **③ 门控策略纯函数（`shouldRunDeployCheck({ argv, isTTY, env, alreadyWarned })`）**：无 IO、无全局状态、可纯测。返回 `false`（静默）的任一条件：非 TTY / `alreadyWarned`（每进程一次）/ `argv` 含 `--json`·`--quiet` / `--version`·`-v`·`--help`·`-h` / **首个非选项 token**（`find(a => !a.startsWith('-'))`）∈ `{setup,update,init,migrate}`（避免「提示用户去做他正在做的事」）/ `CI`·`OPENFEEL_NO_UPDATE_CHECK` 真值。**检测核心与门控分离**：core 只出「事实」（四态），「是否提示」为独立纯策略，便于单测矩阵与 stage-67 CLI 层复用（R-4 契约）。
+- **④ 闭环验证（隔离 HOME 端到端 + 只读零变更）**：单测统一 `vi.mock('node:os')`（`{ ...actual, homedir: () => mockHome.dir }`）+ `mkdtempSync` 隔离 HOME，**绝不触碰真实 `~/.openfeel/`**；另以隔离 HOME（`USERPROFILE`/`HOME` 重定向）起子进程跑 `node bin/openfeel.js setup|update` 验证 CLI 级刷新（mock 对子进程不生效）；**「检测前后全局 state 字节 + mtime 不变、无锁文件」**证明只读（不改写 stale state）。三层证据（既有 state 刷新 / 首次创建 / 只读零变更）缺一不可。
+
+**判据（上溯原则）**：**「读」依赖「写」保持新鲜**——凡引入「读取某状态字段做比较/提示」的能力，必须先确认该字段的写入侧会在每次语义变更时刷新；否则检测能力建立在一个陈旧值上，将产生**系统性假阳性**。改造按「写侧刷新 → 读侧检测 → 门控/展示」三层落地，本阶段只做前两层（CLI 接入与展示归 stage-67）。
+
+**实证**：v1.1.5-stage-66——既有全局 state `openfeel_version='1.0.0'` → `setup`/`update` 后 == `1.1.4`（CLI 级隔离 HOME 实跑 exit 0）；四态（`missing` / `ok` / `mismatch` 升·降级 / `unknown` 非法版本·缺字段·JSON 解析失败·EISDIR）全部命中且 `unknown` 不抛、字节不变；门控真值表 21/21（含 `CI=0/false` 反例、白名单带选项 `update --lang en` 首 token 识别）；检测前后全局 state sha256 + mtime 不变、不产生锁文件；`npm test` 63 文件 / 1113 用例 0 skipped、`tsc` 0、`lint i18n` 753、`lint kb` 0。
+
+**参见：** v1.1.5-stage-66（op-001 `40b5cbb` 写入侧刷新 / op-002 `bc44980` 检测核心+门控 / op-003 `08c6c8d` e2e+集成契约+门禁）；`src/core/deployment-check.ts` `checkGlobalDeployment`/`shouldRunDeployCheck`；`src/core/setup.ts` / `src/core/update.ts` 刷新点；kb/patterns.md #全局/项目双 state 路由模式、#init/update 重启提醒对称输出模式、#数据加载防御性类型守卫模式；kb/architecture.md #全局部署架构；stage-67/plan.md（复用契约）

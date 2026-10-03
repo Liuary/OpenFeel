@@ -1,70 +1,58 @@
-# 自测报告 — v1.1.4-stage-65.op-001
+# 自测报告 — v1.1.5-stage-66.op-001
 
-- **执行时间**：2026-10-03 09:40
+- **执行时间**：2026-10-03
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（首次即通过全部自测）
+- **重试次数**：1（首次即通过，无重试）
 
 ## 执行摘要
-全部实施步骤（T1.1~T1.6 / T2.1 / T6.1a/b / T6.2a/b/c）完成，自测清单 S1~S11 全通过；全量门禁全绿（`npm test` 1071 passed / 0 failed / 0 skipped；`tsc`=0；`lint i18n`=745；`lint kb`=0；`build` 成功且二次幂等；`--version`=1.1.3 未变）。
+
+全部实施步骤（T1.1/T1.2/T4.1/T4.2/T4.3）完成，自测全绿：写入侧刷新 `openfeel_version` 生效且不回归。
 
 ## 实施步骤完成情况
-- [x] T1.1 新增导出接口 `RestoreDiffEntry` / `RestorePreview`（并列 `StatusReconcileItem`，类声明前）
-- [x] T1.2 新增 private `resolveRestoreTarget`（复用旧安全校验，双键回退兼容）
-- [x] T1.3 新增 private `buildRestoreData`（全量=快照本身；选择性=磁盘基底+单阶段替换+status 投影+current 协调）
-- [x] T1.4 新增 private `computeRestoreDiffs`（哨兵 `(absent)`/`(removed)`）
-- [x] T1.5 新增 public `previewRestore`（只读、零写盘、不加锁）
-- [x] T1.6 `restoreCheckpoint(filename, options?)` 签名扩展 + dry-run 短路，全量分支逐字节保持
-- [x] T2.1 `commands/flow.ts` 的 `checkpoint restore` 增 `--stage` / `--dry-run`，dry-run 不需 `--force`
-- [x] T6.1a/b zh-CN/en 各新增 6 键（4 运行 + 2 help），句对对称
-- [x] T6.2a `test/core/flow-manager.test.ts` 新增 5 用例（T6.1/T6.2/T6.3/S4/T6.8）
-- [x] T6.2b `test/commands/flow.test.ts` 新增 3 用例（dry-run/selective/路径穿越）
-- [x] T6.2c 目标测试全绿
+
+- [x] T1.1 `src/core/setup.ts`：`./update-state.js` 导入列表增补 `getOpenfeelVersion`；`setupGlobalFramework()` 保存全局 state 前（`last_update` 之后、`saveGlobalUpdateState` 之前）置 `globalState.openfeel_version = getOpenfeelVersion()`
+- [x] T1.2 `src/core/update.ts`：`updateProject()` 持久化段（`newGlobalState.last_update` 之后、`saveGlobalUpdateState` 之前）置 `newGlobalState.openfeel_version = getOpenfeelVersion()`；未新增 import（复用 `:34`）
+- [x] T4.1/T4.3 `test/core/setup.test.ts`：新增 2 用例；import 增补 `getOpenfeelVersion` / `mkdirSync` / `dirname`
+- [x] T4.2 `test/core/update.test.ts`：新增 1 用例
+- [x] T4.3 运行局部 vitest → 先红（T4.1/T4.2 fail）后绿（52 passed）
 
 ## 自测清单验证
+
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| S1 全量 restore 逐字节一致 | ✅ | T6.3 用例：磁盘写入 JSON 与快照归一化 revision 后逐字段一致 |
-| S2 `--stage A` 仅回退 A | ✅ | T6.1 用例：B/C 保留改动后磁盘值 |
-| S3 current 指向该阶段时同步 op | ✅ | T6.1 断言 `pipeline.current={stage:A,op:op-001}`；非命中不动 |
-| S4 status 按 phase 投影 | ✅ | S4 用例：test_passed→testing（非 done） |
-| S5 dry-run 零写盘 | ✅ | T6.2 用例：flow.json 字节不变、`.bak` 未新写 |
-| S6 差异清单正确（含哨兵） | ✅ | computeRestoreDiffs 实现 + T6.2 断言 from/to phase+status |
-| S7 路径穿越/非法名/缺文件/坏内容拒绝 | ✅ | T6.8 用例 + 既有用例不回归 |
-| S8 `--stage` 不存在 → stage-not-in-snapshot | ✅ | T6.8 用例：reason=stage-not-in-snapshot、restore=false |
-| S9 乐观并发冲突仍拒绝并 warn | ✅ | 既有并发用例不回归 |
-| S10 `lint i18n` = 745 | ✅ | 实测 745（+6，zh/en 对称） |
-| S11 `tsc`=0；`npm test` 0 failed/0 skipped | ✅ | 见下 |
+| S1 既有 state → setup 刷新 | ✅ | T4.1 先红后绿 |
+| S2 首次（无 state）→ setup 刷新 | ✅ | T4.3（本就绿，create* 亦赋值） |
+| S3 既有 state → update 刷新 + files 哈希更新 | ✅ | T4.2 `Object.keys(files).length > 0` |
+| S4 返回结构/输出不回归 | ✅ | 既有 52 用例全绿 |
+| S5 仍走 saveGlobalUpdateState | ✅ | 仅改字段，写盘路径未变 |
+| S6 测试隔离 HOME | ✅ | 复用 `mkdtemp` + `vi.mock('node:os')` |
+| S7 lint i18n = 753 | ✅ | 未新增键 |
+| S8 tsc = 0；npm test 0 failed | ✅ | 见门禁 |
 
 ## 门禁实测
+
 | 命令 | 结果 |
 |------|------|
-| `npx tsc --noEmit` | 0 |
-| `npm test` | Test Files 61 passed；Tests 1071 passed / 0 failed / 0 skipped |
-| `node bin/openfeel.js lint i18n` | ✅ 745 键一致（基线 739 + 6） |
-| `node bin/openfeel.js lint kb` | ✅ 0 过期（检查 325 引用） |
-| `npm run build` | 成功；二次 build 幂等（tracked 文件无变化） |
-| `node bin/openfeel.js --version` | 1.1.3（本 op 不改版本，收口归 op-003） |
-| 目标测试 `vitest run test/core/flow-manager.test.ts test/commands/flow.test.ts` | 2 files / 325 passed |
+| `npx vitest run test/core/setup.test.ts test/core/update.test.ts` | 2 files / 52 passed |
+| `npx tsc --noEmit` | 0（EXIT=0） |
+| `npm test` | 61 files / 1090 passed / 0 failed（0 skipped） |
+| `node bin/openfeel.js lint i18n` | ✅ 753 键一致 |
+| `node bin/openfeel.js lint kb` | ✅ 0 过期（327 引用） |
+| `npm run build` | ✅ EXIT=0（单源一致性通过） |
 
 ## 产出文件
-- `src/core/flow-manager.ts`
-- `src/commands/flow.ts`
-- `src/core/i18n-data/zh-CN.ts`
-- `src/core/i18n-data/en.ts`
-- `test/core/flow-manager.test.ts`
-- `test/commands/flow.test.ts`
-- `.openfeel/plan/v1/stage-65/ops/op-001.md`（动作清单勾选 + 修正记录）
+
+- `src/core/setup.ts`
+- `src/core/update.ts`
+- `test/core/setup.test.ts`
+- `test/core/update.test.ts`
 
 ## 前置校验结果
-- 方案完整性：通过（6 必填字段齐全）
-- Phase 合法性：通过（phase=exec_running，current.op=op-001）
-- 流转合法性：通过（`flow current` 确认 op-001 / v1.1.4-stage-65）
-- i18n 基线：739（实测）；rg 确认 `restoreCheckpoint` 调用点仅 flow-manager.ts + flow.ts + 测试；`previewRestore` 改动前 0 命中
+
+- 方案完整性：通过（目标/实施步骤/产出文件/自测清单/阶段/最多重试齐备）
+- Phase 合法性：通过（`v1.1.5-stage-66` / `op-001` / `exec_running` 匹配）
+- 流转合法性：通过（`flow current` 确认指针为 op-001；`flow attempt` 合法记录）
 
 ## 偏差记录
-1. **T6.3 断言实现方式调整**（已在方案修正记录登记）：方案建议 `mgr.getData()` 与快照 `JSON.stringify` 比对，但 `load()` 会回填 op `id`（磁盘不存），必然不等；改为比对磁盘写入 JSON 与快照 JSON（归一化 revision）。
-2. **i18n 插入位置偏移**：方案标注 zh-CN `:199-205`，实际 `checkpoint.restoreFailTmpl` 位于 `:205`，以实际位置插入，键名/值不变。
-3. 无跳步违规；未触碰快照生产/清理、restore 安全校验（路径穿越/乐观并发/.bak）；未新增依赖；未 `push`/`publish`；未手改 flow.json。
 
-## 移交
-自测通过，**请 Feel 安排 openfeel-reviewer 审查**。
+无。产出与方案「产出文件」清单完全一致，无遗漏/超范围。

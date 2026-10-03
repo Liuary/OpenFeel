@@ -1,0 +1,81 @@
+# stage-66 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.5-stage-66
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-03"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.4-stage-65
+    type: soft
+    status: done
+    reason: "承接 v1.1.4 基线（`lint i18n` 753 / flow scheme create 已落地）；本阶段未新增 i18n 键，维持 753。"
+  - downstream: v1.1.5-stage-67
+    type: hard
+    note: "stage-66 是 stage-67 的 hard 前置：stage-67 复用 `checkGlobalDeployment` + `shouldRunDeployCheck`，接入 `runCli()`/`startRepl()`、新增 `setup --check`、补 i18n 文案与版本收口。stage-66 **不接 CLI**。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 CI workflow、不直写 `flow.json`**；phase 推进由 Feel 调度。"
+
+# 本阶段 3 op：op-001 → op-002（hard）→ op-003（hard）。
+# 覆盖 T1（写入侧刷新）+ T2/T3（检测核心 + 门控纯函数）+ T4/T5（测试 + 门禁）。
+# 不变量：UpdateStateSchema 零变更；全局/项目 state 路径不变；检测只读、不锁、不写盘；
+#         setup/update 返回结构与输出不变；不新增依赖；不接 CLI；不复活 postinstall；不直写 flow.json。
+ops:
+  op-001:
+    file: op-001.md
+    title: "写入侧刷新 openfeel_version（setup/update）"
+    produces:
+      - src/core/setup.ts
+      - src/core/update.ts
+      - test/core/setup.test.ts
+      - test/core/update.test.ts
+    deps: []
+    notes: "覆盖 T1 + T4.1~T4.3（阶段计划 §三）。**T1** `setupGlobalFramework()` 在 `saveGlobalUpdateState(globalState)` 之前置 `globalState.openfeel_version = getOpenfeelVersion()`（并补 import）；`updateProject()` 在 `saveGlobalUpdateState(newGlobalState)` 之前置 `newGlobalState.openfeel_version = getOpenfeelVersion()`（已 import）。语义：无论既有 state（同引用）还是首次创建，部署结束后 `openfeel_version` 恒等于当前 CLI 版本。D-A 根因修复（写入侧），与 op-002 读取侧成对。**不改** last_update/files/冲突/.bak/锁/Schema。门禁：tsc 0 + npm test 0 skipped + lint i18n 753 + lint kb 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "deployment-check 四态检测核心 + 门控纯函数"
+    produces:
+      - src/core/deployment-check.ts
+      - test/core/deployment-check.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T2 + T3 + T4.4~T4.9。**新增** `src/core/deployment-check.ts`：`checkGlobalDeployment({currentVersion?})` 只读四态（`ok`/`mismatch`/`missing`/`unknown`；`existsSync` 区分缺失 vs 损坏；读异常 → `unknown` 静默；**不锁不写盘**，仅针对全局 `~/.openfeel/update_state.json`）；`shouldRunDeployCheck({argv,isTTY,env,alreadyWarned})` 纯函数门控（非 TTY/已提示/--json/--quiet/--version/-v/--help/-h/首 token∈{setup,update,init,migrate}/CI 真值/OPENFEEL_NO_UPDATE_CHECK 真值 → false）。文件头 JSDoc 固化 stage-67 集成契约（R-4）。测试隔离 HOME（vi.mock('node:os') + mkdtemp）。**不接 CLI**（归 stage-67）。门禁：tsc 0 + npm test 0 skipped + lint i18n 753 + lint kb 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "端到端测试 + 集成契约备注 + 全门禁"
+    produces:
+      - test/core/deployment-integration.test.ts
+      - .openfeel/plan/v1/stage-66/plan.md
+      - .openfeel/users/Liuary/log/2026/10/03/2026-10-03-008.md
+    deps:
+      - op: op-002
+        type: hard
+    notes: "覆盖 T5 + 阶段级验收。**e2e** 新建 `test/core/deployment-integration.test.ts`（隔离 HOME）：场景 A `seed '1.0.0' → mismatch → setup → ok`（决定性）；B `seed '0.0.1' → update → ok`；C `无 state → missing → setup → ok`；D 检测只读（mismatch 检测不改写 stale state 字节）。**文档备注** 在 stage 计划追加「十、交付给 stage-67 的集成契约」（R-4 落地）+ 修订记录行。**阶段报告** 落私域日志 008（007 为方案官日志）。**全门禁**：npm test（0 skipped/0 failed）+ tsc 0 + lint i18n 753（不新增键）+ lint kb 0 + npm run build 成功幂等 + `--version`==1.1.4（本阶段不改版本，收口归 stage-67）。注：bin 读 dist，lint/version 门禁须在 build 之后。不新增生产逻辑。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付 stage-67 复用）
+downstream_contracts:
+  - name: "src/core/deployment-check.ts"
+    change: "**新增**：`checkGlobalDeployment({ currentVersion? }) => { status:'ok'|'mismatch'|'missing'|'unknown'; cliVersion; deployedVersion }`（只读）；`shouldRunDeployCheck({ argv, isTTY, env, alreadyWarned }) => boolean`（纯函数门控）。stage-67 **须复用同一函数**，接入点 `runCli()`/`startRepl()`，不得另行定义。"
+  - name: "~/.openfeel/update_state.json.openfeel_version"
+    change: "语义由「首次创建时写一次」改为「**每次 setup/update 全局部署后刷新为当前 CLI 版本**」（D-A）；Schema 与路径不变。"
+  - name: "i18n 基线"
+    change: "**不变**：`lint i18n` = 753（本阶段不新增键；stage-67 统一接入提示文案时再登记新基线）"
+  - name: "版本"
+    change: "**不变**：`package.json.version` = 1.1.4（v1.1.5 收口归 stage-67）"

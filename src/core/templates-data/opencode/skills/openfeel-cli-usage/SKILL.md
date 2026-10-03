@@ -1,6 +1,6 @@
 ---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -11,7 +11,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 边界：**执行型交互向导**请用 `openfeel-wizard` skill（跑 `openfeel flow wizard` 推进流水线）；本 skill 只承载静态知识查阅。
 - 与 `openfeel-tool-usage` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 
-> 本文档为 v1.1.4 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.1.5 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
@@ -20,7 +20,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | 命令 | 用途 | 关键参数 |
 |------|------|----------|
 | `openfeel init [path]` | 初始化项目工作区 | `--lang <zh-CN\|en>`、`--demo`、`--workspace-only`、`--non-interactive` |
-| `openfeel setup` | 部署全局框架配置（不建项目 `.openfeel/`） | `--lang <zh-CN\|en>` |
+| `openfeel setup` | 部署全局框架配置（不建项目 `.openfeel/`）；`--check` 只读诊断全局部署一致性 | `--lang <zh-CN\|en>`、`--check [--json]` |
 | `openfeel update [path]` | 部署适配文件到目标项目 | `--lang`、`--force` |
 | `openfeel migrate [path]` | Legacy 布局迁移（检测/备份/迁移/回滚） | `--dry-run`、`--remap-assignee`、`--clean-global-core-md`；`migrate rollback` |
 | `openfeel flow ...` | 流水线状态管理 | 见下「flow 子命令」 |
@@ -44,6 +44,21 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 **纠错/清理侧补充**：`flow review add|resolve|update|remove`；`flow ops list [--stage <id>] [--json]`（操作方案视图，draft 分组展示）；`flow repair [--prune-orphans]`（默认只报告，`--prune-orphans` 仅清键孤儿，单向不删文件）；`plan scheme register`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，`--dry-run` 零写盘；与 `flow repair --prune-orphans`（仅清键孤儿）对称）；**`flow stage reset <id> --to <phase>`**（`advance` 的**对称复位**：允许回退，受合法 phase 值域 + `to=done` 阻塞 REV 约束，`--dry-run` 零写盘）；**`flow checkpoint restore <file> --stage <id> [--dry-run]`**（按阶段选择性回退；`--dry-run` 差异预览零写盘）。
 
 > 命令职责分层：`plan stage add`（完整，推荐）> `flow stage add`（仅注册 `flow.json`，不建目录）> `stage create`（已弃用）。
+
+## v1.1.5 新增能力（stage-67）
+
+- **主动诊断 `openfeel setup --check [--json]`**：只读检测全局部署版本（`~/.openfeel/update_state.json.openfeel_version`）与 CLI 版本一致性，**不执行部署**；一致退出 `0`，`mismatch`/`missing`/`unknown` 退出 `1`；`--json` 输出 `{schemaVersion,status,cliVersion,deployedVersion}`（`status` ∈ `ok|mismatch|missing|unknown`）。
+- **被动部署提示**：任意命令 / REPL 在 TTY 下检测到全局部署漂移（`mismatch`）或缺失（`missing`）时，向 **stderr** 提示运行 `openfeel setup`；**每进程一次**；`--json`/`--quiet`/`--version`/`--help`、CI、`OPENFEEL_NO_UPDATE_CHECK` 及部署类命令（`setup`/`update`/`init`/`migrate`）静默；`unknown`（state 损坏）被动静默、仅 `--check` 显式报告；**不改退出码、不写盘**。
+
+## 升级流程
+
+```bash
+npm i -g openfeel@latest   # 1. 升级 CLI
+openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/skills/opencode.jsonc
+# 3. 重启 harness（opencode）以加载新的全局配置
+```
+
+仅 `npm i -g` 不会刷新全局资产，须重跑 `openfeel setup` 并重启 harness。`openfeel setup --check` 可诊断全局部署版本与 CLI 版本是否一致（一致退出 0，否则退出 1）。
 
 ## v1.1.2 新增能力（stage-41~55）
 

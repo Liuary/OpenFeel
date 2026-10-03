@@ -138,9 +138,9 @@
 
 **顺序：op-001 → op-002 → op-003。**
 
-**i18n 键（显式登记，预估 +7 → 新基线 760）**：
+**i18n 键（显式登记，+8 → 新基线 761；op-002 实产 `setup` 键 6 个，较预估 +1，新增 `setup.checkUnknownTmpl`）**：
 - `update.globalStaleWarnTmpl`、`update.globalMissingWarnTmpl`（被动提示，2）
-- `setup.checkOkTmpl`、`setup.checkMismatchTmpl`、`setup.checkMissingTmpl`（`--check` 文本，3）
+- `setup.checkOkTmpl`、`setup.checkMismatchTmpl`、`setup.checkMissingTmpl`、`setup.checkUnknownTmpl`（`--check` 文本，4）
 - `help.setup.check`、`help.setup.json`（命令帮助，2）
 
 **边界声明**：被动提示只写 stderr、不写盘、不改退出码；`setup --check` 只读；`setup` 无 `--check` 行为不变；不新增依赖；不 `npm publish`/`git push`；不改 `flow.json`。
@@ -156,7 +156,7 @@
 5. **兼容**：`setup` 无参行为与既有 `--json` 契约不回归（T5.15）。
 6. **文档**：README×2 / GETTING_STARTED / commands / manual / skill 五载体「升级流程」一致（T3）。
 7. **版本**：`--version` == `package.json` == **1.1.5**；`CHANGELOG` 含 `[1.1.5]`；A 类载体 `1.1.4` 残留 **0**。
-8. **门禁**：`npm test` 全绿 `0 skipped / 0 failed`；`tsc` = 0；`lint i18n` = **760（显式登记新基线）**；`lint kb` = 0；`npm run build` 成功且 `.opencode/**` 不复活。
+8. **门禁**：`npm test` 全绿 `0 skipped / 0 failed`；`tsc` = 0；`lint i18n` = **761（显式登记新基线）**；`lint kb` = 0；`npm run build` 成功且 `.opencode/**` 不复活。
 
 ---
 
@@ -167,7 +167,7 @@
 | R-1 | 提示污染 stdout/`--json` | 高 | 提示走 stderr；`--json` 静默；T5.4 断言纯 JSON |
 | R-2 | 接入点波及测试（parseAsync 触发检测） | 中 | 接入在 `runCli`/`startRepl`，**非**顶层钩子；薄适配器可注入上下文单测 |
 | R-3 | `setup --check` 误触发部署或 backup | 高 | 前置短路，`--check` 分支直接 return；T5.14 零写盘 |
-| R-4 | 新增键未登记基线致门禁口径漂移 | 低 | §四显式登记 760；大计划 §七同步 |
+| R-4 | 新增键未登记基线致门禁口径漂移 | 低 | §四显式登记 **761**；大计划 §七同步 |
 | R-5 | 文案双表不成对 / `help.setup.*` 遗漏 | 低 | `lint i18n` 非 0 退出即拦截 |
 | R-6 | 版本收口遗漏载体（package-lock/config.ts/agents-md） | 低 | 依 KB A/B/C/D/E 清单逐条；`1.1.4` 残留 0 断言 |
 | R-7 | `.openfeel/config.yaml` 被整文件重写损坏 | 中 | 仅单行 `edit`，禁 `write` |

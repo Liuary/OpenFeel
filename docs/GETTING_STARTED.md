@@ -35,6 +35,18 @@ openfeel --version
 openfeel --help
 ```
 
+### 升级后为何需重跑 `setup`
+
+升级流程：
+
+```bash
+npm i -g openfeel@latest   # 1. 升级 CLI
+openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/skills/opencode.jsonc
+# 3. 重启 harness（opencode）以加载新的全局配置
+```
+
+仅 `npm i -g` 不会刷新全局资产，须重跑 `openfeel setup` 并重启 harness。`openfeel setup --check` 可诊断全局部署版本与 CLI 版本是否一致（一致退出 0，否则退出 1）。
+
 ## 4. 初始化项目
 
 在项目根目录（或空目录）中初始化 OpenFeel 工作区：
@@ -113,6 +125,7 @@ openfeel lint
 | `openfeel roadmap` | 分期大纲管理（`create`/`show`） |
 | `openfeel instructions <artifactId>` | 生成结构化指令（XML 或 JSON） |
 | `openfeel update [path]` | 部署 OpenFeel 适配文件到目标项目 |
+| `openfeel setup [--check]` | 部署全局框架配置；`--check [--json]` 只读诊断全局部署与 CLI 版本一致性 |
 | `openfeel knowledge` | 知识库管理（`list`/`add`/`search`/`index`） |
 | `openfeel stage` | 工作阶段状态管理（status.md 原子操作） |
 | `openfeel project` | 项目管理与概览 |

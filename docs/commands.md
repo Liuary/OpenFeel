@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.4 快照** | 更新日期：2026-10-03
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.5 快照** | 更新日期：2026-10-03
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -618,8 +618,11 @@ openfeel model list
 纯全局部署（全局 `AGENTS.md` + agent + skill + 全局平台适配器配置），不建立项目 `.openfeel/`，幂等。
 
 ```bash
-openfeel setup [--lang <zh-CN|en>]
+openfeel setup [--lang <zh-CN|en>]            # 部署全局框架配置（幂等）
+openfeel setup --check [--json]               # 只读诊断：一致退出 0，否则退出 1
 ```
+
+`--check` 只读，不执行部署；`--json` 输出 `{schemaVersion,status,cliVersion,deployedVersion}`。
 
 ## migrate — 存量迁移
 

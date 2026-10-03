@@ -81,7 +81,7 @@
 
 ## 七、全局验收标准（版本级）
 
-1. **门禁**：`npm test` 全绿（基线 **61 文件 / 1087 用例 / 0 skipped** → 因新增用例而增加，`0 failed`）；`npx tsc --noEmit` = **0**；`node bin/openfeel.js lint i18n` = **753 + 新增键**（预估 **+7 → 760**，**须显式登记新基线**）；`node bin/openfeel.js lint kb` = **0 过期**；`npm run build` 成功且幂等、`.opencode/**` 不复活。
+1. **门禁**：`npm test` 全绿（基线 **61 文件 / 1087 用例 / 0 skipped** → 因新增用例而增加，`0 failed`）；`npx tsc --noEmit` = **0**；`node bin/openfeel.js lint i18n` = **753 + 新增键**（实产 **+8 → 761**，**已显式登记新基线**）；`node bin/openfeel.js lint kb` = **0 过期**；`npm run build` 成功且幂等、`.opencode/**` 不复活。
 2. **写入侧刷新（决定性）**：已有全局 state（含旧 `openfeel_version`）下执行 `setupGlobalFramework()` 或 `updateProject()` 后，`~/.openfeel/update_state.json.openfeel_version` **== 当前 CLI 版本**。
 3. **检测正确性**：`checkGlobalDeployment()` 在「部署版本 == CLI 版本」→ `ok`；「!=」→ `mismatch`；「全局 state 缺失」→ `missing`；「state 存在但 Schema 非法」→ `unknown`。
 4. **被动提示出现**：版本不一致时，TTY + 非 `--json`/`--quiet` 下，任意普通命令（如 `flow status`）向 **stderr** 输出提示且包含 `openfeel setup`；进程退出码不被改变。
@@ -99,7 +99,7 @@
 | R-2 | 在每个命令运行检测污染测试（读真实 homedir / stderr 噪音） | 中 | 接入点置于 `runCli()`/`startRepl()`（**非** `cli/index.ts` 顶层钩子）；检测只读全局 state；门控含非 TTY/CI 静默；单测注入 mock homedir |
 | R-3 | 提示污染 `--json` stdout 契约 | 高 | 提示走 **stderr**；`--json` 直接静默；专测断言 stdout 纯 JSON |
 | R-4 | 检测阈值误报（Schema 演进/损坏 state） | 中 | 缺失 vs 损坏分离（`unknown` 静默，不提示）；仅 `mismatch`/`missing` 触发 |
-| R-5 | 新增键推高 i18n 基线未登记 | 低 | 显式登记新基线（预估 760）于大计划 §七与 stage-67 §五 |
+| R-5 | 新增键推高 i18n 基线未登记 | 低 | 显式登记新基线（**761**）于大计划 §七与 stage-67 §五 |
 | R-6 | 全局 state 为跨项目共享文件，读取须容错（权限/占用） | 低 | 读取全程 `try/catch`，异常 → `unknown` 静默；不写不锁 |
 
 **回滚**：按阶段 `git revert <sha>`；无数据迁移、无依赖树变动、无 schema 变更；版本回退仅需改回版本载体。

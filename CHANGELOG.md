@@ -2,6 +2,16 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.5] - 2026-10-03
+
+### Added
+- 升级后全局部署一致性检测：任意命令与 REPL 在 TTY 下检测到全局部署漂移或缺失时向 stderr 提示（每进程一次；`--json`/`--quiet`/CI/部署类命令静默）
+- `openfeel setup --check [--json]`：只读诊断全局部署版本与 CLI 版本一致性（一致退出 0，否则退出 1）
+- 版本全链路收口 1.1.4 → 1.1.5
+
+### Documentation
+- README（zh/en）、GETTING_STARTED、commands、manual/core/setup、`openfeel-cli-usage` skill 五载体统一「升级流程：`npm i -g` → `openfeel setup` → 重启 harness」
+
 ## [1.1.4] - 2026-10-03
 
 ### Added

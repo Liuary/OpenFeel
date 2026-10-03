@@ -29,6 +29,17 @@ npm install -g openfeel@latest # 更新到最新版本
 
 要求：Node.js ≥ 20
 
+## 升级 openfeel
+
+```bash
+npm i -g openfeel@latest   # 1. 升级 CLI
+openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/skills/opencode.jsonc
+# 3. 重启 harness（opencode）以加载新的全局配置
+```
+
+> 仅 `npm i -g` 不会刷新全局资产，须重跑 `openfeel setup` 并重启 harness。
+> 若不确定是否需要升级，运行 `openfeel setup --check` 诊断全局部署版本与 CLI 版本是否一致。
+
 ## 快速开始
 
 ```bash

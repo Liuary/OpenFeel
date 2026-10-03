@@ -29,6 +29,18 @@ npm install -g openfeel@latest # Update to latest
 
 Requires: Node.js ≥ 20
 
+## Upgrading openfeel
+
+```bash
+npm i -g openfeel@latest   # 1. Upgrade the CLI
+openfeel setup             # 2. Re-run deployment to refresh global AGENTS.md/agents/skills/opencode.jsonc
+# 3. Restart the harness (opencode) to load the new global config
+```
+
+> `npm i -g` alone does not refresh global assets — you must re-run `openfeel setup` and restart the harness.
+> The CLI also prints a passive prompt when it detects deployment drift or a missing global deployment.
+> If unsure whether an upgrade is needed, run `openfeel setup --check` to diagnose whether the deployed version matches the CLI version.
+
 ## Quick Start
 
 ```bash

@@ -148,6 +148,6 @@ src/commands/setup.ts       registerSetupCommand
 
 ## 相关 skill
 
-- **`openfeel-cli-usage`**（CLI 用法参考，**查询型**）：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 三格式与目录映射约定、典型场景、权限要点；含**快照声明**「本文档为 v1.1.2 快照，命令/参数细节以 `node bin/openfeel.js <cmd> --help` 实时输出为准」（防文档-实现发散）。与 `openfeel-wizard`（**执行型**交互向导）职责分离、正文互引。
+- **`openfeel-cli-usage`**（CLI 用法参考，**查询型**）：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 三格式与目录映射约定、典型场景、权限要点；含**快照声明**「本文档为 v1.1.4 快照，命令/参数细节以 `node bin/openfeel.js <cmd> --help` 实时输出为准」（防文档-实现发散；**归档官 2026-10-03 补正**：权威源 `templates-data/opencode/skills/openfeel-cli-usage/SKILL.md` 已于 v1.1.4-stage-65 更新为 v1.1.4 快照）。与 `openfeel-wizard`（**执行型**交互向导）职责分离、正文互引。
   - 权威源：`src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`（**扁平单文件、中文单语**）；经 `npm run build` 双注入（`update.ts` 的 `SKILL_DEFINITIONS` / `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`）；由 `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（**生成物禁手改**）。**stage-55 起仓库自身不再自举项目级 `.opencode/skills/**`**（自举步骤已随 `build.js` 步骤 8 移除）。skill 总数 **17**。
   - 维护触发：新增/修改 CLI 命令、phase 枚举或 stageId 约定时，须同批更新该 skill 权威源 + 跑 build（详见 `manual/index.md` 维护规则「skill 体系」行）。

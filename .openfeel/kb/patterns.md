@@ -3283,3 +3283,50 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **判据**：声明式状态文件 + CLI 单一写入入口的治理体系下，凡「同一事实存在于状态文件与展示载体两处」的场景，须显式声明权威源并约定不一致时的取舍方向（本仓统一：`flow.json` > 文档副本），避免把展示副本的滞后误判为数据不一致。
 
 **参见：** v1.1.4-stage-64 REV-003（low 非阻塞）；kb/patterns.md #审计日志 action 命名与双轨语义模式；`src/core/plan/scheme.ts` `generateSchemeTemplate`
+
+## [+] 按阶段选择性 checkpoint restore + `--dry-run` 差异预览：以磁盘为基底 + 单子树替换 + 零写盘预览 (2026-10-03)
+
+**背景（v1.1.4-stage-65，问题 3）**：原 `restoreCheckpoint(filename)` 读整快照覆盖 `flow.json`（全量、无粒度、无 diff 预览）。多阶段并行时一旦锁 `phase`，只能全量回退，**跨阶段连带回退**风险高、恢复前无差异可比。
+
+**模式：恢复命令分层扩展——缺省保持全量（向后兼容），`--stage` 收窄到单子树，`--dry-run` 复用只读预览**：
+
+- **签名向后兼容**：`restoreCheckpoint(filename, options?: { stage?: string; dryRun?: boolean }): boolean`。**无 `stage` → 全量覆盖，输出与改前逐字节一致**（`JSON.stringify(restored, null, 2) + '\n'` 逐字保留）；`stage` → 仅替换 `flow.json.stages[stage]` 子树。
+- **以磁盘为基底构造（非以快照为基底）**：`buildRestoreData` 先 `JSON.parse` 读磁盘数据作 base，只把 `snapshot.stages[stageKey]` 写回 `base.stages[stageKey]`——其它阶段、`pipeline` 其余字段、`reviews`、`log` 天然不动（避免「快照整份替换后回填」易漏字段）。
+- **`status` 按 `phase` 重投影**：被恢复子树 `status = mapPhaseToStageStatus(snapshot.phase, snapshot.status)`（呼应状态/相位单一事实源，对旧损坏快照自愈；**不递归投影其它阶段**）。
+- **`current` 协调最小副作用**：仅当「磁盘 `pipeline.current.stage` 归一化后 === 目标阶段 **且** 快照 `current` 亦指向该阶段」时替换 `current`（同步 `op` 指针）；否则 `current` 完全不动（严守「pipeline 其余字段不动」）。
+- **只读预览抽独立方法**：`previewRestore(filename, { stage? })`（只读、不加锁、零写盘）返回 `{ ok, reason?, conflicts, diffs: RestoreDiffEntry[] }`；`restoreCheckpoint --dry-run` 直接复用（返回 `preview.ok`）。`reason` 枚举 `invalid-name | missing | bad-content | stage-not-in-snapshot`；差异条目 `{ stage, fromPhase, toPhase, fromStatus, toStatus }`，新增/移除用哨兵 `'(absent)'`/`'(removed)'`；全量模式列 `union(磁盘阶段, 快照阶段)` 差集，`--stage` 仅列该阶段。
+- **不变量（逐字保留）**：安全校验（拒绝含 `/`/`\`/`..` 的文件名）、乐观并发 `revision` 校验（`diskRevision !== loadedRevision` → 拒绝 + warn）、`.bak` 写前备份（`atomicWriteFileSync(..., {backup:true})`）、revision 重定基 `diskRevision + 1`。快照生产/清理/命名（20 上限）**零改动**。
+
+**陷阱**：① `--dry-run` 分支必须在任何 `atomicWriteFileSync`/锁/`.bak` **之前**返回（复用 kb #`--dry-run` 必须字节级不写盘 口径）；② `stage` 归一化用 `normalizeStageId` + **双键回退**（`snapshot.stages[norm] ?? snapshot.stages[raw]`）兼容以短名建键的存量数据；③ `--dry-run` 只读预览**不要求 `--force`**（`--force` 仅在真实写盘时强制）；④ 真实执行路径「阶段不在快照」当前只有布尔返回（命令层退化为通用失败文案）——`--dry-run` 精确、执行路径模糊，属已知提示一致性小瑕疵（stage-65 REV-002，low）。
+
+**实证**：v1.1.4-stage-65——3 阶段 fixture：`restore --stage A` 仅回退 A，B/C 子树 + `pipeline`（含 `retry`）+ `reviews` + `log` 序列化**逐字节一致**，revision `8→9`（`diskRevision+1`）；`--dry-run` `flow.json` sha256 不变、无 `.bak`、差异行正确；无 `--stage` 全量恢复与快照逐字一致（仅 revision 重定基）。
+
+**参见：** v1.1.4-stage-65（op-001 `1f1414e`）；`src/core/flow-manager.ts` `restoreCheckpoint`/`previewRestore`/`resolveRestoreTarget`/`buildRestoreData`/`computeRestoreDiffs`；kb/patterns.md #Checkpoint 快照自动保存 + 生命周期管理模式、#`--dry-run` 必须字节级不写盘、#flow.json 乐观并发校验模式；manual/core/flow-manager.md「Checkpoint 恢复与阶段复位」
+
+## [+] 故障恢复路径的组合与优先级模式：诊断 → 精准复位 → 按阶段回退 → 全量回退（最后手段）→ 对账 (2026-10-03)
+
+**背景（v1.1.4-stage-65，问题 3「价值肯定」）**：治理体系「禁止手改 `flow.json`」在**故障场景**下须有可解路径。此前能力散落（`checkpoint restore` 全量覆盖 / `flow health --fix` 仅回写 status.md），无统一「先诊断、优先最小动作、最后才全量」的操作顺序。
+
+**模式：把恢复能力编排为「顺序即优先级」的五步链，并显式声明每步的写盘边界与职责**：
+
+```
+① flow health（诊断，只报告）
+② flow stage reset <id> --to <phase>（精准复位单阶段）        ← 首选
+③ checkpoint restore <file> --stage <id> --dry-run（预览）→ 去 --dry-run 执行（按阶段回退）
+④ checkpoint restore <file>（无 --stage，全量覆盖）          ← 最后手段
+⑤ flow health --fix（对账 status.md「状态」，仅该字段）
+```
+
+- **步①诊断**（`flow health`，可 `--quick`/`--json`）：**只报告不修复**（呼应 kb #「只报告型」与「修复型」命令的边界）。
+- **步②精准复位（首选）**：`flow stage reset <id> --to <phase>` 直接改 `flow.json` 目标阶段 `phase`（并按 `mapPhaseToStageStatus` 投影同步 `status`），**不影响其它阶段**；允许回退（不受正向 `transitions` 限制），受**合法 phase 值域**（`PipelinePhaseSchema`，非法直接抛错、不做模糊修正）+ **`to=done` 的阻塞 REV 检查**（核心层 `throw`，不可绕过）约束；`--dry-run` 零写盘；不触发归档 commit、不写 checkpoint；审计 `reset_stage_phase`。**与 `flow advance` 构成「推进 ↔ 复位」对称能力**（呼应 kb/architecture.md #纠正侧能力对称原则）。
+- **步③按阶段回退**：`checkpoint restore --stage <id>` 从快照仅回退该阶段子树；先 `--dry-run` 看差异（零写盘）再执行（执行需 `--force`）。
+- **步④全量回退（最后手段）**：`checkpoint restore <file> --force` 整份覆盖；**多阶段并行时跨阶段连带回退**，故降为最后手段。
+- **步⑤对账**：`flow health --fix`（`--fix --dry-run` 预览）以 `phase` 投影为权威，**仅回写 `status.md` 的「状态」行**（不碰 `flow.json`），为唯一批量对账入口。
+
+**职责边界（须同批文档化）**：`flow stage reset` / `checkpoint restore` **改写 `flow.json`**（phase/status/revision）；`flow health --fix` **仅回写 `status.md`**；`flow health` 只报告。三载体（manual/core、manual/cli、docs/skill）须口径一致（本仓 `node bin/openfeel.js`；部署 skill `openfeel`）。
+
+**判据**：凡「禁止直接编辑的声明式状态文件」，须提供**从最小副作用到最大副作用排序**的恢复手段组合，并显式标注「全量回退为最后手段」——使操作者在故障下优先选择本地化动作，降低连带破坏面。
+
+**实证**：v1.1.4-stage-65——`done/done → stage reset --to review_passed`（status 投影 `review_passed`）→ `advance --to test_pending` exit 0、不被 auto-repair 锁（与 stage-62 协同）；`reset`/`restore` 的 `--dry-run` 均零写盘；三载体恢复路径组合一致。
+
+**参见：** v1.1.4-stage-65（op-002 `516a1d1` / op-003 `c0b8414`）；manual/core/flow-manager.md、manual/cli/commands.md「故障恢复路径」；`src/core/flow-manager.ts` `resetStagePhase`；kb/architecture.md #纠正侧能力对称原则、#状态/相位单一事实源；kb/patterns.md #按阶段选择性 checkpoint restore + `--dry-run` 差异预览、#「只报告型」与「修复型」命令的边界

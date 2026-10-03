@@ -1,0 +1,104 @@
+# stage-65 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.4-stage-65
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-03"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.4-stage-62
+    type: hard
+    status: done
+    reason: "stage-62 已确立「phase 唯一事实源 + status 投影 + auto-repair 仅 phase→status」；选择性恢复的 status 投影与 reset 后不被锁 done 均依赖该语义。"
+  - upstream: v1.1.4-stage-63
+    type: soft
+    status: done
+    reason: "配置默认值/版本载体无直接耦合；stage-65 的版本收口承接同一 v1.1.4 版本链。"
+  - upstream: v1.1.4-stage-64
+    type: soft
+    status: done
+    reason: "stage-64 已把 i18n 基线升至 739；本阶段新增 14 键，须在其基线上显式登记 753。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 CI workflow、不直写 `flow.json`**；phase 推进由 Feel 调度。"
+
+# 本阶段 3 op：op-001 → op-002（hard）→ op-003（hard，文档/版本须反映已落地命令面）。
+# 覆盖问题 3（checkpoint 精准恢复）+ 版本收口 1.1.3→1.1.4。
+# 不变量：默认 restore 全量逐字节不变；不改快照生产/清理；不改 restore 安全校验；
+# reset 受合法 phase 值域 + to=done 阻塞 REV 约束；不新增依赖；不直写 flow.json。
+ops:
+  op-001:
+    file: op-001.md
+    title: "selective restore + dry-run"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+    deps: []
+    notes: "覆盖 T1 + T2 + T6.1~T6.3（+T6.8 selective 分支）。**T1** `restoreCheckpoint(filename, {stage?, dryRun?})` 签名扩展；新增 private `resolveRestoreTarget`（安全校验/归一化/快照校验，与旧校验逐字一致）/`buildRestoreData`（全量=快照本身；选择性=磁盘基底+仅替换 stages[stageKey]，子树 status 按 mapPhaseToStageStatus 投影，仅 current 指向该阶段时同步 current.op）/`computeRestoreDiffs`（差异清单，哨兵 `(absent)`/`(removed)`）；新增 public `previewRestore`（只读零写盘）；模块级导出 `RestoreDiffEntry`/`RestorePreview`。全量分支输出逐字节不变；乐观并发 revision 校验 + `.bak` 语义不变。**T2** `commands/flow.ts` checkpoint restore 新增 `--stage`/`--dry-run`；dry-run 复用 previewRestore 打印差异、不要求 --force；真实写盘仍须 --force。**i18n** 新增 6 键（运行 4 + help 2）。门禁：tsc 0 + npm test 0 skipped + lint i18n 745 + lint kb 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "flow stage reset"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T3 + T6.4~T6.8。**T3** 模块级导出 `ResetStageResult`；`flow-manager.ts` 新增 `resetStagePhase(stageName, to, {dryRun?})`：PipelinePhaseSchema 值域校验（非法抛错、不做模糊修正）→ `to=done` 同语义复用 advanceStagePhase 的阻塞 REV 检查 → phase 写入 + `mapPhaseToStageStatus` 投影 status → 审计 `reset_stage_phase` → 仅 current 指向该阶段时 `syncCurrentOp` → 重算宏观 pipeline.phase（全量 done 判定）；dry-run 零写盘；no-op 幂等；不触发归档 commit、不写 checkpoint。**命令层** `flow stage reset <stageId> --to <phase> [--dry-run]`（新增于 `stageCmd`，`save()` 在命令层，并发错误分流）。**i18n** 新增 8 键（运行 4 + help 4）。**T6.7** 复位后 `autoRepairInconsistency` 不锁 done、`advance --to test_pending` 通过（stage-62 协同）。门禁：tsc 0 + npm test 0 skipped + lint i18n 753 + lint kb 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "文档 + skill + 版本收口 + 门禁 + 报告"
+    produces:
+      - src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md
+      - .openfeel/manual/cli/commands.md
+      - .openfeel/manual/core/flow-manager.md
+      - docs/commands.md
+      - .openfeel/plan/v1/v1.1.4/plan.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - CHANGELOG.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .openfeel/users/Liuary/log/2026/10/03/2026-10-03-003.md
+    deps:
+      - op: op-002
+        type: hard
+    notes: "覆盖 T4 + T5 + T7。**T4** 恢复路径文档化（manual/core、manual/cli、docs、skill 权威源）：`flow health` → `flow stage reset` → `checkpoint restore --stage --dry-run` → 全量 restore（最后手段）→ `flow health --fix`；skill 只改 `templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`，build 传播。**T5 版本收口 A/B/C/D/E**：A 手工载体 `package.json:3` / `package-lock.json:3,:9`（禁 npm install）/ `.openfeel/config.yaml:7`（单行 edit，禁整文件重写）/ `src/core/config.ts:423,:476` / `agents-md/{zh-CN,en}.md:134`；B build 重生成 `template-loader.ts`/`update.ts`（禁手改）；C `CHANGELOG.md` 追加 `## [1.1.4]`；D 禁改历史批注/依赖版本/manual 变更历史/test 注释/README 历史版本；E 无载体（仅 docs/commands.md:3 快照标注同步）。**i18n 基线显式登记 739→753**（v1.1.4 plan §七.1）。**T7** 全门禁（npm test/tsc/lint i18n 753/lint kb/build/--version==1.1.4）+ 版本一致性复核 + 阶段报告落私域日志。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（restore 选择性/预览；新增 stage reset；版本 1.1.4 收口）
+downstream_contracts:
+  - name: "openfeel flow checkpoint restore"
+    change: "新增 `--stage <id>`（选择性，仅回退该阶段子树）与 `--dry-run`（差异预览，零写盘）；无 `--stage` 全量覆盖行为逐字节不变"
+  - name: "openfeel flow stage reset"
+    change: "**新增**：`flow stage reset <stageId> --to <phase> [--dry-run]`（允许回退；受合法 phase 值域 + to=done 阻塞 REV 约束；status 按 phase 投影；不触发归档 commit）"
+  - name: "openfeel --version / package.json"
+    change: "1.1.3 → **1.1.4**（功能版，命令面新增）"
+  - name: "openfeel plan scheme create / register"
+    change: "**不改**（stage-64 已落地；本阶段仅版本收口）"

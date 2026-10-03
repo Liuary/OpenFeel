@@ -568,6 +568,8 @@ export const help: I18nDomain = {
 
   'setup':                 { key: 'help.setup',                 zh: '', en: 'Deploy global OpenFeel framework config (global AGENTS.md + agents + skills + platform adapter config: opencode.jsonc); does not create the project .openfeel/' },
   'setup.lang':            { key: 'help.setup.lang',            zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN' },
+  'setup.check':           { key: 'help.setup.check',           zh: '', en: 'Diagnose whether the global deployment matches the CLI version (read-only; no deploy); exit 0 if consistent, else 1' },
+  'setup.json':            { key: 'help.setup.json',            zh: '', en: 'Output the diagnosis as JSON (pure single JSON document with schemaVersion)' },
 
   'update':                { key: 'help.update',                zh: '', en: 'Deploy OpenFeel adapter files to target project (interactive tool selection when no args)' },
   'update.lang':           { key: 'help.update.lang',           zh: '', en: 'Agent prompt language (zh-CN or en)' },
@@ -877,6 +879,10 @@ export const setup: I18nDomain = {
   'updated':  { key: 'setup.updated',  zh: '', en: 'Updated global files:' },
   'appended': { key: 'setup.appended', zh: '', en: 'Global files needing manual confirmation (already exist and are unmanaged; not overwritten):' },
   'complete': { key: 'setup.complete', zh: '', en: '? Global OpenFeel framework config deployed' },
+  'checkOkTmpl':       { key: 'setup.checkOkTmpl',       zh: '', en: 'Global deployment version {deployed} (matches CLI version {cli})' },
+  'checkMismatchTmpl': { key: 'setup.checkMismatchTmpl', zh: '', en: 'Global deployment version {deployed} != CLI version {cli}; run `openfeel setup` and restart the harness (opencode).' },
+  'checkMissingTmpl':  { key: 'setup.checkMissingTmpl',  zh: '', en: 'No global OpenFeel deployment detected; run `openfeel setup` and restart the harness (opencode).' },
+  'checkUnknownTmpl':  { key: 'setup.checkUnknownTmpl',  zh: '', en: 'Global deployment status cannot be determined (update_state.json missing or corrupted); run `openfeel setup` to redeploy.' },
 };
 
 /* ==================== metrics domain: agent performance summary (T15) ==================== */

@@ -596,6 +596,8 @@ export const help: I18nDomain = {
   // setup
   'setup':                 { key: 'help.setup',                 zh: '部署全局 OpenFeel 框架配置（全局 AGENTS.md + agent + skill + 平台适配器配置（opencode.jsonc）），不建立项目 .openfeel/', en: '' },
   'setup.lang':            { key: 'help.setup.lang',            zh: 'Agent 提示词语言（zh-CN 或 en），默认 zh-CN', en: '' },
+  'setup.check':           { key: 'help.setup.check',           zh: '诊断全局部署与 CLI 版本一致性（只读，不执行部署）；一致退出 0，否则退出 1', en: '' },
+  'setup.json':            { key: 'help.setup.json',            zh: '以 JSON 输出诊断结果（纯 JSON 单文档，含 schemaVersion）', en: '' },
 
   // update
   'update':                { key: 'help.update',                zh: '部署 OpenFeel 适配文件到目标项目（无参数时交互式选择工具）', en: '' },
@@ -918,6 +920,10 @@ export const setup: I18nDomain = {
   'updated':  { key: 'setup.updated',  zh: '已更新全局文件：', en: '' },
   'appended': { key: 'setup.appended', zh: '需人工确认的全局文件（已存在且非受管，未覆盖）：', en: '' },
   'complete': { key: 'setup.complete', zh: '✓ 全局 OpenFeel 框架配置部署完成', en: '' },
+  'checkOkTmpl':       { key: 'setup.checkOkTmpl',       zh: '全局部署版本 {deployed}（与 CLI 版本 {cli} 一致）', en: '' },
+  'checkMismatchTmpl': { key: 'setup.checkMismatchTmpl', zh: '全局部署版本 {deployed} ≠ CLI 版本 {cli}；请运行 openfeel setup 并重启 harness（opencode）。', en: '' },
+  'checkMissingTmpl':  { key: 'setup.checkMissingTmpl',  zh: '未检测到全局 OpenFeel 部署；请运行 openfeel setup 完成部署并重启 harness（opencode）。', en: '' },
+  'checkUnknownTmpl':  { key: 'setup.checkUnknownTmpl',  zh: '全局部署状态无法判定（update_state.json 缺失或损坏）；可运行 openfeel setup 重新部署。', en: '' },
 };
 
 /* ==================== metrics 域：Agent 性能摘要（T15） ==================== */

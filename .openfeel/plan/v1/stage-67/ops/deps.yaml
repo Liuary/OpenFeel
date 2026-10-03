@@ -1,0 +1,104 @@
+# stage-67 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.5-stage-67
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-03"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.5-stage-66
+    type: hard
+    status: done
+    reason: "stage-66 提供只读检测核心 `checkGlobalDeployment()`（四态）与门控纯函数 `shouldRunDeployCheck()`；stage-67 **复用且不改结构**（仅 op-001 附 [REV-003] 注释-only 修正）。stage-66 已 done 并归档。"
+  - upstream: v1.1.4-stage-65
+    type: soft
+    status: done
+    reason: "承接 v1.1.4 基线：`lint i18n` 753、`flow scheme create/publish` 已落地、版本 1.1.4。"
+  - downstream: v1.1.6（后续版本）
+    type: soft
+    note: "被动提示「每进程一次」「stderr 通道」「schemaVersion=1」与 `setup --check` 四态语义为下游稳定契约；`setup --check --json` 顶层对象只追加不改键。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 CI workflow、不直写 `flow.json`**；phase 推进与归档由 Feel/归档官执行。"
+
+# 本阶段 3 op：op-001 → op-002（hard）→ op-003（hard）。
+# 覆盖 T1/T5.1~T5.10（被动提示）+ T2/T5.11~T5.15（setup --check）+ T3/T4/T6（文档+skill+版本+门禁）。
+# 不变量：cli/index.ts 顶层**不注册** commander 钩子；被动提示只写 stderr、不写盘、不改退出码；
+#         setup 无参行为不变；既有 --json 契约不变；不新增依赖；不复活 postinstall；不直写 flow.json。
+ops:
+  op-001:
+    file: op-001.md
+    title: "CLI 被动提示接入（runCli/startRepl）+ 每进程一次 + i18n 文案"
+    produces:
+      - src/cli/deploy-check-output.ts
+      - src/cli/index.ts
+      - src/cli/repl.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/core/deployment-check.ts
+      - test/cli/deploy-check-output.test.ts
+      - test/cli/index.test.ts
+      - test/cli/repl.test.ts
+    deps: []
+    notes: "覆盖 T1 + T5.1~T5.10（D-B/D-C/D-F）。**新增** 薄适配器 `src/cli/deploy-check-output.ts`（`emitGlobalDeployCheck`：组装 argv/isTTY/env → `shouldRunDeployCheck` 门控 → `checkGlobalDeployment` → 仅 stderr 渲染 mismatch/missing；异常全捕获；模块级 `warned` 每进程一次）。**接入** `runCli()`（parse 前）与 `startRepl()`（welcome 后）。i18n +2 键（`update.globalStaleWarnTmpl`/`update.globalMissingWarnTmpl`）。`src/core/deployment-check.ts` 仅 [REV-003] JSDoc 措辞修正（零行为）。[REV-004] 静默断言只针对部署提示文案锚点 `openfeel setup`。门禁：tsc 0 + npm test 0 skipped + lint i18n 755 + lint kb 0 + build。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "setup --check [--json] 主动诊断"
+    produces:
+      - src/commands/setup.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/setup.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T2 + T5.11~T5.15（D-E/D-F）。**扩展** `src/commands/setup.ts`：注册 `--check`/`--json`；action **前置只读短路** `checkGlobalDeployment()` → 文本/JSON 输出 → `process.exitCode = ok?0:1` → `return`（**不**调用 `setupGlobalFramework`，零写盘）。`--json` 单文档 `{schemaVersion:1,status,cliVersion,deployedVersion}`（**数值 1 对齐既有约定**，偏离计划 T2 的 `'1.0'`，见困难点 #1）。i18n +6 键（`setup.checkOkTmpl`/`checkMismatchTmpl`/`checkMissingTmpl`/`checkUnknownTmpl` + `help.setup.check`/`help.setup.json`）→ **新基线 761**（计划预估 760 修正 +1，见困难点 #2）。无 `--check` 行为逐字不变。门禁：tsc 0 + npm test 0 skipped + lint i18n 761 + lint kb 0 + build。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "文档五载体 + 版本收口 1.1.5 + skill 传播 + 门禁"
+    produces:
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - .openfeel/manual/core/setup.md
+      - src/core/templates-data/opencode/skills/openfeel-cli-usage/SKILL.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - CHANGELOG.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+    deps:
+      - op: op-002
+        type: hard
+    notes: "覆盖 T3 + T4 + T6（D-G + 大计划 §五）。**文档五载体**（README×2 / GETTING_STARTED / commands / manual / skill 权威源）统一「升级流程：`npm i -g` → `openfeel setup` → 重启 harness」；`docs/commands.md` 补 `setup --check [--json]` + 快照 v1.1.5。**版本收口 A/B/C/D/E**：A 类 6 载体（package.json / package-lock root :3,:9 / config.yaml 单行 / config.ts 双模板 / agents-md 双源）→ 1.1.5；B 类由 `npm run build` 重生成（**禁手改**）；C 类 CHANGELOG 追加 `[1.1.5]`；D 类禁改（依赖 `color-name@1.1.4` 于 lock :2091、历史批注）；E 类 README/docs 无版本载体（commands 快照除外）。**全门禁**：npm test 0 skipped/0 failed + tsc 0 + lint i18n **761** + lint kb 0 + build 幂等不复活 + `--version` 1.1.5。阶段报告落私域日志；`plan/index.md`/`plan_log.md`/roadmap 归档回填归归档官（不越界）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付后续版本复用）
+downstream_contracts:
+  - name: "src/cli/deploy-check-output.ts"
+    change: "**新增** `emitGlobalDeployCheck(options?) => void`：被动部署提示薄适配器（stderr、每进程一次、异常静默、不改退出码）。可选注入 `{argv,isTTY,env,lang,warned,check}` 便于测试。接入点 `runCli()`/`startRepl()`。"
+  - name: "src/commands/setup.ts"
+    change: "**新增** `setup --check [--json]`：只读诊断，复用 `checkGlobalDeployment()`；一致 `exit 0`，否则 `exit 1`；`--json` 顶层 `{schemaVersion:1,status,cliVersion,deployedVersion}`。无 `--check` 行为不变。"
+  - name: "i18n 基线"
+    change: "753 → **761**（stage-67 +8 键：update 2 + setup check/help 6）。**显式登记**，门禁口径以 761 为准。"
+  - name: "版本"
+    change: "**1.1.4 → 1.1.5**（A 类 6 载体 + B 类 build 重生成 + C 类 CHANGELOG；`--version`=1.1.5；A 类 1.1.4 残留 0；lock 依赖 color-name 1.1.4 属 D 类不动）。"

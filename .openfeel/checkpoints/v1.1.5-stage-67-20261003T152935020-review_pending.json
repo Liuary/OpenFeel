@@ -2,11 +2,11 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-03T07:56:52.306Z",
-    "revision": 750
+    "updated": "2026-10-03T07:28:55.642Z",
+    "revision": 743
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
       "stage": "v1.1.5-stage-67",
       "op": ""
@@ -3042,8 +3042,8 @@
     },
     "v1.1.5-stage-67": {
       "name": "v1.1.5-stage-67",
-      "phase": "done",
-      "status": "done",
+      "phase": "review_pending",
+      "status": "planned",
       "deps": [
         "v1.1.5-stage-66"
       ],
@@ -3102,8 +3102,8 @@
       },
       "stats": {
         "start_time": "2026-10-03T07:10:24.359Z",
-        "end_time": "2026-10-03T07:56:52.248Z",
-        "duration_ms": 2787889
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
@@ -14178,78 +14178,6 @@
       "detail": {
         "opId": "v1.1.5-stage-67.op-003",
         "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-03T07:29:35.039Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.5-stage-67",
-        "from": "exec_running",
-        "to": "review_pending"
-      }
-    },
-    {
-      "time": "2026-10-03T07:37:40.921Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.5-stage-67",
-        "from": "review_pending",
-        "to": "review_passed"
-      }
-    },
-    {
-      "time": "2026-10-03T07:37:40.944Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.5-stage-67",
-        "from": "review_passed",
-        "to": "test_pending"
-      }
-    },
-    {
-      "time": "2026-10-03T07:42:04.300Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.5-stage-67",
-        "from": "test_pending",
-        "to": "test_passed"
-      }
-    },
-    {
-      "time": "2026-10-03T07:42:04.323Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.5-stage-67",
-        "from": "test_passed",
-        "to": "archiving"
-      }
-    },
-    {
-      "time": "2026-10-03T07:42:31.007Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.1.5-stage-67",
-        "opsCount": 3,
-        "reviewsCount": 0,
-        "knowledgeCount": 0,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.1.5-stage-67.md"
-      }
-    },
-    {
-      "time": "2026-10-03T07:56:52.248Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.1.5-stage-67",
-        "from": "archiving",
-        "to": "done"
       }
     }
   ]

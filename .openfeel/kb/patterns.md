@@ -3347,3 +3347,46 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.5-stage-66——既有全局 state `openfeel_version='1.0.0'` → `setup`/`update` 后 == `1.1.4`（CLI 级隔离 HOME 实跑 exit 0）；四态（`missing` / `ok` / `mismatch` 升·降级 / `unknown` 非法版本·缺字段·JSON 解析失败·EISDIR）全部命中且 `unknown` 不抛、字节不变；门控真值表 21/21（含 `CI=0/false` 反例、白名单带选项 `update --lang en` 首 token 识别）；检测前后全局 state sha256 + mtime 不变、不产生锁文件；`npm test` 63 文件 / 1113 用例 0 skipped、`tsc` 0、`lint i18n` 753、`lint kb` 0。
 
 **参见：** v1.1.5-stage-66（op-001 `40b5cbb` 写入侧刷新 / op-002 `bc44980` 检测核心+门控 / op-003 `08c6c8d` e2e+集成契约+门禁）；`src/core/deployment-check.ts` `checkGlobalDeployment`/`shouldRunDeployCheck`；`src/core/setup.ts` / `src/core/update.ts` 刷新点；kb/patterns.md #全局/项目双 state 路由模式、#init/update 重启提醒对称输出模式、#数据加载防御性类型守卫模式；kb/architecture.md #全局部署架构；stage-67/plan.md（复用契约）
+
+## [+] 被动部署版本漂移提示模式：TTY + stderr + 每进程一次 + 门控矩阵（只提示不干预） (2026-10-03)
+
+**背景（v1.1.5-stage-67，D-B/D-C）**：升级 CLI（`npm i -g openfeel@X`）后全局部署不自动刷新，用户无感知地持续加载旧资产。stage-66 已提供检测核心（`checkGlobalDeployment` 四态 + `shouldRunDeployCheck` 门控纯函数），stage-67 把它接入 CLI 运行时做**被动提示**。
+
+**模式：被动提示是「观察者」而非「执行者」——只换通道、只受控出声、绝不改控制流**：
+
+- **接入点**：`runCli()` 在 `program.parse()` **之前**调用 `emitGlobalDeployCheck()`；`startRepl()` 在 `console.log(welcome)` **之后**调用一次。**不在 `cli/index.ts` 顶层注册 commander `preAction`/`postAction` 钩子**——否则全部 `test/**` 的 `program.parseAsync` 都会触发检测，污染测试面（§一 实测无钩子）。
+- **薄适配器** `src/cli/deploy-check-output.ts`：`emitGlobalDeployCheck(options?)` 组装上下文（缺省取 `process.argv.slice(2)` / `process.stdout.isTTY` / `process.env` / 模块级 `warned`），先过 `shouldRunDeployCheck()`；假 → 直接 return（静默）；真 → `checkGlobalDeployment()`，**仅 `mismatch`/`missing`** 渲染 stderr 提示，`ok`/`unknown` 静默。异常全捕获 → 静默（**绝不影响主命令**）。`check`/`warned` 可注入以供单测打桩。
+- **通道与不变量**：提示走 **`process.stderr.write`**（保护 stdout 与 `--json` 契约）；**每进程一次**（模块级 `const warned = { value: false }`，命中后置位）；**不改退出码、不写盘**；语言 `getCliLang(process.cwd())`。
+- **门控矩阵**（与 stage-66 `shouldRunDeployCheck` 同源，stage-67 直接复用）：非 TTY / `--json` / `--quiet` / `--version`(`-v`) / `--help`(`-h`) / **首个非选项 token** ∈ {setup,update,init,migrate} / `CI` / `OPENFEEL_NO_UPDATE_CHECK` → **静默**。
+
+**判据**：凡「工具主动告知用户在别处要做的事」的提示，须满足三条——① **通道隔离**（stderr，不污染可消费输出）；② **不改变控制流**（退出码/写盘零影响）；③ **频率受控**（每进程一次 + 严格静默矩阵）。把「有用提示」与「噪音」的边界写死，避免每次命令都唠叨。
+
+**实证**：v1.1.5-stage-67——隔离 HOME 预置 `openfeel_version=1.1.1`（≠ CLI 1.1.5），TTY 下 `flow status` stderr 出现含 `openfeel setup` 的提示且退出码 0、stdout 无污染；静默矩阵（一致 / 非 TTY / `--json` / `--quiet` / `--version` / `--help` / setup·update·init·migrate 真跑 / CI / `OPENFEEL_NO_UPDATE_CHECK`）全 PASS；每进程一次（适配器连续两次 + REPL 连续两次命令仅 1 次提示）；`npm test` 64 文件 / 1135 用例 0 skipped。
+
+**参见：** v1.1.5-stage-67（op-001 `31aa78b`）；`src/cli/deploy-check-output.ts`、`src/cli/index.ts` `runCli`、`src/cli/repl.ts` `startRepl`；kb/patterns.md #全局部署版本一致性检测模式、#init/update 重启提醒对称输出模式、#命令面收敛与弃用策略；kb/patterns.md #`setup --check` 四态语义与被动提示的差异
+
+## [+] `setup --check` 四态语义与被动提示的差异：主动只读诊断 vs 被动静默提示 (2026-10-03)
+
+**背景（v1.1.5-stage-67，D-E/D-F）**：同一检测核心（`checkGlobalDeployment` 四态）有两个消费出口——CLI 运行时被动提示（op-001）与显式命令 `setup --check [--json]`（op-002）。二者对 **`unknown`** 态的处理**相反**，须显式登记差异而非强行统一。
+
+**模式：主动命令「如实报告全部事实」，被动提示「只在可行动时出声」**：
+
+| 维度 | 被动提示 | `setup --check` |
+|------|----------|-----------------|
+| 触发 | 任意命令 / REPL 运行时自动 | 用户显式执行 |
+| 通道 | stderr | stdout（文本）/ 纯 JSON |
+| `ok` | 静默 | 输出「已部署 vX（与 CLI 一致）」+ exit 0 |
+| `mismatch`/`missing` | stderr 提示 + **不改退出码** | 显式报告 + **exit 1** |
+| `unknown` | **静默**（避免 Schema 演进误报） | **显式报告「无法判定」+ exit 1** |
+| 写盘 | 零 | 零（前置短路，不进入部署） |
+
+- **`--check` 前置短路**：`options.check === true` 分支在 `setupGlobalFramework(...)` **之前** `return`，零写盘、不触碰全局目录（T5.14：执行前后 state 文件字节 + mtime 不变、未生成 AGENTS.md）；无 `--check` 时行为**逐字不变**。
+- **退出码**：`process.exitCode = status === 'ok' ? 0 : 1`（用 `exitCode` 非 `process.exit`，防 stdout 异步 flush 被截断，KB #CLI 退出码语义）。
+- **`--json`**：单文档 `{ schemaVersion: 1, status, cliVersion, deployedVersion }`，stdout 纯 JSON；`schemaVersion` 为**数值 `1`**（对齐全仓 `--json` 约定，计划 T2 原文 `'1.0'` 为笔误，op-002 裁定）。
+- 两条输出路径**共用同一 `getCliLang(process.cwd())`** 语言解析；通道/退出码差异是 D-C/D-E 的**设计裁定**，非漂移（审查「内部模式一致性专项」认定）。
+
+**判据**：同一事实源的多个消费出口，若「是否出声」策略不同（自动 vs 显式、容错 vs 严格），须**显式登记为差异**（附对照表 + 理由），不得为「一致性」把 `unknown` 也纳入被动提示（噪音）或让 `--check` 吞掉 `unknown`（漏报）。
+
+**实证**：v1.1.5-stage-67——真实环境全局漂移 1.1.1→1.1.5：`setup --check --json` 输出 `{"schemaVersion":1,"status":"mismatch","cliVersion":"1.1.5","deployedVersion":"1.1.1"}` 且 exit 1；四态退出码 0/1/1/1 全对；零写盘核验通过；既有 `setup` 无参行为零回归；`npm test` 64 文件 / 1135 用例 0 skipped。
+
+**参见：** v1.1.5-stage-67（op-002 `896801e`）；`src/commands/setup.ts`；`manual/core/setup.md`「检测语义（四态）」、`manual/core/deployment-check.md`；kb/patterns.md #全局部署版本一致性检测模式、#被动部署版本漂移提示模式、#「只报告型」与「修复型」命令的边界、#CLI --json 结构化输出约定

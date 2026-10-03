@@ -28,3 +28,8 @@
 | [2026-10-03-Liuary-024.md](2026-10-03-Liuary-024.md) | Liuary | v1.1.5-stage-66.op-003 执行通过 |
 | [2026-10-03-Liuary-025.md](2026-10-03-Liuary-025.md) | Archiver | **stage-66 归档完成（全局部署版本事实源与检测核心 — D-A/D-D，v1.1.5 首阶段）**：写入侧刷新 `openfeel_version` + `deployment-check.ts` 四态检测 + 门控纯函数；审查 passed（REV-001~004 low open，REV-002 归档官就地调序）；知识沉淀 1 条；**M22 done** |
 | [2026-10-03-Liuary-026.md](2026-10-03-Liuary-026.md) | Liuary | 阶段 v1.1.5-stage-66 完成 |
+| [2026-10-03-Liuary-027.md](2026-10-03-Liuary-027.md) | Liuary | v1.1.5-stage-67.op-001 执行通过 |
+| [2026-10-03-Liuary-028.md](2026-10-03-Liuary-028.md) | Liuary | v1.1.5-stage-67.op-002 执行通过 |
+| [2026-10-03-Liuary-029.md](2026-10-03-Liuary-029.md) | Liuary | v1.1.5-stage-67.op-003 执行通过 |
+| [2026-10-03-Liuary-030.md](2026-10-03-Liuary-030.md) | Archiver | **v1.1.5 版本收官 — stage-67 归档完成（CLI 提示接入、`setup --check` 与版本收口）**：被动提示（stderr/每进程一次/不改退出码）+ `setup --check [--json]` 四态 + 文档五载体 + 版本 1.1.4→1.1.5 全链路收口 + build ×2 幂等；审查 passed（REV-001/002 low open）；测试 PASS 无新增 Bug；知识沉淀 patterns 新增 2；manual 补登 `core/deployment-check.md`；**M23 done，v1.1.5 两阶段全部闭环 = 版本收官** |
+| [2026-10-03-Liuary-031.md](2026-10-03-Liuary-031.md) | Liuary | 阶段 v1.1.5-stage-67 完成 |

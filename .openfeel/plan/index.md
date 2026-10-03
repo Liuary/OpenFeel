@@ -11,7 +11,7 @@
 | [v1.1.2](v1/v1.1.2/plan.md) | CLI 自描述/文档/状态精确性 + 权限/泛化/备份/缺陷清理（stage-41~47）+ 事件加固与遗留修复（stage-48）+ 整仓全量审查（stage-49）+ 非阻塞集中清理（stage-50）+ 纠正侧 CLI 补齐（stage-51）+ 反馈 09/遗留清账（stage-52）+ current/dev_last 职能与格式重构（stage-53）+ 收尾遗留缺陷清理（stage-54）+ 清项目级约束与 Agent（stage-55）+ 发布前收尾（stage-56）+ 发布收尾（stage-57）+ CLI 输出编码自适应 + 运行日志（stage-58） | **stage-41~58 已归档（十八阶段全部闭环）**（**stage-57 CI run #51 失败已修（T32 平台化）、CI 失败注解上线、README 对齐；stage-58 输出编码 + 运行日志 → 发布就绪**；本地领先 origin，**待 Feel 统一 push（stage-57+58）→ CI → 自动 `npm publish`**。**⚠️ 须重启 harness 会话使全局新部署生效**） |
 | [v1.1.3](v1/v1.1.3/plan.md) | CLI 输出编码 `auto` 语义修正（方案 A：win32 非 TTY 直通 UTF-8 + GBK 仅显式 + 删 chcp 死代码） | 已归档（stage-61 单阶段闭环 / 发布就绪） |
 | [v1.1.4](v1/v1.1.4/plan.md) | 第四轮工具链反馈修复（状态/相位单一事实源 + 创建值继承 + op 注册一致 + checkpoint 精准恢复） | **已完成**（**stage-62~65 全部归档 = 版本收官**，7 问题全修复；版本 1.1.4 收口 / 发布就绪） |
-| [v1.1.5](v1/v1.1.5/plan.md) | 消除「升级 CLI 后静默加载旧全局部署」缺口（版本事实源 + 被动检测提示 + `setup --check`） | **进行中**（**stage-66 已归档 = M22 达成**；stage-67 待推进；详见大计划与各阶段 `plan.md`） |
+| [v1.1.5](v1/v1.1.5/plan.md) | 消除「升级 CLI 后静默加载旧全局部署」缺口（版本事实源 + 被动检测提示 + `setup --check`） | **已完成**（**stage-66~67 全部归档 = M22 / M23 达成 / 版本收官**，缺口端到端消除；版本 1.1.5 收口 / 发布就绪） |
 | [v0.5](v0/v0.5/index.md) | 工具链 + 协作增强 + 质量保障（v0.5.0 ~ v0.5.11） | 全部归档 |
 | [v0.4](v0/v0.4/index.md) | 工程精简 + Agent 深化 + 国际化（v0.4.0 ~ v0.4.7） | 全部归档 |
 | [v0.3](v0/v0.3/plan.md) / [v0.3.1](v0/v0.3/v0.3.1/v0.3.1-stage-01/status.md) / [v0.3.2](v0/v0.3/v0.3.2/v0.3.2-stage-01/status.md) | 早期版本（生产加固 / 补丁修正 / 收尾补丁） | 全部归档 |
@@ -89,7 +89,7 @@
 | v1.1.4-stage-64 | v1.1.4（op 注册一致性 — 问题 2：序号「注册 ∪ 文件」+ 空位回填 + `plan scheme register` + 未注册文件告警） | 已归档（**M20 done**） | 3 op | 3/3 |
 | v1.1.4-stage-65 | v1.1.4（checkpoint 选择性恢复与阶段复位 + 版本 1.1.4 收口 — 问题 3：`restore --stage/--dry-run` + `flow stage reset` + 恢复路径三件套 + 版本收口；hard 依赖 stage-62） | 已归档（**M21 done / v1.1.4 版本收官**） | 3 op | 3/3 |
 | v1.1.5-stage-66 | v1.1.5（全局部署版本事实源与检测核心 — D-A/D-D：`setup`/`update` 刷新 `openfeel_version` + 新增 `deployment-check.ts` 四态检测 + 门控策略纯函数） | 已归档（**M22 done**） | 3 op | 3/3 |
-| v1.1.5-stage-67 | v1.1.5（CLI 提示接入、`setup --check` 与版本收口 — D-B/D-C/D-E/D-F/D-G；hard 依赖 stage-66） | **pending**（未注册/未推进） | 3 op | 0/3 |
+| v1.1.5-stage-67 | v1.1.5（CLI 提示接入、`setup --check` 与版本收口 — D-B/D-C/D-E/D-F/D-G；hard 依赖 stage-66） | 已归档（**M23 done / v1.1.5 版本收官**） | 3 op | 3/3 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

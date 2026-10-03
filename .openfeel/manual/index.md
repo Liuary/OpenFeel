@@ -22,6 +22,7 @@
   - [存量迁移](core/migrate.md)
   - [模型配置核心](core/model-config.md)
   - [全局部署（setup）](core/setup.md)
+  - [全局部署一致性检测（deployment-check）](core/deployment-check.md)
   - [权限模型（Agent permission）](core/permission.md)
   - [REV 可信度声明与独立复核](core/code-review.md) — 代码审查可信度规范
   - [CLI 运行日志](core/runtime-log.md) — `~/.openfeel/cli/logs/` 跨项目诊断日志（stage-58）
@@ -57,8 +58,9 @@
 | migrate.ts / 存量迁移 | `core/migrate.md` | legacy 判据、备份 manifest、state 拆分重键、回滚边界变更 |
 | model-config.ts / 三层级模型配置 | `core/model-config.md` | 三层级落点、优先级链、校验规则或读写 API 变更 |
 | commands/model.ts / model 命令组 | `cli/model.md` | 命令面（set/get/list + --scope）、非 TTY 守卫或翻译机制变更 |
-| setup.ts / 全局部署 | `core/setup.md` | 全局部署目标、幂等语义或部署内容变更 |
-| commands/setup.ts / setup 命令 | `cli/setup.md` | 命令面（--lang）或输出行为变更 |
+| setup.ts / 全局部署 | `core/setup.md` | 全局部署目标、幂等语义或部署内容变更；**`openfeel_version` 写入侧刷新（每次全局部署 `saveGlobalUpdateState` 之前赋当前 CLI 版本，事实源）**；检测语义（四态）/升级流程 |
+| deployment-check.ts / 全局部署一致性检测 + deploy-check-output.ts / 被动提示适配器 | `core/deployment-check.md` | 四态检测语义（`ok`/`mismatch`/`missing`/`unknown`）、门控矩阵（`shouldRunDeployCheck`）、CLI 接入点（`runCli`/`startRepl`）、只读/每进程一次不变量、薄适配器 API |
+| commands/setup.ts / setup 命令 | `cli/setup.md` | 命令面（`--lang` / **`--check [--json]`**）或输出行为变更；`--check` 前置短路零写盘 |
 | 命令注册 / i18n | `cli/commands.md` | 新增命令组或翻译机制变更、自描述集合边界（`advanceAccepted`）、结构化错误分流（`StageDirConflictError`）、**`--dry-run` 字节级不写盘语义 / `plan stage add --deps` 存在性校验 / `flow health` 悬空依赖节**；**`lint` 退出码门禁语义（R1/T17）/ 全量 `defaults.*` 配置读写（R3/T36）/ `view` 组 `add` 子命令已移除（A4，stage-52，改用 `flow review add`）/ `help.arguments` i18n 遍历（T38）/ `transitionsDiff`（T19）**；**纠正/清理侧命令面（`plan scheme remove` / `flow repair --prune-orphans` / `flow stage set --deps` / `flow review update·remove` / `stage set` 幂等与字段 / `stage task --add` / `plan stage add --tasks` / `flow advance --quiet` / \`knowledge dedup\`）与 op 命名 \`op-NNN.md\`，stage-51**；**可编排/可观测命令面（stage-52）：\`--json\`×6（含 \`schemaVersion\`）/ \`health --fix\`（仅「状态」字段）/ \`ops list\`（填充度 + 空模板 warning）/ \`draft\`+\`publish\` 两阶段 / \`advance --to\` 自动逐步 + 每步 REV 复检 / \`scheme rename\` / \`NO_COLOR\`/\`--no-color\`，详见 \`cli/commands.md\`「可编排性与可观测性命令面」**；**stage-54：`ops list` 填充度整行锚定 + `null→filled` 已知边界登记（A9）/ `flow phases --help` 补 `transitionsDiff`（JSON 未变）；`cli/BUG-005/006` + `cli/BUG-003` 关闭**；**`stage set --status` 粗粒度值域校验（`STAGE_STATUS_VALUES`，相位值/任意值 exit 1 零写盘）+ `flow health --fix` 权威口径（phase 投影为权威、仅回写 status.md「状态」、批量、`advance` 不回写）— v1.1.4-stage-62**；**v1.1.4-stage-63：`plan stage add --exec-mode/--auto-advance`（骨架初值取 config 默认、显式选项优先、值域非法 exit 1 不建阶段）、`config set/get defaults.X ≡ X`（键归一）、`config set --sync-stages`（仅项目模式，适用 `auto_advance`/`execution_mode`）** |
 | init.ts `--workspace-only` / 用户可见跳过提示 | `core/init.md` + `cli/commands.md` | `InitResult.skipped` 语义（备份失败 / **已存在不覆盖**）或跳过提示输出变更 |
 | Agent 体系 / 调度模型 | `agents/feel.md` | Agent 数量、模型或调度规则变更；**审查会话健康探测与可疑产出处置**（事件 A） |

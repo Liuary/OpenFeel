@@ -124,6 +124,8 @@ fg.sync(['plan/*'], { cwd: openfeelDir, onlyDirectories: true })
 
 > **更新于 2026-08-07**：**v0.5.8 已修复根因**——问题核心在 `mapPhaseToStageStatus`（flow-manager.ts:2758）：原实现将 `test_passed` 和 `archiving` 都映射为 `done` status，导致 `autoRepairInconsistency` 检测到 `status=done, phase≠done` 时强制同步 phase 为 done。修复方案：仅 `done` phase 映射为 `done` status；`test_passed` → `testing`，`archiving` → `archiving`。注意 `mapPhaseToStageStatus` 的返回值直接影响 `autoRepairInconsistency` 的触发条件，二者构成耦合——修改映射表时必须考虑兼容性。
 
+> **补沉 2026-10-03（v1.1.4-stage-62）**：补该条目**未覆盖分支**——v0.5.8 修复仅覆盖 `test_passed` / `archiving`，**未覆盖 `review_passed`**。当配置门禁键 `test_enabled=false` 时，`mapPhaseToStageStatus('review_passed', …, testEnabled=false)` 曾被投影为**终态 `'done'`**（分支未覆盖），叠加 `autoRepairInconsistency` 的**反向** `status=done → phase=done` 前推，把中间相位 `review_passed` **锁死为 `done`**，截断 `review_passed → test_pending` 路径（`findPhasePath` 返回 `no-path`，确定性 **6/6 复发**；见第四轮反馈 docs/08 问题 12）。**根因＝映射分支覆盖不全 + auto-repair 方向错误（`status→phase`）**。**修复（v1.1.4-stage-62 / op-001，commit `26629e6`）**：① 映射去除 `testEnabled` 形参，`review_passed` **恒 `'review_passed'`**（中间相位不再投影终态）；② `autoRepairInconsistency` **方向反转**为仅 `phase → status`（撤销非法 `done`），**禁止任何 `status → phase` 前推**；③ 该配置键已由 op-002（`abcab76`）从代码全链移除（15 相位模型下 phase 图与其无关），存量 `config.yaml` 残留行按非受管扩展键读侧兼容。**教训**：映射表分支更新只覆盖已观测场景会留同根因族缺口——修改 `mapPhaseToStageStatus` 时应穷举断言「任何非 `done` 相位不投影 `done`」（本次 T6.1 已加）。**已知边界**：`default` 分支在 `currentStatus='done'` 时仍返回 `'done'`（非 done 相位投影成终态的语义边缘，锁不复发），见 kb/architecture.md #状态/相位单一事实源（REV-001 登记）。
+
 ## [+] 流水线文件引用断裂的连锁修复 (2026-07-05)
 
 **现象**：v4-stage-02 审查中发现三处引用断裂形成连锁故障：

@@ -53,6 +53,8 @@ models.default             → 默认配置（兜底）
 - 自动流程从 `review_passed` 直接切换到 `done`
 - v3.0 所有 4 阶段均在此模式下闭环
 
+> [superseded 2026-10-03 / v1.1.4-stage-62] 本条目描述的 `test_enabled=false` 测试分路机制**已移除**：15 相位模型下 **phase 图与 `test_enabled` 无关**（`.openfeel/pipeline.yaml` 的 `review_passed: [test_pending]` 恒定），保留即误导（见 kb/patterns.md #死导出/漂移 API 的清理判据）。该键已从 `ConfigDefaultsSchema` / `DEFAULT_CONFIG` / `EFFECTIVE_CONFIG_KEYS` / `instruction-loader` / 双语言模板全链移除；存量 `config.yaml` 残留行按**非受管扩展键**读侧 passthrough 兼容（不报错、不崩溃），`config set test_enabled …` 报无效键。**后续 phase/status 语义见本文件 #状态/相位单一事实源**：`phase` 为唯一事实源，`status` 为其粗粒度投影，`review_passed` 恒投影 `'review_passed'`（不再等价 `done`）。原文保留以存审计链。
+
 ## [+] Flow CLI 严格校验 (2026-06-28)
 
 v3.1 引入的校验规则：
@@ -656,3 +658,20 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.1.2-stage-58 B-1~B-8（`src/core/runtime-log.ts` + `global-paths.getCliLogsDir()`）；manual `core/runtime-log.md` 写明四类边界与 REV-002 error 边界；`bin/openfeel.js` 单一咽喉 install（库侧默认 no-op）；真实 `~/.openfeel/cli/logs/` 在 `npm test` 前后零变化（测试不写真实日志）。
 
 **参见：** v1.1.2-stage-58 B-1~B-8、REV-002；`.openfeel/manual/core/runtime-log.md`；kb/patterns.md #CLI 输出编码自适应单一咽喉模式、#库侧默认 no-op + 进程入口 install
+
+## [+] 状态/相位单一事实源：status 为 phase 的粗粒度投影，phase 为唯一事实源 (2026-10-03)
+
+**背景（v1.1.4-stage-62，问题 4/5/7）**：`stage.status`（`status.md`「状态」/ `flow.json` `stages[].status`）原先由 `mapPhaseToStageStatus(phase, currentStatus, testEnabled)` 派生，却存在两个歧义源：① 配置门禁键 `test_enabled=false` 时中间相位 `review_passed` 被投影为**终态 `'done'`**；② `autoRepairInconsistency` 在 `status==='done' && phase!=='done'` 时**反向**强制 `phase='done'`。二者叠加形成**单向锁**：`flow advance --to review_passed` 置 `status='done'` → 下一步 `advance --to test_pending` 入口 auto-repair 把 `phase` 锁 `done` → `findPhasePath(done → test_pending)` = `no-path`，确定性复发（**6/6**）。
+
+**架构结论**：**`phase` 是唯一事实源，`status` 是 `phase` 的粗粒度投影**。
+
+- `stage.status = mapPhaseToStageStatus(phase, status)`：任何 `status` 都可由 `phase` 重新投影得到；`mapPhaseToStageStatus` **不含 `testEnabled` 形参**（该配置键已全链移除），`review_passed` **恒返回 `'review_passed'`**（**中间相位不投影终态 `done`**）；`review_failed → 'review_failed'`、`test_passed → 'testing'`、`archiving → 'archiving'`、`done → 'done'`，default → `currentStatus`。
+- **不变量**：任何**非 `done`** 相位都不得投影为 `'done'`（`STAGE_STATUS_VALUES` 值域校验的派生依据：`['planned','review_failed','review_passed','testing','archiving','done']`）。
+- **对账/修正只允许 `phase → status` 单向**：`autoRepairInconsistency` 的 `status=done && phase≠done` 分支改为「以 `phase` 为权威，将 `status` 修正为投影值（撤销非法 `done`）」，**绝不** `status → phase` 前推；`phase=done && status≠done` 仍同步 `status='done'`（合法方向）。
+- **`flow.json` 损坏时以 `phase` 为准**：`reconcileStatusMd`（出口 `flow health --fix`）的权威值 = `mapPhaseToStageStatus(phase)`，**仅回写 `status.md`「状态」行**。
+
+**已知边界（REV-001，medium 非阻塞）**：`mapPhaseToStageStatus` 的 `default` 分支返回 `currentStatus`——当调用方传入 `currentStatus='done'` 且 `phase` 落在 default 分支（`exec_running` / `test_pending` 等 9 相位）时，投影值仍为 `'done'`，与「非 done 相位不投影 done」不变量在该输入组合下**破缺**；auto-repair 对此 **no-op 假阳性**（detail 报告已撤销但值未变）。**锁不复发**（auto-repair 不再改 `phase`）、路径求解只依赖 `phase`，故不冲突决定性验收；建议后续阶段收敛（default 分支对 `currentStatus==='done'` 返回安全中间值，或 detail 明示 no-op）。
+
+**实证**：v1.1.4-stage-62（commits `26629e6` / `abcab76` / `fa7f4f8`）；`npm test` 61 文件 / **1023 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` 730、`lint kb` 0；fixture 实测 `{phase:review_passed, status:done}` 经 auto-repair 后 `phase` **不变**、`status='review_passed'`，`advance --to test_pending` exit 0。
+
+**参见：** v1.1.4-stage-62（plan §二/§五；op-001/op-002）；`src/core/flow-manager.ts` `mapPhaseToStageStatus` / `autoRepairInconsistency` / `reconcileStatusMd` / `STAGE_STATUS_VALUES`；kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径；kb/patterns.md #auto-repair 仅 phase→status 单向

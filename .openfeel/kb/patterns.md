@@ -3195,3 +3195,21 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.2-stage-58 A-1/B-2（`rg "process\.env\.VITEST" src/` 零命中；`repl.test.ts` 加 `OPENFEEL_ENCODING:'utf8'` + `OPENFEEL_LOG:'0'`；测试官确认真实 `~/.openfeel/cli/logs/` 在 `npm test` 前后零变化）；REV-001/REV-004 裁定方案 b。
 
 **参见：** v1.1.2-stage-58 A-4/B-5、REV-001/REV-004；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护；kb/patterns.md #测试全局路径隔离模式（禁用保存/恢复伪隔离）
+
+## [+] auto-repair 仅 phase→status 单向 + `flow health --fix` 唯一批量对账/回写入口 (2026-10-03)
+
+**背景（v1.1.4-stage-62，D3 裁定 + 问题 4/7）**：状态文件（`status.md`）与权威源（`flow.json`）漂移时的对账，必须**方向单一、入口唯一**——否则修复动作本身会制造新的不一致（原 `autoRepairInconsistency` 反向改 `phase` 把中间相位锁 `done`）。
+
+**方向单一律**：`autoRepairInconsistency` **只允许 `phase → status`**：
+
+- `status==='done' && phase!=='done'` → 以 `phase` 为权威，将 `status` 修正为 `mapPhaseToStageStatus(phase, status)`（**撤销非法 `done`**）；
+- `phase==='done' && status!=='done'` → 同步 `status='done'`（合法方向）；
+- **绝不** `status → phase` 前推（不把 `phase` 改成 `done` 迁就 `status`）。`dryRun` 分支**只计算不赋值**（遵 kb/patterns.md #`--dry-run` 必须字节级不写盘）。
+
+**入口唯一律**：`flow health --fix` 为**唯一批量对账/回写入口**——以 `phase` 投影（`mapPhaseToStageStatus`）为权威、**仅回写 `status.md`「状态」行**、**批量遍历全部 stages**、`--fix --dry-run` 预览零写盘、幂等；`flow advance` **不回写** `status.md`（D3：避免 advance 耦合 status.md 与扩大写面、失败中间态），故存量对账全部由 `--fix` 承担。
+
+**判据**：任何「多源状态对账」先定**权威源**（此处 `phase`）与**修正方向**（收敛到权威源，**单向**），再定**唯一回写入口**（避免多点写同一字段）；**「反向修正」与「多点回写」是状态漂移的两大放大器**。同族见 kb/patterns.md #「只报告型」与「修复型」命令的边界（默认零写盘 + 显式 `--fix`）。
+
+**实证**：v1.1.4-stage-62（`STAGE_STATUS_VALUES` 导出供 `stage set --status` 值域校验；`rg "stage\.phase =" src/core/flow-manager.ts` 仅 `validate` 自身模糊修正，无 `status → phase` 路径）；fixture `{phase:review_passed, status:done}` → auto-repair 输出「status done → review_passed (以 phase 为权威，撤销非法 done)」，`advance --to test_pending` exit 0；`flow health --fix` 回写后跨文件一致性 pass。
+
+**参见：** v1.1.4-stage-62（D3 裁定；op-001 commit `26629e6` / op-003 commit `fa7f4f8`）；`src/core/flow-manager.ts` `autoRepairInconsistency`；`src/commands/stage.ts`；kb/architecture.md #状态/相位单一事实源

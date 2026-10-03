@@ -9,6 +9,8 @@
 | [v1.0](v1/v1.0/plan.md) | 正式版发布计划（功能冻结 + 稳定发布） | 已归档 |
 | [v1.1](v1/v1.1/plan.md) | v1.1.x 稳定性与全局化（stage-35~40 + v1.1.1-stage-01） | 全部归档 |
 | [v1.1.2](v1/v1.1.2/plan.md) | CLI 自描述/文档/状态精确性 + 权限/泛化/备份/缺陷清理（stage-41~47）+ 事件加固与遗留修复（stage-48）+ 整仓全量审查（stage-49）+ 非阻塞集中清理（stage-50）+ 纠正侧 CLI 补齐（stage-51）+ 反馈 09/遗留清账（stage-52）+ current/dev_last 职能与格式重构（stage-53）+ 收尾遗留缺陷清理（stage-54）+ 清项目级约束与 Agent（stage-55）+ 发布前收尾（stage-56）+ 发布收尾（stage-57）+ CLI 输出编码自适应 + 运行日志（stage-58） | **stage-41~58 已归档（十八阶段全部闭环）**（**stage-57 CI run #51 失败已修（T32 平台化）、CI 失败注解上线、README 对齐；stage-58 输出编码 + 运行日志 → 发布就绪**；本地领先 origin，**待 Feel 统一 push（stage-57+58）→ CI → 自动 `npm publish`**。**⚠️ 须重启 harness 会话使全局新部署生效**） |
+| [v1.1.3](v1/v1.1.3/plan.md) | CLI 输出编码 `auto` 语义修正（方案 A：win32 非 TTY 直通 UTF-8 + GBK 仅显式 + 删 chcp 死代码） | 已归档（stage-61 单阶段闭环 / 发布就绪） |
+| [v1.1.4](v1/v1.1.4/plan.md) | 第四轮工具链反馈修复（状态/相位单一事实源 + 创建值继承 + op 注册一致 + checkpoint 精准恢复） | **计划中**（stage-62~65，待 Feel 注册并推进） |
 | [v0.5](v0/v0.5/index.md) | 工具链 + 协作增强 + 质量保障（v0.5.0 ~ v0.5.11） | 全部归档 |
 | [v0.4](v0/v0.4/index.md) | 工程精简 + Agent 深化 + 国际化（v0.4.0 ~ v0.4.7） | 全部归档 |
 | [v0.3](v0/v0.3/plan.md) / [v0.3.1](v0/v0.3/v0.3.1/v0.3.1-stage-01/status.md) / [v0.3.2](v0/v0.3/v0.3.2/v0.3.2-stage-01/status.md) | 早期版本（生产加固 / 补丁修正 / 收尾补丁） | 全部归档 |
@@ -81,6 +83,10 @@
 | v1.1.2-stage-59 | v1.1.2（修复 CI 环境守卫误报——窗口内 step `OPENFEEL_LOG=0` 隔离 + `Env snapshot` 下移 + 快照三态；CI 转绿并发布 `openfeel@1.1.2`） | 已归档（**十九阶段闭环 / 已发布**） | 2 op | 2/2 |
 | v1.1.2-stage-60 | v1.1.2（CI publish 并发控制——`publish` job 加 `concurrency` 消除同 push 多 run 并发发布同版本 409 假失败） | 已归档（**二十阶段闭环 / 已发布**） | 1 op | 1/1 |
 | v1.1.3-stage-61 | v1.1.3（CLI 输出编码 `auto` 语义修正 — 方案 A：win32 非 TTY 直通 UTF-8 + GBK 仅显式 + 删 chcp 死代码 + 版本 1.1.3 收口） | 已归档（**v1.1.3 单阶段闭环 / 发布就绪**） | 3 op | 3/3 |
+| v1.1.4-stage-62 | v1.1.4（状态/相位单一事实源收敛 — 问题 4/5/7：`status`=phase 投影 + auto-repair 逆向 + `test_enabled` 移除 + `stage set --status` 值域） | **计划中（待注册）** | 3 op | 0/3 |
+| v1.1.4-stage-63 | v1.1.4（配置默认值解析与阶段创建继承 — 问题 1/6：骨架初值取 config 默认 + `defaults.X ≡ X` + `config set --sync-stages`） | **计划中（待注册）** | 3 op | 0/3 |
+| v1.1.4-stage-64 | v1.1.4（op 注册一致性 — 问题 2：序号「注册 ∪ 文件」+ 空位回填 + `plan scheme register` + 未注册文件告警） | **计划中（待注册）** | 3 op | 0/3 |
+| v1.1.4-stage-65 | v1.1.4（checkpoint 选择性恢复与阶段复位 — 问题 3：`restore --stage/--dry-run` + `flow stage reset` + 版本 1.1.4 收口；hard 依赖 stage-62） | **计划中（待注册）** | 3 op | 0/3 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

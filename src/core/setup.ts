@@ -6,7 +6,7 @@
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { listAgentIds, loadAgentTemplate, loadTemplate } from './template-loader.js';
-import { loadGlobalUpdateState, saveGlobalUpdateState, createGlobalUpdateState, updateFileHash, type UpdateState } from './update-state.js';
+import { loadGlobalUpdateState, saveGlobalUpdateState, createGlobalUpdateState, updateFileHash, getOpenfeelVersion, type UpdateState } from './update-state.js';
 import { deployGlobalAsset, SKILL_DEFINITIONS } from './update.js';
 import { appendUpdateInfo } from './update-infos.js';
 import { backupFileBeforeWrite, notifyBackupIfTTY, BackupError } from './backup.js';
@@ -104,6 +104,8 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN'): SetupResul
     if (existsSync(p)) updateFileHash(globalState, p, readFileSync(p, 'utf-8'));
   }
   globalState.last_update = new Date().toISOString();
+  // stage-66/D-A：部署完成即刷新「已部署版本」事实源（每次 setup 刷新，语义=当前已部署全局资产的版本）
+  globalState.openfeel_version = getOpenfeelVersion();
   saveGlobalUpdateState(globalState);
 
   return { created, updated, skipped, appended };

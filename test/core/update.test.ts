@@ -747,6 +747,24 @@ describe('updateProject', () => {
     expect(projectState.files['opencode.jsonc']).toBeDefined();
   });
 
+  // ── stage-66/D-A：写入侧刷新 openfeel_version ──
+
+  it('stage-66/T4.2：既有全局 state（旧 openfeel_version）→ update 后刷新为当前 CLI 版本（files 哈希不回归）', () => {
+    const statePath = join(mockHome.dir, '.openfeel', 'update_state.json');
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(statePath, JSON.stringify({
+      version: '1.0', last_update: '', openfeel_version: '0.0.1', files: {},
+    }, null, 2) + '\n', 'utf-8');
+
+    updateProject(tmpDir);
+
+    const after = JSON.parse(readFileSync(statePath, 'utf-8'));
+    expect(after.openfeel_version).toBe(getOpenfeelVersion());
+    expect(after.openfeel_version).not.toBe('0.0.1');
+    // 全局资产部署后 hash 已入 state（证明 files 更新逻辑未被破坏）
+    expect(Object.keys(after.files).length).toBeGreaterThan(0);
+  });
+
   it('REV-911 命令层：appended > 10 时输出大量追加警告', async () => {
     // 首次部署生成全局文件 → 去标记 → 损坏 state
     updateProject(tmpDir);

@@ -29,10 +29,11 @@ vi.mock('../../src/core/backup.js', async (importOriginal) => {
 });
 
 import { setupGlobalFramework } from '../../src/core/setup.js';
+import { getOpenfeelVersion } from '../../src/core/update-state.js';
 import { resetBackupSetCache } from '../../src/core/backup.js';
 import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath } from '../../src/core/global-paths.js';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync, mkdirSync } from 'node:fs';
+import { join, relative, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 
 describe('setupGlobalFramework', () => {
@@ -173,5 +174,27 @@ describe('setupGlobalFramework', () => {
     setupGlobalFramework('zh-CN');
     const content = readFileSync(getGlobalAgentsMdPath(), 'utf-8');
     expect(content).toContain('平台默认为 `ask`');
+  });
+
+  // ── stage-66/D-A：写入侧刷新 openfeel_version ──
+
+  it('stage-66/T4.1：既有全局 state（旧 openfeel_version）→ setup 后刷新为当前 CLI 版本', () => {
+    const statePath = join(homeDir, '.openfeel', 'update_state.json');
+    mkdirSync(dirname(statePath), { recursive: true });
+    writeFileSync(statePath, JSON.stringify({
+      version: '1.0', last_update: '', openfeel_version: '1.0.0', files: {},
+    }, null, 2) + '\n', 'utf-8');
+
+    setupGlobalFramework('zh-CN');
+
+    const after = JSON.parse(readFileSync(statePath, 'utf-8'));
+    expect(after.openfeel_version).toBe(getOpenfeelVersion());
+    expect(after.openfeel_version).not.toBe('1.0.0');
+  });
+
+  it('stage-66/T4.3：首次（无全局 state）→ setup 后 openfeel_version == 当前 CLI 版本', () => {
+    setupGlobalFramework('zh-CN');
+    const after = JSON.parse(readFileSync(join(homeDir, '.openfeel', 'update_state.json'), 'utf-8'));
+    expect(after.openfeel_version).toBe(getOpenfeelVersion());
   });
 });

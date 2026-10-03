@@ -1775,6 +1775,8 @@ export function updateProject(
   // 更新时间戳
   newState.last_update = new Date().toISOString();
   newGlobalState.last_update = new Date().toISOString();
+  // stage-66/D-A：部署完成即刷新「已部署版本」事实源（既有 state 与首次创建均覆盖）
+  newGlobalState.openfeel_version = getOpenfeelVersion();
 
   // 持久化双 state
   saveUpdateState(projectPath, newState);

@@ -52,3 +52,16 @@
 - **理由**：原实现**硬编码** `manual`/`disabled`（非文档推断的「取运行时 effective 值」），导致每个新建阶段都需手工 `stage set --auto-advance enabled` 校正。取项目默认即可消除逐个校正。
 - **后果 / 适用边界**：**不改**有效值级联优先序（`status.md 局部 > config 默认 > profile > builtin`）；本决策仅影响**骨架初值**与**显式批量同步**。
 - **回滚**：`git revert` 对应 stage-63 commits；无数据迁移。
+
+### ADR-006：全局部署版本一致性检测（消除「升级 CLI 后静默加载旧全局部署」缺口）
+- **日期**：2026-10-03
+- **状态**：accepted
+- **决策**：新增全局部署版本一致性检测，端到端消除「`npm i -g openfeel@X` 后全局资产不自动刷新且框架不检测不提示」的缺口。要点：
+  1. **版本事实源**：复用 `~/.openfeel/update_state.json.openfeel_version`，**并补写入侧刷新**——每次 `setup`/`update` 全局部署后将字段置为当前 CLI 版本（该字段原仅首次建 state 时写入，不刷新会永久假漂移）。
+  2. **检测**：新增 `src/core/deployment-check.ts`，返回四态 `ok`/`mismatch`/`missing`/`unknown`（只读、不锁、不写盘；`missing` 与 `unknown` 用 `existsSync` 分离；不逐文件哈希）。
+  3. **被动提示**：任意命令经 `runCli()`/`startRepl()` 接入（**非顶层 commander 钩子**），仅 TTY + 非 `--json`/`--quiet`/`--version`/`--help`/CI/`OPENFEEL_NO_UPDATE_CHECK`、且非部署类命令时，向 **stderr** 提示（含部署/CLI 版本 + 指向 `openfeel setup` + 重启），**每进程一次**、**不改退出码**。
+  4. **主动诊断**：`openfeel setup --check [--json]`（一致 exit 0；mismatch/missing/unknown exit 1；`--json` 纯 JSON + `schemaVersion:1`；零写盘）。**不新增顶层命令**。
+  5. **不做**：联网版本查询、`postinstall` 自动刷新（KB 记其用户端静默失效）、逐文件哈希被动检测。
+- **理由**：全局模板仅在会话启动时读取，升级 CLI 不重部署则静默加载旧 agent/skill/AGENTS.md（本轮 v1.1.4 发布后实测踩坑）。四态 + 强门控平衡可发现性与噪音；stderr 保护 `--json` 契约。
+- **后果 / 适用边界**：检测针对**全局** state（项目 state 不参与）；state 损坏 → `unknown` 静默；降级（部署>CLI）按 `mismatch` 提示。
+- **回滚**：`git revert` 对应 stage-66/67 commits；无 schema/依赖/数据迁移。

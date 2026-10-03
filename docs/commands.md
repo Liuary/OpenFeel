@@ -251,22 +251,26 @@ Plan 命令管理三层计划体系中的工作阶段（Stage）和操作方案�
 添加工作阶段（**完整入口（推荐）**：创建目录 + `overview.md`/`status.md` + 注册 `flow.json`；仅需注册请用 `openfeel flow stage add`）。
 
 ```bash
-openfeel plan stage add <name> [--deps <ids...>]
+openfeel plan stage add <name> [--deps <ids...>] [--tasks <items...>] [--exec-mode <manual|auto>] [--auto-advance <enabled|disabled>]
 ```
 
-| 参数 | 说明 |
+| 参数/选项 | 说明 |
 |------|------|
 | `name` | 阶段 ID（如 `stage-01`、`v1.1.2-stage-41`） |
 | `--deps <ids...>` | 依赖阶段 ID 列表（空格或逗号分隔，如 `--deps a b` 或 `--deps a,b`） |
+| `--tasks <items...>` | 初始任务列表（生成到 `status.md`；不传保持 `> 待补充`） |
+| `--exec-mode <manual\|auto>` | 执行模式，**显式覆盖 config 默认**（值域非法 → exit 1 且不建阶段） |
+| `--auto-advance <enabled\|disabled>` | 自动推进，**显式覆盖 config 默认**（值域非法 → exit 1 且不建阶段） |
 
 示例：
 
 ```bash
 openfeel plan stage add stage-01
 openfeel plan stage add v1.1.2-stage-41 --deps v1.1.2-stage-40
+openfeel plan stage add v1.1.4-stage-63 --exec-mode auto --auto-advance enabled
 ```
 
-创建 `plan/{series}/{stage-NN}/` 目录，包含 `overview.md`（含「## 依赖」）和 `status.md`，并写入 `flow.json.stages[fullStageId].deps`。非法 stageId 会报错并给出建议名。
+创建 `plan/{series}/{stage-NN}/` 目录，包含 `overview.md`（含「## 依赖」）和 `status.md`，并写入 `flow.json.stages[fullStageId].deps`。非法 stageId 会报错并给出建议名。**阶段初值继承**：未显式传 `--exec-mode`/`--auto-advance` 时，新 `status.md` 的 `执行模式`/`自动推进` 取 `.openfeel/config.yaml` 的 `defaults`（缺失/非法逐键回退内置默认）；显式选项优先于 config 默认（v1.1.4-stage-63）。
 
 ### 阶段创建入口关系
 
@@ -426,10 +430,12 @@ openfeel config effective [key]
 
 ```bash
 openfeel config get [key] [--global]
-openfeel config set <key> <value> [--global]
+openfeel config set <key> <value> [--global] [--sync-stages]
 ```
 
 - **支持全量 `defaults.*` 键**（schema 驱动）：`execution_mode` / `auto_advance` / `merge_mode` 等受管配置键均可通过 `config set`/`get` 读写（与 `config effective` 覆盖范围一致）。**注意**：原布尔测试门禁键已于 v1.1.4-stage-62 移除，`config set` 该键将被判定为**无效键**（报错、不写盘）。
+- **`defaults.X ≡ X`（v1.1.4-stage-63）**：项目模式下 `defaults.` 前缀与 bare key 等价（键归一，单一来源）；`--global` 的 profile 键域不同，不受影响。
+- **`--sync-stages`（v1.1.4-stage-63）**：仅项目模式（与 `--global` 组合 → exit 1）；将值批量写入**所有已注册阶段** `status.md` 对应字段（适用键 `auto_advance` → `自动推进`、`execution_mode` → `执行模式`）；**同值 no-op**；其它键（无阶段字段）跳过并报告。
 - **值类型归一**：写入前按字段 Schema 归一值类型（枚举键按枚举校验；Schema 中若存在布尔键则 `true`/`false` 归一为布尔值），避免以字符串落盘破坏配置校验。当前受管三键均为枚举型。
 - **枚举校验 + 不写盘**：非法取值（如 `execution_mode bogus`）以非 0 退出并报错，**不修改目标文件**（文件 hash 与 mtime 不变）。
 

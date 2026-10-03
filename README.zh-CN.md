@@ -38,6 +38,7 @@ openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/ski
 ```
 
 > 仅 `npm i -g` 不会刷新全局资产，须重跑 `openfeel setup` 并重启 harness。
+> CLI 在检测到全局部署漂移或全局部署缺失时，也会向 stderr 打印被动提示。
 > 若不确定是否需要升级，运行 `openfeel setup --check` 诊断全局部署版本与 CLI 版本是否一致。
 
 ## 快速开始

@@ -1,11 +1,13 @@
 ---
 name: openfeel-agent-model-check
-description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验（opencode 适配器）、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
+description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验（opencode 适配器）、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南、Claude Code 侧模型（`/model`、网关）。
 ---
 
 # Skill: openfeel-agent-model-check
 
 # Agent 模型检查与修复
+
+> 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
 
 ## 何时使用
 
@@ -24,22 +26,6 @@ Model not found: {provider_key}/{model_id}
 
 注意是否有 `Did you mean: xxx` 提示——如有，直接使用建议的模型名。
 
-### 第二步：读取 auth.json 确认实际 provider key
-
-```bash
-# Windows PowerShell / macOS / Linux
-cat ~/.local/share/opencode/auth.json
-```
-
-**关键点**：模型引用中的 provider 部分必须与 `auth.json` 中的 key 完全一致，而非 `opencode.jsonc` 中 `provider.name` 或 `provider.id`。
-
-常见 provider key 示例：
-- `alibaba-cn` — 阿里云中国区（DashScope）
-- `deepseek` — DeepSeek
-- `anthropic` — Anthropic
-- `openai` — OpenAI
-- `zhipuai` — 智谱 AI
-
 ### 第三步：确认模型是否支持目标能力
 
 查阅 [Models.dev](https://models.dev) 确认模型属性：
@@ -56,7 +42,31 @@ cat ~/.local/share/opencode/auth.json
 - `deepseek-flash` 支持多模态图像输入（openfeel-vision 现用模型）
 - 备选视觉模型：`qwen3-vl-plus`（模型名中的 `vl` 表示 Vision-Language）
 
-### 第四步：检查 opencode.jsonc 配置
+### 第六步：验证
+
+重启后调度目标 Agent 执行简单测试任务，确认无报错。
+
+## 平台适配
+
+### opencode 适配器
+
+#### 第二步：读取 auth.json 确认实际 provider key
+
+```bash
+# Windows PowerShell / macOS / Linux
+cat ~/.local/share/opencode/auth.json
+```
+
+**关键点**：模型引用中的 provider 部分必须与 `auth.json` 中的 key 完全一致，而非 `opencode.jsonc` 中 `provider.name` 或 `provider.id`。
+
+常见 provider key 示例：
+- `alibaba-cn` — 阿里云中国区（DashScope）
+- `deepseek` — DeepSeek
+- `anthropic` — Anthropic
+- `openai` — OpenAI
+- `zhipuai` — 智谱 AI
+
+#### 第四步：检查 opencode.jsonc 配置
 
 ```jsonc
 {
@@ -74,13 +84,15 @@ cat ~/.local/share/opencode/auth.json
 3. 不要随意添加前缀（如 `alibaba/`、`Alibaba(China)/`）
 4. 如果不需要自定义 provider 选项（如 baseURL），可以完全不写 `provider` 块
 
-### 第五步：修改并重启
+#### 第五步：修改并重启
 
 修改 `opencode.jsonc` 后**必须重启 opencode** 才能生效。运行中的会话使用启动时加载的配置。
 
-### 第六步：验证
+### Claude Code 适配器
 
-重启后调度目标 Agent 执行简单测试任务，确认无报错。
+- Claude Code **无 `auth.json`**。
+- 模型/provider 由 **Claude 侧**决定（`/model`、`settings.json`/`env`、网关如 cc-switch）。
+- Claude Code **无 `opencode.jsonc`**，模型引用不进 jsonc。
 
 ## 快速诊断清单
 
@@ -91,6 +103,7 @@ cat ~/.local/share/opencode/auth.json
 | 模型支持目标能力 | 查阅 models.dev | Input/Tool Call 等字段 = Yes |
 | opencode.jsonc 语法 | 检查 JSON 格式 | 无语法错误 |
 | 重启生效 | 重启 opencode 后重新测试 | 无 Model not found 报错 |
+| 模型由 Claude 侧配置 | `/model` 或 settings/env | 模型可用 |
 
 ## 多模态（openfeel-vision）Agent 专项
 
@@ -105,6 +118,8 @@ openfeel-vision Agent 必须配置多模态模型。当前默认使用 `deepseek
 
 **推荐**：优先使用 `deepseek-flash`（已内置多模态）；如需更大上下文可备选 `qwen3-vl-plus`。
 
+> **Claude Code 适配器**：多模态由 Claude 侧模型决定；`openfeel-vision` subagent 须选支持图像输入的模型。
+
 ## 常见错误与修复
 
 | 错误信息 | 原因 | 修复 |
@@ -113,3 +128,5 @@ openfeel-vision Agent 必须配置多模态模型。当前默认使用 `deepseek
 | `Model not found: alibaba/xxx` | 内置 key 与实际注册的 key 不一致 | 检查 auth.json，使用实际 key |
 | `Model not found: xxx. Did you mean: yyy` | 模型名拼写错误或不存在 | 使用 `Did you mean` 建议的名称 |
 | Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为支持图像输入的模型（如 `deepseek-flash`） |
+
+> **Claude Code 适配器**：以上排查针对 opencode 的 `auth.json`/`opencode.jsonc`；Claude 侧的模型解析以 `/model`、`settings.json`/`env` 或网关配置为准。

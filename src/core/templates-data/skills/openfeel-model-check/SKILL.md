@@ -1,15 +1,17 @@
 ---
 name: openfeel-model-check
-description: Feel 自检时检查所有 Agent 的模型配置状态，识别期望模型 vs 实际模型的差距，引导用户在目标工具中完成配置。首次配置后存储为部署模板，新项目可直接复用。
+description: 主会话（Feel）自检时检查所有 Agent 的模型配置状态，识别期望模型 vs 实际模型的差距，引导用户在目标工具中完成配置。首次配置后存储为部署模板，新项目可直接复用。
 ---
 
 # 模型配置检查
 
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
+> 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
+
 ## 触发时机
 
-Feel Agent 在以下时机加载本 Skill：
+主会话在以下时机加载本 Skill：
 - 会话启动自检（每次）
 - 用户请求检查模型配置（按需）
 - 新项目首次初始化后（`openfeel init`）
@@ -18,19 +20,11 @@ Feel Agent 在以下时机加载本 Skill：
 
 ### 1. 识别当前平台
 
-读取 `opencode.jsonc`（或对应平台的配置文件），确定当前适配器平台：
-
-| 配置文件 | 平台 |
-|----------|------|
-| `opencode.jsonc` | OpenCode（当前适配器） |
-| `kilo/kilo.json` | Kilo |
-| `claude/claude.json` | Claude |
-
-若无平台配置文件，提示用户当前不在支持的平台中。
+读取当前 harness 的平台配置文件，确定当前适配器平台（已知平台配置文件与 agents 目录差异见 `## 平台适配`）。
 
 ### 2. 扫描 Agent 定义
 
-扫描 `.opencode/agents/`（或对应平台的 agents/ 目录）下所有 `.md` 文件，提取每个 Agent 的模型需求。
+扫描 agents 目录（目录差异见 `## 平台适配`）下所有 `.md` 文件，提取每个 Agent 的模型需求。
 
 **提取规则（优先级从高到低）**：
 
@@ -107,7 +101,7 @@ models:
 ```markdown
 | Agent | 角色要求 | 实际模型 | 配置来源 | 状态 |
 |-------|----------|----------|----------|:--:|
-| Feel | 主力推理 | deepseek-v4-pro | default | ⚠️ |
+| 主会话 | 主力推理 | deepseek-v4-pro | default | ⚠️ |
 | openfeel-reviewer | **异种推理** | deepseek-v4-pro | default | ❌ 与主力相同！ |
 | openfeel-executor | 快速 | deepseek-v4-pro | default | ⚠️ 未使用快速模型 |
 ```
@@ -119,7 +113,7 @@ models:
 ```markdown
 ## 🔍 模型配置检查报告
 
-**平台**：OpenCode（当前适配器）
+**平台**：当前 harness（opencode 适配器 / Claude Code 适配器）
 **配置文件**：.openfeel/config.yaml
 **检查时间**：yyyy-mm-dd HH:MM
 
@@ -147,12 +141,12 @@ models:
 
 ### 6. 引导用户配置
 
-若检查发现以下任一问题，**必须**使用 `question` 工具引导用户：
+若检查发现以下任一问题，**必须**使用向用户提问工具（opencode 适配器：`question`；Claude Code 适配器：`AskUserQuestion`）引导用户：
 
 | 触发条件 | 引导内容 |
 |----------|----------|
 | `models` 节不存在 | "未检测到模型配置。你需要为不同角色分配模型吗？" → 引导创建 |
-| openfeel-reviewer 使用与主力相同模型 | "⚠️ openfeel-reviewer 当前与 Feel 使用相同模型，异种交叉审查的核心优势无法发挥。建议为 openfeel-reviewer 配置不同的模型系列。" |
+| openfeel-reviewer 使用与主力相同模型 | "⚠️ openfeel-reviewer 当前与主会话使用相同模型，异种交叉审查的核心优势无法发挥。建议为 openfeel-reviewer 配置不同的模型系列。" |
 | openfeel-executor 使用推理模型 | "⚠️ openfeel-executor 建议使用快速模型以节省成本。是否配置？" |
 | 关键 Agent 无任何配置 | "以下 Agent 无模型配置：{列表}。请配置。" |
 
@@ -172,7 +166,7 @@ models:
 # 或直接复制此文件到 .openfeel/ 并重命名为 config.yaml（需合并其他节）
 #
 # 最近配置时间：yyyy-mm-dd HH:MM
-# 平台：OpenCode（当前适配器）
+# 平台：当前 harness（opencode 适配器 / Claude Code 适配器）
 
 models:
   default:
@@ -190,6 +184,31 @@ models:
 ```
 
 此模板在下次 `openfeel init` 或新项目部署时自动检测并建议复用。
+
+## 平台适配
+
+### opencode 适配器
+
+平台配置文件：
+
+| 配置文件 | 平台 |
+|----------|------|
+| `opencode.jsonc` | OpenCode（当前适配器） |
+| `kilo/kilo.json` | Kilo |
+
+若无平台配置文件，提示用户当前不在支持的平台中。
+
+- agents 目录：`.opencode/agents/`（或对应平台的 agents/ 目录）下所有 `.md` 文件。
+- 报告/模板中的平台标签：`**平台**：OpenCode（当前适配器）`（原文标签，正文已改为中性表述「当前 harness（opencode 适配器 / Claude Code 适配器）」）。
+- 向用户提问使用 `question` 工具。
+
+### Claude Code 适配器
+
+- Claude Code **无平台配置文件**（原平台识别表中指向 Claude 的错误配置行已删除）。
+- 全局约束：`~/.claude/CLAUDE.md`；本期由 **stage-73** 注入 `settings.json`。
+- agents 目录：`~/.claude/agents/`。
+- 报告平台标签：`Claude Code 适配器`。
+- 向用户提问使用 `AskUserQuestion` 工具。
 
 ## 输出规范
 

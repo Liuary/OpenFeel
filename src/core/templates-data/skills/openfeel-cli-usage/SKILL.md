@@ -10,6 +10,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 定位：**查询型参考手册**（只读，不自执行）。回答「命令是什么、参数怎么给、phase/stageId 规则如何」。
 - 边界：**执行型交互向导**请用 `openfeel-wizard` skill（跑 `openfeel flow wizard` 推进流水线）；本 skill 只承载静态知识查阅。
 - 与 `openfeel-tool-usage` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
+- 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
 
 > 本文档为 v1.1.5 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
@@ -52,6 +53,8 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 ## 升级流程
 
+### opencode 适配器
+
 ```bash
 npm i -g openfeel@latest   # 1. 升级 CLI
 openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/skills/opencode.jsonc
@@ -59,6 +62,16 @@ openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/ski
 ```
 
 仅 `npm i -g` 不会刷新全局资产，须重跑 `openfeel setup` 并重启 harness。`openfeel setup --check` 可诊断全局部署版本与 CLI 版本是否一致（一致退出 0，否则退出 1）。
+
+### Claude Code 适配器
+
+```bash
+npm i -g openfeel@latest       # 1. 升级 CLI
+openfeel setup --tools claude  # 2. 重跑部署（claude 目标）
+```
+
+- 首次创建 `~/.claude/{agents,skills}` 后需**重启会话或 `/reload-skills`** 使新 skill/agent 生效。
+- `CLAUDE.md` 于**下次会话**生效。
 
 ## v1.1.2 新增能力（stage-41~55）
 
@@ -133,10 +146,18 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 ## 权限模型要点
 
+### opencode 适配器
+
 - 9 个 agent 内联 `permission:` 白名单，均含 `external_directory: "allow"`（单一键，无读写粒度）。
 - **合并语义**：agent `.md` frontmatter 与 `opencode.jsonc` 按权限键**深合并**，同名键以 agent `.md` 为准（配置文件无法覆盖已声明键）。
 - **收紧入口**：项目根 `.opencode/agent/<name>.md` 覆盖全局同名 agent 并重写完整 `permission` 块；勿手改全局 agent frontmatter（会被 `update` 覆盖）。
 - 详 `.openfeel/manual/core/permission.md`。
+
+### Claude Code 适配器
+
+- subagent 于 frontmatter 声明 `tools`（白名单，未列即不可用）、`disallowedTools`（黑名单）与 `permissionMode`。
+- **无 `external_directory` 对等概念**。
+- 本期由 **stage-73** 注入 `settings.json`（`agent:"feel"` + `permissions.defaultMode:"auto"`）。
 
 ## 与 openfeel-wizard 的区别
 

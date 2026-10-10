@@ -5,7 +5,7 @@
  *  ① name == 文件名（9×2）；
  *  ② frontmatter `model: inherit`（供应商中立，裁定 E）；
  *  ③ CLAUDE.md 体量软上限 ≤ 700 行（防体量反弹，设计目标 ≈560）；
- *  ④ 跨切面：本阶段不产出 settings.json（归 stage-73）；
+ *  ④ claude-settings.ts 于 stage-73 落地（存在性断言已翻转）；
  *  ⑤ Claude agents 数 == opencode agents 数（均 9，含 feel，**非 −1**）。
  */
 import { describe, it, expect } from 'vitest';
@@ -52,9 +52,9 @@ describe('Claude 适配器跨切面（stage-69 T7.5b）', () => {
     }
   });
 
-  it('跨切面：本阶段不产出 settings.json', () => {
-    // ① claude-settings.ts 归 stage-73，本阶段不建
-    expect(existsSync(join(ROOT, 'src', 'core', 'claude-settings.ts'))).toBe(false);
+  it('跨切面：settings.json 注入模块落地（stage-73）', () => {
+    // ① claude-settings.ts 于 stage-73 落地（原 stage-69/71 阶段断言为 false）
+    expect(existsSync(join(ROOT, 'src', 'core', 'claude-settings.ts'))).toBe(true);
     // ② build.js 本阶段不产出 settings（不含 settings.json 引用）
     const buildSrc = readFileSync(join(ROOT, 'build.js'), 'utf-8');
     expect(buildSrc).not.toContain('settings.json');

@@ -2,6 +2,23 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.6] - 2026-10-11
+
+### Added
+- Claude Code 适配器（多 harness 并存）：`openfeel setup/update --tools <list>` 显式启用（默认仅 opencode，`~/.claude` 零触）；部署 `~/.claude/CLAUDE.md` + 9 agents（含 `feel`）+ 17 skills
+- [stage-73] `~/.claude/settings.json` 注入（严格 JSON 读-深合并-写回）：`agent:"feel"` + `permissions.defaultMode:"auto"`；用户既有键逐字保留；备份/幂等/卸载语义
+- [stage-71] 5 个 Claude 全局路径函数（尊重 `CLAUDE_CONFIG_DIR`）+ D-CFG 备份 HOME 外 `global-external/<sha8>/…` fallback
+- [stage-68] 17 skills 权威源迁中立共享源 `templates-data/skills/`（opencode/Claude 两 harness 共用）
+- 版本全链路收口 1.1.5 → 1.1.6
+
+### Changed
+- [stage-70] 共享 skills 中立化（能力名叙述 + `### opencode 适配器` / `### Claude Code 适配器` 双平台分节）
+- [stage-71] 重启提醒按 harness 组合参数化；i18n 基线 761 → 774
+
+### Documentation
+- README×3 / GETTING_STARTED / commands / manual / `openfeel-cli-usage` skill 六载体补 Claude Code 适配器（`--tools`、`~/.claude/` 资产、settings 注入、升级/重启）
+- CI 环境守卫快照路径新增 `$HOME/.claude`（5 路径，判定语义不变）
+
 ## [1.1.5] - 2026-10-03
 
 ### Added

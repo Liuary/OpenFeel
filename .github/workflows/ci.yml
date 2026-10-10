@@ -36,7 +36,7 @@ jobs:
           # 守卫窗口起点：紧贴 Test 之前（stage-59 M4 下移）；此前 Version consistency guard / lint i18n 均已注入 OPENFEEL_LOG=0
           # 快照三态（stage-59 M5）：ABSENT（不存在）/ EXISTS-EMPTY（存在但无文件）/ 逐文件 sha256 清单
           snapshot() {
-            for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "./.openfeel/config.yaml"; do
+            for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "$HOME/.claude" "./.openfeel/config.yaml"; do
               key=$(echo "$d" | tr '/.' '__')
               if [ -e "$d" ]; then
                 manifest=$(find "$d" -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sort)
@@ -49,7 +49,7 @@ jobs:
           snapshot
       - name: Test
         run: |
-          # 保退出码（pipefail）：tee 不得吞掉 npm test 失败码；日志落 $RUNNER_TEMP（不污染 Env guard 四路径）
+          # 保退出码（pipefail）：tee 不得吞掉 npm test 失败码；日志落 $RUNNER_TEMP（不污染 Env guard 五路径）
           # REV-004：--no-color 关闭 vitest 3.x 在非 TTY 重定向下仍输出的 ANSI 色码（FORCE_COLOR=0 对该 reporter 无效）
           set -o pipefail
           npm test -- --reporter=verbose --no-color 2>&1 | tee "$RUNNER_TEMP/test.log"
@@ -79,7 +79,7 @@ jobs:
         run: |
           # 环境守卫（stage-48 op-002 / 遗留 #12）：测试前后比对全局目录 + 仓库项目配置，防止静默覆写真实环境
           fail=0
-          for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "./.openfeel/config.yaml"; do
+          for d in "$HOME/.openfeel" "$HOME/.config/opencode" "$HOME/.config/openfeel" "$HOME/.claude" "./.openfeel/config.yaml"; do
             key=$(echo "$d" | tr '/.' '__') ; f="$RUNNER_TEMP/snap_after_$key"
             # 三态表示与 before 快照一致（stage-59 M6）：ABSENT / EXISTS-EMPTY / 逐文件 sha256 清单
             if [ -e "$d" ]; then

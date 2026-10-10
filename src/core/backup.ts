@@ -57,12 +57,25 @@ function computeBackupRel(absPath: string, projectPath?: string): { zone: 'globa
     const hash8 = createHash('sha256').update(proj).digest('hex').slice(0, 8);
     return { zone: 'project', rel: join('project', `${basename(proj)}-${hash8}`, rel) };
   }
-  const rel = relative(getHomedir(), absPath);
-  // 越界防御（T26）：相对化结果逃出 HOME（含 '..' 或绝对路径）时拒绝
-  if (rel.startsWith('..') || isAbsolute(rel)) {
-    throw new BackupError(absPath, `路径逃出用户主目录（HOME=${getHomedir()}）`);
+  const abs = resolve(absPath);
+  const rel = relative(getHomedir(), abs);
+  // HOME 内：沿用原 global/ 分区（零回归）
+  if (!rel.startsWith('..') && !isAbsolute(rel)) {
+    return { zone: 'global', rel: join('global', rel) };
   }
-  return { zone: 'global', rel: join('global', rel) };
+  // HOME 外（D-CFG / R-7）：global-external/<sha8>/<规范化尾段>，不再抛错（避免「备份失败→skipped」）
+  // sha8 = sha256(绝对路径) 前 8 位十六进制，仅 [0-9a-f]，天然规避盘符冒号与保留字符（跨平台口径定稿）
+  const sha8 = createHash('sha256').update(abs).digest('hex').slice(0, 8);
+  // 尾段：逐段剥离盘符（Windows `X:`）与前导分隔符，替换文件系统保留字符 [<>:"|?*]，保留目录层级
+  const segs = abs
+    .replace(/^[A-Za-z]:/, '')
+    .split(/[\\/]+/)
+    .filter(Boolean)
+    .map((seg) => seg.replace(/[<>:"|?*]/g, '_'));
+  if (segs.length === 0) {
+    segs.push('root'); // 防御：极端根路径（正常源为文件，不会触发）
+  }
+  return { zone: 'global', rel: join('global-external', sha8, ...segs) };
 }
 
 /** 读改写当次 manifest（须在 backup 锁内调用） */

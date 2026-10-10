@@ -89,3 +89,29 @@ export function getGlobalBackupRootPath(): string {
 export function getCliLogsDir(): string {
   return join(homedir(), '.openfeel', 'cli', 'logs');
 }
+
+/** Claude 全局配置根目录：CLAUDE_CONFIG_DIR 非空优先（函数体内读 env，空/空白回落 ~/.claude） */
+export function getClaudeConfigDir(): string {
+  const dir = process.env.CLAUDE_CONFIG_DIR?.trim();
+  return dir ? dir : join(homedir(), '.claude');
+}
+
+/** Claude 全局 agents 目录（<config>/agents） */
+export function getClaudeAgentsDir(): string {
+  return join(getClaudeConfigDir(), 'agents');
+}
+
+/** Claude 全局 skills 目录（<config>/skills） */
+export function getClaudeSkillsDir(): string {
+  return join(getClaudeConfigDir(), 'skills');
+}
+
+/** Claude 全局约束文件路径（<config>/CLAUDE.md） */
+export function getClaudeMdPath(): string {
+  return join(getClaudeConfigDir(), 'CLAUDE.md');
+}
+
+/** Claude 全局 settings.json 路径（<config>/settings.json；stage-73 消费，本阶段仅解析不写） */
+export function getClaudeSettingsPath(): string {
+  return join(getClaudeConfigDir(), 'settings.json');
+}

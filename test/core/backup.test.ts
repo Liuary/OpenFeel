@@ -20,7 +20,7 @@ import {
   notifyBackupIfTTY,
 } from '../../src/core/backup.js';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { join, basename, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -203,14 +203,32 @@ describe('backupFileBeforeWrite', () => {
     }
   }, 40000);
 
-  it('T26：越界路径（project / HOME 之外）抛 BackupError', () => {
+  it('T26：project 分区越界路径（逃出项目根）仍抛 BackupError', () => {
     const outside = join(projectDir, '..', 'outside-t26.txt');
     writeFileSync(outside, 'x', 'utf-8');
     try {
-      // project 分区：逃出项目根
+      // project 分区：逃出项目根 → 仍拒绝
       expect(() => backupFileBeforeWrite(outside, { command: 'init', projectPath: projectDir })).toThrow(BackupError);
-      // global 分区：逃出 HOME
-      expect(() => backupFileBeforeWrite(outside, { command: 'init' })).toThrow(BackupError);
+    } finally {
+      rmSync(outside, { force: true });
+    }
+  });
+
+  it('D-CFG/R-7：HOME 外路径 → global-external/<sha8>/… fallback（不再抛错）', () => {
+    const outside = join(projectDir, '..', 'outside-dcfg.txt'); // 位于 mock HOME 之外
+    writeFileSync(outside, 'external', 'utf-8');
+    try {
+      const r = backupFileBeforeWrite(outside, { command: 'setup' });
+      expect(r).not.toBeNull();
+      expect(r!.backupRel.startsWith('global-external/')).toBe(true);
+      const abs = resolve(outside);
+      const sha8 = createHash('sha256').update(abs).digest('hex').slice(0, 8);
+      expect(r!.backupRel).toContain(sha8);
+      const dest = join(backupRoot(), r!.ts, r!.backupRel);
+      expect(existsSync(dest)).toBe(true);
+      expect(readFileSync(dest, 'utf-8')).toBe('external');
+      const manifest = JSON.parse(readFileSync(join(backupRoot(), r!.ts, 'manifest.json'), 'utf-8'));
+      expect(manifest.entries[abs]).toBeDefined();
     } finally {
       rmSync(outside, { force: true });
     }

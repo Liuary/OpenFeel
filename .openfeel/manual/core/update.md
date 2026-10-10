@@ -38,9 +38,9 @@
 `updateProject` 由「不含 opencode 即早退」改为「**两工具都未选才返回空**」，并分 `wantOpencode` / `wantClaude` 对称分支：
 
 - **opencode 分支**：步骤 0~4（AGENTS.md / agents / skills / 全局 jsonc / 项目 jsonc）整体包入 `if (wantOpencode)`——**语句逐字保留**（仅缩进 +2，零回归）；`legacyDirs` 警告、`recordProjectLang`、全局 state、`staleCoreKey` 重映射保持在外。
-- **claude 分支**（`if (wantClaude)`）：`~/.claude/CLAUDE.md`（`loadClaudeConstraintTemplate`，走受管区三态）+ 9 agents（`loadClaudeAgentTemplate`）+ 17 共享 skills（`SKILL_DEFINITIONS`）；复用 `deployGlobalAsset`；**不写 `settings.json`**（归 stage-73）。
-- **`getIncomingContent`**：追加 CLAUDE.md / claude agent（`getClaudeAgentsDir()` 下 `{name}.md`）/ claude skill（`getClaudeSkillsDir()` 下 `{name}/SKILL.md`）三分支，与 opencode 分支模式对称。
-- **重启提醒**：按 harness 组合输出（`update.restartHarnessTmpl` + `update.claudeReloadHintTmpl`），`isTTY` 守卫、非交互静默；仅 opencode 时**逐字**与改前一致。
+- **claude 分支**（`if (wantClaude)`）：`~/.claude/CLAUDE.md`（`loadClaudeConstraintTemplate`，走受管区三态）+ 9 agents（`loadClaudeAgentTemplate`）+ 17 共享 skills（`SKILL_DEFINITIONS`）；复用 `deployGlobalAsset`；**step 4c** 经 `applyClaudeSettings` 写 `~/.claude/settings.json`（严格 JSON 读-深合并-写回，v1.1.6-stage-73）。
+- **`getIncomingContent`**：追加 CLAUDE.md / claude agent（`getClaudeAgentsDir()` 下 `{name}.md`）/ claude skill（`getClaudeSkillsDir()` 下 `{name}/SKILL.md`）三分支，与 opencode 分支模式对称；**无 settings 分支**（settings 不入 conflicts）。
+- **重启提醒**：按 harness 组合输出（`update.restartHarnessTmpl` + `update.claudeReloadHintTmpl`），`isTTY` 守卫、非交互静默；仅 opencode 时**逐字**与改前一致；`claudeChanged` 判定源含 `getClaudeSettingsPath()`（仅 settings 变化也触发提醒）。
 
 > **R-5 默认守卫**：`commands/update.ts` 默认工具选择由 `supportedTools.map(t=>t.id)` 改 `filter(t=>t.enabled).map(t=>t.id)`——默认 `update <path>` **仅部署默认启用工具**，`~/.claude` 零触（`kb/patterns.md #工具注册表 enabled 门控的默认守卫`）。
 
@@ -79,4 +79,5 @@ stage-38 用「控制区标记」替换 stage-32 的 `writeWithMergeDetection`�
 | stage-38 | `writeWithMergeDetection` → `writeManagedFile` 控制区三态（+appended 四分类）；新增 `composeManagedContent`/`pushAction`；接入 `managed-region` + `update-infos`；conflicts 恒空语义变化 |
 | stage-39 | 最小侵入抽取 `deployGlobalAsset`（供 migrate 复用，等价 `writeManagedFile(..., {isGlobal:true})`，REV-1205）；`ManagedAction` 改 export；`SKILL_DEFINITIONS` 改 `export const`（build.js 生成模板同步，REV-1308） |
 | v1.1.1 | 拆除项目 AGENTS.md 部署（含 `AgentsMdLangConflictError`）与 `getIncomingContent` 的项目 AGENTS.md 路由；全局约束改部署 `getGlobalAgentsMdPath()`（core.md 退役）；存量全局 state core.md key → AGENTS.md key 一次性重映射 |
-| v1.1.6-stage-71 | 多 harness 双分支（`wantOpencode`/`wantClaude`；早退改「两工具都未选才空」）；claude 分支 = CLAUDE.md + 9 agents + 17 共享 skills（不写 settings.json）；`getIncomingContent` 补三分支；重启提醒按 harness 组合参数化（i18n）；`supportedTools` claude 正式条目 `enabled:false` + `parseToolList`；**R-5**：`update <path>` 默认改 `filter(t=>t.enabled)` |
+| v1.1.6-stage-71 | 多 harness 双分支（`wantOpencode`/`wantClaude`；早退改「两工具都未选才空」）；claude 分支 = CLAUDE.md + 9 agents + 17 共享 skills；`getIncomingContent` 补三分支；重启提醒按 harness 组合参数化（i18n）；`supportedTools` claude 正式条目 `enabled:false` + `parseToolList`；**R-5**：`update <path>` 默认改 `filter(t=>t.enabled)` |
+| v1.1.6-stage-73 | claude 分支 step 4c 接入 `applyClaudeSettings`（`settings.json` 严格 JSON 读-深合并-写回，共享单实现防漂移）；重启提醒 `claudeChanged` 追加 `f === getClaudeSettingsPath()`；settings **不入 conflicts**（`getIncomingContent` 不加分支）；`update([claude])` 二次 skipped 27 → **28** |

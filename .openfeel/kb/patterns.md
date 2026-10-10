@@ -3551,3 +3551,40 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.6-stage-71（op-003 `62fcb43`）——`--tools claude` 实测输出 `请重启当前 harness（Claude Code）…` + `/reload-skills` 提示；默认 `setup` 尾行与改前逐字一致（zh/en 同）；REV 独立复核确认。
 
 **参见：** v1.1.6-stage-71（op-003）；`src/core/update.ts`、`src/commands/setup.ts`；kb/patterns.md #init/update 重启提醒对称输出模式、#CLI 国际化封装模式；kb/architecture.md #多 harness 部署编排架构
+
+## [+] 严格 JSON 深合并的独立实现：格式决定解析器（vs jsonc）+ 用户键逐字保留 + 字节幂等 (2026-10-11)
+
+**背景：v1.1.6-stage-73（T1 / R-10）**——把 `~/.claude/settings.json` 注入作为 `--tools claude` 的正式能力，须「读-深合并-写回」并逐字保留用户键。`settings.json` 为**严格 JSON**（无注释、无受管区标记），与 opencode 的 `jsonc` 是**两种格式**，故**独立实现**深合并。
+
+**实现口径（`claude-settings.ts`）**：
+
+1. **解析**：直接 `JSON.parse`（**严格**，天然拒绝 `//` 注释与 trailing comma）；失败抛 `ClaudeSettingsParseError`；顶层非对象（数组/null/数字/字符串）同抛；空/纯空白输入按 `{}` 处理。
+2. **框架自有键覆盖**：`result.agent = 'feel'`——已存在则**原位覆盖（保序）**，不存在则按片段声明序追加。
+3. **深合并保留子键**：`result.permissions = { ...basePerm, defaultMode: 'auto' }`——用户 `permissions` 下 `allow`/`deny` 等子键逐个保留。
+4. **其余键逐字保留**：`{ ...base }` 浅拷贝保插入序，`env`/`model`/`modelPicker`/`theme`/`apiKeyHelper` 及任意未知键值语义逐字保留。
+5. **稳定序列化**：`JSON.stringify(result, null, 2) + '\n'`；**依赖 JS 对象插入序**（V8 对字符串键保序），**不显式排序**（排序会重排用户既有键 = churn + 与「逐字保留」相悖）。
+6. **字节幂等**：合并为纯函数 ⇒ `merge(merge(x)) === merge(x)`（末 `\n` 与 2 空格缩进稳定）；二次读自身输出字节相同。
+
+**判据：「格式决定解析器」，不得跨格式复用**——严格 JSON 用 `JSON.parse` 直接校验；**不复用** `opencode-config.ts` 的 `parseJsonc`/`deepMergeJsonc`（含剥注释/regex/passthrough 特例，会误纳含注释文件并引入无关特例），**亦不复用** `managed-region.ts` 的标记三态（严格 JSON 无 `<!-- -->` 标记）。`rg "from './(opencode-config|managed-region)"` 须零命中（模块头注释可提及「不复用」但不 import）。
+
+**实证**：v1.1.6-stage-73（op-001 `1fe29b0`）——单测 T6.1~T6.4（空输入逐字、用户键深等于原值 + 保序、`merge(merge(x))===merge(x)`、注释/trailing comma/顶层非对象抛错）；隔离 HOME CLI `Get-FileHash` 二次相等（IDEMPOTENT=True）；REV 独立复核零复用（rg import 零命中）。
+
+**参见：** v1.1.6-stage-73（T1/D-SET3；op-001）；`src/core/claude-settings.ts`；`test/core/claude-settings.test.ts`；kb/patterns.md #JSONC 深度合并模式（**对照：jsonc 剥注释 + passthrough，不适用严格 JSON**）、#写策略按资产归属二分、#原子写模式；manual/core/claude-settings.md
+
+## [+] 用户高频占用文件的「读-深合并-写回」写策略：备份保护 + anomaly 跳过 + 幂等 skipped (2026-10-11)
+
+**背景：v1.1.6-stage-73（T2/T3）**——`~/.claude/settings.json` 属**用户高频占用**资产（用户会自设 `env`/`model`/`modelPicker`/`theme`/`apiKeyHelper` 等键），既非「框架资产（可幂等重建，备份后覆盖）」也非「用户资产（已存在即不覆盖）」，而是第三种写策略：**读-深合并-写回**（保留用户键 + 仅注入框架自有键）。
+
+**写策略（唯一共享函数 `applyClaudeSettings(state, command, lang)`，setup/update 共用防漂移）**：
+
+1. **写前备份（lock 之外）**：`backupFileBeforeWrite(settingsPath, {command})`（目标存在才备份，对齐 jsonc 口径，不存在返回 null → created 路径无假备份）；有备份 → `appendUpdateInfo('backed')` + `notifyBackupIfTTY`。备份置于 `global-claude-settings` 锁**之外**避免与 backup 锁嵌套（死锁）。
+2. **锁内 read → merge → atomicWrite**：`withFileLock(globalLockPath('global-claude-settings'), …)`，**读取也在锁内**（消除 TOCTOU）；写回走 `atomicWriteFileSync`（异常不破坏用户文件）。
+3. **失败跳过 + anomaly**：备份失败（`BackupError`）→ **跳过写入** + `anomaly(backup_failed)` + warn；严格 JSON 解析失败 → **不写盘** + `anomaly(parse_failed)` + skipped（**有意分歧于 jsonc 的「回写原文静默」**，方案裁定）；读取失败 → `anomaly(read_failed)` + skipped；**非 BackupError/ParseError 照旧上抛**（锁超时不吞）。**合并失败不写盘**（事务顺序：先落盘后副作用）。
+4. **幂等**：`existed && merged === raw` → `skipped`（文件字节不变）；`updateFileHash(全局 state, 绝对路径)` 记 hash。
+5. **默认零触**：仅 `--tools claude` 分支接线；默认 `setup`/`update <path>` 后 `~/.claude` **零触**（T6.5 断言）。
+
+**判据**：第三方工具/应用的高频占用配置文件（含用户自定义键 + 框架需注入键）→ **读-深合并-写回**；以写前备份使框架键覆盖可人工还原；解析失败宁 `skipped` + anomaly **不 churn**（绝不破坏用户文件）。区别于「框架资产备份后覆盖」（会丢失用户键）与「用户资产不覆盖」（无法注入）。
+
+**实证**：v1.1.6-stage-73（op-001/002 `1fe29b0`/`8b2fdeb`）——T6.1~T6.8（created/updated/skipped 三态、用户键逐字保留、幂等字节不变、parse_failed 不写盘 + anomaly、backup_failed 跳过 + anomaly + 字节不变、`CLAUDE_CONFIG_DIR` 越界写回 + 备份落 `global-external/`）；隔离 HOME 端到端 + REV 独立复跑。
+
+**参见：** v1.1.6-stage-73（T2/T3；op-001/002）；`src/core/claude-settings.ts` `applyClaudeSettings`；`src/core/setup.ts`、`src/core/update.ts`；kb/patterns.md #部署覆盖前自动备份机制、#写策略按资产归属二分、#全局/项目双 state 路由模式、#事务顺序模式、#原子写模式；kb/troubleshooting.md #「备份失败绝不覆盖」的失败路径语义分叉；manual/core/claude-settings.md、manual/core/backup.md

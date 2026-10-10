@@ -19,6 +19,7 @@
   - [构建管线](core/build.md) — **8 步**管线（stage-69 增 Claude 注入/校验/单源键集断言）
   - [全局路径](core/global-paths.md)
   - [全局平台适配器配置合并（opencode）](core/opencode-config.md)
+  - [Claude settings 注入](core/claude-settings.md) — **v1.1.6-stage-73 新建**：`~/.claude/settings.json` 严格 JSON「读-深合并-写回」（注入 `agent`/`permissions.defaultMode` + 用户键逐字保留 + 备份/anomaly/幂等）
   - [存量迁移](core/migrate.md)
   - [模型配置核心](core/model-config.md)
   - [全局部署（setup）](core/setup.md)
@@ -55,6 +56,7 @@
 | build.js / 构建管线 | `core/build.md` | 源路径、构建步骤、校验断言或生成物标记变更；**发布元数据**（`files`/`engines`/`postinstall`）与主入口死导出清理也归此；**自举步骤 8 已于 stage-55 移除（防复活，仓库自身不再保留项目级 `.opencode/**` 受管实例）**；**skill 权威源迁中立共享源 `templates-data/skills/` + 源路径/读点/校验重指 + 冗余树断言扩展含 `templates-data/opencode/skills`（stage-68）**；**Claude 注入（2 生成 + 3 校验）+ 单源键集断言 `assertKeySetsEqual` + 主流程 6→8 步（stage-69）** |
 | global-paths.ts / 全局路径解析 | `core/global-paths.md` | 全局路径函数、homedir 封装或新增路径；**`getHomedir()` 导出与「homedir 单点收敛」纪律（T27/U3-008）**；**全局 `config.json` 死映射清理指引与四步保护**；**5 个 Claude 路径函数（v1.1.6-stage-71）：`getClaudeConfigDir`/`getClaudeAgentsDir`/`getClaudeSkillsDir`/`getClaudeMdPath`/`getClaudeSettingsPath`，`CLAUDE_CONFIG_DIR` 函数体内读 env（空/空白回落 `~/.claude`）** |
 | opencode-config.ts / 全局平台适配器配置合并（opencode 适配器） | `core/opencode-config.md` | 框架内容对象、parseJsonc/deepMergeJsonc 合并规则变更 |
+| claude-settings.ts / Claude 全局 settings.json 注入 | `core/claude-settings.md` | `buildClaudeSettingsFragment`/`mergeClaudeSettings`/`applyClaudeSettings` 签名或语义变更；严格 JSON 深合并口径、框架自有键 vs 用户键（D-SET）、写策略（备份/anomaly/幂等）、卸载/回滚语义变更（v1.1.6-stage-73） |
 | migrate.ts / 存量迁移 | `core/migrate.md` | legacy 判据、备份 manifest、state 拆分重键、回滚边界变更 |
 | model-config.ts / 三层级模型配置 | `core/model-config.md` | 三层级落点、优先级链、校验规则或读写 API 变更 |
 | commands/model.ts / model 命令组 | `cli/model.md` | 命令面（set/get/list + --scope）、非 TTY 守卫或翻译机制变更 |

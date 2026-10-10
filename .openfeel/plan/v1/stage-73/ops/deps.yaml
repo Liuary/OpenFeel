@@ -1,0 +1,114 @@
+# stage-73 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.6-stage-73
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.6-stage-69
+    type: hard
+    status: done
+    reason: "Claude 内容源（CLAUDE.md 约束 + 9 agents 含 feel）与 template-loader 3 API 就绪；本阶段不读模板（settings 片段为代码常量），但依赖 stage-71 的 claude 部署分支已建立。"
+  - upstream: v1.1.6-stage-71
+    type: hard
+    status: done
+    reason: "提供 `getClaudeSettingsPath()`（尊重 CLAUDE_CONFIG_DIR）+ `setupGlobalFramework(lang,tools)` claude 分支 + `updateProject` wantClaude 分支 + D-CFG 备份 fallback；stage-73 在此扩展「写 settings.json」。"
+  - upstream: v1.1.5-stage-67
+    type: soft
+    status: done
+    reason: "承接基线：CLI 1.1.5 / `lint i18n` 768 / `lint kb` 0。本阶段 i18n 768→774；版本不改（归 stage-72）。"
+  - downstream: v1.1.6-stage-72
+    type: hard
+    note: "settings 注入已完成；stage-72 收口 README×3/GETTING_STARTED/commands/manual（含「卸载/回滚」说明，权威来源 = `docs/claude-code-adapter-plan.md` §十五 Q6 小节）+ i18n 新基线 774 登记 + 版本 1.1.6 + CI guard。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 CI、不直写 `flow.json`、不 commit**；phase 推进由 Feel/归档官执行。"
+
+# 本阶段 3 op：op-001（claude-settings.ts + 单测，hard: 69/71）→ op-002（setup/update 接线 + 备份 + i18n，hard: op-001）→ op-003（卸载文档 + auto mode 实测 + 门禁 + 报告，hard: op-002）。
+# 不变量：
+#   ① 严格 JSON（无注释/无受管区标记）：独立深合并，**不复用** opencode-config/managed-region；
+#   ② 框架自有键（agent / permissions.defaultMode）覆盖 + 用户其余键逐字保留；
+#   ③ 稳定序列化 JSON.stringify(obj,null,2)+'\n' + 依赖 JS 插入序 ⇒ 二次运行字节幂等 → skipped；
+#   ④ 写前备份在 settings 锁之外（避免锁嵌套）；备份失败 → skipped + anomaly(backup_failed)；
+#   ⑤ settings hash 记入**全局** state（绝对路径 key）；settings **不入冲突分支**（不改 getIncomingContent）；
+#   ⑥ 默认行为逐字不变：claude `enabled:false` + `commands/update.ts` `filter(t=>t.enabled)` + opencode 段原样；
+#   ⑦ 不新增顶层命令、不改 `--tools` 命令面、不改既有 `--json` 契约、不改版本号（1.1.5）；
+#   ⑧ 测试全程 `vi.mock('node:os')` + `CLAUDE_CONFIG_DIR` 隔离，严禁触碰真实 `~/.claude`；
+#   ⑨ i18n 6 新键双表成对 → 768→774（双处登记，由 Feel/归档官执行）；
+#   ⑩ 无新增依赖、无 CI 改动、无 commit。
+#
+# 子决策定稿（阶段 plan §八，op-001 落地）：
+#   D-SET  = 用户已设 agent 冲突 → 框架自有键覆盖（原位赋值）+ 备份保护；
+#   D-SET2 = permissions 用户同键（allow/deny/…）→ 深合并保留，仅补/覆盖 defaultMode；
+#   D-SET3 = 固定 null,2 缩进 + 依赖 JS 对象插入序（不显式排序）⇒ 保用户键序且字节幂等。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "`claude-settings.ts`（严格 JSON 深合并）+ 单测"
+    produces:
+      - src/core/claude-settings.ts
+      - test/core/claude-settings.test.ts
+      - test/core/claude-adapter.test.ts
+    deps:
+      - op: v1.1.6-stage-69
+        type: hard
+      - op: v1.1.6-stage-71
+        type: hard
+    notes: "覆盖 T1 + T6.1~T6.4 + D-SET/D-SET2/D-SET3。`buildClaudeSettingsFragment()` → `{agent:'feel',permissions:{defaultMode:'auto'}}`；`mergeClaudeSettings(raw)` 严格 `JSON.parse`（拒注释/trailing comma，失败抛 `ClaudeSettingsParseError`）→ 框架自有键覆盖 + permissions 深合并保留 + 其余键逐字保留 → `JSON.stringify(obj,null,2)+'\\n'`；`ClaudeSettingsAction='created'|'updated'|'skipped'`；`applyClaudeSettings(state,command,lang)`（单一共享函数：lock 之外备份 → lock 内 read/merge/atomicWrite/updateFileHash；备份失败→skipped+anomaly；无变化→skipped）。**不复用** opencode-config/managed-region。**同步翻转** `test/core/claude-adapter.test.ts` ①（claude-settings.ts 存在性 false→true）。**本 op 不接线**（setup/update 调用归 op-002）。门禁：`tsc` 0 + 两测试文件全绿。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "`setup/update` 接线 `applyClaudeSettings` + 备份/anomaly + i18n（768→774）"
+    produces:
+      - src/core/setup.ts
+      - src/core/update.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/setup.test.ts
+      - test/core/update.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T2 + T3 + T5 + T6.5~T6.8。setup.ts claude 分支 step 4c 与 update.ts wantClaude 分支 step 4c **对称调用** `applyClaudeSettings(state,command,lang)`（杜绝双实现漂移 R-新11）；settings **不入 conflicts**（`getIncomingContent` 不加分支）；重启提醒 claudeChanged 追加 `f===getClaudeSettingsPath()`。i18n 新 6 键（`setup|update.claudeSettings{Merged,ParseSkip,WriteSkip}Tmpl`）双表成对 → **768→774**。测试：翻转 stage-71 断言（双 harness 二次 skipped 54→**55**；update `['claude']` created 27→**28**、二次 skipped 27→**28**；settings 存在性 false→true）+ 追加 T6.1~T6.8 用例（含 CLAUDE_CONFIG_DIR 越界走 global-external 备份）。门禁：`tsc` 0 + `lint i18n` 774 + 两测试文件全绿 + 默认输出零回归。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "卸载/回滚语义文档 + auto mode 实测（R-11）+ 全门禁 + 阶段报告"
+    produces:
+      - docs/claude-code-adapter-plan.md
+      - .openfeel/tmp/stage-73-gate-report.md
+      - .openfeel/tmp/stage-73-selftest-report.md
+    deps:
+      - op: op-002
+        type: hard
+    notes: "覆盖 T4 + T7 + T8。T4：`docs/claude-code-adapter-plan.md` **末尾追加**「§十五 settings.json 卸载/回滚语义（Q6）」小节（不新增命令；备份还原 + 手动删键两条回滚路径；作 stage-72 README/manual 权威来源）。T7：auto mode 模型支持实测留痕（可用/回落 manual/未实测），**不阻断门禁**。T8 全门禁：先 `npm run build` ×2（生成 dist 供 backup 并发用例 + 验幂等，`git status --porcelain src/ templates-data/` 空）→ `npm test`（**0 skipped / 0 failed**）→ `npx tsc --noEmit`=0 → `lint i18n`=**774** → `lint kb`=0 → `--version`=**1.1.5** → 隔离 HOME 下默认 `setup`/`update <path>` 后 `~/.claude` **零变化**（R-新12 决定性）→ `setup --tools claude` 后 `agent==='feel'` && `permissions.defaultMode==='auto'` → 无新增顶层命令 / `--json` 契约未变 → 冗余树不复活。产门禁报告 + 自测报告。**本 op 不改源码**（若暴露缺陷回退对应 op）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付 stage-72 复用/收口）
+downstream_contracts:
+  - name: "src/core/claude-settings.ts"
+    change: "**新增**：`buildClaudeSettingsFragment` / `mergeClaudeSettings` / `ClaudeSettingsParseError` / `ClaudeSettingsAction` / `applyClaudeSettings`（严格 JSON 深合并写回，含备份/锁/hash/anomaly）。"
+  - name: "src/core/setup.ts"
+    change: "claude 分支新增 step 4c：`push(applyClaudeSettings(globalState,'setup',lang), getClaudeSettingsPath())`。"
+  - name: "src/core/update.ts"
+    change: "wantClaude 分支新增 step 4c：`pushAction(applyClaudeSettings(newGlobalState,'update',lang), getClaudeSettingsPath(), …)`；重启提醒 claudeChanged 含 settings 路径。"
+  - name: "src/core/i18n-data/{zh-CN,en}.ts"
+    change: "i18n 基线 **768 → 774**（+6 键）；stage-72 收口时确认登记。"
+  - name: "docs/claude-code-adapter-plan.md"
+    change: "**追加** §十五「settings.json 卸载/回滚语义（Q6 定稿）」；头部状态行由 stage-72 更新。"
+  - name: "版本"
+    change: "**不变**：`package.json.version` = 1.1.5（v1.1.6 收口归 stage-72）。"

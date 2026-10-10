@@ -74,3 +74,20 @@
 - **理由**：① 支持 `@import ~/` 并不等于**应当**拆分——单文件 `CLAUDE.md` 部署/更新/比对链路更简单（对齐 opencode `AGENTS.md` 单文件既定模式）；② 拆分引入多文件一致性/传播/备份复杂度，收益（可维护性）在本期约束体量（≈≤700 行）下不显著；③ 本期聚焦「内容适配」而非部署编排重构，拆分留待未来按需评估。
 - **后果 / 适用边界**：`CLAUDE.md` 体量以软断言（≤700 行）约束；`feel` 纪律外置 `feel.md` 已部分缓解体量。**支持 `@import ~/` 为已确认事实**，未来若约束体量显著增长可据此重估。
 - **回滚**：无（纯决策，无代码/数据变更）；如需拆分为后续独立阶段评估。
+
+### ADR-008：Claude 全局 `settings.json` 注入（反转蓝本 §四原「不写 settings.json」裁定）
+- **日期**：2026-10-11
+- **状态**：accepted（**反转** `docs/claude-code-adapter-plan.md` 蓝本 §四原裁定「不触碰 `~/.claude/settings.json`」）
+- **决策**：把 `~/.claude/settings.json` 注入作为 `openfeel setup/update --tools claude` 的**一等能力**——与 CLAUDE.md/agents/skills **一并部署**。注入框架自有键 `agent:'feel'`（裁定 G：默认 agent）与 `permissions.defaultMode:'auto'`（裁定 F：automod = auto mode），其余键（`env`/`model`/`modelPicker`/`theme`/`apiKeyHelper` 等）**逐字保留**；采用**严格 JSON「读-深合并-写回」**（独立实现，不复用 jsonc/受管区），写入前置备份、备份失败即跳过 + `anomaly`、合并无变化即 `skipped`（幂等）、默认（不含 claude）**零触**。
+- **上下文**：蓝本 §四基于「`settings.json` 为用户高频占用、改动风险高」的保守取舍，初版显式不写。v1.1.6-stage-71 已交付 `getClaudeSettingsPath()`（尊重 `CLAUDE_CONFIG_DIR`）与 claude 部署接线、`backup.ts` D-CFG 备份 fallback，为 settings 注入铺平。
+- **理由**：① `agent:'feel'` 是「Claude 会话以 feel 编排」交付核心（否则 Claude 侧无统一主会话入口）；② `permissions.defaultMode:'auto'` 令 automod 能力对 Claude 生效；③ 用户键**逐字保留** + **写前备份**使「覆盖框架自有键」可人工还原，风险可控；④ 严格 JSON 深合并独立实现（格式决定解析器）而非复用 jsonc，语义清晰；⑤ 仅显式 `--tools claude` opt-in，默认零触保证非回归。
+- **后果 / 适用边界**：`settings.json` 属「用户高频占用资产」→ 写策略为**读-深合并-写回**（见 kb/patterns）。`permissions` 下用户子键深合并保留；用户 `permissions` 非对象时整键替换（D-SET2 边界，备份保护）。**本期不新增 `uninstall` 命令**（Q6），仅文档化回滚（备份还原 / 手动删两键）；纯 `uninstall` 列入后续版本。
+- **回滚**：`git revert` 对应 stage-73 commits（`1fe29b0`/`8b2fdeb`/`2b5c3e3`）；备份可人工还原；无数据迁移、无依赖树变动。
+
+### ADR-009：settings 注入冲突策略（D-SET）—— 框架自有键覆盖 + 备份保护
+- **日期**：2026-10-11
+- **状态**：accepted
+- **决策**：当用户既有 `settings.json` 已设 `agent` 与框架 `agent:'feel'` 冲突时，**框架自有键原位覆盖**（`--tools claude` 为**显式 opt-in**，写前备份使原值可人工还原）；用户 `permissions` 下其它子键（`allow`/`deny` 等）**深合并保留**，仅补/覆盖 `defaultMode`；序列化固定 `JSON.stringify(obj, null, 2) + '\n'`，**依赖 JS 对象插入序、不显式排序**（保用户键序 + 二次运行字节幂等）。
+- **理由**：备选「skip + warn（保守）」被否——当用户恰有 `agent` 键时会**静默不交付**（违反 settings 注入为交付核心）；`--tools claude` 为显式选择，覆盖 + 备份保护是「显式 opt-in + 可还原」的合理组合。**不显式排序**——排序会重排用户既有键（churn + 与「逐字保留」精神相悖）。
+- **后果 / 适用边界**：用户 `permissions` 为空/缺失 → 从空对象合并；为非对象（如字符串）→ 以 `{defaultMode:'auto'}` 替换该键（原值仅可经备份还原，D-SET2 边界）。已知行为留痕（REV-73-002）：幂等重跑仍产生新备份（备份先于幂等判定，对齐既有 jsonc 无条件备份口径）。
+- **回滚**：`git revert` 对应 stage-73 commits；备份可人工还原。

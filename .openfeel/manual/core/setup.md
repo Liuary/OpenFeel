@@ -35,8 +35,9 @@ interface SetupResult {
 | **Claude 约束** | 1 | `~/.claude/CLAUDE.md`（`loadClaudeConstraintTemplate`，受管区三态；`tools` 含 claude 时） |
 | **Claude agents** | 9 | `~/.claude/agents/{agent}.md`（`loadClaudeAgentTemplate`，含 `feel`；`tools` 含 claude 时） |
 | **Claude skills** | 17 | `~/.claude/skills/{name}/SKILL.md`（复用 `SKILL_DEFINITIONS`；`tools` 含 claude 时） |
+| **Claude settings** | 1 | `~/.claude/settings.json`（`applyClaudeSettings`，**严格 JSON 读-深合并-写回**；`tools` 含 claude 时，v1.1.6-stage-73） |
 
-> **按工具门控（v1.1.6-stage-71）**：opencode 步骤 1~4 整体包入 `if (tools.includes('opencode'))`，claude 分支包入 `if (tools.includes('claude'))`；默认 `tools=['opencode']` 时行为与改前**逐字一致**（`~/.claude` 零触）。claude 分支**不写 `settings.json`**（归 stage-73）。幂等不变式：默认二次 27 skipped；双 harness 二次 54 skipped。
+> **按工具门控（v1.1.6-stage-71/73）**：opencode 步骤 1~4 整体包入 `if (tools.includes('opencode'))`，claude 分支包入 `if (tools.includes('claude'))`；默认 `tools=['opencode']` 时行为与改前**逐字一致**（`~/.claude` 零触）。claude 分支经 `applyClaudeSettings` 写 `settings.json`（注入 `agent:'feel'` + `permissions.defaultMode:'auto'`，用户键逐字保留；stage-73 落地）。幂等不变式：默认二次 27 skipped；双 harness 二次 55 skipped（+1 settings.json）。
 
 ## 检测语义（四态）
 
@@ -77,6 +78,7 @@ src/commands/setup.ts（openfeel setup [--lang]）
        ├─ src/core/update.ts（deployGlobalAsset / SKILL_DEFINITIONS）
        ├─ src/core/template-loader.ts（loadTemplate / loadAgentTemplate）
        ├─ src/core/opencode-config.ts（mergeGlobalOpencodeJsonc）
+       ├─ src/core/claude-settings.ts（applyClaudeSettings，stage-73）
        ├─ src/core/global-paths.ts（getGlobalAgentsMdPath 等）
        ├─ src/core/update-state.ts（全局 state）
        └─ src/core/fs/{atomic-write,file-lock}.ts
@@ -88,4 +90,5 @@ src/commands/setup.ts（openfeel setup [--lang]）
 |------|------|
 | v1.1.1 | 初始创建：新增 `setupGlobalFramework` 纯全局部署（全局 AGENTS.md + 9 agent + 16 skill + opencode.jsonc），不建项目 `.openfeel/` |
 | v1.1.5 | 新增 `openfeel setup --check [--json]` 只读诊断；补四态检测语义与升级流程；更正 skill 计数（16 → 17） |
-| v1.1.6-stage-71 | 签名扩 `(lang, tools=['opencode'])` + 按工具门控；新增 **claude 分支**（CLAUDE.md + 9 agents + 17 共享 skills，不写 settings.json）；默认仅 opencode 行为逐字不变 |
+| v1.1.6-stage-71 | 签名扩 `(lang, tools=['opencode'])` + 按工具门控；新增 **claude 分支**（CLAUDE.md + 9 agents + 17 共享 skills）；默认仅 opencode 行为逐字不变 |
+| v1.1.6-stage-73 | claude 分支 step 4c 接入 `applyClaudeSettings`（`settings.json` 严格 JSON 读-深合并-写回，注入 `agent`/`permissions.defaultMode` + 用户键保留 + 备份/anomaly/幂等）；双 harness 二次 skipped 54 → **55** |

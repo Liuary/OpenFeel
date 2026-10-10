@@ -56,6 +56,7 @@
 |------------|--------|:--:|
 | 全局资产（AGENTS.md / agents / skills） | `writeManagedFile`（updated / adopt / appended 三分支） | setup / update / migrate |
 | 全局 `opencode.jsonc` | setup.ts / update.ts / migrate.ts 三处直写（备份在 jsonc 锁**之外**） | setup / update / migrate |
+| 全局 `~/.claude/settings.json` | `claude-settings.ts` `applyClaudeSettings`（写前备份在 `global-claude-settings` 锁**之外**；目标存在才备份，`created` 无备份）— v1.1.6-stage-73 | setup / update |
 | 项目 `.openfeel/config.yaml` | **不再覆盖**（stage-47 BUG-002 语义修复：已存在则保留用户配置），无备份接入 | — |
 | 项目 `package.json` | `init.ts` `initProject`（仅实际将写时，覆盖前） | init |
 
@@ -87,3 +88,4 @@
 | stage-46 | 初始创建：`backup.ts`（写前备份 + manifest + backup 锁临界区）+ `getGlobalBackupRootPath`；四链路（setup/update/init/migrate）覆盖写接入；`update_infos` 新增 backed 类 |
 | v1.1.2-stage-47 | 接入点清单收缩：项目 `.openfeel/config.yaml` **改为「不再覆盖」→ 删除其备份接入**（`config/BUG-002` 语义修复）；jsonc 三处失败路径定稿为 **A/B 分流**（`setup`/`update` 跳过继续 + `anomaly(backup_failed)`；`migrate` 有意 fail-fast）；`config.yaml` 与 `package.json` 分离处置（后者备份保留） |
 | v1.1.6-stage-71 | **D-CFG**：`computeBackupRel` global 分支新增 HOME 外 fallback `global-external/<sha8>/<规范化尾段>`（`sha8=sha256(resolve(absPath)).slice(0,8)`），越界不再抛错；HOME 内与 project 分支零回归（project 越界仍抛 `BackupError`） |
+| v1.1.6-stage-73 | 新接入点：全局 `~/.claude/settings.json`（`applyClaudeSettings` 写前备份，`command='setup'/'update'`，备份置于 `global-claude-settings` 锁之外）；HOME 外场景经 D-CFG fallback 可备份 |

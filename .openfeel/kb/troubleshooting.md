@@ -1063,3 +1063,22 @@ concurrency:
 **实证**：v1.1.6-stage-70——`templates/BUG-006`（low, open，model-check 平台适配小节 2 条平台专有句改写非逐字迁移）；REV-70-002（T4.4 短键断言，低）、REV-70-004（Feel 计数口径三处不一致）；审查侧以行级多重集比对基线 `77c5450^` 兜底（`agent-model-check`/`cli-usage` 非标题行缺失 0、`model-config` 仅授权 Feel/desc 改动）。
 
 **参见：** v1.1.6-stage-70（REV-70-002/004；`templates/BUG-006`）；`src/core/templates-data/skills/openfeel-model-check/SKILL.md`；`test/core/templates.test.ts`（T4.2/T4.4）；kb/patterns.md #共享 skill 双平台分节中立化、#模板断言的保护边界（build 注入常量 vs 源文件直读）；kb/troubleshooting.md #多源文案同步陷阱
+
+## [+] Claude Code auto mode 受支持模型约束与「尽力注入」回落处置 (2026-10-11)
+
+**症状/场景**：`~/.claude/settings.json` 注入 `permissions.defaultMode: 'auto'` 后，经 cc-switch 中转**第三方模型**（如 deepseek / glm，模型 ID 形如 `ccs-claude-<provider>--<model>[1M]`）的 Claude Code 会话**未进入 auto mode**，而是**回落 manual**——注入键存在但未按预期生效。
+
+**根因**：auto mode 由 Claude Code 侧按**模型白名单**判定——官方要求受支持模型（Opus4.6+ / Sonnet4.6+ / Haiku5.5 / Fable）。第三方中转模型不在白名单内 → Claude Code 运行时回落 manual。**注入 `defaultMode` 本身正确**，是否生效取决于运行时模型，非框架可控制。
+
+**处置（「尽力注入 + 文档兜底」）**：
+
+1. **照常注入**：`defaultMode:'auto'` 为**尽力项**——不因「本机当前模型可能不受支持」而跳过注入，也不因此阻断部署/门禁（验证项非门禁项）。
+2. **文档兜底**：`docs/claude-code-adapter-plan.md` §十五（Q6 卸载/回滚）说明手动回滚路径 = 删除注入键 `agent`（顶层）与 `permissions.defaultMode`（用户其余键保留）；`CLAUDE_CONFIG_DIR` 越界时备份落 `global-external/`。
+3. **环境受限时如实留痕**：无法实机验证时记「未实测（环境限制）→ 预计回落 manual」，**不得与「实测通过」混同**（对齐「测试未通过不得声称完成」——此处为验证项）。
+4. **可接受结果**：「注入存在 + 由 Claude Code 侧模型决定是否生效」即为交付达成。
+
+**判据**：受「目标应用运行时能力 + 模型白名单」约束的配置键宜采用**尽力注入 + 文档兜底**，**不因环境依赖不可验证而阻断交付**；把「框架可保证的注入」与「运行时才生效的能力」显式二分。
+
+**实证**：v1.1.6-stage-73（op-003 `2b5c3e3`）——T7 实测结论「未实测（环境限制）→ 预计回落 manual」留痕于 `stage-73-gate-report.md` / op-003 修正记录；计划明示不阻断门禁，处置合规（REV 确认）。
+
+**参见：** v1.1.6-stage-73（T7/R-11；op-003）；`src/core/claude-settings.ts`、`docs/claude-code-adapter-plan.md` §十五；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实（隔离 config + 认证复制）；kb/patterns.md #用户高频占用文件的「读-深合并-写回」写策略；manual/core/claude-settings.md

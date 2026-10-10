@@ -38,10 +38,12 @@ describe('stage-66 端到端：刷新 + 检测成对闭环', () => {
   beforeEach(() => {
     mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-deployint-home-'));
     projectDir = mkdtempSync(join(tmpdir(), 'openfeel-deployint-proj-'));
+    delete process.env.CLAUDE_CONFIG_DIR;
   });
   afterEach(() => {
     rmSync(mockHome.dir, { recursive: true, force: true });
     rmSync(projectDir, { recursive: true, force: true });
+    delete process.env.CLAUDE_CONFIG_DIR;
   });
 
   it('场景 A：旧版本 state → mismatch → setup → ok（决定性）', () => {
@@ -75,5 +77,21 @@ describe('stage-66 端到端：刷新 + 检测成对闭环', () => {
     const before = readFileSync(globalStatePath(), 'utf-8');
     checkGlobalDeployment({ currentVersion: getOpenfeelVersion() });
     expect(readFileSync(globalStatePath(), 'utf-8')).toBe(before);
+  });
+
+  // ── stage-71/T7：claude 单装 / 双装闭环 ──
+
+  it('场景 E：claude 单装 → checkGlobalDeployment ok', () => {
+    setupGlobalFramework('zh-CN', ['claude']);
+    const r = checkGlobalDeployment({ currentVersion: getOpenfeelVersion() });
+    expect(r.status).toBe('ok');
+    expect(r.deployedVersion).toBe(getOpenfeelVersion());
+  });
+
+  it('场景 F：双 harness（setup + update）→ checkGlobalDeployment ok', () => {
+    setupGlobalFramework('zh-CN', ['opencode', 'claude']);
+    expect(checkGlobalDeployment({ currentVersion: getOpenfeelVersion() }).status).toBe('ok');
+    updateProject(projectDir, ['opencode', 'claude']);
+    expect(checkGlobalDeployment({ currentVersion: getOpenfeelVersion() }).status).toBe('ok');
   });
 });

@@ -6869,6 +6869,7 @@ npm i -g openfeel@latest       # 1. 升级 CLI
 openfeel setup --tools claude  # 2. 重跑部署（claude 目标）
 \`\`\`
 
+- **\`--tools\` 由 v1.1.6-stage-71 提供**：当前 v1.1.5 的 \`openfeel setup\` **无 \`--tools\` 参数**（\`openfeel setup --help\` 仅 \`--lang\`/\`--check\`/\`--json\`/\`-h\`），照此执行会报 \`unknown option '--tools'\`；升级到 v1.1.6 后以 \`openfeel setup --help\` 实测为准。
 - 首次创建 \`~/.claude/{agents,skills}\` 后需**重启会话或 \`/reload-skills\`** 使新 skill/agent 生效。
 - \`CLAUDE.md\` 于**下次会话**生效。
 
@@ -7412,7 +7413,7 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 ### Claude Code 适配器
 
 - Agent 模型配置在 Claude Code 侧的 \`~/.claude/agents/*.md\` frontmatter \`model\` 字段。
-- 模型权威源为 **cc-switch**。
+- 模型配置经 \`/model\`、\`settings.json\`/\`env\` 或网关（如 cc-switch）等途径确定。
 - \`settings.json\`（本期由 stage-73 注入）仅作参考，模板默认 \`model: inherit\`。
 
 ## 查找可用模型名

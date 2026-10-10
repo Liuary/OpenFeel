@@ -39,7 +39,7 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 ### Claude Code 适配器
 
 - Agent 模型配置在 Claude Code 侧的 `~/.claude/agents/*.md` frontmatter `model` 字段。
-- 模型权威源为 **cc-switch**。
+- 模型配置经 `/model`、`settings.json`/`env` 或网关（如 cc-switch）等途径确定。
 - `settings.json`（本期由 stage-73 注入）仅作参考，模板默认 `model: inherit`。
 
 ## 查找可用模型名

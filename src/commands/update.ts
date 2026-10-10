@@ -6,7 +6,7 @@
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { updateProject, supportedTools, selectTools } from '../core/update.js';
+import { updateProject, supportedTools, selectTools, parseToolList } from '../core/update.js';
 import { initProject } from '../core/init.js';
 import { t, getCliLang } from '../core/i18n.js';
 
@@ -16,11 +16,22 @@ export function registerUpdateCommand(program: Command): void {
     .description('部署 OpenFeel 适配文件到目标项目（无参数时交互式选择工具）')
     .option('--lang <lang>', 'Agent prompt language (zh-CN or en)')
     .option('--force', '跳过 AGENTS.md 覆盖确认，直接覆盖')
-    .action(async (path?: string, options?: { lang?: string; force?: boolean }) => {
+    .option('--tools <list>', t('help.update.tools', getCliLang(process.cwd())))
+    .action(async (path?: string, options?: { lang?: string; force?: boolean; tools?: string }) => {
       const targetPath = resolve(path ?? process.cwd());
       const lang = getCliLang(targetPath);
       const force = options?.force ?? false;
       try {
+
+        // --tools 校验前置（fail-fast）：非法值不触发 auto-init/写盘
+        const toolsParsed = options?.tools !== undefined ? parseToolList(String(options.tools)) : null;
+        if (toolsParsed && toolsParsed.invalid.length > 0) {
+          console.error(t('update.toolsInvalidTmpl', lang, {
+            tools: toolsParsed.invalid.join(', '),
+            valid: supportedTools.map((x) => x.id).join(', '),
+          }));
+          process.exit(1);
+        }
 
         if (!existsSync(targetPath)) {
           console.error(t('update.errorPathNotExistTmpl', lang, { path: targetPath }));
@@ -40,9 +51,11 @@ export function registerUpdateCommand(program: Command): void {
           }
         }
 
-        const selectedTools = path
-          ? supportedTools.map((t) => t.id) // 有路径参数则全部部署
-          : await selectTools();             // 无参数则交互选择
+        const selectedTools = toolsParsed
+          ? toolsParsed.tools
+          : path
+            ? supportedTools.filter((t) => t.enabled).map((t) => t.id) // R-5：仅部署默认启用工具
+            : await selectTools();             // 无参数则交互选择
 
         if (selectedTools.length === 0) {
           console.log(t('update.cancelled', lang));

@@ -27,7 +27,7 @@ vi.mock('../../src/core/backup.js', async (importOriginal) => {
   };
 });
 
-import { updateProject } from '../../src/core/update.js';
+import { updateProject, supportedTools } from '../../src/core/update.js';
 import { resetBackupSetCache } from '../../src/core/backup.js';
 import { createUpdateState, saveUpdateState, hashContent, getOpenfeelVersion } from '../../src/core/update-state.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
@@ -788,5 +788,17 @@ describe('updateProject', () => {
       warnSpy.mockRestore();
       logSpy.mockRestore();
     }
+  });
+
+  // ── stage-71/T4：supportedTools 正式化 + R-5 守卫 ──
+
+  it('stage-71/T4：supportedTools 含 claude(enabled:false)，opencode 仍 enabled:true', () => {
+    expect(supportedTools.find((t) => t.id === 'claude')?.enabled).toBe(false);
+    expect(supportedTools.find((t) => t.id === 'opencode')?.enabled).toBe(true);
+  });
+
+  it('stage-71/R-5：updateProject 默认（opencode）不触 ~/.claude', () => {
+    updateProject(tmpDir);
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
   });
 });

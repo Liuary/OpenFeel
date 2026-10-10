@@ -62,8 +62,13 @@ export const supportedTools: ToolEntry[] = [
     description: 'OpenCode AI 编码助手 — 生成 Agent 定义和 openfeel-* 技能',
     enabled: true,
   },
+  {
+    id: 'claude',
+    name: 'Claude Code',
+    description: 'Anthropic Claude Code CLI — 生成 CLAUDE.md、Claude subagent 定义与共享 openfeel-* 技能',
+    enabled: false,
+  },
   // 后续扩展：
-  // { id: 'claude', name: 'Claude Code', description: 'Anthropic Claude Code CLI', enabled: false },
   // { id: 'cursor', name: 'Cursor', description: 'Cursor IDE', enabled: false },
 ];
 
@@ -93,6 +98,26 @@ export async function selectTools(): Promise<string[]> {
     console.log('（非交互环境，使用默认工具列表）');
     return supportedTools.filter((t) => t.enabled).map((t) => t.id);
   }
+}
+
+/**
+ * 解析 `--tools` 逗号分隔列表。
+ * @returns tools=合法 id（保序去重）；invalid=非法项。空串/纯空白视为非法（触发 exit 1）。
+ */
+export function parseToolList(raw: string): { tools: string[]; invalid: string[] } {
+  if (raw.trim() === '') {
+    return { tools: [], invalid: [''] };
+  }
+  const valid = new Set(supportedTools.map((t) => t.id));
+  const tools: string[] = [];
+  const invalid: string[] = [];
+  for (const part of raw.split(',')) {
+    const v = part.trim();
+    if (v === '') { continue; }        // 忽略尾随/空段
+    if (!valid.has(v)) { invalid.push(v); continue; }
+    if (!tools.includes(v)) { tools.push(v); }
+  }
+  return { tools, invalid };
 }
 // ─── Agent 定义由 template-loader.ts 统一管理 ──────────────────────────
 

@@ -74,4 +74,48 @@ describe('update 命令（stage-50 op-005 T46）', () => {
     expect((thrown as Error)?.message).toBe('__EXIT__');
     expect(exitMock).toHaveBeenCalledWith(1);
   });
+
+  it('R-5 守卫：update <path> 默认部署 opencode，不触 ~/.claude', async () => {
+    await safeParse(['update', projDir]);
+    expect(existsSync(join(homeDir, '.config', 'opencode', 'AGENTS.md'))).toBe(true);
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('--tools opencode：部署 opencode，不触 ~/.claude，退出码未置位', async () => {
+    await safeParse(['update', projDir, '--tools', 'opencode']);
+    expect(existsSync(join(homeDir, '.config', 'opencode', 'AGENTS.md'))).toBe(true);
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('--tools foo（非法值）→ exit 1 且校验前置（零写盘）', async () => {
+    const exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await safeParse(['update', projDir, '--tools', 'foo']);
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    // 校验前置：全局文件未部署
+    expect(existsSync(join(homeDir, '.config', 'opencode', 'AGENTS.md'))).toBe(false);
+  });
+
+  it('--tools 空串 → exit 1（显式指定却无合法值属误用）', async () => {
+    const exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await safeParse(['update', projDir, '--tools', '']);
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
 });

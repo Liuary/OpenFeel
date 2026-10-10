@@ -18,7 +18,7 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 触发条件（任一必问）：需求歧义 / 多个同等合理方案 / 不可逆后果 / 架构决策。使用要求：(Recommended) 标记、选项附后果、≤3 选项、高风险含"取消"。禁止：模糊时自行假设、多方案不选直接实施。
 
 ### 3. task — 子 Agent 调度
-触发条件：并行探索多代码区 / 复杂多步委托 general / 下游 Agent（经 Feel）。使用要求：并行一条消息多 task、prompt 含任务描述+期望返回、明确只读/可写。
+触发条件：并行探索多代码区 / 复杂多步委托 general / 下游 Agent（经主会话（Feel））。使用要求：并行一条消息多 task、prompt 含任务描述+期望返回、明确只读/可写。
 
 ### 4. skill — 技能加载
 触发条件：查阶段状态→openfeel-get-stage-status / 查知识库→openfeel-check-kb / 取 Bug→openfeel-get-bugs。使用要求：会话开始载 check-kb、处理阶段任务前载 get-stage-status、不凭记忆跳过。
@@ -31,3 +31,20 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 | 探索代码 | task(explore) | 手动逐个 grep/read |
 | 获取状态 | skill(openfeel-get-stage-status) | 凭记忆推断 |
 | 批量文件操作 | task(general) | 串行逐个处理 |
+
+## 工具名映射（跨 harness）
+
+本 skill 的四种核心工具（`todowrite`/`question`/`task`/`skill`）在各 harness 的等价工具名见下表；**不改变**既有触发条件/使用要求/优先级表语义。
+
+| opencode（小写） | Claude Code | 说明 |
+|------|------|------|
+| `bash` | `Bash` | 命令执行 |
+| `read` | `Read` | 读文件 |
+| `write` | `Write` | 写文件 |
+| `edit` | `Edit` | 编辑文件 |
+| `glob` | `Glob` | 文件匹配 |
+| `grep` | `Grep` | 内容检索 |
+| `todowrite` | `TodoWrite` | 任务列表 |
+| `skill` | `Skill` | 技能加载 |
+| `task` | `Task` | 子 Agent 调度 |
+| `question` | `AskUserQuestion` | 向用户提问 |

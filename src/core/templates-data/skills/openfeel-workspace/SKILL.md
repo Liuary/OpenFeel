@@ -27,6 +27,6 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 `.openfeel/users/{username}/dev_last.md`（**索引**；同名目录 `dev_last/` 存主题文件，**文件名英文**）
 
 ### 6. 增量更新复核
-检查 `~/.openfeel/update_infos.md`，若存在未修复条目（追加/异常），提醒用户重启会话或委托 Feel 处理；本 Agent 不自行修改该文件。
+检查 `~/.openfeel/update_infos.md`，若存在未修复条目（追加/异常），提醒用户重启会话或委托主会话（Feel）处理；本 Agent 不自行修改该文件。
 
-> 目录结构语义、公共/私域分区、用户身份约束、路径自校验规则见全局 AGENTS.md（约束）；本 skill 仅承载操作步骤。
+> 目录结构语义、公共/私域分区、用户身份约束、路径自校验规则见全局规则文件（opencode 适配器：`~/.config/opencode/AGENTS.md`；Claude Code 适配器：`~/.claude/CLAUDE.md`）（约束）；本 skill 仅承载操作步骤。

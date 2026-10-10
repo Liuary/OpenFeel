@@ -65,7 +65,9 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
    - `deps_satisfied = true`（本 Skill 递归判断）
    - `状态` 为 `ready_for_code` 或 `auto_running`
    - `自动推进` 为 `enabled`（若 status.md 未填则回退到 config.yaml `auto_advance`）
-2. 收集为 `parallel_candidates` 列表，供 Feel 批量调度执行。
+2. 收集为 `parallel_candidates` 列表，供主会话（Feel）批量调度执行。
+
+> 口径：**subagent 不互调**（不直接调用其他 subagent）；需向用户确认的事项一律由主会话负责。
 
 ### 5. 判断自动推进资格
 
@@ -112,8 +114,8 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 | `coding` | openfeel-executor 正在开发 |
 | `ready_for_review` | openfeel-executor 可启动 openfeel-reviewer 审查，或等待用户触发 |
 | `review_failed` | openfeel-reviewer 可启动 openfeel-executor 修复审查问题 |
-| `review_passed` | Feel 可推进到 ready_for_test |
-| `ready_for_test` | Feel 可启动 openfeel-feel-tester |
+| `review_passed` | 主会话可推进到 ready_for_test |
+| `ready_for_test` | 主会话可启动 openfeel-feel-tester |
 | `test_writing` | openfeel-feel-tester 正在写测试 |
 | `testing` | openfeel-feel-tester 正在测试 |
 | `bug_found` | openfeel-feel-tester 可启动 openfeel-executor 修复 Bug |

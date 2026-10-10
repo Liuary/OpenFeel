@@ -88,7 +88,10 @@ description: 渐进式查阅 .openfeel/kb/ 项目知识库，按当前任务需�
    💡 如需确保索引为最新，可运行: python scripts/build_kb_index.py --dry-run
    ```
 
-> 注：语义检索是 `openfeel-check-kb` 的内置回退能力。调用方只需 `skill("openfeel-check-kb")` 一次，无需再手动调用 `openfeel-search-kb`。
+> 注：语义检索是 `openfeel-check-kb` 的内置回退能力。调用方只需加载一次：
+> - opencode 适配器：`skill("openfeel-check-kb")`；
+> - Claude Code 适配器：以 `Skill` 工具加载 `openfeel-check-kb`（工具名映射见 `openfeel-tool-usage`）。
+> 无需再手动调用 `openfeel-search-kb`。
 
 ### 6. 强制检索标记
 

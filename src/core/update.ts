@@ -102,12 +102,14 @@ export async function selectTools(): Promise<string[]> {
 export const SKILL_DEFINITIONS: Record<string, string> = {
   'openfeel-agent-model-check': `---
 name: openfeel-agent-model-check
-description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验（opencode 适配器）、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南。
+description: Agent 模型检查与修复。当 Agent 报 "Model not found" 或需要排查模型配置时使用。涵盖 auth.json 校验（opencode 适配器）、provider key 匹配、模型能力确认、openfeel-vision 多模态专项指南、Claude Code 侧模型（\`/model\`、网关）。
 ---
 
 # Skill: openfeel-agent-model-check
 
 # Agent 模型检查与修复
+
+> 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
 ## 何时使用
 
@@ -126,22 +128,6 @@ Model not found: {provider_key}/{model_id}
 
 注意是否有 \`Did you mean: xxx\` 提示——如有，直接使用建议的模型名。
 
-### 第二步：读取 auth.json 确认实际 provider key
-
-\`\`\`bash
-# Windows PowerShell / macOS / Linux
-cat ~/.local/share/opencode/auth.json
-\`\`\`
-
-**关键点**：模型引用中的 provider 部分必须与 \`auth.json\` 中的 key 完全一致，而非 \`opencode.jsonc\` 中 \`provider.name\` 或 \`provider.id\`。
-
-常见 provider key 示例：
-- \`alibaba-cn\` — 阿里云中国区（DashScope）
-- \`deepseek\` — DeepSeek
-- \`anthropic\` — Anthropic
-- \`openai\` — OpenAI
-- \`zhipuai\` — 智谱 AI
-
 ### 第三步：确认模型是否支持目标能力
 
 查阅 [Models.dev](https://models.dev) 确认模型属性：
@@ -158,7 +144,31 @@ cat ~/.local/share/opencode/auth.json
 - \`deepseek-flash\` 支持多模态图像输入（openfeel-vision 现用模型）
 - 备选视觉模型：\`qwen3-vl-plus\`（模型名中的 \`vl\` 表示 Vision-Language）
 
-### 第四步：检查 opencode.jsonc 配置
+### 第六步：验证
+
+重启后调度目标 Agent 执行简单测试任务，确认无报错。
+
+## 平台适配
+
+### opencode 适配器
+
+#### 第二步：读取 auth.json 确认实际 provider key
+
+\`\`\`bash
+# Windows PowerShell / macOS / Linux
+cat ~/.local/share/opencode/auth.json
+\`\`\`
+
+**关键点**：模型引用中的 provider 部分必须与 \`auth.json\` 中的 key 完全一致，而非 \`opencode.jsonc\` 中 \`provider.name\` 或 \`provider.id\`。
+
+常见 provider key 示例：
+- \`alibaba-cn\` — 阿里云中国区（DashScope）
+- \`deepseek\` — DeepSeek
+- \`anthropic\` — Anthropic
+- \`openai\` — OpenAI
+- \`zhipuai\` — 智谱 AI
+
+#### 第四步：检查 opencode.jsonc 配置
 
 \`\`\`jsonc
 {
@@ -176,13 +186,15 @@ cat ~/.local/share/opencode/auth.json
 3. 不要随意添加前缀（如 \`alibaba/\`、\`Alibaba(China)/\`）
 4. 如果不需要自定义 provider 选项（如 baseURL），可以完全不写 \`provider\` 块
 
-### 第五步：修改并重启
+#### 第五步：修改并重启
 
 修改 \`opencode.jsonc\` 后**必须重启 opencode** 才能生效。运行中的会话使用启动时加载的配置。
 
-### 第六步：验证
+### Claude Code 适配器
 
-重启后调度目标 Agent 执行简单测试任务，确认无报错。
+- Claude Code **无 \`auth.json\`**。
+- 模型/provider 由 **Claude 侧**决定（\`/model\`、\`settings.json\`/\`env\`、网关如 cc-switch）。
+- Claude Code **无 \`opencode.jsonc\`**，模型引用不进 jsonc。
 
 ## 快速诊断清单
 
@@ -193,6 +205,7 @@ cat ~/.local/share/opencode/auth.json
 | 模型支持目标能力 | 查阅 models.dev | Input/Tool Call 等字段 = Yes |
 | opencode.jsonc 语法 | 检查 JSON 格式 | 无语法错误 |
 | 重启生效 | 重启 opencode 后重新测试 | 无 Model not found 报错 |
+| 模型由 Claude 侧配置 | \`/model\` 或 settings/env | 模型可用 |
 
 ## 多模态（openfeel-vision）Agent 专项
 
@@ -207,6 +220,8 @@ openfeel-vision Agent 必须配置多模态模型。当前默认使用 \`deepsee
 
 **推荐**：优先使用 \`deepseek-flash\`（已内置多模态）；如需更大上下文可备选 \`qwen3-vl-plus\`。
 
+> **Claude Code 适配器**：多模态由 Claude 侧模型决定；\`openfeel-vision\` subagent 须选支持图像输入的模型。
+
 ## 常见错误与修复
 
 | 错误信息 | 原因 | 修复 |
@@ -215,6 +230,8 @@ openfeel-vision Agent 必须配置多模态模型。当前默认使用 \`deepsee
 | \`Model not found: alibaba/xxx\` | 内置 key 与实际注册的 key 不一致 | 检查 auth.json，使用实际 key |
 | \`Model not found: xxx. Did you mean: yyy\` | 模型名拼写错误或不存在 | 使用 \`Did you mean\` 建议的名称 |
 | Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为支持图像输入的模型（如 \`deepseek-flash\`） |
+
+> **Claude Code 适配器**：以上排查针对 opencode 的 \`auth.json\`/\`opencode.jsonc\`；Claude 侧的模型解析以 \`/model\`、\`settings.json\`/\`env\` 或网关配置为准。
 `,
   'openfeel-bug-acceptance': `---
 name: openfeel-bug-acceptance
@@ -359,7 +376,10 @@ description: 渐进式查阅 .openfeel/kb/ 项目知识库，按当前任务需�
    💡 如需确保索引为最新，可运行: python scripts/build_kb_index.py --dry-run
    \`\`\`
 
-> 注：语义检索是 \`openfeel-check-kb\` 的内置回退能力。调用方只需 \`skill("openfeel-check-kb")\` 一次，无需再手动调用 \`openfeel-search-kb\`。
+> 注：语义检索是 \`openfeel-check-kb\` 的内置回退能力。调用方只需加载一次：
+> - opencode 适配器：\`skill("openfeel-check-kb")\`；
+> - Claude Code 适配器：以 \`Skill\` 工具加载 \`openfeel-check-kb\`（工具名映射见 \`openfeel-tool-usage\`）。
+> 无需再手动调用 \`openfeel-search-kb\`。
 
 ### 6. 强制检索标记
 
@@ -383,6 +403,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 定位：**查询型参考手册**（只读，不自执行）。回答「命令是什么、参数怎么给、phase/stageId 规则如何」。
 - 边界：**执行型交互向导**请用 \`openfeel-wizard\` skill（跑 \`openfeel flow wizard\` 推进流水线）；本 skill 只承载静态知识查阅。
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
+- 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
 > 本文档为 v1.1.5 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
@@ -425,6 +446,8 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 ## 升级流程
 
+### opencode 适配器
+
 \`\`\`bash
 npm i -g openfeel@latest   # 1. 升级 CLI
 openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/skills/opencode.jsonc
@@ -432,6 +455,16 @@ openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/ski
 \`\`\`
 
 仅 \`npm i -g\` 不会刷新全局资产，须重跑 \`openfeel setup\` 并重启 harness。\`openfeel setup --check\` 可诊断全局部署版本与 CLI 版本是否一致（一致退出 0，否则退出 1）。
+
+### Claude Code 适配器
+
+\`\`\`bash
+npm i -g openfeel@latest       # 1. 升级 CLI
+openfeel setup --tools claude  # 2. 重跑部署（claude 目标）
+\`\`\`
+
+- 首次创建 \`~/.claude/{agents,skills}\` 后需**重启会话或 \`/reload-skills\`** 使新 skill/agent 生效。
+- \`CLAUDE.md\` 于**下次会话**生效。
 
 ## v1.1.2 新增能力（stage-41~55）
 
@@ -506,10 +539,18 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 ## 权限模型要点
 
+### opencode 适配器
+
 - 9 个 agent 内联 \`permission:\` 白名单，均含 \`external_directory: "allow"\`（单一键，无读写粒度）。
 - **合并语义**：agent \`.md\` frontmatter 与 \`opencode.jsonc\` 按权限键**深合并**，同名键以 agent \`.md\` 为准（配置文件无法覆盖已声明键）。
 - **收紧入口**：项目根 \`.opencode/agent/<name>.md\` 覆盖全局同名 agent 并重写完整 \`permission\` 块；勿手改全局 agent frontmatter（会被 \`update\` 覆盖）。
 - 详 \`.openfeel/manual/core/permission.md\`。
+
+### Claude Code 适配器
+
+- subagent 于 frontmatter 声明 \`tools\`（白名单，未列即不可用）、\`disallowedTools\`（黑名单）与 \`permissionMode\`。
+- **无 \`external_directory\` 对等概念**。
+- 本期由 **stage-73** 注入 \`settings.json\`（\`agent:"feel"\` + \`permissions.defaultMode:"auto"\`）。
 
 ## 与 openfeel-wizard 的区别
 
@@ -625,7 +666,9 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
    - \`deps_satisfied = true\`（本 Skill 递归判断）
    - \`状态\` 为 \`ready_for_code\` 或 \`auto_running\`
    - \`自动推进\` 为 \`enabled\`（若 status.md 未填则回退到 config.yaml \`auto_advance\`）
-2. 收集为 \`parallel_candidates\` 列表，供 Feel 批量调度执行。
+2. 收集为 \`parallel_candidates\` 列表，供主会话（Feel）批量调度执行。
+
+> 口径：**subagent 不互调**（不直接调用其他 subagent）；需向用户确认的事项一律由主会话负责。
 
 ### 5. 判断自动推进资格
 
@@ -672,8 +715,8 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 | \`coding\` | openfeel-executor 正在开发 |
 | \`ready_for_review\` | openfeel-executor 可启动 openfeel-reviewer 审查，或等待用户触发 |
 | \`review_failed\` | openfeel-reviewer 可启动 openfeel-executor 修复审查问题 |
-| \`review_passed\` | Feel 可推进到 ready_for_test |
-| \`ready_for_test\` | Feel 可启动 openfeel-feel-tester |
+| \`review_passed\` | 主会话可推进到 ready_for_test |
+| \`ready_for_test\` | 主会话可启动 openfeel-feel-tester |
 | \`test_writing\` | openfeel-feel-tester 正在写测试 |
 | \`testing\` | openfeel-feel-tester 正在测试 |
 | \`bug_found\` | openfeel-feel-tester 可启动 openfeel-executor 修复 Bug |
@@ -706,16 +749,18 @@ description: 加载流水线健康检查结果，供 Agent 判断 flow.json 与�
 `,
   'openfeel-model-check': `---
 name: openfeel-model-check
-description: Feel 自检时检查所有 Agent 的模型配置状态，识别期望模型 vs 实际模型的差距，引导用户在目标工具中完成配置。首次配置后存储为部署模板，新项目可直接复用。
+description: 主会话（Feel）自检时检查所有 Agent 的模型配置状态，识别期望模型 vs 实际模型的差距，引导用户在目标工具中完成配置。首次配置后存储为部署模板，新项目可直接复用。
 ---
 
 # 模型配置检查
 
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
+> 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
+
 ## 触发时机
 
-Feel Agent 在以下时机加载本 Skill：
+主会话在以下时机加载本 Skill：
 - 会话启动自检（每次）
 - 用户请求检查模型配置（按需）
 - 新项目首次初始化后（\`openfeel init\`）
@@ -724,19 +769,11 @@ Feel Agent 在以下时机加载本 Skill：
 
 ### 1. 识别当前平台
 
-读取 \`opencode.jsonc\`（或对应平台的配置文件），确定当前适配器平台：
-
-| 配置文件 | 平台 |
-|----------|------|
-| \`opencode.jsonc\` | OpenCode（当前适配器） |
-| \`kilo/kilo.json\` | Kilo |
-| \`claude/claude.json\` | Claude |
-
-若无平台配置文件，提示用户当前不在支持的平台中。
+读取当前 harness 的平台配置文件，确定当前适配器平台（已知平台配置文件与 agents 目录差异见 \`## 平台适配\`）。
 
 ### 2. 扫描 Agent 定义
 
-扫描 \`.opencode/agents/\`（或对应平台的 agents/ 目录）下所有 \`.md\` 文件，提取每个 Agent 的模型需求。
+扫描 agents 目录（目录差异见 \`## 平台适配\`）下所有 \`.md\` 文件，提取每个 Agent 的模型需求。
 
 **提取规则（优先级从高到低）**：
 
@@ -813,7 +850,7 @@ models:
 \`\`\`markdown
 | Agent | 角色要求 | 实际模型 | 配置来源 | 状态 |
 |-------|----------|----------|----------|:--:|
-| Feel | 主力推理 | deepseek-v4-pro | default | ⚠️ |
+| 主会话 | 主力推理 | deepseek-v4-pro | default | ⚠️ |
 | openfeel-reviewer | **异种推理** | deepseek-v4-pro | default | ❌ 与主力相同！ |
 | openfeel-executor | 快速 | deepseek-v4-pro | default | ⚠️ 未使用快速模型 |
 \`\`\`
@@ -825,7 +862,7 @@ models:
 \`\`\`markdown
 ## 🔍 模型配置检查报告
 
-**平台**：OpenCode（当前适配器）
+**平台**：当前 harness（opencode 适配器 / Claude Code 适配器）
 **配置文件**：.openfeel/config.yaml
 **检查时间**：yyyy-mm-dd HH:MM
 
@@ -853,12 +890,12 @@ models:
 
 ### 6. 引导用户配置
 
-若检查发现以下任一问题，**必须**使用 \`question\` 工具引导用户：
+若检查发现以下任一问题，**必须**使用向用户提问工具（opencode 适配器：\`question\`；Claude Code 适配器：\`AskUserQuestion\`）引导用户：
 
 | 触发条件 | 引导内容 |
 |----------|----------|
 | \`models\` 节不存在 | "未检测到模型配置。你需要为不同角色分配模型吗？" → 引导创建 |
-| openfeel-reviewer 使用与主力相同模型 | "⚠️ openfeel-reviewer 当前与 Feel 使用相同模型，异种交叉审查的核心优势无法发挥。建议为 openfeel-reviewer 配置不同的模型系列。" |
+| openfeel-reviewer 使用与主力相同模型 | "⚠️ openfeel-reviewer 当前与主会话使用相同模型，异种交叉审查的核心优势无法发挥。建议为 openfeel-reviewer 配置不同的模型系列。" |
 | openfeel-executor 使用推理模型 | "⚠️ openfeel-executor 建议使用快速模型以节省成本。是否配置？" |
 | 关键 Agent 无任何配置 | "以下 Agent 无模型配置：{列表}。请配置。" |
 
@@ -878,7 +915,7 @@ models:
 # 或直接复制此文件到 .openfeel/ 并重命名为 config.yaml（需合并其他节）
 #
 # 最近配置时间：yyyy-mm-dd HH:MM
-# 平台：OpenCode（当前适配器）
+# 平台：当前 harness（opencode 适配器 / Claude Code 适配器）
 
 models:
   default:
@@ -897,6 +934,31 @@ models:
 
 此模板在下次 \`openfeel init\` 或新项目部署时自动检测并建议复用。
 
+## 平台适配
+
+### opencode 适配器
+
+平台配置文件：
+
+| 配置文件 | 平台 |
+|----------|------|
+| \`opencode.jsonc\` | OpenCode（当前适配器） |
+| \`kilo/kilo.json\` | Kilo |
+
+若无平台配置文件，提示用户当前不在支持的平台中。
+
+- agents 目录：\`.opencode/agents/\`（或对应平台的 agents/ 目录）下所有 \`.md\` 文件。
+- 报告/模板中的平台标签：\`**平台**：OpenCode（当前适配器）\`（原文标签，正文已改为中性表述「当前 harness（opencode 适配器 / Claude Code 适配器）」）。
+- 向用户提问使用 \`question\` 工具。
+
+### Claude Code 适配器
+
+- Claude Code **无平台配置文件**（原平台识别表中指向 Claude 的错误配置行已删除）。
+- 全局约束：\`~/.claude/CLAUDE.md\`；本期由 **stage-73** 注入 \`settings.json\`。
+- agents 目录：\`~/.claude/agents/\`。
+- 报告平台标签：\`Claude Code 适配器\`。
+- 向用户提问使用 \`AskUserQuestion\` 工具。
+
 ## 输出规范
 
 - 状态图标：✅ 已满足、⚠️ 降级使用（可接受但非最优）、❌ 缺失或严重不匹配
@@ -905,12 +967,14 @@ models:
 `,
   'openfeel-model-config': `---
 name: openfeel-model-config
-description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖 opencode.jsonc 配置（opencode 适配器）、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
+description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或需要调整/新增 Agent 模型时使用。覆盖模型配置位置与优先级链（opencode 适配器 / Claude Code 适配器）、模型名查找方法、多模态模型（openfeel-vision）特殊注意事项。
 ---
 
 # Skill: openfeel-model-config
 
 # Agent 模型查找与配置
+
+> 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
 ## 何时使用
 
@@ -920,6 +984,8 @@ description: 查找和配置 Agent 模型。当 Agent 报 "Model not found" 或�
 - openfeel-vision / 多模态模型无法正常调用
 
 ## 配置位置
+
+### opencode 适配器
 
 Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 
@@ -937,6 +1003,12 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 
 > 💡 **推荐**：可用 \`openfeel model set/get/list --scope default|global|project\` 一键读写三层级模型（工具默认 / 全局 / 当前项目），无需手工定位文件。
 
+### Claude Code 适配器
+
+- Agent 模型配置在 Claude Code 侧的 \`~/.claude/agents/*.md\` frontmatter \`model\` 字段。
+- 模型权威源为 **cc-switch**。
+- \`settings.json\`（本期由 stage-73 注入）仅作参考，模板默认 \`model: inherit\`。
+
 ## 查找可用模型名
 
 当收到 \`"Model not found: xxx. Did you mean: aaa, bbb?"\` 错误时：
@@ -945,6 +1017,8 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 - 不建议凭记忆猜测模型名，以平台提示为准
 
 ## Agent 定义文件中的 model 字段
+
+### opencode 适配器
 
 \`.opencode/agents/<name>.md\` 的 frontmatter \`model:\` 字段**是生效的，且优先于** \`opencode.jsonc\` 的 \`agent.<name>.model\`（stage-40 REV-1606 实测）。opencode 模型解析优先级链：
 
@@ -956,21 +1030,31 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 1. 修改 \`.opencode/agents/<name>.md\` 的 frontmatter \`model:\`（模板源 \`src/core/templates-data/opencode/agents/\` 同步）
 2. （可选，保持一致）同步修改 \`opencode.jsonc\` 的 \`agent.<name>.model\`
 
+### Claude Code 适配器
+
+Claude Code 模型解析优先级链：项目 \`.claude/agents\` > 用户 \`~/.claude/agents\`；frontmatter \`model\` **优先于** \`inherit\`。
+
 ## 多模态（openfeel-vision）模型特殊规则
 
-- Feel 的主力模型（DeepSeek V4 Pro）不支持图片输入
-- 遇到图片输入时 Feel 会自动委托 openfeel-vision Agent
+### opencode 适配器
+
+- 主会话（Feel）的主力模型（DeepSeek V4 Pro）不支持图片输入
+- 遇到图片输入时主会话会自动委托 openfeel-vision Agent
 - openfeel-vision Agent 需要配置多模态模型（现用 \`deepseek-flash\`，备选 \`qwen3-vl-plus\`）
 - 模型名不要随意添加前缀（如 \`alibaba/\`），以平台提示的可用名为准
 - **模型引用格式**：\`{auth.json中的key}/{模型ID}\`，不是 \`provider.name\` 也不是 \`provider.id\`
 - 读取 \`~/.local/share/opencode/auth.json\` 确认实际 provider key（常见：\`alibaba-cn\`、\`deepseek\`、\`zhipuai\`）
 - \`provider\` 块中的 \`name\` 和 \`id\` 仅用于显示，不影响模型解析
 
+### Claude Code 适配器
+
+- 多模态由 Claude 侧模型决定；\`openfeel-vision\` subagent 须选支持图像输入的模型。
+
 ## 项目 Agent 模型概览
 
 | Agent | 模型类型 | 备注 |
 |-------|---------|------|
-| Feel（总统领） | 推理模型 | DeepSeek V4 Pro — 不支持多模态 |
+| 主会话（Feel） | 推理模型 | DeepSeek V4 Pro — 不支持多模态 |
 | openfeel-planner | 推理模型 | — |
 | openfeel-schemer | 推理模型 | — |
 | openfeel-executor | 快速模型 (Flash) | — |
@@ -1233,7 +1317,7 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 触发条件（任一必问）：需求歧义 / 多个同等合理方案 / 不可逆后果 / 架构决策。使用要求：(Recommended) 标记、选项附后果、≤3 选项、高风险含"取消"。禁止：模糊时自行假设、多方案不选直接实施。
 
 ### 3. task — 子 Agent 调度
-触发条件：并行探索多代码区 / 复杂多步委托 general / 下游 Agent（经 Feel）。使用要求：并行一条消息多 task、prompt 含任务描述+期望返回、明确只读/可写。
+触发条件：并行探索多代码区 / 复杂多步委托 general / 下游 Agent（经主会话（Feel））。使用要求：并行一条消息多 task、prompt 含任务描述+期望返回、明确只读/可写。
 
 ### 4. skill — 技能加载
 触发条件：查阶段状态→openfeel-get-stage-status / 查知识库→openfeel-check-kb / 取 Bug→openfeel-get-bugs。使用要求：会话开始载 check-kb、处理阶段任务前载 get-stage-status、不凭记忆跳过。
@@ -1246,6 +1330,23 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 | 探索代码 | task(explore) | 手动逐个 grep/read |
 | 获取状态 | skill(openfeel-get-stage-status) | 凭记忆推断 |
 | 批量文件操作 | task(general) | 串行逐个处理 |
+
+## 工具名映射（跨 harness）
+
+本 skill 的四种核心工具（\`todowrite\`/\`question\`/\`task\`/\`skill\`）在各 harness 的等价工具名见下表；**不改变**既有触发条件/使用要求/优先级表语义。
+
+| opencode（小写） | Claude Code | 说明 |
+|------|------|------|
+| \`bash\` | \`Bash\` | 命令执行 |
+| \`read\` | \`Read\` | 读文件 |
+| \`write\` | \`Write\` | 写文件 |
+| \`edit\` | \`Edit\` | 编辑文件 |
+| \`glob\` | \`Glob\` | 文件匹配 |
+| \`grep\` | \`Grep\` | 内容检索 |
+| \`todowrite\` | \`TodoWrite\` | 任务列表 |
+| \`skill\` | \`Skill\` | 技能加载 |
+| \`task\` | \`Task\` | 子 Agent 调度 |
+| \`question\` | \`AskUserQuestion\` | 向用户提问 |
 `,
   'openfeel-update-stage-status': `---
 name: openfeel-update-stage-status
@@ -1423,9 +1524,9 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 \`.openfeel/users/{username}/dev_last.md\`（**索引**；同名目录 \`dev_last/\` 存主题文件，**文件名英文**）
 
 ### 6. 增量更新复核
-检查 \`~/.openfeel/update_infos.md\`，若存在未修复条目（追加/异常），提醒用户重启会话或委托 Feel 处理；本 Agent 不自行修改该文件。
+检查 \`~/.openfeel/update_infos.md\`，若存在未修复条目（追加/异常），提醒用户重启会话或委托主会话（Feel）处理；本 Agent 不自行修改该文件。
 
-> 目录结构语义、公共/私域分区、用户身份约束、路径自校验规则见全局 AGENTS.md（约束）；本 skill 仅承载操作步骤。
+> 目录结构语义、公共/私域分区、用户身份约束、路径自校验规则见全局规则文件（opencode 适配器：\`~/.config/opencode/AGENTS.md\`；Claude Code 适配器：\`~/.claude/CLAUDE.md\`）（约束）；本 skill 仅承载操作步骤。
 `,
 };
 // AUTO-GENERATED-END: SKILL_DEFINITIONS

@@ -123,3 +123,46 @@ describe('Claude 源树（stage-69）', () => {
     expect(existsSync(join(CLAUDE_DIR, 'skills'))).toBe(false);
   });
 });
+
+/**
+ * stage-70：共享 skills 中立化（双平台分节 + opencode 关键串零回归 +
+ * `claude/claude.json` 纠错 + 工具名映射键集）。断言直读共享源 `templates-data/skills/**`。
+ */
+describe('共享 skills 中立化（stage-70）', () => {
+  const REWRITE = ['openfeel-agent-model-check', 'openfeel-model-config', 'openfeel-model-check', 'openfeel-cli-usage'];
+  const OPENCODE_STRINGS: Record<string, string[]> = {
+    'openfeel-agent-model-check': ['~/.local/share/opencode/auth.json', 'opencode.jsonc', '必须重启 opencode'],
+    'openfeel-model-config': ['opencode.jsonc', '必须重启 opencode',
+      'openfeel model set/get/list --scope default|global|project', '项目 agents frontmatter > 全局 agents frontmatter'],
+    'openfeel-model-check': ['opencode.jsonc', '.opencode/agents/', 'OpenCode（当前适配器）'],
+    'openfeel-cli-usage': ['重启 harness（opencode）', 'external_directory: "allow"', '.opencode/agent/<name>.md'],
+  };
+
+  it('T4.1 4 重写 skill 双平台小节并存', () => {
+    for (const s of REWRITE) {
+      const c = readFileSync(join(SKILLS_DIR, s, 'SKILL.md'), 'utf-8');
+      expect(c, `${s} 缺 opencode 小节`).toContain('### opencode 适配器');
+      expect(c, `${s} 缺 Claude 小节`).toContain('### Claude Code 适配器');
+    }
+  });
+
+  it('T4.2 opencode 关键串零回归', () => {
+    for (const s of REWRITE) {
+      const c = readFileSync(join(SKILLS_DIR, s, 'SKILL.md'), 'utf-8');
+      for (const str of OPENCODE_STRINGS[s]) expect(c, `${s} 丢失 ${str}`).toContain(str);
+    }
+  });
+
+  it('T4.3 纠错：openfeel-model-check 不再含 claude/claude.json', () => {
+    const c = readFileSync(join(SKILLS_DIR, 'openfeel-model-check', 'SKILL.md'), 'utf-8');
+    expect(c).not.toContain('claude/claude.json');
+    expect(c).toContain('~/.claude/CLAUDE.md');
+  });
+
+  it('T4.4 openfeel-tool-usage 工具名映射键集齐备', () => {
+    const c = readFileSync(join(SKILLS_DIR, 'openfeel-tool-usage', 'SKILL.md'), 'utf-8');
+    const oc = ['bash', 'read', 'write', 'edit', 'glob', 'grep', 'todowrite', 'skill', 'task', 'question'];
+    const cc = ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'TodoWrite', 'Skill', 'Task', 'AskUserQuestion'];
+    for (const k of [...oc, ...cc]) expect(c, `映射表缺 ${k}`).toContain(k);
+  });
+});

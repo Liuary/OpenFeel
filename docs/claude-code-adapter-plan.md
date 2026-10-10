@@ -4,7 +4,20 @@
 > 撰写日期：2026-10-10
 > 撰写人：Claude Code Agent
 > 适用范围：OpenFeel 新增 Claude Code 适配器（核心适配）；`§三 模型清单`同时作为后续 opencode 侧模型配置的对照表
-> 状态：提案 — 供 v1.1.6 立项，实现由 opencode 侧流水线调度执行
+> 状态：**已实现（v1.1.6）** — 由 opencode 侧流水线 stage-68~73 落地；本文档保留 v1.0 蓝本原貌，**实施偏差见下方「实施偏差」块**
+
+## 实施偏差（2026-10-11，v1.1.6 落地后补记）
+
+> 下列偏离本文档 §四/§五 原裁定，均经用户裁定并落地；历史正文（「不写 settings.json」/「8 agents」/「53 skipped」）保留为立项快照。
+
+| # | 原蓝本 | 实施 | 依据 |
+|:-:|--------|------|------|
+| 1 | §四「**不写 `settings.json`**」 | **注入为一等能力**：`agent:"feel"` + `permissions.defaultMode:"auto"`（用户键逐字保留，读-深合并-写回） | 裁定 C/F/G，stage-73 落地；卸载/回滚见本文 §十五 |
+| 2 | §四「不部署主 agent」/「8 subagent」 | **9 agents（含 `feel`）**，`settings.json` 注入 `agent:"feel"` | 裁定 B/G，stage-69 |
+| 3 | 双 harness 幂等 `53 skipped` | 实测 **55 skipped**（+`settings.json`；`--tools claude` 二次 28） | stage-73 实测 |
+| 4 | 模型权威源 cc-switch / `model: inherit` | 维持；实机确认自定义模型 ID 可用、`feel` 不设 `tools`（R-13） | stage-69 实机 |
+
+- 本期另新增 `openfeel setup/update --tools <list>`（stage-71）、CI env guard 增 `$HOME/.claude`（stage-72）。
 
 ---
 

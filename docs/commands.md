@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.5 快照** | 更新日期：2026-10-03
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.6 快照** | 更新日期：2026-10-11
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -256,8 +256,6 @@ openfeel flow checkpoint restore <checkpoint-file> [--force] [--stage <id>] [--d
 ```
 
 ---
-
-## roadmap — 分期大纲管理
 
 ## roadmap — 分期大纲管理
 
@@ -618,11 +616,13 @@ openfeel model list
 纯全局部署（全局 `AGENTS.md` + agent + skill + 全局平台适配器配置），不建立项目 `.openfeel/`，幂等。
 
 ```bash
-openfeel setup [--lang <zh-CN|en>]            # 部署全局框架配置（幂等）
-openfeel setup --check [--json]               # 只读诊断：一致退出 0，否则退出 1
+openfeel setup [--lang <zh-CN|en>] [--tools <list>]   # 部署全局框架配置（幂等）
+openfeel setup --check [--json]                       # 只读诊断：一致退出 0，否则退出 1
 ```
 
 `--check` 只读，不执行部署；`--json` 输出 `{schemaVersion,status,cliVersion,deployedVersion}`。
+
+`--tools claude` → 部署 `~/.claude/`（CLAUDE.md + 9 agents + 17 skills + `settings.json` 注入 `agent:"feel"` 与 `permissions.defaultMode:"auto"`，用户键逐字保留）；默认仅 opencode，`~/.claude` 零触。
 
 ## migrate — 存量迁移
 
@@ -648,9 +648,10 @@ openfeel project overview                   # 实时扫描项目结构，输出�
 更新平台适配文件（当前：OpenCode 适配器）——Agent 定义、Skill 文件、`AGENTS.md`，以及**全局 `opencode.jsonc` 的深度合并**（`instructions` 拼接去重 / `agent` 补缺 / 其他对象递归 / 标量覆盖；用户未知字段 passthrough）。部署覆盖既有框架资产前自动备份（`~/.openfeel/backup/{ts}/`）。
 
 ```bash
-openfeel update [path]
+openfeel update [path] [--lang <zh-CN|en>] [--force] [--tools <list>]
 ```
 
 | 参数 | 说明 |
 |------|------|
 | `path` | 目标项目路径，默认为当前目录 |
+| `--tools <list>` | 部署目标工具（逗号分隔，如 `opencode,claude`）；与 `setup` 共用 `parseToolList`，非法值 exit 1；默认仅默认启用工具（不带 `--tools` 时 `~/.claude/` 零触） |

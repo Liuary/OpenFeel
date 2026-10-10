@@ -6,7 +6,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。
 
-> **当前适配 harness**：opencode（默认）；框架面向多 harness 适配（其余适配器预留）。  
+> **当前适配 harness**：**opencode（默认）** ｜ **Claude Code**（`--tools claude`，v1.1.6 起）；框架面向多 harness 适配（其余适配器预留）。  
 > **默认模型配置**：DeepSeek V4（主力推理） + GLM-5.3-flash（交叉审查） + DeepSeek-flash（多模态视觉）。  
 > 首次 `openfeel init` 时会自动检测用户已注册的模型并引导配置。
 
@@ -60,6 +60,15 @@ openfeel plan scheme create stage-01 "实现核心功能"
 openfeel flow status
 ```
 
+## Claude Code 适配器（v1.1.6 起）
+
+> 与 opencode 适配器**并存**，**默认不启用**（须显式 `--tools claude`）。
+
+- **启用**：`openfeel setup --tools claude`（或 `--tools opencode,claude` 双 harness）。
+- **部署资产到 `~/.claude/`**：`CLAUDE.md`（全局约束，受管区三态，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**17 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，**用户既有键逐字保留**）。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；**首次创建 `~/.claude/{agents,skills}` 后须重启会话或 `/reload-skills`** 使新 skill/agent 生效；`CLAUDE.md` 于**下次会话**生效。仅 `npm i -g` 不刷新全局资产。
+- **默认零触**：不带 `--tools` 时 `~/.claude/` **零变化**。
+
 ## v1.1.2 新增能力
 
 - **自描述**：`flow phases [--json]` 输出全部合法 phase 与转移表（JSON 顶层 5 键：`schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff`）。
@@ -76,7 +85,7 @@ openfeel flow status
 | 命令 | 用途 |
 |------|------|
 | `openfeel init [path]` | 初始化新项目，创建 `.openfeel/` 目录结构和平台适配器（当前：opencode） |
-| `openfeel update` | 为已有项目增量部署平台适配器（适用于 `init` 之后再引入 OpenFeel 的项目） |
+| `openfeel update` | 为已有项目增量部署平台适配器（适用于 `init` 之后再引入 OpenFeel 的项目）；`--tools <list>` 显式启用 Claude Code 适配器 |
 | `openfeel flow` | 流水线状态管理（status / phases / overview / current / advance / attempt / ops list / health [--fix] / checkpoint / migrate；status·current·health·metrics·overview 支持 --json） |
 | `openfeel roadmap` | 分期大纲管理（create / show） |
 | `openfeel plan` | 工作阶段与操作方案管理（stage add/list [--deps/--tasks]、scheme create [--draft] / publish / rename / remove / list） |
@@ -84,7 +93,7 @@ openfeel flow status
 | `openfeel config` | 配置管理（get / set[**全量 `defaults.*`**] / effective / get-lang / list-projects，支持 --global） |
 | `openfeel knowledge` | 知识库管理（list / add / search / index / dedup） |
 | `openfeel archive <stage>` | 阶段归档，汇总产出、生成摘要、提取知识 |
-| `openfeel setup` | 纯全局部署（全局 AGENTS.md + agent + skill + 平台适配器配置），不建项目 `.openfeel/` |
+| `openfeel setup` | 纯全局部署（全局 AGENTS.md + agent + skill + 平台适配器配置），不建项目 `.openfeel/`；`--tools <list>` 显式启用 Claude Code 适配器 |
 | `openfeel migrate` | 存量旧布局项目迁移（检测 / 备份 / 回滚） |
 | `openfeel model` | 三层级 agent 模型配置（set / get / list，`--scope`） |
 | `openfeel stage` | 阶段状态（status / set / task / create［已弃用］） |
@@ -180,7 +189,7 @@ Core 层
 ```bash
 npm install        # 安装依赖
 npm run build      # 编译 TypeScript
-npm test           # 运行测试（1018 用例 / 61 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
+npm test           # 运行测试（1206 用例 / 67 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
 ```
 
 ## 致谢

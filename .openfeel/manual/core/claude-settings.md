@@ -57,4 +57,4 @@ src/core/update.ts（doClaude 分支 step 4c）┘─→ applyClaudeSettings(sta
 
 | 阶段 | 变更 |
 |------|------|
-| v1.1.6-stage-73 | 初始创建：新增 `claude-settings.ts`（`buildClaudeSettingsFragment` / `mergeClaudeSettings` / `applyClaudeSettings` / `ClaudeSettingsParseError`）；setup/update claude 分支接线（写前备份 + anomaly + 幂等 + hash）；settings 不入 conflicts；i18n 6 新键（768→774）；Q6 卸载/回滚文档；**反转蓝本 §四**（原「不写 settings.json」裁定） |
+| v1.1.6-stage-73 | 初始创建：新增 `claude-settings.ts`（`buildClaudeSettingsFragment` / `mergeClaudeSettings` / `applyClaudeSettings` / `ClaudeSettingsParseError`）；setup/update claude 分支接线（写前备份 + anomaly + 幂等 + hash）；settings 不入 conflicts；i18n 6 新键（768→774）；Q6 卸载/回滚文档；**反转蓝本 §四**（原「settings.json 不注入」裁定） |

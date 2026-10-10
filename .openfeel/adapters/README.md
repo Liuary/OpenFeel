@@ -18,13 +18,15 @@ OpenFeel 采用核心层 + 适配器层架构：
 |------|------|------|
 | `.opencode/` | OpenCode（**当前默认适配器**） | ✅ 当前使用 |
 | `kilo/` | Kilo | 🔵 预留 |
-| `claude/` | Claude | 🔵 预留 |
+| `claude/` | Claude | ✅ 当前使用（v1.1.6 起，`--tools claude`） |
 
 每个适配器目录至少包含：
-- 平台配置文件（当前：opencode.jsonc；预留：kilo.json / claude.json）
+- 平台配置文件（当前：opencode.jsonc；**Claude Code 无平台配置文件**——其全局约束为 `~/.claude/CLAUDE.md`，另含 `agents/`（9）、`skills/`（17）、`settings.json`；预留：kilo.json）
 - `agents/` — Agent 定义
 - `skills/` — Skill 定义
 - `instructions/` — 平台特化指令（各 harness 适配器）
+
+> **仓库自身不保留项目级部署实例**（stage-55 起）；适配器资产经 `openfeel setup` **全局部署**（opencode 侧落 `~/.config/opencode/`，仓库内不再生成 `.opencode/agents|skills`），`claude/` 侧资产落 `~/.claude/`。
 
 ## 扩展指南
 新增适配器：

@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.1.2 快照** | 更新日期：2026-09-30 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.1.6 快照** | 更新日期：2026-10-11 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -43,9 +43,23 @@ openfeel --help
 npm i -g openfeel@latest   # 1. 升级 CLI
 openfeel setup             # 2. 重跑部署，刷新全局 AGENTS.md/agents/skills/opencode.jsonc
 # 3. 重启 harness（opencode）以加载新的全局配置
+
+# Claude Code 适配器变体（可选，v1.1.6 起）
+openfeel setup --tools claude   # 重跑 Claude 部署（~/.claude/）
+# 首次创建 ~/.claude/{agents,skills} 后重启会话或 /reload-skills
 ```
 
 仅 `npm i -g` 不会刷新全局资产，须重跑 `openfeel setup` 并重启 harness。`openfeel setup --check` 可诊断全局部署版本与 CLI 版本是否一致（一致退出 0，否则退出 1）。
+
+### 启用 Claude Code 适配器（可选）
+
+```bash
+openfeel setup --tools claude   # 部署 ~/.claude/（与 opencode 并存，默认不启用）
+```
+
+- 部署资产到 `~/.claude/`：`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（9 个，含 `feel`）、`skills/`（17 个共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留）。
+- **升级后**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；首次创建 `~/.claude/{agents,skills}` 后须**重启会话或 `/reload-skills`**；`CLAUDE.md` 于下次会话生效。仅 `npm i -g` 不刷新全局资产。
+- **默认零触**：不带 `--tools` 时 `~/.claude/` 零变化。
 
 ## 4. 初始化项目
 
@@ -124,8 +138,8 @@ openfeel lint
 | `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识） |
 | `openfeel roadmap` | 分期大纲管理（`create`/`show`） |
 | `openfeel instructions <artifactId>` | 生成结构化指令（XML 或 JSON） |
-| `openfeel update [path]` | 部署 OpenFeel 适配文件到目标项目 |
-| `openfeel setup [--check]` | 部署全局框架配置；`--check [--json]` 只读诊断全局部署与 CLI 版本一致性 |
+| `openfeel update [path] [--tools <list>]` | 部署 OpenFeel 适配文件到目标项目 |
+| `openfeel setup [--check] [--tools <list>]` | 部署全局框架配置；`--check [--json]` 只读诊断全局部署与 CLI 版本一致性 |
 | `openfeel knowledge` | 知识库管理（`list`/`add`/`search`/`index`） |
 | `openfeel stage` | 工作阶段状态管理（status.md 原子操作） |
 | `openfeel project` | 项目管理与概览 |

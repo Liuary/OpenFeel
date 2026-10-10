@@ -4,7 +4,7 @@
 
 OpenFeel is a TypeScript CLI tool for end-to-end process governance in AI Agent development. Core philosophy: **"Slim prompts, process in tools"** — agents understand workflows by reading `flow.json` state, not long text documents.
 
-> **Current adapter harness**: opencode (default); the framework targets multi-harness support (other adapters reserved).  
+> **Current adapter harness**: **opencode (default)** ｜ **Claude Code** (`--tools claude`, since v1.1.6); the framework targets multi-harness support (other adapters reserved).  
 > **Default Model Config**: DeepSeek V4 (primary reasoning) + GLM-5.3-flash (cross-review) + DeepSeek-flash (multimodal vision).  
 > `openfeel init` auto-detects registered models and guides configuration.
 >
@@ -60,6 +60,15 @@ openfeel plan scheme create stage-01 "Implement core features"
 openfeel flow status
 ```
 
+## Claude Code Adapter (since v1.1.6)
+
+> Coexists with the opencode adapter; **disabled by default** (requires explicit `--tools claude`).
+
+- **Enable**: `openfeel setup --tools claude` (or `--tools opencode,claude` for both harnesses).
+- **Assets deployed to `~/.claude/`**: `CLAUDE.md` (global constraints, managed-region three-state; existing user content is appended, not overwritten), `agents/` (**9**, incl. `feel`), `skills/` (**17** shared sources), `settings.json` (injects `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`; **existing user keys preserved verbatim**).
+- **Upgrade**: `npm i -g openfeel@latest` → `openfeel setup --tools claude`; **after the first creation of `~/.claude/{agents,skills}`, restart the session or run `/reload-skills`** to load new skills/agents; `CLAUDE.md` takes effect on the **next session**. `npm i -g` alone does not refresh global assets.
+- **Zero-touch by default**: without `--tools`, `~/.claude/` is **unchanged**.
+
 ## What's New in v1.1.2
 
 - **Self-description**: `flow phases [--json]` lists all valid phases and the transition table (5 top-level JSON keys: `schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff`).
@@ -76,7 +85,7 @@ openfeel flow status
 | Command | Purpose |
 |---------|---------|
 | `openfeel init [path]` | Initialize new project with `.openfeel/` workspace and platform adapter (current: opencode) |
-| `openfeel update` | Incrementally deploy platform adapter to existing projects |
+| `openfeel update` | Incrementally deploy platform adapter to existing projects; `--tools <list>` explicitly enables the Claude Code adapter |
 | `openfeel flow` | Pipeline state management (status / phases / overview / current / advance / attempt / ops list / health [--fix] / checkpoint / migrate; status·current·health·metrics·overview support --json) |
 | `openfeel roadmap` | Version roadmap management (create / show) |
 | `openfeel plan` | Stage and scheme management (stage add/list [--deps/--tasks], scheme create [--draft] / publish / rename / remove / list) |
@@ -84,7 +93,7 @@ openfeel flow status
 | `openfeel config` | Configuration management (get / set[**all `defaults.*`**] / effective / get-lang / list-projects, supports --global) |
 | `openfeel knowledge` | Knowledge base management (list / add / search / index / dedup) |
 | `openfeel archive <stage>` | Stage archiving with knowledge extraction |
-| `openfeel setup` | Global-only deployment (global AGENTS.md + agents + skills + adapter config); no project `.openfeel/` |
+| `openfeel setup` | Global-only deployment (global AGENTS.md + agents + skills + adapter config); no project `.openfeel/`; `--tools <list>` explicitly enables the Claude Code adapter |
 | `openfeel migrate` | Migrate legacy-layout projects (detect / backup / rollback) |
 | `openfeel model` | Three-tier agent model config (set / get / list, `--scope`) |
 | `openfeel stage` | Work stage status (status / set / task / create [deprecated]) |
@@ -180,7 +189,7 @@ Core Layer
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (1018 cases / 61 test files; Linux CI skips 1 Windows-only case)
+npm test           # Run tests (1206 cases / 67 test files; Linux CI skips 1 Windows-only case)
 ```
 
 ## Acknowledgments

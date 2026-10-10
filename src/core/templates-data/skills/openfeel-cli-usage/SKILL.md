@@ -1,6 +1,6 @@
 ---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 `--tools claude` / settings 注入）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -12,7 +12,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 `openfeel-tool-usage` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
 
-> 本文档为 v1.1.5 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.1.6 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
@@ -21,8 +21,8 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | 命令 | 用途 | 关键参数 |
 |------|------|----------|
 | `openfeel init [path]` | 初始化项目工作区 | `--lang <zh-CN\|en>`、`--demo`、`--workspace-only`、`--non-interactive` |
-| `openfeel setup` | 部署全局框架配置（不建项目 `.openfeel/`）；`--check` 只读诊断全局部署一致性 | `--lang <zh-CN\|en>`、`--check [--json]` |
-| `openfeel update [path]` | 部署适配文件到目标项目 | `--lang`、`--force` |
+| `openfeel setup` | 部署全局框架配置（不建项目 `.openfeel/`）；`--check` 只读诊断全局部署一致性 | `--lang <zh-CN\|en>`、`--check [--json]`、`--tools <list>` |
+| `openfeel update [path]` | 部署适配文件到目标项目 | `--lang`、`--force`、`--tools <list>` |
 | `openfeel migrate [path]` | Legacy 布局迁移（检测/备份/迁移/回滚） | `--dry-run`、`--remap-assignee`、`--clean-global-core-md`；`migrate rollback` |
 | `openfeel flow ...` | 流水线状态管理 | 见下「flow 子命令」 |
 | `openfeel flow checkpoint restore` | Checkpoint 恢复（全量 / 选择性 / 预览） | `<file> [--force] [--stage <id>] [--dry-run]`（无 `--stage`=全量覆盖，最后手段；`--stage`=按阶段回退；`--dry-run`=零写盘预览） |
@@ -45,6 +45,11 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 **纠错/清理侧补充**：`flow review add|resolve|update|remove`；`flow ops list [--stage <id>] [--json]`（操作方案视图，draft 分组展示）；`flow repair [--prune-orphans]`（默认只报告，`--prune-orphans` 仅清键孤儿，单向不删文件）；`plan scheme register`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，`--dry-run` 零写盘；与 `flow repair --prune-orphans`（仅清键孤儿）对称）；**`flow stage reset <id> --to <phase>`**（`advance` 的**对称复位**：允许回退，受合法 phase 值域 + `to=done` 阻塞 REV 约束，`--dry-run` 零写盘）；**`flow checkpoint restore <file> --stage <id> [--dry-run]`**（按阶段选择性回退；`--dry-run` 差异预览零写盘）。
 
 > 命令职责分层：`plan stage add`（完整，推荐）> `flow stage add`（仅注册 `flow.json`，不建目录）> `stage create`（已弃用）。
+
+## v1.1.6 新增能力（stage-68~73）
+
+- **多 harness 并存**：`openfeel setup` / `openfeel update` 新增 `--tools <逗号列表>`（如 `opencode,claude`）；非法值 **exit 1** 前置校验零写盘；默认仅 `opencode`。
+- **Claude Code 适配器资产**：`--tools claude` 部署 `~/.claude/`——`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**17 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留）；默认零触（不带 `--tools` 时 `~/.claude/` 零变化）。
 
 ## v1.1.5 新增能力（stage-67）
 
@@ -70,7 +75,7 @@ npm i -g openfeel@latest       # 1. 升级 CLI
 openfeel setup --tools claude  # 2. 重跑部署（claude 目标）
 ```
 
-- **`--tools` 由 v1.1.6-stage-71 提供**：当前 v1.1.5 的 `openfeel setup` **无 `--tools` 参数**（`openfeel setup --help` 仅 `--lang`/`--check`/`--json`/`-h`），照此执行会报 `unknown option '--tools'`；升级到 v1.1.6 后以 `openfeel setup --help` 实测为准。
+- **`--tools` 由 v1.1.6 提供**：`openfeel setup --tools claude`；首次创建 `~/.claude/{agents,skills}` 后**重启会话或 `/reload-skills`** 使新 skill/agent 生效。
 - 首次创建 `~/.claude/{agents,skills}` 后需**重启会话或 `/reload-skills`** 使新 skill/agent 生效。
 - `CLAUDE.md` 于**下次会话**生效。
 
@@ -158,7 +163,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 - subagent 于 frontmatter 声明 `tools`（白名单，未列即不可用）、`disallowedTools`（黑名单）与 `permissionMode`。
 - **无 `external_directory` 对等概念**。
-- 本期由 **stage-73** 注入 `settings.json`（`agent:"feel"` + `permissions.defaultMode:"auto"`）。
+- `settings.json` 由 `openfeel setup/update --tools claude` 注入（`agent:"feel"` + `permissions.defaultMode:"auto"`，用户键保留），**v1.1.6 起**。
 
 ## 与 openfeel-wizard 的区别
 

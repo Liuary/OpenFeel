@@ -2,13 +2,13 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-10T18:49:39.047Z",
-    "revision": 817
+    "updated": "2026-10-10T19:27:03.226Z",
+    "revision": 832
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "v1.1.6-stage-73",
+      "stage": "v1.1.6-stage-72",
       "op": ""
     },
     "retry": 0
@@ -3178,13 +3178,18 @@
     },
     "v1.1.6-stage-72": {
       "name": "v1.1.6-stage-72",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.1.6-stage-71",
         "v1.1.6-stage-73"
       ],
-      "ops": {}
+      "ops": {},
+      "stats": {
+        "start_time": "2026-10-10T18:49:43.436Z",
+        "end_time": "2026-10-10T19:27:03.205Z",
+        "duration_ms": 2239769
+      }
     }
   },
   "reviews": [],
@@ -15007,6 +15012,156 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.1.6-stage-73",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-10T18:49:43.436Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T18:49:43.743Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-10-10T18:52:37.315Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T18:52:37.613Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-10T18:59:35.471Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-10T19:10:44.758Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "review_pending",
+        "to": "review_failed"
+      }
+    },
+    {
+      "time": "2026-10-10T19:10:45.068Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "review_failed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-10-10T19:11:51.578Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T19:11:51.883Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-10T19:12:38.227Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-10T19:16:45.631Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T19:16:45.939Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-10-10T19:21:04.046Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T19:21:04.354Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-10-10T19:27:03.205Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
         "from": "archiving",
         "to": "done"
       }

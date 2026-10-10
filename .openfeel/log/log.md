@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-11-Liuary-011.md](2026/10/11/2026-10-11-Liuary-011.md) | Liuary | 阶段 v1.1.6-stage-72 完成 |
 | [2026-10-11-Liuary-010.md](2026/10/11/2026-10-11-Liuary-010.md) | Archiver | **v1.1.6 收官阶段 — stage-72 归档完成（文档与版本收口）= v1.1.6 版本收官**：① **文档多载体同步**（README×3 harness 行 + 「Claude Code 适配器（v1.1.6 起）」小节 + 版本横幅 v1.1.2→v1.1.6 + 测试数 1018→**1206** / `GETTING_STARTED` 快照 v1.1.6 + Claude 小节 + `--tools` / `docs/commands.md` 快照 v1.1.6 + `setup`/`update` 补 `--tools` + 顺手修重复 `## roadmap` 标题 / `claude-code-adapter-plan.md` 状态「提案」→「已实现（v1.1.6）」+ 顶部「实施偏差」块 4 条 / adapters + `claude/ADAPTER.md` 预留→已实现 / manual 陈旧口径补正 / cli-usage skill 权威源 v1.1.6 快照 + 删前瞻句 + `--tools`）；② **CI env guard 4→5 路径**（`$HOME/.claude`）；③ **版本 1.1.5→1.1.6 全链路收口**（**A 类 8 载体**含补漏 `claude/constraint` / B 类 build 重生成 / `CHANGELOG [1.1.6]`）；④ **roadmap/plan 回填**（M27/M28 done）。4 op（`968afed`/`0432ec9`/`3e0b292`/`eacc8e8`）。审查 **passed**（**REV-72-003 high blocking** op-004 补提交 closed；REV-72-001/002 low 归档官就地修正 closed）；验收 **5/5 通过**；新增 Bug `cli/BUG-009`/`cli/BUG-010`（low，归档官就地修正 closed）。门禁 **67 文件 / 1206 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **774**、`lint kb` 0（389 引用）、build ×2 幂等、`--version`=**1.1.6**、隔离 HOME 默认 `~/.claude` 零触。知识沉淀 **3 条**（patterns）；manual + `docs` 陈旧口径修正 + 大计划 §六 A 类回填。**v1.1.6 六阶段全部闭环 = 版本收官**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-11-Liuary-009.md](2026/10/11/2026-10-11-Liuary-009.md) | Liuary | 阶段 v1.1.6-stage-73 完成 |
 | [2026-10-11-Liuary-008.md](2026/10/11/2026-10-11-Liuary-008.md) | Archiver | **v1.1.6 第五阶段 — stage-73 归档完成（Claude 全局 `settings.json` 注入，反转蓝本 §四）**：新增 `claude-settings.ts`（严格 JSON 读-深合并-写回，注入 `agent:'feel'` + `permissions.defaultMode:'auto'`，用户键 12/12 逐字保留 + 字节幂等；与 jsonc 刻意隔离零复用）+ `applyClaudeSettings` 单一共享函数（setup/update 对称：写前备份 + `backed` / 锁内 read-merge-atomicWrite / 备份失败 `skipped`+`anomaly(backup_failed)` / 严格 JSON 不写盘+`anomaly(parse_failed)` / 幂等 skipped / `updateFileHash`）+ settings 不入 conflicts + i18n **768→774** + Q6 卸载/回滚文档 + **D-SET 定稿**（框架自有键覆盖 + 备份保护）+ auto mode 实测留痕；默认 `~/.claude` 零触。3 op（`1fe29b0`/`8b2fdeb`/`2b5c3e3`）。审查 **passed**（REV-73-001 low 非阻塞 open；REV-73-002/003 closed）；验收 **7/7 通过、0 Bug**。门禁 **67 文件 / 1206 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **774**、`lint kb` 0（380 引用）、build ×2 幂等；`--version`=1.1.5。知识沉淀 **3 条**（patterns 2 + troubleshooting 1）；manual 新增 `core/claude-settings.md`；ADR-008/009。**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
@@ -31,7 +32,6 @@
 | [2026-10-03-Liuary-016.md](2026/10/03/2026-10-03-Liuary-016.md) | Liuary | v1.1.4-stage-65.op-001 执行通过 |
 | [2026-10-03-Liuary-015.md](2026/10/03/2026-10-03-Liuary-015.md) | Liuary | 阶段 v1.1.4-stage-64 完成 |
 | [2026-10-03-Liuary-014.md](2026/10/03/2026-10-03-Liuary-014.md) | Liuary | v1.1.4-stage-64.op-003 执行通过 |
-| [2026-10-03-Liuary-013.md](2026/10/03/2026-10-03-Liuary-013.md) | Liuary | v1.1.4-stage-64.op-002 执行通过 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

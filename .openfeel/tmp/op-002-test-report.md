@@ -1,48 +1,63 @@
-# 自测报告 — op-002
+# 自测报告 — op-002（CI 环境守卫加路径 + 版本 1.1.5 → 1.1.6 全链路收口）
 
-- **执行时间**：2026-10-11 02:05
+- **执行时间**：2026-10-11
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（首次通过）
-- **Commit**：`7287355` — op-002: supportedTools 正式化 + R-5 守卫 + update --tools 命令面 (v1.1.6-stage-71, T4)
+- **重试次数**：第 1 次
+- **阶段**：v1.1.6-stage-72
 
 ## 执行摘要
-全部步骤完成，自测通过。`claude` 转 `supportedTools` 正式条目（`enabled:false`）；新增导出 `parseToolList`；**R-5 高危修复**（`commands/update.ts` `filter(t=>t.enabled).map(t=>t.id)`）+ `--tools <list>`（非法值 exit 1，校验前置 fail-fast）。`tsc`=0；全量 `npm test` 66 files / 1172 tests passed / 0 failed。
+
+全部 12 项实施步骤完成，10 项自测全部通过：CI 守卫 4→5 路径、A 类 8 载体收口 1.1.6、B 类生成段 build 重生成（幂等）、CHANGELOG 新增 [1.1.6]。
 
 ## 实施步骤完成情况
-- [x] T4.1：`core/update.ts` `supportedTools` claude 转正式条目 `enabled:false`（注释移除，cursor 注释保留）
-- [x] T4.2：`core/update.ts` 新增导出 `parseToolList`（`selectTools` 之后）
-- [x] T4.3：`commands/update.ts` import + `--tools` 选项 + action 签名 + R-5 filter + 校验前置
-- [x] T7c：`test/commands/update.test.ts` 新增 R-5 守卫 / `--tools opencode` / 非法值 exit 1 / 空串 exit 1
-- [x] T7d：`test/core/update.test.ts` 新增 `supportedTools` 断言 + 默认零触 `~/.claude`
+
+- [x] 步骤 1：`package.json:3` → `1.1.6`
+- [x] 步骤 2：`package-lock.json:3,9` 两处 → `1.1.6`（未执行 npm install）
+- [x] 步骤 3：`.openfeel/config.yaml:7` 单行 edit → `1.1.6`
+- [x] 步骤 4：`src/core/config.ts:423,476`（ZH/EN 模板）→ `1.1.6`
+- [x] 步骤 5：`agents-md/{zh-CN,en}.md:134` → `v1.1.6`
+- [x] 步骤 6：`claude/constraint/{zh-CN,en}.md:137` → `v1.1.6`（补漏 H-1）
+- [x] 步骤 7：`npm run build` 重生成 `template-loader.ts`/`update.ts` 生成段
+- [x] 步骤 8：`npm run build` 第二次，验幂等
+- [x] 步骤 9：`CHANGELOG.md` 顶部追加 `## [1.1.6] - 2026-10-11`
+- [x] 步骤 10：`ci.yml:39`（before）追加 `"$HOME/.claude"`
+- [x] 步骤 11：`ci.yml:82`（after）追加 `"$HOME/.claude"`（两处一致）
+- [x] 步骤 12：可选注释 `ci.yml:52`「四路径」→「五路径」
 
 ## 自测清单验证
+
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| S1 `supportedTools` 含 claude `enabled:false`，opencode `enabled:true` | ✅ | T4 断言用例通过 |
-| S2 原 `map(t=>t.id)` 已消失；`filter(t=>t.enabled).map(t=>t.id)` 存在 | ✅ | `rg` 仅命中 filter 版本（update.ts:57） |
-| S3 `parseToolList` 保序去重；空串→invalid；非法项入 invalid | ✅ | 逻辑与命令用例覆盖 |
-| S4 `--tools foo` → exit 1 且零写盘；`update <path>` 默认不触 `~/.claude` | ✅ | 命令层用例通过 |
-| S5 既有 update 命令/核心测试全绿（默认零回归） | ✅ | 48 passed；全量 1172 passed |
-| S6 `npx tsc --noEmit` = 0 | ✅ | exit 0 |
+| S1 A 类 8 处无 `1.1.5` 残留 | ✅ | `rg` EXIT=1（无命中） |
+| S2 `package-lock.json` 仅 2 行变更 | ✅ | `git diff --numstat` = `2 2`；未执行 npm install |
+| S3 `config.yaml` 仅 `:7` 单行变更 | ✅ | diff 仅 version 行；注释/defaults/models 未动 |
+| S4 build ×2 幂等 + 生成段 v1.1.6 | ✅ | SHA256 前后一致（IDEMPOTENT=YES）；v1.1.6 命中 6 处（template-loader 4 + update 1 快照 + ...），`当前/currently v1.1.5` 与 `v1.1.5 快照` 无命中 |
+| S5 `--version` == 1.1.6 == package.json | ✅ | 输出 `1.1.6` |
+| S6 CHANGELOG [1.1.6] 位于 [1.1.5] 之上 | ✅ | :5 [1.1.6] / :22 [1.1.5] |
+| S7 ci.yml 两循环含 `$HOME/.claude` 计数 2 | ✅ | `rg -c` = 2；判定语义（三态/sha256sum/diff -u/exit $fail）未改 |
+| S8 `npx tsc --noEmit` = 0 | ✅ | TSC_EXIT=0 |
+| S9 无手改 B 类生成段 | ✅ | build 重跑哈希不变（可复现） |
+| S10 D 类未误改 | ✅ | CHANGELOG/蓝本 `1.1.5` 命中均为历史条目/历史事实行 |
 
 ## 产出文件
-- `src/core/update.ts`
-- `src/commands/update.ts`
-- `test/core/update.test.ts`
-- `test/commands/update.test.ts`
+
+- `package.json`、`package-lock.json`、`.openfeel/config.yaml`
+- `src/core/config.ts`
+- `src/core/templates-data/agents-md/{zh-CN,en}.md`
+- `src/core/templates-data/claude/constraint/{zh-CN,en}.md`
+- `CHANGELOG.md`、`.github/workflows/ci.yml`
+- `src/core/template-loader.ts`、`src/core/update.ts`（B 类，build 重生成）
 
 ## 前置校验结果
-- 方案完整性：通过
-- Phase 合法性：通过（`exec_running`；`current.op` 空，见偏差）
-- 流转合法性：通过（health --quick 退出码 0）
 
-## 门禁命令结果
-- `npx tsc --noEmit` → 0
-- `npx vitest run test/commands/update.test.ts test/core/update.test.ts` → 2 files / 48 tests passed
-- `npm test` → 66 files / 1172 tests passed / 0 failed
+- 方案完整性：通过（6 项必填字段齐全）
+- Phase 合法性：通过（stage 状态 `exec_running`；全局 phase `active` 经 health 判定合法）
+- 流转合法性：通过（`openfeel flow health --quick` 退出码 0）
+- 备注：`flow.json.current.op` 为空（`""`），与「实施 op-002」指令存在名义偏差——phase 为 `exec_running` 且 Feel 已明确指示执行，按 rule 记录偏差后继续。
 
 ## 偏差记录
-- **i18n 键缺失告警（预期）**：`help.update.tools` 与 `update.toolsInvalidTmpl` 由 op-003 落地；op-002 阶段 `t()` 返回键名并打印 `[i18n] Missing key` 告警。属方案预期（op-002 明确「允许暂以键名渲染，不得断言 help 描述文本」），未在测试中断言文本。
-- **`--tools` 校验前置落点**：方案 T4.3 片段将校验块列于「工具选择段」位置，但要求「校验置于路径存在性检查之前」。实现取方案意图：校验块置于 `try` 顶部（`existsSync(targetPath)` 之前），`selectedTools` 计算留在原位复用 `toolsParsed`，满足 fail-fast 与「非法值零写盘」。
-- **commit 与 op 边界「不 commit」冲突**：同 op-001，依 Feel 明确指令执行 commit，未 push、未 commit `docs/**`/`.openfeel/**`。
-- **`setup --tools` 未做**：按方案边界归 op-003（编译顺序约束），本 op 未改 `setupGlobalFramework` 签名。
+
+- 超范围/遗漏产出：无。
+- 跳步违规：无。
+- 名义偏差：`flow.json` 的 `current.op` 为空，未与 op-002 匹配（见前置校验备注）。
+- 补漏项 H-1（`claude/constraint/{zh-CN,en}.md`）已按方案纳入 A 类。

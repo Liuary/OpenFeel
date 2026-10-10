@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-11-Liuary-009.md](2026/10/11/2026-10-11-Liuary-009.md) | Liuary | 阶段 v1.1.6-stage-73 完成 |
 | [2026-10-11-Liuary-008.md](2026/10/11/2026-10-11-Liuary-008.md) | Archiver | **v1.1.6 第五阶段 — stage-73 归档完成（Claude 全局 `settings.json` 注入，反转蓝本 §四）**：新增 `claude-settings.ts`（严格 JSON 读-深合并-写回，注入 `agent:'feel'` + `permissions.defaultMode:'auto'`，用户键 12/12 逐字保留 + 字节幂等；与 jsonc 刻意隔离零复用）+ `applyClaudeSettings` 单一共享函数（setup/update 对称：写前备份 + `backed` / 锁内 read-merge-atomicWrite / 备份失败 `skipped`+`anomaly(backup_failed)` / 严格 JSON 不写盘+`anomaly(parse_failed)` / 幂等 skipped / `updateFileHash`）+ settings 不入 conflicts + i18n **768→774** + Q6 卸载/回滚文档 + **D-SET 定稿**（框架自有键覆盖 + 备份保护）+ auto mode 实测留痕；默认 `~/.claude` 零触。3 op（`1fe29b0`/`8b2fdeb`/`2b5c3e3`）。审查 **passed**（REV-73-001 low 非阻塞 open；REV-73-002/003 closed）；验收 **7/7 通过、0 Bug**。门禁 **67 文件 / 1206 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **774**、`lint kb` 0（380 引用）、build ×2 幂等；`--version`=1.1.5。知识沉淀 **3 条**（patterns 2 + troubleshooting 1）；manual 新增 `core/claude-settings.md`；ADR-008/009。**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-11-Liuary-007.md](2026/10/11/2026-10-11-Liuary-007.md) | Liuary | 阶段 v1.1.6-stage-71 完成 |
 | [2026-10-11-Liuary-006.md](2026/10/11/2026-10-11-Liuary-006.md) | Archiver | **v1.1.6 第四阶段 — stage-71 归档完成（部署编排与命令面）**：把 Claude 内容源接通 `openfeel setup/update`——`global-paths` 5 Claude 函数（`CLAUDE_CONFIG_DIR` 函数体内读 env）+ setup/update 双分支（claude=CLAUDE.md+9 agents+17 skills，**不写 settings.json**）+ **R-5 高危修复**（`supportedTools` claude `enabled:false` + `filter(t=>t.enabled)`，默认 `~/.claude` 零触，隔离 HOME 端到端实证）+ `--tools <list>`（非法值 exit 1 fail-fast）+ **D-CFG** 备份 HOME 外 `global-external/<sha8>/…` fallback + i18n 7 新键/6 修订（761→**768**）；4 op（`e753217`/`7287355`/`62fcb43`/`cdd0953`）。审查 **passed**（REV-71-001/002 low 非阻塞 open）；验收 **7/7 通过、0 Bug**。门禁 **66 文件 / 1189 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **768**、`lint kb` 0（368 引用）、build ×2 幂等、无 `settings.json`；`--version`=1.1.5。知识沉淀 **5 条**（architecture 1 + patterns 4）；manual 补登 `--tools`/claude 路径/D-CFG/双分支；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
@@ -31,8 +32,6 @@
 | [2026-10-03-Liuary-014.md](2026/10/03/2026-10-03-Liuary-014.md) | Liuary | v1.1.4-stage-64.op-003 执行通过 |
 | [2026-10-03-Liuary-013.md](2026/10/03/2026-10-03-Liuary-013.md) | Liuary | v1.1.4-stage-64.op-002 执行通过 |
 | [2026-10-03-Liuary-012.md](2026/10/03/2026-10-03-Liuary-012.md) | Liuary | v1.1.4-stage-64.op-001 执行通过 |
-| [2026-10-03-Liuary-011.md](2026/10/03/2026-10-03-Liuary-011.md) | Liuary | 阶段 v1.1.4-stage-63 完成 |
-| [2026-10-03-Liuary-010.md](2026/10/03/2026-10-03-Liuary-010.md) | Archiver | **v1.1.4-stage-63 归档完成（配置默认值解析与阶段创建继承，问题 1/6，3 op）**——新阶段 status.md 初值由硬编码改为取 `config.yaml.defaults`（`resolveConfigDefaults`，只读 defaults、不读 status.md、不做级联）+ `plan stage add --exec-mode/--auto-advance` 显式覆盖 + `config set/get` `defaults.X ≡ X`（`normalizeConfigKey` 单一来源）+ `config set --sync-stages` 批量同步；**有效值级联优先序零触碰**；门禁 **61 文件 / 1046 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` 730、`lint kb` 0（312 引用）、build 幂等不复活；审查 **passed**（REV-001/002/003 全 low 非阻塞 open；含一次已回滚 cwd 误操作事故披露）；无新 Bug；知识沉淀 2 条（patterns）；**未推进 flow 至 done（由 Feel 执行）／未 push** |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

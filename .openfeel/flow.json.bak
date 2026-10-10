@@ -2,13 +2,13 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-10T18:18:27.336Z",
-    "revision": 806
+    "updated": "2026-10-10T18:45:20.720Z",
+    "revision": 816
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.6-stage-71",
+      "stage": "v1.1.6-stage-73",
       "op": ""
     },
     "retry": 0
@@ -3148,8 +3148,8 @@
     },
     "v1.1.6-stage-71": {
       "name": "v1.1.6-stage-71",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.1.6-stage-69",
         "v1.1.6-stage-70"
@@ -3157,19 +3157,24 @@
       "ops": {},
       "stats": {
         "start_time": "2026-10-10T17:50:20.415Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-10-10T18:24:28.497Z",
+        "duration_ms": 2048082
       }
     },
     "v1.1.6-stage-73": {
       "name": "v1.1.6-stage-73",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [
         "v1.1.6-stage-69",
         "v1.1.6-stage-71"
       ],
-      "ops": {}
+      "ops": {},
+      "stats": {
+        "start_time": "2026-10-10T18:24:33.392Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
     },
     "v1.1.6-stage-72": {
       "name": "v1.1.6-stage-72",
@@ -14892,6 +14897,106 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.1.6-stage-71",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-10-10T18:24:28.497Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-71",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-10T18:24:33.392Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
+        "from": "plan_pending",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T18:24:33.696Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-10-10T18:29:00.311Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
+        "from": "scheme_pending",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T18:29:00.631Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-10T18:33:52.984Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-10T18:42:31.961Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T18:42:32.291Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-10-10T18:45:20.413Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-10-10T18:45:20.720Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-73",
         "from": "test_passed",
         "to": "archiving"
       }

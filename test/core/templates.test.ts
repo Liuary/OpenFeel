@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { getCurrentTemplate } from '../../src/core/templates.js';
 
 const ROOT = process.cwd();
-const SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'opencode', 'skills');
+const SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'skills');
 const SKILLS = ['openfeel-cli-usage', 'openfeel-wizard', 'openfeel-health', 'openfeel-model-check', 'openfeel-recover'];
 
 describe('模板口径（stage-50 op-006 T53/T54/T55）', () => {

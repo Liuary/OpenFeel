@@ -26,13 +26,15 @@ const TEMPLATE_LOADER_PATH = resolve(__dirname, 'src', 'core', 'template-loader.
 const TEMPLATES_DATA_DIR = resolve(__dirname, 'src', 'core', 'templates-data');
 const TEMPLATE_AGENTS_MD_DIR = resolve(TEMPLATES_DATA_DIR, 'agents-md');
 
-// opencode 模板数据源目录（templates-data/opencode/）—— 唯一权威源
+// opencode 模板数据源目录（templates-data/opencode/）—— agents / ADAPTER 权威源（skills 已迁共享源）
 const TEMPLATE_OPENCODE_DIR = resolve(TEMPLATES_DATA_DIR, 'opencode');
 const TEMPLATE_OPENCODE_AGENTS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'agents');
-const TEMPLATE_OPENCODE_SKILLS_DIR = resolve(TEMPLATE_OPENCODE_DIR, 'skills');
 
-// Skill 定义权威源：重指向 templates-data/opencode/skills（不再读 .opencode/skills）
-const SKILLS_DIR = TEMPLATE_OPENCODE_SKILLS_DIR;
+// 中立共享 skill 权威源（templates-data/skills/）—— 两 harness 共用（stage-68 由 opencode/skills 迁入）
+const TEMPLATE_SHARED_SKILLS_DIR = resolve(TEMPLATES_DATA_DIR, 'skills');
+
+// Skill 定义权威源：重指向中立共享源 templates-data/skills（stage-68；不再读 opencode/skills）
+const SKILLS_DIR = TEMPLATE_SHARED_SKILLS_DIR;
 
 // ── 辅助函数 ──────────────────────────────────────────────────────────
 
@@ -255,24 +257,24 @@ function generateOpencodeAgentTemplates() {
 }
 
 /**
- * 步骤 6：遍历 templates-data/opencode/skills/ 子目录，读取各 SKILL.md
+ * 步骤 6：遍历中立共享源 templates-data/skills/ 子目录，读取各 SKILL.md
  * → 转义 → 注入 template-loader.ts 的 OPENCODE_SKILL_DEFINITIONS
  * 数据结构为 Record<string, string>（skill 名 → 内容）
  */
 function generateOpencodeSkillTemplates() {
   console.log('⟳ 正在注入 opencode Skill 定义 → template-loader.ts...');
-  if (!existsSync(TEMPLATE_OPENCODE_SKILLS_DIR)) {
-    console.warn('⚠ templates-data/opencode/skills/ 目录不存在，跳过 opencode Skill 定义注入');
+  if (!existsSync(TEMPLATE_SHARED_SKILLS_DIR)) {
+    console.warn('⚠ templates-data/skills/ 目录不存在，跳过 opencode Skill 定义注入');
     return;
   }
 
-  const skillDirs = readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true })
+  const skillDirs = readdirSync(TEMPLATE_SHARED_SKILLS_DIR, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name);
   const entries = [];
 
   for (const dir of skillDirs) {
-    const skillPath = join(TEMPLATE_OPENCODE_SKILLS_DIR, dir, 'SKILL.md');
+    const skillPath = join(TEMPLATE_SHARED_SKILLS_DIR, dir, 'SKILL.md');
     if (!existsSync(skillPath)) {
       console.warn(`⚠ ${dir}/SKILL.md 不存在，跳过`);
       continue;
@@ -822,10 +824,10 @@ function validateOpencodeSkillDefinitions() {
   const templateEntries = extractTemplatePairs(objText);
 
   const sourceEntries = {};
-  if (existsSync(TEMPLATE_OPENCODE_SKILLS_DIR)) {
-    const dirs = readdirSync(TEMPLATE_OPENCODE_SKILLS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory());
+  if (existsSync(TEMPLATE_SHARED_SKILLS_DIR)) {
+    const dirs = readdirSync(TEMPLATE_SHARED_SKILLS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory());
     for (const dir of dirs) {
-      const skillPath = join(TEMPLATE_OPENCODE_SKILLS_DIR, dir.name, 'SKILL.md');
+      const skillPath = join(TEMPLATE_SHARED_SKILLS_DIR, dir.name, 'SKILL.md');
       if (existsSync(skillPath)) {
         sourceEntries[dir.name] = safeReadFile(skillPath);
       }
@@ -1025,8 +1027,8 @@ function validateSingleSourceConsistency() {
     extractTemplatePairs(matchBraces(extractBetweenAnchors(UPDATE_PATH, 'SKILL_DEFINITIONS'))),
     extractTemplatePairs(matchBraces(extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_SKILL_DEFINITIONS')))));
   // 断言冗余模板树已删除
-  if (existsSync(resolve(TEMPLATES_DATA_DIR, 'agents')) || existsSync(resolve(TEMPLATES_DATA_DIR, 'core-instructions'))) {
-    errors.push('冗余模板树仍存在：templates-data/agents 或 core-instructions 未删除');
+  if (existsSync(resolve(TEMPLATES_DATA_DIR, 'agents')) || existsSync(resolve(TEMPLATES_DATA_DIR, 'core-instructions')) || existsSync(resolve(TEMPLATES_DATA_DIR, 'opencode', 'skills'))) {
+    errors.push('冗余模板树仍存在：templates-data/agents 或 core-instructions 未删除，或 templates-data/opencode/skills 未迁至共享源 templates-data/skills');
   }
   if (errors.length) {
     console.error('  ✗ 单源一致性校验失败');

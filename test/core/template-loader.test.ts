@@ -186,7 +186,7 @@ describe('update_infos 会话启动修复规则（模板静态断言）', () => 
   });
 
   it('openfeel-workspace skill 含提示性约束且不自行修改（REV-902）', () => {
-    const content = read('../../src/core/templates-data/opencode/skills/openfeel-workspace/SKILL.md');
+    const content = read('../../src/core/templates-data/skills/openfeel-workspace/SKILL.md');
     expect(content).toContain('update_infos.md');
     expect(content).toContain('不自行修改');
     expect(content).not.toContain('resolveUpdateInfo');
@@ -394,14 +394,14 @@ describe('stage-53：工作区结构节与 dev_last 索引化（静态断言）'
   });
 
   it('sync-status skill 无 @{username} 提取依赖，改读 flow.json（A6）', () => {
-    const c = read('../../src/core/templates-data/opencode/skills/openfeel-sync-status/SKILL.md');
+    const c = read('../../src/core/templates-data/skills/openfeel-sync-status/SKILL.md');
     expect(c).not.toContain('@{username}');
     expect(c).toContain('flow.json');
   });
 
   it('workspace/recover skill 含 dev_last/ 与 current_archive', () => {
-    const ws = read('../../src/core/templates-data/opencode/skills/openfeel-workspace/SKILL.md');
-    const rc = read('../../src/core/templates-data/opencode/skills/openfeel-recover/SKILL.md');
+    const ws = read('../../src/core/templates-data/skills/openfeel-workspace/SKILL.md');
+    const rc = read('../../src/core/templates-data/skills/openfeel-recover/SKILL.md');
     expect(ws).toContain('current_archive');
     expect(ws).toContain('dev_last/');
     expect(rc).toContain('dev_last/');

@@ -36,6 +36,11 @@ const TEMPLATE_SHARED_SKILLS_DIR = resolve(TEMPLATES_DATA_DIR, 'skills');
 // Skill 定义权威源：重指向中立共享源 templates-data/skills（stage-68；不再读 opencode/skills）
 const SKILLS_DIR = TEMPLATE_SHARED_SKILLS_DIR;
 
+// Claude Code 模板数据源目录（templates-data/claude/）—— agents / constraint 权威源（stage-69 新增）
+const TEMPLATE_CLAUDE_DIR = resolve(TEMPLATES_DATA_DIR, 'claude');
+const TEMPLATE_CLAUDE_AGENTS_DIR = resolve(TEMPLATE_CLAUDE_DIR, 'agents');
+const TEMPLATE_CLAUDE_CONSTRAINT_DIR = resolve(TEMPLATE_CLAUDE_DIR, 'constraint');
+
 // ── 辅助函数 ──────────────────────────────────────────────────────────
 
 /**
@@ -334,6 +339,87 @@ function generateOpencodeConfigTemplates() {
   const objectBody = `const OPENCODE_CONFIG_TEMPLATES: Record<string, Record<string, string>> = {\n${langEntries.join(',\n')}\n};`;
   replaceBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_CONFIG_TEMPLATES', objectBody);
   console.log(`✓ ${langs.length} 个语言的 opencode 配置模板已注入 template-loader.ts`);
+}
+
+/**
+ * 步骤 9：遍历 templates-data/claude/agents/{zh-CN,en}/ 下的 .md 文件
+ * → 转义 → 注入 template-loader.ts 的 CLAUDE_AGENT_TEMPLATES
+ * 数据结构为双层 Record: Record<string, Record<string, string>>（与 OPENCODE_AGENT_TEMPLATES 同构）
+ * 注意：Claude agent 内容按设计为「平台适配后」的独立源，与 opencode 内容不同，仅键集一致。
+ */
+function generateClaudeAgentTemplates() {
+  console.log('⟳ 正在注入 Claude Agent 模板 → template-loader.ts...');
+  if (!existsSync(TEMPLATE_CLAUDE_AGENTS_DIR)) {
+    console.warn('⚠ templates-data/claude/agents/ 目录不存在，跳过 Claude Agent 模板注入');
+    return;
+  }
+
+  const langDirs = readdirSync(TEMPLATE_CLAUDE_AGENTS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  const langEntries = [];
+  let totalAgentCount = 0;
+
+  for (const lang of langDirs) {
+    const langPath = join(TEMPLATE_CLAUDE_AGENTS_DIR, lang);
+    const agentFiles = readdirSync(langPath).filter((f) => f.endsWith('.md'));
+    const entries = [];
+
+    for (const file of agentFiles) {
+      const key = file.replace(/\.md$/, '');
+      let content = safeReadFile(join(langPath, file));
+      // CRLF→LF 归一化，避免行尾泄漏进模板串（跨平台可复现）
+      content = content.replace(/\r\n/g, '\n');
+      const escaped = escapeForTemplateString(content);
+      // 含连字符的 key（如 feel-tester）需要引号
+      const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
+        ? key
+        : `'${key}'`;
+      entries.push(`    ${formattedKey}: \`${escaped}\`,`);
+    }
+
+    // 含连字符的语言键需要引号
+    const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang)
+      ? lang
+      : `'${lang}'`;
+    langEntries.push(`  ${formattedLang}: {\n${entries.join('\n')}\n  }`);
+    totalAgentCount += agentFiles.length;
+  }
+
+  const objectBody = `const CLAUDE_AGENT_TEMPLATES: Record<string, Record<string, string>> = {\n${langEntries.join(',\n')}\n};`;
+  replaceBetweenAnchors(TEMPLATE_LOADER_PATH, 'CLAUDE_AGENT_TEMPLATES', objectBody);
+  console.log(`✓ ${langDirs.length} 个语言, ${totalAgentCount} 个 Claude Agent 模板已注入 template-loader.ts`);
+}
+
+/**
+ * 步骤 10：读取 templates-data/claude/constraint/ 下所有 .md 文件 → 转义
+ * → 注入 template-loader.ts 的 CLAUDE_CONSTRAINT_TEMPLATES
+ * 每个文件名（不含扩展名）作为语言键；数据结构为单层 Record<string, string>
+ */
+function generateClaudeConstraintTemplate() {
+  console.log('⟳ 正在注入 Claude 约束模板 → template-loader.ts...');
+  if (!existsSync(TEMPLATE_CLAUDE_CONSTRAINT_DIR)) {
+    console.warn('⚠ templates-data/claude/constraint/ 目录不存在，跳过 Claude 约束模板注入');
+    return;
+  }
+
+  const mdFiles = readdirSync(TEMPLATE_CLAUDE_CONSTRAINT_DIR).filter((f) => f.endsWith('.md'));
+  const entries = [];
+
+  for (const file of mdFiles) {
+    const lang = file.replace(/\.md$/, '');
+    let content = safeReadFile(join(TEMPLATE_CLAUDE_CONSTRAINT_DIR, file));
+    // CRLF→LF 归一化，避免行尾泄漏进模板串
+    content = content.replace(/\r\n/g, '\n');
+    const escaped = escapeForTemplateString(content);
+    // 含连字符的 lang 键需要引号
+    const formattedLang = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lang) ? lang : `'${lang}'`;
+    entries.push(`  ${formattedLang}: \`${escaped}\``);
+  }
+
+  const objectBody = `const CLAUDE_CONSTRAINT_TEMPLATES: Record<string, string> = {\n${entries.join(',\n')}\n};`;
+  replaceBetweenAnchors(TEMPLATE_LOADER_PATH, 'CLAUDE_CONSTRAINT_TEMPLATES', objectBody);
+  console.log(`✓ ${mdFiles.length} 个语言的 Claude 约束模板已注入 template-loader.ts`);
 }
 
 // ── 校验函数 ──────────────────────────────────────────────────────────
@@ -961,6 +1047,194 @@ function validateOpencodeTemplates() {
   }
 }
 
+/**
+ * 校验 Claude Agent 模板一致性（从 template-loader.ts CLAUDE_AGENT_TEMPLATES 提取）
+ * 多语言支持：遍历所有顶层语言键，逐语言与源目录文件比对（内容一致）
+ * 并追加：① 必填 frontmatter（name / description）；② 阴性门禁（不含 opencode 专有串）
+ */
+function validateClaudeAgentTemplates() {
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'CLAUDE_AGENT_TEMPLATES');
+  const objText = matchBraces(section);
+  if (!objText) {
+    return { ok: false, count: 0, errors: ['无法在 template-loader.ts 中提取 CLAUDE_AGENT_TEMPLATES 对象'] };
+  }
+
+  const errors = [];
+  let totalCount = 0;
+  const foundLangs = new Set();
+
+  // 阴性门禁：Claude agent 模板不得含 opencode 专有串（平台适配后应全部丢弃 / 改写）
+  const forbiddenTokens = ['mode:', 'permission:', 'reasoning_effort:', '.opencode/'];
+
+  // 遍历顶层语言键: 'langKey': { ... } 或 langKey: { ... }
+  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*\{/g;
+  let langMatch;
+
+  while ((langMatch = langRegex.exec(objText)) !== null) {
+    const langKey = langMatch[2] || langMatch[3];
+    foundLangs.add(langKey);
+
+    const innerStart = objText.indexOf('{', langMatch.index);
+    if (innerStart === -1) {
+      errors.push(`[${langKey}] 无法找到语言对象的起始括号`);
+      continue;
+    }
+    const innerEnd = matchBraceAt(objText, innerStart);
+    if (innerEnd === -1) {
+      errors.push(`[${langKey}] 无法找到匹配的闭合括号`);
+      continue;
+    }
+
+    const innerObj = objText.slice(innerStart, innerEnd + 1);
+    const templateEntries = extractTemplatePairs(innerObj);
+    totalCount += Object.keys(templateEntries).length;
+
+    // 与对应语言源目录比对内容（复用 compareTemplatePairs）
+    const langDir = join(TEMPLATE_CLAUDE_AGENTS_DIR, langKey);
+    const sourceEntries = {};
+    if (existsSync(langDir)) {
+      const files = readdirSync(langDir).filter((f) => f.endsWith('.md'));
+      for (const file of files) {
+        const key = file.replace(/\.md$/, '');
+        sourceEntries[key] = safeReadFile(join(langDir, file));
+      }
+    } else {
+      errors.push(`[${langKey}] 源目录不存在: ${langDir}`);
+    }
+
+    const result = compareTemplatePairs(templateEntries, sourceEntries);
+    if (result.errors.length > 0) {
+      errors.push(...result.errors.map(e => `[${langKey}] ${e}`));
+    }
+
+    // 必填 frontmatter + 阴性门禁（逐 agent 校验注入常量，非源文件直读）
+    for (const [key, content] of Object.entries(templateEntries)) {
+      if (!/^name:\s*\S+/m.test(content)) {
+        errors.push(`[${langKey}] ${key}: 缺少必填字段 name`);
+      }
+      if (!/^description:\s*\S+/m.test(content)) {
+        errors.push(`[${langKey}] ${key}: 缺少必填字段 description`);
+      }
+      for (const token of forbiddenTokens) {
+        if (content.includes(token)) {
+          errors.push(`[${langKey}] ${key}: 含 opencode 专有串 ${token}`);
+        }
+      }
+    }
+
+    langRegex.lastIndex = innerEnd + 1;
+  }
+
+  // 检查有源目录但模板中无对应语言键的情况
+  if (existsSync(TEMPLATE_CLAUDE_AGENTS_DIR)) {
+    const dirs = readdirSync(TEMPLATE_CLAUDE_AGENTS_DIR, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+    for (const dir of dirs) {
+      if (!foundLangs.has(dir)) {
+        errors.push(`源目录 '${dir}' 存在但模板中缺少对应的语言键`);
+      }
+    }
+  }
+
+  return { ok: errors.length === 0, count: totalCount, errors };
+}
+
+/**
+ * 校验 Claude 约束模板（CLAUDE.md）一致性（从 template-loader.ts CLAUDE_CONSTRAINT_TEMPLATES 提取）
+ * 单层 Record：遍历所有语言键，逐语言与源文件逐行归一化比对
+ */
+function validateClaudeConstraintTemplate() {
+  const section = extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'CLAUDE_CONSTRAINT_TEMPLATES');
+  const errors = [];
+  let totalCount = 0;
+
+  // 匹配所有语言条目: 'zh-CN': `...` 或 en: `...`
+  const langRegex = /(?:[\s,])(?:(['"])([a-zA-Z_][\w-]*)\1|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*`((?:[^`\\]|\\.)*)`/g;
+  let match;
+  while ((match = langRegex.exec(section)) !== null) {
+    const langKey = match[2] || match[3];
+    const decoded = unescapeTemplateString(match[4]);
+
+    const sourcePath = join(TEMPLATE_CLAUDE_CONSTRAINT_DIR, `${langKey}.md`);
+    if (!existsSync(sourcePath)) {
+      errors.push(`[${langKey}] 源文件不存在: ${sourcePath}`);
+      continue;
+    }
+    const source = safeReadFile(sourcePath);
+
+    const normD = decoded.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const normS = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    if (normD !== normS) {
+      const dLines = normD.split('\n');
+      const sLines = normS.split('\n');
+      for (let i = 0; i < Math.max(dLines.length, sLines.length) && errors.length < 5; i++) {
+        if (dLines[i] !== sLines[i]) {
+          const maxLen = 60;
+          const tmpl = (dLines[i] || '').length > maxLen
+            ? (dLines[i] || '').slice(0, maxLen) + '...'
+            : (dLines[i] || '');
+          const src = (sLines[i] || '').length > maxLen
+            ? (sLines[i] || '').slice(0, maxLen) + '...'
+            : (sLines[i] || '');
+          errors.push(`[${langKey}] 第 ${i + 1} 行: 模板="${tmpl}", 源文件="${src}"`);
+        }
+      }
+      if (dLines.length !== sLines.length) {
+        errors.push(`[${langKey}] 行数不同: 模板 ${dLines.length} 行, 源文件 ${sLines.length} 行`);
+      }
+    }
+    totalCount++;
+  }
+
+  if (totalCount === 0) {
+    return { ok: false, count: 0, errors: ['无法在 template-loader.ts 中提取任何 Claude 约束语言条目'] };
+  }
+  return { ok: errors.length === 0, count: totalCount, errors };
+}
+
+/**
+ * 校验 Claude 模板一致性（Agent + 约束两类）
+ */
+function validateClaudeTemplates() {
+  console.log('');
+  console.log('⟳ 正在校验 Claude 模板一致性...');
+
+  const agentResult = validateClaudeAgentTemplates();
+  const constraintResult = validateClaudeConstraintTemplate();
+
+  const results = [
+    { name: `Claude Agent 定义 (${agentResult.count} 个, template-loader.ts)`, ok: agentResult.ok, errors: agentResult.errors },
+    { name: `Claude 约束模板 (${constraintResult.count} 个, template-loader.ts)`, ok: constraintResult.ok, errors: constraintResult.errors },
+  ];
+
+  const passed = results.filter((r) => r.ok).length;
+  const total = results.length;
+
+  if (passed === total) {
+    console.log(`  ✓ Claude 模板一致性校验通过 (${total}/${total})`);
+    for (const r of results) {
+      console.log(`    ✓ ${r.name} — 一致`);
+    }
+  } else {
+    console.error(`  ✗ Claude 模板一致性校验失败 (${passed}/${total})`);
+    for (const r of results) {
+      if (r.ok) {
+        console.log(`    ✓ ${r.name} — 一致`);
+      } else {
+        console.error(`    ✗ ${r.name} — 不一致`);
+        if (r.errors && r.errors.length > 0) {
+          for (const e of r.errors) {
+            console.error(`      ${e}`);
+          }
+        }
+      }
+    }
+    process.exit(1);
+  }
+}
+
 // ── 单源一致性校验（N2：两对注入对象键集与内容一致）─────────────────────
 
 /**
@@ -984,6 +1258,23 @@ function assertConsistent(nameA, nameB, entriesA, entriesB) {
     if (a !== b) errors.push(`${nameA}.${k} 内容 ≠ ${nameB}.${k}`);
   }
   return errors;
+}
+
+/**
+ * 断言两组键值对象的键集一致（不比较内容）—— 用于 Claude（平台适配致内容不同）
+ * @param {string} nameA 对象 A 名称（报错用）
+ * @param {string} nameB 对象 B 名称
+ * @param {Object.<string, string>} entriesA 对象 A 条目
+ * @param {Object.<string, string>} entriesB 对象 B 条目
+ * @returns {string[]} 错误列表（空表示键集一致）
+ */
+function assertKeySetsEqual(nameA, nameB, entriesA, entriesB) {
+  const keysA = Object.keys(entriesA).sort();
+  const keysB = Object.keys(entriesB).sort();
+  if (JSON.stringify(keysA) !== JSON.stringify(keysB)) {
+    return [`${nameA} 键集(${keysA.join(',')}) ≠ ${nameB} 键集(${keysB.join(',')})`];
+  }
+  return [];
 }
 
 /**
@@ -1026,6 +1317,9 @@ function validateSingleSourceConsistency() {
   errors.push(...assertConsistent('SKILL_DEFINITIONS', 'OPENCODE_SKILL_DEFINITIONS',
     extractTemplatePairs(matchBraces(extractBetweenAnchors(UPDATE_PATH, 'SKILL_DEFINITIONS'))),
     extractTemplatePairs(matchBraces(extractBetweenAnchors(TEMPLATE_LOADER_PATH, 'OPENCODE_SKILL_DEFINITIONS')))));
+  // Claude agents 键集 == opencode agents 键集（均 9，含 feel；内容按设计不同，仅断言键集）
+  errors.push(...assertKeySetsEqual('CLAUDE_AGENT_TEMPLATES', 'AGENT_TEMPLATES',
+    extractAllAgentEntries('CLAUDE_AGENT_TEMPLATES'), extractAllAgentEntries('AGENT_TEMPLATES')));
   // 断言冗余模板树已删除
   if (existsSync(resolve(TEMPLATES_DATA_DIR, 'agents')) || existsSync(resolve(TEMPLATES_DATA_DIR, 'core-instructions')) || existsSync(resolve(TEMPLATES_DATA_DIR, 'opencode', 'skills'))) {
     errors.push('冗余模板树仍存在：templates-data/agents 或 core-instructions 未删除，或 templates-data/opencode/skills 未迁至共享源 templates-data/skills');
@@ -1035,7 +1329,7 @@ function validateSingleSourceConsistency() {
     for (const e of errors) console.error(`      ${e}`);
     process.exit(1);
   }
-  console.log('  ✓ 单源一致性校验通过（两对对象键集与内容一致）');
+  console.log('  ✓ 单源一致性校验通过（两对对象键集与内容一致 + Claude 键集一致）');
 }
 
 // ── 步骤 8：.opencode/ 自举实例重生成（已于 stage-55 移除）──────────────
@@ -1051,7 +1345,7 @@ try {
   rmSync('dist', { recursive: true, force: true });
   console.log('✓ dist/ 已清理');
 
-  // 六步管线：注入动态内容到 template-loader.ts（不再注入 templates.ts 和 update.ts 的模板段）
+  // 八步管线：注入动态内容到 template-loader.ts（不再注入 templates.ts 和 update.ts 的模板段）
   // core-instructions 模板管线已退役（v1.1.1：core.md 并入全局 AGENTS.md，AGENTS_MD_TEMPLATES 承载）
   generateAgentDefinitions();
   generateAgentsMdTemplate();
@@ -1059,6 +1353,8 @@ try {
   generateOpencodeAgentTemplates();
   generateOpencodeSkillTemplates();
   generateOpencodeConfigTemplates();
+  generateClaudeAgentTemplates();
+  generateClaudeConstraintTemplate();
 
   // 执行 TypeScript 编译
   execSync('npx tsc', { stdio: 'inherit' });
@@ -1069,6 +1365,7 @@ try {
   // 校验模板一致性
   validateTemplates();
   validateOpencodeTemplates();
+  validateClaudeTemplates();
   validateSingleSourceConsistency();
 } catch (err) {
   console.error(`✗ 构建失败: ${err.message}`);

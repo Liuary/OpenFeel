@@ -1,73 +1,56 @@
 # 自测报告 — op-001
 
-- **执行时间**：2026-10-03 15:21
+- **执行时间**：2026-10-10
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（首次）
+- **重试次数**：第 1 次
+- **commit sha**：`89978e73663b3b5b87c5a3dfd20a3537f3bf7ac7`（`89978e7`）
 
 ## 执行摘要
-按 TDD 完成 `v1.1.5-stage-67.op-001`：新增被动部署提示薄适配器 `emitGlobalDeployCheck` 并接入 `runCli()`/`startRepl()`，新增 update 域 2 条 i18n 文案（zh/en 对称），[REV-003] 修正 `isTruthyEnv` JSDoc 措辞（仅注释）；全部 12 项自测与 6 项门禁通过。
+17 个 skill 权威源由 `templates-data/opencode/skills/` 经 `git mv` 迁至中立共享源 `templates-data/skills/`（逐字节不变）；`build.js` 常量/读点/校验/冗余树断言全部重指共享源；两测试文件 5 处旧路径同步。全部 12 项自测通过，`npm run build` 成功且幂等。
 
 ## 实施步骤完成情况
-- [x] T1.1：新建 `src/cli/deploy-check-output.ts`（`emitGlobalDeployCheck` / `DeployCheckOutputOptions`，门控→检测→stderr 渲染，异常全静默，每进程一次）
-- [x] T2.1：`zh-CN.ts` update 域新增 `globalStaleWarnTmpl` / `globalMissingWarnTmpl`
-- [x] T2.2：`en.ts` update 域新增同两键（成对登记）
-- [x] T2.3：mismatch 文案含 `{deployed}`/`{cli}`，两条均含 `openfeel setup`
-- [x] T3.1：`cli/index.ts` 顶部 import + `runCli()` 在 `program.parse()` 前调用 `emitGlobalDeployCheck()`
-- [x] T3.2：`cli/repl.ts` 顶部 import + `startRepl()` 在 `console.log(repl.welcome)` 后调用一次
-- [x] T4.1：`deployment-check.ts` `isTruthyEnv` JSDoc 修正（仅注释）
-- [x] T4.2：`shouldRunDeployCheck` 无行为/签名/导出变更
-- [x] T4.3：`git diff` 仅注释行；`deployment-check.test.ts` 19 用例全绿
-- [x] T5.A1：新建 `test/cli/deploy-check-output.test.ts`（隔离 HOME，T5.1~T5.10 + 异常）
-- [x] T5.B1：`test/cli/index.test.ts` 追加 runCli 接入断言（mock 适配器 + parse 顺序）
-- [x] T5.B2：`test/cli/repl.test.ts` 追加 startRepl 接入断言（mock 适配器 + 保留 readline 导出仅替换 createInterface）
-- [x] T5.B3：`npx vitest run test/cli/` 全绿
+- [x] T1.1 `git mv src/core/templates-data/opencode/skills src/core/templates-data/skills`（EXIT=0）
+- [x] T1.2 迁移完整：共享源 17 目录；旧树 `Test-Path=False`；`git status` 显示纯 `R`（17 行）
+- [x] T1.3 `templates-data/opencode/` 下仅剩 `agents`、`ADAPTER.en.md`、`ADAPTER.zh-CN.md`
+- [x] T1.4 `git diff --cached --numstat --find-renames`：17 行内容列均 `0|0`（纯重命名）
+- [x] T2.1 常量块重指：删除 `TEMPLATE_OPENCODE_SKILLS_DIR`，新增 `TEMPLATE_SHARED_SKILLS_DIR`，`SKILLS_DIR = TEMPLATE_SHARED_SKILLS_DIR`
+- [x] T2.2 步骤 6 `generateOpencodeSkillTemplates` 4 处改指共享源（`:258` 注释、`:264/265`、`:269`、`:275`）
+- [x] T2.3 `validateOpencodeSkillDefinitions` 3 处改指共享源（`:825/826/828`）
+- [x] T2.4 穷举校验：`TEMPLATE_OPENCODE_SKILLS_DIR` 0；`SKILLS_DIR = TEMPLATE_SHARED_SKILLS_DIR` 1 处
+- [x] T3.1 冗余树断言扩展：`validateSingleSourceConsistency` 加 `resolve(TEMPLATES_DATA_DIR,'opencode','skills')`，文案显式提示迁共享源
+- [x] T2.5 `test/core/templates.test.ts:11` 改指共享源
+- [x] T2.6 `test/core/template-loader.test.ts` 4 处（`:189/:397/:403/:404`）改指共享源
+- [x] T2.7 全仓核验：`src/` 与 `test/` 下旧路径 0 命中
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| S1 决定性：mismatch+TTY 普通命令 → stderr 含 `openfeel setup` 且退出码不变（T5.1） | ✅ | 断言含 1.0.0/1.1.5 与锚点；`process.exitCode` 前后相等 |
-| S2 一致/非 TTY/--json/--quiet/--version/--help/部署类/CI/NO_UPDATE_CHECK 静默（T5.2~T5.7b） | ✅ | 全部锚点缺席 |
-| S3 缺失 → 提示；unknown → 静默（T5.8/T5.9） | ✅ | unknown 仅断言锚点缺席（REV-004） |
-| S4 每进程一次（T5.10） | ✅ | 同一 warned 连续两次命中数 = 1 |
-| S5 检测异常 → 静默不抛（T5.1b） | ✅ | `not.toThrow()` + 锚点缺席 |
-| S6 接入点：runCli parse 前、startRepl welcome 后各一次（T5.B1/B2） | ✅ | 以 `invocationCallOrder` 断言顺序 |
-| S7 [REV-003] 仅注释行变更、行为零变化（T4.3） | ✅ | diff 仅 JSDoc 1 行改 1 行；deployment-check 19 用例全绿 |
-| S8 [REV-004] 静默断言仅锚定部署提示文案 | ✅ | 全用 `PROMPT_MARKER`，无 `stderr === ''` 全空断言 |
-| S9 只写 stderr、不写盘、不改退出码 | ✅ | 代码走查：仅 `process.stderr.write`；未调 `process.exitCode`；T5.1/T5.9 |
-| S10 i18n 两表成对（各 2 键） | ✅ | `lint i18n` = 755（753+2） |
-| S11 未在 cli/index.ts 顶层注册 commander 钩子 | ✅ | 仅新增 import 与 runCli 内显式调用 |
-| S12 测试隔离 HOME，零触碰真实 `~/.openfeel` | ✅ | `vi.mock('node:os')` + `mkdtemp` |
+| S1 迁移完整（17 目录、旧树不存在） | ✅ | 17/17；`Test-Path=False` |
+| S2 纯重命名（内容列 0） | ✅ | 17 行 `0|0` |
+| S3 无 `TEMPLATE_OPENCODE_SKILLS_DIR` 残留 + 赋值 1 处 | ✅ | 0 / 1（`build.js:37`） |
+| S4 双注入对象名不变 | ✅ | `update.ts:102`、`template-loader.ts:6508` |
+| S5 冗余树断言覆盖 `opencode/skills` | ✅ | `build.js:1028-1029` |
+| S6 测试旧路径清零（src/test 0） | ✅ | rg 无命中 |
+| S7 `npm run build` 成功 | ✅ | 校验 3/3 + opencode 3/3 + 单源一致性通过 |
+| S8 build 幂等 | ✅ | 两次 build 后 `template-loader.ts`/`update.ts` 无漂移 |
+| S9 零内容变更（仅 `R`，无 `M`） | ✅ | 17 R，无 M |
+| S10 局部测试全绿 | ✅ | Test Files 2 passed / Tests 48 passed |
+| S11 `npx tsc --noEmit` = 0 | ✅ | TSC_EXIT=0 |
+| S12 `lint i18n` = 761 | ✅ | `✅ 761 键一致`；`--version`=1.1.5 |
 
 ## 产出文件
-- `src/cli/deploy-check-output.ts`（新增）
-- `src/cli/index.ts`
-- `src/cli/repl.ts`
-- `src/core/i18n-data/zh-CN.ts`
-- `src/core/i18n-data/en.ts`
-- `src/core/deployment-check.ts`（仅 JSDoc）
-- `test/cli/deploy-check-output.test.ts`（新增）
-- `test/cli/index.test.ts`
-- `test/cli/repl.test.ts`
-
-## 门禁实测
-| 命令 | 结果 |
-|------|------|
-| `npx vitest run test/cli/deploy-check-output.test.ts test/cli/index.test.ts test/cli/repl.test.ts test/core/deployment-check.test.ts` | 4 文件 / 37 用例 全绿 |
-| `npm test` | 64 文件 / **1127 用例** / 0 skipped / 0 failed |
-| `npx tsc --noEmit` | 退出码 0，无输出 |
-| `node bin/openfeel.js lint i18n` | **755 键一致**（753+2） |
-| `node bin/openfeel.js lint kb` | 0 过期（检 333 引用） |
-| `npm run build` | 成功，模板一致性 3/3 通过，未产生额外生成段改动 |
-| `node bin/openfeel.js --version` | 1.1.4（版本收口归 op-003） |
+- `src/core/templates-data/skills/**`（新增 17 个 `SKILL.md`，内容逐字节不变）
+- `src/core/templates-data/opencode/skills/**`（移除）
+- `build.js`（常量重指 + 步骤 6/校验读点 + 冗余树断言扩展）
+- `test/core/templates.test.ts`（`:11` 路径同步）
+- `test/core/template-loader.test.ts`（`:189/:397/:403/:404` 路径同步）
 
 ## 前置校验结果
-- 方式：`openfeel flow health --quick`（CLI）+ 手动读 `.openfeel/flow.json` + 方案前置清单实测
-- 方案完整性：通过（目标与范围/实施步骤/产出文件/自测清单/阶段/最多重试 齐全）
-- Phase 合法性：通过（`flow current`：阶段 state=exec_running，current=v1.1.5-stage-67.op-001；`health --quick` 报告 `v1.1.5-stage-67.phase=exec_running，合法`）
-- 流转合法性：通过（`flow health --quick` 退出码 0，无 error；pipeline.phase=active 被判定合法）
-- 前置实测：`flow current` op 匹配；目标文件不存在（False）；`rg emitGlobalDeployCheck|deploy-check-output src` = 0；stage-66 三导出齐全；lint i18n 基线 753
+- 方案完整性：通过（6 必填字段齐备）
+- Phase 合法性：通过（stage-68 `exec_running`；`openfeel flow health --quick` EXIT=0）
+- 流转合法性：通过（`openfeel flow health --quick` 通过）
 
 ## 偏差记录
-- 无跳步违规。
-- 无超范围产出（`git diff` 确认仅方案声明的 9 个文件；`flow.json`/`checkpoints`/`stage-66/status.md` 由 Feel 管理，本 op 未触碰）。
-- 实现偏离方案的一处增强（非减项）：T5.B2 的 `node:readline` mock 采用「保留 actual 导出、仅替换 `createInterface`」而非方案示例的整体 mock，以避免 inquirer 依赖链加载期缺导出；断言与语义与方案一致。
+- **`flow.json` `current.op` 为空**（方案前置校验预期 `op-001`）；Feel 已明确指示执行 op-001/op-002，phase 为合法 `exec_running`，故继续并在自测报告注明。未改 `flow.json`。
+- **T2.4 与 T3.1 轻微张力**：T2.4 预期 `rg "templates-data/opencode/skills" build.js`=0，但 T3.1 要求断言文案显式提示该旧路径，故 `build.js:1031` 断言文案中出现 1 处该字符串（非代码读点）。以 T3.1 明文要求为准。
+- **`template-loader.test.ts` 4 处额外路径同步**：计划仅列 `templates.test.ts:11`，源码核验发现 `template-loader.test.ts` 另有 4 处旧路径直读，按 op-001 决策表 #1「以源码为准，全部 5 处同步」处理。

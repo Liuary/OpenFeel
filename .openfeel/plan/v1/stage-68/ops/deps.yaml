@@ -1,0 +1,78 @@
+# stage-68 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.6-stage-68
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-10"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.5-stage-67
+    type: soft
+    status: done
+    reason: "承接 v1.1.5 基线（CLI 1.1.5 / `lint i18n` 761 / `lint kb` 0 / `setup --check` 已落地）。本阶段不新增 i18n 键、不改版本。"
+  - downstream: v1.1.6-stage-69
+    type: hard
+    note: "stage-68 是 69/70/71 的公共前提（模板管线多源化）。交付单一权威源 `src/core/templates-data/skills/`（17 个 `SKILL.md`）；注入对象名 `SKILL_DEFINITIONS`/`OPENCODE_SKILL_DEFINITIONS` 不变；`templates-data/opencode/skills` 必须不存在（防复活）。stage-69 在其上建立 Claude 注入锚点，stage-70 在该共享源做中立化改写。"
+  - downstream: v1.1.6-stage-70
+    type: hard
+    note: "中立化改写须以 `templates-data/skills/<name>/SKILL.md` 为唯一权威源；不得回写 `opencode/skills`。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 CI、不直写 `flow.json`**；phase 推进与归档由 Feel/归档官执行。"
+
+# 本阶段 2 op：op-001 → op-002（hard）。
+# 覆盖 T1/T2/T3（迁移 + build 读点/校验/断言 + 测试路径同步）+ T4/T5（不变量测试 + 全门禁 + 报告）。
+# 不变量：
+#   ① 零内容变更（17 个 SKILL.md 逐字节不变）；
+#   ② 双注入对象 SKILL_DEFINITIONS / OPENCODE_SKILL_DEFINITIONS 键名与数据不变（仅数据源改共享）；
+#   ③ 冗余树断言覆盖 templates-data/opencode/skills（防旧树复活）；
+#   ④ `templates-data/opencode/skills` 迁移后必须不存在；
+#   ⑤ 不新增依赖；不改 template-loader.ts/update.ts 生成段结构；不接 CLI；不改版本；不直写 flow.json。
+ops:
+  op-001:
+    file: op-001.md
+    title: "skill 源迁移 + build 读点/校验/冗余树断言重指（零内容变更）"
+    produces:
+      - src/core/templates-data/skills
+      - src/core/templates-data/opencode/skills
+      - build.js
+      - test/core/templates.test.ts
+      - test/core/template-loader.test.ts
+    deps: []
+    notes: "覆盖 T1 + T2 + T3。**T1** `git mv src/core/templates-data/opencode/skills src/core/templates-data/skills`（17 目录整体迁移，纯重命名，内容逐字节不变；迁移后 `opencode/skills` 必须不存在）。**T2** `build.js`：`:32` 常量 `TEMPLATE_OPENCODE_SKILLS_DIR` → 新增 `TEMPLATE_SHARED_SKILLS_DIR = resolve(TEMPLATES_DATA_DIR,'skills')`（删死常量），`:35` `SKILLS_DIR = TEMPLATE_SHARED_SKILLS_DIR`（步骤 4 `:180/185/191` 与 `validateSkillDefinitions` `:679/680/682` 随变量自动生效）；步骤 6 `generateOpencodeSkillTemplates` `:258/264/269/275` 与 `validateOpencodeSkillDefinitions` `:825/826/828` 显式改读共享源常量（注入对象 `OPENCODE_SKILL_DEFINITIONS` 名/锚点/结构不变）；测试路径同步：`test/core/templates.test.ts:11` + `test/core/template-loader.test.ts:189/397/403/404`（源码核验新增 4 处，计划仅列 1 处）。**T3** 冗余树断言 `build.js:1028-1030` 扩为含 `resolve(TEMPLATES_DATA_DIR,'opencode','skills')`，文案显式提示已迁共享源。门禁（局部）：`npm run build` **成功** + 局部 vitest 全绿 + `tsc` 0 + `lint i18n` 761 + `lint kb` 0 + `--version` 1.1.5。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "迁移不变量测试 + 全门禁 + 阶段报告"
+    produces:
+      - test/core/templates-migration.test.ts
+      - .openfeel/users/Liuary/log/2026/10/10/2026-10-10-001.md
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T4 + T5。**T4** 新建 `test/core/templates-migration.test.ts`（独立文件，与 op-001 文件面不相交）：T4.1 共享源 17 目录且各含 `SKILL.md`；T4.2 `Object.keys(SKILL_DEFINITIONS)` ≡ `listOpencodeSkillNames()`（= `OPENCODE_SKILL_DEFINITIONS` 键）且均为 17；T4.3 阴性断言 `templates-data/opencode/skills` **不存在**；T4.4 注入内容 ≡ 共享源逐字节（行尾归一化后）。**T5** 全门禁：`npm test` 0 skipped / 0 failed + `npx tsc --noEmit` 0 + `npm run build` ×2 幂等（`.opencode/**` 与冗余树不复活）+ `lint i18n` **761**（不新增键）+ `lint kb` 0 + `--version` **1.1.5**（不改版本）。**阶段报告** 落私域日志 `2026-10-10-001.md`（含实测门禁值与零内容变更佐证）。注：`bin/openfeel.js` 读 `dist/`，lint/version 须在 build 之后。**不新增/修改生产源码、不新增 i18n 键、不改版本、不接 CLI。**"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付 stage-69/70/71 复用）
+downstream_contracts:
+  - name: "src/core/templates-data/skills/"
+    change: "**新增**（由 `templates-data/opencode/skills/` 整体迁入）：17 个 skill 的**中立共享权威源**（`<name>/SKILL.md`）。两 harness 共用；stage-70 在此做中立化改写，stage-69/71 的 Claude 部署从此源消费。内容迁移当次**逐字节不变**。"
+  - name: "src/core/templates-data/opencode/skills/"
+    change: "**移除**：迁移后**必须不存在**。`build.js` 冗余树断言（`validateSingleSourceConsistency`）覆盖此路径防复活。"
+  - name: "注入对象"
+    change: "**名称与数据不变**：`SKILL_DEFINITIONS`（`src/core/update.ts`，步骤 4 读 `SKILLS_DIR`）与 `OPENCODE_SKILL_DEFINITIONS`（`src/core/template-loader.ts`，步骤 6 读 `TEMPLATE_SHARED_SKILLS_DIR`）。键集均为 17 且内容一致（build 单源一致性断言 + stage-68 T4.2 复核）。**不合并两对象。**"
+  - name: "build.js 常量"
+    change: "`TEMPLATE_OPENCODE_SKILLS_DIR`（死常量）→ 删；新增 `TEMPLATE_SHARED_SKILLS_DIR = resolve(TEMPLATES_DATA_DIR, 'skills')`；`SKILLS_DIR = TEMPLATE_SHARED_SKILLS_DIR`。`TEMPLATE_OPENCODE_DIR` / `TEMPLATE_OPENCODE_AGENTS_DIR` 不变（agents、ADAPTER 仍属 opencode 源）。"
+  - name: "i18n 基线"
+    change: "**不变**：761（本阶段不新增键）。"
+  - name: "版本"
+    change: "**不变**：`package.json.version` = 1.1.5（v1.1.6 收口归 stage-72）。"

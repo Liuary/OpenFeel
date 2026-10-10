@@ -379,6 +379,15 @@ init.ts（deployOpencode 部署）  vs  update.ts（增量更新）
 
 **参见：** v1.1.0-stage-36 op-001/op-004、kb/troubleshooting.md #双层模板源发散、kb/patterns.md #构建脚本多语言循环生成模式、#跨平台行尾归一化模式
 
+> **更新于 2026-10-10（v1.1.6-stage-68）**：**skill 权威源迁至中立共享源**——17 个 skill 由 `templates-data/opencode/skills/` 整体迁至 `templates-data/skills/`（`git mv` 纯重命名，**逐字节不变**），为 v1.1.6「多 harness 并存」铺路（Claude Code 适配器将复用同一 skill 源；**agents 与约束文件仍按 harness 独立源**）。单源语义演进为：agent/instruction 源自 `templates-data/opencode/`，**skill 源自中立共享源 `templates-data/skills/`**。
+>
+> - **build.js 读点重指**：删死常量 `TEMPLATE_OPENCODE_SKILLS_DIR` → 新增 `TEMPLATE_SHARED_SKILLS_DIR = resolve(TEMPLATES_DATA_DIR, 'skills')`；`SKILLS_DIR = TEMPLATE_SHARED_SKILLS_DIR`（步骤 4 注入 `SKILL_DEFINITIONS` 与 `validateSkillDefinitions` 随变量自动生效）；步骤 6 `generateOpencodeSkillTemplates` 4 处 + `validateOpencodeSkillDefinitions` 3 处**显式改读共享源常量**（注入对象 `OPENCODE_SKILL_DEFINITIONS` 名/锚点/结构不变）。
+> - **双注入对象仍不合并**：`SKILL_DEFINITIONS`（`update.ts`，供 `openfeel update`）与 `OPENCODE_SKILL_DEFINITIONS`（`template-loader.ts`，供 `openfeel init`）消费方不同，**仅数据源改共享、对象不合并**（承 D36-4）。
+> - **防复活断言扩展**：`validateSingleSourceConsistency` 的冗余树断言由「`templates-data/agents` / `core-instructions`」扩为**含 `templates-data/opencode/skills`**——迁移后旧树若复活，`npm run build` 立即报错（**实测临时复活 → EXIT=1，复删后通过**）。`templates-data/opencode/` 保留 `agents` + `ADAPTER.{en,zh-CN}.md`（合法现役源，未被断言纳入）。
+> - **零内容变更验证**：`git diff -M --numstat` 17 个 `SKILL.md` 内容列全 `0/0`（纯重命名）+ `npm run build` ×2 幂等 + 生成侧「注入内容 ≡ 共享源逐字节」（行尾归一化）；测试路径 5 处同步（`templates.test.ts:11` + `template-loader.test.ts:189/397/403/404`）+ 新增 `templates-migration.test.ts`（T4.1~T4.4）。
+> - **实证**：v1.1.6-stage-68（commits `89978e7`/`966bd4b`）；`npm test` 65 文件 / 1139 用例 0 skipped、`tsc` 0、`lint i18n` 761、`lint kb` 0、build ×2 幂等不复活。
+> - **参见**：v1.1.6-stage-68 plan/ops、`kb/patterns.md #零行为变更改造的验证方法`（零内容变更变体）、`docs/claude-code-adapter-plan.md`（多 harness 蓝本）。
+
 ## [+] 全局部署架构：框架资产全局化 + 项目精简 + 双 state (2026-09-25)
 
 v1.1.0-stage-37（D1/P2 全量落地）将框架部署目标从「逐项目部署」切换到「全局部署」，并落地框架约束走 instructions 机制：

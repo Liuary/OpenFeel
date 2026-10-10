@@ -12,6 +12,7 @@
 | [v1.1.3](v1/v1.1.3/plan.md) | CLI 输出编码 `auto` 语义修正（方案 A：win32 非 TTY 直通 UTF-8 + GBK 仅显式 + 删 chcp 死代码） | 已归档（stage-61 单阶段闭环 / 发布就绪） |
 | [v1.1.4](v1/v1.1.4/plan.md) | 第四轮工具链反馈修复（状态/相位单一事实源 + 创建值继承 + op 注册一致 + checkpoint 精准恢复） | **已完成**（**stage-62~65 全部归档 = 版本收官**，7 问题全修复；版本 1.1.4 收口 / 发布就绪） |
 | [v1.1.5](v1/v1.1.5/plan.md) | 消除「升级 CLI 后静默加载旧全局部署」缺口（版本事实源 + 被动检测提示 + `setup --check`） | **已完成**（**stage-66~67 全部归档 = M22 / M23 达成 / 版本收官**，缺口端到端消除；版本 1.1.5 收口 / 发布就绪） |
+| [v1.1.6](v1/v1.1.6/plan.md) | Claude Code 适配器（多 harness 并存）：skills 共享中立源 + Claude 9 agent/约束 + `--tools` + `settings.json` 注入 + 版本 1.1.6 | **进行中**（6 阶段：`stage-68`~`stage-73`；**执行顺序 68→69→70→71→73→72**；**stage-68 已归档 = M24 done**，后续 stage-69/70 并行） |
 | [v0.5](v0/v0.5/index.md) | 工具链 + 协作增强 + 质量保障（v0.5.0 ~ v0.5.11） | 全部归档 |
 | [v0.4](v0/v0.4/index.md) | 工程精简 + Agent 深化 + 国际化（v0.4.0 ~ v0.4.7） | 全部归档 |
 | [v0.3](v0/v0.3/plan.md) / [v0.3.1](v0/v0.3/v0.3.1/v0.3.1-stage-01/status.md) / [v0.3.2](v0/v0.3/v0.3.2/v0.3.2-stage-01/status.md) | 早期版本（生产加固 / 补丁修正 / 收尾补丁） | 全部归档 |
@@ -90,6 +91,12 @@
 | v1.1.4-stage-65 | v1.1.4（checkpoint 选择性恢复与阶段复位 + 版本 1.1.4 收口 — 问题 3：`restore --stage/--dry-run` + `flow stage reset` + 恢复路径三件套 + 版本收口；hard 依赖 stage-62） | 已归档（**M21 done / v1.1.4 版本收官**） | 3 op | 3/3 |
 | v1.1.5-stage-66 | v1.1.5（全局部署版本事实源与检测核心 — D-A/D-D：`setup`/`update` 刷新 `openfeel_version` + 新增 `deployment-check.ts` 四态检测 + 门控策略纯函数） | 已归档（**M22 done**） | 3 op | 3/3 |
 | v1.1.5-stage-67 | v1.1.5（CLI 提示接入、`setup --check` 与版本收口 — D-B/D-C/D-E/D-F/D-G；hard 依赖 stage-66） | 已归档（**M23 done / v1.1.5 版本收官**） | 3 op | 3/3 |
+| v1.1.6-stage-68 | v1.1.6（模板管线多源化 — skills 迁 `templates-data/skills/` 共享源 + build 路径/校验/冗余树断言，**零内容变更**） | **已归档**（**M24 done / v1.1.6 首阶段**） | 2 op | 2/2 |
+| v1.1.6-stage-69 | v1.1.6（Claude 内容适配 — `templates-data/claude/**` 9×2 agents 含 feel + 约束×2 + build 8 步 + template-loader 3 API；hard 依赖 stage-68） | 规划中（**M25**） | 4~5 op | 0/— |
+| v1.1.6-stage-70 | v1.1.6（共享 skills 中立化 — 4 重写 + 3 轻改 + 6 Feel 措辞；hard 依赖 stage-68） | 规划中（**M25**） | 2~3 op | 0/— |
+| v1.1.6-stage-71 | v1.1.6（部署编排与命令面 — global-paths 5 函数 + setup/update 双分支 + `--tools` + R-5 修复 + i18n 768 + D-CFG；hard 依赖 stage-69/70） | 规划中（**M26**） | 3~4 op | 0/— |
+| v1.1.6-stage-73 | v1.1.6（Claude 全局 settings 注入 — 深合并写回 + `defaultMode:auto` + `agent:feel` + 备份/幂等/卸载；hard 依赖 stage-69/71；**执行先于 stage-72**） | 规划中（**M27**） | 2~3 op | 0/— |
+| v1.1.6-stage-72 | v1.1.6（文档与版本收口 — README×3 + manual + CHANGELOG + 版本 1.1.6 + CI guard；hard 依赖 stage-71/73；**执行顺序最后**） | 规划中（**M28**） | 2~3 op | 0/— |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

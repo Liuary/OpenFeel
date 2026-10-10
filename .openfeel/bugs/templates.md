@@ -195,3 +195,37 @@ node bin/openfeel.js flow status
 
 > 沉淀：`kb/troubleshooting.md #新增输出键/契约的同步面清单`（i18n help + docs + manual + kb + 部署型 skill 模板，易漏最后一环）。
 
+---
+
+## BUG-006：`openfeel-model-check` 平台适配小节的 2 条平台专有句为改写而非逐字迁移（opencode 零回归字面偏差）
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.6-stage-70`（正式测试，「零回归」项 2 独立复核）｜ **归因**：**模板文案口径**——4 重写 skill 中**唯 `openfeel-model-check`** 的 `## 平台适配 → ### opencode 适配器` 未达「原文搬家」口径
+- **私域详细报告**：`.openfeel/users/Liuary/bugs/templates/BUG-006_model-check平台适配小节2条平台专有句改写非逐字迁移.md`
+
+### 核心结论
+
+4 个重写 skill 中，`openfeel-agent-model-check` / `openfeel-model-config` / `openfeel-cli-usage` 的 opencode 小节均**逐字保留**原文（仅标题层级降级），唯 **`openfeel-model-check`** 的 2 条平台专有句被**改写**（去平台路径 + 指向分节）而非逐字迁移：
+
+- 改写前（`77c5450^:SKILL.md` 基线）：`:22`「读取 `opencode.jsonc`…确定当前运行平台」、`:31`「扫描 `.opencode/agents/`…」
+- 改写后：`:23`「读取当前 harness 的平台配置文件…（指向 `## 平台适配`）」、`:27`「扫描 agents 目录…（指向 `## 平台适配`）」；opencode 小节内仅保留**改写后的 bullet**，原句「扫描 `.opencode/agents/`」「…确定当前运行平台」在本文件 **0 命中**（EXIT=1）
+
+**性质**：信息**未丢失**（关键串 `.opencode/agents/` / `opencode.jsonc` / `OpenCode（当前适配器）` 仍在，T4.2 断言仍全过），但 opencode 小节文本**与原文不一致**（**opencode 零回归字面偏差**）；op-001 统一改写约定 3 / 困难点 #2 采用「(b) 平台关键串仍在小节内 + 非标题行逐字」，executor 对 model-check 采用了「探针式改写」（与另 3 skill「原文搬家」不一致）。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 触发条件 | 阅读 `openfeel-model-check` 的 `### opencode 适配器` 小节、核对「opencode 零回归」承诺时 |
+| 直接后果 | opencode 小节文本与原文不一致（**信息等价、可读性等价**，无运行时/行为影响）；R-1 零回归未**完全**落地 |
+| 数据风险 | 无 |
+| 范围 | 权威源 `src/core/templates-data/skills/openfeel-model-check/SKILL.md` + `npm run build` 生成段（`update.ts` `SKILL_DEFINITIONS` / `template-loader.ts` `OPENCODE_SKILL_DEFINITIONS`） |
+
+### 建议修复方向（供 openfeel-schemer 裁定，非本阶段实施）
+
+1. **(a) 恢复原句逐字**（推荐）：在 `### opencode 适配器` 内回补 `读取 opencode.jsonc…` / `扫描 .opencode/agents/…` 原文，非平台部分走分节引用；`npm run build` 传播生成段；
+2. **(b)** 认可当前探针式改写，显式登记「零回归 = 关键串 + 信息等价」口径（弱化「原文搬家」字面），并同步 T4.2 断言注释。
+3. 与 **REV-70-002**（T4.4 短键断言保护力弱）/ **REV-70-004**（Feel 计数口径）一并并入后续阶段顺带收口。
+
+> 沉淀：`kb/troubleshooting.md #平台分节中立化的「原文搬家 vs 探针式改写」陷阱`（v1.1.6-stage-70 归档新增）。
+
+

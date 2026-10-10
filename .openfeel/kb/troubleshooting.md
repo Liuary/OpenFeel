@@ -1045,3 +1045,21 @@ concurrency:
 **实证**：v1.1.6-stage-69（op-007 报告 `.openfeel/tmp/op-007-test-report.md`；阶段报告 `.openfeel/users/Liuary/log/2026/10/11/2026-10-11-001.md`）——环境探测 `claude --version`=2.1.296、`cc-switch` 未安装；隔离部署 + `CLAUDE_CONFIG_DIR` 生效；认证补齐后 Q1/R-13/Q2/模型 ID 四项确认；REV-69-002 据此闭环。
 
 **参见：** v1.1.6-stage-69（op-007；REV-69-002）；`templates-data/claude/agents/**`、`constraint/**`；kb/patterns.md #Claude Code agent frontmatter 结构化映射、#隔离 HOME 实测 opencode 行为的方法、#真实全局目录操作的安全程序；kb/architecture.md #Claude 内容源自立与运行时 3 API；`.openfeel/dev/decisions.md` ADR-007
+
+## [+] 平台分节中立化的「原文搬家 vs 探针式改写」陷阱：逐字迁移判定 + 子串断言保护力 + 计数口径 (2026-10-11)
+
+**症状/场景**：把共享 skill 改写为双平台分节时，「opencode 小节逐字零回归」的口径下，**部分平台专有句被改写而非逐字迁移**，但关键串断言仍全过（假阴性），字面偏差直到验收/归档才发现（`templates/BUG-006`，low）。
+
+**根因**：中立化改写须对**每一句**判定归属——**原文搬家**（整句逐字迁入 opencode 小节）还是**探针式改写**（去平台路径 + 指向 `## 平台适配` 分节）。executor 对 `openfeel-model-check` 的 `:22`「读取 `opencode.jsonc`…确定当前运行平台」与 `:31`「扫描 .opencode/agents/…」两句采用了探针式改写（`:23`/`:27` 去平台路径 + 指向分节），而另外 3 个重写 skill（agent-model-check / model-config / cli-usage）均逐字搬迁 → **仅 model-check 两处字面偏差**，且 T4.2 断言只查**关键串存在**（.opencode/agents/ / `opencode.jsonc` / `OpenCode（当前适配器）`），对「被改写的整句」无保护力。
+
+**三重陷阱（连带 REV）**：
+
+1. **逐字 vs 探针判定单位是「句」**：混用会致「关键串在、整句变」——零回归口径应显式区分「逐字迁移句」与「探针式改写句」，并在方案统一约定中固定判据。
+2. **子串断言保护力弱（假阴性）**：T4.4 用整文件短键 `toContain`（`question`/`task`/`skill`/`read` 在正文高频出现）→ 映射表缺行亦可能通过（REV-70-002）；映射表类断言应升**行级/表格行粒度**，逐字迁移类应加**非标题行多重集比对**（审查侧已作兜底）。
+3. **计数口径自相矛盾**：方案前置校验写「`\bFeel\b` → 0」但统一约定要求首现写「主会话（**Feel**）」（全角括号内 `Feel` 必命中词边界）→ 字面 0 不可达；gate-report 记 5 vs 实测 6 行（均合法「主会话（Feel）」形态）——口径应为「**排除 `主会话（Feel）` 形态后计数 0**」（REV-70-004）。
+
+**判据/避免**：① 平台分节方案须**逐句**标注「逐字迁移 / 探针式改写」，逐字迁移句以**非标题行多重集比对**兜底（不依赖关键串存在性）；② 断言粒度与数据形态匹配（短键映射表 → 行级断言；整句逐字 → 集合比对）；③ 计数类校验命令须与「合法命中形态」自洽，避免「预期 0」与「允许存在」互斥。
+
+**实证**：v1.1.6-stage-70——`templates/BUG-006`（low, open，model-check 平台适配小节 2 条平台专有句改写非逐字迁移）；REV-70-002（T4.4 短键断言，低）、REV-70-004（Feel 计数口径三处不一致）；审查侧以行级多重集比对基线 `77c5450^` 兜底（`agent-model-check`/`cli-usage` 非标题行缺失 0、`model-config` 仅授权 Feel/desc 改动）。
+
+**参见：** v1.1.6-stage-70（REV-70-002/004；`templates/BUG-006`）；`src/core/templates-data/skills/openfeel-model-check/SKILL.md`；`test/core/templates.test.ts`（T4.2/T4.4）；kb/patterns.md #共享 skill 双平台分节中立化、#模板断言的保护边界（build 注入常量 vs 源文件直读）；kb/troubleshooting.md #多源文案同步陷阱

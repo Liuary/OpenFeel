@@ -1,0 +1,130 @@
+# stage-70 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.6-stage-70
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.6-stage-68
+    type: hard
+    status: done
+    reason: "17 skill 权威源已迁中立共享源 `templates-data/skills/`；本阶段在此源上做中立化改写（只读消费结构，改写正文）。"
+  - upstream: v1.1.5-stage-67
+    type: soft
+    status: done
+    reason: "承接 v1.1.5 基线（CLI 1.1.5 / `lint i18n` 761 / `lint kb` 0）。本阶段不新增 i18n 键、不改版本。"
+  - downstream: v1.1.6-stage-71
+    type: hard
+    note: "本阶段产出的中立共享 skill 由 stage-71 部署编排消费（Claude 侧 17 skill 注入）；本阶段不接部署、不改 build.js/setup/update/i18n。"
+  - downstream: v1.1.6-stage-69
+    type: soft
+    note: "claude agent 模板（含 feel）归 stage-69；本阶段**不改** `templates-data/claude/**`、`agents-md/**`、`opencode/agents/**`。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 CI、不直写 `flow.json`、不 commit**；phase 推进由 Feel/归档官执行。"
+
+# 本阶段 3 op：op-001（4 重写，hard: stage-68）→ op-002（3 轻改 + Feel 归一，hard: op-001）→ op-003（断言 + build ×2 + 门禁 + 报告，hard: op-002）。
+# 复审修正 op-004（REV-70-001 blocking + REV-70-003 low）：cli-usage Claude 小节补 `--tools` 提供版本标注 + model-config Claude 口径统一 + build 传播（hard: op-001, op-002）。
+# 不变量：
+#   ① opencode 小节逐字保留（非标题行字节不变，仅标题层级可降级）—— R-1 零回归；
+#   ② skill 名（frontmatter `name`）不变（合并语义要求唯一）；
+#   ③ 4 重写 skill 同时含 `### opencode 适配器` 与 `### Claude Code 适配器`；
+#   ④ `openfeel-model-check` 不再含错误事实 `claude/claude.json`；
+#   ⑤ 工具名映射表键集 10 行齐备（bash/read/write/edit/glob/grep/todowrite/skill/task/question ↔ PascalCase + AskUserQuestion）；
+#   ⑥ 全仓 skill `\bFeel\b`（编排者角色）归一为「主会话（Feel）」/「主会话」；不改 `feel`（小写）/`OpenFeel`/`Feel 角色`；
+#   ⑦ 不改 skill 名、不新增依赖、不改 CI、不 `flow.json`、不 commit、不改版本（1.1.5）、不新增 i18n 键（761）；
+#   ⑧ 生成段由 `npm run build` 重生成（禁手改），`.opencode/**` 与 `templates-data/opencode/skills` 不复活；
+#   ⑨ 未来功能（当前 CLI 未含）须标注提供阶段 —— cli-usage Claude 小节 `--tools` 标注「由 v1.1.6-stage-71 提供」；model-config Claude 侧模型来源与 agent-model-check 并列口径一致（REV-70-001 / REV-70-003）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "4 个 opencode 特化 skill 重写（能力名叙述 + 双平台分节）+ `claude/claude.json` 纠错"
+    produces:
+      - src/core/templates-data/skills/openfeel-agent-model-check/SKILL.md
+      - src/core/templates-data/skills/openfeel-model-config/SKILL.md
+      - src/core/templates-data/skills/openfeel-model-check/SKILL.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+    deps:
+      - op: v1.1.6-stage-68
+        type: hard
+    notes: "覆盖 T1（+ T1.5 本 op 4 skill 内的 Feel 归一 7 处）。统一约定：平台内容迁入 `### opencode 适配器`（非标题行逐字保留，仅标题层级降级）/ `### Claude Code 适配器`（新增）两小节。逐 skill：agent-model-check `## 平台适配` 收口（auth.json/opencode.jsonc/重启 opencode）；model-config 各 `##` 节内分节（配置位置/frontmatter 优先级链/多模态）+ Claude 链「项目 `.claude/agents` > 用户 `~/.claude/agents`，frontmatter `model` 优先 `inherit`」；model-check `## 平台适配` 收口 + **删 `claude/claude.json` 错误行**（改「Claude Code 无平台配置文件；`~/.claude/CLAUDE.md`；本期由 stage-73 注入 settings.json」）+ agents 目录扫描/报告标签/`question` 分平台；cli-usage `## 升级流程` + `## 权限模型要点` 各自分节（Claude：`--tools claude`、重启/`/reload-skills`、无 `external_directory` 对等概念）。保留串见 op-003 T4.2。门禁（局部）：4 文件双平台小节各 ≥1 + T4.2 保留串命中 + `claude/claude.json` 清零 + `tsc` 0。**不跑 build/test**（传播归 op-003）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "3 个 skill 轻改（工具名映射 / 全局规则文件措辞 / skill 调用语法）+ Feel 措辞全仓归一"
+    produces:
+      - src/core/templates-data/skills/openfeel-tool-usage/SKILL.md
+      - src/core/templates-data/skills/openfeel-workspace/SKILL.md
+      - src/core/templates-data/skills/openfeel-check-kb/SKILL.md
+      - src/core/templates-data/skills/openfeel-get-stage-status/SKILL.md
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T2 + T3。T2：tool-usage 新增「工具名映射（跨 harness）」表（**10 行键集**：`bash/read/write/edit/glob/grep/todowrite/skill/task/question` ↔ `Bash/Read/Write/Edit/Glob/Grep/TodoWrite/Skill/Task/AskUserQuestion`）；workspace `:32`「全局 AGENTS.md」→「全局规则文件（opencode 适配器 `~/.config/opencode/AGENTS.md`；Claude Code 适配器 `~/.claude/CLAUDE.md`）」；check-kb `:91` `skill(\"openfeel-check-kb\")` 调用语法分平台（Claude 用 `Skill` 工具）。T3：全仓 `rg \\bFeel\\b` 穷举 **5 skill / 12 处**（计划示例 6 skill 与实测不符→已登记偏差，权威以 rg 为准；其中 model-check×4 / model-config×3 归 op-001），本 op 处理 `get-stage-status`（`:68` 首现「主会话（Feel）」、`:115`/`:116`「主会话」）+ `tool-usage`（`:21`）+ `workspace`（`:30`）；补「subagent 不互调、主会话负责向用户确认」口径。门禁（局部）：映射表键集齐备 + 3 skill `\\bFeel\\b`=0 + `tsc` 0。**不跑 build/test**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "中立化断言（T4）+ build 传播 ×2 幂等 + 全门禁 + 阶段报告"
+    produces:
+      - test/core/templates.test.ts
+      - src/core/update.ts
+      - src/core/template-loader.ts
+      - .openfeel/tmp/stage-70-gate-report.md
+      - .openfeel/users/Liuary/log/2026/10/11/2026-10-11-0NN.md
+    deps:
+      - op: op-002
+        type: hard
+      - op: op-001
+        type: hard
+    notes: "覆盖 T4 + T5。`test/core/templates.test.ts` 追加 `describe('共享 skills 中立化（stage-70）')`：T4.1 双平台小节并存（`### opencode 适配器` + `### Claude Code 适配器`）；T4.2 opencode 关键串零回归（串表 = op-001 保留串）；T4.3 纠错断言（不含 `claude/claude.json` + 含 `~/.claude/CLAUDE.md`）；T4.4 工具名映射键集（10 行）。T5：`npm run build` ×2（步骤 4 `SKILL_DEFINITIONS` / 步骤 6 `OPENCODE_SKILL_DEFINITIONS`）幂等（第二次后 `git status --porcelain src/ templates-data/` 零输出）；全门禁 `npm test` 0 skipped/0 failed、`tsc` 0、`lint i18n` **761**、`lint kb` 0、`--version` **1.1.5**、受管树（`.opencode/{skills,agents}`、根 `AGENTS.md`/`opencode.jsonc`、`templates-data/opencode/skills`）不复活。生成段**禁手改**，由 build 重生成，入 produces。产阶段报告 + 自测报告。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-004:
+    file: op-004.md
+    title: "修正 REV-70-001（cli-usage Claude 小节 `--tools` 补提供版本标注）+ REV-70-003（model-config Claude 口径统一）"
+    review_fix: [REV-70-001, REV-70-003]
+    produces:
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/skills/openfeel-model-config/SKILL.md
+      - src/core/update.ts
+      - src/core/template-loader.ts
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+    notes: "基于 op-001 修正（复审 `review_failed` 后）。S1 [FIX] REV-70-001：cli-usage `### Claude Code 适配器`（:66-74）代码块后插入 1 条 bullet「**`--tools` 由 v1.1.6-stage-71 提供**：当前 v1.1.5 `openfeel setup` 无 `--tools`（`--help` 仅 `--lang`/`--check`/`--json`/`-h`）…」（与同节 :160 stage-73 标注同构；代码块不变）。S2 [FIX] REV-70-003：model-config :42「模型权威源为 **cc-switch**。」→「模型配置经 `/model`、`settings.json`/`env` 或网关（如 cc-switch）等途径确定。」（与 agent-model-check :94 并列口径对齐）。S3：`npm run build` 传播生成段（禁手改）。S4：REV 处理记录置 `resolved`（`closed` 留 reviewer）。自测：`rg -- '--tools'` ≥2 + `v1.1.6-stage-71` 1 + `模型权威源` 0；build ×2 生成段哈希一致；`npm test` 66 文件/用例 ≥1162/0 skipped；`tsc` 0；`lint i18n` 761；`lint kb` 0；`--version` 1.1.5；opencode 小节零回归。边界：仅改必要 skill 正文；不动 test/build.js/版本载体/flow.json；不 commit。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付 stage-71 复用）
+downstream_contracts:
+  - name: "src/core/templates-data/skills/{openfeel-agent-model-check,openfeel-model-config,openfeel-model-check,openfeel-cli-usage}/SKILL.md"
+    change: "**改写**：能力名叙述 + `### opencode 适配器` / `### Claude Code 适配器` 双平台分节；opencode 小节逐字保留（零回归）；`openfeel-model-check` 纠正 `claude/claude.json` 错误事实。"
+  - name: "src/core/templates-data/skills/{openfeel-tool-usage,openfeel-workspace,openfeel-check-kb}/SKILL.md"
+    change: "**轻改**：工具名映射表（10 键）/ 全局规则文件措辞（含 `~/.claude/CLAUDE.md`）/ `skill(...)` 调用语法分平台。"
+  - name: "src/core/templates-data/skills/openfeel-get-stage-status/SKILL.md"
+    change: "**措辞**：Feel → 主会话（Feel）/ 主会话；补「subagent 不互调」。"
+  - name: "生成段"
+    change: "`SKILL_DEFINITIONS`（update.ts）/ `OPENCODE_SKILL_DEFINITIONS`（template-loader.ts）由 `npm run build` 重生成（**禁手改**）；供 stage-71 部署消费。"
+  - name: "中立化断言"
+    change: "`test/core/templates.test.ts` 新增 T4.1~T4.4；stage-71 部署回归须保持 4 重写 skill 双平台小节与 opencode 关键串。"
+  - name: "i18n 基线"
+    change: "**不变**：761（本阶段不新增键）。"
+  - name: "版本"
+    change: "**不变**：`package.json.version` = 1.1.5（v1.1.6 收口归 stage-72）。"

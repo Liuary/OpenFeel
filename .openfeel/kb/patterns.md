@@ -3455,3 +3455,34 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.6-stage-69——`build.js:1271-1278` `assertKeySetsEqual` 只比键集；`:1321` 调用 `CLAUDE_AGENT_TEMPLATES` vs `AGENT_TEMPLATES`（键集 18 = 2 语言 × 9）；`assertConsistent`（含内容）仅用于两对按设计相同的对象；成功日志「两对对象键集与内容一致 + Claude 键集一致」。
 
 **参见：** v1.1.6-stage-69（op-004 `47d5640`；plan T5/§八；REV-审 4）；`build.js` `assertKeySetsEqual` / `assertConsistent` / `validateSingleSourceConsistency` / `extractBetweenAnchors`；kb/architecture.md #模板单源架构；kb/troubleshooting.md #模板断言的保护边界（build 注入常量 vs 源文件直读）
+
+## [+] 共享 skill 双平台分节中立化：能力名叙述 + 双平台适配器分节 + opencode 小节逐字零回归 + 子串断言法 (2026-10-11)
+
+**背景：v1.1.6-stage-70（中立共享 skill 源供两 harness 消费）**——skills 权威源已迁中立共享源 `templates-data/skills/`（stage-68），本阶段把其中 **4 个 opencode 特化 skill** 改为**能力名叙述 + 平台分节**，使同一份源同时可供 opencode 与 Claude Code 消费。
+
+**模式（共享源平台分流四要件）**：
+
+1. **正文以能力名叙述**：skill 首节加一句「正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。」
+2. **双平台小节分列（标题严格字面）**：一律 `### opencode 适配器` 与 `### Claude Code 适配器`（h3，含中文「适配器」与中间单空格）；一个 skill 可含多对（挂各自能力名 `##` 下），标题文本须完全一致。
+3. **opencode 小节 = 原文搬家（逐字零回归）**：原平台专有内容**整体迁入** opencode 小节；**所有非标题行逐字保留**（字节不变）；**唯一允许改动**＝原块**标题行层级降一级**（`##`→`###`、`###`→`####`，文本不变）。
+4. **Claude 小节内容**：仅写 Claude Code 侧**真实事实**，不得照抄 opencode 小节；未定项写「由 Claude 侧决定」并标注提供阶段（见 #未来功能须标注提供版本）。
+
+**零回归判定的子串断言法（关键）**：文件级**字节全等不可用**（与「新增 Claude 小节」目标互斥）→ 改用**平台关键串 `toContain`（`opencode.jsonc` / `auth.json` / .opencode/agents/ / `external_directory` / `OpenCode（当前适配器）` …）+ 审查侧非标题行逐字比对**；断言**直读源文件**（`templates-data/skills/**`，与既有 T53/T55 同口径），生成段一致性由 build 内建校验覆盖。纠错类事实（`claude/claude.json`）用**定向阴性断言**（`not.toContain` + 正向 `toContain('~/.claude/CLAUDE.md')`）。
+
+**判据**：共享源跨平台分流＝「能力名归属正文 + 平台差异收敛到成对具名小节」；「逐字保留」的判定粒度是**非标题行**（标题层级降级豁免），断言取**关键串子串**而非全文件哈希；占位/错误事实用定向阴性断言收口。
+
+**实证**：v1.1.6-stage-70——4 重写（`openfeel-agent-model-check`/`openfeel-model-config`/`openfeel-model-check`/`openfeel-cli-usage`）；`rg -c "^### opencode 适配器$"`/`"^### Claude Code 适配器$"` 成对（1/1、1/1、3/3、2/2）；`rg "claude/claude.json"` 0 命中（EXIT=1）；`npx vitest run test/core/templates.test.ts` 14 passed（含 T4.1~T4.4）；node 字节级比对证 opencode 小块逐字。
+
+**参见：** v1.1.6-stage-70（op-001 `77c5450` / op-003 `e7af5a9`）；`src/core/templates-data/skills/**`；`test/core/templates.test.ts`（T4.1~T4.4）；kb/patterns.md #平台无关化「描述泛化」原则与边界、#CLI 用法 skill 化模式、#部署语境 vs 本仓语境命令口径二分；kb/troubleshooting.md #平台分节中立化的「原文搬家 vs 探针式改写」陷阱；kb/architecture.md #模板单源架构
+
+## [+] 未来功能/未落地能力写入 skill 与文档须标注「提供版本」（防照做报错） (2026-10-11)
+
+**背景：v1.1.6-stage-70（REV-70-001 blocking）**——`openfeel-cli-usage` skill（自我定位「查询型参考手册 / v1.1.5 快照」）的 Claude Code 小节写入 `openfeel setup --tools claude`，但当前 CLI v1.1.5 **无 `--tools` 参数**（实测 `openfeel setup --help` 仅 `--lang`/`--check`/`--json`/`-h`；由 stage-71 实现），且同节对另一未来功能 `settings.json` **已规范标注**「本期由 **stage-73** 注入」，唯独 `--tools` 漏标。
+
+**模式/判据**：凡在**部署型 skill / 文档 / 快照**中引用**当前 CLI 尚不存在**的命令、参数、字段（由后续阶段实现者），**必须显式标注提供版本/阶段**（如「`--tools` 由 v1.1.6-stage-71 提供：当前 v1.1.5 无此参数，照此执行会报 `unknown option`；升级后以 `--help` 实测为准」），并与同节其它未来功能标注**同构**。判据＝「快照型文档写未来能力」是**事实准确性**问题，用户照做即失败；同节标注范式即内部一致性锚点，**单点漏标**即 blocking 级事实错误。
+
+**避免**：写「用户将照做执行的命令/参数」前先 `--help` 实测或核对版本归属；快照类文档尤其要把「提供版本」作为必备字段；不因「同节已有他处标注」而默认可省。
+
+**实证**：v1.1.6-stage-70（REV-70-001，medium blocking）——op-004（`37d0e8a`）在代码块后补 1 条标注 bullet（与同节 `:160` 的 stage-73 标注同构；代码块不变），复审独立取证：`rg -- "--tools"` = 2（代码块 + 标注）、`rg "v1.1.6-stage-71"` 源 1 处 + 生成段镜像 2 处。
+
+**参见：** v1.1.6-stage-70（REV-70-001；op-004 `37d0e8a`）；`src/core/templates-data/skills/openfeel-cli-usage/SKILL.md`；kb/patterns.md #CLI 用法 skill 化模式、#平台无关化「描述泛化」原则与边界；kb/troubleshooting.md #多源文案同步陷阱

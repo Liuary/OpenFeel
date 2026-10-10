@@ -710,3 +710,30 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.1.6-stage-69（8 commits `de76f89`~`45f2093`）——产物 9×2 + 约束 2；build ×2 幂等（SHA256 一致）；`npm test` **66 文件 / 1158 用例** 0 skipped / 0 failed；`tsc` 0；`lint i18n` 761（不新增）；`lint kb` 0；审查 passed（REV-69-001 blocking 修复 closed）。
 
 **参见：** v1.1.6-stage-68（skills 迁共享源）/ v1.1.6-stage-69（本条目）；`templates-data/claude/**`；`build.js`；`src/core/template-loader.ts`；kb/architecture.md #模板单源架构、#多语言模板数据管线；kb/patterns.md #Claude Code agent frontmatter 结构化映射、#模板锚点注入的鸡生蛋处置、#单源一致性断言键集 vs 内容；manual/core/template-loader.md、manual/core/build.md
+
+## [+] 多 harness 部署编排架构：内容面就绪后接入 setup/update 双分支 + supportedTools enabled 默认门控 (2026-10-11)
+
+**背景：v1.1.6-stage-71（部署编排与命令面）**——v1.1.6 前三阶段（stage-68 skills 中立共享源 / stage-69 Claude 内容源 / stage-70 skills 双平台分节）只备齐**内容面**；本阶段把 Claude 内容接通到 `openfeel setup` / `openfeel update` 的**部署编排面**，并严守「默认行为逐字不变」。
+
+**四层落点**：
+
+| 层 | 落点 | 要点 |
+|----|------|------|
+| **路径面** | `src/core/global-paths.ts` 追加 5 函数 | `getClaudeConfigDir/getClaudeAgentsDir/getClaudeSkillsDir/getClaudeMdPath/getClaudeSettingsPath`；`CLAUDE_CONFIG_DIR` **函数体内读 env** + `.trim()`，空/空白回落 `~/.claude`；延续 homedir 单点（自动纳入 `vi.mock('node:os')` 隔离） |
+| **编排面** | `src/core/setup.ts` + `src/core/update.ts` 双分支 | `setupGlobalFramework(lang, tools=['opencode'])`；`updateProject` 早退改「**两工具都未选才空**」+ `wantOpencode`/`wantClaude` 分支；claude 分支 = `CLAUDE.md` + **9 agents** + **17 共享 skills**（复用 `deployGlobalAsset`，CLAUDE.md 走受管区三态），**不写 `settings.json`**（归 stage-73） |
+| **门控面** | `src/core/update.ts` `supportedTools` + `src/commands/update.ts` | claude 转**正式条目** `{id:'claude', enabled:false}`（原注释删除）；**消费点由 `map(t=>t.id)` 改 `filter(t=>t.enabled).map(t=>t.id)`**（R-5 高危修复）——`enabled:false` 是「默认不启 Claude」的唯一数据源 |
+| **命令面** | `src/commands/{setup,update}.ts` | `--tools <逗号列表>`；`parseToolList`（`core/update.ts` 单一实现，保序去重、空串/纯空白非法）→ 非法值 **exit 1** 且 **fail-fast 前置**（不触发 auto-init/写盘） |
+
+**默认非回归不变量**：默认 `setup` / `update <path>` 后 `~/.claude/` **零变化**；既有 `--json` 契约、`setup` 无参输出/退出码逐字不变；仅 opencode 时的重启提醒逐字不变。以**隔离 HOME 端到端实测**取证（`USERPROFILE`/`HOME` 重定向 + `CLAUDE_CONFIG_DIR` 置空）。
+
+**重启提醒按 harness 组合参数化**：部署后重启提醒由硬编码 opencode 改为按实际变更 harness 动态拼接，文案入 i18n 以 `{harness}` 占位（`update.restartHarnessTmpl`/`setup.restartHarnessTmpl` + `update.claudeReloadHintTmpl`），`isTTY` 守卫、非交互静默。
+
+**备份编排（D-CFG）**：`computeBackupRel` 对越出 HOME 的路径不再抛错，改 `global-external/<sha8>/<规范化尾段>` fallback（`sha8 = sha256(resolve(absPath)).slice(0,8)`），使 `CLAUDE_CONFIG_DIR` 指向 HOME 外时的 `settings.json` 备份（stage-73）可行；HOME 内与 project 分支零回归。
+
+**i18n**：7 新键 + 6 修订键（去 `（opencode）` 硬编码、harness 中性），基线 761→**768**（双处登记）。**边界**：`settings.json` 注入归 stage-73；不改版本号（归 stage-72）/ CI。
+
+**交付给 stage-73 的集成契约**：`getClaudeSettingsPath()`（尊重 `CLAUDE_CONFIG_DIR`）+ `setup`/`update` 的 claude 分支接点 + `backupFileBeforeWrite` D-CFG fallback——stage-73 在 claude 分支扩展「写 `settings.json`」（须在 lock 之外，对齐 jsonc 备份口径）。
+
+**实证**：v1.1.6-stage-71（4 commits `e753217`/`7287355`/`62fcb43`/`cdd0953`）；CLI 端到端 `setup --tools claude` → `~/.claude` 仅 `{agents 9, skills 17, CLAUDE.md}`（无 settings.json）；双 harness 二次 setup skipped=**54**；`npm test` **66 文件 / 1189 用例** 0 skipped；`tsc` 0；`lint i18n` **768**；`lint kb` 0（368 引用）；审查 passed（REV-71-001/002 low 非阻塞 open）。
+
+**参见：** v1.1.6-stage-71（plan §二/§八；op-001~004）；`src/core/{global-paths,setup,update,backup}.ts`；`src/commands/{setup,update}.ts`；kb/architecture.md #全局部署架构、#Claude 内容源自立与运行时 3 API；kb/patterns.md #工具注册表 enabled 门控默认守卫、#环境变量路径函数的函数体内读 env 可测试性、#备份 HOME 外 fallback 的 sha8 口径、#重启提醒按 harness 组合参数化；manual/core/{setup,update,global-paths,backup}.md、manual/cli/{setup,commands}.md

@@ -28,10 +28,23 @@
 ├── manifest.json                          # source(绝对路径) → backupRel + hash + command + time
 ├── global/.config/opencode/AGENTS.md      # 全局资产：相对 HOME 的层级
 ├── global/.config/opencode/agents/feel.md
+├── global-external/<sha8>/…               # HOME 外全局资产（D-CFG，见下节）
 └── project/OpenFeel-3f2a1c9b/             # 项目资产：basename + sha256(projectPath).slice(0,8)
     ├── .openfeel/config.yaml
     └── package.json
 ```
+
+### HOME 外路径 fallback（D-CFG，v1.1.6-stage-71）
+
+`computeBackupRel` 原对越出 HOME 的路径**抛 `BackupError`**（致「备份失败 → 跳过写入」）；D-CFG 使该场景可备份——**越界判定不变**（仍以 `relative(getHomedir(), abs)` 是否 `..`/绝对判定），**仅改处置**：
+
+- **HOME 内** → 沿用 `global/<HOME 相对>`（**零回归**）；
+- **HOME 外** → `global-external/<sha8>/<规范化尾段>`，**不再抛错**；
+  - `sha8 = sha256(resolve(absPath)).digest('hex').slice(0,8)`——输入**规范化绝对路径（含盘符）**，输出仅 `[0-9a-f]` → 天然规避盘符冒号与保留字符，跨平台可复现、可作单层目录名（`C:\foo` 与 `D:\foo` 不撞）；
+  - 尾段：逐段剥离 Windows 盘符（`^[A-Za-z]:`）+ 清洗 `[<>:"|?*]` → `_`，**保留目录层级**，空段防御补 `root`。
+- **project 分支不动**：`projectPath` 越界**仍抛 `BackupError`**（处置仅针对 global 分支）。
+
+动机：`CLAUDE_CONFIG_DIR` 可指向 HOME 外，stage-73 的 `settings.json` 写入需其覆盖前备份可行。详见 `kb/patterns.md #备份 HOME 外 fallback 的 sha8 口径`。
 
 - **`{ts}` 语义（B2）**：`yyyyMMddTHHmmssSSS`（本地时区），进程内首次生成后缓存；同毫秒撞名依次 `-2`、`-3`；**绝不覆盖**既有备份（**每进程（通常即每命令）一个独立目录**——`cachedTs` 为进程级缓存，REPL/同进程多命令共享同一 `{ts}`）。
 - **原子性与并发（B3/REV-005）**：备份写入走 `atomicWriteFileSync`；**整次备份会话（ts 探测 + mkdir + 备份副本写入 + manifest 读改写）全程在单一 `withFileLock(globalLockPath('backup'))` 临界区内**，消除跨进程 TOCTOU。
@@ -73,3 +86,4 @@
 |------|------|
 | stage-46 | 初始创建：`backup.ts`（写前备份 + manifest + backup 锁临界区）+ `getGlobalBackupRootPath`；四链路（setup/update/init/migrate）覆盖写接入；`update_infos` 新增 backed 类 |
 | v1.1.2-stage-47 | 接入点清单收缩：项目 `.openfeel/config.yaml` **改为「不再覆盖」→ 删除其备份接入**（`config/BUG-002` 语义修复）；jsonc 三处失败路径定稿为 **A/B 分流**（`setup`/`update` 跳过继续 + `anomaly(backup_failed)`；`migrate` 有意 fail-fast）；`config.yaml` 与 `package.json` 分离处置（后者备份保留） |
+| v1.1.6-stage-71 | **D-CFG**：`computeBackupRel` global 分支新增 HOME 外 fallback `global-external/<sha8>/<规范化尾段>`（`sha8=sha256(resolve(absPath)).slice(0,8)`），越界不再抛错；HOME 内与 project 分支零回归（project 越界仍抛 `BackupError`） |

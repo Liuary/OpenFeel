@@ -5,7 +5,7 @@
 ## 命令
 
 ```bash
-node bin/openfeel.js setup [--lang <zh-CN|en>]
+node bin/openfeel.js setup [--lang <zh-CN|en>] [--tools <list>]
 node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致性（不部署）
 ```
 
@@ -18,6 +18,7 @@ node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致�
 | 选项 | 说明 |
 |------|------|
 | `--lang <lang>` | Agent 提示词语言（`zh-CN` 或 `en`），默认 `zh-CN` |
+| `--tools <list>` | 部署目标工具列表（逗号分隔，如 `opencode,claude`）；默认仅 `opencode`；**非法值报错 exit 1**（v1.1.6-stage-71） |
 | `--check` | **只读**诊断全局部署版本与 CLI 版本一致性；**零写盘**、不进入部署（前置短路） |
 | `--json` | 配合 `--check`：输出单文档纯 JSON `{ schemaVersion: 1, status, cliVersion, deployedVersion }` |
 
@@ -25,8 +26,9 @@ node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致�
 
 ### 默认（部署）
 
-- 调用 `setupGlobalFramework(deployLang)`，输出创建的全局文件；末尾提示「请重启当前 harness（opencode）以加载新的全局配置」。
+- 调用 `setupGlobalFramework(deployLang, tools)`（`tools` 默认 `['opencode']`），输出创建的全局文件；末尾按 harness 组合提示重启（`setup.restartHarnessTmpl`）。
 - 与 `init` 的区别：`setup` 纯全局（跨项目框架层）；`init` 只做项目初始化（工作区 + 项目平台适配器配置文件 `opencode.jsonc`）。
+- **`--tools`（v1.1.6-stage-71）**：`parseToolList` 解析（保序去重）；非法值 → stderr 报错 **exit 1** 且**校验前置**（零写盘，不触发部署）。`setup --tools claude` → 仅部署 `~/.claude/`（CLAUDE.md + 9 agents + 17 skills，无 `settings.json`）；`--tools opencode,claude` → 双 harness。**默认（不带 `--tools`）行为与改前逐字一致**（仅 opencode，`~/.claude` 零触）。
 
 ### `--check`（主动诊断，v1.1.5）
 
@@ -57,3 +59,4 @@ src/commands/setup.ts（registerSetupCommand）
 |------|------|
 | v1.1.1 | 初始创建：注册 `openfeel setup`（纯全局部署），在 `src/cli/index.ts` 中注册 |
 | v1.1.5 | 新增 `--check [--json]` 只读诊断（四态、零写盘、退出码 0/1）；接入 `checkGlobalDeployment`；无 `--check` 行为逐字不变 |
+| v1.1.6-stage-71 | 新增 `--tools <list>`（逗号分隔、非法值 exit 1 前置校验）；`setupGlobalFramework(deployLang, tools)`；重启提醒按 harness 组合参数化；默认仅 opencode 行为逐字不变 |

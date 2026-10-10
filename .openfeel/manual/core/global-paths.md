@@ -22,13 +22,19 @@
 | `getAuthJsonPath()` | `~/.local/share/opencode/auth.json` |
 | `getGlobalBackupRootPath()` | `~/.openfeel/backup`（部署覆盖前备份统一根，stage-46） |
 | `getCliLogsDir()` | `~/.openfeel/cli/logs`（CLI 跨项目诊断运行日志目录，stage-58） |
+| `getClaudeConfigDir()` | Claude 全局配置根：`CLAUDE_CONFIG_DIR` 非空优先（**函数体内读 env**），空/空白回落 `~/.claude`（stage-71） |
+| `getClaudeAgentsDir()` | `<config>/agents`（stage-71） |
+| `getClaudeSkillsDir()` | `<config>/skills`（stage-71） |
+| `getClaudeMdPath()` | `<config>/CLAUDE.md`（stage-71） |
+| `getClaudeSettingsPath()` | `<config>/settings.json`（stage-73 消费；stage-71 仅解析不写） |
 
-所有函数基于 `homedir()`（`node:os`）+ `join`（`node:path`）拼接，返回绝对路径（不含 `~` 字面量）。
+所有函数基于 `homedir()`（`node:os`）+ `join`（`node:path`）拼接，返回绝对路径（不含 `~` 字面量）。Claude 5 函数中仅 `getClaudeConfigDir()` 直接触碰 homedir + env，其余 4 个经其间接取值。
 
 ## 设计要点
 
 - **homedir 单点封装（N4）**：`homedir()` 已**单点收敛**至本模块（实测 `rg "node:os" src/` 仅命中 `global-paths.ts`）；其余模块一律经 `global-paths` 的路径函数或 `getHomedir()` 委托，**禁止直接 `import 'node:os'`**（v1.1.2-stage-50 T27 补齐 `backup.ts` 的委托，`computeBackupRel` 越界守卫见 `manual/core/backup.md`）。测试 `vi.mock('node:os')` 一处即隔离全部全局路径。
 - **update_infos.md 仅解析路径**：其读写逻辑属 stage-38，本阶段仅提供路径解析函数。
+- **`CLAUDE_CONFIG_DIR` 函数体内读 env（stage-71）**：`getClaudeConfigDir()` 内 `const dir = process.env.CLAUDE_CONFIG_DIR?.trim(); return dir ? dir : join(homedir(), '.claude');`——**必须在函数体内读取**（不得提为模块级常量），否则模块加载即固化、测试无法经 `vi.stubEnv`/`process.env` 注入；空串/纯空白回落 `~/.claude`。测试三态 + `afterEach` 还原 env（`kb/patterns.md #环境变量覆盖型路径函数的函数体内读 env`）。
 
 ## 调用关系
 
@@ -66,3 +72,4 @@ src/core/update-state.ts（全局 state 读写）
 | v1.1.2-stage-48 | 死映射**已清理**（455→0，op-006，含备份 `config.json.bak.2026-09-29T14-04-13-412Z`）；清理指引升级为**四步保护**（末段匹配陷阱 + 删除数断言 + 备份 + 可还原复核） |
 | v1.1.2-stage-50 | 新增 `getHomedir()` 导出（T27，`backup.ts` 委托，消除直接 `node:os` 依赖）；**「homedir 分散 4 处」陈旧名单修正**（实测已单点收敛，仅本模块 import `node:os`；见 `kb` 与 U3-008 收口） |
 | v1.1.2-stage-58 | 新增 `getCliLogsDir()`（`~/.openfeel/cli/logs`，供 `runtime-log.ts`） |
+| v1.1.6-stage-71 | 新增 **5 个 Claude 路径函数**（`getClaudeConfigDir`/`getClaudeAgentsDir`/`getClaudeSkillsDir`/`getClaudeMdPath`/`getClaudeSettingsPath`）；`CLAUDE_CONFIG_DIR` 非空优先（**函数体内读 env** 保测试可注入）+ 空/空白回落 `~/.claude`；延续 homedir 单点（其余 4 函数经 `getClaudeConfigDir` 间接使用，自动纳入 `vi.mock('node:os')` 隔离） |

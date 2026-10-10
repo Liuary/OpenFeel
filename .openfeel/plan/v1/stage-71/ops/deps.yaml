@@ -1,0 +1,134 @@
+# stage-71 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.6-stage-71
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.6-stage-69
+    type: hard
+    status: done
+    reason: "Claude 内容源（CLAUDE.md 约束 + 9 agents 含 feel）与 template-loader 3 API（loadClaudeConstraintTemplate/loadClaudeAgentTemplate/listClaudeAgentIds）就绪；本阶段只读消费。"
+  - upstream: v1.1.6-stage-70
+    type: hard
+    status: done
+    reason: "17 skill 中立共享源（templates-data/skills/ + SKILL_DEFINITIONS）就绪；Claude 侧复用同一份 SKILL_DEFINITIONS。"
+  - upstream: v1.1.5-stage-67
+    type: soft
+    status: done
+    reason: "承接基线：CLI 1.1.5 / `lint i18n` 761 / `lint kb` 0。本阶段 i18n 761→768；版本不改（归 stage-72）。"
+  - downstream: v1.1.6-stage-73
+    type: hard
+    note: "交付 `getClaudeSettingsPath()`（尊重 CLAUDE_CONFIG_DIR）+ `setupGlobalFramework(lang,tools)` claude 分支 + `updateProject` doClaude 分支 + D-CFG 备份 fallback；stage-73 在此扩展「写 settings.json」。**本阶段不写 settings.json、不建 claude-settings.ts**。"
+  - downstream: v1.1.6-stage-72
+    type: hard
+    note: "本阶段 i18n 基线落 768（stage-73 追加 settings 键后重新登记）；版本号/文档/CI guard 归 stage-72。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 CI、不直写 `flow.json`、不 commit**；phase 推进由 Feel/归档官执行。"
+
+# 本阶段 4 op：op-001（global-paths 5 函数 + D-CFG，hard: 69/70）→ op-002（supportedTools + R-5 + update --tools，hard: op-001）→ op-003（setup/update 双分支 + getIncomingContent + 重启提醒 + i18n，hard: op-002）→ op-004（集成测试 + 门禁 + 报告，hard: op-003）。
+# 不变量：
+#   ① 默认行为逐字不变：claude `enabled:false` + `commands/update.ts` `filter(t=>t.enabled)`（R-5 决定性）；
+#   ② `CLAUDE_CONFIG_DIR` 在函数体内读 env；空/空白回落 ~/.claude；
+#   ③ 不写 settings.json、不建 claude-settings.ts（归 stage-73）；
+#   ④ opencode 段原样保留（AGENTS.md + 9 agents + 17 skills + jsonc 深合并）；
+#   ⑤ 不改既有 `--json` 契约；不改 setup 无参输出/退出码；不改版本号（1.1.5）；
+#   ⑥ D-CFG 仅改 `computeBackupRel` 1 函数 + 2 测试；project 越界仍抛 BackupError；
+#   ⑦ i18n 7 新键 + 6 修订 → 768（双表成对、双处登记）；
+#   ⑧ 测试全程 `vi.mock('node:os')` + `CLAUDE_CONFIG_DIR` 隔离，严禁触碰真实 `~/.claude`；
+#   ⑨ 无新增依赖、无 CI 改动、无 commit。
+#
+# 编译顺序说明：op-002 仅做 update 侧 `--tools`；setup `--tools` 依赖 `setupGlobalFramework(lang,tools)` 新签名（T2），
+#   随 op-003 同落，避免 op 间编译断链（详见 op-002 困难点 #2）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "`global-paths.ts` 5 个 Claude 路径函数 + D-CFG 备份 fallback"
+    produces:
+      - src/core/global-paths.ts
+      - src/core/backup.ts
+      - test/core/global-paths.test.ts
+      - test/core/backup.test.ts
+    deps:
+      - op: v1.1.6-stage-69
+        type: hard
+      - op: v1.1.6-stage-70
+        type: hard
+    notes: "覆盖 T1 + T6。T1：追加 `getClaudeConfigDir`（函数体内读 `process.env.CLAUDE_CONFIG_DIR`，空/空白回落 `~/.claude`）+ `getClaudeAgentsDir`/`getClaudeSkillsDir`/`getClaudeMdPath`/`getClaudeSettingsPath`（延续 homedir 单点）。T6/D-CFG：`computeBackupRel` global 分支越界不再抛错，改 `global-external/<sha8>/<规范化尾段>`；**sha8 口径定稿** = `sha256(resolve(absPath)).slice(0,8)`（仅 [0-9a-f]，规避盘符冒号/保留字符），尾段逐段剥离盘符 + 替换 `[<>:\"|?*]`。**仅改 1 函数 + 2 测试**：改写 `backup.test.ts` T26（project 越界仍抛、global 走 fallback）+ 新增 D-CFG 用例；HOME 内既有用例零回归。门禁：`tsc` 0 + 两测试文件全绿。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "`supportedTools` 正式化 + R-5 守卫 + `update --tools` 命令面"
+    produces:
+      - src/core/update.ts
+      - src/commands/update.ts
+      - test/core/update.test.ts
+      - test/commands/update.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T4（update 侧）。`core/update.ts:58-68` claude 注释转正式条目 `{id:'claude',name:'Claude Code',description:…,enabled:false}`；新增导出 `parseToolList(raw)`（保序去重；空串→invalid）。**R-5 高危修复**：`commands/update.ts:43-45` `supportedTools.map(t=>t.id)` → `supportedTools.filter(t=>t.enabled).map(t=>t.id)`；新增 `--tools <list>`（逗号分隔，非法值 exit 1，校验置于路径检查前 fail-fast）。测试：R-5 守卫（`update <path>` 后 `~/.claude` 不存在）+ `--tools opencode` + 非法值 exit 1 + `supportedTools` 断言 + 默认零触 claude。**注**：`help.update.tools`/`update.toolsInvalidTmpl` 键由 op-003 落地（本 op 阶段 help 描述渲染为键名，属预期，不断言）。**`updateProject` 签名/早退不改**（归 op-003）；**setup `--tools` 归 op-003**（编译顺序）。门禁：`tsc` 0 + 两测试文件全绿。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "`setup/update` 双分支 + `getIncomingContent` + 重启提醒 + i18n（761→768）"
+    produces:
+      - src/core/setup.ts
+      - src/commands/setup.ts
+      - src/core/update.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/setup.test.ts
+      - test/core/update.test.ts
+      - test/commands/setup.test.ts
+      - test/commands/update.test.ts
+    deps:
+      - op: op-002
+        type: hard
+    notes: "覆盖 T2 + T3 + T5（+ T4 setup 侧）。T2：`setupGlobalFramework(lang='zh-CN', tools=['opencode'])`；opencode 步骤 1~4 包入 `if (tools.includes('opencode'))`；claude 分支 = CLAUDE.md + 9 agents（listClaudeAgentIds）+ 17 共享 skills（复 SKILL_DEFINITIONS），**不写 settings.json**。T4(setup)：`commands/setup.ts` 加 `--tools`（复用 `parseToolList`，非法 exit 1，无交互勾选）。T3：`updateProject` 早退改「两工具都未选」；opencode 段包 `if(wantOpencode)`；新增 `doClaude`（CLAUDE.md + 9 agents + 17 skills）；`getIncomingContent` 追加 CLAUDE.md/claude agents/claude skills 三分支；重启提醒按 harness 组合（opencode 条件与原一致、claude 含 created）+ Claude `/reload-skills` 提示；`selectTools` 非 TTY 消息走 i18n。CLAUDE.md 复用 `deployGlobalAsset` 受管区三态（用户已有→append 不覆盖）。T5：新增 7 键（help.setup.tools/help.update.tools/update.toolsInvalidTmpl/update.nonInteractiveToolsTmpl/update.restartHarnessTmpl/update.claudeReloadHintTmpl/setup.restartHarnessTmpl）+ 修订 6 键（update.globalStaleWarnTmpl/update.globalMissingWarnTmpl/setup.checkMismatchTmpl/setup.checkMissingTmpl/help.setup/help.init.workspaceOnly）→ **761→768**（zh-CN.ts + en.ts 双表成对）。幂等：默认二次 27 skipped；双 harness 二次 **54**（实测，计划估 53 系旧 8-agent 蓝图）。门禁：`tsc` 0 + `lint i18n` 768 + 四测试文件全绿 + 默认输出零回归。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-004:
+    file: op-004.md
+    title: "集成测试（场景 E/F）+ 全门禁 + 阶段报告"
+    produces:
+      - test/core/deployment-integration.test.ts
+      - .openfeel/tmp/stage-71-gate-report.md
+      - .openfeel/tmp/stage-71-selftest-report.md
+    deps:
+      - op: op-003
+        type: hard
+    notes: "覆盖 T7（集成）+ T8。`deployment-integration.test.ts` 追加场景 E（`setupGlobalFramework('zh-CN',['claude'])` → `checkGlobalDeployment` ok）/ F（`['opencode','claude']` setup + update → ok）。全门禁：先 `npm run build` ×2（生成 dist 供 backup 并发用例 + 验幂等，`git status --porcelain src/ templates-data/` 空）→ `npm test`（**0 skipped / 0 failed**）→ `npx tsc --noEmit`=0 → `lint i18n`=**768** → `lint kb`=0 → `--version`=**1.1.5** → 隔离 HOME 下默认 `setup`/`update <path>` 后 `~/.claude` **零变化**（R-5 决定性）→ 无 `settings.json`/`claude-settings.ts` → 冗余树（`.openfeel/**`、`templates-data/opencode/skills`）不复活。产门禁报告 + 自测报告。**本 op 不改源码**（若暴露缺陷回退对应 op）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付 stage-73 复用）
+downstream_contracts:
+  - name: "src/core/global-paths.ts"
+    change: "**新增** `getClaudeConfigDir`/`getClaudeAgentsDir`/`getClaudeSkillsDir`/`getClaudeMdPath`/`getClaudeSettingsPath`（尊重 `CLAUDE_CONFIG_DIR`）。"
+  - name: "src/core/setup.ts"
+    change: "**签名扩展** `setupGlobalFramework(lang, tools=['opencode'])`；claude 分支（CLAUDE.md + 9 agents + 17 skills）——stage-73 在此扩展「写 settings.json」。"
+  - name: "src/core/update.ts"
+    change: "**新增** `parseToolList`；`updateProject` 双分支（`wantOpencode`/`wantClaude`）+ `doClaude`；`getIncomingContent` 补三分支；`supportedTools` 含 claude `enabled:false`。"
+  - name: "src/core/backup.ts"
+    change: "**D-CFG**：`computeBackupRel` HOME 外路径走 `global-external/<sha8>/…`；stage-73 settings 写入可直接接入（须在 lock 之外）。"
+  - name: "src/core/i18n-data/{zh-CN,en}.ts"
+    change: "i18n 基线 **761 → 768**；stage-73 追加 settings 键后**重新登记**。"
+  - name: "版本"
+    change: "**不变**：`package.json.version` = 1.1.5（v1.1.6 收口归 stage-72）。"

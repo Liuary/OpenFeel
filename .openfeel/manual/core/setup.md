@@ -10,7 +10,7 @@
 
 | 函数 | 功能 |
 |------|------|
-| `setupGlobalFramework(lang?)` | 纯全局部署（首次全量，幂等）；返回 `SetupResult`（created/updated/skipped/appended） |
+| `setupGlobalFramework(lang?, tools?)` | 纯全局部署（首次全量，幂等）；签名 `(lang='zh-CN', tools=['opencode'])`（v1.1.6-stage-71）；返回 `SetupResult`（created/updated/skipped/appended） |
 | `checkGlobalDeployment(options?)` | 只读检测全局部署版本（`core/deployment-check.ts`）；返回 `DeployCheckResult`（四态 `ok`/`mismatch`/`missing`/`unknown`），供 `setup --check` 与 CLI 被动提示消费 |
 
 ## SetupResult
@@ -32,6 +32,11 @@ interface SetupResult {
 | Agent 定义 | 9 | `~/.config/opencode/agents/{agent}.md` |
 | Skill 定义 | 17 | `~/.config/opencode/skills/{name}/SKILL.md` |
 | 全局配置 | 1 | `~/.config/opencode/opencode.jsonc`（opencode 适配器；`mergeGlobalOpencodeJsonc` 深度合并 + 全局锁 + 原子写） |
+| **Claude 约束** | 1 | `~/.claude/CLAUDE.md`（`loadClaudeConstraintTemplate`，受管区三态；`tools` 含 claude 时） |
+| **Claude agents** | 9 | `~/.claude/agents/{agent}.md`（`loadClaudeAgentTemplate`，含 `feel`；`tools` 含 claude 时） |
+| **Claude skills** | 17 | `~/.claude/skills/{name}/SKILL.md`（复用 `SKILL_DEFINITIONS`；`tools` 含 claude 时） |
+
+> **按工具门控（v1.1.6-stage-71）**：opencode 步骤 1~4 整体包入 `if (tools.includes('opencode'))`，claude 分支包入 `if (tools.includes('claude'))`；默认 `tools=['opencode']` 时行为与改前**逐字一致**（`~/.claude` 零触）。claude 分支**不写 `settings.json`**（归 stage-73）。幂等不变式：默认二次 27 skipped；双 harness 二次 54 skipped。
 
 ## 检测语义（四态）
 
@@ -83,3 +88,4 @@ src/commands/setup.ts（openfeel setup [--lang]）
 |------|------|
 | v1.1.1 | 初始创建：新增 `setupGlobalFramework` 纯全局部署（全局 AGENTS.md + 9 agent + 16 skill + opencode.jsonc），不建项目 `.openfeel/` |
 | v1.1.5 | 新增 `openfeel setup --check [--json]` 只读诊断；补四态检测语义与升级流程；更正 skill 计数（16 → 17） |
+| v1.1.6-stage-71 | 签名扩 `(lang, tools=['opencode'])` + 按工具门控；新增 **claude 分支**（CLAUDE.md + 9 agents + 17 共享 skills，不写 settings.json）；默认仅 opencode 行为逐字不变 |

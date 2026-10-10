@@ -3486,3 +3486,68 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.6-stage-70（REV-70-001，medium blocking）——op-004（`37d0e8a`）在代码块后补 1 条标注 bullet（与同节 `:160` 的 stage-73 标注同构；代码块不变），复审独立取证：`rg -- "--tools"` = 2（代码块 + 标注）、`rg "v1.1.6-stage-71"` 源 1 处 + 生成段镜像 2 处。
 
 **参见：** v1.1.6-stage-70（REV-70-001；op-004 `37d0e8a`）；`src/core/templates-data/skills/openfeel-cli-usage/SKILL.md`；kb/patterns.md #CLI 用法 skill 化模式、#平台无关化「描述泛化」原则与边界；kb/troubleshooting.md #多源文案同步陷阱
+
+## [+] 工具注册表 enabled 门控的默认守卫：新增工具默认 enabled:false + 消费点 filter(t=>t.enabled)（双保险） (2026-10-11)
+
+**背景：v1.1.6-stage-71（R-5 高危修复）**——`supportedTools` 是「当前适配 harness」的注册表；为新增 Claude 工具，原把 claude 条目以**注释**形式预留（`// { id:'claude', enabled:false }`），而 `update <path>` 默认工具选择用 `supportedTools.map(t=>t.id)`（**不过滤 enabled**）。一旦把注释转正式条目，claude 会被**静默带入默认部署路径**（默认 `update` 就开始写 `~/.claude/`）。交互路径 `selectTools()` 早已 `filter(t=>t.enabled)`，唯命令层默认路径漏网。
+
+**模式（两条缺一不可）**：
+
+1. **数据侧**：新增（默认不启用）工具在注册表中为**正式条目**且 `enabled:false`——`enabled` 是「默认是否启用」的**唯一数据源**，不要用注释预留（注释既不可测、转为条目时又易漏改消费点）。
+2. **消费侧**：「默认选择启用工具集」的所有消费点一律 `filter(t => t.enabled).map(t => t.id)`；**严禁** `map(t=>t.id)` 直接全选。`enabled:false` 只有配合消费点过滤才生效（双保险）。
+
+**验收（决定性）**：默认路径部署后**隔离 HOME** 内新工具目录**零变化**（`setup` / `update <path>` 后 `~/.claude` 不存在）；单测（core + 命令双层）+ CLI 端到端各一道；并断言 `update --tools <新工具>` **显式**时才部署。
+
+**判据**：凡「注册表 + 默认选择」结构，须回答「默认选择是否读 `enabled`」；新增工具 = 「条目 `enabled:false` + 消费点过滤 + 默认零触隔离实测」三件套。
+
+**实证**：v1.1.6-stage-71——`core/update.ts` claude 正式条目 `enabled:false`（注释移除）；`commands/update.ts` `map(t=>t.id)` → `filter((t)=>t.enabled).map((t)=>t.id)`（原 `map` 消失）；隔离 HOME 实测默认 `setup`/`update <path>` 后 `~/.claude` 不存在。
+
+**参见：** v1.1.6-stage-71（R-5；op-002 `7287355`）；`src/core/update.ts` `supportedTools`/`selectTools`；`src/commands/update.ts`；kb/architecture.md #多 harness 部署编排架构；kb/patterns.md #破坏性命令安全校验清单、#CLI 退出码语义
+
+## [+] 环境变量覆盖型路径函数的「函数体内读 env」可测试性模式（不得提为模块级常量） (2026-10-11)
+
+**背景：v1.1.6-stage-71（R-新6）**——新增 Claude 路径函数 `getClaudeConfigDir()` 尊重 `CLAUDE_CONFIG_DIR`。若把 `process.env.CLAUDE_CONFIG_DIR` 提为**模块级常量**，则模块加载即固化取值，测试**无法**经 `vi.stubEnv` / `process.env` 注入不同值（模块缓存已定型）。
+
+**模式**：环境变量覆盖必须在**函数体内**读取——`const dir = process.env.CLAUDE_CONFIG_DIR?.trim(); return dir ? dir : join(homedir(), '.claude');`；空串/纯空白**回落**默认路径。其余派生路径函数（`getClaudeAgentsDir` 等）经该函数间接取值，继承可注入性。
+
+**配套（测试）**：三态用例（未设 / 设为自定义目录 / 空串 / 纯空白）+ `afterEach` **还原原值**（保存原值并 `delete`）防 env 泄漏；断言落在 `~/.claude/{,agents,skills,CLAUDE.md,settings.json}`。与 `#全局路径测试的单点 mock 隔离模式` 协同：函数经 homedir 单点 → 自动纳入 `vi.mock('node:os')` 隔离。
+
+**判据**：凡路径/配置函数读取「可被测试注入的 env」时，「读 env 的位置」是设计点——**运行时可注入 > 加载期固化**；模块级常量仅供真正恒定的常量（如 `.claude` 字面名）。
+
+**实证**：v1.1.6-stage-71（op-001 `e753217`）——`getClaudeConfigDir` 函数体内读 `process.env.CLAUDE_CONFIG_DIR?.trim()`；三态单测 + env 恢复；`CLAUDE_CONFIG_DIR` 重定向 CLI 实测部署落隔离目录、默认 `~/.claude` 零泄漏。
+
+**参见：** v1.1.6-stage-71（R-新6；op-001）；`src/core/global-paths.ts`；`test/core/global-paths.test.ts`；kb/patterns.md #全局路径测试的单点 mock 隔离模式、#测试全局路径隔离模式（禁用保存/恢复伪隔离）；kb/architecture.md #多 harness 部署编排架构
+
+## [+] 备份 HOME 外路径 fallback 的 sha8 口径：global-external/<sha8>/<规范化尾段> (2026-10-11)
+
+**背景：v1.1.6-stage-71（D-CFG / R-7）**——部署覆盖前备份（`backup.ts`）原对越出 HOME 的路径**抛 `BackupError`**，导致 `CLAUDE_CONFIG_DIR` 指向 HOME 外时「备份失败 → 跳过写入」。D-CFG 使该场景可备份。
+
+**口径（唯一目录名定稿）**：越界**判定不变**（仍以 `relative(getHomedir(), abs)` 是否 `..`/绝对判定），**仅改处置**（抛错 → fallback）：
+
+- HOME 内 → 沿用 `global/<HOME 相对>`（**零回归**）；
+- HOME 外 → `global-external/<sha8>/<规范化尾段>`，**不再抛错**；
+- **`sha8 = sha256(resolve(absPath)).digest('hex').slice(0,8)`**——输入**规范化绝对路径（含盘符）**，输出仅 `[0-9a-f]` → **天然规避盘符冒号与文件系统保留字符**，跨平台可复现且可作单层目录名；含盘符使其对 `C:\foo` 与 `D:\foo` 不撞。
+- **尾段**：逐段剥离 Windows 盘符（`^[A-Za-z]:`）+ 清洗 `[<>:"|?*]` → `_`，**保留目录层级**（`mkdirSync(dir, {recursive:true})` 天然支持）；空段防御补 `root`。
+- **project 分支不动**：`projectPath` 越界**仍抛 `BackupError`**（处置只针对 global 分支）。
+
+**判据**：跨盘符/跨平台的目录名/文件名**不得含绝对路径原文**（冒号/分隔符/保留字符非法）；用「规范化绝对路径的哈希前 N 位（hex）+ 逐段清洗的尾段」兼顾**唯一性 + 可读层级 + 跨平台合法**。
+
+**实证**：v1.1.6-stage-71（op-001）——单测真断言 `backupRel.startsWith('global-external/')` + sha8 复算比对 + dest 存在且内容一致 + `manifest.entries[abs]` 登记；HOME 内既有用例全绿（零回归）。
+
+**参见：** v1.1.6-stage-71（D-CFG / R-7；op-001 `e753217`）；`src/core/backup.ts` `computeBackupRel`；kb/patterns.md #部署覆盖前自动备份机制、#写策略按资产归属二分；kb/troubleshooting.md #「备份失败绝不覆盖」的失败路径语义分叉；manual/core/backup.md
+
+## [+] 重启提醒按 harness 组合参数化：{harness} 占位 + i18n + isTTY 守卫（多 harness 零回归） (2026-10-11)
+
+**背景：v1.1.6-stage-71**——部署后重启提醒原**硬编码 opencode**（`updated.some(startsWith getGlobalAgentsDir())` + 固定文案）。多 harness 并存后须按实际变更的 harness 组合输出，且**默认（仅 opencode）输出逐字不变**。
+
+**模式**：
+
+1. **组合计算**：分别判定各 harness 是否变更——opencode 变更沿用原条件（`updated.some(startsWith getGlobalAgentsDir())`，**保默认零回归**）；claude 变更为 `created∪updated∪appended` 命中 `getClaudeAgentsDir()`/`getClaudeSkillsDir()`/`getClaudeMdPath()` 前缀（含首次创建）。
+2. **文案 i18n 参数化**：`{harness}` 占位（`update.restartHarnessTmpl` / `setup.restartHarnessTmpl`），harness 值拼接 `'opencode'` / `'Claude Code'` / `'opencode / Claude Code'`；**仅 opencode 时渲染结果与改前硬编码逐字一致**（默认输出零回归）。
+3. **守卫与提示**：`process.stdout.isTTY` 守卫、非交互静默；claude 首次创建追加专用提示（`update.claudeReloadHintTmpl`，含 `/reload-skills` 与「CLAUDE.md 下次会话生效」）。
+
+**判据**：多 harness 场景的对称输出须「**先保默认逐字、再参数化扩展**」——把平台名抽为变量/占位，而非复制分支文案；每新增 harness 只扩「变更判定 + 文案键」，不动既有渲染路径。
+
+**实证**：v1.1.6-stage-71（op-003 `62fcb43`）——`--tools claude` 实测输出 `请重启当前 harness（Claude Code）…` + `/reload-skills` 提示；默认 `setup` 尾行与改前逐字一致（zh/en 同）；REV 独立复核确认。
+
+**参见：** v1.1.6-stage-71（op-003）；`src/core/update.ts`、`src/commands/setup.ts`；kb/patterns.md #init/update 重启提醒对称输出模式、#CLI 国际化封装模式；kb/architecture.md #多 harness 部署编排架构

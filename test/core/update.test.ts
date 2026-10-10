@@ -32,6 +32,7 @@ import { resetBackupSetCache } from '../../src/core/backup.js';
 import { createUpdateState, saveUpdateState, hashContent, getOpenfeelVersion } from '../../src/core/update-state.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { getClaudeMdPath, getClaudeAgentsDir, getClaudeSkillsDir } from '../../src/core/global-paths.js';
 import { tmpdir } from 'node:os';
 
 /** 全局 opencode 目录（基于 mock home） */
@@ -104,11 +105,13 @@ describe('updateProject', () => {
     mockHome.dir = homeDir;
     backupMock.failFor = null;
     resetBackupSetCache();
+    delete process.env.CLAUDE_CONFIG_DIR;
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
     rmSync(homeDir, { recursive: true, force: true });
+    delete process.env.CLAUDE_CONFIG_DIR;
   });
 
   it('应创建 9 个全局 Agent 定义文件', () => {
@@ -800,5 +803,74 @@ describe('updateProject', () => {
   it('stage-71/R-5：updateProject 默认（opencode）不触 ~/.claude', () => {
     updateProject(tmpDir);
     expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+  });
+
+  // ── stage-71/T3：claude 分支 + CLAUDE.md 受管区三态 ──
+
+  it('stage-71/T3：updateProject([claude]) 部署 27 文件且不触 opencode', () => {
+    const r = updateProject(tmpDir, ['claude']);
+    // 1 CLAUDE.md + 9 agents + 17 skills = 27
+    expect(r.created).toHaveLength(27);
+    expect(existsSync(getClaudeMdPath())).toBe(true);
+    expect(readdirSync(getClaudeAgentsDir()).filter((f) => f.endsWith('.md'))).toHaveLength(9);
+    expect(readdirSync(getClaudeSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory())).toHaveLength(17);
+    // opencode 未触
+    expect(existsSync(globalAgentsMdPath())).toBe(false);
+    expect(existsSync(join(homeDir, '.claude', 'settings.json'))).toBe(false);
+  });
+
+  it('stage-71/T3：默认 updateProject 不触 ~/.claude（零触）', () => {
+    updateProject(tmpDir);
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+  });
+
+  it('stage-71/T3：用户已有 CLAUDE.md（无标记）→ appended，用户内容逐字保留', () => {
+    mkdirSync(join(homeDir, '.claude'), { recursive: true });
+    const userContent = '# 我的 CLAUDE.md\n用户自定义内容\n';
+    writeFileSync(getClaudeMdPath(), userContent, 'utf-8');
+
+    const r = updateProject(tmpDir, ['claude']);
+    expect(r.appended).toContain(getClaudeMdPath());
+    const after = readFileSync(getClaudeMdPath(), 'utf-8');
+    expect(after.startsWith(userContent)).toBe(true);
+    expect(after).toContain('<!-- openfeel:begin -->');
+  });
+
+  it('stage-71/T3：含标记 CLAUDE.md 篡改区内 → updated，区外逐字保留', () => {
+    updateProject(tmpDir, ['claude']);
+    const outside = '# 用户区外内容\n';
+    const c = readFileSync(getClaudeMdPath(), 'utf-8');
+    const tampered = outside + c.replace('<!-- openfeel:begin -->\n', '<!-- openfeel:begin -->\nTAMPER\n');
+    writeFileSync(getClaudeMdPath(), tampered, 'utf-8');
+
+    const r = updateProject(tmpDir, ['claude']);
+    expect(r.updated).toContain(getClaudeMdPath());
+    const after = readFileSync(getClaudeMdPath(), 'utf-8');
+    expect(after.startsWith(outside)).toBe(true);
+    expect(after).not.toContain('TAMPER');
+  });
+
+  it('stage-71/T3：CLAUDE.md malformed（两对标记）→ skipped + anomaly，不写盘', () => {
+    updateProject(tmpDir, ['claude']);
+    const original = readFileSync(getClaudeMdPath(), 'utf-8');
+    const malformed = original.replace(
+      '<!-- openfeel:end -->',
+      '<!-- openfeel:end -->\n<!-- openfeel:begin -->\nX\n<!-- openfeel:end -->',
+    );
+    writeFileSync(getClaudeMdPath(), malformed, 'utf-8');
+
+    const r = updateProject(tmpDir, ['claude']);
+    expect(r.skipped).toContain(getClaudeMdPath());
+    expect(readFileSync(getClaudeMdPath(), 'utf-8')).toBe(malformed);
+    const infos = readFileSync(updateInfosPath(), 'utf-8');
+    expect(infos).toContain('CLAUDE.md');
+  });
+
+  it('stage-71/T3：二次 updateProject([claude]) → skipped === 27 幂等', () => {
+    updateProject(tmpDir, ['claude']);
+    const r2 = updateProject(tmpDir, ['claude']);
+    expect(r2.created).toHaveLength(0);
+    expect(r2.updated).toHaveLength(0);
+    expect(r2.skipped.length).toBe(27);
   });
 });

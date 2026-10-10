@@ -37,6 +37,7 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
     mockHome.dir = homeDir;
     prevExitCode = process.exitCode;
     process.exitCode = undefined;
+    delete process.env.CLAUDE_CONFIG_DIR;
     logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
     program = new Command();
@@ -49,6 +50,7 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
     process.exitCode = prevExitCode;
     rmSync(homeDir, { recursive: true, force: true });
     mockHome.dir = '';
+    delete process.env.CLAUDE_CONFIG_DIR;
   });
 
   it('基本路径：部署全局文件并输出完成（exit 0）', async () => {
@@ -128,5 +130,38 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
     await program.parseAsync(['setup', '--lang', 'en'], { from: 'user' });
     expect(existsSync(join(homeDir, '.config', 'opencode', 'AGENTS.md'))).toBe(true);
     expect(process.exitCode).toBeUndefined();
+  });
+
+  // ── stage-71/T4：setup --tools 命令面 ──
+
+  it('stage-71/T4：setup --tools claude → 部署 CLAUDE.md，不触 opencode', async () => {
+    await program.parseAsync(['setup', '--tools', 'claude'], { from: 'user' });
+    expect(existsSync(join(homeDir, '.claude', 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(homeDir, '.config', 'opencode', 'AGENTS.md'))).toBe(false);
+    expect(process.exitCode === 0 || process.exitCode === undefined).toBe(true);
+  });
+
+  it('stage-71/T4：setup --tools foo（非法）→ exit 1 且零写盘', async () => {
+    const exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await program.parseAsync(['setup', '--tools', 'foo'], { from: 'user' });
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(existsSync(join(homeDir, '.config', 'opencode', 'AGENTS.md'))).toBe(false);
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+  });
+
+  it('stage-71/T4：默认 setup 不触 ~/.claude 且输出 harness 重启文案', async () => {
+    await program.parseAsync(['setup'], { from: 'user' });
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+    const out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('opencode');
+    expect(out).toContain('harness');
   });
 });

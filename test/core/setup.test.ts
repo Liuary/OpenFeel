@@ -31,7 +31,7 @@ vi.mock('../../src/core/backup.js', async (importOriginal) => {
 import { setupGlobalFramework } from '../../src/core/setup.js';
 import { getOpenfeelVersion } from '../../src/core/update-state.js';
 import { resetBackupSetCache } from '../../src/core/backup.js';
-import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath } from '../../src/core/global-paths.js';
+import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath, getClaudeMdPath, getClaudeAgentsDir, getClaudeSkillsDir } from '../../src/core/global-paths.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -44,10 +44,12 @@ describe('setupGlobalFramework', () => {
     mockHome.dir = homeDir;
     backupMock.failFor = null;
     resetBackupSetCache();
+    delete process.env.CLAUDE_CONFIG_DIR;
   });
 
   afterEach(() => {
     rmSync(homeDir, { recursive: true, force: true });
+    delete process.env.CLAUDE_CONFIG_DIR;
   });
 
   it('部署全局 AGENTS.md + 9 agent + 17 skill + 全局 opencode.jsonc', () => {
@@ -196,5 +198,46 @@ describe('setupGlobalFramework', () => {
     setupGlobalFramework('zh-CN');
     const after = JSON.parse(readFileSync(join(homeDir, '.openfeel', 'update_state.json'), 'utf-8'));
     expect(after.openfeel_version).toBe(getOpenfeelVersion());
+  });
+
+  // ── stage-71/T2：claude 分支 + 门控 ──
+
+  it('stage-71/T2：默认（仅 opencode）setup 不触 ~/.claude（零触）', () => {
+    setupGlobalFramework('zh-CN');
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+  });
+
+  it('stage-71/T2：双 harness setup → CLAUDE.md + 9 agents + 17 skills，且无 settings.json', () => {
+    const r = setupGlobalFramework('zh-CN', ['opencode', 'claude']);
+
+    expect(existsSync(getClaudeMdPath())).toBe(true);
+    expect(r.created).toContain(getClaudeMdPath());
+
+    const claudeAgents = readdirSync(getClaudeAgentsDir()).filter((f) => f.endsWith('.md'));
+    expect(claudeAgents).toHaveLength(9);
+    expect(existsSync(join(getClaudeAgentsDir(), 'feel.md'))).toBe(true);
+
+    const claudeSkills = readdirSync(getClaudeSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory());
+    expect(claudeSkills).toHaveLength(17);
+
+    // 不写 settings.json（归 stage-73）
+    expect(existsSync(join(homeDir, '.claude', 'settings.json'))).toBe(false);
+  });
+
+  it('stage-71/T2：CLAUDE.md 含受管区标记且内容 == loadClaudeConstraintTemplate(zh-CN)', async () => {
+    setupGlobalFramework('zh-CN', ['opencode', 'claude']);
+    const { loadClaudeConstraintTemplate } = await import('../../src/core/template-loader.js');
+    const content = readFileSync(getClaudeMdPath(), 'utf-8');
+    expect(content).toContain('<!-- openfeel:begin -->');
+    expect(content).toContain(loadClaudeConstraintTemplate('zh-CN'));
+  });
+
+  it('stage-71/T2：双 harness 二次 setup 幂等 → created/updated 空 + skipped === 54', () => {
+    setupGlobalFramework('zh-CN', ['opencode', 'claude']);
+    const r2 = setupGlobalFramework('zh-CN', ['opencode', 'claude']);
+    expect(r2.created).toHaveLength(0);
+    expect(r2.updated).toHaveLength(0);
+    // 1 CLAUDE.md + 9 claude agents + 17 claude skills + 27 opencode = 54
+    expect(r2.skipped.length).toBe(54);
   });
 });

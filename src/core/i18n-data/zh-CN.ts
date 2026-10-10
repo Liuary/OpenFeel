@@ -379,8 +379,12 @@ export const update: I18nDomain = {
   'legacyLayoutWarnTmpl':       { key: 'update.legacyLayoutWarnTmpl',       zh: '[update] 检测到项目内旧布局 .opencode/{dirs}，请运行 openfeel migrate（stage-39 提供）迁移。', en: '' },
   'globalJsoncParseSkipTmpl':   { key: 'update.globalJsoncParseSkipTmpl',   zh: '[update] 全局 opencode.jsonc 解析失败（可能含块注释），跳过合并保留原文件: {err}', en: '' },
   'globalJsoncWriteSkipTmpl':   { key: 'update.globalJsoncWriteSkipTmpl',   zh: '[update] {err}；已跳过全局 opencode.jsonc 写入，继续其余步骤', en: '' },
-  'globalStaleWarnTmpl':        { key: 'update.globalStaleWarnTmpl',        zh: '[openfeel] 全局 OpenFeel 部署版本 {deployed} 与当前 CLI 版本 {cli} 不一致；请运行 openfeel setup 并重启 harness（opencode）以加载最新全局配置。', en: '' },
-  'globalMissingWarnTmpl':      { key: 'update.globalMissingWarnTmpl',      zh: '[openfeel] 未检测到全局 OpenFeel 部署；请运行 openfeel setup 完成部署并重启 harness（opencode）。', en: '' },
+  'globalStaleWarnTmpl':        { key: 'update.globalStaleWarnTmpl',        zh: '[openfeel] 全局 OpenFeel 部署版本 {deployed} 与当前 CLI 版本 {cli} 不一致；请运行 openfeel setup 并重启 harness 以加载最新全局配置。', en: '' },
+  'globalMissingWarnTmpl':      { key: 'update.globalMissingWarnTmpl',      zh: '[openfeel] 未检测到全局 OpenFeel 部署；请运行 openfeel setup 完成部署并重启 harness。', en: '' },
+  'toolsInvalidTmpl':           { key: 'update.toolsInvalidTmpl',           zh: '⚠️ 非法工具值：{tools}（合法值：{valid}）', en: '' },
+  'nonInteractiveToolsTmpl':    { key: 'update.nonInteractiveToolsTmpl',    zh: '（非交互环境，使用默认工具列表）', en: '' },
+  'restartHarnessTmpl':         { key: 'update.restartHarnessTmpl',         zh: '{harness} 全局配置已更新，请重启 {harness} 以加载新配置。', en: '' },
+  'claudeReloadHintTmpl':       { key: 'update.claudeReloadHintTmpl',       zh: 'Claude Code：首次创建 ~/.claude/{agents,skills} 后需重启会话或运行 /reload-skills；CLAUDE.md 于下次会话生效。', en: '' },
 };
 
 /* ==================== project 域：项目概览命令 ==================== */
@@ -590,19 +594,21 @@ export const help: I18nDomain = {
   'init':                  { key: 'help.init',                  zh: '初始化项目工作区，创建 .openfeel/ 目录结构和配置文件', en: '' },
   'init.demo':             { key: 'help.init.demo',             zh: '创建带示例骨架的项目（NumKit 风格）', en: '' },
   'init.lang':             { key: 'help.init.lang',             zh: 'Agent 提示词语言（zh-CN 或 en），非交互环境默认 zh-CN', en: '' },
-  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '仅创建 .openfeel/ 工作区（不建全局规则/平台适配器配置（AGENTS.md/opencode.jsonc）），供 feel 空白项目自动搭建', en: '' },
+  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '仅创建 .openfeel/ 工作区（不建全局规则/平台适配器配置），供 feel 空白项目自动搭建', en: '' },
   'init.nonInteractive':   { key: 'help.init.nonInteractive',   zh: '非交互模式（配合 --workspace-only 使用）', en: '' },
 
   // setup
-  'setup':                 { key: 'help.setup',                 zh: '部署全局 OpenFeel 框架配置（全局 AGENTS.md + agent + skill + 平台适配器配置（opencode.jsonc）），不建立项目 .openfeel/', en: '' },
+  'setup':                 { key: 'help.setup',                 zh: '部署全局 OpenFeel 框架配置（全局规则文件 + agent + skill + 平台适配器配置），不建立项目 .openfeel/；默认仅 opencode（--tools 可选 claude）', en: '' },
   'setup.lang':            { key: 'help.setup.lang',            zh: 'Agent 提示词语言（zh-CN 或 en），默认 zh-CN', en: '' },
   'setup.check':           { key: 'help.setup.check',           zh: '诊断全局部署与 CLI 版本一致性（只读，不执行部署）；一致退出 0，否则退出 1', en: '' },
   'setup.json':            { key: 'help.setup.json',            zh: '以 JSON 输出诊断结果（纯 JSON 单文档，含 schemaVersion）', en: '' },
+  'setup.tools':           { key: 'help.setup.tools',           zh: '部署工具列表（逗号分隔，如 opencode,claude；默认仅 opencode；非法值报错退出 1）', en: '' },
 
   // update
   'update':                { key: 'help.update',                zh: '部署 OpenFeel 适配文件到目标项目（无参数时交互式选择工具）', en: '' },
   'update.lang':           { key: 'help.update.lang',           zh: 'Agent prompt language (zh-CN or en)', en: '' },
   'update.force':          { key: 'help.update.force',          zh: '跳过 AGENTS.md 覆盖确认，直接覆盖', en: '' },
+  'update.tools':          { key: 'help.update.tools',          zh: '部署工具列表（逗号分隔，如 opencode,claude；非法值报错退出 1）', en: '' },
 
   // flow
   'flow':                  { key: 'help.flow',                  zh: '流水线状态管理', en: '' },
@@ -921,9 +927,10 @@ export const setup: I18nDomain = {
   'appended': { key: 'setup.appended', zh: '需人工确认的全局文件（已存在且非受管，未覆盖）：', en: '' },
   'complete': { key: 'setup.complete', zh: '✓ 全局 OpenFeel 框架配置部署完成', en: '' },
   'checkOkTmpl':       { key: 'setup.checkOkTmpl',       zh: '全局部署版本 {deployed}（与 CLI 版本 {cli} 一致）', en: '' },
-  'checkMismatchTmpl': { key: 'setup.checkMismatchTmpl', zh: '全局部署版本 {deployed} ≠ CLI 版本 {cli}；请运行 openfeel setup 并重启 harness（opencode）。', en: '' },
-  'checkMissingTmpl':  { key: 'setup.checkMissingTmpl',  zh: '未检测到全局 OpenFeel 部署；请运行 openfeel setup 完成部署并重启 harness（opencode）。', en: '' },
+  'checkMismatchTmpl': { key: 'setup.checkMismatchTmpl', zh: '全局部署版本 {deployed} ≠ CLI 版本 {cli}；请运行 openfeel setup 并重启 harness。', en: '' },
+  'checkMissingTmpl':  { key: 'setup.checkMissingTmpl',  zh: '未检测到全局 OpenFeel 部署；请运行 openfeel setup 完成部署并重启 harness。', en: '' },
   'checkUnknownTmpl':  { key: 'setup.checkUnknownTmpl',  zh: '全局部署状态无法判定（update_state.json 缺失或损坏）；可运行 openfeel setup 重新部署。', en: '' },
+  'restartHarnessTmpl': { key: 'setup.restartHarnessTmpl', zh: '请重启当前 harness（{harness}）以加载新的全局配置。', en: '' },
 };
 
 /* ==================== metrics 域：Agent 性能摘要（T15） ==================== */

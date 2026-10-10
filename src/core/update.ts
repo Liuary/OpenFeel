@@ -8,10 +8,10 @@
  */
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join, basename, isAbsolute, relative } from 'node:path';
-import { loadAgentTemplate, listAgentIds, loadTemplate } from './template-loader.js';
+import { loadAgentTemplate, listAgentIds, loadTemplate, loadClaudeConstraintTemplate, loadClaudeAgentTemplate, listClaudeAgentIds } from './template-loader.js';
 import { recordProjectLang } from './workspace/identity.js';
 import { t, getCliLang } from './i18n.js';
-import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalAgentsMdPath, getGlobalOpencodeJsoncPath, getGlobalUpdateStatePath } from './global-paths.js';
+import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalAgentsMdPath, getGlobalOpencodeJsoncPath, getGlobalUpdateStatePath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeMdPath } from './global-paths.js';
 import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './opencode-config.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
@@ -95,7 +95,7 @@ export async function selectTools(): Promise<string[]> {
     return selected;
   } catch {
     // 交互不可用时（如非 TTY 环境），回退到全部启用项
-    console.log('（非交互环境，使用默认工具列表）');
+    console.log(t('update.nonInteractiveToolsTmpl', getCliLang(process.cwd())));
     return supportedTools.filter((t) => t.enabled).map((t) => t.id);
   }
 }
@@ -1736,8 +1736,10 @@ export function updateProject(
   const globalState = loadGlobalUpdateState();
   const conflicts: string[] = [];
 
-  // 过滤：仅处理选中的工具
-  if (!selectedTools.includes('opencode')) {
+  // 过滤：仅处理选中的工具（两工具都未选才早退）
+  const wantOpencode = selectedTools.includes('opencode');
+  const wantClaude = selectedTools.includes('claude');
+  if (!wantOpencode && !wantClaude) {
     return { created: [], updated: [], skipped: [], conflicts: [], appended: [] };
   }
 
@@ -1747,14 +1749,6 @@ export function updateProject(
   if (legacyDirs.length > 0) {
     console.warn(t('update.legacyLayoutWarnTmpl', getCliLang(projectPath), { dirs: legacyDirs.join(',') }));
   }
-
-  // 全局部署目标（D1）
-  const agentsDir = getGlobalAgentsDir();
-  const skillsDir = getGlobalSkillsDir();
-
-  // 确保全局目标目录存在
-  mkdirSync(agentsDir, { recursive: true });
-  mkdirSync(skillsDir, { recursive: true });
 
   // 记录项目语言映射到全局配置
   // 使用 options?.lang（用户通过 --lang 显式指定的语言）优先，
@@ -1777,88 +1771,132 @@ export function updateProject(
     delete globalState.files[staleCoreKey];
   }
 
-  // 0. 生成全局框架约束 AGENTS.md（~/.config/opencode/AGENTS.md）
-  const agentsMdPath = getGlobalAgentsMdPath();
-  const agentsMdContent = loadTemplate(lang, 'agents-md');
-  {
-    const action = deployGlobalAsset(agentsMdPath, agentsMdContent, newGlobalState, 'update');
-    pushAction(action, agentsMdPath, created, updated, skipped, appended);
-  }
+  // opencode 分支（步骤 0~4）——原样保留
+  if (wantOpencode) {
+    // 全局部署目标（D1）
+    const agentsDir = getGlobalAgentsDir();
+    const skillsDir = getGlobalSkillsDir();
 
-  // 1. 生成 Agent 定义文件到全局 agents 目录（绝对路径作 state key）
-  for (const name of listAgentIds(lang)) {
-    const content = loadAgentTemplate(lang, name);
-    const filePath = join(agentsDir, `${name}.md`);
-    const action = deployGlobalAsset(filePath, content, newGlobalState, 'update');
-    pushAction(action, filePath, created, updated, skipped, appended);
-  }
+    // 确保全局目标目录存在
+    mkdirSync(agentsDir, { recursive: true });
+    mkdirSync(skillsDir, { recursive: true });
 
-  // 2. 生成 Skill 定义文件到全局 skills 目录（每个 Skill 一个子目录，包含 SKILL.md）
-  for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {
-    const skillSubDir = join(skillsDir, name);
-    mkdirSync(skillSubDir, { recursive: true });
-    const filePath = join(skillSubDir, 'SKILL.md');
-    const action = deployGlobalAsset(filePath, content, newGlobalState, 'update');
-    pushAction(action, filePath, created, updated, skipped, appended);
-  }
-
-  // 3. 全局 opencode.jsonc：深度合并（保留用户字段），加全局锁 + 原子写
-  const globalJsoncPath = getGlobalOpencodeJsoncPath();
-  try {
-    // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
-    const globalJsoncBackup = backupFileBeforeWrite(globalJsoncPath, { command: 'update' });
-    if (globalJsoncBackup) {
-      appendUpdateInfo('backed', { absolutePath: globalJsoncPath, backupRel: globalJsoncBackup.backupRel, command: 'update' });
-      notifyBackupIfTTY(globalJsoncBackup.backupRel);
+    // 0. 生成全局框架约束 AGENTS.md（~/.config/opencode/AGENTS.md）
+    const agentsMdPath = getGlobalAgentsMdPath();
+    const agentsMdContent = loadTemplate(lang, 'agents-md');
+    {
+      const action = deployGlobalAsset(agentsMdPath, agentsMdContent, newGlobalState, 'update');
+      pushAction(action, agentsMdPath, created, updated, skipped, appended);
     }
-    // REV-1805：read-merge-write 全部置于锁内，消除与 model-config 锁内读写的 TOCTOU 竞态
-    const globalJsoncNew = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
-      // 安全读取（T50）：目录占位/不可读 → null，跳过合并与写入，按空配置继续
-      const current = readJsoncFile(globalJsoncPath);
-      if (current === null) {
-        return null;
-      }
-      let merged: string;
-      // 合并可能因块注释 parse 失败抛异常（parseJsonc 边界）：降级为「跳过合并、保留原文件」并告警
-      try {
-        merged = mergeGlobalOpencodeJsonc(current);
-      } catch (err) {
-        console.warn(t('update.globalJsoncParseSkipTmpl', getCliLang(projectPath), { err: (err as Error).message }));
-        merged = current;
-      }
-      atomicWriteFileSync(globalJsoncPath, merged);
-      return merged;
-    });
-    if (globalJsoncNew !== null) {
-      updateFileHash(newGlobalState, globalJsoncPath, globalJsoncNew);
+
+    // 1. 生成 Agent 定义文件到全局 agents 目录（绝对路径作 state key）
+    for (const name of listAgentIds(lang)) {
+      const content = loadAgentTemplate(lang, name);
+      const filePath = join(agentsDir, `${name}.md`);
+      const action = deployGlobalAsset(filePath, content, newGlobalState, 'update');
+      pushAction(action, filePath, created, updated, skipped, appended);
     }
-  } catch (err) {
-    if (err instanceof BackupError) {
-      // 备份失败（REV-011-A）：跳过全局 jsonc 写入、记 anomaly、继续其余步骤（对齐 B3 幂等语义）
-      appendUpdateInfo('anomaly', { absolutePath: globalJsoncPath, note: 'backup_failed' });
-      console.warn(t('update.globalJsoncWriteSkipTmpl', getCliLang(projectPath), { err: err.message }));
+
+    // 2. 生成 Skill 定义文件到全局 skills 目录（每个 Skill 一个子目录，包含 SKILL.md）
+    for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {
+      const skillSubDir = join(skillsDir, name);
+      mkdirSync(skillSubDir, { recursive: true });
+      const filePath = join(skillSubDir, 'SKILL.md');
+      const action = deployGlobalAsset(filePath, content, newGlobalState, 'update');
+      pushAction(action, filePath, created, updated, skipped, appended);
+    }
+
+    // 3. 全局 opencode.jsonc：深度合并（保留用户字段），加全局锁 + 原子写
+    const globalJsoncPath = getGlobalOpencodeJsoncPath();
+    try {
+      // 写前备份（B3）：备份须在 jsonc 锁之外（之前）完成，避免 backup 锁与 jsonc 锁嵌套
+      const globalJsoncBackup = backupFileBeforeWrite(globalJsoncPath, { command: 'update' });
+      if (globalJsoncBackup) {
+        appendUpdateInfo('backed', { absolutePath: globalJsoncPath, backupRel: globalJsoncBackup.backupRel, command: 'update' });
+        notifyBackupIfTTY(globalJsoncBackup.backupRel);
+      }
+      // REV-1805：read-merge-write 全部置于锁内，消除与 model-config 锁内读写的 TOCTOU 竞态
+      const globalJsoncNew = withFileLock(globalLockPath('global-opencode-jsonc'), () => {
+        // 安全读取（T50）：目录占位/不可读 → null，跳过合并与写入，按空配置继续
+        const current = readJsoncFile(globalJsoncPath);
+        if (current === null) {
+          return null;
+        }
+        let merged: string;
+        // 合并可能因块注释 parse 失败抛异常（parseJsonc 边界）：降级为「跳过合并、保留原文件」并告警
+        try {
+          merged = mergeGlobalOpencodeJsonc(current);
+        } catch (err) {
+          console.warn(t('update.globalJsoncParseSkipTmpl', getCliLang(projectPath), { err: (err as Error).message }));
+          merged = current;
+        }
+        atomicWriteFileSync(globalJsoncPath, merged);
+        return merged;
+      });
+      if (globalJsoncNew !== null) {
+        updateFileHash(newGlobalState, globalJsoncPath, globalJsoncNew);
+      }
+    } catch (err) {
+      if (err instanceof BackupError) {
+        // 备份失败（REV-011-A）：跳过全局 jsonc 写入、记 anomaly、继续其余步骤（对齐 B3 幂等语义）
+        appendUpdateInfo('anomaly', { absolutePath: globalJsoncPath, note: 'backup_failed' });
+        console.warn(t('update.globalJsoncWriteSkipTmpl', getCliLang(projectPath), { err: err.message }));
+      } else {
+        throw err; // 非备份错误照旧上抛（锁超时等不回退）
+      }
+    }
+
+    // 4. 项目 opencode.jsonc：不存在则写最小 { $schema }；已存在则保留（旧非法字段清理属 stage-39）
+    const projectJsoncPath = resolve(projectPath, 'opencode.jsonc');
+    if (!existsSync(projectJsoncPath)) {
+      atomicWriteFileSync(projectJsoncPath, JSON.stringify(buildProjectOpencodeJsoncObj(), null, 2) + '\n');
+      created.push('opencode.jsonc');
     } else {
-      throw err; // 非备份错误照旧上抛（锁超时等不回退）
+      skipped.push('opencode.jsonc (use existing)');
     }
   }
 
-  // 4. 项目 opencode.jsonc：不存在则写最小 { $schema }；已存在则保留（旧非法字段清理属 stage-39）
-  const projectJsoncPath = resolve(projectPath, 'opencode.jsonc');
-  if (!existsSync(projectJsoncPath)) {
-    atomicWriteFileSync(projectJsoncPath, JSON.stringify(buildProjectOpencodeJsoncObj(), null, 2) + '\n');
-    created.push('opencode.jsonc');
-  } else {
-    skipped.push('opencode.jsonc (use existing)');
+  // claude 分支：CLAUDE.md + 9 agent + 17 共享 skill（不写 settings.json，归 stage-73）
+  if (wantClaude) {
+    const claudeAgentsDir = getClaudeAgentsDir();
+    const claudeSkillsDir = getClaudeSkillsDir();
+    mkdirSync(claudeAgentsDir, { recursive: true });
+    mkdirSync(claudeSkillsDir, { recursive: true });
+
+    // 1c. CLAUDE.md（受管区三态复用 deployGlobalAsset；用户已有 → append 不覆盖）
+    const claudeMd = getClaudeMdPath();
+    pushAction(deployGlobalAsset(claudeMd, loadClaudeConstraintTemplate(lang), newGlobalState, 'update'), claudeMd, created, updated, skipped, appended);
+
+    // 2c. 9 agents（含 feel）
+    for (const name of listClaudeAgentIds(lang)) {
+      const p = join(claudeAgentsDir, `${name}.md`);
+      pushAction(deployGlobalAsset(p, loadClaudeAgentTemplate(lang, name), newGlobalState, 'update'), p, created, updated, skipped, appended);
+    }
+
+    // 3c. 17 共享 skills
+    for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {
+      const dir = join(claudeSkillsDir, name);
+      mkdirSync(dir, { recursive: true });
+      const p = join(dir, 'SKILL.md');
+      pushAction(deployGlobalAsset(p, content, newGlobalState, 'update'), p, created, updated, skipped, appended);
+    }
+    // 不写 settings.json（归 stage-73）
   }
 
-  // 重启提醒（仅在 opencode 全局 agent 配置更新时，且为交互模式）
-  if (updated.some((f) => f.startsWith(getGlobalAgentsDir())) && process.stdout.isTTY) {
+  // 重启提醒（按 harness 组合；isTTY 守卫、非交互静默）
+  if (process.stdout.isTTY) {
     const reminderLang = getCliLang(projectPath);
-    console.log(
-      reminderLang === 'en'
-        ? 'opencode global configuration updated. Please restart opencode to load the new configuration.'
-        : 'opencode 全局配置已更新，请重启 opencode 以加载新配置。'
+    const opencodeChanged = updated.some((f) => f.startsWith(getGlobalAgentsDir()));
+    const claudeChanged = [...created, ...updated, ...appended].some(
+      (f) => f.startsWith(getClaudeAgentsDir()) || f.startsWith(getClaudeSkillsDir()) || f === getClaudeMdPath(),
     );
+    const harnesses: string[] = [];
+    if (opencodeChanged) { harnesses.push('opencode'); }
+    if (claudeChanged) { harnesses.push('Claude Code'); }
+    if (harnesses.length > 0) {
+      console.log(t('update.restartHarnessTmpl', reminderLang, { harness: harnesses.join(' / ') }));
+      if (claudeChanged) { console.log(t('update.claudeReloadHintTmpl', reminderLang)); }
+    }
   }
 
   // ── 写入冲突标记文件 ──
@@ -1986,6 +2024,19 @@ function getIncomingContent(
   if (relativePath.startsWith(getGlobalSkillsDir()) && basename(relativePath) === 'SKILL.md') {
     const name = basename(dirname(relativePath));
     return SKILL_DEFINITIONS[name] ?? '';
+  }
+
+  // Claude 全局约束 CLAUDE.md
+  if (relativePath === getClaudeMdPath()) {
+    return loadClaudeConstraintTemplate(lang);
+  }
+  // Claude agent：位于 getClaudeAgentsDir() 下的 {name}.md
+  if (relativePath.startsWith(getClaudeAgentsDir())) {
+    return loadClaudeAgentTemplate(lang, basename(relativePath, '.md'));
+  }
+  // Claude skill：位于 getClaudeSkillsDir() 下的 {name}/SKILL.md
+  if (relativePath.startsWith(getClaudeSkillsDir()) && basename(relativePath) === 'SKILL.md') {
+    return SKILL_DEFINITIONS[basename(dirname(relativePath))] ?? '';
   }
 
   // 项目 opencode.jsonc

@@ -27,6 +27,7 @@ describe('update 命令（stage-50 op-005 T46）', () => {
     mockHome.dir = homeDir;
     prevExitCode = process.exitCode;
     process.exitCode = undefined;
+    delete process.env.CLAUDE_CONFIG_DIR;
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
     program = new Command();
@@ -40,6 +41,7 @@ describe('update 命令（stage-50 op-005 T46）', () => {
     rmSync(homeDir, { recursive: true, force: true });
     rmSync(projDir, { recursive: true, force: true });
     mockHome.dir = '';
+    delete process.env.CLAUDE_CONFIG_DIR;
   });
 
   async function safeParse(args: string[]): Promise<void> {
@@ -117,5 +119,20 @@ describe('update 命令（stage-50 op-005 T46）', () => {
     }
     expect((thrown as Error)?.message).toBe('__EXIT__');
     expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  // ── stage-71/T3：update --tools claude 命令面 ──
+
+  it('stage-71/T3：update <projDir> --tools claude → 部署 CLAUDE.md，不触 opencode', async () => {
+    await safeParse(['update', projDir, '--tools', 'claude']);
+    expect(existsSync(join(homeDir, '.claude', 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(homeDir, '.config', 'opencode', 'AGENTS.md'))).toBe(false);
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('stage-71/T3：update <projDir>（默认）→ 不触 ~/.claude', async () => {
+    await safeParse(['update', projDir]);
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+    expect(process.exitCode).toBeUndefined();
   });
 });

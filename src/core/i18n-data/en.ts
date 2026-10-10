@@ -354,8 +354,12 @@ export const update: I18nDomain = {
   'legacyLayoutWarnTmpl':       { key: 'update.legacyLayoutWarnTmpl',       zh: '', en: '[update] Detected legacy in-project layout .opencode/{dirs}; run openfeel migrate (provided since stage-39) to migrate.' },
   'globalJsoncParseSkipTmpl':   { key: 'update.globalJsoncParseSkipTmpl',   zh: '', en: '[update] Failed to parse global opencode.jsonc (may contain block comments); skipping merge and keeping the original file: {err}' },
   'globalJsoncWriteSkipTmpl':   { key: 'update.globalJsoncWriteSkipTmpl',   zh: '', en: '[update] {err}; skipped global opencode.jsonc write, continuing with remaining steps' },
-  'globalStaleWarnTmpl':        { key: 'update.globalStaleWarnTmpl',        zh: '', en: '[openfeel] Global OpenFeel deployment version {deployed} differs from CLI version {cli}; run `openfeel setup` and restart the harness (opencode) to load the latest global configuration.' },
-  'globalMissingWarnTmpl':      { key: 'update.globalMissingWarnTmpl',      zh: '', en: '[openfeel] No global OpenFeel deployment detected; run `openfeel setup` and restart the harness (opencode).' },
+  'globalStaleWarnTmpl':        { key: 'update.globalStaleWarnTmpl',        zh: '', en: '[openfeel] Global OpenFeel deployment version {deployed} differs from CLI version {cli}; run `openfeel setup` and restart the harness to load the latest global configuration.' },
+  'globalMissingWarnTmpl':      { key: 'update.globalMissingWarnTmpl',      zh: '', en: '[openfeel] No global OpenFeel deployment detected; run `openfeel setup` and restart the harness.' },
+  'toolsInvalidTmpl':           { key: 'update.toolsInvalidTmpl',           zh: '', en: 'Invalid tool value(s): {tools} (valid: {valid})' },
+  'nonInteractiveToolsTmpl':    { key: 'update.nonInteractiveToolsTmpl',    zh: '', en: '(Non-interactive environment; using the default tool list)' },
+  'restartHarnessTmpl':         { key: 'update.restartHarnessTmpl',         zh: '', en: '{harness} global configuration updated. Please restart {harness} to load the new configuration.' },
+  'claudeReloadHintTmpl':       { key: 'update.claudeReloadHintTmpl',       zh: '', en: 'Claude Code: after first creating ~/.claude/{agents,skills}, restart the session or run /reload-skills; CLAUDE.md takes effect next session.' },
 };
 
 /* ==================== project ==================== */
@@ -563,17 +567,19 @@ export const help: I18nDomain = {
   'init':                  { key: 'help.init',                  zh: '', en: 'Initialize project workspace, create .openfeel/ directory structure and config files' },
   'init.demo':             { key: 'help.init.demo',             zh: '', en: 'Create demo project skeleton (NumKit style)' },
   'init.lang':             { key: 'help.init.lang',             zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN in non-interactive mode' },
-  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '', en: 'Create the .openfeel/ workspace only (no global rules / platform adapter config: AGENTS.md/opencode.jsonc); used by Feel to auto-setup blank projects' },
+  'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '', en: 'Create the .openfeel/ workspace only (no global rules / platform adapter config); used by Feel to auto-setup blank projects' },
   'init.nonInteractive':   { key: 'help.init.nonInteractive',   zh: '', en: 'Non-interactive mode (used together with --workspace-only)' },
 
-  'setup':                 { key: 'help.setup',                 zh: '', en: 'Deploy global OpenFeel framework config (global AGENTS.md + agents + skills + platform adapter config: opencode.jsonc); does not create the project .openfeel/' },
+  'setup':                 { key: 'help.setup',                 zh: '', en: 'Deploy global OpenFeel framework config (global rules file + agents + skills + platform adapter config); does not create the project .openfeel/; defaults to opencode only (use --tools to add claude)' },
   'setup.lang':            { key: 'help.setup.lang',            zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN' },
   'setup.check':           { key: 'help.setup.check',           zh: '', en: 'Diagnose whether the global deployment matches the CLI version (read-only; no deploy); exit 0 if consistent, else 1' },
   'setup.json':            { key: 'help.setup.json',            zh: '', en: 'Output the diagnosis as JSON (pure single JSON document with schemaVersion)' },
+  'setup.tools':           { key: 'help.setup.tools',           zh: '', en: 'Deploy target tools (comma-separated, e.g. opencode,claude; defaults to opencode only; invalid value exits 1)' },
 
   'update':                { key: 'help.update',                zh: '', en: 'Deploy OpenFeel adapter files to target project (interactive tool selection when no args)' },
   'update.lang':           { key: 'help.update.lang',           zh: '', en: 'Agent prompt language (zh-CN or en)' },
   'update.force':          { key: 'help.update.force',          zh: '', en: 'Skip AGENTS.md overwrite confirmation, force overwrite' },
+  'update.tools':          { key: 'help.update.tools',          zh: '', en: 'Deploy target tools (comma-separated, e.g. opencode,claude; invalid value exits 1)' },
 
   'flow':                  { key: 'help.flow',                  zh: '', en: 'Pipeline status management' },
   'flow.status':           { key: 'help.flow.status',           zh: '', en: 'Show pipeline status summary' },
@@ -880,9 +886,10 @@ export const setup: I18nDomain = {
   'appended': { key: 'setup.appended', zh: '', en: 'Global files needing manual confirmation (already exist and are unmanaged; not overwritten):' },
   'complete': { key: 'setup.complete', zh: '', en: '? Global OpenFeel framework config deployed' },
   'checkOkTmpl':       { key: 'setup.checkOkTmpl',       zh: '', en: 'Global deployment version {deployed} (matches CLI version {cli})' },
-  'checkMismatchTmpl': { key: 'setup.checkMismatchTmpl', zh: '', en: 'Global deployment version {deployed} != CLI version {cli}; run `openfeel setup` and restart the harness (opencode).' },
-  'checkMissingTmpl':  { key: 'setup.checkMissingTmpl',  zh: '', en: 'No global OpenFeel deployment detected; run `openfeel setup` and restart the harness (opencode).' },
+  'checkMismatchTmpl': { key: 'setup.checkMismatchTmpl', zh: '', en: 'Global deployment version {deployed} != CLI version {cli}; run `openfeel setup` and restart the harness.' },
+  'checkMissingTmpl':  { key: 'setup.checkMissingTmpl',  zh: '', en: 'No global OpenFeel deployment detected; run `openfeel setup` and restart the harness.' },
   'checkUnknownTmpl':  { key: 'setup.checkUnknownTmpl',  zh: '', en: 'Global deployment status cannot be determined (update_state.json missing or corrupted); run `openfeel setup` to redeploy.' },
+  'restartHarnessTmpl': { key: 'setup.restartHarnessTmpl', zh: '', en: 'Restart the harness ({harness}) to load the new global configuration.' },
 };
 
 /* ==================== metrics domain: agent performance summary (T15) ==================== */

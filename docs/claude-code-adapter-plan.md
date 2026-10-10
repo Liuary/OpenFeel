@@ -264,3 +264,18 @@ src/core/templates-data/
 - Claude Code 官方文档：claude-directory / memory / sub-agents / skills / settings / settings-reference / permissions / hooks / model-config（2026-10-10 核验）+ `CLAUDE_CONFIG_DIR` 语义（vercel-labs/skills#136）。
 - 本机实测：`~/.cc-switch/cc-switch.db`（providers/proxy_config/settings）、`~/.claude/settings.json`、`~/.local/share/opencode/auth.json`、`~/.config/opencode/opencode.jsonc`。
 - 仓库前置研究：`docs/agent-tool-compatibility-fix.md`（工具映射表/迁移检查清单）、`docs/research/*`（多 harness 方向）、`.openfeel/adapters/README.md`（适配器目录规范）。
+
+## 十五、settings.json 卸载/回滚语义（stage-73 定稿，Q6）
+
+> 背景：`~/.claude/settings.json` 注入（`agent:"feel"` + `permissions.defaultMode:"auto"`）为**一等能力**，
+> 本框架对 opencode 亦无卸载命令，故本期**不新增 `uninstall` 命令**，仅文档化回滚路径。
+
+**回滚路径（择一）**：
+1. **备份还原（推荐）**：写入前已备份至 `~/.openfeel/backup/{ts}/global/.claude/settings.json`
+   （`CLAUDE_CONFIG_DIR` 越界时为 `…/global-external/<sha8>/…`）。用备份覆盖回 `settings.json` 即还原。
+2. **手动删键**：编辑 `~/.claude/settings.json`，删除注入键
+   `"agent"`（顶层）与 `"permissions".defaultMode`；用户其余键（`env`/`model`/`modelPicker`/`theme`/`apiKeyHelper` 等）**原样保留**。
+   （仅当用户此前未自设这两键时，删除即完全还原。）
+
+**边界**：本框架不接管用户 `settings.json` 的其它键；重复运行 `openfeel setup/update --tools claude` 只会**重新注入**这两键，不会删除用户键。
+**后续**：纯 `uninstall` 子命令列入后续版本（大计划 §十 Q6 留痕）。

@@ -333,3 +333,59 @@ en 模式下 `flow advance --stage <id> --to done` 首行检测信息为英文�
 |------|--------|------|------|
 | 2026-10-02 02:12 | openfeel-feel-tester | open（low，非阻塞） | 机制正确，缺口 = 无 debug/warn 生产者；不阻塞本阶段验收；**归档官不改源码，维持 open** |
 
+---
+
+## BUG-009：`docs/commands.md:644` 残留「v1.1.2 快照」声明（与 `:3` 的 v1.1.6 快照头自相矛盾）
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.6-stage-72 归档官**就地修正**并留痕）｜ **来源阶段**：`v1.1.6-stage-72`（正式测试验收发现）｜ **归因**：**多载体版本收口仅改文件头、未扫全文**（op-001 仅改 `:3` 头 + `setup`/`update` 节）
+
+### 核心结论
+
+`docs/commands.md` 为版本快照文档（`:5`「本文件为**版本快照**」），stage-72 op-001 已将 `:3` 头改为 `适用版本：**v1.1.6 快照**`，但 `:644` 的说明行仍写「以上为 **v1.1.2 快照**的命令面概览」——**同一文件头/尾口径矛盾**，v1.1.3~v1.1.5 历次收口均遗漏。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 触发条件 | 读者查阅 `docs/commands.md` 文末说明行 |
+| 直接后果 | 误判命令面版本（仅文档口径，**无运行时影响**） |
+| 范围 | 手写文档 `docs/commands.md`（不经 build） |
+
+### 处置（v1.1.6-stage-72 归档，openfeel-archiver）
+
+- **归属裁定**：文档类漂移 → **归档官就地修正**（参照 `cli/BUG-007` 先例）。
+- **修正**：`docs/commands.md:644` 的 `v1.1.2 快照` → **`v1.1.6 快照`**。
+- **验收**：`rg "v1\.1\.2 快照" docs/commands.md` **零命中**。
+
+### 防再犯
+
+版本收口时**须全文扫描同名声明**（`rg "快照" <file>`），不得只改文件头；快照声明可能散落文首/文尾/正文多行。
+
+---
+
+## BUG-010：`manual/cli/commands.md:152-153` 引用已不存在的旧技能权威源路径
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（v1.1.6-stage-72 归档官**就地修正**并留痕）｜ **来源阶段**：`v1.1.6-stage-72`（正式测试验收发现）｜ **归因**：**stage-68 skill 权威源迁移后未全仓同步手写文档**（`git mv` 只改代码侧读点，manual 手写载体漏改）
+
+### 核心结论
+
+stage-68 已将 17 个 skill 权威源由 `templates-data/opencode/skills/`（`git mv`）迁至**中立共享源** `templates-data/skills/`。`manual/cli/commands.md:152`/`:153` 仍引用**已不存在**的旧路径 `templates-data/opencode/skills/openfeel-cli-usage/SKILL.md`（`Test-Path` = False），与同一 manual 内 `index.md:37`/`core/build.md` 的迁移记载**自相矛盾**。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 触发条件 | 读者按 `manual/cli/commands.md` 指引查找 skill 权威源 |
+| 直接后果 | 路径不存在（**事实性错误引用**，无运行时影响） |
+| 范围 | `.openfeel/manual/cli/commands.md`（手写模块手册，不经 build） |
+
+### 处置（v1.1.6-stage-72 归档，openfeel-archiver）
+
+- **归属裁定**：文档类漂移 → **归档官就地修正**。
+- **修正**：`:152`/`:153` 权威源路径 → **`src/core/templates-data/skills/openfeel-cli-usage/SKILL.md`**（中立共享源）；补注「skill 权威源已于 stage-68 迁中立共享源」。
+- **验收**：`rg "templates-data/opencode/skills" .openfeel/manual/cli/commands.md` **零命中**；其余 `manual/**` 命中均为「防复活/迁移历史」合法描述。
+
+### 防再犯
+
+文件迁移（`git mv`）后须**全仓 `rg` 旧路径**——manual/docs 手写载体不经 build，是迁移同步面里最易漏的一环（与 `templates/BUG-005`「部署型 skill 模板」同族）。
+

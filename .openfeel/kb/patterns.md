@@ -3588,3 +3588,47 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.6-stage-73（op-001/002 `1fe29b0`/`8b2fdeb`）——T6.1~T6.8（created/updated/skipped 三态、用户键逐字保留、幂等字节不变、parse_failed 不写盘 + anomaly、backup_failed 跳过 + anomaly + 字节不变、`CLAUDE_CONFIG_DIR` 越界写回 + 备份落 `global-external/`）；隔离 HOME 端到端 + REV 独立复跑。
 
 **参见：** v1.1.6-stage-73（T2/T3；op-001/002）；`src/core/claude-settings.ts` `applyClaudeSettings`；`src/core/setup.ts`、`src/core/update.ts`；kb/patterns.md #部署覆盖前自动备份机制、#写策略按资产归属二分、#全局/项目双 state 路由模式、#事务顺序模式、#原子写模式；kb/troubleshooting.md #「备份失败绝不覆盖」的失败路径语义分叉；manual/core/claude-settings.md、manual/core/backup.md
+
+## [+] 多 harness 版本收口的 A 类载体清单扩展：新增内容源携带新增版本载体 (2026-10-11)
+
+**背景：v1.1.6-stage-72（v1.1.6 收官版本收口）**——沿用 `#版本号全链路收口清单模式`（A 必改 / B 生成段 / C 传播 / D 禁改 / E 无载体）收口 1.1.5→1.1.6 时，**新增 harness（Claude Code）带来了计划清单未列的新增版本载体**：`src/core/templates-data/claude/constraint/{zh-CN,en}.md` 内含「当前 v1.1.x」行（与 `agents-md/{zh-CN,en}.md` 同型），计划 §六 A 类只列 5 类（漏列 claude constraint），实施期实测才发现（A 类实数 **8 载体**，非 6）。
+
+**模式/判据**：**版本载体清单与「内容源结构」强耦合**——凡是**含版本号字面量的模板/约束文件**，都是 A 类手工载体，且**每新增一个 harness 内容源，须同步在 A 类清单登记其版本载体**（尤其「全局约束/说明文件」这类含「当前 vX.Y.Z」行的载体）。收口时不能只按历史清单跑，须以**内容特征扫描**兜底：`rg -n "v1\.1\.5|当前 v1\.1\."` 全仓（排除历史批注）确认残留 0，再逐命中判定 A/B/C/D/E 归类。
+
+**避免**：① 计划期就把「新增 harness 的载体清单」列为风险项（本次 R-新13 版本载体遗漏）；② 实施期发现清单缺漏时**如实回填计划文档**（本次经 REV-72-002 由归档官回填大计划 §六 A 类），保持规划与实施一致；③ 载体命中判定按**内容特征**（是否含版本字面量），不以文件路径/行号为准（同型文件在不同 harness 下命名不同）。
+
+**实证**：v1.1.6-stage-72 op-002——A 类 8 载体全 1.1.6（`package.json` / `package-lock.json` root×2 / `.openfeel/config.yaml`（`meta.version` 单行 edit）/ `config.ts` zh·en / `agents-md/{zh-CN,en}.md` / **`claude/constraint/{zh-CN,en}.md`**）；`rg "1\.1\.5"` A 类残留 **0**；B 类 build ×2 幂等；REV-72-002 记录「实施期补漏 2 处」。
+
+**参见：** v1.1.6-stage-72（op-002 `0432ec9`；REV-72-002）；`src/core/templates-data/{agents-md,claude/constraint}/{zh-CN,en}.md`；kb/patterns.md #版本号全链路收口清单模式：A 必改 / B 生成段 / C 传播 / D 禁改 / E 无载体、#AGENTS.md 模板同步模式、#部署型资产变更的多载体同步面清单
+
+## [+] CI 环境守卫新增路径的对称性：两处快照循环同批追加 + 三态语义不变 + 计数锚点 (2026-10-11)
+
+**背景：v1.1.6-stage-72（T3）**——新增 Claude Code 适配器后，其全局目录 `~/.claude` 也会被 `setup`/`update` 写入，须纳入 CI 环境守卫（`Env snapshot` / `Env guard` 前后快照 diff），防测试/非测试步骤污染真实目录（呼应 `#环境哈希守卫（CI 层）` 与 `#CI 环境守卫误报`）。
+
+**模式（三要件）**：
+
+1. **两处循环同批追加**：守卫脚本在 **before（`Env snapshot`）** 与 **after（`Env guard`）** 各有一份**快照路径列表**，新增目录须**两处同时追加**——只改一处会导致前后快照范围不对称（多出的目录在 diff 中表现为「凭空新增」→ 误报）。本次两处均为 `ci.yml:39` / `:82`。
+2. **判定语义零变更**：仅「增路径」，保持三态（`ABSENT` / `EXISTS-EMPTY` / 逐文件 `sha256`）、**只比 hash 不比 mtime**、`ABSENT→ABSENT` 不误报。
+3. **对称性锚点**：以 `rg -c '"$HOME/\.claude"' .github/workflows/ci.yml` = **2** 作左右对称计数锚点（两处必须一致）。
+
+**判据**：凡「以路径清单驱动」的守卫/检查，新增条目须**成对**修改其全部清单点，并以**计数断言**兜底；「只在单点追加」是有守卫语义漂移风险的经典漏改（同族：多负载体的清单须同批改）。
+
+**实证**：v1.1.6-stage-72 op-002——`ci.yml` 4→**5 路径**（含 `$HOME/.claude`），两循环 diff 仅增路径 + 注释「四路径→五路径」；`rg -c` = 2；判定语义与三态未变；隔离 HOME 默认 `setup`/`update <path>` 后 `~/.claude` 零变化。
+
+**参见：** v1.1.6-stage-72（T3；op-002 `0432ec9`）；`.github/workflows/ci.yml`；kb/patterns.md #环境哈希守卫（CI 层）、#多 harness 版本收口的 A 类载体清单扩展；kb/troubleshooting.md #CI 环境守卫误报：守卫窗口混入默认写盘的非测试 CLI 步骤
+
+## [+] 方案层 ops 产出的审计链完整性：随阶段纳入版本管理 + 精确 `git add <ops 目录>`（禁 `-A`） (2026-10-11)
+
+**背景：v1.1.6-stage-72（REV-72-003 blocking）**——stage-72 的 `ops/` 目录（`deps.yaml` + `op-001~003.md`）在整个执行过程中**未被 `git add`**（`git ls-files .openfeel/plan/v1/stage-72/` 实测仅 `overview.md`/`plan.md`/`status.md`），而 stage-68~71/73 的 ops 均已提交 → **方案层审计链在本阶段断档**：clone/checkout 后无法追溯审查依据（op 文件）与 op 级依赖声明（`deps.yaml`），违反「计划目录纳入版本管理」惯例与跨阶段一致性。
+
+**模式/判据**：
+
+1. **ops 目录是方案层契约文件**，须随阶段纳入版本管理——`deps.yaml`（op 依赖声明）+ `op-NNN.md`（方案正文/来源/依据）为审查与复现的**可追溯载体**；Feel 调度前 glob 校验其存在性，若未提交则校验的是**未跟踪的本地文件**（clone 后即失效）。
+2. **精确路径提交（禁 `git add -A`）**：ops 提交一律 `git add .openfeel/plan/{series}/{stage}/ops/`（限定目录），**严禁 `git add -A`**——后者会裹入 `flow.json` / `checkpoints` / 私域文件等流水线产物（呼应 `#流水线归档自动 git commit 模式`）。
+3. **修复零内容改动**：审计链补提交仅做 `git add` + commit，**不修改** ops 文件内容；提交后以 `git show --stat` 确认仅新增该目录文件（全 `A`）、无越界路径。
+
+**避免**：① executor 每阶段提交产出时把 `ops/` 一并纳入（与其他产物同批）；② 归档时以 `git ls-files` 复核「本阶段 ops 是否已跟踪」，与相邻阶段比对一致性；③ 发现断档立即补提交（本次 op-004 `eacc8e8`：5 文件、765 insertions / 0 deletions、无越界）。
+
+**实证**：v1.1.6-stage-72 Rev-72-003（首轮 blocking）→ op-004（`eacc8e8`）修复 closed；复审 `git ls-files` = 5 文件、`git show --stat` 765+/0-、stage-68~73 ops 审计链补全。
+
+**参见：** v1.1.6-stage-72（REV-72-003；op-004 `eacc8e8`）；`.openfeel/plan/{series}/{stage}/ops/`；kb/patterns.md #流水线归档自动 git commit 模式、#op 文件命名规范（仅编号）、#deps.yaml 应声明实际文件名、#全量审查发现的批量清理方法论

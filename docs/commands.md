@@ -641,7 +641,7 @@ openfeel project overview                   # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-> 说明：以上为 v1.1.2 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 v1.1.6 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

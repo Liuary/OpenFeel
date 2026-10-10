@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 43 |
+| passed | 44 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -89,6 +89,7 @@
 | [v1.1.6-stage-70](stage-70.md) | 共享 skills 中立化 — 4 重写（能力名叙述 + `### opencode 适配器`/`### Claude Code 适配器` 双平台分节；opencode 小节逐字零回归）+ 3 轻改（工具名映射 10 键 / 全局规则文件措辞 / `skill(...)` 分平台）+ Feel 措辞归一（5 skill / 12 处）+ `claude/claude.json` 纠错；4 op（`77c5450`/`27f3314`/`e7af5a9`/`37d0e8a`）；**66 文件 / 1162 用例** 0 skipped、`tsc` 0、`lint i18n` 761、`lint kb` 0（363 引用）、build ×2 幂等不复活；**REV-70-001（medium, blocking）op-004 修复后 closed**（`--tools` 补提供版本标注）+ REV-70-003（low）closed（Claude 模型来源口径统一）；REV-70-002（T4.4 短键断言保护力弱）/ REV-70-004（Feel 计数口径）low 非阻塞 open；新登记 `templates/BUG-006`（low, open：model-check 平台专有句改写非逐字迁移）；知识沉淀 3 条（patterns 2 + troubleshooting 1） | **passed** |
 | [v1.1.6-stage-71](stage-71.md) | 部署编排与命令面（v1.1.6 第四阶段）— global-paths 5 Claude 函数（`CLAUDE_CONFIG_DIR` 函数体内读 env）+ setup/update 双分支（claude=CLAUDE.md+9 agents+17 skills，不写 settings.json）+ **R-5 高危修复**（`supportedTools` claude `enabled:false` + `filter(t=>t.enabled)`，默认 `~/.claude` 零触）+ `--tools` 命令面（非法值 exit 1）+ **D-CFG**（HOME 外备份 `global-external/<sha8>/…` fallback）+ i18n 7 新键/6 修订（761→**768**）；4 op（`e753217`/`7287355`/`62fcb43`/`cdd0953`）；**66 文件 / 1189 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` 768、`lint kb` 0（368 引用）、build ×2 幂等、无 settings.json；**REV-71-001/002 全 low 非阻塞 open**；验收 7/7 通过 0 Bug；知识沉淀 5 条（architecture 1 + patterns 4） | **passed** |
 | [v1.1.6-stage-73](stage-73.md) | Claude 全局 `settings.json` 注入（v1.1.6 第五阶段，**反转蓝本 §四**）— 新增 `claude-settings.ts`（严格 JSON 深合并 + `buildClaudeSettingsFragment` + `applyClaudeSettings` 单一共享函数）+ setup/update 接线（写前备份 / 锁内 read-merge-atomicWrite / `anomaly` / 幂等 skipped / hash）+ i18n 6 新键（768→**774**）+ Q6 卸载/回滚文档 + auto mode 实测留痕；注入 `agent:'feel'` + `permissions.defaultMode:'auto'`，用户键（`env`/`model`/`modelPicker`/`theme`/`apiKeyHelper` 等 12 项）**逐字保留**、**幂等**、**默认零触**；3 op（`1fe29b0`/`8b2fdeb`/`2b5c3e3`）；**67 文件 / 1206 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` 774、`lint kb` 0（380 引用）、build ×2 幂等、隔离 HOME 默认 `~/.claude` 零触；**REV-73-001 low 非阻塞 open**（merged 文案 created 路径失实）/ REV-73-002/003 low closed；验收 7/7 通过 0 Bug；知识沉淀 3 条（patterns 2 + troubleshooting 1） | **passed** |
+| [v1.1.6-stage-72](stage-72.md) | 文档与版本收口（**v1.1.6 收官阶段**，执行顺序最后）— README×3 + GETTING_STARTED + commands + 蓝本状态「提案→已实现（v1.1.6）」+ 实施偏差 + adapters + claude 桩 + manual 陈旧口径补正 + cli-usage skill 权威源 v1.1.6 快照；CI env guard 4→**5 路径**（`$HOME/.claude`）；版本 **1.1.5→1.1.6** 全链路收口（**A 类 8 载体**含补漏 `claude/constraint`、B 类 build 重生成、`CHANGELOG [1.1.6]`）；roadmap/plan 回填 **M27/M28 done**；4 op（`968afed`/`0432ec9`/`3e0b292`/`eacc8e8`）；**67 文件 / 1206 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` 774、`lint kb` 0（389 引用）、build ×2 幂等、`--version` **1.1.6**、A 类 `1.1.5` 残留 0；**REV-72-003（high, blocking）op-004 修复后 closed**（补提交 ops 审计链）/ REV-72-001/002 low 归档官就地修正 closed；验收 **5/5 通过**；新增 Bug `cli/BUG-009`/`cli/BUG-010`（low，归档官就地修正 closed）；知识沉淀 3 条（patterns）；**v1.1.6 六阶段全部闭环 = 版本收官** | **passed** |
 
 ## v5 系列审查
 

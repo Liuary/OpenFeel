@@ -96,7 +96,7 @@
 | v1.1.6-stage-70 | v1.1.6（共享 skills 中立化 — 4 重写〔能力名叙述 + `### opencode 适配器`/`### Claude Code 适配器` 双平台分节，opencode 小节逐字零回归〕+ 3 轻改 + Feel 归一〔5 skill/12 处〕+ `claude/claude.json` 纠错；hard 依赖 stage-68） | **已归档**（**v1.1.6 第三阶段闭环**） | 4 op | 4/4 |
 | v1.1.6-stage-71 | v1.1.6（部署编排与命令面 — global-paths 5 函数 + setup/update 双分支 + `--tools` + R-5 修复 + i18n 768 + D-CFG；hard 依赖 stage-69/70） | **已归档**（**M26 done / v1.1.6 第四阶段**） | 4 op | 4/4 |
 | v1.1.6-stage-73 | v1.1.6（Claude 全局 settings 注入 — 严格 JSON 深合并写回 + `defaultMode:auto` + `agent:feel` + 备份/幂等/卸载；**反转蓝本 §四**；hard 依赖 stage-69/71；**执行先于 stage-72**） | **已归档**（**M27 done / v1.1.6 第五阶段**） | 3 op | 3/3 |
-| v1.1.6-stage-72 | v1.1.6（文档与版本收口 — README×3 + manual + CHANGELOG + 版本 1.1.6 + CI guard；hard 依赖 stage-71/73；**执行顺序最后**） | **已归档**（**M28 done / v1.1.6 版本收官**） | 3 op | 3/3 |
+| v1.1.6-stage-72 | v1.1.6（文档与版本收口 — README×3 + manual + CHANGELOG + 版本 1.1.6 + CI guard；hard 依赖 stage-71/73；**执行顺序最后**） | **已归档**（**M28 done / v1.1.6 版本收官**） | 4 op | 4/4 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

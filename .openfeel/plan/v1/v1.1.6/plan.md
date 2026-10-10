@@ -126,7 +126,7 @@ stage-68 ──▶ stage-69 ──┼──────────────�
 
 > 依据 `kb/patterns.md #版本号全链路收口清单模式`；以内容特征判定，不以行号为准。
 
-- **A 手工载体**：`package.json`（version）；`package-lock.json`（root 两处，**禁 `npm install` 重生成**）；`.openfeel/config.yaml`（`meta.version` **单行 edit，禁整文件重写**）；`src/core/config.ts`（`CONFIG_TEMPLATE_ZH`/`_EN` 各一处）；`src/core/templates-data/agents-md/{zh-CN,en}.md`（「当前 v1.1.x」行）。
+- **A 手工载体**：`package.json`（version）；`package-lock.json`（root 两处，**禁 `npm install` 重生成**）；`.openfeel/config.yaml`（`meta.version` **单行 edit，禁整文件重写**）；`src/core/config.ts`（`CONFIG_TEMPLATE_ZH`/`_EN` 各一处）；`src/core/templates-data/agents-md/{zh-CN,en}.md`（「当前 v1.1.x」行）；`src/core/templates-data/claude/constraint/{zh-CN,en}.md`（「当前 v1.1.x」行，**stage-72 实施期补漏——新增 harness 内容源带来的新增版本载体**，见 REV-72-002）。
 - **B 生成段**：`src/core/template-loader.ts` 由 `npm run build` 从 A 类权威源重生成（**禁手改**）。
 - **C 传播**：`CHANGELOG.md` 追加 `## [1.1.6]`；`docs/commands.md` 快照标注同步 `v1.1.6`；`docs/claude-code-adapter-plan.md` 状态由「提案」更新为「已实现（v1.1.6）」。
 - **D 禁改**：`src/**` 历史批注（`v1.1.x-stage-*` 示例）、依赖自身版本、manual 变更历史、`test/**` 注释。

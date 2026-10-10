@@ -14,9 +14,9 @@ Not all tasks must go through the full pipeline. Non-coding tasks and coding tas
 
 | Task Type | Handling Path | Notes |
 |-----------|---------------|-------|
-| Research/exploration (reading code, consulting references, locating issues) | Feel → research (general / explore Agent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
+| Research/exploration (reading code, consulting references, locating issues) | The main session (Feel role) → research (`general` / `Explore` subagent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
 | Coding implementation (adding/modifying source code) | Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester) | Involves source changes, must go through the full audit chain |
-| Selection discussion (settling a technical approach / design trade-off) | Feel + `question` tool | Conversational decision, produces a conclusion, no plan.md |
+| Selection discussion (settling a technical approach / design trade-off) | The main session (Feel role) and the user + the `AskUserQuestion` tool | Conversational decision, produces a conclusion, no plan.md |
 
 > Non-coding tasks (research, selection discussion) do not require creating a plan or advancing the pipeline; the pipeline is engaged only when source changes or a formal plan document is produced.
 
@@ -198,7 +198,7 @@ At the start of each session, the Agent first reads this file to get the current
 
 Large models may inadvertently truncate or modify the username when constructing `.openfeel/users/{username}/` paths (e.g., `Alice` → `Alic`), causing file read/write failures. When accessing any file under `.openfeel/users/{username}/`, the following self-check rules must be followed:
 
-1. **Immediate check on access failure**: When `read` or `glob` returns "file not found" or "no such file", do not report an error directly. First execute `read .openfeel/.info.json` to re-acquire the correct `username`.
+1. **Immediate check on access failure**: When `Read` or `Glob` returns "file not found" or "no such file", do not report an error directly. First execute `Read .openfeel/.info.json` to re-acquire the correct `username`.
 2. **Compare and correct**: Compare the currently used `username` with the value in `.openfeel/.info.json` character by character. If inconsistent, reconstruct the full path with the correct value and retry.
 3. **Escalate on consecutive failures**: If the retry still fails, report to the user that "Path `{failed path}` does not exist. Confirmed username is `{correct username}`", and wait for user confirmation before proceeding.
 

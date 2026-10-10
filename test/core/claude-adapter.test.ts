@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { splitFrontmatter } from '../../src/core/managed-region.js';
+import { loadClaudeConstraintTemplate } from '../../src/core/template-loader.js';
 
 const ROOT = process.cwd();
 const CLAUDE_DIR = join(ROOT, 'src', 'core', 'templates-data', 'claude');
@@ -67,6 +68,18 @@ describe('Claude 适配器跨切面（stage-69 T7.5b）', () => {
       const opencodeCount = readdirSync(join(OPENCODE_DIR, 'agents', lang)).filter((f) => f.endsWith('.md')).length;
       expect(claudeCount, `${lang} claude vs opencode`).toBe(opencodeCount);
       expect(claudeCount).toBe(9);
+    }
+  });
+
+  it('constraint 无小写工具名 / `question` 工具残留（zh-CN/en）', () => {
+    // 精确判定：仅锁定**反引号包裹的整词小写工具名**（闭引号锚定，规避 `readProfile()` 等函数名）
+    // 与 Claude 侧不存在的 `question` 工具；不匹配合法出现的「主会话（Feel 角色）」/ agent 名 / `Edit`·`Write`·`Read`（已 PascalCase）。
+    const lowerTool = /`(read|glob|grep|edit|write|bash|todowrite)`/;
+    for (const lang of LANGS) {
+      const c = loadClaudeConstraintTemplate(lang);
+      const m = c.match(lowerTool);
+      expect(m, `${lang} constraint 残留小写工具名：${m?.[0] ?? ''}`).toBeNull();
+      expect(c, `${lang} constraint 残留 question 工具`).not.toContain('`question`');
     }
   });
 });

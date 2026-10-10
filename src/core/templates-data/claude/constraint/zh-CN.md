@@ -14,9 +14,9 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 | 任务类型 | 处理路径 | 说明 |
 |----------|----------|------|
-| 调研/探索（读代码、查资料、定位问题） | Feel → research（general / explore Agent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
+| 调研/探索（读代码、查资料、定位问题） | 主会话（Feel 角色）→ research（`general` / `Explore` subagent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
 | 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester） | 有源码变更，须走完整审计链 |
-| 选型讨论（敲定技术方案/设计取舍） | Feel + `question` 工具 | 对话式决策，产出结论，不产出 plan.md |
+| 选型讨论（敲定技术方案/设计取舍） | 主会话（Feel 角色）与用户 + `AskUserQuestion` 工具 | 对话式决策，产出结论，不产出 plan.md |
 
 > 非编码任务（调研、选型讨论）不强制创建计划或推进流水线；仅当产生源码变更或正式计划文档时才接入流水线。
 
@@ -197,7 +197,7 @@ OpenFeel 框架已发布正式版 v1.0.x（当前 v1.1.5）。新项目经 openf
 
 大模型在构造 `.openfeel/users/{username}/` 路径时可能意外截断或修改用户名（如 `Alice` → `Alic`），导致文件读写失败。访问任何 `.openfeel/users/{username}/` 下的文件时，必须遵循以下自校验规则：
 
-1. **访问失败立即校验**：`read`、`glob` 操作返回 "file not found" 或 "no such file" 时，不要直接报错。先执行 `read .openfeel/.info.json` 重新获取正确的 `username`。
+1. **访问失败立即校验**：`Read`、`Glob` 操作返回 "file not found" 或 "no such file" 时，不要直接报错。先执行 `Read .openfeel/.info.json` 重新获取正确的 `username`。
 2. **比对并修正**：将当前使用的 `username` 与 `.openfeel/.info.json` 中的值逐字符比对。若不一致，用正确值重建完整路径后重试。
 3. **连续失败上报**：重试仍失败时，向用户报告「路径 `{失败的路径}` 不存在，已确认用户名为 `{正确用户名}`」，由用户确认后再操作。
 

@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-11-Liuary-007.md](2026/10/11/2026-10-11-Liuary-007.md) | Liuary | 阶段 v1.1.6-stage-71 完成 |
 | [2026-10-11-Liuary-006.md](2026/10/11/2026-10-11-Liuary-006.md) | Archiver | **v1.1.6 第四阶段 — stage-71 归档完成（部署编排与命令面）**：把 Claude 内容源接通 `openfeel setup/update`——`global-paths` 5 Claude 函数（`CLAUDE_CONFIG_DIR` 函数体内读 env）+ setup/update 双分支（claude=CLAUDE.md+9 agents+17 skills，**不写 settings.json**）+ **R-5 高危修复**（`supportedTools` claude `enabled:false` + `filter(t=>t.enabled)`，默认 `~/.claude` 零触，隔离 HOME 端到端实证）+ `--tools <list>`（非法值 exit 1 fail-fast）+ **D-CFG** 备份 HOME 外 `global-external/<sha8>/…` fallback + i18n 7 新键/6 修订（761→**768**）；4 op（`e753217`/`7287355`/`62fcb43`/`cdd0953`）。审查 **passed**（REV-71-001/002 low 非阻塞 open）；验收 **7/7 通过、0 Bug**。门禁 **66 文件 / 1189 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **768**、`lint kb` 0（368 引用）、build ×2 幂等、无 `settings.json`；`--version`=1.1.5。知识沉淀 **5 条**（architecture 1 + patterns 4）；manual 补登 `--tools`/claude 路径/D-CFG/双分支；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-11-Liuary-005.md](2026/10/11/2026-10-11-Liuary-005.md) | Liuary | 阶段 v1.1.6-stage-70 完成 |
 | [2026-10-11-Liuary-004.md](2026/10/11/2026-10-11-Liuary-004.md) | Archiver | **v1.1.6 第三阶段 — stage-70 归档完成（共享 skills 中立化）**：4 个 opencode 特化 skill 改「能力名叙述 + `### opencode 适配器`/`### Claude Code 适配器` 双平台分节」（**opencode 小节逐字零回归**）+ 3 轻改（工具名映射 10 键 / 全局规则文件措辞 / `skill(...)` 分平台）+ Feel 归一（5 skill / 12 处）+ `claude/claude.json` 纠错；**零回归判定用「平台关键串 `toContain` + 非标题行逐字」子串断言法**；4 op（`77c5450`/`27f3314`/`e7af5a9`/`37d0e8a`）。审查 **passed**（REV-70-001 medium blocking 修复后 closed；REV-70-003 closed；REV-70-002/004 low 非阻塞 open）；测试官 **5/5 通过**；新登记 `templates/BUG-006`（low, open）。门禁 **66 文件 / 1162 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **761**、`lint kb` 0（363 引用）、build ×2 幂等不复活；`--version`=1.1.5。知识沉淀 3 条（patterns 2 + troubleshooting 1）；manual + 大计划回填；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
@@ -31,8 +32,6 @@
 | [2026-10-03-Liuary-012.md](2026/10/03/2026-10-03-Liuary-012.md) | Liuary | v1.1.4-stage-64.op-001 执行通过 |
 | [2026-10-03-Liuary-011.md](2026/10/03/2026-10-03-Liuary-011.md) | Liuary | 阶段 v1.1.4-stage-63 完成 |
 | [2026-10-03-Liuary-010.md](2026/10/03/2026-10-03-Liuary-010.md) | Archiver | **v1.1.4-stage-63 归档完成（配置默认值解析与阶段创建继承，问题 1/6，3 op）**——新阶段 status.md 初值由硬编码改为取 `config.yaml.defaults`（`resolveConfigDefaults`，只读 defaults、不读 status.md、不做级联）+ `plan stage add --exec-mode/--auto-advance` 显式覆盖 + `config set/get` `defaults.X ≡ X`（`normalizeConfigKey` 单一来源）+ `config set --sync-stages` 批量同步；**有效值级联优先序零触碰**；门禁 **61 文件 / 1046 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` 730、`lint kb` 0（312 引用）、build 幂等不复活；审查 **passed**（REV-001/002/003 全 low 非阻塞 open；含一次已回滚 cwd 误操作事故披露）；无新 Bug；知识沉淀 2 条（patterns）；**未推进 flow 至 done（由 Feel 执行）／未 push** |
-| [2026-10-03-Liuary-009.md](2026/10/03/2026-10-03-Liuary-009.md) | Liuary | v1.1.4-stage-63.op-003 执行通过 |
-| [2026-10-03-Liuary-008.md](2026/10/03/2026-10-03-Liuary-008.md) | Liuary | v1.1.4-stage-63.op-002 执行通过 |
 
 # 最近日�?
 | 文件 | 用户 | 描述 |

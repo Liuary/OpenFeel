@@ -3,7 +3,7 @@
  * 断言部署型 skill 双口径、agents-md 图注英文化、cli-usage 枚举/命令表补齐。
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { getCurrentTemplate } from '../../src/core/templates.js';
 
@@ -93,5 +93,33 @@ describe('stage-55：项目级受管资产移除（防回归）', () => {
     const src = readFileSync(join(ROOT, 'build.js'), 'utf-8');
     expect(src).not.toContain('regenerateOpencodeInstance');
     expect(src).not.toContain('insertGeneratedMark');
+  });
+});
+
+/**
+ * stage-69：Claude 独立内容源树结构 + 防发散（源文件级，直读 templates-data/claude/**）
+ * ① agents/{zh-CN,en} 各 9 个 .md（含 feel + 8 openfeel-*）；
+ * ② constraint/{zh-CN,en}.md 存在；
+ * ③ claude/skills 不存在（skills 走中立共享源，不复制，防发散）。
+ */
+describe('Claude 源树（stage-69）', () => {
+  const CLAUDE_DIR = join(ROOT, 'src', 'core', 'templates-data', 'claude');
+
+  it('agents/{zh-CN,en} 各 9 个 .md', () => {
+    for (const lang of ['zh-CN', 'en']) {
+      const dir = join(CLAUDE_DIR, 'agents', lang);
+      const files = readdirSync(dir).filter((f) => f.endsWith('.md'));
+      expect(files, `${lang} agent 数`).toHaveLength(9);
+    }
+  });
+
+  it('constraint/{zh-CN,en}.md 存在', () => {
+    for (const lang of ['zh-CN', 'en']) {
+      expect(existsSync(join(CLAUDE_DIR, 'constraint', `${lang}.md`)), `${lang}.md`).toBe(true);
+    }
+  });
+
+  it('claude/skills 不存在（skills 走共享源，防发散）', () => {
+    expect(existsSync(join(CLAUDE_DIR, 'skills'))).toBe(false);
   });
 });

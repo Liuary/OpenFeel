@@ -12,6 +12,9 @@ import {
   listOpencodeAgentIds,
   listOpencodeSkillNames,
   loadTemplate,
+  loadClaudeConstraintTemplate,
+  loadClaudeAgentTemplate,
+  listClaudeAgentIds,
 } from '../../src/core/template-loader.js';
 import { splitFrontmatter } from '../../src/core/managed-region.js';
 
@@ -444,5 +447,96 @@ describe('stage-55 op-005 迁移：reviewer 纪律节（模板源，REV-003）',
     expect(en).toBeTruthy();
     expect(en).toContain('Tool-Failure & Independent-Evidence Discipline');
     expect(en).toContain('CLI evidence outranks read / glob');
+  });
+});
+
+/**
+ * stage-69 T7.1：Claude Agent 模板加载（9 个，含 feel）
+ */
+describe('Claude 模板加载（stage-69 T7.1）', () => {
+  it('listClaudeAgentIds：zh-CN 返回 9 个，含 feel，8 个带 openfeel- 前缀', () => {
+    const ids = listClaudeAgentIds('zh-CN');
+    expect(ids).toHaveLength(9);
+    expect(ids).toContain('feel');
+    expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(8);
+  });
+
+  it('zh/en 键集一致', () => {
+    expect(listClaudeAgentIds('en').sort()).toEqual(listClaudeAgentIds('zh-CN').sort());
+  });
+
+  it('逐 id：frontmatter.name === id 且 description 为非空字符串', () => {
+    for (const id of listClaudeAgentIds('zh-CN')) {
+      const split = splitFrontmatter(loadClaudeAgentTemplate('zh-CN', id));
+      expect(split, `${id} frontmatter 可解析`).not.toBeNull();
+      expect(split!.frontmatter.name, `${id} name`).toBe(id);
+      expect(typeof split!.frontmatter.description, `${id} description 类型`).toBe('string');
+      expect((split!.frontmatter.description as string).length, `${id} description 非空`).toBeGreaterThan(0);
+    }
+  });
+
+  it("loadClaudeAgentTemplate('fr', 'feel') 回退 zh-CN（含中文）", () => {
+    const content = loadClaudeAgentTemplate('fr', 'feel');
+    expect(content).toBeTruthy();
+    expect(content).toMatch(/[\u4e00-\u9fff]/);
+  });
+
+  it("loadClaudeAgentTemplate('en', 'nonexistent') 抛出 Error（含 agentId=nonexistent）", () => {
+    expect(() => loadClaudeAgentTemplate('en', 'nonexistent')).toThrowError(/agentId=nonexistent/);
+  });
+
+  it("loadClaudeConstraintTemplate：zh-CN/en 均非空；fr 回退 zh-CN", () => {
+    expect(loadClaudeConstraintTemplate('zh-CN')).toBeTruthy();
+    expect(loadClaudeConstraintTemplate('en')).toBeTruthy();
+    const fr = loadClaudeConstraintTemplate('fr');
+    expect(fr).toBeTruthy();
+    expect(fr).toMatch(/[\u4e00-\u9fff]/);
+  });
+});
+
+/**
+ * stage-69 T7.2：Claude agent 阴性门禁（对象 = loader 返回的 Claude agent 模板）
+ * Claude 侧应丢弃 opencode 专有串：mode: / permission: / reasoning_effort: / .opencode/
+ */
+describe('Claude 阴性门禁（stage-69 T7.2）', () => {
+  it('9 文件 × 2 语言均不含 opencode 专有串', () => {
+    for (const lang of ['zh-CN', 'en']) {
+      for (const id of listClaudeAgentIds(lang)) {
+        const c = loadClaudeAgentTemplate(lang, id);
+        for (const token of ['mode:', 'permission:', 'reasoning_effort:', '.opencode/']) {
+          expect(c.includes(token), `${lang}/${id} 不应含 ${token}`).toBe(false);
+        }
+      }
+    }
+  });
+});
+
+/**
+ * stage-69 T7.3：Claude 约束模板核心节存在性
+ */
+describe('Claude 约束模板（stage-69 T7.3）', () => {
+  it('zh-CN 含核心节（行为准则/编码风格/工作区结构/版本管理/权限模型）', () => {
+    const zh = loadClaudeConstraintTemplate('zh-CN');
+    for (const sec of ['行为准则', '编码风格', '.openfeel 工作区结构', '版本管理', '权限模型']) {
+      expect(zh, `zh 缺少节 ${sec}`).toContain(sec);
+    }
+  });
+
+  it('en 含核心节（Code of Conduct/Coding Style/Workspace Structure/Project-Specific Constraints/Permission Model）', () => {
+    const en = loadClaudeConstraintTemplate('en');
+    for (const sec of ['Code of Conduct', 'Coding Style', '.openfeel Workspace Structure', 'Project-Specific Constraints', 'Permission Model']) {
+      expect(en, `en 缺少节 ${sec}`).toContain(sec);
+    }
+  });
+});
+
+/**
+ * stage-69 T7.4：Claude ↔ opencode 单源键集一致（均 9，含 feel）
+ */
+describe('Claude↔opencode 单源键集（stage-69 T7.4）', () => {
+  it('listClaudeAgentIds === listAgentIds（zh-CN/en 均 9，含 feel）', () => {
+    for (const lang of ['zh-CN', 'en']) {
+      expect(listClaudeAgentIds(lang).sort()).toEqual(listAgentIds(lang).sort());
+    }
   });
 });

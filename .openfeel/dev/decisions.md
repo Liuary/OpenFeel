@@ -65,3 +65,12 @@
 - **理由**：全局模板仅在会话启动时读取，升级 CLI 不重部署则静默加载旧 agent/skill/AGENTS.md（本轮 v1.1.4 发布后实测踩坑）。四态 + 强门控平衡可发现性与噪音；stderr 保护 `--json` 契约。
 - **后果 / 适用边界**：检测针对**全局** state（项目 state 不参与）；state 损坏 → `unknown` 静默；降级（部署>CLI）按 `mismatch` 提示。
 - **回滚**：`git revert` 对应 stage-66/67 commits；无 schema/依赖/数据迁移。
+
+### ADR-007：Claude 全局约束维持单文件 CLAUDE.md（不拆短路由文件）
+- **日期**：2026-10-11
+- **状态**：accepted
+- **决策**：Claude Code 全局约束**维持单文件 `~/.claude/CLAUDE.md`**（模板源 `templates-data/claude/constraint/{zh-CN,en}.md`，stage-71 部署），**本期不拆分为「短路由文件 + 分包」结构**；`feel` 编排纪律**不蒸馏进 CLAUDE.md**，由 `feel.md` 承载（裁定 B）。
+- **上下文**：Q2 曾问「CLAUDE.md `@import` 是否支持家目录路径」——若支持则可把长约束拆为短路由（`@import` 分包），改善可维护性。v1.1.6-stage-69 实机验证确认 **`@import ~/` 家目录路径受支持**（troubleshooting 记录）。
+- **理由**：① 支持 `@import ~/` 并不等于**应当**拆分——单文件 `CLAUDE.md` 部署/更新/比对链路更简单（对齐 opencode `AGENTS.md` 单文件既定模式）；② 拆分引入多文件一致性/传播/备份复杂度，收益（可维护性）在本期约束体量（≈≤700 行）下不显著；③ 本期聚焦「内容适配」而非部署编排重构，拆分留待未来按需评估。
+- **后果 / 适用边界**：`CLAUDE.md` 体量以软断言（≤700 行）约束；`feel` 纪律外置 `feel.md` 已部分缓解体量。**支持 `@import ~/` 为已确认事实**，未来若约束体量显著增长可据此重估。
+- **回滚**：无（纯决策，无代码/数据变更）；如需拆分为后续独立阶段评估。

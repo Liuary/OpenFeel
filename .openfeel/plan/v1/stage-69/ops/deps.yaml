@@ -1,0 +1,196 @@
+# stage-69 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.6-stage-69
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.6-stage-68
+    type: hard
+    status: done
+    reason: "skills 已迁中立共享源 templates-data/skills/；本阶段只读消费，不改 skill 正文（归 stage-70）。"
+  - upstream: v1.1.5-stage-67
+    type: soft
+    status: done
+    reason: "承接 v1.1.5 基线（CLI 1.1.5 / `lint i18n` 761 / `lint kb` 0）。本阶段不新增 i18n 键、不改版本。"
+  - downstream: v1.1.6-stage-70
+    type: hard
+    note: "共享 source templates-data/skills/ 的中立化改写归 stage-70；本阶段不得改动该源。"
+  - downstream: v1.1.6-stage-71
+    type: hard
+    note: "交付 Claude 内容源 + 注入锚点 + loader 3 API。部署编排（global-paths/setup/update/--tools/i18n 761→768/D-CFG）归 stage-71。"
+  - downstream: v1.1.6-stage-73
+    type: hard
+    note: "settings.json 注入归 stage-73。本阶段**不写** settings.json；`feel` agent 存在（`agent:\"feel\"` 依赖）由本阶段交付。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不改 CI、不直写 `flow.json`**；phase 推进与归档由 Feel/归档官执行。"
+
+# 本阶段 7 op：op-001/002/003（内容源，可并行）→ op-004（build 管线）→ op-005（loader 3 API）→ op-006（测试）→ op-007（实机+门禁+报告）。
+# 追加：op-008（审查修正，REV-69-001 blocking）——修正 op-003 constraint 工具口径残留 + 补阴性断言。
+# 不变量：
+#   ① Claude agents 键集 == opencode agents 键集（均 9，含 feel，**不再 −1**）；
+#   ② Claude agent 模板不含 opencode 专有字段（mode:/permission:/reasoning_effort:/.opencode/）；
+#   ③ Claude 内容源独立于 opencode 源（agents 与约束每 harness 独立源；skills 共享）；
+#   ④ 注入锚点 CLAUDE_AGENT_TEMPLATES / CLAUDE_CONSTRAINT_TEMPLATES（build 生成，禁手改）；
+#   ⑤ `feel` 默认不设 tools（继承，R-13）；
+#   ⑥ 本阶段不写 settings.json、不新增 i18n 键（761 不变）、不改版本（1.1.5）。
+ops:
+  op-001:
+    file: op-001.md
+    title: "Claude `feel` agent 模板（zh+en）— 主会话身份 + 编排纪律平台适配"
+    produces:
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+    deps: []
+    notes: "覆盖 T1。frontmatter：`name: feel` + `description` + `model: inherit` + `effort: medium` + `color: purple`，**不设 `tools`**（R-13 继承；op-007 实机验证 `AskUserQuestion`/`EnterPlanMode`）。正文以 opencode `feel.md`（zh/en 各 418 行）为基底：删「模型配置」节（auth.json/opencode.jsonc）+ 补 `external_directory` 无对等概念；`~/.config/opencode/AGENTS.md`→`~/.claude/CLAUDE.md`（尊重 `CLAUDE_CONFIG_DIR`）；R1 工具名 PascalCase；R2 保留主会话 Task 调度；R4 `question`→`AskUserQuestion`；R5 Feel→主会话（Feel 角色）；R6 重启→Claude 热更新/`/reload-skills`/CLAUDE.md 下次会话生效。门禁（局部）：两文件存在 + T1.4 `rg` 清零 + tsc 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "8 个 `openfeel-*` Claude agent 模板（zh+en，共 16 文件）— frontmatter 映射 + 正文适配"
+    produces:
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-schemer.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-executor.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-reviewer.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-feel-tester.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-utility.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-vision.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/claude/agents/en/openfeel-planner.md
+      - src/core/templates-data/claude/agents/en/openfeel-schemer.md
+      - src/core/templates-data/claude/agents/en/openfeel-executor.md
+      - src/core/templates-data/claude/agents/en/openfeel-reviewer.md
+      - src/core/templates-data/claude/agents/en/openfeel-feel-tester.md
+      - src/core/templates-data/claude/agents/en/openfeel-utility.md
+      - src/core/templates-data/claude/agents/en/openfeel-vision.md
+      - src/core/templates-data/claude/agents/en/openfeel-archiver.md
+    deps:
+      - op: op-001
+        type: soft
+    notes: "覆盖 T2 + T3。frontmatter 映射（严格按表）：planner/schemer=Bash,Read,Glob,Grep,**Skill** / max / purple·blue；executor=Bash,Read,Glob,Grep,**Edit,Write,TodoWrite** / medium / red；reviewer=Bash,Read,Glob,Grep / medium / yellow；feel-tester=Bash,Read,Glob,Grep,**Edit,Write,Skill** / medium / orange；utility=Bash,Read,Glob,Grep,Edit,Write / low / blue；vision=Bash,Read,Glob,Grep / medium / cyan；archiver=Bash,Read,Glob,Grep,**Edit,Write** / low / green；**model 全 inherit**；**一律不含 Task**。丢弃 mode:/permission:/reasoning_effort:。正文 R1~R6；逐文件特殊点：reviewer `opencode --version`→`claude --version` + AGENTS.md→`~/.claude/CLAUDE.md`（:29/:30/:96）；archiver `~/.claude/agents/*.md`（:21/:46）；utility `~/.claude/agents/*.md`（:40）；vision 白名单口径（:53）；8 文件「模型选择」节改写 + external_directory 说明。应急：重试≥2 次可裁定拆 op-002a（只读组）/op-002b（读写组）。门禁：16 文件 9×2、name==文件名、R1~R6 清零、tsc 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "Claude 全局约束模板 `CLAUDE.md`（constraint/{zh-CN,en}.md）"
+    produces:
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+    deps:
+      - op: op-001
+        type: soft
+      - op: op-002
+        type: soft
+    notes: "覆盖 T4。以 `agents-md/{zh-CN,en}.md`（507/508 行，~85% 中立）为基底；改写：头注（`~/.claude/CLAUDE.md` + `CLAUDE_CONFIG_DIR`）；工具约束节（PascalCase + Feel→主会话）；9 Agent 体系表（启动方式列改，含主会话 feel + Task 调度）；**权限模型节整节重写**（subagent tools 白名单 / **本期由 stage-73 注入 settings.json（`agent:\"feel\"` + `permissions.defaultMode:\"auto\"`）** / 生效时机 / 无 external_directory 对等概念）；**不蒸馏 feel 纪律**（裁定 B，由 feel.md 承载）；「AGENTS.md 仅保留行为约束」→ CLAUDE.md；版本行**不改**（1.1.5 归 stage-72）。设计目标 zh ≈ ≤560 行（测试软上限 ≤700，op-006）。门禁：行数达标 + opencode 专有串清零 + 核心节存在 + tsc 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-004:
+    file: op-004.md
+    title: "`build.js` Claude 注入/校验/单源断言 + 主流程 8 步（附 template-loader 锚点桩）"
+    produces:
+      - build.js
+      - src/core/template-loader.ts
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+    notes: "覆盖 T5。常量 `TEMPLATE_CLAUDE_DIR`/`TEMPLATE_CLAUDE_AGENTS_DIR`/`TEMPLATE_CLAUDE_CONSTRAINT_DIR`。生成：`generateClaudeAgentTemplates`（双层 Record→`CLAUDE_AGENT_TEMPLATES`）/`generateClaudeConstraintTemplate`（单层→`CLAUDE_CONSTRAINT_TEMPLATES`）。校验：`validateClaudeAgentTemplates`（内容一致 + 必填 name/description + 阴性门禁 mode:/permission:/reasoning_effort:/.opencode/）/`validateClaudeConstraintTemplate`/包装 `validateClaudeTemplates`。单源：新增 `assertKeySetsEqual`（**仅键集**，内容按设计不同），追加 `CLAUDE_AGENT_TEMPLATES == AGENT_TEMPLATES`（键集 9，含 feel，**不再 −1**）。主流程 6→8 步 + 追加 `validateClaudeTemplates()`。**本 op 亦在 template-loader.ts 新增 2 个 AUTO-GENERATED 锚点桩**（否则 replaceBetweenAnchors exit(1)；loader 导出函数归 op-005）。门禁：`npm run build` 成功 + 幂等 + 阴性/必填门禁实测 + tsc 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-005:
+    file: op-005.md
+    title: "`template-loader.ts` Claude 运行时 3 API（生成段消费）"
+    produces:
+      - src/core/template-loader.ts
+    deps:
+      - op: op-004
+        type: hard
+    notes: "覆盖 T6。手写区（AUTO-GENERATED 之外）新增：`loadClaudeConstraintTemplate(lang): string`、`loadClaudeAgentTemplate(lang, agentId): string`、`listClaudeAgentIds(lang): string[]`（**9，含 feel**）。语义沿 `loadAgentTemplate`：语言回退 `zh-CN` + 缺失抛错。**禁手改**生成段。门禁：build 成功 + tsc 0 + 生成段零人工 diff。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-006:
+    file: op-006.md
+    title: "测试面 — Claude loader 用例 + 阴性门禁 + 新增 claude-adapter.test.ts"
+    produces:
+      - test/core/template-loader.test.ts
+      - test/core/templates.test.ts
+      - test/core/claude-adapter.test.ts
+    deps:
+      - op: op-005
+        type: hard
+    notes: "覆盖 T7（T7.1~T7.5）。`template-loader.test.ts` 追加：T7.1（`listClaudeAgentIds`=9 含 feel、zh/en 键集一致、`name`==id、`description` 非空、回退/缺失抛错）、T7.2（阴性门禁 4 token）、T7.3（约束核心节 zh/en）、T7.4（`listClaudeAgentIds == listAgentIds`）。`templates.test.ts` 追加 Claude 源树（9×2 + 2 constraint；`claude/skills` 不存在防发散）。**新增** `claude-adapter.test.ts`：name==文件名、model==inherit、CLAUDE.md ≤700 软断言、跨切面不产 settings.json、agents 数 == opencode 数（=9 非 −1）。门禁：三测试文件全绿 + tsc 0 + 测试文件数 66。**build×2 幂等 + 全门禁归 op-007。**"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-007:
+    file: op-007.md
+    title: "模型 ID / Q1 / Q2 实机验证 + 全门禁 + 阶段报告"
+    produces:
+      - .openfeel/tmp/op-007-test-report.md
+      - .openfeel/users/Liuary/log/2026/10/11/2026-10-11-001.md
+    deps:
+      - op: op-006
+        type: hard
+    notes: "覆盖 T8 + T9（含 T7.6 build×2 全门禁）。**全门禁**：`npm run build` ×2 幂等、`npm test` 0 skipped/0 failed、`tsc` 0、`lint i18n` **761**、`lint kb` 0、`--version` **1.1.5**、`.opencode/**` 与 `templates-data/opencode/skills` 不复活。**实机**（隔离 HOME，需 Claude Code + cc-switch）：手工铺放 `agents/*.md` + `CLAUDE.md` → 9 agent 可识别、reviewer subagent 实测自定义模型 ID（示例 `ccs-claude-zhipu--glm-5.3-flash[1M]`）；**Q1**（subagent 是否可调 Task，保守默认=否）/**Q2**（`@import` 家目录，默认=不拆）/**R-13**（feel 工具继承，`AskUserQuestion`/`EnterPlanMode` 可用）。无 Claude 环境时：静态门禁照跑 + 出人工验证清单 + 标注「待用户实机确认」。**条件回退**：Q1=可调 Task→重派 op-002 修正；R-13 工具被禁→重派 op-001 修正。产出阶段报告（私域日志）+ 自测报告。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  # --- 审查修正 op（REV 修复，op-007 之后）---
+  op-008:
+    file: op-008.md
+    title: "修正 REV-69-001 — Claude constraint 工具口径残留（Read/Glob/AskUserQuestion + Feel→主会话）+ 阴性断言"
+    produces:
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - test/core/claude-adapter.test.ts
+    deps:
+      - op: op-003
+        type: hard
+      - op: op-005
+        type: hard
+      - op: op-006
+        type: soft
+    notes: "对应审查阻塞项 REV-69-001（medium, blocking）——修正 op-003 输出的 constraint 模板残留。**且仅且**改 3 处×2 文件：① zh:19/en:19 `Feel + \\`question\\` 工具`→`主会话（Feel 角色）与用户 + \\`AskUserQuestion\\` 工具`；② zh:200/en:201 小写 \\`read\\`/\\`glob\\`→\\`Read\\`/\\`Glob\\`；③ zh:17/en:17 `Feel →`→`主会话（Feel 角色）→`（并归一 `general / explore Agent`→\\`general\\` / \\`Explore\\` subagent，可回退）。**测试面**：`test/core/claude-adapter.test.ts` 新增 1 条阴性断言（loader 常量，正则 \\`/(read|glob|grep|edit|write|bash|todowrite)/\\` 闭引号锚定 + 不含 \\`question\\`，**不检查 Feel 以免误伤合法口径**）。**deps 说明**：op-003=REV 主依赖（constraint 内容源，hard）；op-005=断言消费 `loadClaudeConstraintTemplate`（hard，已 done）；op-006=测试文件归属（soft，已 done）。**不动** REV-69-003（非阻塞）。门禁：`rg` 阴性清零 + `npm run build`×2 幂等 + `npm test` 0 skipped/0 failed（66 文件，用例 1157→1158）+ `tsc` 0 + `lint i18n` 761 + `lint kb` 0 + `--version` 1.1.5。生成物 `template-loader.ts` 由 build 重生成（**禁手改**），不入 produces。"
+
+# 下游契约（交付 stage-70/71/73 复用）
+downstream_contracts:
+  - name: "src/core/templates-data/claude/agents/{zh-CN,en}/*.md"
+    change: "**新增**：9 个 Claude agent（含 `feel` + 8 个 `openfeel-*`）。frontmatter 仅 `name`/`description`/`tools`?/`effort`/`color`/`model`（`model: inherit`）；`feel` **不设 `tools`**（继承，R-13）；**全部 subagent 白名单不含 Task**。"
+  - name: "src/core/templates-data/claude/constraint/{zh-CN,en}.md"
+    change: "**新增**：CLAUDE.md 模板（~85% 复用 agents-md；权限模型节重写，含「本期由 stage-73 注入 settings.json」）。feel 纪律不蒸馏（由 feel.md 承载）。"
+  - name: "注入锚点"
+    change: "**新增**：`CLAUDE_AGENT_TEMPLATES`（双层 Record）/ `CLAUDE_CONSTRAINT_TEMPLATES`（单层 Record），由 `build.js` 生成（**禁手改**）。主流程 6→8 步。"
+  - name: "运行时 API"
+    change: "**新增**：`loadClaudeConstraintTemplate(lang)` / `loadClaudeAgentTemplate(lang, id)` / `listClaudeAgentIds(lang)`（9，含 feel；语言回退 zh-CN + 缺失抛错）。"
+  - name: "单源不变量"
+    change: "Claude agents 键集 == opencode agents 键集（均 **9**，含 feel，**不再 −1**）。"
+  - name: "阴性不变量"
+    change: "Claude agent 模板不含 `mode:`/`permission:`/`reasoning_effort:`/`.opencode/`。"
+  - name: "i18n 基线"
+    change: "**不变**：761（本阶段不新增键）。"
+  - name: "版本"
+    change: "**不变**：`package.json.version` = 1.1.5（v1.1.6 收口归 stage-72）。"
+  - name: "settings.json"
+    change: "**本阶段不产**（归 stage-73）；`src/core/claude-settings.ts` 不存在（测试断言）。"

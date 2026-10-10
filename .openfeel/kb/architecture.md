@@ -684,3 +684,29 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.1.4-stage-62（commits `26629e6` / `abcab76` / `fa7f4f8`）；`npm test` 61 文件 / **1023 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` 730、`lint kb` 0；fixture 实测 `{phase:review_passed, status:done}` 经 auto-repair 后 `phase` **不变**、`status='review_passed'`，`advance --to test_pending` exit 0。
 
 **参见：** v1.1.4-stage-62（plan §二/§五；op-001/op-002）；`src/core/flow-manager.ts` `mapPhaseToStageStatus` / `autoRepairInconsistency` / `reconcileStatusMd` / `STAGE_STATUS_VALUES`；kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径；kb/patterns.md #auto-repair 仅 phase→status 单向
+
+## [+] Claude 内容源自立与运行时 3 API：多 harness 内容面第二实现 (2026-10-11)
+
+**背景：v1.1.6-stage-69（Claude 内容适配，v1.1.6 最重阶段）**——v1.1.6 目标为「多 harness 并存」（opencode + Claude Code）。内容面按**可共享性二分**：
+
+- **可共享内容 → 单源**：skills 归类为**中立共享源** `templates-data/skills/`（v1.1.6-stage-68 由 `opencode/skills` `git mv` 迁入，两 harness 共用）。
+- **平台专有内容 → 各 harness 独立源**：**agent 定义**与**全局约束**按 harness 独立——Claude 侧新建 `templates-data/claude/{agents/{zh-CN,en}/*.md（9×2，含 `feel`）, constraint/{zh-CN,en}.md}`；opencode 侧维持 `templates-data/opencode/agents/**` + `templates-data/agents-md/**`。
+
+**运行时 3 API（build 生成段消费，禁手改）**：
+
+| API | 语义 |
+|-----|------|
+| `loadClaudeConstraintTemplate(lang)` | 返回 Claude `CLAUDE.md` 约束模板；语言回退 `zh-CN` + 缺失抛错 |
+| `loadClaudeAgentTemplate(lang, agentId)` | 返回 Claude agent 模板（9 个，含 `feel`）；语言回退 + 缺失抛错 |
+| `listClaudeAgentIds(lang)` | 列出 Claude agent id（**9**，含 `feel`） |
+
+- **注入锚点**：`CLAUDE_AGENT_TEMPLATES`（双层 Record）/ `CLAUDE_CONSTRAINT_TEMPLATES`（单层 Record）由 `build.js` 生成；主流程 **6→8 步**（追加 2 生成 + `validateClaudeTemplates`）。
+- **单源不变量**：Claude agents 键集 == opencode agents 键集（均 **9**，含 feel，**不再 −1**）——**键集断言** `assertKeySetsEqual`（内容按设计不同，不比内容）。
+- **阴性不变量**：Claude agent 模板不含 `mode:`/`permission:`/`reasoning_effort:`/`.opencode/`；`templates-data/claude/skills` **不存在**（skills 走共享源，防发散）。
+- **集成契约（交付 stage-71/73）**：`templates-data/claude/**` + 注入锚点 + 3 API；**本阶段不写 `settings.json`**（归 stage-73）、不接部署编排（归 stage-71）。
+
+**设计理由**：agent/约束深度耦合 harness 字段与工具名（Claude `tools`/`effort`/`color` vs opencode `mode`/`permission`/`reasoning_effort`），强求单源会引入大量条件分支且不可读；而 skills 是平台中立操作步骤，天然可共享。二分兼顾「复用」与「适配准确」。
+
+**实证**：v1.1.6-stage-69（8 commits `de76f89`~`45f2093`）——产物 9×2 + 约束 2；build ×2 幂等（SHA256 一致）；`npm test` **66 文件 / 1158 用例** 0 skipped / 0 failed；`tsc` 0；`lint i18n` 761（不新增）；`lint kb` 0；审查 passed（REV-69-001 blocking 修复 closed）。
+
+**参见：** v1.1.6-stage-68（skills 迁共享源）/ v1.1.6-stage-69（本条目）；`templates-data/claude/**`；`build.js`；`src/core/template-loader.ts`；kb/architecture.md #模板单源架构、#多语言模板数据管线；kb/patterns.md #Claude Code agent frontmatter 结构化映射、#模板锚点注入的鸡生蛋处置、#单源一致性断言键集 vs 内容；manual/core/template-loader.md、manual/core/build.md

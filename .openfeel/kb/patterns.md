@@ -3401,3 +3401,57 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.5-stage-67——真实环境全局漂移 1.1.1→1.1.5：`setup --check --json` 输出 `{"schemaVersion":1,"status":"mismatch","cliVersion":"1.1.5","deployedVersion":"1.1.1"}` 且 exit 1；四态退出码 0/1/1/1 全对；零写盘核验通过；既有 `setup` 无参行为零回归；`npm test` 64 文件 / 1135 用例 0 skipped。
 
 **参见：** v1.1.5-stage-67（op-002 `896801e`）；`src/commands/setup.ts`；`manual/core/setup.md`「检测语义（四态）」、`manual/core/deployment-check.md`；kb/patterns.md #全局部署版本一致性检测模式、#被动部署版本漂移提示模式、#「只报告型」与「修复型」命令的边界、#CLI --json 结构化输出约定
+
+## [+] Claude Code agent frontmatter 结构化映射：opencode → Claude 字段收敛 + subagent 白名单一律不含 Task (2026-10-11)
+
+**背景：v1.1.6-stage-69（Claude 内容适配）**——为 Claude Code 建立独立 agent 内容源 `templates-data/claude/agents/{zh-CN,en}/*.md`（9×2，含 `feel`），frontmatter 需从 opencode 源做**结构化映射**（字段名与语义均不同），不能整段复用。
+
+**映射规则（opencode → Claude）**：
+
+| opencode 字段 | Claude 处置 |
+|---|---|
+| `mode: primary/subagent` | **丢弃**（Claude 无对等概念；主会话由 `settings.json` `agent:"feel"` + Task 调度表达） |
+| `permission:` 块（工具白名单） | **丢弃** → 折叠为 Claude `tools` 逗号分隔字符串（白名单） |
+| `reasoning_effort: high/medium/low` | **丢弃** → Claude `effort`（`low`/`medium`/`max` 同域映射） |
+| （无） | Claude `color`（hex → 命名近邻：`purple`/`blue`/`red`/`yellow`/`orange`/`cyan`/`green`） |
+| （无） | Claude `model`（默认统一 `inherit`，供应商中立；本机覆盖不入模板硬编码） |
+| `name` / `description` | 保留同构（`name` 须 == 文件名；`description` 非空） |
+
+- **`tools` 白名单推导** = opencode `permission:` 键集 **∪** 正文实际使用的工具（**补齐缺口**：executor 用 `Edit/Write/TodoWrite`；planner/schemer 用 `Skill`；feel-tester/archiver 需编辑权限）。
+- **一律不含 `Task`**：所有 subagent 白名单**不含 `Task`**（Q1 实机确认 subagent 不可调 Task）；正文 `task(explore)` 统一改「主会话经 Task 调度 Explore / `[HANDOFF: openfeel-x]`」。
+- **`feel`（主会话）默认不设 `tools`（继承）**（R-13）：避免收窄主会话工具集（`AskUserQuestion`/`EnterPlanMode`）；实机确认继承获宽工具集，无需显式白名单。
+- **阴性门禁**：Claude agent 模板须**不含** `mode:` / `permission:` / `reasoning_effort:` / `.opencode/`（build `validateClaudeTemplates` + 测试双保险）。
+
+**判据**：跨 harness 移植 agent 内容时，**平台专有字段「丢弃 + 折叠」而非照搬**；仅用目标平台**已核实**字段（未核字段会静默丢弃，R-8）；工具白名单须以「目标平台工具名 + 正文实际使用」双重推导。
+
+**实证**：v1.1.6-stage-69——`templates-data/claude/agents/{zh-CN,en}` 各 9（含 `feel.md`）；`feel.md` 无 `tools`、8 个 `openfeel-*` 7 键；`rg` 阴性扫描 `mode:/permission:/reasoning_effort:` 零命中；`model: inherit` 18/18；effort/color 与计划 T2 表逐项吻合；8 subagent 白名单均不含 Task；REV-69-001（constraint 模板残留小写工具名/`question`）修复闭环。
+
+**参见：** v1.1.6-stage-69（`de76f89`/`abebda3`；plan T1~T3；`45f2093` REV 修复）；`src/core/templates-data/claude/agents/**`；kb/patterns.md #新增 Agent 全链路更新清单模式、#命名前缀统一与子串陷阱处理模式、#平台无关化「描述泛化」原则与边界；manual/core/template-loader.md
+
+## [+] 模板锚点注入的鸡生蛋处置：build 生成段与 loader 锚点桩必须同 op 落地 (2026-10-11)
+
+**背景：v1.1.6-stage-69（build.js Claude 注入）**——`build.js` 通过 `replaceBetweenAnchors` 把生成内容写入 `template-loader.ts` 的 `AUTO-GENERATED-BEGIN/END` 块；**锚点缺失时 `process.exit(1)`**。
+
+**模式**：新增一类注入对象（如 `CLAUDE_AGENT_TEMPLATES` / `CLAUDE_CONSTRAINT_TEMPLATES`）时，**build 生成函数**与**宿主文件的锚点桩**之间存在**鸡生蛋依赖**：若先生成函数后加锚点桩，build 因找不到锚点直接失败。**处置 = 同一 op 内先补锚点桩、再加生成函数/校验/主流程调用**；运行时消费该生成段的 loader 导出 API（如 3 个 Claude API）可**后置到下一 op**（此时 build 已能跑通，生成段已就位）。
+
+**判据**：任何「build 写宿主文件 + 宿主文件加载生成段」的闭环，锚点桩是**闭环的前置条件**，必须与生成侧同批落地；loader 消费函数只是下游读取者，可独立排期。审查时用 diff hunk 确认生成段是**锚点处插入**（既有段完整保留）而非整体重写。
+
+**实证**：v1.1.6-stage-69——op-004（`47d5640`）在 `template-loader.ts` 新增 2 个 AUTO-GENERATED 锚点桩（+3646 行经 diff hunk `@@ -7847,6 +7847,3652 @@` 证实为插入生成段）；op-005（`82550c5`）后置新增 3 个运行时 API；build ×2 SHA256 幂等。
+
+**参见：** v1.1.6-stage-69（op-004 `47d5640` / op-005 `82550c5`；plan T5/T6）；`build.js` `replaceBetweenAnchors` / `generateClaudeAgentTemplates` / `generateClaudeConstraintTemplate`；`src/core/template-loader.ts`；kb/architecture.md #模板单源架构、#多语言模板数据管线；kb/troubleshooting.md #模板断言的保护边界（build 注入常量 vs 源文件直读）
+
+## [+] 单源一致性断言：键集断言 vs 内容断言（按设计内容不同时只能比键集） (2026-10-11)
+
+**背景：v1.1.6-stage-69（build.js 单源断言）**——单源架构下 build 断言多对注入对象一致性。原 `assertConsistent` **同时比键集与内容**，适用于**按设计内容相同**的对象对（`AGENT_TEMPLATES ↔ OPENCODE_AGENT_TEMPLATES`、`SKILL_DEFINITIONS ↔ OPENCODE_SKILL_DEFINITIONS`）。
+
+**模式**：当新增对象对**按设计内容本就不同**（Claude agent 内容 ≠ opencode agent 内容，仅**键集**应一致）时，**必须使用只比键集的断言 `assertKeySetsEqual`**（排序后 JSON 比较，无内容比较），**不得**复用含内容比较的 `assertConsistent`——否则必然假红。
+
+- **键集口径**：Claude agents 键集 == opencode agents 键集（均 **9**，**含 `feel`，不再 −1**）。历史上曾按「opencode − 1」推断（误以为 feel 不参与），本阶段修正为 `== listAgentIds`（9）。
+- **保护边界**：断言从**锚点提取 build 注入常量**（`extractBetweenAnchors` + `matchBraces`）后比较，而非直读源文件（防「未注入源」假绿，R-新2）。
+- **阴性不变量**另立**（内容维度）**：Claude 模板不含 opencode 专有字段——属**存在性/负向断言**，与键集断言正交。
+
+**判据**：断言前先问「这两对象**按设计应相同**吗」——**相同**用「键集 + 内容」断言，**仅键集同**用「纯键集」断言；误用是假红高频来源；断言数据源一律取 **build 注入常量**而非源文件。
+
+**实证**：v1.1.6-stage-69——`build.js:1271-1278` `assertKeySetsEqual` 只比键集；`:1321` 调用 `CLAUDE_AGENT_TEMPLATES` vs `AGENT_TEMPLATES`（键集 18 = 2 语言 × 9）；`assertConsistent`（含内容）仅用于两对按设计相同的对象；成功日志「两对对象键集与内容一致 + Claude 键集一致」。
+
+**参见：** v1.1.6-stage-69（op-004 `47d5640`；plan T5/§八；REV-审 4）；`build.js` `assertKeySetsEqual` / `assertConsistent` / `validateSingleSourceConsistency` / `extractBetweenAnchors`；kb/architecture.md #模板单源架构；kb/troubleshooting.md #模板断言的保护边界（build 注入常量 vs 源文件直读）

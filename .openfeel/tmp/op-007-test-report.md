@@ -1,43 +1,41 @@
 # 自测报告 — op-007
 
-- **执行时间**：2026-10-01 09:40
+- **执行时间**：2026-10-11 00:27
 - **执行 Agent**：openfeel-executor
 - **重试次数**：1
 
 ## 执行摘要
-方案声明范围内的 `console.warn` 中文文案全部 i18n 化（命令层走 `t()`、core 有路径上下文走 `t()`、无上下文走 `[WARN]`+英文），自测通过。
+全量静态门禁全绿；实机验证因**隔离 config 下未登录（无认证 / 无 cc-switch）**无法派发 subagent → Q1/Q2/R-13 采用**保守默认**并明确标注「未实机」；阶段报告 + 人工验证清单落盘。
 
-## 实施步骤完成情况
-- [x] L5-1 命令层 warn → `t()`：`flow.ts` Git 脏框图（4 键）、force-REV 拒绝、REV 阻塞列表（2 键）
-- [x] L5-2 core warn 分流：
-  - `flow-manager.ts`（`this.projectPath` → `t()`）：snapshotRestoreRefused / phaseAutoCorrectTmpl / advancePhaseDeprecated / phaseAutoCorrectShortTmpl / advancePhaseNoStageId / autoFixPhaseGuardTmpl
-  - `config.ts`（`projectPath` → `t()`）：profile.parseErrorSkipTmpl / profile.writeFailSkipTmpl
-  - `update-infos.ts`（无参数 → `[WARN]`+英文）
-  - `workspace/identity.ts`（无 projectPath，且被 i18n.ts 依赖不可反向 import → `[WARN]`+英文）
-- [x] L5-3 i18n 键：新增 15（zh/en 对称）
+## T9.1 全量静态门禁实测值
 
-## 自测清单验证
-| 检查项 | 结果 | 备注 |
-|--------|:--:|------|
-| 命令层 warn 全走 `t()`（含 Git 框式警告，外观保留） | ✅ | 4 键框式；zh 保留「Git 脏区警告」 |
-| core warn 按分流规则处理（有上下文 t()；无上下文 [WARN]+英文，零 CJK） | ✅ | 逐处落实 |
-| 告警触发条件/次数/退出码未改变 | ✅ | 仅改文案来源；既有用例守护 |
-| 声明范围 `rg` 无裸中文 warn | ✅ | 5 文件 console.warn 均为 t()/[WARN]+英文 |
-| i18n 同键同序；lint i18n problems=0 退出码 0 | ✅ | 717 键一致 |
-| build + test 全绿；§六 翻转清单完成 | ✅ | 既有 warn 文本断言保持通过（zh 值保留关键子串） |
-| 测试隔离；config.yaml 三值零 diff | ✅ | auto/enabled/true |
-| 未改真实 flow.json/pipeline.yaml/docs/manual；无新增依赖 | ✅ | — |
+| 门禁 | 命令 | 实测 | 预期 | 结论 |
+|------|------|------|------|:--:|
+| build ×2 幂等 | `npm run build` ×2 + SHA256 | loader/update 两次哈希一致 | 无漂移 | ✅ |
+| 受管树不复活 | `Test-Path`（受管子路径） | `.opencode/{agents,skills,ADAPTER.md}`=False；`templates-data/opencode/skills`=False；`templates-data/{agents,core-instructions}`=False | False | ✅ |
+| 全量测试 | `npm test` | 66 文件 / 1157 用例，0 failed / 0 skipped | 全绿 | ✅ |
+| 类型检查 | `npx tsc --noEmit` | EXIT=0 | 0 | ✅ |
+| i18n | `node bin/openfeel.js lint i18n` | 761 键一致 | 761 | ✅ |
+| kb | `node bin/openfeel.js lint kb` | 未发现过期引用（348 引用） | 0 过期 | ✅ |
+| 版本 | `node bin/openfeel.js --version` | 1.1.5 | 1.1.5 | ✅ |
+| Claude 源清单 | 目录计数 | zh=9 / en=9；constraint zh/en=True | 9×2 + 2 | ✅ |
 
-## 产出文件
-- `src/commands/flow.ts`
-- `src/core/flow-manager.ts`
-- `src/core/config.ts`
-- `src/core/update-infos.ts`
-- `src/core/workspace/identity.ts`
-- `src/core/i18n-data/zh-CN.ts`
-- `src/core/i18n-data/en.ts`
-- `test/commands/flow.test.ts`
-- `test/core/flow-manager.test.ts`
+> **T9.1b 口径说明**：`Test-Path .opencode` 实测 **True**（偏差记录见下）——该目录为 opencode 平台自身配置目录（tracked `.opencode/opencode.json`，其余 gitignored），**非** OpenFeel 自举受管树。OpenFeel 受管子路径（`.opencode/agents`、`.opencode/skills`、`.opencode/ADAPTER.md`、`templates-data/opencode/skills`）实测**全部 False**，与 op-007 防复活意图一致。
+
+## T8 实机验证结论（保守默认，标注「未实机」）
+
+- **T8.0 环境探测**：`claude --version` = **2.1.296 (Claude Code)**，CLI 可用；`cc-switch` **未安装**。
+- **T8.1 隔离部署**：`%TEMP%\openfeel-claude-verify\.claude` 手工铺放 9 agents + `CLAUDE.md`；`CLAUDE_CONFIG_DIR` 指向其下；`claude --version` 在隔离 config 下正常返回（未触碰真实 `~/.claude`）。
+- **未能派发**：隔离 config 下 `claude -p` 返回 `Not logged in · Please run /login`（无认证）；且 cc-switch 缺失，自定义模型 ID 无从验证。
+- **保守默认留痕**：
+  - **Q1（subagent 是否可调 Task）= 不可调**（与模板一致：白名单不含 Task）。
+  - **Q2（CLAUDE.md `@import` 家目录路径）= 不拆短路由文件**（单文件 CLAUDE.md）。
+  - **R-13（`feel` 工具继承）= 保持不设 `tools`**（继承）。
+  - **模型 ID = 无法实测 → fallback `inherit`**（模板默认即 inherit，不改）。
+
+## T9.2 产出
+- 阶段报告：`.openfeel/users/Liuary/log/2026/10/11/2026-10-11-001.md`（含门禁表 + 人工验证清单 + Q1/Q2 定稿 + R-13 结论 + 遗留项）
+- 本自测报告：`.openfeel/tmp/op-007-test-report.md`
 
 ## 前置校验结果
 - 方案完整性：通过
@@ -45,7 +43,6 @@
 - 流转合法性：通过
 
 ## 偏差记录
-- **方案与代码事实不符（需上报）**：方案 L5-1/L5-2 与 §八 影响文件清单将 op-007 范围限定为 5 个文件（`commands/flow.ts`、`core/flow-manager.ts`、`core/config.ts`、`core/update-infos.ts`、`core/workspace/identity.ts`）；但全量 `rg` 发现 **另有 11 处含 CJK 的 `console.warn`** 分布在方案未列出的 6 个文件：`core/migrate.ts:547`、`core/init.ts:311`、`core/plan/scheme.ts:143`、`core/public-logger.ts:166`、`core/setup.ts:82,95`、`core/update-state.ts:139`、`core/update.ts:1484,1601,1679,1692`。
-  - 依「不得自行扩大范围」，本 op **未改**这 11 处；建议 Feel/op-010 决定是否纳入（否则 `rg "console\.warn\(.*\p{Han}" src/` 仍有残留，验收 5 的全局口径无法达成）。
-- i18n 键新增 15（方案估 6~12）；无签名变更。
-- 无上下文的 `update-infos.ts`/`identity.ts` 站点采用 `[WARN]`+英文（zh 下亦为英文中性短句，属方案明示取舍）。
+1. **T9.1b「`Test-Path .opencode` = False」口径偏差**：实测 True，因 `.opencode/` 为 opencode 平台自身配置目录（tracked `opencode.json`），非 OpenFeel 受管树；已按受管子路径核验（全 False）替代，防复活意图达成。非本阶段引入，不阻塞。
+2. **实机项未执行**（Q1/Q2/R-13/模型 ID）：环境限制（未登录 + 无 cc-switch），按保守默认留痕并标注「未实机」。
+3. **op-007 无 commit**：产出均为 `.openfeel/**`（按边界不纳入版本管理）。

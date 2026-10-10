@@ -1017,3 +1017,31 @@ concurrency:
 **实证**：v1.1.3-stage-61（op-001 `ae98397`）——win32 实测 `auto` → 合法 UTF-8 中文可读；`--encoding gbk` → GBK；`--json` 旁路**逐字节相同**；`npm test` 61 文件 / 1016 用例 0 skipped / 0 failed；`lint i18n` 730；`lint kb` 0；`tsc` 0；build 成功且 `.opencode` 零复活。
 
 **参见：** v1.1.3-stage-61（op-001 `ae98397` / REV-001 closed）/ v1.1.2-stage-58（回归引入）；`.openfeel/manual/cli/output-encoding.md`；kb/troubleshooting.md #Node 无内建 GBK 编码能力；kb/patterns.md #CLI 输出编码单一咽喉模式
+
+## [+] Claude Code 实机验证方法与行为事实：隔离 config + settings.json 派发 subagent（Q1/Q2/R-13） (2026-10-11)
+
+**症状/场景**：需要**实机验证** Claude Code 的 agent frontmatter 字段可用性、自定义模型 ID、subagent 能力边界（Q1/Q2/R-13），但**不能触碰真实 `~/.claude`**。
+
+**验证方法（隔离 config）**：
+
+1. **环境探测**：`claude --version`（本仓实测 `2.1.296 (Claude Code)` 可用）；确认 `cc-switch` 是否存在（模型切换依赖）。
+2. **隔离部署**：在临时目录（如 `%TEMP%\openfeel-claude-verify\.claude`）手工铺放 `agents/*.md` + `CLAUDE.md`；设 **`CLAUDE_CONFIG_DIR`** 指向该隔离目录 → `claude --version` 在隔离 config 下正常返回（未触碰真实 `~/.claude`）。
+3. **派发 subagent**：隔离 config 下 `claude -p`（或复制 `settings.json` 后交互）派发一次 subagent，实测模型 ID 与工具集。
+4. **零污染核对**：退出后确认真实 `~/.claude` 文件数/mtime 不变。
+
+**关键陷阱**：**隔离 config 下 `claude -p` 返回 `Not logged in · Please run /login`**（无认证）→ **无法派发 subagent**，自定义模型 ID 亦无从验证；且 `cc-switch` 未安装时模型切换不可用。**隔离 config + 复制 `settings.json`（含认证/模型配置）后**方可派发 subagent 完成实机验证。**未获认证时不得声称已实机验证**，须标注「保守默认留痕」。
+
+**实机结论（行为事实）**：
+
+| 项 | 结论 |
+|---|---|
+| **Q1** subagent 是否可调 `Task` | **不可调** → 模板 subagent 白名单一律不含 `Task`，`task(explore)` 改「主会话经 Task 调度 / `[HANDOFF]`」成立 |
+| **R-13** `feel` 是否设 `tools` | **默认不设（继承）获宽工具集** → `AskUserQuestion`/`EnterPlanMode` 等主会话关键工具可用，无需显式白名单 |
+| **Q2** CLAUDE.md `@import ~/` 家目录路径 | **受支持**（但本期**仍维持单文件 CLAUDE.md**，不拆短路由，见 ADR-007） |
+| 自定义模型 ID | **请求成功**（如 `ccs-claude-zhipu--glm-5.3-flash[1M]` 可用）；模板默认 `inherit` 不改 |
+
+**判据/避免**：跨 harness 实机验证一律用**隔离 config**（`CLAUDE_CONFIG_DIR`），且**认证/模型配置须一并复制作数**否则 `-p` 无头模式无法派发；环境受限时按**保守默认**留痕并**如实标注「未实机」**，不得与「实测通过」混同。
+
+**实证**：v1.1.6-stage-69（op-007 报告 `.openfeel/tmp/op-007-test-report.md`；阶段报告 `.openfeel/users/Liuary/log/2026/10/11/2026-10-11-001.md`）——环境探测 `claude --version`=2.1.296、`cc-switch` 未安装；隔离部署 + `CLAUDE_CONFIG_DIR` 生效；认证补齐后 Q1/R-13/Q2/模型 ID 四项确认；REV-69-002 据此闭环。
+
+**参见：** v1.1.6-stage-69（op-007；REV-69-002）；`templates-data/claude/agents/**`、`constraint/**`；kb/patterns.md #Claude Code agent frontmatter 结构化映射、#隔离 HOME 实测 opencode 行为的方法、#真实全局目录操作的安全程序；kb/architecture.md #Claude 内容源自立与运行时 3 API；`.openfeel/dev/decisions.md` ADR-007

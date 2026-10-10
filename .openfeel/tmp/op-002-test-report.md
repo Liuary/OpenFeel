@@ -1,78 +1,46 @@
-# 自测报告 — v1.1.5-stage-67.op-002
+# 自测报告 — op-002
 
-- **执行时间**：2026-10-03 15:24
+- **执行时间**：2026-10-11
 - **执行 Agent**：openfeel-executor
-- **重试次数**：第 1 次（一次通过）
-- **主题**：`setup --check [--json]` 主动诊断
+- **重试次数**：0（含 en 名词 task 改写与描述引号化两项自测内修正）
 
 ## 执行摘要
-
-全部实施步骤完成（T2 + T2.i18n + T5），TDD 先红后绿；`setup --check` 三态（+unknown）退出码、`--json` 纯 JSON 单文档、零写盘均验证通过，全门禁绿。
+新增 8 个 `openfeel-*` Claude agent 模板（zh+en，16 文件），frontmatter 严格按映射表、正文 R1~R6 适配完成，自测通过。
 
 ## 实施步骤完成情况
-
-- [x] T2.1 `src/commands/setup.ts` 注册 `--check`/`--json`；action 前置只读短路，检测后 `return`（不部署）
-- [x] T2.i18n.1 zh-CN `setup` 域 +4 键（`checkOk/Mismatch/Missing/UnknownTmpl`）
-- [x] T2.i18n.2 zh-CN `help` 域 +2 键（`setup.check`/`setup.json`）
-- [x] T2.i18n.3 en `setup` 域 +4 键
-- [x] T2.i18n.4 en `help` 域 +2 键
-- [x] T2.i18n.5 `lint i18n` = 755 + 6 = **761**
-- [x] T5.11~T5.15 测试追加（含 unknown 退出码、纯 JSON、零写盘、无参/`--lang` 回归）
-- [x] T5.16 `npx vitest run test/commands/setup.test.ts` 全绿（先红 7 失败 → 后绿 9 通过）
+- [x] T2.1 16 文件 frontmatter 按要求写入；`name` == 文件名；`description` 完整单行
+- [x] T2.2 负向清零
+- [x] T3.1~T3.8 逐文件特殊点
+- [x] T3.9 全量清零核验
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| S1 一致 → 退出 0 且输出含两版本（T5.11） | ✅ | `--check` 一致分支实测 |
-| S2 不一致/缺失 → 退出 1（T5.12a/b） | ✅ | 另补 T5.12c unknown → 1 |
-| S3 `--json` 纯 JSON 单文档含 4 字段、退出码正确（T5.13/a/b） | ✅ | `JSON.parse` 通过，`schemaVersion: 1` |
-| S4 `--check` 零写盘：state 字节+mtime 不变、不产生全局部署文件（T5.14） | ✅ | 断言通过 |
-| S5 `setup` 无参/`--lang` 行为不回归（T5.15 + 既有基本路径） | ✅ | `--lang en` 仍部署 |
-| S6 不新增顶层命令 | ✅ | 仅扩展 `setup` 选项 |
-| S7 `--check` 分支在部署逻辑之前 `return` | ✅ | 代码走查确认 |
-| S8 i18n 两表成对；`lint i18n` = 761 | ✅ | 实测 761 |
-| S9 `setup --help` 的 `--check`/`--json` 描述来自 `help.setup.*` | ✅ | `setup --check --help` 实测中文描述 |
-| S10 测试隔离 HOME | ✅ | 复用 `vi.mock('node:os')` + `mkdtemp` |
+| S1 16 文件新增；zh/en agents 各 9 | ✅ | 含 feel |
+| S2 逐文件 `name` == 文件名 | ✅ | 16 项 |
+| S3 frontmatter 字段仅 6 键 | ✅ | name/description/tools/effort/color/model |
+| S4 白名单与映射表逐字一致、无 Task | ✅ | 见对照 |
+| S5 负向门禁（9 文件）0 | ✅ | |
+| S6 逐文件特殊点 | ✅ | reviewer `claude --version`+CLAUDE.md；archiver/utility `~/.claude/agents`；vision 白名单口径；executor TodoWrite/返回主会话 |
+| S7 R1 执行类无小写工具名残留 | ✅ | |
+| S8 R2 subagent `task` 清零；含「主会话经 Task 调度」叙述 | ✅ | 词边界 0 |
+| S9 R4 `question` 全清 | ✅ | |
+| S10 8 文件「模型选择」节标准改写 + external_directory | ✅ | |
+| S11 `npx tsc --noEmit` = 0 | ✅ | |
+| 附加：18 agent 文件 frontmatter YAML 合法 | ✅ | node + yaml 解析 |
 
 ## 产出文件
-
-- `src/commands/setup.ts`（`--check`/`--json` + 前置只读短路）
-- `src/core/i18n-data/zh-CN.ts`（+6 键）
-- `src/core/i18n-data/en.ts`（+6 键）
-- `test/commands/setup.test.ts`（T5.11~T5.15 + T5.12c）
-
-## 门禁实测
-
-| 命令 | 结果 |
-|------|------|
-| `npx vitest run test/commands/setup.test.ts` | 9 passed（局部） |
-| `npx tsc --noEmit` | exit 0 |
-| `npm test` | 64 files / **1135 passed** / 0 failed |
-| `node bin/openfeel.js lint i18n` | **761 键一致** |
-| `node bin/openfeel.js lint kb` | 0 过期（检查 333 引用） |
-| `npm run build` | 成功（模板一致性 3/3） |
-| `node bin/openfeel.js --version` | 1.1.4（版本收口归 op-003） |
-
-### 真实 CLI 行为抽验
-
-- `openfeel setup --check` → `全局部署版本 1.1.1 ≠ CLI 版本 1.1.4；请运行 openfeel setup 并重启 harness（opencode）。` exit 1（本机真实全局 state 为 1.1.1）
-- `openfeel setup --check --json` → 纯 JSON：`{"schemaVersion":1,"status":"mismatch","cliVersion":"1.1.4","deployedVersion":"1.1.1"}` exit 1
-- `openfeel setup --check --help` → `--check`/`--json` 描述来自 `help.setup.*`（applyHelpI18n 生效）
+`src/core/templates-data/claude/agents/{zh-CN,en}/openfeel-{planner,schemer,executor,reviewer,feel-tester,utility,vision,archiver}.md`（16）
 
 ## 前置校验结果
-
-- 方案完整性：通过（6 项必填字段齐全）
-- Phase 合法性：通过（`flow current` = `v1.1.5-stage-67.op-002`，phase `exec_running`）
-- 流转合法性：通过（`flow health` 态正常；`flow attempt --result pass` 成功推进至 op-003）
-- 方案前置校验 5 条：全部实测通过（op 一致 / `rg checkGlobalDeployment setup.ts` = 0 / scheme create 可用 / i18n 基线 755 / `setup --check` 报未知选项）
-
-## 方案一致性回写
-
-- 声明产出 4 项 vs 实际产出 4 项：**一致**，无遗漏、无超范围。
-- 困难点 #1：`schemaVersion` 采用数值 `1`（对齐全仓既有约定，计划 T2 的 `'1.0'` 视为笔误，已在 T5.13 固化）。
-- 困难点 #2：新增 `setup.checkUnknownTmpl`（阶段计划 §四预估 4 键 → 实际 6 键；i18n 新基线 755+6=761）。
+- 方案完整性：通过
+- Phase 合法性：通过
+- 流转合法性：通过
 
 ## 偏差记录
+- 偏差 1：en 通用名词 `task` 改写为 assignment/work item/to-do list/work-item table，以满足 T3.9 词边界门禁（语义不变）。
+- 偏差 2：9 个 en 文件 `description` 加 YAML 双引号（text 含 ASCII `: `）。
+- 无跳步违规。
 
-无。严格按方案执行，未跳步、未超范围。
+## Commit
+- `abebda3`（16 文件，1807 行）

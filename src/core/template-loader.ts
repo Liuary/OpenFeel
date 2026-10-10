@@ -11553,3 +11553,37 @@ export function listOpencodeAgentIds(lang: string): string[] {
 export function listOpencodeSkillNames(): string[] {
   return Object.keys(OPENCODE_SKILL_DEFINITIONS);
 }
+
+/**
+ * 加载 Claude 约束模板（即 CLAUDE.md 内容，按语言）。
+ * 指定语言不存在时回退到 zh-CN；两者均缺失时抛出错误。
+ */
+export function loadClaudeConstraintTemplate(lang: string): string {
+  const raw = CLAUDE_CONSTRAINT_TEMPLATES[lang] ?? CLAUDE_CONSTRAINT_TEMPLATES['zh-CN'];
+  if (raw === undefined) {
+    throw new Error(`Claude constraint template not found: lang=${lang}`);
+  }
+  return raw;
+}
+
+/**
+ * 加载 Claude Agent 模板（用于部署 ~/.claude/agents/）。
+ * 指定语言不存在时回退到 zh-CN；agentId 缺失时抛出错误。
+ */
+export function loadClaudeAgentTemplate(lang: string, agentId: string): string {
+  const langData = CLAUDE_AGENT_TEMPLATES[lang] ?? CLAUDE_AGENT_TEMPLATES['zh-CN'];
+  const content = langData?.[agentId];
+  if (content === undefined) {
+    throw new Error(`Claude agent template not found: agentId=${agentId} (lang=${lang})`);
+  }
+  return content;
+}
+
+/**
+ * 列出指定语言下全部 Claude Agent ID（用于部署时遍历）。
+ * 指定语言不存在时回退到 zh-CN。共 9 个（含 feel）。
+ */
+export function listClaudeAgentIds(lang: string): string[] {
+  const langData = CLAUDE_AGENT_TEMPLATES[lang] ?? CLAUDE_AGENT_TEMPLATES['zh-CN'];
+  return Object.keys(langData);
+}

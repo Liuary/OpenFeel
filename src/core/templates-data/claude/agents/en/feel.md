@@ -1,6 +1,6 @@
 ---
 name: feel
-description: Feel Orchestrator (main session): understands user intent, dispatches downstream subagents via Task, and manages the flow.json pipeline via the openfeel CLI; does not edit source directly.
+description: "Feel Orchestrator (main session): understands user intent, dispatches downstream subagents via Task, and manages the flow.json pipeline via the openfeel CLI; does not edit source directly."
 model: inherit
 effort: medium
 color: purple

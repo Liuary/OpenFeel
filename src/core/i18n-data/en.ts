@@ -360,6 +360,9 @@ export const update: I18nDomain = {
   'nonInteractiveToolsTmpl':    { key: 'update.nonInteractiveToolsTmpl',    zh: '', en: '(Non-interactive environment; using the default tool list)' },
   'restartHarnessTmpl':         { key: 'update.restartHarnessTmpl',         zh: '', en: '{harness} global configuration updated. Please restart {harness} to load the new configuration.' },
   'claudeReloadHintTmpl':       { key: 'update.claudeReloadHintTmpl',       zh: '', en: 'Claude Code: after first creating ~/.claude/{agents,skills}, restart the session or run /reload-skills; CLAUDE.md takes effect next session.' },
+  'claudeSettingsMergedTmpl':   { key: 'update.claudeSettingsMergedTmpl',   zh: '', en: '[update] Merged ~/.claude/settings.json (injected agent:"feel" and permissions.defaultMode:"auto"; existing user keys preserved; original backed up)' },
+  'claudeSettingsParseSkipTmpl':{ key: 'update.claudeSettingsParseSkipTmpl',zh: '', en: '[update] ~/.claude/settings.json is not strict JSON (comments or trailing comma); skipped merge, kept original: {err}' },
+  'claudeSettingsWriteSkipTmpl':{ key: 'update.claudeSettingsWriteSkipTmpl',zh: '', en: '[update] {err}; skipped writing ~/.claude/settings.json, continuing with remaining steps' },
 };
 
 /* ==================== project ==================== */
@@ -890,6 +893,9 @@ export const setup: I18nDomain = {
   'checkMissingTmpl':  { key: 'setup.checkMissingTmpl',  zh: '', en: 'No global OpenFeel deployment detected; run `openfeel setup` and restart the harness.' },
   'checkUnknownTmpl':  { key: 'setup.checkUnknownTmpl',  zh: '', en: 'Global deployment status cannot be determined (update_state.json missing or corrupted); run `openfeel setup` to redeploy.' },
   'restartHarnessTmpl': { key: 'setup.restartHarnessTmpl', zh: '', en: 'Restart the harness ({harness}) to load the new global configuration.' },
+  'claudeSettingsMergedTmpl': { key: 'setup.claudeSettingsMergedTmpl', zh: '', en: '[setup] Merged ~/.claude/settings.json (injected agent:"feel" and permissions.defaultMode:"auto"; existing user keys preserved; original backed up)' },
+  'claudeSettingsParseSkipTmpl': { key: 'setup.claudeSettingsParseSkipTmpl', zh: '', en: '[setup] ~/.claude/settings.json is not strict JSON (comments or trailing comma); skipped merge, kept original: {err}' },
+  'claudeSettingsWriteSkipTmpl': { key: 'setup.claudeSettingsWriteSkipTmpl', zh: '', en: '[setup] {err}; skipped writing ~/.claude/settings.json, continuing with remaining steps' },
 };
 
 /* ==================== metrics domain: agent performance summary (T15) ==================== */

@@ -385,6 +385,9 @@ export const update: I18nDomain = {
   'nonInteractiveToolsTmpl':    { key: 'update.nonInteractiveToolsTmpl',    zh: '（非交互环境，使用默认工具列表）', en: '' },
   'restartHarnessTmpl':         { key: 'update.restartHarnessTmpl',         zh: '{harness} 全局配置已更新，请重启 {harness} 以加载新配置。', en: '' },
   'claudeReloadHintTmpl':       { key: 'update.claudeReloadHintTmpl',       zh: 'Claude Code：首次创建 ~/.claude/{agents,skills} 后需重启会话或运行 /reload-skills；CLAUDE.md 于下次会话生效。', en: '' },
+  'claudeSettingsMergedTmpl':   { key: 'update.claudeSettingsMergedTmpl',   zh: '[update] 已合并 ~/.claude/settings.json（注入 agent:"feel" 与 permissions.defaultMode:"auto"，用户既有键已保留；原文件已备份）', en: '' },
+  'claudeSettingsParseSkipTmpl':{ key: 'update.claudeSettingsParseSkipTmpl',zh: '[update] ~/.claude/settings.json 非严格 JSON（含注释或 trailing comma），跳过合并并保留原文件: {err}', en: '' },
+  'claudeSettingsWriteSkipTmpl':{ key: 'update.claudeSettingsWriteSkipTmpl',zh: '[update] {err}；已跳过 ~/.claude/settings.json 写入，继续其余步骤', en: '' },
 };
 
 /* ==================== project 域：项目概览命令 ==================== */
@@ -931,6 +934,9 @@ export const setup: I18nDomain = {
   'checkMissingTmpl':  { key: 'setup.checkMissingTmpl',  zh: '未检测到全局 OpenFeel 部署；请运行 openfeel setup 完成部署并重启 harness。', en: '' },
   'checkUnknownTmpl':  { key: 'setup.checkUnknownTmpl',  zh: '全局部署状态无法判定（update_state.json 缺失或损坏）；可运行 openfeel setup 重新部署。', en: '' },
   'restartHarnessTmpl': { key: 'setup.restartHarnessTmpl', zh: '请重启当前 harness（{harness}）以加载新的全局配置。', en: '' },
+  'claudeSettingsMergedTmpl': { key: 'setup.claudeSettingsMergedTmpl', zh: '[setup] 已合并 ~/.claude/settings.json（注入 agent:"feel" 与 permissions.defaultMode:"auto"，用户既有键已保留；原文件已备份）', en: '' },
+  'claudeSettingsParseSkipTmpl': { key: 'setup.claudeSettingsParseSkipTmpl', zh: '[setup] ~/.claude/settings.json 非严格 JSON（含注释或 trailing comma），跳过合并并保留原文件: {err}', en: '' },
+  'claudeSettingsWriteSkipTmpl': { key: 'setup.claudeSettingsWriteSkipTmpl', zh: '[setup] {err}；已跳过 ~/.claude/settings.json 写入，继续其余步骤', en: '' },
 };
 
 /* ==================== metrics 域：Agent 性能摘要（T15） ==================== */

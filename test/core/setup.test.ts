@@ -31,7 +31,7 @@ vi.mock('../../src/core/backup.js', async (importOriginal) => {
 import { setupGlobalFramework } from '../../src/core/setup.js';
 import { getOpenfeelVersion } from '../../src/core/update-state.js';
 import { resetBackupSetCache } from '../../src/core/backup.js';
-import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath, getClaudeMdPath, getClaudeAgentsDir, getClaudeSkillsDir } from '../../src/core/global-paths.js';
+import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath, getClaudeMdPath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeSettingsPath } from '../../src/core/global-paths.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -207,7 +207,7 @@ describe('setupGlobalFramework', () => {
     expect(existsSync(join(homeDir, '.claude'))).toBe(false);
   });
 
-  it('stage-71/T2：双 harness setup → CLAUDE.md + 9 agents + 17 skills，且无 settings.json', () => {
+  it('stage-71/T2：双 harness setup → CLAUDE.md + 9 agents + 17 skills + settings.json', () => {
     const r = setupGlobalFramework('zh-CN', ['opencode', 'claude']);
 
     expect(existsSync(getClaudeMdPath())).toBe(true);
@@ -220,8 +220,8 @@ describe('setupGlobalFramework', () => {
     const claudeSkills = readdirSync(getClaudeSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory());
     expect(claudeSkills).toHaveLength(17);
 
-    // 不写 settings.json（归 stage-73）
-    expect(existsSync(join(homeDir, '.claude', 'settings.json'))).toBe(false);
+    // settings.json 于 stage-73 落地
+    expect(existsSync(getClaudeSettingsPath())).toBe(true);
   });
 
   it('stage-71/T2：CLAUDE.md 含受管区标记且内容 == loadClaudeConstraintTemplate(zh-CN)', async () => {
@@ -232,12 +232,110 @@ describe('setupGlobalFramework', () => {
     expect(content).toContain(loadClaudeConstraintTemplate('zh-CN'));
   });
 
-  it('stage-71/T2：双 harness 二次 setup 幂等 → created/updated 空 + skipped === 54', () => {
+  it('stage-71/T2：双 harness 二次 setup 幂等 → created/updated 空 + skipped === 55', () => {
     setupGlobalFramework('zh-CN', ['opencode', 'claude']);
     const r2 = setupGlobalFramework('zh-CN', ['opencode', 'claude']);
     expect(r2.created).toHaveLength(0);
     expect(r2.updated).toHaveLength(0);
-    // 1 CLAUDE.md + 9 claude agents + 17 claude skills + 27 opencode = 54
-    expect(r2.skipped.length).toBe(54);
+    // 1 CLAUDE.md + 9 claude agents + 17 claude skills + 1 settings.json + 27 opencode = 55
+    expect(r2.skipped.length).toBe(55);
+  });
+
+  // ── stage-73/T6：settings.json 注入（设置合并 / 备份 / 越界） ──
+
+  it('stage-73/T6.1：claude 单装（无 settings）→ 生成 agent/permissions 且 created', () => {
+    const r = setupGlobalFramework('zh-CN', ['claude']);
+    const p = getClaudeSettingsPath();
+    expect(existsSync(p)).toBe(true);
+    expect(r.created).toContain(p);
+    const obj = JSON.parse(readFileSync(p, 'utf-8'));
+    expect(obj.agent).toBe('feel');
+    expect(obj.permissions.defaultMode).toBe('auto');
+  });
+
+  it('stage-73/T6.2：预置用户键 → 逐字保留 + 注入键到位（D-SET/D-SET2）', () => {
+    mkdirSync(join(homeDir, '.claude'), { recursive: true });
+    const user = {
+      env: { ANTHROPIC_BASE_URL: 'http://127.0.0.1:15721' },
+      model: 'ccs-claude-deepseek--deepseek-flash[1M]',
+      modelPicker: {}, theme: 'dark', apiKeyHelper: 'echo x', agent: 'other',
+      permissions: { allow: ['Bash'], deny: ['WebFetch'] },
+    };
+    writeFileSync(getClaudeSettingsPath(), JSON.stringify(user, null, 2) + '\n', 'utf-8');
+    const r = setupGlobalFramework('zh-CN', ['claude']);
+    const obj = JSON.parse(readFileSync(getClaudeSettingsPath(), 'utf-8'));
+    expect(obj.env).toEqual(user.env);
+    expect(obj.model).toBe(user.model);
+    expect(obj.modelPicker).toEqual({});
+    expect(obj.theme).toBe(user.theme);
+    expect(obj.apiKeyHelper).toBe(user.apiKeyHelper);
+    expect(obj.permissions.allow).toEqual(['Bash']);
+    expect(obj.permissions.deny).toEqual(['WebFetch']);
+    expect(obj.agent).toBe('feel');
+    expect(obj.permissions.defaultMode).toBe('auto');
+    expect(r.updated).toContain(getClaudeSettingsPath());
+  });
+
+  it('stage-73/T6.3：二次运行 settings 无变化 → skipped + 字节不变', () => {
+    setupGlobalFramework('zh-CN', ['claude']);
+    const p = getClaudeSettingsPath();
+    const before = readFileSync(p, 'utf-8');
+    const r2 = setupGlobalFramework('zh-CN', ['claude']);
+    expect(r2.skipped).toContain(p);
+    expect(readFileSync(p, 'utf-8')).toBe(before);
+  });
+
+  it('stage-73/T6.4：严格 JSON（含注释）→ 不写盘 + anomaly(parse_failed) + skipped', () => {
+    mkdirSync(join(homeDir, '.claude'), { recursive: true });
+    const bad = '{\n  // comment\n  "agent": "x"\n}\n';
+    writeFileSync(getClaudeSettingsPath(), bad, 'utf-8');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const r = setupGlobalFramework('zh-CN', ['claude']);
+      expect(readFileSync(getClaudeSettingsPath(), 'utf-8')).toBe(bad);     // 未写盘
+      expect(r.skipped).toContain(getClaudeSettingsPath());
+      expect(readFileSync(join(homeDir, '.openfeel', 'update_infos.md'), 'utf-8')).toContain('原因: parse_failed');
+    } finally { warnSpy.mockRestore(); }
+  });
+
+  it('stage-73/T6.6：预置 settings → 写入前备份 + backed；备份失败 → 跳过 + anomaly', () => {
+    setupGlobalFramework('zh-CN', ['claude']);
+    const p = getClaudeSettingsPath();
+    const obj = JSON.parse(readFileSync(p, 'utf-8'));
+    obj.agent = 'other';                                                   // 篡改 → 触发变化
+    writeFileSync(p, JSON.stringify(obj, null, 2) + '\n', 'utf-8');
+    setupGlobalFramework('zh-CN', ['claude']);
+    const infos = readFileSync(join(homeDir, '.openfeel', 'update_infos.md'), 'utf-8');
+    expect(infos).toContain('## 备份');
+    expect(infos).toContain('来源: setup');
+
+    // 备份失败 → 跳过 + anomaly(backup_failed) + 字节不变
+    const before = readFileSync(p, 'utf-8');
+    backupMock.failFor = p;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const r = setupGlobalFramework('zh-CN', ['claude']);
+      expect(r.skipped).toContain(p);
+      expect(readFileSync(p, 'utf-8')).toBe(before);
+      expect(readFileSync(join(homeDir, '.openfeel', 'update_infos.md'), 'utf-8')).toContain('原因: backup_failed');
+    } finally { warnSpy.mockRestore(); backupMock.failFor = null; }
+  });
+
+  it('stage-73/T6.7：CLAUDE_CONFIG_DIR 越界（HOME 外）→ 仍写回，备份走 global-external', () => {
+    const ext = mkdtempSync(join(tmpdir(), 'openfeel-claude-ext-'));
+    try {
+      process.env.CLAUDE_CONFIG_DIR = ext;
+      writeFileSync(join(ext, 'settings.json'), '{"env":{"A":"1"}}\n', 'utf-8');
+      setupGlobalFramework('zh-CN', ['claude']);
+      const obj = JSON.parse(readFileSync(join(ext, 'settings.json'), 'utf-8'));
+      expect(obj.agent).toBe('feel');
+      expect(obj.env).toEqual({ A: '1' });
+      const backupRoot = join(homeDir, '.openfeel', 'backup');
+      const hasExternal = readdirSync(backupRoot).some((d) => existsSync(join(backupRoot, d, 'global-external')));
+      expect(hasExternal).toBe(true);
+    } finally {
+      delete process.env.CLAUDE_CONFIG_DIR;
+      rmSync(ext, { recursive: true, force: true });
+    }
   });
 });

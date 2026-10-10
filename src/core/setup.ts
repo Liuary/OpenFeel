@@ -11,8 +11,9 @@ import { deployGlobalAsset, SKILL_DEFINITIONS } from './update.js';
 import { appendUpdateInfo } from './update-infos.js';
 import { backupFileBeforeWrite, notifyBackupIfTTY, BackupError } from './backup.js';
 import { mergeGlobalOpencodeJsonc } from './opencode-config.js';
+import { applyClaudeSettings } from './claude-settings.js';
 import { t } from './i18n.js';
-import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeMdPath } from './global-paths.js';
+import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalOpencodeJsoncPath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeMdPath, getClaudeSettingsPath } from './global-paths.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { readJsoncFile } from './fs/safe-read.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
@@ -102,7 +103,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN', tools: stri
     }
   }
 
-  // claude 分支：CLAUDE.md + 9 agent + 17 共享 skill（不写 settings.json，归 stage-73）
+  // claude 分支：CLAUDE.md + 9 agent + 17 共享 skill + settings.json（stage-73）
   if (tools.includes('claude')) {
     // 1c. 全局约束 CLAUDE.md（受管区三态复用 deployGlobalAsset）
     const claudeMd = getClaudeMdPath();
@@ -125,7 +126,9 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN', tools: stri
       push(deployGlobalAsset(p, content, globalState, 'setup'), p);
     }
 
-    // 不写 settings.json（归 stage-73）
+    // 4c. settings.json：读-深合并-写回（注入 agent:"feel" + permissions.defaultMode:"auto"；用户键保留）
+    const settingsPath = getClaudeSettingsPath();
+    push(applyClaudeSettings(globalState, 'setup', lang), settingsPath);
   }
 
   // 5. 写盘全局 state + 记录已部署 hash

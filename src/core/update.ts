@@ -11,8 +11,9 @@ import { resolve, dirname, join, basename, isAbsolute, relative } from 'node:pat
 import { loadAgentTemplate, listAgentIds, loadTemplate, loadClaudeConstraintTemplate, loadClaudeAgentTemplate, listClaudeAgentIds } from './template-loader.js';
 import { recordProjectLang } from './workspace/identity.js';
 import { t, getCliLang } from './i18n.js';
-import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalAgentsMdPath, getGlobalOpencodeJsoncPath, getGlobalUpdateStatePath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeMdPath } from './global-paths.js';
+import { getOpencodeGlobalDir, getGlobalAgentsDir, getGlobalSkillsDir, getGlobalCoreMdPath, getGlobalAgentsMdPath, getGlobalOpencodeJsoncPath, getGlobalUpdateStatePath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeMdPath, getClaudeSettingsPath } from './global-paths.js';
 import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './opencode-config.js';
+import { applyClaudeSettings } from './claude-settings.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
 import { detectFileType, normalize, splitFrontmatter, parseRegion, wrapRegion, replaceRegion, mergeFrontmatter, serializeFrontmatter } from './managed-region.js';
@@ -1856,7 +1857,7 @@ export function updateProject(
     }
   }
 
-  // claude 分支：CLAUDE.md + 9 agent + 17 共享 skill（不写 settings.json，归 stage-73）
+  // claude 分支：CLAUDE.md + 9 agent + 17 共享 skill + settings.json（stage-73）
   if (wantClaude) {
     const claudeAgentsDir = getClaudeAgentsDir();
     const claudeSkillsDir = getClaudeSkillsDir();
@@ -1880,7 +1881,13 @@ export function updateProject(
       const p = join(dir, 'SKILL.md');
       pushAction(deployGlobalAsset(p, content, newGlobalState, 'update'), p, created, updated, skipped, appended);
     }
-    // 不写 settings.json（归 stage-73）
+    // 4c. settings.json（与 setup 对称，共享 applyClaudeSettings，杜绝双实现漂移）
+    const settingsPath = getClaudeSettingsPath();
+    pushAction(
+      applyClaudeSettings(newGlobalState, 'update', getCliLang(projectPath)),
+      settingsPath,
+      created, updated, skipped, appended,
+    );
   }
 
   // 重启提醒（按 harness 组合；isTTY 守卫、非交互静默）
@@ -1888,7 +1895,8 @@ export function updateProject(
     const reminderLang = getCliLang(projectPath);
     const opencodeChanged = updated.some((f) => f.startsWith(getGlobalAgentsDir()));
     const claudeChanged = [...created, ...updated, ...appended].some(
-      (f) => f.startsWith(getClaudeAgentsDir()) || f.startsWith(getClaudeSkillsDir()) || f === getClaudeMdPath(),
+      (f) => f.startsWith(getClaudeAgentsDir()) || f.startsWith(getClaudeSkillsDir())
+        || f === getClaudeMdPath() || f === getClaudeSettingsPath(),
     );
     const harnesses: string[] = [];
     if (opencodeChanged) { harnesses.push('opencode'); }

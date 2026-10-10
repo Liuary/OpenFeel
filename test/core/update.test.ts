@@ -32,7 +32,7 @@ import { resetBackupSetCache } from '../../src/core/backup.js';
 import { createUpdateState, saveUpdateState, hashContent, getOpenfeelVersion } from '../../src/core/update-state.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { getClaudeMdPath, getClaudeAgentsDir, getClaudeSkillsDir } from '../../src/core/global-paths.js';
+import { getClaudeMdPath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeSettingsPath } from '../../src/core/global-paths.js';
 import { tmpdir } from 'node:os';
 
 /** 全局 opencode 目录（基于 mock home） */
@@ -807,16 +807,17 @@ describe('updateProject', () => {
 
   // ── stage-71/T3：claude 分支 + CLAUDE.md 受管区三态 ──
 
-  it('stage-71/T3：updateProject([claude]) 部署 27 文件且不触 opencode', () => {
+  it('stage-71/T3：updateProject([claude]) 部署 28 文件且不触 opencode', () => {
     const r = updateProject(tmpDir, ['claude']);
-    // 1 CLAUDE.md + 9 agents + 17 skills = 27
-    expect(r.created).toHaveLength(27);
+    // 1 CLAUDE.md + 9 agents + 17 skills + 1 settings.json = 28
+    expect(r.created).toHaveLength(28);
     expect(existsSync(getClaudeMdPath())).toBe(true);
     expect(readdirSync(getClaudeAgentsDir()).filter((f) => f.endsWith('.md'))).toHaveLength(9);
     expect(readdirSync(getClaudeSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory())).toHaveLength(17);
     // opencode 未触
     expect(existsSync(globalAgentsMdPath())).toBe(false);
-    expect(existsSync(join(homeDir, '.claude', 'settings.json'))).toBe(false);
+    // settings.json 于 stage-73 落地
+    expect(existsSync(getClaudeSettingsPath())).toBe(true);
   });
 
   it('stage-71/T3：默认 updateProject 不触 ~/.claude（零触）', () => {
@@ -866,11 +867,43 @@ describe('updateProject', () => {
     expect(infos).toContain('CLAUDE.md');
   });
 
-  it('stage-71/T3：二次 updateProject([claude]) → skipped === 27 幂等', () => {
+  it('stage-71/T3：二次 updateProject([claude]) → skipped === 28 幂等', () => {
     updateProject(tmpDir, ['claude']);
     const r2 = updateProject(tmpDir, ['claude']);
     expect(r2.created).toHaveLength(0);
     expect(r2.updated).toHaveLength(0);
-    expect(r2.skipped.length).toBe(27);
+    expect(r2.skipped.length).toBe(28);
+  });
+
+  // ── stage-73/T6：settings.json 注入（update 侧） ──
+
+  it('stage-73/T6.5：默认 updateProject（opencode）→ ~/.claude 零触（含 settings）', () => {
+    updateProject(tmpDir);                       // 默认 ['opencode']
+    expect(existsSync(join(homeDir, '.claude'))).toBe(false);
+  });
+
+  it('stage-73/T6.8：updateProject([claude]) 后 agent==="feel" 且 defaultMode==="auto"；预置用户键保留', () => {
+    mkdirSync(join(homeDir, '.claude'), { recursive: true });
+    writeFileSync(getClaudeSettingsPath(), '{"model":"m","permissions":{"deny":["WebFetch"]}}\n', 'utf-8');
+    const r = updateProject(tmpDir, ['claude']);
+    const obj = JSON.parse(readFileSync(getClaudeSettingsPath(), 'utf-8'));
+    expect(obj.agent).toBe('feel');
+    expect(obj.permissions.defaultMode).toBe('auto');
+    expect(obj.model).toBe('m');
+    expect(obj.permissions.deny).toEqual(['WebFetch']);
+    expect(r.updated).toContain(getClaudeSettingsPath());
+  });
+
+  it('stage-73/T6.7(update)：CLAUDE_CONFIG_DIR 越界 → updateProject([claude]) 可写回', () => {
+    const ext = mkdtempSync(join(tmpdir(), 'openfeel-claude-ext-u-'));
+    try {
+      process.env.CLAUDE_CONFIG_DIR = ext;
+      updateProject(tmpDir, ['claude']);
+      expect(existsSync(join(ext, 'settings.json'))).toBe(true);
+      expect(JSON.parse(readFileSync(join(ext, 'settings.json'), 'utf-8')).agent).toBe('feel');
+    } finally {
+      delete process.env.CLAUDE_CONFIG_DIR;
+      rmSync(ext, { recursive: true, force: true });
+    }
   });
 });

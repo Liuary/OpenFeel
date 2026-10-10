@@ -1,0 +1,141 @@
+# stage-72 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.6-stage-72
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.6-stage-71
+    type: hard
+    status: done
+    reason: "部署编排与命令面（`--tools` / setup-update 双分支 / 5 Claude 路径函数 / D-CFG / i18n 768）就绪；文档须据此描述 `--tools claude` 与 `~/.claude/` 资产。"
+  - upstream: v1.1.6-stage-73
+    type: hard
+    status: done
+    reason: "`~/.claude/settings.json` 注入（`agent:'feel'` + `permissions.defaultMode:'auto'` + 备份/幂等/卸载）就绪 + `docs/claude-code-adapter-plan.md §十五`（Q6）已追加；文档须据此描述 settings 注入与卸载/回滚，并**不得**再写「无 settings.json」。"
+  - upstream: v1.1.5-stage-67
+    type: soft
+    status: done
+    reason: "承接基线：CLI 1.1.5 / `lint i18n` 774 / `lint kb` 0 / 测试 67 文件 1206 用例（stage-73 实测）。本阶段**不改 i18n 基线（仍 774）**、**不新增测试**。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行 `npm publish`、不 `git push`、不 commit、不直写 `flow.json`**；版本收口后由 Feel/用户 push → CI（含新增 `$HOME/.claude` 守卫）→ 自动发布。"
+  - downstream: v1.1.7+（后续版本）
+    type: soft
+    note: "文档/版本底座：A 类载体收口至 1.1.6；`docs/claude-code-adapter-plan.md` 状态「已实现（v1.1.6）」+ 实施偏差块为后续版本引用基线。"
+
+# 本阶段 4 op：op-001（文档多载体，hard: 71/73）→ op-002（CI + 版本收口 A/B/C/D/E，hard: op-001）→ op-003（回填 + 全门禁 + 报告，hard: op-002）→ op-004（REV-72-003 阻塞修复：ops 纳入版本管理，hard: op-003）。
+# 依赖顺序的真实性：op-002 的 `npm run build` 会把 op-001 改定的 cli-usage skill 权威源（快照 v1.1.6）传播到生成段（template-loader.ts/update.ts）；
+#   若 op-001 未先执行，生成段仍为 v1.1.5 → 假收口。故 op-001 → op-002 为**必要** hard 依赖，非仅逻辑排序。
+#
+# 不变量：
+#   ① **不改源码逻辑**：仅版本字符串（config.ts 模板内 `version` 值）+ 文档内容；B 类生成段禁手改（`npm run build` 重生成）；
+#   ② **改前行为非回归未受本阶段影响**：claude `enabled:false` + `commands/update.ts` `filter(t=>t.enabled)` + opencode 段原样；默认 `setup`/`update <path>` 后 `~/.claude` 零触；
+#   ③ `.openfeel/config.yaml` **仅单行 edit，禁整文件 write**；`package-lock.json` **禁 `npm install`**（手工改 root 两行）；
+#   ④ CI 仅两处快照循环追加 `$HOME/.claude`，**判定语义不变**（三态 / 只比 sha256 / ABSENT→ABSENT 不误报）；
+#   ⑤ i18n 基线**不变**（774）；本阶段**不新增测试**；
+#   ⑥ **A 类载体含补漏项** `templates-data/claude/constraint/{zh-CN,en}.md`（计划 §六漏列，含「当前 v1.1.x」行）；
+#   ⑦ 蓝本 `docs/claude-code-adapter-plan.md` **只改头部状态 + 顶部追加「实施偏差」块**，历史正文与 stage-73 `§十五` 不动；
+#   ⑧ manual **不重写**（stage-68~73 归档官已更新）；仅补正 `cli/setup.md`/`cli/commands.md` 陈旧「无 settings.json」口径 + 快照号；
+#   ⑨ 测试全程隔离 HOME（`vi.mock('node:os')` / `CLAUDE_CONFIG_DIR`），严禁触碰真实 `~/.claude`；
+#   ⑩ 无新增依赖、不 `npm publish`/`git push`/commit、不改 `flow.json`（**此约束限 op-001~003**）。
+#   ⑪ **op-004（REV-72-003 修复）例外**：仅 `git add .openfeel/plan/v1/stage-72/ops/`（**禁 `git add -A`**）+ commit（消息 `op-004: 纳入 stage-72 ops 审计链 (v1.1.6-stage-72, REV-72-003)`）；对 op-001~003 既有产出**内容零改动**；**不 push**；不提交 `flow.json`/`checkpoints`/其它 `.openfeel/**`。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "文档多载体同步（README×3 / GETTING_STARTED / commands / 蓝本状态 / adapters / manual 补正 / cli-usage skill 权威源）"
+    produces:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - docs/claude-code-adapter-plan.md
+      - .openfeel/adapters/README.md
+      - claude/ADAPTER.md
+      - .openfeel/manual/cli/setup.md
+      - .openfeel/manual/cli/commands.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+    deps:
+      - op: v1.1.6-stage-71
+        type: hard
+      - op: v1.1.6-stage-73
+        type: hard
+    notes: "覆盖 T1 + T2（文档侧）。README×3 补「Claude Code 适配器」小节（`--tools claude` / `~/.claude/` 资产 CLAUDE.md+9 agents+17 skills+settings.json / `agent:'feel'`+`permissions.defaultMode:'auto'` / 升级重启或 `/reload-skills` / 默认零触）+ harness 行 + 版本横幅 v1.1.2→v1.1.6 + 测试数 1018→**1206**；GETTING_STARTED 快照 v1.1.2→v1.1.6 + Claude 小节 + 命令表 `--tools`；docs/commands.md 快照 v1.1.5→v1.1.6 + setup/update 节 `--tools` + Claude 资产/settings + 顺手修重复 `## roadmap` 标题；蓝本状态「提案」→「已实现（v1.1.6）」+ 顶部「实施偏差」块（settings 反转 / 9 agents / 55 skipped，**不改历史正文**）；adapters/README claude → ✅ 当前使用（v1.1.6 起）+ 纠 `claude.json` 错误；`claude/ADAPTER.md` 桩更新；manual **仅补正** `cli/setup.md:31` + `cli/commands.md:93-94,152` 陈旧口径（其余 stage-68~73 已更新，**不重写**）；cli-usage skill 权威源快照 v1.1.6 + 删前瞻句 + 命令表 `--tools` + v1.1.6 能力节。门禁：残留 rg 断言 + 关键串断言 + `git status` 限于文档/skill。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "CI 环境守卫加路径 + 版本 1.1.5 → 1.1.6 全链路收口（A/B/C/D/E）"
+    produces:
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - CHANGELOG.md
+      - .github/workflows/ci.yml
+      - src/core/template-loader.ts
+      - src/core/update.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T3 + T4。**T4-A 手工载体 8 处**：`package.json:3`；`package-lock.json:3,9`（禁 `npm install`）；`.openfeel/config.yaml:7`（**单行 edit**）；`src/core/config.ts:423,476`；`templates-data/agents-md/{zh-CN,en}.md:134`；**`templates-data/claude/constraint/{zh-CN,en}.md:137`（计划漏列，本 op 补）**。**T4-B**：`npm run build` ×2 重生成 `template-loader.ts`/`update.ts`（禁手改；在 op-001 改定 skill 权威源之后）。**T4-C**：`CHANGELOG.md` 顶部追加 `## [1.1.6] - 2026-10-11`。**T3**：`ci.yml:39/82` 两循环追加 `\"$HOME/.claude\"`（判定语义不变；两处必须一致）。D 类禁改（历史批注/依赖版本/manual 变更历史/`test/**` 注释/CHANGELOG 历史）。门禁：A 类 `1.1.5` 残留 0 + `--version`=1.1.6 + `tsc`=0 + build ×2 幂等 + CI `$HOME/.claude` 计数 2。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "roadmap / plan 回填 + 全门禁 + 阶段报告（v1.1.6 收官）"
+    produces:
+      - .openfeel/roadmap/v1.1.6.md
+      - .openfeel/plan/index.md
+      - .openfeel/plan/plan_log.md
+      - .openfeel/tmp/stage-72-gate-report.md
+      - .openfeel/tmp/stage-72-selftest-report.md
+    deps:
+      - op: op-002
+        type: hard
+    notes: "覆盖 T5。**回填**：roadmap v1.1.6 M27/M28 → done + 状态收官；plan/index v1.1.6 系列行 + stage-72 行（3 op 3/3）→ 已归档；plan_log 顶部追加 stage-72 条目。**全门禁**：先 `npm run build` ×2 → `npm test`（**0 skipped / 0 failed**，67 文件 1206 用例预期）→ `npx tsc --noEmit`=0 → `lint i18n`=**774** → `lint kb`=0 → `--version`=**1.1.6** → A 类残留 0 → CI `$HOME/.claude`=2 → 文档一致性（无 `1018`/`61 个测试文件`；三载体快照 v1.1.6）→ 隔离 HOME 默认 `setup`/`update <path>` 后 `~/.claude` 零触。产门禁报告 + 自测报告。**本 op 不改源码**（暴露缺陷回退对应 op）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-004:
+    file: op-004.md
+    title: "stage-72 ops 纳入版本管理（REV-72-003 阻塞修复，内容零改动）"
+    produces: []
+    deps:
+      - op: op-003
+        type: hard
+    notes: "**对应 REV-72-003（high, blocking）**。实测 `git ls-files .openfeel/plan/v1/stage-72/ops/` 为空（stage-71/73 的 ops 均已跟踪）→ 方案层审计链断档。修复：`git add .openfeel/plan/v1/stage-72/ops/`（**仅该目录，禁 `git add -A`**）→ `git commit -m \"op-004: 纳入 stage-72 ops 审计链 (v1.1.6-stage-72, REV-72-003)\"`。对 op-001~003 既有产出**内容零改动**；**不 push**；不提交 `flow.json`/`checkpoints`/其它 `.openfeel/**`。自测：`git ls-files` 确认 ops 全文件（修复时点 5：deps.yaml + op-001~004.md）被跟踪；`git show --stat HEAD` 仅含 4+1 文件；`git diff` = 空。不含 REV-72-001（归 Feel 推进 status）/ REV-72-002（归归档官回填大计划 §六）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付 Feel / 归档官 / 发布流程）
+downstream_contracts:
+  - name: "版本载体（A 类）"
+    change: "全部收敛至 **1.1.6**：`package.json` / `package-lock.json`（root×2）/ `.openfeel/config.yaml:7` / `src/core/config.ts`（zh·en 模板）/ `templates-data/agents-md/{zh-CN,en}.md` / **`templates-data/claude/constraint/{zh-CN,en}.md`（补漏）**；B 类生成段（`template-loader.ts`/`update.ts`）由 build 重生成。"
+  - name: "CHANGELOG.md"
+    change: "新增 `## [1.1.6] - 2026-10-11`。"
+  - name: ".github/workflows/ci.yml"
+    change: "env guard 快照循环 4 → **5 路径**（含 `$HOME/.claude`）；判定语义不变。"
+  - name: "文档六载体"
+    change: "README×3 / GETTING_STARTED / commands / manual / `openfeel-cli-usage` skill 统一描述 Claude Code 适配器（`--tools` / `~/.claude/` / settings 注入 / 升级重启）。"
+  - name: "roadmap / plan 索引"
+    change: "v1.1.6 全 6 阶段闭环 = **版本收官**（M24~M28 done）；plan_log 追加 stage-72 条目。"
+  - name: "发布口径"
+    change: "**不代 push / 不 `npm publish`**；阶段归档与 flow 推进由 Feel/归档官执行；CI 实跑（含 5 路径守卫）在 push 后由发布流程触发。"

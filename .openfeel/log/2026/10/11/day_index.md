@@ -14,3 +14,4 @@
 | [2026-10-11-Liuary-007.md](2026-10-11-Liuary-007.md) | Liuary | 阶段 v1.1.6-stage-71 完成 |
 | [2026-10-11-Liuary-009.md](2026-10-11-Liuary-009.md) | Liuary | 阶段 v1.1.6-stage-73 完成 |
 | [2026-10-11-Liuary-011.md](2026-10-11-Liuary-011.md) | Liuary | 阶段 v1.1.6-stage-72 完成 |
+| [2026-10-11-Liuary-012.md](2026-10-11-Liuary-012.md) | Liuary | 调研 **Claude Code 适配情况**（代码实现 + 本机部署双路 `Explore`）：适配器端到端完整（命令面/内容源/settings 注入/路径解析/45+ 用例），本机已部署匹配 v1.1.6（9 agents 含 feel / 17 skills / CLAUDE.md 适配器版 / settings 注入 `agent:feel`+`defaultMode:auto` / `--version`=1.1.6）；附带发现 update_infos 13 条备份待勾、`update_state.json` 陈旧 |

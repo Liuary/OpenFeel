@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.6 快照** | 更新日期：2026-10-11
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.7 快照** | 更新日期：2026-10-11
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -92,18 +92,40 @@ openfeel flow current
 自描述全部合法 phase 与**运行时生效的**流转映射（数据源为 `.openfeel/pipeline.yaml`，缺省回退内置默认表）。
 
 ```bash
-openfeel flow phases [--json]
+openfeel flow phases [--mode <full|fast>] [--stage <id>] [--json]
 ```
 
 | 选项 | 说明 |
 |------|------|
-| `--json` | 以 JSON 输出 `{ schemaVersion, phases, transitions, advanceAccepted, transitionsDiff }`，供自动化解析（`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15；`transitionsDiff` = 运行时转移表与内置默认转移表的**差异报告**，`missing` 列出内置默认有而运行时缺失的 source，使 `pipeline.yaml` 漂移**可见而非静默**） |
+| `--json` | 以 JSON 输出 `{ schemaVersion, phases, transitions, advanceAccepted, transitionsDiff, workflowMode }`，供自动化解析（`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15；`transitionsDiff` = 运行时转移表与内置默认转移表的**差异报告**，`missing` 列出内置默认有而运行时缺失的 source，使 `pipeline.yaml` 漂移**可见而非静默**；`workflowMode` = 本次展示所依据的工作流模式（v1.1.7 追加，**既有五键语义逐字不变**）） |
+| `--mode <mode>` | 显式指定工作流模式（`full` / `fast`；缺省经 `--stage` / 当前阶段派生） |
+| `--stage <id>` | 按指定阶段的模式展示转移表（缺省 = 当前阶段） |
 
 示例：
 
 ```bash
 openfeel flow phases
 openfeel flow phases --json
+```
+
+### flow mode
+
+显示当前阶段的工作流模式与来源（**只读**：不写盘、不推进）。
+
+```bash
+openfeel flow mode [--stage <id>] [--json]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--stage <id>` | 目标阶段（缺省 = 当前阶段） |
+| `--json` | 以 JSON 输出 `{ schemaVersion, stage, mode, source, modes }`（`source` 四源枚举 `status.md` / `config.yaml` / `profile.yaml` / `builtin`；`modes` 含 `full` / `fast` 两表，供展示） |
+
+示例：
+
+```bash
+openfeel flow mode
+openfeel flow mode --stage v1.1.7-stage-77 --json
 ```
 
 ### flow advance
@@ -295,7 +317,7 @@ Plan 命令管理三层计划体系中的工作阶段（Stage）和操作方案�
 添加工作阶段（**完整入口（推荐）**：创建目录 + `overview.md`/`status.md` + 注册 `flow.json`；仅需注册请用 `openfeel flow stage add`）。
 
 ```bash
-openfeel plan stage add <name> [--deps <ids...>] [--tasks <items...>] [--exec-mode <manual|auto>] [--auto-advance <enabled|disabled>]
+openfeel plan stage add <name> [--deps <ids...>] [--tasks <items...>] [--exec-mode <manual|auto>] [--auto-advance <enabled|disabled>] [--workflow-mode <full|fast>]
 ```
 
 | 参数/选项 | 说明 |
@@ -305,6 +327,7 @@ openfeel plan stage add <name> [--deps <ids...>] [--tasks <items...>] [--exec-mo
 | `--tasks <items...>` | 初始任务列表（生成到 `status.md`；不传保持 `> 待补充`） |
 | `--exec-mode <manual\|auto>` | 执行模式，**显式覆盖 config 默认**（值域非法 → exit 1 且不建阶段） |
 | `--auto-advance <enabled\|disabled>` | 自动推进，**显式覆盖 config 默认**（值域非法 → exit 1 且不建阶段） |
+| `--workflow-mode <full\|fast>` | 工作流模式，**显式覆盖 config 默认**（值域非法 → exit 1 且不建阶段；骨架 `status.md` 在「自动推进」行后增「工作流模式」行，v1.1.7-stage-75） |
 
 示例：
 
@@ -312,9 +335,10 @@ openfeel plan stage add <name> [--deps <ids...>] [--tasks <items...>] [--exec-mo
 openfeel plan stage add stage-01
 openfeel plan stage add v1.1.2-stage-41 --deps v1.1.2-stage-40
 openfeel plan stage add v1.1.4-stage-63 --exec-mode auto --auto-advance enabled
+openfeel plan stage add v1.1.7-stage-78 --workflow-mode full
 ```
 
-创建 `plan/{series}/{stage-NN}/` 目录，包含 `overview.md`（含「## 依赖」）和 `status.md`，并写入 `flow.json.stages[fullStageId].deps`。非法 stageId 会报错并给出建议名。**阶段初值继承**：未显式传 `--exec-mode`/`--auto-advance` 时，新 `status.md` 的 `执行模式`/`自动推进` 取 `.openfeel/config.yaml` 的 `defaults`（缺失/非法逐键回退内置默认）；显式选项优先于 config 默认（v1.1.4-stage-63）。
+创建 `plan/{series}/{stage-NN}/` 目录，包含 `overview.md`（含「## 依赖」）和 `status.md`，并写入 `flow.json.stages[fullStageId].deps`。非法 stageId 会报错并给出建议名。**阶段初值继承**：未显式传 `--exec-mode`/`--auto-advance` 时，新 `status.md` 的 `执行模式`/`自动推进` 取 `.openfeel/config.yaml` 的 `defaults`（缺失/非法逐键回退内置默认）；显式选项优先于 config 默认（v1.1.4-stage-63）。**工作流模式初值继承（v1.1.7-stage-75）**：同上口径——未显式传 `--workflow-mode` 时取 `config.yaml` 的 `defaults.workflow_mode`（缺失/非法回退内置默认 `fast`；本仓自举显式 `full`）；`flow.json` 同步写冗余字段（不参与级联，读取权威恒为 `status.md`）。
 
 ### 阶段创建入口关系
 
@@ -347,14 +371,15 @@ openfeel plan stage list
 创建操作方案。
 
 ```bash
-openfeel plan scheme create <stage> <title> [--draft]
+openfeel plan scheme create <stage> [title] [--draft] [--from-tasks]
 ```
 
 | 参数/选项 | 说明 |
 |------|------|
 | `stage` | 阶段名（如 stage-01） |
-| `title` | 方案标题 |
+| `title` | 方案标题（**可选**；使用 `--from-tasks` 时省略——标题由任务行派生，二者互斥） |
 | `--draft` | 创建为 draft（未发布态），须经 `plan scheme publish <stage> <opId>` 发布为执行态 |
+| `--from-tasks` | 从阶段任务表**机械生成** `ops/op-NNN.md` 骨架 + `ops/deps.yaml` 占位（**不调用任何 Agent**；幂等前缀锚定——已铺任务跳过、`deps.yaml` 占位不覆盖；无待铺任务输出「无待铺任务」，v1.1.7-stage-75） |
 
 示例：
 
@@ -498,7 +523,7 @@ openfeel config effective [key]
 
 | 参数 | 说明 |
 |------|------|
-| `key`（可选） | 单个受管键；省略时输出三键（`execution_mode` / `auto_advance` / `merge_mode`） |
+| `key`（可选） | 单个受管键；省略时输出四键（`execution_mode` / `auto_advance` / `merge_mode` / `workflow_mode`） |
 
 **来源优先级**：`status.md` > `config.yaml` > `profile.yaml` > `builtin`；未知 key → stderr + exit 1。
 
@@ -508,13 +533,14 @@ openfeel config effective [key]
 
 ```bash
 openfeel config get [key] [--global]
-openfeel config set <key> <value> [--global] [--sync-stages]
+openfeel config set <key> <value> [--global] [--sync-stages] [--stage <ids...>]
 ```
 
-- **支持全量 `defaults.*` 键**（schema 驱动）：`execution_mode` / `auto_advance` / `merge_mode` 等受管配置键均可通过 `config set`/`get` 读写（与 `config effective` 覆盖范围一致）。**注意**：原布尔测试门禁键已于 v1.1.4-stage-62 移除，`config set` 该键将被判定为**无效键**（报错、不写盘）。
+- **支持全量 `defaults.*` 键**（schema 驱动）：`execution_mode` / `auto_advance` / `merge_mode` / `workflow_mode` 等受管配置键均可通过 `config set`/`get` 读写（与 `config effective` 覆盖范围一致）。**注意**：原布尔测试门禁键已于 v1.1.4-stage-62 移除，`config set` 该键将被判定为**无效键**（报错、不写盘）。
 - **`defaults.X ≡ X`（v1.1.4-stage-63）**：项目模式下 `defaults.` 前缀与 bare key 等价（键归一，单一来源）；`--global` 的 profile 键域不同，不受影响。
-- **`--sync-stages`（v1.1.4-stage-63）**：仅项目模式（与 `--global` 组合 → exit 1）；将值批量写入**所有已注册阶段** `status.md` 对应字段（适用键 `auto_advance` → `自动推进`、`execution_mode` → `执行模式`）；**同值 no-op**；其它键（无阶段字段）跳过并报告。
-- **值类型归一**：写入前按字段 Schema 归一值类型（枚举键按枚举校验；Schema 中若存在布尔键则 `true`/`false` 归一为布尔值），避免以字符串落盘破坏配置校验。当前受管三键均为枚举型。
+- **`--sync-stages`（v1.1.4-stage-63）**：仅项目模式（与 `--global` 组合 → exit 1）；将值批量写入**所有已注册阶段** `status.md` 对应字段（适用键 `auto_advance` → `自动推进`、`execution_mode` → `执行模式`、`workflow_mode` → `工作流模式`）；**同值 no-op**；其它键（无阶段字段）跳过并报告。
+- **`--stage <ids...>` 作用域限定（v1.1.7-stage-75）**：缺省 = 全量；空格/逗号分隔；**前置全量校验**（未注册 exit 1 零写盘）；单独 `--stage` 或与 `--global` 组合 → exit 1；`workflow_mode` 字段缺失走**插入**（锚点链「自动推进」→「执行模式」；锚点皆缺 = `skipped-no-anchor`，**退出码恒 0**）；done 阶段不过滤、正常处理。
+- **值类型归一**：写入前按字段 Schema 归一值类型（枚举键按枚举校验；Schema 中若存在布尔键则 `true`/`false` 归一为布尔值），避免以字符串落盘破坏配置校验。当前受管四键均为枚举型。
 - **枚举校验 + 不写盘**：非法取值（如 `execution_mode bogus`）以非 0 退出并报错，**不修改目标文件**（文件 hash 与 mtime 不变）。
 
 ### config get-lang / set-lang
@@ -595,11 +621,13 @@ openfeel lint kb [--fix]     # kb 过期引用检测（扫描 kb 文件中的路
 
 ```bash
 openfeel stage status <id>              # 查看阶段状态
-openfeel stage set <id> --status <v>    # 更新阶段状态（写入 status.md 字段）
+openfeel stage set <id> --status <v>    # 更新阶段状态（写入 status.md 字段；另支持 --exec-mode / --auto-advance / --workflow-mode / --review-agent）
 openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stage add` 等价；建议用 `plan stage add`）
 ```
 
 **`stage set --status` 值域（v1.1.4-stage-62）**：仅接受**粗粒度状态枚举** `planned` / `review_failed` / `review_passed` / `testing` / `archiving` / `done`（单一来源 `STAGE_STATUS_VALUES`，与 `status = phase` 投影的取值域一致）；传入**相位值**（如 `review_pending`）或**任意值** → **exit 1 且不写盘**（不生成 `.bak`）。
+
+**`stage set --workflow-mode` 插入语义（v1.1.7-stage-75）**：目标 `status.md` 无「工作流模式」行时走**插入**（锚点链「自动推进」→「执行模式」；`.bak` + 原子写，其余内容逐字保留）；**锚点皆缺 → exit 1 不写盘、无 `.bak`**；`flow.json` 冗余字段仅在实际写入时同步（不参与级联）。
 
 ## model — 模型配置
 
@@ -641,7 +669,7 @@ openfeel project overview                   # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-> 说明：以上为 v1.1.6 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 v1.1.7 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

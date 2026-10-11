@@ -1,0 +1,118 @@
+# stage-77 op 依赖声明
+# 由 openfeel-schemer 制定；Feel 调度前用 Glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# 方案来源：.openfeel/plan/v1/stage-77/plan.md（rev2，含 REV-77-001~008 修订）T1~T6
+
+version: "1.1"
+stage: v1.1.7-stage-77
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+# revision: 2026-10-11 初版（3 op；收口裁定：T3+T6 合并进最终 op-003，满足「版本收口 op 须为最终 op」）
+# revision: 2026-10-11 rev2（方案审查 REV-77-009~014 落实：op-002 E3/I1 口径 + 单一 TMP、op-003 计数/锚点/行号钉正、不变量②④⑤ 同步）
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.7-stage-74
+    type: hard
+    status: done
+    reason: "双模式引擎已就绪：`workflow_mode`（`full|fast`，默认 fast，`status.md > config.yaml > profile.yaml〔不承载〕> builtin` 级联）、`FAST_TRANSITIONS`、`getValidTargets(fromPhase, mode)` 唯一取表点、`auto_advance` 默认翻 `enabled`（`DEFAULT_CONFIG` 与 schema 逐键默认同键值）。文档/CHANGELOG 的默认值叙述以该实现为准。"
+  - upstream: v1.1.7-stage-75
+    type: hard
+    status: done
+    reason: "命令面已冻结（op-001 文档口径与 op-002 验收断言的事实源）：`plan stage add --workflow-mode`、`stage set --workflow-mode`（插入语义）、`flow mode [--stage] [--json]`（四源 `source`）、`flow phases [--mode] [--stage]`（`--json` 6 键含 `workflowMode`）、`config set --sync-stages --stage <ids...>`、`plan scheme create --from-tasks`、`config effective` 四键。"
+  - upstream: v1.1.7-stage-76
+    type: hard
+    status: done
+    reason: "模板与 skill 措辞冻结（37 份）+ fast 表 9 条目（`plan_review` 必经）+ build 双生成物（`template-loader.ts` + `update.ts`）已入工作区；`openfeel-cli-usage` skill 快照已为 v1.1.7（op-003 C 类仅核对）。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行** `npm publish` / `git push` / 改 CI；executor **不 commit**（v1.1.7 提交单位 = 阶段归档提交）；**不直写 flow.json**；phase 推进由 Feel 经 CLI 执行。"
+
+# 本阶段 3 op（严格串行；执行序 = 计划 T1/T2 → T4 → T3/T5/T6）：
+#   op-001（文档多载体同步 + manual 核对补漏；无前置）
+#   → op-002（fast 隔离端到端验收；前置 op-001）
+#   → op-003（版本收口 A/B/C/D/E + roadmap/plan 回填 + 全门禁；前置 op-001/op-002；**最终 op**）
+#
+# 依赖真实性：
+#   - op-001 → op-002：文档（GETTING_STARTED 模式指引）与 E2E 报告互为对照；文件集不重叠，硬依赖为**序**依赖（阶段计划执行序 T1/T2 → T4）。
+#   - op-001/op-002 → op-003：门禁以**两 op 落地后的工作区**为基线（A 类残留扫描含 README/docs 侧 D 类白名单判定；E2E 报告为阶段验收要件）；文件集不重叠（硬依赖为**序**依赖）。
+#   - 「版本收口 op 须为最终 op」（plan §五 R-77-5）：T3（版本载体）与 T6（门禁）合并进 op-003 —— 其后再无任何 op 触碰版本载体；op-003 内部顺序 = A 类 → build(B) → CHANGELOG(C) → 断言 → 回填(T5) → 门禁(T6)。
+#
+# 不变量：
+#   ① A 类残留断言 = 「6 载体（10 处）1.1.6 计数 = 0」（6 载体 = 事实基准表 6 个 A 行；实测 8 文件 / 10 处字面量），**D 类白名单除外**（文档侧 7 处历史标记 + CHANGELOG 历史条目 + 生成段历史节 + 依赖自身版本 + manual/plan 历史 + `.openfeel/adapters/README.md:21`）——**禁广谱替换**（REV-77-003；计数口径 [REV-77-012 修订]；白名单补漏 [REV-77-014 修订]）。
+#   ② B 类双生成物：`src/core/template-loader.ts`（7 锚点：`build.js:144/174/260/299/340/390/421`）+ `src/core/update.ts`（`SKILL_DEFINITIONS` 1 锚点：`build.js:211`），**禁手改 / 禁 git checkout**；期望改动 = `template-loader.ts` 版本行 4 处（`:2948`/`:3457`/`:11003`/`:11515`）；build ×2 幂等；「提交后 porcelain 空」核验在阶段归档提交后执行 [REV-77-013 修订]。
+#   ③ ci.yml 不改：`:39`/`:82` 两处 `for d in` 各 5 路径 + `rg -c '"$HOME/\.claude"'` = 2（REV-77-006）。
+#   ④ E2E 隔离：HOME/USERPROFILE/XDG_CONFIG_HOME 三设 + 临时项目（**须在任何 git 仓库之外**，脚本含 `git rev-parse` 前置校验；单一 `TMP` 经 `$1` 传入，消除双 `mktemp -d`）；真实 HOME **两级零污染**（R-77-4 / [REV-77-010 修订]）：① 严格面 `.openfeel` + `.config/openfeel` 全量 sha256 前后 diff = 空；② 宽松面 `.claude` / `.config/opencode` 仅框架受管路径子集（`agents/`、`skills/`、`CLAUDE.md`、`settings.json` / `agents/`、`skills/`、`AGENTS.md`、`opencode.jsonc`）前后 diff = 空（易变路径排除项报告登记）。
+#   ⑤ **偏差 D-1（已登记）**：计划 T4-2 第三分句「自 `plan_pending` 直跳 `--to plan_passed` 亦被拒」与 `findPhasePath` 多步自动逐步实现冲突（实测 rc=0、3 行输出〔2 步「已推进：」全角 + 1 汇总「✓ 已推进:」〕、经停 `plan_review`）——op-002 按实测行为取证（E1~E4）+ 报告登记；**裁定（[REV-77-011 修订]）**：属**计划文本措辞**问题（正确表述「不能直达，须经 `plan_review`（唯一路径自动逐步）」），处置 (a) 恰当；计划文本修正由 **planner 另办**（超本阶段边界）。
+#   ⑥ 不新增依赖；不改 `src/**` 逻辑（仅 A 类版本字面量 + B 类 build 生成）；不改 CI / bin / test；不 commit / 不 push / 不 publish；不直写 flow.json。
+#   ⑦ 审计链：本 ops 目录（**3 op** + 本 deps.yaml）随阶段归档提交纳入版本管理（`git add .openfeel/plan/v1/stage-77/ops/`，**禁 `git add -A`**）[kb #方案层 ops 产出的审计链完整性]。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "文档多载体同步与 manual 核对补漏（T1+T2）"
+    produces:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - .openfeel/tmp/op-001-doc-sync-report.md
+    deps: []
+    notes: "T1：README×3「快速迭代模式（v1.1.7 起）」小节 + 测试数 1206→1306（zh-CN/en:192）+「5 键」→ 6 键（zh-CN/en:74）+ 横幅仅 README.md:11→v1.1.7（REV-77-008）；GETTING_STARTED 快照 v1.1.7 + 模式小节的默认 auto_advance 与存量迁移指引（REV-77-007）+ 速查表 flow mode 行；commands 快照×2 + flow phases 补 --mode/--stage 与 6 键 + 新增 flow mode 小节 + plan stage add --workflow-mode + plan scheme create --from-tasks + config 四键/--sync-stages 适用键/--stage + stage set --workflow-mode（REV-77-001 全量）。T2：manual 四份核对+仅补漏（REV-77-004；预期零改动）。D 类 7 处历史标记禁改。不跑 build；不 commit。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "fast 隔离端到端验收（T4）"
+    produces:
+      - .openfeel/tmp/op-002-e2e-fast-report.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "执行序 T1/T2 → T4；文档模式指引与 E2E 实测互为对照"
+    notes: "T4（版本级决定性验收）：隔离 HOME（HOME/USERPROFILE/XDG_CONFIG_HOME）+ 临时项目（git 仓库外前置校验；单一 `TMP` 经 `$1` 传入 [REV-77-014 修订]）内跑：A init/config → B 骨架（工作流模式行 + 默认 auto_advance enabled）→ C flow mode --json → D 快线链 10 步 rc=0 + scheme_pending/test_pending 拒绝 rc=1 → E 多步自动逐步取证（E1~E4：rc=0 + 全角「已推进：」×2 + 两跳具体串 + 汇总行；偏差 D-1，[REV-77-009/011 修订]）→ F 单阶段切回 full → G 非法值 rc=1 且 status.md sha256 不变 → H 存量回落 builtin=fast（REV-77-007 事实复核）→ I 真实 HOME **两级隔离断言**（I1a 严格面全量 sha256 + I1b 宽松面框架受管路径子集 [REV-77-010 修订]）。**FAIL 必须为 0**；报告含 D-1 登记与排除项登记。不改源码/不 commit。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "版本收口 A/B/C/D/E + roadmap/plan 回填 + 全门禁（T3+T5+T6，最终 op）"
+    produces:
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - CHANGELOG.md
+      - .openfeel/roadmap/v1.1.7.md
+      - .openfeel/plan/index.md
+      - .openfeel/plan/plan_log.md
+      - .openfeel/tmp/op-003-gate-report.md
+      - .openfeel/tmp/op-003-self-test-report.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "门禁残留扫描与 README 横幅断言以 op-001 定稿文档为基线"
+      - op: op-002
+        type: hard
+        reason: "阶段验收要件（E2E 报告）先于收口门禁；门禁以两 op 落地后工作区为基线"
+    notes: "T3：A 类 6 载体（10 处字面量 / 8 文件；package-lock 仅手工两行禁 npm install）→ B 类 npm run build 双生成物（**7 锚点 + `update.ts` 1 锚点**；期望模板版本行 4 处；幂等 ×2；禁手改 [REV-77-013 修订]）→ C 类 CHANGELOG [1.1.7]（含 Migration 小节；cli-usage skill 仅核对）→ D 类白名单逐处判读（禁广谱替换；含 `.openfeel/adapters/README.md:21` [REV-77-014 修订]）→ 断言 A 类残留 0 + --version 1.1.7。T5：roadmap/v1.1.7.md（状态行 + 进度表 :72-75 M29~M32 done + 归档日期 + Q1 实际走向=全 full [REV-77-014 修订①]）、plan/index.md（:16 系列行 + :103/:104 阶段行）、plan_log.md 顶部新行。T6：G1 build ×2 幂等 → G2 npm test（67/1306/0/0）→ G3 tsc 0 → G4 lint i18n 796 → G5 lint kb 0（425 引用）→ G6 --version 1.1.7 → G7 A 类残留 0 → G8 README 横幅 =1 → G9 ci.yml 5 路径 ×2 + 锚点 2 → G10 config.yaml 仅版本行 → G11 flow.json 仅 Feel 推进 → G12 .opencode 防复活。观察项（不改）：stage-74/75/76 status.md 状态漂移 + 89 文件孤儿 → 归档官 flow health --fix 对账。**最终 op**（其后无 op 触碰版本载体）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 交付顺序（严格串行，供 Feel 调度）
+execution_order:
+  - op-001
+  - op-002
+  - op-003

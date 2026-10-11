@@ -35,7 +35,7 @@
 - Agent 体系
   - [Agent 设计](agents/feel.md)
   - Skill 体系（按需加载，权威源 **中立共享源** `src/core/templates-data/skills/{name}/SKILL.md`；v1.1.6-stage-68 由 `templates-data/opencode/skills/` 迁入，两 harness 共用；**v1.1.6-stage-70 起 4 个 opencode 特化 skill 采用「能力名叙述 + `### opencode 适配器` / `### Claude Code 适配器` 双平台分节」，opencode 小节逐字零回归**）
-  - `openfeel-cli-usage` — CLI 命令/参数/phase/stageId 用法参考（**查询型**，与执行型 `openfeel-wizard` 互引划界；v1.1.2-stage-43 新增）
+  - `openfeel-cli-usage` — CLI 命令/参数/phase/stageId 用法参考（**查询型**，与执行型 `openfeel-wizard` 互引划界；v1.1.2-stage-43 新增；**快照已更新至 v1.1.7**（v1.1.7-stage-76），含双模式工作流命令面）
 
 ## 维护规则
 

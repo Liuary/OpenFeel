@@ -8,7 +8,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.1.6**（Claude Code 适配器 / 多 harness 并存） — 自描述 `flow phases`、配置有效值 `config effective`、部署前自动备份；框架资产（agents/skills/AGENTS.md）全局部署。
+> 📦 **最新版本 v1.1.7**（快速迭代模式 fast workflow mode / 双模式流水线） — 自描述 `flow phases`、配置有效值 `config effective`、部署前自动备份；框架资产（agents/skills/AGENTS.md）全局部署。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 
@@ -38,5 +38,14 @@ npm install -g openfeel@latest # 更新到最新版本
 - **部署资产到 `~/.claude/`**：`CLAUDE.md`（全局约束，受管区三态，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**17 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，**用户既有键逐字保留**）。
 - **升级**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；**首次创建 `~/.claude/{agents,skills}` 后须重启会话或 `/reload-skills`** 使新 skill/agent 生效；`CLAUDE.md` 于**下次会话**生效。仅 `npm i -g` 不刷新全局资产。
 - **默认零触**：不带 `--tools` 时 `~/.claude/` **零变化**。
+
+## 快速迭代模式（v1.1.7 起）
+
+> 与完整流水线（full）**并存**；新部署默认 **fast**（`config.yaml defaults.workflow_mode`），可逐阶段覆盖与切回。
+
+- **快线链**：`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_passed → archiving → done`（跳过 6 项 `scheme_*` / `test_*`；**计划审查与代码审查保留单轮**，`review_failed` 可回环重试）。
+- **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast`（项目默认记忆）。
+- **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast] [--stage <id>]`（按模式查看转移表）。
+- **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
 
 完整中文文档：[README.zh-CN.md](README.zh-CN.md)（详见其中的「Claude Code 适配器」小节）

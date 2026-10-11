@@ -69,9 +69,20 @@ openfeel flow status
 - **Upgrade**: `npm i -g openfeel@latest` → `openfeel setup --tools claude`; **after the first creation of `~/.claude/{agents,skills}`, restart the session or run `/reload-skills`** to load new skills/agents; `CLAUDE.md` takes effect on the **next session**. `npm i -g` alone does not refresh global assets.
 - **Zero-touch by default**: without `--tools`, `~/.claude/` is **unchanged**.
 
+## Fast Iteration Mode (since v1.1.7)
+
+> **Coexists** with the full pipeline; new deployments default to **fast** (`config.yaml defaults.workflow_mode`), overridable per stage.
+
+- **Fast line**: `plan_pending → plan_review → plan_passed → exec_running → review_pending → review_passed → archiving → done` (skips 6 phases: `scheme_*` / `test_*`; **plan review and code review each keep a single round**; `review_failed` loops back for retries).
+- **Choose and switch**: `openfeel plan stage add <name> --workflow-mode full|fast` (new stage); `openfeel stage set <stage> --workflow-mode full|fast` (per-stage switch); `openfeel config set defaults.workflow_mode full|fast` (project-level default memory).
+- **Inspect (read-only)**: `openfeel flow mode [--stage <id>] [--json]` (current mode + source); `openfeel flow phases [--mode full|fast] [--stage <id>]` (view the transition table per mode).
+- **Auto-advance enabled by default**: new deployments default to `auto_advance: enabled` (since v1.1.7); to disable: `openfeel config set auto_advance disabled`.
+
+Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) ("工作流模式（full / fast）与自动推进" section, Chinese) and [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`.
+
 ## What's New in v1.1.2
 
-- **Self-description**: `flow phases [--json]` lists all valid phases and the transition table (5 top-level JSON keys: `schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff`).
+- **Self-description**: `flow phases [--json]` lists all valid phases and the transition table (6 top-level JSON keys: `schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff` / `workflowMode` (added in v1.1.7; existing five keys unchanged verbatim)).
 - **Stage governance**: `flow stage remove` / `plan stage add --deps` / `stageId` validation and directory-conflict detection.
 - **Effective config**: `config effective` prints the resolved value plus its source (`status.md > config.yaml > profile.yaml > builtin`).
 - **Structured output**: `flow status/current/health/metrics/overview --json` (pure JSON + `schemaVersion`).
@@ -189,7 +200,7 @@ Core Layer
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (1206 cases / 67 test files; Linux CI skips 1 Windows-only case)
+npm test           # Run tests (1306 cases / 67 test files; Linux CI skips 1 Windows-only case)
 ```
 
 ## Acknowledgments

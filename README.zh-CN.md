@@ -69,9 +69,20 @@ openfeel flow status
 - **升级**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；**首次创建 `~/.claude/{agents,skills}` 后须重启会话或 `/reload-skills`** 使新 skill/agent 生效；`CLAUDE.md` 于**下次会话**生效。仅 `npm i -g` 不刷新全局资产。
 - **默认零触**：不带 `--tools` 时 `~/.claude/` **零变化**。
 
+## 快速迭代模式（v1.1.7 起）
+
+> 与完整流水线（full）**并存**；新部署默认 **fast**（`config.yaml defaults.workflow_mode`），可逐阶段覆盖与切回。
+
+- **快线链**：`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_passed → archiving → done`（跳过 6 项 `scheme_*` / `test_*`；**计划审查与代码审查保留单轮**，`review_failed` 可回环重试）。
+- **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast`（项目默认记忆）。
+- **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast] [--stage <id>]`（按模式查看转移表）。
+- **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
+
+升级迁移提示见 [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)「工作流模式（full / fast）与自动推进」小节与 [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`。
+
 ## v1.1.2 新增能力
 
-- **自描述**：`flow phases [--json]` 输出全部合法 phase 与转移表（JSON 顶层 5 键：`schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff`）。
+- **自描述**：`flow phases [--json]` 输出全部合法 phase 与转移表（JSON 顶层 6 键：`schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff` / `workflowMode`（v1.1.7 追加，既有五键语义逐字不变））。
 - **阶段治理**：`flow stage remove` / `plan stage add --deps` / `stageId` 校验与目录冲突检测。
 - **配置有效值**：`config effective` 输出有效值 + 生效来源（`status.md > config.yaml > profile.yaml > builtin`）。
 - **结构化输出**：`flow status/current/health/metrics/overview --json`（纯 JSON + `schemaVersion`）。
@@ -189,7 +200,7 @@ Core 层
 ```bash
 npm install        # 安装依赖
 npm run build      # 编译 TypeScript
-npm test           # 运行测试（1206 用例 / 67 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
+npm test           # 运行测试（1306 用例 / 67 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
 ```
 
 ## 致谢

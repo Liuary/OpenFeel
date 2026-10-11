@@ -151,7 +151,7 @@ stage-74 ──▶ stage-75 ──▶ stage-76 ──▶ stage-77
 
 1. **门禁**：`npm test` 全绿（`0 skipped / 0 failed`）；`npx tsc --noEmit` = 0；`openfeel lint i18n` = 实测新基线（> **774**，各阶段显式登记）；`openfeel lint kb` = 0 过期；`npm run build` ×2 幂等（`git status --porcelain src/` 空）；`node bin/openfeel.js --version` == `1.1.7`。
 2. **双表正确性**：`flow phases`（full 模式）逐字等于**内置现状表**；fast 模式输出快线 7 键；**展示 / 校验 / 推进 / BFS 同源**（同一 stage + mode 下 `flow phases` 所示键集 ⊇ `flow advance --to` 接受集，差异仅 `advanceAccepted` 语义标注）；同 (stage, mode) 下 `canAdvance` / `findPhasePath` / `getAvailablePhases` / `flow phases` 键集一致；`transitionsDiff` 为**同模式**对比（full → `missing=['review_passed|test_passed']`；fast 无覆盖 → 全空）[REV-74-002/004 修订]。
-3. **快线链端到端**（隔离临时项目，[需求变更 2026-10-11 修订]）：`workflow_mode: fast` 下 `plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_pending → review_passed → archiving → done` 全程 `advance` 成功（**`plan_review` 为必经节点**）；`--to scheme_pending` / `--to test_pending` **被拒绝**（exit 非 0，提示合法目标）；自 `plan_pending` 的 `--to plan_passed`（跳过计划审查）**被拒绝**；`plan_review → plan_pending`（退回）**可推进**。
+3. **快线链端到端**（隔离临时项目，[需求变更 2026-10-11 修订]）：`workflow_mode: fast` 下 `plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_pending → review_passed → archiving → done` 全程 `advance` 成功（**`plan_review` 为必经节点**）；`--to scheme_pending` / `--to test_pending` **被拒绝**（exit 非 0，提示合法目标）；自 `plan_pending` 的 `--to plan_passed` **不能直达**，CLI 沿唯一路径**两跳经 `plan_review`**（`plan_review` 为必经中间态）[REV-77-011 修订]；`plan_review → plan_pending`（退回）**可推进**。
 4. **单阶段切换**：`stage set <id> --workflow-mode full` 后，同阶段 `plan_passed → scheme_pending` 可推进（full 链恢复）；`--workflow-mode` 非法值 → exit 1 且 status.md 不变（SHA256 断言）。
 5. **默认自动推进（裁定 E）**：无 `config.yaml` 的**隔离 HOME** 项目（无 `profile.yaml`）`config effective auto_advance` → `enabled [builtin]`；非隔离环境复核时断言合法来源集 `{builtin, profile.yaml}`（profile 仅当画像**显式声明** `preferences.auto_advance` 时兜底）[REV-74-005 修订]；`openfeel init` 生成模板含 `auto_advance: enabled`；**本仓 `config.yaml` 零变化**（`git diff` 空）。
 6. **模式记忆**：项目 `config set defaults.workflow_mode fast` → 新建阶段 status.md 初值「工作流模式：fast」；改 `full` → 后续新建阶段为 `full`；`flow mode` 输出的「来源」逐场景正确（`status.md` / `config.yaml` / `profile.yaml` / `builtin`）。
@@ -191,7 +191,7 @@ stage-74 ──▶ stage-75 ──▶ stage-76 ──▶ stage-77
 ## 十一、端到端验收（实现后，由用户/测试官执行）
 
 1. **静态门禁**：见 §八.1。
-2. **快线链实跑**（隔离临时项目）：`config set defaults.workflow_mode fast` → `plan stage add` → `flow advance` 全程走快线（含 **`plan_review` 必经**：`plan_pending → plan_review → plan_passed`）；跳过的 2 类 phase（`scheme_*` / `test_*`）`advance` 必须被拒；自 `plan_pending` 直跳 `plan_passed` 被拒。[需求变更 2026-10-11 修订]
+2. **快线链实跑**（隔离临时项目）：`config set defaults.workflow_mode fast` → `plan stage add` → `flow advance` 全程走快线（含 **`plan_review` 必经**：`plan_pending → plan_review → plan_passed`）；跳过的 2 类 phase（`scheme_*` / `test_*`）`advance` 必须被拒；自 `plan_pending` 的 `--to plan_passed` **不能直达**，CLI 沿唯一路径**两跳经 `plan_review`**（`plan_review` 为必经中间态）[REV-77-011 修订]。[需求变更 2026-10-11 修订]
 3. **切回 full**：同项目 `stage set <id> --workflow-mode full` → `plan_passed → scheme_pending` 可推进；`flow mode --stage <id>` 显示 `full [来源: status.md]`。
 4. **记忆**：新建第二个阶段 → 初值 = 最后一次选择值；`flow mode` 来源显示 `config.yaml`。
 5. **默认开启自动推进**：全新隔离项目 `openfeel init` → 生成 `auto_advance: enabled`；`config effective` 来源 `config.yaml`。

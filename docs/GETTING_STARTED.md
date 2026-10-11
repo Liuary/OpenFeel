@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.1.6 快照** | 更新日期：2026-10-11 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.1.7 快照** | 更新日期：2026-10-11 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -61,6 +61,31 @@ openfeel setup --tools claude   # 部署 ~/.claude/（与 opencode 并存，默�
 - **升级后**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；首次创建 `~/.claude/{agents,skills}` 后须**重启会话或 `/reload-skills`**；`CLAUDE.md` 于下次会话生效。仅 `npm i -g` 不刷新全局资产。
 - **默认零触**：不带 `--tools` 时 `~/.claude/` 零变化。
 
+### 工作流模式（full / fast）与自动推进（v1.1.7 起）
+
+自 v1.1.7 起支持两种工作流模式（**阶段级生效**，项目级默认记忆于 `config.yaml` 的 `defaults.workflow_mode`）：
+
+- **full**：完整流水线（15 个 phase，含方案与测试环节）。
+- **fast**（新部署默认）：快线链 `plan_pending → plan_review → plan_passed → exec_running → review_pending → review_passed → archiving → done`——跳过 6 项（`scheme_*` / `test_*`），**计划审查与代码审查保留单轮**（`review_failed` 可回环重试）。
+
+选择与查看：
+
+```bash
+openfeel plan stage add stage-01 --workflow-mode fast   # 新建阶段时指定（写入项目默认记忆）
+openfeel stage set stage-01 --workflow-mode full        # 单阶段切回完整流程
+openfeel config set defaults.workflow_mode full         # 项目默认（后续新建阶段沿用）
+openfeel flow mode [--stage stage-01] [--json]          # 查看当前模式与来源（只读）
+openfeel flow phases --mode fast                        # 按指定模式查看转移表
+```
+
+> **默认自动推进开启（v1.1.7 起）**：新部署的 `config.yaml` 默认 `auto_advance: enabled`；如需关闭，执行 `openfeel config set auto_advance disabled`，或在创建阶段时显式传 `--auto-advance disabled`。
+
+> **存量项目升级迁移（v1.1.7 起）**：若项目 `config.yaml` 未设置 `defaults.workflow_mode`（v1.1.7 之前创建的项目），升级后**新建阶段的骨架初值回落内置默认 `fast`**；既有阶段的 `status.md` 若无「工作流模式」字段，其模式解析同样按级联回落 `fast`（无感行为变更）。希望保持完整流程的存量项目，建议执行：
+>
+> ```bash
+> openfeel config set defaults.workflow_mode full   # 项目级默认；新建与无字段阶段一并回落 full
+> ```
+
 ## 4. 初始化项目
 
 在项目根目录（或空目录）中初始化 OpenFeel 工作区：
@@ -85,7 +110,7 @@ openfeel init ./my-agent-project
 openfeel flow status
 ```
 
-输出当前所处的阶段（phase）：`plan_pending → plan_review → plan_passed → scheme_pending → scheme_review → scheme_passed → exec_running → review_pending → review_passed → test_pending → test_passed → archiving → done`。
+输出当前所处的阶段（phase）：`plan_pending → plan_review → plan_passed → scheme_pending → scheme_review → scheme_passed → exec_running → review_pending → review_passed → test_pending → test_passed → archiving → done`（fast 工作流快线下为快线链，见「工作流模式」小节）。
 
 ### 5.2 创建计划
 
@@ -133,6 +158,7 @@ openfeel lint
 |------|------|
 | `openfeel init [path]` | 初始化项目工作区，创建 `.openfeel/` 目录结构与配置文件 |
 | `openfeel flow` | 流水线状态管理（`status`/`current`/`advance`/`attempt`/`log` 等） |
+| `openfeel flow mode` | 查看当前阶段的工作流模式与来源（只读，支持 `--stage` / `--json`） |
 | `openfeel plan` | 计划管理（`stage add/list`、`scheme create/list`） |
 | `openfeel view` | 审查条目管理（`list`/`add`/`accept`） |
 | `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识） |

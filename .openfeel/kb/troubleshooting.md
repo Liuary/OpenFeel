@@ -1125,3 +1125,18 @@ concurrency:
 **实证**：v1.1.7-stage-76 op-003/op-004——build 重生成 `template-loader.ts`（84 loader hunk）+ `update.ts`（16 update hunk）全部落 AUTO-GENERATED 锚点区（0 越界）；build ×2 幂等（`git hash-object` 前后一致）；porcelain `src/ 43 + test/ 5`。
 
 **参见：** v1.1.7-stage-76（T4；REV-76-002）；`build.js`（`replaceBetweenAnchors`）；`src/core/{template-loader,update}.ts`；kb/patterns.md #CLI 用法 skill 化模式；manual/core/build.md、manual/core/template-loader.md
+## [+] fast 隔离 E2E 断言口径：「已推进」全角/半角计数陷阱 + 会话期易变目录的三级隔离断言 (2026-10-11)
+
+- **症状**：fast 快线链隔离验收断言「`grep -c "已推进"` 输出 = 2」**恒 FAIL**（实测 3）；对 `~/.claude` 做全量 sha256 前后 diff **必 FAIL**。
+- **根因**：
+  - `flow advance` 多步自动逐步输出 **3 行**——2 行单步「已推进：…」（**全角冒号**，`flow.advance.stepOkTmpl`）+ 1 行统一成功确认「✓ 已推进: …」（**半角冒号**，`flow.advance.okTmpl`，`src/commands/flow.ts`（`:951-978`））。按裸「已推进」计数得 3，按「已推进：」（全角）计数得 2。
+  - `~/.claude`（及 `~/.config/opencode`）在会话期被 harness 自身持续写入（`projects/`、`sessions/`、`shell-snapshots/`、`telemetry/`、`file-history/`、`cache/`、`todos/`、`history.jsonl`）→ 全量 diff 必然非空。
+- **规避**：
+  - 计数断言**钉死冒号形态**（全角「已推进：」= 2；两跳具体串各 1）或断言「总行数 = 步数 + 1 汇总行」；不写裸「已推进」。
+  - 隔离断言**分层**：① 严格面（CLI 实际可写面）`.openfeel` + `.config/openfeel` **全量清单 + sha256**；② 宽松面 `.claude`/`.config/opencode` **仅框架受管路径子集**（`agents/`、`skills/`、`CLAUDE.md`、`settings.json` / `agents/`、`skills/`、`AGENTS.md`、`opencode.jsonc`）；易变路径**显式排除并登记**。
+- **判据**：断言口径必须与实现的输出模板逐字对齐（全角/半角、单步/汇总）；对被测进程外部持续写入的目录，「零污染」断言只能锁「受管子集」而非全目录。
+
+**实证**：v1.1.7-stage-77 op-002——隔离临时项目实跑 PASS=30 / FAIL=0（E3 全角口径 = 2 + E4 两跳串；I1a 严格面 + I1b 宽松面双 PASS）。
+
+**参见：** v1.1.7-stage-77（T4；op-002；REV-77-009/010）；`src/commands/flow.ts`（`:951-978`）；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护、#测试以「保存/恢复」代替 homedir mock；kb/patterns.md #隔离 HOME 实测法
+

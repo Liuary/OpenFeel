@@ -3752,3 +3752,16 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.7-stage-76 op-005（T7）——反证改回 `plan_pending: ['plan_passed']` → `flow-manager.test.ts` 13 失败；改回 393 用例绿；`flow phases --mode fast` 输出 `plan_pending → [plan_review]`、`plan_review → [plan_passed, plan_pending]`。
 
 **参见：** v1.1.7-stage-76（plan T7；op-005；REV-76-004/009）；`src/core/flow-manager.ts` `FAST_TRANSITIONS`；`src/core/config.ts`；`src/core/i18n-data/{zh-CN,en}.ts`；kb/architecture.md #双模式转移表选择；dev/decisions.md ADR-010；manual/core/flow-manager.md
+## [+] 文档侧历史标记纳入版本收口禁改白名单：B 类双生成物 + 「残留=0」白名单化 + 收口 op 为最终 op (2026-10-11)
+
+- **背景**：版本号全链路收口（见 `#版本号全链路收口清单模式`）在多 harness 内容源扩展后，A 类载体增至 **6 载体 / 10 处字面量 / 8 文件**；收口阶段最易被「残留 = 0」广谱替换误伤历史语义。
+- **三则补正**：
+  - **B 类为「双生成物」**：`npm run build` 重生成 `src/core/template-loader.ts` **+ `src/core/update.ts`**（后者由 `build.js:23` / `:183-212` 注入 `SKILL_DEFINITIONS`）——凡改 `templates-data/**` 源，**双生成物同批重生成**，禁用经验只记其一（承 `#改 templates-data 源须同批重生成的「双生成物」`）。
+  - **D 类禁改须含「文档侧能力引入标记」**：`v1.1.6 起` / `since v1.1.6` 等历史语义标记（README×3 + GETTING_STARTED 共 **7 处**）不得随「残留 = 0」被替换 → **「残留 = 0」断言必须白名单化**（逐处判读，禁全仓广谱 sed）。
+  - **收口 op 须为阶段最终 op**：版本载体（A 类）与门禁合并进最后一个 op，其后再无任何 op 触碰版本载体（本例 op-003 = T3+T5+T6）。
+- **判据**：版本收口前先 `rg "1\.1\.<prev>"` 全仓扫描并按 A/B/C/D/E 逐命中归类；「残留 = 0」**只对 A 类成立**，D 类（历史标记 / 依赖自身版本 / 生成段历史节 / manual·plan 历史）须显式白名单，禁广谱替换。
+
+**实证**：v1.1.7-stage-77（3 op，收口 op-003 为最终 op）——A 类 6 载体/10 处 → 1.1.7；B 类双生成物幂等（`template-loader.ts` `c7f99e23…` / `update.ts` `e5e82576…` 前后一致）；D 类文档侧 7 处逐字保留；`--version`=1.1.7；`1.1.6` 残留 0（白名单除外）。
+
+**参见：** v1.1.7-stage-77（T3/T6；op-003；REV-77-003/005/012）；`build.js`；kb/patterns.md #版本号全链路收口清单模式、#多 harness 版本收口的 A 类载体清单扩展、#改 templates-data 源须同批重生成的「双生成物」
+

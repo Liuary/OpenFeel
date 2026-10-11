@@ -2,6 +2,28 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.7] - 2026-10-11
+
+### Added
+- [stage-74] 快速迭代模式（fast workflow mode）：新增 `workflow_mode` 配置键（`full|fast`，默认 **fast**，`status.md > config.yaml > profile.yaml〔不承载〕> builtin` 四层级联）+ full/fast 双转移表（`FAST_TRANSITIONS` 内置快线表，可选 `pipeline.yaml fast_transitions` 覆盖）+ `getValidTargets(fromPhase, mode)` 唯一取表点（展示/校验/推进/BFS 同源）
+- [stage-75] 模式命令面与交互：`plan stage add --workflow-mode`、`stage set --workflow-mode`（缺失字段**插入**语义）、`flow mode [--stage] [--json]`（只读，四源 `source`）、`flow phases [--mode] [--stage]`（模式分节；`--json` 追加 `workflowMode` 键，既有五键语义逐字不变）、`config set --sync-stages --stage <ids...>`（作用域限定）、wizard 首次模式选型与项目级记忆、`plan scheme create --from-tasks`（op 骨架机械铺，零 Agent 调用）
+- 版本全链路收口 1.1.6 → 1.1.7
+- i18n 基线 **774 → 796**（v1.1.7 汇总：stage-74 +1 / stage-75 +21；stage-76 不变）[REV-77-015 订正]
+
+### Changed
+- **默认行为变更（部署级，请阅读 Migration 小节）**：`auto_advance` 默认值由 `disabled` 翻转为 **`enabled`**（`DEFAULT_CONFIG` 与 schema 逐键默认同键值，单一权威）；新增 `workflow_mode` 默认 **`fast`**（`DEFAULT_PROFILE` 有意保持 `disabled`——用户偏好层与部署级默认二分）
+- [stage-76] fast 快线链**必经计划审查**：`FAST_TRANSITIONS` 修订为 **9 条目**（8 流转键 + `done`；`plan_pending → plan_review` 必经、`plan_review` 双出口；`review_failed` 回环保留）；跳过 6 项（`scheme_*` / `test_*`），保留 9 节点
+- [stage-76] 模板与 skill 模式感知（37 份：`feel.md`×4 / subagent×24 / 全局约束层×4 / skills×5）+ build 重生成双生成物（`template-loader.ts` + `update.ts`）；i18n 基线 **796 不变**（本阶段无 i18n 键增删）[REV-77-015 订正]
+
+### Migration（存量项目升级迁移）
+- **未设置 `defaults.workflow_mode` 的存量项目**：升级后**新建阶段的骨架初值回落内置默认 `fast`**；既有阶段 `status.md` 若无「工作流模式」字段，其模式解析同样按级联回落 `fast`（无感行为变更）
+- 希望保持完整流程（full）的存量项目，建议执行：`openfeel config set defaults.workflow_mode full`（项目级默认；新建与无字段阶段一并回落 full）
+- `auto_advance` 默认翻转仅影响**新建阶段初值与未显式设置处的回退值**；既有 `status.md` / `config.yaml` 中的显式值不变。如需关闭：`openfeel config set auto_advance disabled`
+
+### Documentation
+- README×3 / GETTING_STARTED / commands：快速迭代模式小节、`--workflow-mode` / `flow mode` / `flow phases --mode` / `create --from-tasks`、`flow phases --json` 六键口径、测试基线 **1306**、快照 v1.1.7
+- manual（`core/config.md` / `core/flow-manager.md` / `cli/commands.md` / `index.md`）与 `openfeel-cli-usage` skill 快照 v1.1.7
+
 ## [1.1.6] - 2026-10-11
 
 ### Added

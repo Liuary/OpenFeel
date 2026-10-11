@@ -2,7 +2,7 @@
 description: openfeel-feel-tester 测试官 Agent，推理模型驱动，负责流水线中的正式测试验收。
 mode: subagent
 reasoning_effort: medium
-color: "#E8A838"
+color: "#22D3EE"
 permission:
   bash: "allow"
   read: "allow"

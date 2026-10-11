@@ -3,7 +3,7 @@ description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交�
 mode: subagent
 model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
-color: "#D4A017"
+color: "#EC4899"
 permission:
   bash: "allow"
   read: "allow"

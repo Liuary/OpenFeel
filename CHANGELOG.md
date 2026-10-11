@@ -14,6 +14,10 @@
 - **默认行为变更（部署级，请阅读 Migration 小节）**：`auto_advance` 默认值由 `disabled` 翻转为 **`enabled`**（`DEFAULT_CONFIG` 与 schema 逐键默认同键值，单一权威）；新增 `workflow_mode` 默认 **`fast`**（`DEFAULT_PROFILE` 有意保持 `disabled`——用户偏好层与部署级默认二分）
 - [stage-76] fast 快线链**必经计划审查**：`FAST_TRANSITIONS` 修订为 **9 条目**（8 流转键 + `done`；`plan_pending → plan_review` 必经、`plan_review` 双出口；`review_failed` 回环保留）；跳过 6 项（`scheme_*` / `test_*`），保留 9 节点
 - [stage-76] 模板与 skill 模式感知（37 份：`feel.md`×4 / subagent×24 / 全局约束层×4 / skills×5）+ build 重生成双生成物（`template-loader.ts` + `update.ts`）；i18n 基线 **796 不变**（本阶段无 i18n 键增删）[REV-77-015 订正]
+- Agent 配色整体调冷（部署侧视觉）：Claude 侧 `openfeel-planner` → `blue` / `openfeel-executor` → `green` / `openfeel-reviewer` → `pink` / `openfeel-feel-tester` → `cyan`（模板 ×8，zh-CN/en 各 4）；opencode 侧 `openfeel-executor` → `#4CAF50` / `openfeel-reviewer` → `#EC4899` / `openfeel-feel-tester` → `#22D3EE`（模板 ×6，zh-CN/en 各 3）；`npm run build` 传播双生成段（`template-loader.ts`）
+
+### Fixed
+- [BUG-006] `openfeel-model-check` skill 的 `### opencode 适配器` 小节 2 条平台专有原句**逐字迁入**（对齐「原文搬家」口径，`v1.1.6-stage-70` 遗留）：`读取 opencode.jsonc…` 与 `扫描 .opencode/agents/…` 恢复为基线原文，正文中性化叙述保留不变；`npm run build` 传播生成段（`update.ts` / `template-loader.ts`）
 
 ### Migration（存量项目升级迁移）
 - **未设置 `defaults.workflow_mode` 的存量项目**：升级后**新建阶段的骨架初值回落内置默认 `fast`**；既有阶段 `status.md` 若无「工作流模式」字段，其模式解析同样按级联回落 `fast`（无感行为变更）

@@ -3,7 +3,7 @@ name: openfeel-planner
 description: 计划官：将用户需求转化为结构化开发计划，制定 roadmap/plan.md/deps.yaml；只读，不写源码。
 tools: Bash, Read, Glob, Grep, Skill
 effort: max
-color: purple
+color: blue
 model: inherit
 ---
 

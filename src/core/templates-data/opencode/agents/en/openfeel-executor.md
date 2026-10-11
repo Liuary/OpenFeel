@@ -3,7 +3,7 @@ description: openfeel-executor Agent, fast model, implements code according to o
 mode: subagent
 model: deepseek/deepseek-flash
 reasoning_effort: medium
-color: "#D94A4A"
+color: "#4CAF50"
 permission:
   bash: "allow"
   read: "allow"

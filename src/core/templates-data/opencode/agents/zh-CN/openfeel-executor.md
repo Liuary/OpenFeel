@@ -3,7 +3,7 @@ description: openfeel-executor 执行官 Agent，快速模型，按操作方案�
 mode: subagent
 model: deepseek/deepseek-flash
 reasoning_effort: medium
-color: "#D94A4A"
+color: "#4CAF50"
 permission:
   bash: "allow"
   read: "allow"

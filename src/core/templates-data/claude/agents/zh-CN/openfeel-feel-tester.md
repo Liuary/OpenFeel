@@ -3,7 +3,7 @@ name: openfeel-feel-tester
 description: 测试官：对流水线产出做正式测试验收，记录 BUG 条目（Edit/Write/Skill）。
 tools: Bash, Read, Glob, Grep, Edit, Write, Skill
 effort: medium
-color: orange
+color: cyan
 model: inherit
 ---
 

@@ -3,7 +3,7 @@ name: openfeel-executor
 description: 执行官：严格按 op 操作方案编码实现并自测（Edit/Write/TodoWrite）；不擅自扩大范围。
 tools: Bash, Read, Glob, Grep, Edit, Write, TodoWrite
 effort: medium
-color: red
+color: green
 model: inherit
 ---
 

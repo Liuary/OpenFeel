@@ -199,7 +199,7 @@ node bin/openfeel.js flow status
 
 ## BUG-006：`openfeel-model-check` 平台适配小节的 2 条平台专有句为改写而非逐字迁移（opencode 零回归字面偏差）
 
-- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open** ｜ **来源阶段**：`v1.1.6-stage-70`（正式测试，「零回归」项 2 独立复核）｜ **归因**：**模板文案口径**——4 重写 skill 中**唯 `openfeel-model-check`** 的 `## 平台适配 → ### opencode 适配器` 未达「原文搬家」口径
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**closed**（`v1.1.7` 遗留收口：`openfeel-executor` 采纳方向 **1(a)** 将 2 条平台专有原句逐字迁入 `### opencode 适配器` + `npm run build` 传播双生成段；openfeel-feel-tester 独立复现验收通过）｜ **来源阶段**：`v1.1.6-stage-70`（正式测试，「零回归」项 2 独立复核）｜ **归因**：**模板文案口径**——4 重写 skill 中**唯 `openfeel-model-check`** 的 `## 平台适配 → ### opencode 适配器` 未达「原文搬家」口径
 - **私域详细报告**：`.openfeel/users/Liuary/bugs/templates/BUG-006_model-check平台适配小节2条平台专有句改写非逐字迁移.md`
 
 ### 核心结论
@@ -227,5 +227,9 @@ node bin/openfeel.js flow status
 3. 与 **REV-70-002**（T4.4 短键断言保护力弱）/ **REV-70-004**（Feel 计数口径）一并并入后续阶段顺带收口。
 
 > 沉淀：`kb/troubleshooting.md #平台分节中立化的「原文搬家 vs 探针式改写」陷阱`（v1.1.6-stage-70 归档新增）。
+
+### 处置结果（v1.1.7 遗留收口，2026-10-11）
+
+采纳建议方向 **1(a)**（恢复原句逐字）：`openfeel-executor` 将基线 `77c5450^:21/:33` 两条平台专有句整体逐字迁入 `### opencode 适配器`（`SKILL.md:192` / `:201`），正文 §1/§2 的中性化叙述保留不变；`npm run build` 传播生成段（`update.ts:1000/1009`、`template-loader.ts:7552/7561`，反引号按模板字符串转义为 `` \` ``）。openfeel-feel-tester **独立复现验收通过**：两串在小节内逐字命中且与基线**逐字节相同**；build ×2 幂等；`npm test` 1306 / `lint i18n` 796 / `tsc` 0 全绿；真实 `~/.config/opencode` 零污染。**已 closed**。
 
 

@@ -3,7 +3,7 @@ name: openfeel-reviewer
 description: "Reviewer: cross-reviews plans/schemes/code and files REV entries; reviews only, does not modify."
 tools: Bash, Read, Glob, Grep
 effort: medium
-color: yellow
+color: pink
 model: inherit
 ---
 

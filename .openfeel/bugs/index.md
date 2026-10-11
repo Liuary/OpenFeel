@@ -7,9 +7,9 @@
 
 | 状态 | 数量 |
 |------|:--:|
-| open | 2 |
+| open | 0 |
 | fixed | 0 |
-| closed | 20 |
+| closed | 22 |
 | **合计** | **22** |
 
 > **v1.1.2-stage-43 收口（2026-09-29，commit `cbc606f`）**：`config/BUG-004`（medium，测试隔离缺口）经 openfeel-feel-tester **外部独立进程比对**验收**关闭**——`identity.test.ts`（11/11）与全量 `npm test`（41 文件 / 694 用例）前后真实 `~/.openfeel/config.json` 的 **mtime + SHA-256 均不变**；修复＝N4 单点 `vi.mock('node:os')` + 删除 `savedConfig` 伪隔离 + 新增只读隔离守护用例。**新登记 `cli/BUG-003`**（low，非阻塞）：`flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 修复的收尾遗漏）——**裁定归下一版本或由用户决定**，v1.1.2 不修。至此 v1.1.2 遗留缺陷清零（仅 1 条 low 非阻塞顺延）。
@@ -49,7 +49,7 @@
 | [BUG-005](cli.md) | 空模板检测为纯子串匹配，op 正文引用占位标记被误判「未填充」（`publish` 误拒 + health/ops list 误报） | medium | **closed**（stage-54 op-001 整行锚定；隔离 fixture 端到端验收通过） | v1.1.2-stage-52 |
 | [BUG-006](cli.md) | en 模式下 `flow advance --to done` 的 blocking REV 拒绝文案硬编码中文（`flow.ts:742-743`；op-007 仅覆盖 `console.warn`） | low | **closed**（stage-54 op-002 i18n 补键；en CJK=0 验收通过） | v1.1.2-stage-52 |
 | [BUG-007](cli.md) | `docs/commands.md` 的 `project` 子命令参考陈旧（`list`/`info` 已不存在，实测仅 `overview`） | low | **closed**（stage-56 归档官**就地修正** `docs/commands.md`：改 `project overview`；`rg "project (list\|info)"` 零命中） | v1.1.2-stage-56 |
-| [BUG-008](cli.md) | `--debug`/`OPENFEEL_DEBUG=1` 开关机制正确，但全仓 `runtimeLog()` 仅 info/error 3 处调用、无 debug/warn 生产者 → 真实 CLI 无可观测 `[DEBUG]`（不违反「debug 默认关」裁定） | low | **open**（归档官边界：不改源码，待下阶段/用户裁定） | v1.1.2-stage-58 |
+| [BUG-008](cli.md) | `--debug`/`OPENFEEL_DEBUG=1` 开关机制正确，但全仓 `runtimeLog()` 仅 info/error 3 处调用、无 debug/warn 生产者 → 真实 CLI 无可观测 `[DEBUG]`（不违反「debug 默认关」裁定） | low | **closed**（2026-10-11 处置：机制健全、无 debug 生产者属设计现状，建议仅文档化） | v1.1.2-stage-58 |
 | [BUG-009](cli.md) | `docs/commands.md:644` 残留「v1.1.2 快照」声明（与 `:3` 的 v1.1.6 快照头矛盾） | low | **closed**（stage-72 归档官**就地修正** `:644`→v1.1.6；`rg "v1.1.2 快照"` 零命中） | v1.1.6-stage-72 |
 | [BUG-010](cli.md) | `manual/cli/commands.md:152-153` 引用已不存在的旧技能权威源路径（`templates-data/opencode/skills/` → 实际 `templates-data/skills/`） | low | **closed**（stage-72 归档官**就地修正**为中立共享源路径；旧路径零命中） | v1.1.6-stage-72 |
 
@@ -83,7 +83,7 @@
 | [BUG-003](templates.md) | 部署到用户全局环境的 skill 模板被改为 `node bin/openfeel.js`，用户项目不可执行（与 agent / agents-md 保留裸 `openfeel` 的口径相反） | low | **closed**（stage-50 op-006 T53 双口径 + build 幂等验收通过） | v1.1.2-stage-48 |
 | [BUG-004](templates.md) | 迁移后 `current.md` 统计行沿用「执行中」快照、用例数陈旧（942 vs 实测 949）+ 措辞扞格 | low | **closed**（stage-53 归档官就地修正：942→949 + kb 计数刷新 + 记录措辞改为「归档完成」） | v1.1.2-stage-53 |
 | [BUG-005](templates.md) | `openfeel-cli-usage` skill 的 `flow phases --json` 输出说明缺 `transitionsDiff`（与实测 5 键不一致，`transitionsDiff` 同步面遗漏 skill 模板） | low | **closed**（stage-56 op-001 全链路对齐 5 键；权威源→生成段→全局副本 content-equal 验收通过） | v1.1.2-stage-54 |
-| [BUG-006](templates.md) | `openfeel-model-check` 平台适配小节的 2 条平台专有句为改写而非逐字迁移（opencode 零回归字面偏差；T4.2 关键串断言仍全过） | low | **open**（v1.1.6-stage-70 测试发现；建议并入后续阶段收口） | v1.1.6-stage-70 |
+| [BUG-006](templates.md) | `openfeel-model-check` 平台适配小节的 2 条平台专有句为改写而非逐字迁移（opencode 零回归字面偏差；T4.2 关键串断言仍全过） | low | **closed**（v1.1.7 遗留收口：按备选 (a) 回补原句逐字 + build 传播双生成段；测试官独立复现验收通过） | v1.1.6-stage-70 |
 
 > 注：`templates/BUG-001`（事务官标识列未加前缀）与 `kb/BUG-001`（`lint kb` 过期引用）此前仅存私域，已于 **`v1.1.2-stage-56` 补齐**——分别见本目录 `templates.md` / `kb.md`。至此公域计数与私域一致（17）。
 
@@ -95,6 +95,6 @@
 
 > **v1.1.2-stage-58 收口（2026-10-02，openfeel-archiver）**：**新登记 `cli/BUG-008`（low, open，非阻塞）**——`--debug`/`OPENFEEL_DEBUG=1` 的级别过滤与开关机制经注入验证**完全正确**，但全仓 `runtimeLog()` 仅 info/error 3 处调用、**无 debug/warn 生产者** → 真实 CLI 无可观测 `[DEBUG]`（不违反锁定裁定「debug 默认关」，非回归）。**归档官不改源码**（边界），维持 open 待下阶段/用户裁定（建议「仅文档化」）。统计 **19（open 1 / closed 18）**；公域模块条目 = cli(8) + config(4) + archive(1) + templates(5) + kb(1) = **19**，与私域 `index.md` 及实测 `BUG-*.md` 文件数三者一致。防再犯沉淀（并入 kb）：① install 型能力的 E2E 须含**正控** + 静态断言无 `process.env.VITEST`（vitest 设置并让 spawn 子进程继承）；② 新增「默认开启」能力时，测试/子进程须显式 `OPENFEEL_LOG=0` 隔离（真实用户目录 mtime+SHA256 前后零变化为验收固定项）。
 
-> **v1.1.6-stage-70 归档收口（2026-10-11，openfeel-archiver）**：**新登记 `templates/BUG-006`（low, open，非阻塞）**——`openfeel-model-check` 平台适配小节（`## 平台适配 → ### opencode 适配器`）的 2 条平台专有句为**改写而非逐字迁移**（与另 3 个重写 skill 的「原文搬家」口径不一致），属 **opencode「零回归」字面偏差**；信息未丢失（关键串仍在、T4.2 断言全过），无运行时/行为影响。**归档官不改源码**（边界），维持 open；建议并入后续阶段（优先备选 (a) 回补原句逐字）。统计 **20（open 2 / closed 18）**；公域模块条目 = cli(8) + config(4) + archive(1) + templates(6) + kb(1) = **20**，与私域 `index.md` 及实测 `BUG-*.md` 文件数三者一致。防再犯沉淀（并入 kb）：**平台分节中立化须逐句判定「逐字迁移 / 探针式改写」**，逐字迁移句以「非标题行多重集比对」兜底（不依赖关键串存在性）。
+> **v1.1.6-stage-70 归档收口（2026-10-11，openfeel-archiver）**：**新登记 `templates/BUG-006`（low，非阻塞）**——`openfeel-model-check` 平台适配小节（`## 平台适配 → ### opencode 适配器`）的 2 条平台专有句为**改写而非逐字迁移**（与另 3 个重写 skill 的「原文搬家」口径不一致），属 **opencode「零回归」字面偏差**；信息未丢失（关键串仍在、T4.2 断言全过），无运行时/行为影响。**归档官不改源码**（边界），当时维持 open；**已于 `v1.1.7` 遗留收口按备选 (a) 回补原句逐字并 closed**（见 `templates.md` 处置结果）。统计 **20（open 2 / closed 18）**；公域模块条目 = cli(8) + config(4) + archive(1) + templates(6) + kb(1) = **20**，与私域 `index.md` 及实测 `BUG-*.md` 文件数三者一致。防再犯沉淀（并入 kb）：**平台分节中立化须逐句判定「逐字迁移 / 探针式改写」**，逐字迁移句以「非标题行多重集比对」兜底（不依赖关键串存在性）。
 
 > **v1.1.6-stage-72 归档收口（2026-10-11，openfeel-archiver）**：**新登记并就地关闭 2 条 low 文档漂移**——`cli/BUG-009`（`docs/commands.md:644` 残留「v1.1.2 快照」→ 已同步 `v1.1.6 快照`）、`cli/BUG-010`（`manual/cli/commands.md:152-153` 旧技能权威源路径 → 已改为 stage-68 中立共享源 `templates-data/skills/`）。二者均为**文档类漂移**（手写载体、不经 build），由归档官就地修正并留痕。统计 **22（open 2 / closed 20）**；公域模块条目 = cli(10) + config(4) + archive(1) + templates(6) + kb(1) = **22**，与私域 `index.md` 及实测 `BUG-*.md` 文件数三者一致。仅余 `cli/BUG-008`（无 debug 生产者）/ `templates/BUG-006`（平台专有句改写非逐字）两条历史 low 非阻塞 open。防再犯沉淀（并入 kb）：① **版本收口须全文扫描同名声明**（`rg "快照"`，不只手改文件头）；② **文件迁移（`git mv`）后须全仓 `rg` 旧路径**（手写手册/文档不经 build，迁移同步面最易漏）。**v1.1.6 版本收官（六阶段全部闭环）。**

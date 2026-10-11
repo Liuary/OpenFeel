@@ -3,7 +3,7 @@ name: openfeel-feel-tester
 description: "Tester: performs formal test acceptance of pipeline outputs and files BUG entries (Edit/Write/Skill)."
 tools: Bash, Read, Glob, Grep, Edit, Write, Skill
 effort: medium
-color: orange
+color: cyan
 model: inherit
 ---
 

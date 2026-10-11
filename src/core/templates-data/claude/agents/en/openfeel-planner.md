@@ -3,7 +3,7 @@ name: openfeel-planner
 description: "Planning officer: transforms user requirements into structured development plans, authoring roadmap/plan.md/deps.yaml; read-only, does not edit source."
 tools: Bash, Read, Glob, Grep, Skill
 effort: max
-color: purple
+color: blue
 model: inherit
 ---
 

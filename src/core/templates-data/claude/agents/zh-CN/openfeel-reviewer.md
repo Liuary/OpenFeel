@@ -3,7 +3,7 @@ name: openfeel-reviewer
 description: 审查官：交叉审查计划/方案/代码并提交 REV 条目；只审不改。
 tools: Bash, Read, Glob, Grep
 effort: medium
-color: yellow
+color: pink
 model: inherit
 ---
 

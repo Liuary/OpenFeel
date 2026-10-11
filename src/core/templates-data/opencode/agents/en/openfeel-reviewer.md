@@ -3,7 +3,7 @@ description: openfeel-reviewer Agent, heterogenous reasoning model, responsible 
 mode: subagent
 model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
-color: "#D4A017"
+color: "#EC4899"
 permission:
   bash: "allow"
   read: "allow"

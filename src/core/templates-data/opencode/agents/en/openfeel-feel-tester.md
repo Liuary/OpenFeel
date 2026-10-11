@@ -2,7 +2,7 @@
 description: openfeel-feel-tester Agent, reasoning model, responsible for formal testing and acceptance in the pipeline.
 mode: subagent
 reasoning_effort: medium
-color: "#E8A838"
+color: "#22D3EE"
 permission:
   bash: "allow"
   read: "allow"

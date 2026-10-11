@@ -997,7 +997,7 @@ models:
 
 ### opencode 适配器
 
-平台配置文件：
+读取 \`opencode.jsonc\`（或对应平台的配置文件），确定当前适配器平台：
 
 | 配置文件 | 平台 |
 |----------|------|
@@ -1006,7 +1006,8 @@ models:
 
 若无平台配置文件，提示用户当前不在支持的平台中。
 
-- agents 目录：\`.opencode/agents/\`（或对应平台的 agents/ 目录）下所有 \`.md\` 文件。
+扫描 \`.opencode/agents/\`（或对应平台的 agents/ 目录）下所有 \`.md\` 文件，提取每个 Agent 的模型需求。
+
 - 报告/模板中的平台标签：\`**平台**：OpenCode（当前适配器）\`（原文标签，正文已改为中性表述「当前 harness（opencode 适配器 / Claude Code 适配器）」）。
 - 向用户提问使用 \`question\` 工具。
 

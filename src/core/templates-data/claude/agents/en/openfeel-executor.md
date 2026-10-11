@@ -3,7 +3,7 @@ name: openfeel-executor
 description: "Executor: implements code strictly per the op scheme and self-tests (Edit/Write/TodoWrite); does not expand scope."
 tools: Bash, Read, Glob, Grep, Edit, Write, TodoWrite
 effort: medium
-color: red
+color: green
 model: inherit
 ---
 

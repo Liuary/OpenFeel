@@ -581,7 +581,7 @@ description: openfeel-executor Agent, fast model, implements code according to o
 mode: subagent
 model: deepseek/deepseek-flash
 reasoning_effort: medium
-color: "#D94A4A"
+color: "#4CAF50"
 permission:
   bash: "allow"
   read: "allow"
@@ -791,7 +791,7 @@ Delegable targets: openfeel-vision (analyze screenshots), openfeel-reviewer (pre
 description: openfeel-feel-tester Agent, reasoning model, responsible for formal testing and acceptance in the pipeline.
 mode: subagent
 reasoning_effort: medium
-color: "#E8A838"
+color: "#22D3EE"
 permission:
   bash: "allow"
   read: "allow"
@@ -1024,7 +1024,7 @@ description: openfeel-reviewer Agent, heterogenous reasoning model, responsible 
 mode: subagent
 model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
-color: "#D4A017"
+color: "#EC4899"
 permission:
   bash: "allow"
   read: "allow"
@@ -1980,7 +1980,7 @@ description: openfeel-executor 执行官 Agent，快速模型，按操作方案�
 mode: subagent
 model: deepseek/deepseek-flash
 reasoning_effort: medium
-color: "#D94A4A"
+color: "#4CAF50"
 permission:
   bash: "allow"
   read: "allow"
@@ -2190,7 +2190,7 @@ openfeel-executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码�
 description: openfeel-feel-tester 测试官 Agent，推理模型驱动，负责流水线中的正式测试验收。
 mode: subagent
 reasoning_effort: medium
-color: "#E8A838"
+color: "#22D3EE"
 permission:
   bash: "allow"
   read: "allow"
@@ -2423,7 +2423,7 @@ description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交�
 mode: subagent
 model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
-color: "#D4A017"
+color: "#EC4899"
 permission:
   bash: "allow"
   read: "allow"
@@ -4448,7 +4448,7 @@ description: openfeel-executor Agent, fast model, implements code according to o
 mode: subagent
 model: deepseek/deepseek-flash
 reasoning_effort: medium
-color: "#D94A4A"
+color: "#4CAF50"
 permission:
   bash: "allow"
   read: "allow"
@@ -4658,7 +4658,7 @@ Delegable targets: openfeel-vision (analyze screenshots), openfeel-reviewer (pre
 description: openfeel-feel-tester Agent, reasoning model, responsible for formal testing and acceptance in the pipeline.
 mode: subagent
 reasoning_effort: medium
-color: "#E8A838"
+color: "#22D3EE"
 permission:
   bash: "allow"
   read: "allow"
@@ -4891,7 +4891,7 @@ description: openfeel-reviewer Agent, heterogenous reasoning model, responsible 
 mode: subagent
 model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
-color: "#D4A017"
+color: "#EC4899"
 permission:
   bash: "allow"
   read: "allow"
@@ -5847,7 +5847,7 @@ description: openfeel-executor 执行官 Agent，快速模型，按操作方案�
 mode: subagent
 model: deepseek/deepseek-flash
 reasoning_effort: medium
-color: "#D94A4A"
+color: "#4CAF50"
 permission:
   bash: "allow"
   read: "allow"
@@ -6057,7 +6057,7 @@ openfeel-executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码�
 description: openfeel-feel-tester 测试官 Agent，推理模型驱动，负责流水线中的正式测试验收。
 mode: subagent
 reasoning_effort: medium
-color: "#E8A838"
+color: "#22D3EE"
 permission:
   bash: "allow"
   read: "allow"
@@ -6290,7 +6290,7 @@ description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交�
 mode: subagent
 model: zhipuai/glm-5.3-flash
 reasoning_effort: medium
-color: "#D4A017"
+color: "#EC4899"
 permission:
   bash: "allow"
   read: "allow"
@@ -7549,7 +7549,7 @@ models:
 
 ### opencode 适配器
 
-平台配置文件：
+读取 \`opencode.jsonc\`（或对应平台的配置文件），确定当前适配器平台：
 
 | 配置文件 | 平台 |
 |----------|------|
@@ -7558,7 +7558,8 @@ models:
 
 若无平台配置文件，提示用户当前不在支持的平台中。
 
-- agents 目录：\`.opencode/agents/\`（或对应平台的 agents/ 目录）下所有 \`.md\` 文件。
+扫描 \`.opencode/agents/\`（或对应平台的 agents/ 目录）下所有 \`.md\` 文件，提取每个 Agent 的模型需求。
+
 - 报告/模板中的平台标签：\`**平台**：OpenCode（当前适配器）\`（原文标签，正文已改为中性表述「当前 harness（opencode 适配器 / Claude Code 适配器）」）。
 - 向用户提问使用 \`question\` 工具。
 
@@ -8706,7 +8707,7 @@ name: openfeel-executor
 description: "Executor: implements code strictly per the op scheme and self-tests (Edit/Write/TodoWrite); does not expand scope."
 tools: Bash, Read, Glob, Grep, Edit, Write, TodoWrite
 effort: medium
-color: red
+color: green
 model: inherit
 ---
 
@@ -8913,7 +8914,7 @@ name: openfeel-feel-tester
 description: "Tester: performs formal test acceptance of pipeline outputs and files BUG entries (Edit/Write/Skill)."
 tools: Bash, Read, Glob, Grep, Edit, Write, Skill
 effort: medium
-color: orange
+color: cyan
 model: inherit
 ---
 
@@ -9023,7 +9024,7 @@ name: openfeel-planner
 description: "Planning officer: transforms user requirements into structured development plans, authoring roadmap/plan.md/deps.yaml; read-only, does not edit source."
 tools: Bash, Read, Glob, Grep, Skill
 effort: max
-color: purple
+color: blue
 model: inherit
 ---
 
@@ -9138,7 +9139,7 @@ name: openfeel-reviewer
 description: "Reviewer: cross-reviews plans/schemes/code and files REV entries; reviews only, does not modify."
 tools: Bash, Read, Glob, Grep
 effort: medium
-color: yellow
+color: pink
 model: inherit
 ---
 
@@ -10055,7 +10056,7 @@ name: openfeel-executor
 description: 执行官：严格按 op 操作方案编码实现并自测（Edit/Write/TodoWrite）；不擅自扩大范围。
 tools: Bash, Read, Glob, Grep, Edit, Write, TodoWrite
 effort: medium
-color: red
+color: green
 model: inherit
 ---
 
@@ -10262,7 +10263,7 @@ name: openfeel-feel-tester
 description: 测试官：对流水线产出做正式测试验收，记录 BUG 条目（Edit/Write/Skill）。
 tools: Bash, Read, Glob, Grep, Edit, Write, Skill
 effort: medium
-color: orange
+color: cyan
 model: inherit
 ---
 
@@ -10372,7 +10373,7 @@ name: openfeel-planner
 description: 计划官：将用户需求转化为结构化开发计划，制定 roadmap/plan.md/deps.yaml；只读，不写源码。
 tools: Bash, Read, Glob, Grep, Skill
 effort: max
-color: purple
+color: blue
 model: inherit
 ---
 
@@ -10487,7 +10488,7 @@ name: openfeel-reviewer
 description: 审查官：交叉审查计划/方案/代码并提交 REV 条目；只审不改。
 tools: Bash, Read, Glob, Grep
 effort: medium
-color: yellow
+color: pink
 model: inherit
 ---
 

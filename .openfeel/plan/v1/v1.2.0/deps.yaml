@@ -1,0 +1,199 @@
+# OpenFeel v1.2.0 阶段依赖声明（双主题：flow.json 归档拆分 + 需求流转系统）
+# 由 openfeel-planner 制定；op 级依赖由 openfeel-schemer 在各阶段产方案时落盘（{stage}/ops/deps.yaml）
+# 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
+
+version: "1.1"
+series: v1
+version_label: v1.2.0
+theme: 双主题——需求流转系统 + flow.json 归档拆分（先行）
+generated_by: openfeel-planner
+generated_at: "2026-10-11"
+
+# 跨版本承接（基线）
+baseline:
+  - upstream: v1.1.7-stage-77
+    type: hard
+    status: done
+    reason: "v1.1.7 版本收官：CLI 1.1.7 / 双模式工作流 / 测试 67 文件 1306 用例 / lint i18n 796 / lint kb 0；本版本在其上增量（不改 phase 枚举、不改部署面）。注意：**stage-80 的自举迁移会把本阶段（v1.1.7 组）归档至 .openfeel/flow-archive/**——本依赖为文档层基线声明，不参与 CLI deps 校验。"
+
+stages:
+  v1.2.0-stage-78:
+    name: 归档核心引擎（flow.json 版本分片）
+    deps: []
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/flow-archive/archive-file.ts
+      - src/core/flow-archive/grouping.ts
+      - src/core/flow-archive/archive-ops.ts
+      - src/core/flow-manager.ts
+      - test/core/flow-archive.test.ts
+    notes: "新建 src/core/flow-archive/：归档文件 schema（.openfeel/flow-archive/{version}.json，schemaVersion:1，裁定 U）+ 读/写/列举原语（复用 src/core/fs/ 锁与原子写，独立锁名 flow-archive，不嵌套 flow 锁，核验 A19）+ 版本分组解析（parseStageId 复用，裁定 O1，禁自写解析）+ 切分纯函数（stages 全搬 / reviews 按 r.op 前缀 / log 按 detail.stageName 缺失保留，裁定 T）+ meta.archived_versions 管理（追加 + 幂等去重，裁定 Q）。**只读不改** flow.json 之外无副作用；本阶段不改 commands 层。`src/core/flow-manager.ts` 改动**仅限** `meta.archived_versions` 可选字段声明 + 读侧补齐（最小追加，不改既有方法语义；对齐 `stage-78/plan.md` 自述，方案期定稿）。验收：单测覆盖分组/切分/幂等/边界（空 log、无 stageName 条目、多版本混排）。"
+
+  v1.2.0-stage-79:
+    name: 归档命令面
+    deps:
+      - v1.2.0-stage-78
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/core/flow-archive.test.ts
+    notes: "flow archive 子命令组：`flow archive <version>`（判据门：该版本全 done + 无 blocking open REV，不满足 exit 非 0 零写盘列未满足项，裁定 O2；--dry-run 逐字节零写盘；--json）+ `flow archive list` + `flow archive show <version> [--json]`（按需读取，不进常规路径）+ 审计（archive_flow_version）+ i18n 双表（新基线显式登记）。**顺序不变量**：先写归档文件（新增），成功后 save() 移除 flow.json 条目（删除）（裁定 P；kb #事务顺序模式）。pipeline.current / phase 处置（裁定 P）——置空/指向与空集语义按方案期定稿（开放问题 Q3）。"
+
+  v1.2.0-stage-80:
+    name: 归档消费点适配与存量迁移（本仓自举）
+    deps:
+      - v1.2.0-stage-78
+      - v1.2.0-stage-79
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/commands/plan.ts
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - test/commands/plan.test.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+      - .openfeel/flow.json
+    notes: "消费点适配：① 跨版本 deps（plan stage add --deps：deps 版本前缀 ∈ meta.archived_versions → 视为已满足；未注册且未归档仍拒绝，裁定 Q；核验 A11）；② flow health 归档一致性检查项（archived_versions ↔ flow-archive/ 文件对账 + flow.json 又含已归档版本阶段 → warn 不改退出码，裁定 R；核验 A14）；③ pipeline.current/phase 归档后处置落地（裁定 P）。**本仓自举迁移（T-自举）**：按 9 个版本组（v1.0.0/v1.1.0/v1.1.1/v1.1.2/v1.1.3/v1.1.4/v1.1.5/v1.1.6/v1.1.7）执行归档——程序 = 全量备份（flow.json 至备份目录 + SHA256）+ 逐版本判据门 + --dry-run 先行 + 回滚路径成文；**执行前用户确认**（开放问题 Q9；裁定 S）。端到端：归档后既有命令全绿 + flow.json 体积实测前后对比记录。"
+
+  v1.2.0-stage-81:
+    name: 需求核心引擎
+    deps:
+      - v1.2.0-stage-80
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/req/types.ts
+      - src/core/req/requirement-ops.ts
+      - src/core/req/body-file.ts
+      - src/core/flow-manager.ts
+      - test/core/req.test.ts
+      - test/core/flow-manager.test.ts
+    notes: "新建 src/core/req/：RequirementData / RequirementStatus 类型（7 值域，裁定 B）+ FlowData.requirements（load 缺失补齐 ??= []，核验 B3）+ StageData.requirement_id（可选单值，核验 B2）+ CRUD 与认领原语（add/get/list/update/claim/release；占用校验 exit 语义由命令层呈现，core 返回错误码，核验 B4/B16）+ ID 分配（REQ-NNN max+1 不回收，裁定 F）+ 正文文件原语（.openfeel/requirements/REQ-NNN.md 骨架机械铺，裁定 K；目录 mkdir 幂等，核验 B26）。**所有写入经 save()**（裁定 C）；**不 import workflow_mode**（裁定 J，核验 B21）。"
+
+  v1.2.0-stage-82:
+    name: 需求命令面（openfeel req）
+    deps:
+      - v1.2.0-stage-81
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/commands/req.ts
+      - src/cli/index.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/core/req/requirement-ops.ts
+      - test/commands/req.test.ts
+    notes: "新建 src/commands/req.ts（10 子命令：add/list/show/claim/release/set/link/advance/board/next）+ src/cli/index.ts 两行注册（核验 B11）+ i18n 双表（核验 B24）+ --json 契约（schemaVersion:1 纯单文档，核验 B15）+ 退出码语义（并发 2 / 通用 1）+ 值域校验（status/priority 常量单一来源，核验 B13/B20）+ link 复用 parseStageId/normalizeStageId（核验 B18）。命令层零业务逻辑（单点实现，核验 B16）。"
+
+  v1.2.0-stage-83:
+    name: 需求聚合判定与对账（对称回写）
+    deps:
+      - v1.2.0-stage-81
+      - v1.2.0-stage-82
+    priority: P0
+    est_ops: 2
+    produces_core:
+      - src/core/req/aggregate.ts
+      - src/core/flow-manager.ts
+      - test/core/req.test.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+    notes: "computeRequirementAggregate 独立投影函数（阶段 phase → 需求状态；不改 mapPhaseToStageStatus，核验 B10）+ advanceStagePhase done 分支 / resetStagePhase **对称回写**（纯内存重算、不改控制流与返回值；命令层既有单次 save() 即同事务，核验 B5/B6）+ 存量兼容（requirement_id 缺省 = null；requirements 缺失零报错）+ health 需求对账（可选 warn 级，开放问题 Q6）+ 端到端聚合单测（含「无 requirement_id 阶段推进逐字不变」回归断言）。"
+
+  v1.2.0-stage-84:
+    name: Agent/skill 契约（双主题）
+    deps:
+      - v1.2.0-stage-82
+      - v1.2.0-stage-83
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/en/openfeel-planner.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/claude/agents/en/openfeel-planner.md
+      - src/core/templates-data/skills/openfeel-req/SKILL.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/setup.test.ts
+      - test/core/update.test.ts
+      - test/core/templates-migration.test.ts
+    notes: "Agent 契约面：feel.md×4（需求纪律：接取/流转/完成的需求命令链 + 归档纪律：归档由 CLI 控制、不主动读归档文件防上下文污染）+ openfeel-planner.md×4（需求感知：从需求产出计划；plan.md 关联 requirement_id）+ 新 skill openfeel-req（需求流转用法，权威源单文件；命名按开放问题 Q7）+ openfeel-cli-usage 补 req 与 flow archive 两节 + build 重生成**双生成物**（template-loader.ts + update.ts，禁手改，核验 B23）+ 静态断言（opencode 关键串零回归、跨 harness 对称、**skills 17→18 六处计数翻转**：test/core/setup.test.ts:65/:221、test/core/templates-migration.test.ts:32/:41/:42、test/core/update.test.ts:816，核验 B22）。"
+
+  v1.2.0-stage-85:
+    name: 文档与版本收口（v1.2.0 收官）
+    deps:
+      - v1.2.0-stage-84
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - CHANGELOG.md
+      - package.json
+    notes: "文档多载体（README×3 + GETTING_STARTED + commands）+ manual（core/flow-archive + core/requirement + cli/req + index.md）+ CHANGELOG [1.2.0]（显著登记两组新命令与归档/需求语义）+ 版本 1.2.0 全链路 A/B/C/D/E（§六清单；B 类双生成物）+ roadmap/plan 回填 + **双主题端到端验收**（§十一：归档实跑 / 常规路径零触碰 / 跨版本 deps / 需求全生命周期 / 认领并发 / 向后兼容 / 正交性）。版本收口 op 须为最终 op。"
+
+# 执行顺序（严格串行，以依赖为准；**主题二归档先行**，见大计划 §三「执行顺序裁定 S」）
+execution_order:
+  - v1.2.0-stage-78
+  - v1.2.0-stage-79
+  - v1.2.0-stage-80
+  - v1.2.0-stage-81
+  - v1.2.0-stage-82
+  - v1.2.0-stage-83
+  - v1.2.0-stage-84
+  - v1.2.0-stage-85
+
+# 跨阶段不变量
+invariants:
+  - "phase 枚举零新增（15 项不变）；checkpoint_mapping / phase_corrections / advanceAccepted 语义不变（两主题共用）"
+  - "常规读取路径零触碰归档：消费点清单全员（大计划 §三 裁定 P 附注；flow status/overview/current/ops list/log/wizard/advance/stage/plan stage add/config --sync-stages 等）不读 .openfeel/flow-archive/** 文件内容（flow health 对账仅读目录清单级）；阶段枚举视图随活跃集收缩（文档明示，非回归）"
+  - "归档两步事务顺序：先写归档文件（新增），成功后 save() 移除 flow.json 条目（删除）；同版本重复归档幂等"
+  - "跨版本依赖经 meta.archived_versions 轻量索引判定（版本前缀 ∈ 索引 → 视为已满足）；展示层不读归档"
+  - "需求状态为阶段 phase 的聚合投影（方向单一：phase → 需求状态）；不得由需求状态前推阶段 phase（对齐 ADR-003）"
+  - "需求所有写入经 FlowManager.save()（锁 + revision 乐观锁 + 原子写 + .bak）；不新增写盘点"
+  - "REQ-NNN.md 为人读副本；机读权威恒为 flow.json（不一致以 flow.json 为准）"
+  - "需求层与 workflow_mode 正交：src/core/req/** 与 src/commands/req.ts 不 import/读取 workflow_mode 或转移表"
+  - "requirement_id 缺省 = null（存量 78 阶段不迁移）；requirements / archived_versions 缺失时全命令零报错"
+  - "本仓自举：v1.2.0 八阶段以 full 运行；stage-80 自举迁移执行前须用户确认 + 全量备份 + 回滚路径成文"
+  - "不新增第三方依赖；不改 CI；不触碰 build.js / package.json（除模板重生成必需）；不 npm publish / 不 git push；不直写 flow.json（phase 推进由 Feel 经 CLI 执行）"
+
+# 下游契约（契约先行：跨阶段复用的 API 形态 = 函数签名级）
+downstream_contracts:
+  - name: "src/core/flow-archive/ :: 归档原语（stage-78 交付，stage-79/80 消费）"
+    change: "建议签名（方案期可微调，但语义先冻结）：`groupStagesByVersion(stages): Map<string, string[]>`（版本前缀分组，parseStageId 复用）；`splitForArchive(data, version): { archive: ArchiveFile; remainder: Partial<FlowData> }`（纯函数切分：stages/reviews/log + 保留集）；`writeArchiveFile(projectPath, archive): void`（fs 工具层 + 独立锁 `flow-archive` + 原子写）；`listArchiveVersions(projectPath): string[]`；`readArchiveFile(projectPath, version): ArchiveFile | null`；`addArchivedVersion(data, version): void`（幂等去重）。stage-79 命令层**零第二套解析/切分**。"
+  - name: "src/core/req/ :: 需求原语（stage-81 交付，stage-82/83 消费）"
+    change: "建议签名：`addRequirement(data, { title, targetVersion?, priority?, source? }): RequirementData`（ID = max+1，REQ-NNN；幂等/冲突语义于方案期冻结）；`getRequirement(data, id): RequirementData | null`；`listRequirements(data, filter?): RequirementData[]`（返回副本，核验 B8 范式）；`claimRequirement(data, id, owner): Result`（占用校验：已占用 → 错误码，**不写盘**）；`releaseRequirement(data, id): Result`；`updateRequirement(data, id, patch): Result`；`computeRequirementAggregate(stages, requirementId): { stageCount, doneCount, aggregate }`（**纯投影**，stage-83 交付但接口于 stage-81 登记）；`syncRequirementStatus(data, stageId): string[]`（done/reset 对称回写入口，纯内存，返回受影响需求列表）。"
+  - name: "src/core/flow-manager.ts :: FlowData / StageData 字段契约"
+    change: "`FlowData.requirements?: RequirementData[]`（load 补齐为 []，核验 B3）；`FlowData.meta.archived_versions?: string[]`（缺失视为 []）；`StageData.requirement_id?: string | null`；`StageData.workflow_mode` 语义不变。**新增字段一律可选 + 读侧补齐**（向后兼容不变量）。"
+  - name: "src/core/i18n-data/{zh-CN,en}.ts :: i18n 基线"
+    change: "v1.1.7 基线 **796**；stage-79 / 82 / 84 各自新增键并显式登记新基线（lint i18n 全绿）。命令面文案键前缀约定：`flow.archive.*` / `req.*`（help 域 `help.flow.archive*` / `help.req.*` 对齐既有 applyHelpI18n 范式，核验 cli/index.ts:96-175）。"
+  - name: "src/core/templates-data/skills/openfeel-req/SKILL.md（新）"
+    change: "权威源单文件（中文单语、无 {lang}、description 含查询触发词）；build 步骤 4/6 自动纳入（build.js 零改动，核验 B23）；**skills 计数 17→18 六处断言翻转**（核验 B22）；快照声明「以 openfeel req --help 为准」。"
+  - name: "doc 面（stage-85）"
+    change: "README×3 / GETTING_STARTED / commands 的快照与能力节须覆盖：`flow archive` 三子命令 + `openfeel req` 十字命令组 + `requirements`/`archived_versions`/`requirement_id` 字段语义 + 向后兼容说明（旧 flow.json 零报错；升级无需迁移）+ 归档/需求两概念与顶层 `openfeel archive`（阶段摘要）的区分。"
+
+# 下游硬约束
+downstream:
+  - target: npm publish / git push / CI
+    type: hard
+    note: "本版本不执行发布与推送；版本收口归 stage-85；阶段归档由 openfeel-archiver 执行。"
+  - target: 未来版本的 flow.json 归档范围（requirements）
+    type: soft
+    note: "本版**不归档 requirements**（主题一落地时不处理）；未来版本若需按版本归档需求，须先裁定「跨版本需求切分」语义（大计划 §七.5）。"

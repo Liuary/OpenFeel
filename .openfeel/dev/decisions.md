@@ -101,3 +101,16 @@
 - **回滚**：`git revert` 对应 v1.1.7 各 stage commits；`workflow_mode` 字段移除后行为回落到既有 full 单表。
 - **[需求变更 2026-10-11 修订｜已落地]**：fast 链**不再跳过 `plan_review`**——新链 = `plan_pending → plan_review → plan_passed → exec_running → review_pending → [review_failed ↺] → review_passed → archiving → done`（跳过 **6 项** / **9 节点** / fast 表 **9 条目** = 8 流转键 + `done`）；「计划审查单轮必过，与代码审查同级」。**已于 `v1.1.7-stage-76` T7（op-005）实施并归档**：引擎 `FAST_TRANSITIONS` 8→9 条目（`plan_pending → ['plan_review']` + 新增 `plan_review` 键）+ 文案 5 处（`config.ts`×3 + i18n×2）+ stage-74 断言 **14 点位**同步 + 全量扫描收口（旧口径归零）；单一取表点传导，未改 full 表 / phase 枚举 / 命令面。本 ADR 上文「跳过 `plan_review`／7 个 phase／7 流转键 / 8 条目」口径**已被本轮变更取代**（正文已就地修订并加注）。配套 supersede：`kb/architecture.md` #双模式转移表选择、`kb/index.md`、`manual/core/flow-manager.md`、`manual/index.md`、`kb/patterns.md` #工作流快线必经计划审查（归档官于 stage-76 归档执行）。
 
+### ADR-011：新增「需求（requirement）流转系统」—— 四层模型 + 需求状态机 + 认领协议
+- **日期**：2026-10-11
+- **状态**：proposed（研究定稿，待立项）
+- **决策**：在「版本 roadmap → 阶段 stage → 方案 op」三层之上**插入需求层**，将线性计划范式升级为四层：`版本 → 需求 REQ-NNN → 计划 stage(15-phase) → 方案 op`。**需求 = 排期与调度层；计划 = 对某项明确需求的具体实现**。四条架构抉择（均采纳推荐项）：
+  1. **状态模型 = 双层**：需求层保留粗粒度状态 `draft → scheduled → in_progress → done`（+ `blocked` / `cancelled` / `rejected`）；`in_progress` 的内部进度**由关联阶段的 15-phase 聚合**，工序单一事实源仍在 `phase`（对齐 ADR-003）；需求 `done` 由「全部关联阶段 done」聚合判定并同事务回写，避免双写漂移。
+  2. **存储 = flow.json 内**：`flow.json` 新增顶层 `requirements` 字段（类比 `reviews`），复用 `FlowManager` 的 `withFileLock` + revision 乐观锁 + `atomicWriteFileSync{backup}` + 审计日志；需求正文落 `.openfeel/requirements/REQ-NNN.md`（人读），机读状态权威在 `flow.json`。
+  3. **需求↔计划 = 1:N**：`stage.requirement_id` 单值、**可空**（存量阶段为 `null` = 遗留无需求）；一个需求由若干阶段实现（stage 单属一需求）。
+  4. **认领 = 轻量原子**：`owner` + `claimed_at` 字段，`req claim` 做占用校验（防并发覆盖），**无 TTL/心跳**；替代现有「描述性责任字段」的并发覆盖风险。
+  命令面：新增顶层命令 `openfeel req`（`add`/`list`/`show`/`claim`/`release`/`set`/`link`/`advance`/`board`/`next`）。落地路径（调研确认最小改动）：新建 `src/commands/req.ts` + `src/core/req/` + `src/cli/index.ts` 两行注册，**不触碰** `build.js`/`package.json`；`--json` 沿用 `schemaVersion:1` 约定。
+- **理由**：现状唯一流转实体是阶段，一个版本 = 一串阶段跑完，版本内若干需求无独立身份/生命周期/排期/认领；`flow.json` 无 `requirements` 字段。需求层解耦「排期调度」与「执行工序」。备选被否：**派生单层**（无独立状态机，无法表达未排期/已认领/取消等前置态）；**独立完整状态机**（与阶段机双状态源，复杂度高）；**独立 `requirements.json`**（引入第二状态文件与跨文件一致性风险，需新 health 对账）；**M:N**（聚合语义模糊）；**完整认领**（TTL/心跳对单机场景过度）。
+- **后果 / 适用边界**：`workflow_mode`（full/fast）与需求层**正交**——需求可分别由 full/fast 阶段实现。`artifact-graph`（产物图）与流水线**脱钩**，不作需求地基，仅可借其拓扑排序算法。向后兼容：新增可选字段，存量阶段 `requirement_id=null` 不破坏现有流水线；`mapPhaseToAgent` 责任派生继续服务阶段层。
+- **回滚**：尚未实施（proposed）；若实施后回滚，`git revert` 对应 commits + 移除 `req` 命令注册两行；`flow.json` 的 `requirements` 字段为空/缺失时所有既有命令行为不变。
+

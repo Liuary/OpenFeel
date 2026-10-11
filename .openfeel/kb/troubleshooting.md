@@ -1140,3 +1140,16 @@ concurrency:
 
 **参见：** v1.1.7-stage-77（T4；op-002；REV-77-009/010）；`src/commands/flow.ts`（`:951-978`）；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护、#测试以「保存/恢复」代替 homedir mock；kb/patterns.md #隔离 HOME 实测法
 
+## [+] 可选字段「读侧补齐」的序列化副作用：`load()` 的 `??= []` 使任意 load→save 向存量 flow.json 注入空数组 (2026-10-12)
+
+- **症状**：新增可选字段 `FlowData.meta.archived_versions?: string[]` 后，在 `load()` 里做「读侧补齐」（`this.data.meta.archived_versions ??= []`）→ **任意 load→save 路径**（即使与归档无关）都会在下次 `save()` 把 `archived_versions: []` **写回存量 flow.json**（实测 flow.json 第 7 行现为该键）。与「零既有行为变更（不变量⑤）」在**磁盘格式层**产生张力。
+- **判据**：读侧补齐**对正确性是否必需**？本例**非必需**——消费方 `getArchivedVersions`（自带 `Array.isArray` 守卫）与 `addArchivedVersion`（自防御 + 缺失 `meta` 时兜底）均已自洽；读侧补齐只是「让内存对象更整齐」的便利。
+- **处置取舍**：
+  - 若保留读侧补齐 → **登记为已知语义**（「存量 flow.json 下次 save 会注入空数组」，读侧宽容、无兼容风险），并以 `npm test` 全量为硬判据（本例 68 文件 / 1337 用例全绿，无 load→save 深比较断言被触发 → 无需收窄）；「是否删除读侧补齐」留后续阶段评估。
+  - 若要求磁盘格式层严格零变更 → 移除 `load()` 补齐，改「字段仅在归档写入时落盘」（消费方须全部自带缺失容错）。
+- **正确性证据**：`rg` 复核消费点均自带 `Array.isArray`/`?? []` 守卫（`archive-ops.ts` `getArchivedVersions`/`addArchivedVersion`）——补齐非必需，删除不破坏正确性。
+- **同族教训**：`flow.json`「内容增量」核验须含 `meta.revision`/`meta.updated`（`save()` 必然改写）；可选字段读侧补齐是**新增**一类「save 必然注入」的键，核验存量零变更时须一并识别。
+
+**实证**：v1.2.0-stage-78（REV-78-009 / REV-78-015）——`flow-manager.ts:517`（读侧补齐）经任 load→save 注入 `archived_versions: []`；`npm test` 全量绿（无深比较断言触发）→ 保留原样并登记；归档官 close-with-note（留 stage-79/85 评估）。
+
+**参见：** v1.2.0-stage-78（REV-78-009/015；op-002）；`src/core/flow-manager.ts`（`load()` 读侧补齐）；`src/core/flow-archive/archive-ops.ts`（`getArchivedVersions`/`addArchivedVersion` 自防御）；kb/troubleshooting.md #flow.json「内容增量」核验口径必含 `meta.revision` / `meta.updated`；kb/patterns.md #全局状态文件多类条目扩展与短前缀读侧分类；manual/core/flow-archive.md

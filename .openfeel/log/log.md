@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-12-Liuary-001.md](2026/10/12/2026-10-12-Liuary-001.md) | Liuary | 阶段 v1.2.0-stage-78 完成 |
 | [2026-10-11-Liuary-019.md](2026/10/11/2026-10-11-Liuary-019.md) | Liuary | 阶段 v1.1.7-stage-77 完成 |
 | [2026-10-11-Liuary-018.md](2026/10/11/2026-10-11-Liuary-018.md) | Liuary | 阶段 v1.1.7-stage-76 完成 |
 | [2026-10-11-Liuary-017.md](2026/10/11/2026-10-11-Liuary-017.md) | Liuary | **v1.1.7 第三阶段 — stage-76 归档完成（模板与 skill 模式感知）**：第 ② 位读者（Agent 读 `status.md「工作流模式」`自知调度）全量落文（**37 份**模板/skill）——`feel.md`×4「工作流模式」新节（**节锚点插入**）+ subagent 模板 ×24 模式分支与快线链 + 全局约束层 ×4（L18/L81 模式注记）+ skills ×5 收口 + build 重生成**双生成物**（`template-loader.ts` + `update.ts`，禁手改）+ **T7 fast 快线表 8→9 条目**（`plan_pending → plan_review` + 新增 `plan_review` 键，**fast 下计划审查不跳过**，reviewer 单轮必过）+ 文案 5 处 + 断言 **14 点位** + 全量扫描收口 + 静态对称断言（S1~S7）。5 op（执行序 **op-005→001→002→003→004**；executor 未 commit，HEAD `9a3fe27`）；审查 **passed**（REV-76-001~022 全 closed：计划轮 8 + 方案轮 8 + 代码轮 6；NB-1/2 跟踪）；验收 **通过、0 Bug**。门禁 **67 文件 / 1306 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **796**、`lint kb` 0（417 引用）、build ×2 幂等、`--version`=1.1.6。知识沉淀 **4 条**（patterns 2 + troubleshooting 2）+ 旧口径 supersede（`8 条目/7 流转键` → 9 条目）；**ADR-010 正文修订** + manual `core/flow-manager.md` + `index.md` 同步。**v1.1.7 第三阶段闭环**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
@@ -31,7 +32,6 @@
 | [2026-10-03-Liuary-025.md](2026/10/03/2026-10-03-Liuary-025.md) | Archiver | **stage-66 归档完成（全局部署版本事实源与检测核心 — D-A/D-D，v1.1.5 首阶段）**——写入侧刷新 `openfeel_version`（`setup`/`update` save 之前，消除升级后永久假漂移根因）+ `deployment-check.ts` 只读四态检测（`ok`/`mismatch`/`missing`/`unknown`）+ 门控纯函数；隔离 HOME 端到端（检测前后全局 state 字节 + mtime 不变）；**本阶段不接 CLI**（归 stage-67）；门禁 **63 文件 / 1113 用例 0 skipped**、`tsc` 0、`lint i18n` **753**、`lint kb` 0、build ×2 幂等不复活；审查 **passed**（REV-001~004 全 low 非阻塞 open，REV-002 归档官就地调序，REV-003/004 为 stage-67 须知）；无新 Bug；知识沉淀 1 条（patterns）；**M22 done**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-03-Liuary-024.md](2026/10/03/2026-10-03-Liuary-024.md) | Liuary | v1.1.5-stage-66.op-003 执行通过 |
 | [2026-10-03-Liuary-023.md](2026/10/03/2026-10-03-Liuary-023.md) | Liuary | v1.1.5-stage-66.op-002 执行通过 |
-| [2026-10-03-Liuary-022.md](2026/10/03/2026-10-03-Liuary-022.md) | Liuary | v1.1.5-stage-66.op-001 执行通过 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

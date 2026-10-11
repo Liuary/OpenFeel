@@ -3765,3 +3765,17 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 
 **参见：** v1.1.7-stage-77（T3/T6；op-003；REV-77-003/005/012）；`build.js`；kb/patterns.md #版本号全链路收口清单模式、#多 harness 版本收口的 A 类载体清单扩展、#改 templates-data 源须同批重生成的「双生成物」
 
+## [+] 归档引擎分层与独立锁模式：纯函数（分组/切分）与 IO 原语分离 + 独立锁不嵌套 + 复用 parseStageId 探针法 + 幂等覆盖写 + 读侧宽容 (2026-10-12)
+
+- **背景**：为 `flow.json` 版本分片建立引擎面（v1.2.0-stage-78），须同时满足「切分无损 + 幂等 + 零既有行为变更 + 锁安全」。
+- **分层**：`src/core/flow-archive/` 三分——`archive-file.ts`（schema/类型，仅 `import type`，编译期擦除零运行时依赖边）、`grouping.ts`（**纯函数**：只读输入、不写盘、不加锁、不读环境）、`archive-ops.ts`（**IO 原语**：路径单点 / 写 / 读 / 列举 / 索引）。判据＝「可纯函数化的解析逻辑一律与 IO 隔离」，便于 stage-79/80 消费与单测。
+- **独立锁不嵌套**：归档写盘锁名恒 `flow-archive`（锁文件落 `tmp/locks/` 下、名 `flow-archive.lock`），与 flow 锁**不嵌套**——「先写归档文件 → 后 flow save」为**两次独立临界区**，由命令层（stage-79）编排，核心原语只取自己的锁（裁定 P）。
+- **零自写版本解析：复用既有解析器 + 探针法**：版本段一律经 `parseStageId` 剥离 `-{stageDir}` 后缀得出（`versionOfStageId`）；**版本字符串合法性用「探针法」复用同一解析器**——`isValidVersionString(s) = versionOfStageId(`${s}-stage-00`) === s`（空串/含路径分隔符/非版本形态自然落空），零自写正则、零第二信源。
+- **幂等 + 读侧宽容**：`writeArchiveFile` 覆盖写（`backup:false`）= 同版本重归档幂等；`readArchiveFile` 对**缺失/损坏（JSON 解析失败）/非法版本/合法 JSON 但非对象（`[]`/`null`/标量）**一律返回 `null` 不抛；未知键保留、缺 `counts` 按实际长度回填（读时计算不写盘）。`addArchivedVersion` 纯内存 + 幂等去重（返回是否新增）。
+- **切分无损（双向断言）**：`splitForArchive` 硬性验收「各段 `archive ∪ remainder = 原集合`」（T4.2）；不可归属者一律落 remainder。返回对象为原数据**浅引用**（调用方不得修改）。
+- **零既有行为变更（纯库层新增）**：产物仅被测试 import（`rg "flow-archive" src/` 命中仅 `src/core/flow-archive/**`）；`flow-manager.ts` 仅可选字段声明 + 读侧补齐（12 增 / 1 删，**语义删除 = 0**）。
+- **判据**：新增可写结构（归档文件）时，「解析逻辑纯函数化 + IO 单点 + 独立锁不嵌套 + 幂等覆盖 + 读侧宽容」是声明式状态治理体系下 IO 原语的最小完备集；版本/阶段标识一律经既有解析器（探针法复用）杜绝格式分叉。
+
+**实证**：v1.2.0-stage-78（3 op；门禁 **68 文件 / 1337 用例 0 failed**、tsc 0、i18n 796、kb 0、build ×2 幂等）——12 导出签名对齐 `ops/deps.yaml` `downstream_contracts`；`flow-archive.test.ts` 31 passed（T4.1 分组 / T4.2 双向无损 / T4.3 幂等 / T4.4 边界 / T4.5 隔离）；本仓 `flow.json` sha1 前后一致（零触碰）。
+
+**参见：** v1.2.0-stage-78（plan T1~T5；op-001/002/003；REV-78-008~017）；`src/core/flow-archive/**`；kb/architecture.md #版本分片归档架构；kb/patterns.md #原子写模式、#建议性文件锁模式、#事务顺序模式、#阶段路径映射 stageId 三格式解析、#全局状态文件多类条目扩展与短前缀读侧分类；manual/core/flow-archive.md

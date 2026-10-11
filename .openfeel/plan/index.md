@@ -14,6 +14,7 @@
 | [v1.1.5](v1/v1.1.5/plan.md) | 消除「升级 CLI 后静默加载旧全局部署」缺口（版本事实源 + 被动检测提示 + `setup --check`） | **已完成**（**stage-66~67 全部归档 = M22 / M23 达成 / 版本收官**，缺口端到端消除；版本 1.1.5 收口 / 发布就绪） |
 | [v1.1.6](v1/v1.1.6/plan.md) | Claude Code 适配器（多 harness 并存）：skills 共享中立源 + Claude 9 agent/约束 + `--tools` + `settings.json` 注入 + 版本 1.1.6 | **已归档**（6 阶段全部闭环 = **v1.1.6 版本收官**，M24~M28 达成；版本 1.1.6 收口 / 发布就绪） |
 | [v1.1.7](v1/v1.1.7/plan.md) | 快速迭代模式（fast workflow mode）：双模式 phase 链 + 骨架全量铺/标记驱动 + 默认自动推进开启（`workflow_mode` / `auto_advance`） | **已归档**（4 阶段 `stage-74~77` 全部闭环 = **v1.1.7 版本收官**，M29~M32 达成；版本 1.1.7 收口 / 发布就绪） |
+| [v1.2.0](v1/v1.2.0/plan.md) | 双主题：① 需求流转系统（四层模型 + 需求状态机 + 认领协议）；② **flow.json 归档拆分**（版本分片，**先行执行**） | **执行中**（`stage-78` 已归档 = **M33 done**；`stage-79~85` 待 Feel 经 CLI 注册推进） |
 | [v0.5](v0/v0.5/index.md) | 工具链 + 协作增强 + 质量保障（v0.5.0 ~ v0.5.11） | 全部归档 |
 | [v0.4](v0/v0.4/index.md) | 工程精简 + Agent 深化 + 国际化（v0.4.0 ~ v0.4.7） | 全部归档 |
 | [v0.3](v0/v0.3/plan.md) / [v0.3.1](v0/v0.3/v0.3.1/v0.3.1-stage-01/status.md) / [v0.3.2](v0/v0.3/v0.3.2/v0.3.2-stage-01/status.md) | 早期版本（生产加固 / 补丁修正 / 收尾补丁） | 全部归档 |
@@ -102,6 +103,7 @@
 | v1.1.7-stage-75 | v1.1.7（模式命令面与交互 — `plan stage add --workflow-mode` / `stage set --workflow-mode`（含插入语义）/ `flow mode` 只读 / `flow phases --mode\|--stage` / `config set --sync-stages --stage` / wizard 选型与项目级记忆 / `plan scheme create --from-tasks` op 骨架机械铺；hard 依赖 stage-74） | **已归档**（**M30 done / v1.1.7 第二阶段**） | 4 op | 4/4 |
 | v1.1.7-stage-76 | v1.1.7（模板与 skill 模式感知 — `feel.md`×4 调度纪律 + subagent 模式感知 + skills 收口 + 静态断言；hard 依赖 stage-74/75） | **已归档**（**M31 done / v1.1.7 第三阶段**） | 5 op | 5/5 |
 | v1.1.7-stage-77 | v1.1.7（文档与版本收口 — README×3 + manual + CHANGELOG + 版本 1.1.7 + fast 隔离端到端验收；hard 依赖 stage-76；**执行顺序最后**） | **已归档**（**M32 done / v1.1.7 版本收官**） | 3 op | 3/3 |
+| v1.2.0-stage-78 | v1.2.0（归档核心引擎 — 归档文件 schema + 版本分组/切分纯函数 + IO 原语 + `meta.archived_versions` 轻量索引；**主题二「归档拆分」首阶段**） | **已归档**（**M33 done / v1.2.0 首阶段**） | 3 op | 3/3 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

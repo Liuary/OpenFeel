@@ -1,0 +1,103 @@
+# stage-78 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.2.0-stage-78
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-12"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.7-stage-77
+    type: hard
+    status: done
+    reason: "v1.1.7 收官基线：CLI 1.1.7 / `lint i18n` 796 / `lint kb` 0 / 测试 67 文件 + 1306 用例（登记值，复现 `npm test`）/ flow 注册 v1.1.7 组全 done。本阶段为纯库层新增（`src/core/flow-archive/` + 单测），不改任何既有行为（flow-manager.ts 仅 REV-78-006 最小追加）。"
+  - downstream: v1.2.0-stage-79
+    type: hard
+    note: "归档命令面 `flow archive <version>` / `list` / `show`：**直接消费**本阶段 12 个导出（函数签名级契约见下方 `downstream_contracts`）；命令层**零第二套解析/切分**（禁复制 groupStagesByVersion/splitForArchive）。顺序不变量（先写归档文件 → 后 save 移除）由 stage-79 编排（裁定 P）。`src/commands/flow.ts` 改写归 stage-79（本阶段零触碰）。"
+  - downstream: v1.2.0-stage-80
+    type: hard
+    note: "消费点适配与存量迁移：跨版本 deps（`plan stage add --deps` 经 `meta.archived_versions` 判定，裁定 Q）+ `flow health` 归档一致性检查（裁定 R）+ 本仓 9+ 版本组自举迁移（裁定 S）；迁移编排复用本阶段 `writeArchiveFile` / `addArchivedVersion` / `listArchiveVersions`。"
+  - downstream: npm publish / git push / CI / commit
+    type: hard
+    note: "**本阶段不执行** `npm publish`、不 `git push`、不改 CI、不 commit（除非阶段惯例由 Feel 统一提交）、**不直写 `flow.json`**；版本保持 1.1.7（版本收口归 stage-85）。"
+
+# 本阶段 3 op：op-001（schema + 纯函数 + 分组/切分单测，无前置）
+#   → op-002（IO 原语 + meta.archived_versions 索引 + flow-manager.ts 最小追加，hard: op-001）
+#   → op-003（边界用例 + 隔离复核 + 全门禁，hard: op-002〔经其传递 op-001〕；本阶段最终 op）。
+# 依赖真实性：
+#   op-002 hard 依赖 op-001 —— archive-ops.ts 复用 archive-file.ts 类型与 grouping.ts 的 versionOfStageId（语义依赖）；
+#     且 test/core/flow-archive.test.ts 为同一文件串行追加（前序未完成时后续 describe 起点漂移）。
+#   op-003 hard 依赖 op-002 —— 最后编辑同一测试文件 + 门禁须覆盖全部产出（含 flow-manager.ts 改动）。
+#
+# 不变量：
+#   ① 归档文件 schema 恒定：写侧 `schemaVersion = ARCHIVE_SCHEMA_VERSION (1)`（裁定 U）；读侧对未知值/未知键宽容、缺 counts 按实际长度回填（读时计算不写盘）；
+#   ② 切分无损（双向断言）：`splitForArchive` 的 `stages ∪ remainder = 原集合`、reviews / log 同（T4.2 各段「并集 = 原集」断言为硬性验收）；
+#   ③ 幂等：同版本重复 `writeArchiveFile` = 覆盖写（backup:false，无 .bak）；`addArchivedVersion` 重复 → no-op 返回 false 不追加；
+#   ④ 锁不嵌套：归档写盘锁名恒 `flow-archive`（`.openfeel/tmp/locks/flow-archive.lock`），与 flow 锁**不嵌套**（stage-79 编排时先归档文件、后 flow save，两次独立临界区）；
+#   ⑤ 零既有行为变更：`src/core/flow-manager.ts` 改动仅 REV-78-006 两处（`FlowData.meta.archived_versions?` 声明 + `load()` 读侧补齐 `??= []`），删除行 = 0、方法语义零改；
+#   ⑥ 零自写版本解析：版本段一律经 `parseStageId`（`versionOfStageId` 剥离后缀法）；版本字符串合法性用探针法复用 parseStageId；
+#   ⑦ log 归属唯一读 `detail.stageName`：缺失 / 非字符串 / 不可解析一律保留在 flow.json（`detail.stageId` / `detail.stage` 等他键**不看**，裁定 T）；
+#   ⑧ 常规路径零触碰：本阶段产物（`src/core/flow-archive/**`）仅被测试 import，`src/commands/**` / `src/cli/**` / flow-manager.ts 零 import（stage-79/80 才接入）；
+#   ⑨ 测试全程隔离：fixture `mkdtempSync` tmpDir，**严禁**触碰真实 `.openfeel/` 与本仓 flow.json；归档目录不纳入 `WORKSPACE_DIRS`、零 gitignore 改动（Q2 定稿）；
+#   ⑩ 本阶段不新增 i18n 键（基线 796 不变）；不新增第三方依赖；不改 phase 枚举 / 转移表 / `pipeline.yaml`；不触碰 `build.js` / `package.json`。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "归档文件 schema 与版本分组/切分纯函数（T1 + T2 + T4.1/T4.2）"
+    produces:
+      - src/core/flow-archive/archive-file.ts
+      - src/core/flow-archive/grouping.ts
+      - test/core/flow-archive.test.ts
+    deps: []
+    notes: "覆盖 T1 + T2 + T4.1 + T4.2。`ARCHIVE_SCHEMA_VERSION=1` + `ArchiveFile`/`ArchiveCounts`（类型复用 flow-manager，仅 import type）；`versionOfStageId`（parseStageId 剥离后缀，禁自写正则）/ `groupStagesByVersion` / `listArchivableCandidates`（空集守卫 allDone）/ `splitForArchive`（stages 全搬 / reviews 锚定正则剥离 opId / log 唯一读 detail.stageName）。测试：T4.1 分组三组 describe + T4.2 切分无损双向断言（stages/reviews/log 各段「并集 = 原集」）。门禁：tsc 0 + 定向测试全绿 + 检索复核（零自写版本正则 / 零第二信源 / 本仓 flow.json 零触碰）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "归档 IO 原语与 meta.archived_versions 索引（T3 + T4.3 + REV-78-006）"
+    produces:
+      - src/core/flow-archive/archive-ops.ts
+      - src/core/flow-manager.ts
+      - test/core/flow-archive.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T3 + T4.3 + REV-78-006。`getArchiveDir`/`getArchiveFilePath`（路径单点，按需 mkdir）+ `writeArchiveFile`（独立锁 `flow-archive` + atomicWriteFileSync{backup:false} + 非法版本抛错零写盘）+ `listArchiveVersions`（探针法合法校验 + 字典序）+ `readArchiveFile`（缺失/损坏/非法 → null；未知键保留；缺 counts 回填）+ `addArchivedVersion`（幂等去重，纯内存）/ `getArchivedVersions`（副本 + `?? []`）。**flow-manager.ts 最小追加（REV-78-006）**：`FlowData.meta.archived_versions?: string[]` + `load()` 读侧补齐（`??= []`，仅内存）；删除行 = 0。测试：T4.3 幂等（write ×2 字节一致 + add ×2 仅追加一次）+ IO describe（写读回/覆盖/锁不嵌套/列举过滤/读宽容/非法版本防御/load 补齐）。门禁：tsc 0 + 两测试文件全绿 + numstat 归因。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "边界用例、隔离复核与全门禁（T4.4 + T4.5 + T5）"
+    produces:
+      - test/core/flow-archive.test.ts
+      - .openfeel/tmp/stage-78-selftest-report.md
+      - .openfeel/tmp/stage-78-gate-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "最后编辑同一测试文件（串行追加）；门禁须覆盖 op-001+op-002 全部产出（经 op-002 传递 op-001 依赖）"
+    notes: "覆盖 T4.4 + T4.5 + T5（**本阶段最终 op**）。边界六组：空 log+空 reviews / 空 stages / 单阶段版本 / 版本不存在（空 archive 不抛错）/ 写盘后损坏读侧 null / 幂等重归档端到端。隔离复核：通读 + rg 双证据 + 源码零 `process.cwd`/`homedir` **正向断言**（`import.meta.url` 定位，归因非 cwd）。T5 门禁：build ×2 幂等（`git status --porcelain src/` 空）→ `npm test`（0 skipped / 0 failed，68 文件）→ tsc 0 → lint i18n **796** → lint kb 0 → 路径单点（`rg \"flow-archive\" src/` 仅 core/flow-archive/**）→ diff 归因（flow-manager.ts 删 0 增 ≤14）→ 契约 12 导出 rg 全命中 → 本仓 flow.json 零触碰。报告 2 份落 `.openfeel/tmp/`。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付 stage-79/80；接口形态 = 函数签名级；禁命令层第二套实现）
+downstream_contracts:
+  - name: "src/core/flow-archive/archive-file.ts :: ARCHIVE_SCHEMA_VERSION / ArchiveFile / ArchiveCounts"
+    change: "`export const ARCHIVE_SCHEMA_VERSION = 1`；`interface ArchiveFile { schemaVersion: number; version: string; archived_at: string; stages: Record<string, StageData>; reviews: ReviewItem[]; log: LogEntry[]; counts: ArchiveCounts }`；`interface ArchiveCounts { stages: number; reviews: number; log: number }`。装配样例（stage-79 命令层）：`const { archive, remainder } = splitForArchive(data, version); const full: ArchiveFile = { schemaVersion: ARCHIVE_SCHEMA_VERSION, archived_at: new Date().toISOString(), ...archive }; writeArchiveFile(projectPath, full);`。"
+  - name: "src/core/flow-archive/grouping.ts :: 分组与切分纯函数（4 导出）"
+    change: "`versionOfStageId(stageId: string): string | null`（parseStageId 剥离 `-{stageDir}` 后缀，禁自写正则）；`groupStagesByVersion(stages: Record<string, StageData>): Map<string, string[]>`（稳定顺序 = 键遍历序，不可解析跳过）；`listArchivableCandidates(data: FlowData): Array<{ version: string; stages: string[]; allDone: boolean }>`（只判 allDone 空集守卫；**REV 判定归命令层**）；`splitForArchive(data: FlowData, version: string): { archive: Omit<ArchiveFile,'schemaVersion'|'archived_at'>; remainder: { stages; reviews; log } }`（纯函数；版本不存在 → 空 archive 不抛错；返回对象为原数据浅引用，调用方不得修改）。"
+  - name: "src/core/flow-archive/archive-ops.ts :: 读写原语与索引（7 导出）"
+    change: "`getArchiveDir(projectPath): string` / `getArchiveFilePath(projectPath, version): string`（路径单点，`.openfeel/flow-archive/`）；`writeArchiveFile(projectPath, file: ArchiveFile): void`（独立锁 `flow-archive`；`backup:false`；非法 version **抛错零写盘**）；`listArchiveVersions(projectPath): string[]`（目录缺失 → []；仅合法 `{version}.json`；字典序）；`readArchiveFile(projectPath, version): ArchiveFile | null`（缺失/损坏/非法 version → null 不抛；未知键保留；缺 counts 回填）；`addArchivedVersion(data: FlowData, version: string): boolean`（幂等去重；**纯内存**，持久化由命令层 `save()`）；`getArchivedVersions(data): string[]`（副本；缺失 → []）。**锁不嵌套**：writeArchiveFile 只取 flow-archive 锁；「先写归档文件 → 后 flow save」两步顺序归 stage-79 编排（裁定 P）。"
+  - name: "src/core/flow-manager.ts :: FlowData.meta.archived_versions（REV-78-006）"
+    change: "`FlowData.meta.archived_versions?: string[]`（可选字段；`load()` 读侧补齐 `??= []`——仅内存，磁盘写入由后续 `save()` 发生）。消费方（stage-80）：`plan stage add --deps` 校验「deps 版本前缀 ∈ `getArchivedVersions(data)` → 视为已满足」（裁定 Q，展示层不读归档文件）。"
+  - name: "归档文件 schema / 目录约定（stage-79/80/85 引用）"
+    change: "落点 `.openfeel/flow-archive/{version}.json`（Q2 定稿：不纳入 `WORKSPACE_DIRS`、零 gitignore 改动、按需 mkdir）；结构 `{ schemaVersion:1, version, archived_at, stages, reviews, log, counts }`；只增不改（无 unarchive）；同版本重归档 = 幂等覆盖（无 `.bak`）；锁文件 `.openfeel/tmp/locks/flow-archive.lock`。i18n 基线承接 **796**（stage-79 新增键显式登记新基线）。"

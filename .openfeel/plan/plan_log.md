@@ -71,3 +71,4 @@
 | 2026-06-27 | Liuary | v1.0 计划归档至 v1/ 子目录；创建 v2/ 目录，启动二期计划制定 |
 | 2026-06-27 | Liuary | 一期部署复盘完成：产出 deploy-review + blueprint-test-project 归档于 .openfeel/docs/ |
 | 2026-06-24 | Liuary | 创建 OpenFeel v1.0 开发计划（9 阶段） |
+| 2026-10-12 | openfeel-archiver | v1.2.0-stage-78 归档（归档核心引擎：flow.json 版本分片）——3 op 全 done（op-001 schema+分组/切分纯函数 → op-002 IO 原语+`meta.archived_versions` 索引+`flow-manager.ts` 最小追加 → op-003 边界+全门禁）；审查 passed（REV-78 全 17 条闭合，0 blocking）；0 Bug；门禁 68 文件/1337 用例 0 failed、tsc 0、i18n 796、kb 0、build ×2 幂等；知识沉淀 3 条；manual 新增 `core/flow-archive.md`；**M33 done**、roadmap/plan 回填。未 commit（HEAD `84951ce`）、flow 至 done 由 Feel 执行 |

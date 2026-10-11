@@ -105,7 +105,14 @@ export interface StageData {
 
 /** Flow 完整数据结构 */
 export interface FlowData {
-  meta: { version: string; project: string; updated: string; revision?: number };
+  meta: {
+    version: string;
+    project: string;
+    updated: string;
+    revision?: number;
+    /** 已归档版本前缀索引（轻量索引，裁定 Q / REV-78-006；缺失视为 []，load 读侧补齐） */
+    archived_versions?: string[];
+  };
   pipeline: { phase: MetaPhase; current: { stage: string; op: string }; retry: number };
   stages: Record<string, StageData>;
   reviews: ReviewItem[];
@@ -505,6 +512,10 @@ export class FlowManager {
       this.data = JSON.parse(raw) as FlowData;
       // 记录加载基线 revision（缺失/非法视为 0，兼容存量文件）
       this.loadedRevision = extractRevision(this.data);
+      // 读侧补齐已归档版本索引（REV-78-006）：缺失视为 []（与 ops/deps 补齐同范式）；meta 整体缺失时由 save() 的 ??= 兜底
+      if (this.data.meta) {
+        this.data.meta.archived_versions ??= [];
+      }
       // 从 stages 的键名恢复 op 的 id 字段（运行时便利字段，磁盘不存储）
       if (this.data && this.data.stages) {
         for (const [, stage] of Object.entries(this.data.stages)) {

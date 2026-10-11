@@ -777,3 +777,20 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.1.7-stage-74——`ConfigDefaultsSchema.auto_advance` 由 `disabled→enabled`（executor 自陈偏差，REV-74-011 独立复核确认为**必要**并接受）；`resolveConfigDefaults` 四键实测全 `enabled`/`fast`；隔离 HOME + 无 `config.yaml` → `config effective auto_advance` = `enabled [builtin]`（T7.5 CLI 半段，REV-74-008 补落点）；`DEFAULT_PROFILE`/`ProfilePreferencesSchema` 实测维持 `disabled`。
 
 **参见：** v1.1.7-stage-74（plan T1/T6；op-001；REV-74-005/008/011）；`src/core/config.ts` `DEFAULT_CONFIG`/`ConfigDefaultsSchema`/`resolveConfigDefaults`/`DEFAULT_PROFILE`；kb/architecture.md #双模式转移表选择、#config.yaml meta.version 语义；manual/core/config.md
+
+## [+] 版本分片归档架构：按版本前缀分片 + 三段归档单元 + meta.archived_versions 轻量索引 (2026-10-12)
+
+**背景：v1.2.0-stage-78（主题二「flow.json 归档拆分」先行执行）**——`flow.json` 单文件随版本无限累积（实测 HEAD `84951ce`：**406280 B / revision 914 / 78 阶段全留 / `log[]` 1313 条**），每次 `flow status`/`overview`/Agent 读状态都吞整文件（污染上下文窗口），`save()` 每次重写全文件（写放大）。用户诉求：「flow 文件只保留近期事务和未归档事务，已归档的历史信息按版本号归档」。
+
+**架构结论：归档粒度 = 版本（stageId 前缀 `vX.Y[.Z]`），归档单元 = `stages` 条目 + 关联 `reviews` + 关联 `log` **三段**，`meta`/`pipeline` 保留。**
+
+- **归档落点**：`.openfeel/flow-archive/{version}.json`（**新建目录**，与既有 `openfeel archive`（阶段摘要 → `.openfeel/log/archive-{stage}.md`）**职责分离**）；结构 `{ schemaVersion:1, version, archived_at, stages, reviews, log, counts }`（裁定 U）。目录**不纳入 `WORKSPACE_DIRS`**、零 gitignore 改动、按需 `mkdirSync` 幂等创建（Q2 定稿）。
+- **切分分组键（单一权威 `parseStageId`，禁自写正则）**：`stages` 按解析版本前缀分组；`reviews` 按 `op` 前缀（`<stageId>.op-NNN` 或 `<stageId>`，点号锚定正则剥离 opId 段）；`log` 按 `detail.stageName`。**缺失 / 不可解析一律保留在 flow.json**（`detail.stageId`/`detail.stage` 等他键不看——保守裁定 T，防误搬）。
+- **轻量索引**：`flow.json.meta.archived_versions: string[]`（追加 + 幂等去重，裁定 Q）——供 stage-80 跨版本 deps 判定（`plan stage add --deps` 对已归档版本视为已满足）；**展示层不读归档**。
+- **写盘复用 fs 工具底座**：`withFileLock`（**独立锁名 `flow-archive`**）+ `atomicWriteFileSync`（`backup:false`，同版本重归档 = 幂等覆盖写）；flow.json 变更走既有 `save()`（revision 乐观锁 + `.bak`）。
+- **不自动归档**：不挂 advance 钩子，触发 = 显式命令（可预览 `--dry-run`、可审计、可回滚）。
+- **零常规路径触碰（阶段不变量）**：本阶段产物（`src/core/flow-archive/**`）仅被测试 import；`src/commands/**`/`src/cli/**`/`flow-manager.ts` 零 import（命令面归 stage-79）。**契约面 = 函数签名级**（12 导出交 stage-79/80 直接消费，禁命令层第二套解析/切分）。
+
+**设计理由**：把「版本收官后的历史搬运」独立为版本粒度分片，收缩活跃 `flow.json` 体积，既兑现用户「避免污染上下文窗口」诉求（本仓为首个 dogfood 受益者），又将「既有三段切分」与「未来需求层（可跨版本）」的语义复杂度分离（归档先行 = 失败可回退面最小）。
+
+**参见：** v1.2.0-stage-78（plan T1~T3；op-001/002；REV-78-006/015）；`src/core/flow-archive/{archive-file,grouping,archive-ops}.ts`；`src/core/plan/path.ts`（`parseStageId`）；`src/core/fs/`（`withFileLock`/`atomicWriteFileSync`）；roadmap `v1.2.0.md` §主题二；kb/patterns.md #归档引擎分层与独立锁模式；kb/troubleshooting.md #可选字段「读侧补齐」的序列化副作用；manual/core/flow-archive.md

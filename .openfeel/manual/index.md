@@ -15,6 +15,7 @@
   - [部署覆盖前备份](core/backup.md)
   - [阶段路径映射](core/plan-path.md)
   - [并发保护工具](core/fs.md)
+  - [版本分片归档（flow-archive）](core/flow-archive.md) — **v1.2.0-stage-78 新建**：`.openfeel/flow-archive/{version}.json` 版本分片归档（schema + 分组/切分纯函数 + IO 原语 + `meta.archived_versions` 轻量索引；独立锁 `flow-archive` 不嵌套 flow 锁）
   - [模板加载](core/template-loader.md) — opencode + **Claude Code** 双 harness 模板源（stage-69 新增 `CLAUDE_*` 生成段与 3 API）
   - [构建管线](core/build.md) — **8 步**管线（stage-69 增 Claude 注入/校验/单源键集断言）
   - [全局路径](core/global-paths.md)
@@ -52,6 +53,7 @@
 | plan-path.ts / stageId↔目录映射 | `core/plan-path.md` | stageId 解析/校验/建议名、目录映射规则、`(series, stageDir)` 冲突检测或三级回退逻辑变更 |
 | plan/scheme.ts / op 方案生成与兜底注册 | `core/flow-manager.md`（审计日志与兜底注册节） | 兜底注册路径、冲突检测（`validateStageId` + `findStageDirConflict`）或 `register_op` 审计日志变更；**stage-51 起含 op 命名 `op-NNN.md`、`ensureStageSkeleton` 补骨架、`removeScheme`** |
 | fs/atomic-write.ts / file-lock.ts / sequence.ts | `core/fs.md` | 新增工具、并发机制、锁路径约定或接入范围变更 |
+| flow-archive/ `{archive-file,grouping,archive-ops}.ts` / flow.json 版本分片归档 | `core/flow-archive.md` | 归档文件 schema/落点、版本分组与切分纯函数（`versionOfStageId`/`groupStagesByVersion`/`listArchivableCandidates`/`splitForArchive`）、IO 原语（`writeArchiveFile`/`readArchiveFile`/`listArchiveVersions`/`addArchivedVersion`/`getArchivedVersions`）、独立锁 `flow-archive` 不嵌套、`meta.archived_versions` 轻量索引、读侧宽容语义变更（v1.2.0-stage-78 新建；命令面归 stage-79） |
 | template-loader.ts / 模板运行时加载 | `core/template-loader.md` | 模板源结构、加载 API 或注入对象变更；**skill 源改中立共享源 `templates-data/skills/`（stage-68，对象名/API 不变仅数据源）**；**Claude 生成段 `CLAUDE_AGENT_TEMPLATES`/`CLAUDE_CONSTRAINT_TEMPLATES` + 3 API `loadClaudeConstraintTemplate`/`loadClaudeAgentTemplate`/`listClaudeAgentIds`（stage-69）** |
 | build.js / 构建管线 | `core/build.md` | 源路径、构建步骤、校验断言或生成物标记变更；**发布元数据**（`files`/`engines`/`postinstall`）与主入口死导出清理也归此；**自举步骤 8 已于 stage-55 移除（防复活，仓库自身不再保留项目级 `.opencode/**` 受管实例）**；**skill 权威源迁中立共享源 `templates-data/skills/` + 源路径/读点/校验重指 + 冗余树断言扩展含 `templates-data/opencode/skills`（stage-68）**；**Claude 注入（2 生成 + 3 校验）+ 单源键集断言 `assertKeySetsEqual` + 主流程 6→8 步（stage-69）** |
 | global-paths.ts / 全局路径解析 | `core/global-paths.md` | 全局路径函数、homedir 封装或新增路径；**`getHomedir()` 导出与「homedir 单点收敛」纪律（T27/U3-008）**；**全局 `config.json` 死映射清理指引与四步保护**；**5 个 Claude 路径函数（v1.1.6-stage-71）：`getClaudeConfigDir`/`getClaudeAgentsDir`/`getClaudeSkillsDir`/`getClaudeMdPath`/`getClaudeSettingsPath`，`CLAUDE_CONFIG_DIR` 函数体内读 env（空/空白回落 `~/.claude`）** |

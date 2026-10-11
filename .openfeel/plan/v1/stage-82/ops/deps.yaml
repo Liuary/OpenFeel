@@ -1,0 +1,219 @@
+# stage-82 op 依赖声明
+# 由 openfeel-schemer 生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# revision: 2026-10-12 openfeel-schemer 初版（计划审查轮 REV-82-001~014 落实映射见 plan_rev_mapping；i18n 预期基线 908 = 829 + 79，实测为准）
+# revision: 2026-10-12 openfeel-executor 执行轮（阶段全 op 完成）：i18n 新基线**实测 = 908**（829 + 79：消息 42 + help 37）已登记；
+#   方案审查非阻塞 REV-82-016~021 逐条落实/登记见文末 `scheme_review_revs_landed`。
+
+version: "1.1"
+stage: v1.2.0-stage-82
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-12"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.0-stage-81
+    type: hard
+    status: done
+    reason: "需求引擎（types / 9 原语 / 正文文件）已归档交付；本阶段命令面**只调用引擎原语**（零第二实现）；引擎仅两处**授权小幅补丁**——新增导出 `getAllowedNextStatuses`（REV-82-003）+ `addRequirement` 非数组守卫收口（req/BUG-001 = REV-81-019 同处；`stage-82/plan.md:8`）。"
+  - upstream: v1.2.0-stage-80 / v1.2.0-stage-79 / v1.2.0-stage-78
+    type: soft
+    status: done
+    reason: "归档层与需求命令层**正交**（裁定 J）：`src/commands/req.ts` 不 import / 不读 flow-archive 相关内容；`--json` 失败路径（纯单文档 + exit 非 0）与父子命令 `--json` 陷阱范式参照 stage-79（kb #Commander 父子命令 --json 标志传递陷阱）。"
+  - downstream: v1.2.0-stage-83
+    type: hard
+    note: "① `req advance --to done` 显式路径（引擎校验、不设 --force）与 stage-83 自动回写（in_progress ↔ done 反射）**分层不冲突**（裁定 M）；② 「全部关联阶段 done」判定单点 `allLinkedStagesDone` 的**命令面零消费**（本阶段禁用串断言）；③ 10 子命令与 `--json` 载荷形态冻结为下游引用基线。"
+  - downstream: v1.2.0-stage-84 / v1.2.0-stage-85
+    type: soft
+    note: "stage-84 skill（openfeel-req）以 `openfeel req --help` 为准（本阶段 help 键冻结 37 个）；stage-85 文档覆盖 10 子命令 + `--target-version` 命名 + 退出码语义 + `--json` 四读命令边界。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；不直写 flow.json（phase 推进由 Feel 经 CLI 执行）；提交精确 git add（禁 -A，kb #方案层 ops 产出的审计链完整性）。"
+
+# 本阶段 3 op：op-001（引擎小幅补丁 + 命令组骨架 + add/list/show + 两行注册 + i18n 首段）
+#   → op-002（写命令全组：claim/release/set/link/advance + 分流矩阵 + 四码/幂等/并发矩阵）
+#   → op-003（board/next + help 键双向断言 + T5.6/T6 门禁 + 报告；**阶段收口 op**）。
+# 依赖真实性：
+#   op-002 hard 依赖 op-001 —— advance/set 的「列合法目标」消费 `getAllowedNextStatuses`（引擎新增导出）；
+#     五写命令复用 op-001 helpers（no-init 分流 / failJson / REQ ID 守卫 / 并发收敛）与 i18n 域结构 / 测试骨架。
+#   op-003 hard 依赖 op-002 —— help 双向断言须全部 10 子命令注册完毕；同文件追加串行；门禁覆盖全部产出。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "引擎小幅补丁与命令组骨架（getAllowedNextStatuses + BUG-001 收口 + add/list/show + 两行注册）"
+    produces:
+      - src/core/req/requirement-ops.ts
+      - test/core/req.test.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/commands/req.ts
+      - src/cli/index.ts
+      - test/commands/req.test.ts
+    deps: []
+    notes: "① 引擎补丁两处（同文件、追加式）：`addRequirement:98` 非数组守卫（`Array.isArray` 重建续建——S-82-1；req/BUG-001 = REV-81-019 单点收口）+ `getAllowedNextStatuses` 新增导出（只读纯函数、返回副本、`ALLOWED_TRANSITIONS` 保持模块私有——S-82-2/REV-82-003）；REV-81-018 注释登记。② 命令面：`src/commands/req.ts` 新建（registerReqCommand 骨架 + 共享 helpers + add/list/show）+ `src/cli/index.ts` **仅两行**（B11）。③ i18n：`req` 域 16 消息键 + `help` 域 13 键 + `allDomains` 追加（双表成对）。④ 测试：core 追加「T5.7 承接回归」段（BUG-001 三变体 + getAllowedNextStatuses 全表 + 副本/域外）+ 命令测试骨架与 T-A1~A10。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "写命令全组（claim/release/set/link/advance + 分流矩阵 + 四码/幂等/并发矩阵）"
+    produces:
+      - src/commands/req.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/req.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "advance/set 的「列合法目标」消费 `getAllowedNextStatuses`（引擎新增导出，零命令层硬编码）；五写命令复用 op-001 骨架/helpers/i18n 域结构/测试骨架；同文件（req.ts / test 文件）串行追加"
+    notes: "claim（四态：not_found / already_claimed / invalid_status / invalid_field〔owner 空串〕+ 同 owner 幂等 + `--owner` 缺省链三级〔.info.json user → git config user.name → 哨兵 'unknown' 拒绝〕——REV-82-009/012）+ release（未占用 no-op 恒 exit 0——REV-82-010）+ set（命令层零校验、仅错误码映射 + 无字段 argument-shape 守卫——REV-82-003）+ link（`--requirement`/`--unlink` 互斥 + 仅 `normalizeStageId` 归一 + 引擎唯一门 + already_linked 硬拒「须先解绑」提示——REV-82-001/006）+ advance（零校验 + targets 引擎派生渲染 + 不设 --force——裁定 M）。i18n：21 消息键 + 18 help 键。测试 T-B1~B11 含退出码 0/1/2（并发经 prototype.save mock 构造）。**写命令全部无 --json**（边界，S-82-6）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "看板与推荐、help 键全覆盖断言与全门禁收口（board/next + T4/T5.6/T6；阶段收口 op）"
+    produces:
+      - src/commands/req.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/req.test.ts
+      - .openfeel/tmp/stage-82-selftest-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "help 双向断言须全部 10 子命令注册完毕；同文件串行追加；门禁（T6）覆盖 op-001 + op-002 全部产出"
+    notes: "board（7 组固定顺序 = REQ_STATUSES 声明序、恒含空组、`--json` groups 恒 7 键——S-82-4）+ next（Q5 定稿：scheduled ∧ 未认领〔`--owner` 扩含该 owner 已认领〕；target_version 升序、未指定最后 → created_at ≥ id 兜底；输出单条——S-82-3）+ help 键双向逐键断言（37 键；防 hasKey 死键——REV-82-011）+ 正交/越界静态断言（7 禁止串 × 6 正控）+ T5.6 既有命令零破坏 + T6 全门禁（build ×2 / npm test / tsc / lint i18n 新基线 908 显式登记 / lint kb）+ 真实工作区零触碰 + 承接核验 + 自测报告。**本 op 为阶段收口 op**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 执行顺序（严格串行）：op-001 → op-002 → op-003
+# 注：op-003 为阶段收口 op（含全门禁与报告）；其后由 openfeel-reviewer 审查、openfeel-feel-tester 验收。
+
+# 不变量（供 executor 执行与 reviewer 审查对照）
+invariants:
+  - "命令层零业务逻辑 + 零校验（REV-82-003/006）：`src/commands/req.ts` 零状态转移枚举（唯一「列合法目标」来源 = 引擎导出 `getAllowedNextStatuses`）；流转 / 占用 / 关联唯一性 / 写命令字段校验一律引擎单点；读命令过滤值域取 `REQ_STATUSES` 派生（防 typo）。"
+  - "--json 契约（REV-82-007）：范围 = `list` / `show` / `board` / `next` 四读命令（计划 §二 冻结）；成功 = `{schemaVersion:1, ...}` 纯单文档；失败 = `{schemaVersion:1, error:'<code>', ...ctx}` 纯单文档 + exit 非 0 + 无 ANSI/提示行；人类输出与 --json 互斥；stdout 出 JSON、stderr 零输出。"
+  - "退出码：成功 0；校验/占用/存在性失败 1（`process.exitCode = 1`，禁 `process.exit(1)`）；并发 2（`handleConcurrentConflict` 单点）。"
+  - "写盘单点：全部写命令经引擎原语 + `mgr.save()`（**仅 `changed === true` 时**——幂等/冲突路径零写盘零 save）；失败零写盘。"
+  - "owner 缺省链（REV-82-012）：`.info.json user` → `git config user.name` → 拒绝（哨兵 `'unknown'` 视同不可解析），提示显式 `--owner`；禁硬编码用户名。"
+  - "link（REV-82-001/006）：`--stage` 仅 `normalizeStageId(raw) ?? raw` 归一（禁自写解析、无双键回退、不读 status.md）；存在性以引擎 `stage_not_found` 为唯一门；`already_linked` 硬拒（无覆盖/替换语义）；`--unlink` ↔ `linkRequirement(data, stageKey, null)`。"
+  - "show 禁聚合（REV-82-013）：关联阶段仅原始 id 枚举；禁 done/进度/`.phase` 读取（静态断言固化）。"
+  - "分流矩阵（REV-82-002）：`add` 非法入参 = 引擎抛错 → 命令层捕获经 `shared/errors.ts:47-49` 通用模板 exit 1；其余全部原语 = `RequirementOpResult` 错误码 → 逐码 i18n 文案 exit 1。两条路径显式分流，不得混用。"
+  - "i18n：入口基线 **829**；本阶段新增 **79** 键（消息 42 + help 37；双表成对）→ 预期新基线 **908**（以 `lint i18n` 实测为登记权威）；help arg 键 = `arg`+参数名逐字、option 键 = long 名 camelCase（REV-82-011）；37 键双向逐键断言防死键。"
+  - "正交/边界：不改 phase 枚举 / 转移表 / `pipeline.yaml` / `build.js` / `package.json`；不新增第三方依赖；不触碰归档层（`src/commands/req.ts` 静态断言）；`src/cli/index.ts` 仅两行；不直写 flow.json。"
+  - "测试隔离：全程 fixture tmpDir + 隔离 HOME（`vi.mock('node:os')`）+ `process.cwd` spy + REAL_CWD 反守卫；**严禁**触碰真实 `flow.json` / 真实 `.openfeel/requirements/`（本阶段不在真实仓执行 `req add`）。"
+
+# 方案期设计裁定（定稿；供 stage-83/84/85 与审查消费）
+scheme_decisions:
+  - id: "S-82-1"
+    title: "BUG-001 修复口径：非数组 `requirements` 视同空集**重建续建**（非 invalid_field 拒绝）"
+    decision: "`data.requirements = Array.isArray(data.requirements) ? data.requirements : [];`（op-001 步骤 1.1）。"
+    rationale: "其余 8 原语对非数组容器一律按空集处理（`Array.isArray(...) ? ... : []`）——续建与其口径统一；二者均禁 TypeError 崩溃，续建不新增第二处不对称（add 已为唯一抛错原语）。单点修复（REV-81-019 与 BUG-001 同处，勿双改）。"
+  - id: "S-82-2"
+    title: "`getAllowedNextStatuses(status): RequirementStatus[]` —— 新增导出（只读纯函数、返回副本）"
+    decision: "`return [...(ALLOWED_TRANSITIONS[status] ?? [])];`；`ALLOWED_TRANSITIONS` 保持模块私有（不导出）。"
+    rationale: "R-82-6 方案 ①：单一读点（命令层仅 advance/set 两处消费），不采直导出 ALLOWED_TRANSITIONS（第二读点漂移风险）；`?? []` 守卫域外状态（与 applyStatusChange :155-157 同域）；副本防外部直改内部表（对齐 stage-81「查询 API 返回浅副本」纪律）。"
+  - id: "S-82-3"
+    title: "Q5 定稿：`req next` 筛选 / 排序 / `--owner` 语义 / 输出单条"
+    decision: "候选 = `status==='scheduled'` ∧ 未认领（`--owner <name>` 时扩为 ∧（未认领 ∨ owner===name））；排序 ① target_version 升序（未指定恒最后）② created_at 升序 ③ id 升序（稳定兜底）；输出最优 1 条（`--json` → `requirement: {...}|null`）。"
+    rationale: "单一「owner 空」筛选会使 `--owner` 形同虚设（签名与语义矛盾）；扩读法与「该认领人视角：可接取 + 自己已认领待推进」一致；未指定 target_version 恒最后（排期明确者优先）；id 兜底保输出确定性（防 created_at 同毫秒抖动）。"
+  - id: "S-82-4"
+    title: "`board` 空组策略：恒 7 组固定顺序（含空组）"
+    decision: "human 逐 7 组打印 `{status}（{n}）`（空组亦打印）；`--json` `groups` 恒 7 键（空组 `[]`，键序 = REQ_STATUSES）。域外脏状态不渲染（容忍登记）。"
+    rationale: "固定骨架 = 看板语义 + 输出稳定可断言；顺序派生自 `REQ_STATUSES`（零硬编码）；对齐 kb #两阶段状态 draft/publish 的窄兼容设计「每状态在各自路径显式回答」。"
+  - id: "S-82-5"
+    title: "`--json` 失败对象形态：`{schemaVersion:1, error:'<code>', ...ctx}`"
+    decision: "引擎错误码**逐字**（`not_found` / `stage_not_found` / `already_claimed` / `already_linked` / `invalid_status` / `invalid_field`）+ 命令层码 `no-init` / `invalid-argument`（kebab，对齐 flow archive 既有 JSON 错误名）；context 字段按命令（id / stage / field / value / allowed）。"
+    rationale: "引擎码逐字 = 零映射层 + 与 RequirementOpResult 单一来源；命令层码与既有 flow.archive JSON 失败（`no-init` 等 kebab）同形。失败 JSON 走 stdout（对齐 REV-79-003 范式），exit 非 0。"
+  - id: "S-82-6"
+    title: "`--json` 范围 = `list`/`show`/`board`/`next` 四读命令（写命令无 --json）"
+    decision: "与 `stage-82/plan.md` §二 表格冻结一致；写命令的 `--json` 传入走 commander 未知选项报错（显式边界，非遗漏）。"
+    rationale: "计划 §二 / T5.1 范围；防方案期越界扩展命令面。后续阶段如需写命令 --json 属纯增量（不改既有键）。"
+  - id: "S-82-7"
+    title: "`--owner` 缺省链末端口径：`getUserName` 三级链 + 哨兵 `'unknown'` 拒绝"
+    decision: "`getUserName(process.cwd())`（identity.ts 单点：`.info.json user` → `git config user.name` → 哨兵 `'unknown'`）；结果为空串**或** `'unknown'` → 拒绝 + 提示显式 `--owner`。"
+    rationale: "复用身份单点（零第二实现）；`'unknown'` 为 identity.ts 文档化哨兵（两源皆不可用的唯一出口），视同不可解析——满足 REV-82-012「两者皆无则拒绝」且零硬编码；显式 `--owner`（空串值）直通引擎（零校验 → `invalid_field`）。"
+  - id: "S-82-8"
+    title: "`link --stage` 归一单点：`normalizeStageId(raw) ?? raw`，无第二解析"
+    decision: "仅归一一次；**不做**双键回退、不读 status.md、不做「已注册或有 status.md」宽口径存在性。"
+    rationale: "REV-82-006「存在性以引擎为唯一门」+ 计划「仅经 normalizeStageId 归一、禁自写解析」的字面口径；`registerStage` 恒以全名为键，双键回退无实际收益且引入命令层第二读点。"
+  - id: "S-82-9"
+    title: "`show` 关联阶段 = 仅 stage id 枚举（`data.stages` 键序）"
+    decision: "`Object.entries(data.stages).filter(([, s]) => (s.requirement_id ?? null) === id).map(([k]) => k)`；不渲染 phase / 不做 done / 进度计算。"
+    rationale: "REV-82-013：聚合摘要归 stage-83；本阶段仅原始只读枚举（`.phase` 入禁止串断言）。"
+  - id: "S-82-10"
+    title: "advance/set 失败文案的「合法目标」= `getAllowedNextStatuses(current)` 渲染"
+    decision: "`req.err.invalidStatusTmpl` {id, to, current, targets}；current 经 `getRequirement` 读 API 渲染（纯呈现）；targets = 引擎导出 join(', ')。"
+    rationale: "REV-82-003「命令层零硬编码枚举」；读 API 仅用于文案渲染（非校验）；targets 为引擎全表口径（done 门是否满足由引擎判定，文案层面不改写）。"
+  - id: "S-82-11"
+    title: "REV-81-018 裁定：登记为接受差异（不统一 add/update 校验风格）"
+    decision: "`requirement-ops.ts` 注释登记（op-001 步骤 1.3）；零行为改动。"
+    rationale: "构造期 fail-fast 抛错（add）vs 运行期错误码（update）与命令层分流矩阵（REV-82-002）同口径；统一将破坏 stage-81 冻结契约（addRequirement 抛错已为冻结面登记 REV-81-015）。"
+  - id: "S-82-12"
+    title: "REV-81-020 裁定：命令层规避（严格直传本体），零引擎防御改动"
+    decision: "`req add` 直传 `addRequirement` 返回本体至 `writeRequirementBodySkeleton`（禁浅副本）；用例断言 `body_path` 落库。"
+    rationale: "默认零防御改动（plan §三 承接表）；浅副本风险由命令层纪律 + 用例固化（body_path 落库断言）；引擎面本阶段仅两处授权补丁。"
+
+# 计划审查 REV-82-001~014 落实映射（审查轮闭环基线；供方案审查与代码审查对照）
+plan_rev_mapping:
+  - "REV-82-001 → op-002 步骤 2.5（already_linked 硬拒 exit 1 零写盘 + 「须先解绑」提示；`--unlink` ↔ linkRequirement(data,stage,null)；无覆盖/替换语义；T-B8 三态断言）"
+  - "REV-82-002 → op-001 步骤 1.6（add 无 --source；抛错经 common.errorTmpl）+ op-002 分流矩阵总述（抛错 vs 错误码显式分流；T-A2 / 2.1 不变量）"
+  - "REV-82-003 → op-001 步骤 1.2（getAllowedNextStatuses 新增导出）+ op-002 步骤 2.4/2.6（零校验 + targets 引擎派生渲染；T-B7/T-B9；blocked 两出口经引擎表自然覆盖）"
+  - "REV-82-004 → 本文件 inherited_pending_revs + op-001 步骤 1.1/1.4（BUG-001 收口含用例）+ op-003 步骤 3.6（承接核验）"
+  - "REV-82-005 → op-003 步骤 3.5（入口基线 829 复现 + 新基线 908 显式登记）"
+  - "REV-82-006 → op-002 步骤 2.5（link 引擎唯一门；无 status.md 宽口径）+ S-82-8"
+  - "REV-82-007 → op-001 步骤 1.6 / op-002 / op-003 各 --json 失败路径用例（T-A6/A8/A9、T-C1/C2；纯 JSON + exit 非 0 + stderr 零输出）"
+  - "REV-82-008 → 全 op（全组统一 --target-version；零子命令 --version）"
+  - "REV-82-009 → op-002 步骤 2.2（claim 四码含 invalid_field〔owner 空串〕；T-B2）"
+  - "REV-82-010 → op-002 步骤 2.3（release 未占用 no-op 恒 exit 0；T-B5）"
+  - "REV-82-011 → op-001/002/003 i18n 键清单（arg 键 = arg+参数名逐字、option 键 = camelCase；T-C3 双向断言）"
+  - "REV-82-012 → op-002 步骤 2.2（--owner 缺省链三级 + 拒绝；S-82-7；T-B4 四路径）"
+  - "REV-82-013 → op-001 步骤 1.6（show 禁算 done/进度）+ op-003 步骤 3.4（静止串断言含 `.phase` / `allLinkedStagesDone`）"
+  - "REV-82-014 → 各 op「背景锚点」节（符号名 @ 行号双锚 + 钉 HEAD c5f1d53）"
+
+# 承接上游 pending REV 与 Bug（REV-82-004；来源 users/Liuary/code_review/REV-81.md + bugs/req/BUG-001；逐条处置表见 stage-82/plan.md §三 承接表）
+inherited_pending_revs:
+  - "req/BUG-001（low，open）→ **本阶段补丁收口**：op-001 步骤 1.1（守卫修复）+ 1.4（core 用例）+ T-A4（命令层「损坏数据不崩」回归）；验收后由测试官回归关闭。"
+  - "REV-81-019（low）→ 与 BUG-001 **同一处合并收口**（单点修复，勿双改——op-001 步骤 1.1）。"
+  - "REV-81-016（low）→ 已闭环，**本阶段零代码动作（登记核验）**：源码守卫 `requirement-ops.ts:155-157` + 用例 `test/core/req.test.ts:388-394` 在位；op-003 步骤 3.6 核验。"
+  - "REV-81-017（low）→ **移交 stage-85 收口轮**：`test/core/req.test.ts:638` 断言改写；本阶段仅**追加** T5.7 用例段，不动既有断言段。"
+  - "REV-81-018（low）→ **本阶段方案期裁定：登记为接受差异**（op-001 步骤 1.3 注释；S-82-11）。"
+  - "REV-81-020（low）→ **本阶段命令层规避**（op-001 步骤 1.6 直传本体 + T-A1 body_path 落库断言；S-82-12）；零引擎防御改动。"
+  - "REV-80 移交项（020 / 023 / 029）→ 本阶段零动作（防二次灭失登记）；去向经 stage-81 承接表转移登记，本阶段仅确认未灭失、不认领（op-003 步骤 3.6）。"
+
+# 下游契约（交付 stage-83/84/85；接口形态 = 命令面 + 函数签名级）
+downstream_contracts:
+  - name: "`openfeel req` 命令面（10 子命令；本阶段交付）"
+    change: "add / list / show / claim / release / set / link / advance / board / next；全组统一 `--target-version`（零 `--version`）；`--json` 范围 = 四读命令（list/show/board/next）；退出码 0/1/2（并发）；`link` 命令形态 `req link --stage <stageId> (--requirement <REQ-NNN> | --unlink)`；`advance` = `req advance <REQ-NNN> --to <status>`（不设 --force）。"
+  - name: "`--json` 载荷形态（本阶段交付）"
+    change: "list → `{schemaVersion:1, requirements: RequirementData[]}`；show → `{schemaVersion:1, requirement, stages: string[]}`（仅 id 枚举）；board → `{schemaVersion:1, groups: Record<RequirementStatus, RequirementData[]>}`（恒 7 键）；next → `{schemaVersion:1, requirement: RequirementData | null}`；失败统一 `{schemaVersion:1, error:'<code>', ...ctx}` + exit 非 0。"
+  - name: "`src/core/req/requirement-ops.ts :: getAllowedNextStatuses`（本阶段新增导出）"
+    change: "`getAllowedNextStatuses(status: RequirementStatus): RequirementStatus[]`——只读纯函数；域外状态 → `[]`；返回副本；`ALLOWED_TRANSITIONS` 保持模块私有。命令面唯一消费点（advance/set 文案渲染）；stage-83 如复用须经此单点。"
+  - name: "i18n 键前缀（本阶段交付）"
+    change: "`req.*`（42 键）+ `help.req.*`（37 键）；新基线 **908**（829 + 79；lint i18n 实测为准）；键清单冻结于各 op「i18n 键清单」节。"
+
+# 交付边界（本阶段不做，防越界）
+out_of_scope:
+  - "聚合判定与回写（computeRequirementAggregate / advanceStagePhase done 分支 / resetStagePhase 对称回写）——归 stage-83；命令层禁算 done/进度（REV-82-013）"
+  - "Agent 模板 / 新 skill openfeel-req / openfeel-cli-usage 补节——归 stage-84"
+  - "README / docs / manual / CHANGELOG / 版本收口——归 stage-85"
+  - "写命令 --json（S-82-6 边界冻结；后续增补属纯增量）"
+  - "需求删除命令 / TTL / 心跳 / 抢占 / DAG 调度 / M:N——不做（裁定 N）"
+  - "`plan stage add --requirement`（B19 可选增量——默认不做，`req link` 已覆盖）"
+  - "真实 `.openfeel/requirements/` 目录与真实 flow.json `requirements` 键——本阶段不在真实仓执行 `req add`（首次真实使用留待实际需求接入）"
+  - "npm publish / git push / CI / 第三方依赖 / build.js / package.json / pipeline.yaml / phase 枚举——零触碰"
+
+# 方案审查（scheme_review）非阻塞 REV 落实登记（stage-82 执行轮；2026-10-12）
+scheme_review_revs_landed:
+  - "REV-82-016（medium）→ **op-001 步骤 1.6 `list --status` 值域守卫**：按字面 `includes(undefined) === false` 会把「未过滤」误判为非法，**无过滤的 `req list` 恒 exit 1**。落实为 `options.status !== undefined && !(REQ_STATUSES as readonly string[]).includes(options.status)` 才进非法分支（未过滤主路径用例 T-A5 覆盖）。"
+  - "REV-82-017（low）→ **登记为可接受裁量**：`--json` 失败对象的 `error` 码风格混用（引擎码 snake_case 逐字 `not_found` / `already_claimed` / …；命令层码 kebab `no-init` / `invalid-argument`）为 S-82-5 既定形态——引擎码逐字 = 零映射层；命令层码对齐既有 flow archive JSON 失败范式。下游（stage-83/85）引用时以本形态为准。"
+  - "REV-82-018（low）→ **op-002 步骤 2.5 help 文案注明**：`help.req.link.stage` zh/en 均追加「短名按 v1.0.0 系列解析」/「short name resolves in the v1.0.0 series」（`normalizeStageId` 短名归一恒 v1.0.0 系；多版本文档化用例留待 stage-85）。"
+  - "REV-82-019（low）→ **本文件补记**：跨阶段措辞消解——`openfeel req` 10 子命令、i18n 键与 help 面的**能力**在本阶段交付；真实 `.openfeel/requirements/` 目录与 flow.json `requirements` 键的**创建**随**首次实际使用**（`req add`）发生，不属本阶段产出面（本阶段不在真实仓执行 `req add`；测试全程 fixture tmpDir 隔离）。"
+  - "REV-82-020（low）→ **op-001「KB 锚点」节改全称**：patterns / troubleshooting 锚点引用补齐标题全称（如 `#CLI 退出码语义：发现问题即非 0 退出 + 不设逃生阀 + 用 process.exitCode`）。"
+  - "REV-82-021（low）→ **登记为接受差异**：`req.invalidIdTmpl` 保留在 `req` 域根层（未归入 `req.err.*`）——该键由 op-001「i18n 键清单」冻结（键清单为审查对照基线），移动将破坏冻结清单与 T-C3 逐键断言；语义上其为「共享校验文案」而非错误码映射，故以登记方式消解。"

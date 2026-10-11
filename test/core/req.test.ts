@@ -15,6 +15,7 @@ import {
   addRequirement, claimRequirement, releaseRequirement, updateRequirement,
   advanceRequirement, linkRequirement,
   isTerminalRequirementStatus, allLinkedStagesDone,
+  getAllowedNextStatuses,
 } from '../../src/core/req/requirement-ops.js';
 import {
   getRequirementsDir, getRequirementBodyRelPath, getRequirementBodyPath, writeRequirementBodySkeleton,
@@ -638,5 +639,50 @@ describe('正交边界（stage-81 op-003 / T5.6）', () => {
         expect(src.includes(n)).toBe(false);   // 字面零命中（等价 rg 单串口径）
       }
     }
+  });
+});
+
+// ═══════════════════════════════════════
+// T5.7 承接回归（stage-82）
+// ═══════════════════════════════════════
+// 承接：req/BUG-001（= REV-81-019 同处单点收口）写路径非数组守卫；
+//       新增导出 getAllowedNextStatuses（REV-82-003）。既有断言段零改动（REV-81-017 移交 stage-85）。
+describe('需求原语 — T5.7 承接回归（stage-82）', () => {
+  it('BUG-001：requirements 非数组真值（{} / "x" / 123）→ addRequirement 不抛错、容器化为数组续建', () => {
+    const variants: unknown[] = [{}, 'x', 123];
+    for (const bad of variants) {
+      const data = makeFlowData();
+      // 直构损坏数据（绕过类型：非数组真值）
+      (data as unknown as { requirements: unknown }).requirements = bad;
+      let created: RequirementData | null = null;
+      expect(() => { created = addRequirement(data, { title: '承接回归' }); }).not.toThrow();
+      expect(created).not.toBeNull();
+      expect(created!.id).toBe('REQ-001');
+      expect(Array.isArray(data.requirements)).toBe(true);
+      expect(data.requirements).toHaveLength(1);
+      expect(data.requirements[0].id).toBe('REQ-001');
+      // 审计在位（写路径正常完成）
+      expect(lastLog(data).action).toBe('requirement_add');
+    }
+  });
+
+  it('getAllowedNextStatuses：7 状态全表（含 blocked 两出口补全）', () => {
+    expect(getAllowedNextStatuses('draft')).toEqual(['scheduled', 'blocked', 'cancelled', 'rejected']);
+    expect(getAllowedNextStatuses('scheduled')).toEqual(['in_progress', 'blocked', 'cancelled', 'rejected']);
+    expect(getAllowedNextStatuses('in_progress')).toEqual(['done', 'blocked', 'cancelled', 'rejected']);
+    expect(getAllowedNextStatuses('blocked')).toEqual(['scheduled', 'in_progress', 'cancelled', 'rejected']);
+    expect(getAllowedNextStatuses('done')).toEqual([]);
+    expect(getAllowedNextStatuses('cancelled')).toEqual([]);
+    expect(getAllowedNextStatuses('rejected')).toEqual([]);
+  });
+
+  it('getAllowedNextStatuses：域外状态 → []（不崩）', () => {
+    expect(getAllowedNextStatuses('foo' as RequirementStatus)).toEqual([]);
+  });
+
+  it('getAllowedNextStatuses：返回副本（外部 push 不污染内部表）', () => {
+    const first = getAllowedNextStatuses('draft');
+    first.push('done' as RequirementStatus);
+    expect(getAllowedNextStatuses('draft')).toEqual(['scheduled', 'blocked', 'cancelled', 'rejected']);
   });
 });

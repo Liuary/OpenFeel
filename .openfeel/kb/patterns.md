@@ -3849,3 +3849,47 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **通用判据**：引擎面（纯函数 + 调用方落盘）与命令面（exit 码 / 提示 / save）**分层**；「同语义两条路径」必须收敛为单点实现（本处 = `ALLOWED_TRANSITIONS` 单表 + `advance` 委托 `update`）。**`null`/缺失空集**（零关联）在「全称判定」中须显式守卫，否则 `every` 空集恒真。
 
 **参见：** v1.2.0-stage-81（plan §二 不变量 / 裁定 3·4·8·9；op-002 裁定 3/4/5/8；REV-81-011/013）；`src/core/req/requirement-ops.ts`（`ALLOWED_TRANSITIONS` / `allLinkedStagesDone` / `isTerminalRequirementStatus`）；kb/patterns.md #flow.json 乐观并发校验模式、#幂等写入模式、#审计日志 action 命名与双轨语义模式；manual/core/req.md
+
+## [+] CLI `--json` 成功/失败同契约：stdout 纯单文档 + 失败含 error 码 + stderr 零输出 + 退出码 0/1/2 (2026-10-12)
+
+**契约**：读命令（`list`/`show`/`board`/`next`）的 `--json` **无论成功或失败均走 stdout 纯 JSON 单文档**（`JSON.parse` 可解析、无 ANSI / 提示行、与人类输出互斥），**stderr 零输出**：
+- 成功：`{ schemaVersion: 1, ...领域对象 }`（各命令自身领域对象，不强行同构）。
+- 失败：`{ schemaVersion: 1, error, ...ctx }` —— **exit 非 0**（本组用 `process.exitCode = 1`，**禁 `process.exit(1)`**）。
+- **错误码风格**：引擎错误码 snake_case（`not_found`/`invalid_status`/...）**逐字透传**；命令层码 kebab（`no-init`/`invalid-argument`）——混用**已登记为可接受裁量**（REV-82-017）。
+- 退出码对齐「并发 2 / 通用 1 / 成功 0」；`failJson()` 辅助封装失败出口（`console.log(JSON.stringify({schemaVersion:1,...payload}))` + `process.exitCode = 1`）。
+
+**判据**：`--json` 是**机器消费面**——失败也必须可解析（消费者不能靠 stderr 文本判断），故失败载荷与成功载荷**同通道同结构骨架**。**写命令本阶段无 `--json`**（边界冻结）。
+
+**实证**：v1.2.0-stage-82（自测报告 §三 四读命令成功/失败契约表）；`src/commands/req.ts :: failJson`；对照 kb/patterns.md #CLI --json 结构化输出约定、#CLI 退出码语义。
+
+**参见：** v1.2.0-stage-82；`src/commands/req.ts`；kb/patterns.md #Commander 父子命令 `--json` 标志传递陷阱；manual/cli/commands.md
+
+## [+] help 键命名双规 + 防死键双向逐键断言：arg 取参数名逐字 / option 取 camelCase (2026-10-12)
+
+**命名双规**（`applyHelpI18n` 生成键，`hasKey` 未命中**静默**不报错 → 写错即**死键**）：
+- **位置参数**：键 = `help.<路径>.arg<参数名逐字>`（如 `.argument('<id>')` → `help.req.show.argid`）——**非 camelCase**（`<title>` → `argtitle`）。
+- **选项**：键 = `help.<路径>.<长名 camelCase>`（`--target-version` → `targetVersion`、`--unlink` → `unlink`）。
+- 未写 `.description()`/`.argument()`/`.option()` 的非空占位则不参与替换（占位仅作 fallback）。
+
+**防死键双向断言**（`test` 表驱动，REV-82-011）：
+- **正向**：冻结期望键清单（本阶段 37 help 键）逐键 `hasKey(k,'zh-CN') && hasKey(k,'en') === true`。
+- **反向**：遍历命令树（description 键 + `registeredArguments` → `arg`+name + `options` → camelCase，跳过 negate）生成实际键并断言 **⊆ 期望清单**（**双向锁**：写错键 / 漏登记均红）。
+- 生效实证：`applyHelpI18n(program)` 后 `description() === t(键)` 且 ≠ 原占位。
+
+**判据**：`hasKey` 静默 + `lint i18n` 只查 zh/en 对称性不查引用 ⇒ 键名错误无任何自动失败信号；唯一防线是**对称生成 + 双向断言**。
+
+**实证**：v1.2.0-stage-82（REV-82-011；37 help 键双向断言 T-C3）；对照 kb/patterns.md #CLI 国际化封装模式、#i18n 键对称性校验模式。
+
+**参见：** v1.2.0-stage-82（op-001/002/003）；`src/cli/index.ts :: applyHelpI18n`；kb/troubleshooting.md #新增 i18n 键已定义却未接入（死键）；manual/cli/commands.md
+
+## [+] 身份缺省链解析：三级链 + 末端哨兵拒绝 + 禁硬编码用户名 (2026-10-12)
+
+**链**（`getUserName(cwd)`，`src/core/workspace/identity.ts`）：`.openfeel/.info.json` 的 `user` → `git config user.name` → 末端哨兵 `'unknown'`（前两者皆无时）。
+
+**命令层用法**（`--owner` 缺省，REV-82-012）：`options.owner === undefined` 才走链——`resolved === '' || resolved === 'unknown'`（**末端哨兵**）→ 报错提示**显式 `--owner <name>`** 且 exit 1；否则用解析值。**显式 `--owner ""` 不走链**（直通引擎 → `invalid_field`，零校验）。**禁硬编码用户名**（如 `Liuary`）——跨用户语义错误。
+
+**判据**：凡「缺省取当前用户」参数，① 缺省判定用 `=== undefined`（区分「未传」与「显式空串」）；② 链的**末端失败哨兵**须显式拒绝并提示替代路径，不得静默落一个无意义值；③ 身份解析**单点**（复用既有 `getUserName`，不在命令层自写 git 调用）。
+
+**实证**：v1.2.0-stage-82（REV-82-012；T-B4 四路径：info.json 命中 / git 命中 / 哨兵拒绝 / 显式直通）。
+
+**参见：** v1.2.0-stage-82（op-002）；`src/commands/req.ts`；`src/core/workspace/identity.ts :: getUserName`；kb/patterns.md #语言配置三级回退链；manual/cli/commands.md

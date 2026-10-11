@@ -845,6 +845,47 @@ export const help: I18nDomain = {
   'model.get.scope':     { key: 'help.model.get.scope',     zh: '', en: 'Scope (omit to show effective value)' },
   'model.list':          { key: 'help.model.list',          zh: '', en: 'List models of all agents' },
   'model.list.scope':    { key: 'help.model.list.scope',    zh: '', en: 'Scope (omit to show effective value)' },
+
+  // req (requirement flow command group)
+  'req':                 { key: 'help.req',                 zh: '', en: 'Requirement management (add/list/show/claim/release/set/link/advance/board/next)' },
+  'req.add':             { key: 'help.req.add',             zh: '', en: 'Create a requirement (auto ID; body skeleton under .openfeel/requirements/)' },
+  'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '', en: 'Requirement title' },
+  'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '', en: 'Target version (e.g. v1.3.0)' },
+  'req.add.priority':    { key: 'help.req.add.priority',    zh: '', en: 'Priority (P0/P1/P2)' },
+  'req.list':            { key: 'help.req.list',            zh: '', en: 'List requirements (filter by status/version/owner)' },
+  'req.list.status':     { key: 'help.req.list.status',     zh: '', en: 'Filter by status (draft/scheduled/in_progress/done/blocked/cancelled/rejected)' },
+  'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '', en: 'Filter by target version' },
+  'req.list.owner':      { key: 'help.req.list.owner',      zh: '', en: 'Filter by owner' },
+  'req.list.json':       { key: 'help.req.list.json',       zh: '', en: 'Output JSON { schemaVersion, requirements }' },
+  'req.show':            { key: 'help.req.show',            zh: '', en: 'Show requirement detail (linked stages as raw read-only list)' },
+  'req.show.argid':      { key: 'help.req.show.argid',      zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.show.json':       { key: 'help.req.show.json',       zh: '', en: 'Output JSON { schemaVersion, requirement, stages }' },
+
+  // req (write commands)
+  'req.claim':           { key: 'help.req.claim',           zh: '', en: 'Claim a requirement (occupancy checked; rejected if claimed by another)' },
+  'req.claim.argid':     { key: 'help.req.claim.argid',     zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.claim.owner':     { key: 'help.req.claim.owner',     zh: '', en: 'Owner (default: .openfeel/.info.json user -> git config user.name)' },
+  'req.release':         { key: 'help.req.release',         zh: '', en: 'Release claim (no-op success if unclaimed)' },
+  'req.release.argid':   { key: 'help.req.release.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.set':             { key: 'help.req.set',             zh: '', en: 'Update requirement fields (whitelist; transition legality checked by engine)' },
+  'req.set.argid':       { key: 'help.req.set.argid',       zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.set.status':      { key: 'help.req.set.status',      zh: '', en: 'Target status (legality and done gate checked by engine)' },
+  'req.set.title':       { key: 'help.req.set.title',       zh: '', en: 'New title' },
+  'req.set.targetVersion': { key: 'help.req.set.targetVersion', zh: '', en: 'New target version' },
+  'req.set.priority':    { key: 'help.req.set.priority',    zh: '', en: 'New priority (P0/P1/P2)' },
+  'req.link':            { key: 'help.req.link',            zh: '', en: 'Link a requirement to a stage / unlink (exactly one of --requirement or --unlink)' },
+  'req.link.stage':      { key: 'help.req.link.stage',      zh: '', en: 'Stage ID (stage-NN or vX.Y.Z-stage-NN; short name resolves in the v1.0.0 series)' },
+  'req.link.requirement': { key: 'help.req.link.requirement', zh: '', en: 'Requirement ID (to link; exclusive with --unlink)' },
+  'req.link.unlink':     { key: 'help.req.link.unlink',     zh: '', en: 'Unlink the requirement from the stage' },
+  'req.advance':         { key: 'help.req.advance',         zh: '', en: 'Advance requirement status (legality by engine transition table; done requires all linked stages done)' },
+  'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.advance.to':      { key: 'help.req.advance.to',      zh: '', en: 'Target status (legality checked by engine)' },
+  'req.board':           { key: 'help.req.board',           zh: '', en: 'Requirement board (grouped by status; 7 fixed groups)' },
+  'req.board.targetVersion': { key: 'help.req.board.targetVersion', zh: '', en: 'Filter by target version' },
+  'req.board.json':      { key: 'help.req.board.json',      zh: '', en: 'Output JSON { schemaVersion, groups }' },
+  'req.next':            { key: 'help.req.next',            zh: '', en: 'Recommend the next claimable requirement (scheduled & unclaimed; by target version ascending)' },
+  'req.next.owner':      { key: 'help.req.next.owner',      zh: '', en: 'Owner perspective (include their claimed scheduled requirements)' },
+  'req.next.json':       { key: 'help.req.next.json',       zh: '', en: 'Output JSON { schemaVersion, requirement }' },
 };
 
 /* ==================== config ==================== */
@@ -975,6 +1016,65 @@ export const repl: I18nDomain = {
   'errorPrefix': { key: 'repl.errorPrefix', zh: '', en: 'Error: ' },
 };
 
+/* ==================== req domain: requirement flow command group (stage-82) ==================== */
+export const req: I18nDomain = {
+  // req add
+  'add.doneTmpl':        { key: 'req.add.doneTmpl',           zh: '', en: 'Created {id}: {title} (status: draft)' },
+  'add.bodyTmpl':        { key: 'req.add.bodyTmpl',           zh: '', en: 'Body skeleton: {path}' },
+  // shared validation messages
+  'invalidIdTmpl':       { key: 'req.invalidIdTmpl',          zh: '', en: '{input} -> invalid requirement ID (expected REQ-NNN, e.g. REQ-001)' },
+  // req list
+  'list.empty':          { key: 'req.list.empty',             zh: '', en: '(no matching requirements)' },
+  'list.itemTmpl':       { key: 'req.list.itemTmpl',          zh: '', en: '  - {id} [{status}] {title}' },
+  'list.invalidStatusTmpl': { key: 'req.list.invalidStatusTmpl', zh: '', en: '{value} -> invalid status filter (allowed: {allowed})' },
+  // req show
+  'show.titleTmpl':      { key: 'req.show.titleTmpl',         zh: '', en: '{id}: {title}' },
+  'show.metaTmpl':       { key: 'req.show.metaTmpl',          zh: '', en: 'Status: {status} | Target version: {targetVersion} | Priority: {priority}' },
+  'show.ownerTmpl':      { key: 'req.show.ownerTmpl',         zh: '', en: 'Owner: {owner} (claimed at {claimedAt})' },
+  'show.ownerNone':      { key: 'req.show.ownerNone',         zh: '', en: 'Owner: (none)' },
+  'show.timesTmpl':      { key: 'req.show.timesTmpl',         zh: '', en: 'Created: {created} | Updated: {updated}' },
+  'show.bodyTmpl':       { key: 'req.show.bodyTmpl',          zh: '', en: 'Body: {path}' },
+  'show.stagesLabel':    { key: 'req.show.stagesLabel',       zh: '', en: 'Linked stages:' },
+  'show.stageItemTmpl':  { key: 'req.show.stageItemTmpl',     zh: '', en: '  - {stage}' },
+  'show.stagesNone':     { key: 'req.show.stagesNone',        zh: '', en: 'Linked stages: (none)' },
+  // common errors
+  'err.notFoundTmpl':    { key: 'req.err.notFoundTmpl',       zh: '', en: 'Requirement {id} not found' },
+  // req claim
+  'claim.doneTmpl':      { key: 'req.claim.doneTmpl',         zh: '', en: 'Claimed {id} ({owner})' },
+  'claim.idempotentTmpl': { key: 'req.claim.idempotentTmpl',  zh: '', en: '{id} already claimed by {owner} (no-op)' },
+  'claim.ownerUnresolvedTmpl': { key: 'req.claim.ownerUnresolvedTmpl', zh: '', en: 'Cannot resolve current user name (.openfeel/.info.json and git config user.name unavailable); pass --owner <name> explicitly' },
+  'claim.terminalTmpl':  { key: 'req.claim.terminalTmpl',     zh: '', en: '{id} is in a terminal status ({status}); cannot claim' },
+  // req release
+  'release.doneTmpl':    { key: 'req.release.doneTmpl',       zh: '', en: 'Released {id}' },
+  'release.noopTmpl':    { key: 'req.release.noopTmpl',       zh: '', en: '{id} is not claimed (no-op)' },
+  // req set
+  'set.doneTmpl':        { key: 'req.set.doneTmpl',           zh: '', en: 'Updated {id}' },
+  'set.noopTmpl':        { key: 'req.set.noopTmpl',           zh: '', en: '{id} unchanged (no-op)' },
+  'set.noFieldsTmpl':    { key: 'req.set.noFieldsTmpl',       zh: '', en: 'No fields provided; pass at least one of --status / --title / --target-version / --priority' },
+  // req link
+  'link.doneTmpl':       { key: 'req.link.doneTmpl',          zh: '', en: 'Linked {stage} to {id}' },
+  'link.unlinkDoneTmpl': { key: 'req.link.unlinkDoneTmpl',    zh: '', en: 'Unlinked requirement from {stage}' },
+  'link.noopTmpl':       { key: 'req.link.noopTmpl',          zh: '', en: '{stage} link unchanged (no-op)' },
+  'link.exclusiveTmpl':  { key: 'req.link.exclusiveTmpl',     zh: '', en: 'Provide exactly one of --requirement or --unlink' },
+  'link.terminalTmpl':   { key: 'req.link.terminalTmpl',      zh: '', en: '{id} is in a terminal status ({status}); cannot link' },
+  // req advance
+  'advance.doneTmpl':    { key: 'req.advance.doneTmpl',       zh: '', en: 'Advanced {id}: {from} -> {to}' },
+  'advance.noopTmpl':    { key: 'req.advance.noopTmpl',       zh: '', en: '{id} is already {to} (no-op)' },
+  // error-code mapping
+  'err.stageNotFoundTmpl': { key: 'req.err.stageNotFoundTmpl', zh: '', en: 'Stage {stage} not found (not registered in flow.json stages)' },
+  'err.alreadyClaimedTmpl': { key: 'req.err.alreadyClaimedTmpl', zh: '', en: '{id} is claimed by someone else; release first: openfeel req release {id}' },
+  'err.alreadyLinkedTmpl': { key: 'req.err.alreadyLinkedTmpl', zh: '', en: '{stage} is already linked to another requirement; unlink first: openfeel req link --stage {stage} --unlink' },
+  'err.invalidFieldTmpl': { key: 'req.err.invalidFieldTmpl',  zh: '', en: '{id} invalid field value (check --status / --title / --target-version / --priority)' },
+  'err.invalidStatusTmpl': { key: 'req.err.invalidStatusTmpl', zh: '', en: '{id} target status {to} rejected (current {current}; allowed: {targets})' },
+  // req board
+  'board.groupTmpl':     { key: 'req.board.groupTmpl',        zh: '', en: '{status} ({n})' },
+  'board.itemTmpl':      { key: 'req.board.itemTmpl',         zh: '', en: '  - {id} {title}' },
+  // req next
+  'next.foundTmpl':      { key: 'req.next.foundTmpl',         zh: '', en: 'Next: {id} [{status}] {title}' },
+  'next.ownedSuffixTmpl': { key: 'req.next.ownedSuffixTmpl',  zh: '', en: ' (claimed by {owner})' },
+  'next.empty':          { key: 'req.next.empty',             zh: '', en: '(no claimable requirement)' },
+};
+
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
@@ -997,4 +1097,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'setup',        domain: setup },
   { name: 'metrics',      domain: metrics },
   { name: 'repl',         domain: repl },
+  { name: 'req',          domain: req },
 ];

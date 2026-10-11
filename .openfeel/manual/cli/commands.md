@@ -27,6 +27,7 @@ src/commands/lint.ts        registerLintCommand
 src/commands/migrate.ts     registerMigrateCommand
 src/commands/model.ts       registerModelCommand
 src/commands/setup.ts       registerSetupCommand
+src/commands/req.ts         registerReqCommand
 ```
 
 新增命令组：在 `src/commands/` 创建 `registerXxxCommand(program)` 模块，并在 `src/cli/index.ts` 末尾追加 import + register 调用。
@@ -133,6 +134,25 @@ src/commands/setup.ts       registerSetupCommand
 - **`flow current` 无 op（B8）**：回退显示 `current.stage` + 「(无 op)」。
 
 > ✅ **已关闭缺陷（v1.1.2-stage-54）**：`cli/BUG-005`（medium）空模板检测**已由纯子串改为整行锚定**（`EMPTY_TEMPLATE_LINE_RE`，`isTemplateEmpty`/`detectFillState`/`publishScheme` 单一来源）——op 正文行内引用占位标记不再误判（`publish` 不再误拒 / `ops list` 不误报 `(empty)` / `health` 不误报），仓库空模板告警归零。`cli/BUG-006`（low）en 模式 blocking REV 拒绝文案**已迁 i18n**（`flow.advance.blockingRevRefused`/`blockingRevHint`，en CJK=0、zh 逐字不变）。`cli/BUG-003`（low）`flow phases --help` 已补 `transitionsDiff`（JSON 契约未变）。
+
+### 需求命令组 `req`（v1.2.0-stage-82）
+
+> 需求流转系统（主题一）的命令面（`openfeel req`，**10 子命令**）；命令层**零业务逻辑**（字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联唯一性 / done 门**单点在引擎** `src/core/req/`）。**写命令无 `--json`**（本阶段边界，后续增补属纯增量）。
+
+- `node bin/openfeel.js req add <title> [--target-version <v>] [--priority <P0|P1|P2>]` — 创建需求（ID 自动分配 `REQ-NNN`；正文骨架铺到 `.openfeel/requirements/`；引擎抛错分流 → `common.errorTmpl` exit 1）。
+- `node bin/openfeel.js req list [--status <s>] [--target-version <v>] [--owner <o>] [--json]` — 列出需求（多条件 AND；`--status` 值域取 `REQ_STATUSES`，非法 → exit 1）。
+- `node bin/openfeel.js req show <id> [--json]` — 需求详情（关联阶段为**原始只读枚举**，零 done/进度聚合）。
+- `node bin/openfeel.js req claim <id> [--owner <name>]` — 认领（四码分流 `not_found`/`already_claimed`/`invalid_field`/`invalid_status`；`--owner` 缺省走三级链 `.info.json user` → `git config user.name` → 哨兵 `unknown` 拒绝，**禁硬编码**；同 owner 幂等）。
+- `node bin/openfeel.js req release <id>` — 释放认领（未占用 **no-op 恒 exit 0**）。
+- `node bin/openfeel.js req set <id> [--status <s>] [--title <t>] [--target-version <v>] [--priority <p>]` — 更新字段（白名单；值域/流转合法性由引擎判定；合法目标经 `getAllowedNextStatuses` 派生，**禁命令层枚举**）。
+- `node bin/openfeel.js req link --stage <stageId> (--requirement <id> | --unlink)` — 关联/解绑（`--requirement` 与 `--unlink` **二选一**；`already_linked` **硬拒** exit 1 零写盘，须先解绑；仅一次 `normalizeStageId` 归一）。
+- `node bin/openfeel.js req advance <id> --to <status>` — 显式推进状态（合法目标由引擎流转表判定；done 须全部关联阶段 done；**不设 `--force`**；同值 no-op exit 0）。
+- `node bin/openfeel.js req board [--target-version <v>] [--json]` — 需求看板（按状态分组，**7 组固定顺序** = `REQ_STATUSES`，恒含空组）。
+- `node bin/openfeel.js req next [--owner <name>] [--json]` — 推荐下一个可接取需求（scheduled ∧ 未认领；排序：`target_version` 升序 → `created_at` → `id`）。
+- **`--json` 契约**（四读命令 `list`/`show`/`board`/`next`）：成功/失败**均走 stdout 纯 JSON 单文档** + **stderr 零输出**；成功 `{schemaVersion:1,...领域对象}`、失败 `{schemaVersion:1,error,...ctx}` + exit 1。
+- **退出码 0/1/2**：成功 0 / 各错误 1（`process.exitCode = 1`，**禁 `process.exit(1)`**）/ 并发写冲突 2（`handleConcurrentConflict` 单点）；失败路径 flow.json 逐字节零写盘。
+- **help 键双规**（`applyHelpI18n`）：位置参数键 = `arg`+参数名逐字（非 camelCase）、选项键 = 长名 camelCase —— **37 键双向逐键断言**防死键（REV-82-011）。
+- **正交**：`src/commands/req.ts` 不引用 `ALLOWED_TRANSITIONS` / 工作流模式 / 归档层 / `.phase` / `allLinkedStagesDone`（直读源文全内容 7 禁止串零命中）。
 
 ### 故障恢复路径（v1.1.4-stage-65）
 

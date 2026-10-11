@@ -848,3 +848,19 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **设计理由**：需求层与归档层是 v1.2.0 **两个正交主题**（归档 = 历史只读搬运；需求 = 推进中部的独立身份层）；若需求层耦合归档层/模式字段，则「需求随版本归档」的语义、模式感知横切会污染引擎面。以 6 禁止串断言把边界从「约定」升为「可证伪门禁」。
 
 **参见：** v1.2.0-stage-81（plan §二 不变量 3 / 裁定 J / §七.5；op-003 T5.6；REV-81-006/009）；`src/core/req/{types,requirement-ops,body-file}.ts`；`test/core/req.test.ts`（正交 describe）；manual/core/req.md
+
+## [+] 需求命令面架构：引擎单点 + 命令层零业务逻辑（校验/流转/占用/关联唯一性） (2026-10-12)
+
+**分层**：`openfeel req` 10 子命令（`add`/`list`/`show`/`claim`/`release`/`set`/`link`/`advance`/`board`/`next`）= **薄命令层**（`src/commands/req.ts`）；全部业务判定（字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联唯一性 / done 门）**单点**在引擎层 `src/core/req/requirement-ops.ts`。命令层仅：解析参数 → 调引擎原语 → **错误码→文案映射** → `save()`（成功路径）→ `process.exitCode`。
+
+**关键约束**：
+- **`set`/`advance` 命令层零校验**：不重做流转校验（否则产生第二份流转表 → 双信源漂移）；「列合法目标」经引擎**新增导出** `getAllowedNextStatuses(status)`（只读纯函数、返回副本；`ALLOWED_TRANSITIONS` 保持**模块私有**）派生，**禁命令层硬编码枚举**（REV-82-003 blocking）。
+- **写命令分流矩阵**：引擎**唯一抛错原语** `addRequirement`（构造期入参契约违反）→ `catch` → `common.errorTmpl` exit 1；其余原语恒**返回错误码**（`not_found`/`already_claimed`/`already_linked`/`invalid_status`/`invalid_field`/`stage_not_found`）→ 命令层逐码映射文案 exit 1 零写盘。
+- **`link` 归一单点**：仅一次 `normalizeStageId`（禁自写解析、不做双键回退、不读 status.md）；阶段存在性以引擎 `stage_not_found` 为**唯一门**。
+- **正交**：命令层不 import / 不引用 `ALLOWED_TRANSITIONS`/工作流模式/归档层/`.phase`/`allLinkedStagesDone`（避免第二实现）——以测试直读源文全内容 **7 禁止串零命中**固化。
+
+**分工理由**：引擎面（纯函数 + 调用方落盘）与命令面（exit 码 / 提示 / save）分层，使「同语义」只有一处实现；需求状态机与聚合回写（stage-83）复用同一流转表 / 同一 done 门谓词，禁第二套。
+
+**实证**：v1.2.0-stage-82（plan_review REV-82-001/002/003 blocking；code_review pass）；`src/commands/req.ts`（10 子命令）；`requirement-ops.ts :: getAllowedNextStatuses`。
+
+**参见：** v1.2.0-stage-82（plan §二 不变量；op-001~003）；`src/commands/req.ts`；`src/core/req/requirement-ops.ts`；kb/patterns.md #需求引擎不变量模式、#CLI 退出码语义；manual/core/req.md、manual/cli/commands.md

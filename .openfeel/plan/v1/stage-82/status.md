@@ -4,7 +4,7 @@
 - **自动推进**：enabled
 - **工作流模式**：full
 - **状态**：planned
-- **当前责任 Agent**：user
+- **当前责任 Agent**：openfeel-reviewer
 - **上一责任 Agent**：none
 - **更新时间**：2026-10-11 15:32
 

@@ -888,6 +888,47 @@ export const help: I18nDomain = {
   'model.get.scope':     { key: 'help.model.get.scope',     zh: '层级（缺省展示生效值）', en: '' },
   'model.list':          { key: 'help.model.list',          zh: '列出所有 agent 的模型', en: '' },
   'model.list.scope':    { key: 'help.model.list.scope',    zh: '层级（缺省展示生效值）', en: '' },
+
+  // req（需求流转命令组）
+  'req':                 { key: 'help.req',                 zh: '需求管理（需求流转命令组：添加/列表/详情/认领/推进/看板/推荐）', en: '' },
+  'req.add':             { key: 'help.req.add',             zh: '创建需求（ID 自动分配；正文骨架铺到 .openfeel/requirements/）', en: '' },
+  'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '需求标题', en: '' },
+  'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '预估版本（如 v1.3.0）', en: '' },
+  'req.add.priority':    { key: 'help.req.add.priority',    zh: '优先级（P0/P1/P2）', en: '' },
+  'req.list':            { key: 'help.req.list',            zh: '列出需求（可按状态/版本/认领人过滤）', en: '' },
+  'req.list.status':     { key: 'help.req.list.status',     zh: '按状态过滤（draft/scheduled/in_progress/done/blocked/cancelled/rejected）', en: '' },
+  'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '按预估版本过滤', en: '' },
+  'req.list.owner':      { key: 'help.req.list.owner',      zh: '按认领人过滤', en: '' },
+  'req.list.json':       { key: 'help.req.list.json',       zh: '以 JSON 输出 { schemaVersion, requirements }', en: '' },
+  'req.show':            { key: 'help.req.show',            zh: '查看需求详情（关联阶段为原始只读枚举）', en: '' },
+  'req.show.argid':      { key: 'help.req.show.argid',      zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.show.json':       { key: 'help.req.show.json',       zh: '以 JSON 输出 { schemaVersion, requirement, stages }', en: '' },
+
+  // req（写命令）
+  'req.claim':           { key: 'help.req.claim',           zh: '认领需求（占用校验；已被他人认领则拒绝）', en: '' },
+  'req.claim.argid':     { key: 'help.req.claim.argid',     zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.claim.owner':     { key: 'help.req.claim.owner',     zh: '认领人（缺省：.openfeel/.info.json user → git config user.name）', en: '' },
+  'req.release':         { key: 'help.req.release',         zh: '释放认领（未认领为 no-op 成功）', en: '' },
+  'req.release.argid':   { key: 'help.req.release.argid',   zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.set':             { key: 'help.req.set',             zh: '更新需求字段（白名单；状态流转合法性由引擎判定）', en: '' },
+  'req.set.argid':       { key: 'help.req.set.argid',       zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.set.status':      { key: 'help.req.set.status',      zh: '目标状态（合法性与 done 门由引擎判定）', en: '' },
+  'req.set.title':       { key: 'help.req.set.title',       zh: '新标题', en: '' },
+  'req.set.targetVersion': { key: 'help.req.set.targetVersion', zh: '新预估版本', en: '' },
+  'req.set.priority':    { key: 'help.req.set.priority',    zh: '新优先级（P0/P1/P2）', en: '' },
+  'req.link':            { key: 'help.req.link',            zh: '关联需求到阶段 / 解绑（--requirement 与 --unlink 二选一）', en: '' },
+  'req.link.stage':      { key: 'help.req.link.stage',      zh: '阶段 ID（stage-NN 或 vX.Y.Z-stage-NN；短名按 v1.0.0 系列解析）', en: '' },
+  'req.link.requirement': { key: 'help.req.link.requirement', zh: '需求 ID（关联用；与 --unlink 互斥）', en: '' },
+  'req.link.unlink':     { key: 'help.req.link.unlink',     zh: '解除该阶段的需求关联', en: '' },
+  'req.advance':         { key: 'help.req.advance',         zh: '显式推进需求状态（合法目标由引擎流转表判定；done 须全部关联阶段 done）', en: '' },
+  'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.advance.to':      { key: 'help.req.advance.to',      zh: '目标状态（合法目标由引擎判定）', en: '' },
+  'req.board':           { key: 'help.req.board',           zh: '需求看板（按状态分组；7 组固定顺序）', en: '' },
+  'req.board.targetVersion': { key: 'help.req.board.targetVersion', zh: '按预估版本过滤', en: '' },
+  'req.board.json':      { key: 'help.req.board.json',      zh: '以 JSON 输出 { schemaVersion, groups }', en: '' },
+  'req.next':            { key: 'help.req.next',            zh: '推荐下一个可接取需求（scheduled 且未认领；按预估版本升序）', en: '' },
+  'req.next.owner':      { key: 'help.req.next.owner',      zh: '认领人视角（含该认领人已认领的 scheduled 需求）', en: '' },
+  'req.next.json':       { key: 'help.req.next.json',       zh: '以 JSON 输出 { schemaVersion, requirement }', en: '' },
 };
 
 /* ==================== config 域：配置管理命令 ==================== */
@@ -1019,6 +1060,65 @@ export const repl: I18nDomain = {
   'errorPrefix': { key: 'repl.errorPrefix', zh: '错误：', en: '' },
 };
 
+/* ==================== req 域：需求流转命令组（stage-82） ==================== */
+export const req: I18nDomain = {
+  // req add
+  'add.doneTmpl':        { key: 'req.add.doneTmpl',           zh: '已创建 {id}：{title}（状态 draft）', en: '' },
+  'add.bodyTmpl':        { key: 'req.add.bodyTmpl',           zh: '正文骨架：{path}', en: '' },
+  // 共享校验文案
+  'invalidIdTmpl':       { key: 'req.invalidIdTmpl',          zh: '{input} → 非法需求 ID（应为 REQ-NNN，如 REQ-001）', en: '' },
+  // req list
+  'list.empty':          { key: 'req.list.empty',             zh: '（无匹配需求）', en: '' },
+  'list.itemTmpl':       { key: 'req.list.itemTmpl',          zh: '  - {id} [{status}] {title}', en: '' },
+  'list.invalidStatusTmpl': { key: 'req.list.invalidStatusTmpl', zh: '{value} → 非法状态过滤值（合法值：{allowed}）', en: '' },
+  // req show
+  'show.titleTmpl':      { key: 'req.show.titleTmpl',         zh: '{id}：{title}', en: '' },
+  'show.metaTmpl':       { key: 'req.show.metaTmpl',          zh: '状态: {status} ｜ 预估版本: {targetVersion} ｜ 优先级: {priority}', en: '' },
+  'show.ownerTmpl':      { key: 'req.show.ownerTmpl',         zh: '认领人: {owner}（认领于 {claimedAt}）', en: '' },
+  'show.ownerNone':      { key: 'req.show.ownerNone',         zh: '认领人: （无）', en: '' },
+  'show.timesTmpl':      { key: 'req.show.timesTmpl',         zh: '创建: {created} ｜ 更新: {updated}', en: '' },
+  'show.bodyTmpl':       { key: 'req.show.bodyTmpl',          zh: '正文: {path}', en: '' },
+  'show.stagesLabel':    { key: 'req.show.stagesLabel',       zh: '关联阶段:', en: '' },
+  'show.stageItemTmpl':  { key: 'req.show.stageItemTmpl',     zh: '  - {stage}', en: '' },
+  'show.stagesNone':     { key: 'req.show.stagesNone',        zh: '关联阶段: （无）', en: '' },
+  // 通用错误
+  'err.notFoundTmpl':    { key: 'req.err.notFoundTmpl',       zh: '需求 {id} 不存在', en: '' },
+  // req claim
+  'claim.doneTmpl':      { key: 'req.claim.doneTmpl',         zh: '已认领 {id}（{owner}）', en: '' },
+  'claim.idempotentTmpl': { key: 'req.claim.idempotentTmpl',  zh: '{id} 已由 {owner} 认领（no-op）', en: '' },
+  'claim.ownerUnresolvedTmpl': { key: 'req.claim.ownerUnresolvedTmpl', zh: '无法解析当前用户名（.openfeel/.info.json 与 git config user.name 均不可用）；请显式传入 --owner <name>', en: '' },
+  'claim.terminalTmpl':  { key: 'req.claim.terminalTmpl',     zh: '{id} 已是终态（{status}），不可认领', en: '' },
+  // req release
+  'release.doneTmpl':    { key: 'req.release.doneTmpl',       zh: '已释放 {id}', en: '' },
+  'release.noopTmpl':    { key: 'req.release.noopTmpl',       zh: '{id} 未被认领（no-op）', en: '' },
+  // req set
+  'set.doneTmpl':        { key: 'req.set.doneTmpl',           zh: '已更新 {id}', en: '' },
+  'set.noopTmpl':        { key: 'req.set.noopTmpl',           zh: '{id} 无变更（no-op）', en: '' },
+  'set.noFieldsTmpl':    { key: 'req.set.noFieldsTmpl',       zh: '未提供任何字段；至少提供 --status / --title / --target-version / --priority 之一', en: '' },
+  // req link
+  'link.doneTmpl':       { key: 'req.link.doneTmpl',          zh: '已将 {stage} 关联到 {id}', en: '' },
+  'link.unlinkDoneTmpl': { key: 'req.link.unlinkDoneTmpl',    zh: '已解除 {stage} 的需求关联', en: '' },
+  'link.noopTmpl':       { key: 'req.link.noopTmpl',          zh: '{stage} 关联未变化（no-op）', en: '' },
+  'link.exclusiveTmpl':  { key: 'req.link.exclusiveTmpl',     zh: '--requirement 与 --unlink 必须且只能提供一个', en: '' },
+  'link.terminalTmpl':   { key: 'req.link.terminalTmpl',      zh: '{id} 已是终态（{status}），不可关联', en: '' },
+  // req advance
+  'advance.doneTmpl':    { key: 'req.advance.doneTmpl',       zh: '已推进 {id}：{from} → {to}', en: '' },
+  'advance.noopTmpl':    { key: 'req.advance.noopTmpl',       zh: '{id} 已是 {to}（no-op）', en: '' },
+  // 错误码映射
+  'err.stageNotFoundTmpl': { key: 'req.err.stageNotFoundTmpl', zh: '阶段 {stage} 不存在（未注册于 flow.json 的 stages）', en: '' },
+  'err.alreadyClaimedTmpl': { key: 'req.err.alreadyClaimedTmpl', zh: '{id} 已被他人认领；须先释放：openfeel req release {id}', en: '' },
+  'err.alreadyLinkedTmpl': { key: 'req.err.alreadyLinkedTmpl', zh: '{stage} 已关联其它需求；须先解绑：openfeel req link --stage {stage} --unlink', en: '' },
+  'err.invalidFieldTmpl': { key: 'req.err.invalidFieldTmpl',  zh: '{id} 字段取值非法（检查 --status / --title / --target-version / --priority）', en: '' },
+  'err.invalidStatusTmpl': { key: 'req.err.invalidStatusTmpl', zh: '{id} 目标状态 {to} 被拒（当前 {current}；合法目标：{targets}）', en: '' },
+  // req board
+  'board.groupTmpl':     { key: 'req.board.groupTmpl',        zh: '{status}（{n}）', en: '' },
+  'board.itemTmpl':      { key: 'req.board.itemTmpl',         zh: '  - {id} {title}', en: '' },
+  // req next
+  'next.foundTmpl':      { key: 'req.next.foundTmpl',         zh: '下一项：{id} [{status}] {title}', en: '' },
+  'next.ownedSuffixTmpl': { key: 'req.next.ownedSuffixTmpl',  zh: '（已认领：{owner}）', en: '' },
+  'next.empty':          { key: 'req.next.empty',             zh: '（无可接取需求）', en: '' },
+};
+
 /* ==================== 聚合导出 ==================== */
 /** 所有功能域的聚合数组（供 i18n.ts 构建 Map 使用） */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
@@ -1042,4 +1142,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'setup',        domain: setup },
   { name: 'metrics',      domain: metrics },
   { name: 'repl',         domain: repl },
+  { name: 'req',          domain: req },
 ];

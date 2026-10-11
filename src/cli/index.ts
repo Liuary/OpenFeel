@@ -72,6 +72,7 @@ import { registerLintCommand } from '../commands/lint.js';
 import { registerMigrateCommand } from '../commands/migrate.js';
 import { registerModelCommand } from '../commands/model.js';
 import { registerSetupCommand } from '../commands/setup.js';
+import { registerReqCommand } from '../commands/req.js';
 
 registerInitCommand(program);
 registerFlowCommand(program);
@@ -89,6 +90,7 @@ registerLintCommand(program);
 registerMigrateCommand(program);
 registerModelCommand(program);
 registerSetupCommand(program);
+registerReqCommand(program);
 
 // ── --help 国际化注入 ──
 // 在所有命令注册完成后，遍历 Commander 命令树，

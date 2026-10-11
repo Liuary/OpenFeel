@@ -1,6 +1,6 @@
 # 需求核心引擎模块（req）
 
-> 模块文档，由归档官在归档时维护。对应源码：`src/core/req/`。
+> 模块文档，由归档官在归档时维护。对应源码：`src/core/req/`（引擎面）+ `src/commands/req.ts`（命令面，v1.2.0-stage-82）。
 
 ## 职责
 
@@ -97,6 +97,39 @@
 
 **骨架章节**（H1 + 6 H2）：标题 / 状态 / 摘要 / 目标与验收 / 预估版本 / 关联阶段 / 变更记录。文件头注记「**机读权威恒为 `flow.json` 的 `requirements` 条目**；两者不一致以 flow.json 为准；状态为创建时快照，不追写实时状态」——**防第二事实源**。
 
+## 命令面（`openfeel req`，v1.2.0-stage-82）
+
+> 命令面源码：`src/commands/req.ts`（`registerReqCommand`）；`src/cli/index.ts` **两行注册**（import + register）。
+
+**10 子命令**：
+
+| 子命令 | 类型 | `--json` | 关键行为 |
+|--------|------|:--:|----------|
+| `add <title> [--target-version] [--priority]` | 写 | ✗ | 引擎抛错分流（唯一 throw 路径）；正文骨架直传本体；骨架失败不 save |
+| `list [--status] [--target-version] [--owner]` | 读 | ✓ | `--status` 值域取 `REQ_STATUSES`；多条件 AND |
+| `show <id>` | 读 | ✓ | 关联阶段**仅原始 id 枚举**（零聚合） |
+| `claim <id> [--owner]` | 写 | ✗ | 四码分流 + `--owner` 三级链 + 同 owner 幂等 |
+| `release <id>` | 写 | ✗ | 未占用 no-op 恒 exit 0 |
+| `set <id> [--status/--title/--target-version/--priority]` | 写 | ✗ | 命令层零校验；无字段守卫；targets 引擎派生 |
+| `link --stage <id> (--requirement <id> \| --unlink)` | 写 | ✗ | 互斥守卫；仅一次 `normalizeStageId`；`already_linked` 硬拒 |
+| `advance <id> --to <status>` | 写 | ✗ | 零校验；done 门引擎单点；不设 `--force` |
+| `board [--target-version]` | 读 | ✓ | 7 组固定顺序（= `REQ_STATUSES`）恒含空组 |
+| `next [--owner]` | 读 | ✓ | scheduled ∧ 未认领（`--owner` 扩候选）；排序冻结 |
+
+**命令层零业务逻辑**：字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联唯一性 / done 门**单点在引擎**；命令层仅「解析参数 → 调引擎原语 → 错误码→文案映射 → `save()`（成功路径）→ `process.exitCode`」。`set`/`advance` **零校验**（合法目标经引擎新增导出 `getAllowedNextStatuses` 派生，禁命令层硬编码枚举 → 防第二份流转表）。
+
+**`--json` 契约（四个读命令，成功/失败同契约）**：均走 **stdout 纯 JSON 单文档** + **stderr 零输出**；成功 `{schemaVersion:1, ...领域对象}`（`list`/`show`/`board`/`next` 各自领域对象）；失败 `{schemaVersion:1, error, ...ctx}` + exit 1。**写命令无 `--json`**（本阶段边界）。
+
+**退出码 0/1/2**：成功 0 / 各错误 1（`process.exitCode = 1`，**禁 `process.exit(1)`**）/ 并发写冲突 2（`handleConcurrentConflict` 单点）。失败路径 **flow.json 逐字节零写盘**。
+
+**引擎补丁**：`getAllowedNextStatuses(status)`（`requirement-ops.ts` 新增导出；只读纯函数、返回副本、域外 → `[]`；`ALLOWED_TRANSITIONS` 保持**模块私有**）；`addRequirement` 非数组守卫收口（`??=` → `Array.isArray` 重建续建，与其余 8 原语口径统一）。
+
+**`--owner` 三级链**（`claim`）：`.openfeel/.info.json user` → `git config user.name` → 哨兵 `'unknown'` 显式拒绝（提示显式 `--owner`）；**禁硬编码用户名**；缺省判定 `=== undefined`（显式空串直通引擎 → `invalid_field`）。
+
+**help 键双规**（`applyHelpI18n`）：位置参数键 = `arg`+参数名逐字（非 camelCase）、选项键 = 长名 camelCase；**37 键双向逐键断言**防死键。
+
+**正交声明**：`src/commands/req.ts` 不 import / 不引用 `ALLOWED_TRANSITIONS` / 工作流模式 / 归档层 / `.phase` / `allLinkedStagesDone`——直读源文全内容 **7 禁止串零命中**固化。
+
 ## 设计要点与判据
 
 - **纯内存 + 调用方落盘**：本模块**零独立写盘点**（唯一 IO = 正文文件骨架）；`flow.json` 落盘恒经 `FlowManager.save()`（锁 + `meta.revision` 乐观锁 + `.bak` + 原子写）——需求写入**零自造路径**。
@@ -108,4 +141,5 @@
 
 | 版本 | 变更 |
 |------|------|
+| v1.2.0-stage-82 | **补命令面**：新建 `src/commands/req.ts`（`openfeel req` 10 子命令）+ `src/cli/index.ts` 两行注册；引擎小幅补丁（新增导出 `getAllowedNextStatuses` + `addRequirement` 非数组守卫收口 `req/BUG-001`）；`--json` 四读命令成功/失败同契约 + 退出码 0/1/2 + help 键双规（37 键双向断言）+ `--owner` 三级链；i18n 829→**908**。3 op（未 commit，HEAD `c5f1d53`）；门禁 70 文件 / 1506 用例 0 failed。**下游** stage-83（聚合回写）消费。 |
 | v1.2.0-stage-81 | **新建模块** `src/core/req/`（types / requirement-ops / body-file）；`flow-manager.ts` 最小追加 `FlowData.requirements?` + `StageData.requirement_id?`（读侧宽容不 load 补齐）；9 原语 + 状态流转单点表 + done 门 + 正文骨架；正交静态断言固化。3 op（未 commit，HEAD `3be254c`）；门禁 69 文件 / 1476 用例 0 failed。**下游** stage-82（命令面）/ stage-83（聚合回写）消费。 |

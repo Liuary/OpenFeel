@@ -83,6 +83,7 @@ export function allLinkedStagesDone(data: FlowData, requirementId: string): bool
 /**
  * 新建需求（恒 `status: 'draft'`；读侧宽容写路径；返回**本体**供调用方继续设 body_path）。
  * 非法入参（空 title / 非法 priority / 空 target_version）属构造期契约违反 → 抛错（唯一抛错原语，REV-81-015）。
+ * REV-81-018 登记：add 构造期抛错 / update 运行期错误码为接受差异（与命令层分流矩阵同口径，REV-82-002）；stage-81 冻结面不统一。
  */
 export function addRequirement(
   data: FlowData,
@@ -95,7 +96,8 @@ export function addRequirement(
   }
   // 命名统一（REV-81-012）：API 面恒 target_version（与存储字段同名，零映射层）
   if (input.target_version !== undefined && String(input.target_version).trim() === '') { throw new Error('预估版本不能为空串'); }
-  data.requirements ??= [];                                        // 写路径兜底（REV-81-003）
+  // 非数组（损坏数据）视同空集重建——与其余原语「非数组 ≡ 空集」宽容口径统一（req/BUG-001 = REV-81-019 单点收口）；改自 ??=（??= 不替换非数组真值 → push 抛 TypeError）
+  data.requirements = Array.isArray(data.requirements) ? data.requirements : [];
   const now = new Date().toISOString();
   const req: RequirementData = {
     id: nextRequirementId(data),                                   // 须在 push 之前分配
@@ -148,6 +150,14 @@ const ALLOWED_TRANSITIONS: Record<RequirementStatus, RequirementStatus[]> = {
   done: [], cancelled: [], rejected: [],
 };
 
+/**
+ * 当前状态的合法目标列表（只读纯函数；领域外状态 → []）。
+ * 命令层「列合法目标」的唯一来源——禁第二份流转表（REV-82-003）；返回副本，防调用方直改内部表。
+ */
+export function getAllowedNextStatuses(status: RequirementStatus): RequirementStatus[] {
+  return [...(ALLOWED_TRANSITIONS[status] ?? [])];
+}
+
 /** 状态变更应用（唯一实现）：返回 false = invalid_status（含 done 门不满足） */
 function applyStatusChange(data: FlowData, req: RequirementData, to: RequirementStatus): boolean {
   if (!(REQ_STATUSES as readonly string[]).includes(to)) { return false; }
@@ -189,6 +199,7 @@ export function updateRequirement(
   if (keys.length === 0) { return { ok: true, changed: false }; }
 
   // ④ 值校验（全部维度先校验，失败即整 patch 零变更）
+  // REV-81-018 登记：add 构造期抛错 / update 运行期错误码为接受差异（与命令层分流矩阵同口径，REV-82-002）；stage-81 冻结面不统一。
   if (p.title !== undefined && String(p.title).trim() === '') { return { ok: false, code: 'invalid_field' }; }
   if (p.target_version !== undefined && (typeof p.target_version !== 'string' || p.target_version.trim() === '')) {
     return { ok: false, code: 'invalid_field' };

@@ -97,6 +97,13 @@ openfeel-planner 作为独立 subagent，由**主会话（Feel 角色）**经 **
 - 不直接编码，不执行测试
 - openfeel-planner 与 openfeel-schemer 的职责边界：openfeel-planner 负责"做什么"（what）和"何时做"（when），openfeel-schemer 负责"怎么做"（how）
 
+## 工作流模式感知（fast 快线）
+
+调度前读取当前阶段 `status.md「工作流模式」`（权威查询 `openfeel flow mode [--stage <id>]`）：
+
+- **full**：产出经 openfeel-reviewer 计划审查（`plan_review`）后进入 openfeel-schemer（现状不变）。
+- **fast（工作流快线）**：**本 Agent 产出后必经 openfeel-reviewer 的计划审查（`plan_review` 单轮；通过 → `plan_passed`，问题退回 → `plan_pending`；此后进入 exec）**；产出为轻量计划——任务表 / 依赖声明 / 验收要点**不得省略**，其余过程性描述可精简。（轻量口径：保留 目标 / 依赖 / 任务表 / 验收要点 / 约束 / KB 检索 / 变更点清单 / 风险；背景实测证据明细与修订记录过程可收敛为结论。）
+
 ## 模型选择
 
 openfeel-planner 由 **Claude 侧模型**决定（默认 `model: inherit`）；计划制定需要较强推理能力，框架不在模板内硬编码厂商模型 ID。

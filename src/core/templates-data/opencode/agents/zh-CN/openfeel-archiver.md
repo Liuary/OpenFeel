@@ -118,6 +118,15 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 
 > ⚠️ 注意：归档完成后的阶段状态必须设为 `"done"`，**不得**使用 `"completed"` 等非标准值。`VALID_TRANSITIONS` 中不存在 `"completed"`。
 
+> **fast 工作流快线下**：上表 15 项相位枚举**不变**（可达 ≠ 合法）；可达相位为快线链（`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`）。
+
+## 工作流模式感知（fast 轻量归档）
+
+调度前读取当前阶段 `status.md「工作流模式」`（权威查询 `openfeel flow mode [--stage <id>]`）：
+
+- **full**：归档全量清单（现状不变）。
+- **fast（工作流快线）**：**轻量归档**——状态记录与知识暂存判定（含去重检索）**不得省略**；清单过程性叙述可合并精简。（轻量口径：保留 状态记录 / 知识暂存判定 / 知识库快速概览 / 模块手册判定 / 公共日志摘要；总结过程性叙述可合并为要点。）
+
 ## 模型选择
 
 openfeel-archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，负责理解上下文并提取有价值的经验。

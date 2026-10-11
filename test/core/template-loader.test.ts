@@ -2,9 +2,11 @@
  * template-loader 单元测试
  * 验证中英文模板加载函数的正确性和回退逻辑
  */
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   loadAgentTemplate,
   listAgentIds,
@@ -17,6 +19,7 @@ import {
   listClaudeAgentIds,
 } from '../../src/core/template-loader.js';
 import { splitFrontmatter } from '../../src/core/managed-region.js';
+import { FlowManager } from '../../src/core/flow-manager.js';
 
 describe('loadAgentTemplate', () => {
   it('zh-CN feel 返回非空字符串，含中文内容', () => {
@@ -537,6 +540,68 @@ describe('Claude↔opencode 单源键集（stage-69 T7.4）', () => {
   it('listClaudeAgentIds === listAgentIds（zh-CN/en 均 9，含 feel）', () => {
     for (const lang of ['zh-CN', 'en']) {
       expect(listClaudeAgentIds(lang).sort()).toEqual(listAgentIds(lang).sort());
+    }
+  });
+});
+
+/**
+ * stage-76 S5：fast 口径与 CLI 同源（T4-4）。
+ * 代码侧唯一来源 = 代码派生（经 FlowManager 访问器，禁硬编码快线表副本）；
+ * 文档侧直读源 skill（cli-usage），链串逐字共源。
+ */
+describe('stage-76：fast 口径与 CLI 同源（T4-4）', () => {
+  const CLI_USAGE = join(process.cwd(), 'src', 'core', 'templates-data', 'skills', 'openfeel-cli-usage', 'SKILL.md');
+  const CHAIN = 'plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done';
+  let dir: string;
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'openfeel-stage76-')); });
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+
+  it('代码侧：fast 表 9 条目（代码派生，禁硬编码副本）', () => {
+    const fm = new FlowManager(dir);
+    const fast = fm.getDefaultTransitions('fast');
+    expect(Object.keys(fast)).toHaveLength(9);
+    expect(Object.keys(fast)).toContain('done');
+    expect(fast.plan_pending).toEqual(['plan_review']);
+    expect(fast.plan_review).toEqual(['plan_passed', 'plan_pending']);
+    expect(fast.review_failed).toContain('review_pending');
+    expect(fast.review_failed).toContain('exec_running');
+    expect(fm.getPipelinePhases()).toHaveLength(15);
+  });
+
+  it('文档侧：cli-usage 快线链串 / 9 条目 / 15 项 / 6 项不可达', () => {
+    const c = readFileSync(CLI_USAGE, 'utf-8');
+    expect(c).toContain(CHAIN);
+    expect(c).toContain('9 条目');
+    expect(c).toContain('8 条流转键');
+    expect(c).toContain('恒 15 项');
+    expect(c).toContain('6 项');
+    expect(c).toContain('不可达');
+  });
+
+  it('同源交叉：fast 键名全部出现在快线链串中（闭环）', () => {
+    const c = readFileSync(CLI_USAGE, 'utf-8');
+    expect(c).toContain(CHAIN);
+    const fm = new FlowManager(dir);
+    const fast = fm.getDefaultTransitions('fast');
+    expect(Object.keys(fast).every((k) => CHAIN.includes(k))).toBe(true);
+  });
+});
+
+/**
+ * stage-76 S6：reviewer 失败留痕 + 术语消歧（T4-5）；opencode 既有 FAST-PASS 串零回归。
+ */
+describe('stage-76：reviewer 失败留痕 + 术语消歧（T4-5）', () => {
+  const TD = join(process.cwd(), 'src', 'core', 'templates-data');
+  it('4 份 reviewer 含消歧串 + REV 照常 + FAST-PASS 零回归', () => {
+    const ZH = ['REV 条目照常', '不同机制', '同名异义'];
+    const EN = ['REV entries as usual', 'different mechanisms', 'conflate'];
+    for (const h of ['opencode', 'claude']) {
+      const zh = readFileSync(join(TD, h, 'agents', 'zh-CN', 'openfeel-reviewer.md'), 'utf-8');
+      for (const s of ZH) expect(zh, `${h}/zh-CN reviewer 缺 ${s}`).toContain(s);
+      expect(zh, `${h}/zh-CN reviewer 丢失 FAST-PASS-{NNN}`).toContain('FAST-PASS-{NNN}');
+      const en = readFileSync(join(TD, h, 'agents', 'en', 'openfeel-reviewer.md'), 'utf-8');
+      for (const s of EN) expect(en, `${h}/en reviewer 缺 ${s}`).toContain(s);
+      expect(en, `${h}/en reviewer 丢失 FAST-PASS-{NNN}`).toContain('FAST-PASS-{NNN}');
     }
   });
 });

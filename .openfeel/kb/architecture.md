@@ -747,7 +747,7 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 - **唯一取表点**：`getValidTargets(fromPhase, mode: WorkflowMode)`（`flow-manager.ts`）。`mode` **无默认值**——编译期强制调用点显式传入，从类型层面封死「漏传 mode 落回某默认表」的可能。取表法则唯一为私有 `resolveTransitionsForMode(mode)`：`fast → this.fastTransitions ?? getDefaultPipelineConfig('fast').transitions`；`full → this.pipelineConfig?.transitions ?? getDefaultPipelineConfig().transitions`。
 - **四调用点全部显式传 stage 派生 mode**（源码检索：定义 1 + 调用 4）：`hasTransition` / `getAvailablePhases` / `findPhasePath` / `canAdvance`，各自经 `resolveStageWorkflowMode(stageName).value` 派生；间接消费者 `buildDownstreamPhases`（经无参 `getAvailablePhases` → `current.stage`，出口 `flow status --verbose`）。**任何 `getValidTargets` 调用点不得使用默认 mode**（静态约束）。
 - **展示与校验同源**：`flow phases` 的运行时转移表经 `getPipelineTransitions(mode)`（同一 `resolveTransitionsForMode`），杜绝「展示与实际不符」；访问器 **无参 = full**（零回归既有断言），fast 分节归下游命令面。
-- **phase 枚举零新增**：fast 仅复用既有 15 phase 的子集（7 键 + `done`），`PIPELINE_PHASES` 未动——「模式」是**图的裁剪**而非新相位。
+- **phase 枚举零新增**：fast 仅复用既有 15 phase 的子集（**v1.1.7-stage-76 T7 起为 8 键 + `done` = 9 条目**，原「7 键 + `done`」），`PIPELINE_PHASES` 未动——「模式」是**图的裁剪**而非新相位。
 - **防第二份表**：`FAST_TRANSITIONS` 常量仅 `flow-manager.ts` 定义 + `getDefaultPipelineConfig('fast')` 消费；命令层/模板层零副本（检索 `plan_pending:\s*\[|transitions:` in `src/commands/` = 0）。`advancePhase`（deprecated，不读转移表）不在读点清单内。
 - **模式语义边界**：`config effective` / `flow status --verbose` = **当前阶段域**（无参）；`resolveStageWorkflowMode(stageId)` 显式 stageId = **任意阶段域**（`flow mode --stage` / 表选择），二者不混用。
 
@@ -756,6 +756,8 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **已知边界**：`fast_transitions` 空对象 `{}` 经 `Object.keys(...).length > 0 ? data : null` 判定为**等同缺失** → 回落内置快线表（REV-74-009；避免「fast 全链静默死锁」）。本仓 `.openfeel/pipeline.yaml` 覆盖 full 表（缺组合键 `review_passed|test_passed`），故「本仓运行时 full 表 ≠ 内置 full 表」，两条验收线须区分（REV-74-004）。
 
 **实证**：v1.1.7-stage-74（op-002/op-003/op-004；执行报告 `.openfeel/users/Liuary/log/op-stage74-report-2026-10-11.md`）——`getValidTargets` 定义 1 + 调用 4 均显式传 mode；`FAST_TRANSITIONS` 仅 1 文件；T7.10 断言同 (stage,mode) 下 `canAdvance`/`findPhasePath`/`getAvailablePhases`/`flow phases` 四者键集双向一致；`flow phases --json` 既有键逐字。
+
+> **supersede（2026-10-11｜v1.1.7-stage-76 T7）**：fast 快线表由 **8 条目**（7 流转键 + `done`；`plan_pending → plan_passed`）修订为 **9 条目**（8 流转键 + `done`）——`plan_pending → ['plan_review']` + 新增 `plan_review: ['plan_passed', 'plan_pending']`，即 **fast 下计划审查（`plan_review`）不再跳过**（reviewer 单轮必过）。本节上文「7 键 + `done`」口径已被本轮取代；引擎单一取表点传导（未改 full 表 / phase 枚举 / 命令面）。详见 `dev/decisions.md` ADR-010（2026-10-11 需求变更 T7 修订）、kb/patterns.md #工作流快线必经计划审查。
 
 **参见：** v1.1.7-stage-74（plan T3/T4；op-002/003/004；REV-74-001/002/003/004/009）；`src/core/flow-manager.ts` `getValidTargets`/`resolveTransitionsForMode`/`resolveStageWorkflowMode`/`FAST_TRANSITIONS`；`src/core/pipeline-schema.ts` `FastTransitionsSchema`；kb/architecture.md #状态/相位单一事实源、#部署级默认翻转的单一权威；kb/patterns.md #带 stage 形参的级联解析、#模式标记三层载体与记忆语义；manual/core/flow-manager.md
 

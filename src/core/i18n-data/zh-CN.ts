@@ -330,7 +330,7 @@ export const flow: I18nDomain = {
   'wizard.createSkipped':           { key: 'flow.wizard.createSkipped',           zh: '已跳过阶段创建，退出向导。',                en: '' },
   'wizard.modePrompt':              { key: 'flow.wizard.modePrompt',              zh: '首次配置：请选择本阶段的工作流模式',        en: '' },
   'wizard.modeFull':                { key: 'flow.wizard.modeFull',                zh: 'full（完整链路：含计划审查/方案/测试）',     en: '' },
-  'wizard.modeFast':                { key: 'flow.wizard.modeFast',                zh: 'fast（快速迭代：跳过计划审查/方案/测试）',   en: '' },
+  'wizard.modeFast':                { key: 'flow.wizard.modeFast',                zh: 'fast（快速迭代：跳过方案/测试；保留计划审查与代码审查单轮）',   en: '' },
   'wizard.modeRememberedTmpl':      { key: 'flow.wizard.modeRememberedTmpl',      zh: '✓ 已记忆工作流模式：{mode}（写入 status.md 与项目 config.yaml）', en: '' },
 };
 

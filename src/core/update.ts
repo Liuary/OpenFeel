@@ -419,7 +419,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -431,7 +431,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.1.6 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.1.7 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -446,10 +446,10 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel flow ...\` | 流水线状态管理 | 见下「flow 子命令」 |
 | \`openfeel flow checkpoint restore\` | Checkpoint 恢复（全量 / 选择性 / 预览） | \`<file> [--force] [--stage <id>] [--dry-run]\`（无 \`--stage\`=全量覆盖，最后手段；\`--stage\`=按阶段回退；\`--dry-run\`=零写盘预览） |
 | \`openfeel flow stage reset\` | 精准复位阶段 phase（\`flow advance\` 的对称复位，允许回退） | \`<stageId> --to <phase> [--dry-run]\`（受合法值域 + \`to=done\` 阻塞 REV 约束） |
-| \`openfeel plan stage add\\|list\` | 工作阶段管理 | \`add <name> --deps <ids...> --tasks <items...> --exec-mode <manual\\|auto> --auto-advance <enabled\\|disabled>\`（初值取 \`config.yaml.defaults\`；显式选项优先） |
+| \`openfeel plan stage add\\|list\` | 工作阶段管理 | \`add <name> --deps <ids...> --tasks <items...> --exec-mode <manual\\|auto> --auto-advance <enabled\\|disabled> --workflow-mode <full\\|fast>\`（初值取 \`config.yaml.defaults\`；显式选项优先；\`--workflow-mode\` 覆盖 config 默认） |
 | \`openfeel plan scheme create\\|publish\\|rename\\|list\\|remove\\|register\` | 操作方案管理 | \`create <stage> <title> [--draft]\`、\`publish <stage> <opId>\`、\`rename <stage> <opId> --title <text>\`、\`remove <stage> <opId> [--force] [--dry-run]\`、\`register <stage> [opId] [--dry-run]\`（补注册 fileOrphans） |
-| \`openfeel stage status\\|set\\|task\` | \`status.md\` 原子操作 | \`set <id> --status/--exec-mode/--auto-advance/--review-agent\`、\`task <id> [no] --add/--done/--undone\`（\`stage create\` 已弃用） |
-| \`openfeel config ...\` | 配置管理 | \`get\\|set <key> <value> [--global]\`（支持全量 \`defaults.*\`，且 \`defaults.X ≡ X\`）、\`set ... --sync-stages\`（批量写入所有已注册阶段 \`status.md\` 的 \`自动推进\`/\`执行模式\`）、\`get-lang\\|set-lang\`、\`list-projects\`、\`effective [key]\` |
+| \`openfeel stage status\\|set\\|task\` | \`status.md\` 原子操作 | \`set <id> --status/--exec-mode/--auto-advance/--review-agent/--workflow-mode\`、\`task <id> [no] --add/--done/--undone\`（\`stage create\` 已弃用） |
+| \`openfeel config ...\` | 配置管理 | \`get\\|set <key> <value> [--global]\`（支持全量 \`defaults.*\`，且 \`defaults.X ≡ X\`）、\`set ... --sync-stages [--stage <ids...>]\`（批量写入已注册阶段 \`status.md\` 的 \`自动推进\`/\`执行模式\`/\`工作流模式\`；\`--stage\` 限定作用域，单独使用 / 与 \`--global\` 组合 → exit 1）、\`get-lang\\|set-lang\`、\`list-projects\`、\`effective [key]\` |
 | \`openfeel model set\\|get\\|list\` | 模型三层级配置 | \`set <agent> <model>\` |
 | \`openfeel lint i18n\\|kb\` | 健康检查（i18n 键一致性 / kb 过期引用） | 发现问题**非 0 退出** |
 | \`openfeel knowledge ...\` | 知识库管理 | \`list\` / \`add\` / \`search\` / \`index\` / \`dedup\` |
@@ -459,7 +459,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel roadmap create\\|show\` | 分期大纲管理 | \`create <version>\`、\`show [version]\` |
 | \`openfeel instructions <artifactId>\` | 为指定 artifact 生成结构化指令 | \`--change <name>\`、\`--schema <name>\`、\`--json\` |
 
-**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\`。
+**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`mode\`（\`[--stage <id>] [--json]\`，只读） / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\`。
 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
@@ -469,6 +469,13 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 - **多 harness 并存**：\`openfeel setup\` / \`openfeel update\` 新增 \`--tools <逗号列表>\`（如 \`opencode,claude\`）；非法值 **exit 1** 前置校验零写盘；默认仅 \`opencode\`。
 - **Claude Code 适配器资产**：\`--tools claude\` 部署 \`~/.claude/\`——\`CLAUDE.md\`（全局约束，用户已有内容 append 不覆盖）、\`agents/\`（**9 个**，含 \`feel\`）、\`skills/\`（**17 个**共享源）、\`settings.json\`（注入 \`"agent":"feel"\` + \`"permissions":{"defaultMode":"auto"}\`，用户既有键逐字保留）；默认零触（不带 \`--tools\` 时 \`~/.claude/\` 零变化）。
+
+## v1.1.7 新增能力（stage-74~76）
+
+- **双模式工作流（\`workflow_mode\`）**：值域 \`full | fast\`（默认 \`fast\`）。三层载体：\`config.yaml defaults.workflow_mode\`（项目默认 / 记忆）→ \`status.md「工作流模式」\`（阶段覆盖，**读取权威**）→ \`flow.json\` 冗余字段（可选、**不参与级联**）；级联优先序 \`status.md > config.yaml > builtin\`（\`profile.yaml\` 不承载）。只读查询：\`openfeel flow mode [--stage <id>] [--json]\`（当前模式 + 四源 \`source\`）。
+- **fast 快线转移表（并列）**：\`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项）：\`plan_pending → plan_review\`（**计划审查必经**）、\`plan_review → plan_passed / plan_pending\`、\`plan_passed → exec_running\`、\`exec_running → review_pending\`、\`review_pending → review_failed / review_passed\`、\`review_failed → review_pending / exec_running\`（回环）、\`review_passed → archiving\`、\`archiving → done\`、\`done\`（终态）。**\`phases\` / \`advanceAccepted\` 恒 15 项、模式无关**；fast 下 6 个相位不可达（\`scheme_*\` / \`test_*\`）。
+- **模式命令面**：\`plan stage add --workflow-mode <full|fast>\`（值域派生、非法 exit 1 不建阶段）、\`stage set <id> --workflow-mode <full|fast>\`（缺失字段插入）、\`flow phases [--mode <full|fast>] [--stage <id>]\`（模式分节；\`--json\` 追加 \`workflowMode\`）、\`config set ... --sync-stages [--stage <ids...>]\`（同步字段含「工作流模式」）。
+- **\`config effective\` 四键**：\`auto_advance\` / \`execution_mode\` / \`merge_mode\` / \`workflow_mode\`。
 
 ## v1.1.5 新增能力（stage-67）
 
@@ -502,7 +509,7 @@ openfeel setup --tools claude  # 2. 重跑部署（claude 目标）
 
 > 以下为 v1.1.2 相对上版的增量能力（分组摘要，细节以 \`<cmd> --help\` 为准）。
 
-- **A. 自描述与可纠错（stage-41）**：\`flow phases [--json]\`（**5 键**：\`schemaVersion\`/\`phases\`/\`transitions\`/\`advanceAccepted\`/\`transitionsDiff\`）、\`flow stage remove [--force] [--dry-run] [--purge]\`、stageId 校验/冲突检测（\`validateStageId\` / \`suggestStageId\` / \`findStageDirConflict\`）、\`plan stage add --deps\`。
+- **A. 自描述与可纠错（stage-41）**：\`flow phases [--json] [--mode <full|fast>] [--stage <id>]\`（**6 键**：\`schemaVersion\`/\`phases\`/\`transitions\`/\`advanceAccepted\`/\`transitionsDiff\`/\`workflowMode\`（v1.1.7 追加）；既有五键语义逐字不变）、\`flow stage remove [--force] [--dry-run] [--purge]\`、stageId 校验/冲突检测（\`validateStageId\` / \`suggestStageId\` / \`findStageDirConflict\`）、\`plan stage add --deps\`。
 - **B. 状态与口径（stage-42）**：\`config effective [key]\`（有效值 + 生效来源 \`status.md > config.yaml > profile.yaml > builtin\`）、\`pipeline.phase\` 全量 done 判定、审计日志 \`register_stage\` / \`register_op\`。
 - **C. 部署与备份（stage-46）**：覆盖写前自动备份 \`~/.openfeel/backup/{ts}/\` + \`update_infos.md\`「备份」类条目（Agent 按 \`feel.md\` 检查规则核对）。
 - **D. 纠正/清理侧命令面（stage-51/52，v1.1.4-stage-64 补 register）**：\`plan scheme remove\`（仅删 \`flow.json\` 注册键，不删 op 文件；done/checkpoint 保护）、\`plan scheme register <stage> [opId] [--dry-run]\`（对称补全：补注册 fileOrphans，\`--dry-run\` 零写盘；**\`create\` 序号基于「ops/ 文件 ∪ flow.json 注册」的最小未用正整数（空位回填），创建后对目标阶段未注册文件输出 stderr 告警并提示 \`plan scheme register\`**）、\`plan scheme rename --title\`（必填，空标题报错）、\`plan scheme publish\` + \`create --draft\`（draft→pending，空模板拒绝）、\`flow stage set --deps\`（覆盖写入；**不带 \`--deps\` 视为清空**）、\`flow review update|remove\`、\`stage set\`（**幂等**：同值 no-op + 同值不生成 \`.bak\`；\`--exec-mode <manual\\|auto>\` / \`--auto-advance <enabled\\|disabled>\` / \`--review-agent <agent>\`）、\`stage task --add|--done|--undone\`、\`plan stage add --tasks\`/\`--exec-mode\`/\`--auto-advance\`（显式覆盖 config 默认）、\`flow repair --prune-orphans\`、\`flow health --fix [--dry-run]\`（默认只报告；\`--fix\` **仅回写 status.md「状态」字段**；\`--dry-run\` 预览零写盘）、\`flow ops list\`、\`flow advance --quiet\` + \`--to <远距 phase>\`（存在唯一路径时自动逐步；\`--dry-run\` 展示完整路径）、\`knowledge dedup\`（检索相似条目，**只读建议，不修改 kb**）。\`flow attempt\` 对 **draft op 拒绝**。
@@ -536,7 +543,23 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 | \`archiving\` | \`done\` |
 | \`done\` | （终态） |
 
-- 转移表以**运行时** \`.openfeel/pipeline.yaml\` 为准；\`openfeel flow phases\` 查看当前生效值。
+**fast 快线转移表（\`workflow_mode=fast\`）** —— \`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项），快线链（可达相位序列）为 \`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`：
+
+| phase | 合法目标 |
+|-------|----------|
+| \`plan_pending\` | \`plan_review\` |
+| \`plan_review\` | \`plan_passed\`, \`plan_pending\` |
+| \`plan_passed\` | \`exec_running\` |
+| \`exec_running\` | \`review_pending\` |
+| \`review_pending\` | \`review_failed\`, \`review_passed\` |
+| \`review_failed\` | \`review_pending\`, \`exec_running\` |
+| \`review_passed\` | \`archiving\` |
+| \`archiving\` | \`done\` |
+| \`done\` | （终态） |
+
+> \`phases\` / \`advanceAccepted\` 恒 15 项（模式无关）；fast 下 \`scheme_pending\` / \`scheme_review\` / \`scheme_passed\` / \`test_pending\` / \`test_failed\` / \`test_passed\` 共 **6 项**不可达（无入边）。
+
+- 转移表以**运行时** \`.openfeel/pipeline.yaml\` 为准；\`openfeel flow phases\` 查看当前生效值。（\`--mode <full|fast>\` 显式指定 / \`--stage <id>\` 按阶段派生；\`--json\` 追加 \`workflowMode\`）
 - 推进：\`openfeel flow advance --stage <id> --to <phase>\`。**\`advanceAccepted\` = 内置 15 个 phase 的「推进白名单」**（\`flow advance\` 只接受这 15 个值），**不是**组合式条件键的替代品（旧文案曾误述，此处已更正）。**组合式条件差异**（如内置默认含 \`review_passed|test_passed\`，本仓 \`pipeline.yaml\` 未列）经 \`--json.transitionsDiff.missing\` **显式可见**（stage-50 裁定：**不补组合键**，改以 \`transitionsDiff\` 显式化）。
 - 参考：\`.openfeel/manual/**\`（CLI/flow 模块文档）。
 
@@ -648,7 +671,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 
 ### 0. 读取全局配置
 
-读取 \`.openfeel/config.yaml\`，解析 \`defaults\` 中的 \`execution_mode\`、\`auto_advance\`、\`merge_mode\`。
+读取 \`.openfeel/config.yaml\`，解析 \`defaults\` 中的 \`execution_mode\`、\`auto_advance\`、\`merge_mode\`、\`workflow_mode\`。
 
 ### 1. 定位状态文件
 
@@ -664,6 +687,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 
 - \`执行模式\`
 - \`自动推进\`
+- \`工作流模式\`
 - \`状态\`
 - \`当前责任 Agent\`
 - \`上一责任 Agent\`
@@ -724,6 +748,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 - 阶段：{stage}
 - 执行模式：manual | auto
 - 自动推进：disabled | enabled
+- 工作流模式：full | fast
 - 状态：{status}
 - 当前责任 Agent：{agent}
 - 前置依赖：{依赖列表 或 无}
@@ -737,6 +762,8 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 ## 下一步建议
 {根据状态给出下一步，例如：启动 Code、等待用户、启动 openfeel-feel-tester、停止流程；若存在并行候选则建议批量启动}
 \`\`\`
+
+> **模式感知（fast）**：\`工作流模式\` 为 \`fast\` 时，「下一步建议」不指向方案 / 测试环节（快线链为 计划 → 计划审查 → 执行 → 代码审查 → 归档）；\`plan_pending\` 阶段下一步建议 = \`plan_review\`（必经，勿建议直接 \`plan_passed\`）；相位口径为「**可达 ≠ 合法**」——合法枚举仍 15 项（fast 下仅 6 项不可达），**不得**表述为相位缩减。
 
 ## 状态到下一步映射
 
@@ -1115,6 +1142,8 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 2. 读取**索引** \`.openfeel/users/{username}/dev_last.md\`（「用户偏好」「主题索引」「公共交接区」）→ **按需**再读主题文件（**文件名英文，如 \`decisions.md\`/\`pending.md\`**）恢复详情；**旧格式**（无 \`## 主题索引\` 节）→ 触发惰性迁移（按英文命名映射拆分生成 \`dev_last/\` + 索引，原文保留）
 3. 将两者合并为当前会话起点
 
+> **模式感知**：恢复后按当前阶段 \`status.md「工作流模式」\` 确认流程模式（\`flow recover\` 输出不含模式字段；fast 工作流快线下按快线链继续）。
+
 > **加锁提示（A9）**：恢复流程为**只读**，无需加锁；仅**会话末尾写入**走 \`withFileLock\` 临界区（见 agents-md「并发写加锁协议」）。
 
 ## 输出
@@ -1411,7 +1440,7 @@ description: 标准化更新 .openfeel/plan/{series}/{stage}/status.md 的子计
 
 ### 0. 读取全局配置
 
-读取 \`.openfeel/config.yaml\`，获取 \`defaults\` 中的 \`execution_mode\`、\`auto_advance\`、\`merge_mode\`。
+读取 \`.openfeel/config.yaml\`，获取 \`defaults\` 中的 \`execution_mode\`、\`auto_advance\`、\`merge_mode\`、\`workflow_mode\`。
 
 ### 1. 读取状态文件
 
@@ -1456,6 +1485,7 @@ planned | ready_for_code | coding | ready_for_review | review_failed | review_pa
 
 - \`执行模式\`
 - \`自动推进\`
+- \`工作流模式\`（模式字段**不由**状态更新覆盖）
 - \`前置依赖\`（由 Architect 在 Phase 3.5 中声明，运行时不应修改）
 
 ### 4. 追加状态记录
@@ -1516,6 +1546,8 @@ description: 交互式流水线向导，供 Agent 在终端中逐步推进流水
 1. 运行 \`openfeel flow wizard\` 启动交互式向导
 2. 按提示选择要推进的阶段和下一步 phase（基于当前阶段的可达 transitions）
 3. 确认后执行推进，循环直至阶段 done 或退出
+
+> **模式选型**：首次运行时向导会询问工作流模式（\`full\` / \`fast\`），写入 \`config.yaml defaults.workflow_mode\`（项目级记忆）；非 TTY 环境沿用既有守卫、不询问。
 
 ## 输出
 

@@ -226,7 +226,8 @@ describe('flow 命令（stage-41）', () => {
 
     await safeParse(['flow', 'phases', '--mode', 'fast']);
     const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
-    expect(out).toContain('plan_pending → [plan_passed]');
+    expect(out).toContain('plan_pending → [plan_review]');
+    expect(out).toContain('plan_review → [plan_passed, plan_pending]');
     expect(out).toContain('review_failed → [review_pending, exec_running]');
     expect(out).toContain('当前模式：fast');
     expect(out).toContain('[来源: --mode]');
@@ -249,7 +250,7 @@ describe('flow 命令（stage-41）', () => {
     await safeParse(['flow', 'phases', '--stage', 'v1.0.0-stage-01', '--json']);
     const obj = JSON.parse(logMock.mock.calls[0][0] as string) as { workflowMode: string; transitions: Record<string, string[]> };
     expect(obj.workflowMode).toBe('fast');
-    expect(obj.transitions['plan_pending']).toEqual(['plan_passed']);
+    expect(obj.transitions['plan_pending']).toEqual(['plan_review']);
   });
 
   it('T7.11③：缺省（config full）→ workflowMode === full（既有 full 基线）', async () => {

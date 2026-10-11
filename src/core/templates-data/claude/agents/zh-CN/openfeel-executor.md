@@ -63,9 +63,10 @@ model: inherit
 
 ### 步骤 2：Phase 合法性校验
 
-1. 读取 `.openfeel/flow.json`，检查 `pipeline.phase` 是否为合法枚举值（`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done`），非法则拒绝执行。
+1. 读取 `.openfeel/flow.json`，检查 `pipeline.phase` 是否为合法枚举值（`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done`），非法则拒绝执行。（fast 工作流快线下可达相位为快线链；合法相位枚举 15 项不变——可达 ≠ 合法）
 2. 确认 `pipeline.current.op` 与当前 op-id 匹配，不匹配则拒绝执行。
 3. 当前 phase 不是 `exec_running` 时：若**主会话**已明确指示执行可继续但需注明 phase 偏差；否则拒绝执行。
+4. **fast 工作流快线下相位路径**：`plan_pending → plan_review → plan_passed → exec_running`（计划审查为必经单轮：通过后进入本环节）；`review_failed → exec_running` 回环（审查不通过时回执行修复；`review_failed → review_pending` 重审出口保留）。
 
 ### 步骤 3：FlowManager 流转合法性校验
 

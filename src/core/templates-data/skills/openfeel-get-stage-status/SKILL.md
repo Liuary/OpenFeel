@@ -15,7 +15,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 
 ### 0. 读取全局配置
 
-读取 `.openfeel/config.yaml`，解析 `defaults` 中的 `execution_mode`、`auto_advance`、`merge_mode`。
+读取 `.openfeel/config.yaml`，解析 `defaults` 中的 `execution_mode`、`auto_advance`、`merge_mode`、`workflow_mode`。
 
 ### 1. 定位状态文件
 
@@ -31,6 +31,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 
 - `执行模式`
 - `自动推进`
+- `工作流模式`
 - `状态`
 - `当前责任 Agent`
 - `上一责任 Agent`
@@ -91,6 +92,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 - 阶段：{stage}
 - 执行模式：manual | auto
 - 自动推进：disabled | enabled
+- 工作流模式：full | fast
 - 状态：{status}
 - 当前责任 Agent：{agent}
 - 前置依赖：{依赖列表 或 无}
@@ -104,6 +106,8 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 ## 下一步建议
 {根据状态给出下一步，例如：启动 Code、等待用户、启动 openfeel-feel-tester、停止流程；若存在并行候选则建议批量启动}
 ```
+
+> **模式感知（fast）**：`工作流模式` 为 `fast` 时，「下一步建议」不指向方案 / 测试环节（快线链为 计划 → 计划审查 → 执行 → 代码审查 → 归档）；`plan_pending` 阶段下一步建议 = `plan_review`（必经，勿建议直接 `plan_passed`）；相位口径为「**可达 ≠ 合法**」——合法枚举仍 15 项（fast 下仅 6 项不可达），**不得**表述为相位缩减。
 
 ## 状态到下一步映射
 

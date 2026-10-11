@@ -53,15 +53,37 @@ stages:
       - v1.1.7-stage-74
       - v1.1.7-stage-75
     priority: P0
-    est_ops: 3
+    est_ops: 5   # [REV-76-012 修订] 原估算 3 → 实拆 5 op（op-001~005，见 stage-76/ops/deps.yaml 与 ops/ 目录）；op-005 = T7（fast 表 9 条目必经 `plan_review`，执行序最前；方案层已裁定）[REV-76-009 修订]
     produces_core:
       - src/core/templates-data/opencode/agents/zh-CN/feel.md
       - src/core/templates-data/opencode/agents/en/feel.md
       - src/core/templates-data/claude/agents/zh-CN/feel.md
       - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-{planner,executor,reviewer,archiver,schemer,feel-tester}.md   # [REV-76-002 修订] T2 6 类 × 4 份 = 24 份
+      - src/core/templates-data/opencode/agents/en/openfeel-{planner,executor,reviewer,archiver,schemer,feel-tester}.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-{planner,executor,reviewer,archiver,schemer,feel-tester}.md
+      - src/core/templates-data/claude/agents/en/openfeel-{planner,executor,reviewer,archiver,schemer,feel-tester}.md
+      - src/core/templates-data/agents-md/zh-CN.md       # [REV-76-001 修订] 全局约束层模式注记（L18 路由行 + L81 调度段）
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
       - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
-      - src/core/template-loader.ts
-    notes: "Agent 契约面：feel.md×4 调度纪律（fast 跳过 schemer/tester、reviewer 单轮）+ subagent 模板模式感知 + skills 收口 + build 重生成（禁手改）+ 静态断言（opencode 关键串零回归）。依赖命令面已定稿。"
+      - src/core/templates-data/skills/openfeel-get-stage-status/SKILL.md   # [REV-76-002 修订] T3 其余 3 skill
+      - src/core/templates-data/skills/openfeel-update-stage-status/SKILL.md
+      - src/core/templates-data/skills/openfeel-wizard/SKILL.md
+      - src/core/templates-data/skills/openfeel-recover/SKILL.md   # [REV-76-015 修订] T3 补：恢复后模式确认注记一行
+      - src/core/template-loader.ts      # build 重生成（7 锚点；禁手改）
+      - src/core/update.ts               # [REV-76-002 修订] build 重生成（SKILL_DEFINITIONS 锚点；禁手改）
+      - test/core/templates.test.ts      # [REV-76-002 修订] 静态断言新增点
+      - test/core/template-loader.test.ts
+      - test/core/claude-adapter.test.ts
+      - src/core/flow-manager.ts          # [需求变更 2026-10-11 修订] T7：FAST_TRANSITIONS 必经 plan_review（plan_pending → ['plan_review'] + 新增 plan_review 键；8 → 9 条目 = 8 流转键 + done）
+      - src/core/config.ts                # [需求变更 2026-10-11 修订] T7-b 文案（WorkflowMode 注释 + CONFIG_TEMPLATE_{ZH,EN} fast 说明行）
+      - src/core/i18n-data/zh-CN.ts       # [需求变更 2026-10-11 修订] T7-b 文案（flow.wizard.modeFast，键数不变）
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts    # [需求变更 2026-10-11 修订] T7-c stage-74 fast 断言同步（FAST_EXPECTED / T7.1 / T7.2a·c·d·e / T7.3a / T7.7b·e / T7.11）
+      - test/commands/flow.test.ts        # [需求变更 2026-10-11 修订] T7-c T7.11①·② 串同步
+    notes: "Agent 契约面：feel.md×4 调度纪律（fast 跳过 schemer/tester、planner 产出后**必经计划审查 `plan_review`**、reviewer 单轮〔计划审查 + 代码审查〕）[需求变更 2026-10-11 修订] + subagent 模板模式感知（6 类 ×4）[REV-76-006 修订] + 全局约束层模式注记（agents-md/claude constraint ×4）[REV-76-001 修订] + skills 收口（cli-usage 就地订正 L33/L43/L86；含 openfeel-recover 模式注记）[REV-76-003 / REV-76-015 修订] + build 重生成（生成物 2 份：template-loader.ts + update.ts，禁手改）[REV-76-002 修订] + 静态断言（opencode 关键串零回归、24 份对称、fast transitions **9 条目**含 done 口径〔需求变更 2026-10-11 修订〕；断言串与责任 op 落文逐字核对 [REV-76-009 修订]）[REV-76-004 修订] + [需求变更 2026-10-11 修订] T7：fast 表修订（引擎 `FAST_TRANSITIONS` 单点 + 文案 5 处〔config.ts×3 + i18n×2〕+ stage-74 断言同步 + 全量扫描收口）；**口径校正：条目数 8 → 9**（8 流转键 + done；任务书载「8 → 10」，以实测 9 为准）。依赖命令面已定稿。"
 
   v1.1.7-stage-77:
     name: 文档与版本收口（v1.1.7 收官）
@@ -90,6 +112,7 @@ execution_order:
 invariants:
   - "phase 枚举零新增（15 项不变）；checkpoint_mapping / phase_corrections 两模式共用"
   - "表选择单一权威：展示 / 校验 / 推进 / BFS 路径同源（禁止第二信源）"
+  - "fast 快线表 = 9 条目（8 流转键 + done）：plan_pending → plan_review 必经（需求变更 2026-10-11）；引擎表 / 模板 / 文案 / 断言四层同口径（禁止按旧「8 条目」或「10」落文）"
   - "阶段级生效值只有 status.md 承载；flow.json 冗余字段不参与级联（读取权威恒为 status.md）"
   - "骨架全量铺：fast 不裁剪 plan.md / ops / deps.yaml / status.md"
   - "本仓自举期 74~77 恒以 full 运行（裁定 L）；fast 端到端由 stage-77 隔离临时项目验收覆盖"

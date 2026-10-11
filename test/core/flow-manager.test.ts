@@ -4206,7 +4206,8 @@ describe('双模式转移表（stage-74 op-002）', () => {
 
   /** 内置 fast 表期望字面量（测试内独立书写，不 import 常量，以捕获常量误改） */
   const FAST_EXPECTED: Record<string, string[]> = {
-    plan_pending: ['plan_passed'],
+    plan_pending: ['plan_review'],
+    plan_review: ['plan_passed', 'plan_pending'],
     plan_passed: ['exec_running'],
     exec_running: ['review_pending'],
     review_pending: ['review_failed', 'review_passed'],
@@ -4238,7 +4239,7 @@ describe('双模式转移表（stage-74 op-002）', () => {
     expect(Object.keys(full)).toHaveLength(16);
   });
 
-  it('T7.1：内置 fast 表逐字（8 条目含 done 终止项）', () => {
+  it('T7.1：内置 fast 表逐字（9 条目含 done 终止项）', () => {
     const mgr = new FlowManager(tmpDir);
     expect(mgr.getDefaultTransitions('fast')).toEqual(FAST_EXPECTED);
   });
@@ -4254,7 +4255,7 @@ describe('双模式转移表（stage-74 op-002）', () => {
     const mgr = new FlowManager(tmpDir);
     const fast = mgr.getDefaultTransitions('fast');
     fast.plan_pending.push('__injected__');
-    expect(mgr.getDefaultTransitions('fast').plan_pending).toEqual(['plan_passed']);
+    expect(mgr.getDefaultTransitions('fast').plan_pending).toEqual(['plan_review']);
   });
 
   // ── T7.7 pipeline.yaml 覆盖线（运行时线） ──
@@ -4292,7 +4293,7 @@ describe('双模式转移表（stage-74 op-002）', () => {
       const mgr = new FlowManager(tmpDir);
       const warns = warnSpy.mock.calls.map((c) => String(c[0])).join('\n');
       expect(warns).toContain('fast_transitions');
-      expect(mgr.getPipelineTransitions('fast')['plan_pending']).toEqual(['plan_passed']);
+      expect(mgr.getPipelineTransitions('fast')['plan_pending']).toEqual(['plan_review']);
       expect(mgr.getPipelineTransitions('full')['plan_pending']).toEqual(['done']);
     } finally {
       warnSpy.mockRestore();
@@ -4332,7 +4333,7 @@ describe('双模式转移表（stage-74 op-002）', () => {
       '',
     ].join('\n'));
     const mgr = new FlowManager(tmpDir);
-    expect(mgr.getPipelineTransitions('fast')['plan_pending']).toEqual(['plan_passed']);
+    expect(mgr.getPipelineTransitions('fast')['plan_pending']).toEqual(['plan_review']);
     expect(mgr.getPipelineTransitions('full')['plan_pending']).toEqual(['done']);
   });
 
@@ -4523,7 +4524,7 @@ describe('单一取表点（stage-74 op-004）', () => {
   it('T7.2a：getAvailablePhases 按被操作 stage 的模式解析（B≠current）', () => {
     const mgr = makeMgr(setupDualModeFixture());
     // 若误用当前阶段分支 → B 得 full 两目标（红）
-    expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['plan_passed']);
+    expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['plan_review']);
     expect(mgr.getAvailablePhases('v1.0.0-stage-01')).toEqual(['plan_review', 'plan_passed']);
   });
 
@@ -4535,15 +4536,15 @@ describe('单一取表点（stage-74 op-004）', () => {
   it('T7.2c：findPhasePath 按被操作 stage 的模式解析', () => {
     const mgr = makeMgr(setupDualModeFixture());
     expect(mgr.findPhasePath('v1.0.0-stage-02', 'exec_running'))
-      .toEqual({ path: ['plan_passed', 'exec_running'], reason: 'ok' });
+      .toEqual({ path: ['plan_review', 'plan_passed', 'exec_running'], reason: 'ok' });
     expect(mgr.findPhasePath('v1.0.0-stage-02', 'scheme_pending').reason).toBe('no-path');
     expect(mgr.findPhasePath('v1.0.0-stage-01', 'scheme_pending').reason).toBe('ok');
   });
 
   it('T7.2d：canAdvance 按 opId 解析出的 stage 模式', () => {
     const mgr = makeMgr(setupDualModeFixture());
-    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_passed')).toBe(true);
-    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_review')).toBe(false);
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_passed')).toBe(false);
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_review')).toBe(true);
     expect(mgr.canAdvance('v1.0.0-stage-01.op-001', 'plan_review')).toBe(true);
   });
 
@@ -4551,15 +4552,16 @@ describe('单一取表点（stage-74 op-004）', () => {
     const mgr = makeMgr(setupDualModeFixture());
     // 删除 B 的 status.md → 无 config → builtin fast
     rmSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-02', 'status.md'), { force: true });
-    expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['plan_passed']);
+    expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['plan_review']);
     // B 补 config.yaml workflow_mode: full（仍无 status.md）→ full 集
     writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'defaults:\n  workflow_mode: full\n', 'utf-8');
     expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['plan_review', 'plan_passed']);
   });
 
-  it('T7.3a：fast 拒绝集（plan_review / scheme_pending / test_pending 全 false）', () => {
+  it('T7.3a：fast 拒绝集（scheme_pending / test_pending 全 false）+ plan_review 正断言', () => {
     const mgr = makeMgr(setupDualModeFixture());
-    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_review')).toBe(false);
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_review')).toBe(true);
+    expect(mgr.findPhasePath('v1.0.0-stage-02', 'plan_review')).toEqual({ path: ['plan_review'], reason: 'ok' });
     expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'scheme_pending')).toBe(false);
     expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'test_pending')).toBe(false);
     expect(mgr.findPhasePath('v1.0.0-stage-02', 'test_pending').reason).toBe('no-path');
@@ -4608,7 +4610,7 @@ describe('单一取表点（stage-74 op-004）', () => {
     b.pipeline.current = { stage: 'v1.0.0-stage-02', op: 'v1.0.0-stage-02.op-001' };
     const mgrB = makeMgr(b);
     const downstream = mgrB.verboseSummary().downstreamPhases;
-    expect(downstream.map((d) => d.phase)).toEqual(['plan_passed']);
+    expect(downstream.map((d) => d.phase)).toEqual(['plan_review']);
     expect(downstream[0].responsibleAgent).toBe('openfeel-planner');
   });
 });

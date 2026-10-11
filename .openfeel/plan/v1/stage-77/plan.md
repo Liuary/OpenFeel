@@ -69,8 +69,8 @@
 
 ### T4 — fast 隔离端到端验收（**决定性**）
 - 临时项目 + 隔离 HOME：`openfeel init` → `config set defaults.workflow_mode fast` → `plan stage add` →
-  1. `plan_pending → plan_passed → exec_running → review_pending → review_failed → review_pending → review_passed → archiving → done` 全链 `advance` 成功；
-  2. `--to plan_review` / `scheme_pending` / `test_pending` 被拒绝（exit 非 0）；
+  1. `plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_pending → review_passed → archiving → done` 全链 `advance` 成功（**`plan_review` 为必经节点**）[需求变更 2026-10-11 修订]；
+  2. `--to scheme_pending` / `test_pending` 被拒绝（exit 非 0）；**`--to plan_review` 可推进（必经）**；自 `plan_pending` 直跳 `--to plan_passed` 亦被拒 [需求变更 2026-10-11 修订]；
   3. `stage set <id> --workflow-mode full` 后 `plan_passed → scheme_pending` 可推进；
   4. `flow mode --json` 字段与来源正确；
   5. 全流程**无 `~/.openfeel` 真实目录写入**（隔离断言）。

@@ -101,6 +101,7 @@ Write regression verification results into the Bug file's "Acceptance Record" ta
 - When issues are found, notify openfeel-schemer to formulate a revision
 - Re-test after fixes until passing
 - When tests pass, notify Feel to enter the archiving phase
+- **Workflow Mode Awareness**: under the fast Workflow Fast Line this agent is **not dispatched** (the formal test step is skipped per `status.md` "Workflow Mode"; the `test_*` phases are unreachable); the role definition is unchanged.
 
 ## Model Selection
 

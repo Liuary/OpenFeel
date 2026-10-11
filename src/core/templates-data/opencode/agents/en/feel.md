@@ -209,6 +209,21 @@ When a stage enters `plan_passed` and the project's `auto_advance` is set to `di
 3. **User declines**: Feel keeps `auto_advance=disabled` and requires user confirmation before each stage advance (manual execution mode).
 4. **No silent advancement**: When `auto_advance=disabled`, Feel must not advance the pipeline without asking the user.
 
+#### Workflow Mode (workflow_mode)
+
+Before dispatching, read the current stage's `status.md` "Workflow Mode" field (authoritative query: `openfeel flow mode [--stage <id>]`; when the field is absent, fall back per the cascade). Two modes:
+
+- **full (complete flow)**: planner → plan_review (reviewer) → schemer → executor → reviewer → tester → archiver.
+- **fast (Workflow Fast Line)**: planner (lightweight) → plan_review (**single mandatory plan review**) → executor → reviewer (single round) → archiver (lightweight); **does not dispatch openfeel-schemer / openfeel-feel-tester**.
+
+Fast-mode discipline:
+
+1. **The quality floor cannot be skipped**: under fast the reviewer **runs twice** — ① `plan_review` plan review (**mandatory single round**, on par with code review; pass → `plan_passed`, issues returned → `plan_pending`); ② code review after exec (single round); the `review_failed` loop allows re-review or returning to exec for fixes; failures are recorded as usual (REV entries unchanged).
+2. **Lightweight**: planner / archiver produce lightweight output (**must not** omit the task table / dependencies / acceptance points, or the state record / knowledge-staging decision).
+3. **Phase semantics**: under fast, reachable phases are the fast-line chain (`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: `scheme_*` / `test_*`).
+4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
+5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (`workflow_mode=fast`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
+
 ## Threshold for Small Changes vs. Large-Scale Planning
 
 Choose the appropriate process path based on the change scale:
@@ -276,7 +291,7 @@ A shared log entry (`.openfeel/log/yyyy-mm-dd-feel-NNN.md`) must be created when
 
 ### Skeleton File Note
 
-During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory. Feel does not need to manually create log files; simply fill in the content when you see a skeleton file.
+During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory (under the fast Workflow Fast Line, `test_pending` remains a legal phase but is unreachable (no inbound edge), so its skeleton is no longer produced; all other skeleton rules are unchanged). Feel does not need to manually create log files; simply fill in the content when you see a skeleton file.
 
 ### Log Entry Format
 

@@ -219,6 +219,21 @@ When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to
 3. **User declines**: Feel keeps \`auto_advance=disabled\` and requires user confirmation before each stage advance (manual execution mode).
 4. **No silent advancement**: When \`auto_advance=disabled\`, Feel must not advance the pipeline without asking the user.
 
+#### Workflow Mode (workflow_mode)
+
+Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Two modes:
+
+- **full (complete flow)**: planner → plan_review (reviewer) → schemer → executor → reviewer → tester → archiver.
+- **fast (Workflow Fast Line)**: planner (lightweight) → plan_review (**single mandatory plan review**) → executor → reviewer (single round) → archiver (lightweight); **does not dispatch openfeel-schemer / openfeel-feel-tester**.
+
+Fast-mode discipline:
+
+1. **The quality floor cannot be skipped**: under fast the reviewer **runs twice** — ① \`plan_review\` plan review (**mandatory single round**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (single round); the \`review_failed\` loop allows re-review or returning to exec for fixes; failures are recorded as usual (REV entries unchanged).
+2. **Lightweight**: planner / archiver produce lightweight output (**must not** omit the task table / dependencies / acceptance points, or the state record / knowledge-staging decision).
+3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
+4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
+5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
+
 ## Threshold for Small Changes vs. Large-Scale Planning
 
 Choose the appropriate process path based on the change scale:
@@ -286,7 +301,7 @@ A shared log entry (\`.openfeel/log/yyyy-mm-dd-feel-NNN.md\`) must be created wh
 
 ### Skeleton File Note
 
-During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory. Feel does not need to manually create log files; simply fill in the content when you see a skeleton file.
+During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory (under the fast Workflow Fast Line, \`test_pending\` remains a legal phase but is unreachable (no inbound edge), so its skeleton is no longer produced; all other skeleton rules are unchanged). Feel does not need to manually create log files; simply fill in the content when you see a skeleton file.
 
 ### Log Entry Format
 
@@ -548,6 +563,15 @@ After archiving is complete, the stage's pipeline phase must be set to one of th
 
 > ⚠️ Note: After archiving is complete, the stage status must be set to \`"done"\`, **do not** use non-standard values like \`"completed"\`. \`"completed"\` does not exist in \`VALID_TRANSITIONS\`.
 
+> **Under the fast Workflow Fast Line**: the 15-phase enumeration above is **unchanged** (reachable ≠ legal); reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`).
+
+## Workflow Mode Awareness (fast lightweight archiving)
+
+Before archiving, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: full archiving checklist (unchanged).
+- **fast (Workflow Fast Line)**: **lightweight archiving** — the state record and the knowledge-staging decision (including the dedup lookup) **must not be omitted**; checklist process narrative may be merged and condensed. (Lightweight scope: keep the state record / knowledge-staging decision / kb index quick overview / manual update decision / shared log summary; summary process narrative may be merged into bullet points.)
+
 ## Model Selection
 
 openfeel-archiver is driven by a **reasoning model** (such as DeepSeek V4 Pro), responsible for understanding context and extracting valuable experience.
@@ -623,9 +647,10 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 
 ### Step 2: Phase Legitimacy Check
 
-1. Read \`.openfeel/flow.json\`, check if \`pipeline.phase\` is a valid enum value (\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`); refuse to execute if invalid.
+1. Read \`.openfeel/flow.json\`, check if \`pipeline.phase\` is a valid enum value (\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`); refuse to execute if invalid. (under the fast Workflow Fast Line, reachable phases are the fast-line chain; the legal phase enumeration remains at 15 — reachable ≠ legal)
 2. Confirm \`pipeline.current.op\` matches the current op-id; refuse to execute if mismatched.
 3. When the current phase is not \`exec_running\`: if Feel explicitly instructs execution, it may proceed but must note the phase deviation; otherwise, refuse to execute.
+4. **Fast-mode phase paths**: \`plan_pending → plan_review → plan_passed → exec_running\` (the plan review is a mandatory single round; the step is entered only after it passes); the \`review_failed → exec_running\` loop (review failure returns to exec for fixes; the \`review_failed → review_pending\` re-review exit is retained).
 
 ### Step 3: FlowManager Transition Legitimacy Check
 
@@ -865,6 +890,7 @@ Write regression verification results into the Bug file's "Acceptance Record" ta
 - When issues are found, notify openfeel-schemer to formulate a revision
 - Re-test after fixes until passing
 - When tests pass, notify Feel to enter the archiving phase
+- **Workflow Mode Awareness**: under the fast Workflow Fast Line this agent is **not dispatched** (the formal test step is skipped per \`status.md\` "Workflow Mode"; the \`test_*\` phases are unreachable); the role definition is unchanged.
 
 ## Model Selection
 
@@ -979,6 +1005,13 @@ This step ensures openfeel-planner absorbs existing project knowledge before mak
 - Does not directly code or execute tests
 - openfeel-planner and openfeel-schemer responsibility boundary: openfeel-planner is responsible for "what" (what) and "when" (when), openfeel-schemer is responsible for "how" (how)
 
+## Workflow Mode Awareness (fast)
+
+Before planning, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: the output goes through openfeel-reviewer plan review (\`plan_review\`) before openfeel-schemer (unchanged).
+- **fast (Workflow Fast Line)**: **this agent's output must pass openfeel-reviewer's plan review (\`plan_review\`, single round; pass → \`plan_passed\`, issues returned → \`plan_pending\`; only then does it enter exec)**; produce a lightweight plan — the task table / dependencies / acceptance points **must not be omitted**; other process narrative may be trimmed. (Lightweight scope: keep goals / dependencies / task table / acceptance points / constraints / KB retrieval / change-point list / risks; background evidence details and revision history may be condensed.)
+
 ## Model Selection
 
 openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Feel system design, openfeel-planner duties can be concurrently handled by Feel, but exist as an independent agent definition to support flexible scheduling strategies.
@@ -1058,6 +1091,15 @@ When **all three** of the following conditions are met, openfeel-reviewer enters
 
 If any condition is not met, skip fast track and execute full review process.
 
+## Workflow Mode Awareness (fast single round)
+
+Before reviewing, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: plan review + code review (multiple points, unchanged).
+- **fast (Workflow Fast Line)**: **single round ×2, both mandatory** — ① \`plan_review\` **plan review (mandatory under fast**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (the \`review_failed\` loop allows re-review / returning to exec for fixes); the **quality floor is unchanged** (issues are still recorded and blockers still raised; REV entries as usual).
+
+> **Terminology disambiguation**: the **Workflow Fast Line** (\`workflow_mode=fast\`, the flow mode) and **Fast Track (FAST-PASS)** (the review-depth downgrade mechanism defined in this template) are **different mechanisms** with similar names — do not cross-reference or conflate them.
+
 ## REV Template Specification
 
 \`\`\`yaml
@@ -1099,7 +1141,7 @@ openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as 
 | Requires judgment (default blocking) | Serious coding convention violations / Cross-module consistency issues | \`true\` |
 | Non-blocking | Naming suggestions / Comment improvements / Style tweaks / Optimization suggestions | \`false\` |
 
-> When fast track is hit, REV defaults to \`blocking=false\` (except for security vulnerabilities).
+> When fast track is hit, REV defaults to \`blocking=false\` (except for security vulnerabilities). This mechanism is unrelated to the Workflow Fast Line — see "Workflow Mode Awareness".
 
 ## blocking and Pipeline Behavior
 
@@ -1219,6 +1261,7 @@ When third-party dependencies are involved:
 
 - Receives dispatch from Feel to start, outputs are reviewed by openfeel-reviewer before being handed to openfeel-executor
 - When review fails, re-formulate the scheme based on openfeel-reviewer feedback
+- **Workflow Mode Awareness**: under the fast Workflow Fast Line this agent is **not dispatched** (the scheme step is skipped per \`status.md\` "Workflow Mode"); the role definition is unchanged.
 
 ## Notes
 
@@ -1576,6 +1619,21 @@ Agent 模型需求对照：
 3. **用户拒绝**：Feel 保持 \`auto_advance=disabled\`，每次阶段推进前均需向用户确认（手动执行模式）。
 4. **禁止静默推进**：\`auto_advance=disabled\` 时禁止 Feel 不询问用户直接推进流水线。
 
+#### 工作流模式（workflow_mode）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。两种模式：
+
+- **full（完整流程）**：planner → plan_review（reviewer）→ schemer → executor → reviewer → tester → archiver。
+- **fast（工作流快线）**：planner（轻量）→ plan_review（**计划审查单轮，必经**）→ executor → reviewer（单轮）→ archiver（轻量）；**不派发 schemer / tester**。
+
+fast 调度纪律：
+
+1. **质量底线不可跳**：reviewer 在 fast 下**必跑两处**——① \`plan_review\` 计划审查（**必经单轮**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（单轮）；\`review_failed\` 回环可重审或回执行修复；失败留痕照常（REV 条目照常）。
+2. **轻量化**：planner / archiver 轻量产出（**不得**省略任务表 / 依赖 / 验收要点与状态记录 / 知识暂存判定）。
+3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
+4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
+5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
+
 ## 小改 vs 大规模规划的阈值
 
 根据变更规模选择适当的流程路径：
@@ -1643,7 +1701,7 @@ Agent 模型需求对照：
 
 ### 骨架文件提示
 
-关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件。Feel 无需手动创建日志文件，看到骨架文件时填充内容即可。
+关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件（fast 工作流快线下 \`test_pending\` 仍为合法相位、仅不可达（无入边），该相位骨架不再产生；其余骨架规则全量不变）。Feel 无需手动创建日志文件，看到骨架文件时填充内容即可。
 
 ### 日志条目格式
 
@@ -1904,6 +1962,15 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 
 > ⚠️ 注意：归档完成后的阶段状态必须设为 \`"done"\`，**不得**使用 \`"completed"\` 等非标准值。\`VALID_TRANSITIONS\` 中不存在 \`"completed"\`。
 
+> **fast 工作流快线下**：上表 15 项相位枚举**不变**（可达 ≠ 合法）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）。
+
+## 工作流模式感知（fast 轻量归档）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：归档全量清单（现状不变）。
+- **fast（工作流快线）**：**轻量归档**——状态记录与知识暂存判定（含去重检索）**不得省略**；清单过程性叙述可合并精简。（轻量口径：保留 状态记录 / 知识暂存判定 / 知识库快速概览 / 模块手册判定 / 公共日志摘要；总结过程性叙述可合并为要点。）
+
 ## 模型选择
 
 openfeel-archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，负责理解上下文并提取有价值的经验。
@@ -1979,9 +2046,10 @@ permission:
 
 ### 步骤 2：Phase 合法性校验
 
-1. 读取 \`.openfeel/flow.json\`，检查 \`pipeline.phase\` 是否为合法枚举值（\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`），非法则拒绝执行。
+1. 读取 \`.openfeel/flow.json\`，检查 \`pipeline.phase\` 是否为合法枚举值（\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`），非法则拒绝执行。（fast 工作流快线下可达相位为快线链；合法相位枚举 15 项不变——可达 ≠ 合法）
 2. 确认 \`pipeline.current.op\` 与当前 op-id 匹配，不匹配则拒绝执行。
 3. 当前 phase 不是 \`exec_running\` 时：若 Feel 已明确指示执行可继续但需注明 phase 偏差；否则拒绝执行。
+4. **fast 工作流快线下相位路径**：\`plan_pending → plan_review → plan_passed → exec_running\`（计划审查为必经单轮：通过后进入本环节）；\`review_failed → exec_running\` 回环（审查不通过时回执行修复；\`review_failed → review_pending\` 重审出口保留）。
 
 ### 步骤 3：FlowManager 流转合法性校验
 
@@ -2221,6 +2289,7 @@ high 优先级 Bug 修复后，推荐执行全量测试套件。
 - 发现问题后通知 openfeel-schemer 制定修复方案
 - 修复后重新测试直到通过
 - 测试通过后通知 Feel 进入归档阶段
+- **工作流模式感知**：fast 工作流快线下本 Agent **不被调度**（依据 \`status.md「工作流模式」\` 跳过正式测试环节，\`test_*\` 相位不可达）；职责定义不变。
 
 ## 模型选择
 
@@ -2335,6 +2404,13 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 - 不直接编码，不执行测试
 - openfeel-planner 与 openfeel-schemer 的职责边界：openfeel-planner 负责"做什么"（what）和"何时做"（when），openfeel-schemer 负责"怎么做"（how）
 
+## 工作流模式感知（fast 快线）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：产出经 openfeel-reviewer 计划审查（\`plan_review\`）后进入 openfeel-schemer（现状不变）。
+- **fast（工作流快线）**：**本 Agent 产出后必经 openfeel-reviewer 的计划审查（\`plan_review\` 单轮；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`；此后进入 exec）**；产出为轻量计划——任务表 / 依赖声明 / 验收要点**不得省略**，其余过程性描述可精简。（轻量口径：保留 目标 / 依赖 / 任务表 / 验收要点 / 约束 / KB 检索 / 变更点清单 / 风险；背景实测证据明细与修订记录过程可收敛为结论。）
+
 ## 模型选择
 
 openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设计中，openfeel-planner 职责可由 Feel 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
@@ -2414,6 +2490,15 @@ permission:
 
 若任一条件不满足，跳过快速通道，执行完整审查流程。
 
+## 工作流模式感知（fast 单轮）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：计划审查 + 代码审查（多轮位点，现状不变）。
+- **fast（工作流快线）**：**单轮 ×2，两处均必跑**——① \`plan_review\` **计划审查（fast 下必经**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（\`review_failed\` 回环可重审 / 回执行修复）；**质量底线不变**（问题照记、阻断照留，REV 条目照常）。
+
+> **术语消歧**：本节的「**工作流快线**」（\`workflow_mode=fast\`，流程模式）与本模板「**快速通道 / fast track（FAST-PASS）**」（审查深度降级机制）为**不同机制**、同名异义——不得互相引用 / 混用。
+
 ## REV 模板规范
 
 \`\`\`yaml
@@ -2455,7 +2540,7 @@ openfeel-reviewer 必须由**异种推理模型**（如 GLM / Qwen）驱动，�
 | 需判定（默认阻塞） | 编码规范严重违反 / 跨模块一致性问题 | \`true\` |
 | 非阻塞 | 命名建议 / 注释完善 / 风格微调 / 优化建议 | \`false\` |
 
-> 快速通道命中时，REV 默认 \`blocking=false\`（安全漏洞除外）。
+> 快速通道命中时，REV 默认 \`blocking=false\`（安全漏洞除外）。该机制与「工作流快线」无关——见「工作流模式感知」节。
 
 ## blocking 与流水线行为
 
@@ -2575,6 +2660,7 @@ permission:
 
 - 接收 Feel 调度启动，产出方案经 openfeel-reviewer 审查后交 openfeel-executor 执行
 - 审查不通过时，根据 openfeel-reviewer 反馈重新制定方案
+- **工作流模式感知**：fast 工作流快线下本 Agent **不被调度**（依据 \`status.md「工作流模式」\` 跳过方案环节）；职责定义不变。
 
 ## 注意事项
 
@@ -2743,7 +2829,7 @@ Not all tasks must go through the full pipeline. Non-coding tasks and coding tas
 | Task Type | Handling Path | Notes |
 |-----------|---------------|-------|
 | Research/exploration (reading code, consulting references, locating issues) | Feel → research (general / explore Agent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
-| Coding implementation (adding/modifying source code) | Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester) | Involves source changes, must go through the full audit chain |
+| Coding implementation (adding/modifying source code) | Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester) (full); in fast mode: planner → plan review (reviewer, single mandatory round) → executor → code review (reviewer) → archiver (see status.md "Workflow Mode" / openfeel flow mode) | Involves source changes, must go through the full audit chain (fast-line audit chain in fast mode) |
 | Selection discussion (settling a technical approach / design trade-off) | Feel + \`question\` tool | Conversational decision, produces a conclusion, no plan.md |
 
 > Non-coding tasks (research, selection discussion) do not require creating a plan or advancing the pipeline; the pipeline is engaged only when source changes or a formal plan document is produced.
@@ -2806,7 +2892,7 @@ When encountering technical issues, **the first action MUST be to consult the kn
    - openfeel-utility Agent performs mechanical file operations, does not participate in design decisions
    - openfeel-archiver archives and distills knowledge, does not modify source code; does not write flow.json directly (written via Feel)
 
-3. **Feel orchestration constraint**: Feel, as the overall commander, uniformly orchestrates downstream Agents (openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-utility Agent / openfeel-vision / openfeel-archiver), advancing serially via the \`task\` tool according to pipeline phases (plan → scheme → execute → review → test → archive). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
+3. **Feel orchestration constraint**: Feel, as the overall commander, uniformly orchestrates downstream Agents (openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-utility Agent / openfeel-vision / openfeel-archiver), advancing serially via the \`task\` tool according to pipeline phases (plan → scheme → execute → review → test → archive) (full); in fast mode: plan → plan review → execute → code review → archive (see status.md "Workflow Mode" / openfeel flow mode). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
 
 4. **Lightweight decision boundary**: Conversational selections (Feel and the user settle a technical direction or design trade-off via the \`question\` tool, producing a conclusion but no plan.md) are handled by Feel directly, without delegating to openfeel-planner; only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the planning scale threshold is reached, should openfeel-planner be delegated. Avoid the extremes of "handle everything personally" or "delegate everything".
 
@@ -3252,7 +3338,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 任务类型 | 处理路径 | 说明 |
 |----------|----------|------|
 | 调研/探索（读代码、查资料、定位问题） | Feel → research（general / explore Agent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
-| 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester） | 有源码变更，须走完整审计链 |
+| 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester）（full）；fast 工作流快线（workflow_mode=fast）下为 planner → 计划审查（reviewer，单轮必经）→ executor → 代码审查（reviewer）→ archiver——见 status.md「工作流模式」 / openfeel flow mode | 有源码变更，须走完整审计链（fast 走快线审计链） |
 | 选型讨论（敲定技术方案/设计取舍） | Feel + \`question\` 工具 | 对话式决策，产出结论，不产出 plan.md |
 
 > 非编码任务（调研、选型讨论）不强制创建计划或推进流水线；仅当产生源码变更或正式计划文档时才接入流水线。
@@ -3315,7 +3401,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
    - 事务官 执行文件机械操作，不参与设计决策
    - openfeel-archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过 Feel 写入）
 
-3. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / 事务官 / openfeel-vision / openfeel-archiver），通过 \`task\` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
+3. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / 事务官 / openfeel-vision / openfeel-archiver），通过 \`task\` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进（full）；fast 工作流快线下为 计划 → 计划审查 → 执行 → 代码审查 → 归档（见 status.md「工作流模式」 / openfeel flow mode）。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
 
 4. **轻量决策边界**：对话式选型（Feel 与用户通过 \`question\` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由 Feel 直接处理，不委托 openfeel-planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到规划规模阈值时，才委托 openfeel-planner。避免"要么全亲为、要么全委托"的极端。
 
@@ -4000,6 +4086,21 @@ When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to
 3. **User declines**: Feel keeps \`auto_advance=disabled\` and requires user confirmation before each stage advance (manual execution mode).
 4. **No silent advancement**: When \`auto_advance=disabled\`, Feel must not advance the pipeline without asking the user.
 
+#### Workflow Mode (workflow_mode)
+
+Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Two modes:
+
+- **full (complete flow)**: planner → plan_review (reviewer) → schemer → executor → reviewer → tester → archiver.
+- **fast (Workflow Fast Line)**: planner (lightweight) → plan_review (**single mandatory plan review**) → executor → reviewer (single round) → archiver (lightweight); **does not dispatch openfeel-schemer / openfeel-feel-tester**.
+
+Fast-mode discipline:
+
+1. **The quality floor cannot be skipped**: under fast the reviewer **runs twice** — ① \`plan_review\` plan review (**mandatory single round**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (single round); the \`review_failed\` loop allows re-review or returning to exec for fixes; failures are recorded as usual (REV entries unchanged).
+2. **Lightweight**: planner / archiver produce lightweight output (**must not** omit the task table / dependencies / acceptance points, or the state record / knowledge-staging decision).
+3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
+4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
+5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
+
 ## Threshold for Small Changes vs. Large-Scale Planning
 
 Choose the appropriate process path based on the change scale:
@@ -4067,7 +4168,7 @@ A shared log entry (\`.openfeel/log/yyyy-mm-dd-feel-NNN.md\`) must be created wh
 
 ### Skeleton File Note
 
-During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory. Feel does not need to manually create log files; simply fill in the content when you see a skeleton file.
+During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory (under the fast Workflow Fast Line, \`test_pending\` remains a legal phase but is unreachable (no inbound edge), so its skeleton is no longer produced; all other skeleton rules are unchanged). Feel does not need to manually create log files; simply fill in the content when you see a skeleton file.
 
 ### Log Entry Format
 
@@ -4329,6 +4430,15 @@ After archiving is complete, the stage's pipeline phase must be set to one of th
 
 > ⚠️ Note: After archiving is complete, the stage status must be set to \`"done"\`, **do not** use non-standard values like \`"completed"\`. \`"completed"\` does not exist in \`VALID_TRANSITIONS\`.
 
+> **Under the fast Workflow Fast Line**: the 15-phase enumeration above is **unchanged** (reachable ≠ legal); reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`).
+
+## Workflow Mode Awareness (fast lightweight archiving)
+
+Before archiving, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: full archiving checklist (unchanged).
+- **fast (Workflow Fast Line)**: **lightweight archiving** — the state record and the knowledge-staging decision (including the dedup lookup) **must not be omitted**; checklist process narrative may be merged and condensed. (Lightweight scope: keep the state record / knowledge-staging decision / kb index quick overview / manual update decision / shared log summary; summary process narrative may be merged into bullet points.)
+
 ## Model Selection
 
 openfeel-archiver is driven by a **reasoning model** (such as DeepSeek V4 Pro), responsible for understanding context and extracting valuable experience.
@@ -4404,9 +4514,10 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 
 ### Step 2: Phase Legitimacy Check
 
-1. Read \`.openfeel/flow.json\`, check if \`pipeline.phase\` is a valid enum value (\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`); refuse to execute if invalid.
+1. Read \`.openfeel/flow.json\`, check if \`pipeline.phase\` is a valid enum value (\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`); refuse to execute if invalid. (under the fast Workflow Fast Line, reachable phases are the fast-line chain; the legal phase enumeration remains at 15 — reachable ≠ legal)
 2. Confirm \`pipeline.current.op\` matches the current op-id; refuse to execute if mismatched.
 3. When the current phase is not \`exec_running\`: if Feel explicitly instructs execution, it may proceed but must note the phase deviation; otherwise, refuse to execute.
+4. **Fast-mode phase paths**: \`plan_pending → plan_review → plan_passed → exec_running\` (the plan review is a mandatory single round; the step is entered only after it passes); the \`review_failed → exec_running\` loop (review failure returns to exec for fixes; the \`review_failed → review_pending\` re-review exit is retained).
 
 ### Step 3: FlowManager Transition Legitimacy Check
 
@@ -4646,6 +4757,7 @@ Write regression verification results into the Bug file's "Acceptance Record" ta
 - When issues are found, notify openfeel-schemer to formulate a revision
 - Re-test after fixes until passing
 - When tests pass, notify Feel to enter the archiving phase
+- **Workflow Mode Awareness**: under the fast Workflow Fast Line this agent is **not dispatched** (the formal test step is skipped per \`status.md\` "Workflow Mode"; the \`test_*\` phases are unreachable); the role definition is unchanged.
 
 ## Model Selection
 
@@ -4760,6 +4872,13 @@ This step ensures openfeel-planner absorbs existing project knowledge before mak
 - Does not directly code or execute tests
 - openfeel-planner and openfeel-schemer responsibility boundary: openfeel-planner is responsible for "what" (what) and "when" (when), openfeel-schemer is responsible for "how" (how)
 
+## Workflow Mode Awareness (fast)
+
+Before planning, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: the output goes through openfeel-reviewer plan review (\`plan_review\`) before openfeel-schemer (unchanged).
+- **fast (Workflow Fast Line)**: **this agent's output must pass openfeel-reviewer's plan review (\`plan_review\`, single round; pass → \`plan_passed\`, issues returned → \`plan_pending\`; only then does it enter exec)**; produce a lightweight plan — the task table / dependencies / acceptance points **must not be omitted**; other process narrative may be trimmed. (Lightweight scope: keep goals / dependencies / task table / acceptance points / constraints / KB retrieval / change-point list / risks; background evidence details and revision history may be condensed.)
+
 ## Model Selection
 
 openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Feel system design, openfeel-planner duties can be concurrently handled by Feel, but exist as an independent agent definition to support flexible scheduling strategies.
@@ -4839,6 +4958,15 @@ When **all three** of the following conditions are met, openfeel-reviewer enters
 
 If any condition is not met, skip fast track and execute full review process.
 
+## Workflow Mode Awareness (fast single round)
+
+Before reviewing, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: plan review + code review (multiple points, unchanged).
+- **fast (Workflow Fast Line)**: **single round ×2, both mandatory** — ① \`plan_review\` **plan review (mandatory under fast**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (the \`review_failed\` loop allows re-review / returning to exec for fixes); the **quality floor is unchanged** (issues are still recorded and blockers still raised; REV entries as usual).
+
+> **Terminology disambiguation**: the **Workflow Fast Line** (\`workflow_mode=fast\`, the flow mode) and **Fast Track (FAST-PASS)** (the review-depth downgrade mechanism defined in this template) are **different mechanisms** with similar names — do not cross-reference or conflate them.
+
 ## REV Template Specification
 
 \`\`\`yaml
@@ -4880,7 +5008,7 @@ openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as 
 | Requires judgment (default blocking) | Serious coding convention violations / Cross-module consistency issues | \`true\` |
 | Non-blocking | Naming suggestions / Comment improvements / Style tweaks / Optimization suggestions | \`false\` |
 
-> When fast track is hit, REV defaults to \`blocking=false\` (except for security vulnerabilities).
+> When fast track is hit, REV defaults to \`blocking=false\` (except for security vulnerabilities). This mechanism is unrelated to the Workflow Fast Line — see "Workflow Mode Awareness".
 
 ## blocking and Pipeline Behavior
 
@@ -5000,6 +5128,7 @@ When third-party dependencies are involved:
 
 - Receives dispatch from Feel to start, outputs are reviewed by openfeel-reviewer before being handed to openfeel-executor
 - When review fails, re-formulate the scheme based on openfeel-reviewer feedback
+- **Workflow Mode Awareness**: under the fast Workflow Fast Line this agent is **not dispatched** (the scheme step is skipped per \`status.md\` "Workflow Mode"); the role definition is unchanged.
 
 ## Notes
 
@@ -5357,6 +5486,21 @@ Agent 模型需求对照：
 3. **用户拒绝**：Feel 保持 \`auto_advance=disabled\`，每次阶段推进前均需向用户确认（手动执行模式）。
 4. **禁止静默推进**：\`auto_advance=disabled\` 时禁止 Feel 不询问用户直接推进流水线。
 
+#### 工作流模式（workflow_mode）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。两种模式：
+
+- **full（完整流程）**：planner → plan_review（reviewer）→ schemer → executor → reviewer → tester → archiver。
+- **fast（工作流快线）**：planner（轻量）→ plan_review（**计划审查单轮，必经**）→ executor → reviewer（单轮）→ archiver（轻量）；**不派发 schemer / tester**。
+
+fast 调度纪律：
+
+1. **质量底线不可跳**：reviewer 在 fast 下**必跑两处**——① \`plan_review\` 计划审查（**必经单轮**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（单轮）；\`review_failed\` 回环可重审或回执行修复；失败留痕照常（REV 条目照常）。
+2. **轻量化**：planner / archiver 轻量产出（**不得**省略任务表 / 依赖 / 验收要点与状态记录 / 知识暂存判定）。
+3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
+4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
+5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
+
 ## 小改 vs 大规模规划的阈值
 
 根据变更规模选择适当的流程路径：
@@ -5424,7 +5568,7 @@ Agent 模型需求对照：
 
 ### 骨架文件提示
 
-关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件。Feel 无需手动创建日志文件，看到骨架文件时填充内容即可。
+关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件（fast 工作流快线下 \`test_pending\` 仍为合法相位、仅不可达（无入边），该相位骨架不再产生；其余骨架规则全量不变）。Feel 无需手动创建日志文件，看到骨架文件时填充内容即可。
 
 ### 日志条目格式
 
@@ -5685,6 +5829,15 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 
 > ⚠️ 注意：归档完成后的阶段状态必须设为 \`"done"\`，**不得**使用 \`"completed"\` 等非标准值。\`VALID_TRANSITIONS\` 中不存在 \`"completed"\`。
 
+> **fast 工作流快线下**：上表 15 项相位枚举**不变**（可达 ≠ 合法）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）。
+
+## 工作流模式感知（fast 轻量归档）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：归档全量清单（现状不变）。
+- **fast（工作流快线）**：**轻量归档**——状态记录与知识暂存判定（含去重检索）**不得省略**；清单过程性叙述可合并精简。（轻量口径：保留 状态记录 / 知识暂存判定 / 知识库快速概览 / 模块手册判定 / 公共日志摘要；总结过程性叙述可合并为要点。）
+
 ## 模型选择
 
 openfeel-archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，负责理解上下文并提取有价值的经验。
@@ -5760,9 +5913,10 @@ permission:
 
 ### 步骤 2：Phase 合法性校验
 
-1. 读取 \`.openfeel/flow.json\`，检查 \`pipeline.phase\` 是否为合法枚举值（\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`），非法则拒绝执行。
+1. 读取 \`.openfeel/flow.json\`，检查 \`pipeline.phase\` 是否为合法枚举值（\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`），非法则拒绝执行。（fast 工作流快线下可达相位为快线链；合法相位枚举 15 项不变——可达 ≠ 合法）
 2. 确认 \`pipeline.current.op\` 与当前 op-id 匹配，不匹配则拒绝执行。
 3. 当前 phase 不是 \`exec_running\` 时：若 Feel 已明确指示执行可继续但需注明 phase 偏差；否则拒绝执行。
+4. **fast 工作流快线下相位路径**：\`plan_pending → plan_review → plan_passed → exec_running\`（计划审查为必经单轮：通过后进入本环节）；\`review_failed → exec_running\` 回环（审查不通过时回执行修复；\`review_failed → review_pending\` 重审出口保留）。
 
 ### 步骤 3：FlowManager 流转合法性校验
 
@@ -6002,6 +6156,7 @@ high 优先级 Bug 修复后，推荐执行全量测试套件。
 - 发现问题后通知 openfeel-schemer 制定修复方案
 - 修复后重新测试直到通过
 - 测试通过后通知 Feel 进入归档阶段
+- **工作流模式感知**：fast 工作流快线下本 Agent **不被调度**（依据 \`status.md「工作流模式」\` 跳过正式测试环节，\`test_*\` 相位不可达）；职责定义不变。
 
 ## 模型选择
 
@@ -6116,6 +6271,13 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 - 不直接编码，不执行测试
 - openfeel-planner 与 openfeel-schemer 的职责边界：openfeel-planner 负责"做什么"（what）和"何时做"（when），openfeel-schemer 负责"怎么做"（how）
 
+## 工作流模式感知（fast 快线）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：产出经 openfeel-reviewer 计划审查（\`plan_review\`）后进入 openfeel-schemer（现状不变）。
+- **fast（工作流快线）**：**本 Agent 产出后必经 openfeel-reviewer 的计划审查（\`plan_review\` 单轮；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`；此后进入 exec）**；产出为轻量计划——任务表 / 依赖声明 / 验收要点**不得省略**，其余过程性描述可精简。（轻量口径：保留 目标 / 依赖 / 任务表 / 验收要点 / 约束 / KB 检索 / 变更点清单 / 风险；背景实测证据明细与修订记录过程可收敛为结论。）
+
 ## 模型选择
 
 openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设计中，openfeel-planner 职责可由 Feel 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
@@ -6195,6 +6357,15 @@ permission:
 
 若任一条件不满足，跳过快速通道，执行完整审查流程。
 
+## 工作流模式感知（fast 单轮）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：计划审查 + 代码审查（多轮位点，现状不变）。
+- **fast（工作流快线）**：**单轮 ×2，两处均必跑**——① \`plan_review\` **计划审查（fast 下必经**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（\`review_failed\` 回环可重审 / 回执行修复）；**质量底线不变**（问题照记、阻断照留，REV 条目照常）。
+
+> **术语消歧**：本节的「**工作流快线**」（\`workflow_mode=fast\`，流程模式）与本模板「**快速通道 / fast track（FAST-PASS）**」（审查深度降级机制）为**不同机制**、同名异义——不得互相引用 / 混用。
+
 ## REV 模板规范
 
 \`\`\`yaml
@@ -6236,7 +6407,7 @@ openfeel-reviewer 必须由**异种推理模型**（如 GLM / Qwen）驱动，�
 | 需判定（默认阻塞） | 编码规范严重违反 / 跨模块一致性问题 | \`true\` |
 | 非阻塞 | 命名建议 / 注释完善 / 风格微调 / 优化建议 | \`false\` |
 
-> 快速通道命中时，REV 默认 \`blocking=false\`（安全漏洞除外）。
+> 快速通道命中时，REV 默认 \`blocking=false\`（安全漏洞除外）。该机制与「工作流快线」无关——见「工作流模式感知」节。
 
 ## blocking 与流水线行为
 
@@ -6356,6 +6527,7 @@ permission:
 
 - 接收 Feel 调度启动，产出方案经 openfeel-reviewer 审查后交 openfeel-executor 执行
 - 审查不通过时，根据 openfeel-reviewer 反馈重新制定方案
+- **工作流模式感知**：fast 工作流快线下本 Agent **不被调度**（依据 \`status.md「工作流模式」\` 跳过方案环节）；职责定义不变。
 
 ## 注意事项
 
@@ -6799,7 +6971,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -6811,7 +6983,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.1.6 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.1.7 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -6826,10 +6998,10 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel flow ...\` | 流水线状态管理 | 见下「flow 子命令」 |
 | \`openfeel flow checkpoint restore\` | Checkpoint 恢复（全量 / 选择性 / 预览） | \`<file> [--force] [--stage <id>] [--dry-run]\`（无 \`--stage\`=全量覆盖，最后手段；\`--stage\`=按阶段回退；\`--dry-run\`=零写盘预览） |
 | \`openfeel flow stage reset\` | 精准复位阶段 phase（\`flow advance\` 的对称复位，允许回退） | \`<stageId> --to <phase> [--dry-run]\`（受合法值域 + \`to=done\` 阻塞 REV 约束） |
-| \`openfeel plan stage add\\|list\` | 工作阶段管理 | \`add <name> --deps <ids...> --tasks <items...> --exec-mode <manual\\|auto> --auto-advance <enabled\\|disabled>\`（初值取 \`config.yaml.defaults\`；显式选项优先） |
+| \`openfeel plan stage add\\|list\` | 工作阶段管理 | \`add <name> --deps <ids...> --tasks <items...> --exec-mode <manual\\|auto> --auto-advance <enabled\\|disabled> --workflow-mode <full\\|fast>\`（初值取 \`config.yaml.defaults\`；显式选项优先；\`--workflow-mode\` 覆盖 config 默认） |
 | \`openfeel plan scheme create\\|publish\\|rename\\|list\\|remove\\|register\` | 操作方案管理 | \`create <stage> <title> [--draft]\`、\`publish <stage> <opId>\`、\`rename <stage> <opId> --title <text>\`、\`remove <stage> <opId> [--force] [--dry-run]\`、\`register <stage> [opId] [--dry-run]\`（补注册 fileOrphans） |
-| \`openfeel stage status\\|set\\|task\` | \`status.md\` 原子操作 | \`set <id> --status/--exec-mode/--auto-advance/--review-agent\`、\`task <id> [no] --add/--done/--undone\`（\`stage create\` 已弃用） |
-| \`openfeel config ...\` | 配置管理 | \`get\\|set <key> <value> [--global]\`（支持全量 \`defaults.*\`，且 \`defaults.X ≡ X\`）、\`set ... --sync-stages\`（批量写入所有已注册阶段 \`status.md\` 的 \`自动推进\`/\`执行模式\`）、\`get-lang\\|set-lang\`、\`list-projects\`、\`effective [key]\` |
+| \`openfeel stage status\\|set\\|task\` | \`status.md\` 原子操作 | \`set <id> --status/--exec-mode/--auto-advance/--review-agent/--workflow-mode\`、\`task <id> [no] --add/--done/--undone\`（\`stage create\` 已弃用） |
+| \`openfeel config ...\` | 配置管理 | \`get\\|set <key> <value> [--global]\`（支持全量 \`defaults.*\`，且 \`defaults.X ≡ X\`）、\`set ... --sync-stages [--stage <ids...>]\`（批量写入已注册阶段 \`status.md\` 的 \`自动推进\`/\`执行模式\`/\`工作流模式\`；\`--stage\` 限定作用域，单独使用 / 与 \`--global\` 组合 → exit 1）、\`get-lang\\|set-lang\`、\`list-projects\`、\`effective [key]\` |
 | \`openfeel model set\\|get\\|list\` | 模型三层级配置 | \`set <agent> <model>\` |
 | \`openfeel lint i18n\\|kb\` | 健康检查（i18n 键一致性 / kb 过期引用） | 发现问题**非 0 退出** |
 | \`openfeel knowledge ...\` | 知识库管理 | \`list\` / \`add\` / \`search\` / \`index\` / \`dedup\` |
@@ -6839,7 +7011,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel roadmap create\\|show\` | 分期大纲管理 | \`create <version>\`、\`show [version]\` |
 | \`openfeel instructions <artifactId>\` | 为指定 artifact 生成结构化指令 | \`--change <name>\`、\`--schema <name>\`、\`--json\` |
 
-**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\`。
+**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`mode\`（\`[--stage <id>] [--json]\`，只读） / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\`。
 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
@@ -6849,6 +7021,13 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 - **多 harness 并存**：\`openfeel setup\` / \`openfeel update\` 新增 \`--tools <逗号列表>\`（如 \`opencode,claude\`）；非法值 **exit 1** 前置校验零写盘；默认仅 \`opencode\`。
 - **Claude Code 适配器资产**：\`--tools claude\` 部署 \`~/.claude/\`——\`CLAUDE.md\`（全局约束，用户已有内容 append 不覆盖）、\`agents/\`（**9 个**，含 \`feel\`）、\`skills/\`（**17 个**共享源）、\`settings.json\`（注入 \`"agent":"feel"\` + \`"permissions":{"defaultMode":"auto"}\`，用户既有键逐字保留）；默认零触（不带 \`--tools\` 时 \`~/.claude/\` 零变化）。
+
+## v1.1.7 新增能力（stage-74~76）
+
+- **双模式工作流（\`workflow_mode\`）**：值域 \`full | fast\`（默认 \`fast\`）。三层载体：\`config.yaml defaults.workflow_mode\`（项目默认 / 记忆）→ \`status.md「工作流模式」\`（阶段覆盖，**读取权威**）→ \`flow.json\` 冗余字段（可选、**不参与级联**）；级联优先序 \`status.md > config.yaml > builtin\`（\`profile.yaml\` 不承载）。只读查询：\`openfeel flow mode [--stage <id>] [--json]\`（当前模式 + 四源 \`source\`）。
+- **fast 快线转移表（并列）**：\`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项）：\`plan_pending → plan_review\`（**计划审查必经**）、\`plan_review → plan_passed / plan_pending\`、\`plan_passed → exec_running\`、\`exec_running → review_pending\`、\`review_pending → review_failed / review_passed\`、\`review_failed → review_pending / exec_running\`（回环）、\`review_passed → archiving\`、\`archiving → done\`、\`done\`（终态）。**\`phases\` / \`advanceAccepted\` 恒 15 项、模式无关**；fast 下 6 个相位不可达（\`scheme_*\` / \`test_*\`）。
+- **模式命令面**：\`plan stage add --workflow-mode <full|fast>\`（值域派生、非法 exit 1 不建阶段）、\`stage set <id> --workflow-mode <full|fast>\`（缺失字段插入）、\`flow phases [--mode <full|fast>] [--stage <id>]\`（模式分节；\`--json\` 追加 \`workflowMode\`）、\`config set ... --sync-stages [--stage <ids...>]\`（同步字段含「工作流模式」）。
+- **\`config effective\` 四键**：\`auto_advance\` / \`execution_mode\` / \`merge_mode\` / \`workflow_mode\`。
 
 ## v1.1.5 新增能力（stage-67）
 
@@ -6882,7 +7061,7 @@ openfeel setup --tools claude  # 2. 重跑部署（claude 目标）
 
 > 以下为 v1.1.2 相对上版的增量能力（分组摘要，细节以 \`<cmd> --help\` 为准）。
 
-- **A. 自描述与可纠错（stage-41）**：\`flow phases [--json]\`（**5 键**：\`schemaVersion\`/\`phases\`/\`transitions\`/\`advanceAccepted\`/\`transitionsDiff\`）、\`flow stage remove [--force] [--dry-run] [--purge]\`、stageId 校验/冲突检测（\`validateStageId\` / \`suggestStageId\` / \`findStageDirConflict\`）、\`plan stage add --deps\`。
+- **A. 自描述与可纠错（stage-41）**：\`flow phases [--json] [--mode <full|fast>] [--stage <id>]\`（**6 键**：\`schemaVersion\`/\`phases\`/\`transitions\`/\`advanceAccepted\`/\`transitionsDiff\`/\`workflowMode\`（v1.1.7 追加）；既有五键语义逐字不变）、\`flow stage remove [--force] [--dry-run] [--purge]\`、stageId 校验/冲突检测（\`validateStageId\` / \`suggestStageId\` / \`findStageDirConflict\`）、\`plan stage add --deps\`。
 - **B. 状态与口径（stage-42）**：\`config effective [key]\`（有效值 + 生效来源 \`status.md > config.yaml > profile.yaml > builtin\`）、\`pipeline.phase\` 全量 done 判定、审计日志 \`register_stage\` / \`register_op\`。
 - **C. 部署与备份（stage-46）**：覆盖写前自动备份 \`~/.openfeel/backup/{ts}/\` + \`update_infos.md\`「备份」类条目（Agent 按 \`feel.md\` 检查规则核对）。
 - **D. 纠正/清理侧命令面（stage-51/52，v1.1.4-stage-64 补 register）**：\`plan scheme remove\`（仅删 \`flow.json\` 注册键，不删 op 文件；done/checkpoint 保护）、\`plan scheme register <stage> [opId] [--dry-run]\`（对称补全：补注册 fileOrphans，\`--dry-run\` 零写盘；**\`create\` 序号基于「ops/ 文件 ∪ flow.json 注册」的最小未用正整数（空位回填），创建后对目标阶段未注册文件输出 stderr 告警并提示 \`plan scheme register\`**）、\`plan scheme rename --title\`（必填，空标题报错）、\`plan scheme publish\` + \`create --draft\`（draft→pending，空模板拒绝）、\`flow stage set --deps\`（覆盖写入；**不带 \`--deps\` 视为清空**）、\`flow review update|remove\`、\`stage set\`（**幂等**：同值 no-op + 同值不生成 \`.bak\`；\`--exec-mode <manual\\|auto>\` / \`--auto-advance <enabled\\|disabled>\` / \`--review-agent <agent>\`）、\`stage task --add|--done|--undone\`、\`plan stage add --tasks\`/\`--exec-mode\`/\`--auto-advance\`（显式覆盖 config 默认）、\`flow repair --prune-orphans\`、\`flow health --fix [--dry-run]\`（默认只报告；\`--fix\` **仅回写 status.md「状态」字段**；\`--dry-run\` 预览零写盘）、\`flow ops list\`、\`flow advance --quiet\` + \`--to <远距 phase>\`（存在唯一路径时自动逐步；\`--dry-run\` 展示完整路径）、\`knowledge dedup\`（检索相似条目，**只读建议，不修改 kb**）。\`flow attempt\` 对 **draft op 拒绝**。
@@ -6916,7 +7095,23 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 | \`archiving\` | \`done\` |
 | \`done\` | （终态） |
 
-- 转移表以**运行时** \`.openfeel/pipeline.yaml\` 为准；\`openfeel flow phases\` 查看当前生效值。
+**fast 快线转移表（\`workflow_mode=fast\`）** —— \`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项），快线链（可达相位序列）为 \`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`：
+
+| phase | 合法目标 |
+|-------|----------|
+| \`plan_pending\` | \`plan_review\` |
+| \`plan_review\` | \`plan_passed\`, \`plan_pending\` |
+| \`plan_passed\` | \`exec_running\` |
+| \`exec_running\` | \`review_pending\` |
+| \`review_pending\` | \`review_failed\`, \`review_passed\` |
+| \`review_failed\` | \`review_pending\`, \`exec_running\` |
+| \`review_passed\` | \`archiving\` |
+| \`archiving\` | \`done\` |
+| \`done\` | （终态） |
+
+> \`phases\` / \`advanceAccepted\` 恒 15 项（模式无关）；fast 下 \`scheme_pending\` / \`scheme_review\` / \`scheme_passed\` / \`test_pending\` / \`test_failed\` / \`test_passed\` 共 **6 项**不可达（无入边）。
+
+- 转移表以**运行时** \`.openfeel/pipeline.yaml\` 为准；\`openfeel flow phases\` 查看当前生效值。（\`--mode <full|fast>\` 显式指定 / \`--stage <id>\` 按阶段派生；\`--json\` 追加 \`workflowMode\`）
 - 推进：\`openfeel flow advance --stage <id> --to <phase>\`。**\`advanceAccepted\` = 内置 15 个 phase 的「推进白名单」**（\`flow advance\` 只接受这 15 个值），**不是**组合式条件键的替代品（旧文案曾误述，此处已更正）。**组合式条件差异**（如内置默认含 \`review_passed|test_passed\`，本仓 \`pipeline.yaml\` 未列）经 \`--json.transitionsDiff.missing\` **显式可见**（stage-50 裁定：**不补组合键**，改以 \`transitionsDiff\` 显式化）。
 - 参考：\`.openfeel/manual/**\`（CLI/flow 模块文档）。
 
@@ -7028,7 +7223,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 
 ### 0. 读取全局配置
 
-读取 \`.openfeel/config.yaml\`，解析 \`defaults\` 中的 \`execution_mode\`、\`auto_advance\`、\`merge_mode\`。
+读取 \`.openfeel/config.yaml\`，解析 \`defaults\` 中的 \`execution_mode\`、\`auto_advance\`、\`merge_mode\`、\`workflow_mode\`。
 
 ### 1. 定位状态文件
 
@@ -7044,6 +7239,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 
 - \`执行模式\`
 - \`自动推进\`
+- \`工作流模式\`
 - \`状态\`
 - \`当前责任 Agent\`
 - \`上一责任 Agent\`
@@ -7104,6 +7300,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 - 阶段：{stage}
 - 执行模式：manual | auto
 - 自动推进：disabled | enabled
+- 工作流模式：full | fast
 - 状态：{status}
 - 当前责任 Agent：{agent}
 - 前置依赖：{依赖列表 或 无}
@@ -7117,6 +7314,8 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 ## 下一步建议
 {根据状态给出下一步，例如：启动 Code、等待用户、启动 openfeel-feel-tester、停止流程；若存在并行候选则建议批量启动}
 \`\`\`
+
+> **模式感知（fast）**：\`工作流模式\` 为 \`fast\` 时，「下一步建议」不指向方案 / 测试环节（快线链为 计划 → 计划审查 → 执行 → 代码审查 → 归档）；\`plan_pending\` 阶段下一步建议 = \`plan_review\`（必经，勿建议直接 \`plan_passed\`）；相位口径为「**可达 ≠ 合法**」——合法枚举仍 15 项（fast 下仅 6 项不可达），**不得**表述为相位缩减。
 
 ## 状态到下一步映射
 
@@ -7495,6 +7694,8 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 2. 读取**索引** \`.openfeel/users/{username}/dev_last.md\`（「用户偏好」「主题索引」「公共交接区」）→ **按需**再读主题文件（**文件名英文，如 \`decisions.md\`/\`pending.md\`**）恢复详情；**旧格式**（无 \`## 主题索引\` 节）→ 触发惰性迁移（按英文命名映射拆分生成 \`dev_last/\` + 索引，原文保留）
 3. 将两者合并为当前会话起点
 
+> **模式感知**：恢复后按当前阶段 \`status.md「工作流模式」\` 确认流程模式（\`flow recover\` 输出不含模式字段；fast 工作流快线下按快线链继续）。
+
 > **加锁提示（A9）**：恢复流程为**只读**，无需加锁；仅**会话末尾写入**走 \`withFileLock\` 临界区（见 agents-md「并发写加锁协议」）。
 
 ## 输出
@@ -7791,7 +7992,7 @@ description: 标准化更新 .openfeel/plan/{series}/{stage}/status.md 的子计
 
 ### 0. 读取全局配置
 
-读取 \`.openfeel/config.yaml\`，获取 \`defaults\` 中的 \`execution_mode\`、\`auto_advance\`、\`merge_mode\`。
+读取 \`.openfeel/config.yaml\`，获取 \`defaults\` 中的 \`execution_mode\`、\`auto_advance\`、\`merge_mode\`、\`workflow_mode\`。
 
 ### 1. 读取状态文件
 
@@ -7836,6 +8037,7 @@ planned | ready_for_code | coding | ready_for_review | review_failed | review_pa
 
 - \`执行模式\`
 - \`自动推进\`
+- \`工作流模式\`（模式字段**不由**状态更新覆盖）
 - \`前置依赖\`（由 Architect 在 Phase 3.5 中声明，运行时不应修改）
 
 ### 4. 追加状态记录
@@ -7896,6 +8098,8 @@ description: 交互式流水线向导，供 Agent 在终端中逐步推进流水
 1. 运行 \`openfeel flow wizard\` 启动交互式向导
 2. 按提示选择要推进的阶段和下一步 phase（基于当前阶段的可达 transitions）
 3. 确认后执行推进，循环直至阶段 done 或退出
+
+> **模式选型**：首次运行时向导会询问工作流模式（\`full\` / \`fast\`），写入 \`config.yaml defaults.workflow_mode\`（项目级记忆）；非 TTY 环境沿用既有守卫、不询问。
 
 ## 输出
 
@@ -8142,6 +8346,21 @@ When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to
 3. **User declines**: The main session keeps \`auto_advance=disabled\` and requires user confirmation before each stage advance (manual execution mode).
 4. **No silent advancement**: When \`auto_advance=disabled\`, the main session must not advance the pipeline without asking the user.
 
+#### Workflow Mode (workflow_mode)
+
+Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Two modes:
+
+- **full (complete flow)**: planner → plan_review (reviewer) → schemer → executor → reviewer → tester → archiver.
+- **fast (Workflow Fast Line)**: planner (lightweight) → plan_review (**single mandatory plan review**) → executor → reviewer (single round) → archiver (lightweight); **does not dispatch openfeel-schemer / openfeel-feel-tester**.
+
+Fast-mode discipline:
+
+1. **The quality floor cannot be skipped**: under fast the reviewer **runs twice** — ① \`plan_review\` plan review (**mandatory single round**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (single round); the \`review_failed\` loop allows re-review or returning to exec for fixes; failures are recorded as usual (REV entries unchanged).
+2. **Lightweight**: planner / archiver produce lightweight output (**must not** omit the task table / dependencies / acceptance points, or the state record / knowledge-staging decision).
+3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
+4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
+5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
+
 ## Threshold for Small Changes vs. Large-Scale Planning
 
 Choose the appropriate process path based on the change scale:
@@ -8209,7 +8428,7 @@ A shared log entry (\`.openfeel/log/yyyy-mm-dd-feel-NNN.md\`) must be created wh
 
 ### Skeleton File Note
 
-During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory. The main session does not need to manually create log files; simply fill in the content when you see a skeleton file.
+During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory (under the fast Workflow Fast Line, \`test_pending\` remains a legal phase but is unreachable (no inbound edge), so its skeleton is no longer produced; all other skeleton rules are unchanged). The main session does not need to manually create log files; simply fill in the content when you see a skeleton file.
 
 ### Log Entry Format
 
@@ -8467,6 +8686,15 @@ After archiving is complete, the stage's pipeline phase must be set to one of th
 
 > ⚠️ Note: After archiving is complete, the stage status must be set to \`"done"\`, **do not** use non-standard values like \`"completed"\`. \`"completed"\` does not exist in \`VALID_TRANSITIONS\`.
 
+> **Under the fast Workflow Fast Line**: the 15-phase enumeration above is **unchanged** (reachable ≠ legal); reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`).
+
+## Workflow Mode Awareness (fast lightweight archiving)
+
+Before archiving, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: full archiving checklist (unchanged).
+- **fast (Workflow Fast Line)**: **lightweight archiving** — the state record and the knowledge-staging decision (including the dedup lookup) **must not be omitted**; checklist process narrative may be merged and condensed. (Lightweight scope: keep the state record / knowledge-staging decision / kb index quick overview / manual update decision / shared log summary; summary process narrative may be merged into bullet points.)
+
 ## Model Selection
 
 openfeel-archiver is decided by the **Claude-side model** (default \`model: inherit\`); archiving and knowledge extraction require understanding of context, and the framework does not hard-code vendor model IDs in templates.
@@ -8538,9 +8766,10 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 
 ### Step 2: Phase Legitimacy Check
 
-1. Read \`.openfeel/flow.json\`, check if \`pipeline.phase\` is a valid enum value (\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`); refuse to execute if invalid.
+1. Read \`.openfeel/flow.json\`, check if \`pipeline.phase\` is a valid enum value (\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`); refuse to execute if invalid. (under the fast Workflow Fast Line, reachable phases are the fast-line chain; the legal phase enumeration remains at 15 — reachable ≠ legal)
 2. Confirm \`pipeline.current.op\` matches the current op-id; refuse to execute if mismatched.
 3. When the current phase is not \`exec_running\`: if the **main session** explicitly instructs execution, it may proceed but must note the phase deviation; otherwise, refuse to execute.
+4. **Fast-mode phase paths**: \`plan_pending → plan_review → plan_passed → exec_running\` (the plan review is a mandatory single round; the step is entered only after it passes); the \`review_failed → exec_running\` loop (review failure returns to exec for fixes; the \`review_failed → review_pending\` re-review exit is retained).
 
 ### Step 3: FlowManager Transition Legitimacy Check
 
@@ -8775,6 +9004,7 @@ Write regression verification results into the Bug file's "Acceptance Record" ta
 - When issues are found, **return to the main session**, which dispatches openfeel-schemer to formulate a revision
 - Re-test after fixes until passing
 - When tests pass, notify the **main session** to enter the archiving phase
+- **Workflow Mode Awareness**: under the fast Workflow Fast Line this agent is **not dispatched** (the formal test step is skipped per \`status.md\` "Workflow Mode"; the \`test_*\` phases are unreachable); the role definition is unchanged.
 
 ## Model Selection
 
@@ -8887,6 +9117,13 @@ This step ensures openfeel-planner absorbs existing project knowledge before mak
 - Does not directly code or execute tests
 - openfeel-planner and openfeel-schemer responsibility boundary: openfeel-planner is responsible for "what" (what) and "when" (when), openfeel-schemer is responsible for "how" (how)
 
+## Workflow Mode Awareness (fast)
+
+Before planning, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: the output goes through openfeel-reviewer plan review (\`plan_review\`) before openfeel-schemer (unchanged).
+- **fast (Workflow Fast Line)**: **this agent's output must pass openfeel-reviewer's plan review (\`plan_review\`, single round; pass → \`plan_passed\`, issues returned → \`plan_pending\`; only then does it enter exec)**; produce a lightweight plan — the task table / dependencies / acceptance points **must not be omitted**; other process narrative may be trimmed. (Lightweight scope: keep goals / dependencies / task table / acceptance points / constraints / KB retrieval / change-point list / risks; background evidence details and revision history may be condensed.)
+
 ## Model Selection
 
 openfeel-planner is decided by the **Claude-side model** (default \`model: inherit\`); plan formulation requires strong reasoning capability, and the framework does not hard-code vendor model IDs in templates.
@@ -8963,6 +9200,15 @@ When **all three** of the following conditions are met, openfeel-reviewer enters
 
 If any condition is not met, skip fast track and execute full review process.
 
+## Workflow Mode Awareness (fast single round)
+
+Before reviewing, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`):
+
+- **full**: plan review + code review (multiple points, unchanged).
+- **fast (Workflow Fast Line)**: **single round ×2, both mandatory** — ① \`plan_review\` **plan review (mandatory under fast**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (the \`review_failed\` loop allows re-review / returning to exec for fixes); the **quality floor is unchanged** (issues are still recorded and blockers still raised; REV entries as usual).
+
+> **Terminology disambiguation**: the **Workflow Fast Line** (\`workflow_mode=fast\`, the flow mode) and **Fast Track (FAST-PASS)** (the review-depth downgrade mechanism defined in this template) are **different mechanisms** with similar names — do not cross-reference or conflate them.
+
 ## REV Template Specification
 
 \`\`\`yaml
@@ -9006,7 +9252,7 @@ openfeel-reviewer is decided by the **Claude-side model** (default \`model: inhe
 | Requires judgment (default blocking) | Serious coding convention violations / Cross-module consistency issues | \`true\` |
 | Non-blocking | Naming suggestions / Comment improvements / Style tweaks / Optimization suggestions | \`false\` |
 
-> When fast track is hit, REV defaults to \`blocking=false\` (except for security vulnerabilities).
+> When fast track is hit, REV defaults to \`blocking=false\` (except for security vulnerabilities). This mechanism is unrelated to the Workflow Fast Line — see "Workflow Mode Awareness".
 
 ## blocking and Pipeline Behavior
 
@@ -9122,6 +9368,7 @@ When third-party dependencies are involved:
 
 - Receives dispatch from the **main session** to start; outputs are reviewed by openfeel-reviewer before being handed to openfeel-executor
 - When review fails, re-formulate the scheme based on openfeel-reviewer feedback
+- **Workflow Mode Awareness**: under the fast Workflow Fast Line this agent is **not dispatched** (the scheme step is skipped per \`status.md\` "Workflow Mode"); the role definition is unchanged.
 
 ## Notes
 
@@ -9449,6 +9696,21 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 3. **用户拒绝**：主会话保持 \`auto_advance=disabled\`，每次阶段推进前均需向用户确认（手动执行模式）。
 4. **禁止静默推进**：\`auto_advance=disabled\` 时禁止主会话不询问用户直接推进流水线。
 
+#### 工作流模式（workflow_mode）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。两种模式：
+
+- **full（完整流程）**：planner → plan_review（reviewer）→ schemer → executor → reviewer → tester → archiver。
+- **fast（工作流快线）**：planner（轻量）→ plan_review（**计划审查单轮，必经**）→ executor → reviewer（单轮）→ archiver（轻量）；**不派发 schemer / tester**。
+
+fast 调度纪律：
+
+1. **质量底线不可跳**：reviewer 在 fast 下**必跑两处**——① \`plan_review\` 计划审查（**必经单轮**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（单轮）；\`review_failed\` 回环可重审或回执行修复；失败留痕照常（REV 条目照常）。
+2. **轻量化**：planner / archiver 轻量产出（**不得**省略任务表 / 依赖 / 验收要点与状态记录 / 知识暂存判定）。
+3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
+4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
+5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
+
 ## 小改 vs 大规模规划的阈值
 
 根据变更规模选择适当的流程路径：
@@ -9516,7 +9778,7 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 
 ### 骨架文件提示
 
-关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件。主会话无需手动创建日志文件，看到骨架文件时填充内容即可。
+关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件（fast 工作流快线下 \`test_pending\` 仍为合法相位、仅不可达（无入边），该相位骨架不再产生；其余骨架规则全量不变）。主会话无需手动创建日志文件，看到骨架文件时填充内容即可。
 
 ### 日志条目格式
 
@@ -9773,6 +10035,15 @@ openfeel-feel-tester 通过 → 主会话触发归档 → openfeel-archiver 整�
 
 > ⚠️ 注意：归档完成后的阶段状态必须设为 \`"done"\`，**不得**使用 \`"completed"\` 等非标准值。\`VALID_TRANSITIONS\` 中不存在 \`"completed"\`。
 
+> **fast 工作流快线下**：上表 15 项相位枚举**不变**（可达 ≠ 合法）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）。
+
+## 工作流模式感知（fast 轻量归档）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：归档全量清单（现状不变）。
+- **fast（工作流快线）**：**轻量归档**——状态记录与知识暂存判定（含去重检索）**不得省略**；清单过程性叙述可合并精简。（轻量口径：保留 状态记录 / 知识暂存判定 / 知识库快速概览 / 模块手册判定 / 公共日志摘要；总结过程性叙述可合并为要点。）
+
 ## 模型选择
 
 openfeel-archiver 由 **Claude 侧模型**决定（默认 \`model: inherit\`）；归档与知识提取需要理解上下文，框架不在模板内硬编码厂商模型 ID。
@@ -9844,9 +10115,10 @@ model: inherit
 
 ### 步骤 2：Phase 合法性校验
 
-1. 读取 \`.openfeel/flow.json\`，检查 \`pipeline.phase\` 是否为合法枚举值（\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`），非法则拒绝执行。
+1. 读取 \`.openfeel/flow.json\`，检查 \`pipeline.phase\` 是否为合法枚举值（\`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done\`），非法则拒绝执行。（fast 工作流快线下可达相位为快线链；合法相位枚举 15 项不变——可达 ≠ 合法）
 2. 确认 \`pipeline.current.op\` 与当前 op-id 匹配，不匹配则拒绝执行。
 3. 当前 phase 不是 \`exec_running\` 时：若**主会话**已明确指示执行可继续但需注明 phase 偏差；否则拒绝执行。
+4. **fast 工作流快线下相位路径**：\`plan_pending → plan_review → plan_passed → exec_running\`（计划审查为必经单轮：通过后进入本环节）；\`review_failed → exec_running\` 回环（审查不通过时回执行修复；\`review_failed → review_pending\` 重审出口保留）。
 
 ### 步骤 3：FlowManager 流转合法性校验
 
@@ -10081,6 +10353,7 @@ high 优先级 Bug 修复后，推荐执行全量测试套件。
 - 发现问题后**返回主会话**，由主会话调度 openfeel-schemer 制定修复方案
 - 修复后重新测试直到通过
 - 测试通过后通知**主会话**进入归档阶段
+- **工作流模式感知**：fast 工作流快线下本 Agent **不被调度**（依据 \`status.md「工作流模式」\` 跳过正式测试环节，\`test_*\` 相位不可达）；职责定义不变。
 
 ## 模型选择
 
@@ -10193,6 +10466,13 @@ openfeel-planner 作为独立 subagent，由**主会话（Feel 角色）**经 **
 - 不直接编码，不执行测试
 - openfeel-planner 与 openfeel-schemer 的职责边界：openfeel-planner 负责"做什么"（what）和"何时做"（when），openfeel-schemer 负责"怎么做"（how）
 
+## 工作流模式感知（fast 快线）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：产出经 openfeel-reviewer 计划审查（\`plan_review\`）后进入 openfeel-schemer（现状不变）。
+- **fast（工作流快线）**：**本 Agent 产出后必经 openfeel-reviewer 的计划审查（\`plan_review\` 单轮；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`；此后进入 exec）**；产出为轻量计划——任务表 / 依赖声明 / 验收要点**不得省略**，其余过程性描述可精简。（轻量口径：保留 目标 / 依赖 / 任务表 / 验收要点 / 约束 / KB 检索 / 变更点清单 / 风险；背景实测证据明细与修订记录过程可收敛为结论。）
+
 ## 模型选择
 
 openfeel-planner 由 **Claude 侧模型**决定（默认 \`model: inherit\`）；计划制定需要较强推理能力，框架不在模板内硬编码厂商模型 ID。
@@ -10269,6 +10549,15 @@ model: inherit
 
 若任一条件不满足，跳过快速通道，执行完整审查流程。
 
+## 工作流模式感知（fast 单轮）
+
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询 \`openfeel flow mode [--stage <id>]\`）：
+
+- **full**：计划审查 + 代码审查（多轮位点，现状不变）。
+- **fast（工作流快线）**：**单轮 ×2，两处均必跑**——① \`plan_review\` **计划审查（fast 下必经**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（\`review_failed\` 回环可重审 / 回执行修复）；**质量底线不变**（问题照记、阻断照留，REV 条目照常）。
+
+> **术语消歧**：本节的「**工作流快线**」（\`workflow_mode=fast\`，流程模式）与本模板「**快速通道 / fast track（FAST-PASS）**」（审查深度降级机制）为**不同机制**、同名异义——不得互相引用 / 混用。
+
 ## REV 模板规范
 
 \`\`\`yaml
@@ -10312,7 +10601,7 @@ openfeel-reviewer 由 **Claude 侧模型**决定（默认 \`model: inherit\`）�
 | 需判定（默认阻塞） | 编码规范严重违反 / 跨模块一致性问题 | \`true\` |
 | 非阻塞 | 命名建议 / 注释完善 / 风格微调 / 优化建议 | \`false\` |
 
-> 快速通道命中时，REV 默认 \`blocking=false\`（安全漏洞除外）。
+> 快速通道命中时，REV 默认 \`blocking=false\`（安全漏洞除外）。该机制与「工作流快线」无关——见「工作流模式感知」节。
 
 ## blocking 与流水线行为
 
@@ -10428,6 +10717,7 @@ model: inherit
 
 - 接收**主会话**调度启动，产出方案经 openfeel-reviewer 审查后交 openfeel-executor 执行
 - 审查不通过时，根据 openfeel-reviewer 反馈重新制定方案
+- **工作流模式感知**：fast 工作流快线下本 Agent **不被调度**（依据 \`status.md「工作流模式」\` 跳过方案环节）；职责定义不变。
 
 ## 注意事项
 
@@ -10591,7 +10881,7 @@ Not all tasks must go through the full pipeline. Non-coding tasks and coding tas
 | Task Type | Handling Path | Notes |
 |-----------|---------------|-------|
 | Research/exploration (reading code, consulting references, locating issues) | The main session (Feel role) → research (\`general\` / \`Explore\` subagent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
-| Coding implementation (adding/modifying source code) | Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester) | Involves source changes, must go through the full audit chain |
+| Coding implementation (adding/modifying source code) | Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester) (full); in fast mode: planner → plan review (reviewer, single mandatory round) → executor → code review (reviewer) → archiver (see status.md "Workflow Mode" / openfeel flow mode) | Involves source changes, must go through the full audit chain (fast-line audit chain in fast mode) |
 | Selection discussion (settling a technical approach / design trade-off) | The main session (Feel role) and the user + the \`AskUserQuestion\` tool | Conversational decision, produces a conclusion, no plan.md |
 
 > Non-coding tasks (research, selection discussion) do not require creating a plan or advancing the pipeline; the pipeline is engaged only when source changes or a formal plan document is produced.
@@ -10654,7 +10944,7 @@ When encountering technical issues, **the first action MUST be to consult the kn
    - openfeel-utility Agent performs mechanical file operations, does not participate in design decisions
    - openfeel-archiver archives and distills knowledge, does not modify source code; does not write flow.json directly (written via the **main session**)
 
-3. **Main session orchestration constraint**: The **main session (Feel role)**, as the overall commander, uniformly orchestrates downstream subagents (openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-utility Agent / openfeel-vision / openfeel-archiver), advancing serially via the **Task** tool according to pipeline phases (plan → scheme → execute → review → test → archive). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
+3. **Main session orchestration constraint**: The **main session (Feel role)**, as the overall commander, uniformly orchestrates downstream subagents (openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / openfeel-utility Agent / openfeel-vision / openfeel-archiver), advancing serially via the **Task** tool according to pipeline phases (plan → scheme → execute → review → test → archive) (full); in fast mode: plan → plan review → execute → code review → archive (see status.md "Workflow Mode" / openfeel flow mode). Each Agent operates only within its own responsibility boundary and must not start other Agents beyond its scope or modify flow.json state on its own.
 
 4. **Lightweight decision boundary**: Conversational selections (the **main session** and the user settle a technical direction or design trade-off via the \`AskUserQuestion\` tool, producing a conclusion but no plan.md) are handled by the **main session** directly, without delegating to openfeel-planner; only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the planning scale threshold is reached, should openfeel-planner be delegated. Avoid the extremes of "handle everything personally" or "delegate everything".
 
@@ -11103,7 +11393,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 任务类型 | 处理路径 | 说明 |
 |----------|----------|------|
 | 调研/探索（读代码、查资料、定位问题） | 主会话（Feel 角色）→ research（\`general\` / \`Explore\` subagent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
-| 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester） | 有源码变更，须走完整审计链 |
+| 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester）（full）；fast 工作流快线（workflow_mode=fast）下为 planner → 计划审查（reviewer，单轮必经）→ executor → 代码审查（reviewer）→ archiver——见 status.md「工作流模式」 / openfeel flow mode | 有源码变更，须走完整审计链（fast 走快线审计链） |
 | 选型讨论（敲定技术方案/设计取舍） | 主会话（Feel 角色）与用户 + \`AskUserQuestion\` 工具 | 对话式决策，产出结论，不产出 plan.md |
 
 > 非编码任务（调研、选型讨论）不强制创建计划或推进流水线；仅当产生源码变更或正式计划文档时才接入流水线。
@@ -11166,7 +11456,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
    - 事务官 执行文件机械操作，不参与设计决策
    - openfeel-archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过**主会话**写入）
 
-3. **主会话调度约束**：**主会话（Feel 角色）**统一调度下游 subagent（openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / 事务官 / openfeel-vision / openfeel-archiver），通过 **Task** 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
+3. **主会话调度约束**：**主会话（Feel 角色）**统一调度下游 subagent（openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / 事务官 / openfeel-vision / openfeel-archiver），通过 **Task** 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进（full）；fast 工作流快线下为 计划 → 计划审查 → 执行 → 代码审查 → 归档（见 status.md「工作流模式」 / openfeel flow mode）。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
 
 4. **轻量决策边界**：对话式选型（**主会话**与用户通过 \`AskUserQuestion\` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由**主会话**直接处理，不委托 openfeel-planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到规划规模阈值时，才委托 openfeel-planner。避免"要么全亲为、要么全委托"的极端。
 

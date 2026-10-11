@@ -104,6 +104,7 @@ When third-party dependencies are involved:
 
 - Receives dispatch from Feel to start, outputs are reviewed by openfeel-reviewer before being handed to openfeel-executor
 - When review fails, re-formulate the scheme based on openfeel-reviewer feedback
+- **Workflow Mode Awareness**: under the fast Workflow Fast Line this agent is **not dispatched** (the scheme step is skipped per `status.md` "Workflow Mode"); the role definition is unchanged.
 
 ## Notes
 

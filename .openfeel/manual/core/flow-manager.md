@@ -155,12 +155,12 @@ plan_pending → plan_review → plan_passed
 - 合法流转由 `transitions` 表控制，key 可用 `|` 组合多个源 phase（并行场景）
 - 推进必须通过 CLI（`openfeel flow advance`），禁止手动编辑 flow.json
 
-## 双模式（full / fast）转移表（v1.1.7-stage-74）
+## 双模式（full / fast）转移表（v1.1.7-stage-74；fast 表口径于 v1.1.7-stage-76 T7 修订）
 
 > 「快速迭代模式」（`fast`）与完整链路（`full`）共存：**同一 phase 图按模式裁剪**，不新增 phase。
 
 - **配置键 `workflow_mode`**（枚举 `full|fast`，值域单一来源 `WORKFLOW_MODES`，`core/config.ts`）：项目级默认在 `.openfeel/config.yaml` `defaults.workflow_mode`；阶段级覆盖在 `{stage}/status.md` 的 `**工作流模式**：full|fast` 行。级联解析入口 **`resolveStageWorkflowMode(stageId?)`**（公共），优先级 `status.md > config.yaml > profile.yaml（有意不承载）> builtin(DEFAULT_CONFIG='fast')`。
-- **内置 fast 快线表 `FAST_TRANSITIONS`**（`flow-manager.ts`，单一来源，禁命令层/模板层复制）：7 条流转键 + `done`（全 8 条目）——`plan_pending → plan_passed → exec_running → review_pending → {review_failed, review_passed}`；`review_failed` **双出口** `[review_pending, exec_running]`（失败回环：重审 或 回执行修复）；`review_passed → archiving → done`。
+- **内置 fast 快线表 `FAST_TRANSITIONS`**（`flow-manager.ts`，单一来源，禁命令层/模板层复制）：**v1.1.7-stage-76 T7 起 9 条目**（8 流转键 + `done`；原为 8 条目〔7 流转键 + `done`〕）——`plan_pending → plan_review → plan_passed → exec_running → review_pending → {review_failed, review_passed}`（**fast 下计划审查 `plan_review` 不跳过**，reviewer 单轮必过，与代码审查同级）；`review_failed` **双出口** `[review_pending, exec_running]`（失败回环：重审 或 回执行修复）；`review_passed → archiving → done`。fast 跳过 **6 项**（`scheme_*` / `test_*`）。
 - **运行时快线表 `pipeline.yaml` 可选 `fast_transitions`**（裁定 F）：独立容错 Schema `FastTransitionsSchema`（`pipeline-schema.ts`）；**缺失 / 类型非法 / 空对象 `{}`** → 回落内置快线表（REV-74-009，避免 fast 全链静默死锁）；非法类型告警 `flow.manager.fastTransitionsInvalid`。`phases` / `checkpoint_mapping` / `phase_corrections` 两模式共用。
 - **唯一取表点**：`getValidTargets(fromPhase, mode)`——`mode` **必传**（无默认值）；四调用点（`hasTransition` / `getAvailablePhases` / `findPhasePath` / `canAdvance`）均显式传 `resolveStageWorkflowMode(stage).value`，间接消费者 `buildDownstreamPhases`（`flow status --verbose`）。**任何调用点不得使用默认 mode**（防第二信源，REV-74-002）。
 - **零回归**：`getPipelineTransitions()` / `getDefaultTransitions()` **无参 = full**（既有断言逐字绿）；`flow.json` **不写** mode/transitions 冗余字段（裁定 G）。

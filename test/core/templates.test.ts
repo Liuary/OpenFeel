@@ -166,3 +166,153 @@ describe('共享 skills 中立化（stage-70）', () => {
     for (const k of [...oc, ...cc]) expect(c, `映射表缺 ${k}`).toContain(k);
   });
 });
+
+/**
+ * stage-76：模板与 skill 模式感知（fast 快线）——T4 断言面
+ * S1 feel.md ×4 模式小节对称 / S2 subagent 24 份对称 + opencode 零回归 /
+ * S3 约束层模式注记（agents-md 侧）/ S4 阴性「无 fast 跳过骨架/文件」。
+ * 断言直读源文件 `templates-data/**`（源为唯一可改面，防未注入源假绿）。
+ */
+describe('stage-76：feel.md ×4 模式小节对称（T4-1/T4-2）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+  const FEEL_ZH = [join(TD, 'opencode', 'agents', 'zh-CN', 'feel.md'), join(TD, 'claude', 'agents', 'zh-CN', 'feel.md')];
+  const FEEL_EN = [join(TD, 'opencode', 'agents', 'en', 'feel.md'), join(TD, 'claude', 'agents', 'en', 'feel.md')];
+  const ZH = ['工作流快线', '不派发 schemer / tester', '计划审查单轮，必经', '必跑两处', 'plan_pending → plan_review → plan_passed', '合法相位枚举 15 项不变', '单轮', '术语消歧', '仍为合法相位', '仅不可达', '其余骨架规则全量不变'];
+  const EN = ['Workflow Fast Line', 'does not dispatch openfeel-schemer / openfeel-feel-tester', 'single mandatory plan review', 'plan_pending → plan_review → plan_passed', 'remains at 15', 'runs twice', 'single round', 'Terminology disambiguation', 'remains a legal phase', 'unreachable (no inbound edge)', 'all other skeleton rules are unchanged'];
+
+  it('zh ×2 模式小节关键串齐备 + 骨架注记', () => {
+    for (const p of FEEL_ZH) {
+      const c = readFileSync(p, 'utf-8');
+      for (const s of ZH) expect(c, `${p} 缺 ${s}`).toContain(s);
+    }
+  });
+
+  it('en ×2 模式小节关键串齐备 + 骨架注记', () => {
+    for (const p of FEEL_EN) {
+      const c = readFileSync(p, 'utf-8');
+      for (const s of EN) expect(c, `${p} 缺 ${s}`).toContain(s);
+    }
+  });
+
+  it('骨架句零回归（原句前半逐字保留）+ 自动推进决策纪律节存在', () => {
+    const zhAnchor = '关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件';
+    const enAnchor = 'During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory';
+    for (const p of FEEL_ZH) {
+      const c = readFileSync(p, 'utf-8');
+      expect(c, `${p} 骨架句零回归`).toContain(zhAnchor);
+      expect(c, `${p} 缺自动推进决策纪律`).toContain('自动推进决策纪律');
+    }
+    for (const p of FEEL_EN) {
+      const c = readFileSync(p, 'utf-8');
+      expect(c, `${p} 骨架句零回归`).toContain(enAnchor);
+      expect(c, `${p} 缺 Auto-Advance Decision Rules`).toContain('Auto-Advance Decision Rules');
+    }
+  });
+});
+
+/**
+ * stage-76 S2：subagent 24 份模式感知对称（6 类 × {opencode,claude} × {zh,en}）
+ * + opencode 关键串零回归（抽样，原文逐字）。
+ */
+describe('stage-76：subagent 24 份模式感知对称 + opencode 零回归（T4-6 ①）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+  const CLASSES = ['openfeel-planner', 'openfeel-executor', 'openfeel-reviewer', 'openfeel-archiver', 'openfeel-schemer', 'openfeel-feel-tester'];
+  const ZH: Record<string, string[]> = {
+    'openfeel-planner': ['本 Agent 产出后必经 openfeel-reviewer 的计划审查', '不得省略'],
+    'openfeel-executor': ['可达 ≠ 合法', 'plan_pending → plan_review → plan_passed → exec_running', 'review_failed → exec_running'],
+    'openfeel-reviewer': ['单轮', '质量底线不变', '必经', '术语消歧', '不同机制'],
+    'openfeel-archiver': ['轻量归档', '知识暂存判定', '可达 ≠ 合法'],
+    'openfeel-schemer': ['不被调度'],
+    'openfeel-feel-tester': ['不被调度', '不可达'],
+  };
+  const EN: Record<string, string[]> = {
+    'openfeel-planner': ["must pass openfeel-reviewer's plan review", 'must not be omitted'],
+    'openfeel-executor': ['reachable ≠ legal', 'plan_pending → plan_review → plan_passed → exec_running', 'review_failed → exec_running'],
+    'openfeel-reviewer': ['single round', 'quality floor is unchanged', 'mandatory', 'Terminology disambiguation', 'different mechanisms'],
+    'openfeel-archiver': ['lightweight archiving', 'knowledge-staging decision', 'reachable ≠ legal'],
+    'openfeel-schemer': ['not dispatched'],
+    'openfeel-feel-tester': ['not dispatched', 'unreachable'],
+  };
+
+  it('6 类 × {opencode,claude} × {zh,en} 关键串齐备（harness 内 zh/en 成对）', () => {
+    for (const cls of CLASSES) {
+      for (const h of ['opencode', 'claude']) {
+        const zh = readFileSync(join(TD, h, 'agents', 'zh-CN', `${cls}.md`), 'utf-8');
+        for (const s of ZH[cls]) expect(zh, `${h}/zh-CN/${cls} 缺 ${s}`).toContain(s);
+        const en = readFileSync(join(TD, h, 'agents', 'en', `${cls}.md`), 'utf-8');
+        for (const s of EN[cls]) expect(en, `${h}/en/${cls} 缺 ${s}`).toContain(s);
+      }
+    }
+  });
+
+  it('opencode 关键串零回归（抽样，原文逐字）', () => {
+    const REG: Record<string, string[]> = {
+      'openfeel-planner': ['产出经 openfeel-reviewer 审查后方可进入 openfeel-schemer 阶段'],
+      'openfeel-executor': ['plan_pending | plan_review', 'test_passed | archiving | done'],
+      'openfeel-reviewer': ['FAST-PASS-{NNN}'],
+      'openfeel-archiver': ['VALID_TRANSITIONS'],
+      'openfeel-feel-tester': ['快速验收'],
+      'openfeel-schemer': ['op-NNN.md'],
+    };
+    for (const cls of CLASSES) {
+      const c = readFileSync(join(TD, 'opencode', 'agents', 'zh-CN', `${cls}.md`), 'utf-8');
+      for (const s of REG[cls]) expect(c, `opencode/zh-CN/${cls} 丢失 ${s}`).toContain(s);
+    }
+    expect(readFileSync(join(TD, 'opencode', 'agents', 'en', 'openfeel-planner.md'), 'utf-8')).toContain('Outputs must pass openfeel-reviewer review before entering the openfeel-schemer phase');
+    expect(readFileSync(join(TD, 'opencode', 'agents', 'en', 'openfeel-feel-tester.md'), 'utf-8')).toContain('Fast-Track Acceptance');
+  });
+});
+
+/**
+ * stage-76 S3：全局约束层模式注记（agents-md 侧；zh/en 各两处 L18/L81）。
+ */
+describe('stage-76：约束层模式注记（T4-6 ②，agents-md 侧）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+
+  it('agents-md zh 含 fast 注记（L18/L81）+ full 零回归', () => {
+    const c = readFileSync(join(TD, 'agents-md', 'zh-CN.md'), 'utf-8');
+    expect(c).toContain('fast 工作流快线');
+    expect(c).toContain('planner → 计划审查（reviewer，单轮必经）→ executor → 代码审查（reviewer）→ archiver');
+    expect(c).toContain('fast 工作流快线下为 计划 → 计划审查 → 执行 → 代码审查 → 归档');
+    expect(c).toContain('完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester）');
+  });
+
+  it('agents-md en 含 fast 注记（L18/L81）+ full 零回归', () => {
+    const c = readFileSync(join(TD, 'agents-md', 'en.md'), 'utf-8');
+    expect(c).toContain('in fast mode: planner → plan review (reviewer, single mandatory round) → executor → code review (reviewer) → archiver');
+    expect(c).toContain('in fast mode: plan → plan review → execute → code review → archive');
+    expect(c).toContain('Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester)');
+  });
+});
+
+/**
+ * stage-76 S4：阴性断言——无「fast 跳过骨架/文件/相位」表述（T4-3）。
+ * 扫描集 = 4 feel.md + 24 subagent + 4 约束层 + 5 skill = 37 份（直读源文件）。
+ * 防误伤：仅锁「骨架/文件/相位」组合词，不列泛词「跳过」（既有合法语义）。
+ */
+describe('stage-76：阴性断言——无「fast 跳过骨架/文件」表述（T4-3）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+  const CLASSES = ['openfeel-planner', 'openfeel-executor', 'openfeel-reviewer', 'openfeel-archiver', 'openfeel-schemer', 'openfeel-feel-tester'];
+  const SKILLS5 = ['openfeel-cli-usage', 'openfeel-get-stage-status', 'openfeel-update-stage-status', 'openfeel-wizard', 'openfeel-recover'];
+  const files: string[] = [];
+  for (const lang of ['zh-CN', 'en']) {
+    for (const h of ['opencode', 'claude']) {
+      files.push(join(TD, h, 'agents', lang, 'feel.md'));
+      for (const cls of CLASSES) files.push(join(TD, h, 'agents', lang, `${cls}.md`));
+    }
+  }
+  for (const lang of ['zh-CN', 'en']) {
+    files.push(join(TD, 'agents-md', `${lang}.md`));
+    files.push(join(TD, 'claude', 'constraint', `${lang}.md`));
+  }
+  for (const s of SKILLS5) files.push(join(TD, 'skills', s, 'SKILL.md'));
+  const BANNED = ['跳过骨架', '跳过文件', '跳过相位', '删除相位', '相位变少', '相位减少', 'skips skeleton', 'skips file', 'skips phase', 'deletes phase', 'fewer phases'];
+
+  it('37 份模板/skill 均不含禁用表述', () => {
+    expect(files).toHaveLength(37);
+    for (const p of files) {
+      const c = readFileSync(p, 'utf-8');
+      for (const s of BANNED) expect(c, `${p} 含禁用串 ${s}`).not.toContain(s);
+    }
+  });
+});

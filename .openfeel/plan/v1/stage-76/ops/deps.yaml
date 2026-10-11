@@ -1,0 +1,183 @@
+# stage-76 op 依赖声明
+# 由 openfeel-schemer 制定；Feel 调度前用 Glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.7-stage-76
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+# revision: 2026-10-11 需求变更 T7 修订轮（fast 表 9 条目必经 `plan_review`；新增 op-005 执行序最前；porcelain 43/48）[需求变更 T7 修订]
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.7-stage-74
+    type: hard
+    status: done
+    reason: "双模式引擎已就绪：`FAST_TRANSITIONS`（stage-74 原 8 条目；**[需求变更 T7 修订] 本阶段 op-005 修订为 9 条目（8 流转键 + `done`）**：`plan_pending → plan_review` 必经 + `plan_review: ['plan_passed', 'plan_pending']`；`review_failed → [review_pending, exec_running]` 回环）、`resolveStageWorkflowMode` 单点派生、`getValidTargets(fromPhase, mode)` mode 必传、四源级联（`status.md > config.yaml > profile.yaml〔不承载〕 > builtin=fast`）。模板/skill 引用**禁第二套模式解析**。"
+  - upstream: v1.1.7-stage-75
+    type: hard
+    status: done
+    reason: "命令面已冻结：`flow mode [--stage] [--json]`（四源 `source`）、`flow phases [--mode] [--stage]`（`--json` 6 键含 `workflowMode`）、`plan stage add --workflow-mode`、`stage set --workflow-mode`（插入语义）、`config set --sync-stages [--stage <ids...>]`、`config effective` 四键。本阶段全部文档口径以该命令面实测输出为准。"
+  - downstream: v1.1.7-stage-77
+    type: hard
+    note: "文档与版本收口引用本阶段产物：4 份 feel.md / 24 份 subagent / 4 份约束层 / 4 份 skill 的 fast 口径、生成物 2 份（`template-loader.ts` + `update.ts`）已在库内；stage-77 做版本收口与 fast 端到端验收。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行** `npm publish` / `git push` / 改 CI / 版本收口（保持 1.1.6）；executor **不 commit**（v1.1.7 提交单位 = 阶段归档提交）；**不直写 flow.json**。"
+
+# 本阶段 5 op（严格串行；执行序 = 计划 §三「[需求变更 T7] 引擎/文案/测试（T7）→ 内容源改动 T1 → T2 → T3 → T6 → build 重生成 T4 → 门禁 T5」的 op 化）：
+#   op-005（T7 fast 表 9 条目必经 plan_review + 文案 5 处 + stage-74 断言同步，无前置，执行序最前）[需求变更 T7 修订]
+#   → op-001（T1 feel.md×4 + T6 约束层×4；前置含 op-005）
+#   → op-002（T2 subagent 24 份；Q4 已确认〔2026-10-11〕：底线句 + 保守、量化清单直接落文）[REV-76-016 修订]
+#   → op-003（T3 skills 5 份收口 + T4-build 统一重生成两份生成物）[REV-76-015 修订]
+#   → op-004（T4 断言面 6 条 + T5 门禁收口）
+#
+# 依赖真实性：
+#   - op-005 → op-001：执行序 T7 → T1；引擎表为模板措辞的**事实基准**（新快线链 `plan_pending → plan_review → plan_passed` 先于模板落定；文件集不交叠，硬依赖为**序**依赖）[需求变更 T7 修订]。
+#   - op-001 → op-002：计划执行序 T1 → T2（串行）；op-001 的 feel.md 新节为 24 份模板注记的**口径锚**（工作流快线 / 计划审查必经 / 单轮 / 可达 ≠ 合法 / 术语消歧同一措辞体系）。文件集不交叠（硬依赖为**序**依赖）。
+#   - op-001/op-002 → op-003：`npm run build` 必须在**全部内容源改动**（T1/T2/T3/T6）完成后执行一次（REV-76-002：两生成物同批）；若先 build 后改源，生成物将滞后。
+#   - op-003 → op-004：断言对象含 op-003 的生成物（claude constraint / claude agent via loader）与 4 份 skill 收口结果；门禁的多载体一致性核验以 build 后状态为基线。
+#   - op-005 → op-004：断言 4（S5）经 `getDefaultTransitions('fast')` 派生，对象为 op-005 改后的 **9 条目**表；`npm test` 门禁覆盖 op-005 同步后的 stage-74 断言 [需求变更 T7 修订]。
+#
+# 不变量：
+#   ① 内容源为唯一可改面：`template-loader.ts` + `update.ts` 为 build 重生成（8 锚点：7 → loader + 1 → update），**禁手改 / 禁 `git checkout`**；porcelain **空核验**在阶段归档提交（含两生成物同批）之后执行。
+#   ② full 零回归：新增一律为**并列描述**，不改写/删除既有 full 叙述（opencode 关键串 `toContain` 断言 + 逐文件 diff 复核）。
+#   ③ 相位口径统一（REV-76-004 + 需求变更 T7 修订）：`phases`/`advanceAccepted` 恒 **15 项模式无关**；fast `transitions` **9 条目**（8 流转键 + `done`；`plan_pending → plan_review` 计划审查**必经**、`plan_review → ['plan_passed', 'plan_pending']`）；fast 不可达 **6 项**（`scheme_*` / `test_*`）；含 fast 不可达表述一律「仍为合法相位、仅不可达（无入边）」，**禁**「fast 相位变少 / 删除相位 / 跳过骨架」。
+#   ④ 术语消歧（REV-76-005）：流程模式 = 「工作流快线（`workflow_mode=fast`）」；审查降级 = 「快速通道 / fast track（FAST-PASS）」；二者**不同机制**，reviewer 模板（4 份）显式声明。
+#   ⑤ 4 份 feel.md + 4 份约束层对称（zh ×2 / en ×2 逐字一致；新节规避 harness 主语与工具名）；24 份 subagent = 6 类 × 2 harness × 2 语言，harness 内 zh/en 成对。
+#   ⑥ Q4 口径（2026-10-11 已确认）[REV-76-016 修订]：fast 轻量化 = 底线句 + 保守——planner 任务表/依赖/验收要点、archiver 状态记录/知识暂存判定**不得省略**；**不写硬性数量上限**；`[Q4]` 追加句（保留清单）**直接落文**、无 gate/回退路径。
+#   ⑦ 骨架全量：模板**不得**写「fast 跳过文件/骨架」；`test_pending` 口径 = 仍合法但不可达（无入边），该相位骨架不再产生（其余骨架规则不变）。
+#   ⑧ 不新增依赖；不改 phase 枚举 / 转移表引擎 / CLI 源码 / CI；不 commit / 不 push / 不 publish；不直写 `flow.json`；`--version` 保持 1.1.6。
+#   ⑨ 审计链：本 ops 目录（**5 op** + 本 deps.yaml）随阶段归档提交纳入版本管理（`git add .openfeel/plan/v1/stage-76/ops/`，**禁 `git add -A`**）[kb #方案层 ops 产出的审计链完整性]。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "feel.md ×4 模式纪律与全局约束层模式注记（T1 + T6）"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+    deps:
+      - op: op-005
+        type: hard
+        reason: "执行序 T7 → T1；引擎表为模板措辞的事实基准（新快线链先落地）[需求变更 T7 修订]"
+    notes: "T1：4 份 feel.md 新增「工作流模式」小节（自动推进决策纪律之后；zh ×2 / en ×2 逐字一致；含 fast 下计划审查必经）+ 骨架日志句 fast 注记。T6：4 份约束层 L18 路由行 + L81 调度段 fast 注记（full 逐字保留；fast 链 = 计划 → 计划审查 → 执行 → 代码审查 → 归档）[需求变更 T7 修订]。不跑 build（归 op-003）；不 commit。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "subagent 模板模式感知（T2，24 份）"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/en/openfeel-planner.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/claude/agents/en/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-executor.md
+      - src/core/templates-data/opencode/agents/en/openfeel-executor.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-executor.md
+      - src/core/templates-data/claude/agents/en/openfeel-executor.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-reviewer.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-reviewer.md
+      - src/core/templates-data/claude/agents/en/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/en/openfeel-archiver.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/claude/agents/en/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-schemer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-schemer.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-schemer.md
+      - src/core/templates-data/claude/agents/en/openfeel-schemer.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-feel-tester.md
+      - src/core/templates-data/opencode/agents/en/openfeel-feel-tester.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-feel-tester.md
+      - src/core/templates-data/claude/agents/en/openfeel-feel-tester.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "计划执行序 T1 → T2（串行）；feel.md 新节为 24 份注记的口径锚（同一措辞体系）"
+    notes: "T2：planner（轻量 + 产出后必经 `plan_review` 计划审查）/ executor（相位路径 `plan_pending → plan_review → plan_passed → exec_running` + 白名单注记「可达 ≠ 合法」）/ reviewer（单轮 ×2 均必跑 + 留痕 + 术语消歧显式声明）/ archiver（轻量归档 + 相位注记 + 新快线链）/ schemer、feel-tester（不被调度一行，新增行规避主语、同语言 4 份逐字一致 [REV-76-010 修订]）[需求变更 T7 修订]。**Q4 已确认（2026-10-11）**：底线句 + 保守（不写硬性数量上限），planner/archiver 的 [Q4] 追加句直接落文、无 gate 回退 [REV-76-016 修订]。不跑 build；不 commit。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "skills 收口与 build 重生成（T3 + T4-build）"
+    produces:
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/skills/openfeel-get-stage-status/SKILL.md
+      - src/core/templates-data/skills/openfeel-update-stage-status/SKILL.md
+      - src/core/templates-data/skills/openfeel-wizard/SKILL.md
+      - src/core/templates-data/skills/openfeel-recover/SKILL.md   # [REV-76-015 修订] 恢复后模式确认注记一行
+      - src/core/template-loader.ts
+      - src/core/update.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "build 须在全部内容源改动（T1/T2/T3/T6）完成后执行；两生成物同批（REV-76-002）"
+      - op: op-002
+        type: hard
+        reason: "同上（T2 内容先于 build 落定）"
+    notes: "T3：cli-usage 就地订正 L33/L43/L86 + 快照脚注/frontmatter/参数行 + 新增 v1.1.7 节 + fast 快线表（**9 条目** + 连续快线链串〔含 `plan_review`〕）[REV-76-009 修订 + 需求变更 T7 修订]；其余 4 skill（get-stage-status / update-stage-status / wizard / recover [REV-76-015 修订]）按模式收口。T4-build：`npm run build`（8 锚点）→ 两生成物核验 → porcelain 清单核验（**43 条**：src/；对照 op-004 联合 48）[需求变更 T7 修订] → 幂等预检。**禁手改/禁 checkout 生成物**；「提交后 porcelain 空」核验在阶段归档提交后执行。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-004:
+    file: op-004.md
+    title: "静态断言与门禁收口（T4-断言 + T5）"
+    produces:
+      - test/core/templates.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/claude-adapter.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "断言对象为 op-001 落文产物（4 份 feel.md + 4 份约束层）"
+      - op: op-002
+        type: hard
+        reason: "断言对象为 op-002 的 24 份模板"
+      - op: op-003
+        type: hard
+        reason: "断言含 op-003 生成物（loader 侧）与 skill 收口结果；门禁以 build 后状态为基线"
+      - op: op-005
+        type: hard
+        reason: "断言 4（S5）对象为 op-005 改后的引擎表（9 条目）；`npm test` 门禁覆盖 op-005 同步后的 stage-74 断言 [需求变更 T7 修订]"
+    notes: "T4 断言 6 条：feel.md×4 对称 / opencode 零回归 / 无「fast 跳过骨架」阴性 / fast 口径与 CLI 同源（代码派生，禁硬编码快线表副本）/ reviewer 留痕 + 术语消歧 / 24 份对称 + 约束层 4 份。断言串与责任 op 落文逐字核对为步骤 0 [REV-76-009 修订]。T5 门禁：build ×2 幂等 + `npm test`（0 skipped / 0 failed）+ `tsc` 0 + `lint i18n` **796（不变）** + `lint kb` 0 + 跨 harness 对称 diff 报告 + porcelain **48 条**（`src/` 43 + `test/` 5 联合口径 [REV-76-011 修订 + 需求变更 T7 修订]）清单核验。不新增测试文件；不 commit。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-005:
+    file: op-005.md
+    title: "fast 快线表必经 plan_review——引擎 + 文案 + 测试同步（T7）"
+    produces:
+      - src/core/flow-manager.ts
+      - src/core/config.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+    deps: []
+    notes: "T7 [需求变更 T7 修订]：① 引擎 `FAST_TRANSITIONS` 8 → **9 条目**（`plan_pending → ['plan_review']` + 新增 `plan_review` 键；唯一改点经单一取表点传导，禁第二处改表）；② 文案 5 处（config.ts×3 + i18n `flow.wizard.modeFast`×2；**键数不变 ⇒ lint i18n 796**）；③ stage-74 fast 断言同步 **14 点位**（flow-manager.test.ts 12〔含 T7-d 扫描补充的 `canAdvance(B,'plan_passed')` true→false〕+ flow.test.ts 2）；④ 全量扫描收口「无第 N+1 处」；⑤ 协同口径清单（与 op-001~004）；fast 不可达 7 → **6 项**（`scheme_*` / `test_*`）。执行序最前；不跑 build；不 commit。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 交付顺序（严格串行，供 Feel 调度）
+execution_order:
+  - op-005
+  - op-001
+  - op-002
+  - op-003
+  - op-004

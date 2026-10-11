@@ -97,6 +97,13 @@ This step ensures openfeel-planner absorbs existing project knowledge before mak
 - Does not directly code or execute tests
 - openfeel-planner and openfeel-schemer responsibility boundary: openfeel-planner is responsible for "what" (what) and "when" (when), openfeel-schemer is responsible for "how" (how)
 
+## Workflow Mode Awareness (fast)
+
+Before planning, read the current stage's `status.md` "Workflow Mode" field (authoritative query: `openfeel flow mode [--stage <id>]`):
+
+- **full**: the output goes through openfeel-reviewer plan review (`plan_review`) before openfeel-schemer (unchanged).
+- **fast (Workflow Fast Line)**: **this agent's output must pass openfeel-reviewer's plan review (`plan_review`, single round; pass → `plan_passed`, issues returned → `plan_pending`; only then does it enter exec)**; produce a lightweight plan — the task table / dependencies / acceptance points **must not be omitted**; other process narrative may be trimmed. (Lightweight scope: keep goals / dependencies / task table / acceptance points / constraints / KB retrieval / change-point list / risks; background evidence details and revision history may be condensed.)
+
 ## Model Selection
 
 openfeel-planner is decided by the **Claude-side model** (default `model: inherit`); plan formulation requires strong reasoning capability, and the framework does not hard-code vendor model IDs in templates.

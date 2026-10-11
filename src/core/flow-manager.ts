@@ -450,12 +450,14 @@ export interface PhasePathResult {
 export const PHASE_PATH_MAX_DEPTH = 8;
 
 /**
- * fast 模式内置快线转移表（裁定 C）：7 条流转键 + `done` 终止项（全 8 条目）。
+ * fast 模式内置快线转移表（裁定 C）：8 条流转键 + `done` 终止项（共 9 条目）。
  * 单一来源：仅 getDefaultPipelineConfig('fast') 消费；禁止在命令层/模板层复制（R-74-1）。
+ * `plan_review` 在 fast 下必经（plan_pending → plan_review → plan_passed；通过 → plan_passed，问题退回 → plan_pending）。
  * review_failed 双出口 = 失败回环（重审 或 回执行修复，对应 full 表 scheme_pending 位）；Q3 收紧项留审查裁定。
  */
 const FAST_TRANSITIONS: Record<string, string[]> = {
-  plan_pending: ['plan_passed'],
+  plan_pending: ['plan_review'],
+  plan_review: ['plan_passed', 'plan_pending'],
   plan_passed: ['exec_running'],
   exec_running: ['review_pending'],
   review_pending: ['review_failed', 'review_passed'],

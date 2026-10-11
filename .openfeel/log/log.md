@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-11-Liuary-018.md](2026/10/11/2026-10-11-Liuary-018.md) | Liuary | 阶段 v1.1.7-stage-76 完成 |
+| [2026-10-11-Liuary-017.md](2026/10/11/2026-10-11-Liuary-017.md) | Liuary | **v1.1.7 第三阶段 — stage-76 归档完成（模板与 skill 模式感知）**：第 ② 位读者（Agent 读 `status.md「工作流模式」`自知调度）全量落文（**37 份**模板/skill）——`feel.md`×4「工作流模式」新节（**节锚点插入**）+ subagent 模板 ×24 模式分支与快线链 + 全局约束层 ×4（L18/L81 模式注记）+ skills ×5 收口 + build 重生成**双生成物**（`template-loader.ts` + `update.ts`，禁手改）+ **T7 fast 快线表 8→9 条目**（`plan_pending → plan_review` + 新增 `plan_review` 键，**fast 下计划审查不跳过**，reviewer 单轮必过）+ 文案 5 处 + 断言 **14 点位** + 全量扫描收口 + 静态对称断言（S1~S7）。5 op（执行序 **op-005→001→002→003→004**；executor 未 commit，HEAD `9a3fe27`）；审查 **passed**（REV-76-001~022 全 closed：计划轮 8 + 方案轮 8 + 代码轮 6；NB-1/2 跟踪）；验收 **通过、0 Bug**。门禁 **67 文件 / 1306 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **796**、`lint kb` 0（417 引用）、build ×2 幂等、`--version`=1.1.6。知识沉淀 **4 条**（patterns 2 + troubleshooting 2）+ 旧口径 supersede（`8 条目/7 流转键` → 9 条目）；**ADR-010 正文修订** + manual `core/flow-manager.md` + `index.md` 同步。**v1.1.7 第三阶段闭环**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-11-Liuary-016.md](2026/10/11/2026-10-11-Liuary-016.md) | Liuary | 阶段 v1.1.7-stage-75 完成 |
 | [2026-10-11-Liuary-015.md](2026/10/11/2026-10-11-Liuary-015.md) | Liuary | **v1.1.7 第二阶段 — stage-75 归档完成（模式命令面与交互）**：`plan stage add --workflow-mode` + 骨架「工作流模式」行 + `stage set --workflow-mode`（**插入语义** `insertStatusField` 三态 + 锚点链，替换语义零改动）+ **新增只读** `flow mode [--stage] [--json]`（模式 + 四源 source + `modes`）+ `flow phases --mode/--stage` **模式分节**（消除 `:391/:393` 无参调用致 fast 静默错表；`--json` 五键逐字不变 + 追加 `workflowMode`；`transitionsDiff` 同模式）+ `config set --sync-stages --stage <ids...>`（作用域限定 + 前置全量校验零写盘 + 组合守卫 + `inserted`/`skipped-no-anchor` + 汇总行「同步 N / 插入 M / 跳过 K」，退出码恒 0）+ 冗余字段 `flow.json stages.{id}.workflow_mode`（三写入点 + health 第 10 项仅 warn）+ wizard 首次选型与项目级记忆（非 TTY 守卫 T39 不动）+ `plan scheme create --from-tasks`（op 骨架机械铺，零 Agent）；i18n **775→796**。4 op（executor 未 commit，HEAD `5607905`）；审查 **passed**（REV-75-001~018 全 closed：计划轮 8 + 方案轮 6 + 代码轮 4）；验收 **通过、0 Bug**。门禁 **67 文件 / 1291 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **796**、`lint kb` 0（408 引用）、build ×2 幂等、`--version`=1.1.6。知识沉淀 **4 条**（patterns 3 + troubleshooting 1）+ 1 更新；manual `core/{flow-manager,config}.md` + `cli/commands.md` + `index.md` 同步。**v1.1.7 第二阶段闭环**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-11-Liuary-014.md](2026/10/11/2026-10-11-Liuary-014.md) | Liuary | 阶段 v1.1.7-stage-74 完成 |
@@ -30,8 +32,6 @@
 | [2026-10-03-Liuary-023.md](2026/10/03/2026-10-03-Liuary-023.md) | Liuary | v1.1.5-stage-66.op-002 执行通过 |
 | [2026-10-03-Liuary-022.md](2026/10/03/2026-10-03-Liuary-022.md) | Liuary | v1.1.5-stage-66.op-001 执行通过 |
 | [2026-10-03-Liuary-021.md](2026/10/03/2026-10-03-Liuary-021.md) | Liuary | 阶段 v1.1.4-stage-65 完成 |
-| [2026-10-03-Liuary-020.md](2026/10/03/2026-10-03-Liuary-020.md) | Archiver | **v1.1.4 版本收官** — stage-65 归档完成（checkpoint 选择性恢复与阶段复位 + 版本 1.1.4 收口，问题 3）：选择性 restore + `flow stage reset` + 恢复路径三件套；审查 passed（REV-001/002/003 low open，含跨阶段 stage-62 REV-001）；无新 Bug；知识沉淀 2 条；**v1.1.4 四阶段全部闭环，7 问题全修复** |
-| [2026-10-03-Liuary-019.md](2026/10/03/2026-10-03-Liuary-019.md) | Liuary | v1.1.4 版本收口（1.1.3 → 1.1.4）里程碑：A/B/C/D/E 全链路同步 + 门禁全绿（--version=1.1.4） |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

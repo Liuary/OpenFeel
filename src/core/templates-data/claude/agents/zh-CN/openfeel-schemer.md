@@ -100,6 +100,7 @@ model: inherit
 
 - 接收**主会话**调度启动，产出方案经 openfeel-reviewer 审查后交 openfeel-executor 执行
 - 审查不通过时，根据 openfeel-reviewer 反馈重新制定方案
+- **工作流模式感知**：fast 工作流快线下本 Agent **不被调度**（依据 `status.md「工作流模式」` 跳过方案环节）；职责定义不变。
 
 ## 注意事项
 

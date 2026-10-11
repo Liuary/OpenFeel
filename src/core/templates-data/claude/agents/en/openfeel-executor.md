@@ -63,9 +63,10 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 
 ### Step 2: Phase Legitimacy Check
 
-1. Read `.openfeel/flow.json`, check if `pipeline.phase` is a valid enum value (`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done`); refuse to execute if invalid.
+1. Read `.openfeel/flow.json`, check if `pipeline.phase` is a valid enum value (`plan_pending | plan_review | plan_passed | scheme_pending | scheme_review | scheme_passed | exec_running | review_pending | review_failed | review_passed | test_pending | test_failed | test_passed | archiving | done`); refuse to execute if invalid. (under the fast Workflow Fast Line, reachable phases are the fast-line chain; the legal phase enumeration remains at 15 — reachable ≠ legal)
 2. Confirm `pipeline.current.op` matches the current op-id; refuse to execute if mismatched.
 3. When the current phase is not `exec_running`: if the **main session** explicitly instructs execution, it may proceed but must note the phase deviation; otherwise, refuse to execute.
+4. **Fast-mode phase paths**: `plan_pending → plan_review → plan_passed → exec_running` (the plan review is a mandatory single round; the step is entered only after it passes); the `review_failed → exec_running` loop (review failure returns to exec for fixes; the `review_failed → review_pending` re-review exit is retained).
 
 ### Step 3: FlowManager Transition Legitimacy Check
 

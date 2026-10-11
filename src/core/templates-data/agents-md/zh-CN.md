@@ -15,7 +15,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 任务类型 | 处理路径 | 说明 |
 |----------|----------|------|
 | 调研/探索（读代码、查资料、定位问题） | Feel → research（general / explore Agent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
-| 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester） | 有源码变更，须走完整审计链 |
+| 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester）（full）；fast 工作流快线（workflow_mode=fast）下为 planner → 计划审查（reviewer，单轮必经）→ executor → 代码审查（reviewer）→ archiver——见 status.md「工作流模式」 / openfeel flow mode | 有源码变更，须走完整审计链（fast 走快线审计链） |
 | 选型讨论（敲定技术方案/设计取舍） | Feel + `question` 工具 | 对话式决策，产出结论，不产出 plan.md |
 
 > 非编码任务（调研、选型讨论）不强制创建计划或推进流水线；仅当产生源码变更或正式计划文档时才接入流水线。
@@ -78,7 +78,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
    - 事务官 执行文件机械操作，不参与设计决策
    - openfeel-archiver 归档和沉淀知识，不修改源码；不直写 flow.json（通过 Feel 写入）
 
-3. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / 事务官 / openfeel-vision / openfeel-archiver），通过 `task` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
+3. **Feel 调度约束**：Feel 总统领统一调度下游 Agent（openfeel-planner / openfeel-schemer / openfeel-executor / openfeel-reviewer / openfeel-feel-tester / 事务官 / openfeel-vision / openfeel-archiver），通过 `task` 工具按流水线阶段（计划→方案→执行→审查→测试→归档）串行推进（full）；fast 工作流快线下为 计划 → 计划审查 → 执行 → 代码审查 → 归档（见 status.md「工作流模式」 / openfeel flow mode）。各 Agent 仅在自己的职责边界内操作，不得越界启动其他 Agent 或自行修改 flow.json 状态。
 
 4. **轻量决策边界**：对话式选型（Feel 与用户通过 `question` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由 Feel 直接处理，不委托 openfeel-planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到规划规模阈值时，才委托 openfeel-planner。避免"要么全亲为、要么全委托"的极端。
 

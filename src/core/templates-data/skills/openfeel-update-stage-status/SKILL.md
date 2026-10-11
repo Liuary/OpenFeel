@@ -29,7 +29,7 @@ description: 标准化更新 .openfeel/plan/{series}/{stage}/status.md 的子计
 
 ### 0. 读取全局配置
 
-读取 `.openfeel/config.yaml`，获取 `defaults` 中的 `execution_mode`、`auto_advance`、`merge_mode`。
+读取 `.openfeel/config.yaml`，获取 `defaults` 中的 `execution_mode`、`auto_advance`、`merge_mode`、`workflow_mode`。
 
 ### 1. 读取状态文件
 
@@ -74,6 +74,7 @@ planned | ready_for_code | coding | ready_for_review | review_failed | review_pa
 
 - `执行模式`
 - `自动推进`
+- `工作流模式`（模式字段**不由**状态更新覆盖）
 - `前置依赖`（由 Architect 在 Phase 3.5 中声明，运行时不应修改）
 
 ### 4. 追加状态记录

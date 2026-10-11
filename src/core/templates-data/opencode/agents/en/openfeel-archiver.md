@@ -119,6 +119,15 @@ After archiving is complete, the stage's pipeline phase must be set to one of th
 
 > ⚠️ Note: After archiving is complete, the stage status must be set to `"done"`, **do not** use non-standard values like `"completed"`. `"completed"` does not exist in `VALID_TRANSITIONS`.
 
+> **Under the fast Workflow Fast Line**: the 15-phase enumeration above is **unchanged** (reachable ≠ legal); reachable phases are the fast-line chain (`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`).
+
+## Workflow Mode Awareness (fast lightweight archiving)
+
+Before archiving, read the current stage's `status.md` "Workflow Mode" field (authoritative query: `openfeel flow mode [--stage <id>]`):
+
+- **full**: full archiving checklist (unchanged).
+- **fast (Workflow Fast Line)**: **lightweight archiving** — the state record and the knowledge-staging decision (including the dedup lookup) **must not be omitted**; checklist process narrative may be merged and condensed. (Lightweight scope: keep the state record / knowledge-staging decision / kb index quick overview / manual update decision / shared log summary; summary process narrative may be merged into bullet points.)
+
 ## Model Selection
 
 openfeel-archiver is driven by a **reasoning model** (such as DeepSeek V4 Pro), responsible for understanding context and extracting valuable experience.

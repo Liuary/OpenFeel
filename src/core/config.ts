@@ -24,7 +24,7 @@ export const ConfigMetaSchema = z.object({
 
 /** 工作流模式枚举值域（单一来源：schema / 类型 / 命令面值域派生均引用此处） */
 export const WORKFLOW_MODES = ['full', 'fast'] as const;
-/** 工作流模式：full=完整链路（含计划审查/方案/测试）；fast=快速迭代（跳过上述环节，保留审查单轮） */
+/** 工作流模式：full=完整链路（含计划审查/方案/测试）；fast=快速迭代（跳过方案/测试环节；计划审查与代码审查各保留单轮） */
 export type WorkflowMode = (typeof WORKFLOW_MODES)[number];
 
 /** defaults 块 Schema（允许扩展字段） */
@@ -454,7 +454,7 @@ defaults:
   merge_mode: ${DEFAULT_CONFIG.merge_mode}
 
   # 工作流模式：full=完整链路（含计划审查/方案/测试）
-  #            fast=快速迭代（跳过上述环节，保留审查单轮）
+  #            fast=快速迭代（跳过方案/测试环节；计划审查与代码审查各保留单轮）
   workflow_mode: ${DEFAULT_CONFIG.workflow_mode}
 
 # ---- 模型配置 ----
@@ -511,7 +511,7 @@ defaults:
   merge_mode: ${DEFAULT_CONFIG.merge_mode}
 
   # Workflow mode: full=full pipeline (incl. plan review / scheme / test)
-  #                fast=quick iteration (skip the above; single review round kept)
+  #                fast=quick iteration (skips scheme/test; keeps single-round plan review and code review)
   workflow_mode: ${DEFAULT_CONFIG.workflow_mode}
 
 # ---- Model Configuration ----

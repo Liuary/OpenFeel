@@ -3724,3 +3724,31 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.7-stage-75（op-003）——三条组合守卫用例 + 未注册建议名 + 前置零写盘 + done 阶段显式列入正常处理 + 重复执行幂等（全 noop、SHA256 不变）。
 
 **参见：** v1.1.7-stage-75（plan T5/T7.7/T9；op-003；REV-75-002/005）；`src/commands/config.ts`；kb/patterns.md #defaults.X ≡ X 键归一、#新建阶段骨架初值取 config 默认；manual/cli/commands.md、manual/core/config.md
+
+## [+] Agent 模板模式感知落法：节锚点插入 + 同语言跨 harness 逐字一致 + 按 harness 替换主语 (2026-10-11)
+
+**背景：v1.1.7-stage-76（模板与 skill 模式感知，v1.1.7 第三阶段）**——把「模式标记」的第 ② 位读者（Agent）落地：`feel.md` ×4（opencode/claude × zh-CN/en）调度纪律 + 6 类 subagent 模板 ×4 = 24 份模式感知 + 全局约束层 ×4 + 中立共享 skills ×5，共 37 份模板/skill 落文。
+
+- **节锚点插入，不按行号**：以「自动推进决策纪律」节为锚点插入新节「工作流模式（workflow_mode）」，同批以骨架日志句为锚点行内注记。模板批量改造一律用**内容锚点定位**（行号会因前序插入失效，REV-76-013），且**插入类改动放最后**、自上而下先行内改。
+- **同语言跨 harness 逐字一致**：同一语言（zh-CN 或 en）下 opencode 与 claude 两侧模板正文**逐字一致**（跨 harness 对称 diff = IDENTICAL）；差异仅限已登记的既有 harness 差异词（`Feel`/`主会话`、`Agent`/`subagent`、`task`/`Task`）。断言按「harness 内 zh/en 关键串一致 + opencode 既有串零回归」双向核。
+- **无裸主语**：跨 harness 模板文案**避免裸主语**（claude 侧约定为「主会话 / main session（Feel 角色）」，opencode 侧为 `Feel`）——逐字落文若含裸 `Feel` 主语将破坏同语言 4 份逐字一致（REV-76-010）。去主语示例：「fast 工作流快线下本 Agent 不被调度」。
+- **术语消歧**：流程模式统一称「工作流快线（workflow_mode=fast）」；审查深度降级仍称「快速通道 / FAST-PASS」——同名不许混（REV-76-005）。
+- **判据**：多 harness 多语言模板同步改造 = 「内容锚点定位 + 同语言跨 harness 逐字一致 + 按 harness 替换主语 + 零裸主语」。
+
+**实证**：v1.1.7-stage-76（op-001 feel.md×4 + T6 约束层×4；op-002 subagent×24；op-003 skills×5 + build 重生成；共 37 份；`test/core/templates.test.ts` +4 describe S1~S4 对称断言绿）。
+
+**参见：** v1.1.7-stage-76（plan T1/T2/T6；op-001/002/003；REV-76-001/005/006/010）；`src/core/templates-data/{opencode,claude}/agents/{zh-CN,en}/`、`templates-data/agents-md/`、`templates-data/claude/constraint/`、`templates-data/skills/`；kb/patterns.md #Claude Code agent frontmatter 结构化映射、#单源一致性断言（键集断言 vs 内容断言）、#共享 skill 双平台分节中立化；manual/core/build.md
+
+## [+] 工作流快线必经计划审查：fast 表 8→9 条目（`plan_pending → plan_review`） (2026-10-11)
+
+**背景：v1.1.7-stage-76（T7，需求变更 2026-10-11 修订）**——原 fast 快线跳过 `plan_review`（`plan_pending → plan_passed`），修订为**计划审查（`plan_review`）在 fast 下不跳过**（reviewer 单轮必过，与代码审查同级）。
+
+- **引擎落法**：`FAST_TRANSITIONS` 由 **8 条目 → 9 条目**（8 流转键 + `done`）：`plan_pending: ['plan_review']`（原 `['plan_passed']`）+ 新增键 `plan_review: ['plan_passed', 'plan_pending']`。fast 链变为 `plan_pending → plan_review → plan_passed → exec_running → review_pending → {review_failed ↺} → review_passed → archiving → done`（跳过 **6 项**：scheme_* / test_*）。
+- **单一取表点传导**：只改 `FAST_TRANSITIONS` 常量，未改 full 表 / phase 枚举 / 命令面；四调用点经 `resolveTransitionsForMode('fast')` 自动刷新。
+- **文案与断言同步面**：文案 5 处（`config.ts` ×3 + i18n zh/en ×2）+ 断言 **14 点位**（`flow-manager.test.ts` 12 + `flow.test.ts` 2）+ 全量扫描收口（`plan_pending: ['plan_passed']` / `8 条目|7 流转键` / `跳过计划审查` 等旧口径归零）。
+- **口径校正**：「条目数 8→9」而非任务书初载「8→10」——以「8 流转键 + done」为准（REV-76-004/009）。
+- **判据**：fast 快线的质量底线 = 保留 reviewer 单轮 + **计划审查不跳过** + 失败回环；变更转移表须同批同步文案、断言、kb/manual/ADR 口径。
+
+**实证**：v1.1.7-stage-76 op-005（T7）——反证改回 `plan_pending: ['plan_passed']` → `flow-manager.test.ts` 13 失败；改回 393 用例绿；`flow phases --mode fast` 输出 `plan_pending → [plan_review]`、`plan_review → [plan_passed, plan_pending]`。
+
+**参见：** v1.1.7-stage-76（plan T7；op-005；REV-76-004/009）；`src/core/flow-manager.ts` `FAST_TRANSITIONS`；`src/core/config.ts`；`src/core/i18n-data/{zh-CN,en}.ts`；kb/architecture.md #双模式转移表选择；dev/decisions.md ADR-010；manual/core/flow-manager.md

@@ -209,6 +209,21 @@ Agent 模型需求对照：
 3. **用户拒绝**：Feel 保持 `auto_advance=disabled`，每次阶段推进前均需向用户确认（手动执行模式）。
 4. **禁止静默推进**：`auto_advance=disabled` 时禁止 Feel 不询问用户直接推进流水线。
 
+#### 工作流模式（workflow_mode）
+
+调度前读取当前阶段 `status.md「工作流模式」`（权威查询：`openfeel flow mode [--stage <id>]`；字段缺失时按级联口径回落）。两种模式：
+
+- **full（完整流程）**：planner → plan_review（reviewer）→ schemer → executor → reviewer → tester → archiver。
+- **fast（工作流快线）**：planner（轻量）→ plan_review（**计划审查单轮，必经**）→ executor → reviewer（单轮）→ archiver（轻量）；**不派发 schemer / tester**。
+
+fast 调度纪律：
+
+1. **质量底线不可跳**：reviewer 在 fast 下**必跑两处**——① `plan_review` 计划审查（**必经单轮**，与代码审查同级；通过 → `plan_passed`，问题退回 → `plan_pending`）；② exec 后代码审查（单轮）；`review_failed` 回环可重审或回执行修复；失败留痕照常（REV 条目照常）。
+2. **轻量化**：planner / archiver 轻量产出（**不得**省略任务表 / 依赖 / 验收要点与状态记录 / 知识暂存判定）。
+3. **相位口径**：fast 下可达相位为快线链（`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：`scheme_*` / `test_*`）。
+4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
+5. **术语消歧**：流程模式称「**工作流快线**」（`workflow_mode=fast`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
+
 ## 小改 vs 大规模规划的阈值
 
 根据变更规模选择适当的流程路径：
@@ -276,7 +291,7 @@ Agent 模型需求对照：
 
 ### 骨架文件提示
 
-关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件。Feel 无需手动创建日志文件，看到骨架文件时填充内容即可。
+关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件（fast 工作流快线下 `test_pending` 仍为合法相位、仅不可达（无入边），该相位骨架不再产生；其余骨架规则全量不变）。Feel 无需手动创建日志文件，看到骨架文件时填充内容即可。
 
 ### 日志条目格式
 

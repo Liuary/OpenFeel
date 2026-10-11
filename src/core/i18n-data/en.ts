@@ -305,7 +305,7 @@ export const flow: I18nDomain = {
   'wizard.createSkipped':           { key: 'flow.wizard.createSkipped',           zh: '', en: 'Stage creation skipped, exiting wizard.' },
   'wizard.modePrompt':              { key: 'flow.wizard.modePrompt',              zh: '', en: 'First-time setup: choose the workflow mode for this stage' },
   'wizard.modeFull':                { key: 'flow.wizard.modeFull',                zh: '', en: 'full (complete pipeline: plan review / scheme / test included)' },
-  'wizard.modeFast':                { key: 'flow.wizard.modeFast',                zh: '', en: 'fast (quick iteration: plan review / scheme / test skipped)' },
+  'wizard.modeFast':                { key: 'flow.wizard.modeFast',                zh: '', en: 'fast (quick iteration: scheme/test skipped; single-round plan review and code review kept)' },
   'wizard.modeRememberedTmpl':      { key: 'flow.wizard.modeRememberedTmpl',      zh: '', en: '✓ Workflow mode remembered: {mode} (written to status.md and project config.yaml)' },
 };
 

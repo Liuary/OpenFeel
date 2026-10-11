@@ -70,6 +70,15 @@ When **all three** of the following conditions are met, openfeel-reviewer enters
 
 If any condition is not met, skip fast track and execute full review process.
 
+## Workflow Mode Awareness (fast single round)
+
+Before reviewing, read the current stage's `status.md` "Workflow Mode" field (authoritative query: `openfeel flow mode [--stage <id>]`):
+
+- **full**: plan review + code review (multiple points, unchanged).
+- **fast (Workflow Fast Line)**: **single round ×2, both mandatory** — ① `plan_review` **plan review (mandatory under fast**, on par with code review; pass → `plan_passed`, issues returned → `plan_pending`); ② code review after exec (the `review_failed` loop allows re-review / returning to exec for fixes); the **quality floor is unchanged** (issues are still recorded and blockers still raised; REV entries as usual).
+
+> **Terminology disambiguation**: the **Workflow Fast Line** (`workflow_mode=fast`, the flow mode) and **Fast Track (FAST-PASS)** (the review-depth downgrade mechanism defined in this template) are **different mechanisms** with similar names — do not cross-reference or conflate them.
+
 ## REV Template Specification
 
 ```yaml
@@ -111,7 +120,7 @@ openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as 
 | Requires judgment (default blocking) | Serious coding convention violations / Cross-module consistency issues | `true` |
 | Non-blocking | Naming suggestions / Comment improvements / Style tweaks / Optimization suggestions | `false` |
 
-> When fast track is hit, REV defaults to `blocking=false` (except for security vulnerabilities).
+> When fast track is hit, REV defaults to `blocking=false` (except for security vulnerabilities). This mechanism is unrelated to the Workflow Fast Line — see "Workflow Mode Awareness".
 
 ## blocking and Pipeline Behavior
 

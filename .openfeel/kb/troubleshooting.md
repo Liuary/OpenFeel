@@ -1100,3 +1100,28 @@ concurrency:
 **避免**：凡「核验某命令写盘零/有限变化」，**先读该命令的 `save()` 路径**确认哪些元字段必然改写；把元字段（revision/updated/审计）从「未预期变化」中显式排除，避免把正常行为误判为核验失败并错误阻塞阶段。
 
 **参见：** v1.1.7-stage-75（plan T9 核验 3；op-003 困难点 3 / op-004 修正记录；REV-75-010）；`src/core/flow-manager.ts` `save()`（`:531`/`:550`）；kb/patterns.md #flow.json 乐观并发校验模式
+
+## [+] 断言串与落文逐字核对纪律：markdown 粗体 `**` 断串致 0 命中 (2026-10-11)
+
+**背景：v1.1.7-stage-76（REV-76-009）**——方案层 op-004 的三处断言串与责任 op（op-001/002/003）落文**逐字不符**：① planner-en 串 `reviewed by openfeel-reviewer before being handed to openfeel-schemer` 全仓 0 命中（实为 schemer 模板措辞）；② reviewer-zh `REV 条目照记` 4 份模板均无（落文为 `REV 条目照常`）；③ cli-usage 要求「连续快线链串」而落文为分段罗列 + 表格（该串 0 命中）。→ 若按方案原文断言必红（伪失败）。
+
+- **根因**：**markdown 粗体标记 `**` 会切断子串**——源落文写作 `**REV 条目照常**` 时，断言串若把 `**` 一并写进或漏写，`toContain` 即 0 命中；断言串与落文之间任何不可见标记差异都致伪失败。
+- **纪律**：断言串**以「责任 op 落文逐字」为准**（含或去粗体需显式统一），方案层设「断言串须与责任 op 落文逐字一致」核对步骤（REV-76-009 修法）。
+- **配套**：子串断言对高频词无保护力时升级**行级/表格行粒度**；跨形态的阴性断言须补同义变体（REV-76-018）。
+- **判据**：先落文、后取串；取串须与落文逐字对齐（含 `**` 等标记），核验以「0 MISS」为收口。
+
+**实证**：v1.1.7-stage-76 REV-76-009（方案修订后逐条独立复核，断言串 0 MISS）；关联 REV-76-017/018/019。
+
+**参见：** v1.1.7-stage-76（REV-76-009/017/018/019）；kb/patterns.md #平台分节中立化的「原文搬家 vs 探针式改写」陷阱；manual/core/code-review.md
+
+## [+] 改 templates-data 源须同批重生成的「双生成物」：template-loader.ts + update.ts (2026-10-11)
+
+**背景：v1.1.7-stage-76（REV-76-002）**——改 `templates-data/skills/**`（T3）会**同时**重生成两份构建产物，方案范围仅列 `template-loader.ts` 会漏。
+
+- **两份生成物**：`build.js` 有**两个** `replaceBetweenAnchors` 注入点——`SKILL_DEFINITIONS` → `src/core/update.ts`、模板加载段 → `src/core/template-loader.ts`；改 skill 源二者**同批复重生成**（均禁手改）。
+- **漏列后果**：只列 `template-loader.ts` → T4 的 `git status --porcelain src/` 空断言不可能满足，执行者可能误判回滚、**破坏 skill 部署链**。
+- **判据**：模板类改造的产出清单须**穷举 build 的全部注入对象/锚点**（以 `grep replaceBetweenAnchors build.js` 为准），而非按经验只记其一；生成物纳入提交且以 `--porcelain`（提交后）核验。
+
+**实证**：v1.1.7-stage-76 op-003/op-004——build 重生成 `template-loader.ts`（84 loader hunk）+ `update.ts`（16 update hunk）全部落 AUTO-GENERATED 锚点区（0 越界）；build ×2 幂等（`git hash-object` 前后一致）；porcelain `src/ 43 + test/ 5`。
+
+**参见：** v1.1.7-stage-76（T4；REV-76-002）；`build.js`（`replaceBetweenAnchors`）；`src/core/{template-loader,update}.ts`；kb/patterns.md #CLI 用法 skill 化模式；manual/core/build.md、manual/core/template-loader.md

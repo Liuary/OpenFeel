@@ -62,6 +62,12 @@ function makeTestFlowData(overrides?: Partial<FlowData>): FlowData {
   };
 }
 
+/** 模式敏感用例 fixture：显式声明 full（内置默认 fast，见 v1.1.7-stage-74 R-FIX） */
+function writeFullModeConfig(dir: string): void {
+  mkdirSync(join(dir, '.openfeel'), { recursive: true });
+  writeFileSync(join(dir, '.openfeel', 'config.yaml'), 'defaults:\n  workflow_mode: full\n', 'utf-8');
+}
+
 describe('FlowManager', () => {
   let tmpDir: string;
 
@@ -1047,6 +1053,9 @@ describe('FlowManager', () => {
   // ═══════════════════════════════════════
 
   describe('canAdvance', () => {
+    // R-FIX（stage-74 op-004）：全链语义用例显式声明 full
+    beforeEach(() => { writeFullModeConfig(tmpDir); });
+
     it('合法流转应返回 true（基于 stage.phase）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
@@ -1329,6 +1338,9 @@ describe('FlowManager', () => {
   });
 
   describe('multi-stage parallel scenarios', () => {
+    // R-FIX（stage-74 op-004）：全链语义用例显式声明 full
+    beforeEach(() => { writeFullModeConfig(tmpDir); });
+
     it('两个 stage 不同 phase 共存时 summary 正确展示', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData({
@@ -2000,6 +2012,9 @@ describe('FlowManager', () => {
   // ═══════════════════════════════════════
 
   describe('hasTransition & getAvailablePhases & getPhaseLabels', () => {
+    // R-FIX（stage-74 op-004）：全链语义用例显式声明 full
+    beforeEach(() => { writeFullModeConfig(tmpDir); });
+
     it('hasTransition 对合法跳转应返回 true', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData({ ...makeTestFlowData(), pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 } });
@@ -2049,6 +2064,9 @@ describe('FlowManager', () => {
   // ═══════════════════════════════════════
 
   describe('op-004 findPhasePath（BFS 唯一路径）', () => {
+    // R-FIX（stage-74 op-004）：全链语义用例显式声明 full（含自定义 pipeline.yaml 的 2087/2108 用例——mode 不随 pipeline.yaml 走）
+    beforeEach(() => { writeFullModeConfig(tmpDir); });
+
     it('唯一路径 ok / 已到达 already-at-target / 无路径 no-path（只读）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
@@ -2114,6 +2132,9 @@ describe('FlowManager', () => {
   // ═══════════════════════════════════════
 
   describe('op-012 REV-005 短名归一化', () => {
+    // R-FIX（stage-74 op-004）：全链语义用例显式声明 full
+    beforeEach(() => { writeFullModeConfig(tmpDir); });
+
     /** 构造以全名 v1.0.0-stage-01 建键的 flow 数据（模拟真实 flow.json） */
     const fullKeyData = (phase: PipelinePhase = 'plan_pending'): FlowData => {
       const base = makeTestFlowData();
@@ -2937,6 +2958,9 @@ describe('FlowManager', () => {
   });
 
   describe('端到端：review_passed 不再锁死 done（op-001 T6.3）', () => {
+    // R-FIX（stage-74 op-004）：全链语义用例显式声明 full
+    beforeEach(() => { writeFullModeConfig(tmpDir); });
+
     it('advance review_passed 后 status≠done，且 test_pending 可达', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
@@ -3546,9 +3570,9 @@ describe('配置级联（stage-42 op-001）', () => {
     expect(cascade.configDefaults.auto_advance).toBeUndefined();
     // effective 为三层显式声明值的合并；三层皆无 → undefined（原 DEFAULT_PROFILE 兜底已移除）
     expect(cascade.effective.auto_advance).toBeUndefined();
-    // 有效值来源落 builtin（框架内置默认 disabled）
+    // 有效值来源落 builtin（框架内置默认 enabled，见 v1.1.7-stage-74 裁定 E）
     const r = makeMgr().resolveEffectiveConfig();
-    expect(r.auto_advance).toEqual({ value: 'disabled', source: 'builtin' });
+    expect(r.auto_advance).toEqual({ value: 'enabled', source: 'builtin' });
   });
 
   // ── op-002：resolveEffectiveConfig（有效值 + 来源） ──
@@ -3590,7 +3614,7 @@ describe('配置级联（stage-42 op-001）', () => {
     // 键名拼接构造，避免字面量以保持 `rg` 清理门禁为 0。
     const removedLegacyKey = ['test', 'enabled'].join('_');
     const r = makeMgr().resolveEffectiveConfig();
-    expect(r.auto_advance).toEqual({ value: 'disabled', source: 'builtin' });
+    expect(r.auto_advance).toEqual({ value: 'enabled', source: 'builtin' });
     expect(r.merge_mode).toEqual({ value: 'manual', source: 'builtin' });
     expect(r.execution_mode).toEqual({ value: 'manual', source: 'builtin' });
     expect(r.merge_mode.source).not.toBe('profile.yaml');
@@ -3679,6 +3703,8 @@ describe('配置级联（stage-42 op-001）', () => {
     });
 
     it('T9：canAdvance 合法/非法目标两分支', () => {
+      // R-FIX（stage-74 op-004）：全链语义用例显式声明 full
+      writeFullModeConfig(tmpDir);
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
       expect(mgr.canAdvance('stage-01.op-001', 'plan_review' as PipelinePhase)).toBe(true);
@@ -4166,5 +4192,423 @@ describe('REV-009 stage 解析归一化（stage-52 op-014）', () => {
       // 全 opId → null（既有语义，A9 登记为已知边界，不改契约）
       expect(mgr.readOpTemplate('stage-01', 'stage-01.op-005')).toBeNull();
     });
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-74 op-002：双模式转移表（T7.1 / T7.7 / T7.12）
+// ═══════════════════════════════════════
+
+describe('双模式转移表（stage-74 op-002）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-dualtable-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  /** 内置 fast 表期望字面量（测试内独立书写，不 import 常量，以捕获常量误改） */
+  const FAST_EXPECTED: Record<string, string[]> = {
+    plan_pending: ['plan_passed'],
+    plan_passed: ['exec_running'],
+    exec_running: ['review_pending'],
+    review_pending: ['review_failed', 'review_passed'],
+    review_failed: ['review_pending', 'exec_running'],
+    review_passed: ['archiving'],
+    archiving: ['done'],
+    done: [],
+  };
+
+  function writePipeline(yaml: string): void {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), yaml, 'utf-8');
+  }
+
+  /** 本仓运行时 pipeline.yaml 复刻（只读工作区资产） */
+  function repoPipeline(): string {
+    return readFileSync(join(process.cwd(), '.openfeel', 'pipeline.yaml'), 'utf-8');
+  }
+
+  // ── T7.1 内置双表逐字 + 无参 = full + 深拷贝 ──
+
+  it('T7.1：内置 full 表逐字（含组合键，16 键）', () => {
+    const mgr = new FlowManager(tmpDir);
+    const full = mgr.getDefaultTransitions('full');
+    expect(full.plan_pending).toEqual(['plan_review', 'plan_passed']);
+    expect(full.review_failed).toEqual(['review_pending', 'scheme_pending']);
+    expect(full['review_passed|test_passed']).toEqual(['archiving']);
+    expect(full.done).toEqual([]);
+    expect(Object.keys(full)).toHaveLength(16);
+  });
+
+  it('T7.1：内置 fast 表逐字（8 条目含 done 终止项）', () => {
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.getDefaultTransitions('fast')).toEqual(FAST_EXPECTED);
+  });
+
+  it('T7.1：无参 = full（零回归）', () => {
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.getDefaultTransitions()).toEqual(mgr.getDefaultTransitions('full'));
+    expect(mgr.getPipelineTransitions()).toEqual(mgr.getPipelineTransitions('full'));
+    expect(mgr.getPipelineTransitions('fast')).toEqual(FAST_EXPECTED);
+  });
+
+  it('T7.1：getDefaultTransitions 返回深拷贝（修改不污染下次读取）', () => {
+    const mgr = new FlowManager(tmpDir);
+    const fast = mgr.getDefaultTransitions('fast');
+    fast.plan_pending.push('__injected__');
+    expect(mgr.getDefaultTransitions('fast').plan_pending).toEqual(['plan_passed']);
+  });
+
+  // ── T7.7 pipeline.yaml 覆盖线（运行时线） ──
+
+  it('T7.7a：自定义双表（transitions + fast_transitions）各自生效', () => {
+    writePipeline([
+      'phases: [plan_pending, done]',
+      'transitions:',
+      '  plan_pending: [done]',
+      '  done: []',
+      'fast_transitions:',
+      '  plan_pending: [done]',
+      'checkpoint_mapping: {}',
+      'phase_corrections: {}',
+      '',
+    ].join('\n'));
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.getPipelineTransitions('full')['plan_pending']).toEqual(['done']);
+    expect(mgr.getPipelineTransitions('fast')['plan_pending']).toEqual(['done']);
+  });
+
+  it('T7.7b：非法 fast_transitions → 告警 + 回退内置；full 覆盖不受影响', () => {
+    writePipeline([
+      'phases: [plan_pending, done]',
+      'transitions:',
+      '  plan_pending: [done]',
+      '  done: []',
+      'fast_transitions: not-an-object',
+      'checkpoint_mapping: {}',
+      'phase_corrections: {}',
+      '',
+    ].join('\n'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const mgr = new FlowManager(tmpDir);
+      const warns = warnSpy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(warns).toContain('fast_transitions');
+      expect(mgr.getPipelineTransitions('fast')['plan_pending']).toEqual(['plan_passed']);
+      expect(mgr.getPipelineTransitions('full')['plan_pending']).toEqual(['done']);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('T7.7c：缺失 fast_transitions 键 → fast 取内置快线表', () => {
+    writePipeline([
+      'phases: [plan_pending, done]',
+      'transitions:',
+      '  plan_pending: [done]',
+      '  done: []',
+      'checkpoint_mapping: {}',
+      'phase_corrections: {}',
+      '',
+    ].join('\n'));
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.getPipelineTransitions('fast')).toEqual(FAST_EXPECTED);
+  });
+
+  it('T7.7d：本仓 pipeline.yaml 复刻（运行时 full 线缺组合键；fast 仍内置）', () => {
+    writePipeline(repoPipeline());
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.getPipelineTransitions('full')['review_passed|test_passed']).toBeUndefined();
+    expect(mgr.getPipelineTransitions('fast')).toEqual(FAST_EXPECTED);
+  });
+
+  it('T7.7e：fast_transitions 空对象 {} 等同缺失（回落内置快线表，非死锁）[REV-74-009]', () => {
+    writePipeline([
+      'phases: [plan_pending, done]',
+      'transitions:',
+      '  plan_pending: [done]',
+      '  done: []',
+      'fast_transitions: {}',
+      'checkpoint_mapping: {}',
+      'phase_corrections: {}',
+      '',
+    ].join('\n'));
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.getPipelineTransitions('fast')['plan_pending']).toEqual(['plan_passed']);
+    expect(mgr.getPipelineTransitions('full')['plan_pending']).toEqual(['done']);
+  });
+
+  // ── T7.12 同模式差集（core 层） ──
+
+  describe('T7.12 同模式差集', () => {
+    const diffOf = (runtime: Record<string, string[]>, def: Record<string, string[]>): string[] =>
+      Object.keys(def).filter((k) => !(k in runtime));
+
+    it('T7.12：本仓复刻 full 差集 = [组合键]；fast 无覆盖 = []', () => {
+      writePipeline(repoPipeline());
+      const mgr = new FlowManager(tmpDir);
+      expect(diffOf(mgr.getPipelineTransitions('full'), mgr.getDefaultTransitions('full')))
+        .toEqual(['review_passed|test_passed']);
+      expect(diffOf(mgr.getPipelineTransitions('fast'), mgr.getDefaultTransitions('fast'))).toEqual([]);
+    });
+
+    it('T7.12：自定义 fast_transitions → 差集命中', () => {
+      writePipeline([
+        'phases: [plan_pending, done]',
+        'transitions:',
+        '  plan_pending: [done]',
+        '  done: []',
+        'fast_transitions:',
+        '  plan_pending: [done]',
+        '  done: []',
+        'checkpoint_mapping: {}',
+        'phase_corrections: {}',
+        '',
+      ].join('\n'));
+      const mgr = new FlowManager(tmpDir);
+      const diff = diffOf(mgr.getPipelineTransitions('fast'), mgr.getDefaultTransitions('fast'));
+      expect(diff).toContain('exec_running');
+    });
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-74 op-003：工作流模式解析（T7.4）
+// ═══════════════════════════════════════
+
+describe('工作流模式解析（stage-74 op-003）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-mode-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    // 默认隔离 HOME 指向不存在路径（无 profile.yaml 干扰）
+    mockHome.dir = join(tmpDir, 'no-such-home');
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  function writeProjectConfig(content: string | null): void {
+    if (content === null) {
+      return;
+    }
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), content, 'utf-8');
+  }
+
+  /** 写指定阶段的 status.md（工作流模式行） */
+  function writeStageMode(stageDir: string, mode: 'full' | 'fast'): void {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', stageDir);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'status.md'), `# 状态\n\n- **工作流模式**：${mode}\n`, 'utf-8');
+  }
+
+  function makeMgr(currentStage = 'v1.0.0-stage-01'): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      ...makeTestFlowData(),
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: currentStage, op: 'op-001' }, retry: 0 },
+    });
+    return mgr;
+  }
+
+  it('T7.4a：status.md 覆盖 config.yaml（当前阶段域）', () => {
+    writeStageMode('stage-01', 'full');
+    writeProjectConfig('defaults:\n  workflow_mode: fast\n');
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.workflow_mode).toEqual({ value: 'full', source: 'status.md' });
+  });
+
+  it('T7.4b：config.yaml（无 status.md 字段）', () => {
+    writeProjectConfig('defaults:\n  workflow_mode: full\n');
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.workflow_mode).toEqual({ value: 'full', source: 'config.yaml' });
+  });
+
+  it('T7.4c：builtin（隔离 HOME + 无 config/status 字段）', () => {
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.workflow_mode).toEqual({ value: 'fast', source: 'builtin' });
+  });
+
+  it('T7.4d：画像不承载 workflow_mode（source !== profile.yaml）', () => {
+    // 画像显式声明 auto_advance，但 profile 层对 workflow_mode 不产出
+    mkdirSync(join(tmpDir, '.config', 'openfeel'), { recursive: true });
+    writeFileSync(join(tmpDir, '.config', 'openfeel', 'profile.yaml'), 'preferences:\n  auto_advance: enabled\n', 'utf-8');
+    mockHome.dir = tmpDir; // 使 profile.yaml 生效
+    const r = makeMgr().resolveEffectiveConfig();
+    expect(r.workflow_mode).toEqual({ value: 'fast', source: 'builtin' });
+    expect(r.workflow_mode.source).not.toBe('profile.yaml');
+  });
+
+  it('T7.4e：任意阶段域（决定性，REV-74-001；被操作 stage ≠ current.stage）', () => {
+    writeStageMode('stage-01', 'full');
+    writeStageMode('stage-02', 'fast');
+    const mgr = makeMgr('v1.0.0-stage-01');
+    // 若误复用当前阶段分支 → stage-02 得 full（红）；此处按 stage-02 的 fast 表解析
+    expect(mgr.resolveStageWorkflowMode('v1.0.0-stage-02')).toEqual({ value: 'fast', source: 'status.md' });
+    expect(mgr.resolveStageWorkflowMode('v1.0.0-stage-01')).toEqual({ value: 'full', source: 'status.md' });
+  });
+
+  it('T7.4f：无参 = 当前阶段域', () => {
+    writeStageMode('stage-01', 'full');
+    writeStageMode('stage-02', 'fast');
+    const mgr = makeMgr('v1.0.0-stage-01');
+    expect(mgr.resolveStageWorkflowMode()).toEqual(mgr.resolveStageWorkflowMode('v1.0.0-stage-01'));
+  });
+
+  it('T7.4g：出口同源（verboseSummary.cascade 与 resolveEffectiveConfig 一致）', () => {
+    writeStageMode('stage-01', 'full');
+    const mgr = makeMgr();
+    const summary = mgr.verboseSummary();
+    expect(summary.cascade.statusOverrides.workflow_mode).toBe('full');
+    expect(mgr.resolveEffectiveConfig().workflow_mode).toEqual({ value: 'full', source: 'status.md' });
+  });
+
+  it('T7.4h：不存在阶段不抛错 → 回落 config/builtin', () => {
+    writeProjectConfig('defaults:\n  workflow_mode: full\n');
+    const mgr = makeMgr();
+    expect(mgr.resolveStageWorkflowMode('v1.0.0-stage-99')).toEqual({ value: 'full', source: 'config.yaml' });
+    rmSync(join(tmpDir, '.openfeel', 'config.yaml'), { force: true });
+    expect(mgr.resolveStageWorkflowMode('v1.0.0-stage-99')).toEqual({ value: 'fast', source: 'builtin' });
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-74 op-004：单一取表点（T7.2 / T7.3 / T7.10 / T7.11）
+// ═══════════════════════════════════════
+
+describe('单一取表点（stage-74 op-004）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-singletable-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    mockHome.dir = join(tmpDir, 'no-such-home');
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  /** 双模式 fixture（决定性：被操作 stage ≠ current.stage）：A=full（current）/ B=fast */
+  function setupDualModeFixture(): FlowData {
+    const mk = (stageDir: string, mode: 'full' | 'fast'): void => {
+      const dir = join(tmpDir, '.openfeel', 'plan', 'v1', stageDir);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'status.md'), `# 状态\n\n- **工作流模式**：${mode}\n`, 'utf-8');
+    };
+    mk('stage-01', 'full');
+    mk('stage-02', 'fast');
+    const base = makeTestFlowData();
+    const op = (): typeof base.stages['stage-01']['ops'] => ({
+      'op-001': { ...base.stages['stage-01'].ops['op-001'] },
+    });
+    return {
+      ...base,
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.0.0-stage-01', op: 'v1.0.0-stage-01.op-001' }, retry: 0 },
+      stages: {
+        'v1.0.0-stage-01': { ...base.stages['stage-01'], name: 'A', phase: 'plan_pending', ops: op() },
+        'v1.0.0-stage-02': { ...base.stages['stage-01'], name: 'B', phase: 'plan_pending', ops: op() },
+      },
+    };
+  }
+
+  function makeMgr(data: FlowData): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(data);
+    return mgr;
+  }
+
+  it('T7.2a：getAvailablePhases 按被操作 stage 的模式解析（B≠current）', () => {
+    const mgr = makeMgr(setupDualModeFixture());
+    // 若误用当前阶段分支 → B 得 full 两目标（红）
+    expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['plan_passed']);
+    expect(mgr.getAvailablePhases('v1.0.0-stage-01')).toEqual(['plan_review', 'plan_passed']);
+  });
+
+  it('T7.2b：无参 getAvailablePhases = 当前阶段（A, full）', () => {
+    const mgr = makeMgr(setupDualModeFixture());
+    expect(mgr.getAvailablePhases()).toEqual(mgr.getAvailablePhases('v1.0.0-stage-01'));
+  });
+
+  it('T7.2c：findPhasePath 按被操作 stage 的模式解析', () => {
+    const mgr = makeMgr(setupDualModeFixture());
+    expect(mgr.findPhasePath('v1.0.0-stage-02', 'exec_running'))
+      .toEqual({ path: ['plan_passed', 'exec_running'], reason: 'ok' });
+    expect(mgr.findPhasePath('v1.0.0-stage-02', 'scheme_pending').reason).toBe('no-path');
+    expect(mgr.findPhasePath('v1.0.0-stage-01', 'scheme_pending').reason).toBe('ok');
+  });
+
+  it('T7.2d：canAdvance 按 opId 解析出的 stage 模式', () => {
+    const mgr = makeMgr(setupDualModeFixture());
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_passed')).toBe(true);
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_review')).toBe(false);
+    expect(mgr.canAdvance('v1.0.0-stage-01.op-001', 'plan_review')).toBe(true);
+  });
+
+  it('T7.2e：回落链（删 status.md → config/builtin）', () => {
+    const mgr = makeMgr(setupDualModeFixture());
+    // 删除 B 的 status.md → 无 config → builtin fast
+    rmSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-02', 'status.md'), { force: true });
+    expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['plan_passed']);
+    // B 补 config.yaml workflow_mode: full（仍无 status.md）→ full 集
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'defaults:\n  workflow_mode: full\n', 'utf-8');
+    expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['plan_review', 'plan_passed']);
+  });
+
+  it('T7.3a：fast 拒绝集（plan_review / scheme_pending / test_pending 全 false）', () => {
+    const mgr = makeMgr(setupDualModeFixture());
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'plan_review')).toBe(false);
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'scheme_pending')).toBe(false);
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'test_pending')).toBe(false);
+    expect(mgr.findPhasePath('v1.0.0-stage-02', 'test_pending').reason).toBe('no-path');
+  });
+
+  it('T7.3b：fast 回环 review_failed 双出口（D12）', () => {
+    const data = setupDualModeFixture();
+    data.stages['v1.0.0-stage-02'].phase = 'review_failed';
+    const mgr = makeMgr(data);
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'review_pending')).toBe(true);
+    expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'exec_running')).toBe(true);
+    expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['review_pending', 'exec_running']);
+  });
+
+  it('T7.10：同 (stage, mode) 四者键集双向一致', () => {
+    for (const P of ['plan_pending', 'exec_running', 'review_failed', 'archiving'] as PipelinePhase[]) {
+      // fast B：canAdvance / findPhasePath / getAvailablePhases / getPipelineTransitions('fast') 一致
+      const b = setupDualModeFixture();
+      b.stages['v1.0.0-stage-02'].phase = P;
+      const mgrB = makeMgr(b);
+      const targets = mgrB.getAvailablePhases('v1.0.0-stage-02');
+      expect(targets).toEqual(mgrB.getPipelineTransitions('fast')[P]);
+      for (const t of targets) {
+        expect(mgrB.canAdvance('v1.0.0-stage-02.op-001', t)).toBe(true);
+        expect(mgrB.findPhasePath('v1.0.0-stage-02', t)).toEqual({ path: [t], reason: 'ok' });
+      }
+      for (const t2 of PIPELINE_PHASES.filter((p) => !targets.includes(p))) {
+        expect(mgrB.canAdvance('v1.0.0-stage-02.op-001', t2)).toBe(false);
+      }
+
+      // full A：getAvailablePhases / getPipelineTransitions('full') 一致
+      const a = setupDualModeFixture();
+      a.stages['v1.0.0-stage-01'].phase = P;
+      const mgrA = makeMgr(a);
+      expect(mgrA.getAvailablePhases('v1.0.0-stage-01')).toEqual(mgrA.getPipelineTransitions('full')[P]);
+    }
+  });
+
+  it('T7.11：间接消费者 buildDownstreamPhases 与 getAvailablePhases 一致（fast B / full A）', () => {
+    // full A（current）
+    const mgrA = makeMgr(setupDualModeFixture());
+    expect(mgrA.verboseSummary().downstreamPhases.map((d) => d.phase)).toEqual(mgrA.getAvailablePhases());
+
+    // fast B（current 切到 B）→ 无参链回落 B 的 fast 表
+    const b = setupDualModeFixture();
+    b.pipeline.current = { stage: 'v1.0.0-stage-02', op: 'v1.0.0-stage-02.op-001' };
+    const mgrB = makeMgr(b);
+    const downstream = mgrB.verboseSummary().downstreamPhases;
+    expect(downstream.map((d) => d.phase)).toEqual(['plan_passed']);
+    expect(downstream[0].responsibleAgent).toBe('openfeel-planner');
   });
 });

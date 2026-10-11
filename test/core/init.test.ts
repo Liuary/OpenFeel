@@ -84,16 +84,18 @@ describe('initProject', () => {
 
     const content = readFileSync(configPath, 'utf-8');
     expect(content).toContain('execution_mode: manual');
-    expect(content).toContain('auto_advance: disabled');
+    expect(content).toContain('auto_advance: enabled');
     expect(content).toContain('merge_mode: manual');
+    expect(content).toContain('workflow_mode: fast');
   });
 
   it('readConfig 应能正确解析 config.yaml', async () => {
     await initProject(tmpDir);
     const config = readConfig(tmpDir);
     expect(config.execution_mode).toBe('manual');
-    expect(config.auto_advance).toBe('disabled');
+    expect(config.auto_advance).toBe('enabled');
     expect(config.merge_mode).toBe('manual');
+    expect(config.workflow_mode).toBe('fast');
   });
 
   it('应创建 flow.json 并包含正确结构', async () => {

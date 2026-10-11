@@ -3632,3 +3632,43 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.6-stage-72 Rev-72-003（首轮 blocking）→ op-004（`eacc8e8`）修复 closed；复审 `git ls-files` = 5 文件、`git show --stat` 765+/0-、stage-68~73 ops 审计链补全。
 
 **参见：** v1.1.6-stage-72（REV-72-003；op-004 `eacc8e8`）；`.openfeel/plan/{series}/{stage}/ops/`；kb/patterns.md #流水线归档自动 git commit 模式、#op 文件命名规范（仅编号）、#deps.yaml 应声明实际文件名、#全量审查发现的批量清理方法论
+
+## [+] 模式标记三层载体与记忆语义：项目默认（config.yaml）→ 阶段覆盖（status.md）→ flow.json 不冗余 (2026-10-11)
+
+**背景：v1.1.7-stage-74（双模式引擎）**——`workflow_mode`（`full` | `fast`）需在「项目级默认」与「阶段级覆盖」两个粒度生效，且不得产生第二信源。标记的**承载载体**须先定义清楚。
+
+**三层载体与语义（承载 = 记忆在哪一层）**：
+
+| 层 | 载体 | 语义 | 参与级联 |
+|----|------|------|:--:|
+| 项目级默认 | `.openfeel/config.yaml` `defaults.workflow_mode` | 部署/项目级**记忆**：新建阶段继承初值 + 未显式声明时的兜底 | ✅（中优先级） |
+| 阶段级覆盖 | `{stage}/status.md` 的 `**工作流模式**：full\|fast` 行 | 阶段级**记忆**：逐阶段可不同（full/fast 混用项目） | ✅（最高优先级） |
+| （冗余位） | `flow.json` | **不承载**——flow.json **不写** mode / transitions 冗余字段（裁定 G） | ❌ |
+
+- **cascade 链**：`status.md > config.yaml > profile.yaml（有意不承载）> builtin(DEFAULT_CONFIG.workflow_mode='fast')`。阶段级解析入口 `resolveStageWorkflowMode(stageId)`；`buildCascadeConfig` 的正则新增 `\*\*工作流模式\*\*[：:]\s*(full|fast)`（定值域、无注入面）。
+- **flow.json 保持「不冗余」**：`flow.json` 只存 `phase`/`status`/`ops` 等**已落盘事实**，不把「模式」这类**可从 config/status 解析得到**的派生值复制进去——否则一旦用户改 config.yaml/status.md，flow.json 的副本即成陈旧第二信源（呼应 kb/architecture.md #状态/相位单一事实源）。
+- **记忆的读取时机**：`flow status --verbose` / `config effective` = **当前阶段域**（无参，取 `pipeline.current.stage`）；`flow mode --stage <B>` = **任意阶段域**（显式 stageId）。同一模式在不同阶段的记忆不同，故必须支持**带 stage 形参**解析。
+- **profile 层有意不承载**：`workflow_mode` 不进 `DEFAULT_PROFILE` / `ProfilePreferencesSchema`——画卷 = 用户个人偏好，与「部署级模式」无关（与 `auto_advance` 的翻转点裁定同源，REV-74-005）。
+
+**判据**：新增「有阶段粒度」的配置/模式时，先回答「记忆落在哪几层、哪些层不承载」——**项目默认 + 阶段覆盖两层承载，状态文件（flow.json）不冗余**；把可解析的派生值写进状态文件是第二信源的经典来源。
+
+**实证**：v1.1.7-stage-74——`git diff flow.json` 未新增 mode/transitions 字段（裁定 G 落实）；本仓 `config.yaml` 自举 `workflow_mode: full` → 全阶段落 full（`config effective` / `flow status --verbose` 实测）；`buildCascadeConfig` 的 `statusOverrides` 对未声明阶段无该键 → 自然回落。
+
+**参见：** v1.1.7-stage-74（plan T4/T5/T6；op-001/003/004；裁定 G/L）；`src/core/flow-manager.ts` `buildCascadeConfig`/`resolveStageWorkflowMode`/`resolveEffectiveConfig`；`src/core/config.ts` `STAGE_FIELD_BY_CONFIG_KEY`；kb/architecture.md #双模式转移表选择、#状态/相位单一事实源；kb/patterns.md #新建阶段骨架初值取 config 默认、#`defaults.X ≡ X` 键归一；manual/core/flow-manager.md、manual/core/config.md
+
+## [+] 带 stage 形参的级联解析：复用级联函数时显式传 stage，避免 `current.stage` 硬编码陷阱 (2026-10-11)
+
+**背景：v1.1.7-stage-74（REV-74-001 blocking）**——`buildCascadeConfig()` 原**无 stage 形参**，其 status.md 分支硬编码 `this.data.pipeline.current.stage`。计划 T3 写「`resolveStageWorkflowMode(stageId)` 复用 T4 级联」——若按字面复用无参版，得到的解析器只认**当前阶段**：当被操作 stage ≠ `pipeline.current.stage`（`flow advance --stage <B>`、`stage set <B> --workflow-mode`、`flow mode --stage <B>`、`flow phases --stage <B>`）时会读**错误阶段**的 status.md，在 full/fast 混用项目中推进错误表。
+
+**模式/判据**：
+
+1. **级联解析函数接受可选 stage 形参**：`buildCascadeConfig(stageId?: string)` 以 `stageId ?? this.data?.pipeline.current.stage` 取目标阶段 status.md（经 `findStatusPath(stageId)`）；**无参 = 当前阶段域（行为逐字不变，零回归）**，显式传 = 任意阶段域。
+2. **静态约束**：无参调用**仅允许**出现在既有「当前阶段域」出口（本阶段 = `resolveEffectiveConfig()` / `verboseSummary()` 两处）；**新增消费点一律显式传 stage**——以 `rg` 计数锚点（无参 2 处 / 带参 1 处）兜底。
+3. **决定性测试**：必须构造「被操作 stage ≠ `current.stage`」的用例（T7.2a / T7.4e），断言四出口（`hasTransition`/`getAvailablePhases`/`findPhasePath`/`canAdvance`）对**目标阶段**而非当前阶段求值——否则「复用」在单阶段项目里恒绿、在多阶段项目里静默错。
+4. **语义边界显式声明**：`config effective` / `flow status --verbose` = 当前阶段域；`flow mode --stage` / 表选择 = 任意阶段域。
+
+**避免**：把「复用现有级联函数」当作零成本——**级联函数是否支持 stage 形参决定了它能否被跨阶段复用**；凡「任意阶段域」需求，先确认级联入口有 stage 形参，没有则先扩形参（而非在被调用处另起一套解析）。
+
+**实证**：v1.1.7-stage-74（REV-74-001 提出 → planner 修订 → 复审 closed）——`buildCascadeConfig(stageId?)` 落地；`resolveStageWorkflowMode(stageId?)` 公共化；T7.2a/T7.4e 决定性用例（被操作 stage ≠ current.stage）；无参调用实测 2 处（`verboseSummary` / `resolveEffectiveConfig`）。
+
+**参见：** v1.1.7-stage-74（plan T3/T4；op-003/op-004；REV-74-001/002/014）；`src/core/flow-manager.ts` `buildCascadeConfig`/`resolveStageWorkflowMode`/`getValidTargets`；kb/architecture.md #双模式转移表选择；kb/patterns.md #模式标记三层载体与记忆语义、#新建阶段骨架初值取 config 默认；manual/core/flow-manager.md

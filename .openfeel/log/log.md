@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-11-Liuary-014.md](2026/10/11/2026-10-11-Liuary-014.md) | Liuary | 阶段 v1.1.7-stage-74 完成 |
+| [2026-10-11-Liuary-013.md](2026/10/11/2026-10-11-Liuary-013.md) | Liuary | **v1.1.7 首阶段 — stage-74 归档完成（双模式引擎）**：`workflow_mode`（`full`/`fast`）入配置面（`ConfigDefaultsSchema` default `fast` + `DEFAULT_CONFIG`）+ `auto_advance` 由 `disabled` **翻转 `enabled`**（裁定 E）+ fast 内置快线表 `FAST_TRANSITIONS`（8 条目，`review_failed` 双出口）+ `pipeline.yaml` 可选 `fast_transitions`（空对象等同缺失回落内置）+ `getValidTargets(fromPhase, mode)` **mode 必传**（唯一取表点）+ 四调用点显式传 stage 派生 mode + `resolveStageWorkflowMode(stageId?)` 公共化 + `buildCascadeConfig(stageId?)` 带 stage 形参 + `EFFECTIVE_CONFIG_KEYS` 四键 + 访问器无参=full（零回归）+ 本仓 `config.yaml` +1 行 `workflow_mode: full`。4 op（executor 未 commit）。审查 **passed**（计划轮 REV-74-001~010 closed/resolved；代码轮 REV-74-011~015 low 非阻塞 closed）；验收 **通过、0 Bug**。门禁 **67 文件 / 1239 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **775**、`lint kb` 0（396 引用）、build ×2 幂等、`--version`=1.1.6。知识沉淀 **4 条**（architecture 2 + patterns 2）；manual `core/{config,flow-manager}.md` + `index.md` 同步。**v1.1.7 首阶段闭环**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-11-Liuary-012.md](2026/10/11/2026-10-11-Liuary-012.md) | Liuary | 调研 **Claude Code 适配情况**（代码 + 部署双路 `Explore`）：适配器端到端完整、本机已部署匹配 v1.1.6（9 agents 含 feel / 17 skills / settings 注入 `agent:feel`+`defaultMode:auto`）；待办 update_infos 13 备份条目 |
 | [2026-10-11-Liuary-011.md](2026/10/11/2026-10-11-Liuary-011.md) | Liuary | 阶段 v1.1.6-stage-72 完成 |
 | [2026-10-11-Liuary-010.md](2026/10/11/2026-10-11-Liuary-010.md) | Archiver | **v1.1.6 收官阶段 — stage-72 归档完成（文档与版本收口）= v1.1.6 版本收官**：① **文档多载体同步**（README×3 harness 行 + 「Claude Code 适配器（v1.1.6 起）」小节 + 版本横幅 v1.1.2→v1.1.6 + 测试数 1018→**1206** / `GETTING_STARTED` 快照 v1.1.6 + Claude 小节 + `--tools` / `docs/commands.md` 快照 v1.1.6 + `setup`/`update` 补 `--tools` + 顺手修重复 `## roadmap` 标题 / `claude-code-adapter-plan.md` 状态「提案」→「已实现（v1.1.6）」+ 顶部「实施偏差」块 4 条 / adapters + `claude/ADAPTER.md` 预留→已实现 / manual 陈旧口径补正 / cli-usage skill 权威源 v1.1.6 快照 + 删前瞻句 + `--tools`）；② **CI env guard 4→5 路径**（`$HOME/.claude`）；③ **版本 1.1.5→1.1.6 全链路收口**（**A 类 8 载体**含补漏 `claude/constraint` / B 类 build 重生成 / `CHANGELOG [1.1.6]`）；④ **roadmap/plan 回填**（M27/M28 done）。4 op（`968afed`/`0432ec9`/`3e0b292`/`eacc8e8`）。审查 **passed**（**REV-72-003 high blocking** op-004 补提交 closed；REV-72-001/002 low 归档官就地修正 closed）；验收 **5/5 通过**；新增 Bug `cli/BUG-009`/`cli/BUG-010`（low，归档官就地修正 closed）。门禁 **67 文件 / 1206 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **774**、`lint kb` 0（389 引用）、build ×2 幂等、`--version`=**1.1.6**、隔离 HOME 默认 `~/.claude` 零触。知识沉淀 **3 条**（patterns）；manual + `docs` 陈旧口径修正 + 大计划 §六 A 类回填。**v1.1.6 六阶段全部闭环 = 版本收官**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
@@ -30,9 +32,6 @@
 | [2026-10-03-Liuary-019.md](2026/10/03/2026-10-03-Liuary-019.md) | Liuary | v1.1.4 版本收口（1.1.3 → 1.1.4）里程碑：A/B/C/D/E 全链路同步 + 门禁全绿（--version=1.1.4） |
 | [2026-10-03-Liuary-018.md](2026/10/03/2026-10-03-Liuary-018.md) | Liuary | v1.1.4-stage-65.op-003 执行通过 |
 | [2026-10-03-Liuary-017.md](2026/10/03/2026-10-03-Liuary-017.md) | Liuary | v1.1.4-stage-65.op-002 执行通过 |
-| [2026-10-03-Liuary-016.md](2026/10/03/2026-10-03-Liuary-016.md) | Liuary | v1.1.4-stage-65.op-001 执行通过 |
-| [2026-10-03-Liuary-015.md](2026/10/03/2026-10-03-Liuary-015.md) | Liuary | 阶段 v1.1.4-stage-64 完成 |
-| [2026-10-03-Liuary-014.md](2026/10/03/2026-10-03-Liuary-014.md) | Liuary | v1.1.4-stage-64.op-003 执行通过 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

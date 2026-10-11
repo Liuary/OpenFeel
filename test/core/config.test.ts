@@ -468,16 +468,18 @@ describe('writeDefaultConfig', () => {
 
     const content = readFileSync(configPath, 'utf-8');
     expect(content).toContain('execution_mode: manual');
-    expect(content).toContain('auto_advance: disabled');
+    expect(content).toContain('auto_advance: enabled');
     expect(content).toContain('merge_mode: manual');
+    expect(content).toContain('workflow_mode: fast');
   });
 
   it('readConfig 应能正确解析 writeDefaultConfig 写入的内容', () => {
     writeDefaultConfig(tmpDir);
     const config = readConfig(tmpDir);
     expect(config.execution_mode).toBe('manual');
-    expect(config.auto_advance).toBe('disabled');
+    expect(config.auto_advance).toBe('enabled');
     expect(config.merge_mode).toBe('manual');
+    expect(config.workflow_mode).toBe('fast');
   });
 
   // ═══ stage-50 op-003：配置面健壮性（T28/T32/T36） ═══
@@ -600,14 +602,16 @@ describe('resolveConfigDefaults', () => {
       execution_mode: 'auto',
       auto_advance: 'enabled',
       merge_mode: 'manual',
+      workflow_mode: 'fast',
     });
   });
 
-  it('T6.4b：无 config.yaml → 返回 DEFAULT_CONFIG 三键', () => {
+  it('T6.4b：无 config.yaml → 返回 DEFAULT_CONFIG 四键', () => {
     expect(resolveConfigDefaults(tmpDir)).toEqual({
       execution_mode: 'manual',
-      auto_advance: 'disabled',
+      auto_advance: 'enabled',
       merge_mode: 'manual',
+      workflow_mode: 'fast',
     });
   });
 
@@ -621,6 +625,7 @@ describe('resolveConfigDefaults', () => {
       execution_mode: 'manual',
       auto_advance: 'enabled',
       merge_mode: 'manual',
+      workflow_mode: 'fast',
     });
   });
 
@@ -628,8 +633,59 @@ describe('resolveConfigDefaults', () => {
     writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'meta:\n  version: "1.0"\n', 'utf-8');
     expect(resolveConfigDefaults(tmpDir)).toEqual({
       execution_mode: 'manual',
-      auto_advance: 'disabled',
+      auto_advance: 'enabled',
       merge_mode: 'manual',
+      workflow_mode: 'fast',
     });
+  });
+
+  // ═══ stage-74 op-001：T7.5 默认值翻转 + 隔离 HOME ═══
+
+  it('T7.5：隔离 HOME（无 profile.yaml）+ 无 config.yaml → 四键为 DEFAULT_CONFIG（auto_advance=enabled / workflow_mode=fast）', () => {
+    // 指向不存在的主目录 → 无 profile.yaml 干扰（与 core 层 resolveConfigDefaults 语义闭环）
+    mockHome.dir = join(tmpDir, 'no-such-home');
+    expect(resolveConfigDefaults(tmpDir)).toEqual({
+      execution_mode: 'manual',
+      auto_advance: 'enabled',
+      merge_mode: 'manual',
+      workflow_mode: 'fast',
+    });
+    mockHome.dir = '';
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-74 op-001：T7.6 模板（ZH / EN）
+// ═══════════════════════════════════════
+
+describe('writeDefaultConfig 模板（stage-74 op-001 T7.6）', () => {
+  let tmpDir: string;
+  let tmpDir2: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-config-tmpl-zh-'));
+    tmpDir2 = mkdtempSync(join(tmpdir(), 'openfeel-config-tmpl-en-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    mkdirSync(join(tmpDir2, '.openfeel'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(tmpDir2, { recursive: true, force: true });
+  });
+
+  it('T7.6：ZH 模板含 workflow_mode/auto_advance 新值，且无「默认关闭」残留', () => {
+    writeDefaultConfig(tmpDir);
+    const content = readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8');
+    expect(content).toContain('workflow_mode: fast');
+    expect(content).toContain('auto_advance: enabled');
+    expect(content).not.toContain('默认关闭');
+  });
+
+  it('T7.6：EN 模板含 workflow_mode/auto_advance 新值', () => {
+    writeDefaultConfig(tmpDir2, 'en');
+    const content = readFileSync(join(tmpDir2, '.openfeel', 'config.yaml'), 'utf-8');
+    expect(content).toContain('workflow_mode: fast');
+    expect(content).toContain('auto_advance: enabled');
   });
 });

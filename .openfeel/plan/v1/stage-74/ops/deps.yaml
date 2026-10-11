@@ -1,0 +1,131 @@
+# stage-74 op 依赖声明
+# 由 openfeel-schemer 自动生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.7-stage-74
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.6-stage-72
+    type: hard
+    status: done
+    reason: "v1.1.6 收官基线：CLI 1.1.6 / `lint i18n` 774 / `lint kb` 0 / 测试 67 文件（复现：`find test -name '*.test.ts' | wc -l`）/ `--version` 1.1.6；本阶段在其上增量（不改 phase 枚举、不改部署面）。"
+  - downstream: v1.1.7-stage-75
+    type: hard
+    note: "模式命令面与交互（`plan stage add --workflow-mode` / `stage set --workflow-mode`（含缺失字段插入，裁定 H）/ `flow mode [--stage] [--json]` 只读 / wizard 首次选型 + 项目级记忆 / `config set --sync-stages` 支持 / op 骨架机械铺入口）+ `flow phases` 模式分节（`--mode`/`--stage` 解析 + `--json` 仅增字段 + 兼容性测试 + `transitionsDiff` 同模式期望值）。**硬契约见下方 `downstream_contracts`**（`resolveStageWorkflowMode` 公共访问器**已在本阶段暴露**——供 `flow mode` 直接消费、**禁命令层第二套解析**；stage-75 将改写 `flow-manager.ts`（T5 `syncConfigFieldToStages` 插入语义，`stage-75/plan.md:8` 范围），契约先行避免重复解析实现）[REV-74-007 修订]。⚠️ 一致性标注：`.openfeel/plan/v1/v1.1.7/deps.yaml` stage-75 `produces_core` **不含** `flow-manager.ts`，与 `stage-75/plan.md:8` 范围不一致——**提请 planner 消解**（仅标注，不改 stage-75 文档）；**[REV-74-007 修订] 已消解**：`v1.1.7/deps.yaml` stage-75 `produces_core` 已补 `src/core/flow-manager.ts`（2026-10-11 补登记轮）。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行** `npm publish`、不 `git push`、不改 CI、不 commit、**不直写 `flow.json`**；版本保持 1.1.6（版本收口归 stage-77）。"
+
+# 本阶段 4 op：op-001（配置面四键 + auto_advance 翻转 + 自举，无前置）
+#   → op-002（双表与按 mode 取表访问器，hard: op-001）
+#   → op-003（级联「工作流模式」+ 带 stage 形参解析，hard: op-001 + op-002〔同文件 flow-manager.ts 串行〕）
+#   → op-004（单一取表点接入 + 既有测试对齐 + 全门禁，hard: op-002 + op-003）。
+# 依赖真实性：op-002/003/004 同文件串行（flow-manager.ts），前序未完成时后续 patch 起点漂移；
+#   op-001 必须先于 op-004：其 T6 自举（config.yaml workflow_mode: full）是 op-004 落地后本仓不漂移 fast 的前提。
+#
+# 不变量：
+#   ① 内置 full 表逐字不变（单测对象）≠ 本仓运行时 full 表（`pipeline.yaml` 覆盖线，缺组合键）——两条独立验收线 [REV-74-004]；
+#   ② 表选择单一权威：任何 `getValidTargets` 调用点不得使用默认 mode（显式 stage 派生）；展示与校验同经 `resolveTransitionsForMode` [REV-74-002]；
+#   ③ 访问器无参 = full（`getPipelineTransitions` / `getDefaultTransitions` 零回归既有测试）；`flow phases --json` **仅增字段**（契约登记，实施归 stage-75）[REV-74-003]；
+#   ④ 阶段级生效值唯一承载 = `status.md`；`config.yaml` 为项目默认/记忆；不写 `flow.json` 冗余字段（裁定 G）；
+#   ⑤ 本仓自举：`.openfeel/config.yaml` `defaults.workflow_mode: full`（op-001，CLI 单行增量）——防「status.md 无字段 + builtin fast」漂移（裁定 L）；
+#   ⑥ builtin = `fast`（裁定 B）；`DEFAULT_PROFILE` / `ProfilePreferencesSchema` 的 `auto_advance` **有意保持 `disabled`** [REV-74-005]；
+#   ⑦ 不改 phase 枚举（15 项）/ `checkpoint_mapping` / `phase_corrections` / `advanceAccepted` 语义；不新增依赖；
+#   ⑧ 测试全程隔离（`vi.mock('node:os')` / fixture tmpDir），**严禁**触碰真实 HOME 与本仓 `config.yaml`。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "配置面四键与 auto_advance 默认翻转（T1 + T6）"
+    produces:
+      - src/core/config.ts
+      - test/core/config.test.ts
+      - test/core/init.test.ts
+      - test/core/plan/stage.test.ts
+      - test/core/flow-manager.test.ts
+      - .openfeel/config.yaml
+    deps: []
+    notes: "覆盖 T1 + T6 + T7.5 + T7.6 + T7.8（配置侧翻转点）。`WORKFLOW_MODES`/`WorkflowMode`（config.ts 单一值域源）+ `ConfigDefaultsSchema` 第 4 键（default fast）+ `DEFAULT_CONFIG{auto_advance:'enabled', workflow_mode:'fast'}` + `Config`/`ResolvedConfigDefaults`/`resolveConfigDefaults` 四键 + `STAGE_FIELD_BY_CONFIG_KEY` 追加 + `CONFIG_TEMPLATE_{ZH,EN}` 增行。翻转点 F1~F11 逐点（config.test.ts ×6 / init.test.ts ×2 / plan/stage.test.ts ×1 / flow-manager.test.ts ×2）。T6 自举 = `npm run build` 后 `node bin/openfeel.js config set defaults.workflow_mode full`（**单行增量**，禁整文件重写）。门禁：tsc 0 + 4 测试文件全绿 + `git diff .openfeel/config.yaml` 仅 +1 行。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "双转移表与按 mode 取表访问器（T2 + T5）"
+    produces:
+      - src/core/pipeline-schema.ts
+      - src/core/flow-manager.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+    deps:
+      - op: op-001
+        type: hard
+    notes: "覆盖 T2 + T5 + T7.1 + T7.7 + T7.12（core 层差集）。`getDefaultPipelineConfig(mode='full')` 双表（full 逐字含组合键 / fast = 7 条流转键 + done 终止项，共 8 条目）+ 模块级 `FAST_TRANSITIONS` 单一来源 + `FastTransitionsSchema`（**独立**容错，非法类型 → 忽略 + 告警不 fail 整体配置）+ `loadPipelineConfig` 独立解析 `fast_transitions` + `resolveTransitionsForMode` 唯一取表法则 + 访问器 mode 形参（**无参 = full**）+ i18n 新键 ×1（`flow.manager.fastTransitionsInvalid`，**774→775**，T8 显式登记）。**不动** `getValidTargets`/`buildCascadeConfig`/命令层。门禁：tsc 0 + flow-manager.test.ts 全绿（既有 3405/3416/3439/3447/3776-3796 无参断言逐字绿）+ lint i18n **775** + `flow phases --json` 逐字不变。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "级联「工作流模式」与带 stage 形参解析（T4 + T3 解析层）"
+    produces:
+      - src/core/flow-manager.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/config.test.ts
+    deps:
+      - op: op-001
+        type: hard
+      - op: op-002
+        type: hard
+        reason: "同文件（flow-manager.ts）串行编辑，避免热点冲突（非语义依赖）"
+    notes: "覆盖 T4 + T3（解析层）+ T7.4。`EFFECTIVE_CONFIG_KEYS` 四键 + `buildCascadeConfig(stageId?)` 可选形参（缺省 = current.stage，**无参行为逐字不变**；无参调用仅允许 L2100/L2204 两出口）+ status.md「工作流模式」正则 → `statusOverrides.workflow_mode` + **公共** `resolveStageWorkflowMode(stageId?)`（status.md > config.yaml > profile.yaml（不产出）> builtin fast；任意阶段域，stage-75 `flow mode` 契约 **D7**）。T7.4a~h 含**决定性用例**（stage-02 ≠ current.stage）。CLI：`config effective` 四键（commands/config.test.ts）+ T7.5 CLI 半段（隔离 HOME 无 `config.yaml` → `enabled [builtin]`）[REV-74-008 修订]。门禁：tsc 0 + 两测试文件全绿 + `config effective` 三旧行逐字 + 新增 workflow_mode 行。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-004:
+    file: op-004.md
+    title: "单一取表点接入与既有测试对齐 + 全门禁（T3 + T7 + T8）"
+    produces:
+      - src/core/flow-manager.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+      - .openfeel/tmp/stage-74-gate-report.md
+      - .openfeel/tmp/stage-74-selftest-report.md
+    deps:
+      - op: op-002
+        type: hard
+      - op: op-003
+        type: hard
+    notes: "覆盖 T3 + T7.2/T7.3/T7.9/T7.10/T7.11/T7.12（CLI 契约登记）+ T8。`getValidTargets(fromPhase, mode)` **mode 必传**（编译期驱动 4 调用点：hasTransition/getAvailablePhases/findPhasePath/canAdvance）+ `buildDownstreamPhases` 间接消费者（不改代码）[REV-74-002]。**R-FIX 大回归面**：既有模式敏感用例 fixture 显式声明 full（core：1049-1190 / 1370-1416 / 2002-2046 / 2051-2144 / 2947 / 3684-3688 / 3886-3888；CLI：flow.test.ts beforeEach `setConfigValue(tmpDir,'workflow_mode','full')`）。新增 T7.2（stage B ≠ current 决定性）/T7.3（fast 拒绝集 + review_failed 双出口 D12）/T7.10（同 (stage,mode) 四者键集双向一致）/T7.11（访问器零回归 + 间接消费者）。T8 全门禁：build ×2 幂等 + `npm test` 0 skipped/0 failed + tsc 0 + **lint i18n 775** + lint kb 0 + `flow phases --json` 逐字 + `config effective` 四键 + 检索复核 5 条（无默认 mode / 无第二份转移表）+ 报告 2 份。**D13**：`flow phases` 契约仅登记（实施归 stage-75）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 下游契约（交付 stage-75/76/77；接口形态 = 函数签名级）
+downstream_contracts:
+  - name: "src/core/flow-manager.ts :: resolveStageWorkflowMode(stageId?: string): { value: WorkflowMode; source: ConfigSource }"
+    change: "**新增公共只读访问器**（op-003，D7）。任意阶段域解析：status.md > config.yaml > profile.yaml（不产出）> builtin('fast')。stage-75 `flow mode [--stage <id>]` **直接消费**（禁自建解析——stage-75 **将改写** `flow-manager.ts`（T5；`stage-75/plan.md:8` 范围），契约先行、避免命令层第二套解析）；依据出处：`.openfeel/plan/v1/v1.1.7/deps.yaml` stage-75 `produces_core` **不含** `flow-manager.ts`；⚠️ 与 `stage-75/plan.md` 范围不一致——**提请 planner 消解**（仅标注，不改 stage-75 文档）[REV-74-007 修订]；**已消解**：stage-75 `produces_core` 已补 `src/core/flow-manager.ts`（同轮）。"
+  - name: "src/core/flow-manager.ts :: getPipelineTransitions(mode: WorkflowMode = 'full') / getDefaultTransitions(mode: WorkflowMode = 'full')"
+    change: "mode 形参（**无参 = full**，零回归既有测试）。stage-75 `flow phases` 分节消费：`--mode`/`--stage` 解析后取对应表。"
+  - name: "src/core/config.ts :: WORKFLOW_MODES / type WorkflowMode"
+    change: "值域单一来源（`['full','fast']`）。stage-75 命令面值域派生（`--workflow-mode` 校验）、stage-76 模板叙述均引用。"
+  - name: "flow phases 模式解析契约（T3-附；**本阶段仅登记**）"
+    change: "mode 解析 = `--mode full|fast`（显式最高优先）→ `--stage <id>` → `current.stage` → 四源兜底 builtin `fast`；`--json` 既有权（phases/transitions/advanceAccepted/schemaVersion/transitionsDiff）**逐字保留**，模式信息以新增字段 `workflowMode: { value, source }` 承载；`advanceAccepted` = 内置 15 推进白名单**语义不变**；`transitionsDiff` = **同模式**对比（本仓期望：full → missing=['review_passed|test_passed']；fast 无覆盖 → 全空）；stage-75 须登记 `--json` 兼容性测试（full 场景逐字不回归 + 新字段存在性）。"
+  - name: "src/core/i18n-data/{zh-CN,en}.ts"
+    change: "i18n 基线 **774 → 775**（+1 键 `flow.manager.fastTransitionsInvalid`，op-002）；stage-75 新增键在此基础上继续登记。"
+  - name: ".openfeel/config.yaml（本仓自举）+ v1.1.7 四阶段 status.md"
+    change: "op-001 已写 `defaults.workflow_mode: full`（单行增量）；stage-75 交付补字段能力后执行 `node bin/openfeel.js config set defaults.workflow_mode full --sync-stages` 补齐 74~77 status.md「工作流模式：full」行（裁定 H/L）。"
+  - name: ".openfeel/pipeline.yaml :: fast_transitions（可选顶层键）"
+    change: "语义：`Record<string, string[]>`；缺失/空对象 `{}` → 内置快线表（空对象等同缺失）[REV-74-009 修订]；非法类型 → 忽略 + 告警（不 fail 整体配置）。**本仓不启用该键**（裁定 F）。stage-77 文档须声明「缺失/空对象即用内置快线表」。"
+  - name: "存量兼容说明（stage-77 文档面）"
+    change: "builtin 默认 `fast`（裁定 B）：存量项目未写 `workflow_mode` 且无 status.md 字段时，**表选择回落 fast**（`pipeline.yaml` 自定义 full 表在 fast 模式下不被取用——mode 不随 pipeline.yaml 走）。须在 README/GETTING_STARTED/commands 显式说明升级指引（`config set defaults.workflow_mode full` 恢复全链）。"
+  - name: "既有测试模式基线（R-FIX）"
+    change: "stage-74 已将模式敏感既有用例 fixture 对齐为显式 full（core + CLI）；后续阶段新增全链语义用例须沿用该基线声明（fast 行为用例显式声明 fast）。"

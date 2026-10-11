@@ -1,57 +1,39 @@
-# 自测报告 — op-003（roadmap/plan 回填 + 全门禁 + 阶段报告）
+# 自测报告 — op-003（级联「工作流模式」与带 stage 形参解析，T4 + T3 解析层）
 
-- **执行时间**：2026-10-11
+- **执行时间**：2026-10-11 17:10
 - **执行 Agent**：openfeel-executor
-- **重试次数**：第 1 次
-- **阶段**：v1.1.6-stage-72
+- **重试次数**：2（首跑 `test/commands/config.test.ts > T6.7` 红点：op-001 默认翻转使新建骨架初值变 enabled，`--sync-stages enabled` 变 no-op → 修正为 disabled 目标值）
 
 ## 执行摘要
-
-全部实施步骤完成，11 项自测通过：roadmap/plan 回填、全门禁 13/13 绿、报告落盘。
+`EFFECTIVE_CONFIG_KEYS` 四键 + `buildCascadeConfig(stageId?)` + 公共 `resolveStageWorkflowMode(stageId?)` 完成；`config effective` 出四键；T7.4a~h + `config effective` 四键 + T7.5 CLI 半段全绿。
 
 ## 实施步骤完成情况
-
-- [x] T5-1：`.openfeel/roadmap/v1.1.6.md` 状态行收官 + M27/M28 → done + Q5 补注
-- [x] T5-2：`.openfeel/plan/index.md` v1.1.6 系列行 + stage-72 行 → 已归档 3/3
-- [x] T5-3：`.openfeel/plan/plan_log.md` 顶部追加 stage-72 版本收官条目
-- [x] T5 门禁：build ×2 / npm test / tsc / lint i18n / lint kb / --version / A 类残留 / CI 路径 / 文档一致性 / 默认路径零触
-- [x] 报告：`stage-72-gate-report.md` + `stage-72-selftest-report.md`
+- [x] T4-1 `EFFECTIVE_CONFIG_KEYS` 扩四键
+- [x] T4-2 `buildCascadeConfig(stageId?)` 可选形参（`const targetStage = stageId ?? this.data?.pipeline.current.stage`）+ status.md 增「工作流模式」正则
+- [x] T4-3 新增公共 `resolveStageWorkflowMode(stageId?)`（status.md > config.yaml > profile.yaml（不产出）> builtin fast）
+- [x] 测试 T7.4a~h（含决定性 T7.4e：stage-02 ≠ current.stage）
+- [x] `test/commands/config.test.ts`：`config effective` 四键 + workflow_mode 单键 + T7.5 CLI 半段（隔离 HOME → builtin enabled）[REV-74-008]
 
 ## 自测清单验证
-
-见 `.openfeel/tmp/stage-72-selftest-report.md`（S1~S11 全 ✅）。
-
-## 门禁数字
-
-| 项 | 值 |
-|----|----|
-| npm test | 67 文件 / 1206 用例，0 skipped / 0 failed |
-| tsc | 0 |
-| build ×2 | 幂等（IDEMPOTENT=YES） |
-| lint i18n | 774 |
-| lint kb | 0（389 引用） |
-| --version | 1.1.6 |
-| A 类残留 | 0 |
-| ci.yml `$HOME/.claude` | 2 |
-| 默认路径 `~/.claude` | 零变化（False） |
+| 检查项 | 结果 | 备注 |
+|--------|:--:|------|
+| `npx tsc --noEmit` | ✅ | 0 |
+| `vitest run flow-manager.test.ts commands/config.test.ts` | ✅ | 305 passed（含新增 T7.4 + config 四键 + CLI 半段） |
+| `npm run build` | ✅ | 成功 |
+| `config effective` | ✅ | 四行：`execution_mode：auto [status.md]` / `auto_advance：enabled [status.md]` / `merge_mode：manual [config.yaml]` / `workflow_mode：full [config.yaml]` |
+| `flow status --verbose` | ✅ | 级联表含 `workflow_mode` 行 |
+| `lint i18n` | ✅ | 775 |
+| `rg buildCascadeConfig(` | ✅ | 定义 1 + 无参 2（verboseSummary / resolveEffectiveConfig）+ 形参 1（resolveStageWorkflowMode） |
 
 ## 产出文件
-
-- `.openfeel/roadmap/v1.1.6.md`
-- `.openfeel/plan/index.md`
-- `.openfeel/plan/plan_log.md`
-- `.openfeel/tmp/stage-72-gate-report.md`
-- `.openfeel/tmp/stage-72-selftest-report.md`
+- `src/core/flow-manager.ts`
+- `test/core/flow-manager.test.ts`、`test/commands/config.test.ts`
+- 顺带修正 `test/commands/plan.test.ts`（见偏差）
 
 ## 前置校验结果
-
-- 方案完整性：通过
-- Phase 合法性：通过
-- 流转合法性：通过
+- 通过（health exit 0）
 
 ## 偏差记录
-
-- 超范围/遗漏：无。
+- **[偏差-2] `test/commands/config.test.ts > T6.7`（auto_advance --sync-stages）翻转点补漏**：op-001 F1~F11 清单未含此文件；默认翻转后新建骨架初值 `enabled`，原用例 `set auto_advance enabled --sync-stages` 退化为 no-op（无「已更新」）。改为同步目标 `disabled`（构成真实变更）并同步断言，保留「首写 + 同值 no-op」语义。
+- **[偏差-3] `test/commands/plan.test.ts > T6.8`（--auto-advance 覆盖）陈旧假设清理**：原用例标题/取值「覆盖默认 disabled」在翻转后已不成立（默认即 enabled）；改为 `--auto-advance disabled`（构成真实覆盖）+ 标题对齐，语义由「同值写入」恢复为「显式覆盖默认」。
 - 跳步违规：无。
-- `flow.json.current.op` 为空（名义偏差，见 selftest 报告已知偏差 #1）。
-- tmp 报告受 `.gitignore` 约束不提交（已知偏差 #4）。

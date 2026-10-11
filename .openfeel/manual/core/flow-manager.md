@@ -23,9 +23,10 @@
 | `normalizeAgentName(name)` | 归一化 agent 名（旧名→新名，读取兼容 P5；`toLowerCase` 幂等；非 agent 值原样保留） |
 | `checkRemovable(stageId, {force})` | 只读可移除性检查（`ops` 非空 / 当前活跃 / 被 `deps` 引用），`removeStage` 与 `--dry-run` 共用 |
 | `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、`remove_stage` 审计日志）；**不执行目录删除**，`purge` 时返回 `{ purgeTarget }` 由命令层在 `save()` 成功后删除（stage-47 事务顺序） |
-| `getPipelinePhases()` / `getPipelineTransitions()` | 自描述访问器：返回运行时 `pipelineConfig` 的 phase 列表与转移表**副本**（缺省回退默认表） |
-| `resolveEffectiveConfig()` | 解析**三个**受管配置键（`execution_mode` / `auto_advance` / `merge_mode`，`EFFECTIVE_CONFIG_KEYS`）的「有效值 + 生效来源」，输出 `key → { value, source }`；复用内部 `buildCascadeConfig`（单一权威，避免第二套解析）。**v1.1.4-stage-62 起布尔测试门禁键已移除**，不再属受管键 |
-| `syncConfigFieldToStages(configKey, value)` | **v1.1.4-stage-63 新增**（`config set --sync-stages`）：将受管配置键批量同步到**所有已注册阶段**的 `status.md` 对应字段。适用键由 `STAGE_FIELD_BY_CONFIG_KEY`（`config.ts` 单一来源）映射（`auto_advance → 自动推进`、`execution_mode → 执行模式`）；复用 `writeStatusField` 定向写 + 按阶段锁 + `readStatusFieldValue` 判同值（**同值 no-op 零写盘**），字段/文件缺失 → `skipped-no-field` / `skipped-no-status` 逐条报告；**只读** `flow.json.stages` 枚举、**不写 flow.json**；审计 action `config_sync_stage` |
+| `getPipelinePhases()` / `getPipelineTransitions(mode?)` | 自描述访问器：返回运行时 `pipelineConfig` 的 phase 列表与转移表**副本**（缺省回退默认表）。**v1.1.7-stage-74 起** `getPipelineTransitions(mode: WorkflowMode = 'full')`：**无参 = full**（零回归既有消费点），`fast` 供 stage-75 `flow phases` 模式分节消费；同批新增 `getDefaultTransitions(mode = 'full')`（内置默认表副本，供 `transitionsDiff`） |
+| `getValidTargets(fromPhase, mode)` / `resolveStageWorkflowMode(stageId?)` | **v1.1.7-stage-74 新增/变更**：`getValidTargets(fromPhase, mode: WorkflowMode)` **mode 无默认值**（编译期必传）→ 唯一取表点，读表法则唯一为私有 `resolveTransitionsForMode(mode)`（full = `pipelineConfig.transitions` / fast = `fast_transitions ?? 内置快线表`）。**公共** `resolveStageWorkflowMode(stageId?)`：解析指定阶段的工作流模式（`{ value, source }`），带 stage 形参独立解析（当前域 = 无参；任意域 = 显式 stageId） |
+| `resolveEffectiveConfig()` | 解析**四个**受管配置键（`execution_mode` / `auto_advance` / `merge_mode` / **`workflow_mode`**，`EFFECTIVE_CONFIG_KEYS`）的「有效值 + 生效来源」，输出 `key → { value, source }`；复用内部 `buildCascadeConfig`（单一权威，避免第二套解析）。**v1.1.4-stage-62 起布尔测试门禁键已移除**，不再属受管键；**v1.1.7-stage-74 起受管键扩为四键** |
+| `syncConfigFieldToStages(configKey, value)` | **v1.1.4-stage-63 新增**（`config set --sync-stages`）：将受管配置键批量同步到**所有已注册阶段**的 `status.md` 对应字段。适用键由 `STAGE_FIELD_BY_CONFIG_KEY`（`config.ts` 单一来源）映射（`auto_advance → 自动推进`、`execution_mode → 执行模式`、**`workflow_mode → 工作流模式`**，v1.1.7-stage-74 增）；复用 `writeStatusField` 定向写 + 按阶段锁 + `readStatusFieldValue` 判同值（**同值 no-op 零写盘**），字段/文件缺失 → `skipped-no-field` / `skipped-no-status` 逐条报告；**只读** `flow.json.stages` 枚举、**不写 flow.json**；审计 action `config_sync_stage` |
 | `FlowConcurrentModificationError` / `isFlowConcurrentError(err)` | flow.json 乐观并发冲突错误类型与识别函数（命令层统一捕获） |
 
 ## 并发保护与乐观并发校验
@@ -40,7 +41,7 @@
 
 ## 自描述命令与破坏性命令支撑（stage-41）
 
-- **`getPipelinePhases(): string[]`** / **`getPipelineTransitions(): Record<string, string[]>`**：供 `openfeel flow phases [--json]` 展示。数据源为运行时 `pipelineConfig`（`.openfeel/pipeline.yaml`），缺省回退 `getDefaultPipelineConfig()`；**返回副本**（外部修改不污染内部状态）。与校验用的 `hasTransition()` / `getValidTargets()` 同读 `pipelineConfig.transitions`，杜绝「展示与实际不符」的第二信源。
+- **`getPipelinePhases(): string[]`** / **`getPipelineTransitions(mode = 'full'): Record<string, string[]>`**：供 `openfeel flow phases [--json]` 展示。数据源为运行时 `pipelineConfig`（`.openfeel/pipeline.yaml`），缺省回退 `getDefaultPipelineConfig()`；**返回副本**（外部修改不污染内部状态）。与校验用的 `hasTransition()` / `getValidTargets()` **同读** `resolveTransitionsForMode(mode)`，杜绝「展示与实际不符」的第二信源。**v1.1.7-stage-74：`mode` 可选，无参 = full（零回归）**。
   - **两集合语义区分（stage-47 / `cli/BUG-001`）**：`phases` 为**存在视图**（运行时全部 phase，可含自定义如 `gate`）；`flow advance` 的 phase 白名单为 **`PIPELINE_PHASES` 内置 15**（推进白名单），`flow phases --json` 另增 `advanceAccepted: [...PIPELINE_PHASES]` 使差异可编程消费，人类输出在有差异时追加 `flow.phases.customPhaseNote` 边界说明。**不**把 `advance` 校验收敛到运行时 phases（会波及 `PipelinePhase` 类型与模糊修正链）。
 - **`checkRemovable(stageId, {force}): RemovalCheck`**：只读可移除性检查，供 `removeStage` 与 `flow stage remove --dry-run` 共用（消除骨架与验收标准矛盾）。三类校验——`ops` 非空 / 当前活跃阶段（`pipeline.current.stage`）/ 被其它阶段 `deps` 引用（`(series, stageDir)` 归一化匹配 + `Array.isArray` 守卫兼容存量缺 `deps` 字段）。`--force` 时 `ok` 恒 `true`，但 `opCount` / `isCurrent` / `referencing` 仍如实返回。
 - **`removeStage(stageId, {force, purge}): { purgeTarget?: string }`**：注销阶段。`current` 兜底——移除 `pipeline.current.stage` 后按 `stages` 插入序回退「首个非 done 阶段」，无可回退则清空为 `{stage:'', op:''}`（避免后续 `advance` 失败）；**不删除目录**：`purge: true` 时仅**计算并返回** `purgeTarget`（plan 目录绝对路径），审计日志 `detail = { stageId, purgeTarget, referencing, snapshot }`（记录**意图**而非已发生事实）。`--force` **不清理**引用方悬空 `deps`（保留 + 日志可审计）。
@@ -152,6 +153,17 @@ plan_pending → plan_review → plan_passed
 - 合法流转由 `transitions` 表控制，key 可用 `|` 组合多个源 phase（并行场景）
 - 推进必须通过 CLI（`openfeel flow advance`），禁止手动编辑 flow.json
 
+## 双模式（full / fast）转移表（v1.1.7-stage-74）
+
+> 「快速迭代模式」（`fast`）与完整链路（`full`）共存：**同一 phase 图按模式裁剪**，不新增 phase。
+
+- **配置键 `workflow_mode`**（枚举 `full|fast`，值域单一来源 `WORKFLOW_MODES`，`core/config.ts`）：项目级默认在 `.openfeel/config.yaml` `defaults.workflow_mode`；阶段级覆盖在 `{stage}/status.md` 的 `**工作流模式**：full|fast` 行。级联解析入口 **`resolveStageWorkflowMode(stageId?)`**（公共），优先级 `status.md > config.yaml > profile.yaml（有意不承载）> builtin(DEFAULT_CONFIG='fast')`。
+- **内置 fast 快线表 `FAST_TRANSITIONS`**（`flow-manager.ts`，单一来源，禁命令层/模板层复制）：7 条流转键 + `done`（全 8 条目）——`plan_pending → plan_passed → exec_running → review_pending → {review_failed, review_passed}`；`review_failed` **双出口** `[review_pending, exec_running]`（失败回环：重审 或 回执行修复）；`review_passed → archiving → done`。
+- **运行时快线表 `pipeline.yaml` 可选 `fast_transitions`**（裁定 F）：独立容错 Schema `FastTransitionsSchema`（`pipeline-schema.ts`）；**缺失 / 类型非法 / 空对象 `{}`** → 回落内置快线表（REV-74-009，避免 fast 全链静默死锁）；非法类型告警 `flow.manager.fastTransitionsInvalid`。`phases` / `checkpoint_mapping` / `phase_corrections` 两模式共用。
+- **唯一取表点**：`getValidTargets(fromPhase, mode)`——`mode` **必传**（无默认值）；四调用点（`hasTransition` / `getAvailablePhases` / `findPhasePath` / `canAdvance`）均显式传 `resolveStageWorkflowMode(stage).value`，间接消费者 `buildDownstreamPhases`（`flow status --verbose`）。**任何调用点不得使用默认 mode**（防第二信源，REV-74-002）。
+- **零回归**：`getPipelineTransitions()` / `getDefaultTransitions()` **无参 = full**（既有断言逐字绿）；`flow.json` **不写** mode/transitions 冗余字段（裁定 G）。
+- **语义边界**：`config effective` / `flow status --verbose` = **当前阶段域**（无参）；`flow mode --stage` / 表选择 = **任意阶段域**（显式 stageId）。命令面（`flow mode` / `flow phases --mode|--stage` / `stage set --workflow-mode`）归 **stage-75**。
+
 ## 状态/相位单一事实源（v1.1.4-stage-62）
 
 - **`status` 语义**：`stage.status` 是 `stage.phase` 的**粗粒度投影**，**单一事实源 = `phase`**。任何 `status` 都可由 `phase` 重新投影得到，故对账/修正只允许 `phase → status` 单向。
@@ -165,16 +177,21 @@ plan_pending → plan_review → plan_passed
 
 ## 配置级联与有效值来源（stage-42）
 
-`buildCascadeConfig()`（内部）+ `resolveEffectiveConfig()`（公开）构成**唯一解析权威**，供 `flow status --verbose` 级联表与 `openfeel config effective` 两个出口共用（`rg` 实证：`buildCascadeConfig` 调用方仅 `verboseSummary` 与 `resolveEffectiveConfig`）。
+`buildCascadeConfig(stageId?)`（内部）+ `resolveEffectiveConfig()` / `resolveStageWorkflowMode(stageId?)`（公开）构成**唯一解析权威**，供 `flow status --verbose` 级联表与 `openfeel config effective` 两个出口共用（`rg` 实证：`buildCascadeConfig` 无参调用方仅 `verboseSummary` 与 `resolveEffectiveConfig` 两处——**静态约束**：新增消费点一律显式传 stage）。
+
+> **`buildCascadeConfig(stageId?)` 带 stage 形参（v1.1.7-stage-74，REV-74-001）**：以 `stageId ?? this.data?.pipeline.current.stage` 取目标阶段 status.md（经 `findStatusPath(stageId)`）。**无参 = 当前阶段域**（行为逐字不变）；显式传参 = **任意阶段域**（防「被操作 stage ≠ current.stage」时读错阶段）。`resolveStageWorkflowMode(stageId?)` 即此入口的公开包装（`{ value, source }`）。
 
 优先级链（低 → 高）：`builtin` < `profile.yaml`（全局画像兜底）< `config.yaml defaults` < `status.md` 覆盖
 
 | 层 | 来源 | 说明 |
 |----|------|------|
 | `profileDefaults` | `~/.config/openfeel/profile.yaml` | **仅取 `preferences.auto_advance` 单值**（不做 `preferences` 整体替换）；**stage-47（`config/BUG-003`）起仅当画像文件真实存在且原始 YAML 显式声明 `preferences.auto_advance`（`enabled`/`disabled`）时填充**，文件缺失/解析失败/缺键或非枚举值 → 不填 → 落 `builtin`；`readProfile()` 自身异常安全行为不变 |
-| `configDefaults` | `.openfeel/config.yaml` `defaults` 块 | 全部键 `String(value)` 收集；文件不存在或解析失败则为空 |
-| `statusOverrides` | 当前 `pipeline.current.stage` 的 `status.md` | 正则提取 `**执行模式**` → `execution_mode`、`**自动推进**` → `auto_advance` |
+| `configDefaults` | `.openfeel/config.yaml` `defaults` 块 | 全部键 `String(value)` 收集；文件不存在或解析失败则为空（**逐键经 `ConfigDefaultsSchema` 校验**，非法跳过 + warn） |
+| `statusOverrides` | 目标阶段的 `status.md`（缺省 = 当前 `pipeline.current.stage`；stage 形参路径 = 该阶段） | 正则提取 `**执行模式**` → `execution_mode`、`**自动推进**` → `auto_advance`、**`**工作流模式**` → `workflow_mode`**（v1.1.7-stage-74 增，定值域 `full|fast`） |
 | `effective` | 浅合并 `{...profileDefaults, ...configDefaults, ...statusOverrides}` | 三层均为扁平 `Record<string,string>`，无嵌套覆盖风险 |
+
+- **受管键集合 `EFFECTIVE_CONFIG_KEYS`（v1.1.7-stage-74 扩为四键）**：`execution_mode` / `auto_advance` / `merge_mode` / `workflow_mode`——`resolveEffectiveConfig` 按此枚举产出 `{ value, source }`。
+- **`workflow_mode` 的 profile 层有意不承载**：`DEFAULT_PROFILE` / `ProfilePreferencesSchema` 不含该键（画卷 = 用户个人偏好）；`resolveStageWorkflowMode` 的 profile 分支为对称性保留、实际不产出（REV-74-005）。
 
 来源判定与合并顺序逐字对应：`status.md > config.yaml > profile.yaml > builtin`（三层皆无 → `String(DEFAULT_CONFIG[key])` 标 `builtin`）。
 

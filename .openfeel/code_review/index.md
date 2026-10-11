@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 44 |
+| passed | 45 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -90,6 +90,12 @@
 | [v1.1.6-stage-71](stage-71.md) | 部署编排与命令面（v1.1.6 第四阶段）— global-paths 5 Claude 函数（`CLAUDE_CONFIG_DIR` 函数体内读 env）+ setup/update 双分支（claude=CLAUDE.md+9 agents+17 skills，不写 settings.json）+ **R-5 高危修复**（`supportedTools` claude `enabled:false` + `filter(t=>t.enabled)`，默认 `~/.claude` 零触）+ `--tools` 命令面（非法值 exit 1）+ **D-CFG**（HOME 外备份 `global-external/<sha8>/…` fallback）+ i18n 7 新键/6 修订（761→**768**）；4 op（`e753217`/`7287355`/`62fcb43`/`cdd0953`）；**66 文件 / 1189 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` 768、`lint kb` 0（368 引用）、build ×2 幂等、无 settings.json；**REV-71-001/002 全 low 非阻塞 open**；验收 7/7 通过 0 Bug；知识沉淀 5 条（architecture 1 + patterns 4） | **passed** |
 | [v1.1.6-stage-73](stage-73.md) | Claude 全局 `settings.json` 注入（v1.1.6 第五阶段，**反转蓝本 §四**）— 新增 `claude-settings.ts`（严格 JSON 深合并 + `buildClaudeSettingsFragment` + `applyClaudeSettings` 单一共享函数）+ setup/update 接线（写前备份 / 锁内 read-merge-atomicWrite / `anomaly` / 幂等 skipped / hash）+ i18n 6 新键（768→**774**）+ Q6 卸载/回滚文档 + auto mode 实测留痕；注入 `agent:'feel'` + `permissions.defaultMode:'auto'`，用户键（`env`/`model`/`modelPicker`/`theme`/`apiKeyHelper` 等 12 项）**逐字保留**、**幂等**、**默认零触**；3 op（`1fe29b0`/`8b2fdeb`/`2b5c3e3`）；**67 文件 / 1206 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` 774、`lint kb` 0（380 引用）、build ×2 幂等、隔离 HOME 默认 `~/.claude` 零触；**REV-73-001 low 非阻塞 open**（merged 文案 created 路径失实）/ REV-73-002/003 low closed；验收 7/7 通过 0 Bug；知识沉淀 3 条（patterns 2 + troubleshooting 1） | **passed** |
 | [v1.1.6-stage-72](stage-72.md) | 文档与版本收口（**v1.1.6 收官阶段**，执行顺序最后）— README×3 + GETTING_STARTED + commands + 蓝本状态「提案→已实现（v1.1.6）」+ 实施偏差 + adapters + claude 桩 + manual 陈旧口径补正 + cli-usage skill 权威源 v1.1.6 快照；CI env guard 4→**5 路径**（`$HOME/.claude`）；版本 **1.1.5→1.1.6** 全链路收口（**A 类 8 载体**含补漏 `claude/constraint`、B 类 build 重生成、`CHANGELOG [1.1.6]`）；roadmap/plan 回填 **M27/M28 done**；4 op（`968afed`/`0432ec9`/`3e0b292`/`eacc8e8`）；**67 文件 / 1206 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` 774、`lint kb` 0（389 引用）、build ×2 幂等、`--version` **1.1.6**、A 类 `1.1.5` 残留 0；**REV-72-003（high, blocking）op-004 修复后 closed**（补提交 ops 审计链）/ REV-72-001/002 low 归档官就地修正 closed；验收 **5/5 通过**；新增 Bug `cli/BUG-009`/`cli/BUG-010`（low，归档官就地修正 closed）；知识沉淀 3 条（patterns）；**v1.1.6 六阶段全部闭环 = 版本收官** | **passed** |
+
+## v1.1.7 系列审查
+
+| 阶段 | 摘要 | 状态 |
+|------|------|------|
+| [v1.1.7-stage-74](v1.1.7-stage-74.md) | 双模式引擎（v1.1.7 首阶段）— 引入 `workflow_mode`（`full`/`fast`）+ fast 内置快线表 `FAST_TRANSITIONS`（8 条目，`review_failed` 双出口回环）+ `pipeline.yaml` 可选 `fast_transitions`（`FastTransitionsSchema`，缺失/非法/空对象回落内置）+ `getValidTargets(fromPhase, mode)` **mode 必传**（唯一取表点 `resolveTransitionsForMode`）+ 四调用点（`hasTransition`/`getAvailablePhases`/`findPhasePath`/`canAdvance`）显式传 stage 派生 mode + `resolveStageWorkflowMode(stageId?)` 公共化 + `buildCascadeConfig(stageId?)` 带 stage 形参 + `EFFECTIVE_CONFIG_KEYS` 四键 + `auto_advance` 部署级默认翻转 `enabled`（裁定 E）+ `workflow_mode` 新增（裁定 B）；4 op（executor 未 commit，HEAD `6a2b04f`）；**67 文件 / 1239 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` **775**、`lint kb` 0（396 引用）、build ×2 幂等、`--version`=1.1.6；**REV-74-011~015 全 low 非阻塞 closed**（计划轮 REV-74-001~010 closed/resolved）；验收通过 0 Bug；知识沉淀 4 条（architecture 2 + patterns 2） | **passed** |
 
 ## v5 系列审查
 

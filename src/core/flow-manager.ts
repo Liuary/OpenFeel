@@ -20,6 +20,7 @@ import {
   MetaPhaseSchema,
   META_PHASES,
   transitionKeyMatches,
+  FastTransitionsSchema,
   type PipelineConfig,
   type PipelinePhase,
   type MetaPhase,
@@ -31,7 +32,7 @@ export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-
 import { findStageStatusPath, findStageDirConflict, parseStageId, normalizeStageId } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
-import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY } from './config.js';
+import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, type WorkflowMode } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
 
 /** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
@@ -168,8 +169,8 @@ export interface CascadeConfig {
 /** 配置生效来源枚举（`config effective` 出口，P9） */
 export type ConfigSource = 'status.md' | 'config.yaml' | 'profile.yaml' | 'builtin';
 
-/** `openfeel config effective` 的三个受管键（与 DEFAULT_CONFIG 一致） */
-const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'merge_mode'] as const;
+/** `openfeel config effective` 的四个受管键（与 DEFAULT_CONFIG 一致） */
+const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'] as const;
 
 /** verbose 模式下的状态变更记录 */
 export interface RecentChange {
@@ -446,6 +447,22 @@ export interface PhasePathResult {
 /** findPhasePath BFS 深度上限（B5-1；超出按拒绝处理） */
 export const PHASE_PATH_MAX_DEPTH = 8;
 
+/**
+ * fast 模式内置快线转移表（裁定 C）：7 条流转键 + `done` 终止项（全 8 条目）。
+ * 单一来源：仅 getDefaultPipelineConfig('fast') 消费；禁止在命令层/模板层复制（R-74-1）。
+ * review_failed 双出口 = 失败回环（重审 或 回执行修复，对应 full 表 scheme_pending 位）；Q3 收紧项留审查裁定。
+ */
+const FAST_TRANSITIONS: Record<string, string[]> = {
+  plan_pending: ['plan_passed'],
+  plan_passed: ['exec_running'],
+  exec_running: ['review_pending'],
+  review_pending: ['review_failed', 'review_passed'],
+  review_failed: ['review_pending', 'exec_running'],
+  review_passed: ['archiving'],
+  archiving: ['done'],
+  done: [],
+};
+
 // ── 核心类 ──
 
 export class FlowManager {
@@ -456,6 +473,8 @@ export class FlowManager {
   private filePath: string;
   /** 从 pipeline.yaml 加载的流水线配置（含后备默认值） */
   private pipelineConfig: PipelineConfig | null = null;
+  /** 从 pipeline.yaml 加载的可选快线表（fast_transitions）；null = 缺失/非法/空对象 → 回退内置快线表 [REV-74-009 修订] */
+  private fastTransitions: Record<string, string[]> | null = null;
   /** 公共日志写入器（审计链） */
   private publicLogger: PublicLogger;
 
@@ -1873,10 +1892,11 @@ export class FlowManager {
    * 遍历 transitions 表，key 与 fromPhase 匹配（组合 key 如 'test_passed|review_passed' 任一条件匹配即可）即收集其目标。
    * 无 '|' 的简单 key 保持单条件原行为（精确相等）。
    * @param fromPhase 当前源 phase
+   * @param mode 工作流模式（**必传**；由调用点经 resolveStageWorkflowMode 从 stage 派生——禁止默认 mode）
    * @returns 去重后的可达目标 phase 列表
    */
-  private getValidTargets(fromPhase: PipelinePhase): string[] {
-    const transitions = this.pipelineConfig?.transitions ?? {};
+  private getValidTargets(fromPhase: PipelinePhase, mode: WorkflowMode): string[] {
+    const transitions = this.resolveTransitionsForMode(mode);
     const result = new Set<string>();
     for (const [key, targets] of Object.entries(transitions)) {
       if (transitionKeyMatches(key, fromPhase)) {
@@ -1899,7 +1919,8 @@ export class FlowManager {
     }
     const phase = this.resolveCurrentPhase(stageName);
     if (!phase) return false;
-    return this.getValidTargets(phase).includes(to);
+    const mode = this.resolveStageWorkflowMode(stageName).value;
+    return this.getValidTargets(phase, mode).includes(to);
   }
 
   /**
@@ -1916,7 +1937,8 @@ export class FlowManager {
     }
     const currentPhase = this.resolveCurrentPhase(stageName);
     if (!currentPhase) return [];
-    return this.getValidTargets(currentPhase) as PipelinePhase[];
+    const mode = this.resolveStageWorkflowMode(stageName).value;
+    return this.getValidTargets(currentPhase, mode) as PipelinePhase[];
   }
 
   /**
@@ -1940,6 +1962,9 @@ export class FlowManager {
       return { path: [], reason: 'already-at-target' };
     }
 
+    // 模式在 BFS 外解析一次（stage 派生；同一 T 内 mode 恒定——单 stage 只读一张表）
+    const mode = this.resolveStageWorkflowMode(key).value;
+
     // BFS 逐层扩展；visitedDepth 记录各 phase 首次到达的最小深度（剪枝，避免重复/环）
     const visitedDepth = new Map<string, number>();
     visitedDepth.set(start, 0);
@@ -1953,7 +1978,7 @@ export class FlowManager {
         if (node.path.length >= PHASE_PATH_MAX_DEPTH) {
           continue;
         }
-        for (const target of this.getValidTargets(node.phase)) {
+        for (const target of this.getValidTargets(node.phase, mode)) {
           const path = [...node.path, target];
           if (target === to) {
             hits.push(path);
@@ -1993,22 +2018,36 @@ export class FlowManager {
   }
 
   /**
+   * 按模式解析运行时转移表（唯一取表法则；校验/推进/路径 与 展示 同经本函数 ⇒ 单一信源）。
+   * full → 运行时 pipelineConfig.transitions（pipeline.yaml 覆盖线）；fast → fast_transitions ?? 内置快线表。
+   * 说明：pipelineConfig 构造期恒已加载（constructor 无条件调用），`?? 内置` 保留既有访问器回退语义。
+   */
+  private resolveTransitionsForMode(mode: WorkflowMode): Record<string, string[]> {
+    if (mode === 'fast') {
+      return this.fastTransitions ?? this.getDefaultPipelineConfig('fast').transitions;
+    }
+    return this.pipelineConfig?.transitions ?? this.getDefaultPipelineConfig().transitions;
+  }
+
+  /**
    * 获取运行时生效的 phase 转移表（key 可含 '|' 组合条件）。
    * 缺省/解析失败时回退内置默认配置。返回浅拷贝。
+   * **无参 = full**（零回归既有消费点）；fast 供 stage-75 `flow phases` 模式分节消费。
    */
-  getPipelineTransitions(): Record<string, string[]> {
-    const transitions = this.pipelineConfig?.transitions ?? this.getDefaultPipelineConfig().transitions;
+  getPipelineTransitions(mode: WorkflowMode = 'full'): Record<string, string[]> {
+    const transitions = this.resolveTransitionsForMode(mode);
     return Object.fromEntries(Object.entries(transitions).map(([k, v]) => [k, [...v]]));
   }
 
   /**
    * 获取内置默认 phase 转移表（不受项目 pipeline.yaml 影响）。
    * 供 `flow phases` 做「运行时 vs 默认」差异报告（T19）。
+   * **无参 = full**（零回归既有消费点）；fast 供 stage-75 `flow phases` 模式分节消费。
    * @returns 默认 transitions 的深拷贝
    */
-  getDefaultTransitions(): Record<string, string[]> {
+  getDefaultTransitions(mode: WorkflowMode = 'full'): Record<string, string[]> {
     return Object.fromEntries(
-      Object.entries(this.getDefaultPipelineConfig().transitions).map(([k, v]) => [k, [...v]]),
+      Object.entries(this.getDefaultPipelineConfig(mode).transitions).map(([k, v]) => [k, [...v]]),
     );
   }
 
@@ -2110,10 +2149,13 @@ export class FlowManager {
 
   /**
    * 构建配置级联信息（优先级：profileDefaults < configDefaults < statusOverrides）
-   * 全局画像仅作最低优先级兜底（P2），且只取 preferences.auto_advance 单值，
-   * 不对 preferences 做整体替换（与 config.yaml defaults 键集重叠的仅 auto_advance）。
+   * 全局画像仅作最低优先级兜底（P2），且只取 preferences.auto_advance 单值，**不扩展** workflow_mode。
+   * @param stageId 可选目标阶段（stage 形参唯一入口）；缺省 = pipeline.current.stage
+   *   （**当前阶段域**，无参行为逐字不变）。任意阶段域由 resolveStageWorkflowMode(stageId) 显式传入。
+   * 静态约束（REV-74-001/002）：无参调用**仅允许**出现在既有两出口 resolveEffectiveConfig()
+   *   与 verboseSummary()；新增消费点一律显式传 stage。
    */
-  private buildCascadeConfig(): CascadeConfig {
+  private buildCascadeConfig(stageId?: string): CascadeConfig {
     const profileDefaults: Record<string, string> = {};
     const configDefaults: Record<string, string> = {};
     const statusOverrides: Record<string, string> = {};
@@ -2166,21 +2208,25 @@ export class FlowManager {
       }
     }
 
-    // 最高优先级：当前 stage 的 status.md（如果存在）
-    if (this.data && this.data.pipeline.current.stage) {
-      const stageId = this.data.pipeline.current.stage;
-      const statusPath = this.findStatusPath(stageId);
+    // 最高优先级：目标 stage 的 status.md（缺省 = pipeline.current.stage；stage 形参路径读该阶段）
+    const targetStage = stageId ?? this.data?.pipeline.current.stage;
+    if (targetStage) {
+      const statusPath = this.findStatusPath(targetStage);
       if (statusPath) {
         try {
           const content = readFileSync(statusPath, 'utf-8');
-          // 匹配执行模式、自动推进
+          // 匹配执行模式、自动推进、工作流模式
           const execMatch = content.match(/\*\*执行模式\*\*[：:]\s*(manual|auto)/);
           const autoMatch = content.match(/\*\*自动推进\*\*[：:]\s*(disabled|enabled)/);
+          const modeMatch = content.match(/\*\*工作流模式\*\*[：:]\s*(full|fast)/);
           if (execMatch) {
             statusOverrides['execution_mode'] = execMatch[1];
           }
           if (autoMatch) {
             statusOverrides['auto_advance'] = autoMatch[1];
+          }
+          if (modeMatch) {
+            statusOverrides['workflow_mode'] = modeMatch[1];
           }
         } catch {
           // 读取失败则跳过
@@ -2195,7 +2241,7 @@ export class FlowManager {
   }
 
   /**
-   * 解析三个受管配置键的「有效值 + 生效来源」（`openfeel config effective`，P9）。
+   * 解析四个受管配置键的「有效值 + 生效来源」（`openfeel config effective`，P9）。
    * 复用 buildCascadeConfig（单一权威，避免第二套解析），优先级：
    * status.md > config.yaml > profile.yaml > builtin。
    * @returns key → { value, source }
@@ -2216,6 +2262,31 @@ export class FlowManager {
       }
     }
     return result;
+  }
+
+  /**
+   * 解析指定阶段的工作流模式（裁定 E：「stage → mode」表选择解析入口；stage-75 `flow mode` 契约）。
+   * 带 stage 形参独立解析（REV-74-001）：该阶段 status.md（findStatusPath(stageId)）
+   *   > config.yaml defaults > profile.yaml（**有意不承载**，实际不产出）> builtin（DEFAULT_CONFIG.workflow_mode = fast）。
+   * 语义边界：`config effective` / `flow status --verbose` = **当前阶段域**（无参）；
+   *   本方法显式 stageId = **任意阶段域**（flow mode --stage / 表选择）。
+   * @param stageId 目标阶段 ID（缺省 = pipeline.current.stage；无该阶段 status.md → 自然回落下一层）
+   * @returns { value, source }，source ∈ status.md | config.yaml | profile.yaml | builtin
+   */
+  resolveStageWorkflowMode(stageId?: string): { value: WorkflowMode; source: ConfigSource } {
+    const cascade = this.buildCascadeConfig(stageId);
+    const key = 'workflow_mode';
+    if (cascade.statusOverrides[key] !== undefined) {
+      return { value: cascade.statusOverrides[key] as WorkflowMode, source: 'status.md' };
+    }
+    if (cascade.configDefaults[key] !== undefined) {
+      return { value: cascade.configDefaults[key] as WorkflowMode, source: 'config.yaml' };
+    }
+    if (cascade.profileDefaults[key] !== undefined) {
+      // profile 层有意不承载 workflow_mode（画像 = 个人偏好层，REV-74-005）；此分支为对称性保留，实际不产出
+      return { value: cascade.profileDefaults[key] as WorkflowMode, source: 'profile.yaml' };
+    }
+    return { value: DEFAULT_CONFIG.workflow_mode as WorkflowMode, source: 'builtin' };
   }
 
   /** 查找 status.md 的路径（三级回退：plan/{series}/ 精确 → plan 递归 → stages 兜底） */
@@ -2280,7 +2351,7 @@ export class FlowManager {
     return results.slice(-maxChanges);
   }
 
-  /** 构建下游阶段列表（当前 phase 的可达下一阶段 + Agent 映射） */
+  /** 构建下游阶段列表（当前阶段的可达下一阶段 + Agent 映射；模式经 getAvailablePhases() 无参 → current.stage 派生） */
   private buildDownstreamPhases(): DownstreamPhase[] {
     const available = this.getAvailablePhases();
     const labels = this.getPhaseLabels();
@@ -2637,9 +2708,11 @@ export class FlowManager {
       return false;
     }
     const currentPhase = this.data.stages[parts.stageId].phase;
+    // stage 派生 mode：opId 解析出的 stage（src 内无生产调用方，仅测试；仍为 mode 透传必改点）
+    const mode = this.resolveStageWorkflowMode(parts.stageId).value;
 
     // 检查从当前 phase 到目标 phase 的流转是否合法（支持组合条件 key）
-    const validTargets = this.getValidTargets(currentPhase);
+    const validTargets = this.getValidTargets(currentPhase, mode);
     if (!validTargets.includes(to)) {
       return false;
     }
@@ -3444,8 +3517,8 @@ export class FlowManager {
 
   /**
    * 将受管配置键批量同步到所有已注册阶段的 status.md 对应字段（`config set --sync-stages`）。
-   * 仅 auto_advance→「自动推进」、execution_mode→「执行模式」有阶段级字段；
-   * 其它键无阶段字段 → 全部 skipped-no-field（D-config 裁定，跳过并报告）。
+   * 仅 auto_advance→「自动推进」、execution_mode→「执行模式」、workflow_mode→「工作流模式」
+   * 三个映射键有阶段级字段；其它键无阶段字段 → 全部 skipped-no-field（D-config 裁定，跳过并报告）。
    * 复用 writeStatusField 的定向写 + 按阶段锁；同值 → noop（零写盘）。
    * 只读 flow.json 的阶段枚举，不写 flow.json。
    * @param configKey 已归一的受管配置键（如 auto_advance）
@@ -3934,6 +4007,18 @@ export class FlowManager {
       const raw = readFileSync(pipelinePath, 'utf-8');
       const parsed = parseYaml(raw);
       this.pipelineConfig = PipelineConfigSchema.parse(parsed);
+      // 可选快线表：独立容错解析（非法类型 → 忽略该键 + 告警，不 fail 整体配置；缺失/空对象 → 内置快线表）
+      const fastRaw = (parsed as Record<string, unknown> | null)?.['fast_transitions'];
+      if (fastRaw !== undefined) {
+        const fastParsed = FastTransitionsSchema.safeParse(fastRaw);
+        if (fastParsed.success) {
+          // [REV-74-009 修订] 空对象 {} 等同缺失（空表使 fast 全链不可推进，无合法用途）→ 回落内置快线表
+          this.fastTransitions = Object.keys(fastParsed.data).length > 0 ? fastParsed.data : null;
+        } else {
+          this.fastTransitions = null;
+          console.warn(t('flow.manager.fastTransitionsInvalid', getCliLang(this.projectPath)));
+        }
+      }
     } catch {
       // 解析失败时回退到内置默认值
       this.pipelineConfig = this.getDefaultPipelineConfig();
@@ -3942,9 +4027,11 @@ export class FlowManager {
 
   /**
    * 获取内置默认流水线配置（等价于硬编码常量 + 3 个 Bug 修复）
-   * 当 pipeline.yaml 不存在或解析失败时使用
+   * 当 pipeline.yaml 不存在或解析失败时使用。
+   * @param mode 工作流模式；**无参 = full**（内置 full 表逐字等于历史现状，零回归既有消费点）；
+   *             'fast' 返回快线表（FAST_TRANSITIONS 常量引用）。phases / checkpoint_mapping / phase_corrections 两模式共用。
    */
-  private getDefaultPipelineConfig(): PipelineConfig {
+  private getDefaultPipelineConfig(mode: WorkflowMode = 'full'): PipelineConfig {
     return {
       phases: [
         'plan_pending', 'plan_review', 'plan_passed',
@@ -3953,25 +4040,28 @@ export class FlowManager {
         'review_passed', 'test_pending', 'test_failed',
         'test_passed', 'archiving', 'done',
       ],
-      transitions: {
-        plan_pending: ['plan_review', 'plan_passed'],
-        plan_review: ['plan_passed', 'plan_pending'],
-        plan_passed: ['scheme_pending'],
-        scheme_pending: ['scheme_review', 'scheme_passed'],
-        scheme_review: ['scheme_passed', 'scheme_pending'],
-        scheme_passed: ['exec_running'],
-        exec_running: ['review_pending', 'scheme_pending'],       // BUG 修复：增加 scheme_pending
-        review_pending: ['review_failed', 'review_passed'],
-        review_failed: ['review_pending', 'scheme_pending'],      // BUG 修复：增加 scheme_pending
-        review_passed: ['test_pending'],
-        test_pending: ['test_failed', 'test_passed'],
-        test_failed: ['test_pending', 'scheme_pending'],          // BUG 修复：增加 scheme_pending
-        test_passed: ['archiving'],
-        // 组合条件示例：审查通过 或 测试通过 任一即可推进到 archiving（多 Agent 并行场景，任一完成即推进）
-        'review_passed|test_passed': ['archiving'],
-        archiving: ['done'],
-        done: [],
-      },
+      transitions:
+        mode === 'fast'
+          ? FAST_TRANSITIONS
+          : {
+              plan_pending: ['plan_review', 'plan_passed'],
+              plan_review: ['plan_passed', 'plan_pending'],
+              plan_passed: ['scheme_pending'],
+              scheme_pending: ['scheme_review', 'scheme_passed'],
+              scheme_review: ['scheme_passed', 'scheme_pending'],
+              scheme_passed: ['exec_running'],
+              exec_running: ['review_pending', 'scheme_pending'],       // BUG 修复：增加 scheme_pending
+              review_pending: ['review_failed', 'review_passed'],
+              review_failed: ['review_pending', 'scheme_pending'],      // BUG 修复：增加 scheme_pending
+              review_passed: ['test_pending'],
+              test_pending: ['test_failed', 'test_passed'],
+              test_failed: ['test_pending', 'scheme_pending'],          // BUG 修复：增加 scheme_pending
+              test_passed: ['archiving'],
+              // 组合条件示例：审查通过 或 测试通过 任一即可推进到 archiving（多 Agent 并行场景，任一完成即推进）
+              'review_passed|test_passed': ['archiving'],
+              archiving: ['done'],
+              done: [],
+            },
       checkpoint_mapping: {
         plan: 'plan',
         scheme: 'scheme',

@@ -77,6 +77,12 @@ describe('config 命令（stage-42 op-002）', () => {
     writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), `defaults:\n  auto_advance: ${autoAdvance}\n`, 'utf-8');
   }
 
+  /** 写项目 config.yaml（原始内容，供 workflow_mode 等新增键） */
+  function writeProjectConfigRaw(content: string): void {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), content, 'utf-8');
+  }
+
   /** 写隔离 HOME 下的全局画像 preferences.auto_advance */
   function writeGlobalProfile(autoAdvance: string): void {
     const dir = join(tmpDir, '.config', 'openfeel');
@@ -92,21 +98,43 @@ describe('config 命令（stage-42 op-002）', () => {
     return errorMock.mock.calls.map((c) => c[0] as string).join('\n');
   }
 
-  it('config effective 输出三键，且 auto_advance 来源为 config.yaml（项目优先于画像）', async () => {
+  it('config effective 输出四键，且 auto_advance 来源为 config.yaml（项目优先于画像）', async () => {
     writeGlobalProfile('enabled');
     writeProjectConfig('disabled');
 
     await safeParse(['config', 'effective']);
 
     const out = stdout();
-    // 三键齐全
+    // 四键齐全
     expect(out).toContain('execution_mode');
     expect(out).toContain('auto_advance');
     expect(out).toContain('merge_mode');
+    expect(out).toContain('workflow_mode');
     // auto_advance 有效值取项目 config（disabled），来源标注 config.yaml
     expect(out).toContain('disabled');
     expect(out).toMatch(/auto_advance.*config\.yaml/);
     expect(out).toMatch(/\[(来源|source):/);
+  });
+
+  it('config effective workflow_mode 单键输出（来源 config.yaml）', async () => {
+    writeProjectConfigRaw('defaults:\n  auto_advance: disabled\n  workflow_mode: full\n');
+
+    await safeParse(['config', 'effective', 'workflow_mode']);
+
+    const out = stdout();
+    expect(out).toContain('workflow_mode');
+    expect(out).toMatch(/workflow_mode.*config\.yaml/);
+  });
+
+  it('T7.5（CLI 半段）：隔离 HOME 无 config.yaml → auto_advance=builtin（翻转后 enabled）[REV-74-008]', async () => {
+    // 隔离 HOME 指向不存在路径（无 profile.yaml），且不写 config.yaml
+    mockHome.dir = join(tmpDir, 'no-such-home');
+
+    await safeParse(['config', 'effective', 'auto_advance']);
+
+    const out = stdout();
+    expect(out).toContain('enabled');
+    expect(out).toMatch(/auto_advance.*builtin/);
   });
 
   it('config effective auto_advance 单键输出', async () => {
@@ -368,18 +396,18 @@ describe('config 命令（stage-42 op-002）', () => {
 
   it('T6.7：--sync-stages 写 auto_advance=自动推进；同值 no-op 逐字节不变', async () => {
     setupTwoStages();
-
-    await safeParse(['config', 'set', 'auto_advance', 'enabled', '--sync-stages']);
+    // stage-74：DEFAULT_CONFIG.auto_advance 翻转 enabled → 新建骨架初值为 enabled，同步目标改为 disabled 以构成真实变更
+    await safeParse(['config', 'set', 'auto_advance', 'disabled', '--sync-stages']);
     expect(exitMock).not.toHaveBeenCalled();
-    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **自动推进**：enabled');
-    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toContain('- **自动推进**：enabled');
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **自动推进**：disabled');
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toContain('- **自动推进**：disabled');
     expect(stdout()).toContain('已更新');
 
     // 同值再执行 → 两 status.md 逐字节不变 + noop 输出
     const before1 = readFileSync(stageStatusPath('stage-01'), 'utf-8');
     const before2 = readFileSync(stageStatusPath('stage-02'), 'utf-8');
     logMock.mockClear();
-    await safeParse(['config', 'set', 'auto_advance', 'enabled', '--sync-stages']);
+    await safeParse(['config', 'set', 'auto_advance', 'disabled', '--sync-stages']);
     expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toBe(before1);
     expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toBe(before2);
     expect(stdout()).toContain('已是目标值');

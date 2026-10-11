@@ -175,6 +175,7 @@ export const flow: I18nDomain = {
   'manager.phaseAutoCorrectShortTmpl': { key: 'flow.manager.phaseAutoCorrectShortTmpl', zh: '', en: "[WARN] phase '{to}' auto-corrected to '{corrected}'" },
   'manager.advancePhaseNoStageId':  { key: 'flow.manager.advancePhaseNoStageId',  zh: '', en: '[DEPRECATED] advancePhase: cannot parse stageId; skipped' },
   'manager.autoFixPhaseGuardTmpl':  { key: 'flow.manager.autoFixPhaseGuardTmpl',  zh: '', en: '[WARN] addAutoFixReview is only allowed from review_failed; current stage {stage} phase is {phase}' },
+  'manager.fastTransitionsInvalid': { key: 'flow.manager.fastTransitionsInvalid', zh: '', en: '[WARN] pipeline.yaml fast_transitions has invalid type; ignored, using built-in fast table' },
 
   'log.noInit':                 { key: 'flow.log.noInit',                 zh: '', en: 'Pipeline not initialized, no logs' },
   'log.noLogs':                 { key: 'flow.log.noLogs',                 zh: '', en: 'No operation logs' },

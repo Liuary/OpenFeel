@@ -11,16 +11,16 @@
 | 层级 | 路径 | 内容 |
 |------|------|------|
 | 全局画像 | `~/.config/openfeel/profile.yaml` | `user`（name/lang）、`preferences`（auto_advance/review_mode/communication/confirm_threshold）、`history`（recent_projects） |
-| 项目配置 | `.openfeel/config.yaml` | `meta`（version/project/tech_stack）、`defaults`（execution_mode/auto_advance/merge_mode）、`models`（default/agents/roles） |
+| 项目配置 | `.openfeel/config.yaml` | `meta`（version/project/tech_stack）、`defaults`（execution_mode/auto_advance/merge_mode/**workflow_mode**）、`models`（default/agents/roles） |
 
 优先级：项目配置覆盖全局默认，`readProfile()` 兜底默认值（zh-CN / disabled / full / concise / medium）。
 
 **有效值级联（stage-42，口径权威）**：`builtin < profile.yaml < 项目 config.yaml defaults < 当前阶段 status.md`。解析器位于 `flow-manager`（`buildCascadeConfig` + 公开的 `resolveEffectiveConfig()`，详见 `manual/core/flow-manager.md`），命令出口为 `openfeel config effective [key]`。`config.ts` 侧只提供被级联复用的常量与读取函数：
 
-- `DEFAULT_CONFIG`（导出，**三键齐全**：`execution_mode` / `auto_advance` / `merge_mode`）：级联最底层的 `builtin` 值来源，命令层不另写默认值。
+- `DEFAULT_CONFIG`（导出，**四键齐全**：`execution_mode` / `auto_advance` / `merge_mode` /**`workflow_mode`**）：级联最底层的 `builtin` 值来源，命令层不另写默认值。**v1.1.7-stage-74 起**：`auto_advance` 部署级默认由 `disabled` **翻转为 `enabled`**（裁定 E），新增 `workflow_mode: 'fast'`（裁定 B）；`ConfigDefaultsSchema` 的**逐键 `.default()` 必须与 `DEFAULT_CONFIG` 同键值**（单一权威——缺失键经 `safeParse` 即取此默认，否则会覆盖 `DEFAULT_CONFIG` 值）。`DEFAULT_PROFILE` / `ProfilePreferencesSchema` 的 `auto_advance` **有意保持 `disabled`**（画卷 = 用户个人偏好，与部署级默认无关）。
 - `DEFAULT_PROFILE`：画像是缺失时的安全降级画像。**v1.1.2-stage-47 起**：级联解析不再以 `readProfile()` 的返回值填充 `profileDefaults`，而是「画像文件真实存在 + 原始 YAML 显式声明 `preferences.auto_advance`」双条件判定（`config/BUG-003` 已修复 → 无画像环境来源落 `builtin`）；`DEFAULT_PROFILE` 仅作为 `readProfile()` 自身的异常安全兜底值保留。
 
-**布尔测试门禁键移除（v1.1.4-stage-62）**：原布尔测试门禁配置键（键名见 `CHANGELOG.md` 与 v1.1.4 迁移记录）已移除——15 相位模型下 phase 图与该键无关，保留即误导。存量 `.openfeel/config.yaml` 中的残留行按**非受管扩展键**兼容：`ConfigDefaultsSchema` 的 `.passthrough()` 在**读侧原样保留**（不报错、不崩溃、不参与级联）；对该键执行 `config set` 会被判定为**无效键**并报错（预期）。受管配置键收敛为 `execution_mode` / `auto_advance` / `merge_mode` 三个。
+**布尔测试门禁键移除（v1.1.4-stage-62）**：原布尔测试门禁配置键（键名见 `CHANGELOG.md` 与 v1.1.4 迁移记录）已移除——15 相位模型下 phase 图与该键无关，保留即误导。存量 `.openfeel/config.yaml` 中的残留行按**非受管扩展键**兼容：`ConfigDefaultsSchema` 的 `.passthrough()` 在**读侧原样保留**（不报错、不崩溃、不参与级联）；对该键执行 `config set` 会被判定为**无效键**并报错（预期）。受管配置键收敛为 `execution_mode` / `auto_advance` / `merge_mode` / **`workflow_mode`** 四个（**v1.1.7-stage-74** 增第 4 键 `workflow_mode`，枚举 `full|fast`，值域单一来源 `WORKFLOW_MODES`）。
 
 **键名归一（v1.1.4-stage-63）**：`normalizeConfigKey(key)` 剥离 `defaults.` 前缀（`defaults.execution_mode → execution_mode`），使 **`defaults.X ≡ X`**（单一来源，`config.ts`）；供 `commands/config.ts` 的 `config set/get` 与 `resolveConfigDefaults` 共用。仅剥离一次前缀，`defaults.` 单独出现归一为空串（由白名单拒绝）；`--global` 的 profile 键域不同，**不受影响**。
 
@@ -36,8 +36,8 @@
 | `writeDefaultConfig(projectPath, lang)` | 写入默认项目配置（**整体覆盖，无 `existsSync` 守卫、无备份**）。**契约（stage-47）**：调用方须先自行守卫——`init` 对已存在的 `config.yaml` 不再调用本函数（保留用户配置 + `skipped` 提示）；本函数不应被无守卫地用于既有用户配置 |
 | `getConfigValue(projectPath, key)` / `setConfigValue(...)` | 读取 / 修改单个配置项。**v1.1.2-stage-50 起**：`setConfigValue` 写入前**按字段 Schema 归一值类型**（boolean 键把 `"true"`/`"false"` 解析为布尔，逐层解包后 `instanceof z.ZodBoolean`；**zod v4 无 `_def.typeName`**）——归一是白名单扩至全量 `defaults.*` 的前提（否则 boolean 键首次可达即 `ZodError` 崩溃） |
 | `normalizeConfigKey(key)` | **v1.1.4-stage-63 新增**：配置键名归一（剥离 `defaults.` 前缀），使 `defaults.X ≡ X`（单一来源）。`config set/get`（项目模式）入口先归一再走既有白名单/枚举校验 |
-| `resolveConfigDefaults(projectPath)` | **v1.1.4-stage-63 新增**：读项目 `config.yaml` 的 `defaults` 块作**骨架初值**（逐键经 `ConfigDefaultsSchema` 校验，缺失/非法逐键回退 `DEFAULT_CONFIG`）；**不读 status.md、不做 effective 合并**（区别于 `buildCascadeConfig`）。供 `ensureStageSkeleton` 取新阶段 `执行模式`/`自动推进` 初值 |
-| `STAGE_FIELD_BY_CONFIG_KEY` | **v1.1.4-stage-63 新增**：受管配置键 → 阶段 `status.md` 字段名映射（单一来源）：`auto_advance → 自动推进`、`execution_mode → 执行模式`；无阶段字段的键（`merge_mode`）不在此表，`--sync-stages` 时按 `skipped-no-field` 跳过报告 |
+| `resolveConfigDefaults(projectPath)` | **v1.1.4-stage-63 新增**：读项目 `config.yaml` 的 `defaults` 块作**骨架初值**（逐键经 `ConfigDefaultsSchema` 校验，缺失/非法逐键回退 `DEFAULT_CONFIG`）；**不读 status.md、不做 effective 合并**（区别于 `buildCascadeConfig`）。供 `ensureStageSkeleton` 取新阶段 `执行模式`/`自动推进` 初值。**v1.1.7-stage-74 起**返回**四键**（增 `workflow_mode`） |
+| `STAGE_FIELD_BY_CONFIG_KEY` | **v1.1.4-stage-63 新增**：受管配置键 → 阶段 `status.md` 字段名映射（单一来源）：`auto_advance → 自动推进`、`execution_mode → 执行模式`、**`workflow_mode → 工作流模式`**（v1.1.7-stage-74 增第 3 项）；无阶段字段的键（`merge_mode`）不在此表，`--sync-stages` 时按 `skipped-no-field` 跳过报告 |
 | `readProfile()` / `writeProfile(profile)` | 读取 / 写入全局用户画像（`readProfile` 异常安全：缺失/非法 YAML 回退 `DEFAULT_PROFILE`）。**v1.1.2-stage-48 起**：返回类型为 `Profile & { parseError?: string }`——解析/校验失败（YAML 语法错误、顶层非对象/空文件）时**标记 `parseError`**；非法态下 `ensureProfileDefaults` **跳过写回** + `console.warn`（含路径与原因），`config set --global` 直接报错 `exit 1`（**不覆盖**用户文件） |
 | `CONFIG_TEMPLATE_ZH` / `CONFIG_TEMPLATE_EN` / `DEFAULT_CONFIG` / `DEFAULT_PROFILE` | 模板与默认值常量（`DEFAULT_CONFIG` 为级联 `builtin` 层权威值） |
 

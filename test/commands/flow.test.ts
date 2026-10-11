@@ -23,6 +23,7 @@ import { Command, CommanderError } from 'commander';
 import { registerFlowCommand } from '../../src/commands/flow.js';
 import { initProject } from '../../src/core/init.js';
 import { FlowManager, type FlowData, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { setConfigValue } from '../../src/core/config.js';
 import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -43,6 +44,8 @@ describe('flow 命令（stage-41）', () => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-flow-test-'));
     // 初始化工作区（temp 项目无 pipeline.yaml → 走默认 15 phase 配置）
     await initProject(tmpDir);
+    // R-FIX（stage-74 op-004）：本文件既有用例基线 = full（内置默认 fast；fast CLI 用例归 stage-75）
+    setConfigValue(tmpDir, 'workflow_mode', 'full');
 
     logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
     errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});

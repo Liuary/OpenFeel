@@ -1,0 +1,102 @@
+# OpenFeel v1.1.7 阶段依赖声明
+# 由 openfeel-planner 制定；op 级依赖由 openfeel-schemer 在各阶段产方案时落盘（{stage}/ops/deps.yaml）
+# 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
+
+version: "1.1"
+series: v1
+version_label: v1.1.7
+theme: 快速迭代模式（fast workflow mode）
+generated_by: openfeel-planner
+generated_at: "2026-10-11"
+
+# 跨版本承接（基线）
+baseline:
+  - upstream: v1.1.6-stage-72
+    type: hard
+    status: done
+    reason: "v1.1.6 版本收官：CLI 1.1.6 / 双 harness 部署 / settings 注入 / i18n 774 / 测试 1206 / lint kb 0；本版本在其上增量（不改 phase 枚举、不改部署面）。"
+
+stages:
+  v1.1.7-stage-74:
+    name: 双模式引擎（配置字段 + phase 双表 + 级联 + 默认 auto_advance）
+    deps: []
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/config.ts
+      - src/core/pipeline-schema.ts
+      - src/core/flow-manager.ts
+      - test/core/config.test.ts
+      - test/core/flow-manager.test.ts
+    notes: "配置字段（workflow_mode 第四键 + DEFAULT_CONFIG.auto_advance 翻转 + STAGE_FIELD_BY_CONFIG_KEY 追加）+ full/fast 双表 + stage→mode 表选择单一权威 + 级联「工作流模式」+ EFFECTIVE_CONFIG_KEYS 四键。裁定 C/E/K。含本仓自举基线动作（config.yaml defaults.workflow_mode: full，裁定 L）。"
+
+  v1.1.7-stage-75:
+    name: 模式命令面与交互
+    deps:
+      - v1.1.7-stage-74
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/commands/plan.ts
+      - src/commands/stage.ts
+      - src/commands/flow.ts
+      - src/core/plan/stage.ts
+      - src/core/flow-manager.ts   # [REV-74-007 修订] 补入：T5 `syncConfigFieldToStages()` 插入语义 + `flow.json` 冗余字段写入（消解与 `stage-75/plan.md:8` 范围的不一致）
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+    notes: "plan stage add --workflow-mode / stage set --workflow-mode（含缺失字段插入，裁定 H）/ flow mode 只读命令 / wizard 首次选型 + 项目级记忆写入 / config set --sync-stages 支持 / op 骨架机械铺入口（裁定 I）；`src/core/flow-manager.ts`（T5）：`syncConfigFieldToStages` 插入语义 + `flow.json` 冗余字段写入 [REV-74-007 修订]。"
+
+  v1.1.7-stage-76:
+    name: 模板与 skill 模式感知（标记双读者 ②）
+    deps:
+      - v1.1.7-stage-74
+      - v1.1.7-stage-75
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/template-loader.ts
+    notes: "Agent 契约面：feel.md×4 调度纪律（fast 跳过 schemer/tester、reviewer 单轮）+ subagent 模板模式感知 + skills 收口 + build 重生成（禁手改）+ 静态断言（opencode 关键串零回归）。依赖命令面已定稿。"
+
+  v1.1.7-stage-77:
+    name: 文档与版本收口（v1.1.7 收官）
+    deps:
+      - v1.1.7-stage-76
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - CHANGELOG.md
+      - package.json
+    notes: "文档多载体 + manual（config / flow-manager / cli commands）+ CHANGELOG [1.1.7] + 版本 1.1.7 全链路 A/B/C/D/E + roadmap/plan 回填 + fast 隔离端到端验收。版本收口 op 须为最终 op。"
+
+# 执行顺序（严格串行，以依赖为准）
+execution_order:
+  - v1.1.7-stage-74
+  - v1.1.7-stage-75
+  - v1.1.7-stage-76
+  - v1.1.7-stage-77
+
+# 跨阶段不变量
+invariants:
+  - "phase 枚举零新增（15 项不变）；checkpoint_mapping / phase_corrections 两模式共用"
+  - "表选择单一权威：展示 / 校验 / 推进 / BFS 路径同源（禁止第二信源）"
+  - "阶段级生效值只有 status.md 承载；flow.json 冗余字段不参与级联（读取权威恒为 status.md）"
+  - "骨架全量铺：fast 不裁剪 plan.md / ops / deps.yaml / status.md"
+  - "本仓自举期 74~77 恒以 full 运行（裁定 L）；fast 端到端由 stage-77 隔离临时项目验收覆盖"
+  - "默认 auto_advance=enabled 与 workflow_mode 无关（full / fast 均默认开启）"
+  - "不新增第三方依赖；不改 CI；不 npm publish / 不 git push；不直写 flow.json（phase 推进由 Feel 经 CLI 执行）"
+
+# 下游硬约束
+downstream:
+  - target: npm publish / git push / CI
+    type: hard
+    note: "本版本不执行发布与推送；版本收口归 stage-77；阶段归档由 openfeel-archiver 执行。"

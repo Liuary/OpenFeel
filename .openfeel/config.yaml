@@ -28,6 +28,7 @@ defaults:
   # Worktree 合并模式：manual=手动确认合并
   #                   auto=Feel 自动 git merge + cleanup
   merge_mode: manual
+  workflow_mode: full
 
 # ---- 模型配置 ----
 # 配置 Agent 使用的模型后端。支持 Agent/角色 级精细化覆盖。

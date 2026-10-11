@@ -189,6 +189,7 @@ export const flow: I18nDomain = {
   'manager.phaseAutoCorrectShortTmpl': { key: 'flow.manager.phaseAutoCorrectShortTmpl', zh: "[WARN] Phase '{to}' 自动修正为 '{corrected}'", en: '' },
   'manager.advancePhaseNoStageId':  { key: 'flow.manager.advancePhaseNoStageId',  zh: '[DEPRECATED] advancePhase: 无法解析 stageId，跳过', en: '' },
   'manager.autoFixPhaseGuardTmpl':  { key: 'flow.manager.autoFixPhaseGuardTmpl',  zh: '[WARN] addAutoFixReview 仅允许从 review_failed 状态调用，当前 stage {stage} phase 为 {phase}', en: '' },
+  'manager.fastTransitionsInvalid': { key: 'flow.manager.fastTransitionsInvalid', zh: '[WARN] pipeline.yaml 的 fast_transitions 类型非法，已忽略并使用内置快线表', en: '' },
 
   // flow log
   'log.noInit':                 { key: 'flow.log.noInit',                 zh: '流水线未初始化，无日志',                   en: '' },

@@ -572,12 +572,12 @@ describe('plan 命令', () => {
     expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('取值非法');
   });
 
-  it('T6.8: --auto-advance enabled 覆盖 initProject 默认 disabled', async () => {
-    await safeParse(['plan', 'stage', 'add', 'stage-14', '--auto-advance', 'enabled']);
+  it('T6.8: --auto-advance disabled 覆盖 initProject 默认 enabled（stage-74 默认翻转）', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-14', '--auto-advance', 'disabled']);
 
     expect(exitMock).not.toHaveBeenCalled();
     const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-14', 'status.md');
-    expect(readFileSync(statusPath, 'utf-8')).toContain('- **自动推进**：enabled');
+    expect(readFileSync(statusPath, 'utf-8')).toContain('- **自动推进**：disabled');
   });
 
   it('T6.8: --exec-mode auto 覆盖 initProject 默认 manual', async () => {

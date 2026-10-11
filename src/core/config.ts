@@ -22,11 +22,18 @@ export const ConfigMetaSchema = z.object({
   tech_stack: z.string().optional(),
 }).passthrough();
 
+/** 工作流模式枚举值域（单一来源：schema / 类型 / 命令面值域派生均引用此处） */
+export const WORKFLOW_MODES = ['full', 'fast'] as const;
+/** 工作流模式：full=完整链路（含计划审查/方案/测试）；fast=快速迭代（跳过上述环节，保留审查单轮） */
+export type WorkflowMode = (typeof WORKFLOW_MODES)[number];
+
 /** defaults 块 Schema（允许扩展字段） */
 export const ConfigDefaultsSchema = z.object({
   execution_mode: z.enum(['manual', 'auto']).optional().default('manual'),
-  auto_advance: z.enum(['disabled', 'enabled']).optional().default('disabled'),
+  // 逐键 .default() 必须与 DEFAULT_CONFIG 同键值保持一致（单一权威；缺失键经 safeParse 即取此默认）
+  auto_advance: z.enum(['disabled', 'enabled']).optional().default('enabled'),
   merge_mode: z.enum(['manual', 'auto']).optional().default('manual'),
+  workflow_mode: z.enum(WORKFLOW_MODES).optional().default('fast'),
 }).passthrough();
 
 /** 逐层解包 ZodDefault / ZodOptional / ZodNullable，取得底层类型（schema 驱动的类型判定用） */
@@ -69,6 +76,7 @@ export function getConfigFieldLegalValues(key: string): string[] | null {
 export const STAGE_FIELD_BY_CONFIG_KEY: Record<string, string> = {
   auto_advance: '自动推进',
   execution_mode: '执行模式',
+  workflow_mode: '工作流模式',
 };
 
 /** 单个模型配置 Schema */
@@ -151,27 +159,30 @@ export interface ModelsConfig {
 /** 配置文件结构（backward-compatible: 扁平字段 + 嵌套结构并存） */
 export interface Config {
   meta?: { version?: string; project?: string; tech_stack?: string; [key: string]: unknown };
-  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; merge_mode?: 'manual' | 'auto'; [key: string]: unknown };
+  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; merge_mode?: 'manual' | 'auto'; workflow_mode?: 'full' | 'fast'; [key: string]: unknown };
   models?: ModelsConfig;
   // 向后兼容：扁平字段（由 normalizeConfig 从 defaults 提升）
   execution_mode?: 'manual' | 'auto';
   auto_advance?: 'disabled' | 'enabled';
   merge_mode?: 'manual' | 'auto';
+  workflow_mode?: 'full' | 'fast';
   [key: string]: unknown;
 }
 
 /** 默认配置值（导出供 flow-manager 作为级联 builtin 层取值，保持单一权威） */
 export const DEFAULT_CONFIG: Config = {
   execution_mode: 'manual',
-  auto_advance: 'disabled',
+  auto_advance: 'enabled',   // 裁定 E：部署级默认自动推进开启（与 workflow_mode 无关）
   merge_mode: 'manual',
+  workflow_mode: 'fast',     // 裁定 B：新建默认 fast
 };
 
-/** 配置默认值解析结果（三键；不返回已移除的 test_enabled） */
+/** 配置默认值解析结果（四键；不返回已移除的 test_enabled） */
 export interface ResolvedConfigDefaults {
   execution_mode: 'manual' | 'auto';
   auto_advance: 'disabled' | 'enabled';
   merge_mode: 'manual' | 'auto';
+  workflow_mode: 'full' | 'fast';
 }
 
 /**
@@ -188,13 +199,14 @@ export function normalizeConfigKey(key: string): string {
  * 解析项目 config.yaml 的 defaults 块为**骨架初值**（不读 status.md、不做 effective 合并）。
  * 逐键经 ConfigDefaultsSchema 校验；缺失/非法逐键回退 DEFAULT_CONFIG。
  * @param projectPath 项目根路径
- * @returns 三键默认值（execution_mode / auto_advance / merge_mode）
+ * @returns 四键默认值（execution_mode / auto_advance / merge_mode / workflow_mode）
  */
 export function resolveConfigDefaults(projectPath: string): ResolvedConfigDefaults {
   const result: ResolvedConfigDefaults = {
     execution_mode: DEFAULT_CONFIG.execution_mode as ResolvedConfigDefaults['execution_mode'],
     auto_advance: DEFAULT_CONFIG.auto_advance as ResolvedConfigDefaults['auto_advance'],
     merge_mode: DEFAULT_CONFIG.merge_mode as ResolvedConfigDefaults['merge_mode'],
+    workflow_mode: DEFAULT_CONFIG.workflow_mode as ResolvedConfigDefaults['workflow_mode'],
   };
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
   if (!existsSync(configPath)) {
@@ -205,7 +217,7 @@ export function resolveConfigDefaults(projectPath: string): ResolvedConfigDefaul
     const defaults = (raw?.defaults ?? {}) as Record<string, unknown>;
     // 以字符串记录表赋值，规避 TS 联合键索引赋值推导为 never 的限制
     const target = result as unknown as Record<string, string>;
-    for (const key of ['execution_mode', 'auto_advance', 'merge_mode'] as const) {
+    for (const key of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'] as const) {
       const parsed = ConfigDefaultsSchema.shape[key].safeParse(defaults[key]);
       // 仅接受 schema 校验通过的字符串值；失败/非字符串保持 DEFAULT_CONFIG
       if (parsed.success && typeof parsed.data === 'string') {
@@ -441,6 +453,10 @@ defaults:
   #                   auto=Feel 自动 git merge + cleanup
   merge_mode: ${DEFAULT_CONFIG.merge_mode}
 
+  # 工作流模式：full=完整链路（含计划审查/方案/测试）
+  #            fast=快速迭代（跳过上述环节，保留审查单轮）
+  workflow_mode: ${DEFAULT_CONFIG.workflow_mode}
+
 # ---- 模型配置 ----
 # 配置 Agent 使用的模型后端。支持 Agent/角色 级精细化覆盖。
 # 注：实际模型由平台层分配，此处为 Awareness 目的。
@@ -493,6 +509,10 @@ defaults:
   # Worktree merge mode: manual=manually confirm merge
   #                      auto=Feel auto git merge + cleanup
   merge_mode: ${DEFAULT_CONFIG.merge_mode}
+
+  # Workflow mode: full=full pipeline (incl. plan review / scheme / test)
+  #                fast=quick iteration (skip the above; single review round kept)
+  workflow_mode: ${DEFAULT_CONFIG.workflow_mode}
 
 # ---- Model Configuration ----
 # Configure the model backend used by Agents. Supports Agent/role level fine-grained overrides.

@@ -2,14 +2,14 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-10T19:21:04.354Z",
-    "revision": 831
+    "updated": "2026-10-11T09:18:28.014Z",
+    "revision": 857
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.6-stage-72",
-      "op": ""
+      "stage": "v1.1.7-stage-74",
+      "op": "op-001"
     },
     "retry": 0
   },
@@ -3178,8 +3178,8 @@
     },
     "v1.1.6-stage-72": {
       "name": "v1.1.6-stage-72",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.1.6-stage-71",
         "v1.1.6-stage-73"
@@ -3187,9 +3187,118 @@
       "ops": {},
       "stats": {
         "start_time": "2026-10-10T18:49:43.436Z",
+        "end_time": "2026-10-10T19:27:03.205Z",
+        "duration_ms": 2239769
+      }
+    },
+    "v1.1.7-stage-74": {
+      "name": "v1.1.7-stage-74",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {
+        "op-001": {
+          "title": "配置面四键与 `auto_advance` 默认翻转（T1 + T6）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-002": {
+          "title": "双转移表与按 mode 取表访问器（T2 + T5）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-003": {
+          "title": "级联「工作流模式」与带 stage 形参解析（T4 + T3 解析层）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-004": {
+          "title": "单一取表点接入与既有测试对齐 + 全门禁（T3 + T7 + T8）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        }
+      },
+      "stats": {
+        "start_time": "2026-10-11T08:15:51.147Z",
         "end_time": "",
         "duration_ms": 0
       }
+    },
+    "v1.1.7-stage-75": {
+      "name": "v1.1.7-stage-75",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [
+        "v1.1.7-stage-74"
+      ],
+      "ops": {}
+    },
+    "v1.1.7-stage-76": {
+      "name": "v1.1.7-stage-76",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [
+        "v1.1.7-stage-74",
+        "v1.1.7-stage-75"
+      ],
+      "ops": {}
+    },
+    "v1.1.7-stage-77": {
+      "name": "v1.1.7-stage-77",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [
+        "v1.1.7-stage-76"
+      ],
+      "ops": {}
     }
   },
   "reviews": [],
@@ -15152,6 +15261,265 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.1.6-stage-72",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-10-10T19:27:03.205Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.6-stage-72",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-11T08:06:16.497Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-11T08:06:25.778Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "deps": [
+          "v1.1.7-stage-74"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-11T08:06:26.091Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.1.7-stage-76",
+        "deps": [
+          "v1.1.7-stage-74",
+          "v1.1.7-stage-75"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-11T08:06:26.414Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.1.7-stage-77",
+        "deps": [
+          "v1.1.7-stage-76"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-11T08:15:51.147Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-10-11T08:19:31.634Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "plan_review",
+        "to": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T08:29:20.224Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-10-11T08:30:56.251Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T08:30:56.578Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T08:35:35.990Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-10-11T08:35:40.277Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-10-11T08:35:40.573Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-10-11T08:35:40.869Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "opId": "op-004"
+      }
+    },
+    {
+      "time": "2026-10-11T08:42:19.689Z",
+      "agent": "cli",
+      "action": "scheme_rename",
+      "detail": {
+        "opId": "op-001",
+        "from": "配置面四键与 auto_advance 默认翻转",
+        "to": "配置面四键与 `auto_advance` 默认翻转（T1 + T6）"
+      }
+    },
+    {
+      "time": "2026-10-11T08:42:19.989Z",
+      "agent": "cli",
+      "action": "scheme_rename",
+      "detail": {
+        "opId": "op-002",
+        "from": "双转移表与按 mode 取表访问器（pipeline-schema + flow-manager）",
+        "to": "双转移表与按 mode 取表访问器（T2 + T5）"
+      }
+    },
+    {
+      "time": "2026-10-11T08:42:20.272Z",
+      "agent": "cli",
+      "action": "scheme_rename",
+      "detail": {
+        "opId": "op-003",
+        "from": "级联「工作流模式」与带 stage 形参解析",
+        "to": "级联「工作流模式」与带 stage 形参解析（T4 + T3 解析层）"
+      }
+    },
+    {
+      "time": "2026-10-11T08:42:20.581Z",
+      "agent": "cli",
+      "action": "scheme_rename",
+      "detail": {
+        "opId": "op-004",
+        "from": "单一取表点接入与既有测试对齐 + 全门禁",
+        "to": "单一取表点接入与既有测试对齐 + 全门禁（T3 + T7 + T8）"
+      }
+    },
+    {
+      "time": "2026-10-11T08:42:39.529Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-10-11T08:55:23.075Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T08:55:23.389Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-11T09:07:41.057Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T09:12:11.378Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T09:12:11.706Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T09:18:27.719Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T09:18:28.014Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-74",
         "from": "test_passed",
         "to": "archiving"
       }

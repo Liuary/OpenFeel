@@ -71,6 +71,12 @@ export const PipelineConfigSchema = z.object({
 /** pipeline.yaml 解析后的类型 */
 export type PipelineConfig = z.infer<typeof PipelineConfigSchema>;
 
+/**
+ * 可选顶层键 fast_transitions 的独立容错 Schema（stage-74）。
+ * 非法类型（非对象 / 值非数组）→ 独立判定失败，调用方忽略该键并告警，**不 fail 整体 pipeline 配置**。
+ */
+export const FastTransitionsSchema = z.record(z.string(), z.array(z.string()));
+
 /** 阶段耗时统计 */
 export interface StageStats {
   /** 阶段开始时间（ISO 8601） */

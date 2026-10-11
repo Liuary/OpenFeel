@@ -737,3 +737,41 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.1.6-stage-71（4 commits `e753217`/`7287355`/`62fcb43`/`cdd0953`）；CLI 端到端 `setup --tools claude` → `~/.claude` 仅 `{agents 9, skills 17, CLAUDE.md}`（无 settings.json）；双 harness 二次 setup skipped=**54**；`npm test` **66 文件 / 1189 用例** 0 skipped；`tsc` 0；`lint i18n` **768**；`lint kb` 0（368 引用）；审查 passed（REV-71-001/002 low 非阻塞 open）。
 
 **参见：** v1.1.6-stage-71（plan §二/§八；op-001~004）；`src/core/{global-paths,setup,update,backup}.ts`；`src/commands/{setup,update}.ts`；kb/architecture.md #全局部署架构、#Claude 内容源自立与运行时 3 API；kb/patterns.md #工具注册表 enabled 门控默认守卫、#环境变量路径函数的函数体内读 env 可测试性、#备份 HOME 外 fallback 的 sha8 口径、#重启提醒按 harness 组合参数化；manual/core/{setup,update,global-paths,backup}.md、manual/cli/{setup,commands}.md
+
+## [+] 双模式转移表选择：getValidTargets 单一取表点 + stage→mode→表 三元解析（防第二信源） (2026-10-11)
+
+**背景：v1.1.7-stage-74（双模式引擎，v1.1.7 首阶段）**——「快速迭代模式」（fast）与既有完整链路（full）需共存于同一流水线。若「校验/推进/路径求解/展示」各自维护一份转移表判据，必然出现「同 (stage, mode) 下各出口接受集不一致」的第二信源缺陷（呼应 kb/architecture.md #状态/相位单一事实源 的同族问题）。
+
+**架构结论：转移表选择收敛为三元解析 `stage → mode → 表`，且只有一个取表点。**
+
+- **唯一取表点**：`getValidTargets(fromPhase, mode: WorkflowMode)`（`flow-manager.ts`）。`mode` **无默认值**——编译期强制调用点显式传入，从类型层面封死「漏传 mode 落回某默认表」的可能。取表法则唯一为私有 `resolveTransitionsForMode(mode)`：`fast → this.fastTransitions ?? getDefaultPipelineConfig('fast').transitions`；`full → this.pipelineConfig?.transitions ?? getDefaultPipelineConfig().transitions`。
+- **四调用点全部显式传 stage 派生 mode**（源码检索：定义 1 + 调用 4）：`hasTransition` / `getAvailablePhases` / `findPhasePath` / `canAdvance`，各自经 `resolveStageWorkflowMode(stageName).value` 派生；间接消费者 `buildDownstreamPhases`（经无参 `getAvailablePhases` → `current.stage`，出口 `flow status --verbose`）。**任何 `getValidTargets` 调用点不得使用默认 mode**（静态约束）。
+- **展示与校验同源**：`flow phases` 的运行时转移表经 `getPipelineTransitions(mode)`（同一 `resolveTransitionsForMode`），杜绝「展示与实际不符」；访问器 **无参 = full**（零回归既有断言），fast 分节归下游命令面。
+- **phase 枚举零新增**：fast 仅复用既有 15 phase 的子集（7 键 + `done`），`PIPELINE_PHASES` 未动——「模式」是**图的裁剪**而非新相位。
+- **防第二份表**：`FAST_TRANSITIONS` 常量仅 `flow-manager.ts` 定义 + `getDefaultPipelineConfig('fast')` 消费；命令层/模板层零副本（检索 `plan_pending:\s*\[|transitions:` in `src/commands/` = 0）。`advancePhase`（deprecated，不读转移表）不在读点清单内。
+- **模式语义边界**：`config effective` / `flow status --verbose` = **当前阶段域**（无参）；`resolveStageWorkflowMode(stageId)` 显式 stageId = **任意阶段域**（`flow mode --stage` / 表选择），二者不混用。
+
+**设计理由**：mode 是「同图不同裁剪」，若让每个出口自带缺省 mode，fast/full 混用项目会静默走错表。把「哪张表」收敛到**单一函数**，并用**必传形参**把「选择责任」推给调用点（每个调用点都知道自己在操作哪个 stage），是「单一信源 + 防漏传」的最简结构。
+
+**已知边界**：`fast_transitions` 空对象 `{}` 经 `Object.keys(...).length > 0 ? data : null` 判定为**等同缺失** → 回落内置快线表（REV-74-009；避免「fast 全链静默死锁」）。本仓 `.openfeel/pipeline.yaml` 覆盖 full 表（缺组合键 `review_passed|test_passed`），故「本仓运行时 full 表 ≠ 内置 full 表」，两条验收线须区分（REV-74-004）。
+
+**实证**：v1.1.7-stage-74（op-002/op-003/op-004；执行报告 `.openfeel/users/Liuary/log/op-stage74-report-2026-10-11.md`）——`getValidTargets` 定义 1 + 调用 4 均显式传 mode；`FAST_TRANSITIONS` 仅 1 文件；T7.10 断言同 (stage,mode) 下 `canAdvance`/`findPhasePath`/`getAvailablePhases`/`flow phases` 四者键集双向一致；`flow phases --json` 既有键逐字。
+
+**参见：** v1.1.7-stage-74（plan T3/T4；op-002/003/004；REV-74-001/002/003/004/009）；`src/core/flow-manager.ts` `getValidTargets`/`resolveTransitionsForMode`/`resolveStageWorkflowMode`/`FAST_TRANSITIONS`；`src/core/pipeline-schema.ts` `FastTransitionsSchema`；kb/architecture.md #状态/相位单一事实源、#部署级默认翻转的单一权威；kb/patterns.md #带 stage 形参的级联解析、#模式标记三层载体与记忆语义；manual/core/flow-manager.md
+
+## [+] 部署级默认翻转的单一权威：DEFAULT_CONFIG 与 schema 逐键默认同键值 (2026-10-11)
+
+**背景：v1.1.7-stage-74（T1/T6，裁定 E）**——`auto_advance` 部署级默认由 `disabled` **翻转为 `enabled`**（新建项目默认开启自动闭环），同时新增 `workflow_mode`（default `fast`）。翻转点散落多处（`ConfigDefaultsSchema` 逐键 `.default()`、`DEFAULT_CONFIG`、`DEFAULT_PROFILE`、`ProfilePreferencesSchema`、模板、测试断言），易出现「同键不同默认」。
+
+**架构结论：级联 `builtin` 层默认值的**单一权威 = `DEFAULT_CONFIG`**；`ConfigDefaultsSchema` 的逐键 `.default()` 必须与 `DEFAULT_CONFIG` **同键值**。
+
+- **翻转清单（裁定 E / B）**：`DEFAULT_CONFIG.auto_advance = 'enabled'`、`ConfigDefaultsSchema.auto_advance` 逐键默认同步 `'enabled'`；`DEFAULT_CONFIG.workflow_mode = 'fast'`、`ConfigDefaultsSchema.workflow_mode` 默认 `'fast'`。
+- **为何 schema 默认必须同步**（REV-74-011 复核为**必要**）：`resolveConfigDefaults()` 缺失键路径为 `ConfigDefaultsSchema.shape[key].safeParse(defaults[key])`；若 schema 逐键默认仍为旧值 `'disabled'`，则对 `undefined` 判定成功并返回 `'disabled'`，**覆盖** result 初始化的 `DEFAULT_CONFIG.auto_advance`（`'enabled'`）→ 「全默认 = enabled」的语义必然破缺。故二者必须同键值（单一权威）。
+- **有意** **不** **翻转**：`DEFAULT_PROFILE` / `ProfilePreferencesSchema`（`config.ts`）**保持 `disabled`**——画卷层 = 用户**个人偏好**，与「部署级默认」无关（REV-74-005）。级联最底层 `builtin` 取 `DEFAULT_CONFIG`，profile 层只在画像文件**真实存在且显式声明**时兜底。
+- **副作用面**：`buildCascadeConfig` 的 configDefaults 段按 `Object.entries(defaults)` **仅对显式存在**的键 safeParse 并以原值回填，`.default()` 在该路径**不触发** → `config effective` / `flow status --verbose` 的来源标注不受影响。
+
+**设计理由**：默认值是「多处书写、单点解读」的典型散弹区。把 `DEFAULT_CONFIG` 定为唯一权威、要求 schema 逐键默认对齐，可在「缺失键回退 schema 默认」与「级联 builtin 回退 `DEFAULT_CONFIG`」两条路径上得到同值，消除「schema 默认 ≠ 级联默认」的隐性分叉。
+
+**实证**：v1.1.7-stage-74——`ConfigDefaultsSchema.auto_advance` 由 `disabled→enabled`（executor 自陈偏差，REV-74-011 独立复核确认为**必要**并接受）；`resolveConfigDefaults` 四键实测全 `enabled`/`fast`；隔离 HOME + 无 `config.yaml` → `config effective auto_advance` = `enabled [builtin]`（T7.5 CLI 半段，REV-74-008 补落点）；`DEFAULT_PROFILE`/`ProfilePreferencesSchema` 实测维持 `disabled`。
+
+**参见：** v1.1.7-stage-74（plan T1/T6；op-001；REV-74-005/008/011）；`src/core/config.ts` `DEFAULT_CONFIG`/`ConfigDefaultsSchema`/`resolveConfigDefaults`/`DEFAULT_PROFILE`；kb/architecture.md #双模式转移表选择、#config.yaml meta.version 语义；manual/core/config.md

@@ -91,3 +91,11 @@
 - **理由**：备选「skip + warn（保守）」被否——当用户恰有 `agent` 键时会**静默不交付**（违反 settings 注入为交付核心）；`--tools claude` 为显式选择，覆盖 + 备份保护是「显式 opt-in + 可还原」的合理组合。**不显式排序**——排序会重排用户既有键（churn + 与「逐字保留」精神相悖）。
 - **后果 / 适用边界**：用户 `permissions` 为空/缺失 → 从空对象合并；为非对象（如字符串）→ 以 `{defaultMode:'auto'}` 替换该键（原值仅可经备份还原，D-SET2 边界）。已知行为留痕（REV-73-002）：幂等重跑仍产生新备份（备份先于幂等判定，对齐既有 jsonc 无条件备份口径）。
 - **回滚**：`git revert` 对应 stage-73 commits；备份可人工还原。
+
+### ADR-010：新增 fast（快速迭代）工作流模式 —— 双转移表 + 模式标记驱动
+- **日期**：2026-10-11
+- **状态**：accepted
+- **决策**：在既有完整流水线（full）之外新增 **fast 模式**（`workflow_mode: full|fast`，**默认 fast**）。fast 快线 = `plan_pending→plan_passed→exec_running→review_pending→[review_failed↺]→review_passed→archiving→done`（跳过 `plan_review`/`scheme_*`/`test_*` 共 7 个 phase，**保留 reviewer 单轮 + 失败回环为质量底线**）。实现三原则：① **phase 枚举零新增**；② **双转移表 + 表选择单一权威**（`getValidTargets` 唯一读点按 stage→mode→表选择，防第二信源）；③ **骨架全量铺 + 标记驱动**（plan/ops/deps/status 全量铺，减 Agent 接力不减结构）。模式作用域**阶段级**、记忆**项目级**（最后选择）；标记载体 `config.yaml defaults.workflow_mode` → `status.md「工作流模式」` → `flow.json` 可选冗余（**不参与级联**）。同步裁定：**部署级默认 `auto_advance: enabled`**（`DEFAULT_CONFIG` 由 disabled 翻转，与模式无关）。
+- **理由**：完整流水线每阶段多轮接力成本高、迭代慢；fast 面向轻量变更。备选（新建 phase 枚举 / 单表 + 运行时判空）被否——前者破坏自描述一致性，后者引入第二信源。保留 reviewer 因审查是框架硬性纪律。骨架全量铺而非裁剪，因落盘是 CLI 机械操作不耗 Agent，裁剪反会破坏审计链完整性。
+- **后果 / 适用边界**：fast 下 `flow phases` 须显式标注各模式表与差异（存在视图 vs 推进白名单语义保留）；`pipeline.yaml` 继续覆盖 full 表，fast 用内置表（本仓不启用 `fast_transitions`）；本仓 v1.1.7 自举期**全 full** 验证（防归因混淆）。
+- **回滚**：`git revert` 对应 v1.1.7 各 stage commits；`workflow_mode` 字段移除后行为回落到既有 full 单表。

@@ -202,11 +202,11 @@ describe('stage', () => {
       expect(content).toContain('- **执行模式**：manual');
     });
 
-    it('T6.3：无 config.yaml → 回退 DEFAULT_CONFIG（disabled/manual）', () => {
+    it('T6.3：无 config.yaml → 回退 DEFAULT_CONFIG（enabled/manual）', () => {
       addStage(tmpDir, 'stage-12');
 
       const content = readFileSync(statusPath('stage-12'), 'utf-8');
-      expect(content).toContain('- **自动推进**：disabled');
+      expect(content).toContain('- **自动推进**：enabled');
       expect(content).toContain('- **执行模式**：manual');
     });
   });

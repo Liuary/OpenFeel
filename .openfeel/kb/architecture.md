@@ -794,3 +794,16 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **设计理由**：把「版本收官后的历史搬运」独立为版本粒度分片，收缩活跃 `flow.json` 体积，既兑现用户「避免污染上下文窗口」诉求（本仓为首个 dogfood 受益者），又将「既有三段切分」与「未来需求层（可跨版本）」的语义复杂度分离（归档先行 = 失败可回退面最小）。
 
 **参见：** v1.2.0-stage-78（plan T1~T3；op-001/002；REV-78-006/015）；`src/core/flow-archive/{archive-file,grouping,archive-ops}.ts`；`src/core/plan/path.ts`（`parseStageId`）；`src/core/fs/`（`withFileLock`/`atomicWriteFileSync`）；roadmap `v1.2.0.md` §主题二；kb/patterns.md #归档引擎分层与独立锁模式；kb/troubleshooting.md #可选字段「读侧补齐」的序列化副作用；manual/core/flow-archive.md
+
+## [+] 归档命令面架构：引擎面/命令面分层 + 判据门前置 + 两步事务顺序 + `pipeline` 处置同事务（owner 单一） (2026-10-12)
+
+**决策**：把 stage-78 的**引擎能力**（纯函数 + IO 原语）暴露为 **CLI 控制**的命令面时，采用如下四层约束（`flow archive` 子命令组）：
+
+1. **面分层不越界**：命令面（`src/commands/flow.ts` 的 `flow archive <version>` / `list` / `show`）只做**编排与呈现**；一切版本解析 / 分组切分 / 判据过滤 / 索引管理 / `pipeline` 处置一律经 `src/core/flow-archive/` 的**导出 helper**（**禁命令层第二套解析/切分**，契约 = 函数签名级）。子命令组挂既有 `flow` 命令，**不改顶层命令树**；与既有顶层 `openfeel archive <stage>`（阶段摘要 → `.openfeel/log/archive-*.md`）**职责分离**。
+2. **判据门前置（两步）**：① **版本存在性门**在前——`listArchivableCandidates(data)` 无该 `version` 候选（版本不存在 / 未注册于活跃 flow.json，含已归档版本）→ **exit 1 零写盘**（防空归档覆盖既有归档；`splitForArchive` 对不存在版本返回空集不抛错 + 判据门「全 done」在无候选时 vacuous-true，构成危险源）；② 判据门在后——`allDone !== true`（未 done 阶段）或 `listBlockingOpenRevsForVersion` 非空 → exit 1 零写盘，列未满足项。**覆盖写仅在活跃集仍含该版本条目时允许**（重复执行重跑收敛）。**不设 `--force`**。
+3. **blocking 谓词单一**：`r.blocking !== false && r.status === 'open'`（`blocking` **缺省 = 阻塞**），与全仓唯一谓词同源；版本作用域过滤经 core 单一 helper（复用 `versionOfReviewOp` 同源解析）。
+4. **两步事务顺序 + `pipeline` 处置同事务**：先 `writeArchiveFile`（新增，独立锁 `flow-archive`，与 flow 锁**不嵌套**）→ 成功后内存移除三段 + `addArchivedVersion` + `applyArchivePipelineDisposition`（**纯内存**）→ 最后 `mgr.save()`（后，捕获并发冲突 → exit 2）。顺序不变量：归档文件写成功前**不改** `flow.json`；`save()` 失败 → 归档文件已存在（**幂等可重跑**）、flow.json 原样、exit 2。`pipeline.current` 属被归档版本 → `{stage:'',op:''}`；`phase` 按归档后活跃集重算（**空集 → `'active'`**，与宏观 done 判定空集守卫同效）。处置 **owner = 本阶段**（与归档同一 `save()`），下游 stage-80 仅消费点适配、**不实现处置**。
+
+**设计理由**：破坏性命令（历史永久搬运、无 unarchive）的安全性不靠运行时强制，而靠「**存在性门前置**堵住空集写盘 + **判据门**堵住未收官 + **两步事务顺序**使半完成态可重跑收敛 + **处置同事务**消除 `pipeline` 与 `stages` 双写不一致窗口」四道结构性约束；`--dry-run` 复用同一只读校验路径（四写盘点逐字节零写盘），使「可预览」与「正式执行」共用单一真值来源。
+
+**参见：** v1.2.0-stage-79（plan T1/T3；op-001；REV-79-001/002/005/015）；`src/commands/flow.ts`（`flow archive` 子命令组）；`src/core/flow-archive/{archive-ops,grouping}.ts`（`normalizeArchiveVersion`/`applyArchivePipelineDisposition`/`listBlockingOpenRevsForVersion`）；kb/patterns.md #破坏性命令安全校验清单模式、#事务顺序模式、#`--dry-run` 必须字节级不写盘、#归档引擎分层与独立锁模式；kb/architecture.md #版本分片归档架构；manual/core/flow-archive.md

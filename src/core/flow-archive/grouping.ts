@@ -99,6 +99,19 @@ function versionOfReviewOp(op: string): string | null {
 }
 
 /**
+ * 版本作用域内的「阻塞 open」审查条目（只读纯函数；返回新数组副本，push 不影响 data.reviews）。
+ *
+ * 谓词为**全仓唯一**口径（对齐 `flow-manager.ts:1456`/`:1570`；REV-79-002）：
+ * `r.blocking !== false && r.status === 'open'` —— blocking 缺省（undefined）= 阻塞。
+ * 版本作用域解析与 splitForArchive **同源**（复用本文件私有 versionOfReviewOp）。
+ */
+export function listBlockingOpenRevsForVersion(data: FlowData, version: string): ReviewItem[] {
+  return (data.reviews ?? []).filter(
+    (r) => versionOfReviewOp(r.op) === version && r.blocking !== false && r.status === 'open',
+  );
+}
+
+/**
  * log 条目 → 版本前缀。
  * 唯一读 `detail.stageName`（裁定 T）；缺失 / 非字符串 / 不可解析 → null（保留在 flow.json）。
  * 注意：`detail.stageId` / `detail.stage` 等其它键一律不看（保守裁定，见 D3）。

@@ -1153,3 +1153,18 @@ concurrency:
 **实证**：v1.2.0-stage-78（REV-78-009 / REV-78-015）——`flow-manager.ts:517`（读侧补齐）经任 load→save 注入 `archived_versions: []`；`npm test` 全量绿（无深比较断言触发）→ 保留原样并登记；归档官 close-with-note（留 stage-79/85 评估）。
 
 **参见：** v1.2.0-stage-78（REV-78-009/015；op-002）；`src/core/flow-manager.ts`（`load()` 读侧补齐）；`src/core/flow-archive/archive-ops.ts`（`getArchivedVersions`/`addArchivedVersion` 自防御）；kb/troubleshooting.md #flow.json「内容增量」核验口径必含 `meta.revision` / `meta.updated`；kb/patterns.md #全局状态文件多类条目扩展与短前缀读侧分类；manual/core/flow-archive.md
+
+## [+] 版本归一「方向陷阱」与写盘前路径穿越封堵：引擎键恒带 `v`（去 v 再加 v）+ 探针法校验 version 零写盘拒绝 (2026-10-12)
+
+**坑位 A — 版本归一的「方向」不一致**：引擎键**恒带 `v` 前缀**（`versionOfStageId('v1.1.7-stage-79')` → `v1.1.7`；`splitForArchive`/`listArchivableCandidates` 均以带 `v` 的键比对）。而全仓既有的 `normalizeVersion`（`src/core/plan/roadmap.ts`）语义恰**相反**——其功能是**去掉 `v`**。若命令面直接复用 `normalizeVersion` 归一外部输入（`v1.1.7` / `1.1.7`），则归一结果（`1.1.7`）与引擎键（`v1.1.7`）**错位**，导致存在性门/切分全落空。
+
+- **正解**：命令面归一经 core **导出 helper** `normalizeArchiveVersion(input)`——**trim → 去 `v`（如有）→ 再加 `v`**，canonical **恒带 `v`**；非法 → `null`。**禁**直接复用 `normalizeVersion`（方向相反）。
+- **通用判据**：跨模块复用「归一/解析」函数前，须先核对**归一方向与目标消费方期望形态是否同向**；同名不同向（一个去 `v`、一个要带 `v`）是最隐蔽的坑。校验一律经**探针法复用同一解析器**（`isValidArchiveVersion(s) = versionOfStageId(`${s}-stage-00`) === s`），杜绝第二套正则。
+
+**坑位 B — 写盘前路径穿越封堵**：归档文件路径 `.openfeel/flow-archive/{version}.json` 由 version 拼接；若 version 含 `../`/分隔符，将写出目录外。
+
+- **正解**：`writeArchiveFile` **写盘前**先校验 version 合法性（探针法），非法**抛错零写盘**；`getArchiveFilePath` 仅接受**已校验** version（纵深防御）。**通用判据**：任何「用户输入 → 拼接文件路径 → 写盘」链路，校验必须**在 IO 之前**（fail-fast 零写盘），且底层 IO 原语**自带**二次校验，不依赖调用方自觉。
+
+**实证**：v1.2.0-stage-79（REV-79-004/011/021）——`archive-ops.ts` 导出 `normalizeArchiveVersion`/`isValidArchiveVersion`；`writeArchiveFile` 非法 version 抛错零写盘；T5.4 覆盖「不存在/已归档版本 → 存在性门拒绝 + 空集不得写盘」断言。
+
+**参见：** v1.2.0-stage-79（REV-79-001/004/011；op-001）；`src/core/flow-archive/archive-ops.ts`（`normalizeArchiveVersion`/`isValidArchiveVersion`/`writeArchiveFile`）；`src/core/plan/roadmap.ts`（`normalizeVersion` 去 v 方向）；`src/core/plan/path.ts`（`parseStageId`）；kb/architecture.md #归档命令面架构；kb/patterns.md #归档引擎分层与独立锁模式；manual/core/flow-archive.md

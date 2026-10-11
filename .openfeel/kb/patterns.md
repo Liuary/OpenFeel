@@ -3779,3 +3779,15 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.0-stage-78（3 op；门禁 **68 文件 / 1337 用例 0 failed**、tsc 0、i18n 796、kb 0、build ×2 幂等）——12 导出签名对齐 `ops/deps.yaml` `downstream_contracts`；`flow-archive.test.ts` 31 passed（T4.1 分组 / T4.2 双向无损 / T4.3 幂等 / T4.4 边界 / T4.5 隔离）；本仓 `flow.json` sha1 前后一致（零触碰）。
 
 **参见：** v1.2.0-stage-78（plan T1~T5；op-001/002/003；REV-78-008~017）；`src/core/flow-archive/**`；kb/architecture.md #版本分片归档架构；kb/patterns.md #原子写模式、#建议性文件锁模式、#事务顺序模式、#阶段路径映射 stageId 三格式解析、#全局状态文件多类条目扩展与短前缀读侧分类；manual/core/flow-archive.md
+
+## [+] Commander 父子命令 `--json` 标志传递陷阱：父命令先行消费致子命令 `options.json` 不可达 + 子命令 action 合并 `command.parent?.opts().json` (2026-10-12)
+
+**反模式**：Commander 中**父命令**（命令组）声明了 `--json`，则 `flow archive list --json` 会由**父命令**在派发子命令**之前**先行消费该标志 → 子命令 action 内 `options.json` **恒为 undefined**，`--json` 结构化输出静默失效（无报错、退化为人类输出）。
+
+**正解**：子命令 action 内**显式合并父级 opts**——`const asJson = options.json ?? command.parent?.opts().json;`（子命令 action 的 `(...args, command)` 末参携带该 Command 实例）。已实测：改后 `flow archive list --json` 与 `flow archive show v1.1.7 --json` 两命令均出**纯 JSON 单文档**。**备选否决**：曾评估 `enablePositionalOptions()`（令位置参数不被父选项吞），但该开关影响全局解析语义、牵连既有命令，**否决**改而用父级 opts 合并（改动面单点、零既有命令影响）。
+
+**通用判据**：任何「命令组挂子命令 + 命令组自身可带全局 flag（`--json`/`--quiet`/`--dry-run` 类）」的形态，均须核对**该 flag 是否被父命令提前消费**；子命令若需独立语义，一律经 `command.parent?.opts()` 合并读取，**不得**假设 `options.<flag>` 可信。**验证法**：对子命令 `--json` 与不带 `--json` 两径分别断言输出形态（前者纯 JSON 可 `JSON.parse`，后者人类文案）。
+
+**实证**：v1.2.0-stage-79（REV-79-018，code_review 轮）——审查官实测两命令均出纯 JSON、修复生效后 **closed**；`test/commands/flow.test.ts` T5.5 覆盖 `list`/`show` 的 `--json` 成功与失败两径。
+
+**参见：** v1.2.0-stage-79（REV-79-018；op-002；T5.5）；`src/commands/flow.ts`（`archiveCmd` 子命令 action）；kb/patterns.md #CLI `--json` 结构化输出约定、#命令面收敛与弃用策略；manual/cli/commands.md

@@ -112,7 +112,7 @@
 | # | 议题 | **裁定** | 依据/备注 |
 |:-:|------|----------|-----------|
 | **O1** | 归档粒度 | **版本** = stageId 的版本前缀（`parseStageId` 的 `vX.Y[.Z]` 段，如 `v1.1.7`）；同版本全部阶段一次性成组 | 核验 A12；用户诉求「按版本号归档」 |
-| **O2** | 可归档判据 | 该版本**全部阶段 `phase=done`** + 无该版本 `blocking && open` 的 REV；不满足 → 默认拒绝（exit 非 0 零写盘，列未满足项）；**不做 `--force`** | kb #破坏性命令安全校验清单；版本收官语义 |
+| **O2** | 可归档判据 | **版本存在性门**：活跃 flow.json 无该版本条目（不存在 / 已归档）→ 拒绝零写盘（防空归档覆盖；覆盖写仅限活跃集仍含该版本条目——REV-79-001）；该版本**全部阶段 `phase=done`** + 无该版本 `r.blocking !== false && r.status === 'open'` 的 REV（**全仓唯一谓词**，`blocking` 缺省 = 阻塞——REV-79-002）；不满足 → 默认拒绝（exit 非 0 零写盘，列未满足项）；**不做 `--force`** | kb #破坏性命令安全校验清单；版本收官语义 |
 | **O3** | 与既有 `openfeel archive` 的边界 | **职责分离**：顶层 `openfeel archive <stage>` = 阶段摘要归档（`.openfeel/log/archive-*.md`，archiver 用，**不改**）；本期新增 `openfeel flow archive` 子命令组 = flow.json 版本分片（**不改**顶层命令） | 核验 A16；避免同名混淆（i18n 与 docs 显式区分两概念） |
 | **P** | 归档写盘与 `pipeline` 处置 | ① 归档文件写盘走 fs 工具层（独立锁名 `flow-archive`，不嵌套 flow 锁）；② flow.json 变更走既有 `save()`；③ **顺序不变量**：先写归档文件（新增），成功后 `save()` 移除条目（删除）；④ `pipeline.current.stage` 属被归档版本 → **置空**（或指向下一个活跃阶段，方案期定稿）；⑤ `pipeline.phase` 按归档后活跃集重算（空集语义方案期定稿，空集守卫既有先例 `:1484-1486`）；⑥ 完整消费点清单与「阶段枚举视图随活跃集收缩（文档明示，非回归）」口径见下方『裁定 P 附注』 | 核验 A4/A5/A19；kb #事务顺序模式（先落盘后副作用）+ 「刷新严格早于删除」 |
 | **Q** | 跨版本依赖（裁定①） | `flow.json.meta.archived_versions: string[]`（轻量索引，`flow archive` 追加 + 幂等去重）；`plan stage add --deps` 校验扩展：deps 版本前缀 ∈ `archived_versions` → **视为已满足**；展示层（**完整消费点清单见『裁定 P 附注』**）**不读归档文件**；详查经 `flow archive show <version>` | 核验 A11；「常规路径零触碰归档」原则 |
@@ -172,8 +172,8 @@
 | 阶段 | 主题 | 名称 | 核心交付 | 依赖 | op 估 |
 |------|:--:|------|----------|------|:--:|
 | `v1.2.0-stage-78` | 归档 | 归档核心引擎 | 新建 `src/core/flow-archive/`：归档文件 schema（裁定 U）+ 读/写/列举原语（fs 工具层 + 独立锁）+ 版本分组解析（`parseStageId` 复用，裁定 O1）+ 切分纯函数（stages/reviews/log，裁定 T）+ `meta.archived_versions` 管理（裁定 Q）+ 单测 | — | 3 |
-| `v1.2.0-stage-79` | 归档 | 归档命令面 | `flow archive <version>`（判据门 + `--dry-run` + `--json`）+ `flow archive list` + `flow archive show <version> [--json]` + i18n 双表 + 审计（`archive_flow_version`）+ 单测 | hard: 78 | 3 |
-| `v1.2.0-stage-80` | 归档 | 归档消费点适配与存量迁移 | 跨版本 deps 适配（`plan stage add`，裁定 Q）+ `flow health` 归档一致性检查（裁定 R）+ `pipeline.current`/`phase` 处置（裁定 P）+ **本仓 78 阶段一次性迁移**（备份程序 + 判据门 + 回滚路径成文，裁定 S）+ 端到端（归档后既有命令全绿 + flow.json 体积实测下降） | hard: 78, 79 | 3 |
+| `v1.2.0-stage-79` | 归档 | 归档命令面 | `flow archive <version>`（**版本存在性门** + 判据门 + `--dry-run` + `--json`）+ `flow archive list` + `flow archive show <version> [--json]` + i18n 双表 + 审计（`archive_flow_version`）+ **`pipeline.current`/`phase` 处置（裁定 P；与归档同一事务，owner = 本阶段）** + 单测 | hard: 78 | 3 |
+| `v1.2.0-stage-80` | 归档 | 归档消费点适配与存量迁移 | 跨版本 deps 适配（`plan stage add`，裁定 Q）+ `flow health` 归档一致性检查（裁定 R；**`pipeline` 处置已归 stage-79**——本阶段仅消费点适配 + 迁移 + 健康检查）+ **本仓 78 阶段一次性迁移**（备份程序 + 判据门 + 回滚路径成文，裁定 S）+ 端到端（归档后既有命令全绿 + flow.json 体积实测下降） | hard: 78, 79 | 3 |
 | `v1.2.0-stage-81` | 需求 | 需求核心引擎 | `RequirementData` / `RequirementStatus` 类型 + `FlowData.requirements`（load 补齐）+ `StageData.requirement_id` + 需求 CRUD 与认领原语（add/get/list/update/claim/release）+ ID 分配（REQ-NNN，裁定 F）+ 正文文件原语（裁定 K）+ 单测 | hard: 80 | 3 |
 | `v1.2.0-stage-82` | 需求 | 需求命令面 | `src/commands/req.ts`（10 子命令）+ `src/cli/index.ts` 注册 + i18n 双表 + `--json` 契约 + 退出码语义（并发 2 / 通用 1）+ 单测 | hard: 81 | 3 |
 | `v1.2.0-stage-83` | 需求 | 需求聚合判定与对账 | `computeRequirementAggregate`（独立投影）+ `advanceStagePhase` done / `resetStagePhase` **对称回写**（内存，同事务）+ 存量兼容（`requirement_id` 缺省、`requirements` 缺失零报错）+ health 对账（可选 warn）+ 端到端聚合单测 | hard: 81, 82 | 2 |
@@ -191,7 +191,7 @@ stage-78 ─▶ stage-79 ─▶ stage-80 ─▶ stage-81 ─▶ stage-82 ─▶ 
 
 **为何 8 阶段（而非更少）**：
 
-1. **主题二边界（归档拆分）**：归档「引擎 / 命令面 / 消费点与迁移」三段性质不同——引擎是纯函数与 IO 原语（单测可尽验）；命令面是交互副作用（判据门 / `--dry-run` / i18n / `--json` 契约）；消费点适配 + 存量迁移是**对既有系统的侵入面**（deps 校验 / health / pipeline 处置），风险最高、须独立审查焦点与独立回滚（备份程序）。
+1. **主题二边界（归档拆分）**：归档「引擎 / 命令面 / 消费点与迁移」三段性质不同——引擎是纯函数与 IO 原语（单测可尽验）；命令面是交互副作用（判据门 / `--dry-run` / i18n / `--json` 契约 / `pipeline` 处置〔须与归档同一事务，REV-79-005〕）；消费点适配 + 存量迁移是**对既有系统的侵入面**（deps 校验 / health），风险最高、须独立审查焦点与独立回滚（备份程序）。
 2. **主题一边界（需求流转）**：需求「引擎 / 命令面 / 聚合回写」三段与 v1.1.7 的 74/75 切分同构（引擎纯单测；命令面 TTY/i18n/`--json`）；聚合回写独立成阶段——它触碰 `advanceStagePhase` / `resetStagePhase`（既有推进热点），须独立端到端（「阶段推进 → 需求自动 done」）。
 3. **契约vs收口**：`stage-84`（Agent 行为契约）与 `stage-85`（终局包装）分离——版本收口 op 须为最终 op（v1.1.6/v1.1.7 既有口径）；契约须在冻结前经审查与测试。
 
@@ -326,3 +326,4 @@ stage-78 ─▶ stage-79 ─▶ stage-80 ─▶ stage-81 ─▶ stage-82 ─▶ 
 | 2026-10-11 | openfeel-planner | 初稿（单主题「需求流转系统」）：5 阶段（78~82）；源码核验 30 项；裁定 A~N。 |
 | 2026-10-11 | openfeel-planner | **范围变更修订轮（用户新增主题二「flow.json 归档拆分」）**：v1.2.0 由单主题改**双主题**；阶段扩充为 **8 个（78~85）**——主题二归档 78~80 先行、主题一需求 81~85 顺延；新增裁定 O~W（归档）与执行顺序裁定 S；源码核验表拆为表 A（归档 22 项）+ 表 B（需求 28 项）；版本收口清单与边界、验收、风险、开放问题均双主题化。**只改计划文档，未改源码、未直写 flow.json。** |
 | 2026-10-11 | openfeel-planner | **计划审查 REV 修订轮（v1.2.0-stage-78 plan_review 7 条非阻塞 REV 落实）**：REV-78-001 归档消费点清单完整化（裁定 P ⑥ + 『裁定 P 附注』完整枚举；Q/R 引用；§八.4 / §八.14 / §十一.3 / §十一.11 与 roadmap / deps.yaml invariants 口径统一为「不读 `.openfeel/flow-archive/**` 文件内容、不报错」+ 另立「阶段枚举视图随活跃集收缩（文档明示，非回归）」条目）；REV-78-002 log **1313** 条（原 1306 系测试用例数误植）；REV-78-003 体积口径统一改记字节数 **406280 B**（HEAD `84951ce` 实测，复现 `git cat-file -s HEAD:.openfeel/flow.json`；原 396KB 为 KiB 口径、审查所记 402564 实为 UTF-16 字符数）；REV-78-004 新增「跨主题裁定 X：本仓 v1.2.0 八阶段以 full 运行」并修正 Q1 引用（原引「裁定 L」错位）、裁定 M 备注 Q3→Q4；REV-78-005 核验 A13 行号补 `:794`（restore）；REV-78-006 deps.yaml stage-78 `produces_core` 补 `src/core/flow-manager.ts`（仅 `meta.archived_versions` 可选字段声明 + 读侧补齐）；REV-78-007 裁定 H 补零关联空集守卫。**只改计划文档，未改源码、未直写 flow.json、未推进 phase。** |
+| 2026-10-12 | openfeel-planner | **stage-79 计划审查 REV 修订轮（REV-79-005 落实）**：`pipeline` 处置 **owner 裁定 = stage-79**（处置须与归档同一事务）——§四 stage-79 行补交付项、stage-80 行移除「`pipeline.current`/`phase` 处置」（仅消费点适配 + 迁移 + 健康检查）、「为何 8 阶段」第 1 条同步（stage-80 侵入面 = deps 校验 / health；stage-79 命令面含 `pipeline` 处置）；裁定 O2 口径同步（补版本存在性门 + 谓词改 `r.blocking !== false && r.status === 'open'`，REV-79-001/002）；`deps.yaml` stage-79/stage-80 notes、`downstream_contracts`（新增 stage-79 导出登记）与 `invariants`（版本存在性门）同步。**只改计划文档，未改源码、未直写 flow.json、未推进 phase。** |

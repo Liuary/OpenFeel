@@ -12,6 +12,7 @@ import {
   groupStagesByVersion,
   listArchivableCandidates,
   splitForArchive,
+  listBlockingOpenRevsForVersion,
 } from '../../src/core/flow-archive/grouping.js';
 import {
   writeArchiveFile,
@@ -21,6 +22,9 @@ import {
   getArchivedVersions,
   getArchiveDir,
   getArchiveFilePath,
+  isValidArchiveVersion,
+  normalizeArchiveVersion,
+  applyArchivePipelineDisposition,
 } from '../../src/core/flow-archive/archive-ops.js';
 import {
   ARCHIVE_SCHEMA_VERSION,
@@ -440,7 +444,7 @@ describe('archive-ops（IO 原语与幂等）', () => {
     expect(getArchivedVersions(broken)).toEqual(['v1.1.7']);
   });
 
-  it('load 读侧补齐（REV-78-006）：缺失视为 []，且仅内存补齐不写盘', () => {
+  it('load 不注入 archived_versions（REV-78-015 翻转）：getArchivedVersions 承担「缺失恒等 []」，save 后磁盘不新增该键', () => {
     const flowDir = join(tmpDir, '.openfeel');
     mkdirSync(flowDir, { recursive: true });
     const flowPath = join(flowDir, 'flow.json');
@@ -455,9 +459,18 @@ describe('archive-ops（IO 原语与幂等）', () => {
     writeFileSync(flowPath, text, 'utf-8');
 
     const mgr = new FlowManager(tmpDir);
-    expect(mgr.getData()?.meta.archived_versions).toEqual([]);
-    // 仅内存补齐：磁盘文件逐字节未变（load 不写盘）
+    // 读侧补齐已移除：load 不注入该键（原 REV-78-006 行为翻转）
+    expect(mgr.getData()?.meta.archived_versions).toBeUndefined();
+    // 「缺失恒等 []」语义由 getArchivedVersions 承担（读侧宽容）
+    expect(getArchivedVersions(mgr.getData()!)).toEqual([]);
+    // load 不写盘：磁盘文件逐字节未变
     expect(readFileSync(flowPath, 'utf-8')).toBe(text);
+
+    // load→save 后磁盘不新增该键（序列化副作用已消除）；同时 revision 递增证明写盘确实发生
+    mgr.save();
+    const after = readFileSync(flowPath, 'utf-8');
+    expect(after).not.toContain('archived_versions');
+    expect((JSON.parse(after) as FlowData).meta.revision).toBe(4);
   });
 });
 
@@ -565,5 +578,118 @@ describe('隔离（T4.5）', () => {
     for (const f of ['archive-file.ts', 'grouping.ts', 'archive-ops.ts']) {
       expect(readSrc(f)).not.toMatch(/process\.cwd|homedir/);
     }
+  });
+});
+
+// ═══════════════════════════════════════════════
+// 命令面 helper（stage-79 op-001）
+// ═══════════════════════════════════════════════
+
+/** 构造可配置 status/blocking 的 ReviewItem（未传 blocking 则不写该键，模拟缺省） */
+function makeRev(op: string, opts: { status?: ReviewItem['status']; blocking?: boolean } = {}): ReviewItem {
+  reviewSeq += 1;
+  const item: ReviewItem = {
+    id: `REV-TEST-${reviewSeq}`,
+    op,
+    status: opts.status ?? 'open',
+    priority: 'high',
+    title: '标题',
+    filed_by: 'test',
+    filed_at: '',
+  };
+  if (opts.blocking !== undefined) {
+    item.blocking = opts.blocking;
+  }
+  return item;
+}
+
+describe('命令面 helper（stage-79 op-001）', () => {
+  describe('normalizeArchiveVersion', () => {
+    it('前缀兼容（去 v 再加 v，canonical 恒带 v）', () => {
+      expect(normalizeArchiveVersion('v1.1.7')).toBe('v1.1.7');
+      expect(normalizeArchiveVersion('1.1.7')).toBe('v1.1.7');
+      expect(normalizeArchiveVersion('1.1')).toBe('v1.1');
+      expect(normalizeArchiveVersion(' 1.1.7 ')).toBe('v1.1.7');
+    });
+
+    it('非法输入 → null（空串 / 仅 v / 双 v / 非版本形态 / 路径穿越）', () => {
+      expect(normalizeArchiveVersion('vv1.1.7')).toBeNull();
+      expect(normalizeArchiveVersion('')).toBeNull();
+      expect(normalizeArchiveVersion('v')).toBeNull();
+      expect(normalizeArchiveVersion('abc')).toBeNull();
+      expect(normalizeArchiveVersion('../x')).toBeNull();
+    });
+  });
+
+  describe('isValidArchiveVersion', () => {
+    it('带 v 前缀的版本形态合法；空串 / 缺 v / 非版本形态非法', () => {
+      expect(isValidArchiveVersion('v1.1.7')).toBe(true);
+      expect(isValidArchiveVersion('v4')).toBe(true);
+      expect(isValidArchiveVersion('')).toBe(false);
+      expect(isValidArchiveVersion('1.1.7')).toBe(false);
+      expect(isValidArchiveVersion('vabc')).toBe(false);
+    });
+  });
+
+  describe('listBlockingOpenRevsForVersion', () => {
+    it('blocking 缺省（undefined）= 阻塞且 open → 命中', () => {
+      const hit = makeRev('v1.1.7-stage-73.op-001', { status: 'open' });
+      const data = makeData({ reviews: [hit] });
+      expect(listBlockingOpenRevsForVersion(data, 'v1.1.7').map((r) => r.id)).toEqual([hit.id]);
+    });
+
+    it('blocking:false + open → 不命中；blocking:true + closed → 不命中；其它版本 → 不命中', () => {
+      const nonBlocking = makeRev('v1.1.7-stage-73.op-001', { status: 'open', blocking: false });
+      const closedBlocking = makeRev('v1.1.7-stage-73.op-002', { status: 'closed', blocking: true });
+      const otherVersion = makeRev('v1.0.0-stage-01.op-001', { status: 'open' });
+      const data = makeData({ reviews: [nonBlocking, closedBlocking, otherVersion] });
+      expect(listBlockingOpenRevsForVersion(data, 'v1.1.7')).toEqual([]);
+    });
+
+    it('纯 stageId op（无 .op-NNN 锚定）同样按版本作用域解析', () => {
+      const hit = makeRev('v1.1.7-stage-73', { status: 'open' });
+      const data = makeData({ reviews: [hit] });
+      expect(listBlockingOpenRevsForVersion(data, 'v1.1.7').map((r) => r.id)).toEqual([hit.id]);
+    });
+
+    it('返回新数组副本：push 不影响 data.reviews', () => {
+      const data = makeData({ reviews: [makeRev('v1.1.7-stage-73.op-001', { status: 'open' })] });
+      const result = listBlockingOpenRevsForVersion(data, 'v1.1.7');
+      result.push(makeRev('v1.1.7-stage-73.op-002'));
+      expect(data.reviews).toHaveLength(1);
+    });
+  });
+
+  describe('applyArchivePipelineDisposition', () => {
+    it('current 属该版本 → 置空且 currentCleared=true；op 同清', () => {
+      const data = makeData({
+        stages: { 'v1.1.7-stage-73': makeStage('done') },
+      });
+      data.pipeline.current = { stage: 'v1.1.7-stage-73', op: 'op-001' };
+      const disposed = applyArchivePipelineDisposition(data, 'v1.1.7');
+      expect(disposed.currentCleared).toBe(true);
+      expect(data.pipeline.current).toEqual({ stage: '', op: '' });
+    });
+
+    it('current 属其它版本 → 不变且 currentCleared=false', () => {
+      const data = makeData({ stages: { 'v1.1.7-stage-73': makeStage('done') } });
+      data.pipeline.current = { stage: 'v1.0.0-stage-01', op: 'op-001' };
+      const disposed = applyArchivePipelineDisposition(data, 'v1.1.7');
+      expect(disposed.currentCleared).toBe(false);
+      expect(data.pipeline.current).toEqual({ stage: 'v1.0.0-stage-01', op: 'op-001' });
+    });
+
+    it('phase 重算三态：空集 → active / 全 done → done / 混合 → active', () => {
+      const empty = makeData({ stages: {} });
+      expect(applyArchivePipelineDisposition(empty, 'v1.1.7').phase).toBe('active');
+
+      const allDone = makeData({ stages: { 'v1.1.7-stage-74': makeStage('done') } });
+      expect(applyArchivePipelineDisposition(allDone, 'v1.1.7').phase).toBe('done');
+
+      const mixed = makeData({
+        stages: { 'v1.1.7-stage-74': makeStage('done'), 'v1.1.7-stage-75': makeStage('exec_running') },
+      });
+      expect(applyArchivePipelineDisposition(mixed, 'v1.1.7').phase).toBe('active');
+    });
   });
 });

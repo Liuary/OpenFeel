@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-12-Liuary-002.md](2026/10/12/2026-10-12-Liuary-002.md) | Liuary | 阶段 v1.2.0-stage-79 完成 |
 | [2026-10-12-Liuary-001.md](2026/10/12/2026-10-12-Liuary-001.md) | Liuary | 阶段 v1.2.0-stage-78 完成 |
 | [2026-10-11-Liuary-019.md](2026/10/11/2026-10-11-Liuary-019.md) | Liuary | 阶段 v1.1.7-stage-77 完成 |
 | [2026-10-11-Liuary-018.md](2026/10/11/2026-10-11-Liuary-018.md) | Liuary | 阶段 v1.1.7-stage-76 完成 |
@@ -31,7 +32,6 @@
 | [2026-10-03-Liuary-026.md](2026/10/03/2026-10-03-Liuary-026.md) | Liuary | 阶段 v1.1.5-stage-66 完成 |
 | [2026-10-03-Liuary-025.md](2026/10/03/2026-10-03-Liuary-025.md) | Archiver | **stage-66 归档完成（全局部署版本事实源与检测核心 — D-A/D-D，v1.1.5 首阶段）**——写入侧刷新 `openfeel_version`（`setup`/`update` save 之前，消除升级后永久假漂移根因）+ `deployment-check.ts` 只读四态检测（`ok`/`mismatch`/`missing`/`unknown`）+ 门控纯函数；隔离 HOME 端到端（检测前后全局 state 字节 + mtime 不变）；**本阶段不接 CLI**（归 stage-67）；门禁 **63 文件 / 1113 用例 0 skipped**、`tsc` 0、`lint i18n` **753**、`lint kb` 0、build ×2 幂等不复活；审查 **passed**（REV-001~004 全 low 非阻塞 open，REV-002 归档官就地调序，REV-003/004 为 stage-67 须知）；无新 Bug；知识沉淀 1 条（patterns）；**M22 done**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-03-Liuary-024.md](2026/10/03/2026-10-03-Liuary-024.md) | Liuary | v1.1.5-stage-66.op-003 执行通过 |
-| [2026-10-03-Liuary-023.md](2026/10/03/2026-10-03-Liuary-023.md) | Liuary | v1.1.5-stage-66.op-002 执行通过 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

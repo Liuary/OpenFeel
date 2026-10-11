@@ -23,7 +23,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath } from '../core/plan/path.js';
 import { getConfigFieldLegalValues, setConfigValue } from '../core/config.js';
@@ -32,6 +32,9 @@ import { MetricsStore } from '../core/metrics.js';
 import { addReviewEntry } from '../core/view/entry.js';
 import { handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
+import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
+import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
+import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile } from '../core/flow-archive/archive-ops.js';
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -1623,6 +1626,239 @@ export function registerFlowCommand(program: Command): void {
         console.error(t('flow.checkpoint.restoreFailTmpl', lang, { file }));
         process.exit(1);
       }
+    });
+
+  // flow archive <version> — flow.json 版本分片归档（裁定 O2；与顶层 openfeel archive〔阶段摘要〕职责分离，裁定 O3）
+  const archiveCmd = flow
+    .command('archive')
+    .description('flow.json 版本分片归档（按版本号归档已收官历史）')
+    .argument('<version>', '版本号（如 v1.1.7；前缀 v 可省略）')
+    .option('--dry-run', '仅预览（判据门照常校验；零写盘）')
+    .option('--json', '以 JSON 输出 (machine-readable, single JSON document)')
+    .action((versionInput: string, options: { dryRun?: boolean; json?: boolean }) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      const mgr = createManager();
+      // --json 失败出口统一：纯 JSON 单文档 + exit 1（不混人类文案、不走 stderr）
+      const failJson = (payload: Record<string, unknown>): void => {
+        console.log(JSON.stringify({ schemaVersion: 1, ...payload }, null, 2));
+        process.exitCode = 1;
+      };
+      if (!mgr.isLoaded()) {
+        if (options.json) { failJson({ error: 'no-init' }); return; }
+        console.error(t('common.errorNoInit', lang));
+        process.exitCode = 1;
+        return;
+      }
+      // 版本归一（REV-79-004）：去 v 再加 v；非法 → exit 1 零写盘
+      const version = normalizeArchiveVersion(versionInput);
+      if (!version) {
+        if (options.json) { failJson({ error: 'invalid-version', input: versionInput }); return; }
+        console.error(t('flow.archive.invalidVersionTmpl', lang, { input: versionInput }));
+        process.exitCode = 1;
+        return;
+      }
+      const data = mgr.getData()!;
+      // 版本存在性门（前置；REV-79-001）：无候选（不存在/已归档）→ 拒绝零写盘；覆盖写仅限活跃集仍含该版本条目
+      const candidate = listArchivableCandidates(data).find((c) => c.version === version);
+      if (!candidate) {
+        if (options.json) { failJson({ error: 'version-not-active', version }); return; }
+        console.error(t('flow.archive.versionNotActiveTmpl', lang, { version }));
+        process.exitCode = 1;
+        return;
+      }
+      // 判据门：全 done（candidate.allDone 空集守卫）+ 无 blocking open REV（全仓唯一谓词，REV-79-002）
+      const notDone = candidate.stages.filter((id) => data.stages[id]?.phase !== 'done');
+      const blockingOpen = listBlockingOpenRevsForVersion(data, version);
+      if (!candidate.allDone || blockingOpen.length > 0) {
+        if (options.json) {
+          failJson({ error: 'gate-rejected', version, notDone, blockingOpen: blockingOpen.map((r) => r.id) });
+          return;
+        }
+        if (notDone.length > 0) {
+          console.error(t('flow.archive.gateNotDoneTitleTmpl', lang, { version, n: String(notDone.length) }));
+          for (const id of notDone) {
+            console.error(t('flow.archive.gateItemTmpl', lang, { item: id + ' [' + (data.stages[id]?.phase ?? '') + ']' }));
+          }
+        }
+        if (blockingOpen.length > 0) {
+          console.error(t('flow.archive.gateBlockingRevTitleTmpl', lang, { version, n: String(blockingOpen.length) }));
+          for (const r of blockingOpen) {
+            console.error(t('flow.archive.gateItemTmpl', lang, { item: r.id + ': ' + r.title + ' (priority=' + r.priority + ')' }));
+          }
+        }
+        console.error(t('flow.archive.gateRejected', lang));
+        process.exitCode = 1;
+        return;
+      }
+      // 切分（纯函数；禁命令层第二套解析/切分）
+      const { archive, remainder } = splitForArchive(data, version);
+      const counts = archive.counts;
+      // 装配（REV-79-009）：SplitResult.archive 不含 schemaVersion / archived_at
+      const file: ArchiveFile = { ...archive, schemaVersion: ARCHIVE_SCHEMA_VERSION, archived_at: new Date().toISOString() };
+      // --dry-run：纯内存推演（不写归档文件 / 不 addArchivedVersion / 不 appendLog / 不 save）——四写盘点零触碰
+      if (options.dryRun) {
+        // 深拷 pipeline（REV-79-015）：处置 helper 会就地改 current/phase，预览不得污染 live data
+        const previewData: FlowData = {
+          ...data,
+          stages: remainder.stages,
+          reviews: remainder.reviews,
+          log: remainder.log,
+          pipeline: { ...data.pipeline, current: { ...data.pipeline.current } },
+        };
+        const preview = applyArchivePipelineDisposition(previewData, version);
+        if (options.json) {
+          console.log(JSON.stringify({ schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log, dryRun: true }, null, 2));
+          return;
+        }
+        console.log(t('flow.archive.previewTmpl', lang, { version, stages: String(counts.stages), reviews: String(counts.reviews), log: String(counts.log) }));
+        console.log(t('flow.archive.pipelineTmpl', lang, {
+          current: preview.currentCleared ? t('common.none', lang) : (previewData.pipeline.current.stage || t('common.none', lang)),
+          phase: preview.phase,
+        }));
+        console.log(t('flow.archive.previewNoWrite', lang));
+        return;
+      }
+      // ① 先写归档文件（新增；独立锁 flow-archive，与 flow 锁不嵌套）
+      try {
+        writeArchiveFile(projectPath, file);
+      } catch (err) {
+        // 写盘失败（REV-79-013）：内存未改动（移除/索引/审计均在其后），无需回滚；exit 1 零 flow.json 变更
+        if (options.json) { failJson({ error: 'archive-write-failed', version }); return; }
+        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
+        process.exitCode = 1;
+        return;
+      }
+      // ② 内存移除（stages / reviews / log 三段）
+      data.stages = remainder.stages;
+      data.reviews = remainder.reviews;
+      data.log = remainder.log;
+      // ③ 索引（幂等去重；纯内存）
+      const added = addArchivedVersion(data, version);
+      // ④ pipeline 处置（纯内存；空集 → active，与 flow-manager.ts:1495-1496 守卫同效）
+      const disposed = applyArchivePipelineDisposition(data, version);
+      // ⑤ 审计（须晚于 ②，记录在归档后 flow.json——不混入被归档段）
+      mgr.appendLog({ time: '', agent: 'cli', action: 'archive_flow_version', detail: { version, stages: counts.stages, reviews: counts.reviews, log: counts.log } });
+      // ⑥ 后 save()（顺序不变量：归档文件写成功之前不改 flow.json）
+      try {
+        mgr.save();
+      } catch (err) {
+        if (isFlowConcurrentError(err)) {
+          handleConcurrentConflict(err, lang); // exit 2（归档文件已落盘；重跑幂等收敛）
+          return;
+        }
+        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
+        process.exitCode = 1;
+        return;
+      }
+      if (options.json) {
+        console.log(JSON.stringify({ schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log, dryRun: false }, null, 2));
+        return;
+      }
+      if (added) {
+        console.log(t('flow.archive.doneTmpl', lang, { version, stages: String(counts.stages), reviews: String(counts.reviews), log: String(counts.log) }));
+      } else {
+        console.log(t('flow.archive.rearchivedTmpl', lang, { version }));
+      }
+      console.log(t('flow.archive.pipelineTmpl', lang, {
+        current: disposed.currentCleared ? t('common.none', lang) : (data.pipeline.current.stage || t('common.none', lang)),
+        phase: disposed.phase,
+      }));
+    });
+
+  // flow archive list — 列出已归档版本及计数（只读；引擎字典序）
+  archiveCmd
+    .command('list')
+    .description('列出已归档版本及计数（只读）')
+    .option('--json', '以 JSON 输出 (machine-readable, single JSON document)')
+    .action((options: { json?: boolean }, command: Command) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      // 父命令 archive 亦声明 --json，Commander 派发子命令前会先由父命令消费该标志
+      // → 合并父级 opts（否则 `flow archive list --json` 的 --json 不可达；REV-79-018）
+      const json = options.json === true || command.parent?.opts().json === true;
+      // 引擎字典序（零命令层第二套排序）；逐文件 counts 经读侧复用（损坏 → null）
+      const rows = listArchiveVersions(projectPath).map((v) => ({
+        version: v,
+        counts: readArchiveFile(projectPath, v)?.counts ?? null,
+      }));
+      if (json) {
+        console.log(JSON.stringify({ schemaVersion: 1, versions: rows }, null, 2));
+        return;
+      }
+      if (rows.length === 0) {
+        console.log(t('flow.archive.list.empty', lang));
+        return;
+      }
+      console.log(t('flow.archive.list.title', lang));
+      for (const r of rows) {
+        if (r.counts) {
+          console.log(t('flow.archive.list.itemTmpl', lang, {
+            version: r.version, stages: String(r.counts.stages), reviews: String(r.counts.reviews), log: String(r.counts.log),
+          }));
+        } else {
+          console.log(t('flow.archive.list.unreadableTmpl', lang, { version: r.version }));
+        }
+      }
+      // 只读保证：不 save()、不 appendLog、不读 flow.json
+    });
+
+  // flow archive show <version> — 查看指定归档版本（只读）
+  archiveCmd
+    .command('show')
+    .description('查看指定归档版本（只读）')
+    .argument('<version>', '版本号（如 v1.1.7；前缀 v 可省略）')
+    .option('--json', '以 JSON 输出（全量，含 log / reviews）')
+    .action((versionInput: string, options: { json?: boolean }, command: Command) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      // 同 list：合并父级 --json（REV-79-018）
+      const json = options.json === true || command.parent?.opts().json === true;
+      const available = listArchiveVersions(projectPath);
+      // 版本归一（前缀兼容）：非法 → exit 1 零写盘
+      const version = normalizeArchiveVersion(versionInput);
+      if (!version) {
+        if (json) {
+          console.log(JSON.stringify({ schemaVersion: 1, error: 'invalid-version', input: versionInput, available }, null, 2));
+          process.exitCode = 1;
+          return;
+        }
+        console.error(t('flow.archive.invalidVersionTmpl', lang, { input: versionInput }));
+        process.exitCode = 1;
+        return;
+      }
+      const file = readArchiveFile(projectPath, version);
+      if (!file) {
+        if (json) {
+          console.log(JSON.stringify({ schemaVersion: 1, error: 'not-found', version, available }, null, 2));
+          process.exitCode = 1;
+          return;
+        }
+        console.error(t('flow.archive.show.notFoundTmpl', lang, {
+          version, versions: available.length > 0 ? available.join(', ') : t('common.none', lang),
+        }));
+        process.exitCode = 1;
+        return;
+      }
+      // --json = 全量载荷（ArchiveFile 原文自带 schemaVersion:1，含 log / reviews）——显式请求才取全量（REV-79-003）
+      if (json) {
+        console.log(JSON.stringify(file, null, 2));
+        return;
+      }
+      console.log(t('flow.archive.show.titleTmpl', lang, { version, at: typeof file.archived_at === 'string' ? file.archived_at : '' }));
+      console.log(t('flow.archive.show.countsTmpl', lang, {
+        stages: String(file.counts.stages), reviews: String(file.counts.reviews), log: String(file.counts.log),
+      }));
+      console.log(t('flow.archive.show.stagesLabel', lang));
+      const entries = Object.entries(file.stages ?? {});
+      if (entries.length === 0) {
+        console.log(t('common.noData', lang));
+      } else {
+        for (const [id, stage] of entries) {
+          console.log(t('flow.archive.show.stageLineTmpl', lang, { stage: id, phase: stage?.phase ?? '' }));
+        }
+      }
+      console.log(t('flow.archive.show.fullHint', lang));
     });
 
   // flow health [--quick]

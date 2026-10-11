@@ -38,11 +38,14 @@ stages:
     est_ops: 3
     produces_core:
       - src/commands/flow.ts
+      - src/core/flow-archive/grouping.ts
+      - src/core/flow-archive/archive-ops.ts
+      - src/core/flow-manager.ts
       - src/core/i18n-data/zh-CN.ts
       - src/core/i18n-data/en.ts
       - test/commands/flow.test.ts
       - test/core/flow-archive.test.ts
-    notes: "flow archive 子命令组：`flow archive <version>`（判据门：该版本全 done + 无 blocking open REV，不满足 exit 非 0 零写盘列未满足项，裁定 O2；--dry-run 逐字节零写盘；--json）+ `flow archive list` + `flow archive show <version> [--json]`（按需读取，不进常规路径）+ 审计（archive_flow_version）+ i18n 双表（新基线显式登记）。**顺序不变量**：先写归档文件（新增），成功后 save() 移除 flow.json 条目（删除）（裁定 P；kb #事务顺序模式）。pipeline.current / phase 处置（裁定 P）——置空/指向与空集语义按方案期定稿（开放问题 Q3）。"
+    notes: "flow archive 子命令组：`flow archive <version>`（**版本存在性门**：`listArchivableCandidates` 无该 version 候选〔不存在/已归档〕→ exit 1 零写盘 + 文案区分「版本未注册于活跃 flow.json」；判据门：该版本全 done + 无 `r.blocking !== false && r.status === 'open'` REV〔全仓唯一谓词，REV-79-002〕，不满足 exit 非 0 零写盘列未满足项，裁定 O2；--dry-run 逐字节零写盘；--json〔人类 = counts + stages 概览 / --json = 全量 + schemaVersion:1；失败 = 纯 JSON 单文档 exit 1；REV-79-003〕；覆盖写仅限活跃集仍含该版本条目〔防空归档覆盖，REV-79-001〕）+ `flow archive list`〔引擎字典序〕+ `flow archive show <version> [--json]`（按需读取，不进常规路径）+ 审计（archive_flow_version）+ i18n 双表（含 6 个 arg/option help 键；新基线显式登记）。**顺序不变量**：先写归档文件（新增），成功后 save() 移除 flow.json 条目（删除）（裁定 P；kb #事务顺序模式）。**pipeline.current / phase 处置 owner = 本阶段**（处置与归档同一事务；helper 落点单一 src/core/flow-archive/；空集 → phase=active，与 :1494-1496 守卫同效；REV-79-005）。**REV-78-015 定稿**：随 T1 顺带移除 flow-manager.ts load() 读侧补齐（『缺失 ≡ []』由 getArchivedVersions 承担；净减法）。"
 
   v1.2.0-stage-80:
     name: 归档消费点适配与存量迁移（本仓自举）
@@ -59,7 +62,7 @@ stages:
       - test/core/flow-manager.test.ts
       - test/commands/flow.test.ts
       - .openfeel/flow.json
-    notes: "消费点适配：① 跨版本 deps（plan stage add --deps：deps 版本前缀 ∈ meta.archived_versions → 视为已满足；未注册且未归档仍拒绝，裁定 Q；核验 A11）；② flow health 归档一致性检查项（archived_versions ↔ flow-archive/ 文件对账 + flow.json 又含已归档版本阶段 → warn 不改退出码，裁定 R；核验 A14）；③ pipeline.current/phase 归档后处置落地（裁定 P）。**本仓自举迁移（T-自举）**：按 9 个版本组（v1.0.0/v1.1.0/v1.1.1/v1.1.2/v1.1.3/v1.1.4/v1.1.5/v1.1.6/v1.1.7）执行归档——程序 = 全量备份（flow.json 至备份目录 + SHA256）+ 逐版本判据门 + --dry-run 先行 + 回滚路径成文；**执行前用户确认**（开放问题 Q9；裁定 S）。端到端：归档后既有命令全绿 + flow.json 体积实测前后对比记录。"
+    notes: "消费点适配：① 跨版本 deps（plan stage add --deps：deps 版本前缀 ∈ meta.archived_versions → 视为已满足；未注册且未归档仍拒绝，裁定 Q；核验 A11）；② flow health 归档一致性检查项（archived_versions ↔ flow-archive/ 文件对账 + flow.json 又含已归档版本阶段 → warn 不改退出码，裁定 R；核验 A14）；③ **不实现** pipeline 处置——owner = stage-79（已随归档同一事务落地，REV-79-005）；本阶段仅消费点适配 + 迁移 + 健康检查。**本仓自举迁移（T-自举）**：按 9 个版本组（v1.0.0/v1.1.0/v1.1.1/v1.1.2/v1.1.3/v1.1.4/v1.1.5/v1.1.6/v1.1.7）执行归档——程序 = 全量备份（flow.json 至备份目录 + SHA256）+ 逐版本判据门 + --dry-run 先行 + 回滚路径成文；**执行前用户确认**（开放问题 Q9；裁定 S）。端到端：归档后既有命令全绿 + flow.json 体积实测前后对比记录。"
 
   v1.2.0-stage-81:
     name: 需求核心引擎
@@ -165,6 +168,7 @@ invariants:
   - "phase 枚举零新增（15 项不变）；checkpoint_mapping / phase_corrections / advanceAccepted 语义不变（两主题共用）"
   - "常规读取路径零触碰归档：消费点清单全员（大计划 §三 裁定 P 附注；flow status/overview/current/ops list/log/wizard/advance/stage/plan stage add/config --sync-stages 等）不读 .openfeel/flow-archive/** 文件内容（flow health 对账仅读目录清单级）；阶段枚举视图随活跃集收缩（文档明示，非回归）"
   - "归档两步事务顺序：先写归档文件（新增），成功后 save() 移除 flow.json 条目（删除）；同版本重复归档幂等"
+  - "归档请求版本存在性门：活跃 flow.json 无该版本条目（不存在/已归档）→ 拒绝零写盘；覆盖写仅限活跃集仍含该版本条目（防空归档覆盖既有归档；本版无 unarchive，REV-79-001）"
   - "跨版本依赖经 meta.archived_versions 轻量索引判定（版本前缀 ∈ 索引 → 视为已满足）；展示层不读归档"
   - "需求状态为阶段 phase 的聚合投影（方向单一：phase → 需求状态）；不得由需求状态前推阶段 phase（对齐 ADR-003）"
   - "需求所有写入经 FlowManager.save()（锁 + revision 乐观锁 + 原子写 + .bak）；不新增写盘点"
@@ -178,6 +182,8 @@ invariants:
 downstream_contracts:
   - name: "src/core/flow-archive/ :: 归档原语（stage-78 交付，stage-79/80 消费）"
     change: "建议签名（方案期可微调，但语义先冻结）：`groupStagesByVersion(stages): Map<string, string[]>`（版本前缀分组，parseStageId 复用）；`splitForArchive(data, version): { archive: ArchiveFile; remainder: Partial<FlowData> }`（纯函数切分：stages/reviews/log + 保留集）；`writeArchiveFile(projectPath, archive): void`（fs 工具层 + 独立锁 `flow-archive` + 原子写）；`listArchiveVersions(projectPath): string[]`；`readArchiveFile(projectPath, version): ArchiveFile | null`；`addArchivedVersion(data, version): void`（幂等去重）。stage-79 命令层**零第二套解析/切分**。"
+  - name: "src/core/flow-archive/ :: 命令面新增导出（stage-79 交付，stage-80 消费）"
+    change: "① 版本校验/归一 helper（探针法复用 parseStageId；输入归一 =「去 v 后再加 v」，canonical 恒带 v；签名与命名方案期定稿，REV-79-004）；② 「版本作用域 blocking open REV」谓词 helper（谓词恒为 `r.blocking !== false && r.status === 'open'`，复用 versionOfReviewOp 同源解析；禁命令层第二套，REV-79-002）；③ `pipeline` 处置 helper（裁定 P；纯内存，命令层统一 save()；REV-79-005）。三者文件落点均在 src/core/flow-archive/ 内（禁 flow-manager.ts / 命令层内联）。"
   - name: "src/core/req/ :: 需求原语（stage-81 交付，stage-82/83 消费）"
     change: "建议签名：`addRequirement(data, { title, targetVersion?, priority?, source? }): RequirementData`（ID = max+1，REQ-NNN；幂等/冲突语义于方案期冻结）；`getRequirement(data, id): RequirementData | null`；`listRequirements(data, filter?): RequirementData[]`（返回副本，核验 B8 范式）；`claimRequirement(data, id, owner): Result`（占用校验：已占用 → 错误码，**不写盘**）；`releaseRequirement(data, id): Result`；`updateRequirement(data, id, patch): Result`；`computeRequirementAggregate(stages, requirementId): { stageCount, doneCount, aggregate }`（**纯投影**，stage-83 交付但接口于 stage-81 登记）；`syncRequirementStatus(data, stageId): string[]`（done/reset 对称回写入口，纯内存，返回受影响需求列表）。"
   - name: "src/core/flow-manager.ts :: FlowData / StageData 字段契约"

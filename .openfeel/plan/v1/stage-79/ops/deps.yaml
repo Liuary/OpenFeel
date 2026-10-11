@@ -1,0 +1,124 @@
+# stage-79 op 依赖声明
+# 由 openfeel-schemer 生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.2.0-stage-79
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-12"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.0-stage-78
+    type: hard
+    status: done
+    reason: "归档引擎 12 导出（函数签名级契约，见 stage-78/ops/deps.yaml downstream_contracts）已验证可用；本阶段命令层直接消费，零第二套解析/切分（禁复制 groupStagesByVersion / splitForArchive）。"
+  - upstream: v1.1.7-stage-77
+    type: soft
+    status: done
+    reason: "v1.1.7 收官基线：CLI 1.1.7 / lint i18n 796 / lint kb 0 / 测试 67 文件 + 1306 用例（登记值）。本阶段新基线 826 在此上登记。"
+  - downstream: v1.2.0-stage-80
+    type: hard
+    note: "消费本阶段新增导出（版本归一/归一 isValid、版本作用域谓词、pipeline 处置）与 flow archive 命令；跨版本 deps 适配（裁定 Q）+ flow health 归档一致性（裁定 R）+ 本仓存量迁移（裁定 S）复用 `flow archive <version>` 命令与 `listArchiveVersions` / `writeArchiveFile` 原语。"
+  - downstream: npm publish / git push / CI / commit
+    type: hard
+    note: "本阶段不执行 npm publish、不 git push、不改 CI、不手工直写 flow.json（运行时归档经 FlowManager.save()；op 注册经 plan scheme register CLI）；版本保持 1.1.7（收口归 stage-85）。提交一律精确 git add（含 ops/ 四文件），禁 git add -A。"
+
+# 本阶段 3 op：op-001（T1 执行命令 + T3 处置 + flow-archive 补丁 + REV-78-015，无前置）
+#   → op-002（T2 只读 list/show + T4 其余 i18n，hard: op-001）
+#   → op-003（T5.7 零触碰可执行验证 + T6 全门禁，hard: op-002；本阶段最终 op）。
+# 依赖真实性：
+#   op-002 hard 依赖 op-001 —— 同一 src/commands/flow.ts 的 archiveCmd 变量续写；i18n 双表与 test/commands/flow.test.ts 同文件串行追加；
+#     且 op-002 的 show 复用 op-001 已加的 normalizeArchiveVersion import。
+#   op-003 hard 依赖 op-002 —— 最后编辑同一测试文件；门禁须覆盖 op-001+op-002 全部产出（经 op-002 传递 op-001）。
+#
+# 不变量：
+#   ① 顺序不变量（两步事务）：归档文件 writeArchiveFile 成功之前不触碰 flow.json；内存移除 → addArchivedVersion → pipeline 处置 → appendLog → 最后 save()；
+#   ② 版本存在性门前置：活跃 flow.json 无该版本条目（不存在/已归档）→ exit 1 零写盘；覆盖写仅限活跃集仍含该版本条目（防空归档覆盖既有归档；本版无 unarchive，REV-79-001）；
+#   ③ 判据门谓词唯一：r.blocking !== false && r.status === 'open'（blocking 缺省 = 阻塞）；谓词与版本作用域解析仅 src/core/flow-archive/（禁命令层第二套，REV-79-002）；
+#   ④ --dry-run 字节级零写盘（四写盘点）：flow.json（含 meta.revision/meta.updated，另含 flow.json.bak）· 归档文件 · checkpoints · log 全不动；
+#   ⑤ pipeline 处置 owner = 本阶段（与归档同一事务、同一 save()；current 命中版本 → 置空；phase 按活跃集重算，空集 → active，对齐 flow-manager.ts:1495-1496 守卫）；
+#   ⑥ --json 契约（REV-79-003）：成功/dry-run = { schemaVersion:1, version, stages, reviews, log, dryRun } 纯单文档（不增删键）；失败 = 纯 JSON 单文档 + exit 1（不混人类文案、不走 stderr）；恒 UTF-8（src/cli/output-encoding.ts 既有咽喉，--json 第 1 步旁路，零新逻辑）；
+#   ⑦ 退出码语义：门禁失败 process.exitCode = 1（防 stdout 截断，不设逃生阀）；并发冲突走既有 handleConcurrentConflict（exit 2）；成功恒 0；
+#   ⑧ 常规路径零触碰：src/commands/flow.ts 为唯一 import flow-archive/* 的命令面文件（src/cli/** 与其它既有命令文件零命中）；归档后重命名 .openfeel/flow-archive/ 既有命令全绿；
+#   ⑨ REV-78-015 闭环：load() 读侧补齐移除后「无 archived_versions 的 flow.json 经 load→save 磁盘不新增该键」成立（缺失恒等 [] 由 getArchivedVersions 承担）；
+#   ⑩ i18n 基线 796 → 826（+30 键：21 消息 + 9 help，双表成对、逐键有引用防死键；新基线双处显式登记）；
+#   ⑪ 零新增第三方依赖；不改 phase 枚举 / 转移表 / pipeline.yaml；不改顶层 openfeel archive（阶段摘要，裁定 O3 职责分离）；不触碰 build.js / package.json；
+#   ⑫ 测试全程 fixture tmpDir / 隔离 HOME；本仓 .openfeel/flow.json 零触碰（门禁 sha1 前后一致）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "flow archive <version> 执行命令 + pipeline 处置 + flow-archive 小幅补丁（T1 + T3 + REV-78-015）"
+    produces:
+      - src/core/flow-archive/archive-ops.ts
+      - src/core/flow-archive/grouping.ts
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-archive.test.ts
+      - test/commands/flow.test.ts
+    deps: []
+    notes: "覆盖 T1 + T3 + REV-78-015 + i18n 前 15 键（796→811）+ T5.1~T5.4。flow-archive/ 补丁：archive-ops.ts 导出 isValidArchiveVersion（原私有 isValidVersionString 重命名导出）+ normalizeArchiveVersion（去 v 再加 v，探针同源）+ applyArchivePipelineDisposition（纯内存；空集 → active）；grouping.ts 导出 listBlockingOpenRevsForVersion（复用私有 versionOfReviewOp + 全仓唯一谓词）。flow-manager.ts 净减法：删 :515-518 读侧补齐。命令：存在性门（listArchivableCandidates 无候选 → exit 1 零写盘）→ 判据门 → 两步事务 → 审计 archive_flow_version → pipeline 处置。测试：helper 单测 + REV-78-015 翻转 + 判据门/dry-run 四写盘点/幂等与覆盖写/半完成幂等（save mock 抛并发 exit 2）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "flow archive list / flow archive show 只读命令 + 其余 i18n（T2 + T4）"
+    produces:
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "同一 flow.ts 的 archiveCmd 续写 + i18n 双表/测试文件同文件串行追加；show 复用 op-001 已加 import"
+    notes: "覆盖 T2 + T4 余量（15 键；811→826）+ T5.5/T5.6。list = listArchiveVersions（字典序，零第二套排序）+ 逐文件 readArchiveFile counts（损坏 → null → 不可读文案）；list/show --json 纯单文档（list: {schemaVersion, versions:[{version,counts}]}；show: ArchiveFile 全文含 log/reviews）；show 失败两径 exit 1（--json 纯文档 error 码 + available）；只读零写盘。T5.6 逐字不变：flow phases --json / flow mode --json / flow status 归档前后逐字相等 + flow --help 仅新增 archive + applyHelpI18n 5 键生效冒烟。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "常规路径零触碰可执行验证、全量回归与门禁（T5.7 + T6）"
+    produces:
+      - test/commands/flow.test.ts
+      - .openfeel/tmp/stage-79-selftest-report.md
+      - .openfeel/tmp/stage-79-gate-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "最后编辑同一测试文件（串行追加）；门禁须覆盖 op-001+op-002 全部产出（经 op-002 传递 op-001）"
+    notes: "覆盖 T5.7 + T6（**本阶段最终 op**）。T5.7① 静态 import 面断言（rg：仅 src/commands/flow.ts 命中，3 条 import；src/cli/** 与其它命令文件零命中）+ ② 归档目录重命名回归（7 条既有命令全绿 + 防假绿前置断言 + 恢复一致）+ ③ 逐字输出复核。T6 门禁：build ×2 幂等（git status --porcelain src/ 空）→ npm test（0 skipped / 0 failed）→ tsc 0 → lint i18n 826（显式登记）→ lint kb 0 → 本仓 flow.json sha1 前后一致 → 双报告落 .openfeel/tmp/。提交精确 git add（含 ops/ 四文件），禁 -A。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 执行顺序（严格串行）：op-001 → op-002 → op-003
+# 注：op-003 为最终 op；其后由 openfeel-reviewer 审查、openfeel-feel-tester 测试。
+
+# 下游契约（交付 stage-80；接口形态 = 函数签名级；禁命令层第二套实现）
+downstream_contracts:
+  - name: "src/core/flow-archive/archive-ops.ts :: 版本校验/归一（stage-79 交付，stage-80 复用）"
+    change: "`isValidArchiveVersion(version: string): boolean`（探针法复用 parseStageId，要求带 v 前缀、与 versionOfStageId 输出同形态）；`normalizeArchiveVersion(input: string): string | null`（去 v 再加 v；trim；非法 null）。**归一方向恒「去 v 后加 v」**，canonical 恒带 v（与引擎键一致）；禁复用 normalizeVersion（方向相反）。"
+  - name: "src/core/flow-archive/archive-ops.ts :: pipeline 处置（stage-79 交付，stage-80 消费点适配参考）"
+    change: "`applyArchivePipelineDisposition(data: FlowData, version: string): { currentCleared: boolean; phase: MetaPhase }`——纯内存（不 IO）；须在 stages 移除后调用；current 命中版本 → {stage:'',op:''}；phase = 活跃集非空且全 done ? 'done' : 'active'（空集 → active）。save() 由调用方统一（同事务）。"
+  - name: "src/core/flow-archive/grouping.ts :: 版本作用域 blocking open REV 谓词（stage-79 交付，stage-80 复用）"
+    change: "`listBlockingOpenRevsForVersion(data: FlowData, version: string): ReviewItem[]`——谓词恒为 `r.blocking !== false && r.status === 'open'`（blocking 缺省 = 阻塞）；版本作用域经 versionOfReviewOp 同源解析；返回副本。"
+  - name: "flow archive 命令面契约（stage-80 存量迁移 / stage-84 skill / stage-85 文档消费）"
+    change: "命令：`flow archive <version>`（--dry-run / --json）/ `flow archive list [--json]` / `flow archive show <version> [--json]`。JSON 成功载荷 = { schemaVersion:1, version, stages, reviews, log, dryRun }；失败 = 纯 JSON 单文档 + exit 1（错误码：no-init / invalid-version / version-not-active / gate-rejected / not-found）。退出码：门禁失败 1、并发 2、成功 0。审计 action = `archive_flow_version`（detail: { version, stages, reviews, log }）。`meta.archived_versions` 仅在归档 save() 时落盘（REV-78-015 后 load→save 恒不注入）。"
+  - name: "src/core/i18n-data/{zh-CN,en}.ts :: i18n 基线"
+    change: "v1.1.7 基线 796 → stage-79 收口 **826**（+30：`flow.archive.*` 21 消息键 + `help.flow.archive[.list|.show]` 与 6 个 arg/option help 键共 9 help 键）。stage-82/84/85 各自在此基础上显式登记新基线。"
+
+# 交付边界（本阶段不做，防越界）
+out_of_scope:
+  - "跨版本 deps 适配（plan stage add --deps 经 archived_versions 判定）——归 stage-80（裁定 Q）"
+  - "flow health 归档一致性检查 + 存量迁移（本仓自举）——归 stage-80（裁定 R/S）"
+  - "顶层 openfeel archive <stage>（阶段摘要）语义——不改（裁定 O3）"
+  - "归档文件删除/还原（unarchive）——本版不做（裁定 U/W）"
+  - "manual/core/flow-archive.md 同步——归归档官（本阶段交接项：新增消费面 flow archive 命令组；stage-78『零 import』表述失效）"

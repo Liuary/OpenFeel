@@ -25,11 +25,14 @@ vi.mock('@inquirer/prompts', () => ({ select: mockedInquirer.select, input: mock
 
 import { Command, CommanderError } from 'commander';
 import { registerFlowCommand, shouldPromptWorkflowMode } from '../../src/commands/flow.js';
+import { applyHelpI18n } from '../../src/cli/index.js';
 import { initProject } from '../../src/core/init.js';
-import { FlowManager, type FlowData, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { FlowManager, FlowConcurrentModificationError, type FlowData, type PipelinePhase, type MetaPhase, type StageData } from '../../src/core/flow-manager.js';
 import { setConfigValue } from '../../src/core/config.js';
 import { addStage } from '../../src/core/plan/stage.js';
-import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
+import { splitForArchive } from '../../src/core/flow-archive/grouping.js';
+import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../../src/core/flow-archive/archive-file.js';
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync, statSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -1839,5 +1842,808 @@ describe('flow 命令（stage-41）', () => {
     const flowCmd = program.commands.find((c) => c.name() === 'flow');
     const stageCmd = flowCmd!.commands.find((c) => c.name() === 'stage');
     expect(stageCmd!.commands.map((c) => c.name())).toContain('reset');
+  });
+
+  // ═══════════════════════════════════════════════
+  // flow archive（stage-79 op-001）
+  // ═══════════════════════════════════════════════
+
+  describe('flow archive（stage-79 op-001）', () => {
+    let revSeq = 0;
+
+    // 防污染 vitest 退出码：失败路径仅置 process.exitCode（非 process.exit）
+    beforeEach(() => {
+      process.exitCode = 0;
+      revSeq = 0;
+    });
+    afterEach(() => {
+      process.exitCode = 0;
+    });
+
+    /** 构造最小 StageData */
+    function makeStageData(phase: PipelinePhase): StageData {
+      return { name: 's', phase, status: String(phase), deps: [], ops: {} };
+    }
+
+    /** 构造可配置 status/blocking 的审查条目（未传 blocking 则不写该键，模拟缺省） */
+    function makeRevItem(
+      op: string,
+      opts: { status?: 'open' | 'resolved' | 'closed'; blocking?: boolean } = {},
+    ): FlowData['reviews'][number] {
+      revSeq += 1;
+      const item: FlowData['reviews'][number] = {
+        id: `REV-A-${revSeq}`,
+        op,
+        status: opts.status ?? 'open',
+        priority: 'high',
+        title: '标题',
+        filed_by: 'openfeel-reviewer',
+        filed_at: '2026-01-01T00:00:00Z',
+      };
+      if (opts.blocking !== undefined) {
+        item.blocking = opts.blocking;
+      }
+      return item;
+    }
+
+    /** 夹具：直接写入 flow.json（stages / reviews / log / pipeline.current） */
+    function setupArchiveFixture(opts: {
+      stages: FlowData['stages'];
+      reviews?: FlowData['reviews'];
+      log?: FlowData['log'];
+      current?: { stage: string; op: string };
+    }): void {
+      const mgr = new FlowManager(tmpDir);
+      const data: FlowData = {
+        meta: { version: '1.0', project: 'ArchiveFixture', updated: '2026-01-01T00:00:00Z' },
+        pipeline: {
+          phase: 'active' as MetaPhase,
+          current: opts.current ?? { stage: '', op: '' },
+          retry: 0,
+        },
+        stages: opts.stages,
+        reviews: opts.reviews ?? [],
+        log: opts.log ?? [],
+      };
+      mgr.setData(data);
+      mgr.save();
+    }
+
+    /** 四写盘点快照：给定相对路径 → 内容 / 目录标记 / 缺失标记（递归） */
+    function collectWrites(): Record<string, string> {
+      const out: Record<string, string> = {};
+      const add = (p: string): void => {
+        if (!existsSync(p)) {
+          out[p] = '<missing>';
+          return;
+        }
+        if (statSync(p).isDirectory()) {
+          out[p] = '<dir>';
+          for (const name of readdirSync(p)) {
+            add(join(p, name));
+          }
+          return;
+        }
+        out[p] = readFileSync(p, 'utf-8');
+      };
+      for (const rel of ['flow.json', 'flow.json.bak', 'flow-archive', 'checkpoints', 'log', 'tmp/locks']) {
+        add(join(tmpDir, '.openfeel', rel));
+      }
+      return out;
+    }
+
+    /** 成功夹具：v1.9.0 全 done（两阶段）+ 保留 v1.9.9 非 done + reviews/log */
+    function setupArchivableV190(current?: { stage: string; op: string }): void {
+      setupArchiveFixture({
+        stages: {
+          'v1.9.0-stage-01': makeStageData('done'),
+          'v1.9.0-stage-02': makeStageData('done'),
+          'v1.9.9-stage-01': makeStageData('exec_running'),
+        },
+        reviews: [makeRevItem('v1.9.0-stage-01.op-001', { status: 'closed' })],
+        log: [{ time: 't', agent: 'cli', action: 'advance_stage_phase', detail: { stageName: 'v1.9.0-stage-01' } }],
+        current,
+      });
+    }
+
+    const flowJsonPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
+    const archivePath = (v: string): string => join(tmpDir, '.openfeel', 'flow-archive', `${v}.json`);
+
+    // ── T5.1 判据门 ──
+
+    it('T5.1①: 未全 done → exit 1 且零写盘（flow.json / 归档目录 / checkpoints 三处不变）', async () => {
+      setupArchiveFixture({
+        stages: {
+          'v1.9.0-stage-01': makeStageData('done'),
+          'v1.9.0-stage-02': makeStageData('exec_running'),
+          'v1.9.9-stage-01': makeStageData('exec_running'),
+        },
+        current: { stage: 'v1.9.0-stage-02', op: 'op-001' },
+      });
+      const beforeFlow = readFileSync(flowJsonPath(), 'utf-8');
+      const cpDir = join(tmpDir, '.openfeel', 'checkpoints');
+      const beforeCp = existsSync(cpDir) ? readdirSync(cpDir).sort() : [];
+
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+
+      expect(process.exitCode).toBe(1);
+      expect(readFileSync(flowJsonPath(), 'utf-8')).toBe(beforeFlow);
+      expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
+      expect(existsSync(cpDir) ? readdirSync(cpDir).sort() : []).toEqual(beforeCp);
+      const out = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(out).toContain('存在未完成阶段');
+      expect(out).toContain('v1.9.0-stage-02');
+    });
+
+    it('T5.1②: blocking 缺省（undefined）+ open REV → 拒（exit 1）', async () => {
+      setupArchiveFixture({
+        stages: { 'v1.9.0-stage-01': makeStageData('done') },
+        reviews: [makeRevItem('v1.9.0-stage-01.op-001', { status: 'open' })],
+      });
+      const beforeFlow = readFileSync(flowJsonPath(), 'utf-8');
+
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+
+      expect(process.exitCode).toBe(1);
+      expect(readFileSync(flowJsonPath(), 'utf-8')).toBe(beforeFlow);
+      expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
+      const out = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(out).toContain('存在阻塞 open 审查');
+      expect(out).toContain('REV-A-1');
+    });
+
+    it('T5.1③: blocking:false + open REV → 不拒（进入成功路径）', async () => {
+      setupArchiveFixture({
+        stages: { 'v1.9.0-stage-01': makeStageData('done'), 'v1.9.9-stage-01': makeStageData('exec_running') },
+        reviews: [makeRevItem('v1.9.0-stage-01.op-001', { status: 'open', blocking: false })],
+      });
+
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+
+      expect(process.exitCode).toBe(0);
+      expect(existsSync(archivePath('v1.9.0'))).toBe(true);
+      const file = JSON.parse(readFileSync(archivePath('v1.9.0'), 'utf-8')) as ArchiveFile;
+      expect(file.reviews).toHaveLength(1);
+    });
+
+    it('T5.1④: blocking:true + open REV → 拒（exit 1）', async () => {
+      setupArchiveFixture({
+        stages: { 'v1.9.0-stage-01': makeStageData('done') },
+        reviews: [makeRevItem('v1.9.0-stage-01.op-001', { status: 'open', blocking: true })],
+      });
+
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+
+      expect(process.exitCode).toBe(1);
+      expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
+    });
+
+    // ── T5.2 成功路径 ──
+
+    it('T5.2: 成功路径 — 归档文件 / counts / flow.json 零残留 / 审计 / 索引 / pipeline 处置', async () => {
+      setupArchivableV190({ stage: 'v1.9.0-stage-01', op: 'op-001' });
+      const pre = new FlowManager(tmpDir).getData()!;
+      const expected = splitForArchive(pre, 'v1.9.0');
+
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+
+      expect(process.exitCode).toBe(0);
+      expect(existsSync(archivePath('v1.9.0'))).toBe(true);
+      const file = JSON.parse(readFileSync(archivePath('v1.9.0'), 'utf-8')) as ArchiveFile;
+      expect(file.schemaVersion).toBe(ARCHIVE_SCHEMA_VERSION);
+      expect(file.version).toBe('v1.9.0');
+      expect(Number.isNaN(Date.parse(file.archived_at))).toBe(false);
+      expect(file.stages).toEqual(expected.archive.stages);
+      expect(file.reviews).toEqual(expected.archive.reviews);
+      expect(file.log).toEqual(expected.archive.log);
+      expect(file.counts).toEqual(expected.archive.counts);
+
+      const after = JSON.parse(readFileSync(flowJsonPath(), 'utf-8')) as FlowData;
+      // 三段零残留
+      expect(Object.keys(after.stages)).toEqual(['v1.9.9-stage-01']);
+      expect(after.reviews).toEqual([]);
+      expect(after.log.filter((e) => e.detail['stageName'] === 'v1.9.0-stage-01')).toHaveLength(0);
+      // 审计条目为最后一条（记录在归档后 flow.json）
+      const last = after.log[after.log.length - 1];
+      expect(last.action).toBe('archive_flow_version');
+      expect(last.detail).toMatchObject({ version: 'v1.9.0', stages: 2, reviews: 1, log: 1 });
+      // 索引
+      expect(after.meta.archived_versions).toEqual(['v1.9.0']);
+      // pipeline 处置：current 命中 → 置空；phase 按活跃集重算
+      expect(after.pipeline.current).toEqual({ stage: '', op: '' });
+      expect(after.pipeline.phase).toBe('active');
+      // 人类输出
+      const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(out).toContain('已归档 v1.9.0：阶段 2 / 审查 1 / 日志 1');
+      expect(out).toContain('pipeline 处置：current=(无)，phase=active');
+    });
+
+    it('T5.2b: 活跃集归档后全 done → pipeline.phase = done；current 不命中版本 → 不变', async () => {
+      setupArchiveFixture({
+        stages: {
+          'v1.9.0-stage-01': makeStageData('done'),
+          'v1.0.0-stage-01': makeStageData('done'),
+        },
+        current: { stage: 'v1.0.0-stage-01', op: 'op-002' },
+      });
+
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+
+      expect(process.exitCode).toBe(0);
+      const after = JSON.parse(readFileSync(flowJsonPath(), 'utf-8')) as FlowData;
+      expect(after.pipeline.phase).toBe('done');
+      expect(after.pipeline.current).toEqual({ stage: 'v1.0.0-stage-01', op: 'op-002' });
+      const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(out).toContain('phase=done');
+    });
+
+    // ── T5.3 dry-run 字节级零写盘（四写盘点）──
+
+    it('T5.3: --dry-run 四写盘点逐字节不变 + 归档目录不存在 + --json 纯单文档', async () => {
+      setupArchivableV190({ stage: 'v1.9.0-stage-01', op: 'op-001' });
+      const before = collectWrites();
+
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0', '--dry-run']);
+
+      expect(process.exitCode).toBe(0);
+      expect(collectWrites()).toEqual(before);
+      expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
+      const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(out).toContain('[dry-run] 将归档 v1.9.0：阶段 2 / 审查 1 / 日志 1');
+      expect(out).toContain('预览模式：未写入任何文件');
+
+      // --dry-run --json：纯单文档 + dryRun === true（console.error 零调用）
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0', '--dry-run', '--json']);
+      expect(process.exitCode).toBe(0);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(logMock).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
+      expect(payload).toEqual({ schemaVersion: 1, version: 'v1.9.0', stages: 2, reviews: 1, log: 1, dryRun: true });
+      expect(collectWrites()).toEqual(before);
+    });
+
+    // ── T5.4 幂等与覆盖写边界 + 顺序不变量 ──
+
+    it('T5.4①: 二次归档同版本 → version-not-active 拒（exit 1）+ 归档文件字节不变 + flow.json 不变', async () => {
+      setupArchivableV190();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+      expect(process.exitCode).toBe(0);
+      const archivedBytes = readFileSync(archivePath('v1.9.0'), 'utf-8');
+      const flowBytes = readFileSync(flowJsonPath(), 'utf-8');
+
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+
+      expect(process.exitCode).toBe(1);
+      expect(readFileSync(archivePath('v1.9.0'), 'utf-8')).toBe(archivedBytes);
+      expect(readFileSync(flowJsonPath(), 'utf-8')).toBe(flowBytes);
+      expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('未注册于活跃 flow.json');
+    });
+
+    it('T5.4②: 不存在版本 v9.9.9 → 存在性门拒绝且归档目录仍不存在（空集不写盘）', async () => {
+      setupArchiveFixture({ stages: { 'v1.9.0-stage-01': makeStageData('done') } });
+      const beforeFlow = readFileSync(flowJsonPath(), 'utf-8');
+
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v9.9.9']);
+
+      expect(process.exitCode).toBe(1);
+      expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
+      expect(readFileSync(flowJsonPath(), 'utf-8')).toBe(beforeFlow);
+    });
+
+    it('T5.4③: 非法版本（abc / vv1.1.7）→ invalid-version 拒零写盘', async () => {
+      setupArchiveFixture({ stages: { 'v1.9.0-stage-01': makeStageData('done') } });
+      const beforeFlow = readFileSync(flowJsonPath(), 'utf-8');
+
+      for (const bad of ['abc', 'vv1.1.7']) {
+        logMock.mockClear();
+        errorMock.mockClear();
+        await safeParse(['flow', 'archive', bad]);
+        expect(process.exitCode).toBe(1);
+        expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('非法版本号');
+        expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
+        expect(readFileSync(flowJsonPath(), 'utf-8')).toBe(beforeFlow);
+      }
+    });
+
+    it('T5.4④: 顺序不变量 — save 抛并发 → exit 2、归档文件已落盘、flow.json 原样；重跑幂等收敛', async () => {
+      setupArchivableV190();
+      const beforeFlow = readFileSync(flowJsonPath(), 'utf-8');
+
+      const saveSpy = vi.spyOn(FlowManager.prototype, 'save').mockImplementationOnce(() => {
+        throw new FlowConcurrentModificationError(1, 2);
+      });
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+
+      expect(exitMock).toHaveBeenCalledWith(2);
+      // 归档文件先落盘
+      expect(existsSync(archivePath('v1.9.0'))).toBe(true);
+      const archivedBytes = readFileSync(archivePath('v1.9.0'), 'utf-8');
+      // flow.json 原样（save 未生效）
+      expect(readFileSync(flowJsonPath(), 'utf-8')).toBe(beforeFlow);
+
+      saveSpy.mockRestore();
+
+      // 重跑：幂等收敛（覆盖写 + 索引不重复）
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+      expect(process.exitCode).toBe(0);
+      const converged = JSON.parse(readFileSync(archivePath('v1.9.0'), 'utf-8')) as ArchiveFile;
+      expect(converged.version).toBe('v1.9.0');
+      expect(converged.counts.stages).toBe(2);
+      const after = JSON.parse(readFileSync(flowJsonPath(), 'utf-8')) as FlowData;
+      expect(after.meta.archived_versions).toEqual(['v1.9.0']);
+      expect(Object.keys(after.stages)).toEqual(['v1.9.9-stage-01']);
+    });
+
+    it('T5.4⑤: 未初始化 → no-init（--json 纯单文档 exit 1）', async () => {
+      rmSync(join(tmpDir, '.openfeel', 'flow.json'), { force: true });
+      logMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0', '--json']);
+      expect(process.exitCode).toBe(1);
+      expect(JSON.parse(logMock.mock.calls[0][0] as string)).toEqual({ schemaVersion: 1, error: 'no-init' });
+    });
+
+    it('T5.1/T5.4 --json: 判据门失败 / 版本未注册 → 纯 JSON 单文档 + exit 1（console.error 零调用）', async () => {
+      setupArchiveFixture({
+        stages: { 'v1.9.0-stage-01': makeStageData('done'), 'v1.9.0-stage-02': makeStageData('exec_running') },
+        reviews: [makeRevItem('v1.9.0-stage-01.op-001', { status: 'open' })],
+      });
+
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0', '--json']);
+      expect(process.exitCode).toBe(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(logMock).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(logMock.mock.calls[0][0] as string) as {
+        schemaVersion: number;
+        error: string;
+        notDone: string[];
+        blockingOpen: string[];
+      };
+      expect(payload.schemaVersion).toBe(1);
+      expect(payload.error).toBe('gate-rejected');
+      expect(payload.notDone).toEqual(['v1.9.0-stage-02']);
+      expect(payload.blockingOpen).toEqual(['REV-A-1']);
+    });
+  });
+
+  // ═══════════════════════════════════════════════
+  // flow archive list/show（stage-79 op-002）
+  // ═══════════════════════════════════════════════
+
+  describe('flow archive list/show（stage-79 op-002）', () => {
+    beforeEach(() => {
+      process.exitCode = 0;
+    });
+    afterEach(() => {
+      process.exitCode = 0;
+    });
+
+    const flowJsonPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
+    const archivePath = (v: string): string => join(tmpDir, '.openfeel', 'flow-archive', `${v}.json`);
+
+    /** 夹具：写入 v1.0.0 当前阶段（保留）+ 各待归档版本的 done 阶段 / 可辨识 reviews / log */
+    function seedVersions(versions: string[]): void {
+      const stages: FlowData['stages'] = {
+        'v1.0.0-stage-01': { name: 'c', phase: 'exec_running' as PipelinePhase, status: 'exec_running', deps: [], ops: {} },
+      };
+      const reviews: FlowData['reviews'] = [];
+      const log: FlowData['log'] = [];
+      for (const v of versions) {
+        stages[`${v}-stage-01`] = { name: v, phase: 'done' as PipelinePhase, status: 'done', deps: [], ops: {} };
+        reviews.push({
+          id: `REV-SHOW-${v}`,
+          op: `${v}-stage-01.op-001`,
+          status: 'closed',
+          priority: 'low',
+          title: 'SHOW-TOKEN-TITLE',
+          filed_by: 't',
+          filed_at: '',
+        });
+        log.push({
+          time: '2026-01-01T00:00:00.000Z',
+          agent: 'cli',
+          action: 'SHOW-TOKEN-ACTION',
+          detail: { stageName: `${v}-stage-01` },
+        });
+      }
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'L', updated: '2026-01-01T00:00:00Z' },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.0.0-stage-01', op: '' }, retry: 0 },
+        stages,
+        reviews,
+        log,
+      });
+      mgr.save();
+    }
+
+    /** 采集「写盘点」快照（路径 → 内容 / 目录标记 / 缺失标记，递归） */
+    function collectWrites(): Record<string, string> {
+      const out: Record<string, string> = {};
+      const add = (p: string): void => {
+        if (!existsSync(p)) {
+          out[p] = '<missing>';
+          return;
+        }
+        if (statSync(p).isDirectory()) {
+          out[p] = '<dir>';
+          for (const name of readdirSync(p)) {
+            add(join(p, name));
+          }
+          return;
+        }
+        out[p] = readFileSync(p, 'utf-8');
+      };
+      for (const rel of ['flow.json', 'flow.json.bak', 'flow-archive', 'checkpoints', 'log', 'tmp/locks']) {
+        add(join(tmpDir, '.openfeel', rel));
+      }
+      return out;
+    }
+
+    /** 执行命令并返回 console.log 输出行数组 */
+    async function capture(args: string[]): Promise<string[]> {
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(args);
+      return logMock.mock.calls.map((c) => c[0] as string);
+    }
+
+    // ── T5.5a 空态 ──
+
+    it('T5.5a: list 空态 → 暂无归档提示且 exit 0', async () => {
+      const out = await capture(['flow', 'archive', 'list']);
+      expect(process.exitCode).toBe(0);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(out.join('\n')).toContain('暂无归档版本');
+    });
+
+    // ── T5.5b 字典序 ──
+
+    it('T5.5b: list 顺序 = 引擎字典序（v1.1.6 → v1.1.7）', async () => {
+      seedVersions(['v1.1.7', 'v1.1.6']);
+      await safeParse(['flow', 'archive', 'v1.1.6']);
+      await safeParse(['flow', 'archive', 'v1.1.7']);
+      expect(process.exitCode).toBe(0);
+
+      const out = await capture(['flow', 'archive', 'list', '--json']);
+      const payload = JSON.parse(out[0]) as { versions: Array<{ version: string }> };
+      expect(payload.versions.map((r) => r.version)).toEqual(['v1.1.6', 'v1.1.7']);
+    });
+
+    // ── T5.5c list --json 纯单文档 ──
+
+    it('T5.5c: list --json 纯单文档（console.log ×1 / 顶层键 schemaVersion+versions / error 零调用）', async () => {
+      seedVersions(['v1.1.7']);
+      await safeParse(['flow', 'archive', 'v1.1.7']);
+
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'list', '--json']);
+      expect(process.exitCode).toBe(0);
+      expect(logMock).toHaveBeenCalledTimes(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      const payload = JSON.parse(logMock.mock.calls[0][0] as string) as {
+        schemaVersion: number;
+        versions: Array<{ version: string; counts: unknown }>;
+      };
+      expect(Object.keys(payload).sort()).toEqual(['schemaVersion', 'versions']);
+      expect(payload.schemaVersion).toBe(1);
+      expect(payload.versions).toEqual([{ version: 'v1.1.7', counts: { stages: 1, reviews: 1, log: 1 } }]);
+    });
+
+    it('T5.5c2: list 损坏文件 → 不可读文案（不抛）', async () => {
+      seedVersions(['v1.1.7']);
+      await safeParse(['flow', 'archive', 'v1.1.7']);
+      writeFileSync(archivePath('v1.1.7'), '{broken', 'utf-8');
+
+      const out = await capture(['flow', 'archive', 'list']);
+      expect(process.exitCode).toBe(0);
+      expect(out.join('\n')).toContain('(不可读，文件损坏或非法)');
+      const json = await capture(['flow', 'archive', 'list', '--json']);
+      const payload = JSON.parse(json[0]) as { versions: Array<{ counts: unknown }> };
+      expect(payload.versions[0].counts).toBeNull();
+    });
+
+    // ── T5.5d show 成功 & 前缀兼容 ──
+
+    it('T5.5d: show 成功 + 前缀兼容（1.1.7 ≡ v1.1.7）且不含 log/reviews 明细', async () => {
+      seedVersions(['v1.1.7']);
+      await safeParse(['flow', 'archive', 'v1.1.7']);
+      expect(process.exitCode).toBe(0);
+
+      const full = await capture(['flow', 'archive', 'show', 'v1.1.7']);
+      const short = await capture(['flow', 'archive', 'show', '1.1.7']);
+      expect(process.exitCode).toBe(0);
+      expect(short).toEqual(full);
+      const text = full.join('\n');
+      expect(text).toContain('归档版本 v1.1.7（archived_at: ');
+      expect(text).toContain('阶段 1 / 审查 1 / 日志 1');
+      expect(text).toContain('阶段：');
+      expect(text).toContain('  - v1.1.7-stage-01 [done]');
+      expect(text).toContain('完整 log / reviews 请用 --json 查看');
+      // 防上下文膨胀（R-79-4）：人类输出不含 log / reviews 明细
+      expect(text).not.toContain('SHOW-TOKEN-ACTION');
+      expect(text).not.toContain('REV-SHOW-v1.1.7');
+      expect(text).not.toContain('SHOW-TOKEN-TITLE');
+    });
+
+    // ── T5.5e show --json 全量 ──
+
+    it('T5.5e: show --json = 全量载荷，与磁盘文件深等', async () => {
+      seedVersions(['v1.1.7']);
+      await safeParse(['flow', 'archive', 'v1.1.7']);
+
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'show', 'v1.1.7', '--json']);
+      expect(process.exitCode).toBe(0);
+      expect(logMock).toHaveBeenCalledTimes(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      const payload = JSON.parse(logMock.mock.calls[0][0] as string) as ArchiveFile;
+      const onDisk = JSON.parse(readFileSync(archivePath('v1.1.7'), 'utf-8')) as ArchiveFile;
+      expect(payload).toEqual(onDisk);
+      expect(payload.schemaVersion).toBe(1);
+      expect(payload.log).toHaveLength(1);
+      expect(payload.reviews).toHaveLength(1);
+    });
+
+    // ── T5.5f show 失败两径 ──
+
+    it('T5.5f: show 失败两径（不存在 / 非法版本）；--json 恒纯单文档 + exit 1', async () => {
+      seedVersions(['v1.1.7']);
+      await safeParse(['flow', 'archive', 'v1.1.7']);
+
+      // 不存在（人类）
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'show', 'v9.9.9']);
+      expect(process.exitCode).toBe(1);
+      const errText = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(errText).toContain('归档版本 v9.9.9 不存在；可用版本：v1.1.7');
+
+      // 非法版本（人类）
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'show', 'abc']);
+      expect(process.exitCode).toBe(1);
+      expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('非法版本号');
+
+      // --json 纯单文档（not-found）
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'show', 'v9.9.9', '--json']);
+      expect(process.exitCode).toBe(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(logMock).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(logMock.mock.calls[0][0] as string)).toEqual({
+        schemaVersion: 1,
+        error: 'not-found',
+        version: 'v9.9.9',
+        available: ['v1.1.7'],
+      });
+
+      // --json 纯单文档（invalid-version）
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'show', 'abc', '--json']);
+      expect(process.exitCode).toBe(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(JSON.parse(logMock.mock.calls[0][0] as string)).toEqual({
+        schemaVersion: 1,
+        error: 'invalid-version',
+        input: 'abc',
+        available: ['v1.1.7'],
+      });
+    });
+
+    // ── T5.5g 只读零写盘 ──
+
+    it('T5.5g: list/show 只读零写盘（flow.json / checkpoints / log 三处前后恒等）', async () => {
+      seedVersions(['v1.1.7']);
+      await safeParse(['flow', 'archive', 'v1.1.7']);
+      const before = collectWrites();
+
+      await capture(['flow', 'archive', 'list']);
+      await capture(['flow', 'archive', 'list', '--json']);
+      await capture(['flow', 'archive', 'show', 'v1.1.7']);
+      await capture(['flow', 'archive', 'show', 'v1.1.7', '--json']);
+      expect(process.exitCode).toBe(0);
+
+      expect(collectWrites()).toEqual(before);
+    });
+
+    // ── T5.6 既有命令零破坏 ──
+
+    it('T5.6: phases/mode --json 归档前后逐字相等；status 标签结构不变；flow --help 仅新增 archive', async () => {
+      seedVersions(['v1.1.7']);
+
+      const phasesBefore = (await capture(['flow', 'phases', '--json'])).join('\n');
+      const modeBefore = (await capture(['flow', 'mode', '--json'])).join('\n');
+      const statusBefore = (await capture(['flow', 'status'])).join('\n').split('\n');
+      expect(process.exitCode).toBe(0);
+      expect(errorMock).not.toHaveBeenCalled();
+
+      await safeParse(['flow', 'archive', 'v1.1.7']);
+      expect(process.exitCode).toBe(0);
+
+      const phasesAfter = (await capture(['flow', 'phases', '--json'])).join('\n');
+      const modeAfter = (await capture(['flow', 'mode', '--json'])).join('\n');
+      const statusAfter = (await capture(['flow', 'status'])).join('\n').split('\n');
+      expect(errorMock).not.toHaveBeenCalled();
+
+      // 数据无关命令：逐字不变
+      expect(phasesAfter).toBe(phasesBefore);
+      expect(modeAfter).toBe(modeBefore);
+      // status：计数 / 时间戳随归档合法变化（实测 阶段数 2→1）→ 逐字不变不可达；
+      // 断言「标题行 + 10 行头部标签序列」逐字不变（格式零破坏），值按语义更新
+      const labelOf = (l: string): string => l.split(':')[0];
+      expect(statusAfter[0]).toBe(statusBefore[0]);
+      expect(statusAfter.slice(0, 10).map(labelOf)).toEqual(statusBefore.slice(0, 10).map(labelOf));
+      expect(statusAfter.join('\n')).toContain('阶段数: 1');
+
+      // flow --help 子命令集合 = 既有集合 + archive（其余条目逐字不变）
+      const flowCmd = program.commands.find((c) => c.name() === 'flow')!;
+      const names = flowCmd.commands.map((c) => c.name()).filter((n) => n !== 'help');
+      expect(names).toEqual([
+        'status', 'overview', 'current', 'metrics', 'phases', 'mode', 'stage', 'advance',
+        'attempt', 'ops', 'log', 'review', 'retry', 'repair', 'migrate', 'checkpoint',
+        'archive', 'health', 'recover', 'wizard',
+      ]);
+    });
+
+    // ── op-002 步骤 3.3：applyHelpI18n 冒烟（5 个 help 键已接入，非死键）──
+
+    it('步骤 3.3: applyHelpI18n 使 archive 组 description / 选项 / 参数描述落到新键文案', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const p = new Command();
+        p.name('openfeel');
+        registerFlowCommand(p);
+        applyHelpI18n(p);
+
+        const archiveCmd = p.commands.find((c) => c.name() === 'flow')!.commands.find((c) => c.name() === 'archive')!;
+        expect(archiveCmd.description()).toContain('flow.json 版本分片归档');
+        expect(archiveCmd.registeredArguments[0].description).toContain('前缀 v 可省略');
+        const optDesc = (cmd: Command, flag: string): string =>
+          cmd.options.find((o) => o.long === flag)!.description;
+        expect(optDesc(archiveCmd, '--dry-run')).toContain('判据门照常校验');
+        expect(optDesc(archiveCmd, '--json')).toContain('{ schemaVersion, version, stages, reviews, log, dryRun }');
+
+        const listCmd = archiveCmd.commands.find((c) => c.name() === 'list')!;
+        expect(listCmd.description()).toContain('引擎字典序');
+        expect(optDesc(listCmd, '--json')).toContain('{ schemaVersion, versions:');
+
+        const showCmd = archiveCmd.commands.find((c) => c.name() === 'show')!;
+        expect(showCmd.description()).toContain('counts + 阶段概览');
+        expect(showCmd.registeredArguments[0].description).toContain('前缀 v 可省略');
+        expect(optDesc(showCmd, '--json')).toContain('全量归档内容');
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+  });
+
+  // ═══════════════════════════════════════════════
+  // 常规路径零触碰（stage-79 op-003）
+  // ═══════════════════════════════════════════════
+
+  describe('常规路径零触碰（stage-79 op-003）', () => {
+    beforeEach(() => {
+      process.exitCode = 0;
+    });
+    afterEach(() => {
+      process.exitCode = 0;
+    });
+
+    /** 7 条既有常规命令（T5.7② 口径） */
+    const SEVEN: string[][] = [
+      ['flow', 'status'],
+      ['flow', 'overview'],
+      ['flow', 'current'],
+      ['flow', 'ops', 'list'],
+      ['flow', 'mode'],
+      ['flow', 'phases'],
+      ['flow', 'log'],
+    ];
+
+    const archiveDir = (): string => join(tmpDir, '.openfeel', 'flow-archive');
+    const renamedDir = (): string => join(tmpDir, '.openfeel', 'flow-archive-renamed');
+
+    /** 夹具：v1.9.0 全 done（可归档）+ v1.0.0 当前阶段（保留） */
+    function seedForRename(): void {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'ZeroTouch', updated: '2026-01-01T00:00:00Z' },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.0.0-stage-01', op: '' }, retry: 0 },
+        stages: {
+          'v1.0.0-stage-01': { name: 'c', phase: 'exec_running' as PipelinePhase, status: 'exec_running', deps: [], ops: {} },
+          'v1.9.0-stage-01': { name: 'a', phase: 'done' as PipelinePhase, status: 'done', deps: [], ops: {} },
+        },
+        reviews: [],
+        log: [],
+      });
+      mgr.save();
+    }
+
+    /** 依次执行 7 条命令，返回逐条输出（并断言逐条绿） */
+    async function runSeven(label: string): Promise<string[]> {
+      const outputs: string[] = [];
+      for (const args of SEVEN) {
+        logMock.mockClear();
+        errorMock.mockClear();
+        exitMock.mockClear();
+        await safeParse(args);
+        expect(process.exitCode, `${label} ${args.join(' ')} 退出码`).toBe(0);
+        expect(exitMock, `${label} ${args.join(' ')} 不应调用 process.exit`).not.toHaveBeenCalled();
+        expect(errorMock, `${label} ${args.join(' ')} 不应输出 error`).not.toHaveBeenCalled();
+        outputs.push(logMock.mock.calls.map((c) => c[0] as string).join('\n'));
+      }
+      return outputs;
+    }
+
+    it('T5.7②: 归档目录重命名 → 7 条既有命令全绿；恢复后一致；重命名确已发生（防假绿）', async () => {
+      seedForRename();
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+      expect(process.exitCode).toBe(0);
+      expect(existsSync(join(archiveDir(), 'v1.9.0.json'))).toBe(true);
+
+      // 归档后（目录未重命名）
+      const presentOut = await runSeven('present');
+
+      // 重命名归档目录（防假绿前置断言：确已发生）
+      renameSync(archiveDir(), renamedDir());
+      expect(existsSync(archiveDir())).toBe(false);
+      expect(existsSync(renamedDir())).toBe(true);
+
+      const renamedOut = await runSeven('renamed');
+      // 归档目录不可见不影响常规路径（逐字一致）
+      expect(renamedOut).toEqual(presentOut);
+
+      // 恢复目录名 → 结果一致
+      renameSync(renamedDir(), archiveDir());
+      expect(existsSync(archiveDir())).toBe(true);
+      expect(await runSeven('restored')).toEqual(presentOut);
+    });
+
+    it('T5.7③: 归档前后既有输出 —— 数据无关命令逐字不变（mode/current/phases）；余者仅值随语义更新', async () => {
+      seedForRename();
+      const before = await runSeven('before');
+
+      await safeParse(['flow', 'archive', 'v1.9.0']);
+      expect(process.exitCode).toBe(0);
+      const after = await runSeven('after');
+
+      // 数据无关命令（mode / current / phases）：逐字不变
+      const idx = (args: string[]): number => SEVEN.findIndex((a) => a.join(' ') === args.join(' '));
+      for (const args of [['flow', 'mode'], ['flow', 'current'], ['flow', 'phases']]) {
+        expect(after[idx(args)], args.join(' ')).toBe(before[idx(args)]);
+      }
+      // 数据相关命令（status / overview / ops list / log）：计数与条目随归档合法变化
+      // （实测：阶段数 2→1、v1.9.0 阶段与日志条目迁出）→ 逐字不变不可达；
+      // 断言格式零破坏（10 行头部标签序列逐字不变）
+      const labelOf = (l: string): string => l.split(':')[0];
+      const statusBefore = before[idx(['flow', 'status'])].split('\n');
+      const statusAfter = after[idx(['flow', 'status'])].split('\n');
+      expect(statusAfter[0]).toBe(statusBefore[0]);
+      expect(statusAfter.slice(0, 10).map(labelOf)).toEqual(statusBefore.slice(0, 10).map(labelOf));
+      expect(statusAfter.join('\n')).toContain('阶段数: 1');
+    });
   });
 });

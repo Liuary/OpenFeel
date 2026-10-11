@@ -35,16 +35,17 @@ stages:
     deps:
       - v1.1.7-stage-74
     priority: P0
-    est_ops: 3
+    est_ops: 4   # [REV-75-013 修订] 原估算 3 → 实拆 4 op（op-001~004，见 stage-75/ops/deps.yaml 与 ops/ 目录）
     produces_core:
       - src/commands/plan.ts
       - src/commands/stage.ts
       - src/commands/flow.ts
       - src/core/plan/stage.ts
       - src/core/flow-manager.ts   # [REV-74-007 修订] 补入：T5 `syncConfigFieldToStages()` 插入语义 + `flow.json` 冗余字段写入（消解与 `stage-75/plan.md:8` 范围的不一致）
+      - src/commands/config.ts   # [REV-75-004 修订] 补入：T5 `--sync-stages` `inserted`/`skipped-no-anchor` 分支 + 汇总行「同步 N / 插入 M / 跳过 K」+ `--stage` 限定 + 新 i18n 键落地
       - src/core/i18n-data/zh-CN.ts
       - src/core/i18n-data/en.ts
-    notes: "plan stage add --workflow-mode / stage set --workflow-mode（含缺失字段插入，裁定 H）/ flow mode 只读命令 / wizard 首次选型 + 项目级记忆写入 / config set --sync-stages 支持 / op 骨架机械铺入口（裁定 I）；`src/core/flow-manager.ts`（T5）：`syncConfigFieldToStages` 插入语义 + `flow.json` 冗余字段写入 [REV-74-007 修订]。"
+    notes: "plan stage add --workflow-mode / stage set --workflow-mode（含缺失字段插入，裁定 H）/ flow mode 只读命令 / wizard 首次选型 + 项目级记忆写入 / config set --sync-stages 支持（含 `--stage` 限定，REV-75-002）/ op 骨架机械铺入口（裁定 I）/ `flow phases` 模式分节（REV-75-001）/ 自举收尾动作 T9（REV-75-002）；`src/core/flow-manager.ts`（T5）：`syncConfigFieldToStages` 插入语义 + `--stage` 过滤 + `flow.json` 冗余字段写入 [REV-74-007 / REV-75-002/004 修订]。"
 
   v1.1.7-stage-76:
     name: 模板与 skill 模式感知（标记双读者 ②）

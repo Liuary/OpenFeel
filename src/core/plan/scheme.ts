@@ -6,8 +6,8 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { FlowManager, isFlowConcurrentError, isTemplateEmpty, EMPTY_TEMPLATE_MARKER, findOrphanOps, type PipelinePhase, type Op } from '../flow-manager.js';
-import { parseStageId, validateStageId, findStageDirConflict, normalizeStageId } from './path.js';
-import { ensureStageSkeleton } from './stage.js';
+import { parseStageId, validateStageId, findStageDirConflict, normalizeStageId, findStageStatusPath } from './path.js';
+import { ensureStageSkeleton, sanitizeTaskDesc } from './stage.js';
 import { t, getCliLang } from '../i18n.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../fs/file-lock.js';
@@ -343,6 +343,96 @@ export function createScheme(
   warnUnregisteredFiles(projectPath, parsed.fullStageId);
 
   return opId;
+}
+
+/** `plan scheme create --from-tasks` 结果（stage-75 T6，裁定 I） */
+export interface CreateSchemesFromTasksResult {
+  /** 新创建的 opId 列表（按任务编号升序） */
+  created: string[];
+  /** 新创建的 op 标题列表（与 created 同序） */
+  createdTitles: string[];
+  /** 因已铺而跳过的任务编号列表 */
+  skippedTaskNos: number[];
+  /** 是否新建了 ops/deps.yaml 占位 */
+  depsPlaceholderCreated: boolean;
+}
+
+/**
+ * 从阶段任务表机械生成 ops/op-NNN.md 骨架 + ops/deps.yaml 占位（stage-75 T6）。
+ * **不调用任何 Agent**、无隐式副作用（`plan stage add` 不铺骨架）：仅解析 status.md 的任务行，
+ * 逐条复用 `createScheme`（序号/注册/骨架/告警零复制）。
+ * 幂等：已铺任务按 `任务{N}：` **前缀锚定**跳过（禁模糊子串，`：` 阻断 任务1/任务10 前缀碰撞）。
+ * @param projectPath 项目根路径
+ * @param stageName 阶段 ID（短名 stage-01 或完整 v1.0.0-stage-01）
+ * @returns 创建/跳过明细
+ * @throws Error 阶段名非法（INVALID_STAGE）或 status.md 不存在（STATUS_NOT_FOUND）
+ */
+export function createSchemesFromTasks(projectPath: string, stageName: string): CreateSchemesFromTasksResult {
+  const parsed = parseStageId(stageName);
+  if (!parsed) {
+    // 错误路径：阶段名非法（命令层已先校验，此处防御）
+    throw new Error('INVALID_STAGE');
+  }
+  const statusPath = findStageStatusPath(projectPath, parsed.fullStageId);
+  if (!statusPath) {
+    // 错误路径：阶段 status.md 不存在 → 命令层映射 stage.errorStageNotFoundTmpl
+    throw new Error('STATUS_NOT_FOUND');
+  }
+
+  // 任务解析（任务表唯一权威 = status.md 文本；沿用 `- [ ] 任务N：desc` 行形态）
+  const content = readFileSync(statusPath, 'utf-8');
+  const taskRegex = /^-\s*\[[ x]\]\s*任务(\d+)[：:]\s*(.*)$/gm;
+  const byNo = new Map<number, string>();
+  let m: RegExpExecArray | null;
+  while ((m = taskRegex.exec(content)) !== null) {
+    const no = parseInt(m[1], 10);
+    if (!byNo.has(no)) {
+      byNo.set(no, m[2].trim());
+    }
+  }
+  const taskNos = [...byNo.keys()].sort((a, b) => a - b);
+
+  // 幂等判重信源：既有 op 标题集合（listSchemes 的 title 权威 = 文件首行 `# op-NNN：{title}`）
+  const existingTitles = listSchemes(projectPath, parsed.fullStageId).map((s) => s.title);
+
+  const result: CreateSchemesFromTasksResult = {
+    created: [],
+    createdTitles: [],
+    skippedTaskNos: [],
+    depsPlaceholderCreated: false,
+  };
+  for (const no of taskNos) {
+    const prefix = `任务${no}：`;
+    if (existingTitles.some((t) => t.startsWith(prefix))) {
+      result.skippedTaskNos.push(no);
+      continue;
+    }
+    const title = `${prefix}${sanitizeTaskDesc(byNo.get(no) ?? '')}`;
+    const opId = createScheme(projectPath, parsed.fullStageId, title);
+    result.created.push(opId);
+    result.createdTitles.push(title);
+  }
+
+  // ops/deps.yaml 占位（仅不存在时写最小合法 YAML；不覆盖既有）
+  const opsDir = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'ops');
+  if (!existsSync(opsDir)) {
+    mkdirSync(opsDir, { recursive: true });
+  }
+  const depsPath = join(opsDir, 'deps.yaml');
+  if (!existsSync(depsPath)) {
+    atomicWriteFileSync(
+      depsPath,
+      `# ${parsed.fullStageId} op 依赖声明（占位）\n`
+        + '# 由 openfeel plan scheme create --from-tasks 机械生成；依赖关系请由 openfeel-schemer 补全\n'
+        + '# 参见 kb/patterns.md #op 文件命名规范 + #deps.yaml 声明实际文件名\n\n'
+        + 'version: "1.1"\n'
+        + `stage: ${parsed.fullStageId}\n\n`
+        + 'ops: {}\n',
+    );
+    result.depsPlaceholderCreated = true;
+  }
+
+  return result;
 }
 
 /** 删除（注销）结果（N1-1） */

@@ -5,7 +5,7 @@
 import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
 import type { StageSkeletonOverrides } from '../core/plan/stage.js';
-import { createScheme, listSchemes, removeScheme, publishScheme, renameScheme, registerSchemes } from '../core/plan/scheme.js';
+import { createScheme, createSchemesFromTasks, listSchemes, removeScheme, publishScheme, renameScheme, registerSchemes } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
@@ -30,7 +30,8 @@ export function registerPlanCommand(program: Command): void {
     .option('--tasks <items...>', '初始任务列表（空格或逗号分隔，生成到 status.md）')
     .option('--exec-mode <mode>', '执行模式（manual | auto），覆盖 config 默认')
     .option('--auto-advance <value>', '自动推进（enabled | disabled），覆盖 config 默认')
-    .action((name: string, options: { deps?: string[]; tasks?: string[]; execMode?: string; autoAdvance?: string }) => {
+    .option('--workflow-mode <mode>', '工作流模式（full | fast），覆盖 config 默认')
+    .action((name: string, options: { deps?: string[]; tasks?: string[]; execMode?: string; autoAdvance?: string; workflowMode?: string }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       // 非法 stageId 统一报错 + 建议名（op-002 校验底座）
@@ -55,6 +56,15 @@ export function registerPlanCommand(program: Command): void {
         const allowed = getConfigFieldLegalValues('auto_advance') ?? [];
         if (!allowed.includes(options.autoAdvance)) {
           console.error(t('stage.set.invalidValueTmpl', lang, { field: '自动推进', value: options.autoAdvance, allowed: allowed.join(', ') }));
+          process.exit(1);
+          return;
+        }
+      }
+      if (options.workflowMode !== undefined) {
+        const allowed = getConfigFieldLegalValues('workflow_mode') ?? [];
+        if (!allowed.includes(options.workflowMode)) {
+          // 非法值 → exit 1 且不建阶段
+          console.error(t('stage.set.invalidValueTmpl', lang, { field: '工作流模式', value: options.workflowMode, allowed: allowed.join(', ') }));
           process.exit(1);
           return;
         }
@@ -95,6 +105,9 @@ export function registerPlanCommand(program: Command): void {
       }
       if (options.autoAdvance !== undefined) {
         overrides.autoAdvance = options.autoAdvance as 'disabled' | 'enabled';
+      }
+      if (options.workflowMode !== undefined) {
+        overrides.workflowMode = options.workflowMode as 'full' | 'fast';
       }
 
       try {
@@ -145,15 +158,59 @@ export function registerPlanCommand(program: Command): void {
 
   // plan scheme create <stage> <title>
   // plan scheme create <stage> <title> [--draft]
+  // plan scheme create <stage> --from-tasks  （机械铺 op 骨架 + ops/deps.yaml 占位）
   schemeCmd
     .command('create')
     .description('创建操作方案')
     .argument('<stage>', '阶段 ID（如 stage-01 或 v1.0.0-stage-01）')
-    .argument('<title>', '方案标题')
+    .argument('[title]', '方案标题（使用 --from-tasks 时省略）')
     .option('--draft', '以 draft（未发布）状态创建；填充后需 plan scheme publish 发布')
-    .action((stage: string, title: string, options: { draft?: boolean }) => {
+    .option('--from-tasks', '从阶段任务表机械生成 ops/op-NNN.md 骨架 + ops/deps.yaml 占位（不调用任何 Agent）')
+    .action((stage: string, title: string | undefined, options: { draft?: boolean; fromTasks?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
+
+      // --from-tasks：机械铺（无 Agent 调用、无隐式副作用）
+      if (options.fromTasks) {
+        // 互斥校验：--from-tasks 不接受 title（标题由任务行派生）
+        if (title !== undefined) {
+          console.error(t('plan.scheme.create.fromTasksMutualTmpl', lang));
+          process.exit(1);
+          return;
+        }
+        try {
+          const r = createSchemesFromTasks(projectPath, stage);
+          if (r.created.length === 0) {
+            console.log(t('plan.scheme.fromTasks.emptyTmpl', lang, { stage }));
+          } else {
+            console.log(t('plan.scheme.fromTasks.okTmpl', lang, {
+              count: String(r.created.length),
+              ops: r.created.join(', '),
+              skipped: String(r.skippedTaskNos.length),
+              stage,
+            }));
+          }
+          return;
+        } catch (err) {
+          // 错误路径：status.md 缺失 → 阶段未找到文案；其余 → 通用错误
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg === 'STATUS_NOT_FOUND') {
+            console.error(t('stage.errorStageNotFoundTmpl', lang, { stageId: stage }));
+          } else {
+            console.error(t('common.errorTmpl', lang, { msg }));
+          }
+          process.exit(1);
+          return;
+        }
+      }
+
+      // 无 --from-tasks 时 title 必填（原 `<title>` 必填语义的运行时校验）
+      if (title === undefined) {
+        console.error(t('plan.scheme.create.titleRequiredTmpl', lang));
+        process.exit(1);
+        return;
+      }
+
       const opId = createScheme(projectPath, stage, title, {
         draft: options.draft,
         // N3-2：阶段未注册时提示已按注册语义补齐阶段骨架

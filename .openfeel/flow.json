@@ -2,13 +2,13 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-11T09:24:19.215Z",
-    "revision": 858
+    "updated": "2026-10-11T10:32:51.420Z",
+    "revision": 876
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.1.7-stage-74",
+      "stage": "v1.1.7-stage-75",
       "op": "op-001"
     },
     "retry": 0
@@ -3270,16 +3270,92 @@
         "start_time": "2026-10-11T08:15:51.147Z",
         "end_time": "2026-10-11T09:24:19.196Z",
         "duration_ms": 4108049
-      }
+      },
+      "workflow_mode": "full"
     },
     "v1.1.7-stage-75": {
       "name": "v1.1.7-stage-75",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.1.7-stage-74"
       ],
-      "ops": {}
+      "ops": {
+        "op-001": {
+          "title": "阶段创建/设置命令面与「插入」写函数（T1 + T2 + 冗余写入点①②）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-002": {
+          "title": "`flow mode` 只读查询与 `flow phases` 模式分节（T3 + T3-附）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-003": {
+          "title": "`config set --sync-stages` 作用域限定与 `inserted` 命令层落地（T5 + 冗余写入点③ + health 校验）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-004": {
+          "title": "op 骨架机械铺 + wizard 首次选型 + 自举收尾 T9 + 门禁收口（T6 + T4 + T9 + T8）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        }
+      },
+      "stats": {
+        "start_time": "2026-10-11T09:24:27.217Z",
+        "end_time": "2026-10-11T10:32:51.396Z",
+        "duration_ms": 4104179
+      },
+      "workflow_mode": "full"
     },
     "v1.1.7-stage-76": {
       "name": "v1.1.7-stage-76",
@@ -3289,7 +3365,8 @@
         "v1.1.7-stage-74",
         "v1.1.7-stage-75"
       ],
-      "ops": {}
+      "ops": {},
+      "workflow_mode": "full"
     },
     "v1.1.7-stage-77": {
       "name": "v1.1.7-stage-77",
@@ -3298,7 +3375,8 @@
       "deps": [
         "v1.1.7-stage-76"
       ],
-      "ops": {}
+      "ops": {},
+      "workflow_mode": "full"
     }
   },
   "reviews": [],
@@ -15530,6 +15608,242 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.1.7-stage-74",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-11T09:24:27.217Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-10-11T09:27:21.269Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "plan_review",
+        "to": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T09:34:41.823Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-10-11T09:36:24.792Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T09:36:25.116Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T09:46:33.205Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-10-11T09:46:33.205Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-10-11T09:46:33.205Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-10-11T09:46:33.206Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "opId": "op-004"
+      }
+    },
+    {
+      "time": "2026-10-11T09:47:23.093Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-10-11T09:51:03.406Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "scheme_review",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T09:55:59.123Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-10-11T09:57:12.546Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T09:57:12.900Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-11T10:11:51.946Z",
+      "agent": "cli",
+      "action": "config_sync_stage",
+      "detail": {
+        "stage": "v1.1.7-stage-74",
+        "field": "工作流模式",
+        "value": "full"
+      }
+    },
+    {
+      "time": "2026-10-11T10:11:51.952Z",
+      "agent": "cli",
+      "action": "config_sync_stage",
+      "detail": {
+        "stage": "v1.1.7-stage-75",
+        "field": "工作流模式",
+        "value": "full"
+      }
+    },
+    {
+      "time": "2026-10-11T10:11:51.956Z",
+      "agent": "cli",
+      "action": "config_sync_stage",
+      "detail": {
+        "stage": "v1.1.7-stage-76",
+        "field": "工作流模式",
+        "value": "full"
+      }
+    },
+    {
+      "time": "2026-10-11T10:11:51.960Z",
+      "agent": "cli",
+      "action": "config_sync_stage",
+      "detail": {
+        "stage": "v1.1.7-stage-77",
+        "field": "工作流模式",
+        "value": "full"
+      }
+    },
+    {
+      "time": "2026-10-11T10:14:29.789Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T10:21:34.683Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T10:21:35.017Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T10:26:35.091Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T10:26:35.399Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-10-11T10:32:51.396Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.1.7-stage-75",
         "from": "archiving",
         "to": "done"
       }

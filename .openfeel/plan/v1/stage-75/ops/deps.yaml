@@ -1,0 +1,136 @@
+# stage-75 op 依赖声明
+# 由 openfeel-schemer 制定；Feel 调度前用 Glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.1.7-stage-75
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-11"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.1.7-stage-74
+    type: hard
+    status: done
+    reason: "双模式引擎已就绪：`resolveStageWorkflowMode`（public，flow-manager.ts:2276）/ mode 形参访问器（getPipelineTransitions 2037 / getDefaultTransitions 2048）/ 快线表 / 四源级联 / `STAGE_FIELD_BY_CONFIG_KEY` 含 workflow_mode / 本仓 config.yaml workflow_mode: full（裁定 L）。本阶段只做命令面与交互，**禁止第二套模式解析**。"
+  - downstream: v1.1.7-stage-76
+    type: hard
+    note: "模板与 skill 需引用**已冻结**的命令面：本阶段冻结 `flow mode --json` 结构（含 modes）、`--workflow-mode` 语义、`flow phases --json` 新增 `workflowMode`、wizard 记忆语义、`plan scheme create --from-tasks` 显式入口（无隐式副作用）。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "**本阶段不执行** `npm publish`、不 `git push`、不改 CI、不 commit、**不直写 `flow.json`**（冗余字段经 CLI 自身写入）；版本保持 1.1.6（版本收口归 stage-77）。"
+
+# 本阶段 4 op（严格串行；i18n 双表与 flow-manager/flow/plan 源码跨 op 共享，避免 diff 交叠）：
+#   op-001（阶段创建/设置命令面 + 插入写函数，无前置）
+#   → op-002（flow mode + flow phases 模式分节，hard: op-001）
+#   → op-003（config --sync-stages --stage + inserted + 冗余③ + health，hard: op-001）
+#   → op-004（T6 骨架机械铺 + T4 wizard + T9 自举 + T8 门禁，hard: op-002 + op-003〔transitively op-001〕）。
+# 依赖真实性：
+#   - op-001 → op-002/op-003：同 `src/core/i18n-data/{zh-CN,en}.ts` 双表文件串行（避免 diff 交叠），且 op-002/op-003 的测试基线依赖 op-001 落地的 i18n 基线断言。
+#   - op-001 → op-003：op-003 复用 op-001 新增的 `insertStatusField` 单一插入实现（**禁双实现**）；同 `src/core/flow-manager.ts` 文件串行。
+#   - op-002/op-003 → op-004：wizard 复用 `insertStatusField`；T9 前置 = T2/T5（op-001/op-003）交付并测试绿；同 `flow.ts` / `plan.ts` 文件串行。
+#
+# 不变量：
+#   ① 模式解析单一权威：`flow mode` / `flow phases` 模式派生均经 `resolveStageWorkflowMode`（禁第二信源）；`src/` 内 `getPipelineTransitions(` / `getDefaultTransitions(` **零无参调用**（op-002 收口；访问器默认形参保留供测试）。
+#   ② 写语义二分：`insertStatusField`（插入，新增单一实现）与 `setStatusField`/`writeStatusField`（替换，**零改动**）严格分离；锚点链「自动推进」→「执行模式」→ no-anchor；`.bak` 仅确认插入时生成。
+#   ③ `--json` 只增不改：`flow phases` 既有五键逐字不变 + `workflowMode`（E-2② 键数 5→6 为**有意更新**）；`config effective` 字段零变更。
+#   ④ 冗余字段 `flow.json stages.{id}.workflow_mode`（裁定 G）：可选、不参与级联；三写入点（plan stage add 初值 / stage set --workflow-mode / --sync-stages）**仅实际写入时同步**；health 不一致仅 warn 不 fail（op-003）。
+#   ⑤ 单阶段 vs 批量语义：[REV-75-005] 单阶段 `stage set` 插入失败 fail-fast exit 1 不写盘；批量 `--sync-stages` 以 `skipped-no-anchor` 跳过类表达、**退出码恒 0**。
+#   ⑥ `--stage` 限定（REV-75-002）：作用域参数前置全量校验、失败前置零写盘；单独 `--stage` 或与 `--global` 组合 → exit 1；done 阶段显式列入 = 正常处理（不做 phase 过滤）。
+#   ⑦ wizard 安全边界（REV-75-003）：非 TTY 既有全局守卫（flow.ts:1679-1683）逐字不动（T39 保持）；记忆写入仅用户显式 TTY 选择触发，复用 `setConfigValue` 增量写。
+#   ⑧ T9 自举（裁定 L ②）：`config set defaults.workflow_mode full --sync-stages --stage v1.1.7-stage-74~77` 为本阶段**唯一**改写本仓真实 status.md 的动作；核验 3 口径见 ops/op-003.md 困难点 3 与 ops/op-004.md T9（**[REV-75-010 修订] 首轮 flow.json 内容增量 = 4 个冗余字段 + `meta.revision`(+1) + `meta.updated`（save() 必然改写：flow-manager.ts:531/:550）**，porcelain 相对执行前快照零新增条目；重复执行零写盘）。
+#   ⑨ 不新增依赖；不改 phase 枚举 / 转移表引擎 / `advanceAccepted` 语义；测试全程隔离 HOME/fixture，严禁触碰本仓真实 `config.yaml`/`status.md`（唯一例外 = T9 经 CLI）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "阶段创建/设置命令面与「插入」写函数（T1 + T2 + 冗余写入点①②）"
+    produces:
+      - src/core/plan/stage.ts
+      - src/commands/plan.ts
+      - src/core/flow-manager.ts
+      - src/commands/stage.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/plan/stage.test.ts
+      - test/commands/plan.test.ts
+      - test/commands/stage.test.ts
+      - test/core/flow-manager.test.ts
+    deps: []
+    notes: "覆盖 T1 + T2 + T5（冗余写入点①②）+ T7.1/T7.2/T7.3 + T7.8（部分）。骨架增「工作流模式」行（自动推进后）+ `--workflow-mode` 仿 `--exec-mode`（值域派生、非法 exit 1 不建阶段）+ `stage set` 插入语义（锚点链 + .bak + no-op）+ `FlowManager.insertStatusField`（三态：inserted/exists/no-anchor；禁落 core/plan/stage.ts）+ 冗余字段（仅实际写入时写；plan stage add 仅新建写）。i18n +3 键（775→778）+ 1 文本更新（noOptionTmpl）。门禁：tsc 0 + 4 测试文件全绿 + `setStatusField`/`writeStatusField` 语义零改动复核。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "`flow mode` 只读查询与 `flow phases` 模式分节（T3 + T3-附）"
+    produces:
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/cli/output-encoding.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "同 i18n 双表文件与阶段测试基线串行"
+    notes: "覆盖 T3 + T3-附 + T7.4/T7.5 + T7.11 ①~⑦ + E-2②（5→6 有意更新）。`flow mode [--stage] [--json]` 只读（四源复用 resolveStageWorkflowMode；唯一解析入口）；`flow phases` 模式解析链（--mode 显式 → --stage → current.stage → 级联兜底；显式传 mode 消除 :391/:393 无参调用；transitionsDiff 同模式）+ `--json` 仅增 `workflowMode`（既有五键逐字不变）+ 人类输出增模式分节行/指引行（只增不改）。T7.5 来源枚举按 3 可达源 + profile 阴性边界（**偏差登记**〔REV-75-011 审查认同，plan.md:130 措辞已同步〕，见 op 困难点 2）。i18n +8 键（778→786）+ help.flow.phases.json 文本更新。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "`config set --sync-stages` 作用域限定与 `inserted` 命令层落地（T5 + 冗余写入点③ + health 校验）"
+    produces:
+      - src/core/flow-manager.ts
+      - src/commands/config.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/config.test.ts
+      - test/core/flow-manager.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "复用 op-001 的 insertStatusField 单一插入实现（禁双实现）；同 flow-manager.ts 与 i18n 双表文件串行"
+    notes: "覆盖 T5 + T7.7 + T7.8（health）。`syncConfigFieldToStages` 扩 options.onlyStages + inserted/skipped-no-anchor（复用插入实现）+ 冗余写入点③（仅实际写入时 save 一次）+ `flow health` 一致性 warn（缺失不报、不 fail）；`commands/config.ts` 增 `--stage <ids...>`（变长，逗号/空格均可）+ 组合守卫 + 前置全量校验（零写盘）+ inserted/skipped-no-anchor 显式分支（禁落 default 报错）+ 汇总行 i18n。i18n +1 键（786→787）。T9 口径见 op 困难点 3（[REV-75-010 修订] 审查定稿：porcelain 相对执行前快照零新增条目 + 内容增量含 `meta.revision`/`meta.updated`）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-004:
+    file: op-004.md
+    title: "op 骨架机械铺 + wizard 首次选型 + 自举收尾 T9 + 门禁收口（T6 + T4 + T9 + T8）"
+    produces:
+      - src/core/plan/scheme.ts
+      - src/commands/plan.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/plan/scheme.test.ts
+      - test/commands/plan.test.ts
+      - test/commands/flow.test.ts
+      - .openfeel/plan/v1/stage-74/status.md
+      - .openfeel/plan/v1/stage-75/status.md
+      - .openfeel/plan/v1/stage-76/status.md
+      - .openfeel/plan/v1/stage-77/status.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "同 flow.ts 与 i18n 双表文件串行"
+      - op: op-003
+        type: hard
+        reason: "T9 前置 = T2/T5 交付并测试绿（REV-75-002）；同 i18n 双表文件串行"
+    notes: "覆盖 T6 + T4 + T9 + T8（T7.6/T7.9/T7.10 本 op 部分）。T6 入口定稿 = `plan scheme create <stage> [title] --from-tasks`（显式、可重跑、幂等前缀锚定、deps.yaml 占位不覆盖、零 Agent 调用）；T4 wizard（纯函数决策矩阵 + isTTY 注入 + vi.mock('@inquirer/prompts')；非 TTY 守卫/T39 零改动；记忆经 setConfigValue 增量写；「项目是否设过」用裸 YAML 读——getConfigValue 因 schema 默认填充不可用）；T9 自举命令 + 四项核验（[REV-75-010 修订] 核验 3 口径：含 `meta.revision`/`meta.updated`）+ 失败不进入归档；T8 门禁全量 + 检索复核（src 零无参调用）+ 死键复核。i18n +9 键（787→796）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 交付顺序（严格串行，供 Feel 调度）
+execution_order:
+  - op-001
+  - op-002
+  - op-003
+  - op-004

@@ -18,8 +18,9 @@ import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
 import { FlowManager, STAGE_STATUS_VALUES } from '../core/flow-manager.js';
 import { handleAddStageError } from './shared/errors.js';
-import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId } from '../core/plan/path.js';
+import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { appendStatusTask } from '../core/plan/stage.js';
+import { getConfigFieldLegalValues } from '../core/config.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -61,6 +62,27 @@ function backupStatus(statusPath: string, stageId: string): void {
 
   const backupPath = resolve(tmpDir, `status.${stageId}.bak`);
   copyFileSync(statusPath, backupPath);
+}
+
+/**
+ * 同步 flow.json 中 `stages[id].workflow_mode` 冗余字段（写入点②，裁定 G：可选冗余、不参与级联）。
+ * 仅在实际写入发生时调用；未加载 / 未注册（归一化双键均未命中）→ 静默跳过。
+ * @param mgr 已构造的 FlowManager（循环内可复用同一实例）
+ * @param stageId 用户输入原值（归一化后回退查询）
+ * @param value 目标值
+ */
+function syncWorkflowModeRedundancy(mgr: FlowManager, stageId: string, value: string): void {
+  if (!mgr.isLoaded()) {
+    return;
+  }
+  const data = mgr.getData()!;
+  const key = normalizeStageId(stageId) ?? stageId;
+  const target = data.stages[key];
+  if (!target) {
+    return; // 未注册阶段（允许作用于未注册目录）→ 无冗余条目，跳过
+  }
+  target.workflow_mode = value as 'full' | 'fast';
+  mgr.save();
 }
 
 /**
@@ -361,7 +383,8 @@ export function registerStageCommand(program: Command): void {
     .option('--exec-mode <mode>', '执行模式（manual | auto）')
     .option('--auto-advance <value>', '自动推进（enabled | disabled）')
     .option('--review-agent <agent>', '当前责任 Agent（如 openfeel-executor）')
-    .action((stageId: string, options: { status?: string; execMode?: string; autoAdvance?: string; reviewAgent?: string }) => {
+    .option('--workflow-mode <mode>', '工作流模式（full | fast）')
+    .action((stageId: string, options: { status?: string; execMode?: string; autoAdvance?: string; reviewAgent?: string; workflowMode?: string }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const statusPath = resolveStatusPath(projectPath, stageId);
@@ -371,7 +394,7 @@ export function registerStageCommand(program: Command): void {
         process.exit(1);
       }
 
-      // N7-1：字段白名单（A4）+ 固定写入顺序（状态 → 执行模式 → 自动推进 → 当前责任 Agent）
+      // N7-1：字段白名单（A4）+ 固定写入顺序（状态 → 执行模式 → 自动推进 → 工作流模式 → 当前责任 Agent）
       const jobs: { field: string; value: string; allowed?: string[] }[] = [];
       if (options.status !== undefined) {
         jobs.push({ field: '状态', value: options.status, allowed: [...STAGE_STATUS_VALUES] });
@@ -381,6 +404,9 @@ export function registerStageCommand(program: Command): void {
       }
       if (options.autoAdvance !== undefined) {
         jobs.push({ field: '自动推进', value: options.autoAdvance, allowed: ['enabled', 'disabled'] });
+      }
+      if (options.workflowMode !== undefined) {
+        jobs.push({ field: '工作流模式', value: options.workflowMode, allowed: getConfigFieldLegalValues('workflow_mode') ?? [] });
       }
       if (options.reviewAgent !== undefined) {
         const agent = options.reviewAgent.trim();
@@ -410,9 +436,33 @@ export function registerStageCommand(program: Command): void {
 
       // N5-2：先探测后写（同值 no-op 成功；`.bak` 仅在确认变更后生成）
       const applied: string[] = [];
+      const flowMgr = new FlowManager(projectPath);
       for (const job of jobs) {
         const probe = probeStatusField(statusPath, job.field, job.value);
         if (probe === 'not-found') {
+          // 「工作流模式」为新受管键：字段缺失 → 改道「插入」语义（锚点链）；其余字段保持既有 exit 1
+          if (job.field === '工作流模式') {
+            const r = flowMgr.insertStatusField(statusPath, stageId, job.field, job.value);
+            if (r === 'no-anchor') {
+              if (applied.length > 0) {
+                console.error(t('stage.set.multiPartialTmpl', lang, { done: applied.join(', '), field: job.field }));
+              }
+              console.error(t('stage.set.noAnchorTmpl', lang, { stageId, field: job.field }));
+              process.exit(1);
+              return;
+            }
+            if (r === 'inserted') {
+              console.log(t('stage.set.insertedTmpl', lang, { stageId, field: job.field, value: job.value }));
+            } else {
+              // 竞态防御：锁内发现字段已就位 → 回退替换语义（不产生双行）
+              backupStatus(statusPath, stageId);
+              setStatusField(projectPath, statusPath, job.field, job.value);
+              console.log(t('stage.set.updatedTmpl', lang, { stageId, field: job.field, value: job.value }));
+            }
+            applied.push(job.field);
+            syncWorkflowModeRedundancy(flowMgr, stageId, job.value);
+            continue;
+          }
           if (applied.length > 0) {
             console.error(t('stage.set.multiPartialTmpl', lang, { done: applied.join(', '), field: job.field }));
           }
@@ -434,6 +484,10 @@ export function registerStageCommand(program: Command): void {
         }
         applied.push(job.field);
         console.log(t('stage.set.updatedTmpl', lang, { stageId, field: job.field, value: job.value }));
+        // 冗余写入点②：仅实际写入（will-change 成功）时同步 flow.json 冗余字段
+        if (job.field === '工作流模式') {
+          syncWorkflowModeRedundancy(flowMgr, stageId, job.value);
+        }
       }
     });
 

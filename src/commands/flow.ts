@@ -25,7 +25,9 @@ import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
-import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
+import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath } from '../core/plan/path.js';
+import { getConfigFieldLegalValues, setConfigValue } from '../core/config.js';
+import { parse as parseYaml } from 'yaml';
 import { MetricsStore } from '../core/metrics.js';
 import { addReviewEntry } from '../core/view/entry.js';
 import { handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
@@ -384,25 +386,65 @@ export function registerFlowCommand(program: Command): void {
     .command('phases')
     .description('列出全部合法 phase 及其流转映射（自描述）')
     .option('--json', 'Output { phases, transitions, advanceAccepted, schemaVersion } as JSON')
-    .action((options: { json?: boolean }) => {
-      const lang = getCliLang(process.cwd());
+    .option('--mode <mode>', '显式指定工作流模式（full | fast；缺省经 --stage / 当前阶段派生）')
+    .option('--stage <id>', '按指定阶段的模式展示转移表（缺省 = 当前阶段）')
+    .action((options: { json?: boolean; mode?: string; stage?: string }) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
       const mgr = createManager();
-      const phases = mgr.getPipelinePhases();
-      const transitions = mgr.getPipelineTransitions();
-      // 运行时 vs 内置默认 transitions 差异（T19：使漂移可见，不补组合键）
-      const defaults = mgr.getDefaultTransitions();
+
+      // ① --mode 显式值域校验（schema 派生；非法 → exit 1，不进入只读取值）
+      let explicitMode: 'full' | 'fast' | undefined;
+      if (options.mode !== undefined) {
+        const allowed = getConfigFieldLegalValues('workflow_mode') ?? [];
+        if (!allowed.includes(options.mode)) {
+          console.error(t('stage.set.invalidValueTmpl', lang, { field: '工作流模式', value: options.mode, allowed: allowed.join(', ') }));
+          process.exit(1);
+          return;
+        }
+        explicitMode = options.mode as 'full' | 'fast';
+      }
+
+      // ② --stage 校验（格式 + 存在性）：先于任何只读取值
+      let stageArg: string | undefined;
+      if (options.stage !== undefined) {
+        const v = validateStageId(options.stage);
+        if (!v.ok) {
+          console.error(t('common.stageIdInvalidTmpl', lang, { input: options.stage }));
+          console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, options.stage) }));
+          process.exit(1);
+          return;
+        }
+        stageArg = normalizeStageId(options.stage) ?? options.stage;
+        const known = new Set(Object.keys(mgr.isLoaded() ? mgr.getData()!.stages : {}).map((k) => normalizeStageId(k) ?? k));
+        if (!known.has(stageArg) && !findStageStatusPath(projectPath, stageArg)) {
+          console.error(t('common.stageIdInvalidTmpl', lang, { input: options.stage }));
+          console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, options.stage) }));
+          process.exit(1);
+          return;
+        }
+      }
+
+      // ③ 单点派生：显式 --mode 优先，否则经 --stage / 当前阶段级联解析
+      const resolved = mgr.resolveStageWorkflowMode(stageArg);
+      const derivedMode = explicitMode ?? resolved.value;
+
+      // ④ 显式传 mode（消除无参调用；访问器默认形参保留）
+      const transitions = mgr.getPipelineTransitions(derivedMode);
+      // 运行时 vs 内置默认 transitions 差异（T19：使漂移可见，不补组合键；同模式对比）
+      const defaults = mgr.getDefaultTransitions(derivedMode);
       const missingKeys = Object.keys(defaults).filter((k) => !(k in transitions));
       const extraKeys = Object.keys(transitions).filter((k) => !(k in defaults));
       const changedKeys = Object.keys(defaults).filter(
         (k) => k in transitions && JSON.stringify(defaults[k]) !== JSON.stringify(transitions[k]),
       );
       const transitionsDiff = { missing: missingKeys, extra: extraKeys, changed: changedKeys };
+      const phases = mgr.getPipelinePhases();
 
       if (options.json) {
         // advanceAccepted = 内置 15 phase（flow advance 的推进白名单），与 phases（运行时存在视图，可含自定义）显式区分
-        // 既有三字段（phases/transitions/advanceAccepted）+ transitionsDiff 逐字保留；仅追加 schemaVersion:1（B1-6）
-        // 注：schemaVersion 未来变更须递增版本号
-        console.log(JSON.stringify({ schemaVersion: 1, phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff }, null, 2));
+        // 既有三字段（phases/transitions/advanceAccepted）+ transitionsDiff 逐字保留；schemaVersion 与 workflowMode 追加于末位（B1-6 / stage-75 op-002）
+        console.log(JSON.stringify({ schemaVersion: 1, phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff, workflowMode: derivedMode }, null, 2));
         return;
       }
 
@@ -412,6 +454,9 @@ export function registerFlowCommand(program: Command): void {
         console.log(`  - ${p}`);
       }
       console.log('');
+      // 模式分节行（stage-75 op-002：模式 + 来源 + 查看指引）
+      console.log(t('flow.mode.lineTmpl', lang, { mode: derivedMode, source: explicitMode ? '--mode' : resolved.source }));
+      console.log(t('flow.phases.modeHint', lang));
       console.log(t('flow.phases.transitionsLabel', lang) + ':');
       for (const [key, targets] of Object.entries(transitions)) {
         console.log(`  ${key} → [${targets.join(', ')}]`);
@@ -431,6 +476,67 @@ export function registerFlowCommand(program: Command): void {
         console.log(t('flow.phases.customPhaseNote', lang, { phases: customPhases.join(', ') }));
       }
       console.log(t('flow.phases.hint', lang));
+    });
+
+  // flow mode — 当前工作流模式与来源（只读）
+  flow
+    .command('mode')
+    .description('显示当前工作流模式与来源（只读）')
+    .option('--stage <id>', '目标阶段（缺省 = 当前阶段）')
+    .option('--json', 'Output as JSON')
+    .action((options: { stage?: string; json?: boolean }) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      const mgr = createManager();
+
+      let key: string | undefined;
+      if (options.stage !== undefined) {
+        const v = validateStageId(options.stage);
+        if (!v.ok) {
+          console.error(t('common.stageIdInvalidTmpl', lang, { input: options.stage }));
+          console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, options.stage) }));
+          process.exit(1);
+          return;
+        }
+        key = normalizeStageId(options.stage) ?? options.stage;
+        // 存在性：已注册（flow.json）或有 status.md；二者皆无 → exit 1（防 typo 静默落 config 层）
+        const known = new Set(Object.keys(mgr.isLoaded() ? mgr.getData()!.stages : {}).map((k) => normalizeStageId(k) ?? k));
+        if (!known.has(key) && !findStageStatusPath(projectPath, key)) {
+          console.error(t('common.stageIdInvalidTmpl', lang, { input: options.stage }));
+          console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, options.stage) }));
+          process.exit(1);
+          return;
+        }
+      } else {
+        // 缺省 = 当前阶段；无 current 时 undefined（级联仍可解析 config/builtin）
+        key = mgr.getData()?.pipeline?.current?.stage || undefined;
+      }
+
+      // 唯一解析入口（禁第二套来源判定）
+      const resolved = mgr.resolveStageWorkflowMode(key);
+      const modes = {
+        full: mgr.getPipelineTransitions('full'),
+        fast: mgr.getPipelineTransitions('fast'),
+      };
+
+      if (options.json) {
+        // 未初始化亦保纯 JSON 单文档（stage 空串 + 无 stage 域级联解析值）
+        console.log(JSON.stringify({ schemaVersion: 1, stage: key ?? '', mode: resolved.value, source: resolved.source, modes }, null, 2));
+        return;
+      }
+
+      if (!mgr.isLoaded()) {
+        console.log(t('common.noInit', lang));
+        return;
+      }
+
+      console.log(t('flow.mode.lineTmpl', lang, { mode: resolved.value, source: resolved.source }));
+      // 阶段 phase 已知时补可达目标行（同源 getAvailablePhases）
+      const phase = key ? mgr.getData()?.stages[key]?.phase : undefined;
+      if (key && phase) {
+        console.log(t('flow.mode.targetsLabel', lang, { stage: key, phase, targets: mgr.getAvailablePhases(key).join(', ') }));
+      }
+      // 只读保证：不 save()、不 appendLog、不写任何文件
     });
 
   // flow stage — 阶段管理子命令组
@@ -660,7 +766,7 @@ export function registerFlowCommand(program: Command): void {
     .command('advance')
     .description('推进流水线阶段')
     .option('--op <id>', '操作 ID（如 stage-01.op-001），仅用于日志/展示')
-    .requiredOption('--to <phase>', '目标阶段（如 exec_running）。合法 phase 与转移表：openfeel flow phases')
+    .requiredOption('--to <phase>', '目标阶段（如 exec_running）。合法 phase 与转移表：openfeel flow phases；查看当前模式：openfeel flow mode')
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
     .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')
@@ -1766,6 +1872,33 @@ export function registerFlowCommand(program: Command): void {
             return;
           }
 
+          // stage-75 T4：首次选型 + 项目级记忆（TTY + 阶段无字段 + 项目未显式设默认 → 询问一次）
+          {
+            const modeResolved = mgr.resolveStageWorkflowMode(currentStage);
+            const stageHasField = modeResolved.source === 'status.md';
+            const projectHasDefault = hasExplicitProjectDefault(process.cwd(), 'workflow_mode');
+            if (shouldPromptWorkflowMode(stageHasField, projectHasDefault) === 'prompt') {
+              const chosen = (await select({
+                message: t('flow.wizard.modePrompt', lang),
+                choices: [
+                  { name: t('flow.wizard.modeFull', lang), value: 'full' },
+                  { name: t('flow.wizard.modeFast', lang), value: 'fast' },
+                ],
+              })) as 'full' | 'fast';
+              const statusPath = findStageStatusPath(process.cwd(), currentStage);
+              if (statusPath) {
+                const r = mgr.insertStatusField(statusPath, currentStage, '工作流模式', chosen);
+                if (r === 'no-anchor') {
+                  // 错误路径：手工破坏文件（骨架必含锚点）→ 警告而非阻断（D5）
+                  console.error(t('stage.set.noAnchorTmpl', lang, { stageId: currentStage, field: '工作流模式' }));
+                }
+              }
+              // 记忆写入仅 defaults.workflow_mode（增量写、保注释），不覆盖其它 defaults 键
+              setConfigValue(process.cwd(), 'workflow_mode', chosen);
+              console.log(t('flow.wizard.modeRememberedTmpl', lang, { mode: chosen }));
+            }
+          }
+
           const stagePhase = data.stages[currentStage].phase;
 
           // 显示当前状态
@@ -1857,6 +1990,43 @@ export function registerFlowCommand(program: Command): void {
         process.exitCode = 1;
       }
     });
+}
+
+/**
+ * 「是否询问工作流模式」决策矩阵（stage-75 T4，D4）。
+ * 仅当阶段 status.md 无「工作流模式」字段 **且** 项目 config.yaml 未显式设 `defaults.workflow_mode` 时询问；
+ * 其余 3 态（有字段 / 有项目默认 / 两者皆有）一律 skip（保持既有推进流不变）。
+ * @param stageHasField 阶段 status.md 是否已有「工作流模式」字段
+ * @param projectHasDefault 项目 config.yaml 是否**显式**设过 `defaults.workflow_mode`
+ */
+export function shouldPromptWorkflowMode(stageHasField: boolean, projectHasDefault: boolean): 'prompt' | 'skip' {
+  return !stageHasField && !projectHasDefault ? 'prompt' : 'skip';
+}
+
+/**
+ * 项目 config.yaml 是否**显式**声明了 `defaults.{key}`（stage-75 T4，D3）。
+ * 必须**裸读 YAML**：`getConfigValue` 经 `ConfigDefaultsSchema` 逐键 `.default()` 填充，
+ * 缺失键亦返回 schema 默认值（实测恒 `fast`），无法区分「设过」与「未设」。
+ * 文件缺失 / 解析失败 / 无 defaults 块 / 非对象 → false（视为未显式设置）。
+ * @param projectPath 项目根路径
+ * @param key defaults 下的配置键（如 workflow_mode）
+ */
+function hasExplicitProjectDefault(projectPath: string, key: string): boolean {
+  try {
+    const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
+    if (!existsSync(configPath)) {
+      return false;
+    }
+    const raw = parseYaml(readFileSync(configPath, 'utf-8')) as Record<string, unknown> | null;
+    const defaults = raw?.defaults;
+    if (!defaults || typeof defaults !== 'object') {
+      return false;
+    }
+    return Object.prototype.hasOwnProperty.call(defaults, key);
+  } catch {
+    // 错误路径：YAML 解析失败 → 视为未显式设置（不阻断向导）
+    return false;
+  }
 }
 
 /** 创建 FlowManager 实例（使用当前工作目录） */

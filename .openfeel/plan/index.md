@@ -98,8 +98,8 @@
 | v1.1.6-stage-71 | v1.1.6（部署编排与命令面 — global-paths 5 函数 + setup/update 双分支 + `--tools` + R-5 修复 + i18n 768 + D-CFG；hard 依赖 stage-69/70） | **已归档**（**M26 done / v1.1.6 第四阶段**） | 4 op | 4/4 |
 | v1.1.6-stage-73 | v1.1.6（Claude 全局 settings 注入 — 严格 JSON 深合并写回 + `defaultMode:auto` + `agent:feel` + 备份/幂等/卸载；**反转蓝本 §四**；hard 依赖 stage-69/71；**执行先于 stage-72**） | **已归档**（**M27 done / v1.1.6 第五阶段**） | 3 op | 3/3 |
 | v1.1.6-stage-72 | v1.1.6（文档与版本收口 — README×3 + manual + CHANGELOG + 版本 1.1.6 + CI guard；hard 依赖 stage-71/73；**执行顺序最后**） | **已归档**（**M28 done / v1.1.6 版本收官**） | 4 op | 4/4 |
-| v1.1.7-stage-74 | v1.1.7（双模式引擎 — `workflow_mode` 四键配置 + full/fast 双转移表 + 表选择单一权威 + `auto_advance` 默认翻转 `enabled`；**执行顺序第一**） | **规划中**（待 Feel 推进） | 3 op 估 | 0/3 |
-| v1.1.7-stage-75 | v1.1.7（模式命令面与交互 — `plan stage add --workflow-mode` / `stage set --workflow-mode`（含插入语义）/ `flow mode` 只读 / wizard 选型与项目级记忆 / op 骨架机械铺；hard 依赖 stage-74） | **规划中**（待 Feel 推进） | 3 op 估 | 0/3 |
+| v1.1.7-stage-74 | v1.1.7（双模式引擎 — `workflow_mode` 四键配置 + full/fast 双转移表 + 表选择单一权威 + `auto_advance` 默认翻转 `enabled`；**执行顺序第一**） | **已归档**（**M29 done / v1.1.7 首阶段**） | 4 op | 4/4 |
+| v1.1.7-stage-75 | v1.1.7（模式命令面与交互 — `plan stage add --workflow-mode` / `stage set --workflow-mode`（含插入语义）/ `flow mode` 只读 / `flow phases --mode\|--stage` / `config set --sync-stages --stage` / wizard 选型与项目级记忆 / `plan scheme create --from-tasks` op 骨架机械铺；hard 依赖 stage-74） | **已归档**（**M30 done / v1.1.7 第二阶段**） | 4 op | 4/4 |
 | v1.1.7-stage-76 | v1.1.7（模板与 skill 模式感知 — `feel.md`×4 调度纪律 + subagent 模式感知 + skills 收口 + 静态断言；hard 依赖 stage-74/75） | **规划中**（待 Feel 推进） | 3 op 估 | 0/3 |
 | v1.1.7-stage-77 | v1.1.7（文档与版本收口 — README×3 + manual + CHANGELOG + 版本 1.1.7 + fast 隔离端到端验收；hard 依赖 stage-76；**执行顺序最后**） | **规划中**（待 Feel 推进） | 3 op 估 | 0/3 |
 

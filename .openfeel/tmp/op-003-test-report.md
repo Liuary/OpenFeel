@@ -1,39 +1,47 @@
-# 自测报告 — op-003（级联「工作流模式」与带 stage 形参解析，T4 + T3 解析层）
+# 自测报告 — op-003
 
-- **执行时间**：2026-10-11 17:10
+- **执行时间**：2026-10-11 18:20
 - **执行 Agent**：openfeel-executor
-- **重试次数**：2（首跑 `test/commands/config.test.ts > T6.7` 红点：op-001 默认翻转使新建骨架初值变 enabled，`--sync-stages enabled` 变 no-op → 修正为 disabled 目标值）
+- **重试次数**：1
 
 ## 执行摘要
-`EFFECTIVE_CONFIG_KEYS` 四键 + `buildCascadeConfig(stageId?)` + 公共 `resolveStageWorkflowMode(stageId?)` 完成；`config effective` 出四键；T7.4a~h + `config effective` 四键 + T7.5 CLI 半段全绿。
+全部实施步骤完成，自测清单全绿（tsc 0 / 3 测试文件 420 用例全绿 / lint i18n 787 / fixture 覆盖插入-更新-幂等-限定-守卫-无锚点六类）。
 
 ## 实施步骤完成情况
-- [x] T4-1 `EFFECTIVE_CONFIG_KEYS` 扩四键
-- [x] T4-2 `buildCascadeConfig(stageId?)` 可选形参（`const targetStage = stageId ?? this.data?.pipeline.current.stage`）+ status.md 增「工作流模式」正则
-- [x] T4-3 新增公共 `resolveStageWorkflowMode(stageId?)`（status.md > config.yaml > profile.yaml（不产出）> builtin fast）
-- [x] 测试 T7.4a~h（含决定性 T7.4e：stage-02 ≠ current.stage）
-- [x] `test/commands/config.test.ts`：`config effective` 四键 + workflow_mode 单键 + T7.5 CLI 半段（隔离 HOME → builtin enabled）[REV-74-008]
+- [x] T5-引擎：`syncConfigFieldToStages(configKey, value, { onlyStages })` 三参 + 结果联合类型扩 `inserted` / `skipped-no-anchor`；`--stage` 归一化过滤（`continue`）；`workflow_mode` 字段缺失 → 复用 `insertStatusField`（三态分流：inserted / exists→回退替换 / no-anchor）；其余键保持 `skipped-no-field`；冗余写入点③（`flowJsonDirty` + 循环后 `save()` 一次）；JSDoc 更新
+- [x] health 第 10 项：`checkWorkflowModeRedundancy(items)`（`!quick` 门控；字段缺失 `continue`；不一致 → warn 无 pass 项）
+- [x] T5-命令层：import `normalizeStageId` / `suggestStageId`；`--stage <ids...>` 选项；三条组合守卫（单独 `--stage` / `--global --stage` / 既有 `--global --sync-stages` 保留）；`setConfigValue` **之前**前置全量校验（解析 → 归一 → 注册校验，失败零写盘）；`inserted` / `skipped-no-anchor` 显式分支（不落 default）；汇总行改 i18n 键
+- [x] i18n：`config.set.syncSummaryTmpl`（双表成对）
+- [x] 测试：T7.7a~i（9 用例）+ T7.8b（health 4 用例）
 
 ## 自测清单验证
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| `npx tsc --noEmit` | ✅ | 0 |
-| `vitest run flow-manager.test.ts commands/config.test.ts` | ✅ | 305 passed（含新增 T7.4 + config 四键 + CLI 半段） |
-| `npm run build` | ✅ | 成功 |
-| `config effective` | ✅ | 四行：`execution_mode：auto [status.md]` / `auto_advance：enabled [status.md]` / `merge_mode：manual [config.yaml]` / `workflow_mode：full [config.yaml]` |
-| `flow status --verbose` | ✅ | 级联表含 `workflow_mode` 行 |
-| `lint i18n` | ✅ | 775 |
-| `rg buildCascadeConfig(` | ✅ | 定义 1 + 无参 2（verboseSummary / resolveEffectiveConfig）+ 形参 1（resolveStageWorkflowMode） |
+| `npx tsc --noEmit` → 0 | ✅ | |
+| config + flow-manager + flow 三文件 | ✅ | 420 passed / 0 failed |
+| fixture 批量插入 | ✅ | 输出 `同步 1 / 插入 2 / 跳过 0`；两处 `.bak` 生成；冗余字段同步 |
+| fixture 幂等 | ✅ | 第二次 `同步 0 / 插入 0 / 跳过 3`；flow.json SHA256 不变 |
+| fixture `--stage` 限定 | ✅ | 仅前两者被写；第三阶段逐字不变；逗号写法等价 |
+| fixture 未注册 `--stage` | ✅ | exit 1 + 建议名；config.yaml SHA256 不变 |
+| fixture 单独 `--stage` / `--global --stage` | ✅ | 均 exit 1 + 明确报错 |
+| fixture 无锚点 | ✅ | exit 0 + stderr `noAnchorTmpl`；文件 SHA256 不变 |
+| fixture `flow health` | ✅ | 含「工作流模式」**warn**（不 fail）；移除冗余字段后该项消失（零报错） |
+| `lint i18n` → 787 | ✅ | 786 + 1 |
+| `rg -n "syncSummaryTmpl" src/` | ✅ | 3 命中（1 调用 + 双表定义，无死键） |
+| `--version` → 1.1.6 | ✅ | |
 
 ## 产出文件
 - `src/core/flow-manager.ts`
-- `test/core/flow-manager.test.ts`、`test/commands/config.test.ts`
-- 顺带修正 `test/commands/plan.test.ts`（见偏差）
+- `src/commands/config.ts`
+- `src/core/i18n-data/zh-CN.ts` / `src/core/i18n-data/en.ts`
+- `test/commands/config.test.ts` / `test/core/flow-manager.test.ts`
 
 ## 前置校验结果
-- 通过（health exit 0）
+- 方案完整性：通过
+- Phase 合法性：通过
+- 流转合法性：通过
 
 ## 偏差记录
-- **[偏差-2] `test/commands/config.test.ts > T6.7`（auto_advance --sync-stages）翻转点补漏**：op-001 F1~F11 清单未含此文件；默认翻转后新建骨架初值 `enabled`，原用例 `set auto_advance enabled --sync-stages` 退化为 no-op（无「已更新」）。改为同步目标 `disabled`（构成真实变更）并同步断言，保留「首写 + 同值 no-op」语义。
-- **[偏差-3] `test/commands/plan.test.ts > T6.8`（--auto-advance 覆盖）陈旧假设清理**：原用例标题/取值「覆盖默认 disabled」在翻转后已不成立（默认即 enabled）；改为 `--auto-advance disabled`（构成真实覆盖）+ 标题对齐，语义由「同值写入」恢复为「显式覆盖默认」。
-- 跳步违规：无。
+1. **T7.7b 断言修正**：noop 阶段不触发冗余改写，其 `workflow_mode` 保持新建时写入的 config 默认（fast），非目标值。测试按此语义断言（同时验证「noop 不写 flow.json」）。
+2. **T7.7d 断言修正**：fixture 由 `FlowManager.initFlow` + `addStage` 构造，**不创建 config.yaml**；「前置零写盘」按「文件不存在且未被创建」表达（比 SHA 比对更强的零写盘证据）。
+3. fixture `flow health` 另有既有 `current 指向不存在的 stage: -` fail（init 模板占位符所致，与本 op 无关，单元测试 fixture 已用合法 current 验证 `ok === true`）。

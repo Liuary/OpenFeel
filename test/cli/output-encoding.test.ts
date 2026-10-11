@@ -279,7 +279,7 @@ describe('E-2 spawn E2E（真实子进程，防恒绿）', () => {
   );
 
   it.skipIf(!HAS_DIST_ENCODING)(
-    'E-2② C-2 旁路回归：--json + GBK env → 合法 UTF-8 / JSON.parse / 5 键',
+    'E-2② C-2 旁路回归：--json + GBK env → 合法 UTF-8 / JSON.parse / 6 键（stage-75 op-002 追加 workflowMode）',
     () => {
       const home = mkdtempSync(join(tmpdir(), 'openfeel-enc-home-'));
       try {
@@ -287,9 +287,12 @@ describe('E-2 spawn E2E（真实子进程，防恒绿）', () => {
         expect(r.status).toBe(0);
         const out = r.stdout as Buffer;
         const text = FATAL_UTF8.decode(out); // 合法 UTF-8 不抛
-        const j = JSON.parse(text) as { schemaVersion: number };
+        const j = JSON.parse(text) as { schemaVersion: number; workflowMode: string };
         expect(j.schemaVersion).toBe(1);
-        expect(Object.keys(j).length).toBe(5);
+        // 5 → 6：仅增 workflowMode（既有五键逐字不变）
+        expect(Object.keys(j).length).toBe(6);
+        // cwd = REPO_ROOT → 取本仓 config.yaml 派生值（枚举内即可，避免耦合具体值）
+        expect(j.workflowMode).toMatch(/^(full|fast)$/);
       } finally {
         rmSync(home, { recursive: true, force: true });
       }

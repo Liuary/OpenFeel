@@ -25,6 +25,8 @@ export interface StageSkeletonOverrides {
   executionMode?: 'manual' | 'auto';
   /** 自动推进覆盖值 */
   autoAdvance?: 'disabled' | 'enabled';
+  /** 工作流模式覆盖值 */
+  workflowMode?: 'full' | 'fast';
 }
 
 /** 折叠任务描述：去除首尾空白，内部换行折叠为空格（防结构破坏） */
@@ -149,10 +151,12 @@ ${depsText}
     const configDefaults = resolveConfigDefaults(projectPath);
     const executionMode = overrides?.executionMode ?? configDefaults.execution_mode;
     const autoAdvance = overrides?.autoAdvance ?? configDefaults.auto_advance;
+    const workflowMode = overrides?.workflowMode ?? configDefaults.workflow_mode;
     const statusContent = `# ${parsed.fullStageId} 状态
 
 - **执行模式**：${executionMode}
 - **自动推进**：${autoAdvance}
+- **工作流模式**：${workflowMode}
 - **状态**：planned
 - **当前责任 Agent**：user
 - **上一责任 Agent**：none
@@ -209,7 +213,13 @@ export function addStage(projectPath: string, name: string, deps?: string[], tas
   // 同步到 flow.json（若存在）— 键用完整 stageId
   const flowMgr = new FlowManager(projectPath);
   if (flowMgr.isLoaded()) {
+    // 冗余写入点①：仅「新建」阶段写 workflow_mode（已存在阶段不覆盖，防与 status.md 权威值漂移，D6）
+    const existed = !!flowMgr.getData()!.stages[parsed.fullStageId];
     flowMgr.registerStage(parsed.fullStageId, deps ?? []);
+    if (!existed) {
+      const resolvedWorkflowMode = overrides?.workflowMode ?? resolveConfigDefaults(projectPath).workflow_mode;
+      flowMgr.getData()!.stages[parsed.fullStageId].workflow_mode = resolvedWorkflowMode;
+    }
     flowMgr.save();
   }
 }

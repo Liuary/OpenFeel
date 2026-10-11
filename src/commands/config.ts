@@ -10,6 +10,7 @@ import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
 import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey, STAGE_FIELD_BY_CONFIG_KEY } from '../core/config.js';
 import { FlowManager } from '../core/flow-manager.js';
+import { normalizeStageId, suggestStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
 
@@ -182,10 +183,23 @@ export function registerConfigCommand(program: Command): void {
     .description(t('help.config.set'))
     .option('-g, --global', '操作全局 profile（~/.config/openfeel/profile.yaml）')
     .option('--sync-stages', '将配置值同步写入所有已注册阶段的 status.md 对应字段（仅项目模式）')
+    .option('--stage <ids...>', '限定同步的阶段 ID 列表（仅与 --sync-stages 组合；空格或逗号分隔）')
     .action(function (key: string, value: string) {
-      const opts = this.opts() as { global?: boolean; syncStages?: boolean };
+      const opts = this.opts() as { global?: boolean; syncStages?: boolean; stage?: string[] };
       const lang = getCliLang(process.cwd());
 
+      // --stage 仅可与 --sync-stages 组合（单独使用 → exit 1，防静默无效参数）
+      if (opts.stage !== undefined && !opts.syncStages) {
+        console.error(t('common.errorTmpl', lang, { msg: '--stage 仅可与 --sync-stages 组合使用' }));
+        process.exit(1);
+        return;
+      }
+      // --stage 仅项目模式可用（与 --global 组合 → exit 1）
+      if (opts.global && opts.stage !== undefined) {
+        console.error(t('common.errorTmpl', lang, { msg: '--stage 仅项目模式可用（不能与 --global 组合）' }));
+        process.exit(1);
+        return;
+      }
       // --sync-stages 仅项目模式可用（与 --global 组合 → exit 1）
       if (opts.global && opts.syncStages) {
         console.error(t('common.errorTmpl', lang, { msg: '--sync-stages 仅项目模式可用（不能与 --global 组合）' }));
@@ -251,6 +265,38 @@ export function registerConfigCommand(program: Command): void {
         return;
       }
 
+      // --stage 前置全量校验（D1：解析 → 归一 → 注册校验；任一失败 → exit 1 且 config.yaml/status.md 零写盘）
+      let onlyStages: string[] | undefined;
+      if (opts.syncStages && opts.stage !== undefined) {
+        const projectPath = process.cwd();
+        // 变长参数：空格 / 逗号两种写法（与 --deps 同款）
+        const parsedIds = opts.stage
+          .flatMap((s) => s.split(','))
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (parsedIds.length === 0) {
+          console.error(t('common.errorTmpl', lang, { msg: '--stage 需要至少一个阶段 ID' }));
+          process.exit(1);
+          return;
+        }
+        const normalizedIds = parsedIds.map((id) => normalizeStageId(id) ?? id);
+        const fmCheck = new FlowManager(projectPath);
+        const knownSet = new Set(
+          Object.keys(fmCheck.isLoaded() ? fmCheck.getData()!.stages : {}).map((k) => normalizeStageId(k) ?? k),
+        );
+        const invalid = normalizedIds.filter((id) => !knownSet.has(id));
+        // 未注册阶段（含 flow.json 未加载 → knownSet 为空 → 全部 invalid）→ 逐 id 报错 + 建议名
+        if (invalid.length > 0) {
+          for (const id of invalid) {
+            console.error(t('common.stageIdInvalidTmpl', lang, { input: id }));
+            console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, id) }));
+          }
+          process.exit(1);
+          return;
+        }
+        onlyStages = [...new Set(normalizedIds)];
+      }
+
       try {
         setConfigValue(process.cwd(), normalizedKey, value);
         console.log(t('config.set.valueOk', lang, { key: normalizedKey, value }));
@@ -260,31 +306,50 @@ export function registerConfigCommand(program: Command): void {
         process.exit(1);
       }
 
-      // --sync-stages：将目标键批量同步到所有已注册阶段 status.md 对应字段（仅项目模式）
+      // --sync-stages：将目标键批量同步到已注册阶段 status.md 对应字段（仅项目模式；--stage 可限定范围）
       if (opts.syncStages) {
         const field = STAGE_FIELD_BY_CONFIG_KEY[normalizedKey];
         const mgr = new FlowManager(process.cwd());
-        const results = mgr.isLoaded() ? mgr.syncConfigFieldToStages(normalizedKey, value) : [];
+        const results = mgr.isLoaded() ? mgr.syncConfigFieldToStages(normalizedKey, value, { onlyStages }) : [];
         let updated = 0;
+        let inserted = 0;
+        let skipped = 0;
         for (const r of results) {
           switch (r.result) {
             case 'updated':
               updated++;
               console.log(t('stage.set.updatedTmpl', lang, { stageId: r.stage, field: field ?? normalizedKey, value }));
               break;
+            case 'inserted':
+              // 字段缺失 → 插入语义（与 stage set --workflow-mode 同口径；禁落 default 当错误输出）
+              inserted++;
+              console.log(t('stage.set.insertedTmpl', lang, { stageId: r.stage, field: field ?? normalizedKey, value }));
+              break;
+            case 'skipped-no-anchor':
+              // 锚点缺失 → 跳过类（不写盘；复用 op-001 新键保持口径一致），退出码恒 0
+              skipped++;
+              console.error(t('stage.set.noAnchorTmpl', lang, { stageId: r.stage, field: field ?? normalizedKey }));
+              break;
             case 'noop':
+              skipped++;
               console.log(t('stage.set.noopTmpl', lang, { field: field ?? normalizedKey }));
               break;
             case 'skipped-no-status':
+              skipped++;
               console.error(t('stage.errorStageNotFoundTmpl', lang, { stageId: r.stage }));
               break;
             default: // skipped-no-field
+              skipped++;
               console.error(t('stage.set.errorFieldNotFoundTmpl', lang, { stageId: r.stage, field: field ?? normalizedKey }));
               break;
           }
         }
-        // 汇总：同步 N / 跳过 M（跳过含 no-op 与无字段/无 status；退出码保持 0）
-        console.log(`同步 ${updated} / 跳过 ${results.length - updated}`);
+        // 汇总：同步 N / 插入 M / 跳过 K（跳过含 noop / 无字段 / 无 status / 无锚点；退出码保持 0）
+        console.log(t('config.set.syncSummaryTmpl', lang, {
+          updated: String(updated),
+          inserted: String(inserted),
+          skipped: String(skipped),
+        }));
       }
     });
 

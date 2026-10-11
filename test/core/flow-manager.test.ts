@@ -4612,3 +4612,168 @@ describe('单一取表点（stage-74 op-004）', () => {
     expect(downstream[0].responsibleAgent).toBe('openfeel-planner');
   });
 });
+
+// ── v1.1.7-stage-75 op-001：insertStatusField（单一「插入」写函数）──
+describe('insertStatusField（stage-75 op-001）', () => {
+  let projDir: string;
+
+  beforeEach(() => {
+    projDir = mkdtempSync(join(tmpdir(), 'openfeel-insert-field-'));
+  });
+
+  afterEach(() => {
+    rmSync(projDir, { recursive: true, force: true });
+  });
+
+  /** 写入 status.md 并返回路径与所在阶段目录名 */
+  function writeStatus(stageDirName: string, content: string): string {
+    const dir = join(projDir, '.openfeel', 'plan', 'v1', stageDirName);
+    mkdirSync(dir, { recursive: true });
+    const p = join(dir, 'status.md');
+    writeFileSync(p, content, 'utf-8');
+    return p;
+  }
+
+  function bakPath(stageId: string): string {
+    return join(projDir, '.openfeel', 'tmp', `status.${stageId}.bak`);
+  }
+
+  it('插入：锚点「自动推进」后 +1 行 + .bak 生成 + 其余逐字保留', () => {
+    const before = '# v1.0.0-stage-01 状态\n\n- **执行模式**：manual\n- **自动推进**：disabled\n- **状态**：planned\n';
+    const p = writeStatus('stage-01', before);
+
+    const mgr = new FlowManager(projDir);
+    const r = mgr.insertStatusField(p, 'stage-01', '工作流模式', 'full');
+
+    expect(r).toBe('inserted');
+    const after = readFileSync(p, 'utf-8');
+    expect(after).toBe(before.replace('- **自动推进**：disabled\n', '- **自动推进**：disabled\n- **工作流模式**：full\n'));
+    expect(existsSync(bakPath('stage-01'))).toBe(true);
+    expect(readFileSync(bakPath('stage-01'), 'utf-8')).toBe(before);
+  });
+
+  it('回退锚点：无「自动推进」→「执行模式」行后插入', () => {
+    const p = writeStatus('stage-02', '# v1.0.0-stage-02 状态\n\n- **执行模式**：manual\n- **状态**：planned\n');
+
+    const r = new FlowManager(projDir).insertStatusField(p, 'stage-02', '工作流模式', 'fast');
+
+    expect(r).toBe('inserted');
+    expect(readFileSync(p, 'utf-8')).toBe('# v1.0.0-stage-02 状态\n\n- **执行模式**：manual\n- **工作流模式**：fast\n- **状态**：planned\n');
+  });
+
+  it('exists：字段已存在 → 不写盘、无 .bak', () => {
+    const before = '# v1.0.0-stage-03 状态\n\n- **自动推进**：disabled\n- **工作流模式**：fast\n';
+    const p = writeStatus('stage-03', before);
+
+    const r = new FlowManager(projDir).insertStatusField(p, 'stage-03', '工作流模式', 'full');
+
+    expect(r).toBe('exists');
+    expect(readFileSync(p, 'utf-8')).toBe(before);
+    expect(existsSync(bakPath('stage-03'))).toBe(false);
+  });
+
+  it('no-anchor：锚点链均缺失 → 不写盘、无 .bak', () => {
+    const before = '# v1.0.0-stage-04 状态\n\n- **状态**：planned\n';
+    const p = writeStatus('stage-04', before);
+
+    const r = new FlowManager(projDir).insertStatusField(p, 'stage-04', '工作流模式', 'full');
+
+    expect(r).toBe('no-anchor');
+    expect(readFileSync(p, 'utf-8')).toBe(before);
+    expect(existsSync(bakPath('stage-04'))).toBe(false);
+  });
+
+  it('字段名含正则元字符时按字面量匹配（escapeRegex 防护）', () => {
+    const before = '# x\n\n- **自动推进**：disabled\n';
+    const p = writeStatus('stage-05', before);
+
+    const mgr = new FlowManager(projDir);
+    expect(mgr.insertStatusField(p, 'stage-05', 'a.b', 'v')).toBe('inserted');
+    expect(readFileSync(p, 'utf-8')).toContain('- **a.b**：v');
+    // 二次调用（字段已在）→ exists，不再误插入
+    expect(mgr.insertStatusField(p, 'stage-05', 'a.b', 'v2')).toBe('exists');
+  });
+
+  it('CRLF 文件：保留原行尾风格', () => {
+    const p = writeStatus('stage-06', '# x\r\n\r\n- **自动推进**：disabled\r\n- **状态**：planned\r\n');
+
+    const r = new FlowManager(projDir).insertStatusField(p, 'stage-06', '工作流模式', 'full');
+
+    expect(r).toBe('inserted');
+    expect(readFileSync(p, 'utf-8')).toContain('- **自动推进**：disabled\r\n- **工作流模式**：full\r\n');
+  });
+});
+
+// ── v1.1.7-stage-75 op-003：health 工作流模式冗余一致性（第 10 项，仅 warn）──
+describe('checkWorkflowModeRedundancy（stage-75 op-003）', () => {
+  let projDir: string;
+
+  beforeEach(() => {
+    projDir = mkdtempSync(join(tmpdir(), 'openfeel-wfmode-health-'));
+  });
+
+  afterEach(() => {
+    rmSync(projDir, { recursive: true, force: true });
+  });
+
+  /** 构造最小项目：flow.json（含可选冗余字段）+ status.md */
+  function setup(workflowMode?: string, statusMode = 'full'): void {
+    mkdirSync(join(projDir, '.openfeel', 'plan', 'v1', 'stage-01'), { recursive: true });
+    writeFileSync(
+      join(projDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md'),
+      `# v1.0.0-stage-01 状态\n\n- **执行模式**：manual\n- **自动推进**：disabled\n- **工作流模式**：${statusMode}\n- **状态**：planned\n`,
+      'utf-8',
+    );
+    const stage: Record<string, unknown> = {
+      name: 'v1.0.0-stage-01',
+      phase: 'plan_pending',
+      status: 'planned',
+      deps: [],
+      ops: {},
+    };
+    if (workflowMode !== undefined) {
+      stage.workflow_mode = workflowMode;
+    }
+    writeFileSync(
+      join(projDir, '.openfeel', 'flow.json'),
+      JSON.stringify({
+        meta: { version: '1.0', project: 'T', updated: '2026-01-01T00:00:00Z', revision: 1 },
+        pipeline: { phase: 'active', current: { stage: 'v1.0.0-stage-01', op: '' }, retry: 0 },
+        stages: { 'v1.0.0-stage-01': stage },
+        reviews: [],
+        log: [],
+      }, null, 2),
+      'utf-8',
+    );
+  }
+
+  it('不一致（冗余 fast vs status.md full）→ warn 且 ok 仍为 true', () => {
+    setup('fast', 'full');
+    const result = new FlowManager(projDir).healthCheck(false);
+    const item = result.items.find((i) => i.section === '工作流模式');
+    expect(item?.status).toBe('warn');
+    expect(item?.message).toContain('v1.0.0-stage-01');
+    expect(result.ok).toBe(true);
+    // 仅 warn 不 fail
+    expect(result.items.every((i) => i.status !== 'fail')).toBe(true);
+  });
+
+  it('一致（冗余 full vs status.md full）→ 不产生该 section 项', () => {
+    setup('full', 'full');
+    const result = new FlowManager(projDir).healthCheck(false);
+    expect(result.items.find((i) => i.section === '工作流模式')).toBeUndefined();
+  });
+
+  it('旧 flow.json（无冗余字段）→ 零报错、无该 section 项', () => {
+    setup(undefined, 'full');
+    const result = new FlowManager(projDir).healthCheck(false);
+    expect(result.items.find((i) => i.section === '工作流模式')).toBeUndefined();
+    expect(result.ok).toBe(true);
+  });
+
+  it('quick 模式不执行第 10 项（门控 !quick）', () => {
+    setup('fast', 'full');
+    const result = new FlowManager(projDir).healthCheck(true);
+    expect(result.items.find((i) => i.section === '工作流模式')).toBeUndefined();
+  });
+});

@@ -150,6 +150,97 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
   });
 
+  // ── stage-75 op-001：stage set --workflow-mode「插入」语义（T7.2 / T7.3）──
+
+  it('T7.2a：旧版 status.md（无工作流模式行）→ 插入成功 + .bak + 仅 +1 行', async () => {
+    const p = writeStatus('stage-96');
+    const before = readFileSync(p, 'utf-8');
+
+    await safeParse(['stage', 'set', 'stage-96', '--workflow-mode', 'full']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const after = readFileSync(p, 'utf-8');
+    expect(after).toContain('- **工作流模式**：full');
+    // 其余内容逐字保留（diff 仅 +1 行）
+    const beforeLines = before.split('\n');
+    const afterLines = after.split('\n');
+    expect(afterLines.length).toBe(beforeLines.length + 1);
+    const added = afterLines.filter((l) => !beforeLines.includes(l));
+    expect(added).toEqual(['- **工作流模式**：full']);
+    // 插入位置：紧跟「自动推进」行之后
+    const idx = afterLines.indexOf('- **工作流模式**：full');
+    expect(afterLines[idx - 1]).toBe('- **自动推进**：disabled');
+    // .bak 生成
+    expect(existsSync(bakPath('stage-96'))).toBe(true);
+    expect(stdout()).toContain('已');
+    expect(stdout()).toContain('插入');
+  });
+
+  it('T7.2b：仅「执行模式」锚点（无「自动推进」）→ 回退锚点插入', async () => {
+    const dir = join(projDir, '.openfeel', 'plan', 'v1', 'stage-97');
+    mkdirSync(dir, { recursive: true });
+    const p = join(dir, 'status.md');
+    writeFileSync(p, '# v1.0.0-stage-97 状态\n\n- **执行模式**：manual\n- **状态**：planned\n', 'utf-8');
+
+    await safeParse(['stage', 'set', 'stage-97', '--workflow-mode', 'fast']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const content = readFileSync(p, 'utf-8');
+    expect(content).toContain('- **工作流模式**：fast');
+    expect(content).toContain('- **执行模式**：manual');
+  });
+
+  it('T7.2c：两锚点皆缺 → exit 1 + 锚点文案 + 无 .bak + 文件不变', async () => {
+    const dir = join(projDir, '.openfeel', 'plan', 'v1', 'stage-98');
+    mkdirSync(dir, { recursive: true });
+    const p = join(dir, 'status.md');
+    writeFileSync(p, '# v1.0.0-stage-98 状态\n\n- **状态**：planned\n', 'utf-8');
+    const before = readFileSync(p, 'utf-8');
+
+    await safeParse(['stage', 'set', 'stage-98', '--workflow-mode', 'full']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('插入锚点');
+    expect(existsSync(bakPath('stage-98'))).toBe(false);
+    expect(readFileSync(p, 'utf-8')).toBe(before);
+  });
+
+  it('T7.2d：同值重复 → no-op 文案 + 无新 .bak', async () => {
+    const p = writeStatus('stage-99');
+    writeFileSync(p, readFileSync(p, 'utf-8').replace('- **状态**：planned', '- **工作流模式**：full\n- **状态**：planned'), 'utf-8');
+
+    await safeParse(['stage', 'set', 'stage-99', '--workflow-mode', 'full']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(stdout()).toContain('已是目标值');
+    expect(existsSync(bakPath('stage-99'))).toBe(false);
+  });
+
+  it('T7.3：非法值 → exit 1 且文件不变', async () => {
+    const p = writeStatus('stage-100');
+    const before = readFileSync(p, 'utf-8');
+
+    await safeParse(['stage', 'set', 'stage-100', '--workflow-mode', 'bogus']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(readFileSync(p, 'utf-8')).toBe(before);
+  });
+
+  it('T7.3b：插入后 flow.json 冗余字段同步为写入值', async () => {
+    FlowManager.initFlow(projDir);
+    const m0 = new FlowManager(projDir);
+    m0.registerStage('v1.0.0-stage-101');
+    m0.save();
+    const p = writeStatus('stage-101');
+
+    await safeParse(['stage', 'set', 'stage-101', '--workflow-mode', 'fast']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(p, 'utf-8')).toContain('- **工作流模式**：fast');
+    const flow = JSON.parse(readFileSync(join(projDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-101'].workflow_mode).toBe('fast');
+  });
+
   // ── stage-51 N7：stage set 字段扩展 ──
 
   it('N7：--exec-mode / --auto-advance / --review-agent 分别写入并可回读', async () => {

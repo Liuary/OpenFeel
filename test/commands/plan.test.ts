@@ -96,6 +96,81 @@ describe('plan 命令', () => {
     expect(logMock).toHaveBeenCalledWith('已创建阶段: stage-01');
   });
 
+  // ── stage-75 op-001：plan stage add --workflow-mode（T7.1）──
+
+  it('T7.1a：--workflow-mode fast → 骨架行 + flow.json 冗余 == fast', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01', '--workflow-mode', 'fast']);
+
+    const statusContent = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md'), 'utf-8');
+    expect(statusContent).toContain('- **工作流模式**：fast');
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].workflow_mode).toBe('fast');
+  });
+
+  it('T7.1b：--workflow-mode bogus → exit 1 且阶段目录不存在', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-02', '--workflow-mode', 'bogus']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock).toHaveBeenCalledWith('字段 工作流模式 的取值非法：bogus（允许：full, fast）');
+    // 不建阶段
+    expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-02'))).toBe(false);
+  });
+
+  it('T7.1c：缺省 → 取 config defaults.workflow_mode', async () => {
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'defaults:\n  workflow_mode: full\n', 'utf-8');
+
+    await safeParse(['plan', 'stage', 'add', 'stage-03']);
+
+    const statusContent = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-03', 'status.md'), 'utf-8');
+    expect(statusContent).toContain('- **工作流模式**：full');
+
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-03'].workflow_mode).toBe('full');
+  });
+
+  // ── stage-75 op-004：plan scheme create --from-tasks（T7.9d）──
+
+  it('T7.9d：--from-tasks 从任务表机械生成骨架 + deps.yaml 占位（零 Agent 调用）', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01', '--tasks', '做A,做B']);
+    logMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '--from-tasks']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+    expect(existsSync(join(opsDir, 'op-001.md'))).toBe(true);
+    expect(existsSync(join(opsDir, 'op-002.md'))).toBe(true);
+    expect(existsSync(join(opsDir, 'deps.yaml'))).toBe(true);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('op-001');
+    expect(readFileSync(join(opsDir, 'op-001.md'), 'utf-8')).toContain('# op-001：任务1：做A');
+
+    // 幂等：二次执行无新文件、无报错
+    logMock.mockClear();
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '--from-tasks']);
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('无待铺任务');
+  });
+
+  it('T7.9d：--from-tasks 与 title 互斥 → exit 1；缺 title → exit 1', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01', '--tasks', '做A']);
+
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '标题', '--from-tasks']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('互斥');
+
+    exitMock.mockClear();
+    await safeParse(['plan', 'scheme', 'create', 'stage-01']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('缺少方案标题');
+  });
+
+  it('T7.9d：--from-tasks 阶段 status.md 缺失 → exit 1 + 阶段未找到文案', async () => {
+    await safeParse(['plan', 'scheme', 'create', 'stage-77', '--from-tasks']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('未找到阶段');
+  });
+
   it('plan stage list 应列出已创建阶段（空）', async () => {
     await safeParse(['plan', 'stage', 'list']);
 

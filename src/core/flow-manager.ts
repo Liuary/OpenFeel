@@ -99,6 +99,8 @@ export interface StageData {
   ops: Record<string, Op>;
   /** 阶段耗时统计（可选，运行时填充） */
   stats?: StageStats;
+  /** 工作流模式（可选冗余，不参与级联；读取权威恒为 status.md/级联，裁定 G） */
+  workflow_mode?: 'full' | 'fast';
 }
 
 /** Flow 完整数据结构 */
@@ -3420,6 +3422,11 @@ export class FlowManager {
       this.checkEmptyTemplates(items);
     }
 
+    // ── 10. 工作流模式冗余字段一致性（stage-75 op-003；仅 warn，不 fail、不自动修复）──
+    if (!quick) {
+      this.checkWorkflowModeRedundancy(items);
+    }
+
     const ok = items.every((i) => i.status !== 'fail');
     return { items, ok };
   }
@@ -3516,25 +3523,88 @@ export class FlowManager {
   }
 
   /**
+   * status.md 字段「插入」写（原子写 + 按阶段目录加锁）。
+   * 与 `writeStatusField`（替换语义）并列的**独立**实现，禁双重语义：
+   * 字段行已存在 → `exists`（不写盘）；锚点链「自动推进」后 → 回退「执行模式」后 → 皆缺 `no-anchor`（不写盘 / 无 `.bak`）。
+   * 备份 `.openfeel/tmp/status.{stageId}.bak` 仅在**确认插入**时生成。
+   * 不依赖 `this.data`（flow.json 未加载的存量项目也可仅凭 `this.projectPath` 定位锁/备份）。
+   * @param statusPath status.md 绝对路径
+   * @param stageId 备份文件名中的阶段 ID（单阶段 = 用户输入原值；批量 = flow.json 注册键）
+   * @param key 字段名（如「工作流模式」）
+   * @param value 目标值
+   * @returns `inserted` 已插入 | `exists` 字段已存在（竞态防御，调用方可回退替换）| `no-anchor` 锚点缺失
+   */
+  insertStatusField(statusPath: string, stageId: string, key: string, value: string): 'inserted' | 'exists' | 'no-anchor' {
+    const stageDir = basename(dirname(statusPath));
+    const lockPath = projectLockPath(this.projectPath, `status-${stageDir}`);
+    return withFileLock(lockPath, () => {
+      const content = readFileSync(statusPath, 'utf-8');
+      // 锁内复查：字段行已存在 → 不写盘（探针与写之间的竞态防御）
+      const fieldRegex = new RegExp(`^-\\s*(?:\\*\\*)?${escapeRegex(key)}(?:\\*\\*)?[：:]`, 'm');
+      if (fieldRegex.test(content)) {
+        return 'exists' as const;
+      }
+      // 锚点链：「自动推进」行后优先；缺失则回退「执行模式」行后；皆缺 = no-anchor
+      const anchor =
+        content.match(/^-\s*(?:\*\*)?自动推进(?:\*\*)?[：:]/m) ??
+        content.match(/^-\s*(?:\*\*)?执行模式(?:\*\*)?[：:]/m);
+      if (!anchor || anchor.index === undefined) {
+        return 'no-anchor' as const;
+      }
+      const newLine = `- **${key}**：${value}`;
+      const lineEnd = content.indexOf('\n', anchor.index + anchor[0].length);
+      let updated: string;
+      if (lineEnd === -1) {
+        // 错误路径：锚点行位于文件末行（无尾换行）→ 换行后追加
+        updated = `${content}\n${newLine}`;
+      } else {
+        // 保留锚点行原行尾风格（CRLF 感知），其余字节逐字保留
+        const isCrlf = content[lineEnd - 1] === '\r';
+        const eol = isCrlf ? '\r\n' : '\n';
+        updated = `${content.slice(0, lineEnd + 1)}${newLine}${eol}${content.slice(lineEnd + 1)}`;
+      }
+      // 备份仅在确认插入时生成
+      const tmpDir = resolve(this.projectPath, '.openfeel', 'tmp');
+      if (!existsSync(tmpDir)) {
+        mkdirSync(tmpDir, { recursive: true });
+      }
+      copyFileSync(statusPath, resolve(tmpDir, `status.${stageId}.bak`));
+      atomicWriteFileSync(statusPath, updated);
+      return 'inserted' as const;
+    });
+  }
+
+  /**
    * 将受管配置键批量同步到所有已注册阶段的 status.md 对应字段（`config set --sync-stages`）。
    * 仅 auto_advance→「自动推进」、execution_mode→「执行模式」、workflow_mode→「工作流模式」
    * 三个映射键有阶段级字段；其它键无阶段字段 → 全部 skipped-no-field（D-config 裁定，跳过并报告）。
-   * 复用 writeStatusField 的定向写 + 按阶段锁；同值 → noop（零写盘）。
-   * 只读 flow.json 的阶段枚举，不写 flow.json。
+   * `workflow_mode` 字段缺失时复用 `insertStatusField`（插入语义，单一实现），锚点缺失 → skipped-no-anchor。
+   * 复用 writeStatusField / insertStatusField 的定向写 + 按阶段锁；同值 → noop（零写盘）。
+   * **冗余写入（裁定 G）**：`workflow_mode` 实际写入（updated / inserted）时同步 `stages[id].workflow_mode`
+   * 并 save 一次；noop / skipped 全量运行 → flow.json 零写盘。
    * @param configKey 已归一的受管配置键（如 auto_advance）
    * @param value 目标值
-   * @returns 每阶段一条结果（updated/noop/skipped-no-field/skipped-no-status）
+   * @param options 可选作用域：`onlyStages` 限定阶段 ID 列表（已归一化；缺省 = 全量现状）
+   * @returns 每阶段一条结果（updated/inserted/noop/skipped-no-field/skipped-no-status/skipped-no-anchor）
    */
   syncConfigFieldToStages(
     configKey: string,
     value: string,
-  ): Array<{ stage: string; result: 'updated' | 'noop' | 'skipped-no-field' | 'skipped-no-status' }> {
-    const out: Array<{ stage: string; result: 'updated' | 'noop' | 'skipped-no-field' | 'skipped-no-status' }> = [];
+    options?: { onlyStages?: string[] },
+  ): Array<{ stage: string; result: 'updated' | 'inserted' | 'noop' | 'skipped-no-field' | 'skipped-no-status' | 'skipped-no-anchor' }> {
+    const out: Array<{ stage: string; result: 'updated' | 'inserted' | 'noop' | 'skipped-no-field' | 'skipped-no-status' | 'skipped-no-anchor' }> = [];
     if (!this.data) {
       return out;
     }
     const field = STAGE_FIELD_BY_CONFIG_KEY[configKey];
+    const targets = options?.onlyStages;
+    // 冗余写入标记：仅实际写入（updated / inserted）时置位，循环后 save 一次（D6）
+    let flowJsonDirty = false;
     for (const stageId of Object.keys(this.data.stages)) {
+      // --stage 作用域限定：归一化比较兼容存量短名键（D5；未注册 id 自然落 skipped-no-status）
+      if (targets && !targets.includes(normalizeStageId(stageId) ?? stageId)) {
+        continue;
+      }
       // 错误路径：该 config 键无阶段级字段 → 跳过并报告
       if (!field) {
         out.push({ stage: stageId, result: 'skipped-no-field' });
@@ -3547,8 +3617,31 @@ export class FlowManager {
         continue;
       }
       const current = readStatusFieldValue(readFileSync(statusPath, 'utf-8'), field);
-      // 错误路径：字段行缺失 → 跳过（不新建字段）
+      // 错误路径：字段行缺失 →
+      //   workflow_mode 走「插入」语义（复用 op-001 单一实现）；其余键保持 skipped-no-field（零回归）
       if (current === null) {
+        if (configKey === 'workflow_mode') {
+          const r = this.insertStatusField(statusPath, stageId, field, value);
+          if (r === 'inserted') {
+            this.appendLog({ time: '', agent: 'cli', action: 'config_sync_stage', detail: { stage: stageId, field, value } });
+            out.push({ stage: stageId, result: 'inserted' });
+            this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
+            flowJsonDirty = true;
+            continue;
+          }
+          if (r === 'exists') {
+            // 竞态防御：锁内发现字段已就位 → 回退替换语义（不产生双行）
+            this.writeStatusField(statusPath, field, value);
+            this.appendLog({ time: '', agent: 'cli', action: 'config_sync_stage', detail: { stage: stageId, field, value } });
+            out.push({ stage: stageId, result: 'updated' });
+            this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
+            flowJsonDirty = true;
+            continue;
+          }
+          // 锚点链均缺失 → 跳过类（不写盘、不审计）
+          out.push({ stage: stageId, result: 'skipped-no-anchor' });
+          continue;
+        }
         out.push({ stage: stageId, result: 'skipped-no-field' });
         continue;
       }
@@ -3560,6 +3653,15 @@ export class FlowManager {
       this.writeStatusField(statusPath, field, value);
       this.appendLog({ time: '', agent: 'cli', action: 'config_sync_stage', detail: { stage: stageId, field, value } });
       out.push({ stage: stageId, result: 'updated' });
+      // 冗余写入点③：仅实际写入时同步（noop / skipped 不写）
+      if (configKey === 'workflow_mode') {
+        this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
+        flowJsonDirty = true;
+      }
+    }
+    // 仅在实际发生写入时保存（幂等：全 noop → flow.json 零写盘）
+    if (flowJsonDirty) {
+      this.save();
     }
     return out;
   }
@@ -3593,6 +3695,38 @@ export class FlowManager {
       return;
     }
     items.push({ section: '悬空依赖', status: 'pass', message: '未检测到悬空依赖' });
+  }
+
+  /**
+   * 10. 工作流模式冗余字段一致性：flow.json `stages[].workflow_mode` 与级联解析值不一致 → warn（stage-75 op-003）。
+   * 冗余字段不参与级联（裁定 G），读取权威恒为 status.md/级联；字段缺失（旧 flow.json）零报错；
+   * 仅告警不 fail、不自动修复。无不一致时不产生条目（保持输出精简）——与 checkOrphanOps 同风格。
+   * @param items 健康检查结果收集数组
+   */
+  private checkWorkflowModeRedundancy(items: HealthCheckItem[]): void {
+    if (!this.data) {
+      return;
+    }
+    const mismatched: string[] = [];
+    for (const [stageId, stage] of Object.entries(this.data.stages)) {
+      const redundant = stage.workflow_mode;
+      // 错误路径：旧 flow.json 无该字段 → 直接跳过（零报错）
+      if (redundant === undefined) {
+        continue;
+      }
+      const resolved = this.resolveStageWorkflowMode(stageId).value;
+      if (redundant !== resolved) {
+        mismatched.push(`${stageId}（冗余 ${redundant} ≠ 解析 ${resolved}）`);
+      }
+    }
+    if (mismatched.length === 0) {
+      return;
+    }
+    items.push({
+      section: '工作流模式',
+      status: 'warn',
+      message: `检出 ${mismatched.length} 个阶段的 flow.json 冗余 workflow_mode 与权威解析值不一致（冗余不参与级联，可执行 openfeel config set workflow_mode <v> --sync-stages 修复）：${mismatched.slice(0, 5).join('; ')}${mismatched.length > 5 ? ' …' : ''}`,
+    });
   }
 
   /**

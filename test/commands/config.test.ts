@@ -449,4 +449,176 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(stderr()).toContain('--sync-stages');
   });
+
+  // ═══ v1.1.7-stage-75 op-003：--stage 限定 + inserted / skipped-no-anchor + 冗余写入 ═══
+
+  /** 删除 status.md 的「工作流模式」行（模拟旧版骨架） */
+  function dropWorkflowModeLine(stage: string): void {
+    const p = stageStatusPath(stage);
+    writeFileSync(p, readFileSync(p, 'utf-8').split('\n').filter((l) => !l.includes('工作流模式')).join('\n'), 'utf-8');
+  }
+
+  /** 改写 status.md 的「工作流模式」行值 */
+  function setWorkflowModeLine(stage: string, mode: string): void {
+    const p = stageStatusPath(stage);
+    writeFileSync(p, readFileSync(p, 'utf-8').replace(/\*\*工作流模式\*\*[：:]\s*\w+/, `**工作流模式**：${mode}`), 'utf-8');
+  }
+
+  function flowJson(): Record<string, { workflow_mode?: string }> {
+    return JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')).stages;
+  }
+
+  it('T7.7a：批量插入 → inserted 分支 + .bak 生成 + 汇总「同步 0 / 插入 2 / 跳过 0」', async () => {
+    setupTwoStages();
+    dropWorkflowModeLine('stage-01');
+    dropWorkflowModeLine('stage-02');
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **工作流模式**：full');
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toContain('- **工作流模式**：full');
+    expect(stdout()).toContain('插入');
+    expect(stdout()).toContain('同步 0 / 插入 2 / 跳过 0');
+    // 插入路径生成 .bak
+    expect(existsSync(join(tmpDir, '.openfeel', 'tmp', 'status.v1.0.0-stage-01.bak'))).toBe(true);
+    // 冗余字段同步
+    expect(flowJson()['v1.0.0-stage-01'].workflow_mode).toBe('full');
+    expect(flowJson()['v1.0.0-stage-02'].workflow_mode).toBe('full');
+  });
+
+  it('T7.7b：分类正确（noop + updated）→ 汇总计数准确', async () => {
+    setupTwoStages();
+    setWorkflowModeLine('stage-01', 'full'); // 已同值 → noop
+    setWorkflowModeLine('stage-02', 'fast'); // 需更新 → updated
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toContain('- **工作流模式**：full');
+    expect(stdout()).toContain('已是目标值');
+    expect(stdout()).toContain('同步 1 / 插入 0 / 跳过 1');
+    // noop 阶段不触发冗余改写（仍为新建时写入的 config 默认 fast）
+    expect(flowJson()['v1.0.0-stage-01'].workflow_mode).toBe('fast');
+    expect(flowJson()['v1.0.0-stage-02'].workflow_mode).toBe('full');
+  });
+
+  it('T7.7c：--stage 限定（空格写法）→ 仅前两者被写；第三阶段逐字不变；逗号写法等价', async () => {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+    addStage(tmpDir, 'stage-02');
+    addStage(tmpDir, 'stage-03');
+    for (const s of ['stage-01', 'stage-02', 'stage-03']) {
+      setWorkflowModeLine(s, 'fast');
+    }
+    const before3 = readFileSync(stageStatusPath('stage-03'), 'utf-8');
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages', '--stage', 'stage-01', 'stage-02']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **工作流模式**：full');
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toContain('- **工作流模式**：full');
+    expect(readFileSync(stageStatusPath('stage-03'), 'utf-8')).toBe(before3);
+    expect(stdout()).toContain('同步 2 / 插入 0 / 跳过 0');
+
+    // 逗号写法等价（单参数 a,b）
+    logMock.mockClear();
+    await safeParse(['config', 'set', 'workflow_mode', 'fast', '--sync-stages', '--stage', 'stage-01,stage-02']);
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **工作流模式**：fast');
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toContain('- **工作流模式**：fast');
+    expect(readFileSync(stageStatusPath('stage-03'), 'utf-8')).toBe(before3);
+  });
+
+  it('T7.7d：未注册 --stage → exit 1 + 建议名 + 前置零写盘', async () => {
+    setupTwoStages();
+    const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+    const cfgExisted = existsSync(cfgPath);
+    const cfgBefore = cfgExisted ? readFileSync(cfgPath, 'utf-8') : '';
+    const s1 = readFileSync(stageStatusPath('stage-01'), 'utf-8');
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages', '--stage', 'bogus-x']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('bogus-x');
+    expect(stderr()).toContain('建议名称');
+    // config.yaml 未被创建/改写；status.md 未写
+    expect(existsSync(cfgPath)).toBe(cfgExisted);
+    if (cfgExisted) {
+      expect(readFileSync(cfgPath, 'utf-8')).toBe(cfgBefore);
+    }
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toBe(s1);
+  });
+
+  it('T7.7e：单独 --stage / --global --stage → exit 1', async () => {
+    setupTwoStages();
+
+    await safeParse(['config', 'set', 'auto_advance', 'disabled', '--stage', 'stage-01']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('--sync-stages');
+
+    exitMock.mockClear();
+    await safeParse(['config', 'set', 'auto_advance', 'disabled', '--global', '--sync-stages', '--stage', 'stage-01']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('--stage');
+  });
+
+  it('T7.7f：done 阶段显式列入 → 不做 phase 过滤，正常处理并报告', async () => {
+    setupTwoStages();
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.stages['v1.0.0-stage-01'].phase = 'done';
+    mgr.save();
+    setWorkflowModeLine('stage-01', 'fast');
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages', '--stage', 'stage-01']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **工作流模式**：full');
+    expect(stdout()).toContain('同步 1 / 插入 0 / 跳过 0');
+  });
+
+  it('T7.7g：幂等 → 第二次执行全 noop、flow.json 与 status.md 零写盘', async () => {
+    setupTwoStages();
+    dropWorkflowModeLine('stage-01');
+    dropWorkflowModeLine('stage-02');
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages']);
+
+    const flowBefore = readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8');
+    const s1 = readFileSync(stageStatusPath('stage-01'), 'utf-8');
+    const s2 = readFileSync(stageStatusPath('stage-02'), 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(stdout()).toContain('同步 0 / 插入 0 / 跳过 2');
+    expect(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')).toBe(flowBefore);
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toBe(s1);
+    expect(readFileSync(stageStatusPath('stage-02'), 'utf-8')).toBe(s2);
+  });
+
+  it('T7.7h：锚点缺失 → skipped-no-anchor 计入跳过、退出码 0、stderr 报告', async () => {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01');
+    // 手工破坏：status.md 仅「状态」行（无锚点）
+    writeFileSync(stageStatusPath('stage-01'), '# x\n\n- **状态**：planned\n', 'utf-8');
+    const before = readFileSync(stageStatusPath('stage-01'), 'utf-8');
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(stderr()).toContain('插入锚点');
+    expect(stdout()).toContain('同步 0 / 插入 0 / 跳过 1');
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toBe(before);
+  });
+
+  it('T7.7i：非法键（merge_mode）零回归 → skipped-no-field 计入跳过', async () => {
+    setupTwoStages();
+    errorMock.mockClear();
+
+    await safeParse(['config', 'set', 'merge_mode', 'auto', '--sync-stages']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(stderr()).toContain('未找到');
+    expect(stdout()).toContain('同步 0 / 插入 0 / 跳过 2');
+  });
 });

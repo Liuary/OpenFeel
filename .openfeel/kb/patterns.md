@@ -3672,3 +3672,55 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.1.7-stage-74（REV-74-001 提出 → planner 修订 → 复审 closed）——`buildCascadeConfig(stageId?)` 落地；`resolveStageWorkflowMode(stageId?)` 公共化；T7.2a/T7.4e 决定性用例（被操作 stage ≠ current.stage）；无参调用实测 2 处（`verboseSummary` / `resolveEffectiveConfig`）。
 
 **参见：** v1.1.7-stage-74（plan T3/T4；op-003/op-004；REV-74-001/002/014）；`src/core/flow-manager.ts` `buildCascadeConfig`/`resolveStageWorkflowMode`/`getValidTargets`；kb/architecture.md #双模式转移表选择；kb/patterns.md #模式标记三层载体与记忆语义、#新建阶段骨架初值取 config 默认；manual/core/flow-manager.md
+
+## [+] 命令面模式感知：`flow phases` / `flow mode` 经 `resolveStageWorkflowMode` 派生 mode，禁止默认形参静默错表 (2026-10-11)
+
+**背景：v1.1.7-stage-75（REV-75-001 blocking）**——stage-74 落地双转移表后，`getPipelineTransitions(mode='full')` 访问器**保留默认形参 = full**（既有测试零回归的前提）。但命令面 `flow phases`（`src/commands/flow.ts` 的 `:391`/`:393` 行）仍**无参调用**该访问器 → 在 **fast 阶段静默输出 full 表**（无告警、无报错，「错表」比「报错」更危险）。上游引擎注释（`flow-manager.ts` 2035）早已写明「fast 供 stage-75 `flow phases` 模式分节消费」。
+
+**模式/判据**：
+
+1. **默认形参 = 兼容性债务**：为「既有断言逐字绿」保留的默认值（`mode='full'`），在**新增命令面**里必须**显式传参**消除——默认形参只能服务于**历史消费点**，不得成为新调用点的隐式行为。
+2. **单一派生入口**：命令面的 mode 一律经 `resolveStageWorkflowMode(stageId?)` 派生（解析链 `--mode` 显式 → `--stage` → `current.stage` → 级联兜底 builtin）；`flow mode`（查询）/ `flow phases`（展示 + `transitionsDiff` 同模式）三出口**同源**，禁第二信源。
+3. **收口以检索为准**：以 `rg "getPipelineTransitions\(\)|getDefaultTransitions\(\)" src/` **零命中**为收口证据（访问器默认形参保留供测试，但 `src/` 内零无参调用）。
+4. **兼容性口径**：`--json` **只增不改**（`flow phases` 既有五键逐字不变 + 追加 `workflowMode`）；fast 场景由错表→对表属 **fix 非 break**；full 场景人类输出**除新增行外逐字不变**。
+
+**避免**：把「访问器有默认值」当作「可以无参调用」——凡「同一访问器承载两种模式/两条语义」时，默认值使错误静默；命令面新调用点必须显式派生 + 检索复核。
+
+**实证**：v1.1.7-stage-75（REV-75-001 提出 → planner 增 T3-附 → 复审 closed）——`flow phases` 增 `--mode`/`--stage` 解析链 + 模式分节行；`--json` 追加 `workflowMode`（E-2② 键数 5→6 **有意更新**）；`rg` 实测 src 零无参残留。
+
+**参见：** v1.1.7-stage-75（plan T3/T3-附/T7.11；op-002；REV-75-001/007/012）；`src/commands/flow.ts`；kb/architecture.md #双模式转移表选择；kb/patterns.md #CLI 自描述命令模式、#CLI 自描述集合的「存在视图 vs 推进白名单」区分；manual/cli/commands.md
+
+## [+] status.md 缺失字段插入语义：新增 `insertStatusField`（锚点链 + 三态）与替换语义严格分离 (2026-10-11)
+
+**背景：v1.1.7-stage-75（REV-75-005）**——新增受管键 `workflow_mode` 时发现：既有 `setStatusField`（`commands/stage.ts`）/ `writeStatusField`（`flow-manager.ts`）为**替换语义**（字段不存在返回 false / 只定向替换既有行，**不新建行**）。存量阶段 status.md 无「工作流模式」行 → 需**插入**语义，但**不可改替换语义**（双重语义会使既有 N5「字段缺失 → exit 1」用例与 `--sync-stages` 口径错乱）。
+
+**模式/判据**：
+
+1. **插入与替换严格分离**：新增**单一** `FlowManager.insertStatusField`（原子写 + 按阶段锁 + 三态结果），`setStatusField`/`writeStatusField` **零改动**（禁双重语义）。落点**禁** `core/plan/stage.ts`（其已 import `flow-manager`，会造成循环依赖）。
+2. **三态**：`inserted`（成功插入）/ `exists`（已有，交由替换路径）/ `no-anchor`（无锚点）。
+3. **锚点链**：「**自动推进**」行后 →（缺失则）「**执行模式**」行后 → 两者皆缺 = `no-anchor`。实现为**两步全文匹配**（先找「自动推进」，未命中再找「执行模式」），**非**合并正则——合并正则会错插到「执行模式」行后（与 `ensureStageSkeleton` 布局不一致）。
+4. **单阶段 vs 批量语义二分**：单阶段 `stage set` 路径 `no-anchor` → **fail-fast exit 1 不写盘、无 `.bak`**（探测先于写）；批量 `--sync-stages` 路径 `no-anchor` → 结果码 **`skipped-no-anchor`** 归「跳过」类、**退出码恒 0**。
+5. **`.bak` 仅确认插入时生成**；同值 no-op 零写盘。
+
+**避免**：为「填补缺失字段」直接放宽替换函数的语义——正确做法是**新增一个语义明确的写函数**并让它复用同款「原子写 + 按阶段锁」底座；把「插入 vs 替换」写进结果枚举，让调用方（单阶段 fail-fast / 批量跳过）各自决定口径。
+
+**实证**：v1.1.7-stage-75（op-001 落地 `insertStatusField`；op-003/op-004 复用，**禁双实现**）——T7.2 逐字保留断言（diff 仅 +1 行）+ 锚点回退 + 无锚点不写盘；`setStatusField`/`writeStatusField` 语义零改动复核通过。
+
+**参见：** v1.1.7-stage-75（plan T2/T5/T7.2/T7.7；op-001/003/004；REV-75-005/007）；`src/core/flow-manager.ts` `insertStatusField`/`writeStatusField`；`src/commands/stage.ts` `setStatusField`；kb/patterns.md #幂等写入模式、#新建阶段骨架初值取 config 默认；manual/core/flow-manager.md
+
+## [+] 批量同步的作用域限定参数（`--sync-stages --stage`）：前置全量校验 + 组合守卫 + 不过滤阶段状态 (2026-10-11)
+
+**背景：v1.1.7-stage-75（REV-75-002）**——`config set --sync-stages` 原遍历 `flow.json` **全部已注册阶段**（本仓 78 个，含 75 个 done）。自举需求「只补 74~77」与全量语义不符 → 新增 `--stage <id...>` **限定作用域**。
+
+**模式/判据**：
+
+1. **作用域参数前置全量校验、失败零写盘**：`--stage` 入参经 `normalizeStageId` 归一 + **必须已注册**；未注册 → exit 1（+ 建议名口径）且**前置零写盘**（先校验后写）。
+2. **组合守卫（防静默无效参数）**：单独 `--stage`（无 `--sync-stages`）→ exit 1；`--stage` 与 `--global` 组合 → exit 1；`--global --sync-stages` → exit 1。
+3. **缺省 = 全量**（现状语义零回归）；变长参数支持空格/逗号两种写法，置命令末尾。
+4. **不做阶段状态过滤**：显式列出的 **done 阶段**正常处理并逐条报告（与全量模式一致）——「作用域」只由 `--stage` 显式列表决定，不由 phase/status 隐式决定。
+
+**避免**：给「批量操作」加作用域参数时，**校验必须在写之前**（否则部分写 + exit 1 = 半完成），且**限定参数必须与主开关成对出现**（单独出现即报错，否则成为静默无效参数）。
+
+**实证**：v1.1.7-stage-75（op-003）——三条组合守卫用例 + 未注册建议名 + 前置零写盘 + done 阶段显式列入正常处理 + 重复执行幂等（全 noop、SHA256 不变）。
+
+**参见：** v1.1.7-stage-75（plan T5/T7.7/T9；op-003；REV-75-002/005）；`src/commands/config.ts`；kb/patterns.md #defaults.X ≡ X 键归一、#新建阶段骨架初值取 config 默认；manual/cli/commands.md、manual/core/config.md

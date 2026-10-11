@@ -814,6 +814,8 @@ C:\Users\<user>\AppData\Local\Temp\openfeel-update-test-iFoJSv
 
 **参见：** v1.1.2-stage-52 op-014 exec_review 偏差裁定；kb/patterns.md #测试 cwd 隔离模式、#隔离 HOME 实测法
 
+> **更新于 2026-10-11（v1.1.7-stage-75，**同类事故复发**）**：executor 执行 op-001 时**再次**在仓根误跑 `plan stage add stage-01 --workflow-mode fast`（未 `cd` 隔离 fixture）→ `save()` 触发 flow.json `revision 869→870` 且 `.bak` 被覆盖。**还原纪律（本次实证）**：用「污染前的 `.bak` + `exec_running` checkpoint（= 污染前 `.bak`）」**精确还原** revision 至 869/868，复核 porcelain 无新增条目 / flow.json 无 `workflow_mode` 残留 / 无新 stage 键 / 无新文件。此后全部 fixture 改 `cd "$FW"` + Windows 路径。**教训**：该坑在 stage-52 已登记仍复发 → 「prompt 级提醒」不足以拦截，须以**硬性操作前置**（每条写盘命令前显式 `cd` 隔离目录并断言 cwd）落实；`.`bak` 会在第二次 `save()` 时被覆盖，故**误写后应尽快用 checkpoint 还原**，且优先 `git checkout -- .openfeel/flow.json` 而非手工编辑。
+
 ## [+] 同类缺陷须一次全量扫描而非逐个暴露：stage 解析归一化三轮修复教训 (2026-10-01)
 
 **过程**：stage-52 的 stage 解析归一化缺陷**分三轮**才收口——op-012（REV-005，修 F1~F5）→ op-013（REV-007，补 remove/attempt）→ op-014（REV-009，补 `addAutoFixReview` + 独立扫描又发现第 8/9/10 处）。每轮审查/扫描都「又发现一处」，共 10 处。
@@ -1082,3 +1084,19 @@ concurrency:
 **实证**：v1.1.6-stage-73（op-003 `2b5c3e3`）——T7 实测结论「未实测（环境限制）→ 预计回落 manual」留痕于 `stage-73-gate-report.md` / op-003 修正记录；计划明示不阻断门禁，处置合规（REV 确认）。
 
 **参见：** v1.1.6-stage-73（T7/R-11；op-003）；`src/core/claude-settings.ts`、`docs/claude-code-adapter-plan.md` §十五；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实（隔离 config + 认证复制）；kb/patterns.md #用户高频占用文件的「读-深合并-写回」写策略；manual/core/claude-settings.md
+
+## [+] flow.json「内容增量」核验口径必含 `meta.revision` / `meta.updated`：`save()` 必然改写 (2026-10-11)
+
+**现象/困惑**：v1.1.7-stage-75 T9 自举（`config set defaults.workflow_mode full --sync-stages --stage 74~77`）的核验口径写「flow.json 内容增量 = 仅 4 个 `stages.*.workflow_mode` 字段，无其它变化」→ 按字面执行**核验失败**（REV-75-010 blocking），阶段被**错误阻塞**。
+
+**根因**：`FlowManager.save()` 每次落盘**必然**改写 `meta.updated`（时间戳，`flow-manager.ts:531`）+ `meta.revision`（单调递增，`:550`）。任何经 CLI 写 flow.json 的动作，其「内容增量」都**至少**含这两项（本例还含 `log[].config_sync_stage` 审计条目）。把增量口径写成「仅业务字段」即**不可满足**。
+
+**排查/口径**：
+
+1. **正确口径**：`git diff .openfeel/flow.json` **结构增量 = 业务字段（本例 4 个 `stages.*.workflow_mode`）+ `meta.revision`（+N）+ `meta.updated`（时间戳）+ 审计 `log[]` 条目**；用「porcelain 无**未预期**条目」而非「相对 HEAD 零新增」（T9 必然使原本 clean 的若干 status.md 变 `M`）。
+2. **核验前先快照**：以「执行前快照」为基线比对，而非与 HEAD 比。
+3. **审计条目计入**：凡涉及 `appendLog` 的动作，增量必含 `log[]`（本例 N=4）。
+
+**避免**：凡「核验某命令写盘零/有限变化」，**先读该命令的 `save()` 路径**确认哪些元字段必然改写；把元字段（revision/updated/审计）从「未预期变化」中显式排除，避免把正常行为误判为核验失败并错误阻塞阶段。
+
+**参见：** v1.1.7-stage-75（plan T9 核验 3；op-003 困难点 3 / op-004 修正记录；REV-75-010）；`src/core/flow-manager.ts` `save()`（`:531`/`:550`）；kb/patterns.md #flow.json 乐观并发校验模式

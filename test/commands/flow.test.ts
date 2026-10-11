@@ -19,11 +19,16 @@ vi.mock('node:child_process', () => ({
   execFileSync: mockedChild.execFileSync,
 }));
 
+// mock @inquirer/prompts（stage-75 op-004 T7.6b/c）：wizard 的动态 await import 亦被模块级 mock 拦截
+const mockedInquirer = vi.hoisted(() => ({ select: vi.fn(), input: vi.fn() }));
+vi.mock('@inquirer/prompts', () => ({ select: mockedInquirer.select, input: mockedInquirer.input }));
+
 import { Command, CommanderError } from 'commander';
-import { registerFlowCommand } from '../../src/commands/flow.js';
+import { registerFlowCommand, shouldPromptWorkflowMode } from '../../src/commands/flow.js';
 import { initProject } from '../../src/core/init.js';
 import { FlowManager, type FlowData, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
 import { setConfigValue } from '../../src/core/config.js';
+import { addStage } from '../../src/core/plan/stage.js';
 import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -49,6 +54,8 @@ describe('flow 命令（stage-41）', () => {
 
     logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
     errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockedInquirer.select.mockReset();
+    mockedInquirer.input.mockReset();
     cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
 
@@ -200,6 +207,261 @@ describe('flow 命令（stage-41）', () => {
     const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
     expect(out).toContain('转移表与内置默认存在差异');
     expect(out).toContain('review_passed|test_passed');
+  });
+
+  // ── stage-75 op-002：flow mode / flow phases 模式分节 ──
+
+  /** 写入一个含工作流模式字段的 status.md（存在性判定经 findStageStatusPath） */
+  function writeStageStatus(stageDirName: string, workflowMode?: string): string {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', stageDirName);
+    mkdirSync(dir, { recursive: true });
+    const p = join(dir, 'status.md');
+    const modeLine = workflowMode ? `- **工作流模式**：${workflowMode}\n` : '';
+    writeFileSync(p, `# v1.0.0-${stageDirName} 状态\n\n- **执行模式**：manual\n- **自动推进**：disabled\n${modeLine}- **状态**：planned\n`, 'utf-8');
+    return p;
+  }
+
+  it('T7.11①：flow phases --mode fast → fast 表 + 模式分节行 + --json.workflowMode=fast + diff 全空', async () => {
+    rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
+
+    await safeParse(['flow', 'phases', '--mode', 'fast']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('plan_pending → [plan_passed]');
+    expect(out).toContain('review_failed → [review_pending, exec_running]');
+    expect(out).toContain('当前模式：fast');
+    expect(out).toContain('[来源: --mode]');
+    expect(out).toContain('openfeel flow mode');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'phases', '--mode', 'fast', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string) as {
+      workflowMode: string;
+      transitionsDiff: { missing: string[]; extra: string[]; changed: string[] };
+    };
+    expect(obj.workflowMode).toBe('fast');
+    expect(obj.transitionsDiff).toEqual({ missing: [], extra: [], changed: [] });
+  });
+
+  it('T7.11②：--stage（status.md 置 fast）→ 无 --mode 亦派生 fast 表', async () => {
+    writeStageStatus('stage-01', 'fast');
+    rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
+
+    await safeParse(['flow', 'phases', '--stage', 'v1.0.0-stage-01', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string) as { workflowMode: string; transitions: Record<string, string[]> };
+    expect(obj.workflowMode).toBe('fast');
+    expect(obj.transitions['plan_pending']).toEqual(['plan_passed']);
+  });
+
+  it('T7.11③：缺省（config full）→ workflowMode === full（既有 full 基线）', async () => {
+    await safeParse(['flow', 'phases', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string) as { workflowMode: string };
+    expect(obj.workflowMode).toBe('full');
+  });
+
+  it('T7.11④：无任何来源 → builtin fast 兜底 + source 显示 builtin', async () => {
+    rmSync(join(tmpDir, '.openfeel', 'config.yaml'), { force: true });
+
+    await safeParse(['flow', 'mode']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('当前模式：fast');
+    expect(out).toContain('[来源: builtin]');
+  });
+
+  it('T7.11⑤：--json 只增 workflowMode（既有五键不变）+ 人类输出仅新增 2 行', async () => {
+    rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
+    await safeParse(['flow', 'phases', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
+    // 6 键 = 既有五键 + workflowMode（“只增字段”）
+    expect(Object.keys(obj)).toEqual(['schemaVersion', 'phases', 'transitions', 'advanceAccepted', 'transitionsDiff', 'workflowMode']);
+    expect(obj.schemaVersion).toBe(1);
+    expect((obj.phases as string[]).length).toBe(15);
+    expect((obj.advanceAccepted as string[]).length).toBe(15);
+
+    logMock.mockClear();
+    await safeParse(['flow', 'phases']);
+    const lines = logMock.mock.calls.map((c) => c[0] as string);
+    const newLines = lines.filter((l) => l.includes('当前模式：') || l.includes('openfeel flow mode'));
+    expect(newLines).toHaveLength(2);
+    // 既有行仍逐字在（改前行集合 ⊆ 改后行集合）
+    expect(lines).toContain('OpenFeel 流水线 phase 自描述');
+    expect(lines).toContain('phase 流转映射（from → [to...]）:');
+    expect(lines.some((l) => l.startsWith('  - plan_pending'))).toBe(true);
+    expect(lines.some((l) => l.includes('plan_pending → [plan_review, plan_passed]'))).toBe(true);
+  });
+
+  it('T7.11⑥：transitionsDiff 同模式期望值（full 漂移可见 / fast 全空）', async () => {
+    writePipelineNoComposite();
+    await safeParse(['flow', 'phases', '--json']);
+    const full = JSON.parse(logMock.mock.calls[0][0] as string) as { transitionsDiff: { missing: string[] } };
+    expect(full.transitionsDiff.missing).toContain('review_passed|test_passed');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'phases', '--mode', 'fast', '--json']);
+    const fast = JSON.parse(logMock.mock.calls[0][0] as string) as { transitionsDiff: { missing: string[]; extra: string[]; changed: string[] } };
+    // fast 走内置快线表（pipeline.yaml 仅覆盖 full 线）→ 同模式对比无差异
+    expect(fast.transitionsDiff).toEqual({ missing: [], extra: [], changed: [] });
+  });
+
+  it('T7.11⑦：非法 --mode / 非法 --stage → exit 1', async () => {
+    await safeParse(['flow', 'phases', '--mode', 'bogus']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('取值非法');
+
+    exitMock.mockClear();
+    await safeParse(['flow', 'phases', '--stage', 'bad id !!']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+
+    exitMock.mockClear();
+    await safeParse(['flow', 'phases', '--stage', 'v9.9-stage-99']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toBeTruthy();
+  });
+
+  it('T7.4：flow mode 只读（输出模式/来源 + 三文件 SHA256 不变 + --json 结构）', async () => {
+    const { createHash } = await import('node:crypto');
+    const sha = (p: string): string => createHash('sha256').update(readFileSync(p)).digest('hex');
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+    writeStageStatus('stage-01', 'fast');
+    // 注册阶段（使 phase 已知 → 可达目标行可渲染）
+    const fm = new FlowManager(tmpDir);
+    fm.registerStage('v1.0.0-stage-01');
+    fm.save();
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md');
+    const before = [sha(flowPath), sha(cfgPath), sha(statusPath)];
+
+    await safeParse(['flow', 'mode', '--stage', 'v1.0.0-stage-01']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('当前模式：fast');
+    expect(out).toContain('[来源: status.md]');
+    expect(out).toContain('可达目标');
+
+    expect([sha(flowPath), sha(cfgPath), sha(statusPath)]).toEqual(before);
+
+    logMock.mockClear();
+    await safeParse(['flow', 'mode', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string) as {
+      schemaVersion: number; stage: string; mode: string; source: string; modes: { full: object; fast: object };
+    };
+    expect(Object.keys(obj)).toEqual(['schemaVersion', 'stage', 'mode', 'source', 'modes']);
+    expect(obj.schemaVersion).toBe(1);
+    expect(typeof obj.mode).toBe('string');
+    expect(typeof obj.source).toBe('string');
+    expect(typeof obj.modes.full).toBe('object');
+    expect(typeof obj.modes.fast).toBe('object');
+    expect([sha(flowPath), sha(cfgPath), sha(statusPath)]).toEqual(before);
+  });
+
+  it('T7.5①~③：来源三场景（status.md / config.yaml / builtin）', async () => {
+    // ① status.md 有字段
+    writeStageStatus('stage-02', 'fast');
+    await safeParse(['flow', 'mode', '--stage', 'v1.0.0-stage-02']);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('[来源: status.md]');
+
+    // ② 无 stage 字段 + config.yaml 设值（beforeEach 设 full）
+    logMock.mockClear();
+    await safeParse(['flow', 'mode']);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('[来源: config.yaml]');
+
+    // ③ 全无 → builtin
+    logMock.mockClear();
+    rmSync(join(tmpDir, '.openfeel', 'config.yaml'), { force: true });
+    await safeParse(['flow', 'mode']);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('[来源: builtin]');
+  });
+
+  it('T7.5④：profile.yaml 不承载 workflow_mode（阴性边界）', async () => {
+    // 全局画像显式声明 auto_advance（profile 层唯一承载键）
+    mkdirSync(join(mockHome.dir, '.config', 'openfeel'), { recursive: true });
+    writeFileSync(join(mockHome.dir, '.config', 'openfeel', 'profile.yaml'), 'preferences:\n  auto_advance: enabled\n  workflow_mode: fast\n', 'utf-8');
+
+    await safeParse(['flow', 'mode']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).not.toContain('[来源: profile.yaml]');
+    // 仍落到 config.yaml（beforeEach 设 full）
+    expect(out).toContain('[来源: config.yaml]');
+  });
+
+  // ── stage-75 op-004：wizard 首次选型与项目级记忆（T7.6）──
+
+  /** 强制 TTY（可用时恢复） */
+  function setTty(value: boolean): void {
+    Object.defineProperty(process.stdin, 'isTTY', { value, configurable: true });
+    Object.defineProperty(process.stdout, 'isTTY', { value, configurable: true });
+  }
+
+  it('T7.6a：shouldPromptWorkflowMode 决策矩阵 4 态', () => {
+    expect(shouldPromptWorkflowMode(false, false)).toBe('prompt');
+    expect(shouldPromptWorkflowMode(true, false)).toBe('skip');
+    expect(shouldPromptWorkflowMode(false, true)).toBe('skip');
+    expect(shouldPromptWorkflowMode(true, true)).toBe('skip');
+  });
+
+  it('T7.6b：TTY 首次询问 → 选 fast → status.md 插入 + config.yaml 记忆 + 输出「已记忆」', async () => {
+    const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+    // 项目未显式设 defaults.workflow_mode（裸 YAML 读判定）
+    writeFileSync(cfgPath, 'defaults:\n  execution_mode: manual\n  auto_advance: enabled\n', 'utf-8');
+    addStage(tmpDir, 'stage-01');
+    // 造「旧版」骨架：无工作流模式字段
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md');
+    writeFileSync(statusPath, readFileSync(statusPath, 'utf-8').split('\n').filter((l) => !l.includes('工作流模式')).join('\n'), 'utf-8');
+
+    mockedInquirer.select.mockResolvedValueOnce('fast').mockResolvedValueOnce('__exit__');
+    setTty(true);
+    try {
+      await safeParse(['flow', 'wizard']);
+    } finally {
+      setTty(false);
+    }
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(statusPath, 'utf-8')).toContain('- **工作流模式**：fast');
+    const cfg = readFileSync(cfgPath, 'utf-8');
+    expect(cfg).toContain('workflow_mode: fast');
+    // 其余 defaults 键逐字保留
+    expect(cfg).toContain('execution_mode: manual');
+    expect(cfg).toContain('auto_advance: enabled');
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('已记忆');
+    // 第一次 select = 模式询问，第二次 = 阶段动作选择
+    expect(mockedInquirer.select.mock.calls[0][0].message).toBe('首次配置：请选择本阶段的工作流模式');
+  });
+
+  it('T7.6c：字段已写 / 项目已设默认 → 二次不询问', async () => {
+    const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+    writeFileSync(cfgPath, 'defaults:\n  execution_mode: manual\n  workflow_mode: full\n', 'utf-8');
+    addStage(tmpDir, 'stage-01');
+
+    mockedInquirer.select.mockResolvedValueOnce('__exit__');
+    setTty(true);
+    try {
+      await safeParse(['flow', 'wizard']);
+    } finally {
+      setTty(false);
+    }
+
+    // 仅 1 次 select（阶段动作选择），未出现模式询问
+    expect(mockedInquirer.select).toHaveBeenCalledTimes(1);
+    expect(mockedInquirer.select.mock.calls[0][0].message).not.toBe('首次配置：请选择本阶段的工作流模式');
+  });
+
+  it('T7.6d：非 TTY → 零写盘（T39 口径：exitCode=1 + nonTtyHint）', async () => {
+    addStage(tmpDir, 'stage-01');
+    const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+    const cfgBefore = readFileSync(cfgPath, 'utf-8');
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md');
+    const statusBefore = readFileSync(statusPath, 'utf-8');
+    const prev = process.exitCode;
+    process.exitCode = undefined;
+    try {
+      await safeParse(['flow', 'wizard']);
+      expect(process.exitCode).toBe(1);
+      expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('非交互式');
+      expect(readFileSync(cfgPath, 'utf-8')).toBe(cfgBefore);
+      expect(readFileSync(statusPath, 'utf-8')).toBe(statusBefore);
+      expect(mockedInquirer.select).not.toHaveBeenCalled();
+    } finally {
+      process.exitCode = prev;
+    }
   });
 
   it('T39：flow wizard 非 TTY → 输出 nonTtyHint 且 process.exitCode = 1', async () => {

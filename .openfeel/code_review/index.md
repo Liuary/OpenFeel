@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 45 |
+| passed | 46 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -96,6 +96,7 @@
 | 阶段 | 摘要 | 状态 |
 |------|------|------|
 | [v1.1.7-stage-74](v1.1.7-stage-74.md) | 双模式引擎（v1.1.7 首阶段）— 引入 `workflow_mode`（`full`/`fast`）+ fast 内置快线表 `FAST_TRANSITIONS`（8 条目，`review_failed` 双出口回环）+ `pipeline.yaml` 可选 `fast_transitions`（`FastTransitionsSchema`，缺失/非法/空对象回落内置）+ `getValidTargets(fromPhase, mode)` **mode 必传**（唯一取表点 `resolveTransitionsForMode`）+ 四调用点（`hasTransition`/`getAvailablePhases`/`findPhasePath`/`canAdvance`）显式传 stage 派生 mode + `resolveStageWorkflowMode(stageId?)` 公共化 + `buildCascadeConfig(stageId?)` 带 stage 形参 + `EFFECTIVE_CONFIG_KEYS` 四键 + `auto_advance` 部署级默认翻转 `enabled`（裁定 E）+ `workflow_mode` 新增（裁定 B）；4 op（executor 未 commit，HEAD `6a2b04f`）；**67 文件 / 1239 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` **775**、`lint kb` 0（396 引用）、build ×2 幂等、`--version`=1.1.6；**REV-74-011~015 全 low 非阻塞 closed**（计划轮 REV-74-001~010 closed/resolved）；验收通过 0 Bug；知识沉淀 4 条（architecture 2 + patterns 2） | **passed** |
+| [v1.1.7-stage-75](v1.1.7-stage-75.md) | 模式命令面与交互（v1.1.7 第二阶段）— `plan stage add --workflow-mode` + 骨架「工作流模式」行 + `stage set --workflow-mode`（**插入语义** `insertStatusField` 三态 + 锚点链，替换语义零改动）+ **新增只读** `flow mode [--stage] [--json]`（当前模式 + 四源 source）+ `flow phases --mode/--stage` **模式分节**（消除 `:391/:393` 无参调用致 fast 静默错表；`--json` 五键逐字不变 + 追加 `workflowMode`；`transitionsDiff` 同模式）+ `config set --sync-stages --stage <ids...>`（作用域限定 + 前置校验零写盘 + 组合守卫 + `inserted`/`skipped-no-anchor` + 汇总行，退出码恒 0）+ 冗余字段 `flow.json stages.{id}.workflow_mode`（三写入点 + health 第 10 项仅 warn）+ wizard 首次选型与项目级记忆（非 TTY 守卫 T39 不动）+ `plan scheme create --from-tasks`（op 骨架机械铺，零 Agent）；i18n +21（775→**796**）；T9 自举补 74~77 status.md 字段；4 op（executor 未 commit，HEAD `5607905`）；**67 文件 / 1291 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` **796**、`lint kb` 0（408 引用）、build ×2 幂等、`--version`=1.1.6；**REV-75-001~018 全 closed**（计划轮 8 + 方案轮 6 + 代码轮 4）；验收通过 **0 Bug**；知识沉淀 **4 条**（patterns 3 + troubleshooting 1）+ 1 更新 | **passed** |
 
 ## v5 系列审查
 

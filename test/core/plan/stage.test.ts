@@ -66,6 +66,7 @@ describe('stage', () => {
 
       expect(content).toContain('执行模式');
       expect(content).toContain('自动推进');
+      expect(content).toContain('工作流模式');
       expect(content).toContain('planned');
       expect(content).toContain('当前责任 Agent');
     });
@@ -189,25 +190,80 @@ describe('stage', () => {
       const content = readFileSync(statusPath('stage-10'), 'utf-8');
       expect(content).toContain('- **自动推进**：enabled');
       expect(content).toContain('- **执行模式**：auto');
+      // config 未设 workflow_mode → 回退 DEFAULT_CONFIG（fast）
+      expect(content).toContain('- **工作流模式**：fast');
     });
 
     it('T6.2：overrides 显式优先于 config 默认', () => {
       mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
-      writeFileSync(configPath(), 'defaults:\n  auto_advance: enabled\n  execution_mode: auto\n', 'utf-8');
+      writeFileSync(configPath(), 'defaults:\n  auto_advance: enabled\n  execution_mode: auto\n  workflow_mode: full\n', 'utf-8');
 
-      addStage(tmpDir, 'stage-11', undefined, undefined, { autoAdvance: 'disabled', executionMode: 'manual' });
+      addStage(tmpDir, 'stage-11', undefined, undefined, { autoAdvance: 'disabled', executionMode: 'manual', workflowMode: 'fast' });
 
       const content = readFileSync(statusPath('stage-11'), 'utf-8');
       expect(content).toContain('- **自动推进**：disabled');
       expect(content).toContain('- **执行模式**：manual');
+      // overrides 显式优先于 config 默认（full）
+      expect(content).toContain('- **工作流模式**：fast');
     });
 
-    it('T6.3：无 config.yaml → 回退 DEFAULT_CONFIG（enabled/manual）', () => {
+    it('T6.3：无 config.yaml → 回退 DEFAULT_CONFIG（enabled/manual/fast）', () => {
       addStage(tmpDir, 'stage-12');
 
       const content = readFileSync(statusPath('stage-12'), 'utf-8');
       expect(content).toContain('- **自动推进**：enabled');
       expect(content).toContain('- **执行模式**：manual');
+      expect(content).toContain('- **工作流模式**：fast');
+    });
+
+    it('T6.4：config defaults.workflow_mode=full → 新建骨架继承 full', () => {
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(configPath(), 'defaults:\n  workflow_mode: full\n', 'utf-8');
+
+      addStage(tmpDir, 'stage-13');
+
+      const content = readFileSync(statusPath('stage-13'), 'utf-8');
+      expect(content).toContain('- **工作流模式**：full');
+    });
+  });
+
+  // ── v1.1.7-stage-75 op-001：冗余字段写入点① ──
+
+  describe('addStage 冗余字段写入（stage-75 op-001）', () => {
+    const flowPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
+
+    it('新建阶段写 flow.json.stages[full].workflow_mode（overrides 显式值）', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-20', undefined, undefined, { workflowMode: 'fast' });
+
+      const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+      expect(flow.stages['v1.0.0-stage-20'].workflow_mode).toBe('fast');
+    });
+
+    it('新建阶段缺省取 config defaults.workflow_mode', () => {
+      FlowManager.initFlow(tmpDir);
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'defaults:\n  workflow_mode: full\n', 'utf-8');
+
+      addStage(tmpDir, 'stage-21');
+
+      const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+      expect(flow.stages['v1.0.0-stage-21'].workflow_mode).toBe('full');
+    });
+
+    it('重复 addStage（已存在阶段）不改写既有冗余字段', () => {
+      FlowManager.initFlow(tmpDir);
+      addStage(tmpDir, 'stage-22', undefined, undefined, { workflowMode: 'fast' });
+
+      // 模拟权威值漂移：冗余字段被改为 full 后重复 addStage（默认 fast）不应覆盖
+      const flow0 = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+      flow0.stages['v1.0.0-stage-22'].workflow_mode = 'full';
+      writeFileSync(flowPath(), JSON.stringify(flow0, null, 2), 'utf-8');
+
+      addStage(tmpDir, 'stage-22');
+
+      const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
+      expect(flow.stages['v1.0.0-stage-22'].workflow_mode).toBe('full');
     });
   });
 

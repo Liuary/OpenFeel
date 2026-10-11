@@ -2,6 +2,7 @@
 
 - **执行模式**：auto
 - **自动推进**：enabled
+- **工作流模式**：full
 - **状态**：planned
 - **当前责任 Agent**：user
 - **上一责任 Agent**：none

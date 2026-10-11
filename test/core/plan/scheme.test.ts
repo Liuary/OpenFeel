@@ -3,7 +3,7 @@
  * 测试 createScheme、getScheme 和 listSchemes 在临时目录中的行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createScheme, getScheme, listSchemes, renameScheme, removeScheme, publishScheme, registerSchemes } from '../../../src/core/plan/scheme.js';
+import { createScheme, createSchemesFromTasks, getScheme, listSchemes, renameScheme, removeScheme, publishScheme, registerSchemes } from '../../../src/core/plan/scheme.js';
 import { addStage } from '../../../src/core/plan/stage.js';
 import { FlowManager, findOrphanOps } from '../../../src/core/flow-manager.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
@@ -711,5 +711,83 @@ describe('registerSchemes（stage-64）', () => {
     expect(r.registered).toEqual(['op-001']);
     const flow = JSON.parse(readFileSync(flowPath(), 'utf-8'));
     expect(flow.stages['v1.0.0-stage-01'].ops['op-001'].title).toBe('旧标题');
+  });
+});
+
+// ── v1.1.7-stage-75 op-004：createSchemesFromTasks（T6 op 骨架机械铺）──
+describe('createSchemesFromTasks（stage-75 op-004）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-fromtasks-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const opsDir = (): string => join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+  const statusPath = (): string => join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md');
+
+  /** 建阶段 + 三条任务（含 1 条已勾选） */
+  function setupThreeTasks(): void {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-01', undefined, ['做A', '做B', '做C']);
+    const c = readFileSync(statusPath(), 'utf-8').replace('- [ ] 任务2：做B', '- [x] 任务2：做B');
+    writeFileSync(statusPath(), c, 'utf-8');
+  }
+
+  it('T7.9a：任务表 → 3 个骨架（标题 = 任务N：desc）+ deps.yaml 占位 + 注册 flow.json', () => {
+    setupThreeTasks();
+
+    const r = createSchemesFromTasks(tmpDir, 'stage-01');
+
+    expect(r.created).toEqual(['op-001', 'op-002', 'op-003']);
+    expect(r.createdTitles).toEqual(['任务1：做A', '任务2：做B', '任务3：做C']);
+    expect(r.skippedTaskNos).toEqual([]);
+    expect(r.depsPlaceholderCreated).toBe(true);
+    for (const f of ['op-001.md', 'op-002.md', 'op-003.md', 'deps.yaml']) {
+      expect(existsSync(join(opsDir(), f))).toBe(true);
+    }
+    // 已勾选任务亦铺（机械不判进度，D9）
+    expect(readFileSync(join(opsDir(), 'op-002.md'), 'utf-8')).toContain('# op-002：任务2：做B');
+    // flow.json 注册
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-001'].title).toBe('任务1：做A');
+    expect(Object.keys(flow.stages['v1.0.0-stage-01'].ops)).toHaveLength(3);
+  });
+
+  it('T7.9b：幂等 → 二次调用 created=[]、skipped=[1,2,3]、文件逐字节不变', () => {
+    setupThreeTasks();
+    createSchemesFromTasks(tmpDir, 'stage-01');
+    const before = ['op-001.md', 'op-002.md', 'op-003.md'].map((f) => readFileSync(join(opsDir(), f), 'utf-8'));
+
+    const r = createSchemesFromTasks(tmpDir, 'stage-01');
+
+    expect(r.created).toEqual([]);
+    expect(r.createdTitles).toEqual([]);
+    expect(r.skippedTaskNos).toEqual([1, 2, 3]);
+    expect(r.depsPlaceholderCreated).toBe(false);
+    expect(['op-001.md', 'op-002.md', 'op-003.md'].map((f) => readFileSync(join(opsDir(), f), 'utf-8'))).toEqual(before);
+  });
+
+  it('T7.9c：deps.yaml 已存在 → 不覆盖；任务表为空 → created=[]；status.md 缺失 → 抛错', () => {
+    setupThreeTasks();
+    mkdirSync(opsDir(), { recursive: true });
+    writeFileSync(join(opsDir(), 'deps.yaml'), '# 既有\nversion: "1.1"\nops:\n  op-001:\n    file: op-001.md\n    deps: []\n', 'utf-8');
+
+    const r1 = createSchemesFromTasks(tmpDir, 'stage-01');
+    expect(r1.depsPlaceholderCreated).toBe(false);
+    expect(readFileSync(join(opsDir(), 'deps.yaml'), 'utf-8')).toContain('op-001.md');
+
+    // 任务表为空
+    writeFileSync(statusPath(), '# x\n\n- **状态**：planned\n', 'utf-8');
+    const r2 = createSchemesFromTasks(tmpDir, 'stage-01');
+    expect(r2.created).toEqual([]);
+    expect(r2.skippedTaskNos).toEqual([]);
+
+    // status.md 缺失 → 抛错
+    rmSync(statusPath(), { force: true });
+    expect(() => createSchemesFromTasks(tmpDir, 'stage-22')).toThrow('STATUS_NOT_FOUND');
   });
 });

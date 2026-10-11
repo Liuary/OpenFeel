@@ -2755,6 +2755,114 @@ describe('FlowManager', () => {
       const okItem = mgr.healthCheck(false).items.find((i) => i.section === '悬空依赖');
       expect(okItem?.status).toBe('pass');
     });
+
+    // ── stage-80 op-002：读侧归档依赖同口径（T2-c，REV-80-002） ──
+    it('op-002: 已归档显式 dep 无悬空 warn；未归档不存在 dep 有 warn；短名 typo 不翻转', () => {
+      const base = makeTestFlowData().stages['stage-01'];
+      // ① 已归档显式 dep（v1.0.0-stage-01 未注册但 ∈ archived_versions）→ 视为已满足 → pass
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData({
+        meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+        stages: { 'v1.0.0-stage-05': { ...base, deps: ['v1.0.0-stage-01'] } },
+      }));
+      expect(mgr.healthCheck(false).items.find((i) => i.section === '悬空依赖')?.status).toBe('pass');
+
+      // ② 不存在且未归档显式 dep（v9.9.9-stage-99）→ warn
+      mgr.setData(makeTestFlowData({
+        meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+        stages: { 'v1.0.0-stage-05': { ...base, deps: ['v9.9.9-stage-99'] } },
+      }));
+      const warnItem = mgr.healthCheck(false).items.find((i) => i.section === '悬空依赖');
+      expect(warnItem?.status).toBe('warn');
+      expect(warnItem?.message).toContain('v9.9.9-stage-99');
+
+      // ③ 短名 stage-99（即便 archived_versions 含 v1.0.0）→ 仍 warn（不翻转，REV-80-001）
+      mgr.setData(makeTestFlowData({
+        meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+        stages: { 'v1.0.0-stage-05': { ...base, deps: ['stage-99'] } },
+      }));
+      const shortItem = mgr.healthCheck(false).items.find((i) => i.section === '悬空依赖');
+      expect(shortItem?.status).toBe('warn');
+      expect(shortItem?.message).toContain('stage-99');
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // stage-80 op-002：syncConfigFieldToStages 循环重构（REV-80-009）
+  // ═══════════════════════════════════════
+
+  describe('syncConfigFieldToStages 作用域（REV-80-009）', () => {
+    /** 建 off-set 阶段 status.md（含「工作流模式」行，供替换语义命中） */
+    function writeStatus(stageDir: string, wm: string): string {
+      const dir = join(tmpDir, '.openfeel', 'plan', 'v1', stageDir);
+      mkdirSync(dir, { recursive: true });
+      const p = join(dir, 'status.md');
+      writeFileSync(p, `# ${stageDir}\n\n- **状态**：planned\n- **工作流模式**：${wm}\n`, 'utf-8');
+      return p;
+    }
+
+    it('off-set 可达：仅 status.md 实写、无冗余键、无 TypeError、flow.json 磁盘字节不变', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const base = makeTestFlowData().stages['stage-01'];
+      // 活跃集不含 v1.0.0-stage-01；仅将其作为 off-set 目标传入
+      mgr.setData(makeTestFlowData({ stages: { 'v1.0.0-stage-02': { ...base } } }));
+      const statusPath = writeStatus('stage-01', 'full');
+      const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+      const before = readFileSync(flowPath, 'utf-8');
+
+      const out = mgr.syncConfigFieldToStages('workflow_mode', 'fast', { onlyStages: ['v1.0.0-stage-01'] });
+
+      expect(out).toEqual([{ stage: 'v1.0.0-stage-01', result: 'updated' }]);
+      expect(readFileSync(statusPath, 'utf-8')).toContain('- **工作流模式**：fast'); // status.md 实写
+      expect(mgr.getData()!.stages['v1.0.0-stage-01']).toBeUndefined(); // 无冗余键（无越界解引用）
+      expect(readFileSync(flowPath, 'utf-8')).toBe(before); // flowJsonDirty=false → 零 save
+    });
+
+    it('混合作用域：[活跃, off-set] 两者均产结果行；活跃写冗余 + save、off-set 仅 status.md', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const base = makeTestFlowData().stages['stage-01'];
+      mgr.setData(makeTestFlowData({ stages: { 'v1.0.0-stage-02': { ...base } } }));
+      const activeStatus = writeStatus('stage-02', 'full');
+      const offSetStatus = writeStatus('stage-01', 'full');
+
+      const out = mgr.syncConfigFieldToStages('workflow_mode', 'fast', {
+        onlyStages: ['v1.0.0-stage-02', 'v1.0.0-stage-01'],
+      });
+
+      expect(out.map((r) => r.stage).sort()).toEqual(['v1.0.0-stage-01', 'v1.0.0-stage-02']);
+      expect(out.every((r) => r.result === 'updated')).toBe(true);
+      // 活跃：冗余写入 + save（磁盘 flow.json 出现 workflow_mode）
+      expect(mgr.getData()!.stages['v1.0.0-stage-02'].workflow_mode).toBe('fast');
+      const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+      expect(flow.stages['v1.0.0-stage-02'].workflow_mode).toBe('fast');
+      // off-set：无冗余键、status.md 实写
+      expect(mgr.getData()!.stages['v1.0.0-stage-01']).toBeUndefined();
+      expect(readFileSync(activeStatus, 'utf-8')).toContain('- **工作流模式**：fast');
+      expect(readFileSync(offSetStatus, 'utf-8')).toContain('- **工作流模式**：fast');
+    });
+
+    it('零回归：onlyStages 缺省 = 全量遍历（键序）；活跃 onlyStages 仅覆盖命中键', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const base = makeTestFlowData().stages['stage-01'];
+      mgr.setData(makeTestFlowData({
+        stages: { 'v1.0.0-stage-01': { ...base }, 'v1.0.0-stage-02': { ...base } },
+      }));
+      writeStatus('stage-01', 'full');
+      writeStatus('stage-02', 'full');
+
+      // 全量：两键各产一行，顺序 = stages 键序
+      const all = mgr.syncConfigFieldToStages('workflow_mode', 'fast');
+      expect(all.map((r) => r.stage)).toEqual(['v1.0.0-stage-01', 'v1.0.0-stage-02']);
+
+      // 活跃 onlyStages：仅命中键（未选定键的 status.md 不受影响）
+      writeStatus('stage-01', 'full');
+      writeStatus('stage-02', 'full');
+      const one = mgr.syncConfigFieldToStages('workflow_mode', 'fast', { onlyStages: ['v1.0.0-stage-02'] });
+      expect(one.map((r) => r.stage)).toEqual(['v1.0.0-stage-02']);
+    });
   });
 
   // ═══════════════════════════════════════

@@ -1,0 +1,175 @@
+# stage-80 op 依赖声明
+# 由 openfeel-schemer 生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+
+version: "1.1"
+stage: v1.2.0-stage-80
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-12"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.0-stage-79
+    type: hard
+    status: done
+    reason: "归档命令面 + 引擎导出已交付：`flow archive <version>`（判据门 / --dry-run / pipeline 处置）+ `normalizeArchiveVersion` / `listArchiveVersions` / `readArchiveFile` / `applyArchivePipelineDisposition` / `meta.archived_versions`。本阶段消费点适配与迁移直接复用，零第二套解析/切分。"
+  - upstream: v1.2.0-stage-78
+    type: hard
+    status: done
+    reason: "归档引擎 12 导出（archive-file / grouping / archive-ops）。本阶段新增 `archive-health.ts` 复用 `getArchivedVersions` / `listArchiveVersions` / `versionOfStageId`（禁第二套解析）。"
+  - upstream: v1.1.7-stage-77
+    type: soft
+    status: done
+    reason: "部署级基线（文档层声明）：CLI 1.1.7 / stage-79 收口值 lint i18n 826 / lint kb 0 / 测试 68 文件 1372 用例；本阶段新基线 i18n 829 在此上登记。注意：**stage-80 自举迁移会把 v1.1.7 组一并归档**——本依赖不参与 CLI deps 校验。"
+  - downstream: v1.2.0-stage-81
+    type: hard
+    note: "需求层在**已收缩的活跃集**（v1.2.0 八阶段）上开发：依赖本阶段迁移产物（flow.json 仅剩 v1.2.0 阶段 + `.openfeel/flow-archive/` 9 组）与健康检查零 warn 基线。"
+  - downstream: v1.2.0-stage-84 / v1.2.0-stage-85
+    type: soft
+    note: "stage-84（Agent/skill 契约）消费「归档后消费点行为口径」（deps 判定 / health 归档项 / config 降级）；stage-85（文档与版本收口）消费 T3 恢复路径文案 + `flow-archive/` 目录面 + `flow archive` 命令面文档。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不执行 npm publish、不 git push、不改 CI；不手工直写 flow.json（迁移经 `flow archive` CLI）；不推进流水线 phase；提交一律精确 git add，禁 git add -A（防裹入 flow.json / checkpoints 噪声）。"
+
+# 本阶段 4 op：op-001（T1 deps 判定 helper + 两处校验点）
+#   → op-002（T2 health a/b/c + T7 config 降级 + REV-80-009 循环重构，hard: op-001）
+#   → op-003（T3 文案 + T4 本仓迁移 + T5 验证程序 + T6 门禁 + 承接收口；hard: op-002；迁移最终 op）
+#   → op-004（REV-80-019 修复：b 项「归档残留」判据收窄为「键 ∈ 归档快照阶段集」+ 边界用例；hard: op-003；review_failed 后修复 op）。
+# 依赖真实性：
+#   op-002 hard 依赖 op-001 —— config 降级与 checkDanglingDeps 读侧复用 `isArchivedVersionOf`（单一口径）；
+#     同一 src/commands/flow.ts（stage set 校验块 → health 合并）与 i18n 双表（826→828→829）串行追加。
+#   op-003 hard 依赖 op-002 —— 迁移须在全部源码改动构建后执行（`npm run build` 纳入新代码）；T5 全量清单断言最后编辑同一 test/commands/flow.test.ts；门禁覆盖 op-001+op-002 全部产出。
+#
+# 不变量：
+#   ① 单一口径（REV-80-002）：`isArchivedVersionOf` 全仓唯一实现，写侧（plan.ts / flow.ts）+ 读侧（checkDanglingDeps）+ config 降级共 4 调用点；禁「T1 放行 + health 报悬空」并存；
+#   ② 短名恒走原路径（REV-80-001）：判定恒传**原始输入**（不得传归一化产物）；短名（含 typo）经 parseStageId 归一化（fullStageId ≠ 原输入）恒 false；既有负例逐字不翻转；
+#   ③ 探针法零自写正则（REV-80-010）：helper 显式前缀门复用 parseStageId 派生（`parsed.fullStageId !== stageId` 即拒），消除第二信源；版本段派生与 versionOfStageId 同源但禁 import flow-archive（防环，REV-80-005）；
+#   ④ health 归档项（T2；b 项经 REV-80-019 修订）：a. 双向对账 + b. 活跃集残留【两段式判据：版本前缀 ∈ archived_versions 预筛 ∧ 键 ∈ 匹配快照 stages 键集（readArchiveFile）——默认版本新建阶段不误报】+ c. 悬空读侧同口径；全部 warn-only（**恒无 fail**）→ `ok` / 退出码语义不变；非 quick；不参与 --fix；常规路径只读轻量索引 + 目录清单级，b 项候选分支按版本惰性读一次快照（每版本至多一次；plan.md §四.4 措辞随 REV-80-020 移交修订）；
+#   ⑤ static import 面（REV-80-005）：`flow-manager.ts` 对 `flow-archive` 零 import；消费方 `archive-health.ts` 仅被 `src/commands/flow.ts`；`HealthCheckItem`/`FlowData` 仅 import type；
+#   ⑥ config 降级（REV-80-003 裁定① + REV-80-009）：`--stage <已归档显式全名>` → status.md 照常同步（五态结果不变）+ flow.json 冗余跳过（不触 data.stages[id]、不置 flowJsonDirty、不额外 save）+ info；短名 / 未注册未归档 → 原路径 exit 1 逐字；
+#   ⑦ 循环重构零回归（REV-80-009）：`syncConfigFieldToStages` 遍历集 = `onlyStages ∪ Object.keys(stages)`（归一化去重）；无 --stage 全量 / 活跃 --stage 结果逐字零回归；off-set 分支冗余写入三点（:3637/:3646/:3667）加注册守卫防越界解引用；
+#   ⑧ 迁移安全程序（裁定 S / kb #真实全局目录操作的安全程序）：全量备份（`.openfeel/tmp/backup-stage-80/` + SHA256 源/备份双行）+ 逐版本判据门（--dry-run 先行）+ 顺序实跑 + 回滚路径**预先成文**；**执行前须用户确认**（Q9）；
+#   ⑨ 迁移产物经 CLI 生成（非手改）：`.openfeel/flow.json` + `.openfeel/flow-archive/{v1.0.0..v1.1.7}.json` 9 文件；不 unarchive；不触碰 v1.2.0 阶段条目；
+#   ⑩ 体积判据：迁移后 ≤ 迁移前 1/5（现场迁移前实测换算；方案期读侧推演 ≈0.128×）；
+#   ⑪ i18n 基线 826 → 828（op-001 +2）→ 829（op-002 +1）；双表成对、逐键有引用防死键（lint i18n 显式登记）；
+#   ⑫ 零新增第三方依赖；不改 phase 枚举 / 转移表 / pipeline.yaml / checkpoint 保留策略；不改顶层 openfeel archive（裁定 O3）；不 npm publish / 不 git push / 不直写 flow.json。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "跨版本 deps 判定适配（单一口径 helper + 命令层两处校验点）（T1）"
+    produces:
+      - src/core/plan/path.ts
+      - src/commands/plan.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/plan/path.test.ts
+      - test/commands/plan.test.ts
+      - test/commands/flow.test.ts
+    deps: []
+    notes: "覆盖 T1 + i18n 2 键（826→828）。helper `isArchivedVersionOf`（path.ts，探针法复用 parseStageId，零自写正则——REV-80-010；短名恒 false——REV-80-001）；两处校验点同判据（plan.ts:90 / flow.ts:687，恒传原始 d、「已注册优先」）；info 新键与负例旧键文案分离。测试：helper 单测（含非前缀子串反例）+ 短名 typo 不翻转 + 显式前缀已归档正例（双命令对称）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "health 归档一致性（a/b/c）+ config 已归档目标降级 + syncConfigFieldToStages 循环重构（T2 + T7 + REV-80-009）"
+    produces:
+      - src/core/flow-archive/archive-health.ts
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/commands/config.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-archive.test.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+      - test/commands/config.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "config 降级与 checkDanglingDeps 读侧复用 `isArchivedVersionOf`（单一口径）；同一 src/commands/flow.ts 与 i18n 双表同文件串行追加"
+    notes: "覆盖 T2（新文件 archive-health.ts：a 双向对账 + b 活跃集残留；checkDanglingDeps 读侧同口径〔REV-80-002〕；health 命令层合并 warn-only）+ T7（config 降级 REV-80-003 裁定①）+ REV-80-009（遍历集 onlyStages ∪ keys 去重 + 冗余写入三点注册守卫）+ i18n 1 键（828→829）。测试：对账三项 + 残留 + 悬空对称 + 降级实写（status.md 实写 / flow.json 零冗余零 save）+ 循环重构零回归 + off-set 可达。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "存量迁移（本仓自举）+ 零触碰验证程序 + 全门禁 + 承接收口（T3 + T4 + T5 + T6；最终 op）"
+    produces:
+      - test/commands/flow.test.ts
+      - .openfeel/tmp/backup-stage-80/flow.json
+      - .openfeel/tmp/backup-stage-80/flow.json.sha256
+      - .openfeel/flow-archive/v1.0.0.json
+      - .openfeel/flow-archive/v1.1.0.json
+      - .openfeel/flow-archive/v1.1.1.json
+      - .openfeel/flow-archive/v1.1.2.json
+      - .openfeel/flow-archive/v1.1.3.json
+      - .openfeel/flow-archive/v1.1.4.json
+      - .openfeel/flow-archive/v1.1.5.json
+      - .openfeel/flow-archive/v1.1.6.json
+      - .openfeel/flow-archive/v1.1.7.json
+      - .openfeel/flow.json
+      - .openfeel/plan/v1/stage-79/ops/deps.yaml
+      - .openfeel/plan/v1/stage-79/ops/op-001.md
+      - .openfeel/tmp/stage-79-selftest-report.md
+      - .openfeel/tmp/stage-80-selftest-report.md
+      - .openfeel/tmp/stage-80-migration-report.md
+      - .openfeel/tmp/stage-80-gate-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "迁移须在全部源码改动经 npm run build 后可执行（health config 等行为面）；T5 全量清单与断言最后编辑同一 test/commands/flow.test.ts；门禁覆盖 op-001+op-002 全部产出"
+    notes: "覆盖 T3（恢复路径文案成文，供 stage-85）+ T4（本仓 78 阶段九组一次性迁移：全量备份 + SHA256 + dry-run 先行 + 顺序实跑 + 回滚成文；**执行前须用户确认**〔步骤 0 阻塞门〕）+ T5（rename 回归全量清单 25 条 + static import 面断言 + 活跃集收缩行为断言）+ T6（迁移前/后全门禁）+ 承接 REV 收口（REV-79-020/021/022/023；012/019 转 stage-85）。**本 op 为阶段最终 op**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-004:
+    file: op-004.md
+    title: "REV-80-019 修复——「归档残留」b 项判据收窄为「键 ∈ 归档快照阶段集」+ 边界用例固化（含 REV-80-020/021/022/023 处置）"
+    produces:
+      - src/core/flow-archive/archive-health.ts
+      - test/core/flow-archive.test.ts
+      - test/commands/flow.test.ts
+      - .openfeel/tmp/stage-80-op-004-fix-report.md
+      - .openfeel/tmp/stage-80-migration-report.md
+    deps:
+      - op: op-003
+        type: hard
+        reason: "修复须在迁移后真实归档面（9 组快照）上核验边界（v1.0.0.json 实含 v1.0.0-stage-01..34 → 键级判据正/反例）；test/commands/flow.test.ts 与 op-003 同文件串行；迁移产物为只读核验对象"
+    notes: "review_failed 后修复 op（REV-80-019 blocking；对应 REV 逐条：019 修复 / 020 移交 planner / 021+022 迁移报告加注 / 023 移交主会话）。判据两段式：① 版本前缀 ∈ archived_versions（廉价预筛）∧ ② 键 ∈ readArchiveFile(version).stages 键集（键级证据）；快照不可读 → 不报（a 项承担对账）。候选分支惰性读快照（每版本一次）；常规零读。边界用例双向：键 ∉ 快照 → 无 warn（默认版本新建阶段）/ 键 ∈ 快照 → warn（restore 检出，正控防假绿）。不触 flow.json / 迁移产物；不改 i18n / phase / restore。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 执行顺序（严格串行）：op-001 → op-002 → op-003 → op-004
+# 注：op-003 为迁移最终 op（含用户确认门与真实迁移）；op-004 为 review_failed 后修复 op（REV-80-019 收口）；其后由 openfeel-reviewer 复审、openfeel-feel-tester 测试。
+
+# 下游契约（交付 stage-81/84/85；接口形态 = 函数签名级；禁第二套实现）
+downstream_contracts:
+  - name: "src/core/plan/path.ts :: 归档版本判定 helper（stage-80 交付；单一口径）"
+    change: "`isArchivedVersionOf(stageId: string, archivedVersions: readonly string[] | undefined): boolean`（纯函数）——**显式版本前缀 ∧ 版本 ∈ archived_versions**；判据经 `parseStageId` 探针法派生（`parsed.fullStageId !== stageId` 即拒，零自写正则）；**短名恒 false**。消费方：commands/plan.ts、commands/flow.ts、commands/config.ts、core/flow-manager.ts（checkDanglingDeps）。恒传原始输入（禁传归一动产物）。"
+  - name: "src/core/flow-archive/archive-health.ts :: 归档一致性 health 检查（stage-80 交付；REV-80-019 修订）"
+    change: "`archiveHealthItems(input: { projectPath: string; data: FlowData }): HealthCheckItem[]`（纯函数；恒无 fail，仅 pass/warn；a. 索引 ↔ 文件双向对账；b. 活跃集残留**两段式判据**：版本前缀 ∈ archived_versions 预筛 ∧ 键 ∈ 匹配快照 `stages` 键集（`readArchiveFile`）——默认版本新建阶段不误报〔REV-80-019〕）。对 flow-manager 仅 `import type`（零运行时依赖边）；常规零读归档文件，b 项候选分支按版本惰性读一次快照（stages 键集）。消费方 = commands/flow.ts health action（合并 items；不改退出码；非 quick；不参与 --fix）。"
+    note_granularity: "口径分层（REV-80-027）：**deps 判定 = 版本粒度**（`isArchivedVersionOf`：显式版本前缀 ∈ archived_versions，短名恒 false）；**health b 项 = 键粒度**（stageId ∈ 匹配快照 stages 键集）——两者判据粒度不同，**禁互相套用**（deps 放行 ≠ health 不报残留；health 键级命中 ≠ deps 应判归档）。"
+  - name: "src/core/flow-manager.ts :: syncConfigFieldToStages 作用域语义（stage-80 定稿）"
+    change: "`onlyStages` 缺省 = 活跃集全量（逐字不变）；显式给定 = `onlyStages ∪ Object.keys(stages)` 归一化去重遍历——**off-set 目标（已归档/未注册）可达**：仅 status.md 同步（五态结果不变），flow.json 冗余写入跳过（不触 data.stages[id]、不额外 save）。调用方（commands/config.ts）经 `--stage` 降级路径传入归一化全名。"
+  - name: "恢复路径 × 归档关系文案（T3；stage-85 文档消费）"
+    change: "恢复分层（ADR-004）与归档关系：restore（含 --stage）带回归档版本阶段 → `flow health` 报「归档残留」warn → 重新 `flow archive <version>` 收敛；restore / --fix 行为零改动。落点：`.openfeel/tmp/stage-80-selftest-report.md` §恢复路径（stage-85 收编进 docs/manual）。"
+  - name: "本仓归档面（stage-80 自举产物；stage-81..85 运行基线）"
+    change: "`.openfeel/flow-archive/{v1.0.0..v1.1.7}.json` 9 组（经 CLI 生成、非手改；无 unarchive）；`.openfeel/flow.json` 仅剩 v1.2.0 八阶段（体积 ≤ 迁移前 1/5）；`meta.archived_versions` = 9 版本。后续阶段 `save()` 写放大与读取成本基于该收缩面。"
+
+# 交付边界（本阶段不做，防越界）
+out_of_scope:
+  - "pipeline.current/phase 处置——owner = stage-79（本阶段不实现；REV-79-005）"
+  - "归档文件删除 / 还原（unarchive）——本版不做（裁定 U/W）"
+  - "requirements 字段归档口径——留后续版本（裁定 W）"
+  - "checkpoint 保留策略（CHECKPOINT_MAX_KEEP=20）——不改（裁定 R 仅新增 health 可见性）"
+  - "顶层 openfeel archive <stage>（阶段摘要）语义——不改（裁定 O3）"
+  - "flow.json 记录层操作对已归档目标的拒绝语义（advance/attempt/stage reset 等）——有意拒绝，文档成文归 stage-85（附注④）"
+  - "自动归档（不做；触发 = 显式 flow archive 命令）"

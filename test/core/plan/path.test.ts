@@ -11,6 +11,7 @@ import {
   validateStageId,
   suggestStageId,
   findStageDirConflict,
+  isArchivedVersionOf,
   DEFAULT_SERIES,
 } from '../../../src/core/plan/path.js';
 import { FlowManager } from '../../../src/core/flow-manager.js';
@@ -201,5 +202,36 @@ describe('validateStageId / suggestStageId / findStageDirConflict', () => {
 
   it('findStageDirConflict：flow.json 不存在返回 null', () => {
     expect(findStageDirConflict(tmpDir, 'v4.0.0-stage-04')).toBeNull();
+  });
+});
+
+// ── stage-80 op-001：归档版本判定 helper（单一口径） ──
+describe('isArchivedVersionOf', () => {
+  it('短名恒 false（含 typo stage-99，REV-80-001）——不得据归一化产物判已归档', () => {
+    // 短名经 parseStageId 归一为 v1.0.0-*（默认版本语义），即使 v1.0.0 在归档列表也恒 false
+    expect(isArchivedVersionOf('stage-01', ['v1.0.0'])).toBe(false);
+    expect(isArchivedVersionOf('stage-99', ['v1.0.0'])).toBe(false);
+  });
+
+  it('显式全名已归档 true（REV-80-001 核心不变量）', () => {
+    expect(isArchivedVersionOf('v1.0.0-stage-01', ['v1.0.0'])).toBe(true);
+    // 历史全名（仅主版本）
+    expect(isArchivedVersionOf('v4-stage-04', ['v4'])).toBe(true);
+  });
+
+  it('显式全名未归档 false', () => {
+    expect(isArchivedVersionOf('v1.0.0-stage-01', ['v1.1.7'])).toBe(false);
+  });
+
+  it('非前缀子串不误伤（v1.1.70 vs v1.1.7）', () => {
+    expect(isArchivedVersionOf('v1.1.70-stage-01', ['v1.1.7'])).toBe(false);
+  });
+
+  it('边界：undefined / [] / 非法格式 / 空串 → false', () => {
+    expect(isArchivedVersionOf('v1.0.0-stage-01', undefined)).toBe(false);
+    expect(isArchivedVersionOf('v1.0.0-stage-01', [])).toBe(false);
+    expect(isArchivedVersionOf('foo', ['foo'])).toBe(false);
+    expect(isArchivedVersionOf('v1', ['v1'])).toBe(false);
+    expect(isArchivedVersionOf('', ['v1.0.0'])).toBe(false);
   });
 });

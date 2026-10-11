@@ -85,6 +85,41 @@ export function normalizeStageId(stageId: string): string | null {
   return parsed ? parsed.fullStageId : null;
 }
 
+/**
+ * 判断给定 stageId 是否指向「已归档版本」的阶段（跨版本 deps 判定的单一口径，全仓唯一实现）。
+ *
+ * 判据：**显式携带版本前缀（全名格式）∧ 版本段 ∈ archivedVersions** → true；其余一律 false。
+ *
+ * @param stageId 待判定的阶段 ID（**恒传原始输入**，不得传归一化产物）
+ * @param archivedVersions 已归档版本前缀列表（`meta.archived_versions`；缺省/非数组 → 视为 []）
+ * @returns 是否命中已归档版本
+ *
+ * 三点理由：
+ * 1. **短名恒 false（REV-80-001）**：短名 `stage-NN` 经 parseStageId 归一为 `v1.0.0-*` 属默认版本语义
+ *    （DEFAULT_STAGE_VERSION），不得据此判「已归档」——故以 `parsed.fullStageId !== stageId` 拒掉归一化产物。
+ * 2. **探针法零自写正则（REV-80-010）**：复用 parseStageId 派生（其内部正则即格式权威），消除第二信源。
+ * 3. **与 versionOfStageId 同源且禁 import flow-archive（REV-80-005）**：版本段派生技术一致（剥离 `-{stageDir}`
+ *    后缀），但 `plan/path.ts` 不得 import `flow-archive/*`（反向依赖成环），故就地重实现。
+ */
+export function isArchivedVersionOf(
+  stageId: string,
+  archivedVersions: readonly string[] | undefined,
+): boolean {
+  const parsed = parseStageId(stageId);
+  // 短名输入经 parseStageId 归一化（fullStageId ≠ 原输入）→ 恒 false（REV-80-001）
+  if (!parsed || parsed.fullStageId !== stageId) {
+    return false;
+  }
+  // 版本段派生：剥离 `-{stageDir}` 后缀（与 versionOfStageId 同源技术）
+  const suffix = `-${parsed.stageDir}`;
+  if (!parsed.fullStageId.endsWith(suffix)) {
+    // 防御：parseStageId 产物恒满足（不可达分支，防未来漂移）
+    return false;
+  }
+  const version = parsed.fullStageId.slice(0, -suffix.length);
+  return Array.isArray(archivedVersions) ? archivedVersions.includes(version) : false;
+}
+
 /** stageId 校验结果 */
 export interface StageIdValidation {
   ok: boolean;

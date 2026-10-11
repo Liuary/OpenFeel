@@ -25,12 +25,17 @@ vi.mock('@inquirer/prompts', () => ({ select: mockedInquirer.select, input: mock
 
 import { Command, CommanderError } from 'commander';
 import { registerFlowCommand, shouldPromptWorkflowMode } from '../../src/commands/flow.js';
+import { registerStageCommand } from '../../src/commands/stage.js';
+import { registerConfigCommand } from '../../src/commands/config.js';
+import { registerPlanCommand } from '../../src/commands/plan.js';
+import { registerArchiveCommand } from '../../src/commands/archive.js';
 import { applyHelpI18n } from '../../src/cli/index.js';
 import { initProject } from '../../src/core/init.js';
 import { FlowManager, FlowConcurrentModificationError, type FlowData, type PipelinePhase, type MetaPhase, type StageData } from '../../src/core/flow-manager.js';
 import { setConfigValue } from '../../src/core/config.js';
 import { addStage } from '../../src/core/plan/stage.js';
 import { splitForArchive } from '../../src/core/flow-archive/grouping.js';
+import { writeArchiveFile } from '../../src/core/flow-archive/archive-ops.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../../src/core/flow-archive/archive-file.js';
 import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync, statSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -773,6 +778,40 @@ describe('flow 命令（stage-41）', () => {
     expect(flow.stages['v1.1.2-stage-63'].deps).toEqual([]);
   });
 
+  // ── stage-80 op-001：flow stage set --deps 归档依赖对称（T1②） ──
+
+  it('op-001: 已归档显式前缀 dep → exit 0 + deps 落盘 + info（同 plan.ts 单一口径）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.2.0-stage-90');
+    mgr.getData()!.meta.archived_versions = ['v1.1.2'];
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'stage', 'set', 'v1.2.0-stage-90', '--deps', 'v1.1.2-stage-60']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.2.0-stage-90'].deps).toEqual(['v1.1.2-stage-60']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('已归档');
+  });
+
+  it('op-001: 短名 stage-99 在 archived_versions 下仍 exit 1（不翻转，REV-80-001）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.2.0-stage-91');
+    mgr.getData()!.meta.archived_versions = ['v1.1.2'];
+    mgr.save();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    errorMock.mockClear();
+
+    await safeParse(['flow', 'stage', 'set', 'v1.2.0-stage-91', '--deps', 'stage-99']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('stage-99');
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+  });
+
   // ── stage-51/N2-2：flow review update / remove ──
 
   /** 建立含一条 REV-001 的项目 */
@@ -985,6 +1024,121 @@ describe('flow 命令（stage-41）', () => {
 
     expect(exitMock).toHaveBeenCalledWith(1);
     process.exitCode = undefined;
+  });
+
+  // ── stage-80 op-002：flow health 归档一致性合并（T2 消费方） ──
+
+  it('op-002: flow health --json 合并「归档一致性」项（warn-only 不改退出码）', async () => {
+    // fixture：注入 archived_versions ['v1.0.0'] 且无归档文件 → 必产生对账 warn；current 置空 → 无 fail
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.meta.archived_versions = ['v1.0.0'];
+    mgr.getData()!.pipeline.current = { stage: '', op: '' };
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health', '--json']);
+
+    const obj = parseJsonLog();
+    expect(obj.items.some((i: { name: string }) => i.name === '归档一致性')).toBe(true);
+    expect(obj.ok).toBe(true);
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('op-002: flow health --quick --json 不含归档项（--quick 跳过）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.meta.archived_versions = ['v1.0.0'];
+    mgr.getData()!.pipeline.current = { stage: '', op: '' };
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health', '--quick', '--json']);
+
+    const obj = parseJsonLog();
+    expect(obj.items.every((i: { name: string }) => i.name !== '归档一致性')).toBe(true);
+  });
+
+  it('op-002: flow health（人类）输出现「归档一致性」行', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.meta.archived_versions = ['v1.0.0'];
+    mgr.getData()!.pipeline.current = { stage: '', op: '' };
+    mgr.save();
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health']);
+
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('归档一致性');
+  });
+
+  // ── stage-80 op-004：health b 项判据收窄两段式（REV-80-019）边界固化 ──
+
+  it('op-004: 默认版本新建阶段（键 ∉ 快照）→ 无「归档残留」（REV-80-019 复刻）', async () => {
+    // 复刻 reviewer 路径：archived_versions ['v1.0.0'] + `plan stage add stage-31`（键 v1.0.0-stage-31）+ 无归档文件
+    addStage(tmpDir, 'stage-31');
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.meta.archived_versions = ['v1.0.0'];
+    mgr.getData()!.pipeline.current = { stage: '', op: '' };
+    mgr.save();
+    logMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'health', '--json']);
+
+    const obj = parseJsonLog();
+    expect(obj.items.some((i: { name: string }) => i.name === '归档残留')).toBe(false);
+    expect(obj.items.some((i: { name: string }) => i.name === '归档一致性')).toBe(true);
+    expect(obj.ok).toBe(true);
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('op-004: 真实快照形态（键 ∉ 快照）→ 人类输出无「归档残留」；归档一致性 pass（1 个版本）', async () => {
+    addStage(tmpDir, 'stage-31');
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.meta.archived_versions = ['v1.0.0'];
+    mgr.getData()!.pipeline.current = { stage: '', op: '' };
+    mgr.save();
+    // 实写 v1.0.0.json：含 v1.0.0-stage-01、**不含** v1.0.0-stage-31
+    writeArchiveFile(tmpDir, {
+      schemaVersion: ARCHIVE_SCHEMA_VERSION,
+      version: 'v1.0.0',
+      archived_at: '2026-10-11T00:00:00.000Z',
+      stages: { 'v1.0.0-stage-01': { name: '样本阶段', phase: 'done', status: 'done', deps: [], ops: {} } },
+      reviews: [],
+      log: [],
+      counts: { stages: 1, reviews: 0, log: 0 },
+    });
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health']);
+
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).not.toContain('归档残留');
+    expect(out).toContain('归档一致性');
+    expect(out).toContain('一致（1 个版本）');
+  });
+
+  it('op-004: 正控 — 键 ∈ 快照 → 出现「归档残留」（防恒不报退化）', async () => {
+    addStage(tmpDir, 'stage-31');
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.meta.archived_versions = ['v1.0.0'];
+    mgr.getData()!.pipeline.current = { stage: '', op: '' };
+    mgr.save();
+    // 快照 stages **含** v1.0.0-stage-31（模拟 restore 带回 / 重复归档残留）
+    writeArchiveFile(tmpDir, {
+      schemaVersion: ARCHIVE_SCHEMA_VERSION,
+      version: 'v1.0.0',
+      archived_at: '2026-10-11T00:00:00.000Z',
+      stages: { 'v1.0.0-stage-31': { name: '样本阶段', phase: 'plan_pending', status: 'pending', deps: [], ops: {} } },
+      reviews: [],
+      log: [],
+      counts: { stages: 1, reviews: 0, log: 0 },
+    });
+    logMock.mockClear();
+
+    await safeParse(['flow', 'health', '--json']);
+
+    const obj = parseJsonLog();
+    expect(obj.items.some((i: { name: string }) => i.name === '归档残留')).toBe(true);
   });
 
   it('op-001/B8: 无 op 时 flow current 显示 stage + 「无 op」；--json 的 op 为空串', async () => {
@@ -2644,6 +2798,253 @@ describe('flow 命令（stage-41）', () => {
       expect(statusAfter[0]).toBe(statusBefore[0]);
       expect(statusAfter.slice(0, 10).map(labelOf)).toEqual(statusBefore.slice(0, 10).map(labelOf));
       expect(statusAfter.join('\n')).toContain('阶段数: 1');
+    });
+  });
+
+  // ═══════════════════════════════════════════════
+  // 常规路径零触碰与活跃集（stage-80 op-003）
+  // ═══════════════════════════════════════════════
+
+  describe('常规路径零触碰与活跃集（stage-80）', () => {
+    // 本组消费点清单跨 5 个命令组（flow / stage / config / plan / archive 顶层）
+    let prog: Command;
+
+    beforeEach(() => {
+      process.exitCode = 0;
+      prog = new Command();
+      prog.exitOverride();
+      registerFlowCommand(prog);
+      registerStageCommand(prog);
+      registerConfigCommand(prog);
+      registerPlanCommand(prog);
+      registerArchiveCommand(prog);
+    });
+    afterEach(() => {
+      process.exitCode = 0;
+    });
+
+    const flowJsonPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
+    const archiveDirPath = (): string => join(tmpDir, '.openfeel', 'flow-archive');
+    const renamedDirPath = (): string => join(tmpDir, '.openfeel', 'flow-archive-renamed');
+    const stageDirPath = (dir: string): string => join(tmpDir, '.openfeel', 'plan', 'v1', dir);
+
+    const OP_ID = 'v1.9.1-stage-11.op-001';
+
+    /** 安全解析（捕获 CommanderError 不中断测试）——使用本组多命令组 program */
+    async function parse(args: string[]): Promise<void> {
+      try {
+        await prog.parseAsync(args, { from: 'user' });
+      } catch (err) {
+        if (!(err instanceof CommanderError)) {
+          throw err;
+        }
+      }
+    }
+
+    /** 构造阶段数据（phase / status / ops） */
+    function stageObj(phase: PipelinePhase, status: string, ops: Record<string, unknown> = {}): StageData {
+      return { name: phase, phase, status, deps: [], ops } as StageData;
+    }
+
+    /**
+     * 创建阶段目录 + status.md（文件系统视图，供 plan stage list / stage status 断言）。
+     * status.md 含「工作流模式」字段（值 = full），使 #25 `config set --sync-stages` 走 noop 路径
+     * （skipped-* 会写 stderr；本组判据要求 console.error 零调用）。
+     */
+    function makeDirs(dirs: string[]): void {
+      for (const d of dirs) {
+        mkdirSync(stageDirPath(d), { recursive: true });
+        writeFileSync(
+          join(stageDirPath(d), 'status.md'),
+          `# ${d} 状态\n\n- **执行模式**：manual\n- **自动推进**：enabled\n- **工作流模式**：full\n- **状态**：planned\n`,
+          'utf-8',
+        );
+      }
+    }
+
+    /**
+     * 主夹具：v1.9.0（全 done，两阶段，可归档）+ v1.9.1 活跃（含 op-001）+ v1.9.2 依赖目标。
+     * @param archived 已归档版本列表（含 'v1.9.0' 时不再登记 v1.9.0 阶段）
+     */
+    function seedMain(archived: string[] = []): void {
+      makeDirs(['stage-01', 'stage-02', 'stage-11', 'stage-21', 'stage-41']);
+      const stages: FlowData['stages'] = {
+        'v1.9.1-stage-11': stageObj('plan_passed' as PipelinePhase, 'planned', { 'op-001': makeOp('op-001') }),
+        'v1.9.2-stage-21': stageObj('plan_pending' as PipelinePhase, 'planned'),
+      };
+      if (!archived.includes('v1.9.0')) {
+        stages['v1.9.0-stage-01'] = stageObj('done' as PipelinePhase, 'done');
+        stages['v1.9.0-stage-02'] = stageObj('done' as PipelinePhase, 'done');
+      }
+      const data: FlowData = {
+        meta: { version: '1.0', project: 'ZeroTouch80', updated: '2026-01-01T00:00:00Z', archived_versions: [...archived] },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.9.1-stage-11', op: '' }, retry: 0 },
+        stages,
+        reviews: [],
+        log: [],
+      };
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(data);
+      mgr.save();
+    }
+
+    /** 清理本组命令可能创建的目录 + 重播种 + 预置 checkpoint（保证重复执行幂等） */
+    function resetForGroup(): void {
+      for (const d of ['stage-31', 'stage-41', 'stage-51']) {
+        rmSync(stageDirPath(d), { recursive: true, force: true });
+      }
+      seedMain(['v1.9.0']);
+      // #15 restore --dry-run 所需快照（幂等；文件名取自 listCheckpoints）
+      new FlowManager(tmpDir).saveCheckpoint('v1.9.1-stage-11', 'plan_passed' as PipelinePhase);
+    }
+
+    /**
+     * 组内 25 条消费点命令（大计划 §三 裁定 P 附注① 全量清单）。
+     * mode='green'：退出码 0 + 不调 process.exit + console.error 零调用；
+     * mode='wizard'：非 TTY 守卫（T39）声明豁免——console.error(nonTtyHint) + exitCode=1 为既有设计。
+     */
+    function groupCommands(): Array<{ args: string[]; mode: 'green' | 'wizard' }> {
+      const ck = new FlowManager(tmpDir).listCheckpoints('v1.9.1-stage-11')[0];
+      return [
+        { args: ['flow', 'status'], mode: 'green' },                                              // 1
+        { args: ['flow', 'overview'], mode: 'green' },                                            // 2
+        { args: ['flow', 'current'], mode: 'green' },                                             // 3
+        { args: ['flow', 'ops', 'list'], mode: 'green' },                                         // 4
+        { args: ['flow', 'log'], mode: 'green' },                                                 // 5
+        { args: ['flow', 'wizard'], mode: 'wizard' },                                             // 6
+        { args: ['flow', 'health'], mode: 'green' },                                              // 7
+        { args: ['flow', 'mode'], mode: 'green' },                                                // 8
+        { args: ['flow', 'phases'], mode: 'green' },                                              // 9
+        { args: ['flow', 'advance', '--stage', 'v1.9.1-stage-11', '--to', 'scheme_pending'], mode: 'green' }, // 10
+        { args: ['flow', 'attempt', '--op', OP_ID, '--result', 'pass'], mode: 'green' },          // 11
+        { args: ['flow', 'retry', '--op', OP_ID], mode: 'green' },                                // 12
+        { args: ['flow', 'repair'], mode: 'green' },                                              // 13
+        { args: ['flow', 'recover'], mode: 'green' },                                             // 14
+        { args: ['flow', 'checkpoint', 'restore', ck, '--dry-run'], mode: 'green' },              // 15
+        { args: ['flow', 'stage', 'add', 'v1.9.5-stage-31'], mode: 'green' },                     // 16
+        // addStage 会把该阶段置为 current → 移除需 --force（移后 current 自动回退到非 done 阶段）
+        { args: ['flow', 'stage', 'remove', 'v1.9.5-stage-31', '--force'], mode: 'green' },       // 17
+        { args: ['flow', 'stage', 'set', 'v1.9.2-stage-21', '--deps', 'v1.9.1-stage-11'], mode: 'green' }, // 18
+        { args: ['flow', 'stage', 'reset', 'v1.9.1-stage-11', '--to', 'plan_pending', '--dry-run'], mode: 'green' }, // 19
+        { args: ['stage', 'create', 'v1.9.6-stage-41'], mode: 'green' },                          // 20
+        { args: ['plan', 'stage', 'add', 'v1.9.7-stage-51', '--deps', 'v1.9.1-stage-11'], mode: 'green' }, // 21
+        { args: ['plan', 'scheme', 'list'], mode: 'green' },                                      // 22
+        { args: ['plan', 'scheme', 'register', 'v1.9.1-stage-11'], mode: 'green' },               // 23
+        { args: ['archive', 'v1.9.1-stage-11'], mode: 'green' },                                  // 24
+        { args: ['config', 'set', 'workflow_mode', 'full', '--sync-stages'], mode: 'green' },     // 25
+      ];
+    }
+
+    /** 逐条执行全量清单，返回逐条判据签名（同判据比对用） */
+    async function runAll(label: string): Promise<string[]> {
+      const sig: string[] = [];
+      for (const { args, mode } of groupCommands()) {
+        const cmd = args.join(' ');
+        logMock.mockClear();
+        errorMock.mockClear();
+        exitMock.mockClear();
+        process.exitCode = 0;
+        await parse(args);
+        if (mode === 'wizard') {
+          // 声明豁免（T39）：非 TTY 守卫路径逐字不变（与归档目录无关）
+          expect(process.exitCode, `${label} ${cmd} 退出码`).toBe(1);
+          expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n'), `${label} ${cmd} 非 TTY 守卫文案`).toContain('非交互式');
+          process.exitCode = 0;
+          sig.push(`${cmd}#wizard`);
+          continue;
+        }
+        expect(process.exitCode ?? 0, `${label} ${cmd} 退出码`).toBe(0);
+        expect(exitMock, `${label} ${cmd} 不应调用 process.exit`).not.toHaveBeenCalled();
+        expect(errorMock.mock.calls.length, `${label} ${cmd} 不应输出 error`).toBe(0);
+        sig.push(`${cmd}#ok`);
+      }
+      return sig;
+    }
+
+    it('T5: 归档目录重命名 → 全量 25 条消费点命令全绿；恢复目录名后一致；防假绿前置断言成立', async () => {
+      // 1.1 fixture（多版本）→ 归档 v1.9.0 → 产生归档文件
+      seedMain();
+      await parse(['flow', 'archive', 'v1.9.0']);
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(existsSync(join(archiveDirPath(), 'v1.9.0.json'))).toBe(true);
+
+      // 防假绿前置断言：重命名确已发生
+      renameSync(archiveDirPath(), renamedDirPath());
+      expect(existsSync(archiveDirPath())).toBe(false);
+      expect(existsSync(renamedDirPath())).toBe(true);
+
+      // 1.2 重命名状态下按全量清单逐条执行
+      resetForGroup();
+      const renamedSig = await runAll('renamed');
+
+      // 1.3 恢复目录名 → 重复同一组命令 → 结果一致（同判据）
+      renameSync(renamedDirPath(), archiveDirPath());
+      expect(existsSync(archiveDirPath())).toBe(true);
+      resetForGroup();
+      const restoredSig = await runAll('restored');
+
+      expect(restoredSig).toEqual(renamedSig);
+    });
+
+    it('T5: 归档后活跃集收缩断言（status counts / overview / plan stage list / stage status 全名可用）', async () => {
+      seedMain();
+      await parse(['flow', 'archive', 'v1.9.0']);
+      expect(process.exitCode ?? 0).toBe(0);
+
+      // flow status --json：counts.total = 活跃集数（不含 v1.9.0-stage-*）
+      logMock.mockClear();
+      await parse(['flow', 'status', '--json']);
+      const statusObj = JSON.parse(logMock.mock.calls[0][0] as string) as { counts: { total: number } };
+      expect(statusObj.counts.total).toBe(2);
+
+      // flow overview：不含被归档版本阶段
+      logMock.mockClear();
+      await parse(['flow', 'overview']);
+      const overview = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(overview).not.toContain('v1.9.0-stage-');
+
+      // plan stage list：仍列出归档目录（文件系统视图不随归档变化）
+      logMock.mockClear();
+      await parse(['plan', 'stage', 'list']);
+      const listed = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(listed).toContain('stage-01');
+      expect(listed).toContain('stage-02');
+
+      // stage status <已归档全名>：可用（文件系统视图不变）
+      logMock.mockClear();
+      exitMock.mockClear();
+      await parse(['stage', 'status', 'v1.9.0-stage-01']);
+      expect(exitMock).not.toHaveBeenCalled();
+    });
+
+    it('REV-79-022 收口: 已归档版本重新登记 → 再归档 → 幂等收敛（rearchivedTmpl 覆盖分支）', async () => {
+      // 活跃集仍含 v1.9.1（全 done）且 archived_versions 已含 v1.9.1（模拟「重新登记 → 再归档」）
+      makeDirs(['stage-11']);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData({
+        meta: { version: '1.0', project: 'Rear', updated: '2026-01-01T00:00:00Z', archived_versions: ['v1.9.1'] },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: '', op: '' }, retry: 0 },
+        stages: {
+          'v1.9.1-stage-11': stageObj('done' as PipelinePhase, 'done'),
+          'v1.9.2-stage-21': stageObj('plan_pending' as PipelinePhase, 'planned'),
+        },
+        reviews: [],
+        log: [],
+      });
+      mgr.save();
+
+      logMock.mockClear();
+      await parse(['flow', 'archive', 'v1.9.1']);
+
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('已重新归档');
+      // 归档文件覆盖写出
+      expect(existsSync(join(archiveDirPath(), 'v1.9.1.json'))).toBe(true);
+      // 索引无重复（恰好一次）+ 阶段已移出活跃集
+      const after = JSON.parse(readFileSync(flowJsonPath(), 'utf-8')) as FlowData;
+      expect(after.meta.archived_versions).toEqual(['v1.9.1']);
+      expect(after.stages['v1.9.1-stage-11']).toBeUndefined();
     });
   });
 });

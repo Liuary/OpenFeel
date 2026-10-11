@@ -18,6 +18,7 @@ stageId ↔ plan 目录双向映射的**唯一权威工具**，消除各处硬�
 | `findStageDirConflict(projectPath, stageId)` | 检测 `(series, stageDir)` 冲突，返回映射同一目录的**其它** stageId（无冲突返回 `null`），供 `registerStage`/`addStage` 与三入口命令层复用 |
 | `planDirToStageId(projectPath, stageDir)` | 目录名 → 完整 stageId（回查 flow.json 反向映射 + 去歧义） |
 | `findStageStatusPath(projectPath, stageId)` | 三级回退查找 status.md 绝对路径 |
+| `isArchivedVersionOf(stageId, archivedVersions)` | **v1.2.0-stage-80 新增**：判定 stageId 是否属**已归档版本**（`meta.archived_versions`）——**版本粒度**：**显式版本前缀 ∧ 版本段 ∈ `archivedVersions`**。判据经 `parseStageId` **探针法**派生（`parsed.fullStageId !== stageId` 即拒，零自写正则）；**短名恒 `false`**（短名归一默认版本 `v1.0.0`，属默认版本语义，不得据此判归档）。**全仓唯一实现、4 调用点**（`commands/plan.ts` / `commands/flow.ts` 两校验点 + `core/flow-manager.ts` `checkDanglingDeps` + `commands/config.ts`）。**禁 import `flow-archive/*`**（防反向依赖成环），版本段派生就地重实现（与 `versionOfStageId` 同源技术） |
 
 ## 映射规则
 
@@ -45,3 +46,4 @@ stageId ↔ plan 目录双向映射的**唯一权威工具**，消除各处硬�
 | stage-34 | 新增本模块（stageId 三格式解析 + 双向映射 + 三级回退），收敛 init/plan/stage/scheme/flow-manager/commands 各处硬编码路径 |
 | stage-41 | 新增 `validateStageId` / `suggestStageId` / `findStageDirConflict`（三入口统一 stageId 校验 + 建议名 + `(series, stageDir)` 冲突检测） |
 | stage-52 | 本模块**未改**——`normalizeStageId` 被 op-012/013/014 共 **10 处**调用点复用（统一范式 `normalizeStageId(x) ?? x` + 双键回退，见 `kb/patterns.md #短名/全名 stage 解析归一化的统一范式`）。归档核对确认无需变更 |
+| v1.2.0-stage-80 | 新增 `isArchivedVersionOf`（归档版本判定，**版本粒度、短名恒 false**、探针法复用 `parseStageId`）供跨版本 deps 判定（`plan.ts`/`flow.ts` 两写侧校验点 + `flow-manager.ts` `checkDanglingDeps` 读侧 + `config.ts` 降级）**单一口径**复用（4 调用点）。落点在本模块（而非 `flow-archive/*`）以避 `flow-manager → flow-archive` 反向依赖成环 |

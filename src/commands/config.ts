@@ -10,7 +10,7 @@ import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
 import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey, STAGE_FIELD_BY_CONFIG_KEY } from '../core/config.js';
 import { FlowManager } from '../core/flow-manager.js';
-import { normalizeStageId, suggestStageId } from '../core/plan/path.js';
+import { normalizeStageId, suggestStageId, isArchivedVersionOf } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
 
@@ -267,6 +267,7 @@ export function registerConfigCommand(program: Command): void {
 
       // --stage 前置全量校验（D1：解析 → 归一 → 注册校验；任一失败 → exit 1 且 config.yaml/status.md 零写盘）
       let onlyStages: string[] | undefined;
+      const downgraded: string[] = [];
       if (opts.syncStages && opts.stage !== undefined) {
         const projectPath = process.cwd();
         // 变长参数：空格 / 逗号两种写法（与 --deps 同款）
@@ -281,11 +282,22 @@ export function registerConfigCommand(program: Command): void {
         }
         const normalizedIds = parsedIds.map((id) => normalizeStageId(id) ?? id);
         const fmCheck = new FlowManager(projectPath);
-        const knownSet = new Set(
-          Object.keys(fmCheck.isLoaded() ? fmCheck.getData()!.stages : {}).map((k) => normalizeStageId(k) ?? k),
-        );
-        const invalid = normalizedIds.filter((id) => !knownSet.has(id));
-        // 未注册阶段（含 flow.json 未加载 → knownSet 为空 → 全部 invalid）→ 逐 id 报错 + 建议名
+        const fmData = fmCheck.isLoaded() ? fmCheck.getData() : undefined;
+        const knownSet = new Set(Object.keys(fmData?.stages ?? {}).map((k) => normalizeStageId(k) ?? k));
+        // REV-80-003 裁定①：显式全名 ∧ 已归档 → 降级（仅 status.md、跳过 flow.json 冗余）；
+        // 短名 / 未注册未归档 → 原路径 exit 1（逐字不变）
+        const invalid = normalizedIds.filter((id, i) => {
+          if (knownSet.has(id)) {
+            return false; // 已注册优先（既有正例零回归）
+          }
+          if (isArchivedVersionOf(parsedIds[i], fmData?.meta?.archived_versions)) {
+            // 恒传原值（防归一化产物误判，REV-80-001）
+            downgraded.push(id);
+            return false;
+          }
+          return true;
+        });
+        // 未注册且未归档（含 flow.json 未加载 → knownSet 为空 → 全部 invalid）→ 逐 id 报错 + 建议名
         if (invalid.length > 0) {
           for (const id of invalid) {
             console.error(t('common.stageIdInvalidTmpl', lang, { input: id }));
@@ -294,6 +306,7 @@ export function registerConfigCommand(program: Command): void {
           process.exit(1);
           return;
         }
+        // 归一化全名进入 onlyStages（含 off-set；经 syncConfigFieldToStages 循环可达）
         onlyStages = [...new Set(normalizedIds)];
       }
 
@@ -304,6 +317,11 @@ export function registerConfigCommand(program: Command): void {
         // 写入 config.yaml 失败（YAML 语法错误、权限问题等），输出实际错误原因
         console.error(t('config.set.error', lang, { err: (err as Error).message }));
         process.exit(1);
+      }
+
+      // 已归档目标降级 info（REV-80-003 裁定①）：setConfigValue 成功之后、--sync-stages 块之前
+      if (downgraded.length > 0) {
+        console.log(t('config.set.syncArchivedStageTmpl', lang, { stages: downgraded.join(', ') }));
       }
 
       // --sync-stages：将目标键批量同步到已注册阶段 status.md 对应字段（仅项目模式；--stage 可限定范围）

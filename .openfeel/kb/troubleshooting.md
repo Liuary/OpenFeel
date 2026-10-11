@@ -1168,3 +1168,17 @@ concurrency:
 **实证**：v1.2.0-stage-79（REV-79-004/011/021）——`archive-ops.ts` 导出 `normalizeArchiveVersion`/`isValidArchiveVersion`；`writeArchiveFile` 非法 version 抛错零写盘；T5.4 覆盖「不存在/已归档版本 → 存在性门拒绝 + 空集不得写盘」断言。
 
 **参见：** v1.2.0-stage-79（REV-79-001/004/011；op-001）；`src/core/flow-archive/archive-ops.ts`（`normalizeArchiveVersion`/`isValidArchiveVersion`/`writeArchiveFile`）；`src/core/plan/roadmap.ts`（`normalizeVersion` 去 v 方向）；`src/core/plan/path.ts`（`parseStageId`）；kb/architecture.md #归档命令面架构；kb/patterns.md #归档引擎分层与独立锁模式；manual/core/flow-archive.md
+
+## [+] 长寿命索引与「版本前缀判据」陷阱：短名 stageId 经 `parseStageId` 归一默认版本 `v1.0.0` → 误接受 / 误报 (2026-10-12)
+
+**坑位**：以「**版本前缀 ∈ 长寿命索引**」为唯一条件判定「某 stageId 是否已归档」时，**短名 stageId 会经 `parseStageId` 归一化为默认版本 `v1.0.0-*`**（`DEFAULT_STAGE_VERSION = 'v1.0.0'`，`src/core/plan/path.ts`）→ `versionOfStageId('stage-NN')` **恒返回 `v1.0.0`**。一旦 `v1.0.0` 被写入长寿命索引（`meta.archived_versions`，归档了 v1.0.0 版本组），**任何短名**（含 typo `stage-99`）都命中判据 → 误判「已归档、视为已满足」。本仓迁移写入 `v1.0.0` 后，此坑在**两处**同时暴露：① **deps 判定误接受**（`plan stage add --deps stage-99` 被放行，翻转既有负例）；② **health b 项误报**（`plan stage add stage-31` 键 `v1.0.0-stage-31` 触发误导性「归档残留」warn）。
+
+**处置（两层判据，禁互相套用）**：
+1. **deps 判定（版本粒度）**：helper 加**显式前缀门**——`parseStageId(d)?.fullStageId === d` 才生效（即 d **显式携带版本前缀**），短名/typo 经归一化 `fullStageId ≠ 原输入` → **恒 `false`**，既有负例逐字不翻转。经 `parseStageId` **探针法**派生（零自写正则，消除第二信源）。
+2. **health 残留（键粒度）**：判据收窄为**两段式**——版本前缀 ∈ 索引（廉价预筛）∧ **stageId ∈ 匹配归档快照 `stages` 键集**。默认版本新建阶段键 ∉ 快照 → 不报；restore 带回真残留键 ∈ 快照 → 仍报；快照缺失/损坏 → 读侧宽容 → 不可证实不报。
+
+**通用判据**：① **长寿命索引的键必须与「判定输入」同构**——若索引存**版本**而输入可能是**短名/全名**，须先判「输入是否显式带版本」再查索引，**不得**直接把归一化产物丢进查表；② 一个 helper 若被「放行类」（deps：宽松，误接受代价=漏检依赖）与「报警类」（health：严格，误报代价=误导诊断）**共用**，须审视**两侧对误判的容忍方向相反**，必要时**分层**并登记「禁互相套用」；③ 长寿命索引在**迁移一次性写入**后风险放大——此前为空、判据恒 `false` 的「侥幸安全」被打破，故迁移前须先审视全部长寿命索引消费点。
+
+**实证**：v1.2.0-stage-80（REV-80-001 blocking / REV-80-010 / REV-80-019 blocking / REV-80-028）——`isArchivedVersionOf` 收敛全名格式（短名 typo 不翻转已证）；`archive-health.ts` b 项两段式（隔离工程复现「默认版本新建阶段」修复前误报、修复后无 warn + 正控仍报）。
+
+**参见：** v1.2.0-stage-80（REV-80-001/010/019/028；op-001/004）；`src/core/plan/path.ts`（`isArchivedVersionOf`/`DEFAULT_STAGE_VERSION`）；`src/core/flow-archive/archive-health.ts`；kb/architecture.md #归档消费面口径分层架构；kb/troubleshooting.md #版本归一「方向陷阱」、#同类缺陷须一次全量扫描而非逐个暴露；manual/core/plan-path.md

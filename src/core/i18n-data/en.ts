@@ -461,6 +461,7 @@ export const stage: I18nDomain = {
   'set.noOptionTmpl':            { key: 'stage.set.noOptionTmpl',            zh: '', en: 'Provide at least one field option (--status/--exec-mode/--auto-advance/--workflow-mode/--review-agent)' },
   'set.depsOkTmpl':              { key: 'stage.set.depsOkTmpl',              zh: '', en: 'Updated deps for stage {stage}: {deps}' },
   'set.depsDanglingTmpl':        { key: 'stage.set.depsDanglingTmpl',        zh: '', en: 'Invalid deps: stage(s) not found {deps}' },
+  'set.archivedDepsTmpl':        { key: 'stage.set.archivedDepsTmpl',        zh: '', en: 'Archived dependency (treated as satisfied): {deps}' },
   'task.errorMutualExclusive':   { key: 'stage.task.errorMutualExclusive',   zh: '', en: 'Error: Must specify --done or --undone (mutually exclusive)' },
   'task.errorInvalidTaskNo':     { key: 'stage.task.errorInvalidTaskNo',     zh: '', en: 'Error: Task number must be a positive integer' },
   'task.errorTaskNotFoundTmpl':  { key: 'stage.task.errorTaskNotFoundTmpl',  zh: '', en: 'Error: Task {taskNo} not found in {stageId} status.md' },
@@ -482,6 +483,7 @@ export const stage: I18nDomain = {
 export const plan: I18nDomain = {
   'stage.createdTmpl':           { key: 'plan.stage.createdTmpl',           zh: '', en: 'Stage created: {name}' },
   'stage.invalidDepsTmpl':       { key: 'plan.stage.invalidDepsTmpl',       zh: '', en: 'Unknown dependency stage(s): {deps} (registered stages: {known})' },
+  'stage.archivedDepsTmpl':      { key: 'plan.stage.archivedDepsTmpl',      zh: '', en: 'Archived dependency (treated as satisfied): {deps}' },
   'stage.empty':                 { key: 'plan.stage.empty',                 zh: '', en: 'No working stages yet' },
   'scheme.createdTmpl':          { key: 'plan.scheme.createdTmpl',          zh: '', en: 'Op created: {opId} ({stage})' },
   'scheme.create.titleRequiredTmpl': { key: 'plan.scheme.create.titleRequiredTmpl', zh: '', en: 'Missing scheme title: pass <title>, or use --from-tasks to generate mechanically from the stage task table' },
@@ -864,6 +866,7 @@ export const config: I18nDomain = {
   'get.globalResult':        { key: 'config.get.globalResult',        zh: '', en: '{key}: {value}' },
   'set.valueOk':             { key: 'config.set.valueOk',             zh: '', en: '{key} set to: {value}' },
   'set.syncSummaryTmpl':     { key: 'config.set.syncSummaryTmpl',     zh: '', en: 'Synced {updated} / inserted {inserted} / skipped {skipped}' },
+  'set.syncArchivedStageTmpl': { key: 'config.set.syncArchivedStageTmpl', zh: '', en: 'Archived stage(s): synced to status.md only (flow.json redundancy skipped): {stages}' },
   'set.invalidKey':          { key: 'config.set.invalidKey',          zh: '', en: 'Invalid config key "{val}". Currently supported: {keys}' },
   'set.invalidValue':        { key: 'config.set.invalidValue',        zh: '', en: 'Invalid value "{val}". {key} only supports: {values}' },
   'set.error':               { key: 'config.set.error',               zh: '', en: 'Failed to write project config: {err}' },

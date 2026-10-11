@@ -1,46 +1,74 @@
 # 自测报告 — op-002
 
-- **执行时间**：2026-10-11 18:10
+- **执行时间**：2026-10-12 01:56
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1
+- **重试次数**：第 1 次（首轮 1 用例 fixture 修正后全绿，属正常调试非重试）
 
 ## 执行摘要
-全部实施步骤完成，自测清单全绿（tsc 0 / build 成功 / flow.test.ts 87 用例 + output-encoding 22 用例全绿 / lint i18n 786 / src 内零无参访问器调用）。
+
+health 归档一致性（a/b/c）+ config 已归档目标降级（T7）+ `syncConfigFieldToStages` 循环重构（REV-80-009）全部 8 步完成，自测通过：新建 `archive-health.ts`、`checkDanglingDeps` 读侧同口径、config 降级 + i18n +1 键（828→829）。tsc=0 / 定向 vitest 0 failed / 全量 68 文件 1396 用例 / i18n 829 / build ×2 幂等。
 
 ## 实施步骤完成情况
-- [x] T3：`flow mode [--stage] [--json]` 只读命令（`--stage` 格式 + 存在性校验、缺省回退 `current.stage`、单点 `resolveStageWorkflowMode`、`modes` 双表、human 模式行 + 可达目标行、`--json` 稳定 5 键、不写盘）
-- [x] T3-附：`flow phases` 增 `--mode` / `--stage`（值域校验 → 存在性校验 → 单点派生 `derivedMode` → **显式传 mode** 消除 `:391/:393` 无参调用 → `transitionsDiff` 同模式对比 → `--json` 末位追加 `workflowMode` → 人类输出新增模式分节行 + 指引行）
-- [x] `flow advance --help --to` 描述追加「查看当前模式：openfeel flow mode」
-- [x] i18n：8 新键（`flow.mode.lineTmpl` / `flow.mode.targetsLabel` / `flow.phases.modeHint` / `help.flow.mode{,.stage,.json}` / `help.flow.phases.{mode,stage}`）+ `help.flow.phases.json` 枚举追加 `workflowMode`（双表成对）
-- [x] 测试：T7.11①~⑦ + T7.4 + T7.5①~④（10 用例）；E-2② 5 → 6
+
+- [x] 步骤 1：新建 `src/core/flow-archive/archive-health.ts`（纯函数 `archiveHealthItems`；a 双向对账 + b 活跃集残留；恒无 fail；`import type` 零运行时依赖边）
+- [x] 步骤 2：`checkDanglingDeps` 读侧并入 `isArchivedVersionOf`（写/读单一口径；pass/warn 文案逐字不变）
+- [x] 步骤 3：`syncConfigFieldToStages` 遍历集重构（`onlyStages ∪ keys` 去重）+ 冗余写入三点注册守卫
+- [x] 步骤 4：`config set --sync-stages --stage` 已归档降级（仅 status.md + info；短名/未注册原路径逐字）
+- [x] 步骤 5：`flow health` 命令层合并（人类 + `--json`；warn-only；`--quick` 跳过；`--fix` 不触）
+- [x] 步骤 6：i18n 1 键（`config.set.syncArchivedStageTmpl`，双表成对 828→829）
+- [x] 步骤 7：测试（flow-archive / flow-manager / config / flow 四文件）
+- [x] 步骤 8：边界（不触真实 flow.json / 不触 flow-archive 目录 / 无新增依赖）
 
 ## 自测清单验证
+
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| `npx tsc --noEmit` → 0 | ✅ | |
-| `npm run build` | ✅ | dist 反映新命令面 |
-| `test/commands/flow.test.ts` + `test/cli/output-encoding.test.ts` | ✅ | 87 + 22 全绿（0 failed / 0 skipped） |
-| fixture `flow mode` | ✅ | `当前模式：fast  [来源: config.yaml]` |
-| fixture `flow mode --stage <status.md=full>` | ✅ | `full [来源: status.md]`；flow.json / config.yaml / status.md SHA256 前后不变 |
-| fixture `flow mode --json` | ✅ | 键 = `{schemaVersion, stage, mode, source, modes}`；`modes.full` / `modes.fast` 为对象 |
-| fixture `flow phases` | ✅ | 转移表前含模式分节行 + 指引行；`--mode fast` → fast 表 7 流转键 + `[来源: --mode]` |
-| fixture `flow phases --json` | ✅ | 含 `workflowMode`，键序 6 键（既有五键逐字不变） |
-| fixture 非法 `--mode bogus` / `--stage bogus-!!` | ✅ | 均 exit 1（值域文案 / 建议名） |
-| `rg -n "getPipelineTransitions\(\)\|getDefaultTransitions\(\)" src/` | ✅ | **0 命中** |
-| `lint i18n` → 786 | ✅ | 778 + 8 |
-| `--version` → 1.1.6 | ✅ | 本 op 不改版本 |
+| 对账三项：索引有文件缺 → warn；文件有索引缺 → warn；一致 → pass | ✅ | archiveHealthItems 三用例 |
+| 全项无 `fail` | ✅ | `items.every(i => i.status !== 'fail')` |
+| 残留项：stages 含已归档版本阶段 → warn；清洁 → 不产生条目 | ✅ | section=`归档残留`，message 含 `restore` |
+| 读侧对称：已归档 dep 无悬空 warn；未归档不存在 dep 有 warn；短名 typo 不翻转 | ✅ | `checkDanglingDeps` 与 T1 同 helper |
+| T7 降级：off-set status.md 实写 + flow.json 零冗余零 save + info | ✅ | config.test.ts 降级用例 |
+| 短名 / 未注册原路径 exit 1 逐字 | ✅ | 短名用例 + T7.7d 既有用例 |
+| REV-80-009：无 `--stage` 全量 / 活跃 `--stage` 零回归；off-set 可达不越界 | ✅ | core 级 3 组用例（无 TypeError、无冗余键） |
+| health 合并：`--json` 仅追加 items、`ok`/退出码不变；`--quick` 跳过；`--fix` 不触 | ✅ | flow.test.ts 3 用例 |
+| `npx tsc --noEmit` = 0 | ✅ | — |
+| 定向 vitest 0 failed | ✅ | 4 文件 506 passed |
+| `lint i18n` = 829 | ✅ | 828 + 1 |
+| static import 面：仅 `commands/flow.ts`；`flow-manager.ts` 零命中；`archiveHealthItems` 定义 1 + 消费 1 | ✅ | rg 断言见下 |
+
+### static import 面（步骤 7.6）
+
+- `rg "from '.*flow-archive/" src/ --glob '!src/core/flow-archive/*'` → 命中**仅** `src/commands/flow.ts`（含新 `archive-health` import，仍集中单点）
+- `rg "flow-archive" src/core/flow-manager.ts` → **零命中**（rc=1，REV-80-005 定向）
+- `rg "archiveHealthItems" src/` → 定义 **1** 处（`archive-health.ts:31`）+ 消费 **1** 处（`commands/flow.ts:38 / :1884`）
+
+### 门禁数字
+
+- `npm test` → **68 文件 / 1396 用例**（stage-79 基线 68/1372 + 本阶段新增 24）
+- `npx tsc --noEmit` = 0
+- `node bin/openfeel.js lint i18n` = **829**；`lint kb` = 0
+- `npm run build` ×2 幂等（`git status --porcelain src/` 三次逐字一致）
 
 ## 产出文件
-- `src/commands/flow.ts`
-- `src/core/i18n-data/zh-CN.ts` / `src/core/i18n-data/en.ts`
-- `test/commands/flow.test.ts` / `test/cli/output-encoding.test.ts`
+
+- `src/core/flow-archive/archive-health.ts`（新建）
+- `src/core/flow-manager.ts`（`checkDanglingDeps` + `syncConfigFieldToStages`）
+- `src/commands/flow.ts`（health 合并）/ `src/commands/config.ts`（降级）
+- `src/core/i18n-data/zh-CN.ts` / `src/core/i18n-data/en.ts`（+1 键）
+- `test/core/flow-archive.test.ts` / `test/core/flow-manager.test.ts` / `test/commands/flow.test.ts` / `test/commands/config.test.ts`
 
 ## 前置校验结果
-- 方案完整性：通过
-- Phase 合法性：通过
-- 流转合法性：通过（`flow health --quick` exit 0）
+
+- 方案完整性：通过（6 项必填字段齐全）
+- Phase 合法性：通过（stage-80.phase=exec_running；pipeline.phase=active 合法）
+- 流转合法性：通过（`openfeel flow health --quick` 退出 0）
 
 ## 偏差记录
-1. **D2 缺省 `key` 取值**：fixture `init` 将 `pipeline.current.stage` 置为占位符 `"-"`，故 `flow mode --json` 输出 `stage: "-"`（非 `""`）。实现严格按 D2「`key = getData()?.pipeline?.current?.stage`」，未对占位符做特判（不属方案范围）。
-2. **E-2② 断言放宽**：该用例 `runBin` 的 `cwd = REPO_ROOT`，故 `workflowMode` 取本仓 `config.yaml` 派生值（`full`）。按「只增字段」语义断言键数 6 + 值 ∈ `{full, fast}`，不硬编码具体模式值。
-3. **人类输出「只增不改」**：T7.11⑤ 以「新增行恰 2 条（模式分节 + 指引）+ 既有行仍在」表达（D8 解读，plan.md 已同步为登记口径）。
+
+- 无跳步违规。
+- **REV-80-012**：`archive-health.ts` 显式定义 section 常量 `SECTION_INDEX='归档一致性'` / `SECTION_RESIDUAL='归档残留'`；步骤 7 断言与之一致。
+- **REV-80-015**：纯 off-set 时 `appendLog` 内存副作用——按步骤 3.3 在循环注释加一行边界注记（不置 dirty → 不 save → 无 flow.json 写入）。
+- **REV-80-017 / REV-80-014**：仅涉 op-003，本 op 不涉。
+- 测试 fixture 偏差（说明）：`flow health --json` 合并用例初版因 `initProject` 遗留 `pipeline.current.stage='-'`（触发既有 `current 指向不存在的 stage` fail）导致 `ok !== true`；改用健康 fixture（`current` 置空）后 `ok===true` 成立——属既有健康检查语义，非本 op 缺陷，已注明。
+- **未执行 op-003**（本仓迁移 + 用户确认门）：按任务约束跳过，未运行任何 `flow archive` 命令、未写真实 `.openfeel/flow.json`/`flow-archive/`。
+- 未执行 git commit（本 session 任务显式要求「不 commit」）。

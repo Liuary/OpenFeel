@@ -489,6 +489,7 @@ export const stage: I18nDomain = {
   'set.noOptionTmpl':            { key: 'stage.set.noOptionTmpl',            zh: '请至少提供一个字段选项（--status/--exec-mode/--auto-advance/--workflow-mode/--review-agent）', en: '' },
   'set.depsOkTmpl':              { key: 'stage.set.depsOkTmpl',              zh: '已更新阶段 {stage} 的依赖：{deps}',       en: '' },
   'set.depsDanglingTmpl':        { key: 'stage.set.depsDanglingTmpl',        zh: '依赖校验失败：以下阶段不存在 {deps}',      en: '' },
+  'set.archivedDepsTmpl':        { key: 'stage.set.archivedDepsTmpl',        zh: '依赖已归档（视为已满足）：{deps}',        en: '' },
   'task.errorMutualExclusive':   { key: 'stage.task.errorMutualExclusive',   zh: '错误：必须指定 --done 或 --undone（二者互斥）', en: '' },
   'task.errorInvalidTaskNo':     { key: 'stage.task.errorInvalidTaskNo',     zh: '错误：任务编号必须为正整数',                en: '' },
   'task.errorTaskNotFoundTmpl':  { key: 'stage.task.errorTaskNotFoundTmpl',  zh: '错误：在 {stageId} 的 status.md 中未找到「任务{taskNo}」', en: '' },
@@ -510,6 +511,7 @@ export const stage: I18nDomain = {
 export const plan: I18nDomain = {
   'stage.createdTmpl':           { key: 'plan.stage.createdTmpl',           zh: '已创建阶段: {name}',                       en: '' },
   'stage.invalidDepsTmpl':       { key: 'plan.stage.invalidDepsTmpl',       zh: '依赖阶段不存在：{deps}（已注册阶段：{known}）', en: '' },
+  'stage.archivedDepsTmpl':      { key: 'plan.stage.archivedDepsTmpl',      zh: '依赖已归档（视为已满足）：{deps}',        en: '' },
   'stage.empty':                 { key: 'plan.stage.empty',                 zh: '暂无工作阶段',                            en: '' },
   'scheme.createdTmpl':          { key: 'plan.scheme.createdTmpl',          zh: '已创建操作方案: {opId}（{stage}）',        en: '' },
   'scheme.create.titleRequiredTmpl': { key: 'plan.scheme.create.titleRequiredTmpl', zh: '缺少方案标题：请提供 <title>，或改用 --from-tasks 从阶段任务表机械生成', en: '' },
@@ -907,6 +909,7 @@ export const config: I18nDomain = {
   'get.globalResult':        { key: 'config.get.globalResult',        zh: '{key}: {value}',                           en: '' },
   'set.valueOk':             { key: 'config.set.valueOk',             zh: '{key} 已设置为：{value}',                 en: '' },
   'set.syncSummaryTmpl':     { key: 'config.set.syncSummaryTmpl',     zh: '同步 {updated} / 插入 {inserted} / 跳过 {skipped}', en: '' },
+  'set.syncArchivedStageTmpl': { key: 'config.set.syncArchivedStageTmpl', zh: '已归档阶段仅同步 status.md（跳过 flow.json 冗余）：{stages}', en: '' },
   'set.invalidKey':          { key: 'config.set.invalidKey',          zh: '无效的配置键 "{val}"，当前仅支持：{keys}', en: '' },
   'set.invalidValue':        { key: 'config.set.invalidValue',        zh: '无效的值 "{val}"。{key} 仅支持：{values}', en: '' },
   'set.error':               { key: 'config.set.error',               zh: '项目配置写入失败：{err}',                  en: '' },

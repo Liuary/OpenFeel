@@ -3791,3 +3791,32 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.0-stage-79（REV-79-018，code_review 轮）——审查官实测两命令均出纯 JSON、修复生效后 **closed**；`test/commands/flow.test.ts` T5.5 覆盖 `list`/`show` 的 `--json` 成功与失败两径。
 
 **参见：** v1.2.0-stage-79（REV-79-018；op-002；T5.5）；`src/commands/flow.ts`（`archiveCmd` 子命令 action）；kb/patterns.md #CLI `--json` 结构化输出约定、#命令面收敛与弃用策略；manual/cli/commands.md
+
+## [+] 版本分片存量迁移程序：全量备份（SHA256 双行）+ 逐版本判据门（dry-run 先行）+ 顺序实跑 + 回滚路径预先成文 (2026-10-12)
+
+**模式**：把「本仓全量历史一次性归档搬迁」（不可逆数据动作，无 unarchive）落地为**可预览、可审计、可回滚**的四步程序，是 kb #真实全局目录操作的安全程序（全量备份 + 判据门 + 回滚）在**版本分片归档**语境的具体化：
+
+1. **全量备份 + 双行 SHA256**：`mkdir -p .openfeel/tmp/backup-{stage}/` → 整文件 `cp flow.json`（**连同 `flow.json.bak` 一并备份**，双保险）→ `sha256sum` 源/备份**两行**写入 `flow.json.sha256` → `sha256sum -c` 复核两行 `OK`。备份落 `tmp/`（不入版本管理）。
+2. **判据门预检（`--dry-run` 先行）**：对**每个版本**逐个 `flow archive <v> --dry-run`，任一非 0 即 `break`（GATE-FAIL）；dry-run 后断言 `flow-archive/` **不存在** + flow.json sha1 **前后恒等**（零写盘核对）。**逐版本**（非一次全量）——单版本判据门独立可诊断。
+3. **顺序实跑**：`for v ...; do flow archive "$v" || break; done`，每步后 `flow health` 对账（观察点集收缩 + 无 warn）。9 组全过。
+4. **回滚路径预先成文**（**在实跑之前**写进迁移报告）：`cp` 备份回填 → `sha256sum -c` 复核 → `rm -rf flow-archive/` → `flow health` 复核「索引↔文件」回到 0 版本一致态 → `git diff` 与备份对账。`meta.archived_versions` 随 flow.json **整文件还原**（无需单删）。
+
+**关键纪律**：① **迁移前须用户明确确认**（步骤 0 阻塞门，不得以自动推进绕过）；② 迁移产物**经 CLI 生成**（`flow archive`），**非手改** flow.json / 归档文件；③ **Windows 便携性**：bash `for…done` 循环须给 **PowerShell 等价**（本仓 win32），或明写「经 Git Bash 执行」；`sha256sum` ↔ `Get-FileHash -Algorithm SHA256`。
+
+**时点快照语义（易误读为损坏）**：迁移时点写入的 `flow.json.sha256` 对应**迁移前源**；迁移后任何 CLI save（含 `flow archive` 自身）改写源文件 → **源行现时 `-c` FAILED 属时点语义非损坏**，「备份行」恒 OK；源行复核**仅在备份回填后有效**（回填后两行均 OK）。报告须**显式加注**，并给「迁移时点 vs 现场漂移」**双值**（本仓：迁移时点 58978 B / rev968 ｜ 现场 59225 B / rev969，体积比 **0.1392×** ≤ 1/5 阈值）。
+
+**实证**：v1.2.0-stage-80（op-003，T4）——本仓 78 阶段九组（v1.0.0~v1.1.7）一次性迁移：dry-run 9 组全过 → 实跑 9 组 → `flow.json` **425323 B → ~59KB**（现场 ≤1/5）、阶段 **86→8**、log **1364→233**、`archived_versions=9`、文件孤儿 **89→0**、`flow health` 归档维度零 warn。
+
+**参见：** v1.2.0-stage-80（op-003；REV-80-008/017/018/021/022）；`.openfeel/tmp/stage-80-migration-report.md`；kb/patterns.md #真实全局目录操作的安全程序、#破坏性命令安全校验清单模式、#`--dry-run` 必须字节级不写盘；manual/core/flow-archive.md
+
+## [+] `syncConfigFieldToStages` 循环重构：遍历集「只增不减」去重（`onlyStages` ∪ `Object.keys(stages)`）使 off-set 目标可达 (2026-10-12)
+
+**问题**：`config set --sync-stages --stage <ids...>` 的作用域参数 `onlyStages` 原本**仅作 filter**（`for…Object.keys(this.data.stages)` 内 `if (onlyStages && !onlyStages.includes(id)) continue`），**不扩大遍历集** → 目标不在 `data.stages`（已归档 / 未注册）时**循环根本触不到它** → status.md **不会被写**，「照常同步」与验收不可达（降级路由名存实亡）。
+
+**正解（循环重构）**：遍历集 = **`onlyStages ∪ Object.keys(stages)` 归一化去重**（缺省 `onlyStages` = 活跃集全量，逐字零回归）。使 **off-set 目标（已归档/未注册）可达**：**仅同步 status.md**（五态结果不变），**flow.json 冗余写入跳过**（off-set 分支的冗余写入三点 `:3637/:3646/:3667` 加**注册守卫**，防越界解引用 `data.stages[id]`；不置 `flowJsonDirty`、不额外 `save()`）。调用方（`commands/config.ts`）经 `--stage` 降级路径传入**归一化全名**。
+
+**通用判据**：任何「作用域限定参数（`--stage` / `--ids` / `--only`）+ 遍历既有集合」的批量操作，**先判定该参数是「缩小既有集」还是「额外目标集」**——若是后者，遍历集必须**并入**该参数（去重），而非仅用 `includes` 过滤既有键；否则「不在既有集内的合法目标」被静默漏掉。**零回归断言**：无 `--stage`（全量）/ 活跃 `--stage` 两径结果**逐字不变**。
+
+**实证**：v1.2.0-stage-80（op-002；REV-80-009）——`syncConfigFieldToStages` 遍历集改 `onlyStages ∪ keys`；补 off-set status.md **实写**用例 + 零回归断言；`deps.yaml` 将「作用域语义」登记为交付契约。
+
+**参见：** v1.2.0-stage-80（plan T7；op-002；REV-80-003/009/027）；`src/core/flow-manager.ts`（`syncConfigFieldToStages`）；`src/commands/config.ts`；kb/patterns.md #批量同步的作用域限定参数（`--sync-stages --stage`）、#路径规范化前置去重模式；manual/core/flow-manager.md、manual/core/config.md

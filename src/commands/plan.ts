@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
 import type { StageSkeletonOverrides } from '../core/plan/stage.js';
 import { createScheme, createSchemesFromTasks, listSchemes, removeScheme, publishScheme, renameScheme, registerSchemes } from '../core/plan/scheme.js';
-import { validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
+import { validateStageId, suggestStageId, normalizeStageId, isArchivedVersionOf } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
 import { getConfigFieldLegalValues } from '../core/config.js';
@@ -81,15 +81,26 @@ export function registerPlanCommand(program: Command): void {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      // B2 修复：校验 deps ⊆ 已注册 stages（短名/完整名按 normalizeStageId 归一化比较）
+      // B2 修复（stage-80 适配）：校验 deps ⊆ 已注册 stages（短名/完整名按 normalizeStageId 归一化比较）
       if (deps.length > 0) {
         const fmCheck = new FlowManager(projectPath);
+        const fmData = fmCheck.isLoaded() ? fmCheck.getData() : undefined;
         // flow.json 未初始化时 registered 为空 → 任何 deps 均判无效（无阶段可依赖）
-        const registered = fmCheck.isLoaded() ? Object.keys(fmCheck.getData()!.stages) : [];
+        const registered = fmData ? Object.keys(fmData.stages) : [];
         const known = new Set(registered.map((k) => normalizeStageId(k) ?? k));
-        const invalid = deps.filter((d) => !known.has(normalizeStageId(d) ?? d));
+        // 已归档依赖（显式版本前缀 ∧ 版本 ∈ archived_versions）→ 视为已满足（info 提示，REV-80-001）；
+        // 恒传原始 d —— 不得传归一化产物（否则短名会被误判为已归档）
+        const archivedOk = deps.filter(
+          (d) => !known.has(normalizeStageId(d) ?? d) && isArchivedVersionOf(d, fmData?.meta?.archived_versions),
+        );
+        const invalid = deps.filter(
+          (d) => !known.has(normalizeStageId(d) ?? d) && !isArchivedVersionOf(d, fmData?.meta?.archived_versions),
+        );
+        if (archivedOk.length > 0) {
+          console.log(t('plan.stage.archivedDepsTmpl', lang, { deps: archivedOk.join(', ') }));
+        }
         if (invalid.length > 0) {
-          // 存在未注册的依赖阶段：列出无效项与已注册阶段后退出码 1
+          // 原负例路径：存在未注册且未归档的依赖阶段：列出无效项与已注册阶段后退出码 1（零写盘）
           console.error(t('plan.stage.invalidDepsTmpl', lang, {
             deps: invalid.join(', '),
             known: registered.length > 0 ? registered.join(', ') : t('common.none', lang),

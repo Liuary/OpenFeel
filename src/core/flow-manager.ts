@@ -29,7 +29,7 @@ import {
 import { PublicLogger, formatDate } from './public-logger.js';
 import { t, getCliLang } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
-import { findStageStatusPath, findStageDirConflict, parseStageId, normalizeStageId } from './plan/path.js';
+import { findStageStatusPath, findStageDirConflict, parseStageId, normalizeStageId, isArchivedVersionOf } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, type WorkflowMode } from './config.js';
@@ -3609,11 +3609,32 @@ export class FlowManager {
     const targets = options?.onlyStages;
     // 冗余写入标记：仅实际写入（updated / inserted）时置位，循环后 save 一次（D6）
     let flowJsonDirty = false;
-    for (const stageId of Object.keys(this.data.stages)) {
-      // --stage 作用域限定：归一化比较兼容存量短名键（D5；未注册 id 自然落 skipped-no-status）
-      if (targets && !targets.includes(normalizeStageId(stageId) ?? stageId)) {
-        continue;
+    // 遍历集构造（REV-80-009）：仅 targets 时 = 命中 targets 的活跃键（既有 filter 语义逐字保留，顺序 = stages 键序）
+    //   + 未被任何活跃键覆盖的 off-set 目标（已归档/未注册——status.md 仍照常同步，flow.json 冗余跳过）
+    // 注（REV-80-015）：纯 off-set 运行不置 flowJsonDirty → 不 save；appendLog（status.md 写审计）仅内存态、无 flow.json 写入
+    const loopIds: string[] = [];
+    if (targets) {
+      const covered = new Set<string>();
+      for (const stageId of Object.keys(this.data.stages)) {
+        const norm = normalizeStageId(stageId) ?? stageId;
+        if (!targets.includes(norm)) {
+          continue;
+        }
+        loopIds.push(stageId);
+        covered.add(norm);
       }
+      // off-set 目标（未命中任何活跃键）：仅 status.md 同步，冗余写入跳过
+      for (const t of targets) {
+        if (!covered.has(t)) {
+          loopIds.push(t);
+        }
+      }
+    } else {
+      loopIds.push(...Object.keys(this.data.stages));
+    }
+    for (const stageId of loopIds) {
+      // 注册守卫（REV-80-009）：off-set 目标无 data.stages 条目 → 冗余写入三点须跳过（防越界解引用）
+      const registered = Object.prototype.hasOwnProperty.call(this.data.stages, stageId);
       // 错误路径：该 config 键无阶段级字段 → 跳过并报告
       if (!field) {
         out.push({ stage: stageId, result: 'skipped-no-field' });
@@ -3634,8 +3655,11 @@ export class FlowManager {
           if (r === 'inserted') {
             this.appendLog({ time: '', agent: 'cli', action: 'config_sync_stage', detail: { stage: stageId, field, value } });
             out.push({ stage: stageId, result: 'inserted' });
-            this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
-            flowJsonDirty = true;
+            // 冗余写入点①：注册守卫（REV-80-009）——off-set 目标不新建冗余键、不置 dirty
+            if (registered) {
+              this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
+              flowJsonDirty = true;
+            }
             continue;
           }
           if (r === 'exists') {
@@ -3643,8 +3667,11 @@ export class FlowManager {
             this.writeStatusField(statusPath, field, value);
             this.appendLog({ time: '', agent: 'cli', action: 'config_sync_stage', detail: { stage: stageId, field, value } });
             out.push({ stage: stageId, result: 'updated' });
-            this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
-            flowJsonDirty = true;
+            // 冗余写入点②：注册守卫（REV-80-009）
+            if (registered) {
+              this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
+              flowJsonDirty = true;
+            }
             continue;
           }
           // 锚点链均缺失 → 跳过类（不写盘、不审计）
@@ -3662,8 +3689,8 @@ export class FlowManager {
       this.writeStatusField(statusPath, field, value);
       this.appendLog({ time: '', agent: 'cli', action: 'config_sync_stage', detail: { stage: stageId, field, value } });
       out.push({ stage: stageId, result: 'updated' });
-      // 冗余写入点③：仅实际写入时同步（noop / skipped 不写）
-      if (configKey === 'workflow_mode') {
+      // 冗余写入点③：仅实际写入时同步（noop / skipped 不写）；注册守卫（REV-80-009）——off-set 目标跳过
+      if (configKey === 'workflow_mode' && registered) {
         this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
         flowJsonDirty = true;
       }
@@ -3690,9 +3717,15 @@ export class FlowManager {
     for (const [stageId, stage] of Object.entries(this.data.stages)) {
       const deps = Array.isArray(stage.deps) ? stage.deps : [];
       for (const d of deps) {
-        if (!known.has(normalizeStageId(d) ?? d)) {
-          dangling.push(`${stageId} → ${d}`);
+        if (known.has(normalizeStageId(d) ?? d)) {
+          continue; // 已注册优先
         }
+        // 读侧与写侧同口径（REV-80-002）：显式版本前缀 ∧ 已归档 → 视为已满足，不报悬空；
+        // 恒传原始 d（短名不参与归档判定——REV-80-001）
+        if (isArchivedVersionOf(d, this.data.meta?.archived_versions)) {
+          continue;
+        }
+        dangling.push(`${stageId} → ${d}`);
       }
     }
     if (dangling.length > 0) {

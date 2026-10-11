@@ -340,6 +340,43 @@ describe('plan 命令', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
   });
 
+  // ── stage-80 op-001：跨版本 deps 判定适配（T1） ──
+
+  /** 注入 meta.archived_versions（模拟某版本已移出活跃集） */
+  function injectArchived(versions: string[]): void {
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.meta.archived_versions = versions;
+    mgr.save();
+  }
+
+  it('op-001(a): 短名 typo stage-99 在 archived_versions 下不翻转 → exit 1（REV-80-001）', async () => {
+    injectArchived(['v1.0.0']);
+    errorMock.mockClear();
+    await safeParse(['plan', 'stage', 'add', 'stage-02', '--deps', 'stage-99']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const errOut = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errOut).toContain('stage-99');
+  });
+
+  it('op-001(b): 显式前缀已归档正例 → exit 0 + deps 落盘 + info（REV-80-001）', async () => {
+    injectArchived(['v1.0.0']);
+    logMock.mockClear();
+    await safeParse(['plan', 'stage', 'add', 'stage-02', '--deps', 'v1.0.0-stage-01']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-02'].deps).toEqual(['v1.0.0-stage-01']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('已归档');
+  });
+
+  it('op-001(REV-80-013): --deps v1.0.0-stage-99（∈ [v1.0.0]）→ exit 0（版本粒度裁定）', async () => {
+    injectArchived(['v1.0.0']);
+    await safeParse(['plan', 'stage', 'add', 'stage-02', '--deps', 'v1.0.0-stage-99']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-02'].deps).toEqual(['v1.0.0-stage-99']);
+  });
+
   // ── stage-41：(series, stageDir) 冲突（op-002） ──
 
   it('plan stage add (series, stageDir) 冲突 → 报错 + exit 1', async () => {

@@ -23,9 +23,9 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
-import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath } from '../core/plan/path.js';
+import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
 import { getConfigFieldLegalValues, setConfigValue } from '../core/config.js';
 import { parse as parseYaml } from 'yaml';
 import { MetricsStore } from '../core/metrics.js';
@@ -35,6 +35,7 @@ import { t, getCliLang } from '../core/i18n.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
 import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile } from '../core/flow-archive/archive-ops.js';
+import { archiveHealthItems } from '../core/flow-archive/archive-health.js';
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -684,7 +685,12 @@ export function registerFlowCommand(program: Command): void {
 
       // 悬空依赖：命令层强制校验（核心层仅 warn），非法一律 exit 1 且不写盘
       const known = new Set(Object.keys(data.stages).map((k) => normalizeStageId(k) ?? k));
-      const invalid = deps.filter((d) => !known.has(normalizeStageId(d) ?? d));
+      // 已归档依赖（显式版本前缀 ∧ 版本 ∈ archived_versions）→ 视为已满足（同 plan.ts 单一口径；恒传原始 d）
+      const archivedOk = deps.filter((d) => !known.has(normalizeStageId(d) ?? d) && isArchivedVersionOf(d, data.meta?.archived_versions));
+      const invalid = deps.filter((d) => !known.has(normalizeStageId(d) ?? d) && !isArchivedVersionOf(d, data.meta?.archived_versions));
+      if (archivedOk.length > 0) {
+        console.log(t('stage.set.archivedDepsTmpl', lang, { deps: archivedOk.join(', ') }));
+      }
       if (invalid.length > 0) {
         console.error(t('stage.set.depsDanglingTmpl', lang, { deps: invalid.join(', ') }));
         process.exit(1);
@@ -1872,6 +1878,11 @@ export function registerFlowCommand(program: Command): void {
     .action((options: { quick?: boolean; json?: boolean; fix?: boolean; dryRun?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
+      const quick = options.quick ?? false;
+      // 归档一致性检查项（T2）：warn-only；--quick 跳过；flow.json 未加载 → 跳过（与既有检查降级一致）
+      const archiveItems: HealthCheckItem[] = !quick && mgr.isLoaded()
+        ? archiveHealthItems({ projectPath: process.cwd(), data: mgr.getData()! })
+        : [];
 
       // B2-2：--fix 状态对账（仅回写 status.md「状态」字段；--dry-run 预览不写盘）
       let reconciled: StatusReconcileItem[] | undefined;
@@ -1889,8 +1900,13 @@ export function registerFlowCommand(program: Command): void {
 
       // B1-3：--json 分支纯 JSON 单文档；退出码语义不变（有 fail → 非 0）
       if (options.json) {
-        const report = mgr.getHealthReport(options.quick ?? false);
-        const payload: Record<string, unknown> = { schemaVersion: 1, ok: report.ok, items: report.items };
+        const report = mgr.getHealthReport(quick);
+        // 合并追加归档一致性项（warn-only，恒无 fail → ok / 退出码不变）
+        const items = [
+          ...report.items,
+          ...archiveItems.map((i) => ({ name: i.section, status: i.status, detail: i.message })),
+        ];
+        const payload: Record<string, unknown> = { schemaVersion: 1, ok: report.ok, items };
         // 与 op-001 的 health --json 合并字段（--fix 时追加 reconciled）
         if (reconciled) {
           payload.reconciled = reconciled;
@@ -1929,7 +1945,7 @@ export function registerFlowCommand(program: Command): void {
 
       console.log(t('flow.health.title', lang) + '\n');
 
-      const result = mgr.healthCheck(options.quick ?? false);
+      const result = mgr.healthCheck(quick);
 
       // 图标映射
       const icon = (status: 'pass' | 'warn' | 'fail') => {
@@ -1938,7 +1954,8 @@ export function registerFlowCommand(program: Command): void {
         return '❌';
       };
 
-      for (const item of result.items) {
+      // 合并追加归档一致性项（warn-only；--quick 时 archiveItems 恒空）
+      for (const item of [...result.items, ...archiveItems]) {
         console.log(`${icon(item.status)} ${item.section}: ${item.message}`);
       }
 

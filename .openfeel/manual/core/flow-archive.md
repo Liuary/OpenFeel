@@ -1,6 +1,6 @@
 # 版本分片归档模块（flow-archive）
 
-> 模块文档，由归档官在归档时维护。对应源码：`src/core/flow-archive/{archive-file,grouping,archive-ops}.ts`（**v1.2.0-stage-78 新建**）+ **命令面 `flow archive` 子命令组**（`src/commands/flow.ts`，**v1.2.0-stage-79 新增**）。
+> 模块文档，由归档官在归档时维护。对应源码：`src/core/flow-archive/{archive-file,grouping,archive-ops,archive-health}.ts`（**v1.2.0-stage-78 新建前三者；`archive-health.ts` v1.2.0-stage-80 新增**）+ **命令面 `flow archive` 子命令组**（`src/commands/flow.ts`，**v1.2.0-stage-79 新增**）。
 
 ## 职责
 
@@ -15,6 +15,7 @@
 | `archive-file.ts` | 归档文件 schema 常量与类型（`ARCHIVE_SCHEMA_VERSION` / `ArchiveFile` / `ArchiveCounts`） | 仅 `import type` flow-manager（编译期擦除） |
 | `grouping.ts` | 版本分组与切分**纯函数**（只读输入、不写盘、不加锁、不读环境） | `plan/path.ts` `parseStageId` |
 | `archive-ops.ts` | 归档读写**IO 原语**与 `meta.archived_versions` 索引管理 | `fs/atomic-write.ts`、`fs/file-lock.ts`、`grouping.ts` |
+| `archive-health.ts` | **（v1.2.0-stage-80 新增）** `flow health` **归档一致性**检查项构造**纯函数**（a 索引↔目录双向对账 + b 活跃集残留 + c 悬空读侧；全 warn-only） | `archive-ops.ts`、`grouping.ts`；对 flow-manager 仅 `import type`（零运行时依赖边） |
 
 ## 归档文件 schema
 
@@ -64,6 +65,11 @@
 | `getArchivedVersions(data)` | 已归档版本索引副本；缺失/非数组 → `[]`（**自带 `Array.isArray` 防御**——REV-78-015 后「缺失 ≡ []」语义由本函数承担） |
 | `applyArchivePipelineDisposition(data, version)` | **（v1.2.0-stage-79 新增）** `pipeline` 处置（**纯内存**、须在 stages 移除后调用）：`current` 命中版本 → `{stage:'',op:''}`；返回 `{ currentCleared, phase }`，`phase = 活跃集非空且全 done ? 'done' : 'active'`（**空集 → `'active'`**）。`save()` 由调用方统一（同事务） |
 
+### archive-health.ts（v1.2.0-stage-80）
+| 导出 | 说明 |
+|------|------|
+| `archiveHealthItems(input: { projectPath: string; data: FlowData }): HealthCheckItem[]` | `flow health` **归档一致性**检查项构造（**纯函数、恒无 `fail`、仅 pass/warn**）。三项：**a. 双向对账**（`meta.archived_versions` ↔ 归档目录清单，恒产 1 条 pass/warn，section `归档一致性`）；**b. 活跃集残留**（flow.json `stages` 仍含已归档版本阶段；**两段式判据**——`versionOfStageId(stageId) ∈ archived_versions` **预筛** ∧ `stageId ∈ readArchiveFile(version).stages` **键集**，section `归档残留`；仅非空时 warn）；**c. 悬空读侧**（由 `checkDanglingDeps`，消费 `isArchivedVersionOf`，见 `core/flow-manager.md`）。**只读**：常规（无候选）零读归档文件，b 项候选分支按版本**惰性读一次**快照（仅取 `stages` 键集，不读 reviews/log）；缺失/损坏快照 → 读侧宽容 `null` → **不可证实不报**。**依赖方向**：对 flow-manager 仅 `import type`；**仅被 `src/commands/flow.ts` 消费**（`flow-manager → flow-archive` 零运行时边）。**不参与 `--fix`、不改退出码、非 quick**。 |
+
 ## 命令面（`flow archive` 子命令组，v1.2.0-stage-79）
 
 挂既有 `flow` 命令（**不改顶层命令树**）；与顶层 `openfeel archive <stage>`（阶段摘要 → `.openfeel/log/archive-*.md`）**职责分离**。
@@ -75,6 +81,19 @@
 | `flow archive show <version> [--json]` | 查看指定归档版本（人类 = counts + stages 概览；`--json` = **全量**含 log/reviews + `schemaVersion:1`）；不存在 → exit 1 | 否（只读） |
 
 **关键机制**：① **存在性门前置**——`listArchivableCandidates` 无该 version 候选 → 拒（防空归档覆盖既有归档）；**覆盖写仅在活跃集仍含该版本条目时允许**（重跑幂等收敛）；② **blocking 谓词单源**——`listBlockingOpenRevsForVersion`；③ **两步事务顺序**——归档文件写成功前不改 `flow.json`，`save()` 失败 → 归档文件在、flow.json 原样、exit 2 可重跑；④ **`--json` 失败纯单文档**——`writeArchiveFile` 包 try/catch（`archive-write-failed`）；⑤ **子命令 action 合并 `command.parent?.opts().json`**（父命令 `--json` 会被先行消费，REV-79-018）；⑥ **`--dry-run` 深拷 pipeline**（不就地改 live `data.pipeline`；四写盘点零写盘）。
+
+## 消费点适配（v1.2.0-stage-80）
+
+把归档能力接入既有消费点（**单一口径**硬约束 + **版本粒度/键粒度分层**禁互相套用）：
+
+| 消费点 | 落点 | 口径 |
+|--------|------|------|
+| 跨版本 deps 判定（写侧放行 + 读侧对账**同口径**） | `src/core/plan/path.ts` `isArchivedVersionOf`（**全仓唯一实现**） | **版本粒度**：显式版本前缀 ∧ 版本 ∈ `meta.archived_versions`；经 `parseStageId` 探针法派生（`fullStageId !== 原输入` 即拒）、**短名恒 `false`**。**4 调用点**：`commands/plan.ts`（`plan stage add --deps`）/ `commands/flow.ts`（`flow stage set --deps`）/ `core/flow-manager.ts`（`checkDanglingDeps` health 读侧）/ `commands/config.ts`（降级判定） |
+| `flow health` 归档一致性 | `archive-health.ts`（上节） | **a 索引对账（版本粒度）+ b 残留（键粒度）+ c 悬空读侧（版本粒度）**；全 warn-only 恒无 fail、不改退出码、非 quick、不参与 `--fix` |
+| `config set --sync-stages --stage <已归档显式全名>` | `commands/config.ts` + `flow-manager.ts` `syncConfigFieldToStages` | **降级**：status.md 照常同步（五态结果不变）+ flow.json 冗余跳过（不触 `data.stages[id]`、不置 `flowJsonDirty`、不额外 `save()`）+ info；短名/未注册未归档 → 原路径 exit 1 逐字 |
+| 恢复路径文案（T3，供 stage-85 收编进 docs） | `.openfeel/tmp/stage-80-selftest-report.md` §恢复路径 | restore（含 `--stage`）带回归档版本阶段 → `flow health` 报「归档残留」warn → **重新 `flow archive <version>`** 收敛；restore / `--fix` 行为零改动 |
+
+**本仓自举迁移程序（stage-80 实跑，可复用）**：全量备份（`.openfeel/tmp/backup-{stage}/` 含 `flow.json` + `.bak` + SHA256 **双行**）→ 逐版本 `flow archive <v> --dry-run` 判据门（任一失败 break；零写盘核对）→ 顺序实跑 9 组 + 每步 `flow health` 对账 → **回滚路径预先成文**（备份回填 + `rm -rf flow-archive/` + 对账）。**迁移前须用户确认**；产物**经 CLI 生成非手改**。**成果**：`flow.json` **425323 B → ~59-62KB**（≤1/5）、9 组快照、`archived_versions=9`、阶段 **86→8**、log **1364→233**、孤儿 **89→0**。**时点快照语义**：迁移时点 `flow.json.sha256` 源行现时 `-c` FAILED 属时点非损坏（迁移后 CLI save 改写源）；「备份行」恒 OK。
 
 ## 关键约定
 
@@ -89,3 +108,4 @@
 |------|------|
 | v1.2.0-stage-78 | **新增本模块**（`archive-file.ts` / `grouping.ts` / `archive-ops.ts` + 单测）：归档文件 schema + 版本分组/切分纯函数 + IO 原语与索引；`flow-manager.ts` 最小追加 `FlowData.meta.archived_versions?: string[]` + `load()` 读侧补齐（REV-78-006，12 增/1 删，语义删除 0）。**已知语义**：存量 flow.json 于**下一次 `save()`** 会写入 `archived_versions: []`（读侧宽容，无兼容风险；「是否删除 load 补齐」留 stage-79/85 评估，REV-78-015）。阶段门禁 68 文件 / 1337 用例 0 failed、tsc 0、i18n 796（不变）、build ×2 幂等 |
 | v1.2.0-stage-79 | **新增命令面**（`flow archive` 子命令组挂 `src/commands/flow.ts`：执行 / `list` / `show`）：版本存在性门前置 + 判据门 + `--dry-run`（四写盘点零写盘）+ 两步事务顺序 + 审计 `archive_flow_version` + `pipeline` 处置；**本模块导出扩 3**（`normalizeArchiveVersion` / `applyArchivePipelineDisposition`〔纯内存〕/ `listBlockingOpenRevsForVersion`〔blocking 谓词单源〕+ `isValidArchiveVersion` 导出）；`flow-manager.ts` **净减法 −4**（**REV-78-015 定稿：移除 `load()` 读侧补齐**，「缺失 ≡ []」由 `getArchivedVersions` 承担）；i18n **796 → 826**（+30）。**「零常规路径触碰」表述自本阶段失效**——引擎被命令面 import，仅只读命令不读归档文件（T5.7 归档目录重命名全绿验证）。阶段门禁 68 文件 / 1372 用例 0 failed、tsc 0、i18n 826、kb 0、build ×2 幂等；审查 passed（计划轮 001~010 + 方案轮 013~016闭合、代码轮 018 闭合；7 条非阻塞 pending 转 v1.2.0 收口） |
+| v1.2.0-stage-80 | **新增 `archive-health.ts`**（`flow health` 归档一致性 a/b/c，纯函数恒无 fail；b 项经 **REV-80-019** 收窄为**键粒度两段式**——版本前缀 ∈ `archived_versions` 预筛 ∧ stageId ∈ 匹配快照 `stages` 键集，默认版本新建阶段不误报；对 flow-manager 仅 `import type`、**仅被 `commands/flow.ts` 消费**）+ **消费点适配**（`isArchivedVersionOf` 单一口径 4 调用点；`config set --sync-stages --stage` 已归档目标降级；`syncConfigFieldToStages` 循环重构）+ **本仓 78 阶段九组一次性迁移**（`flow.json` **425323 B → ~59-62KB**、9 快照、`archived_versions=9`、阶段 86→8、log 1364→233、孤儿 89→0）。i18n 826 → **829**。阶段门禁 68 文件 / **1408 用例** 0 failed、tsc 0、i18n 829、kb 0、build ×2 幂等；审查 passed（计划轮 fail→修订 pass、方案轮 pass、**代码轮 fail→op-004 修复→复审 pass**，REV-80-019 blocking 闭合；020/023/029 非阻塞 pending） |

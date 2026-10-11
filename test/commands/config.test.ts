@@ -621,4 +621,48 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(stderr()).toContain('未找到');
     expect(stdout()).toContain('同步 0 / 插入 0 / 跳过 2');
   });
+
+  // ═══ stage-80 op-002：--stage 已归档目标降级（T7；REV-80-003 裁定①） ═══
+
+  /** 建两阶段后移除 stage-01 的 flow.json 条目 + 注入 archived_versions（模拟已归档） */
+  function setupArchivedFixture(): void {
+    setupTwoStages();
+    const mgr = new FlowManager(tmpDir);
+    delete mgr.getData()!.stages['v1.0.0-stage-01'];
+    mgr.getData()!.meta.archived_versions = ['v1.0.0'];
+    mgr.save();
+  }
+
+  it('op-002: 显式全名已归档 --stage → 降级（status.md 实写 + flow.json 零冗余零 save + info）', async () => {
+    setupArchivedFixture();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages', '--stage', 'v1.0.0-stage-01']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toContain('- **工作流模式**：full');
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before); // 零冗余键、零 save
+    expect(stdout()).toContain('已归档');
+    expect(stdout()).toContain('同步 1 / 插入 0 / 跳过 0');
+  });
+
+  it('op-002: 短名 stage-01 在同 fixture 下不降级 → exit 1 + 建议名 + 零写盘（REV-80-001）', async () => {
+    setupArchivedFixture();
+    const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+    const cfgExisted = existsSync(cfgPath);
+    const cfgBefore = cfgExisted ? readFileSync(cfgPath, 'utf-8') : '';
+    const s1 = readFileSync(stageStatusPath('stage-01'), 'utf-8');
+
+    await safeParse(['config', 'set', 'workflow_mode', 'full', '--sync-stages', '--stage', 'stage-01']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('建议名称');
+    expect(existsSync(cfgPath)).toBe(cfgExisted);
+    if (cfgExisted) {
+      expect(readFileSync(cfgPath, 'utf-8')).toBe(cfgBefore);
+    }
+    expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toBe(s1);
+  });
 });

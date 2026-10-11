@@ -111,7 +111,7 @@ downstream_contracts:
   - name: "src/core/flow-archive/grouping.ts :: 版本作用域 blocking open REV 谓词（stage-79 交付，stage-80 复用）"
     change: "`listBlockingOpenRevsForVersion(data: FlowData, version: string): ReviewItem[]`——谓词恒为 `r.blocking !== false && r.status === 'open'`（blocking 缺省 = 阻塞）；版本作用域经 versionOfReviewOp 同源解析；返回副本。"
   - name: "flow archive 命令面契约（stage-80 存量迁移 / stage-84 skill / stage-85 文档消费）"
-    change: "命令：`flow archive <version>`（--dry-run / --json）/ `flow archive list [--json]` / `flow archive show <version> [--json]`。JSON 成功载荷 = { schemaVersion:1, version, stages, reviews, log, dryRun }；失败 = 纯 JSON 单文档 + exit 1（错误码：no-init / invalid-version / version-not-active / gate-rejected / not-found）。退出码：门禁失败 1、并发 2、成功 0。审计 action = `archive_flow_version`（detail: { version, stages, reviews, log }）。`meta.archived_versions` 仅在归档 save() 时落盘（REV-78-015 后 load→save 恒不注入）。"
+    change: "命令：`flow archive <version>`（--dry-run / --json）/ `flow archive list [--json]` / `flow archive show <version> [--json]`。JSON 成功载荷 = { schemaVersion:1, version, stages, reviews, log, dryRun }；失败 = 纯 JSON 单文档 + exit 1（错误码：no-init / invalid-version / version-not-active / gate-rejected / not-found / archive-write-failed）。退出码：门禁失败 1、并发 2、成功 0。审计 action = `archive_flow_version`（detail: { version, stages, reviews, log }）。`meta.archived_versions` 仅在归档 save() 时落盘（REV-78-015 后 load→save 恒不注入）。"
   - name: "src/core/i18n-data/{zh-CN,en}.ts :: i18n 基线"
     change: "v1.1.7 基线 796 → stage-79 收口 **826**（+30：`flow.archive.*` 21 消息键 + `help.flow.archive[.list|.show]` 与 6 个 arg/option help 键共 9 help 键）。stage-82/84/85 各自在此基础上显式登记新基线。"
 

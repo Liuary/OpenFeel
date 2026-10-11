@@ -3,7 +3,7 @@
  * 全程 fixture tmpDir 隔离（mkdtempSync + afterEach 清理）；严禁触碰真实 .openfeel/ 与本仓 flow.json
  * （本模块全部 API 显式接收 projectPath，无 cwd / homedir 依赖）。
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -30,6 +30,7 @@ import {
   ARCHIVE_SCHEMA_VERSION,
   type ArchiveFile,
 } from '../../src/core/flow-archive/archive-file.js';
+import { archiveHealthItems } from '../../src/core/flow-archive/archive-health.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
 import type { FlowData, StageData, ReviewItem, LogEntry } from '../../src/core/flow-manager.js';
 
@@ -691,5 +692,182 @@ describe('命令面 helper（stage-79 op-001）', () => {
       });
       expect(applyArchivePipelineDisposition(mixed, 'v1.1.7').phase).toBe('active');
     });
+  });
+});
+
+// ═══════════════════════════════════════════════
+// stage-80 op-002：归档一致性检查项（archive-health，纯函数）
+// ═══════════════════════════════════════════════
+
+describe('archiveHealthItems（归档一致性）', () => {
+  it('a. 对账一致（索引 v1.0.0 + 实写 v1.0.0.json）→ pass 且全项无 warn/fail', () => {
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.0.0'));
+    const data = makeData({ meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] } });
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    const a = items.find((i) => i.section === '归档一致性');
+    expect(a?.status).toBe('pass');
+    expect(a?.message).toContain('1 个版本');
+    expect(items.every((i) => i.status !== 'fail')).toBe(true);
+    expect(items.some((i) => i.status === 'warn')).toBe(false);
+  });
+
+  it('① 索引有文件缺（archived_versions [v1.0.0]、无文件）→ a 项 warn', () => {
+    const data = makeData({ meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] } });
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    const a = items.find((i) => i.section === '归档一致性');
+    expect(a?.status).toBe('warn');
+    expect(a?.message).toContain('v1.0.0');
+  });
+
+  it('③ 文件有索引缺（实写 v1.0.0.json、archived_versions 缺失）→ a 项 warn', () => {
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.0.0'));
+    const data = makeData();
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    const a = items.find((i) => i.section === '归档一致性');
+    expect(a?.status).toBe('warn');
+    expect(a?.message).toContain('v1.0.0');
+  });
+
+  it('② 活跃集残留（stages 含 v1.0.0-stage-01 + 快照含同键 + archived_versions [v1.0.0]）→ b 项 warn', () => {
+    // 修复后判据要求键级证据（REV-80-019）：须实写含同键的真实快照
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.0.0', {
+      stages: { 'v1.0.0-stage-01': makeStage('done') },
+      counts: { stages: 1, reviews: 0, log: 0 },
+    }));
+    const data = makeData({
+      meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+      stages: { 'v1.0.0-stage-01': makeStage('done') },
+    });
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    const b = items.find((i) => i.section === '归档残留');
+    expect(b?.status).toBe('warn');
+    expect(b?.message).toContain('v1.0.0-stage-01');
+    expect(b?.message).toContain('restore');
+    expect(items.every((i) => i.status !== 'fail')).toBe(true);
+  });
+
+  it('边界（REV-80-019）：默认版本新建阶段（键 ∉ 快照）→ 无「归档残留」warn；a 项 pass', () => {
+    // 快照 v1.0.0.json 存在但**不含** v1.0.0-stage-31（模拟 plan stage add stage-31 的新建阶段）
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.0.0', {
+      stages: { 'v1.0.0-stage-01': makeStage('done') },
+      counts: { stages: 1, reviews: 0, log: 0 },
+    }));
+    const data = makeData({
+      meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+      stages: { 'v1.0.0-stage-31': makeStage('plan_pending') },
+    });
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    expect(items.some((i) => i.section === '归档残留')).toBe(false);
+    expect(items.find((i) => i.section === '归档一致性')?.status).toBe('pass');
+    expect(items.some((i) => i.status === 'warn')).toBe(false);
+  });
+
+  it('边界：快照缺失（索引注入、无文件）→ 不可证实 → 无「归档残留」；a 项 warn', () => {
+    const data = makeData({
+      meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+      stages: { 'v1.0.0-stage-31': makeStage('plan_pending') },
+    });
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    expect(items.some((i) => i.section === '归档残留')).toBe(false);
+    const a = items.find((i) => i.section === '归档一致性');
+    expect(a?.status).toBe('warn');
+    expect(a?.message).toContain('v1.0.0');
+  });
+
+  it('边界：快照损坏（读侧宽容 null）→ 无「归档残留」warn', () => {
+    mkdirSync(getArchiveDir(tmpDir), { recursive: true });
+    writeFileSync(getArchiveFilePath(tmpDir, 'v1.0.0'), '{ invalid', 'utf-8');
+    const data = makeData({
+      meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+      stages: { 'v1.0.0-stage-31': makeStage('plan_pending') },
+    });
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    expect(items.some((i) => i.section === '归档残留')).toBe(false);
+    // 目录清单可列举（文件存在）→ a 项 pass（损坏由 b 项读侧宽容承担，不误报残留）
+    expect(items.find((i) => i.section === '归档一致性')?.status).toBe('pass');
+  });
+
+  it('边界（REV-80-028）：flow.json 含短名键 → b 项不报（假阴性，由 a 项兜底）', () => {
+    // 快照存全名键 v1.0.0-stage-31；flow.json 存短名键 stage-31（归一 v1.0.0）→ 键级证据不匹配 → 不报
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.0.0', {
+      stages: { 'v1.0.0-stage-31': makeStage('done') },
+      counts: { stages: 1, reviews: 0, log: 0 },
+    }));
+    const data = makeData({
+      meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+      stages: { 'stage-31': makeStage('done') },
+    });
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    expect(items.some((i) => i.section === '归档残留')).toBe(false);
+  });
+
+  it('惰性读（REV-80-026）：常规路径（无候选）readArchiveFile 0 次', async () => {
+    const ops = await import('../../src/core/flow-archive/archive-ops.js');
+    const spy = vi.spyOn(ops, 'readArchiveFile');
+    try {
+      // 活跃集键版本未归档（v1.2.0）→ 无候选 → 不读归档文件
+      const data = makeData({
+        meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+        stages: { 'v1.2.0-stage-80': makeStage('exec_running') },
+      });
+
+      archiveHealthItems({ projectPath: tmpDir, data });
+
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('惰性读（REV-80-026）：同版本多候选 → readArchiveFile 1 次（每版本至多读一次）', async () => {
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.0.0', {
+      stages: { 'v1.0.0-stage-01': makeStage('done'), 'v1.0.0-stage-02': makeStage('done') },
+      counts: { stages: 2, reviews: 0, log: 0 },
+    }));
+    const ops = await import('../../src/core/flow-archive/archive-ops.js');
+    const spy = vi.spyOn(ops, 'readArchiveFile');
+    try {
+      const data = makeData({
+        meta: { version: '1.0', project: 't', updated: '', archived_versions: ['v1.0.0'] },
+        stages: {
+          'v1.0.0-stage-01': makeStage('done'),
+          'v1.0.0-stage-02': makeStage('done'),
+        },
+      });
+
+      const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(items.find((i) => i.section === '归档残留')?.status).toBe('warn');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('边界：无归档（索引空 + 无文件）→ pass；清洁活跃集不产生残留条目', () => {
+    const data = makeData({ stages: { 'v1.2.0-stage-80': makeStage('exec_running') } });
+
+    const items = archiveHealthItems({ projectPath: tmpDir, data });
+
+    expect(items).toHaveLength(1);
+    expect(items[0].section).toBe('归档一致性');
+    expect(items[0].status).toBe('pass');
+    expect(items.some((i) => i.section === '归档残留')).toBe(false);
   });
 });

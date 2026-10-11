@@ -807,3 +807,18 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **设计理由**：破坏性命令（历史永久搬运、无 unarchive）的安全性不靠运行时强制，而靠「**存在性门前置**堵住空集写盘 + **判据门**堵住未收官 + **两步事务顺序**使半完成态可重跑收敛 + **处置同事务**消除 `pipeline` 与 `stages` 双写不一致窗口」四道结构性约束；`--dry-run` 复用同一只读校验路径（四写盘点逐字节零写盘），使「可预览」与「正式执行」共用单一真值来源。
 
 **参见：** v1.2.0-stage-79（plan T1/T3；op-001；REV-79-001/002/005/015）；`src/commands/flow.ts`（`flow archive` 子命令组）；`src/core/flow-archive/{archive-ops,grouping}.ts`（`normalizeArchiveVersion`/`applyArchivePipelineDisposition`/`listBlockingOpenRevsForVersion`）；kb/patterns.md #破坏性命令安全校验清单模式、#事务顺序模式、#`--dry-run` 必须字节级不写盘、#归档引擎分层与独立锁模式；kb/architecture.md #版本分片归档架构；manual/core/flow-archive.md
+
+## [+] 归档消费面口径分层架构：deps 判定（版本粒度）vs health 残留（键粒度）+ 单一口径 4 调用点 (2026-10-12)
+
+**决策**：把 stage-78/79 的归档能力接入既有消费点（跨版本 stage deps 判定 + `flow health` 归档一致性 + config 批量同步降级）时，**同一「是否已归档」问题按消费语义分两层粒度**，两者判据不同、**禁互相套用**：
+
+1. **deps 判定 = 版本粒度**（写侧放行 + 读侧对账**同口径**）：core helper `isArchivedVersionOf(stageId, archivedVersions)`（`src/core/plan/path.ts`）——**显式版本前缀 ∧ 版本段 ∈ `meta.archived_versions`**。判据经 `parseStageId` **探针法**派生（`parsed.fullStageId !== stageId` 即拒，零自写正则，消除第二信源）；**短名恒 `false`**（短名 `stage-NN` 经 `parseStageId` 归一为默认版本 `v1.0.0-*`，属**默认版本语义**，不得据此判「已归档」）。**全仓唯一实现**，共 **4 调用点**同源：`commands/plan.ts`（`plan stage add --deps`）+ `commands/flow.ts`（`flow stage set --deps`，两处校验点）+ `core/flow-manager.ts`（`checkDanglingDeps`，health 读侧）+ `commands/config.ts`（降级判定）。**「单一口径」硬约束**：不得「写侧放行 + 读侧报悬空」并存。
+2. **health 归档残留 = 键粒度**（`src/core/flow-archive/archive-health.ts`，**新文件**）：b 项判据**两段式**——① `versionOfStageId(stageId) ∈ archived_versions`（廉价预筛）∧ ② `stageId ∈ readArchiveFile(version).stages` **键集**（键级证据，惰性读一次快照，仅取 `stages` 键集）。收窄动因：短名经 `parseStageId` 归一 `v1.0.0`，而本仓已归档 `v1.0.0` → 若仅凭版本前缀，「默认版本新建阶段」（`plan stage add stage-NN` → 键 `v1.0.0-stage-NN`）即触发**误导性**「归档残留」warn（REV-80-019 blocking）。默认版本新建阶段 → 键 ∉ 快照 → **不报**；restore 带回 → 键 ∈ 快照 → **仍报**（检出能力保留）；快照缺失/损坏 → 读侧宽容 `null` → **不可证实不报**（索引↔文件不一致由 a 项承担）。
+
+**health 归档项三项（a/b/c，全部 warn-only，**恒无 `fail`**、不改退出码、非 quick、不参与 `--fix`）**：a. 归档索引（`meta.archived_versions`）↔ 归档目录清单**双向对账**（恒 1 条 pass/warn）；b. 活跃集残留（键粒度，仅非空时 warn）；c. 悬空依赖**读侧**（`checkDanglingDeps` 并入 `isArchivedVersionOf`，与写侧同口径）。**常规路径零读归档文件**；b 项候选分支按版本惰性读一次快照（每版本至多一次）。
+
+**依赖方向不变量**：`flow-manager.ts` 对 `flow-archive/*` **零 import**（避免 `flow-manager → flow-archive` 运行时边；core helper 落 `plan/path.ts` 而非 flow-archive）；`archive-health.ts` 对 flow-manager 仅 `import type`（编译期擦除），**仅被 `src/commands/flow.ts` 消费**。**静态 import 面可执行断言**：`rg "from '.*flow-archive/" src/ --glob '!src/core/flow-archive/*'` 命中仅 `src/commands/flow.ts`。
+
+**设计理由**：deps 判定关心「这个**版本**是否已归档 → 依赖视为已满足」（版本是依赖的真实语义单元，跨版本阶段集合整体搬运）；health 残留关心「这条 **stageId 键**是否真的躺在某归档快照里」（键级证据才能区分「真残留」与「默认版本新建的同前缀新阶段」）。两者若强行收敛为单一粒度，要么 deps 误拒合法跨版本依赖，要么 health 误报默认版本新建阶段——故显式**分层**并在契约层（`deps.yaml` `note_granularity`）登记「禁互相套用」。
+
+**参见：** v1.2.0-stage-80（plan T1/T2；op-001/002/004；REV-80-001/002/010/019/027）；`src/core/plan/path.ts`（`isArchivedVersionOf`）；`src/core/flow-archive/archive-health.ts`（`archiveHealthItems`）；`src/core/flow-manager.ts`（`checkDanglingDeps`）；kb/architecture.md #版本分片归档架构、#归档命令面架构；kb/troubleshooting.md #长寿命索引与「版本前缀判据」陷阱；manual/core/plan-path.md、manual/core/flow-archive.md、manual/core/flow-manager.md

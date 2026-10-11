@@ -106,6 +106,7 @@
 | v1.2.0-stage-78 | v1.2.0（归档核心引擎 — 归档文件 schema + 版本分组/切分纯函数 + IO 原语 + `meta.archived_versions` 轻量索引；**主题二「归档拆分」首阶段**） | **已归档**（**M33 done / v1.2.0 首阶段**） | 3 op | 3/3 |
 | v1.2.0-stage-79 | v1.2.0（归档命令面 — `flow archive <version>` / `list` / `show` + 判据门前置 + `--dry-run` + 两步事务顺序 + `pipeline` 处置；**主题二「归档拆分」第二阶段**；hard 依赖 stage-78） | **已归档**（**M34 done / v1.2.0 第二阶段**） | 3 op | 3/3 |
 | v1.2.0-stage-80 | v1.2.0（归档消费点适配与存量迁移 — 跨版本 deps 判定 + `flow health` 归档一致性 + `config --sync-stages` 降级 + **本仓 78 阶段九组一次性迁移**（flow.json 425323 B → ~59-62KB）；**主题二「归档拆分」收官阶段**；hard 依赖 stage-78/79） | **已归档**（**M35 done / v1.2.0 归档主题收官**） | 4 op | 4/4 |
+| v1.2.0-stage-81 | v1.2.0（需求核心引擎 — `RequirementData` 10 字段 + 7 值域常量 + `FlowData.requirements`/`StageData.requirement_id`（读侧宽容不 load 补齐）+ 9 原语（纯内存经 `save()`）+ ID 分配 + 正文骨架 + 正交边界；**主题一「需求流转系统」首阶段**；hard 依赖 stage-80） | **已归档**（**M36 done / v1.2.0 需求主题首阶段**） | 3 op | 3/3 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

@@ -1,0 +1,111 @@
+# 需求核心引擎模块（req）
+
+> 模块文档，由归档官在归档时维护。对应源码：`src/core/req/`。
+
+## 职责
+
+需求流转系统（requirement lifecycle system）的**引擎面**——需求层类型与常量的**单一来源**、需求条目在 `flow.json` 的存储字段、需求 CRUD / 认领 / 状态流转原语、ID 分配与正文文件原语。需求层为「**排期与调度层**」（`版本 roadmap → 需求 REQ-NNN → 计划 stage → 方案 op` 四层中的第二层）；**工序单一事实源仍是阶段 `phase`**，需求状态为显式粗粒度字段（聚合回写归 stage-83）。
+
+## 模块分层与文件
+
+| 文件 | 职责 | 依赖 |
+|------|------|------|
+| `types.ts` | 类型与常量**单一来源**（叶子模块、**零 import**）：`REQ_STATUSES`（7 值）+ `RequirementStatus`（自常量派生）+ `REQ_PRIORITIES`（三档）+ `RequirementPriority` + `REQ_ID_PATTERN`（`/^REQ-(\d{3,})$/`，含数字捕获组、非全局标志）+ `RequirementData`（10 字段） | 无 |
+| `requirement-ops.ts` | 需求原语单点（**纯内存、零写盘、审计内嵌**）：读取 / 过滤 / ID 分配 / 写路径 / 共用谓词 / 状态流转单点表 | `import type { FlowData }`（仅类型，编译期擦除）+ `types.js` |
+| `body-file.ts` | 正文路径单点 + 骨架机械铺（`REQ-NNN.md`） | `node:path` / `node:fs` / `../fs/atomic-write.js` / `types.js`（**禁** `process.cwd` / `homedir`） |
+
+> **正交边界**：`src/core/req/**` 不 import / 不读取 `workflow_mode`、`PIPELINE_PHASES` / `getValidTargets`、**`flow-archive/**`**（**本版不归档 `requirements`**）；亦禁 `process.cwd` / `homedir`（路径全由 `projectPath` 参数注入）。以 `test/core/req.test.ts` 正交 describe 静态固化（6 禁止串零命中 + 正控 + `NEEDLES.length === 6`）。
+
+## 核心数据
+
+### `RequirementData`（10 字段）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | `string` | `REQ-NNN`（max+1 不回收；`REQ_ID_PATTERN`） |
+| `title` | `string` | 需求标题（人读简明描述；非空） |
+| `status` | `RequirementStatus` | 显式粗粒度状态；新建恒 `draft` |
+| `target_version?` | `string` | 预估版本（如 `v1.3.0`） |
+| `priority?` | `RequirementPriority` | 优先级 `P0`/`P1`/`P2` |
+| `owner?` | `string` | 认领人（claim 写入） |
+| `claimed_at?` | `string` | 认领时间 ISO 8601（与 `owner` 同批写入/清除） |
+| `created_at` | `string` | 创建时间 ISO 8601 |
+| `updated_at` | `string` | 最近更新时间（**仅实际变更时刷新**，单次赋值纪律） |
+| `body_path?` | `string` | 正文相对路径（POSIX 分隔符，如 `.openfeel/requirements/REQ-001.md`） |
+
+**值域常量（单一来源，命令层须从此派生、禁硬编码）**：`REQ_STATUSES` = `draft`/`scheduled`/`in_progress`/`done`/`blocked`/`cancelled`/`rejected`（7 值）；`REQ_PRIORITIES` = `P0`/`P1`/`P2`。**无 `source`、无 `reason`**（REV-81-005；`reason` 属 Q4-schema 未来增量可选字段，本版不冻结）。
+
+### 存储字段（`flow-manager.ts` 最小追加）
+
+- `FlowData.requirements?: RequirementData[]`——**顶层可选**（类比 `reviews`）；**读侧宽容**：`load()` **不补齐**，读侧 `getRequirements` 派生 `?? []`、写侧 `addRequirement` 内 `??= []` 兜底（对齐 REV-78-015 / stage-79 移除 `archived_versions` load 补齐的方向；避免任意 `load→save` 向存量 `flow.json` 注入 `requirements: []`）。
+- `StageData.requirement_id?: string | null`——需求↔阶段 **1:N** 的「阶段侧单值」；缺省 ≡ `null`（存量不迁移）。
+
+## 核心 API（`requirement-ops.ts`）
+
+| 原语 | 签名（要点） | 说明 |
+|------|--------------|------|
+| `getRequirements(data)` | `(FlowData) => RequirementData[]` | 读侧宽容派生 `?? []`；返回**数组 + 元素浅副本**（防外部直改内存） |
+| `getRequirement(data, id)` | `(FlowData, string) => RequirementData \| null` | 命中返回浅副本、未命中 `null` |
+| `listRequirements(data, filter?)` | `filter?: { status?, target_version?, owner? }` | 多条件 AND；命名统一 `target_version` |
+| `nextRequirementId(data)` | `(FlowData) => string` | 现存 id 数字部分 **max+1**；异常 id 跳过不崩；三位起补零不截断 |
+| `addRequirement(data, input)` | `input: { title, target_version?, priority? }` | 新建恒 `status:'draft'`；返回**本体**（调用方继续设 `body_path`）；**唯一抛错原语**（空 title / 非法 priority / 空串 target_version — 构造期入参校验） |
+| `claimRequirement(data, id, owner)` | `=> RequirementOpResult` | 占用校验：`owner` 空 → `invalid_field`；不存在 → `not_found`；终态 → `invalid_status`；他人占用 → `already_claimed`（**数据零变更**）；同 owner 幂等 `{ok:true,changed:false}` |
+| `releaseRequirement(data, id)` | `=> RequirementOpResult` | 无占用者 → **no-op 成功**（不刷 `updated_at` / 不写审计）；有占用者 → 清除 `owner`+`claimed_at` |
+| `updateRequirement(data, id, patch)` | `patch: { status?, title?, target_version?, priority? }` | 白名单外键 → `invalid_field`；校验失败**整 patch 零变更**；**raw find 改本体**（禁经 `getRequirement`，防副本陷阱）；`updated_at` 单次赋值 |
+| `advanceRequirement(data, id, to)` | `=> RequirementOpResult` | **零第二套**——委托 `updateRequirement(data, id, { status: to })`（同表同门同审计） |
+| `linkRequirement(data, stageId, requirementId)` | `requirementId: string \| null`（`null` = 解绑） | 阶段不存在 → `stage_not_found`；需求不存在 → `not_found`；终态需求 → `invalid_status`；跨需求重绑 → `already_linked`（须先解绑）；**不刷新需求 `updated_at`**（关联写点落在 stage 记录） |
+| `isTerminalRequirementStatus(status)` | `=> boolean` | 终态 = `done` / `cancelled` / `rejected`（claim / link 门共用） |
+| `allLinkedStagesDone(data, id)` | `=> boolean` | **done 门**：`requirement_id === id` 的阶段集**非空** ∧ 全部 `phase === 'done'`；**零关联 → false**（空集守卫防 vacuous truth） |
+
+**结果类型与错误码**：`RequirementOpResult = { ok: true; changed: boolean } | { ok: false; code: RequirementErrorCode }`；`RequirementErrorCode` = `not_found` / `stage_not_found` / `already_claimed` / `already_linked` / `invalid_status` / `invalid_field`。**抛错 vs 错误码不对称**：`addRequirement` 为**唯一抛错原语**（构造期入参契约违反），其余恒经错误码（业务冲突，命令层映射 exit 非 0 零写盘）。
+
+## 状态流转单点表（`ALLOWED_TRANSITIONS`）
+
+| 当前 status | 允许的显式目标 |
+|-------------|----------------|
+| `draft` | `scheduled` / `blocked` / `cancelled` / `rejected` |
+| `scheduled` | `in_progress` / `blocked` / `cancelled` / `rejected` |
+| `in_progress` | `done`（**门**：`allLinkedStagesDone`）/ `blocked` / `cancelled` / `rejected` |
+| `blocked` | `scheduled` / `in_progress` / `cancelled` / `rejected` |
+| `done` / `cancelled` / `rejected` | 终态，无可显式流转（done 的自动回退由 stage-83 聚合承担） |
+| 同值（`X → X`） | 幂等 no-op `{ok:true, changed:false}` |
+
+表外组合 → `invalid_status`。**`done` 的唯一自动写路径 = stage-83 聚合回写；显式路径仅此表**。阶段-83 的 `computeRequirementAggregate` 须与 `allLinkedStagesDone` **语义等价**（禁第二套判定）。
+
+## 审计日志 action（`requirement_*`）
+
+| action | detail | 写入条件 |
+|--------|--------|----------|
+| `requirement_add` | `{ id, title }` | 恒（新建必发生） |
+| `requirement_claim` | `{ id, owner }` | 仅实际认领 |
+| `requirement_release` | `{ id, owner }`（owner = 释放前占用者） | 仅实际释放 |
+| `requirement_status` | `{ id, from, to }` | 仅状态实际变更（`applyStatusChange` 内写，`update`/`advance` 共用） |
+| `requirement_update` | `{ id, fields: [...] }` | 仅字段实际变更 |
+| `requirement_link` | `{ stage, requirementId }`（解绑 = `null`） | 仅实际变更 |
+
+- 审计**在内存**追加（`appendRequirementLog` 单点，镜像 `FlowManager.appendLog` 的 time 填充），**落盘由调用方 `save()` 承担**——原语零写盘点。
+- **幂等 / 冲突路径零审计**（日志 = 事实变更）。
+
+## 正文文件原语（`body-file.ts`）
+
+| 函数 | 说明 |
+|------|------|
+| `getRequirementsDir(projectPath)` | `{projectPath}/.openfeel/requirements`（**不纳入 `WORKSPACE_DIRS`**，按需 mkdir 幂等创建） |
+| `getRequirementBodyRelPath(id)` | 正文**存储**相对路径，恒 POSIX 正斜杠（`.openfeel/requirements/{id}.md`；禁 `path.join`——Windows 产反斜杠） |
+| `getRequirementBodyPath(projectPath, id)` | 正文**文件系统**路径（单点；FS 访问用原生分隔符） |
+| `writeRequirementBodySkeleton(projectPath, req)` | 机械铺骨架：mkdir 幂等 + `atomicWriteFileSync`（`backup` 缺省 false）+ 已存在 → **no-op 不覆盖**（保留人工补充）+ 恒将 `req.body_path` 设为 POSIX 相对路径（**须传 `addRequirement` 返回的本体**）+ 返回绝对路径 |
+
+**骨架章节**（H1 + 6 H2）：标题 / 状态 / 摘要 / 目标与验收 / 预估版本 / 关联阶段 / 变更记录。文件头注记「**机读权威恒为 `flow.json` 的 `requirements` 条目**；两者不一致以 flow.json 为准；状态为创建时快照，不追写实时状态」——**防第二事实源**。
+
+## 设计要点与判据
+
+- **纯内存 + 调用方落盘**：本模块**零独立写盘点**（唯一 IO = 正文文件骨架）；`flow.json` 落盘恒经 `FlowManager.save()`（锁 + `meta.revision` 乐观锁 + `.bak` + 原子写）——需求写入**零自造路径**。
+- **读侧宽容不注入**：顶层可选字段不在 `load()` 补齐（见 kb/patterns.md #顶层可选字段「读侧宽容不注入」模式）；反例断言「纯 load→save → `'requirements' in parsed === false`」。
+- **副本纪律**：查询 API 返回浅副本（数组 + 元素）；**写路径须 raw find 改本体**——经查询 API 拿浅副本会**静默丢更新**（REV-81-011）。
+- **正交**：与归档层、工作流模式零耦合（本版不归档 `requirements`）。
+
+## 变更历史
+
+| 版本 | 变更 |
+|------|------|
+| v1.2.0-stage-81 | **新建模块** `src/core/req/`（types / requirement-ops / body-file）；`flow-manager.ts` 最小追加 `FlowData.requirements?` + `StageData.requirement_id?`（读侧宽容不 load 补齐）；9 原语 + 状态流转单点表 + done 门 + 正文骨架；正交静态断言固化。3 op（未 commit，HEAD `3be254c`）；门禁 69 文件 / 1476 用例 0 failed。**下游** stage-82（命令面）/ stage-83（聚合回写）消费。 |

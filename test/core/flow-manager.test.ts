@@ -4887,3 +4887,108 @@ describe('checkWorkflowModeRedundancy（stage-75 op-003）', () => {
     expect(result.items.find((i) => i.section === '工作流模式')).toBeUndefined();
   });
 });
+
+// ═══════════════════════════════════════════════
+// 需求字段兼容（stage-81 op-001）
+// ═══════════════════════════════════════════════
+
+describe('需求字段兼容（stage-81 op-001）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-req-field-test-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 写盘 fixture（显式 meta.revision: 0 基线——REV-81-014） */
+  function writeFlow(data: Record<string, unknown>): void {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(data, null, 2) + '\n', 'utf-8');
+  }
+
+  /** 基础 fixture：单阶段 stage-01，默认无 requirements / 无 requirement_id */
+  function baseData(
+    extraStage: Record<string, unknown> = {},
+    extraTop: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    return {
+      meta: { version: '1.0', project: 'T', updated: '2026-01-01T00:00:00Z', revision: 0 },
+      pipeline: { phase: 'active', current: { stage: 'stage-01', op: '' }, retry: 0 },
+      stages: {
+        'stage-01': {
+          name: '测试阶段',
+          phase: 'plan_pending',
+          status: 'planned',
+          deps: [],
+          ops: {},
+          ...extraStage,
+        },
+      },
+      reviews: [],
+      log: [],
+      ...extraTop,
+    };
+  }
+
+  function readDisk(): Record<string, unknown> {
+    return JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as Record<string, unknown>;
+  }
+
+  it('存量兼容：无 requirements 键 / 无 requirement_id → load 零报错、缺省 ≡ null', () => {
+    writeFlow(baseData());
+    const mgr = new FlowManager(tmpDir);
+    const stage = mgr.getData()!.stages['stage-01'];
+    expect(stage.requirement_id).toBeUndefined();
+    expect(stage.requirement_id ?? null).toBeNull();
+  });
+
+  it('load→save 不注入 requirements 键（核心断言，REV-81-003）', () => {
+    writeFlow(baseData());
+    const mgr = new FlowManager(tmpDir);
+    mgr.save();
+    const parsed = readDisk();
+    expect('requirements' in parsed).toBe(false);
+    expect((parsed.meta as { revision: number }).revision).toBe(1);
+  });
+
+  it('显式 requirements 条目 → load 保留 → save 逐字保留', () => {
+    const req = {
+      id: 'REQ-001',
+      title: '需求一',
+      status: 'draft',
+      target_version: 'v1.3.0',
+      priority: 'P1',
+      owner: 'alice',
+      claimed_at: '2026-01-02T00:00:00.000Z',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      body_path: '.openfeel/requirements/REQ-001.md',
+    };
+    writeFlow(baseData({}, { requirements: [req] }));
+    const mgr = new FlowManager(tmpDir);
+    expect(mgr.getData()!.requirements).toEqual([req]);
+    mgr.save();
+    expect(readDisk().requirements).toEqual([req]);
+  });
+
+  it('requirement_id 双态（字符串 / null）save→load 往返逐字保留', () => {
+    // 字符串态
+    writeFlow(baseData({ requirement_id: 'REQ-001' }));
+    const mgr1 = new FlowManager(tmpDir);
+    expect(mgr1.getData()!.stages['stage-01'].requirement_id).toBe('REQ-001');
+    mgr1.save();
+    const mgr2 = new FlowManager(tmpDir);
+    expect(mgr2.getData()!.stages['stage-01']).toMatchObject({ requirement_id: 'REQ-001' });
+
+    // null 态
+    writeFlow(baseData({ requirement_id: null }));
+    const mgr3 = new FlowManager(tmpDir);
+    expect(mgr3.getData()!.stages['stage-01'].requirement_id).toBeNull();
+    mgr3.save();
+    const mgr4 = new FlowManager(tmpDir);
+    expect(mgr4.getData()!.stages['stage-01']).toMatchObject({ requirement_id: null });
+  });
+});

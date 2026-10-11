@@ -822,3 +822,29 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **设计理由**：deps 判定关心「这个**版本**是否已归档 → 依赖视为已满足」（版本是依赖的真实语义单元，跨版本阶段集合整体搬运）；health 残留关心「这条 **stageId 键**是否真的躺在某归档快照里」（键级证据才能区分「真残留」与「默认版本新建的同前缀新阶段」）。两者若强行收敛为单一粒度，要么 deps 误拒合法跨版本依赖，要么 health 误报默认版本新建阶段——故显式**分层**并在契约层（`deps.yaml` `note_granularity`）登记「禁互相套用」。
 
 **参见：** v1.2.0-stage-80（plan T1/T2；op-001/002/004；REV-80-001/002/010/019/027）；`src/core/plan/path.ts`（`isArchivedVersionOf`）；`src/core/flow-archive/archive-health.ts`（`archiveHealthItems`）；`src/core/flow-manager.ts`（`checkDanglingDeps`）；kb/architecture.md #版本分片归档架构、#归档命令面架构；kb/troubleshooting.md #长寿命索引与「版本前缀判据」陷阱；manual/core/plan-path.md、manual/core/flow-archive.md、manual/core/flow-manager.md
+
+## [+] 需求流转四层模型架构：需求层为「排期与调度层」（显式字段 + 阶段 phase 聚合投影） (2026-10-12)
+
+**模型**：`版本 roadmap → 需求 REQ-NNN → 计划 stage(15-phase) → 方案 op` 四层。**需求层负责「排期与调度」**（可指定预估版本 `target_version`、优先级 `priority`、认领人 `owner`），**不负责「工序」**——工序的单一事实源仍是阶段 `phase`（对齐既有「状态/相位单一事实源」）。
+
+**双层状态**：需求层粗粒度显式状态 `RequirementStatus`（7 值 `draft`/`scheduled`/`in_progress`/`done`/`blocked`/`cancelled`/`rejected`）+ `in_progress` 内部进度**由关联阶段的 15-phase 聚合**。二者关系 = **聚合投影**：显式字段是权威（写事务在 `flow.json`），聚合方向（阶段 phase → 需求状态回写）**不属本层**。
+
+**存储与职责切片（本阶段 = 引擎面）**：`RequirementData`（**10 字段**）类型与常量（`REQ_STATUSES` / `REQ_PRIORITIES` / `REQ_ID_PATTERN`）**单一来源**落 `src/core/req/types.ts`（叶子模块、零 import）；`FlowData.requirements`（顶层可选，类比 `reviews`）+ `StageData.requirement_id`（单值可空，`1:N` 需求↔阶段）最小追加于 `flow-manager.ts`；CRUD/认领原语落 `src/core/req/requirement-ops.ts`（**纯内存、零独立写盘点**，落盘恒经调用方 `FlowManager.save()`——复用锁 + revision 乐观锁 + `.bak`）；正文骨架落 `src/core/req/body-file.ts`（`REQ-NNN.md` 为**人读副本**，机读权威恒为 `flow.json`）。
+
+**阶段切片**：stage-81 = **引擎面**（数据模型 / 写事务 / CRUD 与认领原语 / ID 分配 / 正文原语）；stage-82 = 命令面（`openfeel req`）；stage-83 = 聚合判定与回写（`advanceStagePhase` done / `resetStagePhase` 对称回写）；stage-84 = Agent/skill 契约；stage-85 = 文档与版本收口。**`requirements` 随版本归档的口径留后续版本**（本版不归档 `requirements`）。
+
+**设计理由**：① 需求层与既有线性计划范式（一个版本 = 一串阶段）解耦，需求获得**独立身份 / 生命周期 / 排期 / 认领**；② 工序单一事实源不被破坏（`phase` 权威不变，需求状态为粗粒度投影）；③ 引擎面/命令面/聚合面分层，使每阶段改动面收敛、可单独验收。
+
+**参见：** v1.2.0-stage-81（plan §二；op-001/002；ADR-011）；`src/core/req/types.ts`；`src/core/req/requirement-ops.ts`；`src/core/flow-manager.ts`；kb/architecture.md #状态/相位单一事实源、#全局宏观状态聚合语义；manual/core/req.md、manual/core/flow-manager.md
+
+## [+] 需求层正交边界架构：`src/core/req/**` 对归档层 / 工作流模式零耦合 + 静态串断言固化 (2026-10-12)
+
+**边界声明**：`src/core/req/**`（需求引擎）**不 import / 不读取**工作流模式字段（`workflow_mode`）、转移表（`PIPELINE_PHASES` / `getValidTargets`）、**归档层（`flow-archive/**`）**；亦**禁** `process.cwd` / `homedir`（路径全由 `projectPath` 参数注入，测试隔离）。**本版不归档 `requirements`**（其归档口径留后续版本）——故与归档层零依赖边。
+
+**固化方式**：以**测试断言形式**静态固化（`test/core/req.test.ts` 正交 describe）——直读三份源文件全内容（**含文件头注释 / JSDoc**），逐文件 × 6 禁止串 `not` 断言 + **正控三断言**（各文件独有符号 `toContain`）+ `NEEDLES.length === 6`（防清单被删空），防负向断言空转；配套 `rg` 命令行零命中复核。
+
+**必要副产品（注释措辞纪律）**：因扫描对象含文件头注释，**「正交声明」注释措辞不得含禁止串字面量**（用「不依赖归档层 / 不引用工作流模式字段」中性措辞）——否则注释与零命中断言自相矛盾（REV-81-009 blocking 即此）。落点选 `src/core/req/` 为叶子层（`types.ts` 零 import），与 flow-manager 仅单向 `import type`，无环。
+
+**设计理由**：需求层与归档层是 v1.2.0 **两个正交主题**（归档 = 历史只读搬运；需求 = 推进中部的独立身份层）；若需求层耦合归档层/模式字段，则「需求随版本归档」的语义、模式感知横切会污染引擎面。以 6 禁止串断言把边界从「约定」升为「可证伪门禁」。
+
+**参见：** v1.2.0-stage-81（plan §二 不变量 3 / 裁定 J / §七.5；op-003 T5.6；REV-81-006/009）；`src/core/req/{types,requirement-ops,body-file}.ts`；`test/core/req.test.ts`（正交 describe）；manual/core/req.md

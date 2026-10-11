@@ -1,0 +1,173 @@
+# stage-81 op 依赖声明
+# 由 openfeel-schemer 生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# revision: 2026-10-12 openfeel-schemer（方案审查 REV-81-009~015 修订轮落实：正交声明措辞与 T5.6 零命中自洽 / RequirementData 字段计数 10 / update raw find + 回写本体断言 / target_version 命名统一 / updated_at 单次赋值纪律 / revision 断言基线定死 / addRequirement 抛错不对称登记）
+
+version: "1.1"
+stage: v1.2.0-stage-81
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-12"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.0-stage-80
+    type: hard
+    status: done
+    reason: "归档三阶段（78/79/80）收官：本仓 flow.json 已收缩为 v1.2.0 八阶段 + `.openfeel/flow-archive/` 9 组 + health 归档维度零 warn。需求层在**已收缩的活跃集**上开发（大计划 §三 执行顺序裁定 S 第 2/3 点）。"
+  - upstream: v1.2.0-stage-79 / v1.2.0-stage-78
+    type: soft
+    status: done
+    reason: "归档引擎与命令面（对照面）：本阶段 `src/core/req/**` 与其**正交**——不 import / 不读 `flow-archive/**`（REV-81-006；T5.6 断言固化）；仅作范式同源参照（读侧宽容 / 独立锁与原子写 / 副本返回），无代码依赖。"
+  - downstream: v1.2.0-stage-82
+    type: hard
+    note: "命令面直接消费本阶段全部导出（CRUD / 认领 / link / advance / 正文原语）；值域校验从 `REQ_STATUSES` / `REQ_PRIORITIES` / `REQ_ID_PATTERN` **派生**（禁硬编码，核验 B13/B20）；`save()` 由命令层统一调用（本阶段零写盘点）；`req set --status blocked` 事由按 Q4-schema 定稿走审计 detail（非 schema）。"
+  - downstream: v1.2.0-stage-83
+    type: hard
+    note: "聚合判定消费 `allLinkedStagesDone` **单一口径谓词**（advance→done 门与聚合回写共用；stage-83 的 `computeRequirementAggregate` 须与其语义等价，**允许重构让本谓词委托聚合函数——禁第二套判定**）；done 的自动回退（in_progress ↔ done 反射）由 stage-83 独占（显式流转表内 done 为终态）。"
+  - downstream: v1.2.0-stage-84 / v1.2.0-stage-85
+    type: soft
+    note: "stage-84 消费需求领域词汇（7 状态值域 / 认领协议 / 正文为副本纪律）；stage-85 消费字段语义（`requirements` / `requirement_id` / `body_path`）与 Q4-schema 定稿结论的文档化。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；不直写 flow.json（`requirements` 键与 `.openfeel/requirements/` 目录的真实创建归 stage-82 命令面）；提交精确 git add（禁 -A）。"
+
+# 本阶段 3 op：op-001（T1+T2 类型与存储字段；读侧宽容）
+#   → op-002（T3+T4 需求原语 + 正文文件原语，hard: op-001）
+#   → op-003（T5.6 正交断言 + T6 全门禁 + 自测报告，hard: op-002；阶段收口 op）。
+# 依赖真实性：
+#   op-002 hard 依赖 op-001 —— requirement-ops 消费 types.ts 全部导出（值域常量/类型/ID 正则）与
+#     `FlowData.requirements` / `StageData.requirement_id` 字段声明（写路径写入该字段）。
+#   op-003 hard 依赖 op-002 —— 正交断言直读 `src/core/req/` 三份源文件；`test/core/req.test.ts` 同文件追加（串行）；
+#     门禁覆盖 op-001 + op-002 全部产出。
+#
+# 不变量：
+#   ① 读侧宽容单一口径（REV-81-003 裁定 (a)）：**不** load 补齐 `requirements`；`getRequirements` 派生 `?? []`；
+#      `addRequirement` 写路径 `??= []` 后 push；「纯 load→save 不注入 requirements 键」为 op-001 硬断言
+#      （kb troubleshooting #可选字段「读侧补齐」的序列化副作用）。
+#   ② 全部写入经 `save()`（裁定 C）：`src/core/req/**` 零独立写盘点（唯一 IO = 正文骨架经 atomicWriteFileSync）；
+#      原语纯内存 + 审计内嵌（`data.log`），save 由命令层承担。
+#   ③ 正交（裁定 J + REV-81-006）：`src/core/req/**` 不 import / 不读 `workflow_mode` / `PIPELINE_PHASES` /
+#      `getValidTargets` / `flow-archive/**`；零 `process.cwd` / `homedir`；**本版不归档 `requirements`**（T5.6 断言固化）；**禁用串零出现（含文件头注释 / JSDoc 全内容）**——正交声明恒用「不依赖归档层 / 不引用工作流模式字段」措辞（REV-81-009）。
+#   ④ 状态流转单点表（裁定 3）：`ALLOWED_TRANSITIONS` 唯一实现；`advanceRequirement` = `updateRequirement({status})`
+#      委托（零第二套）；同值幂等 no-op；终态不再显式流转；`done` 门 = `allLinkedStagesDone`（零关联拒绝——空集守卫，裁定 H）。
+#   ⑤ 认领协议（裁定 E）：`owner` + `claimed_at`；他人占用 → `already_claimed` 零变更零审计；同 owner 幂等；
+#      **无 TTL / 心跳 / 抢占**；release 无占用 → no-op 成功（裁定 5）。
+#   ⑥ ID 分配单点 `nextRequirementId`：max+1 不回收、异常 id 跳过不崩、`REQ-999 → REQ-1000`；
+#      并发同号由 `save()` 乐观校验兜底（大计划 R-10，本阶段不新增并发设施）。
+#   ⑦ 正文非权威（裁定 C/6）：骨架写**创建时快照** + 「机读权威恒为 flow.json」注记；已存在 → no-op 不覆盖；
+#      `body_path` 恒 POSIX 相对路径、由 `writeRequirementBodySkeleton` 单点赋值。
+#   ⑧ 查询副本 / 变更结果（裁定 8）：get/list 返回浅副本（数组 + 元素）；写原语返回 `{ok,changed}` / 错误码；
+#      审计仅在**实际变更**后写（幂等/冲突路径零审计）。
+#   ⑨ 零既有行为变更：`flow-manager.ts` 改动 = 1 行 type import + 2 处字段声明（不 load 补齐、不改 save 语义）；
+#      既有测试（68 文件基线）逐字绿。
+#   ⑩ 测试隔离：全程 fixture tmpDir（mkdtemp + afterEach 清理）；隔离 HOME；**严禁**触碰真实 flow.json /
+#      config.yaml / 不创建真实 `.openfeel/requirements/`（kb troubleshooting #writeDefaultConfig 无条件覆盖）。
+#   ⑪ i18n 基线不变（**829**，本阶段不新增键）；不新增第三方依赖；不改 phase 枚举 / 转移表 / `pipeline.yaml` /
+#      `commands/` 层 / `cli/index.ts`（本阶段无命令面）。
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "需求类型与存储字段（T1 + T2：types.ts + FlowData/StageData 字段 + 读侧宽容）"
+    produces:
+      - src/core/req/types.ts
+      - src/core/flow-manager.ts
+      - test/core/flow-manager.test.ts
+    deps: []
+    notes: "T1 常量单一来源（REQ_STATUSES 7 值 / REQ_PRIORITIES / REQ_ID_PATTERN，类型由常量派生）+ RequirementData 字段表 **10 字段**（**无 source**〔REV-81-005〕、**无 reason**〔Q4-schema 定稿〕；REV-81-010 勘正）；T2 flow-manager.ts 最小追加：`StageData.requirement_id?` + `FlowData.requirements?` + type-only import（**不** load 补齐、**不**改 save——REV-81-003 裁定 (a)）。测试：存量兼容（缺省 ≡ null）+ **load→save 不注入**（核心断言；**revision 基线显式 0 → 1**——REV-81-014）+ 显式 requirements 保留 + 双态往返。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "需求 CRUD/认领原语与正文文件原语（T3 + T4）"
+    produces:
+      - src/core/req/requirement-ops.ts
+      - src/core/req/body-file.ts
+      - test/core/req.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "requirement-ops 消费 types.ts 全部导出（值域常量 / 类型 / ID 正则）与 FlowData/StageData 字段声明（写路径写入 requirements / 读侧谓词读 requirement_id）"
+    notes: "T3 原语（add/get/list/update/advance/claim/release/link/nextRequirementId + isTerminalRequirementStatus / allLinkedStagesDone 谓词；纯内存 + 审计 requirement_*；错误码 6 项冻结）+ T4 正文（getRequirementsDir / getRequirementBodyRelPath / getRequirementBodyPath / writeRequirementBodySkeleton；mkdir 幂等 + 已存在 no-op + body_path POSIX 单点赋值 + 裁定 K 七章节 + 权威源注记）。设计裁定 3~9 见 op-002 正文（流转单点表 / done 门 / release no-op / 骨架定稿 / 错误码与审计表）。测试 T5.1~T5.5 + save 集成。**方案审查修订（REV-81-009~015）**：update 恒 raw find 改本体（禁 getRequirement 副本 + 回写本体断言——REV-81-011）；target_version 命名统一（REV-81-012）；updated_at 单次赋值纪律（REV-81-013）；addRequirement 抛错不对称显式登记（REV-81-015）；正交声明措辞规避禁用串（REV-81-009）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "正交断言与全门禁（T5.6 + T6；阶段收口 op）"
+    produces:
+      - test/core/req.test.ts
+      - .openfeel/tmp/stage-81-selftest-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "正交断言直读 src/core/req/ 三份源文件（须已落盘）；test/core/req.test.ts 与 op-002 同文件串行追加；门禁覆盖 op-001 + op-002 全部产出"
+    notes: "T5.6 正交静态断言（三文件 × 6 禁止串 + 正控 + NEEDLES 清单锁定；rg 复核零命中）+ T6 全门禁（build ×2 幂等 / npm test 0 skipped 0 failed 预期 69 文件 / tsc 0 / lint i18n **829** 不变 / lint kb 0）+ 真实工作区零触碰（无 requirements 键 / 无 requirements 目录）+ 契约一致性核对（按 name 引用 downstream_contracts——REV-81-007）+ 自测报告（含 Q4-schema 定稿登记 + 骨架落盘样例）+ 正交断言口径自洽（REV-81-009：禁用串含注释全内容零命中——声明措辞规避字面量）。**本 op 为阶段收口 op**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 执行顺序（严格串行）：op-001 → op-002 → op-003
+# 注：op-003 为阶段收口 op（含全门禁与报告）；其后由 openfeel-reviewer 审查、openfeel-feel-tester 验收。
+
+# 承接上游 pending REV（REV-80-004 惯例；来源 users/Liuary/code_review/REV-80.md）
+# 全条非阻塞、**本阶段零动作**——仅承接登记防灭失；逐条处置/移交表见 `.openfeel/plan/v1/stage-81/plan.md` §「承接上游 pending REV」。
+inherited_pending_revs: "REV-80-009(medium，归 stage-80 修复方案已落地待台账闭合) / 010·012·013·015·017·018(low，保留 pending，建议随 v1.2.0 收口轮) / 011·014·016·020(low，并入 REV-80-020 → planner 文档修订) / 023(low，→ 主会话 Feel) / 029(low，→ stage-85 收口)。本阶段不触碰归档面。"
+
+# 方案期设计裁定（定稿；供 stage-82/83/84/85 与审查消费）
+scheme_decisions:
+  - id: "S-81-1"
+    title: "Q4-schema 定稿：`reason` 不入 `RequirementData`（v1.2.0）"
+    decision: "`RequirementData` = 10 字段（id/title/status/target_version?/priority?/owner?/claimed_at?/created_at/updated_at/body_path?——REV-81-010 勘正：实数 10，含 `id`）；不含 `reason`（也不含已删的 `source`）。"
+    rationale: "① 无本阶段消费方，与 REV-81-005 删 `source?` 同判据；② blocked 事由承载面已足——人读走 REQ 正文（变更记录节）、机读走 `log[]` 审计 detail（stage-82 `req set --status blocked` 如需携事由入 detail，无需 schema 变更）；③ 未来增补 `reason?: string` 为纯增量可选字段（读侧宽容 + 缺省回落已是本版纪律），零迁移；④ 与裁定 N 边界与「减法优先」一致。"
+  - id: "S-81-2"
+    title: "requirements 读侧宽容（承 REV-81-003 裁定 (a)）"
+    decision: "不 load 补齐；读侧 `getRequirements(data) ?? []` 派生；写侧 `addRequirement` 内 `??= []` 后 push；「纯 load→save 不注入」硬断言。"
+  - id: "S-81-3"
+    title: "状态流转单点表 + done 门（裁定 3/4）"
+    decision: "draft→scheduled；scheduled→in_progress；in_progress→done（门 = allLinkedStagesDone，零关联拒绝）；任意非终态→blocked/cancelled/rejected；blocked→scheduled/in_progress；同值幂等；终态不再显式流转。advance = update({status}) 委托。"
+  - id: "S-81-4"
+    title: "releaseRequirement 无占用者 = no-op 成功（Q3 定稿）"
+    decision: "{ok:true, changed:false}；不刷 updated_at、不写审计、不设状态门。"
+  - id: "S-81-5"
+    title: "正文骨架定稿（裁定 K/6/7）"
+    decision: "七章节（标题/状态/摘要/目标与验收/预估版本/关联阶段/变更记录）+ 创建时快照 + 「机读权威恒为 flow.json」注记；已存在 → no-op 不覆盖（无 overwrite 参数）；body_path 恒 POSIX 相对路径、由 writeRequirementBodySkeleton 单点赋值。"
+  - id: "S-81-6"
+    title: "`.openfeel/requirements/` 不入 WORKSPACE_DIRS（按需 mkdir 幂等创建）"
+    decision: "与 `.openfeel/flow-archive/`（stage-78 Q2 定稿）同口径；目录惰性创建，工作区结构声明零改动。"
+  - id: "S-81-7"
+    title: "错误码 6 项与审计 action 表冻结（裁定 9）"
+    decision: "not_found / stage_not_found / already_claimed / already_linked / invalid_status / invalid_field；审计 requirement_add / requirement_claim / requirement_release / requirement_status / requirement_update / requirement_link（仅实际变更写）。"
+
+# 下游契约（交付 stage-82/83；接口形态 = 函数签名级；禁第二套实现）
+downstream_contracts:
+  - name: "src/core/req/ :: 需求原语（stage-81 交付，stage-82/83 消费）"
+    change: "冻结签名：getRequirements(data: FlowData): RequirementData[]（读侧宽容 ?? [] + 浅副本）；getRequirement(data, id: string): RequirementData | null（浅副本）；listRequirements(data, filter?: { status?: RequirementStatus; target_version?: string; owner?: string }): RequirementData[]（多条件 AND）；nextRequirementId(data): string（max+1 不回收，异常 id 跳过）；addRequirement(data, input: { title: string; target_version?: string; priority?: RequirementPriority }): RequirementData（**新建即 status:'draft'；无 source；返回本体；非法入参 throw**）；claimRequirement(data, id, owner): RequirementOpResult（owner 空串 invalid_field；终态 invalid_status；他人占用 already_claimed **不写盘**）；releaseRequirement(data, id): RequirementOpResult（无占用 no-op 成功）；updateRequirement(data, id, patch: { status?: RequirementStatus; title?: string; target_version?: string; priority?: RequirementPriority }): RequirementOpResult（白名单外键 invalid_field；整 patch 先校验后落地）；advanceRequirement(data, id, to: RequirementStatus): RequirementOpResult（= update({status}) 委托）；linkRequirement(data, stageId, requirementId: string | null): RequirementOpResult（null = 解绑）；allLinkedStagesDone(data, requirementId): boolean（done 门单一口径；零关联 false）；isTerminalRequirementStatus(status): boolean。**全部纯内存；save 由调用方承担。** **命名统一（REV-81-012）**：`target_version` 为唯一命名——存储字段 / add input / list filter / update patch 四处同名（零映射层）。**`updated_at` 单次赋值（REV-81-013）**：状态维度由 `applyStatusChange` 刷新、字段维度由 update 收尾刷新；两维度并存不重复赋值。**抛错不对称登记（REV-81-015）**：`addRequirement` 非法入参 throw（构造期入参校验 / 编程错误）为唯一不对称；其余写原语恒错误码（业务冲突）；命令层捕获 throw 后同走 exit 非 0 零写盘。"
+  - name: "src/core/req/ :: 结果/错误码类型（stage-81 交付）"
+    change: "RequirementOpResult = { ok: true; changed: boolean } | { ok: false; code: RequirementErrorCode }；RequirementErrorCode = 'not_found' | 'stage_not_found' | 'already_claimed' | 'already_linked' | 'invalid_status' | 'invalid_field'。命令层映射：错误码 → exit 非 0 零写盘（并发冲突 exit 2 沿用 save() 既有语义）。"
+  - name: "src/core/req/types.ts :: 类型与常量（stage-81 交付）"
+    change: "REQ_STATUSES（7 值 as const）/ RequirementStatus（自常量派生）/ REQ_PRIORITIES（P0/P1/P2）/ RequirementPriority / REQ_ID_PATTERN（正则恒含数字捕获组；非全局标志）/ RequirementData（10 字段——REV-81-010 勘正）。命令层值域校验**从此派生，禁硬编码**（核验 B13/B20）。"
+  - name: "src/core/req/body-file.ts :: 正文文件原语（stage-81 交付，stage-82 消费）"
+    change: "getRequirementsDir(projectPath): string；getRequirementBodyRelPath(id): string（恒 POSIX）；getRequirementBodyPath(projectPath, id): string；writeRequirementBodySkeleton(projectPath, req: RequirementData): string（mkdir 幂等 + 已存在 no-op 不覆盖 + **req.body_path 单点赋值** + atomicWriteFileSync；返回绝对路径）。**目录不入 WORKSPACE_DIRS**（按需创建）。"
+  - name: "src/core/flow-manager.ts :: FlowData / StageData 字段契约（stage-81 定稿）"
+    change: "FlowData.requirements?: RequirementData[]（**读侧宽容**：getRequirements 派生 ?? []；**不** load 补齐——REV-81-003）；StageData.requirement_id?: string | null（缺省 ≡ null，存量不迁移——裁定 D/L）。**新增字段一律可选 + 读侧宽容（缺省回落）**；load/save 零语义改动。"
+  - name: "审计 action 契约（stage-81 交付；stage-82/83 追加同类）"
+    change: "requirement_add / requirement_claim / requirement_release / requirement_status（detail { id, from, to }）/ requirement_update（detail { id, fields }）/ requirement_link（detail { stage, requirementId }）——**仅实际变更后写**；stage-83 自动回写用 requirement_auto_done（大计划 B7）。"
+  - name: "Q4-schema 定稿（承大计划 §十 Q4；stage-82/85 消费）"
+    change: "reason 不入 RequirementData（v1.2.0）。blocked 事由：人读 → REQ 正文变更记录节；机读 → 审计 detail（如 stage-82 需要）。未来增补为纯增量可选字段（读侧宽容纪律已备）。"
+
+# 交付边界（本阶段不做，防越界）
+out_of_scope:
+  - "命令面 `openfeel req`（10 子命令）/ `src/commands/req.ts` / `cli/index.ts` 注册 / i18n 键——归 stage-82"
+  - "聚合判定与回写（computeRequirementAggregate / advanceStagePhase done 分支 / resetStagePhase 对称回写 / requirement_auto_done）——归 stage-83"
+  - "health 需求对账（悬空 requirement_id / done 漂移）——归 stage-83（开放问题 Q6）"
+  - "phase 枚举 / 转移表 / pipeline.yaml / checkpoint 语义——零触碰（裁定 I）"
+  - "workflow_mode 参与需求层语义——禁止（裁定 J 正交）"
+  - "requirements 归档口径（本版不归档；T5.6 断言固化）——留后续版本（裁定 W / 大计划 §七.5）"
+  - "需求删除命令 / TTL / 心跳 / 抢占 / DAG 调度 / M:N / artifact-graph 集成——不做（裁定 N）"
+  - "真实 `.openfeel/requirements/` 目录与真实 flow.json requirements 键——本阶段不创建（归 stage-82 首次 req add）"
+  - "第三方依赖 / build.js / package.json / CI / npm publish / git push——零触碰"

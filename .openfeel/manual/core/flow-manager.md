@@ -221,7 +221,13 @@ plan_pending → plan_review → plan_passed
 
 ## 数据位置
 
-`flow.json` 位于项目根 `.openfeel/` 下，含 `pipeline`（宏观状态 + 当前阶段/op）、`stages`（各阶段独立状态机）、`reviews`、`log`。
+`flow.json` 位于项目根 `.openfeel/` 下，含 `pipeline`（宏观状态 + 当前阶段/op）、`stages`（各阶段独立状态机）、`reviews`、`log`、`requirements`（**顶层可选**，v1.2.0-stage-81 起）。
+
+## 需求字段（v1.2.0-stage-81）
+
+- **`FlowData.requirements?: RequirementData[]`**（顶层可选，类比 `reviews`）——需求条目存储段；类型定义与需求原语见 `manual/core/req.md`。**读侧宽容**：`load()` **不补齐**该字段（**不注入**）；读侧由 `src/core/req/requirement-ops.ts` 的 `getRequirements` 派生 `?? []`，写侧 `addRequirement` 内 `??= []` 兜底——对齐 REV-78-015（stage-79 移除 `meta.archived_versions` load 补齐）的方向，避免任意 `load→save` 向存量 `flow.json` 注入 `requirements: []`。**`load()` / `save()` 对既有语义零改动**（净变更 = 1 `import type` + 2 处字段声明 + 注释）。
+- **`StageData.requirement_id?: string | null`**（单值可空）——需求↔阶段 **1:N** 的「阶段侧」关联；缺省 ≡ `null`（存量 = 遗留无需求，不迁移）。
+- **`requirements` 随版本归档的口径留后续版本**（本版**不归档** `requirements`）；需求层与工作流模式**正交**（`req` 模块不读 `workflow_mode`）。
 
 ## status.md 路径解析
 

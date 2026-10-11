@@ -3820,3 +3820,32 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.0-stage-80（op-002；REV-80-009）——`syncConfigFieldToStages` 遍历集改 `onlyStages ∪ keys`；补 off-set status.md **实写**用例 + 零回归断言；`deps.yaml` 将「作用域语义」登记为交付契约。
 
 **参见：** v1.2.0-stage-80（plan T7；op-002；REV-80-003/009/027）；`src/core/flow-manager.ts`（`syncConfigFieldToStages`）；`src/commands/config.ts`；kb/patterns.md #批量同步的作用域限定参数（`--sync-stages --stage`）、#路径规范化前置去重模式；manual/core/flow-manager.md、manual/core/config.md
+
+## [+] 顶层可选字段「读侧宽容不注入」模式：不 load 补齐，读侧派生 + 写侧兜底 (2026-10-12)
+
+**模式**：向既有状态文件（`flow.json`）新增**顶层可选数组字段**时，**不在 `load()` 里补齐默认值**——读侧访问器**派生**（`Array.isArray(data.x) ? ... : []`，或 `data.x ?? []`），写路径**兜底**（`data.x ??= []` 后再 push）。
+
+**核心收益（避免序列化副作用）**：任意「`load()` → `save()`」（即使本次不触碰该字段）都不会把 `x: []` **注入**存量文件——保持「未使用该特性 = 文件中无该键」，减少无意义 diff / 体积增长。这正是 `||=` / `??=` 于 `load()` 的反模式（kb/troubleshooting.md #可选字段「读侧补齐」的序列化副作用）。
+
+**与「读侧分类/多类条目扩展」同族**：`meta.archived_versions`（stage-79 移除 load 补齐、改 `getArchivedVersions` 自防御）→ 本阶段 `FlowData.requirements`（REV-81-003 采纳方案 (a) 读侧宽容，对齐 REV-78-015 方向）——**方向一致：可选字段的缺失语义由访问器自防御承担，不由 `load()` 统一物化**。
+
+**不可证伪的反例断言（固化）**：T5.4「纯 `load→save`（未写该字段）→ 读盘 `expect('x' in parsed).toBe(false)`」是**唯一**能证明「未注入」的断言；仅断言「读写往返一致」会漏掉注入（往返都含 `[]` 亦通过）。**注意 revision 基线**：`save()` 恒 `loadedRevision + 1`，fixture 须显式钉 `meta.revision` 基线（否则断言漂移）。
+
+**判据**：凡「新增顶层可选字段」，先问「缺失时谁承担默认」——**访问器派生（读侧）/ 写入兜底（写侧）**，而非 `load()` 物化；「`load()` 补齐」仅在语义确需物化（如 `ops`/`deps` 承载核心结构）时使用。
+
+**参见：** v1.2.0-stage-81（plan §一/§二 不变量 2 / T2；op-001 裁定 2；REV-81-003）；v1.2.0-stage-79（REV-78-015 移除 load 补齐）；`src/core/req/requirement-ops.ts`（`getRequirements`）；`src/core/flow-manager.ts`；kb/troubleshooting.md #可选字段「读侧补齐」的序列化副作用；manual/core/req.md、manual/core/flow-manager.md
+
+## [+] 需求引擎不变量模式：ID max+1 不回收 + 认领占用 + 状态流转单点表 + done 门空集守卫 (2026-10-12)
+
+**需求引擎四不变量**（stage-81 引擎面定稿，供命令面/聚合面消费）：
+
+1. **ID 分配 = max+1 不回收**：`REQ-NNN`（三位起补零、格式 `/^REQ-(\d{3,})$/`）；`nextRequirementId` 取现存 id 数字部分 `max+1`；**异常 id 跳过不崩**（正则不匹配 → `continue`）；三位起补零**不截断**（`REQ-999 → REQ-1000`）。并发同号由 `save()` 乐观并发校验兜底（非引擎面职责）。
+2. **认领占用校验**：`claim` 时 `owner` 非空且 ≠ 当前 owner → `already_claimed`（**数据零变更 + 零审计**）；同 owner 幂等 `{ok:true, changed:false}`；终态需求拒绝；`release` 无占用者 = **no-op 成功**（不刷 `updated_at`、不写审计）。**无 TTL / 心跳 / 抢占**。
+3. **状态流转单点表**：`ALLOWED_TRANSITIONS`（唯一实现）—— `advanceRequirement` 与 `updateRequirement({status})` **共用同一表同一门同一审计**（零第二套；`advance` 仅委托 `update`）；表外组合 → `invalid_status`；同值（`X → X`）→ 幂等 no-op。**禁用**多处分发状态机。
+4. **done 门 = 全部关联阶段 done（空集守卫）**：`allLinkedStagesDone(data, id)` = 关联阶段集**非空** ∧ 全部 `phase === 'done'`；**零关联 → false**（防 vacuous truth）——`in_progress → done` 的显式路径唯一经此门。
+
+**正交纪律**：全部写原语**纯内存**（零独立写盘点），落盘恒经调用方 `FlowManager.save()`；查询 API 返回**浅副本**（数组 + 元素，防调用方直改内存），但写路径**须 raw find 改本体**（经查询 API 拿浅副本会**静默丢更新**——REV-81-011 副本陷阱）。审计在**实际变更**后写（幂等/冲突路径零审计）。
+
+**通用判据**：引擎面（纯函数 + 调用方落盘）与命令面（exit 码 / 提示 / save）**分层**；「同语义两条路径」必须收敛为单点实现（本处 = `ALLOWED_TRANSITIONS` 单表 + `advance` 委托 `update`）。**`null`/缺失空集**（零关联）在「全称判定」中须显式守卫，否则 `every` 空集恒真。
+
+**参见：** v1.2.0-stage-81（plan §二 不变量 / 裁定 3·4·8·9；op-002 裁定 3/4/5/8；REV-81-011/013）；`src/core/req/requirement-ops.ts`（`ALLOWED_TRANSITIONS` / `allLinkedStagesDone` / `isTerminalRequirementStatus`）；kb/patterns.md #flow.json 乐观并发校验模式、#幂等写入模式、#审计日志 action 命名与双轨语义模式；manual/core/req.md

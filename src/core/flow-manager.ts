@@ -34,6 +34,7 @@ import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, type WorkflowMode } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
+import type { RequirementData } from './req/types.js';
 
 /** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed' | 'draft';
@@ -101,6 +102,8 @@ export interface StageData {
   stats?: StageStats;
   /** 工作流模式（可选冗余，不参与级联；读取权威恒为 status.md/级联，裁定 G） */
   workflow_mode?: 'full' | 'fast';
+  /** 关联需求 ID（单值可空；存量缺省 ≡ null，不迁移——裁定 D/L） */
+  requirement_id?: string | null;
 }
 
 /** Flow 完整数据结构 */
@@ -116,6 +119,8 @@ export interface FlowData {
   pipeline: { phase: MetaPhase; current: { stage: string; op: string }; retry: number };
   stages: Record<string, StageData>;
   reviews: ReviewItem[];
+  /** 需求条目（顶层可选；读侧宽容——getRequirements 派生 ?? []，**不** load 补齐，REV-81-003） */
+  requirements?: RequirementData[];
   log: LogEntry[];
 }
 

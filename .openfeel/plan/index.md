@@ -14,7 +14,7 @@
 | [v1.1.5](v1/v1.1.5/plan.md) | 消除「升级 CLI 后静默加载旧全局部署」缺口（版本事实源 + 被动检测提示 + `setup --check`） | **已完成**（**stage-66~67 全部归档 = M22 / M23 达成 / 版本收官**，缺口端到端消除；版本 1.1.5 收口 / 发布就绪） |
 | [v1.1.6](v1/v1.1.6/plan.md) | Claude Code 适配器（多 harness 并存）：skills 共享中立源 + Claude 9 agent/约束 + `--tools` + `settings.json` 注入 + 版本 1.1.6 | **已归档**（6 阶段全部闭环 = **v1.1.6 版本收官**，M24~M28 达成；版本 1.1.6 收口 / 发布就绪） |
 | [v1.1.7](v1/v1.1.7/plan.md) | 快速迭代模式（fast workflow mode）：双模式 phase 链 + 骨架全量铺/标记驱动 + 默认自动推进开启（`workflow_mode` / `auto_advance`） | **已归档**（4 阶段 `stage-74~77` 全部闭环 = **v1.1.7 版本收官**，M29~M32 达成；版本 1.1.7 收口 / 发布就绪） |
-| [v1.2.0](v1/v1.2.0/plan.md) | 双主题：① 需求流转系统（四层模型 + 需求状态机 + 认领协议）；② **flow.json 归档拆分**（版本分片，**先行执行**） | **执行中**（`stage-78~83` 已归档 = **M33~M38 done**，**归档主题三阶段收官 + 需求主题三阶段闭环**；`stage-84~85` 待 Feel 经 CLI 注册推进） |
+| [v1.2.0](v1/v1.2.0/plan.md) | 双主题：① 需求流转系统（四层模型 + 需求状态机 + 认领协议）；② **flow.json 归档拆分**（版本分片，**先行执行**） | **已归档（v1.2.0 收官）**（`stage-78~85` 八阶段全部闭环 = **M33~M40 全部 done**；**归档主题三阶段收官 + 需求主题三阶段闭环 + Agent 契约 + 文档与版本收口**；版本 **1.2.0** 全链路收口 / 发布就绪） |
 | [v0.5](v0/v0.5/index.md) | 工具链 + 协作增强 + 质量保障（v0.5.0 ~ v0.5.11） | 全部归档 |
 | [v0.4](v0/v0.4/index.md) | 工程精简 + Agent 深化 + 国际化（v0.4.0 ~ v0.4.7） | 全部归档 |
 | [v0.3](v0/v0.3/plan.md) / [v0.3.1](v0/v0.3/v0.3.1/v0.3.1-stage-01/status.md) / [v0.3.2](v0/v0.3/v0.3.2/v0.3.2-stage-01/status.md) | 早期版本（生产加固 / 补丁修正 / 收尾补丁） | 全部归档 |
@@ -110,6 +110,7 @@
 | v1.2.0-stage-82 | v1.2.0（需求命令面 — 新建 `src/commands/req.ts`（`openfeel req` 10 子命令）+ 两行注册 + 引擎小幅补丁（`getAllowedNextStatuses` 导出 + `addRequirement` 非数组守卫收口 `req/BUG-001`）+ `--json` 四读命令成功/失败同契约 + 退出码 0/1/2 + help 键双规（37 键双向断言）+ `--owner` 三级链；命令层零业务逻辑；**主题一「需求流转系统」第二阶段**；hard 依赖 stage-81） | **已归档**（**M37 done / v1.2.0 需求主题第二阶段**） | 3 op | 3/3 |
 | v1.2.0-stage-83 | v1.2.0（需求聚合判定与对账 — 新建 `src/core/req/aggregate.ts`（聚合投影纯函数，done 判定**单源委托 `allLinkedStagesDone`** + `syncRequirementStatus` 对称回写入口 + `AUTO_DONE_PRECONDITION` 前置集 + `requirementHealthItems` 对账）+ `flow-manager.ts` 对称回写两热点（advance done 分支 / reset 聚合视图；纯内存同事务，**8+/0-**）+ `flow.ts` health 三处合并 + i18n 908→**911** + 零回归取证；**主题一「需求流转系统」收官阶段**；hard 依赖 stage-81/82） | **已归档**（**M38 done / v1.2.0 需求主题收官**） | 3 op | 3/3 |
 | v1.2.0-stage-84 | v1.2.0（Agent/skill 契约 — `feel.md`×4 需求与归档纪律 + `openfeel-planner.md`×4 需求感知 + **新建 skill `openfeel-req`** + `openfeel-cli-usage` 六处修订 + build 重生成双生成物（键集各 18）+ 静态断言 S1~S5 + **skills 17→18 计数全量翻转**（7 字面量 + 5 派生总数 + `expectedSkills` 白名单）；**双主题 / 第 ② 位读者 = Agent 行为契约**；hard 依赖 stage-82/83） | **已归档**（**M39 done**） | 3 op | 3/3 |
+| v1.2.0-stage-85 | v1.2.0（文档与版本收口 — **v1.2.0 收官 / 最终阶段**：README×3 + GETTING_STARTED + commands + manual（**新建 `cli/req.md`**）+ CHANGELOG `[1.2.0]` + **版本 1.2.0 全链路 A/B/C/D/E**（A 6 载体/8 文件/10 处 + B 双生成物 + D 白名单 21 处）+ 双主题端到端验收（隔离脚本 ALL PASS + 本仓复核）+ 承接 REV 20 条处置 + 根因固化；hard 依赖 stage-84） | **已归档**（**M40 done / v1.2.0 版本收官**） | 3 op | 3/3 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

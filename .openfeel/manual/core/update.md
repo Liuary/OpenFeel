@@ -38,7 +38,7 @@
 `updateProject` 由「不含 opencode 即早退」改为「**两工具都未选才返回空**」，并分 `wantOpencode` / `wantClaude` 对称分支：
 
 - **opencode 分支**：步骤 0~4（AGENTS.md / agents / skills / 全局 jsonc / 项目 jsonc）整体包入 `if (wantOpencode)`——**语句逐字保留**（仅缩进 +2，零回归）；`legacyDirs` 警告、`recordProjectLang`、全局 state、`staleCoreKey` 重映射保持在外。
-- **claude 分支**（`if (wantClaude)`）：`~/.claude/CLAUDE.md`（`loadClaudeConstraintTemplate`，走受管区三态）+ 9 agents（`loadClaudeAgentTemplate`）+ 17 共享 skills（`SKILL_DEFINITIONS`）；复用 `deployGlobalAsset`；**step 4c** 经 `applyClaudeSettings` 写 `~/.claude/settings.json`（严格 JSON 读-深合并-写回，v1.1.6-stage-73）。
+- **claude 分支**（`if (wantClaude)`）：`~/.claude/CLAUDE.md`（`loadClaudeConstraintTemplate`，走受管区三态）+ 9 agents（`loadClaudeAgentTemplate`）+ 18 共享 skills（`SKILL_DEFINITIONS`）；复用 `deployGlobalAsset`；**step 4c** 经 `applyClaudeSettings` 写 `~/.claude/settings.json`（严格 JSON 读-深合并-写回，v1.1.6-stage-73）。
 - **`getIncomingContent`**：追加 CLAUDE.md / claude agent（`getClaudeAgentsDir()` 下 `{name}.md`）/ claude skill（`getClaudeSkillsDir()` 下 `{name}/SKILL.md`）三分支，与 opencode 分支模式对称；**无 settings 分支**（settings 不入 conflicts）。
 - **重启提醒**：按 harness 组合输出（`update.restartHarnessTmpl` + `update.claudeReloadHintTmpl`），`isTTY` 守卫、非交互静默；仅 opencode 时**逐字**与改前一致；`claudeChanged` 判定源含 `getClaudeSettingsPath()`（仅 settings 变化也触发提醒）。
 

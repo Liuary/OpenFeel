@@ -163,6 +163,7 @@
 - **读侧宽容不注入**：顶层可选字段不在 `load()` 补齐（见 kb/patterns.md #顶层可选字段「读侧宽容不注入」模式）；反例断言「纯 load→save → `'requirements' in parsed === false`」。
 - **副本纪律**：查询 API 返回浅副本（数组 + 元素）；**写路径须 raw find 改本体**——经查询 API 拿浅副本会**静默丢更新**（REV-81-011）。
 - **正交**：与归档层、工作流模式零耦合（本版不归档 `requirements`）。
+- **已知边界（REV-83-016）**：`flow stage reset` 复位到 default 分支相位后再推进 `done` **不回写** → 需求遗留漂移（health「需求漂移」warn 可察、**非自愈**）；行为修复（advance 命中 done 按聚合视图无条件重算）转后续版本评估（收口期控制流冻结）。
 
 ## 变更历史
 

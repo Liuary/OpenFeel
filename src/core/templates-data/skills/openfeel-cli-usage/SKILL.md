@@ -47,10 +47,10 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 > 命令职责分层：`plan stage add`（完整，推荐）> `flow stage add`（仅注册 `flow.json`，不建目录）> `stage create`（已弃用）。
 
-## v1.1.6 新增能力（stage-68~73）
+## v1.2.0 新增能力（stage-78~84）
 
-- **多 harness 并存**：`openfeel setup` / `openfeel update` 新增 `--tools <逗号列表>`（如 `opencode,claude`）；非法值 **exit 1** 前置校验零写盘；默认仅 `opencode`。
-- **Claude Code 适配器资产**：`--tools claude` 部署 `~/.claude/`——`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**18 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留）；默认零触（不带 `--tools` 时 `~/.claude/` 零变化）。
+- **flow.json 版本分片归档（`flow archive`）**：按版本号归档已收官历史（判据门：该版本全部阶段 done + 无 blocking open REV；归档文件落 `.openfeel/flow-archive/{version}.json`）。三个入口：`openfeel flow archive <version>`（执行归档；`--dry-run` 预览零写盘、`--json` 结构化输出）、`openfeel flow archive list`（列举已归档版本，只读）、`openfeel flow archive show <version>`（查看指定归档版本，只读）。**与顶层 `openfeel archive <stage>` 区分**：顶层命令是**阶段摘要归档**，`flow archive` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账）。
+- **需求流转（`openfeel req`）**：需求层命令组（10 子命令：`add` / `list` / `show` / `claim` / `release` / `set` / `link` / `advance` / `board` / `next`）。需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**需求进度由关联阶段 phase 聚合**（全部关联阶段 done → 需求自动 done）；认领协议 = `owner` + `claimed_at` 占用校验（无 TTL）。需求正文 `.openfeel/requirements/REQ-NNN.md` 为人读副本，**机读权威恒为 flow.json**。用法权威源见 `openfeel-req` skill；**v1.2.0 起提供**。
 
 ## v1.1.7 新增能力（stage-74~76）
 
@@ -59,10 +59,10 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **模式命令面**：`plan stage add --workflow-mode <full|fast>`（值域派生、非法 exit 1 不建阶段）、`stage set <id> --workflow-mode <full|fast>`（缺失字段插入）、`flow phases [--mode <full|fast>] [--stage <id>]`（模式分节；`--json` 追加 `workflowMode`）、`config set ... --sync-stages [--stage <ids...>]`（同步字段含「工作流模式」）。
 - **`config effective` 四键**：`auto_advance` / `execution_mode` / `merge_mode` / `workflow_mode`。
 
-## v1.2.0 新增能力（stage-78~84）
+## v1.1.6 新增能力（stage-68~73）
 
-- **flow.json 版本分片归档（`flow archive`）**：按版本号归档已收官历史（判据门：该版本全部阶段 done + 无 blocking open REV；归档文件落 `.openfeel/flow-archive/{version}.json`）。三个入口：`openfeel flow archive <version>`（执行归档；`--dry-run` 预览零写盘、`--json` 结构化输出）、`openfeel flow archive list`（列举已归档版本，只读）、`openfeel flow archive show <version>`（查看指定归档版本，只读）。**与顶层 `openfeel archive <stage>` 区分**：顶层命令是**阶段摘要归档**，`flow archive` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账）。
-- **需求流转（`openfeel req`）**：需求层命令组（10 子命令：`add` / `list` / `show` / `claim` / `release` / `set` / `link` / `advance` / `board` / `next`）。需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**需求进度由关联阶段 phase 聚合**（全部关联阶段 done → 需求自动 done）；认领协议 = `owner` + `claimed_at` 占用校验（无 TTL）。需求正文 `.openfeel/requirements/REQ-NNN.md` 为人读副本，**机读权威恒为 flow.json**。用法权威源见 `openfeel-req` skill；**v1.2.0 起提供**。
+- **多 harness 并存**：`openfeel setup` / `openfeel update` 新增 `--tools <逗号列表>`（如 `opencode,claude`）；非法值 **exit 1** 前置校验零写盘；默认仅 `opencode`。
+- **Claude Code 适配器资产**：`--tools claude` 部署 `~/.claude/`——`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**18 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留）；默认零触（不带 `--tools` 时 `~/.claude/` 零变化）。
 
 ## v1.1.5 新增能力（stage-67）
 

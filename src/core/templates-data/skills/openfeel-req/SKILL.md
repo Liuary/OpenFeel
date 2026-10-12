@@ -29,7 +29,7 @@ draft ─→ scheduled ─→ in_progress ─→ done
 | `draft` | 草稿（`req add` 新建初值） |
 | `scheduled` | 已排期（可被 `req next` 推荐接取） |
 | `in_progress` | 进行中（认领后推进；**内部进度由关联阶段的 15-phase 聚合**） |
-| `done` | 完成（**全部关联阶段 done 时自动收口**；`req advance --to done` 亦须此门） |
+| `done` | 完成（**全部关联阶段 done 时自动收口**——前置集限定 `scheduled` / `in_progress`；`req advance --to done` 亦须此门） |
 | `blocked` | 阻塞（可回到 `scheduled` / `in_progress`） |
 | `cancelled` | 已取消（终态） |
 | `rejected` | 已拒绝（终态） |

@@ -202,7 +202,7 @@ Fast-mode discipline:
 
 The requirement layer is the second layer of the four-layer model "version → requirement REQ-NNN → plan stage → op": **a requirement is the scheduling layer**, answering "what to do and when"; **implementation still goes through the full pipeline** — a requirement is not a plan; after taking a requirement, delegate to openfeel-planner for plan.md per the "Threshold for Small Changes vs. Large-Scale Planning" as usual.
 
-A requirement has 7 statuses: `draft` → `scheduled` → `in_progress` → `done`, plus three side states `blocked` / `cancelled` / `rejected`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done).
+A requirement has 7 statuses: `draft` → `scheduled` → `in_progress` → `done`, plus three side states `blocked` / `cancelled` / `rejected`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done — precondition: only `scheduled` / `in_progress`; `draft` / `blocked` / terminal states do not trigger).
 
 Requirement lifecycle actions (command group `openfeel req`, 10 subcommands):
 

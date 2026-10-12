@@ -4,7 +4,7 @@
 
 ## 职责
 
-`openfeel setup` 命令核心：**纯全局部署** OpenFeel 框架配置——全局 `AGENTS.md` + 9 agent + 17 skill + 全局平台适配器配置（`opencode.jsonc`，当前适配器）。复用 `deployGlobalAsset`（受管区三态 + hash 兜底，幂等可重跑），**不建立项目 `.openfeel/`**。全局部署会刷新全局 `update_state.json.openfeel_version`（**已部署版本事实源**），供 `setup --check` 与 CLI 被动提示比对。
+`openfeel setup` 命令核心：**纯全局部署** OpenFeel 框架配置——全局 `AGENTS.md` + 9 agent + 18 skill + 全局平台适配器配置（`opencode.jsonc`，当前适配器）。复用 `deployGlobalAsset`（受管区三态 + hash 兜底，幂等可重跑），**不建立项目 `.openfeel/`**。全局部署会刷新全局 `update_state.json.openfeel_version`（**已部署版本事实源**），供 `setup --check` 与 CLI 被动提示比对。
 
 ## 核心 API
 
@@ -30,11 +30,11 @@ interface SetupResult {
 |------|:--:|------|
 | 全局 AGENTS.md | 1 | `~/.config/opencode/AGENTS.md`（约束唯一权威，`loadTemplate(lang,'agents-md')`） |
 | Agent 定义 | 9 | `~/.config/opencode/agents/{agent}.md` |
-| Skill 定义 | 17 | `~/.config/opencode/skills/{name}/SKILL.md` |
+| Skill 定义 | 18 | `~/.config/opencode/skills/{name}/SKILL.md` |
 | 全局配置 | 1 | `~/.config/opencode/opencode.jsonc`（opencode 适配器；`mergeGlobalOpencodeJsonc` 深度合并 + 全局锁 + 原子写） |
 | **Claude 约束** | 1 | `~/.claude/CLAUDE.md`（`loadClaudeConstraintTemplate`，受管区三态；`tools` 含 claude 时） |
 | **Claude agents** | 9 | `~/.claude/agents/{agent}.md`（`loadClaudeAgentTemplate`，含 `feel`；`tools` 含 claude 时） |
-| **Claude skills** | 17 | `~/.claude/skills/{name}/SKILL.md`（复用 `SKILL_DEFINITIONS`；`tools` 含 claude 时） |
+| **Claude skills** | 18 | `~/.claude/skills/{name}/SKILL.md`（复用 `SKILL_DEFINITIONS`；`tools` 含 claude 时） |
 | **Claude settings** | 1 | `~/.claude/settings.json`（`applyClaudeSettings`，**严格 JSON 读-深合并-写回**；`tools` 含 claude 时，v1.1.6-stage-73） |
 
 > **按工具门控（v1.1.6-stage-71/73）**：opencode 步骤 1~4 整体包入 `if (tools.includes('opencode'))`，claude 分支包入 `if (tools.includes('claude'))`；默认 `tools=['opencode']` 时行为与改前**逐字一致**（`~/.claude` 零触）。claude 分支经 `applyClaudeSettings` 写 `settings.json`（注入 `agent:'feel'` + `permissions.defaultMode:'auto'`，用户键逐字保留；stage-73 落地）。幂等不变式：默认二次 27 skipped；双 harness 二次 55 skipped（+1 settings.json）。

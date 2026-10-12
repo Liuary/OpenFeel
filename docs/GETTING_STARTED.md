@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.1.7 快照** | 更新日期：2026-10-11 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.2.0 快照** | 更新日期：2026-10-13 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -57,7 +57,7 @@ openfeel setup --tools claude   # 重跑 Claude 部署（~/.claude/）
 openfeel setup --tools claude   # 部署 ~/.claude/（与 opencode 并存，默认不启用）
 ```
 
-- 部署资产到 `~/.claude/`：`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（9 个，含 `feel`）、`skills/`（17 个共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留）。
+- 部署资产到 `~/.claude/`：`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（9 个，含 `feel`）、`skills/`（18 个共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留）。
 - **升级后**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；首次创建 `~/.claude/{agents,skills}` 后须**重启会话或 `/reload-skills`**；`CLAUDE.md` 于下次会话生效。仅 `npm i -g` 不刷新全局资产。
 - **默认零触**：不带 `--tools` 时 `~/.claude/` 零变化。
 
@@ -85,6 +85,13 @@ openfeel flow phases --mode fast                        # 按指定模式查看�
 > ```bash
 > openfeel config set defaults.workflow_mode full   # 项目级默认；新建与无字段阶段一并回落 full
 > ```
+
+### v1.2.0 升级说明（存量为零迁移）
+
+v1.2.0 新增 `requirements`（需求）与 `archived_versions`（版本归档索引）字段。**存量项目零迁移**：
+
+- 旧 `flow.json`（不含 `requirements` / `archived_versions`）在全部命令下**零报错**，缺失字段按回落语义处理，升级**无需任何迁移动作**。
+- 版本归档按需执行：版本收官（该版本全部阶段 done 且无 blocking open REV）后，运行 `openfeel flow archive <version>`；建议先 `--dry-run` 预览（零写盘）。
 
 ## 4. 初始化项目
 
@@ -152,6 +159,32 @@ openfeel knowledge index
 openfeel lint
 ```
 
+### 5.5 版本归档（flow archive）
+
+版本收官（该版本**全部阶段 done** 且**无 blocking open REV**）后，可将已完成版本从活跃 `flow.json` 分片归档：
+
+```bash
+openfeel flow archive v1.1.7 --dry-run      # 预览（判据门照常校验；零写盘）
+openfeel flow archive v1.1.7                # 执行归档（判据门；不设 --force）
+openfeel flow archive list                  # 列举已归档版本（只读）
+openfeel flow archive show v1.1.7 [--json]  # 查看指定归档版本（只读）
+```
+
+归档落点 `.openfeel/flow-archive/{version}.json`。**与顶层 `openfeel archive <stage>`（阶段摘要归档）区分**：二者职责不同——`flow archive` 是 flow.json 版本分片归档，`openfeel archive <stage>` 是阶段摘要归档；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账）。
+
+### 5.6 需求流转（openfeel req）
+
+需求是**排期与调度层**——**需求 ≠ 计划**，需求进度由关联阶段聚合，实现仍走流水线。最小闭环：
+
+```bash
+openfeel req add "支持多 harness" --target-version v1.3.0        # 新建需求（ID 自动分配）
+openfeel req claim REQ-001 --owner feel                          # 认领（owner + claimed_at 占用校验）
+openfeel req link --stage v1.2.0-stage-85 --requirement REQ-001  # 关联阶段
+openfeel req board                                               # 看板视图（7 组固定顺序）
+```
+
+需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**全部关联阶段 done 时需求自动收口**。用法权威源见 `openfeel-req` skill。
+
 ## 6. 命令速查表
 
 | 命令 | 说明 |
@@ -161,7 +194,9 @@ openfeel lint
 | `openfeel flow mode` | 查看当前阶段的工作流模式与来源（只读，支持 `--stage` / `--json`） |
 | `openfeel plan` | 计划管理（`stage add/list`、`scheme create/list`） |
 | `openfeel view` | 审查条目管理（`list`/`add`/`accept`） |
-| `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识） |
+| `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识）（**阶段摘要归档**） |
+| `openfeel flow archive` | flow.json 版本分片归档（`<version>` / `list` / `show`；与 `openfeel archive` 阶段摘要归档区分） |
+| `openfeel req` | 需求流转（`add`/`list`/`show`/`claim`/`release`/`set`/`link`/`advance`/`board`/`next`） |
 | `openfeel roadmap` | 分期大纲管理（`create`/`show`） |
 | `openfeel instructions <artifactId>` | 生成结构化指令（XML 或 JSON） |
 | `openfeel update [path] [--tools <list>]` | 部署 OpenFeel 适配文件到目标项目 |

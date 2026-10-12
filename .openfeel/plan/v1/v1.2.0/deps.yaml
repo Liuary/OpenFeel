@@ -3,6 +3,7 @@
 # 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
 # 修订记录：2026-10-12 openfeel-planner —— 复审非阻塞 REV-83-009~011 落实（invariants「存量 78 阶段」→「8 阶段」；需求原语契约补 `stageIds` + 零关联 `aggregate = null` + 首参形态与 `allLinkedStagesDone(data, …)` 对齐〔方案期定稿〕）
 # 修订记录：2026-10-12 openfeel-planner —— 计划审查 REV-84-001/002 修订（stage-84 notes 计数翻转清单扩为 7 处字面量 + 5 处派生总数并登记 `expectedSkills` 补名；承接 REV 与处置表声明〔REV-83-009~018〕；契约条目同口径同步）
+# 修订记录：2026-10-13 openfeel-planner —— 计划审查 REV-85-001~008 修订（stage-85：新增承接 REV 与处置表〔REV-84-006~015 + REV-83-015~018 + REV-83-009~014 销账，复发第 6 次〕；notes 同步承接声明 + manual 命名订正〔core/req.md 已在位，禁新建 core/requirement.md〕；T3 并入最终 op 口径；produces_core 补登新增产出）
 
 version: "1.1"
 series: v1
@@ -173,7 +174,14 @@ stages:
       - docs/commands.md
       - CHANGELOG.md
       - package.json
-    notes: "文档多载体（README×3 + GETTING_STARTED + commands）+ manual（core/flow-archive + core/requirement + cli/req + index.md）+ CHANGELOG [1.2.0]（显著登记两组新命令与归档/需求语义）+ 版本 1.2.0 全链路 A/B/C/D/E（§六清单；B 类双生成物）+ roadmap/plan 回填 + **双主题端到端验收**（§十一：归档实跑 / 常规路径零触碰 / 跨版本 deps / 需求全生命周期 / 认领并发 / 向后兼容 / 正交性）。版本收口 op 须为最终 op。"
+      - .openfeel/manual/cli/req.md
+      - .openfeel/manual/index.md
+      - .openfeel/kb/patterns.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/skills/openfeel-req/SKILL.md
+      - test/core/templates.test.ts
+      - .openfeel/roadmap/v1.2.0.md
+    notes: "文档多载体（README×3〔**版本横幅仅 README.md:11**，实测——REV-85-008〕+ GETTING_STARTED + commands + cli-usage skill 核对/最小补正）+ manual（**核对/最小补正**：core/flow-archive + core/req + cli/commands 已在位；**真新增** cli/req.md；**禁新建 core/requirement.md**——REV-85-003）+ CHANGELOG [1.2.0]（显著登记两组新命令与归档/需求语义）+ 版本 1.2.0 全链路 A/B/C/D/E（§六清单；B 类双生成物；D 类白名单 **file:line 枚举**——REV-85-004）+ roadmap/plan 回填 + **双主题端到端验收**（§十一：归档实跑 / 常规路径零触碰 / 跨版本 deps / 需求全生命周期 / 认领并发 / 向后兼容 / 正交性）+ 陈旧计数订正（setup.ts/update.ts 手写注释 17→18 + ADAPTER 死资产，REV-84-006/004）+ **承接 REV 与处置表**（REV-84-006~015 ×10 + REV-83-015~018 ×4 移交 + REV-83-009~014 销账 ×6——见 stage-85/plan.md 同名列；复发第 **6** 次——REV-85-001）+ 承接 REV 纪律根因固化（kb/patterns.md 子条款 + 大计划回填纪律行——T7，REV-85-002）。**T3 并入最终 op**（版本号全链路 + T4 验收 + T5 门禁同在最终 op——REV-85-006）。"
 
 # 执行顺序（严格串行，以依赖为准；**主题二归档先行**，见大计划 §三「执行顺序裁定 S」）
 execution_order:

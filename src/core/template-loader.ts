@@ -238,7 +238,7 @@ Fast-mode discipline:
 
 The requirement layer is the second layer of the four-layer model "version → requirement REQ-NNN → plan stage → op": **a requirement is the scheduling layer**, answering "what to do and when"; **implementation still goes through the full pipeline** — a requirement is not a plan; after taking a requirement, delegate to openfeel-planner for plan.md per the "Threshold for Small Changes vs. Large-Scale Planning" as usual.
 
-A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done).
+A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done — precondition: only \`scheduled\` / \`in_progress\`; \`draft\` / \`blocked\` / terminal states do not trigger).
 
 Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
 
@@ -1673,7 +1673,7 @@ fast 调度纪律：
 
 需求层位于「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」四层模型的第二层：**需求 = 排期与调度层**，回答「做什么、何时做」；**实现仍走完整流水线**——需求不等于计划，接取需求后按「小改 vs 大规模规划的阈值」照常委托 openfeel-planner 产出 plan.md。
 
-需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done）。
+需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done——前置集限定：仅 \`scheduled\` / \`in_progress\`；\`draft\` / \`blocked\` / 终态不触发）。
 
 需求生命周期动作（命令组 \`openfeel req\`，共 10 个子命令）：
 
@@ -3015,7 +3015,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.1.7). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.2.0). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -3524,7 +3524,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.1.7）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.2.0）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 
@@ -4175,7 +4175,7 @@ Fast-mode discipline:
 
 The requirement layer is the second layer of the four-layer model "version → requirement REQ-NNN → plan stage → op": **a requirement is the scheduling layer**, answering "what to do and when"; **implementation still goes through the full pipeline** — a requirement is not a plan; after taking a requirement, delegate to openfeel-planner for plan.md per the "Threshold for Small Changes vs. Large-Scale Planning" as usual.
 
-A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done).
+A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done — precondition: only \`scheduled\` / \`in_progress\`; \`draft\` / \`blocked\` / terminal states do not trigger).
 
 Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
 
@@ -5610,7 +5610,7 @@ fast 调度纪律：
 
 需求层位于「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」四层模型的第二层：**需求 = 排期与调度层**，回答「做什么、何时做」；**实现仍走完整流水线**——需求不等于计划，接取需求后按「小改 vs 大规模规划的阈值」照常委托 openfeel-planner 产出 plan.md。
 
-需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done）。
+需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done——前置集限定：仅 \`scheduled\` / \`in_progress\`；\`draft\` / \`blocked\` / 终态不触发）。
 
 需求生命周期动作（命令组 \`openfeel req\`，共 10 个子命令）：
 
@@ -7158,10 +7158,10 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 > 命令职责分层：\`plan stage add\`（完整，推荐）> \`flow stage add\`（仅注册 \`flow.json\`，不建目录）> \`stage create\`（已弃用）。
 
-## v1.1.6 新增能力（stage-68~73）
+## v1.2.0 新增能力（stage-78~84）
 
-- **多 harness 并存**：\`openfeel setup\` / \`openfeel update\` 新增 \`--tools <逗号列表>\`（如 \`opencode,claude\`）；非法值 **exit 1** 前置校验零写盘；默认仅 \`opencode\`。
-- **Claude Code 适配器资产**：\`--tools claude\` 部署 \`~/.claude/\`——\`CLAUDE.md\`（全局约束，用户已有内容 append 不覆盖）、\`agents/\`（**9 个**，含 \`feel\`）、\`skills/\`（**18 个**共享源）、\`settings.json\`（注入 \`"agent":"feel"\` + \`"permissions":{"defaultMode":"auto"}\`，用户既有键逐字保留）；默认零触（不带 \`--tools\` 时 \`~/.claude/\` 零变化）。
+- **flow.json 版本分片归档（\`flow archive\`）**：按版本号归档已收官历史（判据门：该版本全部阶段 done + 无 blocking open REV；归档文件落 \`.openfeel/flow-archive/{version}.json\`）。三个入口：\`openfeel flow archive <version>\`（执行归档；\`--dry-run\` 预览零写盘、\`--json\` 结构化输出）、\`openfeel flow archive list\`（列举已归档版本，只读）、\`openfeel flow archive show <version>\`（查看指定归档版本，只读）。**与顶层 \`openfeel archive <stage>\` 区分**：顶层命令是**阶段摘要归档**，\`flow archive\` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 \`.openfeel/flow-archive/**\`（\`flow health\` 仅目录清单级对账）。
+- **需求流转（\`openfeel req\`）**：需求层命令组（10 子命令：\`add\` / \`list\` / \`show\` / \`claim\` / \`release\` / \`set\` / \`link\` / \`advance\` / \`board\` / \`next\`）。需求 7 状态（\`draft\` / \`scheduled\` / \`in_progress\` / \`done\` / \`blocked\` / \`cancelled\` / \`rejected\`）；**需求进度由关联阶段 phase 聚合**（全部关联阶段 done → 需求自动 done）；认领协议 = \`owner\` + \`claimed_at\` 占用校验（无 TTL）。需求正文 \`.openfeel/requirements/REQ-NNN.md\` 为人读副本，**机读权威恒为 flow.json**。用法权威源见 \`openfeel-req\` skill；**v1.2.0 起提供**。
 
 ## v1.1.7 新增能力（stage-74~76）
 
@@ -7170,10 +7170,10 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **模式命令面**：\`plan stage add --workflow-mode <full|fast>\`（值域派生、非法 exit 1 不建阶段）、\`stage set <id> --workflow-mode <full|fast>\`（缺失字段插入）、\`flow phases [--mode <full|fast>] [--stage <id>]\`（模式分节；\`--json\` 追加 \`workflowMode\`）、\`config set ... --sync-stages [--stage <ids...>]\`（同步字段含「工作流模式」）。
 - **\`config effective\` 四键**：\`auto_advance\` / \`execution_mode\` / \`merge_mode\` / \`workflow_mode\`。
 
-## v1.2.0 新增能力（stage-78~84）
+## v1.1.6 新增能力（stage-68~73）
 
-- **flow.json 版本分片归档（\`flow archive\`）**：按版本号归档已收官历史（判据门：该版本全部阶段 done + 无 blocking open REV；归档文件落 \`.openfeel/flow-archive/{version}.json\`）。三个入口：\`openfeel flow archive <version>\`（执行归档；\`--dry-run\` 预览零写盘、\`--json\` 结构化输出）、\`openfeel flow archive list\`（列举已归档版本，只读）、\`openfeel flow archive show <version>\`（查看指定归档版本，只读）。**与顶层 \`openfeel archive <stage>\` 区分**：顶层命令是**阶段摘要归档**，\`flow archive\` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 \`.openfeel/flow-archive/**\`（\`flow health\` 仅目录清单级对账）。
-- **需求流转（\`openfeel req\`）**：需求层命令组（10 子命令：\`add\` / \`list\` / \`show\` / \`claim\` / \`release\` / \`set\` / \`link\` / \`advance\` / \`board\` / \`next\`）。需求 7 状态（\`draft\` / \`scheduled\` / \`in_progress\` / \`done\` / \`blocked\` / \`cancelled\` / \`rejected\`）；**需求进度由关联阶段 phase 聚合**（全部关联阶段 done → 需求自动 done）；认领协议 = \`owner\` + \`claimed_at\` 占用校验（无 TTL）。需求正文 \`.openfeel/requirements/REQ-NNN.md\` 为人读副本，**机读权威恒为 flow.json**。用法权威源见 \`openfeel-req\` skill；**v1.2.0 起提供**。
+- **多 harness 并存**：\`openfeel setup\` / \`openfeel update\` 新增 \`--tools <逗号列表>\`（如 \`opencode,claude\`）；非法值 **exit 1** 前置校验零写盘；默认仅 \`opencode\`。
+- **Claude Code 适配器资产**：\`--tools claude\` 部署 \`~/.claude/\`——\`CLAUDE.md\`（全局约束，用户已有内容 append 不覆盖）、\`agents/\`（**9 个**，含 \`feel\`）、\`skills/\`（**18 个**共享源）、\`settings.json\`（注入 \`"agent":"feel"\` + \`"permissions":{"defaultMode":"auto"}\`，用户既有键逐字保留）；默认零触（不带 \`--tools\` 时 \`~/.claude/\` 零变化）。
 
 ## v1.1.5 新增能力（stage-67）
 
@@ -7880,7 +7880,7 @@ draft ─→ scheduled ─→ in_progress ─→ done
 | \`draft\` | 草稿（\`req add\` 新建初值） |
 | \`scheduled\` | 已排期（可被 \`req next\` 推荐接取） |
 | \`in_progress\` | 进行中（认领后推进；**内部进度由关联阶段的 15-phase 聚合**） |
-| \`done\` | 完成（**全部关联阶段 done 时自动收口**；\`req advance --to done\` 亦须此门） |
+| \`done\` | 完成（**全部关联阶段 done 时自动收口**——前置集限定 \`scheduled\` / \`in_progress\`；\`req advance --to done\` 亦须此门） |
 | \`blocked\` | 阻塞（可回到 \`scheduled\` / \`in_progress\`） |
 | \`cancelled\` | 已取消（终态） |
 | \`rejected\` | 已拒绝（终态） |
@@ -8374,10 +8374,10 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 // AUTO-GENERATED-BEGIN: OPENCODE_CONFIG_TEMPLATES
 const OPENCODE_CONFIG_TEMPLATES: Record<string, Record<string, string>> = {
   'zh-CN': {
-    adapter: 'IyBPcGVuQ29kZSDlubPlj7DpgILphY3lmagKCui/meaYryBPcGVuQ29kZSDlubPlj7DpgILphY3lmajvvIzljIXlkKsgOSDkuKogQWdlbnQg5a6a5LmJ5ZKMIDE3IOS4qiBTa2lsbOOAggoK6YOo572y5ZCO5bCG5Zyo55uu5qCH6aG555uu5Lit55Sf5oiQ77yaCgotIGBvcGVuY29kZS5qc29uY2Ag4oCUIE9wZW5Db2RlIOW5s+WPsOmFjee9ru+8iEFnZW50IOaooeWei+OAgVNraWxscyDliJfooajnrYnvvIkKLSBgLm9wZW5jb2RlL2FnZW50cy9gIOKAlCA5IOS4qiBBZ2VudCDlrprkuYnvvIhmZWVs44CBb3BlbmZlZWwtcGxhbm5lcuOAgW9wZW5mZWVsLXNjaGVtZXLjgIFvcGVuZmVlbC1leGVjdXRvcuOAgW9wZW5mZWVsLXJldmlld2Vy44CBb3BlbmZlZWwtZmVlbC10ZXN0ZXLjgIFvcGVuZmVlbC12aXNpb27jgIFvcGVuZmVlbC1hcmNoaXZlcuOAgW9wZW5mZWVsLXV0aWxpdHnvvIkKLSBgLm9wZW5jb2RlL3NraWxscy9gIOKAlCAxNyDkuKogU2tpbGwg5a6a5LmJ77yIb3BlbmZlZWwtYWdlbnQtbW9kZWwtY2hlY2vjgIFvcGVuZmVlbC1idWctYWNjZXB0YW5jZeOAgW9wZW5mZWVsLWNoZWNrLWti44CBb3BlbmZlZWwtY2xpLXVzYWdl44CBb3BlbmZlZWwtZ2V0LWJ1Z3PjgIFvcGVuZmVlbC1nZXQtc3RhZ2Utc3RhdHVz44CBb3BlbmZlZWwtaGVhbHRo44CBb3BlbmZlZWwtbW9kZWwtY2hlY2vjgIFvcGVuZmVlbC1tb2RlbC1jb25maWfjgIFvcGVuZmVlbC1yZWNvdmVy44CBb3BlbmZlZWwtcm9hZG1hcOOAgW9wZW5mZWVsLXNlYXJjaC1rYuOAgW9wZW5mZWVsLXN5bmMtc3RhdHVz44CBb3BlbmZlZWwtdG9vbC11c2FnZeOAgW9wZW5mZWVsLXVwZGF0ZS1zdGFnZS1zdGF0dXPjgIFvcGVuZmVlbC13aXphcmTjgIFvcGVuZmVlbC13b3Jrc3BhY2XvvIkKLSBgLm9wZW5jb2RlL0FEQVBURVIubWRgIOKAlCDmnKzpgILphY3lmajor7TmmI4KLSBgLm9wZW5jb2RlLy5naXRpZ25vcmVgIOKAlCDlv73nlaXop4TliJkKCj4g5rOo77ya5pys6aG555uu5LiN6YOo572yIGBwYWNrYWdlLmpzb25g77yI55Sx55So5oi36aG555uu6Ieq6KGM566h55CG77yJ44CCCg==',
+    adapter: 'IyBPcGVuQ29kZSDlubPlj7DpgILphY3lmagKCui/meaYryBPcGVuQ29kZSDlubPlj7DpgILphY3lmajvvIzljIXlkKsgOSDkuKogQWdlbnQg5a6a5LmJ5ZKMIDE4IOS4qiBTa2lsbOOAggoK6YOo572y5ZCO5bCG5Zyo55uu5qCH6aG555uu5Lit55Sf5oiQ77yaCgotIGBvcGVuY29kZS5qc29uY2Ag4oCUIE9wZW5Db2RlIOW5s+WPsOmFjee9ru+8iEFnZW50IOaooeWei+OAgVNraWxscyDliJfooajnrYnvvIkKLSBgLm9wZW5jb2RlL2FnZW50cy9gIOKAlCA5IOS4qiBBZ2VudCDlrprkuYnvvIhmZWVs44CBb3BlbmZlZWwtcGxhbm5lcuOAgW9wZW5mZWVsLXNjaGVtZXLjgIFvcGVuZmVlbC1leGVjdXRvcuOAgW9wZW5mZWVsLXJldmlld2Vy44CBb3BlbmZlZWwtZmVlbC10ZXN0ZXLjgIFvcGVuZmVlbC12aXNpb27jgIFvcGVuZmVlbC1hcmNoaXZlcuOAgW9wZW5mZWVsLXV0aWxpdHnvvIkKLSBgLm9wZW5jb2RlL3NraWxscy9gIOKAlCAxOCDkuKogU2tpbGwg5a6a5LmJ77yIb3BlbmZlZWwtYWdlbnQtbW9kZWwtY2hlY2vjgIFvcGVuZmVlbC1idWctYWNjZXB0YW5jZeOAgW9wZW5mZWVsLWNoZWNrLWti44CBb3BlbmZlZWwtY2xpLXVzYWdl44CBb3BlbmZlZWwtZ2V0LWJ1Z3PjgIFvcGVuZmVlbC1nZXQtc3RhZ2Utc3RhdHVz44CBb3BlbmZlZWwtaGVhbHRo44CBb3BlbmZlZWwtbW9kZWwtY2hlY2vjgIFvcGVuZmVlbC1tb2RlbC1jb25maWfjgIFvcGVuZmVlbC1yZWNvdmVy44CBb3BlbmZlZWwtcmVx44CBb3BlbmZlZWwtcm9hZG1hcOOAgW9wZW5mZWVsLXNlYXJjaC1rYuOAgW9wZW5mZWVsLXN5bmMtc3RhdHVz44CBb3BlbmZlZWwtdG9vbC11c2FnZeOAgW9wZW5mZWVsLXVwZGF0ZS1zdGFnZS1zdGF0dXPjgIFvcGVuZmVlbC13aXphcmTjgIFvcGVuZmVlbC13b3Jrc3BhY2XvvIkKLSBgLm9wZW5jb2RlL0FEQVBURVIubWRgIOKAlCDmnKzpgILphY3lmajor7TmmI4KLSBgLm9wZW5jb2RlLy5naXRpZ25vcmVgIOKAlCDlv73nlaXop4TliJkKCj4g5rOo77ya5pys6aG555uu5LiN6YOo572yIGBwYWNrYWdlLmpzb25g77yI55Sx55So5oi36aG555uu6Ieq6KGM566h55CG77yJ44CCCg==',
   },
   en: {
-    adapter: 'IyBPcGVuQ29kZSBQbGF0Zm9ybSBBZGFwdGVyCgpUaGlzIGlzIHRoZSBPcGVuQ29kZSBwbGF0Zm9ybSBhZGFwdGVyLCBjb250YWluaW5nIDkgQWdlbnQgZGVmaW5pdGlvbnMgYW5kIDE3IFNraWxscy4KCkFmdGVyIGRlcGxveW1lbnQsIHRoZSBmb2xsb3dpbmcgZmlsZXMgd2lsbCBiZSBnZW5lcmF0ZWQgaW4gdGhlIHRhcmdldCBwcm9qZWN0OgoKLSBgb3BlbmNvZGUuanNvbmNgIOKAlCBPcGVuQ29kZSBwbGF0Zm9ybSBjb25maWd1cmF0aW9uIChBZ2VudCBtb2RlbHMsIFNraWxscyBsaXN0LCBldGMuKQotIGAub3BlbmNvZGUvYWdlbnRzL2Ag4oCUIDkgQWdlbnQgZGVmaW5pdGlvbnMgKGZlZWwsIG9wZW5mZWVsLXBsYW5uZXIsIG9wZW5mZWVsLXNjaGVtZXIsIG9wZW5mZWVsLWV4ZWN1dG9yLCBvcGVuZmVlbC1yZXZpZXdlciwgb3BlbmZlZWwtZmVlbC10ZXN0ZXIsIG9wZW5mZWVsLXZpc2lvbiwgb3BlbmZlZWwtYXJjaGl2ZXIsIG9wZW5mZWVsLXV0aWxpdHkpCi0gYC5vcGVuY29kZS9za2lsbHMvYCDigJQgMTcgU2tpbGwgZGVmaW5pdGlvbnMgKG9wZW5mZWVsLWFnZW50LW1vZGVsLWNoZWNrLCBvcGVuZmVlbC1idWctYWNjZXB0YW5jZSwgb3BlbmZlZWwtY2hlY2sta2IsIG9wZW5mZWVsLWNsaS11c2FnZSwgb3BlbmZlZWwtZ2V0LWJ1Z3MsIG9wZW5mZWVsLWdldC1zdGFnZS1zdGF0dXMsIG9wZW5mZWVsLWhlYWx0aCwgb3BlbmZlZWwtbW9kZWwtY2hlY2ssIG9wZW5mZWVsLW1vZGVsLWNvbmZpZywgb3BlbmZlZWwtcmVjb3Zlciwgb3BlbmZlZWwtcm9hZG1hcCwgb3BlbmZlZWwtc2VhcmNoLWtiLCBvcGVuZmVlbC1zeW5jLXN0YXR1cywgb3BlbmZlZWwtdG9vbC11c2FnZSwgb3BlbmZlZWwtdXBkYXRlLXN0YWdlLXN0YXR1cywgb3BlbmZlZWwtd2l6YXJkLCBvcGVuZmVlbC13b3Jrc3BhY2UpCi0gYC5vcGVuY29kZS9BREFQVEVSLm1kYCDigJQgVGhpcyBhZGFwdGVyIGRvY3VtZW50YXRpb24KLSBgLm9wZW5jb2RlLy5naXRpZ25vcmVgIOKAlCBJZ25vcmUgcnVsZXMKCj4gTm90ZTogVGhpcyBwcm9qZWN0IGRvZXMgbm90IGRlcGxveSBgcGFja2FnZS5qc29uYCAobWFuYWdlZCBieSB0aGUgdXNlcidzIHByb2plY3QgaXRzZWxmKS4K',
+    adapter: 'IyBPcGVuQ29kZSBQbGF0Zm9ybSBBZGFwdGVyCgpUaGlzIGlzIHRoZSBPcGVuQ29kZSBwbGF0Zm9ybSBhZGFwdGVyLCBjb250YWluaW5nIDkgQWdlbnQgZGVmaW5pdGlvbnMgYW5kIDE4IFNraWxscy4KCkFmdGVyIGRlcGxveW1lbnQsIHRoZSBmb2xsb3dpbmcgZmlsZXMgd2lsbCBiZSBnZW5lcmF0ZWQgaW4gdGhlIHRhcmdldCBwcm9qZWN0OgoKLSBgb3BlbmNvZGUuanNvbmNgIOKAlCBPcGVuQ29kZSBwbGF0Zm9ybSBjb25maWd1cmF0aW9uIChBZ2VudCBtb2RlbHMsIFNraWxscyBsaXN0LCBldGMuKQotIGAub3BlbmNvZGUvYWdlbnRzL2Ag4oCUIDkgQWdlbnQgZGVmaW5pdGlvbnMgKGZlZWwsIG9wZW5mZWVsLXBsYW5uZXIsIG9wZW5mZWVsLXNjaGVtZXIsIG9wZW5mZWVsLWV4ZWN1dG9yLCBvcGVuZmVlbC1yZXZpZXdlciwgb3BlbmZlZWwtZmVlbC10ZXN0ZXIsIG9wZW5mZWVsLXZpc2lvbiwgb3BlbmZlZWwtYXJjaGl2ZXIsIG9wZW5mZWVsLXV0aWxpdHkpCi0gYC5vcGVuY29kZS9za2lsbHMvYCDigJQgMTggU2tpbGwgZGVmaW5pdGlvbnMgKG9wZW5mZWVsLWFnZW50LW1vZGVsLWNoZWNrLCBvcGVuZmVlbC1idWctYWNjZXB0YW5jZSwgb3BlbmZlZWwtY2hlY2sta2IsIG9wZW5mZWVsLWNsaS11c2FnZSwgb3BlbmZlZWwtZ2V0LWJ1Z3MsIG9wZW5mZWVsLWdldC1zdGFnZS1zdGF0dXMsIG9wZW5mZWVsLWhlYWx0aCwgb3BlbmZlZWwtbW9kZWwtY2hlY2ssIG9wZW5mZWVsLW1vZGVsLWNvbmZpZywgb3BlbmZlZWwtcmVjb3Zlciwgb3BlbmZlZWwtcmVxLCBvcGVuZmVlbC1yb2FkbWFwLCBvcGVuZmVlbC1zZWFyY2gta2IsIG9wZW5mZWVsLXN5bmMtc3RhdHVzLCBvcGVuZmVlbC10b29sLXVzYWdlLCBvcGVuZmVlbC11cGRhdGUtc3RhZ2Utc3RhdHVzLCBvcGVuZmVlbC13aXphcmQsIG9wZW5mZWVsLXdvcmtzcGFjZSkKLSBgLm9wZW5jb2RlL0FEQVBURVIubWRgIOKAlCBUaGlzIGFkYXB0ZXIgZG9jdW1lbnRhdGlvbgotIGAub3BlbmNvZGUvLmdpdGlnbm9yZWAg4oCUIElnbm9yZSBydWxlcwoKPiBOb3RlOiBUaGlzIHByb2plY3QgZG9lcyBub3QgZGVwbG95IGBwYWNrYWdlLmpzb25gIChtYW5hZ2VkIGJ5IHRoZSB1c2VyJ3MgcHJvamVjdCBpdHNlbGYpLgo=',
   }
 };
 // AUTO-GENERATED-END: OPENCODE_CONFIG_TEMPLATES
@@ -8589,7 +8589,7 @@ Fast-mode discipline:
 
 The requirement layer is the second layer of the four-layer model "version → requirement REQ-NNN → plan stage → op": **a requirement is the scheduling layer**, answering "what to do and when"; **implementation still goes through the full pipeline** — a requirement is not a plan; after taking a requirement, delegate to openfeel-planner for plan.md per the "Threshold for Small Changes vs. Large-Scale Planning" as usual.
 
-A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done).
+A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done — precondition: only \`scheduled\` / \`in_progress\`; \`draft\` / \`blocked\` / terminal states do not trigger).
 
 Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
 
@@ -9974,7 +9974,7 @@ fast 调度纪律：
 
 需求层位于「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」四层模型的第二层：**需求 = 排期与调度层**，回答「做什么、何时做」；**实现仍走完整流水线**——需求不等于计划，接取需求后按「小改 vs 大规模规划的阈值」照常委托 openfeel-planner 产出 plan.md。
 
-需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done）。
+需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done——前置集限定：仅 \`scheduled\` / \`in_progress\`；\`draft\` / \`blocked\` / 终态不触发）。
 
 需求生命周期动作（命令组 \`openfeel req\`，共 10 个子命令）：
 
@@ -11294,7 +11294,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.1.7). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.2.0). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -11806,7 +11806,7 @@ Claude Code 的权限与工具可用性由 subagent 的 \`tools\` 白名单与 \
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.1.7）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.2.0）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 

@@ -9,10 +9,13 @@ import { getCurrentTemplate } from '../../src/core/templates.js';
 
 const ROOT = process.cwd();
 const SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'skills');
-const SKILLS = ['openfeel-cli-usage', 'openfeel-wizard', 'openfeel-health', 'openfeel-model-check', 'openfeel-recover'];
+const SKILLS = ['openfeel-cli-usage', 'openfeel-wizard', 'openfeel-health', 'openfeel-model-check', 'openfeel-recover', 'openfeel-req'];
+
+/** EOL 归一（CRLF/CR → LF；先例 templates-migration.test.ts:24）——stage-84 跨 harness 切片比较防 CRLF 伪失败（REV-84-011） */
+const norm = (s: string): string => s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
 describe('模板口径（stage-50 op-006 T53/T54/T55）', () => {
-  it('T53：5 skill 模板 node bin 仅出现在加注行（每文件 1 处）且含加注、主口径为 openfeel', () => {
+  it('T53：6 skill 模板 node bin 仅出现在加注行（每文件 1 处）且含加注、主口径为 openfeel', () => {
     for (const s of SKILLS) {
       const content = readFileSync(join(SKILLS_DIR, s, 'SKILL.md'), 'utf-8');
       const count = (content.match(/node bin\/openfeel\.js/g) ?? []).length;
@@ -182,14 +185,14 @@ describe('stage-76：feel.md ×4 模式小节对称（T4-1/T4-2）', () => {
 
   it('zh ×2 模式小节关键串齐备 + 骨架注记', () => {
     for (const p of FEEL_ZH) {
-      const c = readFileSync(p, 'utf-8');
+      const c = norm(readFileSync(p, 'utf-8'));
       for (const s of ZH) expect(c, `${p} 缺 ${s}`).toContain(s);
     }
   });
 
   it('en ×2 模式小节关键串齐备 + 骨架注记', () => {
     for (const p of FEEL_EN) {
-      const c = readFileSync(p, 'utf-8');
+      const c = norm(readFileSync(p, 'utf-8'));
       for (const s of EN) expect(c, `${p} 缺 ${s}`).toContain(s);
     }
   });
@@ -198,12 +201,12 @@ describe('stage-76：feel.md ×4 模式小节对称（T4-1/T4-2）', () => {
     const zhAnchor = '关键操作（推进到 exec_running / review_pending / test_pending / archiving）时，流水线会自动在私域日志目录创建带日期前缀的骨架文件';
     const enAnchor = 'During critical operations (advancing to exec_running / review_pending / test_pending / archiving), the pipeline automatically creates skeleton files with date prefixes in the private log directory';
     for (const p of FEEL_ZH) {
-      const c = readFileSync(p, 'utf-8');
+      const c = norm(readFileSync(p, 'utf-8'));
       expect(c, `${p} 骨架句零回归`).toContain(zhAnchor);
       expect(c, `${p} 缺自动推进决策纪律`).toContain('自动推进决策纪律');
     }
     for (const p of FEEL_EN) {
-      const c = readFileSync(p, 'utf-8');
+      const c = norm(readFileSync(p, 'utf-8'));
       expect(c, `${p} 骨架句零回归`).toContain(enAnchor);
       expect(c, `${p} 缺 Auto-Advance Decision Rules`).toContain('Auto-Advance Decision Rules');
     }
@@ -311,7 +314,7 @@ describe('stage-76：阴性断言——无「fast 跳过骨架/文件」表述�
   it('37 份模板/skill 均不含禁用表述', () => {
     expect(files).toHaveLength(37);
     for (const p of files) {
-      const c = readFileSync(p, 'utf-8');
+      const c = norm(readFileSync(p, 'utf-8'));
       for (const s of BANNED) expect(c, `${p} 含禁用串 ${s}`).not.toContain(s);
     }
   });
@@ -358,7 +361,7 @@ describe('stage-84：feel.md ×4 需求与归档纪律（S1/S2/S3）', () => {
 
   it('S1 zh ×2：两节标题齐备 + 逐字串全命中', () => {
     for (const p of FEEL_ZH) {
-      const c = readFileSync(p, 'utf-8');
+      const c = norm(readFileSync(p, 'utf-8'));
       expect(c, `${p} 缺 ${H_REQ_ZH}`).toContain(H_REQ_ZH);
       expect(c, `${p} 缺 ${H_ARCH_ZH}`).toContain(H_ARCH_ZH);
       for (const s of ZH) expect(c, `${p} 缺 ${s}`).toContain(s);
@@ -366,7 +369,7 @@ describe('stage-84：feel.md ×4 需求与归档纪律（S1/S2/S3）', () => {
   });
   it('S1 en ×2：两节标题齐备 + 逐字串全命中', () => {
     for (const p of FEEL_EN) {
-      const c = readFileSync(p, 'utf-8');
+      const c = norm(readFileSync(p, 'utf-8'));
       expect(c, `${p} 缺 ${H_REQ_EN}`).toContain(H_REQ_EN);
       expect(c, `${p} 缺 ${H_ARCH_EN}`).toContain(H_ARCH_EN);
       for (const s of EN) expect(c, `${p} 缺 ${s}`).toContain(s);
@@ -374,7 +377,7 @@ describe('stage-84：feel.md ×4 需求与归档纪律（S1/S2/S3）', () => {
   });
   it('S1 裸主语零出现（新节切片不含 Feel / 主会话）', () => {
     for (const [p, hs] of [[FEEL_ZH[0], [H_REQ_ZH, H_ARCH_ZH]], [FEEL_EN[0], [H_REQ_EN, H_ARCH_EN]]] as const) {
-      const c = readFileSync(p, 'utf-8');
+      const c = norm(readFileSync(p, 'utf-8'));
       for (const h of hs) {
         const block = extractSection(c, h);
         expect(block.length, `${h} 切片非空`).toBeGreaterThan(0);
@@ -386,25 +389,25 @@ describe('stage-84：feel.md ×4 需求与归档纪律（S1/S2/S3）', () => {
   it('S2 跨 harness 切片逐字一致（zh ×2 节 + en ×2 节）', () => {
     const pairs: Array<[string[], string]> = [[FEEL_ZH, H_REQ_ZH], [FEEL_ZH, H_ARCH_ZH], [FEEL_EN, H_REQ_EN], [FEEL_EN, H_ARCH_EN]];
     for (const [files, h] of pairs) {
-      const oc = extractSection(readFileSync(files[0], 'utf-8'), h);
-      const cc = extractSection(readFileSync(files[1], 'utf-8'), h);
+      const oc = extractSection(norm(readFileSync(files[0], 'utf-8')), h);
+      const cc = extractSection(norm(readFileSync(files[1], 'utf-8')), h);
       expect(oc.length, `${h} opencode 切片非空`).toBeGreaterThan(0);
       expect(cc.length, `${h} claude 切片非空`).toBeGreaterThan(0);
       expect(cc, `${h} 跨 harness 逐字一致`).toBe(oc);
     }
   });
   it('S3 opencode 零回归 + 阴性（8 切片）', () => {
-    const ocZh = readFileSync(FEEL_ZH[0], 'utf-8');
+    const ocZh = norm(readFileSync(FEEL_ZH[0], 'utf-8'));
     for (const s of ['#### 工作流模式（workflow_mode）', '术语消歧', '工作流快线', '自动推进决策纪律', '## 小改 vs 大规模规划的阈值']) {
       expect(ocZh, `零回归缺 ${s}`).toContain(s);
     }
-    const ocEn = readFileSync(FEEL_EN[0], 'utf-8');
+    const ocEn = norm(readFileSync(FEEL_EN[0], 'utf-8'));
     for (const s of ['#### Workflow Mode (workflow_mode)', 'Terminology disambiguation', 'Auto-Advance Decision Rules', '## Threshold for Small Changes vs. Large-Scale Planning']) {
       expect(ocEn, `零回归缺 ${s}`).toContain(s);
     }
     for (const [files, hs] of [[FEEL_ZH, [H_REQ_ZH, H_ARCH_ZH]], [FEEL_EN, [H_REQ_EN, H_ARCH_EN]]] as const) {
       for (const p of files) {
-        const c = readFileSync(p, 'utf-8');
+        const c = norm(readFileSync(p, 'utf-8'));
         for (const h of hs) {
           const block = extractSection(c, h);
           for (const s of NEG) expect(block, `${p}/${h} 含禁用串 ${s}`).not.toContain(s);
@@ -437,7 +440,7 @@ describe('stage-84：openfeel-planner.md ×4 需求感知（S1/S2/S3）', () => 
   it('S1 zh ×2 / en ×2：节标题齐备 + 逐字串全命中', () => {
     for (const [files, h, needles] of [[PL_ZH, H_ZH, ZH], [PL_EN, H_EN, EN]] as const) {
       for (const p of files) {
-        const c = readFileSync(p, 'utf-8');
+        const c = norm(readFileSync(p, 'utf-8'));
         expect(c, `${p} 缺 ${h}`).toContain(h);
         for (const s of needles) expect(c, `${p} 缺 ${s}`).toContain(s);
       }
@@ -445,24 +448,24 @@ describe('stage-84：openfeel-planner.md ×4 需求感知（S1/S2/S3）', () => 
   });
   it('S2 跨 harness 切片逐字一致（zh / en 各 1 节）', () => {
     for (const [files, h] of [[PL_ZH, H_ZH], [PL_EN, H_EN]] as const) {
-      const oc = extractSection(readFileSync(files[0], 'utf-8'), h);
-      const cc = extractSection(readFileSync(files[1], 'utf-8'), h);
+      const oc = extractSection(norm(readFileSync(files[0], 'utf-8')), h);
+      const cc = extractSection(norm(readFileSync(files[1], 'utf-8')), h);
       expect(oc.length, `${h} 切片非空`).toBeGreaterThan(0);
       expect(cc, `${h} 跨 harness 逐字一致`).toBe(oc);
     }
   });
   it('S3 opencode 零回归 + 阴性', () => {
-    const ocZh = readFileSync(PL_ZH[0], 'utf-8');
+    const ocZh = norm(readFileSync(PL_ZH[0], 'utf-8'));
     for (const s of ['## 工作流模式感知（fast 快线）', '产出经 openfeel-reviewer 审查后方可进入 openfeel-schemer 阶段']) {
       expect(ocZh, `零回归缺 ${s}`).toContain(s);
     }
-    const ocEn = readFileSync(PL_EN[0], 'utf-8');
+    const ocEn = norm(readFileSync(PL_EN[0], 'utf-8'));
     for (const s of ['## Workflow Mode Awareness (fast)', 'Outputs must pass openfeel-reviewer review before entering the openfeel-schemer phase']) {
       expect(ocEn, `零回归缺 ${s}`).toContain(s);
     }
     for (const [files, h] of [[PL_ZH, H_ZH], [PL_EN, H_EN]] as const) {
       for (const p of files) {
-        const block = extractSection(readFileSync(p, 'utf-8'), h);
+        const block = extractSection(norm(readFileSync(p, 'utf-8')), h);
         expect(block.length, `${p} 切片非空`).toBeGreaterThan(0);
         expect(block, `${p} 裸主语 Feel`).not.toContain('Feel');
         expect(block, `${p} 裸主语 主会话`).not.toContain('主会话');

@@ -65,7 +65,7 @@ openfeel flow status
 > 与 opencode 适配器**并存**，**默认不启用**（须显式 `--tools claude`）。
 
 - **启用**：`openfeel setup --tools claude`（或 `--tools opencode,claude` 双 harness）。
-- **部署资产到 `~/.claude/`**：`CLAUDE.md`（全局约束，受管区三态，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**17 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，**用户既有键逐字保留**）。
+- **部署资产到 `~/.claude/`**：`CLAUDE.md`（全局约束，受管区三态，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**18 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，**用户既有键逐字保留**）。
 - **升级**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；**首次创建 `~/.claude/{agents,skills}` 后须重启会话或 `/reload-skills`** 使新 skill/agent 生效；`CLAUDE.md` 于**下次会话**生效。仅 `npm i -g` 不刷新全局资产。
 - **默认零触**：不带 `--tools` 时 `~/.claude/` **零变化**。
 
@@ -79,6 +79,12 @@ openfeel flow status
 - **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
 
 升级迁移提示见 [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)「工作流模式（full / fast）与自动推进」小节与 [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`。
+
+## v1.2.0 新增能力
+
+- **flow.json 版本分片归档（`flow archive`）**：三个入口——`openfeel flow archive <version>`（执行归档；判据门 = 该版本全部阶段 done 且无 blocking open REV，**不设 `--force`**）、`openfeel flow archive list`、`openfeel flow archive show <version> [--json]`；归档落点 `.openfeel/flow-archive/{version}.json`。**与顶层 `openfeel archive <stage>`（阶段摘要归档）区分**；常规命令不读归档。
+- **需求流转（`openfeel req`）**：10 子命令（`add` / `list` / `show` / `claim` / `release` / `set` / `link` / `advance` / `board` / `next`）+ 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；需求进度由关联阶段 phase 聚合（**全部关联阶段 done 时自动收口**）；认领协议 = `owner` + `claimed_at`（无 TTL）。用法权威源见 `openfeel-req` skill。
+- **兼容**：旧 flow.json（无 `requirements` / `archived_versions`）零报错，升级**无需迁移**。
 
 ## v1.1.2 新增能力
 
@@ -103,7 +109,9 @@ openfeel flow status
 | `openfeel lint` | 质量门禁检查（i18n 键对称性 / kb 过期引用；**发现问题非 0 退出**，无逃生阀） |
 | `openfeel config` | 配置管理（get / set[**全量 `defaults.*`**] / effective / get-lang / list-projects，支持 --global） |
 | `openfeel knowledge` | 知识库管理（list / add / search / index / dedup） |
-| `openfeel archive <stage>` | 阶段归档，汇总产出、生成摘要、提取知识 |
+| `openfeel archive <stage>` | 阶段归档，汇总产出、生成摘要、提取知识（**阶段摘要归档**——与 `flow archive` 版本分片归档区分） |
+| `openfeel flow archive` | flow.json 版本分片归档（`<version>` / `list` / `show`；与 `openfeel archive` 阶段摘要归档区分） |
+| `openfeel req` | 需求流转（add / list / show / claim / release / set / link / advance / board / next） |
 | `openfeel setup` | 纯全局部署（全局 AGENTS.md + agent + skill + 平台适配器配置），不建项目 `.openfeel/`；`--tools <list>` 显式启用 Claude Code 适配器 |
 | `openfeel migrate` | 存量旧布局项目迁移（检测 / 备份 / 回滚） |
 | `openfeel model` | 三层级 agent 模型配置（set / get / list，`--scope`） |
@@ -136,7 +144,7 @@ Feel 是整个流程的调度中心，负责接收用户意图并调度下游 Ag
 
 ### 全局部署与工作区分层
 
-框架资产（9 agent / 17 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc`）经 `openfeel setup` 部署到 `~/.config/opencode/`；**仓库自身不保留项目级 `.opencode/agents|skills`**（stage-55 起）。
+框架资产（9 agent / 18 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc`）经 `openfeel setup` 部署到 `~/.config/opencode/`；**仓库自身不保留项目级 `.opencode/agents|skills`**（stage-55 起）。
 
 工作区状态分两层：`current.md`（团队文件，跨用户整体进度，≤5 条 + 自动归档）与 `dev_last.md`（本地索引 + 主题目录，跨会话恢复）。框架资产部署覆盖前**自动备份**至 `~/.openfeel/backup/{ts}/`。
 
@@ -193,14 +201,14 @@ Core 层
   └── workspace/ — 目录结构和知识库
 ```
 
-> **框架资产全局部署**：9 agent / 17 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc` 经 `openfeel setup` 部署到 `~/.config/opencode/`；仓库自身不保留项目级 `.opencode/agents|skills`（stage-55 起）。
+> **框架资产全局部署**：9 agent / 18 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc` 经 `openfeel setup` 部署到 `~/.config/opencode/`；仓库自身不保留项目级 `.opencode/agents|skills`（stage-55 起）。
 
 ## 开发
 
 ```bash
 npm install        # 安装依赖
 npm run build      # 编译 TypeScript
-npm test           # 运行测试（1306 用例 / 67 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
+npm test           # 运行测试（1557 用例 / 70 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
 ```
 
 ## 致谢

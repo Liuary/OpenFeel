@@ -1,0 +1,287 @@
+# stage-85 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# revision: 2026-10-13 openfeel-schemer 初版（= 计划审查 REV-85-001~008 修订后定稿映射见 plan_rev_mapping）
+# revision: 2026-10-13 openfeel-schemer 方案审查 REV-85-010~012 修订（op-001 produces 补登 `.openfeel/manual/core/setup.md`；invariants 陈旧计数口径同步〔文档侧 17→18 处〕；S-85-2/S-85-3/S-85-8 补录；新增 scheme_rev_mapping）
+# revision: 2026-10-13 openfeel-schemer 方案复审查 REV-85-013~014 修订（REV-85-013：陈旧计数文档侧必改 18→**20**〔补 `manual/core/setup.md:33`/`:37` 表格式计数——宽模式 `\b17\b` 专属〕+ 自测 1.8 增表格式复核双跑；REV-85-014：非扫描历史特征 2→**4**〔补 `core/setup.md:91`/`:92` + `docs/claude-code-adapter-plan.md:271`〕、历史行保留 4→5〔补 `:92`〕、新增枚举范围界定；op-001 notes / invariants / S-85-2 口径同步；新增 scheme_rev_mapping 条目）
+# revision: 2026-10-13 openfeel-executor 执行期落实方案审查 REV-85-015~016（REV-85-015：op-001 §1.7 枚举计数口径订正为「标准正则 30 = 必改 18 + 保留 12；表格式 2 → 必改 20；保留全集 13；全集 37」+ 自测 1.8 / 报告 ③ 同步 + 本文件 notes/invariants/S-85-2 三处口径同步；REV-85-016：`claude-code-adapter-plan.md:271` 改标「宽模式可见」归入宽模式差集）
+#   说明①：op 数定稿 = **3**（对齐 v1.2.0/deps.yaml `est_ops: 3`；拆分 = op-001 文档多载体与 manual（T1+T2）/ op-002 承接 REV 处置与根因固化（T6+T7①）/ op-003 版本全链路收口与终局验收门禁（T3+T4+T5+T7②）——**op-003 为最终 op**（T3 并入最终 op，REV-85-006；版本号修改后至阶段结束不再引入代码改动）。)
+#   说明②：凡改 `src/core/templates-data/**` 源（cli-usage / feel / openfeel-req / ADAPTER）须**同批** `npm run build` 重生成双生成物（kb troubleshooting #改 templates-data 源须同批重生成的「双生成物」）——op-001 / op-002 / op-003 各在退出前 build + `npm test` 全量绿（中间态闭绿；「测试未通过不得声称任务完成」）。
+#   说明③：i18n 基线 **911**（stage-83 交付后实测「✅ 911 键一致」；stage-84/85 无新键）；本阶段 `lint i18n` 门禁 = 911 实测登记。
+#   说明④：`git status --porcelain src/` 门禁口径（S-85-4）= 「build ×2 幂等（两次 build 间零新漂移）+ 变更行 ⊆ 本阶段 produces 清单」双条件（本阶段**有意**变更源码——stage-84 S-84-4 同口径；「空」口径在源侧不可达，直搬会伪失败）。
+#   说明⑤：D 类「残留=0」白名单化（kb #文档侧历史标记纳入版本收口禁改白名单）：**file:line + 内容特征双锚枚举，禁广谱 sed**；op-001 节序整理致 ②③ 行号漂移——**最终行号以 op-003 执行时实测重登记**。
+
+version: "1.1"
+stage: v1.2.0-stage-85
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-13"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.0-stage-84
+    type: hard
+    status: done
+    reason: "事实基线：feel.md×4 需求/归档纪律 + openfeel-req skill（`node bin/openfeel.js` 计数 1 / 「本仓自举」加注）+ cli-usage 六处修订（快照 v1.2.0 / `:52` 计数 18）+ skills **18**（7 字面量 + 5 派生总数 + `expectedSkills` 白名单）+ 双生成物键集各 18 + 静态断言 S1~S5（切片等值口径）。**承接来源**：9 条非阻塞 pending（REV-84-007~015）+ 移交清单（陈旧计数 setup/update/ADAPTER + `.openfeel/manual/**`）。本阶段零改动 `src/core/req/**` / `src/commands/**`。"
+  - upstream: v1.2.0-stage-78~80
+    type: hard
+    status: done
+    reason: "归档命令面/引擎冻结（`flow archive <version>` / `list` / `show` + 判据门 + 两步事务 + `archived_versions` + health 归档一致性 + 跨版本 deps）——文档表述与验收对象；本仓已迁移 9 组（stage-80 自举；本阶段仅复核）。"
+  - upstream: v1.2.0-stage-81~83
+    type: hard
+    status: done
+    reason: "需求引擎/命令面/聚合冻结（10 子命令 / 7 状态 / `--json` 契约 / 退出码 0/1/2 / 聚合投影与对称回写 / `AUTO_DONE_PRECONDITION` {scheduled, in_progress}）——文档表述与 REV-84-015 订正口径依据；本阶段零改动其源码。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；不直写 flow.json（注册经 `openfeel plan scheme register` CLI）；提交精确 git add（禁 -A，kb #方案层 ops 产出的审计链完整性）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "文档多载体与 manual（README×3 / docs×2 / manual 核对补正 + 真新增 cli/req.md）"
+    produces:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - .openfeel/manual/cli/req.md
+      - .openfeel/manual/index.md
+      - .openfeel/manual/core/flow-archive.md
+      - .openfeel/manual/core/req.md
+      - .openfeel/manual/cli/commands.md
+      - .openfeel/manual/core/update.md
+      - .openfeel/manual/core/template-loader.md
+      - .openfeel/manual/core/init.md
+      - .openfeel/manual/core/build.md
+      - .openfeel/manual/core/setup.md
+      - .openfeel/manual/cli/setup.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .openfeel/tmp/stage-85-doc-report.md
+    deps: []
+    notes: "T1（README×3 **按三载体差异**：版本横幅**仅 `README.md:11`**——REV-85-008；zh/en = 能力小节 + `:203` 测试数行实测 + 命令表补 `flow archive`/`req` 行；GETTING_STARTED 快照 + 5.5/5.6 + 升级说明；commands 快照 + flow archive 三子命令节 + `## req` 节 + 尾注）+ T2（manual 二分：**已在位 → 核对/最小补正**〔core/flow-archive / core/req / cli/commands〕+ **真新增 `cli/req.md`**〔cli 4→5〕+ index.md 补登 + **REV-83-016 标注**；**禁新建 `core/requirement.md`**——REV-85-003）+ T6④ 节序降序（cli-usage：v1.2.0 → v1.1.7 → v1.1.6；REV-84-013）+ 陈旧计数文档侧复核（**双路全枚举（REV-85-015）**：标准正则 **30** = 必改 **18** + 保留 **12**〔历史行 4 + 历史蓝本 8〕；表格式 **2**（宽模式专属，并入必改 → **20**）；宽模式专属差集 = `manual/core/setup.md:33`/`:37`（必改）+ `:92`（历史）+ `README.zh-CN.md:90`/`README.en.md:90`/`docs/claude-code-adapter-plan.md:271`（宽模式可见）；非扫描历史特征 **4**〔README zh/en `:90` + `core/setup.md:91` + `claude-code-adapter-plan.md:271`〕；全集 **37**，宽模式重扫零未判类——**S-85-2**，REV-85-010 + REV-85-013/014/015）。build 同批 + `npm test` 全量绿。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "承接 REV 处置与根因固化（T6+T7①；陈旧计数 src 侧 / 断言稳定化 / 前置集订正 / kb 子条款）"
+    produces:
+      - src/core/setup.ts
+      - src/core/update.ts
+      - src/core/templates-data/opencode/ADAPTER.zh-CN.md
+      - src/core/templates-data/opencode/ADAPTER.en.md
+      - src/core/templates-data/skills/openfeel-req/SKILL.md
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/template-loader.ts
+      - test/core/templates.test.ts
+      - .openfeel/kb/patterns.md
+      - .openfeel/tmp/stage-85-closeout-report.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "同工作区串行（固定顺序用于 diff 归因与 build 累积；REV-83-016 标注落点由 op-001 完成，本 op 核验兜底）"
+    notes: "T6：① 陈旧计数 src 侧（setup.ts ×4 + update.ts 手写区 ×2 `:1981`/`:1998`，**AUTO-GENERATED 段 `:127-:1680` 外**；17→18）+ `ADAPTER.{zh-CN,en}.md` 死资产订正（:3 计数 + :9 列表补 `openfeel-req` 字母序位；**核验：无测试断言引用**，build.js 步骤 7 自校验兜底）；② REV-84-011 断言稳定化（templates.test.ts feel+planner 两 describe 读取套 `norm()`，先例 `templates-migration.test.ts:24`）；③ REV-84-012 示例清单（`SKILLS` 数组纳入 `openfeel-req`——**S-85-3 取「纳入」**）；④ REV-84-013 节序（归 op-001，本 op 核验）；⑤ REV-84-015 前置集订正（`openfeel-req/SKILL.md:32` + feel.md×4——**同语言跨 harness 逐字一致**，S2 切片等值约束；manual/core/req.md 实测已含 → 零改写）；⑥ REV-83-016 标注核验 + 行为修复**转后续**登记；⑦ 复核销账（REV-84-007/008/009/010 + REV-83-015 实测留痕）。T7①：kb/patterns.md「全量审查的发现分类与流转裁定」追加子条款「跨阶段承接 REV 与处置表」（复发第 6 次固化）。build 同批 + `npm test` 全量绿 + **承接表 20 条逐条核验**报告落盘。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "版本 1.2.0 全链路收口与终局验收门禁（T3+T4+T5+T7②；最终 op）"
+    produces:
+      - CHANGELOG.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .openfeel/roadmap/v1.2.0.md
+      - .openfeel/plan/v1/v1.2.0/plan.md
+      - .openfeel/tmp/stage-85-acceptance.mjs
+      - .openfeel/tmp/stage-85-final-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "版本号修改与最终门禁置后（最终 op 纪律）；D 类白名单重登记消费 op-001/002 后的 build 基线"
+      - op: op-001
+        type: hard
+        reason: "C 类传播复核消费其文档落文"
+    notes: "T3：CHANGELOG `[1.2.0]`（Added/Changed〔无默认行为变更〕/兼容说明/Documentation）+ **A 类 6 载体 / 8 文件 / 10 处**（`package.json:3` / `package-lock.json:3+:9`〔**禁 npm install**；`:2905` 依赖版本 D 类禁改〕/ `.openfeel/config.yaml:7`〔单行〕/ `config.ts:435+:492` / agents-md×2 `:134` / constraint×2 `:137`）+ **B 类** build 重生成双生成物（agents-md/constraint 副本归零）+ C 类传播复核 + **D 类白名单（21 处 = 12+3+6，file:line 内容特征双锚，最终行号重登记）** + E 类无载体登记。T4：**双主题端到端验收 §十一 ×11**（隔离脚本 `.openfeel/tmp/stage-85-acceptance.mjs`：归档实跑/跨版本 deps/需求全生命周期/认领并发/向后兼容/正交性；本仓复核：9 组归档 / 常规路径零触碰 / 接受集逐字不变；⑩ Agent 实机可选）+ 回填（roadmap 状态「已归档」+ M40 done + stage-85 行命名 `core/req.md`；大计划 `core/requirement` → `core/req` + **T7② 纪律行**）。T5 门禁：build ×2 幂等（sha1 + S2===S1）/ 变更行 ⊆ produces / `npm test` 0 skipped 0 failed / `tsc` 0 / `lint i18n` 911 实测登记 / `lint kb` 0 / `--version` = 1.2.0 / A 类残留 = 0（白名单内）。**本 op 为阶段最终 op——版本修改后零代码改动**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 执行顺序（严格串行）：op-001 → op-002 → op-003
+# 注：op-003 为阶段**最终 op**（T3 并入——REV-85-006）；其后由 openfeel-reviewer 审查、openfeel-feel-tester 验收、openfeel-archiver 归档。
+
+# 不变量（供 executor 执行与 reviewer 审查对照）
+invariants:
+  - "行为零变更：本阶段不改命令行为 / 控制流 / 契约；仅文档 + 版本载体 + 注释/断言稳定化（承接处置禁改控制流/契约——R-85-5）。"
+  - "A 类残留 = 0：6 类载体 / 8 文件 / 10 处 1.1.7 → 1.2.0；`node bin/openfeel.js --version` == `package.json.version` == 1.2.0（CI 版本守卫同口径）。"
+  - "B 类双生成物：`template-loader.ts` + `update.ts` 仅经 `npm run build` 重生成（禁手改）；build ×2 幂等（sha1 前后一致 + S2 === S1）。"
+  - "白名单化残留口径：「残留=0」按 **file:line 枚举 + 内容特征双锚** 白名单判定（**禁广谱 sed**）；扫描范围（`src/` 全量）与白名单**同集合口径**（REV-84-008 教训）；op-003 登记**最终行号**（R-85-6）。"
+  - "D 类内容特征全集（= 允许残留，21 处）：① 示例/注释 12；② cli-usage 权威源历史标记 3；③ B 类生成物中 ② 的副本 6。集合外残留一律研判/回退。"
+  - "manual 命名唯一：`core/req.md` 为需求模块文档唯一名；**禁新建 `core/requirement.md`**（REV-85-003）；`cli/req.md` 为命令面深入参考（与 `cli/commands.md` req 节不重复）。"
+  - "承接零灭失：承接表 20 条（REV-84-006~015 ×10 + REV-83-015~018 ×4 + REV-83-009~014 销账 ×6）逐条去向可核（处置 / 转后续〔写明接手〕/ 销账）；op-002 报告留痕，归档轮据此销账。"
+  - "版本收口 op 为最终 op：op-003 版本号修改后至阶段结束零代码改动（REV-85-006）。"
+  - "文档-实现一致：文档快照以 `openfeel <cmd> --help` 实测为准；「v1.1.x 起 / since」等历史标记保留（D 类）；README 五面核对（测试数/命令表/架构图/部署口径/旧版本号零残留）。"
+  - "feel.md 对称：同语言跨 harness 新句**逐字一致**（stage-84 S2 切片等值断言不破坏——op-002 前置集订正硬约束）。"
+  - "陈旧计数（**双路扫描口径**）：必改 = 「当前行为描述」类 17→18 = 文档侧 **20** 处〔标准扫描 18〔含 `manual/core/setup.md:7`——REV-85-010〕+ **表格式计数 2**〔`setup.md:33`（`| Skill 定义 | 17 |`）/ `:37`（`| **Claude skills** | 17 |`）——原正则不可见、宽模式 `\b17\b` 捕获；REV-85-013〕+ src 侧 6 处 + ADAPTER×2）；「历史行/历史蓝本」保留（标准正则命中 **12** = 历史行 **4**〔update.md:82 / template-loader.md:42 / build.md:61 / **setup.md:93**〔REV-85-010〕〕+ 历史蓝本 8〔`docs/claude-code-adapter-plan.md:32/34/40/41/103/114/203/230`〕；宽模式含 `setup.md:92`〔v1.1.5 变更行——REV-85-014〕→ 保留全集 **13**）；非扫描历史特征 **4**〔README zh/en `:90` ×2 + `manual/core/setup.md:91`（v1.1.1 行「16 skill」）+ `docs/claude-code-adapter-plan.md:271`（`skills/` 17 目录``，**宽模式可见**——REV-85-016）——REV-85-014〕；枚举范围界定 = 扫描集〔README*/docs*/manual；不含 docs/phase-*〕+ 宽模式差集 = setup.md:33/37（必改）/92（历史）+ README zh/en:90 + claude-code-adapter-plan.md:271（+ 与 skill 计数无关者）；全集 = 必改 20 + 保留 13 + 非扫描 4 = **37**；kb 陈旧计数转归档轮（清单显式登记 = op-002 §2.10 ⑥ / op-003 §3.10 ⑦——REV-85-012）。"
+  - "测试隔离：验收脚本全程 tmpDir + 隔离 HOME；**严禁**触碰真实 `.openfeel/flow.json` / `.openfeel/requirements/`；核验 flow.json 增量时排除 `meta.revision`/`meta.updated`。"
+  - "中间态闭绿：op-001 / op-002 / op-003 各在退出前 build + `npm test` 全量 0 skipped / 0 failed（build 与源改动同批）。"
+  - "不改面：不改 phase 枚举 / 转移表 / `pipeline.yaml` / `build.js` / CI / i18n 键；不新增第三方依赖；不 npm publish / 不 git push；不直写 flow.json；不推进 phase。"
+
+# 方案期设计裁定（定稿；供执行与审查消费）
+scheme_decisions:
+  - id: "S-85-1"
+    title: "op 拆分与最终 op 定稿：op-001（T1+T2）/ op-002（T6+T7①）/ op-003（T3+T4+T5+T7②）"
+    decision: "3 op 严格串行；**T3 并入 op-003（最终 op）**——版本号修改与最终门禁同 op，其后零代码改动（REV-85-006 二择一定稿）。"
+    rationale: "plan §五 拆分建议 + kb #文档侧历史标记纳入版本收口禁改白名单（收口 op 为最终 op）。"
+  - id: "S-85-2"
+    title: "陈旧计数文档侧复核纳入 op-001（README/docs/manual 同面）"
+    decision: "stage-84 移交「`.openfeel/manual/**` 陈旧计数」基础上，将 README×3 / docs×2 的同类陈旧 17→18 一并纳入 T1 五面核对；分类纪律 = **当前行为描述订正 / 历史行·历史蓝本保留**；逐处登记报告。**双路全枚举（REV-85-010 + REV-85-013/014 + REV-85-015/016）**：标准正则 **30** = 必改 **18**（标准 18 含 `manual/core/setup.md:7`）+ 保留 **12**；表格式 **2**（`core/setup.md:33`/`:37`——宽模式 `\b17\b` 专属，并入必改 → **20**）；保留全集 **13**〔历史行 5 = 标准 4 + `core/setup.md:92`〔宽模式可见〕；历史蓝本 8 `docs/claude-code-adapter-plan.md`〕；非扫描历史特征 **4**（README zh/en `:90` ×2 + `core/setup.md:91` + `docs/claude-code-adapter-plan.md:271`〔宽模式可见，REV-85-016〕——REV-85-014）；全集 = 必改 20 + 保留 13 + 非扫描 4 = **37**；词界宽扫防表格式/裸数字漏网。src 侧（setup/update/ADAPTER）归 op-002。"
+    rationale: "stage-84 deps 移交清单（「stage-85 统一订正/复核」）+ T1「README 五面核对通过（部署口径以实测为准）」+ index.md:76 已写「当前 18」形成内部不一致（同类先例：REV-84-005）。"
+  - id: "S-85-3"
+    title: "REV-84-012 二择一定稿：取「纳入 SKILLS 数组」"
+    decision: "`templates.test.ts:12` `SKILLS` 数组追加 `'openfeel-req'`（5→6 项）；不取「按 S4 销账」。**＋ T53 标签同步 5 skill→6 skill（REV-85-011 二择一定稿取「同步」；`templates.test.ts:15` 仅计数词 5→6，T53 编号为历史代号不改）**。"
+    rationale: "实测 openfeel-req/SKILL.md 满足 T53 三断言（`node bin/openfeel.js` 计数 = 1 / 含「本仓自举」/ 含 `` `openfeel `` 主口径）；纳入使计数覆盖更强（与 S4 直读段互补），成本一行。"
+  - id: "S-85-4"
+    title: "`git status --porcelain src/` 门禁口径 = 「build ×2 幂等 + 变更行 ⊆ produces」双条件"
+    decision: "本阶段**有意**变更源码（文档源/模板/版本载体/测试），「空」口径不可达——门禁改为：① build 第②次前后 sha1 一致且快照 S2 === S1；② 全部变更行 ⊆ 本阶段 produces 清单。"
+    rationale: "stage-84 S-84-4 同口径先例；保持门禁强度（幂等 + 零意外）且不伪失败。"
+  - id: "S-85-5"
+    title: "REV-84-011 norm() 落点 = feel + planner 两 describe 的读取套归一"
+    decision: "templates.test.ts feel（:327-415）与 planner（:417-473）两 describe 内全部 `readFileSync` 结果套 `norm()`（与 `templates-migration.test.ts:24` 同实现）；S4/S5 单文件读取（无跨文件切片比较）保持原样。"
+    rationale: "REV-84-011 根因（CRLF 伪失败）发生在切片比较；最小充分落点；与同族先例一致。"
+  - id: "S-85-6"
+    title: "REV-84-015 前置集订正句定稿（三处；feel 同语言跨 harness 逐字一致）"
+    decision: "openfeel-req/SKILL.md:32 与 feel.md×4 按 op-002 步骤 2.5 的「原句 → 改后句」逐字执行；feel.md 的 zh ×2 / en ×2 各组新句**逐字相同**（保 stage-84 S2 切片等值）；manual/core/req.md 实测已含 → 零改写。"
+    rationale: "REV-84-015 建议（补前置集限定）；同语言跨 harness 逐字一致为 stage-84 对称纪律的硬约束（kb #Agent 模板模式感知落法）。"
+  - id: "S-85-7"
+    title: "ADAPTER 死资产**执行订正**（非「登记保留」）"
+    decision: "订正 ADAPTER.{zh-CN,en}.md（:3 计数 → 18；:9 列表补 `openfeel-req`）。方案期核验：无测试/门禁断言引用其内容（templates.test.ts:80 仅断言仓库根**不存在** `.opencode/ADAPTER.md`）；build.js 步骤 7 注入 + 自校验（source==generated）→ 订正后 build 保持一致；运行时 `loadOpencodeConfigTemplate` 零调用方。执行中若发现引用冲突 → 回落「登记保留（零动作）」并报告。"
+    rationale: "plan T6① 条件句（「若核验其被门禁/断言引用则改登记保留」）——核验结果 = 未被断言引用；订正消除与 18 skill 的事实矛盾，成本 = 4 行 + build 自校验兜底。"
+  - id: "S-85-8"
+    title: "KB 陈旧计数与 kb 索引同步归归档轮"
+    decision: "kb/** 中的陈旧计数（如有）不在本阶段订正——转归档轮（archiver）；kb 索引（`kb/index.md`）与公共日志同步亦归归档轮。op-002 仅写 `kb/patterns.md` T7① 子条款（本阶段交付物）。**kb 当前行为计数待归档轮同步清单（file:line）**由 op-002 §2.10 ⑥ / op-003 §3.10 ⑦ 报告显式登记（**REV-85-012**）：订正 = `kb/architecture.md:723` / `kb/index.md:66` / `kb/index.md:71`（当前行为 → 18），余（`architecture.md:382/387/411/633`、`index.md:16/212/334/358/367/371`、`troubleshooting.md:1208`、`patterns.md:3112`）为历史记录保留。"
+    rationale: "kb patterns #kb 条目与规则升级同步时点模式（kb 同步在 archiving 阶段执行）；避免 executor 越界写 kb 索引。"
+  - id: "S-85-9"
+    title: "T7② 大计划纪律行 = op-003 回填同批（T4）写入"
+    decision: "T7② 纪律行随「大计划回填」在 op-003 步骤 3.8 写入（§五附注区）；op-002 仅落 T7①（kb/patterns.md）。"
+    rationale: "plan T7② 原文「大计划：T4 回填时在 §五附注写入同条款」；回填归 op-003。"
+  - id: "S-85-10"
+    title: "A 类 edit 纪律：内容特征 + 基线行号双锚；config.yaml 单行；package-lock 纯文本"
+    decision: "10 处逐处 edit（明细见 op-003 步骤 3.2）；`.openfeel/config.yaml` 单行 edit（禁整文件重写）；`package-lock.json` root 两处纯文本 edit（**禁 `npm install`/`npm ci`**；`:2905` 依赖版本零触碰）；改后立即 `rg` 复核零残留。"
+    rationale: "kb #版本号全链路收口清单模式（A 类；lock 禁重生成）；plan §六 清单。"
+  - id: "S-85-11"
+    title: "验收执行方式：隔离脚本 + 本仓复核二分（⑩ 实机可选）"
+    decision: "大计划 §十一 ×11 中：②④⑥⑦⑧⑨ 由 `.openfeel/tmp/stage-85-acceptance.mjs`（隔离 HOME + tmp 项目，复用 stage-84-verify.mjs / op-002-verify.mjs 先例）覆盖；③⑤⑪ 本仓复核；① = T5 门禁；⑩ Agent 实机可选（环境受限如实标注「未实机」）。承接表 20 条核验复核引用 op-002 报告。"
+    rationale: "kb #隔离 HOME 实测法 + #Claude Code 实机验证方法（受限环境按保守默认留痕如实标注）；验收记录落 `.openfeel/tmp/`（非本计划产物）。"
+  - id: "S-85-12"
+    title: "D 类白名单「同集合口径」执行法：全量重扫 → 逐命中判类 → 最终行号重登记"
+    decision: 'op-003 执行 `rg -n "1.1.7" src/`（src/ 全量）→ 逐命中对照 `whitelist_d_class` 内容特征 → 登记最终 file:line；期望残留 = 21 处；集合外命中逐条研判（新增 → revert 或偏差登记）。'
+    rationale: "REV-84-008 教训（扫描范围与白名单须同集合）；R-85-6（行号漂移按内容特征复核）。"
+  - id: "S-85-13"
+    title: "回填命名订正范围：roadmap `:67` + 大计划 `:183` 的 `requirement`/`core/requirement` → `core/req.md`/`core/req`"
+    decision: "两处命名残留随 T4 回填订正（消除与 REV-85-003「命名唯一」纪律的矛盾）；其余历史正文零触碰。"
+    rationale: "REV-85-003 命名纪律 + T4「阶段划分表 stage-85 行 manual 命名同步 `core/req.md`」；大计划同款残留属同一事实面。"
+
+# D 类禁改白名单（内容特征 + 基线行号双锚；基线 HEAD 9b8d839；**最终行号以 op-003 执行时实测重登记**——① 固定；②③ 经 op-001 节序整理后漂移）
+whitelist_d_class:
+  examples_comments_12:            # ① 示例/注释（历史批注；禁改）
+    - "src/core/i18n-data/zh-CN.ts:119,680,686（版本格式示例 / help 文案示例）"
+    - "src/core/i18n-data/en.ts:109,647,653（同上）"
+    - "src/core/flow-archive/archive-file.ts:25（注释示例）"
+    - "src/core/flow-archive/grouping.ts:25,34（注释示例）"
+    - "src/core/flow-archive/archive-ops.ts:57（注释示例）"
+    - "src/commands/flow.ts:1642,1817（help 参数示例）"
+  skill_historical_marks_3:        # ② cli-usage 权威源历史标记（禁改；op-001 节序整理后行号漂移）
+    - "src/core/templates-data/skills/openfeel-cli-usage/SKILL.md:3（description 历代能力摘要）"
+    - "src/core/templates-data/skills/openfeel-cli-usage/SKILL.md:55（『## v1.1.7 新增能力』节标题）"
+    - "src/core/templates-data/skills/openfeel-cli-usage/SKILL.md:99（『v1.1.7 追加』历史注记）"
+  generated_copies_6:              # ③ ②的 B 类生成物副本（禁手改；build 同步；行号同样漂移）
+    - "src/core/update.ts:422,474,518（基线）"
+    - "src/core/template-loader.ts:7114,7166,7210（基线）"
+  not_d_class:
+    - "package-lock.json:2905（brace-expansion ^1.1.7——依赖版本，禁改，不属 src/ 扫描集合）"
+
+# A 类手工载体（10 处；op-003 逐处 edit → 残留归零）
+version_carriers_a_class:
+  - "package.json:3"
+  - "package-lock.json:3"
+  - "package-lock.json:9"
+  - ".openfeel/config.yaml:7（单行 edit）"
+  - "src/core/config.ts:435"
+  - "src/core/config.ts:492"
+  - "src/core/templates-data/agents-md/zh-CN.md:134"
+  - "src/core/templates-data/agents-md/en.md:134"
+  - "src/core/templates-data/claude/constraint/zh-CN.md:137"
+  - "src/core/templates-data/claude/constraint/en.md:137"
+
+# 承接上游 pending REV（20 条全集；来源 stage-85/plan.md §三「承接 REV 与处置表」+ REV-84.md:295-303；逐条核验归 op-002 报告，销账随归档轮）
+inherited_pending_revs:
+  # 表 1：REV-84-006~015（10 条，stage-84 归档收口明写转 stage-85）
+  - "REV-84-006（low）→ **本阶段订正**（update.ts 手写区 :1981/:1998 + setup.ts :3/:57/:106/:120，17→18）——op-002 步骤 2.1。"
+  - "REV-84-007（low）→ **复核销账**（SKILL.md:3 description 实测已含 v1.2.0 摘要）——op-002 步骤 2.7。"
+  - "REV-84-008（low）→ **复核销账** + 口径固化（扫描范围与白名单同集合——deps.yaml whitelist_d_class）——op-002 步骤 2.7 / op-003 步骤 3.5。"
+  - "REV-84-009（low）→ **复核销账**（现行断言串实测不含 `**` 边界；历史 op 不回溯）——op-002 步骤 2.7。"
+  - "REV-84-010（low）→ **复核销账**（planner S1 用例体已落地于 templates.test.ts:437+）——op-002 步骤 2.7。"
+  - "REV-84-011（medium）→ **本阶段处置**：S1~S3 切片比较套 `norm()`（先例 templates-migration.test.ts:24）——op-002 步骤 2.3。"
+  - "REV-84-012（low）→ **本阶段处置**：SKILLS 数组纳入 `openfeel-req`（S-85-3）——op-002 步骤 2.4。"
+  - "REV-84-013（low）→ **本阶段处置**：cli-usage「新增能力」节序降序（与 T1 同批）——op-001 步骤 1.6（op-002 步骤 2.7 核验）。"
+  - "REV-84-014（low）→ **销账 + 转后续**（归档轮已显式记录；「逐 op 报告」流程改进转下版本评估）——op-002 报告登记。"
+  - "REV-84-015（low）→ **本阶段处置**：前置集订正（openfeel-req/SKILL.md:32 + feel.md×4；manual/core/req.md 已含零改写）——op-002 步骤 2.5。"
+  # 表 2：REV-83-015~018（4 条，stage-84 移交 stage-85 收口轮）
+  - "REV-83-015（low）→ **本阶段核对销账**（v1.2.0/deps.yaml invariants 计数口径实测一致）——op-002 步骤 2.7。"
+  - "REV-83-016（medium）→ **本阶段处置（文档成文）+ 行为修复转后续**（manual/core/req.md + cli/commands.md 标注已知边界；「advance 命中 done 按聚合视图无条件重算」转后续版本评估——收口期控制流冻结）——op-001 步骤 1.4 落点 / op-002 步骤 2.6 核验。"
+  - "REV-83-017（low）→ **转后续**（收口期 `src/core/req/**` 冻结；纯一致性、零行为收益）——op-002 报告登记。"
+  - "REV-83-018（low）→ **转后续**（测试断言结构优化；登记保留）——op-002 报告登记。"
+  # 表 3：REV-83-009~014（6 条，销账——stage-84 台账保留〔已落实核验〕）
+  - "REV-83-009（medium）→ **销账**（用户裁定维持前置集 {scheduled, in_progress}；大计划 §三 裁定 H/M 已同步定稿）。"
+  - "REV-83-010（low）→ **销账**（deps.yaml 改 8 + 历史口径注已落实）。"
+  - "REV-83-011（low）→ **销账**（deps.yaml 契约条目同步 + 首参形态定稿已落实）。"
+  - "REV-83-012（low）→ **销账**（历史 op 文档；口径以 deps 为准）。"
+  - "REV-83-013（medium）→ **销账**（reset 接入点实测不在守卫内；kb 记载已落实）。"
+  - "REV-83-014（low）→ **销账**（stage-83 测试闭环已落实）。"
+
+# 计划审查 REV-85-001~008 落实映射（审查轮闭环基线；供方案审查与代码审查对照）
+plan_rev_mapping:
+  - "REV-85-001（high，blocking，已闭合）→ plan §三「承接 REV 与处置表」（20 条三分去向）+ 本文件 inherited_pending_revs + op-002 步骤 2.10 逐条核验。"
+  - "REV-85-002（medium）→ T7：op-002 步骤 2.8（kb/patterns.md 子条款）+ op-003 步骤 3.8（大计划 §五附注纪律行——S-85-9）。"
+  - "REV-85-003（high，blocking，已闭合）→ op-001 步骤 1.4/1.5（manual 二分核对 + **真新增 `cli/req.md`**；禁 `core/requirement.md`）+ S-85-13（回填命名订正）。"
+  - "REV-85-004（medium）→ op-003 步骤 3.5（D 类 file:line 枚举 + 扫描同集合口径）+ 本文件 whitelist_d_class（S-85-12）。"
+  - "REV-85-005（low）→ 计划 §一 已订正实测 24 份（方案期复核：`ls .openfeel/manual/core/*.md | wc -l` = 24）。"
+  - "REV-85-006（medium）→ op 拆分定稿：T3 并入 op-003（最终 op）——S-85-1。"
+  - "REV-85-007（low）→ op-001 步骤 1.6（cli-usage 核对/最小补正 + REV-84-013 节序）。"
+  - "REV-85-008（low）→ op-001 步骤 1.1（三载体差异：版本横幅仅 `README.md:11`，zh/en 无横幅）。"
+
+# 方案审查 REV-85-010~012 落实映射（scheme_review fail→修订基线；供复审查与代码审查对照）
+scheme_rev_mapping:
+  - "REV-85-010（medium，blocking）→ op-001 步骤 1.7 全枚举修订（必改集补 `manual/core/setup.md:7` → **18** 处〔`9 agent + 17 skill` → 18〕；保留集补 `manual/core/setup.md:93` + 历史蓝本 8〔`docs/claude-code-adapter-plan.md:32/34/40/41/103/114/203/230`〕；非扫描历史特征订正 1→2〔README zh/en:90〕）+ op-001 产出文件与本文件 `produces` 补登 `.openfeel/manual/core/setup.md` + invariants 陈旧计数口径同步 + 自测 1.8 / 报告 ③ 同步。"
+  - "REV-85-011（low）→ op-002 步骤 2.4 子条（T53 标签同步 5 skill→6 skill——二择一定稿取「同步」；`templates.test.ts:15`）+ 自测 2.4 同步；S-85-3 补录。"
+  - "REV-85-012（low）→ op-002 步骤 2.10 ⑥ + op-003 步骤 3.10 ⑦（kb 当前行为计数待归档轮同步清单 file:line 显式登记：订正 = `kb/architecture.md:723` / `kb/index.md:66` / `kb/index.md:71`）；S-85-8 补录 + out_of_scope 补清单指针。"
+  - "REV-85-013（medium，blocking）→ op-001 步骤 1.7 必改集补 **表格式计数 2**〔`manual/core/setup.md:33`/`:37` → 18；必改 18→**20**〕+ 重扫命令双路化（标准正则 + 宽词界 `\b17\b`）+ **自测 1.8 增「表格式计数复核」双跑**；op-001 notes / invariants / S-85-2 口径同步（表格式条目与 `:7` 同类，不修将致同文件 `:7=18` 与 `:33`/`:37=17` 自相矛盾）。"
+  - "REV-85-014（low）→ op-001 步骤 1.7 非扫描段补登 **3 处**〔`manual/core/setup.md:91`（v1.1.1 行「16 skill」）+ `:92`（v1.1.5 行「16 → 17」，同时入历史行保留集 4→5）+ `docs/claude-code-adapter-plan.md:271`（宽模式可见——REV-85-016）〕→ 非扫描历史特征 2→**4**；新增「**枚举范围界定**」段闭合「全枚举」口径（扫描集 + 宽模式差集判类 + 非扫描 4 处显式登记；全集 36——后经 REV-85-015 订正为 37）。"
+  - "REV-85-015（low）→ op-001 步骤 1.7 枚举计数口径订正（原文「标准扫描 32 / 保留 12 = 历史行 5 + 蓝本 8 / 全集 36」三处不自洽）为「**标准正则 30 = 必改 18 + 保留 12；表格式 2（宽模式专属，并入必改 → 20）；宽模式专属差集 = `setup.md:33/:37`（必改）+ `:92`（历史）+ `README zh/en:90` / `adapter-plan:271`；全集 = 必改 20 + 保留 13 + 非扫描 4 = 37**」；自测 1.8 与报告 ③ 同步；本文件 `op-001.notes` / `invariants` / `S-85-2` 三处口径同步。"
+  - "REV-85-016（low）→ op-001 步骤 1.7 `docs/claude-code-adapter-plan.md:271` 由「双模式均不可见」改标「**宽模式可见**」〔`\b17\b` 实测可命中〕，归入「宽模式差集」（`:271` 内容零触碰不变）；§1.7 非扫描段 ③ 与「枚举范围界定」② 同步 + 本文件行同步。"
+
+# 交付边界（本阶段不做，防越界）
+out_of_scope:
+  - "命令行为 / 控制流 / 契约修改——零（承接处置禁改控制流/契约；REV-83-016 行为修复转后续）。"
+  - "`src/core/req/**` / `src/core/flow-manager.ts` / `src/commands/**` / `src/core/flow-archive/**`——零触碰。"
+  - "kb 陈旧计数与 kb 索引（`kb/index.md`）同步——转归档轮（S-85-8；待订正清单登记 = op-002 §2.10 ⑥ / op-003 §3.10 ⑦——REV-85-012）。"
+  - "phase 枚举 / 转移表 / `pipeline.yaml` / `build.js` / CI / i18n 键 / 第三方依赖——零触碰。"
+  - "npm publish / git push——由 Feel / 用户执行；flow.json 直写 / phase 推进——禁止（注册经 CLI）。"
+  - "`docs/design-philosophy.md` 等非版本型文档——E 类无载体，仅登记（能力描述失实时才按需改）。"

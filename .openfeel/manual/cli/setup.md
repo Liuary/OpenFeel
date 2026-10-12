@@ -28,7 +28,7 @@ node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致�
 
 - 调用 `setupGlobalFramework(deployLang, tools)`（`tools` 默认 `['opencode']`），输出创建的全局文件；末尾按 harness 组合提示重启（`setup.restartHarnessTmpl`）。
 - 与 `init` 的区别：`setup` 纯全局（跨项目框架层）；`init` 只做项目初始化（工作区 + 项目平台适配器配置文件 `opencode.jsonc`）。
-- **`--tools`（v1.1.6-stage-71）**：`parseToolList` 解析（保序去重）；非法值 → stderr 报错 **exit 1** 且**校验前置**（零写盘，不触发部署）。`setup --tools claude` → 仅部署 `~/.claude/`（CLAUDE.md + 9 agents + 17 skills + `settings.json` 注入，v1.1.6-stage-73）；`--tools opencode,claude` → 双 harness。**默认（不带 `--tools`）行为与改前逐字一致**（仅 opencode，`~/.claude` 零触）。
+- **`--tools`（v1.1.6-stage-71）**：`parseToolList` 解析（保序去重）；非法值 → stderr 报错 **exit 1** 且**校验前置**（零写盘，不触发部署）。`setup --tools claude` → 仅部署 `~/.claude/`（CLAUDE.md + 9 agents + 18 skills + `settings.json` 注入，v1.1.6-stage-73）；`--tools opencode,claude` → 双 harness。**默认（不带 `--tools`）行为与改前逐字一致**（仅 opencode，`~/.claude` 零触）。
 
 ### `--check`（主动诊断，v1.1.5）
 

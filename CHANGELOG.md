@@ -2,6 +2,25 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.0] - 2026-10-13
+
+### Added
+- [stage-78~80] **flow.json 版本分片归档（`flow archive`）**：子命令组三入口——`flow archive <version>`（执行归档；**判据门** = 该版本全部阶段 done 且无 blocking open REV，**不设 `--force`**；两步事务顺序）、`flow archive list`、`flow archive show <version> [--json]`；归档落点 `.openfeel/flow-archive/{version}.json`；字段 `meta.archived_versions`（轻量索引）；跨版本 deps 判定适配（已归档版本视为已满足）+ `flow health` 归档一致性（a/b/c，warn-only）
+- [stage-81~83] **需求流转（`openfeel req`）**：需求层命令组 10 子命令（`add` / `list` / `show` / `claim` / `release` / `set` / `link` / `advance` / `board` / `next`）+ 需求 7 状态；字段 `requirements` / `requirement_id`；聚合投影与对称回写（全部关联阶段 done 时需求自动收口，`reset` 对称回退）
+- [stage-84~85] Agent/skill 契约（`feel.md`×4 需求/归档纪律 + planner 需求感知）+ 新 skill `openfeel-req`（总量 17 → **18**）+ 文档多载体收口（README×3 / GETTING_STARTED / commands / manual `cli/req.md` 新建）
+- 版本全链路收口 1.1.7 → 1.2.0
+
+### Changed
+- **无默认行为变更**：既有命令的接受集/输出契约逐字不变；阶段枚举视图随活跃集收缩（归档后活跃阶段减少）属**设计预期**（已在文档明示），**非回归**。
+
+### Compatibility（向后兼容）
+- 旧 `flow.json`（不含 `requirements` / `archived_versions`）在全部命令下**零报错**（缺失字段按回落语义处理，读侧不注入）；升级**无需迁移**。
+
+### Documentation
+- `README.md`（版本横幅 v1.2.0）/ `README.zh-CN.md` / `README.en.md`（v1.2.0 能力节 + 测试基线 **1557**）/ `docs/GETTING_STARTED.md` / `docs/commands.md`（快照 v1.2.0 + `flow archive` 三子命令节 + `## req` 节）
+- manual：**新建 `cli/req.md`**；`core/{req,flow-archive,setup,update,template-loader,init,build}.md` / `cli/{commands,setup}.md` / `index.md` 同步
+- `openfeel-cli-usage` skill 快照 v1.2.0（`req` / `flow archive` 节 + 节序降序）
+
 ## [1.1.7] - 2026-10-11
 
 ### Added

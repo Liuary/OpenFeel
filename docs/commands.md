@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.1.7 快照** | 更新日期：2026-10-11
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.2.0 快照** | 更新日期：2026-10-13
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -277,6 +277,37 @@ openfeel flow checkpoint restore <checkpoint-file> [--force] [--stage <id>] [--d
 ⑤ flow health --fix（对账 status.md「状态」，仅该字段）
 ```
 
+### flow archive &lt;version&gt;
+
+执行 flow.json 版本分片归档（v1.2.0-stage-78）。**判据门**：该版本**全部阶段 done** 且**无 blocking open REV**（不满足即拒绝，exit ≠ 0，**零写盘**；**不设 `--force`**）。归档落点 `.openfeel/flow-archive/{version}.json`；采用两步事务顺序保证一致性。
+
+```bash
+openfeel flow archive <version> [--dry-run] [--json]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--dry-run` | 仅预览（判据门照常校验；零写盘） |
+| `--json` | 结构化输出 `{ schemaVersion, version, stages, reviews, log, dryRun }` |
+
+**与顶层 `openfeel archive <stage>` 区分**：顶层命令是**阶段摘要归档**，`flow archive` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账）。
+
+### flow archive list
+
+列出已归档版本及计数（只读；引擎字典序）。
+
+```bash
+openfeel flow archive list
+```
+
+### flow archive show &lt;version&gt; [--json]
+
+查看指定归档版本（只读；人类输出 = counts + 阶段概览）。
+
+```bash
+openfeel flow archive show <version> [--json]
+```
+
 ---
 
 ## roadmap — 分期大纲管理
@@ -505,7 +536,31 @@ openfeel archive <stage>
 |------|------|
 | `stage` | 阶段名称（如 stage-01） |
 
-归档操作会汇总阶段产出、生成摘要、提取知识条目。
+归档操作会汇总阶段产出、生成摘要、提取知识条目。（**阶段摘要归档**——与 `flow archive` 的 flow.json 版本分片归档职责不同。）
+
+---
+
+## req — 需求流转
+
+需求管理命令组（v1.2.0-stage-81~83）。需求是**排期与调度层**（需求 ≠ 计划）；需求进度由关联阶段 phase 聚合，实现仍走流水线。
+
+| 子命令 | 用途 | 关键参数 |
+|--------|------|----------|
+| `req add <title>` | 创建需求（ID 自动分配） | `--target-version <version>`、`--priority <P0\|P1\|P2>` |
+| `req list` | 列出需求 | `--status <status>`、`--target-version <version>`、`--owner <owner>`、`--json` |
+| `req show <id>` | 查看需求详情 | `--json` |
+| `req claim <id>` | 认领需求（占用校验） | `--owner <owner>` |
+| `req release <id>` | 释放认领（未认领为 no-op 成功） | — |
+| `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` |
+| `req link` | 关联需求到阶段 / 解绑（二选一） | `--stage <stageId>`、`--requirement <id>`、`--unlink` |
+| `req advance <id>` | 显式推进需求状态 | `--to <status>` |
+| `req board` | 需求看板（7 组固定顺序） | `--target-version <version>`、`--json` |
+| `req next` | 推荐下一个可接取需求 | `--owner <owner>`、`--json` |
+
+- **退出码**：`0` 成功 ｜ `1` 校验 / 占用 / 存在性失败（经 `process.exitCode`；错误码 分流 `not_found` / `stage_not_found` / `already_claimed` / `invalid_field` / `invalid_status`）｜ `2` 并发写冲突（共享单点）。
+- **`--json` 契约**：四读命令（`list` / `show` / `board` / `next`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。
+- **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`。
+- 分工：引擎面 / 状态机语义（校验 / 流转 / 占用 / 关联唯一性 / done 门）见 [`core/req.md`](../.openfeel/manual/core/req.md)；命令面深入参考见 [`cli/req.md`](../.openfeel/manual/cli/req.md)。
 
 ---
 
@@ -650,7 +705,7 @@ openfeel setup --check [--json]                       # 只读诊断：一致退
 
 `--check` 只读，不执行部署；`--json` 输出 `{schemaVersion,status,cliVersion,deployedVersion}`。
 
-`--tools claude` → 部署 `~/.claude/`（CLAUDE.md + 9 agents + 17 skills + `settings.json` 注入 `agent:"feel"` 与 `permissions.defaultMode:"auto"`，用户键逐字保留）；默认仅 opencode，`~/.claude` 零触。
+`--tools claude` → 部署 `~/.claude/`（CLAUDE.md + 9 agents + 18 skills + `settings.json` 注入 `agent:"feel"` 与 `permissions.defaultMode:"auto"`，用户键逐字保留）；默认仅 opencode，`~/.claude` 零触。
 
 ## migrate — 存量迁移
 
@@ -669,7 +724,7 @@ openfeel project overview                   # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-> 说明：以上为 v1.1.7 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 v1.2.0 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

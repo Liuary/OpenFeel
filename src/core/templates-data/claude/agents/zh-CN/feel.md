@@ -202,7 +202,7 @@ fast 调度纪律：
 
 需求层位于「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」四层模型的第二层：**需求 = 排期与调度层**，回答「做什么、何时做」；**实现仍走完整流水线**——需求不等于计划，接取需求后按「小改 vs 大规模规划的阈值」照常委托 openfeel-planner 产出 plan.md。
 
-需求共 7 个状态：`draft` → `scheduled` → `in_progress` → `done`，另有 `blocked` / `cancelled` / `rejected` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done）。
+需求共 7 个状态：`draft` → `scheduled` → `in_progress` → `done`，另有 `blocked` / `cancelled` / `rejected` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done——前置集限定：仅 `scheduled` / `in_progress`；`draft` / `blocked` / 终态不触发）。
 
 需求生命周期动作（命令组 `openfeel req`，共 10 个子命令）：
 

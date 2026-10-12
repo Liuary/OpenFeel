@@ -1,6 +1,6 @@
 /**
  * setup 命令核心模块（v1.1.1）
- * 纯全局部署：全局 AGENTS.md + 9 agent + 17 skill + 全局平台适配器配置文件（opencode.jsonc）。
+ * 纯全局部署：全局 AGENTS.md + 9 agent + 18 skill + 全局平台适配器配置文件（opencode.jsonc）。
  * 不建立项目 .openfeel/；复用 deployGlobalAsset（受管区三态，幂等可重跑）。
  */
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
@@ -54,7 +54,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN', tools: stri
       push(deployGlobalAsset(p, loadAgentTemplate(lang, id), globalState, 'setup'), p);
     }
 
-    // 3. 17 skill → 全局 skills 目录
+    // 3. 18 skill → 全局 skills 目录
     const skillsDir = getGlobalSkillsDir();
     mkdirSync(skillsDir, { recursive: true });
     for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {
@@ -103,7 +103,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN', tools: stri
     }
   }
 
-  // claude 分支：CLAUDE.md + 9 agent + 17 共享 skill + settings.json（stage-73）
+  // claude 分支：CLAUDE.md + 9 agent + 18 共享 skill + settings.json（stage-73）
   if (tools.includes('claude')) {
     // 1c. 全局约束 CLAUDE.md（受管区三态复用 deployGlobalAsset）
     const claudeMd = getClaudeMdPath();
@@ -117,7 +117,7 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN', tools: stri
       push(deployGlobalAsset(p, loadClaudeAgentTemplate(lang, id), globalState, 'setup'), p);
     }
 
-    // 3c. 17 个共享 skill → ~/.claude/skills/
+    // 3c. 18 个共享 skill → ~/.claude/skills/
     const claudeSkillsDir = getClaudeSkillsDir();
     mkdirSync(claudeSkillsDir, { recursive: true });
     for (const [name, content] of Object.entries(SKILL_DEFINITIONS)) {

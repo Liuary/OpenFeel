@@ -180,7 +180,7 @@
 | `v1.2.0-stage-82` | 需求 | 需求命令面 | `src/commands/req.ts`（10 子命令）+ `src/cli/index.ts` 注册 + i18n 双表 + `--json` 契约 + 退出码语义（并发 2 / 通用 1）+ 单测 | hard: 81 | 3 |
 | `v1.2.0-stage-83` | 需求 | 需求聚合判定与对账 | `computeRequirementAggregate`（独立投影）+ `advanceStagePhase` done / `resetStagePhase` **对称回写**（内存，同事务）+ 存量兼容（`requirement_id` 缺省、`requirements` 缺失零报错）+ health 对账（可选 warn）+ 端到端聚合单测 | hard: 81, 82 | 2 |
 | `v1.2.0-stage-84` | 双主题 | Agent/skill 契约 | `feel.md`×4 + `openfeel-planner.md`×4（需求纪律 + 归档纪律）+ 新 skill `openfeel-req` + `openfeel-cli-usage` 补 `req` 与 `flow archive` + build 双生成物重生成 + 静态断言（skills **17→18** 六处计数翻转） | hard: 82, 83 | 3 |
-| `v1.2.0-stage-85` | 双主题 | 文档与版本收口（v1.2.0 收官） | README×3 + GETTING_STARTED + commands + manual（core/flow-archive + core/requirement + cli/req）+ CHANGELOG `[1.2.0]` + 版本 **1.2.0** 全链路（A/B/C/D/E）+ roadmap/plan 回填 + 双主题端到端验收 | hard: 84 | 3 |
+| `v1.2.0-stage-85` | 双主题 | 文档与版本收口（v1.2.0 收官） | README×3 + GETTING_STARTED + commands + manual（core/flow-archive + core/req + cli/req）+ CHANGELOG `[1.2.0]` + 版本 **1.2.0** 全链路（A/B/C/D/E）+ roadmap/plan 回填 + 双主题端到端验收 | hard: 84 | 3 |
 
 ### 依赖图与执行顺序（**严格串行**）
 
@@ -218,6 +218,7 @@ stage-78 ─▶ stage-79 ─▶ stage-80 ─▶ stage-81 ─▶ stage-82 ─▶ 
 - **review-agent**：全部 `openfeel-reviewer`。
 - **op 级依赖**（`ops/deps.yaml`）由 openfeel-schemer 在各阶段产方案时落盘（hard / soft / mutual_exclusion，声明实际文件名）。
 - **本计划已代 Feel 落盘**：`.openfeel/roadmap/v1.2.0.md` + `.openfeel/plan/v1/v1.2.0/{plan.md,deps.yaml}` + `.openfeel/plan/v1/v1.2.0/` 目录；**阶段目录/status.md 骨架、flow.json 注册与 phase 推进仍由 Feel/CLI 执行**。
+- **计划纪律（T7②，REV-85-002 固化）**：每阶段计划须含「承接 REV 与处置表」（上游 pending REV 逐条去向三分：本阶段处置 / 显式转后续〔写明接手阶段或版本〕/ 台账保留·销账）+ `deps.yaml notes` 同步承接声明；判据 = 上游『转下阶段』条目零丢失（零灭失）。
 
 ## 六、版本收口清单（1.1.7 → 1.2.0，A/B/C/D/E，归 stage-85）
 

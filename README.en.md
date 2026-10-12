@@ -65,7 +65,7 @@ openfeel flow status
 > Coexists with the opencode adapter; **disabled by default** (requires explicit `--tools claude`).
 
 - **Enable**: `openfeel setup --tools claude` (or `--tools opencode,claude` for both harnesses).
-- **Assets deployed to `~/.claude/`**: `CLAUDE.md` (global constraints, managed-region three-state; existing user content is appended, not overwritten), `agents/` (**9**, incl. `feel`), `skills/` (**17** shared sources), `settings.json` (injects `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`; **existing user keys preserved verbatim**).
+- **Assets deployed to `~/.claude/`**: `CLAUDE.md` (global constraints, managed-region three-state; existing user content is appended, not overwritten), `agents/` (**9**, incl. `feel`), `skills/` (**18** shared sources), `settings.json` (injects `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`; **existing user keys preserved verbatim**).
 - **Upgrade**: `npm i -g openfeel@latest` → `openfeel setup --tools claude`; **after the first creation of `~/.claude/{agents,skills}`, restart the session or run `/reload-skills`** to load new skills/agents; `CLAUDE.md` takes effect on the **next session**. `npm i -g` alone does not refresh global assets.
 - **Zero-touch by default**: without `--tools`, `~/.claude/` is **unchanged**.
 
@@ -79,6 +79,12 @@ openfeel flow status
 - **Auto-advance enabled by default**: new deployments default to `auto_advance: enabled` (since v1.1.7); to disable: `openfeel config set auto_advance disabled`.
 
 Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) ("工作流模式（full / fast）与自动推进" section, Chinese) and [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`.
+
+## What's New in v1.2.0
+
+- **flow.json version-shard archiving (`flow archive`)**: three entry points — `openfeel flow archive <version>` (perform archiving; gate = all stages of that version are done and no blocking open REV; **no `--force`**), `openfeel flow archive list`, `openfeel flow archive show <version> [--json]`; archives land at `.openfeel/flow-archive/{version}.json`. **Distinct from the top-level `openfeel archive <stage>` (stage-summary archiving)**; regular commands do not read archives.
+- **Requirement flow (`openfeel req`)**: 10 subcommands (add / list / show / claim / release / set / link / advance / board / next) + 7 statuses (`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`); requirement progress is aggregated from linked stage phases (**auto-closes once all linked stages are done**); claim protocol = `owner` + `claimed_at` (no TTL). Authoritative usage source: the `openfeel-req` skill.
+- **Compatibility**: legacy flow.json (without `requirements` / `archived_versions`) raises no errors; upgrading **requires no migration**.
 
 ## What's New in v1.1.2
 
@@ -103,7 +109,9 @@ Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) 
 | `openfeel lint` | Quality gate checks (i18n key symmetry / kb stale references; **non-zero exit on findings**, no escape hatch) |
 | `openfeel config` | Configuration management (get / set[**all `defaults.*`**] / effective / get-lang / list-projects, supports --global) |
 | `openfeel knowledge` | Knowledge base management (list / add / search / index / dedup) |
-| `openfeel archive <stage>` | Stage archiving with knowledge extraction |
+| `openfeel archive <stage>` | Stage archiving with knowledge extraction (**stage-summary archiving** — distinct from `flow archive` version-shard archiving) |
+| `openfeel flow archive` | flow.json version-shard archiving (`<version>` / `list` / `show`; distinct from `openfeel archive` stage-summary archiving) |
+| `openfeel req` | Requirement flow (add / list / show / claim / release / set / link / advance / board / next) |
 | `openfeel setup` | Global-only deployment (global AGENTS.md + agents + skills + adapter config); no project `.openfeel/`; `--tools <list>` explicitly enables the Claude Code adapter |
 | `openfeel migrate` | Migrate legacy-layout projects (detect / backup / rollback) |
 | `openfeel model` | Three-tier agent model config (set / get / list, `--scope`) |
@@ -136,7 +144,7 @@ Feel is the command center, receiving user intent and dispatching downstream Age
 
 ### Global Deployment and Workspace Layering
 
-Framework assets (9 agents / 17 skills / global `AGENTS.md` / global `opencode.jsonc`) are deployed to `~/.config/opencode/` via `openfeel setup`; **the repository itself keeps no project-level `.opencode/agents|skills`** (since stage-55).
+Framework assets (9 agents / 18 skills / global `AGENTS.md` / global `opencode.jsonc`) are deployed to `~/.config/opencode/` via `openfeel setup`; **the repository itself keeps no project-level `.opencode/agents|skills`** (since stage-55).
 
 Workspace state is layered into two files: `current.md` (team file, cross-user overall progress, ≤5 entries + auto-archiving) and `dev_last.md` (local index + topic directory, cross-session recovery). Framework assets are **automatically backed up** before deployment overwrite to `~/.openfeel/backup/{ts}/`.
 
@@ -193,14 +201,14 @@ Core Layer
   └── workspace/ — Directory structure & knowledge base
 ```
 
-> **Global asset deployment**: 9 agents / 17 skills / global `AGENTS.md` / global `opencode.jsonc` are deployed to `~/.config/opencode/` via `openfeel setup`; the repository itself keeps no project-level `.opencode/agents|skills` (since stage-55).
+> **Global asset deployment**: 9 agents / 18 skills / global `AGENTS.md` / global `opencode.jsonc` are deployed to `~/.config/opencode/` via `openfeel setup`; the repository itself keeps no project-level `.opencode/agents|skills` (since stage-55).
 
 ## Development
 
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (1306 cases / 67 test files; Linux CI skips 1 Windows-only case)
+npm test           # Run tests (1557 cases / 70 test files; Linux CI skips 1 Windows-only case)
 ```
 
 ## Acknowledgments

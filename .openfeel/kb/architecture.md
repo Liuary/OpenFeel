@@ -720,7 +720,7 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 | 层 | 落点 | 要点 |
 |----|------|------|
 | **路径面** | `src/core/global-paths.ts` 追加 5 函数 | `getClaudeConfigDir/getClaudeAgentsDir/getClaudeSkillsDir/getClaudeMdPath/getClaudeSettingsPath`；`CLAUDE_CONFIG_DIR` **函数体内读 env** + `.trim()`，空/空白回落 `~/.claude`；延续 homedir 单点（自动纳入 `vi.mock('node:os')` 隔离） |
-| **编排面** | `src/core/setup.ts` + `src/core/update.ts` 双分支 | `setupGlobalFramework(lang, tools=['opencode'])`；`updateProject` 早退改「**两工具都未选才空**」+ `wantOpencode`/`wantClaude` 分支；claude 分支 = `CLAUDE.md` + **9 agents** + **17 共享 skills**（复用 `deployGlobalAsset`，CLAUDE.md 走受管区三态），**不写 `settings.json`**（归 stage-73） |
+| **编排面** | `src/core/setup.ts` + `src/core/update.ts` 双分支 | `setupGlobalFramework(lang, tools=['opencode'])`；`updateProject` 早退改「**两工具都未选才空**」+ `wantOpencode`/`wantClaude` 分支；claude 分支 = `CLAUDE.md` + **9 agents** + **18 共享 skills**（复用 `deployGlobalAsset`，CLAUDE.md 走受管区三态），**不写 `settings.json`**（归 stage-73） |
 | **门控面** | `src/core/update.ts` `supportedTools` + `src/commands/update.ts` | claude 转**正式条目** `{id:'claude', enabled:false}`（原注释删除）；**消费点由 `map(t=>t.id)` 改 `filter(t=>t.enabled).map(t=>t.id)`**（R-5 高危修复）——`enabled:false` 是「默认不启 Claude」的唯一数据源 |
 | **命令面** | `src/commands/{setup,update}.ts` | `--tools <逗号列表>`；`parseToolList`（`core/update.ts` 单一实现，保序去重、空串/纯空白非法）→ 非法值 **exit 1** 且 **fail-fast 前置**（不触发 auto-init/写盘） |
 

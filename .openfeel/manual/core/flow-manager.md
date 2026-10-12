@@ -229,6 +229,18 @@ plan_pending → plan_review → plan_passed
 - **`StageData.requirement_id?: string | null`**（单值可空）——需求↔阶段 **1:N** 的「阶段侧」关联；缺省 ≡ `null`（存量 = 遗留无需求，不迁移）。
 - **`requirements` 随版本归档的口径留后续版本**（本版**不归档** `requirements`）；需求层与工作流模式**正交**（`req` 模块不读 `workflow_mode`）。
 
+## 需求聚合回写接入（v1.2.0-stage-83）
+
+> 把「需求状态 = 关联阶段 phase 聚合投影」落地为**对称回写**；两热点均为**最小追加**（净 **8+/0-**：1 行 import + 2 处调用带注释），**零控制流改动、零新增写盘点、同事务复用既有 `save()`**。回写逻辑在 `src/core/req/aggregate.ts :: syncRequirementStatus`（纯内存），本文件仅调用。
+
+- **热点 ① `advanceStagePhase`（done 分支）**：在 `targetPhase === 'done'` 分支内（`this.endStage(key)` 与既有注释之后、`return true` **之前**）调用 `syncRequirementStatus(this.data, key)`——**仅 done 分支触发**；非 done 推进 / `prevStatus === 'done'` 重复推进均**不触发**。`return true` / `endStage` 顺序 / `autoCommitOnDone` 语义零改动。
+- **热点 ② `resetStagePhase`（全复位路径）**：在 phase + status 写入 + 审计块（`appendLog`）**之后**、`const curStage` **之前**调用同一入口——**重算聚合视图**（`聚合 ≠ done ∧ status === done → 回退 in_progress`）。**落点须在** `if (normCur === key)` 守卫**之外**（否则非 current 阶段复位不回写——REV-83-013）；`dryRun` / no-op 早退（`resetStagePhase` 前段）**早于**本点（不可达）。
+- **`--dry-run` 零回写（双路径）**：`advanceStagePhase` **无 `dryRun` 形参**（`flow advance --dry-run` 于命令层截断）；`resetStagePhase(..., { dryRun })` 引擎早退——两路径均不写内存、不写盘（含聚合）。
+- **前置集单点**：`AUTO_DONE_PRECONDITION = ['scheduled', 'in_progress']`（`aggregate.ts`）——回写守卫与 `flow health` 需求漂移判据**同口径**；前置集外（`draft`/`blocked`/终态）零动作零审计。
+- **零回归**：无 `requirement_id` / 无 `requirements` 键的阶段推进**逐字节不变**（补丁前/后归一化快照 diff 为空；三路径：本函数 / `flow wizard` / deprecated `advancePhase` 同口径）。
+
+> 详见 `manual/core/req.md`「聚合投影与对称回写」节；`flow health` 新增「需求对账」/「需求漂移」两 section（warn-only、不改退出码、不参与 `--fix`）。
+
 ## status.md 路径解析
 
 `findStatusPath`（及健康检查）委托 `src/core/plan/path.ts` 的 `findStageStatusPath` 实现**三级回退**：

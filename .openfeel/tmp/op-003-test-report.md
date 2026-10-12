@@ -1,53 +1,53 @@
-# 自测报告 — op-003
+# 自测报告 — op-003（v1.2.0-stage-83，阶段收口 op）
 
-- **执行时间**：2026-10-12 13:45
+- **执行时间**：2026-10-12 23:15
 - **执行 Agent**：openfeel-executor
-- **重试次数**：1（首次 T-C1/T-C2 缺 `REQ_STATUSES` 导入、T-C4 误用局部 program —— 已修正）
+- **重试次数**：1（首次通过；其间修正 op-003 命令级 fixture 阶段键为全名，见偏差）
 
 ## 执行摘要
-
-op-003 全部 7 项步骤完成（阶段收口 op）；`board` / `next` 两只读子命令落地，help 键 37 个双向逐键断言就位，T6 六项门禁全绿，阶段自测报告落盘。
+health 需求对账落地（`aggregate.ts` 追加 `requirementHealthItems` + `flow.ts` 三处合并 + i18n 双表 +3 键）；T5 全门禁全绿（build ×2 幂等 / 70 文件 1547 用例 / tsc 0 / i18n **911** / kb 0 / 真实工作区零触碰）。
 
 ## 实施步骤完成情况
-
-- [x] 3.1 `board [--target-version] [--json]`（7 组固定顺序 + 恒含空组，分组派生自 `REQ_STATUSES`）
-- [x] 3.2 `next [--owner] [--json]`（筛选 scheduled ∧ 未认领；排序 target_version 升序 → 未指定最后 → created_at → id）
-- [x] 3.3 i18n 双表 op-003 段（5 消息键 + 6 help 键）
-- [x] 3.4 测试段 C（T-C1~T-C5）
-- [x] 3.5 T6 全门禁（六项逐条实测，见下）
-- [x] 3.6 真实工作区零触碰 + 承接核验
-- [x] 3.7 自测报告 `.openfeel/tmp/stage-82-selftest-report.md`
+- [x] 3.1 `aggregate.ts` 追加 `requirementHealthItems` + `SECTION_REQ_LINKS`/`SECTION_REQ_DRIFT` + 文件头职责行 + 导入（`t` / `HealthCheckItem`）
+- [x] 3.2 `flow.ts` 1 行 import + 三处合并（items 构造 / `--json` / 人类输出循环）；退出码 / `--fix` / `--quick` 语义零改动
+- [x] 3.3 i18n 双表 +3 键（`flow.health.req*`，zh 填 zh / en 填 en，另一语言留 `''`）
+- [x] 3.4 `req.test.ts` 段 D 对账项单测（8 组）
+- [x] 3.5 `flow.test.ts` 命令级段（T4.4 双路径 / T4.6 六组 / T4.3-② wizard + 正控 / i18n 接入 / REAL_CWD 反守卫）
+- [x] 3.6 T5 全门禁（见下）
+- [x] 3.7 阶段收口报告 `.openfeel/tmp/stage-83-selftest-report.md`
 
 ## 自测清单验证
-
 | 检查项 | 结果 | 备注 |
 |--------|:--:|------|
-| 3.1 T-C1 board | ✅ | 7 组固定顺序 + 恒含空组 + 过滤 + `--json` 7 键 + no-init 分流 |
-| 3.2 T-C2 next | ✅ | 排序三因子 + 筛选 + `--owner` 扩候选 + 空态两径 + `--json` + no-init |
-| 3.3 T-C3 help 双向断言 | ✅ | 37 键 zh/en `hasKey` + 命令树反向 ⊆（集合大小相等）+ `applyHelpI18n` 生效 |
-| 3.4 T-C4 既有命令零破坏 | ✅ | `registerReqCommand` 恰 2 次；顶层 17 命令含既有 16；`--help` 冒烟含 req 节；`npm test` 70/1506 绿 |
-| 3.5 T-C5 正交断言 | ✅ | 7 禁止串零命中 + 6 正控命中 |
-| 3.6 门禁六项 | ✅ | build×2 幂等 / 1506 通过 / tsc=0 / i18n=**908** / kb=0 / `--help` 冒烟 |
-| 3.7 真实工作区零触碰 | ✅ | 无 `.openfeel/requirements/`；真实 flow.json 无 `requirements` 键 |
-| 3.8 承接核验 | ✅ | 见阶段报告 §八（BUG-001 / REV-81-016~020 / REV-80 移交 3 项逐条落点） |
-| 3.9 自测报告落盘 | ✅ | `.openfeel/tmp/stage-82-selftest-report.md`（含基线数值 + 键数分解 + 门禁摘要） |
+| 3.1 对账单测 8 组 | ✅ | 悬空/干净/漂移/豁免/前置集内非 done/零数据/恒无 fail/空串守卫 |
+| 3.2 T4.4-① advance --dry-run 零写盘 + 正控 | ✅ | 字节不变（含需求字段）；正控真实推进需求 done |
+| 3.3 T4.4-② reset --dry-run 零写盘 + 正控 | ✅ | 正控需求回退 + `requirement_auto_reopen` 落盘 |
+| 3.4 T4.6-① 悬空 warn + ok + 退出码 | ✅ | detail 含 `v1.0.0-stage-01 → REQ-999` |
+| 3.5 T4.6-② 漂移 warn / ③ 豁免不报 | ✅ | 同上 |
+| 3.6 T4.6-④ --quick 跳过 / ⑤ 人类输出 / ⑥ --fix 不参与 | ✅ | payload 含 reconciled 且无 REQ- |
+| 3.7 T4.3-② wizard 零注入 + 零审计 + 正控 | ✅ | 期望字段 phase/status/pipeline.phase = done |
+| 3.8 i18n 键真实接入 | ✅ | `t()` 渲染 ≠ 原始键；en 非空 |
+| 3.9 build ×2 幂等 | ✅ | 第二次后 `git status` 生成物零 diff |
+| 3.10 npm test 全量 | ✅ | **70 文件 / 1547 用例**，0 skipped / 0 failed |
+| 3.11 tsc --noEmit = 0 | ✅ | — |
+| 3.12 lint i18n 新基线 / lint kb | ✅ | **911**（908+3）；kb 494 引用零失效 |
+| 3.13 真实工作区零触碰 | ✅ | flow.json 无 `requirements` 键；新增 REAL_CWD 反守卫断言 |
+| 3.14 自测报告落盘 | ✅ | 本 op 报告 + 阶段收口报告 |
 
 ## 产出文件
-
-- `src/commands/req.ts`（追加 board / next —— 10 子命令就位）
-- `src/core/i18n-data/zh-CN.ts` / `src/core/i18n-data/en.ts`（+5 消息键 + 6 help 键）
-- `test/commands/req.test.ts`（追加测试段 C）
-- `.openfeel/tmp/stage-82-selftest-report.md`
-- `.openfeel/plan/v1/stage-82/ops/deps.yaml`（REV-82-016~021 落实登记 + i18n 908 基线注记）
-- `.openfeel/plan/v1/stage-82/ops/op-001.md`（REV-82-020 KB 锚点改全称）
+- `src/core/req/aggregate.ts`（追加 `requirementHealthItems` + 2 section 常量 + import + 文件头职责行）
+- `src/commands/flow.ts`（1 import + 三处合并）
+- `src/core/i18n-data/zh-CN.ts` / `src/core/i18n-data/en.ts`（各 +3 键）
+- `test/core/req.test.ts`（段 D）
+- `test/commands/flow.test.ts`（命令级段 + REAL_CWD 守卫）
+- `.openfeel/tmp/stage-83-selftest-report.md`
 
 ## 前置校验结果
-
 - 方案完整性：通过
-- Phase 合法性：通过（`exec_running`）
-- 流转合法性：通过（`flow health --quick` 退出 0）
+- Phase 合法性：通过
+- 流转合法性：通过
 
 ## 偏差记录
-
-- `src/core/i18n.ts` 追加 `req` 域运行时注册（属 op-001 偏差，此处汇总；必要且纯增量）。
-- 无跳步违规。
+- **命令级 fixture 阶段键采用全名 `v1.0.0-stage-01`**：`flow advance/reset` 命令层经 `normalizeStageId` 将短名 `stage-01` 展开为 `v1.0.0-stage-01`，且未命中时**无双键回退**（实测 `无法从 未知 到达 done`）。故 fixture 的 `stages` 键与 `pipeline.current.stage` 使用全名，`--stage stage-01` 仍传短名（同时覆盖归一化）。`flow health` 路径不做归一化，键取值一致。
+- `test/commands/flow.test.ts` 新增 `t` 导入与模块级 `REAL_CWD` / `REAL_FLOW_PATH` / `REAL_FLOW_RAW` 常量（该文件此前**无** REAL_CWD 守卫；按 op-003 3.6「否则新段内补一组」落实）。既有 describe / 用例零改动。
+- `test/core/req.test.ts` 段 C 静态断言在新代码追加后仍全绿（`aggregate.ts` 禁用串零命中 + `.every(` 零命中未破）。

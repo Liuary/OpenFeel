@@ -308,6 +308,9 @@ export const flow: I18nDomain = {
   'health.fixSkippedTmpl':          { key: 'flow.health.fixSkippedTmpl',          zh: '跳过 {n} 个阶段（status.md 中「状态」字段缺失）', en: '' },
   'health.fixDryRunNote':           { key: 'flow.health.fixDryRunNote',           zh: '仅预览，未写入任何文件',                   en: '' },
   'health.fixOnlyStatusNote':       { key: 'flow.health.fixOnlyStatusNote',       zh: '仅同步「状态」字段；执行模式/自动推进/当前任务等不受影响', en: '' },
+  'health.reqLinksPassTmpl':        { key: 'flow.health.reqLinksPassTmpl',        zh: '需求关联一致（{n} 个需求，无悬空引用）', en: '' },
+  'health.reqDanglingTmpl':         { key: 'flow.health.reqDanglingTmpl',         zh: '悬空需求关联：{items}（阶段引用的需求不存在；可经 req link --unlink 解绑）', en: '' },
+  'health.reqDriftTmpl':            { key: 'flow.health.reqDriftTmpl',            zh: '需求状态漂移：{items}（关联阶段已全部 done 但需求状态非 done）', en: '' },
 
   // flow recover
   'recover.title':                  { key: 'flow.recover.title',                  zh: '═══ 跨会话上下文恢复 ═══',               en: '' },

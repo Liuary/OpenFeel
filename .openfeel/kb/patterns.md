@@ -3893,3 +3893,38 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.0-stage-82（REV-82-012；T-B4 四路径：info.json 命中 / git 命中 / 哨兵拒绝 / 显式直通）。
 
 **参见：** v1.2.0-stage-82（op-002）；`src/commands/req.ts`；`src/core/workspace/identity.ts :: getUserName`；kb/patterns.md #语言配置三级回退链；manual/cli/commands.md
+
+## [+] 对称回写模式：advance done ↔ reset 聚合视图重算（声明式不绑定事件）+ 插入点守卫纪律 (2026-10-12)
+
+**模式**：把「上层聚合状态」与「底层工序推进」做**双向对称回写**——正向在推进至终态时置上层状态，反向在复位/回退时**重算聚合视图**再据其回退。入口单点 `syncRequirementStatus(data, stageId)`（`src/core/req/aggregate.ts`，纯内存），两热点接入 `src/core/flow-manager.ts`：① `advanceStagePhase` **仅 `targetPhase === 'done'` 分支**（`endStage` 后 / `return true` 前）；② `resetStagePhase` 全复位路径（phase + status 写入 + 审计后 / `syncCurrentOp` 前）。
+
+**规则（聚合视图表述——REV-83-005，不绑定「从哪个 phase 回退」事件）**：
+- 正向：`聚合 = done ∧ status ∈ AUTO_DONE_PRECONDITION` → 置 `done` + 审计 `requirement_auto_done`；
+- 反向：`重算聚合 ≠ done ∧ status === 'done'` → 回退 `in_progress`（**不做 `done→scheduled` 细粒度回退**）+ 审计 `requirement_auto_reopen`；
+- 其余（前置集外 / 悬空关联 / 状态无变化）→ **零动作零审计**；状态实际变化才 `appendLog`。
+
+**触发点纪律**：① 正向**仅 done 分支**触发——非 done 推进不触发（如 `scheduled→in_progress` 由显式命令 `req advance` 驱动，不由聚合上推）；② 声明式入口**不绑定事件**——同一函数被两热点复用，规则由「输入聚合视图」决定；③ **`--dry-run` 双路径零回写**（`flow advance --dry-run` 命令层截断 / `resetStagePhase` 引擎早退——两早退均**早于**回写点）；④ **纯内存 + 复用调用方既有单次 `save()`**（同事务、**不新增写盘点**、零控制流改动）。
+
+**插入点守卫陷阱（REV-83-013）**：在同一文件追加回写调用时，**行号锚点会漂移**，且相邻 `if (…) { … }` 守卫可能把误插点**包进守卫之内**。实例：`resetStagePhase` 的 `syncCurrentOp` 实为 `:1605`（在 `if (normCur === key)` 之内），若照「`syncCurrentOp` 之前」字面插入，会把调用落入守卫内 → **非 current 阶段复位不回写**（仅 fresh fixture 用例可捕获）。纪律：① 落点以**符号名 + 前后文**双锚描述（例「紧随 `appendLog` 复位审计块之后、`const curStage` 之前；**严禁**置于 `if (normCur === key)` 之内」）；② 补「**非 current 阶段 reset 仍触发回写**」专测（current 指向他阶段）；③ 快照取证（补丁前/后 diff）作零回归兜底。
+
+**判据**：① 对称回写的**反向**须由「重算聚合」驱动（而非绑定具体回退事件），以免细粒度分支穷举遗漏；② 单入口 + 多热点接入时，**接入点描述须抗行号漂移**并显式声明守卫边界；③ 回写恒「只读判定、内存改本体、调用方落盘」（禁 `??=` 注入 / 禁新增 save）。
+
+**实证**：v1.2.0-stage-83（REV-83-005 / REV-83-013；T4.2-③ 对称循环 + ④ 回退目标 + 非 current reset 专测）；`src/core/flow-manager.ts :: advanceStagePhase`/`resetStagePhase`；`test/core/flow-manager.test.ts`。
+
+**参见：** v1.2.0-stage-83（plan §二 回写规则/不变量 8；op-001/002）；`src/core/req/aggregate.ts :: syncRequirementStatus`；`src/core/flow-manager.ts`；kb/patterns.md #事务顺序模式、#`--dry-run` 必须字节级不写盘、#零行为变更改造的验证方法；kb/troubleshooting.md #零回归取证范式；manual/core/flow-manager.md
+
+## [+] auto-done 前置集显式裁定 `{scheduled, in_progress}`：单点常量 + health 漂移判据同口径 (2026-10-12)
+
+**模式**：聚合回写「自动置终态」时，**显式裁定合法来源状态集**，并以**单点常量**承载——`AUTO_DONE_PRECONDITION: readonly RequirementStatus[] = ['scheduled', 'in_progress']`（`src/core/req/aggregate.ts`）。
+
+**理由**：自动 done 若守卫过宽（对任意非终态），会把 `draft`（未排期/未确认）、`blocked`（有意阻塞）**静默 auto-done**，掩盖人工环节；且与显式流转表一致——`draft→done` / `blocked→done` 均**不合法**（`ALLOWED_TRANSITIONS`），故聚合回写不应走显式流转表禁行的路径。
+
+**同口径单点（关键）**：**health 漂移判据复用同一常量**——`done` 漂移 = `status ∈ AUTO_DONE_PRECONDITION ∧ 聚合 done ∧ status ≠ done`；**前置集外（`draft`/`blocked`/终态）为设计豁免不报**。**禁第二份前置集列表**（否则守卫与判据漂移，回写与对账口径分裂）。
+
+**空集/零关联守卫**：与 kb/architecture.md #双层状态聚合架构 的空集守卫同源——零关联阶段不参与判定（禁误报 done）。
+
+**判据**：① 「自动置某状态」的前提集须**显式**（不隐式「非终态皆可」）；② 前提集以**导出常量**承载（非散落字面量），被回写守卫与对账判据**共同消费**；③ 前提集须与既有显式流转表**语义对齐**（禁走流转表禁行的捷径）；④ 穷举矩阵断言（`7 status × 聚合 {done, 非 done}`——仅 `{scheduled, in_progress} × done` 回写，其余零动作零审计）。
+
+**实证**：v1.2.0-stage-83（REV-83-004 显式裁定 / REV-83-009 用户裁定维持前置集；T4.2-① 正向 7×2 穷举 + 段 D 漂移同口径 + 豁免不报）。
+
+**参见：** v1.2.0-stage-83（plan §二 回写规则；op-001/003）；`src/core/req/aggregate.ts :: AUTO_DONE_PRECONDITION`、`requirementHealthItems`；`src/core/req/requirement-ops.ts :: ALLOWED_TRANSITIONS`；kb/architecture.md #需求流转四层模型架构；kb/patterns.md #「只报告型」与「修复型」命令的边界；manual/core/req.md

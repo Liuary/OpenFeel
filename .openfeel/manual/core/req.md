@@ -4,7 +4,7 @@
 
 ## 职责
 
-需求流转系统（requirement lifecycle system）的**引擎面**——需求层类型与常量的**单一来源**、需求条目在 `flow.json` 的存储字段、需求 CRUD / 认领 / 状态流转原语、ID 分配与正文文件原语。需求层为「**排期与调度层**」（`版本 roadmap → 需求 REQ-NNN → 计划 stage → 方案 op` 四层中的第二层）；**工序单一事实源仍是阶段 `phase`**，需求状态为显式粗粒度字段（聚合回写归 stage-83）。
+需求流转系统（requirement lifecycle system）的**引擎面**——需求层类型与常量的**单一来源**、需求条目在 `flow.json` 的存储字段、需求 CRUD / 认领 / 状态流转原语、ID 分配与正文文件原语；另含**聚合投影与对称回写**（`aggregate.ts`，v1.2.0-stage-83）。需求层为「**排期与调度层**」（`版本 roadmap → 需求 REQ-NNN → 计划 stage → 方案 op` 四层中的第二层）；**工序单一事实源仍是阶段 `phase`**，需求状态为显式粗粒度字段（**聚合回写**见「聚合投影与对称回写」节）。
 
 ## 模块分层与文件
 
@@ -13,6 +13,7 @@
 | `types.ts` | 类型与常量**单一来源**（叶子模块、**零 import**）：`REQ_STATUSES`（7 值）+ `RequirementStatus`（自常量派生）+ `REQ_PRIORITIES`（三档）+ `RequirementPriority` + `REQ_ID_PATTERN`（`/^REQ-(\d{3,})$/`，含数字捕获组、非全局标志）+ `RequirementData`（10 字段） | 无 |
 | `requirement-ops.ts` | 需求原语单点（**纯内存、零写盘、审计内嵌**）：读取 / 过滤 / ID 分配 / 写路径 / 共用谓词 / 状态流转单点表 | `import type { FlowData }`（仅类型，编译期擦除）+ `types.js` |
 | `body-file.ts` | 正文路径单点 + 骨架机械铺（`REQ-NNN.md`） | `node:path` / `node:fs` / `../fs/atomic-write.js` / `types.js`（**禁** `process.cwd` / `homedir`） |
+| `aggregate.ts` | **聚合投影与对称回写**（v1.2.0-stage-83，**纯函数/纯内存、无 IO**）：`computeRequirementAggregate`（阶段 phase → 需求状态投影；done 判定**委托** `allLinkedStagesDone`）/ `resolveRequirementStatusForStage` / `syncRequirementStatus`（回写入口，返回受影响需求 ID 列表）/ `AUTO_DONE_PRECONDITION`（前置集单点常量）/ `requirementHealthItems`（health 对账项） | `import type { FlowData }` + `allLinkedStagesDone`（`requirement-ops.js`）+ `types.js` + `../i18n.js`（对账文案） |
 
 > **正交边界**：`src/core/req/**` 不 import / 不读取 `workflow_mode`、`PIPELINE_PHASES` / `getValidTargets`、**`flow-archive/**`**（**本版不归档 `requirements`**）；亦禁 `process.cwd` / `homedir`（路径全由 `projectPath` 参数注入）。以 `test/core/req.test.ts` 正交 describe 静态固化（6 禁止串零命中 + 正控 + `NEEDLES.length === 6`）。
 
@@ -130,6 +131,32 @@
 
 **正交声明**：`src/commands/req.ts` 不 import / 不引用 `ALLOWED_TRANSITIONS` / 工作流模式 / 归档层 / `.phase` / `allLinkedStagesDone`——直读源文全内容 **7 禁止串零命中**固化。
 
+## 聚合投影与对称回写（`aggregate.ts`，v1.2.0-stage-83）
+
+> 把「需求状态 = 关联阶段 phase 聚合投影」落地为**双向对称回写**闭环；接入 `flow-manager.ts` 两热点（`advanceStagePhase` done 分支 / `resetStagePhase`），**纯内存、同事务复用既有 `save()`、不新增写盘点、零控制流改动**。
+
+**核心导出**：
+
+| 导出 | 说明 |
+|------|------|
+| `computeRequirementAggregate(data, requirementId): RequirementAggregate` | 纯投影：`stageIds`（`data.stages` 键序）/ `stageCount` / `doneCount` / `aggregate`（`'scheduled' \| 'in_progress' \| 'done' \| null`）。done 分支**直委托 `allLinkedStagesDone`**（含空集守卫）；**零关联 → `aggregate = null`**（禁误报 done） |
+| `resolveRequirementStatusForStage(data, stageId)` | 单阶段 → 目标状态纯函数；无关联 / 阶段不存在 / 空串 → `null` |
+| `syncRequirementStatus(data, stageId): string[]` | **对称回写入口**（纯内存）；全程只读 `data.requirements`（禁 `??=` 注入）；返回受影响需求 ID 列表；审计 `requirement_auto_done` / `requirement_auto_reopen`（`agent: 'cli'`） |
+| `AUTO_DONE_PRECONDITION` | `readonly RequirementStatus[] = ['scheduled', 'in_progress']`（**前置集单点**——回写守卫与 health 漂移判据**同口径**） |
+| `requirementHealthItems({ data, lang })` | health 对账项（悬空关联 / done 漂移；**warn-only 恒无 fail**） |
+
+**回写规则（聚合视图表述，不绑定事件）**：
+
+1. **正向**（`advanceStagePhase` **仅 `targetPhase === 'done'` 分支**）：`aggregate === 'done' ∧ status ∈ AUTO_DONE_PRECONDITION` → 需求置 `done` + 审计；**前置集外（`draft`/`blocked`/终态）→ 零动作零审计**；非 done 推进**不触发**（`scheduled → in_progress` 由 `req advance` 显式驱动）。
+2. **反向**（`resetStagePhase` 全复位路径）：**重算聚合** → `aggregate ≠ 'done' ∧ status === 'done'` → 回退 `in_progress` + 审计（**不做 `done → scheduled` 细粒度回退**）。
+3. 其余（前置集外 / 悬空关联 / 状态无变化）→ 零动作零审计。
+
+**不变量**：`--dry-run` **双路径零回写**（`flow advance --dry-run` 命令层截断 / `flow stage reset --dry-run` 引擎早退，均早于回写点）；**done 判定单源**（`allLinkedStagesDone`，禁第二份 `.every(`）；同事务（无「阶段 done 而需求未回写」中间态）；无 `requirement_id` 阶段**零行为差异**（补丁前/后归一化快照 diff 为空）。
+
+**health 需求对账**（`flow health` 新增「需求对账」/「需求漂移」两 section）：悬空 `requirement_id` → warn；`done` 漂移（**前置集内** ∧ 聚合 done ∧ status ≠ done）→ warn；**前置集外设计豁免不报**；**不改退出码、不参与 `--fix`、`--quick` 跳过**（对齐 `archive-health.ts` 先例）。
+
+**接入点（`flow-manager.ts`）**：`advanceStagePhase` done 分支（`endStage` 后 / `return true` 前）；`resetStagePhase`（`appendLog` 审计块后 / `const curStage` 前——**不在** `if (normCur === key)` 守卫内）。
+
 ## 设计要点与判据
 
 - **纯内存 + 调用方落盘**：本模块**零独立写盘点**（唯一 IO = 正文文件骨架）；`flow.json` 落盘恒经 `FlowManager.save()`（锁 + `meta.revision` 乐观锁 + `.bak` + 原子写）——需求写入**零自造路径**。
@@ -141,5 +168,6 @@
 
 | 版本 | 变更 |
 |------|------|
+| v1.2.0-stage-83 | **补聚合投影与对称回写**：新建 `src/core/req/aggregate.ts`（`computeRequirementAggregate` done 判定**单源委托** `allLinkedStagesDone` + `resolveRequirementStatusForStage` + `syncRequirementStatus` 对称回写入口 + `AUTO_DONE_PRECONDITION` 前置集单点 + `requirementHealthItems`）；`flow-manager.ts` 对称回写两热点（**8+/0-**；纯内存同事务）；`flow.ts` health 三处合并（warn-only）；i18n 908→**911**（+3 键 `flow.health.req*`）；零回归取证（补丁前/后归一化快照 diff 空 + golden + 正控）。3 op（未 commit，HEAD `33185a3`）；门禁 70 文件 / 1547 用例 0 failed。 |
 | v1.2.0-stage-82 | **补命令面**：新建 `src/commands/req.ts`（`openfeel req` 10 子命令）+ `src/cli/index.ts` 两行注册；引擎小幅补丁（新增导出 `getAllowedNextStatuses` + `addRequirement` 非数组守卫收口 `req/BUG-001`）；`--json` 四读命令成功/失败同契约 + 退出码 0/1/2 + help 键双规（37 键双向断言）+ `--owner` 三级链；i18n 829→**908**。3 op（未 commit，HEAD `c5f1d53`）；门禁 70 文件 / 1506 用例 0 failed。**下游** stage-83（聚合回写）消费。 |
 | v1.2.0-stage-81 | **新建模块** `src/core/req/`（types / requirement-ops / body-file）；`flow-manager.ts` 最小追加 `FlowData.requirements?` + `StageData.requirement_id?`（读侧宽容不 load 补齐）；9 原语 + 状态流转单点表 + done 门 + 正文骨架；正交静态断言固化。3 op（未 commit，HEAD `3be254c`）；门禁 69 文件 / 1476 用例 0 failed。**下游** stage-82（命令面）/ stage-83（聚合回写）消费。 |

@@ -1,0 +1,208 @@
+# stage-83 op 依赖声明
+# 由 openfeel-schemer 生成；Feel 调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# revision: 2026-10-12 openfeel-schemer 初版（计划审查轮 REV-83-001~011 落实映射见 plan_rev_mapping）
+#   说明①：op 数定稿 = **3**（v1.2.0/deps.yaml `est_ops: 2` 为规划期估算；定稿拆分理由：op-001 纯新增文件（零回归风险）
+#     / op-002 触碰推进两热点（最高回归面，独立审查焦点 + 独立取证）/ op-003 命令面与门禁收口——三段性质不同、风险面分离）。
+#   说明②：i18n 预期新基线 **911 = 908 + 3**（health 对账 3 键，双表成对）；以 `lint i18n` 实测为登记权威（REV-83-008）。
+
+version: "1.1"
+stage: v1.2.0-stage-83
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-12"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.0-stage-81
+    type: hard
+    status: done
+    reason: "需求引擎冻结面：消费 `allLinkedStagesDone`（done 判定唯一原语，`requirement-ops.ts:76-79`，含空集守卫——REV-83-002）/ `RequirementStatus` / `REQ_STATUSES` / `FlowData.requirements`（顶层可选）/ `StageData.requirement_id`（单值可空）。**本阶段零改动 `src/core/req/requirement-ops.ts`**（S-83-1 直委托方案——避开 REV-81-016/019 防双改区）。"
+  - upstream: v1.2.0-stage-82
+    type: hard
+    status: done
+    reason: "命令面冻结面：`req advance --to done` 显式门（`applyStatusChange:168`）与聚合自动回写**分层不冲突**（裁定 M）；`--json` 契约 / help 键 37 个 / 消息键 42 个冻结（本阶段零改动 `src/commands/req.ts`）。"
+  - upstream: v1.2.0-stage-80
+    type: soft
+    status: done
+    reason: "health 消费范式参照：`archiveHealthItems`（独立检查函数 + `flow.ts` 合并 + warn-only 恒无 fail）+ `--json` 合并形态（`{name,status,detail}`）+ `--quick` 跳过范式。**需求对账与归档对账互不耦合**（各自独立检查函数；本阶段零触碰 `archive-health.ts`——REV-80-029 移交 stage-85）。"
+  - downstream: v1.2.0-stage-84
+    type: hard
+    note: "契约交付：① `computeRequirementAggregate(data, requirementId)` 返回 `{stageIds, stageCount, doneCount, aggregate}`（值域三值 + 零关联 `null`；首参形态定稿 = `data: FlowData` 直委托——S-83-1/REV-83-011）；② `syncRequirementStatus(data, stageId): string[]`（对称回写入口）；③ 审计动作名 `requirement_auto_done` / `requirement_auto_reopen`（detail `{requirementId, from, to, triggerStage}`）；④ health section 常量 `需求对账` / `需求漂移` + 3 个 `flow.health.req*` 键（新基线 911）；⑤ `AUTO_DONE_PRECONDITION` 前置集单点。"
+  - downstream: v1.2.0-stage-85
+    type: soft
+    note: "文档收口引用面：聚合回写语义（advance 仅 done 分支 / reset 聚合视图回退 / 前置集 {scheduled, in_progress}）、health 需求对账（warn-only、不改退出码、不参与 --fix）；承接表「移交 stage-85」项清单（REV-82-015 / REV-81-017 / REV-80-029）。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；不直写 flow.json（phase 推进由 Feel 经 CLI 执行）；提交精确 git add（禁 -A，kb #方案层 ops 产出的审计链完整性）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "聚合投影与对称回写入口（新建 src/core/req/aggregate.ts；done 判定单源委托）"
+    produces:
+      - src/core/req/aggregate.ts
+      - test/core/req.test.ts
+    deps: []
+    notes: "新建 aggregate.ts：`AUTO_DONE_PRECONDITION`（前置集单点——S-83-4）+ `computeRequirementAggregate`（**直委托 `allLinkedStagesDone`**——REV-83-002 单源；零关联 → `aggregate=null` 空集守卫；实现约束：禁 `.every(` 字面——静态断言固化）+ `resolveRequirementStatusForStage` + `syncRequirementStatus`（对称回写入口，声明式单入口不绑定事件——S-83-3；零注入铁律：`data.requirements` 只读判定，禁 `??=`/赋值）。测试追加段 A/B/C（T4.1 投影穷举 15 phase 表驱动 + T4.5 同源四组 + 7×2 直调矩阵 + 正交/单源静态断言）；既有断言段零改动（REV-81-017 归 stage-85）。**零改动 `requirement-ops.ts`**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "flow-manager 对称回写接入与零回归取证（advance done 分支 / reset 聚合视图回退）"
+    produces:
+      - src/core/flow-manager.ts
+      - test/core/flow-manager.test.ts
+      - .openfeel/tmp/stage-83-baseline.json
+    deps:
+      - op: op-001
+        type: hard
+        reason: "消费 `syncRequirementStatus` 冻结契约（`(data, stageId): string[]`）；`aggregate.ts` 存在性为前置校验点"
+    notes: "① 补丁前基线捕获（临时捕获测试 + 归一化快照 → `.openfeel/tmp/stage-83-baseline.json`，advance / deprecatedAdvance 两键；**时序纪律：先捕获后打补丁**）；② 两热点**最小追加**（1 行 import + advance done 分支内调用（`endStage` 后 / `return true` 前）+ reset 写入审计后调用（`syncCurrentOp` 前））——不改控制流 / 返回值 / checkpoint 位置 / 宏观重算 / 空集守卫；③ 补丁后复跑 diff 为空（路径 ①③ 逐字节零回归实证）；④ 测试追加段：T4.2 正向 7 × 反向 7（含 `done×非done` 自愈格——S-83-3）/ 对称循环三步 / 回退目标恒 in_progress（S-83-5）/ 空集守卫 / 悬空 / 同事务故障注入（无中间态）/ T4.3-①③ golden 快照（+ 正控）/ T4.4-core dry-run + 形参锁定（`advanceStagePhase.length===3`）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "health 需求对账与门禁收口（i18n 双表 + 命令级测试 + T5；阶段收口 op）"
+    produces:
+      - src/core/req/aggregate.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/req.test.ts
+      - test/commands/flow.test.ts
+      - .openfeel/tmp/stage-83-selftest-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "命令级用例断言引擎回写行为（命令面 dry-run / wizard）；health 漂移判据与回写前置集同口径（S-83-4 单点）"
+    notes: "① `requirementHealthItems` 追加（aggregate.ts）——悬空关联（恒 1 条 pass/warn）+ done 漂移（条件 warn；**AUTO_DONE_PRECONDITION 同口径单点**——draft/blocked/终态豁免）；② `flow.ts` health 三处合并（items 构造 / `--json` 合并 / 人类输出循环）——**不改退出码、不参与 --fix、--quick 跳过**（对齐归档对账范式）；③ i18n +3 键（`flow.health.req*` 双表；新基线实测登记，预期 911）；④ 测试：段 D（对账项单测）+ 命令级段（T4.4 双路径 dry-run 零写盘 + 正控 / T4.6 六组 / T4.3-② wizard + 正控）；⑤ T5 全门禁（build ×2 / npm test / tsc / lint i18n / lint kb / 真实工作区零触碰）+ 自测报告（含 diff 空实证 + 承接表 15 条核验）。**本 op 为阶段收口 op**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 执行顺序（严格串行）：op-001 → op-002 → op-003
+# 注：op-003 为阶段收口 op（含全门禁与报告）；其后由 openfeel-reviewer 审查、openfeel-feel-tester 验收。
+
+# 不变量（供 executor 执行与 reviewer 审查对照）
+invariants:
+  - "既有控制流零变更：`endStage` / `return true`/`return false` / `autoCommitOnDone` 契约 / 阻塞 REV 检查顺序 / `syncCurrentOp` / 宏观 `pipeline.phase` 重算 / `resetStagePhase` 的 `changed`+dryRun 早退——**逐字不变**；回写为**追加语句**（`git diff --numstat` 删除列 = 0）。"
+  - "无 `requirement_id` 阶段零行为差异（R-4 关键回归）：同 phase 推进序列下 flow.json 输出（排除 `meta.revision` / `meta.updated` / log.time / stats 时间）逐字节一致——补丁前/后快照 diff 为空（路径 ①③）+ 单测 golden 等值 + **零注入**（`'requirements' in parsed === false` 保持）+ **零审计**（`requirement_` 前缀零命中）+ 正控（关联 fixture 出现 `requirement_auto_done`）。"
+  - "单事务：聚合回写与 phase 变更在**同一次 `save()`** 落盘；不新增写盘点 / 不新增 save 调用；并发冲突（`FlowConcurrentModificationError`）下磁盘无中间态（phase 与需求状态恒同现）。"
+  - "`--dry-run` 零回写（双路径）：`flow advance --dry-run`（命令层 `flow.ts:916-930` 截断，聚合回写不可达）+ `flow stage reset --dry-run`（引擎早退 `flow-manager.ts:1585-1587`）→ flow.json 字节不变（含需求字段）；形参锁定 `advanceStagePhase.length === 3`（引擎**无** dryRun 形参）。"
+  - "done 判定单源（REV-83-002）：唯一原语 `allLinkedStagesDone`（`requirement-ops.ts:76-79`，含空集守卫）；聚合 done 分支**直接委托**（`aggregate.ts` 静态断言 `toContain('allLinkedStagesDone(')` + `.every(` 零命中）；动态断言 `aggregate==='done'` ⟺ `allLinkedStagesDone`（全 fixture）。两消费点（`applyStatusChange:168` / 聚合）同源；**零改动 `requirement-ops.ts`**（不抽谓词/不改造——S-83-1）。"
+  - "auto-done 前置集 = `{scheduled, in_progress}`（REV-83-004 / 用户裁定）：`AUTO_DONE_PRECONDITION` 单点常量——回写守卫与 health 漂移判据**同口径**（禁第二份列表）；`draft`/`blocked`/终态零动作零审计。"
+  - "对称回退按聚合视图（REV-83-005 / plan 不变量 8——**不绑定事件**）：`重算聚合 ≠ done ∧ status === 'done'` → 回退 `in_progress`（不做 `done→scheduled` 细粒度回退——S-83-5）；`done × 聚合非done`（advance 路径漂移态）亦自愈回退 + 审计（S-83-3 显式登记）。"
+  - "投影函数纯：`computeRequirementAggregate` / `resolveRequirementStatusForStage` 无 IO、无 `this`、零 `process.cwd`/`homedir`（正交禁用串零命中）；`requirementHealthItems` 只读纯函数（warn-only 恒无 fail）。"
+  - "零注入铁律：`syncRequirementStatus` / `requirementHealthItems` 对 `data.requirements` 全程只读判定（`Array.isArray(...) ? ... : []`）——**禁 `??=` / 赋值**（顶层可选字段「读侧宽容不注入」纪律）。"
+  - "health 边界：需求项**不改退出码**（`report.ok` 恒由既有检查决定）、**不参与 `--fix`**（`reconcileStatusMd` 零触碰）、`--quick` 跳过；与归档对账项互不耦合（独立检查函数，零触碰 `archive-health.ts`）。"
+  - "正交：`src/core/req/**` 禁用串六串零命中（`workflow_mode` / `PIPELINE_PHASES` / `getValidTargets` / `flow-archive` / `process.cwd` / `homedir`）；对 flow-manager 仅 `import type`（`aggregate.ts`）；`flow-manager` 对 `flow-archive` 零 import（既有不变量保持）。"
+  - "i18n：入口基线 **908**（实测复现）；本阶段 +3 键（`flow.health.req*` 双表成对）→ 预期 **911**（以 `lint i18n` 实测为登记权威）；新键须真实接入（`t()` 渲染 ≠ 原始键——防死键）。"
+  - "测试隔离：全程 fixture tmpDir + 隔离 HOME（`vi.mock('node:os')`）+ `process.cwd` spy；**严禁**触碰真实 `.openfeel/flow.json` 与真实 `.openfeel/requirements/`。"
+  - "不改面：不改 phase 枚举 / 转移表 / `pipeline.yaml` / `build.js` / `package.json` / templates-data / `mapPhaseToStageStatus` / `ALLOWED_TRANSITIONS`；不新增第三方依赖；不 npm publish / 不 git push；不直写 flow.json；不推进 phase。"
+
+# 方案期设计裁定（定稿；供 stage-84/85 与审查消费）
+scheme_decisions:
+  - id: "S-83-1"
+    title: "`computeRequirementAggregate` 首参形态定稿 = 直委托方案（`(data: FlowData, requirementId)`）"
+    decision: "首参取 `data: FlowData`，done 分支**直接调用** `allLinkedStagesDone(data, requirementId)`；**不**抽 stages 级核心谓词、**不**改造 `allLinkedStagesDone`（零改动 `requirement-ops.ts`）——REV-83-011 契约同步落实。"
+    rationale: "REV-83-011 两案择①：委托点唯一（单行调用）且 `requirement-ops.ts` 零触碰——避开 REV-81-016/019 防双改区（改造薄壳会触碰该文件）；`stageCount>0` 门 + 委托即空集守卫同源。契约由 `(stages, requirementId)` 平移为 `(data, requirementId)`（`deps.yaml` 下游契约同步登记）。"
+  - id: "S-83-2"
+    title: "`syncRequirementStatus` 落点 = `src/core/req/aggregate.ts`（req 层自由函数）"
+    decision: "回写入口为 req 层纯函数（`(data, stageId) => string[]`）；`flow-manager.ts` 仅 1 行 import + 2 处调用（无第二实现）。"
+    rationale: "契约签名首参为 `data`（非方法）；需求写语义内聚 req 层（与 `requirement-ops.ts` 的「纯内存 + 审计内嵌 `data.log`」同范式）；`aggregate.ts` 对 flow-manager 仅 `import type` → 零运行时环（`requirement-ops` 对 flow-manager 亦为 type-only）。"
+  - id: "S-83-3"
+    title: "回写入口为**声明式单入口、不绑定事件**：advance 路径漂移态亦自愈回退"
+    decision: "`syncRequirementStatus` 内两条规则按**状态**判定（聚合 done ∧ 前置集内 → done；聚合 ≠ done ∧ status===done → in_progress）；`done × 聚合非done` 格在 advance 路径（漂移态）亦触发回退 + 审计。**显式登记**：T4.2 矩阵「done × 聚合非done」格断言 = 「回退 + 审计」（非零动作）。"
+    rationale: "plan §二 不变量 8 明写「回退条件 = 重算聚合 ≠ done ∧ status === done（**不绑定事件**）」+ REV-83-005 聚合视图表述；该格仅漂移态可达（正常序列中 reset 已在阶段离开 done 时即时回退），回退即**投影自愈**（kb #状态/相位单一事实源「投影可重算 = 漂移自愈」）。T4.2 矩阵「仅 `{scheduled,in_progress}` × 聚合 done 回写；其余零动作零审计」按 **auto-done 规则**读（矩阵名即「auto-done 前置集矩阵」）；非 done 列在 advance 路径对 6 个非 done 状态零动作零审计逐格断言。"
+  - id: "S-83-4"
+    title: "前置集单点常量 `AUTO_DONE_PRECONDITION = ['scheduled','in_progress']`（回写与 health 同口径）"
+    decision: "常量导出（`readonly RequirementStatus[]`）；`syncRequirementStatus` 守卫与 `requirementHealthItems` 漂移判据**共用同一常量**（禁第二份列表）。"
+    rationale: "plan §二 health 行「与回写前置集同口径」的结构化保证——单一来源使二者不可能漂移；REV-83-004 用户裁定（维持 `{scheduled, in_progress}`——REV-83-009 已同步大计划裁定 H/M）。"
+  - id: "S-83-5"
+    title: "回退目标恒 `in_progress`（维持计划默认；不做 `done→scheduled` 细粒度回退）"
+    decision: "重算聚合 ∈ {`scheduled`, `in_progress`} 且 status=done → 一律回退 `in_progress`。"
+    rationale: "plan §二 明示「不做 `done→scheduled` 细粒度回退；方案期可再裁」——方案期维持默认（回退目标单点、断言确定性最强；语义上需求已投放过执行，regress 为「待续推进」而非「未开工」）。"
+  - id: "S-83-6"
+    title: "审计形态：`requirement_auto_done` / `requirement_auto_reopen`，`agent: 'cli'`，detail `{requirementId, from, to, triggerStage}`"
+    decision: "经私有 `appendAggregateLog`（`data.log.push({time, agent:'cli', action, detail})`——与 `requirement-*` 家族同形）；**状态实际变化才写**；`updated_at` 刷新（状态维度单次赋值纪律）。"
+    rationale: "动作名 `requirement_*` 家族 → agent 值随族（`'cli'`）保持单一；detail 携 `triggerStage` 供溯源（哪个阶段推进触发的回写）；审计单点语义对齐 `flow-manager.appendLog`（:2688）载荷形态。"
+  - id: "S-83-7"
+    title: "health 需求对账落点 = `requirementHealthItems`（aggregate.ts）+ `flow.ts` 合并；两 item（`需求对账` 恒产生 + `需求漂移` 条件）"
+    decision: "① `需求对账`（悬空关联）：恒产生 1 条 pass/warn（对齐归档对账 a 项范式）；② `需求漂移`（前置集内 ∧ 聚合 done ∧ status ≠ done）：仅非空时 warn（对齐 b 项范式）；section 为中文常量（对齐 archive 先例）；消息 3 键入 i18n 双表 `flow.health.req*`。"
+    rationale: "Q6 定稿（REV-83-006）：warn 级 / 不改退出码 / 不参与 `--fix`；两类问题分离（悬空 = 数据完整性、漂移 = 状态一致性）便于 `--json` 按 name 断言；漂移判据与回写守卫同口径（S-83-4）——「本应被回写而未回写」的可见化。`draft/blocked/终态` 为设计豁免不报。"
+  - id: "S-83-8"
+    title: "零回归取证口径：补丁前/后快照 diff（路径 ①③）+ 单测三断言 + 正控（对照实验）"
+    decision: "「逐字节一致」= 归一化（置零 `meta.revision` / `meta.updated` / `log[*].time` / `stats` 时间三字段，S-83-8 口径）后 JSON 逐字相等；取证 = ① op-002 步骤 2.1 补丁前捕获 + 2.5 补丁后复跑 diff 为空（真基线）；② 单测以内联 golden 常驻断言（含 ③ deprecated 路径同 golden）；③ 三路径（advanceStagePhase / wizard / deprecated advancePhase）统一四断言：零注入 + `requirement_` 零审计 + golden/字段期望 + **正控**（加关联即出现 auto_done，防「零命中」恒真假绿）。"
+    rationale: "计划 T4.3「逐字节一致（fixture 快照对比）」+ REV-83-007 三路径口径；时间类字段为 save/start/end 必然改写项（kb #flow.json 内容增量核验必含 meta.revision/meta.updated 的口径扩展）；wizard 为命令层（pre/post 脚本化成本高）→ 以三断言 + 正控覆盖（口径同）。"
+  - id: "S-83-9"
+    title: "正交扩面：新 `aggregate.ts` 纳入禁用串扫描（新 describe 段自持 NEEDLES；既有段零改动）"
+    decision: "`test/core/req.test.ts` 追加段 C 扫描 `aggregate.ts`（六串零命中 + 正控 + 防假绿 + 单源断言）；**既有正交断言段（FILES/NEEDLES/三 it）逐字零改动**。"
+    rationale: "REV-81-017「本阶段仅追加聚合用例段、不动既有断言段（归 stage-85）」的字面遵守；新段自持副本的 6 串清单与既有段内容一致（新增 describe 内 `NEEDLES.length === 6` 锁定）。"
+
+# 计划审查 REV-83-001~011 落实映射（审查轮闭环基线；供方案审查与代码审查对照）
+plan_rev_mapping:
+  - "REV-83-001（high，blocking，已闭合）→ 计划轮已补承接表 15 条（stage-83/plan.md §三）；**本文件** `inherited_pending_revs` 逐条登记 + op-003 步骤 3.7 归档轮零灭失核验。"
+  - "REV-83-002（high，blocking，已闭合）→ op-001 步骤 1.1（done 分支直委托 `allLinkedStagesDone`）+ 1.4（T4.5 动态同源四组）+ 1.5（静态：`toContain('allLinkedStagesDone(')` + `.every(` 零命中——禁第二份 done 表达式）；S-83-1。"
+  - "REV-83-003（medium，已闭合）→ 各 op 「背景锚点」节全部「符号名 @ 行号」双锚 + 钉 HEAD `33185a3`；事实口径「存量 **8** 阶段」（迁移后；「78」为迁移前历史口径）。"
+  - "REV-83-004（medium，已闭合）→ op-001 步骤 1.1（`AUTO_DONE_PRECONDITION` 单点）+ 1.4（正向列 7 × 聚合 done 穷举）；op-002 步骤 2.6（T4.2-① 真实路径 7 例）；S-83-4/5。"
+  - "REV-83-005（medium，已闭合）→ op-002 步骤 2.3（advance 仅 done 分支——非 done 不触发）+ 2.4（reset 聚合视图回退——插入点在写入后）；op-001 步骤 1.1（`syncRequirementStatus` JSDoc 触发点约束）；S-83-3（不绑定事件——`done×非done` 自愈格显式登记）。"
+  - "REV-83-006（medium，已闭合）→ op-003 步骤 3.1/3.2（`src/commands/flow.ts` + `aggregate.ts` health 项）+ 3.3（i18n 双表 3 键）；Q6 定稿（warn 级、不改退出码、不参与 --fix）。"
+  - "REV-83-007（low，已闭合）→ op-002 步骤 2.6（T4.3-③ deprecated 路径）+ 2.9（`resetStagePhase` dryRun core 级 + 形参锁定 `advanceStagePhase.length===3`）；op-003 步骤 3.5（T4.4 双路径命令级 + T4.3-② wizard 回归）。"
+  - "REV-83-008（low，已闭合）→ op-003 步骤 3.3/3.6（入口基线 908 实测复现 → 新基线 911 显式登记）；T5 项。"
+  - "REV-83-009（medium，非阻塞）→ **用户裁定：维持前置集 `{scheduled, in_progress}`**；计划轮已同步大计划裁定 M（`v1.2.0/plan.md:154`）/ H（`:149`）；本文件 S-83-4 登记下游口径。"
+  - "REV-83-010（low，非阻塞）→ 计划轮已改「存量 8 阶段」（注明迁移前历史口径 `deps.yaml:199`）；本文件不复制历史口径。"
+  - "REV-83-011（low，非阻塞）→ **S-83-1 首参形态定稿** + 本文件 `downstream_contracts` 契约同步（补 `stageIds` + 零关联 `null` + 首参对齐 `allLinkedStagesDone(data, …)`）。"
+
+# 承接上游 pending REV 与 Bug（REV-83-001 基线；来源 users/Liuary/code_review/{REV-82,REV-81,REV-80}.md；逐条处置表见 stage-83/plan.md §三 承接表）
+inherited_pending_revs:
+  - "REV-82-015（low）→ **移交 stage-85 收口**（stage-82/plan.md §一 锚点微漂移 2 处文档层订正）；本阶段零动作（不改 stage-82 文档）。"
+  - "REV-82-016（medium）→ **台账保留**（已落实核验：`list --status` 守卫在位 `src/commands/req.ts:153`）；本阶段零动作（不改 `src/commands/req.ts`）。"
+  - "REV-82-017（low）→ **台账保留**（`--json` 错误码风格接受裁量，登记于 `stage-82/ops/deps.yaml:215`）；销账随 stage-85。"
+  - "REV-82-018（low）→ **台账保留**（已落实核验：help 文案注明短名系列 `i18n-data/zh-CN.ts:920`）。"
+  - "REV-82-019（low）→ **台账保留**（已落实核验：消解句 `stage-82/ops/deps.yaml:217`）。"
+  - "REV-82-020（low）→ **台账保留**（已落实核验：全称锚点 `stage-82/ops/op-001.md:25`）。"
+  - "REV-82-021（low）→ **台账保留**（`req.invalidIdTmpl` 分组接受差异，登记 `stage-82/ops/deps.yaml:219`）。"
+  - "REV-82-022（low）→ **台账保留**（`src/core/i18n.ts` 超范围产出已补登 + 运行时域注册在位 `:28,34`）。"
+  - "REV-82-023（low）→ **台账保留**（`req next` 硬编码 `'scheduled'` 接受裁量 S-82-3；现状 `src/commands/req.ts:542`）。"
+  - "REV-81-016（low）→ **台账保留 + 本阶段防双改核验**：守卫在位 `requirement-ops.ts:165-167` + 用例 `test/core/req.test.ts:389`；op-001 **零触碰 `requirement-ops.ts`**（S-83-1——原「仅限 T1 委托改造」授权未使用）+ op-001 自测 1.12（diff 零输出）。"
+  - "REV-81-017（low）→ **移交 stage-85**（`test/core/req.test.ts:638` 断言改写）；本阶段**仅追加**段 A/B/C/D、既有断言段零改动（op-001 自测 1.11 + op-003 同纪律）。"
+  - "REV-81-018（low）→ **台账保留**（add/update 校验风格接受差异，注释 `requirement-ops.ts:86`）；本阶段零动作。"
+  - "REV-81-019（low）→ **台账保留 + 防双改**（与 `req/BUG-001` 同处单点修复 `requirement-ops.ts:100`）；本阶段零触碰。"
+  - "REV-81-020（low）→ **台账保留**（命令层规避已落实 `src/commands/req.ts:119`）；销账随 stage-85。"
+  - "REV-80-029（low）→ **移交 stage-85**（`archive-health.ts` 注释补登记移交 executor）；本阶段**零触碰 `archive-health.ts`**（消费范式仅参照）。"
+
+# 下游契约（交付 stage-84/85；接口形态 = 函数签名级）
+downstream_contracts:
+  - name: "`src/core/req/aggregate.ts :: computeRequirementAggregate`（本阶段交付；首参形态定稿）"
+    change: "`computeRequirementAggregate(data: FlowData, requirementId: string): RequirementAggregate`；`RequirementAggregate = { stageIds: string[]; stageCount: number; doneCount: number; aggregate: 'scheduled' | 'in_progress' | 'done' | null }`（**零关联阶段 → `aggregate = null`**——空集守卫，不作 done 判定）；done 判定**委托 `allLinkedStagesDone(data, requirementId)`**（`requirement-ops.ts:76-79` 单一原语——REV-83-002）；**首参形态定稿 = `data: FlowData` 直委托**（S-83-1；REV-83-011 落实：原契约 `(stages, requirementId)` 平移，值域补 `stageIds` 与 `null` 分支）；纯函数（无 IO）。"
+  - name: "`src/core/req/aggregate.ts :: resolveRequirementStatusForStage`（本阶段交付）"
+    change: "`resolveRequirementStatusForStage(data: FlowData, stageId: string): { requirementId: string; target: 'scheduled' | 'in_progress' | 'done' } | null`——单阶段 → 目标状态纯函数；阶段不存在 / 无关联（null/undefined/空串）→ `null`。"
+  - name: "`src/core/req/aggregate.ts :: syncRequirementStatus`（本阶段交付——对称回写入口）"
+    change: "`syncRequirementStatus(data: FlowData, stageId: string): string[]`——纯内存；返回受影响需求 ID 列表；规则 = 声明式单入口（聚合 done ∧ status ∈ `AUTO_DONE_PRECONDITION` → done；聚合 ≠ done ∧ status === done → `in_progress`），**不绑定事件**（S-83-3）；零关联 / 悬空 / 前置集外 / 状态无变化 → `[]` 且零审计零注入。触发点：`advanceStagePhase` 仅 done 分支 / `resetStagePhase` 写入后（dry-run 均不可达）。"
+  - name: "`src/core/req/aggregate.ts :: AUTO_DONE_PRECONDITION`（本阶段交付）"
+    change: "`readonly RequirementStatus[] = ['scheduled', 'in_progress']`——auto-done 前置集单点（REV-83-004）；回写守卫与 health 漂移判据**同口径**（S-83-4）。"
+  - name: "`src/core/req/aggregate.ts :: requirementHealthItems`（本阶段交付）"
+    change: "`requirementHealthItems(input: { data: FlowData; lang?: string }): HealthCheckItem[]`——只读纯函数；section 常量 `需求对账`（恒 1 条 pass/warn——悬空关联）/ `需求漂移`（条件 warn——前置集内 ∧ 聚合 done ∧ status ≠ done；`draft`/`blocked`/终态豁免）；**恒无 fail**（warn-only——不改退出码、不参与 `--fix`）。"
+  - name: "审计动作名（本阶段交付）"
+    change: "`requirement_auto_done`（detail `{ requirementId, from, to: 'done', triggerStage }`）/ `requirement_auto_reopen`（detail `{ requirementId, from: 'done', to: 'in_progress', triggerStage }`）；`agent: 'cli'`；仅在状态实际变化时写入（单点 `data.log`，与 `requirement_*` 家族同形）。"
+  - name: "i18n 键前缀（本阶段交付）"
+    change: "`flow.health.reqLinksPassTmpl` / `flow.health.reqDanglingTmpl` / `flow.health.reqDriftTmpl`（3 键双表成对）；新基线 **911**（908 + 3；`lint i18n` 实测为准）；键清单冻结于 op-003 步骤 3.3。"
+  - name: "契约同步声明（对 v1.2.0/deps.yaml 已登记项）"
+    change: "`v1.2.0/deps.yaml` 需求原语条「`computeRequirementAggregate(stages, requirementId)`／首参形态方案期定稿」由本文件前述条目**覆盖为定稿形态**（REV-83-011 落实；文件名与返回类型以本文件为准）。"
+
+# 交付边界（本阶段不做，防越界）
+out_of_scope:
+  - "需求归档（`requirements` 随版本切分）——裁定 W：留后续版本"
+  - "Agent 模板 / skill（openfeel-req / feel.md / openfeel-planner.md）——归 stage-84"
+  - "README / docs / manual / CHANGELOG / 版本收口——归 stage-85"
+  - "需求自动修复（health 只报告；不做 `--fix` 需求项 / 不做状态自动校正）——裁定 R 同范式"
+  - "`done→scheduled` 细粒度回退 / 需求级细粒度进度百分比——不做（S-83-5）"
+  - "`advanceStagePhase` 增加 `dryRun` 形参——不做（dry-run 由命令层截断；REV-83-007 已核验）"
+  - "非 done 推进触发聚合回写（如 `scheduled → in_progress` 上推）——不做（REV-83-005：由 `req advance` 显式驱动）"
+  - "真实 `.openfeel/requirements/` 与真实 flow.json `requirements` 键的创建——本阶段不在真实仓执行需求写入（测试全程 tmpDir）"
+  - "npm publish / git push / CI / 第三方依赖 / build.js / package.json / pipeline.yaml / phase 枚举——零触碰"

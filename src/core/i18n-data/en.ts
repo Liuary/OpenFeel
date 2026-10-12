@@ -284,6 +284,9 @@ export const flow: I18nDomain = {
   'health.fixSkippedTmpl':          { key: 'flow.health.fixSkippedTmpl',          zh: '', en: 'Skipped {n} stage(s) (no "Status" field in status.md)' },
   'health.fixDryRunNote':           { key: 'flow.health.fixDryRunNote',           zh: '', en: 'Preview only; nothing was written' },
   'health.fixOnlyStatusNote':       { key: 'flow.health.fixOnlyStatusNote',       zh: '', en: 'Only the "Status" field is synced; execution mode / auto-advance / tasks are untouched' },
+  'health.reqLinksPassTmpl':        { key: 'flow.health.reqLinksPassTmpl',        zh: '', en: 'Requirement links consistent ({n} requirements, no dangling refs)' },
+  'health.reqDanglingTmpl':         { key: 'flow.health.reqDanglingTmpl',         zh: '', en: 'Dangling requirement links: {items} (referenced requirement does not exist; unbind via req link --unlink)' },
+  'health.reqDriftTmpl':            { key: 'flow.health.reqDriftTmpl',            zh: '', en: 'Requirement status drift: {items} (all linked stages done but requirement status is not done)' },
 
   'recover.title':                  { key: 'flow.recover.title',                  zh: '', en: '═══ Cross-Session Context Recovery ═══' },
   'recover.globalStatus':           { key: 'flow.recover.globalStatus',           zh: '', en: 'Global Status' },

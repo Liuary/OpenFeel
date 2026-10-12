@@ -35,6 +35,7 @@ import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, type WorkflowMode } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
 import type { RequirementData } from './req/types.js';
+import { syncRequirementStatus } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）
 
 /** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed' | 'draft';
@@ -1521,6 +1522,9 @@ export class FlowManager {
     // 阶段完成时自动结束计时
     if (targetPhase === 'done' && prevStatus !== 'done') {
       this.endStage(key);
+      // 需求聚合回写（T2）：仅 done 分支触发（非 done 推进不触发——REV-83-005）；
+      // 纯内存，落盘由命令层既有单次 save() 承担（同事务，不新增写盘点）；不改控制流与返回值。
+      syncRequirementStatus(this.data, key);
       // 归档 git commit 移出本方法：必须在 flow.json save 之后执行（否则 commit 不含本次 phase 变更）。
       // 返回 true 由命令层在 save 后调用 autoCommitOnDone。
       return true;
@@ -1597,6 +1601,10 @@ export class FlowManager {
       action: 'reset_stage_phase',
       detail: { stageName: key, from: fromPhase, to: targetPhase },
     });
+
+    // 需求聚合对称回退（T2）：聚合视图重算——聚合 ≠ done ∧ 需求 status === done → 回退 in_progress；
+    // 纯内存；dryRun / no-op 已在 :1585 早退（本点不可达）；不新增写盘点。
+    syncRequirementStatus(this.data, key);
 
     // 仅当 current 指向该阶段时同步 op 指针（其它阶段的 current 不被动）
     const curStage = this.data.pipeline.current.stage;

@@ -1,6 +1,7 @@
 # OpenFeel v1.2.0 阶段依赖声明（双主题：flow.json 归档拆分 + 需求流转系统）
 # 由 openfeel-planner 制定；op 级依赖由 openfeel-schemer 在各阶段产方案时落盘（{stage}/ops/deps.yaml）
 # 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
+# 修订记录：2026-10-12 openfeel-planner —— 复审非阻塞 REV-83-009~011 落实（invariants「存量 78 阶段」→「8 阶段」；需求原语契约补 `stageIds` + 零关联 `aggregate = null` + 首参形态与 `allLinkedStagesDone(data, …)` 对齐〔方案期定稿〕）
 
 version: "1.1"
 series: v1
@@ -122,10 +123,13 @@ stages:
     produces_core:
       - src/core/req/aggregate.ts
       - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
       - test/core/req.test.ts
       - test/core/flow-manager.test.ts
       - test/commands/flow.test.ts
-    notes: "computeRequirementAggregate 独立投影函数（阶段 phase → 需求状态；不改 mapPhaseToStageStatus，核验 B10）+ advanceStagePhase done 分支 / resetStagePhase **对称回写**（纯内存重算、不改控制流与返回值；命令层既有单次 save() 即同事务，核验 B5/B6）+ 存量兼容（requirement_id 缺省 = null；requirements 缺失零报错）+ health 需求对账（可选 warn 级，开放问题 Q6）+ 端到端聚合单测（含「无 requirement_id 阶段推进逐字不变」回归断言）。"
+    notes: "computeRequirementAggregate 独立投影函数（阶段 phase → 需求状态；不改 mapPhaseToStageStatus，核验 B10）+ advanceStagePhase done 分支 / resetStagePhase **对称回写**（纯内存重算、不改控制流与返回值；命令层既有单次 save() 即同事务，核验 B5/B6）+ 存量兼容（requirement_id 缺省 = null；requirements 缺失零报错）+ health 需求对账（**Q6 定稿：落地**，warn 级）+ 端到端聚合单测（含「无 requirement_id 阶段推进逐字不变」回归断言）。**计划审查 REV 修订轮（REV-83-001~008）**：done 判定单源（聚合 done 分支复用/委托 `allLinkedStagesDone`，含空集守卫——REV-83-002）+ auto-done 前置集 {scheduled, in_progress}（REV-83-004）+ 触发点裁定（advance 仅 done 分支 / reset 按聚合视图回退——REV-83-005）+ **Q6 定稿：health 需求对账落地**（warn 级、不改退出码、不参与 --fix——REV-83-006；产出含 src/commands/flow.ts + i18n 双表，入口基线 **908**——REV-83-008）+ **承接 REV 与处置表**（REV-82-015~023 / REV-81-016~020 / REV-80-029 逐条处置，见 stage-83/plan.md 同名列——REV-83-001）。"
 
   v1.2.0-stage-84:
     name: Agent/skill 契约（双主题）
@@ -193,7 +197,7 @@ invariants:
   - "需求所有写入经 FlowManager.save()（锁 + revision 乐观锁 + 原子写 + .bak）；不新增写盘点"
   - "REQ-NNN.md 为人读副本；机读权威恒为 flow.json（不一致以 flow.json 为准）"
   - "需求层与 workflow_mode 正交：src/core/req/** 与 src/commands/req.ts 不 import/读取 workflow_mode 或转移表"
-  - "requirement_id 缺省 = null（存量 78 阶段不迁移）；requirements / archived_versions 缺失时全命令零报错"
+  - "requirement_id 缺省 = null（存量 8 阶段不迁移——stage-80 自举迁移后本仓活跃集；「78 阶段」为迁移前历史口径——REV-83-010）；requirements / archived_versions 缺失时全命令零报错"
   - "本仓自举：v1.2.0 八阶段以 full 运行；stage-80 自举迁移执行前须用户确认 + 全量备份 + 回滚路径成文"
   - "不新增第三方依赖；不改 CI；不触碰 build.js / package.json（除模板重生成必需）；不 npm publish / 不 git push；不直写 flow.json（phase 推进由 Feel 经 CLI 执行）"
 
@@ -208,11 +212,11 @@ downstream_contracts:
   - name: "src/core/flow-archive/archive-health.ts :: 归档一致性 health 检查（stage-80 交付）"
     change: "`archiveHealthItems(input: { projectPath: string; data: FlowData }): HealthCheckItem[]`（纯函数；warn 级；a. archived_versions ↔ listArchiveVersions 双向对账；b. data.stages 命中已归档版本前缀〔restore 带回〕）。消费方 = commands/flow.ts health action（合并 items；不改退出码；非 quick；不参与 --fix）。对 flow-manager 仅 `import type`（编译期擦除、零运行时依赖边）。"
   - name: "src/core/req/ :: 需求原语（stage-81 交付，stage-82/83 消费）"
-    change: "建议签名：`addRequirement(data, { title, targetVersion?, priority? }): RequirementData`（ID = max+1，REQ-NNN；**新建即 `status:'draft'`**；**无 `source` 字段**〔REV-81-005：签名对齐 `RequirementData` 字段表〕；幂等/冲突语义于方案期冻结）；`getRequirements(data): RequirementData[]`（读侧宽容派生 `?? []`——不依赖 load 补齐，REV-81-003）；`getRequirement(data, id): RequirementData | null`；`listRequirements(data, filter?): RequirementData[]`（返回副本，核验 B8 范式）；`claimRequirement(data, id, owner): Result`（占用校验：已占用 → 错误码，**不写盘**）；`releaseRequirement(data, id): Result`；`updateRequirement(data, id, patch): Result`；`computeRequirementAggregate(stages, requirementId): { stageCount, doneCount, aggregate }`（**纯投影**，stage-83 交付但接口于 stage-81 登记）；`syncRequirementStatus(data, stageId): string[]`（done/reset 对称回写入口，纯内存，返回受影响需求列表）。"
+    change: "建议签名：`addRequirement(data, { title, targetVersion?, priority? }): RequirementData`（ID = max+1，REQ-NNN；**新建即 `status:'draft'`**；**无 `source` 字段**〔REV-81-005：签名对齐 `RequirementData` 字段表〕；幂等/冲突语义于方案期冻结）；`getRequirements(data): RequirementData[]`（读侧宽容派生 `?? []`——不依赖 load 补齐，REV-81-003）；`getRequirement(data, id): RequirementData | null`；`listRequirements(data, filter?): RequirementData[]`（返回副本，核验 B8 范式）；`claimRequirement(data, id, owner): Result`（占用校验：已占用 → 错误码，**不写盘**）；`releaseRequirement(data, id): Result`；`updateRequirement(data, id, patch): Result`；`computeRequirementAggregate(stages, requirementId): { stageIds: string[]; stageCount; doneCount; aggregate }`（**纯投影**；**done 判定委托 `allLinkedStagesDone`（`requirement-ops.ts:76-79` 单一原语，含空集守卫）**——REV-83-002；**零关联阶段 → `aggregate = null`**（值域 = `scheduled` / `in_progress` / `done` / `null`；不作 done 判定）；**首参形态方案期定稿**（与委托原语 `allLinkedStagesDone(data: FlowData, requirementId)` 对齐，择一：① 首参改 `data: FlowData` 直接委托；② 抽 stages 级核心谓词〔`allLinkedStagesDone` 变薄壳、行为逐字不变〕、首参保持 `stages`；**禁第二份 done 表达式**——REV-83-011）；stage-83 交付但接口于 stage-81 登记）；`syncRequirementStatus(data, stageId): string[]`（done/reset 对称回写入口，纯内存，返回受影响需求列表；done 判定同源）。"
   - name: "src/core/flow-manager.ts :: FlowData / StageData 字段契约"
     change: "`FlowData.requirements?: RequirementData[]`（**读侧宽容**：`getRequirements` 派生 `?? []`；**不** load 补齐——REV-78-015 方向，核验 B3）；`FlowData.meta.archived_versions?: string[]`（缺失视为 []）；`StageData.requirement_id?: string | null`；`StageData.workflow_mode` 语义不变。**新增字段一律可选 + 读侧宽容（缺省回落）**（向后兼容不变量）。"
   - name: "src/core/i18n-data/{zh-CN,en}.ts :: i18n 基线"
-    change: "v1.1.7 基线 **796**（历史值，非现行门禁口径——REV-82-005）；stage-79（→826）/ stage-80（→829）已递增；**stage-82 入口基线 = 829**（复现：`OPENFEEL_LOG=0 node bin/openfeel.js lint i18n` → 「✅ 829 键一致」）；stage-82 / 84 各自新增键并显式登记新基线（lint i18n 全绿；stage-81 不新增键，门禁 = **829**）。命令面文案键前缀约定：`flow.archive.*` / `req.*`（help 域 `help.flow.archive*` / `help.req.*` 对齐既有 applyHelpI18n 范式，核验 cli/index.ts:96-175）。"
+    change: "v1.1.7 基线 **796**（历史值，非现行门禁口径——REV-82-005）；stage-79（→826）/ stage-80（→829）已递增；**stage-82 入口基线 = 829**（复现：`OPENFEEL_LOG=0 node bin/openfeel.js lint i18n` → 「✅ 829 键一致」）；stage-82 / 83 / 84 各自新增键并显式登记新基线（lint i18n 全绿；stage-81 不新增键，门禁 = **829**；**stage-83 入口基线 = 908**——实测：`OPENFEEL_LOG=0 node bin/openfeel.js lint i18n` → 「✅ 908 键一致」；health 对账新键显式登记新基线，REV-83-008）。命令面文案键前缀约定：`flow.archive.*` / `req.*`（help 域 `help.flow.archive*` / `help.req.*` 对齐既有 applyHelpI18n 范式，核验 cli/index.ts:96-175）。"
   - name: "src/core/templates-data/skills/openfeel-req/SKILL.md（新）"
     change: "权威源单文件（中文单语、无 {lang}、description 含查询触发词）；build 步骤 4/6 自动纳入（build.js 零改动，核验 B23）；**skills 计数 17→18 六处断言翻转**（核验 B22）；快照声明「以 openfeel req --help 为准」。"
   - name: "doc 面（stage-85）"

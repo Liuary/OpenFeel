@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "version": "1.0",
+    "project": "S",
+    "updated": "2026-01-01T00:00:00Z",
+    "revision": 0
+  },
+  "pipeline": {
+    "phase": "active",
+    "current": {
+      "stage": "v1.0.0-stage-01",
+      "op": ""
+    },
+    "retry": 0
+  },
+  "stages": {
+    "v1.0.0-stage-01": {
+      "name": "S1",
+      "phase": "REQ-001",
+      "status": "REQ-001",
+      "deps": [],
+      "ops": {},
+      "requirement_id": "in_progress"
+    },
+    "v1.0.0-stage-02": {
+      "name": "S2",
+      "phase": "plan_pending",
+      "status": "plan_pending",
+      "deps": [],
+      "ops": {}
+    }
+  },
+  "reviews": [],
+  "log": []
+}

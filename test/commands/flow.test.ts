@@ -31,6 +31,7 @@ import { registerPlanCommand } from '../../src/commands/plan.js';
 import { registerArchiveCommand } from '../../src/commands/archive.js';
 import { applyHelpI18n } from '../../src/cli/index.js';
 import { initProject } from '../../src/core/init.js';
+import { t } from '../../src/core/i18n.js';
 import { FlowManager, FlowConcurrentModificationError, type FlowData, type PipelinePhase, type MetaPhase, type StageData } from '../../src/core/flow-manager.js';
 import { setConfigValue } from '../../src/core/config.js';
 import { addStage } from '../../src/core/plan/stage.js';
@@ -40,6 +41,11 @@ import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../../src/core/flow-ar
 import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync, statSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+
+// op-003 真实工作区反守卫（REAL_CWD）：模块顶层捕获真实 flow.json 基线（cwdMock 注入前）
+const REAL_CWD = process.cwd();
+const REAL_FLOW_PATH = join(REAL_CWD, '.openfeel', 'flow.json');
+const REAL_FLOW_RAW = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
 
 describe('flow 命令（stage-41）', () => {
   let tmpDir: string;
@@ -3046,5 +3052,191 @@ describe('flow 命令（stage-41）', () => {
       expect(after.meta.archived_versions).toEqual(['v1.9.1']);
       expect(after.stages['v1.9.1-stage-11']).toBeUndefined();
     });
+  });
+
+  // ═══════════════════════════════════════
+  // stage-83 op-003：health 需求对账（T4.6）+ dry-run 双路径（T4.4）+ wizard 回归（T4.3-②）
+  // ═══════════════════════════════════════
+
+  /** flow.json 路径（本段 fixture） */
+  const s83FlowPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
+  /** 原始文本读回 */
+  const readFlowRaw = (): string => readFileSync(s83FlowPath(), 'utf-8');
+  /** 写盘 fixture（显式 revision 0 基线） */
+  const writeS83Flow = (data: Record<string, unknown>): void => {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(s83FlowPath(), JSON.stringify(data, null, 2) + '\n', 'utf-8');
+  };
+  /** 需求条目 */
+  const s83Req = (id: string, status: string): Record<string, unknown> => ({
+    id, title: `需求 ${id}`, status, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
+  });
+  /** 基础 fixture（stage 键用全名——命令层 normalizeStageId 会展开短名） */
+  const S83_STAGE = 'v1.0.0-stage-01';
+  const s83Base = (stages: Record<string, unknown>, extraTop: Record<string, unknown> = {}): Record<string, unknown> => ({
+    meta: { version: '1.0', project: 'T', updated: '2026-01-01T00:00:00Z', revision: 0 },
+    pipeline: { phase: 'active', current: { stage: S83_STAGE, op: '' }, retry: 0 },
+    stages,
+    reviews: [], log: [],
+    ...extraTop,
+  });
+  /** 关联某需求的阶段 */
+  const s83Stage = (phase: string, requirementId?: string): Record<string, unknown> => {
+    const s: Record<string, unknown> = { name: '阶段', phase, status: phase, deps: [], ops: {} };
+    if (requirementId !== undefined) { s.requirement_id = requirementId; }
+    return s;
+  };
+
+  it('op-003 T4.4-① flow advance --dry-run 字节零写盘（含需求字段）+ 正控（真实推进有变化）', async () => {
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('archiving', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'in_progress')] }));
+    const before = readFlowRaw();
+    logMock.mockClear();
+    const prevExit = process.exitCode;
+    process.exitCode = undefined;
+    try {
+      await safeParse(['flow', 'advance', '--stage', 'stage-01', '--to', 'done', '--dry-run']);
+      const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(out).toContain('未实际修改 flow.json');
+      expect(readFlowRaw()).toBe(before);                 // 字节不变（含需求字段）
+      expect(process.exitCode).not.toBe(1);
+    } finally {
+      process.exitCode = prevExit;
+    }
+
+    // 正控：真实推进 → flow.json 变化且需求 done（证明「零写盘」断言非恒真）
+    logMock.mockClear();
+    await safeParse(['flow', 'advance', '--stage', 'stage-01', '--to', 'done']);
+    const after = JSON.parse(readFlowRaw());
+    expect(after.stages[S83_STAGE].phase).toBe('done');
+    expect(after.requirements[0].status).toBe('done');
+    expect(readFlowRaw()).not.toBe(before);
+  });
+
+  it('op-003 T4.4-② flow stage reset --dry-run 字节零写盘 + 正控（回退生效 + requirement_auto_reopen 落盘）', async () => {
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('done', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'done')] }));
+    const before = readFlowRaw();
+    logMock.mockClear();
+    await safeParse(['flow', 'stage', 'reset', 'stage-01', '--to', 'archiving', '--dry-run']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('复位预览');
+    expect(out).toContain(`${S83_STAGE}: done → archiving`);
+    expect(readFlowRaw()).toBe(before);
+
+    // 正控：真实 reset → 需求回退 in_progress + 审计落盘
+    logMock.mockClear();
+    await safeParse(['flow', 'stage', 'reset', 'stage-01', '--to', 'archiving']);
+    const after = JSON.parse(readFlowRaw());
+    expect(after.stages[S83_STAGE].phase).toBe('archiving');
+    expect(after.requirements[0].status).toBe('in_progress');
+    expect(after.log.some((l: Record<string, unknown>) => l.action === 'requirement_auto_reopen')).toBe(true);
+  });
+
+  it('op-003 T4.6-① 悬空 warn + ok===true + 退出码不变', async () => {
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('done', 'REQ-999') }, { requirements: [] }));
+    logMock.mockClear();
+    exitMock.mockClear();
+    await safeParse(['flow', 'health', '--json']);
+    const obj = parseJsonLog();
+    const items = obj.items as Array<{ name: string; status: string; detail: string }>;
+    expect(items.some((i) => i.name === '需求对账' && i.status === 'warn')).toBe(true);
+    expect(items.find((i) => i.name === '需求对账')!.detail).toContain(`${S83_STAGE} → REQ-999`);
+    expect(obj.ok).toBe(true);
+    expect(exitMock).not.toHaveBeenCalledWith(1);
+  });
+
+  it('op-003 T4.6-② 漂移 warn + 退出码不变；T4.6-③ 设计豁免不报', async () => {
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('done', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'scheduled')] }));
+    logMock.mockClear(); exitMock.mockClear();
+    await safeParse(['flow', 'health', '--json']);
+    let obj = parseJsonLog();
+    let items = obj.items as Array<{ name: string; status: string }>;
+    expect(items.some((i) => i.name === '需求漂移' && i.status === 'warn')).toBe(true);
+    expect(obj.ok).toBe(true);
+    expect(exitMock).not.toHaveBeenCalledWith(1);
+
+    // 设计豁免：draft × 全 done → 无漂移项
+    logMock.mockClear();
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('done', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'draft')] }));
+    await safeParse(['flow', 'health', '--json']);
+    obj = parseJsonLog();
+    items = obj.items as Array<{ name: string; status: string }>;
+    expect(items.some((i) => i.name === '需求漂移')).toBe(false);
+    expect(items.find((i) => i.name === '需求对账')!.status).toBe('pass');
+  });
+
+  it('op-003 T4.6-④ --quick 跳过；T4.6-⑤ 人类输出含「需求对账」；T4.6-⑥ --fix 不参与', async () => {
+    // ④ --quick 跳过
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('done', 'REQ-999') }, { requirements: [] }));
+    logMock.mockClear();
+    await safeParse(['flow', 'health', '--quick', '--json']);
+    let obj = parseJsonLog();
+    expect((obj.items as Array<{ name: string }>).some((i) => i.name === '需求对账')).toBe(false);
+
+    // ⑤ 干净 fixture：JSON pass + 人类输出现「需求对账」行
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('done', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'done')] }));
+    logMock.mockClear();
+    await safeParse(['flow', 'health', '--json']);
+    obj = parseJsonLog();
+    expect((obj.items as Array<{ name: string; status: string }>).find((i) => i.name === '需求对账')!.status).toBe('pass');
+    logMock.mockClear();
+    await safeParse(['flow', 'health']);
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('需求对账');
+
+    // ⑥ --fix 不参与（payload 无需求修复项；flow.json 字节不变）
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('done', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'scheduled')] }));
+    const before = readFlowRaw();
+    logMock.mockClear();
+    await safeParse(['flow', 'health', '--fix', '--dry-run', '--json']);
+    obj = parseJsonLog();
+    expect(obj).toHaveProperty('reconciled');
+    expect(JSON.stringify(obj.reconciled)).not.toContain('REQ-');
+    expect(readFlowRaw()).toBe(before);
+  });
+
+  it('op-003 T4.3-② wizard 回归：零注入 + requirement_ 零审计 + 期望字段 + 正控', async () => {
+    // 无关联 fixture（stage-01 archiving；无 requirements 键）
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('archiving') }));
+    mockedInquirer.select.mockResolvedValueOnce('done').mockResolvedValueOnce('yes');
+    setTty(true);
+    try {
+      await safeParse(['flow', 'wizard']);
+    } finally {
+      setTty(false);
+    }
+    const parsed = JSON.parse(readFlowRaw());
+    expect('requirements' in parsed).toBe(false);                                    // 零注入
+    expect((parsed.log as Array<{ action: string }>).filter((l) => l.action.startsWith('requirement_'))).toHaveLength(0);
+    expect(parsed.stages[S83_STAGE].phase).toBe('done');
+    expect(parsed.stages[S83_STAGE].status).toBe('done');
+    expect(parsed.pipeline.phase).toBe('done');
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('已推进');
+
+    // 正控：关联 fixture → requirement_auto_done 出现（回写经 wizard 路径已接通）
+    logMock.mockClear();
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('archiving', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'in_progress')] }));
+    mockedInquirer.select.mockResolvedValueOnce('done').mockResolvedValueOnce('yes');
+    setTty(true);
+    try {
+      await safeParse(['flow', 'wizard']);
+    } finally {
+      setTty(false);
+    }
+    const parsed2 = JSON.parse(readFlowRaw());
+    expect(parsed2.requirements[0].status).toBe('done');
+    expect((parsed2.log as Array<{ action: string }>).some((l) => l.action === 'requirement_auto_done')).toBe(true);
+  });
+
+  it('op-003 i18n 键真实接入（t() 渲染 ≠ 原始键；en 渲染非空）', () => {
+    expect(t('flow.health.reqDanglingTmpl', 'zh-CN', { items: 'x' })).not.toBe('flow.health.reqDanglingTmpl');
+    expect(t('flow.health.reqDanglingTmpl', 'zh-CN', { items: 'x' })).toContain('x');
+    expect(t('flow.health.reqDanglingTmpl', 'en', { items: 'x' })).not.toBe('');
+    expect(t('flow.health.reqLinksPassTmpl', 'en', { n: '2' })).toContain('2');
+    expect(t('flow.health.reqDriftTmpl', 'en', { items: 'y' })).toContain('y');
+  });
+
+  it('op-003 真实工作区零触碰（REAL_CWD 反守卫：真实 flow.json 字节不变 + 零 requirements 注入）', () => {
+    expect(existsSync(REAL_FLOW_PATH)).toBe(true);
+    expect(readFileSync(REAL_FLOW_PATH, 'utf-8')).toBe(REAL_FLOW_RAW);
+    expect(readFileSync(REAL_FLOW_PATH, 'utf-8')).not.toContain('"requirements"');
   });
 });

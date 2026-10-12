@@ -14,7 +14,7 @@
 | [v1.1.5](v1/v1.1.5/plan.md) | 消除「升级 CLI 后静默加载旧全局部署」缺口（版本事实源 + 被动检测提示 + `setup --check`） | **已完成**（**stage-66~67 全部归档 = M22 / M23 达成 / 版本收官**，缺口端到端消除；版本 1.1.5 收口 / 发布就绪） |
 | [v1.1.6](v1/v1.1.6/plan.md) | Claude Code 适配器（多 harness 并存）：skills 共享中立源 + Claude 9 agent/约束 + `--tools` + `settings.json` 注入 + 版本 1.1.6 | **已归档**（6 阶段全部闭环 = **v1.1.6 版本收官**，M24~M28 达成；版本 1.1.6 收口 / 发布就绪） |
 | [v1.1.7](v1/v1.1.7/plan.md) | 快速迭代模式（fast workflow mode）：双模式 phase 链 + 骨架全量铺/标记驱动 + 默认自动推进开启（`workflow_mode` / `auto_advance`） | **已归档**（4 阶段 `stage-74~77` 全部闭环 = **v1.1.7 版本收官**，M29~M32 达成；版本 1.1.7 收口 / 发布就绪） |
-| [v1.2.0](v1/v1.2.0/plan.md) | 双主题：① 需求流转系统（四层模型 + 需求状态机 + 认领协议）；② **flow.json 归档拆分**（版本分片，**先行执行**） | **执行中**（`stage-78~82` 已归档 = **M33/M34/M35/M36/M37 done**，**归档主题三阶段收官 + 需求主题前两阶段闭环**；`stage-83~85` 待 Feel 经 CLI 注册推进） |
+| [v1.2.0](v1/v1.2.0/plan.md) | 双主题：① 需求流转系统（四层模型 + 需求状态机 + 认领协议）；② **flow.json 归档拆分**（版本分片，**先行执行**） | **执行中**（`stage-78~83` 已归档 = **M33~M38 done**，**归档主题三阶段收官 + 需求主题三阶段闭环**；`stage-84~85` 待 Feel 经 CLI 注册推进） |
 | [v0.5](v0/v0.5/index.md) | 工具链 + 协作增强 + 质量保障（v0.5.0 ~ v0.5.11） | 全部归档 |
 | [v0.4](v0/v0.4/index.md) | 工程精简 + Agent 深化 + 国际化（v0.4.0 ~ v0.4.7） | 全部归档 |
 | [v0.3](v0/v0.3/plan.md) / [v0.3.1](v0/v0.3/v0.3.1/v0.3.1-stage-01/status.md) / [v0.3.2](v0/v0.3/v0.3.2/v0.3.2-stage-01/status.md) | 早期版本（生产加固 / 补丁修正 / 收尾补丁） | 全部归档 |
@@ -108,6 +108,7 @@
 | v1.2.0-stage-80 | v1.2.0（归档消费点适配与存量迁移 — 跨版本 deps 判定 + `flow health` 归档一致性 + `config --sync-stages` 降级 + **本仓 78 阶段九组一次性迁移**（flow.json 425323 B → ~59-62KB）；**主题二「归档拆分」收官阶段**；hard 依赖 stage-78/79） | **已归档**（**M35 done / v1.2.0 归档主题收官**） | 4 op | 4/4 |
 | v1.2.0-stage-81 | v1.2.0（需求核心引擎 — `RequirementData` 10 字段 + 7 值域常量 + `FlowData.requirements`/`StageData.requirement_id`（读侧宽容不 load 补齐）+ 9 原语（纯内存经 `save()`）+ ID 分配 + 正文骨架 + 正交边界；**主题一「需求流转系统」首阶段**；hard 依赖 stage-80） | **已归档**（**M36 done / v1.2.0 需求主题首阶段**） | 3 op | 3/3 |
 | v1.2.0-stage-82 | v1.2.0（需求命令面 — 新建 `src/commands/req.ts`（`openfeel req` 10 子命令）+ 两行注册 + 引擎小幅补丁（`getAllowedNextStatuses` 导出 + `addRequirement` 非数组守卫收口 `req/BUG-001`）+ `--json` 四读命令成功/失败同契约 + 退出码 0/1/2 + help 键双规（37 键双向断言）+ `--owner` 三级链；命令层零业务逻辑；**主题一「需求流转系统」第二阶段**；hard 依赖 stage-81） | **已归档**（**M37 done / v1.2.0 需求主题第二阶段**） | 3 op | 3/3 |
+| v1.2.0-stage-83 | v1.2.0（需求聚合判定与对账 — 新建 `src/core/req/aggregate.ts`（聚合投影纯函数，done 判定**单源委托 `allLinkedStagesDone`** + `syncRequirementStatus` 对称回写入口 + `AUTO_DONE_PRECONDITION` 前置集 + `requirementHealthItems` 对账）+ `flow-manager.ts` 对称回写两热点（advance done 分支 / reset 聚合视图；纯内存同事务，**8+/0-**）+ `flow.ts` health 三处合并 + i18n 908→**911** + 零回归取证；**主题一「需求流转系统」收官阶段**；hard 依赖 stage-81/82） | **已归档**（**M38 done / v1.2.0 需求主题收官**） | 3 op | 3/3 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

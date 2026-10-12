@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-11T21:57:18.243Z",
-    "revision": 1011,
+    "updated": "2026-10-12T15:33:58.232Z",
+    "revision": 1026,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -19,7 +19,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.2.0-stage-82",
+      "stage": "v1.2.0-stage-83",
       "op": "op-001"
     },
     "retry": 0
@@ -378,14 +378,71 @@
     },
     "v1.2.0-stage-83": {
       "name": "v1.2.0-stage-83",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.2.0-stage-81",
         "v1.2.0-stage-82"
       ],
-      "ops": {},
-      "workflow_mode": "full"
+      "ops": {
+        "op-001": {
+          "title": "聚合投影与对称回写入口（新建 `src/core/req/aggregate.ts`；done 判定单源委托）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-002": {
+          "title": "flow-manager 对称回写接入与零回归取证（advance done 分支 / reset 聚合视图回退）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        },
+        "op-003": {
+          "title": "health 需求对账与门禁收口（i18n 双表 + 命令级测试 + T5；阶段收口 op）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          }
+        }
+      },
+      "workflow_mode": "full",
+      "stats": {
+        "start_time": "2026-10-11T21:57:19.295Z",
+        "end_time": "2026-10-12T15:33:58.213Z",
+        "duration_ms": 63398918
+      }
     },
     "v1.2.0-stage-84": {
       "name": "v1.2.0-stage-84",
@@ -3067,6 +3124,173 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.2.0-stage-82",
+        "from": "archiving",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-11T21:57:19.295Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-10-11T21:59:44.675Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "plan_review",
+        "to": "plan_pending"
+      }
+    },
+    {
+      "time": "2026-10-11T22:09:33.725Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "plan_pending",
+        "to": "plan_review"
+      }
+    },
+    {
+      "time": "2026-10-11T22:12:46.882Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "plan_review",
+        "to": "plan_passed"
+      }
+    },
+    {
+      "time": "2026-10-11T22:12:47.198Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "plan_passed",
+        "to": "scheme_pending"
+      }
+    },
+    {
+      "time": "2026-10-12T15:00:23.124Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-10-12T15:00:23.124Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-10-12T15:00:23.124Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-10-12T15:01:28.163Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "scheme_pending",
+        "to": "scheme_review"
+      }
+    },
+    {
+      "time": "2026-10-12T15:05:07.207Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "scheme_review",
+        "to": "scheme_passed"
+      }
+    },
+    {
+      "time": "2026-10-12T15:05:07.541Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "scheme_passed",
+        "to": "exec_running"
+      }
+    },
+    {
+      "time": "2026-10-12T15:16:14.562Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "exec_running",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-10-12T15:20:56.832Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "review_pending",
+        "to": "review_passed"
+      }
+    },
+    {
+      "time": "2026-10-12T15:20:57.158Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "review_passed",
+        "to": "test_pending"
+      }
+    },
+    {
+      "time": "2026-10-12T15:27:34.466Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "test_pending",
+        "to": "test_passed"
+      }
+    },
+    {
+      "time": "2026-10-12T15:27:34.825Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
+        "from": "test_passed",
+        "to": "archiving"
+      }
+    },
+    {
+      "time": "2026-10-12T15:33:58.213Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.0-stage-83",
         "from": "archiving",
         "to": "done"
       }

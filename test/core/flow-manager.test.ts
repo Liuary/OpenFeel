@@ -9,6 +9,8 @@ import { t } from '../../src/core/i18n.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
+import { AUTO_DONE_PRECONDITION } from '../../src/core/req/aggregate.js';
+import { REQ_STATUSES, type RequirementData, type RequirementStatus } from '../../src/core/req/types.js';
 
 // mock homedir：隔离全局画像读写（stage-42 op-001/op-002），避免污染真实用户主目录
 // 沿用 test/core/config.test.ts 的既有惯例（vi.hoisted + importOriginal 保留其余 os 导出）
@@ -4990,5 +4992,348 @@ describe('需求字段兼容（stage-81 op-001）', () => {
     mgr3.save();
     const mgr4 = new FlowManager(tmpDir);
     expect(mgr4.getData()!.stages['stage-01']).toMatchObject({ requirement_id: null });
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-83 op-002：需求聚合对称回写接入（T4.2 / T4.3 / T4.4-core）
+// ═══════════════════════════════════════
+describe('需求聚合对称回写接入（stage-83 op-002）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-req-aggregate-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 构造需求条目（与 makeReq 同形对象） */
+  function reqObj(id: string, status: RequirementStatus): RequirementData {
+    return {
+      id,
+      title: `需求 ${id}`,
+      status,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    };
+  }
+
+  /** 构造阶段（可选关联需求） */
+  function stage(phase: PipelinePhase, requirementId?: string): StageData {
+    const s: StageData = { name: '阶段', phase, status: 'in_progress', deps: [], ops: {} };
+    if (requirementId !== undefined) { s.requirement_id = requirementId; }
+    return s;
+  }
+
+  /** 构造 FlowData（可选 requirements 键） */
+  function flowData(stages: Record<string, StageData>, requirements?: RequirementData[]): FlowData {
+    const d = makeTestFlowData({ stages });
+    if (requirements) { d.requirements = requirements; }
+    return d;
+  }
+
+  /** 注入内存数据的 manager（隔离 tmpDir；不落盘） */
+  function mgrWith(data: FlowData): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(structuredClone(data));
+    return mgr;
+  }
+
+  /** 写盘（T4.2-⑦ 双 manager 冲突用） */
+  function writeFlow(data: FlowData): void {
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(data, null, 2) + '\n', 'utf-8');
+  }
+  function readDisk(): Record<string, any> {
+    return JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as Record<string, any>;
+  }
+
+  /** 无 requirement_id / 无 requirements 键 fixture（★ 逐字同 op-002 步骤 2.1） */
+  function unlinkedFixture(): FlowData {
+    return {
+      meta: { version: '1.0', project: 'Stage83Regression', updated: '2026-01-01T00:00:00.000Z' },
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: '', op: '' }, retry: 0 },
+      stages: { 'stage-01': { name: '回归阶段', phase: 'plan_pending' as PipelinePhase, status: 'in_progress', deps: [], ops: {} } },
+      reviews: [], log: [],
+    };
+  }
+
+  /** 归一化易变字段（S-83-8）——与 op-002 步骤 2.1 同口径 */
+  function normalize(raw: unknown): string {
+    const d = structuredClone(raw) as Record<string, any>;
+    if (d.meta) { d.meta.revision = 0; d.meta.updated = ''; }
+    for (const l of (d.log ?? []) as any[]) { l.time = ''; }
+    for (const s of Object.values((d.stages ?? {}) as Record<string, any>)) {
+      if (s.stats) { s.stats.start_time = ''; s.stats.end_time = ''; s.stats.duration_ms = 0; }
+    }
+    return JSON.stringify(d, null, 2);
+  }
+
+  /** 计数某动作的审计条数 */
+  function countAction(mgr: FlowManager, action: string): number {
+    return mgr.getData()!.log.filter((l) => l.action === action).length;
+  }
+  /** 计数 requirement_ 前缀审计条数 */
+  function countReqLogs(mgr: FlowManager): number {
+    return mgr.getData()!.log.filter((l) => String(l.action).startsWith('requirement_')).length;
+  }
+
+  // 补丁前基线 golden（来源 `.openfeel/tmp/stage-83-baseline.json`，本段内联）
+  const GOLDEN_ADVANCE = `{
+  "meta": {
+    "version": "1.0",
+    "project": "Stage83Regression",
+    "updated": "",
+    "revision": 0
+  },
+  "pipeline": {
+    "phase": "done",
+    "current": {
+      "stage": "stage-01",
+      "op": ""
+    },
+    "retry": 0
+  },
+  "stages": {
+    "stage-01": {
+      "name": "回归阶段",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "stage-01",
+        "from": "plan_pending",
+        "to": "done"
+      }
+    }
+  ]
+}`;
+
+  const GOLDEN_DEPRECATED = `{
+  "meta": {
+    "version": "1.0",
+    "project": "Stage83Regression",
+    "updated": "",
+    "revision": 0
+  },
+  "pipeline": {
+    "phase": "done",
+    "current": {
+      "stage": "stage-01",
+      "op": ""
+    },
+    "retry": 0
+  },
+  "stages": {
+    "stage-01": {
+      "name": "回归阶段",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "stats": {
+        "start_time": "",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "",
+      "agent": "flow-manager",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "stage-01",
+        "from": "plan_pending",
+        "to": "done"
+      }
+    }
+  ]
+}`;
+
+  it('T4.2-① 正向矩阵（7 status × 聚合 done——真实 advanceStagePhase）：仅 {scheduled,in_progress} 写 + 审计逐字段；返回值恒 true', () => {
+    for (const status of REQ_STATUSES) {
+      const data = flowData({ 'stage-01': stage('archiving', 'REQ-001') }, [reqObj('REQ-001', status)]);
+      const mgr = mgrWith(data);
+      const before = mgr.getData()!.requirements![0].updated_at;
+      const ret = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
+      expect(ret).toBe(true);                                    // 返回值与回写解耦：恒 true
+      const req = mgr.getData()!.requirements![0];
+      if ((AUTO_DONE_PRECONDITION as readonly string[]).includes(status)) {
+        expect(req.status).toBe('done');
+        expect(req.updated_at).not.toBe(before);                 // updated_at 刷新
+        expect(countAction(mgr, 'requirement_auto_done')).toBe(1);
+        const entry = mgr.getData()!.log.find((l) => l.action === 'requirement_auto_done')!;
+        expect(entry.agent).toBe('cli');
+        expect(entry.detail).toEqual({ requirementId: 'REQ-001', from: status, to: 'done', triggerStage: 'stage-01' });
+      } else {
+        expect(req.status).toBe(status);                         // 前置集外：状态逐字不变
+        expect(countReqLogs(mgr)).toBe(0);                       // 零审计
+      }
+    }
+  });
+
+  it('T4.2-② 反向矩阵（7 status × 聚合非 done——需求同时关联 stage-A 与 stage-B）：仅 done 回退 + 审计；其余 6 零动作', () => {
+    for (const status of REQ_STATUSES) {
+      // 需求同时关联 A（archiving→advance done）与 B（exec_running 固定），推进 A 后聚合仍非 done
+      const data = flowData({
+        'stage-A': stage('archiving', 'REQ-001'),
+        'stage-B': stage('exec_running', 'REQ-001'),
+      }, [reqObj('REQ-001', status)]);
+      const mgr = mgrWith(data);
+      const ret = mgr.advanceStagePhase('stage-A', 'done' as PipelinePhase, 'cli');
+      expect(ret).toBe(true);
+      const req = mgr.getData()!.requirements![0];
+      if (status === 'done') {
+        // S-83-3 漂移自愈格：done × 聚合非 done → 回退 + 审计
+        expect(req.status).toBe('in_progress');
+        expect(countAction(mgr, 'requirement_auto_reopen')).toBe(1);
+        const entry = mgr.getData()!.log.find((l) => l.action === 'requirement_auto_reopen')!;
+        expect(entry.agent).toBe('cli');
+        expect(entry.detail).toEqual({ requirementId: 'REQ-001', from: 'done', to: 'in_progress', triggerStage: 'stage-A' });
+      } else {
+        expect(req.status).toBe(status);
+        expect(countReqLogs(mgr)).toBe(0);
+      }
+    }
+  });
+
+  it('T4.2-③ 对称循环（advance done ↔ reset）：双向对称 + 审计条数逐次断言', () => {
+    const data = flowData({ 'stage-01': stage('archiving', 'REQ-001') }, [reqObj('REQ-001', 'in_progress')]);
+    const mgr = mgrWith(data);
+    // ① advance → done
+    expect(mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli')).toBe(true);
+    expect(mgr.getData()!.requirements![0].status).toBe('done');
+    expect(countAction(mgr, 'requirement_auto_done')).toBe(1);
+    // ② reset（复位到 review_failed——投影 status ≠ done，故再次 advance 仍重入 done 分支）
+    const res = mgr.resetStagePhase('stage-01', 'review_failed');
+    expect(res.changed).toBe(true);
+    expect(res.from).toBe('done');
+    expect(res.to).toBe('review_failed');
+    expect(mgr.getData()!.requirements![0].status).toBe('in_progress');   // 聚合 ≠ done → 回退
+    expect(countAction(mgr, 'requirement_auto_reopen')).toBe(1);
+    // ③ 再 advance → done（对称往返）
+    expect(mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli')).toBe(true);
+    expect(mgr.getData()!.requirements![0].status).toBe('done');
+    expect(countAction(mgr, 'requirement_auto_done')).toBe(2);            // 第二条 done 审计
+  });
+
+  it('REV-83-013 加固：非 current 阶段的 reset 仍触发聚合回写（回写不在 `if (normCur === key)` 之内）', () => {
+    const data = flowData({
+      'stage-01': stage('done', 'REQ-001'),
+      'stage-02': stage('exec_running'),
+    }, [reqObj('REQ-001', 'done')]);
+    data.pipeline.current = { stage: 'stage-02', op: '' };       // current 指向 stage-02（非复位目标）
+    const mgr = mgrWith(data);
+    const res = mgr.resetStagePhase('stage-01', 'exec_running');
+    expect(res.changed).toBe(true);
+    // 复位的是非 current 阶段，但聚合回写仍应生效（需求回退）
+    expect(mgr.getData()!.requirements![0].status).toBe('in_progress');
+    expect(countAction(mgr, 'requirement_auto_reopen')).toBe(1);
+  });
+
+  it('T4.2-④ 回退目标恒 in_progress（聚合 scheduled 场景非 scheduled）', () => {
+    const data = flowData({ 'stage-01': stage('done', 'REQ-001') }, [reqObj('REQ-001', 'done')]);
+    const mgr = mgrWith(data);
+    const res = mgr.resetStagePhase('stage-01', 'plan_pending');
+    expect(res.changed).toBe(true);
+    expect(mgr.getData()!.requirements![0].status).toBe('in_progress');   // 非 scheduled
+  });
+
+  it('T4.2-⑤ 空集守卫：零关联阶段不作 done 判定（零审计零注入，返回值不变）', () => {
+    const data = unlinkedFixture();
+    const mgr = mgrWith(data);
+    const ret = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
+    expect(ret).toBe(true);
+    expect('requirements' in mgr.getData()!).toBe(false);        // 零注入
+    expect(countReqLogs(mgr)).toBe(0);                           // 零审计
+  });
+
+  it('T4.2-⑥ 悬空关联（requirement_id: REQ-999 且 requirements: []）→ 零动作零审计、不抛错', () => {
+    const data = flowData({ 'stage-01': stage('archiving', 'REQ-999') }, []);
+    const mgr = mgrWith(data);
+    let ret: boolean | undefined;
+    expect(() => { ret = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli'); }).not.toThrow();
+    expect(ret).toBe(true);
+    expect(countReqLogs(mgr)).toBe(0);
+    expect(mgr.getData()!.requirements).toEqual([]);
+  });
+
+  it('T4.2-⑦ 同事务：并发冲突下磁盘无中间态（phase 变更与需求状态恒同现）', () => {
+    writeFlow(flowData({ 'stage-01': stage('archiving', 'REQ-001') }, [reqObj('REQ-001', 'in_progress')]));
+    const a = new FlowManager(tmpDir);
+    const b = new FlowManager(tmpDir);
+    // A：真实推进 + save 成功
+    a.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
+    a.save();
+    // B：以旧 revision 加载 → 内存推进 → save 抛并发冲突
+    b.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
+    let err: unknown;
+    try { b.save(); } catch (e) { err = e; }
+    expect(isFlowConcurrentError(err)).toBe(true);
+    // 磁盘恒为 A 的单事务快照：phase 与需求状态同现（B 的失败无半写）
+    const disk = readDisk();
+    expect(disk.stages['stage-01'].phase).toBe('done');
+    expect(disk.requirements[0].status).toBe('done');
+  });
+
+  it('T4.3-① 逐字节 golden（无 requirement_id）+ 零注入 + 零审计 + 正控', () => {
+    const mgr = mgrWith(unlinkedFixture());
+    mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
+    mgr.save();
+    const parsed = readDisk();
+    expect(normalize(parsed)).toBe(GOLDEN_ADVANCE);              // 归一化后逐字节等值
+    expect('requirements' in parsed).toBe(false);                // 零注入
+    expect((parsed.log as any[]).filter((l) => String(l.action).startsWith('requirement_'))).toHaveLength(0);
+    // 正控（对照实验）：加关联 + requirements → auto_done 出现（证明回写已接通，「零命中」非因未激活）
+    const positive = mgrWith(flowData({ 'stage-01': stage('plan_pending', 'REQ-001') }, [reqObj('REQ-001', 'in_progress')]));
+    positive.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
+    expect(countAction(positive, 'requirement_auto_done')).toBe(1);
+  });
+
+  it('T4.3-③ deprecated advancePhase 路径同 golden + 零注入 + 零审计', () => {
+    const mgr = mgrWith(unlinkedFixture());
+    mgr.advancePhase('stage-01.op-001', 'done');
+    mgr.save();
+    const parsed = readDisk();
+    expect(normalize(parsed)).toBe(GOLDEN_DEPRECATED);
+    expect('requirements' in parsed).toBe(false);
+    expect((parsed.log as any[]).filter((l) => String(l.action).startsWith('requirement_'))).toHaveLength(0);
+  });
+
+  it('T4.4-core dry-run 不可达：resetStagePhase(..., {dryRun:true}) 零变更 + 形参锁定', () => {
+    const data = flowData({ 'stage-01': stage('done', 'REQ-001') }, [reqObj('REQ-001', 'done')]);
+    const mgr = mgrWith(data);
+    const reqBefore = JSON.stringify(mgr.getData()!.requirements);
+    const logBefore = mgr.getData()!.log.length;
+    const res = mgr.resetStagePhase('stage-01', 'archiving', { dryRun: true });
+    expect(res.changed).toBe(true);
+    expect(res.from).toBe('done');
+    expect(res.to).toBe('archiving');
+    // data 零变更（需求 / 日志 / 阶段字段全不变——dry-run 早退早于回写点）
+    expect(JSON.stringify(mgr.getData()!.requirements)).toBe(reqBefore);
+    expect(mgr.getData()!.log.length).toBe(logBefore);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+    // 形参锁定（REV-83-007）：advanceStagePhase 无 dryRun 形参；resetStagePhase options 带默认值
+    expect(mgr.advanceStagePhase.length).toBe(3);
+    expect(mgr.resetStagePhase.length).toBe(2);
   });
 });

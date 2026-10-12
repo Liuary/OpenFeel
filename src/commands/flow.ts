@@ -36,6 +36,7 @@ import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/a
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
 import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile } from '../core/flow-archive/archive-ops.js';
 import { archiveHealthItems } from '../core/flow-archive/archive-health.js';
+import { requirementHealthItems } from '../core/req/aggregate.js';   // 需求对账项（stage-83 T3）
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -1883,6 +1884,10 @@ export function registerFlowCommand(program: Command): void {
       const archiveItems: HealthCheckItem[] = !quick && mgr.isLoaded()
         ? archiveHealthItems({ projectPath: process.cwd(), data: mgr.getData()! })
         : [];
+      // 需求对账检查项（stage-83 T3）：warn-only（悬空关联 / done 漂移）；--quick 跳过；未加载 → 跳过
+      const reqItems: HealthCheckItem[] = !quick && mgr.isLoaded()
+        ? requirementHealthItems({ data: mgr.getData()!, lang })
+        : [];
 
       // B2-2：--fix 状态对账（仅回写 status.md「状态」字段；--dry-run 预览不写盘）
       let reconciled: StatusReconcileItem[] | undefined;
@@ -1905,6 +1910,7 @@ export function registerFlowCommand(program: Command): void {
         const items = [
           ...report.items,
           ...archiveItems.map((i) => ({ name: i.section, status: i.status, detail: i.message })),
+          ...reqItems.map((i) => ({ name: i.section, status: i.status, detail: i.message })),
         ];
         const payload: Record<string, unknown> = { schemaVersion: 1, ok: report.ok, items };
         // 与 op-001 的 health --json 合并字段（--fix 时追加 reconciled）
@@ -1955,7 +1961,7 @@ export function registerFlowCommand(program: Command): void {
       };
 
       // 合并追加归档一致性项（warn-only；--quick 时 archiveItems 恒空）
-      for (const item of [...result.items, ...archiveItems]) {
+      for (const item of [...result.items, ...archiveItems, ...reqItems]) {
         console.log(`${icon(item.status)} ${item.section}: ${item.message}`);
       }
 

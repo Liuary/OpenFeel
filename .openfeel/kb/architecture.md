@@ -864,3 +864,19 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.0-stage-82（plan_review REV-82-001/002/003 blocking；code_review pass）；`src/commands/req.ts`（10 子命令）；`requirement-ops.ts :: getAllowedNextStatuses`。
 
 **参见：** v1.2.0-stage-82（plan §二 不变量；op-001~003）；`src/commands/req.ts`；`src/core/req/requirement-ops.ts`；kb/patterns.md #需求引擎不变量模式、#CLI 退出码语义；manual/core/req.md、manual/cli/commands.md
+
+## [+] 双层状态聚合架构：需求 done 判定单源委托 `allLinkedStagesDone`（同一原语两消费点 + 空集守卫） (2026-10-12)
+
+**分层**：需求层为「显式粗粒度状态」+「关联阶段 15-phase 聚合投影」**双层**——**工序单一事实源恒为阶段 `phase`**，需求状态是其**粗粒度投影**（对齐 kb/architecture.md #状态/相位单一事实源：投影方向单一 `phase → 需求状态`，**绝不**由需求状态前推阶段 phase）。
+
+**单源委托（REV-83-002）**：`computeRequirementAggregate(data, requirementId)`（`src/core/req/aggregate.ts`）的 **done 分支直委托既有唯一原语 `allLinkedStagesDone(data, id)`**（`requirement-ops.ts:76-79`，`linked.length > 0 && linked.every(phase === 'done')`，**含空集守卫**）；**禁第二份 `length > 0 && every(done)` 表达式**（会致「显式 done 门」与「聚合投影」双 done 判定源漂移）。两消费点**同源**：`applyStatusChange` 的 `to === 'done'` 门（`req advance --to done` 唯一显式门）与聚合函数共用该原语——以静态断言（`aggregate.ts` 含 `allLinkedStagesDone(` 且 `.every(` 零命中）+ 动态同源断言（全 fixture `aggregate==='done'` ⟺ `allLinkedStagesDone(data,id)`）双向锁定。
+
+**空集守卫**：**零关联阶段 → `aggregate = null`**（不参与 done 判定，**禁误报 done**——`every` 对空数组 vacuous truth 陷阱）；`stageCount / doneCount / stageIds` 一并输出（`stageIds` = `data.stages` 键序）。
+
+**落点**：`src/core/req/aggregate.ts`（对 `flow-manager` 仅 `import type` 防运行时环）；回写入口 `syncRequirementStatus`（纯内存、声明式不绑定事件，见 kb/patterns.md #对称回写模式）。
+
+**判据**：凡「由底层事实派生上层状态」，① 上层判定**必须委托底层唯一原语**（禁就地复写表达式）；② 派生函数**纯**（无 IO / 无 `this`）；③ 空集/无关联须有**显式守卫语义**（返回 `null` 而非 vacuous `done`）；④ 同一判定语义的多个消费点须可枚举并**同源断言**。
+
+**实证**：v1.2.0-stage-83（plan_review REV-83-002 blocking 闭合）；`src/core/req/aggregate.ts :: computeRequirementAggregate`；`test/core/req.test.ts` 段 A（T4.1 15-phase 穷举 + T4.5 同源四组）+ 段 C（静态）。
+
+**参见：** v1.2.0-stage-83（plan §二 不变量 7 / §四.4；op-001）；`src/core/req/aggregate.ts`；`src/core/req/requirement-ops.ts :: allLinkedStagesDone`；kb/architecture.md #状态/相位单一事实源、#需求流转四层模型架构、#全局宏观状态聚合语义（空集守卫）、#需求命令面架构；kb/patterns.md #需求引擎不变量模式；manual/core/req.md

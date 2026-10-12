@@ -20,8 +20,13 @@ import {
 import {
   getRequirementsDir, getRequirementBodyRelPath, getRequirementBodyPath, writeRequirementBodySkeleton,
 } from '../../src/core/req/body-file.js';
-import type { RequirementData, RequirementStatus } from '../../src/core/req/types.js';
+import { REQ_STATUSES, type RequirementData, type RequirementStatus } from '../../src/core/req/types.js';
 import { FlowManager, type FlowData, type StageData, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import {
+  AUTO_DONE_PRECONDITION, computeRequirementAggregate, resolveRequirementStatusForStage, syncRequirementStatus,
+  requirementHealthItems,
+} from '../../src/core/req/aggregate.js';
+import { PIPELINE_PHASES } from '../../src/core/pipeline-schema.js';
 
 /** 构造最小 FlowData（含 log: []） */
 function makeFlowData(stages: Record<string, StageData> = {}): FlowData {
@@ -684,5 +689,314 @@ describe('需求原语 — T5.7 承接回归（stage-82）', () => {
     const first = getAllowedNextStatuses('draft');
     first.push('done' as RequirementStatus);
     expect(getAllowedNextStatuses('draft')).toEqual(['scheduled', 'blocked', 'cancelled', 'rejected']);
+  });
+});
+
+// ═══════════════════════════════════════
+// 段 A：聚合投影穷举（stage-83 op-001 / T4.1 + T4.5）
+// ═══════════════════════════════════════
+
+/** 构造带（可选）requirements 的 FlowData */
+function aggData(stages: Record<string, StageData>, requirements?: RequirementData[]): FlowData {
+  const d = makeFlowData(stages);
+  if (requirements) { d.requirements = requirements; }
+  return d;
+}
+
+/** 构造关联某需求的阶段 */
+function linkedStage(requirementId: string, phase: PipelinePhase): StageData {
+  return makeStage({ phase, requirement_id: requirementId });
+}
+
+describe('需求聚合投影 — T4.1 投影穷举（stage-83 op-001）', () => {
+  it('T4.1a 单阶段 × 全量 phase 表驱动（PIPELINE_PHASES 单一来源，禁硬编码）', () => {
+    expect(PIPELINE_PHASES.length).toBe(15);   // 全量来源锁定
+    for (const phase of PIPELINE_PHASES) {
+      const data = aggData({ 'stage-01': linkedStage('REQ-001', phase) });
+      // plan_pending → scheduled；done → done；其余 13 相位 → in_progress
+      const expected = phase === 'plan_pending' ? 'scheduled' : phase === 'done' ? 'done' : 'in_progress';
+      const agg = computeRequirementAggregate(data, 'REQ-001');
+      expect(agg).toEqual({
+        stageIds: ['stage-01'],
+        stageCount: 1,
+        doneCount: phase === 'done' ? 1 : 0,
+        aggregate: expected,
+      });
+    }
+  });
+
+  it('T4.1b 多阶段组合（stageCount / stageIds 键序 / doneCount 同步断言）', () => {
+    const cases: Array<{ phases: PipelinePhase[]; expected: string; doneCount: number }> = [
+      { phases: ['done', 'done'], expected: 'done', doneCount: 2 },
+      { phases: ['done', 'plan_pending'], expected: 'in_progress', doneCount: 1 },
+      { phases: ['done', 'exec_running'], expected: 'in_progress', doneCount: 1 },
+      { phases: ['plan_pending', 'plan_pending'], expected: 'scheduled', doneCount: 0 },
+      { phases: ['plan_pending', 'archiving'], expected: 'in_progress', doneCount: 0 },
+    ];
+    for (const c of cases) {
+      const stages: Record<string, StageData> = {};
+      c.phases.forEach((p, i) => { stages[`stage-0${i + 1}`] = linkedStage('REQ-001', p); });
+      const agg = computeRequirementAggregate(aggData(stages), 'REQ-001');
+      expect(agg.stageCount).toBe(c.phases.length);
+      expect(agg.stageIds).toEqual(c.phases.map((_p, i) => `stage-0${i + 1}`));
+      expect(agg.doneCount).toBe(c.doneCount);
+      expect(agg.aggregate).toBe(c.expected);
+    }
+  });
+
+  it('T4.1c 空关联与边界（零关联 / stages 缺省不崩 / 关联他需求）', () => {
+    // ① 零关联需求 id
+    const zero = computeRequirementAggregate(aggData({ 'stage-01': linkedStage('REQ-001', 'done') }), 'REQ-999');
+    expect(zero).toEqual({ stageIds: [], stageCount: 0, doneCount: 0, aggregate: null });
+    // ② data.stages 缺省（undefined）——读侧宽容不崩
+    const noStages = makeFlowData();
+    (noStages as unknown as { stages: undefined }).stages = undefined;
+    expect(computeRequirementAggregate(noStages, 'REQ-001')).toEqual({ stageIds: [], stageCount: 0, doneCount: 0, aggregate: null });
+    // ③ 阶段关联他需求 → 目标需求投影为 null
+    const other = computeRequirementAggregate(aggData({ 'stage-01': linkedStage('REQ-002', 'done') }), 'REQ-001');
+    expect(other.aggregate).toBeNull();
+    expect(other.stageCount).toBe(0);
+  });
+
+  it('T4.5 两处同源：aggregate === "done" ⟺ allLinkedStagesDone（全 fixture 四组）', () => {
+    const fixtures: FlowData[] = [
+      // 组 1：空关联
+      aggData({ 'stage-01': linkedStage('REQ-002', 'done') }),
+      // 组 2：单阶段 ×15
+      ...PIPELINE_PHASES.map((p) => aggData({ 'stage-01': linkedStage('REQ-001', p) })),
+      // 组 3：多阶段部分 done
+      aggData({ 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'exec_running') }),
+      // 组 4：多阶段全 done
+      aggData({ 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'done') }),
+    ];
+    for (const data of fixtures) {
+      expect(computeRequirementAggregate(data, 'REQ-001').aggregate === 'done')
+        .toBe(allLinkedStagesDone(data, 'REQ-001'));
+    }
+  });
+
+  it('T4.1d resolveRequirementStatusForStage 四态（有关联 / 无关联 / 阶段不存在 / 空串）', () => {
+    // 有关联 → { requirementId, target }
+    const linked = aggData({ 'stage-01': linkedStage('REQ-001', 'done') });
+    expect(resolveRequirementStatusForStage(linked, 'stage-01')).toEqual({ requirementId: 'REQ-001', target: 'done' });
+    // 无关联（requirement_id 缺省）
+    const noLink = aggData({ 'stage-01': makeStage({ phase: 'done' }) });
+    expect(resolveRequirementStatusForStage(noLink, 'stage-01')).toBeNull();
+    // 阶段不存在
+    expect(resolveRequirementStatusForStage(linked, 'stage-99')).toBeNull();
+    // requirement_id 空串
+    const emptyStr = aggData({ 'stage-01': makeStage({ phase: 'done', requirement_id: '' }) });
+    expect(resolveRequirementStatusForStage(emptyStr, 'stage-01')).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════
+// 段 B：回写入口 7×2 直调矩阵（stage-83 op-001 / syncRequirementStatus）
+// ═══════════════════════════════════════
+describe('需求聚合回写入口 — 7×2 直调矩阵（stage-83 op-001）', () => {
+  const ALL_STATUSES: readonly RequirementStatus[] = REQ_STATUSES;
+
+  it('AUTO_DONE_PRECONDITION 逐字锁定（["scheduled","in_progress"]，长度 2）', () => {
+    expect(AUTO_DONE_PRECONDITION).toEqual(['scheduled', 'in_progress']);
+    expect(AUTO_DONE_PRECONDITION.length).toBe(2);
+  });
+
+  it('正向列（7 status × 聚合 done）：仅 {scheduled,in_progress} 写 done + 审计逐字段；其余零动作零审计', () => {
+    for (const status of ALL_STATUSES) {
+      const data = aggData(
+        { 'stage-01': linkedStage('REQ-001', 'done') },
+        [makeReq('REQ-001', status)],
+      );
+      const logLenBefore = data.log.length;
+      const affected = syncRequirementStatus(data, 'stage-01');
+      const req = data.requirements![0];
+      if (status === 'scheduled' || status === 'in_progress') {
+        expect(req.status).toBe('done');
+        expect(req.updated_at).not.toBe('2026-01-01T00:00:00.000Z');   // updated_at 刷新
+        expect(affected).toEqual(['REQ-001']);
+        expect(data.log.length).toBe(logLenBefore + 1);                // 恰一条审计
+        const entry = lastLog(data);
+        expect(entry.action).toBe('requirement_auto_done');
+        expect(entry.agent).toBe('cli');
+        expect(entry.detail).toEqual({ requirementId: 'REQ-001', from: status, to: 'done', triggerStage: 'stage-01' });
+      } else {
+        expect(req.status).toBe(status);                               // 状态逐字不变
+        expect(affected).toEqual([]);
+        expect(data.log.length).toBe(logLenBefore);                    // 零新增日志
+      }
+    }
+  });
+
+  it('反向列（7 status × 聚合非 done 双阶段 [done,exec_running]）：仅 done 回退 in_progress + 审计；其余 6 零动作零审计', () => {
+    for (const status of ALL_STATUSES) {
+      const data = aggData(
+        { 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'exec_running') },
+        [makeReq('REQ-001', status)],
+      );
+      const logLenBefore = data.log.length;
+      const affected = syncRequirementStatus(data, 'stage-01');
+      const req = data.requirements![0];
+      if (status === 'done') {
+        // S-83-3 声明式自愈（不绑定事件）：done × 聚合非 done → 回退 + 审计
+        expect(req.status).toBe('in_progress');
+        expect(affected).toEqual(['REQ-001']);
+        expect(data.log.length).toBe(logLenBefore + 1);
+        const entry = lastLog(data);
+        expect(entry.action).toBe('requirement_auto_reopen');
+        expect(entry.agent).toBe('cli');
+        expect(entry.detail).toEqual({ requirementId: 'REQ-001', from: 'done', to: 'in_progress', triggerStage: 'stage-01' });
+      } else {
+        expect(req.status).toBe(status);
+        expect(affected).toEqual([]);
+        expect(data.log.length).toBe(logLenBefore);
+      }
+    }
+  });
+
+  it('回退目标单点（S-83-5）：status=done × 聚合 scheduled → 回退 in_progress（非 scheduled）', () => {
+    const data = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'plan_pending') },
+      [makeReq('REQ-001', 'done')],
+    );
+    expect(computeRequirementAggregate(data, 'REQ-001').aggregate).toBe('scheduled');
+    syncRequirementStatus(data, 'stage-01');
+    expect(data.requirements![0].status).toBe('in_progress');   // 回退目标恒 in_progress
+  });
+
+  it('零动作四路：无 requirement_id / 悬空 / requirements 缺省零注入 / 状态已一致', () => {
+    // ① 无 requirement_id
+    const noLink = aggData({ 'stage-01': makeStage({ phase: 'done' }) }, [makeReq('REQ-001', 'scheduled')]);
+    const n0 = noLink.log.length;
+    expect(syncRequirementStatus(noLink, 'stage-01')).toEqual([]);
+    expect(noLink.log.length).toBe(n0);
+    expect(noLink.requirements![0].status).toBe('scheduled');
+
+    // ② 悬空（requirement_id 指向不存在需求）——不抛错
+    const dangling = aggData({ 'stage-01': linkedStage('REQ-999', 'done') }, [makeReq('REQ-001', 'scheduled')]);
+    const n1 = dangling.log.length;
+    expect(() => syncRequirementStatus(dangling, 'stage-01')).not.toThrow();
+    expect(syncRequirementStatus(dangling, 'stage-01')).toEqual([]);
+    expect(dangling.log.length).toBe(n1);
+
+    // ③ requirements 键缺省 → 零注入（'requirements' in data === false 保持）
+    const noReqKey = aggData({ 'stage-01': linkedStage('REQ-001', 'done') });
+    expect('requirements' in noReqKey).toBe(false);
+    expect(syncRequirementStatus(noReqKey, 'stage-01')).toEqual([]);
+    expect('requirements' in noReqKey).toBe(false);
+
+    // ④ 状态已一致（聚合 done ∧ status 已 done → 前置集外 → 零动作）
+    const consistent = aggData({ 'stage-01': linkedStage('REQ-001', 'done') }, [makeReq('REQ-001', 'done')]);
+    const n3 = consistent.log.length;
+    expect(syncRequirementStatus(consistent, 'stage-01')).toEqual([]);
+    expect(consistent.requirements![0].status).toBe('done');
+    expect(consistent.log.length).toBe(n3);
+  });
+});
+
+// ═══════════════════════════════════════
+// 段 C：正交与单源静态断言（stage-83 op-001）
+// ═══════════════════════════════════════
+describe('聚合模块 — 正交与单源静态断言（stage-83 op-001）', () => {
+  const src = readFileSync(new URL('../../src/core/req/aggregate.ts', import.meta.url), 'utf-8');
+  const NEEDLES = ['workflow_mode', 'PIPELINE_PHASES', 'getValidTargets', 'flow-archive', 'process.cwd', 'homedir'] as const;
+
+  it('防假绿：源文件内容非空 + 正控（独有符号在位）', () => {
+    expect(src.length).toBeGreaterThan(0);
+    expect(src).toContain('computeRequirementAggregate');
+  });
+
+  it('禁用串清单锁定（6 串）', () => {
+    expect(NEEDLES.length).toBe(6);
+  });
+
+  it('禁用串零命中（扫描全内容，含文件头注释 / JSDoc）', () => {
+    for (const n of NEEDLES) {
+      expect(src.includes(n)).toBe(false);
+    }
+  });
+
+  it('单源：done 判定委托 allLinkedStagesDone + 禁第二份 done 表达式（.every( 零命中）', () => {
+    expect(src).toContain('allLinkedStagesDone(');
+    expect(src.includes('.every(')).toBe(false);
+  });
+
+  it('动作名单点锁定 + 前置集常量在位', () => {
+    expect(src).toContain("'requirement_auto_done'");
+    expect(src).toContain("'requirement_auto_reopen'");
+    expect(src).toContain('AUTO_DONE_PRECONDITION');
+  });
+});
+
+// ═══════════════════════════════════════
+// 段 D：需求对账项单测（stage-83 op-003 / T4.6 单测面）
+// ═══════════════════════════════════════
+describe('需求对账项 — requirementHealthItems（stage-83 op-003）', () => {
+  it('悬空场景：requirement_id 指向不存在需求 → 恰 1 条「需求对账」warn（含 stage-01 → REQ-999）', () => {
+    const data = aggData({ 'stage-01': makeStage({ phase: 'done', requirement_id: 'REQ-999' }) }, []);
+    const items = requirementHealthItems({ data });
+    const links = items.filter((i) => i.section === '需求对账');
+    expect(links).toHaveLength(1);
+    expect(links[0].status).toBe('warn');
+    expect(links[0].message).toContain('stage-01 → REQ-999');
+  });
+
+  it('干净场景：关联且需求存在 → 恰 1 条「需求对账」pass + 无「需求漂移」条目', () => {
+    const data = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'done') },
+      [makeReq('REQ-001', 'done')],
+    );
+    const items = requirementHealthItems({ data });
+    const links = items.filter((i) => i.section === '需求对账');
+    expect(links).toHaveLength(1);
+    expect(links[0].status).toBe('pass');
+    expect(links[0].message).toContain('1');               // 含需求数
+    expect(items.some((i) => i.section === '需求漂移')).toBe(false);
+  });
+
+  it('漂移场景：status ∈ {scheduled,in_progress} × 关联阶段全 done → 「需求漂移」warn（含 REQ-NNN）', () => {
+    for (const status of ['scheduled', 'in_progress'] as const) {
+      const data = aggData({ 'stage-01': linkedStage('REQ-001', 'done') }, [makeReq('REQ-001', status)]);
+      const items = requirementHealthItems({ data });
+      const drift = items.filter((i) => i.section === '需求漂移');
+      expect(drift).toHaveLength(1);
+      expect(drift[0].status).toBe('warn');
+      expect(drift[0].message).toContain('REQ-001');
+    }
+  });
+
+  it('设计豁免：status ∈ {draft,blocked,cancelled,rejected} × 聚合 done → 无漂移条目（且「需求对账」pass）', () => {
+    for (const status of ['draft', 'blocked', 'cancelled', 'rejected'] as const) {
+      const data = aggData({ 'stage-01': linkedStage('REQ-001', 'done') }, [makeReq('REQ-001', status)]);
+      const items = requirementHealthItems({ data });
+      expect(items.some((i) => i.section === '需求漂移')).toBe(false);
+      expect(items.find((i) => i.section === '需求对账')!.status).toBe('pass');
+    }
+  });
+
+  it('前置集命中但聚合非 done → 无漂移条目', () => {
+    const data = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'exec_running') },
+      [makeReq('REQ-001', 'in_progress')],
+    );
+    const items = requirementHealthItems({ data });
+    expect(items.some((i) => i.section === '需求漂移')).toBe(false);
+  });
+
+  it('零数据：requirements 键缺省 + stages 空 → 恰 1 条 pass（n=0）；全场景恒无 fail', () => {
+    const data = makeFlowData({});
+    const items = requirementHealthItems({ data });
+    expect(items).toHaveLength(1);
+    expect(items[0].section).toBe('需求对账');
+    expect(items[0].status).toBe('pass');
+    expect(items.every((i) => i.status !== 'fail')).toBe(true);
+  });
+
+  it('空串守卫：requirement_id: "" → 不判悬空（pass）', () => {
+    const data = aggData({ 'stage-01': makeStage({ phase: 'done', requirement_id: '' }) }, []);
+    const items = requirementHealthItems({ data });
+    const links = items.filter((i) => i.section === '需求对账');
+    expect(links).toHaveLength(1);
+    expect(links[0].status).toBe('pass');
+    expect(items.every((i) => i.status !== 'fail')).toBe(true);
   });
 });

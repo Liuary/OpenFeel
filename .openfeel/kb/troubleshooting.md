@@ -1182,3 +1182,19 @@ concurrency:
 **实证**：v1.2.0-stage-80（REV-80-001 blocking / REV-80-010 / REV-80-019 blocking / REV-80-028）——`isArchivedVersionOf` 收敛全名格式（短名 typo 不翻转已证）；`archive-health.ts` b 项两段式（隔离工程复现「默认版本新建阶段」修复前误报、修复后无 warn + 正控仍报）。
 
 **参见：** v1.2.0-stage-80（REV-80-001/010/019/028；op-001/004）；`src/core/plan/path.ts`（`isArchivedVersionOf`/`DEFAULT_STAGE_VERSION`）；`src/core/flow-archive/archive-health.ts`；kb/architecture.md #归档消费面口径分层架构；kb/troubleshooting.md #版本归一「方向陷阱」、#同类缺陷须一次全量扫描而非逐个暴露；manual/core/plan-path.md
+
+## [+] 零回归取证范式：补丁前基线捕获 → 补丁后复跑 diff 为空 + golden 内联常量 + 正控防假绿 (2026-10-12)
+
+**场景**：向**既有热点路径**（`advanceStagePhase` / `resetStagePhase` 等被大量既有用例覆盖的推进路径）追加逻辑，须证明「**无 `requirement_id` / 无新字段的既有阶段行为逐字不变**」，仅凭「既有用例全绿」不足（用例覆盖有洞，且新逻辑可能在无关联场景静默激活）。
+
+**取证四步（顺序即纪律）**：
+1. **补丁前基线捕获**（**必须在打补丁之前**）：临时测试在 `tmpDir` 内直构极小 fixture（单阶段、空 ops、**零新字段**）→ 走目标路径（`advance` 与 deprecated 路径各一）→ `save()` → 读回 → **归一化** → 落 `.openfeel/tmp/stage-83-baseline.json`（多键）。顺序颠倒则基线不可复得，须整体重做。
+2. **归一化口径定稿**：深拷后置零**易变字段**——`meta.revision` / `meta.updated`（`save()` 必然改写）+ `log[*].time` + 各阶段 `stats.{start_time,end_time,duration_ms}`（`start/end` 必然改写）；**除此外一切字段逐字节比较**（依据 kb/troubleshooting.md #flow.json 内容增量核验必含 `meta.revision`/`meta.updated`）。
+3. **补丁后复跑 diff 为空**：同 fixture 复跑 → `diff baseline after` → **空**（多键均逐字节一致）→ 路径级零回归实证；临时测试与 after 快照**用后即删**（`git status` 证零残留），基线文件保留（作 golden 取值来源）。
+4. **固化 golden + 正控**：将基线内容**原样内联**为测试常量（`GOLDEN_ADVANCE` / `GOLDEN_DEPRECATED`），用例断言归一化 == golden + **零注入**（`'requirements' in parsed === false`）+ 新审计前缀零命中 + **正控**（同 fixture **加**关联/新字段 → 新审计**出现**，证明「零命中」非因整体未激活）。
+
+**要点**：① 补丁前基线**先于**打补丁捕获（时序纪律）；② 归一化须**显式枚举**易变字段（否则 diff 恒非空、取证失效）；③ golden 内联常量使零回归**常驻门禁**（不依赖一次性 diff 留痕）；④ **正控（对照实验）**防「断言恒真」假绿；⑤ 临时取证文件用后即删、基线文件保留。
+
+**实证**：v1.2.0-stage-83（op-002 步骤 2.1→2.5「diff → `DIFF_EMPTY_OK`」；`test/core/flow-manager.test.ts` golden T4.3-①③ + 正控）；对照 kb/patterns.md #零行为变更改造的验证方法、#测试隔离的「干净机器」验证法。
+
+**参见：** v1.2.0-stage-83（op-002；§四.1 三路径同断言口径）；`.openfeel/tmp/stage-83-baseline.json`；kb/troubleshooting.md #flow.json 内容增量核验必含 `meta.revision`/`meta.updated`、#可选字段「读侧补齐」的序列化副作用；kb/patterns.md #零行为变更改造的验证方法、#对称回写模式

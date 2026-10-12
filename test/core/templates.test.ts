@@ -316,3 +316,187 @@ describe('stage-76：阴性断言——无「fast 跳过骨架/文件」表述�
     }
   });
 });
+
+/**
+ * stage-84：Agent/skill 契约（双主题）——T4 断言面
+ * S1 8 份模板需求/归档节存在性 + 逐字串；S2 跨 harness 对称（提取式切片 toBe）；
+ * S3 opencode 零回归 + 阴性；S4 新 skill openfeel-req 要点；S5 cli-usage 补节与计数订正。
+ * 断言直读源文件 templates-data/** 与共享源 skills/**（源为唯一可改面，防未注入源假绿）。
+ * 断言串纪律：取词法稳定、不跨越粗体边界的子串；允许整体含 `**` 的原样串（kb #断言串与落文逐字核对纪律）。
+ */
+describe('stage-84：feel.md ×4 需求与归档纪律（S1/S2/S3）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+  const FEEL_ZH = [join(TD, 'opencode', 'agents', 'zh-CN', 'feel.md'), join(TD, 'claude', 'agents', 'zh-CN', 'feel.md')];
+  const FEEL_EN = [join(TD, 'opencode', 'agents', 'en', 'feel.md'), join(TD, 'claude', 'agents', 'en', 'feel.md')];
+  const H_REQ_ZH = '#### 需求流转（requirement lifecycle）';
+  const H_ARCH_ZH = '#### 归档与历史读取';
+  const H_REQ_EN = '#### Requirement Lifecycle';
+  const H_ARCH_EN = '#### Archiving and History Reading';
+  const ZH = ['需求 = 排期与调度层', '需求不等于计划', '7 个状态', '阶段 phase → 需求状态',
+    'openfeel req board', 'openfeel req next', 'openfeel req claim <REQ-NNN>',
+    'openfeel req link --stage <stageId> --requirement <REQ-NNN>',
+    'openfeel req advance <REQ-NNN> --to <status>', 'openfeel req release <REQ-NNN>',
+    '正交注记', '不主动读归档文件', 'openfeel flow archive <version>',
+    'openfeel flow archive show <version>', 'openfeel flow archive list', 'flow-archive/**'];
+  const EN = ['a requirement is the scheduling layer', 'a requirement is not a plan', '7 statuses',
+    'stage phase → requirement status', 'openfeel req board', 'openfeel req next',
+    'openfeel req claim <REQ-NNN>', 'openfeel req link --stage <stageId> --requirement <REQ-NNN>',
+    'openfeel req advance <REQ-NNN> --to <status>', 'openfeel req release <REQ-NNN>',
+    'Orthogonality note', 'Never read archive files proactively', 'openfeel flow archive <version>',
+    'openfeel flow archive show <version>', 'openfeel flow archive list', 'flow-archive/**'];
+  const NEG = ['跳过流水线', '绕过流水线', 'bypass the pipeline', '需求即计划', 'a requirement is a plan'];
+
+  /** 提取节切片：标题行 → 下一个 markdown 标题行（不含；防行号漂移） */
+  const extractSection = (text: string, heading: string): string => {
+    const lines = text.split('\n');
+    const start = lines.findIndex((l) => l.startsWith(heading));
+    if (start < 0) { return ''; }
+    const rest = lines.slice(start + 1);
+    const stop = rest.findIndex((l) => /^#{1,6} /.test(l));
+    return [lines[start], ...(stop < 0 ? rest : rest.slice(0, stop))].join('\n');
+  };
+
+  it('S1 zh ×2：两节标题齐备 + 逐字串全命中', () => {
+    for (const p of FEEL_ZH) {
+      const c = readFileSync(p, 'utf-8');
+      expect(c, `${p} 缺 ${H_REQ_ZH}`).toContain(H_REQ_ZH);
+      expect(c, `${p} 缺 ${H_ARCH_ZH}`).toContain(H_ARCH_ZH);
+      for (const s of ZH) expect(c, `${p} 缺 ${s}`).toContain(s);
+    }
+  });
+  it('S1 en ×2：两节标题齐备 + 逐字串全命中', () => {
+    for (const p of FEEL_EN) {
+      const c = readFileSync(p, 'utf-8');
+      expect(c, `${p} 缺 ${H_REQ_EN}`).toContain(H_REQ_EN);
+      expect(c, `${p} 缺 ${H_ARCH_EN}`).toContain(H_ARCH_EN);
+      for (const s of EN) expect(c, `${p} 缺 ${s}`).toContain(s);
+    }
+  });
+  it('S1 裸主语零出现（新节切片不含 Feel / 主会话）', () => {
+    for (const [p, hs] of [[FEEL_ZH[0], [H_REQ_ZH, H_ARCH_ZH]], [FEEL_EN[0], [H_REQ_EN, H_ARCH_EN]]] as const) {
+      const c = readFileSync(p, 'utf-8');
+      for (const h of hs) {
+        const block = extractSection(c, h);
+        expect(block.length, `${h} 切片非空`).toBeGreaterThan(0);
+        expect(block, `${h} 裸主语 Feel`).not.toContain('Feel');
+        expect(block, `${h} 裸主语 主会话`).not.toContain('主会话');
+      }
+    }
+  });
+  it('S2 跨 harness 切片逐字一致（zh ×2 节 + en ×2 节）', () => {
+    const pairs: Array<[string[], string]> = [[FEEL_ZH, H_REQ_ZH], [FEEL_ZH, H_ARCH_ZH], [FEEL_EN, H_REQ_EN], [FEEL_EN, H_ARCH_EN]];
+    for (const [files, h] of pairs) {
+      const oc = extractSection(readFileSync(files[0], 'utf-8'), h);
+      const cc = extractSection(readFileSync(files[1], 'utf-8'), h);
+      expect(oc.length, `${h} opencode 切片非空`).toBeGreaterThan(0);
+      expect(cc.length, `${h} claude 切片非空`).toBeGreaterThan(0);
+      expect(cc, `${h} 跨 harness 逐字一致`).toBe(oc);
+    }
+  });
+  it('S3 opencode 零回归 + 阴性（8 切片）', () => {
+    const ocZh = readFileSync(FEEL_ZH[0], 'utf-8');
+    for (const s of ['#### 工作流模式（workflow_mode）', '术语消歧', '工作流快线', '自动推进决策纪律', '## 小改 vs 大规模规划的阈值']) {
+      expect(ocZh, `零回归缺 ${s}`).toContain(s);
+    }
+    const ocEn = readFileSync(FEEL_EN[0], 'utf-8');
+    for (const s of ['#### Workflow Mode (workflow_mode)', 'Terminology disambiguation', 'Auto-Advance Decision Rules', '## Threshold for Small Changes vs. Large-Scale Planning']) {
+      expect(ocEn, `零回归缺 ${s}`).toContain(s);
+    }
+    for (const [files, hs] of [[FEEL_ZH, [H_REQ_ZH, H_ARCH_ZH]], [FEEL_EN, [H_REQ_EN, H_ARCH_EN]]] as const) {
+      for (const p of files) {
+        const c = readFileSync(p, 'utf-8');
+        for (const h of hs) {
+          const block = extractSection(c, h);
+          for (const s of NEG) expect(block, `${p}/${h} 含禁用串 ${s}`).not.toContain(s);
+        }
+      }
+    }
+  });
+});
+
+describe('stage-84：openfeel-planner.md ×4 需求感知（S1/S2/S3）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+  const PL_ZH = [join(TD, 'opencode', 'agents', 'zh-CN', 'openfeel-planner.md'), join(TD, 'claude', 'agents', 'zh-CN', 'openfeel-planner.md')];
+  const PL_EN = [join(TD, 'opencode', 'agents', 'en', 'openfeel-planner.md'), join(TD, 'claude', 'agents', 'en', 'openfeel-planner.md')];
+  const H_ZH = '## 需求感知';
+  const H_EN = '## Requirement Awareness';
+  const ZH = ['openfeel req show <REQ-NNN>', '关联需求：REQ-NNN', '流转不在本 Agent 职责内', '与「工作流模式感知」正交'];
+  const EN = ['openfeel req show <REQ-NNN>', 'Linked requirement: REQ-NNN', "Flow is not this agent's duty", 'Orthogonal to "Workflow Mode Awareness"'];
+  const NEG = ['跳过流水线', '绕过流水线', 'bypass the pipeline', '需求即计划', 'a requirement is a plan'];
+
+  /** 提取节切片：标题行 → 下一个 markdown 标题行（不含；防行号漂移） */
+  const extractSection = (text: string, heading: string): string => {
+    const lines = text.split('\n');
+    const start = lines.findIndex((l) => l.startsWith(heading));
+    if (start < 0) { return ''; }
+    const rest = lines.slice(start + 1);
+    const stop = rest.findIndex((l) => /^#{1,6} /.test(l));
+    return [lines[start], ...(stop < 0 ? rest : rest.slice(0, stop))].join('\n');
+  };
+
+  it('S1 zh ×2 / en ×2：节标题齐备 + 逐字串全命中', () => {
+    for (const [files, h, needles] of [[PL_ZH, H_ZH, ZH], [PL_EN, H_EN, EN]] as const) {
+      for (const p of files) {
+        const c = readFileSync(p, 'utf-8');
+        expect(c, `${p} 缺 ${h}`).toContain(h);
+        for (const s of needles) expect(c, `${p} 缺 ${s}`).toContain(s);
+      }
+    }
+  });
+  it('S2 跨 harness 切片逐字一致（zh / en 各 1 节）', () => {
+    for (const [files, h] of [[PL_ZH, H_ZH], [PL_EN, H_EN]] as const) {
+      const oc = extractSection(readFileSync(files[0], 'utf-8'), h);
+      const cc = extractSection(readFileSync(files[1], 'utf-8'), h);
+      expect(oc.length, `${h} 切片非空`).toBeGreaterThan(0);
+      expect(cc, `${h} 跨 harness 逐字一致`).toBe(oc);
+    }
+  });
+  it('S3 opencode 零回归 + 阴性', () => {
+    const ocZh = readFileSync(PL_ZH[0], 'utf-8');
+    for (const s of ['## 工作流模式感知（fast 快线）', '产出经 openfeel-reviewer 审查后方可进入 openfeel-schemer 阶段']) {
+      expect(ocZh, `零回归缺 ${s}`).toContain(s);
+    }
+    const ocEn = readFileSync(PL_EN[0], 'utf-8');
+    for (const s of ['## Workflow Mode Awareness (fast)', 'Outputs must pass openfeel-reviewer review before entering the openfeel-schemer phase']) {
+      expect(ocEn, `零回归缺 ${s}`).toContain(s);
+    }
+    for (const [files, h] of [[PL_ZH, H_ZH], [PL_EN, H_EN]] as const) {
+      for (const p of files) {
+        const block = extractSection(readFileSync(p, 'utf-8'), h);
+        expect(block.length, `${p} 切片非空`).toBeGreaterThan(0);
+        expect(block, `${p} 裸主语 Feel`).not.toContain('Feel');
+        expect(block, `${p} 裸主语 主会话`).not.toContain('主会话');
+        for (const s of NEG) expect(block, `${p} 含禁用串 ${s}`).not.toContain(s);
+      }
+    }
+  });
+});
+
+describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () => {
+  const REQ_SKILL = join(SKILLS_DIR, 'openfeel-req', 'SKILL.md');
+  const CLI_SKILL = join(SKILLS_DIR, 'openfeel-cli-usage', 'SKILL.md');
+  it('S4 新 skill 存在、非空且要点齐备（frontmatter 触发词 / 7 状态 / 10 子命令 / 认领协议 / 权威源 / 正交 / 快照声明）', () => {
+    expect(existsSync(REQ_SKILL), 'openfeel-req/SKILL.md 存在').toBe(true);
+    const c = readFileSync(REQ_SKILL, 'utf-8');
+    expect(c.length, '防假绿').toBeGreaterThan(0);
+    for (const s of ['name: openfeel-req', '需求', 'requirement', 'REQ', 'req 命令',
+      '## 需求生命周期（7 状态）', '## 子命令（10 个）', '## 认领协议', '机读权威恒为',
+      '与计划（plan.md）的关系', '与 workflow_mode 正交', 'v1.2.0 起提供', '以 `openfeel req --help`']) {
+      expect(c, `缺 ${s}`).toContain(s);
+    }
+    for (const sub of ['add', 'list', 'show', 'claim', 'release', 'set', 'link', 'advance', 'board', 'next']) {
+      expect(c, `缺子命令 req ${sub}`).toContain(`req ${sub}`);
+    }
+  });
+  it('S5 cli-usage 补节 + 计数订正 + 快照声明更新', () => {
+    const c = readFileSync(CLI_SKILL, 'utf-8');
+    for (const s of ['## v1.2.0 新增能力（stage-78~84）', 'openfeel flow archive <version>',
+      'openfeel flow archive list', 'openfeel flow archive show <version>', '阶段摘要归档',
+      '10 子命令', 'openfeel-req', 'openfeel req', '**18 个**共享源', '本文档为 v1.2.0 快照']) {
+      expect(c, `缺 ${s}`).toContain(s);
+    }
+    expect(c, '陈旧 17 残留').not.toContain('**17 个**共享源');
+    expect(c, '旧快照声明残留').not.toContain('本文档为 v1.1.7 快照');
+    expect((c.match(/node bin\/openfeel\.js/g) ?? []).length, 'T53 自举加注恒 1').toBe(1);
+  });
+});

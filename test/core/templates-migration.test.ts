@@ -2,8 +2,8 @@
  * 模板管线多源化迁移不变量测试（stage-68 op-002 / T4）
  *
  * 断言：
- *   ① skill 权威源已迁中立共享源 templates-data/skills（17 目录，各含 SKILL.md）；
- *   ② 双注入对象 SKILL_DEFINITIONS ≡ OPENCODE_SKILL_DEFINITIONS 键集，均为 17；
+ *   ① skill 权威源已迁中立共享源 templates-data/skills（18 目录，各含 SKILL.md）；
+ *   ② 双注入对象 SKILL_DEFINITIONS ≡ OPENCODE_SKILL_DEFINITIONS 键集，均为 18；
  *   ③ 冗余旧树 templates-data/opencode/skills 不存在（防复活）；
  *   ④ 注入内容与共享源逐字节一致（零内容变更的生成侧复核）。
  *
@@ -24,22 +24,22 @@ const LEGACY_SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'opencode'
 const norm = (s: string) => s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
 describe('stage-68 T4：skill 源迁移不变量（零内容变更）', () => {
-  it('T4.1 共享源含 17 个 skill 目录，且各含 SKILL.md', () => {
+  it('T4.1 共享源含 18 个 skill 目录，且各含 SKILL.md', () => {
     expect(existsSync(SHARED_SKILLS_DIR), '共享源目录存在').toBe(true);
     const dirs = readdirSync(SHARED_SKILLS_DIR, { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
-    expect(dirs.length, 'skill 目录数').toBe(17);
+    expect(dirs.length, 'skill 目录数').toBe(18);
     for (const d of dirs) {
       expect(existsSync(join(SHARED_SKILLS_DIR, d, 'SKILL.md')), `${d}/SKILL.md`).toBe(true);
     }
   });
 
-  it('T4.2 双注入对象键集一致且均为 17', () => {
+  it('T4.2 双注入对象键集一致且均为 18', () => {
     const fromUpdate = Object.keys(SKILL_DEFINITIONS).sort();
     const fromLoader = listOpencodeSkillNames().sort();
-    expect(fromUpdate.length, 'SKILL_DEFINITIONS 键数').toBe(17);
-    expect(fromLoader.length, 'OPENCODE_SKILL_DEFINITIONS 键数').toBe(17);
+    expect(fromUpdate.length, 'SKILL_DEFINITIONS 键数').toBe(18);
+    expect(fromLoader.length, 'OPENCODE_SKILL_DEFINITIONS 键数').toBe(18);
     expect(fromUpdate, '两对象键集一致').toEqual(fromLoader);
   });
 

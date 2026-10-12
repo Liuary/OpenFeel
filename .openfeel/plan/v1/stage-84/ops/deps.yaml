@@ -1,0 +1,226 @@
+# stage-84 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# revision: 2026-10-12 openfeel-schemer 初版（计划审查轮 REV-84-001~006 落实映射见 plan_rev_mapping）
+#   说明①：op 数定稿 = **3**（对齐 v1.2.0/deps.yaml `est_ops: 3`；拆分=op-001 feel×4 契约面 / op-002 planner×4+skill+build+计数翻转 / op-003 断言补点+门禁收口——收口 op 为最终 op，kb #文档侧历史标记纳入版本收口禁改白名单）。
+#   说明②：计数翻转与 build **同 op**（op-002）——18th skill 落源后既有断言（7 字面量 + 5 派生）若不随批翻转则中间态必红；「build 重生成 → 翻转 → 全量绿」必须闭环在同一 op 退出（防中间红态跨 op 遗留——global 约束「测试未通过不得声称任务完成」）。
+#   说明③：i18n 基线 **911**（stage-83 交付后实测：「✅ 911 键一致」）；本阶段无新键，lint i18n 门禁 = 911 实测登记。
+#   说明④：`git status --porcelain src/`「空」口径修订（S-84-4）：本阶段**有意**变更源码（模板/skill/双生成物），门禁改为「build ×2 幂等（sha1 前后一致）+ 变更行 ⊆ 本阶段 produces 清单」双条件。
+
+version: "1.1"
+stage: v1.2.0-stage-84
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-12"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.0-stage-82
+    type: hard
+    status: done
+    reason: "命令面冻结面：`openfeel req` 10 子命令（add/list/show/claim/release/set/link/advance/board/next）+ 选项逐字口径（技能与模板文案的逐字来源）；`--json` 契约 schemaVersion:1。**本阶段零改动 `src/commands/req.ts`**。"
+  - upstream: v1.2.0-stage-83
+    type: hard
+    status: done
+    reason: "聚合语义冻结面：需求状态 = 关联阶段 phase 的聚合投影（方向单一：阶段 phase → 需求状态；全部关联阶段 done → 需求自动 done；auto-done 前置集 {scheduled, in_progress}）。契约文案「聚合由阶段驱动」依据。**本阶段零改动 `src/core/req/**`**。"
+  - upstream: v1.2.0-stage-78~80
+    type: hard
+    status: done
+    reason: "归档命令面冻结：`flow archive <version>` / `list` / `show` 三入口 + 判据门（全 done + 无 blocking open REV）+ 「与顶层 openfeel archive（阶段摘要归档）区分」；文档表述依据。"
+  - downstream: v1.2.0-stage-85
+    type: soft
+    note: "文档收口引用面：openfeel-req skill 要点（7 状态 / 10 子命令 / 认领协议）与需求纪律表述；「陈旧计数登记」移交项清单（setup.ts:3/:57/:106/:120 + update.ts:1898/:1915〔REV-84-006〕+ manual/** + ADAPTER 死资产〔REV-84-004〕）——stage-84 零动作、stage-85 收口轮复核。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；不直写 flow.json（注册经 `openfeel plan scheme register` CLI）；提交精确 git add（禁 -A）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "feel.md ×4 需求与归档纪律（节锚点插入 + 跨 harness 逐字一致）"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - .openfeel/tmp/stage-84-verify.mjs
+    deps: []
+    notes: "T1：两节节锚点插入（锚点 = `## 小改 vs 大规模规划的阈值` / `## Threshold for Small Changes vs. Large-Scale Planning` 标题之前）——①「需求流转（requirement lifecycle）」：四层模型 + 需求=排期与调度层 + 需求不等于计划 + 7 状态 + 聚合由阶段驱动 + 生命周期动作表（接取/认领/关联/流转/完成；10 子命令行示例）+ 正交注记；②「归档与历史读取」：提示 flow archive / 不主动读归档文件 / 按需 show|list / 与顶层 archive 区分。**零裸主语**（同语言跨 harness 两节逐字一致——kb #Agent 模板模式感知落法）；opencode 零回归。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "planner.md ×4 需求感知 + 新建 openfeel-req skill + cli-usage 补节 + build 重生成与计数翻转"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/en/openfeel-planner.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/claude/agents/en/openfeel-planner.md
+      - src/core/templates-data/skills/openfeel-req/SKILL.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/setup.test.ts
+      - test/core/templates-migration.test.ts
+      - test/core/update.test.ts
+      - test/core/template-loader.test.ts
+      - .openfeel/tmp/stage-84-verify.mjs
+    deps:
+      - op: op-001
+        type: hard
+        reason: "同批契约面串行（无代码依赖）；op-003 断言同时消费两者落文"
+    notes: "T2（planner「需求感知」/「Requirement Awareness」节，锚点 = `## 模型选择` / `## Model Selection` 标题之前）+ T3（新建 `openfeel-req/SKILL.md` 中文单语权威源：7 状态 / 10 子命令 / 认领协议 / REQ-NNN.md 人读副本 + flow.json 机读权威 / 与计划关系 / 与 workflow_mode 正交 / 快照声明「以 openfeel req --help 为准」+「v1.2.0 起提供」；cli-usage 六处修订：description / 快照 v1.2.0 / 命令速查行 / flow 子命令行补 archive / `:52` 17→18〔REV-84-005〕/ 新增「v1.2.0 新增能力（stage-78~84）」节——**禁含 `node bin/openfeel.js` 子串**〔T53 恒 1〕）+ `npm run build` ×2 重生成双生成物（禁手改；build.js 零改动）+ 计数翻转全量：**7 字面量（setup.test.ts:65/:221、templates-migration.test.ts:32/:41/:42、update.test.ts:816、template-loader.test.ts:112）+ 5 派生总数（setup.test.ts:89→28/:241→57、update.test.ts:274/:813/:875→29）+ `expectedSkills` 白名单补 `openfeel-req`（update.test.ts:149-167）+ D 组标题/注释 17 点 + 正控（template-loader.test.ts 补 `toContain('openfeel-req')`）**。退出条件：`npm test` 全量 0 skipped / 0 failed。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "静态断言补点与门禁收口（templates.test.ts + T5；阶段收口 op）"
+    produces:
+      - test/core/templates.test.ts
+      - .openfeel/tmp/stage-84-selftest-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "断言消费其全部落文与计数翻转后基线（逐字串来源 = op-001/002 落文）"
+      - op: op-001
+        type: hard
+        reason: "feel.md 逐字来源（S1/S2/S3 直读 4 份 feel.md）"
+    notes: "T4 断言补点（`templates.test.ts` 追加 3 describe：S1 8 份模板节存在性 + 逐字串〔不含 `**` 边界〕；S2 提取式切片跨 harness toBe 逐字一致；S3 opencode 零回归 + 阴性 5 串仅作用新节切片；S4 新 skill 要点〔触发词 / 7 状态 / 10 子命令 / 认领协议 / 权威源 / 正交 / 快照声明〕；S5 cli-usage 补节 + `**18 个**共享源` 正负断言 + T53 加注恒 1）+ 承接核验（REV-83-009~018 十条去向 + REV-84-001~006 落实映射 + REV-84-006 零动作登记 + 陈旧计数「确认未误改」）+ T5 全门禁（build ×2 幂等 sha1 口径 / npm test 0 skipped 0 failed / tsc 0 / lint i18n 911 实测登记 / lint kb 0 / 真实工作区零触碰 / 生成物零意外〔变更行 ⊆ produces〕）+ 收口报告。**本 op 为阶段收口 op（最终 op）**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+# 执行顺序（严格串行）：op-001 → op-002 → op-003
+# 注：op-003 为阶段收口 op（断言 + 全门禁 + 报告）；其后由 openfeel-reviewer 审查、openfeel-feel-tester 验收、openfeel-archiver 归档。
+
+# 不变量（供 executor 执行与 reviewer 审查对照）
+invariants:
+  - "4 份 feel.md 对称：同语言跨 harness 新节切片**逐字一致**（提取式切片 toBe 断言，4 组）；新节**零裸主语**（`Feel` / `主会话` / `main session` 零出现）；opencode 既有关键串零回归（`#### 工作流模式（workflow_mode）` / `术语消歧` / `自动推进决策纪律` / `## 小改 vs 大规模规划的阈值` + en 对应串）。"
+  - "4 份 planner.md 对称：同口径（节锚点 `## 模型选择` / `## Model Selection` 之前；切片逐字一致 + 零裸主语）；opencode 零回归（`## 工作流模式感知（fast 快线）` / `产出经 openfeel-reviewer 审查后方可进入 openfeel-schemer 阶段`）。"
+  - "正交落文：需求流转/归档纪律与 `workflow_mode`（full/fast）不耦合——两节均含正交注记（`正交注记` / `Orthogonality note`），且新节切片阴性 5 串零命中（`跳过流水线` / `绕过流水线` / `bypass the pipeline` / `需求即计划` / `a requirement is a plan`）；**需求 ≠ 计划**（实现仍走流水线）表述齐备。"
+  - "生成物禁手改：`src/core/template-loader.ts` + `src/core/update.ts` 仅经 `npm run build` 重生成；`build.js` 零改动（按目录自动纳入新 skill——核验 B23）；生成段外的手写注释区零触碰。"
+  - "计数一致（17→18 全量）：**7 字面量**（setup.test.ts:65/:221、templates-migration.test.ts:32/:41/:42、update.test.ts:816、template-loader.test.ts:112）+ **5 派生总数**（setup.test.ts:89→28/:241→57、update.test.ts:274/:813/:875→29）+ **`expectedSkills` 白名单补 `openfeel-req`**（update.test.ts:149-167）+ D 组标题/注释 17 点；`SKILL_DEFINITIONS ≡ OPENCODE_SKILL_DEFINITIONS` 键集一致（18）；全仓 `17`/`27`/`55`/旧 `28` 残留仅允许登记清单内无关命中。"
+  - "cli-usage 纪律：T53 既有断言不破坏（`node bin/openfeel.js` 计数恒 1）；`:52` 陈旧计数改 18 且生成副本随 build 同步（`update.ts:471` / `template-loader.ts:7023` 禁手改）；快照声明 v1.1.7→v1.2.0；六处修订之外零改动（口径补全两处已登记 S-84-7）。"
+  - "新 skill 纪律：`openfeel-req/SKILL.md` 中文单语、扁平单文件（无 {lang}）；description 含「需求 / requirement / REQ / req 命令」触发词；「v1.2.0 起提供」+ 快照声明「以 `openfeel req --help` 为准」齐备；只描述已实现能力（10 子命令 / 归档三入口逐字于 `--help` 口径，不写未实现细节）。"
+  - "零行为耦合：模板/skill 改动不引入新命令/新权限/新 i18n 键；lint i18n 门禁 = 911（实测登记）；不动 phase 枚举 / 转移表 / `pipeline.yaml`。"
+  - "中间态闭绿：op-002 退出 = `npm test` 全量 0 skipped / 0 failed（翻转与 build 同 op）；op-003 退出 = 全门禁绿 + 报告落盘。"
+  - "断言串纪律：全部断言串取**不含 `**` 边界**的稳定子串（kb #断言串与落文逐字核对纪律）；阴性断言仅作用**新节切片**（不扫全文件）。"
+  - "测试隔离：全程 tmpDir + 隔离 HOME；**严禁**触碰真实 `.openfeel/flow.json` 与真实 `.openfeel/requirements/`；`.openfeel/tmp/*` 临时物不入版本管理。"
+  - "不改面：不改 `src/**` 行为面（除 8 模板 + 2 skill + 双生成物）；不改 `build.js` / `package.json` / `pipeline.yaml` / phase 枚举 / `src/core/{flow-manager,req,commands}/**` / i18n 双表；不改全局约束层与其余 6 类 subagent 模板；不新增第三方依赖；不 npm publish / 不 git push；不直写 flow.json；不推进 phase。"
+
+# 方案期设计裁定（定稿；供 stage-85 与审查消费）
+scheme_decisions:
+  - id: "S-84-1"
+    title: "对称判据定稿 = 「新节零裸主语 + 提取式切片 toBe 逐字一致」"
+    decision: "同语言跨 harness 的对称断言从 stage-76 的「逐串 toContain」升级为**切片等值**：按「节标题行 → 下一 markdown 标题行」提取切片，断言 `claude 切片 === opencode 切片`（feel 4 组 + planner 2 组）；配套「新节零裸主语」正面纪律（`Feel` / `主会话` 零出现）——使跨 harness 逐字一致成为**结构性可达**而非人工核对。"
+    rationale: "kb `#Agent 模板模式感知落法` 的「同语言跨 harness 逐字一致 + 零裸主语」判据；切片等值可捕获任意插入/删改（强于逐串），且不依赖行号（防漂移）。op 提供的插入文本**避免一切 harness 差异词**，故等值可成立（无需 normalize）。"
+  - id: "S-84-2"
+    title: "节锚点定稿：feel 两节插「小改 vs 大规模规划阈值」标题之前；planner 节插「模型选择」标题之前"
+    decision: "feel.md：两节（`#### 需求流转（requirement lifecycle）` / `#### 归档与历史读取`）整体插入 `## 小改 vs 大规模规划的阈值`（zh）/ `## Threshold for Small Changes vs. Large-Scale Planning`（en）标题**之前**（层级 `####`，归「核心职责」邻域——plan T1「核心职责/工作流模式邻域」落点）。planner.md：`## 需求感知` / `## Requirement Awareness` 插 `## 模型选择` / `## Model Selection` 标题**之前**（与「工作流模式感知」节并列——plan T2 明示）。"
+    rationale: "内容锚点定位（非行号——行号会因前序插入失效，kb 纪律）；插入放最后（本阶段无行内改，纯插入）；锚点串在两 harness 同语言下一致，提取与核验同一口径。"
+  - id: "S-84-3"
+    title: "新 skill 命名与形态定稿：`openfeel-req`（Q7 默认）；中文单语、扁平单文件、快照声明 + 提供版本"
+    decision: "目录名 `openfeel-req`；`SKILL.md` 中文单语、无 `{lang}`、frontmatter 仅 `name` + `description`（description 含「需求 / requirement / REQ / req 命令」触发词）；正文首节含「**v1.2.0 起提供**」+ 快照声明「以 `openfeel req --help` 为准」；正文含本仓自举加注（复用既有范式）。"
+    rationale: "kb `#CLI 用法 skill 化模式`（权威源单文件 + 触发可发现性 + 快照声明）+ `#未来功能/未落地能力写入 skill 与文档须标注「提供版本」`；`build.js` 按目录自动纳入（零改动）。"
+  - id: "S-84-4"
+    title: "build 与计数翻转**同 op**（op-002）+ `git status --porcelain src/` 门禁口径修订"
+    decision: "18th skill 落源、cli-usage 订正、`npm run build` ×2、计数翻转（7+5+1+17 点）全部并入 op-002，**退出条件 = `npm test` 全量绿**。T5 的 `git status --porcelain src/` 门禁口径修订为双条件：① **幂等**（第二次 build 前后两生成物 sha1 一致 + `git status` 快照 S2 === S1）；② **零意外**（变更行 ⊆ 本阶段 produces 清单）。"
+    rationale: "若翻转滞后于 build/skill 落源，中间态 12 处计数断言必红——违背「测试未通过不得声称任务完成」；本阶段**有意**变更源码，「`git status --porcelain src/` 空」在源侧不可达（stage-83 口径直搬会伪失败），修订为「幂等 + 零意外」保持门禁强度（B 类双生成物幂等先例：kb `#文档侧历史标记纳入版本收口禁改白名单`）。"
+  - id: "S-84-5"
+    title: "REV-84-006 裁定：**本阶段零动作、登记转 stage-85**（与 setup.ts 同类注释同批处置）"
+    decision: "`src/core/update.ts:1898`/`:1915` 手写陈旧计数注释（「17 共享 skill / 17 共享 skills」，AUTO-GENERATED 段外、build 不重生成）**本阶段不改**；登记入「陈旧计数登记」清单，与 `src/core/setup.ts:106`/`:120`（逐字同文案）同批移交 stage-85 收口轮复核。"
+    rationale: "两文件该两处为**逐字同文案**——只改 update.ts 一侧将制造跨文件不对称（且 setup.ts 已由 plan §一登记「本阶段零动作」）；同批陈旧、单点收口（stage-85）语义更一致，且 update.ts 本阶段仅允许 build 生成段变更（防「禁手改」边界扩大）。op-003 步骤 3.2 核验两行**零变更**并留痕报告。"
+  - id: "S-84-6"
+    title: "断言落点定稿：`templates.test.ts` 承接 S1~S5 全部新断言；`template-loader.test.ts` 仅计数翻转 + 正控"
+    decision: "T4 补点归 `test/core/templates.test.ts`（3 个新 describe）与 `test/core/template-loader.test.ts`（:110/:112 翻转 + `toContain('openfeel-req')` 正控）；**不含** `test/core/claude-adapter.test.ts`（REV-84-003 已裁定删除引用）。"
+    rationale: "plan T4 定稿（REV-84-003；与 stage-76 先例一致——对称断言归 templates.test.ts）；计数翻转与其正控同处（同一次编辑闭环），防「计数改写但新 skill 未纳入」假绿。"
+  - id: "S-84-7"
+    title: "cli-usage「口径补全」两处（命令速查表补 `openfeel req` 行 + flow 子命令行补 `archive`）随 T3 同批"
+    decision: "除 plan T3 明列的「req 节 + flow archive 节 + 快照版本 + `:52` 计数」外，将 `openfeel req` 补入「命令速查」表、将 `archive` 补入「flow 子命令」行（v1.2.0 两个新命令面在速查层的落位——对齐 v1.1.7 补节先例：`mode` / `phases` 已在速查行）。六处修订之外零改动。"
+    rationale: "查询型参考手册的一致性要求（命令面已交付而速查层缺席将致手册残缺）；两处补全为纯文案、不影响任何既有断言（T53/T55 不受影响）；显式登记以利审查（非隐性扩范围）。"
+  - id: "S-84-8"
+    title: "断言串口径定稿：落文与断言串同源（op 文本逐字）+ 一律不含 `**` 边界 + 阴性仅作用切片"
+    decision: "op-003 断言串全部取自 op-001/op-002 的插入文本（同一来源）；选串一律取**不含 `**` 边界**的稳定子串；阴性 5 串仅作用于新节切片（防误伤既有合法文案）。"
+    rationale: "kb `#断言串与落文逐字核对纪律（markdown 粗体 ** 断串致 0 命中）`（REV-76-009 教训）——本方案在 op 文本层次消除粗体断串风险（落文关键句有意不含粗体）。"
+
+# 计数翻转逐点清单（REV-84-001 全量；执行归 op-002、断言消费归 op-003；基线 HEAD ab60cb6 实测复核）
+count_flip_points:
+  literals_17_to_18:            # 7 处字面量
+    - "test/core/setup.test.ts:65"
+    - "test/core/setup.test.ts:221"
+    - "test/core/templates-migration.test.ts:32"
+    - "test/core/templates-migration.test.ts:41"
+    - "test/core/templates-migration.test.ts:42"
+    - "test/core/update.test.ts:816"
+    - "test/core/template-loader.test.ts:112"
+  derived_totals:               # 5 处派生总数
+    - "test/core/setup.test.ts:89（27→28）"
+    - "test/core/setup.test.ts:241（55→57）"
+    - "test/core/update.test.ts:274（28→29）"
+    - "test/core/update.test.ts:813（28→29）"
+    - "test/core/update.test.ts:875（28→29）"
+  whitelist:                    # 1 处白名单枚举（非计数，手工追加）
+    - "test/core/update.test.ts:149-167 expectedSkills 追加 'openfeel-req'（→18 名）"
+  titles_comments:              # D 组标题/注释（非断言；17 点）
+    - "test/core/setup.test.ts:3 / :55 / :88 / :210 / :235 / :240"
+    - "test/core/templates-migration.test.ts:5 / :6 / :27 / :38"
+    - "test/core/template-loader.test.ts:110"
+    - "test/core/update.test.ts:145 / :264 / :272 / :810 / :812 / :870"
+  positive_control:
+    - "test/core/template-loader.test.ts 追加 expect(names).toContain('openfeel-req')（防计数改写假绿）"
+  unrelated_do_not_touch:       # 全仓复核允许残留（与本阶段无关，禁改）
+    - "test/commands/req.test.ts:1017（顶层命令数 17，非 skill）"
+    - "test/core/migrate.test.ts:389/:410-412（17 位时间戳 regex）"
+    - "test/core/release-metadata.test.ts:24（engines >=20.17.0）"
+    - "test/commands/flow.test.ts:2932（用例索引注释）"
+  registered_stale_zero_action: # 陈旧计数登记（本阶段零动作——确认未误改；转 stage-85）
+    - "src/core/setup.ts:3 / :57 / :106 / :120（注释）"
+    - "src/core/update.ts:1898 / :1915（手写注释——REV-84-006，S-84-5）"
+    - ".openfeel/manual/**（与 kb 引用，陈旧计数）"
+    - "src/core/templates-data/opencode/ADAPTER.{zh-CN,en}.md（死资产——REV-84-004）"
+
+# 计划审查 REV-84-001~006 落实映射（审查轮闭环基线；供方案审查与代码审查对照）
+plan_rev_mapping:
+  - "REV-84-001（high，blocking，已闭合）→ 计数翻转全量入 op-002 步骤 2.7（7 字面量 + 5 派生 + 白名单 + D 组 17 点 + E 正控 + F 全仓复核）；本文件 count_flip_points 结构化登记。"
+  - "REV-84-002（high，blocking，已闭合）→ op-003 步骤 3.2 承接核验（REV-83-009~018 十条去向）+ 3.4 报告 ④ 承接表核验；本文件 inherited_pending_revs 逐条登记。"
+  - "REV-84-003（low，已闭合）→ 断言补点归 `templates.test.ts` / `template-loader.test.ts`（S-84-6）；**不含** `claude-adapter.test.ts`（全阶段零触碰）。"
+  - "REV-84-004（low，已闭合）→ 死资产 `ADAPTER.{zh-CN,en}.md` 登记转 stage-85（op-003 步骤 3.2 复核「未误改」；本文件 registered_stale_zero_action）。"
+  - "REV-84-005（low，已闭合）→ op-002 步骤 2.5(e)（`:52` 17→18）+ 2.6（生成副本随 build 同步核验）；op-003 S5 断言正负双查。"
+  - "REV-84-006（low，pending）→ **方案裁定 S-84-5：本阶段零动作、登记转 stage-85**；op-003 步骤 3.2 核验 `update.ts:1898`/`:1915` 零变更并留痕报告；销账随 stage-85 收口轮。"
+
+# 承接上游 pending REV（来源 users/Liuary/code_review/REV-83.md 归档收口表；逐条处置表见 stage-84/plan.md §三）
+inherited_pending_revs:
+  - "REV-83-016（medium）→ **移交 stage-85 成文**（本表登记 + manual `core/requirement` / `cli/req` 节 + help 文案标注残留路径）；**stage-84 零动作**（不改 `src/core/flow-manager.ts` 守卫；「advance 命中 done 按聚合视图无条件重算」留待收口轮/后续版本评估）。"
+  - "REV-83-015（low）→ **移交 stage-85 收口轮**（`deps.yaml` invariants 计数口径统一）；本阶段对 v1.2.0/deps.yaml 零修订（不动 invariants 段）。"
+  - "REV-83-017（low）→ **移交 stage-85 收口轮**（`aggregate.ts:127` 可选优化）；本阶段零触碰 `src/core/req/**`。"
+  - "REV-83-018（low）→ **移交 stage-85 收口轮**（静态禁令收敛）；本阶段零触碰 `test/core/req.test.ts`。"
+  - "REV-83-009~014（×6，medium/low）→ **台账保留**（均已落实核验——用户裁定维持前置集 {scheduled, in_progress} + 大计划/plan 同步；deps 改 8 + 注历史口径；契约补 `stageIds` + 零关联 `null`；op-003 hard→soft；reset 接入点主干约束 +「非 current 阶段 reset 仍回写」专测；fixture 明写双 `requirement_id`）；销账随 stage-85 收口轮；本阶段零行为动作。"
+  - "REV-84-006（low，pending）→ **本阶段零动作、登记转 stage-85**（S-84-5；与 setup.ts 同类注释同批处置）。"
+
+# 下游契约（交付 stage-85；接口形态 = 契约文本级）
+downstream_contracts:
+  - name: "`feel.md` ×4 :: 需求与归档纪律节（本阶段交付）"
+    change: "新节切片锚点（提取用）：zh `#### 需求流转（requirement lifecycle）` / `#### 归档与历史读取`；en `#### Requirement Lifecycle` / `#### Archiving and History Reading`。口径：需求=排期与调度层 / 需求不等于计划 / 7 状态 / 聚合方向单一 / 归档由 CLI 执行（提示而非代劳）/ 不主动读 `.openfeel/flow-archive/**` / 按需 `flow archive show|list`。stage-85 文档面（README/docs/manual）表述须与本口径一致。"
+  - name: "`openfeel-planner.md` ×4 :: 需求感知节（本阶段交付）"
+    change: "新节锚点：zh `## 需求感知` / en `## Requirement Awareness`；口径：`req show` 读取 → `plan.md` 头部「关联需求：REQ-NNN」标注 → 流转不在 planner 职责内（经 `openfeel req` CLI；只读不写）。"
+  - name: "`skills/openfeel-req/SKILL.md`（新建；本阶段交付）"
+    change: "需求流转用法权威源（中文单语、扁平单文件）；stage-85 的 README / docs/commands 引用其要点（7 状态 / 10 子命令 / 认领协议 / 权威源语义）；skills 计数 **18**（17→18 全量翻转见 count_flip_points）。"
+  - name: "`skills/openfeel-cli-usage/SKILL.md` :: v1.2.0 节（本阶段交付）"
+    change: "新增「## v1.2.0 新增能力（stage-78~84）」节（flow archive 三入口 + req 命令组）；快照声明 v1.2.0；命令速查层补 `openfeel req` 行与 flow 子命令 `archive`。"
+  - name: "陈旧计数移交清单（stage-85 收口轮）"
+    change: "setup.ts:3/:57/:106/:120 + update.ts:1898/:1915（REV-84-006）+ `.openfeel/manual/**` 陈旧计数 + ADAPTER 死资产（REV-84-004）——均**本阶段零动作**，stage-85 统一订正/复核。"
+
+# 交付边界（本阶段不做，防越界）
+out_of_scope:
+  - "README×3 / docs / CHANGELOG / manual 更新与版本收口——归 stage-85"
+  - "全局约束层（`agents-md/*` / `claude/constraint/*`）注记——本阶段裁定**零动作**（纪律仅在 feel/planner 模板内落文；plan §边界默认最小）"
+  - "schemer / executor / reviewer / archiver / vision / feel-tester 等其余 subagent 模板——零触碰"
+  - "`src/core/setup.ts` / `update.ts` 手写注释陈旧计数（REV-84-006）与 manual/ADAPTER 陈旧计数——登记转 stage-85（本阶段零动作）"
+  - "`src/core/req/**` / `src/core/flow-manager.ts` / `src/commands/**` ——零触碰（REV-83-015/016/017/018 归 stage-85）"
+  - "i18n 键新增 / phase 枚举 / 转移表 / `pipeline.yaml` / `build.js` / `package.json` ——零触碰"
+  - "npm publish / git push / CI 变更 / 第三方依赖 ——零触碰"
+  - "真实 `.openfeel/requirements/` 与真实 flow.json `requirements` 键写入 ——本阶段零执行（测试全程 tmpDir）"

@@ -1198,3 +1198,19 @@ concurrency:
 **实证**：v1.2.0-stage-83（op-002 步骤 2.1→2.5「diff → `DIFF_EMPTY_OK`」；`test/core/flow-manager.test.ts` golden T4.3-①③ + 正控）；对照 kb/patterns.md #零行为变更改造的验证方法、#测试隔离的「干净机器」验证法。
 
 **参见：** v1.2.0-stage-83（op-002；§四.1 三路径同断言口径）；`.openfeel/tmp/stage-83-baseline.json`；kb/troubleshooting.md #flow.json 内容增量核验必含 `meta.revision`/`meta.updated`、#可选字段「读侧补齐」的序列化副作用；kb/patterns.md #零行为变更改造的验证方法、#对称回写模式
+
+## [+] build「双生成物」禁手改的段二分：AUTO-GENERATED 段 vs 手写注释段（陈旧计数漏登记陷阱） (2026-10-13)
+
+**场景**：改 `templates-data/**` 源后须 `npm run build` 重生成「双生成物」（`src/core/template-loader.ts` + `src/core/update.ts`，见本文 #改 templates-data 源须同批重生成的「双生成物」）。但 `update.ts` **同一文件内两类段**纪律相反，易把「生成段禁手改」误读为「整文件禁改」而漏改可改的手写段。
+
+**段二分（`rg -n "AUTO-GENERATED" src/core/update.ts` 定位边界）**：
+- **AUTO-GENERATED 段**（本阶段 `:127`–`:1597`）：**禁手改**——build 整体重生成，手改被覆盖。
+- **手写注释段**（`:1597` 之后，如 `:1898`/`:1915`）：**build 不重生成**，属手写代码，**可且应**随批订正；其陈旧计数（「17 共享 skill」）与 `setup.ts:106`/`:120` 逐字同文案，若因「禁手改」误判而不触碰 → **陈旧残留 + 与 setup 口径不一致**。
+
+**陷阱**：版本 / 计数收口清单若只登记「`setup.ts` 同类」而漏 `update.ts` 手写段，则「禁手改」被误读为「整文件禁改」。
+
+**判据**：声称「生成物禁手改」前，先 `rg -n "AUTO-GENERATED" <file>` 划定**生成段边界**；边界外手写段按普通源对待；收口清单须同时登记**同名同文案的全部手写副本**。
+
+**实证**：v1.2.0-stage-84（REV-84-006：`update.ts:1898`/`:1915` 手写陈旧计数注释漏登记；处置＝据 S-84-5 归档轮显式销账、本阶段零动作）。
+
+**参见：** v1.2.0-stage-84（op-002/003；REV-84-006）；kb/troubleshooting.md #改 templates-data 源须同批重生成的「双生成物」、#多源文案同步陷阱；kb/patterns.md #新增 skill 纳入生成物键集

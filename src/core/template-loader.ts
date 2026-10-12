@@ -234,6 +234,32 @@ Fast-mode discipline:
 4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
 5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
 
+#### Requirement Lifecycle
+
+The requirement layer is the second layer of the four-layer model "version → requirement REQ-NNN → plan stage → op": **a requirement is the scheduling layer**, answering "what to do and when"; **implementation still goes through the full pipeline** — a requirement is not a plan; after taking a requirement, delegate to openfeel-planner for plan.md per the "Threshold for Small Changes vs. Large-Scale Planning" as usual.
+
+A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done).
+
+Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
+
+| Step | Action | Command |
+|------|--------|---------|
+| Take | Browse requirement views and pick the next takeable requirement | \`openfeel req board\` / \`openfeel req next\` / \`openfeel req list\` |
+| Claim | Claim the requirement (rejected if already claimed by another — guards concurrent overwrite; no TTL) | \`openfeel req claim <REQ-NNN>\` |
+| Link | Link the requirement to the stages implementing it | \`openfeel req link --stage <stageId> --requirement <REQ-NNN>\` |
+| Advance | Stage advancement drives aggregation; advance explicitly along legal targets | \`openfeel req advance <REQ-NNN> --to <status>\` |
+| Complete | Auto-done once all linked stages are done; overview and release | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
+
+> Orthogonality note: requirement flow is orthogonal to the workflow mode (\`full\` / \`fast\`) — the requirement discipline is identical in both modes.
+
+#### Archiving and History Reading
+
+Once a version is finalized (all its stages done), prompt the user that version archiving is available (\`openfeel flow archive <version>\` — after the criteria gate passes, the archive file is written first and the active entries removed afterwards): the archiving action is executed by the CLI; dispatch only prompts, never performs it.
+
+- Never read archive files proactively: regular dispatch must not read \`.openfeel/flow-archive/**\` (to prevent context pollution); the active set via \`openfeel flow status\` / \`openfeel flow overview\` is the full working view.
+- Query history on demand: when history is genuinely needed, use \`openfeel flow archive show <version>\` (single version, read-only) or \`openfeel flow archive list\` (enumerate versions); do not read the files directly.
+- Distinct from top-level \`openfeel archive\`: the top-level command is stage-summary archiving; \`flow archive\` is flow.json version-shard archiving — different responsibilities.
+
 ## Threshold for Small Changes vs. Large-Scale Planning
 
 Choose the appropriate process path based on the change scale:
@@ -1012,6 +1038,15 @@ Before planning, read the current stage's \`status.md\` "Workflow Mode" field (a
 - **full**: the output goes through openfeel-reviewer plan review (\`plan_review\`) before openfeel-schemer (unchanged).
 - **fast (Workflow Fast Line)**: **this agent's output must pass openfeel-reviewer's plan review (\`plan_review\`, single round; pass → \`plan_passed\`, issues returned → \`plan_pending\`; only then does it enter exec)**; produce a lightweight plan — the task table / dependencies / acceptance points **must not be omitted**; other process narrative may be trimmed. (Lightweight scope: keep goals / dependencies / task table / acceptance points / constraints / KB retrieval / change-point list / risks; background evidence details and revision history may be condensed.)
 
+## Requirement Awareness
+
+When a task originates from a requirement (\`REQ-NNN\`):
+
+- Read the requirement: first read the requirement details (title / status / owner / linked stages) via \`openfeel req show <REQ-NNN>\` as plan input.
+- Link the plan to the requirement: annotate the header of the produced \`plan.md\` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
+- Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the \`openfeel req\` CLI; this agent is read-only (no direct flow.json writes).
+- Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under \`full\` / \`fast\`.
+
 ## Model Selection
 
 openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Feel system design, openfeel-planner duties can be concurrently handled by Feel, but exist as an independent agent definition to support flexible scheduling strategies.
@@ -1633,6 +1668,32 @@ fast 调度纪律：
 3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
 4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
 5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
+
+#### 需求流转（requirement lifecycle）
+
+需求层位于「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」四层模型的第二层：**需求 = 排期与调度层**，回答「做什么、何时做」；**实现仍走完整流水线**——需求不等于计划，接取需求后按「小改 vs 大规模规划的阈值」照常委托 openfeel-planner 产出 plan.md。
+
+需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done）。
+
+需求生命周期动作（命令组 \`openfeel req\`，共 10 个子命令）：
+
+| 步骤 | 动作 | 命令 |
+|------|------|------|
+| 接取 | 浏览需求视图，挑选下一个可接取需求 | \`openfeel req board\` / \`openfeel req next\` / \`openfeel req list\` |
+| 认领 | 占用需求（已被他人认领则拒绝——防并发覆盖，无 TTL） | \`openfeel req claim <REQ-NNN>\` |
+| 关联 | 把需求关联到实现它的阶段 | \`openfeel req link --stage <stageId> --requirement <REQ-NNN>\` |
+| 流转 | 阶段推进驱动聚合；显式流转按合法目标推进 | \`openfeel req advance <REQ-NNN> --to <status>\` |
+| 完成 | 全部关联阶段 done 后需求自动 done；总览与释放 | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
+
+> 正交注记：需求流转与工作流模式（\`full\` / \`fast\`）正交——两种模式下需求纪律一致。
+
+#### 归档与历史读取
+
+版本收官（该版本全部阶段 done）后，提示用户可执行版本归档（\`openfeel flow archive <version>\`——判据门校验后先写归档文件、再移除活跃条目）：归档动作由 CLI 执行，调度侧只提示不代劳。
+
+- 不主动读归档文件：常规调度不得读取 \`.openfeel/flow-archive/**\`（防上下文污染）；活跃集经 \`openfeel flow status\` / \`openfeel flow overview\` 即为全量工作视图。
+- 按需查询历史：确需历史版本时用 \`openfeel flow archive show <version>\`（单版本只读）或 \`openfeel flow archive list\`（列举版本），不直接读文件。
+- 与顶层 \`openfeel archive\` 区分：顶层命令是阶段摘要归档；\`flow archive\` 是 flow.json 版本分片归档，二者职责不同。
 
 ## 小改 vs 大规模规划的阈值
 
@@ -2410,6 +2471,15 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 - **full**：产出经 openfeel-reviewer 计划审查（\`plan_review\`）后进入 openfeel-schemer（现状不变）。
 - **fast（工作流快线）**：**本 Agent 产出后必经 openfeel-reviewer 的计划审查（\`plan_review\` 单轮；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`；此后进入 exec）**；产出为轻量计划——任务表 / 依赖声明 / 验收要点**不得省略**，其余过程性描述可精简。（轻量口径：保留 目标 / 依赖 / 任务表 / 验收要点 / 约束 / KB 检索 / 变更点清单 / 风险；背景实测证据明细与修订记录过程可收敛为结论。）
+
+## 需求感知
+
+当任务源自需求（\`REQ-NNN\`）时：
+
+- 读取需求：先以 \`openfeel req show <REQ-NNN>\` 读取需求详情（标题 / 状态 / 认领人 / 关联阶段），作为计划输入。
+- 计划关联需求：产出的 \`plan.md\` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
+- 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
+- 与「工作流模式感知」正交：\`full\` / \`fast\` 下需求感知口径一致。
 
 ## 模型选择
 
@@ -4101,6 +4171,32 @@ Fast-mode discipline:
 4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
 5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
 
+#### Requirement Lifecycle
+
+The requirement layer is the second layer of the four-layer model "version → requirement REQ-NNN → plan stage → op": **a requirement is the scheduling layer**, answering "what to do and when"; **implementation still goes through the full pipeline** — a requirement is not a plan; after taking a requirement, delegate to openfeel-planner for plan.md per the "Threshold for Small Changes vs. Large-Scale Planning" as usual.
+
+A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done).
+
+Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
+
+| Step | Action | Command |
+|------|--------|---------|
+| Take | Browse requirement views and pick the next takeable requirement | \`openfeel req board\` / \`openfeel req next\` / \`openfeel req list\` |
+| Claim | Claim the requirement (rejected if already claimed by another — guards concurrent overwrite; no TTL) | \`openfeel req claim <REQ-NNN>\` |
+| Link | Link the requirement to the stages implementing it | \`openfeel req link --stage <stageId> --requirement <REQ-NNN>\` |
+| Advance | Stage advancement drives aggregation; advance explicitly along legal targets | \`openfeel req advance <REQ-NNN> --to <status>\` |
+| Complete | Auto-done once all linked stages are done; overview and release | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
+
+> Orthogonality note: requirement flow is orthogonal to the workflow mode (\`full\` / \`fast\`) — the requirement discipline is identical in both modes.
+
+#### Archiving and History Reading
+
+Once a version is finalized (all its stages done), prompt the user that version archiving is available (\`openfeel flow archive <version>\` — after the criteria gate passes, the archive file is written first and the active entries removed afterwards): the archiving action is executed by the CLI; dispatch only prompts, never performs it.
+
+- Never read archive files proactively: regular dispatch must not read \`.openfeel/flow-archive/**\` (to prevent context pollution); the active set via \`openfeel flow status\` / \`openfeel flow overview\` is the full working view.
+- Query history on demand: when history is genuinely needed, use \`openfeel flow archive show <version>\` (single version, read-only) or \`openfeel flow archive list\` (enumerate versions); do not read the files directly.
+- Distinct from top-level \`openfeel archive\`: the top-level command is stage-summary archiving; \`flow archive\` is flow.json version-shard archiving — different responsibilities.
+
 ## Threshold for Small Changes vs. Large-Scale Planning
 
 Choose the appropriate process path based on the change scale:
@@ -4879,6 +4975,15 @@ Before planning, read the current stage's \`status.md\` "Workflow Mode" field (a
 - **full**: the output goes through openfeel-reviewer plan review (\`plan_review\`) before openfeel-schemer (unchanged).
 - **fast (Workflow Fast Line)**: **this agent's output must pass openfeel-reviewer's plan review (\`plan_review\`, single round; pass → \`plan_passed\`, issues returned → \`plan_pending\`; only then does it enter exec)**; produce a lightweight plan — the task table / dependencies / acceptance points **must not be omitted**; other process narrative may be trimmed. (Lightweight scope: keep goals / dependencies / task table / acceptance points / constraints / KB retrieval / change-point list / risks; background evidence details and revision history may be condensed.)
 
+## Requirement Awareness
+
+When a task originates from a requirement (\`REQ-NNN\`):
+
+- Read the requirement: first read the requirement details (title / status / owner / linked stages) via \`openfeel req show <REQ-NNN>\` as plan input.
+- Link the plan to the requirement: annotate the header of the produced \`plan.md\` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
+- Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the \`openfeel req\` CLI; this agent is read-only (no direct flow.json writes).
+- Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under \`full\` / \`fast\`.
+
 ## Model Selection
 
 openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the Feel system design, openfeel-planner duties can be concurrently handled by Feel, but exist as an independent agent definition to support flexible scheduling strategies.
@@ -5500,6 +5605,32 @@ fast 调度纪律：
 3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
 4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
 5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
+
+#### 需求流转（requirement lifecycle）
+
+需求层位于「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」四层模型的第二层：**需求 = 排期与调度层**，回答「做什么、何时做」；**实现仍走完整流水线**——需求不等于计划，接取需求后按「小改 vs 大规模规划的阈值」照常委托 openfeel-planner 产出 plan.md。
+
+需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done）。
+
+需求生命周期动作（命令组 \`openfeel req\`，共 10 个子命令）：
+
+| 步骤 | 动作 | 命令 |
+|------|------|------|
+| 接取 | 浏览需求视图，挑选下一个可接取需求 | \`openfeel req board\` / \`openfeel req next\` / \`openfeel req list\` |
+| 认领 | 占用需求（已被他人认领则拒绝——防并发覆盖，无 TTL） | \`openfeel req claim <REQ-NNN>\` |
+| 关联 | 把需求关联到实现它的阶段 | \`openfeel req link --stage <stageId> --requirement <REQ-NNN>\` |
+| 流转 | 阶段推进驱动聚合；显式流转按合法目标推进 | \`openfeel req advance <REQ-NNN> --to <status>\` |
+| 完成 | 全部关联阶段 done 后需求自动 done；总览与释放 | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
+
+> 正交注记：需求流转与工作流模式（\`full\` / \`fast\`）正交——两种模式下需求纪律一致。
+
+#### 归档与历史读取
+
+版本收官（该版本全部阶段 done）后，提示用户可执行版本归档（\`openfeel flow archive <version>\`——判据门校验后先写归档文件、再移除活跃条目）：归档动作由 CLI 执行，调度侧只提示不代劳。
+
+- 不主动读归档文件：常规调度不得读取 \`.openfeel/flow-archive/**\`（防上下文污染）；活跃集经 \`openfeel flow status\` / \`openfeel flow overview\` 即为全量工作视图。
+- 按需查询历史：确需历史版本时用 \`openfeel flow archive show <version>\`（单版本只读）或 \`openfeel flow archive list\`（列举版本），不直接读文件。
+- 与顶层 \`openfeel archive\` 区分：顶层命令是阶段摘要归档；\`flow archive\` 是 flow.json 版本分片归档，二者职责不同。
 
 ## 小改 vs 大规模规划的阈值
 
@@ -6278,6 +6409,15 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 - **full**：产出经 openfeel-reviewer 计划审查（\`plan_review\`）后进入 openfeel-schemer（现状不变）。
 - **fast（工作流快线）**：**本 Agent 产出后必经 openfeel-reviewer 的计划审查（\`plan_review\` 单轮；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`；此后进入 exec）**；产出为轻量计划——任务表 / 依赖声明 / 验收要点**不得省略**，其余过程性描述可精简。（轻量口径：保留 目标 / 依赖 / 任务表 / 验收要点 / 约束 / KB 检索 / 变更点清单 / 风险；背景实测证据明细与修订记录过程可收敛为结论。）
 
+## 需求感知
+
+当任务源自需求（\`REQ-NNN\`）时：
+
+- 读取需求：先以 \`openfeel req show <REQ-NNN>\` 读取需求详情（标题 / 状态 / 认领人 / 关联阶段），作为计划输入。
+- 计划关联需求：产出的 \`plan.md\` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
+- 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
+- 与「工作流模式感知」正交：\`full\` / \`fast\` 下需求感知口径一致。
+
 ## 模型选择
 
 openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 Feel 体系设计中，openfeel-planner 职责可由 Feel 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
@@ -6971,7 +7111,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -6983,7 +7123,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.1.7 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.2.0 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -7006,12 +7146,13 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel lint i18n\\|kb\` | 健康检查（i18n 键一致性 / kb 过期引用） | 发现问题**非 0 退出** |
 | \`openfeel knowledge ...\` | 知识库管理 | \`list\` / \`add\` / \`search\` / \`index\` / \`dedup\` |
 | \`openfeel archive <stage>\` | 归档指定阶段（汇总产出、生成摘要、提取知识） | \`<stage>\` |
+| \`openfeel req ...\` | 需求流转（需求管理命令组） | 见「v1.2.0 新增能力（stage-78~84）」节 |
 | \`openfeel view list\\|accept\` | 审查条目验收（\`add\` 已移除，改用 \`flow review add\`） | — |
 | \`openfeel project overview\` | 项目结构概览 | \`overview\`（无 \`list\`/\`info\` 子命令） |
 | \`openfeel roadmap create\\|show\` | 分期大纲管理 | \`create <version>\`、\`show [version]\` |
 | \`openfeel instructions <artifactId>\` | 为指定 artifact 生成结构化指令 | \`--change <name>\`、\`--schema <name>\`、\`--json\` |
 
-**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`mode\`（\`[--stage <id>] [--json]\`，只读） / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\`。
+**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`mode\`（\`[--stage <id>] [--json]\`，只读） / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\` / \`archive\`（\`<version>\` / \`list\` / \`show\`）。
 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
@@ -7020,7 +7161,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 ## v1.1.6 新增能力（stage-68~73）
 
 - **多 harness 并存**：\`openfeel setup\` / \`openfeel update\` 新增 \`--tools <逗号列表>\`（如 \`opencode,claude\`）；非法值 **exit 1** 前置校验零写盘；默认仅 \`opencode\`。
-- **Claude Code 适配器资产**：\`--tools claude\` 部署 \`~/.claude/\`——\`CLAUDE.md\`（全局约束，用户已有内容 append 不覆盖）、\`agents/\`（**9 个**，含 \`feel\`）、\`skills/\`（**17 个**共享源）、\`settings.json\`（注入 \`"agent":"feel"\` + \`"permissions":{"defaultMode":"auto"}\`，用户既有键逐字保留）；默认零触（不带 \`--tools\` 时 \`~/.claude/\` 零变化）。
+- **Claude Code 适配器资产**：\`--tools claude\` 部署 \`~/.claude/\`——\`CLAUDE.md\`（全局约束，用户已有内容 append 不覆盖）、\`agents/\`（**9 个**，含 \`feel\`）、\`skills/\`（**18 个**共享源）、\`settings.json\`（注入 \`"agent":"feel"\` + \`"permissions":{"defaultMode":"auto"}\`，用户既有键逐字保留）；默认零触（不带 \`--tools\` 时 \`~/.claude/\` 零变化）。
 
 ## v1.1.7 新增能力（stage-74~76）
 
@@ -7028,6 +7169,11 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **fast 快线转移表（并列）**：\`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项）：\`plan_pending → plan_review\`（**计划审查必经**）、\`plan_review → plan_passed / plan_pending\`、\`plan_passed → exec_running\`、\`exec_running → review_pending\`、\`review_pending → review_failed / review_passed\`、\`review_failed → review_pending / exec_running\`（回环）、\`review_passed → archiving\`、\`archiving → done\`、\`done\`（终态）。**\`phases\` / \`advanceAccepted\` 恒 15 项、模式无关**；fast 下 6 个相位不可达（\`scheme_*\` / \`test_*\`）。
 - **模式命令面**：\`plan stage add --workflow-mode <full|fast>\`（值域派生、非法 exit 1 不建阶段）、\`stage set <id> --workflow-mode <full|fast>\`（缺失字段插入）、\`flow phases [--mode <full|fast>] [--stage <id>]\`（模式分节；\`--json\` 追加 \`workflowMode\`）、\`config set ... --sync-stages [--stage <ids...>]\`（同步字段含「工作流模式」）。
 - **\`config effective\` 四键**：\`auto_advance\` / \`execution_mode\` / \`merge_mode\` / \`workflow_mode\`。
+
+## v1.2.0 新增能力（stage-78~84）
+
+- **flow.json 版本分片归档（\`flow archive\`）**：按版本号归档已收官历史（判据门：该版本全部阶段 done + 无 blocking open REV；归档文件落 \`.openfeel/flow-archive/{version}.json\`）。三个入口：\`openfeel flow archive <version>\`（执行归档；\`--dry-run\` 预览零写盘、\`--json\` 结构化输出）、\`openfeel flow archive list\`（列举已归档版本，只读）、\`openfeel flow archive show <version>\`（查看指定归档版本，只读）。**与顶层 \`openfeel archive <stage>\` 区分**：顶层命令是**阶段摘要归档**，\`flow archive\` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 \`.openfeel/flow-archive/**\`（\`flow health\` 仅目录清单级对账）。
+- **需求流转（\`openfeel req\`）**：需求层命令组（10 子命令：\`add\` / \`list\` / \`show\` / \`claim\` / \`release\` / \`set\` / \`link\` / \`advance\` / \`board\` / \`next\`）。需求 7 状态（\`draft\` / \`scheduled\` / \`in_progress\` / \`done\` / \`blocked\` / \`cancelled\` / \`rejected\`）；**需求进度由关联阶段 phase 聚合**（全部关联阶段 done → 需求自动 done）；认领协议 = \`owner\` + \`claimed_at\` 占用校验（无 TTL）。需求正文 \`.openfeel/requirements/REQ-NNN.md\` 为人读副本，**机读权威恒为 flow.json**。用法权威源见 \`openfeel-req\` skill；**v1.2.0 起提供**。
 
 ## v1.1.5 新增能力（stage-67）
 
@@ -7703,6 +7849,83 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 
 恢复摘要：流水线状态 + 阻塞项 + 待处理任务列表
 `,
+  'openfeel-req': `---
+name: openfeel-req
+description: OpenFeel 需求流转用法参考：需求（requirement）四层模型与 7 状态生命周期、req 命令组 10 个子命令（add/list/show/claim/release/set/link/advance/board/next）与参数、认领协议、REQ-NNN 正文与人读副本语义（机读权威恒为 flow.json）、与计划（plan.md）的关系、与 workflow_mode 正交。当需要创建/查询/认领/关联/推进需求，或要理解 REQ-NNN 状态与阶段聚合关系时加载。
+---
+
+# OpenFeel 需求流转（openfeel req）用法参考
+
+## 说明
+
+- 定位：**查询型参考手册**（只读，不自执行）。回答「需求是什么、状态怎么流转、\`req\` 命令怎么用」。
+- 提供版本：**v1.2.0 起提供**（\`openfeel req\` 命令组）；命令/参数细节以 \`openfeel req --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+- 本仓自举：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js req <cmd>\`；安装后使用 \`openfeel req <cmd>\`。
+- 相关 skill：\`openfeel-cli-usage\`（全量命令速查）；本 skill 只承载需求流转专项。
+
+## 四层模型与需求定位
+
+需求层位于**「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」**四层模型的第二层：**需求 = 排期与调度层**（回答「做什么、何时做」）；**计划 = 对某项明确需求的具体实现**。需求不等于计划——接取需求后仍按既有规划阈值走流水线（\`plan.md\` 头部标注「关联需求：REQ-NNN」）。
+
+## 需求生命周期（7 状态）
+
+\`\`\`
+draft ─→ scheduled ─→ in_progress ─→ done
+  │          │            │
+  └──────────┴────────────┴──→ blocked / cancelled / rejected
+\`\`\`
+
+| 状态 | 语义 |
+|------|------|
+| \`draft\` | 草稿（\`req add\` 新建初值） |
+| \`scheduled\` | 已排期（可被 \`req next\` 推荐接取） |
+| \`in_progress\` | 进行中（认领后推进；**内部进度由关联阶段的 15-phase 聚合**） |
+| \`done\` | 完成（**全部关联阶段 done 时自动收口**；\`req advance --to done\` 亦须此门） |
+| \`blocked\` | 阻塞（可回到 \`scheduled\` / \`in_progress\`） |
+| \`cancelled\` | 已取消（终态） |
+| \`rejected\` | 已拒绝（终态） |
+
+- **投影方向单一**：需求状态是关联阶段 phase 的聚合投影（方向：阶段 phase → 需求状态）；不得由需求状态前推阶段 phase。
+- 合法显式流转由引擎流转表判定（\`req advance --to <status>\` / \`req set --status <status>\`）；终态（\`done\` / \`cancelled\` / \`rejected\`）不可再流转。
+
+## 子命令（10 个）
+
+| 子命令 | 用途 | 关键参数 |
+|--------|------|----------|
+| \`req add <title>\` | 创建需求（ID 自动分配 REQ-NNN，max+1 不回收；正文骨架铺到 \`.openfeel/requirements/REQ-NNN.md\`） | \`--target-version <version>\`、\`--priority <P0\\|P1\\|P2>\` |
+| \`req list\` | 列出需求（可按状态 / 版本 / 认领人过滤） | \`--status <status>\`、\`--target-version <version>\`、\`--owner <owner>\`、\`--json\` |
+| \`req show <id>\` | 查看需求详情（关联阶段为原始只读枚举） | \`--json\` |
+| \`req claim <id>\` | 认领需求（占用校验；已被他人认领则拒绝） | \`--owner <owner>\`（缺省 \`.openfeel/.info.json\` user → git config user.name） |
+| \`req release <id>\` | 释放认领（未认领为 no-op 成功） | — |
+| \`req set <id>\` | 更新需求字段（白名单；状态流转合法性由引擎判定） | \`--status\`、\`--title\`、\`--target-version\`、\`--priority\` |
+| \`req link\` | 关联需求到阶段 / 解绑 | \`--stage <stageId>\`、\`--requirement <id>\`、\`--unlink\`（与 \`--requirement\` 二选一） |
+| \`req advance <id>\` | 显式推进需求状态（合法目标由引擎流转表判定；done 须全部关联阶段 done） | \`--to <status>\` |
+| \`req board\` | 需求看板（按状态分组；7 组固定顺序） | \`--target-version <version>\`、\`--json\` |
+| \`req next\` | 推荐下一个可接取需求（\`scheduled\` 且未认领；按预估版本升序） | \`--owner <owner>\`（含该认领人已认领的 scheduled 需求）、\`--json\` |
+
+> \`--json\` 输出为纯 JSON 单文档（含 \`schemaVersion\`，脚本消费口径）；命令细节以 \`openfeel req <sub> --help\` 为准。
+
+## 认领协议
+
+- **轻量原子**：\`owner\` + \`claimed_at\` 两字段；\`req claim\` 做**占用校验**（已被他人认领 → 拒绝，exit 非 0 零写盘）；**无 TTL / 无心跳**（单机场景足够）。
+- 认领人缺省解析：\`.openfeel/.info.json\` 的 \`user\` → \`git config user.name\`。
+- 释放：\`req release <id>\`（未认领为 no-op 成功）；终态需求不可认领。
+
+## REQ-NNN 正文与权威源
+
+- 正文文件：\`.openfeel/requirements/REQ-NNN.md\`（\`req add\` 机械铺骨架，**人读副本**）。
+- **机读权威恒为 \`.openfeel/flow.json\` 的 \`requirements\` 条目**；正文与 flow.json 不一致时**以 flow.json 为准**（正文内状态为创建时快照，不追写）。
+- \`stages[*].requirement_id\` 记录需求↔阶段关联（单值可空；存量阶段缺省 = \`null\`）；关联关系以 flow.json 为准。
+
+## 与计划（plan.md）的关系
+
+- 需求 = 排期与调度层；**具体实现仍由计划承载**——阶段 \`plan.md\` 头部标注「关联需求：REQ-NNN」。
+- 需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；planner 只读不写（不直写 flow.json）。
+
+## 与 workflow_mode 正交
+
+需求层与工作流模式（\`full\` / \`fast\`）**正交**：需求可分别由 full / fast 阶段实现；两种模式下需求纪律一致，\`workflow_mode\` 不影响需求状态机与命令行为。
+`,
   'openfeel-roadmap': `---
 name: openfeel-roadmap
 description: 加载项目路线图，供 Agent 查看版本规划和里程碑。
@@ -8361,6 +8584,32 @@ Fast-mode discipline:
 3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
 4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
 5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
+
+#### Requirement Lifecycle
+
+The requirement layer is the second layer of the four-layer model "version → requirement REQ-NNN → plan stage → op": **a requirement is the scheduling layer**, answering "what to do and when"; **implementation still goes through the full pipeline** — a requirement is not a plan; after taking a requirement, delegate to openfeel-planner for plan.md per the "Threshold for Small Changes vs. Large-Scale Planning" as usual.
+
+A requirement has 7 statuses: \`draft\` → \`scheduled\` → \`in_progress\` → \`done\`, plus three side states \`blocked\` / \`cancelled\` / \`rejected\`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done).
+
+Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
+
+| Step | Action | Command |
+|------|--------|---------|
+| Take | Browse requirement views and pick the next takeable requirement | \`openfeel req board\` / \`openfeel req next\` / \`openfeel req list\` |
+| Claim | Claim the requirement (rejected if already claimed by another — guards concurrent overwrite; no TTL) | \`openfeel req claim <REQ-NNN>\` |
+| Link | Link the requirement to the stages implementing it | \`openfeel req link --stage <stageId> --requirement <REQ-NNN>\` |
+| Advance | Stage advancement drives aggregation; advance explicitly along legal targets | \`openfeel req advance <REQ-NNN> --to <status>\` |
+| Complete | Auto-done once all linked stages are done; overview and release | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
+
+> Orthogonality note: requirement flow is orthogonal to the workflow mode (\`full\` / \`fast\`) — the requirement discipline is identical in both modes.
+
+#### Archiving and History Reading
+
+Once a version is finalized (all its stages done), prompt the user that version archiving is available (\`openfeel flow archive <version>\` — after the criteria gate passes, the archive file is written first and the active entries removed afterwards): the archiving action is executed by the CLI; dispatch only prompts, never performs it.
+
+- Never read archive files proactively: regular dispatch must not read \`.openfeel/flow-archive/**\` (to prevent context pollution); the active set via \`openfeel flow status\` / \`openfeel flow overview\` is the full working view.
+- Query history on demand: when history is genuinely needed, use \`openfeel flow archive show <version>\` (single version, read-only) or \`openfeel flow archive list\` (enumerate versions); do not read the files directly.
+- Distinct from top-level \`openfeel archive\`: the top-level command is stage-summary archiving; \`flow archive\` is flow.json version-shard archiving — different responsibilities.
 
 ## Threshold for Small Changes vs. Large-Scale Planning
 
@@ -9125,6 +9374,15 @@ Before planning, read the current stage's \`status.md\` "Workflow Mode" field (a
 - **full**: the output goes through openfeel-reviewer plan review (\`plan_review\`) before openfeel-schemer (unchanged).
 - **fast (Workflow Fast Line)**: **this agent's output must pass openfeel-reviewer's plan review (\`plan_review\`, single round; pass → \`plan_passed\`, issues returned → \`plan_pending\`; only then does it enter exec)**; produce a lightweight plan — the task table / dependencies / acceptance points **must not be omitted**; other process narrative may be trimmed. (Lightweight scope: keep goals / dependencies / task table / acceptance points / constraints / KB retrieval / change-point list / risks; background evidence details and revision history may be condensed.)
 
+## Requirement Awareness
+
+When a task originates from a requirement (\`REQ-NNN\`):
+
+- Read the requirement: first read the requirement details (title / status / owner / linked stages) via \`openfeel req show <REQ-NNN>\` as plan input.
+- Link the plan to the requirement: annotate the header of the produced \`plan.md\` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
+- Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the \`openfeel req\` CLI; this agent is read-only (no direct flow.json writes).
+- Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under \`full\` / \`fast\`.
+
 ## Model Selection
 
 openfeel-planner is decided by the **Claude-side model** (default \`model: inherit\`); plan formulation requires strong reasoning capability, and the framework does not hard-code vendor model IDs in templates.
@@ -9711,6 +9969,32 @@ fast 调度纪律：
 3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
 4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
 5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
+
+#### 需求流转（requirement lifecycle）
+
+需求层位于「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」四层模型的第二层：**需求 = 排期与调度层**，回答「做什么、何时做」；**实现仍走完整流水线**——需求不等于计划，接取需求后按「小改 vs 大规模规划的阈值」照常委托 openfeel-planner 产出 plan.md。
+
+需求共 7 个状态：\`draft\` → \`scheduled\` → \`in_progress\` → \`done\`，另有 \`blocked\` / \`cancelled\` / \`rejected\` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done）。
+
+需求生命周期动作（命令组 \`openfeel req\`，共 10 个子命令）：
+
+| 步骤 | 动作 | 命令 |
+|------|------|------|
+| 接取 | 浏览需求视图，挑选下一个可接取需求 | \`openfeel req board\` / \`openfeel req next\` / \`openfeel req list\` |
+| 认领 | 占用需求（已被他人认领则拒绝——防并发覆盖，无 TTL） | \`openfeel req claim <REQ-NNN>\` |
+| 关联 | 把需求关联到实现它的阶段 | \`openfeel req link --stage <stageId> --requirement <REQ-NNN>\` |
+| 流转 | 阶段推进驱动聚合；显式流转按合法目标推进 | \`openfeel req advance <REQ-NNN> --to <status>\` |
+| 完成 | 全部关联阶段 done 后需求自动 done；总览与释放 | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
+
+> 正交注记：需求流转与工作流模式（\`full\` / \`fast\`）正交——两种模式下需求纪律一致。
+
+#### 归档与历史读取
+
+版本收官（该版本全部阶段 done）后，提示用户可执行版本归档（\`openfeel flow archive <version>\`——判据门校验后先写归档文件、再移除活跃条目）：归档动作由 CLI 执行，调度侧只提示不代劳。
+
+- 不主动读归档文件：常规调度不得读取 \`.openfeel/flow-archive/**\`（防上下文污染）；活跃集经 \`openfeel flow status\` / \`openfeel flow overview\` 即为全量工作视图。
+- 按需查询历史：确需历史版本时用 \`openfeel flow archive show <version>\`（单版本只读）或 \`openfeel flow archive list\`（列举版本），不直接读文件。
+- 与顶层 \`openfeel archive\` 区分：顶层命令是阶段摘要归档；\`flow archive\` 是 flow.json 版本分片归档，二者职责不同。
 
 ## 小改 vs 大规模规划的阈值
 
@@ -10473,6 +10757,15 @@ openfeel-planner 作为独立 subagent，由**主会话（Feel 角色）**经 **
 
 - **full**：产出经 openfeel-reviewer 计划审查（\`plan_review\`）后进入 openfeel-schemer（现状不变）。
 - **fast（工作流快线）**：**本 Agent 产出后必经 openfeel-reviewer 的计划审查（\`plan_review\` 单轮；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`；此后进入 exec）**；产出为轻量计划——任务表 / 依赖声明 / 验收要点**不得省略**，其余过程性描述可精简。（轻量口径：保留 目标 / 依赖 / 任务表 / 验收要点 / 约束 / KB 检索 / 变更点清单 / 风险；背景实测证据明细与修订记录过程可收敛为结论。）
+
+## 需求感知
+
+当任务源自需求（\`REQ-NNN\`）时：
+
+- 读取需求：先以 \`openfeel req show <REQ-NNN>\` 读取需求详情（标题 / 状态 / 认领人 / 关联阶段），作为计划输入。
+- 计划关联需求：产出的 \`plan.md\` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
+- 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
+- 与「工作流模式感知」正交：\`full\` / \`fast\` 下需求感知口径一致。
 
 ## 模型选择
 

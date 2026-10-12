@@ -2,6 +2,7 @@
 # 由 openfeel-planner 制定；op 级依赖由 openfeel-schemer 在各阶段产方案时落盘（{stage}/ops/deps.yaml）
 # 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
 # 修订记录：2026-10-12 openfeel-planner —— 复审非阻塞 REV-83-009~011 落实（invariants「存量 78 阶段」→「8 阶段」；需求原语契约补 `stageIds` + 零关联 `aggregate = null` + 首参形态与 `allLinkedStagesDone(data, …)` 对齐〔方案期定稿〕）
+# 修订记录：2026-10-12 openfeel-planner —— 计划审查 REV-84-001/002 修订（stage-84 notes 计数翻转清单扩为 7 处字面量 + 5 处派生总数并登记 `expectedSkills` 补名；承接 REV 与处置表声明〔REV-83-009~018〕；契约条目同口径同步）
 
 version: "1.1"
 series: v1
@@ -156,7 +157,7 @@ stages:
       - test/core/setup.test.ts
       - test/core/update.test.ts
       - test/core/templates-migration.test.ts
-    notes: "Agent 契约面：feel.md×4（需求纪律：接取/流转/完成的需求命令链 + 归档纪律：归档由 CLI 控制、不主动读归档文件防上下文污染）+ openfeel-planner.md×4（需求感知：从需求产出计划；plan.md 关联 requirement_id）+ 新 skill openfeel-req（需求流转用法，权威源单文件；命名按开放问题 Q7）+ openfeel-cli-usage 补 req 与 flow archive 两节 + build 重生成**双生成物**（template-loader.ts + update.ts，禁手改，核验 B23）+ 静态断言（opencode 关键串零回归、跨 harness 对称、**skills 17→18 六处计数翻转**：test/core/setup.test.ts:65/:221、test/core/templates-migration.test.ts:32/:41/:42、test/core/update.test.ts:816，核验 B22）。"
+    notes: "Agent 契约面：feel.md×4（需求纪律：接取/流转/完成的需求命令链 + 归档纪律：归档由 CLI 控制、不主动读归档文件防上下文污染）+ openfeel-planner.md×4（需求感知：从需求产出计划；plan.md 关联 requirement_id）+ 新 skill openfeel-req（需求流转用法，权威源单文件；命名按开放问题 Q7）+ openfeel-cli-usage 补 req 与 flow archive 两节 + build 重生成**双生成物**（template-loader.ts + update.ts，禁手改，核验 B23）+ 静态断言（opencode 关键串零回归、跨 harness 对称、**skills 17→18 全量计数翻转 = 7 处字面量 + 5 处派生总数**〔字面量：setup.test.ts:65/:221、templates-migration.test.ts:32/:41/:42、update.test.ts:816、template-loader.test.ts:112；派生总数：setup.test.ts:89→28 / :241→57、update.test.ts:274 / :813 / :875→29；另 `expectedSkills` 白名单手工追加 `openfeel-req`——REV-84-001〕，核验 B22）。**承接 REV 与处置表**（REV-83-009~018 逐条去向：016 → 移交 stage-85 成文；015/017/018 → 移交 stage-85 收口轮；009~014 台账保留〔已落实核验〕——见 stage-84/plan.md 同名列，REV-84-002）。"
 
   v1.2.0-stage-85:
     name: 文档与版本收口（v1.2.0 收官）
@@ -218,7 +219,7 @@ downstream_contracts:
   - name: "src/core/i18n-data/{zh-CN,en}.ts :: i18n 基线"
     change: "v1.1.7 基线 **796**（历史值，非现行门禁口径——REV-82-005）；stage-79（→826）/ stage-80（→829）已递增；**stage-82 入口基线 = 829**（复现：`OPENFEEL_LOG=0 node bin/openfeel.js lint i18n` → 「✅ 829 键一致」）；stage-82 / 83 / 84 各自新增键并显式登记新基线（lint i18n 全绿；stage-81 不新增键，门禁 = **829**；**stage-83 入口基线 = 908**——实测：`OPENFEEL_LOG=0 node bin/openfeel.js lint i18n` → 「✅ 908 键一致」；health 对账新键显式登记新基线，REV-83-008）。命令面文案键前缀约定：`flow.archive.*` / `req.*`（help 域 `help.flow.archive*` / `help.req.*` 对齐既有 applyHelpI18n 范式，核验 cli/index.ts:96-175）。"
   - name: "src/core/templates-data/skills/openfeel-req/SKILL.md（新）"
-    change: "权威源单文件（中文单语、无 {lang}、description 含查询触发词）；build 步骤 4/6 自动纳入（build.js 零改动，核验 B23）；**skills 计数 17→18 六处断言翻转**（核验 B22）；快照声明「以 openfeel req --help 为准」。"
+    change: "权威源单文件（中文单语、无 {lang}、description 含查询触发词）；build 步骤 4/6 自动纳入（build.js 零改动，核验 B23）；**skills 计数 17→18 全量断言翻转（7 处字面量 + 5 处派生总数 + `expectedSkills` 白名单补名；核验 B22）**；快照声明「以 openfeel req --help 为准」。"
   - name: "doc 面（stage-85）"
     change: "README×3 / GETTING_STARTED / commands 的快照与能力节须覆盖：`flow archive` 三子命令 + `openfeel req` 十字命令组 + `requirements`/`archived_versions`/`requirement_id` 字段语义 + 向后兼容说明（旧 flow.json 零报错；升级无需迁移）+ 归档/需求两概念与顶层 `openfeel archive`（阶段摘要）的区分。"
 

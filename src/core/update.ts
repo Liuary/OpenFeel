@@ -419,7 +419,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -431,7 +431,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.1.7 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.2.0 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -454,12 +454,13 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel lint i18n\\|kb\` | 健康检查（i18n 键一致性 / kb 过期引用） | 发现问题**非 0 退出** |
 | \`openfeel knowledge ...\` | 知识库管理 | \`list\` / \`add\` / \`search\` / \`index\` / \`dedup\` |
 | \`openfeel archive <stage>\` | 归档指定阶段（汇总产出、生成摘要、提取知识） | \`<stage>\` |
+| \`openfeel req ...\` | 需求流转（需求管理命令组） | 见「v1.2.0 新增能力（stage-78~84）」节 |
 | \`openfeel view list\\|accept\` | 审查条目验收（\`add\` 已移除，改用 \`flow review add\`） | — |
 | \`openfeel project overview\` | 项目结构概览 | \`overview\`（无 \`list\`/\`info\` 子命令） |
 | \`openfeel roadmap create\\|show\` | 分期大纲管理 | \`create <version>\`、\`show [version]\` |
 | \`openfeel instructions <artifactId>\` | 为指定 artifact 生成结构化指令 | \`--change <name>\`、\`--schema <name>\`、\`--json\` |
 
-**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`mode\`（\`[--stage <id>] [--json]\`，只读） / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\`。
+**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`mode\`（\`[--stage <id>] [--json]\`，只读） / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`）/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\` / \`archive\`（\`<version>\` / \`list\` / \`show\`）。
 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
@@ -468,7 +469,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 ## v1.1.6 新增能力（stage-68~73）
 
 - **多 harness 并存**：\`openfeel setup\` / \`openfeel update\` 新增 \`--tools <逗号列表>\`（如 \`opencode,claude\`）；非法值 **exit 1** 前置校验零写盘；默认仅 \`opencode\`。
-- **Claude Code 适配器资产**：\`--tools claude\` 部署 \`~/.claude/\`——\`CLAUDE.md\`（全局约束，用户已有内容 append 不覆盖）、\`agents/\`（**9 个**，含 \`feel\`）、\`skills/\`（**17 个**共享源）、\`settings.json\`（注入 \`"agent":"feel"\` + \`"permissions":{"defaultMode":"auto"}\`，用户既有键逐字保留）；默认零触（不带 \`--tools\` 时 \`~/.claude/\` 零变化）。
+- **Claude Code 适配器资产**：\`--tools claude\` 部署 \`~/.claude/\`——\`CLAUDE.md\`（全局约束，用户已有内容 append 不覆盖）、\`agents/\`（**9 个**，含 \`feel\`）、\`skills/\`（**18 个**共享源）、\`settings.json\`（注入 \`"agent":"feel"\` + \`"permissions":{"defaultMode":"auto"}\`，用户既有键逐字保留）；默认零触（不带 \`--tools\` 时 \`~/.claude/\` 零变化）。
 
 ## v1.1.7 新增能力（stage-74~76）
 
@@ -476,6 +477,11 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **fast 快线转移表（并列）**：\`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项）：\`plan_pending → plan_review\`（**计划审查必经**）、\`plan_review → plan_passed / plan_pending\`、\`plan_passed → exec_running\`、\`exec_running → review_pending\`、\`review_pending → review_failed / review_passed\`、\`review_failed → review_pending / exec_running\`（回环）、\`review_passed → archiving\`、\`archiving → done\`、\`done\`（终态）。**\`phases\` / \`advanceAccepted\` 恒 15 项、模式无关**；fast 下 6 个相位不可达（\`scheme_*\` / \`test_*\`）。
 - **模式命令面**：\`plan stage add --workflow-mode <full|fast>\`（值域派生、非法 exit 1 不建阶段）、\`stage set <id> --workflow-mode <full|fast>\`（缺失字段插入）、\`flow phases [--mode <full|fast>] [--stage <id>]\`（模式分节；\`--json\` 追加 \`workflowMode\`）、\`config set ... --sync-stages [--stage <ids...>]\`（同步字段含「工作流模式」）。
 - **\`config effective\` 四键**：\`auto_advance\` / \`execution_mode\` / \`merge_mode\` / \`workflow_mode\`。
+
+## v1.2.0 新增能力（stage-78~84）
+
+- **flow.json 版本分片归档（\`flow archive\`）**：按版本号归档已收官历史（判据门：该版本全部阶段 done + 无 blocking open REV；归档文件落 \`.openfeel/flow-archive/{version}.json\`）。三个入口：\`openfeel flow archive <version>\`（执行归档；\`--dry-run\` 预览零写盘、\`--json\` 结构化输出）、\`openfeel flow archive list\`（列举已归档版本，只读）、\`openfeel flow archive show <version>\`（查看指定归档版本，只读）。**与顶层 \`openfeel archive <stage>\` 区分**：顶层命令是**阶段摘要归档**，\`flow archive\` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 \`.openfeel/flow-archive/**\`（\`flow health\` 仅目录清单级对账）。
+- **需求流转（\`openfeel req\`）**：需求层命令组（10 子命令：\`add\` / \`list\` / \`show\` / \`claim\` / \`release\` / \`set\` / \`link\` / \`advance\` / \`board\` / \`next\`）。需求 7 状态（\`draft\` / \`scheduled\` / \`in_progress\` / \`done\` / \`blocked\` / \`cancelled\` / \`rejected\`）；**需求进度由关联阶段 phase 聚合**（全部关联阶段 done → 需求自动 done）；认领协议 = \`owner\` + \`claimed_at\` 占用校验（无 TTL）。需求正文 \`.openfeel/requirements/REQ-NNN.md\` 为人读副本，**机读权威恒为 flow.json**。用法权威源见 \`openfeel-req\` skill；**v1.2.0 起提供**。
 
 ## v1.1.5 新增能力（stage-67）
 
@@ -1150,6 +1156,83 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 ## 输出
 
 恢复摘要：流水线状态 + 阻塞项 + 待处理任务列表
+`,
+  'openfeel-req': `---
+name: openfeel-req
+description: OpenFeel 需求流转用法参考：需求（requirement）四层模型与 7 状态生命周期、req 命令组 10 个子命令（add/list/show/claim/release/set/link/advance/board/next）与参数、认领协议、REQ-NNN 正文与人读副本语义（机读权威恒为 flow.json）、与计划（plan.md）的关系、与 workflow_mode 正交。当需要创建/查询/认领/关联/推进需求，或要理解 REQ-NNN 状态与阶段聚合关系时加载。
+---
+
+# OpenFeel 需求流转（openfeel req）用法参考
+
+## 说明
+
+- 定位：**查询型参考手册**（只读，不自执行）。回答「需求是什么、状态怎么流转、\`req\` 命令怎么用」。
+- 提供版本：**v1.2.0 起提供**（\`openfeel req\` 命令组）；命令/参数细节以 \`openfeel req --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+- 本仓自举：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js req <cmd>\`；安装后使用 \`openfeel req <cmd>\`。
+- 相关 skill：\`openfeel-cli-usage\`（全量命令速查）；本 skill 只承载需求流转专项。
+
+## 四层模型与需求定位
+
+需求层位于**「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」**四层模型的第二层：**需求 = 排期与调度层**（回答「做什么、何时做」）；**计划 = 对某项明确需求的具体实现**。需求不等于计划——接取需求后仍按既有规划阈值走流水线（\`plan.md\` 头部标注「关联需求：REQ-NNN」）。
+
+## 需求生命周期（7 状态）
+
+\`\`\`
+draft ─→ scheduled ─→ in_progress ─→ done
+  │          │            │
+  └──────────┴────────────┴──→ blocked / cancelled / rejected
+\`\`\`
+
+| 状态 | 语义 |
+|------|------|
+| \`draft\` | 草稿（\`req add\` 新建初值） |
+| \`scheduled\` | 已排期（可被 \`req next\` 推荐接取） |
+| \`in_progress\` | 进行中（认领后推进；**内部进度由关联阶段的 15-phase 聚合**） |
+| \`done\` | 完成（**全部关联阶段 done 时自动收口**；\`req advance --to done\` 亦须此门） |
+| \`blocked\` | 阻塞（可回到 \`scheduled\` / \`in_progress\`） |
+| \`cancelled\` | 已取消（终态） |
+| \`rejected\` | 已拒绝（终态） |
+
+- **投影方向单一**：需求状态是关联阶段 phase 的聚合投影（方向：阶段 phase → 需求状态）；不得由需求状态前推阶段 phase。
+- 合法显式流转由引擎流转表判定（\`req advance --to <status>\` / \`req set --status <status>\`）；终态（\`done\` / \`cancelled\` / \`rejected\`）不可再流转。
+
+## 子命令（10 个）
+
+| 子命令 | 用途 | 关键参数 |
+|--------|------|----------|
+| \`req add <title>\` | 创建需求（ID 自动分配 REQ-NNN，max+1 不回收；正文骨架铺到 \`.openfeel/requirements/REQ-NNN.md\`） | \`--target-version <version>\`、\`--priority <P0\\|P1\\|P2>\` |
+| \`req list\` | 列出需求（可按状态 / 版本 / 认领人过滤） | \`--status <status>\`、\`--target-version <version>\`、\`--owner <owner>\`、\`--json\` |
+| \`req show <id>\` | 查看需求详情（关联阶段为原始只读枚举） | \`--json\` |
+| \`req claim <id>\` | 认领需求（占用校验；已被他人认领则拒绝） | \`--owner <owner>\`（缺省 \`.openfeel/.info.json\` user → git config user.name） |
+| \`req release <id>\` | 释放认领（未认领为 no-op 成功） | — |
+| \`req set <id>\` | 更新需求字段（白名单；状态流转合法性由引擎判定） | \`--status\`、\`--title\`、\`--target-version\`、\`--priority\` |
+| \`req link\` | 关联需求到阶段 / 解绑 | \`--stage <stageId>\`、\`--requirement <id>\`、\`--unlink\`（与 \`--requirement\` 二选一） |
+| \`req advance <id>\` | 显式推进需求状态（合法目标由引擎流转表判定；done 须全部关联阶段 done） | \`--to <status>\` |
+| \`req board\` | 需求看板（按状态分组；7 组固定顺序） | \`--target-version <version>\`、\`--json\` |
+| \`req next\` | 推荐下一个可接取需求（\`scheduled\` 且未认领；按预估版本升序） | \`--owner <owner>\`（含该认领人已认领的 scheduled 需求）、\`--json\` |
+
+> \`--json\` 输出为纯 JSON 单文档（含 \`schemaVersion\`，脚本消费口径）；命令细节以 \`openfeel req <sub> --help\` 为准。
+
+## 认领协议
+
+- **轻量原子**：\`owner\` + \`claimed_at\` 两字段；\`req claim\` 做**占用校验**（已被他人认领 → 拒绝，exit 非 0 零写盘）；**无 TTL / 无心跳**（单机场景足够）。
+- 认领人缺省解析：\`.openfeel/.info.json\` 的 \`user\` → \`git config user.name\`。
+- 释放：\`req release <id>\`（未认领为 no-op 成功）；终态需求不可认领。
+
+## REQ-NNN 正文与权威源
+
+- 正文文件：\`.openfeel/requirements/REQ-NNN.md\`（\`req add\` 机械铺骨架，**人读副本**）。
+- **机读权威恒为 \`.openfeel/flow.json\` 的 \`requirements\` 条目**；正文与 flow.json 不一致时**以 flow.json 为准**（正文内状态为创建时快照，不追写）。
+- \`stages[*].requirement_id\` 记录需求↔阶段关联（单值可空；存量阶段缺省 = \`null\`）；关联关系以 flow.json 为准。
+
+## 与计划（plan.md）的关系
+
+- 需求 = 排期与调度层；**具体实现仍由计划承载**——阶段 \`plan.md\` 头部标注「关联需求：REQ-NNN」。
+- 需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；planner 只读不写（不直写 flow.json）。
+
+## 与 workflow_mode 正交
+
+需求层与工作流模式（\`full\` / \`fast\`）**正交**：需求可分别由 full / fast 阶段实现；两种模式下需求纪律一致，\`workflow_mode\` 不影响需求状态机与命令行为。
 `,
   'openfeel-roadmap': `---
 name: openfeel-roadmap

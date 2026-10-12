@@ -1,6 +1,6 @@
 /**
  * setup 单元测试（v1.1.1）
- * 验证 setupGlobalFramework 纯全局部署：全局 AGENTS.md + 9 agent + 17 skill + 全局 opencode.jsonc，
+ * 验证 setupGlobalFramework 纯全局部署：全局 AGENTS.md + 9 agent + 18 skill + 全局 opencode.jsonc，
  * 不建立项目 .openfeel/，且幂等可重跑。
  * mock homedir 隔离，不污染真实主目录。
  */
@@ -52,7 +52,7 @@ describe('setupGlobalFramework', () => {
     delete process.env.CLAUDE_CONFIG_DIR;
   });
 
-  it('部署全局 AGENTS.md + 9 agent + 17 skill + 全局 opencode.jsonc', () => {
+  it('部署全局 AGENTS.md + 9 agent + 18 skill + 全局 opencode.jsonc', () => {
     const r = setupGlobalFramework('zh-CN');
 
     expect(existsSync(getGlobalAgentsMdPath())).toBe(true);
@@ -62,7 +62,7 @@ describe('setupGlobalFramework', () => {
     expect(agentFiles).toHaveLength(9);
 
     const skillDirs = readdirSync(getGlobalSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory());
-    expect(skillDirs).toHaveLength(17);
+    expect(skillDirs).toHaveLength(18);
 
     expect(existsSync(getGlobalOpencodeJsoncPath())).toBe(true);
     const jsonc = JSON.parse(readFileSync(getGlobalOpencodeJsoncPath(), 'utf-8'));
@@ -85,8 +85,8 @@ describe('setupGlobalFramework', () => {
 
     expect(r2.created).toHaveLength(0);
     expect(r2.updated).toHaveLength(0);
-    // 9 agents + 17 skills + 1 全局 AGENTS.md = 27（opencode.jsonc 走 merge，不计入返回列表）
-    expect(r2.skipped.length).toBe(27);
+    // 9 agents + 18 skills + 1 全局 AGENTS.md = 28（opencode.jsonc 走 merge，不计入返回列表）
+    expect(r2.skipped.length).toBe(28);
   });
 
   it('不建立项目 .openfeel/（setup 纯全局部署）', () => {
@@ -207,7 +207,7 @@ describe('setupGlobalFramework', () => {
     expect(existsSync(join(homeDir, '.claude'))).toBe(false);
   });
 
-  it('stage-71/T2：双 harness setup → CLAUDE.md + 9 agents + 17 skills + settings.json', () => {
+  it('stage-71/T2：双 harness setup → CLAUDE.md + 9 agents + 18 skills + settings.json', () => {
     const r = setupGlobalFramework('zh-CN', ['opencode', 'claude']);
 
     expect(existsSync(getClaudeMdPath())).toBe(true);
@@ -218,7 +218,7 @@ describe('setupGlobalFramework', () => {
     expect(existsSync(join(getClaudeAgentsDir(), 'feel.md'))).toBe(true);
 
     const claudeSkills = readdirSync(getClaudeSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory());
-    expect(claudeSkills).toHaveLength(17);
+    expect(claudeSkills).toHaveLength(18);
 
     // settings.json 于 stage-73 落地
     expect(existsSync(getClaudeSettingsPath())).toBe(true);
@@ -232,13 +232,13 @@ describe('setupGlobalFramework', () => {
     expect(content).toContain(loadClaudeConstraintTemplate('zh-CN'));
   });
 
-  it('stage-71/T2：双 harness 二次 setup 幂等 → created/updated 空 + skipped === 55', () => {
+  it('stage-71/T2：双 harness 二次 setup 幂等 → created/updated 空 + skipped === 57', () => {
     setupGlobalFramework('zh-CN', ['opencode', 'claude']);
     const r2 = setupGlobalFramework('zh-CN', ['opencode', 'claude']);
     expect(r2.created).toHaveLength(0);
     expect(r2.updated).toHaveLength(0);
-    // 1 CLAUDE.md + 9 claude agents + 17 claude skills + 1 settings.json + 27 opencode = 55
-    expect(r2.skipped.length).toBe(55);
+    // 1 CLAUDE.md + 9 claude agents + 18 claude skills + 1 settings.json + 28 opencode = 57
+    expect(r2.skipped.length).toBe(57);
   });
 
   // ── stage-73/T6：settings.json 注入（设置合并 / 备份 / 越界） ──

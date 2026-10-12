@@ -104,6 +104,15 @@ openfeel-planner 作为独立 subagent，由**主会话（Feel 角色）**经 **
 - **full**：产出经 openfeel-reviewer 计划审查（`plan_review`）后进入 openfeel-schemer（现状不变）。
 - **fast（工作流快线）**：**本 Agent 产出后必经 openfeel-reviewer 的计划审查（`plan_review` 单轮；通过 → `plan_passed`，问题退回 → `plan_pending`；此后进入 exec）**；产出为轻量计划——任务表 / 依赖声明 / 验收要点**不得省略**，其余过程性描述可精简。（轻量口径：保留 目标 / 依赖 / 任务表 / 验收要点 / 约束 / KB 检索 / 变更点清单 / 风险；背景实测证据明细与修订记录过程可收敛为结论。）
 
+## 需求感知
+
+当任务源自需求（`REQ-NNN`）时：
+
+- 读取需求：先以 `openfeel req show <REQ-NNN>` 读取需求详情（标题 / 状态 / 认领人 / 关联阶段），作为计划输入。
+- 计划关联需求：产出的 `plan.md` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
+- 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 `openfeel req` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
+- 与「工作流模式感知」正交：`full` / `fast` 下需求感知口径一致。
+
 ## 模型选择
 
 openfeel-planner 由 **Claude 侧模型**决定（默认 `model: inherit`）；计划制定需要较强推理能力，框架不在模板内硬编码厂商模型 ID。

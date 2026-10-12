@@ -104,6 +104,15 @@ Before planning, read the current stage's `status.md` "Workflow Mode" field (aut
 - **full**: the output goes through openfeel-reviewer plan review (`plan_review`) before openfeel-schemer (unchanged).
 - **fast (Workflow Fast Line)**: **this agent's output must pass openfeel-reviewer's plan review (`plan_review`, single round; pass → `plan_passed`, issues returned → `plan_pending`; only then does it enter exec)**; produce a lightweight plan — the task table / dependencies / acceptance points **must not be omitted**; other process narrative may be trimmed. (Lightweight scope: keep goals / dependencies / task table / acceptance points / constraints / KB retrieval / change-point list / risks; background evidence details and revision history may be condensed.)
 
+## Requirement Awareness
+
+When a task originates from a requirement (`REQ-NNN`):
+
+- Read the requirement: first read the requirement details (title / status / owner / linked stages) via `openfeel req show <REQ-NNN>` as plan input.
+- Link the plan to the requirement: annotate the header of the produced `plan.md` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
+- Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the `openfeel req` CLI; this agent is read-only (no direct flow.json writes).
+- Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under `full` / `fast`.
+
 ## Model Selection
 
 openfeel-planner is decided by the **Claude-side model** (default `model: inherit`); plan formulation requires strong reasoning capability, and the framework does not hard-code vendor model IDs in templates.

@@ -3928,3 +3928,49 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.0-stage-83（REV-83-004 显式裁定 / REV-83-009 用户裁定维持前置集；T4.2-① 正向 7×2 穷举 + 段 D 漂移同口径 + 豁免不报）。
 
 **参见：** v1.2.0-stage-83（plan §二 回写规则；op-001/003）；`src/core/req/aggregate.ts :: AUTO_DONE_PRECONDITION`、`requirementHealthItems`；`src/core/req/requirement-ops.ts :: ALLOWED_TRANSITIONS`；kb/architecture.md #需求流转四层模型架构；kb/patterns.md #「只报告型」与「修复型」命令的边界；manual/core/req.md
+
+## [+] 跨 harness × 语言模板对称纪律：提取式切片字节等值 + 节锚点插入 + 无裸主语 (2026-10-13)
+
+**模式**：多 harness（opencode / claude）× 多语言（zh-CN / en）模板同步改造时，「对称」的**判据**与**插入法**须成文固化（共 8 份模板本阶段）。
+
+**四条纪律**：
+- **节锚点插入**（不用行号）：新增节以既有节标题为锚，在锚点行**前**插入正文块 + 空行；行号会因前序插入失效，禁按行号定位。
+- **同语言跨 harness 逐字等值**：**提取式切片**——按「节标题行 → 下一 markdown 标题行（不含，`/^#{1,6} /` 停机）」切片，断言同语言两份（opencode × claude）切片 `===` 逐字相等；切片**非空**前置断言**防假绿**。差异仅允许既有 harness 差异词。
+- **无裸主语**：正文不含 `Feel` / `主会话` 等主语（同语言跨 harness 一致的结构性保证）；如需主语按 harness 替换。
+- **插入外零改动**：`git diff --numstat` 删除列 = 0（纯插入）；既有节顺序 / 空行不动。
+
+**判据**：跨 harness 对称**不能**用文件级字节全等（与「某 harness 独有内容」目标互斥），须用**提取式切片**聚焦到新增节；切片断言须防「切片为空 → 两空串相等」的假绿。
+
+**实证**：v1.2.0-stage-84（op-001/op-002；S2 提取式切片 `toBe` + 切片非空前置；`test/core/templates.test.ts` S1/S2/S3）。
+
+**参见：** v1.2.0-stage-84（op-001/002/003）；kb/patterns.md #Agent 模板模式感知落法、#共享 skill 双平台分节中立化；kb/troubleshooting.md #断言串与落文逐字核对纪律
+
+## [+] skills 计数翻转全量清单：字面量 + 派生总数 + 白名单枚举（派生值 27/28/55 陷阱） (2026-10-13)
+
+**场景**：新增一个 skill（17→18）时，「计数」散布多处且**形态不同**，只按字面量 `17` 全仓 `rg` **兜不住**派生总数。
+
+**三类翻转点（缺一必红）**：
+- **字面量（17→18）**：`toHaveLength(17)` / `toBe(17)` 等直接断言（本阶段 7 处：`setup.test.ts:65`/`:221`、`templates-migration.test.ts:32`/`:41`/`:42`、`update.test.ts:816`、`template-loader.test.ts:112`）。
+- **派生总数（陷阱）**：由 skill 数**参与运算**得出的总数常量——本阶段 5 处：`setup.test.ts:89`（27→28）、`:241`（55→57）、`update.test.ts:274`/`:813`/`:875`（28→29）。这些值（27/28/55）**不含 `17`**，`rg "\b17\b"` **匹配不到** → 必须**单独扫总数常量**。
+- **白名单枚举（非计数）**：`expectedSkills` 等**数组白名单须手工追加**新 skill 名（该数组长度即计数，但是白名单不是数字——kb `#CLI 用法 skill 化模式` 第 6 条「方案首版即漏此点」，本阶段同类复发 REV-84-001）。
+
+**缓解**：`rg "\b17\b" test/`（含 `test/commands/`）+ 单独扫派生常量 `27/28/55` + 白名单逐名核对 + build 生成物键集断言（`SKILL_DEFINITIONS` ≡ `OPENCODE_SKILL_DEFINITIONS`）。
+
+**判据**：改「集合大小」类事实前，先枚举**该集合大小的全部表达形态**（字面量 / 派生运算 / 白名单数组 / 标题与注释 / 生成物副本），逐形态扫描；仅扫其中一个形态必留尾（对齐 kb/troubleshooting.md #同类缺陷须一次全量扫描而非逐个暴露）。
+
+**实证**：v1.2.0-stage-84（op-002；A 组 7 点 + B 组 5 点 + C1 白名单；REV-84-001 blocking）。
+
+**参见：** v1.2.0-stage-84（op-002/003）；kb/patterns.md #CLI 用法 skill 化模式、#部署型资产变更的多载体同步面清单、#新增 skill 纳入生成物键集；manual/index.md 维护规则「skill 体系」行
+
+## [+] 新增 skill 纳入生成物键集：build 按目录自动纳入 + 白名单手工追加 + 键集一致断言 (2026-10-13)
+
+**模式**：新增 / 改名 skill 时，内容与计数**自动面与手工面二分**：
+- **自动纳入（零代码改动）**：`build.js` 按 `templates-data/skills/` **目录**遍历，新目录自动进双注入对象（`SKILL_DEFINITIONS` / `OPENCODE_SKILL_DEFINITIONS`）+ 双生成物（`update.ts` / `template-loader.ts`）；新 skill **不需要**改 `build.js`。
+- **手工追加**：`expectedSkills` 白名单（非计数，须逐名追加）+ 各处字面量 / 派生总数（见 #skills 计数翻转全量清单）。
+- **键集一致断言**：两端注入对象**键集相等**（18≡18），但**内容按设计可不同**——用**键集**断言而非内容断言（对齐 kb `#单源一致性断言：键集断言 vs 内容断言`）。
+
+**判据**：新增集合元素时先问「哪些面自动跟随、哪些面手工」；自动面靠 build 幂等验证（两生成物 sha1 前后一致），手工面靠「全形态扫描」收口（见 #skills 计数翻转全量清单）。
+
+**实证**：v1.2.0-stage-84（op-002；build 首次输出「18 个…注入」双行 + 第二次幂等；`SKILL_DEFINITIONS` 键集 18）。
+
+**参见：** v1.2.0-stage-84（op-002/003）；kb/patterns.md #CLI 用法 skill 化模式、#skills 计数翻转全量清单、#单源一致性断言：键集断言 vs 内容断言；manual/core/build.md

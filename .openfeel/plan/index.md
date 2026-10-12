@@ -109,6 +109,7 @@
 | v1.2.0-stage-81 | v1.2.0（需求核心引擎 — `RequirementData` 10 字段 + 7 值域常量 + `FlowData.requirements`/`StageData.requirement_id`（读侧宽容不 load 补齐）+ 9 原语（纯内存经 `save()`）+ ID 分配 + 正文骨架 + 正交边界；**主题一「需求流转系统」首阶段**；hard 依赖 stage-80） | **已归档**（**M36 done / v1.2.0 需求主题首阶段**） | 3 op | 3/3 |
 | v1.2.0-stage-82 | v1.2.0（需求命令面 — 新建 `src/commands/req.ts`（`openfeel req` 10 子命令）+ 两行注册 + 引擎小幅补丁（`getAllowedNextStatuses` 导出 + `addRequirement` 非数组守卫收口 `req/BUG-001`）+ `--json` 四读命令成功/失败同契约 + 退出码 0/1/2 + help 键双规（37 键双向断言）+ `--owner` 三级链；命令层零业务逻辑；**主题一「需求流转系统」第二阶段**；hard 依赖 stage-81） | **已归档**（**M37 done / v1.2.0 需求主题第二阶段**） | 3 op | 3/3 |
 | v1.2.0-stage-83 | v1.2.0（需求聚合判定与对账 — 新建 `src/core/req/aggregate.ts`（聚合投影纯函数，done 判定**单源委托 `allLinkedStagesDone`** + `syncRequirementStatus` 对称回写入口 + `AUTO_DONE_PRECONDITION` 前置集 + `requirementHealthItems` 对账）+ `flow-manager.ts` 对称回写两热点（advance done 分支 / reset 聚合视图；纯内存同事务，**8+/0-**）+ `flow.ts` health 三处合并 + i18n 908→**911** + 零回归取证；**主题一「需求流转系统」收官阶段**；hard 依赖 stage-81/82） | **已归档**（**M38 done / v1.2.0 需求主题收官**） | 3 op | 3/3 |
+| v1.2.0-stage-84 | v1.2.0（Agent/skill 契约 — `feel.md`×4 需求与归档纪律 + `openfeel-planner.md`×4 需求感知 + **新建 skill `openfeel-req`** + `openfeel-cli-usage` 六处修订 + build 重生成双生成物（键集各 18）+ 静态断言 S1~S5 + **skills 17→18 计数全量翻转**（7 字面量 + 5 派生总数 + `expectedSkills` 白名单）；**双主题 / 第 ② 位读者 = Agent 行为契约**；hard 依赖 stage-82/83） | **已归档**（**M39 done**） | 3 op | 3/3 |
 
 **历史版本**（未进入 flow.json 阶段体系，保留 v0 体系标识）：
 

@@ -224,6 +224,32 @@ fast 调度纪律：
 4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
 5. **术语消歧**：流程模式称「**工作流快线**」（`workflow_mode=fast`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
 
+#### 需求流转（requirement lifecycle）
+
+需求层位于「版本 → 需求 REQ-NNN → 计划 stage → 方案 op」四层模型的第二层：**需求 = 排期与调度层**，回答「做什么、何时做」；**实现仍走完整流水线**——需求不等于计划，接取需求后按「小改 vs 大规模规划的阈值」照常委托 openfeel-planner 产出 plan.md。
+
+需求共 7 个状态：`draft` → `scheduled` → `in_progress` → `done`，另有 `blocked` / `cancelled` / `rejected` 三个旁路状态。需求进度由关联阶段的 phase 聚合（投影方向单一：阶段 phase → 需求状态；全部关联阶段 done 时需求自动收口 done）。
+
+需求生命周期动作（命令组 `openfeel req`，共 10 个子命令）：
+
+| 步骤 | 动作 | 命令 |
+|------|------|------|
+| 接取 | 浏览需求视图，挑选下一个可接取需求 | `openfeel req board` / `openfeel req next` / `openfeel req list` |
+| 认领 | 占用需求（已被他人认领则拒绝——防并发覆盖，无 TTL） | `openfeel req claim <REQ-NNN>` |
+| 关联 | 把需求关联到实现它的阶段 | `openfeel req link --stage <stageId> --requirement <REQ-NNN>` |
+| 流转 | 阶段推进驱动聚合；显式流转按合法目标推进 | `openfeel req advance <REQ-NNN> --to <status>` |
+| 完成 | 全部关联阶段 done 后需求自动 done；总览与释放 | `openfeel req board` / `openfeel req release <REQ-NNN>` |
+
+> 正交注记：需求流转与工作流模式（`full` / `fast`）正交——两种模式下需求纪律一致。
+
+#### 归档与历史读取
+
+版本收官（该版本全部阶段 done）后，提示用户可执行版本归档（`openfeel flow archive <version>`——判据门校验后先写归档文件、再移除活跃条目）：归档动作由 CLI 执行，调度侧只提示不代劳。
+
+- 不主动读归档文件：常规调度不得读取 `.openfeel/flow-archive/**`（防上下文污染）；活跃集经 `openfeel flow status` / `openfeel flow overview` 即为全量工作视图。
+- 按需查询历史：确需历史版本时用 `openfeel flow archive show <version>`（单版本只读）或 `openfeel flow archive list`（列举版本），不直接读文件。
+- 与顶层 `openfeel archive` 区分：顶层命令是阶段摘要归档；`flow archive` 是 flow.json 版本分片归档，二者职责不同。
+
 ## 小改 vs 大规模规划的阈值
 
 根据变更规模选择适当的流程路径：

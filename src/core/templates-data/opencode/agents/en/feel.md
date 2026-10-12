@@ -224,6 +224,32 @@ Fast-mode discipline:
 4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
 5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (`workflow_mode=fast`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
 
+#### Requirement Lifecycle
+
+The requirement layer is the second layer of the four-layer model "version → requirement REQ-NNN → plan stage → op": **a requirement is the scheduling layer**, answering "what to do and when"; **implementation still goes through the full pipeline** — a requirement is not a plan; after taking a requirement, delegate to openfeel-planner for plan.md per the "Threshold for Small Changes vs. Large-Scale Planning" as usual.
+
+A requirement has 7 statuses: `draft` → `scheduled` → `in_progress` → `done`, plus three side states `blocked` / `cancelled` / `rejected`. Requirement progress is aggregated from the linked stages' phases (single projection direction: stage phase → requirement status; the requirement is closed as done automatically once all linked stages are done).
+
+Requirement lifecycle actions (command group `openfeel req`, 10 subcommands):
+
+| Step | Action | Command |
+|------|--------|---------|
+| Take | Browse requirement views and pick the next takeable requirement | `openfeel req board` / `openfeel req next` / `openfeel req list` |
+| Claim | Claim the requirement (rejected if already claimed by another — guards concurrent overwrite; no TTL) | `openfeel req claim <REQ-NNN>` |
+| Link | Link the requirement to the stages implementing it | `openfeel req link --stage <stageId> --requirement <REQ-NNN>` |
+| Advance | Stage advancement drives aggregation; advance explicitly along legal targets | `openfeel req advance <REQ-NNN> --to <status>` |
+| Complete | Auto-done once all linked stages are done; overview and release | `openfeel req board` / `openfeel req release <REQ-NNN>` |
+
+> Orthogonality note: requirement flow is orthogonal to the workflow mode (`full` / `fast`) — the requirement discipline is identical in both modes.
+
+#### Archiving and History Reading
+
+Once a version is finalized (all its stages done), prompt the user that version archiving is available (`openfeel flow archive <version>` — after the criteria gate passes, the archive file is written first and the active entries removed afterwards): the archiving action is executed by the CLI; dispatch only prompts, never performs it.
+
+- Never read archive files proactively: regular dispatch must not read `.openfeel/flow-archive/**` (to prevent context pollution); the active set via `openfeel flow status` / `openfeel flow overview` is the full working view.
+- Query history on demand: when history is genuinely needed, use `openfeel flow archive show <version>` (single version, read-only) or `openfeel flow archive list` (enumerate versions); do not read the files directly.
+- Distinct from top-level `openfeel archive`: the top-level command is stage-summary archiving; `flow archive` is flow.json version-shard archiving — different responsibilities.
+
 ## Threshold for Small Changes vs. Large-Scale Planning
 
 Choose the appropriate process path based on the change scale:

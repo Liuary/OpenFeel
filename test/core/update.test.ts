@@ -142,7 +142,7 @@ describe('updateProject', () => {
     expect(feelContent).toContain('你是 Feel');
   });
 
-  it('应创建全部 17 个 Skill 定义文件（全局）', () => {
+  it('应创建全部 18 个 Skill 定义文件（全局）', () => {
     updateProject(tmpDir);
     const skillsDir = globalSkillsDir();
 
@@ -164,6 +164,7 @@ describe('updateProject', () => {
       'openfeel-workspace',
       'openfeel-tool-usage',
       'openfeel-cli-usage',
+      'openfeel-req',
     ];
 
     for (const skillName of expectedSkills) {
@@ -261,7 +262,7 @@ describe('updateProject', () => {
     expect(parsed.skills).toBeUndefined();
   });
 
-  it('重复调用不重复创建，第二次全部 skipped（28）', () => {
+  it('重复调用不重复创建，第二次全部 skipped（29）', () => {
     const result1 = updateProject(tmpDir);
     expect(result1.created.length).toBeGreaterThan(0);
     expect(result1.updated.length).toBe(0);
@@ -269,9 +270,9 @@ describe('updateProject', () => {
     const result2 = updateProject(tmpDir);
     expect(result2.created.length).toBe(0);
     expect(result2.updated.length).toBe(0);
-    // 27 全局部署文件（9 agents + 17 skills + 1 全局 AGENTS.md）+ 项目 opencode.jsonc = 28
+    // 28 全局部署文件（9 agents + 18 skills + 1 全局 AGENTS.md）+ 项目 opencode.jsonc = 29
     // （全局 opencode.jsonc 走 merge + state hash，不计入返回列表）
-    expect(result2.skipped.length).toBe(28);
+    expect(result2.skipped.length).toBe(29);
   });
 
   it('手动修改全局 agent（无标记）第二次 update 追加受管区而非冲突（三态）', () => {
@@ -807,13 +808,13 @@ describe('updateProject', () => {
 
   // ── stage-71/T3：claude 分支 + CLAUDE.md 受管区三态 ──
 
-  it('stage-71/T3：updateProject([claude]) 部署 28 文件且不触 opencode', () => {
+  it('stage-71/T3：updateProject([claude]) 部署 29 文件且不触 opencode', () => {
     const r = updateProject(tmpDir, ['claude']);
-    // 1 CLAUDE.md + 9 agents + 17 skills + 1 settings.json = 28
-    expect(r.created).toHaveLength(28);
+    // 1 CLAUDE.md + 9 agents + 18 skills + 1 settings.json = 29
+    expect(r.created).toHaveLength(29);
     expect(existsSync(getClaudeMdPath())).toBe(true);
     expect(readdirSync(getClaudeAgentsDir()).filter((f) => f.endsWith('.md'))).toHaveLength(9);
-    expect(readdirSync(getClaudeSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory())).toHaveLength(17);
+    expect(readdirSync(getClaudeSkillsDir(), { withFileTypes: true }).filter((d) => d.isDirectory())).toHaveLength(18);
     // opencode 未触
     expect(existsSync(globalAgentsMdPath())).toBe(false);
     // settings.json 于 stage-73 落地
@@ -867,12 +868,12 @@ describe('updateProject', () => {
     expect(infos).toContain('CLAUDE.md');
   });
 
-  it('stage-71/T3：二次 updateProject([claude]) → skipped === 28 幂等', () => {
+  it('stage-71/T3：二次 updateProject([claude]) → skipped === 29 幂等', () => {
     updateProject(tmpDir, ['claude']);
     const r2 = updateProject(tmpDir, ['claude']);
     expect(r2.created).toHaveLength(0);
     expect(r2.updated).toHaveLength(0);
-    expect(r2.skipped.length).toBe(28);
+    expect(r2.skipped.length).toBe(29);
   });
 
   // ── stage-73/T6：settings.json 注入（update 侧） ──

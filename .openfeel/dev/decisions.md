@@ -102,8 +102,8 @@
 - **[需求变更 2026-10-11 修订｜已落地]**：fast 链**不再跳过 `plan_review`**——新链 = `plan_pending → plan_review → plan_passed → exec_running → review_pending → [review_failed ↺] → review_passed → archiving → done`（跳过 **6 项** / **9 节点** / fast 表 **9 条目** = 8 流转键 + `done`）；「计划审查单轮必过，与代码审查同级」。**已于 `v1.1.7-stage-76` T7（op-005）实施并归档**：引擎 `FAST_TRANSITIONS` 8→9 条目（`plan_pending → ['plan_review']` + 新增 `plan_review` 键）+ 文案 5 处（`config.ts`×3 + i18n×2）+ stage-74 断言 **14 点位**同步 + 全量扫描收口（旧口径归零）；单一取表点传导，未改 full 表 / phase 枚举 / 命令面。本 ADR 上文「跳过 `plan_review`／7 个 phase／7 流转键 / 8 条目」口径**已被本轮变更取代**（正文已就地修订并加注）。配套 supersede：`kb/architecture.md` #双模式转移表选择、`kb/index.md`、`manual/core/flow-manager.md`、`manual/index.md`、`kb/patterns.md` #工作流快线必经计划审查（归档官于 stage-76 归档执行）。
 
 ### ADR-011：新增「需求（requirement）流转系统」—— 四层模型 + 需求状态机 + 认领协议
-- **日期**：2026-10-11
-- **状态**：proposed（研究定稿，待立项）
+- **日期**：2026-10-11（**2026-10-13 实施完成**：v1.2.0 双主题八阶段 `stage-78~85` 闭环，需求流转系统端到端落地；`--version`=1.2.0）
+- **状态**：**accepted**（研究定稿 → v1.2.0 实施验收通过）
 - **决策**：在「版本 roadmap → 阶段 stage → 方案 op」三层之上**插入需求层**，将线性计划范式升级为四层：`版本 → 需求 REQ-NNN → 计划 stage(15-phase) → 方案 op`。**需求 = 排期与调度层；计划 = 对某项明确需求的具体实现**。四条架构抉择（均采纳推荐项）：
   1. **状态模型 = 双层**：需求层保留粗粒度状态 `draft → scheduled → in_progress → done`（+ `blocked` / `cancelled` / `rejected`）；`in_progress` 的内部进度**由关联阶段的 15-phase 聚合**，工序单一事实源仍在 `phase`（对齐 ADR-003）；需求 `done` 由「全部关联阶段 done」聚合判定并同事务回写，避免双写漂移。
   2. **存储 = flow.json 内**：`flow.json` 新增顶层 `requirements` 字段（类比 `reviews`），复用 `FlowManager` 的 `withFileLock` + revision 乐观锁 + `atomicWriteFileSync{backup}` + 审计日志；需求正文落 `.openfeel/requirements/REQ-NNN.md`（人读），机读状态权威在 `flow.json`。

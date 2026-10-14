@@ -138,21 +138,22 @@ src/commands/req.ts         registerReqCommand
 
 ### 需求命令组 `req`（v1.2.0-stage-82）
 
-> 需求流转系统（主题一）的命令面（`openfeel req`，**10 子命令**）；命令层**零业务逻辑**（字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联唯一性 / done 门**单点在引擎** `src/core/req/`）。**写命令无 `--json`**（本阶段边界，后续增补属纯增量）。
+> 需求流转系统（主题一）的命令面（`openfeel req`，**11 子命令**；v1.2.1-stage-87 增 `split`）；命令层**零业务逻辑**（字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联唯一性 / done 门**单点在引擎** `src/core/req/`）。**`split` 为唯一带 `--json` 的写命令**，其余写命令无 `--json`（既有边界，后续增补属纯增量）。
 
 - `node bin/openfeel.js req add <title> [--target-version <v>] [--priority <P0|P1|P2>]` — 创建需求（ID 自动分配 `REQ-NNN`；正文骨架铺到 `.openfeel/requirements/`；引擎抛错分流 → `common.errorTmpl` exit 1）。
 - `node bin/openfeel.js req list [--status <s>] [--target-version <v>] [--owner <o>] [--json]` — 列出需求（多条件 AND；`--status` 值域取 `REQ_STATUSES`，非法 → exit 1）。
-- `node bin/openfeel.js req show <id> [--json]` — 需求详情（关联阶段为**原始只读枚举**，零 done/进度聚合）。
+- `node bin/openfeel.js req split <id> --into <title> [--into <title> ...] [--json]` — **拆分一等动作**（v1.2.1-stage-87；**首个 repeatable option** + **首个带 `--json` 的写命令**）：顺序 ID + `parent_id` + 子初值 `scheduled`（拆分即发布）；失败零写盘（父不存在/父终态/空标题/缺 `--into`）；exit 0/1/2。
+- `node bin/openfeel.js req show <id> [--json]` — 需求详情（关联阶段为**原始只读枚举**，零 done/进度聚合；v1.2.1-stage-87：human +父/子 2 行、`--json` 追加 `parent`/`children`，**只增不改**）。
 - `node bin/openfeel.js req claim <id> [--owner <name>]` — 认领（四码分流 `not_found`/`already_claimed`/`invalid_field`/`invalid_status`；`--owner` 缺省走三级链 `.info.json user` → `git config user.name` → 哨兵 `unknown` 拒绝，**禁硬编码**；同 owner 幂等）。
 - `node bin/openfeel.js req release <id>` — 释放认领（未占用 **no-op 恒 exit 0**）。
 - `node bin/openfeel.js req set <id> [--status <s>] [--title <t>] [--target-version <v>] [--priority <p>]` — 更新字段（白名单；值域/流转合法性由引擎判定；合法目标经 `getAllowedNextStatuses` 派生，**禁命令层枚举**）。
 - `node bin/openfeel.js req link --stage <stageId> (--requirement <id> | --unlink)` — 关联/解绑（`--requirement` 与 `--unlink` **二选一**；`already_linked` **硬拒** exit 1 零写盘，须先解绑；仅一次 `normalizeStageId` 归一）。
 - `node bin/openfeel.js req advance <id> --to <status>` — 显式推进状态（合法目标由引擎流转表判定；done 须全部关联阶段 done；**不设 `--force`**；同值 no-op exit 0）。
-- `node bin/openfeel.js req board [--target-version <v>] [--json]` — 需求看板（按状态分组，**7 组固定顺序** = `REQ_STATUSES`，恒含空组）。
-- `node bin/openfeel.js req next [--owner <name>] [--json]` — 推荐下一个可接取需求（scheduled ∧ 未认领；排序：`target_version` 升序 → `created_at` → `id`）。
-- **`--json` 契约**（四读命令 `list`/`show`/`board`/`next`）：成功/失败**均走 stdout 纯 JSON 单文档** + **stderr 零输出**；成功 `{schemaVersion:1,...领域对象}`、失败 `{schemaVersion:1,error,...ctx}` + exit 1。
+- `node bin/openfeel.js req board [--target-version <v>] [--json]` — 需求看板（按状态分组，**7 组固定顺序** = `REQ_STATUSES`，恒含空组；v1.2.1-stage-87：条目行 owner 非空时追加后缀，**仅 human**）。
+- `node bin/openfeel.js req next [--owner <name>] [--limit <n>] [--json]` — 推荐下一个可接取需求（scheduled ∧ 未认领；排序：`target_version` 升序 → `created_at` → `id`；v1.2.1-stage-87：`--limit`（≥1 整数，判定基准 = 解析后数值；`> 1` 时 `--json` 追加 `candidates`））。
+- **`--json` 契约**（5 命令 `list`/`show`/`split`/`board`/`next`）：成功/失败**均走 stdout 纯 JSON 单文档** + **stderr 零输出**；成功 `{schemaVersion:1,...领域对象}`、失败 `{schemaVersion:1,error,...ctx}` + exit 1；**exit 2（并发冲突）走统一出口非 JSON 单文档**（有意差异）。
 - **退出码 0/1/2**：成功 0 / 各错误 1（`process.exitCode = 1`，**禁 `process.exit(1)`**）/ 并发写冲突 2（`handleConcurrentConflict` 单点）；失败路径 flow.json 逐字节零写盘。
-- **help 键双规**（`applyHelpI18n`）：位置参数键 = `arg`+参数名逐字（非 camelCase）、选项键 = 长名 camelCase —— **37 键双向逐键断言**防死键（REV-82-011）。
+- **help 键双规**（`applyHelpI18n`）：位置参数键 = `arg`+参数名逐字（非 camelCase）、选项键 = 长名 camelCase —— **42 键双向逐键断言**防死键（REV-82-011；37 → 42，v1.2.1-stage-87）。
 - **正交**：`src/commands/req.ts` 不引用 `ALLOWED_TRANSITIONS` / 工作流模式 / 归档层 / `.phase` / `allLinkedStagesDone`（直读源文全内容 7 禁止串零命中）。
 - **已知边界（REV-83-016）**：`flow stage reset` 复位后再推进 `done` **不回写** → 需求遗留漂移（health「需求漂移」warn 可察、**非自愈**）；行为修复转后续版本评估（收口期控制流冻结）。
 
@@ -180,4 +181,4 @@ src/commands/req.ts         registerReqCommand
   - 权威源：`src/core/templates-data/skills/openfeel-cli-usage/SKILL.md`（**中立共享源**，stage-68 由 `templates-data/opencode/skills/` 迁入；**扁平单文件、中文单语**）；经 `npm run build` 双注入（`update.ts` 的 `SKILL_DEFINITIONS` / `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`）；由 `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（**生成物禁手改**）。**stage-55 起仓库自身不再自举项目级 `.opencode/skills/**`**（自举步骤已随 `build.js` 步骤 8 移除）。skill 总数 **18**。
   - 维护触发：新增/修改 CLI 命令、phase 枚举或 stageId 约定时，须同批更新该 skill 权威源 + 跑 build（详见 `manual/index.md` 维护规则「skill 体系」行）。
 
-- **`openfeel-req`**（需求流转用法参考，**查询型**；**v1.2.0-stage-84 新增**）：需求生命周期 7 状态、`openfeel req` 10 子命令与参数、认领协议（`owner` + `claimed_at`，无 TTL）、`REQ-NNN.md` 正文与机读权威源（`flow.json`）、需求与计划的关系（需求 ≠ 计划、实现仍走流水线）、与 `workflow_mode` 正交；**快照声明**「以 `node bin/openfeel.js req --help` 为准」（v1.2.0 起提供）。权威源 `src/core/templates-data/skills/openfeel-req/SKILL.md`（中立共享源、扁平单文件中文单语）；经 `npm run build` 双注入（`update.ts` / `template-loader.ts`，键集 18）+ `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（生成物禁手改）。
+- **`openfeel-req`**（需求流转用法参考，**查询型**；**v1.2.0-stage-84 新增**）：需求生命周期 7 状态、`openfeel req` **11 子命令**与参数（v1.2.1-stage-87 增 `split`）、认领协议（`owner` + `claimed_at`，无 TTL）、`REQ-NNN.md` 正文与机读权威源（`flow.json`）、需求与计划的关系（需求 ≠ 计划、实现仍走流水线）、**需求与版本解绑** + **并行接取**（v1.2.1-stage-87）、与 `workflow_mode` 正交；**快照声明**「以 `node bin/openfeel.js req --help` 为准」（v1.2.0 起提供）。权威源 `src/core/templates-data/skills/openfeel-req/SKILL.md`（中立共享源、扁平单文件中文单语）；经 `npm run build` 双注入（`update.ts` / `template-loader.ts`，键集 18）+ `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（生成物禁手改）。

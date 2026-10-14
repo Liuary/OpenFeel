@@ -1242,3 +1242,17 @@ concurrency:
 **实证**：v1.2.1-stage-86（scheme_review REV-86-007；op-002 执行期收敛：三例 cwd 隔离 + `index`/`repl`/`output-encoding` 剔除会话变量；REV-86-010 登记更广副作用为台账跟踪项）。
 
 **参见：** v1.2.1-stage-86（REV-86-007/010；op-002）；kb/patterns.md #测试 cwd 隔离模式、#库侧默认 no-op + 进程入口 install 的副作用隔离模式、#进程级会话标识三级链；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护
+
+## [+] 零回归口径的「数量词陷阱」：「N 子命令逐字零回归」须按**带 `--json` 的命令数**计 (2026-10-15)
+
+**症状**：计划/REV 文本写「`--json` 成功/失败同契约对 **11 子命令**逐字零回归」——**字面上不成立**。仓库内带 `--json` 的 `req` 子命令仅 **5 个**（`list`/`show`/`split`/`board`/`next`），另 6 个写命令（`add`/`claim`/`release`/`set`/`link`/`advance`）**本就无 `--json`**（stage-82 显式边界，`test/commands/req.test.ts` T-B11 锁定）。
+
+**根因**：零回归语料的**分母**取自「子命令总数」，而**分子**（实际有该契约的命令）是另一子集——两者被当成同一集合。属**口径措辞过宽**（非代码缺陷）：实质结论（带 `--json` 的命令零漂移）已被实证（J1/J2 + 全量测试）。
+
+**处置**：① 措辞修订为「带 `--json` 的 5 个子命令」；② 计划/REV 阶段写「零回归」断言时，**分母必须与断言语料的实际作用域同源**（从代码/测试反查集合，勿用「命令组总数」代填）。
+
+**同类提示**：本阶段另见**条件性失真**——`help.req.next.json` 描述仍写两键，而 `--limit > 1` 时实际为三键（含 `candidates`）；`help.req.show.json` 则**恒失真**（实际 5 键）。**新增输出键必须同步 checklist 全走一遍**（i18n help + docs + manual + kb + 部署型 skill 模板），本阶段的权威源 skill **已正确记载**（见 kb/troubleshooting.md #新增输出键/契约的同步面清单）。
+
+**实证**：v1.2.1-stage-87（测试官非阻塞观察 #2；`test/commands/req.test.ts` T-B11 + T-C3 `EXPECTED=42`）。
+
+**参见：** v1.2.1-stage-87（REV-87-008 / 测试报告 §五观察 2）；kb/troubleshooting.md #新增输出键/契约的同步面清单；kb/patterns.md #CLI `--json` 成功/失败同契约、#help 键命名双规与防死键双向逐键断言；manual/cli/req.md

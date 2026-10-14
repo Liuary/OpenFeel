@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-15-Liuary-002.md](2026/10/15/2026-10-15-Liuary-002.md) | Liuary | 阶段 v1.2.1-stage-87 完成 |
 | [2026-10-15-Liuary-001.md](2026/10/15/2026-10-15-Liuary-001.md) | Liuary | 阶段 v1.2.1-stage-86 完成 |
 | [2026-10-13-Liuary-002.md](2026/10/13/2026-10-13-Liuary-002.md) | Liuary | 阶段 v1.2.0-stage-85 完成 |
 | [2026-10-13-Liuary-001.md](2026/10/13/2026-10-13-Liuary-001.md) | Liuary | 阶段 v1.2.0-stage-84 完成 |
@@ -31,7 +32,6 @@
 | [2026-10-11-Liuary-002.md](2026/10/11/2026-10-11-Liuary-002.md) | Archiver | **v1.1.6 第二阶段 — stage-69 归档完成（Claude 内容适配 / v1.1.6 最重阶段）**：新建 Claude Code 独立内容源 `templates-data/claude/**`（`agents/{zh-CN,en}/*.md` 各 9 含 `feel` + `constraint/{zh-CN,en}.md`）——frontmatter opencode→Claude 映射（`permission:`→`tools`/`reasoning_effort:`→`effort`/新增 `color`·`model`，丢弃 `mode:`/`permission:`/`reasoning_effort:`），`feel` 不设 `tools`（继承 R-13），8 subagent 白名单不含 Task；`build.js` 注入/校验/单源键集断言（`assertKeySetsEqual` 仅比键集）+ 主流程 6→8 步 + `template-loader.ts` 2 锚点桩与 3 API（`loadClaudeConstraintTemplate`/`loadClaudeAgentTemplate`/`listClaudeAgentIds`，回退 zh-CN + 缺失抛错）+ 新增 `claude-adapter.test.ts`。8 提交（`de76f89`~`45f2093`）。首轮审查 failed（REV-69-001 medium blocking）→ op-008 修复后 **closed**；REV-69-002/003 非阻塞 open。**实机确认** Q1 subagent 不可调 Task / R-13 feel 继承宽工具集 / Q2 `@import ~/` 受支持 / 模型 ID 请求成功。门禁 **66 文件 / 1158 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` 761、`lint kb` 0、build ×2 SHA256 幂等不复活；`--version`=1.1.5。知识沉淀 **5 条新增**（patterns 3 + troubleshooting 1 + architecture 1）；manual 三载体同步；新增 **ADR-007**；**M25 部分达成 / v1.1.6 第二阶段闭环**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
 | [2026-10-11-Liuary-001.md](2026/10/11/2026-10-11-Liuary-001.md) | Liuary | 阶段 v1.1.6-stage-68 完成 |
 | [2026-10-10-Liuary-001.md](2026/10/10/2026-10-10-Liuary-001.md) | Archiver | **v1.1.6 首阶段 — stage-68 归档完成（模板管线多源化 / 零内容变更）**：17 个 skills 权威源迁中立共享源 `templates-data/skills/`（`git mv` 纯重命名，逐字节不变）+ `build.js` 常量/读点/校验重指（删死常量 `TEMPLATE_OPENCODE_SKILLS_DIR` → `TEMPLATE_SHARED_SKILLS_DIR`）+ 冗余树断言扩展覆盖 `templates-data/opencode/skills` 防复活（实测 `EXIT=1`）+ 测试路径 5 处同步 + 新增 `templates-migration.test.ts`（T4.1~T4.4）；双注入对象 `SKILL_DEFINITIONS`/`OPENCODE_SKILL_DEFINITIONS` 不合并；门禁 **65 文件 / 1139 用例 0 skipped / 0 failed**、`tsc` 0、`lint i18n` **761**、`lint kb` 0、build ×2 幂等不复活；审查 **passed**（REV-68-001/002 全 low 非阻塞 open）；测试官 **5/5 通过 0 Bug**；知识沉淀 **2 条更新**；manual 三载体同步；**M24 done，v1.1.6 首阶段闭环**；**未推进 flow 至 done（由 Feel 执行）／未 push／未 publish** |
-| [2026-10-03-Liuary-031.md](2026/10/03/2026-10-03-Liuary-031.md) | Liuary | 阶段 v1.1.5-stage-67 完成 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

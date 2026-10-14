@@ -4066,3 +4066,65 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.1-stage-86（op-002 建 `session.ts`；op-003 `flow-manager.ts :: computeResumed` 两落点 + `test/core/session.test.ts` 7 例 + T4.1~T4.6；REV-86-006 golden 同批补 `session_id`）。
 
 **参见：** v1.2.1-stage-86（plan T4 / Q1 / R-86-3；REV-86-006/007/009/010；op-002/003）；`src/core/session.ts`；kb/patterns.md #身份缺省链解析、#环境变量覆盖型路径函数的「函数体内读 env」可测试性模式、#顶层可选字段「读侧宽容不注入」模式；kb/troubleshooting.md #Claude Code 实机验证方法；kb/architecture.md #可观测性埋点架构；manual/core/session.md
+
+## [+] 事务性批量构造原语模式：全成或零变更 + 门序前置 + 顺序 ID 单源派生 + 恰 1 条聚合审计 (2026-10-15)
+
+**问题**：新增 `splitRequirement(data, parentId, children)` —— 一次调用构造 N 条子需求。若逐条「校验 + 写入」交错，中途失败会留下**半成品**（前 N-1 条已入 `data.requirements`、`flow.json` 视调用方语义或已污染），破坏「失败路径逐字节零写盘」的统一契约。
+
+**模式（四要素）**：
+
+1. **门序前置 + 任一失败零变更零审计**：全部门判定**先于任何写入**，顺序固定 = ①argument-shape（数组非空）→ ②`not_found`（父不存在）→ ③`invalid_status`（父终态，与 `claim`/`link` 同款终态门）→ ④`invalid_field`（逐子项标题 trim 后空串）。判定循环内**零写入**。
+2. **构造段单趟完成且循环内零可失败语句**：校验全通过后才进入构造；构造循环体只有「无分支的赋值 + push」——**可失败性已被前置门清零**，故不存在「构造到一半失败」。
+3. **顺序 ID 单源派生（staged 容器）**：第 N 子 ID = 当前 max + N——**不新写 ID 解析**，而是造一个 `staged = { ...data, requirements: [...已有] }` 浅容器承载「当前 max」，复用既有 `nextRequirementId(staged)` 单源派生（每 push 一次容器内的 max 自然推进）。**避免第二份 max+1 逻辑**（对齐「单一取表点」纪律）。
+4. **一次性并入 + 恰 1 条聚合审计**：构造完再 `data.requirements = list`（**单点赋入**，半成品在赋值前不可达）；审计**只写 1 条**聚合事件（`requirement_split`，detail `{parentId, children: [ids]}`，对齐 `requirement_*` 族命名）——**而非 N 条子事件**（审计语义 = 「发生了一次拆分」这一事实）。
+
+**配套纪律**：
+- **父侧零副作用**：父 `status`/`updated_at` 不变、不写父侧字段——父流转由上层显式执行（防批量原语「顺手」改父状态，破坏单点职责）。
+- **错误范式择一**：批量原语采用**运行期错误码范式**（`{ok:false, code}`），**不复用** `add` 的构造期抛错路径（REV-87-002 定稿）——`split` 自持校验循环，与 `update` 同族，命令层 `failCode` 分流零适配。同族一致 > 复用「像的」原语。
+- **返回本体列表**：返回子需求**本体**（供调用方逐条铺正文），禁浅副本路径（对齐 `addRequirement` 返回本体先例）。
+
+**判据**：一次调用构造多条记录的原语，一律「**先全判、后全造、单点并入、单条审计**」；批量内的派生值须**复用同族单源函数**而非另写循环算术。
+
+**实证**：v1.2.1-stage-87（op-001；`src/core/req/requirement-ops.ts :: splitRequirement` + `SPLIT_CHILD_STATUS`；W1~W7 断言；隔离实跑「任一项非法 → 整批 exit 1 + `flow.json` 字节级不变」）。
+
+**参见：** v1.2.1-stage-87（plan T1 / Q4·Q11 / REV-87-002；op-001）；kb/patterns.md #需求引擎不变量模式、#关系型可选字段「仅溯源不聚合」模式、#对称回写模式；kb/architecture.md #需求拆分与版本解绑架构；manual/core/req.md
+
+## [+] 关系型可选字段「仅溯源不聚合」模式：只记关系事实、禁造第二判定源 (2026-10-15)
+
+**问题**：需求拆分需落 `parent_id` 表达父子关系。若顺手让父状态由子聚合（或无子即 done 之类），就会与既有 `allLinkedStagesDone` 形成**第二 done 判定源**，长期漂移。
+
+**模式**：把新增关系字段定位为「**关系事实**」而非「**状态派生**」——四不做：
+1. **不入聚合判定**（不参与 `computeRequirementAggregate` / 不参与任何 done/reopen 推导）；
+2. **不入 done 门**（`applyStatusChange` 的 `to === 'done'` 门仍只委托 `allLinkedStagesDone`）；
+3. **不进 `PATCH_WHITELIST`**（`req set` 不可改绑——**用白名单天然拒改，替代写「拒改校验」代码**）；
+4. **读侧不补齐**（`load()` 零改动 → 存量 `load→save` 零注入；对齐 kb/patterns.md #顶层可选字段「读侧宽容不注入」模式）。
+
+配套：**不写环检测**（子 ID 恒为新 max+1、方向恒 `child → parent`，结构上无环——用结构约束替代运行时校验）；**父子无级联**（子全 done 父仍 `draft`，父流转显式驱动）。
+
+**验证手段**：以「`aggregate.ts` 本阶段**零改动**」+ `.every(` 零命中保持 + 聚合隔离正控（W10）为门——**把「没做多余的事」变成可断言的证据**。
+
+**判据**：新增关系字段先自问「这是事实还是派生？」——事实**只记不派生**；「未做某事」也要**声明一条可核验的零改动证据**（而非仅凭设计意图）。
+
+**实证**：v1.2.1-stage-87（plan 边界 1 / 不变量 1 / R-87-1；op-001；`src/core/req/types.ts :: parent_id` 注释 + `git diff 4c18dbc -- src/core/req/aggregate.ts` 为空）。
+
+**参见：** v1.2.1-stage-87（plan §二 不变量 1 / §三 T1；REV-87-004①）；kb/architecture.md #需求拆分与版本解绑架构、#双层状态聚合架构；kb/patterns.md #顶层可选字段「读侧宽容不注入」模式、#事务性批量构造原语模式；manual/core/req.md
+
+## [+] 命令面「首个先例」模式：repeatable option（`collect` 累加）+ 带 `--json` 的写命令契约 (2026-10-15)
+
+**问题**：`req split <id> --into <title> --into <title>...` 需**重复选项**收多值；且它是本仓**首个带 `--json` 的写命令**（此前 `--json` 仅限读命令，写命令"无 `--json`"是 stage-82 的显式边界）。
+
+**repeatable option**：用 Commander `.option('--into <title>', desc, collectInto, [] as string[])` —— `collectInto` 为 `(v, acc) => [...acc, v]` 累加器。**弃 variadic `<titles...>`**：既有 variadic 先例（`flow.ts:665` 选项描述自警「建议置于命令末尾」）**有吞后续参数风险**，多值收聚一律用 repeatable（可置于任意位置、边界清晰）。
+
+**带 `--json` 的写命令契约**：
+- **成功径**：stdout **纯 JSON 单文档** + `schemaVersion:1` + 领域对象（`split` → `{parent, children}`），exit 0；
+- **失败径**：stdout 纯单文档含 `error` 码 + exit 1（与读命令**同契约**）；
+- **exit 2（并发写冲突）例外**：走全仓统一出口 `handleConcurrentConflict`（stderr 文案 + `process.exit(2)`），**非 JSON 单文档**——**显式登记**为有意差异（不为单命令特化统一出口）；
+- **校验型失败（参数形态）**：`--into` 缺省 → `invalid-argument`（与引擎业务错误码分列——命令层形态校验 vs 引擎业务门）。
+
+**`--limit` 解析基准纪律**：命令层解析选项数值时，**判定基准须是「解析后数值」而非「是否传参」**——显式 `--limit 1` 与缺省**同形态**（否则会因「用户传了」而走多值分支，输出漂移）。
+
+**判据**：新增「首个」形态（首个 repeatable / 首个写命令 `--json`）时，须把**契约 + 例外**一并显式登记（含「哪些失败不走 JSON」），并写**正控**（显式 1 与缺省 `out()` 相等 + `Object.keys` 相等）防实现按「是否传参」误判。
+
+**实证**：v1.2.1-stage-87（op-001 `collectInto` + `req split`；op-002 `req next --limit`；`test/commands/req.test.ts` T-D1~T-D4 / T-E3③ 正控；隔离实跑 6.1/6.2 成功·失败径各 5 例）。
+
+**参见：** v1.2.1-stage-87（plan T1/T2 / Q10 / REV-87-004②；op-001/op-002）；`src/commands/req.ts :: collectInto`；kb/patterns.md #CLI `--json` 成功/失败同契约、#Commander 父子命令 `--json` 标志传递陷阱、#CLI 退出码语义；kb/architecture.md #需求拆分与版本解绑架构；manual/cli/req.md

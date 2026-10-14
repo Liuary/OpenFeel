@@ -900,3 +900,22 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.1-stage-86（3 op `aea0b41` / `dff7e68` / `7a56fa3`；18 文件 +1182/−16；门禁 **71 文件 / 1591 用例** 0 skipped / 0 failed、`lint i18n` **912**、`tsc` 0）。
 
 **参见：** v1.2.1-stage-86（plan §二 不变量 / §三 T1~T4 / §四 Q1·Q2；op-001~003）；`src/core/session.ts`；`src/core/metrics.ts :: PHASE_AGENT_MAP`；`src/core/runtime-log.ts :: logCliStart / logCliDone / installExitHooks`；kb/architecture.md #四类日志边界、#状态/相位单一事实源；kb/patterns.md #死代码接线的落点判据、#CLI 进程日志行格式向后兼容扩展、#进程级会话标识三级链；manual/core/session.md、manual/core/metrics.md、manual/core/runtime-log.md
+
+## [+] 需求拆分与版本解绑架构：父子关系「仅溯源不聚合」+ 需求与版本正交（`target_version` 非门） (2026-10-15)
+
+**背景**：v1.2.1「需求接取制度」把机制层（v1.2.0 已有 `claim`/`release` + 占用校验）升级为**完整工作模式**——① 需求**可拆分为可独立执行/并行的子需求**（设计 §3.2「拆解为可独立执行/并行的子需求并发布」、§3.3「鼓励拆分需求并行执行」）；② 需求**不绑版本**（版本号仅发布时推进）。
+
+**父子关系「仅溯源不聚合」（核心不变量）**：
+- `RequirementData.parent_id?: string` 是**纯溯源字段**——**不入聚合判定 / 不入 done 门 / 不进 `PATCH_WHITELIST`（`req set` 不可改绑）/ 读侧不 load 补齐**；父子**无级联**（两子均 done 后父仍 `draft`，父流转由 feel 显式执行）。
+- 理由：聚合 done 判定**单源恒为 `allLinkedStagesDone`**（承 stage-83 REV-83-002 纪律）；引入父子聚合会造**第二份 done 判定源**（`.every(`）→ 漂移。`parent_id` 表达「什么由什么拆出」这一**关系事实**，不表达状态派生——故不新增聚合面（`aggregate.ts` 本阶段零改动为门）。
+- **禁 `PATCH_WHITELIST`** 天然拒改绑 + **不写环检测**（子 ID 恒为新 max+1、方向恒 `child → parent`，结构上无环）——「用结构约束替代运行时校验」。
+
+**需求与版本正交（`target_version` 非门）**：
+- `target_version` 为**纯可选、纯展示/过滤/排序维度**；全生命周期（创建 → 认领 → 排期 → 进行中 → 关联阶段 → 阶段 done → 聚合收口）**无一处作为门**——核验面 = 6 消费点（字段声明 / `listRequirements` 读侧过滤 / `addRequirement` **仅拒空串** / `updateRequirement` 仅显式提供时值域校验 / 命令层传递·展示·过滤·排序 / 骨架缺省渲染）+ 6 无版本条件点（`ALLOWED_TRANSITIONS` 单点表 / `applyStatusChange` done 门 / `claim` / `release` / `link` / `allLinkedStagesDone` + 聚合回写）。
+- 固定手段三面：**核验**（`file:line` 逐条 + 是否构成门）+ **断言**（「无 `target_version` 全生命周期可用」端到端，防未来引入版本门）+ **落文**（skill `## 需求与版本解绑`）。**版本号推进与需求解绑**——`--version` 仍归发布收口阶段（本阶段不改）。
+
+**判据**：新增**关系型可选字段**时，先判「它是关系事实还是状态派生」——关系事实**只记不聚合**（禁造第二判定源）；「某字段不构成门」须以**消费点全枚举 + 逐条判定**固定，而非仅凭「看起来可选」。
+
+**实证**：v1.2.1-stage-87（plan §二 不变量 1 / 边界 1/3；REV-87-002/004；op-001~003；3 commits `f46d01d`/`a84227f`/`b3c4df3`；门禁 71 文件 / 1614 用例 0 skipped / 0 failed、`lint i18n` 931、`tsc` 0）。
+
+**参见：** v1.2.1-stage-87（plan §三 T1/T3 / §二 不变量；op-001/op-003）；`src/core/req/types.ts :: RequirementData.parent_id`；`src/core/req/requirement-ops.ts :: splitRequirement`；kb/architecture.md #需求流转四层模型架构、#双层状态聚合架构、#需求层正交边界架构；kb/patterns.md #事务性批量构造原语模式、#关系型可选字段「仅溯源不聚合」模式；manual/core/req.md

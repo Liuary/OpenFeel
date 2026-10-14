@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-14T17:38:53.330Z",
-    "revision": 1080,
+    "updated": "2026-10-14T18:40:46.776Z",
+    "revision": 1092,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -19,7 +19,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.2.1-stage-86",
+      "stage": "v1.2.1-stage-87",
       "op": ""
     },
     "retry": 0
@@ -581,26 +581,31 @@
     },
     "v1.2.1-stage-86": {
       "name": "v1.2.1-stage-86",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "full",
       "stats": {
         "start_time": "2026-10-14T16:45:49.290Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-10-14T17:44:41.307Z",
+        "duration_ms": 3532017
       }
     },
     "v1.2.1-stage-87": {
       "name": "v1.2.1-stage-87",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [
         "v1.2.1-stage-86"
       ],
       "ops": {},
-      "workflow_mode": "full"
+      "workflow_mode": "full",
+      "stats": {
+        "start_time": "2026-10-14T17:50:05.150Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
     },
     "v1.2.1-stage-88": {
       "name": "v1.2.1-stage-88",
@@ -4096,6 +4101,149 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.2.1-stage-86",
+        "from": "test_passed",
+        "to": "archiving",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T17:44:41.307Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-86",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T17:50:05.150Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e"
+      }
+    },
+    {
+      "time": "2026-10-14T17:56:08.573Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T17:56:08.956Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T18:06:26.657Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T18:12:00.252Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "scheme_review",
+        "to": "scheme_passed",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T18:12:00.639Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T18:28:04.302Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T18:33:09.166Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T18:33:09.557Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "review_passed",
+        "to": "test_pending",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T18:40:46.375Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
+        "from": "test_pending",
+        "to": "test_passed",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T18:40:46.776Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-87",
         "from": "test_passed",
         "to": "archiving",
         "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",

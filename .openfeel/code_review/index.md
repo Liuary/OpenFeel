@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 49 |
+| passed | 50 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -139,3 +139,4 @@
 | 阶段 | 摘要 | 状态 |
 |------|------|------|
 | [v1.2.1-stage-86](v1.2.1-stage-86.md) | 可观测性改造（recordRun 接线 / CLI 日志 3 字段 + done 必写 / op 级埋点 / 跨会话标注）— REV-86-001~008 全 closed，代码轮 +2 low 非阻塞（009/010 open） | passed |
+| [v1.2.1-stage-87](v1.2.1-stage-87.md) | 需求接取制度与拆分（`req split` 一等动作 / 并行接取就绪 / 版本解绑）— REV-87-001~007 全 closed，代码轮 +3 非阻塞（008 medium / 009·010 low open） | passed |

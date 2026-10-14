@@ -14,7 +14,7 @@ Not all tasks must go through the full pipeline. Non-coding tasks and coding tas
 
 | Task Type | Handling Path | Notes |
 |-----------|---------------|-------|
-| Research/exploration (reading code, consulting references, locating issues) | Feel → research (general / explore Agent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
+| Research/exploration (reading code, consulting references, locating issues) | Feel → research (`openfeel-explorer` Agent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
 | Coding implementation (adding/modifying source code) | Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester) (full); in fast mode: planner → plan review (reviewer, single mandatory round) → executor → code review (reviewer) → archiver (see status.md "Workflow Mode" / openfeel flow mode) | Involves source changes, must go through the full audit chain (fast-line audit chain in fast mode) |
 | Selection discussion (settling a technical approach / design trade-off) | Feel + `question` tool | Conversational decision, produces a conclusion, no plan.md |
 
@@ -84,13 +84,14 @@ When encountering technical issues, **the first action MUST be to consult the kn
 
 Deviating from the above constraints is considered a violation and will be flagged during review.
 
-### 9-Agent System Overview
+### 10-Agent System Overview
 
 | Agent | Role | Driving Model | Invocation |
 |-------|------|---------------|------------|
 | Feel | Overall Commander | Flagship reasoning model | primary |
 | openfeel-planner | Planning Officer | Reasoning model | subagent |
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | subagent |
+| openfeel-explorer | Exploration Officer | Fast model (Flash) | subagent |
 | openfeel-executor | Execution Officer | Fast model (Flash) | subagent |
 | openfeel-reviewer | Review Officer | Heterogeneous reasoning model (GLM) | subagent |
 | openfeel-feel-tester | Testing Officer | Reasoning model | subagent |
@@ -102,7 +103,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 
 ## Permission Model (Agent permission)
 
-Each of the 9 agents inlines a `permission:` allowlist (including `external_directory: "allow"`), deployed by `openfeel setup` to the **global agents directory** (opencode adapter: `~/.config/opencode/agents/*.md`).
+Each of the 10 agents inlines a `permission:` allowlist (including `external_directory: "allow"`), deployed by `openfeel setup` to the **global agents directory** (opencode adapter: `~/.config/opencode/agents/*.md`).
 
 - **Merge semantics (deep merge per permission key; agent wins)**: the agent `.md` frontmatter `permission` and the project/global `opencode.jsonc` `permission` / `agent.<name>.permission` are **deep-merged per permission key**; **for a key declared in the agent `.md`, the `.md` value wins (config files cannot override it)**, and only keys absent from the agent `.md` take effect from config.
 - **`external_directory`**: the framework inlines `"allow"` → the agent's effective value is `allow` (no prompt outside the workspace); the **opencode platform default is `ask`**, so adding the key is a behavior change (ask→allow; verified in an isolated environment on opencode 1.18.33).

@@ -62,9 +62,9 @@ describe('loadAgentTemplate', () => {
 });
 
 describe('listAgentIds', () => {
-  it('zh-CN 返回 9 个 Agent ID 数组', () => {
+  it('zh-CN 返回 10 个 Agent ID 数组', () => {
     const ids = listAgentIds('zh-CN');
-    expect(ids).toHaveLength(9);
+    expect(ids).toHaveLength(10);
     expect(ids).toContain('feel');
     expect(ids).toContain('openfeel-executor');
     expect(ids).toContain('openfeel-planner');
@@ -74,36 +74,37 @@ describe('listAgentIds', () => {
     expect(ids).toContain('openfeel-archiver');
     expect(ids).toContain('openfeel-utility');
     expect(ids).toContain('openfeel-vision');
+    expect(ids).toContain('openfeel-explorer');
   });
 
-  it('en 返回 9 个 Agent ID 数组（与 zh-CN 相同）', () => {
+  it('en 返回 10 个 Agent ID 数组（与 zh-CN 相同）', () => {
     const zhIds = listAgentIds('zh-CN');
     const enIds = listAgentIds('en');
-    expect(enIds).toHaveLength(9);
+    expect(enIds).toHaveLength(10);
     expect(enIds).toEqual(zhIds);
   });
 
-  it('fr 回退到 zh-CN，仍返回 9 个 ID', () => {
+  it('fr 回退到 zh-CN，仍返回 10 个 ID', () => {
     const ids = listAgentIds('fr');
-    expect(ids).toHaveLength(9);
+    expect(ids).toHaveLength(10);
   });
 });
 
 describe('命名前缀完整性', () => {
-  it('listAgentIds 返回 9 项：feel 不带前缀、其余 8 项带 openfeel-', () => {
+  it('listAgentIds 返回 10 项：feel 不带前缀、其余 9 项带 openfeel-', () => {
     const ids = listAgentIds('zh-CN');
-    expect(ids).toHaveLength(9);
+    expect(ids).toHaveLength(10);
     expect(ids).toContain('feel');
-    expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(8);
+    expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(9);
     expect(ids.every((id) => id === 'feel' || id.startsWith('openfeel-'))).toBe(true);
   });
 
-  it('listOpencodeAgentIds 双语均返回 9 项且 8 项带前缀', () => {
+  it('listOpencodeAgentIds 双语均返回 10 项且 9 项带前缀', () => {
     for (const lang of ['zh-CN', 'en']) {
       const ids = listOpencodeAgentIds(lang);
-      expect(ids).toHaveLength(9);
+      expect(ids).toHaveLength(10);
       expect(ids).toContain('feel');
-      expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(8);
+      expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(9);
     }
   });
 
@@ -223,7 +224,7 @@ describe('update_infos 会话启动修复规则（模板静态断言）', () => 
 
 /**
  * stage-44 权限模型断言
- * 锁定 9 agent × zh/en 权威源补键（external_directory）、双语键集一致、
+ * 锁定 10 agent × zh/en 权威源补键（external_directory）、双语键集一致、
  * utility 键与 opencode schema 对齐（write → edit，依据 op-001 实测）、
  * 部署源（OPENCODE_AGENT_TEMPLATES）与权威源双注入一致。
  */
@@ -247,9 +248,9 @@ describe('权限模型（stage-44）', () => {
     return (fm.permission ?? {}) as Record<string, unknown>;
   };
 
-  it('9 agent × zh/en 权威源 permission 均含 external_directory 且值为 allow', () => {
+  it('10 agent × zh/en 权威源 permission 均含 external_directory 且值为 allow', () => {
     for (const lang of LANGS) {
-      expect(listAgentIds(lang)).toHaveLength(9);
+      expect(listAgentIds(lang)).toHaveLength(10);
       for (const id of listAgentIds(lang)) {
         const perm = permOf(loadAgentTemplate(lang, id));
         expect(perm, `${lang}/${id}`).toHaveProperty('external_directory');
@@ -327,6 +328,18 @@ describe('权限模型（stage-44）', () => {
       for (const id of Object.keys(GOLDEN)) {
         expect(permKeys(lang, id), `${lang}/${id} 键集`).toEqual(GOLDEN[id]);
       }
+    }
+  });
+
+  it('stage-89：openfeel-explorer 只读键集恰 bash/read/glob/grep/external_directory（无 task/edit/write）', () => {
+    const KEYS = ['bash', 'external_directory', 'glob', 'grep', 'read'];
+    for (const lang of LANGS) {
+      expect(permKeys(lang, 'openfeel-explorer'), `${lang} 权威源键集`).toEqual(KEYS);
+      for (const banned of ['task', 'edit', 'write']) {
+        expect(permKeys(lang, 'openfeel-explorer'), `${lang} 不该含 ${banned}`).not.toContain(banned);
+      }
+      expect(isAllow(permOf(loadAgentTemplate(lang, 'openfeel-explorer')).external_directory), `${lang} ed 值`).toBe(true);
+      expect(Object.keys(permOf(loadOpencodeAgentTemplate(lang, 'openfeel-explorer'))).sort(), `${lang} 部署源键集`).toEqual(KEYS);
     }
   });
 });
@@ -489,14 +502,14 @@ describe('stage-55 op-005 迁移：reviewer 纪律节（模板源，REV-003）',
 });
 
 /**
- * stage-69 T7.1：Claude Agent 模板加载（9 个，含 feel）
+ * stage-69 T7.1：Claude Agent 模板加载（10 个，含 feel）
  */
 describe('Claude 模板加载（stage-69 T7.1）', () => {
-  it('listClaudeAgentIds：zh-CN 返回 9 个，含 feel，8 个带 openfeel- 前缀', () => {
+  it('listClaudeAgentIds：zh-CN 返回 10 个，含 feel，9 个带 openfeel- 前缀', () => {
     const ids = listClaudeAgentIds('zh-CN');
-    expect(ids).toHaveLength(9);
+    expect(ids).toHaveLength(10);
     expect(ids).toContain('feel');
-    expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(8);
+    expect(ids.filter((id) => id.startsWith('openfeel-'))).toHaveLength(9);
   });
 
   it('zh/en 键集一致', () => {
@@ -537,7 +550,7 @@ describe('Claude 模板加载（stage-69 T7.1）', () => {
  * Claude 侧应丢弃 opencode 专有串：mode: / permission: / reasoning_effort: / .opencode/
  */
 describe('Claude 阴性门禁（stage-69 T7.2）', () => {
-  it('9 文件 × 2 语言均不含 opencode 专有串', () => {
+  it('10 文件 × 2 语言均不含 opencode 专有串', () => {
     for (const lang of ['zh-CN', 'en']) {
       for (const id of listClaudeAgentIds(lang)) {
         const c = loadClaudeAgentTemplate(lang, id);
@@ -569,10 +582,10 @@ describe('Claude 约束模板（stage-69 T7.3）', () => {
 });
 
 /**
- * stage-69 T7.4：Claude ↔ opencode 单源键集一致（均 9，含 feel）
+ * stage-69 T7.4：Claude ↔ opencode 单源键集一致（均 10，含 feel）
  */
 describe('Claude↔opencode 单源键集（stage-69 T7.4）', () => {
-  it('listClaudeAgentIds === listAgentIds（zh-CN/en 均 9，含 feel）', () => {
+  it('listClaudeAgentIds === listAgentIds（zh-CN/en 均 10，含 feel）', () => {
     for (const lang of ['zh-CN', 'en']) {
       expect(listClaudeAgentIds(lang).sort()).toEqual(listAgentIds(lang).sort());
     }

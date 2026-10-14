@@ -14,7 +14,7 @@ Not all tasks must go through the full pipeline. Non-coding tasks and coding tas
 
 | Task Type | Handling Path | Notes |
 |-----------|---------------|-------|
-| Research/exploration (reading code, consulting references, locating issues) | The main session (Feel role) → research (`general` / `Explore` subagent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
+| Research/exploration (reading code, consulting references, locating issues) | The main session (Feel role) → research (`openfeel-explorer` subagent) | Read-only exploration, no source code changes; flow.json need not spin up for this |
 | Coding implementation (adding/modifying source code) | Full pipeline (openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester) (full); in fast mode: planner → plan review (reviewer, single mandatory round) → executor → code review (reviewer) → archiver (see status.md "Workflow Mode" / openfeel flow mode) | Involves source changes, must go through the full audit chain (fast-line audit chain in fast mode) |
 | Selection discussion (settling a technical approach / design trade-off) | The main session (Feel role) and the user + the `AskUserQuestion` tool | Conversational decision, produces a conclusion, no plan.md |
 
@@ -84,15 +84,16 @@ When encountering technical issues, **the first action MUST be to consult the kn
 
 Deviating from the above constraints is considered a violation and will be flagged during review.
 
-### 9-Agent System Overview
+### 10-Agent System Overview
 
-> **9 agents (including the main session `feel`) + Task dispatch**
+> **10 agents (including the main session `feel`) + Task dispatch**
 
 | Agent | Role | Driving Model | Startup Method |
 |-------|------|---------------|----------------|
 | Feel | Overall Commander | Flagship reasoning model | Main session (`settings.json` `agent:"feel"`) |
 | openfeel-planner | Planning Officer | Reasoning model | Claude subagent (Task dispatch) |
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | Claude subagent (Task dispatch) |
+| openfeel-explorer | Exploration Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
 | openfeel-executor | Execution Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
 | openfeel-reviewer | Review Officer | Heterogeneous reasoning model (GLM) | Claude subagent (Task dispatch) |
 | openfeel-feel-tester | Testing Officer | Reasoning model | Claude subagent (Task dispatch) |
@@ -106,7 +107,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 
 Claude Code's permissions and tool availability are determined jointly by a subagent's `tools` whitelist and `settings.json`, deployed by `openfeel setup` / `openfeel update --tools claude`.
 
-1. **Subagent tool whitelist**: A Claude Code subagent declares its usable tool whitelist via frontmatter `tools:` (**unlisted = unavailable**); it can also be adjusted via `disallowedTools` (blacklist) and `permissionMode`. The 8 subagents of this framework have their whitelists in their own `.md` frontmatter; the main session `feel` **does not set `tools`** (inherits all tools).
+1. **Subagent tool whitelist**: A Claude Code subagent declares its usable tool whitelist via frontmatter `tools:` (**unlisted = unavailable**); it can also be adjusted via `disallowedTools` (blacklist) and `permissionMode`. The 9 subagents of this framework have their whitelists in their own `.md` frontmatter; the main session `feel` **does not set `tools`** (inherits all tools).
 
 2. **Injected into `settings.json` by stage-73 (this cycle)**: `openfeel setup/update --tools claude` (command surface wired in stage-71) injects, in **stage-73**, `"agent": "feel"` (default main-session agent) and `"permissions": { "defaultMode": "auto" }` (auto mode) into `~/.claude/settings.json`; **stage-69 does not write `settings.json`**, it only establishes content sources.
 

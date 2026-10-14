@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { getCurrentTemplate } from '../../src/core/templates.js';
+import { listAgentIds, listClaudeAgentIds } from '../../src/core/template-loader.js';
 
 const ROOT = process.cwd();
 const SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'skills');
@@ -101,18 +102,18 @@ describe('stage-55：项目级受管资产移除（防回归）', () => {
 
 /**
  * stage-69：Claude 独立内容源树结构 + 防发散（源文件级，直读 templates-data/claude/**）
- * ① agents/{zh-CN,en} 各 9 个 .md（含 feel + 8 openfeel-*）；
+ * ① agents/{zh-CN,en} 各 10 个 .md（含 feel + 9 openfeel-*）；
  * ② constraint/{zh-CN,en}.md 存在；
  * ③ claude/skills 不存在（skills 走中立共享源，不复制，防发散）。
  */
 describe('Claude 源树（stage-69）', () => {
   const CLAUDE_DIR = join(ROOT, 'src', 'core', 'templates-data', 'claude');
 
-  it('agents/{zh-CN,en} 各 9 个 .md', () => {
+  it('agents/{zh-CN,en} 各 10 个 .md', () => {
     for (const lang of ['zh-CN', 'en']) {
       const dir = join(CLAUDE_DIR, 'agents', lang);
       const files = readdirSync(dir).filter((f) => f.endsWith('.md'));
-      expect(files, `${lang} agent 数`).toHaveLength(9);
+      expect(files, `${lang} agent 数`).toHaveLength(10);
     }
   });
 
@@ -582,5 +583,51 @@ describe('stage-88：调度与 Handoff 节（直接调度语义）对称与阴�
     expect(norm(readFileSync(file('claude', 'zh-CN', 'openfeel-vision'), 'utf-8'))).toContain('除直接调度通用工作者外，不调用其他 Agent / subagent');
     expect(norm(readFileSync(file('claude', 'zh-CN', 'openfeel-executor'), 'utf-8')), '⑤ zh').toContain('（subagent 不调用 Task）');
     expect(norm(readFileSync(file('claude', 'en', 'openfeel-executor'), 'utf-8')), '⑤ en').toContain('(subagents do not call Task)');
+  });
+});
+
+/**
+ * stage-89：探索者注册与路由替代（T3.1/T3.2）
+ * ① 注册面（listAgentIds / listClaudeAgentIds 含 openfeel-explorer 且计数 10）；
+ * ② 路由正控（4 份路由行指向 openfeel-explorer）；
+ * ③ 路由阴性（同行 scoped + 大小写敏感：general / explore Agent / 反引号 Explore 零残留；
+ *    REV-89-005 定界——第 1/3 列 exploration 与 :41 explore independently 为存量非命中面，整文件扫描会误伤）。
+ */
+describe('stage-89：探索者注册与路由替代（T3.1/T3.2）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+  const ROUTE_FILES = [
+    join(TD, 'agents-md', 'zh-CN.md'),
+    join(TD, 'agents-md', 'en.md'),
+    join(TD, 'claude', 'constraint', 'zh-CN.md'),
+    join(TD, 'claude', 'constraint', 'en.md'),
+  ];
+  const routeLineOf = (p: string): string | undefined =>
+    norm(readFileSync(p, 'utf-8')).split('\n').find((l) => l.includes('research（') || l.includes('research ('));
+
+  it('① 注册面：双语 agents 目录均含 openfeel-explorer 且计数 10', () => {
+    expect(listAgentIds('zh-CN')).toContain('openfeel-explorer');
+    expect(listAgentIds('en')).toContain('openfeel-explorer');
+    expect(listClaudeAgentIds('zh-CN')).toContain('openfeel-explorer');
+    expect(listAgentIds('zh-CN')).toHaveLength(10);
+    expect(listAgentIds('en')).toHaveLength(10);
+    expect(listClaudeAgentIds('zh-CN')).toHaveLength(10);
+  });
+
+  it('② 路由正控：4 份路由行指向 openfeel-explorer', () => {
+    for (const p of ROUTE_FILES) {
+      const route = routeLineOf(p);
+      expect(route, `${p} 路由行非空（防假绿）`).toBeTruthy();
+      expect(route, `${p} 路由行正控`).toContain('openfeel-explorer');
+    }
+  });
+
+  it('③ 路由阴性（同行 scoped + 大小写敏感）', () => {
+    for (const p of ROUTE_FILES) {
+      const route = routeLineOf(p);
+      expect(route, `${p} 路由行非空（防假绿）`).toBeTruthy();
+      expect(route, `${p} 残留 general`).not.toContain('general');
+      expect(route, `${p} 残留 explore Agent`).not.toContain('explore Agent');
+      expect(route, `${p} 残留 Explore`).not.toContain('`Explore`');
+    }
   });
 });

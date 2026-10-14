@@ -213,14 +213,14 @@ describe('model-config', () => {
       expect(r.effective).toBe('alibaba-cn/fm-only');
     });
 
-    it('listAgentModels 返回 9 条，每条 byScope 完整（REV-1507）', () => {
+    it('listAgentModels 返回 10 条，每条 byScope 完整（REV-1507）', () => {
       writeAuthJson(['deepseek', 'zhipuai', 'alibaba-cn']);
       const proj = mkdtempSync(join(tmpdir(), 'model-config-proj-'));
       projectDirs.push(proj);
       const fw = setupFrameworkTmp();
       fwRoots.push(fw);
       const list = listAgentModels(undefined, { projectPath: proj, frameworkRoot: fw });
-      expect(list).toHaveLength(9);
+      expect(list).toHaveLength(10);
       for (const item of list) {
         expect(item.byScope).toHaveProperty('project');
         expect(item.byScope).toHaveProperty('global');

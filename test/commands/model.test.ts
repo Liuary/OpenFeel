@@ -79,14 +79,14 @@ describe('openfeel model 命令', () => {
     }
   });
 
-  it('list 输出 9 个 agent', () => {
+  it('list 输出 10 个 agent', () => {
     const r = runModel(['list']);
     expect(r.exitCode).toBe(0);
     // 不依赖 i18n 语言：断言出现 openfeel- 前缀 agent 条目
     expect(r.stdout).toContain('openfeel-executor');
     const lines = r.stdout.split('\n').filter((l) => l.includes('openfeel-') || /^\s+feel:/.test(l));
-    // 9 个 agent 中 8 个带 openfeel- 前缀 + feel
-    expect(lines.length).toBeGreaterThanOrEqual(9);
+    // 10 个 agent 中 9 个带 openfeel- 前缀 + feel
+    expect(lines.length).toBeGreaterThanOrEqual(10);
   });
 
   it('get 指定 scope 仅展示该 scope 值（T45：强断言 agent 名 + model 值，cwd 隔离）', () => {

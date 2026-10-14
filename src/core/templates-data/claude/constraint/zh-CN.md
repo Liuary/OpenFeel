@@ -14,7 +14,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 | 任务类型 | 处理路径 | 说明 |
 |----------|----------|------|
-| 调研/探索（读代码、查资料、定位问题） | 主会话（Feel 角色）→ research（`general` / `Explore` subagent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
+| 调研/探索（读代码、查资料、定位问题） | 主会话（Feel 角色）→ research（`openfeel-explorer` subagent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
 | 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester）（full）；fast 工作流快线（workflow_mode=fast）下为 planner → 计划审查（reviewer，单轮必经）→ executor → 代码审查（reviewer）→ archiver——见 status.md「工作流模式」 / openfeel flow mode | 有源码变更，须走完整审计链（fast 走快线审计链） |
 | 选型讨论（敲定技术方案/设计取舍） | 主会话（Feel 角色）与用户 + `AskUserQuestion` 工具 | 对话式决策，产出结论，不产出 plan.md |
 
@@ -84,15 +84,16 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 偏离以上约束的行为视为违规，审查时将被标记。
 
-### 9 Agent 体系总览
+### 10 Agent 体系总览
 
-> **9 agents（含主会话 `feel`）+ Task 调度**
+> **10 agents（含主会话 `feel`）+ Task 调度**
 
 | Agent | 角色 | 驱动模型 | 启动方式 |
 |-------|------|----------|----------|
 | Feel | 总统领 | 主力推理模型 | 主会话（`settings.json` `agent:"feel"`） |
 | openfeel-planner | 计划官 | 推理模型 | Claude subagent（Task 调度） |
 | openfeel-schemer | 方案官 | 主力推理模型 | Claude subagent（Task 调度） |
+| openfeel-explorer | 探索者 | 快速模型 (Flash) | Claude subagent（Task 调度） |
 | openfeel-executor | 执行官 | 快速模型 (Flash) | Claude subagent（Task 调度） |
 | openfeel-reviewer | 审查官 | 异种推理模型 (GLM) | Claude subagent（Task 调度） |
 | openfeel-feel-tester | 测试官 | 推理模型 | Claude subagent（Task 调度） |
@@ -106,7 +107,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 Claude Code 的权限与工具可用性由 subagent 的 `tools` 白名单与 `settings.json` 共同决定，随 `openfeel setup` / `openfeel update --tools claude` 部署。
 
-1. **subagent 工具白名单**：Claude Code 的 subagent 通过 frontmatter `tools:` 声明可用工具白名单（**未列即不可用**）；另可经 `disallowedTools`（黑名单）与 `permissionMode` 调整。本框架 8 个 subagent 的白名单见各自 `.md` frontmatter；主会话 `feel` **不设 `tools`**（继承全部工具）。
+1. **subagent 工具白名单**：Claude Code 的 subagent 通过 frontmatter `tools:` 声明可用工具白名单（**未列即不可用**）；另可经 `disallowedTools`（黑名单）与 `permissionMode` 调整。本框架 9 个 subagent 的白名单见各自 `.md` frontmatter；主会话 `feel` **不设 `tools`**（继承全部工具）。
 
 2. **本期由 stage-73 注入 `settings.json`**：`openfeel setup/update --tools claude`（stage-71 接命令面）在 **stage-73** 注入 `~/.claude/settings.json` 的 `"agent": "feel"`（默认主会话 agent）与 `"permissions": { "defaultMode": "auto" }`（auto mode）；**本阶段（stage-69）不写 `settings.json`**，仅建立内容源。
 

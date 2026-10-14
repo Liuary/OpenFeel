@@ -2,11 +2,11 @@
  * Claude 适配器跨切面断言（stage-69 T7.5b）
  *
  * 职责：对 Claude Code 独立内容源（templates-data/claude/**）做源文件级 + 跨切面断言：
- *  ① name == 文件名（9×2）；
+ *  ① name == 文件名（10×2）；
  *  ② frontmatter `model: inherit`（供应商中立，裁定 E）；
  *  ③ CLAUDE.md 体量软上限 ≤ 700 行（防体量反弹，设计目标 ≈560）；
  *  ④ claude-settings.ts 于 stage-73 落地（存在性断言已翻转）；
- *  ⑤ Claude agents 数 == opencode agents 数（均 9，含 feel，**非 −1**）。
+ *  ⑤ Claude agents 数 == opencode agents 数（均 10，含 feel，**非 −1**）。
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -20,7 +20,7 @@ const OPENCODE_DIR = join(ROOT, 'src', 'core', 'templates-data', 'opencode');
 const LANGS = ['zh-CN', 'en'];
 
 describe('Claude 适配器跨切面（stage-69 T7.5b）', () => {
-  it('name == 文件名（9×2）', () => {
+  it('name == 文件名（10×2）', () => {
     for (const lang of LANGS) {
       const dir = join(CLAUDE_DIR, 'agents', lang);
       const files = readdirSync(dir).filter((f) => f.endsWith('.md'));
@@ -62,12 +62,35 @@ describe('Claude 适配器跨切面（stage-69 T7.5b）', () => {
     expect(existsSync(join(CLAUDE_DIR, 'settings.json'))).toBe(false);
   });
 
-  it('agents 数 == opencode 数（= 9，含 feel，非 −1）', () => {
+  it('agents 数 == opencode 数（= 10，含 feel，非 −1）', () => {
     for (const lang of LANGS) {
       const claudeCount = readdirSync(join(CLAUDE_DIR, 'agents', lang)).filter((f) => f.endsWith('.md')).length;
       const opencodeCount = readdirSync(join(OPENCODE_DIR, 'agents', lang)).filter((f) => f.endsWith('.md')).length;
       expect(claudeCount, `${lang} claude vs opencode`).toBe(opencodeCount);
-      expect(claudeCount).toBe(9);
+      expect(claudeCount).toBe(10);
+    }
+  });
+
+  it('stage-89：openfeel-explorer tools 恰 Bash, Read, Glob, Grep + 无 forbiddenTokens + 正文无裸主语', () => {
+    for (const lang of LANGS) {
+      const c = readFileSync(join(CLAUDE_DIR, 'agents', lang, 'openfeel-explorer.md'), 'utf-8');
+      const fm = splitFrontmatter(c)!.frontmatter;
+      expect(fm.name, `${lang} name`).toBe('openfeel-explorer');
+      expect(fm.model, `${lang} model`).toBe('inherit');
+      const tools = String(fm.tools).split(',').map((s) => s.trim()).sort();
+      expect(tools, `${lang} tools 集合`).toEqual(['Bash', 'Glob', 'Grep', 'Read']);
+      for (const banned of ['Edit', 'Write', 'Task', 'Skill', 'TodoWrite']) {
+        expect(tools, `${lang} 不该含 ${banned}`).not.toContain(banned);
+      }
+      for (const t of ['mode:', 'permission:', 'reasoning_effort:', '.opencode/']) {
+        expect(c, `${lang} forbiddenToken ${t}`).not.toContain(t);
+      }
+      // 框架专名 `OpenFeel` 含子串 `Feel`（非裸主语）→ 剔除专名后再判裸主语
+      // （执行期偏差登记：op-001 §1.8 对整文件字面 `not.toContain('Feel')` 在专名 `OpenFeel` 下恒假，实测已捕获）
+      const body = c.replace(/OpenFeel/g, '');
+      for (const s of ['Feel', '主会话', 'main session']) {
+        expect(body, `${lang} 裸主语 ${s}`).not.toContain(s);
+      }
     }
   });
 

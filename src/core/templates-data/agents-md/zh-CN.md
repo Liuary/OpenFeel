@@ -14,7 +14,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 | 任务类型 | 处理路径 | 说明 |
 |----------|----------|------|
-| 调研/探索（读代码、查资料、定位问题） | Feel → research（general / explore Agent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
+| 调研/探索（读代码、查资料、定位问题） | Feel → research（`openfeel-explorer` Agent） | 只读探索，不产出源码变更，flow.json 不必为此空转 |
 | 编码实现（新增/修改源码） | 完整流水线（openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer → openfeel-feel-tester）（full）；fast 工作流快线（workflow_mode=fast）下为 planner → 计划审查（reviewer，单轮必经）→ executor → 代码审查（reviewer）→ archiver——见 status.md「工作流模式」 / openfeel flow mode | 有源码变更，须走完整审计链（fast 走快线审计链） |
 | 选型讨论（敲定技术方案/设计取舍） | Feel + `question` 工具 | 对话式决策，产出结论，不产出 plan.md |
 
@@ -84,13 +84,14 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 偏离以上约束的行为视为违规，审查时将被标记。
 
-### 9 Agent 体系总览
+### 10 Agent 体系总览
 
 | Agent | 角色 | 驱动模型 | 调起方式 |
 |-------|------|----------|----------|
 | Feel | 总统领 | 主力推理模型 | primary |
 | openfeel-planner | 计划官 | 推理模型 | subagent |
 | openfeel-schemer | 方案官 | 主力推理模型 | subagent |
+| openfeel-explorer | 探索者 | 快速模型 (Flash) | subagent |
 | openfeel-executor | 执行官 | 快速模型 (Flash) | subagent |
 | openfeel-reviewer | 审查官 | 异种推理模型 (GLM) | subagent |
 | openfeel-feel-tester | 测试官 | 推理模型 | subagent |
@@ -102,7 +103,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 ## 权限模型（Agent permission）
 
-9 个 agent 各自内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `openfeel setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）。
+10 个 agent 各自内联 `permission:` 白名单（含 `external_directory: "allow"`），随 `openfeel setup` 部署到**全局 agents 目录**（opencode 适配器：`~/.config/opencode/agents/*.md`）。
 
 - **合并语义（按权限键深合并，agent 优先）**：agent `.md` frontmatter 的 `permission` 与项目/全局 `opencode.jsonc` 的 `permission` / `agent.<name>.permission` **按权限键深合并**；**同名键以 agent `.md` 为准（配置文件无法覆盖）**，agent 未声明的键才由配置生效。
 - **`external_directory`**：框架内联配置 `"allow"` → agent 生效值 `allow`（工作区外目录免询问）；**opencode 平台默认为 `ask`**，补键是行为变更（ask→allow，依据隔离环境实测 opencode 1.18.33）。

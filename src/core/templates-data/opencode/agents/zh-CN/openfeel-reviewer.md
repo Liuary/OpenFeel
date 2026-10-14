@@ -9,6 +9,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  task: "allow"
   external_directory: "allow"
 ---
 
@@ -103,6 +104,16 @@ blocking: true | false
 2. **可疑历史结论不得继承**：来自「被判定可疑」会话的 REV 条目 / 验收记录 / 事实断言，一律视为**「待复核」**；未经本会话独立复核，**不得**据此推进流水线或作为审查依据。
 3. **命令行取证优先于 read / glob**：关键事实（文件内容、行号、计数、状态）以命令行（`rg -n` / `Get-Content` / `node -e`）实测为**唯一权威**；当 `read` / `glob` 结果与命令行冲突时，**以命令行为准**，并在结论中标注取证命令。
 4. **结论须第三方可复现**：每条事实性结论须给出**可复现三要素**——命令 + 版本（`opencode --version` / `node -v` / 仓库 commit） + 环境（隔离 HOME 与否）；无法复现的结论须显式标注「未确证」。
+
+## 调度与 Handoff
+
+本 Agent **可直接调度**（不经多级转介）：通用工作者 `openfeel-executor`（读写）。
+
+`openfeel-feel-tester`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
+
+> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+
+超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 `[HANDOFF: agent_name]` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
 ## 模型选择
 

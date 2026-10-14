@@ -1473,7 +1473,7 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 触发条件（任一必问）：需求歧义 / 多个同等合理方案 / 不可逆后果 / 架构决策。使用要求：(Recommended) 标记、选项附后果、≤3 选项、高风险含"取消"。禁止：模糊时自行假设、多方案不选直接实施。
 
 ### 3. task — 子 Agent 调度
-触发条件：并行探索多代码区 / 复杂多步委托 general / 下游 Agent（经主会话（Feel））。使用要求：并行一条消息多 task、prompt 含任务描述+期望返回、明确只读/可写。
+触发条件：并行探索多代码区 / 复杂多步委托 general / 下游 Agent（经主会话（Feel）） / 直接调度通用工作者（执行者 openfeel-executor；任意 Agent 均可直发，不经多级转介）。使用要求：并行一条消息多 task、prompt 含任务描述+期望返回、明确只读/可写。
 
 ### 4. skill — 技能加载
 触发条件：查阶段状态→openfeel-get-stage-status / 查知识库→openfeel-check-kb / 取 Bug→openfeel-get-bugs。使用要求：会话开始载 check-kb、处理阶段任务前载 get-stage-status、不凭记忆跳过。
@@ -1486,6 +1486,7 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 | 探索代码 | task(explore) | 手动逐个 grep/read |
 | 获取状态 | skill(openfeel-get-stage-status) | 凭记忆推断 |
 | 批量文件操作 | task(general) | 串行逐个处理 |
+| 通用执行任务 | task(openfeel-executor) | 自行串行处理 |
 
 ## 工具名映射（跨 harness）
 

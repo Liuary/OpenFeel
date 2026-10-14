@@ -8,6 +8,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  task: "allow"
   external_directory: "allow"
 ---
 
@@ -116,6 +117,16 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 - 计划关联需求：产出的 `plan.md` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
 - 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 `openfeel req` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
 - 与「工作流模式感知」正交：`full` / `fast` 下需求感知口径一致。
+
+## 调度与 Handoff
+
+本 Agent **可直接调度**（不经多级转介）：通用工作者 `openfeel-executor`（读写）。
+
+`openfeel-feel-tester`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
+
+> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+
+超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 `[HANDOFF: agent_name]` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
 ## 模型选择
 

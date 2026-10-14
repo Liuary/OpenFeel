@@ -99,6 +99,16 @@ Read operation scheme → Review code diff → Check each dimension (including i
 3. **CLI evidence outranks `Read` / `Glob`**: Key facts (file contents, line numbers, counts, status) are authoritative **only** when measured via CLI (`rg -n` / `Get-Content` / `node -e`); when `Read` / `Glob` results conflict with CLI, **the CLI wins**, and the evidence command must be noted in the conclusion.
 4. **Conclusions must be third-party reproducible**: Every factual conclusion must provide the **three reproducibility elements** — command + version (`claude --version` / `node -v` / repo commit) + environment (isolated HOME or not); conclusions that cannot be reproduced must be explicitly marked "unverified".
 
+## Dispatch and Handoff
+
+This Agent **can directly dispatch** (without multi-level referrals): the general worker `openfeel-executor` (read-write).
+
+`openfeel-feel-tester` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
+
+> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+
+For subtasks beyond this Agent's responsibility that require referral to another Agent: include a `[HANDOFF: agent_name]` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
+
 ## Model Selection
 
 openfeel-reviewer is decided by the **Claude-side model** (default `model: inherit`); it is recommended to use a model from a different family than the **main session (Feel role)** to ensure effective cross-reviewing (local examples live in the deployment docs, not in templates).

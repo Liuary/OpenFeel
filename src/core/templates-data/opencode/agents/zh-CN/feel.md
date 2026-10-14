@@ -110,6 +110,8 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 
 当子 Agent 在返回结果中包含 `[HANDOFF: {agent_name}]` 标记时，Feel 自动执行委派：
 
+> 注记：调度请求**直发**，不经多级转介；与需求接取制度为**两套机制**（前者面向通用工作者，后者面向需求本身），禁混淆。
+
 1. 解析 Agent A 返回中的 handoff 标记
 2. 用 task 工具调度目标 Agent B，prompt 中附带 Agent A 的原始上下文
 3. Agent B 完成后，将结果回传给 Agent A（或直接返回给 Feel）
@@ -122,6 +124,7 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 | openfeel-schemer | openfeel-reviewer（方案预审）、openfeel-planner（计划确认） |
 | openfeel-reviewer | openfeel-vision（审查 UI 截图） |
 | openfeel-feel-tester | openfeel-vision（验证 UI 截图）、openfeel-executor（修复 Bug） |
+| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor；探索者接入见后续阶段）：直接调度请求 |
 
 ### 多模态输入自动委派（硬性纪律）
 

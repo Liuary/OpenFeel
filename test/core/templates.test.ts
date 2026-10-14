@@ -504,3 +504,83 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
     expect((c.match(/node bin\/openfeel\.js/g) ?? []).length, 'T53 自举加注恒 1').toBe(1);
   });
 });
+
+/**
+ * stage-88：调度与 Handoff 节（直接调度语义）
+ * S1 节计数/切片正控/裸主语与 explorer 阴性/模型选择节位于其后；S2 跨 harness 切片逐字一致；S3 负向措辞 10 行。
+ */
+describe('stage-88：调度与 Handoff 节（直接调度语义）对称与阴性（S1/S2/S3）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+  const IDS = ['openfeel-planner', 'openfeel-schemer', 'openfeel-reviewer', 'openfeel-archiver', 'openfeel-utility', 'openfeel-vision'];
+  const H_ZH = '## 调度与 Handoff'; const H_EN = '## Dispatch and Handoff';
+  const M_ZH = '## 模型选择'; const M_EN = '## Model Selection';
+  const file = (h: string, lang: string, id: string) => join(TD, h, 'agents', lang, `${id}.md`);
+
+  /** 提取节切片：标题行 → 下一个 markdown 标题行（不含；防行号漂移）——stage-84 S1 同款 */
+  const extractSection = (text: string, heading: string): string => {
+    const lines = text.split('\n');
+    const start = lines.findIndex((l) => l.startsWith(heading));
+    if (start < 0) { return ''; }
+    const rest = lines.slice(start + 1);
+    const stop = rest.findIndex((l) => /^#{1,6} /.test(l));
+    return [lines[start], ...(stop < 0 ? rest : rest.slice(0, stop))].join('\n');
+  };
+
+  it('S1 节标题恰 1 处 + 切片非空 + 正控 + 裸主语零出现 + 模型选择节位于其后', () => {
+    const combos = [['opencode', 'zh-CN', H_ZH, M_ZH], ['claude', 'zh-CN', H_ZH, M_ZH],
+      ['opencode', 'en', H_EN, M_EN], ['claude', 'en', H_EN, M_EN]] as const;
+    for (const id of IDS) {
+      for (const [h, lang, H, M] of combos) {
+        const c = norm(readFileSync(file(h, lang, id), 'utf-8'));
+        expect((c.match(new RegExp(H, 'g')) ?? []).length, `${h}/${lang}/${id} 节计数`).toBe(1);
+        const block = extractSection(c, H);
+        expect(block.length, `${h}/${lang}/${id} 切片非空`).toBeGreaterThan(0);
+        expect(block, `${h}/${lang}/${id} 缺 HANDOFF 标记`).toContain('[HANDOFF: agent_name]');
+        expect(block, `${h}/${lang}/${id} 缺通用工作者名`).toContain('openfeel-executor');
+        expect(block, `${h}/${lang}/${id} 裸主语 Feel`).not.toContain('Feel');
+        expect(block, `${h}/${lang}/${id} 裸主语 主会话`).not.toContain('主会话');
+        expect(block, `${h}/${lang}/${id} 裸主语 main session`).not.toContain('main session');
+        expect(block, `${h}/${lang}/${id} 悬空引用 explorer`).not.toContain('openfeel-explorer');
+        expect(c, `${h}/${lang}/${id} 缺 ${M}`).toContain(M);
+        expect(c.indexOf(M), `${h}/${lang}/${id} 锚点错位`).toBeGreaterThan(c.indexOf(H));
+      }
+    }
+  });
+
+  it('S2 跨 harness 切片逐字一致（zh 6×2 + en 6×2）', () => {
+    for (const id of IDS) {
+      for (const [lang, H] of [['zh-CN', H_ZH], ['en', H_EN]] as const) {
+        const oc = extractSection(norm(readFileSync(file('opencode', lang, id), 'utf-8')), H);
+        const cc = extractSection(norm(readFileSync(file('claude', lang, id), 'utf-8')), H);
+        expect(oc.length, `${lang}/${id} opencode 切片非空`).toBeGreaterThan(0);
+        expect(cc, `${lang}/${id} 跨 harness 逐字一致`).toBe(oc);
+      }
+    }
+  });
+
+  it('S3 负向措辞规整 10 行：新表述在位 + 旧表述零残留（行级精确匹配）', () => {
+    const UTIL = [['opencode', 'zh-CN', '4. 除直接调度通用工作者外，不调用其他 Agent', /^4\. 不调用其他 Agent$/m],
+      ['opencode', 'en', '4. Do not invoke other Agents except for direct dispatch of general workers.', /^4\. Do not invoke other Agents\.$/m],
+      ['claude', 'zh-CN', '4. 除直接调度通用工作者外，不调用其他 Agent', /^4\. 不调用其他 Agent$/m],
+      ['claude', 'en', '4. Do not invoke other Agents except for direct dispatch of general workers.', /^4\. Do not invoke other Agents\.$/m]] as const;
+    for (const [h, lang, pos, neg] of UTIL) {
+      const c = norm(readFileSync(file(h, lang, 'openfeel-utility'), 'utf-8'));
+      expect(c, `${h}/${lang} utility 新表述`).toContain(pos);
+      expect(c, `${h}/${lang} utility 旧表述残留`).not.toMatch(neg);
+    }
+    const VIS = [['opencode', 'zh-CN', '- 除直接调度通用工作者外，不调用其他 Agent / subagent', /^- 不调用其他 Agent$/m],
+      ['opencode', 'en', '- Does not invoke other Agents / subagents except for direct dispatch of general workers.', /^- Does not invoke other Agents$/m],
+      ['claude', 'zh-CN', '- 除直接调度通用工作者外，不调用其他 Agent / subagent', /^- 不调用其他 subagent$/m],
+      ['claude', 'en', '- Does not invoke other Agents / subagents except for direct dispatch of general workers.', /^- Does not invoke other subagents$/m]] as const;
+    for (const [h, lang, pos, neg] of VIS) {
+      const c = norm(readFileSync(file(h, lang, 'openfeel-vision'), 'utf-8'));
+      expect(c, `${h}/${lang} vision 新表述`).toContain(pos);
+      expect(c, `${h}/${lang} vision 旧表述残留`).not.toMatch(neg);
+    }
+    expect(norm(readFileSync(file('claude', 'zh-CN', 'openfeel-vision'), 'utf-8')), 'zh 括注残留').not.toContain('（subagent 不互调）');
+    expect(norm(readFileSync(file('claude', 'en', 'openfeel-vision'), 'utf-8')), 'en 括注残留').not.toContain('subagents do not invoke each other');
+    expect(norm(readFileSync(file('claude', 'zh-CN', 'openfeel-vision'), 'utf-8'))).toContain('除直接调度通用工作者外，不调用其他 Agent / subagent');
+    expect(norm(readFileSync(file('claude', 'zh-CN', 'openfeel-executor'), 'utf-8')), '⑤ zh').toContain('（subagent 不调用 Task）');
+    expect(norm(readFileSync(file('claude', 'en', 'openfeel-executor'), 'utf-8')), '⑤ en').toContain('(subagents do not call Task)');
+  });
+});

@@ -9,6 +9,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  task: "allow"
   external_directory: "allow"
 ---
 
@@ -53,9 +54,19 @@ openfeel-vision 接收图片输入后，按照需求进行分析，输出结构�
 - 不执行代码修改或文件写入（无 write/task 权限）。拥有 bash 权限但仅限于只读命令（如 cat、head、grep），不执行任何文件写入或修改操作
 - 不参与方案设计或架构决策
 - 不参与流水线阶段推进（不操作 flow.json / status.md）
-- 不调用其他 Agent
+- 除直接调度通用工作者外，不调用其他 Agent / subagent
 
 当分析需求超出视觉分析范围时，如实告知调用方能力边界并建议合适的 Agent（如 openfeel-executor 执行代码修改、openfeel-schemer 制定方案等）。
+
+## 调度与 Handoff
+
+本 Agent **可直接调度**（不经多级转介）：通用工作者 `openfeel-executor`（读写）。
+
+`openfeel-feel-tester`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
+
+> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+
+超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 `[HANDOFF: agent_name]` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
 ## 模型选择
 

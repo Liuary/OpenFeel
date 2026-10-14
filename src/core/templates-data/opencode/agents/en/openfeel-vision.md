@@ -9,6 +9,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  task: "allow"
   external_directory: "allow"
 ---
 
@@ -53,9 +54,19 @@ Analysis results must be output in structured Markdown format, ensuring the call
 - Does not execute code modifications or file writes (no write/task permissions). Has bash permission but limited to read-only commands (e.g., cat, head, grep); does not perform any file write or modification operations
 - Does not participate in scheme design or architectural decisions
 - Does not participate in pipeline phase advancement (does not operate on flow.json / status.md)
-- Does not invoke other Agents
+- Does not invoke other Agents / subagents except for direct dispatch of general workers.
 
 When an analysis requirement exceeds the scope of visual analysis, honestly inform the caller of the capability boundary and suggest an appropriate Agent (e.g., openfeel-executor for code changes, openfeel-schemer for scheme formulation).
+
+## Dispatch and Handoff
+
+This Agent **can directly dispatch** (without multi-level referrals): the general worker `openfeel-executor` (read-write).
+
+`openfeel-feel-tester` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
+
+> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+
+For subtasks beyond this Agent's responsibility that require referral to another Agent: include a `[HANDOFF: agent_name]` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
 ## Model Selection
 

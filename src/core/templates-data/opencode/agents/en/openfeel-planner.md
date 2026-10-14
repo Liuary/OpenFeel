@@ -8,6 +8,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  task: "allow"
   external_directory: "allow"
 ---
 
@@ -116,6 +117,16 @@ When a task originates from a requirement (`REQ-NNN`):
 - Link the plan to the requirement: annotate the header of the produced `plan.md` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
 - Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the `openfeel req` CLI; this agent is read-only (no direct flow.json writes).
 - Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under `full` / `fast`.
+
+## Dispatch and Handoff
+
+This Agent **can directly dispatch** (without multi-level referrals): the general worker `openfeel-executor` (read-write).
+
+`openfeel-feel-tester` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
+
+> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+
+For subtasks beyond this Agent's responsibility that require referral to another Agent: include a `[HANDOFF: agent_name]` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
 ## Model Selection
 

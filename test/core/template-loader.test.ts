@@ -295,6 +295,40 @@ describe('权限模型（stage-44）', () => {
       }
     }
   });
+
+  it('stage-88：6 subagent × zh/en 权威源 permission.task 均为 allow（直接调度授权）', () => {
+    const IDS = ['openfeel-planner', 'openfeel-schemer', 'openfeel-reviewer', 'openfeel-archiver', 'openfeel-utility', 'openfeel-vision'];
+    for (const lang of LANGS) {
+      for (const id of IDS) {
+        const perm = permOf(loadAgentTemplate(lang, id));
+        expect(perm, `${lang}/${id} 缺 task`).toHaveProperty('task');
+        expect(isAllow(perm.task), `${lang}/${id} task 值`).toBe(true);
+      }
+    }
+  });
+
+  it('stage-88：部署源 OPENCODE_AGENT_TEMPLATES 侧 task 键同步一致', () => {
+    const IDS = ['openfeel-planner', 'openfeel-schemer', 'openfeel-reviewer', 'openfeel-archiver', 'openfeel-utility', 'openfeel-vision'];
+    for (const lang of LANGS) {
+      for (const id of IDS) {
+        const dep = permOf(loadOpencodeAgentTemplate(lang, id));
+        expect(dep, `${lang}/${id} 部署源缺 task`).toHaveProperty('task');
+        expect(isAllow(dep.task), `${lang}/${id} 部署源 task 值`).toBe(true);
+      }
+    }
+  });
+
+  it('stage-88 阴性（范围锁）：executor / feel-tester 键集逐字不变', () => {
+    const GOLDEN: Record<string, string[]> = {
+      'openfeel-executor': ['bash', 'external_directory', 'glob', 'grep', 'read', 'task'],
+      'openfeel-feel-tester': ['bash', 'external_directory', 'glob', 'grep', 'read', 'skill', 'task', 'webfetch'],
+    };
+    for (const lang of LANGS) {
+      for (const id of Object.keys(GOLDEN)) {
+        expect(permKeys(lang, id), `${lang}/${id} 键集`).toEqual(GOLDEN[id]);
+      }
+    }
+  });
 });
 
 /**

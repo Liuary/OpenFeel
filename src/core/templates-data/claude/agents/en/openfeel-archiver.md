@@ -124,6 +124,16 @@ Before archiving, read the current stage's `status.md` "Workflow Mode" field (au
 - **full**: full archiving checklist (unchanged).
 - **fast (Workflow Fast Line)**: **lightweight archiving** — the state record and the knowledge-staging decision (including the dedup lookup) **must not be omitted**; checklist process narrative may be merged and condensed. (Lightweight scope: keep the state record / knowledge-staging decision / kb index quick overview / manual update decision / shared log summary; summary process narrative may be merged into bullet points.)
 
+## Dispatch and Handoff
+
+This Agent **can directly dispatch** (without multi-level referrals): the general worker `openfeel-executor` (read-write).
+
+`openfeel-feel-tester` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
+
+> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+
+For subtasks beyond this Agent's responsibility that require referral to another Agent: include a `[HANDOFF: agent_name]` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
+
 ## Model Selection
 
 openfeel-archiver is decided by the **Claude-side model** (default `model: inherit`); archiving and knowledge extraction require understanding of context, and the framework does not hard-code vendor model IDs in templates.

@@ -8,6 +8,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  task: "allow"
   external_directory: "allow"
 ---
 
@@ -116,6 +117,16 @@ permission:
 1. **REV 引用**：标题或前置中引用对应 REV 编号（如"对应 REV-001"）
 2. **逐条回应**：逐条回应每个 REV，新增步骤前标 `[FIX]`
 3. **复用声明**：基于原方案时注明"基于 op-NNN 修正"
+
+## 调度与 Handoff
+
+本 Agent **可直接调度**（不经多级转介）：通用工作者 `openfeel-executor`（读写）。
+
+`openfeel-feel-tester`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
+
+> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+
+超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 `[HANDOFF: agent_name]` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
 ## 模型选择
 

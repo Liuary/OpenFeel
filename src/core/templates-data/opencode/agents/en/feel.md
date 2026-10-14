@@ -110,6 +110,8 @@ Minimal op file requirements: placed in the corresponding stage's `ops/` directo
 
 When a sub-agent includes the `[HANDOFF: {agent_name}]` marker in its returned result, Feel automatically performs the delegation:
 
+> Note: dispatch requests are **sent directly**, without multi-level referrals; a **different mechanism** from the requirement-claiming system (the former targets general workers, the latter targets requirements themselves) - do not conflate.
+
 1. Parse the handoff marker in Agent A's returned result
 2. Dispatch target Agent B via the `task` tool, attaching Agent A's original context in the prompt
 3. After Agent B completes, relay the result back to Agent A (or return it directly to Feel)
@@ -122,6 +124,7 @@ Available Handoff targets:
 | openfeel-schemer | openfeel-reviewer (pre-review schemes), openfeel-planner (confirm plans) |
 | openfeel-reviewer | openfeel-vision (review UI screenshots) |
 | openfeel-feel-tester | openfeel-vision (verify UI screenshots), openfeel-executor (fix bugs) |
+| Any Agent (including subagents) | General worker (openfeel-executor; explorer onboarding comes in a later stage): direct dispatch requests |
 
 ### Multimodal Input Auto-Delegation (Hard Rule)
 

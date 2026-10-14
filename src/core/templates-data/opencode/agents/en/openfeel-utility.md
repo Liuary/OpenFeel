@@ -9,6 +9,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  task: "allow"
   edit: "allow"
   external_directory: "allow"
 ---
@@ -38,7 +39,7 @@ The input format must include the `task_type: utility` marker and a specific ope
 1. Do not participate in design decisions.
 2. Do not modify `.ts` business logic source code.
 3. Do not modify Agent prompt files (`.opencode/agents/*.md`).
-4. Do not invoke other Agents.
+4. Do not invoke other Agents except for direct dispatch of general workers.
 5. Do not manipulate pipeline state (flow.json / status.md).
 6. Tasks beyond responsibility scope must be immediately returned to Feel.
 
@@ -47,6 +48,16 @@ The input format must include the `task_type: utility` marker and a specific ope
 - **openfeel-utility Agent**: Handles mechanical file operations (no judgment logic required), such as batch replacements, format conversion, build execution.
 - **openfeel-executor**: Handles tasks that require understanding of business logic context, escalated from Feel.
 - **Escalation condition**: When a task involves code logic judgment, scheme execution, or decision-making, Feel must label the task description with `type: utility` and transfer the openfeel-utility Agent's incomplete tasks to openfeel-executor.
+
+## Dispatch and Handoff
+
+This Agent **can directly dispatch** (without multi-level referrals): the general worker `openfeel-executor` (read-write).
+
+`openfeel-feel-tester` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
+
+> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+
+For subtasks beyond this Agent's responsibility that require referral to another Agent: include a `[HANDOFF: agent_name]` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
 ## Model Selection
 

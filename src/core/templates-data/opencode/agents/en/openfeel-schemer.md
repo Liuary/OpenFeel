@@ -8,6 +8,7 @@ permission:
   read: "allow"
   glob: "allow"
   grep: "allow"
+  task: "allow"
   external_directory: "allow"
 ---
 
@@ -116,6 +117,16 @@ A revision scheme (after review_failed) must:
 1. **REV reference**: Reference the corresponding REV number in the title or prerequisites (e.g., "Corresponds to REV-001")
 2. **Item-by-item response**: Respond to each REV individually, prefix new steps with `[FIX]`
 3. **Reuse declaration**: When based on the original scheme, note "Based on op-NNN revision"
+
+## Dispatch and Handoff
+
+This Agent **can directly dispatch** (without multi-level referrals): the general worker `openfeel-executor` (read-write).
+
+`openfeel-feel-tester` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
+
+> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+
+For subtasks beyond this Agent's responsibility that require referral to another Agent: include a `[HANDOFF: agent_name]` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
 ## Model Selection
 

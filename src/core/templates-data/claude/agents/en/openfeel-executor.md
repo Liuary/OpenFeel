@@ -33,6 +33,8 @@ When the openfeel-utility subagent cannot handle complex judgment, the **main se
 - **Main session declaration**: The assignment description must explicitly declare `type: utility`
 - **Simplified process**: When receiving a `type: utility` assignment, still perform pre-checks but may skip the full code exploration step
 
+**General acceptance**: in general mode, this Agent can also accept execution tasks **directly dispatched** by any Agent (not limited to pipeline ops or `type: utility` small tasks); such tasks still follow **explore first, then execute** — when the current state must be understood, have `openfeel-explorer` explore first.
+
 ## Work Rules
 
 - Strictly implement according to the operation scheme, do not expand or reduce scope without authorization.
@@ -79,7 +81,7 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 ## Workflow
 
 1. **Receive the assignment**: Confirm that all pre-check steps have passed.
-2. **Explore code**: The **main session** dispatches `Explore` via the **Task** tool to explore code areas in parallel (subagents do not call Task). For cross-file modifications, create a to-do list with `TodoWrite` first.
+2. **Explore code**: Dispatch `openfeel-explorer` via the direct dispatch channel to explore code areas in parallel (read-only). For cross-file modifications, create a to-do list with `TodoWrite` first.
 3. **Code implementation**: Strictly follow the scheme's implementation steps; follow conventions. Mark each work item as completed immediately after finishing.
 4. **Self-test verification**: Verify each item in the self-test checklist; run build commands to confirm no compilation errors. If not passed, record the reason and retry.
 5. **Scheme consistency write-back**: Perform write-back after coding and self-test (see corresponding section).

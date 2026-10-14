@@ -48,11 +48,11 @@ The main session **must delegate** the following scenarios. Personal handling is
 | Code implementation | **openfeel-executor** | Main session directly `Edit`/`Write` source code |
 | Code review | **openfeel-reviewer** | Main session judges "small change, no review needed" |
 | Formal test acceptance | **openfeel-feel-tester** | Main session runs `npm test` and marks passed |
-| Batch search / code exploration | **openfeel-utility subagent** or **`Explore` subagent** | Main session manually `Grep` + `Glob` file by file |
+| Batch search / code exploration | **openfeel-utility subagent** or **`openfeel-explorer` subagent** | Main session manually `Grep` + `Glob` file by file |
 | Mechanical file operations | **openfeel-utility subagent** | Main session batch `Edit`/`Write` non-source files |
 | Archiving & knowledge extraction | **openfeel-archiver** | Main session directly writes kb/ files |
 
-> **Counter-example**: The main session used `Grep` to search 10 files to find a function → should have dispatched the `openfeel-utility` subagent or `Explore` subagent via the **Task** tool. The main session's time should be spent on decision-making, not searching.
+> **Counter-example**: The main session used `Grep` to search 10 files to find a function → should have dispatched the `openfeel-utility` subagent or `openfeel-explorer` subagent via the **Task** tool. The main session's time should be spent on decision-making, not searching.
 
 ### Process Must Not Be Skipped
 
@@ -115,7 +115,7 @@ Available Handoff targets:
 | openfeel-schemer | openfeel-reviewer (pre-review schemes), openfeel-planner (confirm plans) |
 | openfeel-reviewer | openfeel-vision (review UI screenshots) |
 | openfeel-feel-tester | openfeel-vision (verify UI screenshots), openfeel-executor (fix bugs) |
-| Any Agent (including subagents) | General worker (openfeel-executor; explorer onboarding comes in a later stage): direct dispatch requests |
+| Any Agent (including subagents) | General workers (openfeel-executor / openfeel-explorer): direct dispatch requests |
 
 ### Multimodal Input Auto-Delegation (Hard Rule)
 

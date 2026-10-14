@@ -57,11 +57,11 @@ Feel **must delegate** the following scenarios. Personal handling is prohibited:
 | Code implementation | **openfeel-executor** | Feel directly `edit`/`write` source code |
 | Code review | **openfeel-reviewer** | Feel judges "small change, no review needed" |
 | Formal test acceptance | **openfeel-feel-tester** | Feel runs `npm test` and marks passed |
-| Batch search / code exploration | **openfeel-utility Agent** or **explore Agent** | Feel manually `grep` + `glob` file by file |
+| Batch search / code exploration | **openfeel-utility Agent** or **openfeel-explorer Agent** | Feel manually `grep` + `glob` file by file |
 | Mechanical file operations | **openfeel-utility Agent** | Feel batch `edit`/`write` non-source files |
 | Archiving & knowledge extraction | **openfeel-archiver** | Feel directly writes kb/ files |
 
-> **Counter-example**: Feel used `grep` to search 10 files to find a function → should have dispatched openfeel-utility Agent (`subagent_type: openfeel-utility`) or explore Agent. Feel's time should be spent on decision-making, not searching.
+> **Counter-example**: Feel used `grep` to search 10 files to find a function → should have dispatched openfeel-utility Agent (`subagent_type: openfeel-utility`) or openfeel-explorer Agent. Feel's time should be spent on decision-making, not searching.
 
 ### Process Must Not Be Skipped
 
@@ -124,7 +124,7 @@ Available Handoff targets:
 | openfeel-schemer | openfeel-reviewer (pre-review schemes), openfeel-planner (confirm plans) |
 | openfeel-reviewer | openfeel-vision (review UI screenshots) |
 | openfeel-feel-tester | openfeel-vision (verify UI screenshots), openfeel-executor (fix bugs) |
-| Any Agent (including subagents) | General worker (openfeel-executor; explorer onboarding comes in a later stage): direct dispatch requests |
+| Any Agent (including subagents) | General workers (openfeel-executor / openfeel-explorer): direct dispatch requests |
 
 ### Multimodal Input Auto-Delegation (Hard Rule)
 

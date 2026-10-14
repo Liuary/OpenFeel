@@ -408,7 +408,7 @@ export function getAgentModel(agentIdRaw: string, scope?: ModelScope, opts?: Mod
   return { agentId, effective, byScope, inconsistent: def.inconsistent };
 }
 
-/** 列出所有 9 个 agent 的模型（REV-1507：始终返回完整 byScope，scope 仅透传给 get） */
+/** 列出所有 10 个 agent 的模型（REV-1507：始终返回完整 byScope，scope 仅透传给 get） */
 export function listAgentModels(scope?: ModelScope, opts?: ModelConfigOptions): GetModelResult[] {
   return listAgentIds('zh-CN').map((id) => getAgentModel(id, scope, opts));
 }

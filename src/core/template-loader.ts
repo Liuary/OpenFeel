@@ -67,11 +67,11 @@ Feel **must delegate** the following scenarios. Personal handling is prohibited:
 | Code implementation | **openfeel-executor** | Feel directly \`edit\`/\`write\` source code |
 | Code review | **openfeel-reviewer** | Feel judges "small change, no review needed" |
 | Formal test acceptance | **openfeel-feel-tester** | Feel runs \`npm test\` and marks passed |
-| Batch search / code exploration | **openfeel-utility Agent** or **explore Agent** | Feel manually \`grep\` + \`glob\` file by file |
+| Batch search / code exploration | **openfeel-utility Agent** or **openfeel-explorer Agent** | Feel manually \`grep\` + \`glob\` file by file |
 | Mechanical file operations | **openfeel-utility Agent** | Feel batch \`edit\`/\`write\` non-source files |
 | Archiving & knowledge extraction | **openfeel-archiver** | Feel directly writes kb/ files |
 
-> **Counter-example**: Feel used \`grep\` to search 10 files to find a function → should have dispatched openfeel-utility Agent (\`subagent_type: openfeel-utility\`) or explore Agent. Feel's time should be spent on decision-making, not searching.
+> **Counter-example**: Feel used \`grep\` to search 10 files to find a function → should have dispatched openfeel-utility Agent (\`subagent_type: openfeel-utility\`) or openfeel-explorer Agent. Feel's time should be spent on decision-making, not searching.
 
 ### Process Must Not Be Skipped
 
@@ -134,7 +134,7 @@ Available Handoff targets:
 | openfeel-schemer | openfeel-reviewer (pre-review schemes), openfeel-planner (confirm plans) |
 | openfeel-reviewer | openfeel-vision (review UI screenshots) |
 | openfeel-feel-tester | openfeel-vision (verify UI screenshots), openfeel-executor (fix bugs) |
-| Any Agent (including subagents) | General worker (openfeel-executor; explorer onboarding comes in a later stage): direct dispatch requests |
+| Any Agent (including subagents) | General workers (openfeel-executor / openfeel-explorer): direct dispatch requests |
 
 ### Multimodal Input Auto-Delegation (Hard Rule)
 
@@ -608,7 +608,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -657,6 +657,8 @@ When the openfeel-utility Agent's model is fast and cannot handle complex judgme
 - **Feel declaration**: The task description must explicitly declare \`type: utility\`
 - **Simplified process**: When receiving a \`type: utility\` task, still perform pre-checks but may skip the full code exploration step
 
+**General acceptance**: in general mode, this Agent can also accept execution tasks **directly dispatched** by any Agent (not limited to pipeline ops or \`type: utility\` small tasks); such tasks still follow **explore first, then execute** — when the current state must be understood, have \`openfeel-explorer\` explore first.
+
 ## Work Rules
 
 - Strictly implement according to the operation scheme, do not expand or reduce scope without authorization.
@@ -703,7 +705,7 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 ## Workflow
 
 1. **Receive task**: Confirm that all pre-check steps have passed.
-2. **Explore code**: Use \`task(explore)\` to explore code areas in parallel. For cross-file modifications, create a task list with \`todowrite\` first.
+2. **Explore code**: Use \`task(openfeel-explorer)\` to explore code areas in parallel (read-only). For cross-file modifications, create a task list with \`todowrite\` first.
 3. **Code implementation**: Strictly follow the scheme's implementation steps; follow conventions. Mark each task as completed immediately after finishing.
 4. **Self-test verification**: Verify each item in the self-test checklist; run build commands to confirm no compilation errors. If not passed, record the reason and retry.
 5. **Scheme consistency write-back**: Perform write-back after coding and self-test (see corresponding section).
@@ -1133,7 +1135,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -1257,7 +1259,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -1417,7 +1419,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -1488,7 +1490,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -1562,7 +1564,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -1636,11 +1638,11 @@ permission:
 | 编码实现 | **openfeel-executor** | Feel 直接 \`edit\`/\`write\` 源码 |
 | 代码审查 | **openfeel-reviewer** | Feel 自行判断"改动小不用审" |
 | 正式测试验收 | **openfeel-feel-tester** | Feel 跑完 \`npm test\` 就标记通过 |
-| 批量搜索/探索代码 | **事务官** 或 **explore Agent** | Feel 手动 \`grep\` + \`glob\` 逐个搜文件 |
+| 批量搜索/探索代码 | **事务官** 或 **openfeel-explorer Agent** | Feel 手动 \`grep\` + \`glob\` 逐个搜文件 |
 | 文件机械操作 | **事务官** | Feel 批量 \`edit\`/\`write\` 非源码文件 |
 | 归档沉淀知识 | **openfeel-archiver** | Feel 直接写 kb/ 文件 |
 
-> **反例**：Feel 用 \`grep\` 搜索了 10 个文件找到某个函数 → 应该派事务官（\`subagent_type: openfeel-utility\`）或 explore Agent 去做。Feel 的时间应用于决策，不是搜索。
+> **反例**：Feel 用 \`grep\` 搜索了 10 个文件找到某个函数 → 应该派事务官（\`subagent_type: openfeel-utility\`）或 openfeel-explorer Agent 去做。Feel 的时间应用于决策，不是搜索。
 
 ### 流程不可跳过
 
@@ -1703,7 +1705,7 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 | openfeel-schemer | openfeel-reviewer（方案预审）、openfeel-planner（计划确认） |
 | openfeel-reviewer | openfeel-vision（审查 UI 截图） |
 | openfeel-feel-tester | openfeel-vision（验证 UI 截图）、openfeel-executor（修复 Bug） |
-| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor；探索者接入见后续阶段）：直接调度请求 |
+| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor / openfeel-explorer）：直接调度请求 |
 
 ### 多模态输入自动委派（硬性纪律）
 
@@ -2176,7 +2178,7 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -2225,6 +2227,8 @@ permission:
 - **Feel 声明**：任务描述中须显式声明 \`type: utility\`
 - **简化流程**：收到 \`type: utility\` 任务时，仍须执行前置校验但可跳过完整代码探索步骤
 
+**通用承接**：通用模式下，本 Agent 亦可承接任意 Agent **直接调度**的执行任务（不限于流水线 op 与 \`type: utility\` 小活）；此类任务仍须**先探后执行**——需要理解现状时先由 \`openfeel-explorer\` 探索。
+
 ## 工作规则
 
 - 严格按照操作方案实施，不擅自扩大或缩小范围。
@@ -2271,7 +2275,7 @@ permission:
 ## 工作流程
 
 1. **接收任务**：确认已通过前置校验全部步骤。
-2. **探索代码**：用 \`task(explore)\` 并行探索代码区域。跨文件修改先用 \`todowrite\` 创建任务列表。
+2. **探索代码**：用 \`task(openfeel-explorer)\` 并行探索代码区域（只读）。跨文件修改先用 \`todowrite\` 创建任务列表。
 3. **编码实现**：严格按方案实施步骤编码，遵循规范。每个任务完成后立即标记完成。
 4. **自测验证**：按自测清单逐项验证，运行构建命令确认无编译错误。不通过则记录原因并重试。
 5. **方案一致性回写**：编码和自测完成后执行回写（详见对应章节）。
@@ -2701,7 +2705,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -2825,7 +2829,7 @@ blocking: true | false
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -2985,7 +2989,7 @@ permission:
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -3056,7 +3060,7 @@ task_type: utility
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -3130,7 +3134,7 @@ openfeel-vision 接收图片输入后，按照需求进行分析，输出结构�
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -4274,11 +4278,11 @@ Feel **must delegate** the following scenarios. Personal handling is prohibited:
 | Code implementation | **openfeel-executor** | Feel directly \`edit\`/\`write\` source code |
 | Code review | **openfeel-reviewer** | Feel judges "small change, no review needed" |
 | Formal test acceptance | **openfeel-feel-tester** | Feel runs \`npm test\` and marks passed |
-| Batch search / code exploration | **openfeel-utility Agent** or **explore Agent** | Feel manually \`grep\` + \`glob\` file by file |
+| Batch search / code exploration | **openfeel-utility Agent** or **openfeel-explorer Agent** | Feel manually \`grep\` + \`glob\` file by file |
 | Mechanical file operations | **openfeel-utility Agent** | Feel batch \`edit\`/\`write\` non-source files |
 | Archiving & knowledge extraction | **openfeel-archiver** | Feel directly writes kb/ files |
 
-> **Counter-example**: Feel used \`grep\` to search 10 files to find a function → should have dispatched openfeel-utility Agent (\`subagent_type: openfeel-utility\`) or explore Agent. Feel's time should be spent on decision-making, not searching.
+> **Counter-example**: Feel used \`grep\` to search 10 files to find a function → should have dispatched openfeel-utility Agent (\`subagent_type: openfeel-utility\`) or openfeel-explorer Agent. Feel's time should be spent on decision-making, not searching.
 
 ### Process Must Not Be Skipped
 
@@ -4341,7 +4345,7 @@ Available Handoff targets:
 | openfeel-schemer | openfeel-reviewer (pre-review schemes), openfeel-planner (confirm plans) |
 | openfeel-reviewer | openfeel-vision (review UI screenshots) |
 | openfeel-feel-tester | openfeel-vision (verify UI screenshots), openfeel-executor (fix bugs) |
-| Any Agent (including subagents) | General worker (openfeel-executor; explorer onboarding comes in a later stage): direct dispatch requests |
+| Any Agent (including subagents) | General workers (openfeel-executor / openfeel-explorer): direct dispatch requests |
 
 ### Multimodal Input Auto-Delegation (Hard Rule)
 
@@ -4815,7 +4819,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -4864,6 +4868,8 @@ When the openfeel-utility Agent's model is fast and cannot handle complex judgme
 - **Feel declaration**: The task description must explicitly declare \`type: utility\`
 - **Simplified process**: When receiving a \`type: utility\` task, still perform pre-checks but may skip the full code exploration step
 
+**General acceptance**: in general mode, this Agent can also accept execution tasks **directly dispatched** by any Agent (not limited to pipeline ops or \`type: utility\` small tasks); such tasks still follow **explore first, then execute** — when the current state must be understood, have \`openfeel-explorer\` explore first.
+
 ## Work Rules
 
 - Strictly implement according to the operation scheme, do not expand or reduce scope without authorization.
@@ -4910,7 +4916,7 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 ## Workflow
 
 1. **Receive task**: Confirm that all pre-check steps have passed.
-2. **Explore code**: Use \`task(explore)\` to explore code areas in parallel. For cross-file modifications, create a task list with \`todowrite\` first.
+2. **Explore code**: Use \`task(openfeel-explorer)\` to explore code areas in parallel (read-only). For cross-file modifications, create a task list with \`todowrite\` first.
 3. **Code implementation**: Strictly follow the scheme's implementation steps; follow conventions. Mark each task as completed immediately after finishing.
 4. **Self-test verification**: Verify each item in the self-test checklist; run build commands to confirm no compilation errors. If not passed, record the reason and retry.
 5. **Scheme consistency write-back**: Perform write-back after coding and self-test (see corresponding section).
@@ -5340,7 +5346,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -5464,7 +5470,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -5624,7 +5630,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -5695,7 +5701,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -5769,7 +5775,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -5843,11 +5849,11 @@ permission:
 | 编码实现 | **openfeel-executor** | Feel 直接 \`edit\`/\`write\` 源码 |
 | 代码审查 | **openfeel-reviewer** | Feel 自行判断"改动小不用审" |
 | 正式测试验收 | **openfeel-feel-tester** | Feel 跑完 \`npm test\` 就标记通过 |
-| 批量搜索/探索代码 | **事务官** 或 **explore Agent** | Feel 手动 \`grep\` + \`glob\` 逐个搜文件 |
+| 批量搜索/探索代码 | **事务官** 或 **openfeel-explorer Agent** | Feel 手动 \`grep\` + \`glob\` 逐个搜文件 |
 | 文件机械操作 | **事务官** | Feel 批量 \`edit\`/\`write\` 非源码文件 |
 | 归档沉淀知识 | **openfeel-archiver** | Feel 直接写 kb/ 文件 |
 
-> **反例**：Feel 用 \`grep\` 搜索了 10 个文件找到某个函数 → 应该派事务官（\`subagent_type: openfeel-utility\`）或 explore Agent 去做。Feel 的时间应用于决策，不是搜索。
+> **反例**：Feel 用 \`grep\` 搜索了 10 个文件找到某个函数 → 应该派事务官（\`subagent_type: openfeel-utility\`）或 openfeel-explorer Agent 去做。Feel 的时间应用于决策，不是搜索。
 
 ### 流程不可跳过
 
@@ -5910,7 +5916,7 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 | openfeel-schemer | openfeel-reviewer（方案预审）、openfeel-planner（计划确认） |
 | openfeel-reviewer | openfeel-vision（审查 UI 截图） |
 | openfeel-feel-tester | openfeel-vision（验证 UI 截图）、openfeel-executor（修复 Bug） |
-| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor；探索者接入见后续阶段）：直接调度请求 |
+| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor / openfeel-explorer）：直接调度请求 |
 
 ### 多模态输入自动委派（硬性纪律）
 
@@ -6383,7 +6389,7 @@ openfeel-feel-tester 通过 → Feel 触发归档 → openfeel-archiver 整理�
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -6432,6 +6438,8 @@ permission:
 - **Feel 声明**：任务描述中须显式声明 \`type: utility\`
 - **简化流程**：收到 \`type: utility\` 任务时，仍须执行前置校验但可跳过完整代码探索步骤
 
+**通用承接**：通用模式下，本 Agent 亦可承接任意 Agent **直接调度**的执行任务（不限于流水线 op 与 \`type: utility\` 小活）；此类任务仍须**先探后执行**——需要理解现状时先由 \`openfeel-explorer\` 探索。
+
 ## 工作规则
 
 - 严格按照操作方案实施，不擅自扩大或缩小范围。
@@ -6478,7 +6486,7 @@ permission:
 ## 工作流程
 
 1. **接收任务**：确认已通过前置校验全部步骤。
-2. **探索代码**：用 \`task(explore)\` 并行探索代码区域。跨文件修改先用 \`todowrite\` 创建任务列表。
+2. **探索代码**：用 \`task(openfeel-explorer)\` 并行探索代码区域（只读）。跨文件修改先用 \`todowrite\` 创建任务列表。
 3. **编码实现**：严格按方案实施步骤编码，遵循规范。每个任务完成后立即标记完成。
 4. **自测验证**：按自测清单逐项验证，运行构建命令确认无编译错误。不通过则记录原因并重试。
 5. **方案一致性回写**：编码和自测完成后执行回写（详见对应章节）。
@@ -6908,7 +6916,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -7032,7 +7040,7 @@ blocking: true | false
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -7192,7 +7200,7 @@ permission:
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -7263,7 +7271,7 @@ task_type: utility
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -7337,7 +7345,7 @@ openfeel-vision 接收图片输入后，按照需求进行分析，输出结构�
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -8985,11 +8993,11 @@ The main session **must delegate** the following scenarios. Personal handling is
 | Code implementation | **openfeel-executor** | Main session directly \`Edit\`/\`Write\` source code |
 | Code review | **openfeel-reviewer** | Main session judges "small change, no review needed" |
 | Formal test acceptance | **openfeel-feel-tester** | Main session runs \`npm test\` and marks passed |
-| Batch search / code exploration | **openfeel-utility subagent** or **\`Explore\` subagent** | Main session manually \`Grep\` + \`Glob\` file by file |
+| Batch search / code exploration | **openfeel-utility subagent** or **\`openfeel-explorer\` subagent** | Main session manually \`Grep\` + \`Glob\` file by file |
 | Mechanical file operations | **openfeel-utility subagent** | Main session batch \`Edit\`/\`Write\` non-source files |
 | Archiving & knowledge extraction | **openfeel-archiver** | Main session directly writes kb/ files |
 
-> **Counter-example**: The main session used \`Grep\` to search 10 files to find a function → should have dispatched the \`openfeel-utility\` subagent or \`Explore\` subagent via the **Task** tool. The main session's time should be spent on decision-making, not searching.
+> **Counter-example**: The main session used \`Grep\` to search 10 files to find a function → should have dispatched the \`openfeel-utility\` subagent or \`openfeel-explorer\` subagent via the **Task** tool. The main session's time should be spent on decision-making, not searching.
 
 ### Process Must Not Be Skipped
 
@@ -9052,7 +9060,7 @@ Available Handoff targets:
 | openfeel-schemer | openfeel-reviewer (pre-review schemes), openfeel-planner (confirm plans) |
 | openfeel-reviewer | openfeel-vision (review UI screenshots) |
 | openfeel-feel-tester | openfeel-vision (verify UI screenshots), openfeel-executor (fix bugs) |
-| Any Agent (including subagents) | General worker (openfeel-executor; explorer onboarding comes in a later stage): direct dispatch requests |
+| Any Agent (including subagents) | General workers (openfeel-executor / openfeel-explorer): direct dispatch requests |
 
 ### Multimodal Input Auto-Delegation (Hard Rule)
 
@@ -9504,7 +9512,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -9548,6 +9556,8 @@ When the openfeel-utility subagent cannot handle complex judgment, the **main se
 - **Applicable tasks**: Batch format replacement, configuration item sorting, document structure adjustment
 - **Main session declaration**: The assignment description must explicitly declare \`type: utility\`
 - **Simplified process**: When receiving a \`type: utility\` assignment, still perform pre-checks but may skip the full code exploration step
+
+**General acceptance**: in general mode, this Agent can also accept execution tasks **directly dispatched** by any Agent (not limited to pipeline ops or \`type: utility\` small tasks); such tasks still follow **explore first, then execute** — when the current state must be understood, have \`openfeel-explorer\` explore first.
 
 ## Work Rules
 
@@ -9595,7 +9605,7 @@ Confirm that the following 6 required fields are present. If any is missing, ret
 ## Workflow
 
 1. **Receive the assignment**: Confirm that all pre-check steps have passed.
-2. **Explore code**: The **main session** dispatches \`Explore\` via the **Task** tool to explore code areas in parallel (subagents do not call Task). For cross-file modifications, create a to-do list with \`TodoWrite\` first.
+2. **Explore code**: Dispatch \`openfeel-explorer\` via the direct dispatch channel to explore code areas in parallel (read-only). For cross-file modifications, create a to-do list with \`TodoWrite\` first.
 3. **Code implementation**: Strictly follow the scheme's implementation steps; follow conventions. Mark each work item as completed immediately after finishing.
 4. **Self-test verification**: Verify each item in the self-test checklist; run build commands to confirm no compilation errors. If not passed, record the reason and retry.
 5. **Scheme consistency write-back**: Perform write-back after coding and self-test (see corresponding section).
@@ -10012,7 +10022,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -10132,7 +10142,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -10289,7 +10299,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -10355,7 +10365,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -10425,7 +10435,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 \`openfeel-feel-tester\` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (\`openfeel-explorer\`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a \`[HANDOFF: agent_name]\` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 
@@ -10493,11 +10503,11 @@ color: purple
 | 编码实现 | **openfeel-executor** | 主会话直接 \`Edit\`/\`Write\` 源码 |
 | 代码审查 | **openfeel-reviewer** | 主会话自行判断"改动小不用审" |
 | 正式测试验收 | **openfeel-feel-tester** | 主会话跑完 \`npm test\` 就标记通过 |
-| 批量搜索/探索代码 | **事务官** 或 **\`Explore\` subagent** | 主会话手动 \`Grep\` + \`Glob\` 逐个搜文件 |
+| 批量搜索/探索代码 | **事务官** 或 **\`openfeel-explorer\` subagent** | 主会话手动 \`Grep\` + \`Glob\` 逐个搜文件 |
 | 文件机械操作 | **事务官** | 主会话批量 \`Edit\`/\`Write\` 非源码文件 |
 | 归档沉淀知识 | **openfeel-archiver** | 主会话直接写 kb/ 文件 |
 
-> **反例**：主会话用 \`Grep\` 搜索了 10 个文件找到某个函数 → 应该经 **Task** 工具调度 \`openfeel-utility\` subagent 或 \`Explore\` subagent 去做。主会话的时间应用于决策，不是搜索。
+> **反例**：主会话用 \`Grep\` 搜索了 10 个文件找到某个函数 → 应该经 **Task** 工具调度 \`openfeel-utility\` subagent 或 \`openfeel-explorer\` subagent 去做。主会话的时间应用于决策，不是搜索。
 
 ### 流程不可跳过
 
@@ -10560,7 +10570,7 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 | openfeel-schemer | openfeel-reviewer（方案预审）、openfeel-planner（计划确认） |
 | openfeel-reviewer | openfeel-vision（审查 UI 截图） |
 | openfeel-feel-tester | openfeel-vision（验证 UI 截图）、openfeel-executor（修复 Bug） |
-| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor；探索者接入见后续阶段）：直接调度请求 |
+| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor / openfeel-explorer）：直接调度请求 |
 
 ### 多模态输入自动委派（硬性纪律）
 
@@ -11011,7 +11021,7 @@ openfeel-feel-tester 通过 → 主会话触发归档 → openfeel-archiver 整�
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -11055,6 +11065,8 @@ model: inherit
 - **适用任务**：格式批量替换、配置项整理、文档结构调整
 - **主会话声明**：任务描述中须显式声明 \`type: utility\`
 - **简化流程**：收到 \`type: utility\` 任务时，仍须执行前置校验但可跳过完整代码探索步骤
+
+**通用承接**：通用模式下，本 Agent 亦可承接任意 Agent **直接调度**的执行任务（不限于流水线 op 与 \`type: utility\` 小活）；此类任务仍须**先探后执行**——需要理解现状时先由 \`openfeel-explorer\` 探索。
 
 ## 工作规则
 
@@ -11102,7 +11114,7 @@ model: inherit
 ## 工作流程
 
 1. **接收任务**：确认已通过前置校验全部步骤。
-2. **探索代码**：由**主会话**经 **Task** 工具调度 \`Explore\` 并行探索代码区域（subagent 不调用 Task）。跨文件修改先用 \`TodoWrite\` 创建任务列表。
+2. **探索代码**：经直接调度通道派 \`openfeel-explorer\` 并行探索代码区域（只读）。跨文件修改先用 \`TodoWrite\` 创建任务列表。
 3. **编码实现**：严格按方案实施步骤编码，遵循规范。每个任务完成后立即标记完成。
 4. **自测验证**：按自测清单逐项验证，运行构建命令确认无编译错误。不通过则记录原因并重试。
 5. **方案一致性回写**：编码和自测完成后执行回写（详见对应章节）。
@@ -11519,7 +11531,7 @@ openfeel-planner 作为独立 subagent，由**主会话（Feel 角色）**经 **
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -11639,7 +11651,7 @@ blocking: true | false
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -11796,7 +11808,7 @@ model: inherit
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -11862,7 +11874,7 @@ task_type: utility
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 
@@ -11932,7 +11944,7 @@ openfeel-vision 接收图片输入后，按照需求进行分析，输出结构�
 
 \`openfeel-feel-tester\`（测试官）不在通用工作者分类内；可被直接调度，语义同上。
 
-> 通用工作者 = 执行者 / 探索者；直接调度 = 调度请求**直发**，不经多级转介。探索者接入见后续阶段。
+> 通用工作者 = 执行者 / 探索者（\`openfeel-explorer\`，只读）；直接调度 = 调度请求**直发**，不经多级转介。
 
 超出职责边界、需转介其他 Agent 的子任务：在返回结果中使用 \`[HANDOFF: agent_name]\` 标记（目标 + 上下文），交由 Handoff 委派机制解析并派发。
 

@@ -541,7 +541,7 @@ describe('stage-88：调度与 Handoff 节（直接调度语义）对称与阴�
         expect(block, `${h}/${lang}/${id} 裸主语 Feel`).not.toContain('Feel');
         expect(block, `${h}/${lang}/${id} 裸主语 主会话`).not.toContain('主会话');
         expect(block, `${h}/${lang}/${id} 裸主语 main session`).not.toContain('main session');
-        expect(block, `${h}/${lang}/${id} 悬空引用 explorer`).not.toContain('openfeel-explorer');
+        expect(block, `${h}/${lang}/${id} 缺 explorer 正控`).toContain('openfeel-explorer');
         expect(c, `${h}/${lang}/${id} 缺 ${M}`).toContain(M);
         expect(c.indexOf(M), `${h}/${lang}/${id} 锚点错位`).toBeGreaterThan(c.indexOf(H));
       }
@@ -581,8 +581,13 @@ describe('stage-88：调度与 Handoff 节（直接调度语义）对称与阴�
     expect(norm(readFileSync(file('claude', 'zh-CN', 'openfeel-vision'), 'utf-8')), 'zh 括注残留').not.toContain('（subagent 不互调）');
     expect(norm(readFileSync(file('claude', 'en', 'openfeel-vision'), 'utf-8')), 'en 括注残留').not.toContain('subagents do not invoke each other');
     expect(norm(readFileSync(file('claude', 'zh-CN', 'openfeel-vision'), 'utf-8'))).toContain('除直接调度通用工作者外，不调用其他 Agent / subagent');
-    expect(norm(readFileSync(file('claude', 'zh-CN', 'openfeel-executor'), 'utf-8')), '⑤ zh').toContain('（subagent 不调用 Task）');
-    expect(norm(readFileSync(file('claude', 'en', 'openfeel-executor'), 'utf-8')), '⑤ en').toContain('(subagents do not call Task)');
+    // stage-89：C12 显式翻转（REV-88-009 ①）——旧平台断言 → 新正控 + 新阴性
+    const zhEx = norm(readFileSync(file('claude', 'zh-CN', 'openfeel-executor'), 'utf-8'));
+    const enEx = norm(readFileSync(file('claude', 'en', 'openfeel-executor'), 'utf-8'));
+    expect(zhEx, '⑤ zh 新正控').toContain('openfeel-explorer');
+    expect(enEx, '⑤ en 新正控').toContain('openfeel-explorer');
+    expect(zhEx, '⑤ zh 旧平台断言残留').not.toContain('不调用 Task');
+    expect(enEx, '⑤ en 旧平台断言残留').not.toContain('do not call Task');
   });
 });
 
@@ -629,5 +634,65 @@ describe('stage-89：探索者注册与路由替代（T3.1/T3.2）', () => {
       expect(route, `${p} 残留 explore Agent`).not.toContain('explore Agent');
       expect(route, `${p} 残留 Explore`).not.toContain('`Explore`');
     }
+  });
+
+  it('全 templates-data 探索者占位零残留（大小写不敏感）', () => {
+    const walk = (dir: string, out: string[] = []): string[] => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p, out);
+        else if (e.name.endsWith('.md')) out.push(p);
+      }
+      return out;
+    };
+    const files = walk(join(ROOT, 'src', 'core', 'templates-data'));
+    expect(files.length, '扫描集合非空').toBeGreaterThan(60); // op-001 后实测 64 个 .md（opencode 20 + claude 20 + agents-md 2 + constraint 2 + ADAPTER 2 + skills 18）
+    for (const p of files) {
+      const lower = norm(readFileSync(p, 'utf-8')).toLowerCase();
+      expect(lower, `中文占位残留 ${p}`).not.toContain('探索者接入');
+      expect(lower, `en 占位残留 ${p}`).not.toContain('explorer onboarding');
+    }
+  });
+
+  it('feel 引用面：4 份 feel.md 指向 openfeel-explorer + scoped 阴性', () => {
+    const FEELS = [
+      join(TD, 'opencode', 'agents', 'zh-CN', 'feel.md'),
+      join(TD, 'opencode', 'agents', 'en', 'feel.md'),
+      join(TD, 'claude', 'agents', 'zh-CN', 'feel.md'),
+      join(TD, 'claude', 'agents', 'en', 'feel.md'),
+    ];
+    for (const p of FEELS) {
+      const c = norm(readFileSync(p, 'utf-8'));
+      expect(c, `${p} 正控`).toContain('openfeel-explorer');
+      expect(c, `${p} 残留 explore Agent`).not.toContain('explore Agent');
+      expect(c, `${p} 残留 \`Explore\` subagent`).not.toContain('`Explore` subagent');
+    }
+  });
+
+  it('executor 面：4 份指向 openfeel-explorer + 无平台断言 + 行尾子句正控', () => {
+    const EX = [
+      [join(TD, 'opencode', 'agents', 'zh-CN', 'openfeel-executor.md'), '跨文件修改先用 `todowrite` 创建任务列表。'],
+      [join(TD, 'opencode', 'agents', 'en', 'openfeel-executor.md'), 'For cross-file modifications, create a task list with `todowrite` first.'],
+      [join(TD, 'claude', 'agents', 'zh-CN', 'openfeel-executor.md'), '跨文件修改先用 `TodoWrite` 创建任务列表。'],
+      [join(TD, 'claude', 'agents', 'en', 'openfeel-executor.md'), 'For cross-file modifications, create a to-do list with `TodoWrite` first.'],
+    ] as const;
+    for (const [p, tail] of EX) {
+      const c = norm(readFileSync(p, 'utf-8'));
+      expect(c, `${p} 正控`).toContain('openfeel-explorer');
+      expect(c, `${p} 行尾子句`).toContain(tail);
+    }
+    for (const p of [join(TD, 'claude', 'agents', 'zh-CN', 'openfeel-executor.md'),
+      join(TD, 'claude', 'agents', 'en', 'openfeel-executor.md')]) {
+      const c = norm(readFileSync(p, 'utf-8'));
+      expect(c, `${p} 旧平台断言`).not.toContain('不调用 Task');
+      expect(c, `${p} 旧平台断言 en`).not.toContain('do not call Task');
+    }
+  });
+
+  it('executor 承接注记正控', () => {
+    expect(norm(readFileSync(join(TD, 'opencode', 'agents', 'zh-CN', 'openfeel-executor.md'), 'utf-8'))).toContain('通用承接');
+    expect(norm(readFileSync(join(TD, 'claude', 'agents', 'zh-CN', 'openfeel-executor.md'), 'utf-8'))).toContain('通用承接');
+    expect(norm(readFileSync(join(TD, 'opencode', 'agents', 'en', 'openfeel-executor.md'), 'utf-8'))).toContain('General acceptance');
+    expect(norm(readFileSync(join(TD, 'claude', 'agents', 'en', 'openfeel-executor.md'), 'utf-8'))).toContain('General acceptance');
   });
 });

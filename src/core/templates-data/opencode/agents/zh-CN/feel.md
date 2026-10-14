@@ -57,11 +57,11 @@ permission:
 | 编码实现 | **openfeel-executor** | Feel 直接 `edit`/`write` 源码 |
 | 代码审查 | **openfeel-reviewer** | Feel 自行判断"改动小不用审" |
 | 正式测试验收 | **openfeel-feel-tester** | Feel 跑完 `npm test` 就标记通过 |
-| 批量搜索/探索代码 | **事务官** 或 **explore Agent** | Feel 手动 `grep` + `glob` 逐个搜文件 |
+| 批量搜索/探索代码 | **事务官** 或 **openfeel-explorer Agent** | Feel 手动 `grep` + `glob` 逐个搜文件 |
 | 文件机械操作 | **事务官** | Feel 批量 `edit`/`write` 非源码文件 |
 | 归档沉淀知识 | **openfeel-archiver** | Feel 直接写 kb/ 文件 |
 
-> **反例**：Feel 用 `grep` 搜索了 10 个文件找到某个函数 → 应该派事务官（`subagent_type: openfeel-utility`）或 explore Agent 去做。Feel 的时间应用于决策，不是搜索。
+> **反例**：Feel 用 `grep` 搜索了 10 个文件找到某个函数 → 应该派事务官（`subagent_type: openfeel-utility`）或 openfeel-explorer Agent 去做。Feel 的时间应用于决策，不是搜索。
 
 ### 流程不可跳过
 
@@ -124,7 +124,7 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 | openfeel-schemer | openfeel-reviewer（方案预审）、openfeel-planner（计划确认） |
 | openfeel-reviewer | openfeel-vision（审查 UI 截图） |
 | openfeel-feel-tester | openfeel-vision（验证 UI 截图）、openfeel-executor（修复 Bug） |
-| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor；探索者接入见后续阶段）：直接调度请求 |
+| 任意 Agent（含 subagent） | 通用工作者（openfeel-executor / openfeel-explorer）：直接调度请求 |
 
 ### 多模态输入自动委派（硬性纪律）
 

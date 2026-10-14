@@ -111,7 +111,7 @@ This Agent **can directly dispatch** (without multi-level referrals): the genera
 
 `openfeel-feel-tester` (test officer) is not part of the general-worker classification; it can also be dispatched directly, with the same semantics.
 
-> General workers = executor / explorer; direct dispatch = dispatch requests are **sent directly**, without multi-level referrals. Explorer onboarding comes in a later stage.
+> General workers = executor / explorer (`openfeel-explorer`, read-only); direct dispatch = dispatch requests are **sent directly**, without multi-level referrals.
 
 For subtasks beyond this Agent's responsibility that require referral to another Agent: include a `[HANDOFF: agent_name]` marker in the returned result (target + context), which the Handoff delegation mechanism will parse and dispatch.
 

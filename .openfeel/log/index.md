@@ -175,6 +175,8 @@
 | [2026-10-13](2026/10/13/day_index.md) | 阶段 v1.2.0-stage-85 完成 （嵌套） |
 | [2026-10-15](2026/10/15/day_index.md) | 阶段 v1.2.1-stage-86 完成 （嵌套） |
 | [2026-10-15](2026/10/15/day_index.md) | 阶段 v1.2.1-stage-87 完成 （嵌套） |
+| [2026-10-15](2026/10/15/2026-10-15-Liuary-003.md) | Archiver 归档 **v1.2.1 第三阶段 — stage-88（通用工作者直接调度）**：双口径通道（opencode 嵌套 `task` no-go / Claude Q1 推翻）+ 24 份「调度与 Handoff」节 + 12 份 permission + Q1 supersede （嵌套） |
+| [2026-10-15](2026/10/15/day_index.md) | 阶段 v1.2.1-stage-88 完成 （嵌套） |
 
 - [29 日](2026/09/29/2026-09-29-Liuary-001.md) — Reviewer 审查 stage-46 计划（部署覆盖前备份，有条件通过：1 high + 2 medium blocking REV，config.yaml 覆盖路径漏备份上报）（末尾追加：文件含历史混合编码，避免整文件重写）
 | [2026-09-29](2026/09/29/day_index.md) | v1.1.2-stage-41.op-001 执行通过 |

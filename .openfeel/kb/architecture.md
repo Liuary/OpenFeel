@@ -919,3 +919,26 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.1-stage-87（plan §二 不变量 1 / 边界 1/3；REV-87-002/004；op-001~003；3 commits `f46d01d`/`a84227f`/`b3c4df3`；门禁 71 文件 / 1614 用例 0 skipped / 0 failed、`lint i18n` 931、`tsc` 0）。
 
 **参见：** v1.2.1-stage-87（plan §三 T1/T3 / §二 不变量；op-001/op-003）；`src/core/req/types.ts :: RequirementData.parent_id`；`src/core/req/requirement-ops.ts :: splitRequirement`；kb/architecture.md #需求流转四层模型架构、#双层状态聚合架构、#需求层正交边界架构；kb/patterns.md #事务性批量构造原语模式、#关系型可选字段「仅溯源不聚合」模式；manual/core/req.md
+
+## [+] 通用工作者直接调度架构：双口径通道（opencode 嵌套 task / Claude Handoff 直发）+ 能力探测 → 通道选择 → 统一语义 (2026-10-15)
+
+**背景**：设计 §2.2「**Agent 自治调度**」把「**任意 Agent 均可直接调度通用工作者**（执行者 / 探索者），不经多级转介」定为机制目标。现行硬规则「subagent 不调用 Task / 仅主会话（Feel）编排」被两条冲击——新语义 = **调度请求直发，不经多级转介**。因两 harness 平台能力不同，机制呈**双口径**。
+
+**统一语义（不可因通道而异）**：任意 Agent 直接调度**通用工作者**即达语义；**「通用工作者」是分类学概念** = 执行者 / 探索者（设计 §2.2 原文），**`openfeel-feel-tester`（测试官）不属该分类**（其可被直接调度但须**并列表述**，不污染分类学的 REV-88-002）。**它与需求接取制度（stage-87）是两套机制**——本架构针对通用工作者，需求发布/接取仍由 feel 中介。
+
+**双口径通道**：
+- **opencode 侧 = 嵌套 `task`**：子 agent frontmatter `permission.task = "allow"`（标量字符串，与既有 5 处先例一致）授权 + 模板「调度与 Handoff」节落文；**实际可达性由平台深度阈值 `subagent_depth` 决定**（默认 `1` → 二级嵌套被拦截；调至 ≥2 即跑通二级链路）→ 授权扩展**必要且有效**，唯一阻塞项为平台配置。
+- **Claude 侧 = Handoff 直发中介**：`[HANDOFF: {agent_name}]` 标记直发 + 主会话（Feel 角色）即到即派（复用既有 Handoff 原语，零新增基础设施）；**平台侧嵌套 Task 能力存在但本阶段不启用**（见下 Q1 反转）。
+
+**能力探测 → 通道选择 → 统一语义（架构主线）**：
+1. **探测先行**：能力结论一律来自**行为级实测**（隔离环境探针 + 交互判据），**禁静态冒充行为**（`debug agent` 的 permission/tools 段仅作静态参照，**非授权判据**）。
+2. **通道选择判据**：`go` = 静态非 deny ∧ 行为级三要素齐备（① 调起下一级会话 ② 目标正确指定 ③ 结果回传）；**其余（含「未实测」）一律 no-go** → **降级为两 harness 统一 Handoff 直发**。
+3. **模板文本零通道耦合**：新增「调度与 Handoff」节**不点具体通道工具**（不出现 `task`/`Task` 能力声明）→ go / no-go 两分支下**均成立**（Q3 相容性设计），是「通道可替换」的结构性保证。
+
+**降级红线（不虚构平台能力）**：未获认证 / 环境受限时**不得声称「实测通过」**，一律「保守默认 + 如实留痕」；降级条件①「保留 permission 扩展为未来能力留门」须由**实测证据**支撑（本阶段 `subagent_depth` 提升加测使「留门」由推测升级为实测）。
+
+**判据**：跨 harness 能力机制宜**先探测、再选通道、后统一语义**——把「平台可达性」与「框架语义」解耦；能力声明一律行为级实证，未实测即按最保守分支（统一中介）落文并在模板中保持通道中立。
+
+**实证**：v1.2.1-stage-88（`ops/op-001-verdict.md` §1/§8/§9；REV-88-009 裁定；op-002 落 12 份 permission + 24 份「调度与 Handoff」节 + 负向措辞规整 10 行；3 commits `10b8d37`/`e1ba62e`/`7abc767`；门禁 71 文件 / 1620 用例 0 skipped / 0 failed、`lint i18n` 931、`tsc` 0）。
+
+**参见：** v1.2.1-stage-88（plan §二 统一语义 / §三 T1·T2；op-001-verdict.md §6.3/§8.1/§9；REV-88-008/009）；`src/core/templates-data/opencode/agents/{zh-CN,en}/openfeel-*.md`（`permission.task`）+ `.../claude/agents/**`（「调度与 Handoff」节）；kb/patterns.md #跨 Agent Handoff 委派原语模式、#平台能力实测先行的 go/no-go 决策范式、#opencode 嵌套 task 行为级实测方法；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实（Q1 supersede）；manual/agents/feel.md

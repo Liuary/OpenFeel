@@ -38,7 +38,7 @@
   - [setup 命令](cli/setup.md)
   - [输出编码自适应](cli/output-encoding.md) — win32 非 TTY **直通 UTF-8**（GBK 仅显式）+ `--json` 恒 UTF-8（stage-58 引入 / **stage-61 修正 auto 第⑤步语义**）
 - Agent 体系
-  - [Agent 设计](agents/feel.md)
+  - [Agent 设计](agents/feel.md) — **v1.2.1-stage-88 补**：直接调度与 Handoff（统一语义「调度请求直发，不经多级转介」+ 双口径通道〔opencode 嵌套 `task` / Claude Handoff 直发〕+ 能力探测 go/no-go + 跨 harness × 语言对称四律；24 份「调度与 Handoff」节 + 12 份 `permission.task`）
   - Skill 体系（按需加载，权威源 **中立共享源** `src/core/templates-data/skills/{name}/SKILL.md`；v1.1.6-stage-68 由 `templates-data/opencode/skills/` 迁入，两 harness 共用；**v1.1.6-stage-70 起 4 个 opencode 特化 skill 采用「能力名叙述 + `### opencode 适配器` / `### Claude Code 适配器` 双平台分节」，opencode 小节逐字零回归**）
   - `openfeel-cli-usage` — CLI 命令/参数/phase/stageId 用法参考（**查询型**，与执行型 `openfeel-wizard` 互引划界；v1.1.2-stage-43 新增；**快照已更新至 v1.2.0**（v1.2.0-stage-84），含 `req` / `flow archive` 节 + 双模式工作流命令面）
   - `openfeel-req` — 需求流转用法参考（生命周期 7 状态 / **11 子命令**（v1.2.1-stage-87 增 `split`）/ 认领协议 / `REQ-NNN.md` 正文与权威源 / 与计划关系 / **需求与版本解绑** + **并行接取** / 与 `workflow_mode` 正交；**v1.2.0-stage-84 新增**；权威源 `src/core/templates-data/skills/openfeel-req/SKILL.md`，中立共享源，build 双注入）

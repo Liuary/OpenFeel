@@ -27,6 +27,16 @@
 - **写入约束**：Planner 与 Archiver 对 flow.json 的操作必须通过 Feel + CLI 间接完成
 - **跨 Agent 协作**：`[HANDOFF: agent]` 标记可触发委派（如 Executor → Vision 分析截图）
 
+## 直接调度与 Handoff（v1.2.1-stage-88）
+
+> 落点（权威源）：`templates-data/{opencode,claude}/agents/{zh-CN,en}/openfeel-*.md`「调度与 Handoff」/「Dispatch and Handoff」节（6 subagent × 2 harness × 2 语言 = 24 份）+ opencode `permission.task = "allow"` ×12 + `feel.md`×4 目标表增行。
+
+- **统一语义**：「**调度请求直发，不经多级转介**」——任意 Agent 均可直接调度**通用工作者**（`openfeel-executor`；只读探索者归 stage-89）。**「通用工作者」= 执行者 / 探索者**（设计 §2.2 分类学）；`openfeel-feel-tester`（测试官）**不属该分类**，可被直接调度但须并列表述。**与需求接取制度（stage-87）是两套机制**——本机制针对通用工作者，需求仍由 feel 中介。
+- **双口径通道（按 harness）**：**opencode 侧** = 嵌套 `task`（子 agent frontmatter `permission.task = "allow"`；实际可达性受平台 `subagent_depth` 阈值约束，默认 `1` 拦截二级嵌套）；**Claude 侧** = **Handoff 直发中介**（`[HANDOFF: {agent_name}]` 直发 + 主会话即到即派，复用既有原语，零新增基础设施）。
+- **能力探测先行**：通道选择判据 `go` = 静态非 deny **∧** 行为级三要素齐备（调起下一级 / 目标正确指定 / 结果回传）；其余（含未实测）一律 `no-go` → 两 harness 统一 Handoff 直发。**未实测不得声称实测**（保守默认留痕，不虚构平台能力）。模板新增节**不点具体通道工具** → go/no-go 两分支下均成立。
+- **平台事实（v1.2.1-stage-88 实测）**：opencode 嵌套 task **默认配置下 no-go**（`subagent_depth = 1` 拦截；提升 depth 即跑通，permission 扩展必要有效）；Claude Code **2.1.300** 下 `tools` 白名单含 `Task` 的 subagent **可**派发下一级（`spawnDepth: 2`，运行时工具名 `Agent`）——**原 Q1「subagent 不可调 Task」已 supersede**（见 kb/troubleshooting.md）；本仓 **claude 侧 `tools` 白名单仍不加 `Task`**（能力决策转 stage-89）。
+- **对称纪律（跨 harness × 语言）**：节锚点插入（禁行号）｜同语言跨 harness **提取式切片逐字等值**｜**零 harness 主语**（新节不含 `Feel`/`主会话`、无替换位）｜按 harness 替换主语仅适用既有文本。
+
 ## 审查会话健康探测与可疑产出处置（v1.1.2-stage-48 事件 A）
 
 > 落点（权威源）：`src/core/templates-data/opencode/agents/{zh-CN,en}/feel.md`「审查会话健康探测与可疑产出处置」节 + `.../openfeel-reviewer.md`「工具调用异常与独立取证纪律」节；配套规范见 `manual/core/code-review.md`。

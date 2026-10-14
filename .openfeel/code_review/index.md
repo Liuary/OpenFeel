@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 50 |
+| passed | 51 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -140,3 +140,4 @@
 |------|------|------|
 | [v1.2.1-stage-86](v1.2.1-stage-86.md) | 可观测性改造（recordRun 接线 / CLI 日志 3 字段 + done 必写 / op 级埋点 / 跨会话标注）— REV-86-001~008 全 closed，代码轮 +2 low 非阻塞（009/010 open） | passed |
 | [v1.2.1-stage-87](v1.2.1-stage-87.md) | 需求接取制度与拆分（`req split` 一等动作 / 并行接取就绪 / 版本解绑）— REV-87-001~007 全 closed，代码轮 +3 非阻塞（008 medium / 009·010 low open） | passed |
+| [v1.2.1-stage-88](v1.2.1-stage-88.md) | 通用工作者直接调度（双口径通道：opencode 嵌套 `task` no-go〔`subagent_depth=1` 拦截，提升 depth 跑通〕/ Claude Q1 推翻〔2.1.300 白名单含 `Task` 可派发，`spawnDepth:2`〕/ 24 份「调度与 Handoff」节 / 12 份 permission / 负向措辞规整 10 行）— REV-88-001~008·011 全 closed（含 001/002 计划轮 + 008 high blocking），复遗留 2 非阻塞（009 Q1 反转裁定转 stage-89 / 010 转 stage-93） | passed |

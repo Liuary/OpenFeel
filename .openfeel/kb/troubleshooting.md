@@ -1085,6 +1085,40 @@ concurrency:
 
 **参见：** v1.1.6-stage-73（T7/R-11；op-003）；`src/core/claude-settings.ts`、`docs/claude-code-adapter-plan.md` §十五；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实（隔离 config + 认证复制）；kb/patterns.md #用户高频占用文件的「读-深合并-写回」写策略；manual/core/claude-settings.md
 
+> **【supersede｜2026-10-15｜v1.2.1-stage-88】** 本条目的 **Q1 行为事实已变更**（原行保留不删）。
+> **变更内容**：**Q1「subagent 不可调 `Task`」在 Claude Code 2.1.300 下已不成立**——`tools` 白名单**显式含 `Task`** 的 subagent **可以**派发下一级 subagent（转录 meta 实证：`{"agentType":"q1-probe","spawnDepth":1}` → `{"agentType":"openfeel-executor","parentAgentId":"…","spawnDepth":**2**}`）；运行时装该工具名为 **`Agent`**（白名单令牌仍为 `Task`）。双阴性对照（白名单 `Read` / `Read, Bash`）证明白名单**真实生效**、`Task` 为**唯一使能项**。故「模板 subagent 白名单一律不含 `Task`」这一**推断**已不再由平台事实支撑（是否启用 `Task` 转为**能力决策**，非平台限制）。
+> **理由**：① v1.1.6-stage-69 的 Q1 结论基于 Claude Code 2.1.296 隔离 config 环境（**当时无 `Task` 白名单样本**），2.1.300 已可实测推翻；② 实测三组对照设计齐备（命令 + 版本 + 环境三要素），证据等级 = **行为级**；③ 残留风险一并登记——`Task` 与 `Agent` 的官方映射关系**未文档化确认**，深度上限**仅观测到 2 级**。
+> **附带补充（同条目方法面）**：隔离验证**仅隔离 `CLAUDE_CONFIG_DIR` 即可保留认证**（`~/.claude.json` 仍在位 → 可正常派发 subagent），**无需复制作数认证文件**——本条目原「认证/模型配置须一并复制作数」是「隔离 config 无认证」场景下的补救，非唯一路径；隔离 config 若保留 `~/.claude.json` 则免此步。
+> **适用边界**：**仅针对 Claude Code 2.1.300 实测；跨版本可能漂移**。本仓 at v1.2.1-stage-88 **未改任何 claude 侧 `tools` 白名单**（Q15 裁定「不加 `Task`」继续有效）——平台事实订正与能力决策**转 stage-89**（REV-88-009 承接清单）；目标项目语义不受影响。
+> **回滚**：`git checkout <stage-88-before-sha> -- .openfeel/kb/troubleshooting.md`。
+
+> **【supersede 后续落地登记】** 本条目的**方法路补充**（仅隔离 `CLAUDE_CONFIG_DIR` 保留认证）与 **Q1 平台事实重述**在模板侧的落法归 **v1.2.1-stage-89**（`claude/agents/**` executor「（subagent 不调用 Task）」×2 改写或限定语境 + 是否将 `Task` 列入通用工作者白名单的能力决策 + `claude-adapter.test.ts` 断言面同步）。
+
+## [+] Claude Code 2.1.300 subagent 可调 Task（Q1 反转）：白名单含 Task → 运行时 Agent 工具 → spawnDepth 2；双阴性对照隔离使能项 (2026-10-15)
+
+**症状/场景**：模板/文档中的「subagent 不调用 `Task`」类平台事实陈述是否仍成立？`tools` 白名单里的 `Task` 令牌在 Claude Code 中**是否真能授予派发下一级的能力**？
+
+**验证方法（隔离 config 三组对照）**：隔离 `CLAUDE_CONFIG_DIR`（铺放 agents + `CLAUDE.md` + `settings.json` + 探针 fixture；**未隔离 HOME**——`~/.claude.json` 认证仍在位，故可正常派发）。
+
+| 组 | subagent `tools` 白名单 | 结果 | 关键证据 |
+|---|---|------|---------|
+| q1-probe（正向） | `Bash, Read, Task` | **成功派发下一级** | 转录 meta `{"agentType":"q1-probe","spawnDepth":1}`；`{"agentType":"openfeel-executor","parentAgentId":"…","spawnDepth":2}` |
+| q1-ctrl（阴性①） | `Read`（无 `Task`） | Task 不可用，未派发 | 自报可用工具 = `Read`、`SubagentHandback` |
+| q1-ctrl2（阴性②，隔离使能项） | `Read, Bash`（无 `Task`） | Task 不可用，未派发 | 自报可用工具 = `Read`、`Bash`、`SubagentHandback` |
+
+- 正向组实际调用（逐字）：`TOOL_USE: Agent {"subagent_type":"openfeel-executor", …}`——**运行时工具名为 `Agent`**，白名单令牌 `Task` 仍可授予该工具。
+- 对照组证明白名单**真实生效**（未列出即不可用）→ 正向组的派发能力**只能**归因于白名单中的 `Task`。
+
+**结论**：**Q1「subagent 不可调 Task」在 Claude Code 2.1.300 下已不成立**（行为级实证，非静态推断）。故：① 「模板 subagent 白名单一律不含 `Task`」不再是平台约束，而是**能力决策**；② 「（subagent 不调用 Task）」类表述的**事实面须按 2.1.300 重述或限定语境**；③ **能力可用 ≠ 必须启用**（保守实现可正当地继续不启用）。
+
+**残留风险（须一并登记）**：① 未区分「`Task` 是官方别名」与「`Task` 为可接受的旧令牌」；② **深度上限未测**（仅观测到 `spawnDepth: 2`）；③ 基于 **2.1.300 单版本**实测，跨版本可能漂移。
+
+**判据/避免**：判定「subagent 能否派发下一级」一律**行为级三要素**（调起下一级 / 目标正确指定 / 结果回传）；**禁以「白名单未列即不可用」的静态推断作为平台事实**——须以正向 + 双阴性对照实验隔离使能项；未实测不得声称实测（见 kb/patterns.md #平台能力实测先行的 go/no-go 决策范式）。
+
+**实证**：v1.2.1-stage-88（`ops/op-001-verdict.md` §8.1；Claude Code **2.1.300**；隔离 `CLAUDE_CONFIG_DIR` 三组对照；证据等级 = 行为级，报告留痕采信）；REV-88-009 裁定本阶段实现与事实一致、模板落法转 stage-89。
+
+**参见：** v1.2.1-stage-88（op-001-verdict.md §8.1/§10.3；终局报告 §1.2；REV-88-009）；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实（**本条为其 Q1 断言的 supersede 继承条目**）；kb/patterns.md #平台能力实测先行的 go/no-go 决策范式；kb/architecture.md #通用工作者直接调度架构；`src/core/templates-data/claude/agents/{zh-CN,en}/openfeel-executor.md`
+
 ## [+] flow.json「内容增量」核验口径必含 `meta.revision` / `meta.updated`：`save()` 必然改写 (2026-10-11)
 
 **现象/困惑**：v1.1.7-stage-75 T9 自举（`config set defaults.workflow_mode full --sync-stages --stage 74~77`）的核验口径写「flow.json 内容增量 = 仅 4 个 `stages.*.workflow_mode` 字段，无其它变化」→ 按字面执行**核验失败**（REV-75-010 blocking），阶段被**错误阻塞**。

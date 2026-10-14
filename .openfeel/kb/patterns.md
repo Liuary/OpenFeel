@@ -3423,6 +3423,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 
 - **`tools` 白名单推导** = opencode `permission:` 键集 **∪** 正文实际使用的工具（**补齐缺口**：executor 用 `Edit/Write/TodoWrite`；planner/schemer 用 `Skill`；feel-tester/archiver 需编辑权限）。
 - **一律不含 `Task`**：所有 subagent 白名单**不含 `Task`**（Q1 实机确认 subagent 不可调 Task）；正文 `task(explore)` 统一改「主会话经 Task 调度 Explore / `[HANDOFF: openfeel-x]`」。
+  > **【supersede｜2026-10-15｜v1.2.1-stage-88】** 本条后半的**事实依据 Q1 已被推翻**（前半的「本仓现状 = 不含 `Task`」仍为真）。**变更内容**：Claude Code **2.1.300** 下 `tools` 白名单**显式含 `Task`** 的 subagent **可以**派发下一级（行为级实证 `spawnDepth: 2`；运行时工具名 `Agent`）→ 「白名单不含 `Task`」不再是**平台约束**，而是**能力决策**。**适用边界**：仅针对本仓内容源；目标项目自行决定是否启用 `Task`。**回滚**：`git checkout <stage-88-before-sha> -- .openfeel/kb/patterns.md`。详见 kb/troubleshooting.md #Claude Code 2.1.300 subagent 可调 Task。
 - **`feel`（主会话）默认不设 `tools`（继承）**（R-13）：避免收窄主会话工具集（`AskUserQuestion`/`EnterPlanMode`）；实机确认继承获宽工具集，无需显式白名单。
 - **阴性门禁**：Claude agent 模板须**不含** `mode:` / `permission:` / `reasoning_effort:` / `.opencode/`（build `validateClaudeTemplates` + 测试双保险）。
 
@@ -4128,3 +4129,45 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.1-stage-87（op-001 `collectInto` + `req split`；op-002 `req next --limit`；`test/commands/req.test.ts` T-D1~T-D4 / T-E3③ 正控；隔离实跑 6.1/6.2 成功·失败径各 5 例）。
 
 **参见：** v1.2.1-stage-87（plan T1/T2 / Q10 / REV-87-004②；op-001/op-002）；`src/commands/req.ts :: collectInto`；kb/patterns.md #CLI `--json` 成功/失败同契约、#Commander 父子命令 `--json` 标志传递陷阱、#CLI 退出码语义；kb/architecture.md #需求拆分与版本解绑架构；manual/cli/req.md
+
+## [+] 平台能力实测先行的 go/no-go 决策范式：go = 静态非 deny ∧ 行为级三要素齐备，其余（含未实测）一律 no-go (2026-10-15)
+
+**场景**：把一条「平台是否支持能力 X」的结论落为模板/配置/代码时，须先判定能否落地，避免把**未验证的能力**写成既成事实（如「可直接 `task` 调起下一级」）。核心是把**能力声明**与**机制落地**解耦。
+
+**判据（三态判定范式）**：
+1. **go 的充要条件** = 「静态非 deny」**∧**「行为级三要素齐备」：
+   - **静态**：权限/配置项**显式非 deny**（如 `task: "allow"` 在位）。静态放行**只是必要条件**——`ask` 类在部分工具下自动放行、`deny` 才强制，**静态不可冒充行为**。
+   - **行为级三要素**：① 能**调起下一级**（子会话/子代理实际创建）；② **目标被正确指定**（按名称解析成功）；③ **结果回传父会话**（回传值可辨，含回传**错误对象**亦算达成）。
+2. **其余一律 no-go**（**含「未实测」**）→ 走**保守降级分支**，不得假设能力可用。
+3. **降级留门须有实测支撑**：如「保留权限扩展为未来能力留门」须由实测证据（如仅需改一个配置键即跑通）**支撑**，而非推测性留门。
+
+**配套纪律**：
+- **未实测不得声称实测**：环境受限时按「保守默认 + 如实标注『未实测（环境限制）』」，**不得与「实测通过」混同**。
+- **合成分支中立落文**：面向两分支的文件文本**不点具体通道工具**，使 go / no-go **两种结果下同一文案均成立**——避免因单一结论反转而返工全量模板（24 份）。
+- **预期外的三态**：实测可能出现**预期外的第三态**（如「推翻」），须**如实登记**，不按预置选项强行归档。
+
+**判据**：凡「平台能力」结论进入交付面，一律**实测先行 + 三态判定 + 中立落文**；能力可用**不等于**必须启用（保守实现可正当地走降级分支）。
+
+**实证**：v1.2.1-stage-88（`ops/op-001-verdict.md` §9 判定表 no-go + 四条件留痕；§8.1 Claude Q1 结论为「推翻」——方案预置两态之外的第三态，**如实登记未强行归档**；§6.3 深度提升加测使「留门」有实测支撑；REV-88-009 裁定本阶段实现与事实一致、无需就地改判）。
+
+**参见：** v1.2.1-stage-88（plan §一 C1~C4 / §二 不变量 1「平台事实不虚构」/ 边界 1「降级红线」；op-001-verdict.md §6/§9/§10；REV-88-009）；kb/architecture.md #通用工作者直接调度架构；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实（Q1 supersede）、#opencode 全局 AGENTS.md 加载排查；kb/patterns.md #opencode 嵌套 task 行为级实测方法
+
+## [+] opencode 嵌套 task 行为级实测方法：默认 subagent_depth 1 拦截 + 提升 depth 验证 + debug agent 的 tools/permission 段非授权判据 (2026-10-15)
+
+**场景**：判定 opencode 的 subagent **能否直接调度下一级 subagent**（嵌套 `task`），须区分「静态 permission 授权」与「行为级可达」两层，且不得在真实全局目录上试验。
+
+**方法（四步）**：
+1. **隔离 HOME 铺放**：双设 `HOME` / `USERPROFILE` 指向临时目录，`opencode debug paths` 断言四路径全隔离（承「隔离 HOME 实测 opencode 行为的方法」四步法）。
+2. **静态 ruleset 参照**：`opencode debug agent <name>` 读 permission/tools 段——**仅作静态参照，非授权判据**（该工具对 `ask` 自动放行、仅强制 `deny`；**ask 判别必须用 `opencode run`**）。
+3. **行为级探针（权威判据）**：`opencode run --format json "<要求 A 派发 B，并要求 B 派发 C>"`（**非 TTY，且未用 `--auto`**）；判「① 子会话是否创建 ② 目标是否被正确解析 ③ 结果/错误是否回传」三要素。
+4. **零污染核对**：退出后逐项比对真实全局（agent 文件 sha256 清单 + 目录 mtime + `~/.openfeel` 文件数 + auth.json mtime），隔离目录用后整体删除，**不得在真实全局目录做写操作**。
+
+**关键现象（本仓实测）**：
+- **默认配置下二级嵌套被拦截**：patform 默认 `subagent_depth = 1`，planner → executor 的孙会话**未创建**，回传逐字错误 `Subagent depth limit reached (1). Increase "subagent_depth" to allow nested subagents.` → **no-go**（三要素①失败，②③达成）。
+- **提升 depth 即跑通**：隔离配置仅增设 `"subagent_depth": 3`，同一探针**完整跑通二级嵌套**（日志含 3 个会话 ID、`depth limit` 报错 0 次）→ permission 扩展**必要且有效**，唯一阻塞项为平台深度阈值；`subagent_depth` 键名来自平台错误提示（**非公开 schema**，后续版本可能改名）。
+
+**判据/避免**：嵌套调度判定一律「**静态非 deny ∧ 行为级三要素**」；**禁以 `debug agent` 静态输出冒充行为级通过**；默认 depth 阈值可能拦截，需**提升 depth 加测**方能确认能力本身可用（而非授权无效）；深度上限、并发、permission 继承、子会话成本**未验证面**须一并登记。
+
+**实证**：v1.2.1-stage-88（`ops/op-001-verdict.md` §1~§7/§10；opencode 1.18.35；探针 A 方法学否定 / 探针 B 默认 no-go / 探针 C 深度提升 go；零污染 9 文件 sha256 前后一致）。
+
+**参见：** v1.2.1-stage-88（op-001-verdict.md §6.2/§6.3/§9/§10）；`src/core/templates-data/opencode/agents/{zh-CN,en}/openfeel-*.md :: permission.task`；kb/patterns.md #隔离 HOME 实测 opencode 行为的方法、#平台能力实测先行的 go/no-go 决策范式；kb/architecture.md #通用工作者直接调度架构

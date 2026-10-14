@@ -1,0 +1,121 @@
+# stage-88 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# revision: 2026-10-15 openfeel-schemer 初版（计划修订 1 / REV-88-001~004 closed + REV-88-005 low 吸收）
+#   说明①：op 数定稿 = 3（对齐 v1.2.1/deps.yaml `est_ops: 3`）。拆分 = op-001 T1 平台能力核验（纯核验，无 src 改动）/ op-002 T2 机制落地（12+24+10+4+1 文件 + A1~A3 断言 + build 双生成物）/ op-003 T3 承接项 + 门禁（**阶段末 op**）。
+#   说明②：执行序恒为 op-001 → op-002 → op-003。op-001 无 src 改动但与 op-002 为**语义门**关系（go/no-go → 文案口径 / 降级红线）；op-002 与 op-003 均执行 npm run build（禁并发）+ op-003 门禁须在 op-002 build 之后。
+#   说明③：REV 吸收映射 —— 001（high，C5 负向措辞全量去向）→ op-002 §2.3（①+②+③ = 10 行规整；④ get-stage-status:71 转 stage-91 登记、⑤ claude executor:82 保留、⑥ agents-md/constraint:81 归 stage-89）；002（medium，分类学）→ op-002 §2.2 冻结文本（通用工作者 = executor；feel-tester 并列）；003（low，stage-87/ops 已入管）→ op-003 §3.3（三项收窄）；004（low，双向偏差登记）→ 本文件 produces 与实际改动面双向对账；**005（low，C5 排除项计数偏差）→ op-003 §3.4 吸收**（计划回写 + 台账）。
+#   说明④：方案期裁定 —— D-1 探索者表述统一「探索者接入见后续阶段」（含 feel 目标表行，不写仓内阶段编号）｜D-2 REV 台账 executor 置 resolved、closed 归 reviewer｜D-3 REV-88-005 吸收口径｜D-4 A2/A3 断言落 test/core/templates.test.ts 文件末新 describe｜D-5 tool-usage 增补用「直发 / 不经多级转介」（跨 harness 中立 skill 不断言平台能力）。
+#   说明⑤：`git status --porcelain src/` 口径 = 「build ×2 幂等（S2 === S1）+ 变更集 ⊆ produces 清单」（本阶段**有意**变更 templates-data 源 + 同批重生成双生成物——「空」口径不可达，承 stage-86 说明⑤）；生成物（template-loader.ts / update.ts）**禁手改**。
+version: "1.1"
+stage: v1.2.1-stage-88
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-15"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.1-stage-87
+    type: hard
+    status: done
+    reason: "事实基线（stage-87 归档 `a207a30` 登记）：71 文件 / 1614 用例 0 skipped / 0 failed；`tsc` 0；`lint i18n` 931；`lint kb` 0；build ×2 幂等；`--version` = 1.2.0。语义冻结：需求接取制度（stage-87）与本阶段**直接调度**为**两套机制**（计划 §二）——文案须显式区分。承接：上游 pending REV-87-008/009/010（medium/low/low）由本阶段 op-003 处置（008/009 订正 + 010 验收关闭 + stage-88/ops 入管）；REV-86-009/010 显式转后续（计划 §七，零灭失）。承接判据源 = `.openfeel/users/Liuary/code_review/REV-86.md` + `REV-87.md`（**非** flow.json.reviews）。"
+  - downstream: v1.2.1-stage-89（探索者接入 + 路由/计数翻转）
+    type: hard
+    note: "① 本节新增文案**零** `openfeel-explorer` 引用（A3 阴性断言锁定；「探索者」仅作概念表述）；② 移除面 5 项归 stage-89：`agents-md/{zh-CN,en}.md` + `claude/constraint/{zh-CN,en}.md`（「统一调度…不得越界启动其他 Agent」行 :81）+ `test/core/claude-adapter.test.ts` 复核；③ agent 9→10 计数翻转、skill 面 `task(explore)`/`task(general)` 收编、`openfeel-get-stage-status:71` 收编归 stage-91。"
+  - downstream: v1.2.1-stage-90/92/93
+    type: hard
+    note: "需求级模式属性（90）/ 并行编排契约与审查档位（92）/ 版本与文档收口（93）——本阶段零触碰；`--version` 保持 1.2.0。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；**不直写 flow.json**；不推进 phase（由 Feel 经 CLI 执行）；精确 git add（禁 -A，kb #方案层 ops 产出的审计链完整性）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "平台能力核验（T1）——opencode 嵌套 task 隔离实测 + Claude 侧 Q1 复核 + Handoff 通道确认 + go/no-go 判定表"
+    produces:
+      - .openfeel/plan/v1/stage-88/ops/op-001-verdict.md
+    deps: []
+    notes: "纯核验 op（**无 src/ 改动**）。① 环境与零污染基线快照（真实 `~/.config/opencode/` 文件清单 + 逐文件 sha256 + max mtime）；② 双设 HOME/USERPROFILE 隔离 + `opencode debug paths` 四路径断言（mismatch → STOP）；③ 隔离 fixture 铺放（6 份改造副本，**不入仓**）+ 认证副本用后删除；④ 静态 ruleset（`opencode debug agent` —— 局限登记：ask 被放行、仅判 deny）；⑤ **行为级**（`opencode run --agent openfeel-planner` 探针：子 agent 直接调度 openfeel-executor + 三要素判定 + Q13 四项观察）；⑥ 清理 + 零污染核对；⑦ Claude 侧 Q1 复核（CLAUDE_CONFIG_DIR 隔离 + 认证复制 + 带 Task 的 fixture，受限 → 「未实测（环境限制）」保守默认留痕）+ Handoff 通道证据分级（静态在位 = 本 op；行为级链路 = **主会话（Feel）职责**，报告预留条目）；⑧ go/no-go 判定（go = 静态非 deny ∧ 行为级三要素齐备；其余一律 no-go）+ 降级红线四条件；⑨ 报告十要素。**禁以静态证据冒充行为证据**。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "机制落地（T2）——opencode permission task 授权扩展 ×12 + 「调度与 Handoff」节 ×24 + 负向措辞规整 10 行 + feel 目标表扩展 ×4 + tool-usage 最小追加 + A1~A3 断言 + build 双生成物"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/en/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-schemer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-schemer.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/en/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-utility.md
+      - src/core/templates-data/opencode/agents/en/openfeel-utility.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-vision.md
+      - src/core/templates-data/opencode/agents/en/openfeel-vision.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/claude/agents/en/openfeel-planner.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-schemer.md
+      - src/core/templates-data/claude/agents/en/openfeel-schemer.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-reviewer.md
+      - src/core/templates-data/claude/agents/en/openfeel-reviewer.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/claude/agents/en/openfeel-archiver.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-utility.md
+      - src/core/templates-data/claude/agents/en/openfeel-utility.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-vision.md
+      - src/core/templates-data/claude/agents/en/openfeel-vision.md
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/templates-data/skills/openfeel-tool-usage/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/template-loader.test.ts
+      - test/core/templates.test.ts
+      - .openfeel/tmp/stage-88-op002-report.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "go/no-go 判定决定文案口径与是否触发降级红线（Q3）；两分支下本 op 的节文本均成立（不点具体通道工具），但结论须先落档以支撑终局报告汇总。"
+    notes: "T2.1~T2.6 全量。① permission 扩展（12 文件）：**紧跟既有 `grep: \"allow\"` 行之后**插入 `  task: \"allow\"`（标量形式与既有先例一致）；键集 after = planner/schemer/reviewer/archiver/vision {bash, external_directory, glob, grep, read, task}、utility +edit；feel/executor/feel-tester **零触碰**。② 「调度与 Handoff」节（24 文件）：插入锚点 = `## 模型选择` / `## Model Selection` **标题行之前**（节锚点插入禁行号）；**冻结文本逐字**（zh/en 各一份，同语言跨 harness 完全同文）；硬性纪律 = 零 harness 主语（无 Feel/主会话/main session、无替换位）｜分类学（通用工作者 = executor；feel-tester 并列，**不得归入**）｜零悬空引用（禁 openfeel-explorer；「探索者」仅概念）｜不点通道工具（task/Task 能力声明禁入）｜单写者（≤10 行 + 不搬迁既有 `## Handoff` 节——schemer/reviewer 8 份两节并存）。③ 负向措辞规整 **10 行**：① utility ×4（opencode zh:41/en:41、claude zh:35/en:35）② vision ×4（opencode zh:56/en:56、claude zh:51/en:51）③ vision claude ×2（zh:21/en:21 删括注）；红线 = 仅改该行 / 无裸主语 / **不得宣称可调度任意 Agent** / 保留项⑤（claude executor:82）零触碰 / 转出项④（get-stage-status:71）零触碰（转 stage-91）。④ feel ×4：Handoff 目标表**追加行**（既有 4 行逐字保留）+ 4 步前语义注记（两套机制区分）+ 委托边界/核心职责冲突核对（登记制）。⑤ tool-usage skill：触发条件追加「直接调度通用工作者（执行者 openfeel-executor；任意 Agent 均可直发，不经多级转介）」+ 优先级表追加行「通用执行任务 → task(openfeel-executor)」；映射表 10 键与 task(explore)/task(general) 两行零改动（Q16）。⑥ 断言 A1（template-loader.test.ts 权限 describe 内：正向 + 部署源 + 阴性键集 golden = executor 6 键 / feel-tester 8 键）+ A2/A3（templates.test.ts 文件末新 describe：S1 节计数 + 切片非空 + 正控 + 裸主语/explorer 阴性 + 模型选择节在后；S2 跨 harness 切片逐字 ===；S3 负向措辞 10 行新表述在位 + 旧表述行级零残留）+ A4（既有断言零改写全绿）。⑦ `npm run build` 双生成物（禁手改）+ porcelain ⊆ produces + 局部 vitest + tsc = 0。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "承接项处置与门禁收口（T3）——REV-87-008 i18n 描述串 / REV-87-009 JSDoc / REV-87-010 处置 + REV-88-005 吸收 + 门禁全量 + 终局报告（阶段末 op）"
+    produces:
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/core/req/body-file.ts
+      - .openfeel/plan/v1/stage-88/plan.md
+      - .openfeel/users/Liuary/code_review/REV-87.md
+      - .openfeel/users/Liuary/code_review/REV-88.md
+      - .openfeel/plan/v1/stage-88/ops/deps.yaml
+      - .openfeel/plan/v1/stage-88/ops/op-001.md
+      - .openfeel/plan/v1/stage-88/ops/op-001-verdict.md
+      - .openfeel/plan/v1/stage-88/ops/op-002.md
+      - .openfeel/plan/v1/stage-88/ops/op-003.md
+      - .openfeel/tmp/stage-88-final-report.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "终局报告 §1 须引用 `op-001-verdict.md` 的 go/no-go 与 Q1 结论原文；§3.3 的 ops 入管清单含 `op-001-verdict.md`。"
+      - op: op-002
+        type: hard
+        reason: "门禁全量（build ×2 / npm test 新基线 / tsc / lint）须在机制落地 + build 之后；同批收口（计划 §八：hard: op-002）。"
+    notes: "T3.1~T3.4 + 终局报告（**阶段末 op**；**无 templates-data 改动**——本 op 不重生成生成物，仅核验 build 幂等）。① REV-87-008：`help.req.show.json` 描述串（zh `i18n-data/zh-CN.ts:908` / en `i18n-data/en.ts:865`）→ 补 `parent, children`（**仅改值，键名/键数不变 → lint i18n 931 不变**）。② REV-87-009：`src/core/req/body-file.ts:30` JSDoc → 状态参数化（**纯注释行**）。③ REV-87-010 三项收窄：`git ls-files` + `git log --diff-filter=A` 证据（期望 `a207a30` + 4 文件）→ 台账 `resolved`（**closed 归 reviewer**，D-2）；`git add .openfeel/plan/v1/stage-88/ops/`（5 文件精确清单，禁 -A）；制度性修复登记（计划 §八 已明示）。④ REV-88-005 吸收（D-3）：plan.md C5 排除项计数校准为「实测 6 处（zh ×4 + en ×2）」+ §九 追加一行；台账 `resolved`。⑤ 门禁全量：build ×2 幂等（porcelain ⊆ produces）/ `npm test` 0 skipped 0 failed（新基线登记）/ `npx tsc --noEmit` 0 / `OPENFEEL_LOG=0 node bin/openfeel.js lint i18n` = 931 / `lint kb` = 0 / 零回归断言（C9+C10+stage-76 S1/S2+T4.4）全绿零改写 / numstat 归因 100% 字符串·注释行 / `--version` = 1.2.0。⑥ 终局报告八节（含 Handoff 链路证据等级、降级触发状态、承接 REV 处置表 + **请 reviewer 验收 closed**、§七 零灭失核对、偏差登记）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+mutual_exclusions:
+  - group: [op-001, op-002, op-003]
+    reason: "op-002 与 op-003 **均执行 `npm run build`**（重写 src/core/{template-loader,update}.ts 生成段——禁并发 build）；op-003 门禁（build ×2 / 全量 test / lint）必须在 op-002 落地之后；op-001 虽无 src 改动，但其判定结论是 op-002 的语义门（go/no-go → 文案口径 / 降级红线）且终局报告汇总依赖其产物 → 三者恒串行。"

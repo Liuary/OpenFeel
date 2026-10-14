@@ -905,7 +905,7 @@ export const help: I18nDomain = {
   'req.list.json':       { key: 'help.req.list.json',       zh: '以 JSON 输出 { schemaVersion, requirements }', en: '' },
   'req.show':            { key: 'help.req.show',            zh: '查看需求详情（关联阶段为原始只读枚举）', en: '' },
   'req.show.argid':      { key: 'help.req.show.argid',      zh: '需求 ID（如 REQ-001）', en: '' },
-  'req.show.json':       { key: 'help.req.show.json',       zh: '以 JSON 输出 { schemaVersion, requirement, stages }', en: '' },
+  'req.show.json':       { key: 'help.req.show.json',       zh: '以 JSON 输出 { schemaVersion, requirement, stages, parent, children }', en: '' },
 
   // req（写命令）
   'req.claim':           { key: 'help.req.claim',           zh: '认领需求（占用校验；已被他人认领则拒绝）', en: '' },

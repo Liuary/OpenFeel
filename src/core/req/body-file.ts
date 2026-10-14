@@ -27,7 +27,7 @@ export function getRequirementBodyPath(projectPath: string, id: string): string 
 
 /**
  * 渲染需求正文骨架（裁定 6 模板逐字）。
- * 状态取当前值（新需求恒为 draft 快照）；`target_version` 缺省渲染为 `（未指定）`。
+ * 状态取当前值（参数化：req add 恒 draft；req split 子需求初值 scheduled）；`target_version` 缺省渲染为 `（未指定）`。
  */
 function renderRequirementBodySkeleton(req: RequirementData): string {
   const targetVersion = req.target_version !== undefined && req.target_version !== ''

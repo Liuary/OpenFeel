@@ -862,7 +862,7 @@ export const help: I18nDomain = {
   'req.list.json':       { key: 'help.req.list.json',       zh: '', en: 'Output JSON { schemaVersion, requirements }' },
   'req.show':            { key: 'help.req.show',            zh: '', en: 'Show requirement detail (linked stages as raw read-only list)' },
   'req.show.argid':      { key: 'help.req.show.argid',      zh: '', en: 'Requirement ID (e.g. REQ-001)' },
-  'req.show.json':       { key: 'help.req.show.json',       zh: '', en: 'Output JSON { schemaVersion, requirement, stages }' },
+  'req.show.json':       { key: 'help.req.show.json',       zh: '', en: 'Output JSON { schemaVersion, requirement, stages, parent, children }' },
 
   // req (write commands)
   'req.claim':           { key: 'help.req.claim',           zh: '', en: 'Claim a requirement (occupancy checked; rejected if claimed by another)' },

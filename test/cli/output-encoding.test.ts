@@ -239,7 +239,7 @@ describe('E-2 spawn E2E（真实子进程，防恒绿）', () => {
    * cwd=仓库根（与 plan E-2「临时目录」口径的偏差已声明；保证 flow.json 可用）。
    */
   function spawnEnv(home: string, encoding: string): NodeJS.ProcessEnv {
-    return {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       USERPROFILE: home,
       HOME: home,
@@ -247,6 +247,10 @@ describe('E-2 spawn E2E（真实子进程，防恒绿）', () => {
       OPENFEEL_LOG: '0',
       OPENFEEL_ENCODING: encoding,
     };
+    // stage-86 op-002 最小修订：cwd=仓库根 → 剔除会话候选变量，
+    // 防 session 续接文件写入真实工作区 `.openfeel/tmp/`（REV-86-007 同类防护）
+    delete env.CLAUDE_CODE_SESSION_ID;
+    return env;
   }
 
   /** 运行 bin 子进程并以 Buffer 捕获 stdout */

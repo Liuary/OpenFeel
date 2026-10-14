@@ -91,6 +91,9 @@ describe('stage-67 op-001 runCli 接入被动部署检测', () => {
     emit.mockClear();
     const parseSpy = vi.spyOn(rootProgram, 'parse').mockImplementation(() => rootProgram);
     vi.stubEnv('OPENFEEL_LOG', '0'); // 防运行日志写真实 HOME（隔离旁路）
+    // stage-86 op-002 最小修订（REV-86-007 同类）：本用例 cwd = 真实仓库 →
+    // 清空会话候选变量，防 logCliStart 的 session 续接文件写入真实工作区（OPENFEEL_LOG=0 不拦会话解析）
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', '');
     const prevArgv = process.argv;
     process.argv = ['node', 'openfeel', 'flow', 'status'];
     try {

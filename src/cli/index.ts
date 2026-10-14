@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { t, getCliLang, hasKey } from '../core/i18n.js';
 import { isFlowConcurrentError } from '../core/flow-manager.js';
 import { handleConcurrentConflict } from '../commands/shared/errors.js';
-import { runtimeLog } from '../core/runtime-log.js';
+import { runtimeLog, logCliStart, logCliDone } from '../core/runtime-log.js';
 import { emitGlobalDeployCheck } from './deploy-check-output.js';
 
 // 读取 package.json 获取版本号
@@ -193,8 +193,9 @@ export function handleCliError(err: unknown): never {
 /** CLI 启动入口：包裹 program.parse，统一处理并发写冲突 */
 export function runCli(): void {
   // stage-58 B-6：命令（argv）+ 结果入运行日志；不记录 stdout 内容。
-  // 注：--help/--version 由 commander 输出后直接 exit → 不记「cli done」；错误路径经 handleCliError 抛出 → 亦不记「cli done」。
-  runtimeLog('info', 'cli start: ' + process.argv.slice(2).join(' '));
+  // 注：--help/--version 经 commander 输出后 exit → 由 exit 兜底记「cli done」（v1.2.1-stage-86 有意变更）；
+  // 错误路径经 handleCliError 抛出后同样经 exit 兜底记「cli done」。
+  logCliStart(process.argv.slice(2));
   // stage-67：被动部署提示（门控内置于适配器；异常静默，不影响主命令）
   emitGlobalDeployCheck();
   try {
@@ -202,7 +203,7 @@ export function runCli(): void {
   } catch (err) {
     handleCliError(err);
   }
-  runtimeLog('info', 'cli done exit=' + (process.exitCode ?? 0));
+  logCliDone(typeof process.exitCode === 'number' ? process.exitCode : 0);
 }
 
 export { program };

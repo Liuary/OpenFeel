@@ -31,11 +31,15 @@ describe('REPL smoke（stage-50 op-004 T40）', () => {
   it.skipIf(!HAS_DIST_CLI)('错误命令后 REPL 不中途退出；exit 输出再见；help 列表不含不存在命令', () => {
     const home = mkdtempSync(join(tmpdir(), 'openfeel-repl-home-'));
     try {
+      // stage-86 op-002 最小修订：本用例未隔离 cwd（= 仓库根）→ 剔除会话候选变量，
+      // 防 session 续接文件写入真实工作区 `.openfeel/tmp/`（REV-86-007 同类防护）
+      const childEnv = { ...process.env, USERPROFILE: home, HOME: home, XDG_CONFIG_HOME: home, OPENFEEL_ENCODING: 'utf8', OPENFEEL_LOG: '0' };
+      delete childEnv.CLAUDE_CODE_SESSION_ID;
       const r = spawnSync(process.execPath, [BIN_PATH], {
         input: 'notacommand\nhelp\nexit\n',
         encoding: 'utf-8',
         timeout: 30000,
-        env: { ...process.env, USERPROFILE: home, HOME: home, XDG_CONFIG_HOME: home, OPENFEEL_ENCODING: 'utf8', OPENFEEL_LOG: '0' },
+        env: childEnv,
       });
       expect(r.status).toBe(0);
       // 走到 exit 分支 → 输出再见（说明错误命令未杀死主循环）

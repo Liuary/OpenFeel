@@ -36,6 +36,7 @@ import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, type W
 import { getGlobalProfilePath } from './global-paths.js';
 import type { RequirementData } from './req/types.js';
 import { syncRequirementStatus } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）
+import { getSessionId } from './session.js';                  // 会话标识（stage-86 T4；core→core 零环）
 
 /** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed' | 'draft';
@@ -58,6 +59,10 @@ export interface Op {
   attempts: number;
   max_attempts: number;
   checkpoints: Checkpoints;
+  /** 最近一次 attempt 记录时间（ISO；可选——存量 op 缺省，读侧宽容不注入） */
+  attempted_at?: string;
+  /** 进入 done / failed 终态时间（ISO；可选——读侧宽容不注入） */
+  completed_at?: string;
 }
 
 /** 审查条目 */
@@ -1412,6 +1417,40 @@ export class FlowManager {
   }
 
   /**
+   * T4：跨会话恢复判定。从 log 尾部回扫（本次条目尚未写入）取该 stage 最近一条
+   * advance_stage_phase / reset_stage_phase 条目（要求 detail.to === exitedPhase）；
+   * 任一侧不可信 / 缺失 → 返回 null（调用方省略 resumed 字段，不臆断；proc: 级不参与跨会话判定）。
+   * @param log 审计日志（本次条目尚未 append）
+   * @param stageKey 阶段键（完整 stageId）
+   * @param exitedPhase 本次转换退出的 phase（= 上一次转换进入的 phase）
+   * @param currentId 本次会话标识（含来源前缀）
+   * @returns true = 异会话恢复；false = 同会话；null = 不可判定（省略字段）
+   */
+  private computeResumed(log: LogEntry[], stageKey: string, exitedPhase: string, currentId: string): boolean | null {
+    // 可信判定：仅 env: / project: 前缀参与跨会话判定；proc: → 不可判定
+    if (!(currentId.startsWith('env:') || currentId.startsWith('project:'))) {
+      return null;
+    }
+    for (let k = log.length - 1; k >= 0; k--) {
+      const e = log[k];
+      if (e.action !== 'advance_stage_phase' && e.action !== 'reset_stage_phase') {
+        continue;
+      }
+      const detail = e.detail as { stageName?: unknown; to?: unknown; session_id?: unknown };
+      if (detail.stageName !== stageKey || detail.to !== exitedPhase) {
+        continue;
+      }
+      const prevId = typeof detail.session_id === 'string' ? detail.session_id : '';
+      // 旧条目无 session_id / 值非法 / 上一侧不可信 → 不可判定
+      if (!(prevId.startsWith('env:') || prevId.startsWith('project:'))) {
+        return null;
+      }
+      return prevId !== currentId; // 同值 → 同会话（false）；异值 → 跨会话恢复（true）
+    }
+    return null; // 无历史转换条目 → 不可判定
+  }
+
+  /**
    * 推进指定阶段到目标流水线阶段（新 API）
    * @param stageName 阶段名（如 stage-01）
    * @param phase 目标流水线阶段（PipelinePhase）
@@ -1498,12 +1537,17 @@ export class FlowManager {
       && Object.values(this.data.stages).every((s) => s.phase === 'done');
     this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 
+    // T4：跨会话恢复标注（可选字段；任一侧不可信 / 缺失 → 省略 resumed，不臆断）
+    // 计算在 appendLog 之前 → 回扫天然排除本次条目
+    const sessionId = getSessionId({ projectPath: this.projectPath });
+    const resumed = this.computeResumed(this.data.log, key, fromPhase, sessionId);
+
     // 追加日志（使用实际触发者名，而非硬编码 'flow-manager'）
     this.appendLog({
       time: '',
       agent: actualTrigger,
       action: 'advance_stage_phase',
-      detail: { stageName: key, from: fromPhase, to: targetPhase },
+      detail: { stageName: key, from: fromPhase, to: targetPhase, session_id: sessionId, ...(resumed === null ? {} : { resumed }) },
     });
 
     // REV-003: advance_stage_phase 改为 endStage 时批量聚合，取消逐条写入
@@ -1595,11 +1639,14 @@ export class FlowManager {
     stage.status = projectedStatus;
 
     // 审计日志：reset 为修复而非里程碑推进
+    // T4：跨会话恢复标注（与 advanceStagePhase 同款；计算在 appendLog 之前）
+    const resetSessionId = getSessionId({ projectPath: this.projectPath });
+    const resetResumed = this.computeResumed(this.data.log, key, fromPhase, resetSessionId);
     this.appendLog({
       time: '',
       agent: 'flow-manager',
       action: 'reset_stage_phase',
-      detail: { stageName: key, from: fromPhase, to: targetPhase },
+      detail: { stageName: key, from: fromPhase, to: targetPhase, session_id: resetSessionId, ...(resetResumed === null ? {} : { resumed: resetResumed }) },
     });
 
     // 需求聚合对称回退（T2）：聚合视图重算——聚合 ≠ done ∧ 需求 status === done → 回退 in_progress；
@@ -2456,6 +2503,9 @@ export class FlowManager {
 
     if (result === 'pass') {
       op.state = 'done';
+      // T3：op 级埋点（唯一写入点 = recordAttempt；pass 同时进入 done 终态）
+      op.attempted_at = new Date().toISOString();
+      op.completed_at = op.attempted_at;
       if (stageIdOfOp) { this.syncCurrentOp(stageIdOfOp); }
       this.data.pipeline.retry = 0;
       this.appendLog({
@@ -2476,6 +2526,8 @@ export class FlowManager {
     // result === 'fail'
     if (op.attempts < op.max_attempts) {
       op.state = 'pending'; // 回到 pending 等待重试
+      // T3：仅记 attempted_at（未进入终态 → completed_at 缺省）
+      op.attempted_at = new Date().toISOString();
       if (stageIdOfOp) { this.syncCurrentOp(stageIdOfOp); }
       this.data.pipeline.retry += 1;
       this.appendLog({
@@ -2495,6 +2547,9 @@ export class FlowManager {
 
     // 重试耗尽
     op.state = 'failed';
+    // T3：重试耗尽 = 进入 failed 终态 → 双写
+    op.attempted_at = new Date().toISOString();
+    op.completed_at = op.attempted_at;
     this.data.pipeline.retry += 1;
     this.appendLog({
       time: '',

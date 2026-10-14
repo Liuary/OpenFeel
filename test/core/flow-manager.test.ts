@@ -11,6 +11,7 @@ import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AUTO_DONE_PRECONDITION } from '../../src/core/req/aggregate.js';
 import { REQ_STATUSES, type RequirementData, type RequirementStatus } from '../../src/core/req/types.js';
+import { resetSessionCache } from '../../src/core/session.js';
 
 // mock homedir：隔离全局画像读写（stage-42 op-001/op-002），避免污染真实用户主目录
 // 沿用 test/core/config.test.ts 的既有惯例（vi.hoisted + importOriginal 保留其余 os 导出）
@@ -23,6 +24,11 @@ vi.mock('node:os', async (importOriginal) => {
 // mock child_process：断言 autoCommitOnDone 以数组参数调用 git（T16），避免真实 git 操作
 const mockedChild = vi.hoisted(() => ({ execFileSync: vi.fn() }));
 vi.mock('node:child_process', () => ({ execFileSync: mockedChild.execFileSync }));
+
+// stage-86 op-003（REV-86-006）：golden 断言的确定性会话值（T4 恒写 detail.session_id；
+// 执行环境真实存在 CLAUDE_CODE_SESSION_ID → 不 stub 则值非确定）
+const GOLDEN_SESSION_ID = 'golden-fixed';
+const GOLDEN_SESSION_LABEL = 'env:' + GOLDEN_SESSION_ID;
 
 /** 创建测试用 FlowData（带一个阶段和一个 op） */
 function makeTestFlowData(overrides?: Partial<FlowData>): FlowData {
@@ -5003,9 +5009,14 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-req-aggregate-'));
+    // stage-86 op-003（REV-86-006）：T4 恒写 detail.session_id → golden 断言须确定性会话值
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', GOLDEN_SESSION_ID);
+    resetSessionCache();
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
+    resetSessionCache();
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -5119,7 +5130,8 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
       "detail": {
         "stageName": "stage-01",
         "from": "plan_pending",
-        "to": "done"
+        "to": "done",
+        "session_id": "${GOLDEN_SESSION_LABEL}"
       }
     }
   ]
@@ -5163,7 +5175,8 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
       "detail": {
         "stageName": "stage-01",
         "from": "plan_pending",
-        "to": "done"
+        "to": "done",
+        "session_id": "${GOLDEN_SESSION_LABEL}"
       }
     }
   ]
@@ -5335,5 +5348,225 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
     // 形参锁定（REV-83-007）：advanceStagePhase 无 dryRun 形参；resetStagePhase options 带默认值
     expect(mgr.advanceStagePhase.length).toBe(3);
     expect(mgr.resetStagePhase.length).toBe(2);
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-86 op-003：T3 op 级时间字段 + T4 跨会话恢复标注
+// ═══════════════════════════════════════
+describe('stage-86 op-003 T3/T4（op 级时间字段 + 跨会话恢复标注）', () => {
+  let tmpDir: string;
+  const flowPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-s86-t3t4-'));
+    // 环境解耦硬要求：显式控制会话候选变量（执行环境真实存在该变量）
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', 'S1');
+    resetSessionCache();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetSessionCache();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 归一化易变字段（meta.revision / meta.updated）后序列化 */
+  function normalizeRaw(raw: string): string {
+    const d = JSON.parse(raw) as Record<string, any>;
+    if (d.meta) {
+      d.meta.revision = 0;
+      d.meta.updated = '';
+    }
+    return JSON.stringify(d, null, 2);
+  }
+
+  /** 写盘存量 flow.json（磁盘真实形态：op 不含运行时便利字段 `id`——save() 会剔除） */
+  function writeDisk(data: FlowData): void {
+    const disk = structuredClone(data) as FlowData;
+    for (const stage of Object.values(disk.stages)) {
+      for (const op of Object.values(stage.ops)) {
+        delete (op as unknown as Record<string, unknown>).id;
+      }
+    }
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    writeFileSync(flowPath(), JSON.stringify(disk, null, 2) + '\n', 'utf-8');
+  }
+
+  /** 取最后一个 advance/reset 转换条目 */
+  function lastPhaseEntry(mgr: FlowManager): { action: string; detail: Record<string, unknown> } {
+    const log = mgr.getData()!.log;
+    for (let i = log.length - 1; i >= 0; i--) {
+      const e = log[i];
+      if (e.action === 'advance_stage_phase' || e.action === 'reset_stage_phase') {
+        return { action: e.action, detail: e.detail };
+      }
+    }
+    throw new Error('no phase entry');
+  }
+
+  // ── T3：三分支 + draft 零追加 + 零注入 ──
+
+  it('T3.1 pass 分支：attempted_at + completed_at 双写且相等（均为 ISO）', () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData());
+    mgr.recordAttempt('stage-01.op-001', 'pass');
+
+    const op = mgr.getData()!.stages['stage-01'].ops['op-001'];
+    expect(op.state).toBe('done');
+    expect(typeof op.attempted_at).toBe('string');
+    expect(Number.isNaN(Date.parse(op.attempted_at!))).toBe(false);
+    expect(op.completed_at).toBe(op.attempted_at);
+  });
+
+  it('T3.2 fail-retry 分支：仅 attempted_at（completed_at 键不存在）', () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData());
+    mgr.recordAttempt('stage-01.op-001', 'fail');
+
+    const op = mgr.getData()!.stages['stage-01'].ops['op-001'] as unknown as Record<string, unknown>;
+    expect(op.state).toBe('pending');
+    expect(typeof op.attempted_at).toBe('string');
+    expect('completed_at' in op).toBe(false);
+  });
+
+  it('T3.3 fail-exhausted 分支：attempted_at + completed_at 双写', () => {
+    const data = makeTestFlowData();
+    data.stages['stage-01'].ops['op-001'].attempts = 2;
+    data.stages['stage-01'].ops['op-001'].max_attempts = 3;
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(data);
+    mgr.recordAttempt('stage-01.op-001', 'fail');
+
+    const op = mgr.getData()!.stages['stage-01'].ops['op-001'];
+    expect(op.state).toBe('failed');
+    expect(typeof op.attempted_at).toBe('string');
+    expect(op.completed_at).toBe(op.attempted_at);
+  });
+
+  it('T3.4 draft 拒绝分支：零追加（两键均不存在）', () => {
+    const data = makeTestFlowData();
+    data.stages['stage-01'].ops['op-001'].state = 'draft';
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(data);
+    mgr.recordAttempt('stage-01.op-001', 'pass');
+
+    const op = mgr.getData()!.stages['stage-01'].ops['op-001'] as unknown as Record<string, unknown>;
+    expect('attempted_at' in op).toBe(false);
+    expect('completed_at' in op).toBe(false);
+    expect(mgr.getData()!.log.some((l) => l.action === 'attempt_refused_draft')).toBe(true);
+  });
+
+  it('T3.5 零注入 golden：存量 op（无时间字段）load→save 归一化逐字节等值 + 新键零出现', () => {
+    const disk = makeTestFlowData();
+    writeDisk(disk);
+    const beforeNormalized = normalizeRaw(readFileSync(flowPath(), 'utf-8'));
+
+    const mgr = new FlowManager(tmpDir);
+    mgr.load();
+    mgr.save();
+
+    const raw = readFileSync(flowPath(), 'utf-8');
+    expect(raw).not.toContain('attempted_at');
+    expect(raw).not.toContain('completed_at');
+    expect(normalizeRaw(raw)).toBe(beforeNormalized);
+  });
+
+  // ── T4：跨会话恢复标注 ──
+
+  it('T4.1 同会话 → resumed=false 且 session_id 落值', () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData());
+    mgr.advanceStagePhase('stage-01', 'plan_review' as PipelinePhase, 'cli');
+    mgr.advanceStagePhase('stage-01', 'plan_passed' as PipelinePhase, 'cli');
+
+    const entries = mgr.getData()!.log.filter((l) => l.action === 'advance_stage_phase');
+    expect(entries).toHaveLength(2);
+    expect(entries[1].detail.session_id).toBe('env:S1');
+    expect(entries[1].detail.resumed).toBe(false);
+  });
+
+  it('T4.2 异会话 → resumed=true（跨会话恢复显式可辨）', () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData());
+    mgr.advanceStagePhase('stage-01', 'plan_review' as PipelinePhase, 'cli');
+
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', 'S2');
+    resetSessionCache();
+    mgr.advanceStagePhase('stage-01', 'plan_passed' as PipelinePhase, 'cli');
+
+    const last = lastPhaseEntry(mgr);
+    expect(last.detail.session_id).toBe('env:S2');
+    expect(last.detail.resumed).toBe(true);
+  });
+
+  it('T4.3 不可判定（proc: 级）→ session_id 恒写但 resumed 字段缺省', () => {
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', '');
+    resetSessionCache();
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData());
+    mgr.advanceStagePhase('stage-01', 'plan_review' as PipelinePhase, 'cli');
+    mgr.advanceStagePhase('stage-01', 'plan_passed' as PipelinePhase, 'cli');
+
+    const entries = mgr.getData()!.log.filter((l) => l.action === 'advance_stage_phase');
+    expect(String(entries[1].detail.session_id)).toMatch(/^proc:[0-9a-f]{8}$/);
+    expect('resumed' in entries[1].detail).toBe(false);
+  });
+
+  it('T4.4 旧条目无 session_id → resumed 缺省（存量兼容）', () => {
+    const data = makeTestFlowData();
+    data.log.push({
+      time: new Date().toISOString(),
+      agent: 'cli',
+      action: 'advance_stage_phase',
+      detail: { stageName: 'stage-01', from: 'plan_pending', to: 'plan_review' },
+    });
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(data);
+    mgr.advanceStagePhase('stage-01', 'plan_passed' as PipelinePhase, 'cli');
+
+    const entries = mgr.getData()!.log.filter((l) => l.action === 'advance_stage_phase');
+    const last = entries[entries.length - 1];
+    expect(last.detail.session_id).toBe('env:S1');
+    expect('resumed' in last.detail).toBe(false);
+  });
+
+  it('T4.5 resetStagePhase 路径同款标注（异会话 → resumed=true）', () => {
+    const data = makeTestFlowData();
+    data.stages['stage-01'].phase = 'exec_running' as PipelinePhase;
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(data);
+    mgr.advanceStagePhase('stage-01', 'review_pending' as PipelinePhase, 'cli');
+
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', 'S2');
+    resetSessionCache();
+    const res = mgr.resetStagePhase('stage-01', 'exec_running');
+
+    expect(res.changed).toBe(true);
+    const last = lastPhaseEntry(mgr);
+    expect(last.action).toBe('reset_stage_phase');
+    expect(last.detail.session_id).toBe('env:S2');
+    expect(last.detail.resumed).toBe(true);
+  });
+
+  it('T4.6 零注入：旧 flow.json（log 条目无新键）load→save 归一化逐字节等值 + 新键零出现', () => {
+    const data = makeTestFlowData();
+    data.log.push({
+      time: '2026-01-01T00:00:00.000Z',
+      agent: 'cli',
+      action: 'advance_stage_phase',
+      detail: { stageName: 'stage-01', from: 'plan_pending', to: 'plan_review' },
+    });
+    writeDisk(data);
+    const beforeNormalized = normalizeRaw(readFileSync(flowPath(), 'utf-8'));
+
+    const mgr = new FlowManager(tmpDir);
+    mgr.load();
+    mgr.save();
+
+    const raw = readFileSync(flowPath(), 'utf-8');
+    expect(raw).not.toContain('session_id');
+    expect(raw).not.toContain('"resumed"');
+    expect(normalizeRaw(raw)).toBe(beforeNormalized);
   });
 });

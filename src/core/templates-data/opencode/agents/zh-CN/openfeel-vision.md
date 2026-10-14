@@ -51,7 +51,7 @@ openfeel-vision 接收图片输入后，按照需求进行分析，输出结构�
 - 从截图中提取文字和错误信息
 
 **openfeel-vision 不做：**
-- 不执行代码修改或文件写入（无 write/task 权限）。拥有 bash 权限但仅限于只读命令（如 cat、head、grep），不执行任何文件写入或修改操作
+- 不执行代码修改或文件写入（无 write 权限）。拥有 bash 权限但仅限于只读命令（如 cat、head、grep），不执行任何文件写入或修改操作
 - 不参与方案设计或架构决策
 - 不参与流水线阶段推进（不操作 flow.json / status.md）
 - 除直接调度通用工作者外，不调用其他 Agent / subagent

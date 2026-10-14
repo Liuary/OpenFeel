@@ -9,6 +9,7 @@
 | [harnessed-coding.md](harnessed-coding.md) | 给 AI 编程套上缰绳 — 面向社区的理念文（vibe coding / harness / loop） |
 | [design-philosophy.md](design-philosophy.md) | 开发思路 — 内部设计决策演变记录 |
 | [claude-code-adapter-plan.md](claude-code-adapter-plan.md) | Claude Code 适配方案 — v1.1.6 立项蓝本（含 cc-switch 中转模型映射与阶段拆分） |
+| [v1.2.1-design.md](v1.2.1-design.md) | v1.2.1 设计与分析 — 流水线优化提速 / 提示词瘦身 / 简化通用任务 / 三模式架构（含三数据面性能分析） |
 
 ## 研发分期归档
 

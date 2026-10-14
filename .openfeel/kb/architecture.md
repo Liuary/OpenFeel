@@ -880,3 +880,23 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.0-stage-83（plan_review REV-83-002 blocking 闭合）；`src/core/req/aggregate.ts :: computeRequirementAggregate`；`test/core/req.test.ts` 段 A（T4.1 15-phase 穷举 + T4.5 同源四组）+ 段 C（静态）。
 
 **参见：** v1.2.0-stage-83（plan §二 不变量 7 / §四.4；op-001）；`src/core/req/aggregate.ts`；`src/core/req/requirement-ops.ts :: allLinkedStagesDone`；kb/architecture.md #状态/相位单一事实源、#需求流转四层模型架构、#全局宏观状态聚合语义（空集守卫）、#需求命令面架构；kb/patterns.md #需求引擎不变量模式；manual/core/req.md
+
+## [+] 可观测性埋点架构：recordRun 命令层接线 + phase→agent 归属 + 日志 3 字段 + 会话标识三级链 (2026-10-15)
+
+**背景**：v1.2.1 的提速举措若无埋点则无法度量（设计 §8）——`recordRun` 为零调用点死代码、`flow metrics` 恒空；CLI 运行日志 578/5371 条 start 无 done（约 10.8%，耗时永久丢失）；`exec_running` 为**阶段级** phase 不可按 op 分段；活跃/闲置靠分析层「>20min」启发式（非 CLI）。
+
+**四件套**：
+1. **度量接线（T1）**：`recordRun` 调用点落**命令层**（`src/commands/flow.ts` advance 逐步推进循环内、`mgr.save()` 之后），core 层零改动——因 `metrics.ts:10` 已 `import { normalizeAgentName } from './flow-manager.js'`，**core 反向接线必成 import 环**；归属以 `PHASE_AGENT_MAP` **单点常量**（10 键）承载（`*_passed` / `done` / meta 未入表 = 跳过不记）；duration = 被退出 phase 的**窗口耗时**（无基线跳过不写 0 值）；`--dry-run` 因提前 return 天然排除（字节级零写盘）。
+2. **日志字段（T2）**：start/done 行对称落 `[project=…] [session=…]`，done 行另落 `[duration_ms=…]`；**done 行必写加固**（`process.on('exit')` 单源 + SIGINT/SIGTERM → 130/143 + 一次性旗标），安装点 = **bin 单一咽喉**。
+3. **op 埋点（T3）**：`Op` 增**可选** `attempted_at?` / `completed_at?`，仅 `recordAttempt` 三分支写值（`draft` 拒绝分支不写）；**读侧宽容不注入**（`load()` 零改动 → 存量 `load→save` 零注入）。
+4. **语义标注（T4）**：`advance_stage_phase` / `reset_stage_phase` 审计 detail 追加**可选** `session_id`（恒写）/ `resumed`（条件写），**跨会话恢复显式可辨**，替代 >20min 启发式。
+
+**会话标识单一来源**：新建 `src/core/session.ts`（叶子模块，**零 import runtime-log / flow-manager** 防环），被 runtime-log 与 flow-manager 共同消费；三级链 env → project → proc + 值前缀 `env:` / `project:` / `proc:` 供**机器可判**人工 vs 自动化；`proc:` 级不参与跨会话判定。
+
+**不变量**：新增埋点一律「**可选字段 + 读侧宽容**」（不 load 补齐）；四类日志边界不变（只改「CLI 进程运行日志」行内字段）；`--dry-run` 字节级零写盘；口径警示——phase 窗口**含跨会话闲置/等待**，不得表述为「agent 纯执行时长」（`flow metrics` 追加口径注记行 + T4 标注联合解释）。
+
+**判据**：埋点字段「可选 + 读侧宽容」为默认；「死代码接线」先判 import 环方向（core 已被反向依赖 → 落命令层）。
+
+**实证**：v1.2.1-stage-86（3 op `aea0b41` / `dff7e68` / `7a56fa3`；18 文件 +1182/−16；门禁 **71 文件 / 1591 用例** 0 skipped / 0 failed、`lint i18n` **912**、`tsc` 0）。
+
+**参见：** v1.2.1-stage-86（plan §二 不变量 / §三 T1~T4 / §四 Q1·Q2；op-001~003）；`src/core/session.ts`；`src/core/metrics.ts :: PHASE_AGENT_MAP`；`src/core/runtime-log.ts :: logCliStart / logCliDone / installExitHooks`；kb/architecture.md #四类日志边界、#状态/相位单一事实源；kb/patterns.md #死代码接线的落点判据、#CLI 进程日志行格式向后兼容扩展、#进程级会话标识三级链；manual/core/session.md、manual/core/metrics.md、manual/core/runtime-log.md

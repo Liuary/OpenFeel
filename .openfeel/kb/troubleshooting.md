@@ -1214,3 +1214,31 @@ concurrency:
 **实证**：v1.2.0-stage-84（REV-84-006：`update.ts:1898`/`:1915` 手写陈旧计数注释漏登记；处置＝据 S-84-5 归档轮显式销账、本阶段零动作）。
 
 **参见：** v1.2.0-stage-84（op-002/003；REV-84-006）；kb/troubleshooting.md #改 templates-data 源须同批重生成的「双生成物」、#多源文案同步陷阱；kb/patterns.md #新增 skill 纳入生成物键集
+
+## [+] 回扫「最近一条」转换条目求 phase 窗口耗时得 ≈0：`appendLog` 已把本次转换压入 log 末尾 (2026-10-15)
+
+**症状**：为某 phase 计算「窗口耗时」时，若按「回扫 log 中该 stage **最近一条** `advance_stage_phase` / `reset_stage_phase` 条目的 time」取基线，得到 duration ≈ 0（误导值，直接削弱度量意义）。
+
+**根因**：落点既定在 `mgr.advanceStagePhase(...)` **成功之后**，而 `advanceStagePhase` 内部经 `appendLog`（`flow-manager.ts:1502-1505`）**已把本次转换（fromPhase→next，time = now）压入 `this.data.log` 末尾**（`appendLog` 自动补 `time`）→「最近一条」恰为**当前这次** → `now − now ≈ 0`。
+
+**修法**：基线须取「**进入 fromPhase 的那次转换**」——① 以**命令开始前**的 log 长度为上界（`logLenBefore`，天然排除本次新写入）；② 按 `detail.to === 被退出 phase` 匹配回扫（而非「最近一条」）；③ `plan_pending` 无转换条目时兜底 `register_stage`；④ 无基线 → **跳过不记**（不写 0 值污染 avg）。回归防护：单测设**下界断言**（如 `>= 59000ms`）证非 ≈0。
+
+**判据**：凡「取某状态进入时刻」的回扫，须先问「本次写入是否已在 log 中」——同函数内先 append 后回扫必然自指；排除本次的统一手段是**上界快照**。
+
+**实证**：v1.2.1-stage-86（plan_review REV-86-002；op-001 `src/commands/flow.ts :: findPhaseEnteredAtMs`；M1 下界断言）。
+
+**参见：** v1.2.1-stage-86（REV-86-002；op-001）；`src/commands/flow.ts :: findPhaseEnteredAtMs`；`src/core/flow-manager.ts :: appendLog`；kb/patterns.md #死代码接线的落点判据
+
+## [+] 子进程测试未设 `cwd` 致向真实仓库写入：`spawnSync` 缺省继承 cwd (2026-10-15)
+
+**症状**：`spawnSync(node, [bin], {env: {…隔离 HOME…}})` 类子进程用例，若被测代码以 `process.cwd()` 为项目路径（如 session 续接文件写入 `<cwd>/.openfeel/tmp/session.json`），用例会**写/读真实仓库**——env 命中即向 `.openfeel/tmp/session.json` 写入（污染真实会话续接文件；虽处 `.gitignore` 忽略域但违背测试隔离纪律）；无 env 命中时仍会**读**真实 cwd 的该文件，使断言随环境漂移。
+
+**根因**：`spawnSync` **缺省继承父进程 cwd**（未显式设 `cwd`）；既有先例（`repl.test.ts`）同样未设 cwd 但路径不触发写，故未暴露。
+
+**修法**：子进程用例**统一显式 `cwd: tmpDir`**；并**剔除会话类环境变量**（如 `CLAUDE_CODE_SESSION_ID`）防继承真实会话；更广的「env 命中即在任意 cwd 创建 `.openfeel/tmp/`」副作用应**显式登记**，守卫（存在 `.openfeel/` 方写）口径留后续版本定稿。
+
+**判据**：凡 `spawnSync` 且被测代码可能读 `process.cwd()`，**必须显式设 `cwd`**——「HOME 隔离」不覆盖 cwd 维度的污染。
+
+**实证**：v1.2.1-stage-86（scheme_review REV-86-007；op-002 执行期收敛：三例 cwd 隔离 + `index`/`repl`/`output-encoding` 剔除会话变量；REV-86-010 登记更广副作用为台账跟踪项）。
+
+**参见：** v1.2.1-stage-86（REV-86-007/010；op-002）；kb/patterns.md #测试 cwd 隔离模式、#库侧默认 no-op + 进程入口 install 的副作用隔离模式、#进程级会话标识三级链；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护

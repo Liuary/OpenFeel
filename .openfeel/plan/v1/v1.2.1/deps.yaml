@@ -1,0 +1,234 @@
+# OpenFeel v1.2.1 阶段依赖声明（七主题：需求接取 / 通用工作者调度 / 探索者 / 提示词瘦身 / 三模式 / 可观测性 / 并行提速）
+# 由 openfeel-planner 制定；op 级依赖由 openfeel-schemer 在各阶段产方案时落盘（{stage}/ops/deps.yaml）
+# 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
+# 修订记录：2026-10-15 openfeel-planner —— 初稿（依据 docs/v1.2.1-design.md 用户定稿；设计 §9 S1~S7 + 收官 → stage-86~93）
+
+version: "1.1"
+series: v1
+version_label: v1.2.1
+theme: 七主题——需求接取制度（版本解绑）/ 通用工作者直接调度 / 探索者与执行者 / 提示词瘦身 / 三模式架构 / 可观测性改造 / 并行提速
+generated_by: openfeel-planner
+generated_at: "2026-10-15"
+
+# 跨版本承接（基线）
+baseline:
+  - upstream: v1.2.0-stage-85
+    type: hard
+    status: done
+    reason: "v1.2.0 版本收官：CLI 1.2.0 / flow-archive 版本分片 / 需求流转系统（引擎+命令面+聚合）/ 测试 70 文件 1557 用例 / lint i18n 911；本版本在其上增量（不改 phase 枚举、沿用 req 引擎与归档层）。承接声明：v1.2.0 pending REV 空账（flow.json reviews=0 实测）——无需承接表。注意：本版本将 supersede「需求层与 workflow_mode 正交」约束（裁定 D），supersede 记录归归档轮（kb）。"
+
+stages:
+  v1.2.1-stage-86:
+    name: 可观测性改造
+    deps: []
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/metrics.ts
+      - src/core/runtime-log.ts
+      - src/cli/index.ts
+      - bin/openfeel.js
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/metrics.test.ts
+      - test/core/runtime-log.test.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+    notes: "设计 §8 四项最小改造集 + 分析 §8.2#6 加固：① 接线 recordRun（metrics.ts:79 现死代码；落点候选 = 阶段推进/attempt 触发 + phase→agent 归属口径，至少一处真实调用使 flow metrics 非空；Q2 方案期定稿）② CLI 日志补 duration_ms（done 行 src/cli/index.ts:205）/project/session_id + **done 行必写加固**（异常路径亦落行——分析 §8.2#6 578/5371 丢失；Q1 采集链方案期定稿）③ op 级 phase 埋点（flow.json op 结构无时间戳——新增**可选**时间字段，读侧宽容不注入〔kb #顶层可选字段模式〕）④ 活跃/闲置语义标注（phase 转换显式标注跨会话恢复，替代分析层 >20min 启发式——依赖 ② 的 session 标识）。**边界**：不建 dashboard、不改 phase 枚举、不改四类日志布局（裁定 N）。"
+
+  v1.2.1-stage-87:
+    name: 需求接取制度与拆分
+    deps:
+      - v1.2.1-stage-86
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/req/types.ts
+      - src/core/req/requirement-ops.ts
+      - src/commands/req.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/req.test.ts
+      - test/commands/req.test.ts
+    notes: "设计 §2.3/§2.4/§3：① 拆分一等动作（req split + parent_id? 可选字段 + 父子展示；Q4 方案期定稿形态）② 并行接取就绪视图（board/next 增强，方案期定稿范围）③ 版本解绑语义（需求不绑版本——target_version 维持可选；版本号仅在发布时推进；CLI/文档口径核验）。**机制层既有基础**：claim 占用校验/ release / owner+claimed_at（v1.2.0-stage-81/82）零改动复用。**边界**（裁定 F/M）：不做需求树状态聚合（父子仅溯源；聚合单源 allLinkedStagesDone 禁第二份判定——承 REV-83-002 纪律）；requirements 不归档（维持 v1.2.0 裁定 W）。命令面纪律：--json 成功/失败同契约 + schemaVersion:1 + help 键双规（kb 先例）。"
+
+  v1.2.1-stage-88:
+    name: 通用工作者直接调度机制
+    deps:
+      - v1.2.1-stage-87
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/en/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-schemer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-schemer.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/en/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-utility.md
+      - src/core/templates-data/opencode/agents/en/openfeel-utility.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-vision.md
+      - src/core/templates-data/opencode/agents/en/openfeel-vision.md
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - test/core/claude-adapter.test.ts
+    notes: "设计 §2.2（允许各 Agent 直接操作——『subagent 不调用 Task』规则放宽）：① **平台能力核验先行**（opencode 嵌套 task 隔离实测 go/no-go——现状仅 executor/feel-tester 有 task:allow；Claude 侧 Task 限制复核〔v1.1.6-stage-69 Q1 = subagent 不可调 Task〕+ Handoff 通道确认；Q3 执行期定稿+留痕；实测方法照 kb #Claude Code 实机验证方法）② 机制落地（opencode permission task 授权扩展〔范围方案期定稿〕；Claude 通道裁定落档）③ 最小必要规则落文 + 断言（模板权限断言；『subagent 不调用 Task』类措辞清单化）。**降级红线（裁定 H）**：opencode 实测不可行 → 两 harness 统一 Handoff 中介并如实留痕。**单写者纪律**：本阶段只做最小必要落文，散文收编归 stage-91。模板改造同批 npm run build 双生成物。"
+
+
+  v1.2.1-stage-89:
+    name: 通用工作者：探索者与执行者
+    deps:
+      - v1.2.1-stage-88
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-explorer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-explorer.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-explorer.md
+      - src/core/templates-data/claude/agents/en/openfeel-explorer.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-executor.md
+      - src/core/templates-data/opencode/agents/en/openfeel-executor.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-executor.md
+      - src/core/templates-data/claude/agents/en/openfeel-executor.md
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - test/core/claude-adapter.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/setup.test.ts
+      - test/core/update.test.ts
+    notes: "设计 §6：① 新增 openfeel-explorer（只读：Bash/Read/Glob/Grep 4 项、**不加 Skill**——裁定 I；templates ×2 harness ×2 语言 + frontmatter 结构化映射〔opencode permission / claude tools〕+ build 自动纳入）② 执行者通用化（承接任意 agent 的活 + 通用模式任意执行任务；读写工具集不变）+ 路由表更新（『调研/探索 → research（general/Explore）』→『→ openfeel-explorer』；agents-md:17 + claude/constraint:17 双 harness 同批）③ agent **9→10** 计数全枚举翻转（字面量 + 派生总数 + 白名单枚举 + 键集断言——kb 先例）+ 断言（阴性：explorer 无写工具 / 无裸主语 / 跨 harness 对称四律）。**边界**：utility 保留（无推理机械活）；探索者/执行者面向需推理通用任务（设计 §5.5）。"
+
+  v1.2.1-stage-90:
+    name: 三模式架构（规划/快速/通用）
+    deps:
+      - v1.2.1-stage-89
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/config.ts
+      - src/core/req/types.ts
+      - src/core/flow-manager.ts
+      - src/core/plan/stage.ts
+      - src/commands/req.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/config.test.ts
+      - test/core/req.test.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/req.test.ts
+      - test/commands/flow.test.ts
+    notes: "设计 §2.3/§7：① 值域扩展（WORKFLOW_MODES ['full','fast'] → 3 值 + general〔保留既有字面量零回归〕；骨架 stage.ts:154-159 / 冗余字段 :216-220 / health 第 10 项 / insertStatusField / wizard 同步——消费点全枚举）② 需求级模式属性（RequirementData.workflow_mode? 可选；解析链 status.md 显式 > 需求级 > config > profile > builtin 经 resolveStageWorkflowMode **单点**延伸〔消费点 flow-manager:1946/1964/1990 + commands/flow:434/521/2136〕；**supersede v1.2.0 需求层正交边界**——6 禁止串断言显式改写为『模式仅经单点解析器消费』类断言〔禁删除；独立 op + 差额对照——R-2〕）③ 规模驱动默认与升级路径（需求默认快速；req add/set --workflow-mode；general → fast/full 可升级、不自动降级；Q5 边界方案期定稿）+ i18n + 单测。supersede kb 记录归归档轮。"
+
+  v1.2.1-stage-91:
+    name: 提示词瘦身与上下文治理
+    deps:
+      - v1.2.1-stage-88
+      - v1.2.1-stage-89
+      - v1.2.1-stage-90
+    priority: P0
+    est_ops: 4
+    produces_core:
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/templates-data/opencode/agents/zh-CN/
+      - src/core/templates-data/opencode/agents/en/
+      - src/core/templates-data/claude/agents/zh-CN/
+      - src/core/templates-data/claude/agents/en/
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/templates-data/skills/
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/claude-adapter.test.ts
+      - test/core/setup.test.ts
+      - test/core/update.test.ts
+    notes: "设计 §5（**单写者收编点**——吸收 87~90 全部语义）：① 流程 → skill 下沉（逐提示词审核：可复用操作流程落为 skill〔新增/增补〕；约束工具化清单——CLI 可校验规则移出提示词；Q7 清单边界方案期定稿）② **36 agent 模板 + 4 约束文件索引壳化重写**（『skill 索引壳 + 最小约束』；含 87~90 新语义：需求接取 / dispatch 双口径 / 探索者路由 / 三模式；先例四律：节锚点插入 + 提取式切片字节等值 + 无裸主语 + 插入外零改动）③ 上下文治理（compact / 工具结果截断 / 按需加载指引落 skill 与约束；harness 能力边界留痕——Claude 侧 auto-compact 为宿主行为）④ build 双生成物 + 静态断言（尺寸方向值 feel.md ≤ 50%〔Q7 分档〕/ skill 索引引用完整性〔被引用 skill 存在〕/ 跨 harness 对称）+ 计数翻转（skills 增减全枚举）。**风险**：R-1 语义丢失（清单先成文后落文 + 断言同批修订）。"
+
+  v1.2.1-stage-92:
+    name: 流水线提速与并行拆分执行
+    deps:
+      - v1.2.1-stage-86
+      - v1.2.1-stage-90
+      - v1.2.1-stage-91
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - src/core/flow-manager.ts
+      - src/core/config.ts
+      - src/commands/flow.ts
+      - src/core/templates-data/skills/
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+    notes: "设计 §4：① 审查档位与合并（三档『免审/快线/全量』按模式与规模裁剪——**转移表层**实现；flow phases 展示同步；断言；契约 delta 按**瘦身后范式**〔skill 化〕；Q6 档位判据/配置形态方案期定稿；**不破坏** blocking REV 门 + 审计 + --dry-run 语义，高风险强制全量——R-5）② 并行编排与交互提速（拆分并行契约 + **组合转移 `|` 复用**〔v0.5.3 既有〕+ 减少提问/批量确认 + 缩短长子会话指引 + 会话卫生（子会话自动 archive）平台核验〔Q8；不可控→文档留痕边界〕）③ 归档轻量化（archiver 中位 5.9min 固定开销——机械步骤下沉 utility/脚本，评估→落地）。**边界**：并行仅限独立子任务（裁定 L——有依赖仍串行）。"
+
+
+  v1.2.1-stage-93:
+    name: 文档与版本收口（v1.2.1 收官）
+    deps:
+      - v1.2.1-stage-91
+      - v1.2.1-stage-92
+    priority: P0
+    est_ops: 3
+    produces_core:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - CHANGELOG.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - .openfeel/manual/index.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - .openfeel/roadmap/v1.2.1.md
+    notes: "文档多载体（README×3〔版本横幅/file:line 白名单——以内容特征扫描兜底〕+ GETTING_STARTED + commands〔req split / --workflow-mode〕+ manual 按需〔新 agent / 可观测性语义 / 三模式；命名核对禁新建重复页〕+ cli-usage skill 快照 v1.2.1）+ CHANGELOG [1.2.1]（显著登记：req split / 需求级模式 / 三模式 / openfeel-explorer / dispatch 机制 / 可观测性字段 / 审查档位）+ **版本 1.2.1 全链路 A/B/C/D/E**（6 载体/8 文件/10 处 + B 双生成物 + C 传播 + D 白名单 file:line 枚举〔含文档侧能力引入标记〕+ E 无载体）+ roadmap/plan 回填 + **七主题端到端验收**（隔离脚本 + 本仓复核二分——kb 范式）+ 承接 REV 处置表（上游空账）。**收口 op = 阶段最终 op**（v1.2.0 口径）。"
+
+# 执行顺序（严格串行，以依赖为准；设计 §9 S1~S7 + 收官）
+execution_order:
+  - v1.2.1-stage-86
+  - v1.2.1-stage-87
+  - v1.2.1-stage-88
+  - v1.2.1-stage-89
+  - v1.2.1-stage-90
+  - v1.2.1-stage-91
+  - v1.2.1-stage-92
+  - v1.2.1-stage-93
+
+# 跨阶段不变量
+invariants:
+  - "phase 枚举零新增（15 项不变）；checkpoint_mapping / phase_corrections / advanceAccepted 语义不变"
+  - "既有 full / fast 行为零回归（字面量保留；转移表仅经审查档位机制的有意变更且登记；flow phases / advance 接受集逐字不变）"
+  - "埋点 / 字段类变更一律『可选 + 读侧宽容』：存量 flow.json 纯 load→save 零注入（字节级断言）；metrics.json / CLI 日志字段为增量（旧行兼容）"
+  - "模板 / skill 改造同批 npm run build 重生成双生成物（template-loader.ts + update.ts，禁手改；git status --porcelain src/ 干净）"
+  - "跨 harness × 语言模板对称四律：节锚点插入 + 提取式切片字节等值 + 无裸主语 + 插入外零改动（numstat 删除列 0）"
+  - "需求层模式解析经单点（resolveStageWorkflowMode 延伸）；聚合判定单源 allLinkedStagesDone（禁第二份判定——父子字段不入聚合）"
+  - "requirements 不归档（维持 v1.2.0 裁定 W）；flow-archive 归档口径不变"
+  - "不直写 flow.json（注册 / 推进由 Feel 经 CLI）；版本收口 1.2.1 按 A/B/C/D/E 清单；不 npm publish / 不 push"
+  - "新增命令面与 --workflow-mode 等契约：--json 成功/失败同契约（schemaVersion:1）+ 退出码 0/1/2 + help 键双规 + i18n 双表成对（各阶段显式登记新基线 > 911）"

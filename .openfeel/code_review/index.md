@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 48 |
+| passed | 49 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -133,3 +133,9 @@
 | [stage-09](stage-09.md) | 测试文档发布准备 — REV-001 CI 缺失已修复，通过 | passed |
 | [v1.0.0-stage-31](v1.0.0-stage-31.md) | Pantheogen CLI 体验优化 — 4 REV (3 closed + 1 low non-blocking) | passed |
 | [v1.0.0-stage-32](v1.0.0-stage-32.md) | update 增量更新 + 冲突标记机制 — 3 REV (all non-blocking) | passed |
+
+## v1.2.1 系列审查
+
+| 阶段 | 摘要 | 状态 |
+|------|------|------|
+| [v1.2.1-stage-86](v1.2.1-stage-86.md) | 可观测性改造（recordRun 接线 / CLI 日志 3 字段 + done 必写 / op 级埋点 / 跨会话标注）— REV-86-001~008 全 closed，代码轮 +2 low 非阻塞（009/010 open） | passed |

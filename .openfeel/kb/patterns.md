@@ -4010,3 +4010,59 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.0-stage-85（op-003；`.openfeel/tmp/stage-85-acceptance.mjs` → ALL PASS 0 FAILURES；本仓复核 9 组归档 + phases=15/advanceAccepted=15 逐字不变）。
 
 **参见：** v1.2.0-stage-85（op-003；T4/§十一）；kb/patterns.md #隔离 HOME 实测法、#版本分片存量迁移程序、#需求层正交边界架构（kb/architecture.md）；kb/troubleshooting.md #fast 隔离 E2E 断言口径
+
+## [+] 死代码接线的落点判据：core 反向 import 成环 → 落命令层 + duration 基线按 `detail.to` 回扫（排除本次写入） (2026-10-15)
+
+**问题**：`recordRun` 定义于 `src/core/metrics.ts` 但全仓零调用点（死代码）；要接线须先定落点。直接落 core 会成环——`metrics.ts:10` 已 `import { normalizeAgentName } from './flow-manager.js'`，core 反向接线成 import 环（R-86-7）。
+
+**落点判据**：先判依赖方向——core 模块 A 已被 core 模块 B **反向 import** 时，A 的调用点须落**命令层**（`src/commands/**`），core 层零改动；证据 = `rg "import.*flow-manager" src/core/metrics.ts` 命中 **且** `rg "import.*metrics" src/core/flow-manager.ts` 零命中。
+
+**归属口径**：phase→agent 归属以**单点常量表**（`PHASE_AGENT_MAP`，10 键）承载，未入表 phase（`*_passed` / `done` / meta）**跳过不记**（无归属不污染统计）。
+
+**duration 基线口径**：窗口耗时 = now −「**进入该 phase 的那次转换**」时间——按 `detail.to === 被退出 phase` 回扫**命令开始前**的 log 区间（上界 `logLenBefore`，排除本次写入）+ `plan_pending` 兜底 `register_stage`；**无基线 → 跳过不记**（不写 0 值污染 avg）。
+
+**写盘时机**：命令层仅在「本命令内确有记录」时 `save()` 一次；`--dry-run` 分支提前 return → 天然排除（字节级零写盘）。
+
+**判据**：接线死代码前先做一行 `rg` 判 import 方向；窗口类埋点的基线须是「**进入该状态的转换**」而非「最近一条条目」（后者含本次写入，详见 kb/troubleshooting.md）。
+
+**实证**：v1.2.1-stage-86（op-001；`src/core/metrics.ts :: PHASE_AGENT_MAP` + `src/commands/flow.ts :: findPhaseEnteredAtMs`；M1 下界断言 `>= 59000ms` 证非 ≈0）。
+
+**参见：** v1.2.1-stage-86（plan T1 / Q2 / REV-86-002；op-001）；kb/patterns.md #审计日志 action 命名与双轨语义模式、#顶层可选字段「读侧宽容不注入」模式；kb/troubleshooting.md #回扫「最近一条」转换条目求 phase 窗口耗时得 ≈0；kb/architecture.md #可观测性埋点架构；manual/core/metrics.md
+
+## [+] CLI 进程日志行格式向后兼容扩展：前缀不变 + 方括号键值对后缀 + 进程完成行必写加固 (2026-10-15)
+
+**问题**：运行日志行格式 `[ISO][LEVEL][pid] message`（`runtime-log.ts:108` 唯一写入点）需补 `duration_ms` / `project` / `session_id` 三字段——既要保老解析器兼容、又要让旧断言（结尾锚定正则）可同批修订；另 578/5371 条 start 无 done（约 10.8%），耗时永久丢失（进程被杀 / 中断 / 崩溃）。
+
+**行格式扩展**：**前缀逐字不变**（`[ISO][LEVEL][pid]`，保老解析器兼容）+ 追加**方括号键值对后缀**（`[project=<cwd>] [session=<id>]`；选方括号而非引号以对**空格路径安全**）；done 行形如 `cli done exit=0 [duration_ms=123] [project=…] [session=…]`，start/done **对称**。`runtimeLog` 原语**零改动**——后缀由调用层构造（新增 `logCliStart` / `logCliDone` 薄封装）。
+
+**完成行必写加固**：
+- `process.on('exit')` **单源兜底**（覆盖正常结束 / `process.exit` / 未捕获异常）+ `once('SIGINT')` → `process.exit(130)` / `once('SIGTERM')` → `process.exit(143)`（保中断语义；写行仍由 exit 钩子单源承担）。
+- **一次性旗标**（`cliDoneLogged`）防双写，且**置位先于写入**——即使日志被 `--no-log` / `OPENFEEL_LOG=0` 关闭也置位，保「done 事件已发生」语义。
+- 安装点 = **bin 单一咽喉**（`installRuntimeLog()` 之后紧跟 `installExitHooks()`）；库侧不自动安装、**不设 VITEST/env 守卫**（kb 先例）；钩子体内 try/catch 全吞（best-effort）。
+
+**有意变更须显式登记**：① `--help` / `--version` 由「不记 done」→「经 exit 兜底记 done」；② 既有行格式断言同批修订（+ 负控：确认旧格式不再成立）；③ 调用点注释口径更新。
+
+**判据**：新增日志字段一律「**前缀不变 + 后缀式**」扩展（兼容为默认，不破契约）；「事件必写」用 **exit 单源 + 幂等旗标**而非多写入点。
+
+**实证**：v1.2.1-stage-86（op-002；`src/core/runtime-log.ts :: logCliStart / logCliDone / installExitHooks` + `bin/openfeel.js`；子进程 3 场景 `--help` / 未知命令 / 固定 session 全绿不 skip）。
+
+**参见：** v1.2.1-stage-86（plan T2 / R-86-2 / R-86-6；REV-86-008；op-002）；kb/patterns.md #库侧默认 no-op + 进程入口 install 的副作用隔离模式、#CLI 输出编码自适应的「单一咽喉」模式；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护；kb/architecture.md #可观测性埋点架构、#四类日志边界；manual/core/runtime-log.md
+
+## [+] 进程级会话标识三级链 + 来源值前缀标注 + 跨会话恢复显式标注（替代时间启发式） (2026-10-15)
+
+**问题**：需区分「人工（交互会话）」vs「自动化（单进程）」，并据以**显式判定**某次 phase 转换是否**跨会话恢复**——替代分析层「phase 段 >20min」启发式。
+
+**会话标识三级链**（新建叶子模块 `src/core/session.ts`；`getSessionIdentity(opts?)` / `getSessionId(opts?)`）：
+1. **env**（最高优先）：探测 harness 环境变量候选清单——**仅录入实机实测命中者**（本仓实测 Claude Code 侧 `CLAUDE_CODE_SESSION_ID` 存在、UUID 形；opencode 侧无实测环境 → **不录入任何候选名，不臆造**）；值非空（trim 非空）才准入；**命中时 best-effort 写项目续接文件**。
+2. **project**：读 `<projectPath>/.openfeel/tmp/session.json`（`{session_id, source, started_at}`）复用。
+3. **proc**（兜底）：`randomUUID()` 短前缀 8 位，语义 = **单进程**；**不写文件**（防把自动化进程固化成跨进程会话）。
+
+**来源值前缀**：id 带 `env:` / `project:` / `proc:` 前缀 → **机器可判**来源；**禁止 TTL 猜测**（无过期 / 轮换逻辑，轮换仅由 env 值变化驱动）。memoized（按 `projectPath`）；模块**零 import runtime-log / flow-manager**（防环——二者均为其消费方）。
+
+**跨会话恢复显式标注**：phase 转换审计 detail 追加**可选** `session_id`（**恒写**，含 `proc:`）+ `resumed`（**条件写**）——本次转换会话 ≠ 上次转换会话 → `true`；同会话 → `false`；**任一侧不可信（`proc:` 级）/ 缺失 → 省略字段**（不臆断；`proc:` 级不得用于跨会话判定）；计算置于 `appendLog` **之前**（使回扫天然排除本次条目）。
+
+**判据**：可判定性不足时**省略字段而非填猜测值**；多来源标识须带**来源前缀**使消费方可自行判可信度；env 候选名「未实测命中不入代码」。
+
+**实证**：v1.2.1-stage-86（op-002 建 `session.ts`；op-003 `flow-manager.ts :: computeResumed` 两落点 + `test/core/session.test.ts` 7 例 + T4.1~T4.6；REV-86-006 golden 同批补 `session_id`）。
+
+**参见：** v1.2.1-stage-86（plan T4 / Q1 / R-86-3；REV-86-006/007/009/010；op-002/003）；`src/core/session.ts`；kb/patterns.md #身份缺省链解析、#环境变量覆盖型路径函数的「函数体内读 env」可测试性模式、#顶层可选字段「读侧宽容不注入」模式；kb/troubleshooting.md #Claude Code 实机验证方法；kb/architecture.md #可观测性埋点架构；manual/core/session.md

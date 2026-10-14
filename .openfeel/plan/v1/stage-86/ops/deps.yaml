@@ -1,0 +1,86 @@
+# stage-86 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# revision: 2026-10-15 openfeel-schemer 初版（plan_review REV-86-001~005 吸收后定稿）
+#   说明①：op 数定稿 = 3（对齐 v1.2.1/deps.yaml `est_ops: 3`）。拆分 = op-001 T1 recordRun 接线 + 计划承接口径勘误 / op-002 T2 日志三字段与 done 行必写加固（含新增 src/core/session.ts）/ op-003 T3+T4 埋点 + T5 门禁（**阶段末 op**，门禁全绿后交审查）。
+#   说明②：REV-86 吸收映射 —— 001（承接口径）→ op-001 §1.1 + 本文件 cross_stage_constraints；002（duration 口径「进入 fromPhase 的那次转换」）→ op-001 §1.3；003（recordAttempt 行号订正 :2427）→ op-003 §3.1；004（requirements 措辞）→ op-001 §1.1；005（src/core/session.ts 清单）→ op-002 produces 补登。
+#   说明③：i18n 基线 911 → **912**（op-001 +1 键 `metrics.summary.caliberNote`，双表成对）；门禁实测登记。
+#   说明④：测试基线 70 文件 / 1557 用例 → 本阶段 +1 文件（test/core/session.test.ts）+ 新增用例若干；执行期实测登记（0 skipped / 0 failed）。
+#   说明⑤：`git status --porcelain src/` 口径 = 「build ×2 幂等（S2 === S1）+ 变更行 ⊆ produces 清单」（本阶段**有意**变更源码——「空」口径不可达，直搬会伪失败；S-85-4 同款）。
+#   说明⑥：本阶段**不改 templates-data** → build 双生成物无内容变更（幂等断言照跑）；不触 `pipeline.yaml` / phase 枚举（15）/ 转移表。
+#   说明⑦：`--dry-run` 字节级零写盘契约（flow.json 零改 + metrics.json 不生成 + 新增副作用零触发）为 op-001 自测硬项。
+#   说明⑧：op-003 门禁依赖 dist 最新 → 顺序恒为「build → test」（子进程用例 `it.skipIf(!HAS_DIST_CLI)` 不得 skip）。
+
+version: "1.1"
+stage: v1.2.1-stage-86
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-15"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.0-stage-85
+    type: hard
+    status: done
+    reason: "事实基线：v1.2.0 收官（70 文件 / 1557 用例 / lint i18n 911 / --version = 1.2.0）。**承接口径（REV-86-001 更正）**：上游 pending REV 权威台账 = `.openfeel/users/Liuary/code_review/REV-85.md`（**非** `flow.json.reviews`——该字段为 CLI ReviewItem[] 台账）；实测 pending 1 条 = **REV-85-017**（low / 非阻塞）——上游归档轮已显式转 **v1.3.0**（验收记录「保留 pending」）→ **非本阶段承接**；其余条目全部 closed → 本阶段承接实质为空、零灭失（判据 = 上游台账逐条去向）。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；**不直写 flow.json**；不推进 phase；提交精确 git add（禁 -A，kb #方案层 ops 产出的审计链完整性）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "recordRun 接线（命令层）+ PHASE_AGENT_MAP + flow metrics 口径注记（T1）+ 计划承接口径勘误（REV-86-001/004）"
+    produces:
+      - .openfeel/plan/v1/stage-86/plan.md
+      - src/core/metrics.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/flow.test.ts
+      - test/core/metrics.test.ts
+      - .openfeel/tmp/stage-86-metrics-report.md
+    deps: []
+    notes: "T1（Q2 定稿）：落点 = 命令层 src/commands/flow.ts advance 循环（`advanceStagePhase` :942 + save() :955 **之后**；--dry-run 提前 return :917-932 天然排除）；PHASE_AGENT_MAP 10 键单点常量置 src/core/metrics.ts（值域 6 agent；`*_passed`/done 不入表）；duration 口径 = 「**进入 fromPhase 的那次转换**」（REV-86-002：按 detail.to 回扫 [0, logLenBefore) 存量范围 + plan_pending 兜底 register_stage；**禁**「log 最近一条」字面实现）；无基线 → 跳过不记 + debug 留痕（不写 0 值）；参数 result='success' / retries=0；记录后循环外一次 save（先 load 合并防覆盖）。flow metrics 口径注记（summary 有数据分支 +1 行；getSummaryData 零改动；i18n 双表 +1 键 → 912）。**计划承接口径勘误**（§七判据源 / A8 措辞 / §九 修订记录——REV-86-001/004 定稿文本）。单测 M1~M5（含 dry-run 零写盘 + 防多步污染正控）。未接入口登记（reset / attempt 改道 / deprecated advancePhase）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-002:
+    file: op-002.md
+    title: "CLI 日志 3 字段 + done 行必写加固 + session 三级链（T2；含新增 src/core/session.ts）"
+    produces:
+      - src/core/session.ts
+      - src/core/runtime-log.ts
+      - src/cli/index.ts
+      - bin/openfeel.js
+      - test/core/session.test.ts
+      - test/core/runtime-log.test.ts
+      - .openfeel/tmp/stage-86-log-report.md
+    deps:
+      - op: op-001
+        type: soft
+        reason: "同工作区串行（diff 归因；无内容依赖）"
+    notes: "T2（Q1 定稿）：start/done 行对称后缀 `[project=<cwd>] [session=<id>]`（方括号键值对——空格路径安全；前缀不变保老解析器兼容）；done 行另含 `[duration_ms=…]`（起点 = runtime-log 模块级常量 ≈ 进程早段；幂等不随重装重置）。done 必写加固：process.on('exit') **单源兜底** + SIGINT/SIGTERM → 130/143（handler 仅 process.exit，写行由 exit 单源）+ 一次性旗标防双写；安装点 = bin 单一咽喉（库侧 no-op；**不设 VITEST/env 守卫**）。**session 三级链**（新模块 src/core/session.ts，memoized；env 实测命中名 → .openfeel/tmp/session.json 续接 → proc UUID 短前缀；**禁止 TTL 猜测**；proc 不写文件）——候选名以实机实测为唯一准入（实测命中：CLAUDE_CODE_SESSION_ID，2026-10-15 方案期；执行期复核）。断言同批修订：runtime-log.test.ts :56-60（+负控）；新增 done/exit 钩子/子进程三场景。**REV-86-005**：src/core/session.ts 已补登本清单（版本级 deps.yaml produces_core 未列——登记建议 planner/收官轮同步）。有意变更：--help/--version 经 exit 兜底记 done 等三项。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+
+  op-003:
+    file: op-003.md
+    title: "op 级时间字段（T3）+ 跨会话恢复标注（T4）+ 阶段门禁与终局报告（T5；REV-86-003 行号订正）"
+    produces:
+      - src/core/flow-manager.ts
+      - test/core/flow-manager.test.ts
+      - .openfeel/tmp/stage-86-final-report.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "T4 依赖 session 标识（getSessionId 与 proc: 不可信判定）"
+      - op: op-001
+        type: soft
+        reason: "metrics 口径注记——R-86-1 联合解释；lint i18n 912 基线来自 op-001"
+    notes: "T3：Op 增可选 attempted_at?/completed_at?（recordAttempt **:2427** 三分支追加——REV-86-003 订正；pass/fail-exhausted 双写、fail-retry 单写、draft 拒绝分支不写）；load() 零改动（读侧宽容不注入——零注入天然成立）。T4：advance_stage_phase（:1502-1507）与 reset_stage_phase（:1598-1603）detail 追加可选 session_id（恒如实写，含 proc:）+ resumed（条件：两侧均 env:/project: 可信且 detail.to === exitedPhase；同值 false / 异值 true / 其余省略——proc: 不参与跨会话判定；计算在 appendLog 之前）；纯内存零新写盘点、零控制流改动。T5 门禁：build ×2 幂等 / npm test 0 skipped 0 failed（新基线登记）/ tsc 0 / lint i18n 912 / lint kb 0 / porcelain src/ ⊆ produces。实跑验收（隔离临时项目为主：metrics 非空 / 日志 3 字段 / op 时间戳 / resumed 可辨 / 零注入字节断言；本仓复核 = 零污染断言，**不推进本仓 phase**）。终局报告含 REV-86 逐条处置表与未接入口登记。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议

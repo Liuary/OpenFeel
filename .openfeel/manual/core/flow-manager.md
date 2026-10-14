@@ -218,6 +218,7 @@ plan_pending → plan_review → plan_passed
 - **幂等/冲突不写日志**：`registerStage` 的幂等早返回与冲突抛错均位于 `appendLog` **之前**，保证「日志 = 事实变更」。
 - **`plan/scheme.ts` 兜底注册（stage-42 op-004）**：`createScheme` 中 `syncToFlowJson` 的兜底注册路径改经 `validateStageId` + `findStageDirConflict` 校验，命中冲突时 `warn` 并 `return`（**不抛错**：外层 try/catch 会吞非并发错误，warn 显式可见且不破坏「op 文件已创建」契约）；注册成功后写 `register_op`，再由 `save()` 落盘。
 - 审计查询须同时识别 `add_stage` 与 `register_stage`（双轨非重复）。
+- **`advance_stage_phase` / `reset_stage_phase` 的 `detail` 追加可选键**（v1.2.1-stage-86，T4）：`session_id`（恒写）/ `resumed`（条件写，跨会话恢复标注）——详见「op 时间字段与跨会话恢复标注」节。
 
 ## 数据位置
 
@@ -240,6 +241,32 @@ plan_pending → plan_review → plan_passed
 - **零回归**：无 `requirement_id` / 无 `requirements` 键的阶段推进**逐字节不变**（补丁前/后归一化快照 diff 为空；三路径：本函数 / `flow wizard` / deprecated `advancePhase` 同口径）。
 
 > 详见 `manual/core/req.md`「聚合投影与对称回写」节；`flow health` 新增「需求对账」/「需求漂移」两 section（warn-only、不改退出码、不参与 `--fix`）。
+
+## op 时间字段与跨会话恢复标注（v1.2.1-stage-86）
+
+### `Op` 可选时间字段（T3）
+
+`Op` 接口（`flow-manager.ts:53-61`）追加两个**可选**字段（读侧宽容、**不 load 补齐**）：
+
+| 字段 | 类型 | 写入时机 | 语义 |
+|------|------|----------|------|
+| `attempted_at?` | `string`（ISO） | `recordAttempt` **三分支**各写 | 最近一次 attempt 记录时间 |
+| `completed_at?` | `string`（ISO） | 仅 **pass** / **fail-exhausted** | 进入 `done` / `failed` 终态时间 |
+
+- **三分支写值**：`pass` → 两者均写（相等）；`fail-retry` → **仅** `attempted_at`；`fail-exhausted` → 两者均写；**`draft` 拒绝分支零追加**（B4-5 语义保持）。
+- **读侧宽容**：`load()` **零改动**（不加补齐逻辑）→ 存量 `load→save` **零注入**天然成立（kb #顶层可选字段「读侧宽容不注入」模式）。
+- **消费语义**：`exec_running` 窗口可按 op 分段 ≈（上一 op `attempted_at` | 阶段进入时间, 本 op `attempted_at` / `completed_at`]——**无需 op 级 phase**，不改 phase 枚举。
+
+### 转换审计 detail 追加 `session_id` / `resumed`（T4）
+
+`advance_stage_phase`（`:1502-1507`）与 `reset_stage_phase`（`:1598-1603`）条目的 `detail` 追加两个**可选**键：
+
+- `session_id`：**恒写**（含 `proc:` 单进程标注）——经 `getSessionId({ projectPath })`（`src/core/session.ts`；core→core 零 import 环）。
+- `resumed`：**条件写**——由私有 `computeResumed(log, stageKey, exitedPhase, currentId)` 判定：从 log 尾部回扫该 stage 最近一条 advance/reset 条目（要求 `detail.to === exitedPhase`），**本次会话 ≠ 上次转换会话 → `true`**；同会话 → `false`；**任一侧不可信（`proc:` 级）/ 缺失 / 值非法 → `null` → 省略字段**（不臆断）。
+- **计算置于 `appendLog` 之前** → 回扫天然排除本次条目。
+- **约束**：纯内存、**不新增写盘点**（落盘归既有命令层单次 `save()`，同事务）；**不改控制流与返回值**；不改既有 action 命名。
+
+> 用途：使「活跃 / 闲置」语义**显式可辨**（跨会话恢复段 vs 同会话段），替代分析层「phase 段 >20min」启发式；与 `flow metrics` 口径注记联合解释（phase 窗口含跨会话闲置）。
 
 ## status.md 路径解析
 

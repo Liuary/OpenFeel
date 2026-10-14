@@ -49,6 +49,16 @@
 - **能力决策：`Task` 不启用（两 harness 均不加）**——① opencode 默认 `subagent_depth=1` 拦截；② Claude 侧仅**单版本**实测、深度上限未测、`Task`→`Agent` 映射未文档化；③ **单边启用将造成两 harness 语义分叉**，与「统一语义 + 双口径」架构相悖。**可逆面（单点已界定）**：启用 = 4 文件 `tools` 白名单 + 断言 + 文案**同批**；残留风险须**未来启用前重新实测**（kb `#平台能力实测先行的 go/no-go 决策范式`：**能力可用 ≠ 必须启用**）。
 - **对称纪律**：新增 4 份模板键集两 harness **同名同数**（build `assertKeySetsEqual`）；正文**无裸主语**（`Feel` / `主会话` 零出现）。
 
+## 三模式感知与需求携带模式（v1.2.1-stage-90）
+
+> 落点（权威源）：`src/core/templates-data/{opencode,claude}/agents/{zh-CN,en}/{feel,openfeel-planner}.md`（8 文件）+ `skills/openfeel-req/SKILL.md`；断言 `test/core/templates.test.ts`。
+
+- **模板面 supersede（15 处，禁静默删除）**：① `feel.md` 需求节**正交注记 ×4** → 「**模式注记**：需求**携带**模式属性（需求级 `workflow_mode`，经单点解析作用于其关联阶段）；三种模式下需求纪律一致。」（同语言跨 harness 逐字同文）；② `openfeel-planner.md` 需求感知节 **正交 bullet ×4** → 「与「工作流模式感知」的**关系**：需求携带模式属性…三种模式下需求感知口径一致。」；③ `skills/openfeel-req/SKILL.md`「与 `workflow_mode` **正交**」→「与 `workflow_mode` 的**关系**」（description / 节标题 / 正文）；④ `feel.md` 模式节 ×4：`两种模式：` → **`三种模式：`** + 新增 general 条目（**无流水线** / 按需调度通用工作者 / **仅需求级合法** / 可显式升级、不自动降级），full / fast 两条目**逐字保留**。
+- **旧串零残留门**：7 条旧串 × `templates-data/**`（64 文件）全内容扫描 = **0 命中**（`templates.test.ts` S90-2）；`templates.test.ts` needle 4 处显式替换（`'正交注记'`→`'模式注记'` 等）+ 新增 `describe('stage-90：三模式文案（supersede）')` 5 用例。
+- **对称纪律**：改写保同语言跨 harness **逐字同文**（切片 `===`）、**零裸主语**（禁 `Feel` / `主会话` / `main session`）、改写外**零改动**（`numstat`：feel 3/2、planner 1/1、SKILL 3/3）、按节锚点定位（禁行号）。
+- **权威源 → 生成物**：改 `templates-data/**` 后同批 `npm run build` 重生成 `template-loader.ts` + `update.ts`（**禁手改**）。
+- **`general` 的运行时语义**：见 `manual/core/flow-manager.md`「需求级模式与载体制约束」节；agent 侧只承载**语义说明**，判定一律在引擎单点。
+
 ## 审查会话健康探测与可疑产出处置（v1.1.2-stage-48 事件 A）
 
 > 落点（权威源）：`src/core/templates-data/opencode/agents/{zh-CN,en}/feel.md`「审查会话健康探测与可疑产出处置」节 + `.../openfeel-reviewer.md`「工具调用异常与独立取证纪律」节；配套规范见 `manual/core/code-review.md`。

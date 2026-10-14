@@ -1,6 +1,6 @@
 # req 命令组（需求流转命令面）
 
-> 模块文档，由归档官在归档时维护。对应源码：`src/commands/req.ts`（命令薄层）。**v1.2.0-stage-85 新建**；**v1.2.1-stage-87 补**：`split` 子命令（10 → 11）、首个带 `--json` 的写命令、`next --limit`、`board` owner 后缀、`show` 父子展示（**需求与版本解绑**：`target_version` 为纯展示/过滤/排序维度，全生命周期非门）。
+> 模块文档，由归档官在归档时维护。对应源码：`src/commands/req.ts`（命令薄层）。**v1.2.0-stage-85 新建**；**v1.2.1-stage-87 补**：`split` 子命令（10 → 11）、首个带 `--json` 的写命令、`next --limit`、`board` owner 后缀、`show` 父子展示（**需求与版本解绑**：`target_version` 为纯展示/过滤/排序维度，全生命周期非门）；**v1.2.1-stage-90 补**：`add` / `set` 增 `--workflow-mode <mode>`（`full|fast|general`）+ `link` / `set` 经单点**下发**关联阶段（help 键 42 → **44**）。
 >
 > 快照声明：本文档为命令面深入参考；命令/参数细节以 `node bin/openfeel.js req --help`（本仓）实时输出为准。
 
@@ -17,14 +17,14 @@
 
 | 子命令 | 用法 | 关键选项 | 行为要点 | 退出码 |
 |--------|------|----------|----------|:--:|
-| `add` | `req add <title>` | `--target-version <version>`、`--priority <P0\|P1\|P2>` | 创建需求（ID 自动分配 `REQ-NNN`；正文骨架铺到 `.openfeel/requirements/`）；**唯一抛错原语**（构造期入参校验）；骨架失败不 `save()` | 0 / 1 |
+| `add` | `req add <title>` | `--target-version <version>`、`--priority <P0\|P1\|P2>`、**`--workflow-mode <mode>`** | 创建需求（ID 自动分配 `REQ-NNN`；正文骨架铺到 `.openfeel/requirements/`）；**唯一抛错原语**（构造期入参校验）；骨架失败不 `save()`；**v1.2.1-stage-90**：`--workflow-mode`（值域 `full`/`fast`/`general`，非法值构造期抛错 → exit 1） | 0 / 1 |
 | `split` | `req split <id> --into <title>` | `--into <title>`（**可重复**，至少一项）、`--json` | **拆分一等动作**（v1.2.1-stage-87）：把需求拆为若干子需求（顺序 ID + `parent_id` + 初值 `scheduled`，**拆分即发布**）；**本仓首个 repeatable option** + **首个带 `--json` 的写命令**；失败零写盘（父不存在/父终态/空标题/无 `--into`） | 0 / 1 / 2 |
 | `list` | `req list` | `--status <status>`、`--target-version <version>`、`--owner <owner>`、`--json` | 列出需求（多条件 AND）；`--status` 值域取 `REQ_STATUSES`，非法 → exit 1 | 0 / 1 |
 | `show` | `req show <id>` | `--json` | 需求详情；关联阶段为**原始只读 id 枚举**（零 done/进度聚合）；v1.2.1-stage-87：human +2 行（`父需求:` / `子需求:`）、`--json` 追加 `parent`/`children`（**只增不改**；悬空 `parent_id` 原样回显不报错） | 0 / 1 |
 | `claim` | `req claim <id>` | `--owner <owner>` | 认领（占用校验；已被他人认领则拒绝）；`--owner` 缺省走三级链；同 owner 幂等 | 0 / 1 / 2 |
 | `release` | `req release <id>` | — | 释放认领（未占用为 **no-op 成功** exit 0） | 0 / 1 / 2 |
-| `set` | `req set <id>` | `--status` / `--title` / `--target-version` / `--priority` | 更新需求字段（白名单）；命令层零校验，值域/流转合法性由引擎判定 | 0 / 1 / 2 |
-| `link` | `req link` | `--stage <stageId>`、`--requirement <id>`、`--unlink` | 关联需求到阶段 / 解绑（`--requirement` 与 `--unlink` **二选一**）；`already_linked` 硬拒 | 0 / 1 / 2 |
+| `set` | `req set <id>` | `--status` / `--title` / `--target-version` / `--priority` / **`--workflow-mode <mode>`** | 更新需求字段（白名单）；命令层零校验，值域/流转合法性由引擎判定；**v1.2.1-stage-90**：`--workflow-mode` 更新成功后经 `syncConfigFieldToStages` **下发所有已链接阶段**；`general` 且已有链接阶段 → `general_mode_conflict` 拒绝 | 0 / 1 / 2 |
+| `link` | `req link` | `--stage <stageId>`、`--requirement <id>`、`--unlink` | 关联需求到阶段 / 解绑（`--requirement` 与 `--unlink` **二选一**）；`already_linked` 硬拒；**v1.2.1-stage-90**：目标需求带模式 → 经 `syncConfigFieldToStages` **下发到该阶段**（status.md 字段 + flow.json 冗余同批）；目标需求为 `general` → `general_mode_conflict` 拒绝 | 0 / 1 / 2 |
 | `advance` | `req advance <id>` | `--to <status>` | 显式推进状态（合法目标由引擎流转表判定；done 须全部关联阶段 done）；**不设 `--force`** | 0 / 1 / 2 |
 | `board` | `req board` | `--target-version <version>`、`--json` | 需求看板（按状态分组，**7 组固定顺序** = `REQ_STATUSES`，恒含空组）；v1.2.1-stage-87：条目行 owner 非空时追加后缀（**仅 human**） | 0 / 1 |
 | `next` | `req next` | `--owner <owner>`、`--limit <n>`、`--json` | 推荐下一个可接取需求（`scheduled` ∧ 未认领；按预估版本升序）；v1.2.1-stage-87：`--limit <n>`（≥1 整数；**判定基准 = 解析后数值**——显式 `--limit 1` 与缺省同形态；`> 1` 时 human 多行 + `--json` 追加 `candidates`；非法值 exit 1 零写盘） | 0 / 1 |
@@ -58,6 +58,7 @@
 | `already_linked` | 跨需求重绑（`link`，须先解绑） |
 | `invalid_field` | 字段门拒绝（白名单外键 / 非法值 / owner 空串 / title 空串） |
 | `invalid_status` | 状态门拒绝（claim 终态 / 非法流转 / `set --status` 非法值 / link 终态需求 / **`split` 父终态**） |
+| `general_mode_conflict` | **载体制约束门**（v1.2.1-stage-90）：需求为 `general` 却有已链接阶段（`set --workflow-mode general`）/ 链到 `general` 需求（`link`）——**单码两文案** |
 | `invalid-argument` | **命令层参数形态校验**（`split` 缺 `--into` / `next --limit` 非 ≥1 整数）——与引擎业务错误码**分列**；v1.2.1-stage-87 |
 
 **`--owner` 三级链**（`claim` 缺省）：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name` → 哨兵 `'unknown'` 显式拒绝（**禁硬编码用户名**）。
@@ -69,7 +70,7 @@
 - **位置参数**：键 = `arg` + 参数名**逐字**（非 camelCase）。
 - **选项**：键 = 长名 **camelCase**。
 
-**42 键双向逐键断言**（`test/cli/help-arguments.test.ts` 族）防死键——新增子命令/选项须同步补键，en 下 `Arguments:` 段 CJK 零命中（v1.2.0-stage-82 = 37 → v1.2.1-stage-87 = **42**）。
+**44 键双向逐键断言**（`test/cli/help-arguments.test.ts` 族）防死键——新增子命令/选项须同步补键，en 下 `Arguments:` 段 CJK 零命中（v1.2.0-stage-82 = 37 → v1.2.1-stage-87 = 42 → **v1.2.1-stage-90 = 44**〔`add`/`set` 各增 `--workflow-mode` 选项键〕）。
 
 ## 与 cli/commands.md 的分工
 

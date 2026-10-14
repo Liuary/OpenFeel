@@ -10,16 +10,16 @@
 
 | 文件 | 职责 | 依赖 |
 |------|------|------|
-| `types.ts` | 类型与常量**单一来源**（叶子模块、**零 import**）：`REQ_STATUSES`（7 值）+ `RequirementStatus`（自常量派生）+ `REQ_PRIORITIES`（三档）+ `RequirementPriority` + `REQ_ID_PATTERN`（`/^REQ-(\d{3,})$/`，含数字捕获组、非全局标志）+ `RequirementData`（**11 字段**，stage-87 增 `parent_id?`） | 无 |
+| `types.ts` | 类型与常量**单一来源**（叶子模块、**零 import**）：`REQ_STATUSES`（7 值）+ `RequirementStatus`（自常量派生）+ `REQ_PRIORITIES`（三档）+ `RequirementPriority` + `REQ_ID_PATTERN`（`/^REQ-(\d{3,})$/`，含数字捕获组、非全局标志）+ `RequirementData`（**12 字段**，stage-87 增 `parent_id?`、v1.2.1-stage-90 增 `workflow_mode?`） | 无 |
 | `requirement-ops.ts` | 需求原语单点（**纯内存、零写盘、审计内嵌**）：读取 / 过滤 / ID 分配 / 写路径 / 共用谓词 / 状态流转单点表 | `import type { FlowData }`（仅类型，编译期擦除）+ `types.js` |
 | `body-file.ts` | 正文路径单点 + 骨架机械铺（`REQ-NNN.md`） | `node:path` / `node:fs` / `../fs/atomic-write.js` / `types.js`（**禁** `process.cwd` / `homedir`） |
 | `aggregate.ts` | **聚合投影与对称回写**（v1.2.0-stage-83，**纯函数/纯内存、无 IO**）：`computeRequirementAggregate`（阶段 phase → 需求状态投影；done 判定**委托** `allLinkedStagesDone`）/ `resolveRequirementStatusForStage` / `syncRequirementStatus`（回写入口，返回受影响需求 ID 列表）/ `AUTO_DONE_PRECONDITION`（前置集单点常量）/ `requirementHealthItems`（health 对账项） | `import type { FlowData }` + `allLinkedStagesDone`（`requirement-ops.js`）+ `types.js` + `../i18n.js`（对账文案） |
 
-> **正交边界**：`src/core/req/**` 不 import / 不读取 `workflow_mode`、`PIPELINE_PHASES` / `getValidTargets`、**`flow-archive/**`**（**本版不归档 `requirements`**）；亦禁 `process.cwd` / `homedir`（路径全由 `projectPath` 参数注入）。以 `test/core/req.test.ts` 正交 describe 静态固化（6 禁止串零命中 + 正控 + `NEEDLES.length === 6`）。
+> **模式边界（v1.2.1-stage-90 supersede 旧「正交」口径）**：需求层**可携带**模式属性 `workflow_mode?`（受控串——字段声明 / `PATCH_WHITELIST` / 值域校验合法）；模式**仅经单点解析器**消费（`FlowManager.resolveStageWorkflowMode`）且**不入聚合 / 不入 done 门 / 不入对账**。`src/core/req/**` 与 `src/commands/req.ts` 仍**禁** `resolveStageWorkflowMode`（**新禁止串**，禁第二份解析）/ `PIPELINE_PHASES` / `getValidTargets` / `flow-archive` / `process.cwd` / `homedir`；`body-file.ts`（人读骨架）对 `workflow_mode` **仍零命中**，聚合面 `aggregate.ts` **仍零命中**。以 `test/core/req.test.ts`（C1/C2）与 `test/commands/req.test.ts`（C3）显式改写后的断言固化（受控串分文件判类 + 新禁止串 + 正控扩容 + `NEEDLES.length` 锁定）。
 
 ## 核心数据
 
-### `RequirementData`（11 字段）
+### `RequirementData`（12 字段）
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -34,6 +34,7 @@
 | `updated_at` | `string` | 最近更新时间（**仅实际变更时刷新**，单次赋值纪律） |
 | `body_path?` | `string` | 正文相对路径（POSIX 分隔符，如 `.openfeel/requirements/REQ-001.md`） |
 | `parent_id?` | `string` | **拆分来源父需求 ID**（v1.2.1-stage-87 新增；**仅溯源**——不参与聚合判定 / 不参与 done 门 / 无父子级联 / 不进 `PATCH_WHITELIST`；**读侧宽容不 load 补齐**） |
+| `workflow_mode?` | `WorkflowMode` | **需求级模式属性**（v1.2.1-stage-90 新增；值域 `full`/`fast`/`general`，权威 = `WORKFLOW_MODES` 单源）。**仅调度属性**——不入聚合 / 不入 done 门 / 不入对账；**读侧宽容 + 零注入**；`import type` 保「零运行时 import」。经**单点解析**作用于其关联阶段（链序 `status.md > 需求级 > config > profile > builtin`）；`general` **仅需求级合法**（见下「需求级模式」节） |
 
 **值域常量（单一来源，命令层须从此派生、禁硬编码）**：`REQ_STATUSES` = `draft`/`scheduled`/`in_progress`/`done`/`blocked`/`cancelled`/`rejected`（7 值）；`REQ_PRIORITIES` = `P0`/`P1`/`P2`。**无 `source`、无 `reason`**（REV-81-005；`reason` 属 Q4-schema 未来增量可选字段，本版不冻结）。
 
@@ -50,17 +51,17 @@
 | `getRequirement(data, id)` | `(FlowData, string) => RequirementData \| null` | 命中返回浅副本、未命中 `null` |
 | `listRequirements(data, filter?)` | `filter?: { status?, target_version?, owner? }` | 多条件 AND；命名统一 `target_version` |
 | `nextRequirementId(data)` | `(FlowData) => string` | 现存 id 数字部分 **max+1**；异常 id 跳过不崩；三位起补零不截断 |
-| `addRequirement(data, input)` | `input: { title, target_version?, priority? }` | 新建恒 `status:'draft'`；返回**本体**（调用方继续设 `body_path`）；**唯一抛错原语**（空 title / 非法 priority / 空串 target_version — 构造期入参校验） |
+| `addRequirement(data, input)` | `input: { title, target_version?, priority?, workflow_mode? }` | 新建恒 `status:'draft'`；返回**本体**（调用方继续设 `body_path`）；**唯一抛错原语**（空 title / 非法 priority / 空串 target_version / **非法 `workflow_mode`**〔v1.2.1-stage-90，运行时读 `WORKFLOW_MODES` 单源校验〕— 构造期入参校验） |
 | `claimRequirement(data, id, owner)` | `=> RequirementOpResult` | 占用校验：`owner` 空 → `invalid_field`；不存在 → `not_found`；终态 → `invalid_status`；他人占用 → `already_claimed`（**数据零变更**）；同 owner 幂等 `{ok:true,changed:false}` |
 | `releaseRequirement(data, id)` | `=> RequirementOpResult` | 无占用者 → **no-op 成功**（不刷 `updated_at` / 不写审计）；有占用者 → 清除 `owner`+`claimed_at` |
-| `updateRequirement(data, id, patch)` | `patch: { status?, title?, target_version?, priority? }` | 白名单外键 → `invalid_field`；校验失败**整 patch 零变更**；**raw find 改本体**（禁经 `getRequirement`，防副本陷阱）；`updated_at` 单次赋值 |
+| `updateRequirement(data, id, patch)` | `patch: { status?, title?, target_version?, priority?, workflow_mode? }` | 白名单外键 → `invalid_field`；校验失败**整 patch 零变更**；**raw find 改本体**（禁经 `getRequirement`，防副本陷阱）；`updated_at` 单次赋值；**`workflow_mode?`**（v1.2.1-stage-90：`PATCH_WHITELIST` 增键 + 引擎层值域校验） |
 | `advanceRequirement(data, id, to)` | `=> RequirementOpResult` | **零第二套**——委托 `updateRequirement(data, id, { status: to })`（同表同门同审计） |
 | `linkRequirement(data, stageId, requirementId)` | `requirementId: string \| null`（`null` = 解绑） | 阶段不存在 → `stage_not_found`；需求不存在 → `not_found`；终态需求 → `invalid_status`；跨需求重绑 → `already_linked`（须先解绑）；**不刷新需求 `updated_at`**（关联写点落在 stage 记录） |
 | `splitRequirement(data, parentId, children)` | `children: Array<{title: string}>` → `RequirementSplitResult`（v1.2.1-stage-87 新增） | **拆分一等动作**（批量构造原语）。门序 = ①children 空 → `invalid_field` ②父不存在 → `not_found` ③**父终态** → `invalid_status` ④逐子标题 trim 空 → `invalid_field`；任一失败**零变更零审计**。构造：顺序 ID（staged 容器复用 `nextRequirementId` 单源派生，第 N 子 = 当前 max + N）+ `parent_id = 父 ID` + 子初值 `scheduled`（`SPLIT_CHILD_STATUS`，**拆分即发布**，直入 `req next` 候选池）+ **一次性并入** + 恰 1 条 `requirement_split` 审计 + **父零副作用**（状态不变 / 不刷 `updated_at`）；返回子需求**本体**列表 |
 | `isTerminalRequirementStatus(status)` | `=> boolean` | 终态 = `done` / `cancelled` / `rejected`（claim / link 门共用） |
 | `allLinkedStagesDone(data, id)` | `=> boolean` | **done 门**：`requirement_id === id` 的阶段集**非空** ∧ 全部 `phase === 'done'`；**零关联 → false**（空集守卫防 vacuous truth） |
 
-**结果类型与错误码**：`RequirementOpResult = { ok: true; changed: boolean } | { ok: false; code: RequirementErrorCode }`；`RequirementSplitResult = { ok: true; children: RequirementData[] } | { ok: false; code: RequirementErrorCode }`（v1.2.1-stage-87）；`RequirementErrorCode` = `not_found` / `stage_not_found` / `already_claimed` / `already_linked` / `invalid_status` / `invalid_field`。**抛错 vs 错误码不对称**：`addRequirement` 为**唯一抛错原语**（构造期入参契约违反），其余恒经错误码（业务冲突，命令层映射 exit 非 0 零写盘）——**`splitRequirement` 择定错误码范式**（REV-87-002 定稿：自持校验循环、与 `update` 同族，**不复用** `add` 抛错路径）。
+**结果类型与错误码**：`RequirementOpResult = { ok: true; changed: boolean } | { ok: false; code: RequirementErrorCode }`；`RequirementSplitResult = { ok: true; children: RequirementData[] } | { ok: false; code: RequirementErrorCode }`（v1.2.1-stage-87）；`RequirementErrorCode` = `not_found` / `stage_not_found` / `already_claimed` / `already_linked` / `invalid_status` / `invalid_field` / **`general_mode_conflict`**（v1.2.1-stage-90；载体制约束：需求为 `general` 却有已链接阶段 / 链到 `general` 需求——单码两文案）。**抛错 vs 错误码不对称**：`addRequirement` 为**唯一抛错原语**（构造期入参契约违反），其余恒经错误码（业务冲突，命令层映射 exit 非 0 零写盘）——**`splitRequirement` 择定错误码范式**（REV-87-002 定稿：自持校验循环、与 `update` 同族，**不复用** `add` 抛错路径）。
 
 ## 状态流转单点表（`ALLOWED_TRANSITIONS`）
 
@@ -109,14 +110,14 @@
 
 | 子命令 | 类型 | `--json` | 关键行为 |
 |--------|------|:--:|----------|
-| `add <title> [--target-version] [--priority]` | 写 | ✗ | 引擎抛错分流（唯一 throw 路径）；正文骨架直传本体；骨架失败不 save |
+| `add <title> [--target-version] [--priority] [--workflow-mode]` | 写 | ✗ | 引擎抛错分流（唯一 throw 路径）；正文骨架直传本体；骨架失败不 save；**`--workflow-mode <mode>`**（v1.2.1-stage-90；构造期值域校验，非法抛错 → 通用模板 exit 1） |
 | `list [--status] [--target-version] [--owner]` | 读 | ✓ | `--status` 值域取 `REQ_STATUSES`；多条件 AND |
 | `show <id>` | 读 | ✓ | 关联阶段**仅原始 id 枚举**（零聚合）；v1.2.1-stage-87：human 插 2 行（`父需求:` / `子需求:`）、`--json` 追加载荷 `parent` + `children`（**追加在既有三键之后，只增不改**；键序 `schemaVersion, requirement, stages, parent, children`） |
 | `split <id> --into <title>` | 写 | ✓ | **拆分一等动作**（v1.2.1-stage-87，本仓**首个 repeatable option** + **首个带 `--json` 的写命令**）；`--into` 可重复（`collectInto` 累加，至少一项，缺省 → `invalid-argument`）；四码分流（`not_found`/`invalid_status`/`invalid_field`/`invalid-argument`）；失败**零写盘**；成功逐条铺子正文后单次 `save()` | 0 / 1 / 2 |
 | `claim <id> [--owner]` | 写 | ✗ | 四码分流 + `--owner` 三级链 + 同 owner 幂等 |
 | `release <id>` | 写 | ✗ | 未占用 no-op 恒 exit 0 |
-| `set <id> [--status/--title/--target-version/--priority]` | 写 | ✗ | 命令层零校验；无字段守卫；targets 引擎派生 |
-| `link --stage <id> (--requirement <id> \| --unlink)` | 写 | ✗ | 互斥守卫；仅一次 `normalizeStageId`；`already_linked` 硬拒 |
+| `set <id> [--status/--title/--target-version/--priority/--workflow-mode]` | 写 | ✗ | 命令层零校验；无字段守卫；targets 引擎派生；**`--workflow-mode <mode>`**（v1.2.1-stage-90；引擎值域校验 + 成功后**下发所有已链接阶段**〔见「需求级模式」节〕；`general` 且已有链接阶段 → `general_mode_conflict` 拒绝） |
+| `link --stage <id> (--requirement <id> \| --unlink)` | 写 | ✗ | 互斥守卫；仅一次 `normalizeStageId`；`already_linked` 硬拒；**v1.2.1-stage-90：目标需求带模式 → 经 `syncConfigFieldToStages` 下发到该阶段**（status.md 字段 + flow.json 冗余同批）；目标需求为 `general` → `general_mode_conflict` 拒绝 |
 | `advance <id> --to <status>` | 写 | ✗ | 零校验；done 门引擎单点；不设 `--force` |
 | `board [--target-version]` | 读 | ✓ | 7 组固定顺序（= `REQ_STATUSES`）恒含空组；v1.2.1-stage-87：条目行 owner 非空时追加后缀（**仅 human**；`--json groups` 键集零改动） |
 | `next [--owner] [--limit]` | 读 | ✓ | scheduled ∧ 未认领（`--owner` 扩候选）；排序冻结；v1.2.1-stage-87：`--limit <n>`（≥1 整数，**判定基准 = 解析后数值**——显式 `--limit 1` 与缺省同形态；`> 1` 时 `--json` 追加 `candidates` + human 多行；非法值 exit 1 零写盘） |
@@ -131,11 +132,21 @@
 
 **`--owner` 三级链**（`claim`）：`.openfeel/.info.json user` → `git config user.name` → 哨兵 `'unknown'` 显式拒绝（提示显式 `--owner`）；**禁硬编码用户名**；缺省判定 `=== undefined`（显式空串直通引擎 → `invalid_field`）。
 
-**help 键双规**（`applyHelpI18n`）：位置参数键 = `arg`+参数名逐字（非 camelCase）、选项键 = 长名 camelCase；**42 键双向逐键断言**防死键（37 → 41〔op-001〕→ 42〔op-002〕）。
+**help 键双规**（`applyHelpI18n`）：位置参数键 = `arg`+参数名逐字（非 camelCase）、选项键 = 长名 camelCase；**44 键双向逐键断言**防死键（37 → 41〔op-001〕→ 42〔op-002〕→ **44**〔v1.2.1-stage-90：`add`/`set` 各增 `--workflow-mode` 选项键〕）。
 
 **版本解绑（v1.2.1-stage-87）**：`target_version` 为**纯可选、纯展示/过滤/排序维度**——全生命周期无一处作为门（核验面 = 6 消费点 + 6 无版本条件点，结论全部「否」）；「无 `target_version` 全生命周期可用」有端到端断言固定；skill `openfeel-req` 落 `## 需求与版本解绑` 节。
 
-**正交声明**：`src/commands/req.ts` 不 import / 不引用 `ALLOWED_TRANSITIONS` / 工作流模式 / 归档层 / `.phase` / `allLinkedStagesDone`——直读源文全内容 **7 禁止串零命中**固化。
+**模式边界声明（v1.2.1-stage-90 supersede）**：`src/commands/req.ts` 不 import / 不引用 `ALLOWED_TRANSITIONS` / **`resolveStageWorkflowMode`**（**新禁止串**，禁第二份解析）/ 归档层 / `.phase` / `allLinkedStagesDone`——直读源文全内容**受控串 + 新禁止串**固化（`workflow_mode` 由禁止串 → **受控串**：`--workflow-mode` 选项 + patch 传参合法）。
+
+## 需求级模式（v1.2.1-stage-90，supersede 旧「正交」口径）
+
+需求**携带**模式属性 `workflow_mode?`，经**单点解析**作用于其关联阶段。
+
+- **解析链（唯一）**：`FlowManager.resolveStageWorkflowMode(stageId)` = `status.md 显式 > 需求级 > config.yaml > profile.yaml（不承载）> builtin`；新增 `ConfigSource` 第 5 值 **`'requirement'`**；需求级层在 `status.md` 分支之后插入（`stages[id].requirement_id → requirements[]` 命中且值合法 → 返回；缺失 / 悬空 / 非法 → **自然回落**下一层，零报错）。`resolveEffectiveConfig().workflow_mode` **委托**同一单点（禁第二份层序判定）。
+- **生效路径（禁「名义层」）**：因 `ensureStageSkeleton` 恒写「工作流模式」行（status.md 层恒命中）→ 需求级层须经**显式动作下发**：`req link` / `req set --workflow-mode` 经单点原语 `syncConfigFieldToStages('workflow_mode', v, { onlyStages })` 下发（status.md 字段 + flow.json 冗余**同批**）→ 「需求级为权威源头、阶段字段为投影」；`plan stage add` 骨架初值链亦经单点（需求级 > config defaults）。
+- **载体制约束（`general` 仅需求级合法）**：需求侧门——需求为 `general` ⟹ **零关联阶段**（`req set --workflow-mode general` 有链接 → 拒；`req link` 到 `general` 需求 → 拒；错误码 `general_mode_conflict`）。阶段级 / 部署级写入面（`plan stage add` / `stage set` / `config set` / **`flow wizard` 双写入面**）拒绝 `general`（详见 `manual/core/flow-manager.md` / `manual/core/config.md`）。**流转**：`general → fast / full` 显式升级可用；**反向不自动降级**。
+- **模式不入聚合**：`workflow_mode` **不参与** done 判定 / 对账（`aggregate.ts` 仍零命中；`allLinkedStagesDone` 单源未松动）。
+- **已知缺口（`req/BUG-002`，medium / open，非阻塞）**：`general` 需求**恒无法进入 `done`**——载体制约束（general ⟹ 零关联阶段）与既有 done 门（`allLinkedStagesDone` 要求 `linked.length > 0 && every(phase === 'done')`）叠加成**死锁**（`req advance --to done` / `req set --status done` 同源拒绝；拒绝文案把 `done` 列为合法目标却拒绝，自相矛盾）；有绕行路径（升级 `fast`/`full` 后完成），**承接阶段 93 收口轮 / 后续裁定**。
 
 ## 聚合投影与对称回写（`aggregate.ts`，v1.2.0-stage-83）
 
@@ -168,13 +179,14 @@
 - **纯内存 + 调用方落盘**：本模块**零独立写盘点**（唯一 IO = 正文文件骨架）；`flow.json` 落盘恒经 `FlowManager.save()`（锁 + `meta.revision` 乐观锁 + `.bak` + 原子写）——需求写入**零自造路径**。
 - **读侧宽容不注入**：顶层可选字段不在 `load()` 补齐（见 kb/patterns.md #顶层可选字段「读侧宽容不注入」模式）；反例断言「纯 load→save → `'requirements' in parsed === false`」。
 - **副本纪律**：查询 API 返回浅副本（数组 + 元素）；**写路径须 raw find 改本体**——经查询 API 拿浅副本会**静默丢更新**（REV-81-011）。
-- **正交**：与归档层、工作流模式零耦合（本版不归档 `requirements`）。
+- **模式边界**：需求**携带**模式属性（`workflow_mode?`）但**模式不参与聚合 / done 门 / 对账**；模式仅经单点解析器消费（详见「需求级模式」节；v1.2.1-stage-90 supersede 旧「零耦合」口径）。与归档层仍零耦合（本版不归档 `requirements`）。
 - **已知边界（REV-83-016）**：`flow stage reset` 复位到 default 分支相位后再推进 `done` **不回写** → 需求遗留漂移（health「需求漂移」warn 可察、**非自愈**）；行为修复（advance 命中 done 按聚合视图无条件重算）转后续版本评估（收口期控制流冻结）。
 
 ## 变更历史
 
 | 版本 | 变更 |
 |------|------|
+| v1.2.1-stage-90 | **需求级模式属性（supersede 旧「正交」口径）**：`RequirementData` +`workflow_mode?`（**12 字段**；值域 `full`/`fast`/`general`；**仅调度属性**、读侧宽容零注入）；`addRequirement` 入参 + 值域校验、`updateRequirement` `PATCH_WHITELIST` 增键；错误码 +`general_mode_conflict`（载体制约束——general 需求不得有已链接阶段）；命令面 `add`/`set` 各增 `--workflow-mode`（help 键 **42 → 44**）+ `link`/`set` 经 `syncConfigFieldToStages` **下发**关联阶段；解析链插入**需求级层**（`status.md > requirement > config > profile > builtin`，`ConfigSource` 第 5 值 `'requirement'`）+ `resolveEffectiveConfig` 委托单点；断言 C1/C2/C3 **显式改写**（`workflow_mode` 禁止串 → **受控串** + 新禁止串 `resolveStageWorkflowMode` + 正控扩容，**严格强于旧断言**）。i18n 931 → **939**（+8 键）。4 commits（`342e6ef`/`143928c`/`77552f9`/`02156a9`）；门禁 **71 文件 / 1674 用例** 0 skipped 0 failed、`tsc` 0、build ×2 幂等。**已知缺口**：`general` 需求恒无法 `done` → `req/BUG-002`（转 stage-93）。 |
 | v1.2.1-stage-87 | **需求接取制度与拆分**：`RequirementData` +`parent_id?`（**11 字段**；仅溯源不聚合）；新增 `splitRequirement` 原语 + `RequirementSplitResult`（**批量构造：全成或零变更 + 顺序 ID 单源派生 + 父终态门 + 子初值 `scheduled` + 恰 1 条 `requirement_split` 审计 + 父零副作用**）+ `SPLIT_CHILD_STATUS` 常量；命令面 **10 → 11 子命令**（+`req split`，首个 repeatable option + 首个带 `--json` 的写命令）+ `req next --limit` + `req board` owner 后缀 + `req show` 父子展示（悬空 `parent_id` 原样回显）；骨架 +`## 父需求`（**7 H2**）+ `## 变更记录` 状态参数化；help 键 **37 → 42**；i18n 912 → **931**（+19 键）。3 op（`f46d01d`/`a84227f`/`b3c4df3`）；门禁 **71 文件 / 1614 用例** 0 skipped 0 failed、`tsc` 0、`lint i18n` 931、build ×2 幂等。 |
 | v1.2.0-stage-83 | **补聚合投影与对称回写**：新建 `src/core/req/aggregate.ts`（`computeRequirementAggregate` done 判定**单源委托** `allLinkedStagesDone` + `resolveRequirementStatusForStage` + `syncRequirementStatus` 对称回写入口 + `AUTO_DONE_PRECONDITION` 前置集单点 + `requirementHealthItems`）；`flow-manager.ts` 对称回写两热点（**8+/0-**；纯内存同事务）；`flow.ts` health 三处合并（warn-only）；i18n 908→**911**（+3 键 `flow.health.req*`）；零回归取证（补丁前/后归一化快照 diff 空 + golden + 正控）。3 op（未 commit，HEAD `33185a3`）；门禁 70 文件 / 1547 用例 0 failed。 |
 | v1.2.0-stage-82 | **补命令面**：新建 `src/commands/req.ts`（`openfeel req` 10 子命令）+ `src/cli/index.ts` 两行注册；引擎小幅补丁（新增导出 `getAllowedNextStatuses` + `addRequirement` 非数组守卫收口 `req/BUG-001`）；`--json` 四读命令成功/失败同契约 + 退出码 0/1/2 + help 键双规（37 键双向断言）+ `--owner` 三级链；i18n 829→**908**。3 op（未 commit，HEAD `c5f1d53`）；门禁 70 文件 / 1506 用例 0 failed。**下游** stage-83（聚合回写）消费。 |

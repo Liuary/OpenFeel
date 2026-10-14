@@ -4190,3 +4190,37 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.1-stage-89（占位 28 处改写〔24 节注记 + 4 feel 表末行，`numstat` 各 1/1 零补行〕；`rg -in "探索者接入|explorer onboarding" src/core/templates-data/` = **0 命中**；C11 / C12 两处显式翻转，`templates.test.ts` stage-88 describe 内**允许且仅允许**该两处改动）。
 
 **参见：** v1.2.1-stage-89（plan §三 T3.2 / T4.1 / §五 验收 4 / R-89-4；op-002 §2.6~§2.7；REV-89-001（占位 26→28 订正）/ REV-89-003③）；`test/core/templates.test.ts`（stage-89 describe）；kb/patterns.md #陈旧计数「全枚举」纪律、#跨阶段承接 REV 与处置表；kb/architecture.md #只读通用工作者架构
+
+## [+] 断言 supersede 范式：正交断言 → 需求级受控串（负向保持 + 新禁止串 + 正控扩容 + 差额对照，禁静默删除） (2026-10-15)
+
+**场景**：当某个「边界断言」的**前提语义被显式推翻**时（本案：v1.2.0 断言「需求层与 `workflow_mode` **正交**、`src/core/req/**` 对该字段**零命中**」，v1.2.1-stage-90 改判「需求**携带**模式属性」），旧断言**不能**静默删除或放宽——须**显式改写**且**新断言严格强于旧断言**（计划裁定 D / R-2；放宽即审计面弱化）。
+
+**改写四件套（本案落地）**：
+1. **禁止串 → 受控串（分文件判类）**：`workflow_mode` 由「全文件零命中」改为**按文件判类**——`types.ts`（字段声明）/ `requirement-ops.ts`（`PATCH_WHITELIST` + 值域校验）**合法**（正控 `toContain`），`body-file.ts`（人读骨架）**仍零命中**（负向保持）。即「一刀禁止」升级为「**声明面受控 + 非声明面仍禁**」。
+2. **新禁止串**：把旧面无法命中的**新越界形态**补入禁止清单——本案新增 `resolveStageWorkflowMode`（禁 `req` 层出现**第二份模式解析**），使禁令从「禁字段名」精确化为「**禁第二实现**」。
+3. **正控扩容**：旧面仅有「各文件独有符号」正控，新面**追加**字段声明 / 值域常量 / 错误码正控——**防负向断言空转**（清单被删空时负向恒真）。
+4. **`NEEDLES.length` 锁定值同步** + **差额对照留痕**：「旧断言 → 新断言 → 强度对比」**逐条**入终端报告与提交信息（可被审查逐条复核）；describe 段名改写为「…（stage-90 supersede v1.2.0 正交口径）」。
+
+**配套纪律**：① **原子同批**——断言改写与源码字段落地**同一提交**（否则中间必红态；本案 op-002 §2.6 C1/C2/C3 与字段同批）；② **文案与断言同批**（模板逐字串清单 + 落文，防假绿/红——见 #断言串与落文逐字核对纪律）；③ **跨面一致**——同一 supersede 在**代码断言 / 模板文案 / kb 条目 / manual** 四面同步（本案：代码 3 组 + 模板 15 处 + 断言 4 处 + kb 追加式 supersede + manual）；④ **历史串处置**——旧措辞（「正交」）不得残留静默：**改写**或**显式登记转出**（本案 7 旧串 × `templates-data/**` 64 文件全内容扫描 = **0 命中**；kb 历史串随 supersede 正文同批处置）。
+
+**判据**：凡「阴性断言 / 边界禁令」因语义变更须调整，一律走「**禁删除、禁放宽、显式改写 + 新禁止串 + 正控扩容 + 差额对照**」四件套；**受控串须分文件判类**（声明面合法 ≠ 全文件合法）；新断言强度须**可逐条对照**（负向保持 + 正控不可被删行满足）。
+
+**实证**：v1.2.1-stage-90（`test/core/req.test.ts` C1〔T5.6 组〕/ C2〔聚合面**保持** 6 串含 `workflow_mode` 零命中 + 新增动态同源断言：改模式 → 聚合输出不变〕/ C3〔`FORBIDDEN` 7 串 `workflow_mode` → `resolveStageWorkflowMode` + `POSITIVE` 6→7〕；`aggregate.ts` 头注**刻意规避字面量**以保 C2 零命中〔REV-90-012〕；差额对照见终局报告 §4.1；`templates.test.ts` 新增 stage-90 supersede describe 5 用例）。
+
+**参见：** v1.2.1-stage-90（plan §二 不变量 7 / §三 T3 / §五 验收 7；op-002 §2.6 + op-003 §3.1~3.2；REV-90-007~013）；`test/core/req.test.ts`；`test/commands/req.test.ts`；`test/core/templates.test.ts`；kb/architecture.md #需求级模式属性架构、#需求层正交边界架构（supersede 块）；kb/patterns.md #延迟占位注记的收口模式、#supersede 历史决策的追加式记录、#断言串与落文逐字核对纪律、#陈旧计数「全枚举」纪律
+
+## [+] 值域扩展全枚举范式：单源常量 + 消费点全枚举 + 双路扫描差集判类 + 生成物自动同步 (2026-10-15)
+
+**场景**：把一个**已冻结的枚举值域**扩展（本案：工作流模式 `full | fast` → `full | fast | general`），而全仓存在大量**散落的字面量副本 / 类型联合 / 正则 / help 文案 / 模板副本 / 生成物**——漏改任一处即产生**静默回落**或**第二信源**。
+
+**四步范式**：
+1. **单源常量定唯一权威**：`WORKFLOW_MODES`（`src/core/config.ts`）为**唯一** 3 值清单；schema / 类型 / 命令面值域门 / status.md 正则（`new RegExp(...MODES.join('|'))`）/ 骨架初值 / 冗余字段 / health **全部派生**。**禁**任何第二份 3 值字面量清单。
+2. **消费点全枚举（登记基线）**：以**标准正则 + 宽词界双路扫描**列出全部命中并**逐处判类**——本案联合字面量 `'full' | 'fast'` 实测 **13 处**（本行 9 + 命令面 cast 4）→ 逐处归一为 `WorkflowMode`；`status.md` 正则**硬编码 2 值**（**唯一硬编码处**，漏改即「三值在第 1 层被丢弃、静默回落 config」）；命令面 cast / help 文案 / i18n 键 / 模板副本 / 生成物**逐面列名**。
+3. **双路扫描差集逐处判类（必改 / 保留 / 非扫描）**：标准正则扫描 + **宽词界**扫描取差集，**零未判类**方可收口。**保留层**须有明确理由并登记——本案：wizard choices（`full`/`fast` = **阶段合法子集**，**有意**不含 `general`，非漏改）/ 历史 describe 名 / 测试 fixture 局部类型 / **快照声明件**（转后续阶段）/ **生成物**（源副本自动同步）。**变体面同口径**（大小写变体、`双模式`/`两种模式` 等叙述式副本须同扫描）。
+4. **生成物自动同步（禁手改）**：模板源（`templates-data/**`）改动后**同批** `npm run build` 重生成双生成物（`template-loader.ts` + `update.ts`）；`git status --porcelain src/` ⊆ produces 清单；**禁手改生成物**。
+
+**判据**：① 扩展枚举**先问「值域单源在哪」**，只改常量 + 派生链，**不逐处补字面量**；② **第 2 实现（正则/help/cast）是最易漏的静默失败点**——须与常量**同源绑定**（常量构造正则或同源断言）；③ 收口门 = **双路扫描差集零未判类** + 保留层**逐条有理**（`保留` 与 `漏改` 须可区分）；④ **例外（有意子集）须显式登记为裁定**，不得就地豁免。
+
+**实证**：v1.2.1-stage-90（`WORKFLOW_MODES` 3 值；联合字面量 13 → **0**；`output-encoding.test.ts` 值域正则翻转 `/^(full|fast|general)$/`；`flow mode --json` `modes` 增 `general` 键；差集判类见终局报告 §5.1「零未判类」；生成物 sha256 前后稳定；`lint i18n` 931 → **939**）。
+
+**参见：** v1.2.1-stage-90（plan §一 表 A 消费点全枚举 A1~A14 / §三 T1 / §五 门禁「值域全枚举扫描」；op-001）；`src/core/config.ts :: WORKFLOW_MODES`；`src/core/flow-manager.ts`（status.md 正则 / `resolveTransitionsForMode`）；kb/architecture.md #需求级模式属性架构、#双模式转移表选择；kb/patterns.md #陈旧计数「全枚举」纪律、#变体面同口径、#多 harness 版本收口 A 类载体清单扩展；kb/troubleshooting.md #改 templates-data 源须同批重生成「双生成物」

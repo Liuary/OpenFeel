@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 52 |
+| passed | 53 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -142,3 +142,4 @@
 | [v1.2.1-stage-87](v1.2.1-stage-87.md) | 需求接取制度与拆分（`req split` 一等动作 / 并行接取就绪 / 版本解绑）— REV-87-001~007 全 closed，代码轮 +3 非阻塞（008 medium / 009·010 low open） | passed |
 | [v1.2.1-stage-88](v1.2.1-stage-88.md) | 通用工作者直接调度（双口径通道：opencode 嵌套 `task` no-go〔`subagent_depth=1` 拦截，提升 depth 跑通〕/ Claude Q1 推翻〔2.1.300 白名单含 `Task` 可派发，`spawnDepth:2`〕/ 24 份「调度与 Handoff」节 / 12 份 permission / 负向措辞规整 10 行）— REV-88-001~008·011 全 closed（含 001/002 计划轮 + 008 high blocking），复遗留 2 非阻塞（009 Q1 反转裁定转 stage-89 / 010 转 stage-93） | passed |
 | [v1.2.1-stage-89](v1.2.1-stage-89.md) | 通用工作者：探索者与执行者（新增只读 `openfeel-explorer`〔opencode 恰 5 键 / claude `tools` 恰 4 项，精确相等断言〕+ 路由替代内置 `Explore`·`general` + 收口 28 处零补行 + agent 计数 9→10 全枚举 + C11/C12 显式翻转 + 能力决策 `Task` 不启用）— REV-89-001~005（含 001/002 计划轮 blocking）+ 代码轮 006~009 全 closed；遗留 3 非阻塞（008 status.md 留痕〔主会话已修〕/ 006+E-89-6 陈旧计数 → stage-93 / 88-010 → stage-93） | passed |
+| [v1.2.1-stage-90](v1.2.1-stage-90.md) | 三模式架构：规划 / 快速 / 通用（值域 3 值 `full`/`fast`/`general`〔`general` 空表 + 不新增 phase〕+ 需求级模式属性 `workflow_mode?`〔携带、仅调度、不入聚合〕+ 解析链单点第 2 层〔`status.md > 需求级 > config > profile > builtin`，`ConfigSource` 第 5 值 `'requirement'`〕+ 生效路径下发 + 载体制约束「`general` 仅需求级合法」〔4 面穷尽：三命令面 + wizard 双写入面〕+ supersede「正交 → 携带」〔3 组代码断言 + 15 处模板文案，旧串 0 残留〕）— REV-90-001（**high blocking** wizard 载体制面遗漏）经修订 1 闭合 + 002~010 全 closed + 代码轮 011（转主会话）/ 012·013 closed；**1 非阻塞 BUG**：`req/BUG-002`（general 需求恒无法 done → stage-93） | passed |

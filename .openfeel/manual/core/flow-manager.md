@@ -24,7 +24,7 @@
 | `checkRemovable(stageId, {force})` | 只读可移除性检查（`ops` 非空 / 当前活跃 / 被 `deps` 引用），`removeStage` 与 `--dry-run` 共用 |
 | `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、`remove_stage` 审计日志）；**不执行目录删除**，`purge` 时返回 `{ purgeTarget }` 由命令层在 `save()` 成功后删除（stage-47 事务顺序） |
 | `getPipelinePhases()` / `getPipelineTransitions(mode?)` | 自描述访问器：返回运行时 `pipelineConfig` 的 phase 列表与转移表**副本**（缺省回退默认表）。**v1.1.7-stage-74 起** `getPipelineTransitions(mode: WorkflowMode = 'full')`：**无参 = full**（零回归既有消费点），`fast` 供 stage-75 `flow phases` 模式分节消费；同批新增 `getDefaultTransitions(mode = 'full')`（内置默认表副本，供 `transitionsDiff`） |
-| `getValidTargets(fromPhase, mode)` / `resolveStageWorkflowMode(stageId?)` | **v1.1.7-stage-74 新增/变更**：`getValidTargets(fromPhase, mode: WorkflowMode)` **mode 无默认值**（编译期必传）→ 唯一取表点，读表法则唯一为私有 `resolveTransitionsForMode(mode)`（full = `pipelineConfig.transitions` / fast = `fast_transitions ?? 内置快线表`）。**公共** `resolveStageWorkflowMode(stageId?)`：解析指定阶段的工作流模式（`{ value, source }`），带 stage 形参独立解析（当前域 = 无参；任意域 = 显式 stageId） |
+| `getValidTargets(fromPhase, mode)` / `resolveStageWorkflowMode(stageId?)` | **v1.1.7-stage-74 新增/变更**：`getValidTargets(fromPhase, mode: WorkflowMode)` **mode 无默认值**（编译期必传）→ 唯一取表点，读表法则唯一为私有 `resolveTransitionsForMode(mode)`（full = `pipelineConfig.transitions` / fast = `fast_transitions ?? 内置快线表`）。**公共** `resolveStageWorkflowMode(stageId?)`：解析指定阶段的工作流模式（`{ value, source }`），带 stage 形参独立解析（当前域 = 无参；任意域 = 显式 stageId）。**v1.2.1-stage-90**：链上插入**需求级层**（`status.md > 需求级 > config.yaml > profile.yaml > builtin`；`source` 新值 `'requirement'`）；`resolveTransitionsForMode` / `getDefaultPipelineConfig` 增 **`general` 分支（空表）** |
 | `resolveEffectiveConfig()` | 解析**四个**受管配置键（`execution_mode` / `auto_advance` / `merge_mode` / **`workflow_mode`**，`EFFECTIVE_CONFIG_KEYS`）的「有效值 + 生效来源」，输出 `key → { value, source }`；复用内部 `buildCascadeConfig`（单一权威，避免第二套解析）。**v1.1.4-stage-62 起布尔测试门禁键已移除**，不再属受管键；**v1.1.7-stage-74 起受管键扩为四键** |
 | `syncConfigFieldToStages(configKey, value, options?)` | **v1.1.4-stage-63 新增 / v1.1.7-stage-75 扩参**（`config set --sync-stages`）：将受管配置键批量同步到阶段 `status.md` 对应字段。适用键由 `STAGE_FIELD_BY_CONFIG_KEY`（`config.ts` 单一来源）映射（`auto_advance → 自动推进`、`execution_mode → 执行模式`、**`workflow_mode → 工作流模式`**，v1.1.7-stage-74 增）；**v1.1.7-stage-75 起** `options.onlyStages?: string[]` **限定作用域**（缺省 = 全部已注册阶段；调用方负责前置 `normalizeStageId` 归一 + 已注册校验）。字段缺失 → `workflow_mode` 走**插入**（复用 `insertStatusField`，**禁双实现**）、结果码 **`inserted`**；锚点缺失 → **`skipped-no-anchor`**（归「跳过」类，**退出码恒 0**）；`execution_mode`/`auto_advance` 字段缺失**保持 `skipped-no-field`**（零回归），字段/文件缺失 → `skipped-no-field` / `skipped-no-status` 逐条报告。**只读** `flow.json.stages` 枚举、**不写 flow.json**；审计 action `config_sync_stage`。**v1.2.0-stage-80 循环重构**：遍历集 = **`onlyStages ∪ Object.keys(stages)` 归一化去重**（缺省 `onlyStages` = 活跃集全量，逐字零回归），使 **off-set 目标（已归档/未注册）可达** → 仅 status.md 同步（五态结果不变），flow.json 冗余写入**跳过**（冗余写入三点 `:3637/:3646/:3667` 加注册守卫，防越界解引用；不置 `flowJsonDirty`、不额外 `save()`） |
 | `insertStatusField(stageId, field, value)` | **v1.1.7-stage-75 新增**：在阶段 `status.md` **插入**受管字段行（原子写 + 按阶段锁），三态返回 **`inserted` / `exists` / `no-anchor`**；**锚点链**「自动推进」行后 →（缺失则）「执行模式」行后 → 皆缺 = `no-anchor`（**两步全文匹配**，非合并正则）；`.bak` 仅确认插入时生成。与替换语义函数 **严格分离**（`setStatusField`（`commands/stage.ts`）/ `writeStatusField` **零改动**，禁双重语义）；**落点禁** `core/plan/stage.ts`（循环依赖）。供 `stage set --workflow-mode`（单阶段 `no-anchor` → fail-fast exit 1）与 `syncConfigFieldToStages`（批量 `no-anchor` → `skipped-no-anchor`）共用 |
@@ -155,16 +155,24 @@ plan_pending → plan_review → plan_passed
 - 合法流转由 `transitions` 表控制，key 可用 `|` 组合多个源 phase（并行场景）
 - 推进必须通过 CLI（`openfeel flow advance`），禁止手动编辑 flow.json
 
-## 双模式（full / fast）转移表（v1.1.7-stage-74；fast 表口径于 v1.1.7-stage-76 T7 修订）
+## 三模式（full / fast / general）转移表（v1.1.7-stage-74；fast 表口径于 v1.1.7-stage-76 T7 修订；**general 于 v1.2.1-stage-90 增**）
 
-> 「快速迭代模式」（`fast`）与完整链路（`full`）共存：**同一 phase 图按模式裁剪**，不新增 phase。
+> 「快速迭代模式」（`fast`）/「完整链路」（`full`）/「通用模式」（`general`）共存：**同一 phase 图按模式裁剪**，不新增 phase。
 
-- **配置键 `workflow_mode`**（枚举 `full|fast`，值域单一来源 `WORKFLOW_MODES`，`core/config.ts`）：项目级默认在 `.openfeel/config.yaml` `defaults.workflow_mode`；阶段级覆盖在 `{stage}/status.md` 的 `**工作流模式**：full|fast` 行。级联解析入口 **`resolveStageWorkflowMode(stageId?)`**（公共），优先级 `status.md > config.yaml > profile.yaml（有意不承载）> builtin(DEFAULT_CONFIG='fast')`。
-- **内置 fast 快线表 `FAST_TRANSITIONS`**（`flow-manager.ts`，单一来源，禁命令层/模板层复制）：**v1.1.7-stage-76 T7 起 9 条目**（8 流转键 + `done`；原为 8 条目〔7 流转键 + `done`〕）——`plan_pending → plan_review → plan_passed → exec_running → review_pending → {review_failed, review_passed}`（**fast 下计划审查 `plan_review` 不跳过**，reviewer 单轮必过，与代码审查同级）；`review_failed` **双出口** `[review_pending, exec_running]`（失败回环：重审 或 回执行修复）；`review_passed → archiving → done`。fast 跳过 **6 项**（`scheme_*` / `test_*`）。
+- **配置键 `workflow_mode`**（枚举 **`full|fast|general`**〔v1.2.1-stage-90 由 2 值扩为 3 值〕，值域单一来源 `WORKFLOW_MODES`，`core/config.ts`）：项目级默认在 `.openfeel/config.yaml` `defaults.workflow_mode`；阶段级覆盖在 `{stage}/status.md` 的 `**工作流模式**：full|fast|general` 行；**需求级**由需求条目 `workflow_mode?` 承载。级联解析入口 **`resolveStageWorkflowMode(stageId?)`**（公共），优先级 **`status.md > 需求级 > config.yaml > profile.yaml（有意不承载）> builtin(DEFAULT_CONFIG='fast')`**；`ConfigSource` 第 5 值 **`'requirement'`**（v1.2.1-stage-90）。`status.md` 值域正则由 `new RegExp(...WORKFLOW_MODES.join('|'))` **同源构造**（原为硬编码 2 值——漏改即静默回落）。
+- **通用模式 `general`（v1.2.1-stage-90）**：语义 = 「**无流水线**、按需调度通用工作者」——`resolveTransitionsForMode('general')` 返回**空表 `{}`**（**不新增 phase**，15 项不变）；`flow advance` 在 general 阶段**显式错误引导**（`flow.advance.generalNoPipeline`；**不静默失败**；防御路径——常规写路径下 general 阶段态不可达，见「载体制约束」）；`flow phases --mode general` 为纯展示查询（空表）。
+- **内置 fast 快线表 `FAST_TRANSITIONS`**（`flow-manager.ts`，单一来源，禁命令层/模板层复制）：**v1.1.7-stage-76 T7 起 9 条目**（8 流转键 + `done`；原为 8 条目〔7 流转键 + `done`〕）——`plan_pending → plan_review → plan_passed → exec_running → review_pending → {review_failed, review_passed}`（**fast 下计划审查 `plan_review` 不跳过**，reviewer 单轮必过，与代码审查同级）；`review_failed` **双出口** `[review_pending, exec_running]`（失败回环：重审 或 回执行修复）；`review_passed → archiving → done`。fast 跳过 **6 项**（`scheme_*` / `test_*`）。`full` / `fast` 两表**逐字零回归**。
 - **运行时快线表 `pipeline.yaml` 可选 `fast_transitions`**（裁定 F）：独立容错 Schema `FastTransitionsSchema`（`pipeline-schema.ts`）；**缺失 / 类型非法 / 空对象 `{}`** → 回落内置快线表（REV-74-009，避免 fast 全链静默死锁）；非法类型告警 `flow.manager.fastTransitionsInvalid`。`phases` / `checkpoint_mapping` / `phase_corrections` 两模式共用。
 - **唯一取表点**：`getValidTargets(fromPhase, mode)`——`mode` **必传**（无默认值）；四调用点（`hasTransition` / `getAvailablePhases` / `findPhasePath` / `canAdvance`）均显式传 `resolveStageWorkflowMode(stage).value`，间接消费者 `buildDownstreamPhases`（`flow status --verbose`）。**任何调用点不得使用默认 mode**（防第二信源，REV-74-002）。
 - **零回归**：`getPipelineTransitions()` / `getDefaultTransitions()` **无参 = full**（既有断言逐字绿）；`flow.json` **不写** mode/transitions 冗余字段（裁定 G）。
 - **语义边界**：`config effective` / `flow status --verbose` = **当前阶段域**（无参）；`flow mode --stage` / 表选择 = **任意阶段域**（显式 stageId）。命令面（`flow mode` / `flow phases --mode|--stage` / `stage set --workflow-mode`）归 **stage-75**。
+
+### 需求级模式与载体制约束（v1.2.1-stage-90）
+
+- **需求级层（解析链第 2 层）**：`resolveStageWorkflowMode(stageId)` 在 `status.md` 分支之后插入——`stages[id].requirement_id → requirements[]` 命中且 `workflow_mode` 合法 → 返回该值 + `source: 'requirement'`；缺失 / 悬空 / 非法 → **自然回落**下一层（零报错）。`resolveEffectiveConfig().workflow_mode` **委托**同一单点（**禁第二份层序判定**，D-90-6）。
+- **生效路径（禁「名义层」）**：因 `ensureStageSkeleton` 恒写「工作流模式」行 → 需求级层须经**显式动作下发**：`req link` / `req set --workflow-mode` 经 `syncConfigFieldToStages('workflow_mode', v, { onlyStages })` 下发（status.md 字段 + flow.json 冗余**同批**）；`plan stage add` 骨架初值与 `addStage` 冗余写入**均经单点**（D-90-5①）。
+- **载体制约束（`general` 仅需求级合法）——写入面穷尽 4 面**：① `plan stage add --workflow-mode general` ② `stage set --workflow-mode general` ③ `config set workflow_mode general` → 三面 **exit 1 + 提示「general 仅限需求级」（`common.generalOnlyRequirement`）+ 零写盘**（目标文件 hash / mtime 不变）；④ **`flow wizard` 双写入面**（阶段级 `insertStatusField` + 部署级 `setConfigValue` 直调 core、不经命令层门）→ 以「**不提供 general 选项**」达成同口径拒绝（choices 恒 = 阶段合法子集 `full` / `fast`；无 `flow.wizard.modeGeneral` 键）。**拒设不能赖 schema**：`setConfigValue` 仅经 `ConfigDefaultsSchema` 校验 → 3 值化后 schema **放行** general，故阶段级 / 部署级拒设须**命令层显式门**（REV-90-001）。
+- **需求侧门**：需求为 `general` ⟹ **零关联阶段**（`req set --workflow-mode general` 有链接 → 拒；`req link` 到 `general` 需求 → 拒；错误码 `general_mode_conflict`）—— 详见 `manual/core/req.md`。
 
 ## 状态/相位单一事实源（v1.1.4-stage-62）
 
@@ -189,7 +197,7 @@ plan_pending → plan_review → plan_passed
 |----|------|------|
 | `profileDefaults` | `~/.config/openfeel/profile.yaml` | **仅取 `preferences.auto_advance` 单值**（不做 `preferences` 整体替换）；**stage-47（`config/BUG-003`）起仅当画像文件真实存在且原始 YAML 显式声明 `preferences.auto_advance`（`enabled`/`disabled`）时填充**，文件缺失/解析失败/缺键或非枚举值 → 不填 → 落 `builtin`；`readProfile()` 自身异常安全行为不变 |
 | `configDefaults` | `.openfeel/config.yaml` `defaults` 块 | 全部键 `String(value)` 收集；文件不存在或解析失败则为空（**逐键经 `ConfigDefaultsSchema` 校验**，非法跳过 + warn） |
-| `statusOverrides` | 目标阶段的 `status.md`（缺省 = 当前 `pipeline.current.stage`；stage 形参路径 = 该阶段） | 正则提取 `**执行模式**` → `execution_mode`、`**自动推进**` → `auto_advance`、**`**工作流模式**` → `workflow_mode`**（v1.1.7-stage-74 增，定值域 `full|fast`） |
+| `statusOverrides` | 目标阶段的 `status.md`（缺省 = 当前 `pipeline.current.stage`；stage 形参路径 = 该阶段） | 正则提取 `**执行模式**` → `execution_mode`、`**自动推进**` → `auto_advance`、**`**工作流模式**` → `workflow_mode`**（v1.1.7-stage-74 增，**v1.2.1-stage-90 值域扩为 `full|fast|general`**，正则经 `WORKFLOW_MODES` 同源构造） |
 | `effective` | 浅合并 `{...profileDefaults, ...configDefaults, ...statusOverrides}` | 三层均为扁平 `Record<string,string>`，无嵌套覆盖风险 |
 
 - **受管键集合 `EFFECTIVE_CONFIG_KEYS`（v1.1.7-stage-74 扩为四键）**：`execution_mode` / `auto_advance` / `merge_mode` / `workflow_mode`——`resolveEffectiveConfig` 按此枚举产出 `{ value, source }`。
@@ -228,7 +236,7 @@ plan_pending → plan_review → plan_passed
 
 - **`FlowData.requirements?: RequirementData[]`**（顶层可选，类比 `reviews`）——需求条目存储段；类型定义与需求原语见 `manual/core/req.md`。**读侧宽容**：`load()` **不补齐**该字段（**不注入**）；读侧由 `src/core/req/requirement-ops.ts` 的 `getRequirements` 派生 `?? []`，写侧 `addRequirement` 内 `??= []` 兜底——对齐 REV-78-015（stage-79 移除 `meta.archived_versions` load 补齐）的方向，避免任意 `load→save` 向存量 `flow.json` 注入 `requirements: []`。**`load()` / `save()` 对既有语义零改动**（净变更 = 1 `import type` + 2 处字段声明 + 注释）。
 - **`StageData.requirement_id?: string | null`**（单值可空）——需求↔阶段 **1:N** 的「阶段侧」关联；缺省 ≡ `null`（存量 = 遗留无需求，不迁移）。
-- **`requirements` 随版本归档的口径留后续版本**（本版**不归档** `requirements`）；需求层与工作流模式**正交**（`req` 模块不读 `workflow_mode`）。
+- **`requirements` 随版本归档的口径留后续版本**（本版**不归档** `requirements`）；需求层**携带**模式属性（`RequirementData.workflow_mode?`，v1.2.1-stage-90 supersede 旧「正交」口径）——模式仅经单点解析器 `resolveStageWorkflowMode` 消费、**不入聚合**（见「需求级模式与载体制约束」节）。
 
 ## 需求聚合回写接入（v1.2.0-stage-83）
 

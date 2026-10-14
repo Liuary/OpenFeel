@@ -849,6 +849,14 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 
 **参见：** v1.2.0-stage-81（plan §二 不变量 3 / 裁定 J / §七.5；op-003 T5.6；REV-81-006/009）；`src/core/req/{types,requirement-ops,body-file}.ts`；`test/core/req.test.ts`（正交 describe）；manual/core/req.md
 
+> **【supersede（追加式）｜2026-10-15｜v1.2.1-stage-90】** 上文「需求层与工作流模式**正交**、`src/core/req/**` 对 `workflow_mode` **零耦合**」的旧口径**已被显式取代**（原文保留以存审计链，**禁静默删除**——计划裁定 D / R-2）。
+>
+> - **旧口径（v1.2.0-stage-81）**：`src/core/req/**` 对 `workflow_mode` **零命中**（6 禁止串静态断言，含文件头注释全内容）；「需求」与「模式」被视为两正交主题，互不可见。
+> - **新口径（v1.2.1-stage-90）**：**需求可携带模式属性**——`RequirementData.workflow_mode?: WorkflowMode`（可选、读侧宽容、零注入）；`src/core/req/**` 与 `src/commands/req.ts` 对 `workflow_mode` 由「**一刀禁止串**」改为「**受控串**」（字段声明 / `PATCH_WHITELIST` / 值域校验 / `--workflow-mode` 选项**合法**；`body-file.ts` 人读骨架**仍零命中**）。
+> - **语义差异（关键）**：旧「正交」= 需求层**看不见**模式；新「携带」= 需求层**持有**模式属性，但**模式不参与聚合 / 不入 done 门 / 不入对账**（聚合面 `aggregate.ts` 对 `workflow_mode` **仍零命中**——不变量未松动，故与 #双层状态聚合架构 的 done 判定单源**无冲突**）。模式的**唯一消费点** = 单点解析器 `FlowManager.resolveStageWorkflowMode`（链序 `status.md > requirement > config.yaml > profile.yaml〔不承载〕> builtin`）；`req` 层**新增禁止串 `resolveStageWorkflowMode`**（禁第二份解析），原 6 禁止串中另 4 串（`PIPELINE_PHASES`/`getValidTargets`/`flow-archive`/`process.cwd`/`homedir`）**逐字保留**。
+> - **生效范围**：`test/core/req.test.ts`（T5.6 组 C1）+ `test/commands/req.test.ts`（组 C3）**显式改写且严格强于旧断言**（负向保持 + 新禁止串 + 正控扩容 + `NEEDLES.length` 锁定值同步）；`body-file.ts` 头注**逐字保留**（该声明仍为真）；`aggregate.ts` 头注口径改写为中性措辞「模式属性（需求级模式字段）」（**刻意规避 `workflow_mode` 字面量**以保 C2 零命中断言，REV-90-012 登记）。
+> - **迁移说明 / 判据源**：判据源 = `.openfeel/users/Liuary/code_review/REV-90.md`（001~013）+ `.openfeel/code_review/v1.2.1-stage-90.md`；差额对照见终局报告 `.openfeel/tmp/stage-90-final-report.md` §4.1（C1/C2/C3 旧→新逐条强度对比）。**新继承条目见本文件 #需求级模式属性架构**；**存量「与 workflow_mode 正交」措辞**（含本条目上文、`kb/index.md` 摘要、模板 / skill 文案）已随 stage-90 同批改写或登记转出（模板面 15 处显式改写 + kb 摘要改写；skill `openfeel-req` 标题「与 workflow_mode 正交」→「与 workflow_mode 的关系」）。
+
 ## [+] 需求命令面架构：引擎单点 + 命令层零业务逻辑（校验/流转/占用/关联唯一性） (2026-10-12)
 
 **分层**：`openfeel req` 10 子命令（`add`/`list`/`show`/`claim`/`release`/`set`/`link`/`advance`/`board`/`next`）= **薄命令层**（`src/commands/req.ts`）；全部业务判定（字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联唯一性 / done 门）**单点**在引擎层 `src/core/req/requirement-ops.ts`。命令层仅：解析参数 → 调引擎原语 → **错误码→文案映射** → `save()`（成功路径）→ `process.exitCode`。
@@ -965,3 +973,25 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.1-stage-89（新增 4 份 explorer 模板〔双 harness × 双语言，opencode 六字段 + claude 六字段，键集两 harness 同名同数〕；路由 4 处 + 收口 28 处改写〔零补行〕+ feel 引用面 8 处 token 替换；agent 计数 9→10 全枚举；3 commits `4127760`/`53aa5d0`/`f33e6b1`；门禁 71 文件 / 1629 用例 0 skipped / 0 failed、`tsc` 0、`lint i18n` 931、`lint kb` 0、build ×2 幂等）。
 
 **参见：** v1.2.1-stage-89（plan §二 目标语义与不变量 / §三 T1~T4；op-001~003；`REV-89.md` 001~009）；`src/core/templates-data/{opencode,claude}/agents/{zh-CN,en}/openfeel-explorer.md`；kb/architecture.md #通用工作者直接调度架构（上位条：本条目是其分类学第二成员的实体化）；kb/patterns.md #平台能力实测先行的 go/no-go 决策范式、#延迟占位注记的收口模式、#跨 harness × 语言模板对称纪律；manual/agents/feel.md、manual/core/permission.md
+
+## [+] 需求级模式属性架构：需求携带模式 + 单点解析链第二条 + 载体制约束（`general` 仅需求级合法） (2026-10-15)
+
+**背景**：v1.2.1 主题五把设计 §7「三模式架构」（规划 `full` / 快速 `fast` / 通用 `general`）从表格落为**代码事实**。核心位移：模式从「**阶段级 / 部署级**」扩展为**需求级属性**——「**需求携带模式**，经**单点解析**作用于其关联阶段」。本条承接并 **supersede** #需求层正交边界架构 的旧「需求与模式正交」口径（见该条目追加式 supersede 块）。
+
+**① 值域 3 值（单源）**：`WORKFLOW_MODES = ['full','fast','general']`（`src/core/config.ts`，**唯一权威**）；类型联合 / schema / `getConfigFieldLegalValues` / status.md 值域正则（`new RegExp(...WORKFLOW_MODES.join('|'))`）/ 骨架初值 / 冗余字段 / health 全部**派生**（禁第二份 3 值清单）。既有 `full` / `fast` 字面量、转移表、默认值**逐字零回归**；`DEFAULT_CONFIG.workflow_mode` 仍 `'fast'`。
+
+**② 需求级字段（携带，非正交）**：`RequirementData.workflow_mode?: WorkflowMode`（`req/types.ts`，**可选 + 读侧宽容 + 零注入**，`import type` 保「零运行时 import」）；`PATCH_WHITELIST` 增键 + 引擎层值域校验（运行时读 `WORKFLOW_MODES` 单源）；`req add/set --workflow-mode <mode>`。**仅调度属性**——模式**不入聚合 / 不入 done 门 / 不入对账**（`aggregate.ts` 对 `workflow_mode` **仍零命中**，done 判定单源恒 `allLinkedStagesDone` 未松动）。
+
+**③ 解析链单点（唯一）**：`FlowManager.resolveStageWorkflowMode(stageId)` 链序 = **`status.md 显式 > 需求级 > config.yaml > profile.yaml（不承载）> builtin`**；新增 `ConfigSource` 第 5 值 `'requirement'`。需求级层在 `status.md` 分支之后插入（`stages[id].requirement_id → requirements[]` 命中且值合法则返回；缺失 / 悬空 / 非法 → **自然回落**下一层，零报错）；`resolveEffectiveConfig().workflow_mode` **委托**同一单点（消除第二份层序判定，D-90-6）。**新增禁止串** `resolveStageWorkflowMode` 于 `src/core/req/**` 与 `src/commands/req.ts`（禁第二份解析）。
+
+**④ 生效路径（禁「名义层」）**：因骨架恒写「工作流模式」行（status.md 层恒命中），需求级层存在被短路风险 → 必须经**显式动作下发**：`req link` / `req set --workflow-mode` 经单点原语 `syncConfigFieldToStages('workflow_mode', v, { onlyStages })` 下发（status.md 字段 + flow.json 冗余**同批**）→ 「**需求级为权威源头、阶段字段为投影**」；`plan stage add` 骨架初值链亦经单点（需求级 > config defaults）。
+
+**⑤ 载体制约束（`general` 仅需求级合法）**：`general` 语义 = 「**无流水线**」（转移表空 `{}` + `flow advance` 显式错误引导，**不新增 phase**）。**写入面穷尽 4 面**：① `plan stage add --workflow-mode general` ② `stage set --workflow-mode general` ③ `config set workflow_mode general` → 三面 exit 1 + 提示「general 仅限需求级」+ **零写盘**（hash / mtime 不变）；④ **`flow wizard` 双写入面**（`:2173` 阶段级 `insertStatusField` + `:2180` 部署级 `setConfigValue` 直调）→ 以「**不提供 general 选项**」达成同口径拒绝（choices 恒 = 阶段合法子集 `full` / `fast`）。**需求侧门**：需求为 `general` ⟹ **不得有已链接阶段**（`req set --workflow-mode general` 有链接 → 拒；`req link` 到 `general` 需求 → 拒；单码 `general_mode_conflict` 两文案）。**拒设不能赖 schema**：`setConfigValue` 仅经 `ConfigDefaultsSchema` 校验 → 3 值化后 schema **放行** `general`，故阶段级 / 部署级拒绝须**命令层显式门** + wizard 不收选项（REV-90-001）。**流转**：`general → fast / full` 显式升级可用、**不自动降级**。
+
+**判据**：① 凡「把横切属性下沉到某一层」——先判**该层是否为叶子 / 是否已有单点解析器**，一律复用既有**单点**（禁第二份判定）；② 新增值域一律**单源常量 + 消费点全枚举 + 双路扫描差集判类**（见 kb/patterns.md #值域扩展全枚举范式）；③ 「某取值仅在某载体合法」须以**写入面穷尽枚举**（含交互式写入面如 wizard 的双写入）固定，**不能只枚举命令面**；④ supersede 旧断言一律**显式改写 + 差额对照 + 禁静默删除**（见 kb/patterns.md #断言 supersede 范式）。
+
+**已知缺口（登记，转后续裁定）**：`general` 需求**恒无法进入 `done`**——载体制约束（general ⟹ 零关联阶段）与既有 done 门（`allLinkedStagesDone` 要求 `linked.length > 0 && every(phase==='done')`）叠加成死锁（`req advance --to done` / `req set --status done` 同源拒绝；拒绝文案把 `done` 列为合法目标却拒绝，自相矛盾）。属**语义面设计缺口**（非阻塞、有绕行路径：升级 `fast`/`full` 后完成）→ 登记为 `req/BUG-002`（medium, open），承接**阶段 93 收口轮 / 后续裁定**（详见 `.openfeel/bugs/req.md`）。
+
+**实证**：v1.2.1-stage-90（4 commits `342e6ef` op-001 值域 / `143928c` op-002 需求级 + CLI / `77552f9` op-003a 模板 supersede / `02156a9` op-003b build + 门禁；39 产出文件；门禁 **71 文件 / 1674 用例** 0 skipped / 0 failed〔基线 1629〕、`tsc` 0、`lint i18n` **939**〔931 + 8 新键〕、`lint kb` 0〔575 引用〕、build ×2 幂等、`--version` **1.2.0**；C1/C2/C3 显式改写 + 15 处模板文案 supersede + 旧串零残留 0 命中）。
+
+**参见：** v1.2.1-stage-90（plan §二 目标语义与不变量 / §三 T1~T3 / §四 Q1~Q7；op-001~003；`REV-90.md` 001~013）；`src/core/config.ts :: WORKFLOW_MODES`；`src/core/flow-manager.ts :: resolveStageWorkflowMode / resolveTransitionsForMode / syncConfigFieldToStages`；`src/core/req/types.ts :: RequirementData.workflow_mode`；`src/commands/req.ts`；kb/architecture.md #需求层正交边界架构（**supersede**）、#双模式转移表选择、#部署级默认翻转的单一权威、#需求命令面架构、#双层状态聚合架构、#只读通用工作者架构；kb/patterns.md #断言 supersede 范式、#值域扩展全枚举范式、#模式标记三层载体与记忆语义、#带 stage 形参的级联解析、#关系型可选字段「仅溯源不聚合」模式、#对称回写模式；kb/troubleshooting.md #配置键白名单须 schema 驱动 + 值类型归一；manual/core/req.md、manual/core/flow-manager.md、manual/core/config.md、manual/cli/req.md、manual/agents/feel.md

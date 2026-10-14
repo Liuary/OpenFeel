@@ -7851,7 +7851,7 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 `,
   'openfeel-req': `---
 name: openfeel-req
-description: OpenFeel 需求流转用法参考：需求（requirement）四层模型与 7 状态生命周期、req 命令组 10 个子命令（add/list/show/claim/release/set/link/advance/board/next）与参数、认领协议、REQ-NNN 正文与人读副本语义（机读权威恒为 flow.json）、与计划（plan.md）的关系、与 workflow_mode 正交。当需要创建/查询/认领/关联/推进需求，或要理解 REQ-NNN 状态与阶段聚合关系时加载。
+description: OpenFeel 需求流转用法参考：需求（requirement）四层模型与 7 状态生命周期、req 命令组 11 个子命令（add/list/show/claim/release/set/link/advance/board/next/split）与参数、认领协议、REQ-NNN 正文与人读副本语义（机读权威恒为 flow.json）、与计划（plan.md）的关系、与 workflow_mode 正交。当需要创建/查询/认领/关联/推进需求，或要理解 REQ-NNN 状态与阶段聚合关系时加载。
 ---
 
 # OpenFeel 需求流转（openfeel req）用法参考
@@ -7888,20 +7888,21 @@ draft ─→ scheduled ─→ in_progress ─→ done
 - **投影方向单一**：需求状态是关联阶段 phase 的聚合投影（方向：阶段 phase → 需求状态）；不得由需求状态前推阶段 phase。
 - 合法显式流转由引擎流转表判定（\`req advance --to <status>\` / \`req set --status <status>\`）；终态（\`done\` / \`cancelled\` / \`rejected\`）不可再流转。
 
-## 子命令（10 个）
+## 子命令（11 个）
 
 | 子命令 | 用途 | 关键参数 |
 |--------|------|----------|
 | \`req add <title>\` | 创建需求（ID 自动分配 REQ-NNN，max+1 不回收；正文骨架铺到 \`.openfeel/requirements/REQ-NNN.md\`） | \`--target-version <version>\`、\`--priority <P0\\|P1\\|P2>\` |
 | \`req list\` | 列出需求（可按状态 / 版本 / 认领人过滤） | \`--status <status>\`、\`--target-version <version>\`、\`--owner <owner>\`、\`--json\` |
-| \`req show <id>\` | 查看需求详情（关联阶段为原始只读枚举） | \`--json\` |
+| \`req show <id>\` | 查看需求详情（关联阶段为原始只读枚举）（含父需求 / 子需求） | \`--json\` |
 | \`req claim <id>\` | 认领需求（占用校验；已被他人认领则拒绝） | \`--owner <owner>\`（缺省 \`.openfeel/.info.json\` user → git config user.name） |
 | \`req release <id>\` | 释放认领（未认领为 no-op 成功） | — |
 | \`req set <id>\` | 更新需求字段（白名单；状态流转合法性由引擎判定） | \`--status\`、\`--title\`、\`--target-version\`、\`--priority\` |
 | \`req link\` | 关联需求到阶段 / 解绑 | \`--stage <stageId>\`、\`--requirement <id>\`、\`--unlink\`（与 \`--requirement\` 二选一） |
 | \`req advance <id>\` | 显式推进需求状态（合法目标由引擎流转表判定；done 须全部关联阶段 done） | \`--to <status>\` |
 | \`req board\` | 需求看板（按状态分组；7 组固定顺序） | \`--target-version <version>\`、\`--json\` |
-| \`req next\` | 推荐下一个可接取需求（\`scheduled\` 且未认领；按预估版本升序） | \`--owner <owner>\`（含该认领人已认领的 scheduled 需求）、\`--json\` |
+| \`req next\` | 推荐下一个可接取需求（\`scheduled\` 且未认领；按预估版本升序） | \`--owner <owner>\`（含该认领人已认领的 scheduled 需求）、\`--limit <n>\`（缺省 1；大于 1 时 \`--json\` 追加 \`candidates\`）、\`--json\` |
+| \`req split <id>\` | 拆分需求为若干子需求（**拆分即发布**：子需求入 \`scheduled\` 候选池；父子仅溯源、不参与聚合） | \`--into <title>\`（可重复；至少一项）、\`--json\` |
 
 > \`--json\` 输出为纯 JSON 单文档（含 \`schemaVersion\`，脚本消费口径）；命令细节以 \`openfeel req <sub> --help\` 为准。
 
@@ -7913,7 +7914,7 @@ draft ─→ scheduled ─→ in_progress ─→ done
 
 ## REQ-NNN 正文与权威源
 
-- 正文文件：\`.openfeel/requirements/REQ-NNN.md\`（\`req add\` 机械铺骨架，**人读副本**）。
+- 正文文件：\`.openfeel/requirements/REQ-NNN.md\`（\`openfeel req\` 机械铺骨架，**人读副本**）。
 - **机读权威恒为 \`.openfeel/flow.json\` 的 \`requirements\` 条目**；正文与 flow.json 不一致时**以 flow.json 为准**（正文内状态为创建时快照，不追写）。
 - \`stages[*].requirement_id\` 记录需求↔阶段关联（单值可空；存量阶段缺省 = \`null\`）；关联关系以 flow.json 为准。
 
@@ -7925,6 +7926,16 @@ draft ─→ scheduled ─→ in_progress ─→ done
 ## 与 workflow_mode 正交
 
 需求层与工作流模式（\`full\` / \`fast\`）**正交**：需求可分别由 full / fast 阶段实现；两种模式下需求纪律一致，\`workflow_mode\` 不影响需求状态机与命令行为。
+
+## 需求与版本解绑
+
+- 需求**不绑版本**：\`target_version\` 为**可选**字段，且**不作任何门**（不影响创建 / 认领 / 关联 / 状态流转 / done 判定）。
+- **版本号仅在发布时推进**：日常需求动作（拆分 / 接取 / 推进）不触动版本号；版本推进属发布动作。
+
+## 并行接取
+
+- 拆分 → 子需求各自独立（独立 ID / 正文 / 认领 / 阶段关联），可**并行接取**：占用校验按需求粒度（\`req claim\`），子需求之间互不阻塞。
+- **接取制为默认调度**：需求由 feel 发布、Agent 接取（\`req next\` → \`req claim\`）。
 `,
   'openfeel-roadmap': `---
 name: openfeel-roadmap

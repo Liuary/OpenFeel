@@ -1179,3 +1179,23 @@ describe('并行接取 — stage-87 op-002', () => {
     expect(data.log.filter((e) => e.action === 'requirement_claim')).toHaveLength(2);
   });
 });
+
+// ═══════════════════════════════════════
+// 版本解绑 — stage-87 op-003（T3）
+// ═══════════════════════════════════════
+describe('版本解绑 — stage-87 op-003', () => {
+  it('无 target_version 全生命周期可用（防未来引入版本门）', () => {
+    const data = makeFlowData({ 'stage-01': makeStage({ phase: 'plan_pending' }) });
+    const req = addRequirement(data, { title: '无版本需求' });
+    expect('target_version' in req).toBe(false);                                  // 创建：不写版本键
+    expect(claimRequirement(data, 'REQ-001', 'Alice').ok).toBe(true);             // 认领
+    expect(advanceRequirement(data, 'REQ-001', 'scheduled').ok).toBe(true);       // 排期
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress').ok).toBe(true);     // 进行中
+    expect(linkRequirement(data, 'stage-01', 'REQ-001').ok).toBe(true);           // 关联阶段
+    data.stages['stage-01'].phase = 'done';
+    expect(syncRequirementStatus(data, 'stage-01')).toEqual(['REQ-001']);         // 聚合收口（无版本条件）
+    expect(getRequirement(data, 'REQ-001')!.status).toBe('done');
+    expect(lastLog(data).action).toBe('requirement_auto_done');
+    expect('target_version' in getRequirement(data, 'REQ-001')!).toBe(false);     // 全程零版本键写入
+  });
+});

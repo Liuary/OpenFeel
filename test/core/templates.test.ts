@@ -478,16 +478,17 @@ describe('stage-84：openfeel-planner.md ×4 需求感知（S1/S2/S3）', () => 
 describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () => {
   const REQ_SKILL = join(SKILLS_DIR, 'openfeel-req', 'SKILL.md');
   const CLI_SKILL = join(SKILLS_DIR, 'openfeel-cli-usage', 'SKILL.md');
-  it('S4 新 skill 存在、非空且要点齐备（frontmatter 触发词 / 7 状态 / 10 子命令 / 认领协议 / 权威源 / 正交 / 快照声明）', () => {
+  it('S4 新 skill 存在、非空且要点齐备（frontmatter 触发词 / 7 状态 / 11 子命令 / 认领协议 / 权威源 / 正交 / 快照声明 / 版本解绑 / 并行接取）', () => {
     expect(existsSync(REQ_SKILL), 'openfeel-req/SKILL.md 存在').toBe(true);
     const c = readFileSync(REQ_SKILL, 'utf-8');
     expect(c.length, '防假绿').toBeGreaterThan(0);
     for (const s of ['name: openfeel-req', '需求', 'requirement', 'REQ', 'req 命令',
-      '## 需求生命周期（7 状态）', '## 子命令（10 个）', '## 认领协议', '机读权威恒为',
-      '与计划（plan.md）的关系', '与 workflow_mode 正交', 'v1.2.0 起提供', '以 `openfeel req --help`']) {
+      '## 需求生命周期（7 状态）', '## 子命令（11 个）', '## 认领协议', '机读权威恒为',
+      '与计划（plan.md）的关系', '与 workflow_mode 正交', 'v1.2.0 起提供', '以 `openfeel req --help`',
+      '## 需求与版本解绑', '## 并行接取', '版本号仅在发布时推进', '不绑版本']) {
       expect(c, `缺 ${s}`).toContain(s);
     }
-    for (const sub of ['add', 'list', 'show', 'claim', 'release', 'set', 'link', 'advance', 'board', 'next']) {
+    for (const sub of ['add', 'list', 'show', 'claim', 'release', 'set', 'link', 'advance', 'board', 'next', 'split']) {
       expect(c, `缺子命令 req ${sub}`).toContain(`req ${sub}`);
     }
   });

@@ -111,7 +111,7 @@ openfeel-planner 作为独立 subagent，由**主会话（Feel 角色）**经 **
 - 读取需求：先以 `openfeel req show <REQ-NNN>` 读取需求详情（标题 / 状态 / 认领人 / 关联阶段），作为计划输入。
 - 计划关联需求：产出的 `plan.md` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
 - 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 `openfeel req` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
-- 与「工作流模式感知」正交：`full` / `fast` 下需求感知口径一致。
+- 与「工作流模式感知」的关系：需求携带模式属性（需求级 `workflow_mode`，经单点解析作用于关联阶段）；三种模式下需求感知口径一致。
 
 ## 调度与 Handoff
 

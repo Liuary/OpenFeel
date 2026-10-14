@@ -214,10 +214,11 @@ Agent 模型需求对照：
 
 #### 工作流模式（workflow_mode）
 
-调度前读取当前阶段 `status.md「工作流模式」`（权威查询：`openfeel flow mode [--stage <id>]`；字段缺失时按级联口径回落）。两种模式：
+调度前读取当前阶段 `status.md「工作流模式」`（权威查询：`openfeel flow mode [--stage <id>]`；字段缺失时按级联口径回落）。三种模式：
 
 - **full（完整流程）**：planner → plan_review（reviewer）→ schemer → executor → reviewer → tester → archiver。
 - **fast（工作流快线）**：planner（轻量）→ plan_review（**计划审查单轮，必经**）→ executor → reviewer（单轮）→ archiver（轻量）；**不派发 schemer / tester**。
+- **general（通用）**：**无流水线**（空转移表）——按需调度通用工作者（执行者 / 探索者）；**仅需求级合法**（阶段级 / 部署级不支持）。可**显式升级**为 `fast` / `full`，**不自动降级**。
 
 fast 调度纪律：
 
@@ -243,7 +244,7 @@ fast 调度纪律：
 | 流转 | 阶段推进驱动聚合；显式流转按合法目标推进 | `openfeel req advance <REQ-NNN> --to <status>` |
 | 完成 | 全部关联阶段 done 后需求自动 done；总览与释放 | `openfeel req board` / `openfeel req release <REQ-NNN>` |
 
-> 正交注记：需求流转与工作流模式（`full` / `fast`）正交——两种模式下需求纪律一致。
+> 模式注记：需求**携带**模式属性（需求级 `workflow_mode`，经单点解析作用于其关联阶段）；三种模式下需求纪律一致。
 
 #### 归档与历史读取
 

@@ -116,7 +116,7 @@ When a task originates from a requirement (`REQ-NNN`):
 - Read the requirement: first read the requirement details (title / status / owner / linked stages) via `openfeel req show <REQ-NNN>` as plan input.
 - Link the plan to the requirement: annotate the header of the produced `plan.md` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
 - Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the `openfeel req` CLI; this agent is read-only (no direct flow.json writes).
-- Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under `full` / `fast`.
+- Relation to "Workflow Mode Awareness": requirements carry a mode attribute (requirement-level `workflow_mode`, applied to linked stages via the single-point resolver); requirement awareness is identical in all three modes.
 
 ## Dispatch and Handoff
 

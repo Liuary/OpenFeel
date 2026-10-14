@@ -340,13 +340,13 @@ describe('stage-84：feel.md ×4 需求与归档纪律（S1/S2/S3）', () => {
     'openfeel req board', 'openfeel req next', 'openfeel req claim <REQ-NNN>',
     'openfeel req link --stage <stageId> --requirement <REQ-NNN>',
     'openfeel req advance <REQ-NNN> --to <status>', 'openfeel req release <REQ-NNN>',
-    '正交注记', '不主动读归档文件', 'openfeel flow archive <version>',
+    '模式注记', '不主动读归档文件', 'openfeel flow archive <version>',
     'openfeel flow archive show <version>', 'openfeel flow archive list', 'flow-archive/**'];
   const EN = ['a requirement is the scheduling layer', 'a requirement is not a plan', '7 statuses',
     'stage phase → requirement status', 'openfeel req board', 'openfeel req next',
     'openfeel req claim <REQ-NNN>', 'openfeel req link --stage <stageId> --requirement <REQ-NNN>',
     'openfeel req advance <REQ-NNN> --to <status>', 'openfeel req release <REQ-NNN>',
-    'Orthogonality note', 'Never read archive files proactively', 'openfeel flow archive <version>',
+    'Mode note', 'Never read archive files proactively', 'openfeel flow archive <version>',
     'openfeel flow archive show <version>', 'openfeel flow archive list', 'flow-archive/**'];
   const NEG = ['跳过流水线', '绕过流水线', 'bypass the pipeline', '需求即计划', 'a requirement is a plan'];
 
@@ -424,8 +424,8 @@ describe('stage-84：openfeel-planner.md ×4 需求感知（S1/S2/S3）', () => 
   const PL_EN = [join(TD, 'opencode', 'agents', 'en', 'openfeel-planner.md'), join(TD, 'claude', 'agents', 'en', 'openfeel-planner.md')];
   const H_ZH = '## 需求感知';
   const H_EN = '## Requirement Awareness';
-  const ZH = ['openfeel req show <REQ-NNN>', '关联需求：REQ-NNN', '流转不在本 Agent 职责内', '与「工作流模式感知」正交'];
-  const EN = ['openfeel req show <REQ-NNN>', 'Linked requirement: REQ-NNN', "Flow is not this agent's duty", 'Orthogonal to "Workflow Mode Awareness"'];
+  const ZH = ['openfeel req show <REQ-NNN>', '关联需求：REQ-NNN', '流转不在本 Agent 职责内', '与「工作流模式感知」的关系'];
+  const EN = ['openfeel req show <REQ-NNN>', 'Linked requirement: REQ-NNN', "Flow is not this agent's duty", 'Relation to "Workflow Mode Awareness"'];
   const NEG = ['跳过流水线', '绕过流水线', 'bypass the pipeline', '需求即计划', 'a requirement is a plan'];
 
   /** 提取节切片：标题行 → 下一个 markdown 标题行（不含；防行号漂移） */
@@ -479,13 +479,13 @@ describe('stage-84：openfeel-planner.md ×4 需求感知（S1/S2/S3）', () => 
 describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () => {
   const REQ_SKILL = join(SKILLS_DIR, 'openfeel-req', 'SKILL.md');
   const CLI_SKILL = join(SKILLS_DIR, 'openfeel-cli-usage', 'SKILL.md');
-  it('S4 新 skill 存在、非空且要点齐备（frontmatter 触发词 / 7 状态 / 11 子命令 / 认领协议 / 权威源 / 正交 / 快照声明 / 版本解绑 / 并行接取）', () => {
+  it('S4 新 skill 存在、非空且要点齐备（frontmatter 触发词 / 7 状态 / 11 子命令 / 认领协议 / 权威源 / 模式关系 / 快照声明 / 版本解绑 / 并行接取）', () => {
     expect(existsSync(REQ_SKILL), 'openfeel-req/SKILL.md 存在').toBe(true);
     const c = readFileSync(REQ_SKILL, 'utf-8');
     expect(c.length, '防假绿').toBeGreaterThan(0);
     for (const s of ['name: openfeel-req', '需求', 'requirement', 'REQ', 'req 命令',
       '## 需求生命周期（7 状态）', '## 子命令（11 个）', '## 认领协议', '机读权威恒为',
-      '与计划（plan.md）的关系', '与 workflow_mode 正交', 'v1.2.0 起提供', '以 `openfeel req --help`',
+      '与计划（plan.md）的关系', '与 workflow_mode 的关系', 'v1.2.0 起提供', '以 `openfeel req --help`',
       '## 需求与版本解绑', '## 并行接取', '版本号仅在发布时推进', '不绑版本']) {
       expect(c, `缺 ${s}`).toContain(s);
     }
@@ -694,5 +694,117 @@ describe('stage-89：探索者注册与路由替代（T3.1/T3.2）', () => {
     expect(norm(readFileSync(join(TD, 'claude', 'agents', 'zh-CN', 'openfeel-executor.md'), 'utf-8'))).toContain('通用承接');
     expect(norm(readFileSync(join(TD, 'opencode', 'agents', 'en', 'openfeel-executor.md'), 'utf-8'))).toContain('General acceptance');
     expect(norm(readFileSync(join(TD, 'claude', 'agents', 'en', 'openfeel-executor.md'), 'utf-8'))).toContain('General acceptance');
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-90 op-003：三模式文案（supersede）
+// ═══════════════════════════════════════
+describe('stage-90：三模式文案（supersede）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+  const FEEL_FILES: Array<[string, 'zh' | 'en']> = [
+    [join(TD, 'opencode', 'agents', 'zh-CN', 'feel.md'), 'zh'],
+    [join(TD, 'claude', 'agents', 'zh-CN', 'feel.md'), 'zh'],
+    [join(TD, 'opencode', 'agents', 'en', 'feel.md'), 'en'],
+    [join(TD, 'claude', 'agents', 'en', 'feel.md'), 'en'],
+  ];
+  const H_REQ_ZH = '#### 需求流转（requirement lifecycle）';
+  const H_REQ_EN = '#### Requirement Lifecycle';
+
+  /** 递归列举 templates-data/**（全文件类型） */
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) { walk(p, out); } else { out.push(p); }
+    }
+    return out;
+  };
+
+  /** 提取节切片：标题行 → 下一个 markdown 标题行（不含） */
+  const extractSection = (text: string, heading: string): string => {
+    const lines = text.split('\n');
+    const start = lines.findIndex((l) => l.startsWith(heading));
+    if (start < 0) { return ''; }
+    const rest = lines.slice(start + 1);
+    const stop = rest.findIndex((l) => /^#{1,6} /.test(l));
+    return [lines[start], ...(stop < 0 ? rest : rest.slice(0, stop))].join('\n');
+  };
+
+  it('S90-1 三模式正控：4 份 feel.md 含「三种模式：」/「Three modes:」+ general 条目要点串', () => {
+    for (const [p, lang] of FEEL_FILES) {
+      const c = norm(readFileSync(p, 'utf-8'));
+      if (lang === 'zh') {
+        expect(c, `${p} 缺 三种模式：`).toContain('三种模式：');
+        for (const s of ['**general（通用）**', '**无流水线**', '**仅需求级合法**']) {
+          expect(c, `${p} 缺 ${s}`).toContain(s);
+        }
+      } else {
+        expect(c, `${p} 缺 Three modes:`).toContain('Three modes:');
+        for (const s of ['**general (General)**', '**no pipeline**', '**valid at the requirement level only**']) {
+          expect(c, `${p} 缺 ${s}`).toContain(s);
+        }
+      }
+    }
+  });
+
+  it('S90-2 旧串零残留门（D-90-14）：templates-data/** × 7 条旧串 = 0 命中', () => {
+    const OLD_STRINGS = ['正交注记', 'Orthogonality note', '与「工作流模式感知」正交',
+      'Orthogonal to "Workflow Mode Awareness"', '与 workflow_mode 正交', '两种模式：', 'Two modes:'];
+    const files = walk(TD);
+    // 防假绿前置：文件数 ≥ 60（实测 64）+ 正控（feel.md 在列）
+    expect(files.length).toBeGreaterThanOrEqual(60);
+    expect(files.some((f) => f.endsWith(join('agents', 'zh-CN', 'feel.md')))).toBe(true);
+    for (const f of files) {
+      const c = readFileSync(f, 'utf-8');
+      for (const s of OLD_STRINGS) {
+        expect(c.includes(s), `${f} 残留旧串: ${s}`).toBe(false);
+      }
+    }
+  });
+
+  it('S90-3 跨 harness 逐字一致（改写后需求节切片 zh ×2 / en ×2 ===）', () => {
+    for (const [h, idx] of [[H_REQ_ZH, 0], [H_REQ_EN, 2]] as const) {
+      const oc = extractSection(norm(readFileSync(FEEL_FILES[idx][0], 'utf-8')), h);
+      const cc = extractSection(norm(readFileSync(FEEL_FILES[idx + 1][0], 'utf-8')), h);
+      expect(oc.length, `${h} opencode 切片非空`).toBeGreaterThan(0);
+      expect(cc, `${h} 跨 harness 逐字一致`).toBe(oc);
+    }
+  });
+
+  it('S90-4 零裸主语：新注记 / 新 bullet / general 条目所在文件切片不含 Feel / 主会话 / main session', () => {
+    // 新注记切片（需求节）+ 新 bullet（旧 bullet 行已改写；general 条目在模式节 → 直取含该串的行）
+    for (const [p, lang] of FEEL_FILES) {
+      const c = norm(readFileSync(p, 'utf-8'));
+      const block = extractSection(c, lang === 'zh' ? H_REQ_ZH : H_REQ_EN);
+      expect(block.length).toBeGreaterThan(0);
+      for (const s of ['Feel', '主会话', 'main session']) {
+        expect(block, `${p}/${h0(block)} 裸主语 ${s}`).not.toContain(s);
+      }
+      const generalLine = c.split('\n').find((l) => l.startsWith(lang === 'zh' ? '- **general（通用）**' : '- **general (General)**'));
+      expect(generalLine, `${p} general 条目缺失`).toBeDefined();
+      for (const s of ['Feel', '主会话', 'main session']) {
+        expect(generalLine!, `${p} general 条目裸主语 ${s}`).not.toContain(s);
+      }
+    }
+    function h0(b: string): string { return b.split('\n')[0]; }
+  });
+
+  it('S90-5 新文案不含 NEG 5 串（「无流水线」不命中；作用域 = 模式节 + 需求节切片）', () => {
+    const NEG = ['跳过流水线', '绕过流水线', 'bypass the pipeline', '需求即计划', 'a requirement is a plan'];
+    const H_MODE_ZH = '#### 工作流模式（workflow_mode）';
+    const H_MODE_EN = '#### Workflow Mode (workflow_mode)';
+    for (const [p, lang] of FEEL_FILES) {
+      const c = norm(readFileSync(p, 'utf-8'));
+      const blocks = [
+        extractSection(c, lang === 'zh' ? H_MODE_ZH : H_MODE_EN),
+        extractSection(c, lang === 'zh' ? H_REQ_ZH : H_REQ_EN),
+      ];
+      for (const block of blocks) {
+        expect(block.length, `${p} 切片非空`).toBeGreaterThan(0);
+        for (const s of NEG) {
+          expect(block.includes(s), `${p} 切片含禁用串 ${s}`).toBe(false);
+        }
+      }
+    }
   });
 });

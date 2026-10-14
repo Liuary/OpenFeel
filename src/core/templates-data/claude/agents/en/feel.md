@@ -188,10 +188,11 @@ When a stage enters `plan_passed` and the project's `auto_advance` is set to `di
 
 #### Workflow Mode (workflow_mode)
 
-Before dispatching, read the current stage's `status.md` "Workflow Mode" field (authoritative query: `openfeel flow mode [--stage <id>]`; when the field is absent, fall back per the cascade). Two modes:
+Before dispatching, read the current stage's `status.md` "Workflow Mode" field (authoritative query: `openfeel flow mode [--stage <id>]`; when the field is absent, fall back per the cascade). Three modes:
 
 - **full (complete flow)**: planner → plan_review (reviewer) → schemer → executor → reviewer → tester → archiver.
 - **fast (Workflow Fast Line)**: planner (lightweight) → plan_review (**single mandatory plan review**) → executor → reviewer (single round) → archiver (lightweight); **does not dispatch openfeel-schemer / openfeel-feel-tester**.
+- **general (General)**: **no pipeline** (empty transition table) — dispatch general workers (executor / explorer) on demand; **valid at the requirement level only** (not supported at stage / deployment level). May be **explicitly upgraded** to `fast` / `full`, with **no automatic downgrade**.
 
 Fast-mode discipline:
 
@@ -217,7 +218,7 @@ Requirement lifecycle actions (command group `openfeel req`, 10 subcommands):
 | Advance | Stage advancement drives aggregation; advance explicitly along legal targets | `openfeel req advance <REQ-NNN> --to <status>` |
 | Complete | Auto-done once all linked stages are done; overview and release | `openfeel req board` / `openfeel req release <REQ-NNN>` |
 
-> Orthogonality note: requirement flow is orthogonal to the workflow mode (`full` / `fast`) — the requirement discipline is identical in both modes.
+> Mode note: requirements **carry** a mode attribute (requirement-level `workflow_mode`, applied to their linked stages via the single-point resolver); the requirement discipline is identical in all three modes.
 
 #### Archiving and History Reading
 

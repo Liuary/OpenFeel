@@ -31,6 +31,7 @@ export const common: I18nDomain = {
   stageIdInvalidTmpl:  { key: 'common.stageIdInvalidTmpl',  zh: '{input} → 非法阶段 ID（应为 stage-NN 或 vX.Y.Z-stage-NN）', en: '' },
   stageIdSuggestTmpl:  { key: 'common.stageIdSuggestTmpl',  zh: '建议名称：{suggest}', en: '' },
   stageDirConflictTmpl:{ key: 'common.stageDirConflictTmpl', zh: '阶段目录冲突：{stage} 与 {other} 映射同一目录', en: '' },
+  generalOnlyRequirement: { key: 'common.generalOnlyRequirement', zh: 'general（通用模式）仅限需求级——阶段级 / 部署级不支持；阶段请使用 fast / full。', en: '' },
 };
 
 /* ==================== flow 域：流水线状态管理 ==================== */
@@ -180,6 +181,7 @@ export const flow: I18nDomain = {
   'advance.stepOkTmpl':         { key: 'flow.advance.stepOkTmpl',         zh: '已推进：{stage} {from} → {to}',            en: '' },
   'advance.ambiguousTmpl':      { key: 'flow.advance.ambiguousTmpl',      zh: '存在多条等价路径，已拒绝；请逐步显式指定 --to', en: '' },
   'advance.noPathTmpl':         { key: 'flow.advance.noPathTmpl',         zh: '无法从 {from} 到达 {to}；当前可达目标：{targets}', en: '' },
+  'advance.generalNoPipeline':  { key: 'flow.advance.generalNoPipeline',  zh: '错误: 阶段 "{stage}" 的工作流模式为 general（无流水线）——无合法跳转目标；如需推进请先显式升级为 fast / full。', en: '' },
   'advance.depthExceededTmpl':  { key: 'flow.advance.depthExceededTmpl',  zh: '路径深度超过上限（{max}），已拒绝',          en: '' },
   'advance.partialFailTmpl':    { key: 'flow.advance.partialFailTmpl',    zh: '已完成到 {done}；失败于 {failed}；剩余路径：{remaining}', en: '' },
   'advance.blockedByRevTmpl':   { key: 'flow.advance.blockedByRevTmpl',   zh: '存在阻塞中的审查条目，已停止推进：{revs}；剩余路径：{remaining}', en: '' },
@@ -671,7 +673,7 @@ export const help: I18nDomain = {
   'flow.metrics.json':     { key: 'help.flow.metrics.json',     zh: '以 JSON 输出', en: '' },
   'flow.phases':           { key: 'help.flow.phases',           zh: '列出全部合法 phase 及其流转映射（自描述）', en: '' },
   'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '以 JSON 输出 { phases, transitions, advanceAccepted, transitionsDiff, schemaVersion, workflowMode }（advanceAccepted = 内置 15 phase，即 flow advance 的推进白名单；transitionsDiff = 运行时转移表与内置默认的差异报告；workflowMode = 本次展示所依据的工作流模式）', en: '' },
-  'flow.phases.mode':      { key: 'help.flow.phases.mode',      zh: '显式指定工作流模式（full | fast；缺省经 --stage / 当前阶段派生）', en: '' },
+  'flow.phases.mode':      { key: 'help.flow.phases.mode',      zh: '显式指定工作流模式（full | fast | general；缺省经 --stage / 当前阶段派生）', en: '' },
   'flow.phases.stage':     { key: 'help.flow.phases.stage',     zh: '按指定阶段的模式展示转移表（缺省 = 当前阶段）', en: '' },
   'flow.mode':             { key: 'help.flow.mode',             zh: '显示当前工作流模式与来源（只读）', en: '' },
   'flow.mode.stage':       { key: 'help.flow.mode.stage',       zh: '目标阶段（缺省 = 当前阶段）', en: '' },
@@ -812,7 +814,7 @@ export const help: I18nDomain = {
   'stage.set.status':      { key: 'help.stage.set.status',      zh: '状态值（粗粒度：planned/review_failed/review_passed/testing/archiving/done）', en: '' },
   'stage.set.execMode':    { key: 'help.stage.set.execMode',    zh: '执行模式（manual | auto）', en: '' },
   'stage.set.autoAdvance': { key: 'help.stage.set.autoAdvance', zh: '自动推进（enabled | disabled）', en: '' },
-  'stage.set.workflowMode': { key: 'help.stage.set.workflowMode', zh: '工作流模式（full | fast）', en: '' },
+  'stage.set.workflowMode': { key: 'help.stage.set.workflowMode', zh: '工作流模式（full | fast | general）', en: '' },
   'stage.set.reviewAgent': { key: 'help.stage.set.reviewAgent', zh: '当前责任 Agent（如 openfeel-executor）', en: '' },
   'stage.task':            { key: 'help.stage.task',            zh: '勾选/取消任务 checkbox，或追加任务', en: '' },
   'stage.task.argstageId': { key: 'help.stage.task.argstageId', zh: '阶段 ID（如 v4-stage-04）', en: '' },

@@ -296,7 +296,7 @@ describe('E-2 spawn E2E（真实子进程，防恒绿）', () => {
         // 5 → 6：仅增 workflowMode（既有五键逐字不变）
         expect(Object.keys(j).length).toBe(6);
         // cwd = REPO_ROOT → 取本仓 config.yaml 派生值（枚举内即可，避免耦合具体值）
-        expect(j.workflowMode).toMatch(/^(full|fast)$/);
+        expect(j.workflowMode).toMatch(/^(full|fast|general)$/);
       } finally {
         rmSync(home, { recursive: true, force: true });
       }

@@ -5570,3 +5570,102 @@ describe('stage-86 op-003 T3/T4（op 级时间字段 + 跨会话恢复标注）'
     expect(normalizeRaw(raw)).toBe(beforeNormalized);
   });
 });
+
+// ═══════════════════════════════════════
+// stage-90 op-001：general 模式（空表）与值域同源
+// ═══════════════════════════════════════
+
+describe('stage-90：general 模式（空表）与值域同源', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-general-mode-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    mockHome.dir = join(tmpDir, 'no-such-home');
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  /** 写指定阶段的 status.md（工作流模式行；general 为防御路径手工构造） */
+  function writeStageMode(stageDir: string, mode: string): void {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', stageDir);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'status.md'), `# 状态\n\n- **工作流模式**：${mode}\n`, 'utf-8');
+  }
+
+  function makeMgr(currentStage = 'v1.0.0-stage-01'): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      ...makeTestFlowData(),
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: currentStage, op: 'op-001' }, retry: 0 },
+    });
+    return mgr;
+  }
+
+  it('T90.1：general 空表（getPipelineTransitions / getDefaultTransitions / getValidTargets / getAvailablePhases）', () => {
+    const mgr = makeMgr();
+    expect(mgr.getPipelineTransitions('general')).toEqual({});
+    expect(mgr.getDefaultTransitions('general')).toEqual({});
+    // getValidTargets 为私有原语（经 any-cast 直测空表语义；与公开 getAvailablePhases 同源）
+    const anyMgr = mgr as unknown as { getValidTargets(p: PipelinePhase, m: string): string[] };
+    expect(anyMgr.getValidTargets('plan_pending', 'general')).toEqual([]);
+    writeStageMode('stage-01', 'general');
+    expect(mgr.getAvailablePhases()).toEqual([]);
+  });
+
+  it('T90.2：防御路径——手写 general 的 status.md 经第 1 层解析命中（非静默回落 config）', () => {
+    writeStageMode('stage-01', 'general');
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'defaults:\n  workflow_mode: fast\n', 'utf-8');
+    const r = makeMgr().resolveStageWorkflowMode('v1.0.0-stage-01');
+    expect(r).toEqual({ value: 'general', source: 'status.md' });
+  });
+
+  it('T90.3：health 第 10 项自动覆盖（status.md general + 冗余 fast → 恰 1 条 warn）', () => {
+    mkdirSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01'), { recursive: true });
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md'),
+      '# v1.0.0-stage-01 状态\n\n- **执行模式**：manual\n- **自动推进**：disabled\n- **工作流模式**：general\n- **状态**：planned\n',
+      'utf-8',
+    );
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'flow.json'),
+      JSON.stringify({
+        meta: { version: '1.0', project: 'T', updated: '2026-01-01T00:00:00Z', revision: 1 },
+        pipeline: { phase: 'active', current: { stage: 'v1.0.0-stage-01', op: '' }, retry: 0 },
+        stages: {
+          'v1.0.0-stage-01': { name: 'v1.0.0-stage-01', phase: 'plan_pending', status: 'planned', deps: [], ops: {}, workflow_mode: 'fast' },
+        },
+        reviews: [],
+        log: [],
+      }, null, 2),
+      'utf-8',
+    );
+    const result = new FlowManager(tmpDir).healthCheck(false);
+    const items = result.items.filter((i) => i.section === '工作流模式');
+    expect(items).toHaveLength(1);
+    expect(items[0].status).toBe('warn');
+    expect(result.ok).toBe(true);
+  });
+
+  it('T90.4：零回归正控——full 16 键 / fast 9 条目逐字不变', () => {
+    const mgr = makeMgr();
+    expect(Object.keys(mgr.getPipelineTransitions('full'))).toHaveLength(16);
+    expect(mgr.getPipelineTransitions('full')['exec_running']).toEqual(['review_pending', 'scheme_pending']);
+    const fast = mgr.getPipelineTransitions('fast');
+    expect(Object.keys(fast)).toHaveLength(9);
+    expect(fast).toEqual({
+      plan_pending: ['plan_review'],
+      plan_review: ['plan_passed', 'plan_pending'],
+      plan_passed: ['exec_running'],
+      exec_running: ['review_pending'],
+      review_pending: ['review_failed', 'review_passed'],
+      review_failed: ['review_pending', 'exec_running'],
+      review_passed: ['archiving'],
+      archiving: ['done'],
+      done: [],
+    });
+  });
+});

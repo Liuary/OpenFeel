@@ -23,7 +23,8 @@ export const ConfigMetaSchema = z.object({
 }).passthrough();
 
 /** 工作流模式枚举值域（单一来源：schema / 类型 / 命令面值域派生均引用此处） */
-export const WORKFLOW_MODES = ['full', 'fast'] as const;
+// 3 值（stage-90）：general = 无流水线 / 按需调度通用工作者 / 仅需求级合法
+export const WORKFLOW_MODES = ['full', 'fast', 'general'] as const;
 /** 工作流模式：full=完整链路（含计划审查/方案/测试）；fast=快速迭代（跳过方案/测试环节；计划审查与代码审查各保留单轮） */
 export type WorkflowMode = (typeof WORKFLOW_MODES)[number];
 
@@ -159,13 +160,13 @@ export interface ModelsConfig {
 /** 配置文件结构（backward-compatible: 扁平字段 + 嵌套结构并存） */
 export interface Config {
   meta?: { version?: string; project?: string; tech_stack?: string; [key: string]: unknown };
-  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; merge_mode?: 'manual' | 'auto'; workflow_mode?: 'full' | 'fast'; [key: string]: unknown };
+  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; merge_mode?: 'manual' | 'auto'; workflow_mode?: WorkflowMode; [key: string]: unknown };
   models?: ModelsConfig;
   // 向后兼容：扁平字段（由 normalizeConfig 从 defaults 提升）
   execution_mode?: 'manual' | 'auto';
   auto_advance?: 'disabled' | 'enabled';
   merge_mode?: 'manual' | 'auto';
-  workflow_mode?: 'full' | 'fast';
+  workflow_mode?: WorkflowMode;
   [key: string]: unknown;
 }
 
@@ -182,7 +183,7 @@ export interface ResolvedConfigDefaults {
   execution_mode: 'manual' | 'auto';
   auto_advance: 'disabled' | 'enabled';
   merge_mode: 'manual' | 'auto';
-  workflow_mode: 'full' | 'fast';
+  workflow_mode: WorkflowMode;
 }
 
 /**

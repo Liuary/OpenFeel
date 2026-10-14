@@ -32,7 +32,7 @@ export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-
 import { findStageStatusPath, findStageDirConflict, parseStageId, normalizeStageId, isArchivedVersionOf } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
-import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, type WorkflowMode } from './config.js';
+import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, WORKFLOW_MODES, type WorkflowMode } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
 import type { RequirementData } from './req/types.js';
 import { syncRequirementStatus } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）
@@ -107,7 +107,7 @@ export interface StageData {
   /** 阶段耗时统计（可选，运行时填充） */
   stats?: StageStats;
   /** 工作流模式（可选冗余，不参与级联；读取权威恒为 status.md/级联，裁定 G） */
-  workflow_mode?: 'full' | 'fast';
+  workflow_mode?: WorkflowMode;
   /** 关联需求 ID（单值可空；存量缺省 ≡ null，不迁移——裁定 D/L） */
   requirement_id?: string | null;
 }
@@ -2091,11 +2091,16 @@ export class FlowManager {
   /**
    * 按模式解析运行时转移表（唯一取表法则；校验/推进/路径 与 展示 同经本函数 ⇒ 单一信源）。
    * full → 运行时 pipelineConfig.transitions（pipeline.yaml 覆盖线）；fast → fast_transitions ?? 内置快线表。
+   * general → 空表（无流水线；模式语义本身，非「缺省回落」）。
    * 说明：pipelineConfig 构造期恒已加载（constructor 无条件调用），`?? 内置` 保留既有访问器回退语义。
    */
   private resolveTransitionsForMode(mode: WorkflowMode): Record<string, string[]> {
     if (mode === 'fast') {
       return this.fastTransitions ?? this.getDefaultPipelineConfig('fast').transitions;
+    }
+    // general（无流水线）：空表为**模式语义**的忠实表达（D-90-3；与 pipeline.yaml fast_transitions:{} 的「配置层空值回落」路径 / 语义均不同）
+    if (mode === 'general') {
+      return {};
     }
     return this.pipelineConfig?.transitions ?? this.getDefaultPipelineConfig().transitions;
   }
@@ -2289,7 +2294,8 @@ export class FlowManager {
           // 匹配执行模式、自动推进、工作流模式
           const execMatch = content.match(/\*\*执行模式\*\*[：:]\s*(manual|auto)/);
           const autoMatch = content.match(/\*\*自动推进\*\*[：:]\s*(disabled|enabled)/);
-          const modeMatch = content.match(/\*\*工作流模式\*\*[：:]\s*(full|fast)/);
+          // 值域自 WORKFLOW_MODES 派生（单源；stage-90——漏改本行即第 1 层丢弃、静默回落 config）
+          const modeMatch = content.match(new RegExp(`\\*\\*工作流模式\\*\\*[：:]\\s*(${WORKFLOW_MODES.join('|')})`));
           if (execMatch) {
             statusOverrides['execution_mode'] = execMatch[1];
           }
@@ -3725,7 +3731,7 @@ export class FlowManager {
             out.push({ stage: stageId, result: 'inserted' });
             // 冗余写入点①：注册守卫（REV-80-009）——off-set 目标不新建冗余键、不置 dirty
             if (registered) {
-              this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
+              this.data.stages[stageId].workflow_mode = value as WorkflowMode;
               flowJsonDirty = true;
             }
             continue;
@@ -3737,7 +3743,7 @@ export class FlowManager {
             out.push({ stage: stageId, result: 'updated' });
             // 冗余写入点②：注册守卫（REV-80-009）
             if (registered) {
-              this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
+              this.data.stages[stageId].workflow_mode = value as WorkflowMode;
               flowJsonDirty = true;
             }
             continue;
@@ -3759,7 +3765,7 @@ export class FlowManager {
       out.push({ stage: stageId, result: 'updated' });
       // 冗余写入点③：仅实际写入时同步（noop / skipped 不写）；注册守卫（REV-80-009）——off-set 目标跳过
       if (configKey === 'workflow_mode' && registered) {
-        this.data.stages[stageId].workflow_mode = value as 'full' | 'fast';
+        this.data.stages[stageId].workflow_mode = value as WorkflowMode;
         flowJsonDirty = true;
       }
     }
@@ -4274,6 +4280,7 @@ export class FlowManager {
    * 当 pipeline.yaml 不存在或解析失败时使用。
    * @param mode 工作流模式；**无参 = full**（内置 full 表逐字等于历史现状，零回归既有消费点）；
    *             'fast' 返回快线表（FAST_TRANSITIONS 常量引用）。phases / checkpoint_mapping / phase_corrections 两模式共用。
+   *             'general' 返回空转移表（无流水线；phases 仍 15 项）。
    */
   private getDefaultPipelineConfig(mode: WorkflowMode = 'full'): PipelineConfig {
     return {
@@ -4287,7 +4294,9 @@ export class FlowManager {
       transitions:
         mode === 'fast'
           ? FAST_TRANSITIONS
-          : {
+          : mode === 'general'
+            ? {}                                   // general：无流水线（空表；phases 仍 15 项，不新增 phase）
+            : {
               plan_pending: ['plan_review', 'plan_passed'],
               plan_review: ['plan_passed', 'plan_pending'],
               plan_passed: ['scheme_pending'],

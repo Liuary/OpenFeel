@@ -10,6 +10,7 @@ import { registerConfigCommand } from '../../src/commands/config.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
 import { addStage } from '../../src/core/plan/stage.js';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -96,6 +97,11 @@ describe('config 命令（stage-42 op-002）', () => {
 
   function stderr(): string {
     return errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+  }
+
+  /** 文件内容 sha256（载体门零写盘取证） */
+  function sha(p: string): string {
+    return createHash('sha256').update(readFileSync(p)).digest('hex');
   }
 
   it('config effective 输出四键，且 auto_advance 来源为 config.yaml（项目优先于画像）', async () => {
@@ -364,6 +370,29 @@ describe('config 命令（stage-42 op-002）', () => {
     expect((thrown as Error)?.message).toBe('__EXIT__');
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(readFileSync(configPath(), 'utf-8')).toBe(before);
+  });
+
+  it('T90.14：config set workflow_mode general → 载体门 exit 1 + config.yaml / status.md 零写盘', async () => {
+    FlowManager.initFlow(tmpDir);
+    addStage(tmpDir, 'stage-11');
+    writeProjectConfigRaw('defaults:\n  workflow_mode: full\n');
+    const before = sha(configPath());
+    const statusP = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-11', 'status.md');
+    const beforeStatus = sha(statusP);
+    exitMock.mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await safeParse(['config', 'set', 'workflow_mode', 'general', '--sync-stages', '--stage', 'stage-11']);
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('general（通用模式）仅限需求级——阶段级 / 部署级不支持；阶段请使用 fast / full。');
+    expect(sha(configPath())).toBe(before);      // 部署级零写盘
+    expect(sha(statusP)).toBe(beforeStatus);     // --sync-stages 副作用亦零写盘
   });
 
   it('T6.4d：未知键 defaults.bogus → 白名单拒绝 exit 1，错误含 defaults. 等价提示', async () => {

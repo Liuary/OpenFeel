@@ -30,6 +30,7 @@ export const common: I18nDomain = {
   stageIdInvalidTmpl:  { key: 'common.stageIdInvalidTmpl',  zh: '', en: '{input} → invalid stage ID (expected stage-NN or vX.Y.Z-stage-NN)' },
   stageIdSuggestTmpl:  { key: 'common.stageIdSuggestTmpl',  zh: '', en: 'Suggested name: {suggest}' },
   stageDirConflictTmpl:{ key: 'common.stageDirConflictTmpl', zh: '', en: 'Stage dir conflict: {stage} and {other} map to the same directory' },
+  generalOnlyRequirement: { key: 'common.generalOnlyRequirement', zh: '', en: 'general (General Mode) is valid at the requirement level only — not supported at stage / deployment level; use fast / full for stages.' },
 };
 
 /* ==================== flow ==================== */
@@ -168,6 +169,7 @@ export const flow: I18nDomain = {
   'advance.stepOkTmpl':         { key: 'flow.advance.stepOkTmpl',         zh: '', en: 'Advanced: {stage} {from} → {to}' },
   'advance.ambiguousTmpl':      { key: 'flow.advance.ambiguousTmpl',      zh: '', en: 'Multiple equivalent paths; refused. Specify --to step by step' },
   'advance.noPathTmpl':         { key: 'flow.advance.noPathTmpl',         zh: '', en: 'Cannot reach {to} from {from}; reachable targets: {targets}' },
+  'advance.generalNoPipeline':  { key: 'flow.advance.generalNoPipeline',  zh: '', en: 'Error: stage "{stage}" uses workflow mode general (no pipeline) — no legal transition targets; to advance, explicitly upgrade to fast / full first.' },
   'advance.depthExceededTmpl':  { key: 'flow.advance.depthExceededTmpl',  zh: '', en: 'Path depth exceeds limit ({max}); refused' },
   'advance.partialFailTmpl':    { key: 'flow.advance.partialFailTmpl',    zh: '', en: 'Completed up to {done}; failed at {failed}; remaining path: {remaining}' },
   'advance.blockedByRevTmpl':   { key: 'flow.advance.blockedByRevTmpl',   zh: '', en: 'Blocking review entries found; stopped: {revs}; remaining path: {remaining}' },
@@ -638,7 +640,7 @@ export const help: I18nDomain = {
   'flow.metrics.json':     { key: 'help.flow.metrics.json',     zh: '', en: 'Output as JSON' },
   'flow.phases':           { key: 'help.flow.phases',           zh: '', en: 'List all valid phases and transitions (self-describing)' },
   'flow.phases.json':      { key: 'help.flow.phases.json',      zh: '', en: 'Output { phases, transitions, advanceAccepted, transitionsDiff, schemaVersion, workflowMode } as JSON (advanceAccepted = the built-in 15 phases accepted by flow advance; transitionsDiff = diff report between runtime and built-in default transitions; workflowMode = the workflow mode used for this view)' },
-  'flow.phases.mode':      { key: 'help.flow.phases.mode',      zh: '', en: 'Explicit workflow mode (full | fast; default derived from --stage / current stage)' },
+  'flow.phases.mode':      { key: 'help.flow.phases.mode',      zh: '', en: 'Explicit workflow mode (full | fast | general; default derived from --stage / current stage)' },
   'flow.phases.stage':     { key: 'help.flow.phases.stage',     zh: '', en: "Show the transition table for the given stage's mode (default: current stage)" },
   'flow.mode':             { key: 'help.flow.mode',             zh: '', en: 'Show current workflow mode and its source (read-only)' },
   'flow.mode.stage':       { key: 'help.flow.mode.stage',       zh: '', en: 'Target stage (default: current stage)' },
@@ -775,7 +777,7 @@ export const help: I18nDomain = {
   'stage.set.status':      { key: 'help.stage.set.status',      zh: '', en: 'Status value (coarse-grained: planned/review_failed/review_passed/testing/archiving/done)' },
   'stage.set.execMode':    { key: 'help.stage.set.execMode',    zh: '', en: 'Execution mode (manual | auto)' },
   'stage.set.autoAdvance': { key: 'help.stage.set.autoAdvance', zh: '', en: 'Auto advance (enabled | disabled)' },
-  'stage.set.workflowMode': { key: 'help.stage.set.workflowMode', zh: '', en: 'Workflow mode (full | fast)' },
+  'stage.set.workflowMode': { key: 'help.stage.set.workflowMode', zh: '', en: 'Workflow mode (full | fast | general)' },
   'stage.set.reviewAgent': { key: 'help.stage.set.reviewAgent', zh: '', en: 'Current responsible agent (e.g. openfeel-executor)' },
   'stage.task':            { key: 'help.stage.task',            zh: '', en: 'Check/uncheck a task checkbox, or append a task' },
   'stage.task.argstageId': { key: 'help.stage.task.argstageId', zh: '', en: 'Stage ID (e.g. v4-stage-04)' },

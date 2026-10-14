@@ -26,7 +26,7 @@ import { resolve } from 'node:path';
 import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
-import { getConfigFieldLegalValues, setConfigValue } from '../core/config.js';
+import { getConfigFieldLegalValues, setConfigValue, type WorkflowMode } from '../core/config.js';
 import { parse as parseYaml } from 'yaml';
 import { MetricsStore, PHASE_AGENT_MAP } from '../core/metrics.js';
 import { runtimeLog } from '../core/runtime-log.js';
@@ -392,7 +392,7 @@ export function registerFlowCommand(program: Command): void {
     .command('phases')
     .description('列出全部合法 phase 及其流转映射（自描述）')
     .option('--json', 'Output { phases, transitions, advanceAccepted, schemaVersion } as JSON')
-    .option('--mode <mode>', '显式指定工作流模式（full | fast；缺省经 --stage / 当前阶段派生）')
+    .option('--mode <mode>', '显式指定工作流模式（full | fast | general；缺省经 --stage / 当前阶段派生）')
     .option('--stage <id>', '按指定阶段的模式展示转移表（缺省 = 当前阶段）')
     .action((options: { json?: boolean; mode?: string; stage?: string }) => {
       const projectPath = process.cwd();
@@ -400,7 +400,7 @@ export function registerFlowCommand(program: Command): void {
       const mgr = createManager();
 
       // ① --mode 显式值域校验（schema 派生；非法 → exit 1，不进入只读取值）
-      let explicitMode: 'full' | 'fast' | undefined;
+      let explicitMode: WorkflowMode | undefined;
       if (options.mode !== undefined) {
         const allowed = getConfigFieldLegalValues('workflow_mode') ?? [];
         if (!allowed.includes(options.mode)) {
@@ -408,7 +408,7 @@ export function registerFlowCommand(program: Command): void {
           process.exit(1);
           return;
         }
-        explicitMode = options.mode as 'full' | 'fast';
+        explicitMode = options.mode as WorkflowMode;
       }
 
       // ② --stage 校验（格式 + 存在性）：先于任何只读取值
@@ -523,6 +523,7 @@ export function registerFlowCommand(program: Command): void {
       const modes = {
         full: mgr.getPipelineTransitions('full'),
         fast: mgr.getPipelineTransitions('fast'),
+        general: mgr.getPipelineTransitions('general'),
       };
 
       if (options.json) {
@@ -860,6 +861,12 @@ export function registerFlowCommand(program: Command): void {
           } else if (pathResult.reason === 'depth-exceeded') {
             console.error(t('flow.advance.depthExceededTmpl', lang, { max: String(PHASE_PATH_MAX_DEPTH) }));
           } else {
+            // general（无流水线）→ 显式错误引导（防御路径：常规写路径不产生 general 阶段态；REV-90-005 / D-90-3）
+            if (mgr.resolveStageWorkflowMode(stageArg).value === 'general') {
+              console.error(t('flow.advance.generalNoPipeline', lang, { stage: stageArg }));
+              process.exit(1);
+              return;
+            }
             console.error(t('flow.advance.noPathTmpl', lang, {
               from: currentPhase,
               to: options.to,
@@ -2167,7 +2174,7 @@ export function registerFlowCommand(program: Command): void {
                   { name: t('flow.wizard.modeFull', lang), value: 'full' },
                   { name: t('flow.wizard.modeFast', lang), value: 'fast' },
                 ],
-              })) as 'full' | 'fast';
+              })) as WorkflowMode;
               const statusPath = findStageStatusPath(process.cwd(), currentStage);
               if (statusPath) {
                 const r = mgr.insertStatusField(statusPath, currentStage, '工作流模式', chosen);

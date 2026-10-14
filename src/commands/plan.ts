@@ -9,7 +9,7 @@ import { createScheme, createSchemesFromTasks, listSchemes, removeScheme, publis
 import { validateStageId, suggestStageId, normalizeStageId, isArchivedVersionOf } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
-import { getConfigFieldLegalValues } from '../core/config.js';
+import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
 
 export function registerPlanCommand(program: Command): void {
   const plan = program
@@ -30,7 +30,7 @@ export function registerPlanCommand(program: Command): void {
     .option('--tasks <items...>', '初始任务列表（空格或逗号分隔，生成到 status.md）')
     .option('--exec-mode <mode>', '执行模式（manual | auto），覆盖 config 默认')
     .option('--auto-advance <value>', '自动推进（enabled | disabled），覆盖 config 默认')
-    .option('--workflow-mode <mode>', '工作流模式（full | fast），覆盖 config 默认')
+    .option('--workflow-mode <mode>', '工作流模式（full | fast | general），覆盖 config 默认')
     .action((name: string, options: { deps?: string[]; tasks?: string[]; execMode?: string; autoAdvance?: string; workflowMode?: string }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
@@ -68,6 +68,12 @@ export function registerPlanCommand(program: Command): void {
           process.exit(1);
           return;
         }
+      }
+      if (options.workflowMode === 'general') {
+        // 载体制约束：general 仅需求级合法（阶段级写入面拒绝；零写盘）
+        console.error(t('common.generalOnlyRequirement', lang));
+        process.exit(1);
+        return;
       }
 
       // 兼容 --deps a,b 与 --deps a b：逐项按逗号再切分、去空
@@ -118,7 +124,7 @@ export function registerPlanCommand(program: Command): void {
         overrides.autoAdvance = options.autoAdvance as 'disabled' | 'enabled';
       }
       if (options.workflowMode !== undefined) {
-        overrides.workflowMode = options.workflowMode as 'full' | 'fast';
+        overrides.workflowMode = options.workflowMode as WorkflowMode;
       }
 
       try {

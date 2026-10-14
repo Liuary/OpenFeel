@@ -359,7 +359,7 @@ describe('flow 命令（stage-41）', () => {
     logMock.mockClear();
     await safeParse(['flow', 'mode', '--json']);
     const obj = JSON.parse(logMock.mock.calls[0][0] as string) as {
-      schemaVersion: number; stage: string; mode: string; source: string; modes: { full: object; fast: object };
+      schemaVersion: number; stage: string; mode: string; source: string; modes: { full: object; fast: object; general: object };
     };
     expect(Object.keys(obj)).toEqual(['schemaVersion', 'stage', 'mode', 'source', 'modes']);
     expect(obj.schemaVersion).toBe(1);
@@ -367,6 +367,7 @@ describe('flow 命令（stage-41）', () => {
     expect(typeof obj.source).toBe('string');
     expect(typeof obj.modes.full).toBe('object');
     expect(typeof obj.modes.fast).toBe('object');
+    expect(typeof obj.modes.general).toBe('object');
     expect([sha(flowPath), sha(cfgPath), sha(statusPath)]).toEqual(before);
   });
 
@@ -3341,5 +3342,92 @@ describe('flow 命令（stage-41）', () => {
       const realRaw = existsSync(REAL_METRICS_PATH) ? readFileSync(REAL_METRICS_PATH, 'utf-8') : null;
       expect(realRaw).toBe(REAL_METRICS_RAW);
     });
+  });
+
+  // ── stage-90 op-001：general 模式（空表）/ 载体门 / wizard 源扫描 ──
+
+  it('T90.5：flow phases --mode general --json → workflowMode=general + transitions 空表 + 顶层 6 键', async () => {
+    await safeParse(['flow', 'phases', '--mode', 'general', '--json']);
+
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string) as {
+      workflowMode: string; transitions: Record<string, string[]>; transitionsDiff: { missing: string[]; extra: string[]; changed: string[] };
+    };
+    expect(Object.keys(JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>)).toHaveLength(6);
+    expect(obj.workflowMode).toBe('general');
+    expect(obj.transitions).toEqual({});
+    expect(obj.transitionsDiff).toEqual({ missing: [], extra: [], changed: [] });
+  });
+
+  it('T90.6：flow mode --json 的 modes.general 存在（空表）', async () => {
+    await safeParse(['flow', 'mode', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string) as { modes: Record<string, unknown> };
+    expect(obj.modes.general).toEqual({});
+    expect(Object.keys(obj.modes)).toEqual(['full', 'fast', 'general']);
+  });
+
+  it('T90.7：advance 防御路径（status.md general）→ 显式错误文案 + exit 1 + 零写盘', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-05');
+    mgr.save();
+    writeStageStatus('stage-05', 'general');
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    logMock.mockClear();
+    errorMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-05', '--to', 'exec_running']);
+
+    const err = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(err).toContain(t('flow.advance.generalNoPipeline', 'zh-CN', { stage: 'v1.0.0-stage-05' }));
+    expect(err).not.toContain(t('flow.advance.noPathTmpl', 'zh-CN', { from: '', to: '', targets: '' }).split('{')[0]);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before); // 零写盘
+  });
+
+  it('T90.8：REV-90-010 边界登记——general + --force 走既有逃生舱（不触发载体门）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-06');
+    mgr.save();
+    writeStageStatus('stage-06', 'general');
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    logMock.mockClear();
+    errorMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-06', '--to', 'exec_running', '--force', '--dry-run']);
+
+    const err = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(err).not.toContain('general');
+    expect(exitMock).not.toHaveBeenCalledWith(1);
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+  });
+
+  it('T90.9：wizard 源扫描断言（D-90-12 判定式：choices 块零 general ∧ 含 full/fast ∧ i18n 无 modeGeneral）', () => {
+    const src = readFileSync(join(REAL_CWD, 'src', 'commands', 'flow.ts'), 'utf-8');
+    const start = src.indexOf('flow.wizard.modePrompt');
+    const end = src.indexOf('})) as WorkflowMode;');
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const block = src.slice(start, end);
+    // choices 构造块：仅阶段合法子集（full / fast），零 general 字面量
+    expect(block.includes('general')).toBe(false);
+    expect(block).toContain("'full'");
+    expect(block).toContain("'fast'");
+
+    for (const f of ['zh-CN.ts', 'en.ts']) {
+      const table = readFileSync(join(REAL_CWD, 'src', 'core', 'i18n-data', f), 'utf-8');
+      expect(table).toContain("flow.wizard.modeFull");
+      expect(table).toContain("flow.wizard.modeFast");
+      expect(table.includes('flow.wizard.modeGeneral')).toBe(false);
+    }
+  });
+
+  it('T90.10：flow.wizard.modeFull / modeFast 文案逐字保留（未新增 modeGeneral）', () => {
+    const zh = readFileSync(join(REAL_CWD, 'src', 'core', 'i18n-data', 'zh-CN.ts'), 'utf-8');
+    const en = readFileSync(join(REAL_CWD, 'src', 'core', 'i18n-data', 'en.ts'), 'utf-8');
+    expect(zh).toContain("zh: 'full（完整链路：含计划审查/方案/测试）'");
+    expect(zh).toContain("zh: 'fast（快速迭代：跳过方案/测试；保留计划审查与代码审查单轮）'");
+    expect(en).toContain("en: 'full (complete pipeline: plan review / scheme / test included)'");
+    expect(en).toContain("en: 'fast (quick iteration: scheme/test skipped; single-round plan review and code review kept)'");
   });
 });

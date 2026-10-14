@@ -12,7 +12,8 @@ vi.mock('node:os', async (importOriginal) => {
 import { Command, CommanderError } from 'commander';
 import { registerStageCommand } from '../../src/commands/stage.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
-import { existsSync, readFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -90,6 +91,11 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
   }
   function bakPath(stageId: string): string {
     return join(projDir, '.openfeel', 'tmp', `status.${stageId}.bak`);
+  }
+
+  /** 文件内容 sha256（载体门零写盘取证） */
+  function sha(p: string): string {
+    return createHash('sha256').update(readFileSync(p)).digest('hex');
   }
 
   it('基本路径：stage create 合法 stageId → 写入 flow.json', async () => {
@@ -239,6 +245,41 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
     expect(readFileSync(p, 'utf-8')).toContain('- **工作流模式**：fast');
     const flow = JSON.parse(readFileSync(join(projDir, '.openfeel', 'flow.json'), 'utf-8'));
     expect(flow.stages['v1.0.0-stage-101'].workflow_mode).toBe('fast');
+  });
+
+  it('T90.12：stage set --workflow-mode general → exit 1 + 载体门文案 + status.md hash/mtime 不变', async () => {
+    FlowManager.initFlow(projDir);
+    const m0 = new FlowManager(projDir);
+    m0.registerStage('v1.0.0-stage-102');
+    m0.save();
+    const p = writeStatus('stage-102');
+    const flowPath = join(projDir, '.openfeel', 'flow.json');
+    const before = sha(p);
+    const beforeFlow = sha(flowPath);
+    const beforeMtime = statSync(p).mtimeMs;
+
+    await safeParse(['stage', 'set', 'stage-102', '--workflow-mode', 'general']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('general（通用模式）仅限需求级——阶段级 / 部署级不支持；阶段请使用 fast / full。');
+    expect(sha(p)).toBe(before);            // 零写盘
+    expect(sha(flowPath)).toBe(beforeFlow); // 冗余面亦零写盘
+    expect(statSync(p).mtimeMs).toBe(beforeMtime);
+  });
+
+  it('T90.13：多字段批量场景（含 general）→ 前置门生效、其余字段亦零写盘', async () => {
+    FlowManager.initFlow(projDir);
+    const m0 = new FlowManager(projDir);
+    m0.registerStage('v1.0.0-stage-103');
+    m0.save();
+    const p = writeStatus('stage-103');
+    const before = sha(p);
+
+    await safeParse(['stage', 'set', 'stage-103', '--status', 'exec_running', '--workflow-mode', 'general']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(sha(p)).toBe(before);
+    expect(readFileSync(p, 'utf-8')).toContain('- **状态**：planned');
   });
 
   // ── stage-51 N7：stage set 字段扩展 ──

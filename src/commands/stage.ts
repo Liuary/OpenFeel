@@ -20,7 +20,7 @@ import { FlowManager, STAGE_STATUS_VALUES } from '../core/flow-manager.js';
 import { handleAddStageError } from './shared/errors.js';
 import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { appendStatusTask } from '../core/plan/stage.js';
-import { getConfigFieldLegalValues } from '../core/config.js';
+import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -81,7 +81,7 @@ function syncWorkflowModeRedundancy(mgr: FlowManager, stageId: string, value: st
   if (!target) {
     return; // 未注册阶段（允许作用于未注册目录）→ 无冗余条目，跳过
   }
-  target.workflow_mode = value as 'full' | 'fast';
+  target.workflow_mode = value as WorkflowMode;
   mgr.save();
 }
 
@@ -383,7 +383,7 @@ export function registerStageCommand(program: Command): void {
     .option('--exec-mode <mode>', '执行模式（manual | auto）')
     .option('--auto-advance <value>', '自动推进（enabled | disabled）')
     .option('--review-agent <agent>', '当前责任 Agent（如 openfeel-executor）')
-    .option('--workflow-mode <mode>', '工作流模式（full | fast）')
+    .option('--workflow-mode <mode>', '工作流模式（full | fast | general）')
     .action((stageId: string, options: { status?: string; execMode?: string; autoAdvance?: string; reviewAgent?: string; workflowMode?: string }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
@@ -404,6 +404,12 @@ export function registerStageCommand(program: Command): void {
       }
       if (options.autoAdvance !== undefined) {
         jobs.push({ field: '自动推进', value: options.autoAdvance, allowed: ['enabled', 'disabled'] });
+      }
+      if (options.workflowMode === 'general') {
+        // 载体制约束：general 仅需求级合法（阶段级写入面拒绝；前置 → 批量场景零写盘）
+        console.error(t('common.generalOnlyRequirement', lang));
+        process.exit(1);
+        return;
       }
       if (options.workflowMode !== undefined) {
         jobs.push({ field: '工作流模式', value: options.workflowMode, allowed: getConfigFieldLegalValues('workflow_mode') ?? [] });

@@ -112,9 +112,18 @@ describe('plan 命令', () => {
     await safeParse(['plan', 'stage', 'add', 'stage-02', '--workflow-mode', 'bogus']);
 
     expect(exitMock).toHaveBeenCalledWith(1);
-    expect(errorMock).toHaveBeenCalledWith('字段 工作流模式 的取值非法：bogus（允许：full, fast）');
+    expect(errorMock).toHaveBeenCalledWith('字段 工作流模式 的取值非法：bogus（允许：full, fast, general）');
     // 不建阶段
     expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-02'))).toBe(false);
+  });
+
+  it('T90.11：--workflow-mode general → exit 1 + 载体门文案 + 阶段目录零创建（零写盘）', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-07', '--workflow-mode', 'general']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock).toHaveBeenCalledWith('general（通用模式）仅限需求级——阶段级 / 部署级不支持；阶段请使用 fast / full。');
+    // 零写盘：阶段目录不创建
+    expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-07'))).toBe(false);
   });
 
   it('T7.1c：缺省 → 取 config defaults.workflow_mode', async () => {

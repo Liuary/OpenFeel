@@ -7,7 +7,7 @@ import { resolve, join } from 'node:path';
 import { FlowManager } from '../flow-manager.js';
 import { parseStageId, findStageStatusPath } from './path.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
-import { resolveConfigDefaults } from '../config.js';
+import { resolveConfigDefaults, type WorkflowMode } from '../config.js';
 
 /** 工作阶段 */
 export interface Stage {
@@ -26,7 +26,7 @@ export interface StageSkeletonOverrides {
   /** 自动推进覆盖值 */
   autoAdvance?: 'disabled' | 'enabled';
   /** 工作流模式覆盖值 */
-  workflowMode?: 'full' | 'fast';
+  workflowMode?: WorkflowMode;
 }
 
 /** 折叠任务描述：去除首尾空白，内部换行折叠为空格（防结构破坏） */
@@ -151,7 +151,10 @@ ${depsText}
     const configDefaults = resolveConfigDefaults(projectPath);
     const executionMode = overrides?.executionMode ?? configDefaults.execution_mode;
     const autoAdvance = overrides?.autoAdvance ?? configDefaults.auto_advance;
-    const workflowMode = overrides?.workflowMode ?? configDefaults.workflow_mode;
+    // stage-90 P1'：模式初值经解析单点（status.md 尚未创建 → 自然落到「需求级 > config defaults」；与 addStage 冗余写入同源）
+    const skeletonMgr = new FlowManager(projectPath);
+    const workflowMode = overrides?.workflowMode
+      ?? (skeletonMgr.isLoaded() ? skeletonMgr.resolveStageWorkflowMode(parsed.fullStageId).value : configDefaults.workflow_mode);
     const statusContent = `# ${parsed.fullStageId} 状态
 
 - **执行模式**：${executionMode}
@@ -217,7 +220,9 @@ export function addStage(projectPath: string, name: string, deps?: string[], tas
     const existed = !!flowMgr.getData()!.stages[parsed.fullStageId];
     flowMgr.registerStage(parsed.fullStageId, deps ?? []);
     if (!existed) {
-      const resolvedWorkflowMode = overrides?.workflowMode ?? resolveConfigDefaults(projectPath).workflow_mode;
+      // stage-90 P1'：与骨架初值同源（此时 status.md 已含初值 → 第 1 层命中，读回同值；health 第 10 项零告警）
+      const resolvedWorkflowMode = overrides?.workflowMode
+        ?? (flowMgr.isLoaded() ? flowMgr.resolveStageWorkflowMode(parsed.fullStageId).value : resolveConfigDefaults(projectPath).workflow_mode);
       flowMgr.getData()!.stages[parsed.fullStageId].workflow_mode = resolvedWorkflowMode;
     }
     flowMgr.save();

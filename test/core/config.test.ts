@@ -3,7 +3,7 @@
  * 测试 readConfig 和 writeDefaultConfig 的 YAML 解析行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, DEFAULT_CONFIG, ConfigDefaultsSchema, normalizeConfigKey, resolveConfigDefaults, type Profile } from '../../src/core/config.js';
+import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, DEFAULT_CONFIG, ConfigDefaultsSchema, normalizeConfigKey, resolveConfigDefaults, getConfigFieldLegalValues, WORKFLOW_MODES, type Profile } from '../../src/core/config.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -687,5 +687,29 @@ describe('writeDefaultConfig 模板（stage-74 op-001 T7.6）', () => {
     const content = readFileSync(join(tmpDir2, '.openfeel', 'config.yaml'), 'utf-8');
     expect(content).toContain('workflow_mode: fast');
     expect(content).toContain('auto_advance: enabled');
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-90 op-001：值域 3 值同源（WORKFLOW_MODES 单点派生）
+// ═══════════════════════════════════════
+
+describe('stage-90：工作流模式值域 3 值同源', () => {
+  it('WORKFLOW_MODES 为 3 值（full / fast / general）', () => {
+    expect(WORKFLOW_MODES).toEqual(['full', 'fast', 'general']);
+  });
+
+  it('getConfigFieldLegalValues(\'workflow_mode\') 逐值等于 WORKFLOW_MODES（无第二份清单）', () => {
+    expect(getConfigFieldLegalValues('workflow_mode')).toEqual([...WORKFLOW_MODES]);
+  });
+
+  it('ConfigDefaultsSchema 值域随 WORKFLOW_MODES 派生（general 经 schema 放行 = 命令层门为必需）', () => {
+    const parsed = ConfigDefaultsSchema.parse({ workflow_mode: 'general' });
+    expect(parsed.workflow_mode).toBe('general');
+    expect(ConfigDefaultsSchema.safeParse({ workflow_mode: 'bogus' }).success).toBe(false);
+  });
+
+  it('DEFAULT_CONFIG.workflow_mode 仍为 fast（默认值不动——裁定 E）', () => {
+    expect(DEFAULT_CONFIG.workflow_mode).toBe('fast');
   });
 });

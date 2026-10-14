@@ -265,6 +265,13 @@ export function registerConfigCommand(program: Command): void {
         return;
       }
 
+      // 载体制约束：general 仅需求级合法（部署级写入面拒绝；位于全部写盘点之前 → 零写盘）
+      if (normalizedKey === 'workflow_mode' && value === 'general') {
+        console.error(t('common.generalOnlyRequirement', lang));
+        process.exit(1);
+        return;
+      }
+
       // --stage 前置全量校验（D1：解析 → 归一 → 注册校验；任一失败 → exit 1 且 config.yaml/status.md 零写盘）
       let onlyStages: string[] | undefined;
       const downgraded: string[] = [];

@@ -1159,7 +1159,7 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 `,
   'openfeel-req': `---
 name: openfeel-req
-description: OpenFeel 需求流转用法参考：需求（requirement）四层模型与 7 状态生命周期、req 命令组 11 个子命令（add/list/show/claim/release/set/link/advance/board/next/split）与参数、认领协议、REQ-NNN 正文与人读副本语义（机读权威恒为 flow.json）、与计划（plan.md）的关系、与 workflow_mode 正交。当需要创建/查询/认领/关联/推进需求，或要理解 REQ-NNN 状态与阶段聚合关系时加载。
+description: OpenFeel 需求流转用法参考：需求（requirement）四层模型与 7 状态生命周期、req 命令组 11 个子命令（add/list/show/claim/release/set/link/advance/board/next/split）与参数、认领协议、REQ-NNN 正文与人读副本语义（机读权威恒为 flow.json）、与计划（plan.md）的关系、与 workflow_mode 的关系（需求携带模式属性、经单点解析作用于关联阶段）。当需要创建/查询/认领/关联/推进需求，或要理解 REQ-NNN 状态与阶段聚合关系时加载。
 ---
 
 # OpenFeel 需求流转（openfeel req）用法参考
@@ -1231,9 +1231,9 @@ draft ─→ scheduled ─→ in_progress ─→ done
 - 需求 = 排期与调度层；**具体实现仍由计划承载**——阶段 \`plan.md\` 头部标注「关联需求：REQ-NNN」。
 - 需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；planner 只读不写（不直写 flow.json）。
 
-## 与 workflow_mode 正交
+## 与 workflow_mode 的关系
 
-需求层与工作流模式（\`full\` / \`fast\`）**正交**：需求可分别由 full / fast 阶段实现；两种模式下需求纪律一致，\`workflow_mode\` 不影响需求状态机与命令行为。
+需求**携带**模式属性（需求级 \`workflow_mode\`，值域 \`full\` / \`fast\` / \`general\`）；模式经**单点解析**作用于其关联阶段（显式下发后阶段字段为投影）；三种模式（规划 / 快速 / 通用）下需求纪律一致，\`workflow_mode\` 不影响需求状态机与命令行为。
 
 ## 需求与版本解绑
 

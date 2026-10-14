@@ -1,0 +1,126 @@
+# stage-90 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 应声明实际文件名
+# revision: 2026-10-15 openfeel-schemer 初版（计划 R1 定稿；REV-90-001~005 全 closed + REV-90-006 非阻塞复核提示 2 条已吸收）
+#   说明①：op 数定稿 = 3（对齐 `.openfeel/plan/v1/v1.2.1/deps.yaml:120` `est_ops: 3`）。拆分 = op-001 值域 3 值 + 消费点全枚举 + 载体制门（三命令面）+ 骨架初值链经单点 / op-002 需求级模式属性 + 解析链单点 + 生效路径 + req CLI + C1/C2/C3 断言 supersede + REV-88-010 承接 / op-003 模板面 supersede（15 处 + 4 处断言）+ build + 门禁 + 差额对照 + ops 入管 + 终局报告（**阶段末 op**）。
+#   说明②：执行序恒为 op-001 → op-002 → op-003（三者恒串行）。**每个 op 收尾测试全绿**（D-90-1：断言改写与其驱动源**同批**——字段落地与 C1/C3 双向原子；避免中间红态不可独立验收）。
+#   说明③：**偏离计划 §八 的拆分归并（方案期裁定 D-90-1）** —— 计划 §八 把「3 组代码断言改写」整体归 op-003；本方案将 **C1/C2/C3 移入 op-002**（与需求级字段落地原子同批）。**双向原子性论证**：① 字段先行而断言未改 → C1/C3 必红（types.ts / requirement-ops.ts 含 workflow_mode、commands/req.ts 含 --workflow-mode）；② 断言先行而字段未落地 → 新正控必红（要求字段声明在位）。分离即产生**结构性红态**。**裁定 D / R-2 实质不削弱**：op-002 内 §2.6 为**独立任务块 + 独立 commit**（差额对照入提交信息）；op-003 保留模板面独立任务块 + 独立 commit；差额对照由 op-003 §3.5 汇总。**无需拆 4 op**。
+#   说明④：REV 吸收映射 —— REV-88-010（`req show --json` 行内描述缺 `parent, children`）→ **本阶段处置**（op-002 §2.4 一行订正 + 台账 `resolved`，`closed` 归 reviewer；R-90-11 保底：审查维持 93 去向则撤回，零损失）。REV-86-009 / 010 → 台账保留·销账维持（零重复登记）。REV-89-006 / E-89-6（cli-usage 快照陈旧计数）→ 维持转 stage-93（op-001 §1.8 扫描登记「进一步陈旧」）。REV-90-001（wizard 双写入面）→ op-001 §1.4/§1.7（choices 保持 2 项 + 源扫描断言 + i18n 不新增 modeGeneral）。REV-90-002（13 处联合字面量）→ op-001 全数归一（13 → 0）。REV-90-003（8 调用点）→ 基线登记，op-001 新增第 9 调用点（advance 防御路径，经单点、非第二份判定——**登记**）。REV-90-004（主题编号消歧）→ 引用一律节题定位（「设计 §7 三模式架构」）。REV-90-005（general 阶段态不可达）→ D-90-3（防御路径保留、不构造常规冗余用例）。REV-90-006（非阻塞复核提示）→ 提示 1（i18n `flow.wizard.*` 不新增 modeGeneral）落 op-001 §1.5/§1.7；提示 2（wizard 静态源扫描判定式）落 op-001 §1.7（D-90-12 判定式）。
+#   说明⑤：方案期裁定 —— D-90-1 supersede 断言原子性归位（C1/C2/C3 → op-002；独立任务块 + 独立 commit）｜D-90-2 `ConfigSource` 第 5 值 `'requirement'` 归 op-002（与唯一产出路径同批；计划 T1.2 落位微调）｜D-90-3 Q1 定稿（general 空表 + REV-74-009 先例分野 + advance 显式错误为防御路径）｜D-90-4 Q2 定稿（禁设 + 引导：三命令面 exit 1 零写盘 + wizard 不提供选项 + 需求侧引擎门）｜D-90-5 Q3 定稿（P1'：骨架初值链经单点（op-001）+ `req link` / `req set` 下发复用 `syncConfigFieldToStages`（op-002）+ 禁名义层）｜D-90-6 Q4 定稿（`resolveEffectiveConfig` 的 workflow_mode 出口**委托** `resolveStageWorkflowMode`——复用层级函数，禁两份判定）｜D-90-7 Q5 定稿（types.ts `import type` / requirement-ops.ts 运行时导入 `WORKFLOW_MODES`）｜D-90-8 Q6 定稿（3 op；见说明③）｜D-90-9 Q7 定稿（需求正文骨架不承载模式——`body-file.ts` 零触碰）｜D-90-10 REV-88-010 处置 + 台账 `resolved`｜D-90-11 阶段末 op 口径（op-003 = 阶段末 op；kb supersede 正文归归档轮，仅登记）｜D-90-12 wizard cast 归一为 `WorkflowMode` + 子集约束改由源扫描断言锁定（判定式 = choices 块零 `general` ∧ 含 full / fast ∧ i18n 无 `modeGeneral`）｜D-90-13 载体门文案统一（通用键 `common.generalOnlyRequirement`）+ 落点（各值域门之后）+ 需求侧新错误码 `general_mode_conflict`（**单码两文案**——`failCode` 按调用点映射）｜D-90-14 模板面零残留门（`templates-data/**` × 7 条旧串 = 0 命中）｜D-90-15 模板面单写者纪律（≤6 行 / 处、仅功能性子句、节锚点定位）。
+#   说明⑥：**对应计划微调登记（方案期）** —— E-90-1：计划 T1.2 把 `ConfigSource` 第 5 值归 T1 / op-001 → 本方案归 **op-002**（D-90-2；理由 = 与唯一产出路径同批）；E-90-2：计划 B2 调用点 8 处 → op-001 新增**第 9 调用点**（advance 显式错误，经单点；**有意新增，非漏登**）；E-90-3：计划 §八 op-003 断言范围 → C1/C2/C3 移 op-002（D-90-1，说明③）。以上三项由 op-003 §3.7 报告登记（**plan.md 回写可由后续修订轮或归档轮承接**）。
+#   说明⑦：`git status --porcelain src/` 口径 = 「build ×2 幂等 + 变更集 ⊆ produces 清单」（本阶段**有意**变更 `templates-data` 源并同批重生成双生成物——「空」口径不可达，承 stage-86 / stage-88 / stage-89 说明）；生成物（`src/core/template-loader.ts` / `src/core/update.ts`）**禁手改**。
+version: "1.1"
+stage: v1.2.1-stage-90
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-15"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.1-stage-89
+    type: hard
+    status: done
+    reason: "语义冻结 + 事实基线（stage-89 归档 `9a0c6be` 登记）：71 文件 / 1629 用例 0 skipped / 0 failed；`tsc` 0；`lint i18n` 931；`lint kb` 0；build ×2 幂等；`--version` = 1.2.0。前置实质 = 顺序 + 语义（设计 §9 S5 依赖 S4）；**功能面无代码级依赖**（89 产物集中于 templates-data / agent 面）。冻结面（本阶段零触碰）：「通用工作者 = 执行者 / 探索者」分类学与全部 agent 模板（除 feel / planner 的功能性子句改写）；`FAST_TRANSITIONS` 9 条目；本仓 `config.yaml defaults.workflow_mode: full`（自举零扰动）。"
+  - upstream: v1.2.1-stage-90 计划审查
+    type: hard
+    status: closed
+    reason: "REV-90-001~005 全 `closed`（1 阻塞 + 4 非阻塞，修订 1 处置）+ REV-90-006（非阻塞）复核通过（2 条提示吸收：① i18n `flow.wizard.*` 不新增 `modeGeneral` → op-001 §1.5/§1.7；② wizard 静态源扫描判定式 → op-001 §1.7 / D-90-12）。判据源 = `.openfeel/users/Liuary/code_review/REV-90.md`。"
+  - downstream: v1.2.1-stage-91（提示词瘦身与收编）/ v1.2.1-stage-92（提速与并行编排）
+    type: hard
+    note: "91：`skills/openfeel-get-stage-status/SKILL.md:95`（值域行）与 `skills/openfeel-wizard/SKILL.md:18`（模式选型行）显式转 91（本阶段零触碰，D5/D6 登记）——收编时按「阶段合法子集」复核（仅须防误扩为 3 值）。92：审查档位与并行编排（本阶段零触碰）。"
+  - downstream: v1.2.1-stage-93（版本与文档收口）
+    type: hard
+    note: "`--version`（保持 1.2.0）、README / docs / CHANGELOG / manual 面（D9/D10）、`skills/openfeel-cli-usage/SKILL.md` 快照刷新（`:3` / `:57` 陈旧计数因本阶段值域扩展**进一步陈旧**——登记、本阶段零触碰）、`--force`/`-A` 禁项等同口径。"
+  - downstream: 归档轮（本阶段）
+    type: hard
+    note: "kb supersede 落点（**归档轮执行，本阶段仅登记指针**）：① `kb/architecture.md:840` 条目追加式 supersede（五要素）；② 新增继承条目「需求级模式属性架构」（字段 / 链序 / 载体制约束 / 生效路径 / 单源不变）；③ `kb/index.md:77` 摘要行改写；④ `kb/patterns.md` 补沉 2 条（断言 supersede 范式 / 值域扩展全枚举范式）+ `kb/index.md` 计数 / 摘要刷新；⑤ 公共日志；⑥ manual 面（`core/req.md` / `core/flow-manager.md` / `agents/feel.md`）同步。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；**不直写 flow.json**；不推进 phase（由 Feel 经 CLI 执行）；精确 `git add`（禁 `-A`，kb #方案层 ops 产出的审计链完整性）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "值域扩展 full / fast / general（3 值）+ 消费点全枚举同步 + 载体制约束门（三命令面）+ 骨架初值链经单点 + 值域面单测"
+    produces:
+      - src/core/config.ts
+      - src/core/flow-manager.ts
+      - src/core/plan/stage.ts
+      - src/commands/flow.ts
+      - src/commands/plan.ts
+      - src/commands/stage.ts
+      - src/commands/config.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/config.test.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+      - test/commands/plan.test.ts
+      - test/commands/stage.test.ts
+      - test/commands/config.test.ts
+      - test/cli/output-encoding.test.ts
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T1 全部（T1.1~T1.4；D-90-2 微调：ConfigSource 归 op-002）。① `config.ts:26` 3 值（唯一改动点；schema / 类型自动派生、默认值不动）+ `:162/:168/:185` 归一；② `flow-manager.ts`：`:2292` 正则由 WORKFLOW_MODES 构造（同源；TS 模板串双反斜杠书写）+ `:2096-2101` / `:4278-4308` general 空表分支（Q1 A 案 + 先例分野）+ `:110/:3728/:3740/:3762` 归一；③ `plan/stage.ts`：`:29` 归一 + `:150-154` 初值链经单点 + `addStage:216-221` 冗余写入经同一单点（同值；health 零告警）；④ 命令面：flow（help 3 值 / cast / `modes.general` / advance 显式错误防御路径〔第 9 调用点〕/ wizard 零改动 + cast 归一）、plan / stage / config（help 3 值 + cast 归一 + 载体门 exit 1 零写盘）、`common.generalOnlyRequirement` 通用键；⑤ i18n 2 键修订 + 2 键新增（不新增 `flow.wizard.modeGeneral`）；⑥ 断言：C6 三处翻转 + general 空表 / 防御路径 / 载体门（hash 不变）/ wizard 源扫描（D-90-12 判定式）/ `getConfigFieldLegalValues` 同源；⑦ **本 op 零 templates-data 改动 → 不需要 build**。13 处联合字面量全数归一（rg 复核 0 命中）。"
+  op-002:
+    file: op-002.md
+    title: "需求级模式属性（字段 + 引擎 + 解析链单点延伸 + 生效路径 + req CLI）+ 代码断言 supersede（C1/C2/C3 独立任务块）+ 源码头注口径 + REV-88-010 承接"
+    produces:
+      - src/core/req/types.ts
+      - src/core/req/requirement-ops.ts
+      - src/core/req/aggregate.ts
+      - src/core/flow-manager.ts
+      - src/commands/req.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/req.test.ts
+      - test/commands/req.test.ts
+      - test/core/flow-manager.test.ts
+      - .openfeel/users/Liuary/code_review/REV-88.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "3 值（含 general）是需求级值域校验 / 载体制门的前提；`src/core/flow-manager.ts` 与 `src/core/i18n-data/*` 同文件 → 串行。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T2 全部 + T3.1（代码断言 3 组 + 源码头注）+ T4.3（D-90-1 归位）。① `types.ts`：`import type` + `workflow_mode?` 字段 + 头注改写（D-90-7）；② `requirement-ops.ts`：运行时导入 WORKFLOW_MODES + 错误码 `general_mode_conflict`（「冻结」显式例外）+ add 入参 / 构造期校验 + PATCH_WHITELIST 5 键 + updateRequirement 值校验 / 载体制门 / 差异赋值 + linkRequirement 载体制门 + 头注；③ `flow-manager.ts`：`ConfigSource` 第 5 值 + 解析链需求级层（读侧宽容：缺失 / 悬空 / 非法回落；阶段定位同域归一）+ `resolveEffectiveConfig` 委托单点（D-90-6，禁两份判定）；④ `commands/req.ts`：add / set `--workflow-mode` + 无字段守卫 + failCode 单码两文案 + 下发（link / set，save 后经 `syncConfigFieldToStages` 单点）+ show 行内描述补 parent, children（REV-88-010）+ 头注；⑤ i18n 6 键新增 + 2 键修订；⑥ **C1/C2/C3 显式 supersede**（独立任务块 + 独立 commit + 差额对照入提交信息；禁删除）+ 源码头注口径（types / requirement-ops / aggregate / commands/req；body-file 保留）；⑦ 单测：解析链四场景 + Q4 同源五场景 + health 覆盖 + 需求侧门 + 下发 + 零注入（C9 字节级）+ 零回归；⑧ **本 op 零 templates-data 改动 → 不需要 build**。"
+  op-003:
+    file: op-003.md
+    title: "模板面 supersede 显式改写（15 处文案 + 4 处断言，独立任务块 + 独立 commit）+ build 双生成物 + 零回归取证 + 门禁全量 + 差额对照汇总 + ops 入管 + 终局报告（阶段末 op）"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/opencode/agents/en/openfeel-planner.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-planner.md
+      - src/core/templates-data/claude/agents/en/openfeel-planner.md
+      - src/core/templates-data/skills/openfeel-req/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - .openfeel/tmp/stage-90-final-report.md
+      - .openfeel/plan/v1/stage-90/ops/op-001.md
+      - .openfeel/plan/v1/stage-90/ops/op-002.md
+      - .openfeel/plan/v1/stage-90/ops/op-003.md
+      - .openfeel/plan/v1/stage-90/ops/deps.yaml
+      - .openfeel/plan/v1/stage-90/status.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "build ×2 与门禁须在全部源码改动后；模板 supersede 的「三模式」语义引用 op-001 值域事实。"
+      - op: op-002
+        type: hard
+        reason: "模板文案引用的「需求携带模式属性」语义须先落代码与头注；差额对照汇总取自 op-002 §2.6。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T3.2 + T3.3 + T3.4 + T4.1 + T4.2 + T5 + D-90-11/14/15。① 15 处文案逐字定稿（feel 注记 ×4 / planner bullet ×4 / SKILL ×3 / feel 模式节 ×4〔三种模式 + general 条目〕；同语言跨 harness 逐字同文、零裸主语、≤6 行 / 处、节锚点定位）；② `templates.test.ts` 4 处 needle + 用例名替换 + 新增 stage-90 describe（三模式正控 + **旧串零残留门**〔7 条旧串 × `templates-data/**` = 0 命中〕+ 跨 harness 切片等值 + 零裸主语）；S1/S2/S3 零改写全绿；③ `npm run build` 双生成物（禁手改）+ ×2 幂等；④ 零回归快照（full / fast 逐字不变，diff 仅登记翻转项）+ 零注入字节级；⑤ 差额对照三类汇总成文（代码 3 组 + 模板 15 处 + 断言 4 处；**禁静默删除**）；⑥ 门禁全量（`npm test` 新基线登记 / `tsc` 0 / `lint i18n` 931+N 逐键 / `lint kb` 0 / 双路扫描零未判类 / `--version` 1.2.0）；⑦ `ops/**` 4 文件精确入管 + 终局报告八节 + 归档轮落点登记（kb 五要素，仅登记）；⑧ status.md 经 `openfeel stage` CLI 更新（勿手改）。"
+
+mutual_exclusions:
+  - group: [op-001, op-002, op-003]
+    reason: "① **同文件交集**：`src/core/flow-manager.ts`（op-001 值域 / 转移表 / 骨架；op-002 解析链 / ConfigSource）与 `src/core/i18n-data/{zh-CN,en}.ts`（op-001 值域文案；op-002 需求面文案）被两 op **两轮**改动；`test/core/flow-manager.test.ts` 同（op-001 值域面 + op-002 需求级层）。② **语义门**：op-002 需求级值域校验 / 载体制门**依赖** op-001 的 3 值；op-003 模板文案引用 op-001 / op-002 已落代码语义。③ **顺序门**：op-003 的 build ×2 / 门禁 / 扫描必须在 op-001 + op-002 落地之后（源码冻结）；两生成物为 op-003 同批产物（禁并发 build）。④ **计划 §八 亦明示**「op-001 与 op-002 共有 `flow-manager.ts` → 必须串行」→ 三者**恒串行**（D-90-8）。"

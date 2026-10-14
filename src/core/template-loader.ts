@@ -224,10 +224,11 @@ When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to
 
 #### Workflow Mode (workflow_mode)
 
-Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Two modes:
+Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Three modes:
 
 - **full (complete flow)**: planner → plan_review (reviewer) → schemer → executor → reviewer → tester → archiver.
 - **fast (Workflow Fast Line)**: planner (lightweight) → plan_review (**single mandatory plan review**) → executor → reviewer (single round) → archiver (lightweight); **does not dispatch openfeel-schemer / openfeel-feel-tester**.
+- **general (General)**: **no pipeline** (empty transition table) — dispatch general workers (executor / explorer) on demand; **valid at the requirement level only** (not supported at stage / deployment level). May be **explicitly upgraded** to \`fast\` / \`full\`, with **no automatic downgrade**.
 
 Fast-mode discipline:
 
@@ -253,7 +254,7 @@ Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
 | Advance | Stage advancement drives aggregation; advance explicitly along legal targets | \`openfeel req advance <REQ-NNN> --to <status>\` |
 | Complete | Auto-done once all linked stages are done; overview and release | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
 
-> Orthogonality note: requirement flow is orthogonal to the workflow mode (\`full\` / \`fast\`) — the requirement discipline is identical in both modes.
+> Mode note: requirements **carry** a mode attribute (requirement-level \`workflow_mode\`, applied to their linked stages via the single-point resolver); the requirement discipline is identical in all three modes.
 
 #### Archiving and History Reading
 
@@ -1127,7 +1128,7 @@ When a task originates from a requirement (\`REQ-NNN\`):
 - Read the requirement: first read the requirement details (title / status / owner / linked stages) via \`openfeel req show <REQ-NNN>\` as plan input.
 - Link the plan to the requirement: annotate the header of the produced \`plan.md\` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
 - Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the \`openfeel req\` CLI; this agent is read-only (no direct flow.json writes).
-- Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under \`full\` / \`fast\`.
+- Relation to "Workflow Mode Awareness": requirements carry a mode attribute (requirement-level \`workflow_mode\`, applied to linked stages via the single-point resolver); requirement awareness is identical in all three modes.
 
 ## Dispatch and Handoff
 
@@ -1795,10 +1796,11 @@ Agent 模型需求对照：
 
 #### 工作流模式（workflow_mode）
 
-调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。两种模式：
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。三种模式：
 
 - **full（完整流程）**：planner → plan_review（reviewer）→ schemer → executor → reviewer → tester → archiver。
 - **fast（工作流快线）**：planner（轻量）→ plan_review（**计划审查单轮，必经**）→ executor → reviewer（单轮）→ archiver（轻量）；**不派发 schemer / tester**。
+- **general（通用）**：**无流水线**（空转移表）——按需调度通用工作者（执行者 / 探索者）；**仅需求级合法**（阶段级 / 部署级不支持）。可**显式升级**为 \`fast\` / \`full\`，**不自动降级**。
 
 fast 调度纪律：
 
@@ -1824,7 +1826,7 @@ fast 调度纪律：
 | 流转 | 阶段推进驱动聚合；显式流转按合法目标推进 | \`openfeel req advance <REQ-NNN> --to <status>\` |
 | 完成 | 全部关联阶段 done 后需求自动 done；总览与释放 | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
 
-> 正交注记：需求流转与工作流模式（\`full\` / \`fast\`）正交——两种模式下需求纪律一致。
+> 模式注记：需求**携带**模式属性（需求级 \`workflow_mode\`，经单点解析作用于其关联阶段）；三种模式下需求纪律一致。
 
 #### 归档与历史读取
 
@@ -2697,7 +2699,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 - 读取需求：先以 \`openfeel req show <REQ-NNN>\` 读取需求详情（标题 / 状态 / 认领人 / 关联阶段），作为计划输入。
 - 计划关联需求：产出的 \`plan.md\` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
 - 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
-- 与「工作流模式感知」正交：\`full\` / \`fast\` 下需求感知口径一致。
+- 与「工作流模式感知」的关系：需求携带模式属性（需求级 \`workflow_mode\`，经单点解析作用于关联阶段）；三种模式下需求感知口径一致。
 
 ## 调度与 Handoff
 
@@ -4435,10 +4437,11 @@ When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to
 
 #### Workflow Mode (workflow_mode)
 
-Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Two modes:
+Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Three modes:
 
 - **full (complete flow)**: planner → plan_review (reviewer) → schemer → executor → reviewer → tester → archiver.
 - **fast (Workflow Fast Line)**: planner (lightweight) → plan_review (**single mandatory plan review**) → executor → reviewer (single round) → archiver (lightweight); **does not dispatch openfeel-schemer / openfeel-feel-tester**.
+- **general (General)**: **no pipeline** (empty transition table) — dispatch general workers (executor / explorer) on demand; **valid at the requirement level only** (not supported at stage / deployment level). May be **explicitly upgraded** to \`fast\` / \`full\`, with **no automatic downgrade**.
 
 Fast-mode discipline:
 
@@ -4464,7 +4467,7 @@ Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
 | Advance | Stage advancement drives aggregation; advance explicitly along legal targets | \`openfeel req advance <REQ-NNN> --to <status>\` |
 | Complete | Auto-done once all linked stages are done; overview and release | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
 
-> Orthogonality note: requirement flow is orthogonal to the workflow mode (\`full\` / \`fast\`) — the requirement discipline is identical in both modes.
+> Mode note: requirements **carry** a mode attribute (requirement-level \`workflow_mode\`, applied to their linked stages via the single-point resolver); the requirement discipline is identical in all three modes.
 
 #### Archiving and History Reading
 
@@ -5338,7 +5341,7 @@ When a task originates from a requirement (\`REQ-NNN\`):
 - Read the requirement: first read the requirement details (title / status / owner / linked stages) via \`openfeel req show <REQ-NNN>\` as plan input.
 - Link the plan to the requirement: annotate the header of the produced \`plan.md\` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
 - Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the \`openfeel req\` CLI; this agent is read-only (no direct flow.json writes).
-- Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under \`full\` / \`fast\`.
+- Relation to "Workflow Mode Awareness": requirements carry a mode attribute (requirement-level \`workflow_mode\`, applied to linked stages via the single-point resolver); requirement awareness is identical in all three modes.
 
 ## Dispatch and Handoff
 
@@ -6006,10 +6009,11 @@ Agent 模型需求对照：
 
 #### 工作流模式（workflow_mode）
 
-调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。两种模式：
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。三种模式：
 
 - **full（完整流程）**：planner → plan_review（reviewer）→ schemer → executor → reviewer → tester → archiver。
 - **fast（工作流快线）**：planner（轻量）→ plan_review（**计划审查单轮，必经**）→ executor → reviewer（单轮）→ archiver（轻量）；**不派发 schemer / tester**。
+- **general（通用）**：**无流水线**（空转移表）——按需调度通用工作者（执行者 / 探索者）；**仅需求级合法**（阶段级 / 部署级不支持）。可**显式升级**为 \`fast\` / \`full\`，**不自动降级**。
 
 fast 调度纪律：
 
@@ -6035,7 +6039,7 @@ fast 调度纪律：
 | 流转 | 阶段推进驱动聚合；显式流转按合法目标推进 | \`openfeel req advance <REQ-NNN> --to <status>\` |
 | 完成 | 全部关联阶段 done 后需求自动 done；总览与释放 | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
 
-> 正交注记：需求流转与工作流模式（\`full\` / \`fast\`）正交——两种模式下需求纪律一致。
+> 模式注记：需求**携带**模式属性（需求级 \`workflow_mode\`，经单点解析作用于其关联阶段）；三种模式下需求纪律一致。
 
 #### 归档与历史读取
 
@@ -6908,7 +6912,7 @@ openfeel-planner 作为独立子 Agent 由 Feel 按需唤起。Feel 根据规划
 - 读取需求：先以 \`openfeel req show <REQ-NNN>\` 读取需求详情（标题 / 状态 / 认领人 / 关联阶段），作为计划输入。
 - 计划关联需求：产出的 \`plan.md\` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
 - 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
-- 与「工作流模式感知」正交：\`full\` / \`fast\` 下需求感知口径一致。
+- 与「工作流模式感知」的关系：需求携带模式属性（需求级 \`workflow_mode\`，经单点解析作用于关联阶段）；三种模式下需求感知口径一致。
 
 ## 调度与 Handoff
 
@@ -8397,7 +8401,7 @@ description: 跨会话上下文恢复，供 Agent 在会话启动时重建流水
 `,
   'openfeel-req': `---
 name: openfeel-req
-description: OpenFeel 需求流转用法参考：需求（requirement）四层模型与 7 状态生命周期、req 命令组 11 个子命令（add/list/show/claim/release/set/link/advance/board/next/split）与参数、认领协议、REQ-NNN 正文与人读副本语义（机读权威恒为 flow.json）、与计划（plan.md）的关系、与 workflow_mode 正交。当需要创建/查询/认领/关联/推进需求，或要理解 REQ-NNN 状态与阶段聚合关系时加载。
+description: OpenFeel 需求流转用法参考：需求（requirement）四层模型与 7 状态生命周期、req 命令组 11 个子命令（add/list/show/claim/release/set/link/advance/board/next/split）与参数、认领协议、REQ-NNN 正文与人读副本语义（机读权威恒为 flow.json）、与计划（plan.md）的关系、与 workflow_mode 的关系（需求携带模式属性、经单点解析作用于关联阶段）。当需要创建/查询/认领/关联/推进需求，或要理解 REQ-NNN 状态与阶段聚合关系时加载。
 ---
 
 # OpenFeel 需求流转（openfeel req）用法参考
@@ -8469,9 +8473,9 @@ draft ─→ scheduled ─→ in_progress ─→ done
 - 需求 = 排期与调度层；**具体实现仍由计划承载**——阶段 \`plan.md\` 头部标注「关联需求：REQ-NNN」。
 - 需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；planner 只读不写（不直写 flow.json）。
 
-## 与 workflow_mode 正交
+## 与 workflow_mode 的关系
 
-需求层与工作流模式（\`full\` / \`fast\`）**正交**：需求可分别由 full / fast 阶段实现；两种模式下需求纪律一致，\`workflow_mode\` 不影响需求状态机与命令行为。
+需求**携带**模式属性（需求级 \`workflow_mode\`，值域 \`full\` / \`fast\` / \`general\`）；模式经**单点解析**作用于其关联阶段（显式下发后阶段字段为投影）；三种模式（规划 / 快速 / 通用）下需求纪律一致，\`workflow_mode\` 不影响需求状态机与命令行为。
 
 ## 需求与版本解绑
 
@@ -9133,10 +9137,11 @@ When a stage enters \`plan_passed\` and the project's \`auto_advance\` is set to
 
 #### Workflow Mode (workflow_mode)
 
-Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Two modes:
+Before dispatching, read the current stage's \`status.md\` "Workflow Mode" field (authoritative query: \`openfeel flow mode [--stage <id>]\`; when the field is absent, fall back per the cascade). Three modes:
 
 - **full (complete flow)**: planner → plan_review (reviewer) → schemer → executor → reviewer → tester → archiver.
 - **fast (Workflow Fast Line)**: planner (lightweight) → plan_review (**single mandatory plan review**) → executor → reviewer (single round) → archiver (lightweight); **does not dispatch openfeel-schemer / openfeel-feel-tester**.
+- **general (General)**: **no pipeline** (empty transition table) — dispatch general workers (executor / explorer) on demand; **valid at the requirement level only** (not supported at stage / deployment level). May be **explicitly upgraded** to \`fast\` / \`full\`, with **no automatic downgrade**.
 
 Fast-mode discipline:
 
@@ -9162,7 +9167,7 @@ Requirement lifecycle actions (command group \`openfeel req\`, 10 subcommands):
 | Advance | Stage advancement drives aggregation; advance explicitly along legal targets | \`openfeel req advance <REQ-NNN> --to <status>\` |
 | Complete | Auto-done once all linked stages are done; overview and release | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
 
-> Orthogonality note: requirement flow is orthogonal to the workflow mode (\`full\` / \`fast\`) — the requirement discipline is identical in both modes.
+> Mode note: requirements **carry** a mode attribute (requirement-level \`workflow_mode\`, applied to their linked stages via the single-point resolver); the requirement discipline is identical in all three modes.
 
 #### Archiving and History Reading
 
@@ -10014,7 +10019,7 @@ When a task originates from a requirement (\`REQ-NNN\`):
 - Read the requirement: first read the requirement details (title / status / owner / linked stages) via \`openfeel req show <REQ-NNN>\` as plan input.
 - Link the plan to the requirement: annotate the header of the produced \`plan.md\` with "Linked requirement: REQ-NNN"; omit the annotation when there is no requirement source.
 - Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the \`openfeel req\` CLI; this agent is read-only (no direct flow.json writes).
-- Orthogonal to "Workflow Mode Awareness": requirement awareness is identical under \`full\` / \`fast\`.
+- Relation to "Workflow Mode Awareness": requirements carry a mode attribute (requirement-level \`workflow_mode\`, applied to linked stages via the single-point resolver); requirement awareness is identical in all three modes.
 
 ## Dispatch and Handoff
 
@@ -10643,10 +10648,11 @@ openfeel-reviewer 审查发现的 REV，**即使是白名单操作（如文档�
 
 #### 工作流模式（workflow_mode）
 
-调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。两种模式：
+调度前读取当前阶段 \`status.md「工作流模式」\`（权威查询：\`openfeel flow mode [--stage <id>]\`；字段缺失时按级联口径回落）。三种模式：
 
 - **full（完整流程）**：planner → plan_review（reviewer）→ schemer → executor → reviewer → tester → archiver。
 - **fast（工作流快线）**：planner（轻量）→ plan_review（**计划审查单轮，必经**）→ executor → reviewer（单轮）→ archiver（轻量）；**不派发 schemer / tester**。
+- **general（通用）**：**无流水线**（空转移表）——按需调度通用工作者（执行者 / 探索者）；**仅需求级合法**（阶段级 / 部署级不支持）。可**显式升级**为 \`fast\` / \`full\`，**不自动降级**。
 
 fast 调度纪律：
 
@@ -10672,7 +10678,7 @@ fast 调度纪律：
 | 流转 | 阶段推进驱动聚合；显式流转按合法目标推进 | \`openfeel req advance <REQ-NNN> --to <status>\` |
 | 完成 | 全部关联阶段 done 后需求自动 done；总览与释放 | \`openfeel req board\` / \`openfeel req release <REQ-NNN>\` |
 
-> 正交注记：需求流转与工作流模式（\`full\` / \`fast\`）正交——两种模式下需求纪律一致。
+> 模式注记：需求**携带**模式属性（需求级 \`workflow_mode\`，经单点解析作用于其关联阶段）；三种模式下需求纪律一致。
 
 #### 归档与历史读取
 
@@ -11523,7 +11529,7 @@ openfeel-planner 作为独立 subagent，由**主会话（Feel 角色）**经 **
 - 读取需求：先以 \`openfeel req show <REQ-NNN>\` 读取需求详情（标题 / 状态 / 认领人 / 关联阶段），作为计划输入。
 - 计划关联需求：产出的 \`plan.md\` 头部标注「关联需求：REQ-NNN」；无需求来源时省略该标注。
 - 流转不在本 Agent 职责内：需求状态流转（认领 / 关联 / 推进）经 \`openfeel req\` CLI 执行；本 Agent 只读不写（不直写 flow.json）。
-- 与「工作流模式感知」正交：\`full\` / \`fast\` 下需求感知口径一致。
+- 与「工作流模式感知」的关系：需求携带模式属性（需求级 \`workflow_mode\`，经单点解析作用于关联阶段）；三种模式下需求感知口径一致。
 
 ## 调度与 Handoff
 

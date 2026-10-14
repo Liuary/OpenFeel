@@ -4,9 +4,11 @@
  * 职责：需求读取（读侧宽容 + 浅副本）、ID 分配、写路径原语（add / claim / release / update / advance / link）
  *       与共用谓词（终态判定 / 全部关联阶段 done）。全部为**纯内存**操作 + 审计内嵌（`data.log`），
  *       零独立写盘点——落盘恒走调用方（命令层）的 `FlowManager` 落盘方法。
- * 正交声明：不依赖归档层 / 不引用工作流模式字段。
+ * 边界声明：不依赖归档层；模式属性（workflow_mode?）为调度属性——本层只做「值域校验 + 载体制门」，
+ *   解析 / 下发单点在 FlowManager；不参与聚合判定。
  */
 import type { FlowData } from '../flow-manager.js';                 // 仅类型（编译期擦除）
+import { WORKFLOW_MODES, type WorkflowMode } from '../config.js';   // 值域单源（运行时值导入，禁就地三值字面量）
 import {
   REQ_ID_PATTERN, REQ_PRIORITIES, REQ_STATUSES,
   type RequirementData, type RequirementPriority, type RequirementStatus,
@@ -19,7 +21,8 @@ export type RequirementErrorCode =
   | 'already_claimed'  // 已被他人占用（claim）
   | 'already_linked'   // 阶段已属其它需求（link 重绑；须先解绑）
   | 'invalid_status'   // 状态门拒绝（claim 终态 / 非法流转 / patch.status 非法值 / link 终态需求）
-  | 'invalid_field';   // 字段门拒绝（白名单外键 / 非法值 / owner 空串 / title 空串）
+  | 'invalid_field'      // 字段门拒绝（白名单外键 / 非法值 / owner 空串 / title 空串）
+  | 'general_mode_conflict'; // 载体制门（stage-90）：general 仅限无关联阶段的需求 / general 需求不接受阶段关联
 
 /** 写路径原语结果（ok=false 时携错误码；命令层映射 exit 非 0 零写盘） */
 export type RequirementOpResult = { ok: true; changed: boolean } | { ok: false; code: RequirementErrorCode };
@@ -92,12 +95,15 @@ export function allLinkedStagesDone(data: FlowData, requirementId: string): bool
  */
 export function addRequirement(
   data: FlowData,
-  input: { title: string; target_version?: string; priority?: RequirementPriority },
+  input: { title: string; target_version?: string; priority?: RequirementPriority; workflow_mode?: WorkflowMode },
 ): RequirementData {
   const title = typeof input?.title === 'string' ? input.title.trim() : '';
   if (title === '') { throw new Error('需求标题不能为空'); }        // 非法入参：编程错误抛错（非业务冲突）
   if (input.priority !== undefined && !(REQ_PRIORITIES as readonly string[]).includes(input.priority)) {
     throw new Error(`需求优先级非法：${String(input.priority)}`);    // 值域单点 = REQ_PRIORITIES
+  }
+  if (input.workflow_mode !== undefined && !(WORKFLOW_MODES as readonly string[]).includes(input.workflow_mode)) {
+    throw new Error(`需求工作流模式非法：${String(input.workflow_mode)}`);   // 值域单点 = WORKFLOW_MODES
   }
   // 命名统一（REV-81-012）：API 面恒 target_version（与存储字段同名，零映射层）
   if (input.target_version !== undefined && String(input.target_version).trim() === '') { throw new Error('预估版本不能为空串'); }
@@ -113,6 +119,7 @@ export function addRequirement(
   };
   if (input.target_version !== undefined) { req.target_version = String(input.target_version).trim(); }
   if (input.priority !== undefined) { req.priority = input.priority; }
+  if (input.workflow_mode !== undefined) { req.workflow_mode = input.workflow_mode; }
   data.requirements.push(req);
   appendRequirementLog(data, 'requirement_add', { id: req.id, title: req.title });
   return req;                                                      // 本体（调用方继续设 body_path）
@@ -237,7 +244,7 @@ function applyStatusChange(data: FlowData, req: RequirementData, to: Requirement
 }
 
 /** 字段白名单（= RequirementData 可变字段名子集） */
-const PATCH_WHITELIST = ['status', 'title', 'target_version', 'priority'] as const;
+const PATCH_WHITELIST = ['status', 'title', 'target_version', 'priority', 'workflow_mode'] as const;
 
 /**
  * 更新需求（patch 白名单；全部维度先校验后落地——校验失败整 patch 零变更）。
@@ -246,7 +253,7 @@ const PATCH_WHITELIST = ['status', 'title', 'target_version', 'priority'] as con
 export function updateRequirement(
   data: FlowData,
   id: string,
-  patch: { status?: RequirementStatus; title?: string; target_version?: string; priority?: RequirementPriority },
+  patch: { status?: RequirementStatus; title?: string; target_version?: string; priority?: RequirementPriority; workflow_mode?: WorkflowMode },
 ): RequirementOpResult {
   // ① 内联 raw find（与 claim / release 同款）
   const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
@@ -273,6 +280,14 @@ export function updateRequirement(
   if (p.status !== undefined && !(REQ_STATUSES as readonly string[]).includes(p.status)) {
     return { ok: false, code: 'invalid_status' };
   }
+  if (p.workflow_mode !== undefined && !(WORKFLOW_MODES as readonly string[]).includes(p.workflow_mode)) {
+    return { ok: false, code: 'invalid_field' };                  // 值域单点 = WORKFLOW_MODES
+  }
+  // 载体制门（D-90-4）：general 仅限**无关联阶段**的需求（有链接阶段 → 拒绝；零变更零审计）
+  if (p.workflow_mode === 'general') {
+    const hasLinked = Object.values(data.stages ?? {}).some((s) => (s.requirement_id ?? null) === id);
+    if (hasLinked) { return { ok: false, code: 'general_mode_conflict' }; }
+  }
 
   // ⑥ 状态维度（= 当前则无变更；≠ 走单点 applyStatusChange）
   let statusChanged = false;
@@ -293,6 +308,9 @@ export function updateRequirement(
   }
   if (p.priority !== undefined) {
     if (req.priority !== p.priority) { req.priority = p.priority; changedFields.push('priority'); }
+  }
+  if (p.workflow_mode !== undefined) {
+    if (req.workflow_mode !== p.workflow_mode) { req.workflow_mode = p.workflow_mode; changedFields.push('workflow_mode'); }
   }
 
   // ⑧ updated_at 单次赋值纪律（REV-81-013）：字段维度实际变更且状态维度未变时刷新一次；
@@ -324,6 +342,8 @@ export function linkRequirement(data: FlowData, stageId: string, requirementId: 
     const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === requirementId);
     if (!req) { return { ok: false, code: 'not_found' }; }                             // 需求不存在
     if (isTerminalRequirementStatus(req.status)) { return { ok: false, code: 'invalid_status' }; }  // 终态拒绝
+    // 载体制门（D-90-4）：general（无流水线）需求不接受阶段关联
+    if (req.workflow_mode === 'general') { return { ok: false, code: 'general_mode_conflict' }; }
     if ((stage.requirement_id ?? null) === requirementId) { return { ok: true, changed: false }; }   // 同值幂等
     if (stage.requirement_id != null) { return { ok: false, code: 'already_linked' }; }              // 跨需求重绑
     stage.requirement_id = requirementId;

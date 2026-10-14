@@ -29,7 +29,7 @@ import { hasKey, t } from '../../src/core/i18n.js';
 import { FlowManager, FlowConcurrentModificationError } from '../../src/core/flow-manager.js';
 import { getAllowedNextStatuses } from '../../src/core/req/requirement-ops.js';
 import { REQ_STATUSES } from '../../src/core/req/types.js';
-import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -948,22 +948,22 @@ describe('req 命令组（stage-82）', () => {
     expect(err()).toContain('flow.json 未初始化');
   });
 
-  it('T-C3 help 键双向逐键断言（42 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
+  it('T-C3 help 键双向逐键断言（44 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
     const EXPECTED = [
       'help.req',
-      'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority',
+      'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority', 'help.req.add.workflowMode',
       'help.req.list', 'help.req.list.status', 'help.req.list.targetVersion', 'help.req.list.owner', 'help.req.list.json',
       'help.req.show', 'help.req.show.argid', 'help.req.show.json',
       'help.req.claim', 'help.req.claim.argid', 'help.req.claim.owner',
       'help.req.release', 'help.req.release.argid',
-      'help.req.set', 'help.req.set.argid', 'help.req.set.status', 'help.req.set.title', 'help.req.set.targetVersion', 'help.req.set.priority',
+      'help.req.set', 'help.req.set.argid', 'help.req.set.status', 'help.req.set.title', 'help.req.set.targetVersion', 'help.req.set.priority', 'help.req.set.workflowMode',
       'help.req.link', 'help.req.link.stage', 'help.req.link.requirement', 'help.req.link.unlink',
       'help.req.advance', 'help.req.advance.argid', 'help.req.advance.to',
       'help.req.board', 'help.req.board.targetVersion', 'help.req.board.json',
       'help.req.next', 'help.req.next.owner', 'help.req.next.json', 'help.req.next.limit',
       'help.req.split', 'help.req.split.argid', 'help.req.split.into', 'help.req.split.json',
     ];
-    expect(EXPECTED).toHaveLength(42);
+    expect(EXPECTED).toHaveLength(44);
 
     // ① 正向：zh / en 双侧 hasKey
     for (const k of EXPECTED) {
@@ -1019,11 +1019,11 @@ describe('req 命令组（stage-82）', () => {
     expect(rootProgram.commands.length).toBe(17);
   });
 
-  it('T-C5 正交/越界静态断言：7 禁止串零命中 + 6 正控命中', () => {
+  it('T-C5′ 越界静态断言（stage-90 supersede）：7 禁止串零命中 + 7 正控命中', () => {
     const src = readFileSync(new URL('../../src/commands/req.ts', import.meta.url), 'utf-8');
     expect(src.length).toBeGreaterThan(0);
     const FORBIDDEN = [
-      'ALLOWED_TRANSITIONS', 'workflow_mode', 'getValidTargets', 'flow-archive',
+      'ALLOWED_TRANSITIONS', 'resolveStageWorkflowMode', 'getValidTargets', 'flow-archive',
       '.phase', 'allLinkedStagesDone', 'padStart',
     ];
     expect(FORBIDDEN.length).toBe(7);
@@ -1033,8 +1033,9 @@ describe('req 命令组（stage-82）', () => {
     const POSITIVE = [
       'getAllowedNextStatuses', 'REQ_STATUSES', 'REQ_ID_PATTERN',
       'linkRequirement', 'writeRequirementBodySkeleton', 'listRequirements',
+      '--workflow-mode',
     ];
-    expect(POSITIVE.length).toBe(6);
+    expect(POSITIVE.length).toBe(7);
     for (const n of POSITIVE) {
       expect(src).toContain(n);
     }
@@ -1580,5 +1581,206 @@ describe('stage-87 op-002 接取视图与并行接取', () => {
     resetCapture();
     await safeParse(['req', 'next']);
     expect(out()).toBe(nextGolden);
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-90 op-002：需求级模式属性（CLI 面：字段 / 下发 / 载体门 / 零注入）
+// ═══════════════════════════════════════
+describe('stage-90 op-002 需求级模式属性（CLI）', () => {
+  let tmpDir: string;
+  let program: Command;
+  let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
+  let cwdMock: ReturnType<typeof vi.fn>;
+  let exitMock: ReturnType<typeof vi.fn>;
+  let prevExitCode: number | string | undefined;
+
+  const STAGE = 'v1.0.0-stage-01';
+
+  beforeEach(async () => {
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-req90-home-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-req90-test-'));
+    mockedChild.execSync.mockReset();
+    mockedChild.execFileSync.mockReset();
+    await initProject(tmpDir);
+
+    logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    prevExitCode = process.exitCode;
+    process.exitCode = 0;
+
+    program = new Command();
+    program.exitOverride();
+    registerReqCommand(program);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
+    logMock.mockRestore();
+    errorMock.mockRestore();
+    cwdMock.mockRestore();
+    exitMock.mockRestore();
+    process.exitCode = prevExitCode;
+
+    const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
+    expect(realRaw).toBe(REAL_FLOW_RAW);
+    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+  });
+
+  async function safeParse(args: string[]): Promise<void> {
+    try {
+      await program.parseAsync(args, { from: 'user' });
+    } catch (err) {
+      if (!(err instanceof CommanderError)) { throw err; }
+    }
+  }
+
+  function out(): string { return logMock.mock.calls.map((c) => c[0] as string).join('\n'); }
+  function err(): string { return errorMock.mock.calls.map((c) => c[0] as string).join('\n'); }
+  function resetCapture(): void { logMock.mockClear(); errorMock.mockClear(); process.exitCode = 0; }
+  function readFlow(): any { return JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')); }
+  function flowRaw(): string { return readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'); }
+  function writeFlow(mutate: (d: any) => void): void {
+    const d = readFlow();
+    mutate(d);
+    writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
+  }
+  function req_(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id,
+      title: `需求 ${id}`,
+      status: 'scheduled',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      ...overrides,
+    };
+  }
+  function statusPathOf(): string { return join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md'); }
+
+  /** 建阶段：flow.json 注册（可选关联需求）+ status.md（无「工作流模式」行 = 插入语义） */
+  function setupStage(requirementId?: string): string {
+    const mgr = new FlowManager(tmpDir);
+    mgr.registerStage(STAGE);
+    mgr.save();
+    writeFlow((d) => { d.stages[STAGE].requirement_id = requirementId ?? null; });
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(statusPathOf(), `# ${STAGE} 状态\n\n- **执行模式**：manual\n- **自动推进**：disabled\n- **状态**：planned\n`, 'utf-8');
+    return statusPathOf();
+  }
+
+  it('T90-REQ-7：req add --workflow-mode 合法写入 / 非法 exit 1 零写盘', async () => {
+    await safeParse(['req', 'add', '带模式需求', '--workflow-mode', 'fast']);
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements[0].workflow_mode).toBe('fast');
+
+    resetCapture();
+    const raw = flowRaw();
+    await safeParse(['req', 'add', '非法模式需求', '--workflow-mode', 'bogus']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('需求工作流模式非法');
+    expect(flowRaw()).toBe(raw);                                  // 零写盘
+  });
+
+  it('T90-REQ-8：req set --workflow-mode 值写入 + --json 含字段 + noFields 守卫已扩键', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    await safeParse(['req', 'set', 'REQ-001', '--workflow-mode', 'full']);
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements[0].workflow_mode).toBe('full');
+
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-001', '--json']);
+    expect(JSON.parse(out()).requirement.workflow_mode).toBe('full');
+
+    resetCapture();
+    await safeParse(['req', 'set', 'REQ-001']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('--workflow-mode');
+  });
+
+  it('T90-REQ-9：req link 下发（需求 fast → status.md 字段 + flow.json 冗余同批 + 提示文案）', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001', { workflow_mode: 'fast' })]; });
+    const p = setupStage();
+    expect(readFileSync(p, 'utf-8')).not.toContain('工作流模式');
+
+    resetCapture();
+    await safeParse(['req', 'link', '--stage', STAGE, '--requirement', 'REQ-001']);
+
+    expect(process.exitCode).toBe(0);
+    expect(readFileSync(p, 'utf-8')).toContain('- **工作流模式**：fast');     // status.md 字段
+    expect(readFlow().stages[STAGE].workflow_mode).toBe('fast');            // flow.json 冗余同批
+    expect(out()).toContain('已将需求工作流模式 fast 下发到阶段');
+  });
+
+  it('T90-REQ-10：无模式需求 link → 零下发（status.md 不含模式行 + 无提示）', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    const p = setupStage();
+
+    resetCapture();
+    await safeParse(['req', 'link', '--stage', STAGE, '--requirement', 'REQ-001']);
+
+    expect(process.exitCode).toBe(0);
+    expect(readFileSync(p, 'utf-8')).not.toContain('工作流模式');
+    expect(readFlow().stages[STAGE].workflow_mode).toBeUndefined();
+    expect(out()).not.toContain('下发');
+  });
+
+  it('T90-REQ-11：req set --workflow-mode 下发到已关联阶段（先落盘主变更 → 再下发）', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001', { workflow_mode: 'fast' })]; });
+    const p = setupStage('REQ-001');
+
+    await safeParse(['req', 'set', 'REQ-001', '--workflow-mode', 'full']);
+
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements[0].workflow_mode).toBe('full');
+    expect(readFileSync(p, 'utf-8')).toContain('- **工作流模式**：full');
+    expect(readFlow().stages[STAGE].workflow_mode).toBe('full');
+    expect(out()).toContain('已将工作流模式 full 下发到 1 个关联阶段');
+  });
+
+  it('T90-REQ-12：需求侧载体门（有链接阶段 + general → exit 1 零写盘；零链接 general 成功）', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001', { workflow_mode: 'fast' })]; });
+    setupStage('REQ-001');
+    const raw = flowRaw();
+
+    resetCapture();
+    await safeParse(['req', 'set', 'REQ-001', '--workflow-mode', 'general']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('general（无流水线）仅限无关联阶段的需求');
+    expect(flowRaw()).toBe(raw);                                            // 零变更零审计
+
+    resetCapture();
+    writeFlow((d) => { d.requirements.push(req_('REQ-002', { workflow_mode: 'general' })); });
+    await safeParse(['req', 'link', '--stage', STAGE, '--requirement', 'REQ-002']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('工作流模式为 general（无流水线）——不接受阶段关联');
+
+    resetCapture();
+    await safeParse(['req', 'add', '零链接通用需求', '--workflow-mode', 'general']);
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements.find((r: any) => r.id === 'REQ-003').workflow_mode).toBe('general');
+  });
+
+  it('T90-REQ-13：零注入（C9）——旧 flow.json（无模式字段）load→save 字节级不变 + show --json 缺省无键', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    const before = flowRaw();
+    await safeParse(['req', 'show', 'REQ-001', '--json']);
+    expect(flowRaw()).toBe(before);
+    expect(JSON.parse(out()).requirement).not.toHaveProperty('workflow_mode');   // 缺省不出现该键
+
+    resetCapture();
+    await safeParse(['req', 'list', '--json']);
+    expect(flowRaw()).toBe(before);
+    expect(JSON.parse(out()).requirements[0]).not.toHaveProperty('workflow_mode');
+  });
+
+  it('T90-REQ-14：req show --json 行内描述含 parent, children（REV-88-010）', () => {
+    const src = readFileSync(new URL('../../src/commands/req.ts', import.meta.url), 'utf-8');
+    expect(src).toContain('{ schemaVersion, requirement, stages, parent, children }');
+    expect(src).not.toContain('{ schemaVersion, requirement, stages }');
   });
 });

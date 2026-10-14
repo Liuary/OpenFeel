@@ -5669,3 +5669,118 @@ describe('stage-90：general 模式（空表）与值域同源', () => {
     });
   });
 });
+
+// ═══════════════════════════════════════
+// stage-90 op-002：需求级模式层（解析链第 2 层）
+// ═══════════════════════════════════════
+
+describe('stage-90：需求级模式层（解析链第 2 层）', () => {
+  let tmpDir: string;
+  const STAGE = 'v1.0.0-stage-01';
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-reqmode-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    mockHome.dir = join(tmpDir, 'no-such-home');
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  /** 写阶段 status.md（mode 为 undefined = 无「工作流模式」行） */
+  function writeStatus(mode?: string, stageDir = 'stage-01'): void {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', stageDir);
+    mkdirSync(dir, { recursive: true });
+    const modeLine = mode ? `- **工作流模式**：${mode}\n` : '';
+    writeFileSync(join(dir, 'status.md'), `# ${STAGE} 状态\n\n- **执行模式**：manual\n${modeLine}- **状态**：planned\n`, 'utf-8');
+  }
+
+  function writeProjectConfig(content: string): void {
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), content, 'utf-8');
+  }
+
+  /** 构造「阶段关联需求」数据（reqMode 为 undefined = 需求无模式属性；reqExists=false = 悬空关联） */
+  function makeMgr(opts: { linked?: boolean; reqMode?: string; reqExists?: boolean; redundant?: string } = {}): FlowManager {
+    const linked = opts.linked === true;
+    const stage: StageData = {
+      name: STAGE,
+      phase: 'plan_pending' as PipelinePhase,
+      status: 'planned',
+      deps: [],
+      ops: {},
+      requirement_id: linked ? 'REQ-001' : null,
+    };
+    if (opts.redundant !== undefined) { stage.workflow_mode = opts.redundant as StageData['workflow_mode']; }
+    const data = makeTestFlowData({
+      stages: { [STAGE]: stage },
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: STAGE, op: 'op-001' }, retry: 0 },
+    });
+    if (linked && opts.reqExists !== false) {
+      const req: RequirementData = {
+        id: 'REQ-001', title: '需求一', status: 'scheduled',
+        created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
+      };
+      if (opts.reqMode !== undefined) { req.workflow_mode = opts.reqMode as NonNullable<RequirementData['workflow_mode']>; }
+      data.requirements = [req];
+    }
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(data);
+    return mgr;
+  }
+
+  it('T90-REQ-1：需求级生效（阶段无 status.md 模式字段 + 需求 fast → source=requirement）', () => {
+    writeStatus();                                                   // 无「工作流模式」行
+    const r = makeMgr({ linked: true, reqMode: 'fast' }).resolveStageWorkflowMode(STAGE);
+    expect(r).toEqual({ value: 'fast', source: 'requirement' });
+  });
+
+  it('T90-REQ-2：被阶段显式覆盖（status.md full + 需求 fast → status.md 优先）', () => {
+    writeStatus('full');
+    writeProjectConfig('defaults:\n  workflow_mode: fast\n');
+    const r = makeMgr({ linked: true, reqMode: 'fast' }).resolveStageWorkflowMode(STAGE);
+    expect(r).toEqual({ value: 'full', source: 'status.md' });
+  });
+
+  it('T90-REQ-3：无关联回落（requirement_id 缺省 → config / builtin）', () => {
+    writeStatus();
+    expect(makeMgr().resolveStageWorkflowMode(STAGE)).toEqual({ value: 'fast', source: 'builtin' });
+    writeProjectConfig('defaults:\n  workflow_mode: full\n');
+    expect(makeMgr().resolveStageWorkflowMode(STAGE)).toEqual({ value: 'full', source: 'config.yaml' });
+  });
+
+  it('T90-REQ-4：悬空回落（requirement_id 指向不存在需求 → 自然回落，零报错）', () => {
+    writeStatus();
+    writeProjectConfig('defaults:\n  workflow_mode: full\n');
+    expect(makeMgr({ linked: true, reqExists: false }).resolveStageWorkflowMode(STAGE))
+      .toEqual({ value: 'full', source: 'config.yaml' });
+  });
+
+  it('T90-REQ-5：Q4 同源（resolveEffectiveConfig() ≡ resolveStageWorkflowMode()，五场景逐字相等）', () => {
+    const scenarios: Array<() => FlowManager> = [
+      () => { writeStatus(); return makeMgr({ linked: true, reqMode: 'general' }); },
+      () => { writeStatus('full'); return makeMgr({ linked: true, reqMode: 'fast' }); },
+      () => { writeStatus(); return makeMgr(); },
+      () => { writeStatus(); writeProjectConfig('defaults:\n  workflow_mode: full\n'); return makeMgr(); },
+      () => { writeStatus(); return makeMgr({ linked: true, reqExists: false }); },
+    ];
+    for (const build of scenarios) {
+      const mgr = build();
+      expect(mgr.resolveEffectiveConfig()['workflow_mode']).toEqual(mgr.resolveStageWorkflowMode());
+    }
+  });
+
+  it('T90-REQ-6：health 第 10 项需求级场景（一致零告警 / 不一致 1 条 warn）', () => {
+    writeStatus();                                                   // status.md 无模式字段 → 需求级为权威
+    const consistent = makeMgr({ linked: true, reqMode: 'fast', redundant: 'fast' }).healthCheck(false);
+    expect(consistent.items.filter((i) => i.section === '工作流模式')).toHaveLength(0);
+
+    writeStatus();
+    const mismatch = makeMgr({ linked: true, reqMode: 'fast', redundant: 'full' }).healthCheck(false);
+    const items = mismatch.items.filter((i) => i.section === '工作流模式');
+    expect(items).toHaveLength(1);
+    expect(items[0].status).toBe('warn');
+    expect(items[0].message).toContain('冗余 full ≠ 解析 fast');
+  });
+});

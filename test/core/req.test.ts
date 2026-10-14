@@ -612,15 +612,16 @@ describe('需求原语 — T5.4d save 集成', () => {
 });
 
 // ═══════════════════════════════════════
-// T5.6 正交边界（静态断言）
+// T5.6 需求层模式边界（stage-90 supersede v1.2.0 正交口径）
 // ═══════════════════════════════════════
-describe('正交边界（stage-81 op-003 / T5.6）', () => {
+describe('需求层模式边界（stage-90 supersede v1.2.0 正交口径）', () => {
   const readSrc = (f: string): string =>
     readFileSync(new URL(`../../src/core/req/${f}`, import.meta.url), 'utf-8');
 
   const FILES = ['types.ts', 'requirement-ops.ts', 'body-file.ts'] as const;
-  // 禁用串清单锁定（防清单被删空）
-  const NEEDLES = ['workflow_mode', 'PIPELINE_PHASES', 'getValidTargets', 'flow-archive', 'process.cwd', 'homedir'] as const;
+  // 禁用串清单锁定（防清单被删空）；stage-90：`workflow_mode` → `resolveStageWorkflowMode`
+  // （受控串判类见下方独立 it —— 模式字段声明 / 白名单合法「受控」存在，解析器引用仍全域禁止）
+  const NEEDLES = ['PIPELINE_PHASES', 'getValidTargets', 'flow-archive', 'process.cwd', 'homedir', 'resolveStageWorkflowMode'] as const;
 
   it('防假绿：三源文件内容非空', () => {
     for (const f of FILES) {
@@ -638,13 +639,25 @@ describe('正交边界（stage-81 op-003 / T5.6）', () => {
     expect(NEEDLES.length).toBe(6);
   });
 
-  it('禁止串零命中（扫描源文件全内容，含文件头注释 / JSDoc）', () => {
+  it('全域禁止串零命中（扫描源文件全内容，含文件头注释 / JSDoc）', () => {
     for (const f of FILES) {
       const src = readSrc(f);
       for (const n of NEEDLES) {
         expect(src.includes(n)).toBe(false);   // 字面零命中（等价 rg 单串口径）
       }
     }
+  });
+
+  it('受控串判类：types.ts / requirement-ops.ts 含 workflow_mode（字段声明 / 白名单合法）；body-file.ts 仍零命中', () => {
+    expect(readSrc('types.ts')).toContain('workflow_mode');
+    expect(readSrc('requirement-ops.ts')).toContain('workflow_mode');
+    expect(readSrc('body-file.ts').includes('workflow_mode')).toBe(false);
+  });
+
+  it('受控串正控（新增强度）：字段声明 / 值域单源 / 载体制门在位', () => {
+    expect(readSrc('types.ts')).toContain('workflow_mode?: WorkflowMode');
+    expect(readSrc('requirement-ops.ts')).toContain('WORKFLOW_MODES');
+    expect(readSrc('requirement-ops.ts')).toContain('general_mode_conflict');
   });
 });
 
@@ -926,6 +939,18 @@ describe('聚合模块 — 正交与单源静态断言（stage-83 op-001）', ()
     expect(src).toContain("'requirement_auto_reopen'");
     expect(src).toContain('AUTO_DONE_PRECONDITION');
   });
+
+  it('stage-90：模式不影响聚合（改需求 workflow_mode → computeRequirementAggregate 输出不变）', () => {
+    const data = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'done') },
+      [makeReq('REQ-001', 'scheduled')],
+    );
+    const before = computeRequirementAggregate(data, 'REQ-001');
+    data.requirements![0].workflow_mode = 'general';                 // 模式为纯调度属性：不入聚合 / 不入 done 门 / 不入对账
+    const after = computeRequirementAggregate(data, 'REQ-001');
+    expect(after).toEqual(before);
+    expect(allLinkedStagesDone(data, 'REQ-001')).toBe(true);         // done 判定单源不受模式影响
+  });
 });
 
 // ═══════════════════════════════════════
@@ -1197,5 +1222,61 @@ describe('版本解绑 — stage-87 op-003', () => {
     expect(getRequirement(data, 'REQ-001')!.status).toBe('done');
     expect(lastLog(data).action).toBe('requirement_auto_done');
     expect('target_version' in getRequirement(data, 'REQ-001')!).toBe(false);     // 全程零版本键写入
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-90 op-002：需求级模式属性（引擎面：值域 / 载体制门 / 零审计）
+// ═══════════════════════════════════════
+describe('stage-90 op-002 需求级模式属性（引擎）', () => {
+  it('T90-REQ-15：addRequirement 值域（合法写入 / 非法抛错）', () => {
+    const data = makeFlowData();
+    const req = addRequirement(data, { title: 'x', workflow_mode: 'general' });
+    expect(req.workflow_mode).toBe('general');
+    expect(data.requirements![0].workflow_mode).toBe('general');
+    expect(() => addRequirement(data, { title: 'y', workflow_mode: 'bogus' as never })).toThrow('需求工作流模式非法');
+  });
+
+  it('T90-REQ-16：updateRequirement 值域（合法写入 / 非法 invalid_field 零变更）', () => {
+    const data = aggData({}, [makeReq('REQ-001', 'scheduled')]);
+    expect(updateRequirement(data, 'REQ-001', { workflow_mode: 'fast' })).toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].workflow_mode).toBe('fast');
+    expect(lastLog(data).detail.fields).toEqual(['workflow_mode']);
+
+    const n = data.log.length;
+    expect(updateRequirement(data, 'REQ-001', { workflow_mode: 'bogus' as never }))
+      .toEqual({ ok: false, code: 'invalid_field' });
+    expect(data.log.length).toBe(n);                             // 零审计
+  });
+
+  it('T90-REQ-17：载体制门——general + 已链接阶段 → general_mode_conflict（零变更零审计）', () => {
+    const data = aggData({ 'stage-01': linkedStage('REQ-001', 'plan_pending') }, [makeReq('REQ-001', 'scheduled')]);
+    const n = data.log.length;
+    expect(updateRequirement(data, 'REQ-001', { workflow_mode: 'general' }))
+      .toEqual({ ok: false, code: 'general_mode_conflict' });
+    expect(data.requirements![0].workflow_mode).toBeUndefined();
+    expect(data.log.length).toBe(n);
+  });
+
+  it('T90-REQ-18：载体制门反向——general 需求 + 零链接 → 成功；已关联需求不接受 general', () => {
+    const ok = aggData({}, [makeReq('REQ-001', 'scheduled')]);
+    expect(updateRequirement(ok, 'REQ-001', { workflow_mode: 'general' })).toEqual({ ok: true, changed: true });
+
+    // 已关联（requirement_id 指向 REQ-001）→ 拒绝
+    const linked = aggData({ 'stage-01': linkedStage('REQ-001', 'plan_pending') }, [makeReq('REQ-001', 'scheduled')]);
+    expect(updateRequirement(linked, 'REQ-001', { workflow_mode: 'general' }))
+      .toEqual({ ok: false, code: 'general_mode_conflict' });
+  });
+
+  it('T90-REQ-19：linkRequirement 对 general 需求 → general_mode_conflict（零变更零审计）', () => {
+    const data = aggData({ 'stage-01': makeStage() }, [makeReq('REQ-001', 'scheduled', { workflow_mode: 'general' })]);
+    const n = data.log.length;
+    expect(linkRequirement(data, 'stage-01', 'REQ-001')).toEqual({ ok: false, code: 'general_mode_conflict' });
+    expect(data.stages['stage-01'].requirement_id).toBeUndefined();
+    expect(data.log.length).toBe(n);
+
+    // non-general 需求零回归
+    const normal = aggData({ 'stage-01': makeStage() }, [makeReq('REQ-001', 'scheduled', { workflow_mode: 'fast' })]);
+    expect(linkRequirement(normal, 'stage-01', 'REQ-001')).toEqual({ ok: true, changed: true });
   });
 });

@@ -5,12 +5,14 @@
  * 命令层零业务逻辑：解析 / 校验 / ID 分配 / 写入全部单点在 `src/core/req/`；本文件仅做
  *   「参数解析 → 调用引擎原语 → 错误码→文案映射 → 退出码」。
  * 命令层零校验：状态流转合法性 / 认领占用 / 关联唯一性 / 写命令字段校验一律由引擎单点判定。
- * 正交声明：不引用工作流模式相关字段；不依赖归档层；不计算 done / 进度 / 聚合摘要（该职责归后续阶段）。
+ * 模式边界：需求可携带模式属性（`--workflow-mode` 选项 / 传参给引擎）；模式解析与下发单点在引擎与 FlowManager，
+ *   本层不做值域 / 载体判定；不依赖归档层；不计算 done / 进度 / 聚合摘要。
  * 退出码：成功 0；校验 / 占用 / 存在性失败 1（恒经 `process.exitCode`）；并发写冲突 2（共享单点）。
  */
 import { Command } from 'commander';
 import { t, getCliLang } from '../core/i18n.js';
 import { FlowManager, isFlowConcurrentError } from '../core/flow-manager.js';
+import { type WorkflowMode } from '../core/config.js';
 import { handleConcurrentConflict } from './shared/errors.js';
 import {
   addRequirement, getRequirement, getRequirements, listRequirements,
@@ -103,7 +105,8 @@ export function registerReqCommand(program: Command): void {
     .description('创建需求（ID 自动分配；正文骨架铺到 .openfeel/requirements/）')
     .option('--target-version <version>', '预估版本（如 v1.3.0）')
     .option('--priority <priority>', '优先级（P0/P1/P2）')
-    .action((title: string, options: { targetVersion?: string; priority?: string }) => {
+    .option('--workflow-mode <mode>', '工作流模式（full / fast / general；缺省不设置）')
+    .action((title: string, options: { targetVersion?: string; priority?: string; workflowMode?: string }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -112,11 +115,12 @@ export function registerReqCommand(program: Command): void {
       }
       const data = mgr.getData()!;
       try {
-        // 运行期值域由引擎单点判定（命令层零校验）；priority 断言仅编译期
+        // 运行期值域由引擎单点判定（命令层零校验）；priority / workflow_mode 断言仅编译期
         const created = addRequirement(data, {
           title,
           target_version: options.targetVersion,
           priority: options.priority as RequirementPriority | undefined,
+          workflow_mode: options.workflowMode as WorkflowMode | undefined,
         });
         // 正文骨架：严格直传引擎返回本体（禁浅副本）；写失败 → 不 save（flow.json 零变更）
         let bodyPath: string;
@@ -190,7 +194,7 @@ export function registerReqCommand(program: Command): void {
   req
     .command('show <id>')
     .description('查看需求详情（关联阶段为原始只读枚举）')
-    .option('--json', '以 JSON 输出 { schemaVersion, requirement, stages }')
+    .option('--json', '以 JSON 输出 { schemaVersion, requirement, stages, parent, children }')
     .action((id: string, options: { json?: boolean }, command: Command) => {
       const lang = getCliLang(process.cwd());
       const asJson = asJsonOf(options, command);
@@ -356,7 +360,8 @@ export function registerReqCommand(program: Command): void {
     .option('--title <title>', '新标题')
     .option('--target-version <version>', '新预估版本')
     .option('--priority <priority>', '新优先级（P0/P1/P2）')
-    .action((id: string, options: { status?: string; title?: string; targetVersion?: string; priority?: string }) => {
+    .option('--workflow-mode <mode>', '新工作流模式（full / fast / general；general 仅限无关联阶段的需求）')
+    .action((id: string, options: { status?: string; title?: string; targetVersion?: string; priority?: string; workflowMode?: string }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -371,7 +376,8 @@ export function registerReqCommand(program: Command): void {
       }
       // 无字段守卫（argument-shape，非业务校验）
       if (options.status === undefined && options.title === undefined
-        && options.targetVersion === undefined && options.priority === undefined) {
+        && options.targetVersion === undefined && options.priority === undefined
+        && options.workflowMode === undefined) {
         console.error(t('req.set.noFieldsTmpl', lang));
         process.exitCode = 1;
         return;
@@ -382,6 +388,7 @@ export function registerReqCommand(program: Command): void {
         title: options.title,
         target_version: options.targetVersion,
         priority: options.priority as RequirementPriority | undefined,
+        workflow_mode: options.workflowMode as WorkflowMode | undefined,
       });
       if (!r.ok) {
         const current = getRequirement(data, id)?.status ?? '';
@@ -394,6 +401,7 @@ export function registerReqCommand(program: Command): void {
             current,
             targets: getAllowedNextStatuses(current as RequirementStatus).join(', '),
           }),
+          general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id }),
         });
         return;
       }
@@ -403,6 +411,18 @@ export function registerReqCommand(program: Command): void {
       }
       if (!saveOrFail(mgr, lang)) {
         return;
+      }
+      // stage-90 T2.3：需求级模式下发（先落盘主变更 → 再下发；单点 syncConfigFieldToStages：status.md 字段 + flow.json 冗余同批）
+      if (options.workflowMode !== undefined) {
+        const linked = Object.entries(data.stages ?? {})
+          .filter(([, s]) => (s.requirement_id ?? null) === id)
+          .map(([k]) => normalizeStageId(k) ?? k);
+        if (linked.length > 0) {
+          const synced = mgr.syncConfigFieldToStages('workflow_mode', options.workflowMode, { onlyStages: linked });
+          const wrote = synced.filter((s) => s.result === 'updated' || s.result === 'inserted').length;
+          console.log(t('req.set.modeSyncedTmpl', lang, { id, mode: options.workflowMode, count: String(wrote) }));
+        }
+        // 零关联阶段（含 general 门后）→ 仅更新需求字段，零副作用（不输出下发提示）
       }
       console.log(t('req.set.doneTmpl', lang, { id }));
     });
@@ -451,6 +471,7 @@ export function registerReqCommand(program: Command): void {
             status: requirementId ? (getRequirement(data, requirementId)?.status ?? '') : '',
           }),
           already_linked: t('req.err.alreadyLinkedTmpl', lang, { stage: stageKey }),
+          general_mode_conflict: t('req.err.generalTargetTmpl', lang, { id: requirementId ?? '' }),
         });
         return;
       }
@@ -460,6 +481,16 @@ export function registerReqCommand(program: Command): void {
       }
       if (!saveOrFail(mgr, lang)) {
         return;
+      }
+      // stage-90 T2.3：需求级模式下发（需求携带 workflow_mode 时经单点同步到关联阶段）
+      if (hasRequirement && requirementId) {
+        const reqLinked = getRequirement(data, requirementId);
+        if (reqLinked?.workflow_mode) {
+          const synced = mgr.syncConfigFieldToStages('workflow_mode', reqLinked.workflow_mode, { onlyStages: [stageKey] });
+          if (synced.some((s) => s.result === 'updated' || s.result === 'inserted')) {
+            console.log(t('req.link.modeSyncedTmpl', lang, { stage: stageKey, mode: reqLinked.workflow_mode }));
+          }
+        }
       }
       console.log(hasRequirement
         ? t('req.link.doneTmpl', lang, { stage: stageKey, id: requirementId ?? '' })

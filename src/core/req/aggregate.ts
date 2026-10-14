@@ -5,7 +5,8 @@
  *       零关联 → aggregate = null，空集守卫禁误报 done）；② resolveRequirementStatusForStage（单阶段 → 目标状态，纯函数）；
  *       ③ syncRequirementStatus（对称回写入口，纯内存，返回受影响需求 ID 列表，供测试/日志）；
  *       ④ requirementHealthItems（需求对账项构造——悬空关联 / done 漂移；只读纯函数，warn-only 恒无 fail）。
- * 正交声明：不依赖归档层 / 不引用工作流模式字段（禁用串零命中）；对 flow-manager 仅 `import type`（防运行时环）。
+ * 边界声明：不依赖归档层；模式属性（需求级模式字段）不入聚合 / 不入 done 门 / 不入对账（禁用串零命中，stage-90 保持）；
+ *   对 flow-manager 仅 import type（防运行时环）。
  * 写盘：全部纯内存——落盘恒走调用方 FlowManager.save()（不新增写盘点）。
  */
 import type { FlowData, HealthCheckItem } from '../flow-manager.js';   // 仅类型（编译期擦除；防运行时环）

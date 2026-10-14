@@ -187,7 +187,7 @@ export interface CascadeConfig {
 }
 
 /** 配置生效来源枚举（`config effective` 出口，P9） */
-export type ConfigSource = 'status.md' | 'config.yaml' | 'profile.yaml' | 'builtin';
+export type ConfigSource = 'status.md' | 'config.yaml' | 'profile.yaml' | 'builtin' | 'requirement';   // 'requirement' = 需求级（stage-90）
 
 /** `openfeel config effective` 的四个受管键（与 DEFAULT_CONFIG 一致） */
 const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'] as const;
@@ -2327,6 +2327,11 @@ export class FlowManager {
     const cascade = this.buildCascadeConfig();
     const result: Record<string, { value: string; source: ConfigSource }> = {};
     for (const key of EFFECTIVE_CONFIG_KEYS) {
+      if (key === 'workflow_mode') {
+        // Q4 定稿（D-90-6）：委托单点层级函数（无参 = 当前阶段域，与 config effective 语义域一致）；禁第二份层序判定
+        result[key] = this.resolveStageWorkflowMode();
+        continue;
+      }
       if (cascade.statusOverrides[key] !== undefined) {
         result[key] = { value: cascade.statusOverrides[key], source: 'status.md' };
       } else if (cascade.configDefaults[key] !== undefined) {
@@ -2344,17 +2349,29 @@ export class FlowManager {
   /**
    * 解析指定阶段的工作流模式（裁定 E：「stage → mode」表选择解析入口；stage-75 `flow mode` 契约）。
    * 带 stage 形参独立解析（REV-74-001）：该阶段 status.md（findStatusPath(stageId)）
-   *   > config.yaml defaults > profile.yaml（**有意不承载**，实际不产出）> builtin（DEFAULT_CONFIG.workflow_mode = fast）。
+   *   > 需求级（关联需求携带的 workflow_mode）> config.yaml defaults > profile.yaml（**有意不承载**，实际不产出）> builtin（DEFAULT_CONFIG.workflow_mode = fast）。
    * 语义边界：`config effective` / `flow status --verbose` = **当前阶段域**（无参）；
    *   本方法显式 stageId = **任意阶段域**（flow mode --stage / 表选择）。
    * @param stageId 目标阶段 ID（缺省 = pipeline.current.stage；无该阶段 status.md → 自然回落下一层）
-   * @returns { value, source }，source ∈ status.md | config.yaml | profile.yaml | builtin
+   * @returns { value, source }，source ∈ status.md | requirement | config.yaml | profile.yaml | builtin
    */
   resolveStageWorkflowMode(stageId?: string): { value: WorkflowMode; source: ConfigSource } {
     const cascade = this.buildCascadeConfig(stageId);
     const key = 'workflow_mode';
     if (cascade.statusOverrides[key] !== undefined) {
       return { value: cascade.statusOverrides[key] as WorkflowMode, source: 'status.md' };
+    }
+    // ── 需求级层（stage-90 T2.2）：阶段关联需求携带的模式属性 ──
+    // 读侧宽容：缺失 / 悬空 / 非法 → 自然回落下一层（零报错）；阶段定位与 status.md 层同域（归一 + 键回退）
+    const reqTarget = stageId ?? this.data?.pipeline.current.stage;
+    const reqStageRec = reqTarget ? this.data?.stages?.[normalizeStageId(reqTarget) ?? reqTarget] : undefined;
+    const reqId = reqStageRec?.requirement_id ?? null;
+    if (reqId) {
+      const reqRec = (Array.isArray(this.data?.requirements) ? this.data!.requirements : []).find((r) => r?.id === reqId);
+      const reqMode = reqRec?.workflow_mode;
+      if (reqMode !== undefined && (WORKFLOW_MODES as readonly string[]).includes(reqMode)) {
+        return { value: reqMode, source: 'requirement' };
+      }
     }
     if (cascade.configDefaults[key] !== undefined) {
       return { value: cascade.configDefaults[key] as WorkflowMode, source: 'config.yaml' };

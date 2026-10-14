@@ -2,8 +2,10 @@
  * 需求层类型与常量 — 单一来源（叶子模块）
  *
  * 职责：需求状态值域、优先级值域、需求 ID 格式与 `RequirementData` 字段表的**唯一权威定义**。
- * 正交声明：零 import（叶子模块）；不依赖归档层 / 不引用工作流模式字段。
+ * 边界声明：仅类型导入（import type，编译期擦除、零运行时依赖）；不依赖归档层；模式属性（workflow_mode?）为调度属性——
+ *   不参与聚合判定 / 不入 done 门（done 判定单源恒在 allLinkedStagesDone）。
  */
+import type { WorkflowMode } from '../config.js';   // 仅类型（编译期擦除、零运行时依赖）
 
 /** 需求状态值域（7 值，裁定 B；单一来源——stage-82 命令层校验须从此派生，禁硬编码） */
 export const REQ_STATUSES = ['draft', 'scheduled', 'in_progress', 'done', 'blocked', 'cancelled', 'rejected'] as const;
@@ -42,4 +44,6 @@ export interface RequirementData {
   body_path?: string;
   /** 拆分来源父需求 ID（**仅溯源**：不参与聚合判定 / 不参与 done 门 / 无父子级联；可选——读侧宽容不 load 补齐） */
   parent_id?: string;
+  /** 需求级工作流模式（**调度属性**：经解析单点作用于其关联阶段；可选 + 读侧宽容不 load 补齐；不入聚合 / 不入 done 门；值域权威 = WORKFLOW_MODES） */
+  workflow_mode?: WorkflowMode;
 }

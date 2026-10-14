@@ -21,6 +21,20 @@ export interface AgentMetrics {
   avgDurationMs: number;
 }
 
+/** phase → 负责 Agent 映射（T1 归属口径；`*_passed` / `done` / meta 等不入表 = 跳过不记） */
+export const PHASE_AGENT_MAP: Readonly<Record<string, string>> = {
+  plan_pending: 'openfeel-planner',
+  plan_review: 'openfeel-planner',
+  scheme_pending: 'openfeel-schemer',
+  scheme_review: 'openfeel-schemer',
+  exec_running: 'openfeel-executor',
+  review_pending: 'openfeel-reviewer',
+  review_failed: 'openfeel-reviewer',
+  test_pending: 'openfeel-feel-tester',
+  test_failed: 'openfeel-feel-tester',
+  archiving: 'openfeel-archiver',
+};
+
 /** metrics.json 持久化数据结构 */
 interface MetricsData {
   agents: Record<string, AgentMetrics>;
@@ -141,6 +155,9 @@ export class MetricsStore {
         t('metrics.summary.avgDuration', lang, { n: String(m.avgDurationMs) }),
       );
     }
+
+    // T1 口径注记：耗时 = phase 窗口（非 agent 纯执行时长）；仅在有数据分支追加
+    lines.push('', t('metrics.summary.caliberNote', lang));
 
     return lines.join('\n');
   }

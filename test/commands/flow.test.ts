@@ -46,6 +46,9 @@ import { tmpdir } from 'node:os';
 const REAL_CWD = process.cwd();
 const REAL_FLOW_PATH = join(REAL_CWD, '.openfeel', 'flow.json');
 const REAL_FLOW_RAW = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
+// stage-86 op-001 反守卫：真实工作区 metrics.json 基线（模块顶层捕获，cwdMock 注入前）
+const REAL_METRICS_PATH = join(REAL_CWD, '.openfeel', 'metrics.json');
+const REAL_METRICS_RAW = existsSync(REAL_METRICS_PATH) ? readFileSync(REAL_METRICS_PATH, 'utf-8') : null;
 
 describe('flow 命令（stage-41）', () => {
   let tmpDir: string;
@@ -3238,5 +3241,105 @@ describe('flow 命令（stage-41）', () => {
     expect(existsSync(REAL_FLOW_PATH)).toBe(true);
     expect(readFileSync(REAL_FLOW_PATH, 'utf-8')).toBe(REAL_FLOW_RAW);
     expect(readFileSync(REAL_FLOW_PATH, 'utf-8')).not.toContain('"requirements"');
+  });
+
+  // ── stage-86 op-001：T1 recordRun 接线（命令层） ──
+
+  describe('stage-86 op-001 recordRun 接线', () => {
+    const S86_STAGE = 'v1.9.0-stage-01';
+    const flowPath = () => join(tmpDir, '.openfeel', 'flow.json');
+    const metricsPath = () => join(tmpDir, '.openfeel', 'metrics.json');
+
+    /** 读隔离 tmpDir 下的 metrics.json（不存在返回 null） */
+    function readMetrics(): { agents: Record<string, { totalRuns: number; totalDurationMs: number }> } | null {
+      if (!existsSync(metricsPath())) {
+        return null;
+      }
+      return JSON.parse(readFileSync(metricsPath(), 'utf-8')) as never;
+    }
+
+    /**
+     * M1/M2/M5 共用的前置构造：stage phase = scheme_pending +
+     * 手工塞一条「进入 scheme_pending」的转换条目（time = now-60s）→ duration 下界可断言。
+     */
+    function seedSchemePending(): void {
+      const mgr = new FlowManager(tmpDir);
+      mgr.addStage(S86_STAGE);
+      const d = mgr.getData()!;
+      d.stages[S86_STAGE].phase = 'scheme_pending' as PipelinePhase;
+      d.log.push({
+        time: new Date(Date.now() - 60_000).toISOString(),
+        agent: 'cli',
+        action: 'advance_stage_phase',
+        detail: { stageName: S86_STAGE, from: 'plan_review', to: 'scheme_pending' },
+      });
+      mgr.save();
+    }
+
+    it('M1: advance 实跑 → metrics.json 生成且非空（agent 归属 + phase 窗口）', async () => {
+      seedSchemePending();
+      logMock.mockClear();
+
+      await safeParse(['flow', 'advance', '--stage', S86_STAGE, '--to', 'exec_running']);
+
+      const data = readMetrics();
+      expect(data).not.toBeNull();
+      // 正控（防多步污染）：中间 phase scheme_passed 不入表 → 键集恰 1 键
+      expect(Object.keys(data!.agents)).toEqual(['openfeel-schemer']);
+      expect(data!.agents['openfeel-schemer'].totalRuns).toBe(1);
+      // 窗口 ≈ 60s（下界断言，不设上限——避免机器慢时伪失败）
+      expect(data!.agents['openfeel-schemer'].totalDurationMs).toBeGreaterThanOrEqual(59_000);
+    });
+
+    it('M2: flow metrics --json 展示真实 run 数据（agent 归属 + 非空）', async () => {
+      seedSchemePending();
+      await safeParse(['flow', 'advance', '--stage', S86_STAGE, '--to', 'exec_running']);
+
+      logMock.mockClear();
+      await safeParse(['flow', 'metrics', '--json']);
+
+      const obj = parseJsonLog();
+      const agents = obj.agents as Array<{ agentName: string; totalRuns: number }>;
+      const schemer = agents.find((a) => a.agentName === 'openfeel-schemer');
+      expect(schemer).toBeDefined();
+      expect(schemer!.totalRuns).toBeGreaterThanOrEqual(1);
+    });
+
+    it('M3: 无归属 phase（plan_passed 不入表）→ metrics.json 不生成', async () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.addStage(S86_STAGE);
+      mgr.getData()!.stages[S86_STAGE].phase = 'plan_passed' as PipelinePhase;
+      mgr.save();
+
+      await safeParse(['flow', 'advance', '--stage', S86_STAGE, '--to', 'scheme_pending']);
+
+      expect(existsSync(metricsPath())).toBe(false);
+    });
+
+    it('M4: 无基线不记（plan_pending 且无 register_stage 条目 → 跳过）', async () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.addStage(S86_STAGE); // 默认 phase = plan_pending；add_stage 条目非 register_stage → 无基线
+      mgr.save();
+
+      await safeParse(['flow', 'advance', '--stage', S86_STAGE, '--to', 'scheme_pending']);
+
+      expect(existsSync(metricsPath())).toBe(false);
+    });
+
+    it('M5: --dry-run 零写盘（flow.json 字节不变 + metrics.json 不生成）', async () => {
+      seedSchemePending();
+      const before = readFileSync(flowPath(), 'utf-8');
+      logMock.mockClear();
+
+      await safeParse(['flow', 'advance', '--stage', S86_STAGE, '--to', 'exec_running', '--dry-run']);
+
+      expect(readFileSync(flowPath(), 'utf-8')).toBe(before);
+      expect(existsSync(metricsPath())).toBe(false);
+    });
+
+    it('M6: 反守卫 —— 真实工作区 .openfeel/metrics.json 未被触碰', () => {
+      const realRaw = existsSync(REAL_METRICS_PATH) ? readFileSync(REAL_METRICS_PATH, 'utf-8') : null;
+      expect(realRaw).toBe(REAL_METRICS_RAW);
+    });
   });
 });

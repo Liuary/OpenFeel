@@ -1052,6 +1052,7 @@ export const metrics: I18nDomain = {
   'summary.totalRetries': { key: 'metrics.summary.totalRetries', zh: '  总重试次数: {n}', en: '' },
   'summary.totalDuration':{ key: 'metrics.summary.totalDuration',zh: '  总耗时: {n}ms', en: '' },
   'summary.avgDuration':  { key: 'metrics.summary.avgDuration',  zh: '  平均耗时: {n}ms', en: '' },
+  'summary.caliberNote':  { key: 'metrics.summary.caliberNote',  zh: '注：耗时口径 = phase 窗口（含跨会话闲置 / 等待），非 agent 纯执行时长。', en: '' },
 };
 
 /* ==================== repl 域：交互模式（T40） ==================== */

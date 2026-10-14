@@ -28,7 +28,8 @@ import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
 import { getConfigFieldLegalValues, setConfigValue } from '../core/config.js';
 import { parse as parseYaml } from 'yaml';
-import { MetricsStore } from '../core/metrics.js';
+import { MetricsStore, PHASE_AGENT_MAP } from '../core/metrics.js';
+import { runtimeLog } from '../core/runtime-log.js';
 import { addReviewEntry } from '../core/view/entry.js';
 import { handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
@@ -933,6 +934,12 @@ export function registerFlowCommand(program: Command): void {
 
       // 逐步推进（B5-2 / A3）：唯一路径 → 依次调用 advanceStagePhase（保留每步校验/日志/checkpoint）
       // 中间态不回滚（A3）；失败 → 输出「已完成 / 失败点 / 剩余路径」+ exit 1
+      // T1：recordRun 接线（命令层；--dry-run 已于上方提前 return——天然排除）
+      const metricsStore = MetricsStore.getInstance();
+      metricsStore.load();  // 读盘合并（防 save 覆盖历史记录）；幂等
+      const logLenBefore = mgr.getData()?.log.length ?? 0;  // 基线回扫上界（排除本次写入；REV-86-002）
+      let metricsRecorded = false;
+      let prevStepDoneMs = 0;  // 多步时上一步完成时刻（i>0 的窗口基线）
       const totalSteps = phasePath.length;
       let archivedAny = false;
       for (let i = 0; i < totalSteps; i++) {
@@ -953,6 +960,20 @@ export function registerFlowCommand(program: Command): void {
         }
         archivedAny = archivedAny || archived;
         mgr.save();
+        // T1：对刚退出的 fromPhase 记一条 run（窗口 = 进入该 phase 的转换 → 本次退出）
+        const exitedPhase = i > 0 ? phasePath[i - 1] : startPhase;
+        const agentName = PHASE_AGENT_MAP[exitedPhase];
+        if (agentName) {
+          const baseMs = i > 0 ? prevStepDoneMs : findPhaseEnteredAtMs(mgr, stageArg, exitedPhase, logLenBefore);
+          if (baseMs !== null && baseMs > 0) {
+            metricsStore.recordRun(agentName, Date.now() - baseMs, 'success', 0);
+            metricsRecorded = true;
+          } else {
+            // 无基线 → 跳过不记（不写 0 值污染 avg）；debug 留痕（默认关，不扰输出）
+            runtimeLog('debug', 'metrics skip (no baseline): stage=' + stageArg + ' phase=' + exitedPhase);
+          }
+        }
+        prevStepDoneMs = Date.now();
         // 归档 commit 必须在 flow.json save 之后执行，确保 commit 包含本次 phase 变更
         if (archived) {
           mgr.autoCommitOnDone(stageArg);
@@ -981,6 +1002,9 @@ export function registerFlowCommand(program: Command): void {
           }
         }
       }
+
+      // T1：仅本命令内有记录时落盘一次（低并发非关键路径；推进失败提前 exit 则不 save）
+      if (metricsRecorded) { metricsStore.save(); }
 
       // 成功确认（单步与多步统一）；--quiet 完全静默
       if (!options.quiet) {
@@ -2286,6 +2310,33 @@ function hasExplicitProjectDefault(projectPath: string, key: string): boolean {
     // 错误路径：YAML 解析失败 → 视为未显式设置（不阻断向导）
     return false;
   }
+}
+
+/**
+ * 求「进入 fromPhase 的那次转换」的时间戳（T1 duration 基线；REV-86-002 口径）。
+ * 回扫范围 [0, logLenBefore)——本次命令写入之前的存量条目（天然排除本次新写入）；
+ * 按 detail.to === fromPhase 匹配 advance/reset 转换条目；plan_pending 无转换条目时兜底 register_stage；
+ * 无基线返回 null（调用方跳过不记——不写 0 值）。
+ */
+function findPhaseEnteredAtMs(mgr: FlowManager, stageArg: string, fromPhase: string, logLenBefore: number): number | null {
+  const log = mgr.getData()?.log ?? [];
+  const upper = Math.min(logLenBefore, log.length);
+  for (let k = upper - 1; k >= 0; k--) {
+    const e = log[k];
+    if (e.action !== 'advance_stage_phase' && e.action !== 'reset_stage_phase') { continue; }
+    if (e.detail.stageName !== stageArg || e.detail.to !== fromPhase) { continue; }
+    const ms = Date.parse(e.time);
+    return Number.isNaN(ms) ? null : ms;
+  }
+  if (fromPhase === 'plan_pending') {
+    for (let k = upper - 1; k >= 0; k--) {
+      const e = log[k];
+      if (e.action !== 'register_stage' || e.detail.stageName !== stageArg) { continue; }
+      const ms = Date.parse(e.time);
+      return Number.isNaN(ms) ? null : ms;
+    }
+  }
+  return null;
 }
 
 /** 创建 FlowManager 实例（使用当前工作目录） */

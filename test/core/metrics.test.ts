@@ -3,7 +3,7 @@
  * 测试 MetricsStore 单例的性能指标记录、摘要生成与持久化读写
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MetricsStore, type AgentMetrics } from '../../src/core/metrics.js';
+import { MetricsStore, PHASE_AGENT_MAP, type AgentMetrics } from '../../src/core/metrics.js';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -168,5 +168,64 @@ describe('MetricsStore', () => {
     // 默认 zh-CN 输出保持现行为
     const zh = store.summary();
     expect(zh).toContain('成功率: 50.0%');
+  });
+
+  it('stage-86 op-001：summary() 含口径注记（zh）；en 无 CJK', () => {
+    const store = MetricsStore.getInstance(tmpDir);
+    store.recordRun('openfeel-executor', 100, 'success');
+
+    expect(store.summary()).toContain('口径');
+    const en = store.summary('en');
+    expect(en).not.toMatch(/[一-鿿]/);
+    expect(en).toContain('phase windows');
+  });
+
+  it('stage-86 op-001：无数据分支不加口径注记（仅 noData）', () => {
+    const store = MetricsStore.getInstance(tmpDir);
+    const text = store.summary();
+    expect(text).toBe('暂无 Agent 性能数据。');
+    expect(text).not.toContain('口径');
+  });
+
+  it('stage-86 op-001：getSummaryData() 键集不变（agents + 既有字段 + successRate）', () => {
+    const store = MetricsStore.getInstance(tmpDir);
+    store.recordRun('openfeel-executor', 100, 'success');
+
+    const data = store.getSummaryData();
+    expect(Object.keys(data)).toEqual(['agents']);
+    expect(data.agents).toHaveLength(1);
+    expect(Object.keys(data.agents[0]).sort()).toEqual(
+      ['agentName', 'avgDurationMs', 'failedRuns', 'successRate', 'successfulRuns', 'totalDurationMs', 'totalRetries', 'totalRuns'],
+    );
+  });
+
+  it('stage-86 op-001：PHASE_AGENT_MAP 10 键全集 + 值域 6 agent', () => {
+    const expectedKeys = [
+      'plan_pending', 'plan_review',
+      'scheme_pending', 'scheme_review',
+      'exec_running',
+      'review_pending', 'review_failed',
+      'test_pending', 'test_failed',
+      'archiving',
+    ];
+    expect(Object.keys(PHASE_AGENT_MAP)).toHaveLength(10);
+    expect(Object.keys(PHASE_AGENT_MAP).sort()).toEqual([...expectedKeys].sort());
+    const allowed = new Set([
+      'openfeel-planner', 'openfeel-schemer', 'openfeel-executor',
+      'openfeel-reviewer', 'openfeel-feel-tester', 'openfeel-archiver',
+    ]);
+    for (const v of Object.values(PHASE_AGENT_MAP)) {
+      expect(allowed.has(v)).toBe(true);
+    }
+    // 逐键断言（防键名拼写漂移）
+    expect(PHASE_AGENT_MAP['plan_pending']).toBe('openfeel-planner');
+    expect(PHASE_AGENT_MAP['scheme_pending']).toBe('openfeel-schemer');
+    expect(PHASE_AGENT_MAP['exec_running']).toBe('openfeel-executor');
+    expect(PHASE_AGENT_MAP['review_failed']).toBe('openfeel-reviewer');
+    expect(PHASE_AGENT_MAP['test_failed']).toBe('openfeel-feel-tester');
+    expect(PHASE_AGENT_MAP['archiving']).toBe('openfeel-archiver');
+    // 非归属 phase 不入表
+    expect(PHASE_AGENT_MAP['scheme_passed']).toBeUndefined();
+    expect(PHASE_AGENT_MAP['done']).toBeUndefined();
   });
 });

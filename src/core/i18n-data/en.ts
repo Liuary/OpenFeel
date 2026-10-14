@@ -1008,6 +1008,7 @@ export const metrics: I18nDomain = {
   'summary.totalRetries': { key: 'metrics.summary.totalRetries', zh: '', en: '  Total retries: {n}' },
   'summary.totalDuration':{ key: 'metrics.summary.totalDuration',zh: '', en: '  Total duration: {n}ms' },
   'summary.avgDuration':  { key: 'metrics.summary.avgDuration',  zh: '', en: '  Avg duration: {n}ms' },
+  'summary.caliberNote':  { key: 'metrics.summary.caliberNote',  zh: '', en: 'Note: durations are phase windows (including cross-session idle/wait), not pure agent execution time.' },
 };
 
 /* ==================== repl domain: interactive mode (T40) ==================== */

@@ -889,6 +889,7 @@ export const help: I18nDomain = {
   'req.next':            { key: 'help.req.next',            zh: '', en: 'Recommend the next claimable requirement (scheduled & unclaimed; by target version ascending)' },
   'req.next.owner':      { key: 'help.req.next.owner',      zh: '', en: 'Owner perspective (include their claimed scheduled requirements)' },
   'req.next.json':       { key: 'help.req.next.json',       zh: '', en: 'Output JSON { schemaVersion, requirement }' },
+  'req.next.limit':      { key: 'help.req.next.limit',      zh: '', en: 'Max number of candidates (integer >= 1; default 1)' },
   'req.split':           { key: 'help.req.split',           zh: '', en: 'Split a requirement into child requirements (split = publish; children start as scheduled)' },
   'req.split.argid':     { key: 'help.req.split.argid',     zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.split.into':      { key: 'help.req.split.into',      zh: '', en: 'Child requirement title (repeatable; at least one)' },
@@ -1077,10 +1078,14 @@ export const req: I18nDomain = {
   // req board
   'board.groupTmpl':     { key: 'req.board.groupTmpl',        zh: '', en: '{status} ({n})' },
   'board.itemTmpl':      { key: 'req.board.itemTmpl',         zh: '', en: '  - {id} {title}' },
+  'board.ownedSuffixTmpl': { key: 'req.board.ownedSuffixTmpl', zh: '', en: ' (claimed by {owner})' },
   // req next
   'next.foundTmpl':      { key: 'req.next.foundTmpl',         zh: '', en: 'Next: {id} [{status}] {title}' },
   'next.ownedSuffixTmpl': { key: 'req.next.ownedSuffixTmpl',  zh: '', en: ' (claimed by {owner})' },
   'next.empty':          { key: 'req.next.empty',             zh: '', en: '(no claimable requirement)' },
+  'next.limitInvalidTmpl': { key: 'req.next.limitInvalidTmpl', zh: '', en: '{value} -> invalid --limit value (expected an integer >= 1)' },
+  'next.multiLabel':     { key: 'req.next.multiLabel',        zh: '', en: 'Claimable requirements ({n}):' },
+  'next.itemTmpl':       { key: 'req.next.itemTmpl',          zh: '', en: '  - {id} [{status}] {title}' },
   // req split
   'split.doneTmpl':      { key: 'req.split.doneTmpl',         zh: '', en: 'Split {id} -> {children} ({n} child requirements)' },
   'split.childTmpl':     { key: 'req.split.childTmpl',        zh: '', en: '  - {id}: {title} (body: {path})' },

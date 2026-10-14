@@ -615,18 +615,21 @@ export function registerReqCommand(program: Command): void {
       for (const s of REQ_STATUSES) {
         console.log(t('req.board.groupTmpl', lang, { status: s, n: String(groups[s].length) }));
         for (const r of groups[s]) {
-          console.log(t('req.board.itemTmpl', lang, { id: r.id, title: r.title }));
+          let line = t('req.board.itemTmpl', lang, { id: r.id, title: r.title });
+          if (r.owner) { line += t('req.board.ownedSuffixTmpl', lang, { owner: r.owner }); }
+          console.log(line);
         }
       }
     });
 
-  // ── req next [--owner <name>] [--json] ──
+  // ── req next [--owner <name>] [--limit <n>] [--json] ──
   req
     .command('next')
     .description('推荐下一个可接取需求（scheduled 且未认领；按预估版本升序）')
     .option('--owner <owner>', '认领人视角（含该认领人已认领的 scheduled 需求）')
+    .option('--limit <n>', '返回候选条数上限（≥1 的整数；缺省 1）')
     .option('--json', '以 JSON 输出 { schemaVersion, requirement }')
-    .action((options: { owner?: string; json?: boolean }, command: Command) => {
+    .action((options: { owner?: string; limit?: string; json?: boolean }, command: Command) => {
       const lang = getCliLang(process.cwd());
       const asJson = asJsonOf(options, command);
       const mgr = createManager();
@@ -635,6 +638,18 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       const data = mgr.getData()!;
+      // --limit 解析（REV-87-004② 定稿：判定基准 = **解析后数值**，非「是否传参」——显式 1 与缺省同形态）
+      const parsed = options.limit === undefined ? 1 : (/^\d+$/.test(options.limit) ? Number(options.limit) : NaN);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        if (asJson) {
+          failJson({ error: 'invalid-argument', field: 'limit', value: options.limit ?? '' });
+        } else {
+          console.error(t('req.next.limitInvalidTmpl', lang, { value: options.limit ?? '' }));
+          process.exitCode = 1;
+        }
+        return;
+      }
+      const limit = parsed;
       // 只读保证：不 save / 不 appendLog / 零写盘
       const rows = listRequirements(data, { status: 'scheduled' });
       // 候选：无 --owner = scheduled 且未认领；有 --owner = scheduled 且（未认领 ∨ owner === 该认领人）
@@ -654,19 +669,28 @@ export function registerReqCommand(program: Command): void {
         if (a.id !== b.id) { return a.id < b.id ? -1 : 1; }
         return 0;
       });
-      const top = candidates[0] ?? null;
+      const picked = candidates.slice(0, limit);       // 切片只作用于**已排序**结果——候选池与排序冻结语义零变
+      const top = picked[0] ?? null;
       if (asJson) {
-        console.log(JSON.stringify({ schemaVersion: 1, requirement: top }, null, 2));
+        // 只增不改：limit === 1 恒既有两键（显式 1 与缺省一致）；limit > 1 追加 candidates（既有两键逐字）
+        console.log(JSON.stringify(limit === 1
+          ? { schemaVersion: 1, requirement: top }
+          : { schemaVersion: 1, requirement: top, candidates: picked }, null, 2));
         return;
       }
-      if (!top) {
-        console.log(t('req.next.empty', lang));
+      if (!top) { console.log(t('req.next.empty', lang)); return; }
+      if (limit === 1) {
+        // 既有单行路径逐字（含 owner 后缀）
+        let line = t('req.next.foundTmpl', lang, { id: top.id, status: top.status, title: top.title });
+        if (top.owner) { line += t('req.next.ownedSuffixTmpl', lang, { owner: top.owner }); }
+        console.log(line);
         return;
       }
-      let line = t('req.next.foundTmpl', lang, { id: top.id, status: top.status, title: top.title });
-      if (top.owner) {
-        line += t('req.next.ownedSuffixTmpl', lang, { owner: top.owner });
+      console.log(t('req.next.multiLabel', lang, { n: String(picked.length) }));
+      for (const r of picked) {
+        let line = t('req.next.itemTmpl', lang, { id: r.id, status: r.status, title: r.title });
+        if (r.owner) { line += t('req.next.ownedSuffixTmpl', lang, { owner: r.owner }); }
+        console.log(line);
       }
-      console.log(line);
     });
 }

@@ -948,7 +948,7 @@ describe('req 命令组（stage-82）', () => {
     expect(err()).toContain('flow.json 未初始化');
   });
 
-  it('T-C3 help 键双向逐键断言（41 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
+  it('T-C3 help 键双向逐键断言（42 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
     const EXPECTED = [
       'help.req',
       'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority',
@@ -960,10 +960,10 @@ describe('req 命令组（stage-82）', () => {
       'help.req.link', 'help.req.link.stage', 'help.req.link.requirement', 'help.req.link.unlink',
       'help.req.advance', 'help.req.advance.argid', 'help.req.advance.to',
       'help.req.board', 'help.req.board.targetVersion', 'help.req.board.json',
-      'help.req.next', 'help.req.next.owner', 'help.req.next.json',
+      'help.req.next', 'help.req.next.owner', 'help.req.next.json', 'help.req.next.limit',
       'help.req.split', 'help.req.split.argid', 'help.req.split.into', 'help.req.split.json',
     ];
-    expect(EXPECTED).toHaveLength(41);
+    expect(EXPECTED).toHaveLength(42);
 
     // ① 正向：zh / en 双侧 hasKey
     for (const k of EXPECTED) {
@@ -1313,5 +1313,272 @@ describe('stage-87 op-001 拆分与父子展示', () => {
     resetCapture();
     await safeParse(['req', 'show', 'REQ-001']);
     expect(out()).toBe(showGolden);
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-87 op-002：接取视图（next --limit / board owner 后缀）与并行接取
+// ═══════════════════════════════════════
+describe('stage-87 op-002 接取视图与并行接取', () => {
+  let tmpDir: string;
+  let program: Command;
+  let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
+  let cwdMock: ReturnType<typeof vi.fn>;
+  let prevExitCode: number | string | undefined;
+
+  beforeEach(async () => {
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-next-home-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-next-test-'));
+    mockedChild.execSync.mockReset();
+    mockedChild.execFileSync.mockReset();
+    await initProject(tmpDir);
+
+    logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    prevExitCode = process.exitCode;
+    process.exitCode = 0;
+
+    program = new Command();
+    program.exitOverride();
+    registerReqCommand(program);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
+    logMock.mockRestore();
+    errorMock.mockRestore();
+    cwdMock.mockRestore();
+    process.exitCode = prevExitCode;
+
+    const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
+    expect(realRaw).toBe(REAL_FLOW_RAW);
+    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+  });
+
+  async function safeParse(args: string[]): Promise<void> {
+    try {
+      await program.parseAsync(args, { from: 'user' });
+    } catch (err) {
+      if (!(err instanceof CommanderError)) { throw err; }
+    }
+  }
+
+  function out(): string { return logMock.mock.calls.map((c) => c[0] as string).join('\n'); }
+  function err(): string { return errorMock.mock.calls.map((c) => c[0] as string).join('\n'); }
+  function resetCapture(): void { logMock.mockClear(); errorMock.mockClear(); process.exitCode = 0; }
+  function readFlow(): any { return JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')); }
+  function flowRaw(): string { return readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'); }
+  function writeFlow(mutate: (d: any) => void): void {
+    const d = readFlow();
+    mutate(d);
+    writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
+  }
+  function req_(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id,
+      title: `需求 ${id}`,
+      status: 'draft',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      ...overrides,
+    };
+  }
+
+  // ═══ T-E1 端到端并行接取 ═══
+
+  it('T-E1 端到端并行接取：split 父（2 子）→ 两 owner 各 claim → revision +2 → next 双视角', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    resetCapture();
+    await safeParse(['req', 'split', 'REQ-001', '--into', 'A', '--into', 'B']);
+    expect(process.exitCode).toBe(0);
+    const revAfterSplit = readFlow().meta.revision;
+
+    resetCapture();
+    await safeParse(['req', 'claim', 'REQ-002', '--owner', 'Alice']);
+    expect(process.exitCode).toBe(0);
+    resetCapture();
+    await safeParse(['req', 'claim', 'REQ-003', '--owner', 'Bob']);
+    expect(process.exitCode).toBe(0);
+
+    const d = readFlow();
+    expect(d.meta.revision).toBe(revAfterSplit + 2);              // 两写命令各 +1
+    expect(d.requirements.find((r: any) => r.id === 'REQ-002').owner).toBe('Alice');
+    expect(d.requirements.find((r: any) => r.id === 'REQ-003').owner).toBe('Bob');
+    expect(d.log.filter((e: any) => e.action === 'requirement_claim')).toHaveLength(2);
+
+    // --owner Alice 视角 → REQ-002 在候选
+    resetCapture();
+    await safeParse(['req', 'next', '--owner', 'Alice']);
+    expect(process.exitCode).toBe(0);
+    expect(out()).toContain('REQ-002');
+
+    // 无 --owner → 两子均已认领 → 空态
+    resetCapture();
+    await safeParse(['req', 'next']);
+    expect(out()).toBe('（无可接取需求）');
+  });
+
+  // ═══ T-E2 board owner 后缀 ═══
+
+  it('T-E2 board owner 后缀：有 owner 追加后缀、无 owner 逐字；--json groups 键集与值逐字', async () => {
+    writeFlow((d) => {
+      d.requirements = [
+        req_('REQ-001', { owner: 'Alice', claimed_at: '2026-02-01T00:00:00.000Z' }),
+        req_('REQ-002'),
+      ];
+    });
+    resetCapture();
+    await safeParse(['req', 'board']);
+    expect(process.exitCode).toBe(0);
+    const lines = out().split('\n');
+    expect(lines).toContain('  - REQ-001 需求 REQ-001（已认领：Alice）');
+    expect(lines).toContain('  - REQ-002 需求 REQ-002');           // 无 owner：逐字（无后缀）
+    expect(lines.filter((l) => l.startsWith('  - REQ-002 '))).toHaveLength(1);
+
+    resetCapture();
+    await safeParse(['req', 'board', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(obj)).toEqual(['schemaVersion', 'groups']);   // 无 key 变化
+    expect(Object.keys(obj.groups)).toEqual([...REQ_STATUSES]);
+    expect(obj.groups.draft).toHaveLength(2);
+    expect(obj.groups.draft[0].owner).toBe('Alice');                 // 元素本已含 owner
+    expect('owner' in obj.groups.draft[1]).toBe(false);
+  });
+
+  // ═══ T-E3 --limit 矩阵 ═══
+
+  it('T-E3 req next --limit 矩阵：缺省 / 显式 1 / 2 / 5 / 非法 / 空候选 + 只读零写盘', async () => {
+    writeFlow((d) => {
+      d.requirements = [
+        req_('REQ-001', { status: 'scheduled', target_version: 'v1.3.0', created_at: '2026-01-01T00:00:00.000Z' }),
+        req_('REQ-002', { status: 'scheduled', target_version: 'v1.3.0', created_at: '2026-01-02T00:00:00.000Z' }),
+        req_('REQ-003', { status: 'scheduled', target_version: 'v1.4.0', created_at: '2026-01-03T00:00:00.000Z' }),
+      ];
+    });
+    const revBefore = readFlow().meta.revision;
+    const logLenBefore = readFlow().log.length;
+
+    // ① 缺省（未传）→ human 单行 golden
+    resetCapture();
+    await safeParse(['req', 'next']);
+    expect(process.exitCode).toBe(0);
+    const defaultOut = out();
+    expect(defaultOut).toBe('下一项：REQ-001 [scheduled] 需求 REQ-001');
+
+    // ② 缺省 --json → 两键逐字（不含 candidates）
+    resetCapture();
+    await safeParse(['req', 'next', '--json']);
+    const j0 = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(j0)).toEqual(['schemaVersion', 'requirement']);
+    expect(j0.requirement.id).toBe('REQ-001');
+
+    // ③ 显式 --limit 1（REV-87-004②）→ 与缺省逐字相同；键集相同（正控）
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '1']);
+    expect(out()).toBe(defaultOut);
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '1', '--json']);
+    const j1 = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(j1)).toEqual(Object.keys(j0));
+
+    // ④ --limit 2（候选 ≥3）→ label + 2 行；--json 既有两键 + candidates（长度 2，顺序 = 冻结排序前 2）
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '2']);
+    expect(out()).toBe([
+      '可接取需求（2）:',
+      '  - REQ-001 [scheduled] 需求 REQ-001',
+      '  - REQ-002 [scheduled] 需求 REQ-002',
+    ].join('\n'));
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '2', '--json']);
+    const j2 = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(j2)).toEqual(['schemaVersion', 'requirement', 'candidates']);
+    expect(j2.candidates.map((c: any) => c.id)).toEqual(['REQ-001', 'REQ-002']);
+
+    // ⑤ --limit 5（候选恰 3）→ 3 行 / candidates 长度 3（不补空行）
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '5']);
+    expect(out().split('\n')).toHaveLength(4);                     // label + 3 行
+    expect(out()).toContain('可接取需求（3）:');
+    expect(out()).not.toContain('可接取需求（5）:');
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '5', '--json']);
+    expect(JSON.parse(logMock.mock.calls[0][0] as string).candidates).toHaveLength(3);
+
+    // ⑥ 非法值（0 / -1 / abc / 1.5）→ exit 1 + 零写盘；--json → invalid-argument + stderr 零输出
+    for (const bad of ['0', '-1', 'abc', '1.5']) {
+      resetCapture();
+      const raw = flowRaw();
+      await safeParse(['req', 'next', '--limit', bad]);
+      expect(process.exitCode, `human ${bad}`).toBe(1);
+      expect(err()).toContain('非法 --limit 值');
+      expect(flowRaw()).toBe(raw);
+
+      resetCapture();
+      await safeParse(['req', 'next', '--limit', bad, '--json']);
+      expect(process.exitCode, `json ${bad}`).toBe(1);
+      expect(logMock.mock.calls.length).toBe(1);
+      const jb = JSON.parse(logMock.mock.calls[0][0] as string);
+      expect(jb.schemaVersion).toBe(1);
+      expect(jb.error).toBe('invalid-argument');
+      expect(err()).toBe('');
+      expect(flowRaw()).toBe(raw);
+    }
+
+    // ⑦ --limit > 1 且候选 0（REV-87-006 组合）→ 空态优先于多行 label
+    writeFlow((d) => { d.requirements = [req_('REQ-001', { status: 'draft' })]; });
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '2']);
+    expect(process.exitCode).toBe(0);
+    expect(out()).toBe('（无可接取需求）');
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '2', '--json']);
+    const jEmpty = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(jEmpty.requirement).toBeNull();
+    expect(jEmpty.candidates).toEqual([]);
+
+    // ⑧ 认证只读：上述全部路径 revision / log 长度逐字不变（零 save / 零审计）
+    expect(readFlow().meta.revision).toBe(revBefore);
+    expect(readFlow().log.length).toBe(logLenBefore);
+  });
+
+  // ═══ T-E4 零回归 golden（含正控）═══
+
+  it('T-E4 零回归 golden：board（无 owner 数据）逐字 + next（缺省）逐字 + 正控 + 二次执行一致', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001', { status: 'scheduled' })]; });
+
+    resetCapture();
+    await safeParse(['req', 'board']);
+    const boardGolden = [
+      'draft（0）',
+      'scheduled（1）',
+      '  - REQ-001 需求 REQ-001',
+      'in_progress（0）',
+      'done（0）',
+      'blocked（0）',
+      'cancelled（0）',
+      'rejected（0）',
+    ].join('\n');
+    expect(out()).toBe(boardGolden);
+
+    resetCapture();
+    await safeParse(['req', 'next']);
+    const nextGolden = '下一项：REQ-001 [scheduled] 需求 REQ-001';
+    expect(out()).toBe(nextGolden);
+
+    // 正控：非空 + 唯一哨兵 + 二次执行逐字相同
+    expect(boardGolden.length).toBeGreaterThan(0);
+    expect(nextGolden.length).toBeGreaterThan(0);
+    expect(boardGolden).toContain('draft（0）');
+    expect(nextGolden).toContain('下一项：');
+    resetCapture();
+    await safeParse(['req', 'board']);
+    expect(out()).toBe(boardGolden);
+    resetCapture();
+    await safeParse(['req', 'next']);
+    expect(out()).toBe(nextGolden);
   });
 });

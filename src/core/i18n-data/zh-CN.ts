@@ -932,6 +932,7 @@ export const help: I18nDomain = {
   'req.next':            { key: 'help.req.next',            zh: '推荐下一个可接取需求（scheduled 且未认领；按预估版本升序）', en: '' },
   'req.next.owner':      { key: 'help.req.next.owner',      zh: '认领人视角（含该认领人已认领的 scheduled 需求）', en: '' },
   'req.next.json':       { key: 'help.req.next.json',       zh: '以 JSON 输出 { schemaVersion, requirement }', en: '' },
+  'req.next.limit':      { key: 'help.req.next.limit',      zh: '返回候选条数上限（≥1 的整数；缺省 1）', en: '' },
   'req.split':           { key: 'help.req.split',           zh: '拆分需求为若干子需求（拆分即发布：子需求入 scheduled）', en: '' },
   'req.split.argid':     { key: 'help.req.split.argid',     zh: '需求 ID（如 REQ-001）', en: '' },
   'req.split.into':      { key: 'help.req.split.into',      zh: '子需求标题（可重复；至少一项）', en: '' },
@@ -1121,10 +1122,14 @@ export const req: I18nDomain = {
   // req board
   'board.groupTmpl':     { key: 'req.board.groupTmpl',        zh: '{status}（{n}）', en: '' },
   'board.itemTmpl':      { key: 'req.board.itemTmpl',         zh: '  - {id} {title}', en: '' },
+  'board.ownedSuffixTmpl': { key: 'req.board.ownedSuffixTmpl', zh: '（已认领：{owner}）', en: '' },
   // req next
   'next.foundTmpl':      { key: 'req.next.foundTmpl',         zh: '下一项：{id} [{status}] {title}', en: '' },
   'next.ownedSuffixTmpl': { key: 'req.next.ownedSuffixTmpl',  zh: '（已认领：{owner}）', en: '' },
   'next.empty':          { key: 'req.next.empty',             zh: '（无可接取需求）', en: '' },
+  'next.limitInvalidTmpl': { key: 'req.next.limitInvalidTmpl', zh: '{value} → 非法 --limit 值（应为 ≥1 的整数）', en: '' },
+  'next.multiLabel':     { key: 'req.next.multiLabel',        zh: '可接取需求（{n}）:', en: '' },
+  'next.itemTmpl':       { key: 'req.next.itemTmpl',          zh: '  - {id} [{status}] {title}', en: '' },
   // req split
   'split.doneTmpl':      { key: 'req.split.doneTmpl',         zh: '已拆分 {id} → {children}（共 {n} 条子需求）', en: '' },
   'split.childTmpl':     { key: 'req.split.childTmpl',        zh: '  - {id}：{title}（正文：{path}）', en: '' },

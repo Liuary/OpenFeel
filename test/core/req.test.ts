@@ -1147,3 +1147,35 @@ describe('需求拆分原语 — stage-87 op-001', () => {
     expect(allLinkedStagesDone(data, 'REQ-002')).toBe(false);
   });
 });
+
+// ═══════════════════════════════════════
+// 并行接取 — stage-87 op-002（W11）
+// ═══════════════════════════════════════
+describe('并行接取 — stage-87 op-002', () => {
+  it('W11 两子需求两 owner 并行接取互不阻塞 + 第三方占用拒绝 + 审计恰 2 条', () => {
+    // 口径注记：本用例为**语义层顺序模拟**。真并发（同毫秒跨进程）的 exit 2
+    //（跨进程锁 + revision 乐观锁）为 v1.2.0 既有并发语义、**非本阶段回归**——见终局报告。
+    const data = makeFlowData();
+    addRequirement(data, { title: '父' });
+    const sp = splitRequirement(data, 'REQ-001', [{ title: 'A' }, { title: 'B' }]);
+    expect(sp.ok).toBe(true);
+
+    // 并行接取：两子需求两 owner 各自成功（占用校验按需求粒度，互不阻塞）
+    expect(claimRequirement(data, 'REQ-002', 'Alice')).toEqual({ ok: true, changed: true });
+    expect(claimRequirement(data, 'REQ-003', 'Bob')).toEqual({ ok: true, changed: true });
+    const c2 = getRequirement(data, 'REQ-002')!;
+    const c3 = getRequirement(data, 'REQ-003')!;
+    expect(c2.owner).toBe('Alice');
+    expect(c3.owner).toBe('Bob');
+    expect(typeof c2.claimed_at).toBe('string');
+    expect(typeof c3.claimed_at).toBe('string');
+
+    // 第三方再认领 REQ-002 → 拒绝；REQ-003 不受影响（占用校验 per-需求零回归）
+    expect(claimRequirement(data, 'REQ-002', 'Carol')).toEqual({ ok: false, code: 'already_claimed' });
+    expect(getRequirement(data, 'REQ-002')!.owner).toBe('Alice');
+    expect(getRequirement(data, 'REQ-003')!.owner).toBe('Bob');
+
+    // 审计恰 2 条 requirement_claim
+    expect(data.log.filter((e) => e.action === 'requirement_claim')).toHaveLength(2);
+  });
+});

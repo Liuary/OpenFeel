@@ -6,7 +6,7 @@
 
 `npm run build` 的构建脚本，负责：
 
-1. 从模板源读取 agent / skill / instructions / AGENTS.md 模板，内联为 TS 字符串常量写入 `src/core/template-loader.ts` 与 `src/core/update.ts` 的 `AUTO-GENERATED-BEGIN/END` 块。**skill 权威源 = 中立共享源 `src/core/templates-data/skills/`**（stage-68 由 `opencode/skills` 迁入，两 harness 共用）；agent / ADAPTER 源自 `src/core/templates-data/opencode/`；**Claude Code 内容源 = `src/core/templates-data/claude/`**（agents 9×2 + constraint×2，stage-69 新建）；AGENTS.md 模板源自 `src/core/templates-data/agents-md/`。
+1. 从模板源读取 agent / skill / instructions / AGENTS.md 模板，内联为 TS 字符串常量写入 `src/core/template-loader.ts` 与 `src/core/update.ts` 的 `AUTO-GENERATED-BEGIN/END` 块。**skill 权威源 = 中立共享源 `src/core/templates-data/skills/`**（stage-68 由 `opencode/skills` 迁入，两 harness 共用）；agent / ADAPTER 源自 `src/core/templates-data/opencode/`；**Claude Code 内容源 = `src/core/templates-data/claude/`**（agents **10×2** + constraint×2，stage-69 新建 / v1.2.1-stage-89 增 explorer）；AGENTS.md 模板源自 `src/core/templates-data/agents-md/`。
 2. 校验模板有效性（`validateTemplates()` / `validateOpencodeTemplates()` / **`validateClaudeTemplates()`** / `validateSingleSourceConsistency()`）。
 3. 调用 `npx tsc` 编译 TypeScript。
 4. **（stage-55 已移除）** 原步骤 8 `.opencode/` 自举重生——仓库自身不再保留项目级部署实例（防复活：`build.js` 步骤 8 已删除）。

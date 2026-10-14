@@ -3994,7 +3994,11 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 
 **实证**：v1.2.0-stage-85（op-001 §1.7）——文档面陈旧计数 17→18 全量翻转：必改 **20**（标准 18 + 表格式 2〔`manual/core/setup.md:33`/`:37`〕）+ 保留 **13** + 非扫描 **4** = 全集 **37**，宽模式重扫零未判类；REV-85-010（blocking）/013（blocking）/014/015/016 均由此纪律暴露与闭合。
 
-**参见：** v1.2.0-stage-85（op-001；REV-85-010/013/014/015/016）；`.openfeel/manual/core/setup.md`；kb/patterns.md #skills 计数翻转全量清单、#部署型资产变更的多载体同步面清单
+> **更新于 2026-10-15**：**agent 侧同构陷阱（9→10）** —— 与 skill 侧同构，**派生总数不含字面量**：agent 翻转点 = 字面量 **12**（`claude-adapter`/`templates`/`template-loader`/`setup`/`update` 各测试）+ **派生总数 5**（`28→29` / `57→59` / `29→30`×3——**均不含 `9`，`rg "\b9\b"` 匹配不到**）+ **显式面 5**（逐名 `toContain` / 前缀计数 `8→9` / `update` 逐名 / `model-config` / `model.test`）+ 声明面（标题 / 正文计数 / 总览表行 / `ADAPTER` 清单）+ 代码注释 1；另**附属 27 处**（用例名 / 注释文案）随同批同步。**双 harness 面**：claude 与 opencode agents 同批（claude 侧另有 `tools` 白名单与 `forbiddenTokens` 判负）。**扫描残留判类**须**逐处**写明（本案残差落在：cli-usage 快照件及其生成物 / 手写区注释行 / **fast 表 9 条目**〔非 agent 计数，恒 9 **禁误改**〕/ `v9.9.9` 类版本串）。
+> **变体面三处同口径（R1 实证）**：存量文本存在**大小写变体**时（en 表行小写 `explorer onboarding comes in a later stage`），**扫描、断言、复核三处须同用大小写不敏感口径**（`rg -i` / 断言正则 `i` 标志 / 显式并列小写变体）——大写敏感口径下该 2 处**逃过扫描**（测试绿、实际残留 = 「零残留」**静默假绿**）。同时**该窄则窄、该宽则宽须显式分野**：占位面取**大小写不敏感**（宽），**路由面取路由行 scoped + 大小写敏感**（窄，防误伤存量第 1 / 3 列 `exploration` / `explore independently`）。
+> **已声明「快照」的文档属保留 / 非扫描层**：`skills/openfeel-cli-usage/SKILL.md`（内部声明 v1.2.0 快照）的陈旧 agent / skill 计数**显式登记**为「随收官轮刷新」——**须在差集判类中写明**，以闭合「零未判类」口径（否则宽扫残差会被误判漏改）。实证 v1.2.1-stage-89（表 D 41 动作全枚举 + 双路扫描零未判类；REV-89-004 逐项列名 / REV-89-006 行号订正 / E-89-5 漏登补正 / E-89-6 快照件）。
+
+**参见：** v1.2.0-stage-85（op-001；REV-85-010/013/014/015/016）；v1.2.1-stage-89（plan 表 D；REV-89-004/006/009）；`.openfeel/manual/core/setup.md`；kb/patterns.md #skills 计数翻转全量清单、#部署型资产变更的多载体同步面清单、#延迟占位注记的收口模式
 
 ## [+] 双主题收官端到端验收范式：隔离临时项目脚本（归档实跑/需求全生命周期/正交性/向后兼容）+ 本仓复核二分 (2026-10-13)
 
@@ -4171,3 +4175,18 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.1-stage-88（`ops/op-001-verdict.md` §1~§7/§10；opencode 1.18.35；探针 A 方法学否定 / 探针 B 默认 no-go / 探针 C 深度提升 go；零污染 9 文件 sha256 前后一致）。
 
 **参见：** v1.2.1-stage-88（op-001-verdict.md §6.2/§6.3/§9/§10）；`src/core/templates-data/opencode/agents/{zh-CN,en}/openfeel-*.md :: permission.task`；kb/patterns.md #隔离 HOME 实测 opencode 行为的方法、#平台能力实测先行的 go/no-go 决策范式；kb/architecture.md #通用工作者直接调度架构
+
+## [+] 延迟占位注记的收口模式：占位 → 实体落地 → 阴性断言翻转为正控（翻转须严格强于旧断言） (2026-10-15)
+
+**场景**：某能力（本案 = 只读探索者）**分两阶段落地**——前一阶段（stage-88）先冻结分类学与接口语义，并在 24 份模板中留下**占位注记**（「探索者接入见后续阶段」），同时用**阴性断言**临时锁住「悬空引用」：`expect(block).not.toContain('openfeel-explorer')`。后一阶段（stage-89）实体落地时，该阴性断言**必须显式翻转**，不能静默删除。
+
+**收口三件套**：
+1. **占位全量改写（零补行）**：占位文本 → 实体表述（`探索者接入见后续阶段` → ``（`openfeel-explorer`，只读）``）。**改写而非补行**——先实测占位行是否已在位（本案 en 侧为**小写变体** `explorer onboarding comes in a later stage`，大写敏感扫描曾误判「缺失 → 需补行」，照字面执行会插出**重复表行**）。
+2. **阴性 → 正控翻转 + 增量面**：`not.toContain('openfeel-explorer')` → `toContain('openfeel-explorer')`，并**追加**旧面所无的全局约束——全 `templates-data/**`（64 个 `.md`）**零占位残留**断言（**大小写不敏感**，与改写面同口径）。
+3. **差额对照留痕**：翻转**必须**在计划 / 报告 / 提交信息中给「旧断言 → 新断言」逐字对照，且新断言**严格强于**旧断言（本案：C12 旧 = 单条精确串 `toContain('（subagent 不调用 Task）')`〔1 条/语言〕→ 新 = 正控 `toContain('openfeel-explorer')` **∧** 阴性 `not.toContain('不调用 Task')`〔2 条/语言〕；正控不可被删行满足，阴性为旧面所无的「残留检测」）。
+
+**判据**：凡「延期项 / 占位 / 临时锁」类断言，其收口须**显式翻转 + 增面 + 留差额对照**三件齐备；**禁**静默删除或放宽（放宽即审计面弱化，属高优先级风险 R-89-4）。占位扫描与断言**两侧必须同口径**（变体面见 kb `#陈旧计数「全枚举」纪律` 的变体面补强）。
+
+**实证**：v1.2.1-stage-89（占位 28 处改写〔24 节注记 + 4 feel 表末行，`numstat` 各 1/1 零补行〕；`rg -in "探索者接入|explorer onboarding" src/core/templates-data/` = **0 命中**；C11 / C12 两处显式翻转，`templates.test.ts` stage-88 describe 内**允许且仅允许**该两处改动）。
+
+**参见：** v1.2.1-stage-89（plan §三 T3.2 / T4.1 / §五 验收 4 / R-89-4；op-002 §2.6~§2.7；REV-89-001（占位 26→28 订正）/ REV-89-003③）；`test/core/templates.test.ts`（stage-89 describe）；kb/patterns.md #陈旧计数「全枚举」纪律、#跨阶段承接 REV 与处置表；kb/architecture.md #只读通用工作者架构

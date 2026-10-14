@@ -5,15 +5,16 @@
 
 ## 职责
 
-说明 OpenFeel 9 个 agent 在 **opencode 适配器**中的 `permission` 白名单构成、配置合并/优先级语义、项目级收紧入口，以及 `openfeel setup/update` 对用户自定义的保留边界。
+说明 OpenFeel 10 个 agent 在 **opencode 适配器**中的 `permission` 白名单构成、配置合并/优先级语义、项目级收紧入口，以及 `openfeel setup/update` 对用户自定义的保留边界。
 
-## 9 个 agent 的 permission 键集（v1.1.2-stage-44 补键后）
+## 10 个 agent 的 permission 键集（v1.1.2-stage-44 补键后；v1.2.1-stage-89 增 `openfeel-explorer`）
 
 | agent | 键集（zh-CN 与 en 完全一致） |
 |-------|------------------------------|
 | `feel` | bash, read, glob, grep, task, todowrite, skill, webfetch, **external_directory** |
 | `openfeel-archiver` | bash, read, glob, grep, **external_directory** |
 | `openfeel-executor` | bash, read, glob, grep, task, **external_directory** |
+| `openfeel-explorer` | bash, read, glob, grep, **external_directory**（**只读**：无 `task` / `edit`；恰 **5 键**，精确相等断言锁定） |
 | `openfeel-feel-tester` | bash, read, glob, grep, task, skill, `webfetch: "deny"`, **external_directory** |
 | `openfeel-planner` | bash, read, glob, grep, **external_directory** |
 | `openfeel-reviewer` | bash, read, glob, grep, **external_directory** |
@@ -80,3 +81,4 @@ permission:
 | 阶段 | 变更 |
 |------|------|
 | v1.1.2-stage-44 | 初始创建；9×2 agent 模板补 `external_directory: "allow"`（单值形式，实测裁定）；`openfeel-utility` 的 `write` → `edit`（实测 `write` 非授权键）；文档化覆盖/合并语义与项目级收紧入口（`.opencode/agent/<name>.md`）；依据 `op-001-findings.md` 更正需求原文关于「顶层 `permission: allow` 不生效」的过度概括 |
+| v1.2.1-stage-89 | 新增只读探索者 `openfeel-explorer`（**恰 5 键**：bash/read/glob/grep/external_directory，**无 `task` / `edit`**）→ agent 数 **9→10**（3 处：标题 / 职责 / 键集表）；配套精确相等断言（`toEqual` 排序后）与 claude 侧 `tools` 恰 4 项（Bash/Read/Glob/Grep） |

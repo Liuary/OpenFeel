@@ -12,7 +12,7 @@
 |------|------|
 | `setAgentModel(scope, agentId, model, opts?)` | 写指定 scope 的 agent model，返回 `SetModelResult`（changedFiles / needsBuild / warning） |
 | `getAgentModel(agentId, scope?, opts?)` | 读 agent model，返回 `GetModelResult`（effective / byScope / inconsistent） |
-| `listAgentModels(scope?, opts?)` | 列出全部 9 个 agent 的模型 |
+| `listAgentModels(scope?, opts?)` | 列出全部 10 个 agent 的模型（派生自 `listAgentIds` → 新增 agent 自动纳入；v1.2.1-stage-89 增 `openfeel-explorer`） |
 | `validateModel(model)` | 校验模型名格式 + provider（对照 auth.json），返回 `ModelValidation` |
 | `readAuthProviders()` | 读取 auth.json 顶层 provider key 集合，缺文件/解析失败返回 null |
 | `isFrameworkSourceReady(opts?)` | 判断框架源码是否就位（default scope 预判，复用 core 层路径推导） |
@@ -23,7 +23,7 @@
 
 | scope | 落点 | 写盘方式 |
 |-------|------|----------|
-| `default` | 有显式 model 的 4 agent（executor/utility/reviewer/vision）→ `templates-data/opencode/agents/{zh-CN,en}/*.md` frontmatter（双语）；vision/reviewer 额外改 `opencode-config.ts`；无显式 model 的 5 agent 报错提示改用 global/project | managed-region frontmatter 读写 + opencode-config 结构化定位 |
+| `default` | 有显式 model 的 5 agent（executor/explorer/utility/reviewer/vision，v1.2.1-stage-89 增 explorer）→ `templates-data/opencode/agents/{zh-CN,en}/*.md` frontmatter（双语）；vision/reviewer 额外改 `opencode-config.ts`；无显式 model 的 5 agent 报错提示改用 global/project | managed-region frontmatter 读写 + opencode-config 结构化定位 |
 | `global` | `~/.config/opencode/opencode.jsonc` `agent.<name>.model` | parseJsonc + 文件锁 + 原子写 |
 | `project` | 项目根 `opencode.jsonc` `agent.<name>.model` | parseJsonc + 原子写（不加锁） |
 

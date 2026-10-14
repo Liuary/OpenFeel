@@ -942,3 +942,26 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.1-stage-88（`ops/op-001-verdict.md` §1/§8/§9；REV-88-009 裁定；op-002 落 12 份 permission + 24 份「调度与 Handoff」节 + 负向措辞规整 10 行；3 commits `10b8d37`/`e1ba62e`/`7abc767`；门禁 71 文件 / 1620 用例 0 skipped / 0 failed、`lint i18n` 931、`tsc` 0）。
 
 **参见：** v1.2.1-stage-88（plan §二 统一语义 / §三 T1·T2；op-001-verdict.md §6.3/§8.1/§9；REV-88-008/009）；`src/core/templates-data/opencode/agents/{zh-CN,en}/openfeel-*.md`（`permission.task`）+ `.../claude/agents/**`（「调度与 Handoff」节）；kb/patterns.md #跨 Agent Handoff 委派原语模式、#平台能力实测先行的 go/no-go 决策范式、#opencode 嵌套 task 行为级实测方法；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实（Q1 supersede）；manual/agents/feel.md
+
+## [+] 只读通用工作者架构：工具集下限（恰 4 项）× 无写能力 × 路由替代内置 agent + 能力决策「能力可用 ≠ 必须启用」 (2026-10-15)
+
+**背景**：stage-88 冻结的分类学「**通用工作者 = 执行者 / 探索者**」在 stage-89 把**第二个成员**（只读探索者 `openfeel-explorer`）落为实体 agent，替代对内置 `Explore` / `general` 的依赖（模型可控、有框架纪律、可审计）。原则 = **先探后执行**：需先理解现状 → 派探索者（只读、可并行、便宜）；产出结论 → 再派执行者落地（读写、需谨慎、串行性强）。
+
+**只读硬性（三处一致 + 精确相等断言）**：
+- **opencode 侧 `permission` 恰 5 键**：`bash / read / glob / grep / external_directory`（**无 `task` / `edit`**）——无写、无派发能力。
+- **Claude 侧 `tools` 恰 4 项**：`Bash, Read, Glob, Grep`（**无 `Task` / `Skill` / `TodoWrite` / `Edit` / `Write`**）。
+- **断言口径**：键集 / 工具集**排序后精确相等**（`toEqual`）而非 `toContain`——`toContain` 拦不住「顺手多授一个键」；正文「能力边界」节与 frontmatter 同口径（三处一致）。
+
+**路由替代的设计判据**：内置 `Explore` / `general` **非框架资产**（无模板、无权限、无断言保护）→ 替换**不产生断链**，且换来模型可控 / 框架纪律 / 可审计；路由表 4 份（`agents-md` ×2 + `claude/constraint` ×2）第 2 列统一改指 `openfeel-explorer`，**第 1 / 3 列逐字不变**（故路由阴性断言须**路由行 scoped**，不得整文件扫描——存量第 1 / 3 列含 `exploration` / `explore independently`）。
+
+**能力决策：`Task` 不启用（两 harness 均不加）——「能力可用 ≠ 必须启用」**：
+- **事实**：Claude Code 2.1.300 下白名单含 `Task` 的 subagent **可**派发下一级（stage-88 实测）；opencode 侧嵌套调度**默认 no-go**（`subagent_depth = 1` 拦截）。
+- **决策**：模板**能力位保持不含 `Task`**（探索者 `tools` 无 `Task`、`permission` 无 `task`）。理由 = ① opencode 默认拦截 → 当前实际通道统一为 **Handoff 直发**；② Claude 侧仅**单版本**实测、深度上限未测、`Task` → `Agent` 映射未文档化；③ **单边启用将造成两 harness 语义分叉**，与 stage-88 冻结的「统一语义 + 双口径」架构相悖。
+- **可逆面（单点已界定）**：启用 = 4 文件 `tools` 白名单 + 断言 + 文案**同批**；残留风险（单版本 / 深度上限 / 映射未文档化）须**未来启用前重新实测**。
+- **禁述**：不得写「无条件可嵌套派发」（能力声明不得超出实测边界）。
+
+**判据**：新增「只读型 / 受限型」工作者时，**权限下限用精确相等断言锁死**（而非「至少含」），并把「路由面替换」与「能力位是否放开」**分作两个独立决策**——平台「能」不等于框架「要」。
+
+**实证**：v1.2.1-stage-89（新增 4 份 explorer 模板〔双 harness × 双语言，opencode 六字段 + claude 六字段，键集两 harness 同名同数〕；路由 4 处 + 收口 28 处改写〔零补行〕+ feel 引用面 8 处 token 替换；agent 计数 9→10 全枚举；3 commits `4127760`/`53aa5d0`/`f33e6b1`；门禁 71 文件 / 1629 用例 0 skipped / 0 failed、`tsc` 0、`lint i18n` 931、`lint kb` 0、build ×2 幂等）。
+
+**参见：** v1.2.1-stage-89（plan §二 目标语义与不变量 / §三 T1~T4；op-001~003；`REV-89.md` 001~009）；`src/core/templates-data/{opencode,claude}/agents/{zh-CN,en}/openfeel-explorer.md`；kb/architecture.md #通用工作者直接调度架构（上位条：本条目是其分类学第二成员的实体化）；kb/patterns.md #平台能力实测先行的 go/no-go 决策范式、#延迟占位注记的收口模式、#跨 harness × 语言模板对称纪律；manual/agents/feel.md、manual/core/permission.md

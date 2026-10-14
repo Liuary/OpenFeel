@@ -13,9 +13,9 @@ import { t, getCliLang } from '../core/i18n.js';
 import { FlowManager, isFlowConcurrentError } from '../core/flow-manager.js';
 import { handleConcurrentConflict } from './shared/errors.js';
 import {
-  addRequirement, getRequirement, listRequirements,
+  addRequirement, getRequirement, getRequirements, listRequirements,
   claimRequirement, releaseRequirement, updateRequirement, advanceRequirement, linkRequirement,
-  getAllowedNextStatuses, type RequirementErrorCode,
+  getAllowedNextStatuses, splitRequirement, type RequirementErrorCode,
 } from '../core/req/requirement-ops.js';
 import { REQ_STATUSES, REQ_ID_PATTERN, type RequirementStatus, type RequirementPriority, type RequirementData } from '../core/req/types.js';
 import { writeRequirementBodySkeleton } from '../core/req/body-file.js';
@@ -54,6 +54,11 @@ function failNoInit(lang: string, asJson: boolean): void {
 /** 需求 ID 格式校验（取 core 常量单点，防 typo） */
 function isValidReqId(id: string): boolean {
   return REQ_ID_PATTERN.test(id);
+}
+
+/** --into 累积（repeatable option；**本仓首个 repeatable**——既有先例为 variadic `<ids...>`（`flow.ts:665` 选项描述自警「建议置于命令末尾」），其有吞后续参数风险故不采用） */
+function collectInto(value: string, previous: string[]): string[] {
+  return [...previous, value];
 }
 
 /** 引擎错误码 → i18n 文案映射（命令层仅映射，零校验）；未登记码走通用模板兜底 */
@@ -218,8 +223,13 @@ export function registerReqCommand(program: Command): void {
       const stages = Object.entries(data.stages ?? {})
         .filter(([, s]) => (s.requirement_id ?? null) === id)
         .map(([k]) => k);
+      // 子需求 = 存储顺序枚举（不额外排序——避免第二排序源；对齐 stages 无排序先例）
+      const childRows = getRequirements(data).filter((r) => r.parent_id === id);
+      const children = childRows.map((c) => c.id);
+      // 父需求 ID **原样回显**（悬空不报错、不做存在性判定——悬空对账职责单点在 requirementHealthItems，REV-87-004①）
+      const parent = r.parent_id ?? null;
       if (asJson) {
-        console.log(JSON.stringify({ schemaVersion: 1, requirement: r, stages }, null, 2));
+        console.log(JSON.stringify({ schemaVersion: 1, requirement: r, stages, parent, children }, null, 2));
         return;
       }
       console.log(t('req.show.titleTmpl', lang, { id: r.id, title: r.title }));
@@ -233,6 +243,17 @@ export function registerReqCommand(program: Command): void {
         : t('req.show.ownerNone', lang));
       console.log(t('req.show.timesTmpl', lang, { created: r.created_at, updated: r.updated_at }));
       console.log(t('req.show.bodyTmpl', lang, { path: r.body_path ?? t('common.none', lang) }));
+      console.log(parent !== null
+        ? t('req.show.parentTmpl', lang, { parent })
+        : t('req.show.parentNone', lang));
+      if (childRows.length === 0) {
+        console.log(t('req.show.childrenNone', lang));
+      } else {
+        console.log(t('req.show.childrenLabel', lang));
+        for (const c of childRows) {
+          console.log(t('req.show.childItemTmpl', lang, { id: c.id, status: c.status, title: c.title }));
+        }
+      }
       if (stages.length === 0) {
         console.log(t('req.show.stagesNone', lang));
       } else {
@@ -487,6 +508,82 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       console.log(t('req.advance.doneTmpl', lang, { id, from: before ?? '', to: options.to }));
+    });
+
+  // ── req split <id> --into <title> [--into <title>...] [--json] ──
+  req
+    .command('split <id>')
+    .description('拆分需求为若干子需求（拆分即发布：子需求入 scheduled）')
+    .option('--into <title>', '子需求标题（可重复；至少一项）', collectInto, [] as string[])
+    .option('--json', '以 JSON 输出 { schemaVersion, parent, children }')
+    .action((id: string, options: { into?: string[]; json?: boolean }, command: Command) => {
+      const lang = getCliLang(process.cwd());
+      const asJson = asJsonOf(options, command);
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, asJson);
+        return;
+      }
+      const data = mgr.getData()!;
+      if (!isValidReqId(id)) {
+        if (asJson) {
+          failJson({ error: 'invalid-argument', field: 'id', value: id });
+        } else {
+          console.error(t('req.invalidIdTmpl', lang, { input: id }));
+          process.exitCode = 1;
+        }
+        return;
+      }
+      // argument-shape 守卫（非业务校验——对齐 req link 互斥守卫先例）
+      const into = options.into ?? [];
+      if (into.length === 0) {
+        if (asJson) {
+          failJson({ error: 'invalid-argument', field: 'into' });
+        } else {
+          console.error(t('req.split.noIntoTmpl', lang));
+          process.exitCode = 1;
+        }
+        return;
+      }
+      // 命令层零业务校验：父门 / 终态门 / 子项校验 / ID 分配 / 审计全在引擎单点
+      const r = splitRequirement(data, id, into.map((title) => ({ title })));
+      if (!r.ok) {
+        if (asJson) {
+          failJson({ error: r.code, id });
+          return;
+        }
+        failCode(lang, r.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id }),
+          invalid_status: t('req.split.terminalTmpl', lang, { id, status: getRequirement(data, id)?.status ?? '' }),
+          invalid_field: t('req.split.invalidFieldTmpl', lang),
+        });
+        return;
+      }
+      // 正文骨架逐条铺（严格直传引擎返回本体，禁浅副本）；任一失败 → 不 save（flow.json 零变更——对齐 req add 先例）
+      const bodies: string[] = [];
+      try {
+        for (const child of r.children) {
+          bodies.push(writeRequirementBodySkeleton(process.cwd(), child));
+        }
+      } catch (err) {
+        failGeneric(lang, err);
+        return;
+      }
+      if (!saveOrFail(mgr, lang)) {
+        return;
+      }
+      if (asJson) {
+        console.log(JSON.stringify({ schemaVersion: 1, parent: id, children: r.children }, null, 2));
+        return;
+      }
+      console.log(t('req.split.doneTmpl', lang, {
+        id, n: String(r.children.length), children: r.children.map((c) => c.id).join(', '),
+      }));
+      for (let i = 0; i < r.children.length; i += 1) {
+        console.log(t('req.split.childTmpl', lang, {
+          id: r.children[i].id, title: r.children[i].title, path: bodies[i],
+        }));
+      }
     });
 
   // ── req board [--target-version <v>] [--json] ──

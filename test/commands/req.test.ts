@@ -405,6 +405,7 @@ describe('req 命令组（stage-82）', () => {
       'help.req', 'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority',
       'help.req.list', 'help.req.list.status', 'help.req.list.targetVersion', 'help.req.list.owner', 'help.req.list.json',
       'help.req.show', 'help.req.show.argid', 'help.req.show.json',
+      'help.req.split', 'help.req.split.argid', 'help.req.split.into', 'help.req.split.json',
     ];
     for (const k of op001HelpKeys) {
       expect(hasKey(k, 'zh-CN')).toBe(true);
@@ -947,7 +948,7 @@ describe('req 命令组（stage-82）', () => {
     expect(err()).toContain('flow.json 未初始化');
   });
 
-  it('T-C3 help 键双向逐键断言（37 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
+  it('T-C3 help 键双向逐键断言（41 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
     const EXPECTED = [
       'help.req',
       'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority',
@@ -960,8 +961,9 @@ describe('req 命令组（stage-82）', () => {
       'help.req.advance', 'help.req.advance.argid', 'help.req.advance.to',
       'help.req.board', 'help.req.board.targetVersion', 'help.req.board.json',
       'help.req.next', 'help.req.next.owner', 'help.req.next.json',
+      'help.req.split', 'help.req.split.argid', 'help.req.split.into', 'help.req.split.json',
     ];
-    expect(EXPECTED).toHaveLength(37);
+    expect(EXPECTED).toHaveLength(41);
 
     // ① 正向：zh / en 双侧 hasKey
     for (const k of EXPECTED) {
@@ -1036,5 +1038,280 @@ describe('req 命令组（stage-82）', () => {
     for (const n of POSITIVE) {
       expect(src).toContain(n);
     }
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-87 op-001：req split / req show 父子展示 / 零回归 golden
+// ═══════════════════════════════════════
+describe('stage-87 op-001 拆分与父子展示', () => {
+  let tmpDir: string;
+  let program: Command;
+  let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
+  let cwdMock: ReturnType<typeof vi.fn>;
+  let exitMock: ReturnType<typeof vi.fn>;
+  let prevExitCode: number | string | undefined;
+
+  beforeEach(async () => {
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-split-home-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-split-test-'));
+    mockedChild.execSync.mockReset();
+    mockedChild.execFileSync.mockReset();
+    await initProject(tmpDir);
+
+    logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    prevExitCode = process.exitCode;
+    process.exitCode = 0;
+
+    program = new Command();
+    program.exitOverride();
+    registerReqCommand(program);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
+    logMock.mockRestore();
+    errorMock.mockRestore();
+    cwdMock.mockRestore();
+    exitMock.mockRestore();
+    process.exitCode = prevExitCode;
+
+    const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
+    expect(realRaw).toBe(REAL_FLOW_RAW);
+    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+  });
+
+  async function safeParse(args: string[]): Promise<void> {
+    try {
+      await program.parseAsync(args, { from: 'user' });
+    } catch (err) {
+      if (!(err instanceof CommanderError)) { throw err; }
+    }
+  }
+
+  function out(): string { return logMock.mock.calls.map((c) => c[0] as string).join('\n'); }
+  function err(): string { return errorMock.mock.calls.map((c) => c[0] as string).join('\n'); }
+  function resetCapture(): void { logMock.mockClear(); errorMock.mockClear(); process.exitCode = 0; }
+  function readFlow(): any { return JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')); }
+  function flowRaw(): string { return readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'); }
+  function writeFlow(mutate: (d: any) => void): void {
+    const d = readFlow();
+    mutate(d);
+    writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
+  }
+  function req_(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id,
+      title: `需求 ${id}`,
+      status: 'draft',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      ...overrides,
+    };
+  }
+
+  // ═══ T-D1 split 成功（human）═══
+
+  it('T-D1 split 成功：落库 3 条 + parent_id + scheduled + 两正文骨架 + 审计 + revision +1 + 父零副作用', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    const revBefore = readFlow().meta.revision;
+    const parentBefore = { ...readFlow().requirements[0] };
+
+    resetCapture();
+    await safeParse(['req', 'split', 'REQ-001', '--into', 'A', '--into', 'B']);
+
+    expect(process.exitCode).toBe(0);
+    const d = readFlow();
+    expect(d.meta.revision).toBe(revBefore + 1);
+    expect(d.requirements).toHaveLength(3);
+    expect(d.requirements[1].id).toBe('REQ-002');
+    expect(d.requirements[2].id).toBe('REQ-003');
+    for (const c of [d.requirements[1], d.requirements[2]]) {
+      expect(c.parent_id).toBe('REQ-001');
+      expect(c.status).toBe('scheduled');
+      expect(c.body_path).toBe(`.openfeel/requirements/${c.id}.md`);
+    }
+    // 父零副作用（逐字不变）
+    expect(d.requirements[0]).toEqual(parentBefore);
+    // 审计
+    const splitLogs = d.log.filter((e: any) => e.action === 'requirement_split');
+    expect(splitLogs).toHaveLength(1);
+    expect(splitLogs[0].detail.children).toEqual(['REQ-002', 'REQ-003']);
+    // 两正文骨架文件
+    const body1 = join(tmpDir, '.openfeel', 'requirements', 'REQ-002.md');
+    const body2 = join(tmpDir, '.openfeel', 'requirements', 'REQ-003.md');
+    expect(existsSync(body1)).toBe(true);
+    expect(existsSync(body2)).toBe(true);
+    expect(readFileSync(body1, 'utf-8')).toContain('## 父需求\n\nREQ-001');
+    // 输出
+    expect(out()).toContain('REQ-002');
+    expect(out()).toContain('REQ-003');
+  });
+
+  // ═══ T-D2 split --json 成功（单文档 / stderr 零输出）═══
+
+  it('T-D2 split --json 成功：单文档 { schemaVersion, parent, children } + 元素含 body_path + stderr 零输出', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    resetCapture();
+    await safeParse(['req', 'split', 'REQ-001', '--into', 'A', '--into', 'B', '--json']);
+
+    expect(process.exitCode).toBe(0);
+    expect(logMock.mock.calls.length).toBe(1);                    // stdout 纯单文档
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(obj.schemaVersion).toBe(1);
+    expect(obj.parent).toBe('REQ-001');
+    expect(obj.children).toHaveLength(2);
+    expect(obj.children[0].id).toBe('REQ-002');
+    expect(obj.children[0].body_path).toBe('.openfeel/requirements/REQ-002.md');
+    expect(err()).toBe('');
+  });
+
+  // ═══ T-D3 失败分流零写盘（四径 × human / --json）═══
+
+  it('T-D3 失败四径：human exit 1 + 文案 + 零写盘；--json 纯 JSON error 码 + stderr 零输出', async () => {
+    const cases: Array<{ args: string[]; setup?: () => void; code: string; humanMsg: string }> = [
+      { args: ['req', 'split', 'REQ-001'], code: 'invalid-argument', humanMsg: '未提供 --into' },
+      { args: ['req', 'split', 'REQ-999', '--into', 'A'], code: 'not_found', humanMsg: '需求 REQ-999 不存在' },
+      {
+        args: ['req', 'split', 'REQ-001', '--into', 'A'],
+        setup: () => { writeFlow((dd) => { dd.requirements = [req_('REQ-001', { status: 'done' })]; }); },
+        code: 'invalid_status',
+        humanMsg: '已是终态',
+      },
+      { args: ['req', 'split', 'REQ-001', '--into', '   '], code: 'invalid_field', humanMsg: '子需求取值非法' },
+    ];
+
+    for (const c of cases) {
+      // human 径
+      writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+      c.setup?.();
+      resetCapture();
+      const raw = flowRaw();
+      await safeParse(c.args);
+      expect(process.exitCode, c.code).toBe(1);
+      expect(err()).toContain(c.humanMsg);
+      expect(flowRaw()).toBe(raw);                                 // 零写盘
+      expect(logMock.mock.calls.length).toBe(0);
+
+      // --json 径
+      resetCapture();
+      const raw2 = flowRaw();
+      await safeParse([...c.args, '--json']);
+      expect(process.exitCode, c.code).toBe(1);
+      expect(logMock.mock.calls.length).toBe(1);
+      const obj = JSON.parse(logMock.mock.calls[0][0] as string);
+      expect(obj.schemaVersion).toBe(1);
+      expect(obj.error).toBe(c.code);
+      expect(err()).toBe('');                                      // stderr 零输出
+      expect(flowRaw()).toBe(raw2);
+    }
+  });
+
+  // ═══ T-D4 并发冲突 exit 2（契约边界：走统一 stderr 出口）═══
+
+  it('T-D4 split 并发冲突：exit 2 + 并发文案 + flow.json 逐字不变', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    const raw = flowRaw();
+    const saveSpy = vi.spyOn(FlowManager.prototype, 'save').mockImplementationOnce(() => {
+      throw new FlowConcurrentModificationError(1, 2);
+    });
+    resetCapture();
+    await safeParse(['req', 'split', 'REQ-001', '--into', 'A']);
+    expect(exitMock).toHaveBeenCalledWith(2);
+    expect(err()).toContain('并发冲突');
+    expect(flowRaw()).toBe(raw);
+    saveSpy.mockRestore();
+  });
+
+  // ═══ T-D5 show 父子展示（human + --json 只增不改）═══
+
+  it('T-D5 show 父子：父视图 / 子视图 human 插入式 + --json 新键追加在既有三键之后', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    resetCapture();
+    await safeParse(['req', 'split', 'REQ-001', '--into', 'A', '--into', 'B']);
+    expect(process.exitCode).toBe(0);
+
+    // 父视图
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-001']);
+    expect(process.exitCode).toBe(0);
+    expect(out()).toContain('父需求: （无）');
+    expect(out()).toContain('子需求:');
+    expect(out()).toContain('  - REQ-002 [scheduled] A');
+    expect(out()).toContain('  - REQ-003 [scheduled] B');
+
+    // 子视图
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-002']);
+    expect(out()).toContain('父需求: REQ-001');
+    expect(out()).toContain('子需求: （无）');
+    expect(out()).not.toContain('  - REQ-002 [scheduled] A');
+
+    // --json 只增不改
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-001', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(obj)).toEqual(['schemaVersion', 'requirement', 'stages', 'parent', 'children']);
+    expect(obj.schemaVersion).toBe(1);
+    expect(obj.requirement.id).toBe('REQ-001');
+    expect(Array.isArray(obj.stages)).toBe(true);
+    expect(obj.parent).toBeNull();
+    expect(obj.children).toEqual(['REQ-002', 'REQ-003']);
+    expect(err()).toBe('');
+  });
+
+  // ═══ T-D6 悬空 parent_id（REV-87-004①）═══
+
+  it('T-D6 悬空 parent_id：原样回显、不报错、exit 0', async () => {
+    writeFlow((d) => { d.requirements = [req_('REQ-001', { parent_id: 'REQ-999' })]; });
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-001']);
+    expect(process.exitCode).toBe(0);
+    expect(out()).toContain('REQ-999');
+    expect(err()).toBe('');
+  });
+
+  // ═══ T-D7 零回归取证（golden 内联 + 正控）═══
+
+  it('T-D7 零回归 golden：add 逐字 + show（无父无子）逐字 + 正控 + 二次执行一致', async () => {
+    // ① req add（未受影响写命令）
+    resetCapture();
+    await safeParse(['req', 'add', '金标准']);
+    expect(process.exitCode).toBe(0);
+    const addGolden = [
+      '已创建 REQ-001：金标准（状态 draft）',
+      `正文骨架：${join(tmpDir, '.openfeel', 'requirements', 'REQ-001.md')}`,
+    ].join('\n');
+    expect(out()).toBe(addGolden);
+
+    // ② req show（无父无子）—— 含新增两行（有意增量 golden）
+    writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-001']);
+    const showGolden = [
+      'REQ-001：需求 REQ-001',
+      '状态: draft ｜ 预估版本: (无) ｜ 优先级: (无)',
+      '认领人: （无）',
+      '创建: 2026-01-01T00:00:00.000Z ｜ 更新: 2026-01-01T00:00:00.000Z',
+      '正文: (无)',
+      '父需求: （无）',
+      '子需求: （无）',
+      '关联阶段: （无）',
+    ].join('\n');
+    expect(out()).toBe(showGolden);
+
+    // ③ 正控：golden 非空 + 唯一哨兵 + 二次执行逐字相同
+    expect(addGolden.length).toBeGreaterThan(0);
+    expect(showGolden.length).toBeGreaterThan(0);
+    expect(addGolden).toContain('已创建 REQ-001');
+    expect(showGolden).toContain('创建: ');
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-001']);
+    expect(out()).toBe(showGolden);
   });
 });

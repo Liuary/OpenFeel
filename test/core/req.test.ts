@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import {
   getRequirements, getRequirement, listRequirements, nextRequirementId,
   addRequirement, claimRequirement, releaseRequirement, updateRequirement,
-  advanceRequirement, linkRequirement,
+  advanceRequirement, linkRequirement, splitRequirement,
   isTerminalRequirementStatus, allLinkedStagesDone,
   getAllowedNextStatuses,
 } from '../../src/core/req/requirement-ops.js';
@@ -540,11 +540,11 @@ describe('需求正文原语 — T5.5 骨架', () => {
     expect(content).toContain('机读权威恒为');
     expect(content).toContain('## 状态');
     expect(content).toContain('draft（创建时快照；以 flow.json 为准）');
-    for (const section of ['## 摘要', '## 目标与验收', '## 预估版本', '## 关联阶段', '## 变更记录']) {
+    for (const section of ['## 摘要', '## 目标与验收', '## 预估版本', '## 父需求', '## 关联阶段', '## 变更记录']) {
       expect(content).toContain(section);
     }
-    // 六 H2 章节
-    expect(content.match(/^## /gm)!.length).toBe(6);
+    // 七 H2 章节
+    expect(content.match(/^## /gm)!.length).toBe(7);
 
     expect(req.body_path).toBe('.openfeel/requirements/REQ-001.md');   // POSIX 断言
   });
@@ -554,6 +554,7 @@ describe('需求正文原语 — T5.5 骨架', () => {
     const req = addRequirement(data, { title: 'x' });
     const p = writeRequirementBodySkeleton(tmpDir, req);
     expect(readFileSync(p, 'utf-8')).toContain('（未指定）');
+    expect(readFileSync(p, 'utf-8')).toContain('## 父需求\n\n（无）');   // 精确串（防任意「（无）」误命中）
   });
 
   it('已存在 → no-op 不覆盖（内容逐字不变）；仍保证 body_path 赋值', () => {
@@ -998,5 +999,151 @@ describe('需求对账项 — requirementHealthItems（stage-83 op-003）', () =
     expect(links).toHaveLength(1);
     expect(links[0].status).toBe('pass');
     expect(items.every((i) => i.status !== 'fail')).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════
+// 需求拆分原语 — stage-87 op-001（W1~W10）
+// ═══════════════════════════════════════
+describe('需求拆分原语 — stage-87 op-001', () => {
+  it('W1 成功：顺序 ID / parent_id / scheduled / 同批时间 / 返回本体 / 恰 1 条审计 / 父零副作用', () => {
+    const data = makeFlowData();
+    const parent = addRequirement(data, { title: '父' });
+    const parentUpdatedBefore = parent.updated_at;
+    const parentStatusBefore = parent.status;
+    const logLenBefore = data.log.length;
+
+    const r = splitRequirement(data, 'REQ-001', [{ title: 'A' }, { title: 'B' }]);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) { return; }
+    expect(r.children).toHaveLength(2);
+    expect(r.children.map((c) => c.id)).toEqual(['REQ-002', 'REQ-003']);
+    for (const c of r.children) {
+      expect(c.parent_id).toBe('REQ-001');
+      expect(c.status).toBe('scheduled');
+      expect(c.created_at).toBe(c.updated_at);
+    }
+    // 返回本体（非浅副本）
+    expect(r.children[0]).toBe(data.requirements![1]);
+    expect(r.children[1]).toBe(data.requirements![2]);
+    // 审计恰 1 条
+    expect(data.log.length).toBe(logLenBefore + 1);
+    expect(lastLog(data).action).toBe('requirement_split');
+    expect(lastLog(data).detail).toEqual({ parentId: 'REQ-001', children: ['REQ-002', 'REQ-003'] });
+    // 父零副作用
+    const parentAfter = data.requirements![0];
+    expect(parentAfter.status).toBe(parentStatusBefore);
+    expect(parentAfter.updated_at).toBe(parentUpdatedBefore);
+    expect('parent_id' in parentAfter).toBe(false);
+    expect(data.requirements).toHaveLength(3);
+  });
+
+  it('W2 顺序 ID + 不回收：现存 REQ-001、REQ-005 → 子 = REQ-006、REQ-007', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'draft'), makeReq('REQ-005', 'draft')];
+    const r = splitRequirement(data, 'REQ-001', [{ title: 'A' }, { title: 'B' }]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) { return; }
+    expect(r.children.map((c) => c.id)).toEqual(['REQ-006', 'REQ-007']);
+  });
+
+  it('W3 父不存在 → not_found + 零变更零审计', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'draft')];
+    const logLen = data.log.length;
+    const r = splitRequirement(data, 'REQ-999', [{ title: 'A' }]);
+    expect(r).toEqual({ ok: false, code: 'not_found' });
+    expect(data.requirements).toHaveLength(1);
+    expect(data.log.length).toBe(logLen);
+  });
+
+  it('W4 父终态（done / cancelled / rejected 表驱动）→ invalid_status + 零变更零审计', () => {
+    for (const status of ['done', 'cancelled', 'rejected'] as const) {
+      const data = makeFlowData();
+      data.requirements = [makeReq('REQ-001', status)];
+      const logLen = data.log.length;
+      const r = splitRequirement(data, 'REQ-001', [{ title: 'A' }]);
+      expect(r).toEqual({ ok: false, code: 'invalid_status' });
+      expect(data.requirements).toHaveLength(1);
+      expect(data.log.length).toBe(logLen);
+    }
+  });
+
+  it('W5 children = [] → invalid_field + 零变更零审计（argument-shape）', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'draft')];
+    const logLen = data.log.length;
+    const r = splitRequirement(data, 'REQ-001', []);
+    expect(r).toEqual({ ok: false, code: 'invalid_field' });
+    expect(data.requirements).toHaveLength(1);
+    expect(data.log.length).toBe(logLen);
+  });
+
+  it('W6 事务性：第 1 项合法 + 第 2 项空白 → invalid_field + 零变更零审计（正控）', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'draft')];
+    const logLen = data.log.length;
+    const r = splitRequirement(data, 'REQ-001', [{ title: 'A' }, { title: '   ' }]);
+    expect(r).toEqual({ ok: false, code: 'invalid_field' });
+    expect(data.requirements).toHaveLength(1);           // 正控：长度逐字不变
+    expect(data.log.length).toBe(logLen);                // 正控：审计零新增
+  });
+
+  it('W7 requirements 非数组真值（{}）→ 不抛错 + 视同空集（父不存在 not_found）+ 零变更零审计', () => {
+    const data = makeFlowData();
+    (data as unknown as { requirements: unknown }).requirements = { 'REQ-001': makeReq('REQ-001', 'draft') };
+    const corrupted = data.requirements;
+    let r: ReturnType<typeof splitRequirement> | null = null;
+    expect(() => { r = splitRequirement(data, 'REQ-001', [{ title: 'A' }]); }).not.toThrow();
+    // 非数组 ≡ 空集（读侧宽容口径，BUG-001 / REV-81-019 延伸）→ 父恒不存在
+    expect(r!.ok).toBe(false);
+    expect((r! as { code: string }).code).toBe('not_found');
+    // 零变更：失败路径不改动（容器化仅成功路径发生）
+    expect(data.requirements).toBe(corrupted);
+    expect(data.log.length).toBe(0);
+  });
+
+  it('W8 读侧宽容：add 创建条目无 parent_id 键；split 子条目有 parent_id 键', () => {
+    const data = makeFlowData();
+    addRequirement(data, { title: '父' });
+    expect('parent_id' in data.requirements![0]).toBe(false);   // 不注入
+    const r = splitRequirement(data, 'REQ-001', [{ title: 'A' }]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) { return; }
+    expect('parent_id' in r.children[0]).toBe(true);
+  });
+
+  it('W9 骨架：split 子正文含「## 父需求\n\nREQ-001」且 ^## 计数 7；add 创建含「（无）」', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-req-split-body-'));
+    try {
+      const data = makeFlowData();
+      addRequirement(data, { title: '父' });
+      const r = splitRequirement(data, 'REQ-001', [{ title: 'A' }]);
+      expect(r.ok).toBe(true);
+      if (!r.ok) { return; }
+      const childPath = writeRequirementBodySkeleton(tmpDir, r.children[0]);
+      const childContent = readFileSync(childPath, 'utf-8');
+      expect(childContent).toContain('## 父需求\n\nREQ-001');
+      expect(childContent.match(/^## /gm)!.length).toBe(7);
+      expect(childContent).toContain('初始状态 scheduled');   // 状态参数化（非硬编码 draft）
+
+      const addPath = writeRequirementBodySkeleton(tmpDir, data.requirements![0]);
+      expect(readFileSync(addPath, 'utf-8')).toContain('## 父需求\n\n（无）');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('W10 聚合隔离（R-87-1 正控）：父子不聚合 + 不参与 done 门', () => {
+    const data = makeFlowData({});
+    addRequirement(data, { title: '父' });
+    splitRequirement(data, 'REQ-001', [{ title: 'A' }, { title: 'B' }]);
+    // 父无关联阶段 → 聚合 null（子需求 parent_id 不构成关联）
+    expect(computeRequirementAggregate(data, 'REQ-001').aggregate).toBeNull();
+    expect(allLinkedStagesDone(data, 'REQ-001')).toBe(false);
+    // 子需求亦零关联
+    expect(computeRequirementAggregate(data, 'REQ-002').aggregate).toBeNull();
+    expect(allLinkedStagesDone(data, 'REQ-002')).toBe(false);
   });
 });

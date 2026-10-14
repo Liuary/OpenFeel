@@ -36,7 +36,7 @@ function renderRequirementBodySkeleton(req: RequirementData): string {
   return [
     `# ${req.id}：${req.title}`,
     '',
-    '> 本文件为需求正文（人读副本，由 req add 机械铺骨架）。**机读权威恒为 `.openfeel/flow.json` 的 `requirements` 条目**；两者不一致时以 flow.json 为准。下方状态为创建时快照，不追写实时状态。',
+    '> 本文件为需求正文（人读副本，由 openfeel req 机械铺骨架）。**机读权威恒为 `.openfeel/flow.json` 的 `requirements` 条目**；两者不一致时以 flow.json 为准。下方状态为创建时快照，不追写实时状态。',
     '',
     '## 状态',
     '',
@@ -54,13 +54,17 @@ function renderRequirementBodySkeleton(req: RequirementData): string {
     '',
     targetVersion,
     '',
+    '## 父需求',
+    '',
+    req.parent_id ?? '（无）',
+    '',
     '## 关联阶段',
     '',
     '（以 flow.json 的 `stages[*].requirement_id` 为准；此处可人工补充说明）',
     '',
     '## 变更记录',
     '',
-    `- ${req.created_at} 创建（${req.id}，初始状态 draft）`,
+    `- ${req.created_at} 创建（${req.id}，初始状态 ${req.status}）`,
     '',
   ].join('\n');
 }

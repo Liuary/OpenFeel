@@ -24,6 +24,11 @@ export type RequirementErrorCode =
 /** 写路径原语结果（ok=false 时携错误码；命令层映射 exit 非 0 零写盘） */
 export type RequirementOpResult = { ok: true; changed: boolean } | { ok: false; code: RequirementErrorCode };
 
+/** 拆分原语结果（成功携子需求**本体**列表；失败携错误码——**业务分流范式**，REV-87-002 定稿） */
+export type RequirementSplitResult =
+  | { ok: true; children: RequirementData[] }
+  | { ok: false; code: RequirementErrorCode };
+
 /** 追加需求审计日志（纯内存；save 由调用方承担） */
 function appendRequirementLog(data: FlowData, action: string, detail: Record<string, unknown>): void {
   data.log.push({ time: new Date().toISOString(), agent: 'cli', action, detail });
@@ -111,6 +116,64 @@ export function addRequirement(
   data.requirements.push(req);
   appendRequirementLog(data, 'requirement_add', { id: req.id, title: req.title });
   return req;                                                      // 本体（调用方继续设 body_path）
+}
+
+/** 子需求初值状态：拆分即发布（Q11 定稿——子需求直接入 `req next` 候选池，达成「并行接取就绪」） */
+const SPLIT_CHILD_STATUS: RequirementStatus = 'scheduled';
+
+/**
+ * 拆分需求为若干子需求（T1 / Q4 定稿；纯内存 + 单条审计，落盘恒由调用方 save()）。
+ * 门（顺序固定；任一失败 → **零变更零审计**）：
+ *   ① children 非数组 / 空 → invalid_field（argument-shape）
+ *   ② 父不存在 → not_found
+ *   ③ 父终态 → invalid_status（与 claim / link 同款终态门）
+ *   ④ 逐子项标题校验（trim 后空串）→ invalid_field
+ *      —— **校验内容**对齐 add 构造期口径，**错误范式**为运行期错误码（REV-87-002 定稿：
+ *      split 不复用 add 的抛错路径，自持校验循环，与 update 同族——命令层 failCode 分流零适配）。
+ * 构造（校验全通过后单趟完成，循环内零可失败语句）：
+ *   - 顺序分配 ID：第 N 子 = 当前 max + N（经 staged 容器复用 nextRequirementId **单源派生**——不新写解析）；
+ *   - parent_id = 父 ID；status = SPLIT_CHILD_STATUS；created_at / updated_at 同批；
+ *   - **一次性并入** data.requirements（半成品不可达——全成或零变更）；
+ *   - 审计恰一条 requirement_split（detail {parentId, children: [ids]}——对齐 requirement_* 族命名）；
+ *   - 父需求**零副作用**（状态不变 / 不刷 updated_at / 不写父侧字段——父流转由 feel 显式执行）。
+ * 环检测：不写——子 ID 恒为新建 max+1、方向恒 `child → parent`，结构上无环。
+ * 返回子需求**本体**列表（供调用方逐条铺正文，对齐 addRequirement 返回本体先例；禁浅副本路径）。
+ */
+export function splitRequirement(
+  data: FlowData,
+  parentId: string,
+  children: Array<{ title: string }>,
+): RequirementSplitResult {
+  if (!Array.isArray(children) || children.length === 0) { return { ok: false, code: 'invalid_field' }; }
+  const parent = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === parentId);
+  if (!parent) { return { ok: false, code: 'not_found' }; }
+  if (isTerminalRequirementStatus(parent.status)) { return { ok: false, code: 'invalid_status' }; }
+  const titles: string[] = [];
+  for (const c of children) {
+    const title = typeof c?.title === 'string' ? c.title.trim() : '';
+    if (title === '') { return { ok: false, code: 'invalid_field' }; }
+    titles.push(title);
+  }
+  // staged 容器承载「当前 max」：复用 nextRequirementId 单源派生 → 顺序分配且不重解析
+  const list: RequirementData[] = Array.isArray(data.requirements) ? [...data.requirements] : [];
+  const staged: FlowData = { ...data, requirements: list };
+  const now = new Date().toISOString();
+  const created: RequirementData[] = [];
+  for (const title of titles) {
+    const child: RequirementData = {
+      id: nextRequirementId(staged),
+      title,
+      status: SPLIT_CHILD_STATUS,
+      parent_id: parentId,
+      created_at: now,
+      updated_at: now,
+    };
+    list.push(child);
+    created.push(child);
+  }
+  data.requirements = list;
+  appendRequirementLog(data, 'requirement_split', { parentId, children: created.map((c) => c.id) });
+  return { ok: true, children: created };
 }
 
 /** 认领需求（占用校验；同 owner 幂等；终态拒绝；他人占用零变更零审计） */

@@ -932,6 +932,10 @@ export const help: I18nDomain = {
   'req.next':            { key: 'help.req.next',            zh: '推荐下一个可接取需求（scheduled 且未认领；按预估版本升序）', en: '' },
   'req.next.owner':      { key: 'help.req.next.owner',      zh: '认领人视角（含该认领人已认领的 scheduled 需求）', en: '' },
   'req.next.json':       { key: 'help.req.next.json',       zh: '以 JSON 输出 { schemaVersion, requirement }', en: '' },
+  'req.split':           { key: 'help.req.split',           zh: '拆分需求为若干子需求（拆分即发布：子需求入 scheduled）', en: '' },
+  'req.split.argid':     { key: 'help.req.split.argid',     zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.split.into':      { key: 'help.req.split.into',      zh: '子需求标题（可重复；至少一项）', en: '' },
+  'req.split.json':      { key: 'help.req.split.json',      zh: '以 JSON 输出 { schemaVersion, parent, children }', en: '' },
 };
 
 /* ==================== config 域：配置管理命令 ==================== */
@@ -1121,6 +1125,18 @@ export const req: I18nDomain = {
   'next.foundTmpl':      { key: 'req.next.foundTmpl',         zh: '下一项：{id} [{status}] {title}', en: '' },
   'next.ownedSuffixTmpl': { key: 'req.next.ownedSuffixTmpl',  zh: '（已认领：{owner}）', en: '' },
   'next.empty':          { key: 'req.next.empty',             zh: '（无可接取需求）', en: '' },
+  // req split
+  'split.doneTmpl':      { key: 'req.split.doneTmpl',         zh: '已拆分 {id} → {children}（共 {n} 条子需求）', en: '' },
+  'split.childTmpl':     { key: 'req.split.childTmpl',        zh: '  - {id}：{title}（正文：{path}）', en: '' },
+  'split.noIntoTmpl':    { key: 'req.split.noIntoTmpl',       zh: '未提供 --into；请至少给出一个子需求标题（--into 可重复）', en: '' },
+  'split.terminalTmpl':  { key: 'req.split.terminalTmpl',     zh: '{id} 已是终态（{status}），不可拆分', en: '' },
+  'split.invalidFieldTmpl': { key: 'req.split.invalidFieldTmpl', zh: '子需求取值非法（标题不能为空）', en: '' },
+  // req show（父需求 / 子需求）
+  'show.parentTmpl':     { key: 'req.show.parentTmpl',        zh: '父需求: {parent}', en: '' },
+  'show.parentNone':     { key: 'req.show.parentNone',        zh: '父需求: （无）', en: '' },
+  'show.childrenLabel':  { key: 'req.show.childrenLabel',     zh: '子需求:', en: '' },
+  'show.childItemTmpl':  { key: 'req.show.childItemTmpl',     zh: '  - {id} [{status}] {title}', en: '' },
+  'show.childrenNone':   { key: 'req.show.childrenNone',      zh: '子需求: （无）', en: '' },
 };
 
 /* ==================== 聚合导出 ==================== */

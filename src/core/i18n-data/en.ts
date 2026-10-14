@@ -889,6 +889,10 @@ export const help: I18nDomain = {
   'req.next':            { key: 'help.req.next',            zh: '', en: 'Recommend the next claimable requirement (scheduled & unclaimed; by target version ascending)' },
   'req.next.owner':      { key: 'help.req.next.owner',      zh: '', en: 'Owner perspective (include their claimed scheduled requirements)' },
   'req.next.json':       { key: 'help.req.next.json',       zh: '', en: 'Output JSON { schemaVersion, requirement }' },
+  'req.split':           { key: 'help.req.split',           zh: '', en: 'Split a requirement into child requirements (split = publish; children start as scheduled)' },
+  'req.split.argid':     { key: 'help.req.split.argid',     zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.split.into':      { key: 'help.req.split.into',      zh: '', en: 'Child requirement title (repeatable; at least one)' },
+  'req.split.json':      { key: 'help.req.split.json',      zh: '', en: 'Output JSON { schemaVersion, parent, children }' },
 };
 
 /* ==================== config ==================== */
@@ -1077,6 +1081,18 @@ export const req: I18nDomain = {
   'next.foundTmpl':      { key: 'req.next.foundTmpl',         zh: '', en: 'Next: {id} [{status}] {title}' },
   'next.ownedSuffixTmpl': { key: 'req.next.ownedSuffixTmpl',  zh: '', en: ' (claimed by {owner})' },
   'next.empty':          { key: 'req.next.empty',             zh: '', en: '(no claimable requirement)' },
+  // req split
+  'split.doneTmpl':      { key: 'req.split.doneTmpl',         zh: '', en: 'Split {id} -> {children} ({n} child requirements)' },
+  'split.childTmpl':     { key: 'req.split.childTmpl',        zh: '', en: '  - {id}: {title} (body: {path})' },
+  'split.noIntoTmpl':    { key: 'req.split.noIntoTmpl',       zh: '', en: 'No --into provided; give at least one child title (--into, repeatable)' },
+  'split.terminalTmpl':  { key: 'req.split.terminalTmpl',     zh: '', en: '{id} is in a terminal status ({status}); cannot split' },
+  'split.invalidFieldTmpl': { key: 'req.split.invalidFieldTmpl', zh: '', en: 'Invalid child value (title must not be empty)' },
+  // req show (parent / children)
+  'show.parentTmpl':     { key: 'req.show.parentTmpl',        zh: '', en: 'Parent: {parent}' },
+  'show.parentNone':     { key: 'req.show.parentNone',        zh: '', en: 'Parent: (none)' },
+  'show.childrenLabel':  { key: 'req.show.childrenLabel',     zh: '', en: 'Children:' },
+  'show.childItemTmpl':  { key: 'req.show.childItemTmpl',     zh: '', en: '  - {id} [{status}] {title}' },
+  'show.childrenNone':   { key: 'req.show.childrenNone',      zh: '', en: 'Children: (none)' },
 };
 
 /* ==================== 聚合导出 ==================== */

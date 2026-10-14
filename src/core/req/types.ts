@@ -40,4 +40,6 @@ export interface RequirementData {
   updated_at: string;
   /** 正文相对路径（POSIX 分隔符，如 .openfeel/requirements/REQ-001.md） */
   body_path?: string;
+  /** 拆分来源父需求 ID（**仅溯源**：不参与聚合判定 / 不参与 done 门 / 无父子级联；可选——读侧宽容不 load 补齐） */
+  parent_id?: string;
 }

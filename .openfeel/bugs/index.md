@@ -7,10 +7,10 @@
 
 | 状态 | 数量 |
 |------|:--:|
-| open | 1 |
+| open | 3 |
 | fixed | 0 |
 | closed | 23 |
-| **合计** | **24** |
+| **合计** | **26** |
 
 > **v1.1.2-stage-43 收口（2026-09-29，commit `cbc606f`）**：`config/BUG-004`（medium，测试隔离缺口）经 openfeel-feel-tester **外部独立进程比对**验收**关闭**——`identity.test.ts`（11/11）与全量 `npm test`（41 文件 / 694 用例）前后真实 `~/.openfeel/config.json` 的 **mtime + SHA-256 均不变**；修复＝N4 单点 `vi.mock('node:os')` + 删除 `savedConfig` 伪隔离 + 新增只读隔离守护用例。**新登记 `cli/BUG-003`**（low，非阻塞）：`flow phases --json` 的 `--help` 文案只列 `{ phases, transitions }`，实际输出含 `advanceAccepted`（`cli/BUG-001` 修复的收尾遗漏）——**裁定归下一版本或由用户决定**，v1.1.2 不修。至此 v1.1.2 遗留缺陷清零（仅 1 条 low 非阻塞顺延）。
 >
@@ -52,6 +52,7 @@
 | [BUG-008](cli.md) | `--debug`/`OPENFEEL_DEBUG=1` 开关机制正确，但全仓 `runtimeLog()` 仅 info/error 3 处调用、无 debug/warn 生产者 → 真实 CLI 无可观测 `[DEBUG]`（不违反「debug 默认关」裁定） | low | **closed**（2026-10-11 处置：机制健全、无 debug 生产者属设计现状，建议仅文档化） | v1.1.2-stage-58 |
 | [BUG-009](cli.md) | `docs/commands.md:644` 残留「v1.1.2 快照」声明（与 `:3` 的 v1.1.6 快照头矛盾） | low | **closed**（stage-72 归档官**就地修正** `:644`→v1.1.6；`rg "v1.1.2 快照"` 零命中） | v1.1.6-stage-72 |
 | [BUG-010](cli.md) | `manual/cli/commands.md:152-153` 引用已不存在的旧技能权威源路径（`templates-data/opencode/skills/` → 实际 `templates-data/skills/`） | low | **closed**（stage-72 归档官**就地修正**为中立共享源路径；旧路径零命中） | v1.1.6-stage-72 |
+| [BUG-011](cli.md) | `--review-tier lean\|skip` 在阶段恰处于**被裁剪相位**时可达目标集为空 → 无法推进（仅 `--force` 可绕行） | medium | **open**（承接 **v1.2.1-stage-93** 收口轮缺陷清零） | v1.2.1-stage-92 |
 
 ### config
 
@@ -84,6 +85,7 @@
 | [BUG-004](templates.md) | 迁移后 `current.md` 统计行沿用「执行中」快照、用例数陈旧（942 vs 实测 949）+ 措辞扞格 | low | **closed**（stage-53 归档官就地修正：942→949 + kb 计数刷新 + 记录措辞改为「归档完成」） | v1.1.2-stage-53 |
 | [BUG-005](templates.md) | `openfeel-cli-usage` skill 的 `flow phases --json` 输出说明缺 `transitionsDiff`（与实测 5 键不一致，`transitionsDiff` 同步面遗漏 skill 模板） | low | **closed**（stage-56 op-001 全链路对齐 5 键；权威源→生成段→全局副本 content-equal 验收通过） | v1.1.2-stage-54 |
 | [BUG-006](templates.md) | `openfeel-model-check` 平台适配小节的 2 条平台专有句为改写而非逐字迁移（opencode 零回归字面偏差；T4.2 关键串断言仍全过） | low | **closed**（v1.1.7 遗留收口：按备选 (a) 回补原句逐字 + build 传播双生成段；测试官独立复现验收通过） | v1.1.6-stage-70 |
+| [BUG-007](templates.md) | en 侧归档官指针 `§Archive Mechanical Checklist` 指向**不存在**的节名（实际节名仅中文 `归档机械核对清单`，两语言不对称） | low | **open**（承接 **v1.2.1-stage-93** 收口轮缺陷清零） | v1.2.1-stage-92 |
 
 ### req
 
@@ -109,3 +111,5 @@
 > **v1.2.0-stage-82 归档收口（2026-10-12，openfeel-archiver）**：**新登记模块 `req`**（首次建立）——`req/BUG-001`（low，`addRequirement` 对非数组 `requirements` 抛 TypeError，其余 8 原语均宽容）经 **stage-82 op-001 步骤 1.1 单点修复后 closed**（`??=` → `Array.isArray` 重建续建）；回归 = core 三变体（`{}`/`'x'`/`123`）+ 命令层 T-A4（`requirements: {}` → `req add` exit 0 不崩）；与 `REV-81-019` 同一处合并。核心结论见本目录 `req.md`（新建）。统计 **23（open 0 / closed 23）**；公域模块条目 = cli(10) + config(4) + archive(1) + templates(6) + kb(1) + req(1) = **23**，与私域 `index.md` 及实测 `BUG-*.md` 文件数三者一致。防再犯沉淀（并入 kb）：**同类「读写宽容口径」须全原语一致**——读侧 8 原语用 `Array.isArray ? : []`、而唯一写原语 `addRequirement` 用 `??=`（仅覆盖 null/undefined），形成实现内部不对称（损坏数据边界）；写路径兜底应与读侧同口径。**v1.2.0 需求主题第二阶段闭环。**
 
 > **v1.2.1-stage-90 归档收口（2026-10-15，openfeel-archiver）**：**新登记 `req/BUG-002`（medium, open，非阻塞）**——`workflow_mode: general` 需求**恒无法进入 `done`**：载体制约束（`general` ⟹ 零关联阶段，`req set`/`req link` 双向 `general_mode_conflict` 拒绝）与既有「裁定 4」done 门（`allLinkedStagesDone` 要求 `linked.length > 0 && every(phase === 'done')`）**叠加成死锁**（`req advance --to done` / `req set --status done` 同源拒绝）；附带拒绝文案把 `done` 列为合法目标却拒绝（静态合法集未反映动态前置）。**常规写路径可达**（与 REV-90-005 的「阶段态不可达」不同）、无数据丢失、**有绕行路径**（升级 `fast`/`full` 后完成）。**承接去向 = `v1.2.1-stage-93` 收口轮 / 后续裁定**（openfeel-schemer 三选一：放开 general done 门 / 明示「仅升级后完成」并修文案 / 判设计保留转后续）——**显著登记、不静默丢弃**；修复须同步 C2 动态断言口径（**显式 supersede** 而非静默放宽）。**归档官不改源码**（边界）。统计 **24（open 1 / closed 23）**；公域模块条目 = cli(10) + config(4) + archive(1) + templates(6) + kb(1) + req(2) = **24**，与私域 `index.md` 及实测 `BUG-*.md` 文件数三者一致。防再犯沉淀（并入 kb）：**「某取值仅在某载体合法」的约束须做写入面穷尽枚举 + 与既有门（done 门 / 聚合）的**交集可达性推演**——枚举写入面时须同查「该约束与既有门的组合是否产生不可达状态」**（详见 kb/architecture.md #需求级模式属性架构 已知缺口节）。
+
+> **v1.2.1-stage-92 归档收口（2026-10-15，openfeel-archiver）**：**新登记 2 条非阻塞 BUG（均承接 `v1.2.1-stage-93` 收口轮缺陷清零）**——`cli/BUG-011`（**medium, open**）`--review-tier lean|skip` 在阶段**恰停于被裁剪相位**（`plan_review`/`scheme_review`）时 `getValidTargets(当前相位, mode, tier)` 为空集 → 无法推进（报「无合法跳转目标」exit 1；免审档最典型用法失效）；**零回归**（缺省 / `full` 档不受影响），**有绕行**（`--force`），须 openfeel-schemer 裁定修法（裁剪只作用「入边/目标侧」——全裁 key 时不删 key，改过滤 targets）。`templates/BUG-007`（**low, open**）en 侧归档官指针 `§Archive Mechanical Checklist` 指向**不存在**的节名（`openfeel-logging` 为中文单语共享 skill，实际节名 `### 7. 归档机械核对清单`；zh 侧可解析、两语言不对称；**不被现有引用完整性断言捕获**〔其只校验 skill 文件存在性、不校验节锚〕）。二者均**新功能边界 / 文档口径级**、不影响阶段门禁。**归档官不改源码**（边界），维持 open 显著登记。统计 **26（open 3 / closed 23）**；公域模块条目 = cli(11) + config(4) + archive(1) + templates(7) + kb(1) + req(2) = **26**，与私域 `index.md`（open 3 / closed 23 / 合计 26）及实测 `BUG-*.md` 文件数三者一致。**未关闭 open 3 = `cli/BUG-011`（medium）/ `templates/BUG-007`（low）/ `req/BUG-002`（medium，stage-90 承接）→ 均在 stage-93 收口轮清零。** 防再犯沉淀（并入 kb）：① **裁剪类能力须同时处理「入边」与「起始节点」两侧**——只裁「进入被裁剪项」会让已处于该项的实体无路可走（单测须覆盖「起始状态被裁剪」边界）；② **文档类「节名指针」的引用完整性须覆盖「节锚」维度**——中文单语共享 skill 的 en 侧指针尤其易踩「引用翻译后节名」陷阱（同 `templates/BUG-006` 平台分节同族）。

@@ -393,3 +393,43 @@ stage-68 已将 17 个 skill 权威源由 `templates-data/opencode/skills/`（`g
 
 文件迁移（`git mv`）后须**全仓 `rg` 旧路径**——manual/docs 手写载体不经 build，是迁移同步面里最易漏的一环（与 `templates/BUG-005`「部署型 skill 模板」同族）。
 
+
+---
+
+## BUG-011：`--review-tier lean|skip` 在阶段恰停于**被裁剪相位**时可达目标集为空 → 无法推进（仅 `--force` 可绕过）
+
+- **优先级**：medium ｜ **阻塞**：否 ｜ **状态**：**open**（承接 **v1.2.1-stage-93 收口轮缺陷清零**）｜ **来源阶段**：`v1.2.1-stage-92`（正式测试验收发现，phase=`test_pending`，HEAD `4b4912d`）｜ **归因**：**审查档位（v1.2.1-stage-92 新功能）边界场景未处理**——裁剪只作用于「进入被裁剪关」的语义，未处理「阶段已处于被裁剪关」的起始节点
+- **私域详细报告**：`.openfeel/users/Liuary/bugs/cli/BUG-011_审查档位裁剪致当前相位无合法跳转目标.md`
+
+### 核心结论
+
+审查档位（`REVIEW_TIERS = full/lean/skip`）语义 = 「裁剪审查关」（`lean` 裁 `scheme_review` / `skip` 裁 `plan_review` + `scheme_review`）。当阶段**恰好停在被裁剪的审查关**时以该档位推进：
+
+```
+node bin/openfeel.js flow advance --stage v1.0.0-stage-01 --to plan_review      # exit 0 → phase=plan_review
+node bin/openfeel.js flow advance --stage v1.0.0-stage-01 --to plan_passed --review-tier skip
+# → 「无法从 plan_review 到达 plan_passed；当前可达目标：(无)」exit 1（零写盘）
+```
+
+根因 = `pruneTransitionsByTier` 步骤 ②（`flow-manager.ts:2145-2148`）对被裁剪相位**整体删除其 key**，而 `findPhasePath` / `getAvailablePhases`（`:2078` / `:2040`）的**起始节点正是当前相位**——阶段停在 `plan_review`（`skip` 档）或 `scheme_review`（`lean` 档）时 `getValidTargets(当前相位, mode, tier)` 恒为空集，BFS 无出边 ⟹ 一切目标判为不可达。**这是「免审」档最典型的调用时机**（评审未做 / 不必要，直接放行下游），该场景 100% 失败；报错文案还与「本次推进免除审查关 …」自相矛盾，误导排查方向。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 触发面 | `flow advance --review-tier lean`（阶段处于 `scheme_review`）/ `--review-tier skip`（阶段处于 `plan_review` 或 `scheme_review`） |
+| 存量影响 | **零回归**——缺省档位（`full`）与显式 `--review-tier full` 不受影响（零裁剪）；不涉及 blocking REV 门 / `--dry-run` 语义 / 审计 `review_tier` 键 / 相位枚举 15 项 / `pipeline.yaml` / 输出格式（均已实测零破坏） |
+| 覆盖缺口 | op-001 定义表边界表 B1~B10 未登记本场景；core 单测 T92.1~T92.6 与命令层 T92.1~T92.7 **仅覆盖「目标相位被裁剪 → 不可达」，零用例覆盖「当前相位被裁剪 → 出边归零」** |
+| 绕行 | `--review-tier skip --to plan_passed --force` → exit 0（但 `--force` 连带跳过非法 phase / 阶段跳跃校验，属「以降低保护换取通行」，不应是必需代价） |
+
+### 修复建议（供 openfeel-schemer 裁定；测试官不改码）
+
+**裁剪只作用于「入边 / 目标侧」**——当 `keyConds` 全部被裁剪时**不删 key**，改为与步骤 ③/④ 同口径过滤 targets（对本例 `plan_review: ['plan_passed','plan_pending']` 均为非裁剪项 ⟹ 原样保留），使「处于被裁剪关」的阶段可正常向该档位下游推进；同步补 core 单测（当前相位 ∈ `TIER_PRUNED_PHASES[tier]` 的 `getValidTargets` / `findPhasePath` 断言）与边界表条目。
+
+### 防再犯
+
+**裁剪类能力须同时处理「入边」与「起始节点」两侧**——只裁「进入被裁剪项」会让已处于该项的实体无路可走；新增值域 / 裁剪轴的单测须覆盖「起始状态被裁剪」边界，而非仅「目标状态被裁剪」。
+
+### 承接去向
+
+**v1.2.1-stage-93 收口轮缺陷清零**（连同 `templates/BUG-007` 与 `req/BUG-002`）——**显著登记、不静默丢弃**；登记于本阶段代码审查摘要（`.openfeel/code_review/v1.2.1-stage-92.md`）与公共日志。

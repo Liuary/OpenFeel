@@ -1015,3 +1015,41 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.1-stage-91（4 ops 恒串行 `787b279` op-001 流程下沉 + 新建 4 skill / `28b1eb3` op-002 40 份 agent 索引壳化 / `5e72578`+`782c5f8` op-003 4 约束瘦身 + 治理落点 / `27e9848` op-004 门禁收口；4 commits；skills 18 → **22**；40 agent 正文重写（feel ×4 为基线 **34.1%~40.9%** ≤ 50%；Tier A 28 份 ≤ min(⌈65%⌉, 8192) 零超标；Tier S 8 份〔explorer/utility ×4〕**除索引节外零改动**）；4 约束 **30478/35617/30679/35879 B → 11851/14379/12055/14653 B**（508/509/511/512 行 → 161/161/164/164 行，≤350）；门禁 **71 文件 / 1682 用例** 0 skipped / 0 failed〔基线 1674，+8〕、`tsc` 0、`lint i18n` **939**（零新增键）、`lint kb` 0、build ×2 幂等、`--version` **1.2.0**〔不改，归 93〕；三类静态断言落地（尺寸双表分置 / 引用完整性 / 跨 harness 对称）+ 扫描集 **37 → 66**）。
 
 **参见：** v1.2.1-stage-91（plan §二 边界 / §三 T1~T5 / `ops/op-001~004`；`REV-91.md` 001~011）；`src/core/templates-data/{opencode,claude}/agents/**`；`src/core/templates-data/skills/**`；`src/core/templates-data/{agents-md,claude/constraint}/**`；kb/architecture.md #全局约束架构、#上下文预算治理架构、#模板单源架构；kb/patterns.md #约束/操作分离模式、#CLI 用法 skill 化模式、#提示词瘦身范式、#模板收口三类静态断言、#新增 skill 纳入生成物键集、#跨 harness × 语言模板对称纪律；kb/troubleshooting.md #多源文案同步陷阱
+
+## [+] 审查档位架构：档位轴 × 唯一取表点第二参 × 三档裁剪谱（默认零裁剪 = 零回归）(2026-10-15)
+
+**背景**：v1.2.1-stage-92 把设计 §4「流水线优化提速」的「审查档位（免审 / 快线 / 全量）」落为**转移表层的可验证机制**。核心约束：审查档位是**第二条轴**（模式轴 `workflow_mode` 之外），**必须同构挂在既有唯一取表点上**，禁第二份层序判定 / 取表实现。
+
+**① 单源常量（`pipeline-schema.ts`）**：`REVIEW_TIERS = ['full','lean','skip']`（3 值，与 `PIPELINE_PHASES` / `TRANSITION_OR_SEPARATOR` 同域）+ `ReviewTier` 类型 + `TIER_PRUNED_PHASES: Record<ReviewTier, readonly PipelinePhase[]>`（`full: []` / `lean: ['scheme_review']` / `skip: ['plan_review','scheme_review']`——**单源裁剪谱**，消费点仅裁剪函数）。三档语义 = **审查关裁剪谱**（相对模式基表）：全量 = 零裁剪；精简 = 裁 `scheme_review`（= 现状 fast 审查深度语义）；免审 = 裁两道**计划类**审查关（`plan_review` + `scheme_review`），**恒保留** `review_pending`（代码审查 = 审计链骨干）/ `test_pending` / `archiving`（R-92-1 缓解：免审不得成为「跳审后门」）。
+
+**② 唯一取表点延伸（`flow-manager.ts`）**：`resolveTransitionsForMode(mode, tier: ReviewTier = 'full')` **第二参**——先按既有三分支取**原始表**（full = 运行时 / 内置；fast = `fast_transitions ?? 内置快线表`；general = 空表），**末尾统一** `return pruneTransitionsByTier(raw, tier);`。私有纯函数 `pruneTransitionsByTier(table, tier)`（**调用点恰 1 处**）：① `tier==='full'` → 深拷贝原样返回；② 删除被裁剪相位的 key；③ 各 key 的 targets 过滤被裁剪相位；④ **边收缩回退**——若某 key 过滤后 targets 为空且原非空，则并入「被删目标的 targets」（再过滤）后去重（保证 fast 基表裁 `plan_review` 后 `plan_pending` 不空集：`['plan_review']` → 收缩 `plan_review` 的 targets → `plan_pending → ['plan_passed']`）。下游签名加**可选末参**（既有调用零改动）：`getValidTargets` / `getPipelineTransitions` / `findPhasePath` / `getAvailablePhases`（`getValidTargets` 的「mode 必传」纪律保持）。派生映射单源常量 `MODE_DERIVED_TIER = { full:'full', fast:'lean', general:'full' }`。**无 tier 调用 = 原逻辑等价**（tier='full' 零裁剪）⟹ **默认零裁剪 = 零回归**。
+
+**③ 无新持久载体（防过度设计）**：档位 = **转移表层推导 + 命令层 `flow advance --review-tier <tier>` 调用期显式声明**——**不落** status.md / flow.json / config（不新增骨架行 / 插入锚点 / 冗余字段 / health 项；承「能不加载体就不加」）。**生效口径**：有效档位 = `explicitTier ?? 'full'`（不传 = 零裁剪；派生档仅用于 `flow phases` 展示与提示，**不改变推进语义**）。
+
+**④ 三条硬语义零破坏（不变量）**：① blocking REV 门（命令层 + core 双层）**逐字零改动**（免审档推进 `done` 仍拒）；② `--dry-run` **提前 return 零写盘**（档位行仅显式时追加）；③ 审计**只增不改**——`advance_stage_phase` detail 追加**可选**键 `review_tier`（**仅显式声明时写**，条件展开），既有键（`stageName`/`from`/`to`/`session_id`/`resumed`）逐字保留，`reset_stage_phase` **不加**该键（无档位输入面）；`flow.json` 存量**零注入**（禁 load 侧补齐）。
+
+**⑤ 展示面**：`flow phases` 人读增设**档位分节行**（档位 + 来源 + 查看指引，承 stage-75 模式分节先例）；`--json` **末位追加** `reviewTier`（既有 6 键逐字保留、顺序不变）；**样式消歧**：档位三档「全量 / 精简 / 免审」（`full` / `lean` / `skip`）与「工作流快线」（`workflow_mode=fast`）**分属两轴，禁互相引用 / 混用**；「快速通道 / fast track（FAST-PASS）」为审查深度降级**总称**，保持既有含义（承边界 8 命名消歧裁定：**禁「快线」二字**）。
+
+**判据**：① 新增横切轴（如审查档位）一律**同构挂既有单点取表点**（`resolveTransitionsForMode` 第二参），**禁第二份层序 / 取表**；② 裁剪类能力**默认值须为「零裁剪 / 零回归」**（缺省不改变既有语义），新行为**仅显式声明时生效**；③ 免审 / 降级类档位**不得削弱** blocking 门 / 审计 / `--dry-run`（硬语义断言锁定）；④ 能不加持久载体就不加（调用期声明优先于配置键 / 字段 / 需求级属性）；⑤ 值域扩展一律**单源常量 + 消费点全枚举 + 双路扫描差集判类**（见 kb/patterns.md #值域扩展全枚举范式）；⑥ 边裁剪须处理**起始节点为空集**的边界（登记为 `cli/BUG-011`，转 stage-93 收口轮）。
+
+**实证**：v1.2.1-stage-92（4 ops 恒串行 `cf4ea4f` op-001 审查档位 / `9ae2814` op-002 并行与交互 / `8e465d8` op-003 归档轻量化 / `4b4912d` op-004 门禁收口）；隔离三档实跑（full 3 关全可达 / lean 免 `scheme_review` / skip `plan_passed` 单步直通）；`pruneTransitionsByTier` 调用点 = 1（静态断言 T92.7）；`flow phases --json` 6 → 7 键；门禁 **71 文件 / 1695 用例** 0 skipped / 0 failed〔基线 1682，+13〕、`tsc` 0、`lint i18n` **944**〔939 + 5 新键〕、`lint kb` 0（599 引用）、build ×2 幂等、`--version` **1.2.0**〔不改，归 93〕。
+
+**参见：** v1.2.1-stage-92（plan §二 不变量 / §三 T1、`ops/op-001`；`REV-92.md` 001~006）；`src/core/pipeline-schema.ts :: REVIEW_TIERS / TIER_PRUNED_PHASES`；`src/core/flow-manager.ts :: pruneTransitionsByTier / resolveTransitionsForMode / MODE_DERIVED_TIER / advanceStagePhase`；`src/commands/flow.ts`；kb/architecture.md #双模式转移表选择、#需求级模式属性架构；kb/patterns.md #值域扩展全枚举范式、#零回归取证范式；kb/troubleshooting.md #零回归取证范式、#autoRepairInconsistency 干扰组合条件推进路径；manual/core/flow-manager.md、manual/cli/commands.md
+
+## [+] 并行编排契约：独立子任务并行（无依赖链 ∧ 无文件冲突域）+ 组合键声明 + 维持不补裁定 (2026-10-15)
+
+**背景**：v1.2.1-stage-92 把设计 §4「并行编排」落为**契约成文**（落 skill，非运行时 DAG 调度）。拆分（`req split`，stage-87 已在位）为**一等动作**，本阶段只补「怎么并行」的判据 / 契约 / 实测。
+
+**五点契约（判据同源 kb/architecture.md #Worktree 并行批次策略，不另起）**：① **适用范围** = 独立子任务（**无依赖链**）；② **冲突域判据** = 文件集**无交集**可并行；依赖 API / 数据结构 / Agent 文件 → **恒串行**；③ **拆分与接取** = `req split`（**拆分即发布**，子需求入 `scheduled`）→ `req claim`（按**需求粒度**、互不阻塞）；④ **合并顺序** = 先完成先合并、后完成 rebase；⑤ **留痕纪律** = 并行各支独立审查 / 归档 + 状态留痕（防 `flow health` 跨文件一致性 warn 家族随并行度放大）。
+
+**显式不做（防过度设计）**：不新建 worktree 管理机制（无代码级 worktree，`status.md` 仅 `## Worktree / Session` 块 + skill 可选输入）；不做运行时 DAG 调度 / 需求树状态聚合（聚合单源恒 `allLinkedStageDone`）。
+
+**组合转移 `|` 复用与裁定重审**：`pipeline.yaml` 可用组合键（`'a|b': [target]`，经 `parseTransitionKey` / `transitionKeyMatches` **单一控制点**解析）表达「**任一源相位完成即推进**」。**stage-50 裁定「不补组合键」显式重审结论 = 维持不补（选项 a）**——本仓 `.openfeel/pipeline.yaml` **零改动**，裁定一致性最高；「复用」体现为**契约 + 声明指南 + 隔离实测**。**禁无声推翻既有裁定**（承 kb/patterns.md #延迟占位注记的收口模式纪律）。既有澄清随带：`advanceAccepted` = 内置 15 phase 推进白名单，**≠ 组合条件路径**；`transitionsDiff.missing` 为「内置含、运行时缺」的可见化机制。
+
+**实测（隔离项目，本仓零改动）**：含组合键项目 `'review_passed|test_passed': [archiving]` → 两相位均**单步直推** `archiving`；正控（无组合键）同目标需 **3 步**；`autoRepairInconsistency`（`flow advance` 前置自动修复）**不截断组合路径**（kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径 复测 3/3）。
+
+**判据**：① 并行判据一律复用**文件集冲突域 + 依赖面串行**（见 #Worktree 并行批次策略），**禁另起一套**；② 并行**仅限独立子任务**，有依赖恒串行，**不引入**需求树聚合；③ 组合键「启用」= 推翻既有裁定 → 须**显式重审 + 登记 + 零回归论证 + 断言改写差额对照**（禁无声）；④ 契约 delta 落 **skill**（单一 owner），agent 提示词只增索引行 / 最小必要句。
+
+**实证**：v1.2.1-stage-92（`9ae2814` op-002；契约落 `openfeel-delegation` 并行编排节 + 声明指南 + stage-50 裁定重审结论**双处登记**〔`deps.yaml` + 报告〕；交互提速落 `openfeel-tool-usage` §2 增补；会话卫生核验三要素 + 可控 / 不可控分列〔不可控项禁「已实现」〕；`.openfeel/pipeline.yaml` `git diff --stat` 空）。
+
+**参见：** v1.2.1-stage-92（plan §三 T2、`ops/op-002`；`.openfeel/tmp/stage-92-{parallel-contract,composite-e2e,session-hygiene-audit}.md`）；`src/core/templates-data/skills/openfeel-delegation/SKILL.md`（并行编排节 / 交互提速节）；kb/architecture.md #Worktree 并行批次策略、#通用工作者直接调度架构；kb/patterns.md #流水线 transitions 组合条件 `|` 运算符模式、#跨阶段「契约先行」协同；kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径、#advanceAccepted 被误述为「组合条件路径」

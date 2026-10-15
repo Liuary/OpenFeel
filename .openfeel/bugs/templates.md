@@ -233,3 +233,40 @@ node bin/openfeel.js flow status
 采纳建议方向 **1(a)**（恢复原句逐字）：`openfeel-executor` 将基线 `77c5450^:21/:33` 两条平台专有句整体逐字迁入 `### opencode 适配器`（`SKILL.md:192` / `:201`），正文 §1/§2 的中性化叙述保留不变；`npm run build` 传播生成段（`update.ts:1000/1009`、`template-loader.ts:7552/7561`，反引号按模板字符串转义为 `` \` ``）。openfeel-feel-tester **独立复现验收通过**：两串在小节内逐字命中且与基线**逐字节相同**；build ×2 幂等；`npm test` 1306 / `lint i18n` 796 / `tsc` 0 全绿；真实 `~/.config/opencode` 零污染。**已 closed**。
 
 
+
+---
+
+## BUG-007：en 侧归档官指针 `§Archive Mechanical Checklist` 指向**不存在**的节名（实际节名仅中文）
+
+- **优先级**：low ｜ **阻塞**：否 ｜ **状态**：**open**（承接 **v1.2.1-stage-93 收口轮缺陷清零**）｜ **来源阶段**：`v1.2.1-stage-92`（正式测试验收发现，phase=`test_pending`，HEAD `4b4912d`）｜ **归因**：**归档轻量化（v1.2.1-stage-92 op-003）落地项 ④ 的「一行指针」en 侧引用了翻译后的节名**——`openfeel-logging` 为**中文单语中立共享 skill**（双 harness 共用一份），en 侧按字面检索英文节名零命中
+- **私域详细报告**：`.openfeel/users/Liuary/bugs/templates/BUG-007_en侧归档官指针节名悬空（归档机械核对清单）.md`
+
+### 核心结论
+
+en 侧归档官模板的「一行指针」指向 `openfeel-logging` 的 `§Archive Mechanical Checklist`：
+
+- 指针侧（en 归档官 ×2，跨 harness 字节等值）：`the **mechanical checklist** … lives in \`openfeel-logging\` §Archive Mechanical Checklist`
+- 目标 skill 实际节标题（`openfeel-logging/SKILL.md:62`）：`### 7. 归档机械核对清单（命令化 / 幂等 / 无推理）`
+- 全仓检索 `Archive Mechanical Checklist`：**除 en 归档官模板（源 2 处 + 生成物 3 处）外 0 命中** ⟹ 该英文节名**不存在**。
+
+对照 zh 侧（`opencode/agents/zh-CN/openfeel-archiver.md:20`）：`见 \`openfeel-logging\` §归档机械核对清单` —— 是 `:62` 标题的**子串**，可解析。**同一条指针在两语言间可解析性不对称**。
+
+### 影响范围
+
+| 项 | 说明 |
+|----|------|
+| 模块 | `src/core/templates-data/{claude,opencode}/agents/en/openfeel-archiver.md`（各 1 行；同批 `npm run build` 重生成 `template-loader.ts` / `update.ts`） |
+| 断言面 | 「skill 索引引用完整性」断言范围为 **skill 名 → 文件存在性**，**不校验节锚** ⟹ 本项**不被现有断言捕获**（故三门禁全绿仍可存在） |
+| 不影响 | zh 侧指针 / 跨 harness × 语言字节等值（同语言对应块逐字相等，实测 `BYTE-EQUAL: true`）/ 改块行数（1 行/处 ≤ 6）/ archiver 四份尺寸（5139 / 5853 / 4994 / 5632 ≤ 上限 5242 / 6030 / 5124 / 5850）/ 保留面（知识语义判定 / 状态记录 / 公共日志摘要 / 概览结论 / 去重 / 模式感知）**零删减**（`git diff` 仅 1 hunk/文件） |
+
+### 修复建议（供 openfeel-schemer 裁定；测试官不改码）
+
+`§<节名>` 指针应可在目标文件中**按字面命中**（T4.2「引用完整性 / 悬空零容忍」的同口径延伸）。两种达标形态：① 与 zh 侧一致使用**中文节名**（`§归档机械核对清单`，双语混排在本仓 en 模板中已是既有惯例，如同文件 `openfeel-archiver (归档官)`）；或 ② 节标题改为**双语**（`### 7. 归档机械核对清单 / Archive Mechanical Checklist`），使两侧指针均可命中。
+
+### 防再犯
+
+**文档类「节名指针」的引用完整性须覆盖「节锚」维度**——现有断言只校验 skill **文件存在性**，不校验 `§<节名>` 是否按字面命中，故悬空指针可穿透门禁；**中文单语共享 skill 的 en 侧指针**尤其易踩「引用翻译后节名」陷阱（同文件 `openfeel-model-check` 平台分节同族，见 `templates/BUG-006`）。
+
+### 承接去向
+
+**v1.2.1-stage-93 收口轮缺陷清零**（连同 `cli/BUG-011` 与 `req/BUG-002`）——**显著登记、不静默丢弃**；登记于本阶段代码审查摘要（`.openfeel/code_review/v1.2.1-stage-92.md`）与公共日志。

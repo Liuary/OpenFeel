@@ -4256,3 +4256,19 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.1-stage-91（op-004 §4.2 三类断言全量；尺寸表 `AGENT_SIZE_TARGETS` 40 ∧ `CONSTRAINT_SIZE_TARGETS` 4 逐份实存 ≤ 上限；引用完整性切片非空 + 悬空 0；对称 describe 索引节 `toBe` 等值 + 零裸主语 + 五类语义正控；扫描集 `toHaveLength(66)` 实测 0 命中；断言面 1674 → **1682 用例** +8）。
 
 **参见：** v1.2.1-stage-91（plan §一 表 C C1~C7 / §三 T5.2；`ops/op-002` §2.6 / `ops/op-003` §3.4 / `ops/op-004` §4.2~4.4；REV-91-001/006/008）；`test/core/templates.test.ts` / `claude-adapter.test.ts`；kb/architecture.md #提示词索引壳架构；kb/patterns.md #模板锚点注入的鸡生蛋处置、#单源一致性断言键集 vs 内容断言、#跨 harness × 语言模板对称纪律、#提示词瘦身范式；kb/troubleshooting.md #模板断言的保护边界
+
+## [+] 提速度量范式：档位实跑对照 + 归档机械步骤下沉判据（无推理 ∧ 一条命令 ∧ 幂等）(2026-10-15)
+
+**场景**：声称「提速 / 优化」时，须把主张落为**可度量、可复跑**的实测，而非感觉。
+
+**① 审查档位实跑对照（隔离三档二分验收）**：隔离 fixture（`mkdtemp` + `OPENFEEL_LOG=0` + cwd 隔离）；三路实跑 `--review-tier full`（3 关轨迹）/ `lean`（免 `scheme_review`）/ `skip`（免 `plan_review` + `scheme_review`）；逐档记录**相位轨迹** + **审计条目**（`flow.json` log 的 `review_tier` 在位）+ dry-run 预览含档位行 + `metrics.json` 增量 / CLI 日志 `duration_ms`（可观测面）。**本仓复核二分**：本仓（`workflow_mode: full`）默认调用**逐字零回归**（kb/troubleshooting.md #零回归取证范式）。口径 = **可观测性为提速前置**（无度量则只能「声称提速」）。
+
+**② 归档机械步骤下沉判据（三条全满足才下沉）**：**无推理** ∧ **一条命令可完成** ∧ **幂等**。机械候选四类 = 快速概览三项取值（源文件数 / Agent 数 / 最近更新）/ manual 模块树**存在性**核对 / `ops/**` 清点与 `flow ops list` 对照 / 各类 `git status` 与计数核对。**明确不下沉的保留面**（承 archiver 轻量口径「保留面不可省」）：知识**语义**判定（新旧取舍 / 去重裁定 / 手册职责变更判定）/ 状态记录 / 公共日志摘要 / 概览**结论** / 模式感知节——**零删减**。落点优先**复用既有命令 + skill 清单**（不新增 CLI 能力 / 不新建 skill / 不新增依赖）。
+
+**③ 前后对照表三列**：`步骤数 / 耗时 / 人工介入点`；耗时口径 = `metrics.json`（`archiver` 归属，`recordRun` 接线）+ CLI 日志 `duration_ms`；**外部基线**（如设计 §1.2 的 archiver 中位 5.9min）**登记不确定性**，差值仅登记趋势、**不作硬断言**。
+
+**判据**：① 提速主张一律**以实测为准**（隔离脚本 + 本仓复核二分，见 kb/patterns.md #双主题收官端到端验收范式）；② 机械步骤下沉判据 = **无推理 ∧ 一条命令 ∧ 幂等**；③ **保留推理面**（知识语义判定 / 状态记录 / 公共日志摘要 / 概览结论）——**下沉淀不得连带删掉推理面**（R-92-6 缓解）；④ 落点优先复用既有能力（防过度设计）；⑤ 模板轻量化（机械步骤描述 → **一行指针**）须守**跨 harness × 语言对称四律**（节锚点插入 / 提取式切片字节等值 / 零裸主语 / 插入外零改动）。
+
+**实证**：v1.2.1-stage-92（`cf4ea4f` op-001 三档隔离实跑 / `8e465d8` op-003 归档轻量化）；归档机械清单 **4 条核对项 / 7 条幂等命令**（`openfeel-logging` §7「归档机械核对清单」）；archiver ×4 模板机械步骤描述 → 一行指针（-26 / -5 / -26 / -5 B，1 插 1 删 / 文件，保留面零删减）；前后对照：机械步骤 0 → 4 条命令、人工介入点 5 → 0（语义判定 3 处保留）、清单实测 ≈ 637 ms；`.openfeel/tmp/stage-92-{tier-e2e,archive-step-inventory,archive-beforeafter}.md`。
+
+**参见：** v1.2.1-stage-92（plan §三 T1.8 / T3、`ops/op-001` §1.8、`ops/op-003`；`REV-92.md` 003/004）；`src/core/templates-data/skills/openfeel-logging/SKILL.md`（§7 归档机械核对清单）；kb/patterns.md #双主题收官端到端验收范式、#提示词瘦身范式、#模板收口三类静态断言；kb/architecture.md #可观测性埋点架构、#审查档位架构；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护、#改 templates-data 源须同批重生成的「双生成物」

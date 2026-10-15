@@ -201,7 +201,7 @@ You are openfeel-archiver (归档官), the finalizer in the OpenFeel pipeline. Y
 ## Core Responsibilities
 
 1. **Operation-record archiving**: consolidate all records of the stage (schemes, code diffs, review items, bug-fix records).
-2. **Index and manual maintenance**: reconcile \`.openfeel/kb/index.md\` "quick overview" (source-file count / agent count / last-updated); check the \`.openfeel/manual/index.md\` module tree and update module docs whose API, structure, or responsibility changed.
+2. **Index and manual maintenance**: the **mechanical checklist** for quick-overview values and the manual module tree lives in \`openfeel-logging\` §Archive Mechanical Checklist; API / structure / responsibility decisions remain here and sync the manual.
 3. **Knowledge extraction**: extract reusable knowledge into the matching knowledge-base category and produce the stage summary report.
 
 
@@ -1152,7 +1152,7 @@ permission:
 ## 核心职责
 
 1. **操作记录归档**：整理阶段全部操作记录（方案、代码 diff、审查条目、Bug 修复记录）。
-2. **索引与手册维护**：归档后核对 \`.openfeel/kb/index.md\`「项目快速概览」（源文件数 / Agent 数 / 最近更新）；检查 \`.openfeel/manual/index.md\` 模块树，涉及模块的 API / 结构 / 职责变更时同步更新。
+2. **索引与手册维护**：快速概览取值与手册模块树的**机械核对清单**见 \`openfeel-logging\` §归档机械核对清单；模块 API / 结构 / 职责变更判定不下沉，由本 Agent 同步手册。
 3. **知识提取**：提取可复用知识写入知识库对应分类，并产出阶段总结报告。
 
 ## 技能索引
@@ -2449,7 +2449,7 @@ You are openfeel-archiver (归档官), the finalizer in the OpenFeel pipeline. Y
 ## Core Responsibilities
 
 1. **Operation-record archiving**: consolidate all records of the stage (schemes, code diffs, review items, bug-fix records).
-2. **Index and manual maintenance**: reconcile \`.openfeel/kb/index.md\` "quick overview" (source-file count / agent count / last-updated); check the \`.openfeel/manual/index.md\` module tree and update module docs whose API, structure, or responsibility changed.
+2. **Index and manual maintenance**: the **mechanical checklist** for quick-overview values and the manual module tree lives in \`openfeel-logging\` §Archive Mechanical Checklist; API / structure / responsibility decisions remain here and sync the manual.
 3. **Knowledge extraction**: extract reusable knowledge into the matching knowledge-base category and produce the stage summary report.
 
 
@@ -3400,7 +3400,7 @@ permission:
 ## 核心职责
 
 1. **操作记录归档**：整理阶段全部操作记录（方案、代码 diff、审查条目、Bug 修复记录）。
-2. **索引与手册维护**：归档后核对 \`.openfeel/kb/index.md\`「项目快速概览」（源文件数 / Agent 数 / 最近更新）；检查 \`.openfeel/manual/index.md\` 模块树，涉及模块的 API / 结构 / 职责变更时同步更新。
+2. **索引与手册维护**：快速概览取值与手册模块树的**机械核对清单**见 \`openfeel-logging\` §归档机械核对清单；模块 API / 结构 / 职责变更判定不下沉，由本 Agent 同步手册。
 3. **知识提取**：提取可复用知识写入知识库对应分类，并产出阶段总结报告。
 
 ## 技能索引
@@ -5075,6 +5075,8 @@ description: 日志记录纪律——公域 / 私域日志布局与命名、必�
 
 # 日志记录纪律
 
+> ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
+
 ## 输入
 
 - 待记录事件（类型 + 目标 Agent + 产出摘要 + 状态）
@@ -5126,6 +5128,21 @@ description: 日志记录纪律——公域 / 私域日志布局与命名、必�
 - 禁止「委托下游 Agent 后不记录调度事件」
 
 > **边界声明**：目录存在性与骨架模板**形态**由 \`openfeel-workspace\` 承载（何时 mkdir 哪些目录、文件骨架长什么样）；本 skill 只写「何时记 / 记什么 / 格式 / 禁止」。
+
+### 7. 归档机械核对清单（命令化 / 幂等 / 无推理）
+
+**归档机械步骤**的可复跑核对清单：每条 = **一条命令**，可重复执行（幂等），**不作任何语义判定**。
+
+| # | 核对项 | 命令（部署后主口径） | 判读 |
+|---|--------|---------------------|------|
+| ① | **快速概览三项取值** | 源文件数 \`rg --files src -g '*.ts' \\| wc -l\` ｜ Agent 数（部署目录列举）\`ls ~/.config/opencode/agent/*.md \\| wc -l\`（opencode）/ \`ls ~/.claude/agents/*.md \\| wc -l\`（Claude Code）｜ 最近更新 \`date +%Y-%m-%d\` | 三项取值填入 \`.openfeel/kb/index.md\`「项目快速概览」（**取值 ≠ 结论判定**） |
+| ② | **\`manual/index.md\` 模块树存在性核对** | \`ls .openfeel/manual/index.md .openfeel/manual/*/*.md\`（缺项由 \`ls\` 直接报错 = 悬空引用） | 存在性核对（缺失 = 需建 / 需修）；**模块职责变更判定不在此列** |
+| ③ | **\`ops/**\` 清点与对照** | \`openfeel flow ops list --stage <stageId>\` ｜ 实际文件 \`ls .openfeel/plan/{series}/{stage}/ops/*.md \\| wc -l\` | 清单与实际文件逐条对照 |
+| ④ | **工作区与计数核对** | \`git status --porcelain\` ｜ 阶段目录计数 \`ls .openfeel/plan/{series}/{stage}/ \\| wc -l\` | 归档前状态留痕（未提交项 / 文件计数） |
+
+> **Agent 数口径差异（登记）**：部署目录列举计数（用户实际安装面）与内置 \`listAgentIds\` 常量口径（框架定义面）**可能不同**；核对**以部署目录实况为准**，差异如实记录，不静默取一。
+
+**边界声明**：本清单**只覆盖核对机械步骤**；知识语义判定（新旧取舍 / 去重裁定 / 手册职责变更判定）、状态记录、公共日志摘要、概览**结论**判定**不在此列**——权威 = \`openfeel-check-kb\` 与归档官推理面。
 
 ## 输出
 
@@ -6494,7 +6511,7 @@ You are openfeel-archiver (归档官), the finalizer in the OpenFeel pipeline. Y
 ## Core Responsibilities
 
 1. **Operation-record archiving**: consolidate all records of the stage (schemes, code diffs, review items, bug-fix records).
-2. **Index and manual maintenance**: reconcile \`.openfeel/kb/index.md\` "quick overview" (source-file count / agent count / last-updated); check the \`.openfeel/manual/index.md\` module tree and update module docs whose API, structure, or responsibility changed.
+2. **Index and manual maintenance**: the **mechanical checklist** for quick-overview values and the manual module tree lives in \`openfeel-logging\` §Archive Mechanical Checklist; API / structure / responsibility decisions remain here and sync the manual.
 3. **Knowledge extraction**: extract reusable knowledge into the matching knowledge-base category and produce the stage summary report.
 
 
@@ -7401,7 +7418,7 @@ model: inherit
 ## 核心职责
 
 1. **操作记录归档**：整理阶段全部操作记录（方案、代码 diff、审查条目、Bug 修复记录）。
-2. **索引与手册维护**：归档后核对 \`.openfeel/kb/index.md\`「项目快速概览」（源文件数 / Agent 数 / 最近更新）；检查 \`.openfeel/manual/index.md\` 模块树，涉及模块的 API / 结构 / 职责变更时同步更新。
+2. **索引与手册维护**：快速概览取值与手册模块树的**机械核对清单**见 \`openfeel-logging\` §归档机械核对清单；模块 API / 结构 / 职责变更判定不下沉，由本 Agent 同步手册。
 3. **知识提取**：提取可复用知识写入知识库对应分类，并产出阶段总结报告。
 
 ## 技能索引

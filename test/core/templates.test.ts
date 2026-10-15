@@ -10,13 +10,13 @@ import { listAgentIds, listClaudeAgentIds } from '../../src/core/template-loader
 
 const ROOT = process.cwd();
 const SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'skills');
-const SKILLS = ['openfeel-cli-usage', 'openfeel-wizard', 'openfeel-health', 'openfeel-model-check', 'openfeel-recover', 'openfeel-req', 'openfeel-delegation', 'openfeel-memory'];
+const SKILLS = ['openfeel-cli-usage', 'openfeel-wizard', 'openfeel-health', 'openfeel-model-check', 'openfeel-recover', 'openfeel-req', 'openfeel-delegation', 'openfeel-memory', 'openfeel-logging'];
 
 /** EOL 归一（CRLF/CR → LF；先例 templates-migration.test.ts:24）——stage-84 跨 harness 切片比较防 CRLF 伪失败（REV-84-011） */
 const norm = (s: string): string => s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
 describe('模板口径（stage-50 op-006 T53/T54/T55）', () => {
-  it('T53：8 skill 模板 node bin 仅出现在加注行（每文件 1 处）且含加注、主口径为 openfeel', () => {
+  it('T53：9 skill 模板 node bin 仅出现在加注行（每文件 1 处）且含加注、主口径为 openfeel', () => {
     for (const s of SKILLS) {
       const content = readFileSync(join(SKILLS_DIR, s, 'SKILL.md'), 'utf-8');
       const count = (content.match(/node bin\/openfeel\.js/g) ?? []).length;

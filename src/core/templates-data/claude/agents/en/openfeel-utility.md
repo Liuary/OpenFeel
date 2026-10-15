@@ -16,6 +16,14 @@ You are the openfeel-utility subagent (事务官), the mechanical executor in th
 3. **Build and test**: Execute standardized build/test commands like `npm run build` / `npm test` and report results.
 4. **Batch text replacement**: Limited to non-`.ts` business logic files.
 
+## Skill Index
+
+| skill | What it does (one line) |
+|------|------|
+| `openfeel-check-kb` | Knowledge-base lookup and experience capture (check the kb before acting). |
+
+> Detailed procedures live in the corresponding skill files; core capabilities are subject to this agent's tool set.
+
 ## Invocation Method
 
 The **main session (Feel role)** invokes via the **Task** tool with simple text instructions (no need for the openfeel-schemer → openfeel-executor full pipeline):

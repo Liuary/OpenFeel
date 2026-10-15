@@ -23,6 +23,14 @@ permission:
 3. **构建测试**：执行 `npm run build` / `npm test` 等标准化构建测试命令，报告结果。
 4. **批量文本替换**：限定在非 `.ts` 业务逻辑文件范围内执行批量文本替换。
 
+## 技能索引
+
+| skill | 用途（一行） |
+|------|------|
+| `openfeel-check-kb` | 知识库检索与经验沉淀（先查 kb 再动手）。 |
+
+> 详细流程见对应 skill 文件；核心能力以本 agent 工具集为准。
+
 ## 调起方式
 
 Feel 通过 `task` 工具调起，传入简单文本指令（无需 openfeel-schemer → openfeel-executor 完整流水线）：

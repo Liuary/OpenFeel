@@ -808,3 +808,114 @@ describe('stage-90：三模式文案（supersede）', () => {
     }
   });
 });
+
+/**
+ * stage-91 op-002：agent 模板尺寸方向值（40 份）
+ *
+ * 直读**源文件**（不经 loader，防「改源忘 build」窗口假绿）；分档见 ops/op-002.md D-91-2：
+ *   - feel ×4：<= ceil(50% x baseline)；
+ *   - Tier A（7 类 × 4 = 28 份）：<= min(ceil(65% x baseline), 8192)；
+ *   - Tier S（explorer ×4 + utility ×4 = 8 份）：<= baseline + 512 B（`## 技能索引` 索引节增量预算；
+ *     REV-91-005 同源订正——加节必增字节，「不增长」口径不可达）。
+ */
+export const AGENT_SIZE_TARGETS: Record<string, { file: string; baseline: number; ceiling: number }> = {
+  'claude/en/feel': { file: 'src/core/templates-data/claude/agents/en/feel.md', baseline: 36517, ceiling: 18259 },
+  'claude/en/openfeel-archiver': { file: 'src/core/templates-data/claude/agents/en/openfeel-archiver.md', baseline: 9276, ceiling: 6030 },
+  'claude/en/openfeel-executor': { file: 'src/core/templates-data/claude/agents/en/openfeel-executor.md', baseline: 12794, ceiling: 8192 },
+  'claude/en/openfeel-explorer': { file: 'src/core/templates-data/claude/agents/en/openfeel-explorer.md', baseline: 3230, ceiling: 3742 },
+  'claude/en/openfeel-feel-tester': { file: 'src/core/templates-data/claude/agents/en/openfeel-feel-tester.md', baseline: 5290, ceiling: 3439 },
+  'claude/en/openfeel-planner': { file: 'src/core/templates-data/claude/agents/en/openfeel-planner.md', baseline: 10076, ceiling: 6550 },
+  'claude/en/openfeel-reviewer': { file: 'src/core/templates-data/claude/agents/en/openfeel-reviewer.md', baseline: 10355, ceiling: 6731 },
+  'claude/en/openfeel-schemer': { file: 'src/core/templates-data/claude/agents/en/openfeel-schemer.md', baseline: 7386, ceiling: 4801 },
+  'claude/en/openfeel-utility': { file: 'src/core/templates-data/claude/agents/en/openfeel-utility.md', baseline: 3524, ceiling: 4036 },
+  'claude/en/openfeel-vision': { file: 'src/core/templates-data/claude/agents/en/openfeel-vision.md', baseline: 4638, ceiling: 3015 },
+  'claude/zh-CN/feel': { file: 'src/core/templates-data/claude/agents/zh-CN/feel.md', baseline: 31147, ceiling: 15574 },
+  'claude/zh-CN/openfeel-archiver': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-archiver.md', baseline: 8064, ceiling: 5242 },
+  'claude/zh-CN/openfeel-executor': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-executor.md', baseline: 10749, ceiling: 6987 },
+  'claude/zh-CN/openfeel-explorer': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-explorer.md', baseline: 2710, ceiling: 3222 },
+  'claude/zh-CN/openfeel-feel-tester': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-feel-tester.md', baseline: 4414, ceiling: 2870 },
+  'claude/zh-CN/openfeel-planner': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-planner.md', baseline: 8456, ceiling: 5497 },
+  'claude/zh-CN/openfeel-reviewer': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-reviewer.md', baseline: 8797, ceiling: 5719 },
+  'claude/zh-CN/openfeel-schemer': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-schemer.md', baseline: 6092, ceiling: 3960 },
+  'claude/zh-CN/openfeel-utility': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-utility.md', baseline: 2935, ceiling: 3447 },
+  'claude/zh-CN/openfeel-vision': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-vision.md', baseline: 3764, ceiling: 2447 },
+  'opencode/en/feel': { file: 'src/core/templates-data/opencode/agents/en/feel.md', baseline: 36661, ceiling: 18331 },
+  'opencode/en/openfeel-archiver': { file: 'src/core/templates-data/opencode/agents/en/openfeel-archiver.md', baseline: 8999, ceiling: 5850 },
+  'opencode/en/openfeel-executor': { file: 'src/core/templates-data/opencode/agents/en/openfeel-executor.md', baseline: 12208, ceiling: 7936 },
+  'opencode/en/openfeel-explorer': { file: 'src/core/templates-data/opencode/agents/en/openfeel-explorer.md', baseline: 3258, ceiling: 3770 },
+  'opencode/en/openfeel-feel-tester': { file: 'src/core/templates-data/opencode/agents/en/openfeel-feel-tester.md', baseline: 4964, ceiling: 3227 },
+  'opencode/en/openfeel-planner': { file: 'src/core/templates-data/opencode/agents/en/openfeel-planner.md', baseline: 9646, ceiling: 6270 },
+  'opencode/en/openfeel-reviewer': { file: 'src/core/templates-data/opencode/agents/en/openfeel-reviewer.md', baseline: 10152, ceiling: 6599 },
+  'opencode/en/openfeel-schemer': { file: 'src/core/templates-data/opencode/agents/en/openfeel-schemer.md', baseline: 7052, ceiling: 4584 },
+  'opencode/en/openfeel-utility': { file: 'src/core/templates-data/opencode/agents/en/openfeel-utility.md', baseline: 3409, ceiling: 3921 },
+  'opencode/en/openfeel-vision': { file: 'src/core/templates-data/opencode/agents/en/openfeel-vision.md', baseline: 4573, ceiling: 2973 },
+  'opencode/zh-CN/feel': { file: 'src/core/templates-data/opencode/agents/zh-CN/feel.md', baseline: 31638, ceiling: 15819 },
+  'opencode/zh-CN/openfeel-archiver': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-archiver.md', baseline: 7883, ceiling: 5124 },
+  'opencode/zh-CN/openfeel-executor': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-executor.md', baseline: 10408, ceiling: 6766 },
+  'opencode/zh-CN/openfeel-explorer': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-explorer.md', baseline: 2773, ceiling: 3285 },
+  'opencode/zh-CN/openfeel-feel-tester': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-feel-tester.md', baseline: 4187, ceiling: 2722 },
+  'opencode/zh-CN/openfeel-planner': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md', baseline: 8237, ceiling: 5355 },
+  'opencode/zh-CN/openfeel-reviewer': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-reviewer.md', baseline: 8690, ceiling: 5649 },
+  'opencode/zh-CN/openfeel-schemer': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-schemer.md', baseline: 5872, ceiling: 3817 },
+  'opencode/zh-CN/openfeel-utility': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-utility.md', baseline: 2872, ceiling: 3384 },
+  'opencode/zh-CN/openfeel-vision': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-vision.md', baseline: 3722, ceiling: 2420 },
+};
+
+describe('stage-91：agent 模板尺寸方向值（40 份）', () => {
+  it('常量表恰 40 条 + 逐份实存命中 + 实测字节 <= 上限', () => {
+    const entries = Object.entries(AGENT_SIZE_TARGETS);
+    expect(entries, '尺寸常量表条目数').toHaveLength(40);
+    for (const [key, { file, baseline, ceiling }] of entries) {
+      const p = join(ROOT, file);
+      expect(existsSync(p), `${key} 实存`).toBe(true);
+      const bytes = readFileSync(p).length;
+      expect(baseline, `${key} baseline 非零`).toBeGreaterThan(0);
+      expect(bytes, `${key} 实测 ${bytes} B > 上限 ${ceiling} B`).toBeLessThanOrEqual(ceiling);
+    }
+  });
+});
+
+/**
+ * stage-91 op-002：索引节形态与分列（40 份）
+ * ① `## 技能索引`（zh）/ `## Skill Index`（en）各恰 1 处，切片含表头 `| skill |` 且非空；
+ * ② feel ×4：`## 常用命令索引` / `## Command Index` 在位且**不含** `| skill |` 行（skill 与 CLI / agent 入口分列正控）；
+ * ③ 混列阴性：索引节切片内零 CLI 命令形态串（`openfeel flow|plan|stage|view|archive|knowledge|roadmap`）。
+ */
+describe('stage-91：索引节形态与分列（40 份）', () => {
+  /** 提取节切片：标题行 -> 下一个 markdown 标题行（不含） */
+  const slice = (text: string, heading: string): string => {
+    const lines = text.split('\n');
+    const start = lines.findIndex((l) => l.startsWith(heading));
+    if (start < 0) { return ''; }
+    const rest = lines.slice(start + 1);
+    const stop = rest.findIndex((l) => /^#{1,6} /.test(l));
+    return [lines[start], ...(stop < 0 ? rest : rest.slice(0, stop))].join('\n');
+  };
+  const CLI_IN_INDEX = /`openfeel (flow|plan|stage|view|archive|knowledge|roadmap|init)\b/;
+
+  it('40 份索引节恰 1 处 + 表头在位 + 切片非空 + 零 CLI 混列', () => {
+    for (const [key, { file }] of Object.entries(AGENT_SIZE_TARGETS)) {
+      const lang = key.split('/')[1];
+      const heading = lang === 'en' ? '## Skill Index' : '## 技能索引';
+      const c = norm(readFileSync(join(ROOT, file), 'utf-8'));
+      expect((c.match(new RegExp(`^${heading}$`, 'gm')) ?? []).length, `${key} 索引节计数`).toBe(1);
+      const block = slice(c, heading);
+      expect(block.length, `${key} 索引切片非空（防假绿）`).toBeGreaterThan(0);
+      expect(block, `${key} 缺表头`).toContain('| skill |');
+      expect(CLI_IN_INDEX.test(block), `${key} 索引节混列 CLI 命令`).toBe(false);
+    }
+  });
+
+  it('feel ×4 命令索引节在位且不含 skill 表行（分列正控）', () => {
+    for (const [key, { file }] of Object.entries(AGENT_SIZE_TARGETS)) {
+      if (!key.endsWith('/feel')) { continue; }
+      const lang = key.split('/')[1];
+      const commandHeading = lang === 'en' ? '## Command Index' : '## 常用命令索引';
+      const c = norm(readFileSync(join(ROOT, file), 'utf-8'));
+      expect(c, `${key} 缺 ${commandHeading}`).toContain(commandHeading);
+      const block = slice(c, commandHeading);
+      expect(block.length, `${key} 命令索引切片非空`).toBeGreaterThan(0);
+      expect(block, `${key} 命令索引节误含 skill 表行`).not.toContain('| skill |');
+    }
+  });
+});

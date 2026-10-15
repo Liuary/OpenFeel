@@ -2,6 +2,37 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.1] - 2026-10-15
+
+### Added
+- [stage-86~93 + 94] **三模式架构（`full` / `fast` / `general`）**：`workflow_mode` 值域 2 值 → **3 值**（默认仍 `fast`）；`general`（无流水线）**仅需求级合法**（阶段级 / 部署级写入面显式拒绝 + wizard 不提供选项）；模式解析链插入**需求级层**（`status.md > 需求级 > config.yaml > profile.yaml〔不承载〕> builtin`，`ConfigSource` 第 5 值 `'requirement'`）；**升级不降级**（`general → fast / full` 显式可用，反向无隐式动作）
+- [stage-87] **需求接取与拆分（`req split`）**：**拆分即发布**（子需求一次入 `scheduled`）+ 顺序 ID 单源派生 + 父终态门 + 恰 1 条 `requirement_split` 审计 + 父零副作用；`parent_id?` **仅溯源**（不入聚合 / 不入 done 门 / 不参与 `PATCH_WHITELIST`）；**并行接取**（`req claim` 互不阻塞）；**需求与版本解绑**（`target_version` 为纯展示 / 过滤 / 排序维度，非门）；`req` 命令组 **10 → 11 子命令**（`split` = 首个 repeatable option + 首个带 `--json` 的写命令）
+- [stage-88] **通用工作者直接调度（双口径）**：opencode 侧 = 嵌套 `task` 工具；Claude Code 侧 = Handoff 直发；统一语义「调度请求直发，不经多级转介」+ 能力探测 go/no-go；**并行编排契约**（独立子任务并行〔无依赖链 ∧ 无文件冲突域〕+ 合并顺序 + 留痕纪律）
+- [stage-89] **新 agent `openfeel-explorer`（只读）**：承接「调研 / 探索」路由；工具集下限恰 4 项（Read / Glob / Grep / Bash），无写、无派发；Agent 数 **9 → 10**；权限模型「**10 agent**」白名单键集
+- [stage-86] **可观测性**：`metrics.json` 经 `recordRun` 接线（`MetricsStore` + `PHASE_AGENT_MAP` 归属单点）；CLI 运行日志行**向后兼容扩展**（`[project=…] [session=…]` + `duration_ms`，前缀不变）；op 级时间戳（`attempted_at?` / `completed_at?`）；跨会话恢复标注 `resumed`；会话标识三级链（env → project 续接文件 → proc 兜底）
+- [stage-92] **审查档位（`full` / `lean` / `skip`）**：与工作流模式**正交的第二轴**——模式定基表，档位裁审查关（`full` 零裁剪 / `lean` 裁 `scheme_review` / `skip` 裁 `plan_review` + `scheme_review`；**恒保留**代码审查关 / 测试关 / 归档关）；单源常量 `REVIEW_TIERS` + `TIER_PRUNED_PHASES`；`flow advance --review-tier <tier>`（缺省按模式派生）+ `flow phases --json` 末位追加 `reviewTier`（既有 6 键逐字保留，**7 键**）；归档轻量化
+- [stage-91] **提示词瘦身收编点**：40 份 agent 模板重写为「**skill 索引壳 + 最小约束**」+ skill 下沉（skills **18 → 22**：delegation / logging / memory / context-hygiene 新建 + workspace / get-stage-status / tool-usage / wizard / recover 增补）；骨架模板 4 组单一归属 `openfeel-workspace`
+- [stage-94] **模型默认值统一 + 部署非破坏性（用户主权键 `model`）**：opencode 侧显式默认收敛为 `deepseek/deepseek-flash`；部署（`setup` / `update`）对用户既有 `model` 键**无则创建、有则不覆盖**（不与用户既有值双写漂移）
+- 版本全链路收口 1.2.0 → 1.2.1；i18n 基线 **939 → 945**（stage-91~93 汇总：+1 键 `req.err.doneGateTmpl` 与既有修订键；逐键列名见阶段报告）
+
+### Fixed
+- [stage-93] **`req/BUG-002`：`general` 需求完成路径（死锁）**——`general` 恒零关联阶段（载体制双向门）而 done 门要求全部关联阶段 done，两者交叉使 `general` 需求**永远无法 `done`**。修复：新增导出谓词 `canCompleteRequirement`（**载体制对偶完成路径**，判据 = 需求自身 `workflow_mode` **字段直判**，与载体制门**同源**；禁解析级联）+ `applyStatusChange` done 门**单点消费**；`general` 且有链接（数据损坏态）**从严回落**路 1；非 `general` 判定单源 `allLinkedStagesDone` **不变**；done 门拒绝**文案专用化**（`req.err.doneGateTmpl`，错误码恒 `invalid_status`）
+- [stage-93] **`cli/BUG-011`：档位裁剪致当前相位无跳转目标**——阶段**恰停于被裁剪相位**（如 `plan_review` + `skip`）时该档位无可达目标（仅 `--force` 可绕行）。修复：裁剪**只作用于入边 / 目标侧**——被裁剪相位**保留出边**（可正常向该档位下游推进，零 `--force`）；「**进入**被裁剪关」仍不可达；`full` 档零裁剪逐字不变
+- [stage-93] **`templates/BUG-007`：en 归档官指针悬空**——`§Archive Mechanical Checklist` 指向的节标题仅中文（目标节 `openfeel-logging` §7）。修复：改中文节名 `§归档机械核对清单`（源 ×2 + 生成物同批重生成），并补「**具名 § 指针字面命中**」断言（正控 ≥ 4 + 负控）防再犯
+- [stage-93] `REV-92-006` 处置：`flow.advance.depthExceededTmpl` **追加**「目标可能不可达」提示（BFS / exit code / 零写盘**逐字不变**）
+
+### Changed
+- **无默认行为变更**（除上述**有意变更且登记**项）；既有命令接受集 / 输出契约逐字保留。
+- **有意变更清单（已登记；禁静默）**：① `general` 需求 done 门放行（`req/BUG-002` 修复本体）② 档位表结构差异（被裁剪相位源键保留，`lean` / `skip` 键集 15/14 → **16/16**；`fast`+`skip` 8 → 9）③ `flow advance` 失败提示行的可达目标在「阶段处于被裁剪相位」场景由「(无)」转**非空**（修复本体语义的一部分）④ en 归档官指针文本 ⑤ depth-exceeded 文案 ⑥ 文档面（快照 / 计数家族订正，内容级）⑦ i18n 944 → 945。
+- **兼容说明（向后兼容）**：旧 `flow.json`（不含 `requirements` / `archived_versions` / 模式字段）在全部命令下**零报错零注入**；升级**无需迁移**；`--json` 既有键**逐字保留**（`flow phases` 6 → 7 键为**末位追加**，既有键顺序不变）。
+- **验收口径（修复后的新增可达路径，旧行为 = 拒绝）**：`req advance --to done`（零关联 `general` 需求）与 `flow advance --to <下游> --review-tier skip`（自被裁剪相位）**均为修复后的新增可达路径**。
+
+### Documentation
+- `README.md`（横幅 **v1.2.1** + 新「v1.2.1 新增能力」节）/ `README.zh-CN.md` / `README.en.md`（同构新节 + 部署资产 **10 agents / 22 skills** + 测试基线 **1719 用例 / 71 文件**）
+- `docs/GETTING_STARTED.md`（快照 v1.2.1 + 「v1.2.1 能力速览」+ 升级指引）/ `docs/commands.md`（快照 v1.2.1 + `flow advance --review-tier` + `req` 节补 `split` / `--workflow-mode` / `general_mode_conflict`）
+- manual 9 文件（已知缺口 → 修复记录〔追加式〕/ 档位边界 → 修复记录 / 变更历史追加 v1.2.1-stage-93 行 / 陈旧计数家族订正）
+- `openfeel-cli-usage` skill 快照 **v1.2.1**（新节「v1.2.1 新增能力（stage-86~93 + 94）」）；`openfeel-req` skill done 语义精确化
+
 ## [1.2.0] - 2026-10-13
 
 ### Added

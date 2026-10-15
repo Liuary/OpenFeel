@@ -153,6 +153,8 @@ stage-86 ─▶ stage-87 ─▶ stage-88 ─▶ stage-89 ─▶ stage-90 ─▶ 
 
 **执行顺序：86 → 87 → 88 → 89 → 90 → 91 → 92 → 93。**
 
+> **执行顺序注记（2026-10-15 收官实况）**：表内 86~92 **串行**完成并各自归档 → **表外补阶段 `v1.2.1-stage-94`**（模型默认值统一与部署非破坏性，用户直接指令新增，**未入本表**）**先于收官轮完成**（归档 `e72539f`）→ **93 最终收口**（本行顺序图与「为何 8 阶段」正文**保持原样不重写**，实况以本注记 + §五「注册实况」+ roadmap 进度表为准）。
+
 **各阶段明细（目标 / 任务表 / 约束 / 验收要点 / 依赖）见附录 A。**
 
 **为何 8 阶段（对齐设计 §9 S1~S7 + 收官）**：
@@ -179,6 +181,7 @@ stage-86 ─▶ stage-87 ─▶ stage-88 ─▶ stage-89 ─▶ stage-90 ─▶ 
 | 8 | `v1.2.1-stage-93` | 文档与版本收口（v1.2.1 收官） | `v1.2.1-stage-91` `v1.2.1-stage-92` | auto | enabled | full |
 
 - **注册命令**（Feel 执行）：`openfeel plan stage add <stageId> --deps <ids...> --tasks <items...> --exec-mode auto --auto-advance enabled --workflow-mode full`；随后 `openfeel flow advance --stage <stageId> --to plan_pending`。
+- **注册实况（2026-10-15，最终）**：本表 8 阶段**已全部注册并 done（86~92 各自归档；93 = 收官轮）**；另有 **表外补阶段 `v1.2.1-stage-94`**（模型默认值统一与部署非破坏性，用户直接指令新增，**未入本表**，先于收官轮完成归档 `e72539f`）。执行顺序实况 = 86~92 串行 → **94（表外）先于收官轮完成** → 93 最终收口。roadmap 进度表已同步（`.openfeel/roadmap/v1.2.1.md`）。
 - **review-agent**：全部 `openfeel-reviewer`。
 - **op 级依赖**（`ops/deps.yaml`）由 openfeel-schemer 在各阶段产方案时落盘（hard / soft / mutual_exclusion，声明实际文件名）。
 - **本计划已代 Feel 落盘**：`.openfeel/roadmap/v1.2.1.md` + `.openfeel/plan/v1/v1.2.1/{plan.md,deps.yaml}`；**阶段目录 / status.md 骨架、flow.json 注册与 phase 推进仍由 Feel/CLI 执行**。
@@ -276,6 +279,7 @@ stage-86 ─▶ stage-87 ─▶ stage-88 ─▶ stage-89 ─▶ stage-90 ─▶ 
 |------|--------|------|
 | 2026-10-15 | openfeel-planner | 初稿：依据 `docs/v1.2.1-design.md`（用户定稿）制定七主题版本计划——8 阶段（86~93，对齐设计 §9 S1~S7 + 收官）；源码核验 6 表 28 项；关键裁定 A~P；里程碑 M41~M48；版本收口清单 A/B/C/D/E；风险 R-1~R-11；开放问题 Q1~Q9。**只写计划文档，未改源码、未直写 flow.json、未推进 phase。** |
 | 2026-10-15 | openfeel-planner | 补全：新增附录 A「阶段明细」（每阶段 目标 / 任务表 / 约束 / 验收要点 / 依赖）+ §四 附录指针。**只改计划文档。** |
+| 2026-10-15 | openfeel-executor（stage-93 op-003 收官回填） | **收官实况登记（最小追加，不重写正文）**：① 8 阶段 86~93 **全 done**（86~92 归档 `4c18dbc`/`a207a30`/`61385d8`/`9a0c6be`/`3d25d76`/`16908fe`/`3db367a`）；② **表外补阶段 `v1.2.1-stage-94`**（模型默认值统一 + 部署非破坏性，用户直接指令新增，**先于收官轮完成**，归档 `e72539f`）；③ 版本 **1.2.1** 全链路写入（A 类 10 处 / B 类双生成物 / C 类传播复核 / D 类白名单终局 / E 类判类）+ `CHANGELOG [1.2.1]`；④ 文档多载体（README×3 / docs×2 / manual 9 文件 / cli-usage 快照 v1.2.1 + 陈旧计数家族订正）；⑤ 七主题×10 组端到端验收通过（隔离脚本 **92 checks / 0 failures**，含 BUG-002 / BUG-011 修复链转正）；⑥ **est_ops 对账实况 = 3 维持**（§八「+1 = 4」撤回；实由「T1 独立 op + 收口恒独立」承载）。**§四 / §五 实况已在上方就地补注；未重写正文。** |
 
 ---
 

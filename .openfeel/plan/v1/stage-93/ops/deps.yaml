@@ -1,0 +1,198 @@
+# v1.2.1-stage-93 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 应声明实际文件名
+# revision: 2026-10-15 openfeel-schemer 初版（计划 §八 定稿；REV-93-001~004 全吸收 —— 逐条映射见说明④）
+#   说明① **op 数定稿 = 3**（Q5 定稿 = 计划 §八「降级方案（3 op）」）。执行序恒为
+#     op-001（T1 缺陷清零）→ op-002（T2 文档多载体）→ op-003（T3 版本收口 + T4 验收 + T5 回填 + T6 门禁，**阶段最终 op**）。
+#     三 op **恒串行**（详 mutual_exclusions）。定稿理由（D-93-12）：计划 §三 T4 纪律「**验收须在收口 op 内**（与 T3 同 op）」
+#     + 收口纪律（承 v1.2.0-stage-85 / REV-85-006 定稿）「版本收口 op = 阶段最终 op（版本号写入、CHANGELOG、**验收**、
+#     门禁、回填、入管**同 op**）」+ kb #收口 op 为最终 op —— §八「4 op（推荐）」与 T4 纪律自相矛盾处由本裁定消解为 3 op；
+#     **验收须覆盖最终产物**（版本横幅 / CHANGELOG / A 类写入后执行 T4，认证最终 commit 内容；计划 T4 项 10「版本面并入
+#     T3 验证」同此口径）。阶段目录先例 = `stage-85/ops/`（三 op 收官）。
+#   说明② **est_ops 对账**：大计划 `.openfeel/plan/v1/v1.2.1/deps.yaml` 登记 `est_ops: 3`（§四 阶段表同行）→ **维持 3**；
+#     阶段计划 §八「`est_ops = 4`（对账 = +1）」**撤回**（+1 之实由「T1 独立 op + 收口恒独立」充分承载——3 op 结构中 T1 仍为
+#     独立 op-001，收口仍独立且含验收）。回写去向 = **主会话**（版本计划侧对账记录 / 终局报告对账表；本 Agent 不直改版本计划文件）。
+#   说明③ **方案期裁定 D-93-1 ~ D-93-16（全量登记；详细论证见各 op 头部「方案期裁定」）**：
+#     D-93-1（Q1 实现）BUG-002 = 谓词单点 `canCompleteRequirement(data, req)` + `applyStatusChange` 单点消费；
+#       判据 = 需求自身 `workflow_mode` **字段直判**（与载体制门 :287-290 / :346 同源；**禁解析级联** `resolveStageWorkflowMode`
+#       ——T5.6 NEEDLES :624 保持零命中）；防御 = general 且有链接（损坏态）从严回落路 1｜
+#     D-93-2（Q1 文案）新增键 `req.err.doneGateTmpl` + 条件消费（to=done 且 done ∈ 静态合法集）；错误码恒 `invalid_status`
+#       （`RequirementErrorCode` / `--json` 零变更）；驳回计划推荐 (b)（静态注记全场景噪音，登记）｜
+#     D-93-3（Q2）REV-92-006 = 文案补充提示（`flow.advance.depthExceededTmpl` 修订）；候选 (a) 经论证对报告场景无效（登记）｜
+#     D-93-4（Q3）BUG-007 = 形态 ①（en 指针改中文节名 `§归档机械核对清单`）+「具名 § 指针字面命中」断言增强（先全量扫描 → 仅本处悬空；
+#       零误报；正控 ≥ 4 + 负控）；验收口径 `rg "Archive Mechanical Checklist"` 零命中维持｜
+#     D-93-5 REV-93-001~004 吸收映射（详说明④）｜
+#     D-93-6 op-001 显式裁剪（零触碰 types.ts / pipeline-schema.ts / aggregate.ts / plan/stage.ts / pipeline.yaml / build.js）｜
+#     D-93-7（Q7）陈旧计数家族全量刷新（**文档载体面**：README×3 / docs×2 / cli-usage / manual 全量）+ 判类三分（当前事实→改写 /
+#       历史节内→保留+「v1.2.1 起 N」标注 / 历史标记→保留）；`test/**` D 类禁改｜
+#     D-93-8 T2.5 `openfeel-req` skill 精确化归 op-002（先修复后落文由 hard 串行保证）｜
+#     D-93-9 REV-93-003 落实：cli-usage 新节标题「v1.2.1 新增能力（stage-86~93 + 94）」（禁 stage-78~84）｜
+#     D-93-10 op-002 文档面有意变更白名单（内容级）｜
+#     D-93-11 op-002 显式裁剪（零触碰 A 类 / CHANGELOG——归 op-003）｜
+#     D-93-12（Q5）op 数 3 + 验收并入收口 op（详说明①②）｜
+#     D-93-13（Q4）验收粒度：复跑 = E1 / E2 / E5（含 BUG-002 链）/ E7（含 BUG-011 链）+ 零回归 + 版本面；引用 = E3 / E6 / E8｜
+#     D-93-14（Q6）回填边界：roadmap（状态 / M41~M48 done / stage-94 表外登记 / 执行顺序注记）+ 大计划最小追加（不重写正文）｜
+#     D-93-15 op-003 版本面有意变更白名单｜ D-93-16 收口顺序不变量（版本写入→验收→回填→门禁→报告→入管；版本写入后零代码改动）。
+#   说明④ **REV-93 吸收映射**（判据源 `.openfeel/users/Liuary/code_review/REV-93.md`；计划审查结论 = 通过，4 条非阻塞）：
+#     REV-93-001（T1.1 缺「完成路径判据与载体制门同源（字段直判）」约束）→ **全案吸收**：D-93-1 判据 = 字段直判 +
+#       op-001 §1.1 注释落文 + C2 supersede 材料「新口径」句「字段级判据与载体制门同源」（plan.md T1.1 修订由主会话按需执行）。
+#     REV-93-002（T1.3 验收写死 Q3 形态 ①）→ D-93-4 定稿形态 ① → 验收口径**维持**（零命中）；形态 ② 被否登记。
+#     REV-93-003（T2.4 新节范围标注笔误 stage-78~93）→ D-93-9 按 **stage-86~93 + 94** 落文（op-002 §2.6）。
+#     REV-93-004（三处漂移登记）→ 全案基线订正：`PATCH_WHITELIST` :247 / `lint kb` 619 引用 / flow.json revision 1176 邻域
+#       （执行期按内容特征复核；归档轮对账时顺手更正计划登记值——归归档轮）。
+#   说明⑤ **零回归与有意变更白名单（阶段汇总，禁静默）**：
+#     ① BUG-002 完成语义（general 需求 done 门放行 = 载体制对偶完成路径；非 general 单源不变；聚合面零命中保持）——C2 显式 supersede；
+#     ② BUG-011 档位矩阵（裁剪只作用入边/目标侧；被裁剪相位保留出边；skip/lean 档表结构差异——既有断言改写逐条登记）；
+#     ③ BUG-007 指针文本（en 归档官源 ×2 + 生成物）；
+#     ④ REV-92-006 文案（depth-exceeded 追加提示）；
+#     ⑤ 文档面（README×3 / docs×2 / manual / cli-usage+req skill 快照 / 计数家族订正——内容级）；
+#     ⑥ 版本面（A 类 10 处 / B 类重生成 / CHANGELOG / 回填）；
+#     ⑦ i18n 944 → **945**（+1 键 `req.err.doneGateTmpl`；修订键 `req.advance` / `flow.advance.depthExceededTmpl` 不计增量）。
+#     三项既有硬语义（blocking REV 门 / 审计 detail 只增不改 / `--dry-run` 零写盘）**零破坏**；phase 枚举 15 项 /
+#     `advanceAccepted` / `checkpoint_mapping` / `phase_corrections` 逐字不变；存量 flow.json 零注入。
+#   说明⑥ **阴性面（本阶段零触碰，逐条登记）**：`src/core/req/aggregate.ts`（**R-93-1 关键防线**）/ `types.ts` /
+#     `src/core/pipeline-schema.ts`（TIER_PRUNED_PHASES 零改动）/ `src/core/plan/stage.ts` / `.openfeel/pipeline.yaml` /
+#     `build.js` / `.openfeel/flow.json`（不直写；推进由 Feel 经 CLI）/ phase 枚举与 `advanceAccepted` 语义 /
+#     `docs/phase-*/**` / `docs/v1.2.1-design.md` / `docs/claude-code-adapter-plan.md` / `test/**` 内 `1.2.0` 同名命中（D 类）/
+#     `openfeel-reviewer` 模型档位（部署侧配置）/ CI / `npm publish` / `git push`。
+#   说明⑦ **KB 锚点**（方案与执行须参考，判据同源）：`kb/architecture.md:977 #需求级模式属性架构`、`#审查档位架构`、
+#     `#双模式转移表选择（getValidTargets 单一取表点 + 可达 ≠ 合法）`、`#部署非破坏性语义架构（用户主权键）`；
+#     `kb/patterns.md:3056 #supersede 追加式记录（五要素；原行不删）`、`#版本号全链路收口清单模式（A/B/C/D/E）`、
+#     `#文档侧历史标记纳入版本收口禁改白名单`、`:4003 #双主题收官端到端验收范式（隔离脚本 + 本仓复核二分）`、
+#     `:3983 #陈旧计数「全枚举」纪律`、`#同类缺陷一次全量扫描`、`#零回归取证范式`、`#REV/缺陷状态收口的分层口径`、
+#     `:3483 #未来功能标注「提供版本」`、`#README 与实现同步的检查清单`；`kb/troubleshooting.md:1151 #改 templates-data 源
+#     须同批重生成「双生成物」`、`:1138 #断言串与落文逐字核对纪律`、`:591 #多源文案同步陷阱`、`#默认开启写真实用户目录的
+#     副作用防护（OPENFEEL_LOG=0）`、`#flow.json 内容增量核验必含 meta.revision/meta.updated`。
+#     **暂无**「收官轮缺陷清零（白名单修复 + supersede 差额对照 + 隔离实跑）」既有条目 → 归档轮补沉 patterns（op-003 §3.11 已登记落点）。
+#   说明⑧ **对计划 §八 的落位微调与增补面（合册）**：① op 数 4 → **3**（D-93-12；Q5 降级方案）；② op-002 增收「陈旧计数家族
+#     全量刷新（文档载体面）」（D-93-7；E-89-6 家族实证 ≥ 15 处散落于 README×3 / GETTING_STARTED / commands / cli-usage / manual
+#     9 文件——计划仅点 cli-usage :65，Family 扫描为 Q7 授权扩展，**登记在案**）；③ **增补面（deps 缺 / 实际改动，供阶段对账）**：
+#     `src/core/req/requirement-ops.ts` + `src/commands/req.ts` + `src/core/i18n-data/{zh-CN,en}.ts`（BUG-002）｜
+#     `src/core/flow-manager.ts`（BUG-011）｜`templates-data/{claude,opencode}/agents/en/openfeel-archiver.md`（BUG-007）｜
+#     `test/**` 五文件 ｜ `templates-data/skills/openfeel-req/SKILL.md`（T2.5）｜ `.openfeel/manual/**` 9 文件（计数 + 修复记录）｜
+#     `.openfeel/tmp/**`（supersede / assertion-diff / doc-scan / acceptance / final-report）——按此增补（主会话对账）。
+version: "1.1"
+stage: v1.2.1-stage-93
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-15"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.1-stage-91 / v1.2.1-stage-92
+    type: hard
+    status: done
+    reason: "阶段级 hard 依赖（flow.json deps 声明 91+92，两者均已 done 归档）。实质：91 = 提示词瘦身收编点（索引壳 / skill 化范式——本阶段文档与 skill 面须按瘦身后范式落文）；92 = 审查档位（`--review-tier` / `pruneTransitionsByTier` / `flow phases` 7 键——BUG-011 修复位与断言面）。基线（stage-94 归档登记 + 方案期实测）：npm test 71 文件 / 1707 用例 0 skipped / 0 failed；tsc = 0；lint i18n = 944；lint kb = 619 引用 0 过期（REV-93-004）；本仓 config.yaml defaults.workflow_mode: full。"
+  - upstream: v1.2.1-stage-94（表外补阶段）
+    type: hard
+    status: done
+    reason: "用户直接指令新增的表外补阶段（模型默认值与部署非破坏性），2026-10-15 先行完成并归档（归档提交 e72539f）。其语义（模型默认值统一 deepseek/deepseek-flash 回退终值 + 用户主权键 model 部署非破坏性）**须被本阶段文档口径吸收**（CHANGELOG / cli-usage / README / GETTING_STARTED）；stage-94 计划 §边界 8 明示交接口径。"
+  - upstream: v1.2.1-stage-93 计划审查（REV-93-001~004）
+    type: hard
+    status: absorbed
+    reason: "审查结论**通过**（4 条非阻塞）；四条全部**吸收**（说明④）：001 → D-93-1 字段直判 + C2 supersede 新口径句；002 → D-93-4 形态 ① 验收口径维持；003 → D-93-9 范围标注 stage-86~93 + 94；004 → 全案基线订正三处。判据源 = `.openfeel/users/Liuary/code_review/REV-93.md`。"
+  - downstream: 归档轮（本阶段）
+    type: hard
+    note: "kb 补沉落点（op-003 §3.11 登记）：`#需求级模式属性架构` 已知缺口 supersede 补记（本阶段产材料 `.openfeel/tmp/stage-93-supersede-materials.md`）+ 「收官轮缺陷清零范式」（白名单修复 + supersede 差额对照 + 隔离实跑）新条目候选；manual 面已随 op-002 落文；`flow archive v1.2.1` 前置条件登记（本阶段 done + 无 blocking open REV；执行归 Feel / 主会话）。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；不直写 flow.json；不推进 phase（由 Feel 经 CLI 执行；权限不足按 D-93-12 移交主会话）；精确 git add（禁 -A）；status.md 经 openfeel stage CLI（勿手改）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "缺陷清零（BUG-002 载体制对偶完成路径 + C2 supersede / BUG-011 档位裁剪出边修复 / BUG-007 指针与 §锚断言增强 / REV-92-006 文案处置）"
+    produces:
+      - src/core/req/requirement-ops.ts
+      - src/commands/req.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/core/flow-manager.ts
+      - src/core/templates-data/claude/agents/en/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/en/openfeel-archiver.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/req.test.ts
+      - test/commands/req.test.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+      - test/core/templates.test.ts
+      - .openfeel/tmp/stage-93-supersede-materials.md
+      - .openfeel/tmp/stage-93-assertion-diff.md
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T1 全部（T1.1~T1.4）+ D-93-1 ~ D-93-6 + Q1 / Q2 / Q3 定稿。① BUG-002：canCompleteRequirement 谓词单点（字段直判；防御回落）+ applyStatusChange :238 消费 + 新键 req.err.doneGateTmpl + 条件消费两处 + help 三处 + C2 supersede（注释改写 + 判类对照 + 新 describe T93.1~T93.8）+ supersede 材料五要素；② BUG-011：步骤 ②（:2147-2150）删除 + JSDoc 改写 + 边界复核五项 + T92.1 / T92.2 判类改写 + T93.9 / T93.10 覆盖（两档 × 两相位 + 命令层实跑）；③ BUG-007：全量 § 扫描 → en 指针 ×2 改中文节名 + T93.11 断言增强（正控 >= 4 + 负控）+ rg 零命中；④ REV-92-006：flow.advance.depthExceededTmpl 修订（+ T93.12 可选）；⑤ build ×2 幂等 + lint i18n 945（+1 键）+ 局部五文件测试 + tsc + lint kb。材料：supersede / assertion-diff。硬边界：aggregate.ts 零改动（R-93-1）；.every( 禁第二份；T5.6 NEEDLES 零命中保持。"
+  op-002:
+    file: op-002.md
+    title: "文档多载体（README×3 / GETTING_STARTED / commands / manual / skill 快照 v1.2.1 + 陈旧计数家族全量订正）"
+    produces:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/skills/openfeel-req/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .openfeel/manual/index.md
+      - .openfeel/manual/core/req.md
+      - .openfeel/manual/core/flow-manager.md
+      - .openfeel/manual/cli/commands.md
+      - .openfeel/manual/cli/setup.md
+      - .openfeel/manual/core/setup.md
+      - .openfeel/manual/core/init.md
+      - .openfeel/manual/core/template-loader.md
+      - .openfeel/tmp/stage-93-doc-scan.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "文档须描述**修复后**语义（BUG-002 完成路径 / BUG-011 档位边界 / done 门文案）与最终命令面；openfeel-req skill 精确化（T2.5）与 BUG-002 联动（先修复后落文）。两者共享 build 双生成物（各一轮）恒串行。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T2 全部（T2.1~T2.5）+ D-93-7 ~ D-93-11 + Q7 定稿 + REV-93-003 落实。① 扫描先行（双路 + 命令面实测；.openfeel/tmp/stage-93-doc-scan.md；零未判类）；② README×3（横幅 / 新节 / 测试数行 / 判类②标注）；GETTING_STARTED（快照 + 能力速览 + 升级指引）；commands（快照 + req split / --workflow-mode / --review-tier / 计数）；③ manual 9 文件（已知缺口 → 修复记录；档位边界 → 修复记录；18 skills 全量 → 22；追加式）；④ cli-usage 快照 → v1.2.1（六锚 :3/:15/:38/:50/:53/:65 + :30/:44/:57/:59/:99/:149/:186 判类；新节「v1.2.1 新增能力（stage-86~93 + 94）」；E-89-6 订正 9→10 / 18→22）；⑤ openfeel-req skill :77 精确化；⑥ build ×2 + rg 复核 + lint i18n 945 不变 + lint kb 0。边界：A 类 / CHANGELOG 零触碰（归 op-003）；docs/phase-*/** 与 test/** 禁改。"
+  op-003:
+    file: op-003.md
+    title: "版本 1.2.1 全链路收口 + CHANGELOG + 七主题端到端验收 + roadmap/plan 回填 + 门禁全量 + 终局报告与入管（阶段最终 op）"
+    produces:
+      - CHANGELOG.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .openfeel/roadmap/v1.2.1.md
+      - .openfeel/plan/v1/v1.2.1/plan.md
+      - .openfeel/plan/v1/stage-93/ops/op-001.md
+      - .openfeel/plan/v1/stage-93/ops/op-002.md
+      - .openfeel/plan/v1/stage-93/ops/op-003.md
+      - .openfeel/plan/v1/stage-93/ops/deps.yaml
+      - .openfeel/tmp/stage-93-acceptance.mjs
+      - .openfeel/tmp/stage-93-acceptance-report.md
+      - .openfeel/tmp/stage-93-final-report.md
+      - .openfeel/plan/v1/stage-93/status.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "收口以源码冻结为前提；三 BUG 修复对照表与验收（BUG-002 / BUG-011 修复链）依赖 op-001 最终态。"
+      - op: op-002
+        type: hard
+        reason: "C 类传播复核与验收（文档面）依赖 op-002 最终态；测试数行 / 快照行取本 op 门禁实测值。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T3 / T4 / T5 / T6 全部 + D-93-12 ~ D-93-16 + Q4 / Q5 / Q6 定稿。① CHANGELOG [1.2.1]（Added / Fixed / Changed+兼容+验收 / Documentation）；② A 类 10 处逐处 + 内容特征扫描兜底 + B 类 build ×2 幂等 + C 类复核 + D 白名单（全量重扫 file:line 显式枚举，零未判类）+ E 判类 + --version = 1.2.1 + A 类残留 0；③ T4 七主题验收（隔离脚本 + 本仓复核二分；BUG-002 / BUG-011 修复链转正；E3 / E6 / E8 引用项如实标注）；④ roadmap（状态已归档 / M41~M48 done / stage-94 表外登记 / 执行顺序注记）+ 大计划最小追加；⑤ 门禁全量（build ×2 / npm test 新基线 / tsc 0 / lint i18n 945 / lint kb 0 / --version / A 残留）；⑥ 终局报告（三 BUG 修复对照 / 版本收口清单 / 验收记录 / 承接三分 + REV-93 吸收证据 + 归档轮落点）；⑦ ops/** 五文件精确入管（禁 -A）+ 流程面移交（status.md 经 CLI；权限不足移交主会话，登记不阻塞）。注：status.md 行为条件性 produces（CLI 权限可用时改动，否则登记零改动）。收口序不变量：版本写入 → 验收 → 回填 → 门禁 → 报告 → 入管；版本号修改后零代码改动；任何红灯停止上报。"
+
+mutual_exclusions:
+  - group: [op-001, op-002]
+    reason: "① 共享 build 双生成物：op-001（archiver en ×2）与 op-002（cli-usage / req skill）各触发一次 npm run build（src/core/template-loader.ts + src/core/update.ts 重生成——禁并发 build）；test/core/templates.test.ts 被 op-001（§锚断言增强）触碰。② 语义门：op-002 文档 / skill 文本须描述 op-001 修复后语义（先冻结代码语义，再落文）。恒串行。"
+  - group: [op-003]
+    reason: "阶段最终 op（恒末位）：版本收口 / 验收 / 回填 / 门禁 / ops 入管均须在 op-001 / op-002 冻结后执行；版本号写入后至阶段结束零代码改动（D-93-16）。"

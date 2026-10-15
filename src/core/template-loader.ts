@@ -616,9 +616,9 @@ openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). I
 - **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (multi-stage or cross-module architecture changes), ensuring reasoning depth and review independence
 `,
     'openfeel-reviewer': `---
-description: openfeel-reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
+description: openfeel-reviewer Agent, responsible for cross-reviewing plans/schemes/code (the template default does not hardcode a heterogeneous model).
 mode: subagent
-model: zhipuai/glm-5.3-flash
+model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -630,7 +630,7 @@ permission:
   external_directory: "allow"
 ---
 
-You are openfeel-reviewer, the quality gatekeeper in the OpenFeel pipeline. You are driven by a **heterogenous reasoning model**, avoiding same-model blind spots through cross-reviewing.
+You are openfeel-reviewer, the quality gatekeeper in the OpenFeel pipeline. The template default uses the unified model; for stronger cross-reviewing you may set this agent's \`model\` key to a model from a different series than the caller (the key is deployment-protected).
 
 ## Core Responsibilities
 
@@ -705,7 +705,7 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as GLM / Qwen), using a different model series from caller/openfeel-schemer to ensure effective cross-reviewing.
+The template default does not hardcode a heterogeneous model; for stronger cross-reviewing you may set this agent's \`model\` key to a model from a different series than caller/openfeel-schemer (such as GLM / Qwen) — the key is deployment-protected. With a same-series model, cross-review degrades to same-model re-checking, which is expected in a single-model user's context.
 
 ## Notes
 
@@ -1548,9 +1548,9 @@ openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 调用
 - **独立 openfeel-planner 调用时**：仅在「大规模」场景（多阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
 `,
     'openfeel-reviewer': `---
-description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
+description: openfeel-reviewer 审查官 Agent，负责交叉审查计划/方案/代码（模板默认不硬编码异族）。
 mode: subagent
-model: zhipuai/glm-5.3-flash
+model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -1562,7 +1562,7 @@ permission:
   external_directory: "allow"
 ---
 
-你是 openfeel-reviewer（审查官），OpenFeel 流水线中的质量把关者。你由**异种推理模型**驱动，通过交叉审查避免同模型盲区。
+你是 openfeel-reviewer（审查官），OpenFeel 流水线中的质量把关者。模板默认使用统一模型；如需交叉审查增强，可为本 agent 的 \`model\` 键设置与调用方异族系列模型（该键受部署保护）。
 
 ## 核心职责
 
@@ -1633,7 +1633,7 @@ blocking: true | false
 
 ## 模型选择
 
-openfeel-reviewer 必须由**异种推理模型**（如 GLM / Qwen）驱动，与 调用方/openfeel-schemer 使用不同模型系列，确保交叉审查的有效性。
+模板默认不硬编码异族；如需交叉审查增强，可为本 agent 的 \`model\` 键设置与 调用方/openfeel-schemer 异族系列模型（如 GLM / Qwen）——该键受部署保护。同族模型下交叉审查退化为同模型复核，在单一模型用户语境下属预期行为。
 
 ## 注意事项
 
@@ -1983,7 +1983,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | subagent |
 | openfeel-explorer | Exploration Officer | Fast model (Flash) | subagent |
 | openfeel-executor | Execution Officer | Fast model (Flash) | subagent |
-| openfeel-reviewer | Review Officer | Heterogeneous reasoning model (GLM) | subagent |
+| openfeel-reviewer | Review Officer | Reasoning model (heterogeneous optional) | subagent |
 | openfeel-feel-tester | Testing Officer | Reasoning model | subagent |
 | openfeel-utility Agent | Utility Officer | Fast model (Flash) | subagent |
 | openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | subagent |
@@ -2144,7 +2144,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | openfeel-schemer | 方案官 | 主力推理模型 | subagent |
 | openfeel-explorer | 探索者 | 快速模型 (Flash) | subagent |
 | openfeel-executor | 执行官 | 快速模型 (Flash) | subagent |
-| openfeel-reviewer | 审查官 | 异种推理模型 (GLM) | subagent |
+| openfeel-reviewer | 审查官 | 推理模型（异族可选增强） | subagent |
 | openfeel-feel-tester | 测试官 | 推理模型 | subagent |
 | openfeel-utility | 事务官 | 快速模型 (Flash) | subagent |
 | openfeel-vision | 视觉官 | 多模态模型 (deepseek-flash) | subagent |
@@ -2864,9 +2864,9 @@ openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). I
 - **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (multi-stage or cross-module architecture changes), ensuring reasoning depth and review independence
 `,
     'openfeel-reviewer': `---
-description: openfeel-reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
+description: openfeel-reviewer Agent, responsible for cross-reviewing plans/schemes/code (the template default does not hardcode a heterogeneous model).
 mode: subagent
-model: zhipuai/glm-5.3-flash
+model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -2878,7 +2878,7 @@ permission:
   external_directory: "allow"
 ---
 
-You are openfeel-reviewer, the quality gatekeeper in the OpenFeel pipeline. You are driven by a **heterogenous reasoning model**, avoiding same-model blind spots through cross-reviewing.
+You are openfeel-reviewer, the quality gatekeeper in the OpenFeel pipeline. The template default uses the unified model; for stronger cross-reviewing you may set this agent's \`model\` key to a model from a different series than the caller (the key is deployment-protected).
 
 ## Core Responsibilities
 
@@ -2953,7 +2953,7 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as GLM / Qwen), using a different model series from caller/openfeel-schemer to ensure effective cross-reviewing.
+The template default does not hardcode a heterogeneous model; for stronger cross-reviewing you may set this agent's \`model\` key to a model from a different series than caller/openfeel-schemer (such as GLM / Qwen) — the key is deployment-protected. With a same-series model, cross-review degrades to same-model re-checking, which is expected in a single-model user's context.
 
 ## Notes
 
@@ -3796,9 +3796,9 @@ openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 调用
 - **独立 openfeel-planner 调用时**：仅在「大规模」场景（多阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
 `,
     'openfeel-reviewer': `---
-description: openfeel-reviewer 审查官 Agent，异种推理模型，负责交叉审查计划/方案/代码。
+description: openfeel-reviewer 审查官 Agent，负责交叉审查计划/方案/代码（模板默认不硬编码异族）。
 mode: subagent
-model: zhipuai/glm-5.3-flash
+model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -3810,7 +3810,7 @@ permission:
   external_directory: "allow"
 ---
 
-你是 openfeel-reviewer（审查官），OpenFeel 流水线中的质量把关者。你由**异种推理模型**驱动，通过交叉审查避免同模型盲区。
+你是 openfeel-reviewer（审查官），OpenFeel 流水线中的质量把关者。模板默认使用统一模型；如需交叉审查增强，可为本 agent 的 \`model\` 键设置与调用方异族系列模型（该键受部署保护）。
 
 ## 核心职责
 
@@ -3881,7 +3881,7 @@ blocking: true | false
 
 ## 模型选择
 
-openfeel-reviewer 必须由**异种推理模型**（如 GLM / Qwen）驱动，与 调用方/openfeel-schemer 使用不同模型系列，确保交叉审查的有效性。
+模板默认不硬编码异族；如需交叉审查增强，可为本 agent 的 \`model\` 键设置与 调用方/openfeel-schemer 异族系列模型（如 GLM / Qwen）——该键受部署保护。同族模型下交叉审查退化为同模型复核，在单一模型用户语境下属预期行为。
 
 ## 注意事项
 
@@ -5549,7 +5549,7 @@ Claude Code 模型解析优先级链：项目 \`.claude/agents\` > 用户 \`~/.c
 | openfeel-planner | 推理模型 | — |
 | openfeel-schemer | 推理模型 | — |
 | openfeel-executor | 快速模型 (Flash) | — |
-| openfeel-reviewer | 异种推理模型 (GLM) | — |
+| openfeel-reviewer | 推理模型（异族可选增强） | — |
 | openfeel-feel-tester | 推理模型 | — |
 | 事务官 | 快速模型 (Flash) | — |
 | openfeel-vision | 多模态模型 | 需配 deepseek-flash |
@@ -8218,7 +8218,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | Claude subagent (Task dispatch) |
 | openfeel-explorer | Exploration Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
 | openfeel-executor | Execution Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
-| openfeel-reviewer | Review Officer | Heterogeneous reasoning model (GLM) | Claude subagent (Task dispatch) |
+| openfeel-reviewer | Review Officer | Reasoning model (heterogeneous optional) | Claude subagent (Task dispatch) |
 | openfeel-feel-tester | Testing Officer | Reasoning model | Claude subagent (Task dispatch) |
 | openfeel-utility Agent | Utility Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
 | openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | Claude subagent (Task dispatch) |
@@ -8382,7 +8382,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | openfeel-schemer | 方案官 | 主力推理模型 | Claude subagent（Task 调度） |
 | openfeel-explorer | 探索者 | 快速模型 (Flash) | Claude subagent（Task 调度） |
 | openfeel-executor | 执行官 | 快速模型 (Flash) | Claude subagent（Task 调度） |
-| openfeel-reviewer | 审查官 | 异种推理模型 (GLM) | Claude subagent（Task 调度） |
+| openfeel-reviewer | 审查官 | 推理模型（异族可选增强） | Claude subagent（Task 调度） |
 | openfeel-feel-tester | 测试官 | 推理模型 | Claude subagent（Task 调度） |
 | openfeel-utility | 事务官 | 快速模型 (Flash) | Claude subagent（Task 调度） |
 | openfeel-vision | 视觉官 | 多模态模型 (deepseek-flash) | Claude subagent（Task 调度） |

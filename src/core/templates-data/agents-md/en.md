@@ -93,7 +93,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | subagent |
 | openfeel-explorer | Exploration Officer | Fast model (Flash) | subagent |
 | openfeel-executor | Execution Officer | Fast model (Flash) | subagent |
-| openfeel-reviewer | Review Officer | Heterogeneous reasoning model (GLM) | subagent |
+| openfeel-reviewer | Review Officer | Reasoning model (heterogeneous optional) | subagent |
 | openfeel-feel-tester | Testing Officer | Reasoning model | subagent |
 | openfeel-utility Agent | Utility Officer | Fast model (Flash) | subagent |
 | openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | subagent |

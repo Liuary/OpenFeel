@@ -477,7 +477,7 @@ models:
     fast:
       provider: deepseek
       model_name: deepseek-flash
-    # 异种模型：openfeel-reviewer 交叉审查用（GLM 系列，与 DeepSeek 不同架构）
+    # 异种模型：openfeel-reviewer 交叉审查用的可选增强（框架默认不硬编码异族；GLM 系列，与 DeepSeek 不同架构）
     cross_model:
       provider: zhipu
       model_name: glm-5.1
@@ -534,7 +534,7 @@ models:
     fast:
       provider: deepseek
       model_name: deepseek-flash
-    # Cross-review model: openfeel-reviewer (GLM series, different architecture from DeepSeek)
+    # Cross-review model: an optional enhancement for openfeel-reviewer (the framework default does not hardcode a heterogeneous model; GLM series, different architecture from DeepSeek)
     cross_model:
       provider: zhipu
       model_name: glm-5.1

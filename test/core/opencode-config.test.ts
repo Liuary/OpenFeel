@@ -36,7 +36,7 @@ describe('buildGlobalOpencodeFrameworkObj', () => {
   it('应包含 vision/reviewer 两个模型默认键', () => {
     expect(obj.agent).toEqual({
       'openfeel-vision': { model: 'deepseek/deepseek-flash' },
-      'openfeel-reviewer': { model: 'zhipuai/glm-5.3-flash' },
+      'openfeel-reviewer': { model: 'deepseek/deepseek-flash' },
     });
   });
 
@@ -87,14 +87,14 @@ describe('deepMergeJsonc 字段规则', () => {
     const overlay = {
       agent: {
         'openfeel-vision': { model: 'deepseek/deepseek-flash' },
-        'openfeel-reviewer': { model: 'zhipuai/glm-5.3-flash' },
+        'openfeel-reviewer': { model: 'deepseek/deepseek-flash' },
       },
     };
     const merged = deepMergeJsonc(base, overlay) as { agent: Record<string, unknown> };
     // 用户已定义 vision → 完整自定义，框架不补 model
     expect(merged.agent['openfeel-vision']).toEqual({ model: 'user/custom' });
     // 用户未定义 reviewer → 补入框架默认
-    expect(merged.agent['openfeel-reviewer']).toEqual({ model: 'zhipuai/glm-5.3-flash' });
+    expect(merged.agent['openfeel-reviewer']).toEqual({ model: 'deepseek/deepseek-flash' });
   });
 
   it('skills：框架不写，用户已有保留', () => {

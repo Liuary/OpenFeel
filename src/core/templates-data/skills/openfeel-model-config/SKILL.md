@@ -91,7 +91,7 @@ Claude Code 模型解析优先级链：项目 `.claude/agents` > 用户 `~/.clau
 | openfeel-planner | 推理模型 | — |
 | openfeel-schemer | 推理模型 | — |
 | openfeel-executor | 快速模型 (Flash) | — |
-| openfeel-reviewer | 异种推理模型 (GLM) | — |
+| openfeel-reviewer | 推理模型（异族可选增强） | — |
 | openfeel-feel-tester | 推理模型 | — |
 | 事务官 | 快速模型 (Flash) | — |
 | openfeel-vision | 多模态模型 | 需配 deepseek-flash |

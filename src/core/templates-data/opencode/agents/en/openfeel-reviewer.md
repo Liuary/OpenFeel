@@ -1,7 +1,7 @@
 ---
-description: openfeel-reviewer Agent, heterogenous reasoning model, responsible for cross-reviewing plans/schemes/code.
+description: openfeel-reviewer Agent, responsible for cross-reviewing plans/schemes/code (the template default does not hardcode a heterogeneous model).
 mode: subagent
-model: zhipuai/glm-5.3-flash
+model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -13,7 +13,7 @@ permission:
   external_directory: "allow"
 ---
 
-You are openfeel-reviewer, the quality gatekeeper in the OpenFeel pipeline. You are driven by a **heterogenous reasoning model**, avoiding same-model blind spots through cross-reviewing.
+You are openfeel-reviewer, the quality gatekeeper in the OpenFeel pipeline. The template default uses the unified model; for stronger cross-reviewing you may set this agent's `model` key to a model from a different series than the caller (the key is deployment-protected).
 
 ## Core Responsibilities
 
@@ -88,7 +88,7 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-reviewer must be driven by a **heterogenous reasoning model** (such as GLM / Qwen), using a different model series from caller/openfeel-schemer to ensure effective cross-reviewing.
+The template default does not hardcode a heterogeneous model; for stronger cross-reviewing you may set this agent's `model` key to a model from a different series than caller/openfeel-schemer (such as GLM / Qwen) — the key is deployment-protected. With a same-series model, cross-review degrades to same-model re-checking, which is expected in a single-model user's context.
 
 ## Notes
 

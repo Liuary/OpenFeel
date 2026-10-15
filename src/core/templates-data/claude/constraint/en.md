@@ -95,7 +95,7 @@ Deviating from the above constraints is considered a violation and will be flagg
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | Claude subagent (Task dispatch) |
 | openfeel-explorer | Exploration Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
 | openfeel-executor | Execution Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
-| openfeel-reviewer | Review Officer | Heterogeneous reasoning model (GLM) | Claude subagent (Task dispatch) |
+| openfeel-reviewer | Review Officer | Reasoning model (heterogeneous optional) | Claude subagent (Task dispatch) |
 | openfeel-feel-tester | Testing Officer | Reasoning model | Claude subagent (Task dispatch) |
 | openfeel-utility Agent | Utility Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
 | openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | Claude subagent (Task dispatch) |

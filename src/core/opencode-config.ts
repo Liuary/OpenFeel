@@ -18,7 +18,7 @@ export function buildGlobalOpencodeFrameworkObj(): Record<string, unknown> {
     default_agent: 'feel',
     agent: {
       'openfeel-vision': { model: 'deepseek/deepseek-flash' },
-      'openfeel-reviewer': { model: 'zhipuai/glm-5.3-flash' },
+      'openfeel-reviewer': { model: 'deepseek/deepseek-flash' },
     },
     // N3：experimental.agent_manager_tool 已被移除（op-000 实测 schema 未定义 + 静默丢弃），故不写
     // v1.1.1：instructions 已移除——op-000 实测全局 AGENTS.md 自动加载（YES），约束无需显式 instructions 引用

@@ -6,7 +6,7 @@
  * 本模块属 opencode 适配器实现；下文 opencode / opencode.jsonc / ~/.config/opencode 均为该适配器细节。
  *
  * 三层级落点：
- *  - default（工具默认）：有显式 model 的 4 个 agent（executor/utility/reviewer/vision）
+ *  - default（工具默认）：有显式 model 的 5 个 agent（executor/explorer/utility/reviewer/vision）
  *    改 src/core/templates-data/opencode/agents/{zh-CN,en}/*.md frontmatter `model:`（双语）；
  *    其中 vision/reviewer 额外改 src/core/opencode-config.ts buildGlobalOpencodeFrameworkObj()
  *    的 agent.<name>.model。无显式 model 的 5 个 agent（feel/planner/schemer/feel-tester/archiver）

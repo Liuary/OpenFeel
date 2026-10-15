@@ -34,3 +34,4 @@
 |------|------|
 | stage-37 | 初始创建；`parseJsonc` 从 update.ts 迁移至此（op-003 删本地副本改 import）；新增 `deepMergeJsonc` / `mergeGlobalOpencodeJsonc` / 双构建对象（REV-605「已存在不覆盖」语义 + REV-703 agent 级合并粒度） |
 | v1.1.1 | `buildGlobalOpencodeFrameworkObj` 移除 `instructions`（op-000 实测全局 AGENTS.md 自动加载 = YES）；`mergeGlobalOpencodeJsonc` 清理已废弃的 `getGlobalCoreMdPath()` 引用（保留用户其他 instructions） |
+| v1.2.1-stage-94 | `buildGlobalOpencodeFrameworkObj()` 的 **`openfeel-reviewer` 条目默认值**由 `zhipuai/glm-5.3-flash` 收敛为 **`deepseek/deepseek-flash`**（与其余显式 model agent 统一的单一默认——「模板硬编码 reviewer 异族」存量废止）；`openfeel-vision` 条目维持 `deepseek/deepseek-flash`。**`mergeAgentDefaults`（「用户定义即不覆盖」）零改动**（REV-703 已达标）。详见 kb/patterns.md #模型默认值统一范式 |

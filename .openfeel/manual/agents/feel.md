@@ -15,11 +15,13 @@
 | Schemer | 方案官 | 主力推理模型 | subagent | high |
 | Explorer | 探索者（**只读**） | 快速模型 (Flash) | subagent | medium |
 | Executor | 执行官 | 快速模型 (Flash) | subagent | low |
-| Reviewer | 审查官 | 异种推理模型 (GLM) | subagent | medium |
+| Reviewer | 审查官 | 推理模型（**模板默认已归一**；异族为**可选增强**） | subagent | medium |
 | Feel Tester | 测试官 | 推理模型 | subagent | medium |
 | 事务官 | 事务官 | 快速模型 (Flash) | subagent | low |
 | Vision | 视觉官 | 多模态模型 (deepseek-flash) | subagent | low |
 | Archiver | 归档官 | 推理模型 | subagent | low |
+
+> **模型默认值策略（v1.2.1-stage-94）**：框架模板**不假设用户具备异族供应商**——opencode 侧 5 个「显式 `model`」agent（executor/explorer/utility/vision/reviewer）默认**收敛为单一快速模型**（`deepseek/deepseek-flash`）；claude 侧 20 份模板**维持 `model: inherit`**（自动接管用户默认模型）。reviewer 的**交叉审查（异族）**降级为**用户可选增强**——经**用户主权键 `model`**（`~/.claude/agents/<name>.md` / `~/.config/opencode/agents/<name>.md`，`openfeel update` **保留**该键）设置，**单模型用户语境下「同模型」非缺陷**。详见 kb/patterns.md #模型默认值统一范式、kb/architecture.md #部署非破坏性语义架构、kb/troubleshooting.md #Claude Code reviewer 异族模型本地复现路径。
 
 ## 调度模型
 

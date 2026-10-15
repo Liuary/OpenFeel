@@ -66,6 +66,7 @@ stage-38 用「控制区标记」替换 stage-32 的 `writeWithMergeDetection`�
 | ✅ | malformed | — | 不写盘，仅记 anomaly 条目 | `skipped` |
 
 - 标记型文件（markdown 正文 / .gitignore）走三态；frontmatter / JSONC 结构化型文件恒走合并不进入三态（N1）。
+- **含标记分支的 frontmatter 合并（`region.status === 'ok'`）经 `mergeFrontmatter(existingFm, incomingFm, USER_SOVEREIGN_KEYS)`**（v1.2.1-stage-94）：用户主权键 **`model`** 已有则**保留用户值**（「无则创建、有则不覆盖」），其余框架字段维持 incoming 覆盖。**仅此分支**传白名单；`created` / `appended` / `malformed` / adopt 四路径**不触碰 frontmatter**（语义逐字）。详见 kb/architecture.md #部署非破坏性语义架构。
 - 无标记追加「追加即建区」（N2）；hash 降级为「无标记文件归属兜底」（N3），不再作为含标记文件拒写依据。
 - `UpdateResult` 新增 `appended: string[]`（与 created/updated/skipped/conflicts 并列）；`conflicts` 本阶段恒空（语义变化）。
 - 追加/异常动作内联写 `~/.openfeel/update_infos.md`（见 `core/update-infos.md`），路径二元组（绝对路径 / 项目根+相对路径）。
@@ -81,3 +82,4 @@ stage-38 用「控制区标记」替换 stage-32 的 `writeWithMergeDetection`�
 | v1.1.1 | 拆除项目 AGENTS.md 部署（含 `AgentsMdLangConflictError`）与 `getIncomingContent` 的项目 AGENTS.md 路由；全局约束改部署 `getGlobalAgentsMdPath()`（core.md 退役）；存量全局 state core.md key → AGENTS.md key 一次性重映射 |
 | v1.1.6-stage-71 | 多 harness 双分支（`wantOpencode`/`wantClaude`；早退改「两工具都未选才空」）；claude 分支 = CLAUDE.md + 9 agents + 17 共享 skills；`getIncomingContent` 补三分支；重启提醒按 harness 组合参数化（i18n）；`supportedTools` claude 正式条目 `enabled:false` + `parseToolList`；**R-5**：`update <path>` 默认改 `filter(t=>t.enabled)` |
 | v1.1.6-stage-73 | claude 分支 step 4c 接入 `applyClaudeSettings`（`settings.json` 严格 JSON 读-深合并-写回，共享单实现防漂移）；重启提醒 `claudeChanged` 追加 `f === getClaudeSettingsPath()`；settings **不入 conflicts**（`getIncomingContent` 不加分支）；`update([claude])` 二次 skipped 27 → **28** |
+| v1.2.1-stage-94 | **部署非破坏性（用户主权键）**：`writeManagedFile` 含标记分支调 `mergeFrontmatter(existingFm, incomingFm, USER_SOVEREIGN_KEYS)`——`model` 键已有即保留用户值（「无则创建、有则不覆盖」）；其余路径零改动；`setup` / `migrate` 经 `deployGlobalAsset` **单点继承**（调用方零改动）；`--scope default`（`model-config.ts`）不受影响。同批注入文案：「勿手改 frontmatter」**限定化**（`model` 主权、其余框架键仍覆盖）+ Claude 侧「模型校验路径 / 用户主权配置位」节。详见 kb/architecture.md #部署非破坏性语义架构 |

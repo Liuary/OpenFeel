@@ -1053,3 +1053,21 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.1-stage-92（`9ae2814` op-002；契约落 `openfeel-delegation` 并行编排节 + 声明指南 + stage-50 裁定重审结论**双处登记**〔`deps.yaml` + 报告〕；交互提速落 `openfeel-tool-usage` §2 增补；会话卫生核验三要素 + 可控 / 不可控分列〔不可控项禁「已实现」〕；`.openfeel/pipeline.yaml` `git diff --stat` 空）。
 
 **参见：** v1.2.1-stage-92（plan §三 T2、`ops/op-002`；`.openfeel/tmp/stage-92-{parallel-contract,composite-e2e,session-hygiene-audit}.md`）；`src/core/templates-data/skills/openfeel-delegation/SKILL.md`（并行编排节 / 交互提速节）；kb/architecture.md #Worktree 并行批次策略、#通用工作者直接调度架构；kb/patterns.md #流水线 transitions 组合条件 `|` 运算符模式、#跨阶段「契约先行」协同；kb/troubleshooting.md #autoRepairInconsistency 干扰组合条件推进路径、#advanceAccepted 被误述为「组合条件路径」
+
+## [+] 部署非破坏性语义架构：用户主权键（键级「无则创建、有则不覆盖」）+ 部署路径与 --scope default 调用点区分 (2026-10-15)
+
+**背景**：v1.2.1-stage-94（用户 2026-10-15 直接指令裁定②：「部署时**无则创建、有则不覆盖用户设定**」，防「升级 CLI 即覆盖用户模型」）。实质是**修补「控制区标记模式」契约缺口**——frontmatter 位于标记**之外**（属「区外归用户」的契约面），却被 incoming 覆盖；而既有坑位链显示用户改 `model` **只能**手改 frontmatter（jsonc 被 frontmatter 遮蔽，见 kb/troubleshooting.md #opencode 模型解析优先级排查），手改又会被部署覆盖 → 闭环缺口。
+
+**键级语义（用户主权键）**：白名单常量 `USER_SOVEREIGN_KEYS = ['model']`（**单源**，`managed-region.ts`）。部署合并（仅 `region.status === 'ok'` 分支）时：目标 frontmatter **已有该键** → **保留用户值**（含显式 `null`）；**无该键** → 写模板值（「无则创建」）；文件不存在 → 写全文（`created`）。**其余框架主权键**（`name` / `description` / `tools` / `permission` 等）维持 incoming 覆盖（浅合并；`permission` 嵌套对象**整体覆盖**）；**正文受管区**维持无条件替换。
+
+**调用点区分（关键，防误伤）**：实现形态 = `mergeFrontmatter(existing, incoming, preserveKeys = [])` 可选参（默认不传 = 旧行为逐字）；**仅部署路径** `update.ts` 的 `writeManagedFile` 含标记分支传 `USER_SOVEREIGN_KEYS`；`openfeel model set --scope default`（`model-config.ts`，写**模板源**）**不传** → **覆盖语义逐字保持**（不变量：模型配置命令不被保护逻辑废掉）。三入口（`setup` / `update` / `migrate`）经 `deployGlobalAsset → writeManagedFile` **单点统一**（改一处全覆盖）；`init` / `setup` / `claude-settings` 调用方零改动。
+
+**零触碰面（登记防重复改造）**：`created` / `appended` / `malformed` / adopt 四路径**不触碰 frontmatter**（语义逐字）；`--scope global|project`（jsonc）不变；opencode.jsonc `mergeAgentDefaults`（已达标）、claude-settings 注入（仅自有键）、CLAUDE.md 受管区三态均不改。
+
+**文档化推论（边界说明）**：删 `model` 行 + 重部署 = **回归模板默认**；**框架默认值变更不自动传播到已部署实例**（键存在即保留——既有部署将停留旧模板默认值，属「存在即保留」的已知语义结果；如需切换新默认，删除该行再部署或显式设置新值）。
+
+**判据/避免**：① 用户主权键判据 = **「键存在即保留」**（不依赖基线——含标记分支本就不看 hash，hash 已降级为「无标记文件归属兜底」N3）；② 白名单**恰单键**（`model`）——升维将破坏「框架升级可传播」，扩展须用户明确后单独立项；③ 「框架可保证的保留」与「用户显式设置的持久」显式二分。
+
+**实证**：v1.2.1-stage-94（`85c8435` op-002；`ops/op-002`、`.openfeel/tmp/stage-94-{nondestructive-contract,deploy-nondestructive-e2e,repo-persistence}.md`）——隔离四场景（改值保留 ×2 harness / 删行补写 / 正文更新并行）+ 阴性（`description` 篡改仍被覆盖）全绿；**本仓实测**：`openfeel update --tools claude` 后 `~/.claude/agents/openfeel-reviewer.md` 的 `model: ccs-claude-zhipu--glm-5.3-flash[1M]` **前后逐字保留**（正文随模板更新）、`openfeel-explorer.md` **创建**（「无则创建」见证）、`settings.json` 用户键逐字；新增 12 用例（`managed-region` +5 / `update` +6 / `model-config` +1）；`--scope default` 覆盖语义回归断言绿（R-94-2）。
+
+**参见：** v1.2.1-stage-94（plan §二 不变量 / §三 T2；`REV-94.md` 001~007）；`src/core/managed-region.ts :: USER_SOVEREIGN_KEYS / mergeFrontmatter`；`src/core/update.ts :: writeManagedFile`；kb/architecture.md #控制区标记增量更新架构、#模型配置三层级架构；kb/patterns.md #模型默认值统一范式、#写策略按资产归属二分；kb/troubleshooting.md #Claude Code reviewer 异族模型本地复现路径；manual/core/managed-region.md、manual/core/update.md、manual/core/model-config.md

@@ -43,8 +43,8 @@ Agent frontmatter 的 `model` 字段格式为 `provider/model-name`，非简短�
 ```yaml
 # ✅ 正确格式
 model: deepseek/deepseek-v4-pro   # 默认推理
-model: deepseek/deepseek-v4-flash # 快速执行
-model: zhipuai/glm-5.2            # 异种审查
+model: deepseek/deepseek-flash    # 快速执行（框架模板默认值）
+model: zhipuai/glm-5.3-flash      # 异族（交叉审查可选增强，经用户主权键设置）
 ```
 
 **踩过的坑**：
@@ -55,6 +55,8 @@ model: zhipuai/glm-5.2            # 异种审查
 **缓存注意**：修改 frontmatter 后需重启 OpenCode/VSCode。config.yaml roles 不参与模型解析。
 
 > **更新于 2026-09-25（stage-40 REV-1606 实测勘误）**：上句「模型完全由 frontmatter 直接指定」不完整——实测优先级链为「项目 agents frontmatter > 全局 agents frontmatter > 项目 opencode.jsonc `agent.model` > 全局 opencode.jsonc `agent.model` > opencode 默认」，即 **frontmatter 生效且优先于 opencode.jsonc `agent.model`**（与「jsonc 覆盖 frontmatter」的直觉相反）。改模型不生效时先查各层显式值确认生效源，或用 `openfeel model set/get/list --scope default|global|project` 一键读写。详见 troubleshooting.md #opencode 模型解析优先级排查。
+
+> **更新于 2026-10-15（v1.2.1-stage-94）**：示例值订正——① 「快速执行」范例由 `deepseek/deepseek-v4-flash`（**已下线名，实测三层不可用**）改为 **`deepseek/deepseek-flash`**（= 框架模板默认值）；② 「异种审查」改为「异族（交叉审查可选增强）」——框架模板默认**不再硬编码异族**（见 kb/patterns.md #模型默认值统一范式），异族经**用户主权键 `model`** 设置（`~/.claude/agents/<name>.md` / `~/.config/opencode/agents/<name>.md`，`openfeel update` **保留**该键，见 kb/architecture.md #部署非破坏性语义架构）。模型字面值一律以**实测可用**为准（详见 troubleshooting.md #模型名错误导致 Agent 无法启动）。
 
 ## [+] npm pack 发布验证与 files 字段一致性检查 (2026-08-07)
 

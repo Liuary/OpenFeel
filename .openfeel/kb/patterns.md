@@ -4272,3 +4272,22 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.1-stage-92（`cf4ea4f` op-001 三档隔离实跑 / `8e465d8` op-003 归档轻量化）；归档机械清单 **4 条核对项 / 7 条幂等命令**（`openfeel-logging` §7「归档机械核对清单」）；archiver ×4 模板机械步骤描述 → 一行指针（-26 / -5 / -26 / -5 B，1 插 1 删 / 文件，保留面零删减）；前后对照：机械步骤 0 → 4 条命令、人工介入点 5 → 0（语义判定 3 处保留）、清单实测 ≈ 637 ms；`.openfeel/tmp/stage-92-{tier-e2e,archive-step-inventory,archive-beforeafter}.md`。
 
 **参见：** v1.2.1-stage-92（plan §三 T1.8 / T3、`ops/op-001` §1.8、`ops/op-003`；`REV-92.md` 003/004）；`src/core/templates-data/skills/openfeel-logging/SKILL.md`（§7 归档机械核对清单）；kb/patterns.md #双主题收官端到端验收范式、#提示词瘦身范式、#模板收口三类静态断言；kb/architecture.md #可观测性埋点架构、#审查档位架构；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护、#改 templates-data 源须同批重生成的「双生成物」
+
+## [+] 模型默认值统一范式：显式默认归一（单模型用户现实）+ `inherit` 自动接管维持 + 模型字面值 go/no-go + 反转登记（模板硬编码异族废止） (2026-10-15)
+
+**背景**：v1.2.1-stage-94（用户 2026-10-15 直接指令裁定①）：除「**自动接管用户默认模型（`inherit`）**」者外，**全部自定义模型 → 单一快速模型**——理由「很多用户是单一模型，**框架模板不得假设用户具备异族供应商**」。
+
+**范式四则**：
+
+1. **分层默认（两 harness 分工）**：opencode 侧「显式 `model`」的 5 agent（executor / explorer / utility / vision / reviewer）框架模板默认**收敛为单一值**（本阶段终值 `deepseek/deepseek-flash`）+ `opencode-config.ts` 的 vision/reviewer 两条目同批；claude 侧 20 份模板**维持 `model: inherit`**（自动接管用户默认，供应商中立——本机专有 ID 格式 `ccs-claude-<slug>--<model>[1M]` **不入模板硬编码**）。「无 `model` 键」的 5 agent 维持（与 claude 侧 `inherit` 语义对应）。
+2. **模型字面值 go/no-go（执行前置实测；禁静默择值）**：新字面值的**可用性 = 执行前置三层实测**（① opencode 派发权威报错 `Model not found: … Did you mean:` ② 清单命令 ③ provider API），**任何「不可用」证据 → 停 op 上报**；全路径不可达 → 同样上报；**回退候选预登记**（禁凭记忆断定可用/不可用、禁静默择值）。本阶段实测 `deepseek/deepseek-v4-flash` **不可用**（三层一致 + kb 已有「已下线」历史）→ **停 op 上报 → 主会话裁定回退 `deepseek/deepseek-flash`。
+3. **多模态例外门（未证即维持）**：多模态 agent（vision）如目标字面值的多模态能力**未证** → **维持现值**（保守），**实测支持才随统一值**；例外须显式登记 + skill 文本同步（禁盲目随大流改）。
+4. **一致性文本逐处判类（零未判类）**：一切「默认值 / 示例值」类引用（skill / `agents-md` / `constraint` / config 模板 / i18n 示例）**同批同步**；枚举用**三扫描路径**（值 ① + 值 ② + **描述性** `异种|[Hh]eterogen|glm`——纯字面值双路扫不到「异种推理模型 (GLM)」类描述行）；逐处判 `[改]`/`[轻改]`/`[不改·边界登记]`；历史记录 / 报告 / 边界面不改；zh/en 对称 + 生成物同批。
+
+**反转登记（supersede，「模板硬编码 reviewer 异族」存量废止）**：opencode 侧 reviewer 模板默认由 `zhipuai/glm-5.3-flash` → 单一默认；同文件 `description`/body 的断言式「异种推理模型」改限定化表述。**理由**：用户裁定 + 单模型用户现实 + 降本方向。**适用边界 = 仅模板默认层**——**本地配置层仍完整支持异族**（经用户主权键 `model`，受部署保护）。反转材料格式对齐 kb supersede 先例（原行保留不删 + 变更内容 + 理由 + 适用边界 + 落地方 + 回滚）。
+
+**判据/避免**：① 框架模板默认**不得假设用户多供应商**（单模型用户 = 一等公民；「交叉审查退化」在单模型语境下**非缺陷**）；② 平台可用性**实测先行**、不可用**停上报**——承 kb/troubleshooting.md #模型名错误导致 Agent 无法启动 的坑位纪律；③ 「模板默认层」与「本地配置层」职责二分——框架**给受保护的配置位**，**不替用户选模型**。
+
+**实证**：v1.2.1-stage-94（`9f993d0` op-001 / `85c8435` op-002；`.openfeel/tmp/stage-94-{model-availability,final-report,supersede-materials}.md`）——10 处 frontmatter + `opencode-config.ts:20/:21` 收敛；`rg "zhipuai/glm-5.3-flash" src/ test/` **零残留**；claude 侧 20 份 diff 空（硬验收）；vision 例外门**未触发**（provider API `input_modalities` 含 `image`）；断言改写 4 处（`opencode-config.test.ts:39/:90/:97` + `model-config.test.ts:138`）+ 保留面逐字。
+
+**参见：** v1.2.1-stage-94（plan §一 表 A / §二 目标语义 / §三 T1；`REV-94.md` 001/003/004）；`src/core/templates-data/opencode/agents/{zh-CN,en}/openfeel-{executor,explorer,utility,vision,reviewer}.md`；`src/core/opencode-config.ts`；kb/architecture.md #部署非破坏性语义架构、#模型配置三层级架构；kb/patterns.md #值域扩展全枚举范式、#陈旧计数「全枚举」纪律、#跨 harness × 语言模板对称纪律、#未来功能/未落地能力写入 skill 与文档须标注「提供版本」；kb/troubleshooting.md #模型名错误导致 Agent 无法启动、#Claude Code reviewer 异族模型本地复现路径；kb/setup.md #OpenCode Agent 模型配置

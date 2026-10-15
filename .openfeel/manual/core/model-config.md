@@ -49,3 +49,4 @@ interface ModelConfigOptions { projectPath?: string; frameworkRoot?: string; }  
 | 阶段 | 变更 |
 |------|------|
 | stage-40 | 初始创建。三层级读写 + 校验 + auth.json provider 读取；REV-1606 修正优先级链（frontmatter > jsonc）；REV-1501~1507/1601~1606/1701~1704 落地 |
+| v1.2.1-stage-94 | **注释订正**（`model-config.ts:9` 「有显式 model 的 **4 个** agent」→ **5 个**（executor/**explorer**/utility/reviewer/vision）——explorer 于 stage-89 加入，机制层已动态支持）。**写入语义零改动**：`--scope default` 的 `mergeFrontmatter(split.frontmatter, { model })`（`:218`）**不传**用户主权键白名单 → **覆盖语义逐字保持**（新增回归断言锁定，R-94-2）；保护逻辑仅部署路径（见 manual/core/update.md）。框架默认模型值见 kb/patterns.md #模型默认值统一范式 |

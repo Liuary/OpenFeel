@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 55 |
+| passed | 56 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -145,3 +145,4 @@
 | [v1.2.1-stage-90](v1.2.1-stage-90.md) | 三模式架构：规划 / 快速 / 通用（值域 3 值 `full`/`fast`/`general`〔`general` 空表 + 不新增 phase〕+ 需求级模式属性 `workflow_mode?`〔携带、仅调度、不入聚合〕+ 解析链单点第 2 层〔`status.md > 需求级 > config > profile > builtin`，`ConfigSource` 第 5 值 `'requirement'`〕+ 生效路径下发 + 载体制约束「`general` 仅需求级合法」〔4 面穷尽：三命令面 + wizard 双写入面〕+ supersede「正交 → 携带」〔3 组代码断言 + 15 处模板文案，旧串 0 残留〕）— REV-90-001（**high blocking** wizard 载体制面遗漏）经修订 1 闭合 + 002~010 全 closed + 代码轮 011（转主会话）/ 012·013 closed；**1 非阻塞 BUG**：`req/BUG-002`（general 需求恒无法 done → stage-93） | passed |
 | [v1.2.1-stage-91](v1.2.1-stage-91.md) | 提示词瘦身与上下文治理（流程 → skill 下沉〔skills **18 → 22** + 4 约束瘦身 ≤350 行〕+ 40 份 agent **索引壳化**〔`## 技能索引` + 最小约束，frontmatter 零改动〕+ 收编 87~90 零遗漏 + 上下文治理**可控/不可控分列留痕** + **三类静态断言**〔尺寸双表分置 40∧4 / 引用完整性悬空零容忍 / 跨 harness 对称〕+ 扫描集 37→66）— REV-91-001~004 计划轮吸收 closed + 005（**medium blocking** Tier S 判据矛盾）修订 1 闭合 + 006~009 closed + 代码轮 010（转主会话）/ 011（门禁未独立复跑，转主会话）pending；0 阻塞 | passed |
 | [v1.2.1-stage-92](v1.2.1-stage-92.md) | 流水线提速与并行拆分执行（**审查档位** `full/lean/skip` 单源 + 唯一取表点 `resolveTransitionsForMode(mode, tier)` 第二参 + 边收缩 + **默认零裁剪 = 零回归** + 无新持久载体 + `flow phases --json` 6→7 键 + 三条硬语义零破坏 / **并行编排契约** + 组合键 **维持不补**〔stage-50 裁定重审〕+ 交互提速 + 会话卫生核验 / **归档轻量化**〔机械清单命令化 + archiver ×4 指针化，保留面零删减〕）— REV-92-001~004 计划/方案轮吸收 + 代码轮 005·006 low 非阻塞 pending；**2 非阻塞 BUG**（`cli/BUG-011` medium / `templates/BUG-007` low，转 stage-93）；0 阻塞 | passed |
+| [v1.2.1-stage-94](v1.2.1-stage-94.md) | 模型默认值与部署非破坏性（**用户直接指令补阶段 / 八阶段表外**）：**模型默认值统一**（opencode 侧 5 agent 显式默认收敛单一值 + claude 侧 20 份维持 `inherit` + **模型字面值 go/no-go**〔`deepseek-v4-flash` 三层实测不可用 → 停 op 上报 → 裁定回退 `deepseek/deepseek-flash`，禁静默择值〕+ vision 例外门未触发 + 三扫描路径零未判类）/ **部署非破坏性**（`USER_SOVEREIGN_KEYS=['model']` 单源 + `mergeFrontmatter(..., preserveKeys?)` 可选参 + 键级「无则创建、有则不覆盖」+ 仅部署路径 + `--scope default` 覆盖语义零改动）/ **本仓 GLM 持久与复现**（reviewer `ccs-claude-zhipu--glm-5.3-flash[1M]` 经 update 逐字保留 + explorer 创建 + supersede R-12 缓解路径定性）— REV-94-001/003（medium blocking）经方案/执行期吸收 + 002/004 落实 closed；代码轮 005·006·007 low 非阻塞（归档轮/主会话闭环）；**0 阻塞、0 新增 BUG** | passed |

@@ -350,6 +350,9 @@ OpenFeel 的模板部署存在**两层模板源**：
 
 **参见：** v1.1.0-stage-36 op-004（附带修复）、kb/setup.md #OpenCode Agent 模型配置（model 格式 `provider/model-name`）
 
+> **【复核印证｜2026-10-15｜v1.2.1-stage-94】** 本条结论**再次独立印证**（原行保留不删）。stage-94 的模型字面值 go/no-go **三层实测**（① opencode 派发权威报错 `Model not found: deepseek/deepseek-v4-flash. Did you mean:` ② 清单命令恰 2 条无 v4-flash ③ provider API 恰 2 条 + `models.dev` `status: deprecated`）**一致判定 `deepseek/deepseek-v4-flash` 不可用** → 停 op 上报 → 主会话裁定回退 `deepseek/deepseek-flash`。**悬空提醒**：`kb/setup.md` #OpenCode Agent 模型配置 的示例行仍以 `deepseek/deepseek-v4-flash` 作为「快速执行」范例（已订正见该条「更新于 2026-10-15」）；模型字面值在模板/示例中一律以**实测可用**为准。
+> **适用边界**：本条「修复范围全链路」口径不变；stage-94 的全链路面见 kb/patterns.md #模型默认值统一范式（10 处 frontmatter + `opencode-config.ts` 2 条目 + 生成物 build）。
+
 ## [+] opencode instructions 路径 `~` 不展开（debug config 输出保留字面 `~/...`）(2026-09-25)
 
 **现象：** 全局 opencode.jsonc 的 `instructions: ["~/.config/opencode/openfeel/core.md"]`，用 `opencode debug config` 查看时输出**原样保留** `"~/.config/opencode/openfeel/core.md"`（未展开为绝对路径）。
@@ -1292,3 +1295,35 @@ concurrency:
 **实证**：v1.2.1-stage-87（测试官非阻塞观察 #2；`test/commands/req.test.ts` T-B11 + T-C3 `EXPECTED=42`）。
 
 **参见：** v1.2.1-stage-87（REV-87-008 / 测试报告 §五观察 2）；kb/troubleshooting.md #新增输出键/契约的同步面清单；kb/patterns.md #CLI `--json` 成功/失败同契约、#help 键命名双规与防死键双向逐键断言；manual/cli/req.md
+
+## [+] Claude Code reviewer 异族模型本地复现路径：用户级 frontmatter `model` 键为正式配置位 + 部署保护（supersede「可选增强表」缓解路径） (2026-10-15)
+
+**症状/场景**：Claude Code 下 reviewer 实际未跑异族模型（观察：21 万条 subagent 响应全 `deepseek-flash`）；框架「reviewer = 异族模型」的设计**只在 opencode 侧实现**，claude 侧从未生效。需要一条**正当、可持久、可复现**的路径让用户为 reviewer 配异族模型。
+
+**根因链（实测）**：claude 侧模板全 `model: inherit`（随主会话模型）× `~/.claude/settings.json` 各档位全映射同一模型（cc-switch）→ reviewer 与主会话同模型 → 交叉审查退化（`docs/claude-code-adapter-plan.md` R-12）。
+
+**复现路径（正当最小形态）**：
+
+| 要素 | 内容 |
+|------|------|
+| **值** | 用户本机 cc-switch 完整 ID（形如 `ccs-claude-zhipu--glm-5.3-flash[1M]`；**slug 依本机配置，不可硬编码入模板**） |
+| **落点** | 用户级 `~/.claude/agents/<name>.md` frontmatter 的 `model` 键 = **正式配置位**（claude 原生解析链：项目 `.claude/agents` > 用户 `~/.claude/agents`；frontmatter `model` **优先于** `inherit`） |
+| **复现步骤** | 设该键 → `openfeel update --tools claude`（**保留**，可重复执行）→ 回退 = 删该行再部署（回归模板默认 `inherit`） |
+| **生效验证法** | 重启会话后派发该 agent 实测实际生效模型；记录**命令 + 版本 + 环境**三要素；**未实测不得表述为「已生效」** |
+| **持久性依据** | 用户主权键机制（kb/architecture.md #部署非破坏性语义架构）——升级 CLI 不再覆盖 |
+
+opencode 侧同源同语义：`~/.config/opencode/agents/<name>.md` 的 `model` 同样受部署保护。
+
+**三项 supersede（原行保留不删；格式对齐 kb #Claude Code 2.1.300 subagent 可调 Task 先例块）**：
+
+> **【supersede｜2026-10-15｜v1.2.1-stage-94】#1 —「模板硬编码 reviewer 异族」存量废止**：`openfeel-reviewer` 的**框架模板默认**由 `zhipuai/glm-5.3-flash` → `deepseek/deepseek-flash`（与其余 4 个显式 model agent 统一的单一默认；`opencode-config.ts` 同批）；同文件 `description`/body 断言式「异种推理模型 / heterogeneous reasoning model」改限定化表述。**理由**：用户裁定 + 单一模型用户现实 + 降本。**适用边界**：**仅模板默认层**——本地配置层仍完整支持异族（本表路径，受部署保护）。**落地方**：`templates-data/opencode/agents/{zh-CN,en}/openfeel-reviewer.md` + `opencode-config.ts:21` + `agents-md` / `claude/constraint` / `model-config` skill 一致性文本。**回滚**：`git revert <stage-94-op-001-sha>`。
+
+> **【supersede｜2026-10-15｜v1.2.1-stage-94】#2 —「勿手改全局 agent frontmatter（会被 update 覆盖）」限定化**：`model` 键**除外**——该键为**用户主权配置**：`openfeel update` / `setup --tools <harness>` **保留**用户在 agent 文件 frontmatter 中设置的 `model` 值（**无则补模板默认**）；其余框架字段（`description` / `tools` / `permission` 等）**仍会被覆盖**（浅合并）。**生效范围**：两 harness（`~/.claude/agents/**` + `~/.config/opencode/agents/**`），三入口单点统一。**不生效范围**：`openfeel model set --scope default`（写模板源）**保持覆盖语义**——保护逻辑仅在部署路径；白名单恰 `model` 单键。**落地方**：`agents-md/{zh-CN,en}:111` + `skills/openfeel-cli-usage/SKILL.md:188` + `managed-region.ts` / `update.ts`。
+
+> **【supersede｜2026-10-15｜v1.2.1-stage-94】#3 — R-12 缓解路径更新**：`docs/claude-code-adapter-plan.md` 的 R-12（「全 `inherit` ⇒ 交叉审查退化」）**缓解路径**由「文档可选增强表」升级为**用户主权键机制（可持久设置异族，受部署保护）+ 文档（skill 复现路径）+ 本仓示范**三层。**重新定性（关键）**：「全 `inherit` ⇒ 退化」在**单一模型用户语境下不是缺陷**（该用户没有第二个模型可选），故框架**不再硬编码**异族；多模型用户由本地配置层（`model` 键）解决。**适用边界**：「退化」命题**保留**，但**归因**由「框架缺陷」改为「**用户模型可得性约束**」——框架职责 = 提供**受保护的配置位**，不 = 替用户选模型。**落地方**：模板层（#1）+ 部署层（#2）+ 两 skill 的 Claude 节；`docs/**` 蓝本修订归 **stage-93 文档轮**。
+
+**判据/避免**：① 自定义模型 ID 的**可用性**以**派发实测**为权威（cc-switch 清单/定价表仅参考），未实测不得表述为「已支持」；② 用户主权键是**唯一正当持久位**——不再依赖「手工改全局 agent 易被 update 覆盖」的易失方式。
+
+**实证**：v1.2.1-stage-94（`9f993d0` op-001 / `85c8435` op-002；`.openfeel/tmp/stage-94-{repo-persistence,supersede-materials,final-report}.md`）——本仓 `~/.claude/agents/openfeel-reviewer.md` `model: ccs-claude-zhipu--glm-5.3-flash[1M]` 经 `update --tools claude` 前后**逐字保留**；`openfeel-explorer.md` 创建；`settings.json` 用户键逐字保留。
+
+**参见：** v1.2.1-stage-94（plan §二「本仓 reviewer = GLM」/ §三 T3；`REV-94.md` 001~007）；`docs/claude-code-adapter-plan.md`（R-12 / 决策 6 / 实施偏差表 #4）；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实、#模型名错误导致 Agent 无法启动；kb/architecture.md #部署非破坏性语义架构、#Claude 内容源自立与运行时 3 API；kb/patterns.md #模型默认值统一范式、#Claude Code agent frontmatter 结构化映射；`src/core/templates-data/skills/openfeel-{model-config,agent-model-check}/SKILL.md`

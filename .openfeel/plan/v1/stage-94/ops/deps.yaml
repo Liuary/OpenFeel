@@ -1,0 +1,191 @@
+# stage-94 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 应声明实际文件名
+# revision: 2026-10-15 openfeel-schemer 初版（计划 §八 定稿；REV-94-001 / REV-94-002 全吸收 —— 逐条映射见说明④）
+#   说明① **op 数定稿 = 3**（对齐计划 §八「op 拆分建议」+ 阶段末 op 独立，承 stage-91/92 先例）。执行序恒为
+#     op-001（T1 模型默认值统一）→ op-002（T2 部署非破坏性 + T3 本仓持久化）→ op-003（T4 收口，阶段末 op）。
+#     三 op **恒串行**（详 mutual_exclusions）：op-001 / op-002 **共有** `templates-data/agents-md/**`、
+#     `skills/openfeel-model-config|agent-model-check` 与 `npm run build` 双生成物（`template-loader.ts` + `update.ts`）
+#     → 不得并发（禁两次并发 build / 禁同文件两轮未定稿触碰）。
+#   说明② **est_ops 声明**：本阶段为版本计划八阶段表外补阶段（用户 2026-10-15 直接指令），版本计划
+#     `.openfeel/plan/v1/v1.2.1/deps.yaml` **未含 est_ops 登记值**——计划 §八 建议 `est_ops = 3`（含自洽登记的
+#     2-op 降级方案并注明「取舍须在方案期显式登记」）。**本方案定稿 = 3 → 与建议值一致，无偏差**；**降级 2-op
+#     方案不采纳**（本句即该登记）：T3.3「复现路径成文」与 T2.4「契约文本限定化」同属 skill 文本批
+#     （model-config / agent-model-check / cli-usage），若并入 op-001 将导致同文件跨 op 两轮触碰 + 破单一 owner 纪律；
+#     且 T2 源码语义与 T3 实测强耦合（本仓实测必须在实现通过后执行）。**回写去向 = 主会话**
+#     （版本计划侧对账登记由 op-003 §3.5 报告承载；本 Agent 不直改版本计划文件）。
+#   说明③ **方案期裁定 D-94-1 ~ D-94-16（全量登记；详细论证见各 op 头部「方案期裁定」）**：
+#     D-94-1 op 数 3 + 执行序 001→002→003（说明①②）｜
+#     D-94-2（Q1 定稿）字面值可用性三层实测路径（opencode 派发 / 清单命令 / provider API）；任何「不可用」证据
+#       → 停 op 上报；全路径不可达 → 同样上报（禁静默落值）｜
+#     D-94-3（Q4 定稿）vision 例外门方向 = **未证即维持**（保守）：实测支持多模态才随统一值，否则维持现值 + 例外登记｜
+#     D-94-4（Q6 定稿）T2 实现形态 = (a) `mergeFrontmatter(existing, incoming, preserveKeys?)` 可选参；白名单常量单源；
+#       `model-config.ts:218` 不传（`--scope default` 覆盖语义保持）｜
+#     D-94-5（Q9 定稿）cross_model 异族示例保留（config.ts 双语示例 + models.template.yaml 零改动 + model-check skill
+#       概念描述保留）；仅 config.ts 注释增「可选增强」限定语｜
+#     D-94-6（Q8 定稿）**不新增可见性提示面**（零 i18n 新键 / 零 update_infos 新类目）｜
+#     D-94-7（Q5 定稿）T3.2 延伸 opencode 侧实测 = 执行（先 claude 核心验收）｜
+#     D-94-8（REV-94-001 吸收）**第三扫描路径 `异种|[Hh]eterogeneous|glm`** 入逐处判类表（零未判类）；点名 4 处
+#       （agents-md/{zh-CN,en}:96 + claude/constraint/{zh-CN,en}:98）判 [轻改]；**同族扩展 6 处**
+#       （opencode/agents/{zh-CN,en}/openfeel-reviewer.md:2/:16/:87(zh)/:91(en)）同判 [轻改]，理由 = 同文件自洽
+#       （frontmatter 默认值改单一默认后，同文件断言式「异种推理模型」自相矛盾）；**显式范围扩展登记**｜
+#     D-94-9（REV-94-002 吸收）kb 引用一律以**条目标题**定位（行号 / 分类文件以执行期实测为准）｜
+#     D-94-10（Q3 定稿）不做 `openfeel model` Claude 侧命令扩展（默认不做）｜
+#     D-94-11（Q10 定稿）supersede 材料本阶段产出（op-003 落 tmp），kb 写入归归档轮｜
+#     D-94-12（Q2 定稿）白名单恰为 `model` 单键（参数形态留扩展口，本阶段只传 ['model']）｜
+#     D-94-13 偏差登记（零触碰面）｜ D-94-14 执行顺序定稿（实现先于实测；本仓实测异常即停还原上报）｜
+#     D-94-15 流程面移交（status.md 经 openfeel stage CLI；权限不足移交主会话）｜ D-94-16 收口增量（REV-94 落实登记）。
+#   说明④ **REV 吸收映射**（判据源 `.openfeel/users/Liuary/code_review/REV-94.md`；审查结论 = 通过，1 条 blocking 待方案期吸收）：
+#     REV-94-001（medium / blocking：A6 判类基线遗漏 4 处 reviewer「异种推理模型 (GLM)」行；字面值双路扫描覆盖不到）
+#       → **全案吸收（D-94-8）**：第三扫描路径入表 + 点名 4 处判 [轻改] + 同族扩展 6 处 + zh/en 对称 + 生成物同批；
+#       落实责任 = op-001 §1.3（判类表）/ §1.4（断言）/ §1.5（build）；收口复核 = op-003 §3.1。
+#     REV-94-002（low：计划引 kb 行号漂移 `:311`/`:316`，实测 `:334`/`:432`；条目标题正确）
+#       → **全案吸收（D-94-9）**：本方案 kb 引用一律标题定位；op-003 §3.5 报告引用时复核行号（标题不变）；
+#       不强制回改计划文档（避免为行号单独翻新基线）。
+#   说明⑤ **零回归与有意变更白名单**：不改 `openfeel model`（opencode 三层级）写入语义（`model-config.ts:218` 零改动）；
+#     `setup` / `init` / `claude-settings` 调用方零改动（单点化）；三态其余路径（created/appended/malformed）与
+#     conflicts 恒空逐字不变；claude 侧 20 份模板与 `claude-adapter.test.ts:39/:85` 逐字不变。
+#     **有意变更白名单（全量登记）**：① opencode 侧 5 agent ×2 语言 10 处 frontmatter 值 + `opencode-config.ts:20/:21`
+#     ② 一致性文本判类表 [改]/[轻改] 全部处所（含 REV-94-001 点名 4 处与同族扩展 6 处）③ `mergeFrontmatter` 新增
+#     可选参（默认行为不变）④ `update.ts:2393` 调用点传白名单 ⑤ 四类断言改写（opencode-config.test.ts:39/:90/:97 +
+#     model-config.test.ts:138）⑥ skill 文本增节/句（用户主权键 + 复现路径）⑦ 条件性：vision 例外维持时其 2 处
+#     frontmatter + 8 处 vision 相关文本不进 [改] 批（例外登记）。
+#   说明⑥ **阴性面（本阶段零触碰，逐条登记）**：`docs/**` / `README*` / `CHANGELOG.md`（归 93）｜`.openfeel/models.template.yaml`｜
+#     `.openfeel/config.yaml`｜`.openfeel/pipeline.yaml`｜`flow.json`（不直写）｜phase 枚举 / 转移表 / `--json` 契约｜
+#     `src/core/claude-settings.ts` / `src/core/setup.ts` / `src/core/init.ts`（调用方零改动）｜opencode.jsonc
+#     `mergeAgentDefaults`（B5 已达标）｜`src/core/i18n-data/**` 键集（只改示例值，零增删键）｜agent 10 / skills 22 计数｜
+#     `package.json` / `package-lock.json` / `build.js`｜`openfeel-reviewer` 的 claude 侧本地配置本身（实测只读）。
+#   说明⑦ **KB 锚点**（方案与执行须参考，判据同源；一律标题定位）**：`kb/troubleshooting.md #模型名错误导致 Agent 无法启动：
+#     deepseek-v4-flash 已下线 → deepseek-flash`（Q1 风险源）；`#opencode 模型解析优先级排查：frontmatter 覆盖
+#     opencode.jsonc agent.model`；`#Claude Code 2.1.300 subagent 可调 Task（Q1 反转）`（supersede 块格式先例）；
+#     `#Claude Code 实机验证方法与行为事实`（实机方法学三要素）；`#默认开启写真实用户目录的副作用防护（VITEST 继承 +
+#     OPENFEEL_LOG=0）`；`kb/patterns.md #控制区标记模式`（区外归用户契约）；`#值域扩展全枚举范式`；`#跨 harness × 语言
+#     模板对称纪律`；`#部署型资产变更的多载体同步面清单`；`#未来功能/未落地能力写入 skill 与文档须标注「提供版本」`；
+#     `#双主题收官端到端验收范式（隔离脚本 + 本仓复核二分）`；`kb/troubleshooting.md #改 templates-data 源须同批重生成的
+#     「双生成物」` / `#断言串与落文逐字核对纪律` / `#多源文案同步陷阱` / `#零回归取证范式`。
+#     **暂无**「用户主权键 / 部署非破坏性 frontmatter / 模型默认值统一」既有条目 → 归档轮补沉（op-003 §3.5 已登记落点）。
+#   说明⑧ **对计划 §八 的落位微调与显式裁剪（合册）**：① op-001 **增补** REV-94-001 同族扩展 6 处（opencode reviewer
+#     description + body）——显式登记（D-94-8），非静默偏离；② op-002 归并 T2 + T3（skill 文本单一 owner + 实测耦合）；
+#     ③ op-003 增收 REV-94 落实登记（D-94-16）；④ 三 op 共享 `.openfeel/tmp/stage-94-assertion-diff.md`（逐 op 段追加）。
+#     ——均**登记在案，无静默偏离**。
+version: "1.1"
+stage: v1.2.1-stage-94
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-15"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.1-stage-92
+    type: hard
+    status: done
+    reason: "阶段级 hard 依赖（flow.json deps=[v1.2.1-stage-92]；版本计划八阶段表外补阶段）。92 已归档（提交 3db367a），本阶段在其冻结面上增量。上游基线（stage-92 归档登记 + 本方案实测复核）：npm test 71 文件 / 1695 用例 0 skipped / 0 failed；tsc = 0；lint i18n = 944；lint kb = 0；git status --porcelain src/ 空；--version = 1.2.0；agent 10 / skills 22；本仓 config.yaml defaults.workflow_mode: full + test_enabled: true。"
+  - upstream: v1.2.1-stage-94 计划审查（REV-94-001 / REV-94-002）
+    type: hard
+    status: closed
+    reason: "审查结论通过（1 条 medium blocking 待方案期吸收 + 1 条 low 非阻塞）；两条全部吸收（说明④）：001 → 第三扫描路径入表 + 点名 4 处 [轻改] + 同族扩展 6 处（D-94-8）；002 → kb 标题定位（D-94-9）。判据源 = .openfeel/users/Liuary/code_review/REV-94.md。"
+  - downstream: v1.2.1-stage-93（文档与版本收口）
+    type: hard
+    note: "交接口径：93 文档轮须吸收 ① 模型默认值策略（opencode 显式默认统一 + claude inherit 维持）② 部署非破坏性（用户主权键 model）③ 反转三项口径（README / CHANGELOG / cli-usage 快照 / GETTING_STARTED 视情）④ R-12 定性更新；--version 保持 1.2.0（归 93）；cli-usage 快照件更新归 93（本阶段仅改 :188 限定化句，快照声明零改动）。建议 94 先于 93（计划边界 8）。"
+  - downstream: 归档轮（本阶段）
+    type: hard
+    note: "kb 补沉落点（op-003 §3.5 登记）：architecture 新增「用户主权键机制（键级『无则创建、有则不覆盖』+ 部署路径与 --scope default 的调用点区分）」与「模型默认值统一范式（opencode 显式默认归一 + claude inherit 维持 + 反转登记：模板硬编码异族废止）」；troubleshooting 补 supersede 材料（三项反转）；kb/index.md 计数 / 摘要刷新；manual 面（core/model-config.md 等按需）；公共日志。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；不直写 flow.json；不推进 phase（由 Feel 经 CLI 执行）；精确 git add（禁 -A）；status.md 经 openfeel stage CLI（勿手改；权限不足按 op-003 §3.6 移交主会话）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "模型默认值统一（可用性实测门禁 + 5 agent 显式默认收敛 + 三扫描路径逐处判类 + 断言同批）"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-executor.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-explorer.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-utility.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-vision.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-reviewer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-executor.md
+      - src/core/templates-data/opencode/agents/en/openfeel-explorer.md
+      - src/core/templates-data/opencode/agents/en/openfeel-utility.md
+      - src/core/templates-data/opencode/agents/en/openfeel-vision.md
+      - src/core/templates-data/opencode/agents/en/openfeel-reviewer.md
+      - src/core/opencode-config.ts
+      - src/core/config.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/templates-data/skills/openfeel-agent-model-check/SKILL.md
+      - src/core/templates-data/skills/openfeel-model-config/SKILL.md
+      - src/core/templates-data/skills/openfeel-model-check/SKILL.md
+      - src/core/model-config.ts
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/model-config.test.ts
+      - test/core/opencode-config.test.ts
+      - .openfeel/tmp/stage-94-model-availability.md
+      - .openfeel/tmp/stage-94-assertion-diff.md
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议（字面值不可用 / 不可达 → 停 op 上报，按 BLOCKED 处置）
+    notes: "T1 全部（T1.1~T1.5）+ D-94-2 / D-94-3 / D-94-5 / D-94-8 / D-94-9 / D-94-13。① 1.0 前置门禁：字面值可用性三层实测（opencode 派发 Did you mean 权威 / 清单命令 / provider API）+ vision 多模态实测；不可用或不可达 → 停 op 上报（禁静默择值）② 10 处 frontmatter + opencode-config.ts:20/:21 收敛（vision 按例外门）③ claude 侧 20 份零改动自证 + 断言不改写 ④ 三扫描路径逐处判类表（零未判类；[改]/[轻改]/[不改·边界登记]；含 REV-94-001 点名 4 处 + 同族扩展 6 处）⑤ 断言改写 4 处（opencode-config.test.ts:39/:90/:97 + model-config.test.ts:138）+ 保留面逐字 ⑥ build 双生成物 ×2 + 局部跑测 + lint i18n = 944（零键增删）。注：skills/openfeel-model-check/SKILL.md 与 test/core/templates.test.ts 为条件性 produces（判类复核碰触时改动，否则登记零改动）。"
+  op-002:
+    file: op-002.md
+    title: "部署非破坏性语义（用户主权键 model）+ 契约文本限定化 + 本仓 GLM 持久化实测"
+    produces:
+      - src/core/managed-region.ts
+      - src/core/update.ts
+      - src/core/template-loader.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/skills/openfeel-model-config/SKILL.md
+      - src/core/templates-data/skills/openfeel-agent-model-check/SKILL.md
+      - test/core/update.test.ts
+      - test/core/managed-region.test.ts
+      - test/core/model-config.test.ts
+      - .openfeel/tmp/stage-94-nondestructive-contract.md
+      - .openfeel/tmp/stage-94-deploy-nondestructive-e2e.md
+      - .openfeel/tmp/stage-94-repo-persistence.md
+      - .openfeel/tmp/stage-94-assertion-diff.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "同批 build 与文件去重：两 op 共改 templates-data/agents-md/**、skills/openfeel-model-config|agent-model-check，且共享 template-loader.ts / update.ts 双生成物 ⟹ 恒串行；op-001 判类与终值先冻结（文本口径一致）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议（本仓实测异常即停 → 备份还原后上报）
+    notes: "T2 全部（T2.1~T2.5）+ T3 全部（T3.1~T3.3）+ D-94-4 / D-94-6 / D-94-7 / D-94-10 / D-94-12 / D-94-14 / D-94-13。① 契约成文（用户主权键判定流程 + 边界 4 条 + 调用点区分）② 实现 (a) 形态：mergeFrontmatter 可选参（默认不传 = 现行为）+ 白名单常量单源 + update.ts:2393 传 ['model'] + model-config.ts:218 零改动 ③ 单测三类（新语义 4 场景 / 零回归 / 阴性 description 仍覆盖）④ 「勿手改」限定化（agents-md:111 zh/en + cli-usage:188；保留框架字段覆盖 + 增 model 保留；cli-usage 不得新增 node bin/openfeel.js 字样）+ T3.3 复现路径成文（model-config / agent-model-check skill）⑤ 隔离实测四场景（隔离 HOME + OPENFEEL_LOG=0）⑥ 本仓实测（update --tools claude：GLM 保留核心验收 + explorer 创建 + settings 用户键逐字 + CLAUDE.md 受管区 + state 记账；异常即停还原上报）+ opencode 侧延伸（Q5）⑦ build ×2 + 断言复核 + 零 i18n 新键（944）+ 调用方零改动自证。注：test/core/model-config.test.ts 为条件性 produces（回归断言增强时）。"
+  op-003:
+    file: op-003.md
+    title: "一致性核验与门禁收口（三扫描零未判类复核 + 反转三项 supersede 材料 + 门禁全量 + 四表终局报告 + ops 入管）（阶段末 op）"
+    produces:
+      - .openfeel/tmp/stage-94-final-report.md
+      - .openfeel/tmp/stage-94-supersede-materials.md
+      - .openfeel/tmp/stage-94-assertion-diff.md
+      - .openfeel/plan/v1/stage-94/ops/op-001.md
+      - .openfeel/plan/v1/stage-94/ops/op-002.md
+      - .openfeel/plan/v1/stage-94/ops/op-003.md
+      - .openfeel/plan/v1/stage-94/ops/deps.yaml
+      - .openfeel/plan/v1/stage-94/status.md
+      - test/core/templates.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "收口以源码冻结为前提；模型值对照表与三扫描复核依赖 op-001 最终态（判类表零未判类）。"
+      - op: op-002
+        type: hard
+        reason: "部署语义前后对照表 / 本仓持久化实测表 / 反转材料 #2 依赖 op-002 最终态（契约文本与实测记录定稿）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T4 全部（T4.1~T4.5）+ D-94-9 / D-94-11 / D-94-15 / D-94-16。① 全枚举复核（三扫描路径零未判类 + zhipuai/glm-5.3-flash 零残留 + 计数非翻转 agent 10 / skills 22 / i18n 944 + claude agents 20 份 diff 空 + docs 零改动）② 反转三项 supersede 材料（格式对齐 kb Q1 反转先例块；kb 写入归归档轮）③ 门禁六项（npm test 新基线 / tsc 0 / lint i18n 944 / lint kb 0 / build ×2 幂等 / --version 1.2.0）④ 承接 REV 三分（REV-92-001~005 + REV-91-011 闭合证据转主会话；REV-92-006 转 93；零灭失）+ REV-94-001/002 落实登记 ⑤ 四表终局报告 + 本仓 GLM 三要素登记 + 归档轮落点登记 ⑥ ops/** 四文件精确入管（禁 -A）+ status.md 经 openfeel stage CLI（权限不足移交主会话，登记不阻塞）。注：status.md 与 test/core/templates.test.ts 两行为条件性 produces（CLI 权限可用 / 断言碰触时改动，否则登记零改动）。"
+
+mutual_exclusions:
+  - group: [op-001, op-002]
+    reason: "① 共享 build 双生成物（src/core/template-loader.ts + src/core/update.ts；两 op 各触发 npm run build——禁并发 build）② 共有文件 templates-data/agents-md/** 与 skills/openfeel-model-config|agent-model-check（去重串行；同段落冲突以 op-002 终稿为准并登记）③ 语义门：op-002 契约文本与 op-001 判类终值须一致（先冻结模型默认值面）。"
+  - group: [op-003]
+    reason: "阶段末 op（恒末位）：全枚举复核 / 计数核对 / 门禁全量 / 四表 / ops 入管均须在 op-001 + op-002 冻结后执行。"

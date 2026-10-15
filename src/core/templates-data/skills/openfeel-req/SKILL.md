@@ -29,7 +29,7 @@ draft ─→ scheduled ─→ in_progress ─→ done
 | `draft` | 草稿（`req add` 新建初值） |
 | `scheduled` | 已排期（可被 `req next` 推荐接取） |
 | `in_progress` | 进行中（认领后推进；**内部进度由关联阶段的 15-phase 聚合**） |
-| `done` | 完成（**全部关联阶段 done 时自动收口**——前置集限定 `scheduled` / `in_progress`；`req advance --to done` 亦须此门） |
+| `done` | 完成（**全部关联阶段 done 时自动收口**——前置集限定 `scheduled` / `in_progress`；`req advance --to done` 亦须此门；**`general` 零关联需求经载体制对偶完成路径可直接 `done`**，v1.2.1 起） |
 | `blocked` | 阻塞（可回到 `scheduled` / `in_progress`） |
 | `cancelled` | 已取消（终态） |
 | `rejected` | 已拒绝（终态） |
@@ -48,7 +48,7 @@ draft ─→ scheduled ─→ in_progress ─→ done
 | `req release <id>` | 释放认领（未认领为 no-op 成功） | — |
 | `req set <id>` | 更新需求字段（白名单；状态流转合法性由引擎判定） | `--status`、`--title`、`--target-version`、`--priority` |
 | `req link` | 关联需求到阶段 / 解绑 | `--stage <stageId>`、`--requirement <id>`、`--unlink`（与 `--requirement` 二选一） |
-| `req advance <id>` | 显式推进需求状态（合法目标由引擎流转表判定；done 须全部关联阶段 done） | `--to <status>` |
+| `req advance <id>` | 显式推进需求状态（合法目标由引擎流转表判定；done：非 `general` 需求须全部关联阶段 done） | `--to <status>` |
 | `req board` | 需求看板（按状态分组；7 组固定顺序） | `--target-version <version>`、`--json` |
 | `req next` | 推荐下一个可接取需求（`scheduled` 且未认领；按预估版本升序） | `--owner <owner>`（含该认领人已认领的 scheduled 需求）、`--limit <n>`（缺省 1；大于 1 时 `--json` 追加 `candidates`）、`--json` |
 | `req split <id>` | 拆分需求为若干子需求（**拆分即发布**：子需求入 `scheduled` 候选池；父子仅溯源、不参与聚合） | `--into <title>`（可重复；至少一项）、`--json` |
@@ -74,7 +74,7 @@ draft ─→ scheduled ─→ in_progress ─→ done
 
 ## 与 workflow_mode 的关系
 
-需求**携带**模式属性（需求级 `workflow_mode`，值域 `full` / `fast` / `general`）；模式经**单点解析**作用于其关联阶段（显式下发后阶段字段为投影）；三种模式（规划 / 快速 / 通用）下需求纪律一致，`workflow_mode` 不影响需求状态机与命令行为。
+需求**携带**模式属性（需求级 `workflow_mode`，值域 `full` / `fast` / `general`）；模式经**单点解析**作用于其关联阶段（显式下发后阶段字段为投影）；三种模式（规划 / 快速 / 通用）下需求纪律一致；`workflow_mode` **经载体制完成路径参与 done 门**（`general` 零关联需求可显式完成；判据 = 需求自身字段直判，与载体制门同源；v1.2.1 起），其余不影响需求状态机与命令行为。
 
 ## 需求与版本解绑
 

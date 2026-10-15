@@ -65,7 +65,7 @@ openfeel flow status
 > 与 opencode 适配器**并存**，**默认不启用**（须显式 `--tools claude`）。
 
 - **启用**：`openfeel setup --tools claude`（或 `--tools opencode,claude` 双 harness）。
-- **部署资产到 `~/.claude/`**：`CLAUDE.md`（全局约束，受管区三态，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**18 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，**用户既有键逐字保留**）。
+- **部署资产到 `~/.claude/`**：`CLAUDE.md`（全局约束，受管区三态，用户已有内容 append 不覆盖）、`agents/`（**10 个**，含 `feel`）、`skills/`（**22 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，**用户既有键逐字保留**；**无则创建、有则不覆盖**——用户主权键 `model` 不被改写）。
 - **升级**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；**首次创建 `~/.claude/{agents,skills}` 后须重启会话或 `/reload-skills`** 使新 skill/agent 生效；`CLAUDE.md` 于**下次会话**生效。仅 `npm i -g` 不刷新全局资产。
 - **默认零触**：不带 `--tools` 时 `~/.claude/` **零变化**。
 
@@ -74,21 +74,40 @@ openfeel flow status
 > 与完整流水线（full）**并存**；新部署默认 **fast**（`config.yaml defaults.workflow_mode`），可逐阶段覆盖与切回。
 
 - **快线链**：`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_passed → archiving → done`（跳过 6 项 `scheme_*` / `test_*`；**计划审查与代码审查保留单轮**，`review_failed` 可回环重试）。
-- **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast`（项目默认记忆）。
-- **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast] [--stage <id>]`（按模式查看转移表）。
+- **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast|general`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast|general`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast|general`（项目默认记忆）。**`general` 仅需求级合法**（v1.2.1 起，见下「v1.2.1 新增能力」）。
+- **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast|general] [--stage <id>]`（按模式查看转移表）。
 - **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
 
 升级迁移提示见 [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)「工作流模式（full / fast）与自动推进」小节与 [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`。
 
+## v1.2.1 新增能力
+
+> 对应阶段：**stage-86 ~ 93 + 94**（94 = 表外补阶段：模型默认值与部署非破坏性）。以下能力**v1.2.1 起提供**。
+
+- **三模式架构（`full` / `fast` / `general`）**：`workflow_mode` 值域由 2 值扩为 3 值（默认仍 `fast`）。`general`（无流水线）**仅需求级合法**——阶段级 / 部署级写入面拒绝（`plan stage add` / `stage set` / `config set` 命令层显式门 + wizard 不提供选项）；模式解析链增「需求级」一层（`status.md > 需求级 > config.yaml > builtin`）；**升级不降级**。
+- **需求接取与拆分（`openfeel req split`）**：**拆分即发布**——子需求一次入 `scheduled`；`parent_id` 仅溯源（**不入聚合 / 不入 done 门 / 不参与 `PATCH_WHITELIST`**）；并行接取（`claim` 互不阻塞）；**需求与版本解绑**（`target_version` 为纯展示 / 过滤 / 排序维度，非门）。`req` 命令组 **10 → 11 子命令**。
+- **通用工作者直接调度（双口径）**：opencode 侧 = 嵌套 `task` 工具；Claude Code 侧 = Handoff 直发。通用模式下可承接任意 Agent **直接调度**的执行任务。
+- **新 agent `openfeel-explorer`（只读）**：专职「调研 / 探索」路由——只读 4 工具（Read / Glob / Grep / Bash）；agent 数 **9 → 10**。
+- **可观测性**：`metrics.json` 经 `recordRun` 接线；CLI 日志含 `duration_ms` / `project` / `session_id` 三字段；op 级时间戳；跨会话恢复标注（`resumed`）。
+- **审查档位（`--review-tier <full|lean|skip>`）**：与工作流模式**分属两轴**——模式定基表，档位裁审查关（`full` 零裁剪 / `lean` 裁 `scheme_review` / `skip` 裁 `plan_review + scheme_review`；恒保留代码审查关 / 测试关 / 归档关）。缺省按模式派生（`full`→`full` / `fast`→`lean` / `general`→`full`）。`flow phases --json` 末位追加 `reviewTier`（既有 6 键逐字保留，**共 7 键**）。
+- **并行编排契约 + 归档轻量化**。
+- **模型默认值统一 + 部署非破坏性（用户主权键 `model`）**：部署（`setup` / `update`）对用户既有 `model` 键**无则创建、有则不覆盖**。
+
+### 缺陷修复（v1.2.1）
+
+- **`req/BUG-002`**：`general` 需求**完成路径**——`general` 恒零关联阶段（载体制双向门）而 done 门要求全部关联阶段 done，两者交叉曾致 `general` 需求**永远无法 `done`**。现开辟**载体制对偶完成路径**（判据 = 需求自身 `workflow_mode` 字段直判，与载体制门同源），`req advance --to done` / `req set --status done` 对零关联 `general` 需求**放行**；非 `general` 判定单源不变；done 门拒绝改用专用文案。
+- **`cli/BUG-011`**：审查档位裁剪致**当前相位无跳转目标**。现**裁剪只作用于入边 / 目标侧**，被裁剪相位保留出边；「进入被裁剪关」仍不可达。
+- **`templates/BUG-007`**：en 归档官指针悬空 → 改中文节名 + 补「具名 § 指针字面命中」断言。
+
 ## v1.2.0 新增能力
 
 - **flow.json 版本分片归档（`flow archive`）**：三个入口——`openfeel flow archive <version>`（执行归档；判据门 = 该版本全部阶段 done 且无 blocking open REV，**不设 `--force`**）、`openfeel flow archive list`、`openfeel flow archive show <version> [--json]`；归档落点 `.openfeel/flow-archive/{version}.json`。**与顶层 `openfeel archive <stage>`（阶段摘要归档）区分**；常规命令不读归档。
-- **需求流转（`openfeel req`）**：10 子命令（`add` / `list` / `show` / `claim` / `release` / `set` / `link` / `advance` / `board` / `next`）+ 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；需求进度由关联阶段 phase 聚合（**全部关联阶段 done 时自动收口**）；认领协议 = `owner` + `claimed_at`（无 TTL）。用法权威源见 `openfeel-req` skill。
+- **需求流转（`openfeel req`）**：10 子命令（v1.2.1 起 11，+`split`）（`add` / `list` / `show` / `claim` / `release` / `set` / `link` / `advance` / `board` / `next`）+ 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；需求进度由关联阶段 phase 聚合（**全部关联阶段 done 时自动收口**）；认领协议 = `owner` + `claimed_at`（无 TTL）。用法权威源见 `openfeel-req` skill。
 - **兼容**：旧 flow.json（无 `requirements` / `archived_versions`）零报错，升级**无需迁移**。
 
 ## v1.1.2 新增能力
 
-- **自描述**：`flow phases [--json]` 输出全部合法 phase 与转移表（JSON 顶层 6 键：`schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff` / `workflowMode`（v1.1.7 追加，既有五键语义逐字不变））。
+- **自描述**：`flow phases [--json]` 输出全部合法 phase 与转移表（JSON 顶层 6 键：`schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff` / `workflowMode`（v1.1.7 追加，既有五键语义逐字不变）；v1.2.1 起 7 键，末位追加 `reviewTier`）。
 - **阶段治理**：`flow stage remove` / `plan stage add --deps` / `stageId` 校验与目录冲突检测。
 - **配置有效值**：`config effective` 输出有效值 + 生效来源（`status.md > config.yaml > profile.yaml > builtin`）。
 - **结构化输出**：`flow status/current/health/metrics/overview --json`（纯 JSON + `schemaVersion`）。
@@ -144,7 +163,7 @@ Feel 是整个流程的调度中心，负责接收用户意图并调度下游 Ag
 
 ### 全局部署与工作区分层
 
-框架资产（9 agent / 18 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc`）经 `openfeel setup` 部署到 `~/.config/opencode/`；**仓库自身不保留项目级 `.opencode/agents|skills`**（stage-55 起）。
+框架资产（10 agent / 22 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc`）经 `openfeel setup` 部署到 `~/.config/opencode/`；**仓库自身不保留项目级 `.opencode/agents|skills`**（stage-55 起）。
 
 工作区状态分两层：`current.md`（团队文件，跨用户整体进度，≤5 条 + 自动归档）与 `dev_last.md`（本地索引 + 主题目录，跨会话恢复）。框架资产部署覆盖前**自动备份**至 `~/.openfeel/backup/{ts}/`。
 
@@ -201,14 +220,14 @@ Core 层
   └── workspace/ — 目录结构和知识库
 ```
 
-> **框架资产全局部署**：9 agent / 18 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc` 经 `openfeel setup` 部署到 `~/.config/opencode/`；仓库自身不保留项目级 `.opencode/agents|skills`（stage-55 起）。
+> **框架资产全局部署**：10 agent / 22 skill / 全局 `AGENTS.md` / 全局 `opencode.jsonc` 经 `openfeel setup` 部署到 `~/.config/opencode/`；仓库自身不保留项目级 `.opencode/agents|skills`（stage-55 起）。
 
 ## 开发
 
 ```bash
 npm install        # 安装依赖
 npm run build      # 编译 TypeScript
-npm test           # 运行测试（1557 用例 / 70 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
+npm test           # 运行测试（1719 用例 / 71 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
 ```
 
 ## 致谢

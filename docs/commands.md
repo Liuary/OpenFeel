@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.2.0 快照** | 更新日期：2026-10-13
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.2.1 快照** | 更新日期：2026-10-15
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -92,12 +92,12 @@ openfeel flow current
 自描述全部合法 phase 与**运行时生效的**流转映射（数据源为 `.openfeel/pipeline.yaml`，缺省回退内置默认表）。
 
 ```bash
-openfeel flow phases [--mode <full|fast>] [--stage <id>] [--json]
+openfeel flow phases [--mode <full|fast|general>] [--stage <id>] [--json]
 ```
 
 | 选项 | 说明 |
 |------|------|
-| `--json` | 以 JSON 输出 `{ schemaVersion, phases, transitions, advanceAccepted, transitionsDiff, workflowMode }`，供自动化解析（`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15；`transitionsDiff` = 运行时转移表与内置默认转移表的**差异报告**，`missing` 列出内置默认有而运行时缺失的 source，使 `pipeline.yaml` 漂移**可见而非静默**；`workflowMode` = 本次展示所依据的工作流模式（v1.1.7 追加，**既有五键语义逐字不变**）） |
+| `--json` | 以 JSON 输出 `{ schemaVersion, phases, transitions, advanceAccepted, transitionsDiff, workflowMode, reviewTier }`（**7 键**；`phases` = 运行时**存在视图**；`advanceAccepted` = `flow advance` 的**推进白名单**，内置 15；`transitionsDiff` = 运行时转移表与内置默认转移表的**差异报告**，`missing` 列出内置默认有而运行时缺失的 source，使 `pipeline.yaml` 漂移**可见而非静默**；`workflowMode` = 本次展示所依据的工作流模式（v1.1.7 追加，**既有五键语义逐字不变**）；`reviewTier` = 由该模式派生的审查档位（**v1.2.1-stage-92 末位追加**，既有 6 键逐字保留、顺序不变）） |
 | `--mode <mode>` | 显式指定工作流模式（`full` / `fast`；缺省经 `--stage` / 当前阶段派生） |
 | `--stage <id>` | 按指定阶段的模式展示转移表（缺省 = 当前阶段） |
 
@@ -133,7 +133,7 @@ openfeel flow mode --stage v1.1.7-stage-77 --json
 推进流水线阶段。
 
 ```bash
-openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--dry-run] [--force]
+openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--review-tier <tier>] [--dry-run] [--force]
 ```
 
 | 选项 | 说明 |
@@ -141,6 +141,7 @@ openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--dry-run]
 | `--stage <stage-id>` | 阶段 ID（**必填**，可用短名或完整名） |
 | `--to <phase>` | 目标阶段（必填）。合法 phase 与转移表见 `openfeel flow phases` |
 | `--op <op-id>` | 操作 ID（**可选**，仅用于日志/展示） |
+| `--review-tier <tier>` | 审查档位（`full` / `lean` / `skip`；缺省 = 按模式派生；仅显式声明时裁剪审查关，**不可绕过 REV 阻塞检查**）。三档语义：`full` 零裁剪 / `lean` 裁 `scheme_review` / `skip` 裁 `plan_review` + `scheme_review`（代码审查关 / 测试关 / 归档关恒保留）。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进；「**进入**被裁剪关」仍不可达。显式 `lean` / `skip` 打印一行非阻断警告；值域非法 → exit 1 零写盘 |
 | `--dry-run` | 仅验证不修改（预览输出）；**字节级不写盘**（`revision`/phase 不变） |
 | `--force` | 跳过非法 phase 与阶段跳跃检查（仍受 REV 闭环守卫约束，不可绕过） |
 
@@ -348,7 +349,7 @@ Plan 命令管理三层计划体系中的工作阶段（Stage）和操作方案�
 添加工作阶段（**完整入口（推荐）**：创建目录 + `overview.md`/`status.md` + 注册 `flow.json`；仅需注册请用 `openfeel flow stage add`）。
 
 ```bash
-openfeel plan stage add <name> [--deps <ids...>] [--tasks <items...>] [--exec-mode <manual|auto>] [--auto-advance <enabled|disabled>] [--workflow-mode <full|fast>]
+openfeel plan stage add <name> [--deps <ids...>] [--tasks <items...>] [--exec-mode <manual|auto>] [--auto-advance <enabled|disabled>] [--workflow-mode <full|fast|general>]
 ```
 
 | 参数/选项 | 说明 |
@@ -542,23 +543,25 @@ openfeel archive <stage>
 
 ## req — 需求流转
 
-需求管理命令组（v1.2.0-stage-81~83）。需求是**排期与调度层**（需求 ≠ 计划）；需求进度由关联阶段 phase 聚合，实现仍走流水线。
+需求管理命令组（v1.2.0-stage-81~83；**v1.2.1-stage-87 增 `split` / stage-90 增 `--workflow-mode` / stage-93 修复 done 门**）。需求是**排期与调度层**（需求 ≠ 计划）；需求进度由关联阶段 phase 聚合，实现仍走流水线。
 
 | 子命令 | 用途 | 关键参数 |
 |--------|------|----------|
-| `req add <title>` | 创建需求（ID 自动分配） | `--target-version <version>`、`--priority <P0\|P1\|P2>` |
+| `req add <title>` | 创建需求（ID 自动分配） | `--target-version <version>`、`--priority <P0\|P1\|P2>`、`--workflow-mode <full\|fast\|general>` |
 | `req list` | 列出需求 | `--status <status>`、`--target-version <version>`、`--owner <owner>`、`--json` |
 | `req show <id>` | 查看需求详情 | `--json` |
 | `req claim <id>` | 认领需求（占用校验） | `--owner <owner>` |
 | `req release <id>` | 释放认领（未认领为 no-op 成功） | — |
-| `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` |
+| `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` / `--workflow-mode` |
 | `req link` | 关联需求到阶段 / 解绑（二选一） | `--stage <stageId>`、`--requirement <id>`、`--unlink` |
 | `req advance <id>` | 显式推进需求状态 | `--to <status>` |
+| `req split <id>` | 拆分需求为若干子需求（**拆分即发布**：子需求入 `scheduled`） | `--into <title>`（**可重复**，至少一项）、`--json` |
 | `req board` | 需求看板（7 组固定顺序） | `--target-version <version>`、`--json` |
 | `req next` | 推荐下一个可接取需求 | `--owner <owner>`、`--json` |
 
-- **退出码**：`0` 成功 ｜ `1` 校验 / 占用 / 存在性失败（经 `process.exitCode`；错误码 分流 `not_found` / `stage_not_found` / `already_claimed` / `invalid_field` / `invalid_status`）｜ `2` 并发写冲突（共享单点）。
-- **`--json` 契约**：四读命令（`list` / `show` / `board` / `next`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。
+- **退出码**：`0` 成功 ｜ `1` 校验 / 占用 / 存在性失败（经 `process.exitCode`；错误码 分流 `not_found` / `stage_not_found` / `already_claimed` / `invalid_field` / `invalid_status` / `general_mode_conflict`）｜ `2` 并发写冲突（共享单点）。
+- **`--json` 契约**：**5 命令（4 读 + `split`）**——四读命令（`list` / `show` / `board` / `next`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。`split`（写命令）= 成功 `{ schemaVersion, parent, children }`，同样遵循单文档契约。
+- **`--workflow-mode`（v1.2.1-stage-90 起）**：值域 `full` / `fast` / `general`；**`general`（无流水线）仅需求级合法**——阶段级 / 部署级写入面拒绝（`general_mode_conflict` 亦在需求与阶段关联时触发：`general` 需求不接受阶段关联）。**done 门（v1.2.1-stage-93 修复）**：`general` 需求零关联阶段可**显式完成**（载体制对偶完成路径，判据字段直判）；非 `general` 需求仍须全部关联阶段 done，被拒时输出专用文案。
 - **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`。
 - 分工：引擎面 / 状态机语义（校验 / 流转 / 占用 / 关联唯一性 / done 门）见 [`core/req.md`](../.openfeel/manual/core/req.md)；命令面深入参考见 [`cli/req.md`](../.openfeel/manual/cli/req.md)。
 
@@ -705,7 +708,7 @@ openfeel setup --check [--json]                       # 只读诊断：一致退
 
 `--check` 只读，不执行部署；`--json` 输出 `{schemaVersion,status,cliVersion,deployedVersion}`。
 
-`--tools claude` → 部署 `~/.claude/`（CLAUDE.md + 9 agents + 18 skills + `settings.json` 注入 `agent:"feel"` 与 `permissions.defaultMode:"auto"`，用户键逐字保留）；默认仅 opencode，`~/.claude` 零触。
+`--tools claude` → 部署 `~/.claude/`（CLAUDE.md + 10 agents + 22 skills + `settings.json` 注入 `agent:"feel"` 与 `permissions.defaultMode:"auto"`，用户键逐字保留；用户主权键 `model` **无则创建、有则不覆盖**）；默认仅 opencode，`~/.claude` 零触。
 
 ## migrate — 存量迁移
 
@@ -724,7 +727,7 @@ openfeel project overview                   # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-> 说明：以上为 v1.2.0 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 v1.2.1 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

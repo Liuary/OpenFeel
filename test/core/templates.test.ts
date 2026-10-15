@@ -492,15 +492,18 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
       expect(c, `缺子命令 req ${sub}`).toContain(`req ${sub}`);
     }
   });
-  it('S5 cli-usage 补节 + 计数订正 + 快照声明更新', () => {
+  it('S5 cli-usage 补节 + 计数订正 + 快照声明更新（stage-93 判类改写：快照 → v1.2.1 / 共享源 18 → 22）', () => {
     const c = readFileSync(CLI_SKILL, 'utf-8');
-    for (const s of ['## v1.2.0 新增能力（stage-78~84）', 'openfeel flow archive <version>',
+    for (const s of ['## v1.2.0 新增能力（stage-78~84）', '## v1.2.1 新增能力（stage-86~93 + 94）',
+      'openfeel flow archive <version>',
       'openfeel flow archive list', 'openfeel flow archive show <version>', '阶段摘要归档',
-      '10 子命令', 'openfeel-req', 'openfeel req', '**18 个**共享源', '本文档为 v1.2.0 快照']) {
+      '10 子命令', 'v1.2.1 起 11', 'openfeel-req', 'openfeel req', '**22 个**共享源', '本文档为 v1.2.1 快照']) {
       expect(c, `缺 ${s}`).toContain(s);
     }
     expect(c, '陈旧 17 残留').not.toContain('**17 个**共享源');
+    expect(c, '陈旧 18 残留').not.toContain('**18 个**共享源');
     expect(c, '旧快照声明残留').not.toContain('本文档为 v1.1.7 快照');
+    expect(c, 'v1.2.0 快照声明残留').not.toContain('本文档为 v1.2.0 快照');
     expect((c.match(/node bin\/openfeel\.js/g) ?? []).length, 'T53 自举加注恒 1').toBe(1);
   });
 });

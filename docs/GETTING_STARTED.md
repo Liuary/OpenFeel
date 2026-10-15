@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.2.0 快照** | 更新日期：2026-10-13 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.2.1 快照** | 更新日期：2026-10-15 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -57,7 +57,7 @@ openfeel setup --tools claude   # 重跑 Claude 部署（~/.claude/）
 openfeel setup --tools claude   # 部署 ~/.claude/（与 opencode 并存，默认不启用）
 ```
 
-- 部署资产到 `~/.claude/`：`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（9 个，含 `feel`）、`skills/`（18 个共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留）。
+- 部署资产到 `~/.claude/`：`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（10 个，含 `feel`）、`skills/`（22 个共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留；**无则创建、有则不覆盖**——用户主权键 `model` 不被改写）。
 - **升级后**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；首次创建 `~/.claude/{agents,skills}` 后须**重启会话或 `/reload-skills`**；`CLAUDE.md` 于下次会话生效。仅 `npm i -g` 不刷新全局资产。
 - **默认零触**：不带 `--tools` 时 `~/.claude/` 零变化。
 
@@ -67,6 +67,8 @@ openfeel setup --tools claude   # 部署 ~/.claude/（与 opencode 并存，默�
 
 - **full**：完整流水线（15 个 phase，含方案与测试环节）。
 - **fast**（新部署默认）：快线链 `plan_pending → plan_review → plan_passed → exec_running → review_pending → review_passed → archiving → done`——跳过 6 项（`scheme_*` / `test_*`），**计划审查与代码审查保留单轮**（`review_failed` 可回环重试）。
+
+> **v1.2.1 起**：模式值域扩为三值 `full / fast / general`；新增的 `general`（无流水线）**仅需求级合法**——阶段级 / 部署级写入面会拒绝。三模式选择与升级约束见下「**v1.2.1 能力速览**」。
 
 选择与查看：
 
@@ -185,18 +187,52 @@ openfeel req board                                               # 看板视图�
 
 需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**全部关联阶段 done 时需求自动收口**。用法权威源见 `openfeel-req` skill。
 
+## v1.2.1 能力速览
+
+> 对应阶段 stage-86 ~ 93 + 94（94 = 表外补阶段）。完整命令/参数细节以 `openfeel <cmd> --help` 实时输出为准；能力名叙述权威源见 `openfeel-cli-usage` skill。
+
+**① 需求接取与拆分（`req split`）**——拆分即发布（子需求一次入 `scheduled`）：
+
+```bash
+openfeel req add "重构日志层"
+openfeel req split REQ-001 --into "抽取日志接口" --into "替换调用点"   # --into 可重复
+openfeel req claim REQ-002 --owner alice                            # 并行接取：claim 互不阻塞
+```
+
+`parent_id` 仅溯源（不入聚合 / 不入 done 门）；`target_version` 为纯展示 / 过滤 / 排序维度（**需求与版本解绑**）。
+
+**② 三模式选择（`--workflow-mode`）**——`full` / `fast` / `general`；**`general`（无流水线）仅需求级合法**：
+
+```bash
+openfeel req add "调研任务" --workflow-mode general   # 需求级：无流水线
+openfeel req advance REQ-003 --to done               # general 需求可显式完成（载体制对偶完成路径）
+openfeel stage set stage-01 --workflow-mode full     # 阶段级：仅 full / fast
+```
+
+**③ 审查档位（`--review-tier`）**——与工作流模式正交；缺省按模式派生：
+
+```bash
+openfeel flow advance --stage stage-01 --to plan_passed --review-tier skip
+```
+
+`full`（零裁剪）/ `lean`（裁 `scheme_review`）/ `skip`（裁 `plan_review` + `scheme_review`）；代码审查关 / 测试关 / 归档关恒保留；显式 `lean` / `skip` 打印一行非阻断警告。裁剪**只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时仍可向其下游推进，「**进入**被裁剪关」仍不可达。
+
+**④ 通用工作者与探索者**——通用模式下可**直接调度**任意 Agent 的执行任务；调研 / 探索类任务由只读 agent `openfeel-explorer` 承接（Read / Glob / Grep / Bash，不产出源码变更）。
+
+**⑤ 升级指引**——存量 `flow.json` **零报错零迁移**；部署**非破坏性**：用户既有键**逐字保留**，用户主权键 `model` **无则创建、有则不覆盖**。升级：`npm i -g openfeel@latest` → `openfeel setup --tools claude`（`~/.claude` 面）或 `openfeel update <path>`（项目面）。
+
 ## 6. 命令速查表
 
 | 命令 | 说明 |
 |------|------|
 | `openfeel init [path]` | 初始化项目工作区，创建 `.openfeel/` 目录结构与配置文件 |
-| `openfeel flow` | 流水线状态管理（`status`/`current`/`advance`/`attempt`/`log` 等） |
+| `openfeel flow` | 流水线状态管理（`status`/`current`/`advance`/`attempt`/`log` 等；`advance` 支持 `--review-tier <full|lean|skip>`） |
 | `openfeel flow mode` | 查看当前阶段的工作流模式与来源（只读，支持 `--stage` / `--json`） |
 | `openfeel plan` | 计划管理（`stage add/list`、`scheme create/list`） |
 | `openfeel view` | 审查条目管理（`list`/`add`/`accept`） |
 | `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识）（**阶段摘要归档**） |
 | `openfeel flow archive` | flow.json 版本分片归档（`<version>` / `list` / `show`；与 `openfeel archive` 阶段摘要归档区分） |
-| `openfeel req` | 需求流转（`add`/`list`/`show`/`claim`/`release`/`set`/`link`/`advance`/`board`/`next`） |
+| `openfeel req` | 需求流转（`add`/`list`/`show`/`claim`/`release`/`set`/`link`/`advance`/`split`/`board`/`next`，共 11 子命令） |
 | `openfeel roadmap` | 分期大纲管理（`create`/`show`） |
 | `openfeel instructions <artifactId>` | 生成结构化指令（XML 或 JSON） |
 | `openfeel update [path] [--tools <list>]` | 部署 OpenFeel 适配文件到目标项目 |

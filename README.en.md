@@ -65,7 +65,7 @@ openfeel flow status
 > Coexists with the opencode adapter; **disabled by default** (requires explicit `--tools claude`).
 
 - **Enable**: `openfeel setup --tools claude` (or `--tools opencode,claude` for both harnesses).
-- **Assets deployed to `~/.claude/`**: `CLAUDE.md` (global constraints, managed-region three-state; existing user content is appended, not overwritten), `agents/` (**9**, incl. `feel`), `skills/` (**18** shared sources), `settings.json` (injects `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`; **existing user keys preserved verbatim**).
+- **Assets deployed to `~/.claude/`**: `CLAUDE.md` (global constraints, managed-region three-state; existing user content is appended, not overwritten), `agents/` (**10**, incl. `feel`), `skills/` (**22** shared sources), `settings.json` (injects `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`; **existing user keys preserved verbatim**; **created when absent, never overwritten** — the user-sovereign `model` key is not rewritten).
 - **Upgrade**: `npm i -g openfeel@latest` → `openfeel setup --tools claude`; **after the first creation of `~/.claude/{agents,skills}`, restart the session or run `/reload-skills`** to load new skills/agents; `CLAUDE.md` takes effect on the **next session**. `npm i -g` alone does not refresh global assets.
 - **Zero-touch by default**: without `--tools`, `~/.claude/` is **unchanged**.
 
@@ -74,21 +74,40 @@ openfeel flow status
 > **Coexists** with the full pipeline; new deployments default to **fast** (`config.yaml defaults.workflow_mode`), overridable per stage.
 
 - **Fast line**: `plan_pending → plan_review → plan_passed → exec_running → review_pending → review_passed → archiving → done` (skips 6 phases: `scheme_*` / `test_*`; **plan review and code review each keep a single round**; `review_failed` loops back for retries).
-- **Choose and switch**: `openfeel plan stage add <name> --workflow-mode full|fast` (new stage); `openfeel stage set <stage> --workflow-mode full|fast` (per-stage switch); `openfeel config set defaults.workflow_mode full|fast` (project-level default memory).
-- **Inspect (read-only)**: `openfeel flow mode [--stage <id>] [--json]` (current mode + source); `openfeel flow phases [--mode full|fast] [--stage <id>]` (view the transition table per mode).
+- **Choose and switch**: `openfeel plan stage add <name> --workflow-mode full|fast|general` (new stage); `openfeel stage set <stage> --workflow-mode full|fast|general` (per-stage switch); `openfeel config set defaults.workflow_mode full|fast|general` (project-level default memory). **`general` is requirement-level only** (since v1.2.1; see "What's New in v1.2.1").
+- **Inspect (read-only)**: `openfeel flow mode [--stage <id>] [--json]` (current mode + source); `openfeel flow phases [--mode full|fast|general] [--stage <id>]` (view the transition table per mode).
 - **Auto-advance enabled by default**: new deployments default to `auto_advance: enabled` (since v1.1.7); to disable: `openfeel config set auto_advance disabled`.
 
 Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) ("工作流模式（full / fast）与自动推进" section, Chinese) and [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`.
 
+## What's New in v1.2.1
+
+> Stages covered: **stage-86 ~ 93 + 94** (94 = out-of-table supplementary stage: model defaults and non-destructive deployment). All capabilities below are **available since v1.2.1**.
+
+- **Three-mode architecture (`full` / `fast` / `general`)**: the `workflow_mode` value domain grows from 2 to 3 values (default remains `fast`). `general` (no pipeline) is **requirement-level only** — stage-level / deployment-level write surfaces reject it (explicit command-layer gates in `plan stage add` / `stage set` / `config set`; wizard offers no such option); the resolution chain gains a "requirement" layer (`status.md > requirement > config.yaml > builtin`); **upgrades only, never implicit downgrades**.
+- **Requirement intake and splitting (`openfeel req split`)**: **splitting publishes** — children enter `scheduled` in one shot; `parent_id` is traceability-only (**not in aggregation / not in the done gate / not in `PATCH_WHITELIST`**); parallel intake (`claim` never blocks); **requirements are decoupled from versions** (`target_version` is display / filter / sort only, never a gate). The `req` command group grows **10 → 11 subcommands**.
+- **Direct dispatch of general workers (two dialects)**: opencode = nested `task` tool; Claude Code = direct Handoff. In general mode any Agent can accept **directly dispatched** execution work.
+- **New agent `openfeel-explorer` (read-only)**: dedicated "research / exploration" route — 4 read-only tools (Read / Glob / Grep / Bash); agent count **9 → 10**.
+- **Observability**: `metrics.json` wired via `recordRun`; CLI logs carry `duration_ms` / `project` / `session_id`; op-level timestamps; cross-session resume marker (`resumed`).
+- **Review tiers (`--review-tier <full|lean|skip>`)**: an axis **orthogonal** to workflow mode — the mode picks the base table, the tier prunes review gates (`full` prunes nothing / `lean` prunes `scheme_review` / `skip` prunes `plan_review + scheme_review`; code review, test and archiving gates are always kept). Defaults derive from the mode (`full`→`full` / `fast`→`lean` / `general`→`full`). `flow phases --json` appends `reviewTier` last (existing 6 keys unchanged verbatim, **7 keys total**).
+- **Parallel orchestration contract + lightweight archiving**.
+- **Unified model defaults + non-destructive deployment (user-sovereign `model` key)**: deployment (`setup` / `update`) **creates the user's `model` key when absent and never overwrites it**.
+
+### Bug Fixes (v1.2.1)
+
+- **`req/BUG-002`**: the **completion path for `general` requirements** — a `general` requirement always has zero linked stages (bidirectional carrier gate) while the done gate demands all linked stages done; the two crossed and left `general` requirements **permanently unable to reach `done`**. A **dual completion path** is now provided (criterion = the requirement's own `workflow_mode` field, same source as the carrier gate), so `req advance --to done` / `req set --status done` **succeed** for stage-less `general` requirements; the single-source rule for non-`general` requirements is unchanged; done-gate rejections use dedicated copy.
+- **`cli/BUG-011`**: tier pruning left a stage **with no transition targets when sitting exactly on a pruned phase**. Pruning now **applies to incoming edges / targets only**, so pruned phases keep their outgoing edges; **entering** a pruned gate remains unreachable.
+- **`templates/BUG-007`**: the en archiver pointer dangled → switched to the Chinese section name, plus a "named § pointer literal hit" assertion to prevent recurrence.
+
 ## What's New in v1.2.0
 
 - **flow.json version-shard archiving (`flow archive`)**: three entry points — `openfeel flow archive <version>` (perform archiving; gate = all stages of that version are done and no blocking open REV; **no `--force`**), `openfeel flow archive list`, `openfeel flow archive show <version> [--json]`; archives land at `.openfeel/flow-archive/{version}.json`. **Distinct from the top-level `openfeel archive <stage>` (stage-summary archiving)**; regular commands do not read archives.
-- **Requirement flow (`openfeel req`)**: 10 subcommands (add / list / show / claim / release / set / link / advance / board / next) + 7 statuses (`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`); requirement progress is aggregated from linked stage phases (**auto-closes once all linked stages are done**); claim protocol = `owner` + `claimed_at` (no TTL). Authoritative usage source: the `openfeel-req` skill.
+- **Requirement flow (`openfeel req`)**: 10 subcommands (11 since v1.2.1, +`split`) (add / list / show / claim / release / set / link / advance / board / next) + 7 statuses (`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`); requirement progress is aggregated from linked stage phases (**auto-closes once all linked stages are done**); claim protocol = `owner` + `claimed_at` (no TTL). Authoritative usage source: the `openfeel-req` skill.
 - **Compatibility**: legacy flow.json (without `requirements` / `archived_versions`) raises no errors; upgrading **requires no migration**.
 
 ## What's New in v1.1.2
 
-- **Self-description**: `flow phases [--json]` lists all valid phases and the transition table (6 top-level JSON keys: `schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff` / `workflowMode` (added in v1.1.7; existing five keys unchanged verbatim)).
+- **Self-description**: `flow phases [--json]` lists all valid phases and the transition table (6 top-level JSON keys: `schemaVersion` / `phases` / `transitions` / `advanceAccepted` / `transitionsDiff` / `workflowMode` (added in v1.1.7; existing five keys unchanged verbatim); **7 keys since v1.2.1**, appending `reviewTier` last).
 - **Stage governance**: `flow stage remove` / `plan stage add --deps` / `stageId` validation and directory-conflict detection.
 - **Effective config**: `config effective` prints the resolved value plus its source (`status.md > config.yaml > profile.yaml > builtin`).
 - **Structured output**: `flow status/current/health/metrics/overview --json` (pure JSON + `schemaVersion`).
@@ -144,7 +163,7 @@ Feel is the command center, receiving user intent and dispatching downstream Age
 
 ### Global Deployment and Workspace Layering
 
-Framework assets (9 agents / 18 skills / global `AGENTS.md` / global `opencode.jsonc`) are deployed to `~/.config/opencode/` via `openfeel setup`; **the repository itself keeps no project-level `.opencode/agents|skills`** (since stage-55).
+Framework assets (10 agents / 22 skills / global `AGENTS.md` / global `opencode.jsonc`) are deployed to `~/.config/opencode/` via `openfeel setup`; **the repository itself keeps no project-level `.opencode/agents|skills`** (since stage-55).
 
 Workspace state is layered into two files: `current.md` (team file, cross-user overall progress, ≤5 entries + auto-archiving) and `dev_last.md` (local index + topic directory, cross-session recovery). Framework assets are **automatically backed up** before deployment overwrite to `~/.openfeel/backup/{ts}/`.
 
@@ -201,14 +220,14 @@ Core Layer
   └── workspace/ — Directory structure & knowledge base
 ```
 
-> **Global asset deployment**: 9 agents / 18 skills / global `AGENTS.md` / global `opencode.jsonc` are deployed to `~/.config/opencode/` via `openfeel setup`; the repository itself keeps no project-level `.opencode/agents|skills` (since stage-55).
+> **Global asset deployment**: 10 agents / 22 skills / global `AGENTS.md` / global `opencode.jsonc` are deployed to `~/.config/opencode/` via `openfeel setup`; the repository itself keeps no project-level `.opencode/agents|skills` (since stage-55).
 
 ## Development
 
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (1557 cases / 70 test files; Linux CI skips 1 Windows-only case)
+npm test           # Run tests (1719 cases / 71 test files; Linux CI skips 1 Windows-only case)
 ```
 
 ## Acknowledgments

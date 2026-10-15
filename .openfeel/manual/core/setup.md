@@ -4,7 +4,7 @@
 
 ## 职责
 
-`openfeel setup` 命令核心：**纯全局部署** OpenFeel 框架配置——全局 `AGENTS.md` + 9 agent + 18 skill + 全局平台适配器配置（`opencode.jsonc`，当前适配器）。复用 `deployGlobalAsset`（受管区三态 + hash 兜底，幂等可重跑），**不建立项目 `.openfeel/`**。全局部署会刷新全局 `update_state.json.openfeel_version`（**已部署版本事实源**），供 `setup --check` 与 CLI 被动提示比对。
+`openfeel setup` 命令核心：**纯全局部署** OpenFeel 框架配置——全局 `AGENTS.md` + 10 agent + 22 skill + 全局平台适配器配置（`opencode.jsonc`，当前适配器）。复用 `deployGlobalAsset`（受管区三态 + hash 兜底，幂等可重跑），**不建立项目 `.openfeel/`**。全局部署会刷新全局 `update_state.json.openfeel_version`（**已部署版本事实源**），供 `setup --check` 与 CLI 被动提示比对。
 
 ## 核心 API
 

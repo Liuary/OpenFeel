@@ -43,7 +43,7 @@
 
 原步骤 8 置于 `npx tsc` 之后（`await import('./dist/core/fs/atomic-write.js')` 复用 stage-35 原子写），从权威源重生成 `.opencode/{agents,skills,instructions/core.md,ADAPTER.md}` 并插入生成物标记；采用「清空旧名残留目录 → 全量重写」策略（`rmSync` 而非 `git rm`，因 build 运行时无 git 依赖）。
 
-> **移除原因（v1.1.2-stage-55）**：仓库自身不再保留项目级部署实例——全局资产已由 `openfeel setup` 幂等部署（18 skill / 9 agent / 全局 `AGENTS.md`），删除步骤 8 以消除「项目级与全局」双份资产漂移与 build 复活负担（**防复活**）。相关：`kb/architecture.md` N1 决策已被 supersede（2026-10-01）、`dev/decisions.md` 对应 ADR。
+> **移除原因（v1.1.2-stage-55）**：仓库自身不再保留项目级部署实例——全局资产已由 `openfeel setup` 幂等部署（18 skill / 9 agent〔**当时值**——v1.2.1 现值为 22 skill / 10 agent〕/ 全局 `AGENTS.md`），删除步骤 8 以消除「项目级与全局」双份资产漂移与 build 复活负担（**防复活**）。相关：`kb/architecture.md` N1 决策已被 supersede（2026-10-01）、`dev/decisions.md` 对应 ADR。
 
 ## 发布元数据与死导出清理（v1.1.2-stage-49）
 

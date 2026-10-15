@@ -1,6 +1,6 @@
 ---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 `--tools claude` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 `openfeel req`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 `flow archive`：`<version>` / `list` / `show`）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 `--tools claude` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 `openfeel req`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 `flow archive`：`<version>` / `list` / `show`）、v1.2.1 新增能力（需求拆分 `req split` / 三模式 `full/fast/general` / 审查档位 `--review-tier` / 通用工作者 `openfeel-explorer` / 可观测性字段 / 模型默认值统一与部署非破坏性）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -12,7 +12,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 `openfeel-tool-usage` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
 
-> 本文档为 v1.2.0 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.2.1 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
@@ -27,7 +27,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | `openfeel flow ...` | 流水线状态管理 | 见下「flow 子命令」 |
 | `openfeel flow checkpoint restore` | Checkpoint 恢复（全量 / 选择性 / 预览） | `<file> [--force] [--stage <id>] [--dry-run]`（无 `--stage`=全量覆盖，最后手段；`--stage`=按阶段回退；`--dry-run`=零写盘预览） |
 | `openfeel flow stage reset` | 精准复位阶段 phase（`flow advance` 的对称复位，允许回退） | `<stageId> --to <phase> [--dry-run]`（受合法值域 + `to=done` 阻塞 REV 约束） |
-| `openfeel plan stage add\|list` | 工作阶段管理 | `add <name> --deps <ids...> --tasks <items...> --exec-mode <manual\|auto> --auto-advance <enabled\|disabled> --workflow-mode <full\|fast>`（初值取 `config.yaml.defaults`；显式选项优先；`--workflow-mode` 覆盖 config 默认） |
+| `openfeel plan stage add\|list` | 工作阶段管理 | `add <name> --deps <ids...> --tasks <items...> --exec-mode <manual\|auto> --auto-advance <enabled\|disabled> --workflow-mode <full\|fast\|general>`（初值取 `config.yaml.defaults`；显式选项优先；`--workflow-mode` 覆盖 config 默认；**`general` 仅需求级合法**——阶段级写入面拒绝） |
 | `openfeel plan scheme create\|publish\|rename\|list\|remove\|register` | 操作方案管理 | `create <stage> <title> [--draft]`、`publish <stage> <opId>`、`rename <stage> <opId> --title <text>`、`remove <stage> <opId> [--force] [--dry-run]`、`register <stage> [opId] [--dry-run]`（补注册 fileOrphans） |
 | `openfeel stage status\|set\|task` | `status.md` 原子操作 | `set <id> --status/--exec-mode/--auto-advance/--review-agent/--workflow-mode`、`task <id> [no] --add/--done/--undone`（`stage create` 已弃用） |
 | `openfeel config ...` | 配置管理 | `get\|set <key> <value> [--global]`（支持全量 `defaults.*`，且 `defaults.X ≡ X`）、`set ... --sync-stages [--stage <ids...>]`（批量写入已注册阶段 `status.md` 的 `自动推进`/`执行模式`/`工作流模式`；`--stage` 限定作用域，单独使用 / 与 `--global` 组合 → exit 1）、`get-lang\|set-lang`、`list-projects`、`effective [key]` |
@@ -35,34 +35,46 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | `openfeel lint i18n\|kb` | 健康检查（i18n 键一致性 / kb 过期引用） | 发现问题**非 0 退出** |
 | `openfeel knowledge ...` | 知识库管理 | `list` / `add` / `search` / `index` / `dedup` |
 | `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识） | `<stage>` |
-| `openfeel req ...` | 需求流转（需求管理命令组） | 见「v1.2.0 新增能力（stage-78~84）」节 |
+| `openfeel req ...` | 需求流转（需求管理命令组；**11 子命令**） | 见「v1.2.0 新增能力（stage-78~84）」+「v1.2.1 新增能力（stage-86~93 + 94）」节 |
 | `openfeel view list\|accept` | 审查条目验收（`add` 已移除，改用 `flow review add`） | — |
 | `openfeel project overview` | 项目结构概览 | `overview`（无 `list`/`info` 子命令） |
 | `openfeel roadmap create\|show` | 分期大纲管理 | `create <version>`、`show [version]` |
 | `openfeel instructions <artifactId>` | 为指定 artifact 生成结构化指令 | `--change <name>`、`--schema <name>`、`--json` |
 
-**flow 子命令**：`status` / `current` / `overview` / `phases` / `mode`（`[--stage <id>] [--json]`，只读） / `stage`（`add` / `remove` / `set --deps` / **`reset <id> --to <phase> [--dry-run]`**）/ `metrics` / `advance`（`--stage <id> --to <phase>`、`--op`、`--force`、`--dry-run`、`--quiet`）/ `attempt` / `log` / `review` / `retry` / `repair` / `ops` / `migrate` / `checkpoint`（`list` / **`restore <file> [--force] [--stage <id>] [--dry-run]`**）/ `health` / `recover` / `wizard` / `archive`（`<version>` / `list` / `show`）。
+**flow 子命令**：`status` / `current` / `overview` / `phases` / `mode`（`[--stage <id>] [--json]`，只读） / `stage`（`add` / `remove` / `set --deps` / **`reset <id> --to <phase> [--dry-run]`**）/ `metrics` / `advance`（`--stage <id> --to <phase>`、`--op`、`--force`、`--dry-run`、`--quiet`、**`--review-tier <full\|lean\|skip>`**）/ `attempt` / `log` / `review` / `retry` / `repair` / `ops` / `migrate` / `checkpoint`（`list` / **`restore <file> [--force] [--stage <id>] [--dry-run]`**）/ `health` / `recover` / `wizard` / `archive`（`<version>` / `list` / `show`）。
 
 **纠错/清理侧补充**：`flow review add|resolve|update|remove`；`flow ops list [--stage <id>] [--json]`（操作方案视图，draft 分组展示）；`flow repair [--prune-orphans]`（默认只报告，`--prune-orphans` 仅清键孤儿，单向不删文件）；`plan scheme register`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，`--dry-run` 零写盘；与 `flow repair --prune-orphans`（仅清键孤儿）对称）；**`flow stage reset <id> --to <phase>`**（`advance` 的**对称复位**：允许回退，受合法 phase 值域 + `to=done` 阻塞 REV 约束，`--dry-run` 零写盘）；**`flow checkpoint restore <file> --stage <id> [--dry-run]`**（按阶段选择性回退；`--dry-run` 差异预览零写盘）。
 
 > 命令职责分层：`plan stage add`（完整，推荐）> `flow stage add`（仅注册 `flow.json`，不建目录）> `stage create`（已弃用）。
 
+## v1.2.1 新增能力（stage-86~93 + 94）
+
+> 以下能力**v1.2.1 起提供**（94 = 表外补阶段：模型默认值与部署非破坏性）。
+
+- **需求接取与拆分（`req split`）**：**拆分即发布**——`openfeel req split <id> --into <title> [--into <title> ...] [--json]`，子需求一次入 `scheduled`；`parent_id` 仅溯源（**不入聚合 / 不入 done 门 / 不参与 `PATCH_WHITELIST`**）；顺序 ID 单源派生 + 父终态门 + 恰 1 条 `requirement_split` 审计。**并行接取**：`req claim` 互不阻塞。**需求与版本解绑**：`target_version` 为纯展示 / 过滤 / 排序维度，非门。命令组 **10 → 11 子命令**。
+- **通用工作者直接调度（双口径）**：opencode 侧 = 嵌套 `task` 工具；Claude Code 侧 = Handoff 直发。通用模式下可承接任意 Agent **直接调度**的执行任务（不限于流水线 op）；派发前先探后执行。
+- **`openfeel-explorer`（新 agent，只读）**：承接「调研 / 探索」路由；工具集下限恰 4 项（Read / Glob / Grep / Bash），无写、无派发；agent 数 **9 → 10**。
+- **三模式（`full` / `fast` / `general`）**：`plan stage add --workflow-mode` / `stage set --workflow-mode` / `config set defaults.workflow_mode` / `flow phases --mode` 值域均为 `full|fast|general`（**`general` 仅需求级合法**——阶段级 / 部署级写入面拒绝，wizard 不提供选项）；需求侧 `req add` / `req set --workflow-mode`；解析链增需求级层（`status.md > 需求级 > config.yaml > builtin`）；**升级不降级**。
+- **可观测性**：`metrics.json` 经 `recordRun` 接线（`flow metrics`）；CLI 日志行含 `duration_ms` / `project` / `session_id`；op 级时间戳（`attempted_at` / `completed_at`）；跨会话恢复标注 `resumed`。
+- **审查档位（`flow advance --review-tier <full|lean|skip>`）**：与工作流模式**分属两轴**；缺省按模式派生（`flow phases --json.reviewTier`）；显式 `lean` / `skip` 一行非阻断警告；值域非法 exit 1 零写盘。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进（v1.2.1-stage-93 修复 `cli/BUG-011`）；「**进入**被裁剪关」仍不可达。
+- **模型默认值统一 + 部署非破坏性（用户主权键 `model`）**：部署（`setup` / `update`）对用户既有 `model` 键**无则创建、有则不覆盖**；opencode 侧显式默认收敛为 `deepseek/deepseek-flash`。
+
 ## v1.2.0 新增能力（stage-78~84）
 
 - **flow.json 版本分片归档（`flow archive`）**：按版本号归档已收官历史（判据门：该版本全部阶段 done + 无 blocking open REV；归档文件落 `.openfeel/flow-archive/{version}.json`）。三个入口：`openfeel flow archive <version>`（执行归档；`--dry-run` 预览零写盘、`--json` 结构化输出）、`openfeel flow archive list`（列举已归档版本，只读）、`openfeel flow archive show <version>`（查看指定归档版本，只读）。**与顶层 `openfeel archive <stage>` 区分**：顶层命令是**阶段摘要归档**，`flow archive` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账）。
-- **需求流转（`openfeel req`）**：需求层命令组（10 子命令：`add` / `list` / `show` / `claim` / `release` / `set` / `link` / `advance` / `board` / `next`）。需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**需求进度由关联阶段 phase 聚合**（全部关联阶段 done → 需求自动 done）；认领协议 = `owner` + `claimed_at` 占用校验（无 TTL）。需求正文 `.openfeel/requirements/REQ-NNN.md` 为人读副本，**机读权威恒为 flow.json**。用法权威源见 `openfeel-req` skill；**v1.2.0 起提供**。
+- **需求流转（`openfeel req`）**：需求层命令组（10 子命令（**v1.2.1 起 11**，+`split`）：`add` / `list` / `show` / `claim` / `release` / `set` / `link` / `advance` / `board` / `next`）。需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**需求进度由关联阶段 phase 聚合**（全部关联阶段 done → 需求自动 done）；认领协议 = `owner` + `claimed_at` 占用校验（无 TTL）。需求正文 `.openfeel/requirements/REQ-NNN.md` 为人读副本，**机读权威恒为 flow.json**。用法权威源见 `openfeel-req` skill；**v1.2.0 起提供**。
 
 ## v1.1.7 新增能力（stage-74~76）
 
-- **双模式工作流（`workflow_mode`）**：值域 `full | fast`（默认 `fast`）。三层载体：`config.yaml defaults.workflow_mode`（项目默认 / 记忆）→ `status.md「工作流模式」`（阶段覆盖，**读取权威**）→ `flow.json` 冗余字段（可选、**不参与级联**）；级联优先序 `status.md > config.yaml > builtin`（`profile.yaml` 不承载）。只读查询：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 四源 `source`）。
+- **双模式工作流（`workflow_mode`）**：值域 `full | fast`（默认 `fast`）（**v1.2.1 起 3 值 `full | fast | general`**——`general` 仅需求级合法，见「v1.2.1 新增能力」节）。三层载体：`config.yaml defaults.workflow_mode`（项目默认 / 记忆）→ `status.md「工作流模式」`（阶段覆盖，**读取权威**）→ `flow.json` 冗余字段（可选、**不参与级联**）；级联优先序 `status.md > config.yaml > builtin`（`profile.yaml` 不承载）。只读查询：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 四源 `source`）。
 - **fast 快线转移表（并列）**：`transitions` 共 **9 条目**（8 条流转键 + `done` 终止项）：`plan_pending → plan_review`（**计划审查必经**）、`plan_review → plan_passed / plan_pending`、`plan_passed → exec_running`、`exec_running → review_pending`、`review_pending → review_failed / review_passed`、`review_failed → review_pending / exec_running`（回环）、`review_passed → archiving`、`archiving → done`、`done`（终态）。**`phases` / `advanceAccepted` 恒 15 项、模式无关**；fast 下 6 个相位不可达（`scheme_*` / `test_*`）。
-- **模式命令面**：`plan stage add --workflow-mode <full|fast>`（值域派生、非法 exit 1 不建阶段）、`stage set <id> --workflow-mode <full|fast>`（缺失字段插入）、`flow phases [--mode <full|fast>] [--stage <id>]`（模式分节；`--json` 追加 `workflowMode`）、`config set ... --sync-stages [--stage <ids...>]`（同步字段含「工作流模式」）。
+- **模式命令面**：`plan stage add --workflow-mode <full|fast>`（值域派生、非法 exit 1 不建阶段）、`stage set <id> --workflow-mode <full|fast>`（缺失字段插入）、`flow phases [--mode <full|fast>] [--stage <id>]`（模式分节；`--json` 追加 `workflowMode`）、`config set ... --sync-stages [--stage <ids...>]`（同步字段含「工作流模式」）（**v1.2.1 起三处参数值域均含 `general`**）。
 - **`config effective` 四键**：`auto_advance` / `execution_mode` / `merge_mode` / `workflow_mode`。
 
 ## v1.1.6 新增能力（stage-68~73）
 
 - **多 harness 并存**：`openfeel setup` / `openfeel update` 新增 `--tools <逗号列表>`（如 `opencode,claude`）；非法值 **exit 1** 前置校验零写盘；默认仅 `opencode`。
-- **Claude Code 适配器资产**：`--tools claude` 部署 `~/.claude/`——`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（**9 个**，含 `feel`）、`skills/`（**18 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留）；默认零触（不带 `--tools` 时 `~/.claude/` 零变化）。
+- **Claude Code 适配器资产**：`--tools claude` 部署 `~/.claude/`——`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（**10 个**，含 `feel`）、`skills/`（**22 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留；**无则创建、有则不覆盖**——用户主权键 `model` 不被改写）；默认零触（不带 `--tools` 时 `~/.claude/` 零变化）。
 
 ## v1.1.5 新增能力（stage-67）
 
@@ -96,7 +108,7 @@ openfeel setup --tools claude  # 2. 重跑部署（claude 目标）
 
 > 以下为 v1.1.2 相对上版的增量能力（分组摘要，细节以 `<cmd> --help` 为准）。
 
-- **A. 自描述与可纠错（stage-41）**：`flow phases [--json] [--mode <full|fast>] [--stage <id>]`（**6 键**：`schemaVersion`/`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`/`workflowMode`（v1.1.7 追加）；既有五键语义逐字不变）、`flow stage remove [--force] [--dry-run] [--purge]`、stageId 校验/冲突检测（`validateStageId` / `suggestStageId` / `findStageDirConflict`）、`plan stage add --deps`。
+- **A. 自描述与可纠错（stage-41）**：`flow phases [--json] [--mode <full|fast>] [--stage <id>]`（**6 键**：`schemaVersion`/`phases`/`transitions`/`advanceAccepted`/`transitionsDiff`/`workflowMode`（v1.1.7 追加）；既有五键语义逐字不变；**v1.2.1 起 7 键**——末位追加 `reviewTier`）、`flow stage remove [--force] [--dry-run] [--purge]`、stageId 校验/冲突检测（`validateStageId` / `suggestStageId` / `findStageDirConflict`）、`plan stage add --deps`。
 - **B. 状态与口径（stage-42）**：`config effective [key]`（有效值 + 生效来源 `status.md > config.yaml > profile.yaml > builtin`）、`pipeline.phase` 全量 done 判定、审计日志 `register_stage` / `register_op`。
 - **C. 部署与备份（stage-46）**：覆盖写前自动备份 `~/.openfeel/backup/{ts}/` + `update_infos.md`「备份」类条目（Agent 按 `feel.md` 检查规则核对）。
 - **D. 纠正/清理侧命令面（stage-51/52，v1.1.4-stage-64 补 register）**：`plan scheme remove`（仅删 `flow.json` 注册键，不删 op 文件；done/checkpoint 保护）、`plan scheme register <stage> [opId] [--dry-run]`（对称补全：补注册 fileOrphans，`--dry-run` 零写盘；**`create` 序号基于「ops/ 文件 ∪ flow.json 注册」的最小未用正整数（空位回填），创建后对目标阶段未注册文件输出 stderr 告警并提示 `plan scheme register`**）、`plan scheme rename --title`（必填，空标题报错）、`plan scheme publish` + `create --draft`（draft→pending，空模板拒绝）、`flow stage set --deps`（覆盖写入；**不带 `--deps` 视为清空**）、`flow review update|remove`、`stage set`（**幂等**：同值 no-op + 同值不生成 `.bak`；`--exec-mode <manual\|auto>` / `--auto-advance <enabled\|disabled>` / `--review-agent <agent>`）、`stage task --add|--done|--undone`、`plan stage add --tasks`/`--exec-mode`/`--auto-advance`（显式覆盖 config 默认）、`flow repair --prune-orphans`、`flow health --fix [--dry-run]`（默认只报告；`--fix` **仅回写 status.md「状态」字段**；`--dry-run` 预览零写盘）、`flow ops list`、`flow advance --quiet` + `--to <远距 phase>`（存在唯一路径时自动逐步；`--dry-run` 展示完整路径）、`knowledge dedup`（检索相似条目，**只读建议，不修改 kb**）。`flow attempt` 对 **draft op 拒绝**。
@@ -146,7 +158,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 > `phases` / `advanceAccepted` 恒 15 项（模式无关）；fast 下 `scheme_pending` / `scheme_review` / `scheme_passed` / `test_pending` / `test_failed` / `test_passed` 共 **6 项**不可达（无入边）。
 
-- 转移表以**运行时** `.openfeel/pipeline.yaml` 为准；`openfeel flow phases` 查看当前生效值。（`--mode <full|fast>` 显式指定 / `--stage <id>` 按阶段派生；`--json` 追加 `workflowMode`）
+- 转移表以**运行时** `.openfeel/pipeline.yaml` 为准；`openfeel flow phases` 查看当前生效值。（`--mode <full|fast|general>` 显式指定 / `--stage <id>` 按阶段派生；`--json` 追加 `workflowMode`，v1.2.1 起末位再追加 `reviewTier`）
 - 推进：`openfeel flow advance --stage <id> --to <phase>`。**`advanceAccepted` = 内置 15 个 phase 的「推进白名单」**（`flow advance` 只接受这 15 个值），**不是**组合式条件键的替代品（旧文案曾误述，此处已更正）。**组合式条件差异**（如内置默认含 `review_passed|test_passed`，本仓 `pipeline.yaml` 未列）经 `--json.transitionsDiff.missing` **显式可见**（stage-50 裁定：**不补组合键**，改以 `transitionsDiff` 显式化）。
 - 参考：`.openfeel/manual/**`（CLI/flow 模块文档）。
 
@@ -183,7 +195,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 ### opencode 适配器
 
-- 9 个 agent 内联 `permission:` 白名单，均含 `external_directory: "allow"`（单一键，无读写粒度）。
+- 10 个 agent 内联 `permission:` 白名单，均含 `external_directory: "allow"`（单一键，无读写粒度）；只读探索者 `openfeel-explorer` 恰 5 键（v1.2.1-stage-89 增）。
 - **合并语义**：agent `.md` frontmatter 与 `opencode.jsonc` 按权限键**深合并**，同名键以 agent `.md` 为准（配置文件无法覆盖已声明键）。
 - **收紧入口**：项目根 `.opencode/agent/<name>.md` 覆盖全局同名 agent 并重写完整 `permission` 块；`model` 键为用户主权配置（`update` 保留其值，无则补模板默认），其余 frontmatter 字段仍会被 `update` 覆盖。
 - 详 `.openfeel/manual/core/permission.md`。

@@ -16,7 +16,7 @@ import { mergeGlobalOpencodeJsonc, buildProjectOpencodeJsoncObj } from './openco
 import { applyClaudeSettings } from './claude-settings.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
-import { detectFileType, normalize, splitFrontmatter, parseRegion, wrapRegion, replaceRegion, mergeFrontmatter, serializeFrontmatter } from './managed-region.js';
+import { detectFileType, normalize, splitFrontmatter, parseRegion, wrapRegion, replaceRegion, mergeFrontmatter, serializeFrontmatter, USER_SOVEREIGN_KEYS } from './managed-region.js';
 import { appendUpdateInfo } from './update-infos.js';
 import { backupFileBeforeWrite, BackupError, notifyBackupIfTTY, type BackupCommand } from './backup.js';
 import { readJsoncFile } from './fs/safe-read.js';
@@ -221,6 +221,14 @@ cat ~/.local/share/opencode/auth.json
 - Claude Code **无 \`auth.json\`**。
 - 模型/provider 由 **Claude 侧**决定（\`/model\`、\`settings.json\`/\`env\`、网关如 cc-switch）。
 - Claude Code **无 \`opencode.jsonc\`**，模型引用不进 jsonc。
+
+#### 模型校验路径（Claude Code）
+
+1. **会话内**：\`/model\` 查看/切换当前会话模型；\`~/.claude/settings.json\` 的 \`env\`（如 \`ANTHROPIC_DEFAULT_*_MODEL\`）与 \`modelPicker.options\` 为档位映射来源。
+2. **网关/中转**：如 cc-switch 之类网关的模型清单 / 定价表可作**参考**（非权威——权威以实际派发为准）。
+3. **Agent 级**：\`~/.claude/agents/<name>.md\` 的 frontmatter \`model\` 为 agent 专属配置位，**优先于** \`inherit\`。
+4. **可用性实测法**（自定义模型 ID 是否可用）：隔离 config 目录 + 派发 subagent 实测，观察实际生效模型 / 报错；记录**命令 + 版本 + 环境**三要素，未实测不得表述为「已支持」。
+5. **受部署保护**：上述 \`model\` 键为**用户主权配置**——\`openfeel update\` / \`setup --tools claude\` **保留**其值（无则补模板默认），升级框架不会覆盖用户设定。
 
 ## 快速诊断清单
 
@@ -604,7 +612,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 - 9 个 agent 内联 \`permission:\` 白名单，均含 \`external_directory: "allow"\`（单一键，无读写粒度）。
 - **合并语义**：agent \`.md\` frontmatter 与 \`opencode.jsonc\` 按权限键**深合并**，同名键以 agent \`.md\` 为准（配置文件无法覆盖已声明键）。
-- **收紧入口**：项目根 \`.opencode/agent/<name>.md\` 覆盖全局同名 agent 并重写完整 \`permission\` 块；勿手改全局 agent frontmatter（会被 \`update\` 覆盖）。
+- **收紧入口**：项目根 \`.opencode/agent/<name>.md\` 覆盖全局同名 agent 并重写完整 \`permission\` 块；\`model\` 键为用户主权配置（\`update\` 保留其值，无则补模板默认），其余 frontmatter 字段仍会被 \`update\` 覆盖。
 - 详 \`.openfeel/manual/core/permission.md\`。
 
 ### Claude Code 适配器
@@ -1516,6 +1524,14 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 
 Claude Code 模型解析优先级链：项目 \`.claude/agents\` > 用户 \`~/.claude/agents\`；frontmatter \`model\` **优先于** \`inherit\`。
 
+**用户主权键（\`model\`）——正式配置位与部署保护**：
+
+- 用户级 \`~/.claude/agents/<name>.md\` 的 frontmatter \`model\` 是 Claude 侧的**正式配置位**；
+- \`openfeel update\`（含 \`setup --tools claude\`）**保留**该键的既有值（用户主权键机制：键级「无则创建、有则不覆盖」）——
+  升级 CLI **不会**覆盖你设的模型；删掉该行再部署则回归模板默认（\`inherit\`）；
+- 其余 frontmatter 字段（\`description\` / \`tools\` 等）仍由框架覆盖；正文自定义写在受管区外。
+- opencode 侧同源同语义：\`~/.config/opencode/agents/<name>.md\` 的 \`model\` 同样受部署保护。
+
 ## 多模态（openfeel-vision）模型特殊规则
 
 ### opencode 适配器
@@ -2390,7 +2406,10 @@ function writeManagedFile(
   if (region.status === 'ok') {
     // 含标记：frontmatter 合并 + 正文区内替换，全文比对（REV-901 skip 判定）
     // incoming 无 frontmatter（如 core.md/AGENTS.md 模板）时保留用户已有 frontmatter，避免写入丢失（REV-1101）
-    const newFm = existingFm && incomingFm ? mergeFrontmatter(existingFm, incomingFm) : (existingFm ?? incomingFm);
+    // 用户主权键（stage-94）：部署路径传入白名单，已存在则保留用户值（「无则创建、有则不覆盖」）
+    const newFm = existingFm && incomingFm
+      ? mergeFrontmatter(existingFm, incomingFm, USER_SOVEREIGN_KEYS)
+      : (existingFm ?? incomingFm);
     const newBody = replaceRegion(existingBody, incomingBody, type);
     const newContent = newFm ? serializeFrontmatter(newFm) + newBody : newBody;
     if (newContent === normalize(existing)) {

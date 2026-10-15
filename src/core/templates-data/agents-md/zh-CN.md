@@ -108,7 +108,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 - **合并语义（按权限键深合并，agent 优先）**：agent `.md` frontmatter 的 `permission` 与项目/全局 `opencode.jsonc` 的 `permission` / `agent.<name>.permission` **按权限键深合并**；**同名键以 agent `.md` 为准（配置文件无法覆盖）**，agent 未声明的键才由配置生效。
 - **`external_directory`**：框架内联配置 `"allow"` → agent 生效值 `allow`（工作区外目录免询问）；**opencode 平台默认为 `ask`**，补键是行为变更（ask→allow，依据隔离环境实测 opencode 1.18.33）。
 - **项目级收紧（唯一入口）**：在**项目根**新建 `.opencode/agent/<name>.md` 覆盖同名 agent，并重写完整 `permission` 块；**`opencode.jsonc` 的 `agent.<name>.permission` 无法收紧已声明键（镜像全量键亦无效）**。详见 `.openfeel/manual/core/permission.md`。
-- **勿手改全局 agent 文件 frontmatter**：`openfeel update` 会覆盖 frontmatter 同名字段（浅合并，`permission` 嵌套对象整体覆盖，见 `src/core/managed-region.ts`）；正文自定义请写在受管区（`<!-- openfeel:begin/end -->`）之外。
+- **`model` 键为用户主权配置（其余 frontmatter 勿手改）**：`openfeel update` **保留**你在 agent 文件 frontmatter 中设置的 `model` 值（无则补模板默认）；其余框架字段（`description` / `tools` / `permission` 等）仍会被覆盖（浅合并，`permission` 嵌套对象整体覆盖，见 `src/core/managed-region.ts`）；正文自定义请写在受管区（`<!-- openfeel:begin/end -->`）之外。
 - **生效时机**：opencode 仅在启动时读取配置，改动后须**重启**。
 - **不支持的能力**：`external_directory` 为单一键，**无「只读放行 / 写入才询问」的读写分粒度**。
 

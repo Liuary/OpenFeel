@@ -185,7 +185,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 - 9 个 agent 内联 `permission:` 白名单，均含 `external_directory: "allow"`（单一键，无读写粒度）。
 - **合并语义**：agent `.md` frontmatter 与 `opencode.jsonc` 按权限键**深合并**，同名键以 agent `.md` 为准（配置文件无法覆盖已声明键）。
-- **收紧入口**：项目根 `.opencode/agent/<name>.md` 覆盖全局同名 agent 并重写完整 `permission` 块；勿手改全局 agent frontmatter（会被 `update` 覆盖）。
+- **收紧入口**：项目根 `.opencode/agent/<name>.md` 覆盖全局同名 agent 并重写完整 `permission` 块；`model` 键为用户主权配置（`update` 保留其值，无则补模板默认），其余 frontmatter 字段仍会被 `update` 覆盖。
 - 详 `.openfeel/manual/core/permission.md`。
 
 ### Claude Code 适配器

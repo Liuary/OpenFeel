@@ -94,6 +94,14 @@ cat ~/.local/share/opencode/auth.json
 - 模型/provider 由 **Claude 侧**决定（`/model`、`settings.json`/`env`、网关如 cc-switch）。
 - Claude Code **无 `opencode.jsonc`**，模型引用不进 jsonc。
 
+#### 模型校验路径（Claude Code）
+
+1. **会话内**：`/model` 查看/切换当前会话模型；`~/.claude/settings.json` 的 `env`（如 `ANTHROPIC_DEFAULT_*_MODEL`）与 `modelPicker.options` 为档位映射来源。
+2. **网关/中转**：如 cc-switch 之类网关的模型清单 / 定价表可作**参考**（非权威——权威以实际派发为准）。
+3. **Agent 级**：`~/.claude/agents/<name>.md` 的 frontmatter `model` 为 agent 专属配置位，**优先于** `inherit`。
+4. **可用性实测法**（自定义模型 ID 是否可用）：隔离 config 目录 + 派发 subagent 实测，观察实际生效模型 / 报错；记录**命令 + 版本 + 环境**三要素，未实测不得表述为「已支持」。
+5. **受部署保护**：上述 `model` 键为**用户主权配置**——`openfeel update` / `setup --tools claude` **保留**其值（无则补模板默认），升级框架不会覆盖用户设定。
+
 ## 快速诊断清单
 
 | 检查项 | 命令/操作 | 期望结果 |

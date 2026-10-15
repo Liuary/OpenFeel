@@ -1998,7 +1998,7 @@ Each agent inlines a \`permission:\` allowlist (including \`external_directory: 
 - **Merge semantics (deep merge per permission key; agent wins)**: the agent \`.md\` frontmatter \`permission\` and the project/global \`opencode.jsonc\` \`permission\` / \`agent.<name>.permission\` are **deep-merged per permission key**; **for a key declared in the agent \`.md\`, the \`.md\` value wins (config files cannot override it)**, and only keys absent from the agent \`.md\` take effect from config.
 - **\`external_directory\`**: the framework inlines \`"allow"\` → the agent's effective value is \`allow\` (no prompt outside the workspace); the **opencode platform default is \`ask\`**, so adding the key is a behavior change (ask→allow; verified in an isolated environment on opencode 1.18.33).
 - **Project-level tightening (the only entry)**: create \`.opencode/agent/<name>.md\` at the project root to override the same-named agent and rewrite the full \`permission\` block; **\`agent.<name>.permission\` in \`opencode.jsonc\` cannot tighten a declared key (mirroring every key does not help either)**. See \`.openfeel/manual/core/permission.md\`.
-- **Do not hand-edit the global agent file frontmatter**: \`openfeel update\` overwrites same-named frontmatter fields (shallow merge; the nested \`permission\` object is replaced wholesale, see \`src/core/managed-region.ts\`); put custom content outside the managed region (\`<!-- openfeel:begin/end -->\`).
+- **The \`model\` key is user-sovereign (do not hand-edit the rest)**: \`openfeel update\` **preserves** the \`model\` value you set in an agent file's frontmatter (a missing key gets the template default); other framework fields (\`description\` / \`tools\` / \`permission\` etc.) are still overwritten (shallow merge; the nested \`permission\` object is replaced wholesale, see \`src/core/managed-region.ts\`); put custom content outside the managed region (\`<!-- openfeel:begin/end -->\`).
 - **When it takes effect**: opencode reads configuration only at startup — **restart** after changes.
 - **Unsupported**: \`external_directory\` is a single key; there is **no read/write granularity** ("allow reads, ask on writes").
 
@@ -2159,7 +2159,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 - **合并语义（按权限键深合并，agent 优先）**：agent \`.md\` frontmatter 的 \`permission\` 与项目/全局 \`opencode.jsonc\` 的 \`permission\` / \`agent.<name>.permission\` **按权限键深合并**；**同名键以 agent \`.md\` 为准（配置文件无法覆盖）**，agent 未声明的键才由配置生效。
 - **\`external_directory\`**：框架内联配置 \`"allow"\` → agent 生效值 \`allow\`（工作区外目录免询问）；**opencode 平台默认为 \`ask\`**，补键是行为变更（ask→allow，依据隔离环境实测 opencode 1.18.33）。
 - **项目级收紧（唯一入口）**：在**项目根**新建 \`.opencode/agent/<name>.md\` 覆盖同名 agent，并重写完整 \`permission\` 块；**\`opencode.jsonc\` 的 \`agent.<name>.permission\` 无法收紧已声明键（镜像全量键亦无效）**。详见 \`.openfeel/manual/core/permission.md\`。
-- **勿手改全局 agent 文件 frontmatter**：\`openfeel update\` 会覆盖 frontmatter 同名字段（浅合并，\`permission\` 嵌套对象整体覆盖，见 \`src/core/managed-region.ts\`）；正文自定义请写在受管区（\`<!-- openfeel:begin/end -->\`）之外。
+- **\`model\` 键为用户主权配置（其余 frontmatter 勿手改）**：\`openfeel update\` **保留**你在 agent 文件 frontmatter 中设置的 \`model\` 值（无则补模板默认）；其余框架字段（\`description\` / \`tools\` / \`permission\` 等）仍会被覆盖（浅合并，\`permission\` 嵌套对象整体覆盖，见 \`src/core/managed-region.ts\`）；正文自定义请写在受管区（\`<!-- openfeel:begin/end -->\`）之外。
 - **生效时机**：opencode 仅在启动时读取配置，改动后须**重启**。
 - **不支持的能力**：\`external_directory\` 为单一键，**无「只读放行 / 写入才询问」的读写分粒度**。
 
@@ -4231,6 +4231,14 @@ cat ~/.local/share/opencode/auth.json
 - 模型/provider 由 **Claude 侧**决定（\`/model\`、\`settings.json\`/\`env\`、网关如 cc-switch）。
 - Claude Code **无 \`opencode.jsonc\`**，模型引用不进 jsonc。
 
+#### 模型校验路径（Claude Code）
+
+1. **会话内**：\`/model\` 查看/切换当前会话模型；\`~/.claude/settings.json\` 的 \`env\`（如 \`ANTHROPIC_DEFAULT_*_MODEL\`）与 \`modelPicker.options\` 为档位映射来源。
+2. **网关/中转**：如 cc-switch 之类网关的模型清单 / 定价表可作**参考**（非权威——权威以实际派发为准）。
+3. **Agent 级**：\`~/.claude/agents/<name>.md\` 的 frontmatter \`model\` 为 agent 专属配置位，**优先于** \`inherit\`。
+4. **可用性实测法**（自定义模型 ID 是否可用）：隔离 config 目录 + 派发 subagent 实测，观察实际生效模型 / 报错；记录**命令 + 版本 + 环境**三要素，未实测不得表述为「已支持」。
+5. **受部署保护**：上述 \`model\` 键为**用户主权配置**——\`openfeel update\` / \`setup --tools claude\` **保留**其值（无则补模板默认），升级框架不会覆盖用户设定。
+
 ## 快速诊断清单
 
 | 检查项 | 命令/操作 | 期望结果 |
@@ -4613,7 +4621,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 
 - 9 个 agent 内联 \`permission:\` 白名单，均含 \`external_directory: "allow"\`（单一键，无读写粒度）。
 - **合并语义**：agent \`.md\` frontmatter 与 \`opencode.jsonc\` 按权限键**深合并**，同名键以 agent \`.md\` 为准（配置文件无法覆盖已声明键）。
-- **收紧入口**：项目根 \`.opencode/agent/<name>.md\` 覆盖全局同名 agent 并重写完整 \`permission\` 块；勿手改全局 agent frontmatter（会被 \`update\` 覆盖）。
+- **收紧入口**：项目根 \`.opencode/agent/<name>.md\` 覆盖全局同名 agent 并重写完整 \`permission\` 块；\`model\` 键为用户主权配置（\`update\` 保留其值，无则补模板默认），其余 frontmatter 字段仍会被 \`update\` 覆盖。
 - 详 \`.openfeel/manual/core/permission.md\`。
 
 ### Claude Code 适配器
@@ -5524,6 +5532,14 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 ### Claude Code 适配器
 
 Claude Code 模型解析优先级链：项目 \`.claude/agents\` > 用户 \`~/.claude/agents\`；frontmatter \`model\` **优先于** \`inherit\`。
+
+**用户主权键（\`model\`）——正式配置位与部署保护**：
+
+- 用户级 \`~/.claude/agents/<name>.md\` 的 frontmatter \`model\` 是 Claude 侧的**正式配置位**；
+- \`openfeel update\`（含 \`setup --tools claude\`）**保留**该键的既有值（用户主权键机制：键级「无则创建、有则不覆盖」）——
+  升级 CLI **不会**覆盖你设的模型；删掉该行再部署则回归模板默认（\`inherit\`）；
+- 其余 frontmatter 字段（\`description\` / \`tools\` 等）仍由框架覆盖；正文自定义写在受管区外。
+- opencode 侧同源同语义：\`~/.config/opencode/agents/<name>.md\` 的 \`model\` 同样受部署保护。
 
 ## 多模态（openfeel-vision）模型特殊规则
 

@@ -138,6 +138,18 @@ describe('model-config', () => {
       expect(cfg).toContain("'openfeel-reviewer': { model: 'deepseek/deepseek-flash' }");
     });
 
+    it('stage-94/R-94-2：`--scope default` 覆盖语义回归——已存在 model 键仍被改写为入参值', () => {
+      const fw = setupFrameworkTmp();
+      fwRoots.push(fw);
+      // reviewer 模板 frontmatter 原本已有 model 键（= deepseek/deepseek-flash）；`--scope default` 应「覆盖」而非「保留」
+      const r = setAgentModel('default', 'reviewer', 'zhipuai/glm-5.3-flash', { frameworkRoot: fw });
+      expect(r.changedFiles).toHaveLength(3);
+      const zh = readFileSync(join(fw, 'src', 'core', 'templates-data', 'opencode', 'agents', 'zh-CN', 'openfeel-reviewer.md'), 'utf-8');
+      expect(zh, '--scope default 覆盖语义不受部署路径保护影响').toContain('model: zhipuai/glm-5.3-flash');
+      const cfg = readFileSync(join(fw, 'src', 'core', 'opencode-config.ts'), 'utf-8');
+      expect(cfg).toContain("'openfeel-reviewer': { model: 'zhipuai/glm-5.3-flash' }");
+    });
+
     it('无显式 model 的 agent（feel）抛错，不产生文件变更', () => {
       const fw = setupFrameworkTmp();
       fwRoots.push(fw);

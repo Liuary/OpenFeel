@@ -67,6 +67,14 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 
 Claude Code 模型解析优先级链：项目 `.claude/agents` > 用户 `~/.claude/agents`；frontmatter `model` **优先于** `inherit`。
 
+**用户主权键（`model`）——正式配置位与部署保护**：
+
+- 用户级 `~/.claude/agents/<name>.md` 的 frontmatter `model` 是 Claude 侧的**正式配置位**；
+- `openfeel update`（含 `setup --tools claude`）**保留**该键的既有值（用户主权键机制：键级「无则创建、有则不覆盖」）——
+  升级 CLI **不会**覆盖你设的模型；删掉该行再部署则回归模板默认（`inherit`）；
+- 其余 frontmatter 字段（`description` / `tools` 等）仍由框架覆盖；正文自定义写在受管区外。
+- opencode 侧同源同语义：`~/.config/opencode/agents/<name>.md` 的 `model` 同样受部署保护。
+
 ## 多模态（openfeel-vision）模型特殊规则
 
 ### opencode 适配器

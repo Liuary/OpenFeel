@@ -34,6 +34,7 @@ import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync
 import { join, relative } from 'node:path';
 import { getClaudeMdPath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeSettingsPath } from '../../src/core/global-paths.js';
 import { tmpdir } from 'node:os';
+import { splitFrontmatter } from '../../src/core/managed-region.js';
 
 /** 全局 opencode 目录（基于 mock home） */
 function globalOpencodeDir(): string {
@@ -754,6 +755,97 @@ describe('updateProject', () => {
     expect(projectState.files['AGENTS.md']).toBeUndefined();
     // 项目 opencode.jsonc 仍纳入项目 state
     expect(projectState.files['opencode.jsonc']).toBeDefined();
+  });
+
+  // ── stage-94/T2.3：部署非破坏性（用户主权键 `model`）──
+
+  it('stage-94：opencode 侧 agent 已有 model 键 → 再部署保留用户值（框架默认不传播）', () => {
+    updateProject(tmpDir);
+    const p = join(globalAgentsDir(), 'openfeel-executor.md');
+    const before = readFileSync(p, 'utf-8');
+    const tampered = before.replace(/^model:.*$/m, 'model: user/custom-model');
+    writeFileSync(p, tampered, 'utf-8');
+
+    const result = updateProject(tmpDir);
+
+    const after = readFileSync(p, 'utf-8');
+    expect(after, '用户设置的 model 必须保留').toContain('model: user/custom-model');
+    expect(after, '框架模板值不得回写').not.toContain('model: deepseek/deepseek-flash');
+    // model 未被覆盖 ⇒ 内容无变化 ⇒ skipped（无多余写盘/备份）
+    expect(result.skipped).toContain(p);
+    expect(result.updated).not.toContain(p);
+  });
+
+  it('stage-94：claude 侧 agent 已有 model 键 → 再部署保留（正文随模板更新仍生效）', () => {
+    updateProject(tmpDir, ['claude'], 'zh-CN', {});
+    const p = join(getClaudeAgentsDir(), 'openfeel-planner.md');
+    const before = readFileSync(p, 'utf-8');
+    // 模拟用户手工设置异族模型（本仓场景：reviewer 用 GLM）
+    const tampered = before.replace(/^model: inherit$/m, 'model: ccs-claude-zhipu--glm-5.3-flash[1M]')
+      .replace(/^description:.*$/m, 'description: 用户篡改描述');
+    writeFileSync(p, tampered, 'utf-8');
+
+    const result = updateProject(tmpDir, ['claude'], 'zh-CN', {});
+
+    const after = readFileSync(p, 'utf-8');
+    // frontmatter 判定（正文「模型选择」节含字面 `model: inherit` 叙述，故不可整文件 substring 判定）
+    const fm = splitFrontmatter(after)!.frontmatter;
+    expect(fm.model, '用户 model 保留').toBe('ccs-claude-zhipu--glm-5.3-flash[1M]');
+    // 框架主权键 description 仍被模板覆盖 ⇒ 保留用户 model 与正文/键更新并存
+    expect(fm.description, 'description 仍为模板值').toContain('计划官');
+    expect(fm.description, '用户篡改描述被覆盖').not.toBe('用户篡改描述');
+    // 正文随模板更新仍生效（受管区在位）
+    expect(after).toContain('<!-- openfeel:begin -->');
+    expect(result.updated).toContain(p);
+  });
+
+  it('stage-94：agent 删除 model 行 → 再部署补写模板值（键级「无则创建」）', () => {
+    updateProject(tmpDir);
+    const p = join(globalAgentsDir(), 'openfeel-utility.md');
+    const before = readFileSync(p, 'utf-8');
+    writeFileSync(p, before.replace(/^model:.*\n/m, ''), 'utf-8');
+
+    const result = updateProject(tmpDir);
+
+    const after = readFileSync(p, 'utf-8');
+    expect(after, '缺键 → 补模板值').toContain('model: deepseek/deepseek-flash');
+    expect(result.updated).toContain(p);
+  });
+
+  it('stage-94：agent 未改 model 的既有部署文件 → 保留现值（框架默认值变更不自动传播）', () => {
+    updateProject(tmpDir);
+    const p = join(globalAgentsDir(), 'openfeel-vision.md');
+    const before = readFileSync(p, 'utf-8');
+
+    const result = updateProject(tmpDir);
+
+    const after = readFileSync(p, 'utf-8');
+    expect(after).toContain('model: deepseek/deepseek-flash');
+    // 无差异 → skipped（幂等）
+    expect(result.skipped).toContain(p);
+    expect(after).toBe(before);
+  });
+
+  it('stage-94 阴性：白名单外键（description）用户篡改仍被框架覆盖', () => {
+    updateProject(tmpDir);
+    const p = join(globalAgentsDir(), 'openfeel-schemer.md');
+    const before = readFileSync(p, 'utf-8');
+    writeFileSync(p, before.replace(/^description:.*$/m, 'description: OLD-USER-DESCRIPTION'), 'utf-8');
+
+    updateProject(tmpDir);
+
+    const after = readFileSync(p, 'utf-8');
+    expect(after, '框架主权键仍覆盖').not.toContain('OLD-USER-DESCRIPTION');
+    expect(after).toMatch(/^description: openfeel-schemer/m);
+  });
+
+  it('stage-94 阴性：部署路径保护不触及 `--scope default` 语义（model 行仅由模板写）', () => {
+    // 对照取证：deployGlobalAsset 与 `openfeel model set --scope default` 分属两调用点；
+    // 后者（model-config.ts:218）不传白名单，其覆盖语义由 test/core/model-config.test.ts 独立锁定。
+    updateProject(tmpDir);
+    const opencodeCfg = readFileSync(join(process.cwd(), 'src', 'core', 'model-config.ts'), 'utf-8');
+    expect(opencodeCfg, 'model-config.ts 调用点不得传白名单').toContain('mergeFrontmatter(split.frontmatter, { model })');
+    expect(opencodeCfg, '不得引入 USER_SOVEREIGN_KEYS').not.toContain('USER_SOVEREIGN_KEYS');
   });
 
   // ── stage-66/D-A：写入侧刷新 openfeel_version ──

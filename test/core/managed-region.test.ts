@@ -181,6 +181,49 @@ describe('splitFrontmatter / mergeFrontmatter / serializeFrontmatter', () => {
     expect(mergeFrontmatter(existing, incoming)).toEqual({ permission: { bash: 'allow' } });
   });
 
+  it('mergeFrontmatter：preserveKeys 默认不传 = 现行为（第三参缺省零回归）', () => {
+    const existing = { description: '旧', model: 'user/model' };
+    const incoming = { description: '新', model: 'tpl/model' };
+    // 不传第三参 → incoming 覆盖同名字段（与历史行为逐字一致）
+    expect(mergeFrontmatter(existing, incoming)).toEqual({ description: '新', model: 'tpl/model' });
+    // 显式传空数组 → 同上
+    expect(mergeFrontmatter(existing, incoming, [])).toEqual({ description: '新', model: 'tpl/model' });
+  });
+
+  it('stage-94：preserveKeys 含 model 且 existing 有该键 → 保留用户值，其余键仍 incoming 覆盖', () => {
+    const existing = { description: '旧', model: 'user/custom', extra: 'user-only' };
+    const incoming = { description: '新', model: 'deepseek/deepseek-flash' };
+    expect(mergeFrontmatter(existing, incoming, ['model'])).toEqual({
+      description: '新',
+      model: 'user/custom',
+      extra: 'user-only',
+    });
+  });
+
+  it('stage-94：preserveKeys 含 model 但 existing 无该键 → 取 incoming 模板值（「无则创建」）', () => {
+    const existing = { description: '用户改过但无 model' };
+    const incoming = { description: '模板描述', model: 'deepseek/deepseek-flash' };
+    expect(mergeFrontmatter(existing, incoming, ['model'])).toEqual({
+      description: '模板描述',
+      model: 'deepseek/deepseek-flash',
+    });
+  });
+
+  it('stage-94：白名单恰为 model 单键——同批传入的其它键不受保护（守护扩展口但不升维）', () => {
+    const existing = { description: '用户描述', model: 'user/m' };
+    const incoming = { description: '模板描述', model: 'tpl/m' };
+    // 仅 model 入白名单 → description 仍被覆盖（R-94-3 阴性）
+    expect(mergeFrontmatter(existing, incoming, ['model'])).toEqual({ description: '模板描述', model: 'user/m' });
+    // 若把 description 也纳入 → 则被保护（证明白名单是「显式传入才生效」，非硬编码）
+    expect(mergeFrontmatter(existing, incoming, ['model', 'description'])).toEqual({ description: '用户描述', model: 'user/m' });
+  });
+
+  it('stage-94：existing 的 model 为显式空值（null）→ 仍视为「存在」并保留（存在即保留口径）', () => {
+    const existing = { model: null };
+    const incoming = { model: 'deepseek/deepseek-flash' };
+    expect(mergeFrontmatter(existing, incoming, ['model'])).toEqual({ model: null });
+  });
+
   it('serializeFrontmatter 输出末尾换行正确（REV-1008）', () => {
     const out = serializeFrontmatter({ name: 'demo' });
     expect(out.startsWith('---\n')).toBe(true);

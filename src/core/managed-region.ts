@@ -179,14 +179,37 @@ export function splitFrontmatter(content: string): FrontmatterSplit | null {
 }
 
 /**
- * 合并 frontmatter（REV-904）：incoming 全字段覆盖 + existing 独有字段 passthrough（浅合并，无白名单过滤）。
+ * 用户主权键白名单（键级「无则创建、有则不覆盖」）。
+ *
+ * 语义：部署路径合并 frontmatter 时，若目标文件 frontmatter **已有**白名单键，则**保留用户值**；
+ * 无该键则写入模板值（「无则创建」）。**本阶段（stage-94）白名单恰为 `model` 单键**——
+ * 其余框架主权键（`name`/`description`/`tools`/`permission` 等）维持 incoming 覆盖（浅合并）。
+ *
+ * 生效范围：**仅部署路径**（`update.ts` 的 `writeManagedFile` 含标记分支）；
+ * `openfeel model set --scope default`（`model-config.ts`）**不传**本白名单，覆盖语义逐字保持。
+ */
+export const USER_SOVEREIGN_KEYS: readonly string[] = ['model'];
+
+/**
+ * 合并 frontmatter：incoming 全字段覆盖 + existing 独有字段 passthrough（浅合并，无白名单过滤）。
  * incoming（框架模板字段）覆盖同名 existing 字段；existing 独有字段 passthrough 保留。
+ *
+ * @param preserveKeys 用户主权键白名单（可选）：键在 existing 中**存在**时取 existing 值（不覆盖 incoming）；
+ *                     existing 无该键时取 incoming 值。**默认不传 = 现行为逐字**（incoming 覆盖 + passthrough）。
  */
 export function mergeFrontmatter(
   existing: Record<string, unknown>,
   incoming: Record<string, unknown>,
+  preserveKeys: readonly string[] = [],
 ): Record<string, unknown> {
-  return { ...existing, ...incoming };
+  const merged: Record<string, unknown> = { ...existing, ...incoming };
+  // 用户主权键：仅当 existing 已有该键时回填用户值（存在即保留；含显式 null/空值，语义为「用户明确设置」）
+  for (const key of preserveKeys) {
+    if (Object.prototype.hasOwnProperty.call(existing, key)) {
+      merged[key] = existing[key];
+    }
+  }
+  return merged;
 }
 
 /** 序列化 frontmatter 为 `---\n{...}\n---\n`（yaml.stringify 输出，显式保证末尾换行） */

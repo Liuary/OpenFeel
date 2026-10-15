@@ -14,7 +14,7 @@ import {
   getRequirements, getRequirement, listRequirements, nextRequirementId,
   addRequirement, claimRequirement, releaseRequirement, updateRequirement,
   advanceRequirement, linkRequirement, splitRequirement,
-  isTerminalRequirementStatus, allLinkedStagesDone,
+  isTerminalRequirementStatus, allLinkedStagesDone, canCompleteRequirement,
   getAllowedNextStatuses,
 } from '../../src/core/req/requirement-ops.js';
 import {
@@ -946,10 +946,10 @@ describe('聚合模块 — 正交与单源静态断言（stage-83 op-001）', ()
       [makeReq('REQ-001', 'scheduled')],
     );
     const before = computeRequirementAggregate(data, 'REQ-001');
-    data.requirements![0].workflow_mode = 'general';                 // 模式为纯调度属性：不入聚合 / 不入 done 门 / 不入对账
+    data.requirements![0].workflow_mode = 'general';                 // 模式不入聚合 / 不入对账（aggregate.ts 零 workflow_mode）；经载体制对偶完成路径参与 done 门（canCompleteRequirement 字段直判单点——stage-93 supersede）
     const after = computeRequirementAggregate(data, 'REQ-001');
     expect(after).toEqual(before);
-    expect(allLinkedStagesDone(data, 'REQ-001')).toBe(true);         // done 判定单源不受模式影响
+    expect(allLinkedStagesDone(data, 'REQ-001')).toBe(true);         // done 判定单源（allLinkedStagesDone）语义未动——模式经完成门单点前置
   });
 });
 
@@ -1278,5 +1278,93 @@ describe('stage-90 op-002 需求级模式属性（引擎）', () => {
     // non-general 需求零回归
     const normal = aggData({ 'stage-01': makeStage() }, [makeReq('REQ-001', 'scheduled', { workflow_mode: 'fast' })]);
     expect(linkRequirement(normal, 'stage-01', 'REQ-001')).toEqual({ ok: true, changed: true });
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-93 op-001 BUG-002 完成路径（engine）
+// 载体制对偶完成路径：general 需求显式完成（字段直判单点 canCompleteRequirement）；
+// 非 general 单源 allLinkedStagesDone 语义零改动；防御 = general 且有链接（损坏态）从严回落路 1。
+// ═══════════════════════════════════════
+describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
+  it('T93.1：general 需求全链可显式完成（draft → scheduled → in_progress → done ok:true + 审计在位）', () => {
+    const data = makeFlowData();
+    const req = addRequirement(data, { title: '通用工作者需求', workflow_mode: 'general' });
+    expect(req.workflow_mode).toBe('general');
+    expect(advanceRequirement(data, req.id, 'scheduled')).toEqual({ ok: true, changed: true });
+    expect(advanceRequirement(data, req.id, 'in_progress')).toEqual({ ok: true, changed: true });
+    expect(advanceRequirement(data, req.id, 'done')).toEqual({ ok: true, changed: true });
+    expect(getRequirement(data, req.id)!.status).toBe('done');
+    const last = lastLog(data);
+    expect(last.action).toBe('requirement_status');                                  // 审计在位
+    expect(last.detail).toMatchObject({ id: req.id, from: 'in_progress', to: 'done' });
+  });
+
+  it('T93.2：非 general 零回归——零关联拒 / 未全 done 拒 / 全 done 允（零变更零审计）', () => {
+    // 零关联（无阶段）→ 拒
+    const noLink = aggData({}, [makeReq('REQ-001', 'in_progress')]);
+    const n1 = noLink.log.length;
+    expect(advanceRequirement(noLink, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+    expect(noLink.requirements![0].status).toBe('in_progress');
+    expect(noLink.log.length).toBe(n1);
+
+    // 有链接但未全 done → 拒
+    const partial = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'in_progress') },
+      [makeReq('REQ-001', 'in_progress')],
+    );
+    expect(advanceRequirement(partial, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+    expect(partial.requirements![0].status).toBe('in_progress');
+
+    // 有链接且全 done → 允
+    const allDone = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'done') },
+      [makeReq('REQ-001', 'in_progress')],
+    );
+    expect(advanceRequirement(allDone, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+    expect(allDone.requirements![0].status).toBe('done');
+  });
+
+  it('T93.3：防御——general 且有链接（载体制门不可达的损坏态）从严回落路 1', () => {
+    const broken = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'in_progress') },
+      [makeReq('REQ-001', 'in_progress', { workflow_mode: 'general' })],
+    );
+    expect(advanceRequirement(broken, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+
+    const brokenDone = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'done') },
+      [makeReq('REQ-001', 'in_progress', { workflow_mode: 'general' })],
+    );
+    expect(advanceRequirement(brokenDone, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+  });
+
+  it('T93.4：聚合面复锁（R-93-1）——general 需求 done 后聚合恒 null 且无「需求漂移」对账项', () => {
+    const data = makeFlowData();
+    const req = addRequirement(data, { title: 'g', workflow_mode: 'general' });
+    advanceRequirement(data, req.id, 'scheduled');
+    advanceRequirement(data, req.id, 'in_progress');
+    advanceRequirement(data, req.id, 'done');
+    expect(getRequirement(data, req.id)!.status).toBe('done');
+    expect(computeRequirementAggregate(data, req.id).aggregate).toBeNull();          // 零关联 → null（不入聚合）
+    const items = requirementHealthItems({ data });
+    expect(items.some((i) => i.section === '需求漂移')).toBe(false);                 // 零漂移误报
+  });
+
+  it('T93.5：单源——allLinkedStagesDone 语义未动 + aggregate.ts 禁用串 / .every( 零命中复跑', () => {
+    const data = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'done') },
+      [makeReq('REQ-001', 'in_progress', { workflow_mode: 'general' })],
+    );
+    expect(allLinkedStagesDone(data, 'REQ-001')).toBe(true);                         // 语义零改动（general 且全 done 仍 true）
+    expect(canCompleteRequirement(data, data.requirements![0])).toBe(true);          // 回落路 1 判定一致
+
+    const src = readFileSync(new URL('../../src/core/req/aggregate.ts', import.meta.url), 'utf-8');
+    for (const n of ['workflow_mode', 'PIPELINE_PHASES', 'getValidTargets', 'flow-archive', 'process.cwd', 'homedir']) {
+      expect(src.includes(n)).toBe(false);
+    }
+    expect(src.includes('.every(')).toBe(false);                                     // 禁第二份 done 表达式
+    expect(readFileSync(new URL('../../src/core/req/requirement-ops.ts', import.meta.url), 'utf-8'))
+      .toContain('export function canCompleteRequirement');                          // 新符号正控
   });
 });

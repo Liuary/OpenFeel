@@ -5873,26 +5873,28 @@ describe('审查档位（stage-92 op-001）', () => {
     expect(mgr.getPipelineTransitions('full', 'full')).toEqual(FULL_EXPECTED);
 
     // 精简：裁 scheme_review（= 现状 fast 审查深度语义）
+    // stage-93 BUG-011 判类改写：裁剪只作用于入边 / 目标侧 → 被裁剪相位作源键时**保留出边**
+    // （旧断言 = toBeUndefined / keys 15，见 .openfeel/tmp/stage-93-assertion-diff.md）
     const lean = mgr.getPipelineTransitions('full', 'lean');
-    expect(lean.scheme_review).toBeUndefined();
+    expect(lean.scheme_review).toEqual(['scheme_passed', 'scheme_pending']);
     expect(lean.scheme_pending).toEqual(['scheme_passed']);
     expect(lean.plan_pending).toEqual(['plan_review', 'plan_passed']);
     expect(lean.plan_review).toEqual(['plan_passed', 'plan_pending']);
     expect(lean.review_passed).toEqual(['test_pending']);
     expect(lean['review_passed|test_passed']).toEqual(['archiving']);
-    expect(Object.keys(lean)).toHaveLength(15);
+    expect(Object.keys(lean)).toHaveLength(16);
 
     // 免审：裁两道计划类审查关；恒保留 review_pending / 测试关 / 归档关
     const skip = mgr.getPipelineTransitions('full', 'skip');
-    expect(skip.plan_review).toBeUndefined();
-    expect(skip.scheme_review).toBeUndefined();
+    expect(skip.plan_review).toEqual(['plan_passed', 'plan_pending']);
+    expect(skip.scheme_review).toEqual(['scheme_passed', 'scheme_pending']);
     expect(skip.plan_pending).toEqual(['plan_passed']);
     expect(skip.scheme_pending).toEqual(['scheme_passed']);
     expect(skip.review_pending).toEqual(['review_failed', 'review_passed']);
     expect(skip.test_pending).toEqual(['test_failed', 'test_passed']);
     expect(skip['review_passed|test_passed']).toEqual(['archiving']);
     expect(skip.archiving).toEqual(['done']);
-    expect(Object.keys(skip)).toHaveLength(14);
+    expect(Object.keys(skip)).toHaveLength(16);
 
     // 深拷贝纪律：裁剪结果改内存不污染基表 / 后续读取
     skip.plan_passed.push('__injected__');
@@ -5909,15 +5911,16 @@ describe('审查档位（stage-92 op-001）', () => {
     expect(mgr.getPipelineTransitions('fast', 'lean')).toEqual(FAST_EXPECTED);
     expect(FAST_EXPECTED.plan_pending).toEqual(['plan_review']); // 基表未被污染
 
-    // skip：plan_review 的 key 被删 → 边收缩回退至其 targets（过滤自身后去重）
+    // skip：plan_review 的入边被裁（plan_pending → 边收缩回退至其 targets，过滤自身后去重）；
+    //       plan_review 作源键的出边保留（stage-93 BUG-011 判类改写：旧断言 = toBeUndefined / keys 8）
     const skip = mgr.getPipelineTransitions('fast', 'skip');
     expect(skip.plan_pending).toEqual(['plan_passed']);
-    expect(skip.plan_review).toBeUndefined();
+    expect(skip.plan_review).toEqual(['plan_passed', 'plan_pending']);
     expect(skip.plan_passed).toEqual(['exec_running']);
     expect(skip.review_pending).toEqual(['review_failed', 'review_passed']);
     expect(skip.review_failed).toEqual(['review_pending', 'exec_running']);
     expect(skip.archiving).toEqual(['done']);
-    expect(Object.keys(skip)).toHaveLength(8);
+    expect(Object.keys(skip)).toHaveLength(9);
   });
 
   it('T92.3：general 空表（三档均空）+ getValidTargets 档位透传', () => {
@@ -6001,5 +6004,53 @@ describe('审查档位（stage-92 op-001）', () => {
     expect(TIER_PRUNED_PHASES).toEqual({ full: [], lean: ['scheme_review'], skip: ['plan_review', 'scheme_review'] });
     // 相位枚举 15 项零改动
     expect([...PIPELINE_PHASES]).toHaveLength(15);
+  });
+
+  it('T93.9：被裁剪相位出边保留（stage-93 BUG-011）——两档 × 两相位可达 + 阴性 + 表级差分（不引入新边）', () => {
+    const mgr = makeMgr('full');
+    const t = privTargets(mgr);
+    const base = mgr.getDefaultTransitions('full');
+
+    // ① 出边保留：阶段恰处于被裁剪相位时该档位仍有可达下游（修复前恒为空 → 死锁）
+    expect(t('plan_review', 'full', 'skip')).toEqual(['plan_passed', 'plan_pending']);
+    expect(t('scheme_review', 'full', 'skip')).toEqual(['scheme_passed', 'scheme_pending']);
+    expect(t('scheme_review', 'full', 'lean')).toEqual(['scheme_passed', 'scheme_pending']);
+    expect(t('plan_review', 'full', 'skip').length).toBeGreaterThan(0);
+    expect(t('scheme_review', 'full', 'lean').length).toBeGreaterThan(0);
+
+    // ② findPhasePath 自被裁剪相位可达下游（单步）
+    mgr.getData()!.stages['v1.0.0-stage-01'].phase = 'plan_review' as PipelinePhase;
+    expect(mgr.findPhasePath('v1.0.0-stage-01', 'plan_passed', 'skip')).toEqual({ path: ['plan_passed'], reason: 'ok' });
+
+    // ③ 阴性：进入被裁剪关仍不可达（目标侧过滤 + 边收缩语义保持）
+    mgr.getData()!.stages['v1.0.0-stage-01'].phase = 'plan_pending' as PipelinePhase;
+    const noPlanReview = mgr.findPhasePath('v1.0.0-stage-01', 'plan_review', 'skip');
+    expect(noPlanReview.path).toEqual([]);
+    expect(noPlanReview.reason).not.toBe('ok');
+    const noSchemeReview = mgr.findPhasePath('v1.0.0-stage-01', 'scheme_review', 'lean');
+    expect(noSchemeReview.path).toEqual([]);
+    expect(noSchemeReview.reason).not.toBe('ok');
+
+    // ④ 表级差分锁定（不引入新边）：键集恒等 + 每条边可溯源（基表边 / 经被裁相位一次收缩）
+    for (const tier of ['lean', 'skip'] as const) {
+      const pruned = TIER_PRUNED_PHASES[tier] as readonly string[];
+      const tbl = mgr.getPipelineTransitions('full', tier);
+      expect(Object.keys(tbl).sort()).toEqual(Object.keys(base).sort());          // 被裁剪相位源键保留
+      for (const [k, targets] of Object.entries(tbl)) {
+        const allowed = new Set<string>(base[k] ?? []);
+        for (const d of base[k] ?? []) {
+          if (pruned.includes(d)) {
+            for (const c of base[d] ?? []) { allowed.add(c); }                    // 边收缩一次（既有语义）
+          }
+        }
+        for (const target of targets) {
+          expect(allowed.has(target)).toBe(true);                                 // 零新边
+        }
+        if (pruned.includes(k)) {
+          // 被裁剪相位作源键 → 值 = 基表 targets 过滤被裁剪项（逐字）
+          expect(targets).toEqual((base[k] ?? []).filter((x) => !pruned.includes(x)));
+        }
+      }
+    }
   });
 });

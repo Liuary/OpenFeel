@@ -2122,12 +2122,13 @@ export class FlowManager {
    * 纯函数：不改入参（不污染 FAST_TRANSITIONS 常量 / pipelineConfig），恒返回新对象 + 新数组。
    * 算法：
    * ① `tier === 'full'` → 深拷贝原样返回（零裁剪 ⟹ 既有调用逐字零回归）；
-   * ② 删除「其源条件相位全部被裁剪」的 key（内置 / 运行时表的 key 均为单相位，⟹ 即删除被裁剪相位的 key）；
-   * ③ 各 key 的 targets 过滤被裁剪相位（目标侧裁剪 = 跳过该审查关）；
-   * ④ **边收缩回退**——若某 key 过滤后 targets 为空且原 targets 非空，则并入「被删目标的 targets」
+   * ② 各 key 的 targets 过滤被裁剪相位（目标侧裁剪 = 跳过该审查关）；
+   * ③ **边收缩回退**——若某 key 过滤后 targets 为空且原 targets 非空，则并入「被删目标的 targets」
    *    （再过滤被裁剪项与自身）后去重。该回退保证 fast 基表裁 `plan_review` 后 `plan_pending` 非空集
    *    （`['plan_review']` → 收缩 `plan_review` 的 targets → `plan_pending → ['plan_passed']`）。
-   * 边界（登记）：含被裁剪相位的**组合 key**（如 `'scheme_review|x'`）在部分条件未裁剪时按 ② 保留原样；
+   * **裁剪只作用于入边 / 目标侧**：被裁剪相位保留出边（阶段已处于被裁剪关时可向该档位下游推进）；
+   * 「**进入**被裁剪关」仍被目标侧过滤裁掉。
+   * 边界（登记）：含被裁剪相位的**组合 key**（如 `'scheme_review|x'`）按 ② 过滤 targets（不再整键删除）；
    * 内置 full/fast 表与本仓运行时表均无此类键（唯一组合键 `'review_passed|test_passed'` 不含被裁剪相位）。
    * @param table 模式基表（由 resolveTransitionsForMode 按既有三分支解析所得）
    * @param tier 审查档位
@@ -2144,13 +2145,9 @@ export class FlowManager {
     const result: Record<string, string[]> = {};
     for (const [key, targets] of Object.entries(table)) {
       const keyConds = parseTransitionKey(key);
-      // ② 源条件相位全部被裁剪 → 整体删除该 key（其入边由 ④ 边收缩兜底）
-      if (keyConds.length > 0 && keyConds.every((c) => isPruned(c))) {
-        continue;
-      }
-      // ③ 目标侧过滤被裁剪相位
+      // ② 目标侧过滤被裁剪相位（裁剪只作用于入边 / 目标侧——被裁剪相位作源键时保留，其出边可推进）
       let filtered = targets.filter((t) => !isPruned(t));
-      // ④ 边收缩回退：过滤后为空且原 targets 非空 → 并入被删目标的 targets（过滤被裁剪项与自身后去重）
+      // ③ 边收缩回退：过滤后为空且原 targets 非空 → 并入被删目标的 targets（过滤被裁剪项与自身后去重）
       if (filtered.length === 0 && targets.length > 0) {
         const merged = new Set<string>();
         for (const dropped of targets) {

@@ -3605,4 +3605,75 @@ describe('flow 命令（stage-41）', () => {
     expect(sigLine).toContain("mode: WorkflowMode = 'full'");
     expect(sigLine).not.toContain('tier');
   });
+
+  // stage-93 op-001：BUG-011 修复（裁剪只作用于入边 / 目标侧 → 被裁剪相位保留出边）——命令层实跑
+  it('T93.10：phase=plan_review + --review-tier skip → plan_passed exit 0 零 --force；阴性「进入被裁剪关仍拒」', async () => {
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    setupResetStage('plan_review' as PipelinePhase, 'planned');
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      logMock.mockClear();
+      errorMock.mockClear();
+      exitMock.mockClear();
+
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_passed', '--review-tier', 'skip']);
+
+      expect(exitMock).not.toHaveBeenCalled();                                  // 修复前 = 死锁（无目标 → exit 1），现零 --force 可达
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('已推进');
+      expect(warnMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('审查档位');   // 降档警告保留
+
+      const after = JSON.parse(readFileSync(flowPath, 'utf-8')) as FlowData;
+      expect(after.stages['v1.0.0-stage-01'].phase).toBe('plan_passed');
+      const advanceLogs = after.log.filter((l) => l.action === 'advance_stage_phase');
+      expect(advanceLogs).toHaveLength(1);
+      expect(advanceLogs[0].detail).toMatchObject({ from: 'plan_review', to: 'plan_passed', review_tier: 'skip' });
+      const detailKeys = Object.keys(advanceLogs[0].detail);
+      expect(detailKeys.indexOf('review_tier')).toBe(detailKeys.length - 1);    // 追加于末位
+    } finally {
+      warnMock.mockRestore();
+    }
+
+    // 阴性：进入被裁剪关仍不可达（plan_pending → plan_review @skip → no-path 零写盘）
+    setupResetStage('plan_pending' as PipelinePhase, 'planned');
+    const raw = readFileSync(flowPath, 'utf-8');
+    const warnMock2 = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      errorMock.mockClear();
+      exitMock.mockClear();
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_review', '--review-tier', 'skip']);
+      expect(exitMock).toHaveBeenCalledWith(1);
+      const err = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(err).toMatch(/无法从|路径深度超过上限/);                             // 不可达（no-path / 深度上限）
+      expect(err).toContain('合法跳转目标: [plan_passed]');                      // 进入被裁剪关不可达（plan_review 不在可达集）
+      expect(readFileSync(flowPath, 'utf-8')).toBe(raw);                        // 零写盘
+    } finally {
+      warnMock2.mockRestore();
+    }
+  });
+
+  // stage-93 op-001：REV-92-006 文案处置（depth-exceeded 追加「目标可能不可达」提示）——命令层实跑
+  it('T93.12：depth-exceeded 文案含新提示 + 被裁剪相位的可达目标非空（REV-93-007 输出面登记）', async () => {
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    setupResetStage('plan_review' as PipelinePhase, 'planned');
+    const raw = readFileSync(flowPath, 'utf-8');
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      errorMock.mockClear();
+      exitMock.mockClear();
+      // 阶段恰处于被裁剪相位（plan_review @skip）且目标不可达（scheme_review 同被裁）→ depth-exceeded
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'scheme_review', '--review-tier', 'skip']);
+
+      expect(exitMock).toHaveBeenCalledWith(1);
+      const err = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(err).toContain('路径深度超过上限');                                  // BFS / 判定逐字不变
+      expect(err).toContain('目标可能不可达');                                    // REV-92-006 新增提示
+      // REV-93-007：被裁剪相位的可达目标由「(无)」转非空（修复本体语义的一部分）
+      expect(err).toContain('合法跳转目标: [plan_passed, plan_pending]');
+      expect(err).not.toContain('当前 phase 无合法跳转目标');
+      expect(readFileSync(flowPath, 'utf-8')).toBe(raw);                          // 零写盘
+    } finally {
+      warnMock.mockRestore();
+    }
+  });
 });

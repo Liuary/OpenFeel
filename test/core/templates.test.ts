@@ -984,6 +984,66 @@ describe('stage-91：skill 索引引用完整性', () => {
   });
 });
 
+// ═══════════════════════════════════════
+// stage-93 op-001：具名 § 节指针 → 目标文件字面命中（BUG-007 断言增强，防再犯）
+// 口径：`openfeel-<skill>` 后**直邻**（仅空白）`§<节名>`；节名纯数字 / 范围 → 扫描外（登记）；
+//       具名（非纯数字）→ 断言目标 skill 文件 `includes(节名)`（先全量扫描，仅 en 归档官 ×2 曾悬空）。
+// ═══════════════════════════════════════
+describe('stage-93：具名 § 节指针字面命中（BUG-007 断言增强）', () => {
+  /** 具名节指针语法：反引号 skill 名 + 仅空白 + § + 节名（至空白 / 反引号 / 中文标点止） */
+  const POINTER_RE = /`(openfeel-[a-z0-9-]+)`[ \t]*§([^\s`），，。；;：:、]+)/g;
+  /** 纯数字 / 数字范围节名 → 扫描外（登记边界；数字节序不作文本命中判定） */
+  const isNumericSection = (s: string): boolean => /^[0-9]+(\s*[~／/、-]\s*[0-9]+)*$/.test(s);
+
+  /** 纯函数（可负控）：具名节指针 → 目标 skill 文件字面命中；skill 缺失 / 未命中 → false */
+  const resolves = (skillName: string, sectionName: string): boolean => {
+    const p = join(SKILLS_DIR, skillName, 'SKILL.md');
+    if (!existsSync(p)) { return false; }
+    return norm(readFileSync(p, 'utf-8')).includes(sectionName);
+  };
+
+  /** 递归收集全模板（skills + 双 harness agents 双语言）中的具名节指针对 */
+  const collectNamedPointers = (): Array<{ from: string; skill: string; section: string }> => {
+    const out: Array<{ from: string; skill: string; section: string }> = [];
+    const walk = (dir: string): void => {
+      for (const ent of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, ent.name);
+        if (ent.isDirectory()) { walk(full); continue; }
+        if (!ent.name.endsWith('.md')) { continue; }
+        const text = norm(readFileSync(full, 'utf-8'));
+        for (const m of text.matchAll(POINTER_RE)) {
+          if (isNumericSection(m[2])) { continue; }
+          out.push({ from: full.slice(ROOT.length + 1), skill: m[1], section: m[2] });
+        }
+      }
+    };
+    walk(join(ROOT, 'src', 'core', 'templates-data'));
+    return out;
+  };
+
+  it('T93.11：全量具名 § 指针逐条字面命中 + 正控（≥ 4）+ 负控（纯函数）', () => {
+    const found = collectNamedPointers();
+
+    // 正控：语料中具名指针数 ≥ 4（防扫描口径失效假绿）
+    expect(found.length, '具名 § 指针数').toBeGreaterThanOrEqual(4);
+
+    // 逐条：具名指针必须在目标 skill 文件中字面命中（悬空 = 红灯）
+    for (const p of found) {
+      expect(resolves(p.skill, p.section), `${p.from} → ${p.skill} §${p.section} 悬空`).toBe(true);
+    }
+
+    // 负控（纯函数防假绿）：命中名 → true；悬空名 / 不存在 skill → false
+    expect(resolves('openfeel-logging', '归档机械核对清单')).toBe(true);
+    expect(resolves('openfeel-logging', 'Archive Mechanical Checklist')).toBe(false);
+    expect(resolves('openfeel-nonexistent', '归档机械核对清单')).toBe(false);
+
+    // 数字节名出界登记（扫描外，不参与字面命中断言）
+    expect(isNumericSection('2')).toBe(true);
+    expect(isNumericSection('3')).toBe(true);
+    expect(isNumericSection('归档机械核对清单')).toBe(false);
+  });
+});
+
 describe('stage-91：跨 harness 对称（关键节 + 裸主语 + 语义正控）', () => {
   it('关键节切片同语言跨 harness 逐字等值 + 切片零裸主语', () => {
     for (const lang of ['zh-CN', 'en']) {

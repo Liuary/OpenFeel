@@ -392,15 +392,20 @@ export function registerReqCommand(program: Command): void {
       });
       if (!r.ok) {
         const current = getRequirement(data, id)?.status ?? '';
+        // done 门专用文案（stage-93 BUG-002）：静态表放行 done 而仍被拒 ⇒ 唯一可能是完成门
+        const doneGate = options.status === 'done'
+          && (getAllowedNextStatuses(current as RequirementStatus) as readonly string[]).includes('done');
         failCode(lang, r.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
           invalid_field: t('req.err.invalidFieldTmpl', lang, { id }),
-          invalid_status: t('req.err.invalidStatusTmpl', lang, {
-            id,
-            to: options.status ?? '',
-            current,
-            targets: getAllowedNextStatuses(current as RequirementStatus).join(', '),
-          }),
+          invalid_status: doneGate
+            ? t('req.err.doneGateTmpl', lang, { id, current })
+            : t('req.err.invalidStatusTmpl', lang, {
+              id,
+              to: options.status ?? '',
+              current,
+              targets: getAllowedNextStatuses(current as RequirementStatus).join(', '),
+            }),
           general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id }),
         });
         return;
@@ -500,7 +505,7 @@ export function registerReqCommand(program: Command): void {
   // ── req advance <id> --to <status> ──
   req
     .command('advance <id>')
-    .description('显式推进需求状态（合法目标由引擎流转表判定；done 须全部关联阶段 done）')
+    .description('显式推进需求状态（合法目标由引擎流转表判定；done：非 general 需求须全部关联阶段 done）')
     .requiredOption('--to <status>', '目标状态（合法目标由引擎判定）')
     .action((id: string, options: { to: string }) => {
       const lang = getCliLang(process.cwd());
@@ -520,14 +525,20 @@ export function registerReqCommand(program: Command): void {
       // 命令层零校验：合法目标 + done 门均在引擎单点
       const r = advanceRequirement(data, id, options.to as RequirementStatus);
       if (!r.ok) {
+        // done 门专用文案（stage-93 BUG-002）：静态表放行 done 而仍被拒 ⇒ 唯一可能是完成门
+        const doneGate = options.to === 'done'
+          && before !== undefined
+          && (getAllowedNextStatuses(before) as readonly string[]).includes('done');
         failCode(lang, r.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
-          invalid_status: t('req.err.invalidStatusTmpl', lang, {
-            id,
-            to: options.to,
-            current: before ?? '',
-            targets: before !== undefined ? getAllowedNextStatuses(before).join(', ') : '',
-          }),
+          invalid_status: doneGate
+            ? t('req.err.doneGateTmpl', lang, { id, current: before ?? '' })
+            : t('req.err.invalidStatusTmpl', lang, {
+              id,
+              to: options.to,
+              current: before ?? '',
+              targets: before !== undefined ? getAllowedNextStatuses(before).join(', ') : '',
+            }),
         });
         return;
       }

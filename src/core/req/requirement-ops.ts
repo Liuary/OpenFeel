@@ -86,6 +86,22 @@ export function allLinkedStagesDone(data: FlowData, requirementId: string): bool
   return linked.length > 0 && linked.every((s) => s.phase === 'done');
 }
 
+/**
+ * 完成门判据（BUG-002 单点收口；裁定 4 扩展为两路——stage-93）：
+ *   路 1（不变）：非 general 需求 → allLinkedStagesDone（有阶段且全 done；零关联恒 false）；
+ *   路 2（新增）：general 需求 → 载体制对偶完成路径（显式完成直接放行；general 恒零关联，
+ *     由双向载体制门保证——updateRequirement / linkRequirement）。
+ * 判据来源 = 需求自身 workflow_mode 字段直判（与载体制门同源；禁解析级联——解析链仅作用于阶段侧调度）。
+ * 防御：general 且有链接 = 载体制门不可达的数据损坏态 → 从严回落路 1（不因模式字段获得额外豁免）。
+ */
+export function canCompleteRequirement(data: FlowData, req: RequirementData): boolean {
+  if (req.workflow_mode === 'general') {
+    const hasLinked = Object.values(data.stages ?? {}).some((s) => (s.requirement_id ?? null) === req.id);
+    if (!hasLinked) { return true; }
+  }
+  return allLinkedStagesDone(data, req.id);
+}
+
 // ═══ 写路径原语 ═══
 
 /**
@@ -235,7 +251,8 @@ function applyStatusChange(data: FlowData, req: RequirementData, to: Requirement
   // 域外 status（存量脏数据 / 人工篡改）→ 查表得 undefined，守卫后与「表外组合」同语义，不抛 TypeError（REV-81-016）
   const allowed = ALLOWED_TRANSITIONS[req.status];
   if (!allowed || !allowed.includes(to)) { return false; }
-  if (to === 'done' && !allLinkedStagesDone(data, req.id)) { return false; }  // 裁定 4（零关联拒绝）
+  // 裁定 4 扩展（stage-93）：completion 判据单点（canCompleteRequirement），不再直呼路 1
+  if (to === 'done' && !canCompleteRequirement(data, req)) { return false; }
   const from = req.status;
   req.status = to;
   req.updated_at = new Date().toISOString();                      // 状态维度刷新（单次赋值纪律，REV-81-013）

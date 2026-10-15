@@ -753,13 +753,16 @@ describe('req 命令组（stage-82）', () => {
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'blocked']);
     expect(readFlow().requirements[0].status).toBe('blocked');
 
-    // --to done 未全 done → exit 1 文案含 targets
+    // --to done 未全 done → exit 1 专用 done 门文案
+    // （stage-93 BUG-002 判类改写：旧断言「合法目标：…」在该场景不再成立——静态表放行 done 而
+    //   完成门拒绝，改用专用键 req.err.doneGateTmpl，矛盾句式消除；exit 1 与零写盘逐字不变）
     seed('in_progress', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'plan_pending' }) });
     resetCapture();
     let raw = flowRaw();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(1);
-    expect(err()).toContain(`合法目标：${getAllowedNextStatuses('in_progress').join(', ')}`);
+    expect(err()).toContain('done 须全部关联阶段');
+    expect(err()).not.toContain('合法目标：done');
     expect(flowRaw()).toBe(raw);
 
     // 全 done → 成功 + 审计 requirement_status
@@ -1782,5 +1785,143 @@ describe('stage-90 op-002 需求级模式属性（CLI）', () => {
     const src = readFileSync(new URL('../../src/commands/req.ts', import.meta.url), 'utf-8');
     expect(src).toContain('{ schemaVersion, requirement, stages, parent, children }');
     expect(src).not.toContain('{ schemaVersion, requirement, stages }');
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-93 op-001：BUG-002 完成路径（CLI 面：general 显式完成 / 同源放行 / 专用拒绝文案）
+// ═══════════════════════════════════════
+describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
+  let tmpDir: string;
+  let program: Command;
+  let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
+  let cwdMock: ReturnType<typeof vi.fn>;
+  let exitMock: ReturnType<typeof vi.fn>;
+  let prevExitCode: number | string | undefined;
+
+  beforeEach(async () => {
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-req93-home-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-req93-test-'));
+    mockedChild.execSync.mockReset();
+    mockedChild.execFileSync.mockReset();
+    await initProject(tmpDir);
+
+    logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    prevExitCode = process.exitCode;
+    process.exitCode = 0;
+
+    program = new Command();
+    program.exitOverride();
+    registerReqCommand(program);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
+    logMock.mockRestore();
+    errorMock.mockRestore();
+    cwdMock.mockRestore();
+    exitMock.mockRestore();
+    process.exitCode = prevExitCode;
+
+    const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
+    expect(realRaw).toBe(REAL_FLOW_RAW);
+    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+  });
+
+  async function safeParse(args: string[]): Promise<void> {
+    try {
+      await program.parseAsync(args, { from: 'user' });
+    } catch (err) {
+      if (!(err instanceof CommanderError)) { throw err; }
+    }
+  }
+
+  function out(): string { return logMock.mock.calls.map((c) => c[0] as string).join('\n'); }
+  function err(): string { return errorMock.mock.calls.map((c) => c[0] as string).join('\n'); }
+  function resetCapture(): void { logMock.mockClear(); errorMock.mockClear(); process.exitCode = 0; }
+  function readFlow(): any { return JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')); }
+  function flowRaw(): string { return readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'); }
+  function req_(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id,
+      title: `需求 ${id}`,
+      status: 'scheduled',
+      created_at: '2026-01-01T00:00:00.000Z',
+      ...overrides,
+    };
+  }
+  function seedReq(overrides: Record<string, unknown>): void {
+    const d = readFlow();
+    d.requirements = [req_('REQ-001', overrides)];
+    writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
+  }
+
+  it('T93.6：重现链转正——general 需求 advance --to done exit 0（零关联显式完成）', async () => {
+    await safeParse(['req', 'add', '通用工作者需求', '--workflow-mode', 'general']);
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements[0].workflow_mode).toBe('general');
+    expect(readFlow().requirements[0].status).toBe('draft');
+
+    resetCapture();
+    await safeParse(['req', 'advance', 'REQ-001', '--to', 'scheduled']);
+    expect(process.exitCode).toBe(0);
+
+    resetCapture();
+    await safeParse(['req', 'advance', 'REQ-001', '--to', 'in_progress']);
+    expect(process.exitCode).toBe(0);
+
+    resetCapture();
+    await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+    expect(process.exitCode).toBe(0);                                        // 修复前恒 exit 1（死锁）
+    expect(readFlow().requirements[0].status).toBe('done');
+    expect(out()).toContain('已推进 REQ-001：in_progress → done');            // 成功文案在位
+    expect(readFlow().log.some((e: any) => e.action === 'requirement_status')).toBe(true);
+  });
+
+  it('T93.7：req set --status done 同源放行（general）+ req board done 桶收纳', async () => {
+    seedReq({ status: 'in_progress', workflow_mode: 'general' });
+    resetCapture();
+    await safeParse(['req', 'set', 'REQ-001', '--status', 'done']);
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements[0].status).toBe('done');
+
+    resetCapture();
+    await safeParse(['req', 'board', '--json']);
+    expect(process.exitCode).toBe(0);
+    const groups = JSON.parse(out()).groups;
+    expect(groups.done.map((r: any) => r.id)).toContain('REQ-001');
+  });
+
+  it('T93.8：拒绝文案专用化——非 general 零关联 done 被拒（advance / set 两路径同验，exit 1 零写盘）', async () => {
+    // advance 路径
+    seedReq({ status: 'in_progress' });
+    let raw = flowRaw();
+    await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('done 须全部关联阶段');                            // 新键 req.err.doneGateTmpl 生效
+    expect(err()).not.toContain('合法目标：done');                             // 矛盾句式（该场景）不再出现
+    expect(flowRaw()).toBe(raw);                                              // 零写盘
+
+    // set 路径（同源条件）
+    resetCapture();
+    raw = flowRaw();
+    await safeParse(['req', 'set', 'REQ-001', '--status', 'done']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('done 须全部关联阶段');
+    expect(err()).not.toContain('合法目标：done');
+    expect(flowRaw()).toBe(raw);
+
+    // 反向对照：done 不在合法集时仍走通用文案（逐字零回归）
+    resetCapture();
+    seedReq({ status: 'scheduled' });
+    await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('合法目标：');                                     // 非法流转场景保持通用文案
+    expect(err()).not.toContain('done 须全部关联阶段');
   });
 });

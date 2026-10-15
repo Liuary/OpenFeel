@@ -20,11 +20,14 @@ import {
   MetaPhaseSchema,
   META_PHASES,
   transitionKeyMatches,
+  parseTransitionKey,
   FastTransitionsSchema,
+  TIER_PRUNED_PHASES,
   type PipelineConfig,
   type PipelinePhase,
   type MetaPhase,
   type StageStats,
+  type ReviewTier,
 } from './pipeline-schema.js';
 import { PublicLogger, formatDate } from './public-logger.js';
 import { t, getCliLang } from './i18n.js';
@@ -483,6 +486,18 @@ const FAST_TRANSITIONS: Record<string, string[]> = {
   review_passed: ['archiving'],
   archiving: ['done'],
   done: [],
+};
+
+/**
+ * 工作流模式 → 派生的审查档位（**单源常量**；stage-92 D-92-3）。
+ * 仅用于「展示 / 提示」（`flow phases` 档位分节行与 `--json.reviewTier`）；**不参与推进语义**
+ * （`flow advance` 的有效档位 = 显式声明 ?? full，缺省恒零裁剪 ⟹ 既有流程零回归）。
+ * general（无流水线）恒全量语义，不特判。
+ */
+export const MODE_DERIVED_TIER: Record<WorkflowMode, ReviewTier> = {
+  full: 'full',
+  fast: 'lean',
+  general: 'full',
 };
 
 // ── 核心类 ──
@@ -1455,9 +1470,15 @@ export class FlowManager {
    * @param stageName 阶段名（如 stage-01）
    * @param phase 目标流水线阶段（PipelinePhase）
    * @param triggeredBy 触发者标识（如 'cli' / 'Feel'），默认 'flow-manager'
+   * @param opts.reviewTier 本次调用的审查档位（**仅显式声明时写审计键** `review_tier`；缺省不写 ⟹ 既有条目逐字不变）
    * @returns 是否触发 done 归档（true = 本次推进将阶段变为 done 且之前非 done，需在 save 后执行归档 commit）
    */
-  advanceStagePhase(stageName: string, phase: PipelinePhase, triggeredBy?: string): boolean {
+  advanceStagePhase(
+    stageName: string,
+    phase: PipelinePhase,
+    triggeredBy?: string,
+    opts?: { reviewTier?: ReviewTier },
+  ): boolean {
     if (!this.data) {
       return false;
     }
@@ -1543,11 +1564,16 @@ export class FlowManager {
     const resumed = this.computeResumed(this.data.log, key, fromPhase, sessionId);
 
     // 追加日志（使用实际触发者名，而非硬编码 'flow-manager'）
+    // 审查档位留痕（stage-92 D-92-4）：review_tier **仅显式声明时**追加（既有键逐字保留，缺省条目字节级不变）
     this.appendLog({
       time: '',
       agent: actualTrigger,
       action: 'advance_stage_phase',
-      detail: { stageName: key, from: fromPhase, to: targetPhase, session_id: sessionId, ...(resumed === null ? {} : { resumed }) },
+      detail: {
+        stageName: key, from: fromPhase, to: targetPhase, session_id: sessionId,
+        ...(resumed === null ? {} : { resumed }),
+        ...(opts?.reviewTier === undefined ? {} : { review_tier: opts.reviewTier }),
+      },
     });
 
     // REV-003: advance_stage_phase 改为 endStage 时批量聚合，取消逐条写入
@@ -1964,10 +1990,11 @@ export class FlowManager {
    * 无 '|' 的简单 key 保持单条件原行为（精确相等）。
    * @param fromPhase 当前源 phase
    * @param mode 工作流模式（**必传**；由调用点经 resolveStageWorkflowMode 从 stage 派生——禁止默认 mode）
+   * @param tier 审查档位（可选，缺省 'full' = 零裁剪 ⟹ 既有调用逐字零回归）
    * @returns 去重后的可达目标 phase 列表
    */
-  private getValidTargets(fromPhase: PipelinePhase, mode: WorkflowMode): string[] {
-    const transitions = this.resolveTransitionsForMode(mode);
+  private getValidTargets(fromPhase: PipelinePhase, mode: WorkflowMode, tier: ReviewTier = 'full'): string[] {
+    const transitions = this.resolveTransitionsForMode(mode, tier);
     const result = new Set<string>();
     for (const [key, targets] of Object.entries(transitions)) {
       if (transitionKeyMatches(key, fromPhase)) {
@@ -1998,8 +2025,9 @@ export class FlowManager {
    * 获取当前阶段的所有可达下一阶段（基于 transitions 表，支持组合条件）
    * 供 flow wizard 交互模式使用
    * @param stageName 可选阶段名，提供时使用该阶段 phase 进行查找；否则使用 current.stage 的 phase
+   * @param tier 审查档位（可选，缺省 'full' = 零裁剪）
    */
-  getAvailablePhases(stageName?: string): PipelinePhase[] {
+  getAvailablePhases(stageName?: string, tier: ReviewTier = 'full'): PipelinePhase[] {
     if (!this.data) {
       return [];
     }
@@ -2009,7 +2037,7 @@ export class FlowManager {
     const currentPhase = this.resolveCurrentPhase(stageName);
     if (!currentPhase) return [];
     const mode = this.resolveStageWorkflowMode(stageName).value;
-    return this.getValidTargets(currentPhase, mode) as PipelinePhase[];
+    return this.getValidTargets(currentPhase, mode, tier) as PipelinePhase[];
   }
 
   /**
@@ -2018,9 +2046,10 @@ export class FlowManager {
    * 纯只读：不写盘、不改内存。
    * @param stageName 阶段 ID
    * @param to 目标 phase
+   * @param tier 审查档位（可选，缺省 'full' = 零裁剪；显式声明时按裁剪表求路径）
    * @returns 路径与原因（no-path/ambiguous/depth-exceeded 供命令层报错；already-at-target 按 no-op）
    */
-  findPhasePath(stageName: string, to: string): PhasePathResult {
+  findPhasePath(stageName: string, to: string, tier: ReviewTier = 'full'): PhasePathResult {
     // REV-005：归一化 stageId（短名 → 全名），与 setStageDeps / plan scheme * 同范式
     // 双键回退：兼容以短名建键的存量 / 测试数据（归一化键不存在时回退原始键）
     const normalized = normalizeStageId(stageName) ?? stageName;
@@ -2049,7 +2078,7 @@ export class FlowManager {
         if (node.path.length >= PHASE_PATH_MAX_DEPTH) {
           continue;
         }
-        for (const target of this.getValidTargets(node.phase, mode)) {
+        for (const target of this.getValidTargets(node.phase, mode, tier)) {
           const path = [...node.path, target];
           if (target === to) {
             hits.push(path);
@@ -2089,29 +2118,88 @@ export class FlowManager {
   }
 
   /**
+   * ═══ 审查档位裁剪（stage-92 D-92-2 / D-92-3；**唯一调用点** = resolveTransitionsForMode）═══
+   * 纯函数：不改入参（不污染 FAST_TRANSITIONS 常量 / pipelineConfig），恒返回新对象 + 新数组。
+   * 算法：
+   * ① `tier === 'full'` → 深拷贝原样返回（零裁剪 ⟹ 既有调用逐字零回归）；
+   * ② 删除「其源条件相位全部被裁剪」的 key（内置 / 运行时表的 key 均为单相位，⟹ 即删除被裁剪相位的 key）；
+   * ③ 各 key 的 targets 过滤被裁剪相位（目标侧裁剪 = 跳过该审查关）；
+   * ④ **边收缩回退**——若某 key 过滤后 targets 为空且原 targets 非空，则并入「被删目标的 targets」
+   *    （再过滤被裁剪项与自身）后去重。该回退保证 fast 基表裁 `plan_review` 后 `plan_pending` 非空集
+   *    （`['plan_review']` → 收缩 `plan_review` 的 targets → `plan_pending → ['plan_passed']`）。
+   * 边界（登记）：含被裁剪相位的**组合 key**（如 `'scheme_review|x'`）在部分条件未裁剪时按 ② 保留原样；
+   * 内置 full/fast 表与本仓运行时表均无此类键（唯一组合键 `'review_passed|test_passed'` 不含被裁剪相位）。
+   * @param table 模式基表（由 resolveTransitionsForMode 按既有三分支解析所得）
+   * @param tier 审查档位
+   * @returns 裁剪后的新表
+   */
+  private pruneTransitionsByTier(table: Record<string, string[]>, tier: ReviewTier): Record<string, string[]> {
+    // 全量档：零裁剪（深拷贝返回，防调用方改内存污染基表）
+    if (tier === 'full') {
+      return Object.fromEntries(Object.entries(table).map(([k, v]) => [k, [...v]]));
+    }
+    const pruned = TIER_PRUNED_PHASES[tier];
+    const isPruned = (p: string): boolean => pruned.includes(p as PipelinePhase);
+
+    const result: Record<string, string[]> = {};
+    for (const [key, targets] of Object.entries(table)) {
+      const keyConds = parseTransitionKey(key);
+      // ② 源条件相位全部被裁剪 → 整体删除该 key（其入边由 ④ 边收缩兜底）
+      if (keyConds.length > 0 && keyConds.every((c) => isPruned(c))) {
+        continue;
+      }
+      // ③ 目标侧过滤被裁剪相位
+      let filtered = targets.filter((t) => !isPruned(t));
+      // ④ 边收缩回退：过滤后为空且原 targets 非空 → 并入被删目标的 targets（过滤被裁剪项与自身后去重）
+      if (filtered.length === 0 && targets.length > 0) {
+        const merged = new Set<string>();
+        for (const dropped of targets) {
+          if (!isPruned(dropped)) {
+            continue;
+          }
+          for (const cascaded of table[dropped] ?? []) {
+            if (!isPruned(cascaded) && !keyConds.includes(cascaded)) {
+              merged.add(cascaded);
+            }
+          }
+        }
+        filtered = [...merged];
+      }
+      result[key] = filtered;
+    }
+    return result;
+  }
+
+  /**
    * 按模式解析运行时转移表（唯一取表法则；校验/推进/路径 与 展示 同经本函数 ⇒ 单一信源）。
    * full → 运行时 pipelineConfig.transitions（pipeline.yaml 覆盖线）；fast → fast_transitions ?? 内置快线表。
    * general → 空表（无流水线；模式语义本身，非「缺省回落」）。
+   * 审查档位为**第二参延伸**（stage-92 D-92-3）：末尾统一经 pruneTransitionsByTier 裁剪；
+   * 缺省 tier='full' = 零裁剪 ⟹ 与原逻辑等价（唯一取表点不变，禁第二份层序 / 取表）。
    * 说明：pipelineConfig 构造期恒已加载（constructor 无条件调用），`?? 内置` 保留既有访问器回退语义。
    */
-  private resolveTransitionsForMode(mode: WorkflowMode): Record<string, string[]> {
+  private resolveTransitionsForMode(mode: WorkflowMode, tier: ReviewTier = 'full'): Record<string, string[]> {
+    let raw: Record<string, string[]>;
     if (mode === 'fast') {
-      return this.fastTransitions ?? this.getDefaultPipelineConfig('fast').transitions;
+      raw = this.fastTransitions ?? this.getDefaultPipelineConfig('fast').transitions;
+    } else if (mode === 'general') {
+      // general（无流水线）：空表为**模式语义**的忠实表达（D-90-3；与 pipeline.yaml fast_transitions:{} 的「配置层空值回落」路径 / 语义均不同）
+      raw = {};
+    } else {
+      raw = this.pipelineConfig?.transitions ?? this.getDefaultPipelineConfig().transitions;
     }
-    // general（无流水线）：空表为**模式语义**的忠实表达（D-90-3；与 pipeline.yaml fast_transitions:{} 的「配置层空值回落」路径 / 语义均不同）
-    if (mode === 'general') {
-      return {};
-    }
-    return this.pipelineConfig?.transitions ?? this.getDefaultPipelineConfig().transitions;
+    // 档位裁剪统一落此处（唯一取表点的单一裁剪入口；general 空表裁剪后仍空表）
+    return this.pruneTransitionsByTier(raw, tier);
   }
 
   /**
    * 获取运行时生效的 phase 转移表（key 可含 '|' 组合条件）。
    * 缺省/解析失败时回退内置默认配置。返回浅拷贝。
    * **无参 = full**（零回归既有消费点）；fast 供 stage-75 `flow phases` 模式分节消费。
+   * @param tier 审查档位（可选，缺省 'full' = 零裁剪）
    */
-  getPipelineTransitions(mode: WorkflowMode = 'full'): Record<string, string[]> {
-    const transitions = this.resolveTransitionsForMode(mode);
+  getPipelineTransitions(mode: WorkflowMode = 'full', tier: ReviewTier = 'full'): Record<string, string[]> {
+    const transitions = this.resolveTransitionsForMode(mode, tier);
     return Object.fromEntries(Object.entries(transitions).map(([k, v]) => [k, [...v]]));
   }
 

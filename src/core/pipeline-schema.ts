@@ -59,6 +59,28 @@ export function transitionKeyMatches(key: string, phase: string): boolean {
   return parseTransitionKey(key).includes(phase);
 }
 
+/**
+ * 审查档位枚举常量（stage-92 D-92-2 定稿）。
+ * 语义 = **审查关裁剪谱**（相对工作流模式的基表）：全量 = 零裁剪；精简 = 裁 plan/scheme 两道中的 scheme_review；
+ * 免审 = 裁 plan_review + scheme_review。三档**恒保留** review_pending（代码审查 = 审计链骨干）/ 测试关 / 归档关。
+ * 命名纪律：禁「快线」二字（与 `workflow_mode=fast` 的「工作流快线」消歧）。
+ */
+export const REVIEW_TIERS = ['full', 'lean', 'skip'] as const;
+
+/** 审查档位类型（从常量推导，单一来源） */
+export type ReviewTier = (typeof REVIEW_TIERS)[number];
+
+/**
+ * 各档位裁剪的审查关相位（**单源常量**）。
+ * 消费点唯一 = flow-manager 的 pruneTransitionsByTier（禁第二份裁剪谱）。
+ * 注：相位枚举 15 项不变——裁剪只作用于转移表，**不删除** PipelinePhase 值域。
+ */
+export const TIER_PRUNED_PHASES: Record<ReviewTier, readonly PipelinePhase[]> = {
+  full: [],
+  lean: ['scheme_review'],
+  skip: ['plan_review', 'scheme_review'],
+};
+
 /** pipeline.yaml 的完整 Schema（transitions key 允许 '|' 组合条件） */
 export const PipelineConfigSchema = z.object({
   phases: z.array(z.string()),

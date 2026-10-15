@@ -23,8 +23,8 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
-import { PipelinePhaseSchema, PIPELINE_PHASES } from '../core/pipeline-schema.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, MODE_DERIVED_TIER, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
+import { PipelinePhaseSchema, PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES, type ReviewTier } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
 import { getConfigFieldLegalValues, setConfigValue, type WorkflowMode } from '../core/config.js';
 import { parse as parseYaml } from 'yaml';
@@ -450,7 +450,8 @@ export function registerFlowCommand(program: Command): void {
       if (options.json) {
         // advanceAccepted = 内置 15 phase（flow advance 的推进白名单），与 phases（运行时存在视图，可含自定义）显式区分
         // 既有三字段（phases/transitions/advanceAccepted）+ transitionsDiff 逐字保留；schemaVersion 与 workflowMode 追加于末位（B1-6 / stage-75 op-002）
-        console.log(JSON.stringify({ schemaVersion: 1, phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff, workflowMode: derivedMode }, null, 2));
+        // reviewTier 再追加于末位（stage-92 op-001；既有 6 键逐字保留、顺序不变）
+        console.log(JSON.stringify({ schemaVersion: 1, phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff, workflowMode: derivedMode, reviewTier: MODE_DERIVED_TIER[derivedMode] }, null, 2));
         return;
       }
 
@@ -463,6 +464,9 @@ export function registerFlowCommand(program: Command): void {
       // 模式分节行（stage-75 op-002：模式 + 来源 + 查看指引）
       console.log(t('flow.mode.lineTmpl', lang, { mode: derivedMode, source: explicitMode ? '--mode' : resolved.source }));
       console.log(t('flow.phases.modeHint', lang));
+      // 审查档位分节行（stage-92 op-001：档位 + 来源（模式派生）+ 查看指引；档位仅由模式**派生展示**，不改变推进语义）
+      console.log(t('flow.phases.tierLineTmpl', lang, { tier: MODE_DERIVED_TIER[derivedMode], mode: derivedMode }));
+      console.log(t('flow.phases.tierHint', lang));
       console.log(t('flow.phases.transitionsLabel', lang) + ':');
       for (const [key, targets] of Object.entries(transitions)) {
         console.log(`  ${key} → [${targets.join(', ')}]`);
@@ -782,14 +786,29 @@ export function registerFlowCommand(program: Command): void {
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
     .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')
+    .option('--review-tier <tier>', '审查档位（full / lean / skip；缺省=按模式派生；仅显式声明时裁剪审查关，不可绕过 REV 阻塞检查）')
     .option('--quiet', '静默非错误输出（成功确认与 Git 警告均不打印）')
-    .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean; quiet?: boolean }) => {
+    .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean; reviewTier?: string; quiet?: boolean }) => {
       const lang = getCliLang(process.cwd());
       // 自定义 --stage 必选校验（提供中文错误提示）
       if (!options.stage) {
         console.error(t('flow.advance.errorNoStage', lang));
         process.exit(1);
       }
+
+      // 审查档位值域校验（stage-92 op-001；fail-fast 且**先于任何取值 / 路径解析 / autoRepair 写盘**）
+      // 复用 stage.set.invalidValueTmpl（与 flow phases --mode 同款，零新增键）；非法 → exit 1 零写盘
+      let explicitTier: ReviewTier | undefined;
+      if (options.reviewTier !== undefined) {
+        if (!(REVIEW_TIERS as readonly string[]).includes(options.reviewTier)) {
+          console.error(t('stage.set.invalidValueTmpl', lang, { field: '审查档位', value: options.reviewTier, allowed: REVIEW_TIERS.join(', ') }));
+          process.exit(1);
+          return;
+        }
+        explicitTier = options.reviewTier as ReviewTier;
+      }
+      // 生效档位：显式声明 ?? full（**不传 = 零裁剪**；派生档仅用于 `flow phases` 展示与提示，不改变推进语义）
+      const effTier: ReviewTier = explicitTier ?? 'full';
 
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -851,11 +870,11 @@ export function registerFlowCommand(program: Command): void {
       // - 已在 to → no-op 成功
       let phasePath: string[] = [options.to];
       if (!options.force) {
-        const pathResult = mgr.findPhasePath(stageArg, options.to);
+        const pathResult = mgr.findPhasePath(stageArg, options.to, effTier);
         if (pathResult.reason === 'no-path' || pathResult.reason === 'ambiguous' || pathResult.reason === 'depth-exceeded') {
           const data = mgr.getData();
           const currentPhase = data?.stages[stageArg]?.phase ?? t('common.unknown', lang);
-          const availableTargets = mgr.getAvailablePhases(stageArg);
+          const availableTargets = mgr.getAvailablePhases(stageArg, effTier);
           if (pathResult.reason === 'ambiguous') {
             console.error(t('flow.advance.ambiguousTmpl', lang));
           } else if (pathResult.reason === 'depth-exceeded') {
@@ -904,6 +923,15 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
+      // 审查档位协同警告（stage-92 op-001 / D-92-4）：**仅显式声明**非全量档位时输出一行
+      // 非阻断（退出码不变）；`--review-tier full` 与缺省不告警 ⟹ 既有流程零输出回归
+      if (explicitTier === 'lean' || explicitTier === 'skip') {
+        console.warn(t('flow.advance.warnTierTmpl', lang, {
+          tier: explicitTier,
+          gates: TIER_PRUNED_PHASES[explicitTier].join(', '),
+        }));
+      }
+
       // REV 闭环（命令层兜底）：推进到 done 时检查 blocking REV（单步入口；多步循环每步后另复检，B5-3）
       if (options.to === 'done' && options.stage) {
         const blockingOpen = assertNoBlockingOpenRev(mgr, stageArg, lang);
@@ -930,6 +958,13 @@ export function registerFlowCommand(program: Command): void {
         console.log(`  ` + t('common.stage', lang) + `: ${stageArg}`);
         console.log(`  ` + t('flow.advance.dryRunFrom', lang) + `: ${startPhase}`);
         console.log(`  ` + t('flow.advance.dryRunTo', lang) + `: ${options.to}`);
+        // 审查档位行（stage-92 op-001）：仅显式声明时追加（缺省零输出回归）；档位为空裁剪时 gates 显示「(无)」
+        if (explicitTier !== undefined) {
+          console.log(`  ` + t('flow.advance.dryRunTierTmpl', lang, {
+            tier: explicitTier,
+            gates: TIER_PRUNED_PHASES[explicitTier].join(', ') || t('common.none', lang),
+          }));
+        }
         if (phasePath.length > 1) {
           const fullPath = [startPhase, ...phasePath].join(t('flow.advance.pathArrow', lang));
           console.log(`  ` + t('flow.advance.pathTitle', lang) + ` ${fullPath}`);
@@ -953,7 +988,7 @@ export function registerFlowCommand(program: Command): void {
         const next = phasePath[i];
         let archived = false;
         try {
-          archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli');
+          archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli', explicitTier ? { reviewTier: explicitTier } : undefined);
         } catch (err: unknown) {
           if (totalSteps > 1) {
             const remaining = phasePath.slice(i).join(t('flow.advance.pathArrow', lang));

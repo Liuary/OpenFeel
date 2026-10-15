@@ -3,8 +3,8 @@
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, isTemplateEmpty, detectFillState, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
-import { PIPELINE_PHASES } from '../../src/core/pipeline-schema.js';
+import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, isTemplateEmpty, detectFillState, MODE_DERIVED_TIER, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES } from '../../src/core/pipeline-schema.js';
 import { t } from '../../src/core/i18n.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
@@ -5346,7 +5346,10 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
     expect(mgr.getData()!.log.length).toBe(logBefore);
     expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
     // 形参锁定（REV-83-007）：advanceStagePhase 无 dryRun 形参；resetStagePhase options 带默认值
-    expect(mgr.advanceStagePhase.length).toBe(3);
+    // stage-92 op-001 有意变更白名单：advanceStagePhase 追加第 4 形参 opts（审查档位留痕入口，
+    // `opts?: { reviewTier?: ReviewTier }`）——dryRun 形参**仍不存在**（无 dryRun 能力，锁不再由 arity 单独承担）
+    expect(mgr.advanceStagePhase.length).toBe(4);
+    expect(mgr.advanceStagePhase.toString()).not.toContain('dryRun');
     expect(mgr.resetStagePhase.length).toBe(2);
   });
 });
@@ -5782,5 +5785,221 @@ describe('stage-90：需求级模式层（解析链第 2 层）', () => {
     expect(items).toHaveLength(1);
     expect(items[0].status).toBe('warn');
     expect(items[0].message).toContain('冗余 full ≠ 解析 fast');
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-92 op-001：审查档位（转移表层裁剪 / 唯一取表点延伸 / 审计留痕 / 零回归）
+// ═══════════════════════════════════════
+
+describe('审查档位（stage-92 op-001）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-tier-'));
+    mockHome.dir = join(tmpDir, 'no-such-home');
+    // 审计留痕 golden：确定性会话值（T4 恒写 detail.session_id）
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', GOLDEN_SESSION_ID);
+    resetSessionCache();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetSessionCache();
+    rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  /** 内置 full 表期望字面量（测试内独立书写，不 import 常量，以捕获常量误改） */
+  const FULL_EXPECTED: Record<string, string[]> = {
+    plan_pending: ['plan_review', 'plan_passed'],
+    plan_review: ['plan_passed', 'plan_pending'],
+    plan_passed: ['scheme_pending'],
+    scheme_pending: ['scheme_review', 'scheme_passed'],
+    scheme_review: ['scheme_passed', 'scheme_pending'],
+    scheme_passed: ['exec_running'],
+    exec_running: ['review_pending', 'scheme_pending'],
+    review_pending: ['review_failed', 'review_passed'],
+    review_failed: ['review_pending', 'scheme_pending'],
+    review_passed: ['test_pending'],
+    test_pending: ['test_failed', 'test_passed'],
+    test_failed: ['test_pending', 'scheme_pending'],
+    test_passed: ['archiving'],
+    'review_passed|test_passed': ['archiving'],
+    archiving: ['done'],
+    done: [],
+  };
+
+  /** 内置 fast 表期望字面量（9 条目含 done 终止项） */
+  const FAST_EXPECTED: Record<string, string[]> = {
+    plan_pending: ['plan_review'],
+    plan_review: ['plan_passed', 'plan_pending'],
+    plan_passed: ['exec_running'],
+    exec_running: ['review_pending'],
+    review_pending: ['review_failed', 'review_passed'],
+    review_failed: ['review_pending', 'exec_running'],
+    review_passed: ['archiving'],
+    archiving: ['done'],
+    done: [],
+  };
+
+  /** 单阶段 fixture：status.md 声明指定模式（无 pipeline.yaml → 走内置表）+ 内存阶段（phase = plan_pending） */
+  function makeMgr(mode: 'full' | 'fast' | 'general'): FlowManager {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'status.md'), `# 状态\n\n- **工作流模式**：${mode}\n`, 'utf-8');
+    const mgr = new FlowManager(tmpDir);
+    const base = makeTestFlowData();
+    mgr.setData({
+      ...base,
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: 'v1.0.0-stage-01', op: '' }, retry: 0 },
+      stages: {
+        'v1.0.0-stage-01': { ...base.stages['stage-01'], name: 'T', phase: 'plan_pending', status: 'planned', ops: {} },
+      },
+    });
+    return mgr;
+  }
+
+  /** 私有原语 any-cast（与公开 getAvailablePhases 同源） */
+  function privTargets(mgr: FlowManager): (p: PipelinePhase, m: string, t?: string) => string[] {
+    return (mgr as unknown as { getValidTargets(p: PipelinePhase, m: string, t?: string): string[] }).getValidTargets.bind(mgr);
+  }
+
+  it('T92.1：裁剪表三档（full 模式）——lean 裁 scheme_review / skip 裁 plan_review + scheme_review，其余边逐字', () => {
+    const mgr = makeMgr('full');
+
+    // 缺省 / 显式 full = 零裁剪（既有内置 full 表逐字，16 键）
+    expect(mgr.getPipelineTransitions('full')).toEqual(FULL_EXPECTED);
+    expect(mgr.getPipelineTransitions('full', 'full')).toEqual(FULL_EXPECTED);
+
+    // 精简：裁 scheme_review（= 现状 fast 审查深度语义）
+    const lean = mgr.getPipelineTransitions('full', 'lean');
+    expect(lean.scheme_review).toBeUndefined();
+    expect(lean.scheme_pending).toEqual(['scheme_passed']);
+    expect(lean.plan_pending).toEqual(['plan_review', 'plan_passed']);
+    expect(lean.plan_review).toEqual(['plan_passed', 'plan_pending']);
+    expect(lean.review_passed).toEqual(['test_pending']);
+    expect(lean['review_passed|test_passed']).toEqual(['archiving']);
+    expect(Object.keys(lean)).toHaveLength(15);
+
+    // 免审：裁两道计划类审查关；恒保留 review_pending / 测试关 / 归档关
+    const skip = mgr.getPipelineTransitions('full', 'skip');
+    expect(skip.plan_review).toBeUndefined();
+    expect(skip.scheme_review).toBeUndefined();
+    expect(skip.plan_pending).toEqual(['plan_passed']);
+    expect(skip.scheme_pending).toEqual(['scheme_passed']);
+    expect(skip.review_pending).toEqual(['review_failed', 'review_passed']);
+    expect(skip.test_pending).toEqual(['test_failed', 'test_passed']);
+    expect(skip['review_passed|test_passed']).toEqual(['archiving']);
+    expect(skip.archiving).toEqual(['done']);
+    expect(Object.keys(skip)).toHaveLength(14);
+
+    // 深拷贝纪律：裁剪结果改内存不污染基表 / 后续读取
+    skip.plan_passed.push('__injected__');
+    lean.scheme_pending.push('__injected__');
+    expect(mgr.getPipelineTransitions('full')).toEqual(FULL_EXPECTED);
+    expect(mgr.getDefaultTransitions('full')).toEqual(FULL_EXPECTED);
+  });
+
+  it('T92.2：fast 基表三档——lean 幂等（no-op）；skip 边收缩 plan_pending → [plan_passed]', () => {
+    const mgr = makeMgr('fast');
+    expect(mgr.getPipelineTransitions('fast')).toEqual(FAST_EXPECTED);
+    expect(mgr.getPipelineTransitions('fast', 'full')).toEqual(FAST_EXPECTED);
+    // lean 对 fast 幂等（fast 表无 scheme_review）
+    expect(mgr.getPipelineTransitions('fast', 'lean')).toEqual(FAST_EXPECTED);
+    expect(FAST_EXPECTED.plan_pending).toEqual(['plan_review']); // 基表未被污染
+
+    // skip：plan_review 的 key 被删 → 边收缩回退至其 targets（过滤自身后去重）
+    const skip = mgr.getPipelineTransitions('fast', 'skip');
+    expect(skip.plan_pending).toEqual(['plan_passed']);
+    expect(skip.plan_review).toBeUndefined();
+    expect(skip.plan_passed).toEqual(['exec_running']);
+    expect(skip.review_pending).toEqual(['review_failed', 'review_passed']);
+    expect(skip.review_failed).toEqual(['review_pending', 'exec_running']);
+    expect(skip.archiving).toEqual(['done']);
+    expect(Object.keys(skip)).toHaveLength(8);
+  });
+
+  it('T92.3：general 空表（三档均空）+ getValidTargets 档位透传', () => {
+    const mgr = makeMgr('full');
+    expect(mgr.getPipelineTransitions('general')).toEqual({});
+    expect(mgr.getPipelineTransitions('general', 'lean')).toEqual({});
+    expect(mgr.getPipelineTransitions('general', 'skip')).toEqual({});
+
+    const targets = privTargets(mgr);
+    expect(targets('plan_pending', 'full')).toEqual(['plan_review', 'plan_passed']);
+    expect(targets('plan_pending', 'full', 'lean')).toEqual(['plan_review', 'plan_passed']);
+    expect(targets('plan_pending', 'full', 'skip')).toEqual(['plan_passed']);
+    expect(targets('scheme_pending', 'full', 'lean')).toEqual(['scheme_passed']);
+    expect(targets('scheme_pending', 'full', 'skip')).toEqual(['scheme_passed']);
+    expect(targets('review_pending', 'full', 'skip')).toEqual(['review_failed', 'review_passed']);
+    // general 档位裁剪后仍空表
+    expect(targets('plan_pending', 'general', 'skip')).toEqual([]);
+  });
+
+  it('T92.4：findPhasePath / getAvailablePhases 档位透传（fast + skip 路径剪短一环）', () => {
+    const mgr = makeMgr('fast');
+    // 缺省（零裁剪）：plan_pending → plan_review → plan_passed → exec_running
+    expect(mgr.findPhasePath('v1.0.0-stage-01', 'exec_running').path).toEqual(['plan_review', 'plan_passed', 'exec_running']);
+    // lean 对 fast 幂等 → 与缺省同路径
+    expect(mgr.findPhasePath('v1.0.0-stage-01', 'exec_running', 'lean').path).toEqual(['plan_review', 'plan_passed', 'exec_running']);
+    // skip → 边收缩使路径剪短一环
+    expect(mgr.findPhasePath('v1.0.0-stage-01', 'exec_running', 'skip').path).toEqual(['plan_passed', 'exec_running']);
+
+    expect(mgr.getAvailablePhases('v1.0.0-stage-01')).toEqual(['plan_review']);
+    expect(mgr.getAvailablePhases('v1.0.0-stage-01', 'full')).toEqual(['plan_review']);
+    expect(mgr.getAvailablePhases('v1.0.0-stage-01', 'skip')).toEqual(['plan_passed']);
+
+    // full 基表：被裁剪相位在免审 / 精简档下不可达（path 空，非 ok）
+    const fullMgr = makeMgr('full');
+    expect(fullMgr.findPhasePath('v1.0.0-stage-01', 'scheme_review').path).toEqual(['plan_passed', 'scheme_pending', 'scheme_review']);
+    const leanNoHit = fullMgr.findPhasePath('v1.0.0-stage-01', 'scheme_review', 'lean');
+    expect(leanNoHit.path).toEqual([]);
+    expect(leanNoHit.reason).not.toBe('ok');
+    const skipNoHit = fullMgr.findPhasePath('v1.0.0-stage-01', 'plan_review', 'skip');
+    expect(skipNoHit.path).toEqual([]);
+    expect(skipNoHit.reason).not.toBe('ok');
+  });
+
+  it('T92.5：advanceStagePhase 审计留痕——既有键逐字 + review_tier 仅显式时在末位', () => {
+    const mgr = makeMgr('full');
+    mgr.advanceStagePhase('v1.0.0-stage-01', 'plan_review', 'cli');
+    mgr.advanceStagePhase('v1.0.0-stage-01', 'scheme_pending', 'cli', { reviewTier: 'skip' });
+    mgr.advanceStagePhase('v1.0.0-stage-01', 'scheme_passed', 'cli', {});
+
+    const logs = mgr.getData()!.log.filter((l) => l.action === 'advance_stage_phase');
+    expect(logs).toHaveLength(3);
+    // ① 缺省推进：既有 4 键逐字，**无** review_tier（字节级）
+    expect(Object.keys(logs[0].detail)).toEqual(['stageName', 'from', 'to', 'session_id']);
+    expect(JSON.stringify(logs[0].detail)).not.toContain('review_tier');
+    // ② 显式档位：既有键逐字保留 + review_tier 追加于末位（含跨会话标注 resumed）
+    expect(Object.keys(logs[1].detail)).toEqual(['stageName', 'from', 'to', 'session_id', 'resumed', 'review_tier']);
+    expect(logs[1].detail).toMatchObject({
+      stageName: 'v1.0.0-stage-01', from: 'plan_review', to: 'scheme_pending', review_tier: 'skip',
+    });
+    // ③ 空 opts：写入条件展开为「无该键」（undefined ≠ 显式声明）
+    expect(JSON.stringify(logs[2].detail)).not.toContain('review_tier');
+    // reset 面零改动：reset_stage_phase 无档位输入面 → 恒不写 review_tier（登记裁剪）
+    mgr.resetStagePhase('v1.0.0-stage-01', 'plan_pending');
+    const resetLogs = mgr.getData()!.log.filter((l) => l.action === 'reset_stage_phase');
+    expect(resetLogs).toHaveLength(1);
+    expect(JSON.stringify(resetLogs[0].detail)).not.toContain('review_tier');
+  });
+
+  it('T92.6：默认零裁剪（零回归）+ 派生映射单源 + 常量值域单源', () => {
+    const mgr = makeMgr('full');
+    expect(mgr.getPipelineTransitions()).toEqual(mgr.getPipelineTransitions('full', 'full'));
+    expect(mgr.getPipelineTransitions()).toEqual(FULL_EXPECTED);
+    // getDefaultTransitions 零改动（REV-92-004 选项 a：不受运行时 yaml 影响 + 不带 tier）
+    expect(mgr.getDefaultTransitions('full')).toEqual(FULL_EXPECTED);
+    expect(Object.keys(mgr.getDefaultTransitions('full'))).toHaveLength(16);
+    expect(mgr.getDefaultTransitions('fast')).toEqual(FAST_EXPECTED);
+    // 派生映射单源
+    expect(MODE_DERIVED_TIER).toEqual({ full: 'full', fast: 'lean', general: 'full' });
+    // 值域 / 裁剪谱单源
+    expect(REVIEW_TIERS).toEqual(['full', 'lean', 'skip']);
+    expect(TIER_PRUNED_PHASES).toEqual({ full: [], lean: ['scheme_review'], skip: ['plan_review', 'scheme_review'] });
+    // 相位枚举 15 项零改动
+    expect([...PIPELINE_PHASES]).toHaveLength(15);
   });
 });

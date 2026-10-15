@@ -285,21 +285,27 @@ describe('flow 命令（stage-41）', () => {
     expect(out).toContain('[来源: builtin]');
   });
 
-  it('T7.11⑤：--json 只增 workflowMode（既有五键不变）+ 人类输出仅新增 2 行', async () => {
+  it('T7.11⑤：--json 只增 workflowMode / reviewTier（既有五键不变）+ 人类输出仅新增 4 行', async () => {
     rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
     await safeParse(['flow', 'phases', '--json']);
     const obj = JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
-    // 6 键 = 既有五键 + workflowMode（“只增字段”）
-    expect(Object.keys(obj)).toEqual(['schemaVersion', 'phases', 'transitions', 'advanceAccepted', 'transitionsDiff', 'workflowMode']);
+    // 7 键 = 既有五键 + workflowMode + reviewTier（stage-92 op-001 末位追加；“只增字段”）
+    expect(Object.keys(obj)).toEqual(['schemaVersion', 'phases', 'transitions', 'advanceAccepted', 'transitionsDiff', 'workflowMode', 'reviewTier']);
     expect(obj.schemaVersion).toBe(1);
     expect((obj.phases as string[]).length).toBe(15);
     expect((obj.advanceAccepted as string[]).length).toBe(15);
+    // 本仓基线模式 = full → 派生档位 = full（零裁剪）
+    expect(obj.reviewTier).toBe('full');
 
     logMock.mockClear();
     await safeParse(['flow', 'phases']);
     const lines = logMock.mock.calls.map((c) => c[0] as string);
+    // 模式分节 2 行（既有）+ 档位分节 2 行（stage-92 op-001 新增）；档位行不匹配模式过滤器
     const newLines = lines.filter((l) => l.includes('当前模式：') || l.includes('openfeel flow mode'));
     expect(newLines).toHaveLength(2);
+    const tierLines = lines.filter((l) => l.includes('审查档位：') || l.includes('--review-tier'));
+    expect(tierLines).toHaveLength(2);
+    expect(tierLines[0]).toContain('审查档位：full（模式派生自 full）');
     // 既有行仍逐字在（改前行集合 ⊆ 改后行集合）
     expect(lines).toContain('OpenFeel 流水线 phase 自描述');
     expect(lines).toContain('phase 流转映射（from → [to...]）:');
@@ -3346,13 +3352,14 @@ describe('flow 命令（stage-41）', () => {
 
   // ── stage-90 op-001：general 模式（空表）/ 载体门 / wizard 源扫描 ──
 
-  it('T90.5：flow phases --mode general --json → workflowMode=general + transitions 空表 + 顶层 6 键', async () => {
+  it('T90.5：flow phases --mode general --json → workflowMode=general + transitions 空表 + 顶层 7 键', async () => {
     await safeParse(['flow', 'phases', '--mode', 'general', '--json']);
 
     const obj = JSON.parse(logMock.mock.calls[0][0] as string) as {
       workflowMode: string; transitions: Record<string, string[]>; transitionsDiff: { missing: string[]; extra: string[]; changed: string[] };
     };
-    expect(Object.keys(JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>)).toHaveLength(6);
+    // 6 → 7：stage-92 op-001 末位追加 reviewTier（既有 6 键逐字保留）
+    expect(Object.keys(JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>)).toHaveLength(7);
     expect(obj.workflowMode).toBe('general');
     expect(obj.transitions).toEqual({});
     expect(obj.transitionsDiff).toEqual({ missing: [], extra: [], changed: [] });
@@ -3429,5 +3436,173 @@ describe('flow 命令（stage-41）', () => {
     expect(zh).toContain("zh: 'fast（快速迭代：跳过方案/测试；保留计划审查与代码审查单轮）'");
     expect(en).toContain("en: 'full (complete pipeline: plan review / scheme / test included)'");
     expect(en).toContain("en: 'fast (quick iteration: scheme/test skipped; single-round plan review and code review kept)'");
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // stage-92 op-001：审查档位（flow advance --review-tier / flow phases 档位分节）
+  // ═══════════════════════════════════════════════════════════════
+
+  it('T92.1：--review-tier 非法值 → exit 1 + 「取值非法」+ 零写盘（先于任何取值/路径解析）', async () => {
+    setupResetStage('plan_pending' as PipelinePhase, 'planned');
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = readFileSync(flowPath, 'utf-8');
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_review', '--review-tier', 'bogus']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const err = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(err).toContain('取值非法');
+    expect(err).toContain('full, lean, skip');
+    // 零写盘：flow.json 字节级不变（校验先于 autoRepair / 任何取值与路径解析）
+    expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+  });
+
+  it('T92.2：--review-tier skip → plan_pending 单步直通 plan_passed + 审计 review_tier + 降档警告', async () => {
+    setupResetStage('plan_pending' as PipelinePhase, 'planned');
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      logMock.mockClear();
+      exitMock.mockClear();
+
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_passed', '--review-tier', 'skip']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      // 单步直通：多步才有的逐步输出（含 plan_review 中间跳）缺席
+      const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(out).toContain('已推进');
+      expect(out).not.toContain('plan_review');
+
+      const warns = warnMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(warns).toContain('审查档位');
+      expect(warns).toContain('plan_review, scheme_review');
+      expect(warns).toContain('代码审查关恒保留');
+
+      const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as FlowData;
+      expect(after.stages['v1.0.0-stage-01'].phase).toBe('plan_passed');
+      const advanceLogs = after.log.filter((l) => l.action === 'advance_stage_phase');
+      expect(advanceLogs).toHaveLength(1);
+      // 既有键逐字在位 + review_tier 仅显式时追加
+      expect(advanceLogs[0].detail).toMatchObject({
+        stageName: 'v1.0.0-stage-01', from: 'plan_pending', to: 'plan_passed', review_tier: 'skip',
+      });
+      expect(typeof advanceLogs[0].detail.session_id).toBe('string');
+    } finally {
+      warnMock.mockRestore();
+    }
+  });
+
+  it('T92.3：缺省 = 零裁剪（无 review_tier 键 + 零警告）；显式 full = 零裁剪且留痕 full', async () => {
+    setupResetStage('plan_pending' as PipelinePhase, 'planned');
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    try {
+      // ① 缺省（无 --review-tier）→ 逐字零回归：既有 full 表路径 + 审计无边车键 + 零警告
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_review']);
+      expect(exitMock).not.toHaveBeenCalled();
+      const first = JSON.parse(readFileSync(flowPath, 'utf-8')) as FlowData;
+      const firstLog = first.log.filter((l) => l.action === 'advance_stage_phase');
+      expect(firstLog).toHaveLength(1);
+      expect('review_tier' in firstLog[0].detail).toBe(false);
+      expect(Object.keys(firstLog[0].detail)).toEqual(['stageName', 'from', 'to', 'session_id']);
+      expect(warnMock).not.toHaveBeenCalled();
+
+      // ② 显式 --review-tier full → 档位=零裁剪（路径不变）且**显式声明**留痕
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_passed', '--review-tier', 'full']);
+      expect(exitMock).not.toHaveBeenCalled();
+      const second = JSON.parse(readFileSync(flowPath, 'utf-8')) as FlowData;
+      const secondLog = second.log.filter((l) => l.action === 'advance_stage_phase');
+      expect(secondLog).toHaveLength(2); // ① 的 1 条 + ② 的 1 条（plan_review→plan_passed 单步）
+      expect(secondLog[1].detail.review_tier).toBe('full');
+      expect(secondLog[1].detail).toMatchObject({ from: 'plan_review', to: 'plan_passed' });
+      // full 档零裁剪 → 不告警（警告仅 lean / skip）
+      expect(warnMock).not.toHaveBeenCalled();
+    } finally {
+      warnMock.mockRestore();
+    }
+  });
+
+  it('T92.4：--review-tier lean --dry-run → 预览含档位行且 .openfeel 全目录零写盘', async () => {
+    const { createHash } = await import('node:crypto');
+    setupResetStage('plan_review' as PipelinePhase, 'planned');
+    const snap = (dir: string): Record<string, string> => {
+      const out: Record<string, string> = {};
+      for (const ent of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, ent.name);
+        if (ent.isDirectory()) { Object.assign(out, snap(p)); } else { out[p] = createHash('sha256').update(readFileSync(p)).digest('hex'); }
+      }
+      return out;
+    };
+    const openfeelDir = join(tmpDir, '.openfeel');
+    const before = snap(openfeelDir);
+    expect(Object.keys(before).length).toBeGreaterThanOrEqual(3); // 防假绿：快照非空
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_passed', '--review-tier', 'lean', '--dry-run']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('Dry-run');
+    expect(out).toContain('审查档位: lean');
+    expect(out).toContain('免除: scheme_review');
+    expect(snap(openfeelDir)).toEqual(before);
+  });
+
+  it('T92.5：--review-tier skip --to done + blocking REV → exit 1 零写盘（--force 不可绕过）', async () => {
+    setupResetStage('test_passed' as PipelinePhase, 'testing', [
+      {
+        id: 'REV-92-BLK', op: 'v1.0.0-stage-01.op-001', title: 'blocking', status: 'open', blocking: true,
+        priority: 'high', filed_by: 'openfeel-reviewer', filed_at: '2026-01-01T00:00:00Z',
+      },
+    ]);
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const revBefore = JSON.parse(readFileSync(flowPath, 'utf-8')).meta.revision;
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      errorMock.mockClear();
+      exitMock.mockClear();
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'done', '--review-tier', 'skip']);
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('blocking REV');
+      // 降档警告非阻断（输出一行，退出码以外无副作用）
+      expect(warnMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('审查档位');
+
+      // --force 亦不可绕过 REV 阻塞检查
+      errorMock.mockClear();
+      exitMock.mockClear();
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'done', '--review-tier', 'skip', '--force']);
+      expect(exitMock).toHaveBeenCalledWith(1);
+
+      const after = JSON.parse(readFileSync(flowPath, 'utf-8'));
+      expect(after.meta.revision).toBe(revBefore);
+      expect(after.stages['v1.0.0-stage-01'].phase).toBe('test_passed');
+    } finally {
+      warnMock.mockRestore();
+    }
+  });
+
+  it('T92.6：flow phases --json.reviewTier 三模式取值（full→full / fast→lean / general→full）', async () => {
+    rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
+    const tierOf = async (mode: string): Promise<unknown> => {
+      logMock.mockClear();
+      await safeParse(['flow', 'phases', '--mode', mode, '--json']);
+      return (JSON.parse(logMock.mock.calls[0][0] as string) as { reviewTier: unknown }).reviewTier;
+    };
+    expect(await tierOf('full')).toBe('full');
+    expect(await tierOf('fast')).toBe('lean');
+    expect(await tierOf('general')).toBe('full');
+  });
+
+  it('T92.7：单一取表点静态断言（pruneTransitionsByTier 调用点恰 1；resolveTransitionsForMode 调用点恰 2）', () => {
+    const src = readFileSync(join(REAL_CWD, 'src', 'core', 'flow-manager.ts'), 'utf-8');
+    const count = (needle: string): number => src.split(needle).length - 1;
+    expect(count('this.pruneTransitionsByTier(')).toBe(1);
+    expect(count('this.resolveTransitionsForMode(')).toBe(2);
+    // getDefaultTransitions 零改动（REV-92-004 选项 a：不加 tier 参数，保持「不受运行时 yaml 影响」语义）
+    const sigStart = src.indexOf('getDefaultTransitions(');
+    expect(sigStart).toBeGreaterThan(-1);
+    const sigLine = src.slice(sigStart, src.indexOf('\n', sigStart));
+    expect(sigLine).toContain("mode: WorkflowMode = 'full'");
+    expect(sigLine).not.toContain('tier');
   });
 });

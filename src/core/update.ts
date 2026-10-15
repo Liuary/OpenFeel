@@ -1143,7 +1143,7 @@ description: 记忆与落档纪律——记忆加载优先级、偏好合并、�
 
 会话结束前更新 \`.openfeel/users/{username}/dev_last.md\`（索引）与 \`dev_last/*.md\`（主题文件）：
 
-> **临界区（A9，一次进出）**：以下 ①~④ 的「读 → 合并 → 写回」须在 \`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })\` 内完成（**含读取**；锁路径 \`.openfeel/tmp/locks/dev-last-{username}.lock\`）；\`dist\` 不可用时退化为「读-合并-写」并标注「未加锁」。
+> **临界区（A9，一次进出）**：以下 ①~④ 的「读 → 合并 → 写回」须在 \`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })\` 内完成（**含读取**；锁路径 \`.openfeel/tmp/locks/dev-last-{username}.lock\`；临界区内合并后用 \`atomicWriteFileSync\` 原子落盘；超时 / 陈旧沿用默认 5000 / 3000ms）；\`dist\` 不可用时退化为「读-合并-写」并标注「未加锁」。
 
 1. 更新索引「用户偏好」（**不整文件覆盖**，Read → 合并 → 写回）。
 2. 更新 / 新建主题文件（**文件名英文**；单条 >300 字或 >10 条时转 \`tmp/\` 文档并记地址）。
@@ -2065,6 +2065,20 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 
 所有用户（含单人项目）均遵循此分区结构。Agent 每次通过 \`.openfeel/.info.json\` 获取当前用户名确定私域路径；代码修改后须同步更新私域内相关文件，保持与实际状态一致。
 
+### 设计目的与分层原则
+
+> **两条设计目的（一切格式规则的推导总纲）**：
+> ① **保存核心信息便于恢复**——任何时刻打开索引（\`dev/current.md\` / \`users/{username}/dev_last.md\`）即可在有限上下文内恢复到可继续工作的程度。
+> ② **避免无关信息污染上下文**——索引层只放「结论与位置」，细节下沉到主题文件 / \`tmp/\` 文档；索引不承载过程性明细。
+
+**分层原则**：
+
+| 层 | 载体 | 粒度上限 | 读者 |
+|----|------|----------|------|
+| 索引层 | \`.openfeel/dev/current.md\`、\`.openfeel/users/{username}/dev_last.md\` | 条数硬限 + 字数硬限 | 用户 / 会话启动 |
+| 主题层 | \`.openfeel/users/{username}/dev_last/{english-name}.md\` | ≤10 条、≤300 字/条 | 按需读取 |
+| 详情层 | \`.openfeel/users/{username}/tmp/\` 文档 | 不限（仅记**地址**） | 显式指定时读取 |
+
 > **路径自校验**：构造 \`.openfeel/users/{username}/\` 路径可能意外截断用户名（如 \`Alice\` → \`Alic\`）。访问失败（file not found）时不要直接报错：先重读 \`.openfeel/.info.json\` 取正确 \`username\`，逐字符比对后重建路径重试；连续失败则向用户报告「路径 \`{失败路径}\` 不存在，已确认用户名为 \`{正确用户名}\`」后操作。
 
 ### 公共域目录职责与命名
@@ -2164,8 +2178,8 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 > 超期记录：**不归档**（就地保留或由用户手动清理）。
 \`\`\`
 
-- 主题文件名映射：待续事项 → \`pending.md\`、决策记录 → \`decisions.md\`、流水线状态 → \`pipeline-state.md\`、上次操作 → \`last-operation.md\`、经验暂存 → \`experience.md\`（新主题同理，英文 kebab-case）。
-- 主题数 >5 时：先合并同类主题；无可合并则把最旧且已完结主题降为一行摘要移入「已收敛主题」（\`dev_last/archive/\` **不存在**，不迁移、不归档）。
+- 主题文件名映射：待续事项 → \`dev_last/pending.md\`、决策记录 → \`dev_last/decisions.md\`、流水线状态 → \`dev_last/pipeline-state.md\`、上次操作 → \`dev_last/last-operation.md\`、经验暂存 → \`dev_last/experience.md\`（新主题同理，英文 kebab-case）。
+- 主题数 >5 时：**优先合并同类主题**；无可合并则把最旧且已完结主题降为一行摘要移入「已收敛主题」（\`dev_last/archive/\` **不存在**，不迁移、不归档）。
 
 ### 3. \`REV-{NO}\` 条目模板
 

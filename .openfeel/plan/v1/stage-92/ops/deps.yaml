@@ -1,0 +1,192 @@
+# stage-92 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 应声明实际文件名
+# revision: 2026-10-15 openfeel-schemer 初版（计划 §八 定稿；REV-92-001 / REV-92-002 全吸收 —— 逐条映射见说明④）
+#   说明① **op 数定稿 = 4**（对齐计划 §八「op 拆分建议」+ 阶段末 op 独立，承 stage-91 先例）。执行序恒为
+#     op-001（T1 审查档位）→ op-002（T2 并行编排与交互提速）→ op-003（T3 归档轻量化）→ op-004（T4 门禁收口，阶段末 op）。
+#     四 op **恒串行**（详 mutual_exclusions）；op-002 / op-003 顺序理论可换（互不读对方产物），但二者**共有**
+#     `npm run build` 双生成物与 `test/core/templates.test.ts` → 仍恒串行（不得并发 build）。
+#   说明② **est_ops 偏差显式登记（REV-92-002 落实）**：版本计划 `.openfeel/plan/v1/v1.2.1/deps.yaml:175` 登记
+#     `est_ops: 3`（版本计划 §四 阶段表同行 `v1.2.1-stage-92 … 3`，`:143`）→ **本方案定稿 4**。理由 = ① T3 保留
+#     **模板面**（归档官模板 ×4 轻量化 + 前后对照实测量级独立）——3 op 降级方案的前提（「Q7 全部落脚本、不动模板」）
+#     未被采纳（D-92-8 判定落地项含模板轻量化）；② 收口恒独立（承 stage-91 先例）；③ 对齐计划 §八建议 `est_ops = 4`
+#     （其已自洽登记 3-op 降级方案并注明「取舍须在方案期显式登记」——**本句即该登记**）。**回写去向 = 主会话**
+#     （版本计划侧对账记录 / 终局报告对账表由 op-004 登记；本 Agent 不直改版本计划文件）。
+#   说明③ **方案期裁定 D-92-1 ~ D-92-12（全量登记；详细论证见各 op 头部「方案期裁定」）**：
+#     D-92-1 op 数 4 + 执行序 001→002→003→004（说明①）｜
+#     D-92-2（Q1 定稿）档位命名 = 全量 `full` / 精简 `lean` / 免审 `skip`（**禁「快线」二字**，与「工作流快线」消歧）；
+#       语义 = 审查关裁剪谱：全量零裁剪 / 精简裁 `scheme_review`（= 现状 fast 审查深度；设计 §4「计划审查与方案审查
+#       合并为单轮」的实现形态）/ 免审裁 `plan_review` + `scheme_review`｜
+#     D-92-3（Q2 定稿）**无新持久载体**（转移表层推导 + `flow advance --review-tier` 调用期显式声明；不落 status.md /
+#       flow.json / config；不新增骨架行 / 插入锚点 / 冗余字段 / health 项）——计划 T1.5「无新载体」结论**显式登记**；
+#       解析单点 = `resolveTransitionsForMode(mode, tier)` 第二参延伸（禁第二份层序/取表）｜
+#     D-92-4（Q3 定稿）免审 = 免两道计划类审查关，**恒保留** `review_pending` / 测试关 / archiving / blocking REV 门；
+#       警告协同 = 显式声明非全量档位时 `flow advance` 一行 `console.warn`（非阻断）；审计 = `review_tier` **仅显式时写**；
+#       `reset_stage_phase` 不加该键（无输入面，登记裁剪）｜
+#     D-92-5（Q4 定稿）组合键 **维持不补**（stage-50 裁定显式重审 = 维持；本仓 `.openfeel/pipeline.yaml` 零改动；
+#       「复用」= 契约 + 指南 + 隔离实测）｜
+#     D-92-6（Q5 定稿）契约落点 = 增补 delegation（并行编排节 + 交互提速节）+ tool-usage §2 + context-hygiene 微调；
+#       **不新建 skill**（skills 22 不上翻）；agent 模板预期零改动（索引已含）｜
+#     D-92-7（Q6 定稿）档位验收 = 隔离三档实跑 + 本仓默认零回归复核二分｜
+#     D-92-8（Q7 定稿）归档轻量化落地 = 三项机械核对清单落 `openfeel-logging` 新节（含自举加注 + 入 `SKILLS` 常量）+
+#       归档官模板 ×4 一行指针化（≤6 行/处；保留面零删减）——**不新增 CLI 能力 / 不新建 skill / 不新增依赖**｜
+#     D-92-9（Q8 定稿）会话卫生核验 = 执行期定稿 + 三要素留痕 + 可控/不可控分列（禁「已实现」）｜
+#     D-92-10（Q9 维持）与 93 分界：cli-usage 快照 / `--version` / README / docs / CHANGELOG / manual 归 93｜
+#     D-92-11 偏差登记（计划 op 表落位微调）｜ D-92-12 阶段末 op 口径（kb / manual 归归档轮；status.md 经 CLI）。
+#   说明④ **REV 吸收映射**（判据源 `.openfeel/users/Liuary/code_review/REV-92.md`；计划审查结论 = 通过，2 条 low 非阻塞）：
+#     REV-92-001（表 A3 行数偏差：计划称 45 行 / 实测 **54 行**）→ **全案订正**：本方案背景锚点一律 54 行（op-001 基线行）；
+#       文档订正动作归 **op-004 §4.6**（`plan.md` 表 A3 一行订正「45 → 54」+ diff 登记）。内容性断言（15 单键 / 无组合键 /
+#       `checkpoint_mapping` / `phase_corrections` / `fast_transitions` 缺位）已复核**全部成立**。
+#     REV-92-002（est_ops 3 vs 4 须显式登记 + 回写对账）→ **说明②**（本文件）+ **op-004 §4.6 对账表**；回写去向 = 主会话。
+#   说明⑤ **零回归与有意变更白名单**：默认（无 `--review-tier`）下 full / fast / general 既有转移表、路径、`flow phases`
+#     输出、`flow advance` 输出与退出码**逐字不变**（档位 = 零裁剪 ⟹ 等价原逻辑；承 kb #零回归取证范式）。**有意变更
+#     白名单（全量登记于 op-004 §4.4）**：① `flow phases --json` 6 → 7 键（`reviewTier` 末位追加）② `flow phases` 人读
+#     +2 行（档位行 / 指引行）③ `help.flow.phases.json` 文案（zh/en 修订键）④ i18n 939 → **944**（5 新键）⑤ `SKILLS`
+#     常量 8 → **9**（+`openfeel-logging`）⑥ archiver ×4 字节收缩 ⑦ 四 skill 增补节（delegation / tool-usage /
+#     context-hygiene / logging）。三项硬语义（blocking REV 门 / 审计 detail 只增不改 / `--dry-run` 零写盘）**零破坏**；
+#     `PIPELINE_PHASES` 15 项与 `advanceAccepted` 逐字不变。
+#   说明⑥ **阴性面（本阶段零触碰，逐条登记）**：`.openfeel/pipeline.yaml`（受控面，零改动）｜`src/core/config.ts` /
+#     `test/core/config.test.ts`（无受管键）｜`src/core/req/**`（档位不挂需求级）｜`src/core/templates-data/{opencode,claude}/
+#     agents/**`（**仅** archiver ×4 属 op-003；feel ×4 预期零改动）｜`docs/**` / `README*` / `CHANGELOG.md` /
+#     `.openfeel/manual/**`（→ 93 / 归档轮）｜`skills/openfeel-cli-usage/SKILL.md`（快照件 → 93，进一步陈旧**登记**）｜
+#     `flow.json`（不直写）｜phase 枚举 / `checkpoint_mapping` / `phase_corrections` / `advanceAccepted` 语义｜`build.js` /
+#     `package.json` / `package-lock.json`｜`archive` / `flow archive` 命令语义｜`openfeel-reviewer` 模型档位。
+#   说明⑦ **KB 锚点**（方案与执行须参考，判据同源）**：`kb/architecture.md:5 #Worktree 并行批次策略`（并行判据唯一来源）；
+#     `#双模式转移表选择（getValidTargets 单一取表点 + stage→mode→表三元解析）`（档位同构延伸基础）；`#提示词索引壳架构`
+#     （契约落 skill / 单写者）；`kb/patterns.md:4212 #值域扩展全枚举范式`；`#跨 harness × 语言模板对称纪律`（`:3937`）；
+#     `#双主题收官端到端验收范式（隔离脚本 + 本仓复核二分）`（`:4003`）；`#未来功能/未落地能力写入 skill 与文档须标注
+#     「提供版本」`（`:3483`）；`kb/troubleshooting.md:106 #autoRepairInconsistency 干扰组合条件推进路径`（op-002 复测）；
+#     `:905 #advanceAccepted 被误述为「组合条件路径」`（声明指南澄清）；`:1097 #Claude Code 2.1.300 subagent 可调 Task` +
+#     `:1023 #Claude Code 实机验证方法`（会话卫生核验方法学）；`:1220 #零回归取证范式`；`#改 templates-data 源须同批重生成
+#     「双生成物」`；`#默认开启写真实用户目录的副作用防护（OPENFEEL_LOG=0）`。
+#     **暂无**「审查档位 / 并行编排契约 / 归档轻量化」既有条目 → 归档轮补沉（op-004 §4.7 已登记落点）。
+#   说明⑧ **对计划 §八 的落位微调与显式裁剪（合册）**：① op-001 **零触碰** `config.ts` / `config.test.ts`（计划列「若受管键」，
+#     本方案未选受管键）与 `req/**`；② op-002 **零触碰** `.openfeel/pipeline.yaml`（Q4 维持不补）与 agent 模板（索引已含）；
+#     ③ op-003 落地面以 `openfeel-logging` 新节承载（计划 Q7 建议「脚本 + skill 清单」中取 **skill 清单**——不引入脚本资产、
+#     不新增命令面）；④ op-004 增收（REV-92-001 一行订正 + REV-92-002 对账登记）——均**登记在案，无静默偏离**。
+version: "1.1"
+stage: v1.2.1-stage-92
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-15"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.1-stage-86 / v1.2.1-stage-90 / v1.2.1-stage-91
+    type: hard
+    status: done
+    reason: "阶段级 hard 依赖（`.openfeel/plan/v1/v1.2.1/deps.yaml:168-175`）。实质三位一体：86 = 度量前置（recordRun 命令层接线 + CLI 日志 3 字段——本阶段档位/归档实测的度量口径），90 = 模式与规模轴（三值模式 + 需求级模式属性 + 单点解析器 resolveStageWorkflowMode flow-manager.ts:2358——档位轴须同一单点家族延伸），91 = 收编点（索引壳 / skill 化范式——契约 delta 只增节 / 索引行 / 最小必要句）。基线（stage-91 归档登记 + 本方案实测复核）：npm test 71 文件 / 1682 用例 0 skipped / 0 failed；tsc = 0；lint i18n = 939；lint kb = 0；.openfeel/pipeline.yaml = 54 行（REV-92-001 订正）；本仓 config.yaml defaults.workflow_mode: full。"
+  - upstream: v1.2.1-stage-92 计划审查（REV-92-001 / REV-92-002）
+    type: hard
+    status: closed
+    reason: "审查结论**通过**（2 条 low 非阻塞）；两条全部**吸收**（说明④）：001（行数 45 → 54）→ 全案背景锚点订正 + op-004 §4.6 文档订正；002（est_ops 3 → 4 显式登记）→ 说明② + op-004 §4.6 对账表（回写去向 = 主会话）。判据源 = `.openfeel/users/Liuary/code_review/REV-92.md`。"
+  - downstream: v1.2.1-stage-93（文档与版本收口）
+    type: hard
+    note: "维持转 93：① openfeel-cli-usage SKILL.md 快照件（--review-tier / reviewTier 新面 → 进一步陈旧**登记**，本阶段零触碰）；② --version（保持 1.2.0）；③ README / docs / CHANGELOG / manual；④ req/BUG-002（general 需求 done 门）收口轮；⑤ 版本计划侧 est_ops 对账回写（主会话）。"
+  - downstream: 归档轮（本阶段）
+    type: hard
+    note: "kb 补沉落点（op-004 §4.7 登记）：architecture 新增「审查档位架构」（档位轴 × 单点取表第二参 × 三档裁剪谱 + 零裁剪默认）与「并行编排契约」（冲突域判据 + 组合键声明指南 + 维持不补裁定）；patterns 新增「提速度量范式」（档位实跑对照 + 归档步骤下沉判据）；kb/index.md 计数 / 摘要刷新；manual 面（core/flow-manager.md / cli/commands.md 判定落文）；公共日志。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 npm publish / 不 git push / 不改 CI；不直写 flow.json；不推进 phase（由 Feel 经 CLI 执行；权限不足按 E2 移交主会话）；精确 git add（禁 -A）；status.md 经 openfeel stage CLI（勿手改）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "审查档位（转移表层裁剪 + 展示 + 审计留痕 + dry-run 协同 + i18n + 单测三类）"
+    produces:
+      - src/core/pipeline-schema.ts
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+      - .openfeel/tmp/stage-92-tier-definition.md
+      - .openfeel/tmp/stage-92-tier-e2e.md
+      - .openfeel/tmp/stage-92-assertion-diff.md
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T1 全部（T1.1~T1.6）+ D-92-2 / D-92-3 / D-92-4（Q1 / Q2 / Q3 定稿）+ D-92-7（Q6 实跑口径）+ D-92-11。① 档位定义表 + 载体矩阵「无新载体」结论成文（先成文后落文）；② 单源常量 REVIEW_TIERS / TIER_PRUNED_PHASES（pipeline-schema）+ 裁剪函数 pruneTransitionsByTier（含边收缩回退）+ resolveTransitionsForMode(mode, tier='full') 第二参（唯一取表点）+ 下游可选 tier 签名 + MODE_DERIVED_TIER + advanceStagePhase 审计可选键（仅显式时写）；③ 命令层：--review-tier 选项（值域 fail-fast 复用 stage.set.invalidValueTmpl）+ 警告（仅显式非全量）+ dry-run 档位行 + flow phases 人读 +2 行 / --json 末位追加 reviewTier（6 → 7 键）；④ i18n 5 新键（zh/en 双份 + 消费点）+ help.flow.phases.json 修订；⑤ 单测三类（档位生效 / 零回归〔含 T7.11⑤ 6 → 7 键有意变更白名单〕/ 硬语义）；⑥ 隔离三档实跑 + 本仓默认零回归复核。本 op 零 config / 零 req / 零 templates-data ⟹ 不跑 build（登记）。"
+  op-002:
+    file: op-002.md
+    title: "并行编排与交互提速（契约成文 + 组合键裁定重审与隔离实测 + 交互提速 + 会话卫生核验）"
+    produces:
+      - src/core/templates-data/skills/openfeel-delegation/SKILL.md
+      - src/core/templates-data/skills/openfeel-tool-usage/SKILL.md
+      - src/core/templates-data/skills/openfeel-context-hygiene/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - .openfeel/tmp/stage-92-parallel-contract.md
+      - .openfeel/tmp/stage-92-composite-e2e.md
+      - .openfeel/tmp/stage-92-session-hygiene-audit.md
+      - .openfeel/tmp/stage-92-assertion-diff.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "转移面语义先冻结（档位裁定影响并行场景的转移声明口径；计划 §八口径）+ 本 op 与 op-003 共享 build 双生成物与 test/core/templates.test.ts（恒串行）；契约文本涉及术语消歧时须与 op-001 定稿命名一致（全量 / 精简 / 免审）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T2 全部（T2.1~T2.5）+ D-92-5 / D-92-6 / D-92-9（Q4 / Q5 / Q8 定稿）+ D-92-11。① 并行编排契约五点（适用范围 / 冲突域判据〔kb #Worktree 同源，不另起〕/ 拆分接取 / 合并顺序 / 留痕纪律）；② 组合转移声明指南 + stage-50 裁定重审结论 = 维持不补（显式登记）；③ 隔离实测（组合键两独立相位任一触发推进 + autoRepairInconsistency 交互复测——kb troubleshooting.md:106）；④ 交互提速（tool-usage §2 增补 + delegation 交互提速节含长子会话指引 + 术语消歧行增补；安全底线不削）；⑤ 会话卫生核验（三要素 + 可控/不可控分列 + context-hygiene §5 结论行更新，禁「已实现」）；⑥ build 双生成物 + 断言判类复核（阴性扫描 66 份零命中 BANNED；SKILLS / expectedSkills 计数预期零改动）；⑦ 零 agent 模板改动 / 零 pipeline.yaml 改动自证。"
+  op-003:
+    file: op-003.md
+    title: "归档轻量化（逐步骤评估成文 + 机械清单落地 + 归档官模板轻量化 + 前后对照实测）"
+    produces:
+      - src/core/templates-data/skills/openfeel-logging/SKILL.md
+      - src/core/templates-data/opencode/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/opencode/agents/en/openfeel-archiver.md
+      - src/core/templates-data/claude/agents/zh-CN/openfeel-archiver.md
+      - src/core/templates-data/claude/agents/en/openfeel-archiver.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - .openfeel/tmp/stage-92-archive-step-inventory.md
+      - .openfeel/tmp/stage-92-archive-beforeafter.md
+      - .openfeel/tmp/stage-92-assertion-diff.md
+    deps:
+      - op: op-002
+        type: hard
+        reason: "同批 build 与模板断言面（减少两次触碰模板；二者共享 template-loader.ts / update.ts / templates.test.ts ⟹ 恒串行）；openfeel-logging 新节与 delegation 路由（事务官）指针面同批维护。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T3 全部（T3.1~T3.3）+ D-92-8（Q7 定稿）+ D-92-11。① 逐步骤表（D2 全量职责枚举 → 机械 / 推理判定 → 下沉判定，零未判类；保留面显式登记）；② 落地项 ①②③ → openfeel-logging 新节「归档机械核对清单」（命令化 / 幂等；含自举加注 + 入 SKILLS 常量 8 → 9）；③ 落地项 ④ → archiver ×4 机械步骤一行指针化（≤6 行/处；保留面零删减；对称四律；零触碰 frontmatter / 技能索引节 / 枚举节 / 模式感知节 / 调度节）；④ 前后对照实测（隔离 fixture 一轮 + 本仓复核二分；口径 = metrics.json archiver + CLI 日志 duration_ms；基线中位 5.9min 为外部统计值，登记不确定性）；⑤ build 双生成物 + 断言复核（尺寸 40 份复跑 / 索引节与三类断言保留全绿）；⑥ 零新依赖 / 零 CLI 能力新增 / archive+flow archive 语义零改动自证。"
+  op-004:
+    file: op-004.md
+    title: "门禁收口（三类静态断言全量 + 计数复核 + 四表汇总 + 门禁全量 + ops 入管 + 终局报告）（阶段末 op）"
+    produces:
+      - .openfeel/plan/v1/stage-92/ops/op-001.md
+      - .openfeel/plan/v1/stage-92/ops/op-002.md
+      - .openfeel/plan/v1/stage-92/ops/op-003.md
+      - .openfeel/plan/v1/stage-92/ops/op-004.md
+      - .openfeel/plan/v1/stage-92/ops/deps.yaml
+      - .openfeel/tmp/stage-92-final-report.md
+      - .openfeel/tmp/stage-92-assertion-diff.md
+      - .openfeel/plan/v1/stage-92/plan.md
+      - .openfeel/plan/v1/stage-92/status.md
+      - test/core/templates.test.ts
+      - test/commands/flow.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "收口以源码冻结为前提；四表之一（档位对照）与门禁新基线依赖 op-001 最终态。"
+      - op: op-002
+        type: hard
+        reason: "并行实测记录 / 会话卫生核验结论两表依赖 op-002 最终态；模板面断言差额对照依赖其 skill 增节定稿。"
+      - op: op-003
+        type: hard
+        reason: "归档前后对照表与 archiver 尺寸复核依赖 op-003 最终态；SKILLS 常量 8 → 9 的 T53 复核同批。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T4 全部（T4.1~T4.7）+ D-92-10 / D-92-12 + REV-92-001 / 002 落实。① build ×2 幂等 + git status --porcelain src/ ⊆ 三 op produces 并集；② 三类静态断言全量（尺寸双表分置 40 ∧ 4 / 引用完整性悬空 0 / 跨 harness 对称）；③ 计数非翻转面（agent 10 / skills 22 / 双注入键集 22）双路扫描逐处判类；④ 差额对照汇总（有意变更白名单 7 条，禁静默）；⑤ 门禁全量（npm test 新基线 / tsc 0 / lint i18n 实测新基线〔≥ 939〕/ lint kb 0 / --version 1.2.0）；⑥ 四表 + 承接 REV 三分（处置 0 / 保留 2 / 转出 4 + 1 闭合证据）+ REV-92-001 一行订正（plan.md 45 → 54）+ REV-92-002 对账登记（回写去向 = 主会话）；⑦ ops/** 五文件精确入管（禁 -A）+ 终局报告八节 + 归档轮落点登记；⑧ status.md 经 openfeel stage CLI（权限不足 → 移交主会话，登记不阻塞；不直写 flow.json / 不推进 phase）。注：test/** 与 status.md 两行为条件性 produces（复核碰触 / CLI 权限可用时改动，否则登记零改动）。"
+
+mutual_exclusions:
+  - group: [op-001, op-002, op-003]
+    reason: "① 共享 build 双生成物：op-002 / op-003 各触发一次 npm run build（src/core/template-loader.ts + src/core/update.ts 重生成——禁并发 build）；test/core/templates.test.ts 被 op-002 / op-003 两轮触碰（判类复核 / SKILLS 常量）。② 语义门：op-002 契约文本的术语消歧与档位命名须与 op-001 定稿一致（先冻结转移面语义）；op-003 指针目标（logging 新节 / delegation 路由）依赖 op-002 已落 openfeel-delegation 增补。③ 顺序门：全量门禁与四表汇总须在源码冻结后（op-004 恒末位）。→ 四 op 恒串行（op-002 / op-003 次序可换，但不得并发）。"
+  - group: [op-004]
+    reason: "阶段末 op（恒末位）：build ×2 幂等 / 三类断言全量 / 计数复核 / 门禁全量 / ops/** 入管 / 终局报告均须在三者冻结后执行。"

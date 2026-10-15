@@ -270,3 +270,15 @@ en 侧归档官模板的「一行指针」指向 `openfeel-logging` 的 `§Archi
 ### 承接去向
 
 **v1.2.1-stage-93 收口轮缺陷清零**（连同 `cli/BUG-011` 与 `req/BUG-002`）——**显著登记、不静默丢弃**；登记于本阶段代码审查摘要（`.openfeel/code_review/v1.2.1-stage-92.md`）与公共日志。
+
+### 处置（v1.2.1-stage-93 归档，openfeel-archiver）
+
+**已关闭（closed）**——v1.2.1-stage-93 op-001（commit `dad4569`）修复：en 侧归档官「一行指针」由 `§Archive Mechanical Checklist` 改为**中文节名** `§归档机械核对清单`（`templates-data/{claude,opencode}/agents/en/openfeel-archiver.md` 各 1 行 + 同批 `npm run build` 重生成生成物 ×3；zh 侧逐字不变；同语言跨 harness 字节等值保持）。
+
+- **回归证据**：全仓 `rg "Archive Mechanical Checklist"` 源 + 生成物**零命中**（残余 3 处 = CHANGELOG / README 叙述 + `test/core/templates.test.ts:1040` 负控，合法）；T93.11 具名 `§` 指针「字面命中」断言（正控 ≥4 + 负控防假绿）绿；验收链 §5 PASS。
+- **形态裁定**：D-93-4 = 形态 ①（改中文节名）；形态 ②（`openfeel-logging` 节标题双语化）**被否并登记**（动共享 skill 节标题、改动面更大）。
+- **正式关闭**：openfeel-reviewer 技术验收 closed（2026-10-15 15:30）；**正式关闭落笔 = openfeel-feel-tester**（stage-93 归档轮复核四处数据面一致后归入）。
+
+### 防再犯（修订，v1.2.1-stage-93）
+
+`§<节名>` 指针的引用完整性**须覆盖「节锚」维度**（仅校验 skill 文件存在性的断言不能捕获悬空节名）——T93.11 已把「**具名 § 指针 → 目标文件字面命中**」纳入引用完整性断言（正控 ≥4）；**中文单语共享 skill 的 en 侧指针**尤易踩「引用翻译后节名」陷阱（同族见 #BUG-006 平台分节）。

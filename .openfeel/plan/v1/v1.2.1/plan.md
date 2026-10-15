@@ -4,7 +4,7 @@
 > **规模判定**：**大规模**（8 阶段，跨 `src/core/{metrics,runtime-log,flow-manager,config,req/**}` + `src/commands/{flow,req}.ts` + `src/cli/**` + `src/core/templates-data/**`（agent 模板 36 份 + 约束 4 份 + skills）+ `test/**` + 文档与版本载体；含**流水线语义变更**（三模式 / 审查档位）与 **Agent 体系结构变更**（新增探索者 / 调度机制 / 提示词范式））→ 走独立 openfeel-planner → openfeel-reviewer 完整流程。
 > **定位（七主题）**：① **需求接取制度为核心**（发布/接取/拆分；**流水线与版本解绑**，仅发布时推进版本号）；② **通用工作者直接调度**（执行者/探索者可被**任意 agent 直接调度**——与需求接取制度是**两套**机制，勿混淆）；③ **新增探索者 agent**（只读）与执行者（读写），**先探后执行**，替代对内置 Explore/general 的依赖；④ **提示词瘦身**（必要的操作流程一律转 skill；agent 提示词只列 skill 索引）；⑤ **三模式架构**（规划/快速/通用；需求规模驱动）；⑥ **可观测性改造**（接线 `recordRun` / CLI 日志补字段 / op 级埋点）；⑦ **并行提速**（鼓励拆分需求并行执行）。
 > **权威设计记录**：`docs/v1.2.1-design.md`（用户定稿，本计划的唯一权威依据）；数据依据 = `.openfeel/users/Liuary/tmp/analysis/{opencode,pipeline,claude}-analysis.md`（三数据面只读分析）。
-> **阶段计划**：`.openfeel/plan/v1/stage-86/plan.md` … `stage-93/plan.md`（待 Feel 注册后落盘）。
+> **阶段计划**：`.openfeel/plan/v1/stage-86/plan.md` … `stage-93/plan.md`（**已注册归档**：`v1.2.1-stage-86` ~ `stage-93` 全 done；表外补阶段 `stage-94` 先行完成）。
 > **路线图**：`.openfeel/roadmap/v1.2.1.md`。
 > **依赖声明**：`.openfeel/plan/v1/v1.2.1/deps.yaml`（阶段级 hard 依赖 + op 级由 openfeel-schemer 细化）。
 > **系列**：`v1`；`stageDir` 映射 `stage-86` ~ `stage-93`；阶段 ID 自 `v1.2.1-stage-86` 起（承接 v1.2.0 的 stage-85）。

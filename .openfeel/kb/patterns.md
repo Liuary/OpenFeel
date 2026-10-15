@@ -4291,3 +4291,38 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.1-stage-94（`9f993d0` op-001 / `85c8435` op-002；`.openfeel/tmp/stage-94-{model-availability,final-report,supersede-materials}.md`）——10 处 frontmatter + `opencode-config.ts:20/:21` 收敛；`rg "zhipuai/glm-5.3-flash" src/ test/` **零残留**；claude 侧 20 份 diff 空（硬验收）；vision 例外门**未触发**（provider API `input_modalities` 含 `image`）；断言改写 4 处（`opencode-config.test.ts:39/:90/:97` + `model-config.test.ts:138`）+ 保留面逐字。
 
 **参见：** v1.2.1-stage-94（plan §一 表 A / §二 目标语义 / §三 T1；`REV-94.md` 001/003/004）；`src/core/templates-data/opencode/agents/{zh-CN,en}/openfeel-{executor,explorer,utility,vision,reviewer}.md`；`src/core/opencode-config.ts`；kb/architecture.md #部署非破坏性语义架构、#模型配置三层级架构；kb/patterns.md #值域扩展全枚举范式、#陈旧计数「全枚举」纪律、#跨 harness × 语言模板对称纪律、#未来功能/未落地能力写入 skill 与文档须标注「提供版本」；kb/troubleshooting.md #模型名错误导致 Agent 无法启动、#Claude Code reviewer 异族模型本地复现路径；kb/setup.md #OpenCode Agent 模型配置
+
+## [+] 收官轮缺陷清零范式：白名单修复 + supersede 差额对照 + 隔离实跑 + 断言判类登记 + 「不引入新边」表级差分 (2026-10-15)
+
+**背景**：v1.2.1-stage-93（**版本收口轮 / 收官阶段**）把「**版本收口 + 缺陷清零同轮完成**」落为可复用范式——在全内容冻结之上，收口轮以**白名单**方式清零承接的历史缺陷，且**不得引入新功能 / 新命令 / 新字段**（承 kb/patterns.md #文档侧历史标记纳入版本收口禁改白名单 的「收口 op 为最终 op」纪律）。
+
+**范式五则**：
+
+1. **白名单修复（收口期冻结）**：可改动面 = **显式白名单**（本阶段 = 三 BUG：完成语义 / 裁剪可达性 / 模板指针）；**发现新缺口 → 记录 + 评估，不擅自扩面**（缺口登记转后续裁定，禁「顺手修」）。修复半径逐项**收敛到单点**（谓词单点 / 裁剪函数单点 / 模板 1 行）。
+2. **supersede 差额对照（禁静默改写断言）**：凡修复改变既有断言语义 → **显式 supersede**：**原行不删** + 差额对照表逐条（**改写 / 保留 / 新增**三类判类）+ 新口径句 + 五要素（日期+阶段 / 变更内容 / 理由 / 适用边界 / 回滚）；材料落 `tmp/`（**kb 写入归归档轮**，执行 op 不直写 kb）。见 kb/patterns.md #断言 supersede 范式、#supersede 历史决策的追加式记录。
+3. **隔离实跑 + 本仓复核二分**：修复场景**进验收链**（复现链转正：`general` 零关联 `advance --to done` exit 0 / `plan_review`@skip → `plan_passed` exit 0 零 `--force` / 全仓 `rg` 零命中）；隔离脚本（`mkdtemp` + 隔离 HOME 双设 `HOME`/`USERPROFILE` + cwd 隔离 + `OPENFEEL_NO_UPDATE_CHECK=1`）**checks 计数须为「0 failures」且首轮 FAIL 逐项归因**（脚本口径 vs 产品缺陷——**须独立复核，防「脚本口径修正」掩盖产品缺陷**）。见 kb/patterns.md #双主题收官端到端验收范式。
+4. **断言判类登记（零未判类）**：新增 / 变更断言按 **改写 / 保留 / 新增** 三类登记（禁删除）；**新断言须「严格强于旧断言」**（本阶段：done 门矛盾句式改写为专用文案断言 + **旧串阴性**；§ 指针断言**从「文件存在性」升级到「节锚字面命中」**——正控 ≥4 + 负控防假绿）。
+5. **文档类指针的引用完整性须覆盖「节锚」维度**：`§<节名>` 指针**须按字面命中**目标文件（现有「skill 名 → 文件存在」断言**捕获不到悬空节名**）；**中文单语共享 skill 的 en 侧指针**尤易踩「引用翻译后节名」陷阱（同族：平台分节改写非逐字）。
+
+**判据/避免**：① 收口轮**先清缺陷再写版本号**（版本写入后**零代码改动**，D-16 顺序不变量：版本写入 → 验收 → 回填 → 门禁 → 报告 → 入管）；② **有意语义变更须显式登记**（用户可见输出面变化同样入白名单：`flow advance` 失败提示可达目标由「(无)」转非空 = 修复本体语义的一部分）；③ **症状修复不掩盖**——脚本首轮失败须做「脚本自身断言口径问题 vs 产品缺陷」二分独立复核；④ 白名单修复 + supersede + 隔离实跑 + 判类登记**四件套恒同轮**，缺一即留「静默改写」窗口。
+
+**实证**：v1.2.1-stage-93（3 ops `dad4569` op-001 缺陷清零 / `9011a9e` op-002 文档多载体 / `dfa1ee9` op-003 版本收口 + 验收 + 回填 + 门禁〔**阶段最终 op**〕；八阶段 86~93 + 表外 94）——三 BUG 清零（`req/BUG-002` 26 条 Bug 台账 → open 0 / closed 26，四处数据面一致）；版本 **1.2.1** A 类 6 载体 / 8 文件 / 10 处残留 0 + B 类双生成物 build ×2 幂等 + C 类五载体 + D 类白名单 file:line 枚举零未判类；端到端七主题 ×10 组（隔离脚本 **92 checks / 0 failures** + 本仓复核 9 组 / 17 阶段）；门禁 **71 文件 / 1719 用例** 0 skipped / 0 failed（+12）、`tsc` 0、`lint i18n` **945**、`lint kb` **619 引用 0 过期**、`--version` **1.2.1**；审查 REV-93-001~008 **全 closed**（0 阻塞 / 0 新增 BUG）；材料 `.openfeel/tmp/stage-93-{final-report,acceptance-report,supersede-materials,assertion-diff,doc-scan}.md`。
+
+**参见：** v1.2.1-stage-93（plan §二 不变量 / §三 T1~T6 / §七 承接三分；`ops/op-001~003`；`REV-93.md` 001~008）；kb/patterns.md #文档侧历史标记纳入版本收口禁改白名单、#断言 supersede 范式、#supersede 历史决策的追加式记录、#双主题收官端到端验收范式、#版本号全链路收口清单模式、#陈旧计数「全枚举」纪律、#裁剪-过滤类能力的「两侧」处理 + 表级差分「不引入新边」；kb/architecture.md #需求级模式属性架构（supersede 块）、#审查档位架构；`CHANGELOG.md [1.2.1]`
+
+## [+] 裁剪 / 过滤类能力的「两侧」处理 + 表级差分「不引入新边」 (2026-10-15)
+
+**背景**：v1.2.1-stage-93 修复 `cli/BUG-011`（`--review-tier lean|skip` 在阶段**恰处于被裁剪相位**时可达目标集为空 → 无法推进）时固化 —— **裁剪 / 过滤 / 收缩类能力**（转移表裁剪、权限过滤、视图投影、白名单收缩等）须同时处理「**入边**」与「**起始节点**」两侧。
+
+**范式四则**：
+
+1. **两侧处理**：裁剪只应限制「**进入**被裁剪项」（**入边 / 目标侧**过滤），**不应让已处于该项的实体无路可走**——**起始节点（当前状态）的「出边」须保留**（对被裁剪状态作 key 的条目：**不删 key**，改与其它步骤同口径过滤 targets）。反例（本 BUG 根因）：对源条件全部被裁剪的 key **整键删除** → 起始节点处于该项时出边归零、BFS 无出边 → 一切目标判为不可达（且先打印「本次免除该关」再拒绝，文案自相矛盾）。
+2. **语义差显式化**：修复只改「**已处于**被裁剪项的出边」；「**进入**被裁剪项」保持被裁（**阴性断言必须保留**）；豁免档（如 `full` 零裁剪）**逐字不变**。
+3. **表级差分锁定「不引入新边」**：裁剪 / 收缩改动**不能只断言「目标可达」**——须以**表级差分**证明输出表**键集 ≡ 基表**（本阶段 `lean`/`skip` 16/16、`fast`+`skip` 9）且**每条边可溯源**（值 = 基表 targets 过滤被裁剪项）；这样把「意外引入新推进路径」的风险**结构性**封死（比「可达性抽样」强）。
+4. **失败面输出面变化须登记**：修复会改变**失败提示 / 预览 / diff 展示**的内容时（本阶段：失败提示行的可达目标由「(无)」转非空列表）→ 列入**有意变更白名单**并同批断言（否则执行期易被误判回归或漏登）。
+
+**判据/避免**：① 新增「裁剪 / 档位 / 过滤轴」时，单测**必须覆盖「起始状态被裁剪」边界**，而非仅「目标状态被裁剪」（本 BUG 的既有用例恰只覆盖后者）；② 裁剪函数**单点 + 单源常量**（`TIER_PRUNED_PHASES`），禁第二份裁剪实现；③ 边收缩 / 回退分支须读**原表**（不受前置步骤删 key 影响）；④ 与「可达 ≠ 合法」「唯一取表点」口径并存，不因修复放宽合法性校验。
+
+**实证**：v1.2.1-stage-93 op-001（`dad4569`；`.openfeel/tmp/stage-93-assertion-diff.md` 有意变更白名单）——`pruneTransitionsByTier` 删除「全裁 key 整键删除」步骤（`flow-manager.ts:2148-2150` 删；保留目标侧过滤 + 边收缩回退）；T93.9（core：两档 × 两相位 `getValidTargets` 非空 + 表级差分「不引入新边」+ 阴性「进入仍被裁」）+ T93.10（命令层 `plan_review`@skip → `plan_passed` **exit 0 零 `--force`** + 阴性 + 零写盘）；验收链 §4 全 PASS。
+
+**参见：** v1.2.1-stage-93（plan §一 表 A A6~A8 / §三 T1.2 / §四 Q2；`ops/op-001` §1.5；`REV-93.md` 007）；`src/core/flow-manager.ts :: pruneTransitionsByTier / resolveTransitionsForMode / getValidTargets / findPhasePath`；`src/core/pipeline-schema.ts :: REVIEW_TIERS / TIER_PRUNED_PHASES`；kb/architecture.md #审查档位架构、#双模式转移表选择；kb/patterns.md #收官轮缺陷清零范式、#值域扩展全枚举范式、#零回归取证范式；manual/core/flow-manager.md、manual/cli/commands.md

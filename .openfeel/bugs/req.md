@@ -84,3 +84,15 @@ openfeel req set REQ-00N --status done                 # ← 同样被拒
 **→ `v1.2.1-stage-93`（收口轮）/ 后续裁定**。本阶段（stage-90）**非阻塞**、零污染本仓；已同步登记于 `.openfeel/code_review/v1.2.1-stage-90.md`（遗留节）、`.openfeel/kb/architecture.md #需求级模式属性架构`（已知缺口）、`manual/core/req.md`（已知缺口）与公共日志。
 
 > v1.2.1-stage-90 测试验收通过（**24 项 23 过、1 非阻塞 BUG、0 阻塞**）；门禁 **71 文件 / 1674 用例 0 skipped / 0 failed**。**本阶段零代码修复**（语义面设计缺口，须 openfeel-schemer 裁定）。
+
+### BUG-002 处置（v1.2.1-stage-93 归档，openfeel-archiver）
+
+**已关闭（closed）**——v1.2.1-stage-93 op-001（commit `dad4569`）修复：为 `general` 需求开辟**载体制对偶完成路径**。
+
+- **根因（双因死锁）**：① 载体制约束（`general` ⟹ 零关联阶段，`req set --workflow-mode general` / `req link` 双向 `general_mode_conflict`）与 ② 既有「裁定 4」done 门（`allLinkedStagesDone` 要求 `linked.length > 0 && every(phase==='done')`，零关联恒 `false`）**叠加** ⟹ `general` 需求 `done` 恒不可达。
+- **修法**：`canCompleteRequirement(data, req)` **谓词单点**（判据 = 需求自身 `workflow_mode` **字段直判**，与载体制门 `:287-290` / `:346` **同源**；**禁解析级联** `resolveStageWorkflowMode`——T5.6 NEEDLES 保持零命中）+ `applyStatusChange` done 门**单点消费**（`requirement-ops.ts:262-263`）；`general` **且有链接**（载体制门不可达的数据损坏态）**从严回落**路 1；`allLinkedStagesDone` 语义零改动；`aggregate.ts` 零 `workflow_mode` 防线保持。
+- **附带缺陷（同因）**：拒绝文案专用化 `req.err.doneGateTmpl`（zh/en 成对，错误码恒 `invalid_status`），消除「把 `done` 列为合法目标却拒绝」的自相矛盾。
+- **C2 断言显式 supersede（禁静默）**：旧「模式为纯调度属性：不入聚合 / 不入 done 门 / 不入对账」→ 新口径「**模式经载体制对偶完成路径参与 done 门——字段级判据与载体制门同源（`req.workflow_mode` 直判）；聚合投影 / 对账仍不参与**」；差额对照 C2-1~C2-10 逐条（改写 3 / 保留 5 / 新增 2；原行不删）；材料 `.openfeel/tmp/stage-93-supersede-materials.md`，**本归档轮写入 `kb/architecture.md #需求级模式属性架构`**（追加式 supersede 块）。
+- **回归证据**：T93.1~T93.8（engine：general 全链 / 非 general 零回归 / 防御损坏态 / 聚合复锁 / 单源；CLI：复现链转正 / set 同源放行 + board 收纳 / 专用拒绝文案）；验收链 §3 全 PASS（`general` 零关联 `advance --to done` **exit 0**、`req board` done 桶收纳、非 general 零关联 → 拒 exit 1 + 专用文案 + 零写盘）。
+- **正式关闭**：openfeel-reviewer 技术验收 closed（2026-10-15 15:30）；**正式关闭落笔 = openfeel-feel-tester**（stage-93 归档轮复核四处数据面一致后归入）。
+- **防再犯**：「某取值仅在某载体合法」类约束须做**写入面穷尽枚举 + 与既有门（done 门 / 聚合）的「交集可达性推演」**——枚举写入面时须同查「该约束与既有门的组合是否产生不可达状态」。

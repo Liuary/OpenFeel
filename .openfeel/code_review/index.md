@@ -7,7 +7,7 @@
 | 状态 | 数量 |
 |------|------|
 | pending | 0 |
-| passed | 56 |
+| passed | 57 |
 | failed | 0 |
 
 ## v1.1.2 系列审查
@@ -146,3 +146,4 @@
 | [v1.2.1-stage-91](v1.2.1-stage-91.md) | 提示词瘦身与上下文治理（流程 → skill 下沉〔skills **18 → 22** + 4 约束瘦身 ≤350 行〕+ 40 份 agent **索引壳化**〔`## 技能索引` + 最小约束，frontmatter 零改动〕+ 收编 87~90 零遗漏 + 上下文治理**可控/不可控分列留痕** + **三类静态断言**〔尺寸双表分置 40∧4 / 引用完整性悬空零容忍 / 跨 harness 对称〕+ 扫描集 37→66）— REV-91-001~004 计划轮吸收 closed + 005（**medium blocking** Tier S 判据矛盾）修订 1 闭合 + 006~009 closed + 代码轮 010（转主会话）/ 011（门禁未独立复跑，转主会话）pending；0 阻塞 | passed |
 | [v1.2.1-stage-92](v1.2.1-stage-92.md) | 流水线提速与并行拆分执行（**审查档位** `full/lean/skip` 单源 + 唯一取表点 `resolveTransitionsForMode(mode, tier)` 第二参 + 边收缩 + **默认零裁剪 = 零回归** + 无新持久载体 + `flow phases --json` 6→7 键 + 三条硬语义零破坏 / **并行编排契约** + 组合键 **维持不补**〔stage-50 裁定重审〕+ 交互提速 + 会话卫生核验 / **归档轻量化**〔机械清单命令化 + archiver ×4 指针化，保留面零删减〕）— REV-92-001~004 计划/方案轮吸收 + 代码轮 005·006 low 非阻塞 pending；**2 非阻塞 BUG**（`cli/BUG-011` medium / `templates/BUG-007` low，转 stage-93）；0 阻塞 | passed |
 | [v1.2.1-stage-94](v1.2.1-stage-94.md) | 模型默认值与部署非破坏性（**用户直接指令补阶段 / 八阶段表外**）：**模型默认值统一**（opencode 侧 5 agent 显式默认收敛单一值 + claude 侧 20 份维持 `inherit` + **模型字面值 go/no-go**〔`deepseek-v4-flash` 三层实测不可用 → 停 op 上报 → 裁定回退 `deepseek/deepseek-flash`，禁静默择值〕+ vision 例外门未触发 + 三扫描路径零未判类）/ **部署非破坏性**（`USER_SOVEREIGN_KEYS=['model']` 单源 + `mergeFrontmatter(..., preserveKeys?)` 可选参 + 键级「无则创建、有则不覆盖」+ 仅部署路径 + `--scope default` 覆盖语义零改动）/ **本仓 GLM 持久与复现**（reviewer `ccs-claude-zhipu--glm-5.3-flash[1M]` 经 update 逐字保留 + explorer 创建 + supersede R-12 缓解路径定性）— REV-94-001/003（medium blocking）经方案/执行期吸收 + 002/004 落实 closed；代码轮 005·006·007 low 非阻塞（归档轮/主会话闭环）；**0 阻塞、0 新增 BUG** | passed |
+| [v1.2.1-stage-93](v1.2.1-stage-93.md) | 文档与版本收口（**v1.2.1 收官阶段**，八阶段 86~93 + 表外 94）— **缺陷清零**（三 BUG 白名单：`req/BUG-002` 载体制对偶完成路径〔`canCompleteRequirement` 字段直判单点 + `applyStatusChange` 单点消费 + C2 断言**显式 supersede** 差额对照〕/ `cli/BUG-011` 裁剪**只作用入边 / 目标侧**〔被裁剪相位保留出边 + 表级差分锁定「**不引入新边**」〕/ `templates/BUG-007` en 指针改中文节名 + §锚字面命中断言）+ **版本 1.2.1 全链路 A/B/C/D/E**（A 类 6 载体 / 8 文件 / 10 处残留 0 + B 类双生成物 build ×2 幂等 + C 类五载体 + D 类白名单 file:line 枚举零未判类 + E 按需）+ CHANGELOG `[1.2.1]` + 文档多载体（README×3 / docs×2 / manual 9 文件 / cli-usage 快照 + E-89-6 陈旧计数家族全量订正）+ **七主题 ×10 组端到端验收**（隔离脚本 **92 checks / 0 failures** + 本仓复核二分；测试官 **5 维度 / 45 项 / 169 checks / 0 failures**）+ roadmap/plan 回填 + 承接三分（处置 5 / 转出 6 / 保留 2 = 零灭失）— REV-93-001~004 计划轮 + 005~007 方案轮吸收 + 代码轮 008 low 随审关闭（**全 closed**）；3 ops（`dad4569`/`9011a9e`/`dfa1ee9`）；门禁 **71 文件 / 1719 用例** 0 skipped / 0 failed（+12）、`tsc` 0、`lint i18n` **945**、`lint kb` **619 引用 0 过期**、build ×2 幂等、`--version` **1.2.1**；**0 阻塞、0 新增 BUG**；**v1.2.1 版本收官** | passed |

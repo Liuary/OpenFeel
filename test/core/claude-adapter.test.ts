@@ -19,6 +19,9 @@ const CLAUDE_DIR = join(ROOT, 'src', 'core', 'templates-data', 'claude');
 const OPENCODE_DIR = join(ROOT, 'src', 'core', 'templates-data', 'opencode');
 const LANGS = ['zh-CN', 'en'];
 
+/** 约束文件体量软上限（行；stage-91 Q8 收紧：700 → 350，只紧不松）——约束侧与 agents-md 侧共用单点常量 */
+export const CONSTRAINT_MAX_LINES = 350;
+
 describe('Claude 适配器跨切面（stage-69 T7.5b）', () => {
   it('name == 文件名（10×2）', () => {
     for (const lang of LANGS) {
@@ -44,11 +47,14 @@ describe('Claude 适配器跨切面（stage-69 T7.5b）', () => {
     }
   });
 
-  it('CLAUDE.md 体量软上限 ≤ 700 行（zh-CN/en）', () => {
+  it('约束文件体量软上限 ≤ 350 行（CLAUDE.md zh-CN/en + agents-md 侧对称）', () => {
     for (const lang of LANGS) {
-      const content = readFileSync(join(CLAUDE_DIR, 'constraint', `${lang}.md`), 'utf-8');
-      const lines = content.split('\n').length;
-      expect(lines, `${lang}.md 行数 ${lines}`).toBeLessThanOrEqual(700);
+      const claude = readFileSync(join(CLAUDE_DIR, 'constraint', `${lang}.md`), 'utf-8');
+      const claudeLines = claude.split('\n').length;
+      expect(claudeLines, `claude/constraint/${lang}.md 行数 ${claudeLines}`).toBeLessThanOrEqual(CONSTRAINT_MAX_LINES);
+      const agentsMd = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'agents-md', `${lang}.md`), 'utf-8');
+      const agentsLines = agentsMd.split('\n').length;
+      expect(agentsLines, `agents-md/${lang}.md 行数 ${agentsLines}`).toBeLessThanOrEqual(CONSTRAINT_MAX_LINES);
     }
   });
 
@@ -130,5 +136,33 @@ describe('stage-76：claude 约束层 fast 注记 + 生成物模式小节（T4-6
     expect(loadClaudeAgentTemplate('zh-CN', 'feel')).toContain('工作流快线');
     expect(loadClaudeAgentTemplate('en', 'feel')).toContain('Workflow Fast Line');
     expect(loadClaudeAgentTemplate('zh-CN', 'openfeel-reviewer')).toContain('术语消歧');
+  });
+});
+
+/**
+ * stage-91 op-003：约束文件尺寸方向值（4 份）
+ *
+ * 直读**源文件**；目标 = ceil(60% x 基线)（ops/op-003.md D-91-2 约束分档）。
+ * 本 describe 即**约束面唯一尺寸常量表**：[FIX] REV-91-008 —— op-004 §4.2.1 以「本表 == 4」
+ * 双断言复核，**不落第三份汇总常量**；「40 + 4 = 44」仅在终局报告层汇总。
+ */
+export const CONSTRAINT_SIZE_TARGETS: Record<string, { file: string; baseline: number; ceiling: number }> = {
+  'agents-md/zh-CN': { file: 'src/core/templates-data/agents-md/zh-CN.md', baseline: 30478, ceiling: 18287 },
+  'agents-md/en': { file: 'src/core/templates-data/agents-md/en.md', baseline: 35617, ceiling: 21371 },
+  'claude/constraint/zh-CN': { file: 'src/core/templates-data/claude/constraint/zh-CN.md', baseline: 30679, ceiling: 18408 },
+  'claude/constraint/en': { file: 'src/core/templates-data/claude/constraint/en.md', baseline: 35879, ceiling: 21528 },
+};
+
+describe('stage-91：约束文件尺寸方向值（4 份）', () => {
+  it('常量表恰 4 条 + 逐份实存命中 + 实测字节 <= 上限', () => {
+    const entries = Object.entries(CONSTRAINT_SIZE_TARGETS);
+    expect(entries, '约束尺寸常量表条目数').toHaveLength(4);
+    for (const [key, { file, baseline, ceiling }] of entries) {
+      const p = join(ROOT, file);
+      expect(existsSync(p), `${key} 实存`).toBe(true);
+      const bytes = readFileSync(p).length;
+      expect(baseline, `${key} baseline 非零`).toBeGreaterThan(0);
+      expect(bytes, `${key} 实测 ${bytes} B > 上限 ${ceiling} B`).toBeLessThanOrEqual(ceiling);
+    }
   });
 });

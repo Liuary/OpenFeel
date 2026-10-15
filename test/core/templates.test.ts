@@ -26,22 +26,16 @@ describe('模板口径（stage-50 op-006 T53/T54/T55）', () => {
     }
   });
 
-  it('T54：agents-md en 图注并列英文；zh/en 图体行数一致', () => {
+  it('T54：生命周期图体下沉 openfeel-workspace skill；约束文件零图体（stage-91 结构性替换）', () => {
     const en = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'agents-md', 'en.md'), 'utf-8');
     const zh = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'agents-md', 'zh-CN.md'), 'utf-8');
-    // en 图注为纯英文（stage-56：旧中英并列「验收不通过 / review failed」→ 纯英文 acceptance rejected）
-    expect(en).toContain('acceptance rejected');
-    // 抽取含 pending/open 的代码块，zh/en 图体行数一致（图示未错位）
-    const block = (text: string): string[] => {
-      const lines = text.split('\n');
-      const idx = lines.findIndex((l) => l.includes('pending/open'));
-      let start = idx;
-      while (start >= 0 && !lines[start].startsWith('```')) start--;
-      let end = idx;
-      while (end < lines.length && !(end > idx && lines[end].startsWith('```'))) end++;
-      return lines.slice(start, end + 1);
-    };
-    expect(block(en).length).toBe(block(zh).length);
+    // 图体（含 pending/open 的代码块）随工作区结构节下沉 skill —— 约束文件零图体
+    expect(zh.includes('pending/open'), '约束 zh 残留图体').toBe(false);
+    expect(en.includes('pending/open'), '约束 en 残留图体').toBe(false);
+    // skill 侧承载图体（正控，防整节误删）
+    const skill = readFileSync(join(SKILLS_DIR, 'openfeel-workspace', 'SKILL.md'), 'utf-8');
+    expect(skill).toContain('pending/open');
+    expect(skill).toContain('验收不通过');
   });
 
   it('T55：cli-usage 枚举含 phases/stage；命令表覆盖 16 命令族', () => {

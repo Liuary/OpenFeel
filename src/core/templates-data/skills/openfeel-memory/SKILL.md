@@ -66,7 +66,7 @@ description: 记忆与落档纪律——记忆加载优先级、偏好合并、�
 
 会话结束前更新 `.openfeel/users/{username}/dev_last.md`（索引）与 `dev_last/*.md`（主题文件）：
 
-> **临界区（A9，一次进出）**：以下 ①~④ 的「读 → 合并 → 写回」须在 `withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })` 内完成（**含读取**；锁路径 `.openfeel/tmp/locks/dev-last-{username}.lock`）；`dist` 不可用时退化为「读-合并-写」并标注「未加锁」。
+> **临界区（A9，一次进出）**：以下 ①~④ 的「读 → 合并 → 写回」须在 `withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })` 内完成（**含读取**；锁路径 `.openfeel/tmp/locks/dev-last-{username}.lock`；临界区内合并后用 `atomicWriteFileSync` 原子落盘；超时 / 陈旧沿用默认 5000 / 3000ms）；`dist` 不可用时退化为「读-合并-写」并标注「未加锁」。
 
 1. 更新索引「用户偏好」（**不整文件覆盖**，Read → 合并 → 写回）。
 2. 更新 / 新建主题文件（**文件名英文**；单条 >300 字或 >10 条时转 `tmp/` 文档并记地址）。

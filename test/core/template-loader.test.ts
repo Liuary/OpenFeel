@@ -132,18 +132,21 @@ describe('loadTemplate', () => {
     expect(result).toContain('You should think in English');
   });
 
-  it('zh-CN agents-md 含工作区结构约束（core.md 内容已并入）', () => {
+  it('zh-CN agents-md 含工作区结构约束与 skill 指针（stage-91 改写）', () => {
     const result = loadTemplate('zh-CN', 'agents-md');
     expect(result).toBeTruthy();
     expect(result).toContain('.openfeel');
+    expect(result).toContain('openfeel-workspace');
     expect(result).toContain('项目特有约束（可选化）');
     expect(result).toMatch(/[\u4e00-\u9fff]/);
     expect(result).not.toContain('{项目名称}');
   });
 
-  it('en agents-md 含对应工作区结构约束', () => {
+  it('en agents-md 含对应工作区结构约束与 skill 指针（stage-91 改写）', () => {
     const result = loadTemplate('en', 'agents-md');
     expect(result).toBeTruthy();
+    expect(result).toContain('.openfeel');
+    expect(result).toContain('openfeel-workspace');
     expect(result).toContain('Public Domain');
     expect(result).toContain('Project-Specific Constraints');
     expect(result).toMatch(/[a-zA-Z]/);
@@ -403,33 +406,41 @@ describe('stage-51 op-007 N9-4：模板去重口径（A6）', () => {
 describe('stage-53：工作区结构节与 dev_last 索引化（静态断言）', () => {
   const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf-8');
 
-  it('agents-md（zh/en）含两条设计目的 + 分层原则', () => {
+  it('设计目的与分层原则下沉 openfeel-workspace skill（stage-91 结构性替换）', () => {
     const zh = read('../../src/core/templates-data/agents-md/zh-CN.md');
     const en = read('../../src/core/templates-data/agents-md/en.md');
-    expect(zh).toContain('保存核心信息便于恢复');
-    expect(zh).toContain('避免无关信息污染上下文');
-    expect(en).toContain('Preserve the core information needed for recovery');
-    expect(en).toContain('Avoid polluting the context');
+    // 约束侧：仅留一行指针（双语言）
+    expect(zh).toContain('openfeel-workspace');
+    expect(en).toContain('openfeel-workspace');
+    // skill 侧：承载设计目的与分层原则全文（同语言载体 = 共享 skill，zh）
+    const skill = read('../../src/core/templates-data/skills/openfeel-workspace/SKILL.md');
+    expect(skill).toContain('保存核心信息便于恢复');
+    expect(skill).toContain('避免无关信息污染上下文');
+    expect(skill).toContain('分层原则');
   });
 
-  it('agents-md（zh/en）含 dev_last 索引骨架 + R4/R6 + A9/A10', () => {
-    const zh = read('../../src/core/templates-data/agents-md/zh-CN.md');
-    const en = read('../../src/core/templates-data/agents-md/en.md');
+  it('dev_last 索引骨架下沉 openfeel-workspace skill + A9 锁下沉 openfeel-memory（stage-91 结构性替换）', () => {
+    const ws = read('../../src/core/templates-data/skills/openfeel-workspace/SKILL.md');
+    const mem = read('../../src/core/templates-data/skills/openfeel-memory/SKILL.md');
     for (const s of ['主题索引（最多 5 个）', '已收敛主题', '公共交接区', '优先合并同类主题']) {
-      expect(zh, `zh 缺 ${s}`).toContain(s);
-    }
-    for (const s of ['Topic Index', 'Converged Topics', 'Public Handoff Section', 'merge similar topics first']) {
-      expect(en, `en 缺 ${s}`).toContain(s);
-    }
-    // A9 加锁协议
-    for (const s of ['withFileLock', 'dev-last-', '.openfeel/tmp/locks/', 'atomicWriteFileSync']) {
-      expect(zh, `zh 缺 ${s}`).toContain(s);
-      expect(en, `en 缺 ${s}`).toContain(s);
+      expect(ws, `workspace 缺 ${s}`).toContain(s);
     }
     // A10：5 个英文主题文件名
     for (const n of ['pending.md', 'decisions.md', 'pipeline-state.md', 'last-operation.md', 'experience.md']) {
-      expect(zh, `zh 缺 dev_last/${n}`).toContain(`dev_last/${n}`);
-      expect(en, `en 缺 dev_last/${n}`).toContain(`dev_last/${n}`);
+      expect(ws, `workspace 缺 dev_last/${n}`).toContain(`dev_last/${n}`);
+    }
+    // A9 加锁协议（临界区归属记忆与落档纪律）
+    for (const s of ['withFileLock', 'dev-last-', '.openfeel/tmp/locks/', 'atomicWriteFileSync']) {
+      expect(mem, `memory 缺 ${s}`).toContain(s);
+    }
+    // 约束侧仅留指针（双语言，防回退为内嵌骨架）
+    const zh = read('../../src/core/templates-data/agents-md/zh-CN.md');
+    const en = read('../../src/core/templates-data/agents-md/en.md');
+    for (const s of ['## 主题索引（最多 5 个）', '## 已收敛主题', '## 公共交接区', '## REV-{NO}', '## 近期提交记录']) {
+      expect(zh.includes(s), `zh 残留内嵌骨架标题 ${s}`).toBe(false);
+    }
+    for (const s of ['## Topic Index', '## Converged Topics', '## Public Handoff Section', '## Recent Submissions']) {
+      expect(en.includes(s), `en 残留内嵌骨架标题 ${s}`).toBe(false);
     }
   });
 

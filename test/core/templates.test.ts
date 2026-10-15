@@ -285,29 +285,34 @@ describe('stage-76：约束层模式注记（T4-6 ②，agents-md 侧）', () =>
 
 /**
  * stage-76 S4：阴性断言——无「fast 跳过骨架/文件/相位」表述（T4-3）。
- * 扫描集 = 4 feel.md + 24 subagent + 4 约束层 + 5 skill = 37 份（直读源文件）。
+ * 扫描集 = 40 agent + 4 约束层 + 22 skill = 66 份（直读源文件；stage-91 op-004 D-91-15 全量扩面，原 37 份）。
  * 防误伤：仅锁「骨架/文件/相位」组合词，不列泛词「跳过」（既有合法语义）。
  */
 describe('stage-76：阴性断言——无「fast 跳过骨架/文件」表述（T4-3）', () => {
   const TD = join(ROOT, 'src', 'core', 'templates-data');
   const CLASSES = ['openfeel-planner', 'openfeel-executor', 'openfeel-reviewer', 'openfeel-archiver', 'openfeel-schemer', 'openfeel-feel-tester'];
-  const SKILLS5 = ['openfeel-cli-usage', 'openfeel-get-stage-status', 'openfeel-update-stage-status', 'openfeel-wizard', 'openfeel-recover'];
+  // stage-91 op-004（D-91-15）：扫描集由 37 份扩面至**全量 66 份** = 40 agent + 4 约束 + 22 skill
   const files: string[] = [];
   for (const lang of ['zh-CN', 'en']) {
     for (const h of ['opencode', 'claude']) {
       files.push(join(TD, h, 'agents', lang, 'feel.md'));
       for (const cls of CLASSES) files.push(join(TD, h, 'agents', lang, `${cls}.md`));
+      files.push(join(TD, h, 'agents', lang, 'openfeel-explorer.md'));
+      files.push(join(TD, h, 'agents', lang, 'openfeel-utility.md'));
+      files.push(join(TD, h, 'agents', lang, 'openfeel-vision.md'));
     }
   }
   for (const lang of ['zh-CN', 'en']) {
     files.push(join(TD, 'agents-md', `${lang}.md`));
     files.push(join(TD, 'claude', 'constraint', `${lang}.md`));
   }
-  for (const s of SKILLS5) files.push(join(TD, 'skills', s, 'SKILL.md'));
+  for (const d of readdirSync(join(TD, 'skills'), { withFileTypes: true })) {
+    if (d.isDirectory()) files.push(join(TD, 'skills', d.name, 'SKILL.md'));
+  }
   const BANNED = ['跳过骨架', '跳过文件', '跳过相位', '删除相位', '相位变少', '相位减少', 'skips skeleton', 'skips file', 'skips phase', 'deletes phase', 'fewer phases'];
 
-  it('37 份模板/skill 均不含禁用表述', () => {
-    expect(files).toHaveLength(37);
+  it('66 份模板/skill 均不含禁用表述', () => {
+    expect(files).toHaveLength(66);
     for (const p of files) {
       const c = norm(readFileSync(p, 'utf-8'));
       for (const s of BANNED) expect(c, `${p} 含禁用串 ${s}`).not.toContain(s);
@@ -910,6 +915,122 @@ describe('stage-91：索引节形态与分列（40 份）', () => {
       const block = slice(c, commandHeading);
       expect(block.length, `${key} 命令索引切片非空`).toBeGreaterThan(0);
       expect(block, `${key} 命令索引节误含 skill 表行`).not.toContain('| skill |');
+    }
+  });
+});
+
+/**
+ * stage-91 op-004 §4.2：三类静态断言全量（直读**源文件**，不经 loader）
+ *   ① 尺寸方向值覆盖完整性（agent 面表 == 40；约束面表 == 4 由 claude-adapter.test.ts 承担 ——
+ *      [FIX] REV-91-008 双表分置，不落第三份汇总常量；「40 + 4 = 44」仅终局报告层汇总）；
+ *   ② skill 索引引用完整性（40 份索引节切片 -> 逐个 skill 名 existsSync，悬空引用零容忍）；
+ *   ③ 跨 harness 对称（关键节切片逐字等值 + 切片零裸主语 + 五类语义正控）。
+ */
+const AGENT_COMBOS: Array<[string, string]> = [['opencode', 'zh-CN'], ['opencode', 'en'], ['claude', 'zh-CN'], ['claude', 'en']];
+const AGENT_IDS = ['feel', 'openfeel-planner', 'openfeel-schemer', 'openfeel-explorer', 'openfeel-executor',
+  'openfeel-reviewer', 'openfeel-feel-tester', 'openfeel-vision', 'openfeel-archiver', 'openfeel-utility'];
+const agentPath = (h: string, lang: string, id: string) =>
+  join(ROOT, 'src', 'core', 'templates-data', h, 'agents', lang, `${id}.md`);
+
+const sliceOf = (text: string, heading: string): string => {
+  const lines = text.split('\n');
+  const start = lines.findIndex((l) => l.startsWith(heading));
+  if (start < 0) { return ''; }
+  const rest = lines.slice(start + 1);
+  const stop = rest.findIndex((l) => /^#{1,6} /.test(l));
+  return [lines[start], ...(stop < 0 ? rest : rest.slice(0, stop))].join('\n');
+};
+
+describe('stage-91：尺寸方向值覆盖完整性（agent 面）', () => {
+  it('常量表 == 40 且覆盖 4 harness-lang × 10 agent 全交叉（防漏登 / 防新增文件逃逸）', () => {
+    const keys = Object.keys(AGENT_SIZE_TARGETS).sort();
+    expect(keys, 'agent 面尺寸常量表条目数').toHaveLength(40);
+    const expected: string[] = [];
+    for (const [h, lang] of AGENT_COMBOS) {
+      for (const id of AGENT_IDS) expected.push(`${h}/${lang}/${id}`);
+    }
+    expect(keys).toEqual(expected.sort());
+    for (const key of keys) {
+      expect(existsSync(join(ROOT, AGENT_SIZE_TARGETS[key].file)), `${key} 源文件实存`).toBe(true);
+    }
+    // 约束面：常量表归属 claude-adapter.test.ts（4 条），此处仅断「不落第三份汇总常量」
+    const thisSrc = readFileSync(join(ROOT, 'test', 'core', 'templates.test.ts'), 'utf-8');
+    const thirdTableNeedle = ['export', 'const', 'CONSTRAINT' + '_SIZE_TARGETS'].join(' ');
+    expect(thisSrc.includes(thirdTableNeedle), '不得在本文件重复维护约束面常量表').toBe(false);
+  });
+});
+
+describe('stage-91：skill 索引引用完整性', () => {
+  it('40 份索引节切片非空 + 表头在位 + 每个 skill 名实存（悬空引用 0）', () => {
+    let checked = 0;
+    for (const [h, lang] of AGENT_COMBOS) {
+      for (const id of AGENT_IDS) {
+        const key = `${h}/${lang}/${id}`;
+        const heading = lang === 'en' ? '## Skill Index' : '## 技能索引';
+        const c = norm(readFileSync(agentPath(h, lang, id), 'utf-8'));
+        expect((c.match(new RegExp(`^${heading}$`, 'gm')) ?? []).length, `${key} 索引节计数`).toBe(1);
+        const block = sliceOf(c, heading);
+        expect(block.length, `${key} 切片非空（防假绿前置）`).toBeGreaterThan(0);
+        expect(block, `${key} 缺表头`).toContain('| skill |');
+        const names = [...new Set(block.match(/openfeel-[a-z0-9-]+/g) ?? [])];
+        expect(names.length, `${key} 索引节 skill 名非空`).toBeGreaterThan(0);
+        for (const n of names) {
+          expect(existsSync(join(SKILLS_DIR, n, 'SKILL.md')), `${key} 悬空引用 ${n}`).toBe(true);
+          checked += 1;
+        }
+      }
+    }
+    expect(checked, '引用完整性检查总数 > 0').toBeGreaterThan(0);
+  });
+});
+
+describe('stage-91：跨 harness 对称（关键节 + 裸主语 + 语义正控）', () => {
+  it('关键节切片同语言跨 harness 逐字等值 + 切片零裸主语', () => {
+    for (const lang of ['zh-CN', 'en']) {
+      const headings = lang === 'en' ? ['## Skill Index'] : ['## 技能索引'];
+      for (const id of AGENT_IDS) {
+        for (const h of headings) {
+          const oc = sliceOf(norm(readFileSync(agentPath('opencode', lang, id), 'utf-8')), h);
+          const cc = sliceOf(norm(readFileSync(agentPath('claude', lang, id), 'utf-8')), h);
+          expect(oc.length, `${lang}/${id} 索引切片非空`).toBeGreaterThan(0);
+          expect(cc, `${lang}/${id}/${h} 跨 harness 逐字等值`).toBe(oc);
+          for (const bare of ['Feel', '主会话', 'main session']) {
+            expect(cc, `${lang}/${id} 索引切片裸主语 ${bare}`).not.toContain(bare);
+          }
+        }
+      }
+      // feel 的核心职责节同样跨 harness 等值
+      const hr = lang === 'en' ? '## Core Responsibilities' : '## 核心职责';
+      const oc = sliceOf(norm(readFileSync(agentPath('opencode', lang, 'feel'), 'utf-8')), hr);
+      const cc = sliceOf(norm(readFileSync(agentPath('claude', lang, 'feel'), 'utf-8')), hr);
+      expect(oc.length, `${lang}/feel 核心职责切片非空`).toBeGreaterThan(0);
+      expect(cc, `${lang}/feel 核心职责跨 harness 逐字等值`).toBe(oc);
+    }
+  });
+
+  it('语义正控：需求接取 / dispatch / 探索者 / 三模式 / fast 快线五类串在 feel ×4 与相应 subagent 面在位', () => {
+    for (const [h, lang] of AGENT_COMBOS) {
+      const feel = norm(readFileSync(agentPath(h, lang, 'feel'), 'utf-8'));
+      const planner = norm(readFileSync(agentPath(h, lang, 'openfeel-planner'), 'utf-8'));
+      const executor = norm(readFileSync(agentPath(h, lang, 'openfeel-executor'), 'utf-8'));
+      const soft = lang === 'en';
+      // 需求接取（feel + planner）
+      expect(feel, `${h}/${lang} feel 需求接取`).toContain(soft ? 'openfeel req' : 'openfeel req');
+      expect(planner, `${h}/${lang} planner 需求感知`).toContain(soft ? 'openfeel req show <REQ-NNN>' : 'openfeel req show <REQ-NNN>');
+      // dispatch 双口径
+      expect(feel, `${h}/${lang} feel dispatch`).toContain('openfeel-utility');
+      for (const id of ['openfeel-planner', 'openfeel-schemer', 'openfeel-reviewer', 'openfeel-archiver', 'openfeel-utility', 'openfeel-vision']) {
+        const c = norm(readFileSync(agentPath(h, lang, id), 'utf-8'));
+        expect(c, `${h}/${lang}/${id} 缺 [HANDOFF: agent_name]`).toContain('[HANDOFF: agent_name]');
+      }
+      // 探索者路由
+      expect(feel, `${h}/${lang} feel 探索者`).toContain('openfeel-explorer');
+      expect(executor, `${h}/${lang} executor 探索者`).toContain('openfeel-explorer');
+      // 三模式
+      expect(feel, `${h}/${lang} feel 三模式`).toContain(soft ? 'Three modes:' : '三种模式：');
+      // fast 快线
+      expect(feel, `${h}/${lang} feel fast 快线`).toContain(soft ? 'Workflow Fast Line' : '工作流快线');
+      expect(planner, `${h}/${lang} planner 计划审查单轮`).toContain(soft ? 'plan_review' : 'plan_review');
     }
   });
 });

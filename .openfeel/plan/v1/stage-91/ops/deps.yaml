@@ -1,0 +1,161 @@
+# stage-91 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前 glob 校验实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 应声明实际文件名
+# revision: 2026-10-15 openfeel-schemer 初版（计划 §八 定稿；REV-91-001~004 全吸收 —— low 非阻塞，逐条映射见说明④）
+# revision (r1): 2026-10-15 openfeel-schemer 修订 1（**方案审查退回处置**：REV-91-005 阻塞 + 006/007/008 非阻塞 → 就地修订 op-001/002/003/004；逐条处置见说明⑧）
+#   说明①：op 数定稿 = 4（对齐 `.openfeel/plan/v1/v1.2.1/deps.yaml:144` `est_ops: 4`；计划 §八 Q6 建议）。拆分 = op-001 流程 → skill 下沉（清单成文 + 新建 4 skill + 增补 5 skill + 收编落点 + 计数翻转第一段 + build）/ op-002 40 agent 模板索引壳化重写（Q3 范式 + Q1 分档 + 收编 + 断言第一卷 + 尺寸断言第一段 + build）/ op-003 4 约束文件瘦身 + T4.4 指针 + 上限收紧 + 断言第二卷 + build / op-004 门禁收口（三类静态断言全量 + 计数复核 + 四表汇总 + 全量门禁 + ops 入管 + 终局报告）（**阶段末 op**）。
+#   说明②：执行序恒为 op-001 → op-002 → op-003 → op-004（四者恒串行）。**每个 op 收尾测试全绿**（断言改写与其驱动源**同批**——防中间红态不可独立验收）。op-002 与 op-003 顺序可交换（互不读对方产物），但**共用** `test/core/templates.test.ts` 与双生成物 → 仍恒串行（mutual_exclusion）。
+#   说明③：**偏离计划 §八 的落位微调（方案期裁定 D-91-1；须登记）** —— 计划 §八 将 T3 + T4 整体归 op-003；本方案将 **T4 主体（`openfeel-context-hygiene` skill 正文）移入 op-001**（与新建 skill 同批落文，避免「先建空壳再二次改写」；且 op-002 的 feel.md 索引行与 op-003 的约束层指针均须指向**已存在**的 skill）。T4.4 约束层指针留 op-003、feel.md 索引行归 op-002 —— 三处落位由 op-004 报告登记。
+#   说明④：REV 吸收映射（`.openfeel/users/Liuary/code_review/REV-91.md`，001~004 全 low / 非阻塞）—— REV-91-001（`templates.test.ts` describe 计数 **10 → 15**，工作量 +50%）→ **全案订正**：op-002 D-91-6/§2.6 以 15 个 describe 为准逐条判类；op-004 §4.2/§4.5 按 15 口径复核。REV-91-002（explorer opencode/zh **2773 B** 非 2710；行数 claude 侧 **59**）→ **op-002 表 1 订正基线**（Tier S 白名单判定基准）。REV-91-003（feel.md 索引表实测 **6 skill + 1 agent** + 8 CLI + 2 流程阶段，非「5 项 skill」）→ **op-002 §2.1 / D-91-4**（skill 与 CLI 命令 / agent 入口**分列**；`openfeel-utility` 归调起入口，不入引用完整性校验）。REV-91-004（utility en 侧 3409/3524 B 超 2700~2900 区间）→ **op-002 D-91-2④**（白名单判据改**结构判据**：`h2` ≤ 6 ∧ 行数 ≤ 70）——**（r1 修订：已改为「除索引节外」口径，本句为历史引用，现行判据见说明⑧ [FIX] REV-91-005；REV-91-009 处置）**。四条均为**订正性吸收**，无新增面。
+#   说明⑤：方案期裁定（D-91-1 ~ D-91-15；详细论证见各 op 头部「方案期裁定」）—— D-91-1 op 数 4 + T4 落位微调 ｜ D-91-2 Q1 定稿（feel ≤50%：15819/15574/18331/18259 B；Tier A 28 份 `min(⌈65%×基线⌉, 8192)`；Tier S 8 份不设收紧目标（上限 = 现状 + 512 B 索引节预算；REV-91-005 修订）；约束 4 份 `⌈60%×基线⌉`：18287/21371/18408/21528 B；**「取更严者」为对计划「取先达者」的收紧解释**）｜ D-91-3 Q2 定稿（新建 4 / 增补 5；骨架 4 组单一归属 `openfeel-workspace`；skills **18 → 22**）｜ D-91-4 Q3 定稿（索引壳节结构 + `## 技能索引` 两列表 + skill 与 CLI 命令分列 + 索引节中性纪律）｜ D-91-5 Q4 定稿（上下文治理三落点：skill 主体 + 约束指针 + feel 索引行；可控 / 不可控分列）｜ D-91-6 Q5 定稿（三类判类 + 禁静默删除 + 15 describe 逐条判类 + 差额对照）｜ D-91-7 Q7 定稿（约束工具化 5 条 CLI 可达核验：`flow advance` / `flow health` / `stage set` / `init --workspace-only` / 模板断言——**均已 `--help` 实测在位**）｜ D-91-8 扫描增补面（`update.test.ts:274/:814/:818`、`templates.test.ts:649` 注释 = 翻转；`setup.ts:3/:57/:106/:120`、`update.ts:1993/:2010` 手写注释 = **非翻转面，登记转 93**）｜ D-91-9 载体 ADAPTER 计数 + 枚举（字典序）｜ D-91-10 保留锚点串清单先行（op-002 §2.0）｜ D-91-11 REV-91-002 基线订正 ｜ D-91-12 REV-91-003 分列 ｜ D-91-13 skill 自举加注口径（含 CLI 命令 → 加注 + 入 `SKILLS` 常量）｜ D-91-14 阶段末 op 口径（kb supersede / manual 归归档轮，本阶段仅登记）｜ D-91-15 扫描集扩面（37 → 66，判类 = 结构性替换（增强）；实测 0 命中）。**白名单「不改」口径修正**（D-91-2⑤）：Tier S 8 份仍须新增 `## 技能索引` 节（T5.2.2 全 40 份硬要求）→ 修正为「除索引节外零改动」。
+#   说明⑥：`git status --porcelain src/` 口径 = 「build ×2 幂等 + 变更集 ⊆ produces 清单」（本阶段**有意**变更 `templates-data/**` 源并同批重生成双生成物——「空」口径不可达，承 stage-86/88/89/90 先例）；生成物（`src/core/template-loader.ts` / `src/core/update.ts`）**禁手改**（仅 AUTO-GENERATED 段随 build 变更）。
+#   说明⑦：**阴性面（本阶段零触碰，逐条登记）**：`src/**` 非 templates-data 源码（除双生成物）；`src/core/i18n-data/**`（本阶段**预期不新增 i18n 键**）；`docs/**` / `README*` / `CHANGELOG.md` / `.openfeel/manual/**`（→ 93）；`skills/openfeel-cli-usage/SKILL.md`（快照件 → 93，D5/D7 维持）；`flow.json` / phase 枚举 / `build.js` / `.openfeel/config.yaml` / `.openfeel/pipeline.yaml`；E1/E2 转主会话（`openfeel stage` / `openfeel flow` CLI）；`req/BUG-002` 维持转 93。
+#   说明⑧：**修订 1（第二轮方案审查退回处置）**（判据源 `.openfeel/users/Liuary/code_review/REV-91.md`「方案审查（scheme_review）」节；结论 = 退回：1 阻塞 + 3 非阻塞；逐条就地修订 op-001/002/003/004）—— REV-91-005（**阻塞**；medium：Tier S 结构判据「h2 ≤ 6 ∧ 行数 ≤ 70」与 D-91-2⑤「仍须新增 `## 技能索引` 节」数学矛盾）→ 判据改「**除新增索引节外**」口径（修正建议第一案：`h2`（除索引节）≤ 6 ∧ 行数（除索引节块 ≤ 8 行）≤ 70；换算参考：总 `h2` 7 / 总行 71~72·66~67），**三处同步**（op-002 D-91-2④ / §2.7 / 自测清单）；**同源订正字节侧**上限「现状 → 现状 + 512 B（索引节预算）」（op-002 D-91-2③ / 表 1 / 自测清单 + op-004 §4.2.1 同口径）。REV-91-006（非阻塞：判类表缺 `:83` / `:135` 两行，去重 13/15）→ op-002 §2.6 补 ③⑤ → **15 行闭环**（③ 保留——零触碰项目级受管资产面；⑤ 归 op-001——高相关、默认保留、落文后复核）+ op-001 新增自测复核项（`:135` describe 全绿）。REV-91-007（非阻塞：`SKILLS` 常量行号）→ op-001 四处 `:14` → `:13` 订正（并同批订正旧锚 `:157` → `:166-171`）。REV-91-008（非阻塞：「覆盖 == 44」跨文件常量汇总张力）→ op-004 §4.2.1 改**双表分置断言**（`templates.test.ts` == 40 ∧ `claude-adapter.test.ts` == 4；**不落第三份汇总常量**；44 仅终局报告层）+ §4.5 映射 + op-003 §3.4 登记（4 侧唯一常量表）+ op-002 produces `update.ts` 说明（agent 面注入仅落 `template-loader.ts`）。
+version: "1.1"
+stage: v1.2.1-stage-91
+series: v1
+generated_by: openfeel-schemer
+generated_at: "2026-10-15"
+
+# 跨阶段约束
+cross_stage_constraints:
+  - upstream: v1.2.1-stage-88 / v1.2.1-stage-89 / v1.2.1-stage-90
+    type: hard
+    status: done
+    reason: "阶段级 hard 依赖（`.openfeel/plan/v1/v1.2.1/deps.yaml:137-142`）。实质 = **语义冻结后的唯一收编点**（裁定 J 单写者纪律）：88（dispatch 双口径）/ 89（探索者与执行者）/ 90（三模式与需求级模式属性）的全部语义本阶段一次性收编。基线（stage-90 归档登记，实测复核一致）：`npm test` 71 文件 / **1674** 用例 0 skipped / 0 failed；`tsc` 0；`lint i18n` **939**；`lint kb` 0（593 引用）；build ×2 幂等；`--version` = **1.2.0**；本仓 `config.yaml defaults.workflow_mode: full`（零扰动）。"
+  - upstream: v1.2.1-stage-91 计划审查（REV-91-001~004）
+    type: hard
+    status: closed
+    reason: "审查结论**通过**（4 条非阻塞订正，low）；四条全部**吸收**（说明④）：001 → 15 describe 口径（op-002 §2.6 / op-004 §4.2）；002 → explorer/utility 基线订正（op-002 表 1）；003 → 索引表 6 skill + 1 agent 分列（op-002 §2.1 / D-91-4）；004 → 白名单结构判据（D-91-2④）。判据源 = `.openfeel/users/Liuary/code_review/REV-91.md`。"
+  - upstream: v1.2.1-stage-91 方案审查（REV-91-005~008）
+    type: hard
+    status: closed
+    reason: "第二轮（scheme_review）结论 = **退回**（1 阻塞 + 3 非阻塞）；修订 1 **全处置**（说明⑧）：005（阻塞）→ op-002 D-91-2③④ / 表 1 / §2.7 / 自测清单（「除索引节外」口径 + 字节上限 现状 + 512 B）+ op-004 §4.2.1 同口径；006 → op-002 §2.6 15 行闭环 + op-001 自测复核项；007 → op-001 `:13` 行号订正；008 → op-004 §4.2.1 双断言（40 ∧ 4）+ op-003 §3.4 登记 + op-002 produces 说明。判据源 = `.openfeel/users/Liuary/code_review/REV-91.md`（第二轮）。"
+  - downstream: v1.2.1-stage-92（提速与并行拆分执行）
+    type: hard
+    note: "92 的审查档位与并行编排**依赖本阶段瘦身后范式**（契约 delta 按索引壳 / skill 化表述）；会话卫生平台能力核验（大计划 §十 Q8）归 **92** —— 本阶段只落**指引**（`openfeel-context-hygiene`），**不落实现**、不虚构 harness 能力。本阶段零触碰 92 面。"
+  - downstream: v1.2.1-stage-93（文档与版本收口）
+    type: hard
+    note: "维持转 93：① `skills/openfeel-cli-usage/SKILL.md` 快照刷新（`:65`「18 个共享源」与 `templates.test.ts:500` 断言随本阶段 skills 面变动**进一步陈旧**——本阶段**零触碰该文件**、断言维持绿，登记）；② D-91-8 手写源注释（`setup.ts:3/:57/:106/:120`、`update.ts:1993/:2010`）陈旧计数（agent 9 → 10 / skill 18 → 22）；③ `--version`（保持 1.2.0）；④ `README*` / `docs/**` / `CHANGELOG` / `manual/**`；⑤ `req/BUG-002`（`general` 需求 done 门）收口轮。"
+  - downstream: 归档轮（本阶段）
+    type: hard
+    note: "kb 补沉（本阶段仅登记指针，op-004 §4.7）：`architecture` 新增「提示词索引壳架构」（skill 索引壳 + 最小约束 + 引用完整性）与 `patterns` 新增「提示词瘦身范式」（流程清单先行 + 尺寸方向值 + 语义等价对照 + 三类静态断言）+ `kb/index.md` 计数 / 摘要刷新 + 公共日志 + manual 面（`agents/feel.md` / `index.md` / `core/build.md` 视实际产出定）。"
+  - downstream: npm publish / git push / CI
+    type: hard
+    note: "本阶段不 `npm publish` / 不 `git push` / 不改 CI；**不直写 `flow.json`**；**不推进 phase**（由 Feel 经 CLI 执行）；精确 `git add`（**禁 `-A`**，kb #方案层 ops 产出的审计链完整性）；`status.md` 经 `openfeel stage set` 更新（勿手改）。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "流程 → skill 下沉（判据与清单成文 + 新建 4 skill + 增补 5 skill + 收编落点订正 + 计数翻转第一段 + build 双生成物）"
+    produces:
+      - src/core/templates-data/skills/openfeel-delegation/SKILL.md
+      - src/core/templates-data/skills/openfeel-logging/SKILL.md
+      - src/core/templates-data/skills/openfeel-memory/SKILL.md
+      - src/core/templates-data/skills/openfeel-context-hygiene/SKILL.md
+      - src/core/templates-data/skills/openfeel-workspace/SKILL.md
+      - src/core/templates-data/skills/openfeel-get-stage-status/SKILL.md
+      - src/core/templates-data/skills/openfeel-wizard/SKILL.md
+      - src/core/templates-data/skills/openfeel-tool-usage/SKILL.md
+      - src/core/templates-data/skills/openfeel-recover/SKILL.md
+      - src/core/templates-data/opencode/ADAPTER.zh-CN.md
+      - src/core/templates-data/opencode/ADAPTER.en.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - test/core/templates-migration.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/setup.test.ts
+      - test/core/update.test.ts
+      - .openfeel/tmp/stage-91-flow-to-skill-inventory.md
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T1 全部（T1.1 清单成文 / T1.2 新建 4 skill / T1.3 收编落点 / T1.4 约束工具化清单）+ D-91-3 / D-91-7 / D-91-9 / D-91-12 / D-91-13。① 新建 4 skill（delegation / logging / memory / context-hygiene——其中 context-hygiene 承载 T4.1~T4.3 主体，D-91-1）；② 增补 5 skill（workspace 目录语义 + 骨架 4 组单一归属 / get-stage-status `:18`+`:71`+`:95` 收编 / wizard `:18` 保持 2 项 + 子集注记 / tool-usage 规模阈值 + 指针 / recover 交叉指针）；③ 计数翻转第一段（字面量 + 派生 29→33 / 59→67 + expectedSkills 白名单 + ADAPTER 双文件 + 双注入键集 22 一致）；④ **本 op 零触碰 agent 模板与约束文件**（`git status --porcelain` 自证）；⑤ build 双生成物（skill 面注入）——**本 op 需要 build**（与 stage-90 各 op 相反，因本阶段首改 templates-data 源）。"
+  op-002:
+    file: op-002.md
+    title: "40 份 agent 模板索引壳化重写（Q3 范式 + Q1 分档 + 语义收编 + 断言同批第一卷 + 尺寸断言第一段 + build）"
+    produces:
+      - src/core/templates-data/opencode/agents/zh-CN/
+      - src/core/templates-data/opencode/agents/en/
+      - src/core/templates-data/claude/agents/zh-CN/
+      - src/core/templates-data/claude/agents/en/
+      - src/core/templates-data/opencode/agents/zh-CN/feel.md
+      - src/core/templates-data/opencode/agents/en/feel.md
+      - src/core/templates-data/claude/agents/zh-CN/feel.md
+      - src/core/templates-data/claude/agents/en/feel.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/core/templates.test.ts
+      - .openfeel/tmp/stage-91-anchor-inventory.md
+      - .openfeel/tmp/stage-91-semantic-absorption.md
+      - .openfeel/tmp/stage-91-assertion-diff.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "`## 技能索引` 节引用的 5 个新 / 增补 skill 名须先存在（防悬空引用——op-004 §4.2 引用完整性断言零容忍）；skills 计数 22 事实须先落地（索引节内容与 `ADAPTER` 枚举一致性）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T2 全部（T2.1 范式 / T2.2 feel ×4 / T2.3 subagent 36 / T2.4 收编核对 / T2.5 frontmatter 零改动）+ D-91-2 / D-91-4 / D-91-6（第一卷）/ D-91-10 / D-91-11。① **先成文后落文**：保留锚点串清单（15 describes 机械提取 → 三类判类）落 `stage-91-anchor-inventory.md`；② 40 份索引壳重写（feel ×4 ≤50%；Tier A 28 份 ≤ `min(⌈65%⌉, 8192)`；Tier S 8 份除索引节外零改动）；③ 收编 87~90 全语义（收编核对表零遗漏）+ dispatch 双口径 / 探索者路由 / 三模式与需求级模式注记 / fast 快线；④ 既有断言同批第一卷（**15 行判类表闭环**——本 op 执行面 9 行 ①③⑥⑦⑩⑪⑬⑭⑮（REV-91-006 补登 ③⑤）+ 骨架句锚点结构性替换至 `openfeel-logging`）+ 新增 2 个 describe（尺寸 40 份 / 索引节形态与分列）；⑤ frontmatter 零改动自证；⑥ 零回归：前 / 后归一化快照差额 ⊆ 收编核对表；⑦ build 双生成物 + ×2 幂等（REV-91-008 登记：agent 面注入仅落 `template-loader.ts`；`update.ts` 承载 skill 面、本 op 内重生成不变——produces 多列无害）。"
+  op-003:
+    file: op-003.md
+    title: "4 约束文件瘦身（工作区结构下沉 + 最小必要约束集）+ 上下文治理落点 + 上限收紧 + 断言第二卷 + build"
+    produces:
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/template-loader.ts
+      - test/core/claude-adapter.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/templates.test.ts
+      - .openfeel/tmp/stage-91-assertion-diff.md
+      - .openfeel/tmp/stage-91-constraint-signoff.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "骨架模板与目录语义须已落 `openfeel-workspace`（指针行指向实存 skill——防死指针）；`openfeel-context-hygiene` skill 须已存在（T4.4 指针指向实存 skill）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T3 全部（T3.1 工作区结构下沉 / T3.2 最小必要约束集 / T3.3 上限收紧 / T3.4 对称与图体）+ T4.4 + D-91-2（约束分档）/ D-91-3 / D-91-5 / D-91-6（第二卷）。① 工作区结构节（≈15KB）逐块迁移 → 约束层留**一行指针**（六内嵌骨架标题零残留核验）；② 保留 12 节逐节过签（**红线 R-91-6**：行为准则 / 安全边界零丢失；产出 `constraint-signoff.md`）；③ 上下文治理约束层一行指针（4 份，zh/en 同句）；④ 上限收紧 `≤700 → ≤350`（单点常量）+ agents-md 侧对称断言 + 尺寸断言第二段（4 份）；⑤ 断言第二卷（`template-loader.test.ts:135-151` 改写 + `templates.test.ts` ②/④/⑧/⑨ 判类 + T54 图体结构性替换；约束面尺寸常量表 == op-004 §4.2 双断言之 **4 侧**——REV-91-008 登记）；⑥ build 双生成物 + 局部跑测全绿。"
+  op-004:
+    file: op-004.md
+    title: "门禁收口（三类静态断言全量 + 计数翻转复核 + 语义等价取证汇总 + 门禁全量 + ops 入管 + 终局报告）（阶段末 op）"
+    produces:
+      - test/core/templates.test.ts
+      - test/core/claude-adapter.test.ts
+      - test/core/template-loader.test.ts
+      - test/core/setup.test.ts
+      - test/core/update.test.ts
+      - test/core/templates-migration.test.ts
+      - .openfeel/tmp/stage-91-final-report.md
+      - .openfeel/tmp/stage-91-assertion-diff.md
+      - .openfeel/plan/v1/stage-91/ops/op-001.md
+      - .openfeel/plan/v1/stage-91/ops/op-002.md
+      - .openfeel/plan/v1/stage-91/ops/op-003.md
+      - .openfeel/plan/v1/stage-91/ops/op-004.md
+      - .openfeel/plan/v1/stage-91/ops/deps.yaml
+      - .openfeel/plan/v1/stage-91/status.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "收口以源码冻结为前提；计数复核与引用完整性依赖 skill 面最终态。"
+      - op: op-002
+        type: hard
+        reason: "三类断言全量（尺寸面 = agent 表 40 份（约束面 4 份表归本 op 对 op-003 依赖，见下）；引用完整性 40 份 / 跨 harness 对称）依赖 agent 面最终态；差额对照汇总取自 op-002 §2.6。REV-91-008 双表口径。"
+      - op: op-003
+        type: hard
+        reason: "约束面尺寸与上限断言、扫描集扩面（37 → 66）依赖约束面最终态。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T5 全部（T5.1~T5.5）+ D-91-6（汇总）/ D-91-8 / D-91-14 / D-91-15。① build ×2 幂等（生成物变更仅落 AUTO-GENERATED 段）；② 三类静态断言全量（**尺寸双表分置：`templates.test.ts` == 40 ∧ `claude-adapter.test.ts` == 4**（REV-91-008；不落第三份汇总常量，44 仅报告层）+ Tier S 上限 = 现状 + 512 B（REV-91-005）/ 引用完整性含防假绿前置 / 跨 harness 对称含裸主语与五类语义正控）——**直读源文件**；③ 计数翻转双路扫描零未判类 + 派生值 33 / 67 复核 + agent 10 非翻转核对；④ 扫描集扩面 37 → 66（`toBe(66)`）+ `:649` 注释 68；⑤ 四表汇总（下沉清单 / 收编核对 / 断言差额 / 尺寸前后）+ REV 处置表三分结论 + REV-91 吸收映射；⑥ 全量门禁（`npm test` 新基线 / `tsc` 0 / `lint i18n` 939 / `lint kb` 0 / `--version` 1.2.0）；⑦ `ops/**` 五文件精确入管（禁 `-A`）+ 终局报告八节 + 归档轮落点登记；⑧ `status.md` 经 `openfeel stage set` 更新（勿手改 / 不直写 `flow.json` / 不推进 phase）。"
+
+mutual_exclusions:
+  - group: [op-001, op-002, op-003]
+    reason: "① **同文件交集**：`src/core/templates-data/**` 被三 op 分面改动但**同批 build**（`src/core/template-loader.ts` + `src/core/update.ts` 三次重生成——**禁并发 build**）；`test/core/templates.test.ts` 被三 op **三轮**改动（op-001 skill 面 / op-002 agent 面 / op-003 约束面判类）。② **语义门**：op-002 的 `## 技能索引` 引用名依赖 op-001 已落地 skill；op-003 的指针行依赖 op-001 的 workspace / context-hygiene 实存。③ **顺序门**：build ×2 幂等与全量扫描须在源码冻结后（op-004 恒末位）。→ 四 op **恒串行**（op-002 / op-003 次序可交换，但不得并发）。"
+  - group: [op-004]
+    reason: "阶段末 op（恒末位）：收口断言 / 计数全量复核 / 门禁 / `ops/**` 入管 / 终局报告均须在三者冻结后执行。"

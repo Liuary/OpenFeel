@@ -995,3 +995,23 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.1-stage-90（4 commits `342e6ef` op-001 值域 / `143928c` op-002 需求级 + CLI / `77552f9` op-003a 模板 supersede / `02156a9` op-003b build + 门禁；39 产出文件；门禁 **71 文件 / 1674 用例** 0 skipped / 0 failed〔基线 1629〕、`tsc` 0、`lint i18n` **939**〔931 + 8 新键〕、`lint kb` 0〔575 引用〕、build ×2 幂等、`--version` **1.2.0**；C1/C2/C3 显式改写 + 15 处模板文案 supersede + 旧串零残留 0 命中）。
 
 **参见：** v1.2.1-stage-90（plan §二 目标语义与不变量 / §三 T1~T3 / §四 Q1~Q7；op-001~003；`REV-90.md` 001~013）；`src/core/config.ts :: WORKFLOW_MODES`；`src/core/flow-manager.ts :: resolveStageWorkflowMode / resolveTransitionsForMode / syncConfigFieldToStages`；`src/core/req/types.ts :: RequirementData.workflow_mode`；`src/commands/req.ts`；kb/architecture.md #需求层正交边界架构（**supersede**）、#双模式转移表选择、#部署级默认翻转的单一权威、#需求命令面架构、#双层状态聚合架构、#只读通用工作者架构；kb/patterns.md #断言 supersede 范式、#值域扩展全枚举范式、#模式标记三层载体与记忆语义、#带 stage 形参的级联解析、#关系型可选字段「仅溯源不聚合」模式、#对称回写模式；kb/troubleshooting.md #配置键白名单须 schema 驱动 + 值类型归一；manual/core/req.md、manual/core/flow-manager.md、manual/core/config.md、manual/cli/req.md、manual/agents/feel.md
+
+## [+] 提示词索引壳架构：skill 索引壳 + 最小约束 + 收编 + 引用完整性 + 上下文治理可控/不可控分列 (2026-10-15)
+
+**背景**：v1.2.1-stage-91 把设计 §5「提示词瘦身」与 §1.5「上下文膨胀」落为**可验证的模板事实**——agent 提示词从「**角色职责 + 操作流程细则混写**」改为「**skill 索引壳 + 最小约束**」：可复用操作流程全部下沉为独立 skill，提示词只留角色定位、核心职责、技能索引（skill 名 + 一行用途）与最小约束/产出契约。这是「**约束/操作分离**」（见 #全局约束架构）在**提示词层**的对偶：**提示词承载「你是谁 / 必须遵守什么」，skill 承载「怎么做」**。
+
+**① 索引壳形态（agent 提示词正文）**：节结构 = **保留既有断言锚定节** ∪ **新增 `## 技能索引` / `## Skill Index`**。保留节按角色在位：`## 核心职责` / `## 调度与 Handoff` / `## 模型选择` / `## 注意事项` / feel 的 `## 需求流转`·`## 归档与历史读取`·`## 自动推进决策纪律`。新增索引节 = **两列表** `| skill | 用途（一行） |` + 声明行「详细流程见对应 skill 文件」；**skill 与 CLI 命令 / agent 入口分列**（原混列表拆为 `## 技能索引`〔仅 skill〕+ `## 常用命令索引`〔CLI 8 条 + 调起入口 `openfeel-utility`〕）。**索引节中性纪律**：不写「你可加载」类二人物（非 Skill-capable agent 〔explorer/utility/reviewer/archiver/executor/vision〕不产生死指令），统一声明「核心能力以本 agent 工具集为准」。
+
+**② 最小约束保留面（不下沉，瘦身边界）**：角色定位 / 核心职责 / 工具集与权限 / 产出契约 / 模型选择 / 关键禁止项 / 编号引用 / **既有断言锚定的语义串**。**frontmatter 零改动**（键集与键值零触碰，权限断言保持零改写）。
+
+**③ 流程 → skill 下沉判据（四条全满足才下沉）**：① 属**操作流程**（步骤/纪律/检查清单），非角色职责或产出契约；② **可复用**（跨会话复用或 ≥2 角色消费）；③ 独立成文 **≥ 20 行**；④ **无既有 skill 归属**（有归属则**增补**而非新建）。**先成文后落文**（R-91-1）：下沉清单**逐处**登记 `原位置 → 新归属 → 判定（保留/改写/下沉/合并/新建）→ 篇幅变化 → 落文 op`，重写后逐条回查。
+
+**④ 引用完整性（索引壳的护栏）**：agent 索引节中引用的 skill **必须全部实存**（`templates-data/skills/<name>/SKILL.md`）——**悬空引用零容忍**（断言：按节锚点提取索引切片 → 抽 `openfeel-[a-z0-9-]+` 去重 → 逐名 `existsSync`）。新 skill 经 `build.js` 遍历 `templates-data/skills/` 子目录**自动纳入**双注入键集（`SKILL_DEFINITIONS` + `OPENCODE_SKILL_DEFINITIONS`），须同步双键集一致断言（见 kb/patterns.md #新增 skill 纳入生成物键集）。本轮 skills **18 → 22**（新建 delegation / logging / memory / context-hygiene；增补 workspace / get-stage-status / tool-usage / wizard / recover），约束文件行数软上限 **700 → 350**（只紧不松）。
+
+**⑤ 上下文治理：可控 / 不可控分列留痕（禁「已实现」虚述）**：harness **可控项** = 提示词 / 约束 / skill 内的**按需加载与裁剪指引**（= dev_last 三层分层索引架构的**提示词侧对偶**，见 #上下文预算治理架构）；**不可控项** = Claude 侧 auto-compact（**宿主行为**）/ opencode 侧 compaction（**平台配置项**，本仓不注入）。落文三处：skill 主体（`openfeel-context-hygiene`）+ 约束层一行指针 + feel 索引行。**不可控项禁表述为「已实现」**（承 kb/patterns.md #未来功能/未落地能力须标注「提供版本」）。
+
+**判据**：① 凡「提示词出现可复用操作步骤（≥20 行且无归属）」→ **下沉为 skill**，提示词只留**索引行 + 最小约束**；② 保留面判定**以既有断言锚点为准**（保留节标题与语义串 = 硬约束，不得随瘦身删除）；③ 索引节**跨 harness × 语言逐字等值**（同语言 `toBe`；零裸主语）；④ 新增/改写 skill 一律**引用完整性 + 键集一致**双断言；⑤ 上下文治理凡涉及宿主/平台行为，一律**分列可控/不可控**并标注能力归属，**禁虚述已实现**。
+
+**实证**：v1.2.1-stage-91（4 ops 恒串行 `787b279` op-001 流程下沉 + 新建 4 skill / `28b1eb3` op-002 40 份 agent 索引壳化 / `5e72578`+`782c5f8` op-003 4 约束瘦身 + 治理落点 / `27e9848` op-004 门禁收口；4 commits；skills 18 → **22**；40 agent 正文重写（feel ×4 为基线 **34.1%~40.9%** ≤ 50%；Tier A 28 份 ≤ min(⌈65%⌉, 8192) 零超标；Tier S 8 份〔explorer/utility ×4〕**除索引节外零改动**）；4 约束 **30478/35617/30679/35879 B → 11851/14379/12055/14653 B**（508/509/511/512 行 → 161/161/164/164 行，≤350）；门禁 **71 文件 / 1682 用例** 0 skipped / 0 failed〔基线 1674，+8〕、`tsc` 0、`lint i18n` **939**（零新增键）、`lint kb` 0、build ×2 幂等、`--version` **1.2.0**〔不改，归 93〕；三类静态断言落地（尺寸双表分置 / 引用完整性 / 跨 harness 对称）+ 扫描集 **37 → 66**）。
+
+**参见：** v1.2.1-stage-91（plan §二 边界 / §三 T1~T5 / `ops/op-001~004`；`REV-91.md` 001~011）；`src/core/templates-data/{opencode,claude}/agents/**`；`src/core/templates-data/skills/**`；`src/core/templates-data/{agents-md,claude/constraint}/**`；kb/architecture.md #全局约束架构、#上下文预算治理架构、#模板单源架构；kb/patterns.md #约束/操作分离模式、#CLI 用法 skill 化模式、#提示词瘦身范式、#模板收口三类静态断言、#新增 skill 纳入生成物键集、#跨 harness × 语言模板对称纪律；kb/troubleshooting.md #多源文案同步陷阱

@@ -3,8 +3,8 @@
 - **执行模式**：auto
 - **自动推进**：enabled
 - **工作流模式**：full
-- **状态**：planned
-- **当前责任 Agent**：user
+- **状态**：archiving
+- **当前责任 Agent**：openfeel-archiver
 - **上一责任 Agent**：none
 - **更新时间**：2026-10-14 16:40
 

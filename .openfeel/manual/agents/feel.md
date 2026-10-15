@@ -59,6 +59,17 @@
 - **权威源 → 生成物**：改 `templates-data/**` 后同批 `npm run build` 重生成 `template-loader.ts` + `update.ts`（**禁手改**）。
 - **`general` 的运行时语义**：见 `manual/core/flow-manager.md`「需求级模式与载体制约束」节；agent 侧只承载**语义说明**，判定一律在引擎单点。
 
+## 提示词索引壳与 skill 下沉（v1.2.1-stage-91）
+
+> 落点（权威源）：`src/core/templates-data/{opencode,claude}/agents/{zh-CN,en}/*.md`（**40 份正文重写**）+ `.../skills/**`（新建 4 / 增补 5）+ `.../{agents-md,claude/constraint}/**`（4 约束瘦身）；断言 `test/core/templates.test.ts` + `claude-adapter.test.ts`。
+
+- **索引壳形态**：40 份 agent 提示词正文重写为「**skill 索引壳 + 最小约束**」——只留角色定位 / `## 核心职责` / **`## 技能索引`**（两列表 `| skill | 用途（一行） |` + 声明行「详细流程见对应 skill 文件」）/ 最小约束与产出契约；**skill 与 CLI 命令 / agent 入口分列**（`## 常用命令索引`）。**frontmatter 零改动**（键集/权限断言零改写）；**既有断言锚定节保留**（`## 调度与 Handoff` 仍位于 `## 模型选择` 之前；feel 的需求流转 / 归档与历史读取 / 自动推进决策纪律节在位）。
+- **流程 → skill 下沉**：可复用操作流程（≥20 行 ∧ 无既有归属）下沉为独立 skill；**skills 18 → 22**（新建 **delegation**〔委托与流水线纪律〕/ **logging**〔记录纪律〕/ **memory**〔记忆与落档〕/ **context-hygiene**〔上下文卫生〕；增补 **workspace**〔工作区结构与**骨架模板 4 组**单一归属〕/ **get-stage-status** / **tool-usage** / **wizard** / **recover**）。约束文件 `## .openfeel 工作区结构（约束）` 节（≈15KB）下沉 workspace，**只留一行指针**；行数软上限 **700 → 350**。
+- **引用完整性**：索引节引用的 skill **必须实存**（悬空零容忍）；新 skill 经 `build.js` 遍历目录**自动纳入**双注入键集；调起入口 `openfeel-utility` **不参与** skill 引用校验。
+- **上下文治理（T4）**：落三处（skill 主体 `openfeel-context-hygiene` + 约束层一行指针 + feel 索引行）；**可控项 / 不可控项分列留痕**，不可控项（宿主 auto-compact / 平台 compaction）**禁「已实现」表述**。
+- **三类静态断言**（`stage-91：` 前缀）：**尺寸方向值双表分置**（agent 面 40 ∧ 约束面 4，不落汇总常量）/ **skill 索引引用完整性**（切片非空防假绿 + 逐名 `existsSync`）/ **跨 harness 对称**（关键节切片 `toBe` 逐字 + 零裸主语 + 五类语义正控）；`templates.test.ts` 阴性扫描集 **37 → 66**。
+- **对称纪律 / 生成物**：同语言跨 harness **逐字等值**、零裸主语、改写外零改动（Tier S 8 份 `numstat` 8 增 0 删）；改 `templates-data/**` 后同批 `npm run build` 重生成 `template-loader.ts` + `update.ts`（**禁手改**）。
+
 ## 审查会话健康探测与可疑产出处置（v1.1.2-stage-48 事件 A）
 
 > 落点（权威源）：`src/core/templates-data/opencode/agents/{zh-CN,en}/feel.md`「审查会话健康探测与可疑产出处置」节 + `.../openfeel-reviewer.md`「工具调用异常与独立取证纪律」节；配套规范见 `manual/core/code-review.md`。

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-14T23:17:19.143Z",
-    "revision": 1136,
+    "updated": "2026-10-15T01:48:35.273Z",
+    "revision": 1150,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -19,7 +19,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.2.1-stage-90",
+      "stage": "v1.2.1-stage-91",
       "op": ""
     },
     "retry": 0
@@ -639,8 +639,8 @@
     },
     "v1.2.1-stage-90": {
       "name": "v1.2.1-stage-90",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.2.1-stage-89"
       ],
@@ -648,21 +648,26 @@
       "workflow_mode": "full",
       "stats": {
         "start_time": "2026-10-14T22:01:59.018Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-10-14T23:23:36.093Z",
+        "duration_ms": 4897075
       }
     },
     "v1.2.1-stage-91": {
       "name": "v1.2.1-stage-91",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [
         "v1.2.1-stage-88",
         "v1.2.1-stage-89",
         "v1.2.1-stage-90"
       ],
       "ops": {},
-      "workflow_mode": "full"
+      "workflow_mode": "full",
+      "stats": {
+        "start_time": "2026-10-14T23:31:26.006Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
     },
     "v1.2.1-stage-92": {
       "name": "v1.2.1-stage-92",
@@ -4784,6 +4789,173 @@
       "action": "advance_stage_phase",
       "detail": {
         "stageName": "v1.2.1-stage-90",
+        "from": "test_passed",
+        "to": "archiving",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T23:23:36.093Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-90",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T23:31:26.006Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e"
+      }
+    },
+    {
+      "time": "2026-10-14T23:34:45.708Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T23:34:46.103Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T23:44:38.389Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T23:48:33.446Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "scheme_review",
+        "to": "scheme_pending",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-14T23:59:34.843Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-15T00:04:04.656Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "scheme_review",
+        "to": "scheme_passed",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-15T00:04:05.048Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-15T00:42:01.973Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-15T01:31:18.533Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-15T01:31:18.912Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "review_passed",
+        "to": "test_pending",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-15T01:48:34.881Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
+        "from": "test_pending",
+        "to": "test_passed",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-15T01:48:35.273Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-91",
         "from": "test_passed",
         "to": "archiving",
         "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",

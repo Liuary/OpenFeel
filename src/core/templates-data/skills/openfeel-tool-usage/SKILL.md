@@ -33,6 +33,22 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 | 批量文件操作 | task(general) | 串行逐个处理 |
 | 通用执行任务 | task(openfeel-executor) | 自行串行处理 |
 
+### 6. 规模阈值与轻量决策边界
+
+按改动**波及面**（是否跨文件、是否跨阶段 / 跨模块）选择档位：
+
+| 规模 | 处理方式 | 流程 |
+|------|----------|------|
+| 微小改动（单文件、无跨文件影响） | 调用方自行处理（兼任 openfeel-planner） | 直接编码，无需正式计划 |
+| 跨文件改动 | 唤起 openfeel-planner 制定正式计划 | 调用方 → openfeel-planner → openfeel-executor |
+| 多阶段规模化改动（跨模块或需求边界不清） | 大规模规划，必须走完整流程 | 调用方 → openfeel-planner → openfeel-schemer → openfeel-executor → openfeel-reviewer |
+
+**轻量决策边界**：轻量决策指对话式选型——调用方与用户澄清并敲定技术方向或设计取舍，产出的是「结论」而非「正式计划文档」，不产出 plan.md；此类决策由调用方直接处理，无需委托 openfeel-planner。仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或该变更明显为跨模块 / 跨阶段性质时，才委托 openfeel-planner。
+
+### 7. 委托纪律
+
+委托边界、dispatch 双口径、流程不可跳过、Handoff 与多模态委派、子任务上下文描述要求见 `openfeel-delegation`。
+
 ## 工具名映射（跨 harness）
 
 本 skill 的四种核心工具（`todowrite`/`question`/`task`/`skill`）在各 harness 的等价工具名见下表；**不改变**既有触发条件/使用要求/优先级表语义。

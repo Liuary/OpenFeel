@@ -15,7 +15,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 
 ### 0. 读取全局配置
 
-读取 `.openfeel/config.yaml`，解析 `defaults` 中的 `execution_mode`、`auto_advance`、`merge_mode`、`workflow_mode`。
+读取 `.openfeel/config.yaml`，解析 `defaults` 中的 `execution_mode`、`auto_advance`、`merge_mode`、`workflow_mode`（**三值**：`full` / `fast` / `general`）。
 
 ### 1. 定位状态文件
 
@@ -68,7 +68,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
    - `自动推进` 为 `enabled`（若 status.md 未填则回退到 config.yaml `auto_advance`）
 2. 收集为 `parallel_candidates` 列表，供主会话（Feel）批量调度执行。
 
-> 口径：**subagent 不互调**（不直接调用其他 subagent）；需向用户确认的事项一律由主会话负责。
+> 口径：**除直接调度通用工作者外，不调用其他 Agent**；需向用户确认的事项一律由调用方负责。
 
 ### 5. 判断自动推进资格
 
@@ -92,7 +92,7 @@ description: 读取 .openfeel/plan/{series}/{stage}/status.md，判断当前子�
 - 阶段：{stage}
 - 执行模式：manual | auto
 - 自动推进：disabled | enabled
-- 工作流模式：full | fast
+- 工作流模式：full | fast | general
 - 状态：{status}
 - 当前责任 Agent：{agent}
 - 前置依赖：{依赖列表 或 无}

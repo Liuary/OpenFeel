@@ -10,13 +10,13 @@ import { listAgentIds, listClaudeAgentIds } from '../../src/core/template-loader
 
 const ROOT = process.cwd();
 const SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'skills');
-const SKILLS = ['openfeel-cli-usage', 'openfeel-wizard', 'openfeel-health', 'openfeel-model-check', 'openfeel-recover', 'openfeel-req'];
+const SKILLS = ['openfeel-cli-usage', 'openfeel-wizard', 'openfeel-health', 'openfeel-model-check', 'openfeel-recover', 'openfeel-req', 'openfeel-delegation', 'openfeel-memory'];
 
 /** EOL 归一（CRLF/CR → LF；先例 templates-migration.test.ts:24）——stage-84 跨 harness 切片比较防 CRLF 伪失败（REV-84-011） */
 const norm = (s: string): string => s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
 describe('模板口径（stage-50 op-006 T53/T54/T55）', () => {
-  it('T53：6 skill 模板 node bin 仅出现在加注行（每文件 1 处）且含加注、主口径为 openfeel', () => {
+  it('T53：8 skill 模板 node bin 仅出现在加注行（每文件 1 处）且含加注、主口径为 openfeel', () => {
     for (const s of SKILLS) {
       const content = readFileSync(join(SKILLS_DIR, s, 'SKILL.md'), 'utf-8');
       const count = (content.match(/node bin\/openfeel\.js/g) ?? []).length;
@@ -646,7 +646,7 @@ describe('stage-89：探索者注册与路由替代（T3.1/T3.2）', () => {
       return out;
     };
     const files = walk(join(ROOT, 'src', 'core', 'templates-data'));
-    expect(files.length, '扫描集合非空').toBeGreaterThan(60); // op-001 后实测 64 个 .md（opencode 20 + claude 20 + agents-md 2 + constraint 2 + ADAPTER 2 + skills 18）
+    expect(files.length, '扫描集合非空').toBeGreaterThan(60); // op-001 后实测 68 个 .md（opencode 20 + claude 20 + agents-md 2 + constraint 2 + ADAPTER 2 + skills 22）
     for (const p of files) {
       const lower = norm(readFileSync(p, 'utf-8')).toLowerCase();
       expect(lower, `中文占位残留 ${p}`).not.toContain('探索者接入');

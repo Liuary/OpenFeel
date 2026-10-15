@@ -108,9 +108,9 @@ describe('命名前缀完整性', () => {
     }
   });
 
-  it('listOpencodeSkillNames 返回 18 项全部带 openfeel- 前缀', () => {
+  it('listOpencodeSkillNames 返回 22 项全部带 openfeel- 前缀', () => {
     const names = listOpencodeSkillNames();
-    expect(names).toHaveLength(18);
+    expect(names).toHaveLength(22);
     expect(names.every((n) => n.startsWith('openfeel-'))).toBe(true);
     expect(names).toContain('openfeel-workspace');
     expect(names).toContain('openfeel-tool-usage');

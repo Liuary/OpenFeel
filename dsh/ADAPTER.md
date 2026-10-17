@@ -1,18 +1,21 @@
 # DSH 适配器
 
-> ✅ 已实现（OpenFeel v1.2.3 / DSH 0.2.0-rc.2）。
+> ✅ 已实现（OpenFeel v1.3.0 / DSH 0.2.0-rc.2）。
 
-- **启用**：把本目录作为 DSH bundle 装进 profile —— `package.json` 的 `dependencies` 加
+- **安装（推荐，单包）**：`npm i -g openfeel@latest` → `openfeel setup --tools dsh`
+  （写入 DSH profile 的 `link:<openfeelRoot>/dsh` 依赖与 `dsh.profile.bundles`，按需 `pnpm install`），
+  然后**重启 DSH 宿主**。适配器随 `openfeel` 包分发，不需要单独发布 `openfeel-dsh`。
+- **开发态**：把本目录作为 DSH bundle 装进 profile —— `package.json` 的 `dependencies` 加
   `"openfeel-dsh": "link:<repo>/dsh"`，`dsh.profile.bundles` 加 `"openfeel-dsh"`，然后
   `pnpm install`。**改代码后需重启 DSH 宿主**（Loader 按 URL 缓存 ESM 模块）。
 - **安装（另一种）**：经 DSH 插件管理器 `install_bundle` 装 `link:<repo>/dsh`；`file:` 会拷贝，
   改代码后须重装。
 - **落点**：`ctx.tools`（13 个 `feel_*` 工具）、`ctx.commands`（`/feel`）、
   `ctx.systemPrompt`（`<feel_mode>` 纪律段）。不写任何领域状态。
-- **契约**：CLI 的 `--json` 出口以 [`../docs/json-contract.md`](../docs/json-contract.md) 为**单一权威**
-  （33 成功出口）；本适配器只消费、不重实现。
+- **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
+  （v1.3.0 起仍 40 个成功出口）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`。
+  的 `openfeel.requiresCli`（≥1.3.0）。
 
 ## 设计边界
 
@@ -39,22 +42,24 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
 | `lib/surface/prompt.js` | `<feel_mode>` 系统提示段 |
-| `test/` | 契约 / 行为 / 真实注册表 三套验证（108 断言） |
-| `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 `../docs/json-contract.md` 为准） |
+| `test/` | 契约 / 行为 / 真实注册表 三套验证（42 + 77 + 10 = 129 断言） |
+| `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证
 
 ```bash
 cd dsh
 node test/contract.js      # 42 — DSH schema 契约（真实 assertSupportedJsonSchema）
-node test/verify.js        # 56 — 行为（真实 CLI + 真实 .openfeel 副本）
+node test/verify.js        # 77 — 行为（真实 CLI + 真实 .openfeel 副本）
 node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载
 ```
 
 ## 发布说明
 
-本目录**不**包含在 OpenFeel 的 `package.json` `files` 字段内，故 `npm publish openfeel` 不会
-打包它；它是仓库内的一等适配器，与 `claude/`、`kilo/` 同级。对 `tsc`（`src/**/*.ts`）、
-`vitest`（`test/**/*.test.ts`）、`build.js`（`src/core/templates-data/**`）均无影响。
+v1.3.0 起，本目录的运行文件（`lib/`、`cordis.patch.yml`、`package.json`、`README.md`、
+`ADAPTER.md`、`docs/`）**已包含**在根 `openfeel` 的 `package.json` `files` 内，随
+`npm publish openfeel` 分发；不单独发布 `openfeel-dsh` 包。仍不包含 `dsh/test/`。
+对 `tsc`（`src/**/*.ts`）、`vitest`（`test/**/*.test.ts`）、`build.js`
+（`src/core/templates-data/**`）均无影响。
 
 详细说明见 [README.md](README.md)。

@@ -898,6 +898,13 @@ describe('updateProject', () => {
     expect(supportedTools.find((t) => t.id === 'opencode')?.enabled).toBe(true);
   });
 
+  it('v1.3.0：supportedTools 含 dsh（enabled:false，projectDeployable:false）', () => {
+    const dsh = supportedTools.find((t) => t.id === 'dsh');
+    expect(dsh).toBeDefined();
+    expect(dsh?.enabled).toBe(false);
+    expect(dsh?.projectDeployable).toBe(false);
+  });
+
   it('stage-71/R-5：updateProject 默认（opencode）不触 ~/.claude', () => {
     updateProject(tmpDir);
     expect(existsSync(join(homeDir, '.claude'))).toBe(false);

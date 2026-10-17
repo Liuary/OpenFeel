@@ -10,7 +10,7 @@
 
 | 函数 | 功能 |
 |------|------|
-| `setupGlobalFramework(lang?, tools?)` | 纯全局部署（首次全量，幂等）；签名 `(lang='zh-CN', tools=['opencode'])`（v1.1.6-stage-71）；返回 `SetupResult`（created/updated/skipped/appended） |
+| `setupGlobalFramework(lang?, tools?, options?)` | 纯全局部署（首次全量，幂等）；签名 `(lang='zh-CN', tools=['opencode'], options={})`（v1.3.0 增加 `dshProfile`）；返回 `SetupResult`（created/updated/skipped/appended + 可选 `dsh`） |
 | `checkGlobalDeployment(options?)` | 只读检测全局部署版本（`core/deployment-check.ts`）；返回 `DeployCheckResult`（四态 `ok`/`mismatch`/`missing`/`unknown`），供 `setup --check` 与 CLI 被动提示消费 |
 
 ## SetupResult
@@ -21,6 +21,8 @@ interface SetupResult {
   updated: string[];
   skipped: string[];
   appended: string[];
+  /** v1.3.0：仅 `--tools dsh` 时出现；不进入全局资产 hash */
+  dsh?: { home: string; adapterDir: string; profiles: DshProfileResult[] };
 }
 ```
 
@@ -36,8 +38,11 @@ interface SetupResult {
 | **Claude agents** | 9 | `~/.claude/agents/{agent}.md`（`loadClaudeAgentTemplate`，含 `feel`；`tools` 含 claude 时） |
 | **Claude skills** | 18 | `~/.claude/skills/{name}/SKILL.md`（复用 `SKILL_DEFINITIONS`；`tools` 含 claude 时） |
 | **Claude settings** | 1 | `~/.claude/settings.json`（`applyClaudeSettings`，**严格 JSON 读-深合并-写回**；`tools` 含 claude 时，v1.1.6-stage-73） |
+| **DSH profile** | N | `<DSH_HOME>/profiles/<name>/package.json`（`link:<openfeelRoot>/dsh` + `dsh.profile.bundles`；`tools` 含 dsh 时，v1.3.0） |
 
 > **按工具门控（v1.1.6-stage-71/73）**：opencode 步骤 1~4 整体包入 `if (tools.includes('opencode'))`，claude 分支包入 `if (tools.includes('claude'))`；默认 `tools=['opencode']` 时行为与改前**逐字一致**（`~/.claude` 零触）。claude 分支经 `applyClaudeSettings` 写 `settings.json`（注入 `agent:'feel'` + `permissions.defaultMode:'auto'`，用户键逐字保留；stage-73 落地）。幂等不变式：默认二次 27 skipped；双 harness 二次 55 skipped（+1 settings.json）。
+>
+> **DSH 门控（v1.3.0）**：`tools` 含 `dsh` 时先 `planDshDeployment` 预检（任何写盘前），再 `applyDshDeployment`（锁外备份 → 锁内重读/合并/按需 pnpm → 解锁后 install）；结果只放 `SetupResult.dsh`。混合组合（`opencode,dsh`）先部署全局资产再部署 DSH；纯 dsh 不刷新 `update_state.json` 版本事实。
 
 ## 检测语义（四态）
 
@@ -79,6 +84,7 @@ src/commands/setup.ts（openfeel setup [--lang]）
        ├─ src/core/template-loader.ts（loadTemplate / loadAgentTemplate）
        ├─ src/core/opencode-config.ts（mergeGlobalOpencodeJsonc）
        ├─ src/core/claude-settings.ts（applyClaudeSettings，stage-73）
+       ├─ src/core/dsh-profile.ts（planDshDeployment / applyDshDeployment，v1.3.0）
        ├─ src/core/global-paths.ts（getGlobalAgentsMdPath 等）
        ├─ src/core/update-state.ts（全局 state）
        └─ src/core/fs/{atomic-write,file-lock}.ts
@@ -92,3 +98,4 @@ src/commands/setup.ts（openfeel setup [--lang]）
 | v1.1.5 | 新增 `openfeel setup --check [--json]` 只读诊断；补四态检测语义与升级流程；更正 skill 计数（16 → 17） |
 | v1.1.6-stage-71 | 签名扩 `(lang, tools=['opencode'])` + 按工具门控；新增 **claude 分支**（CLAUDE.md + 9 agents + 17 共享 skills）；默认仅 opencode 行为逐字不变 |
 | v1.1.6-stage-73 | claude 分支 step 4c 接入 `applyClaudeSettings`（`settings.json` 严格 JSON 读-深合并-写回，注入 `agent`/`permissions.defaultMode` + 用户键保留 + 备份/anomaly/幂等）；双 harness 二次 skipped 54 → **55** |
+| v1.3.0-stage-101 | 签名扩 `options.dshProfile`；新增 **DSH 分支**（profile 预检、link + bundles 合并、按需 pnpm、锁外备份/锁内写、失败回滚）；`SetupResult.dsh`；纯 dsh 不刷新全局部署版本 |

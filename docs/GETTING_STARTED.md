@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.2.4 快照** | 更新日期：2026-10-17 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.3.0 快照** | 更新日期：2026-10-17 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -60,6 +60,34 @@ openfeel setup --tools claude   # 部署 ~/.claude/（与 opencode 并存，默�
 - 部署资产到 `~/.claude/`：`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（10 个，含 `feel`）、`skills/`（22 个共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留；**无则创建、有则不覆盖**——用户主权键 `model` 不被改写）。
 - **升级后**：`npm i -g openfeel@latest` → `openfeel setup --tools claude`；首次创建 `~/.claude/{agents,skills}` 后须**重启会话或 `/reload-skills`**；`CLAUDE.md` 于下次会话生效。仅 `npm i -g` 不刷新全局资产。
 - **默认零触**：不带 `--tools` 时 `~/.claude/` 零变化。
+
+### 启用 DSH 适配器（可选，v1.3.0 起）
+
+```bash
+npm i -g openfeel@latest      # 单包，已含 dsh/
+openfeel setup --tools dsh    # 写入 DSH profile 并部署（可 --dsh-profile web 窄化）
+# 重启 DSH 宿主
+```
+
+- 写入 `<DSH_HOME>/profiles/<name>/package.json`：`dependencies["openfeel-dsh"] = "link:<openfeelRoot>/dsh"` + `dsh.profile.bundles += "openfeel-dsh"`；依赖变化或链接无效时才执行 `pnpm install`。
+- 默认部署全部已检测 profile；`--dsh-profile <name>` 可只改一个。写前备份、幂等重跑、失败回滚；真实 `~/.dsh` 之外的测试请用临时 `DSH_HOME`。
+- 与 opencode / Claude Code 并存，默认不部署；升级 CLI 后重启 DSH 即随 `link:` 更新。详见 [dsh/README.md](../dsh/README.md)。
+- `openfeel update --tools dsh` 不适用（DSH 是全局部署）。
+
+### 推荐用法：需求驱动 + 快速迭代（fast）
+
+日常开发推荐先发布需求，再用 **fast** 阶段迭代（计划审查 + 代码审查各单轮，跳过 scheme/test）：
+
+```bash
+openfeel req add "接入 DSH 适配器" --workflow-mode fast
+openfeel req claim REQ-NNN
+openfeel plan stage add vX.Y.Z-stage-NN --workflow-mode fast
+openfeel req link --stage vX.Y.Z-stage-NN --requirement REQ-NNN
+openfeel flow next
+```
+
+- 大改动 / 架构变更用 `full`（完整六关）；零散任务可用需求级 `general`；不要默认推荐 `full`。
+- 需求关联阶段后，全部阶段 done 时自动收口需求。
 
 ### 工作流模式（full / fast）与自动推进（v1.1.7 起）
 
@@ -314,8 +342,8 @@ openfeel flow advance --stage stage-01 --to plan_passed --review-tier skip
 | `openfeel req` | 需求流转（`add`/`list`/`show`/`claim`/`release`/`set`/`link`/`advance`/`split`/`board`/`next`，共 11 子命令） |
 | `openfeel roadmap` | 分期大纲管理（`create`/`show`） |
 | `openfeel instructions <artifactId>` | 生成结构化指令（XML 或 JSON） |
-| `openfeel update [path] [--tools <list>]` | 部署 OpenFeel 适配文件到目标项目 |
-| `openfeel setup [--check] [--tools <list>]` | 部署全局框架配置；`--check [--json]` 只读诊断全局部署与 CLI 版本一致性 |
+| `openfeel update [path] [--tools <list>]` | 部署 OpenFeel 适配文件到目标项目；`--tools dsh` 不适用（v1.3.0，请用 `setup`） |
+| `openfeel setup [--check] [--tools <list>] [--dsh-profile <name>]` | 部署全局框架配置；`--check [--json]` 只读诊断全局部署与 CLI 版本一致性；`--tools dsh` 部署 DSH profile（v1.3.0） |
 | `openfeel knowledge` | 知识库管理（`list`/`add`/`search`/`index`/`dedup`；读命令支持 `--json`） |
 | `openfeel stage` | 工作阶段状态管理（status.md 原子操作；`status` 支持 `--json`） |
 | `openfeel project` | 项目管理与概览（`overview` 支持 `--json`） |

@@ -28,8 +28,13 @@ export function registerUpdateCommand(program: Command): void {
         if (toolsParsed && toolsParsed.invalid.length > 0) {
           console.error(t('update.toolsInvalidTmpl', lang, {
             tools: toolsParsed.invalid.join(', '),
-            valid: supportedTools.map((x) => x.id).join(', '),
+            valid: supportedTools.filter((x) => x.projectDeployable !== false).map((x) => x.id).join(', '),
           }));
+          process.exit(1);
+        }
+        // dsh 是全局部署（DSH profile），不属于项目 update 面；在 auto-init/写盘前拒绝
+        if (toolsParsed?.tools.includes('dsh')) {
+          console.error(t('update.dshNotAllowedTmpl', lang));
           process.exit(1);
         }
 
@@ -54,7 +59,7 @@ export function registerUpdateCommand(program: Command): void {
         const selectedTools = toolsParsed
           ? toolsParsed.tools
           : path
-            ? supportedTools.filter((t) => t.enabled).map((t) => t.id) // R-5：仅部署默认启用工具
+            ? supportedTools.filter((t) => t.enabled && t.projectDeployable !== false).map((t) => t.id) // R-5：仅部署默认启用工具
             : await selectTools();             // 无参数则交互选择
 
         if (selectedTools.length === 0) {

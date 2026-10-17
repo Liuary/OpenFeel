@@ -425,6 +425,7 @@ export const update: I18nDomain = {
   'claudeSettingsMergedTmpl':   { key: 'update.claudeSettingsMergedTmpl',   zh: '', en: '[update] Merged ~/.claude/settings.json (injected agent:"feel" and permissions.defaultMode:"auto"; existing user keys preserved; original backed up)' },
   'claudeSettingsParseSkipTmpl':{ key: 'update.claudeSettingsParseSkipTmpl',zh: '', en: '[update] ~/.claude/settings.json is not strict JSON (comments or trailing comma); skipped merge, kept original: {err}' },
   'claudeSettingsWriteSkipTmpl':{ key: 'update.claudeSettingsWriteSkipTmpl',zh: '', en: '[update] {err}; skipped writing ~/.claude/settings.json, continuing with remaining steps' },
+  'dshNotAllowedTmpl':          { key: 'update.dshNotAllowedTmpl',          zh: '', en: 'update does not support dsh (the DSH adapter is a global deployment); use openfeel setup --tools dsh.' },
 };
 
 /* ==================== project ==================== */
@@ -646,11 +647,12 @@ export const help: I18nDomain = {
   'init.workspaceOnly':    { key: 'help.init.workspaceOnly',    zh: '', en: 'Create the .openfeel/ workspace only (no global rules / platform adapter config); used by Feel to auto-setup blank projects' },
   'init.nonInteractive':   { key: 'help.init.nonInteractive',   zh: '', en: 'Non-interactive mode (used together with --workspace-only)' },
 
-  'setup':                 { key: 'help.setup',                 zh: '', en: 'Deploy global OpenFeel framework config (global rules file + agents + skills + platform adapter config); does not create the project .openfeel/; defaults to opencode only (use --tools to add claude)' },
+  'setup':                 { key: 'help.setup',                 zh: '', en: 'Deploy global OpenFeel framework config (global rules file + agents + skills + platform adapter config); does not create the project .openfeel/; defaults to opencode only (use --tools to add claude / dsh)' },
   'setup.lang':            { key: 'help.setup.lang',            zh: '', en: 'Agent prompt language (zh-CN or en), defaults to zh-CN' },
   'setup.check':           { key: 'help.setup.check',           zh: '', en: 'Diagnose whether the global deployment matches the CLI version (read-only; no deploy); exit 0 if consistent, else 1' },
   'setup.json':            { key: 'help.setup.json',            zh: '', en: 'Output the diagnosis as JSON (pure single JSON document with schemaVersion)' },
-  'setup.tools':           { key: 'help.setup.tools',           zh: '', en: 'Deploy target tools (comma-separated, e.g. opencode,claude; defaults to opencode only; invalid value exits 1)' },
+  'setup.tools':           { key: 'help.setup.tools',           zh: '', en: 'Deploy target tools (comma-separated, e.g. opencode,claude,dsh; defaults to opencode only; invalid value exits 1)' },
+  'setup.dshProfile':      { key: 'help.setup.dshProfile',      zh: '', en: 'DSH profile name (e.g. web / desktop); defaults to all detected profiles' },
 
   'update':                { key: 'help.update',                zh: '', en: 'Deploy OpenFeel adapter files to target project (interactive tool selection when no args)' },
   'update.lang':           { key: 'help.update.lang',           zh: '', en: 'Agent prompt language (zh-CN or en)' },
@@ -1061,6 +1063,23 @@ export const setup: I18nDomain = {
   'claudeSettingsMergedTmpl': { key: 'setup.claudeSettingsMergedTmpl', zh: '', en: '[setup] Merged ~/.claude/settings.json (injected agent:"feel" and permissions.defaultMode:"auto"; existing user keys preserved; original backed up)' },
   'claudeSettingsParseSkipTmpl': { key: 'setup.claudeSettingsParseSkipTmpl', zh: '', en: '[setup] ~/.claude/settings.json is not strict JSON (comments or trailing comma); skipped merge, kept original: {err}' },
   'claudeSettingsWriteSkipTmpl': { key: 'setup.claudeSettingsWriteSkipTmpl', zh: '', en: '[setup] {err}; skipped writing ~/.claude/settings.json, continuing with remaining steps' },
+  'dshProfilesTmpl': { key: 'setup.dshProfilesTmpl', zh: '', en: 'DSH adapter: {home} ({count} profile(s))' },
+  'dshProfileUpdatedTmpl': { key: 'setup.dshProfileUpdatedTmpl', zh: '', en: '  ~ {name}: updated {path} (openfeel-dsh -> link:{adapter}; bundles += openfeel-dsh)' },
+  'dshProfileSkippedTmpl': { key: 'setup.dshProfileSkippedTmpl', zh: '', en: '  - {name}: up to date, skipped {path}' },
+  'dshInstallOkTmpl': { key: 'setup.dshInstallOkTmpl', zh: '', en: '  pnpm install completed: {path}' },
+  'dshInstallSkipTmpl': { key: 'setup.dshInstallSkipTmpl', zh: '', en: '  pnpm install skipped: dependency unchanged and link valid' },
+  'dshMultiProfileHint': { key: 'setup.dshMultiProfileHint', zh: '', en: 'Multiple DSH profiles detected ({profiles}); deploying to all. Use --dsh-profile to narrow.' },
+  'dshRestartHint': { key: 'setup.dshRestartHint', zh: '', en: 'Restart the DSH host to load the adapter (host modules are not hot-reloaded).' },
+  'dshHomeMissingTmpl': { key: 'setup.dshHomeMissingTmpl', zh: '', en: 'DSH profiles directory not found: {dir}. Install/start DSH first, or set DSH_HOME.' },
+  'dshProfileMissingTmpl': { key: 'setup.dshProfileMissingTmpl', zh: '', en: 'No recognizable DSH profile (package.json) under: {dir}.' },
+  'dshProfileUnknownTmpl': { key: 'setup.dshProfileUnknownTmpl', zh: '', en: 'DSH profile "{name}" not found; available: {profiles}.' },
+  'dshProfileInvalidJsonTmpl': { key: 'setup.dshProfileInvalidJsonTmpl', zh: '', en: 'DSH profile package.json is not valid JSON: {path} ({err}).' },
+  'dshProfileNotDshTmpl': { key: 'setup.dshProfileNotDshTmpl', zh: '', en: '{path} is not a DSH profile (missing dsh config); refusing to modify.' },
+  'dshProfileInvalidShapeTmpl': { key: 'setup.dshProfileInvalidShapeTmpl', zh: '', en: 'Invalid DSH profile shape ({field}): {path}.' },
+  'dshAdapterMissingTmpl': { key: 'setup.dshAdapterMissingTmpl', zh: '', en: 'This openfeel install does not include the DSH adapter ({path}); upgrade to >=1.3.0 or run from the repo.' },
+  'dshPnpmMissingTmpl': { key: 'setup.dshPnpmMissingTmpl', zh: '', en: 'pnpm not found; run npm i -g pnpm, or run pnpm install manually in {path}.' },
+  'dshPnpmFailedTmpl': { key: 'setup.dshPnpmFailedTmpl', zh: '', en: 'pnpm install failed ({path}); profile package.json rolled back. Retry manually: cd {path} && pnpm install.' },
+  'dshBackupFailedTmpl': { key: 'setup.dshBackupFailedTmpl', zh: '', en: 'DSH profile backup failed; write skipped: {path} ({err}).' },
 };
 
 /* ==================== metrics domain: agent performance summary (T15) ==================== */

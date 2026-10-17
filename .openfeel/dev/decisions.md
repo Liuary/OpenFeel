@@ -161,3 +161,15 @@
 - **后果 / 适用边界**：`pipeline.phase` 由归档逻辑按活跃集重算，空集 → `active`（`archive-ops` 既有语义，非异常）；flow.json 阶段数归零、log 361→209；v1.2.0 各阶段摘要（`.openfeel/log/archive-v1.2.0-stage-78.md`~`85.md`）不受影响；无源码 / 契约 / 命令行为变更。
 - **回滚**：`git revert` 本次提交；或从 `flow.json.bak`（归档前快照）恢复 flow.json 并删除 `flow-archive/v1.2.0.json`、从 `meta.archived_versions` 移除 v1.2.0。
 
+### ADR-016：v1.3.0 DSH 适配器单包分发 + `setup --tools dsh`
+- **日期**：2026-10-17
+- **状态**：accepted（v1.3.0-stage-101 实施并验收完成）
+- **决策**：
+  1. **单包分发**：`openfeel` npm 包纳入 `dsh/` 运行文件（lib / cordis.patch.yml / package.json / README / ADAPTER / docs），**不发布独立 `openfeel-dsh`**；DSH profile 依赖写 `link:<openfeelRoot>/dsh`，bundles 追加 `openfeel-dsh`。
+  2. **唯一部署入口**：`openfeel setup --tools dsh [--dsh-profile <name>]`；`update --tools dsh` 在 auto-init / 写盘前拒绝（DSH 是全局部署）。预检全部选中 profile；写前锁外备份，锁内重读/合并/按需 pnpm 预检/原子写，解锁后 install；失败回滚到锁内重读原文；多 profile fail-fast。
+  3. **错误契约复用**：不新增 `CliErrorCode`；预检/用法/profile → `INVALID_ARGUMENT`/1，备份/install → `INTERNAL_ERROR`/3，`detail.reason=dsh-*` 区分；13 码 / 40 成功出口 / 41 注册选项不变。
+  4. **版本 lockstep**：`dsh/package.json` 与根包同为 1.3.0，`requiresCli: ">=1.3.0"`；CLI 发版即适配器发版。README 版本能力概览迁至单一 `docs/VERSIONS.md`，README 推荐「发布需求 + fast」主流用法。
+- **理由**：`openfeel` 是 CLI，DSH 插件管理器要求可挂载 bundle 包，无法直接把 CLI 包当插件；独立 `openfeel-dsh` 会分裂发布列车并让 CLI 用户多装。`link:` 指向包内 `dsh/` 可避免重复安装，升级随 `npm i -g openfeel@latest` 生效。新增 DSH 错误码会破坏已冻结的 JSON 契约，故用 `detail.reason` 扩展。
+- **后果 / 适用边界**：`setup --tools dsh` 是用户显式安装动作（类比写 `~/.claude`），需重启 DSH 宿主；pnpm install 非原子（多 profile fail-fast、混合 `opencode,dsh` 非原子）；DSH profile 不进入全局 `update_state.json`；`openfeel-dsh` 不发布 npm。
+- **回滚**：`git revert` v1.3.0 相关提交；或从 `~/.openfeel/backup/<ts>/` 恢复 profile `package.json`，移除 `dependencies["openfeel-dsh"]` + `bundles` 条目后 `pnpm install`；CLI 版本回退并重启 DSH 即回退适配器。
+

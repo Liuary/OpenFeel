@@ -17,6 +17,7 @@ import { getGlobalAgentsMdPath, getGlobalAgentsDir, getGlobalSkillsDir, getGloba
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { readJsoncFile } from './fs/safe-read.js';
 import { withFileLock, globalLockPath } from './fs/file-lock.js';
+import { planDshDeployment, applyDshDeployment, type DshProfileResult } from './dsh-profile.js';
 
 /** setup 部署结果 */
 export interface SetupResult {
@@ -24,10 +25,25 @@ export interface SetupResult {
   updated: string[];
   skipped: string[];
   appended: string[];
+  /** DSH profile 部署结果（仅 `--tools dsh` 时出现；不进入全局资产 hash/update_state） */
+  dsh?: {
+    home: string;
+    adapterDir: string;
+    profiles: DshProfileResult[];
+  };
+}
+
+/** `--tools dsh` 的额外选项 */
+export interface SetupOptions {
+  dshProfile?: string;
 }
 
 /** 纯全局部署（首次全量，幂等）；不建立项目 .openfeel/；按 tools 门控分支（默认仅 opencode） */
-export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN', tools: string[] = ['opencode']): SetupResult {
+export function setupGlobalFramework(
+  lang: 'zh-CN' | 'en' = 'zh-CN',
+  tools: string[] = ['opencode'],
+  options: SetupOptions = {},
+): SetupResult {
   const created: string[] = [];
   const updated: string[] = [];
   const skipped: string[] = [];
@@ -38,6 +54,11 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN', tools: stri
     else if (action === 'skipped') skipped.push(path);
     else appended.push(path);
   };
+
+  // DSH 预检必须先于任何写盘（含 opencode/claude 分支）：profile/结构/adapter 校验
+  const dshPlan = tools.includes('dsh')
+    ? planDshDeployment({ dshProfile: options.dshProfile })
+    : undefined;
 
   const globalState: UpdateState = loadGlobalUpdateState() ?? createGlobalUpdateState({});
 
@@ -131,14 +152,25 @@ export function setupGlobalFramework(lang: 'zh-CN' | 'en' = 'zh-CN', tools: stri
     push(applyClaudeSettings(globalState, 'setup', lang), settingsPath);
   }
 
-  // 5. 写盘全局 state + 记录已部署 hash
-  for (const p of [...created, ...updated, ...appended]) {
-    if (existsSync(p)) updateFileHash(globalState, p, readFileSync(p, 'utf-8'));
+  // DSH 分支：锁外备份 + 锁内重读/合并/按需写 + 解锁后 install（fail-fast）
+  let dsh: SetupResult['dsh'];
+  if (dshPlan !== undefined) {
+    const profiles = applyDshDeployment(dshPlan);
+    // REV-003：DSH profile 不属于受管全局资产，只放 result.dsh，不进入 created/updated/skipped
+    dsh = { home: dshPlan.home, adapterDir: dshPlan.adapterDir, profiles };
   }
-  globalState.last_update = new Date().toISOString();
-  // stage-66/D-A：部署完成即刷新「已部署版本」事实源（每次 setup 刷新，语义=当前已部署全局资产的版本）
-  globalState.openfeel_version = getOpenfeelVersion();
-  saveGlobalUpdateState(globalState);
 
-  return { created, updated, skipped, appended };
+  // 5. 写盘全局 state + 记录已部署 hash（N3：纯 dsh 不刷新全局部署版本事实）
+  const touchesGlobalAssets = tools.includes('opencode') || tools.includes('claude');
+  if (touchesGlobalAssets) {
+    for (const p of [...created, ...updated, ...appended]) {
+      if (existsSync(p)) updateFileHash(globalState, p, readFileSync(p, 'utf-8'));
+    }
+    globalState.last_update = new Date().toISOString();
+    // stage-66/D-A：部署完成即刷新「已部署版本」事实源（每次 setup 刷新，语义=当前已部署全局资产的版本）
+    globalState.openfeel_version = getOpenfeelVersion();
+    saveGlobalUpdateState(globalState);
+  }
+
+  return { created, updated, skipped, appended, ...(dsh === undefined ? {} : { dsh }) };
 }

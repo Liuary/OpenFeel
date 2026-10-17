@@ -38,4 +38,33 @@ describe('发布元数据（stage-49 B3/B4）', () => {
     const mod = await import(pathToFileURL(distPath).href);
     expect('VERSION' in mod).toBe(false);
   });
+
+  // ── v1.3.0-stage-101：单包分发 DSH 适配器 ─────────────────────────
+
+  it('v1.3.0：files 含 dsh 运行文件与 ADAPTER.md', () => {
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8')) as { files: string[] };
+    for (const entry of [
+      'dsh/lib',
+      'dsh/cordis.patch.yml',
+      'dsh/package.json',
+      'dsh/README.md',
+      'dsh/ADAPTER.md',
+      'dsh/docs',
+    ]) {
+      expect(pkg.files).toContain(entry);
+    }
+    expect(pkg.files).not.toContain('dsh/test');
+  });
+
+  it('v1.3.0：dsh/package.json 与根版本 lockstep，requiresCli 同步，仍 private', () => {
+    const rootPkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8')) as { version: string };
+    const dshPkg = JSON.parse(readFileSync(join(ROOT, 'dsh', 'package.json'), 'utf-8')) as {
+      version: string;
+      private: boolean;
+      openfeel: { requiresCli: string };
+    };
+    expect(dshPkg.version).toBe(rootPkg.version);
+    expect(dshPkg.private).toBe(true);
+    expect(dshPkg.openfeel.requiresCli).toBe(`>=${rootPkg.version}`);
+  });
 });

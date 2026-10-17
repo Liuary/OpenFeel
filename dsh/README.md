@@ -7,7 +7,7 @@
 
 - 适配器位置：**本目录** = OpenFeel 仓库的 `dsh/`（与 `claude/`、`kilo/`、`.opencode/` 同级的
   一等适配器）。`OpenFeel-DSH/plugin` 是指向本目录的目录联接。
-- 权威契约：[`../docs/json-contract.md`](../docs/json-contract.md)（33 个成功 `--json` 出口冻结表）
+- 权威契约：[`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md)（40 个成功 `--json` 出口冻结表）
 - 宿主：DSH `0.2.0-rc.2`，profile `web` / `desktop`
 
 ---
@@ -28,18 +28,29 @@
 
 ## 2. 安装
 
-作为 **DSH bundle** 安装（本地路径，适合开发）：
+**方式 0（推荐，单包）**：适配器已随 `openfeel` npm 包分发（`openfeel` ≥ 1.3.0），无需单独安装本目录：
+
+```bash
+npm i -g openfeel@latest     # 1. 安装/升级（包内已含 dsh/）
+openfeel setup --tools dsh   # 2. 写入 DSH profile + 按需 pnpm install（可 --dsh-profile web）
+# 3. 重启 DSH 宿主
+```
+
+`setup --tools dsh` 会写入 `<DSH_HOME>/profiles/<name>/package.json` 的
+`dependencies["openfeel-dsh"] = "link:<openfeelRoot>/dsh"` 与 `dsh.profile.bundles`；
+写前备份、幂等重跑、失败回滚。`openfeel update --tools dsh` 不适用（DSH 是全局部署）。
+
+**方式 A（开发态）**：把本目录链接进 profile（改动重启即生效）：
 
 ```powershell
-# 方式 A：把本目录链接进 profile（推荐开发用；改动重启即生效）
-#   在 C:\Users\Liuary\.dsh\profiles\web\package.json
-#   dependencies 加入：  "openfeel-dsh": "link:C:/Users/Liuary/Dev/Mine/AI/OpenFeel-DSH/plugin"
+#   在 %USERPROFILE%\.dsh\profiles\web\package.json
+#   dependencies 加入：  "openfeel-dsh": "link:<repo>/dsh"
 #   dsh.profile.bundles 加入：  "openfeel-dsh"
 #   然后：
 pnpm install --prefer-offline
 
 # 方式 B：经插件管理器安装（file: 拷贝，改代码后需重装）
-#   plugin_manager install_bundle  →  file:C:\Users\Liuary\Dev\Mine\AI\OpenFeel-DSH\plugin
+#   plugin_manager install_bundle  →  file:<repo>\dsh
 ```
 
 **前置条件**：已安装 OpenFeel CLI（`npm install -g openfeel`，`openfeel --version` 可用）。
@@ -182,7 +193,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 ```powershell
 cd plugin
 node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（42 项）
-node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（56 项）
+node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（77 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（10 项）
 ```
 
@@ -206,7 +217,7 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 │   ├── index.js           # 插件入口：name / inject / apply / normalizeConfig
 │   ├── adapters/
 │   │   ├── cli.js         # CLI 执行器：可执行文件解析、UTF-8/无色/无日志、退出码语义
-│   │   ├── workspace.js   # 会话工作区 → OpenFeel 项目根（向上回溯 .openfeel/）
+│   │   ├── workspace.js   # 会话工作区 = 项目根（与 CLI 一致，**不回溯**）
 │   │   └── dashboard.js   # 状态快照 + 「下一步」决策（消费 flow next/status，无相位→Agent 本地镜像）
 │   ├── tools/
 │   │   ├── index.js       # 13 个工具定义与 CLI argv 翻译
@@ -230,19 +241,24 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 
 1. **改代码需重启宿主**：Loader 按 URL 缓存 ESM 模块；`set_bundle enable` 不会重新导入。
    用 `link:` 依赖可避免每次重装，但仍需重启。
-2. **未初始化工作区**：会话工作区不含 `.openfeel/` 时（向上回溯也找不到），工具返回
-   `refusal` 并提示 `openfeel init`。上溯会命中祖先目录的 `.openfeel/`（monorepo 友好），
-   因此「家目录有 `.openfeel/`」时子目录会被视为同一项目。
-3. **CLI 契约（v1.2.3）**：`flow next --json` 提供调度决策；`flow status --json` 的
+2. **项目解析与 CLI 一致，不回溯**：会话工作区**本身**即项目根（`openfeel flow status`
+   在深层子目录返回空态可证 CLI 从不回溯）。判定项目以 `.openfeel/flow.json` 或
+   `config.yaml` 为标记；`~/.openfeel/`（`openfeel setup` 的**全局家目录**）不含这些标记，
+   因此不会被误判为项目。未命中项目时工具返回 `refusal` 并提示 `openfeel init`，
+   提示段则**完全不注入**。
+   > 若需要 monorepo（子目录里工作），那应作为 OpenFeel CLI 的能力
+   > （如 `openfeel project resolve --json`）由各适配器共享，而不是每个 harness 各写一套回溯。
+3. **CLI 契约（v1.3.0）**：`flow next --json` 提供调度决策；`flow status --json` 的
    `stages[]` 已含 `workflowMode` / `requirementId` / `reviewTier` / `effectiveReviewTier` /
    `opsSummary`；`--json` 失败输出 envelope（`error.code` / `kind` / `detail`）为分类权威；
-   `flow advance --json` 仅用于失败 envelope。详见
-   [更新说明](<../docs/OPENFEEL-1.2.3-UPDATE.md>)。
-4. **仍有 6 个命令面不支持 `--json`**（实测：传 `--json` 被 `INVALID_ARGUMENT` 拒绝）：
-   `plan stage list`、`flow retry`、`model list|get`、`lint`、`roadmap show`。适配器对这些
-   保留人类文本回显。当前有 **24 处 `--json` 调用 / 8 处文本回显**（含 `instructions` 的
-   XML 默认形态）。缺口清单见
-   [CLI 需求单 §复核结论](<../docs/CLI-REQUIREMENTS.md>)。
-5. **超时**：默认单次 120s。超大 `flow.json`（数百 KB）的 `flow status` 可能接近上限。
-6. **不替代 agent 委派**：`feel_next` 给出负责 Agent 与 `[HANDOFF: agent]` 标记，实际派发
+   `flow advance --json` 仅用于失败 envelope。v1.2.4 起共 **40 个成功 `--json` 出口**，
+   适配器消费其中 **32 处**。详见 [操作指南](https://github.com/Liuary/OpenFeel/blob/master/dsh/ACTION-GUIDE.md) 与
+   [更新说明](https://github.com/Liuary/OpenFeel/blob/master/docs/dsh-cli-requirements-supplement-1.2.3.md)。
+4. **读命令已全面结构化**：v1.2.4 补齐了 `plan stage list` / `model list|get` / `flow retry` /
+   `lint` / `roadmap show` / `config get --all`，适配器文本回显降到 **1 处**
+   （仅 `instructions` 的 XML 默认形态）。`--json` 调用点 **32** 处。
+5. **`stage_summary` 默认拒绝覆盖**：v1.2.4 起 `archive <stage>` 对已存在的归档文件返回
+   `ARCHIVE_EXISTS`（refusal）且零写盘；确需覆盖须传 `force=true`，会冲掉人工整理的摘要。
+6. **超时**：默认单次 120s。超大 `flow.json`（数百 KB）的 `flow status` 可能接近上限。
+7. **不替代 agent 委派**：`feel_next` 给出负责 Agent 与 `[HANDOFF: agent]` 标记，实际派发
    由 DSH 的 `subagent` / `workflow` 完成——DSH 没有 OpenFeel 的 `Task` 语义。

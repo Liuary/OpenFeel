@@ -2,6 +2,27 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+> 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
+
+## [1.3.0] - 2026-10-17
+
+> 次版本（Minor）：**DSH 适配器单包分发 + `setup --tools dsh` + README 重构**。`openfeel` npm 包内置 `dsh/` 运行文件；`update --tools dsh` 明确拒绝；修复适配器 6 处位置参数空值；JSON 契约保持 **40 成功出口 / 41 注册选项 / 13 错误码**，退出码语义不变。
+
+### Added
+- [stage-101] **`openfeel setup --tools dsh [--dsh-profile <name>]`**：把 `<openfeelRoot>/dsh` 以 `link:` 依赖写入 DSH profile 的 `package.json`、追加 `dsh.profile.bundles`、按需执行 `pnpm install`，并提示重启 DSH 宿主。默认部署全部已检测 profile；`--dsh-profile` 可窄化；写前备份、幂等重跑、失败回滚。
+- [stage-101] **单包分发**：根 `package.json.files` 纳入 `dsh/lib`、`dsh/cordis.patch.yml`、`dsh/package.json`、`dsh/README.md`、`dsh/ADAPTER.md`、`dsh/docs`；不发布独立 `openfeel-dsh` 包。
+- [stage-101] **README 推荐用法**：新增「需求驱动 + 快速迭代（fast）」章节（`req add/claim` → fast 阶段 → `flow next`），三语 README 同步。
+- [stage-101] **`docs/VERSIONS.md`**：面向用户的版本能力概览（中文主文件 + English highlights），README 仅保留索引。
+
+### Changed
+- [stage-101] **README 瘦身**：v1.1.2~v1.2.4 版本能力章节迁出至 `docs/VERSIONS.md`；三份 README 顶部新增 VERSIONS / CHANGELOG 索引行与 DSH harness 标识。
+- [stage-101] **`openfeel update --tools dsh` 拒绝**：DSH 是全局部署，命令层在 auto-init / 写盘前 exit 1 并指引 `setup`；`supportedTools` 增加 `dsh` 条目（`enabled=false`、`projectDeployable=false`）。
+- [stage-101] **`dsh/package.json`**：version 与根包 lockstep（1.3.0），`requiresCli: ">=1.3.0"`；仍 `private: true`。
+- [stage-101] **DSH 适配器既有修复纳入本版**：工作区解析不回溯、提示段经 `agents.currentInitiator()` 取会话 cwd、7 处文本回显改 `--json`、`ARCHIVE_EXISTS` 语义适配、`config get --all` 调用面。
+
+### Fixed
+- [stage-101] **适配器位置参数空值（6 处）**：`pushOption(argv, '', value)` 会把空字符串当作 flag 推入 argv，导致 Commander 多收一个空位置参数（实测 `feel_op create` 报 `too many arguments`）。新增 `pushPositional` 并替换 `feel_op create/register`、`feel_checkpoint list`、`feel_verify config_effective`、`feel_plan scheme_list/roadmap_show`；补真实 CLI 断言与 CI 语法检查。
+
 ## [1.2.4] - 2026-10-17
 
 > 补丁版本（Patch）：**DSH ACTION-GUIDE A1~A5 收口**。完成 1 项数据安全修复（A1）+ 7 个新增 `--json` 命令面（A2~A4）+ 1 项既有出口扩展（A5）；JSON 契约升级为 **40 成功出口 / 41 注册选项**；退出码 0/1/2/3 语义与 phase 枚举/转移表不变；**不修改 `dsh/`**。

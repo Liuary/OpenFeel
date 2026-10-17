@@ -9,7 +9,7 @@
  * 用法：node test/verify.js [--keep]
  */
 
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -108,7 +108,14 @@ function mockContext(cwd) {
   /** @type {string[]} */
   const logs = [];
 
+  // 提示段在装配期没有 cwd 入参（AssembleContext = { scope?, signal? }），
+  // 只能经 agents.currentInitiator() 反查会话。这里给一个最小替身。
+  const agent = { session: { header: { cwd } } };
+  const services = new Map([['agents', { currentInitiator: () => agent }]]);
+
   const ctx = {
+    /** @param {string} name */
+    get: (name) => services.get(name),
     logger: () => ({
       info: (/** @type {string} */ message) => logs.push(`INFO ${message}`),
       warn: (/** @type {string} */ message) => logs.push(`WARN ${message}`),
@@ -143,7 +150,7 @@ function mockContext(cwd) {
     },
   };
 
-  return { ctx, tools, commands, sections, logs, cwd };
+  return { ctx, tools, commands, sections, logs, cwd, services };
 }
 
 /**
@@ -222,6 +229,8 @@ async function main() {
   // 2) 只读工具（打真实项目，只读安全）
   process.stdout.write('\n[2] 只读工具 — 真实项目快照\n');
   const realExec = execFor(SOURCE_PROJECT);
+  const fixtureStage = ok(await workspace.tools.get('feel_stage').execute({ action: 'list' }, realExec)).stages[0]?.id;
+  assertString(fixtureStage, '需要至少一个阶段用于适配器验证');
   const status = workspace.tools.get('feel_status');
 
   let snapshot;
@@ -387,6 +396,33 @@ async function main() {
     assert(data !== null, '应返回数据');
   });
 
+  await check('feel_op action=retry 返回重试状态（JSON，v1.2.4 出口）', async () => {
+    // 从真实 op 列表里取一个合法 op id，避免用假 id 触发 INVALID_ARGUMENT。
+    const listResult = await workspace.tools.get('feel_op').execute({ action: 'list' }, realExec);
+    const listed = ok(listResult);
+    const ops = Array.isArray(listed?.ops) ? listed.ops : [];
+    assert(ops.length > 0, '应至少有一个 op');
+    const op = ops[0];
+    const opId = `${op.stage}.${op.opId}`;
+    const result = await workspace.tools.get('feel_op').execute({ action: 'retry', op: opId }, realExec);
+    const data = ok(result);
+    assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
+    assert(data.op === opId, `op 应回显 ${opId}，实际 ${data.op}`);
+    assert(typeof data.attempts === 'number', 'attempts 应为数字');
+    assert(typeof data.maxAttempts === 'number', 'maxAttempts 应为数字');
+    assert(typeof data.exhausted === 'boolean', 'exhausted 应为布尔');
+    assertString(data.state, 'state 为空');
+  });
+
+  await check('feel_checkpoint action=list 带 stage 位置参数（v1.3.0 pushPositional）', async () => {
+    const result = await workspace.tools
+      .get('feel_checkpoint')
+      .execute({ action: 'list', stage: fixtureStage }, realExec);
+    const data = ok(result);
+    assert(data.stage === fixtureStage, `stage 应回显，实际 ${JSON.stringify(data.stage)}`);
+    assert(Array.isArray(data.checkpoints), 'checkpoints 应为数组');
+  });
+
   await check('feel_review action=list 返回条目（JSON）', async () => {
     const result = await workspace.tools.get('feel_review').execute({ action: 'list' }, realExec);
     const data = ok(result);
@@ -394,10 +430,18 @@ async function main() {
     assert(typeof data === 'object' && data !== null, '结果应为对象');
   });
 
-  await check('feel_stage action=list 返回阶段（文本，CLI 尚无 --json）', async () => {
+  await check('feel_stage action=list 返回阶段（JSON，v1.2.4 出口）', async () => {
     const result = await workspace.tools.get('feel_stage').execute({ action: 'list' }, realExec);
     const data = ok(result);
-    assertString(data.output, 'output 为空');
+    assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
+    assert(Array.isArray(data.stages), 'stages 应为数组');
+    assert(typeof data.count === 'number', 'count 应为数字');
+    assert(data.stages.length === data.count, `stages 长度应等于 count（${data.stages.length} vs ${data.count}）`);
+    const first = data.stages[0];
+    assert(first !== undefined, '应至少有一个阶段');
+    for (const key of ['id', 'phase', 'status']) {
+      assert(first[key] !== undefined, `阶段对象缺字段 ${key}`);
+    }
   });
 
   await check('feel_stage action=status 返回阶段状态（JSON）', async () => {
@@ -406,16 +450,108 @@ async function main() {
     assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
   });
 
-  await check('feel_plan action=stage_list 返回阶段', async () => {
+  await check('feel_plan action=stage_list 返回阶段（JSON，v1.2.4 出口）', async () => {
     const result = await workspace.tools.get('feel_plan').execute({ action: 'stage_list' }, realExec);
     const data = ok(result);
-    assertString(data.output, 'output 为空');
+    assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
+    assert(Array.isArray(data.stages), 'stages 应为数组');
   });
 
-  await check('feel_model action=list 返回模型', async () => {
+  await check('feel_plan action=scheme_list 带 stage 位置参数（v1.3.0 pushPositional）', async () => {
+    const result = await workspace.tools
+      .get('feel_plan')
+      .execute({ action: 'scheme_list', stage: fixtureStage }, realExec);
+    const data = ok(result);
+    assert(data.stage === fixtureStage, `stage 应回显，实际 ${JSON.stringify(data.stage)}`);
+    assert(Array.isArray(data.schemes), 'schemes 应为数组');
+  });
+
+  await check('feel_plan action=roadmap_show 带 version 位置参数（v1.3.0 pushPositional）', async () => {
+    const result = await workspace.tools
+      .get('feel_plan')
+      .execute({ action: 'roadmap_show', version: '1.2.4' }, realExec);
+    const data = ok(result);
+    assert(data.version === '1.2.4', `version 应为 1.2.4，实际 ${JSON.stringify(data.version)}`);
+    assert(Array.isArray(data.milestones) && data.milestones.length > 0, 'milestones 不应为空');
+  });
+
+  await check('feel_verify action=config_effective 带 key 位置参数（v1.3.0 pushPositional）', async () => {
+    const result = await workspace.tools
+      .get('feel_verify')
+      .execute({ action: 'config_effective', key: 'workflow_mode' }, realExec);
+    const data = ok(result);
+    assert(data.key === 'workflow_mode', `key 应回显 workflow_mode，实际 ${JSON.stringify(data.key)}`);
+    assertString(String(data.value), 'value 为空');
+    assertString(data.source, 'source 为空');
+  });
+
+  await check('feel_model action=list 返回模型（JSON，v1.2.4 出口）', async () => {
     const result = await workspace.tools.get('feel_model').execute({ action: 'list' }, realExec);
     const data = ok(result);
-    assertString(data.output, 'output 为空');
+    assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
+    assert(Array.isArray(data.agents), 'agents 应为数组');
+    assert(data.agents.length > 0, 'agents 不应为空');
+    // scope 为 null 表示「未指定层级 → 展示生效值」，不是缺失。
+    assert(data.scope === null || typeof data.scope === 'string', `scope 应为 null 或字符串，实际 ${JSON.stringify(data.scope)}`);
+    for (const item of data.agents) {
+      assert(typeof item.agent === 'string' && item.agent !== '', '每个 agent 应有非空 agent 字段');
+      assert(Object.hasOwn(item, 'model'), '每个 agent 应带 model 字段（可为 null）');
+    }
+  });
+
+  await check('feel_model action=get 返回单 agent（JSON，v1.2.4 出口）', async () => {
+    const result = await workspace.tools
+      .get('feel_model')
+      .execute({ action: 'get', agent: 'openfeel-executor' }, realExec);
+    const data = ok(result);
+    assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
+    assert(data.agent === 'openfeel-executor', `agent 应为 openfeel-executor，实际 ${data.agent}`);
+    assertString(data.model, 'model 为空');
+    assertString(data.provider, 'provider 为空');
+    assertString(data.source, 'source 为空');
+    assert(result.summary.includes('openfeel-executor'), 'summary 应包含 agent 名');
+  });
+
+  await check('feel_model action=get 未配置 agent 时 model 为 null', async () => {
+    const result = await workspace.tools.get('feel_model').execute({ action: 'get', agent: 'feel' }, realExec);
+    const data = ok(result);
+    assert(data.model === null, `未配置 agent 的 model 应为 null，实际 ${JSON.stringify(data.model)}`);
+    assert(result.summary.includes('未配置'), 'summary 应说明未配置');
+  });
+
+  await check('feel_plan action=roadmap_show 空态语义（JSON，v1.2.4 出口）', async () => {
+    const result = await workspace.tools.get('feel_plan').execute({ action: 'roadmap_show' }, realExec);
+    const data = ok(result);
+    assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
+    assert(data.version === null, '未传版本时 version 应为 null（不自动发现）');
+    assert(Array.isArray(data.milestones) && data.milestones.length === 0, '空态 milestones 应为 []');
+    assert(result.summary.includes('不自动发现'), 'summary 应提示需显式传版本');
+  });
+
+  await check('feel_verify action=lint 返回结构化结果（JSON，v1.2.4 出口）', async () => {
+    const result = await workspace.tools.get('feel_verify').execute({ action: 'lint', target: 'kb' }, realExec);
+    const data = ok(result);
+    assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
+    assert(data.target === 'kb', `target 应为 kb，实际 ${data.target}`);
+    assert(typeof data.ok === 'boolean', 'ok 应为布尔');
+    assert(Array.isArray(data.issues), 'issues 应为数组');
+  });
+
+  await check('feel_verify action=config_get 无 key 走 --all（JSON，v1.2.4 出口）', async () => {
+    const result = await workspace.tools.get('feel_verify').execute({ action: 'config_get' }, realExec);
+    const data = ok(result);
+    assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
+    assert(data.scope === 'project', `scope 应为 project，实际 ${data.scope}`);
+    assert(data.defaults !== null && typeof data.defaults === 'object', 'defaults 应为对象');
+  });
+
+  await check('feel_verify action=config_get 有 key 保持原行为', async () => {
+    const result = await workspace.tools
+      .get('feel_verify')
+      .execute({ action: 'config_get', key: 'defaults.workflow_mode' }, realExec);
+    const data = ok(result);
+    assert(data.key === 'defaults.workflow_mode', `key 应回显，实际 ${data.key}`);
+    assertString(String(data.value), 'value 为空');
   });
 
   // 3) /feel 命令
@@ -467,6 +603,20 @@ async function main() {
 
   const tempExec = execFor(tempProject);
   const modeBefore = readFileSync(join(tempProject, '.openfeel', 'flow.json'), 'utf8').match(/"revision":\s*(\d+)/)?.[1];
+
+  // 写操作测试必须先于任何「原项目未被修改」断言，且只能打副本。
+  await check('feel_op action=create 位置参数无空参（v1.3.0 pushPositional，副本）', async () => {
+    const result = await workspace.tools
+      .get('feel_op')
+      .execute({ action: 'create', stage: fixtureStage, title: 'verify create' }, tempExec);
+    ok(result);
+    const listed = ok(await workspace.tools.get('feel_op').execute({ action: 'list' }, tempExec));
+    const ops = Array.isArray(listed?.ops) ? listed.ops : [];
+    assert(
+      ops.some((op) => op.stage === fixtureStage && op.title === 'verify create'),
+      'verify create 应已创建（否则说明空位置参数导致 create 失败）',
+    );
+  });
 
   await check('feel_req action=add 创建需求', async () => {
     const result = await workspace.tools.get('feel_req').execute(
@@ -556,22 +706,63 @@ async function main() {
     assert(original === modeBefore, `原项目 revision 被改动：${modeBefore} → ${original}`);
   });
 
-  // 出口 #33（archive <stage> --json）是**写命令**，且会覆盖既有归档摘要：
-  // 只允许打在副本上，绝不能对真实仓库执行（见需求单 P1-5）。
-  await check('feel_archive action=stage_summary 走 #33 JSON 出口（副本）', async () => {
+  // 出口 #33（archive <stage> --json）是**写命令**：只允许打在副本上。
+  // v1.2.4 起 CLI 拒绝覆盖已存在的归档文件（ARCHIVE_EXISTS，零写盘）。
+  // fixture 用当前活跃阶段（动态取 feel_stage list 首项；版本归档后仍可用）。
+  const archivedStage = fixtureStage;
+  const archiveMdPath = join(tempProject, '.openfeel', 'log', `archive-${archivedStage}.md`);
+  const flowJsonPath = join(tempProject, '.openfeel', 'flow.json');
+  if (!existsSync(archiveMdPath)) {
+    writeFileSync(
+      archiveMdPath,
+      `# synthetic archive fixture — ${archivedStage}\n\n`
+        + Array.from({ length: 120 }, (_, i) => `- synthetic line ${i + 1}`).join('\n')
+        + '\n',
+      'utf8',
+    );
+  }
+
+  await check('A1: 归档文件已存在时拒绝覆盖且零写盘（副本）', async () => {
+    const mdBefore = readFileSync(archiveMdPath, 'utf8');
+    const revBefore = readFileSync(flowJsonPath, 'utf8').match(/"revision":\s*(\d+)/)?.[1];
+    let rejected;
+    try {
+      await workspace.tools.get('feel_archive').execute({ action: 'stage_summary', stage: archivedStage }, tempExec);
+    } catch (error) {
+      rejected = error;
+    }
+    assert(rejected !== undefined, '应拒绝覆盖已存在的归档');
+    assert(rejected.code === 'ARCHIVE_EXISTS', `code 应为 ARCHIVE_EXISTS，实际 ${rejected.code}`);
+    assert(rejected.kind === 'refusal', `kind 应为 refusal，实际 ${rejected.kind}`);
+    assert(rejected.message.includes('force=true'), '拒绝消息应指引 force=true');
+    // 四重零写盘：md 内容、revision、log 长度、md 行数
+    assert(readFileSync(archiveMdPath, 'utf8') === mdBefore, '归档 md 内容被改动');
+    const revAfter = readFileSync(flowJsonPath, 'utf8').match(/"revision":\s*(\d+)/)?.[1];
+    assert(revAfter === revBefore, `revision 被改动：${revBefore} → ${revAfter}`);
+    assert(mdBefore.split('\n').length > 100, `归档 md 行数异常：${mdBefore.split('\n').length}`);
+  });
+
+  await check('A1: force=true 显式覆盖并返回 #33 六键文档（副本）', async () => {
     const result = await workspace.tools
       .get('feel_archive')
-      .execute({ action: 'stage_summary', stage: 'v1.2.0-stage-78' }, tempExec);
-    const data = ok(result, 'stage_summary');
+      .execute({ action: 'stage_summary', stage: archivedStage, force: true }, tempExec);
+    const data = ok(result, 'stage_summary force');
     assert(data.schemaVersion === 1, 'schemaVersion 应为 1');
-    assert(data.stage === 'v1.2.0-stage-78', `stage 应为 v1.2.0-stage-78，实际 ${data.stage}`);
+    assert(data.stage === archivedStage, `stage 应为 ${archivedStage}，实际 ${data.stage}`);
     assert(typeof data.opsCount === 'number', 'opsCount 应为数字');
     assert(typeof data.reviewsCount === 'number', 'reviewsCount 应为数字');
+    assert(Array.isArray(data.knowledgeExtracts), 'knowledgeExtracts 应为数组');
     assertString(data.archivePath, 'archivePath 为空');
-    assert(result.summary.includes('覆盖写入'), 'summary 应提示覆盖写入风险');
+    assert(result.summary.includes('覆盖重写'), 'force 成功时 summary 应标明覆盖重写');
+    // 覆盖确实生效：md 被重写
+    assert(readFileSync(archiveMdPath, 'utf8').split('\n').length < 100, '覆盖后 md 应被重写为存根');
   });
+
   await check('原项目归档摘要未被触碰', () => {
-    const original = readFileSync(join(SOURCE_PROJECT, '.openfeel', 'log', 'archive-v1.2.0-stage-78.md'), 'utf8');
+    // 用一份确定存在且 >100 行的原项目历史摘要做只读校验（与 fixture 阶段解耦）。
+    const originalPath = join(SOURCE_PROJECT, '.openfeel', 'log', 'archive-v1.2.0-stage-78.md');
+    assert(existsSync(originalPath), '原项目归档摘要缺失');
+    const original = readFileSync(originalPath, 'utf8');
     const lineCount = original.split('\n').length;
     assert(lineCount > 100, `原项目归档摘要疑似被覆盖：仅 ${lineCount} 行`);
   });
@@ -598,13 +789,78 @@ async function main() {
     rmSync(bareRoot, { recursive: true, force: true });
   });
 
-  await check('工作区向上回溯可发现祖先 .openfeel/（monorepo 友好）', async () => {
-    // ~/.openfeel 由 `openfeel setup` 全局部署建立；从深路径向上应能定位到它。
+  // ── 项目解析：与 CLI 对齐，**不向上回溯** ─────────────────────────
+  // 依据：`openfeel flow status --json` 在深层子目录返回空态（祖先有 ~/.openfeel
+  // 也不命中）⇒ CLI 只认 cwd。若适配器自行回溯，会把全局家目录误判成项目。
+
+  await check('不回溯：深层子目录不被判定为 OpenFeel 项目', async () => {
+    const { resolveWorkspace } = await import('../lib/adapters/workspace.js');
     const deep = join(tmpdir(), 'feel-verify-deep', 'a', 'b');
-    const { findProjectRoot } = await import('../lib/adapters/workspace.js');
-    const found = findProjectRoot(deep);
-    assert(found !== undefined, '向上回溯应找到祖先 .openfeel/');
-    assert(existsSync(join(found, '.openfeel')), `回溯结果应含 .openfeel/：${found}`);
+    // 该深路径的祖先含 ~/.openfeel（全局家），但不得因此被判为项目。
+    const resolved = resolveWorkspace({ agent: { session: { header: { cwd: deep } } } });
+    assert(resolved.initialized === false, `深层子目录不应被判为项目，实际 initialized=${resolved.initialized}`);
+    assert(resolved.projectRoot === resolve(deep), `projectRoot 应等于会话 cwd，实际 ${resolved.projectRoot}`);
+  });
+
+  await check('全局家目录 ~/.openfeel 不被判定为项目', async () => {
+    const { resolveWorkspace, isGlobalHomeLike } = await import('../lib/adapters/workspace.js');
+    const home = process.env.USERPROFILE ?? process.env.HOME;
+    assert(home !== undefined, '无法取得用户主目录');
+    const resolved = resolveWorkspace({ agent: { session: { header: { cwd: home } } } });
+    assert(resolved.initialized === false, `主目录不应被判为项目，实际 initialized=${resolved.initialized}`);
+    // 主目录的 .openfeel 若存在，应被识别为「全局家目录形态」而非项目。
+    if (isGlobalHomeLike(home)) {
+      assert(resolved.initialized === false, '全局家目录形态必须判为非项目');
+    }
+  });
+
+  await check('会话 cwd 恰为项目时判定为项目', async () => {
+    const { resolveWorkspace, isProjectWorkspace } = await import('../lib/adapters/workspace.js');
+    const resolved = resolveWorkspace({ agent: { session: { header: { cwd: SOURCE_PROJECT } } } });
+    assert(resolved.initialized === true, 'OpenFeel 项目目录应判定为项目');
+    assert(resolved.projectRoot === resolve(SOURCE_PROJECT), `projectRoot 应为项目根，实际 ${resolved.projectRoot}`);
+    assert(isProjectWorkspace(SOURCE_PROJECT) === true, 'isProjectWorkspace 应返回 true');
+  });
+
+  await check('显式 project 指向全局家目录时给出专用诊断', async () => {
+    const status = workspace.tools.get('feel_status');
+    const home = process.env.USERPROFILE ?? process.env.HOME;
+    let rejected;
+    try {
+      await status.execute({ action: 'status', project: home }, execFor(SOURCE_PROJECT));
+    } catch (error) {
+      rejected = error;
+    }
+    assert(rejected !== undefined, '指向全局家目录应被拒绝');
+    assert(rejected.kind === 'usage', `应为 usage，实际 ${rejected.kind}`);
+    assert(
+      rejected.message.includes('全局配置目录') || rejected.message.includes('flow.json'),
+      `诊断应说明全局目录/缺 flow.json：${rejected.message}`,
+    );
+  });
+
+  // ── 提示段注入条件 ─────────────────────────────────────────────
+  await check('提示段：项目内返回完整 Feel 纪律', () => {
+    const text = workspace.sections[0].text();
+    assert(typeof text === 'string' && text.includes('<feel_mode>'), '项目内应注入 feel_mode');
+    assert(text.includes(SOURCE_PROJECT), `提示应包含项目根，实际未包含`);
+  });
+
+  await check('提示段：非项目目录返回空串（不注入）', async () => {
+    const { apply: applyAdapter } = await import('../lib/index.js');
+    const nonProject = mockContext(join(tmpdir(), 'feel-verify-deep', 'a', 'b'));
+    applyAdapter(nonProject.ctx, {});
+    const text = nonProject.sections[0].text();
+    assert(text === '', `非项目目录不应注入，实际: ${String(text).slice(0, 120)}`);
+  });
+
+  await check('提示段：拿不到会话 Agent 时返回空串', async () => {
+    const { apply: applyAdapter } = await import('../lib/index.js');
+    const noAgent = mockContext(SOURCE_PROJECT);
+    noAgent.services.delete('agents'); // 模拟 agents 服务未挂载
+    applyAdapter(noAgent.ctx, {});
+    const text = noAgent.sections[0].text();
+    assert(text === '', `拿不到会话时不应注入，实际: ${String(text).slice(0, 120)}`);
   });
 
   await check('缺失 CLI 给出安装指引', async () => {

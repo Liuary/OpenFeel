@@ -1,6 +1,6 @@
 ---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 `--tools claude` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 `openfeel req`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 `flow archive`：`<version>` / `list` / `show`）、v1.2.1 新增能力（需求拆分 `req split` / 三模式 `full/fast/general` / 审查档位 `--review-tier` / 通用工作者 `openfeel-explorer` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）、v1.2.4 收口（archive <stage> 覆盖保护 + --force / plan stage list·model list|get·flow retry·lint i18n|kb·roadmap show --json / config get --all / 40 成功出口·41 注册选项）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 `--tools claude` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 `openfeel req`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 `flow archive`：`<version>` / `list` / `show`）、v1.2.1 新增能力（需求拆分 `req split` / 三模式 `full/fast/general` / 审查档位 `--review-tier` / 通用工作者 `openfeel-explorer` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）、v1.2.4 收口（archive <stage> 覆盖保护 + --force / plan stage list·model list|get·flow retry·lint i18n|kb·roadmap show --json / config get --all / 40 成功出口·41 注册选项）、v1.3.0（DSH 适配器单包分发 / setup --tools dsh / README 版本能力概览迁出）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -12,7 +12,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 `openfeel-tool-usage` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
 
-> 本文档为 v1.2.4 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.3.0 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
@@ -21,8 +21,8 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | 命令 | 用途 | 关键参数 |
 |------|------|----------|
 | `openfeel init [path]` | 初始化项目工作区 | `--lang <zh-CN\|en>`、`--demo`、`--workspace-only`、`--non-interactive` |
-| `openfeel setup` | 部署全局框架配置（不建项目 `.openfeel/`）；`--check` 只读诊断全局部署一致性 | `--lang <zh-CN\|en>`、`--check [--json]`、`--tools <list>` |
-| `openfeel update [path]` | 部署适配文件到目标项目 | `--lang`、`--force`、`--tools <list>` |
+| `openfeel setup` | 部署全局框架配置（不建项目 `.openfeel/`）；`--check` 只读诊断全局部署一致性 | `--lang <zh-CN\|en>`、`--check [--json]`、`--tools <list>`、`--dsh-profile <name>`（v1.3.0） |
+| `openfeel update [path]` | 部署适配文件到目标项目 | `--lang`、`--force`、`--tools <list>`（`dsh` 不适用，v1.3.0） |
 | `openfeel migrate [path]` | Legacy 布局迁移（检测/备份/迁移/回滚） | `--dry-run`、`--remap-assignee`、`--clean-global-core-md`；`migrate rollback` |
 | `openfeel flow ...` | 流水线状态管理（含 `next` 调度决策查询） | 见下「flow 子命令」 |
 | `openfeel flow checkpoint restore` | Checkpoint 恢复（全量 / 选择性 / 预览） | `<file> [--force] [--stage <id>] [--dry-run]`（无 `--stage`=全量覆盖，最后手段；`--stage`=按阶段回退；`--dry-run`=零写盘预览） |
@@ -61,6 +61,15 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **`flow archive --dry-run --json` 判据明细 + `archive <stage> --json`（v1.2.2 起提供）**：`flow archive` 成功 9 键 / gate-rejected 9 键，含 `eligible` / `unfinishedStages[]{id,phase}` / `blockingReviews[]{id,title,priority}`；`archive <stage> --json` 输出 `archivePath` / 计数 / `knowledgeExtracts`；`--dry-run` 零写盘；与 `flow archive`（版本分片）职责分离。
 - **`reviewTier` 消歧（v1.2.2 起提供）**：`flow phases --json` / `flow status.stages[]` / `flow next` 同时给出展示值 `reviewTier`/`displayReviewTier` 与生效值 `effectiveReviewTier`（恒 `full`）。**订正**：`flow advance` 未显式传 `--review-tier` 时生效档位恒 **`full`**（不是按模式派生）；按模式派生的是 `flow phases --json.reviewTier` 展示值。源码 help 文案已于 v1.2.3 订正。
 - **兼容承诺（v1.2.2 起提供）**：既有 19 个成功出口字段零破坏（只增不改）；人类输出逐字不变；退出码 0/1/2 语义不变、3 仅新增；phase 枚举 15 项 / `advanceAccepted` / full-fast 行为不变；存量 `flow.json` 零迁移零注入；REQ-001 L80「2=内部错误或用法错误」登记为需求文本勘误（权威口径见契约 §2/§10）。
+
+## v1.3.0（stage-101）
+
+> 次版本：DSH 适配器单包分发 + `openfeel setup --tools dsh` + README 重构。JSON 契约保持 **40 成功出口 / 41 注册选项 / 13 错误码**，退出码语义不变。
+
+- **`openfeel setup --tools dsh [--dsh-profile <name>]`**：将包内 `dsh/` 以 `link:<openfeelRoot>/dsh` 写入 DSH profile（`DSH_HOME` 或 `~/.dsh`）的 `dependencies`，并追加 `dsh.profile.bundles`；依赖变化/链接无效时才执行 `pnpm install`；写前备份、幂等重跑、失败回滚。默认部署全部已检测 profile。
+- **`openfeel update --tools dsh`**：不适用（全局部署），命令层在 auto-init / 写盘前 exit 1 并指引 `setup`。
+- **错误映射**：预检 / 用法 / profile → `INVALID_ARGUMENT`（refusal/1，`detail.reason=dsh-*`）；备份 / pnpm install → `INTERNAL_ERROR`（internal/3，`dsh-backup-failed` / `dsh-pnpm-install-failed`）。不新增 CLI 错误码。
+- **单包**：不发布独立 `openfeel-dsh`；`dsh/` 随 `openfeel` npm 包分发，默认不部署。README 版本能力概览迁至 `docs/VERSIONS.md`。
 
 ## v1.2.4 收口（stage-100）
 
@@ -107,7 +116,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 ## v1.1.6 新增能力（stage-68~73）
 
-- **多 harness 并存**：`openfeel setup` / `openfeel update` 新增 `--tools <逗号列表>`（如 `opencode,claude`）；非法值 **exit 1** 前置校验零写盘；默认仅 `opencode`。
+- **多 harness 并存**：`openfeel setup` / `openfeel update` 新增 `--tools <逗号列表>`（如 `opencode,claude`）；非法值 **exit 1** 前置校验零写盘；默认仅 `opencode`。**v1.3.0**：`setup --tools dsh` 部署到 DSH profile（`--dsh-profile` 窄化）；`update --tools dsh` 拒绝。
 - **Claude Code 适配器资产**：`--tools claude` 部署 `~/.claude/`——`CLAUDE.md`（全局约束，用户已有内容 append 不覆盖）、`agents/`（**10 个**，含 `feel`）、`skills/`（**22 个**共享源）、`settings.json`（注入 `"agent":"feel"` + `"permissions":{"defaultMode":"auto"}`，用户既有键逐字保留；**无则创建、有则不覆盖**——用户主权键 `model` 不被改写）；默认零触（不带 `--tools` 时 `~/.claude/` 零变化）。
 
 ## v1.1.5 新增能力（stage-67）

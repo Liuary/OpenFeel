@@ -14,6 +14,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
+      - name: Adapter syntax check
+        run: find dsh/lib -name '*.js' -print0 | xargs -0 -n1 node --check
       - run: npm ci
       - run: npm run build
       - name: Version consistency guard

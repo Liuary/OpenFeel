@@ -163,7 +163,16 @@ async function main() {
   /** @type {any[]} */
   const logs = [];
 
+  // 提示段在装配期经 `agents.currentInitiator()` 反查会话 cwd（AssembleContext 不含 cwd）。
+  // 这里提供替身，模拟「当前会话工作区 = OpenFeel 项目」。
+  const sessionAgent = {
+    session: { header: { cwd: process.env.FEEL_TEST_PROJECT ?? 'C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel' } },
+  };
+  const services = new Map([['agents', { currentInitiator: () => sessionAgent }]]);
+
   const mountCtx = {
+    /** @param {string} name */
+    get: (name) => services.get(name),
     tools: toolsService,
     commands: serviceStub.commands,
     systemPrompt: serviceStub.systemPrompt,

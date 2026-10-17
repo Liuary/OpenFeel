@@ -5,7 +5,7 @@
 ## 命令
 
 ```bash
-node bin/openfeel.js setup [--lang <zh-CN|en>] [--tools <list>]
+node bin/openfeel.js setup [--lang <zh-CN|en>] [--tools <list>] [--dsh-profile <name>]
 node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致性（不部署）
 ```
 
@@ -18,7 +18,8 @@ node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致�
 | 选项 | 说明 |
 |------|------|
 | `--lang <lang>` | Agent 提示词语言（`zh-CN` 或 `en`），默认 `zh-CN` |
-| `--tools <list>` | 部署目标工具列表（逗号分隔，如 `opencode,claude`）；默认仅 `opencode`；**非法值报错 exit 1**（v1.1.6-stage-71） |
+| `--tools <list>` | 部署目标工具列表（逗号分隔，如 `opencode,claude,dsh`）；默认仅 `opencode`；**非法值报错 exit 1**（v1.1.6-stage-71） |
+| `--dsh-profile <name>` | 仅 `--tools dsh` 生效：只部署指定 DSH profile（缺省全部已检测 profile） |
 | `--check` | **只读**诊断全局部署版本与 CLI 版本一致性；**零写盘**、不进入部署（前置短路） |
 | `--json` | 配合 `--check`：输出单文档纯 JSON `{ schemaVersion: 1, status, cliVersion, deployedVersion }` |
 
@@ -29,6 +30,7 @@ node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致�
 - 调用 `setupGlobalFramework(deployLang, tools)`（`tools` 默认 `['opencode']`），输出创建的全局文件；末尾按 harness 组合提示重启（`setup.restartHarnessTmpl`）。
 - 与 `init` 的区别：`setup` 纯全局（跨项目框架层）；`init` 只做项目初始化（工作区 + 项目平台适配器配置文件 `opencode.jsonc`）。
 - **`--tools`（v1.1.6-stage-71）**：`parseToolList` 解析（保序去重）；非法值 → stderr 报错 **exit 1** 且**校验前置**（零写盘，不触发部署）。`setup --tools claude` → 仅部署 `~/.claude/`（CLAUDE.md + **10 agents**（v1.2.1-stage-89 由 9 翻转） + 22 skills + `settings.json` 注入，v1.1.6-stage-73）；`--tools opencode,claude` → 双 harness。**默认（不带 `--tools`）行为与改前逐字一致**（仅 opencode，`~/.claude` 零触）。
+- **`--tools dsh`（v1.3.0-stage-101）**：先对全部选中 profile 只读预检（home / 结构 / adapter），再锁外备份、锁内重读合并、按需 `pnpm install`；结果只进 `SetupResult.dsh`，不写全局 `update_state.json` 资产 hash。预检/用法类错误 → `INVALID_ARGUMENT`/exit 1；备份/安装类 → `INTERNAL_ERROR`/exit 3。成功后提示重启 DSH 宿主。`openfeel update --tools dsh` 不适用（exit 1 指引 setup）。
 
 ### `--check`（主动诊断，v1.1.5）
 
@@ -50,6 +52,7 @@ node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致�
 ```
 src/commands/setup.ts（registerSetupCommand）
   ├─（默认）src/core/setup.ts（setupGlobalFramework）
+  │    └─（--tools dsh）src/core/dsh-profile.ts（planDshDeployment / applyDshDeployment）
   └─（--check）src/core/deployment-check.ts（checkGlobalDeployment）
 ```
 

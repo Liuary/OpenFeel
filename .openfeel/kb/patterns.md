@@ -4513,3 +4513,15 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.4-stage-100 A1（`merge.ts` 检查前置 + 码表 12 → 13 行 + `archive --force`）；测试覆盖零写盘四项、别名双文件正控/负控、未归档回归与 `--force` 六键；门禁 75 文件 / 1941 用例。
 
 **参见：** `src/core/archive/merge.ts`、`src/commands/archive.ts`、`docs/json-contract.md` §3/#33、`.openfeel/manual/cli/commands.md`；kb/patterns.md #`--dry-run` 必须字节级不写盘、#破坏性命令安全校验清单、#归档引擎分层与独立锁模式；kb/troubleshooting.md #零回归取证范式
+
+## [+] [REV-001] B1 计划：profile 锁内调用 backup/appendUpdateInfo 造成嵌套全局锁，需改为锁外备份、锁内重读合并写 (2026-10-17)
+
+归档自阶段 v1.3.0-stage-101
+
+## [+] [REV-002] B2 计划：DSH_* 错误码不在 CliErrorCode 13 码表；改用 INVALID_ARGUMENT/INTERNAL_ERROR + detail.reason，避免改 JSON 契约 §3 (2026-10-17)
+
+归档自阶段 v1.3.0-stage-101
+
+## [+] [REV-003] B3 计划：DSH profile 路径进入 updated 会被 setup 写入 global update_state hash，与"不属于受管资产"矛盾；只走 SetupResult.dsh (2026-10-17)
+
+归档自阶段 v1.3.0-stage-101

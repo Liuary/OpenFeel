@@ -32,6 +32,13 @@
 |------|------|
 | [research/](research/) | 技术调研与方向分析（AI_Prompt 框架、Vibe Coding、v3 方向等） |
 
+## 版本与发布
+
+| 文件 | 内容 |
+|------|------|
+| [VERSIONS.md](VERSIONS.md) | 面向用户的版本能力概览（中文主文件 + English highlights） |
+| [../CHANGELOG.md](../CHANGELOG.md) | Keep a Changelog 逐版本明细（Added / Changed / Fixed） |
+
 ## 类别说明
 
 | 类别 | 用途 |

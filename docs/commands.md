@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.2.4 快照** | 更新日期：2026-10-17
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.3.0 快照** | 更新日期：2026-10-17
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -874,13 +874,21 @@ openfeel model list [--scope ...] [--json]
 纯全局部署（全局 `AGENTS.md` + agent + skill + 全局平台适配器配置），不建立项目 `.openfeel/`，幂等。
 
 ```bash
-openfeel setup [--lang <zh-CN|en>] [--tools <list>]   # 部署全局框架配置（幂等）
+openfeel setup [--lang <zh-CN|en>] [--tools <list>] [--dsh-profile <name>]   # 部署全局框架配置（幂等）
 openfeel setup --check [--json]                       # 只读诊断：一致退出 0，否则退出 1
 ```
 
 `--check` 只读，不执行部署；`--json` 输出 `{schemaVersion,status,cliVersion,deployedVersion}`。
 
 `--tools claude` → 部署 `~/.claude/`（CLAUDE.md + 10 agents + 22 skills + `settings.json` 注入 `agent:"feel"` 与 `permissions.defaultMode:"auto"`，用户键逐字保留；用户主权键 `model` **无则创建、有则不覆盖**）；默认仅 opencode，`~/.claude` 零触。
+
+`--tools dsh`（v1.3.0 起）→ 把 `openfeel` 包内的 `dsh/` 部署到 DSH profile：
+
+- `DSH_HOME`（env）或 `~/.dsh` 下的 `profiles/<name>/package.json`；缺省部署**全部**已检测 profile，`--dsh-profile web` 可窄化。
+- 写入 `dependencies["openfeel-dsh"] = "link:<openfeelRoot>/dsh"` + `dsh.profile.bundles += "openfeel-dsh"`；仅在依赖变化或链接无效时执行 `pnpm install --prefer-offline`（写前备份、失败回滚、幂等重跑零备份/零 pnpm）。
+- DSH profile **不进入**全局 `update_state.json` 资产 hash；纯 dsh 不刷新全局部署版本。
+- 错误：预检 / 用法 / profile 类 → `INVALID_ARGUMENT` / exit 1（`detail.reason=dsh-*`）；备份 / pnpm install → `INTERNAL_ERROR` / exit 3。均零写盘或已回滚。
+- 完成后重启 DSH 宿主（host module 不热加载）。`openfeel update --tools dsh` 不适用，会 exit 1 并指引本命令。
 
 ## migrate — 存量迁移
 
@@ -901,7 +909,7 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## JSON 出口一览（v1.2.4 快照）
+## JSON 出口一览（v1.3.0 快照，无 JSON 变更）
 
 > 计数口径：**40 个成功出口 / 41 个注册选项**；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 
@@ -949,7 +957,7 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 40 | `roadmap show` | `roadmap show [version] --json` | `schemaVersion,version,milestones` |
 | 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 40 / 41**） |
 
-> 说明：以上为 v1.2.4 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 v1.3.0 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 
@@ -962,4 +970,4 @@ openfeel update [path] [--lang <zh-CN|en>] [--force] [--tools <list>]
 | 参数 | 说明 |
 |------|------|
 | `path` | 目标项目路径，默认为当前目录 |
-| `--tools <list>` | 部署目标工具（逗号分隔，如 `opencode,claude`）；与 `setup` 共用 `parseToolList`，非法值 exit 1；默认仅默认启用工具（不带 `--tools` 时 `~/.claude/` 零触） |
+| `--tools <list>` | 部署目标工具（逗号分隔，如 `opencode,claude`）；与 `setup` 共用 `parseToolList`，非法值 exit 1；默认仅默认启用工具（不带 `--tools` 时 `~/.claude/` 零触）。**`dsh` 不适用于 update**：`--tools dsh` → exit 1（在 auto-init / 写盘前），请改用 `openfeel setup --tools dsh` |

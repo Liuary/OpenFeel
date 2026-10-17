@@ -22,6 +22,7 @@ import {
   presentCall,
   pushFlag,
   pushOption,
+  pushPositional,
   renderEnvelope,
   requireArg,
   string,
@@ -364,11 +365,10 @@ export function createTools(context) {
 
       switch (action) {
         case 'list': {
-          // 注：`openfeel plan stage list` 尚未支持 `--json`（会用 INVALID_ARGUMENT 拒绝），
-          // 因此这里保留人类文本。需求见 docs/CLI-REQUIREMENTS.md。
           return envelope(action, async () => {
-            const out = await cli.text(['plan', 'stage', 'list'], opts);
-            return { data: { output: out.text }, summary: '已列出工作阶段。' };
+            const data = await cli.json(['plan', 'stage', 'list', '--json'], opts);
+            const stages = Array.isArray(data?.stages) ? data.stages : [];
+            return { data, summary: `已列出工作阶段（${stages.length} 个）。` };
           });
         }
         case 'add': {
@@ -487,7 +487,7 @@ export function createTools(context) {
         case 'create': {
           const stage = requireArg(args, 'stage', action);
           const argv = ['plan', 'scheme', 'create', stage];
-          pushOption(argv, '', args.title);
+          pushPositional(argv, args.title);
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return { data: { stage, output: out.text }, summary: `已为 ${stage} 创建操作方案。` };
@@ -522,7 +522,7 @@ export function createTools(context) {
         case 'register': {
           const stage = requireArg(args, 'stage', action);
           const argv = ['plan', 'scheme', 'register', stage];
-          pushOption(argv, '', args.op);
+          pushPositional(argv, args.op);
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return { data: { stage, output: out.text }, summary: '文件孤儿方案已补注册。' };
@@ -538,10 +538,12 @@ export function createTools(context) {
         }
         case 'retry': {
           const op = requireArg(args, 'op', action);
-          // 注：`openfeel flow retry` 尚未支持 `--json`；保留人类文本。
           return envelope(action, async () => {
-            const out = await cli.text(['flow', 'retry', '--op', op], opts);
-            return { data: { op, output: out.text }, summary: `已查询 ${op} 重试状态。` };
+            const data = await cli.json(['flow', 'retry', '--op', op, '--json'], opts);
+            const attempts = typeof data?.attempts === 'number' ? data.attempts : 0;
+            const max = typeof data?.maxAttempts === 'number' ? data.maxAttempts : 0;
+            const exhausted = data?.exhausted === true ? '（重试次数已用尽）' : '';
+            return { data, summary: `${op} 重试状态：${data?.state ?? '?'}，${attempts}/${max}${exhausted}。` };
           });
         }
         default:
@@ -737,7 +739,7 @@ export function createTools(context) {
 
       if (action === 'list') {
         const argv = ['flow', 'checkpoint', 'list'];
-        pushOption(argv, '', args.stage);
+        pushPositional(argv, args.stage);
         argv.push('--json');
         return envelope(action, async () => {
           const data = await cli.json(argv, opts);
@@ -772,12 +774,13 @@ export function createTools(context) {
   const feelArchive = {
     name: 'feel_archive',
     description:
-      '版本管理。action=list 列出已归档版本；action=show 查看某归档版本；action=create 执行 flow.json 版本分片归档（判据门：该版本全部阶段 done **且** 无 blocking open REV；**无 force 覆盖**；归档后该版本阶段从 flow.json 移除）；action=stage_summary 是**另一个**功能（顶层 openfeel archive <stage>，生成阶段摘要到 .openfeel/log/，不动 flow.json）。',
+      '版本管理。action=list 列出已归档版本；action=show 查看某归档版本；action=create 执行 flow.json 版本分片归档（判据门：该版本全部阶段 done **且** 无 blocking open REV；**无 force 覆盖**；归档后该版本阶段从 flow.json 移除）；action=stage_summary 是**另一个**功能（顶层 openfeel archive <stage>，生成阶段摘要到 .openfeel/log/，不动 flow.json）。v1.2.4 起 stage_summary **拒绝覆盖**已存在的归档文件（`ARCHIVE_EXISTS`，零写盘）；确需覆盖须传 force=true。',
     parameters: {
       action: stringEnum(['list', 'show', 'create', 'stage_summary'], '操作。', { required: true }),
       version: string('版本号（如 v1.2.0；前缀 v 可省略）。show/create 必需。'),
       stage: string('阶段 ID（stage_summary 必需）。'),
       dry_run: boolean('create 仅预览判据与将归档内容，零写盘。'),
+      force: boolean('stage_summary 覆盖已存在的归档文件（默认拒绝；覆盖会冲掉既有摘要）。'),
       project: string('项目根目录。'),
     },
     output: { schema: envelopeSchema(), render: renderEnvelope },
@@ -816,15 +819,32 @@ export function createTools(context) {
           const stage = requireArg(args, 'stage', action);
           return envelope(action, async () => {
             // 出口 #33（json-contract §5）：archive <stage> --json。
-            // 警告：该命令会**覆盖** `.openfeel/log/archive-<stage>.md`——重跑会把既有
-            // 人工整理摘要压成自动生成的存根。摘要中明确提示，避免调用方误以为幂等。
-            const data = await cli.json(['archive', stage, '--json'], opts);
-            const ops = typeof data?.opsCount === 'number' ? data.opsCount : 0;
-            const reviews = typeof data?.reviewsCount === 'number' ? data.reviewsCount : 0;
-            return {
-              data,
-              summary: `阶段 ${stage} 摘要已归档：${ops} 个 op、${reviews} 条 REV。该归档文件为覆盖写入（重跑会冲掉既有摘要）。`,
-            };
+            // v1.2.4 起 CLI 会**拒绝覆盖**已存在的归档文件（ARCHIVE_EXISTS / refusal /
+            // 零写盘）；force=true 才显式覆盖。这里把拒绝翻译成可操作的提示，
+            // 而不是让模型盲目重试。
+            const argv = ['archive', stage, '--json'];
+            if (args.force === true) argv.push('--force');
+            try {
+              const data = await cli.json(argv, opts);
+              const ops = typeof data?.opsCount === 'number' ? data.opsCount : 0;
+              const reviews = typeof data?.reviewsCount === 'number' ? data.reviewsCount : 0;
+              return {
+                data,
+                summary: args.force === true
+                  ? `阶段 ${stage} 归档已**覆盖重写**：${ops} 个 op、${reviews} 条 REV。`
+                  : `阶段 ${stage} 摘要已归档：${ops} 个 op、${reviews} 条 REV。`,
+              };
+            } catch (error) {
+              if (error instanceof FeelError && error.code === 'ARCHIVE_EXISTS') {
+                throw new FeelError(
+                  `阶段 ${stage} 的归档文件已存在，OpenFeel 已拒绝覆盖且未写盘。\n`
+                    + '如确认要用自动生成的内容**覆盖**既有摘要（会丢失人工整理内容），请以 force=true 重试；'
+                    + '否则无需任何操作——既有归档保持不变。',
+                  { kind: 'refusal', code: 'ARCHIVE_EXISTS', detail: { ...error.detail, stage } },
+                );
+              }
+              throw error;
+            }
           });
         }
         default:
@@ -947,10 +967,11 @@ export function createTools(context) {
         }
         case 'lint': {
           const target = args.target ?? 'kb';
-          // 注：`openfeel lint` 尚未支持 `--json`；保留人类文本。
           return envelope(action, async () => {
-            const out = await cli.text(['lint', target], opts);
-            return { data: { target, output: out.text }, summary: `lint ${target} 完成。` };
+            const data = await cli.json(['lint', target, '--json'], opts);
+            const ok = data?.ok !== false;
+            const issues = Array.isArray(data?.issues) ? data.issues.length : 0;
+            return { data, summary: `lint ${target} ${ok ? '通过' : '发现问题'}（${issues} 项）。` };
           });
         }
         case 'recover':
@@ -966,17 +987,25 @@ export function createTools(context) {
             return { data, summary: '已输出项目概览。' };
           });
         case 'config_get': {
+          // v1.2.4 起 `config get` 无 key 不再报 key-required，而是 `--all` 返回全量。
+          // 有 key 时保持原行为。
           const argv = ['config', 'get'];
-          pushOption(argv, '', args.key);
-          argv.push('--json');
+          if (args.key === undefined || args.key === '') {
+            argv.push('--all', '--json');
+          } else {
+            argv.push(args.key, '--json');
+          }
           return envelope(action, async () => {
             const data = await cli.json(argv, opts);
-            return { data, summary: '已读取配置。' };
+            const summary = args.key === undefined || args.key === ''
+              ? `已读取全量配置（scope=${data?.scope ?? '?'}）。`
+              : `已读取配置 ${args.key} = ${JSON.stringify(data?.value)}（scope=${data?.scope ?? '?'}）。`;
+            return { data, summary };
           });
         }
         case 'config_effective': {
           const argv = ['config', 'effective'];
-          pushOption(argv, '', args.key);
+          pushPositional(argv, args.key);
           argv.push('--json');
           return envelope(action, async () => {
             const data = await cli.json(argv, opts);
@@ -1061,14 +1090,14 @@ export function createTools(context) {
 
       switch (action) {
         case 'stage_list':
-          // 注：`openfeel plan stage list` 尚未支持 `--json`；保留人类文本。
           return envelope(action, async () => {
-            const out = await cli.text(['plan', 'stage', 'list'], opts);
-            return { data: { output: out.text }, summary: '已列出工作阶段。' };
+            const data = await cli.json(['plan', 'stage', 'list', '--json'], opts);
+            const stages = Array.isArray(data?.stages) ? data.stages : [];
+            return { data, summary: `已列出工作阶段（${stages.length} 个）。` };
           });
         case 'scheme_list': {
           const argv = ['plan', 'scheme', 'list'];
-          pushOption(argv, '', args.stage);
+          pushPositional(argv, args.stage);
           argv.push('--json');
           return envelope(action, async () => {
             const data = await cli.json(argv, opts);
@@ -1084,11 +1113,16 @@ export function createTools(context) {
         }
         case 'roadmap_show': {
           const argv = ['roadmap', 'show'];
-          pushOption(argv, '', args.version);
-          // 注：`openfeel roadmap show` 尚未支持 `--json`；保留人类文本。
+          pushPositional(argv, args.version);
+          argv.push('--json');
           return envelope(action, async () => {
-            const out = await cli.text(argv, opts);
-            return { data: { version: args.version ?? '(all)', output: out.text }, summary: '已读取分期大纲。' };
+            const data = await cli.json(argv, opts);
+            const milestones = Array.isArray(data?.milestones) ? data.milestones.length : 0;
+            // 不传版本时 CLI 返回空态 { version: null, milestones: [] }（不自动发现版本）。
+            const summary = data?.version === null || data?.version === undefined
+              ? '未指定版本：roadmap show --json 不自动发现版本，请显式传 version。'
+              : `已读取 ${data.version} 分期大纲（${milestones} 个里程碑）。`;
+            return { data, summary };
           });
         }
         case 'instructions': {
@@ -1137,19 +1171,28 @@ export function createTools(context) {
         case 'list': {
           const argv = ['model', 'list'];
           pushOption(argv, '--scope', args.scope);
-          // 注：`openfeel model list|get` 尚未支持 `--json`；保留人类文本。
+          argv.push('--json');
           return envelope(action, async () => {
-            const out = await cli.text(argv, opts);
-            return { data: { output: out.text }, summary: '已列出 agent 模型配置。' };
+            const data = await cli.json(argv, opts);
+            const agents = Array.isArray(data?.agents) ? data.agents.length : 0;
+            // scope 为 null 表示「未指定层级 → 展示生效值」，不是缺失。
+            const scopeLabel = data?.scope === null || data?.scope === undefined
+              ? '生效值（未指定层级）'
+              : String(data.scope);
+            return { data, summary: `已列出 agent 模型配置（${agents} 个，scope=${scopeLabel}）。` };
           });
         }
         case 'get': {
           const agent = requireArg(args, 'agent', action);
           const argv = ['model', 'get', agent];
           pushOption(argv, '--scope', args.scope);
+          argv.push('--json');
           return envelope(action, async () => {
-            const out = await cli.text(argv, opts);
-            return { data: { agent, output: out.text }, summary: `已读取 ${agent} 的模型。` };
+            const data = await cli.json(argv, opts);
+            const summary = data?.model === null || data?.model === undefined
+              ? `${agent} 未配置模型（未命中任何层级）。`
+              : `${agent} 的模型：${data.model}（provider=${data.provider ?? '?'}，来源=${data.source ?? '?'}）。`;
+            return { data, summary };
           });
         }
         case 'set': {

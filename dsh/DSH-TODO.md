@@ -1,6 +1,6 @@
 # DSH 侧待办（OpenFeel v1.2.4 交接）
 
-> **状态**：OpenFeel 侧 A1~A5 已全部交付并验收（v1.2.4）。
+> **状态**：OpenFeel 侧 A1~A5 已全部交付并验收（v1.2.4）。**v1.3.0 起已被「单包分发 + `openfeel setup --tools dsh`」取代**——本文件保留为历史交接记录；安装/升级以根 README 的 DSH 节与 `setup --tools dsh` 为准。
 > **基线**：OpenFeel `1.2.4` ｜ DSH `0.2.0-rc.2`
 > **权威契约**：OpenFeel `docs/json-contract.md`
 > **补充材料**：OpenFeel `docs/dsh-cli-requirements-supplement-1.2.3.md`（内容已增量至 v1.2.4）
@@ -134,12 +134,50 @@ v1.2.2+ 起失败也输出 JSON envelope。判断「支持 `--json`」必须同�
 
 ## 8. 完成清单
 
-- [ ] 7 处 `cli.text()` → `cli.json()`（§1）
-- [ ] `feel_archive` 处理 `ARCHIVE_EXISTS` / 透传 `--force`（§2）
-- [ ] `feel_verify action=config_get` 支持无 key 全量（§3）
-- [ ] `requiresCli >= 1.2.4`（§4）
-- [ ] contract / verify / integration 全绿（§5）
-- [ ] 新增 A1~A5 出口断言（§5）
-- [ ] 文本回显 8 → 1、JSON 调用 25 → 32（§5）
-- [ ] DSH 文档同步（§6）
-- [ ] 未修改 OpenFeel 源码；`dsh/` 边界保持（§7）
+- [x] 7 处 `cli.text()` → `cli.json()`（§1）
+- [x] `feel_archive` 处理 `ARCHIVE_EXISTS` / 透传 `--force`（§2）
+- [x] `feel_verify action=config_get` 支持无 key 全量（§3）
+- [x] `requiresCli >= 1.2.4`（§4）
+- [x] contract / verify / integration 全绿（§5）
+- [x] 新增 A1~A5 出口断言（§5）
+- [x] 文本回显 8 → 1、JSON 调用 25 → 32（§5）
+- [x] DSH 文档同步（§6）
+- [x] 未修改 OpenFeel 源码；`dsh/` 边界保持（§7）
+
+---
+
+## 9. 完成记录（DSH 侧，2026-10-17）
+
+| 项 | 结果 |
+|---|---|
+| OpenFeel 版本 | 实测 `1.2.4`（`--version --json`） |
+| `--json` 调用点 | **25 → 32** |
+| 文本回显 | **8 → 1**（仅 `instructions` 的 XML 默认形态，`lib/tools/index.js` 唯一 `cli.text`） |
+| `requiresCli` | `>=1.2.4` |
+| 验证 | contract **42/42**、verify **66/66**、integration **10/10** = **118 断言** |
+
+### A1 实测取证（临时副本，未触碰真实仓库）
+
+```
+基线:  revision=1297  log=361  md=115 行  hash=112DE29A…
+无 --force → { error: { code: "ARCHIVE_EXISTS", kind: "refusal" } }  exit 1
+  零写盘校验: md 哈希相等=True  revision 不变=True  log 不变=True  md 仍 115 行
+加 --force → exit 0，六键文档；md 重写为 20 行，revision=1298
+```
+
+适配器把 `ARCHIVE_EXISTS` 翻译为可操作提示（指引 `force=true`），不盲目重试；
+`force=true` 成功时 summary 明确标注「已**覆盖重写**」。
+
+### A1~A5 新增断言覆盖
+
+`plan stage list`（2 处调用）、`model list`、`model get`（含未配置 agent 的 `model: null`）、
+`flow retry`、`lint`、`roadmap show`（空态 `version: null` 语义）、`config get --all`（含带 key 回归）、
+`archive` 三态（拒绝 / 零写盘 / force 成功）。
+
+### 遗留：线上宿主需重启
+
+Loader 按 URL 缓存 ESM 模块，`set_bundle enable=false→true` **不会**重新导入。
+实测确认：重启前本会话仍返回旧形态（`feel_model action=list` 返回 `output` 文本），
+重启后才会加载 v1.2.4 适配器。<br>
+（注：上轮「路径迁移」曾因真实路径变化意外绕过缓存，本轮回路径稳定，故需重启。）
+

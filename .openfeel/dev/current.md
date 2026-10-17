@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.2.4 — 补丁版本收官**（ACTION-GUIDE A1~A5 全部收口）｜ 归档覆盖保护（`ARCHIVE_EXISTS` + `--force` + 零写盘）｜ 剩余读命令 `--json`（plan stage list / model list|get / flow retry / lint / roadmap show）｜ `config get --all --json` ｜ **40 成功出口 / 41 注册选项** ｜ 版本 1.2.4 ｜ v1.2.2 / v1.2.3 已收官；**已 push，未 `npm publish`**
-> 统计：测试 75 文件 / **1941 用例全绿（0 skipped / 0 failed）** ｜ `lint i18n` **994** 键 ｜ `lint kb` 0 过期（归档后 649 引用）｜ **40 成功出口 / 41 注册 `--json`** ｜ **版本 1.2.4**
+> OpenFeel **v1.3.0 — DSH 适配器单包分发 + README 重构**｜ `openfeel` 内置 `dsh/`；`openfeel setup --tools dsh` 部署到 DSH profile（link + bundles + 按需 pnpm）｜ 适配器 6 处位置参数空值修复 ｜ 版本能力概览迁至 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.0 ｜ **待 push，由 CI 自动 npm publish**
+> 统计：测试 77 文件 / **1978 用例全绿（0 skipped / 0 failed）** ｜ `lint i18n` **1013** 键 ｜ `lint kb` 0 过期（649 引用）｜ **13 错误码 / 40 成功出口 / 41 注册 `--json`** ｜ **版本 1.3.0**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-17** @Liuary：**v1.3.0 单包分发 DSH 适配器 + README 重构**——① 根 `package.json.files` 纳入 `dsh/` 运行文件（含 ADAPTER.md，不含 test）；② 新增 `openfeel setup --tools dsh [--dsh-profile]`：DSH profile 预检 → 锁外备份 → 锁内重读/合并 → 按需 `pnpm install` → 失败回滚；纯 dsh 不写全局 `update_state.json`；错误映射复用 `INVALID_ARGUMENT`/1 与 `INTERNAL_ERROR`/3（不新增 13 码）；③ `update --tools dsh` 在 auto-init 前拒绝；④ 修复适配器 6 处 `pushOption('', value)` 空位置参数 → `pushPositional`；⑤ README 三语瘦身（版本能力迁至单一 `docs/VERSIONS.md`）+ DSH 安装节 + 「需求 + fast」推荐用法；⑥ 版本 1.3.0 A/B/C/D/E、`dsh/package.json` lockstep、CI 适配器 `node --check`。实现完成，待门禁/归档/发布
 
 - **2026-10-17** @Liuary：**v1.2.0 版本分片补做归档（14 个版本书账对齐）**——状态排查发现：v1.2.0 八阶段（78~85）全部 done 但从未执行 `flow archive`（10-11 批量归档 v1.0.0~v1.1.7 时 v1.2.0 未完成；10-17 补归档 v1.2.1~v1.2.4 时漏掉）。本次补做：判据满足（8 阶段全 done / 0 blocking REV）→ `.openfeel/flow-archive/v1.2.0.json`（8 stages / 0 reviews / 153 log）+ `meta.archived_versions` 追加 v1.2.0 + flow.json 阶段清空（log 361→209）；25 个 op 的 pending 记录**原样留档**（v1.2.0 期未落 `attempt_pass`，不补刷历史）。`pipeline.phase` 按活跃集重算为空集 → `active`（CLI 既有语义）。见 ADR-015
 

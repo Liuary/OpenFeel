@@ -292,6 +292,22 @@ export function pushOption(argv, flag, value, format) {
 }
 
 /**
+ * 追加一个位置参数（不是 flag；空值跳过）。
+ *
+ * 与 `pushOption(argv, '', value)` 的区别：后者会把空字符串当作 flag 推入 argv，
+ * 使 Commander 多收到一个空位置参数（实测 `feel_op create` 报
+ * `too many arguments ... Expected 2 arguments but got 3`）。
+ * @param {string[]} argv
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+export function pushPositional(argv, value) {
+  if (value === undefined || value === null || value === '') return argv;
+  argv.push(String(value));
+  return argv;
+}
+
+/**
  * 追加一个布尔开关参数。
  * @param {string[]} argv
  * @param {string} flag

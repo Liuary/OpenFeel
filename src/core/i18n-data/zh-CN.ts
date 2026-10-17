@@ -453,6 +453,7 @@ export const update: I18nDomain = {
   'claudeSettingsMergedTmpl':   { key: 'update.claudeSettingsMergedTmpl',   zh: '[update] 已合并 ~/.claude/settings.json（注入 agent:"feel" 与 permissions.defaultMode:"auto"，用户既有键已保留；原文件已备份）', en: '' },
   'claudeSettingsParseSkipTmpl':{ key: 'update.claudeSettingsParseSkipTmpl',zh: '[update] ~/.claude/settings.json 非严格 JSON（含注释或 trailing comma），跳过合并并保留原文件: {err}', en: '' },
   'claudeSettingsWriteSkipTmpl':{ key: 'update.claudeSettingsWriteSkipTmpl',zh: '[update] {err}；已跳过 ~/.claude/settings.json 写入，继续其余步骤', en: '' },
+  'dshNotAllowedTmpl':          { key: 'update.dshNotAllowedTmpl',          zh: 'update 不支持 dsh（DSH 适配器是全局部署）；请使用 openfeel setup --tools dsh。', en: '' },
 };
 
 /* ==================== project 域：项目概览命令 ==================== */
@@ -677,11 +678,12 @@ export const help: I18nDomain = {
   'init.nonInteractive':   { key: 'help.init.nonInteractive',   zh: '非交互模式（配合 --workspace-only 使用）', en: '' },
 
   // setup
-  'setup':                 { key: 'help.setup',                 zh: '部署全局 OpenFeel 框架配置（全局规则文件 + agent + skill + 平台适配器配置），不建立项目 .openfeel/；默认仅 opencode（--tools 可选 claude）', en: '' },
+  'setup':                 { key: 'help.setup',                 zh: '部署全局 OpenFeel 框架配置（全局规则文件 + agent + skill + 平台适配器配置），不建立项目 .openfeel/；默认仅 opencode（--tools 可选 claude / dsh）', en: '' },
   'setup.lang':            { key: 'help.setup.lang',            zh: 'Agent 提示词语言（zh-CN 或 en），默认 zh-CN', en: '' },
   'setup.check':           { key: 'help.setup.check',           zh: '诊断全局部署与 CLI 版本一致性（只读，不执行部署）；一致退出 0，否则退出 1', en: '' },
   'setup.json':            { key: 'help.setup.json',            zh: '以 JSON 输出诊断结果（纯 JSON 单文档，含 schemaVersion）', en: '' },
-  'setup.tools':           { key: 'help.setup.tools',           zh: '部署工具列表（逗号分隔，如 opencode,claude；默认仅 opencode；非法值报错退出 1）', en: '' },
+  'setup.tools':           { key: 'help.setup.tools',           zh: '部署工具列表（逗号分隔，如 opencode,claude,dsh；默认仅 opencode；非法值报错退出 1）', en: '' },
+  'setup.dshProfile':      { key: 'help.setup.dshProfile',      zh: 'DSH profile 名称（如 web / desktop）；缺省部署到全部已检测 profile', en: '' },
 
   // update
   'update':                { key: 'help.update',                zh: '部署 OpenFeel 适配文件到目标项目（无参数时交互式选择工具）', en: '' },
@@ -1105,6 +1107,23 @@ export const setup: I18nDomain = {
   'claudeSettingsMergedTmpl': { key: 'setup.claudeSettingsMergedTmpl', zh: '[setup] 已合并 ~/.claude/settings.json（注入 agent:"feel" 与 permissions.defaultMode:"auto"，用户既有键已保留；原文件已备份）', en: '' },
   'claudeSettingsParseSkipTmpl': { key: 'setup.claudeSettingsParseSkipTmpl', zh: '[setup] ~/.claude/settings.json 非严格 JSON（含注释或 trailing comma），跳过合并并保留原文件: {err}', en: '' },
   'claudeSettingsWriteSkipTmpl': { key: 'setup.claudeSettingsWriteSkipTmpl', zh: '[setup] {err}；已跳过 ~/.claude/settings.json 写入，继续其余步骤', en: '' },
+  'dshProfilesTmpl': { key: 'setup.dshProfilesTmpl', zh: 'DSH 适配器：{home}（{count} 个 profile）', en: '' },
+  'dshProfileUpdatedTmpl': { key: 'setup.dshProfileUpdatedTmpl', zh: '  ~ {name}：已更新 {path}（openfeel-dsh → link:{adapter}；bundles += openfeel-dsh）', en: '' },
+  'dshProfileSkippedTmpl': { key: 'setup.dshProfileSkippedTmpl', zh: '  - {name}：已是最新，跳过 {path}', en: '' },
+  'dshInstallOkTmpl': { key: 'setup.dshInstallOkTmpl', zh: '  pnpm install 完成：{path}', en: '' },
+  'dshInstallSkipTmpl': { key: 'setup.dshInstallSkipTmpl', zh: '  pnpm install 跳过：依赖未变化且链接有效', en: '' },
+  'dshMultiProfileHint': { key: 'setup.dshMultiProfileHint', zh: '检测到多个 DSH profile（{profiles}），将全部部署；可用 --dsh-profile 窄化。', en: '' },
+  'dshRestartHint': { key: 'setup.dshRestartHint', zh: '请重启 DSH 宿主以加载适配器（host module 不走热加载）。', en: '' },
+  'dshHomeMissingTmpl': { key: 'setup.dshHomeMissingTmpl', zh: '未检测到 DSH profile 目录：{dir}。请先安装/启动 DSH，或设置 DSH_HOME。', en: '' },
+  'dshProfileMissingTmpl': { key: 'setup.dshProfileMissingTmpl', zh: 'DSH profiles 目录下没有可识别 profile（需含 package.json）：{dir}。', en: '' },
+  'dshProfileUnknownTmpl': { key: 'setup.dshProfileUnknownTmpl', zh: '未找到 DSH profile「{name}」；可用：{profiles}。', en: '' },
+  'dshProfileInvalidJsonTmpl': { key: 'setup.dshProfileInvalidJsonTmpl', zh: 'DSH profile 的 package.json 不是合法 JSON：{path}（{err}）。', en: '' },
+  'dshProfileNotDshTmpl': { key: 'setup.dshProfileNotDshTmpl', zh: '{path} 不是 DSH profile（缺少 dsh 配置）；拒绝修改。', en: '' },
+  'dshProfileInvalidShapeTmpl': { key: 'setup.dshProfileInvalidShapeTmpl', zh: 'DSH profile 结构非法（{field} 类型错误）：{path}。', en: '' },
+  'dshAdapterMissingTmpl': { key: 'setup.dshAdapterMissingTmpl', zh: '当前 openfeel 安装未包含 DSH 适配器（{path}）；请升级到 ≥1.3.0 或从仓库运行。', en: '' },
+  'dshPnpmMissingTmpl': { key: 'setup.dshPnpmMissingTmpl', zh: '未找到 pnpm；请 npm i -g pnpm，或先在 {path} 手动执行 pnpm install。', en: '' },
+  'dshPnpmFailedTmpl': { key: 'setup.dshPnpmFailedTmpl', zh: 'pnpm install 失败（{path}）；已回滚 profile package.json。手动重试：cd {path} && pnpm install。', en: '' },
+  'dshBackupFailedTmpl': { key: 'setup.dshBackupFailedTmpl', zh: 'DSH profile 备份失败，已跳过写入：{path}（{err}）。', en: '' },
 };
 
 /* ==================== metrics 域：Agent 性能摘要（T15） ==================== */

@@ -135,4 +135,37 @@ describe('update 命令（stage-50 op-005 T46）', () => {
     expect(existsSync(join(homeDir, '.claude'))).toBe(false);
     expect(process.exitCode).toBeUndefined();
   });
+
+  // ── v1.3.0-stage-101：dsh 边界 ─────────────────────────────────────
+
+  it('v1.3.0 update --tools dsh → exit 1，不 auto-init、零写盘', async () => {
+    const exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    let thrown: unknown;
+    try {
+      await safeParse(['update', projDir, '--tools', 'dsh']);
+    } catch (err) {
+      thrown = err;
+    }
+    expect((thrown as Error)?.message).toBe('__EXIT__');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(existsSync(join(projDir, '.openfeel'))).toBe(false);
+    const errOut = vi.mocked(console.error).mock.calls.map((c) => String(c[0])).join('\n');
+    expect(errOut).toContain('setup --tools dsh');
+  });
+
+  it('v1.3.0 update --tools foo 的合法值列表不含 dsh', async () => {
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('__EXIT__');
+    }) as never);
+    try {
+      await safeParse(['update', projDir, '--tools', 'foo']);
+    } catch {
+      /* expected */
+    }
+    const errOut = vi.mocked(console.error).mock.calls.map((c) => String(c[0])).join('\n');
+    expect(errOut).toContain('opencode');
+    expect(errOut).not.toContain('dsh');
+  });
 });

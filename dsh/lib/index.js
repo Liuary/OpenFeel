@@ -71,6 +71,26 @@ export function normalizeConfig(raw) {
 }
 
 /**
+ * 取当前正在装配提示的会话 Agent。
+ *
+ * 提示装配期没有直接的 agent/cwd 入参，只能经 `agents.currentInitiator()`
+ * 沿进程内的驱动链反查——`dsh-tool-goal` 用的是同一手法。
+ * `agents` 未挂载或调用失败时返回 `undefined`（提示段据此放弃注入）。
+ *
+ * @param {object} ctx 插件上下文。
+ * @returns {object | undefined} 发起当前装配的 Agent。
+ */
+function currentAgent(ctx) {
+  try {
+    const agents = typeof ctx.get === 'function' ? ctx.get('agents') : undefined;
+    if (agents === undefined || typeof agents.currentInitiator !== 'function') return undefined;
+    return agents.currentInitiator();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * 插件挂载。
  *
  * @param {object} ctx Cordis 上下文（插件私域）。
@@ -121,18 +141,26 @@ export function apply(ctx, rawConfig) {
     ctx.systemPrompt.section({
       name: FEEL_PROMPT_NAME,
       order: FEEL_PROMPT_ORDER,
+      // 注意：PromptSection.text 的签名是 `(context: AssembleContext) => string`，
+      // 而 `AssembleContext = { scope?, signal? }` —— **不含 cwd**。
+      // 因此必须经 `agents.currentInitiator()` 反查会话，否则只能用宿主进程 cwd，
+      // 会把「宿主启动目录」误当会话工作区。
       text: () => {
-        // 每次装配时探测，使提示随工作区是否已初始化而准确。
-        let projectRoot;
-        let detected = false;
+        const agent = currentAgent(ctx);
+        const sessionCwd = agent?.session?.header?.cwd;
+        // 拿不到会话且没有显式 cwd 配置 → 不注入（宁可不打扰，也不给错的项目）。
+        if ((typeof sessionCwd !== 'string' || sessionCwd === '') && config.cwd === undefined) return '';
+
+        let resolved;
         try {
-          const resolved = resolveWorkspace({}, { fallback: config.cwd ?? process.cwd() });
-          projectRoot = resolved.projectRoot;
-          detected = resolved.initialized;
+          resolved = resolveWorkspace(agent === undefined ? {} : { agent }, { fallback: config.cwd });
         } catch {
-          detected = false;
+          return '';
         }
-        return renderFeelPrompt({ projectRoot, detected, language: config.language });
+        // 不回溯：只有会话工作区**本身**是 OpenFeel 项目时才注入 Feel 纪律。
+        // 否则在任意目录开会话都会被灌流程提示（这正是曾经的误报来源）。
+        if (!resolved.initialized) return '';
+        return renderFeelPrompt({ projectRoot: resolved.projectRoot, detected: true, language: config.language });
       },
     });
   }

@@ -114,3 +114,18 @@
 - **后果 / 适用边界**：`workflow_mode`（full/fast）与需求层**正交**——需求可分别由 full/fast 阶段实现。`artifact-graph`（产物图）与流水线**脱钩**，不作需求地基，仅可借其拓扑排序算法。向后兼容：新增可选字段，存量阶段 `requirement_id=null` 不破坏现有流水线；`mapPhaseToAgent` 责任派生继续服务阶段层。
 - **回滚**：尚未实施（proposed）；若实施后回滚，`git revert` 对应 commits + 移除 `req` 命令注册两行；`flow.json` 的 `requirements` 字段为空/缺失时所有既有命令行为不变。
 
+### ADR-012：v1.2.2 CLI 机器可读契约与「扩展优先」原则
+- **日期**：2026-10-17
+- **状态**：accepted（v1.2.2 四阶段 95~98 实施并验收完成）
+- **决策**：按 OpenFeel-DSH 适配器 11 项需求（P0×3 / P1×4 / P2×4）升级 CLI 契约，并确立**扩展优先原则**：
+  1. **OpenFeel 本体必须保持正常可用**；如非必要**只扩展、不修改**（新增字段/退出码/选项优先，既有语义零改动）。
+  2. **确实必须修改时，原适配必须同步跟进**——opencode / Claude Code 适配模板、`openfeel-cli-usage` skill、docs / manual / README 须在同一版本内更新，不得让既有消费者静默失效。
+  3. **退出码扩展为 0/1/2/3**：0 成功；1 预期拒绝（含门禁/相位非法/用法错误）；2 并发写冲突（既有语义不变）；3 内部错误。`kind`（refusal/internal）为分类权威，退出码为冗余信号；并发冲突 `kind=refusal`。
+  4. **legacy 错误载荷只增不改**：`{schemaVersion,error:'...'}` 末尾追加顶层 `errorKind`，`error` 恒为 string、既有键序不变；`typeof doc.error` 为双形态判别规则。
+  5. **档位只增不改**：`reviewTier` 保留为展示值，新增 `displayReviewTier` / `effectiveReviewTier`；三处输出（`flow phases` / `flow status.stages[]` / `flow next`）一致。
+  6. **全局 `--project`**：根选项 + `runCli` 预扫描 chdir 单点；`knowledge dedup` 本地 `--project` 保留（不收敛）。
+  7. **契约冻结**：`docs/json-contract.md` 为单一权威；`schemaVersion` 恒首键；成功出口 33 / 注册选项 34（v1.2.2）；`flow advance --json` 仅失败出口不计入成功出口。
+- **理由**：适配器不应镜像 Agent 编制或解析中文文本；决策权威应在 CLI；扩展优先可最大化兼容既有 OpenCode / Claude Code / DSH 消费者。备选（直接重映射退出码 / 全量改新 envelope / 收敛本地 `--project`）均破坏既有消费者，被否。
+- **后果 / 适用边界**：新增出口/字段为增量，既有行为与人类输出保持；版本收口后零业务代码改动。转出 v1.2.3：REV-95-009 并发 JSON 退出机制统一、`flow advance --help --review-tier` 文案、DSH `PHASE_AGENT` 镜像退役、锁超时 E2E 测试钩子。
+- **回滚**：`git revert` v1.2.2 四个阶段归档 commits（`25ebc4e` / `87df0b7` / `cdef4ae` / `861f0b5`）；版本号与文档载体随 revert 回退；无数据迁移、无依赖树变动。
+

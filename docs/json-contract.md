@@ -1,9 +1,9 @@
 # OpenFeel CLI JSON 输出契约（v1.2.2）
 
-- **权威范围**：`--json` 成功输出（19 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
+- **权威范围**：`--json` 成功输出（33 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
-- **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。
-- **不变量**：既有 18 个成功出口**零删除 / 零重排 / 类型零改**；只允许本文件 §6 登记的有意增量。第 19 个成功出口 `flow next` 为新增（§6.10）。
+- **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。§6 登记的是有意增量清单，未登记即视为破坏。
+- **不变量**：既有 19 个成功出口**零删除 / 零重排 / 类型零改**（本阶段新增第 20~33 个）；只允许本文件 §6 登记的有意增量。出口 #19 `flow next` 为 stage-96 新增（§6.10）。
 
 ## §1 单文档规则
 
@@ -12,6 +12,7 @@
 3. 可选字段缺省时使用 `null`；集合字段使用 `[]`；映射字段使用 `{}`；不使用 `undefined`（`JSON.stringify` 会丢键）。
 4. 既有字段只增不删、不重排、不改类型；键的语义与取值规则以本文件冻结表为准。
 5. JSON 输出与人类可读输出共享同一业务判定，禁止为 JSON 分支复制第二套来源判定。
+6. **双轨判定（stage-97 §13.6）**：成功 JSON 分支判定（`options.json`，Commander 已注册选项；直接 `parse` 与 `runCli` 两条入口均可达）与失败 envelope 判定（`isJsonMode()` 单点，由 `runCli` 预扫描置位、命令层不得自行 set）为两条授权入口；测试直接 parse 失败路径须显式 `setJsonMode(true)` 并在 `finally` 复位。
 
 ## §2 退出码语义表（权威口径 R-cp-1）
 
@@ -41,7 +42,7 @@
 | `PROJECT_NOT_FOUND` | refusal | 1 |
 | `FLOW_CONCURRENT_CONFLICT` | refusal | 2 |
 | `INTERNAL_ERROR` | internal | 3 |
-| `ARCHIVE_FAILED` | refusal | 1（stage-97 预留，本阶段不实现） |
+| `ARCHIVE_FAILED` | refusal | 1（stage-97 实现：`archive <stage> --json` 失败（refusal/1）） |
 
 - `code` 为语言无关常量（zh/en 一致）；`message` 可本地化。
 - 映射表与 `src/core/errors.ts` 同源；可执行断言由 `test/cli/error-envelope.test.ts`（op-002）承担。
@@ -78,6 +79,7 @@
 ```
 
 - `error` **恒为 string**，既有键序不变；仅允许在末尾追加顶层 `errorKind`（`refusal | internal`）。
+- `flow archive` 判据拒绝（gate-rejected）9 键固定序：`schemaVersion,error,version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind`；`eligible` 恒 `false`；`unfinishedStages[]{id,phase}`；`blockingReviews[]{id,title,priority}`（见 §13.3）。
 - 适用：`flow archive` / `flow archive show` / `req` 族既有 `failJson` 路径。
 
 ### 4.3 唯一判别规则
@@ -89,9 +91,9 @@ typeof doc.error === 'string'  → legacy
 
 - 禁止以退出码、命令名或字段存在性做第二套判别。
 
-## §5 19 出口冻结表
+## §5 33 出口冻结表
 
-> 计数口径：**19 个成功 JSON 出口**。`flow advance --json` 为错误封装开关，不计入（见 §7）。
+> 计数口径：**33 个成功 JSON 出口**。`flow advance --json` 为错误封装开关，不计入（见 §7）。
 
 | # | 出口 | 顶层键序 | 元素/嵌套键（实测） | 条件键/形态 |
 |:-:|------|----------|--------------------|------------|
@@ -102,11 +104,11 @@ typeof doc.error === 'string'  → legacy
 | 5 | `flow phases` | `schemaVersion,phases,transitions,advanceAccepted,transitionsDiff,workflowMode,reviewTier,displayReviewTier,effectiveReviewTier` | `transitionsDiff{missing,extra,changed}` | 恒在；末位新增 2 键（既有 7 键不变，见 §12.3） |
 | 6 | `flow mode` | `schemaVersion,stage,mode,source,modes` | `modes{full,fast,general}`（各为 transitions 映射） | 恒在 |
 | 7 | `flow ops list` | `schemaVersion,ops` | `ops[]{stage,opId,title,state,fill,warning}` | `warning` 恒在，非 empty 时 `null` |
-| 8 | `flow archive` | 成功：`schemaVersion,version,stages,reviews,log,dryRun` | `stages/reviews/log` 为 number | 失败为 legacy（见 §4） |
+| 8 | `flow archive` | 成功：`schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews` | `stages/reviews/log` 为 number；`dryRun` 为 boolean；`eligible` 成功恒 `true`；`unfinishedStages` / `blockingReviews` 成功恒 `[]` | 失败为 legacy（见 §4；gate-rejected 9 键见 #8b） |
 | 9 | `flow archive list` | `schemaVersion,versions` | `versions[]{version,counts}`；`counts{stages,reviews,log}` 或 `null` | `counts` 恒在、可空 |
 | 10 | `flow archive show` | **`schemaVersion,version,stages,reviews,log,counts,archived_at`**（本版首键重定位；其余相对序不变） | 嵌套透传归档文件原文 | 失败为 legacy（见 §4） |
 | 11 | `flow health` | `schemaVersion,ok,items,reconciled` | `items[]{name,status,detail}` | `reconciled` 恒在，非 `--fix` 时 `null`；`ok:false` 仍为成功文档 + exit 1 |
-| 12 | `req list` | `schemaVersion,requirements` | `requirements[]` = `RequirementData`；可选字段（`target_version,priority,owner,claimed_at,body_path,parent_id,workflow_mode`）**条件出现**（读侧宽容不注入） | 条件出现键（依据：`src/core/req/types.ts` 可选标记 + 读侧宽容不注入） |
+| 12 | `req list` | `schemaVersion,requirements` | `requirements[]` = `RequirementData` + 末位追加 `linkedStages,progress`；`linkedStages[]{id,phase}`；`progress{done,total}`；`RequirementData` 可选字段（`target_version,priority,owner,claimed_at,body_path,parent_id,workflow_mode`）**条件出现**（读侧宽容不注入） | 条件出现键（依据：`src/core/req/types.ts` 可选标记 + 读侧宽容不注入）；两新键恒在且恒为末位 |
 | 13 | `req show` | `schemaVersion,requirement,stages,parent,children` | `stages:string[]`；`parent:string|null`；`children:string[]` | `parent` 恒在、可空 |
 | 14 | `req split` | `schemaVersion,parent,children` | `children` = `RequirementData[]` | 恒在 |
 | 15 | `req board` | `schemaVersion,groups` | `groups` 键序 = `REQ_STATUSES`（7 值）；值为数组 | 恒在 |
@@ -114,6 +116,20 @@ typeof doc.error === 'string'  → legacy
 | 17 | `instructions` | **`schemaVersion,artifact,task,project_context,rules,dependencies,output,instruction,template,unlocks`**（C1） | `artifact{id,change,schema}`；`project_context{tech_stack,workspace,project,config{execution_mode,auto_advance,merge_mode}}`；`template` 可空 | `template` 恒在、可空 |
 | 18 | `setup --check` | `schemaVersion,status,cliVersion,deployedVersion` | `deployedVersion` 可空 | `status!=='ok'` 仍为成功文档 + exit 1 |
 | 19 | `flow next` | `schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews` | `blockingReviews[]{id,title,priority,op}`；`guards:string[]`（本地化；顺序见 §12.1） | 恒在（无活跃阶段亦为完整 12 键文档；可空字段 `null`、数组 `[]`） |
+| 20 | `stage status` | 单阶段：`schemaVersion,stageId,statusPath,fields,tasks,blockedBy`；无参：`schemaVersion,stages,count` | 单阶段 `fields` = 7 规范键 + `raw`（`execMode,autoAdvance,status,reviewAgent,previousReviewAgent,updatedAt,workflowMode,raw`）；`tasks[]{number,done,description}`；无参 `stages[]{stageId,status,statusPath}` | `blockedBy` 可空（`null`）；`statusPath` 绝对路径；无参空态 `stages:[]` + `count:0` |
+| 21 | `flow recover` | `schemaVersion,initialized,phase,currentOp,stageStatus,blockedBy,pendingTasks,stageStats` | `stageStats` 为映射（`{}` 空态）；`pendingTasks:string[]` | 未初始化：`initialized:false` + `null` / `[]` / `{}`（exit 0，镜像人类） |
+| 22 | `flow checkpoint list` | `schemaVersion,stage,checkpoints,count` | `checkpoints:string[]` | `stage` 可空（`null` = 全部）；未初始化与空集合同形 `checkpoints:[]` |
+| 23 | `knowledge search` | `schemaVersion,query,limit,offset,results` | `results[]{title,category,date,enabled,content,summary}`；`summary` 为内容前 100 字（超出加 `…`） | 空态 `results:[]` + exit 0 |
+| 24 | `knowledge list` | `schemaVersion,entries,count` | `entries[]{title,category,date,enabled}`（不含 `content`） | 空态 `entries:[]` + exit 0 |
+| 25 | `knowledge index` | `schemaVersion,categories,recentUpdates` | `categories[]{name,description}`；`recentUpdates[]{date,category,title}` | `index.md` 缺失时 `categories` 为 4 分类缺省、`recentUpdates:[]` |
+| 26 | `knowledge dedup` | `schemaVersion,threshold,categories,found,readOnly,matches` | `matches[]{category,title,date,enabled,similarity,flagged}`；`categories:string[]` | 恒 `readOnly:true`；无匹配 `found:false` + `matches:[]`；非法阈值/分类走 envelope（refusal/1） |
+| 27 | `config get` | 项目：`schemaVersion,scope,key,value`；全局无 key：`schemaVersion,scope,values`；全局有 key：同项目形态 | `values` = 6 全局键固定序（`user.name,user.lang,preferences.auto_advance,preferences.review_mode,preferences.communication,preferences.confirm_threshold`） | 全局缺省值 `undefined` → JSON `null`（人类显示空串；`DEFAULT_PROFILE` 回填后 6 键通常有值）；项目无 key → envelope `INVALID_ARGUMENT` |
+| 28 | `config effective` | 无 key：`schemaVersion,effective`；有 key：`schemaVersion,key,value,source` | `effective` 为受管键映射（键序 = `EFFECTIVE_CONFIG_KEYS`） | 未知 key → envelope `INVALID_ARGUMENT`（refusal/1） |
+| 29 | `view list` | `schemaVersion,count,reviews` | `reviews[]` 10 键：`id,op,status,priority,title,filed_by,filed_at,blocking,canAutoFix,autoFixDetail` | `blocking` 缺省 `true`（`!== false`）；`canAutoFix` 缺省 `false`（`=== true`）；`autoFixDetail` 可空；空态 `reviews:[]`；内部异常 JSON `INTERNAL_ERROR`/3（人类 1） |
+| 30 | `plan scheme list` | `schemaVersion,stage,count,schemes` | `schemes[]{stage,opId,title,filePath,draft,fill}`；`filePath` 为项目根相对路径 | `stage` 可空（`null` = 全部）；`draft` = flow.json 同 opId 存在 `state:'draft'`（跨阶段全局匹配，见 §13.5）；`fill` 经 `detectFillState`；空态 `schemes:[]` |
+| 31 | `flow log` | `schemaVersion,count,entries` | `entries[]{time,agent,action,detail}`；`time` 原始 ISO（不截断）；`agent` 经 `normalizeAgentName` | 空日志与未初始化同形 `entries:[]` + exit 0 |
+| 32 | `project overview` | `schemaVersion,project,dirs,stats,entries,techStack` | `project{name,version,description}`；`dirs{src{exists,cli,commands,core,utils},opencode{exists,agents,skills},openfeel{exists,kb,plan,codeReview,bugs}}`；`stats{tsSourceFiles,agentDefs,cliModules,kbEntries,planVersions}`；`entries{available,cli,pkg,build}`；`techStack{runtime,language,cliFramework,validation,config,fileMatch,test}` | `dirs.*` 子项目录不存在时 `null`（`bugs` 为 boolean）；`stats` 恒 number；`entries.available` 反映 `src` 存在性 |
+| 33 | `archive <stage>` | `schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts` | `archivePath` 绝对路径；`opsCount/reviewsCount` 为 number；`knowledgeExtracts:string[]` | 阶段不存在 / 未初始化 → envelope `ARCHIVE_FAILED`/refusal/1；异常 → `INTERNAL_ERROR`/internal/3（人类保持 1） |
 
 **登记类别**：恒在键 / 条件出现键 / 文档形态变体三类，测试断言须与类别一致。
 
@@ -128,21 +144,28 @@ typeof doc.error === 'string'  → legacy
 7. 全局 `--project` 根选项（op-003；单点注入 chdir）。
 8. 退出码 `3`（internal；纯新增）。
 9. `flow advance --json` 错误模式开关（op-002；成功输出保持人类文本，非成功出口）。
-10. `flow next --json` 新出口（第 19 个成功出口；12 键固定序，见 §12.1；REQ P0-1 / P2-2 一致性）。
+10. `flow next --json` 新出口（出口 #19；12 键固定序，见 §12.1；REQ P0-1 / P2-2 一致性）。
 11. `flow status --json.stages[]` 追加 5 字段（P1-1；既有 5 字段键序/类型不变；见 §12.2）。
 12. `flow phases --json` 末位追加 `displayReviewTier` / `effectiveReviewTier`（P2-2；既有 7 键不变；见 §12.3）。
+13. **stage-97：14 个读命令 `--json` 新出口（#20~#33）**——`stage status`（单阶段/无参）、`flow recover`、`flow checkpoint list`、`flow log`、`project overview`、`knowledge search|list|index|dedup`、`config get|effective`、`view list`、`plan scheme list`，以及 `archive <stage>`（13 命令面 + `archive <stage>`；详见 §13.1）。
+14. **stage-97：`req list --json.requirements[]` 末位追加 `linkedStages` / `progress`**——既有 `RequirementData` 键序不变，仅末位追加；`linkedStages[]{id,phase}`、`progress{done,total}`（见 §13.3）。
+15. **stage-97：`flow archive --json`（gate-rejected 与成功）追加 `eligible` / `unfinishedStages` / `blockingReviews`**——legacy 键序与 `error` 类型不变；成功形态 9 键、gate-rejected 形态 9 键（见 §4.2 / §13.3）。
 
 ## §7 计数口径
 
-- **成功 JSON 出口 = 19 个**（flow 12 + req 5 + instructions 1 + setup 1）。
+- **成功 JSON 出口 = 33 个**（flow 15 + req 5 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 1 + project 1 + archive 1）。
+  - flow 15 = `status,overview,current,metrics,phases,mode,ops list,archive,archive list,archive show,health,next,recover,checkpoint list,log`。
+  - 本阶段新增 14 个：#20~#33；`req list` / `flow archive` 为既有出口的键增量（不改变计数）。
 - `flow advance --json` 为**错误封装开关**：成功输出保持人类文本，不计入成功出口。
-- 本阶段注册的 `--json` 选项数为 **20**（19 成功出口 + 1 错误模式开关）；「注册选项数」与「成功出口数」不得混用。
+- 注册的 `--json` 选项数为 **34**（33 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。
+- 三处对齐：源码 `option('--json'` 去重计数 34 / 本文件 33+34 / `test/cli/json-contract.test.ts` 用例 #1~#33。
 
 ## §8 迁移边界
 
 - **不迁移**（保持人类文本与既有退出码）：`init` / `migrate` / `update` / `model` / `flow review` / `flow stage add` 等人类专用失败路径。
 - `flow advance` 成功输出不 JSON 化；仅失败在 JSON 模式下输出 envelope。
 - 未注册 `--json` 的命令不接受该选项（Commander 报 unknown option）。
+- stage-97 新增 14 个读命令出口（#20~#33）均只新增 JSON 分支；人类输出逐字不变（证据见 `.openfeel/tmp/stage-97/human-output-diff.md`）。
 
 ## §9 扩展优先原则 C1~C6 同步清单
 
@@ -177,7 +200,7 @@ typeof doc.error === 'string'  → legacy
 
 ## §12 调度属性与 `flow next` 冻结语义（v1.2.2-stage-96）
 
-### §12.1 `flow next --json`（第 19 个成功出口）
+### §12.1 `flow next --json`（出口 #19，stage-96）
 
 - **12 键固定序**：`schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews`；`schemaVersion` 恒为首键、值 `1`。
 - **`stage`**：命中的阶段键（双键回退：`normalizeStageId(current.stage)` 优先，其次原始键）；无活跃阶段时保留 `pipeline.current.stage` 原始值（初始化占位 `-` 亦原样输出），原始值为空串时输出 `null`。
@@ -209,3 +232,94 @@ typeof doc.error === 'string'  → legacy
 ### §12.4 三处档位一致性
 
 `flow next`（§12.1）、`flow status --json.stages[]`（§12.2）、`flow phases --json`（§12.3）的同名档位语义一致：`reviewTier` = 展示档位（由 `workflowMode` 派生），`effectiveReviewTier` = 生效档位（恒 `'full'`）；`flow phases` 另以 `displayReviewTier` 给出展示档位的显式名。
+
+## §13 读命令 JSON 冻结细则（v1.2.2-stage-97）
+
+### §13.1 出口清单与计数
+
+本阶段新增 14 个成功出口（#20~#33），均为只读命令面（`archive <stage>` 除外，它写归档摘要与 flow 日志）。冻结键序见 §5；可执行断言见 `test/cli/json-contract.test.ts` #20~#33。
+
+| # | 出口 | 命令面 |
+|:-:|------|--------|
+| 20 | `stage status` | `stage status [<stageId>] --json`（单阶段/无参两形态） |
+| 21 | `flow recover` | `flow recover --json`（已初始化/未初始化两形态） |
+| 22 | `flow checkpoint list` | `flow checkpoint list [stage] --json` |
+| 23 | `knowledge search` | `knowledge search <query> [--limit] [--offset] --json` |
+| 24 | `knowledge list` | `knowledge list [--type] --json` |
+| 25 | `knowledge index` | `knowledge index --json` |
+| 26 | `knowledge dedup` | `knowledge dedup [content] [--threshold] [--category] --json` |
+| 27 | `config get` | `config get [key] [--global] --json` |
+| 28 | `config effective` | `config effective [key] --json` |
+| 29 | `view list` | `view list [--op] --json` |
+| 30 | `plan scheme list` | `plan scheme list [stage] --json` |
+| 31 | `flow log` | `flow log [--last <n>] --json` |
+| 32 | `project overview` | `project overview --json` |
+| 33 | `archive <stage>` | `archive <stage> --json` |
+
+### §13.2 空态与 no-init 语义（Q6 定稿）
+
+| 命令 | 空态 / no-init 形态 | 退出码 | 人类模式镜像关系 |
+|------|--------------------|:--:|------------------|
+| `stage status`（无参） | `stages:[]` + `count:0` | 0 | 人类打印「无阶段」（exit 0） |
+| `stage status <id>` | 未找到 → envelope `STAGE_NOT_FOUND`/refusal | 1 | 人类 stderr 两行 + exit 1 |
+| `flow recover` | `initialized:false` + `phase/currentOp/stageStatus/blockedBy:null` + `pendingTasks:[]` + `stageStats:{}` | 0 | 人类打印未初始化提示（exit 0） |
+| `flow checkpoint list` | 未初始化与空集合同形 `stage:null,checkpoints:[],count:0` | 0 | 人类「无快照」（exit 0） |
+| `flow log` | 未初始化与空日志同形 `count:0,entries:[]` | 0 | 人类「无日志 / 未初始化」（exit 0） |
+| `knowledge search` | `results:[]`（不区分 offset 越界） | 0 | 人类「未找到」+ 偏移提示（exit 0） |
+| `knowledge list` | `entries:[]` + `count:0` | 0 | 人类「空」（exit 0） |
+| `knowledge index` | `index.md` 缺失 → 4 分类缺省 + `recentUpdates:[]` | 0 | 人类分类概览 + 无更新（exit 0） |
+| `knowledge dedup` | 无匹配 → `found:false` + `matches:[]`；无内容 → envelope `INVALID_ARGUMENT` | 0 / 1 | 人类「无相似条目」/ 错误（exit 0 / 1） |
+| `config get`（项目） | 无 key → envelope `INVALID_ARGUMENT` | 1 | 人类错误（exit 1） |
+| `config get --global`（无 key） | `values` 6 键齐全；`undefined` → JSON `null`（`DEFAULT_PROFILE` 回填后 6 键通常有值；人类模式同值/空串） | 0 | 人类逐行（`undefined` 显示空串） |
+| `config effective` | `effective` 恒为受管键映射（含缺省解析值） | 0 | 人类逐行（exit 0） |
+| `view list` | `count:0,reviews:[]` | 0 | 人类「空」（exit 0） |
+| `plan scheme list` | `schemes:[]` + `count:0`（非法 stage 名同为空） | 0 | 人类「空」（exit 0） |
+| `project overview` | 恒输出 5 段结构；目录不存在时子项 `null`（无 `initialized` 键） | 0 | 人类逐段（exit 0） |
+| `archive <stage>` | 阶段不存在 / 未初始化 → envelope `ARCHIVE_FAILED` | 1 | 人类 stderr 单行 + exit 1 |
+
+### §13.3 字段形态约定
+
+- **绝对路径**：`stage.status.statusPath`（`resolve(projectPath, ...)`）、`archive <stage>.archivePath`（`join(process.cwd(), '.openfeel', 'log', ...)`）。
+- **项目根相对路径**：`plan scheme list.schemes[].filePath`（如 `.openfeel/plan/v1/stage-01/ops/op-001.md`）。
+- **`req list` 增量**：`linkedStages[]` 元素 `{id, phase}`（按 flow.json `stages` 声明序）；`progress` = `{done,total}`（`computeRequirementAggregate` 单点派生）。
+- **`flow archive` legacy 增量**：gate-rejected 的 `unfinishedStages[]{id,phase}`、`blockingReviews[]{id,title,priority}`；成功形态 `dryRun:boolean`、`eligible:true`、两数组恒 `[]`。键位：legacy 五键序保留，三新键插在 `blockingOpen` 后、`errorKind` 前。
+- **`stage.status.fields`**：7 规范键 `execMode,autoAdvance,status,reviewAgent,previousReviewAgent,updatedAt,workflowMode` + `raw`（原始中文键映射）；`tasks[]` 仅三元组 `number,done,description`（不输出 `line`）。
+
+### §13.4 JSON 内部异常口径
+
+- **业务拒绝**：预期拒绝（非法参数、阶段/需求不存在、门禁拒绝）→ envelope `kind=refusal`、exit 1（并发冲突 exit 2）。
+- **JSON 内部异常**：命令层捕获的非预期异常，经 `failInternal` 输出 `INTERNAL_ERROR` / `kind=internal` / exit 3（stage-95 §2 的细化；本阶段新增/改造的 13 读命令 + `archive <stage>` 适用）。
+- **人类模式**：0/1/2 语义零改动；同类异常仍按既有 `stderr + exit 1`（`view list` / `archive <stage>` 等）。
+- **边界例外**：`flow archive` 非 dry-run 的 `mgr.save()` 失败保持既有 stderr + exit 1（legacy 路径，本阶段不改造）。
+
+### §13.5 `plan scheme list.draft` 的 opId 全局匹配（既有口径与风险登记）
+
+- `draft` 标记的既有实现：遍历 **flow.json 全部阶段**的 `ops`，凡 `state === 'draft'` 的 `opId` 进入集合；`schemes[].draft = draftIds.has(s.opId)`。
+- **风险**：跨阶段存在同名 `opId`（如各阶段均使用 `op-001`）时，任一阶段存在 draft 会使所有同名 opId 的 scheme 都被标记 `draft`。这是 stage-97 之前的既有口径，本阶段**只登记不改造**；如需阶段域精确匹配，转 stage-98 评估（会改变既有 `draft` 取值，属行为变更）。
+- 测试仅断言「存在 draft op 时标记为 true、无 draft 时 false」，不据此反推跨阶段精确语义。
+
+### §13.6 双轨判定例外条款
+
+- **成功输出分支**：可读取命令级 `options.json`（Commander 已注册选项）；`runCli` 与测试内直接 `program.parse` 两条入口均可达。命令层按此分支输出成功文档。
+- **失败 envelope 分支**：一律经 `isJsonMode()` 单点判定（由 `runCli` 预扫描置位；命令层不得自行 `setJsonMode`）。
+- 测试直接 `parse` 的失败路径须显式 `setJsonMode(true)`，并在 `finally` 调用 `resetJsonModeForTest()`（沿用 `docNext` 范式）。
+- 本条款与 op-001 R4、op-002 公共 import 节一致（仅登记，无需改源码）。
+
+## §14 承接 REV 边界登记（v1.2.2-stage-97）
+
+### §14.1 REV-95-008：文件锁等待超时归类
+
+- **归类**：`withFileLock` 等待超时抛**普通 `Error`**（消息 `获取文件锁超时（{timeoutMs}ms）：{lockPath}`），**不是** `FlowConcurrentModificationError`；因此归 `INTERNAL_ERROR` / `kind=internal` / exit `3`（不得误归并发冲突 `FLOW_CONCURRENT_CONFLICT`/2）。
+- **命令面**：本阶段新增/改造的 13 个读命令与 `archive <stage>`，在 JSON 模式经 `failInternal` 输出 envelope；人类模式保持既有 exit 1 文案（0/1/2 语义零改动）。
+- **边界例外**：`flow archive` 非 dry-run 的 `mgr.save()` 异常保持既有 stderr + exit 1（legacy 路径，本阶段不改造）。
+- **覆盖证据**：`test/cli/error-envelope.test.ts` ⑩——单元级（预创建锁文件 + `timeoutMs:5` + `isFlowConcurrentError(err) === false`）与命令级（`FlowManager.prototype.save` 抛出锁超时 → `archive <stage> --json` 输出 `INTERNAL_ERROR`/3）。
+
+### §14.2 REV-95-009：并发冲突退出机制差异（仅登记）
+
+- `handleConcurrentConflict` 的 JSON 分支在 `emitErrorEnvelope` 后调用 `process.exit(2)`（立即退出），而 `failCli` 采用「置 `process.exitCode` 后返回、由调用方 `return`」。
+- 两者**语义等价**（stdout 单 envelope + exit 2），差异仅在进程退出时机；本阶段**仅登记 + 错误矩阵复核**（`error-envelope.test.ts` ⑤/⑪），不改实现。
+- 退出机制统一改造转 **stage-98** 评估。
+
+### §14.3 REV-96-008：本阶段零动作
+
+- 转 stage-98（随 ops 归档订正）；本阶段不动作。

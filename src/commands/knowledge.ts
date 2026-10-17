@@ -14,9 +14,21 @@ import { t, getCliLang } from '../core/i18n.js';
 import { resolve } from 'node:path';
 import { findSimilarEntries } from '../utils/kb-dedup.js';
 import { resolveProjectPathForCommand } from '../cli/project-option.js';
+import { withSchemaVersion, emitJson } from './shared/json-output.js';
+import { failRefusal } from './shared/errors.js';
 
 /** 有效分类列表 */
 const VALID_CATEGORIES = ['architecture', 'patterns', 'troubleshooting', 'setup'];
+
+/**
+ * 生成内容摘要（前 100 字，超出追加省略号）。
+ * 人类渲染与 JSON `summary` 同源单点，保证双轨一致。
+ * @param content 条目全文
+ * @returns 摘要字符串
+ */
+function summarizeContent(content: string): string {
+  return content.length > 100 ? content.slice(0, 100) + '…' : content;
+}
 
 export function registerKnowledgeCommand(program: Command): void {
   const knowledge = program
@@ -30,9 +42,19 @@ export function registerKnowledgeCommand(program: Command): void {
     .command('list')
     .description('列出知识条目')
     .option('--type <category>', '按分类过滤')
-    .action((options: { type?: string }) => {
+    .option('--json', t('help.knowledge.list.json', getCliLang(process.cwd())))
+    .action((options: { type?: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const entries = listKnowledge(process.cwd(), options.type);
+
+      // JSON 分支须为首行纯 JSON 单文档（元素不含 content）
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          entries: entries.map(({ title, category, date, enabled }) => ({ title, category, date, enabled })),
+          count: entries.length,
+        }));
+        return;
+      }
 
       if (entries.length === 0) {
         console.log(t('knowledge.list.empty', lang));
@@ -109,11 +131,30 @@ export function registerKnowledgeCommand(program: Command): void {
     .argument('<query>', '搜索关键词')
     .option('--limit <n>', '返回结果数量上限（默认 10）', '10')
     .option('--offset <n>', '结果偏移量（默认 0）', '0')
-    .action((query: string, options: { limit: string; offset: string }) => {
+    .option('--json', t('help.knowledge.search.json', getCliLang(process.cwd())))
+    .action((query: string, options: { limit: string; offset: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const limit = Math.max(1, parseInt(options.limit, 10) || 10);
       const offset = Math.max(0, parseInt(options.offset, 10) || 0);
       const entries = searchKnowledge(process.cwd(), query, limit, offset);
+
+      // JSON 分支须为首行纯 JSON 单文档（空结果 → results:[] + exit 0）
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          query,
+          limit,
+          offset,
+          results: entries.map((e) => ({
+            title: e.title,
+            category: e.category,
+            date: e.date,
+            enabled: e.enabled,
+            content: e.content,
+            summary: summarizeContent(e.content),
+          })),
+        }));
+        return;
+      }
 
       if (entries.length === 0) {
         console.log(t('knowledge.search.noResultsTmpl', lang, { query }));
@@ -128,11 +169,8 @@ export function registerKnowledgeCommand(program: Command): void {
       for (const entry of entries) {
         const status = entry.enabled ? t('knowledge.list.enabled', lang) : t('knowledge.list.disabled', lang);
         console.log(`[${entry.category}] ${entry.title} (${entry.date}) [${status}]`);
-        // 输出内容摘要（前 100 字）
-        const summary = entry.content.length > 100
-          ? entry.content.slice(0, 100) + '…'
-          : entry.content;
-        console.log(`  ${summary}`);
+        // 输出内容摘要（前 100 字；与 JSON summary 同源）
+        console.log(`  ${summarizeContent(entry.content)}`);
         console.log('');
       }
     });
@@ -143,9 +181,16 @@ export function registerKnowledgeCommand(program: Command): void {
   knowledge
     .command('index')
     .description('显示知识库索引概览')
-    .action(() => {
+    .option('--json', t('help.knowledge.index.json', getCliLang(process.cwd())))
+    .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const idx = getKnowledgeIndex(process.cwd());
+
+      // JSON 分支须为首行纯 JSON 单文档（getKnowledgeIndex 直出，零命令层加工）
+      if (options.json) {
+        emitJson(withSchemaVersion(idx));
+        return;
+      }
 
       console.log(t('knowledge.index.categoryOverview', lang));
       if (idx.categories.length === 0) {
@@ -182,7 +227,8 @@ export function registerKnowledgeCommand(program: Command): void {
     .option('--project <path>', '目标项目根路径（默认当前目录）')
     .option('--category <name>', '仅检查指定分类（architecture|patterns|troubleshooting|setup）')
     .option('--threshold <n>', '相似度阈值 0~1（默认 0.8）')
-    .action(async (content: string | undefined, options: { project?: string; category?: string; threshold?: string }, command: Command) => {
+    .option('--json', t('help.knowledge.dedup.json', getCliLang(process.cwd())))
+    .action(async (content: string | undefined, options: { project?: string; category?: string; threshold?: string; json?: boolean }, command: Command) => {
       const lang = getCliLang(process.cwd());
       // D-95-12：预扫描结果优先（绝对路径）；直接 parse 时回退 resolve(cwd, raw)
       const globals = command.optsWithGlobals() as { project?: string };
@@ -191,6 +237,14 @@ export function registerKnowledgeCommand(program: Command): void {
       // 阈值校验（0~1）
       const threshold = options.threshold === undefined ? 0.8 : Number(options.threshold);
       if (options.threshold !== undefined && (Number.isNaN(threshold) || threshold < 0 || threshold > 1)) {
+        if (options.json) {
+          failRefusal({
+            code: 'INVALID_ARGUMENT',
+            message: t('knowledge.dedup.invalidThresholdTmpl', lang, { value: options.threshold }),
+            detail: { field: 'threshold', value: options.threshold },
+          });
+          return;
+        }
         console.error(t('knowledge.dedup.invalidThresholdTmpl', lang, { value: options.threshold }));
         process.exit(1);
         return;
@@ -200,6 +254,17 @@ export function registerKnowledgeCommand(program: Command): void {
       let categories: string[];
       if (options.category !== undefined) {
         if (!VALID_CATEGORIES.includes(options.category)) {
+          if (options.json) {
+            failRefusal({
+              code: 'INVALID_ARGUMENT',
+              message: t('knowledge.dedup.invalidCategoryTmpl', lang, {
+                value: options.category,
+                allowed: VALID_CATEGORIES.join(' | '),
+              }),
+              detail: { field: 'category', value: options.category },
+            });
+            return;
+          }
           console.error(t('knowledge.dedup.invalidCategoryTmpl', lang, {
             value: options.category,
             allowed: VALID_CATEGORIES.join(' | '),
@@ -218,6 +283,14 @@ export function registerKnowledgeCommand(program: Command): void {
         text = await readStdin();
       }
       if (!text || text.trim().length === 0) {
+        if (options.json) {
+          failRefusal({
+            code: 'INVALID_ARGUMENT',
+            message: t('knowledge.dedup.noContentTmpl', lang),
+            detail: { field: 'content' },
+          });
+          return;
+        }
         console.error(t('knowledge.dedup.noContentTmpl', lang));
         process.exit(1);
         return;
@@ -226,21 +299,47 @@ export function registerKnowledgeCommand(program: Command): void {
       // 跨阶段契约：命令层只计算 basePath 并传参（禁自行解析路径规则）
       const basePath = resolve(projectPath, '.openfeel', 'kb');
 
-      console.log(t('knowledge.dedup.title', lang));
-      let found = false;
+      // 统一收集匹配（人类渲染与 JSON 同源；categories 顺序 + 相似度降序）
+      const matches: Array<{
+        category: string; title: string; date: string; enabled: boolean;
+        similarity: number; flagged: boolean;
+      }> = [];
       for (const cat of categories) {
-        const results = findSimilarEntries(text.trim(), cat, basePath);
-        for (const r of results) {
+        for (const r of findSimilarEntries(text.trim(), cat, basePath)) {
           if (r.similarity <= 0) {
             continue;
           }
-          found = true;
-          const pct = (r.similarity * 100).toFixed(1);
-          const flag = r.similarity > threshold ? ' ' + t('knowledge.dedup.suggestFlag', lang) : '';
-          console.log(t('knowledge.dedup.itemTmpl', lang, { category: cat, title: r.entry.title, pct, flag }));
+          matches.push({
+            category: cat,
+            title: r.entry.title,
+            date: r.entry.date,
+            // KbEntry.status（'+'/'-'）映射为布尔 enabled（与 human/knowledge list 口径一致）
+            enabled: r.entry.status === '+',
+            similarity: r.similarity,
+            flagged: r.similarity > threshold,
+          });
         }
       }
-      if (!found) {
+
+      // JSON 分支须为首行纯 JSON 单文档（只读语义由 readOnly 显式声明）
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          threshold,
+          categories,
+          found: matches.length > 0,
+          readOnly: true,
+          matches,
+        }));
+        return;
+      }
+
+      console.log(t('knowledge.dedup.title', lang));
+      for (const m of matches) {
+        const pct = (m.similarity * 100).toFixed(1);
+        const flag = m.flagged ? ' ' + t('knowledge.dedup.suggestFlag', lang) : '';
+        console.log(t('knowledge.dedup.itemTmpl', lang, { category: m.category, title: m.title, pct, flag }));
+      }
+      if (matches.length === 0) {
         console.log(t('knowledge.dedup.noneTmpl', lang, { threshold: String(threshold) }));
       }
       // 只读声明（固定行）

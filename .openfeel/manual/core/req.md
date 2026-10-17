@@ -111,7 +111,7 @@
 | 子命令 | 类型 | `--json` | 关键行为 |
 |--------|------|:--:|----------|
 | `add <title> [--target-version] [--priority] [--workflow-mode]` | 写 | ✗ | 引擎抛错分流（唯一 throw 路径）；正文骨架直传本体；骨架失败不 save；**`--workflow-mode <mode>`**（v1.2.1-stage-90；构造期值域校验，非法抛错 → 通用模板 exit 1） |
-| `list [--status] [--target-version] [--owner]` | 读 | ✓ | `--status` 值域取 `REQ_STATUSES`；多条件 AND |
+| `list [--status] [--target-version] [--owner]` | 读 | ✓ | `--status` 值域取 `REQ_STATUSES`；多条件 AND；**v1.2.2-stage-97**：`--json.requirements[]` 末位追加 `linkedStages:[{id,phase}]` 与 `progress:{done,total}`（`listLinkedStages` 单点 + `computeRequirementAggregate`，无 N+1；零关联 `[]` + `{0,0}`；既有字段顺序/值不变） |
 | `show <id>` | 读 | ✓ | 关联阶段**仅原始 id 枚举**（零聚合）；v1.2.1-stage-87：human 插 2 行（`父需求:` / `子需求:`）、`--json` 追加载荷 `parent` + `children`（**追加在既有三键之后，只增不改**；键序 `schemaVersion, requirement, stages, parent, children`） |
 | `split <id> --into <title>` | 写 | ✓ | **拆分一等动作**（v1.2.1-stage-87，本仓**首个 repeatable option** + **首个带 `--json` 的写命令**）；`--into` 可重复（`collectInto` 累加，至少一项，缺省 → `invalid-argument`）；四码分流（`not_found`/`invalid_status`/`invalid_field`/`invalid-argument`）；失败**零写盘**；成功逐条铺子正文后单次 `save()` | 0 / 1 / 2 |
 | `claim <id> [--owner]` | 写 | ✗ | 四码分流 + `--owner` 三级链 + 同 owner 幂等 |
@@ -157,7 +157,8 @@
 
 | 导出 | 说明 |
 |------|------|
-| `computeRequirementAggregate(data, requirementId): RequirementAggregate` | 纯投影：`stageIds`（`data.stages` 键序）/ `stageCount` / `doneCount` / `aggregate`（`'scheduled' \| 'in_progress' \| 'done' \| null`）。done 分支**直委托 `allLinkedStagesDone`**（含空集守卫）；**零关联 → `aggregate = null`**（禁误报 done） |
+| `computeRequirementAggregate(data, requirementId): RequirementAggregate` | 纯投影：`stageIds`（`data.stages` 键序）/ `stageCount` / `doneCount` / `aggregate`（`'scheduled' \| 'in_progress' \| 'done' \| null`）。done 分支**直委托 `allLinkedStagesDone`**（含空集守卫）；**零关联 → `aggregate = null`**（禁误报 done）。**v1.2.2-stage-97**：内部 `stageIds` 过滤改用 `listLinkedStages`（单点，行为等价） |
+| `listLinkedStages(data, requirementId): {id, phase}[]` | **v1.2.2-stage-97 新增**：关联阶段枚举单点——唯一实现 `data.stages` 单次遍历 + `requirement_id === id` 过滤，按 `data.stages` 键序；`computeRequirementAggregate` 内部复用，`req list --json` 直接消费（`linkedStages` + `progress`，无 N+1）。**单点覆盖范围 = `req list + aggregate`**；`req show`/`req split` 的既有内联过滤未纳入（REV-97-006 登记，纯等价重构转后续） |
 | `resolveRequirementStatusForStage(data, stageId)` | 单阶段 → 目标状态纯函数；无关联 / 阶段不存在 / 空串 → `null` |
 | `syncRequirementStatus(data, stageId): string[]` | **对称回写入口**（纯内存）；全程只读 `data.requirements`（禁 `??=` 注入）；返回受影响需求 ID 列表；审计 `requirement_auto_done` / `requirement_auto_reopen`（`agent: 'cli'`） |
 | `AUTO_DONE_PRECONDITION` | `readonly RequirementStatus[] = ['scheduled', 'in_progress']`（**前置集单点**——回写守卫与 health 漂移判据**同口径**） |
@@ -174,6 +175,8 @@
 **health 需求对账**（`flow health` 新增「需求对账」/「需求漂移」两 section）：悬空 `requirement_id` → warn；`done` 漂移（**前置集内** ∧ 聚合 done ∧ status ≠ done）→ warn；**前置集外设计豁免不报**；**不改退出码、不参与 `--fix`、`--quick` 跳过**（对齐 `archive-health.ts` 先例）。
 
 **接入点（`flow-manager.ts`）**：`advanceStagePhase` done 分支（`endStage` 后 / `return true` 前）；`resetStagePhase`（`appendLog` 审计块后 / `const curStage` 前——**不在** `if (normCur === key)` 守卫内）。
+
+**关联阶段枚举单点（v1.2.2-stage-97）**：`listLinkedStages(data, requirementId)` 为「`requirement_id` 过滤」的唯一新增实现（`data.stages` 单次遍历 + 键序），`computeRequirementAggregate` 内部改用它（原内联 filter 删除，行为等价）；`req list --json` 末位两键直接消费。**空态/悬空**：零关联与悬空 `requirement_id` 均给 `[]` + `{done:0,total:0}`；与 `req show --json.stages` 的一致性由测试交叉断言。**已知边界（REV-97-006）**：`req show`（stages）与 `req split` 仍保留既有内联过滤，单点覆盖范围 = `req list + aggregate`；纯等价重构留待 stage-98/后续版本，当前语义等价。
 
 ## 设计要点与判据
 

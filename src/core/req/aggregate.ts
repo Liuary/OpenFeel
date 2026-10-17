@@ -9,7 +9,7 @@
  *   对 flow-manager 仅 import type（防运行时环）。
  * 写盘：全部纯内存——落盘恒走调用方 FlowManager.save()（不新增写盘点）。
  */
-import type { FlowData, HealthCheckItem } from '../flow-manager.js';   // 仅类型（编译期擦除；防运行时环）
+import type { FlowData, HealthCheckItem, PipelinePhase } from '../flow-manager.js';   // 仅类型（编译期擦除；防运行时环）
 import { allLinkedStagesDone } from './requirement-ops.js';   // done 判定唯一原语（REV-83-002）
 import type { RequirementStatus } from './types.js';
 import { t } from '../i18n.js';                                        // 对账文案（新键 flow.health.req*；双表成对）
@@ -34,19 +34,42 @@ export interface RequirementAggregate {
 }
 
 /**
+ * 需求关联阶段（data.stages 键序；phase 供聚合与适配器共用）
+ */
+export interface LinkedStage {
+  /** 阶段 ID（data.stages 键序） */
+  id: string;
+  /** 阶段当前相位 */
+  phase: PipelinePhase;
+}
+
+/**
+ * 需求关联阶段单点过滤（唯一实现；命令层与聚合共用）。
+ * requirement_id 缺省 / 空串 / null 一律视为未关联（与既有 `(s.requirement_id ?? null) === requirementId` 等价）。
+ * @param data flow 数据（只读）
+ * @param requirementId 需求 ID
+ * @returns 关联阶段列表（data.stages 键序）
+ */
+export function listLinkedStages(data: FlowData, requirementId: string): LinkedStage[] {
+  return Object.entries(data.stages ?? {})
+    .filter(([, s]) => (s.requirement_id ?? null) === requirementId)
+    .map(([id, s]) => ({ id, phase: s.phase }));
+}
+
+/**
  * 需求聚合投影（纯函数；无 IO、无 this 依赖，给定输入相同输出）。
  * done 分支**委托** allLinkedStagesDone（含空集守卫同源）——禁第二份 done 表达式（REV-83-002）。
  * 零关联阶段 → aggregate = null（不参与 done 判定——空集守卫，禁误报）。
  */
 export function computeRequirementAggregate(data: FlowData, requirementId: string): RequirementAggregate {
-  const linked = Object.entries(data.stages ?? {}).filter(([, s]) => (s.requirement_id ?? null) === requirementId);
-  const stageIds = linked.map(([stageId]) => stageId);
+  const linked = listLinkedStages(data, requirementId);
+  const stageIds = linked.map((l) => l.id);
   const stageCount = stageIds.length;
   let doneCount = 0;
   let anyStarted = false;
-  for (const [, s] of linked) {
-    if (s.phase === 'done') { doneCount += 1; }
-    if (s.phase !== 'plan_pending') { anyStarted = true; }
+  for (const l of linked) {
+    if (l.phase === 'done') { doneCount += 1; }
+    if (l.phase !== 'plan_pending') { anyStarted = true; }
   }
   // 零关联 → null（空集守卫）；done 判定唯一经 allLinkedStagesDone 委托（禁第二份表达式）
   let aggregate: RequirementAggregateValue = null;

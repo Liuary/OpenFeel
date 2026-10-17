@@ -320,6 +320,69 @@ describe('req 命令组（stage-82）', () => {
     expect(errorMock).not.toHaveBeenCalled();
   });
 
+  // ═══ stage-97 op-003：list --json 关联阶段与进度 ═══
+
+  it('T-97-3 list --json：末位追加 linkedStages/progress（多阶段部分 done / 零关联 / 悬空 / 键序）', async () => {
+    writeFlow((d) => {
+      d.requirements = [req_('REQ-001'), req_('REQ-002')];
+      d.stages = {
+        'v1.0.0-stage-01': { name: 'S1', phase: 'done', status: 'done', deps: [], ops: {}, requirement_id: 'REQ-001' },
+        'v1.0.0-stage-02': { name: 'S2', phase: 'exec_running', status: 'running', deps: [], ops: {}, requirement_id: 'REQ-001' },
+        'v1.0.0-stage-03': { name: 'S3', phase: 'done', status: 'done', deps: [], ops: {}, requirement_id: 'REQ-999' },
+      };
+    });
+    const before = flowRaw();
+
+    resetCapture();
+    await safeParse(['req', 'list', '--json']);
+    expect(process.exitCode).toBe(0);
+
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(obj)).toEqual(['schemaVersion', 'requirements']);
+    const byId = new Map(obj.requirements.map((r: any) => [r.id, r]));
+
+    // 有关联 + 部分 done：linkedStages 键序 = data.stages 键序；progress = {done,total}
+    const r1 = byId.get('REQ-001') as any;
+    expect(r1.linkedStages).toEqual([
+      { id: 'v1.0.0-stage-01', phase: 'done' },
+      { id: 'v1.0.0-stage-02', phase: 'exec_running' },
+    ]);
+    expect(r1.progress).toEqual({ done: 1, total: 2 });
+    // 末位两键（既有 RequirementData 键序零改）
+    expect(Object.keys(r1).slice(-2)).toEqual(['linkedStages', 'progress']);
+    expect(r1).toMatchObject({ id: 'REQ-001', title: '需求 REQ-001', status: 'draft' });
+
+    // 零关联（悬空 requirement_id 归 REQ-999，不落到 REQ-002）
+    const r2 = byId.get('REQ-002') as any;
+    expect(r2.linkedStages).toEqual([]);
+    expect(r2.progress).toEqual({ done: 0, total: 0 });
+
+    // 只读：flow.json 逐字节不变
+    expect(flowRaw()).toBe(before);
+    expect(errorMock).not.toHaveBeenCalled();
+  });
+
+  it('T-97-3 list --json：linkedStages 与 req show --json.stages 一致', async () => {
+    writeFlow((d) => {
+      d.requirements = [req_('REQ-001')];
+      d.stages = {
+        'v1.0.0-stage-02': { name: 'S2', phase: 'plan_pending', status: 'planned', deps: [], ops: {}, requirement_id: 'REQ-001' },
+        'v1.0.0-stage-01': { name: 'S1', phase: 'done', status: 'done', deps: [], ops: {}, requirement_id: 'REQ-001' },
+      };
+    });
+
+    resetCapture();
+    await safeParse(['req', 'list', '--json']);
+    const listed = JSON.parse(logMock.mock.calls[0][0] as string).requirements[0];
+
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-001', '--json']);
+    const shown = JSON.parse(logMock.mock.calls[0][0] as string);
+
+    expect(listed.linkedStages.map((s: any) => s.id)).toEqual(shown.stages);
+    expect(shown.stages).toEqual(['v1.0.0-stage-02', 'v1.0.0-stage-01']);
+  });
+
   // ═══ T-A7 show ═══
 
   it('T-A7 show：详情 + 关联阶段仅 id 枚举；notFound / invalidId 两失败路径', async () => {

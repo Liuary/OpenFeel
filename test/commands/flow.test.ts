@@ -2266,6 +2266,25 @@ describe('flow 命令（stage-41）', () => {
       expect(out).toContain('pipeline 处置：current=(无)，phase=active');
     });
 
+    it('T5.2c: 非 dry-run --json 成功 → 9 键 + eligible:true + 空明细（console.error 零调用）', async () => {
+      setupArchivableV190();
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['flow', 'archive', 'v1.9.0', '--json']);
+      expect(process.exitCode).toBe(0);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(logMock).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
+      expect(Object.keys(payload)).toEqual([
+        'schemaVersion', 'version', 'stages', 'reviews', 'log', 'dryRun',
+        'eligible', 'unfinishedStages', 'blockingReviews',
+      ]);
+      expect(payload).toMatchObject({
+        schemaVersion: 1, version: 'v1.9.0', stages: 2, reviews: 1, log: 1,
+        dryRun: false, eligible: true, unfinishedStages: [], blockingReviews: [],
+      });
+    });
+
     it('T5.2b: 活跃集归档后全 done → pipeline.phase = done；current 不命中版本 → 不变', async () => {
       setupArchiveFixture({
         stages: {
@@ -2310,7 +2329,15 @@ describe('flow 命令（stage-41）', () => {
       expect(errorMock).not.toHaveBeenCalled();
       expect(logMock).toHaveBeenCalledTimes(1);
       const payload = JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
-      expect(payload).toEqual({ schemaVersion: 1, version: 'v1.9.0', stages: 2, reviews: 1, log: 1, dryRun: true });
+      expect(payload).toEqual({
+        schemaVersion: 1, version: 'v1.9.0', stages: 2, reviews: 1, log: 1, dryRun: true,
+        eligible: true, unfinishedStages: [], blockingReviews: [],
+      });
+      // 键序冻结（D-97-03-03）：成功 9 键
+      expect(Object.keys(payload)).toEqual([
+        'schemaVersion', 'version', 'stages', 'reviews', 'log', 'dryRun',
+        'eligible', 'unfinishedStages', 'blockingReviews',
+      ]);
       expect(collectWrites()).toEqual(before);
     });
 
@@ -2418,6 +2445,9 @@ describe('flow 命令（stage-41）', () => {
         error: string;
         notDone: string[];
         blockingOpen: string[];
+        eligible: boolean;
+        unfinishedStages: Array<{ id: string; phase: string | null }>;
+        blockingReviews: Array<{ id: string; title: string; priority: string }>;
         errorKind: string;
       };
       expect(payload.schemaVersion).toBe(1);
@@ -2425,8 +2455,17 @@ describe('flow 命令（stage-41）', () => {
       expect(payload.notDone).toEqual(['v1.9.0-stage-02']);
       expect(payload.blockingOpen).toEqual(['REV-A-1']);
       // stage-95 op-002：legacy 载荷末尾追加 errorKind（refusal），既有键序不变
-      expect(Object.keys(payload)).toEqual(['schemaVersion', 'error', 'version', 'notDone', 'blockingOpen', 'errorKind']);
+      // op-003：三新键插在 blockingOpen 后、errorKind 前（D-97-03-03）
+      expect(Object.keys(payload)).toEqual([
+        'schemaVersion', 'error', 'version', 'notDone', 'blockingOpen',
+        'eligible', 'unfinishedStages', 'blockingReviews', 'errorKind',
+      ]);
       expect(payload.errorKind).toBe('refusal');
+      // op-003 判据明细：eligible=false + 未完成阶段 / 阻塞审查结构化明细
+      expect(payload.eligible).toBe(false);
+      expect(payload.unfinishedStages).toEqual([{ id: 'v1.9.0-stage-02', phase: 'exec_running' }]);
+      expect(payload.blockingReviews).toEqual([{ id: 'REV-A-1', title: '标题', priority: 'high' }]);
+      expect(typeof payload.error).toBe('string');
     });
   });
 
@@ -2737,7 +2776,7 @@ describe('flow 命令（stage-41）', () => {
         const optDesc = (cmd: Command, flag: string): string =>
           cmd.options.find((o) => o.long === flag)!.description;
         expect(optDesc(archiveCmd, '--dry-run')).toContain('判据门照常校验');
-        expect(optDesc(archiveCmd, '--json')).toContain('{ schemaVersion, version, stages, reviews, log, dryRun }');
+        expect(optDesc(archiveCmd, '--json')).toContain('{ schemaVersion, version, stages, reviews, log, dryRun, eligible, unfinishedStages, blockingReviews }');
 
         const listCmd = archiveCmd.commands.find((c) => c.name() === 'list')!;
         expect(listCmd.description()).toContain('引擎字典序');
@@ -4156,6 +4195,208 @@ describe('flow 命令（stage-41）', () => {
       expect(phases).toContain('OpenFeel 流水线 phase 自描述');
       expect(phases).not.toContain('displayReviewTier');
       expect(phases).not.toContain('effectiveReviewTier');
+    });
+  });
+
+  // ═══ stage-97 op-001：flow recover / checkpoint list / log ═══
+
+  describe('stage-97 op-001：人类输出基线与 JSON 契约', () => {
+    function stdout(): string {
+      return logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    }
+
+    it('op-001 基线：flow recover（已初始化）人类输出', async () => {
+      await safeParse(['flow', 'recover']);
+      expect(stdout()).toMatchInlineSnapshot(`
+        "
+        ═══ 跨会话上下文恢复 ═══
+
+        全局状态:   active
+        流水线阶段: 未知
+        当前操作:   -.init
+        阶段状态:   status.md 不存在
+
+        无待处理任务
+
+        ═══════════════════════════"
+      `);
+    });
+
+    it('op-001 基线：flow recover（未初始化）人类输出', async () => {
+      const bare = mkdtempSync(join(tmpdir(), 'openfeel-bare-recover-'));
+      cwdMock.mockReturnValue(bare);
+      try {
+        await safeParse(['flow', 'recover']);
+        expect(stdout()).toMatchInlineSnapshot(`"流水线未初始化（flow.json 不存在）"`);
+      } finally {
+        cwdMock.mockReturnValue(tmpDir);
+        rmSync(bare, { recursive: true, force: true });
+      }
+    });
+
+    it('op-001 基线：flow checkpoint list（空 / 有快照 / 指定 stage）人类输出', async () => {
+      logMock.mockClear();
+      await safeParse(['flow', 'checkpoint', 'list']);
+      expect(stdout()).toMatchInlineSnapshot(`"（暂无 Checkpoint 快照）"`);
+
+      const cpDir = join(tmpDir, '.openfeel', 'checkpoints');
+      mkdirSync(cpDir, { recursive: true });
+      const snap = 'v1.0.0-stage-01-20260101T000000000-plan_review.json';
+      writeFileSync(join(cpDir, snap), '{}', 'utf-8');
+
+      logMock.mockClear();
+      await safeParse(['flow', 'checkpoint', 'list', 'stage-01']);
+      expect(stdout()).toMatchInlineSnapshot(`
+        "Checkpoint 快照 [stage-01]:
+          v1.0.0-stage-01-20260101T000000000-plan_review.json
+        共 1 个快照"
+      `);
+    });
+
+    it('op-001 基线：flow log（空 / 有日志）人类输出', async () => {
+      logMock.mockClear();
+      await safeParse(['flow', 'log']);
+      expect(stdout()).toMatchInlineSnapshot(`"暂无操作日志"`);
+
+      const mgr = new FlowManager(tmpDir);
+      mgr.appendLog({ time: '2026-01-02T03:04:05.000Z', agent: 'openfeel-executor', action: 'start', detail: { k: 'v' } });
+      mgr.appendLog({ time: '2026-01-02T03:05:06.000Z', agent: 'cli', action: 'noop', detail: {} });
+      mgr.save();
+
+      logMock.mockClear();
+      await safeParse(['flow', 'log', '--last', '2']);
+      expect(stdout()).toMatchInlineSnapshot(`
+        "最近 2 条操作日志:
+
+        [2026-01-02 03:04:05] openfeel-executor — start
+          详情: {"k":"v"}
+
+        [2026-01-02 03:05:06] cli — noop
+        "
+      `);
+    });
+
+    // ── JSON 契约 ──
+
+    /** 执行一次命令并解析 stdout 单文档（断言 schemaVersion 首键=1、无 ANSI、无 stderr） */
+    async function jsonDoc(args: string[]): Promise<Record<string, unknown>> {
+      logMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(args);
+      const raw = stdout();
+      expect(raw.trim().length).toBeGreaterThan(0);
+      expect(raw).not.toMatch(/\x1b\[/);
+      expect(errorMock).not.toHaveBeenCalled();
+      const doc = JSON.parse(raw) as Record<string, unknown>;
+      expect(Object.keys(doc)[0]).toBe('schemaVersion');
+      expect(doc.schemaVersion).toBe(1);
+      return doc;
+    }
+
+    it('op-001 JSON：flow recover（已初始化）7 键序与值', async () => {
+      const doc = await jsonDoc(['flow', 'recover', '--json']);
+      expect(Object.keys(doc)).toEqual([
+        'schemaVersion', 'initialized', 'phase', 'currentOp',
+        'stageStatus', 'blockedBy', 'pendingTasks', 'stageStats',
+      ]);
+      expect(doc.initialized).toBe(true);
+      expect(doc.phase).toBeNull();
+      expect(typeof doc.currentOp).toBe('string');
+      expect(typeof doc.stageStatus).toBe('string');
+      expect(doc.blockedBy).toBeNull();
+      expect(doc.pendingTasks).toEqual([]);
+      expect(doc.stageStats).toEqual({});
+      expect(process.exitCode ?? 0).toBe(0);
+    });
+
+    it('op-001 JSON：flow recover（未初始化）→ initialized:false + 空值 + exit 0', async () => {
+      const bare = mkdtempSync(join(tmpdir(), 'openfeel-bare-json-recover-'));
+      cwdMock.mockReturnValue(bare);
+      try {
+        const doc = await jsonDoc(['flow', 'recover', '--json']);
+        expect(Object.keys(doc)).toEqual([
+          'schemaVersion', 'initialized', 'phase', 'currentOp',
+          'stageStatus', 'blockedBy', 'pendingTasks', 'stageStats',
+        ]);
+        expect(doc.initialized).toBe(false);
+        expect(doc.phase).toBeNull();
+        expect(doc.currentOp).toBeNull();
+        expect(doc.stageStatus).toBeNull();
+        expect(doc.blockedBy).toBeNull();
+        expect(doc.pendingTasks).toEqual([]);
+        expect(doc.stageStats).toEqual({});
+        expect(exitMock).not.toHaveBeenCalled();
+        expect(process.exitCode ?? 0).toBe(0);
+      } finally {
+        cwdMock.mockReturnValue(tmpDir);
+        rmSync(bare, { recursive: true, force: true });
+      }
+    });
+
+    it('op-001 JSON：flow checkpoint list（空 / 指定 stage）', async () => {
+      const empty = await jsonDoc(['flow', 'checkpoint', 'list', '--json']);
+      expect(Object.keys(empty)).toEqual(['schemaVersion', 'stage', 'checkpoints', 'count']);
+      expect(empty.stage).toBeNull();
+      expect(empty.checkpoints).toEqual([]);
+      expect(empty.count).toBe(0);
+
+      const cpDir = join(tmpDir, '.openfeel', 'checkpoints');
+      mkdirSync(cpDir, { recursive: true });
+      const snap = 'v1.0.0-stage-01-20260101T000000000-plan_review.json';
+      writeFileSync(join(cpDir, snap), '{}', 'utf-8');
+
+      const doc = await jsonDoc(['flow', 'checkpoint', 'list', 'stage-01', '--json']);
+      expect(doc.stage).toBe('stage-01');
+      expect(doc.checkpoints).toEqual([snap]);
+      expect(doc.count).toBe(1);
+      expect(exitMock).not.toHaveBeenCalled();
+    });
+
+    it('op-001 JSON：flow log（空 → [] / 有日志 → 键序与值）', async () => {
+      const empty = await jsonDoc(['flow', 'log', '--json']);
+      expect(Object.keys(empty)).toEqual(['schemaVersion', 'count', 'entries']);
+      expect(empty.count).toBe(0);
+      expect(empty.entries).toEqual([]);
+
+      const mgr = new FlowManager(tmpDir);
+      mgr.appendLog({ time: '2026-01-02T03:04:05.000Z', agent: 'executor', action: 'start', detail: { k: 'v' } });
+      mgr.appendLog({ time: '2026-01-02T03:05:06.000Z', agent: 'cli', action: 'noop', detail: {} });
+      mgr.save();
+
+      const doc = await jsonDoc(['flow', 'log', '--last', '2', '--json']);
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'count', 'entries']);
+      expect(doc.count).toBe(2);
+      const entries = doc.entries as Array<Record<string, unknown>>;
+      expect(Object.keys(entries[0])).toEqual(['time', 'agent', 'action', 'detail']);
+      expect(entries).toEqual([
+        { time: '2026-01-02T03:04:05.000Z', agent: 'openfeel-executor', action: 'start', detail: { k: 'v' } },
+        { time: '2026-01-02T03:05:06.000Z', agent: 'cli', action: 'noop', detail: {} },
+      ]);
+      expect(exitMock).not.toHaveBeenCalled();
+    });
+
+    it('op-001 JSON：flow log（未初始化）→ entries:[] + exit 0', async () => {
+      const bare = mkdtempSync(join(tmpdir(), 'openfeel-bare-json-log-'));
+      cwdMock.mockReturnValue(bare);
+      try {
+        const doc = await jsonDoc(['flow', 'log', '--json']);
+        expect(doc.count).toBe(0);
+        expect(doc.entries).toEqual([]);
+        expect(exitMock).not.toHaveBeenCalled();
+        expect(process.exitCode ?? 0).toBe(0);
+      } finally {
+        cwdMock.mockReturnValue(tmpDir);
+        rmSync(bare, { recursive: true, force: true });
+      }
+    });
+
+    it('op-001 JSON：三条命令只读（flow.json 字节不变）', async () => {
+      const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+      const before = readFileSync(flowPath, 'utf-8');
+      await jsonDoc(['flow', 'recover', '--json']);
+      await jsonDoc(['flow', 'checkpoint', 'list', '--json']);
+      await jsonDoc(['flow', 'log', '--json']);
+      expect(readFileSync(flowPath, 'utf-8')).toBe(before);
     });
   });
 });

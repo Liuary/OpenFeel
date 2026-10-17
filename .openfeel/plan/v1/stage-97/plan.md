@@ -4,69 +4,69 @@
 - **依赖**：**hard: `v1.2.2-stage-95` / `v1.2.2-stage-96`**（契约助手 / 错误封装 / 决策权威先冻结）
 - **优先级**：P0（DSH 适配器 P0-2 主体 + P1-3 / P1-4 / P2-4）
 - **关联需求**：REQ-001（CLI 机器可读契约与调度决策下沉（DSH 适配器需求）；关联由 Feel 经 `openfeel req link` 执行）
-- **制定人**：openfeel-planner ｜ **制定时间**：2026-10-17 ｜ **修订轮**：修订 0（初稿）
-- **基线**：**HEAD `38f1e05`** + 当前工作区；上游登记值 71 文件 / 1719 用例、`lint i18n` 945、`lint kb` 0 过期 / 624 引用、`--version` 1.2.1、flow.json `revision 1188` / 17 stages 全 done / `reviews` 0。**实况复核**：stage-95/96 完成后以其实测值为准。
+- **制定人**：openfeel-planner ｜ **制定时间**：2026-10-17 ｜ **修订轮**：修订 1（REV-97-001~003：基线重登记 / 出口计数权威化 / 承接表落实）
+- **基线**：**HEAD `87df0b7`**（stage-96 归档提交）+ 当前工作区；上游门禁实况 **74 文件 / 1809 用例**、`lint i18n` **969**、`lint kb` **0 过期 / 614 引用**、`--version` 1.2.1、flow.json `meta.revision 1241` / **21 stages**（stage-95/96 已归档，stage-97 当前）/ `reviews` 0。**实况复核**：本阶段门禁起点以 HEAD `87df0b7` 实测为准；行号漂移按内容特征复核。
 - **定位**：把适配器仍需文本解析的 13 个读命令面一次性补齐 `--json`，并完成 `req list` 关联阶段 / `flow archive` 判据明细 / 阶段归档 JSON 三个扩展。
 - **范围（文件级）**：
   - **修改**：`src/commands/{stage,flow,knowledge,config,view,plan,project,archive,req}.ts`；`src/core/req/aggregate.ts`（新增 `listLinkedStages` 单点）；`src/core/flow-archive/grouping.ts`（仅复用，预期不改）；`src/core/i18n-data/{zh-CN,en}.ts`；对应测试；`docs/json-contract.md`。
   - **只读**：`src/cli/**`、`src/core/flow-manager.ts`（除 stage-96 已改面）。
 - **边界**：
   1. **人类输出逐字不变**：每命令先构造数据对象，再分别渲染人类文本 / JSON；补丁前/后快照 diff 空。
-  2. **不改既有 18 出口字段**（`req list` / `flow archive` 只增不改；其余读命令为新增 `--json` 开关）。
+  2. **不改既有 19 个成功出口字段**（stage-96 后基线；`req list` / `flow archive` 只增不改；其余读命令为新增 `--json` 开关）。
   3. **不改 `flow archive` 判据口径**；`--dry-run` 零写盘。
   4. **不实现** `flow next` / `flow status` 调度属性（stage-96 已完成，本阶段只读不改）。
   5. **不引入第三方依赖**；不直写 `flow.json`。
 
 ## KB 检索（`openfeel-check-kb`）
 
-- `kb/patterns.md #CLI --json 成功/失败同契约` → 12 个新出口统一形态。
+- `kb/patterns.md #CLI --json 成功/失败同契约` → **14 个新成功出口**（13 命令面 + `archive <stage>`）统一形态。
 - `kb/patterns.md #零回归取证范式` → 人类输出快照 diff 与既有出口字段冻结。
 - `kb/patterns.md #顶层可选字段「读侧宽容不注入」模式` → 读命令 JSON 不得改变 flow.json 读写。
 - `kb/architecture.md #需求流转四层模型架构` + `#双层状态聚合架构` → `req list.linkedStages/progress` 复用 aggregate 单源。
-- `kb/patterns.md #陈旧计数「全枚举」纪律` → 出口清单 / 字段清单全枚举。
+- `kb/patterns.md #陈旧计数「全枚举」纪律` → 出口清单 / 字段清单全枚举；计数口径 **成功出口 19→33 / 注册选项 20→34**。
 - `kb/troubleshooting.md #默认开启写真实用户目录的副作用防护` → 命令实跑测试的隔离环境。
 - `kb/troubleshooting.md #断言串与落文逐字核对纪律` → 字段名 / 文档 / 测试同批。
 - **无**「读命令 JSON 批量补全」既有条目 → 归档轮补沉 patterns。
 
 ---
 
-## 一、实测清单（基线 HEAD `38f1e05`）
+## 一、实测清单（基线 HEAD `87df0b7`）
 
 ### 表 A：13 个读命令面现状
 
 | # | 命令 | 实现位置 | 数据源 / 现状 | JSON 要点 |
 |:-:|------|----------|---------------|-----------|
-| A1 | `stage status [stageId]` | `stage.ts:334-375`；`showStageStatus:179`；`parseStatusFields:91`；`parseTasks:108` | 人类文本；中文键字段；`listAllStages` 无参列表 | `stages[]` 或单阶段 `fields/tasks/blockedBy/statusPath`；字段规范名 Q7 |
-| A2 | `flow recover` | `flow.ts:2051-2101`；`recoverContext:1309` | `RecoveryContext {phase,currentOp,stageStatus,blockedBy,pendingTasks}` + `getAllStageStats()` | 直出 + `initialized` + `stageStats` |
-| A3 | `flow checkpoint list [stage]` | `flow.ts:1621-1645`；`listCheckpoints:670` | `string[]` 文件名 | `checkpoints:[string]` + `count` + `stage` |
-| A4 | `knowledge search <q>` | `knowledge.ts:105-137`；`searchKnowledge` | `KnowledgeEntry[]`（含 content） | `query/limit/offset/results[]`（content 全文或摘要 Q8） |
-| A5 | `knowledge list` | `knowledge.ts:28-56`；`listKnowledge:180` | 元数据表格 | `entries[]`（不含 content，保持概览轻量） |
-| A6 | `knowledge index` | `knowledge.ts:142-170`；`getKnowledgeIndex` | `{categories,recentUpdates}` | 直出 |
-| A7 | `knowledge dedup` | `knowledge.ts:175-242`；`findSimilarEntries` | 人类文本；本地 `--project` | `threshold/categories/matches[]/found/readOnly:true` |
-| A8 | `config get` / `effective` | `config.ts:123-178 / 383-408`；`resolveEffectiveConfig:2411` | 项目/全局两模式；`effective` 为 `{value,source}` | `scope/key/value` / `effective` 映射 |
-| A9 | `view list` | `view.ts:18-40`；`listReviews:187` | `ReviewItem`（`blocking?` 缺省阻塞） | `reviews[]` 含解析后的 `blocking:boolean` |
-| A10 | `plan scheme list [stage]` | `plan.ts:310-343`；`listSchemes:890`；`detectFillState:4517` | `Scheme` + draft 标记 | `schemes[]` 含 `draft:boolean` / `fill` |
-| A11 | `flow log --last <n>` | `flow.ts:1216-1245` | `data.log` | `entries[]` + `count` |
-| A12 | `project overview` | `project.ts:17-172` | 实时扫描 | `project/dirs/stats/entries/techStack`；先聚合再渲染 |
+| A1 | `stage status [stageId]` | `stage.ts:335-378`；`showStageStatus:179`；`parseStatusFields:91`；`parseTasks:108` | 人类文本；中文键字段；`listAllStages` 无参列表 | `stages[]` 或单阶段 `fields/tasks/blockedBy/statusPath`；字段规范名 Q7 |
+| A2 | `flow recover` | `flow.ts:2230-2282`；`recoverContext:1326`（flow-manager） | `RecoveryContext {phase,currentOp,stageStatus,blockedBy,pendingTasks}` + `getAllStageStats()` | 直出 + `initialized` + `stageStats` |
+| A3 | `flow checkpoint list [stage]` | `flow.ts:1791-1812`；`listCheckpoints:687`（flow-manager） | `string[]` 文件名 | `checkpoints:[string]` + `count` + `stage` |
+| A4 | `knowledge search <q>` | `knowledge.ts:107-143`；`searchKnowledge`（core/workspace/knowledge.ts:211） | `KnowledgeEntry[]`（含 content） | `query/limit/offset/results[]`（content 全文或摘要 Q8） |
+| A5 | `knowledge list` | `knowledge.ts:30-62`；`listKnowledge`（core/workspace/knowledge.ts:180） | 元数据表格 | `entries[]`（不含 content，保持概览轻量） |
+| A6 | `knowledge index` | `knowledge.ts:144-179`；`getKnowledgeIndex`（core/workspace/knowledge.ts:237） | `{categories,recentUpdates}` | 直出 |
+| A7 | `knowledge dedup` | `knowledge.ts:180-287`；`findSimilarEntries`（utils/kb-dedup.ts:160） | 人类文本；本地 `--project` | `threshold/categories/matches[]/found/readOnly:true` |
+| A8 | `config get` / `effective` | `config.ts:124-181 / 384-409`；`resolveEffectiveConfig:2428` | 项目/全局两模式；`effective` 为 `{value,source}` | `scope/key/value` / `effective` 映射 |
+| A9 | `view list` | `view.ts:19-43`；`listReviews`（core/view/entry.ts:187） | `ReviewItem`（`blocking?` 缺省阻塞） | `reviews[]` 含解析后的 `blocking:boolean` |
+| A10 | `plan scheme list [stage]` | `plan.ts:312-346`；`listSchemes`（core/plan/scheme.ts:890）；`detectFillState`（flow-manager.ts:4543） | `Scheme` + draft 标记 | `schemes[]` 含 `draft:boolean` / `fill` |
+| A11 | `flow log --last <n>` | `flow.ts:1384-1415` | `data.log` | `entries[]` + `count` |
+| A12 | `project overview` | `project.ts:18-24`；`outputProjectOverview:26-174` | 实时扫描 | `project/dirs/stats/entries/techStack`；先聚合再渲染 |
 
 ### 表 B：扩展项现状
 
 | # | 项 | 现状 | 结论 |
 |:-:|------|------|------|
-| B1 | `req list --json` | `req.ts:180-182` 输出 `{schemaVersion,requirements: rows}`；`rows` 为 `RequirementData[]` | 追加 `linkedStages` / `progress`；复用 `computeRequirementAggregate`（`aggregate.ts:41-57`） |
-| B2 | `flow archive --dry-run --json` | `flow.ts:1746-1750` 判据拒绝 `error/notDone/blockingOpen`；`1783-1785` 成功 dry-run 仅计数 | 追加 `eligible/unfinishedStages/blockingReviews`；legacy 保留 |
+| B1 | `req list --json` | `req.ts:154-199`（输出 `:184`）`{schemaVersion,requirements: rows}`；`rows` 为 `RequirementData[]` | 追加 `linkedStages` / `progress`；复用 `computeRequirementAggregate`（`aggregate.ts:41-57`） |
+| B2 | `flow archive --dry-run --json` | `flow.ts:1920` 判据拒绝 `error/notDone/blockingOpen`；`:1962` 成功 dry-run 仅计数；非 dry-run 成功 `:2007` | 追加 `eligible/unfinishedStages/blockingReviews`；legacy 保留 |
 | B3 | `openfeel archive <stage>` | `archive.ts:10-46` 人类输出；`archiveStage` 返回 `ArchiveResult \| null` | 新增 `--json`；`ARCHIVE_FAILED` refusal |
-| B4 | 判据单源 | `listArchivableCandidates` + `listBlockingOpenRevsForVersion`（`grouping.ts:108`） | 复用，禁第二份 |
+| B4 | 判据单源 | `listArchivableCandidates`（`grouping.ts:77`）+ `listBlockingOpenRevsForVersion`（`grouping.ts:108`） | 复用，禁第二份 |
 | B5 | 错误封装 | stage-95 已提供 `failRefusal` / `failInternal` / JSON 模式单点 | 每个新 `--json` 分支的失败路径接入 |
 
 ### 表 C：门禁基线
 
 | 项 | 起点（stage-96 完成后复核） | 阶段末目标 |
 |----|------|------|
-| `npm test` | stage-96 登记值 | 新基线（13 命令 + 3 扩展的新增用例逐项登记） |
+| `npm test` | **74 文件 / 1809 用例**（HEAD `87df0b7` 实测） | 新基线（14 个新成功出口 + 3 扩展的新增用例逐项登记） |
 | `npx tsc --noEmit` | 0 | 0 |
-| `lint i18n` | stage-96 登记值 | ≥ 起点 + 新 help/文案键（逐键列名） |
-| `lint kb` | 0 过期 | 0 |
+| `lint i18n` | **969**（HEAD `87df0b7` 实测） | ≥ 969 + 新 help/文案键（逐键列名） |
+| `lint kb` | **0 过期 / 614 引用**（HEAD `87df0b7` 实测） | 0 过期 |
 | `npm run build` | ×2 幂等 | ×2 幂等（本阶段不改 templates-data） |
 | 人类输出 | 基线快照 | **逐字不变**（13 命令 + `archive` + `req list` + `flow archive`） |
 
@@ -81,7 +81,8 @@
 | 归档判据 | `flow archive --dry-run --json` 含 `eligible/unfinishedStages/blockingReviews`；判据与门禁同源；零写盘 |
 | 阶段归档 | `archive <stage> --json` 含 `archivePath/opsCount/reviewsCount/knowledgeExtracts` |
 | 错误 | 新 `--json` 命令失败走 stage-95 envelope；legacy `req` / `flow archive` 字符串载荷保留 |
-| 零回归 | 人类输出逐字不变；既有 18 出口零删除；`flow.json` 零注入 |
+| **出口计数** | stage-96 后基线：**成功出口 19 / 注册选项 20**；本阶段新增**成功出口 14**（13 个读命令面 + `archive <stage>`）；阶段末目标：**成功出口 33 / 注册选项 34**。`flow advance --json` 为仅失败出口，不计入成功出口。 |
+| 零回归 | 人类输出逐字不变；既有 19 个成功出口零删除；`flow.json` 零注入 |
 
 **不变量**：
 
@@ -132,8 +133,8 @@
 ### T4 — `flow archive --dry-run --json` 判据明细（P1-4）
 
 - **实现**：
-  - 判据拒绝分支（`flow.ts:1746-1750`）：保留 `error:'gate-rejected'` / `version` / `notDone` / `blockingOpen`，追加 `eligible:false` / `unfinishedStages: notDone.map(id => ({id, phase: data.stages[id]?.phase ?? null}))` / `blockingReviews: blockingOpen.map(r => ({id,title,priority}))`。
-  - 成功 dry-run 分支（`1783-1785`）：保留 `version/stages/reviews/log/dryRun`，追加 `eligible:true` / `unfinishedStages:[]` / `blockingReviews:[]`。
+  - 判据拒绝分支（`flow.ts:1920`）：保留 `error:'gate-rejected'` / `version` / `notDone` / `blockingOpen`，追加 `eligible:false` / `unfinishedStages: notDone.map(id => ({id, phase: data.stages[id]?.phase ?? null}))` / `blockingReviews: blockingOpen.map(r => ({id,title,priority}))`。
+  - 成功 dry-run 分支（`:1962`；非 dry-run 成功 `:2007`）：保留 `version/stages/reviews/log/dryRun`，追加 `eligible:true` / `unfinishedStages:[]` / `blockingReviews:[]`。
   - 非 dry-run 成功 JSON 同样追加 `eligible:true` + 空数组（同代码路径，增量）。
 - **测试**：不合格 fixture（未完成阶段 + blocking REV）→ `eligible:false` + 明细 + exit 1；合格 fixture → `eligible:true` + 空数组；`--dry-run` 前后 flow.json / flow-archive 目录哈希不变。
 - **边界**：不改判据；不改 legacy 字段；不改人类输出。
@@ -147,9 +148,9 @@
 ### T6 — 错误接入 + i18n + 契约测试 + 门禁
 
 - 每个新 `--json` 分支的失败路径使用 `failRefusal` / `failInternal`；`no-init` 语义镜像人类退出码（读视图 0 + `initialized:false`；需项目的命令 1 + envelope）。
-- 新增 help 键（13 个 `--json` 选项）与文案键；zh/en 成对。
-- `docs/json-contract.md` 追加 12 个新出口 + 3 个扩展的冻结表。
-- 门禁：test / tsc / i18n / kb / build ×2；人类快照 diff 空；既有 18 出口契约测试仍绿。
+- 新增 help 键（**14 个 `--json` 选项**：13 个读命令面 + `archive <stage>`）与文案键；zh/en 成对。
+- `docs/json-contract.md` 追加 **14 个新成功出口** + 3 个扩展的冻结表；契约 §7 计数更新为**成功出口 33 / 注册选项 34**。
+- 门禁：test / tsc / i18n / kb / build ×2；人类快照 diff 空；**既有 19 个成功出口**契约测试仍绿；`json-contract.test.ts` 出口枚举按 **33** 登记。
 
 ---
 
@@ -165,13 +166,14 @@
 
 ## 五、验收要点（阶段级）
 
-1. **13 个读命令面**：`--json` 单文档、关键字段齐全、stdout 无人类文本；人类输出快照 diff 空；退出码镜像。
+1. **14 个新成功出口**（13 个读命令面 + `archive <stage>`）：`--json` 单文档、关键字段齐全、stdout 无人类文本；人类输出快照 diff 空；退出码镜像。
 2. **`req list --json`**：`linkedStages` / `progress` 与 flow.json 一致；零关联 `[]` + `{done:0,total:0}`；无 N+1。
 3. **`flow archive --dry-run --json`**：`eligible` / `unfinishedStages` / `blockingReviews` 正确；legacy `error/notDone/blockingOpen` 保留；零写盘哈希不变。
 4. **`archive <stage> --json`**：`archivePath` / `knowledgeExtracts` / 计数正确；失败 envelope；人类输出不变。
 5. **错误一致性**：新命令 JSON 失败走 stage-95 envelope；legacy 载荷保留；zh/en code 一致。
-6. **零回归**：既有 18 出口契约测试全绿；人类输出无变化；`flow.json` 零注入。
-7. **门禁**：test / tsc / i18n / kb / build 全绿；新增测试文件与用例登记。
+6. **零回归**：既有 19 个成功出口契约测试全绿；人类输出无变化；`flow.json` 零注入。
+7. **计数口径**：阶段末**成功出口 33 / 注册选项 34**；`docs/json-contract.md` §7 与 `json-contract.test.ts` 出口枚举逐项对齐，无旧计数口径残留。
+8. **门禁**：test / tsc / i18n / kb / build 全绿；新增测试文件与用例登记。
 
 ## 六、风险
 
@@ -189,17 +191,20 @@
 
 ## 七、承接 REV 与处置表（REV-85-002 固化口径）
 
-- **判据源**：flow.json `reviews: 0` + 用户台账 `REV-92` / `REV-94` + stage-95/96 处置结果 + 本会话实测。
+- **判据源**：flow.json `reviews: 0`（HEAD `87df0b7`）+ 用户台账 `REV-92` / `REV-94` / `REV-95` / `REV-96` / `REV-97` + stage-95/96 归档处置结果 + 本会话实测。
 
 | 上游条目 | 优先级 | 去向 | 依据 |
 |---------|:--:|------|------|
 | REV-92-006（BFS 报错语义） | low | **台账保留**（本阶段不触 `findPhasePath`） | 非本阶段面 |
 | REV-94-005 / 006 | low | **转 stage-98**（文档/入管） | 承 stage-95 三分 |
 | REV-94-007 | low | **台账保留**（部署侧） | 承 stage-94 留痕 |
-| stage-95/96 新增 REV | 按实际 | **本阶段处置 / 转 stage-98** | 归档后补记 |
+| **REV-95-008**（锁等待超时归类 `INTERNAL_ERROR/internal/3` 契约边界未登记） | low | **本阶段处置**（`docs/json-contract.md` 登记边界 + 错误矩阵/实跑覆盖锁超时路径） | REV-95 代码审查：非缺陷；stage-97 读命令失败路径接入时登记 |
+| **REV-95-009**（并发 envelope `process.exit(2)` 退出机制不一致） | low | **本阶段处置（仅契约登记 + 错误矩阵覆盖；退出机制不改）**；退出机制改造显式转 stage-98 评估 | 保持 `handleConcurrentConflict` 的 `never` 语义与 0/1/2 零改动（扩展优先）；本阶段不改并发出口实现 |
+| **REV-96-008**（op-003.md 残留「17 阶段」陈旧计数） | low | **转 stage-98**（随 `ops/` 归档订正为 21 阶段） | REV-96 代码审查：ops 为 schemer 产出，执行期只读；终局报告口径已正确 |
 | 其余已闭合条目 | — | **零动作**（登记） | 台账实测 |
 
-- **三分结论**：本阶段处置 = 上游 stage-95/96 新增 REV（按实际登记）／显式转出 2（REV-94-005/006）／台账保留 2（REV-92-006、REV-94-007）→ **零灭失成立**。
+- **三分结论**：**本阶段处置 2（REV-95-008、REV-95-009）／显式转出 3（REV-94-005/006、REV-96-008）／台账保留 2（REV-92-006、REV-94-007）→ 零灭失成立**。
+- **口径说明**：REV-95-005 已由 stage-96 §七显式转 stage-98（roadmap 收口），本阶段不重复计数；REV-94-007 为跨版本部署侧台账，承 stage-95/96 口径。
 
 ## 八、op 拆分建议（供 openfeel-schemer 定稿；`est_ops = 4`）
 
@@ -218,3 +223,4 @@
 | 时间 | 制定人 | 说明 |
 |------|--------|------|
 | 2026-10-17 | openfeel-planner | 初稿：依据大计划 §二/§三/附录 A「stage-97」+ DSH P0-2/P1-3/P1-4/P2-4 + 源码实测（3 表 22 项）；变更点 T1~T6；开放问题 Q1~Q7；风险 R-97-1~7；承接三分；op 拆分 4 项。**只写本计划文档**。 |
+| 2026-10-17 | openfeel-planner | **修订 1（REV-97-001~003 收尾）**：① 基线同步 HEAD `87df0b7`、74 文件 / 1809 用例、`lint i18n` 969、`lint kb` 0 过期 / 614 引用、flow.json `meta.revision 1241` / 21 stages；表 A/B 行号按实测重登记（recover `flow.ts:2230-2282`、gate-rejected `:1920`、dry-run 成功 `:1962`、非 dry-run `:2007` 等），T4 同步。② 出口计数权威化：基线 19 成功出口 / 20 注册选项，本阶段新增 14 成功出口（13 命令面 + `archive <stage>`），阶段末目标 33 / 34；统一 KB / T6 / 验收 1/6/7 表述，清除旧计数口径。③ §七补 REV-95-008（本阶段处置）、REV-95-009（本阶段处置，机制改造转 stage-98）、REV-96-008（转 stage-98），三分结论更新为「处置 2／转出 3／保留 2」。**只改本计划文档**。 |

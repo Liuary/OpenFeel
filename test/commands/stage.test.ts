@@ -12,6 +12,7 @@ vi.mock('node:os', async (importOriginal) => {
 import { Command, CommanderError } from 'commander';
 import { registerStageCommand } from '../../src/commands/stage.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
+import { resetJsonModeForTest, setJsonMode } from '../../src/commands/shared/json-output.js';
 import { existsSync, readFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
@@ -365,5 +366,180 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
 
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(stderr()).toContain('缺少任务小节');
+  });
+
+  // ── stage-97 op-001：人类输出基线（改动前生成，改动后逐字不变）──
+
+  it('op-001 基线：stage status 无参空列表人类输出', async () => {
+    await safeParse(['stage', 'status']);
+    expect(stdout()).toMatchInlineSnapshot(`"未发现任何阶段（.openfeel/plan/ 中无 status.md 文件）"`);
+  });
+
+  it('op-001 基线：stage status 无参有阶段人类输出', async () => {
+    writeStatus('stage-01');
+    writeStatus('stage-02', { status: 'done' });
+    await safeParse(['stage', 'status']);
+    expect(stdout()).toMatchInlineSnapshot(`
+      "发现 2 个阶段
+        📋 v1.0.0-stage-01  →  planned
+        ✅ v1.0.0-stage-02  →  done
+
+      使用 openfeel stage status <stageId> 查看详细状态
+      "
+    `);
+  });
+
+  it('op-001 基线：stage status 单阶段（字段+任务+阻塞）人类输出', async () => {
+    const p = writeStatus('stage-01', { status: 'exec_running' });
+    writeFileSync(
+      p,
+      readFileSync(p, 'utf-8').replace('无', '等待外部依赖确认')
+        + '\n- [ ] 任务1：实现 A\n- [x] 任务2：实现 B\n',
+      'utf-8',
+    );
+    await safeParse(['stage', 'status', 'stage-01']);
+    expect(stdout()).toMatchInlineSnapshot(`
+      "
+      ── stage-01 ──
+
+        执行模式: manual
+        自动推进: disabled
+        状态: exec_running
+        当前责任 Agent: user
+        上一责任 Agent: none
+        [ ] 任务1: 实现 A
+        [x] 任务2: 实现 B
+      任务列表 (1/2 完成)
+          ⬜ 任务1: 实现 A
+          ✅ 任务2: 实现 B
+      阻塞原因: 等待外部依赖确认
+      "
+    `);
+  });
+
+  // ── stage-97 op-001：JSON 契约 ──
+
+  /** 执行一次命令并解析 stdout 单文档（断言 schemaVersion 首键=1、无 ANSI、无 stderr） */
+  async function jsonDoc(args: string[]): Promise<Record<string, unknown>> {
+    logMock.mockClear();
+    errMock.mockClear();
+    await safeParse(args);
+    const raw = stdout();
+    expect(raw.trim().length).toBeGreaterThan(0);
+    expect(raw).not.toMatch(/\x1b\[/);
+    expect(errMock).not.toHaveBeenCalled();
+    const doc = JSON.parse(raw) as Record<string, unknown>;
+    expect(Object.keys(doc)[0]).toBe('schemaVersion');
+    expect(doc.schemaVersion).toBe(1);
+    return doc;
+  }
+
+  it('op-001 JSON：stage status 无参空列表 → stages:[] + count:0 + exit 0', async () => {
+    const doc = await jsonDoc(['stage', 'status', '--json']);
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'stages', 'count']);
+    expect(doc.stages).toEqual([]);
+    expect(doc.count).toBe(0);
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(process.exitCode ?? 0).toBe(0);
+  });
+
+  it('op-001 JSON：stage status 无参有阶段 → stageId/status/statusPath 键序 + 绝对路径', async () => {
+    writeStatus('stage-01');
+    writeStatus('stage-02', { status: 'done' });
+    const doc = await jsonDoc(['stage', 'status', '--json']);
+    const stages = doc.stages as Array<Record<string, unknown>>;
+    expect(doc.count).toBe(2);
+    expect(Object.keys(stages[0])).toEqual(['stageId', 'status', 'statusPath']);
+    expect(stages.map((s) => s.stageId)).toEqual(['v1.0.0-stage-01', 'v1.0.0-stage-02']);
+    // statusPath 统一绝对路径
+    expect(stages[0].statusPath).toBe(join(projDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md'));
+  });
+
+  it('op-001 JSON：stage status 单阶段 → fields 7 规范键 + raw / tasks 三元组 / blockedBy', async () => {
+    const dir = join(projDir, '.openfeel', 'plan', 'v1', 'stage-01');
+    mkdirSync(dir, { recursive: true });
+    const p = join(dir, 'status.md');
+    writeFileSync(p, [
+      '# v1.0.0-stage-01 状态',
+      '',
+      '- **执行模式**：manual',
+      '- **自动推进**：disabled',
+      '- **状态**：exec_running',
+      '- **当前责任 Agent**：openfeel-executor',
+      '- **上一责任 Agent**：none',
+      '- **更新时间**：2026-10-17T00:00:00Z',
+      '- **工作模式**：full',
+      '',
+      '## 当前任务',
+      '',
+      '- [ ] 任务1：实现 A',
+      '- [x] 任务2：实现 B',
+      '',
+      '## 阻塞 / 暂停原因',
+      '',
+      '等待外部依赖确认',
+      '',
+    ].join('\n'), 'utf-8');
+
+    const doc = await jsonDoc(['stage', 'status', 'stage-01', '--json']);
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'stageId', 'statusPath', 'fields', 'tasks', 'blockedBy']);
+    expect(doc.stageId).toBe('stage-01');
+    expect(doc.statusPath).toBe(p);
+
+    const fields = doc.fields as Record<string, unknown>;
+    expect(Object.keys(fields)).toEqual([
+      'execMode', 'autoAdvance', 'status', 'reviewAgent',
+      'previousReviewAgent', 'updatedAt', 'workflowMode', 'raw',
+    ]);
+    expect(fields.execMode).toBe('manual');
+    expect(fields.autoAdvance).toBe('disabled');
+    expect(fields.status).toBe('exec_running');
+    expect(fields.reviewAgent).toBe('openfeel-executor');
+    expect(fields.previousReviewAgent).toBe('none');
+    expect(fields.updatedAt).toBe('2026-10-17T00:00:00Z');
+    expect(fields.workflowMode).toBe('full');
+    expect((fields.raw as Record<string, string>)['执行模式']).toBe('manual');
+
+    const tasks = doc.tasks as Array<Record<string, unknown>>;
+    expect(Object.keys(tasks[0])).toEqual(['number', 'done', 'description']);
+    expect(tasks).toEqual([
+      { number: 1, done: false, description: '实现 A' },
+      { number: 2, done: true, description: '实现 B' },
+    ]);
+    expect(doc.blockedBy).toBe('等待外部依赖确认');
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('op-001 JSON：stage status 有参未找到 → STAGE_NOT_FOUND / refusal / exit 1', async () => {
+    const prevExitCode = process.exitCode;
+    process.exitCode = 0;
+    setJsonMode(true);
+    try {
+      logMock.mockClear();
+      errMock.mockClear();
+      await safeParse(['stage', 'status', 'v9-stage-99', '--json']);
+      const doc = JSON.parse(stdout()) as Record<string, any>;
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'error']);
+      expect(doc.schemaVersion).toBe(1);
+      expect(doc.error.code).toBe('STAGE_NOT_FOUND');
+      expect(doc.error.kind).toBe('refusal');
+      expect(doc.error.detail.stageId).toBe('v9-stage-99');
+      expect(typeof doc.error.detail.hint).toBe('string');
+      expect(process.exitCode).toBe(1);
+      // 失败 envelope 不输出人类文案
+      expect(errMock).not.toHaveBeenCalled();
+    } finally {
+      resetJsonModeForTest();
+      process.exitCode = prevExitCode ?? 0;
+    }
+  });
+
+  it('op-001 JSON：只读（status.md 字节不变 / 不生成 flow.json）', async () => {
+    const p = writeStatus('stage-01');
+    const before = sha(p);
+    await jsonDoc(['stage', 'status', '--json']);
+    await jsonDoc(['stage', 'status', 'stage-01', '--json']);
+    expect(sha(p)).toBe(before);
+    expect(existsSync(join(projDir, '.openfeel', 'flow.json'))).toBe(false);
   });
 });

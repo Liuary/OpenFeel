@@ -13,6 +13,18 @@ import { FlowManager } from '../core/flow-manager.js';
 import { normalizeStageId, suggestStageId, isArchivedVersionOf } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
+import { withSchemaVersion, emitJson } from './shared/json-output.js';
+import { failRefusal } from './shared/errors.js';
+
+/** 全局 profile 固定键序（人类输出顺序；JSON `values` 同序） */
+const GLOBAL_PROFILE_KEYS = [
+  'user.name',
+  'user.lang',
+  'preferences.auto_advance',
+  'preferences.review_mode',
+  'preferences.communication',
+  'preferences.confirm_threshold',
+] as const;
 
 /** 全局配置 key 白名单：key → 合法值列表（null 表示任意 string） */
 const GLOBAL_ALLOWED_KEYS: Record<string, string[] | null> = {
@@ -124,8 +136,10 @@ export function registerConfigCommand(program: Command): void {
     .command('get [key]')
     .description(t('help.config.get'))
     .option('-g, --global', '操作全局 profile（~/.config/openfeel/profile.yaml）')
+    .option('--json', t('help.config.get.json', getCliLang(process.cwd())))
     .action(function (key: string | undefined) {
-      const opts = this.opts() as { global?: boolean };
+      const opts = this.opts() as { global?: boolean; json?: boolean };
+      const asJson = opts.json === true;
       const lang = getCliLang(process.cwd());
 
       // 全局模式：操作 ~/.config/openfeel/profile.yaml
@@ -138,6 +152,16 @@ export function registerConfigCommand(program: Command): void {
         }
         // 无 key：输出完整 Profile
         if (!key) {
+          if (asJson) {
+            const values: Record<string, string | null> = {};
+            for (const k of GLOBAL_PROFILE_KEYS) {
+              const v = getNestedValue(profile, k);
+              // 缺省值 JSON 用 null（人类显示空串；契约标注差异）
+              values[k] = v === undefined ? null : String(v);
+            }
+            emitJson(withSchemaVersion({ scope: 'global', values }));
+            return;
+          }
           console.log(t('config.get.globalResult', lang, { key: 'user.name', value: String(getNestedValue(profile, 'user.name') ?? '') }));
           console.log(t('config.get.globalResult', lang, { key: 'user.lang', value: String(getNestedValue(profile, 'user.lang') ?? '') }));
           console.log(t('config.get.globalResult', lang, { key: 'preferences.auto_advance', value: String(getNestedValue(profile, 'preferences.auto_advance') ?? '') }));
@@ -148,6 +172,14 @@ export function registerConfigCommand(program: Command): void {
         }
         // 有 key：深层取值
         const value = getNestedValue(profile, key);
+        if (asJson) {
+          emitJson(withSchemaVersion({
+            scope: 'global',
+            key,
+            value: value === undefined ? null : String(value),
+          }));
+          return;
+        }
         if (value === undefined) {
           console.log(t('config.get.globalKeyNotFound', lang, { key }));
         } else {
@@ -158,13 +190,22 @@ export function registerConfigCommand(program: Command): void {
 
       // 项目模式（原行为）：key 必填
       if (!key) {
-        console.error(t('config.get.noProject', lang, { err: 'key 未指定（项目模式下必须提供 key）' }));
-        process.exit(1);
+        // JSON 模式走 envelope（isJsonMode 单点判定）；人类模式逐字保持 exit 1
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('config.get.noProject', lang, { err: 'key 未指定（项目模式下必须提供 key）' }),
+          detail: { reason: 'key-required' },
+        });
+        return;
       }
       try {
         // 键名归一：`defaults.X` 与 `X` 等价（输出回显用户输入原键以保留可识别性）
         const normalized = normalizeConfigKey(key);
         const value = getConfigValue(process.cwd(), normalized);
+        if (asJson) {
+          emitJson(withSchemaVersion({ scope: 'project', key, value }));
+          return;
+        }
         if (value === null) {
           console.log(t('config.get.result', lang, { key, value: t('common.noConfig', lang) }));
         } else {
@@ -172,8 +213,12 @@ export function registerConfigCommand(program: Command): void {
         }
       } catch (err) {
         // 读取 config.yaml 失败（YAML 语法错误、权限问题等），输出实际错误原因
-        console.error(t('config.get.noProject', lang, { err: (err as Error).message }));
-        process.exit(1);
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('config.get.noProject', lang, { err: (err as Error).message }),
+          detail: { reason: 'config-unreadable' },
+        });
+        return;
       }
     });
 
@@ -383,7 +428,8 @@ export function registerConfigCommand(program: Command): void {
   configCmd
     .command('effective [key]')
     .description(t('help.config.effective'))
-    .action((key?: string) => {
+    .option('--json', t('help.config.effective.json', getCliLang(process.cwd())))
+    .action((key: string | undefined, options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = new FlowManager(process.cwd());
       const resolved = mgr.resolveEffectiveConfig();
@@ -392,11 +438,25 @@ export function registerConfigCommand(program: Command): void {
       if (key) {
         // 未知受管键：报错并退出（不静默）
         if (!resolved[key]) {
-          console.error(t('config.effective.unknownKey', lang, { key, keys: keys.join(', ') }));
-          process.exit(1);
+          failRefusal({
+            code: 'INVALID_ARGUMENT',
+            message: t('config.effective.unknownKey', lang, { key, keys: keys.join(', ') }),
+            detail: { key, keys },
+          });
+          return;
         }
         const r = resolved[key];
+        if (options.json) {
+          emitJson(withSchemaVersion({ key, value: r.value, source: r.source }));
+          return;
+        }
         console.log(t('config.effective.row', lang, { key, value: r.value, source: r.source }));
+        return;
+      }
+
+      // JSON 分支须为首行纯 JSON 单文档（键序 = EFFECTIVE_CONFIG_KEYS）
+      if (options.json) {
+        emitJson(withSchemaVersion({ effective: resolved }));
         return;
       }
 

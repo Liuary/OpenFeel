@@ -1138,3 +1138,21 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.2-stage-96（3 ops 串行；`flow next` **12 键固定序**、本仓 `test_pending` → `legalNextPhases=[test_failed,test_passed]`、空态「全 `null` + `responsibleAgent='feel'` + `guards=[noActiveStage]`」；15 phase 映射矩阵 + advance 接受集交叉断言；核心层纯增量 +26 行、`src/commands` 零 `mapPhaseToAgent`；人类输出 `flow status` / `flow status --verbose` / `flow phases` / `flow advance --help` **EMPTY diff**；门禁 74 文件 / 1809 用例、`lint i18n` 969）。
 
 **参见：** `src/core/flow-manager.ts`；`src/commands/flow.ts`；`docs/json-contract.md` §12.1；kb/architecture.md #双模式转移表选择、#需求级模式属性架构、#审查档位架构；kb/patterns.md #同类缺陷一次全量扫描、#CLI `--json` 成功/失败同契约；manual/core/flow-manager.md、manual/cli/commands.md
+
+## [+] 需求聚合单点扩展架构：`listLinkedStages` 单一过滤 + `req list` 末位两键 (2026-10-17)
+
+**背景**：DSH 适配器读取 `req list --json` 后仍需自行按 `requirement_id` 过滤 `flow.json.stages` 才能得到「该需求关联哪些阶段、完成几成」，且该过滤在命令层与 `aggregate.ts` 各有一份，存在口径漂移与 N+1 风险。本阶段把「关联阶段枚举」抽为聚合层单点导出，命令层只做投影。
+
+**① 单点抽取（禁第二份过滤）**：`aggregate.ts` 新增导出 `listLinkedStages(data, requirementId): {id, phase}[]`——唯一实现 `data.stages` 单次遍历 + `requirement_id === id` 过滤，结果按 `data.stages` 键序；`computeRequirementAggregate` 内部**改用同一函数**（原内联 filter 删除），使 `stageIds` / `stageCount` / `doneCount` 与命令层枚举同源。
+
+**② 命令层零业务逻辑**：`req.ts` 的 `req list` 在既有 `requirements[]` 元素**末位**追加两键：`linkedStages: listLinkedStages(data, r.id)`、`progress: { done: agg.doneCount, total: agg.stageCount }`（`agg` 复用同一条 `computeRequirementAggregate` 结果，单次调用即得，无 N+1）。既有字段顺序与值逐字不变；`req show` / `board` / `next` / `split` 零改动。
+
+**③ 空态与悬空关联**：零关联 → `linkedStages: []` + `progress: {done:0,total:0}`（不误报 done）；`requirement_id` 指向不存在阶段 → 该条被过滤掉，同样 `[]` + `{0,0}`；`req list` 与 `req show.stages` 的一致性由测试交叉断言（数量与 id 集相等）。
+
+**④ 已知边界（REV-97-006）**：`req show`（stages）与 `req split` 仍有**既有**内联 `requirement_id` 过滤（stage-97 前已在，属「req 写面零改动」边界）。单点覆盖范围 = `req list + aggregate`；两处既有内联的纯等价重构留待 stage-98/后续版本，当前语义等价但存在长期漂移风险。
+
+**判据**：① 聚合层已存在「阶段↔需求」判定时，任何新读面**必须复用聚合导出**而非在命令层再 `.filter`；② 单点抽取采用「新增导出 + 原调用点改用它」的最小改法，禁止复制实现；③ 新字段恒追加在元素末位，既有键序/类型零改动；④ 空态与悬空关联给同一显式形态（`[]` + `{0,0}`），并测与另一出口（`req show`）的一致性；⑤ 已知未单点化的既有实现须在代码审查/契约中登记（不假装已消除）。
+
+**实证**：v1.2.2-stage-97 op-003（`aggregate.ts` 新增 `listLinkedStages` + 内部复用；`req.ts` 仅 +13 行；本仓 REQ-001 → `linkedStages` 4 项 / `progress={done:2,total:4}` 与 flow.json 一致；隔离 fixture 覆盖零关联/部分完成/悬空；`req list` 剥离末两键后与 HEAD 基线逐字段相等）。
+
+**参见：** `src/core/req/aggregate.ts`；`src/commands/req.ts`；`docs/json-contract.md` §6 / #12；kb/architecture.md #双层状态聚合架构、#需求流转四层模型架构；kb/patterns.md #读命令 `--json` 全量补全与 33 出口契约矩阵；manual/core/req.md、manual/cli/commands.md

@@ -4394,3 +4394,37 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.2-stage-96（`flow next --json` 三类空态断言：`stage='-'` / `stage=null` / 记录缺失原样回显；`guards.length===1`；`responsibleAgent='feel'`；契约 §12.1 与测试同批；测试官隔离工程复跑 `ZERO_WRITE_OK`）。
 
 **参见：** `src/commands/flow.ts`；`docs/json-contract.md` §12.1；kb/architecture.md #CLI JSON 输出契约冻结与错误封装分层架构、#调度决策单一权威架构；kb/patterns.md #CLI `--json` 结构化输出约定；manual/cli/commands.md
+
+## [+] 读命令 `--json` 全量补全：先聚合数据对象再双渲染 + 33 出口契约矩阵 (2026-10-17)
+
+**场景**：DSH 适配器仍需对 13 个读命令面（stage status / flow recover·checkpoint·log / knowledge search·list·index·dedup / config get·effective / view list / plan scheme list / project overview）解析中文人类文本。这些命令历史上「渲染逻辑即查询逻辑」，直接加 `--json` 分支极易产生两套查询、输出漂移。
+
+**做法**：
+1. **数据聚合先行、双渲染后行**：每个命令先重构为 `collectXxx(cwd, opts)` 数据对象 + 两个渲染器（人类 / JSON）消费同一对象；人类渲染器仅做格式化，禁二次查询。这是「人类输出逐字不变」的结构性保证。
+2. **JSON 分支纯单文档**：首行输出且仅一个文档，`schemaVersion` 为构造序首键；stdout 无标题/进度/警告（警告走 stderr 或 `detail`）；退出码镜像人类模式（成功 0 / 拒绝 1 / 并发 2）。
+3. **契约矩阵逐出口冻结**：对每个新出口登记「顶层键序 + 元素键集 + 空态 + no-init + 字段形态」，与 `test/cli/json-contract.test.ts` 的 `#N` 用例一一对应。
+4. **no-init 双语义逐命令定稿**：读视图（`flow recover` 等）返回 0 + `initialized:false` + 空值；需项目的命令（`stage status <id>` / `config` / `view` / `plan scheme` / `knowledge`）返回 refusal 1 + 稳定 code（如 `STAGE_NOT_FOUND`）。
+5. **计数三处对齐审计**：源码 `grep "option('--json'"`（注册选项）＝契约 §7（成功出口 + 注册选项）＝测试出口枚举 `#1~#N`；任一不等即失败。本阶段落 33 成功出口 / 34 注册选项。
+6. **零回归双门禁**：既有出口冻结测试全绿 + 人类输出「HEAD 源码构建 vs 当前构建、同数据」受控 diff 空（含旧快照重跑）。
+
+**判据**：① 读命令加 JSON 的唯一改造法是「聚合 → 双渲染」，禁在人类渲染分支里塞 JSON 判断；② 新出口数量以「源码注册点 / 契约文档 / 冻结测试」三处对齐为权威，禁单点声明；③ 空态与 no-init 属于契约，必须与正常态同批写测试；④ 成功分支判定读命令级 `options.json`（错误 envelope 恒走 `isJsonMode()` 单点），双轨例外须在契约登记；⑤ 人类输出快照是回归硬门禁，不能用「字段存在即可」替代。
+
+**实证**：v1.2.2-stage-97（14 个新成功出口 #20~#33；契约 33/34；`json-contract.test.ts` 44 passed、`error-envelope.test.ts` 17 passed；门禁 74 文件 / 1894 用例、`lint i18n` 983；人类输出 28/28 场景 + 23 场景独立对照 diff 0；`--dry-run` 前后 flow.json / flow-archive 哈希不变）。
+
+**参见：** `docs/json-contract.md` §5~§7、§13；`test/cli/json-contract.test.ts`；kb/patterns.md #18 出口契约冻结审计方法、#CLI `--json` 成功/失败同契约、#JSON 空态约定；kb/architecture.md #CLI JSON 输出契约冻结与错误封装分层架构；manual/cli/commands.md、manual/core/json-contract.md
+
+## [+] legacy 错误载荷与新增判据字段并存：既有键序不动 + 新键定锚插入 + `errorKind` 恒末位 (2026-10-17)
+
+**场景**：`flow archive` 的判据拒绝载荷是 stage-95 之前的 legacy 形态 `{schemaVersion, error:'gate-rejected', version, notDone, blockingOpen}`（`error` 为 **string**）。本阶段需暴露判据明细（是否合格 / 未完成阶段 / 阻塞 REV），但既有适配器已按「`doc.error` 是字符串」判类并读取前 5 键，任何重排或类型变更都会静默破坏消费者。
+
+**做法**：
+1. **既有键序逐字保留**：`schemaVersion` → `error`（恒 `string`）→ `version` → `notDone` → `blockingOpen` 相对序不变；**只在 `blockingOpen` 之后、`errorKind` 之前插入**新键 `eligible` / `unfinishedStages` / `blockingReviews`，`errorKind` 由统一错误出口恒置末位。
+2. **同形覆盖成功分支**：成功 dry-run 与非 dry-run 同代码路径追加 `eligible:true` + `unfinishedStages:[]` + `blockingReviews:[]`，使「9 键」在成功/拒绝两路径一致，消费者可无分支读取。
+3. **判据单源**：新字段值直接复用既有判据函数（`listArchivableCandidates` + `listBlockingOpenRevsForVersion`），不另写判定；`eligible` = 两判据均空。
+4. **零写盘与 legacy 例外**：`--dry-run` 不新增任何写点（不写归档文件 / 不 save / 不 appendLog），以 flow.json + flow-archive 全文件哈希断言取证；非 dry-run 的 `save()` 异常保持 legacy stderr + exit 1（作为 internal/3 归类规则的显式例外登记）。
+
+**判据**：① 给 legacy 结构化载荷加字段时，**追加而非改造**：不重排、不改类型、不把 `error` 换成对象；② 新键插入位置要可判类——「既有键之后、统一错误出口追加键之前」；③ 同一代码路径的失败与成功分支应输出同键集（仅取值不同），避免消费者按分支猜键；④ 新字段值必须复用既有判据单点，禁第二份判定；⑤ 零写盘/降级边界用整文件哈希而不是「未看到写操作」。
+
+**实证**：v1.2.2-stage-97 op-003（gate-rejected 9 键固定序 `schemaVersion,error,version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind`，exit 1；合格 fixture `eligible:true` + 两空数组；`--dry-run` 真实工作区 10 个文件 SHA256 前后一致；非 dry-run 成功同形）。
+
+**参见：** `src/commands/flow.ts`；`src/core/flow-archive/grouping.ts`；`docs/json-contract.md` §6 / §13 / §14；kb/patterns.md #错误双形态 + `errorKind` 增量兼容策略、#读命令 `--json` 全量补全与 33 出口契约矩阵；kb/architecture.md #归档命令面架构；manual/cli/commands.md

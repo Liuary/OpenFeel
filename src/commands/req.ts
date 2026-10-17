@@ -21,6 +21,8 @@ import {
 } from '../core/req/requirement-ops.js';
 import { REQ_STATUSES, REQ_ID_PATTERN, type RequirementStatus, type RequirementPriority, type RequirementData } from '../core/req/types.js';
 import { writeRequirementBodySkeleton } from '../core/req/body-file.js';
+import { computeRequirementAggregate, listLinkedStages } from '../core/req/aggregate.js';
+import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { getUserName } from '../core/workspace/identity.js';
 import { normalizeStageId } from '../core/plan/path.js';
 
@@ -181,7 +183,16 @@ export function registerReqCommand(program: Command): void {
         owner: options.owner,
       });
       if (asJson) {
-        console.log(JSON.stringify({ schemaVersion: 1, requirements: rows }, null, 2));
+        // 末位追加关联阶段与进度（既有 RequirementData 键序零改；聚合/关联阶段共用单点实现）
+        const requirements = rows.map((r) => {
+          const agg = computeRequirementAggregate(data, r.id);
+          return {
+            ...r,
+            linkedStages: listLinkedStages(data, r.id),
+            progress: { done: agg.doneCount, total: agg.stageCount },
+          };
+        });
+        emitJson(withSchemaVersion({ requirements }));
         return;
       }
       if (rows.length === 0) {

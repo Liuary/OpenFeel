@@ -9,6 +9,7 @@ import { Command, CommanderError } from 'commander';
 import { registerConfigCommand } from '../../src/commands/config.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
 import { addStage } from '../../src/core/plan/stage.js';
+import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
@@ -49,6 +50,8 @@ describe('config 命令（stage-42 op-002）', () => {
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
     mockHome.dir = '';
+    // JSON 失败路径置位的退出码须复位（进程级状态）
+    process.exitCode = undefined;
     // 还原运行时日志环境变量
     if (prevLogEnv === undefined) {
       delete process.env.OPENFEEL_LOG;
@@ -693,5 +696,178 @@ describe('config 命令（stage-42 op-002）', () => {
       expect(readFileSync(cfgPath, 'utf-8')).toBe(cfgBefore);
     }
     expect(readFileSync(stageStatusPath('stage-01'), 'utf-8')).toBe(s1);
+  });
+
+  // ── stage-97 op-002：config get / effective JSON 契约 ──
+
+  /** 执行一次成功 JSON 命令并解析单文档（schemaVersion 首键=1、无 ANSI、无 stderr） */
+  async function jsonDoc(args: string[]): Promise<Record<string, any>> {
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(args);
+    const raw = stdout();
+    expect(raw.trim().length).toBeGreaterThan(0);
+    expect(raw).not.toMatch(/\x1b\[/);
+    expect(errorMock).not.toHaveBeenCalled();
+    const doc = JSON.parse(raw) as Record<string, any>;
+    expect(Object.keys(doc)[0]).toBe('schemaVersion');
+    expect(doc.schemaVersion).toBe(1);
+    return doc;
+  }
+
+  /** 执行一次 JSON 失败命令并解析 envelope（失败 envelope 判定经 isJsonMode 单点） */
+  async function jsonError(args: string[]): Promise<Record<string, any>> {
+    logMock.mockClear();
+    errorMock.mockClear();
+    setJsonMode(true);
+    try {
+      await safeParse(args);
+    } finally {
+      resetJsonModeForTest();
+    }
+    const raw = stdout();
+    expect(raw.trim().length).toBeGreaterThan(0);
+    expect(errorMock).not.toHaveBeenCalled();
+    const doc = JSON.parse(raw) as Record<string, any>;
+    expect(Object.keys(doc)[0]).toBe('schemaVersion');
+    expect(doc.schemaVersion).toBe(1);
+    return doc;
+  }
+
+  it('op-002 JSON：config get 项目有值 → scope,key,value 键序', async () => {
+    writeProjectConfig('disabled');
+
+    const doc = await jsonDoc(['config', 'get', 'auto_advance', '--json']);
+
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'scope', 'key', 'value']);
+    expect(doc.scope).toBe('project');
+    expect(doc.key).toBe('auto_advance');
+    expect(doc.value).toBe('disabled');
+  });
+
+  it('op-002 JSON：config get 项目无值 → value:null + exit 0', async () => {
+    const doc = await jsonDoc(['config', 'get', 'merge_mode', '--json']);
+
+    expect(doc.scope).toBe('project');
+    expect(doc.key).toBe('merge_mode');
+    expect(doc.value).toBeNull();
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('op-002 JSON：config get 项目无 key → INVALID_ARGUMENT（reason=key-required）', async () => {
+    const doc = await jsonError(['config', 'get', '--json']);
+
+    expect(doc.error.code).toBe('INVALID_ARGUMENT');
+    expect(doc.error.kind).toBe('refusal');
+    expect(doc.error.detail).toEqual({ reason: 'key-required' });
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('op-002 JSON：config get --global 无 key → values 6 键固定顺序', async () => {
+    const doc = await jsonDoc(['config', 'get', '--global', '--json']);
+
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'scope', 'values']);
+    expect(doc.scope).toBe('global');
+    const values = doc.values as Record<string, unknown>;
+    expect(Object.keys(values)).toEqual([
+      'user.name',
+      'user.lang',
+      'preferences.auto_advance',
+      'preferences.review_mode',
+      'preferences.communication',
+      'preferences.confirm_threshold',
+    ]);
+    // readProfile 深合并默认值 → 6 键均为字符串（缺省 null 规则见契约 §13.6）
+    for (const k of Object.keys(values)) {
+      expect(typeof values[k]).toBe('string');
+    }
+  });
+
+  it('op-002 JSON：config get --global 有 key / 未知 key → value:null', async () => {
+    writeGlobalProfile('enabled');
+
+    const doc = await jsonDoc(['config', 'get', 'preferences.auto_advance', '--global', '--json']);
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'scope', 'key', 'value']);
+    expect(doc.scope).toBe('global');
+    expect(doc.key).toBe('preferences.auto_advance');
+    expect(doc.value).toBe('enabled');
+
+    const missing = await jsonDoc(['config', 'get', 'foo.bar', '--global', '--json']);
+    expect(Object.keys(missing)).toEqual(['schemaVersion', 'scope', 'key', 'value']);
+    expect(missing.value).toBeNull();
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('op-002 JSON：config get --global profile parseError → stderr 告警 + 文档仍输出', async () => {
+    const dir = join(tmpDir, '.config', 'openfeel');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'profile.yaml'), 'just-a-scalar\n', 'utf-8');
+
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['config', 'get', '--global', '--json']);
+
+    const doc = JSON.parse(stdout()) as Record<string, unknown>;
+    expect(Object.keys(doc)[0]).toBe('schemaVersion');
+    expect(stderr()).toContain('配置文件解析失败');
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('op-002 JSON：config effective 无 key → effective 键序（EFFECTIVE_CONFIG_KEYS）', async () => {
+    const doc = await jsonDoc(['config', 'effective', '--json']);
+
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'effective']);
+    const effective = doc.effective as Record<string, { value: string; source: string }>;
+    expect(Object.keys(effective)).toEqual(['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode']);
+    expect(Object.keys(effective.auto_advance)).toEqual(['value', 'source']);
+    expect(typeof effective.auto_advance.value).toBe('string');
+    expect(effective.auto_advance.source).toBe('builtin');
+  });
+
+  it('op-002 JSON：config effective 有 key → key,value,source；未知 key → INVALID_ARGUMENT', async () => {
+    const doc = await jsonDoc(['config', 'effective', 'auto_advance', '--json']);
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'key', 'value', 'source']);
+    expect(doc.key).toBe('auto_advance');
+    expect(typeof doc.value).toBe('string');
+    expect(doc.source).toBe('builtin');
+
+    const err = await jsonError(['config', 'effective', 'bogus', '--json']);
+    expect(err.error.code).toBe('INVALID_ARGUMENT');
+    expect(err.error.detail).toEqual({
+      key: 'bogus',
+      keys: ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'],
+    });
+    expect(process.exitCode).toBe(1);
+  });
+
+  // 人类输出基线
+
+  it('op-002 基线：config get 项目有值 人类输出逐字不变', async () => {
+    writeProjectConfig('disabled');
+    await safeParse(['config', 'get', 'auto_advance']);
+    expect(stdout()).toMatchInlineSnapshot(`"auto_advance：disabled"`);
+  });
+
+  it('op-002 基线：config get --global 无 key 人类输出逐字不变', async () => {
+    await safeParse(['config', 'get', '--global']);
+    expect(stdout()).toMatchInlineSnapshot(`
+      "user.name: 
+      user.lang: zh-CN
+      preferences.auto_advance: disabled
+      preferences.review_mode: full
+      preferences.communication: concise
+      preferences.confirm_threshold: medium"
+    `);
+  });
+
+  it('op-002 基线：config effective 无 key 人类输出逐字不变', async () => {
+    await safeParse(['config', 'effective']);
+    expect(stdout()).toMatchInlineSnapshot(`
+      "配置有效值与来源
+      execution_mode：manual    [来源: builtin]
+      auto_advance：enabled    [来源: builtin]
+      merge_mode：manual    [来源: builtin]
+      workflow_mode：fast    [来源: builtin]"
+    `);
   });
 });

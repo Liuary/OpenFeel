@@ -17,7 +17,8 @@ import { withFileLock, projectLockPath } from '../core/fs/file-lock.js';
 import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
 import { FlowManager, STAGE_STATUS_VALUES } from '../core/flow-manager.js';
-import { handleAddStageError } from './shared/errors.js';
+import { failRefusal, handleAddStageError } from './shared/errors.js';
+import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { appendStatusTask } from '../core/plan/stage.js';
 import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
@@ -35,6 +36,41 @@ interface TaskEntry {
   done: boolean;
   /** 完整的原始行文本 */
   line: string;
+  /** 任务描述（去掉 checkbox 与「任务{N}：」前缀） */
+  description: string;
+}
+
+/** 规范化状态字段（JSON 契约：7 个 camelCase 键 + raw 原始中文键值对） */
+interface CanonicalStatusFields {
+  execMode: string | null;
+  autoAdvance: string | null;
+  status: string | null;
+  reviewAgent: string | null;
+  previousReviewAgent: string | null;
+  updatedAt: string | null;
+  workflowMode: string | null;
+  raw: StatusFields;
+}
+
+/** 将 status.md 原始中文字段映射为规范化键（缺失 → null） */
+function buildCanonicalFields(raw: StatusFields): CanonicalStatusFields {
+  return {
+    execMode: raw['执行模式'] ?? null,
+    autoAdvance: raw['自动推进'] ?? null,
+    status: raw['状态'] ?? null,
+    reviewAgent: raw['当前责任 Agent'] ?? null,
+    previousReviewAgent: raw['上一责任 Agent'] ?? null,
+    updatedAt: raw['更新时间'] ?? null,
+    workflowMode: raw['工作模式'] ?? null,
+    raw,
+  };
+}
+
+/** 提取「## 阻塞 / 暂停原因」正文；无内容或「无」→ null */
+function extractBlockedReason(content: string): string | null {
+  const m = content.match(/^## 阻塞 \/ 暂停原因\n\n(.+?)(?:\n##|\n*$)/ms);
+  const text = m?.[1]?.trim() ?? '';
+  return text === '' || text === '无' ? null : text;
 }
 
 /**
@@ -111,10 +147,12 @@ function parseTasks(content: string): TaskEntry[] {
   let match: RegExpExecArray | null;
 
   while ((match = taskRegex.exec(content)) !== null) {
+    const descMatch = match[1].match(/任务\d+[：:]\s*(.*)/);
     tasks.push({
       number: parseInt(match[3], 10),
       done: match[2] === 'x',
       line: match[1],
+      description: descMatch ? descMatch[1] : match[1],
     });
   }
 
@@ -205,10 +243,8 @@ function showStageStatus(statusPath: string, stageId: string): void {
     console.log(t('stage.task.taskListTmpl', lang, { done: String(doneCount), total: String(tasks.length) }));
     for (const task of tasks) {
       const icon = task.done ? '✅' : '⬜';
-      // 提取任务描述（去掉 checkbox 和"任务{N}："前缀）
-      const descMatch = task.line.match(/任务\d+[：:]\s*(.*)/);
-      const desc = descMatch ? descMatch[1] : task.line;
-      console.log(`    ${icon} ` + t('stage.task.taskItemTmpl', lang, { number: String(task.number), desc }));
+      // 任务描述已在 parseTasks 内同源提取（人类输出逐字不变）
+      console.log(`    ${icon} ` + t('stage.task.taskItemTmpl', lang, { number: String(task.number), desc: task.description }));
     }
   }
 
@@ -335,13 +371,27 @@ export function registerStageCommand(program: Command): void {
     .command('status')
     .description('查看阶段状态（无参数时列出所有阶段）')
     .argument('[stageId]', '阶段 ID（如 v4-stage-04）')
-    .action((stageId?: string) => {
+    .option('--json', t('help.stage.status.json', getCliLang(process.cwd())))
+    .action((stageId: string | undefined, options: { json?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
 
       if (!stageId) {
         // 无参数：列出所有阶段
         const stages = listAllStages(projectPath);
+
+        // JSON 分支须为首行纯 JSON 单文档（statusPath 统一绝对路径）
+        if (options.json) {
+          emitJson(withSchemaVersion({
+            stages: stages.map((s) => ({
+              stageId: s.stageId,
+              status: s.status,
+              statusPath: resolve(projectPath, s.statusPath),
+            })),
+            count: stages.length,
+          }));
+          return;
+        }
 
         if (stages.length === 0) {
           console.log(t('stage.status.noStages', lang));
@@ -366,9 +416,33 @@ export function registerStageCommand(program: Command): void {
       // 有参数：显示指定阶段详细状态
       const statusPath = resolveStatusPath(projectPath, stageId);
       if (!statusPath) {
+        // JSON 模式：预期拒绝 envelope（失败 envelope 判定经 isJsonMode() 单点）
+        if (options.json) {
+          failRefusal({
+            code: 'STAGE_NOT_FOUND',
+            message: t('stage.errorStageNotFoundTmpl', lang, { stageId }),
+            detail: { stageId, hint: t('stage.errorCheckStageId', lang) },
+          });
+          return;
+        }
         console.error(t('stage.errorStageNotFoundTmpl', lang, { stageId }));
         console.error(t('stage.errorCheckStageId', lang));
         process.exit(1);
+      }
+
+      // JSON 分支：单文档输出（fields 7 规范键 + raw；tasks 精简三元组）
+      if (options.json) {
+        const content = readFileSync(statusPath, 'utf-8');
+        const fields = parseStatusFields(content);
+        const tasks = parseTasks(content);
+        emitJson(withSchemaVersion({
+          stageId,
+          statusPath,
+          fields: buildCanonicalFields(fields),
+          tasks: tasks.map(({ number, done, description }) => ({ number, done, description })),
+          blockedBy: extractBlockedReason(content),
+        }));
+        return;
       }
 
       showStageStatus(statusPath, stageId);

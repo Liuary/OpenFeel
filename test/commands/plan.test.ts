@@ -759,4 +759,72 @@ describe('plan 命令', () => {
     const scheme = program.commands.find((c) => c.name() === 'plan')!.commands.find((c) => c.name() === 'scheme')!;
     expect(scheme.commands.map((c) => c.name())).toContain('register');
   });
+
+  // ── stage-97 op-002：plan scheme list JSON 契约 ──
+
+  /** 执行一次成功 JSON 命令并解析单文档（schemaVersion 首键=1、无 ANSI、无 stderr） */
+  async function jsonDoc(args: string[]): Promise<Record<string, any>> {
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(args);
+    const raw = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(raw.trim().length).toBeGreaterThan(0);
+    expect(raw).not.toMatch(/\x1b\[/);
+    expect(errorMock).not.toHaveBeenCalled();
+    const doc = JSON.parse(raw) as Record<string, any>;
+    expect(Object.keys(doc)[0]).toBe('schemaVersion');
+    expect(doc.schemaVersion).toBe(1);
+    return doc;
+  }
+
+  it('op-002 JSON：scheme list 键序 + draft + fill 三值', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '草稿方案', '--draft']);
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '部分方案']);
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '完成方案']);
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+    writeFileSync(join(opsDir, 'op-002.md'), '# op-002：部分方案\n\n## 实施步骤\n- [ ] 待办\n', 'utf-8');
+    writeFileSync(join(opsDir, 'op-003.md'), '# op-003：完成方案\n\n## 实施步骤\n- [x] 完成\n', 'utf-8');
+
+    const doc = await jsonDoc(['plan', 'scheme', 'list', '--json']);
+
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'stage', 'count', 'schemes']);
+    expect(doc.stage).toBeNull();
+    expect(doc.count).toBe(3);
+    const schemes = doc.schemes as Array<Record<string, unknown>>;
+    expect(Object.keys(schemes[0])).toEqual(['stage', 'opId', 'title', 'filePath', 'draft', 'fill']);
+    expect(schemes.map((s) => s.opId)).toEqual(['op-001', 'op-002', 'op-003']);
+    expect(schemes[0].draft).toBe(true);
+    expect(schemes[0].fill).toBe('empty');
+    expect(schemes[1].draft).toBe(false);
+    expect(schemes[1].fill).toBe('partial');
+    expect(schemes[2].fill).toBe('filled');
+    expect(schemes[0].filePath).toBe('.openfeel/plan/v1/stage-01/ops/op-001.md');
+  });
+
+  it('op-002 JSON：scheme list 指定 stage 过滤 / 空态 → schemes:[]', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '方案A']);
+
+    const filtered = await jsonDoc(['plan', 'scheme', 'list', 'stage-01', '--json']);
+    expect(filtered.stage).toBe('stage-01');
+    expect(filtered.count).toBe(1);
+    expect((filtered.schemes as Array<Record<string, unknown>>)[0].stage).toBe('stage-01');
+
+    const empty = await jsonDoc(['plan', 'scheme', 'list', 'stage-99', '--json']);
+    expect(empty.stage).toBe('stage-99');
+    expect(empty.count).toBe(0);
+    expect(empty.schemes).toEqual([]);
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('op-002 基线：scheme list 人类输出逐字不变', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    await safeParse(['plan', 'scheme', 'create', 'stage-01', '实现核心功能']);
+    logMock.mockClear();
+
+    await safeParse(['plan', 'scheme', 'list']);
+
+    expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toMatchInlineSnapshot(`"[stage-01] op-001 — 实现核心功能"`);
+  });
 });

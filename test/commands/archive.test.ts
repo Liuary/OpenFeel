@@ -8,6 +8,7 @@ import { registerArchiveCommand } from '../../src/commands/archive.js';
 import { archiveStage } from '../../src/core/archive/merge.js';
 import { FlowManager, type FlowData } from '../../src/core/flow-manager.js';
 import { t } from '../../src/core/i18n.js';
+import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -33,6 +34,7 @@ describe('archive 命令（op-010 L2）', () => {
     errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
     cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    process.exitCode = 0;
     program = new Command();
     program.exitOverride();
     registerArchiveCommand(program);
@@ -72,6 +74,7 @@ describe('archive 命令（op-010 L2）', () => {
   it('i18n：archive 文案 en 无 CJK', () => {
     expect(/[\u4e00-\u9fff]/.test(t('archive.errorArchiveFailedTmpl', 'en', { stage: 's' }))).toBe(false);
     expect(/[\u4e00-\u9fff]/.test(t('help.archive.argstage', 'en'))).toBe(false);
+    expect(/[\u4e00-\u9fff]/.test(t('help.archive.json', 'en'))).toBe(false);
   });
 
   // ── stage-52/op-014：REV-009 archive 短名归一化 ──
@@ -169,5 +172,87 @@ describe('archive 命令（op-010 L2）', () => {
     setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
     expect(archiveStage(tmpDir, 'stage-99')).toBeNull();
     expect(archiveStage(tmpDir, 'v1.0.0-stage-99')).toBeNull();
+  });
+
+  // ── stage-97 op-003：archive <stage> --json（D-97-03-05） ──
+
+  it('op-003: --json 成功 → 6 键固定序 / archivePath 绝对 / 计数 / knowledgeExtracts 数组', async () => {
+    setupFlow(
+      { 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001', 'op-002']) },
+      [mkReview('REV-001', 'v1.0.0-stage-01.op-001', 'closed')],
+    );
+    logMock.mockClear();
+    errorMock.mockClear();
+
+    await safeParse(['archive', 'stage-01', '--json']);
+
+    expect(process.exitCode).toBe(0);
+    expect(errorMock).not.toHaveBeenCalled();
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const raw = logMock.mock.calls[0][0] as string;
+    expect(raw).not.toMatch(/\u001b\[/);   // 无 ANSI
+    const payload = JSON.parse(raw);
+    expect(Object.keys(payload)).toEqual([
+      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts',
+    ]);
+    expect(payload.schemaVersion).toBe(1);
+    expect(payload.stage).toBe('stage-01');             // 用户输入原值
+    expect(payload.archivePath).toBe(join(tmpDir, '.openfeel', 'log', 'archive-stage-01.md'));
+    expect(payload.opsCount).toBe(2);
+    expect(payload.reviewsCount).toBe(1);
+    expect(Array.isArray(payload.knowledgeExtracts)).toBe(true);
+    expect(payload.knowledgeExtracts).toContain('[REV-001] k');   // 已关闭审查 → 知识提取
+    expect(payload.knowledgeExtracts.every((x: unknown) => typeof x === 'string')).toBe(true);
+
+    // 空态：无审查条目 → knowledgeExtracts 为空数组（非 null / 非缺省）
+    setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
+    logMock.mockClear();
+    await safeParse(['archive', 'stage-01', '--json']);
+    const empty = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(empty.knowledgeExtracts).toEqual([]);
+  });
+
+  it('op-003: --json 失败（阶段不存在）→ ARCHIVE_FAILED / refusal / exit 1 纯 envelope', async () => {
+    setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
+    logMock.mockClear();
+    errorMock.mockClear();
+    setJsonMode(true);
+    try {
+      await safeParse(['archive', 'stage-99', '--json']);
+    } finally {
+      resetJsonModeForTest();
+    }
+
+    expect(process.exitCode).toBe(1);
+    expect(errorMock).not.toHaveBeenCalled();
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(payload)).toEqual(['schemaVersion', 'error']);
+    expect(payload.schemaVersion).toBe(1);
+    expect(payload.error).toMatchObject({ code: 'ARCHIVE_FAILED', kind: 'refusal', detail: { stage: 'stage-99' } });
+    expect(typeof payload.error.message).toBe('string');
+  });
+
+  it('op-003: --json 异常（save 抛错）→ INTERNAL_ERROR / internal / exit 3', async () => {
+    setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
+    const saveSpy = vi.spyOn(FlowManager.prototype, 'save').mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
+    logMock.mockClear();
+    errorMock.mockClear();
+    setJsonMode(true);
+    try {
+      await safeParse(['archive', 'stage-01', '--json']);
+    } finally {
+      resetJsonModeForTest();
+      saveSpy.mockRestore();
+    }
+
+    expect(process.exitCode).toBe(3);
+    expect(errorMock).not.toHaveBeenCalled();
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(payload.error).toMatchObject({ code: 'INTERNAL_ERROR', kind: 'internal' });
+    expect(payload.error.detail).toMatchObject({ name: 'Error', message: 'boom' });
   });
 });

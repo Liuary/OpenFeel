@@ -1,0 +1,170 @@
+# v1.2.2-stage-97 op 依赖声明（读命令 --json 全量补全）
+# 由 openfeel-schemer 生成；调用方调度前用 Glob 校验 ops.*.file 与 produces 实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# 修订：2026-10-17 openfeel-schemer 初版（计划 §八 est_ops=4 定稿；REV-97-001~003 全吸收）
+# 说明① op 数 = 4（维持计划 est_ops=4），执行序恒为 op-001 → op-002 → op-003 → op-004（阶段末 op）。
+# 说明② 关键方案期裁定（全量论证见各 op 头部）：
+#   D-97-001 stage.status：fields 7 规范键 + fields.raw 原始中文键；tasks 增加 description；statusPath 绝对。
+#   D-97-002 Q6 no-init：严格镜像人类退出码（stage status 无参/flow checkpoint/flow log/knowledge/view/plan 空态 0；
+#     flow recover 0 + initialized:false；stage status 有参未找到 1 + STAGE_NOT_FOUND；project overview 恒 0 无 initialized）。
+#   D-97-003 project overview 键冻结：project/dirs/stats/entries/techStack；dirs 子项不存在 null；techStack 展示字符串。
+#   D-97-004 knowledge search：content 全文 + summary 100 字；Q4 config get：全局无 key values（缺省 null）；Q7 fill 复用 detectFillState。
+#   D-97-005 listLinkedStages 单点：aggregate.ts 导出，computeRequirementAggregate 内部复用；req list 末位追加 linkedStages/progress。
+#   D-97-006 flow archive：legacy 键序保留（error/notDone/blockingOpen），三新键插在 blockingOpen 后、errorKind 前；
+#     成功 9 键；判据复用 listArchivableCandidates + listBlockingOpenRevsForVersion；dry-run 零写盘。
+#   D-97-007 archive <stage>：6 键；ARCHIVE_FAILED/refusal/1；异常 INTERNAL_ERROR/internal/3；人类保持 1。
+#   D-97-008 JSON 内部异常口径：业务拒绝 1；JSON 内部异常 3（stage-95 §2 细化）；人类 0/1/2 零改动。
+#   D-97-009 计数权威：成功出口 19 → 33（本阶段新增 14）；注册选项 20 → 34；req list/flow archive 为既有出口增量。
+#   D-97-010 i18n：14 个 help.*.json 新键（各 op 自加、成对），lint i18n 969 → 983；help.flow.archive.json 修改不改计数。
+#   D-97-011 REV-95-008 本阶段处置（契约 §14 + error-envelope ⑩）；REV-95-009 仅登记 + 错误矩阵复核，机制改造转 stage-98；
+#     REV-96-008 转 stage-98，本阶段零动作。
+#   D-97-012 不推进 phase / 不直写 flow.json / 不手改 status.md / 不改 plan.md / 不新增第三方依赖。
+# 说明③ JSON 契约不变量：既有 19 个成功出口零删除/零重排/类型零改；schemaVersion 首键=1；stdout 单文档；
+#   可选字段 null / 数组 [] / 映射 {}；人类输出逐字不变。
+# 说明③b deps 字段语义：file = op 短文件名（调用方按 ops 目录拼接）；file_path = 项目根相对完整路径（Glob 校验存在性）；produces = 该 op 实际产出的源码/测试文件清单（Glob 校验）。
+# 说明④ 共享文件串行：flow.ts（op-001/op-003）；i18n 双表（op-001/op-002/op-003）；test/commands/flow.test.ts（op-001/op-003）；
+#   test/cli/json-contract.test.ts（op-003/op-004）。各 op 均在前序 op 完成后开始。
+version: "1.1"
+stage: v1.2.2-stage-97
+series: v1
+version_label: v1.2.2
+generated_by: openfeel-schemer
+generated_at: "2026-10-17"
+
+baseline:
+  head: "87df0b7"
+  cli_version: "1.2.1"
+  tests: "74 文件 / 1809 用例（阶段起点；阶段末以实测登记）"
+  tsc: "0"
+  lint_i18n: "969（阶段末目标 983）"
+  lint_kb: "0 过期 / 614 引用"
+  json_exports: "19 成功出口 / 20 注册 --json 选项（阶段末 33 / 34）"
+  flow_meta: "meta.revision 1241 / 21 stages / reviews 0（计划头登记）"
+  notes: "REV-97-001：HEAD / 门禁值按计划修订 1 登记；行号仅快照，执行按内容特征定位。"
+
+cross_stage_constraints:
+  - upstream: v1.2.2-stage-95
+    type: hard
+    status: done
+    reason: "stage-95 已归档：withSchemaVersion / emitJson / failRefusal / failInternal / 12 码表 / 19 出口契约（stage-96 后）已落地；ARCHIVE_FAILED 映射已预留。"
+  - upstream: v1.2.2-stage-96
+    type: hard
+    status: done
+    reason: "stage-96 已归档（HEAD 87df0b7）：flow next 第 19 出口与 stages[]/phases 调度属性已冻结；本阶段只读不改。"
+  - upstream: REV-97-001~003（plan_review）
+    type: hard
+    status: "pending → 本阶段吸收"
+    reason: "001 基线重登记（HEAD 87df0b7 / 74/1809 / 969 / 614 / 21 stages）；002 计数权威 19→33 / 20→34、新出口 14；003 承接 REV-95-008/009 本阶段处置、REV-96-008 转 stage-98。"
+  - downstream: v1.2.2-stage-98
+    type: hard
+    note: "98 收口文档多载体（README×3 / GETTING_STARTED / commands / json-contract 定稿 / manual / cli-usage skill / CHANGELOG）+ DSH 端到端（33 出口 + 11 项需求）+ REV-95-009 退出机制改造评估 + REV-96-008 ops 归档订正。本阶段不得让既有消费者静默失效。"
+  - downstream: 本阶段流程面
+    type: hard
+    note: "不直写 flow.json；不推进 phase；不手改 status.md；不改 plan.md；阶段完成由调用方经 CLI 推进。"
+
+ops:
+  op-001:
+    file: op-001.md
+    file_path: .openfeel/plan/v1/stage-97/ops/op-001.md
+    title: "T1 flow/stage 读命令 --json（stage status / flow recover / checkpoint list / log / project overview）"
+    produces:
+      - src/commands/stage.ts
+      - src/commands/flow.ts
+      - src/commands/project.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/stage.test.ts
+      - test/commands/flow.test.ts
+      - test/commands/project.test.ts
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "P0-2 五个命令面。① 基线快照（before）② stage.status 双形态 + STAGE_NOT_FOUND ③ flow recover 双形态 ④ checkpoint list ⑤ flow log ⑥ project overview collect/render 拆分 ⑦ 5 个 help 键（i18n 969→974）⑧ 测试：形状/空态/退出码/人类快照/只读。新增成功出口 5（19→24）、注册选项 5（20→25）。"
+
+  op-002:
+    file: op-002.md
+    file_path: .openfeel/plan/v1/stage-97/ops/op-002.md
+    title: "T2 knowledge/config/view/plan 读命令 --json（8 个命令面）"
+    produces:
+      - src/commands/knowledge.ts
+      - src/commands/config.ts
+      - src/commands/view.ts
+      - src/commands/plan.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/knowledge.test.ts
+      - test/commands/config.test.ts
+      - test/commands/view.test.ts
+      - test/commands/plan.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "JSON 分支风格与失败出口范式由 op-001 定稿；共享 i18n 双表，恒串行。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "P0-2 八个命令面。① baseline ② knowledge search/list/index/dedup ③ config get/effective ④ view list ⑤ plan scheme list ⑥ 8 个 help 键（i18n 974→982）⑦ 测试：形状/空态/错误/人类快照。新增成功出口 8（24→32）、注册选项 8（25→33）。"
+
+  op-003:
+    file: op-003.md
+    file_path: .openfeel/plan/v1/stage-97/ops/op-003.md
+    title: "T3 req list 关联阶段 + T4 flow archive 判据明细 + T5 archive <stage> --json"
+    produces:
+      - src/core/req/aggregate.ts
+      - src/commands/req.ts
+      - src/commands/flow.ts
+      - src/commands/archive.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/req.test.ts
+      - test/commands/req.test.ts
+      - test/commands/flow.test.ts
+      - test/commands/archive.test.ts
+      - test/cli/json-contract.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "共享 src/commands/flow.ts 与 test/commands/flow.test.ts；op-001 先完成 recover/checkpoint/log。"
+      - op: op-002
+        type: hard
+        reason: "共享 i18n 双表；op-002 先完成 8 键。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "P1-3 + P1-4 + P2-4。① baseline ② listLinkedStages 单点 + aggregate 复用 ③ req list 末位两键 ④ flow archive gate-rejected 三键 + 成功三键（legacy 键序保留）⑤ archive <stage> 6 键 + ARCHIVE_FAILED/INTERNAL_ERROR ⑥ help.archive.json 新增 + help.flow.archive.json 修改（i18n 982→983）⑦ 测试：#8 键序更新、req list 两键、dry-run 哈希、archive envelope。新增成功出口 1（32→33）、注册选项 1（33→34）；req list/flow archive 为既有出口增量。"
+
+  op-004:
+    file: op-004.md
+    file_path: .openfeel/plan/v1/stage-97/ops/op-004.md
+    title: "契约登记、33 出口冻结测试、REV-95-008/009 覆盖与阶段门禁"
+    produces:
+      - docs/json-contract.md
+      - test/cli/json-contract.test.ts
+      - test/cli/error-envelope.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "#20~#22、#31、#32 出口需已实现。"
+      - op: op-002
+        type: hard
+        reason: "#23~#30 出口需已实现。"
+      - op: op-003
+        type: hard
+        reason: "#33 出口与 req list/flow archive 扩展需已实现；共享 json-contract.test.ts，#8 已由 op-003 更新。"
+    retry:
+      max: 3
+      on_fail: "回退 Feel 重议（字段/键序不符回退对应 op，不在本 op 改业务代码）"
+    notes: "契约 + 测试 + 门禁收口。① 契约头部/§5 33 行/§6 三项/§7 33+34/§13 细则/§14 REV 边界 ② json-contract.test.ts #20~#33 + legacy ③ error-envelope ⑩（REV-95-008）/⑪（REV-95-009）④ i18n 983 核对 ⑤ 人类输出 before/after diff 空 ⑥ 门禁：test / tsc / lint i18n / lint kb / build ×2 ⑦ 出口计数三处审计 ⑧ 不推进 phase。"
+
+mutual_exclusions:
+  - group: [op-001, op-002]
+    reason: "共享 src/core/i18n-data/{zh-CN,en}.ts；op-001 先加 5 键，op-002 再加 8 键，恒串行。"
+  - group: [op-002, op-003]
+    reason: "共享 i18n 双表；op-003 追加/修改 help 键，须在 op-002 之后。"
+  - group: [op-001, op-003]
+    reason: "共享 src/commands/flow.ts 与 test/commands/flow.test.ts；op-001 先改 recover/checkpoint/log，op-003 再改 flow archive。"
+  - group: [op-003, op-004]
+    reason: "共享 test/cli/json-contract.test.ts；op-003 只更新 #8，op-004 扩展 #20~#33 与全局计数，恒串行。"
+  - group: [op-004]
+    reason: "阶段末 op（恒末位）：契约/冻结测试/门禁须在 op-001~003 全部冻结后执行。"

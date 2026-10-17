@@ -6,6 +6,8 @@ import { Command } from 'commander';
 import { listReviews, acceptReview } from '../core/view/entry.js';
 import { normalizeAgentName } from '../core/flow-manager.js';
 import { t, getCliLang } from '../core/i18n.js';
+import { withSchemaVersion, emitJson } from './shared/json-output.js';
+import { failInternal } from './shared/errors.js';
 
 export function registerViewCommand(program: Command): void {
   const view = program
@@ -19,10 +21,31 @@ export function registerViewCommand(program: Command): void {
     .command('list')
     .description('列出审查条目')
     .option('--op <id>', '按操作 ID 过滤')
-    .action((options: { op?: string }) => {
+    .option('--json', t('help.view.list.json', getCliLang(process.cwd())))
+    .action((options: { op?: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       try {
         const items = listReviews(process.cwd(), options.op);
+
+        // JSON 分支须为首行纯 JSON 单文档（blocking 缺省 true / canAutoFix 缺省 false）
+        if (options.json) {
+          emitJson(withSchemaVersion({
+            count: items.length,
+            reviews: items.map((r) => ({
+              id: r.id,
+              op: r.op,
+              status: r.status,
+              priority: r.priority,
+              title: r.title,
+              filed_by: normalizeAgentName(r.filed_by),
+              filed_at: r.filed_at,
+              blocking: r.blocking !== false,
+              canAutoFix: r.canAutoFix === true,
+              autoFixDetail: r.autoFixDetail ?? null,
+            })),
+          }));
+          return;
+        }
 
         if (items.length === 0) {
           console.log(t('view.list.empty', lang));
@@ -34,6 +57,11 @@ export function registerViewCommand(program: Command): void {
           console.log(`  ${t('common.op', lang)}: ${item.op}  ${t('view.list.filedBy', lang)}: ${normalizeAgentName(item.filed_by)}  ${t('view.list.filedAt', lang)}: ${item.filed_at}`);
         }
       } catch (err) {
+        // JSON 模式走 INTERNAL_ERROR / exit 3；人类模式逐字保持 exit 1
+        if (options.json) {
+          failInternal(err, { stderrLines: [t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) })] });
+          return;
+        }
         console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
         process.exit(1);
       }

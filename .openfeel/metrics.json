@@ -2,57 +2,57 @@
   "agents": {
     "openfeel-executor": {
       "agentName": "openfeel-executor",
-      "totalRuns": 11,
-      "successfulRuns": 11,
+      "totalRuns": 12,
+      "successfulRuns": 12,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 17616458,
-      "avgDurationMs": 1601496
+      "totalDurationMs": 19688528,
+      "avgDurationMs": 1640711
     },
     "openfeel-reviewer": {
       "agentName": "openfeel-reviewer",
-      "totalRuns": 13,
-      "successfulRuns": 13,
+      "totalRuns": 14,
+      "successfulRuns": 14,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 9282567,
-      "avgDurationMs": 714044
+      "totalDurationMs": 9470069,
+      "avgDurationMs": 676434
     },
     "openfeel-feel-tester": {
       "agentName": "openfeel-feel-tester",
+      "totalRuns": 12,
+      "successfulRuns": 12,
+      "failedRuns": 0,
+      "totalRetries": 0,
+      "totalDurationMs": 5454271,
+      "avgDurationMs": 454523
+    },
+    "openfeel-archiver": {
+      "agentName": "openfeel-archiver",
       "totalRuns": 11,
       "successfulRuns": 11,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 5073678,
-      "avgDurationMs": 461243
-    },
-    "openfeel-archiver": {
-      "agentName": "openfeel-archiver",
-      "totalRuns": 10,
-      "successfulRuns": 10,
-      "failedRuns": 0,
-      "totalRetries": 0,
-      "totalDurationMs": 5078593,
-      "avgDurationMs": 507859
+      "totalDurationMs": 5308125,
+      "avgDurationMs": 482557
     },
     "openfeel-planner": {
       "agentName": "openfeel-planner",
-      "totalRuns": 28,
-      "successfulRuns": 28,
+      "totalRuns": 30,
+      "successfulRuns": 30,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 212388490,
-      "avgDurationMs": 7585303
+      "totalDurationMs": 221864085,
+      "avgDurationMs": 7395470
     },
     "openfeel-schemer": {
       "agentName": "openfeel-schemer",
-      "totalRuns": 22,
-      "successfulRuns": 22,
+      "totalRuns": 24,
+      "successfulRuns": 24,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 12137851,
-      "avgDurationMs": 551721
+      "totalDurationMs": 12927396,
+      "avgDurationMs": 538642
     }
   }
 }

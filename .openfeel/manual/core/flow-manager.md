@@ -200,6 +200,16 @@ plan_pending → plan_review → plan_passed
 - **只读承诺**：`flow next` 不 `save()` / 不 `appendLog` / 不改 phase；`legalNextPhases` 复用 `getAvailablePhases`（唯一取表点），与 `advance --dry-run` 接受集交叉断言（直接可达 ⊂ 接受集）。
 - 三处档位语义（展示 vs 生效）与契约见 `manual/cli/commands.md`「调度决策面」与 `docs/json-contract.md` §12；架构判据见 `kb/architecture.md #调度决策单一权威架构`。
 
+### 读命令 JSON 投影消费点（v1.2.2-stage-97）
+
+> 核心层本阶段**零改动**（`flow-manager.ts` 不在 diff）；读命令的 JSON 投影只消费既有方法与数据，验证「聚合先行、双渲染后行」不要求核心新增 API。
+
+- **`flow recover --json`**：消费 `recoverContext`（返回 `RecoveryContext {phase,currentOp,stageStatus,blockedBy,pendingTasks}`）+ `getAllStageStats()`，追加 `initialized` 后直出；未初始化（`initialized:false`）沿用人类模式 exit 0，不新增写盘。
+- **`flow checkpoint list [stage] --json`**：消费 `listCheckpoints`（`string[]` 文件名）+ 短名归一兜底，输出 `{stage,checkpoints,count}`；空列表 `[]`、exit 0。
+- **`flow log --last <n> --json`**：读取 `data.log` 末尾 n 条（`Math.max(1, parseInt(...) || 10)` 为既有语义），输出 `{count,entries:[{time,agent,action,detail}]}`；不写盘。
+- **边界**：`--dry-run` / JSON 模式均不改变上述方法的读语义；`flow archive` 判据明细复用核心/归档层既有判据函数（见 `manual/cli/commands.md`「读命令 `--json` 全量补全与判据扩展」）。
+- 架构判据见 `kb/patterns.md #读命令 `--json` 全量补全`；契约见 `docs/json-contract.md` §5 / §13。
+
 ## 状态/相位单一事实源（v1.1.4-stage-62）
 
 - **`status` 语义**：`stage.status` 是 `stage.phase` 的**粗粒度投影**，**单一事实源 = `phase`**。任何 `status` 都可由 `phase` 重新投影得到，故对账/修正只允许 `phase → status` 单向。

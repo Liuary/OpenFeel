@@ -1384,15 +1384,32 @@ export function registerFlowCommand(program: Command): void {
     .command('log')
     .description('显示最近操作日志')
     .option('--last <n>', '显示最近 n 条（默认 10）', '10')
-    .action((options: { last: string }) => {
+    .option('--json', t('help.flow.log.json', getCliLang(process.cwd())))
+    .action((options: { last: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
+
+      const n = Math.max(1, parseInt(options.last, 10) || 10);
+      // JSON 分支须为首行纯 JSON 单文档；空日志与未初始化同形（entries: []）
+      if (options.json) {
+        const entries = mgr.isLoaded() && mgr.getData() ? mgr.getData()!.log.slice(-n) : [];
+        emitJson(withSchemaVersion({
+          count: entries.length,
+          entries: entries.map((e) => ({
+            time: e.time,
+            agent: normalizeAgentName(e.agent),
+            action: e.action,
+            detail: e.detail,
+          })),
+        }));
+        return;
+      }
+
       if (!mgr.isLoaded()) {
         console.log(t('flow.log.noInit', lang));
         return;
       }
 
-      const n = Math.max(1, parseInt(options.last, 10) || 10);
       const data = mgr.getData();
       if (!data || data.log.length === 0) {
         console.log(t('flow.log.noLogs', lang));
@@ -1791,10 +1808,22 @@ export function registerFlowCommand(program: Command): void {
     .command('list')
     .description('列出所有（或指定阶段的）Checkpoint 快照')
     .argument('[stage]', '阶段 ID（可选），如 v5.3-stage-01')
-    .action((stage?: string) => {
+    .option('--json', t('help.flow.checkpoint.list.json', getCliLang(process.cwd())))
+    .action((stage: string | undefined, options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       const snapshots = mgr.listCheckpoints(stage);
+
+      // JSON 分支：未初始化与空集合同形（checkpoints: []）
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          stage: stage ?? null,
+          checkpoints: snapshots,
+          count: snapshots.length,
+        }));
+        return;
+      }
+
       if (snapshots.length === 0) {
         console.log(stage
           ? t('flow.checkpoint.noSnapshotsStageTmpl', lang, { stage })
@@ -1917,7 +1946,16 @@ export function registerFlowCommand(program: Command): void {
       const blockingOpen = listBlockingOpenRevsForVersion(data, version);
       if (!candidate.allDone || blockingOpen.length > 0) {
         if (options.json) {
-          failJson({ error: 'gate-rejected', version, notDone, blockingOpen: blockingOpen.map((r) => r.id) });
+          // 判据明细（D-97-03-04）：legacy 五键序保留，三新键插在 blockingOpen 后、errorKind 前
+          failJson({
+            error: 'gate-rejected',
+            version,
+            notDone,
+            blockingOpen: blockingOpen.map((r) => r.id),
+            eligible: false,
+            unfinishedStages: notDone.map((id) => ({ id, phase: data.stages[id]?.phase ?? null })),
+            blockingReviews: blockingOpen.map((r) => ({ id: r.id, title: r.title, priority: r.priority })),
+          });
           return;
         }
         const stderrLines: string[] = [];
@@ -1959,7 +1997,11 @@ export function registerFlowCommand(program: Command): void {
         };
         const preview = applyArchivePipelineDisposition(previewData, version);
         if (options.json) {
-          console.log(JSON.stringify({ schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log, dryRun: true }, null, 2));
+          // 成功 9 键（D-97-03-03）：dry-run 只读 counts，零写盘
+          console.log(JSON.stringify({
+            schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log,
+            dryRun: true, eligible: true, unfinishedStages: [], blockingReviews: [],
+          }, null, 2));
           return;
         }
         console.log(t('flow.archive.previewTmpl', lang, { version, stages: String(counts.stages), reviews: String(counts.reviews), log: String(counts.log) }));
@@ -2004,7 +2046,11 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
       if (options.json) {
-        console.log(JSON.stringify({ schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log, dryRun: false }, null, 2));
+        // 成功 9 键（D-97-03-03）：保持在 mgr.save() 成功之后输出（顺序不变）
+        console.log(JSON.stringify({
+          schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log,
+          dryRun: false, eligible: true, unfinishedStages: [], blockingReviews: [],
+        }, null, 2));
         return;
       }
       if (added) {
@@ -2229,15 +2275,44 @@ export function registerFlowCommand(program: Command): void {
   flow
     .command('recover')
     .description('跨会话上下文恢复：输出流水线状态、阻塞原因和待处理任务')
-    .action(() => {
+    .option('--json', t('help.flow.recover.json', getCliLang(process.cwd())))
+    .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
+        // JSON 分支：未初始化 exit 0 + initialized:false + 空值（镜像人类 exit 0）
+        if (options.json) {
+          emitJson(withSchemaVersion({
+            initialized: false,
+            phase: null,
+            currentOp: null,
+            stageStatus: null,
+            blockedBy: null,
+            pendingTasks: [],
+            stageStats: {},
+          }));
+          return;
+        }
         console.log(t('common.noInit', lang));
         return;
       }
 
       const recovery = mgr.recoverContext(lang);
+      const stageStats = mgr.getAllStageStats();
+
+      // JSON 分支（键序：initialized,phase,currentOp,stageStatus,blockedBy,pendingTasks,stageStats）
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          initialized: true,
+          phase: recovery.phase,
+          currentOp: recovery.currentOp,
+          stageStatus: recovery.stageStatus,
+          blockedBy: recovery.blockedBy === '' ? null : recovery.blockedBy,
+          pendingTasks: recovery.pendingTasks,
+          stageStats,
+        }));
+        return;
+      }
 
       console.log('');
       console.log(t('flow.recover.title', lang));

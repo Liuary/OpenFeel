@@ -19,14 +19,16 @@ vi.mock('node:os', async (importOriginal) => {
 vi.mock('../../src/cli/deploy-check-output.js', () => ({ emitGlobalDeployCheck: vi.fn() }));
 
 import { Command } from 'commander';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, openSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CLI_ERROR_CODES, CLI_ERROR_TABLE, getCliErrorSpec, isInternalCode } from '../../src/core/errors.js';
 import { handleConcurrentConflict } from '../../src/commands/shared/errors.js';
 import { resetJsonModeForTest, setJsonMode } from '../../src/commands/shared/json-output.js';
 import { registerFlowCommand } from '../../src/commands/flow.js';
-import { FlowManager, type FlowData } from '../../src/core/flow-manager.js';
+import { registerArchiveCommand } from '../../src/commands/archive.js';
+import { FlowManager, type FlowData, isFlowConcurrentError } from '../../src/core/flow-manager.js';
+import { withFileLock, projectLockPath } from '../../src/core/fs/file-lock.js';
 import { initProject } from '../../src/core/init.js';
 import { setConfigValue } from '../../src/core/config.js';
 import { program as rootProgram, runCli } from '../../src/cli/index.js';
@@ -63,6 +65,7 @@ describe('错误层（stage-95 op-002）', () => {
     program = new Command();
     program.exitOverride();
     registerFlowCommand(program);
+    registerArchiveCommand(program);
   });
 
   afterEach(() => {
@@ -399,5 +402,82 @@ describe('错误层（stage-95 op-002）', () => {
     expect(errText).toContain('取值非法');
     expect(errText).toContain('bogus');
     expect(errText).toContain('full, fast, general');
+  });
+
+  // ── ⑩ REV-95-008：文件锁等待超时归 INTERNAL_ERROR/internal/3 ──
+
+  it('⑩a REV-95-008 单元级：锁等待超时抛普通 Error（非 FlowConcurrentModificationError）', () => {
+    const lockPath = projectLockPath(tmpDir, 'probe');
+    mkdirSync(join(tmpDir, '.openfeel', 'tmp', 'locks'), { recursive: true });
+    // 预创建锁文件（O_EXCL 会 EEXIST）→ 等待窗口内无法获取
+    const fd = openSync(lockPath, 'wx');
+    closeSync(fd);
+
+    let caught: unknown;
+    try {
+      withFileLock(lockPath, () => {}, { timeoutMs: 5, staleMs: 60000 });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toContain('获取文件锁超时');
+    // 关键边界：锁超时不是并发冲突（不得归 FLOW_CONCURRENT_CONFLICT/2）
+    expect(isFlowConcurrentError(caught)).toBe(false);
+  });
+
+  it('⑩b REV-95-008 命令级：archive <stage> --json 的 save 锁超时 → INTERNAL_ERROR/internal/3', async () => {
+    setFlowData('plan_pending');
+    // 模拟 mgr.save() 内 withFileLock 抛普通 Error（锁等待超时）
+    const spy = vi.spyOn(FlowManager.prototype, 'save').mockImplementationOnce(() => {
+      throw new Error('获取文件锁超时（5000ms）：flow.lock');
+    });
+    setJsonMode(true);
+    try {
+      await safeParse(['archive', 'v1.0.0-stage-01', '--json']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(3);
+      // stdout 恰一个 envelope（archivePath 写盘成功但不落入 stdout）
+      expect(logMock).toHaveBeenCalledTimes(1);
+      const doc = lastDoc() as {
+        schemaVersion: number;
+        error: { code: string; kind: string; message: string; detail: unknown };
+      };
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'error']);
+      expect(doc.error.code).toBe('INTERNAL_ERROR');
+      expect(doc.error.kind).toBe('internal');
+      expect(doc.error.message).toContain('获取文件锁超时');
+      expect(doc.error.detail).not.toBeNull();
+    } finally {
+      spy.mockRestore();
+      resetJsonModeForTest();
+    }
+  });
+
+  // ── ⑪ REV-95-009：并发冲突退出机制复核（仅登记，改造转 stage-98） ──
+
+  it('⑪ REV-95-009：stdout 恰一个 envelope 且 process.exit(2)（与 failCli 置码返回语义等价）', () => {
+    setJsonMode(true);
+    process.exitCode = 0;
+
+    handleConcurrentConflict({ expectedRevision: 3, actualRevision: 4 }, 'en');
+
+    // stdout 恰一个 envelope 文档
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(errorMock).not.toHaveBeenCalled();
+    const doc = JSON.parse(logMock.mock.calls[0][0] as string) as {
+      schemaVersion: number;
+      error: { code: string; kind: string; detail: unknown };
+    };
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'error']);
+    expect(doc.error.code).toBe('FLOW_CONCURRENT_CONFLICT');
+    expect(doc.error.kind).toBe('refusal');
+    expect(doc.error.detail).toEqual({ expectedRevision: 3, actualRevision: 4 });
+    // 退出机制差异：handleConcurrentConflict 调 process.exit(2)（failCli 为置码后返回）
+    // 机制差异已登记契约 §14.2，统一改造转 stage-98；本阶段不改实现。
+    expect(exitMock).toHaveBeenCalledTimes(1);
+    expect(exitMock).toHaveBeenCalledWith(2);
+    expect(process.exitCode).toBe(2);
   });
 });

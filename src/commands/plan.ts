@@ -8,8 +8,9 @@ import type { StageSkeletonOverrides } from '../core/plan/stage.js';
 import { createScheme, createSchemesFromTasks, listSchemes, removeScheme, publishScheme, renameScheme, registerSchemes } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId, isArchivedVersionOf } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
-import { StageDirConflictError, FlowManager } from '../core/flow-manager.js';
+import { StageDirConflictError, FlowManager, detectFillState } from '../core/flow-manager.js';
 import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
+import { withSchemaVersion, emitJson } from './shared/json-output.js';
 
 export function registerPlanCommand(program: Command): void {
   const plan = program
@@ -312,15 +313,11 @@ export function registerPlanCommand(program: Command): void {
     .command('list')
     .description('列出操作方案（可选按阶段过滤）')
     .argument('[stage]', '阶段名（可选）')
-    .action((stage?: string) => {
+    .option('--json', t('help.plan.scheme.list.json', getCliLang(process.cwd())))
+    .action((stage: string | undefined, options: { json?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const schemes = listSchemes(projectPath, stage);
-
-      if (schemes.length === 0) {
-        console.log(t('plan.scheme.empty', lang));
-        return;
-      }
 
       // B4-3：draft 标记（便于识别未发布；仅在行尾追加，保持既有字段顺序/输出）
       const draftIds = new Set<string>();
@@ -334,6 +331,28 @@ export function registerPlanCommand(program: Command): void {
             }
           }
         }
+      }
+
+      // JSON 分支须为首行纯 JSON 单文档（filePath 为项目根相对路径）
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          stage: stage ?? null,
+          count: schemes.length,
+          schemes: schemes.map((s) => ({
+            stage: s.stage,
+            opId: s.opId,
+            title: s.title,
+            filePath: s.filePath,
+            draft: draftIds.has(s.opId),
+            fill: detectFillState(s.content),
+          })),
+        }));
+        return;
+      }
+
+      if (schemes.length === 0) {
+        console.log(t('plan.scheme.empty', lang));
+        return;
       }
 
       for (const scheme of schemes) {

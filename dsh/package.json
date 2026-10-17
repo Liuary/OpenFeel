@@ -1,0 +1,45 @@
+{
+  "name": "openfeel-dsh",
+  "version": "0.1.0",
+  "description": "OpenFeel × DSH — Feel 模式适配器：把 OpenFeel 的流水线、需求分发、版本归档与知识库接入 DeepSeek Harness",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "docs"
+  ],
+  "engines": {
+    "node": ">=20.17.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Liuary/OpenFeel.git",
+    "directory": "dsh"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "openfeel": {
+    "adapter": "dsh",
+    "requiresCli": ">=1.2.3"
+  },
+  "keywords": [
+    "openfeel",
+    "dsh",
+    "deepseek-harness",
+    "adapter",
+    "workflow",
+    "governance"
+  ]
+}

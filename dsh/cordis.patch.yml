@@ -1,0 +1,26 @@
+# OpenFeel × DSH bundle patch
+#
+# This is the DSH adaptation layer of OpenFeel: one loader row that mounts the
+# Feel-mode adapter. The adapter projects OpenFeel's CLI and `.openfeel/`
+# workspace into DeepSeek Harness — it owns no domain state of its own, so all
+# pipeline, requirement, and archive authority stays with the OpenFeel CLI.
+#
+# A profile mounts this bundle by listing `openfeel-dsh` in
+# `dsh.profile.bundles`; the row below is then inserted over the profile root.
+# Later layers (and the user's own cordis.patch.yml) address it by `id`.
+
+- insert:
+    - id: openfeel-feel
+      name: 'openfeel-dsh'
+      config:
+        # CLI 可执行文件：默认走 PATH / npm 全局 bin / node 同目录探测。
+        command: openfeel
+        # 单次调用超时（毫秒）。大项目 flow.json 可达数百 KB，放宽到 120s。
+        timeoutMs: 120000
+        # 是否写 OpenFeel CLI 运行日志（~/.openfeel/cli/logs/）。
+        # 默认关闭：只读沙箱下写全局目录会失败，且该日志对 agent 无价值。
+        log: false
+        # 是否注入 Feel 纪律系统提示段。启用 Feel 模式时通常应为 true。
+        autoPrompt: true
+        # 系统提示段语言：zh-CN | en
+        language: zh-CN

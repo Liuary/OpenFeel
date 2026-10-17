@@ -1,6 +1,6 @@
 # 当前进度
 
-> OpenFeel **v1.3.0 — DSH 适配器单包分发 + README 重构**｜ `openfeel` 内置 `dsh/`；`openfeel setup --tools dsh` 部署到 DSH profile（link + bundles + 按需 pnpm）｜ 适配器 6 处位置参数空值修复 ｜ 版本能力概览迁至 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.0 ｜ **待 push，由 CI 自动 npm publish**
+> OpenFeel **v1.3.0 — DSH 适配器单包分发 + README 重构**｜ `openfeel` 内置 `dsh/`；`openfeel setup --tools dsh` 部署到 DSH profile（link + bundles + 按需 pnpm）｜ 适配器 6 处位置参数空值修复 ｜ 版本能力概览迁至 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.0 ｜ **已归档；push 后由 CI 自动 npm publish**
 > 统计：测试 77 文件 / **1978 用例全绿（0 skipped / 0 failed）** ｜ `lint i18n` **1013** 键 ｜ `lint kb` 0 过期（649 引用）｜ **13 错误码 / 40 成功出口 / 41 注册 `--json`** ｜ **版本 1.3.0**
 
 ## 近期提交记录（最多 5 条，最新在上）

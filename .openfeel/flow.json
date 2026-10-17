@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-17T12:21:32.344Z",
-    "revision": 1330,
+    "updated": "2026-10-17T12:21:43.310Z",
+    "revision": 1331,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -18,86 +18,20 @@
       "v1.2.1",
       "v1.2.3",
       "v1.2.4",
-      "v1.2.0"
+      "v1.2.0",
+      "v1.3.0"
     ]
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.3.0-stage-101",
-      "op": "op-001"
+      "stage": "",
+      "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.3.0-stage-101": {
-      "name": "v1.3.0-stage-101",
-      "phase": "done",
-      "status": "done",
-      "deps": [],
-      "ops": {
-        "op-001": {
-          "title": "单包分发 DSH 适配器 + setup --tools dsh + README 重构 + 1.3.0 发布收口",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        }
-      },
-      "workflow_mode": "fast",
-      "requirement_id": "REQ-002",
-      "stats": {
-        "start_time": "2026-10-17T11:31:55.768Z",
-        "end_time": "2026-10-17T12:21:32.322Z",
-        "duration_ms": 2976554
-      }
-    }
-  },
-  "reviews": [
-    {
-      "id": "REV-001",
-      "op": "v1.3.0-stage-101.op-001",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "B1 计划：profile 锁内调用 backup/appendUpdateInfo 造成嵌套全局锁，需改为锁外备份、锁内重读合并写",
-      "filed_by": "cli",
-      "filed_at": "2026-10-17T11:36:58.279Z",
-      "canAutoFix": false,
-      "blocking": true
-    },
-    {
-      "id": "REV-002",
-      "op": "v1.3.0-stage-101.op-001",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "B2 计划：DSH_* 错误码不在 CliErrorCode 13 码表；改用 INVALID_ARGUMENT/INTERNAL_ERROR + detail.reason，避免改 JSON 契约 §3",
-      "filed_by": "cli",
-      "filed_at": "2026-10-17T11:37:01.050Z",
-      "canAutoFix": false,
-      "blocking": true
-    },
-    {
-      "id": "REV-003",
-      "op": "v1.3.0-stage-101.op-001",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "B3 计划：DSH profile 路径进入 updated 会被 setup 写入 global update_state hash，与\"不属于受管资产\"矛盾；只走 SetupResult.dsh",
-      "filed_by": "cli",
-      "filed_at": "2026-10-17T11:37:03.742Z",
-      "canAutoFix": false,
-      "blocking": true
-    }
-  ],
+  "stages": {},
+  "reviews": [],
   "log": [
     {
       "time": "2026-07-09T15:31:43.834Z",
@@ -2062,15 +1996,6 @@
       }
     },
     {
-      "time": "2026-10-17T11:26:51.016Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-10-17T11:26:52.711Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -2108,110 +2033,6 @@
         "fields": [
           "title"
         ]
-      }
-    },
-    {
-      "time": "2026-10-17T11:31:55.768Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "time": "2026-10-17T11:36:53.013Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "opId": "op-001"
-      }
-    },
-    {
-      "time": "2026-10-17T11:37:05.922Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "plan_review",
-        "to": "plan_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-17T11:40:02.615Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-17T11:42:33.604Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-17T11:42:35.751Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:08:56.385Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "opId": "op-002"
-      }
-    },
-    {
-      "time": "2026-10-17T12:10:23.034Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "opId": "op-003"
-      }
-    },
-    {
-      "time": "2026-10-17T12:16:36.807Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "opId": "op-004"
-      }
-    },
-    {
-      "time": "2026-10-17T12:17:00.604Z",
-      "agent": "cli",
-      "action": "register_op",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "opId": "op-005"
       }
     },
     {
@@ -2259,66 +2080,6 @@
       }
     },
     {
-      "time": "2026-10-17T12:21:20.630Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:21:23.614Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:21:27.110Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:21:30.406Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "opsCount": 1,
-        "reviewsCount": 3,
-        "knowledgeCount": 3,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.3.0-stage-101.md"
-      }
-    },
-    {
-      "time": "2026-10-17T12:21:32.322Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.0-stage-101",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-10-17T12:21:32.344Z",
       "agent": "cli",
       "action": "requirement_auto_done",
@@ -2327,6 +2088,17 @@
         "from": "in_progress",
         "to": "done",
         "triggerStage": "v1.3.0-stage-101"
+      }
+    },
+    {
+      "time": "2026-10-17T12:21:43.310Z",
+      "agent": "cli",
+      "action": "archive_flow_version",
+      "detail": {
+        "version": "v1.3.0",
+        "stages": 1,
+        "reviews": 3,
+        "log": 16
       }
     }
   ],

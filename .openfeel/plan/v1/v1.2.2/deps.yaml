@@ -1,0 +1,160 @@
+# OpenFeel v1.2.2 阶段依赖声明（CLI 机器可读契约与调度决策下沉）
+# 由 openfeel-planner 制定；op 级依赖由 openfeel-schemer 在各阶段产方案时落盘（{stage}/ops/deps.yaml）
+# 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
+# 修订记录：2026-10-17 openfeel-planner —— 初稿（依据 docs/v1.2.2-requirements.md + REQ-001；基础设施 → 决策权威 → 读命令补全 → 收口验收）
+#           2026-10-17 openfeel-planner —— 修订 1（stage-95 plan_review 闭环：退出码 0/1/2/3、legacy errorKind、12 行映射表、扩展优先原则、--project 四项边界）
+
+version: "1.1"
+series: v1
+version_label: v1.2.2
+theme: CLI 机器可读契约与调度决策下沉（DSH 适配器 11 项需求：P0×3 / P1×4 / P2×4）
+generated_by: openfeel-planner
+generated_at: "2026-10-17"
+
+# 跨版本承接（基线）
+baseline:
+  - upstream: v1.2.1-stage-94
+    type: hard
+    status: done
+    reason: "v1.2.1 版本收官（17 阶段全 done；CLI 1.2.1；测试 71 文件 / 1719 用例；lint i18n 945；lint kb 0 过期 / 624 引用；flow.json reviews=0）。v1.2.2 在其上做 CLI 契约增量：不改 phase 枚举、不改转移表语义、不破坏既有 18 个 --json 出口。承接声明：flow.json 官方 reviews 空账（0）；用户级台账 pending 条目按各阶段计划三分登记（本阶段处置 / 显式转后续 / 台账保留）。"
+
+stages:
+  v1.2.2-stage-95:
+    name: JSON 输出契约与错误封装基础设施
+    deps: []
+    priority: P0
+    est_ops: 4
+    requirement: REQ-001
+    produces_core:
+      - src/cli/index.ts
+      - src/cli/project-option.ts
+      - src/commands/shared/errors.ts
+      - src/commands/shared/json-output.ts
+      - src/core/errors.ts
+      - src/commands/flow.ts
+      - src/commands/req.ts
+      - src/commands/knowledge.ts
+      - src/commands/instructions.ts
+      - src/commands/setup.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - docs/json-contract.md
+      - test/cli/json-contract.test.ts
+      - test/cli/error-envelope.test.ts
+      - test/cli/project-option.test.ts
+      - test/cli/index.test.ts
+      - test/commands/flow.test.ts
+      - test/commands/req.test.ts
+      - test/commands/knowledge.test.ts
+      - test/commands/shared-errors.test.ts
+    notes: "P2-1 + P0-3 + P2-3 + P1-2。① 契约助手（withSchemaVersion 构造序 {schemaVersion:1,...doc} / emitJson / JSON 模式单点）+ docs/json-contract.md（退出码表 + 12 行 code→kind→exitCode 映射表 + legacy 双形态 + REQ-001 L80 勘误留痕 + 扩展优先清单）+ 契约测试；② 错误层（src/core/errors.ts: CliErrorKind/CliError/12 码表内嵌 kind+exitCode；shared/errors.ts: failRefusal/failInternal/并发 JSON）+ runCli 统一 catch：退出码 0 成功 / 1 refusal / 2 并发冲突（kind=refusal）/ 3 internal；新 envelope 仅覆盖文本型失败，legacy {schemaVersion,error:'...'} 类型与键序零改动并末尾追加 errorKind；③ --version --json（argv 预扫描，{schemaVersion,version,node}）；④ 全局 --project（根选项 + 预扫描 chdir + 目录校验；knowledge dedup 优先保留本地声明 + optsWithGlobals，语法兼容；chdir 后语言按目标项目；--log-file 相对路径在 chdir 前按原始 cwd 解析；--project/--json 预扫描成对防误判；单进程单命令前提）；⑤ 18 出口契约审计：instructions --json 补 schemaVersion 首键（C1）；条件键 null 占位评估（Q3 豁免判据）；键序冻结表。边界：不迁移 init/migrate/update/model 等人类专用失败路径；不引入第三方依赖；人类输出逐字不变；0/1/2 退出码语义零改动；扩展优先 C1~C6 同步清单。"
+
+  v1.2.2-stage-96:
+    name: 调度决策权威
+    deps:
+      - v1.2.2-stage-95
+    priority: P0
+    est_ops: 3
+    requirement: REQ-001
+    produces_core:
+      - src/core/flow-manager.ts
+      - src/core/pipeline-schema.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+      - docs/json-contract.md
+    notes: "P0-1 + P1-1 + P2-2。① flow next [--json]：stage/phase/phaseLabel/responsibleAgent/workflowMode/reviewTier/effectiveReviewTier/legalNextPhases/suggestedCommand/guards/blockingReviews；responsibleAgent 经 FlowManager 公开单点（委托 mapPhaseToAgent）；legalNextPhases 经 getAvailablePhases（缺省 full，与 flow advance 同源）；suggestedCommand 取首项；blockingReviews 为当前阶段域 blocking open REV（抽 listStageBlockingOpenReviews 单点，与 assertNoBlockingOpenRev 共用）；只读零写盘。② flow status --json.stages[] 追加 workflowMode/requirementId/reviewTier/effectiveReviewTier/opsSummary:{total,byState}；既有 id/phase/status/deps/ops 键序不变。③ flow phases --json 既有 7 键不变，末位追加 displayReviewTier（= reviewTier）与 effectiveReviewTier（恒 full）；文档固定说明展示值/生效值。边界：不改转移表；reviewTier 只增不改；effectiveReviewTier 定义=advance 缺省档位。"
+
+  v1.2.2-stage-97:
+    name: 读命令 --json 全量补全
+    deps:
+      - v1.2.2-stage-95
+      - v1.2.2-stage-96
+    priority: P0
+    est_ops: 4
+    requirement: REQ-001
+    produces_core:
+      - src/commands/stage.ts
+      - src/commands/flow.ts
+      - src/commands/knowledge.ts
+      - src/commands/config.ts
+      - src/commands/view.ts
+      - src/commands/plan.ts
+      - src/commands/project.ts
+      - src/commands/archive.ts
+      - src/commands/req.ts
+      - src/core/req/aggregate.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/commands/stage.test.ts
+      - test/commands/flow.test.ts
+      - test/commands/knowledge.test.ts
+      - test/commands/config.test.ts
+      - test/commands/view.test.ts
+      - test/commands/plan.test.ts
+      - test/commands/project.test.ts
+      - test/commands/archive.test.ts
+      - test/commands/req.test.ts
+      - test/core/req.test.ts
+      - test/cli/json-contract.test.ts
+      - docs/json-contract.md
+    notes: "P0-2 + P1-3 + P1-4 + P2-4。① 13 个读命令面 --json：stage status / flow recover / flow checkpoint list / knowledge search/list/index/dedup / config get/effective / view list / plan scheme list / flow log / project overview；人类输出逐字不变（先聚合数据对象再渲染）；失败路径接入错误封装（复用 stage-95 envelope；退出码 0/1/2/3 与映射表同源）。② req list --json 追加 linkedStages:[{id,phase}] + progress:{done,total}（对象；零关联 [] + {done:0,total:0}；复用 aggregate 单点，新增 listLinkedStages）。③ flow archive --dry-run --json 追加 eligible/unfinishedStages/blockingReviews；判据复用 listArchivableCandidates + listBlockingOpenRevsForVersion；保留 legacy error/notDone/blockingOpen（末尾追加 errorKind）；零写盘。④ openfeel archive <stage> --json 输出 schemaVersion/stage/archivePath/opsCount/reviewsCount/knowledgeExtracts；失败 ARCHIVE_FAILED（refusal/1；映射已在 stage-95 12 行表预留）。边界：不改 flow archive 判据口径；不改人类输出；每命令 JSON 退出码镜像人类模式。"
+
+  v1.2.2-stage-98:
+    name: 文档与版本收口（v1.2.2 收官）
+    deps:
+      - v1.2.2-stage-95
+      - v1.2.2-stage-96
+      - v1.2.2-stage-97
+    priority: P0
+    est_ops: 3
+    requirement: REQ-001
+    produces_core:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - docs/json-contract.md
+      - CHANGELOG.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .openfeel/manual/index.md
+      - .openfeel/manual/cli/commands.md
+      - .openfeel/manual/core/flow-manager.md
+      - .openfeel/manual/core/req.md
+      - .openfeel/roadmap/v1.2.2.md
+      - .openfeel/plan/v1/v1.2.2/plan.md
+    notes: "文档多载体（README×3 / GETTING_STARTED / commands / json-contract 定稿 / manual 按需 / cli-usage skill 快照 v1.2.2）+ CHANGELOG [1.2.2]（flow next / 全局 --project / 13 读命令 --json / 错误封装 / --version --json / flow archive 判据明细 / archive --json / reviewTier 消歧）+ 版本 1.2.2 全链路 A/B/C/D/E（6 载体 / 8 文件 / 10 处 + B 双生成物 + C 传播 + D 白名单 file:line + E 无载体）+ DSH 端到端契约验收（既有 18 出口 + 本版 11 项需求全部出口；隔离 fixture + 真实 DSH 只读消费）+ roadmap/plan 回填 + 承接 REV 处置表。收口 op = 阶段最终 op（版本号写入、CHANGELOG、验收、门禁、回填同 op）；文档以 --help 实测为准；A 类内容特征扫描兜底；D 类白名单禁止广谱 sed；package-lock 禁 npm install；config.yaml 单行 edit。"
+
+# 执行顺序（严格串行，以依赖为准）
+execution_order:
+  - v1.2.2-stage-95
+  - v1.2.2-stage-96
+  - v1.2.2-stage-97
+  - v1.2.2-stage-98
+
+# 跨阶段不变量
+invariants:
+  - "所有 --json 输出均为单文档：schemaVersion 恒为首键且值为 1；stdout 不混人类文本；可选字段用 null、数组用 []、映射用 {}"
+  - "既有 18 个 --json 出口字段零破坏（只增不改、键序保留）；人类输出模式逐字不变（除显式登记的有意变更）"
+  - "错误封装：新 envelope {error:{code,kind,message,detail}} 仅覆盖文本型失败；legacy {schemaVersion,error:'...'} 保留 error 字符串类型与既有键序并末尾追加顶层 errorKind（refusal|internal）；kind 为分类权威；退出码 0 成功 / 1 预期拒绝（refusal）/ 2 并发写冲突（refusal，EXIT_CONCURRENT 不变）/ 3 内部错误（internal，新增）；0/1/2 语义零改动；12 行 code→kind→exitCode 映射表为单一权威；REQ-001 L80「2=内部错误或用法错误」登记为需求文本勘误（留痕 json-contract + CHANGELOG）"
+  - "phase 枚举 15 项 / checkpoint_mapping / phase_corrections / advanceAccepted / 转移表语义不变；本版不裁剪、不新增边"
+  - "flow next 的 responsibleAgent / legalNextPhases / blockingReviews 与既有单点同源（mapPhaseToAgent / getAvailablePhases / assertNoBlockingOpenRev），禁止命令层第二份实现"
+  - "reviewTier 保留为展示值兼容别名；displayReviewTier 同值；effectiveReviewTier 恒为 advance 缺省 full；三处输出（flow phases / flow status.stages[] / flow next）一致"
+  - "全局 --project 单点注入（runCli 预扫描 chdir）；不传时回退 process.cwd()；knowledge dedup 优先保留本地声明（optsWithGlobals，语法兼容）；chdir 后语言按目标项目解析；--log-file 相对路径在 chdir 前按原始 cwd 解析；--project/--json 预扫描成对防误判；CLI 单进程单命令 → chdir 每进程一次 → 无进程内多项目并发"
+  - "flow archive 判据复用 listArchivableCandidates + listBlockingOpenRevsForVersion（禁第二份）；--dry-run 零写盘"
+  - "扩展优先原则（v1.2.2 全局）：如非必要只扩展不修改（新增字段/退出码/选项优先，既有语义零改动）；确实必须修改时，受影响的既有适配器/模板/技能/文档须在同一版本内同步跟进，不得让既有消费者静默失效（C1~C6 清单见 stage-95 计划）"
+  - "不引入第三方依赖；不改 CI；不 npm publish / 不 git push；不直写 flow.json（注册/推进由 Feel 经 CLI）"
+  - "所有阶段关联 REQ-001；每阶段计划含承接 REV 处置表；版本收口按 A/B/C/D/E 清单；双生成物同批 npm run build"

@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { handleAddStageError, handleConcurrentConflict } from '../../src/commands/shared/errors.js';
 import { StageDirConflictError, FlowConcurrentModificationError } from '../../src/core/flow-manager.js';
+import { setJsonMode } from '../../src/commands/shared/json-output.js';
 
 describe('shared error handlers（stage-50 op-004 T38/T42）', () => {
   let errorMock: ReturnType<typeof vi.fn>;
@@ -12,6 +13,7 @@ describe('shared error handlers（stage-50 op-004 T38/T42）', () => {
   let prevExitCode: number | string | undefined;
 
   beforeEach(() => {
+    setJsonMode(false);
     prevExitCode = process.exitCode;
     errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
     exitMock = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
@@ -20,6 +22,7 @@ describe('shared error handlers（stage-50 op-004 T38/T42）', () => {
   });
 
   afterEach(() => {
+    setJsonMode(false);
     errorMock.mockRestore();
     exitMock.mockRestore();
     process.exitCode = prevExitCode;
@@ -53,5 +56,32 @@ describe('shared error handlers（stage-50 op-004 T38/T42）', () => {
   it('T42：addStage 并发冲突经 handleAddStageError 收敛到 exit 2', () => {
     expect(() => handleAddStageError(new FlowConcurrentModificationError(3, 4), 'zh-CN')).toThrow('__EXIT__2');
     expect(exitMock).toHaveBeenCalledWith(2);
+  });
+
+  it('stage-95 op-002：JSON 模式并发 → FLOW_CONCURRENT_CONFLICT envelope（refusal）+ exit 2', () => {
+    setJsonMode(true);
+    const logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const prevLogExitCode = process.exitCode;
+    try {
+      expect(() => handleConcurrentConflict({ expectedRevision: 1, actualRevision: 2 }, 'zh-CN')).toThrow('__EXIT__2');
+      expect(exitMock).toHaveBeenCalledWith(2);
+      expect(process.exitCode).toBe(2);
+      // 人类文案不走 stderr（stdout 单文档）
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(logMock).toHaveBeenCalledTimes(1);
+      const doc = JSON.parse(logMock.mock.calls[0][0] as string) as {
+        schemaVersion: number;
+        error: { code: string; kind: string; message: string; detail: unknown };
+      };
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'error']);
+      expect(Object.keys(doc.error)).toEqual(['code', 'kind', 'message', 'detail']);
+      expect(doc.error.code).toBe('FLOW_CONCURRENT_CONFLICT');
+      expect(doc.error.kind).toBe('refusal');
+      expect(doc.error.detail).toEqual({ expectedRevision: 1, actualRevision: 2 });
+    } finally {
+      logMock.mockRestore();
+      setJsonMode(false);
+      process.exitCode = prevLogExitCode;
+    }
   });
 });

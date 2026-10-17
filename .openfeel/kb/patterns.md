@@ -4326,3 +4326,38 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.1-stage-93 op-001（`dad4569`；`.openfeel/tmp/stage-93-assertion-diff.md` 有意变更白名单）——`pruneTransitionsByTier` 删除「全裁 key 整键删除」步骤（`flow-manager.ts:2148-2150` 删；保留目标侧过滤 + 边收缩回退）；T93.9（core：两档 × 两相位 `getValidTargets` 非空 + 表级差分「不引入新边」+ 阴性「进入仍被裁」）+ T93.10（命令层 `plan_review`@skip → `plan_passed` **exit 0 零 `--force`** + 阴性 + 零写盘）；验收链 §4 全 PASS。
 
 **参见：** v1.2.1-stage-93（plan §一 表 A A6~A8 / §三 T1.2 / §四 Q2；`ops/op-001` §1.5；`REV-93.md` 007）；`src/core/flow-manager.ts :: pruneTransitionsByTier / resolveTransitionsForMode / getValidTargets / findPhasePath`；`src/core/pipeline-schema.ts :: REVIEW_TIERS / TIER_PRUNED_PHASES`；kb/architecture.md #审查档位架构、#双模式转移表选择；kb/patterns.md #收官轮缺陷清零范式、#值域扩展全枚举范式、#零回归取证范式；manual/core/flow-manager.md、manual/cli/commands.md
+
+## [+] 18 出口契约冻结审计方法：实测枚举 → 冻结表 → 逐出口键序断言 + 条件键二选一登记 + 有意变更全枚举 (2026-10-17)
+
+**场景**：给既有 `--json` 输出「冻结契约」，同时必须保证零破坏（不删键 / 不重排 / 不改类型）。仅靠「写一份文档」不够——文档会与实现漂移，必须让冻结表与可执行断言同源。
+
+**六步方法**：
+1. **实测枚举**：以注册点为准（`grep -n "option('--json" src/commands`），不采信需求单计数；按命令归属分组，得到真实出口数（本仓 18 = flow 11 + req 5 + instructions 1 + setup 1）。
+2. **逐出口抓取形态**：隔离 fixture 实跑每个出口，记录「顶层键序 + 数组元素键集 + 条件键出现条件」；未初始化 / 空态等**文档形态变体**单独登记（如 `flow overview` 的 `{schemaVersion,initialized:false}`）。
+3. **冻结表登记规则**：每个键二选一——**恒在键**（缺省 `null` 占位）或**条件出现键**（须附消费者依据）；禁止含糊。豁免（保留条件出现）仅在「已知外部消费者对键集做严格相等断言」时成立。
+4. **有意变更全枚举**：本版只允许 C1（`instructions` 补首键）与 C1b/G-1（`flow archive show` 首键重定位）；每项写明「改动位置 + 同步清单 + 提供版本」。
+5. **可执行断言同源**：逐出口断言 `JSON.parse(stdout)` 成功、`Object.keys(doc)[0]==='schemaVersion'`、`doc.schemaVersion===1`、顶层键序 `toEqual([...冻结序])`、stdout 恰一个文档；条件键按登记类型断言（恒在 / 条件出现）。文档冻结表与测试断言必须逐项对应。
+6. **计数口径显式**：区分「成功出口」与「错误模式开关」——`flow advance --json` 成功仍输出人类文本、仅失败走 envelope，因此**不计入成功出口**（18 而非 19）；`--help --json` 不处理，同样排除。
+
+**判据**：① 冻结是**实测快照**，不是设计意图；② 契约文档与测试**同一事实源**，改一处必须改另一处；③ 「只增不改」优先，键序变更须显式登记；④ 条件键不得默认化，无依据即恒在键；⑤ 计数必须全枚举（禁「约 / 等」），分母与断言语料作用域同源。
+
+**实证**：v1.2.2-stage-95 op-001/op-004（`docs/json-contract.md` §5 冻结表 ↔ `test/cli/json-contract.test.ts` 逐出口断言；测试官隔离 fixture 18/18 首键与键序一致；`flow archive show` 首键重定位登记为 G-1）。
+
+**参见：** `docs/json-contract.md`；kb/patterns.md #CLI `--json` 结构化输出约定、#CLI `--json` 成功/失败同契约；kb/troubleshooting.md #新增输出键/契约的同步面清单；kb/architecture.md #CLI JSON 输出契约冻结与错误封装分层架构
+
+## [+] 错误双形态 + `errorKind` 增量兼容策略：legacy `error` 恒 `string` + 末尾追加 + 12 行 `code→kind→exitCode` 映射单一权威 (2026-10-17)
+
+**场景**：既有失败载荷有两类——文本型失败（无结构）与 legacy `{schemaVersion, error:'...'}`（`error` 为字符串）。要引入稳定分类 `kind`，但零破坏红线禁止改 `error` 类型或键序。
+
+**策略**：
+1. **新 envelope 只覆盖文本型失败**：`{ schemaVersion: 1, error: { code, kind, message, detail } }`；`code` 语言无关、`message` 本地化、`detail` 携带可定位字段（`{stage,from,to}` / `{field,value,allowed}` / `{path,reason}`）。
+2. **legacy 载荷原位保留 + 末尾追加**：构造序固定写 `{ schemaVersion: 1, ...payload, errorKind }`，`error` 恒 `string`、既有键与键序零改动，`errorKind` 恒为末键；判别唯一规则 = `typeof doc.error === 'string' | 'object'`。
+3. **映射表单一权威**：12 行 `code → kind → exitCode` 内嵌于 `src/core/errors.ts`（命令层禁硬编码），文档与测试逐行同源断言；`kind ∈ {refusal,internal}`，退出码 `0/1/2` 语义零改动 + `3=internal` 新增。
+4. **分类裁量显式化**：并发冲突 = `refusal/2`（预期、可重试，不是内部故障）；写盘失败 = `internal/3`（用户无法通过修正输入解决）；用法错误 = `refusal/1`；未映射意外异常 = `INTERNAL_ERROR/internal/3`。
+5. **JSON 出口的退出机制**：`failCli` JSON 分支「输出 → `process.exitCode` → return」，避免 Windows 管道下 `process.exit` 截断 stdout；`process.exit` 仅作兜底。
+
+**判据**：① 兼容性改造优先「末尾追加键」而非改类型 / 重排；② 分类权威必须是**单一张表**，命令行、文档、测试三处逐行一致；③ 新增退出码只用于原本不在语义表中的路径；④ 双形态必须给唯一判别规则，禁止消费者按场景猜；⑤ 输出后退出优先 `process.exitCode` + return。
+
+**实证**：v1.2.2-stage-95 op-002（`error-envelope.test.ts` 14 用例：12 行映射逐行、refusal/internal、并发 exit 2、用法错误 exit 1、exit 3 双模式、legacy 键序 + `errorKind` 末键；测试官 zh/en 矩阵 16/16 断言通过）。
+
+**参见：** `src/core/errors.ts`；`src/commands/shared/errors.ts`；`docs/json-contract.md` §2~§4；kb/patterns.md #CLI 退出码语义、#CLI `--json` 成功/失败同契约；kb/architecture.md #CLI JSON 输出契约冻结与错误封装分层架构

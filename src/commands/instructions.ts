@@ -9,6 +9,8 @@ import {
   generateInstructions,
   generateInstructionsJson,
 } from '../core/artifact-graph/instruction-loader.js';
+import { withSchemaVersion } from './shared/json-output.js';
+import { failCli } from './shared/errors.js';
 
 export function registerInstructionsCommand(program: Command): void {
   program
@@ -36,7 +38,8 @@ export function registerInstructionsCommand(program: Command): void {
             artifactId,
             projectPath,
           );
-          console.log(JSON.stringify(result, null, 2));
+          // C1：命令层补 schemaVersion 首键（核心 loader 零改动）
+          console.log(JSON.stringify(withSchemaVersion(result), null, 2));
         } else {
           const xml = await generateInstructions(
             schema,
@@ -47,8 +50,15 @@ export function registerInstructionsCommand(program: Command): void {
           console.log(xml);
         }
       } catch (err) {
-        console.error(t('common.errorTmpl', lang, { msg: (err as Error).message }));
-        process.exit(1);
+        // 非 JSON 文案逐字不变；JSON 模式 → INVALID_ARGUMENT envelope + exit 1
+        const message = t('common.errorTmpl', lang, { msg: (err as Error).message });
+        failCli({
+          code: 'INVALID_ARGUMENT',
+          message,
+          detail: { artifactId, change: changeName },
+          stderrLines: [message],
+        });
+        return;
       }
     });
 }

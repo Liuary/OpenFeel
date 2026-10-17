@@ -10,6 +10,10 @@ import type { I18nEntry, I18nDomain } from './types.js';
 export const common: I18nDomain = {
   error:           { key: 'common.error',           zh: '错误',       en: '' },
   errorTmpl:       { key: 'common.errorTmpl',       zh: '错误：{msg}', en: '' },
+  invalidArgumentTmpl: { key: 'common.invalidArgumentTmpl', zh: '参数或用法错误：{detail}', en: '' },
+  projectNotFoundTmpl: { key: 'common.projectNotFoundTmpl', zh: '项目路径不存在或不是目录：{path}', en: '' },
+  projectMissingValueTmpl: { key: 'common.projectMissingValueTmpl', zh: '--project 缺少路径值', en: '' },
+  projectConflictTmpl: { key: 'common.projectConflictTmpl', zh: '--project 多次给出且解析路径不一致：{values}', en: '' },
   concurrentConflict: { key: 'common.concurrentConflict', zh: '[并发冲突] flow.json 已被其它进程修改（期望 revision={expected}，磁盘={actual}）；本次修改未写入，请重新执行该命令重试。', en: '' },
   ok:              { key: 'common.ok',              zh: '✓',         en: '' },
   none:            { key: 'common.none',            zh: '(无)',      en: '' },
@@ -641,6 +645,7 @@ export const help: I18nDomain = {
   'global.logFile':        { key: 'help.global.logFile',        zh: '运行日志文件路径（默认 ~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log）', en: '' },
   'global.noLog':          { key: 'help.global.noLog',          zh: '关闭运行日志（亦可通过 OPENFEEL_LOG=0 / OPENFEEL_NO_LOG=1）', en: '' },
   'global.debug':          { key: 'help.global.debug',          zh: '记录 debug 级日志（默认仅 info/warn/error）', en: '' },
+  'global.project':        { key: 'help.global.project',        zh: '项目根路径（等效于在该目录下运行；默认当前目录）', en: '' },
   'openfeel.version':      { key: 'help.openfeel.version',      zh: '输出版本号',                      en: '' },
 
   // init

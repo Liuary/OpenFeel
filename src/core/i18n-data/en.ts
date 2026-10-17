@@ -9,6 +9,10 @@ import type { I18nEntry, I18nDomain } from './types.js';
 export const common: I18nDomain = {
   error:           { key: 'common.error',           zh: '', en: 'Error' },
   errorTmpl:       { key: 'common.errorTmpl',       zh: '', en: 'Error: {msg}' },
+  invalidArgumentTmpl: { key: 'common.invalidArgumentTmpl', zh: '', en: 'Invalid argument or usage: {detail}' },
+  projectNotFoundTmpl: { key: 'common.projectNotFoundTmpl', zh: '', en: 'Project path does not exist or is not a directory: {path}' },
+  projectMissingValueTmpl: { key: 'common.projectMissingValueTmpl', zh: '', en: '--project requires a path value' },
+  projectConflictTmpl: { key: 'common.projectConflictTmpl', zh: '', en: '--project was given multiple times with different resolved paths: {values}' },
   concurrentConflict: { key: 'common.concurrentConflict', zh: '', en: '[concurrent conflict] flow.json was modified by another process (expected revision={expected}, on-disk={actual}); this change was not written, please retry.' },
   ok:              { key: 'common.ok',              zh: '', en: '✓' },
   none:            { key: 'common.none',            zh: '', en: '(none)' },
@@ -612,6 +616,7 @@ export const help: I18nDomain = {
   'global.logFile':        { key: 'help.global.logFile',        zh: '', en: 'Runtime log file path (default ~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log)' },
   'global.noLog':          { key: 'help.global.noLog',          zh: '', en: 'Disable runtime log (also via OPENFEEL_LOG=0 / OPENFEEL_NO_LOG=1)' },
   'global.debug':          { key: 'help.global.debug',          zh: '', en: 'Record debug-level logs (default: info/warn/error only)' },
+  'global.project':        { key: 'help.global.project',        zh: '', en: 'Project root path (equivalent to running in that directory; defaults to the current directory)' },
   'openfeel.version':      { key: 'help.openfeel.version',      zh: '', en: 'Output version number' },
 
   'init':                  { key: 'help.init',                  zh: '', en: 'Initialize project workspace, create .openfeel/ directory structure and config files' },

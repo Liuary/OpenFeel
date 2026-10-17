@@ -30,6 +30,7 @@ import { registerConfigCommand } from '../../src/commands/config.js';
 import { registerPlanCommand } from '../../src/commands/plan.js';
 import { registerArchiveCommand } from '../../src/commands/archive.js';
 import { applyHelpI18n } from '../../src/cli/index.js';
+import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
 import { initProject } from '../../src/core/init.js';
 import { t } from '../../src/core/i18n.js';
 import { FlowManager, FlowConcurrentModificationError, type FlowData, type PipelinePhase, type MetaPhase, type StageData } from '../../src/core/flow-manager.js';
@@ -1000,6 +1001,9 @@ describe('flow 命令（stage-41）', () => {
     expect(obj.schemaVersion).toBe(1);
     expect(typeof obj.ok).toBe('boolean');
     expect(obj.items).toBeInstanceOf(Array);
+    // stage-95 op-001：reconciled 恒在（无 --fix 时为 null），位置固定于 items 之后
+    expect(Object.keys(obj)).toEqual(['schemaVersion', 'ok', 'items', 'reconciled']);
+    expect(obj.reconciled).toBeNull();
   });
 
   it('op-001/B1-4: flow metrics --json 含 schemaVersion=1', async () => {
@@ -1279,7 +1283,7 @@ describe('flow 命令（stage-41）', () => {
     expect(out).toContain('已回写 0');
   });
 
-  it('op-003/B2: 写盘失败 → exit 1 + 明确错误', async () => {
+  it('op-003/B2: 写盘失败 → exit 3（stage-95 D-95-11 分类补全；文案逐字不变）', async () => {
     setupReconcileStage('stage-99', 'active', 'planned');
     const proto = FlowManager.prototype as unknown as { writeStatusField: () => boolean };
     const spy = vi.spyOn(proto, 'writeStatusField').mockImplementation(() => {
@@ -1291,7 +1295,8 @@ describe('flow 命令（stage-41）', () => {
 
     await safeParse(['flow', 'health', '--fix']);
 
-    expect(exitMock).toHaveBeenCalledWith(1);
+    // 内部故障：原 exit 1 → 本版 exit 3（0/1/2 语义不变，3 为新增内部错误码）
+    expect(exitMock).toHaveBeenCalledWith(3);
     expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('disk full');
     spy.mockRestore();
   });
@@ -1727,6 +1732,15 @@ describe('flow 命令（stage-41）', () => {
     expect(obj.schemaVersion).toBe(1);
     expect(obj.ops).toHaveLength(2);
     expect(obj.ops.every((o: { fill: string }) => ['empty', 'partial', 'filled'].includes(o.fill))).toBe(true);
+    // stage-95 op-001：warning 恒在且位于 fill 之后（empty → string，其余 null）
+    for (const o of obj.ops as Array<{ fill: string; warning: unknown }>) {
+      expect(Object.keys(o)).toEqual(['stage', 'opId', 'title', 'state', 'fill', 'warning']);
+      if (o.fill === 'empty') {
+        expect(typeof o.warning).toBe('string');
+      } else {
+        expect(o.warning).toBeNull();
+      }
+    }
   });
 
   it('op-005/B4-5: attempt --op <draft op> → exit 1 且 attempts 未递增', async () => {
@@ -2365,7 +2379,7 @@ describe('flow 命令（stage-41）', () => {
       logMock.mockClear();
       await safeParse(['flow', 'archive', 'v1.9.0', '--json']);
       expect(process.exitCode).toBe(1);
-      expect(JSON.parse(logMock.mock.calls[0][0] as string)).toEqual({ schemaVersion: 1, error: 'no-init' });
+      expect(JSON.parse(logMock.mock.calls[0][0] as string)).toEqual({ schemaVersion: 1, error: 'no-init', errorKind: 'refusal' });
     });
 
     it('T5.1/T5.4 --json: 判据门失败 / 版本未注册 → 纯 JSON 单文档 + exit 1（console.error 零调用）', async () => {
@@ -2385,11 +2399,15 @@ describe('flow 命令（stage-41）', () => {
         error: string;
         notDone: string[];
         blockingOpen: string[];
+        errorKind: string;
       };
       expect(payload.schemaVersion).toBe(1);
       expect(payload.error).toBe('gate-rejected');
       expect(payload.notDone).toEqual(['v1.9.0-stage-02']);
       expect(payload.blockingOpen).toEqual(['REV-A-1']);
+      // stage-95 op-002：legacy 载荷末尾追加 errorKind（refusal），既有键序不变
+      expect(Object.keys(payload)).toEqual(['schemaVersion', 'error', 'version', 'notDone', 'blockingOpen', 'errorKind']);
+      expect(payload.errorKind).toBe('refusal');
     });
   });
 
@@ -2570,6 +2588,10 @@ describe('flow 命令（stage-41）', () => {
       const onDisk = JSON.parse(readFileSync(archivePath('v1.1.7'), 'utf-8')) as ArchiveFile;
       expect(payload).toEqual(onDisk);
       expect(payload.schemaVersion).toBe(1);
+      // stage-95 op-001 / G-1：首键重定位（命令层 withSchemaVersion；其余相对序不变）
+      expect(Object.keys(payload)).toEqual([
+        'schemaVersion', 'version', 'stages', 'reviews', 'log', 'counts', 'archived_at',
+      ]);
       expect(payload.log).toHaveLength(1);
       expect(payload.reviews).toHaveLength(1);
     });
@@ -2607,6 +2629,7 @@ describe('flow 命令（stage-41）', () => {
         error: 'not-found',
         version: 'v9.9.9',
         available: ['v1.1.7'],
+        errorKind: 'refusal',
       });
 
       // --json 纯单文档（invalid-version）
@@ -2620,6 +2643,7 @@ describe('flow 命令（stage-41）', () => {
         error: 'invalid-version',
         input: 'abc',
         available: ['v1.1.7'],
+        errorKind: 'refusal',
       });
     });
 
@@ -3244,10 +3268,9 @@ describe('flow 命令（stage-41）', () => {
     expect(t('flow.health.reqDriftTmpl', 'en', { items: 'y' })).toContain('y');
   });
 
-  it('op-003 真实工作区零触碰（REAL_CWD 反守卫：真实 flow.json 字节不变 + 零 requirements 注入）', () => {
+  it('op-003 真实工作区零触碰（REAL_CWD 反守卫：真实 flow.json 字节不变（基线快照，允许既有 requirements））', () => {
     expect(existsSync(REAL_FLOW_PATH)).toBe(true);
     expect(readFileSync(REAL_FLOW_PATH, 'utf-8')).toBe(REAL_FLOW_RAW);
-    expect(readFileSync(REAL_FLOW_PATH, 'utf-8')).not.toContain('"requirements"');
   });
 
   // ── stage-86 op-001：T1 recordRun 接线（命令层） ──
@@ -3674,6 +3697,40 @@ describe('flow 命令（stage-41）', () => {
       expect(readFileSync(flowPath, 'utf-8')).toBe(raw);                          // 零写盘
     } finally {
       warnMock.mockRestore();
+    }
+  });
+
+  // ── stage-95 op-002：flow advance --json（错误封装开关）──
+
+  it('stage-95 op-002：advance --json 非法相位 → stdout 单 envelope + exit 1（无 human 输出）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.9.0-stage-77');
+    mgr.save();
+    logMock.mockClear();
+    errorMock.mockClear();
+    exitMock.mockClear();
+    process.exitCode = 0;
+    setJsonMode(true);
+    try {
+      await safeParse(['flow', 'advance', '--stage', 'v1.9.0-stage-77', '--to', 'bogus', '--json']);
+
+      // JSON 模式：不调用 process.exit，仅置退出码（REV-95-007.1）
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+      expect(logMock).toHaveBeenCalledTimes(1);
+      const doc = JSON.parse(logMock.mock.calls[0][0] as string) as {
+        schemaVersion: number;
+        error: { code: string; kind: string; message: string; detail: unknown };
+      };
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'error']);
+      expect(Object.keys(doc.error)).toEqual(['code', 'kind', 'message', 'detail']);
+      expect(doc.error.code).toBe('PHASE_TRANSITION_ILLEGAL');
+      expect(doc.error.kind).toBe('refusal');
+      // 失败前的人类提示行改走 stderr，stdout 保持单文档
+      expect(errorMock).not.toHaveBeenCalled();
+    } finally {
+      resetJsonModeForTest();
+      process.exitCode = 0;
     }
   });
 });

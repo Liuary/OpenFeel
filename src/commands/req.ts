@@ -29,9 +29,12 @@ function createManager(): FlowManager {
   return new FlowManager(process.cwd());
 }
 
-/** JSON 失败载荷：纯单文档走 stdout（不混 stderr——对齐既有 flow archive 范式），并置退出码 1 */
+/**
+ * JSON 失败载荷（legacy 形态）：纯单文档走 stdout（不混 stderr——对齐既有 flow archive 范式），并置退出码 1。
+ * `error` 恒 string、既有键序零改动；`errorKind` 恒为末尾键（REV-95-002 / D-95-09）。
+ */
 function failJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify({ schemaVersion: 1, ...payload }, null, 2));
+  console.log(JSON.stringify({ schemaVersion: 1, ...payload, errorKind: 'refusal' }, null, 2));
   process.exitCode = 1;
 }
 

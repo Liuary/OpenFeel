@@ -31,7 +31,9 @@ import { parse as parseYaml } from 'yaml';
 import { MetricsStore, PHASE_AGENT_MAP } from '../core/metrics.js';
 import { runtimeLog } from '../core/runtime-log.js';
 import { addReviewEntry } from '../core/view/entry.js';
-import { handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
+import { failCli, failInternal, handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
+import { withSchemaVersion, isJsonMode } from './shared/json-output.js';   // JSON 契约助手（stage-95 op-001/op-002）
+import { type CliErrorKind } from '../core/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
@@ -404,8 +406,13 @@ export function registerFlowCommand(program: Command): void {
       if (options.mode !== undefined) {
         const allowed = getConfigFieldLegalValues('workflow_mode') ?? [];
         if (!allowed.includes(options.mode)) {
-          console.error(t('stage.set.invalidValueTmpl', lang, { field: '工作流模式', value: options.mode, allowed: allowed.join(', ') }));
-          process.exit(1);
+          const message = t('stage.set.invalidValueTmpl', lang, { field: '工作流模式', value: options.mode, allowed: allowed.join(', ') });
+          failCli({
+            code: 'INVALID_ARGUMENT',
+            message,
+            detail: { field: 'workflowMode', value: options.mode, allowed },
+            stderrLines: [message],
+          });
           return;
         }
         explicitMode = options.mode as WorkflowMode;
@@ -416,17 +423,15 @@ export function registerFlowCommand(program: Command): void {
       if (options.stage !== undefined) {
         const v = validateStageId(options.stage);
         if (!v.ok) {
-          console.error(t('common.stageIdInvalidTmpl', lang, { input: options.stage }));
-          console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, options.stage) }));
-          process.exit(1);
+          const stderrLines = stageIdErrorLines(lang, projectPath, options.stage);
+          failCli({ code: 'INVALID_ARGUMENT', message: stderrLines[0], detail: { stage: options.stage }, stderrLines });
           return;
         }
         stageArg = normalizeStageId(options.stage) ?? options.stage;
         const known = new Set(Object.keys(mgr.isLoaded() ? mgr.getData()!.stages : {}).map((k) => normalizeStageId(k) ?? k));
         if (!known.has(stageArg) && !findStageStatusPath(projectPath, stageArg)) {
-          console.error(t('common.stageIdInvalidTmpl', lang, { input: options.stage }));
-          console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, options.stage) }));
-          process.exit(1);
+          const stderrLines = stageIdErrorLines(lang, projectPath, options.stage);
+          failCli({ code: 'STAGE_NOT_FOUND', message: stderrLines[0], detail: { stage: options.stage }, stderrLines });
           return;
         }
       }
@@ -503,18 +508,16 @@ export function registerFlowCommand(program: Command): void {
       if (options.stage !== undefined) {
         const v = validateStageId(options.stage);
         if (!v.ok) {
-          console.error(t('common.stageIdInvalidTmpl', lang, { input: options.stage }));
-          console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, options.stage) }));
-          process.exit(1);
+          const stderrLines = stageIdErrorLines(lang, projectPath, options.stage);
+          failCli({ code: 'INVALID_ARGUMENT', message: stderrLines[0], detail: { stage: options.stage }, stderrLines });
           return;
         }
         key = normalizeStageId(options.stage) ?? options.stage;
         // 存在性：已注册（flow.json）或有 status.md；二者皆无 → exit 1（防 typo 静默落 config 层）
         const known = new Set(Object.keys(mgr.isLoaded() ? mgr.getData()!.stages : {}).map((k) => normalizeStageId(k) ?? k));
         if (!known.has(key) && !findStageStatusPath(projectPath, key)) {
-          console.error(t('common.stageIdInvalidTmpl', lang, { input: options.stage }));
-          console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, options.stage) }));
-          process.exit(1);
+          const stderrLines = stageIdErrorLines(lang, projectPath, options.stage);
+          failCli({ code: 'STAGE_NOT_FOUND', message: stderrLines[0], detail: { stage: options.stage }, stderrLines });
           return;
         }
       } else {
@@ -787,13 +790,24 @@ export function registerFlowCommand(program: Command): void {
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
     .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')
     .option('--review-tier <tier>', '审查档位（full / lean / skip；缺省=按模式派生；仅显式声明时裁剪审查关，不可绕过 REV 阻塞检查）')
+    .option('--json', '以 JSON 输出错误封装（仅失败时；成功输出保持人类文本）')
     .option('--quiet', '静默非错误输出（成功确认与 Git 警告均不打印）')
     .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean; reviewTier?: string; quiet?: boolean }) => {
       const lang = getCliLang(process.cwd());
+      // JSON 模式（--json 为错误封装开关）下，失败前的人类进展行改走 stderr，保证 stdout 仅一个 envelope；
+      // 成功路径的人类输出保持 console.log（advance 成功不 JSON 化，契约 §7/§8）。
+      const info = (line: string): void => {
+        if (isJsonMode()) {
+          console.error(line);
+          return;
+        }
+        console.log(line);
+      };
       // 自定义 --stage 必选校验（提供中文错误提示）
       if (!options.stage) {
-        console.error(t('flow.advance.errorNoStage', lang));
-        process.exit(1);
+        const message = t('flow.advance.errorNoStage', lang);
+        failCli({ code: 'INVALID_ARGUMENT', message, detail: { required: '--stage' }, stderrLines: [message] });
+        return;
       }
 
       // 审查档位值域校验（stage-92 op-001；fail-fast 且**先于任何取值 / 路径解析 / autoRepair 写盘**）
@@ -801,8 +815,13 @@ export function registerFlowCommand(program: Command): void {
       let explicitTier: ReviewTier | undefined;
       if (options.reviewTier !== undefined) {
         if (!(REVIEW_TIERS as readonly string[]).includes(options.reviewTier)) {
-          console.error(t('stage.set.invalidValueTmpl', lang, { field: '审查档位', value: options.reviewTier, allowed: REVIEW_TIERS.join(', ') }));
-          process.exit(1);
+          const message = t('stage.set.invalidValueTmpl', lang, { field: '审查档位', value: options.reviewTier, allowed: REVIEW_TIERS.join(', ') });
+          failCli({
+            code: 'INVALID_ARGUMENT',
+            message,
+            detail: { field: 'reviewTier', value: options.reviewTier, allowed: REVIEW_TIERS },
+            stderrLines: [message],
+          });
           return;
         }
         explicitTier = options.reviewTier as ReviewTier;
@@ -812,8 +831,9 @@ export function registerFlowCommand(program: Command): void {
 
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error(t('common.errorNoInit', lang));
-        process.exit(1);
+        const message = t('common.errorNoInit', lang);
+        failCli({ code: 'NO_INIT', message, detail: null, stderrLines: [message] });
+        return;
       }
 
       // REV-005：命令层归一化（短名 → 全名），与 plan.ts / flow.ts 其它 stage 解析点同范式
@@ -824,7 +844,8 @@ export function registerFlowCommand(program: Command): void {
         // B1 修复：dry-run 走预览模式（不写内存/不写盘），仅在非 dry-run 时 save()
         const repairResult = mgr.autoRepairInconsistency(stageArg, { dryRun: options.dryRun });
         if (repairResult.fixed) {
-          console.log(
+          // JSON 模式下改走 stderr（失败时 stdout 仅保留一个 envelope）
+          info(
             options.dryRun
               ? t('flow.advance.autoRepairPreview', lang) + `: ${repairResult.detail}`
               : t('flow.advance.autoRepaired', lang) + `: ${repairResult.detail}`,
@@ -842,25 +863,37 @@ export function registerFlowCommand(program: Command): void {
         for (const w of warnings) {
           console.warn(`[WARN] ${w}`);
         }
-        console.log(t('flow.advance.warnAutoCorrect', lang));
+        // JSON 模式下改走 stderr（失败时 stdout 仅保留一个 envelope）
+        info(t('flow.advance.warnAutoCorrect', lang));
       }
 
       if (!valid) {
-        console.error(t('flow.advance.errorInvalidFormat', lang));
-        for (const err of errors) {
-          console.error(`  - ${err}`);
-        }
-        process.exit(1);
+        const message = t('flow.advance.errorInvalidFormat', lang);
+        failCli({
+          code: 'INVALID_ARGUMENT',
+          message,
+          detail: { errors },
+          stderrLines: [message, ...errors.map((e) => '  - ' + e)],
+        });
+        return;
       }
 
       // 非法 phase 校验（P1）：拒绝不在枚举中的目标 phase；--force 可跳过此项，但不可绕过 REV 阻塞检查
       if (!options.force) {
         const phaseResult = PipelinePhaseSchema.safeParse(options.to);
         if (!phaseResult.success) {
-          console.error(t('flow.advance.errorInvalidPhaseTmpl', lang, { phase: options.to }));
-          console.error(t('flow.advance.labelValidPhases', lang) + `: [${PIPELINE_PHASES.join(', ')}]`);
-          console.error(t('flow.advance.hintUseForceFuzzy', lang));
-          process.exit(1);
+          const message = t('flow.advance.errorInvalidPhaseTmpl', lang, { phase: options.to });
+          failCli({
+            code: 'PHASE_TRANSITION_ILLEGAL',
+            message,
+            detail: { stage: stageArg, to: options.to, allowed: [...PIPELINE_PHASES] },
+            stderrLines: [
+              message,
+              t('flow.advance.labelValidPhases', lang) + `: [${PIPELINE_PHASES.join(', ')}]`,
+              t('flow.advance.hintUseForceFuzzy', lang),
+            ],
+          });
+          return;
         }
       }
 
@@ -875,33 +908,44 @@ export function registerFlowCommand(program: Command): void {
           const data = mgr.getData();
           const currentPhase = data?.stages[stageArg]?.phase ?? t('common.unknown', lang);
           const availableTargets = mgr.getAvailablePhases(stageArg, effTier);
+          const stderrLines: string[] = [];
           if (pathResult.reason === 'ambiguous') {
-            console.error(t('flow.advance.ambiguousTmpl', lang));
+            stderrLines.push(t('flow.advance.ambiguousTmpl', lang));
           } else if (pathResult.reason === 'depth-exceeded') {
-            console.error(t('flow.advance.depthExceededTmpl', lang, { max: String(PHASE_PATH_MAX_DEPTH) }));
+            stderrLines.push(t('flow.advance.depthExceededTmpl', lang, { max: String(PHASE_PATH_MAX_DEPTH) }));
           } else {
             // general（无流水线）→ 显式错误引导（防御路径：常规写路径不产生 general 阶段态；REV-90-005 / D-90-3）
             if (mgr.resolveStageWorkflowMode(stageArg).value === 'general') {
-              console.error(t('flow.advance.generalNoPipeline', lang, { stage: stageArg }));
-              process.exit(1);
+              const message = t('flow.advance.generalNoPipeline', lang, { stage: stageArg });
+              failCli({
+                code: 'PHASE_PATH_NOT_FOUND',
+                message,
+                detail: { stage: stageArg, from: currentPhase, to: options.to, reason: pathResult.reason, targets: availableTargets },
+                stderrLines: [message],
+              });
               return;
             }
-            console.error(t('flow.advance.noPathTmpl', lang, {
+            stderrLines.push(t('flow.advance.noPathTmpl', lang, {
               from: currentPhase,
               to: options.to,
               targets: availableTargets.length > 0 ? `[${availableTargets.join(', ')}]` : t('common.none', lang),
             }));
           }
           // 保留既有跳转诊断（可达目标）——与现状一致
-          console.error(t('flow.advance.errorPhaseJumpTmpl', lang, { stage: stageArg, to: options.to }));
-          console.error(t('flow.advance.currentPhaseTmpl', lang, { phase: currentPhase }));
+          stderrLines.push(t('flow.advance.errorPhaseJumpTmpl', lang, { stage: stageArg, to: options.to }));
+          stderrLines.push(t('flow.advance.currentPhaseTmpl', lang, { phase: currentPhase }));
           if (availableTargets.length > 0) {
-            console.error(t('flow.advance.availableTargets', lang) + `: [${availableTargets.join(', ')}]`);
+            stderrLines.push(t('flow.advance.availableTargets', lang) + `: [${availableTargets.join(', ')}]`);
           } else {
-            console.error(t('flow.advance.noAvailableTargets', lang));
+            stderrLines.push(t('flow.advance.noAvailableTargets', lang));
           }
-          console.error(t('flow.advance.hintUseForce', lang));
-          process.exit(1);
+          stderrLines.push(t('flow.advance.hintUseForce', lang));
+          failCli({
+            code: 'PHASE_PATH_NOT_FOUND',
+            message: stderrLines[0],
+            detail: { stage: stageArg, from: currentPhase, to: options.to, reason: pathResult.reason, targets: availableTargets },
+            stderrLines,
+          });
           return;
         }
         if (pathResult.reason === 'already-at-target') {
@@ -939,9 +983,13 @@ export function registerFlowCommand(program: Command): void {
           if (options.force) {
             console.warn(t('flow.advance.forceRevRefused', lang));
           }
-          console.error(t('flow.advance.blockingRevRefused', lang));
-          console.error(t('flow.advance.blockingRevHint', lang));
-          process.exit(1);
+          const message = t('flow.advance.blockingRevRefused', lang);
+          failCli({
+            code: 'BLOCKING_REVIEWS',
+            message,
+            detail: { stage: stageArg, to: 'done', reviews: blockingOpen.map((r) => r.id) },
+            stderrLines: [message, t('flow.advance.blockingRevHint', lang)],
+          });
           return;
         }
       }
@@ -990,14 +1038,21 @@ export function registerFlowCommand(program: Command): void {
         try {
           archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli', explicitTier ? { reviewTier: explicitTier } : undefined);
         } catch (err: unknown) {
+          const stderrLines: string[] = [];
           if (totalSteps > 1) {
             const remaining = phasePath.slice(i).join(t('flow.advance.pathArrow', lang));
             const doneTo = i > 0 ? phasePath[i - 1] : t('common.none', lang);
-            console.error(t('flow.advance.partialFailTmpl', lang, { done: doneTo, failed: next, remaining }));
+            stderrLines.push(t('flow.advance.partialFailTmpl', lang, { done: doneTo, failed: next, remaining }));
           }
           const msg = err instanceof Error ? err.message : String(err);
-          console.error(t('common.errorTmpl', lang, { msg }));
-          process.exit(1);
+          const message = t('common.errorTmpl', lang, { msg });
+          stderrLines.push(message);
+          // 多步循环中的意外异常归内部错误（D-95-11：原 exit 1 → exit 3，登记为分类补全）
+          failInternal(err, {
+            message,
+            stderrLines,
+            detail: { stage: stageArg, failed: next, remaining: phasePath.slice(i) },
+          });
           return;
         }
         archivedAny = archivedAny || archived;
@@ -1035,11 +1090,16 @@ export function registerFlowCommand(program: Command): void {
           const blockingOpen = assertNoBlockingOpenRev(mgr, stageArg, lang);
           if (blockingOpen.length > 0) {
             const remainingPath = phasePath.slice(i + 1);
-            console.error(t('flow.advance.blockedByRevTmpl', lang, {
+            const message = t('flow.advance.blockedByRevTmpl', lang, {
               revs: blockingOpen.map((r) => r.id).join(', '),
               remaining: remainingPath.length > 0 ? remainingPath.join(t('flow.advance.pathArrow', lang)) : t('common.none', lang),
-            }));
-            process.exit(1);
+            });
+            failCli({
+              code: 'BLOCKING_REVIEWS',
+              message,
+              detail: { stage: stageArg, to: 'done', reviews: blockingOpen.map((r) => r.id) },
+              stderrLines: [message],
+            });
             return;
           }
         }
@@ -1179,14 +1239,14 @@ export function registerFlowCommand(program: Command): void {
       }
 
       if (options.json) {
-        // 复用 op-001 口径：顶层对象 + schemaVersion:1
+        // 复用 op-001 口径：顶层对象 + schemaVersion:1；warning 恒在（非 empty 为 null）
         const ops = items.map((it) => ({
           stage: it.stage,
           opId: it.opId,
           title: it.title,
           state: it.state,
           fill: it.fill,
-          ...(it.fill === 'empty' ? { warning: t('flow.ops.emptyWarningTmpl', lang, { opId: it.opId }) } : {}),
+          warning: it.fill === 'empty' ? t('flow.ops.emptyWarningTmpl', lang, { opId: it.opId }) : null,
         }));
         console.log(JSON.stringify({ schemaVersion: 1, ops }, null, 2));
         return;
@@ -1712,23 +1772,28 @@ export function registerFlowCommand(program: Command): void {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const mgr = createManager();
-      // --json 失败出口统一：纯 JSON 单文档 + exit 1（不混人类文案、不走 stderr）
-      const failJson = (payload: Record<string, unknown>): void => {
-        console.log(JSON.stringify({ schemaVersion: 1, ...payload }, null, 2));
-        process.exitCode = 1;
+      // --json 失败出口统一（legacy 形态）：纯 JSON 单文档、不混人类文案；
+      // `errorKind` 恒为末尾键，`error` 恒 string、既有键序零改动（REV-95-002 / D-95-09）
+      const failJson = (
+        payload: Record<string, unknown>,
+        errorKind: CliErrorKind = 'refusal',
+        exitCode = 1,
+      ): void => {
+        console.log(JSON.stringify({ schemaVersion: 1, ...payload, errorKind }, null, 2));
+        process.exitCode = exitCode;
       };
       if (!mgr.isLoaded()) {
         if (options.json) { failJson({ error: 'no-init' }); return; }
-        console.error(t('common.errorNoInit', lang));
-        process.exitCode = 1;
+        const message = t('common.errorNoInit', lang);
+        failCli({ code: 'NO_INIT', message, detail: null, stderrLines: [message] });
         return;
       }
       // 版本归一（REV-79-004）：去 v 再加 v；非法 → exit 1 零写盘
       const version = normalizeArchiveVersion(versionInput);
       if (!version) {
         if (options.json) { failJson({ error: 'invalid-version', input: versionInput }); return; }
-        console.error(t('flow.archive.invalidVersionTmpl', lang, { input: versionInput }));
-        process.exitCode = 1;
+        const message = t('flow.archive.invalidVersionTmpl', lang, { input: versionInput });
+        failCli({ code: 'INVALID_ARGUMENT', message, detail: { input: versionInput }, stderrLines: [message] });
         return;
       }
       const data = mgr.getData()!;
@@ -1736,8 +1801,8 @@ export function registerFlowCommand(program: Command): void {
       const candidate = listArchivableCandidates(data).find((c) => c.version === version);
       if (!candidate) {
         if (options.json) { failJson({ error: 'version-not-active', version }); return; }
-        console.error(t('flow.archive.versionNotActiveTmpl', lang, { version }));
-        process.exitCode = 1;
+        const message = t('flow.archive.versionNotActiveTmpl', lang, { version });
+        failCli({ code: 'INVALID_ARGUMENT', message, detail: { version }, stderrLines: [message] });
         return;
       }
       // 判据门：全 done（candidate.allDone 空集守卫）+ 无 blocking open REV（全仓唯一谓词，REV-79-002）
@@ -1748,20 +1813,26 @@ export function registerFlowCommand(program: Command): void {
           failJson({ error: 'gate-rejected', version, notDone, blockingOpen: blockingOpen.map((r) => r.id) });
           return;
         }
+        const stderrLines: string[] = [];
         if (notDone.length > 0) {
-          console.error(t('flow.archive.gateNotDoneTitleTmpl', lang, { version, n: String(notDone.length) }));
+          stderrLines.push(t('flow.archive.gateNotDoneTitleTmpl', lang, { version, n: String(notDone.length) }));
           for (const id of notDone) {
-            console.error(t('flow.archive.gateItemTmpl', lang, { item: id + ' [' + (data.stages[id]?.phase ?? '') + ']' }));
+            stderrLines.push(t('flow.archive.gateItemTmpl', lang, { item: id + ' [' + (data.stages[id]?.phase ?? '') + ']' }));
           }
         }
         if (blockingOpen.length > 0) {
-          console.error(t('flow.archive.gateBlockingRevTitleTmpl', lang, { version, n: String(blockingOpen.length) }));
+          stderrLines.push(t('flow.archive.gateBlockingRevTitleTmpl', lang, { version, n: String(blockingOpen.length) }));
           for (const r of blockingOpen) {
-            console.error(t('flow.archive.gateItemTmpl', lang, { item: r.id + ': ' + r.title + ' (priority=' + r.priority + ')' }));
+            stderrLines.push(t('flow.archive.gateItemTmpl', lang, { item: r.id + ': ' + r.title + ' (priority=' + r.priority + ')' }));
           }
         }
-        console.error(t('flow.archive.gateRejected', lang));
-        process.exitCode = 1;
+        stderrLines.push(t('flow.archive.gateRejected', lang));
+        failCli({
+          code: 'ARCHIVE_GATE_REJECTED',
+          message: stderrLines[stderrLines.length - 1],
+          detail: { version, notDone, blockingOpen: blockingOpen.map((r) => r.id) },
+          stderrLines,
+        });
         return;
       }
       // 切分（纯函数；禁命令层第二套解析/切分）
@@ -1796,10 +1867,11 @@ export function registerFlowCommand(program: Command): void {
       try {
         writeArchiveFile(projectPath, file);
       } catch (err) {
-        // 写盘失败（REV-79-013）：内存未改动（移除/索引/审计均在其后），无需回滚；exit 1 零 flow.json 变更
-        if (options.json) { failJson({ error: 'archive-write-failed', version }); return; }
-        console.error(t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) }));
-        process.exitCode = 1;
+        // 写盘失败（REV-79-013）：内存未改动（移除/索引/审计均在其后），无需回滚；exit 3 零 flow.json 变更
+        // 分类补全（D-95-09）：写盘失败用户无法通过修正输入解决 → internal / exit 3
+        if (options.json) { failJson({ error: 'archive-write-failed', version }, 'internal', 3); return; }
+        const message = t('common.errorTmpl', lang, { msg: err instanceof Error ? err.message : String(err) });
+        failCli({ code: 'ARCHIVE_WRITE_FAILED', message, detail: { version }, stderrLines: [message] });
         return;
       }
       // ② 内存移除（stages / reviews / log 三段）
@@ -1892,30 +1964,33 @@ export function registerFlowCommand(program: Command): void {
       const version = normalizeArchiveVersion(versionInput);
       if (!version) {
         if (json) {
-          console.log(JSON.stringify({ schemaVersion: 1, error: 'invalid-version', input: versionInput, available }, null, 2));
+          // legacy 形态：error 恒 string、既有键序不变，errorKind 恒末尾
+          console.log(JSON.stringify({ schemaVersion: 1, error: 'invalid-version', input: versionInput, available, errorKind: 'refusal' }, null, 2));
           process.exitCode = 1;
           return;
         }
-        console.error(t('flow.archive.invalidVersionTmpl', lang, { input: versionInput }));
-        process.exitCode = 1;
+        const message = t('flow.archive.invalidVersionTmpl', lang, { input: versionInput });
+        failCli({ code: 'INVALID_ARGUMENT', message, detail: { input: versionInput }, stderrLines: [message] });
         return;
       }
       const file = readArchiveFile(projectPath, version);
       if (!file) {
         if (json) {
-          console.log(JSON.stringify({ schemaVersion: 1, error: 'not-found', version, available }, null, 2));
+          // legacy 形态：error 恒 string、既有键序不变，errorKind 恒末尾
+          console.log(JSON.stringify({ schemaVersion: 1, error: 'not-found', version, available, errorKind: 'refusal' }, null, 2));
           process.exitCode = 1;
           return;
         }
-        console.error(t('flow.archive.show.notFoundTmpl', lang, {
+        const message = t('flow.archive.show.notFoundTmpl', lang, {
           version, versions: available.length > 0 ? available.join(', ') : t('common.none', lang),
-        }));
-        process.exitCode = 1;
+        });
+        failCli({ code: 'INVALID_ARGUMENT', message, detail: { version }, stderrLines: [message] });
         return;
       }
       // --json = 全量载荷（ArchiveFile 原文自带 schemaVersion:1，含 log / reviews）——显式请求才取全量（REV-79-003）
+      // G-1（stage-95 op-001）：命令层 withSchemaVersion 包装，保证 schemaVersion 恒为首键；既有键相对顺序不变
       if (json) {
-        console.log(JSON.stringify(file, null, 2));
+        console.log(JSON.stringify(withSchemaVersion(file), null, 2));
         return;
       }
       console.log(t('flow.archive.show.titleTmpl', lang, { version, at: typeof file.archived_at === 'string' ? file.archived_at : '' }));
@@ -1961,10 +2036,9 @@ export function registerFlowCommand(program: Command): void {
         try {
           reconciled = mgr.reconcileStatusMd({ dryRun: options.dryRun });
         } catch (err: unknown) {
-          // 写盘失败 → 明确错误 + 非 0 退出
+          // 写盘失败 → 内部错误（D-95-11：原 exit 1 → exit 3，登记为分类补全）；非 JSON 文案逐字不变
           const msg = err instanceof Error ? err.message : String(err);
-          console.error(t('common.errorTmpl', lang, { msg }));
-          process.exit(1);
+          failInternal(err, { stderrLines: [t('common.errorTmpl', lang, { msg })] });
           return;
         }
       }
@@ -1978,11 +2052,8 @@ export function registerFlowCommand(program: Command): void {
           ...archiveItems.map((i) => ({ name: i.section, status: i.status, detail: i.message })),
           ...reqItems.map((i) => ({ name: i.section, status: i.status, detail: i.message })),
         ];
-        const payload: Record<string, unknown> = { schemaVersion: 1, ok: report.ok, items };
-        // 与 op-001 的 health --json 合并字段（--fix 时追加 reconciled）
-        if (reconciled) {
-          payload.reconciled = reconciled;
-        }
+        // D-95-02：reconciled 恒在（非 --fix 时 null），位置固定于 items 之后
+        const payload = { schemaVersion: 1, ok: report.ok, items, reconciled: reconciled ?? null };
         console.log(JSON.stringify(payload, null, 2));
         if (!report.ok) {
           process.exit(1);
@@ -2384,6 +2455,19 @@ function findPhaseEnteredAtMs(mgr: FlowManager, stageArg: string, fromPhase: str
 /** 创建 FlowManager 实例（使用当前工作目录） */
 function createManager(): FlowManager {
   return new FlowManager(process.cwd());
+}
+
+/**
+ * `--stage` 非法 / 不存在错误的 stderr 两行（逐字保持既有文案与顺序）。
+ * @param lang 语言标识
+ * @param projectPath 项目根
+ * @param input 用户输入的阶段 ID
+ */
+function stageIdErrorLines(lang: string, projectPath: string, input: string): string[] {
+  return [
+    t('common.stageIdInvalidTmpl', lang, { input }),
+    t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, input) }),
+  ];
 }
 
 /**

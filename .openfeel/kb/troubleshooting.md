@@ -1327,3 +1327,21 @@ opencode 侧同源同语义：`~/.config/opencode/agents/<name>.md` 的 `model` 
 **实证**：v1.2.1-stage-94（`9f993d0` op-001 / `85c8435` op-002；`.openfeel/tmp/stage-94-{repo-persistence,supersede-materials,final-report}.md`）——本仓 `~/.claude/agents/openfeel-reviewer.md` `model: ccs-claude-zhipu--glm-5.3-flash[1M]` 经 `update --tools claude` 前后**逐字保留**；`openfeel-explorer.md` 创建；`settings.json` 用户键逐字保留。
 
 **参见：** v1.2.1-stage-94（plan §二「本仓 reviewer = GLM」/ §三 T3；`REV-94.md` 001~007）；`docs/claude-code-adapter-plan.md`（R-12 / 决策 6 / 实施偏差表 #4）；kb/troubleshooting.md #Claude Code 实机验证方法与行为事实、#模型名错误导致 Agent 无法启动；kb/architecture.md #部署非破坏性语义架构、#Claude 内容源自立与运行时 3 API；kb/patterns.md #模型默认值统一范式、#Claude Code agent frontmatter 结构化映射；`src/core/templates-data/skills/openfeel-{model-config,agent-model-check}/SKILL.md`
+
+## [+] 真实工作区的「反守卫」测试失效：合法状态变化（如 `REQ-001` 存在）时「目录不存在」断言批量假红灯 → 改为递归快照等价 (2026-10-17)
+
+**现象**：`test/commands/req.test.ts` + `flow.test.ts` 在真实仓库上批量失败 **49 项**（req 48 + flow 1）。断言形如 `expect(existsSync(REAL_REQ_DIR)).toBe(false)`（5 处）与 `expect(raw).not.toContain('"requirements"')`（1 处）。报错指向「真实工作区不应有需求层」，但代码行为本身正确。
+
+**根因**：这类「反守卫」断言把**真实工作区的当前状态**当成不变量——测试的前提是「仓库没有 `.openfeel/requirements/`」。当需求流转功能正式登记 `REQ-001`（合法、常态）后，前提被合法数据证伪；断言与产品行为无关，属**测试脆弱**而非缺陷。
+
+**处置（等价且更强）**：
+1. 用**基线快照**替换「不存在」判定：`snapshotReqDir(dir)` 在目录不存在时返回 `null`，存在时递归收集 `[{ rel, content }]`（`/` 分隔、按相对路径排序），断言改为 `toEqual(REAL_REQ_SNAPSHOT)`——**覆盖新增 / 修改 / 删除**，严格强于「目录不存在」。
+2. 删除被字节级断言**严格覆盖**的弱断言（`REAL_FLOW_RAW` 的 `readFileSync(...) === REAL_FLOW_RAW` 保留）；不得顺手放宽其他真实工作区守卫（临时目录清理、`process.cwd` mock、`REAL_CWD` 反守卫）。
+3. 失败集取证：修复前 `failure-set-before.txt`（49 项）→ 修复后空文件；定向复跑 `req + flow` **205/205 passed**。
+4. 等价性复核：`git diff` 统计新增 `snapshotReqDir` 7 行（定义 + 基线 + 5 处断言）、删除旧断言 5 处、flow 删除 1 处；无空断言 / 断言弱化。
+
+**判据**：① 涉及**真实仓库**的隔离断言，只能断言「行为前后等价」或「不触碰范围」，**不得断言某种合法状态不存在**；② 快照须覆盖增/改/删三态并排序稳定；③ 删除弱断言前必须证明其被更强断言严格覆盖；④ 修复仅限测试隔离，产品行为零改动（`src/**` 零 diff）。
+
+**实证**：v1.2.2-stage-95 op-004（方案修订 1 纳入；D-95-21）；`.openfeel/tmp/stage-95/{failure-set-before,failure-set-after}.txt`；测试官独立复核「反守卫未弱化」通过。
+
+**参见：** `test/commands/req.test.ts`（`snapshotReqDir` / `REAL_FLOW_RAW`）；kb/troubleshooting.md #子进程测试未设 `cwd` 致向真实仓库写入、#零回归取证范式；kb/patterns.md #18 出口契约冻结审计方法

@@ -13,6 +13,7 @@ import type { KnowledgeEntry } from '../core/workspace/knowledge.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { resolve } from 'node:path';
 import { findSimilarEntries } from '../utils/kb-dedup.js';
+import { resolveProjectPathForCommand } from '../cli/project-option.js';
 
 /** 有效分类列表 */
 const VALID_CATEGORIES = ['architecture', 'patterns', 'troubleshooting', 'setup'];
@@ -171,6 +172,9 @@ export function registerKnowledgeCommand(program: Command): void {
 
   // -----------------------------------------------------------------------
   // knowledge dedup [content] [--project <path>] [--category <name>] [--threshold <n>]
+  // 扩展优先（C2）：本地 --project 声明保留；根全局 --project 并行提供。
+  // 同名 flag 实测被根选项消费（local options.project === undefined），故经 optsWithGlobals()
+  // 读取并走 resolveProjectPathForCommand 单点解析。
   // -----------------------------------------------------------------------
   knowledge
     .command('dedup [content]')
@@ -178,9 +182,11 @@ export function registerKnowledgeCommand(program: Command): void {
     .option('--project <path>', '目标项目根路径（默认当前目录）')
     .option('--category <name>', '仅检查指定分类（architecture|patterns|troubleshooting|setup）')
     .option('--threshold <n>', '相似度阈值 0~1（默认 0.8）')
-    .action(async (content: string | undefined, options: { project?: string; category?: string; threshold?: string }) => {
+    .action(async (content: string | undefined, options: { project?: string; category?: string; threshold?: string }, command: Command) => {
       const lang = getCliLang(process.cwd());
-      const projectPath = options.project ?? process.cwd();
+      // D-95-12：预扫描结果优先（绝对路径）；直接 parse 时回退 resolve(cwd, raw)
+      const globals = command.optsWithGlobals() as { project?: string };
+      const projectPath = resolveProjectPathForCommand(globals.project);
 
       // 阈值校验（0~1）
       const threshold = options.threshold === undefined ? 0.8 : Number(options.threshold);

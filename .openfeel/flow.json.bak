@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-15T07:26:50.659Z",
-    "revision": 1186,
+    "updated": "2026-10-17T04:37:24.581Z",
+    "revision": 1218,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -19,7 +19,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.2.1-stage-93",
+      "stage": "v1.2.2-stage-95",
       "op": ""
     },
     "retry": 0
@@ -688,8 +688,8 @@
     },
     "v1.2.1-stage-93": {
       "name": "v1.2.1-stage-93",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.2.1-stage-91",
         "v1.2.1-stage-92"
@@ -698,8 +698,8 @@
       "workflow_mode": "full",
       "stats": {
         "start_time": "2026-10-15T06:12:45.354Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-10-15T07:34:06.381Z",
+        "duration_ms": 4881027
       }
     },
     "v1.2.1-stage-94": {
@@ -716,6 +716,133 @@
         "end_time": "2026-10-15T06:04:16.109Z",
         "duration_ms": 4028235
       }
+    },
+    "v1.2.2-stage-95": {
+      "name": "v1.2.2-stage-95",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {
+        "op-001": {
+          "title": "JSON 契约助手、18 出口冻结审计与契约正文",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-10-17T03:54:51.281Z",
+          "completed_at": "2026-10-17T03:54:51.281Z"
+        },
+        "op-002": {
+          "title": "错误层与 runCli 统一入口（退出码 0/1/2/3 + legacy errorKind）",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-10-17T04:05:40.095Z",
+          "completed_at": "2026-10-17T04:05:40.095Z"
+        },
+        "op-003": {
+          "title": "全局 `--project` 与 `--version --json`",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-10-17T04:11:35.471Z",
+          "completed_at": "2026-10-17T04:11:35.471Z"
+        },
+        "op-004": {
+          "title": "i18n 收口、零回归取证与阶段门禁（阶段末 op）",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-10-17T04:23:35.430Z",
+          "completed_at": "2026-10-17T04:23:35.430Z"
+        }
+      },
+      "workflow_mode": "full",
+      "requirement_id": "REQ-001",
+      "stats": {
+        "start_time": "2026-10-17T03:05:38.670Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    },
+    "v1.2.2-stage-96": {
+      "name": "v1.2.2-stage-96",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [
+        "v1.2.2-stage-95"
+      ],
+      "ops": {},
+      "workflow_mode": "full",
+      "requirement_id": "REQ-001"
+    },
+    "v1.2.2-stage-97": {
+      "name": "v1.2.2-stage-97",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [
+        "v1.2.2-stage-95",
+        "v1.2.2-stage-96"
+      ],
+      "ops": {},
+      "workflow_mode": "full",
+      "requirement_id": "REQ-001"
+    },
+    "v1.2.2-stage-98": {
+      "name": "v1.2.2-stage-98",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [
+        "v1.2.2-stage-95",
+        "v1.2.2-stage-96",
+        "v1.2.2-stage-97"
+      ],
+      "ops": {},
+      "workflow_mode": "full",
+      "requirement_id": "REQ-001"
     }
   },
   "reviews": [],
@@ -5405,6 +5532,358 @@
         "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-10-15T07:34:06.381Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.1-stage-93",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "env:62ee6815-2392-428f-9ee6-fcb05885087e",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T02:52:01.174Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-001",
+        "title": "CLI 机器可读契约与调度决策下沉（DSH 适配器需求）"
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:22.592Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:22.885Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.2.2-stage-96",
+        "deps": [
+          "v1.2.2-stage-95"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:23.179Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.2.2-stage-97",
+        "deps": [
+          "v1.2.2-stage-95",
+          "v1.2.2-stage-96"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:23.478Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "deps": [
+          "v1.2.2-stage-95",
+          "v1.2.2-stage-96",
+          "v1.2.2-stage-97"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:25.998Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.2.2-stage-95",
+        "requirementId": "REQ-001"
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:26.286Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.2.2-stage-96",
+        "requirementId": "REQ-001"
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:26.569Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.2.2-stage-97",
+        "requirementId": "REQ-001"
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:26.853Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.2.2-stage-98",
+        "requirementId": "REQ-001"
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:30.207Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-001",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-17T03:05:38.670Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-17T03:10:15.660Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "plan_review",
+        "to": "plan_pending",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T03:23:24.875Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T03:27:03.240Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T03:27:15.160Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T03:39:43.097Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T03:45:37.597Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "scheme_review",
+        "to": "scheme_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T03:45:37.910Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T03:54:01.191Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-10-17T03:54:01.503Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-10-17T03:54:01.798Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-10-17T03:54:02.073Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "opId": "op-004"
+      }
+    },
+    {
+      "time": "2026-10-17T03:54:51.281Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.2.2-stage-95.op-001",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-17T04:05:40.095Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.2.2-stage-95.op-002",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-17T04:11:35.471Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.2.2-stage-95.op-003",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-17T04:23:35.430Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.2.2-stage-95.op-004",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-17T04:23:35.755Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T04:29:41.096Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T04:29:41.396Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "review_passed",
+        "to": "test_pending",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T04:37:20.478Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "test_pending",
+        "to": "test_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T04:37:24.581Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-95",
+        "from": "test_passed",
+        "to": "archiving",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "CLI 机器可读契约与调度决策下沉（DSH 适配器需求）",
+      "status": "scheduled",
+      "created_at": "2026-10-17T02:52:01.174Z",
+      "updated_at": "2026-10-17T03:05:30.207Z",
+      "target_version": "v1.2.2",
+      "priority": "P0",
+      "workflow_mode": "full",
+      "body_path": ".openfeel/requirements/REQ-001.md"
     }
   ]
 }

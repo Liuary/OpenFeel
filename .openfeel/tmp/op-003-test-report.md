@@ -1,77 +1,64 @@
-# 自测报告 — op-003
+# op-003 自测报告（v1.2.2-stage-95）
 
-- **执行时间**：2026-10-15 13:50
-- **执行 Agent**：openfeel-executor
-- **重试次数**：第 **1** 次
+- **执行者**：openfeel-executor
+- **方案**：`.openfeel/plan/v1/stage-95/ops/op-003.md`（前置 op-001 / op-002 hard 已满足）
+- **结论**：通过；可交回调用方安排 openfeel-reviewer 审查。
 
 ## 执行摘要
 
-源码冻结面上完成三扫描路径全枚举复核（**零未判类**）、计数非翻转核对、反转三项 supersede 材料、四表终局报告与
-承接 REV 三分（**零灭失**）；门禁六项全绿并登记新基线；`ops/**` 精确入管、`status.md` 经 CLI 勾选任务并**移交 phase 推进权**。
-自测清单 8/8 通过。
-
-## 前置校验结果
-
-- 方案完整性：**通过**（6 项必填节齐备）
-- Phase 合法性：**通过**（`stages["v1.2.1-stage-94"].phase` = `exec_running`）
-- 流转合法性：**通过**（`openfeel flow health --quick` 退出码 0）
+按 op-003 实现全局 `--project <path>`（预扫描 + 单点 chdir + 目录校验 + 错误封装 + 单点解析）与 `--version --json`（三键单文档）。落实 REV-95-003 四项边界：语言按目标项目、`--log-file` 按原始 cwd、`--project`/`--json` 预扫描成对防误判、单进程单命令前提（文件头/函数注释登记）。未改 bin、未改 phase 枚举/转移表、未新增依赖、未 commit。
 
 ## 实施步骤完成情况
 
-- [x] **3.0 前置核验**：`git status --porcelain src/` 空（⊆ 两 op produces 并集，已提交）；`npm test` 全绿
-- [x] **3.1 全枚举复核**：三扫描路径复跑零未判类；`zhipuai/glm-5.3-flash` **零残留**；计数非翻转；`claude/agents/**` + `docs/**` diff 空
-- [x] **3.2 反转三项 supersede 材料** → `.openfeel/tmp/stage-94-supersede-materials.md`（+ REV-94 落实登记附表 + 归档轮落点）
-- [x] **3.3 门禁全量**：六项全绿（见下）
-- [x] **3.4 承接 REV 三分**：处置 0 / 保留 0 / 转出 7 → **零灭失**；REV-94-001~004 落实结论入报告
-- [x] **3.5 四表终局报告** → `.openfeel/tmp/stage-94-final-report.md`
-- [x] **3.6 收口动作**：`ops/**` 四文件精确 `git add`（禁 `-A`）；`status.md` 经 `openfeel stage task … --done`（**未手改**）；phase 推进移交主会话
+- [x] 1. i18n 双表新增 4 键：`common.projectNotFoundTmpl` / `common.projectMissingValueTmpl` / `common.projectConflictTmpl` / `help.global.project`（zh/en 成对；en 无 CJK）。
+- [x] 2. 新增 `src/cli/project-option.ts`：`extractProjectArgs` / `extractProjectArg` / `applyProjectOption` / `resolveProjectPathForCommand` / `resetProjectRootForTest`（复用 `scanArgv`，无第二套扫描）。
+- [x] 3. `src/cli/index.ts`：根选项追加于 `--debug` 之后；runCli 顺序 `setJsonMode → version JSON 短路 → applyProjectOption → logCliStart → emitGlobalDeployCheck → parse → logCliDone`。
+- [x] 4. `src/commands/knowledge.ts`：本地 `--project` 声明逐字保留；动作改 `command.optsWithGlobals()` + `resolveProjectPathForCommand`（禁用 `options.project`）。
+- [x] 5. 测试：新增 `test/cli/project-option.test.ts`（13 例）；`test/cli/json-contract.test.ts` 增 `--version --json` / `-v --json` / 纯文本 3 例；`test/commands/knowledge.test.ts` 增同名双注册 1 例。
 
-## 自测清单验证
+## 自测清单验证（实测值）
 
-| # | 检查项 | 结果 | 备注 |
-|:-:|--------|:--:|------|
-| 1 | 三扫描路径复核零未判类；`zhipuai/glm-5.3-flash` 在 `src/` + `test/` 零残留（除有意保留项） | ✅ | 零残留（**无**有意保留项）；路径 ③ 命中 15 处全部有判类（`[轻改]` 已落实 7 + `[不改·边界登记]` 7 + `[轻改]` 注释 1） |
-| 2 | 计数非翻转：agent 10 / skills 22 / i18n 944 / 双注入键集 22；`claude/agents/**` 20 份 diff 空；`docs/**` 零改动 | ✅ | 实测逐项达标 |
-| 3 | supersede 材料三项齐备，每项含「变更内容 / 理由 / 适用边界 / 落地方」；**kb 零写入** | ✅ | 三块材料格式对齐 kb 先例块；kb 写入仅**登记落点**（归档轮执行） |
-| 4 | 门禁六项全绿且逐项登记新基线 | ✅ | 见下门禁表 |
-| 5 | 承接 REV 三分零灭失（处置 0 / 保留 0 / 转出 7）；REV-94-001/002 落实结论在报告 | ✅ | 含 REV-94-003/004 |
-| 6 | 四表齐备；本仓 GLM 三要素在报告；归档轮落点登记 | ✅ | `stage-94-final-report.md` §一表①~④ / §三 / §五 |
-| 7 | `ops/**` 四文件精确入管（禁 `-A`）；`flow.json` 未直写；phase 未推进；`status.md` 经 CLI 或已登记移交 | ✅ | 精确 `git add` 四文件；flow.json 未触碰；phase 交主会话；status.md 任务勾选经 CLI |
-| 8 | 零「待后续验证」类模糊项；报告内 kb 引用均为标题定位（行号以实测复核） | ✅ | 全部 kb 引用为标题形式；行号以执行期实测值给出 |
+- `npx tsc --noEmit` → **0 错误**。
+- `npx vitest run test/cli/project-option.test.ts test/cli/json-contract.test.ts test/commands/knowledge.test.ts` → **3 文件 / 45 用例全绿**。
+- `npm test` → **74 文件：72 通过 / 2 失败；1779 用例：1730 通过 / 49 失败**。
+  - 失败项集合 = `test/commands/req.test.ts` 48 + `test/commands/flow.test.ts` 1，均为 REQ-001 合法存在导致的真实工作区反守卫失败（与 op-002 交接一致，**无新增**；归 op-004 修复）。
+- `npm run build` ×2 → dist 全量 JS sha256 聚合值两次一致：`7cd0fc2b6bce67ed5290b870f4ea1bc1b0e8c75480e9829c73a3259e2ccfdf92`（幂等）。
+- `node bin/openfeel.js lint i18n` → **✅ 950 键一致**（946 + 4）。新增键逐名：`common.projectNotFoundTmpl`、`common.projectMissingValueTmpl`、`common.projectConflictTmpl`、`help.global.project`。
+- `node bin/openfeel.js --version --json` → `{"schemaVersion":1,"version":"1.2.1","node":"v24.18.1"}`（键序恰为 `schemaVersion,version,node`）；`--version` → `1.2.1`（纯文本不变）。
+- `--project` 六场景实跑（A 未初始化 / B 已初始化）：
+  - 前置 `--project B flow status --json` → 读到 B 的 `pipeline/stages`，首键 `schemaVersion`，exit 0。
+  - 后置 `flow status --json --project B`、等号 `--project=B` → 同上，exit 0。
+  - 不存在路径 → `PROJECT_NOT_FOUND` / `detail.reason=not-found` / exit 1。
+  - 文件路径 → `PROJECT_NOT_FOUND` / `detail.reason=not-directory` / exit 1。
+  - 缺失值 `--project --json` → `INVALID_ARGUMENT` / exit 1。
+  - 多值冲突 `--project A --project B` → `INVALID_ARGUMENT` / `detail.values=[A,B]` / exit 1；同值重复允许。
+- 语言边界：B `.info.json lang=en`，从 A 执行 `--project B flow current` → 英文输出（Global Status/Stage/…）。
+- `--log-file` 边界：从 A 执行 `--project B --log-file logs/x.log flow current` → 写入 `A/logs/x.log`，`B/logs` 不存在；日志 `[project=B]`。
+- `--version --json` + 非法 `--project` → 仍输出版本三键文档、exit 0（版本短路先于项目校验）。
+- `--help --json` → 帮助文本照常输出（不拦截）；根 `--help` 唯一增量 = 新增 `--project <path>` 行。
+- `knowledge dedup --help` → 本地 `--project <path> 目标项目根路径（默认当前目录）` 逐字不变。
 
-### 门禁六项（新基线逐项登记）
+## 产出文件（与方案声明一致）
 
-| # | 项 | 起点（stage-92） | 本阶段实测 | 结果 |
-|:-:|----|------|------|:--:|
-| 1 | `npm test` | 71 文件 / 1695 用例 / 0 failed | **71 文件 / 1707 用例 / 0 skipped / 0 failed** | ✅ |
-| 2 | `npx tsc --noEmit` | 0 | **0**（exit 0） | ✅ |
-| 3 | `lint i18n` | 944 | **944** | ✅ |
-| 4 | `lint kb` | 0 过期（612 引用） | **0 过期（612 引用）** | ✅ |
-| 5 | `npm run build` ×2 幂等 | 幂等 | **幂等** | ✅ |
-| 6 | `--version` | 1.2.0 | **1.2.0** | ✅ |
+- 新增：`src/cli/project-option.ts`、`test/cli/project-option.test.ts`
+- 修改：`src/cli/index.ts`、`src/commands/knowledge.ts`、`src/core/i18n-data/zh-CN.ts`、`src/core/i18n-data/en.ts`、`test/cli/json-contract.test.ts`、`test/commands/knowledge.test.ts`
+- 方案一致性比对：**8/8 一致，无遗漏、无超范围**（工作区其余改动均属 op-001/op-002 及计划/状态文件）。
 
-## 产出文件（实际）
+## 前置校验结果
 
-- `.openfeel/tmp/stage-94-final-report.md`（四表 + 反转材料指针 + 本仓登记 + 归档轮落点）
-- `.openfeel/tmp/stage-94-supersede-materials.md`（反转三项材料全文 + REV-94 落实附表）
-- `.openfeel/tmp/stage-94-assertion-diff.md`（收口段：全枚举复核差额）
-- `.openfeel/plan/v1/stage-94/ops/{op-001,op-002,op-003}.md` + `deps.yaml`（入管）
-- `.openfeel/plan/v1/stage-94/status.md`（**经 CLI** 勾选任务1；状态字段移交主会话）
-- `test/core/model-config.test.ts`（收口段 1 处示例值订正）
-- `.openfeel/tmp/op-003-test-report.md`（本报告）
+- **方式**：方案完整性人工核对 + `openfeel flow health --quick`（CLI，exit 0）。
+- **phase**：`exec_running`（合法）；`current.op = v1.2.2-stage-95.op-003`（与任务 op-id 匹配）；重试次数 0。
+- **结论**：通过（0 errors；无 warnings）。
+- **方案完整性**：`## 目标` / `## 实施步骤` / `## 产出文件` / `## 自测清单` / `- **阶段**` / `- **最多重试**` 齐备。
 
 ## 偏差记录
 
-| # | 偏差 | 类型 | 说明 |
-|:-:|------|------|------|
-| 1 | `test/core/model-config.test.ts` 1 处示例值订正（真实模型名 → 虚构值） | 收口段改动（已登记） | 保 `zhipuai/glm-5.3-flash` 零残留可核查性；断言语义不变 |
-| 2 | `status.md` 状态字段**未**变更（仅勾选任务1） | **权限/职责边界（登记移交）** | `openfeel stage set --status` 的可用值（`review_passed` 等）均含**审查语义**——超出 executor 职责；按 D-94-15「权限不足 → 移交主会话」，**登记不阻塞** |
-| 3 | stage task1 文案仍为「自定义模型默认 **deepseek-v4-flash**」（回退值裁定后未同步） | 遗留登记 | `status.md` 手改受限（须经 CLI，而 CLI 无改文案子命令）；已登记终局报告 §六，供主会话裁定 |
-| 4 | `flow.json` porcelain 显示 M | **非本 Agent 所改** | 系主会话此前会话的 checkpoints/phase 流转；本 Agent 三 op 全程未直写 flow.json |
-| 5 | 跳步违规 | **无** | 标准流程完整执行 |
+- 无跳步、无超范围源码改动。
+- `npm run lint:i18n` 在 `package.json` 中不存在（仅有 build/test/test:coverage/dev）；以方案命令 `node bin/openfeel.js lint i18n` 等效执行并取得 950。
+- `extractProjectArg` 按 op-003 正文实现为「取最后一个出现值」；计划 T3 行文曾写「取首个」。以 op-003（方案期裁定 D-95-12）为准；该函数不被生产路径消费（`applyProjectOption` 处理全部值）。
 
-## 结论
+## 交接给 op-004
 
-op-003 **完成**，自测清单 8/8 通过；阶段三 op（op-001/002/003）全部完成。
-**流程面移交主会话**：① `status.md` 状态字段与 phase 推进；② REV-92-001~005 / REV-91-011 / REV-94-001~004 的台账登记。
-请**主会话**安排 openfeel-reviewer 审查（本 Agent 不推进 phase / 不自行推进状态）。
+- 失败集 49（req 48 + flow 1）按原计划由 op-004 的测试隔离修复收口。
+- `lint i18n` 基线 950 已达成；人类输出 diff 仅 `--help` 新增 `--project` 一行（有意增量）。
+- 未 commit / 未 push / 未推进 phase。

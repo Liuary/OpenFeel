@@ -129,4 +129,40 @@ describe('knowledge dedup（stage-51 op-007 N9-2）', () => {
     expect(exitMock).not.toHaveBeenCalled();
     expect(stdout()).toContain('未发现相似条目');
   });
+
+  // ── stage-95 op-003：根全局 --project 与本地同名声明并存（C2 扩展路径） ──
+
+  it('op-003：同名双注册下 --project 读取目标项目（保留本地声明，语法零变化）', async () => {
+    // 目标项目 B：与 cwd（projDir）不同的知识库
+    const targetDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-knowledge-target-'));
+    initKnowledgeBase(targetDir);
+    addKnowledgeEntry(targetDir, 'patterns', '目标项目专属条目', '量子纠缠专属术语ZZZ');
+    try {
+      const root = new Command();
+      root.exitOverride();
+      root.option('--project <path>', '项目根路径');
+      registerKnowledgeCommand(root);
+
+      await root.parseAsync(
+        ['knowledge', 'dedup', '量子纠缠专属术语ZZZ', '--project', targetDir],
+        { from: 'user' },
+      );
+
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(stdout()).toContain('目标项目专属条目');
+      expect(stdout()).not.toContain('未发现相似条目');
+
+      // 本地 --project 声明与语法逐字不变（help 文案 / 选项形态 / 位置参数）
+      const knowledgeCmd = root.commands.find((c) => c.name() === 'knowledge')!;
+      const dedup = knowledgeCmd.commands.find((c) => c.name() === 'dedup')!;
+      const opt = dedup.options.find((o) => o.long === '--project');
+      expect(opt).toBeDefined();
+      expect(opt!.flags).toBe('--project <path>');
+      expect(opt!.description).toBe('目标项目根路径（默认当前目录）');
+      expect(dedup.registeredArguments).toHaveLength(1);
+      expect(dedup.registeredArguments[0].name()).toBe('content');
+    } finally {
+      rmSync(targetDir, { recursive: true, force: true });
+    }
+  });
 });

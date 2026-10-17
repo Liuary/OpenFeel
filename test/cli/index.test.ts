@@ -19,6 +19,16 @@ vi.mock('../../src/cli/deploy-check-output.js', () => ({ emitGlobalDeployCheck: 
 import { applyHelpI18n, shouldUseColor, program as rootProgram, runCli } from '../../src/cli/index.js';
 import { emitGlobalDeployCheck } from '../../src/cli/deploy-check-output.js';
 import { registerStageCommand } from '../../src/commands/stage.js';
+import {
+  resolveJsonMode,
+  resolveVersionFlag,
+  scanArgv,
+  withSchemaVersion,
+  setJsonMode,
+  isJsonMode,
+  resetJsonModeForTest,
+  SCHEMA_VERSION,
+} from '../../src/commands/shared/json-output.js';
 
 describe('applyHelpI18n（stage-50 op-004 T38）', () => {
   let tmpDir: string;
@@ -108,5 +118,62 @@ describe('stage-67 op-001 runCli 接入被动部署检测', () => {
       vi.unstubAllEnvs();
       parseSpy.mockRestore();
     }
+  });
+});
+
+// ── stage-95 op-001：JSON 契约助手（argv 单点扫描 / 首键构造） ──
+
+describe('stage-95 op-001 json-output', () => {
+  afterEach(() => {
+    resetJsonModeForTest();
+  });
+
+  it('resolveJsonMode：位置/取值跳过/不支持 --json=true', () => {
+    expect(resolveJsonMode(['flow', 'status', '--json'])).toBe(true);
+    expect(resolveJsonMode(['flow', 'status'])).toBe(false);
+    // 取值选项后的 --json 是取值 token，不是开关
+    expect(resolveJsonMode(['flow', 'review', 'add', '--title', '--json'])).toBe(false);
+    expect(resolveJsonMode(['--encoding', '--json'])).toBe(false);
+    // Commander 原生拒绝 --json=true（unknown option），预扫描同样不识别
+    expect(resolveJsonMode(['flow', 'status', '--json=true'])).toBe(false);
+  });
+
+  it('scanArgv：-- 终止、--project 值与缺值、未知 --x=v 不吞下一 token', () => {
+    expect(scanArgv(['flow', 'status', '--json'])).toEqual({
+      json: true, version: false, projectValues: [], projectMissingValue: false,
+    });
+    expect(scanArgv(['--project', '/tmp/p', 'flow', 'status']).projectValues).toEqual(['/tmp/p']);
+    expect(scanArgv(['--project=/tmp/p', 'flow', 'status']).projectValues).toEqual(['/tmp/p']);
+    expect(scanArgv(['--project', '--json'])).toEqual({
+      json: true, version: false, projectValues: [], projectMissingValue: true,
+    });
+    expect(scanArgv(['--project=']).projectMissingValue).toBe(true);
+    // -- 之后不再识别
+    expect(resolveJsonMode(['flow', 'status', '--', '--json'])).toBe(false);
+    // 未知 --x=v 不吞下一 token
+    expect(resolveJsonMode(['--unknown=1', '--json'])).toBe(true);
+  });
+
+  it('resolveVersionFlag：--version / -v，且 -- 之后不识别', () => {
+    expect(resolveVersionFlag(['--version'])).toBe(true);
+    expect(resolveVersionFlag(['-v'])).toBe(true);
+    expect(resolveVersionFlag(['flow', 'status'])).toBe(false);
+    expect(resolveVersionFlag(['--', '--version'])).toBe(false);
+  });
+
+  it('withSchemaVersion：schemaVersion 为运行时首键且值恒 1（反例对照）', () => {
+    const doc = withSchemaVersion({ a: 1 });
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'a']);
+    expect(doc.schemaVersion).toBe(SCHEMA_VERSION);
+    // 反例：展开序写反 → schemaVersion 落末位（仅断言形态，不在生产使用）
+    expect(Object.keys({ ...{ a: 1 }, schemaVersion: 1 })).toEqual(['a', 'schemaVersion']);
+  });
+
+  it('setJsonMode / isJsonMode 单点状态', () => {
+    expect(isJsonMode()).toBe(false);
+    setJsonMode(true);
+    expect(isJsonMode()).toBe(true);
+    resetJsonModeForTest();
+    expect(isJsonMode()).toBe(false);
   });
 });

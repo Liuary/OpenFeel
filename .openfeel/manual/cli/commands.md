@@ -38,11 +38,16 @@ src/commands/req.ts         registerReqCommand
 
 | 选项 | 说明 |
 |------|------|
+| `--project <path>` | **v1.2.2-stage-95 新增**：以指定目录为项目上下文（语义等效 cwd）；`runCli` 预扫描后 `process.chdir` 单点注入，不传回退 `process.cwd()` |
 | `--no-color` | 禁用彩色输出（亦可通过 `NO_COLOR=1`；当前无着色实现，与编码解耦） |
 | `--encoding <encoding>` | 输出编码（`utf8\|gbk\|auto`，默认 `auto`） |
-| `--log-file <path>` | 运行日志文件路径（默认 `~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log`） |
+| `--log-file <path>` | 运行日志文件路径（默认 `~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log`；相对路径按**原始 cwd** 解析，不受 `--project` chdir 影响） |
 | `--no-log` | 关闭运行日志（亦可通过 `OPENFEEL_LOG=0` / `OPENFEEL_NO_LOG=1`） |
 | `--debug` | 记录 debug 级日志（默认仅 info/warn/error） |
+
+**`--project` 边界（v1.2.2-stage-95）**：支持 `--project <path>` / `--project=<path>`；多值不一致 → `INVALID_ARGUMENT`（exit 1），路径不存在或非目录 → `PROJECT_NOT_FOUND`（exit 1）；命令输出语言按**目标项目**解析，而 `--help` 语言按原始 cwd（`applyHelpI18n` 在 chdir 前执行，已登记为文档边界）；CLI 为单进程单命令，`chdir` 每进程至多一次。`knowledge dedup` 保留其本地 `--project` 声明（语法零变化），经 `optsWithGlobals()` + 单点解析读取。
+
+**`--version --json`（v1.2.2-stage-95）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，`schemaVersion` 首键，exit 0）；纯文本 `--version` 逐字不变。
 
 **输出编码自适应（stage-58）**：`auto` 在 Windows 非 TTY（管道/重定向）下按 `chcp` 映射转码，TTY/POSIX 直通 UTF-8；`--json` **恒 UTF-8**（解析第 1 步最高优先，覆盖显式 `--encoding`/`OPENFEEL_ENCODING`/auto）；不可编码字符降 `?` 且**不告警**；**仅支持 UTF-8 字符串语义**（非默认 encoding 的直接 write 不受支持）。详见 [输出编码自适应](output-encoding.md)。
 
@@ -56,17 +61,22 @@ src/commands/req.ts         registerReqCommand
 
 ## 错误处理与退出码
 
-`src/cli/index.ts` 提供统一 CLI 入口与错误处理（v1.1.0-stage-35 新增）：
+`src/cli/index.ts` 提供统一 CLI 入口与错误处理（v1.1.0-stage-35 新增；**v1.2.2-stage-95 扩展为分层错误出口**）：
 
 - `runCli()`：包裹 `program.parse()`，捕获冒泡异常交给 `handleCliError()`；`bin/openfeel.js` 有参数模式改调 `runCli()`（REPL 分支不变）。
 - `handleCliError(err)`：识别 `isFlowConcurrentError(err)`（flow.json 乐观并发冲突）→ 输出中文可重试提示后 `process.exit(EXIT_CONCURRENT)`；非并发错误原样 rethrow。
 - `EXIT_CONCURRENT = 2`：并发冲突退出码，与通用错误 1 区分，供自动化识别「可重试」冲突。
+- **错误层（v1.2.2-stage-95）**：`src/core/errors.ts` 提供 12 行 `code → kind → exitCode` 映射表（单一权威，含 `kind ∈ {refusal,internal}`）；`src/commands/shared/errors.ts` 提供 `failCli` / `failRefusal` / `failInternal`；`runCli` 统一 catch——JSON 模式输出错误 envelope，非 JSON 模式保留既有 stderr 文案并把内部错误置 exit 3。
+- **双形态**：新 envelope `{schemaVersion:1,error:{code,kind,message,detail}}` 覆盖文本型失败；legacy `{schemaVersion,error:'...'}` 保留 `error` 为 `string` 与既有键序，仅在末尾追加 `errorKind`；判别唯一规则 `typeof doc.error`。
+- **JSON 模式用法错误**：Commander 解析期错误（未知命令 / 未知选项 / 缺参）经 `exitOverride` 归 `INVALID_ARGUMENT`/refusal/1；非 JSON 模式零变化。
+- 完整契约（首键 / 单文档 / 18 出口冻结表 / 12 行映射表 / 迁移边界）见 [JSON 输出契约](../core/json-contract.md)。
 
-| 场景 | 退出码 |
-|------|:--:|
-| 并发冲突（可重试） | `2` |
-| 通用错误 | `1` |
-| 成功 | `0` |
+| 场景 | kind | 退出码 |
+|------|------|:--:|
+| 成功 | — | `0` |
+| 预期拒绝（门禁拒绝 / 相位非法 / 非法参数 / 用法错误 / 未初始化 / 并发冲突） | `refusal` | `1`（并发冲突为 `2`，保留 `EXIT_CONCURRENT`） |
+| 内部错误（未捕获异常 / 内部故障） | `internal` | `3`（v1.2.2-stage-95 新增） |
+| 并发写冲突（可重试） | `refusal` | `2` |
 
 **质量门禁退出码（v1.1.2-stage-50，R1/T17）**：`lint i18n` / `lint kb` **发现问题即 `exit 1`**（对齐 `flow health`），使 CI 可直接以其为门禁；用 `process.exitCode = 1` 而非 `process.exit(1)`（防 stdout 异步 flush 被截断）。**不新增** `--warn-only`/`--no-fail` 逃生阀——忽略结果应由调用方显式表达（`lint kb || true`）。
 
@@ -135,6 +145,16 @@ src/commands/req.ts         registerReqCommand
 - **`flow current` 无 op（B8）**：回退显示 `current.stage` + 「(无 op)」。
 
 > ✅ **已关闭缺陷（v1.1.2-stage-54）**：`cli/BUG-005`（medium）空模板检测**已由纯子串改为整行锚定**（`EMPTY_TEMPLATE_LINE_RE`，`isTemplateEmpty`/`detectFillState`/`publishScheme` 单一来源）——op 正文行内引用占位标记不再误判（`publish` 不再误拒 / `ops list` 不误报 `(empty)` / `health` 不误报），仓库空模板告警归零。`cli/BUG-006`（low）en 模式 blocking REV 拒绝文案**已迁 i18n**（`flow.advance.blockingRevRefused`/`blockingRevHint`，en CJK=0、zh 逐字不变）。`cli/BUG-003`（low）`flow phases --help` 已补 `transitionsDiff`（JSON 契约未变）。
+
+### JSON 输出契约与错误封装（v1.2.2-stage-95）
+
+> 面向 DSH 等机器消费者：契约正文单一权威 = `docs/json-contract.md`；可执行冻结 = `test/cli/json-contract.test.ts`；错误矩阵 = `test/cli/error-envelope.test.ts`。
+
+- **18 个成功出口**：`flow` 11（status / overview / current / metrics / phases / mode / ops list / archive / archive list / archive show / health）+ `req` 5（list / show / split / board / next）+ `instructions` 1 + `setup --check` 1；全部 `schemaVersion:1` 运行时首键 + stdout 单文档；键序/键集冻结，只增不改。
+- **条件键登记**：`flow health.reconciled` 与 `flow ops list[].warning` 为恒在键（缺省 `null`）；`req next.candidates` 为条件出现键（`--limit > 1`）。
+- **有意变更**：C1 `instructions` 补首键；C1b/G-1 `flow archive show` 首键由第 6 位重定位为 `schemaVersion`（其余 6 键相对序不变）。
+- **错误模式开关**：`flow advance --json` 成功仍输出人类文本、仅失败走 envelope，**不计入 18 个成功出口**。
+- **契约助手**：`src/commands/shared/json-output.ts`（`withSchemaVersion` / `emitJson` / `setJsonMode` / `resolveJsonMode` / argv 预扫描）；命令层不得自行解析 `--json`。
 
 ### 需求命令组 `req`（v1.2.0-stage-82）
 

@@ -1,0 +1,170 @@
+# v1.2.2-stage-95 op 依赖声明
+# 由 openfeel-schemer 生成；主会话调度前用 Glob 校验 produces 实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# 修订：2026-10-17 openfeel-schemer 初版（计划 §八 est_ops=4 定稿；REV-95-001~005 全吸收）
+#   修订：2026-10-17 openfeel-schemer（修订 1）——op-004 纳入 REQ-001 合法存在下的测试隔离修复：
+#     test/commands/req.test.ts（5 处目录反守卫 → 模块顶层基线快照等价）+ test/commands/flow.test.ts
+#     （删除 requirements 字符串断言，保留 REAL_FLOW_RAW 字节不变）；仅测试隔离，产品行为零改动（D-95-21）。
+#   修订：2026-10-17 openfeel-executor（REV-95-006 闭环）——mutual_exclusions 补全共享文件：
+#     op-001↔op-002 追加 instructions.ts / test/commands/instructions.test.ts / test/commands/flow.test.ts；
+#     op-002↔op-003 追加 src/core/i18n-data/{zh-CN,en}.ts。
+#   说明① op 数 = 4，执行序恒为 op-001 → op-002 → op-003 → op-004（阶段末 op）。
+#   说明② 关键方案期裁定（全量论证见各 op 头部）：
+#     D-95-01 withSchemaVersion 必须 {schemaVersion:1,...doc} 构造（REV-95-004）｜
+#     D-95-02 条件键：health.reconciled / ops list[].warning 补 null；req next.candidates 登记条件出现；
+#       flow overview 未初始化登记文档形态变体｜
+#     D-95-03 实测缺口 G-1：flow archive show --json 首键非 schemaVersion → 命令层 withSchemaVersion 包装｜
+#     D-95-04 instructions 首键只在命令层补，核心 loader 零改动｜
+#     D-95-05 冻结集 = 18 个成功 JSON 出口；flow advance --json 为错误模式开关（不计出口）｜
+#     D-95-06 flow advance 新增本地 --json 作为错误封装开关（根全局 --json 会吞子命令同名 flag，实测破坏 18 出口）｜
+#     D-95-07 failCli 输出后 process.exit；runCli catch 置 exitCode 后返回（保 logCliDone）｜
+#     D-95-08 模块加载期 exitOverride + 模式感知 writeErr；JSON 用法错误 → INVALID_ARGUMENT/1｜
+#     D-95-09 legacy 载荷只追加末尾 errorKind；archive-write-failed → internal/3｜
+#     D-95-10 迁移边界：init/migrate/update/model/flow review/flow stage add 不动｜
+#     D-95-11 health --fix 写失败与 advance 多步意外异常归 internal/3（分类补全）｜
+#     D-95-12 同名 --project 实测：根选项吞子命令 token，dedup 须用 resolveProjectPathForCommand 单点
+#       （预扫描绝对路径优先；直接 parse 回退 resolve(cwd, raw)）｜
+#     D-95-13 实测修正：applyHelpI18n 在 bin 中先于 runCli(chdir) → help 语言按原始 cwd；
+#       命令输出语言按目标项目（契约文档按实测登记）｜
+#     D-95-14 --log-file 原始 cwd 由 bin 的 installRuntimeLog 先于 chdir 天然保证；不改 bin，测试证明｜
+#     D-95-15 --version --json 在 setJsonMode 后、--project 前短路｜
+#     D-95-16 --project 缺失/冲突 → INVALID_ARGUMENT/1；路径问题 → PROJECT_NOT_FOUND/1｜
+#     D-95-17 i18n 5 键（op-002 1 + op-003 4）随实现同批新增；op-004 做最终 lint 基线｜
+#     D-95-18 op-004 不新增业务代码；缺陷回退归属 op｜
+#     D-95-19 不推进 phase / 不直写 flow.json / 不手改 status.md｜
+#     D-95-20 人类输出零回归以 op-001 第 0 步基线为唯一对照；动态命令排除并登记理由。
+#     D-95-21（修订 1）REQ-001 合法存在是真实工作区常态：反守卫改为基线快照等价；仅测试隔离，产品行为零改动。
+#   说明③ JSON 契约不变量：18 个成功出口零删除/零重排/类型零改；schemaVersion 首键=1；stdout 单文档；
+#     可选字段 null / 数组 [] / 映射 {}；人类输出逐字不变（有意增量：--help 新增两行、JSON 新增字段/键）。
+#   说明④ 错误不变量：kind ∈ {refusal,internal} 为分类权威；退出码 0 成功 / 1 预期拒绝（含用法错误）/
+#     2 并发冲突（kind=refusal，EXIT_CONCURRENT 不变）/ 3 内部错误（新增）；12 行映射表单一权威；
+#     legacy error 恒 string、键序不变、仅末尾 errorKind。
+version: "1.1"
+stage: v1.2.2-stage-95
+series: v1
+version_label: v1.2.2
+generated_by: openfeel-schemer
+generated_at: "2026-10-17"
+
+cross_stage_constraints:
+  - upstream: v1.2.1-stage-94
+    type: hard
+    status: done
+    reason: "上游已 done；flow.json deps=[]。基线（本方案实测复核）：CLI 1.2.1；npm test 71 文件 / 1719 用例；tsc 0；lint i18n 945；lint kb 0 过期 / 624 引用；18 个 --json 出口；git status 仅 .openfeel 工作区改动。"
+  - upstream: stage-95 计划审查 REV-95-001~005
+    type: hard
+    status: closed/pending
+    reason: "REV-95-001/002 blocking 已在计划修订 1 闭环（退出码 0/1/2/3 + 12 行映射表 + legacy errorKind）；REV-95-003/004 非阻塞已定稿；REV-95-005（两处旧口径残留）由本方案 C2 口径与 op-004 检索取证收口。"
+  - downstream: v1.2.2-stage-96 / 97 / 98
+    type: hard
+    note: "96/97 复用 json-output.ts / core/errors.ts / failCli 与契约冻结表；98 收口文档多载体（C1/C1b/C2/C4/C5/C6 的 skill/docs/README/CHANGELOG/DSH 断言）。本阶段不得让既有消费者静默失效。"
+  - downstream: 本阶段流程面
+    type: hard
+    note: "不直写 flow.json；不推进 phase；不手改 status.md；阶段完成由 Feel 经 CLI 推进。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "JSON 契约助手、18 出口冻结审计与契约正文"
+    produces:
+      - src/commands/shared/json-output.ts
+      - src/commands/instructions.ts
+      - src/commands/flow.ts
+      - docs/json-contract.md
+      - test/cli/json-contract.test.ts
+      - test/cli/index.test.ts
+      - test/commands/instructions.test.ts
+      - test/commands/flow.test.ts
+      - .openfeel/tmp/stage-95/baseline/
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T1 + T5。① 第 0 步先捕获人类输出基线（任何源码编辑前）② json-output.ts（withSchemaVersion 构造序 / emitJson / setJsonMode / isJsonMode / scanArgv / VALUE_OPTIONS / resolveJsonMode / resolveVersionFlag）③ instructions 命令层补 schemaVersion 首键（C1）④ flow.ts 三处：health.reconciled=null、ops warning=null、archive show withSchemaVersion（G-1）⑤ docs/json-contract.md 全章节（退出码 0/1/2/3、12 行映射表、legacy 双形态、18 出口冻结表、C1~C6、REQ-001 L80 勘误）⑥ 契约测试 18 出口 + 条件键 + 首键专项。"
+
+  op-002:
+    file: op-002.md
+    title: "错误层与 runCli 统一入口（退出码 0/1/2/3 + legacy errorKind）"
+    produces:
+      - src/core/errors.ts
+      - src/commands/shared/errors.ts
+      - src/cli/index.ts
+      - src/commands/flow.ts
+      - src/commands/req.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/commands/instructions.ts
+      - src/commands/setup.ts
+      - test/cli/error-envelope.test.ts
+      - test/commands/shared-errors.test.ts
+      - test/commands/flow.test.ts
+      - test/commands/req.test.ts
+      - test/commands/instructions.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "依赖 json-output.ts（emitJson/isJsonMode/withSchemaVersion）与契约文档映射表；flow.ts 与 op-001 串行（op-001 先冻结条件键/首键）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T2。① 12 行 CLI_ERROR_CODES（kind/exitCode 内嵌）② failCli/failRefusal/failInternal/emitErrorEnvelope + 并发 JSON 分支 ③ runCli setJsonMode + 模块级 exitOverride/writeErr + 统一 catch（JSON envelope / 非 JSON 堆栈 + exit 3）④ flow advance 新增本地 --json（错误模式开关，D-95-06）+ 失败路径映射（PHASE_TRANSITION_ILLEGAL / PHASE_PATH_NOT_FOUND / BLOCKING_REVIEWS / STAGE_NOT_FOUND / NO_INIT / INVALID_ARGUMENT / INTERNAL_ERROR）⑤ flow phases/mode/archive/health 迁移 ⑥ flow archive*/req legacy 末尾 errorKind（archive-write-failed internal/3）⑦ 测试 12 行逐行断言 + refusal/internal/并发/用法错误/zh-en code 一致 + 非 JSON 不变；⑧ i18n 新增 `common.invalidArgumentTmpl`。"
+
+  op-003:
+    file: op-003.md
+    title: "全局 --project 与 --version --json"
+    produces:
+      - src/cli/project-option.ts
+      - src/cli/index.ts
+      - src/commands/knowledge.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - test/cli/project-option.test.ts
+      - test/cli/json-contract.test.ts
+      - test/commands/knowledge.test.ts
+    deps:
+      - op: op-001
+        type: hard
+        reason: "复用 scanArgv / withSchemaVersion / emitJson / resolveVersionFlag；json-contract.test.ts 由 op-001 创建后追加 version 段。"
+      - op: op-002
+        type: hard
+        reason: "src/cli/index.ts 与 op-002 共同触碰（恒串行）；--project 错误使用 failCli/emitErrorEnvelope 与 refusal/1 语义。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T3 + T4。① 4 个 i18n 键（3 common + help.global.project）zh/en 成对 ② project-option.ts（extractProjectArgs/applyProjectOption/resolveProjectPathForCommand；缺失/冲突 INVALID_ARGUMENT，路径问题 PROJECT_NOT_FOUND）③ index.ts 根选项 + runCli 顺序 setJsonMode → version JSON 短路 → applyProjectOption → logCliStart → emitGlobalDeployCheck → parse ④ knowledge dedup 保留本地声明，改用 optsWithGlobals + 单点解析（D-95-12）⑤ 测试：前置/后置/等号/无效/缺失/冲突、语言按目标项目、--log-file 原始 cwd、--title --json / --encoding --project 误判对、dedup 双注册回归、version JSON 精确形态。"
+
+  op-004:
+    file: op-004.md
+    title: "i18n 收口、零回归取证与阶段门禁（阶段末 op）"
+    produces:
+      - test/commands/req.test.ts
+      - test/commands/flow.test.ts
+      - docs/json-contract.md
+      - .openfeel/tmp/stage-95/final-report.md
+      - .openfeel/tmp/stage-95/human-output-diff.md
+      - .openfeel/tmp/stage-95/failure-set-before.txt
+      - .openfeel/tmp/stage-95/failure-set-after.txt
+    deps:
+      - op: op-001
+        type: hard
+        reason: "契约冻结表与基线快照为本 op 对照源。"
+      - op: op-002
+        type: hard
+        reason: "错误矩阵（0/1/2/3 + 12 行 + legacy errorKind）须在错误层冻结后复跑。"
+      - op: op-003
+        type: hard
+        reason: "--project / --version --json 六场景与 i18n 950 基线须在实现后复跑。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议（缺陷按归属回退对应 op，不在本 op 改设计）
+    notes: "T6 + 验收全项。① i18n 逐键（恰 5 键）与 lint 950 ② 人类输出 baseline/after 归一化 diff 空（排除项登记理由）③ 18 出口契约复核 ④ 错误矩阵 10 场景 × zh/en ⑤ --project 六场景 + version ⑥ C1~C6 逐项结论（禁止留空）⑦ 门禁：npm test / tsc 0 / build ×2 幂等 / lint i18n 950 / lint kb 0 / --version 1.2.1 / --version --json 三键 ⑧ 报告与承接 REV 处置；不推进 phase、不直写 flow.json；⑨ 测试隔离修复（修订 1）：req.test.ts 全 5 处目录反守卫改为基线快照等价（覆盖新增/修改/删除）；flow.test.ts 删除 requirements 字符串断言、保留 REAL_FLOW_RAW 字节不变并订正标题；失败集 49→0；仅测试隔离，产品行为零改动。"
+
+mutual_exclusions:
+  - group: [op-001, op-002]
+    reason: "共享 src/commands/flow.ts（op-001 条件键/首键 → op-002 错误层迁移）、src/commands/instructions.ts（op-001 成功 JSON 首键 / op-002 失败 envelope）、test/commands/instructions.test.ts（op-001 首键断言 / op-002 envelope 用例）、test/commands/flow.test.ts（op-001 条件键+首键断言 / op-002 legacy 断言同批更新），恒串行；op-001 先行冻结契约面。"
+  - group: [op-002, op-003]
+    reason: "共享 src/cli/index.ts（op-002 runCli catch/exitOverride → op-003 预扫描/根选项/version）与 src/core/i18n-data/{zh-CN,en}.ts（op-002 增 1 键 / op-003 增 4 键），恒串行；op-003 hard 依赖 op-002。"
+  - group: [op-001, op-003]
+    reason: "共享 test/cli/json-contract.test.ts（op-001 创建 18 出口冻结 → op-003 追加 version 段），串行。"
+  - group: [op-004]
+    reason: "阶段末 op（恒末位）：门禁/零回归/C1~C6 收口须在 op-001~003 全部冻结后执行。"

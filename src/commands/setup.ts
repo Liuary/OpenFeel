@@ -7,6 +7,7 @@ import { setupGlobalFramework } from '../core/setup.js';
 import { parseToolList, supportedTools } from '../core/update.js';
 import { checkGlobalDeployment } from '../core/deployment-check.js';
 import { t, getCliLang } from '../core/i18n.js';
+import { failCli } from './shared/errors.js';
 
 export function registerSetupCommand(program: Command): void {
   program
@@ -49,11 +50,18 @@ export function registerSetupCommand(program: Command): void {
       if (options?.tools !== undefined) {
         const parsed = parseToolList(String(options.tools));
         if (parsed.invalid.length > 0) {
-          console.error(t('update.toolsInvalidTmpl', lang, {
+          const message = t('update.toolsInvalidTmpl', lang, {
             tools: parsed.invalid.join(', '),
             valid: supportedTools.map((x) => x.id).join(', '),
-          }));
-          process.exit(1);
+          });
+          // 非 JSON 文案逐字不变；JSON 模式 → INVALID_ARGUMENT envelope + exit 1
+          failCli({
+            code: 'INVALID_ARGUMENT',
+            message,
+            detail: { invalid: parsed.invalid, valid: supportedTools.map((x) => x.id) },
+            stderrLines: [message],
+          });
+          return;
         }
         tools = parsed.tools;
       }

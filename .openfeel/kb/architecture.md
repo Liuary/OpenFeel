@@ -1080,3 +1080,43 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.1-stage-94（`85c8435` op-002；`ops/op-002`、`.openfeel/tmp/stage-94-{nondestructive-contract,deploy-nondestructive-e2e,repo-persistence}.md`）——隔离四场景（改值保留 ×2 harness / 删行补写 / 正文更新并行）+ 阴性（`description` 篡改仍被覆盖）全绿；**本仓实测**：`openfeel update --tools claude` 后 `~/.claude/agents/openfeel-reviewer.md` 的 `model: ccs-claude-zhipu--glm-5.3-flash[1M]` **前后逐字保留**（正文随模板更新）、`openfeel-explorer.md` **创建**（「无则创建」见证）、`settings.json` 用户键逐字；新增 12 用例（`managed-region` +5 / `update` +6 / `model-config` +1）；`--scope default` 覆盖语义回归断言绿（R-94-2）。
 
 **参见：** v1.2.1-stage-94（plan §二 不变量 / §三 T2；`REV-94.md` 001~007）；`src/core/managed-region.ts :: USER_SOVEREIGN_KEYS / mergeFrontmatter`；`src/core/update.ts :: writeManagedFile`；kb/architecture.md #控制区标记增量更新架构、#模型配置三层级架构；kb/patterns.md #模型默认值统一范式、#写策略按资产归属二分；kb/troubleshooting.md #Claude Code reviewer 异族模型本地复现路径；manual/core/managed-region.md、manual/core/update.md、manual/core/model-config.md
+
+## [+] CLI JSON 输出契约冻结与错误封装分层架构：18 出口冻结表 + 契约助手单点 + 错误码表单一权威 + 双形态兼容 (2026-10-17)
+
+**背景**：v1.2.2 把 DSH 适配器的 11 项 CLI 缺口做成版本级能力，stage-95 是地基——必须先冻结「既有 18 个 `--json` 成功出口」的机器契约，并给失败路径一个稳定可分类的出口，后续 stage-96/97 才能复用而不反复改写。核心约束 = **扩展优先**：既有出口与 0/1/2 退出码语义零改动。
+
+**① 契约层（`src/commands/shared/json-output.ts`）**：`withSchemaVersion(doc)` 必须写成 `{ schemaVersion: 1, ...doc }`（运行时首键由字面量构造序保证，类型签名不保证）；`emitJson(doc)` 单文档输出；`setJsonMode` / `isJsonMode` 为**进程级单点**（命令层只读，不各自解析 argv）；`scanArgv` + `VALUE_OPTIONS` 统一预扫描 `--json` / `--project` 等 token，并跳过已知取值选项的下一 token。
+
+**② 18 出口冻结表（单一权威 = `docs/json-contract.md` §5）**：实测注册 `flow` 11 + `req` 5 + `instructions` 1 + `setup` 1；每个出口登记「顶层键序 + 数组元素键集 + 条件键类型」。条件键**二选一登记**：恒在键（缺省 `null` 占位，如 `flow health.reconciled` / `flow ops list[].warning`）或条件出现键（附依据，如 `req next.candidates`）。本版仅两处结构性新增：**C1** `instructions` 补首键 `schemaVersion`（核心 loader 零改动，命令层包装）；**C1b/G-1** `flow archive show` 首键由第 6 位重定位为 `schemaVersion`（其余 6 键相对序不变）。
+
+**③ 错误层分层（`src/core/errors.ts` + `src/commands/shared/errors.ts` + `src/cli/index.ts`）**：`core/errors.ts` 内嵌 **12 行 `code → kind → exitCode` 映射表**（单一来源，命令层禁硬编码字符串码）；`shared/errors.ts` 提供 `failCli/failRefusal/failInternal` 与并发 JSON 分支；`runCli` 统一 catch——JSON 模式输出 `{schemaVersion,error:{code,kind,message,detail}}`，非 JSON 模式保留既有 stderr 文案并把内部错误置 exit 3；Commander 解析期错误在 JSON 模式下经 `exitOverride` 归 `INVALID_ARGUMENT`/refusal/1，非 JSON 模式零变化。
+
+**④ 双形态兼容**：新 envelope 只覆盖「文本型失败」；既有 `{schemaVersion, error:'...'}` 载荷保留 `error` 为 `string` 与既有键序，仅在**末尾**追加 `errorKind ∈ {refusal,internal}`；判别规则唯一 = `typeof doc.error`。`archive-write-failed` 由 exit 1 重分类为 `internal/3`（登记为分类补全，3 为全新值无既有消费者）。
+
+**⑤ 退出码（权威口径 R-cp-1）**：`0` 成功 / `1` 预期拒绝（含用法错误）/ `2` 并发写冲突（`kind=refusal`，`EXIT_CONCURRENT` 语义零改动）/ `3` 内部错误（新增）。`kind` 为分类权威，退出码为冗余信号。
+
+**判据**：① 机器契约以**实测行为快照**为准（逐出口键序断言），文档与测试同源、禁「约 / 等」；② 错误分类须**单一权威码表** + 文档 + 测试三处逐行一致；③ 兼容改造优先「只增不改」（首键补位、末尾追加），必须改键序时须登记为「有意变更」并全枚举；④ 新增退出码只在**未纳入既有语义表**的路径上启用，禁重映射既有 0/1/2；⑤ JSON 模式检测与项目锚定都必须**单点**，命令层禁第二套解析。
+
+**实证**：v1.2.2-stage-95（4 ops 恒串行；契约测试 `json-contract` 24 + `error-envelope` 14 + `project-option` 13 = 51/51；门禁 74 文件 / 1779 用例、`tsc` 0、`lint i18n` 950、`lint kb` 0/624、build ×2 幂等；审查 REV-95-001~007 闭环）。
+
+**参见：** `docs/json-contract.md`；`src/core/errors.ts`；`src/commands/shared/{json-output,errors}.ts`；kb/patterns.md #CLI `--json` 成功/失败同契约、#错误双形态 + errorKind 增量兼容策略；manual/core/json-contract.md
+
+## [+] 全局 `--project` 项目锚定架构：argv 预扫描 + `process.chdir` 单点注入（零改 121 处 `process.cwd()`） (2026-10-17)
+
+**背景**：DSH 适配器每次调用需要指定目标项目，而 OpenFeel 的项目根解析散落在命令层 121 处 `process.cwd()`。方案选择「**等效 cwd**」：在进程入口把 `--project` 预扫描出来并 `chdir` 一次，命令层零改动、零第二套根解析。
+
+**① 单点实现（`src/cli/project-option.ts`）**：`extractProjectArgs` 支持 `--project <path>` 与 `--project=<path>`（取首个 / 多值冲突判定）；`applyProjectOption` 以**原始 cwd** 为基准 `resolve` → `statSync` 校验目录 → `process.chdir`。路径不存在/非目录 → `PROJECT_NOT_FOUND`/refusal/1（`detail.path`/`detail.reason`）；缺失值或前后取值冲突 → `INVALID_ARGUMENT`/refusal/1。
+
+**② `runCli` 顺序即语义**：`setJsonMode` → `--version --json` 短路 → `applyProjectOption` → `logCliStart` → `emitGlobalDeployCheck` → `program.parse`。JSON 模式必须先于项目失败判定；`chdir` 必须先于运行日志（project 字段正确）。
+
+**③ 三条边界（实测定稿）**：`--log-file` 相对路径在 `chdir` 前由 `bin` 的 `installRuntimeLog` 按**原始 cwd** 解析（日志是调用侧工件）；命令输出语言按**目标项目**解析（`getCliLang(process.cwd())` 在 chdir 后），而 `applyHelpI18n` 在 `bin` 中先于 `runCli` → `--help` 语言按原始 cwd，二者可能不同（已登记为文档边界）；预扫描跳过 `VALUE_OPTIONS` 的取值 token（`--title --json` / `--encoding --project` 成对负控）。
+
+**④ 同名本地选项的扩展路径**：`knowledge dedup` 保留既有本地 `--project` 声明（help/语法零变化），动作经 `optsWithGlobals()` + `resolveProjectPathForCommand` **单点**读取（预扫描绝对路径优先，回退 `resolve(cwd, raw)`）；实测 Commander 同名 flag 下子命令 `options.project` 为 `undefined`，禁止直接读 `options.project`。
+
+**⑤ 单进程单命令前提**：CLI 一次进程只执行一个命令 → `chdir` 每进程至多一次 → 不存在进程内多项目并发；`--project` 不等于常驻进程的多项目会话能力。
+
+**判据**：① 横切「运行上下文」类参数（项目根 / 语言 / 编码）优先在**进程入口单点注入**，禁命令层第二套解析；② 注入顺序 = 「模式判定 → 短路能力 → 上下文切换 → 日志/部署检查 → 解析」；③ chdir 后仍相对用户的路径（日志）须在 chdir **前**按原始 cwd 解析，并在文档给示例；④ argv 预扫描必须与「取值选项」名单同步演进，且成对负控；⑤ 同名选项并存时用 `optsWithGlobals` + 单点解析函数，废弃直接读子命令 `options`。
+
+**实证**：v1.2.2-stage-95 op-003（`project-option` 13 用例；隔离双项目 A/B 实跑 12/12：前置/后置/等号/无参回退/非法路径/文件路径/缺值/多值冲突/同值重复/语言跟随/`--log-file` 原始 cwd/误判对）；`knowledge dedup --project` 回归通过。
+
+**参见：** `src/cli/project-option.ts`；`src/cli/index.ts`；`docs/json-contract.md` §11；kb/patterns.md #Commander 父子命令 `--json` 标志传递陷阱；manual/core/json-contract.md

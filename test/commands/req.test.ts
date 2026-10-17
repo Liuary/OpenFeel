@@ -29,8 +29,8 @@ import { hasKey, t } from '../../src/core/i18n.js';
 import { FlowManager, FlowConcurrentModificationError } from '../../src/core/flow-manager.js';
 import { getAllowedNextStatuses } from '../../src/core/req/requirement-ops.js';
 import { REQ_STATUSES } from '../../src/core/req/types.js';
-import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 
 // 模块顶层捕获真实工作区基线（REAL_CWD 反守卫用）
@@ -38,6 +38,36 @@ const REAL_CWD = process.cwd();
 const REAL_FLOW_PATH = join(REAL_CWD, '.openfeel', 'flow.json');
 const REAL_FLOW_RAW = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
 const REAL_REQ_DIR = join(REAL_CWD, '.openfeel', 'requirements');
+
+/**
+ * 捕获需求层目录快照：目录不存在返回 null；存在则递归收集
+ * 文件相对路径（统一 `/` 分隔）与内容，按相对路径排序。
+ * 用于「真实工作区零触碰」反守卫——覆盖新增 / 修改 / 删除三类触碰，
+ * 且允许仓库合法存在 .openfeel/requirements/（REQ-001 常态）。
+ */
+function snapshotReqDir(dir: string): { rel: string; content: string }[] | null {
+  if (!existsSync(dir)) {
+    return null;
+  }
+  const files: { rel: string; content: string }[] = [];
+  const walk = (abs: string): void => {
+    const entries = readdirSync(abs, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      const childAbs = join(abs, entry.name);
+      if (entry.isDirectory()) {
+        walk(childAbs);
+      } else if (entry.isFile()) {
+        // 相对路径统一使用 `/` 分隔，避免跨平台差异
+        files.push({ rel: relative(dir, childAbs).split(sep).join('/'), content: readFileSync(childAbs, 'utf-8') });
+      }
+    }
+  };
+  walk(dir);
+  return files.sort((a, b) => a.rel.localeCompare(b.rel));
+}
+
+// 真实需求层基线快照（存在性 + 文件相对路径集合 + 文件内容）
+const REAL_REQ_SNAPSHOT = snapshotReqDir(REAL_REQ_DIR);
 
 describe('req 命令组（stage-82）', () => {
   let tmpDir: string;
@@ -79,7 +109,7 @@ describe('req 命令组（stage-82）', () => {
     // REAL_CWD 反守卫：真实工作区逐字零触碰
     const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
     expect(realRaw).toBe(REAL_FLOW_RAW);
-    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+    expect(snapshotReqDir(REAL_REQ_DIR)).toEqual(REAL_REQ_SNAPSHOT);
   });
 
   /** 安全解析命令，捕获 CommanderError 不使测试中断 */
@@ -347,6 +377,9 @@ describe('req 命令组（stage-82）', () => {
     const nf = JSON.parse(logMock.mock.calls[0][0] as string);
     expect(nf.error).toBe('not_found');
     expect(nf.id).toBe('REQ-999');
+    // stage-95 op-002：legacy 载荷末尾追加 errorKind（error 恒 string、既有键序不变）
+    expect(nf.errorKind).toBe('refusal');
+    expect(Object.keys(nf).pop()).toBe('errorKind');
     expect(errorMock).not.toHaveBeenCalled();
 
     // invalid-argument
@@ -357,6 +390,8 @@ describe('req 命令组（stage-82）', () => {
     expect(ia.error).toBe('invalid-argument');
     expect(ia.field).toBe('id');
     expect(ia.value).toBe('foo');
+    expect(ia.errorKind).toBe('refusal');
+    expect(Object.keys(ia).pop()).toBe('errorKind');
     expect(errorMock).not.toHaveBeenCalled();
   });
 
@@ -377,6 +412,9 @@ describe('req 命令组（stage-82）', () => {
     const obj = JSON.parse(logMock.mock.calls[0][0] as string);
     expect(obj.schemaVersion).toBe(1);
     expect(obj.error).toBe('no-init');
+    // stage-95 op-002：errorKind 恒为末尾键
+    expect(obj.errorKind).toBe('refusal');
+    expect(Object.keys(obj).pop()).toBe('errorKind');
   });
 
   it('T-A10 add 未初始化：errorNoInit + exit 1', async () => {
@@ -1087,7 +1125,7 @@ describe('stage-87 op-001 拆分与父子展示', () => {
 
     const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
     expect(realRaw).toBe(REAL_FLOW_RAW);
-    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+    expect(snapshotReqDir(REAL_REQ_DIR)).toEqual(REAL_REQ_SNAPSHOT);
   });
 
   async function safeParse(args: string[]): Promise<void> {
@@ -1359,7 +1397,7 @@ describe('stage-87 op-002 接取视图与并行接取', () => {
 
     const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
     expect(realRaw).toBe(REAL_FLOW_RAW);
-    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+    expect(snapshotReqDir(REAL_REQ_DIR)).toEqual(REAL_REQ_SNAPSHOT);
   });
 
   async function safeParse(args: string[]): Promise<void> {
@@ -1631,7 +1669,7 @@ describe('stage-90 op-002 需求级模式属性（CLI）', () => {
 
     const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
     expect(realRaw).toBe(REAL_FLOW_RAW);
-    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+    expect(snapshotReqDir(REAL_REQ_DIR)).toEqual(REAL_REQ_SNAPSHOT);
   });
 
   async function safeParse(args: string[]): Promise<void> {
@@ -1830,7 +1868,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
 
     const realRaw = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
     expect(realRaw).toBe(REAL_FLOW_RAW);
-    expect(existsSync(REAL_REQ_DIR)).toBe(false);
+    expect(snapshotReqDir(REAL_REQ_DIR)).toEqual(REAL_REQ_SNAPSHOT);
   });
 
   async function safeParse(args: string[]): Promise<void> {

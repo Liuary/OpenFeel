@@ -3,13 +3,22 @@
  * 基于 Commander 构建命令行入口，静态导入并注册所有命令模块。
  * 新增命令只需在 src/commands/ 下创建模块并在本文件末尾追加 import + register 调用。
  */
-import { Command } from 'commander';
+import { Command, CommanderError } from 'commander';
 import { createRequire } from 'node:module';
 import { t, getCliLang, hasKey } from '../core/i18n.js';
 import { isFlowConcurrentError } from '../core/flow-manager.js';
-import { handleConcurrentConflict } from '../commands/shared/errors.js';
+import { emitErrorEnvelope, handleConcurrentConflict } from '../commands/shared/errors.js';
+import {
+  isJsonMode,
+  resolveJsonMode,
+  setJsonMode,
+  resolveVersionFlag,
+  withSchemaVersion,
+  emitJson,
+} from '../commands/shared/json-output.js';
 import { runtimeLog, logCliStart, logCliDone } from '../core/runtime-log.js';
 import { emitGlobalDeployCheck } from './deploy-check-output.js';
+import { applyProjectOption } from './project-option.js';
 
 // 读取 package.json 获取版本号
 const require = createRequire(import.meta.url);
@@ -29,7 +38,29 @@ program
   // stage-58 B-4：运行日志全局选项
   .option('--log-file <path>', t('help.global.logFile', getCliLang(process.cwd())))
   .option('--no-log', t('help.global.noLog', getCliLang(process.cwd())))
-  .option('--debug', t('help.global.debug', getCliLang(process.cwd())));
+  .option('--debug', t('help.global.debug', getCliLang(process.cwd())))
+  // stage-95 op-003：全局 --project（预扫描 + 单点 chdir；help 文案语言在模块加载期按原始 cwd 求值）
+  .option('--project <path>', t('help.global.project', getCliLang(process.cwd())));
+
+// ── stage-95 op-002：Commander 机制（须在子命令注册前安装，子命令创建时继承） ──
+// 用法错误（未知命令/未知选项/缺参）的 JSON 模式封装：
+//  - exitCode===0（--help / --version）放行，走 Commander 原生 process.exit(0)；
+//  - JSON 模式 throw CommanderError → runCli catch 转 INVALID_ARGUMENT envelope + exit 1；
+//  - 非 JSON 模式 process.exit(err.exitCode)，与现状逐字等价。
+program.exitOverride((err) => {
+  if (err.code === 'commander.executeSubCommandAsync') return;
+  if (err.exitCode === 0) return;
+  if (isJsonMode()) throw err;
+  process.exit(err.exitCode);
+});
+// JSON 模式下静默 Commander 人类错误文本（防止混入 stdout/stderr）；非 JSON 逐字不变
+program.configureOutput({
+  writeErr: (str) => {
+    if (!isJsonMode()) {
+      process.stderr.write(str);
+    }
+  },
+});
 
 /**
  * 是否启用彩色输出（B7-1，单一判定入口）。
@@ -179,23 +210,88 @@ export function applyHelpI18n(program: Command): void {
 /** 并发写冲突退出码：与通用错误 1 区分，便于自动化识别「可重试」冲突 */
 export const EXIT_CONCURRENT = 2;
 
-/** 统一 CLI 错误处理：识别 flow.json 并发写冲突并输出可重试提示（单点，T38） */
-export function handleCliError(err: unknown): never {
+/**
+ * 统一 CLI 错误处理（单点，T38；stage-95 op-002 扩展 JSON 模式）。
+ * 分类优先级：并发冲突（exit 2）→ Commander 用法错误（JSON：INVALID_ARGUMENT/1）→ 其他（JSON：INTERNAL_ERROR/3）。
+ * 非 JSON 模式：并发冲突与用法错误保持既有形态；其他异常输出堆栈并置 exit 3（本版新增内部错误码）。
+ * @param err 捕获到的异常
+ */
+export function handleCliError(err: unknown): void {
   // stage-58 B-6：记录「命令处理中抛出的异常」。error 级语义边界（REV-002）：
   // commander 解析期错误（未知命令/未知选项/缺参）经 program.error() 直接 process.exit(1)，不抛异常、不达此处 → 不入日志。
+  // stage-95 op-002：JSON 模式下解析期错误经 exitOverride throw 后到达此处（记日志，形态无回归）。
   runtimeLog('error', 'cli error: ' + (err instanceof Error ? err.message : String(err)));
   if (isFlowConcurrentError(err)) {
     handleConcurrentConflict(err, getCliLang(process.cwd()));
+    return;
   }
-  throw err;
+  const lang = getCliLang(process.cwd());
+  if (err instanceof CommanderError) {
+    // JSON 模式：用法错误 → INVALID_ARGUMENT envelope + exit 1
+    if (isJsonMode()) {
+      emitErrorEnvelope({
+        code: 'INVALID_ARGUMENT',
+        message: t('common.invalidArgumentTmpl', lang, { detail: err.message }),
+        detail: { commanderCode: err.code },
+      });
+      process.exitCode = 1;
+      return;
+    }
+    // 非 JSON：保持既有未捕获形态（正常路径到不了此处，exitOverride 已 process.exit）
+    throw err;
+  }
+  if (isJsonMode()) {
+    // JSON 模式：其他未捕获异常 → INTERNAL_ERROR envelope + exit 3
+    const msg = err instanceof Error ? err.message : String(err);
+    emitErrorEnvelope({
+      code: 'INTERNAL_ERROR',
+      message: t('common.errorTmpl', lang, { msg }),
+      detail: err instanceof Error
+        ? { name: err.name, message: err.message, stack: err.stack }
+        : { name: 'Error', message: String(err) },
+    });
+    process.exitCode = 3;
+    return;
+  }
+  // 非 JSON：保持既有含堆栈形态，退出码归本版新增的 3（内部错误）
+  console.error(err instanceof Error ? (err.stack ?? err.message) : String(err));
+  process.exitCode = 3;
 }
 
-/** CLI 启动入口：包裹 program.parse，统一处理并发写冲突 */
+/**
+ * CLI 启动入口：JSON 模式单点预扫描 + `--project` 项目锚定 + 统一 catch（并发 / 用法错误 / 内部错误）。
+ *
+ * 顺序契约（stage-95 op-003，严格）：
+ * 1. `setJsonMode` —— 错误输出模式须在 `--project` 失败前已知；
+ * 2. `--version --json` 短路 —— 纯信息命令，不进入 Commander、不依赖项目（非法 `--project` 不阻断）；
+ *    `--help --json` 不拦截（帮助文本保持）；
+ * 3. `applyProjectOption` —— 预扫描 + 单点 chdir，必须早于 `logCliStart`（日志 project 字段 = 目标项目）；
+ * 4. `logCliStart` → `emitGlobalDeployCheck` → `program.parse` → `logCliDone`。
+ */
 export function runCli(): void {
+  // stage-95 op-002：JSON 模式单点（命令层只读 isJsonMode()，不得各自解析 argv）
+  const argv = process.argv.slice(2);
+  setJsonMode(resolveJsonMode(argv));
+
+  // stage-95 op-003：--version/-v + --json → 单文档并返回（不进入 Commander；纯信息命令）
+  if (resolveVersionFlag(argv) && isJsonMode()) {
+    logCliStart(argv);
+    emitJson(withSchemaVersion({ version: pkg.version, node: process.version }));
+    logCliDone(0);
+    return;
+  }
+
+  // stage-95 op-003：--project 预扫描必须在 logCliStart 之前（日志 project 字段 = 目标项目）
+  if (!applyProjectOption(argv)) {
+    // JSON 模式 failCli 仅置 process.exitCode 不退出 → 此处 return 保 logCliDone 记录真实码
+    logCliDone(typeof process.exitCode === 'number' ? process.exitCode : 1);
+    return;
+  }
+
   // stage-58 B-6：命令（argv）+ 结果入运行日志；不记录 stdout 内容。
   // 注：--help/--version 经 commander 输出后 exit → 由 exit 兜底记「cli done」（v1.2.1-stage-86 有意变更）；
-  // 错误路径经 handleCliError 抛出后同样经 exit 兜底记「cli done」。
-  logCliStart(process.argv.slice(2));
+  // 错误路径经 handleCliError 置退出码后落到 logCliDone，记录真实退出码。
+  logCliStart(argv);
   // stage-67：被动部署提示（门控内置于适配器；异常静默，不影响主命令）
   emitGlobalDeployCheck();
   try {

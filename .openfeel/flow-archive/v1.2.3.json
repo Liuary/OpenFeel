@@ -1,0 +1,120 @@
+{
+  "version": "v1.2.3",
+  "stages": {
+    "v1.2.3-stage-99": {
+      "name": "v1.2.3-stage-99",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-10-17T08:39:28.227Z",
+        "end_time": "2026-10-17T09:02:33.208Z",
+        "duration_ms": 1384981
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-10-17T08:33:01.860Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-17T08:39:28.227Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-17T08:44:30.580Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T08:44:30.940Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T08:54:32.338Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T08:58:43.504Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T08:58:49.115Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T09:02:33.208Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 0,
+    "log": 8
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-10-17T09:02:35.304Z"
+}

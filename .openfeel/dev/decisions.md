@@ -129,3 +129,15 @@
 - **后果 / 适用边界**：新增出口/字段为增量，既有行为与人类输出保持；版本收口后零业务代码改动。转出 v1.2.3：REV-95-009 并发 JSON 退出机制统一、`flow advance --help --review-tier` 文案、DSH `PHASE_AGENT` 镜像退役、锁超时 E2E 测试钩子。
 - **回滚**：`git revert` v1.2.2 四个阶段归档 commits（`25ebc4e` / `87df0b7` / `cdef4ae` / `861f0b5`）；版本号与文档载体随 revert 回退；无数据迁移、无依赖树变动。
 
+### ADR-013：v1.2.3 补丁收口 —— 转出项不挂账 + 并发 JSON 退出统一 + 测试 seam 门控
+- **日期**：2026-10-17
+- **状态**：accepted（v1.2.3-stage-99 实施并验收完成）
+- **决策**：
+  1. **转出项不跨版本挂账**：v1.2.2 收口期因「版本写入后零业务代码改动」冻结而转出的项，由紧随其后的补丁版本 **v1.2.3** 一次收口，不无限期延后。
+  2. **并发 JSON 退出统一**：`handleConcurrentConflict` 的 JSON 分支改为「输出 envelope → `process.exitCode=2` → `return`」，与 `failCli` 语义一致；非 JSON 模式与退出码 2 语义零改动；10 个调用点全枚举，禁止 fallthrough。
+  3. **锁超时测试 seam**：仅 `OPENFEEL_TEST_MODE=1` 生效，函数体内读取 + 显式 options 优先；生产默认 5000/3000ms 不变；用于稳定覆盖 `INTERNAL_ERROR/internal/3`。
+  4. **REV-97-006 纯等价重构**：命令层 `req show` / `req set --workflow-mode` 的内联 `requirement_id` 过滤改用 `listLinkedStages`；core `allLinkedStagesDone` / `hasLinked` 等 done 判定原语保留。
+- **理由**：v1.2.2 已冻结契约与版本；补丁版本是最小风险路径。测试 seam 门控避免生产行为泄漏；等价重构不改变任何输出。
+- **后果 / 适用边界**：v1.2.3 为 semver 合法补丁号（不使用四段 `1.2.2.1`）；33 成功出口 / 34 注册选项与退出码 0/1/2 语义不变；存量 flow.json 零迁移。
+- **回滚**：`git revert` v1.2.3 归档 commit（`ea9aa68`）及版本分片归档 commit；版本号回退 1.2.2；无数据迁移。
+

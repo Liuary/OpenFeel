@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-17T08:58:49.115Z",
-    "revision": 1286,
+    "updated": "2026-10-17T09:02:33.231Z",
+    "revision": 1287,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -19,7 +19,7 @@
     ]
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.2.3-stage-99",
       "op": ""
@@ -583,15 +583,15 @@
     },
     "v1.2.3-stage-99": {
       "name": "v1.2.3-stage-99",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "stats": {
         "start_time": "2026-10-17T08:39:28.227Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-10-17T09:02:33.208Z",
+        "duration_ms": 1384981
       }
     }
   },
@@ -4098,6 +4098,18 @@
         "stageName": "v1.2.3-stage-99",
         "from": "review_passed",
         "to": "archiving",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T09:02:33.208Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.3-stage-99",
+        "from": "archiving",
+        "to": "done",
         "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }

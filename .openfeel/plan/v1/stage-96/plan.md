@@ -4,8 +4,8 @@
 - **依赖**：**hard: `v1.2.2-stage-95`**（契约助手、错误封装、JSON 模式单点必须先冻结）
 - **优先级**：P0（DSH 适配器核心诉求：消除 `PHASE_AGENT_MAP` 镜像与文本决策）
 - **关联需求**：REQ-001（CLI 机器可读契约与调度决策下沉（DSH 适配器需求）；关联由 Feel 经 `openfeel req link` 执行）
-- **制定人**：openfeel-planner ｜ **制定时间**：2026-10-17 ｜ **修订轮**：修订 0（初稿）
-- **基线**：**HEAD `38f1e05`** + 当前工作区；上游门禁登记值 71 文件 / 1719 用例、`lint i18n` 945、`lint kb` 0 过期 / 624 引用、`--version` 1.2.1、flow.json `revision 1188` / 17 stages 全 done / `reviews` 0。**实况复核**：stage-95 完成后以其门禁实测值为准（本阶段不得引用旧值）。
+- **制定人**：openfeel-planner ｜ **制定时间**：2026-10-17 ｜ **修订轮**：修订 1（承接 REV-96-005：补 REV-95-005/008/009 登记 + 基线同步 HEAD `25ebc4e`）
+- **基线**：**HEAD `25ebc4e`**（stage-95 归档提交）+ 当前工作区；上游门禁实况 **74 文件 / 1779 用例**、`lint i18n` **950**、`lint kb` **0 过期 / 604 引用**、`--version` 1.2.1、flow.json `meta.revision 1226` / 21 stages（stage-95 已归档，stage-96 当前）/ `reviews` 0。**实况复核**：stage-96 门禁起点以 HEAD `25ebc4e` 实测为准；行号漂移按内容特征复核。
 - **定位**：把「当前阶段 + 相位 → 谁负责 → 合法下一相位 → 建议命令 → 守卫 → 阻塞项」收敛为 CLI 单点输出；并让 `flow status --json` 一次给出每阶段调度属性，消除适配器 N 次 `flow mode` 调用。
 - **范围（文件级）**：
   - **修改**：`src/core/flow-manager.ts`（公开 `getResponsibleAgent` / 抽阻塞 REV 单点谓词）；`src/core/pipeline-schema.ts`（如需新增 `DEFAULT_EFFECTIVE_REVIEW_TIER` 常量）；`src/commands/flow.ts`（`flow next` / `buildStatusJson` / `flow phases --json`）；`src/core/i18n-data/{zh-CN,en}.ts`；`test/core/flow-manager.test.ts`、`test/commands/flow.test.ts`、`test/cli/json-contract.test.ts`、`docs/json-contract.md`。
@@ -30,7 +30,7 @@
 
 ---
 
-## 一、实测清单（基线 HEAD `38f1e05`）
+## 一、实测清单（基线 HEAD `25ebc4e`）
 
 ### 表 A：决策数据源与消费点
 
@@ -40,10 +40,10 @@
 | A2 | `getPhaseLabels(lang)` 15 项双语；缺省回落 phase 原文 | `flow-manager.ts:2236-2290` | `phaseLabel` 复用 |
 | A3 | `getAvailablePhases(stageName?, tier='full')` → 当前相位直接可达；`getValidTargets` 单一取表 | `flow-manager.ts:2030-2041 / 1996` | `legalNextPhases` 复用 |
 | A4 | `resolveStageWorkflowMode(stageId?)` 单点链：status.md > 需求级 > config > profile > builtin | `flow-manager.ts:2443-2469` | 每阶段 `workflowMode` 唯一来源 |
-| A5 | `MODE_DERIVED_TIER = {full:'full', fast:'lean', general:'full'}`；`flow advance` 缺省 `effTier = explicitTier ?? 'full'` | `flow-manager.ts:497-501`；`flow.ts:811` | `reviewTier` 展示值；`effectiveReviewTier='full'` |
-| A6 | 阻塞 REV 阶段域过滤在 `assertNoBlockingOpenRev`（命令层）与 `advanceStagePhase` done 门（核心层）各一份 | `flow.ts:2397-2417`；`flow-manager.ts:1512-1527` | 抽 `listStageBlockingOpenReviews(reviews, stage)` 单点；`flow next` 与命令层复用 |
-| A7 | `flow status --json.stages[]` 恰 `{id,phase,status,deps,ops}`；`ops` 为 opId→state | `flow.ts:2467-2473`；`collectOpStates:2442` | 追加 5 字段，既有键序不变 |
-| A8 | `flow phases --json` 恰 7 键，`reviewTier` 在末位 | `flow.ts:454` | 追加 2 键到末位 |
+| A5 | `MODE_DERIVED_TIER = {full:'full', fast:'lean', general:'full'}`；`flow advance` 缺省 `effTier = explicitTier ?? 'full'` | `flow-manager.ts:497-501`；`flow.ts:830` | `reviewTier` 展示值；`effectiveReviewTier='full'` |
+| A6 | 阻塞 REV 阶段域过滤在 `assertNoBlockingOpenRev`（命令层）与 `advanceStagePhase` done 门（核心层）各一份 | `flow.ts:2481-2500`；`flow-manager.ts:1512-1527` | 抽 `listStageBlockingOpenReviews(reviews, stage)` 单点；`flow next` 与命令层复用 |
+| A7 | `flow status --json.stages[]` 恰 `{id,phase,status,deps,ops}`；`ops` 为 opId→state | `flow.ts:2551-2556`；`collectOpStates:2526` | 追加 5 字段，既有键序不变 |
+| A8 | `flow phases --json` 恰 7 键，`reviewTier` 在末位 | `flow.ts:452-459` | 追加 2 键到末位 |
 | A9 | `flow next` 不存在（实测 unknown command exit 1） | 实测 | 新增命令 |
 | A10 | `StageData.requirement_id?: string \| null` 已在位 | `flow-manager.ts:103-116` | `requirementId = ?? null` |
 | A11 | `FlowData.reviews` 含 `blocking?: boolean`（缺省 undefined = 阻塞） | `flow-manager.ts:72-90` | 输出解析为布尔：`blocking !== false` |
@@ -52,10 +52,10 @@
 
 | 项 | 起点（stage-95 完成后复核） | 阶段末目标 |
 |----|------|------|
-| `npm test` | stage-95 登记值 | 新基线（新增 flow next / stages 属性 / phases 消歧用例） |
+| `npm test` | **74 文件 / 1779 用例**（HEAD `25ebc4e` 实测） | 新基线（新增 flow next / stages 属性 / phases 消歧用例） |
 | `npx tsc --noEmit` | 0 | 0 |
-| `lint i18n` | stage-95 登记值 | ≥ 起点 + 新 guard/文案键（逐键列名） |
-| `lint kb` | 0 过期 | 0 |
+| `lint i18n` | **950**（HEAD `25ebc4e` 实测） | ≥ 起点 + 新 guard/文案键（逐键列名） |
+| `lint kb` | **0 过期 / 604 引用**（HEAD `25ebc4e` 实测） | 0 过期 |
 | `npm run build` | ×2 幂等 | ×2 幂等（本阶段不改 templates-data） |
 | 人类输出 | 基线快照 | `flow status` / `flow phases` / `flow` 帮助逐字不变（除新增 `flow next`） |
 
@@ -166,8 +166,8 @@
 
 ## 七、承接 REV 与处置表（REV-85-002 固化口径）
 
-- **判据源**：flow.json `reviews: 0` + 用户台账 `REV-92` / `REV-94` + stage-95 处置结果 + 本会话实测。
-- **上游 stage-95**：本阶段承接其契约助手 / 错误封装；stage-95 新增 REV 按流程处置（本表在 stage-95 归档后补记）。
+- **判据源**：flow.json `reviews: 0`（HEAD `25ebc4e`）+ 用户台账 `REV-92` / `REV-94` / `REV-95` / `REV-96` + stage-95 归档处置结果 + 本会话实测。
+- **上游 stage-95**：**已归档（HEAD `25ebc4e`）**；本阶段承接其契约助手 / 错误封装。其新增 REV-95-005 / 008 / 009 按下表显式转出登记，与 `ops/op-003.md` §5 完整承接表一致（REV-96-005 闭环）。
 
 | 上游条目 | 优先级 | 去向 | 依据 |
 |---------|:--:|------|------|
@@ -175,9 +175,14 @@
 | REV-92-002（est_ops 对账） | low | **台账保留**（本阶段 est_ops=3 已在 deps.yaml 登记） | 本计划 §附录 A |
 | REV-94-005 / 006 | low | **转 stage-98**（文档/入管核对） | 承 stage-95 三分 |
 | REV-94-007 | low | **台账保留**（部署侧） | 承 stage-94 留痕 |
+| **REV-95-005**（roadmap:31 旧口径残留） | low | **转 stage-98**（roadmap 文档收口） | REV-95 代码审查：roadmap 为 Feel 维护载体；契约 §9 备注已登记 |
+| **REV-95-008**（锁等待超时归类 `INTERNAL_ERROR/internal/3` 契约边界未登记） | low | **转 stage-97**（契约文档） | REV-95 代码审查：非缺陷、非阻塞；stage-97 读命令失败路径接入时登记 |
+| **REV-95-009**（并发 envelope `process.exit(2)` 退出机制不一致） | low | **转 stage-97** | REV-95 代码审查：stage-97 若并发进入更多 JSON 路径一并改造 |
 | 其余已闭合条目 | — | **零动作**（登记） | 台账实测 |
 
-- **三分结论**：本阶段处置 0／显式转出 2（REV-94-005/006）／台账保留 2（REV-92-006、REV-92-002）→ **零灭失成立**。
+- **三分结论**：**处置 0／显式转出 5（REV-94-005/006、REV-95-005/008/009）／台账保留 2（REV-92-006、REV-92-002）→ 零灭失成立**。
+- **与 op-003 一致性**：本表与 `.openfeel/plan/v1/stage-96/ops/op-003.md` §5 完整承接表逐行一致；REV-96-005 的「计划 §七待修订」遗留项由此闭环。
+- **口径说明**：REV-94-007（部署侧旧模板默认值）为跨版本部署侧台账，计入 stage-95 三分表，不重复计入本阶段 0/5/2；op-003 §5 同口径未列该行。
 
 ## 八、op 拆分建议（供 openfeel-schemer 定稿；`est_ops = 3`）
 
@@ -195,3 +200,4 @@
 | 时间 | 制定人 | 说明 |
 |------|--------|------|
 | 2026-10-17 | openfeel-planner | 初稿：依据大计划 §二/§三/附录 A「stage-96」+ DSH P0-1/P1-1/P2-2 + 源码实测（2 表 17 项）；变更点 T1~T5；开放问题 Q1~Q5；风险 R-96-1~6；承接三分（处置 0 / 转出 2 / 保留 2）；op 拆分 3 项。**只写本计划文档**。 |
+| 2026-10-17 | openfeel-planner | **修订 1（REV-96-005 收尾）**：§七补 REV-95-005（→ stage-98）/ REV-95-008、REV-95-009（→ stage-97）三行，三分结论更新为「处置 0／转出 5／保留 2」，与 `ops/op-003.md` §5 逐行一致；基线同步 HEAD `25ebc4e`、74 文件 / 1779 用例、`lint i18n` 950、`lint kb` 0 过期 / 604 引用、flow.json `meta.revision 1226` / 21 stages；表 A 行号按内容特征重登记（A5 `flow.ts:830`、A6 `flow.ts:2481-2500`、A7 `flow.ts:2551-2556` / `collectOpStates:2526`、A8 `flow.ts:452-459`）。**只改本计划文档**。 |

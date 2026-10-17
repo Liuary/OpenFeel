@@ -1,64 +1,71 @@
-# op-003 自测报告（v1.2.2-stage-95）
-
-- **执行者**：openfeel-executor
-- **方案**：`.openfeel/plan/v1/stage-95/ops/op-003.md`（前置 op-001 / op-002 hard 已满足）
-- **结论**：通过；可交回调用方安排 openfeel-reviewer 审查。
+# op-003 自测报告（v1.2.2-stage-96）
 
 ## 执行摘要
 
-按 op-003 实现全局 `--project <path>`（预扫描 + 单点 chdir + 目录校验 + 错误封装 + 单点解析）与 `--version --json`（三键单文档）。落实 REV-95-003 四项边界：语言按目标项目、`--log-file` 按原始 cwd、`--project`/`--json` 预扫描成对防误判、单进程单命令前提（文件头/函数注释登记）。未改 bin、未改 phase 枚举/转移表、未新增依赖、未 commit。
+严格按 `.openfeel/plan/v1/stage-96/ops/op-003.md` 完成阶段末收口：i18n 969 键逐键核验、19 成功出口 / 20 注册 `--json` 选项与契约 §5/§12 终校、三处档位一致与空态复核、人类输出零回归取证（受控 HEAD 代码 vs 新代码，`flow status --verbose` 入矩阵）、REV-96-001~007 闭环登记、承接 REV 三分 0/5/2 复核、全量门禁与性能实测。**未新增业务代码、未发现产品缺陷；仅产出报告与证据。** 结论：通过（请安排 openfeel-reviewer 审查）。
 
 ## 实施步骤完成情况
 
-- [x] 1. i18n 双表新增 4 键：`common.projectNotFoundTmpl` / `common.projectMissingValueTmpl` / `common.projectConflictTmpl` / `help.global.project`（zh/en 成对；en 无 CJK）。
-- [x] 2. 新增 `src/cli/project-option.ts`：`extractProjectArgs` / `extractProjectArg` / `applyProjectOption` / `resolveProjectPathForCommand` / `resetProjectRootForTest`（复用 `scanArgv`，无第二套扫描）。
-- [x] 3. `src/cli/index.ts`：根选项追加于 `--debug` 之后；runCli 顺序 `setJsonMode → version JSON 短路 → applyProjectOption → logCliStart → emitGlobalDeployCheck → parse → logCliDone`。
-- [x] 4. `src/commands/knowledge.ts`：本地 `--project` 声明逐字保留；动作改 `command.optsWithGlobals()` + `resolveProjectPathForCommand`（禁用 `options.project`）。
-- [x] 5. 测试：新增 `test/cli/project-option.test.ts`（13 例）；`test/cli/json-contract.test.ts` 增 `--version --json` / `-v --json` / 纯文本 3 例；`test/commands/knowledge.test.ts` 增同名双注册 1 例。
+- [x] 0. 起点记录：HEAD `25ebc4e`、`git status --porcelain`、`flow.json` / `status.md` SHA256、门禁基线入 `gate.log`。
+- [x] 1. i18n 收口：17 个 `flow.next.*` 键各有 1 处源码消费；`help.flow.next` / `help.flow.next.json` 由 `applyHelpI18n` 消费（测试冒烟 `test/commands/flow.test.ts:3993`）；`lint i18n` = **969 键一致**；op-002 仅改 `help.flow.phases.json` 文本、未增键（diff 核验）。
+- [x] 2. 契约复核：`json-contract.test.ts` 27 用例通过；`flow next` 12 键、`status.stages[]` 10 键、`phases` 9 键键序与契约逐字一致；三处档位一致；空态 12 键 / 阶段缺失 / 未初始化三态实测；20 个注册 `--json` 选项；契约计数 19/20 无漂移。
+- [x] 3. 人类输出零回归：重跑 baseline 矩阵到 `after/**`；`flow status` / `--verbose` / `phases` / `advance --help` 受控逐字 diff 空；`--help` 两处有意增量登记；失败路径 3 条与旧代码逐字一致；`flow next` 新命令三态登记。
+- [x] 4. REV-96-001~005 闭环（含 006/007）：证据落 `final-report.md` §⑥。
+- [x] 5. 承接 REV 处置登记：完整表 + 三分结论；`plan.md §七`（行 170/178-180/183）与 `op-003.md §5`（行 85/92-96）逐行一致。
+- [x] 6. 全量门禁：test / tsc / build ×2 / i18n / kb / version / 实跑矩阵 / 性能，原始输出入 `gate.log`。
+- [x] 7. 变更集审计：本 op 零新增白名单外变更；`flow.json` / `status.md` 字节前后一致；`users` / `src/cli` / package / README / CHANGELOG 零改动；无第三方依赖。
+- [x] 8. 终局报告十小节齐全：`final-report.md`。
 
-## 自测清单验证（实测值）
+## 自测清单验证
 
-- `npx tsc --noEmit` → **0 错误**。
-- `npx vitest run test/cli/project-option.test.ts test/cli/json-contract.test.ts test/commands/knowledge.test.ts` → **3 文件 / 45 用例全绿**。
-- `npm test` → **74 文件：72 通过 / 2 失败；1779 用例：1730 通过 / 49 失败**。
-  - 失败项集合 = `test/commands/req.test.ts` 48 + `test/commands/flow.test.ts` 1，均为 REQ-001 合法存在导致的真实工作区反守卫失败（与 op-002 交接一致，**无新增**；归 op-004 修复）。
-- `npm run build` ×2 → dist 全量 JS sha256 聚合值两次一致：`7cd0fc2b6bce67ed5290b870f4ea1bc1b0e8c75480e9829c73a3259e2ccfdf92`（幂等）。
-- `node bin/openfeel.js lint i18n` → **✅ 950 键一致**（946 + 4）。新增键逐名：`common.projectNotFoundTmpl`、`common.projectMissingValueTmpl`、`common.projectConflictTmpl`、`help.global.project`。
-- `node bin/openfeel.js --version --json` → `{"schemaVersion":1,"version":"1.2.1","node":"v24.18.1"}`（键序恰为 `schemaVersion,version,node`）；`--version` → `1.2.1`（纯文本不变）。
-- `--project` 六场景实跑（A 未初始化 / B 已初始化）：
-  - 前置 `--project B flow status --json` → 读到 B 的 `pipeline/stages`，首键 `schemaVersion`，exit 0。
-  - 后置 `flow status --json --project B`、等号 `--project=B` → 同上，exit 0。
-  - 不存在路径 → `PROJECT_NOT_FOUND` / `detail.reason=not-found` / exit 1。
-  - 文件路径 → `PROJECT_NOT_FOUND` / `detail.reason=not-directory` / exit 1。
-  - 缺失值 `--project --json` → `INVALID_ARGUMENT` / exit 1。
-  - 多值冲突 `--project A --project B` → `INVALID_ARGUMENT` / `detail.values=[A,B]` / exit 1；同值重复允许。
-- 语言边界：B `.info.json lang=en`，从 A 执行 `--project B flow current` → 英文输出（Global Status/Stage/…）。
-- `--log-file` 边界：从 A 执行 `--project B --log-file logs/x.log flow current` → 写入 `A/logs/x.log`，`B/logs` 不存在；日志 `[project=B]`。
-- `--version --json` + 非法 `--project` → 仍输出版本三键文档、exit 0（版本短路先于项目校验）。
-- `--help --json` → 帮助文本照常输出（不拦截）；根 `--help` 唯一增量 = 新增 `--project <path>` 行。
-- `knowledge dedup --help` → 本地 `--project <path> 目标项目根路径（默认当前目录）` 逐字不变。
+- [x] i18n：19 键逐键有消费；969 一致；无死键 / 无多余键。
+- [x] 契约：19 成功出口 / 20 注册选项；`#19` 与 §5 #19 一致；「18 个成功出口」仅存于 §1 不变量行。
+- [x] 决策权威：`responsibleAgent` 与 `mapPhaseToAgent` 同源（`getResponsibleAgent` 委托）；`legalNextPhases` 全部被 `advance --dry-run` 接受；`blockingReviews` 阶段域正确（测试覆盖）；`guards` 顺序固定；空态 12 键齐全。
+- [x] 零回归：`flow status` / `--verbose` / `phases` / `advance --help` 受控 diff 空；`--help` 两处差异已登记。
+- [x] 只读：`flow next` 前后 `flow.json` SHA256 一致；测试断言 `save` 零调用（`flow.test.ts:3978`）。
+- [x] 门禁：全部全绿并登记（见下）。
+- [x] 越界：本 op 仅新增 `.openfeel/tmp/stage-96/**`；`flow.json` / `status.md` / `plan.md` / REV 文件零改动。
+- [x] 报告：终局报告十小节齐全；三分结论明确；遗留可追溯。
 
-## 产出文件（与方案声明一致）
+## 门禁数值
 
-- 新增：`src/cli/project-option.ts`、`test/cli/project-option.test.ts`
-- 修改：`src/cli/index.ts`、`src/commands/knowledge.ts`、`src/core/i18n-data/zh-CN.ts`、`src/core/i18n-data/en.ts`、`test/cli/json-contract.test.ts`、`test/commands/knowledge.test.ts`
-- 方案一致性比对：**8/8 一致，无遗漏、无超范围**（工作区其余改动均属 op-001/op-002 及计划/状态文件）。
+| 项 | 实测 |
+|----|------|
+| `npm test` | 74 文件 / **1809 用例**，0 failed / 0 skipped |
+| `npx tsc --noEmit` | 0 |
+| `npm run build` ×2 | 幂等（dist SHA256 一致；src 无新增变更；template-loader/update diff 空） |
+| `lint i18n` | 969 键一致 |
+| `lint kb` | 0 过期 / 604 引用 |
+| `--version` | 1.2.1 |
+| `flow status --json` 性能 | 5 次中位数 **393ms**（< 1s） |
+
+## 产出文件
+
+- `.openfeel/tmp/stage-96/final-report.md`
+- `.openfeel/tmp/stage-96/human-output-diff.md`
+- `.openfeel/tmp/stage-96/gate.log`
+- `.openfeel/tmp/stage-96/after/**`（快照、受控 HEAD 对照、失败路径、测试/门禁日志）
+- `.openfeel/tmp/op-003-test-report.md`（本报告）
+
+未修改 `docs/json-contract.md` 或 `test/**`（门禁未暴露缺口；D-96-17）。
 
 ## 前置校验结果
 
-- **方式**：方案完整性人工核对 + `openfeel flow health --quick`（CLI，exit 0）。
-- **phase**：`exec_running`（合法）；`current.op = v1.2.2-stage-95.op-003`（与任务 op-id 匹配）；重试次数 0。
-- **结论**：通过（0 errors；无 warnings）。
-- **方案完整性**：`## 目标` / `## 实施步骤` / `## 产出文件` / `## 自测清单` / `- **阶段**` / `- **最多重试**` 齐备。
+- **方式**：`openfeel flow health --quick`（退出 0，快速模式健康检查通过；无 errors / warnings）。
+- **phase**：`exec_running`；`current.op = v1.2.2-stage-96.op-003`（与 op-id 匹配）。
+- **结论**：通过。
+- **方案完整性**：`## 目标` / `## 实施步骤` / `## 产出文件` / `## 自测清单` / `- **阶段**` / `- **最多重试**` 六项齐备。
+- **流转合法性**：`exec_running` 属合法枚举；前置 op-001 / op-002 均 hard 已完成；本 op 恒阶段末位。
 
 ## 偏差记录
 
-- 无跳步、无超范围源码改动。
-- `npm run lint:i18n` 在 `package.json` 中不存在（仅有 build/test/test:coverage/dev）；以方案命令 `node bin/openfeel.js lint i18n` 等效执行并取得 950。
-- `extractProjectArg` 按 op-003 正文实现为「取最后一个出现值」；计划 T3 行文曾写「取首个」。以 op-003（方案期裁定 D-95-12）为准；该函数不被生产路径消费（`applyProjectOption` 处理全部值）。
+1. **无跳步违规**。
+2. **op-003 §6「本仓 17 阶段」为陈旧值**：实测 `flow.json` 为 **21 stages**（`counts={total:21,done:18,active:3}`）。按实测登记，不作为缺陷（计划基线亦为 21 stages）。
+3. **基线 vs 重跑的数据态差异**：baseline 于 op-001 第 0 步采集（当前操作 op-001、日志 504），本 op 重跑时数据已推进（op-003、日志 506），故 `flow status` / `--verbose` 存在数据态差异。为满足 D-96-18「逐字 diff 空」硬判据，追加**受控对照**：`git archive HEAD` 导出源码 → 临时目录构建 → 以本仓为 cwd 运行 HEAD 代码 → 与新代码同数据逐字 diff（四项均空）。差异逐条登记于 `human-output-diff.md` §3。
+4. **既有变更集非本 op 引入**：`test/cli/output-encoding.test.ts`（op-002 已登记偏差）、`.openfeel/tmp/op-002-test-report.md`（op-002 产出）、`.openfeel/plan/v1/stage-96/plan.md`（planner 修订 1）、`flow.json` / `logs` / `metrics` / `checkpoints`（工作流数据）均在 op-003 开始前已存在；本 op 起点与终点的 `git status --porcelain` 对比仅新增本报告 `.openfeel/tmp/op-003-test-report.md`（executor 角色强制的自测报告，受版本跟踪，与 op-002 同名报告同范式）。`after/**` 等证据位于被忽略的 `.openfeel/tmp/stage-96/**`。
+5. **证据文件扩展**：在允许的 `after/**` 下追加 `human-diff-raw.log`、`npm-test.log`、`check-json.log`、`status-now.json`、`head-*.out`、`fail-*`、`dist-hash-*.txt`、`same-source.log`，用于可复现取证。
+6. **未 commit / push**（任务边界）；`ops/` 仍为未跟踪，阶段提交须精确 `git add .openfeel/plan/v1/stage-96/ops/`。
 
-## 交接给 op-004
+## 可审查移交
 
-- 失败集 49（req 48 + flow 1）按原计划由 op-004 的测试隔离修复收口。
-- `lint i18n` 基线 950 已达成；人类输出 diff 仅 `--help` 新增 `--project` 一行（有意增量）。
-- 未 commit / 未 push / 未推进 phase。
+自测通过，未发现需修复的产品行为问题。请安排 **openfeel-reviewer** 审查；本 op 不推进 phase、不直写 `flow.json`、不手改 `status.md`。

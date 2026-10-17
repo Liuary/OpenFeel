@@ -3,7 +3,7 @@
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, isTemplateEmpty, detectFillState, MODE_DERIVED_TIER, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase } from '../../src/core/flow-manager.js';
+import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, isTemplateEmpty, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase, type ReviewItem } from '../../src/core/flow-manager.js';
 import { PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES } from '../../src/core/pipeline-schema.js';
 import { t } from '../../src/core/i18n.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
@@ -6052,5 +6052,180 @@ describe('审查档位（stage-92 op-001）', () => {
         }
       }
     }
+  });
+});
+
+// ═══════════════════════════════════════
+// stage-96 op-001：调度决策单点（getResponsibleAgent / listStageBlockingOpenReviews）
+// ═══════════════════════════════════════
+
+describe('stage-96 op-001 调度单点', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-stage96-dispatch-'));
+    // 全链语义用例显式声明 full（内置默认 fast）
+    writeFullModeConfig(tmpDir);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 构造审查条目（缺省 open；blocking 缺省 = 阻塞） */
+  function rev(overrides: Partial<ReviewItem> & { id: string; op: string }): ReviewItem {
+    return {
+      status: 'open',
+      priority: 'medium',
+      title: `标题 ${overrides.id}`,
+      filed_by: 'openfeel-reviewer',
+      filed_at: '2026-01-01T00:00:00Z',
+      ...overrides,
+    };
+  }
+
+  /** 构造「当前阶段 + 指定相位」的管理器（full 模式） */
+  function mgrAtPhase(phase: PipelinePhase): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    const base = makeTestFlowData();
+    mgr.setData({
+      ...base,
+      pipeline: { phase: 'active' as MetaPhase, current: { stage: 'stage-01', op: 'op-001' }, retry: 0 },
+      stages: {
+        'stage-01': { ...base.stages['stage-01'], phase },
+      },
+    });
+    return mgr;
+  }
+
+  it('15 phase → getResponsibleAgent 映射矩阵（与 mapPhaseToAgent 同源）', () => {
+    const expected: Record<PipelinePhase, string> = {
+      plan_pending: 'openfeel-planner',
+      plan_review: 'openfeel-planner',
+      plan_passed: 'openfeel-planner',
+      scheme_pending: 'openfeel-schemer',
+      scheme_review: 'openfeel-schemer',
+      scheme_passed: 'openfeel-schemer',
+      exec_running: 'openfeel-executor',
+      review_pending: 'openfeel-reviewer',
+      review_failed: 'openfeel-reviewer',
+      review_passed: 'openfeel-reviewer',
+      test_pending: 'openfeel-feel-tester',
+      test_failed: 'openfeel-feel-tester',
+      test_passed: 'openfeel-feel-tester',
+      archiving: 'openfeel-archiver',
+      done: 'none',
+    };
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData());
+    for (const phase of PIPELINE_PHASES) {
+      expect(mgr.getResponsibleAgent(phase)).toBe(expected[phase]);
+    }
+  });
+
+  it('15 phase → getAvailablePhases（full）直接目标矩阵', () => {
+    const expected: Record<PipelinePhase, PipelinePhase[]> = {
+      plan_pending: ['plan_review', 'plan_passed'],
+      plan_review: ['plan_passed', 'plan_pending'],
+      plan_passed: ['scheme_pending'],
+      scheme_pending: ['scheme_review', 'scheme_passed'],
+      scheme_review: ['scheme_passed', 'scheme_pending'],
+      scheme_passed: ['exec_running'],
+      exec_running: ['review_pending', 'scheme_pending'],
+      review_pending: ['review_failed', 'review_passed'],
+      review_failed: ['review_pending', 'scheme_pending'],
+      // 组合键 review_passed|test_passed 追加 archiving（顺序 = 转移表遍历序去重）
+      review_passed: ['test_pending', 'archiving'],
+      test_pending: ['test_failed', 'test_passed'],
+      test_failed: ['test_pending', 'scheme_pending'],
+      test_passed: ['archiving'],
+      archiving: ['done'],
+      done: [],
+    };
+    for (const phase of PIPELINE_PHASES) {
+      expect(mgrAtPhase(phase).getAvailablePhases('stage-01')).toEqual(expected[phase]);
+    }
+  });
+
+  it('listStageBlockingOpenReviews：精确 + 前缀命中，前缀重叠不误命中', () => {
+    const reviews = [
+      rev({ id: 'REV-001', op: 'stage-01' }),
+      rev({ id: 'REV-002', op: 'stage-01.op-001' }),
+      rev({ id: 'REV-003', op: 'stage-010.op-001' }),
+      rev({ id: 'REV-004', op: 'stage-01x.op-001' }),
+    ];
+    expect(listStageBlockingOpenReviews(reviews, 'stage-01').map((r) => r.id)).toEqual(['REV-001', 'REV-002']);
+  });
+
+  it('listStageBlockingOpenReviews：blocking 缺省/true 命中，false 与非 open 排除，顺序保持', () => {
+    const reviews = [
+      rev({ id: 'REV-001', op: 'stage-01.op-001' }),
+      rev({ id: 'REV-002', op: 'stage-01.op-002', blocking: true }),
+      rev({ id: 'REV-003', op: 'stage-01.op-003', blocking: false }),
+      rev({ id: 'REV-004', op: 'stage-01.op-004', status: 'resolved' }),
+      rev({ id: 'REV-005', op: 'stage-01.op-005', status: 'closed' }),
+      rev({ id: 'REV-006', op: 'stage-01.op-006' }),
+    ];
+    expect(listStageBlockingOpenReviews(reviews, 'stage-01').map((r) => r.id)).toEqual(['REV-001', 'REV-002', 'REV-006']);
+  });
+
+  it('listStageBlockingOpenReviews：空 stage → []', () => {
+    const reviews = [rev({ id: 'REV-001', op: '.op-001' })];
+    expect(listStageBlockingOpenReviews(reviews, '')).toEqual([]);
+  });
+
+  it('等价性：helper 结果 = advanceStagePhase 到 done 的抛错清单（blocking:false 两处均放行）', () => {
+    const mgr = new FlowManager(tmpDir);
+    const base = makeTestFlowData();
+    mgr.setData({
+      ...base,
+      stages: { 'stage-01': { ...base.stages['stage-01'], phase: 'test_passed' } },
+      reviews: [
+        rev({ id: 'REV-001', op: 'stage-01.op-001' }),
+        rev({ id: 'REV-002', op: 'stage-01.op-002', blocking: false }),
+        rev({ id: 'REV-003', op: 'stage-01.op-003', status: 'resolved' }),
+        rev({ id: 'REV-004', op: 'stage-02.op-001' }),
+      ],
+    });
+
+    const helperIds = listStageBlockingOpenReviews(mgr.getData()!.reviews, 'stage-01').map((r) => r.id);
+    let gateIds: string[] = [];
+    try {
+      mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
+    } catch (err) {
+      gateIds = [...(err as Error).message.matchAll(/(REV-[0-9A-Za-z-]+):/g)].map((m) => m[1]);
+    }
+    expect(helperIds).toEqual(['REV-001']);
+    expect(gateIds).toEqual(helperIds);
+
+    // blocking:false 单条 fixture → helper [] 且 done 门放行
+    const permissive = new FlowManager(tmpDir);
+    permissive.setData({
+      ...base,
+      stages: { 'stage-01': { ...base.stages['stage-01'], phase: 'test_passed' } },
+      reviews: [rev({ id: 'REV-009', op: 'stage-01.op-001', blocking: false })],
+    });
+    expect(listStageBlockingOpenReviews(permissive.getData()!.reviews, 'stage-01')).toEqual([]);
+    expect(() => permissive.advanceStagePhase('stage-01', 'done' as PipelinePhase)).not.toThrow();
+  });
+
+  it('同源一致性：verboseSummary().downstreamPhases = available × labels × getResponsibleAgent（REV-96-001）', () => {
+    const mgr = mgrAtPhase('scheme_review');
+    const labels = mgr.getPhaseLabels();
+    const expected = mgr.getAvailablePhases('stage-01').map((p) => ({
+      phase: p,
+      label: labels[p],
+      responsibleAgent: mgr.getResponsibleAgent(p),
+    }));
+    expect(mgr.verboseSummary().downstreamPhases).toEqual(expected);
+  });
+
+  it('静态约束：buildDownstreamPhases 仍直接消费 mapPhaseToAgent（本版零改动）', () => {
+    const source = readFileSync(new URL('../../src/core/flow-manager.ts', import.meta.url), 'utf-8');
+    const block = source.match(/private buildDownstreamPhases\(\): DownstreamPhase\[\] \{[\s\S]*?\n {2}\}/);
+    expect(block).not.toBeNull();
+    expect(block![0]).toContain('this.getAvailablePhases()');
+    expect(block![0]).toContain('this.getPhaseLabels()');
+    expect(block![0]).toContain('this.mapPhaseToAgent(phase)');
   });
 });

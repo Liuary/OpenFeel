@@ -33,7 +33,7 @@ import { applyHelpI18n } from '../../src/cli/index.js';
 import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
 import { initProject } from '../../src/core/init.js';
 import { t } from '../../src/core/i18n.js';
-import { FlowManager, FlowConcurrentModificationError, type FlowData, type PipelinePhase, type MetaPhase, type StageData } from '../../src/core/flow-manager.js';
+import { FlowManager, FlowConcurrentModificationError, type FlowData, type PipelinePhase, type MetaPhase, type StageData, type ReviewItem } from '../../src/core/flow-manager.js';
 import { setConfigValue } from '../../src/core/config.js';
 import { addStage } from '../../src/core/plan/stage.js';
 import { splitForArchive } from '../../src/core/flow-archive/grouping.js';
@@ -105,6 +105,23 @@ describe('flow 命令（stage-41）', () => {
         throw err;
       }
     }
+  }
+
+  /**
+   * stage-96 op-001：flow next --json 测试辅助。
+   * 命令层只读 isJsonMode()（stage-95 不变量 2），直接 parseAsync 的测试须显式置位并复位。
+   */
+  async function runNextJson(args: string[] = ['flow', 'next', '--json']): Promise<Record<string, unknown>> {
+    logMock.mockClear();
+    errorMock.mockClear();
+    setJsonMode(true);
+    try {
+      await safeParse(args);
+    } finally {
+      resetJsonModeForTest();
+    }
+    const raw = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    return JSON.parse(raw) as Record<string, unknown>;
   }
 
   // ── flow phases ──
@@ -286,17 +303,19 @@ describe('flow 命令（stage-41）', () => {
     expect(out).toContain('[来源: builtin]');
   });
 
-  it('T7.11⑤：--json 只增 workflowMode / reviewTier（既有五键不变）+ 人类输出仅新增 4 行', async () => {
+  it('T7.11⑤：--json 只增 workflowMode / reviewTier / displayReviewTier / effectiveReviewTier（既有五键不变）+ 人类输出仅新增 4 行', async () => {
     rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
     await safeParse(['flow', 'phases', '--json']);
     const obj = JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
-    // 7 键 = 既有五键 + workflowMode + reviewTier（stage-92 op-001 末位追加；“只增字段”）
-    expect(Object.keys(obj)).toEqual(['schemaVersion', 'phases', 'transitions', 'advanceAccepted', 'transitionsDiff', 'workflowMode', 'reviewTier']);
+    // 9 键 = 既有五键 + workflowMode + reviewTier（stage-92 op-001）+ displayReviewTier / effectiveReviewTier（stage-96 op-002 末位追加；“只增字段”）
+    expect(Object.keys(obj)).toEqual(['schemaVersion', 'phases', 'transitions', 'advanceAccepted', 'transitionsDiff', 'workflowMode', 'reviewTier', 'displayReviewTier', 'effectiveReviewTier']);
     expect(obj.schemaVersion).toBe(1);
     expect((obj.phases as string[]).length).toBe(15);
     expect((obj.advanceAccepted as string[]).length).toBe(15);
     // 本仓基线模式 = full → 派生档位 = full（零裁剪）
     expect(obj.reviewTier).toBe('full');
+    expect(obj.displayReviewTier).toBe(obj.reviewTier);
+    expect(obj.effectiveReviewTier).toBe('full');
 
     logMock.mockClear();
     await safeParse(['flow', 'phases']);
@@ -2665,7 +2684,7 @@ describe('flow 命令（stage-41）', () => {
 
     // ── T5.6 既有命令零破坏 ──
 
-    it('T5.6: phases/mode --json 归档前后逐字相等；status 标签结构不变；flow --help 仅新增 archive', async () => {
+    it('T5.6: phases/mode --json 归档前后逐字相等；status 标签结构不变；flow --help 仅新增 archive / next', async () => {
       seedVersions(['v1.1.7']);
 
       const phasesBefore = (await capture(['flow', 'phases', '--json'])).join('\n');
@@ -2696,7 +2715,7 @@ describe('flow 命令（stage-41）', () => {
       const flowCmd = program.commands.find((c) => c.name() === 'flow')!;
       const names = flowCmd.commands.map((c) => c.name()).filter((n) => n !== 'help');
       expect(names).toEqual([
-        'status', 'overview', 'current', 'metrics', 'phases', 'mode', 'stage', 'advance',
+        'status', 'next', 'overview', 'current', 'metrics', 'phases', 'mode', 'stage', 'advance',
         'attempt', 'ops', 'log', 'review', 'retry', 'repair', 'migrate', 'checkpoint',
         'archive', 'health', 'recover', 'wizard',
       ]);
@@ -3375,14 +3394,14 @@ describe('flow 命令（stage-41）', () => {
 
   // ── stage-90 op-001：general 模式（空表）/ 载体门 / wizard 源扫描 ──
 
-  it('T90.5：flow phases --mode general --json → workflowMode=general + transitions 空表 + 顶层 7 键', async () => {
+  it('T90.5：flow phases --mode general --json → workflowMode=general + transitions 空表 + 顶层 9 键', async () => {
     await safeParse(['flow', 'phases', '--mode', 'general', '--json']);
 
     const obj = JSON.parse(logMock.mock.calls[0][0] as string) as {
       workflowMode: string; transitions: Record<string, string[]>; transitionsDiff: { missing: string[]; extra: string[]; changed: string[] };
     };
-    // 6 → 7：stage-92 op-001 末位追加 reviewTier（既有 6 键逐字保留）
-    expect(Object.keys(JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>)).toHaveLength(7);
+    // 6 → 7：stage-92 op-001 末位追加 reviewTier；7 → 9：stage-96 op-002 末位追加 displayReviewTier / effectiveReviewTier
+    expect(Object.keys(JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>)).toHaveLength(9);
     expect(obj.workflowMode).toBe('general');
     expect(obj.transitions).toEqual({});
     expect(obj.transitionsDiff).toEqual({ missing: [], extra: [], changed: [] });
@@ -3604,16 +3623,24 @@ describe('flow 命令（stage-41）', () => {
     }
   });
 
-  it('T92.6：flow phases --json.reviewTier 三模式取值（full→full / fast→lean / general→full）', async () => {
+  it('T92.6：flow phases --json.reviewTier 三模式取值（full→full / fast→lean / general→full）+ displayReviewTier 同值 + effectiveReviewTier 恒 full', async () => {
     rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
-    const tierOf = async (mode: string): Promise<unknown> => {
+    const tiersOf = async (mode: string): Promise<{ reviewTier: unknown; displayReviewTier: unknown; effectiveReviewTier: unknown }> => {
       logMock.mockClear();
       await safeParse(['flow', 'phases', '--mode', mode, '--json']);
-      return (JSON.parse(logMock.mock.calls[0][0] as string) as { reviewTier: unknown }).reviewTier;
+      const obj = JSON.parse(logMock.mock.calls[0][0] as string) as { reviewTier: unknown; displayReviewTier: unknown; effectiveReviewTier: unknown };
+      return { reviewTier: obj.reviewTier, displayReviewTier: obj.displayReviewTier, effectiveReviewTier: obj.effectiveReviewTier };
     };
-    expect(await tierOf('full')).toBe('full');
-    expect(await tierOf('fast')).toBe('lean');
-    expect(await tierOf('general')).toBe('full');
+    const expectTiers = async (mode: string, tier: string): Promise<void> => {
+      const t = await tiersOf(mode);
+      expect(t.reviewTier).toBe(tier);
+      // stage-96 op-002：displayReviewTier 与 reviewTier 同值；effectiveReviewTier 恒 full
+      expect(t.displayReviewTier).toBe(tier);
+      expect(t.effectiveReviewTier).toBe('full');
+    };
+    await expectTiers('full', 'full');
+    await expectTiers('fast', 'lean');
+    await expectTiers('general', 'full');
   });
 
   it('T92.7：单一取表点静态断言（pruneTransitionsByTier 调用点恰 1；resolveTransitionsForMode 调用点恰 2）', () => {
@@ -3732,5 +3759,403 @@ describe('flow 命令（stage-41）', () => {
       resetJsonModeForTest();
       process.exitCode = 0;
     }
+  });
+
+  // ═══════════════════════════════════════════════
+  // stage-96 op-001：flow next（调度决策只读出口）
+  // ═══════════════════════════════════════════════
+
+  describe('stage-96 op-001 flow next', () => {
+    const NEXT_KEYS = [
+      'schemaVersion', 'stage', 'phase', 'phaseLabel', 'responsibleAgent', 'workflowMode',
+      'reviewTier', 'effectiveReviewTier', 'legalNextPhases', 'suggestedCommand', 'guards', 'blockingReviews',
+    ];
+    const STAGE = 'v1.9.0-stage-77';
+
+    /** 构造审查条目（缺省 open；blocking 缺省 = 阻塞） */
+    function revItem(overrides: Partial<ReviewItem> & { id: string; op: string }): ReviewItem {
+      return {
+        status: 'open',
+        priority: 'medium',
+        title: `标题 ${overrides.id}`,
+        filed_by: 'openfeel-reviewer',
+        filed_at: '2026-01-01T00:00:00Z',
+        ...overrides,
+      };
+    }
+
+    /** 写入活跃阶段夹具并保存 */
+    function seedStage(phase: PipelinePhase = 'plan_pending', reviews: ReviewItem[] = []): void {
+      const mgr = new FlowManager(tmpDir);
+      mgr.addStage(STAGE, phase);
+      if (reviews.length > 0) {
+        mgr.getData()!.reviews = reviews;
+      }
+      mgr.save();
+    }
+
+    beforeEach(() => {
+      process.exitCode = 0;
+    });
+
+    it('full：12 键精确序 + 字段值 + advance 接受集交叉', async () => {
+      seedStage();
+      const d = await runNextJson();
+      expect(Object.keys(d)).toEqual(NEXT_KEYS);
+      expect(d.schemaVersion).toBe(1);
+      expect(d.stage).toBe(STAGE);
+      expect(d.phase).toBe('plan_pending');
+      expect(d.phaseLabel).toBe('计划待定');
+      expect(d.responsibleAgent).toBe('openfeel-planner');
+      expect(d.workflowMode).toBe('full');
+      expect(d.reviewTier).toBe('full');
+      expect(d.effectiveReviewTier).toBe('full');
+      expect(d.legalNextPhases).toEqual(['plan_review', 'plan_passed']);
+      expect(d.suggestedCommand).toBe(`openfeel flow advance --stage ${STAGE} --to plan_review`);
+      expect(d.guards).toEqual([]);
+      expect(d.blockingReviews).toEqual([]);
+
+      // 契约不变量 2：legalNextPhases 每个元素均被 flow advance 接受（dry-run）
+      for (const target of d.legalNextPhases as string[]) {
+        process.exitCode = 0;
+        await safeParse(['flow', 'advance', '--stage', STAGE, '--to', target, '--dry-run']);
+        expect(process.exitCode).toBe(0);
+      }
+    });
+
+    it('fast：workflowMode=fast / reviewTier=lean / effective=full / 档位差守卫', async () => {
+      seedStage();
+      setConfigValue(tmpDir, 'workflow_mode', 'fast');
+      const d = await runNextJson();
+      expect(d.workflowMode).toBe('fast');
+      expect(d.reviewTier).toBe('lean');
+      expect(d.effectiveReviewTier).toBe('full');
+      expect(d.legalNextPhases).toEqual(['plan_review']);
+      expect(d.suggestedCommand).toBe(`openfeel flow advance --stage ${STAGE} --to plan_review`);
+      expect(d.guards).toHaveLength(1);
+      const guard = (d.guards as string[])[0];
+      expect(guard).toContain('lean');
+      expect(guard).toContain('full');
+    });
+
+    it('无活跃阶段：初始化占位 - 原样输出（全 null + feel + noActiveStage）', async () => {
+      const d = await runNextJson();
+      expect(Object.keys(d)).toEqual(NEXT_KEYS);
+      expect(d.stage).toBe('-');
+      expect(d.phase).toBeNull();
+      expect(d.phaseLabel).toBeNull();
+      expect(d.responsibleAgent).toBe('feel');
+      expect(d.workflowMode).toBeNull();
+      expect(d.reviewTier).toBeNull();
+      expect(d.effectiveReviewTier).toBeNull();
+      expect(d.legalNextPhases).toEqual([]);
+      expect(d.suggestedCommand).toBeNull();
+      expect(d.guards).toHaveLength(1);
+      expect((d.guards as string[])[0]).toContain('无活跃阶段');
+      expect(d.blockingReviews).toEqual([]);
+    });
+
+    it('无活跃阶段：current.stage 显式空串 → stage=null，其余同上', async () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.getData()!.pipeline.current.stage = '';
+      mgr.save();
+      const d = await runNextJson();
+      expect(d.stage).toBeNull();
+      expect(d.phase).toBeNull();
+      expect(d.responsibleAgent).toBe('feel');
+      expect(d.workflowMode).toBeNull();
+      expect(d.reviewTier).toBeNull();
+      expect(d.effectiveReviewTier).toBeNull();
+      expect(d.legalNextPhases).toEqual([]);
+      expect(d.suggestedCommand).toBeNull();
+      expect(d.guards).toHaveLength(1);
+      expect(d.blockingReviews).toEqual([]);
+    });
+
+    it('阶段记录缺失：保留原始 stage 值 + 全 null + noActiveStage', async () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.getData()!.pipeline.current.stage = 'v9.9.9-stage-99';
+      mgr.save();
+      const d = await runNextJson();
+      expect(d.stage).toBe('v9.9.9-stage-99');
+      expect(d.phase).toBeNull();
+      expect(d.responsibleAgent).toBe('feel');
+      expect(d.legalNextPhases).toEqual([]);
+      expect(d.guards).toHaveLength(1);
+      expect((d.guards as string[])[0]).toContain('无活跃阶段');
+    });
+
+    it('done：legalNextPhases=[] / suggestedCommand=null / 无合法目标守卫', async () => {
+      seedStage('done');
+      const d = await runNextJson();
+      expect(d.phase).toBe('done');
+      expect(d.responsibleAgent).toBe('none');
+      expect(d.legalNextPhases).toEqual([]);
+      expect(d.suggestedCommand).toBeNull();
+      expect(d.guards).toHaveLength(1);
+      expect((d.guards as string[])[0]).toContain('无合法下一相位');
+    });
+
+    it('general：空转移表 → 无合法目标（不新增 other guard）', async () => {
+      seedStage();
+      setConfigValue(tmpDir, 'workflow_mode', 'general');
+      const d = await runNextJson();
+      expect(d.workflowMode).toBe('general');
+      expect(d.reviewTier).toBe('full');
+      expect(d.effectiveReviewTier).toBe('full');
+      expect(d.legalNextPhases).toEqual([]);
+      expect(d.suggestedCommand).toBeNull();
+      expect(d.guards).toHaveLength(1);
+      expect((d.guards as string[])[0]).toContain('无合法下一相位');
+    });
+
+    it('blocking：仅当前阶段域（前缀重叠不误命中）+ 元素键序 id,title,priority,op', async () => {
+      seedStage('plan_pending', [
+        revItem({ id: 'REV-001', op: `${STAGE}.op-001`, priority: 'high', title: '真实阻塞' }),
+        revItem({ id: 'REV-002', op: `${STAGE}0.op-001` }),
+      ]);
+      const d = await runNextJson();
+      const block = d.blockingReviews as Array<Record<string, unknown>>;
+      expect(block).toHaveLength(1);
+      expect(Object.keys(block[0])).toEqual(['id', 'title', 'priority', 'op']);
+      expect(block[0].id).toBe('REV-001');
+      expect(d.guards).toHaveLength(1);
+      expect((d.guards as string[])[0]).toContain('阻塞中的 open REV');
+    });
+
+    it('guards 顺序：auto-advance → blocking → 无目标（fast + disabled + blocking）', async () => {
+      seedStage('plan_pending', [revItem({ id: 'REV-100', op: `${STAGE}.op-001` })]);
+      setConfigValue(tmpDir, 'workflow_mode', 'fast');
+      setConfigValue(tmpDir, 'auto_advance', 'disabled');
+      const d = await runNextJson();
+      const guards = d.guards as string[];
+      expect(guards).toHaveLength(3);
+      expect(guards[0]).toContain('自动推进已禁用');
+      expect(guards[1]).toContain('阻塞中的 open REV');
+      expect(guards[2]).toContain('展示档位');
+
+      // 无目标守卫出现在 blocking 之后（phase=done）
+      const mgr = new FlowManager(tmpDir);
+      mgr.getData()!.stages[STAGE].phase = 'done';
+      mgr.save();
+      const d2 = await runNextJson();
+      const guards2 = d2.guards as string[];
+      const blockingIdx = guards2.findIndex((g) => g.includes('阻塞中的 open REV'));
+      const noTargetIdx = guards2.findIndex((g) => g.includes('无合法下一相位'));
+      expect(blockingIdx).toBeGreaterThanOrEqual(0);
+      expect(noTargetIdx).toBeGreaterThan(blockingIdx);
+    });
+
+    it('人类输出：标题 / 字段标签 / 建议命令；无 ANSI、无 JSON 片段', async () => {
+      seedStage();
+      logMock.mockClear();
+      await safeParse(['flow', 'next']);
+      const out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(out).toContain('流水线下一步（只读）');
+      expect(out).toContain('阶段: v1.9.0-stage-77');
+      expect(out).toContain('相位: plan_pending (计划待定)');
+      expect(out).toContain('负责 Agent: openfeel-planner');
+      expect(out).toContain('合法下一相位: [plan_review, plan_passed]');
+      expect(out).toContain(`建议命令: openfeel flow advance --stage ${STAGE} --to plan_review`);
+      expect(out).not.toContain('\u001b[');
+      expect(out).not.toContain('"schemaVersion"');
+      expect(process.exitCode).toBe(0);
+    });
+
+    it('未初始化：NO_INIT envelope / kind=refusal / exitCode=1 / 不调用 process.exit', async () => {
+      rmSync(join(tmpDir, '.openfeel', 'flow.json'));
+      expect(exitMock).not.toHaveBeenCalled();
+      const d = await runNextJson();
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(logMock).toHaveBeenCalledTimes(1);
+      expect(Object.keys(d)).toEqual(['schemaVersion', 'error']);
+      const err = d.error as Record<string, unknown>;
+      expect(err.code).toBe('NO_INIT');
+      expect(err.kind).toBe('refusal');
+      expect(process.exitCode).toBe(1);
+    });
+
+    it('只读零写盘：save 零调用 + flow.json 字节前后相等', async () => {
+      seedStage();
+      const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+      const before = readFileSync(flowPath);
+      const saveSpy = vi.spyOn(FlowManager.prototype, 'save');
+      try {
+        await runNextJson();
+        await safeParse(['flow', 'next']);
+        expect(saveSpy).not.toHaveBeenCalled();
+      } finally {
+        saveSpy.mockRestore();
+      }
+      expect(readFileSync(flowPath).equals(before)).toBe(true);
+    });
+
+    it('applyHelpI18n：help.flow.next / help.flow.next.json 有消费', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const p = new Command();
+        p.name('openfeel');
+        registerFlowCommand(p);
+        applyHelpI18n(p);
+        const nextCmd = p.commands.find((c) => c.name() === 'flow')!.commands.find((c) => c.name() === 'next')!;
+        expect(nextCmd.description()).toContain('调度决策');
+        const jsonOpt = nextCmd.options.find((o) => o.long === '--json')!;
+        expect(jsonOpt.description).toContain('{ schemaVersion, stage, phase');
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+  });
+  // ═══════════════════════════════════════════════
+  // stage-96 op-002：flow status --json 阶段调度属性 + flow phases --json 档位消歧
+  // ═══════════════════════════════════════════════
+
+  describe('stage-96 op-002 阶段调度属性', () => {
+    const STAGE_KEYS = [
+      'id', 'phase', 'status', 'deps', 'ops',
+      'workflowMode', 'requirementId', 'reviewTier', 'effectiveReviewTier', 'opsSummary',
+    ];
+    const STAGE = 'v1.9.0-stage-77';
+    const EMPTY_STAGE = 'v1.9.0-stage-78';
+
+    /** 夹具：STAGE（REQ-001 + 双状态 op）与 EMPTY_STAGE（空 ops / 无需求） */
+    function seed(): void {
+      const mgr = new FlowManager(tmpDir);
+      mgr.addStage(STAGE);
+      mgr.getData()!.stages[STAGE].requirement_id = 'REQ-001';
+      mgr.getData()!.stages[STAGE].ops = {
+        'op-001': { title: 'a', state: 'pending' },
+        'op-002': { title: 'b', state: 'done' },
+      } as never;
+      mgr.addStage(EMPTY_STAGE);
+      delete mgr.getData()!.stages[EMPTY_STAGE].requirement_id;
+      mgr.getData()!.stages[EMPTY_STAGE].ops = {};
+      mgr.save();
+    }
+
+    async function statusDoc(): Promise<Record<string, unknown>> {
+      logMock.mockClear();
+      await safeParse(['flow', 'status', '--json']);
+      return JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
+    }
+
+    it('顶层 4 键不变 + stages[] 精确 10 键序 + 字段值 / opsSummary 同源', async () => {
+      seed();
+      const d = await statusDoc();
+      // 顶层 4 键零改
+      expect(Object.keys(d)).toEqual(['schemaVersion', 'pipeline', 'stages', 'counts']);
+
+      const stages = d.stages as Array<Record<string, unknown>>;
+      const s = stages.find((x) => x.id === STAGE)!;
+      expect(Object.keys(s)).toEqual(STAGE_KEYS);
+      // 既有 5 字段值与夹具一致
+      expect(s.phase).toBe('plan_pending');
+      expect(s.status).toBe('planned');
+      expect(s.deps).toEqual([]);
+      expect(s.ops).toEqual({ 'op-001': 'pending', 'op-002': 'done' });
+      // 新增 5 字段
+      expect(s.workflowMode).toBe('full');          // beforeEach 置 config full
+      expect(s.requirementId).toBe('REQ-001');
+      expect(s.reviewTier).toBe('full');
+      expect(s.effectiveReviewTier).toBe('full');
+      expect(s.opsSummary).toEqual({ total: 2, byState: { pending: 1, done: 1 } });
+      // 同源不变量：total === Object.keys(ops).length
+      expect((s.opsSummary as { total: number }).total).toBe(Object.keys(s.ops as object).length);
+    });
+
+    it('空 ops / 缺省需求 → requirementId=null + opsSummary={total:0,byState:{}}', async () => {
+      seed();
+      const d = await statusDoc();
+      const stages = d.stages as Array<Record<string, unknown>>;
+      const e = stages.find((x) => x.id === EMPTY_STAGE)!;
+      expect(Object.keys(e)).toEqual(STAGE_KEYS);
+      expect(e.requirementId).toBeNull();
+      expect(e.opsSummary).toEqual({ total: 0, byState: {} });
+      expect(e.ops).toEqual({});
+    });
+
+    it('workflow_mode=fast → workflowMode=fast / reviewTier=lean / effectiveReviewTier=full，且与 flow mode --stage 同源', async () => {
+      seed();
+      setConfigValue(tmpDir, 'workflow_mode', 'fast');
+      const d = await statusDoc();
+      const stages = d.stages as Array<Record<string, unknown>>;
+      const s = stages.find((x) => x.id === STAGE)!;
+      expect(s.workflowMode).toBe('fast');
+      expect(s.reviewTier).toBe('lean');
+      expect(s.effectiveReviewTier).toBe('full');
+
+      // 一致性：flow mode --stage <id> --json.mode === stages[].workflowMode
+      logMock.mockClear();
+      await safeParse(['flow', 'mode', '--stage', STAGE, '--json']);
+      const modeDoc = JSON.parse(logMock.mock.calls[0][0] as string) as { mode: string };
+      expect(modeDoc.mode).toBe(s.workflowMode);
+    });
+
+    it('byState 仅含观测态（无零值键）+ 空串 state 按观测键计数', async () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.addStage(STAGE);
+      mgr.getData()!.stages[STAGE].ops = {
+        'op-001': { title: 'a', state: 'done' },
+        'op-002': { title: 'b', state: 'done' },
+        'op-003': { title: 'c' },                       // 畸形：state 缺失 → ''
+      } as never;
+      mgr.save();
+      const d = await statusDoc();
+      const s = (d.stages as Array<Record<string, unknown>>).find((x) => x.id === STAGE)!;
+      // 只出现观测到的键（done / ''），不注入 pending 等零值键；键序 = 首次出现序
+      expect(Object.keys((s.opsSummary as { byState: object }).byState)).toEqual(['done', '']);
+      expect(s.opsSummary).toEqual({ total: 3, byState: { done: 2, '': 1 } });
+    });
+
+    it('flow phases --json 消歧：fast → reviewTier=displayReviewTier=lean / effectiveReviewTier=full', async () => {
+      rmSync(join(tmpDir, '.openfeel', 'pipeline.yaml'), { force: true });
+      const phaseDoc = async (mode: string): Promise<Record<string, unknown>> => {
+        logMock.mockClear();
+        await safeParse(['flow', 'phases', '--mode', mode, '--json']);
+        return JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
+      };
+      const fast = await phaseDoc('fast');
+      expect(Object.keys(fast)).toEqual([
+        'schemaVersion', 'phases', 'transitions', 'advanceAccepted', 'transitionsDiff', 'workflowMode',
+        'reviewTier', 'displayReviewTier', 'effectiveReviewTier',
+      ]);
+      expect(fast.workflowMode).toBe('fast');
+      expect(fast.reviewTier).toBe('lean');
+      expect(fast.displayReviewTier).toBe('lean');
+      expect(fast.effectiveReviewTier).toBe('full');
+
+      const general = await phaseDoc('general');
+      expect(general.reviewTier).toBe('full');
+      expect(general.displayReviewTier).toBe('full');
+      expect(general.effectiveReviewTier).toBe('full');
+    });
+
+    it('人类输出零回归：flow status / flow status --verbose / flow phases 不泄漏 JSON 新字段', async () => {
+      seed();
+      const human = async (args: string[]): Promise<string> => {
+        logMock.mockClear();
+        await safeParse(args);
+        return logMock.mock.calls.map((c) => c[0] as string).join('\n');
+      };
+      const status = await human(['flow', 'status']);
+      expect(status).toContain('OpenFeel 流水线状态');
+      // 非 verbose 仅展示当前活跃阶段（addStage 末次 = EMPTY_STAGE）
+      expect(status).toContain(EMPTY_STAGE);
+      expect(status).not.toContain('opsSummary');
+      expect(status).not.toContain('effectiveReviewTier');
+
+      const verbose = await human(['flow', 'status', '--verbose']);
+      // verbose 段落标签序列保持不变（逐字 diff 归 op-003）
+      expect(verbose).toContain('配置级联状态');
+      expect(verbose).toContain('下游 Agent 就绪状态');
+      expect(verbose).toContain('跨会话恢复信息');
+      expect(verbose).not.toContain('opsSummary');
+      expect(verbose).not.toContain('displayReviewTier');
+
+      const phases = await human(['flow', 'phases']);
+      expect(phases).toContain('OpenFeel 流水线 phase 自描述');
+      expect(phases).not.toContain('displayReviewTier');
+      expect(phases).not.toContain('effectiveReviewTier');
+    });
   });
 });

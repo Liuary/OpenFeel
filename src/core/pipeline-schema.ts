@@ -71,6 +71,14 @@ export const REVIEW_TIERS = ['full', 'lean', 'skip'] as const;
 export type ReviewTier = (typeof REVIEW_TIERS)[number];
 
 /**
+ * `flow advance` 未显式传 `--review-tier` 时的生效档位（零裁剪）。
+ * 与 MODE_DERIVED_TIER（展示值）语义不同：本常量不随工作流模式变化。
+ * 单一来源：flow advance 缺省 / flow next.effectiveReviewTier /
+ *           flow phases.effectiveReviewTier / flow status.stages[].effectiveReviewTier。
+ */
+export const DEFAULT_EFFECTIVE_REVIEW_TIER: ReviewTier = 'full';
+
+/**
  * 各档位裁剪的审查关相位（**单源常量**）。
  * 消费点唯一 = flow-manager 的 pruneTransitionsByTier（禁第二份裁剪谱）。
  * 注：相位枚举 15 项不变——裁剪只作用于转移表，**不删除** PipelinePhase 值域。

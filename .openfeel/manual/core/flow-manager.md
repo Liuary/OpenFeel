@@ -19,7 +19,10 @@
 | `autoRepairInconsistency(stageName, options?)` | 自动修复 phase↔status 不一致（**phase 为唯一事实源，v1.1.4-stage-62 起单向**：`status=done` 且 `phase≠done` → 将 `status` 修正为 phase 投影、**绝不反向改 `phase`**；`phase=done` 且 `status≠done` → 同步 `status='done'`）；**stage-49 B1 起增可选 `options: { dryRun?: boolean }`**——`dryRun` 时**只计算不赋值**（返回「将修复 X」的报告），供 `flow advance --dry-run` 预览（不再写盘） |
 | `saveCheckpoint()` / `restoreCheckpoint()` | 阶段检查点保存与恢复。**v1.1.4-stage-65 起**：`restoreCheckpoint(filename, { stage?, dryRun? })` 支持选择性（`--stage`）与预览（`--dryRun`，零写盘）；无 `stage` 时为**全量覆盖**（向后兼容，逐字节不变）。配套只读 `previewRestore(filename, { stage? })` 与精准复位 `resetStagePhase(stageName, to, { dryRun? })`（详见「Checkpoint 恢复与阶段复位」节） |
 | `autoCommitOnDone(stageName)` | 阶段 done 时自动 git 提交 |
-| `mapPhaseToAgent(phase)` | 将 PipelinePhase 映射为负责 Agent 标识（返回**新名** `openfeel-*`，`done → none`） |
+| `mapPhaseToAgent(phase)` | 将 PipelinePhase 映射为负责 Agent 标识（返回**新名** `openfeel-*`，`done → none`）；**v1.2.2-stage-96 起私有实现不动**，外部一律经下方 `getResponsibleAgent` 消费 |
+| `getResponsibleAgent(phase)` | **v1.2.2-stage-96 新增（公开单点）**：委托既有 private `mapPhaseToAgent`（映射结果零改动）。命令层 / 适配器一律经本方法取 phase→agent，**禁止复制映射**（验收判据：`grep -rn "mapPhaseToAgent" src/commands/` = 0）；与 `flow status --verbose.downstreamPhases[].responsibleAgent` 同源 |
+| `listStageBlockingOpenReviews(reviews, stage)` | **v1.2.2-stage-96 新增（模块级导出纯函数）**：过滤指定阶段域的阻塞 open REV——`(r.op === stage \|\| r.op.startsWith(stage + '.')) ∧ r.blocking !== false ∧ r.status === 'open'`；空 `stage` → `[]`；保序。`flow next.blockingReviews` 与命令层 `assertNoBlockingOpenRev` 共用；**核心两处 done 门（`advanceStagePhase` / `resetStagePhase`）内联判定本版零改动**，以等价性测试防漂移 |
+| `DEFAULT_EFFECTIVE_REVIEW_TIER` | **v1.2.2-stage-96 新增（`pipeline-schema.ts` 导出常量）**：`ReviewTier = 'full'`——`flow advance` 未显式 `--review-tier` 时的**生效档位**（不随工作流模式变化）。单一来源：`flow advance` 缺省 / `flow next.effectiveReviewTier` / `flow status.stages[].effectiveReviewTier` / `flow phases.effectiveReviewTier`；与展示值 `MODE_DERIVED_TIER` 语义分离 |
 | `normalizeAgentName(name)` | 归一化 agent 名（旧名→新名，读取兼容 P5；`toLowerCase` 幂等；非 agent 值原样保留） |
 | `checkRemovable(stageId, {force})` | 只读可移除性检查（`ops` 非空 / 当前活跃 / 被 `deps` 引用），`removeStage` 与 `--dry-run` 共用 |
 | `removeStage(stageId, {force, purge})` | 注销阶段（含 `current` 兜底回退、`remove_stage` 审计日志）；**不执行目录删除**，`purge` 时返回 `{ purgeTarget }` 由命令层在 `save()` 成功后删除（stage-47 事务顺序） |
@@ -186,6 +189,16 @@ plan_pending → plan_review → plan_passed
 - **审计**：`advanceStagePhase(..., opts?: { reviewTier? })` 的 detail **仅显式声明时**追加可选键 `review_tier`（既有键 `stageName`/`from`/`to`/`session_id`/`resumed` 逐字保留，条件展开）；`resetStagePhase` **不加**该键；`flow.json` 存量**零注入**（禁 load 侧补齐）。
 - **命名消歧**：审查档位三档「全量 / 精简 / 免审」（`full` / `lean` / `skip`）与「工作流快线」（`workflow_mode=fast`）**分属两轴，禁互相引用 / 混用**；「快速通道 / fast track（FAST-PASS）」为审查深度降级**总称**（**禁「快线」二字**指代档位）。
 - **缺陷修复记录**（**v1.2.1-stage-93 清零**）：`cli/BUG-011`（medium）——阶段**恰停于被裁剪相位**（如 `plan_review` + `skip`）时 `getValidTargets(当前相位, mode, tier)` 曾为空集 → 无法推进（仅 `--force` 可绕行）；**现裁剪只作用于入边 / 目标侧，被裁剪相位保留出边**，可正常向该档位下游推进（零 `--force`）；语义差 = **只修「已处于被裁剪关的出边」**，入边 / 目标侧过滤与「进入不可达」保持；`full` 档零裁剪逐字不变；`flow advance` 失败提示行的可达目标在同场景由「(无)」转非空（有意变更，已登记）。
+
+## 调度决策单点（v1.2.2-stage-96）
+
+> 为 DSH 适配器提供「当前阶段 + 相位 → 谁负责 → 合法下一相位 → 建议命令 → 守卫 → 阻塞 REV」的 CLI 单点输出（`flow next`）；核心层只**公开既有单点**并抽一个纯谓词，**不新增决策逻辑、不改转移表**。
+
+- **`getResponsibleAgent(phase)`**：公开包装，委托 private `mapPhaseToAgent`（映射零改动）。既有聚合 `DownstreamPhase` / `buildDownstreamPhases()`（三元组 = `getAvailablePhases + getPhaseLabels + mapPhaseToAgent`，供 `flow status --verbose`）**本版零改动**，仅登记为第三消费点，并以同源一致性测试锁定 `verboseSummary().downstreamPhases` ≡ `getAvailablePhases(stage).map(...)`。
+- **`listStageBlockingOpenReviews(reviews, stage)`**：阶段域阻塞 REV 纯谓词（见上表）。命令层 `assertNoBlockingOpenRev` 的内联两段 filter 已替换为该单点（输出文案与顺序逐字保留）；核心两处 done 门保留内联判定，以「同一 fixture 下 helper 结果 = done 门抛错清单」的等价性测试防未来漂移。
+- **`DEFAULT_EFFECTIVE_REVIEW_TIER`**（`pipeline-schema.ts`）：生效档位单源常量；`flow advance` 的 `explicitTier ?? DEFAULT_EFFECTIVE_REVIEW_TIER` 值恒 `'full'`（行为零变化）；`flow next` / `stages[]` / `phases` 三出口引用同一常量。
+- **只读承诺**：`flow next` 不 `save()` / 不 `appendLog` / 不改 phase；`legalNextPhases` 复用 `getAvailablePhases`（唯一取表点），与 `advance --dry-run` 接受集交叉断言（直接可达 ⊂ 接受集）。
+- 三处档位语义（展示 vs 生效）与契约见 `manual/cli/commands.md`「调度决策面」与 `docs/json-contract.md` §12；架构判据见 `kb/architecture.md #调度决策单一权威架构`。
 
 ## 状态/相位单一事实源（v1.1.4-stage-62）
 

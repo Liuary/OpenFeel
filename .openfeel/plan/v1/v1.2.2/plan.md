@@ -191,7 +191,7 @@
 | 里程碑 | 阶段 | 状态 | 归档 | 备注 |
 |--------|:--:|:--:|------|------|
 | M49 JSON 契约与错误封装基础设施 | stage-95 | **done（2026-10-17）** | [archive-v1.2.2-stage-95.md](../../../log/archive-v1.2.2-stage-95.md) | 18 出口冻结 + 错误层（0/1/2/3 + `errorKind`）+ `--version --json` + 全局 `--project`；门禁 74 文件 / 1779 用例；验收 0 Bug |
-| M50 调度决策权威 | stage-96 | 待执行 | — | `flow next` / `stages[]` 调度属性 / `reviewTier` 消歧 |
+| M50 调度决策权威 | stage-96 | **done（2026-10-17）** | [archive-v1.2.2-stage-96.md](../../../log/archive-v1.2.2-stage-96.md) | `flow next`（12 键）+ `stages[]` 5 调度属性 + `phases` 档位消歧 + 决策三单点；契约 19 出口 / 20 注册选项；门禁 74 文件 / 1809 用例；验收 0 Bug |
 | M51 读命令 `--json` 全量补全 | stage-97 | 待执行 | — | 13 读命令 / `req list` 扩展 / `flow archive` 判据明细 / `archive` JSON |
 | M52 文档与版本收口 | stage-98 | 待执行 | — | 文档多载体 / CHANGELOG `[1.2.2]` / DSH 端到端验收 |
 

@@ -1,0 +1,132 @@
+# v1.2.2-stage-96 op 依赖声明（调度决策权威：flow next 与阶段调度属性）
+# 由 openfeel-schemer 生成；调用方调度前用 Glob 校验 produces 实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# 修订：2026-10-17 openfeel-schemer 初版（计划 §八 est_ops=3 定稿；REV-96-001~005 全吸收）
+# 说明① op 数 = 3（维持计划 est_ops=3），执行序恒为 op-001 → op-002 → op-003（阶段末 op）。
+#   不拆 4 的理由：T1 与 T2 强耦合（flow next 是新单点的唯一消费者，拆开会让首个 op 无可验证产出）；
+#   T3/T4 同属命令层 JSON 只增不改面，共享 flow.ts 与同一批契约表；T5 为收尾。拆 4 只增加串行交接成本。
+# 说明② 关键方案期裁定（全量论证见各 op 头部）：
+#   D-96-01 单一权威 + 消费点全枚举：getResponsibleAgent 委托 mapPhaseToAgent；
+#     buildDownstreamPhases（verboseSummary → flow status --verbose）本版零改动，仅登记 + 同源测试（REV-96-001）。
+#   D-96-02 阻塞 REV 单点：新增 listStageBlockingOpenReviews；flow next + 命令层 assertNoBlockingOpenRev 共用；
+#     核心 advanceStagePhase / resetStagePhase 两处 done 门本版零改动 + 等价性测试。
+#   D-96-03 DEFAULT_EFFECTIVE_REVIEW_TIER='full' 放 pipeline-schema；flow advance 缺省引用常量（值恒等）。
+#   D-96-04 flow next 12 键固定序；无活跃阶段全 null（responsibleAgent='feel'、guards=[noActiveStage]）——REV-96-004 定稿。
+#   D-96-05 guards 本地化字符串、顺序固定（无活跃 → auto-advance → blocking → 无目标 → 档位差）；本版无 guardCodes。
+#   D-96-06 suggestedCommand 取 legalNextPhases[0]；本版不支持 --stage。
+#   D-96-07 i18n 新增 19 键（17 flow.next + 2 help.flow.next*）；lint i18n 950 → 969。
+#   D-96-08 flow next = 第 19 个成功 JSON 出口（flow 12）；注册 --json 选项 20（REV-96-003）。
+#   D-96-10 stages[] 10 键固定序（既有 5 键零改）；D-96-11 opsSummary 仅观测态、无零值键。
+#   D-96-12 flow status 逐阶段解析不缓存（Q4）；op-003 实测中位数 < 1s。
+#   D-96-13 flow phases 既有 7 键零改，末位追加 displayReviewTier / effectiveReviewTier。
+#   D-96-17 op-003 不新增业务代码；缺陷按归属回退 op-001/op-002。
+#   D-96-18 人类输出快照矩阵含 flow status --verbose（REV-96-001）；逐字 diff 空。
+#   D-96-19 不推进 phase / 不直写 flow.json / 不手改 status.md / 不改 plan.md / REV 文件。
+#   D-96-20 REV-96-005：计划修订 1 已补齐 §七（REV-95-005/008/009 三行 + 三分 0/5/2），与 op-003 §5 逐行一致；op-003 只做一致性复核（闭环）。
+# 说明③ JSON 契约不变量：19 个成功出口零删除/零重排/类型零改（新增 flow next）；schemaVersion 首键=1；
+#   stdout 单文档；可选字段 null / 数组 [] / 映射 {}；人类输出逐字不变（有意增量仅 --help 两处 + 新增命令）。
+# 说明④ 决策权威不变量：phase→agent 经 getResponsibleAgent；可达相位经 getAvailablePhases；模式经
+#   resolveStageWorkflowMode；阻塞 REV 经 listStageBlockingOpenReviews；三处档位口径一致（reviewTier=display，effective=full）。
+version: "1.1"
+stage: v1.2.2-stage-96
+series: v1
+version_label: v1.2.2
+generated_by: openfeel-schemer
+generated_at: "2026-10-17"
+
+baseline:
+  head: "25ebc4e"
+  cli_version: "1.2.1"
+  tests: "74 文件 / 1779 用例（stage-96 起点；阶段末以实测登记）"
+  tsc: "0"
+  lint_i18n: "950（阶段末目标 969）"
+  lint_kb: "0 过期 / 604 引用（计划头 624 为陈旧值；以实测登记）"
+  json_exports: "18 成功出口 / 19 注册 --json 选项（阶段末 19 / 20）"
+  notes: "REV-96-002：HEAD / 门禁值 / 行号均按此基线重登记；行号仅快照，执行按内容特征定位。"
+
+cross_stage_constraints:
+  - upstream: v1.2.2-stage-95
+    type: hard
+    status: done
+    reason: "stage-95 已归档（HEAD 25ebc4e）：withSchemaVersion / emitJson / failCli / failInternal / 契约助手与 18 出口冻结表已落地；flow advance --json 为错误模式开关（不计成功出口）。"
+  - upstream: REV-96-001~005（plan_review）
+    type: hard
+    status: "pending → 本阶段吸收"
+    reason: "001 消费点补登 + buildDownstreamPhases 零改动 + verbose 快照；002 基线重登记；003 契约计数 18→19/19→20；004 空态定稿；005 承接表补 REV-95-005/008/009（op-003 登记）。"
+  - downstream: v1.2.2-stage-97 / v1.2.2-stage-98
+    type: hard
+    note: "97 复用 flow next 的决策字段与错误封装；98 收口文档多载体（commands / README / GETTING_STARTED / json-contract 定稿 / manual / cli-usage skill / CHANGELOG）并执行 DSH 端到端（19+11 出口）。本阶段不得让既有消费者静默失效。"
+  - downstream: 本阶段流程面
+    type: hard
+    note: "不直写 flow.json；不推进 phase；不手改 status.md；阶段完成由 Feel 经 CLI 推进。"
+
+ops:
+  op-001:
+    file: op-001.md
+    title: "调度单点方法 + flow next（JSON / 人类输出 / 契约第 19 出口）"
+    produces:
+      - src/core/pipeline-schema.ts
+      - src/core/flow-manager.ts
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - docs/json-contract.md
+      - test/core/flow-manager.test.ts
+      - test/commands/flow.test.ts
+      - test/cli/json-contract.test.ts
+      - .openfeel/tmp/stage-96/baseline
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T2 + T1 + T5(i18n/契约计数)。① 第 0 步基线快照（先 build、含 flow status --verbose）② DEFAULT_EFFECTIVE_REVIEW_TIER ③ listStageBlockingOpenReviews + getResponsibleAgent ④ assertNoBlockingOpenRev 委托 + advance 缺省引用常量 ⑤ flow next（12 键固定序、空态全 null、guards 固定顺序、blockingReviews 元素键 id,title,priority,op、只读）⑥ 19 个 i18n 键 ⑦ json-contract 头部/§5 #19/§6.10/§7/§12.1 ⑧ 测试：15 phase 矩阵 / helper 语义与等价性 / downstream 同源 / flow next 七类分支 / 只读 / 契约 #19。"
+
+  op-002:
+    file: op-002.md
+    title: "flow status --json 阶段调度属性 + flow phases --json 档位消歧"
+    produces:
+      - src/commands/flow.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - docs/json-contract.md
+      - test/commands/flow.test.ts
+      - test/cli/json-contract.test.ts
+      - .openfeel/tmp/stage-96/op-002-report.md
+    deps:
+      - op: op-001
+        type: hard
+        reason: "依赖 DEFAULT_EFFECTIVE_REVIEW_TIER 与 op-001 冻结的档位口径；共享 flow.ts / 契约文档 / 两个测试文件（恒串行）。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T3 + T4 + T5(契约行/测试)。① summarizeOpStates（total/byState 仅观测态）② buildStatusJson stages 追加 5 字段（10 键固定序）③ phases --json 末位追加 display/effective ④ help.flow.phases.json 文本同步（不增键）⑤ 契约 §5 #1/#5 + §6.11/§6.12 + §12.2/§12.3 ⑥ 测试：既有 7→9 键断言更新、status 字段/空 ops/多状态/fast、phases 三模式、契约 #1/#5 扩展 ⑦ 耗时实测（Q4）。"
+
+  op-003:
+    file: op-003.md
+    title: "i18n 收口、REV 处置登记、零回归取证与阶段门禁（阶段末 op）"
+    produces:
+      - .openfeel/tmp/stage-96/final-report.md
+      - .openfeel/tmp/stage-96/human-output-diff.md
+      - .openfeel/tmp/stage-96/after
+      - .openfeel/tmp/stage-96/gate.log
+    deps:
+      - op: op-001
+        type: hard
+        reason: "基线快照与 flow next / 第 19 出口实现为对照源。"
+      - op: op-002
+        type: hard
+        reason: "stages[] / phases 增量为零回归与契约复核对象。"
+    retry:
+      max: 3
+      on_fail: "回退 Feel 重议（缺陷按归属回退对应 op，不在本 op 改设计）"
+    notes: "T5 + 验收全项。① i18n 19 键逐键 + 969 + 零死键 ② 19 出口 / 20 注册选项 / 三处档位一致 / 空态复核 ③ 人类输出 baseline vs after 逐字 diff（含 flow status --verbose；--help 两处有意增量登记）④ REV-96-001~005 闭环表 ⑤ 承接 REV 表（REV-92-006/002 保留、REV-94-005/006 + REV-95-005/008/009 转出；三分 0/5/2）+ 复核 plan.md §七（修订 1）逐行一致（REV-96-005 闭环） ⑥ 全量门禁：npm test / tsc 0 / build ×2 幂等 / lint i18n 969 / lint kb 0 / --version 1.2.1 ⑦ 变更集白名单审计 / 无第三方依赖 ⑧ 终局报告十小节。"
+
+mutual_exclusions:
+  - group: [op-001, op-002]
+    reason: "共享 src/commands/flow.ts、src/core/i18n-data/{zh-CN,en}.ts、docs/json-contract.md、test/commands/flow.test.ts、test/cli/json-contract.test.ts；op-001 先冻结 flow next 与契约计数（新增 19 个 i18n 键），op-002 再改 stages/phases JSON 与 help.flow.phases.json 文案及对应断言，恒串行。"
+  - group: [op-001, op-003]
+    reason: "op-003 以 op-001 第 0 步基线为唯一对照源，且复核其产出；串行。"
+  - group: [op-002, op-003]
+    reason: "op-003 复核 op-002 的 stages/phases 增量与人类输出零回归；串行。"
+  - group: [op-003]
+    reason: "阶段末 op（恒末位）：门禁/零回归/REV 收口须在 op-001/op-002 全部冻结后执行。"

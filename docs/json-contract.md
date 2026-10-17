@@ -1,9 +1,9 @@
 # OpenFeel CLI JSON 输出契约（v1.2.2）
 
-- **权威范围**：`--json` 成功输出（18 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
+- **权威范围**：`--json` 成功输出（19 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
 - **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。
-- **不变量**：既有 18 个成功出口**零删除 / 零重排 / 类型零改**；只允许本文件 §6 登记的有意增量。
+- **不变量**：既有 18 个成功出口**零删除 / 零重排 / 类型零改**；只允许本文件 §6 登记的有意增量。第 19 个成功出口 `flow next` 为新增（§6.10）。
 
 ## §1 单文档规则
 
@@ -89,17 +89,17 @@ typeof doc.error === 'string'  → legacy
 
 - 禁止以退出码、命令名或字段存在性做第二套判别。
 
-## §5 18 出口冻结表
+## §5 19 出口冻结表
 
-> 计数口径：**18 个成功 JSON 出口**。`flow advance --json` 为错误封装开关，不计入（见 §7）。
+> 计数口径：**19 个成功 JSON 出口**。`flow advance --json` 为错误封装开关，不计入（见 §7）。
 
 | # | 出口 | 顶层键序 | 元素/嵌套键（实测） | 条件键/形态 |
 |:-:|------|----------|--------------------|------------|
-| 1 | `flow status` | `schemaVersion,pipeline,stages,counts` | `pipeline{phase,current{stage,op}}`；`stages[]{id,phase,status,deps,ops}`；`counts{total,done,active}` | 恒在 |
+| 1 | `flow status` | `schemaVersion,pipeline,stages,counts` | `pipeline{phase,current{stage,op}}`；`stages[]{id,phase,status,deps,ops,workflowMode,requirementId,reviewTier,effectiveReviewTier,opsSummary{total,byState}}`；`counts{total,done,active}` | 恒在；`stages[]` 末位新增 5 字段（既有 5 字段键序/类型不变，见 §12.2）；`requirementId` 恒在、可空（`null`）；`byState` 仅含观测态 |
 | 2 | `flow overview` | 已初始化：`schemaVersion,phase,current,summary,stages,reviews,health,logs` | `current{stage,op}`；`summary{phase,currentOp,retryCount,stagesCount,opsCount,reviewItemsOpen,recentLogs}`；`stages[]{id,phase,status,opsTotal,opsDone}`；`reviews{open,blockingOpen,nonBlockingOpen,resolved,closed}`；`health{ok,pass,warn,fail}` | **形态变体**：未初始化恰 `schemaVersion,initialized(false)` |
 | 3 | `flow current` | `schemaVersion,stage,op,phase` | 均为 string（空态 `''`） | 恒在 |
 | 4 | `flow metrics` | `schemaVersion,agents` | `agents[]{agentName,totalRuns,successfulRuns,failedRuns,totalRetries,totalDurationMs,avgDurationMs,successRate}` | 恒在 |
-| 5 | `flow phases` | `schemaVersion,phases,transitions,advanceAccepted,transitionsDiff,workflowMode,reviewTier` | `transitionsDiff{missing,extra,changed}` | 恒在 |
+| 5 | `flow phases` | `schemaVersion,phases,transitions,advanceAccepted,transitionsDiff,workflowMode,reviewTier,displayReviewTier,effectiveReviewTier` | `transitionsDiff{missing,extra,changed}` | 恒在；末位新增 2 键（既有 7 键不变，见 §12.3） |
 | 6 | `flow mode` | `schemaVersion,stage,mode,source,modes` | `modes{full,fast,general}`（各为 transitions 映射） | 恒在 |
 | 7 | `flow ops list` | `schemaVersion,ops` | `ops[]{stage,opId,title,state,fill,warning}` | `warning` 恒在，非 empty 时 `null` |
 | 8 | `flow archive` | 成功：`schemaVersion,version,stages,reviews,log,dryRun` | `stages/reviews/log` 为 number | 失败为 legacy（见 §4） |
@@ -113,6 +113,7 @@ typeof doc.error === 'string'  → legacy
 | 16 | `req next` | `schemaVersion,requirement` | `requirement` 对象或 `null` | **`candidates` 条件出现键**（仅 `limit>1`） |
 | 17 | `instructions` | **`schemaVersion,artifact,task,project_context,rules,dependencies,output,instruction,template,unlocks`**（C1） | `artifact{id,change,schema}`；`project_context{tech_stack,workspace,project,config{execution_mode,auto_advance,merge_mode}}`；`template` 可空 | `template` 恒在、可空 |
 | 18 | `setup --check` | `schemaVersion,status,cliVersion,deployedVersion` | `deployedVersion` 可空 | `status!=='ok'` 仍为成功文档 + exit 1 |
+| 19 | `flow next` | `schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews` | `blockingReviews[]{id,title,priority,op}`；`guards:string[]`（本地化；顺序见 §12.1） | 恒在（无活跃阶段亦为完整 12 键文档；可空字段 `null`、数组 `[]`） |
 
 **登记类别**：恒在键 / 条件出现键 / 文档形态变体三类，测试断言须与类别一致。
 
@@ -127,12 +128,15 @@ typeof doc.error === 'string'  → legacy
 7. 全局 `--project` 根选项（op-003；单点注入 chdir）。
 8. 退出码 `3`（internal；纯新增）。
 9. `flow advance --json` 错误模式开关（op-002；成功输出保持人类文本，非成功出口）。
+10. `flow next --json` 新出口（第 19 个成功出口；12 键固定序，见 §12.1；REQ P0-1 / P2-2 一致性）。
+11. `flow status --json.stages[]` 追加 5 字段（P1-1；既有 5 字段键序/类型不变；见 §12.2）。
+12. `flow phases --json` 末位追加 `displayReviewTier` / `effectiveReviewTier`（P2-2；既有 7 键不变；见 §12.3）。
 
 ## §7 计数口径
 
-- **成功 JSON 出口 = 18 个**（flow 11 + req 5 + instructions 1 + setup 1）。
+- **成功 JSON 出口 = 19 个**（flow 12 + req 5 + instructions 1 + setup 1）。
 - `flow advance --json` 为**错误封装开关**：成功输出保持人类文本，不计入成功出口。
-- 本阶段注册的 `--json` 选项数为 **19**（18 成功出口 + 1 错误模式开关）；「注册选项数」与「成功出口数」不得混用。
+- 本阶段注册的 `--json` 选项数为 **20**（19 成功出口 + 1 错误模式开关）；「注册选项数」与「成功出口数」不得混用。
 
 ## §8 迁移边界
 
@@ -170,3 +174,38 @@ typeof doc.error === 'string'  → legacy
 3. **`--log-file` 相对路径**：在 `bin` 的 `installRuntimeLog` 先于 chdir 解析，按**原始 cwd**。
 4. **预扫描误判面**：已知取值选项跳过其下一 token（防 `--title --json` / `--encoding --project`）；裸 `--xxx` 取值不保证（如 `--title --json` 中 `--json` 为取值 token 时不被识别为开关）。
 5. **前提**：CLI 为一次性进程、单进程单命令；不存在单进程内多项目并发切换的场景承诺。
+
+## §12 调度属性与 `flow next` 冻结语义（v1.2.2-stage-96）
+
+### §12.1 `flow next --json`（第 19 个成功出口）
+
+- **12 键固定序**：`schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews`；`schemaVersion` 恒为首键、值 `1`。
+- **`stage`**：命中的阶段键（双键回退：`normalizeStageId(current.stage)` 优先，其次原始键）；无活跃阶段时保留 `pipeline.current.stage` 原始值（初始化占位 `-` 亦原样输出），原始值为空串时输出 `null`。
+- **`phase` / `phaseLabel` / `workflowMode` / `reviewTier` / `effectiveReviewTier`**：无活跃阶段或阶段记录缺失 → 全 `null`（不采用「display 为 null 而 effective 为 full」的混合态）。
+- **`responsibleAgent`**：与 `mapPhaseToAgent` 同源（`done → 'none'`）；无活跃阶段 → `'feel'`（显式约定）。
+- **`legalNextPhases`**：`getAvailablePhases(stage)`（缺省 tier=`full`）的**直接可达**目标；不是多步 BFS 可达集；顺序 = 转移表遍历序去重。
+- **`suggestedCommand`**：`openfeel flow advance --stage <stage> --to <legalNextPhases[0]>`；空集 → `null`。
+- **`guards`**：本地化字符串数组；本版不提供 `guardCodes`；顺序固定 ①无活跃阶段 ②`auto_advance=disabled` ③blocking open REV 非空 ④无合法目标 ⑤展示档位 ≠ 生效档位。活跃且健康时 `[]`。
+- **`blockingReviews`**：仅当前阶段域（`r.op === stage || r.op.startsWith(stage + '.')`）∧ `blocking !== false` ∧ `status === 'open'`；元素键序 `id,title,priority,op`。
+- **只读**：不写盘、不改 phase、不 save、不 appendLog；本版不支持 `--stage`。
+
+### §12.2 `flow status --json.stages[]`（阶段调度属性）
+
+- **10 键固定序**：`id,phase,status,deps,ops,workflowMode,requirementId,reviewTier,effectiveReviewTier,opsSummary`。既有 5 键（`id,phase,status,deps,ops`）键序与类型**逐字不变**，新增 5 键仅追加于其后。
+- **`workflowMode`**：逐阶段经 `resolveStageWorkflowMode(id).value` 单点解析（同一 manager 快照；本版不缓存）。
+- **`requirementId`**：`stage.requirement_id ?? null`（恒在、可空；存量缺省 ≡ `null`）。
+- **`reviewTier`**：`MODE_DERIVED_TIER[workflowMode]`（展示值；`full→full` / `fast→lean` / `general→full`）。
+- **`effectiveReviewTier`**：`DEFAULT_EFFECTIVE_REVIEW_TIER`（生效值，恒 `'full'`）。
+- **`opsSummary`**：`{ total, byState }`；`total = Object.keys(ops).length = Σ byState`；`byState` **仅含观测到的状态**（零值键不出现），键序 = 状态首次出现序；空 ops → `{ total: 0, byState: {} }`；畸形 op 的 `state` 为空串时按观测键 `''` 计数（与 `collectOpStates` 的 `op?.state ?? ''` 同源）。
+- **顶层 4 键不变**：`schemaVersion,pipeline,stages,counts`。
+
+### §12.3 `flow phases --json`（档位消歧）
+
+- **9 键固定序**：`schemaVersion,phases,transitions,advanceAccepted,transitionsDiff,workflowMode,reviewTier,displayReviewTier,effectiveReviewTier`。既有 7 键逐字保留，新增 2 键仅在末位。
+- **`reviewTier`**：展示值，保留为兼容别名；**`displayReviewTier`**：与 `reviewTier` 同值（显式名）；**`effectiveReviewTier`**：恒 `'full'`（`flow advance` 缺省生效档位）。
+- 三模式取值：`full→full` / `fast→lean` / `general→full`（`reviewTier` 与 `displayReviewTier` 同步取值）。
+- **人类输出零变化**：`flow phases` 正文（含档位分节行）逐字不变。
+
+### §12.4 三处档位一致性
+
+`flow next`（§12.1）、`flow status --json.stages[]`（§12.2）、`flow phases --json`（§12.3）的同名档位语义一致：`reviewTier` = 展示档位（由 `workflowMode` 派生），`effectiveReviewTier` = 生效档位（恒 `'full'`）；`flow phases` 另以 `displayReviewTier` 给出展示档位的显式名。

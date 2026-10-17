@@ -1,5 +1,5 @@
 /**
- * 18 出口 JSON 契约可执行冻结（v1.2.2-stage-95 op-001）
+ * 19 出口 JSON 契约可执行冻结（v1.2.2-stage-95 op-001；stage-96 op-001 新增第 19 出口 flow next）
  *
  * 断言：每个成功 `--json` 出口 stdout 恰好一个 JSON 文档、`schemaVersion` 为运行时首键且值为 1、
  * 顶层键序与 `docs/json-contract.md` §5 冻结表逐字一致；条件键 / 形态变体 / legacy 失败形态专项。
@@ -31,6 +31,7 @@ import { registerSetupCommand } from '../../src/commands/setup.js';
 import { runCli, program as rootProgram } from '../../src/cli/index.js';
 import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
 import { initProject } from '../../src/core/init.js';
+import { setConfigValue } from '../../src/core/config.js';
 import { FlowManager, type FlowData } from '../../src/core/flow-manager.js';
 import type { RequirementData } from '../../src/core/req/types.js';
 import { REQ_STATUSES } from '../../src/core/req/types.js';
@@ -46,7 +47,7 @@ const REAL_CWD = process.cwd();
 const REAL_FLOW_PATH = join(REAL_CWD, '.openfeel', 'flow.json');
 const REAL_FLOW_RAW = existsSync(REAL_FLOW_PATH) ? readFileSync(REAL_FLOW_PATH, 'utf-8') : null;
 
-describe('18 出口 JSON 契约冻结（stage-95 op-001）', () => {
+describe('19 出口 JSON 契约冻结（stage-95 op-001）', () => {
   let tmpDir: string;
   let uninitDir: string;
   let program: Command;
@@ -128,6 +129,16 @@ describe('18 出口 JSON 契约冻结（stage-95 op-001）', () => {
     return parsed;
   }
 
+  /** stage-96 op-001：flow next --json（命令层只读 isJsonMode()；直接 parse 须显式置位并复位） */
+  async function docNext(): Promise<Record<string, unknown>> {
+    setJsonMode(true);
+    try {
+      return await doc(['flow', 'next', '--json']);
+    } finally {
+      resetJsonModeForTest();
+    }
+  }
+
   /** 写入 archivable 夹具：v1.9.0 全 done + 保留 v1.9.9 非 done */
   function seedArchivable(): void {
     const mgr = new FlowManager(tmpDir);
@@ -165,11 +176,33 @@ describe('18 出口 JSON 契约冻结（stage-95 op-001）', () => {
 
   // ── 1~6：flow 只读出口 ──
 
-  it('#1 flow status：顶层键序冻结', async () => {
+  it('#1 flow status：顶层键序冻结 + stages[] 10 键（末位 5 调度属性）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.2.2-stage-96');
+    mgr.getData()!.stages['v1.2.2-stage-96'].requirement_id = 'REQ-001';
+    mgr.getData()!.stages['v1.2.2-stage-96'].ops = {
+      'op-001': { title: 't1', state: 'pending' },
+      'op-002': { title: 't2', state: 'done' },
+    } as never;
+    mgr.save();
+
     const d = await doc(['flow', 'status', '--json']);
     expect(Object.keys(d)).toEqual(['schemaVersion', 'pipeline', 'stages', 'counts']);
     expect(Object.keys(d.pipeline as object)).toEqual(['phase', 'current']);
     expect(Object.keys(d.counts as object)).toEqual(['total', 'done', 'active']);
+
+    // stage-96 op-002：stages[] 10 键固定序（既有 5 键零改，新增 5 键仅追加于末位）
+    const s = (d.stages as Array<Record<string, unknown>>).find((x) => x.id === 'v1.2.2-stage-96')!;
+    expect(Object.keys(s)).toEqual([
+      'id', 'phase', 'status', 'deps', 'ops',
+      'workflowMode', 'requirementId', 'reviewTier', 'effectiveReviewTier', 'opsSummary',
+    ]);
+    // fixture 未设 workflow_mode → 内置默认 fast；展示 lean / 生效恒 full
+    expect(s.workflowMode).toBe('fast');
+    expect(s.reviewTier).toBe('lean');
+    expect(s.effectiveReviewTier).toBe('full');
+    expect(s.requirementId).toBe('REQ-001');
+    expect(s.opsSummary).toEqual({ total: 2, byState: { pending: 1, done: 1 } });
   });
 
   it('#2 flow overview：已初始化顶层键序冻结', async () => {
@@ -204,12 +237,18 @@ describe('18 出口 JSON 契约冻结（stage-95 op-001）', () => {
     expect(Array.isArray(d.agents)).toBe(true);
   });
 
-  it('#5 flow phases：顶层键序冻结', async () => {
+  it('#5 flow phases：顶层键序冻结（末位 2 键档位消歧）', async () => {
     const d = await doc(['flow', 'phases', '--json']);
     expect(Object.keys(d)).toEqual([
       'schemaVersion', 'phases', 'transitions', 'advanceAccepted', 'transitionsDiff', 'workflowMode', 'reviewTier',
+      'displayReviewTier', 'effectiveReviewTier',
     ]);
     expect(Object.keys(d.transitionsDiff as object)).toEqual(['missing', 'extra', 'changed']);
+    // fixture 未设 workflow_mode → 内置默认 fast → 展示档位 lean / 生效档位恒 full
+    expect(d.workflowMode).toBe('fast');
+    expect(d.reviewTier).toBe('lean');
+    expect(d.displayReviewTier).toBe('lean');
+    expect(d.effectiveReviewTier).toBe('full');
   });
 
   it('#6 flow mode：顶层键序冻结', async () => {
@@ -356,6 +395,82 @@ describe('18 出口 JSON 契约冻结（stage-95 op-001）', () => {
     expect(Object.keys(d)).toEqual(['schemaVersion', 'status', 'cliVersion', 'deployedVersion']);
     expect(typeof d.status).toBe('string');
     process.exitCode = 0;
+  });
+
+  // ── 19：flow next（stage-96 op-001；第 19 个成功出口） ──
+
+  it('#19 flow next：无活跃阶段（初始化占位 - / 显式空串）12 键固定序 + 全 null 空态', async () => {
+    const NEXT_KEYS = [
+      'schemaVersion', 'stage', 'phase', 'phaseLabel', 'responsibleAgent', 'workflowMode',
+      'reviewTier', 'effectiveReviewTier', 'legalNextPhases', 'suggestedCommand', 'guards', 'blockingReviews',
+    ];
+    // initProject 默认 pipeline.current.stage = '-'（原样输出）
+    const d = await docNext();
+    expect(Object.keys(d)).toEqual(NEXT_KEYS);
+    expect(d.stage).toBe('-');
+    expect(d.phase).toBeNull();
+    expect(d.phaseLabel).toBeNull();
+    expect(d.responsibleAgent).toBe('feel');
+    expect(d.workflowMode).toBeNull();
+    expect(d.reviewTier).toBeNull();
+    expect(d.effectiveReviewTier).toBeNull();
+    expect(d.legalNextPhases).toEqual([]);
+    expect(d.suggestedCommand).toBeNull();
+    expect(d.guards).toHaveLength(1);
+    expect(d.blockingReviews).toEqual([]);
+
+    // 显式置空串 → stage=null，其余同上
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.pipeline.current.stage = '';
+    mgr.save();
+    const d2 = await docNext();
+    expect(Object.keys(d2)).toEqual(NEXT_KEYS);
+    expect(d2.stage).toBeNull();
+    expect(d2.phase).toBeNull();
+    expect(d2.phaseLabel).toBeNull();
+    expect(d2.responsibleAgent).toBe('feel');
+    expect(d2.workflowMode).toBeNull();
+    expect(d2.reviewTier).toBeNull();
+    expect(d2.effectiveReviewTier).toBeNull();
+    expect(d2.legalNextPhases).toEqual([]);
+    expect(d2.suggestedCommand).toBeNull();
+    expect(d2.guards).toHaveLength(1);
+    expect(d2.blockingReviews).toEqual([]);
+  });
+
+  it('#19 flow next：活跃阶段（内置默认 fast）→ lean/full 档位差 + 建议命令精确匹配', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.2.2-stage-96');
+    mgr.save();
+    const d = await docNext();
+    expect(Object.keys(d)).toEqual([
+      'schemaVersion', 'stage', 'phase', 'phaseLabel', 'responsibleAgent', 'workflowMode',
+      'reviewTier', 'effectiveReviewTier', 'legalNextPhases', 'suggestedCommand', 'guards', 'blockingReviews',
+    ]);
+    expect(d.stage).toBe('v1.2.2-stage-96');
+    expect(d.phase).toBe('plan_pending');
+    expect(d.responsibleAgent).toBe('openfeel-planner');
+    expect(d.workflowMode).toBe('fast');
+    expect(d.reviewTier).toBe('lean');
+    expect(d.effectiveReviewTier).toBe('full');
+    expect(d.legalNextPhases).toEqual(['plan_review']);
+    expect(d.suggestedCommand).toBe('openfeel flow advance --stage v1.2.2-stage-96 --to plan_review');
+    expect(d.guards).toHaveLength(1);
+    expect((d.guards as string[])[0]).toContain('lean');
+    expect(d.blockingReviews).toEqual([]);
+  });
+
+  it('#19 flow next：full 模式 → 双合法目标 / reviewTier=full / guards=[]', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.2.2-stage-96');
+    mgr.save();
+    setConfigValue(tmpDir, 'workflow_mode', 'full');
+    const d = await docNext();
+    expect(d.workflowMode).toBe('full');
+    expect(d.reviewTier).toBe('full');
+    expect(d.effectiveReviewTier).toBe('full');
+    expect(d.legalNextPhases).toEqual(['plan_review', 'plan_passed']);
+    expect(d.guards).toEqual([]);
   });
 
   // ── legacy 失败形态（errorKind 归 op-002，不在此断言） ──

@@ -154,6 +154,23 @@ export function isFlowConcurrentError(err: unknown): err is FlowConcurrentModifi
     || (typeof err === 'object' && err !== null && (err as { name?: string }).name === 'FlowConcurrentModificationError');
 }
 
+/**
+ * 过滤指定阶段域的阻塞 open REV（单点谓词）。
+ * 阶段域：r.op === stage 或 r.op.startsWith(stage + '.')（`.` 分隔防前缀重叠）。
+ * 阻塞判定：r.blocking !== false（undefined 视为阻塞）且 r.status === 'open'。
+ * 纯只读；空 stage → []。
+ */
+export function listStageBlockingOpenReviews(reviews: ReviewItem[], stage: string): ReviewItem[] {
+  if (!stage) {
+    return [];
+  }
+  return reviews.filter(
+    (r) => (r.op === stage || r.op.startsWith(stage + '.'))
+      && r.blocking !== false
+      && r.status === 'open',
+  );
+}
+
 /** 阶段目录冲突：两个不同 stageId 映射同一 (series, stageDir)（cli/BUG-002） */
 export class StageDirConflictError extends Error {
   /** 本次冲突检测的 stageId */
@@ -2544,6 +2561,15 @@ export class FlowManager {
       });
     }
     return result;
+  }
+
+  /**
+   * 公开单点：将 PipelinePhase 映射为负责 Agent 标识。
+   * 命令层 / 适配器一律经本方法消费，禁止复制映射；内部委托 mapPhaseToAgent。
+   * 与 flow status --verbose 的 downstreamPhases.responsibleAgent 同源。
+   */
+  getResponsibleAgent(phase: PipelinePhase): string {
+    return this.mapPhaseToAgent(phase);
   }
 
   /** 将 PipelinePhase 映射为负责 Agent 标识（返回新名，供新写入使用） */

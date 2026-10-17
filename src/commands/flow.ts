@@ -23,8 +23,8 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, MODE_DERIVED_TIER, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
-import { PipelinePhaseSchema, PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES, type ReviewTier } from '../core/pipeline-schema.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
+import { PipelinePhaseSchema, PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES, DEFAULT_EFFECTIVE_REVIEW_TIER, type ReviewTier } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
 import { getConfigFieldLegalValues, setConfigValue, type WorkflowMode } from '../core/config.js';
 import { parse as parseYaml } from 'yaml';
@@ -32,7 +32,7 @@ import { MetricsStore, PHASE_AGENT_MAP } from '../core/metrics.js';
 import { runtimeLog } from '../core/runtime-log.js';
 import { addReviewEntry } from '../core/view/entry.js';
 import { failCli, failInternal, handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
-import { withSchemaVersion, isJsonMode } from './shared/json-output.js';   // JSON 契约助手（stage-95 op-001/op-002）
+import { withSchemaVersion, isJsonMode, emitJson } from './shared/json-output.js';   // JSON 契约助手（stage-95 op-001/op-002）
 import { type CliErrorKind } from '../core/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
@@ -172,6 +172,111 @@ export function registerFlowCommand(program: Command): void {
         }
         if (recovery.pendingTasks.length > 10) {
           console.log(t('flow.status.recoveryMoreTmpl', lang, { n: String(recovery.pendingTasks.length - 10) }));
+        }
+      }
+    });
+
+  // flow next — 当前阶段调度决策（只读；P0-1）
+  flow
+    .command('next')
+    .description('显示当前阶段的调度决策（负责 Agent / 合法下一相位 / 建议命令 / 守卫 / 阻塞项；只读）')
+    .option('--json', 'Output as JSON (machine-readable, single JSON document)')
+    .action(() => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        const message = t('common.errorNoInit', lang);
+        failCli({ code: 'NO_INIT', message, detail: null, stderrLines: [message] });
+        return;
+      }
+      const data = mgr.getData()!;
+      const rawStage = data.pipeline.current.stage || '';
+      // 双键回退（与 core resolveCurrentPhase / advanceStagePhase 同范式）：归一化键优先，其次原始键
+      const normalized = rawStage ? (normalizeStageId(rawStage) ?? rawStage) : '';
+      const activeKey = rawStage
+        ? (data.stages[normalized] ? normalized : (data.stages[rawStage] ? rawStage : null))
+        : null;
+
+      let phase: PipelinePhase | null = null;
+      let phaseLabel: string | null = null;
+      let responsibleAgent = 'feel';                 // 无活跃阶段显式约定
+      let workflowMode: WorkflowMode | null = null;
+      let reviewTier: ReviewTier | null = null;
+      let effectiveReviewTier: ReviewTier | null = null;
+      let legalNextPhases: PipelinePhase[] = [];
+      let suggestedCommand: string | null = null;
+      const guards: string[] = [];
+      let blockingReviews: Array<{ id: string; title: string; priority: string; op: string }> = [];
+
+      if (activeKey) {
+        const currentPhase = data.stages[activeKey].phase;
+        phase = currentPhase;
+        phaseLabel = mgr.getPhaseLabels(lang)[currentPhase] ?? currentPhase;
+        responsibleAgent = mgr.getResponsibleAgent(currentPhase);
+        workflowMode = mgr.resolveStageWorkflowMode(activeKey).value;
+        reviewTier = MODE_DERIVED_TIER[workflowMode];
+        effectiveReviewTier = DEFAULT_EFFECTIVE_REVIEW_TIER;
+        legalNextPhases = mgr.getAvailablePhases(activeKey);
+        suggestedCommand = legalNextPhases.length > 0
+          ? `openfeel flow advance --stage ${activeKey} --to ${legalNextPhases[0]}`
+          : null;
+        blockingReviews = listStageBlockingOpenReviews(data.reviews, activeKey).map((r) => ({
+          id: r.id, title: r.title, priority: r.priority, op: r.op,
+        }));
+        // 守卫顺序契约固定（§12.1）：auto-advance → blocking → 无目标 → 档位差
+        if (mgr.resolveEffectiveConfig()['auto_advance']?.value === 'disabled') {
+          guards.push(t('flow.next.guardAutoAdvanceDisabled', lang));
+        }
+        if (blockingReviews.length > 0) {
+          guards.push(t('flow.next.guardBlockingReviewsTmpl', lang, { n: String(blockingReviews.length) }));
+        }
+        if (legalNextPhases.length === 0) {
+          guards.push(t('flow.next.guardNoLegalTargets', lang));
+        }
+        if (reviewTier !== effectiveReviewTier) {
+          guards.push(t('flow.next.guardTierDiffTmpl', lang, { display: reviewTier, effective: effectiveReviewTier }));
+        }
+      } else {
+        guards.push(t('flow.next.guardNoActiveStage', lang));
+      }
+
+      const doc = withSchemaVersion({
+        stage: activeKey ?? (rawStage || null),
+        phase,
+        phaseLabel,
+        responsibleAgent,
+        workflowMode,
+        reviewTier,
+        effectiveReviewTier,
+        legalNextPhases,
+        suggestedCommand,
+        guards,
+        blockingReviews,
+      });
+
+      // JSON 模式单点（stage-95 不变量 2）：命令层只读 isJsonMode()
+      if (isJsonMode()) {
+        emitJson(doc);
+        return;
+      }
+      // 人类输出（逐行标签；空值统一 t('common.none', lang)）
+      console.log(t('flow.next.title', lang));
+      console.log(`  ${t('flow.next.stageLabel', lang)}: ${doc.stage ?? t('common.none', lang)}`);
+      console.log(`  ${t('flow.next.phaseLabel', lang)}: ${doc.phase ?? t('common.none', lang)}${doc.phaseLabel ? ` (${doc.phaseLabel})` : ''}`);
+      console.log(`  ${t('flow.next.responsibleAgentLabel', lang)}: ${doc.responsibleAgent}`);
+      console.log(`  ${t('flow.next.workflowModeLabel', lang)}: ${doc.workflowMode ?? t('common.none', lang)}`);
+      console.log(`  ${t('flow.next.displayTierLabel', lang)}: ${doc.reviewTier ?? t('common.none', lang)}`);
+      console.log(`  ${t('flow.next.effectiveTierLabel', lang)}: ${doc.effectiveReviewTier ?? t('common.none', lang)}`);
+      console.log(`  ${t('flow.next.legalNextPhasesLabel', lang)}: ${doc.legalNextPhases.length > 0 ? `[${doc.legalNextPhases.join(', ')}]` : t('common.none', lang)}`);
+      console.log(`  ${t('flow.next.suggestedCommandLabel', lang)}: ${doc.suggestedCommand ?? t('common.none', lang)}`);
+      if (doc.guards.length > 0) {
+        console.log(`  ${t('flow.next.guardsLabel', lang)}:`);
+        for (const g of doc.guards) { console.log(`    - ${g}`); }
+      }
+      if (doc.blockingReviews.length > 0) {
+        console.log(`  ${t('flow.next.blockingReviewsLabel', lang)}:`);
+        for (const r of doc.blockingReviews) {
+          console.log(`    - ${t('flow.next.blockingReviewItemTmpl', lang, { id: r.id, title: r.title, priority: r.priority, op: r.op })}`);
         }
       }
     });
@@ -456,7 +561,9 @@ export function registerFlowCommand(program: Command): void {
         // advanceAccepted = 内置 15 phase（flow advance 的推进白名单），与 phases（运行时存在视图，可含自定义）显式区分
         // 既有三字段（phases/transitions/advanceAccepted）+ transitionsDiff 逐字保留；schemaVersion 与 workflowMode 追加于末位（B1-6 / stage-75 op-002）
         // reviewTier 再追加于末位（stage-92 op-001；既有 6 键逐字保留、顺序不变）
-        console.log(JSON.stringify({ schemaVersion: 1, phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff, workflowMode: derivedMode, reviewTier: MODE_DERIVED_TIER[derivedMode] }, null, 2));
+        // stage-96 op-002：末位再追加 displayReviewTier（与 reviewTier 同值显式名）与 effectiveReviewTier（推进缺省档位，恒 full）
+        const displayTier = MODE_DERIVED_TIER[derivedMode];
+        console.log(JSON.stringify({ schemaVersion: 1, phases, transitions, advanceAccepted: [...PIPELINE_PHASES], transitionsDiff, workflowMode: derivedMode, reviewTier: displayTier, displayReviewTier: displayTier, effectiveReviewTier: DEFAULT_EFFECTIVE_REVIEW_TIER }, null, 2));
         return;
       }
 
@@ -826,8 +933,8 @@ export function registerFlowCommand(program: Command): void {
         }
         explicitTier = options.reviewTier as ReviewTier;
       }
-      // 生效档位：显式声明 ?? full（**不传 = 零裁剪**；派生档仅用于 `flow phases` 展示与提示，不改变推进语义）
-      const effTier: ReviewTier = explicitTier ?? 'full';
+      // 生效档位：显式声明 ?? DEFAULT_EFFECTIVE_REVIEW_TIER（**不传 = 零裁剪**；派生档仅用于 `flow phases` 展示与提示，不改变推进语义）
+      const effTier: ReviewTier = explicitTier ?? DEFAULT_EFFECTIVE_REVIEW_TIER;
 
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -2483,10 +2590,8 @@ function assertNoBlockingOpenRev(mgr: FlowManager, stage: string | undefined, la
     return [];
   }
   // REV-007：补 `.` 分隔符（与 core flow-manager.ts 的 stageId + '.' 范式一致），避免 stageId 前缀重叠误拦
-  const stageReviews = mgr.getReviewItems().filter(
-    (r) => r.op === stage || r.op.startsWith(stage + '.'),
-  );
-  const blockingOpen = stageReviews.filter((r) => r.blocking !== false && r.status === 'open');
+  // 单点委托：阶段域 + blocking !== false + status === 'open' 判定归核心 listStageBlockingOpenReviews（禁第二份）
+  const blockingOpen = listStageBlockingOpenReviews(mgr.getReviewItems(), stage);
   if (blockingOpen.length > 0) {
     console.warn(t('flow.advance.revBlockedTitleTmpl', lang, { n: String(blockingOpen.length) }));
     for (const rev of blockingOpen) {
@@ -2535,8 +2640,21 @@ function collectOpStates(stage: { ops?: unknown }): Record<string, string> {
 }
 
 /**
+ * 由 ops (opId→state) 派生汇总：total = 键数；byState 仅含观测到的状态（无零值键）。
+ * 键序 = 状态首次出现序；空 ops → { total: 0, byState: {} }。
+ */
+function summarizeOpStates(ops: Record<string, string>): { total: number; byState: Record<string, number> } {
+  const byState: Record<string, number> = {};
+  for (const state of Object.values(ops)) {
+    byState[state] = (byState[state] ?? 0) + 1;
+  }
+  return { total: Object.keys(ops).length, byState };
+}
+
+/**
  * 构建 `flow status --json` 的结构化输出（B1-1）。
  * 顶层对象 + schemaVersion:1；stages 为数组，ops 为 opId→state 映射；counts 为阶段计数。
+ * stage-96 op-002：stages[] 末位追加 5 个调度属性（既有 5 键键序/类型逐字不变）。
  */
 function buildStatusJson(mgr: FlowManager): Record<string, unknown> {
   const data = mgr.getData();
@@ -2548,13 +2666,23 @@ function buildStatusJson(mgr: FlowManager): Record<string, unknown> {
       counts: { total: 0, done: 0, active: 0 },
     };
   }
-  const stages = Object.entries(data.stages).map(([id, stage]) => ({
-    id,
-    phase: stage.phase,
-    status: stage.status,
-    deps: stage.deps ?? [],
-    ops: collectOpStates(stage),
-  }));
+  const stages = Object.entries(data.stages).map(([id, stage]) => {
+    const ops = collectOpStates(stage);
+    // 模式单点解析：逐阶段经 resolveStageWorkflowMode（同一 manager 快照；D-96-12 不缓存）
+    const workflowMode = mgr.resolveStageWorkflowMode(id).value;
+    return {
+      id,
+      phase: stage.phase,
+      status: stage.status,
+      deps: stage.deps ?? [],
+      ops,
+      workflowMode,
+      requirementId: stage.requirement_id ?? null,
+      reviewTier: MODE_DERIVED_TIER[workflowMode],
+      effectiveReviewTier: DEFAULT_EFFECTIVE_REVIEW_TIER,
+      opsSummary: summarizeOpStates(ops),
+    };
+  });
   const total = stages.length;
   const done = stages.filter((s) => s.phase === 'done').length;
   return {

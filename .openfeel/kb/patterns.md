@@ -4361,3 +4361,36 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.2-stage-95 op-002（`error-envelope.test.ts` 14 用例：12 行映射逐行、refusal/internal、并发 exit 2、用法错误 exit 1、exit 3 双模式、legacy 键序 + `errorKind` 末键；测试官 zh/en 矩阵 16/16 断言通过）。
 
 **参见：** `src/core/errors.ts`；`src/commands/shared/errors.ts`；`docs/json-contract.md` §2~§4；kb/patterns.md #CLI 退出码语义、#CLI `--json` 成功/失败同契约；kb/architecture.md #CLI JSON 输出契约冻结与错误封装分层架构
+
+## [+] 展示档位 vs 生效档位：只增不改 + 三出口同名同义 + 常量单源 (2026-10-17)
+
+**场景**：`flow phases --json.reviewTier` 长期承载「模式派生档位」（`full→full / fast→lean / general→full`），读者容易误以为它就是 `flow advance` 实际生效的档位。实际 `flow advance` 缺省恒 `full`（`explicitTier ?? 'full'`），两者是**不同概念**：前者是**展示值**（随工作流模式变化），后者是**生效值**（本版不随模式变化）。
+
+**做法（只增不改）**：
+1. **既有键逐字保留**：`reviewTier` 保持原位置原值（兼容别名，零破坏）；末位追加 `displayReviewTier`（同值显式名）与 `effectiveReviewTier`（生效值）。
+2. **常量单源**：`DEFAULT_EFFECTIVE_REVIEW_TIER: ReviewTier = 'full'` 落 `pipeline-schema.ts`（紧邻 `REVIEW_TIERS`）；`flow advance` 的 `explicitTier ?? 'full'` 改为引用该常量（值恒等、行为零变化），`flow next` / `flow status.stages[]` / `flow phases` 一律引用。
+3. **三出口一致**：`flow next.reviewTier/effectiveReviewTier`、`flow status --json.stages[].reviewTier/effectiveReviewTier`、`flow phases.reviewTier/displayReviewTier/effectiveReviewTier` 语义同源，测试交叉断言（同一阶段三处 `reviewTier` 相等、三处 `effectiveReviewTier` 恒 `full`）。
+4. **契约文档定理**：§12 显式写「`reviewTier` = 展示值兼容别名；`displayReviewTier` = 同值显式名；`effectiveReviewTier` = `flow advance` 缺省生效档位」。帮助文案同步补键名（**不增键**，`lint i18n` 计数不变）。
+
+**判据**：① 一个字段承担两个语义时，**不改语义、不改位置**，追加显式名键 + 由常量单源给值；② 缓存/派生的展示值不得冒充生效值——凡「缺省行为」均由具名常量承载并可被程序化区分；③ 多出口同名语义必须交叉断言（禁各自为政）；④ 三模式取值表（`full→full / fast→lean / general→full`）须与 `MODE_DERIVED_TIER` 单源对齐。
+
+**实证**：v1.2.2-stage-96（`flow phases --json` 7→9 键、`stages[]` 5→10 键、`flow next` 12 键；三模式实跑 `full→full/full/full`、`fast→lean/lean/full`、`general→full/full/full`；`flow phases` 人类输出零变化；`flow advance --help` 空 diff）。
+
+**参见：** `src/core/pipeline-schema.ts`；`src/commands/flow.ts`；`docs/json-contract.md` §12.2/§12.3；kb/architecture.md #审查档位架构、#调度决策单一权威架构；manual/cli/commands.md
+
+## [+] JSON 空态约定：全 `null` + 显式缺省主体 + 单一守卫（禁混合态） (2026-10-17)
+
+**场景**：新增决策类 JSON 出口（`flow next`）在被 DSH 启动自检调用时，常处于「无活跃阶段 / 阶段记录缺失 / 未初始化」三类空态。若各字段各自决定缺省（有的 `null`、有的给缺省值），消费者会读到语义怪态（如 `effectiveReviewTier='full'` 而 `reviewTier=null`——生效档位存在却无展示档位），且契约无法冻结。
+
+**约定**：
+1. **12 键恒在**：空态亦输出完整文档（顶层键序与字段数不变），键集不做条件增删。
+2. **全 `null` 簇**：`phase` / `phaseLabel` / `workflowMode` / `reviewTier` / `effectiveReviewTier` 一律 `null`（**不采用混合态**）；数组字段 `legalNextPhases` / `blockingReviews` 为 `[]`；`suggestedCommand` 为 `null`。
+3. **显式缺省主体**：`responsibleAgent = 'feel'`（无活跃阶段由 Feel 决定下一步）——**不是** `'none'`（`'none'` 专表示 `phase=done` 的既有映射）。
+4. **单一守卫**：`guards` 恰含一条 `noActiveStage`（本地化字符串），其余守卫不参与；`stage` 保留 `pipeline.current.stage` 原始值（空串 → `null`；初始化占位 `-` 原样输出，与 `flow current --json` 同源），阶段记录缺失时保留原始值 + 全 `null` 簇。
+5. **未初始化另走错误出口**：无 `flow.json` → `NO_INIT` refusal + exit 1（不是空态文档）。
+
+**判据**：① 空态属于**契约的一部分**，必须与正常态同批写测试（三态：占位 `-` / 显式空串 / 记录缺失）；② 同族字段的空态取值必须**成组一致**（禁止一半 `null` 一半缺省值）；③ 用**专门守卫名**表达空态原因，不用「魔法缺省值」暗示；④ `stage` 等「原始值回显」字段与 `phase` 等「解析值」字段区分对待（回显保留原值，解析值给 `null`）；⑤ 错误（未初始化）与空态（已初始化但无活跃阶段）严格二分。
+
+**实证**：v1.2.2-stage-96（`flow next --json` 三类空态断言：`stage='-'` / `stage=null` / 记录缺失原样回显；`guards.length===1`；`responsibleAgent='feel'`；契约 §12.1 与测试同批；测试官隔离工程复跑 `ZERO_WRITE_OK`）。
+
+**参见：** `src/commands/flow.ts`；`docs/json-contract.md` §12.1；kb/architecture.md #CLI JSON 输出契约冻结与错误封装分层架构、#调度决策单一权威架构；kb/patterns.md #CLI `--json` 结构化输出约定；manual/cli/commands.md

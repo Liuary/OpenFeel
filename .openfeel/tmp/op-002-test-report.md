@@ -1,84 +1,53 @@
-# 自测报告 — op-002
-
-- **执行时间**：2026-10-15 13:42
-- **执行 Agent**：openfeel-executor
-- **重试次数**：第 **1** 次
+# op-002 自测报告（v1.2.2-stage-96）
 
 ## 执行摘要
 
-在部署路径落**用户主权键 `model` 键级保护**（`mergeFrontmatter` 可选参 + 白名单常量单源 + `update.ts` 调用点传参）；
-`--scope default` 与三态其余路径逐字不动；同批限定化「勿手改」契约文本并成文「用户主权键 + 复现路径」；
-以**隔离四场景 + 本仓实测二分**证明 —— 全部 10 项自测清单通过，**核心验收（本仓 GLM 保留）通过**。
-
-## 前置校验结果
-
-- 方案完整性：**通过**（6 项必填节齐备）
-- Phase 合法性：**通过**（`stages["v1.2.1-stage-94"].phase` = `exec_running`）
-- 流转合法性：**通过**（`openfeel flow health --quick` 退出码 0）
+按 `ops/op-002.md` 完成 T3（`flow status --json.stages[]` 追加 5 个调度属性）+ T4（`flow phases --json` 末位追加 2 个档位消歧键）+ 契约 §5/§6/§12 同步 + 测试同步。既有键序零改、人类输出零改。全量门禁通过（74 文件 / 1809 用例，0 failed）。
 
 ## 实施步骤完成情况
 
-- [x] **2.0 前置核验**：op-001 已完成（`git status --porcelain src/` ⊆ op-001 produces）；`update/managed-region` 基线全绿；reviewer `model` 值在位（快照留痕）
-- [x] **2.1 语义契约成文** → `.openfeel/tmp/stage-94-nondestructive-contract.md`（判定流程 + 边界 4 条 + 调用点区分）
-- [x] **2.2 实现（单点化 + (a) 形态）**：`managed-region.ts` 加 `USER_SOVEREIGN_KEYS` + 第三参；`update.ts:2393` 传白名单；`model-config.ts:218` **未改**
-- [x] **2.3 单测三类**：新增 12 处（见 `assertion-diff.md` op-002 段）；保留面逐字未动
-- [x] **2.4 契约文本限定化 + 复现路径成文**：`agents-md:111` zh/en + `cli-usage:188`；`model-config`/`agent-model-check` 两 skill Claude 节
-- [x] **2.5 隔离实测四场景** → `.openfeel/tmp/stage-94-deploy-nondestructive-e2e.md`（4/4 ✅）
-- [x] **2.6 本仓实测** → `.openfeel/tmp/stage-94-repo-persistence.md`（① GLM 保留 ✅ ② explorer 创建 ✅ ③ settings 逐字 ✅ ④ CLAUDE.md ✅ ⑤ state ✅；opencode 延伸同步 ✅）
-- [x] **2.7 build + 断言复核 + 边界自证**：build ×2 幂等；目标 6 文件全绿；tsc 0；i18n 944；kb 0；调用方零改动
+- [x] 0. 前置核对：op-001 已落地（`DEFAULT_EFFECTIVE_REVIEW_TIER` / `getResponsibleAgent` / `flow next` 12 键正常）；基线键序从 `.openfeel/tmp/stage-96/baseline/*.out` 提取（与改造前实测一致）。
+- [x] 1. 新增 `summarizeOpStates`（total / byState 仅观测态、无零值键、空态 `{total:0,byState:{}}`）。
+- [x] 2. `buildStatusJson` stages map 追加 5 字段，固定 10 键序；既有 5 键与顶层 4 键零改；不缓存。
+- [x] 3. `flow phases --json` 末位追加 `displayReviewTier` / `effectiveReviewTier`，既有 7 键逐字保留；人类分支零改动。
+- [x] 4. `help.flow.phases.json` zh/en 文案补两键名，**不增键**（i18n 969）。
+- [x] 5. `docs/json-contract.md` §5 #1/#5、§6.11/§6.12、§12.2/§12.3（并补 §12.4 三处一致）。
+- [x] 6. `test/commands/flow.test.ts`：T7.11⑤ 7→9 键、T90.5 7→9、T92.6 追加 display/effective；新增 6 项用例（10 键序 / 空态 / fast 同源 / byState 零值键 / phases 消歧 / 人类输出零回归）。
+- [x] 7. `test/cli/json-contract.test.ts`：#1 扩展 stages[] 10 键 + 值；#5 扩展 9 键 + fast 语义。
+- [x] 8. 定向测试 / tsc / build ×2 / i18n / 全量 npm test / 耗时实测均完成（见 `stage-96/op-002-report.md`）。
 
 ## 自测清单验证
 
-| # | 检查项 | 结果 | 备注 |
-|:-:|--------|:--:|------|
-| 1 | 第三参默认不传 = 现行为（`:167/:178` 逐字通过）；部署调用点传 `['model']`；`model-config.ts:218` 未改 | ✅ | 默认参路径 6 例新增断言 + 原 2 例逐字通过；静态断言锁定 `model-config.ts` 零命中白名单 |
-| 2 | 四场景新语义单测全绿（改值保留 ×2 harness / 删行补写 / 正文并行）；`--scope default` 覆盖语义回归断言绿（R-94-2） | ✅ | `update.test.ts` 5 新增例 + `model-config.test.ts` R-94-2 例全绿 |
-| 3 | 阴性：白名单外键（`description`）篡改仍被覆盖；白名单**恰为** `model` 单键（R-94-3） | ✅ | `update.test.ts` 阴性例 + `managed-region.test.ts` 对照组（显式传 `['model','description']` 才保护） |
-| 4 | 三态其余路径（`created`/`appended`/`malformed`）与 `conflicts` 恒空断言逐字未动 | ✅ | `update.test.ts:705-728` 等保留面零改动且全绿 |
-| 5 | 隔离实测四场景三要素齐 + 前后对照；本仓实测 ① GLM 保留 ② explorer 创建 ③ settings 逐字 + 注入键 ④ CLAUDE.md ⑤ state | ✅ | 见 e2e / repo-persistence 两记录；①②③④⑤ 逐项实测通过 |
-| 6 | GLM 三要素登记在位；异常即停路径与备份还原命令已写入报告 | ✅ | repo-persistence §五/§六；本次**未触发** |
-| 7 | 「勿手改」两处限定化；zh/en 对称；cli-usage 未新增 `node bin/openfeel.js` 字样 | ✅ | `templates.test.ts` 全绿；实测该串计数 = **1** |
-| 8 | 两 skill 的「用户主权键 + 配置位置 + 校验路径」在位；与 op-001 同段落无冲突 | ✅ | `model-config` Claude 节扩写（op-001 仅改 `:94` 档位行，无重叠）；`agent-model-check` Claude 节新增校验路径节 |
-| 9 | `git status --porcelain src/core/setup.ts src/core/init.ts src/core/claude-settings.ts` 为空；零 i18n 新键（944）；build ×2 幂等；`--porcelain src/` ⊆ produces | ✅ | 三文件 porcelain 空；944；build ×2；差异面 = 8 文件 ⊆ produces |
-| 10 | 零「待后续验证」类模糊项；未实测项含显式标注 | ✅ | 无未实测项（隔离 + 本仓双侧实测）；「生效验证法」为**复现步骤说明**，非待验证项 |
+- [x] 键序：`stages[]` 10 键精确序；`flow phases --json` 9 键精确序；`flow status --json` 顶层 4 键不变（实跑 + 断言双证）。
+- [x] 语义：`workflowMode` 与 `flow mode --stage` 同源（测试交叉断言）；`reviewTier = MODE_DERIVED_TIER[workflowMode]`；`effectiveReviewTier` 恒 `full`；`opsSummary` 与 `ops` 同源、空态正确、无零值键（含空串 state 用例）。
+- [x] 只增不改：既有 5 字段 / 7 键类型与顺序由精确 `toEqual` 断言冻结；`git diff` 确认改造仅在 JSON 对象末位追加。
+- [x] 人类输出：`flow phases` 与基线逐字 diff 空；`flow status` / `--verbose` 仅数据态差异，标签序列一致，无新字段泄漏。
+- [x] 契约：§5 #1/#5、§6.11/§6.12、§12.2/§12.3 与实测一致；无「7 键」陈旧描述残留。
+- [x] 门禁：tsc 0 / 定向 203 全绿 / 全量 1809 全绿 / i18n 969 / build ×2 幂等 / 无构建产物入 src。
 
-### 门禁实测
+## 产出文件
 
-```
-npm test → Test Files 71 passed (71) / Tests 1707 passed (1707)   （起点 1695 → +12，全部为本段新增）
-npx tsc --noEmit → exit 0
-node bin/openfeel.js lint i18n → ✅ 944 键一致（零新键）
-node bin/openfeel.js lint kb → ✅ 未发现过期引用（612 引用）
-node bin/openfeel.js --version → 1.2.0（不改，归 93）
-npm run build ×2 → 幂等
-```
+- `src/commands/flow.ts`
+- `src/core/i18n-data/zh-CN.ts`
+- `src/core/i18n-data/en.ts`
+- `docs/json-contract.md`
+- `test/commands/flow.test.ts`
+- `test/cli/json-contract.test.ts`
+- `test/cli/output-encoding.test.ts`（偏差 1）
+- `.openfeel/tmp/stage-96/op-002-report.md`
+- `.openfeel/tmp/op-002-test-report.md`
 
-## 产出文件（实际）
+## 前置校验结果
 
-- `src/core/managed-region.ts`（`USER_SOVEREIGN_KEYS` + `mergeFrontmatter` 第三参）
-- `src/core/update.ts`（`:2393` 部署调用点传白名单）
-- `src/core/template-loader.ts`（build 重生成，禁手改）
-- `src/core/templates-data/agents-md/{zh-CN,en}.md`（`:111` 限定化）
-- `src/core/templates-data/skills/openfeel-cli-usage/SKILL.md`（`:188` 限定化）
-- `src/core/templates-data/skills/openfeel-model-config/SKILL.md`（Claude 节：用户主权键 + 复现路径）
-- `src/core/templates-data/skills/openfeel-agent-model-check/SKILL.md`（Claude 节：校验路径 + 实测法 + 受部署保护）
-- `test/core/update.test.ts` / `test/core/managed-region.test.ts`（新增 12 例）
-- `test/core/model-config.test.ts`（R-94-2 回归例）
-- `.openfeel/tmp/stage-94-nondestructive-contract.md` / `-deploy-nondestructive-e2e.md` / `-repo-persistence.md` / `-assertion-diff.md`（op-002 段）
+- **方式**：`openfeel flow health --quick`
+- **phase**：`exec_running`；`current.op = op-002`（与 op-id 匹配）
+- **结论**：通过（退出码 0；无 errors / warnings）
+- **方案完整性**：`## 目标` / `## 实施步骤` / `## 产出文件` / `## 自测清单` / `- **阶段**` / `- **最多重试**` 六项齐备。
 
 ## 偏差记录
 
-| # | 偏差 | 类型 | 说明 |
-|:-:|------|------|------|
-| 1 | claude 侧部署保留测试落 `update.test.ts` 而非 `claude-adapter.test.ts` | 落点调整（已登记） | 后者无 `homedir()` mock；前者已有完整隔离基建，避免新增两套 mock；覆盖同一 `updateProject` 路径 |
-| 2 | 新增 **12** 例（计划未给定额） | 范围**扩张**（良性，已登记） | 计划 §2.3 按「三类 × 场景」表述未计数；含 4 场景 ×2 harness + 阴性 + 静态 + R-94-2 回归 + 边界（`null` / 白名单显式传参对照） |
-| 3 | `test/core/model-config.test.ts` 新增 1 例（计划标「条件性」） | 条件触发（已登记） | 条件 = 「`--scope default` 回归断言增强」——本 op 触发（R-94-2 专用断言） |
-| 4 | **仓库根 `opencode.jsonc` 一度被重建** | 实测副作用（已修复，**无残留**） | opencode 侧本仓实测从仓库根运行 → 重建**项目级** `opencode.jsonc`（该资产 stage-92 `ebac4ea` 已删并有防回归断言）。已 `rm` 移除，`templates.test.ts` 复绿；未进入任何提交 |
-| 5 | 首次 `update --tools claude` EPERM（`CLAUDE.md` rename） | 环境瞬时占用（非缺陷） | 两次复现于不同文件；`W_OK` + `rename` 探测全部通过 → 瞬时占用；重试后全量成功。EPERM 前 `created`/`updated` 均空，**无副作用**；GLM 值全程在位 |
-| 6 | `HOME` 隔离在 Windows 无效 | 实测发现（已登记） | `global-paths.ts` 唯一来源 `os.homedir()` → Windows 取 `USERPROFILE`；首次 opencode 运行实际写真实 `~/.config/opencode`（内容一致、多为 skipped，无破坏）。后续改用 `USERPROFILE` 隔离 |
-| 7 | 跳步违规 | **无** | 标准流程完整执行 |
-
-## 结论
-
-op-002 **完成**，自测清单 10/10 通过，**本仓 reviewer GLM 配置经部署保留（核心验收通过）**。
-请**主会话**安排 openfeel-reviewer 审查（本 Agent 不推进 phase / 不自行推进状态）。
+1. **追加文件 `test/cli/output-encoding.test.ts`**（未列于 op 产出文件）：全量 `npm test` 发现 E-2② 断言 `flow phases --json` 顶层 7 键。该断言是本次有意增量（末位追加 2 键）的必然受影响面，仅更新既有期望值 7→9 并补 `displayReviewTier`/`effectiveReviewTier` 断言，不改业务语义。属「既有断言更新（只改期望）」的同类处置。
+2. **基线键序文件缺失**：`baseline/` 下无 `flow-status-json.keys.txt` / `flow-phases-json.keys.txt`，按 op 步骤 0 的兜底条款，从同目录 `flow-status-json.out` / `flow-phases-json.out` 快照提取键序（与改造前实跑一致）。
+3. **行号漂移**：op-002 引用的 `flow.ts:455-461` / `:2551-2557` 在 op-001 后漂移为 `:560-566` / `:2654-2660`，已按内容特征（`options.json` 分支 / `buildStatusJson`）定位。
+4. **`git status --porcelain src/` 非空**：op-001 与 op-002 源码改动均在工作区（本 op 不得 commit），故不可能为空；以「构建未产生 src 内新文件/产物、dist 未被跟踪」作为等价判定。
+5. 未 commit / push，未改 flow.json、未推进 phase。

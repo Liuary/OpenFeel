@@ -1120,3 +1120,21 @@ this.data.pipeline.phase = (allDone ? 'done' : 'active') as MetaPhase;
 **实证**：v1.2.2-stage-95 op-003（`project-option` 13 用例；隔离双项目 A/B 实跑 12/12：前置/后置/等号/无参回退/非法路径/文件路径/缺值/多值冲突/同值重复/语言跟随/`--log-file` 原始 cwd/误判对）；`knowledge dedup --project` 回归通过。
 
 **参见：** `src/cli/project-option.ts`；`src/cli/index.ts`；`docs/json-contract.md` §11；kb/patterns.md #Commander 父子命令 `--json` 标志传递陷阱；manual/core/json-contract.md
+
+## [+] 调度决策单一权威架构：`flow next` 复用既有三单点 + 零复制聚合 (2026-10-17)
+
+**背景**：DSH 适配器必须自行拼装「当前阶段 + 相位 → 谁负责 → 合法下一相位 → 建议命令 → 守卫 → 阻塞 REV」，为此在适配器侧镜像了 `PHASE_AGENT_MAP` 与转移表，任何一处漂移都会让调度决策与 CLI 实际行为分叉。把决策收进 CLI 的正确做法**不是新建一套决策逻辑**，而是把既有核心单点**公开化 + 聚合**。
+
+**① 三单点复用（禁第二份）**：`responsibleAgent` ← `FlowManager.getResponsibleAgent(phase)`（公开包装，内部委托既有 private `mapPhaseToAgent`，映射实现零改动）；`legalNextPhases` ← `getAvailablePhases(stage)`（内部经唯一取表点 `getValidTargets(fromPhase, mode)`）；`workflowMode` ← `resolveStageWorkflowMode(stage).value`（`status.md > 需求级 > config > profile > builtin` 单链）。命令层验收判据 = `grep -rn "mapPhaseToAgent" src/commands/` **0 命中**。
+
+**② 阻塞 REV 谓词抽取**：新增导出纯函数 `listStageBlockingOpenReviews(reviews, stage)`（阶段域 `r.op === stage || r.op.startsWith(stage + '.')` ∧ `blocking !== false` ∧ `status === 'open'`），供 `flow next` 与命令层 `assertNoBlockingOpenRev` 共用；核心两处 done 门（`advanceStagePhase` / `resetStagePhase`）**本版零改动**，以「同一 fixture 下 helper 结果 = done 门抛错清单」的等价性测试防未来漂移。
+
+**③ 复用而非复刻聚合**：核心已有 `DownstreamPhase {phase,label,responsibleAgent}` + `buildDownstreamPhases()`（`getAvailablePhases + getPhaseLabels + mapPhaseToAgent` 三元组）→ `flow status --verbose`。`flow next` 语义不同（需当前相位 + 可空空态）故**不复用类型**，但**复用同一三元原语**并以同源一致性测试锁定 `verboseSummary().downstreamPhases` ≡ `getAvailablePhases(stage).map(p => ({phase, label, responsibleAgent}))`；`buildDownstreamPhases` 零改动（仅登记为消费点）。
+
+**④ 决策面聚合的只读承诺**：`flow next` 不 save / 不 appendLog / 不改 phase；`suggestedCommand` 直接可执行（`openfeel flow advance --stage <s> --to <legalNextPhases[0]>`），`legalNextPhases` 每个元素均被 `advance --dry-run` 接受（直接可达 ⊂ advance 接受集，多步跳跃不要求覆盖）。
+
+**判据**：① 新增决策面命令前先做「消费点全枚举」——既有单点聚合（如 `buildDownstreamPhases`）必须登记，禁止在命令层出现第二份 phase→agent 映射；② 单点方法优先「公开包装 + 内部委托」而非把私有实现改 public（改动面最小、内部调用零波及）；③ 谓词类逻辑抽取为**纯函数**（可单测、无 IO），核心既有内联判定可保留但须有等价性测试；④ 聚合命令复用**原语**而非**聚合结果**，形态不同不强求类型复用；⑤ 决策面命令恒只读，`suggestedCommand` 的可执行性由交叉测试保证。
+
+**实证**：v1.2.2-stage-96（3 ops 串行；`flow next` **12 键固定序**、本仓 `test_pending` → `legalNextPhases=[test_failed,test_passed]`、空态「全 `null` + `responsibleAgent='feel'` + `guards=[noActiveStage]`」；15 phase 映射矩阵 + advance 接受集交叉断言；核心层纯增量 +26 行、`src/commands` 零 `mapPhaseToAgent`；人类输出 `flow status` / `flow status --verbose` / `flow phases` / `flow advance --help` **EMPTY diff**；门禁 74 文件 / 1809 用例、`lint i18n` 969）。
+
+**参见：** `src/core/flow-manager.ts`；`src/commands/flow.ts`；`docs/json-contract.md` §12.1；kb/architecture.md #双模式转移表选择、#需求级模式属性架构、#审查档位架构；kb/patterns.md #同类缺陷一次全量扫描、#CLI `--json` 成功/失败同契约；manual/core/flow-manager.md、manual/cli/commands.md

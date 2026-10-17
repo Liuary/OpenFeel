@@ -121,15 +121,16 @@ export function failInternal(
 }
 
 /**
- * 并发写冲突统一处理：输出唯一 i18n 文案并退出码 2（不返回）。
- * JSON 模式输出 FLOW_CONCURRENT_CONFLICT envelope（kind=refusal）；非 JSON 分支逐字不变。
+ * 并发写冲突统一处理：输出唯一 i18n 文案并置退出码 2。
+ * JSON 模式输出 FLOW_CONCURRENT_CONFLICT envelope（kind=refusal）后置码返回（由调用方 return）；
+ * 非 JSON 分支逐字不变（console.error + 即时 process.exit(2)）。
  * @param err 并发写冲突错误（含 expectedRevision / actualRevision）
  * @param lang 语言标识
  */
 export function handleConcurrentConflict(
   err: { expectedRevision: number; actualRevision: number },
   lang: string,
-): never {
+): void {
   if (isJsonMode()) {
     emitErrorEnvelope({
       code: 'FLOW_CONCURRENT_CONFLICT',
@@ -140,8 +141,9 @@ export function handleConcurrentConflict(
       detail: { expectedRevision: err.expectedRevision, actualRevision: err.actualRevision },
     });
     process.exitCode = EXIT_CONCURRENT;
-    // 测试 mock process.exit 后不得穿透到非 JSON 分支（人类文案）
-    process.exit(EXIT_CONCURRENT);
+    // JSON 模式仅置码返回（REV-95-009）：不调用 process.exit，避免 Windows 管道 stdout 截断；
+    // 调用方必须立即 return，禁止落入通用错误分支（二次输出 / exit 1）
+    return;
   } else {
     console.error(t('common.concurrentConflict', lang, {
       expected: String(err.expectedRevision),
@@ -153,14 +155,17 @@ export function handleConcurrentConflict(
 
 /**
  * addStage 失败统一处理（T42）：并发写冲突 / 阶段目录冲突 / 其他错误三类分流。
- * `stage create` 与 `flow stage add` 共用，保证两入口输出一致（不返回）。
+ * `stage create` 与 `flow stage add` 共用，保证两入口输出一致。
+ * JSON 并发分支置码返回（调用方须立即 return）；其余分支保持即时退出。
  * @param err 捕获到的错误
  * @param lang 语言标识
  */
-export function handleAddStageError(err: unknown, lang: string): never {
+export function handleAddStageError(err: unknown, lang: string): void {
   // 并发写冲突：本次未写入 flow.json，输出可重试提示并退出码 2
   if (isFlowConcurrentError(err)) {
     handleConcurrentConflict(err, lang);
+    // JSON 模式仅置码返回 → 显式终止分流，避免落入下方通用错误分支（exit 1 二次输出）
+    return;
   }
   // 阶段目录冲突：按类型分流走 i18n 模板（cli/BUG-002 死键消除）
   if (err instanceof StageDirConflictError) {

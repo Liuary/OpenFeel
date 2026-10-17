@@ -1,6 +1,6 @@
 # JSON 输出契约与错误封装（json-contract）
 
-> 模块文档，由归档官在归档时维护。对应源码：`src/commands/shared/json-output.ts`、`src/core/errors.ts`、`src/commands/shared/errors.ts`、`src/cli/project-option.ts`。契约正文单一权威：`docs/json-contract.md`。**v1.2.2-stage-95 新建 / stage-96 扩展（`flow next` + 调度属性）/ stage-97 扩展至 33 成功出口 / stage-98 收官归档核对（33/34 计数三处对齐、无源码变更）**。
+> 模块文档，由归档官在归档时维护。对应源码：`src/commands/shared/json-output.ts`、`src/core/errors.ts`、`src/commands/shared/errors.ts`、`src/cli/project-option.ts`。契约正文单一权威：`docs/json-contract.md`。**v1.2.2-stage-95 新建 / stage-96 扩展（`flow next` + 调度属性）/ stage-97 扩展至 33 成功出口 / stage-98 收官归档核对（33/34 计数三处对齐、无源码变更）/ v1.2.3-stage-99 并发 JSON 退出统一（REV-95-009）+ 锁超时 E2E 证据**。
 
 ## 职责
 
@@ -12,7 +12,7 @@
 |----|------|------|
 | 契约助手 | `src/commands/shared/json-output.ts` | `withSchemaVersion(doc)`（必须 `{ schemaVersion: 1, ...doc }`）、`emitJson(doc)`、`setJsonMode` / `isJsonMode`、`scanArgv` / `VALUE_OPTIONS` / `resolveJsonMode` / `resolveVersionFlag` |
 | 错误码表 | `src/core/errors.ts` | `CliErrorKind = 'refusal' \| 'internal'`；12 行 `CLI_ERROR_CODES`（内嵌 `kind` + `exitCode`，单一来源）；`CliError` / `isCliError` |
-| 错误出口 | `src/commands/shared/errors.ts` | `failCli`（JSON: envelope → `process.exitCode` → return；非 JSON: 本地化 stderr）、`failRefusal` / `failInternal`、`handleConcurrentConflict` JSON 分支 |
+| 错误出口 | `src/commands/shared/errors.ts` | `failCli`（JSON: envelope → `process.exitCode` → return；非 JSON: 本地化 stderr）、`failRefusal` / `failInternal`、`handleConcurrentConflict`（v1.2.3 起 JSON 分支同 `failCli` 机制：emit → exitCode=2 → return；非 JSON 保持 `process.exit(2)`） |
 | 统一入口 | `src/cli/index.ts` | `runCli` 顺序：`setJsonMode` → `--version --json` 短路 → `applyProjectOption` → `logCliStart` → `emitGlobalDeployCheck` → `parse`；JSON 模式 `exitOverride`；统一 catch |
 | 项目锚定 | `src/cli/project-option.ts` | `extractProjectArgs` / `applyProjectOption` / `resolveProjectPathForCommand`（原始 cwd 解析 → `statSync` → `chdir`） |
 
@@ -29,7 +29,7 @@
 9. **退出码**：`0` 成功 / `1` 预期拒绝（含用法错误）/ `2` 并发写冲突（`EXIT_CONCURRENT` 语义不变）/ `3` 内部错误（新增）；`kind` 为分类权威。
 10. **`--project`**：语义等效 cwd；`--log-file` 相对路径按原始 cwd；命令输出语言按目标项目、`--help` 按原始 cwd；单进程单命令。
 11. **读命令细则（§13）**：出口清单、空态 / no-init 双语义（读视图 0 + `initialized:false`；需项目命令 refusal 1）、字段形态（绝对/相对路径）、JSON 内部异常口径（内部异常 3 vs 人类 1 的登记边界）、成功分支判定读命令级 `options.json` 而错误 envelope 经 `isJsonMode()` 单点的例外。
-12. **REV 边界（§14）**：锁等待超时归 `INTERNAL_ERROR`/internal/3（REV-95-008，含 `flow archive` save 异常 legacy 例外）；并发 envelope `process.exit(2)` 与置码返回的机制差异仅登记（REV-95-009，改造转 stage-98）。
+12. **REV 边界（§14）**：锁等待超时归 `INTERNAL_ERROR`/internal/3（REV-95-008，含 `flow archive` save 异常 legacy 例外；**v1.2.3-stage-99 补 E2E 证据：test-only env seam + `test/cli/lock-timeout.test.ts`**）；**并发退出机制已于 v1.2.3-stage-99 统一（REV-95-009）**——JSON：emit → `process.exitCode=2` → return；非 JSON：`process.exit(2)` 逐字不变（§14.2 已同步）。
 
 ## 12 行 `code → kind → exitCode` 映射（摘要）
 
@@ -56,6 +56,7 @@
 
 | 版本 | 阶段 | 变更 |
 |------|------|------|
+| v1.2.3 | stage-99 | **并发 JSON 退出统一（REV-95-009）**：`handleConcurrentConflict` JSON 分支 emit → `process.exitCode=2` → return；非 JSON 分支逐字不变；`handleAddStageError` `never → void` + 10 调用点显式返回；§14.1 补锁超时 E2E 证据（test-only env seam）；33/34 与退出码语义零改动 |
 | v1.2.2 | stage-98 | 文档收口：33/34 计数与多载体同步核对；无源码变更。`--version --json`（三键）单列，不计入 33 出口 / 34 注册选项 |
 | v1.2.2 | stage-95 | 新建：契约助手、18 出口冻结、错误层（12 行映射 / 退出码 0-3 / legacy `errorKind`）、`--version --json`、全局 `--project` |
 | v1.2.2 | stage-96 | `flow next` 第 19 出口；`stages[]` 5 调度属性 / `phases` 2 档位键（§12）；注册选项 20 |

@@ -1,8 +1,13 @@
 /**
  * file-lock 单元测试 — 互斥 / 超时 / 陈旧抢占 / 归属释放 / 跨进程
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { withFileLock, LOCK_STALE_MS_DEFAULT } from '../../../src/core/fs/file-lock.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+  withFileLock,
+  resolveTestLockDefault,
+  LOCK_STALE_MS_DEFAULT,
+  LOCK_TIMEOUT_MS_DEFAULT,
+} from '../../../src/core/fs/file-lock.js';
 import {
   existsSync,
   mkdirSync,
@@ -28,7 +33,54 @@ describe('file-lock', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // ── 测试专用 env seam（REV-98-006①；非公开契约） ──
+
+  describe('测试专用 env seam', () => {
+    it('gate off：OPENFEEL_TEST_MODE 非 1 时 env 完全忽略，回落生产默认', () => {
+      vi.stubEnv('OPENFEEL_TEST_LOCK_TIMEOUT_MS', '7');
+      vi.stubEnv('OPENFEEL_TEST_LOCK_STALE_MS', '9');
+      expect(resolveTestLockDefault('OPENFEEL_TEST_LOCK_TIMEOUT_MS', LOCK_TIMEOUT_MS_DEFAULT)).toBe(LOCK_TIMEOUT_MS_DEFAULT);
+      expect(resolveTestLockDefault('OPENFEEL_TEST_LOCK_STALE_MS', LOCK_STALE_MS_DEFAULT)).toBe(LOCK_STALE_MS_DEFAULT);
+    });
+
+    it('gate on + 合法值：注入值生效', () => {
+      vi.stubEnv('OPENFEEL_TEST_MODE', '1');
+      vi.stubEnv('OPENFEEL_TEST_LOCK_TIMEOUT_MS', '200');
+      vi.stubEnv('OPENFEEL_TEST_LOCK_STALE_MS', '60000');
+      expect(resolveTestLockDefault('OPENFEEL_TEST_LOCK_TIMEOUT_MS', LOCK_TIMEOUT_MS_DEFAULT)).toBe(200);
+      expect(resolveTestLockDefault('OPENFEEL_TEST_LOCK_STALE_MS', LOCK_STALE_MS_DEFAULT)).toBe(60000);
+    });
+
+    it.each(['0', '-5', '1.5', '', 'abc'])('gate on + 非法值 %j：回落生产默认', (raw) => {
+      vi.stubEnv('OPENFEEL_TEST_MODE', '1');
+      vi.stubEnv('OPENFEEL_TEST_LOCK_TIMEOUT_MS', raw);
+      vi.stubEnv('OPENFEEL_TEST_LOCK_STALE_MS', raw);
+      expect(resolveTestLockDefault('OPENFEEL_TEST_LOCK_TIMEOUT_MS', LOCK_TIMEOUT_MS_DEFAULT)).toBe(LOCK_TIMEOUT_MS_DEFAULT);
+      expect(resolveTestLockDefault('OPENFEEL_TEST_LOCK_STALE_MS', LOCK_STALE_MS_DEFAULT)).toBe(LOCK_STALE_MS_DEFAULT);
+    });
+
+    it('gate off：即便 env stale=1 也不抢占 fresh 锁（默认 3000ms 生效）', () => {
+      writeFileSync(lockPath, JSON.stringify({ pid: 999999, time: Date.now(), token: 'x' }), 'utf-8');
+      vi.stubEnv('OPENFEEL_TEST_LOCK_STALE_MS', '1');
+      const started = Date.now();
+      expect(() => withFileLock(lockPath, () => 1, { timeoutMs: 120 })).toThrow(/超时/);
+      // 若 env 误生效（stale=1）则该调用会很快抢占成功；回落默认后必然等满 120ms
+      expect(Date.now() - started).toBeGreaterThanOrEqual(100);
+    });
+
+    it('显式 options 优先于 env seam', () => {
+      writeFileSync(lockPath, JSON.stringify({ pid: 999999, time: Date.now(), token: 'x' }), 'utf-8');
+      vi.stubEnv('OPENFEEL_TEST_MODE', '1');
+      vi.stubEnv('OPENFEEL_TEST_LOCK_TIMEOUT_MS', '10000');
+      vi.stubEnv('OPENFEEL_TEST_LOCK_STALE_MS', '60000');
+      const started = Date.now();
+      expect(() => withFileLock(lockPath, () => 1, { timeoutMs: 120, staleMs: 60000 })).toThrow(/超时/);
+      expect(Date.now() - started).toBeLessThan(5000);
+    });
   });
 
   it('正常加解锁并返回 fn 结果', () => {

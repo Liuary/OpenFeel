@@ -80,6 +80,15 @@ openfeel flow status
 
 升级迁移提示见 [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)「工作流模式（full / fast）与自动推进」小节与 [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`。
 
+## v1.2.3 修复（补丁）
+
+> 对应阶段：**stage-99**。本版为 v1.2.2 转出项收口，不新增功能；JSON 契约 33 成功出口 / 34 注册选项与退出码语义不变。本仓收口基线：**75 文件 / 1911 用例 / 21 阶段**。
+
+- **并发 JSON 退出机制统一（REV-95-009）**：`handleConcurrentConflict` JSON 分支改为「输出 envelope → 置 `process.exitCode=2` → return」；非 JSON 分支逐字不变；10 个调用点无 fallthrough。
+- **`--review-tier` help 文案订正（REV-98-003 第 6 项）**：源码 help 与 i18n zh/en 改为「缺省=full（零裁剪）」；缺省推进行为不变。
+- **`req` 过滤单点化（REV-97-006）**：`req show` / `req set --workflow-mode` 复用 `listLinkedStages`；`req split` 与 core 引擎层 done 判定原语保留。
+- **锁等待超时 E2E 测试钩子（REV-98-006①，test-only）**：仅 `OPENFEEL_TEST_MODE=1` 生效；生产默认 5000/3000ms 不变；E2E 断言 `INTERNAL_ERROR/internal/3`。
+
 ## v1.2.2 新增能力
 
 > 对应阶段：**stage-95 ~ 98**。以下能力**v1.2.2 起提供**；JSON 契约单一权威见 docs/json-contract.md（33 个成功出口 / 34 个注册选项）。本仓收口基线：74 文件 / 1894 用例 / 21 阶段。

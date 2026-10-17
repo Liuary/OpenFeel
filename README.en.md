@@ -80,6 +80,15 @@ openfeel flow status
 
 Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) ("工作流模式（full / fast）与自动推进" section, Chinese) and [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`.
 
+## Fixes in v1.2.3 (Patch)
+
+> Stage covered: **stage-99**. This patch closes the items carried out of v1.2.2 and adds no new features; the 33 successful exports / 34 registered options contract and exit-code semantics are unchanged. This repository's closure baseline: **75 test files / 1911 cases / 21 stages**.
+
+- **Unified concurrent JSON exit (REV-95-009)**: the `handleConcurrentConflict` JSON branch now emits the `FLOW_CONCURRENT_CONFLICT` envelope, sets `process.exitCode=2`, and returns (same mechanism as `failCli`, avoiding stdout truncation on Windows pipes); the non-JSON branch is unchanged verbatim; all 10 call sites return without fallthrough.
+- **`--review-tier` help-text correction (REV-98-003 item 6)**: `flow advance --help` and the zh/en i18n entries now say "default = full (zero pruning)" instead of "derived from the workflow mode"; the mode-derived value is the `flow phases --json.reviewTier` display value; default advance behavior is unchanged.
+- **`req` filter single-sourcing (REV-97-006)**: `req show` / `req set --workflow-mode` reuse `listLinkedStages`; `req split` and the core done primitives remain unchanged; behavior is identical.
+- **Lock-timeout E2E test hook (REV-98-006①, test-only)**: an env seam active only when `OPENFEEL_TEST_MODE=1` makes the timeout path assert `INTERNAL_ERROR/internal/3` deterministically; production defaults remain 5000/3000ms.
+
 ## What's New in v1.2.2
 
 > Stages covered: **stage-95 ~ 98**. All capabilities below are **available since v1.2.2**; `docs/json-contract.md` is the single authority for the JSON contract (33 successful exports / 34 registered options). This repository's closure baseline: 74 test files / 1894 cases / 21 stages.

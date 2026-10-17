@@ -737,7 +737,7 @@ export const help: I18nDomain = {
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '阶段 ID（如 stage-03），必须指定', en: '' },
   'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）', en: '' },
   'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改', en: '' },
-  'flow.advance.reviewTier': { key: 'help.flow.advance.reviewTier', zh: '审查档位（full / lean / skip；缺省=按模式派生；仅显式声明时裁剪审查关，不可绕过 REV 阻塞检查）', en: '' },
+  'flow.advance.reviewTier': { key: 'help.flow.advance.reviewTier', zh: '审查档位（full / lean / skip；缺省=full（零裁剪）；仅显式声明时裁剪审查关，不可绕过 REV 阻塞检查）', en: '' },
   'flow.advance.quiet':    { key: 'help.flow.advance.quiet',    zh: '静默非错误输出（成功确认与 Git 警告均不打印）', en: '' },
   'flow.attempt':          { key: 'help.flow.attempt',          zh: '记录操作执行结果', en: '' },
   'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '操作 ID（如 stage-01.op-001）', en: '' },

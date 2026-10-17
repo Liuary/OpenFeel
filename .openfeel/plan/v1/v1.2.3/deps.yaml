@@ -1,0 +1,81 @@
+# OpenFeel v1.2.3 阶段依赖声明（v1.2.2 转出项收口 · 补丁版本）
+# 由 openfeel-planner 制定；本版单阶段，op 级依赖由 openfeel-schemer 在阶段产方案时落盘（stage-99/ops/deps.yaml）
+# 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
+
+version: "1.1"
+series: v1
+version_label: v1.2.3
+theme: v1.2.2 转出项收口（并发 JSON 退出 / help 文案 / 锁超时 E2E 钩子 / req 单点化 / 版本收口）
+generated_by: openfeel-planner
+generated_at: "2026-10-17"
+
+# 跨版本承接（基线）
+baseline:
+  - upstream: v1.2.2-stage-98
+    type: hard
+    status: done
+    reason: "v1.2.2 四阶段 95~98 全部 done 并归档（CLI 1.2.2；契约 33 成功出口 / 34 注册选项；测试 74 文件 / 1894 用例；lint i18n 983；lint kb 0 过期 / 622 引用；flow.json reviews=0）。本版只承接 v1.2.2 收官遗留的仓库内转出项：REV-95-009 / REV-98-006① / REV-98-003 第 6 项 / REV-97-006，并完成版本 1.2.3 收口；不新增功能、不改 phase 枚举、不破坏 JSON 契约。"
+
+stages:
+  v1.2.3-stage-99:
+    name: v1.2.2 转出项收口与版本 1.2.3 收口
+    deps: []
+    priority: P0
+    est_ops: 6
+    requirement: null
+    produces_core:
+      - src/commands/shared/errors.ts
+      - src/commands/flow.ts
+      - src/commands/req.ts
+      - src/cli/index.ts
+      - src/core/fs/file-lock.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/config.ts
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/cli/error-envelope.test.ts
+      - test/cli/lock-timeout.test.ts
+      - test/core/fs/file-lock.test.ts
+      - test/commands/req.test.ts
+      - test/core/req.test.ts
+      - docs/json-contract.md
+      - docs/commands.md
+      - docs/GETTING_STARTED.md
+      - .openfeel/manual/index.md
+      - .openfeel/manual/cli/commands.md
+      - .openfeel/manual/core/json-contract.md
+      - .openfeel/manual/core/fs.md
+      - .openfeel/manual/core/req.md
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - CHANGELOG.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - .openfeel/roadmap/v1.2.3.md
+      - .openfeel/plan/v1/v1.2.3/plan.md
+      - .openfeel/plan/v1/stage-99/plan.md
+    notes: "T1 并发 JSON 退出统一（handleConcurrentConflict JSON 分支 emit → exitCode=2 → return；handleAddStageError 返回类型 never→void；10 个调用点显式 return——直接 8 + handleAddStageError 调用方 2（flow.ts:694 / stage.ts:679，均为 catch 末语句、fallthrough 风险为零）；非 JSON 与 exit 2 语义零改动；REV-95-009）。T2 `--review-tier` help 文案订正（flow.ts 字面量 + i18n zh/en 双键 + 文档注记；缺省 full 零裁剪；REV-98-003 第 6 项）。T3 锁等待超时 E2E 钩子（OPENFEEL_TEST_MODE=1 门控 + OPENFEEL_TEST_LOCK_TIMEOUT_MS / OPENFEEL_TEST_LOCK_STALE_MS；显式 options 优先、非法值回落、生产默认零改动；新增 test/cli/lock-timeout.test.ts 断言 INTERNAL_ERROR/internal/3；REV-98-006①）。T4 req 内联过滤单点化（req show + req set --workflow-mode 改用 listLinkedStages；单点范围 = 命令层输出面 + 聚合投影；core 引擎层 allLinkedStagesDone / hasLinked 等 done 判定原语保留；req split 零改动；纯等价重构；REV-97-006）。T5 版本 1.2.3 全链路 A/B/C/D/E + CHANGELOG + docs/json-contract §14.1/§14.2 + manual + skill 快照 + build 双生成物。T6 门禁（npm test / tsc / lint i18n / lint kb / build ×2 / --version 1.2.3）。边界：不新增功能/字段/依赖；不改 33/34 JSON 契约；不直写 flow.json；不代 push。外部项 OUT-1（OpenFeel-DSH 适配器跟进）仅登记，不纳入本仓文件清单。"
+
+# 执行顺序（单阶段）
+execution_order:
+  - v1.2.3-stage-99
+
+# 跨阶段/版本不变量
+invariants:
+  - "并发冲突：JSON 模式输出单个 FLOW_CONCURRENT_CONFLICT envelope（kind=refusal）后置 process.exitCode=2 并 return；非 JSON 模式 stderr 文案与 process.exit(2) 逐字不变；退出码 0/1/2 语义零改动"
+  - "handleConcurrentConflict / handleAddStageError 返回类型为 void；所有调用点在 handler 后显式 return，禁止 JSON 模式落入通用错误分支（二次输出 / exit 1）"
+  - "锁等待超时仍归 INTERNAL_ERROR/internal/3（非 FLOW_CONCURRENT_CONFLICT/2）；测试钩子仅在 OPENFEEL_TEST_MODE=1 时生效，生产默认 timeoutMs=5000 / staleMs=3000 与行为零改动，非公开 CLI 契约"
+  - "req show / req set --workflow-mode 行为零变化；listLinkedStages 为命令层输出面 + 聚合投影的唯一 requirement_id 过滤单点；core 引擎层 allLinkedStagesDone / hasLinked 等 done 判定原语保留、不受影响；req split 零改动"
+  - "flow advance 缺省生效档位仍为 full（零裁剪）；本版只订正 help 文案，不改推进语义"
+  - "33 个成功 JSON 出口 / 34 个注册选项键集与键序不变；phase 枚举 15 项 / 转移表不变；存量 flow.json 零迁移零注入"
+  - "版本 1.2.3 三段补丁号；A 类 6 载体 / 8 文件 / 10 处；B 类双生成物由 build 重生成禁手改；版本写入后零业务代码改动"
+  - "不新增第三方依赖；不改 CI；不 npm publish / 不 git push；不直写 flow.json（阶段注册/推进由 Feel 经 CLI）"
+  - "OUT-1（OpenFeel-DSH 适配器：退役 PHASE_AGENT 镜像 + errorFromResult 消费 kind/code/detail）为仓库外项，由 Feel 单独委派，不作为本仓 stage-99 完成判据"

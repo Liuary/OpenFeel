@@ -763,9 +763,10 @@ export function registerFlowCommand(program: Command): void {
         }
         console.log(t('flow.stage.remove.okTmpl', lang, { stage: stageArg }));
       } catch (err: unknown) {
-        // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；其余走通用错误
+        // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；JSON 模式置码返回 → 显式 return 防落入通用分支
         if (isFlowConcurrentError(err)) {
           handleConcurrentConflict(err, lang);
+          return;
         }
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));
@@ -825,8 +826,10 @@ export function registerFlowCommand(program: Command): void {
       try {
         mgr.setStageDeps(stageId, deps);
       } catch (err: unknown) {
+        // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；JSON 模式置码返回 → 显式 return 防落入通用分支
         if (isFlowConcurrentError(err)) {
           handleConcurrentConflict(err, lang);
+          return;
         }
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));
@@ -877,9 +880,10 @@ export function registerFlowCommand(program: Command): void {
           to: result.to,
         }));
       } catch (err: unknown) {
-        // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；其余走通用错误
+        // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；JSON 模式置码返回 → 显式 return 防落入通用分支
         if (isFlowConcurrentError(err)) {
           handleConcurrentConflict(err, lang);
+          return;
         }
         const msg = err instanceof Error ? err.message : String(err);
         console.error(t('common.errorTmpl', lang, { msg }));
@@ -896,7 +900,7 @@ export function registerFlowCommand(program: Command): void {
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
     .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')
-    .option('--review-tier <tier>', '审查档位（full / lean / skip；缺省=按模式派生；仅显式声明时裁剪审查关，不可绕过 REV 阻塞检查）')
+    .option('--review-tier <tier>', '审查档位（full / lean / skip；缺省=full（零裁剪）；仅显式声明时裁剪审查关，不可绕过 REV 阻塞检查）')
     .option('--json', '以 JSON 输出错误封装（仅失败时；成功输出保持人类文本）')
     .option('--quiet', '静默非错误输出（成功确认与 Git 警告均不打印）')
     .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean; reviewTier?: string; quiet?: boolean }) => {
@@ -2558,9 +2562,10 @@ export function registerFlowCommand(program: Command): void {
           }
         }
       } catch (err) {
-        // 并发写冲突：统一单点（i18n 文案 + 退出码 2）
+        // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；JSON 模式置码返回 → 显式 return 防落入通用分支
         if (isFlowConcurrentError(err)) {
           handleConcurrentConflict(err, lang);
+          return;
         }
         // 失败：统一错误模板 + 非 0 退出（T39）
         const msg = err instanceof Error ? err.message : String(err);

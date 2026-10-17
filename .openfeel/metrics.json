@@ -2,21 +2,21 @@
   "agents": {
     "openfeel-executor": {
       "agentName": "openfeel-executor",
-      "totalRuns": 13,
-      "successfulRuns": 13,
+      "totalRuns": 14,
+      "successfulRuns": 14,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 22038701,
-      "avgDurationMs": 1695285
+      "totalDurationMs": 22640106,
+      "avgDurationMs": 1617150
     },
     "openfeel-reviewer": {
       "agentName": "openfeel-reviewer",
-      "totalRuns": 15,
-      "successfulRuns": 15,
+      "totalRuns": 16,
+      "successfulRuns": 16,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 9727291,
-      "avgDurationMs": 648486
+      "totalDurationMs": 9978466,
+      "avgDurationMs": 623654
     },
     "openfeel-feel-tester": {
       "agentName": "openfeel-feel-tester",
@@ -38,12 +38,12 @@
     },
     "openfeel-planner": {
       "agentName": "openfeel-planner",
-      "totalRuns": 32,
-      "successfulRuns": 32,
+      "totalRuns": 34,
+      "successfulRuns": 34,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 235293165,
-      "avgDurationMs": 7352911
+      "totalDurationMs": 235981903,
+      "avgDurationMs": 6940644
     },
     "openfeel-schemer": {
       "agentName": "openfeel-schemer",

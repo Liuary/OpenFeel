@@ -1,8 +1,9 @@
-# OpenFeel CLI JSON 输出契约（v1.2.2）
+# OpenFeel CLI JSON 输出契约（v1.2.3）
 
 - **权威范围**：`--json` 成功输出（33 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
 - **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。§6 登记的是有意增量清单，未登记即视为破坏。
+- **v1.2.3-stage-99 收口**：并发冲突 JSON 退出机制已与 `failCli` 统一（§14.2）；§14.1 补锁超时 E2E 证据；33 成功出口 / 34 注册选项与退出码语义零改动。
 - **v1.2.2-stage-98 定稿**：文档多载体（README×3 / GETTING_STARTED / commands / manual / cli-usage）已同批同步；本文件为 v1.2.2 发布口径（33 成功出口 / 34 注册选项）。
 - **不变量**：既有 19 个成功出口**零删除 / 零重排 / 类型零改**（本阶段新增第 20~33 个）；只允许本文件 §6 登记的有意增量。出口 #19 `flow next` 为 stage-96 新增（§6.10）。
 
@@ -315,12 +316,14 @@ typeof doc.error === 'string'  → legacy
 - **命令面**：本阶段新增/改造的 13 个读命令与 `archive <stage>`，在 JSON 模式经 `failInternal` 输出 envelope；人类模式保持既有 exit 1 文案（0/1/2 语义零改动）。
 - **边界例外**：`flow archive` 非 dry-run 的 `mgr.save()` 异常保持既有 stderr + exit 1（legacy 路径，本阶段不改造）。
 - **覆盖证据**：`test/cli/error-envelope.test.ts` ⑩——单元级（预创建锁文件 + `timeoutMs:5` + `isFlowConcurrentError(err) === false`）与命令级（`FlowManager.prototype.save` 抛出锁超时 → `archive <stage> --json` 输出 `INTERNAL_ERROR`/3）。
+- **E2E 证据（v1.2.3-stage-99）**：`test/cli/lock-timeout.test.ts` 以子进程真实触发 `withFileLock` 超时——预置 fresh `.openfeel/tmp/locks/flow.lock` + 测试 env seam（`OPENFEEL_TEST_MODE=1`、`OPENFEEL_TEST_LOCK_TIMEOUT_MS=200`、`OPENFEEL_TEST_LOCK_STALE_MS=60000`）→ `archive <stage> --json` 退出码 3、stdout 单文档 `INTERNAL_ERROR`/`kind=internal`、stderr 不含 envelope；重复 3 次稳定。该 seam **仅测试可用、非公开 CLI 契约**，生产默认 `timeoutMs=5000` / `staleMs=3000` 不变。
 
-### §14.2 REV-95-009：并发冲突退出机制差异（仅登记）
+### §14.2 REV-95-009：并发冲突退出机制已统一（v1.2.3-stage-99）
 
-- `handleConcurrentConflict` 的 JSON 分支在 `emitErrorEnvelope` 后调用 `process.exit(2)`（立即退出），而 `failCli` 采用「置 `process.exitCode` 后返回、由调用方 `return`」。
-- 两者**语义等价**（stdout 单 envelope + exit 2），差异仅在进程退出时机；本阶段**仅登记 + 错误矩阵复核**（`error-envelope.test.ts` ⑤/⑪），不改实现。
-- 退出机制统一改造转 **stage-98** 评估。
+- `handleConcurrentConflict` 的 JSON 分支现为：`emitErrorEnvelope` → 置 `process.exitCode = 2` → **return**（由调用方显式 `return` 终止命令），与 `failCli` 机制一致；不再调用 `process.exit(2)`。
+- **语义零改动**：stdout 单个 `FLOW_CONCURRENT_CONFLICT`（`kind=refusal`）envelope、exit 2、`detail={expectedRevision,actualRevision}` 均不变；非 JSON 分支 `console.error` + `process.exit(2)` 逐字不变。
+- **调用点纪律**：`handleConcurrentConflict` / `handleAddStageError` 返回类型为 `void`；10 个调用点（直接 8 + `handleAddStageError` 调用方 2）均在 handler 后返回，禁止落入通用错误分支（二次输出 / exit 1）。
+- **覆盖证据**：`test/cli/error-envelope.test.ts` ⑤/⑤b/⑤c/⑤d/⑤e/⑪（机制 + 命令级无 fallthrough + 非 JSON 不变）与 `test/commands/shared-errors.test.ts`（JSON 置码返回）。
 
 ### §14.3 REV-96-008：本阶段零动作
 

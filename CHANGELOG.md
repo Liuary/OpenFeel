@@ -2,6 +2,24 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.3] - 2026-10-17
+
+> 补丁版本（Patch）：**v1.2.2 转出项收口**。不新增功能 / 字段 / 配置键 / 第三方依赖；33 成功出口 / 34 注册选项契约不变。
+
+### Fixed
+- [stage-99] **并发 JSON 退出机制统一（REV-95-009）**：`handleConcurrentConflict` 的 JSON 分支由 `process.exit(2)` 改为「输出 `FLOW_CONCURRENT_CONFLICT` envelope → 置 `process.exitCode=2` → return」，与 `failCli` 同机制（规避 Windows 管道 stdout 截断）；非 JSON 分支 `console.error + process.exit(2)` 逐字不变；`handleAddStageError` 返回类型 `never → void` 并显式 return；10 个调用点（直接 8 + `handleAddStageError` 调用方 2）逐点核对无 fallthrough。
+- [stage-99] **`flow advance --help --review-tier` 文案订正（REV-98-003 第 6 项）**：源码 help 与 i18n zh/en 由「缺省=按模式派生」订正为「缺省=full（零裁剪）」；按模式派生的是 `flow phases --json.reviewTier` 展示值；`flow advance` 缺省行为零改动。
+- [stage-99] **`req` 内联过滤单点化（REV-97-006）**：`req show` 与 `req set --workflow-mode` 的 `requirement_id` 内联过滤改为复用 `listLinkedStages`（命令层输出面 + 聚合投影唯一实现）；`req split` 与 core 引擎层 `allLinkedStagesDone` / `hasLinked` 保留；纯等价重构、行为零变化。
+
+### Changed
+- [stage-99] **锁等待超时 E2E 测试钩子（REV-98-006①，test-only）**：`withFileLock` 增 `OPENFEEL_TEST_MODE=1` 门控的 `OPENFEEL_TEST_LOCK_TIMEOUT_MS` / `OPENFEEL_TEST_LOCK_STALE_MS` 注入面（函数体内读取、显式 options 优先、非法值回落）；生产默认 `timeoutMs=5000` / `staleMs=3000` 与算法零改动；非公开 CLI 契约。新增 `test/cli/lock-timeout.test.ts` 稳定断言锁超时归 `INTERNAL_ERROR/internal/3`。
+- [stage-99] 版本全链路 **1.2.2 → 1.2.3**（A 类 6 载体 / 8 文件 / 10 处 + B 类双生成物 + C 类文档多载体）。
+
+### Compatibility
+- **退出码**：0 成功 / 1 预期拒绝 / 2 并发冲突 / 3 内部错误，语义全部不变；并发 JSON envelope 内容与 exit 2 不变。
+- **JSON 契约**：33 个成功出口 / 34 个注册选项键集与键序不变；非 JSON 并发 stderr 文案逐字不变。
+- **行为**：`req show` / `req set` / `req split`、`flow advance` 缺省档位输出不变；存量 `flow.json` 零迁移零注入。
+
 ## [1.2.2] - 2026-10-17
 
 > 契约型功能主题版（Z 级）：**CLI 机器可读契约与调度决策下沉**（DSH 适配器需求 11 项 P0×3 / P1×4 / P2×4 一次交付）。

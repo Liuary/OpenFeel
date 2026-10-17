@@ -58,13 +58,14 @@ describe('shared error handlers（stage-50 op-004 T38/T42）', () => {
     expect(exitMock).toHaveBeenCalledWith(2);
   });
 
-  it('stage-95 op-002：JSON 模式并发 → FLOW_CONCURRENT_CONFLICT envelope（refusal）+ exit 2', () => {
+  it('stage-95 op-002 / stage-99 REV-95-009：JSON 模式并发 → FLOW_CONCURRENT_CONFLICT envelope（refusal）+ exitCode 2', () => {
     setJsonMode(true);
     const logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
     const prevLogExitCode = process.exitCode;
     try {
-      expect(() => handleConcurrentConflict({ expectedRevision: 1, actualRevision: 2 }, 'zh-CN')).toThrow('__EXIT__2');
-      expect(exitMock).toHaveBeenCalledWith(2);
+      // REV-95-009：JSON 模式不再即时退出（emit → 置码 → return）
+      handleConcurrentConflict({ expectedRevision: 1, actualRevision: 2 }, 'zh-CN');
+      expect(exitMock).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(2);
       // 人类文案不走 stderr（stdout 单文档）
       expect(errorMock).not.toHaveBeenCalled();

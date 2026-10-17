@@ -704,7 +704,7 @@ export const help: I18nDomain = {
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '', en: 'Stage ID (e.g. stage-03), required' },
   'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '', en: 'Force execution (skip invalid phase check and phase jump check, but not REV block check)' },
   'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '', en: 'Validate only without modifying (preview output). When combined with --force, skips validation but still does not modify' },
-  'flow.advance.reviewTier': { key: 'help.flow.advance.reviewTier', zh: '', en: 'Review tier (full / lean / skip; default = derived from the workflow mode; the tier trims review gates only when declared explicitly, and cannot bypass the REV block check)' },
+  'flow.advance.reviewTier': { key: 'help.flow.advance.reviewTier', zh: '', en: 'Review tier (full / lean / skip; default = full (zero pruning); the tier trims review gates only when declared explicitly, and cannot bypass the REV block check)' },
   'flow.advance.quiet':    { key: 'help.flow.advance.quiet',    zh: '', en: 'Silence non-error output (no success confirmation or Git warning)' },
   'flow.attempt':          { key: 'help.flow.attempt',          zh: '', en: 'Record operation execution result' },
   'flow.attempt.op':       { key: 'help.flow.attempt.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },

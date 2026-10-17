@@ -1418,3 +1418,34 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
       .toContain('export function canCompleteRequirement');                          // 新符号正控
   });
 });
+
+// ═══ stage-99 T4 / REV-97-006：req 命令层 requirement_id 过滤单点化（静态 + 等价） ═══
+
+describe('REQ-97-006 命令层过滤单点化', () => {
+  it('listLinkedStages 保持 data.stages 键序；零关联 / 空串 / 缺省字段均不命中', () => {
+    const data = makeFlowData({
+      'stage-02': makeStage({ requirement_id: 'REQ-001' }),
+      'stage-01': makeStage({ requirement_id: 'REQ-001' }),
+      'stage-03': makeStage({ requirement_id: '' }),
+      'stage-04': makeStage(),
+      'stage-05': makeStage({ requirement_id: 'REQ-999' }),
+    });
+    expect(listLinkedStages(data, 'REQ-001').map((l) => l.id)).toEqual(['stage-02', 'stage-01']);
+    expect(listLinkedStages(data, 'REQ-002')).toEqual([]);
+  });
+
+  it('src/commands/req.ts 内联 requirement_id 过滤归零；listLinkedStages 为输出面单点', () => {
+    const src = readFileSync(new URL('../../src/commands/req.ts', import.meta.url), 'utf-8');
+    // 负向：命令层不再出现内联过滤表达式
+    expect(src).not.toContain('(s.requirement_id ?? null) ===');
+    // 正向：show / set --workflow-mode 均复用 listLinkedStages
+    expect(src).toContain('listLinkedStages(data, id).map((l) => l.id)');
+    expect(src).toContain('listLinkedStages(data, id).map((l) => normalizeStageId(l.id) ?? l.id)');
+  });
+
+  it('core 引擎层 done 判定原语保留（不在单点范围，未被重构）', () => {
+    const src = readFileSync(new URL('../../src/core/req/requirement-ops.ts', import.meta.url), 'utf-8');
+    expect(src).toContain('export function allLinkedStagesDone');
+    expect(src).toContain('hasLinked');
+  });
+});

@@ -1363,3 +1363,23 @@ opencode 侧同源同语义：`~/.config/opencode/agents/<name>.md` 的 `model` 
 **实证**：v1.2.2-stage-98（首跑 2/5 → 重采样后 5/5；`dsh-e2e-report.md` §9 D1/D2；测试报告 O-1；`npm test` 74 文件 / 1894 用例独立复跑全绿佐证产品面零回归）。
 
 **参见：** `.openfeel/tmp/stage-98/e2e/run-zero-regression.mjs`、`e2e/logs/zero-regression*.json`；`.openfeel/users/Liuary/log/2026-10-17-stage-98-test-report.md`（O-1）；kb/troubleshooting.md #零回归取证范式、#真实工作区的「反守卫」测试失效；kb/patterns.md #双主题收官端到端验收范式
+
+## [+] 测试专用 env seam 的门控纪律：`*_TEST_MODE=1` 主开关 + 函数体内读 env + 正整数校验 + 显式 options 优先 (2026-10-17)
+
+**现象**：锁等待超时路径在 E2E 中**无法稳定触发**——`withFileLock` 默认 `timeoutMs=5000` / `staleMs=3000`，而 `staleMs < timeoutMs` 是刻意设计（崩溃残留须在等待窗口内被抢占），因此预置锁 3s 后即被判 stale 抢占，5s 超时永远到不了。外部进程持续 touch mtime 虽可行但依赖时序、确定性弱。
+
+**做法（env seam 六条纪律）**：
+1. **主开关门控**：仅 `OPENFEEL_TEST_MODE === '1'` 时读取测试变量；否则完全忽略（生产零分支副作用）。
+2. **变量命名隔离**：`OPENFEEL_TEST_LOCK_TIMEOUT_MS` / `OPENFEEL_TEST_LOCK_STALE_MS`，前缀 `OPENFEEL_TEST_` + 领域限定，避免与真实配置混淆。
+3. **函数体内读 env**：解析在 `withFileLock` 函数体内完成（`resolveTestLockDefault(envKey, fallback)`），**不得提为模块级常量**——模块加载即固化会使子进程注入失效。
+4. **值校验**：`Number(raw)` 且 `Number.isInteger(n) && n > 0` 才生效；非法 / 缺失 / 空串回落既有默认。
+5. **优先级**：调用点显式 `options.timeoutMs` / `options.staleMs` > env seam > 默认常量。
+6. **默认与算法零改动**：生产 gate off 时默认值（5000/3000ms）与锁算法逐字不变；文档与导出注释明确「非公开契约」。
+
+**配套测试矩阵**：gate off 不生效 / gate on + 合法值生效 / gate on + 非法值（0、负数、非整数、空串）回落 / 显式 options 优先；E2E 在隔离 HOME + fresh 锁 + `timeout 200ms / stale 60000ms` 下断言 `status===3`、单文档 `INTERNAL_ERROR`/internal、stderr 无 envelope，并**重复 3 次**证稳定。
+
+**陷阱**：① 子进程 E2E 的 env 必须是完整隔离 env（`HOME`/`USERPROFILE`/`OPENFEEL_LOG=0`）再叠加测试变量，否则污染真实工作区；② 若门禁依赖 `dist`，E2E 前必须先 build，收口要求 0 skipped（不得用 `skipIf` 掩埋）；③ 「测试钩子」不是公开能力——`--help` / 契约 / 版本说明中不得宣传，只在 manual 与源码注释登记。
+
+**实证**：v1.2.3-stage-99 T3（REV-98-006①）：`src/core/fs/file-lock.ts` + `test/core/fs/file-lock.test.ts`（gate / 合法 / 非法 / 显式优先）+ 新增 `test/cli/lock-timeout.test.ts`；E2E 重复 3 次稳定；生产默认 `LOCK_TIMEOUT_MS_DEFAULT` / `LOCK_STALE_MS_DEFAULT` 与算法零 diff。
+
+**参见：** `src/core/fs/file-lock.ts`、`test/cli/lock-timeout.test.ts`、`docs/json-contract.md` §14.1、`.openfeel/manual/core/fs.md`；kb/patterns.md #环境变量覆盖型路径函数的「函数体内读 env」可测试性模式、#建议性文件锁模式、#补丁版本转出项收口范式；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护、#子进程测试未设 cwd 致真实仓库污染

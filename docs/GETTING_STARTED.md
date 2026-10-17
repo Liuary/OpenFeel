@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.2.2 快照** | 更新日期：2026-10-17 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.2.3 快照** | 更新日期：2026-10-17 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -187,6 +187,15 @@ openfeel req board                                               # 看板视图�
 
 需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**全部关联阶段 done 时需求自动收口**。用法权威源见 `openfeel-req` skill。
 
+## v1.2.3 修复速览
+
+> 对应阶段 stage-99（补丁版本：v1.2.2 转出项收口）。不新增功能；33 成功出口 / 34 注册选项契约与退出码语义不变。本仓收口基线 **75 文件 / 1911 用例 / 21 阶段**。
+
+- **并发 JSON 退出统一**：并发冲突在 JSON 模式输出单个 `FLOW_CONCURRENT_CONFLICT`（refusal）envelope 后置 `process.exitCode=2` 返回；非 JSON 模式 stderr 文案与 `process.exit(2)` 不变。
+- **`--review-tier` help 订正**：`flow advance --help` 现为「缺省=full（零裁剪）」；`flow phases --json.reviewTier` 仍是按模式派生的展示值。
+- **`req` 过滤单点化**：`req show` / `req set --workflow-mode` 复用 `listLinkedStages`，输出不变。
+- **锁超时 E2E 测试钩子（test-only）**：仅 `OPENFEEL_TEST_MODE=1` 生效；生产默认不变；锁等待超时稳定归 `INTERNAL_ERROR/internal/3`。
+
 ## v1.2.2 能力速览
 
 > 对应阶段 stage-95 ~ 98。以下能力**v1.2.2 起提供**；JSON 契约单一权威见 [json-contract.md](json-contract.md)（33 个成功出口 / 34 个注册选项；本仓收口基线 74 文件 / 1894 用例 / 21 阶段）。完整命令/参数细节以 `openfeel <cmd> --help` 实时输出为准。
@@ -243,7 +252,7 @@ openfeel stage status v1.2.2-stage-98 --json
 
 退出码：`0` 成功 / `1` 预期拒绝 / `2` 并发冲突 / `3` 内部错误（v1.2.2 新增）。legacy 形态保留 `error` 为 string，仅在末尾追加 `errorKind`；判别唯一规则 `typeof doc.error === 'string'`。
 
-**⑤ 档位语义订正（`--review-tier`）**——`flow advance` 未显式传 `--review-tier` 时**生效档位恒 `full`**；**展示值**按模式派生（`flow phases --json.reviewTier` / `displayReviewTier`）；`effectiveReviewTier` 三处（`flow next` / `flow status.stages[]` / `flow phases`）恒为 `full`。源码 help 文案订正转 v1.2.3。
+**⑤ 档位语义订正（`--review-tier`）**——`flow advance` 未显式传 `--review-tier` 时**生效档位恒 `full`**；**展示值**按模式派生（`flow phases --json.reviewTier` / `displayReviewTier`）；`effectiveReviewTier` 三处（`flow next` / `flow status.stages[]` / `flow phases`）恒为 `full`。源码 help 文案已于 v1.2.3 订正为「缺省=full（零裁剪）」。
 
 **⑥ 升级兼容**——存量 `flow.json` 零迁移零注入；既有 19 个成功出口字段零破坏（只增不改）；人类输出逐字不变；退出码 0/1/2 语义不变、3 仅新增。
 

@@ -82,7 +82,8 @@ function failGeneric(lang: string, err: unknown): void {
 }
 
 /**
- * 保存并收敛并发：成功返回 true；并发冲突 → 单点 exit 2（不返回）；其他异常 → 通用文案 exit 1 并返回 false。
+ * 保存并收敛并发：成功返回 true；并发冲突 → 单点处理（JSON 置码 2 返回 / 非 JSON exit 2），
+ * 其他异常 → 通用文案 exit 1 并返回 false。返回 false 时调用方须早返回。
  */
 function saveOrFail(mgr: FlowManager, lang: string): boolean {
   try {
@@ -237,10 +238,8 @@ export function registerReqCommand(program: Command): void {
         }
         return;
       }
-      // 关联阶段 = 原始只读枚举（零聚合计算 / 零阶段推进字段读取——归后续阶段）
-      const stages = Object.entries(data.stages ?? {})
-        .filter(([, s]) => (s.requirement_id ?? null) === id)
-        .map(([k]) => k);
+      // 关联阶段 = 原始只读枚举（零聚合计算 / 零阶段推进字段读取——归后续阶段）；命令层输出面复用单点过滤（REV-97-006）
+      const stages = listLinkedStages(data, id).map((l) => l.id);
       // 子需求 = 存储顺序枚举（不额外排序——避免第二排序源；对齐 stages 无排序先例）
       const childRows = getRequirements(data).filter((r) => r.parent_id === id);
       const children = childRows.map((c) => c.id);
@@ -433,9 +432,8 @@ export function registerReqCommand(program: Command): void {
       }
       // stage-90 T2.3：需求级模式下发（先落盘主变更 → 再下发；单点 syncConfigFieldToStages：status.md 字段 + flow.json 冗余同批）
       if (options.workflowMode !== undefined) {
-        const linked = Object.entries(data.stages ?? {})
-          .filter(([, s]) => (s.requirement_id ?? null) === id)
-          .map(([k]) => normalizeStageId(k) ?? k);
+        // 命令层输出面复用单点过滤（REV-97-006）；保留既有短名归一语义与 onlyStages 作用域
+        const linked = listLinkedStages(data, id).map((l) => normalizeStageId(l.id) ?? l.id);
         if (linked.length > 0) {
           const synced = mgr.syncConfigFieldToStages('workflow_mode', options.workflowMode, { onlyStages: linked });
           const wrote = synced.filter((s) => s.result === 'updated' || s.result === 'inserted').length;

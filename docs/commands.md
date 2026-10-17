@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.2.2 快照** | 更新日期：2026-10-17
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.2.3 快照** | 更新日期：2026-10-17
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -62,6 +62,12 @@
 
 - `error` **恒为 `string`**，既有键序不变；仅允许在末尾追加顶层 `errorKind`（`refusal | internal`）。
 - **判别唯一规则**：`typeof doc.error === 'string'` → legacy；否则（object）→ envelope。禁止以退出码 / 命令名 / 字段存在性做第二套判别。
+
+### 并发退出机制（v1.2.3 起统一）
+
+- JSON 模式：并发冲突输出单个 `FLOW_CONCURRENT_CONFLICT`（`kind=refusal`）envelope → 置 `process.exitCode = 2` → 返回（与 `failCli` 同机制，规避 Windows 管道 stdout 截断）；10 个调用点均在 handler 后显式 `return`，无通用错误分支二次输出。
+- 非 JSON 模式：`console.error` 单行并发文案 + `process.exit(2)` 逐字不变。
+- 退出码 0/1/2/3 语义与 envelope 形态零改动；`handleAddStageError` 的并发分流同样置码返回。
 
 ### 退出码
 
@@ -236,7 +242,7 @@ openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--review-t
 | `--stage <stage-id>` | 阶段 ID（**必填**，可用短名或完整名） |
 | `--to <phase>` | 目标阶段（必填）。合法 phase 与转移表见 `openfeel flow phases` |
 | `--op <op-id>` | 操作 ID（**可选**，仅用于日志/展示） |
-| `--review-tier <tier>` | 审查档位（`full` / `lean` / `skip`；**缺省 `full`**——未显式传时生效档位恒 `full`，展示值按模式派生（见 `flow phases --json.reviewTier` / `displayReviewTier`）；仅显式声明时裁剪审查关，**不可绕过 REV 阻塞检查**）。三档语义：`full` 零裁剪 / `lean` 裁 `scheme_review` / `skip` 裁 `plan_review` + `scheme_review`（代码审查关 / 测试关 / 归档关恒保留）。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进；「**进入**被裁剪关」仍不可达。显式 `lean` / `skip` 打印一行非阻断警告；值域非法 → exit 1 零写盘。**注**：本仓 `flow advance --help` 现文案「缺省=按模式派生」为陈旧表述，源码 help 文案订正转 v1.2.3；语义以本节 / 契约 §12.3 为准 |
+| `--review-tier <tier>` | 审查档位（`full` / `lean` / `skip`；**缺省 `full`**——未显式传时生效档位恒 `full`，展示值按模式派生（见 `flow phases --json.reviewTier` / `displayReviewTier`）；仅显式声明时裁剪审查关，**不可绕过 REV 阻塞检查**）。三档语义：`full` 零裁剪 / `lean` 裁 `scheme_review` / `skip` 裁 `plan_review` + `scheme_review`（代码审查关 / 测试关 / 归档关恒保留）。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进；「**进入**被裁剪关」仍不可达。显式 `lean` / `skip` 打印一行非阻断警告；值域非法 → exit 1 零写盘。**注**：源码 help 文案已于 v1.2.3 订正为「缺省=full（零裁剪）」，与本节 / 契约 §12.3 一致 |
 | `--dry-run` | 仅验证不修改（预览输出）；**字节级不写盘**（`revision`/phase 不变） |
 | `--force` | 跳过非法 phase 与阶段跳跃检查（仍受 REV 闭环守卫约束，不可绕过） |
 | `--json` | 错误封装开关（v1.2.2）：**仅失败时**在 JSON 模式下输出错误 envelope；成功仍输出人类文本，**不计入成功出口** |

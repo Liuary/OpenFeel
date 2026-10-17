@@ -23,11 +23,11 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, openSync, closeSync } fr
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CLI_ERROR_CODES, CLI_ERROR_TABLE, getCliErrorSpec, isInternalCode } from '../../src/core/errors.js';
-import { handleConcurrentConflict } from '../../src/commands/shared/errors.js';
+import { handleConcurrentConflict, handleAddStageError } from '../../src/commands/shared/errors.js';
 import { resetJsonModeForTest, setJsonMode } from '../../src/commands/shared/json-output.js';
 import { registerFlowCommand } from '../../src/commands/flow.js';
 import { registerArchiveCommand } from '../../src/commands/archive.js';
-import { FlowManager, type FlowData, isFlowConcurrentError } from '../../src/core/flow-manager.js';
+import { FlowManager, FlowConcurrentModificationError, type FlowData, isFlowConcurrentError } from '../../src/core/flow-manager.js';
 import { withFileLock, projectLockPath } from '../../src/core/fs/file-lock.js';
 import { initProject } from '../../src/core/init.js';
 import { setConfigValue } from '../../src/core/config.js';
@@ -277,12 +277,13 @@ describe('错误层（stage-95 op-002）', () => {
 
   // ── 5：并发冲突 ──
 
-  it('⑤ 并发：JSON 模式 → FLOW_CONCURRENT_CONFLICT/refusal/exit 2', () => {
+  it('⑤ 并发：JSON 模式 → 单 envelope + process.exitCode=2，不调用 process.exit', () => {
     setJsonMode(true);
     process.exitCode = 0;
     handleConcurrentConflict({ expectedRevision: 1, actualRevision: 2 }, 'zh-CN');
 
-    expect(exitMock).toHaveBeenCalledWith(2);
+    // REV-95-009：JSON 模式改为「emit → 置码 → return」，不再即时退出
+    expect(exitMock).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(2);
     expect(errorMock).not.toHaveBeenCalled();
     expect(logMock).toHaveBeenCalledTimes(1);
@@ -290,6 +291,74 @@ describe('错误层（stage-95 op-002）', () => {
     expect(doc.error.code).toBe('FLOW_CONCURRENT_CONFLICT');
     expect(doc.error.kind).toBe('refusal');
     expect(doc.error.detail).toEqual({ expectedRevision: 1, actualRevision: 2 });
+  });
+
+  it('⑤b 并发：非 JSON 模式 → stderr 文案逐字 + process.exit(2) 不变', () => {
+    setJsonMode(false);
+    process.exitCode = 0;
+    handleConcurrentConflict({ expectedRevision: 1, actualRevision: 2 }, 'en');
+
+    expect(logMock).not.toHaveBeenCalled();
+    expect(errorMock).toHaveBeenCalledTimes(1);
+    expect(errorMock.mock.calls[0][0]).toBe(
+      '[concurrent conflict] flow.json was modified by another process (expected revision=1, on-disk=2); this change was not written, please retry.',
+    );
+    expect(exitMock).toHaveBeenCalledTimes(1);
+    expect(exitMock).toHaveBeenCalledWith(2);
+    // 非 JSON 分支逐字不变：仅 process.exit(2)（mock 不写 process.exitCode，真实进程退出码为 2）
+  });
+
+  it('⑤c handleAddStageError 并发 JSON：单 envelope + exitCode 2，不落入通用 errorTmpl/exit 1', () => {
+    setJsonMode(true);
+    process.exitCode = 0;
+    handleAddStageError(new FlowConcurrentModificationError(5, 6), 'zh-CN');
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(errorMock).not.toHaveBeenCalled();
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(2);
+    const doc = lastDoc() as { error: { code: string; detail: unknown } };
+    expect(doc.error.code).toBe('FLOW_CONCURRENT_CONFLICT');
+    expect(doc.error.detail).toEqual({ expectedRevision: 5, actualRevision: 6 });
+  });
+
+  it('⑤d flow stage set 并发 JSON：命令级无 fallthrough（单 envelope + exitCode 2）', async () => {
+    setFlowData('plan_pending');
+    const spy = vi.spyOn(FlowManager.prototype, 'setStageDeps').mockImplementationOnce(() => {
+      throw new FlowConcurrentModificationError(7, 8);
+    });
+    setJsonMode(true);
+    try {
+      await safeParse(['flow', 'stage', 'set', 'v1.0.0-stage-01']);
+      expect(logMock).toHaveBeenCalledTimes(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+      const doc = lastDoc() as { error: { code: string; kind: string } };
+      expect(doc.error.code).toBe('FLOW_CONCURRENT_CONFLICT');
+      expect(doc.error.kind).toBe('refusal');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('⑤e flow stage reset 并发 JSON：命令级无 fallthrough（单 envelope + exitCode 2）', async () => {
+    setFlowData('plan_pending');
+    const spy = vi.spyOn(FlowManager.prototype, 'resetStagePhase').mockImplementationOnce(() => {
+      throw new FlowConcurrentModificationError(9, 10);
+    });
+    setJsonMode(true);
+    try {
+      await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-01', '--to', 'plan_pending']);
+      expect(logMock).toHaveBeenCalledTimes(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+      const doc = lastDoc() as { error: { code: string } };
+      expect(doc.error.code).toBe('FLOW_CONCURRENT_CONFLICT');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   // ── 6：internal 双模式（runCli 统一 catch） ──
@@ -455,9 +524,9 @@ describe('错误层（stage-95 op-002）', () => {
     }
   });
 
-  // ── ⑪ REV-95-009：并发冲突退出机制复核（仅登记，改造转 stage-98） ──
+  // ── ⑪ REV-95-009：并发 JSON 退出机制已统一为「emit → exitCode → return」 ──
 
-  it('⑪ REV-95-009：stdout 恰一个 envelope 且 process.exit(2)（与 failCli 置码返回语义等价）', () => {
+  it('⑪ REV-95-009：stdout 恰一个 envelope、不调 process.exit、exitCode=2（与 failCli 同机制）', () => {
     setJsonMode(true);
     process.exitCode = 0;
 
@@ -474,10 +543,8 @@ describe('错误层（stage-95 op-002）', () => {
     expect(doc.error.code).toBe('FLOW_CONCURRENT_CONFLICT');
     expect(doc.error.kind).toBe('refusal');
     expect(doc.error.detail).toEqual({ expectedRevision: 3, actualRevision: 4 });
-    // 退出机制差异：handleConcurrentConflict 调 process.exit(2)（failCli 为置码后返回）
-    // 机制差异已登记契约 §14.2，统一改造转 stage-98；本阶段不改实现。
-    expect(exitMock).toHaveBeenCalledTimes(1);
-    expect(exitMock).toHaveBeenCalledWith(2);
+    // 机制已与 failCli 对齐：置码返回，不调用 process.exit（防 Windows 管道 stdout 截断）
+    expect(exitMock).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(2);
   });
 });

@@ -184,12 +184,14 @@
 - **读侧宽容不注入**：顶层可选字段不在 `load()` 补齐（见 kb/patterns.md #顶层可选字段「读侧宽容不注入」模式）；反例断言「纯 load→save → `'requirements' in parsed === false`」。
 - **副本纪律**：查询 API 返回浅副本（数组 + 元素）；**写路径须 raw find 改本体**——经查询 API 拿浅副本会**静默丢更新**（REV-81-011）。
 - **模式边界**：需求**携带**模式属性（`workflow_mode?`）但**模式不参与聚合 / done 门 / 对账**；模式仅经单点解析器消费（详见「需求级模式」节；v1.2.1-stage-90 supersede 旧「零耦合」口径）。与归档层仍零耦合（本版不归档 `requirements`）。
+- **过滤单点边界（v1.2.3-stage-99 / REV-97-006）**：`listLinkedStages` 为**命令层输出面 + 聚合投影**的唯一 `requirement_id` 过滤实现（`req list --json` / `req show` / `req set --workflow-mode` 与 `computeRequirementAggregate` 共用）；core 引擎层 done 判定原语 `allLinkedStagesDone` / `hasLinked` 为领域逻辑，保留、不在单点范围；`req split` / `splitRequirement` 无过滤改动。
 - **已知边界（REV-83-016）**：`flow stage reset` 复位到 default 分支相位后再推进 `done` **不回写** → 需求遗留漂移（health「需求漂移」warn 可察、**非自愈**）；行为修复（advance 命中 done 按聚合视图无条件重算）转后续版本评估（收口期控制流冻结）。
 
 ## 变更历史
 
 | 版本 | 变更 |
 |------|------|
+| v1.2.3-stage-99 | **命令层过滤单点化（REV-97-006）**：`req show` / `req set --workflow-mode` 内联 `requirement_id` 过滤改为复用 `listLinkedStages`；`req split` 与 core done 原语零改动；行为零变化。 |
 | v1.2.2-stage-98 | 文档收口复核：`listLinkedStages` / `req list` 两键口径与契约一致；无源码变更。 |
 | v1.2.1-stage-93 | **缺陷清零（`req/BUG-002`）**：新增导出谓词 `canCompleteRequirement(data, req)`（**载体制对偶完成路径**：`general` 需求显式完成直接放行；判据 = 需求自身 `workflow_mode` **字段直判**，与载体制门 `:287-290` / `:346` **同源**；禁解析级联——`resolveStageWorkflowMode` 于 `requirement-ops.ts` 仍零出现）；`applyStatusChange` done 门改**单点消费**（谓词恰 1 处新增）；`general` 且有链接（损坏态）**从严回落**路 1（`allLinkedStagesDone`）；`allLinkedStagesDone` 语义零改动（仍含唯一 `.every(`）；i18n +1 键 `req.err.doneGateTmpl`（zh/en 成对）+ 条件消费（`commands/req.ts` set / advance 两处；错误码恒 `invalid_status`）+ `req.advance` help 三处同步；i18n 944 → **945**；C2 断言**显式 supersede**（段 C 注释改写 + 差额对照逐条；聚合面 NEEDLES 6 串零命中保持）。门禁 **71 文件 / 1719 用例** 0 skipped 0 failed、`tsc` 0、`lint kb` 0、build ×2 幂等。 |
 | v1.2.1-stage-90 | **需求级模式属性（supersede 旧「正交」口径）**：`RequirementData` +`workflow_mode?`（**12 字段**；值域 `full`/`fast`/`general`；**仅调度属性**、读侧宽容零注入）；`addRequirement` 入参 + 值域校验、`updateRequirement` `PATCH_WHITELIST` 增键；错误码 +`general_mode_conflict`（载体制约束——general 需求不得有已链接阶段）；命令面 `add`/`set` 各增 `--workflow-mode`（help 键 **42 → 44**）+ `link`/`set` 经 `syncConfigFieldToStages` **下发**关联阶段；解析链插入**需求级层**（`status.md > requirement > config > profile > builtin`，`ConfigSource` 第 5 值 `'requirement'`）+ `resolveEffectiveConfig` 委托单点；断言 C1/C2/C3 **显式改写**（`workflow_mode` 禁止串 → **受控串** + 新禁止串 `resolveStageWorkflowMode` + 正控扩容，**严格强于旧断言**）。i18n 931 → **939**（+8 键）。4 commits（`342e6ef`/`143928c`/`77552f9`/`02156a9`）；门禁 **71 文件 / 1674 用例** 0 skipped 0 failed、`tsc` 0、build ×2 幂等。**已知缺口**：`general` 需求恒无法 `done` → `req/BUG-002`（转 stage-93）。 |

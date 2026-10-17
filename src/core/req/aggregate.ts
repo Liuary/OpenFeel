@@ -44,8 +44,9 @@ export interface LinkedStage {
 }
 
 /**
- * 需求关联阶段单点过滤（唯一实现；命令层与聚合共用）。
+ * 需求关联阶段单点过滤（命令层输出面 + 聚合投影的唯一实现）。
  * requirement_id 缺省 / 空串 / null 一律视为未关联（与既有 `(s.requirement_id ?? null) === requirementId` 等价）。
+ * 边界：core 引擎层 done 判定原语（allLinkedStagesDone / hasLinked）为领域逻辑，保留、不在本单点范围。
  * @param data flow 数据（只读）
  * @param requirementId 需求 ID
  * @returns 关联阶段列表（data.stages 键序）

@@ -2022,7 +2022,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.2.2). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.2.3). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -2183,7 +2183,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.2.2）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.2.3）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 
@@ -4436,7 +4436,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）、v1.2.1 新增能力（需求拆分 \`req split\` / 三模式 \`full/fast/general\` / 审查档位 \`--review-tier\` / 通用工作者 \`openfeel-explorer\` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）、v1.2.1 新增能力（需求拆分 \`req split\` / 三模式 \`full/fast/general\` / 审查档位 \`--review-tier\` / 通用工作者 \`openfeel-explorer\` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -4448,7 +4448,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.2.2 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.2.3 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -4495,8 +4495,17 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **机器可读错误封装（v1.2.2 起提供）**：\`{schemaVersion:1,error:{code,kind,message,detail}}\`；退出码 **0 成功 / 1 预期拒绝 / 2 并发冲突 / 3 内部错误（新增）**；legacy \`{error:'...'}\` 保留 string 类型与键序、末尾追加 \`errorKind\`；判别唯一规则 \`typeof doc.error === 'string'\`；12 行 \`code→kind→exitCode\` 映射表。
 - **\`--version --json\`（v1.2.2 起提供）**：\`{schemaVersion:1,version,node}\`（三键）；**单列，不计入 33 成功出口、也不计入 34 注册选项**；纯文本 \`--version\` 逐字不变。
 - **\`flow archive --dry-run --json\` 判据明细 + \`archive <stage> --json\`（v1.2.2 起提供）**：\`flow archive\` 成功 9 键 / gate-rejected 9 键，含 \`eligible\` / \`unfinishedStages[]{id,phase}\` / \`blockingReviews[]{id,title,priority}\`；\`archive <stage> --json\` 输出 \`archivePath\` / 计数 / \`knowledgeExtracts\`；\`--dry-run\` 零写盘；与 \`flow archive\`（版本分片）职责分离。
-- **\`reviewTier\` 消歧（v1.2.2 起提供）**：\`flow phases --json\` / \`flow status.stages[]\` / \`flow next\` 同时给出展示值 \`reviewTier\`/\`displayReviewTier\` 与生效值 \`effectiveReviewTier\`（恒 \`full\`）。**订正**：\`flow advance\` 未显式传 \`--review-tier\` 时生效档位恒 **\`full\`**（不是按模式派生）；按模式派生的是 \`flow phases --json.reviewTier\` 展示值。源码 help 文案订正转 v1.2.3。
+- **\`reviewTier\` 消歧（v1.2.2 起提供）**：\`flow phases --json\` / \`flow status.stages[]\` / \`flow next\` 同时给出展示值 \`reviewTier\`/\`displayReviewTier\` 与生效值 \`effectiveReviewTier\`（恒 \`full\`）。**订正**：\`flow advance\` 未显式传 \`--review-tier\` 时生效档位恒 **\`full\`**（不是按模式派生）；按模式派生的是 \`flow phases --json.reviewTier\` 展示值。源码 help 文案已于 v1.2.3 订正。
 - **兼容承诺（v1.2.2 起提供）**：既有 19 个成功出口字段零破坏（只增不改）；人类输出逐字不变；退出码 0/1/2 语义不变、3 仅新增；phase 枚举 15 项 / \`advanceAccepted\` / full-fast 行为不变；存量 \`flow.json\` 零迁移零注入；REQ-001 L80「2=内部错误或用法错误」登记为需求文本勘误（权威口径见契约 §2/§10）。
+
+## v1.2.3 修复（stage-99）
+
+> 补丁版本：v1.2.2 转出项收口。不新增功能；33 成功出口 / 34 注册选项与退出码 0/1/2/3 语义不变。本仓收口基线 **75 文件 / 1911 用例 / 21 阶段**。
+
+- **并发 JSON 退出统一（REV-95-009）**：并发冲突 JSON 模式输出单个 \`FLOW_CONCURRENT_CONFLICT\`（refusal）envelope → 置 \`process.exitCode=2\` → return（与 \`failCli\` 同机制）；非 JSON 模式 \`console.error + process.exit(2)\` 逐字不变；10 个调用点显式返回。
+- **\`flow advance --help --review-tier\` 订正**：源码 help 与 i18n zh/en 为「缺省=full（零裁剪）」；按模式派生的是 \`flow phases --json.reviewTier\` 展示值；缺省推进行为不变。
+- **\`req\` 过滤单点化（REV-97-006）**：\`req show\` / \`req set --workflow-mode\` 复用 \`listLinkedStages\`；\`req split\` 与 core done 原语保留；行为零变化。
+- **锁等待超时 E2E 测试钩子（REV-98-006①，test-only）**：仅 \`OPENFEEL_TEST_MODE=1\` 生效；生产默认 5000/3000ms 不变；E2E 稳定断言 \`INTERNAL_ERROR/internal/3\`。
 
 ## v1.2.1 新增能力（stage-86~93 + 94）
 
@@ -8301,7 +8310,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.2.2). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.2.3). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -8465,7 +8474,7 @@ Claude Code 的权限与工具可用性由 subagent 的 \`tools\` 白名单与 \
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.2.2）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.2.3）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 

@@ -71,6 +71,26 @@ function sleepSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+/**
+ * 测试专用默认值解析（REV-98-006①；非公开 CLI 契约）。
+ * 仅当 `OPENFEEL_TEST_MODE=1` 时读取 env（gate off 时零副作用）；
+ * `Number(raw)` 且为正整数才生效，非法/缺失一律回落既有默认。
+ * 必须在函数体内读取 env（不得提为模块级常量），保证子进程 E2E 可注入。
+ * @param envKey 测试 env 键名
+ * @param fallback 生产默认值
+ */
+export function resolveTestLockDefault(envKey: string, fallback: number): number {
+  if (process.env.OPENFEEL_TEST_MODE !== '1') {
+    return fallback;
+  }
+  const raw = process.env[envKey];
+  if (raw === undefined || raw === '') {
+    return fallback;
+  }
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
 /** 读取锁文件内容；读取/解析失败返回 null */
 function readLockInfo(lockPath: string): LockInfo | null {
   try {
@@ -124,9 +144,14 @@ export function withFileLock<T>(
   fn: () => T,
   options: FileLockOptions = {},
 ): T {
+  // 显式 options > 测试 env seam（仅 OPENFEEL_TEST_MODE=1 生效）> 生产默认常量
+  const timeoutMs = options.timeoutMs === undefined
+    ? resolveTestLockDefault('OPENFEEL_TEST_LOCK_TIMEOUT_MS', LOCK_TIMEOUT_MS_DEFAULT)
+    : options.timeoutMs;
+  const staleMs = options.staleMs === undefined
+    ? resolveTestLockDefault('OPENFEEL_TEST_LOCK_STALE_MS', LOCK_STALE_MS_DEFAULT)
+    : options.staleMs;
   const {
-    timeoutMs = LOCK_TIMEOUT_MS_DEFAULT,
-    staleMs = LOCK_STALE_MS_DEFAULT,
     initialBackoffMs = LOCK_INITIAL_BACKOFF_MS_DEFAULT,
     maxBackoffMs = LOCK_MAX_BACKOFF_MS_DEFAULT,
   } = options;

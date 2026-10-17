@@ -8,7 +8,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.2.2**（机器可读契约与调度决策下沉） — `openfeel flow next [--json]`（12 键调度决策，只读）+ 全局 `--project <path>` + 读命令 `--json` 全量补全（**33 个成功出口 / 34 个注册选项**）+ 错误封装 `code` + `kind` + `errorKind`（退出码 0/1/2/3）+ `--version --json` + `flow archive --dry-run --json` 判据明细 + `archive <stage> --json` + `reviewTier` 消歧。
+> 📦 **最新版本 v1.2.3**（v1.2.2 转出项收口 · 补丁） — 并发 JSON 退出机制统一（emit → `process.exitCode=2` → return）+ `flow advance --help --review-tier` 文案订正（缺省=full 零裁剪）+ `req show` / `req set` 过滤单点化 + 锁等待超时 E2E 测试钩子（test-only）。**33 个成功出口 / 34 个注册选项**契约与退出码 0/1/2/3 语义不变。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 
@@ -47,6 +47,15 @@ npm install -g openfeel@latest # 更新到最新版本
 - **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast|general`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast|general`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast|general`（项目默认记忆）。**`general` 仅需求级合法**（v1.2.1 起，见下「v1.2.1 新增能力」）。
 - **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast|general] [--stage <id>]`（按模式查看转移表）。
 - **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
+
+## v1.2.3 修复（补丁）
+
+> 对应阶段：**stage-99**。本版为 v1.2.2 转出项收口，不新增功能；JSON 契约 33 成功出口 / 34 注册选项与退出码语义不变。本仓收口基线：**75 文件 / 1911 用例 / 21 阶段**。
+
+- **并发 JSON 退出机制统一（REV-95-009）**：`handleConcurrentConflict` JSON 分支改为「输出 `FLOW_CONCURRENT_CONFLICT` envelope → 置 `process.exitCode=2` → return」（与 `failCli` 同机制，规避 Windows 管道 stdout 截断）；非 JSON 分支 `console.error + process.exit(2)` 逐字不变；10 个调用点无 fallthrough。
+- **`--review-tier` help 文案订正（REV-98-003 第 6 项）**：`flow advance --help` 与 i18n zh/en 由「缺省=按模式派生」改为「缺省=full（零裁剪）」；按模式派生的是 `flow phases --json.reviewTier` 展示值；缺省推进行为不变。
+- **`req` 过滤单点化（REV-97-006）**：`req show` / `req set --workflow-mode` 复用 `listLinkedStages`；`req split` 与 core 引擎层 done 判定原语保留；行为零变化。
+- **锁等待超时 E2E 测试钩子（REV-98-006①，test-only）**：仅 `OPENFEEL_TEST_MODE=1` 生效的 env seam 使超时路径可稳定断言 `INTERNAL_ERROR/internal/3`；生产默认 5000/3000ms 不变。
 
 ## v1.2.2 新增能力
 

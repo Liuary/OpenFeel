@@ -29,7 +29,8 @@
 
 | 方法 / 常量 | 功能 |
 |------|------|
-| `withFileLock<T>(lockPath, fn, options?)` | 同步执行 fn，获取 / 释放建议性锁；`options` 含 `timeoutMs`（默认 5000）、`staleMs`（默认 3000）、`initialBackoffMs`（10）、`maxBackoffMs`（500） |
+| `withFileLock<T>(lockPath, fn, options?)` | 同步执行 fn，获取 / 释放建议性锁；`options` 含 `timeoutMs`（默认 5000）、`staleMs`（默认 3000）、`initialBackoffMs`（10）、`maxBackoffMs`（500）。**v1.2.3 测试钩子（非公开契约）**：仅 `OPENFEEL_TEST_MODE=1` 时，`OPENFEEL_TEST_LOCK_TIMEOUT_MS` / `OPENFEEL_TEST_LOCK_STALE_MS` 覆盖默认值（函数体内读取、正整数才生效、显式 options 优先、非法回落） |
+| `resolveTestLockDefault(envKey, fallback)` | 测试专用默认值解析（v1.2.3）：gate off 直接回落；`Number(raw)` 为正整数才生效 |
 | `projectLockPath(projectPath, name)` | 项目级锁路径 `.openfeel/tmp/locks/{name}.lock` |
 | `globalLockPath(name)` | 全局锁路径 `~/.openfeel/locks/{name}.lock` |
 | `LOCK_TIMEOUT_MS_DEFAULT` / `LOCK_STALE_MS_DEFAULT` 等 | 默认常量集中定义 |
@@ -52,6 +53,7 @@
 - **序号 `max+1` 降级为候选起点**：最终分配权归 `O_EXCL` 独占创建 + EEXIST 重试；`parse` 回调必须只解析文件名（空文件占位仍计入，不重号）。
 - **Windows 容错**：`renameSync` 目标被独占句柄打开时可能抛 `EPERM/EBUSY`；`unlinkSync` 释放失败 try/catch 静默忽略，靠 TTL 兜底。
 - **锁不嵌套**：同一进程不可对同一 lockPath 嵌套调用；共享写点各自取一把锁。
+- **测试钩子（v1.2.3-stage-99，REV-98-006①）**：`OPENFEEL_TEST_MODE=1` 门控的 env seam 只用于让 CLI E2E 稳定触发等待超时（`timeout=200ms` / `stale=60000ms` + fresh 锁）；生产 gate off 时零分支副作用，默认值与算法不变；显式 `options` 恒优先。非公开 CLI 契约。
 
 ## 接入范围
 
@@ -61,4 +63,5 @@
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.2.3-stage-99 | 2026-10-17 | 增测试专用 env seam（`OPENFEEL_TEST_MODE=1` + `OPENFEEL_TEST_LOCK_TIMEOUT_MS` / `OPENFEEL_TEST_LOCK_STALE_MS`）；新增 `test/cli/lock-timeout.test.ts` 断言锁超时 `INTERNAL_ERROR/internal/3`；生产默认与算法零改动 |
 | v1.1.0-stage-35 | 2026-09-12 | 初始创建（原子写 + 建议性文件锁 + 序号原子化三工具 + 高风险写入接入） |

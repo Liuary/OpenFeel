@@ -153,3 +153,11 @@
 - **后果 / 适用边界**：既有出口与退出码语义零改动；`--force` 为显式 opt-in；存量归档与 flow.json 零迁移；`dsh/` 零 diff。
 - **回滚**：`git revert` v1.2.4 归档 commit（`1797df2`）及版本分片归档 commit；版本号回退 1.2.3；无数据迁移。
 
+### ADR-015：v1.2.0 版本分片补做归档 —— 14 个版本书账对齐
+- **日期**：2026-10-17
+- **状态**：accepted（Feel 经 `openfeel flow archive` 补做）
+- **决策**：对 v1.2.0 八个 done 阶段执行 `flow archive v1.2.0` 补做版本分片：产物 `.openfeel/flow-archive/v1.2.0.json`（8 stages / 0 reviews / 153 log），`meta.archived_versions` 追加 `v1.2.0`，flow.json 中该版本阶段移除。**不补刷 op 尝试记录**（25 个 op 保持 pending / attempts=0），历史原貌留档。
+- **理由**：v1.2.0 收官期（2026-10-13）沿用「手工生成阶段摘要、不运行 `openfeel archive` CLI」的先例，版本分片从未创建；2026-10-17 补归档 v1.2.1~v1.2.4 时漏掉 v1.2.0，导致 8 个 done 阶段长期驻留 flow.json，与其余 13 个版本不一致。补做判据当前满足：全部阶段 done、0 blocking REV（`flow archive --dry-run` eligible=true）。
+- **后果 / 适用边界**：`pipeline.phase` 由归档逻辑按活跃集重算，空集 → `active`（`archive-ops` 既有语义，非异常）；flow.json 阶段数归零、log 361→209；v1.2.0 各阶段摘要（`.openfeel/log/archive-v1.2.0-stage-78.md`~`85.md`）不受影响；无源码 / 契约 / 命令行为变更。
+- **回滚**：`git revert` 本次提交；或从 `flow.json.bak`（归档前快照）恢复 flow.json 并删除 `flow-archive/v1.2.0.json`、从 `meta.archived_versions` 移除 v1.2.0。
+

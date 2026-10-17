@@ -80,6 +80,19 @@ openfeel flow status
 
 升级迁移提示见 [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)「工作流模式（full / fast）与自动推进」小节与 [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`。
 
+## v1.2.2 新增能力
+
+> 对应阶段：**stage-95 ~ 98**。以下能力**v1.2.2 起提供**；JSON 契约单一权威见 docs/json-contract.md（33 个成功出口 / 34 个注册选项）。本仓收口基线：74 文件 / 1894 用例 / 21 阶段。
+
+- **`openfeel flow next [--json]`（决策权威，只读）**：12 键固定序（`schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews`）；`responsibleAgent` 与 `mapPhaseToAgent` 同源；`legalNextPhases` 每个元素均被 `flow advance` 接受；零写盘。
+- **全局 `--project <path>`**：任意命令前置/后置/`=` 形态；语义等效 cwd；语言按目标项目、`--log-file` 相对路径按原始 cwd；`knowledge dedup` 保留本地声明（语法兼容）。
+- **读命令 `--json` 全量补全**：13 个命令面（`stage status` / `flow recover` / `flow checkpoint list` / `flow log` / `project overview` / `knowledge search|list|index|dedup` / `config get|effective` / `view list` / `plan scheme list`）+ `archive <stage> --json`；累计 **33 个成功出口 / 34 个注册选项**。
+- **机器可读错误封装**：`{schemaVersion:1,error:{code,kind,message,detail}}`；退出码 **0 成功 / 1 预期拒绝 / 2 并发冲突 / 3 内部错误（新增）**；legacy `{error:'...'}` 保留 string 类型与键序、末尾追加 `errorKind`；12 行 `code→kind→exitCode` 映射表。
+- **`--version --json`**：`{schemaVersion:1,version,node}`（三键；单列，不计入 33 出口/34 选项）。
+- **`flow archive --dry-run --json` 判据明细 + `archive <stage> --json`**：`eligible` / `unfinishedStages` / `blockingReviews`；`archivePath` / 计数；`--dry-run` 零写盘。
+- **`reviewTier` 消歧**：`flow phases --json` / `flow status.stages[]` / `flow next` 同时给出展示值 `reviewTier`/`displayReviewTier` 与生效值 `effectiveReviewTier`（恒 `full`）。**订正**：`flow advance` 未显式传 `--review-tier` 时生效档位恒 **`full`**（不是按模式派生）；按模式派生的是 `flow phases --json.reviewTier` 展示值。源码 help 文案订正转 v1.2.3。
+- **兼容承诺**：既有 19 个成功出口字段零破坏（只增不改）；人类输出逐字不变；退出码 0/1/2 语义不变、3 仅新增；phase 枚举 15 项 / `advanceAccepted` / full-fast 行为不变；存量 `flow.json` 零迁移零注入；REQ-001 L80「2=内部错误或用法错误」登记为需求文本勘误（权威口径见契约 §2/§10）。
+
 ## v1.2.1 新增能力
 
 > 对应阶段：**stage-86 ~ 93 + 94**（94 = 表外补阶段：模型默认值与部署非破坏性）。以下能力**v1.2.1 起提供**。
@@ -227,7 +240,7 @@ Core 层
 ```bash
 npm install        # 安装依赖
 npm run build      # 编译 TypeScript
-npm test           # 运行测试（1719 用例 / 71 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
+npm test           # 运行测试（1894 用例 / 74 个测试文件；Linux CI 跳过 1 个 Windows 专属用例）
 ```
 
 ## 致谢

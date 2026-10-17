@@ -1,6 +1,6 @@
 # JSON 输出契约与错误封装（json-contract）
 
-> 模块文档，由归档官在归档时维护。对应源码：`src/commands/shared/json-output.ts`、`src/core/errors.ts`、`src/commands/shared/errors.ts`、`src/cli/project-option.ts`。契约正文单一权威：`docs/json-contract.md`。**v1.2.2-stage-95 新建 / stage-96 扩展（`flow next` + 调度属性）/ stage-97 扩展至 33 成功出口**。
+> 模块文档，由归档官在归档时维护。对应源码：`src/commands/shared/json-output.ts`、`src/core/errors.ts`、`src/commands/shared/errors.ts`、`src/cli/project-option.ts`。契约正文单一权威：`docs/json-contract.md`。**v1.2.2-stage-95 新建 / stage-96 扩展（`flow next` + 调度属性）/ stage-97 扩展至 33 成功出口 / stage-98 收官归档核对（33/34 计数三处对齐、无源码变更）**。
 
 ## 职责
 
@@ -56,6 +56,7 @@
 
 | 版本 | 阶段 | 变更 |
 |------|------|------|
+| v1.2.2 | stage-98 | 文档收口：33/34 计数与多载体同步核对；无源码变更。`--version --json`（三键）单列，不计入 33 出口 / 34 注册选项 |
 | v1.2.2 | stage-95 | 新建：契约助手、18 出口冻结、错误层（12 行映射 / 退出码 0-3 / legacy `errorKind`）、`--version --json`、全局 `--project` |
 | v1.2.2 | stage-96 | `flow next` 第 19 出口；`stages[]` 5 调度属性 / `phases` 2 档位键（§12）；注册选项 20 |
 | v1.2.2 | stage-97 | 13 读命令面 + `archive <stage>` = 14 新出口（#20~#33）；`req list` / `flow archive` 增量；§13 读命令细则 + §14 REV 边界；**33 出口 / 34 注册选项** |

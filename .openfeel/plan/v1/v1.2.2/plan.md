@@ -4,7 +4,7 @@
 > **规模判定**：**大规模**（4 阶段，跨 `src/cli/**` + `src/commands/**`（11 个命令文件）+ `src/core/{flow-manager,errors,pipeline-schema,req/aggregate}.ts` + i18n 双表 + `test/**` + 文档/版本载体 + 适配器端到端验收；含**输出契约冻结**与**错误语义层**两类架构级变更）→ 独立 openfeel-planner → openfeel-reviewer 完整流程。
 > **定位**：把 CLI 变成**机器可读契约的唯一权威**——读命令全面 `--json`、失败结构化（稳定 `code` + `kind`）、调度决策（谁负责 / 下一步 / 建议命令 / 阻塞项）由 `flow next` 单点输出，消除 DSH 适配器对中文文本与 `PHASE_AGENT_MAP` 镜像的依赖。
 > **需求权威**：`docs/v1.2.2-requirements.md`（原文）+ `REQ-001`（标题：CLI 机器可读契约与调度决策下沉（DSH 适配器需求））。**所有阶段关联 REQ-001**。
-> **阶段计划**：`.openfeel/plan/v1/stage-95/plan.md` … `stage-98/plan.md`（**待注册**）。
+> **阶段计划**：`.openfeel/plan/v1/stage-95/plan.md` … `stage-98/plan.md`（**四阶段均已注册并归档，2026-10-17**）。
 > **路线图**：`.openfeel/roadmap/v1.2.2.md`。
 > **依赖声明**：`.openfeel/plan/v1/v1.2.2/deps.yaml`（阶段级 hard 依赖 + op 级由 openfeel-schemer 细化）。
 > **系列**：`v1`；`stageDir` 映射 `stage-95` ~ `stage-98`；阶段 ID 自 `v1.2.2-stage-95` 起（承接 v1.2.1-stage-94）。
@@ -193,7 +193,7 @@
 | M49 JSON 契约与错误封装基础设施 | stage-95 | **done（2026-10-17）** | [archive-v1.2.2-stage-95.md](../../../log/archive-v1.2.2-stage-95.md) | 18 出口冻结 + 错误层（0/1/2/3 + `errorKind`）+ `--version --json` + 全局 `--project`；门禁 74 文件 / 1779 用例；验收 0 Bug |
 | M50 调度决策权威 | stage-96 | **done（2026-10-17）** | [archive-v1.2.2-stage-96.md](../../../log/archive-v1.2.2-stage-96.md) | `flow next`（12 键）+ `stages[]` 5 调度属性 + `phases` 档位消歧 + 决策三单点；契约 19 出口 / 20 注册选项；门禁 74 文件 / 1809 用例；验收 0 Bug |
 | M51 读命令 `--json` 全量补全 | stage-97 | **done（2026-10-17）** | [archive-v1.2.2-stage-97.md](../../../log/archive-v1.2.2-stage-97.md) | 13 读命令面 + `archive <stage>` = 14 新成功出口（#20~#33）+ `req list` 末位两键 + `flow archive` 判据明细；契约 33 出口 / 34 注册选项；门禁 74 文件 / 1894 用例；验收 0 Bug |
-| M52 文档与版本收口 | stage-98 | 待执行 | — | 文档多载体 / CHANGELOG `[1.2.2]` / DSH 端到端验收 |
+| M52 文档与版本收口 | stage-98 | **done（2026-10-17）** | [archive-v1.2.2-stage-98.md](../../../log/archive-v1.2.2-stage-98.md) | 文档多载体 + `CHANGELOG [1.2.2]` + 版本 1.2.2 全链路；契约 33 出口 / 34 注册选项；DSH 最终验收通过（33 出口/11 项映射/15 决策/多项目/零回归/真实消费 48-48）；门禁 74 文件 / 1894 用例；验证 0 Bug；**v1.2.2 版本收官（四阶段 95~98 全 done）** |
 
 ### 依赖图与执行顺序（**严格串行**）
 
@@ -327,7 +327,8 @@ stage-95 ─▶ stage-96 ─▶ stage-97 ─▶ stage-98
 | 时间 | 制定人 | 说明 |
 |------|--------|------|
 | 2026-10-17 | openfeel-planner | 初稿：依据 `docs/v1.2.2-requirements.md` + `REQ-001` 制定 4 阶段（95~98）；源码核验 5 表 30+ 项；关键裁定 D-1~D-7；里程碑 M49~M52；版本收口 A/B/C/D/E；风险 R-1~R-12；开放问题 Q1~Q10。**只写计划文档，未改源码、未直写 flow.json、未推进 phase。** |
-| 2026-10-17 | openfeel-planner | **修订 1（stage-95 计划审查闭环同步）**：新增 D-0 扩展优先原则（全局不变量）；按用户最终裁定更新 D-1——退出码 0/1/2/3（并发冲突 `kind=refusal` + exit 2；内部错误 exit 3）、legacy 载荷追加 `errorKind`、12 行 code→kind→exitCode 映射表、REQ-001 L80 登记需求文本勘误；D-2 增补 REV-95-003 四项边界（语言按目标项目 / `--log-file` 原始 cwd / 预扫描成对防误判 / 单进程单命令）与 C2 扩展路径；D-4 增补构造顺序与 Q3 豁免判据；D-6 登记 `ARCHIVE_FAILED` 映射。同步更新 §一 P0-3、§二 A2/A6/A7/A8、§六 C（CHANGELOG 勘误+errorKind）、§七.3、§八.3/.7/.11、§九 R-2/R-3/R-12/R-13、§十 Q1~Q4、附录 A stage-95。**只写计划文档。** |
+| 2026-10-17 | openfeel-executor | **stage-98 收口实况回填（最小追加）**：CLI **1.2.2**；契约 **33 成功出口 / 34 注册选项**；门禁 **74 文件 / 1894 用例**（0 failed / 0 skipped）、`tsc --noEmit` 0、`lint i18n` 983、`lint kb` 0 过期；本仓 **21 阶段**；DSH 最终验收通过（33 出口 41/41、11 项映射 11/11、决策 15/15、多项目 5/5、零回归 5/5、真实消费 48/48 exit 0）；§四 M52/stage-98 状态与归档列同步回填。**不重写正文，未推进 phase / 未直写 flow.json。** |
+| 2026-10-17 | openfeel-archiver | **阶段归档 + v1.2.2 版本收官回填**：归档摘要 `.openfeel/log/archive-v1.2.2-stage-98.md` 生成（含「v1.2.2 版本收官」节：四阶段 95~98 全 done / 11 项需求出口与证据 / 33-34 口径 / REQ-001 自动收口说明）；M52 归档链接去「归档轮生成」占位并补版本收官备注。**只改计划回填与归档材料，未改源码 / 测试 / flow.json，未 commit / push。** |
 
 ---
 

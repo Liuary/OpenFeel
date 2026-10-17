@@ -8,7 +8,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.2.1**（需求接取与拆分 / 三模式 / 审查档位 / 通用工作者） — 需求 `openfeel req`（11 子命令 / 7 状态；+`split` 拆分即发布）+ 三模式 `full / fast / general` + 审查档位 `--review-tier` + `openfeel-explorer`（只读）+ 可观测性（`metrics` / 日志 3 字段）+ 模型默认值统一与部署非破坏性（用户主权键 `model`）。
+> 📦 **最新版本 v1.2.2**（机器可读契约与调度决策下沉） — `openfeel flow next [--json]`（12 键调度决策，只读）+ 全局 `--project <path>` + 读命令 `--json` 全量补全（**33 个成功出口 / 34 个注册选项**）+ 错误封装 `code` + `kind` + `errorKind`（退出码 0/1/2/3）+ `--version --json` + `flow archive --dry-run --json` 判据明细 + `archive <stage> --json` + `reviewTier` 消歧。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 
@@ -47,6 +47,19 @@ npm install -g openfeel@latest # 更新到最新版本
 - **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast|general`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast|general`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast|general`（项目默认记忆）。**`general` 仅需求级合法**（v1.2.1 起，见下「v1.2.1 新增能力」）。
 - **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast|general] [--stage <id>]`（按模式查看转移表）。
 - **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
+
+## v1.2.2 新增能力
+
+> 对应阶段：**stage-95 ~ 98**。以下能力**v1.2.2 起提供**；JSON 契约单一权威见 docs/json-contract.md（33 个成功出口 / 34 个注册选项）。本仓收口基线：74 文件 / 1894 用例 / 21 阶段。
+
+- **`openfeel flow next [--json]`（决策权威，只读）**：12 键固定序（`schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews`）；`responsibleAgent` 与 `mapPhaseToAgent` 同源；`legalNextPhases` 每个元素均被 `flow advance` 接受；零写盘。
+- **全局 `--project <path>`**：任意命令前置/后置/`=` 形态；语义等效 cwd；语言按目标项目、`--log-file` 相对路径按原始 cwd；`knowledge dedup` 保留本地声明（语法兼容）。
+- **读命令 `--json` 全量补全**：13 个命令面（`stage status` / `flow recover` / `flow checkpoint list` / `flow log` / `project overview` / `knowledge search|list|index|dedup` / `config get|effective` / `view list` / `plan scheme list`）+ `archive <stage> --json`；累计 **33 个成功出口 / 34 个注册选项**。
+- **机器可读错误封装**：`{schemaVersion:1,error:{code,kind,message,detail}}`；退出码 **0 成功 / 1 预期拒绝 / 2 并发冲突 / 3 内部错误（新增）**；legacy `{error:'...'}` 保留 string 类型与键序、末尾追加 `errorKind`；12 行 `code→kind→exitCode` 映射表。
+- **`--version --json`**：`{schemaVersion:1,version,node}`（三键；单列，不计入 33 出口/34 选项）。
+- **`flow archive --dry-run --json` 判据明细 + `archive <stage> --json`**：`eligible` / `unfinishedStages` / `blockingReviews`；`archivePath` / 计数；`--dry-run` 零写盘。
+- **`reviewTier` 消歧**：`flow phases --json` / `flow status.stages[]` / `flow next` 同时给出展示值 `reviewTier`/`displayReviewTier` 与生效值 `effectiveReviewTier`（恒 `full`）。**订正**：`flow advance` 未显式传 `--review-tier` 时生效档位恒 **`full`**（不是按模式派生）；按模式派生的是 `flow phases --json.reviewTier` 展示值。源码 help 文案订正转 v1.2.3。
+- **兼容承诺**：既有 19 个成功出口字段零破坏（只增不改）；人类输出逐字不变；退出码 0/1/2 语义不变、3 仅新增；phase 枚举 15 项 / `advanceAccepted` / full-fast 行为不变；存量 `flow.json` 零迁移零注入；REQ-001 L80「2=内部错误或用法错误」登记为需求文本勘误（权威口径见契约 §2/§10）。
 
 ## v1.2.1 新增能力
 

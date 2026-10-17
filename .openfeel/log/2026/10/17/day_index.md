@@ -20,3 +20,8 @@
 | [2026-10-17-Liuary-015.md](2026-10-17-Liuary-015.md) | Liuary | v1.2.2-stage-97.op-004 执行通过 |
 | [2026-10-17-Liuary-016.md](2026-10-17-Liuary-016.md) | Archiver | v1.2.2-stage-97 归档完成（读命令 `--json` 全量补全：13 命令面 + `archive <stage>` → 33 出口） |
 | [2026-10-17-Liuary-017.md](2026-10-17-Liuary-017.md) | Liuary | 阶段 v1.2.2-stage-97 完成 |
+| [2026-10-17-Liuary-018.md](2026-10-17-Liuary-018.md) | Liuary | v1.2.2-stage-98.op-001 执行通过 |
+| [2026-10-17-Liuary-019.md](2026-10-17-Liuary-019.md) | Liuary | v1.2.2-stage-98.op-002 执行通过 |
+| [2026-10-17-Liuary-020.md](2026-10-17-Liuary-020.md) | Liuary | v1.2.2-stage-98.op-003 执行通过 |
+| [2026-10-17-Liuary-021.md](2026-10-17-Liuary-021.md) | Archiver | v1.2.2-stage-98 归档完成 + **v1.2.2 版本收官**（文档与版本收口：版本 1.2.2 全链路 + DSH 33 出口 41/41 + 真实消费 48/48） |
+| [2026-10-17-Liuary-022.md](2026-10-17-Liuary-022.md) | Liuary | 阶段 v1.2.2-stage-98 完成 |

@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.2.1 快照** | 更新日期：2026-10-15 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.2.2 快照** | 更新日期：2026-10-17 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -187,6 +187,66 @@ openfeel req board                                               # 看板视图�
 
 需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**全部关联阶段 done 时需求自动收口**。用法权威源见 `openfeel-req` skill。
 
+## v1.2.2 能力速览
+
+> 对应阶段 stage-95 ~ 98。以下能力**v1.2.2 起提供**；JSON 契约单一权威见 [json-contract.md](json-contract.md)（33 个成功出口 / 34 个注册选项；本仓收口基线 74 文件 / 1894 用例 / 21 阶段）。完整命令/参数细节以 `openfeel <cmd> --help` 实时输出为准。
+
+**① 决策权威（`flow next`，只读）**——12 键固定序，适配器不再镜像 phase→agent 映射：
+
+```bash
+openfeel flow next --json
+```
+
+```json
+{
+  "schemaVersion": 1,
+  "stage": "v1.2.2-stage-98",
+  "phase": "exec_running",
+  "responsibleAgent": "openfeel-executor",
+  "legalNextPhases": ["review_pending"],
+  "suggestedCommand": "openfeel flow advance --stage v1.2.2-stage-98 --to review_pending",
+  "guards": []
+}
+```
+
+（示例为截取；完整 12 键见契约 §12.1。`responsibleAgent` 与 `mapPhaseToAgent` 同源；`legalNextPhases` 每个元素均被 `flow advance` 接受。）
+
+**② 多项目（全局 `--project`）**——语义等效 cwd，前置/后置/`=` 形态均可：
+
+```bash
+openfeel --project ../projB flow status --json
+openfeel flow status --json --project ../projB
+```
+
+命令输出语言按**目标项目**解析；`--log-file` 相对路径按**原始 cwd** 解析；`--help` 语言在 chdir 前求值（按原始 cwd）。
+
+**③ 读命令 JSON**——13 个命令面新增 `--json`，统一单文档 + `schemaVersion` 首键，可选字段缺省 `null`：
+
+```bash
+openfeel flow status --json
+openfeel stage status v1.2.2-stage-98 --json
+```
+
+**④ 错误封装**——失败路径输出机器可读 envelope；退出码 0/1/2/3：
+
+```json
+{
+  "schemaVersion": 1,
+  "error": {
+    "code": "PHASE_TRANSITION_ILLEGAL",
+    "kind": "refusal",
+    "message": "……",
+    "detail": null
+  }
+}
+```
+
+退出码：`0` 成功 / `1` 预期拒绝 / `2` 并发冲突 / `3` 内部错误（v1.2.2 新增）。legacy 形态保留 `error` 为 string，仅在末尾追加 `errorKind`；判别唯一规则 `typeof doc.error === 'string'`。
+
+**⑤ 档位语义订正（`--review-tier`）**——`flow advance` 未显式传 `--review-tier` 时**生效档位恒 `full`**；**展示值**按模式派生（`flow phases --json.reviewTier` / `displayReviewTier`）；`effectiveReviewTier` 三处（`flow next` / `flow status.stages[]` / `flow phases`）恒为 `full`。源码 help 文案订正转 v1.2.3。
+
+**⑥ 升级兼容**——存量 `flow.json` 零迁移零注入；既有 19 个成功出口字段零破坏（只增不改）；人类输出逐字不变；退出码 0/1/2 语义不变、3 仅新增。
+
 ## v1.2.1 能力速览
 
 > 对应阶段 stage-86 ~ 93 + 94（94 = 表外补阶段）。完整命令/参数细节以 `openfeel <cmd> --help` 实时输出为准；能力名叙述权威源见 `openfeel-cli-usage` skill。
@@ -209,7 +269,7 @@ openfeel req advance REQ-003 --to done               # general 需求可显式�
 openfeel stage set stage-01 --workflow-mode full     # 阶段级：仅 full / fast
 ```
 
-**③ 审查档位（`--review-tier`）**——与工作流模式正交；缺省按模式派生：
+**③ 审查档位（`--review-tier`）**——与工作流模式正交；`flow advance` 缺省**生效档位**恒 `full`（展示值按模式派生）：
 
 ```bash
 openfeel flow advance --stage stage-01 --to plan_passed --review-tier skip
@@ -226,24 +286,26 @@ openfeel flow advance --stage stage-01 --to plan_passed --review-tier skip
 | 命令 | 说明 |
 |------|------|
 | `openfeel init [path]` | 初始化项目工作区，创建 `.openfeel/` 目录结构与配置文件 |
-| `openfeel flow` | 流水线状态管理（`status`/`current`/`advance`/`attempt`/`log` 等；`advance` 支持 `--review-tier <full|lean|skip>`） |
+| `openfeel flow` | 流水线状态管理（`status`/`current`/`advance`/`attempt`/`log`/`next` 等；`advance` 支持 `--review-tier <full|lean|skip>`） |
+| `openfeel flow next [--json]` | 当前阶段调度决策（负责 Agent / 合法下一相位 / 建议命令 / 守卫 / 阻塞 REV；只读，**v1.2.2 起**） |
 | `openfeel flow mode` | 查看当前阶段的工作流模式与来源（只读，支持 `--stage` / `--json`） |
 | `openfeel plan` | 计划管理（`stage add/list`、`scheme create/list`） |
 | `openfeel view` | 审查条目管理（`list`/`add`/`accept`） |
-| `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识）（**阶段摘要归档**） |
+| `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要、提取知识）（**阶段摘要归档**；支持 `--json`，v1.2.2 起） |
 | `openfeel flow archive` | flow.json 版本分片归档（`<version>` / `list` / `show`；与 `openfeel archive` 阶段摘要归档区分） |
 | `openfeel req` | 需求流转（`add`/`list`/`show`/`claim`/`release`/`set`/`link`/`advance`/`split`/`board`/`next`，共 11 子命令） |
 | `openfeel roadmap` | 分期大纲管理（`create`/`show`） |
 | `openfeel instructions <artifactId>` | 生成结构化指令（XML 或 JSON） |
 | `openfeel update [path] [--tools <list>]` | 部署 OpenFeel 适配文件到目标项目 |
 | `openfeel setup [--check] [--tools <list>]` | 部署全局框架配置；`--check [--json]` 只读诊断全局部署与 CLI 版本一致性 |
-| `openfeel knowledge` | 知识库管理（`list`/`add`/`search`/`index`） |
-| `openfeel stage` | 工作阶段状态管理（status.md 原子操作） |
-| `openfeel project` | 项目管理与概览 |
-| `openfeel config` | 配置管理（`get`/`set`，支持 `--global`） |
+| `openfeel knowledge` | 知识库管理（`list`/`add`/`search`/`index`/`dedup`；读命令支持 `--json`） |
+| `openfeel stage` | 工作阶段状态管理（status.md 原子操作；`status` 支持 `--json`） |
+| `openfeel project` | 项目管理与概览（`overview` 支持 `--json`） |
+| `openfeel config` | 配置管理（`get`/`set`，支持 `--global`；`get`/`effective` 支持 `--json`） |
 | `openfeel lint` | 项目健康检查（i18n 键一致性、kb 引用有效性） |
-| `openfeel -v, --version` | 输出版本号 |
+| `openfeel -v, --version` | 输出版本号（`--version --json` / `-v --json` → `{schemaVersion:1,version,node}`，v1.2.2 起） |
 | `openfeel -h, --help` | 显示命令帮助信息 |
+| 全局选项 `--project <path>` | 以指定目录为项目上下文（语义等效 cwd；v1.2.2 起） |
 
 ## 相关文档
 

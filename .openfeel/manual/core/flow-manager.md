@@ -199,6 +199,7 @@ plan_pending → plan_review → plan_passed
 - **`DEFAULT_EFFECTIVE_REVIEW_TIER`**（`pipeline-schema.ts`）：生效档位单源常量；`flow advance` 的 `explicitTier ?? DEFAULT_EFFECTIVE_REVIEW_TIER` 值恒 `'full'`（行为零变化）；`flow next` / `stages[]` / `phases` 三出口引用同一常量。
 - **只读承诺**：`flow next` 不 `save()` / 不 `appendLog` / 不改 phase；`legalNextPhases` 复用 `getAvailablePhases`（唯一取表点），与 `advance --dry-run` 接受集交叉断言（直接可达 ⊂ 接受集）。
 - 三处档位语义（展示 vs 生效）与契约见 `manual/cli/commands.md`「调度决策面」与 `docs/json-contract.md` §12；架构判据见 `kb/architecture.md #调度决策单一权威架构`。
+- **stage-98 文档收口复核**：无 API 变更；`--review-tier` 缺省 `full` 以契约 §12.3 为准（`flow phases --json.reviewTier` 为展示值）。
 
 ### 读命令 JSON 投影消费点（v1.2.2-stage-97）
 

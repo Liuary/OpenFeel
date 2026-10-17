@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-17T06:46:00.992Z",
-    "revision": 1258,
+    "updated": "2026-10-17T08:00:09.886Z",
+    "revision": 1277,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -17,9 +17,9 @@
     ]
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "v1.2.2-stage-97",
+      "stage": "v1.2.2-stage-98",
       "op": ""
     },
     "retry": 0
@@ -978,16 +978,79 @@
     },
     "v1.2.2-stage-98": {
       "name": "v1.2.2-stage-98",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.2.2-stage-95",
         "v1.2.2-stage-96",
         "v1.2.2-stage-97"
       ],
-      "ops": {},
+      "ops": {
+        "op-001": {
+          "title": "T1 文档多载体同步（README×3 / GETTING_STARTED / commands / json-contract 定稿 / manual / cli-usage 快照 v1.2.2）+ 同批 build",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-10-17T07:10:16.884Z",
+          "completed_at": "2026-10-17T07:10:16.884Z"
+        },
+        "op-002": {
+          "title": "T3 DSH 端到端验收资产准备与预演（隔离 fixture + 33 出口契约矩阵 + 11 项需求映射 + 适配器视角消费脚本）",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-10-17T07:32:08.589Z",
+          "completed_at": "2026-10-17T07:32:08.589Z"
+        },
+        "op-003": {
+          "title": "T2 版本 1.2.2 全链路收口（A/B/C/D/E）+ T3 最终 DSH 端到端验收 + T4 回填 + T5 门禁 + 终局报告与入管（**阶段最终 op**）",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-10-17T07:43:45.386Z",
+          "completed_at": "2026-10-17T07:43:45.386Z"
+        }
+      },
       "workflow_mode": "full",
-      "requirement_id": "REQ-001"
+      "requirement_id": "REQ-001",
+      "stats": {
+        "start_time": "2026-10-17T06:46:03.579Z",
+        "end_time": "2026-10-17T08:00:09.854Z",
+        "duration_ms": 4446275
+      }
     }
   },
   "reviews": [],
@@ -6450,15 +6513,235 @@
         "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-10-17T06:46:03.579Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-17T06:49:12.530Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T06:49:12.954Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T07:01:43.291Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-10-17T07:01:43.693Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-10-17T07:01:44.063Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-10-17T07:01:44.457Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T07:04:35.258Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "scheme_review",
+        "to": "scheme_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T07:04:35.704Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T07:10:16.884Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.2.2-stage-98.op-001",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-17T07:32:08.589Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.2.2-stage-98.op-002",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-17T07:43:45.386Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.2.2-stage-98.op-003",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-10-17T07:43:45.865Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T07:48:03.076Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T07:48:03.528Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "review_passed",
+        "to": "test_pending",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T07:52:33.124Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.2.2-stage-97",
+        "opsCount": 4,
+        "reviewsCount": 0,
+        "knowledgeCount": 0,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.2.2-stage-97.md"
+      }
+    },
+    {
+      "time": "2026-10-17T07:55:36.910Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "test_pending",
+        "to": "test_passed",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T07:55:37.258Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "test_passed",
+        "to": "archiving",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T08:00:09.854Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.2.2-stage-98",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "env:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-17T08:00:09.886Z",
+      "agent": "cli",
+      "action": "requirement_auto_done",
+      "detail": {
+        "requirementId": "REQ-001",
+        "from": "in_progress",
+        "to": "done",
+        "triggerStage": "v1.2.2-stage-98"
+      }
     }
   ],
   "requirements": [
     {
       "id": "REQ-001",
       "title": "CLI 机器可读契约与调度决策下沉（DSH 适配器需求）",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-10-17T02:52:01.174Z",
-      "updated_at": "2026-10-17T04:42:07.905Z",
+      "updated_at": "2026-10-17T08:00:09.886Z",
       "target_version": "v1.2.2",
       "priority": "P0",
       "workflow_mode": "full",

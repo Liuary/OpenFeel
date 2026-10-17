@@ -1,6 +1,8 @@
 # CLI 命令体系（commands）
 
 > 模块文档，由归档官在归档时维护。对应源码：`src/cli/index.ts` + `src/commands/*.ts`。
+>
+> **版本快照：v1.2.2（2026-10-17 收官归档核对）** —— 契约 **33 成功出口 / 34 注册 `--json` 选项**（`--version --json` 单列）；命令面与本模块「调度决策面」「读命令 `--json` 全量补全」「全局选项与错误处理」三节一致，细节以 `node bin/openfeel.js <cmd> --help` 实测为准。
 
 ## 职责
 
@@ -193,6 +195,7 @@ src/commands/req.ts         registerReqCommand
 - **内部异常口径**：JSON 模式内部异常 exit 3；`view list` 人类模式与 `flow archive` 非 dry-run `save()` 异常保持 exit 1（已登记边界，见 `docs/json-contract.md` §13.4 / §14.1）。
 - **判定风格**：13 命令面的成功分支读**命令级 `options.json`**，错误 envelope 一律经 `isJsonMode()` 单点（§13 登记例外；`flow next` 沿用 `isJsonMode()`）。
 - **已知边界**：`plan scheme list.draft` 的 opId 跨阶段同名匹配风险（§13.5，转 stage-98）；`knowledge index.recentUpdates` 的 `category/title` 受索引表头解析口径影响（人类输出同样表现，非本阶段引入）。
+- **stage-98（文档收口）**：快照 / 计数 / 错误封装 / 读命令说明定稿；无源码变更。
 
 ### 需求命令组 `req`（v1.2.0-stage-82）
 
@@ -235,7 +238,7 @@ src/commands/req.ts         registerReqCommand
 
 ## 相关 skill
 
-- **`openfeel-cli-usage`**（CLI 用法参考，**查询型**）：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 三格式与目录映射约定、典型场景、权限要点；含**快照声明**「本文档为 v1.1.7 快照，命令/参数细节以 `node bin/openfeel.js <cmd> --help` 实时输出为准」（防文档-实现发散；**归档官 2026-10-11 补正**：权威源 `src/core/templates-data/skills/openfeel-cli-usage/SKILL.md` 已于 **v1.1.7-stage-76** 更新为 v1.1.7 快照，含 `--tools <list>` + Claude 适配器升级/重启流程 + 权限模型分节 + **v1.1.7 双模式工作流**（`flow mode` / `flow phases --mode` 6 键 / `--workflow-mode` / `--sync-stages --stage`）；skill 权威源已于 stage-68 迁**中立共享源**）。与 `openfeel-wizard`（**执行型**交互向导）职责分离、正文互引。
+- **`openfeel-cli-usage`**（CLI 用法参考，**查询型**）：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 三格式与目录映射约定、典型场景、权限要点；含**快照声明**「本文档为 v1.2.2 快照，命令/参数细节以 `node bin/openfeel.js <cmd> --help` 实时输出为准」（防文档-实现发散；**v1.2.2-stage-98 更新说明**：权威源 `src/core/templates-data/skills/openfeel-cli-usage/SKILL.md` 已同批更新为 **v1.2.2 快照**，含 `flow next` / 全局 `--project` / 13 读命令 `--json`（33 成功出口 / 34 注册选项）/ 错误封装 / `--version --json` / `reviewTier` 消歧；skill 权威源已于 stage-68 迁**中立共享源**）。与 `openfeel-wizard`（**执行型**交互向导）职责分离、正文互引。
   - 权威源：`src/core/templates-data/skills/openfeel-cli-usage/SKILL.md`（**中立共享源**，stage-68 由 `templates-data/opencode/skills/` 迁入；**扁平单文件、中文单语**）；经 `npm run build` 双注入（`update.ts` 的 `SKILL_DEFINITIONS` / `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`）；由 `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（**生成物禁手改**）。**stage-55 起仓库自身不再自举项目级 `.opencode/skills/**`**（自举步骤已随 `build.js` 步骤 8 移除）。skill 总数 **18**。
   - 维护触发：新增/修改 CLI 命令、phase 枚举或 stageId 约定时，须同批更新该 skill 权威源 + 跑 build（详见 `manual/index.md` 维护规则「skill 体系」行）。
 

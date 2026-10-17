@@ -1,0 +1,194 @@
+# v1.2.2-stage-98 op 依赖声明（文档与版本收口 · v1.2.2 收官）
+# 由 openfeel-schemer 生成；调用方调度前用 Glob 校验 ops.*.file 与 produces 实际文件存在性
+# 参见 kb/patterns.md #op 文件命名规范（仅编号）+ #deps.yaml 声明实际文件名
+# 修订：2026-10-17 openfeel-schemer 初版（计划 §八 est_ops=3 定稿；REV-98-001~004 全吸收）
+# 说明① op 数 = 3（维持计划 est_ops=3），执行序恒为 op-001 → op-002 → op-003（阶段最终 op）。
+#   不采用计划 §八 的 2 op 降级：DSH 验收面重（33 出口 + 11 映射 + 五矩阵 + 真实消费），
+#   并入最终 op 会压垮收口；本方案把「验收资产准备与预演」独立为 op-002，最终认证仍在 op-003
+#   （满足计划 T3「验收须在收口 op 内」）。理由登记于 op-001 D-98-001。
+# 说明② 关键方案期裁定（全量论证见各 op 头部）：
+#   D-98-001 op 数 3：文档 → 验收资产/预演 → 版本收口+最终验收+回填+门禁。
+#   D-98-002 json-contract 定稿边界：仅头部/§7 单列/§9 载体状态；冻结表零改；契约测试零改。
+#   D-98-003 收口顺序：CHANGELOG → A 类 10 处 → B build ×2 → 版本验证 → A/D 审计 → 最终 DSH 验收
+#     → roadmap/plan 回填 → 门禁 → 终局报告 → ops 入管；版本写入后零代码改动。
+#   D-98-004 --review-tier：文档面登记「flow advance 缺省 full」；源码 help 订正转 v1.2.3；禁改 flow.ts。
+#   D-98-005 A 类纪律：单行 edit / 禁广谱 sed / package-lock 仅 root :3/:9 / config.yaml 单行 / 禁 npm install。
+#   D-98-006 计数权威：33 成功出口 / 34 注册选项 / --version --json 单列 / 21 阶段 / 74-1894 / i18n 983。
+#   D-98-007 DSH 验收：真实消费优先（PATH shim + verify.js，只读）；降级 = 适配器视角消费脚本 + 未执行原因
+#     + 补验窗口 ≤ 1 个版本；DSH 镜像退役登记为转出项（只读边界）。
+#   D-98-008 零回归：不改 CLI 语义 / phase 枚举 / advanceAccepted / 既有 19 出口 / 人类输出；不写 flow.json。
+#   D-98-009 入管：git add 逐文件精确（禁 -A）；tmp / flow.json / metrics / checkpoints / users 不入管。
+#   D-98-010 最终 op 后无后续依赖：op-003 完成后进入审查/测试/归档轮，无下一执行 op 读取其产物。
+# 说明③ deps 字段语义：file = op 短文件名（调用方按 ops 目录拼接）；file_path = 项目根相对完整路径
+#   （Glob 校验存在性）；produces = 该 op 实际产出的受管文件清单（Glob 校验；tmp 文件另列 produces_tmp）。
+version: "1.1"
+stage: v1.2.2-stage-98
+series: v1
+version_label: v1.2.2
+generated_by: openfeel-schemer
+generated_at: "2026-10-17"
+
+baseline:
+  head: "cdef4ae"
+  cli_version: "1.2.1"
+  tests: "74 文件 / 1894 用例（阶段起点；阶段末以实测登记）"
+  tsc: "0"
+  lint_i18n: "983"
+  lint_kb: "0 过期 / 622 引用（计划登记 614；以本会话实测登记）"
+  json_exports: "33 成功出口 / 34 注册选项（--version --json 单列，不计入）"
+  flow_meta: "meta.revision 1261 / 21 stages / reviews 0"
+  dsh: "C:/Users/Liuary/Dev/Mine/AI/OpenFeel-DSH（只读；plugin/lib/adapters/cli.js + plugin/test/verify.js 可用）"
+  notes: "REV-98-001：HEAD / 门禁值按计划修订 1 登记；行号仅快照，执行按内容特征定位。"
+
+cross_stage_constraints:
+  - upstream: v1.2.2-stage-95
+    type: hard
+    status: done
+    reason: "契约助手 / 错误层 / 12 码表 / --version --json / 全局 --project 已落地；19 出口基线（stage-96 后）。"
+  - upstream: v1.2.2-stage-96
+    type: hard
+    status: done
+    reason: "flow next 第 19 出口 + stages[] 5 调度属性 + phases 档位消歧已冻结；本阶段只读。"
+  - upstream: v1.2.2-stage-97
+    type: hard
+    status: done
+    reason: "13 读命令面 + archive <stage> = 14 新出口（#20~#33）；33 出口 / 34 注册选项冻结；本阶段只读。"
+  - upstream: REV-98-001~004（plan_review）
+    type: hard
+    status: "pending → 本阶段吸收"
+    reason: "001 基线重登记（HEAD cdef4ae / 74-1894 / 983 / 622 / 21 stages）；002 计数权威 33/34/21 + --version --json 单列；003 承接三分 + --review-tier 文档面裁定；004 DSH 降级判据。"
+  - downstream: v1.2.2 归档轮
+    type: soft
+    status: "本阶段 done 后由 Feel/主会话执行"
+    reason: "flow archive v1.2.2 前置 = 阶段 done；归档轮落点（kb 补沉 / manual 面 / cli-usage 快照去向）在 final-report 登记；本阶段不执行归档、不推进 phase。"
+  - downstream: DSH 侧适配器改造
+    type: soft
+    status: "转出（非本阶段阻塞）"
+    reason: "DSH dashboard.js 仍持有 PHASE_AGENT 镜像、未消费 flow next --json；本仓只读 DSH，登记为 DSH 侧后续改造项（CLI 侧单点权威已提供）。"
+  - downstream: 版本载体
+    type: hard
+    note: "1.2.2 全链路 A/B/C/D/E 收口后，阶段结束前不再引入代码改动；op-003 为最终 op。"
+
+ops:
+  op-001:
+    file: op-001.md
+    file_path: .openfeel/plan/v1/stage-98/ops/op-001.md
+    title: "T1 文档多载体同步（README×3 / GETTING_STARTED / commands / json-contract 定稿 / manual / cli-usage 快照 v1.2.2）+ 同批 build"
+    produces:
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - docs/GETTING_STARTED.md
+      - docs/commands.md
+      - docs/json-contract.md
+      - .openfeel/manual/index.md
+      - .openfeel/manual/cli/commands.md
+      - .openfeel/manual/core/flow-manager.md
+      - .openfeel/manual/core/req.md
+      - .openfeel/manual/core/json-contract.md
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - test/core/templates.test.ts
+      - src/core/template-loader.ts
+      - src/core/update.ts
+    produces_tmp:
+      - .openfeel/tmp/stage-98/baseline.md
+      - .openfeel/tmp/stage-98/doc-baseline/
+      - .openfeel/tmp/stage-98/stale-count-scan-before.txt
+    deps: []
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T1。① 基线快照 + --help 实测落盘 ② README×3 v1.2.2 节（8 条同构）+ 横幅 + 测试数 1894/74 ③ GETTING_STARTED 快照 + v1.2.2 能力速览 + review-tier 订正 + 速查表 ④ commands 全局选项 / flow next / 13 读命令 / 错误封装 / JSON 出口一览 ⑤ json-contract 定稿（头部 + §7 --version --json 单列 + §9 已同步；冻结表零改）⑥ manual 5 文件核对 + 变更历史 ⑦ cli-usage SKILL 快照 v1.2.2 + 新节 ⑧ templates.test.ts S5 同批 ⑨ build ×2 ⑩ 陈旧计数全枚举扫描。不改版本号 / 源码逻辑 / CHANGELOG。"
+
+  op-002:
+    file: op-002.md
+    file_path: .openfeel/plan/v1/stage-98/ops/op-002.md
+    title: "T3 DSH 端到端验收资产准备与预演（隔离 fixture + 33 出口契约矩阵 + 11 项需求映射 + 适配器视角消费脚本）"
+    produces: []
+    produces_tmp:
+      - .openfeel/tmp/stage-98/e2e/lib/fixture.mjs
+      - .openfeel/tmp/stage-98/e2e/run-exports.mjs
+      - .openfeel/tmp/stage-98/e2e/run-mapping.mjs
+      - .openfeel/tmp/stage-98/e2e/run-error-matrix.mjs
+      - .openfeel/tmp/stage-98/e2e/run-decision.mjs
+      - .openfeel/tmp/stage-98/e2e/run-multi-project.mjs
+      - .openfeel/tmp/stage-98/e2e/run-zero-regression.mjs
+      - .openfeel/tmp/stage-98/e2e/dsh-consumer.mjs
+      - .openfeel/tmp/stage-98/e2e/bin/openfeel.cmd
+      - .openfeel/tmp/stage-98/e2e/rehearsal-report.md
+      - .openfeel/tmp/stage-98/e2e/logs/
+    deps:
+      - op: op-001
+        type: hard
+        reason: "文档冻结 + build 产物就绪；预演以 op-001 的 build 为输入。"
+      - op: stage-95
+        type: hard
+        reason: "契约助手 / 错误层 / --version --json / --project 已冻结。"
+      - op: stage-96
+        type: hard
+        reason: "flow next / stages[] 调度属性 / phases 档位消歧已冻结。"
+      - op: stage-97
+        type: hard
+        reason: "13 读命令 + archive <stage> = 33 出口冻结。"
+    retry:
+      max: 3
+      on_fail: 回退 Feel 重议
+    notes: "T3 准备 + 预演（CLI 1.2.1）。① 隔离 fixture 工厂（精简 .openfeel + schema；OPENFEEL_LOG=0 + 临时 HOME/USERPROFILE）② 33 出口 + --version --json 进程级契约（键序/首键/单文档/带空态；零写盘哈希）③ 11 项需求映射（P0-1~P2-4；P2-3 单列）④ 错误矩阵（refusal/legacy/no-init/并发/内部；zh/en code 一致）⑤ 15 phase 决策矩阵 + advance 接受集交叉 ⑥ 多项目 --project 三形态 + 非法路径 ⑦ 零回归（人类输出 diff / 21 阶段 / 15 phase / flow.json 哈希）⑧ DSH 适配器视角消费脚本（FeelCli 逐出口 + errorFromResult）⑨ DSH 真实消费（PATH shim + verify.js，只读；contract/integration 缺运行时则跳过登记）⑩ 预演报告。不改任何源码/文档/计划/flow.json；DSH 镜像边界登记为转出项。"
+
+  op-003:
+    file: op-003.md
+    file_path: .openfeel/plan/v1/stage-98/ops/op-003.md
+    title: "T2 版本 1.2.2 全链路收口（A/B/C/D/E）+ T3 最终 DSH 端到端验收 + T4 回填 + T5 门禁 + 终局报告与入管（阶段最终 op）"
+    produces:
+      - CHANGELOG.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - src/core/config.ts
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - .openfeel/roadmap/v1.2.2.md
+      - .openfeel/plan/v1/v1.2.2/plan.md
+      - .openfeel/plan/v1/stage-98/ops/op-001.md
+      - .openfeel/plan/v1/stage-98/ops/op-002.md
+      - .openfeel/plan/v1/stage-98/ops/op-003.md
+      - .openfeel/plan/v1/stage-98/ops/deps.yaml
+    produces_tmp:
+      - .openfeel/tmp/stage-98/final-report.md
+      - .openfeel/tmp/stage-98/dsh-e2e-report.md
+      - .openfeel/tmp/stage-98/d-class-whitelist.md
+      - .openfeel/tmp/stage-98/rev-handoff.md
+      - .openfeel/tmp/stage-98/version-closure.md
+      - .openfeel/tmp/stage-98/gate.log
+    deps:
+      - op: op-001
+        type: hard
+        reason: "文档冻结；C 类传播与回填以 op-001 文档为前提。"
+      - op: op-002
+        type: hard
+        reason: "验收工具链与预演就绪；本 op 复跑并覆盖最终认证。"
+    retry:
+      max: 3
+      on_fail: "停止 + 上报 Feel（不在本 op 内改业务代码；字段/键序不符回退对应前序 op）"
+    notes: "T2 + T3 最终 + T4 + T5。收口顺序固定：① CHANGELOG [1.2.2]（Added/Changed/Compatibility/Documentation + REQ-001 L80 勘误）② A 类 10 处单行 edit ③ B 类 build ×2 ④ --version=1.2.2 / --version --json ⑤ A/D 白名单审计（零未判类）⑥ 最终 DSH 验收（33 出口 + 11 映射 + 五矩阵 + 真实消费或降级登记 + 三要素）⑦ roadmap/plan 回填（状态已归档 / M52 done / 最小追加）⑧ 门禁全量（build ×2 / npm test 74-1894 / tsc 0 / lint i18n 983 / lint kb 0 / 人类输出 diff 空 / flow.json 哈希不变 / 出口计数三处对齐）⑨ 终局报告（五表 + 映射 + A/B/C/D/E + 承接三分 + 归档轮落点）⑩ ops/** 精确入管（禁 -A；tmp/flow.json/metrics/checkpoints/users 不入）。版本号写入后零代码改动；最终 op 后无后续依赖；不 commit / push / publish；不推进 phase。"
+
+mutual_exclusions:
+  - group: [op-001, op-003]
+    reason: "共享 src/core/templates-data/** 与双生成物 template-loader.ts / update.ts（op-001 文档模板 + build；op-003 版本行 + build）→ 恒串行。"
+  - group: [op-002, op-003]
+    reason: "共享 .openfeel/tmp/stage-98/e2e/**（op-002 预演；op-003 复跑覆盖最终认证）→ 恒串行。"
+  - group: [op-003]
+    reason: "阶段最终 op（恒末位）：版本收口 / 最终验收 / 回填 / 门禁 / 入管须在 op-001 / op-002 冻结后执行；版本号写入后至阶段结束零代码改动；本 op 完成后无后续依赖。"
+
+execution_order:
+  - op-001
+  - op-002
+  - op-003
+
+no_downstream_after:
+  op: op-003
+  statement: "op-003 为阶段最终 op；完成后无后续执行 op 依赖其产物，阶段进入代码审查 / 测试 / 归档轮（flow archive v1.2.2 由 Feel/主会话在阶段 done 后执行）。"

@@ -2,6 +2,48 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.2] - 2026-10-17
+
+> 契约型功能主题版（Z 级）：**CLI 机器可读契约与调度决策下沉**（DSH 适配器需求 11 项 P0×3 / P1×4 / P2×4 一次交付）。
+> 口径：**33 个成功 JSON 出口**（19 既有 + 14 本版新增）+ **34 个注册 `--json` 选项**（含 `flow advance --json` 错误模式开关）；`--version --json` 单列，不计入 33/34。权威说明见 `docs/json-contract.md`。
+
+### Added
+- [stage-96] **`flow next [--json]`（P0-1 调度决策权威）**：CLI 单点输出「当前阶段 + 相位 → 负责 Agent → 合法下一相位 → 建议命令 → 守卫 → 阻塞 REV」共 **12 键**；`responsibleAgent` 与 `mapPhaseToAgent`、`legalNextPhases` 与 `getAvailablePhases`、`blockingReviews` 与 `assertNoBlockingOpenRev` **同源**（无第二份映射）；只读零写盘。
+- [stage-95] **全局 `--project <path>`（P1-2）**：根命令注册，`runCli` 唯一注入点预扫描并 `process.chdir`（语义等价「以该路径为 cwd」）；语言解析按目标项目、`--log-file` 保留原始 cwd；`knowledge dedup` 保留本地声明并以 `optsWithGlobals()` 单点解析（C2 扩展路径）。
+- [stage-97] **13 个读命令面 `--json`（P0-2）**：`stage status`（单阶段 / 无参）、`flow recover`、`flow checkpoint list`、`flow log`、`project overview`、`knowledge search|list|index|dedup`、`config get|effective`、`view list`、`plan scheme list`，共新增 **#20~#33** 中 13 个成功出口。
+- [stage-95] **`--version --json`（P2-3）**：`{schemaVersion, version, node}` 三键；`-v --json` 同形；`--version` 人类输出逐字不变。
+- [stage-97] **`archive <stage> --json`（P2-4）**：`{schemaVersion, stage, archivePath, opsCount, reviewsCount, knowledgeExtracts}`；失败路径 `ARCHIVE_FAILED`/refusal/1、异常 `INTERNAL_ERROR`/internal/3。
+- [stage-97] **`flow archive --dry-run --json` 判据明细（P1-4）**：暴露 `eligible` / `unfinishedStages` / `blockingReviews`；判据复用既有单点，`--dry-run` 零写盘。
+- [stage-96] **`flow status --json.stages[]` 5 个调度属性（P1-1）**：`workflowMode` / `requirementId` / `reviewTier` / `effectiveReviewTier` / `opsSummary`（`opsSummary.total = Σ byState`）。
+- [stage-96] **`flow phases --json` 档位消歧字段（P2-2）**：保留既有 `reviewTier`（展示值），追加 `displayReviewTier`（同值显式名）与 `effectiveReviewTier`（`flow advance` 缺省生效档位 = `full`）；`flow status --json.stages[]` 与 `flow next --json` 同口径给出两者。
+- [stage-97] **`req list --json` 关联阶段 / 进度（P1-3）**：末位追加 `linkedStages`（阶段 ID 数组）与 `progress`（`{done,total}` 对象）；零关联需求为 `[]` + `{done:0,total:0}`。
+- [stage-95~97] **机器可读错误封装（P0-3）**：新增统一错误层（`src/core/errors.ts` + `src/commands/shared/errors.ts` + JSON 模式单点）；文本型失败改为 `{error:{code,kind,message,detail}}`，`kind ∈ {refusal,internal}`；**退出码 0 成功 / 1 预期拒绝或用法错误 / 2 并发写冲突（语义零改动）/ 3 内部错误（新增）**；legacy 载荷（`flow archive*` / `req *` 的 `error` 字符串）保留类型与键序、仅末尾追加 `errorKind`；`docs/json-contract.md` 载 **12 行 code→kind→exitCode 映射表**。
+
+### Changed
+- [stage-95] **JSON 输出契约冻结（P2-1）**：`--json` 模式 stdout 恰好 **一个** JSON 文档；`schemaVersion` 恒为首键；可选字段一律 `null`、数组 `[]`、映射 `{}`；冻结键序稳定。`docs/json-contract.md` 为**单一权威**（33 成功出口全表 + 注册选项 34 + legacy 双形态 + 迁移边界）。
+- [stage-95] **`instructions --json` 追加 `schemaVersion` 首键**（既有键与键序顺延保留）。
+- [stage-95] **`flow archive show --json` 首键重定位**（`schemaVersion` 前置，其余键序不变）。
+- [stage-92/96] **`flow advance --review-tier` 生效缺省 = `full`**：`flow phases --json.reviewTier` 为**展示值**（按工作流模式派生），**生效值**见 `effectiveReviewTier`；`docs/commands.md` / `.openfeel/manual/cli/commands.md` 登记该口径勘误；**源码 help 字符串订正转 v1.2.3 首个规划阶段**（收口期冻结零代码改动）。
+
+### Fixed
+- 无（本版为契约增量，不修改既有行为语义）。
+
+### Security
+- 无。
+
+### Compatibility / Migration
+- **既有 19 个成功出口字段零破坏**：只增不改、键序保留；人类输出逐字不变。
+- **退出码**：0/1/2 语义不变，**3 仅新增**（internal）；并发冲突仍为 2 且 `kind=refusal`。
+- **legacy `error` 恒 `string`**、键序不变、仅末尾追加 `errorKind`。
+- **phase 枚举 15 项 / `advanceAccepted` / full-fast 转移行为不变**；存量 `flow.json` **零迁移、零注入**。
+- **`--project`**：不改变既有命令语义；未传时行为与 1.2.1 完全一致。
+- **REQ-001 L80 勘误留痕**：需求原文括注「2 = 内部错误或用法错误」与实现不符，权威口径为 **2 = 并发写冲突、3 = 内部错误、1 = 预期拒绝 / 用法错误**；该括注登记为**需求文本勘误**，**不修改 REQ-001 机读数据**（同口径见 `docs/json-contract.md` 与 stage-95 计划）。
+
+### Documentation
+- [stage-98] 文档多载体同步：README×3 / `docs/GETTING_STARTED.md` / `docs/commands.md` / `docs/json-contract.md`（定稿）/ `.openfeel/manual/{index,cli/commands,core/flow-manager,core/json-contract,core/req}.md` / `openfeel-cli-usage` skill 快照。
+- [stage-98] 版本全链路 **1.2.1 → 1.2.2**（`package.json` / `package-lock.json` / `.openfeel/config.yaml` / 配置模板 / 部署模板 / 双生成物）。
+- [stage-98] 本仓收口基线：**74 测试文件 / 1894 用例**、`lint i18n` **983**、**33 成功出口 / 34 注册选项**、**21 阶段**。
+
 ## [1.2.1] - 2026-10-15
 
 ### Added

@@ -80,6 +80,19 @@ openfeel flow status
 
 Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) ("工作流模式（full / fast）与自动推进" section, Chinese) and [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`.
 
+## What's New in v1.2.2
+
+> Stages covered: **stage-95 ~ 98**. All capabilities below are **available since v1.2.2**; `docs/json-contract.md` is the single authority for the JSON contract (33 successful exports / 34 registered options). This repository's closure baseline: 74 test files / 1894 cases / 21 stages.
+
+- **`openfeel flow next [--json]` (decision authority, read-only)**: 12 keys in fixed order (`schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews`); `responsibleAgent` shares the same source as `mapPhaseToAgent`; every element of `legalNextPhases` is accepted by `flow advance`; zero writes.
+- **Global `--project <path>`**: leading/trailing/`=` forms before or after any command; semantically equivalent to cwd; language resolves from the target project while `--log-file` relative paths resolve from the original cwd; `knowledge dedup` keeps its local declaration (syntactically compatible).
+- **Full read-command `--json` coverage**: 13 command surfaces (`stage status` / `flow recover` / `flow checkpoint list` / `flow log` / `project overview` / `knowledge search|list|index|dedup` / `config get|effective` / `view list` / `plan scheme list`) plus `archive <stage> --json`; **33 successful exports / 34 registered options** in total.
+- **Machine-readable error envelope**: `{schemaVersion:1,error:{code,kind,message,detail}}`; exit codes **0 success / 1 expected refusal / 2 concurrent conflict / 3 internal error (new)**; legacy `{error:'...'}` keeps the string type and key order, appending `errorKind` at the end; 12-row `code→kind→exitCode` mapping.
+- **`--version --json`**: `{schemaVersion:1,version,node}` (three keys; listed separately, not counted among the 33 exports/34 options).
+- **`flow archive --dry-run --json` criteria details + `archive <stage> --json`**: `eligible` / `unfinishedStages` / `blockingReviews`; `archivePath` / counts; `--dry-run` writes nothing.
+- **`reviewTier` disambiguation**: `flow phases --json` / `flow status.stages[]` / `flow next` now expose both the display value `reviewTier`/`displayReviewTier` and the effective value `effectiveReviewTier` (always `full`). **Correction**: when `flow advance` is not given an explicit `--review-tier`, the effective tier is always **`full`** (not derived from the mode); the mode-derived value is `flow phases --json.reviewTier` (display only). Source help-text correction moves to v1.2.3.
+- **Compatibility promise**: the existing 19 successful export field sets are unbroken (additive only); human output is unchanged verbatim; exit codes 0/1/2 keep their semantics while 3 is new only; the 15-phase enum / `advanceAccepted` / full-fast behavior are unchanged; existing `flow.json` files need zero migration and receive zero injection; REQ-001 L80 ("2 = internal or usage error") is registered as a requirement-text erratum (authoritative wording in contract §2/§10).
+
 ## What's New in v1.2.1
 
 > Stages covered: **stage-86 ~ 93 + 94** (94 = out-of-table supplementary stage: model defaults and non-destructive deployment). All capabilities below are **available since v1.2.1**.
@@ -227,7 +240,7 @@ Core Layer
 ```bash
 npm install        # Install dependencies
 npm run build      # Compile TypeScript
-npm test           # Run tests (1719 cases / 71 test files; Linux CI skips 1 Windows-only case)
+npm test           # Run tests (1894 cases / 74 test files; Linux CI skips 1 Windows-only case)
 ```
 
 ## Acknowledgments

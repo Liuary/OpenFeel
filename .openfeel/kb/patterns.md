@@ -4428,3 +4428,54 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.2-stage-97 op-003（gate-rejected 9 键固定序 `schemaVersion,error,version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind`，exit 1；合格 fixture `eligible:true` + 两空数组；`--dry-run` 真实工作区 10 个文件 SHA256 前后一致；非 dry-run 成功同形）。
 
 **参见：** `src/commands/flow.ts`；`src/core/flow-archive/grouping.ts`；`docs/json-contract.md` §6 / §13 / §14；kb/patterns.md #错误双形态 + `errorKind` 增量兼容策略、#读命令 `--json` 全量补全与 33 出口契约矩阵；kb/architecture.md #归档命令面架构；manual/cli/commands.md
+
+## [+] 收官版本收口执行序：A/B/C/D/E 逐类闭环 + 双生成物 ×2 幂等 + 计数三处对齐 (2026-10-17)
+
+**场景**：版本级最后一阶段（收口阶段）要同时完成「文档多载体 + 版本号全链路 + CHANGELOG + 端到端验收 + 回填 + 门禁」，注意力分散时最容易出现「先改版本号、后补文档」导致门禁口径与文档口径互相追尾，或「templates-data 改了忘 build」导致生成物残留旧版本。
+
+**做法（固定执行序，收口 op = 最终 op）**：
+1. **文档先冻结（独立 op）**：README×3 / GETTING_STARTED / commands / 契约文档定稿 / manual / cli-usage skill 全部改完 + 同批 `npm run build`，此后文档面不再动。
+2. **收口 op 内固定顺序**：`CHANGELOG → A 类版本载体 → B 类 build ×2 → 版本验证（--version / --version --json）→ A/D 残留审计 → 最终端到端验收 → 回填（roadmap / 版本计划）→ 全量门禁 → 终局报告 → ops 精确入管`。顺序本身写入方案裁定（D-98-003），执行时只按序推进、不重排。
+3. **A 类逐处单行 edit**：每个载体先内容特征定位（`rg` 命中判类）再单行改；`package-lock.json` 仅 root 两处、禁 `npm install`；`config.yaml` 禁整文件重写。
+4. **B 类 build 次数 ≥2 且比对**：第 1/2 次证重生成正确，门禁期第 3/4 次以 `git status --porcelain src/` 逐行一致证幂等；生成物 `当前 vX.Y.Z-1` 命中必须为 0。
+5. **D 类残留白名单化**：全仓扫描必须给「命中总数 / 已判类数 / 未判类数」三数，**未判类 = 0 才算通过**；依赖自身版本、历史节、审计留痕各自成类并留 file:line 证据。
+6. **计数三处对齐**：源码 `option('--json'` 注册点 = 契约文档计数表 = 冻结测试出口枚举；任一不等即红灯（本版 33 成功出口 / 34 注册选项，`--version --json` 单列不计）。
+
+**判据**：① 文档面与版本面必须分批（文档先冻结），否则版本号写入后的文档改动会破坏「零代码改动」自证；② build 幂等必须**逐行 diff 同一份 `git status`**，不能用「两次 exit 0」代替；③ 白名单纪律的通过条件只能是「未判类 0」，不能是「命中可解释」；④ 计数以三处对齐为权威，禁止文档声明领先于源码；⑤ 收口 op 后除回填/报告/归档外不得再有变更。
+
+**实证**：v1.2.2-stage-98（op-001 文档冻结 → op-002 验收工具链 → op-003 收口）：A 类 10 处 / 8 文件残留 0；build ×4（2 次收口 + 2 次门禁）幂等；D 类 305 命中 / **未判类 0**；计数 33/34 三处对齐；门禁 74 文件 / 1894 用例、tsc 0、i18n 983、kb 0 过期 / 622 引用、`--version` 1.2.2。
+
+**参见：** `.openfeel/tmp/stage-98/{version-closure.md,d-class-whitelist.md,gate.log,final-report.md}`；kb/patterns.md #版本号全链路收口清单模式、#文档侧历史标记纳入版本收口禁改白名单、#陈旧计数「全枚举」纪律；kb/troubleshooting.md #build 双生成物段二分；manual/core/build.md
+
+## [+] DSH 端到端验收范式：33 出口契约矩阵 + 11 项需求映射视图 + 五矩阵 + 真实消费 (2026-10-17)
+
+**场景**：CLI 新增大量机器可读出口后，需要向「真实适配器」证明契约可用，而不是只证明本仓测试自洽。常见抽检只覆盖新出口，会漏掉既有出口的被动破坏；或只做「需求 × 新出口」映射，在「既有 + 新增」分类缝隙里漏验（v1.2.2 曾出现「18 + 11」口径缺 `flow next`）。
+
+**做法（五层验收）**：
+1. **出口全量矩阵**：按契约冻结表逐出口断言（本版 33 个成功出口 + `--version --json` 单列），断言单文档 / `schemaVersion` 首键 / 顶层键序逐字 / 关键嵌套键 / 类型 / 退出码；条件键与形态变体（未初始化态、`--limit`、`setup --check` 0/1、成功/失败双形态）单列变体编号。只读出口在断言前后做 `hashTree` 相等以证零写盘。
+2. **需求 → 出口映射视图**：11 项需求逐项列出「消费出口编号 + 命中字段 + 证据文件」，映射必须建立在**出口全量**之上（33 全量口径），禁止「既有 N + 本版 M」两段相加的缝隙口径。
+3. **五矩阵**：错误（refusal / legacy / 未初始化 / 并发 / 内部；zh-en `code` 逐字一致）、决策（15 phase × `legalNextPhases ⊆ advanceAccepted` × 逐目标 `advance --dry-run` 接受）、多项目（`--project` 三形态等价 / 非法路径 / 缺值 / 语言 / 日志 cwd）、零回归（人类输出快照 diff 空 + 阶段/相位计数 + 既有出口 + 真实 `flow.json` 哈希不变）、契约矩阵本身。
+4. **两层真实消费**：① **适配器视角脚本**（按适配器消费面 `FeelCli` 逐出口断言）作为过程级替代证据；② **适配器仓库真实测试**（PATH shim 指向本仓 `bin`、`OPENFEEL_LOG=0`、临时 HOME、适配器仓库只读），报告记录「命令 + CLI 版本 + 环境」三要素，并以文件 SHA-1 前后比对证明仓库零改动。
+5. **隔离纪律**：所有 fixture 落 `os.tmpdir()`；真实仓库 `flow.json` 哈希起点 = 终点；适配器仓库只读不改。
+
+**判据**：① 验收对象必须是「出口全量」，不是「本版新增」；② 真实消费优先，但必须设降级路径（适配器视角脚本 + 未执行原因 + 补验窗口 ≤ 1 个版本），不把外部依赖当唯一阻塞项；③ 只读出口的零写盘要用哈希前后相等证明；④ 真实消费必须记录三要素并可复跑；⑤ 无法稳定触发的错误路径（如锁超时）如实登记 skip 并指明单元级覆盖面，不伪造 pass。
+
+**实证**：v1.2.2-stage-98（CLI 1.2.2 / win32 / Node v24.18.1）：契约 41/41、需求映射 11/11、错误 4/4（⑥b 如实 skip）、决策 15/15、多项目 5/5、零回归 5/5、适配器视角 39/39、**DSH `verify.js` 48/48 exit 0**；DSH 仓库 11 文件 SHA-1 0 changed；真实 `flow.json` 哈希 `1a80fcf0…` 全程不变；降级路径未启用但在位。
+
+**参见：** `.openfeel/tmp/stage-98/dsh-e2e-report.md`、`.openfeel/tmp/stage-98/e2e/**`；`docs/json-contract.md` §5 / §12 / §14；kb/patterns.md #读命令 `--json` 全量补全、#legacy 错误载荷与新增判据字段并存；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护、#子进程测试未设 cwd 致真实仓库污染
+
+## [+] 收口期冻结：版本号写入后零业务代码改动（冻结边界以源码差异 ⊆ 允许集自证） (2026-10-17)
+
+**场景**：版本收口阶段极易「顺手修一下」发现的 help 文案 / 小缺陷，导致版本号写入后仍有代码变更，使「版本收口 op = 最终 op」的可审计性失效。典型冲突：审查发现 `flow advance --help` 的 `--review-tier` 文案与实现不符，而订正处是源码字符串。
+
+**做法**：
+1. **先明确定义允许集**：收口期允许的源码差异 = 版本载体（`config.ts` 版本行）+ 生成物（`template-loader.ts` / `update.ts`）+ 文档模板源（agents-md / constraint / cli-usage skill）+ 快照断言；**业务逻辑文件零 diff**。
+2. **自证而非口头声明**：收口完成时用 `git diff <baseline> --stat -- src/` 逐文件核对「文件数 ⊆ 允许集 ∧ 无逻辑 diff」，并单列点名高风险文件（如 `src/commands/flow.ts`）**零 diff** 作为冻结证据。
+3. **冲突项拆分处置**：文档面可改的（`docs/commands.md` / manual 登记实际语义）本阶段闭合；源码面（help 字符串）显式转下一版本首个规划阶段，并在承接表登记「为什么不在本阶段做」。
+4. **缺口只记录不扩面**：验收/审查发现的新缺口一律登记（不修），避免连锁改动让收口节奏失控。
+
+**判据**：① 冻结的判据是「源码差异集合 ⊆ 允许集」，不是「我改了很少」；② 冻结冲突必须二分（文档面 / 源码面），禁止用「冻结豁免」临时改源码；③ 转出项要有明确落点版本与承接表证据；④ 版本写入后的每一次 build / 验收 / 回填都要能解释为「非代码改动」；⑤ 阶段最终 op 之后不允许再有执行 op。
+
+**实证**：v1.2.2-stage-98（`src/**` 差异恰 8 文件 ⊆ 允许集；`src/commands/flow.ts` 零 diff；`--review-tier` 文档面本阶段登记「缺省 full」、源码 help 订正转 v1.2.3；REV-95-009 退出机制改造同样转 v1.2.3 而非收口期修改）。
+
+**参见：** `.openfeel/tmp/stage-98/{version-closure.md,rev-handoff.md}`；REV-98.md（REV-98-003 `--review-tier` 裁定）；kb/patterns.md #收官轮缺陷清零范式、#版本号全链路收口清单模式；manual/cli/commands.md（`--review-tier` 缺省 full 登记）

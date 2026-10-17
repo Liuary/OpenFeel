@@ -1345,3 +1345,21 @@ opencode 侧同源同语义：`~/.config/opencode/agents/<name>.md` 的 `model` 
 **实证**：v1.2.2-stage-95 op-004（方案修订 1 纳入；D-95-21）；`.openfeel/tmp/stage-95/{failure-set-before,failure-set-after}.txt`；测试官独立复核「反守卫未弱化」通过。
 
 **参见：** `test/commands/req.test.ts`（`snapshotReqDir` / `REAL_FLOW_RAW`）；kb/troubleshooting.md #子进程测试未设 `cwd` 致向真实仓库写入、#零回归取证范式；kb/patterns.md #18 出口契约冻结审计方法
+
+## [+] 验收脚本的人类输出基线绑定阶段起点状态 → 阶段推进后复跑必然误报（一次性基线陷阱） (2026-10-17)
+
+**现象**：收口阶段的零回归脚本 `run-zero-regression.mjs` 首跑 **2/5 失败**（人类输出快照与「真实仓库零注入」项）。失败差异逐行核对后只有流水线自身状态值不同：`phase`、`ops state`、`current op`（op-002 pending→done、阶段 exec_running→test_pending），**键序 / 字段 / 格式零差异**，另 10 条人类输出逐字一致。同一脚本在测试官会话（阶段已推进到 `test_pending`）复跑同样报 2 项失败。
+
+**根因**：脚本的人类输出基线与 `flow.json` 哈希是在「某一次的阶段起点状态」上采样并固化的（含 `flow.json` 哈希断言）。阶段每推进一次，`flow.json` 合法变化，基线即过期——脚本把**合法状态变化**当成了回归。它是一次性验收资产，却被当成可随时复跑的常驻门禁使用。
+
+**处置**：
+1. **如实验证而非改断言**：保留原始失败证据（`zero-regression.op-002-baseline-failure.json` + 旧 human-baseline），逐行核对差异仅为状态值，结论「产品面零回归成立」，不记产品 Bug。
+2. **重采样基线后复跑**：以**收口 op 起点状态**重新采样人类输出基线与哈希，复跑 5/5、diff 空、哈希不变；报告登记「第二次运行为准」及偏差项（D1/D2）。
+3. **资产定性**：在验收报告与 final-report 中明确该脚本为**临时验收资产、不随产品发布**，其失败不构成门禁红灯；门禁以 `npm test` + 契约冻结测试 + 人类输出受控 diff（HEAD 源码构建 vs 当前构建、同数据）为准。
+4. **测试官侧复核**：主会话阶段推进后再复跑会再次误报 → 记为**非阻塞观察**（O-1），逐行核对成立即放行，避免把资产缺陷升级为产品缺陷。
+
+**判据**：① 断言「真实仓库/流水线状态」的脚本，基线必须**状态无关**（剥离易变字段）或**一次性**（明确标注只对某起点有效）；② 复跑失败先做差异分类（状态值 vs 字段/键序/格式），只有后者才是产品回归；③ 临时验收资产不得进入常驻门禁口径；④ 基线重采样必须保留原始失败证据与偏差登记，禁止删证据后重跑「变绿」。
+
+**实证**：v1.2.2-stage-98（首跑 2/5 → 重采样后 5/5；`dsh-e2e-report.md` §9 D1/D2；测试报告 O-1；`npm test` 74 文件 / 1894 用例独立复跑全绿佐证产品面零回归）。
+
+**参见：** `.openfeel/tmp/stage-98/e2e/run-zero-regression.mjs`、`e2e/logs/zero-regression*.json`；`.openfeel/users/Liuary/log/2026-10-17-stage-98-test-report.md`（O-1）；kb/troubleshooting.md #零回归取证范式、#真实工作区的「反守卫」测试失效；kb/patterns.md #双主题收官端到端验收范式

@@ -3,6 +3,7 @@
 - **权威范围**：`--json` 成功输出（33 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
 - **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。§6 登记的是有意增量清单，未登记即视为破坏。
+- **v1.2.2-stage-98 定稿**：文档多载体（README×3 / GETTING_STARTED / commands / manual / cli-usage）已同批同步；本文件为 v1.2.2 发布口径（33 成功出口 / 34 注册选项）。
 - **不变量**：既有 19 个成功出口**零删除 / 零重排 / 类型零改**（本阶段新增第 20~33 个）；只允许本文件 §6 登记的有意增量。出口 #19 `flow next` 为 stage-96 新增（§6.10）。
 
 ## §1 单文档规则
@@ -159,6 +160,7 @@ typeof doc.error === 'string'  → legacy
 - `flow advance --json` 为**错误封装开关**：成功输出保持人类文本，不计入成功出口。
 - 注册的 `--json` 选项数为 **34**（33 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。
 - 三处对齐：源码 `option('--json'` 去重计数 34 / 本文件 33+34 / `test/cli/json-contract.test.ts` 用例 #1~#33。
+- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 33 个成功出口、也不计入 34 个注册选项（非 Commander 选项）；验收单列。**
 
 ## §8 迁移边界
 
@@ -171,13 +173,13 @@ typeof doc.error === 'string'  → legacy
 
 | 项 | 决议 | 代码/测试状态 | 其余载体 |
 |----|------|---------------|----------|
-| **C1** | `instructions --json` 补首键 `schemaVersion` | **已同步**：op-001 命令层 `withSchemaVersion`；核心 loader 零改动（`git status` 空）；`test/commands/instructions.test.ts`（首键+9 键相对序）与 `test/cli/json-contract.test.ts` #17 通过 | `openfeel-cli-usage` skill / README / DSH 适配器 / CHANGELOG 登记 stage-98 |
-| **C1b** | `flow archive show --json` 首键重定位（G-1） | **已同步**：op-001 命令层 `withSchemaVersion(file)`（`flow.ts:1993`）；既有 6 键相对序不变；`json-contract.test.ts` #10 通过 | CLI 文档 / `openfeel-cli-usage` skill 示例登记 stage-98 |
-| **C2** | `knowledge dedup --project`：**保留本地声明 + 单点解析**（本地 `--project` 声明零修改；根全局 `--project` 并行提供；动作经 `optsWithGlobals()` 读取，路径解析单点） | **已同步**：op-003 实现（`knowledge.ts:182` 本地声明保留；`:176-189` `optsWithGlobals` + `resolveProjectPathForCommand` 单点）；`project-option.test.ts` #13 与 `knowledge.test.ts` 回归通过；实测无 help 重复/解析歧义 | `docs/commands.md` / manual / skill 的全局 `--project` 说明登记 stage-98 |
-| **C3** | 条件键 `null` 占位（`flow health.reconciled` / `flow ops list[].warning`） | **已同步**：op-001 实现为**恒在键**；`json-contract.test.ts` #7（`warning` 恒在，empty→string / 其余 null）/ #11（`reconciled` 恒在 null）通过；`req next.candidates` 为条件出现键（#16）；`flow overview` 未初始化形态变体 #2b | skill 示例；CHANGELOG（若未来豁免） |
-| **C4** | 非 JSON 模式内部错误仅新增退出码 `3`；0/1/2 零改动 | **已同步**：op-002 实现；`error-envelope.test.ts` ①/⑥/⑦、实跑矩阵（10 行 × zh/en，`archive-write-failed`→3、锁超时→`INTERNAL_ERROR`/3）；非 JSON 退出码对照通过 | CHANGELOG / DSH 分类断言 stage-98 |
-| **C5** | legacy `errorKind` 仅末尾追加，`error` 类型与键序零改动 | **已同步**：op-002 实现（`flow archive*` / `req *`）；`error-envelope.test.ts` ① 与契约测试 legacy 段通过；实跑 `08-archive-gate` / `09-archive-write` / `10-req-missing`（zh/en）`error` 恒 string、`errorKind` 为末键 | CHANGELOG / DSH 可改用 `errorKind`（stage-98） |
-| **C6** | 全局 `--project` 纯新增根选项；不传时行为逐字不变 | **已同步**：op-003 实现（根选项 + 预扫描 + help 双表）；`project-option.test.ts` 13 项通过；实跑前置/后置/等号/无效路径/缺失值/多值冲突、目标项目语言、`--log-file` 原始 cwd、误判对均通过 | `docs/commands.md` / manual / skill / README 选项表 stage-98 |
+| **C1** | `instructions --json` 补首键 `schemaVersion` | **已同步**：op-001 命令层 `withSchemaVersion`；核心 loader 零改动（`git status` 空）；`test/commands/instructions.test.ts`（首键+9 键相对序）与 `test/cli/json-contract.test.ts` #17 通过 | **已同步（stage-98）**：README×3 / GETTING_STARTED / docs/commands.md / manual / cli-usage skill；DSH 消费记录与 CHANGELOG 于阶段最终 op（op-003）落地 |
+| **C1b** | `flow archive show --json` 首键重定位（G-1） | **已同步**：op-001 命令层 `withSchemaVersion(file)`（`flow.ts:1993`）；既有 6 键相对序不变；`json-contract.test.ts` #10 通过 | **已同步（stage-98）**：docs/commands.md / manual / cli-usage skill；CHANGELOG 于阶段最终 op（op-003）落地 |
+| **C2** | `knowledge dedup --project`：**保留本地声明 + 单点解析**（本地 `--project` 声明零修改；根全局 `--project` 并行提供；动作经 `optsWithGlobals()` 读取，路径解析单点） | **已同步**：op-003 实现（`knowledge.ts:182` 本地声明保留；`:176-189` `optsWithGlobals` + `resolveProjectPathForCommand` 单点）；`project-option.test.ts` #13 与 `knowledge.test.ts` 回归通过；实测无 help 重复/解析歧义 | **已同步（stage-98）**：docs/commands.md / README×3 / manual / cli-usage skill |
+| **C3** | 条件键 `null` 占位（`flow health.reconciled` / `flow ops list[].warning`） | **已同步**：op-001 实现为**恒在键**；`json-contract.test.ts` #7（`warning` 恒在，empty→string / 其余 null）/ #11（`reconciled` 恒在 null）通过；`req next.candidates` 为条件出现键（#16）；`flow overview` 未初始化形态变体 #2b | **已同步（stage-98）**：GETTING_STARTED / docs/commands.md / cli-usage skill；CHANGELOG 于阶段最终 op（op-003）落地 |
+| **C4** | 非 JSON 模式内部错误仅新增退出码 `3`；0/1/2 零改动 | **已同步**：op-002 实现；`error-envelope.test.ts` ①/⑥/⑦、实跑矩阵（10 行 × zh/en，`archive-write-failed`→3、锁超时→`INTERNAL_ERROR`/3）；非 JSON 退出码对照通过 | **已同步（stage-98）**：README×3 / GETTING_STARTED / docs/commands.md / manual / cli-usage skill；DSH 分类断言与 CHANGELOG 于阶段最终 op（op-003）落地 |
+| **C5** | legacy `errorKind` 仅末尾追加，`error` 类型与键序零改动 | **已同步**：op-002 实现（`flow archive*` / `req *`）；`error-envelope.test.ts` ① 与契约测试 legacy 段通过；实跑 `08-archive-gate` / `09-archive-write` / `10-req-missing`（zh/en）`error` 恒 string、`errorKind` 为末键 | **已同步（stage-98）**：README×3 / GETTING_STARTED / docs/commands.md / manual / cli-usage skill；DSH 与 CHANGELOG 于阶段最终 op（op-003）落地 |
+| **C6** | 全局 `--project` 纯新增根选项；不传时行为逐字不变 | **已同步**：op-003 实现（根选项 + 预扫描 + help 双表）；`project-option.test.ts` 13 项通过；实跑前置/后置/等号/无效路径/缺失值/多值冲突、目标项目语言、`--log-file` 原始 cwd、误判对均通过 | **已同步（stage-98）**：README×3 / docs/commands.md / manual / cli-usage skill |
 
 > 本阶段直接落盘本契约与代码/测试面；其余文档载体由 stage-98 在同一版本内收口，既有消费者不得静默失效。
 >

@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.3.0 快照** | 更新日期：2026-10-17
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.3.1 快照** | 更新日期：2026-10-17
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -885,7 +885,7 @@ openfeel setup --check [--json]                       # 只读诊断：一致退
 `--tools dsh`（v1.3.0 起）→ 把 `openfeel` 包内的 `dsh/` 部署到 DSH profile：
 
 - `DSH_HOME`（env）或 `~/.dsh` 下的 `profiles/<name>/package.json`；缺省部署**全部**已检测 profile，`--dsh-profile web` 可窄化。
-- 写入 `dependencies["openfeel-dsh"] = "link:<openfeelRoot>/dsh"` + `dsh.profile.bundles += "openfeel-dsh"`；仅在依赖变化或链接无效时执行 `pnpm install --prefer-offline`（写前备份、失败回滚、幂等重跑零备份/零 pnpm）。
+- 写入 `dependencies["openfeel-dsh"] = "link:<openfeelRoot>/dsh"` + `dsh.profile.bundles += "openfeel-dsh"`；仅在依赖变化或链接无效时执行 `pnpm install --prefer-offline --no-frozen-lockfile`（允许更新过期 lockfile；写前备份、失败回滚 package.json、幂等重跑零备份/零 pnpm；失败时 lockfile/node_modules 可能保留部分更新，下次 setup 收敛）。
 - DSH profile **不进入**全局 `update_state.json` 资产 hash；纯 dsh 不刷新全局部署版本。
 - 错误：预检 / 用法 / profile 类 → `INVALID_ARGUMENT` / exit 1（`detail.reason=dsh-*`）；备份 / pnpm install → `INTERNAL_ERROR` / exit 3。均零写盘或已回滚。
 - 完成后重启 DSH 宿主（host module 不热加载）。`openfeel update --tools dsh` 不适用，会 exit 1 并指引本命令。
@@ -909,7 +909,7 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## JSON 出口一览（v1.3.0 快照，无 JSON 变更）
+## JSON 出口一览（v1.3.1 快照，无 JSON 变更）
 
 > 计数口径：**40 个成功出口 / 41 个注册选项**；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 

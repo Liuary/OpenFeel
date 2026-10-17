@@ -247,6 +247,12 @@ describe('DSH profile 部署核心', () => {
     expect(json.dependencies?.['openfeel-dsh']).toBe(toLinkSpec(ADAPTER_DIR));
     expect(json.dsh?.profile?.bundles).toContain('openfeel-dsh');
     expect(spawnSync).toHaveBeenCalledTimes(2);
+    expect(spawnSync).toHaveBeenNthCalledWith(
+      2,
+      'pnpm',
+      ['install', '--prefer-offline', '--no-frozen-lockfile'],
+      expect.objectContaining({ cwd: join(dshHome, 'profiles', 'web') }),
+    );
     expect(existsSync(join(home, '.openfeel', 'backup'))).toBe(true);
   });
 

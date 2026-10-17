@@ -9,12 +9,19 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.3.1** — DSH deploy hotfix: `setup --tools dsh` now runs `pnpm install` with `--no-frozen-lockfile`, so stale profile lockfiles no longer block deployment.
 - **v1.3.0** — The DSH adapter now ships inside the `openfeel` package; `openfeel setup --tools dsh` installs it into DSH profiles. README was slimmed: version notes moved here.
 - **v1.2.4** — Data-safe `archive <stage>` overwrite protection (`ARCHIVE_EXISTS` / `--force`), JSON output for the remaining read commands, and `config get --all`.
 - **v1.2.2 / v1.2.3** — Machine-readable JSON contract (`flow next`, error envelopes, exit codes 0/1/2/3) and its concurrency/test-seam fixes.
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.3.1 — DSH 部署热修复（frozen-lockfile）
+
+- **`setup --tools dsh` 修复**：profile 的 `openfeel-dsh` `link:` 目标变化会使 `pnpm-lock.yaml` 过期；内部 `pnpm install` 增加 `--no-frozen-lockfile`，不再被 `ERR_PNPM_OUTDATED_LOCKFILE` 阻断。
+- **行为边界**：保留写前备份、失败回滚 `package.json`、幂等跳过与多 profile fail-fast；失败时 lockfile / `node_modules` 可能保留部分更新，下一次 `setup` 收敛。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup --tools dsh` → 重启 DSH。详见 [CHANGELOG](../CHANGELOG.md#131---2026-10-17)。
 
 ## v1.3.0 — DSH 适配器单包分发 + README 重构
 

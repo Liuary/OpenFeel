@@ -30,7 +30,7 @@ node bin/openfeel.js setup --check [--json]   # 只读诊断全局部署一致�
 - 调用 `setupGlobalFramework(deployLang, tools)`（`tools` 默认 `['opencode']`），输出创建的全局文件；末尾按 harness 组合提示重启（`setup.restartHarnessTmpl`）。
 - 与 `init` 的区别：`setup` 纯全局（跨项目框架层）；`init` 只做项目初始化（工作区 + 项目平台适配器配置文件 `opencode.jsonc`）。
 - **`--tools`（v1.1.6-stage-71）**：`parseToolList` 解析（保序去重）；非法值 → stderr 报错 **exit 1** 且**校验前置**（零写盘，不触发部署）。`setup --tools claude` → 仅部署 `~/.claude/`（CLAUDE.md + **10 agents**（v1.2.1-stage-89 由 9 翻转） + 22 skills + `settings.json` 注入，v1.1.6-stage-73）；`--tools opencode,claude` → 双 harness。**默认（不带 `--tools`）行为与改前逐字一致**（仅 opencode，`~/.claude` 零触）。
-- **`--tools dsh`（v1.3.0-stage-101）**：先对全部选中 profile 只读预检（home / 结构 / adapter），再锁外备份、锁内重读合并、按需 `pnpm install`；结果只进 `SetupResult.dsh`，不写全局 `update_state.json` 资产 hash。预检/用法类错误 → `INVALID_ARGUMENT`/exit 1；备份/安装类 → `INTERNAL_ERROR`/exit 3。成功后提示重启 DSH 宿主。`openfeel update --tools dsh` 不适用（exit 1 指引 setup）。
+- **`--tools dsh`（v1.3.0-stage-101；v1.3.1 修复 frozen-lockfile）**：先对全部选中 profile 只读预检（home / 结构 / adapter），再锁外备份、锁内重读合并、按需 `pnpm install --prefer-offline --no-frozen-lockfile`（允许更新过期 profile lockfile；失败时 `package.json` 回滚，lockfile/node_modules 可能保留部分更新，下次 setup 收敛）；结果只进 `SetupResult.dsh`，不写全局 `update_state.json` 资产 hash。预检/用法类错误 → `INVALID_ARGUMENT`/exit 1；备份/安装类 → `INTERNAL_ERROR`/exit 3。成功后提示重启 DSH 宿主。`openfeel update --tools dsh` 不适用（exit 1 指引 setup）。
 
 ### `--check`（主动诊断，v1.1.5）
 

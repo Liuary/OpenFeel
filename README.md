@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.3.0**（DSH 适配器单包分发 + README 重构） — `openfeel` 包内置 `dsh/`；`openfeel setup --tools dsh` 一键部署到 DSH profile；修复适配器 6 处位置参数空值问题；版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.3.1**（DSH 部署热修复） — `openfeel setup --tools dsh` 的 `pnpm install` 增加 `--no-frozen-lockfile`，修复 profile lockfile 过期时的 `ERR_PNPM_OUTDATED_LOCKFILE`；版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

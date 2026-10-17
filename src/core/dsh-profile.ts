@@ -385,9 +385,11 @@ export function resolvePnpmCommand(profileDir?: string): void {
   }
 }
 
-/** 在 profile 目录执行 pnpm install --prefer-offline */
+/** 在 profile 目录执行 pnpm install --prefer-offline（允许更新过期 lockfile） */
 export function runPnpmInstall(profileDir: string): void {
-  const result = spawnSync('pnpm', ['install', '--prefer-offline'], {
+  // profile 的 package.json 会随 link: 目标变化；CI=1 下 pnpm 默认 frozen-lockfile，
+  // 过期 lockfile 会直接 ERR_PNPM_OUTDATED_LOCKFILE。显式放宽，让 pnpm 更新 lockfile。
+  const result = spawnSync('pnpm', ['install', '--prefer-offline', '--no-frozen-lockfile'], {
     cwd: profileDir,
     shell: process.platform === 'win32',
     encoding: 'utf8',

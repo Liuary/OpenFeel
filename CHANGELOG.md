@@ -4,6 +4,15 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.3.1] - 2026-10-17
+
+> 补丁版本（Patch）：修复 `setup --tools dsh` 在 DSH profile lockfile 过期时因 pnpm frozen-lockfile 部署失败。
+
+### Fixed
+- [stage-102] **`setup --tools dsh` 的 pnpm frozen-lockfile 失败**：profile 的 `openfeel-dsh` `link:` 目标变化会使 `pnpm-lock.yaml` 的 specifier 过期；内部以 `CI=1` 执行 `pnpm install` 时默认 frozen-lockfile，直接 `ERR_PNPM_OUTDATED_LOCKFILE` 并回滚。现改为 `pnpm install --prefer-offline --no-frozen-lockfile`，允许更新 profile lockfile；保留 180s 超时、非交互、失败回滚 `package.json`、`DSH_PNPM_INSTALL_FAILED` / `INTERNAL_ERROR` 映射。`pnpm-lock.yaml` / `node_modules` 在失败时可能保留部分更新，下一次 `setup` 收敛。
+- [stage-102] **测试**：`test/core/dsh-profile.test.ts` 断言第二次 `spawnSync` 的 argv 为 `install --prefer-offline --no-frozen-lockfile`（`cwd` 为 profile 目录）。
+- [stage-102] **文档**：`docs/commands.md` setup 节与 `manual/core/dsh-profile.md` 记录原因与 lockfile 更新语义。
+
 ## [1.3.0] - 2026-10-17
 
 > 次版本（Minor）：**DSH 适配器单包分发 + `setup --tools dsh` + README 重构**。`openfeel` npm 包内置 `dsh/` 运行文件；`update --tools dsh` 明确拒绝；修复适配器 6 处位置参数空值；JSON 契约保持 **40 成功出口 / 41 注册选项 / 13 错误码**，退出码语义不变。

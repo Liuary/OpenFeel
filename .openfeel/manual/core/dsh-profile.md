@@ -41,6 +41,7 @@
 ## 幂等与零副作用
 
 - unchanged + link 有效 → skipped：不备份、不加锁、不预检 pnpm、不 install。
+- install 使用 `pnpm install --prefer-offline --no-frozen-lockfile`：profile 的 `link:` 目标变化会使 lockfile specifier 过期，`CI=1` 的 frozen 默认会直接失败；显式允许 pnpm 更新 lockfile。install 失败只回滚 `package.json`；`pnpm-lock.yaml` / `node_modules` 可能保留部分更新，下一次 setup 会收敛。
 - 所有测试用临时 `DSH_HOME` + mock HOME；**真实 `~/.dsh` 零副作用**。
 - 混合组合（`opencode,dsh`）非原子：全局资产先写，DSH 失败不回滚全局资产（文档化）。
 
@@ -49,3 +50,4 @@
 | 阶段 | 变更 |
 |------|------|
 | v1.3.0-stage-101 | 初始创建：单包 DSH 部署（`setup --tools dsh`）、profile 合并/预检/锁序/回滚/错误映射 |
+| v1.3.1-stage-102 | install 增加 `--no-frozen-lockfile`：修复 profile lockfile 过期时的 `ERR_PNPM_OUTDATED_LOCKFILE` |

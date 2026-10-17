@@ -617,6 +617,7 @@ export const knowledge: I18nDomain = {
 /* ==================== archive 域：归档命令 ==================== */
 export const archive: I18nDomain = {
   'errorArchiveFailedTmpl':      { key: 'archive.errorArchiveFailedTmpl',      zh: '错误：归档失败，请确认阶段 "{stage}" 存在且 flow.json 已初始化。', en: '' },
+  'errorArchiveExistsTmpl':      { key: 'archive.errorArchiveExistsTmpl',      zh: '错误：阶段 "{stage}" 的归档文件已存在（{path}）；如需覆盖请显式使用 --force。', en: '' },
   'okTmpl':                      { key: 'archive.okTmpl',                      zh: '✓ 阶段已归档: {stage}',                     en: '' },
   'opsCount':                    { key: 'archive.opsCount',                    zh: '操作数',                                  en: '' },
   'reviewsCount':                { key: 'archive.reviewsCount',                zh: '审查条目数',                              en: '' },
@@ -653,6 +654,7 @@ export const lint: I18nDomain = {
   'kb.okTmpl':             { key: 'lint.kb.okTmpl',             zh: '✅ 未发现过期引用（共检查 {n} 个引用）', en: '' },
   'kb.staleTmpl':          { key: 'lint.kb.staleTmpl',          zh: '❌ 发现 {n} 个过期引用',                en: '' },
   'kb.staleItemTmpl':      { key: 'lint.kb.staleItemTmpl',      zh: '  {file} L{line}: "{ref}" → 文件不存在', en: '' },
+  'kb.issueTmpl':          { key: 'lint.kb.issueTmpl',          zh: 'L{line}: "{ref}" → 文件不存在',          en: '' },
 };
 
 /* ==================== help 域：命令帮助文本（--help 输出用语） ==================== */
@@ -766,6 +768,7 @@ export const help: I18nDomain = {
   'flow.review.remove.argrev-id': { key: 'help.flow.review.remove.argrev-id', zh: '审查条目 ID（如 REV-001）', en: '' },
   'flow.retry':            { key: 'help.flow.retry',            zh: '查询操作的重试状态', en: '' },
   'flow.retry.op':         { key: 'help.flow.retry.op',         zh: '操作 ID（如 stage-01.op-001）', en: '' },
+  'flow.retry.json':       { key: 'help.flow.retry.json',       zh: '以 JSON 输出 { schemaVersion, op, attempts, maxAttempts, exhausted, state }', en: '' },
   'flow.repair':           { key: 'help.flow.repair',           zh: '自动检测并修复 flow.json 中的常见问题', en: '' },
   'flow.repair.dryRun':    { key: 'help.flow.repair.dryRun',    zh: '仅检测不修复', en: '' },
   'flow.repair.backup':    { key: 'help.flow.repair.backup',    zh: '修复前备份为 .bak', en: '' },
@@ -799,6 +802,7 @@ export const help: I18nDomain = {
   'config.get':            { key: 'help.config.get',            zh: '读取配置项的值（项目配置；--global 时读取全局 profile；键支持 defaults.X，与 X 等价）', en: '' },
   'config.get.global':     { key: 'help.config.get.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
   'config.get.json':       { key: 'help.config.get.json',       zh: '以 JSON 输出（纯 JSON 单文档，含 schemaVersion）', en: '' },
+  'config.get.all':        { key: 'help.config.get.all',        zh: '项目模式一次读取全量 defaults（四键；不可与 --global 或 key 组合）', en: '' },
   'config.set':            { key: 'help.config.set',            zh: '设置配置项的值（项目配置；--global 时写入全局 profile；键支持 defaults.X，与 X 等价）', en: '' },
   'config.set.global':     { key: 'help.config.set.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
   'config.effective':      { key: 'help.config.effective',      zh: '输出配置的有效值 + 生效来源（status.md > config.yaml > profile.yaml > builtin）', en: '' },
@@ -817,6 +821,7 @@ export const help: I18nDomain = {
   'plan.stage.add.argname': { key: 'help.plan.stage.add.argname', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
   'plan.stage.add.tasks':  { key: 'help.plan.stage.add.tasks',  zh: '初始任务列表（空格或逗号分隔，生成到 status.md）', en: '' },
   'plan.stage.list':       { key: 'help.plan.stage.list',       zh: '列出所有工作阶段', en: '' },
+  'plan.stage.list.json':  { key: 'help.plan.stage.list.json',  zh: '以 JSON 输出 { schemaVersion, stages: [{ id, phase, status, deps, workflowMode, opsTotal, opsDone }], count }', en: '' },
   'plan.scheme':           { key: 'help.plan.scheme',           zh: '操作方案管理', en: '' },
   'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '创建操作方案', en: '' },
   'plan.scheme.create.argstage': { key: 'help.plan.scheme.create.argstage', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
@@ -900,6 +905,7 @@ export const help: I18nDomain = {
   'archive':               { key: 'help.archive',               zh: '归档指定阶段（汇总产出、生成摘要、提取知识）', en: '' },
   'archive.argstage':      { key: 'help.archive.argstage',      zh: '阶段名称（如 stage-06）', en: '' },
   'archive.json':          { key: 'help.archive.json',          zh: '以 JSON 输出 { schemaVersion, stage, archivePath, opsCount, reviewsCount, knowledgeExtracts }', en: '' },
+  'archive.force':         { key: 'help.archive.force',         zh: '显式覆盖已存在的归档文件（缺省拒绝覆盖，零写盘）', en: '' },
 
   // roadmap
   'roadmap':               { key: 'help.roadmap',               zh: '分期大纲管理', en: '' },
@@ -907,6 +913,7 @@ export const help: I18nDomain = {
   'roadmap.create.argversion': { key: 'help.roadmap.create.argversion', zh: '版本号', en: '' },
   'roadmap.show':          { key: 'help.roadmap.show',          zh: '显示分期大纲内容（不传版本则列出所有）', en: '' },
   'roadmap.show.argversion': { key: 'help.roadmap.show.argversion', zh: '版本号（可选）', en: '' },
+  'roadmap.show.json':     { key: 'help.roadmap.show.json',     zh: '以 JSON 输出 { schemaVersion, version, milestones: [{ title, theme, stage, deliverable }] }', en: '' },
 
   // instructions
   'instructions':          { key: 'help.instructions',          zh: '为指定 artifact 生成结构化指令（XML 或 JSON）', en: '' },
@@ -918,7 +925,9 @@ export const help: I18nDomain = {
   // lint
   'lint':                  { key: 'help.lint',                  zh: '项目健康检查（i18n 键一致性、kb 引用有效性）', en: '' },
   'lint.i18n':             { key: 'help.lint.i18n',             zh: '校验 i18n 键一致性（空值/中英独有键）', en: '' },
+  'lint.i18n.json':        { key: 'help.lint.i18n.json',        zh: '以 JSON 输出 { schemaVersion, target, ok, issues: [{ path, message }] }', en: '' },
   'lint.kb':               { key: 'help.lint.kb',               zh: '检测 .openfeel/kb/ 中的过期文件引用', en: '' },
+  'lint.kb.json':          { key: 'help.lint.kb.json',          zh: '以 JSON 输出 { schemaVersion, target, ok, issues: [{ path, message }] }', en: '' },
 
   // migrate（legacy 布局迁移）
   'migrate':               { key: 'help.migrate',               zh: 'Legacy 布局迁移（检测/备份/迁移/回滚存量项目旧布局）', en: '' },
@@ -936,8 +945,10 @@ export const help: I18nDomain = {
   'model.set.force':     { key: 'help.model.set.force',     zh: '确认修改框架默认（非 TTY 下 --scope default 必须）', en: '' },
   'model.get':           { key: 'help.model.get',           zh: '读取指定 agent 的模型', en: '' },
   'model.get.scope':     { key: 'help.model.get.scope',     zh: '层级（缺省展示生效值）', en: '' },
+  'model.get.json':      { key: 'help.model.get.json',      zh: '以 JSON 输出 { schemaVersion, scope, agent, provider, model, source }', en: '' },
   'model.list':          { key: 'help.model.list',          zh: '列出所有 agent 的模型', en: '' },
   'model.list.scope':    { key: 'help.model.list.scope',    zh: '层级（缺省展示生效值）', en: '' },
+  'model.list.json':     { key: 'help.model.list.json',     zh: '以 JSON 输出 { schemaVersion, scope, agents: [{ agent, provider, model, source }] }', en: '' },
 
   // req（需求流转命令组）
   'req':                 { key: 'help.req',                 zh: '需求管理（需求流转命令组：添加/列表/详情/认领/推进/看板/推荐）', en: '' },

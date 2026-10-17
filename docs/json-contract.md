@@ -1,9 +1,10 @@
-# OpenFeel CLI JSON 输出契约（v1.2.3）
+# OpenFeel CLI JSON 输出契约（v1.2.4）
 
-- **权威范围**：`--json` 成功输出（33 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
+- **权威范围**：`--json` 成功输出（40 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
 - **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。§6 登记的是有意增量清单，未登记即视为破坏。
-- **v1.2.3-stage-99 收口**：并发冲突 JSON 退出机制已与 `failCli` 统一（§14.2）；§14.1 补锁超时 E2E 证据；33 成功出口 / 34 注册选项与退出码语义零改动。
+- **v1.2.4-stage-100 收口**：DSH ACTION-GUIDE A1~A5 交付——A1 `archive <stage>` 覆盖保护（`ARCHIVE_EXISTS`）+ A2~A4 新增 7 个成功出口（#34~#40）+ A5 `config get --all` 扩展。计数升级为 **40 成功出口 / 41 注册 `--json` 选项**；§15 为本版细则。
+- **v1.2.3-stage-99 收口**：并发冲突 JSON 退出机制已与 `failCli` 统一（§14.2）；§14.1 补锁超时 E2E 证据；当时 33 成功出口 / 34 注册选项与退出码语义零改动。
 - **v1.2.2-stage-98 定稿**：文档多载体（README×3 / GETTING_STARTED / commands / manual / cli-usage）已同批同步；本文件为 v1.2.2 发布口径（33 成功出口 / 34 注册选项）。
 - **不变量**：既有 19 个成功出口**零删除 / 零重排 / 类型零改**（本阶段新增第 20~33 个）；只允许本文件 §6 登记的有意增量。出口 #19 `flow next` 为 stage-96 新增（§6.10）。
 
@@ -45,6 +46,7 @@
 | `FLOW_CONCURRENT_CONFLICT` | refusal | 2 |
 | `INTERNAL_ERROR` | internal | 3 |
 | `ARCHIVE_FAILED` | refusal | 1（stage-97 实现：`archive <stage> --json` 失败（refusal/1）） |
+| `ARCHIVE_EXISTS` | refusal | 1（v1.2.4 A1：目标归档文件已存在且未显式 `--force`；零写盘） |
 
 - `code` 为语言无关常量（zh/en 一致）；`message` 可本地化。
 - 映射表与 `src/core/errors.ts` 同源；可执行断言由 `test/cli/error-envelope.test.ts`（op-002）承担。
@@ -93,9 +95,9 @@ typeof doc.error === 'string'  → legacy
 
 - 禁止以退出码、命令名或字段存在性做第二套判别。
 
-## §5 33 出口冻结表
+## §5 40 出口冻结表
 
-> 计数口径：**33 个成功 JSON 出口**。`flow advance --json` 为错误封装开关，不计入（见 §7）。
+> 计数口径：**40 个成功 JSON 出口**（#1~#40）。`flow advance --json` 为错误封装开关，不计入（见 §7）。
 
 | # | 出口 | 顶层键序 | 元素/嵌套键（实测） | 条件键/形态 |
 |:-:|------|----------|--------------------|------------|
@@ -125,13 +127,20 @@ typeof doc.error === 'string'  → legacy
 | 24 | `knowledge list` | `schemaVersion,entries,count` | `entries[]{title,category,date,enabled}`（不含 `content`） | 空态 `entries:[]` + exit 0 |
 | 25 | `knowledge index` | `schemaVersion,categories,recentUpdates` | `categories[]{name,description}`；`recentUpdates[]{date,category,title}` | `index.md` 缺失时 `categories` 为 4 分类缺省、`recentUpdates:[]` |
 | 26 | `knowledge dedup` | `schemaVersion,threshold,categories,found,readOnly,matches` | `matches[]{category,title,date,enabled,similarity,flagged}`；`categories:string[]` | 恒 `readOnly:true`；无匹配 `found:false` + `matches:[]`；非法阈值/分类走 envelope（refusal/1） |
-| 27 | `config get` | 项目：`schemaVersion,scope,key,value`；全局无 key：`schemaVersion,scope,values`；全局有 key：同项目形态 | `values` = 6 全局键固定序（`user.name,user.lang,preferences.auto_advance,preferences.review_mode,preferences.communication,preferences.confirm_threshold`） | 全局缺省值 `undefined` → JSON `null`（人类显示空串；`DEFAULT_PROFILE` 回填后 6 键通常有值）；项目无 key → envelope `INVALID_ARGUMENT` |
+| 27 | `config get` | 项目：`schemaVersion,scope,key,value`；项目 `--all`：`schemaVersion,scope,defaults`；全局无 key：`schemaVersion,scope,values`；全局有 key：同项目形态 | `values` = 6 全局键固定序（`user.name,user.lang,preferences.auto_advance,preferences.review_mode,preferences.communication,preferences.confirm_threshold`）；`defaults` = 4 项目键固定序（`execution_mode,auto_advance,merge_mode,workflow_mode`，取自 `resolveConfigDefaults`） | 全局缺省值 `undefined` → JSON `null`（人类显示空串；`DEFAULT_PROFILE` 回填后 6 键通常有值）；项目无 key 且无 `--all` → envelope `INVALID_ARGUMENT`（`key-required`）；`--all`+`--global` → `all-global-conflict`；`--all`+key → `all-with-key` |
 | 28 | `config effective` | 无 key：`schemaVersion,effective`；有 key：`schemaVersion,key,value,source` | `effective` 为受管键映射（键序 = `EFFECTIVE_CONFIG_KEYS`） | 未知 key → envelope `INVALID_ARGUMENT`（refusal/1） |
 | 29 | `view list` | `schemaVersion,count,reviews` | `reviews[]` 10 键：`id,op,status,priority,title,filed_by,filed_at,blocking,canAutoFix,autoFixDetail` | `blocking` 缺省 `true`（`!== false`）；`canAutoFix` 缺省 `false`（`=== true`）；`autoFixDetail` 可空；空态 `reviews:[]`；内部异常 JSON `INTERNAL_ERROR`/3（人类 1） |
 | 30 | `plan scheme list` | `schemaVersion,stage,count,schemes` | `schemes[]{stage,opId,title,filePath,draft,fill}`；`filePath` 为项目根相对路径 | `stage` 可空（`null` = 全部）；`draft` = flow.json 同 opId 存在 `state:'draft'`（跨阶段全局匹配，见 §13.5）；`fill` 经 `detectFillState`；空态 `schemes:[]` |
 | 31 | `flow log` | `schemaVersion,count,entries` | `entries[]{time,agent,action,detail}`；`time` 原始 ISO（不截断）；`agent` 经 `normalizeAgentName` | 空日志与未初始化同形 `entries:[]` + exit 0 |
 | 32 | `project overview` | `schemaVersion,project,dirs,stats,entries,techStack` | `project{name,version,description}`；`dirs{src{exists,cli,commands,core,utils},opencode{exists,agents,skills},openfeel{exists,kb,plan,codeReview,bugs}}`；`stats{tsSourceFiles,agentDefs,cliModules,kbEntries,planVersions}`；`entries{available,cli,pkg,build}`；`techStack{runtime,language,cliFramework,validation,config,fileMatch,test}` | `dirs.*` 子项目录不存在时 `null`（`bugs` 为 boolean）；`stats` 恒 number；`entries.available` 反映 `src` 存在性 |
-| 33 | `archive <stage>` | `schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts` | `archivePath` 绝对路径；`opsCount/reviewsCount` 为 number；`knowledgeExtracts:string[]` | 阶段不存在 / 未初始化 → envelope `ARCHIVE_FAILED`/refusal/1；异常 → `INTERNAL_ERROR`/internal/3（人类保持 1） |
+| 33 | `archive <stage>` | `schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts` | `archivePath` 绝对路径；`opsCount/reviewsCount` 为 number；`knowledgeExtracts:string[]` | 阶段不存在 / 未初始化 → envelope `ARCHIVE_FAILED`/refusal/1；目标归档已存在且未 `--force` → `ARCHIVE_EXISTS`/refusal/1（零写盘）；异常 → `INTERNAL_ERROR`/internal/3（人类保持 1）；`--force` 不新增返回键 |
+| 34 | `plan stage list` | `schemaVersion,stages,count` | `stages[]{id,phase,status,deps,workflowMode,opsTotal,opsDone}`；`phase/status` 可空，`deps` 恒数组 | flow.json 注册阶段（声明序）；`workflowMode` 经 `resolveStageWorkflowMode`；空态/未初始化 `stages:[]` + `count:0` + exit 0；人类输出保持计划目录清单（不同视图） |
+| 35 | `model list` | `schemaVersion,scope,agents` | `agents[]{agent,provider,model,source}`；`scope` 回显 `--scope`（未指定 `null`） | `provider/model` 按生效值首个 `/` 切分（无 `/` → `provider:null`）；`source` = 生效层（default > project > global），无值 `null` |
+| 36 | `model get` | `schemaVersion,scope,agent,provider,model,source` | 单 agent 六键；派生规则同 #35 | 非法 scope → `INVALID_ARGUMENT`/refusal/1；人类输出不变 |
+| 37 | `flow retry` | `schemaVersion,op,attempts,maxAttempts,exhausted,state` | `attempts = getRetryCount(op)`；`maxAttempts = op.max_attempts`；`exhausted = attempts >= maxAttempts` | 只读；未初始化 → `NO_INIT`；阶段不存在 → `STAGE_NOT_FOUND`；非法 opId / op 不存在 → `INVALID_ARGUMENT`（detail.reason） |
+| 38 | `lint i18n` | `schemaVersion,target,ok,issues` | `target:"i18n"`；`issues[]{path,message}`；`path ∈ {src/core/i18n-data/zh-CN.ts, src/core/i18n-data/en.ts}` | `ok = issues.length === 0`；`ok:false` 仍为成功文档 + exit 1；人类输出逐字不变 |
+| 39 | `lint kb` | `schemaVersion,target,ok,issues` | `target:"kb"`；`issues[]{path,message}`；`path = .openfeel/kb/<file>`（项目根相对） | 无 kb 目录 → `ok:true,issues:[]` + exit 0；过期引用 → `ok:false` + exit 1 |
+| 40 | `roadmap show` | `schemaVersion,version,milestones` | `milestones[]{title,theme,stage,deliverable}`（表头驱动；兼容 3/4 列，缺列 `null`） | 不传版本 → `version:null,milestones:[]` + exit 0；版本不存在 → `INVALID_ARGUMENT`/refusal/1；人类输出逐字不变 |
 
 **登记类别**：恒在键 / 条件出现键 / 文档形态变体三类，测试断言须与类别一致。
 
@@ -152,16 +161,17 @@ typeof doc.error === 'string'  → legacy
 13. **stage-97：14 个读命令 `--json` 新出口（#20~#33）**——`stage status`（单阶段/无参）、`flow recover`、`flow checkpoint list`、`flow log`、`project overview`、`knowledge search|list|index|dedup`、`config get|effective`、`view list`、`plan scheme list`，以及 `archive <stage>`（13 命令面 + `archive <stage>`；详见 §13.1）。
 14. **stage-97：`req list --json.requirements[]` 末位追加 `linkedStages` / `progress`**——既有 `RequirementData` 键序不变，仅末位追加；`linkedStages[]{id,phase}`、`progress{done,total}`（见 §13.3）。
 15. **stage-97：`flow archive --json`（gate-rejected 与成功）追加 `eligible` / `unfinishedStages` / `blockingReviews`**——legacy 键序与 `error` 类型不变；成功形态 9 键、gate-rejected 形态 9 键（见 §4.2 / §13.3）。
+16. **v1.2.4-stage-100：A1~A5 有意增量（#34~#40 + 2 项既有出口扩展）**——A1 `archive <stage>` 增 `ARCHIVE_EXISTS` 拒绝（错误码第 13 行）与 `--force`（出口 #33 键集不变）；A2~A4 新增 #34~#40 七个出口；A5 `config get --all` 扩展 #27（项目模式新增 `defaults` 形态）。既有出口字段键集/键序/类型零改动；详见 §15。
 
 ## §7 计数口径
 
-- **成功 JSON 出口 = 33 个**（flow 15 + req 5 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 1 + project 1 + archive 1）。
+- **成功 JSON 出口 = 40 个**（flow 15 + req 5 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 2 + project 1 + archive 1 + model 2 + lint 2 + roadmap 1）。
   - flow 15 = `status,overview,current,metrics,phases,mode,ops list,archive,archive list,archive show,health,next,recover,checkpoint list,log`。
-  - 本阶段新增 14 个：#20~#33；`req list` / `flow archive` 为既有出口的键增量（不改变计数）。
+  - v1.2.4 新增 7 个：#34 `plan stage list`、#35 `model list`、#36 `model get`、#37 `flow retry`、#38 `lint i18n`、#39 `lint kb`、#40 `roadmap show`；`config get --all`（#27 扩展）与 `archive --force`（#33 选项扩展）不计新增出口。
 - `flow advance --json` 为**错误封装开关**：成功输出保持人类文本，不计入成功出口。
-- 注册的 `--json` 选项数为 **34**（33 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。
-- 三处对齐：源码 `option('--json'` 去重计数 34 / 本文件 33+34 / `test/cli/json-contract.test.ts` 用例 #1~#33。
-- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 33 个成功出口、也不计入 34 个注册选项（非 Commander 选项）；验收单列。**
+- 注册的 `--json` 选项数为 **41**（40 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。`lint kb` 与 `lint i18n` 为两个独立 Commander 子命令，各计 1。
+- 三处对齐：源码 `option('--json'` 去重计数 41 / 本文件 40+41 / `test/cli/json-contract.test.ts` 用例 #1~#40；`test/commands/knowledge.test.ts` 计数用例 = 41/40。
+- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 40 个成功出口、也不计入 41 个注册选项（非 Commander 选项）；验收单列。**
 
 ## §8 迁移边界
 
@@ -328,3 +338,40 @@ typeof doc.error === 'string'  → legacy
 ### §14.3 REV-96-008：本阶段零动作
 
 - 转 stage-98（随 ops 归档订正）；本阶段不动作。
+
+## §15 v1.2.4-stage-100 细则（DSH ACTION-GUIDE A1~A5）
+
+### §15.1 A1：`archive <stage> [--json] [--force]` 覆盖保护
+
+- **判定顺序**：`FlowManager` 只读加载 → 阶段解析（短名归一 + 双键回退）→ **目标文件存在性检查** → 计算摘要 → 写归档 → `appendLog` → `save()` → KB 同步。
+- **拒绝条件**：`.openfeel/log/archive-{stageName}.md` 已存在且未传 `force` → `ARCHIVE_EXISTS` / `kind=refusal` / exit 1；JSON `detail={stage,archivePath}`；人类 stderr 单行 + exit 1。
+- **零写盘保证**：检查点位于 `mkdirSync` / `atomicWriteFileSync` / `appendLog` / `save()` / `initKnowledgeBase` / `addKnowledgeEntry` 之前。主判据 = 归档文件内容 SHA-256 + `flow.json` revision + `log[]` 长度 + KB 条目数；`mtime` 仅辅助（测试在并发/时间粒度下稳定）。
+- **`--force` 语义**：仅绕过归档文件覆盖保护；成功出口 #33 六键不变；重复归档可能重复写 KB 条目，去重由 `knowledge dedup` 承担。
+- **已知边界（归档文件级，非阶段级）**：
+  - `openfeel archive v1.2.0-stage-78` → `.openfeel/log/archive-v1.2.0-stage-78.md`
+  - `openfeel archive stage-78` → `.openfeel/log/archive-stage-78.md`
+  - 两者派生**不同目标文件**，互不触发覆盖保护；保护只针对本次命令的写入目标文件。
+
+### §15.2 A2：`plan stage list --json`
+
+- **数据源**：`FlowManager.getData().stages`（flow.json 注册阶段，声明序）；**不枚举计划目录**。
+- `phases/status` 缺省 `null`；`deps = Array.isArray(stage.deps) ? stage.deps : []`；`workflowMode = resolveStageWorkflowMode(id).value`；`opsTotal = Object.keys(stage.ops ?? {}).length`；`opsDone = values.filter(state === 'done').length`。
+- **人类输出**：保持 `listStages()` 目录清单逐字不变；JSON 是「注册阶段调度视图」，两者为不同视图。
+
+### §15.3 A3：`model list|get --json`
+
+- `scope` 回显 `--scope`，未指定 `null`；指定 scope 时取 `byScope[scope]`，否则取 `effective`（default > project > global）。
+- `provider`/`model`：有效值首个 `/` 之前为 provider、之后为 model；无 `/` → `provider:null`、`model` 为原值；无有效值 → 三者均 `null`。
+- `source`：指定 scope 且值非空 → 该 scope；未指定 → 解析链首个非空层；无值 → `null`。
+
+### §15.4 A4：三命令面
+
+- **`flow retry`**：`attempts = getRetryCount(op)`、`maxAttempts = op.max_attempts`、`exhausted = attempts >= maxAttempts`、`state = op.state`；只读零写盘。
+- **`lint i18n|kb`**：`ok = issues.length === 0`；`ok:false` 仍输出成功文档并保持 `process.exitCode = 1` 门禁语义；结构化 issues 与人类输出同源（人类行逐字不变）；`lint kb` 无目录 → `ok:true,issues:[]`。
+- **`roadmap show`**：`version` = 归一化版本（去前导 `v`）；不传版本 → `version:null,milestones:[]`；表头驱动解析 `## 里程碑` 表格（兼容 3/4 列；缺列 `null`）；无小节/占位文案 → `milestones:[]`；版本不存在 → `INVALID_ARGUMENT`/refusal/1。
+
+### §15.5 A5：`config get --all --json`
+
+- 形态：`{schemaVersion,scope:"project",defaults:{execution_mode,auto_advance,merge_mode,workflow_mode}}`（`resolveConfigDefaults` 四键固定序，缺失/非法逐键回退 `DEFAULT_CONFIG`）。
+- **仅项目模式**：`--all` + `--global` → `INVALID_ARGUMENT`（`all-global-conflict`）；`--all` + 位置 key → `INVALID_ARGUMENT`（`all-with-key`）。
+- **不再 `key-required`**：项目模式无 key 且带 `--all` → 成功文档 exit 0；不带 `--all` 的既有行为逐字不变（人类输出四行 `key: value` 仅出现在 `--all`）。

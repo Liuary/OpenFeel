@@ -4496,3 +4496,20 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 **实证**：v1.2.3-stage-99（fast 单阶段）：承接表 4 项仓库内转出项（REV-95-009 / REV-98-003⑥ / REV-98-006① / REV-97-006）→ T1~T4 一一对应，T5 版本收口、T6 门禁；OUT-1（DSH 适配器）外部项仅登记。门禁 75 文件 / 1911 用例 0 failed、tsc 0、i18n 983、kb 0 过期 / 631 引用、build ×2 幂等、`--version` 1.2.3、A 类残留 0、lock-timeout E2E 3 次稳定；REV-99-001~003 全 closed。
 
 **参见：** `.openfeel/plan/v1/stage-99/plan.md`、`.openfeel/tmp/stage-99/gate.md`、`.openfeel/log/archive-v1.2.3-stage-99.md`；kb/patterns.md #版本号全链路收口清单模式、#收官版本收口执行序、#收口期冻结；kb/troubleshooting.md #测试专用 env seam 的门控纪律
+
+## [+] 归档覆盖保护：文件级保护目标 + 检查先于一切写盘 + 零写盘四项主判据 + `--force` 正控 (2026-10-17)
+
+**场景**：`archive <stage>` 原本幂等覆盖写——对已有归档重跑会静默重写归档文件、重复追加 `log[]`、重复抽取 KB 条目（数据安全风险）。需要「拒绝覆盖 + 显式越权」，同时不能靠 mtime 之类不稳定信号证明「什么都没写」。
+
+**做法**：
+1. **保护目标 = 本次写入的归档文件**（`archive-${输入原值}.md`），不是阶段级：`archive v1.2.0-stage-78` → `archive-v1.2.0-stage-78.md`，`archive stage-78` → `archive-stage-78.md`，两者派生不同文件、互不触发。别名跨保护为**已知边界**，契约显式登记，避免适配器误以为「同阶段必拦」。
+2. **检查点前置到一切写盘之前**：阶段解析（只读）→ 目标文件存在性检查 → 命中且无 `--force` 抛 `ArchiveExistsError` → 命令层 `failRefusal({code:'ARCHIVE_EXISTS'})`。`mkdirSync(logDir)` / 归档写入 / `appendLog` / `save()` / KB 同步全部排在检查之后。
+3. **零写盘主判据（内容级四项）**：① 归档文件内容哈希（SHA-256）不变；② `flow.json.meta.revision` 不变；③ `flow.json.log[]` 长度不变；④ KB 条目数不变。**mtime 仅辅助**——并发/文件系统时间粒度下等值断言不稳。
+4. **`--force` 正控**：必须断言真实写盘（内容哈希变化 / revision 递增 + 成功出口六键），防止「什么都没写」的假绿；负控 = 未 force 时四项零变化 + exit 1。
+5. **人类 / JSON 双保护共用同一判定**（`failRefusal` 单点），不复制第二套业务判定。
+
+**判据**：① 保护范围措辞必须写「归档文件级」并给双别名示例；② 检查顺序是安全属性，不是实现细节——以「检查先于全部写盘点」逐语句核对；③ 零写盘断言以内容级四项为主，mtime 不入主断言；④ 拒绝分支与覆盖分支都要有正控，防假绿。
+
+**实证**：v1.2.4-stage-100 A1（`merge.ts` 检查前置 + 码表 12 → 13 行 + `archive --force`）；测试覆盖零写盘四项、别名双文件正控/负控、未归档回归与 `--force` 六键；门禁 75 文件 / 1941 用例。
+
+**参见：** `src/core/archive/merge.ts`、`src/commands/archive.ts`、`docs/json-contract.md` §3/#33、`.openfeel/manual/cli/commands.md`；kb/patterns.md #`--dry-run` 必须字节级不写盘、#破坏性命令安全校验清单、#归档引擎分层与独立锁模式；kb/troubleshooting.md #零回归取证范式

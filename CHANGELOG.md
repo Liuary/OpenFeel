@@ -2,6 +2,30 @@
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.4] - 2026-10-17
+
+> 补丁版本（Patch）：**DSH ACTION-GUIDE A1~A5 收口**。完成 1 项数据安全修复（A1）+ 7 个新增 `--json` 命令面（A2~A4）+ 1 项既有出口扩展（A5）；JSON 契约升级为 **40 成功出口 / 41 注册选项**；退出码 0/1/2/3 语义与 phase 枚举/转移表不变；**不修改 `dsh/`**。
+
+### Added
+- [stage-100] **A2 `plan stage list --json`（#34）**：`{schemaVersion,stages,count}`；`stages[]` 七键 `id,phase,status,deps,workflowMode,opsTotal,opsDone`，数据源为 flow.json 注册阶段（声明序），`workflowMode` 经 `resolveStageWorkflowMode` 单点；空态 `[]/0` + exit 0；人类输出（计划目录清单）逐字不变。
+- [stage-100] **A3 `model list|get --json`（#35/#36）**：list `{schemaVersion,scope,agents:[{agent,provider,model,source}]}`；get `{schemaVersion,scope,agent,provider,model,source}`；`provider`/`model` 按生效值首个 `/` 切分（无 `/` → `provider:null`），`source` 取生效层（default > project > global）；非法 scope → `INVALID_ARGUMENT`；人类输出不变。
+- [stage-100] **A4 三命令面（#37~#40）**：`flow retry --op <id> --json`（六键 `op,attempts,maxAttempts,exhausted,state`）；`lint i18n|kb --json`（`{target,ok,issues:[{path,message}]}`，`ok:false` 仍为成功文档并保持 exit 1 门禁语义；人类行与结构化 issues 同源）；`roadmap show [version] --json`（`version` + 表头驱动的 `milestones[{title,theme,stage,deliverable}]`，兼容 3/4 列历史格式，无版本 `null/[]`）。
+- [stage-100] **A5 `config get --all --json`（#27 扩展）**：项目模式一次取全量 `{schemaVersion,scope:"project",defaults:{execution_mode,auto_advance,merge_mode,workflow_mode}}`（`resolveConfigDefaults` 四键固定序）；不再报 `key-required`；`--all` + `--global` / `--all` + key → `INVALID_ARGUMENT`（`all-global-conflict` / `all-with-key`）。
+
+### Fixed
+- [stage-100] **A1 `archive <stage>` 覆盖保护（数据安全）**：目标归档文件已存在且未显式 `--force` → `ARCHIVE_EXISTS` / `kind=refusal` / exit 1，且**零写盘**（存在性检查位于 `mkdirSync` / 归档写入 / `appendLog` / `save()` / KB 同步之前；主判据 = 归档内容 SHA-256 + `flow.json` revision + `log[]` 长度 + KB 条目数）。人类模式与 `--json` 模式行为一致；`--force` 仅绕过归档文件覆盖保护。保护为**归档文件级**（`archive v1.2.0-stage-78` 与 `archive stage-78` 派生不同目标文件、互不触发）。
+
+### Changed
+- [stage-100] **错误码表 12 → 13 行**：新增 `ARCHIVE_EXISTS`（refusal/1，追加于 `ARCHIVE_FAILED` 之后）。
+- [stage-100] **JSON 契约计数 33/34 → 40/41**：新增 #34~#40；`lint kb` 与 `lint i18n` 为两个独立 Commander 子命令，各计 1 个注册选项；`flow advance --json` 仍为错误模式开关（不计成功出口）。
+- [stage-100] 版本全链路 **1.2.3 → 1.2.4**（A 类 6 载体 / 8 文件 / 10 处 + B 类生成物 + C 类文档多载体）。
+
+### Compatibility
+- **退出码**：0 成功 / 1 预期拒绝 / 2 并发冲突 / 3 内部错误，语义全部不变。
+- **JSON 契约**：既有 33 个成功出口字段键集、键序与类型零改动；新增出口只增不改；单一 `schemaVersion` 首键；人类输出逐字不变。
+- **行为**：A1 检查先于任何写盘；未归档阶段回归不变；`config get` 既有 key 路径不变；`lint` 人类输出与退出码不变。
+- **边界**：`dsh/` 零 diff；未纳入 lint/build/发布扫描；无新增第三方依赖；phase 枚举 15 项 / 转移表不变；存量 `flow.json` 零迁移零注入。
+
 ## [1.2.3] - 2026-10-17
 
 > 补丁版本（Patch）：**v1.2.2 转出项收口**。不新增功能 / 字段 / 配置键 / 第三方依赖；33 成功出口 / 34 注册选项契约不变。

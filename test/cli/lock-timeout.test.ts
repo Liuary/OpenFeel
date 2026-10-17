@@ -79,7 +79,9 @@ describe.skipIf(!HAS_DIST)('锁等待超时 CLI E2E（REV-98-006①）', () => {
       // 每次运行前重置 fresh 锁（前一轮未获取成功，锁文件保留；重写保证 mtime 新鲜）
       writeFileSync(lockPath, JSON.stringify({ pid: 999999, time: Date.now(), token: `e2e-${i}` }), 'utf-8');
 
-      const result = runCli(['archive', 'v1.0.0-stage-01', '--json'], projectDir, homeDir, {
+      // v1.2.4 A1：归档文件已存在时必须显式 --force 才会进入写盘/保存路径；
+      // 本用例验证的是锁超时（save 路径），故每次均带 --force（不改变断言目标）
+      const result = runCli(['archive', 'v1.0.0-stage-01', '--json', '--force'], projectDir, homeDir, {
         OPENFEEL_TEST_MODE: '1',
         OPENFEEL_TEST_LOCK_TIMEOUT_MS: '200',
         OPENFEEL_TEST_LOCK_STALE_MS: '60000',

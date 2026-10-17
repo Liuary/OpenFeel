@@ -498,7 +498,7 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
       '## v1.2.2 新增能力（stage-95~98）',
       'openfeel flow archive <version>',
       'openfeel flow archive list', 'openfeel flow archive show <version>', '阶段摘要归档',
-      '10 子命令', 'v1.2.1 起 11', 'openfeel-req', 'openfeel req', '**22 个**共享源', '本文档为 v1.2.3 快照']) {
+      '10 子命令', 'v1.2.1 起 11', 'openfeel-req', 'openfeel req', '**22 个**共享源', '本文档为 v1.2.4 快照']) {
       expect(c, `缺 ${s}`).toContain(s);
     }
     expect(c, '陈旧 17 残留').not.toContain('**17 个**共享源');
@@ -506,6 +506,7 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
     expect(c, '旧快照声明残留').not.toContain('本文档为 v1.1.7 快照');
     expect(c, 'v1.2.0 快照声明残留').not.toContain('本文档为 v1.2.0 快照');
     expect(c, 'v1.2.1 快照声明残留').not.toContain('本文档为 v1.2.1 快照');
+    expect(c, 'v1.2.3 快照声明残留').not.toContain('本文档为 v1.2.3 快照');
     expect((c.match(/node bin\/openfeel\.js/g) ?? []).length, 'T53 自举加注恒 1').toBe(1);
   });
 });

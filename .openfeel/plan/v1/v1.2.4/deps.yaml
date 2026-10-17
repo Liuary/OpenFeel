@@ -1,0 +1,98 @@
+# OpenFeel v1.2.4 阶段依赖声明（DSH ACTION-GUIDE A1~A5 收口 · 补丁版本）
+# 由 openfeel-planner 制定；本版单阶段，op 级依赖由 openfeel-schemer 在阶段产方案时落盘（stage-100/ops/deps.yaml）
+# 结构：stages.{stageId}.deps（供 flow health 循环依赖检测消费；键为完整 stageId）
+
+version: "1.1"
+series: v1
+version_label: v1.2.4
+theme: DSH ACTION-GUIDE A1~A5 收口（archive 覆盖保护 / plan stage list / model / flow retry / lint / roadmap show / config get --all / 版本 1.2.4）
+generated_by: openfeel-planner
+generated_at: "2026-10-17"
+
+# 跨版本承接（基线）
+baseline:
+  - upstream: v1.2.3-stage-99
+    type: hard
+    status: done
+    reason: "v1.2.3 单阶段 done 并归档（CLI 1.2.3；契约 33 成功出口 / 34 注册选项；测试 75 文件 / 1911 用例；lint i18n 983；lint kb 0 过期 / 643 引用；flow.json revision 1289；reviews=0）。本版只承接 dsh/ACTION-GUIDE.md 的 A1~A5 五项待办与版本 1.2.4 收口；不修改 dsh/、不新增依赖、不改 phase 枚举/转移表。"
+
+stages:
+  v1.2.4-stage-100:
+    name: DSH A1~A5 收口与版本 1.2.4 收口
+    deps: []
+    priority: P1
+    est_ops: 7
+    workflow_mode: fast
+    requirement: null
+    produces_core:
+      - src/core/archive/merge.ts
+      - src/core/errors.ts
+      - src/core/plan/roadmap.ts
+      - src/commands/archive.ts
+      - src/commands/plan.ts
+      - src/commands/model.ts
+      - src/commands/flow.ts
+      - src/commands/lint.ts
+      - src/commands/roadmap.ts
+      - src/commands/config.ts
+      - src/core/i18n-data/zh-CN.ts
+      - src/core/i18n-data/en.ts
+      - src/core/templates-data/skills/openfeel-cli-usage/SKILL.md
+      - src/core/templates-data/agents-md/zh-CN.md
+      - src/core/templates-data/agents-md/en.md
+      - src/core/templates-data/claude/constraint/zh-CN.md
+      - src/core/templates-data/claude/constraint/en.md
+      - src/core/config.ts
+      - src/core/template-loader.ts
+      - src/core/update.ts
+      - test/commands/archive.test.ts
+      - test/core/archive/merge.test.ts
+      - test/commands/plan.test.ts
+      - test/commands/model.test.ts
+      - test/commands/flow.test.ts
+      - test/commands/lint.test.ts
+      - test/commands/roadmap.test.ts
+      - test/commands/config.test.ts
+      - test/commands/knowledge.test.ts
+      - test/cli/json-contract.test.ts
+      - test/cli/error-envelope.test.ts
+      - docs/json-contract.md
+      - docs/commands.md
+      - docs/GETTING_STARTED.md
+      - docs/dsh-cli-requirements-supplement-1.2.3.md
+      - .openfeel/manual/index.md
+      - .openfeel/manual/cli/commands.md
+      - .openfeel/manual/cli/model.md
+      - .openfeel/manual/core/json-contract.md
+      - .openfeel/manual/core/config.md
+      - README.md
+      - README.zh-CN.md
+      - README.en.md
+      - CHANGELOG.md
+      - package.json
+      - package-lock.json
+      - .openfeel/config.yaml
+      - .openfeel/roadmap/v1.2.4.md
+      - .openfeel/plan/v1/v1.2.4/plan.md
+      - .openfeel/plan/v1/stage-100/plan.md
+    notes: "T1 A1 归档覆盖保护：archiveStage 在阶段解析后、任何写盘前检查 archive-<输入原值>.md；已存在且无 force → ArchiveExistsError → ARCHIVE_EXISTS/refusal/1，零写盘（归档文件内容哈希 SHA-256、flow.json revision、log[] 长度、KB 条目数不变；mtime 仅辅助、并发/时间粒度下稳定；保护为归档文件级：archive v1.2.0-stage-78 → archive-v1.2.0-stage-78.md，archive stage-78 → archive-stage-78.md，互不触发）；新增 --force 显式覆盖；错误码表 12→13 行；人类与 JSON 双保护。T2 A2 plan stage list --json：flow.json 注册阶段调度视图，stages[] 七键（id/phase/status/deps/workflowMode/opsTotal/opsDone）+ count；空态 []/0；人类目录清单不变。T3 A3 model list|get --json：provider/model 按首个 / 切分，source 按 default > project > global 解析链；scope 回显/null；人类输出不变。T4 A4 flow retry（op/attempts/maxAttempts/exhausted/state）+ lint kb|i18n（target/ok/issues[{path,message}]，ok:false 仍 exit 1）+ roadmap show（version/milestones[{title,theme,stage,deliverable}]，3/4 列表头兼容）；人类输出不变。T5 A5 config get --all --json：项目模式 {scope:'project',defaults} 四键（resolveConfigDefaults），不再 key-required；--all+key / --global --all 拒绝。T6 版本 1.2.4 全链路 A/B/C/D/E + CHANGELOG + 文档多载体 + supplement 增量 + build 双生成物。T7 门禁（npm test / tsc / lint i18n / lint kb / build ×2 / --version 1.2.4 / 契约 #1~#40 / 人类输出零回归 / dsh 零 diff）。计数锁定：40 成功出口 / 41 注册 --json 选项（lint 双命令面各 +1，较任务预估 39/40 +1）。边界：不修改 dsh/、不纳入扫描、不新增依赖、不改 phase 枚举/转移表、不镜像 Agent 编制、不复制第二套业务判定、不直写 flow.json、不代 push。"
+
+# 执行顺序（单阶段）
+execution_order:
+  - v1.2.4-stage-100
+
+# 跨阶段/版本不变量
+invariants:
+  - "A1 已有归档且无 --force：ARCHIVE_EXISTS/refusal/1，零写盘；主判据 = 归档文件内容哈希（SHA-256）+ flow.json revision + log[] 长度 + KB 条目数（mtime 仅辅助，测试在并发/时间粒度下稳定）；--force 仅绕过归档文件覆盖保护，不改变知识提取/日志语义"
+  - "A1 错误码 ARCHIVE_EXISTS 入单一权威映射表（13 行）；human 与 JSON 均受保护；保护为归档文件级（非阶段级）：archive v1.2.0-stage-78 → archive-v1.2.0-stage-78.md，archive stage-78 → archive-stage-78.md，互不触发覆盖保护"
+  - "A1 零写盘正控：--force 必须真实覆盖（内容哈希变化 / revision 递增），防止『未写盘』假绿"
+  - "A2 JSON 枚举 flow.json 注册阶段（调度视图）；人类输出保持计划目录清单；workflowMode 经 resolveStageWorkflowMode 单点；空态 stages:[] + count:0 + exit 0"
+  - "A3 provider/model 按生效值首个 / 切分；source 遵循 default > project > global 解析链；scope 未指定为 null；复用 getAgentModel/listAgentModels，不新建解析"
+  - "A4 lint ok:false 仍为成功文档 + exit 1（既有门禁语义）；issues 与人类输出同源；roadmap 里程碑表头驱动、缺省 []；flow retry 只读"
+  - "A5 --all 仅项目模式；defaults 四键固定序、缺省回退 DEFAULT_CONFIG；不再 key-required；--all+key / --global --all → INVALID_ARGUMENT"
+  - "计数：40 成功 JSON 出口 / 41 注册 --json 选项；源码命令树 / 契约 §5+§7 / 冻结测试 #1~#40 三处对齐；config get --all 与 archive --force 不计新增出口"
+  - "既有 33 个成功出口字段零删除/零重排/类型零改；既有命令人类输出逐字不变；退出码 0/1/2/3 语义不变"
+  - "不修改 dsh/；不把 dsh/ 纳入 lint/build/发布扫描；不新增第三方依赖；phase 枚举 15 项 / 转移表不变；不镜像 Agent 编制；不复制第二套业务判定"
+  - "版本 1.2.4 三段补丁号；A 类 6 载体 / 8 文件 / 10 处；B 类双生成物由 build 重生成禁手改；版本写入后零业务代码改动"
+  - "不直写 flow.json；不推进 phase；不 commit / push；不 npm publish；阶段推进由 Feel 经 CLI 执行"
+  - "OUT-1（DSH 适配器消费 v1.2.4 新出口：cli.text → cli.json、requiresCli 升级）为仓库外项，由 Feel/DSH 单独执行，不作为本仓 stage-100 完成判据"

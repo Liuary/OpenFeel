@@ -36,6 +36,9 @@ import { registerViewCommand } from '../../src/commands/view.js';
 import { registerPlanCommand } from '../../src/commands/plan.js';
 import { registerProjectCommand } from '../../src/commands/project.js';
 import { registerArchiveCommand } from '../../src/commands/archive.js';
+import { registerModelCommand } from '../../src/commands/model.js';
+import { registerLintCommand } from '../../src/commands/lint.js';
+import { registerRoadmapCommand } from '../../src/commands/roadmap.js';
 import { runCli, program as rootProgram } from '../../src/cli/index.js';
 import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
 import { initProject } from '../../src/core/init.js';
@@ -93,6 +96,9 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     registerPlanCommand(program);
     registerProjectCommand(program);
     registerArchiveCommand(program);
+    registerModelCommand(program);
+    registerLintCommand(program);
+    registerRoadmapCommand(program);
 
     // instructions：复制仓库 schema 到临时项目（隔离；与既有 instructions 测试同源）
     const destDir = join(tmpDir, '.openfeel', 'schemas', 'spec-driven');
@@ -918,9 +924,175 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(d.knowledgeExtracts).toEqual(['[REV-001] k']);
     expect(process.exitCode).toBe(0);
 
+    // v1.2.4 A1：已有归档 + 无 --force → ARCHIVE_EXISTS/refusal/1，归档内容逐字不变
+    const archivePath = String(d.archivePath);
+    const archiveBefore = readFileSync(archivePath, 'utf-8');
+    const exists = await docFailure(['archive', 'v1.2.2-stage-97', '--json']);
+    const existsErr = exists.error as Record<string, unknown>;
+    expect(existsErr.code).toBe('ARCHIVE_EXISTS');
+    expect(existsErr.kind).toBe('refusal');
+    expect(existsErr.detail).toEqual({ stage: 'v1.2.2-stage-97', archivePath });
+    expect(readFileSync(archivePath, 'utf-8')).toBe(archiveBefore);
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+
     const fail = await docFailure(['archive', 'stage-99', '--json']);
     const err = fail.error as Record<string, unknown>;
     expect(err.code).toBe('ARCHIVE_FAILED');
+    expect(err.kind).toBe('refusal');
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+  });
+
+  // ── v1.2.4 A2~A5：新增出口 #34~#40 ──
+
+  it('#34 plan stage list：注册阶段调度视图（7 键元素 + count）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.2.4-stage-100');
+    mgr.getData()!.stages['v1.2.4-stage-100'].ops = {
+      'op-001': { title: 'a', state: 'done' },
+      'op-002': { title: 'b', state: 'pending' },
+    } as never;
+    mgr.save();
+
+    const d = await doc(['plan', 'stage', 'list', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'stages', 'count']);
+    const stages = d.stages as Array<Record<string, unknown>>;
+    const target = stages.find((s) => s.id === 'v1.2.4-stage-100')!;
+    expect(Object.keys(target)).toEqual([
+      'id', 'phase', 'status', 'deps', 'workflowMode', 'opsTotal', 'opsDone',
+    ]);
+    expect(target.deps).toEqual([]);
+    expect(target.opsTotal).toBe(2);
+    expect(target.opsDone).toBe(1);
+    expect(typeof target.workflowMode).toBe('string');
+    expect(d.count).toBe(stages.length);
+    expect(process.exitCode).toBe(0);
+
+    // 空态：未初始化项目 → stages:[] / count:0 / exit 0
+    cwdMock.mockReturnValue(uninitDir);
+    const empty = await doc(['plan', 'stage', 'list', '--json']);
+    expect(empty.stages).toEqual([]);
+    expect(empty.count).toBe(0);
+    expect(process.exitCode).toBe(0);
+    cwdMock.mockReturnValue(tmpDir);
+  });
+
+  it('#35/#36 model list|get：键序、首个 / 切分、source 三层', async () => {
+    writeFileSync(join(tmpDir, 'opencode.jsonc'), JSON.stringify({
+      agent: { 'openfeel-executor': { model: 'deepseek/deepseek-flash' } },
+    }, null, 2) + '\n', 'utf-8');
+
+    const list = await doc(['model', 'list', '--scope', 'project', '--json']);
+    expect(Object.keys(list)).toEqual(['schemaVersion', 'scope', 'agents']);
+    expect(list.scope).toBe('project');
+    const agents = list.agents as Array<Record<string, unknown>>;
+    expect(agents.length).toBeGreaterThan(0);
+    expect(Object.keys(agents[0])).toEqual(['agent', 'provider', 'model', 'source']);
+    const executor = agents.find((a) => a.agent === 'openfeel-executor')!;
+    expect(executor).toEqual({
+      agent: 'openfeel-executor', provider: 'deepseek', model: 'deepseek-flash', source: 'project',
+    });
+
+    const get = await doc(['model', 'get', 'openfeel-executor', '--scope', 'project', '--json']);
+    expect(Object.keys(get)).toEqual(['schemaVersion', 'scope', 'agent', 'provider', 'model', 'source']);
+    expect(get).toMatchObject({
+      scope: 'project', agent: 'openfeel-executor', provider: 'deepseek',
+      model: 'deepseek-flash', source: 'project',
+    });
+
+    // 未指定 scope → 生效值 + default 层来源（框架默认 frontmatter）
+    const eff = await doc(['model', 'get', 'openfeel-executor', '--json']);
+    expect(eff.scope).toBeNull();
+    expect(eff.agent).toBe('openfeel-executor');
+    expect(eff.provider).toBe('deepseek');
+    expect(eff.model).toBe('deepseek-flash');
+    expect(eff.source).toBe('default');
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('#37 flow retry：六键 + exhausted 判定', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.2.4-stage-100');
+    mgr.getData()!.stages['v1.2.4-stage-100'].ops = {
+      'op-001': { title: 't', state: 'failed', attempts: 3, max_attempts: 3 },
+    } as never;
+    mgr.save();
+
+    const d = await doc(['flow', 'retry', '--op', 'v1.2.4-stage-100.op-001', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'op', 'attempts', 'maxAttempts', 'exhausted', 'state']);
+    expect(d).toMatchObject({
+      op: 'v1.2.4-stage-100.op-001', attempts: 3, maxAttempts: 3, exhausted: true, state: 'failed',
+    });
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('#38/#39 lint：结构化 issues、ok:false 仍为成功文档 + exit 1', async () => {
+    const kbDir = join(tmpDir, '.openfeel', 'kb');
+    rmSync(kbDir, { recursive: true, force: true });
+
+    const okDoc = await doc(['lint', 'kb', '--json']);
+    expect(Object.keys(okDoc)).toEqual(['schemaVersion', 'target', 'ok', 'issues']);
+    expect(okDoc).toMatchObject({ target: 'kb', ok: true, issues: [] });
+    expect(process.exitCode).toBe(0);
+
+    mkdirSync(kbDir, { recursive: true });
+    writeFileSync(join(kbDir, 'patterns.md'), '见 [缺失](missing-file.md)\n', 'utf-8');
+    const badDoc = await doc(['lint', 'kb', '--json']);
+    expect(badDoc).toMatchObject({ target: 'kb', ok: false });
+    const issues = badDoc.issues as Array<Record<string, unknown>>;
+    expect(Object.keys(issues[0])).toEqual(['path', 'message']);
+    expect(issues[0].path).toBe('.openfeel/kb/patterns.md');
+    expect(String(issues[0].message)).toContain('missing-file.md');
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+
+    // i18n：中英键集合在当前工作区一致 → ok:true / issues:[]
+    const i18nDoc = await doc(['lint', 'i18n', '--json']);
+    expect(Object.keys(i18nDoc)).toEqual(['schemaVersion', 'target', 'ok', 'issues']);
+    expect(i18nDoc.target).toBe('i18n');
+    expect(i18nDoc.ok).toBe(true);
+    expect(i18nDoc.issues).toEqual([]);
+  });
+
+  it('#40 roadmap show：version/milestones 键序、3/4 列兼容、空态与版本不存在', async () => {
+    const roadmapDir = join(tmpDir, '.openfeel', 'roadmap');
+    mkdirSync(roadmapDir, { recursive: true });
+    writeFileSync(
+      join(roadmapDir, 'v1.9.0.md'),
+      [
+        '# 分期大纲 v1.9.0',
+        '',
+        '## 里程碑',
+        '',
+        '| 里程碑 | 阶段 | 交付物 |',
+        '|--------|:--:|--------|',
+        '| M1 三列 | stage-1 | 交付一 |',
+        '',
+        '## 备注',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const d = await doc(['roadmap', 'show', 'v1.9.0', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'version', 'milestones']);
+    expect(d.version).toBe('1.9.0');
+    const milestones = d.milestones as Array<Record<string, unknown>>;
+    expect(Object.keys(milestones[0])).toEqual(['title', 'theme', 'stage', 'deliverable']);
+    expect(milestones[0]).toEqual({
+      title: 'M1 三列', theme: null, stage: 'stage-1', deliverable: '交付一',
+    });
+
+    // 不传版本 → version:null / milestones:[] / exit 0
+    const none = await doc(['roadmap', 'show', '--json']);
+    expect(none).toEqual({ schemaVersion: 1, version: null, milestones: [] });
+    expect(process.exitCode).toBe(0);
+
+    // 版本不存在 → INVALID_ARGUMENT/refusal/1
+    const missing = await docFailure(['roadmap', 'show', '9.9.9', '--json']);
+    const err = missing.error as Record<string, unknown>;
+    expect(err.code).toBe('INVALID_ARGUMENT');
     expect(err.kind).toBe('refusal');
     expect(process.exitCode).toBe(1);
     process.exitCode = 0;

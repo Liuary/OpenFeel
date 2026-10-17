@@ -11,6 +11,8 @@ import {
   type ModelScope, type GetModelResult,
 } from '../core/model-config.js';
 import { t, getCliLang } from '../core/i18n.js';
+import { withSchemaVersion, emitJson } from './shared/json-output.js';
+import { failRefusal } from './shared/errors.js';
 
 /** 合法 scope 集合 */
 const SCOPES: ModelScope[] = ['default', 'global', 'project'];
@@ -24,6 +26,45 @@ function parseScope(raw: string): ModelScope {
     throw new Error(`非法 scope "${raw}"，应为 default|global|project`);
   }
   return raw as ModelScope;
+}
+
+/**
+ * JSON 视图派生：provider/model 按生效值首个 `/` 切分，source 取生效层。
+ * 指定 scope 且值非空 → source = 该 scope；未指定 → default > project > global 首个非空。
+ * @param r get/list 的结果条目
+ * @param scope 用户显式指定的层级（未指定为 undefined）
+ */
+function toJsonModel(
+  r: GetModelResult,
+  scope: ModelScope | undefined,
+): { provider: string | null; model: string | null; source: ModelScope | null } {
+  const value = scope ? (r.byScope[scope] ?? null) : (r.effective ?? null);
+  let provider: string | null = null;
+  let model: string | null = null;
+  if (value !== null) {
+    const slash = value.indexOf('/');
+    if (slash === -1) {
+      // 无 `/` → provider 为 null，model 为原值
+      model = value;
+    } else {
+      provider = value.slice(0, slash);
+      model = value.slice(slash + 1);
+    }
+  }
+  let source: ModelScope | null = null;
+  if (scope) {
+    source = value !== null ? scope : null;
+  } else if (value !== null) {
+    // 与非指定 scope 的 effective 链同源：default > project > global
+    source = r.byScope.default != null
+      ? 'default'
+      : r.byScope.project != null
+        ? 'project'
+        : r.byScope.global != null
+          ? 'global'
+          : null;
+  }
+  return { provider, model, source };
 }
 
 /** 打印 GetModelResult 的 byScope 展示 */
@@ -123,21 +164,44 @@ export function registerModelCommand(program: Command): void {
     .command('get <agent>')
     .description(t('help.model.get'))
     .option('--scope <scope>', t('help.model.get.scope'))
-    .action((agent: string, options: { scope?: string }) => {
+    .option('--json', t('help.model.get.json', getCliLang(process.cwd())))
+    .action((agent: string, options: { scope?: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       let scope: ModelScope | undefined;
       try {
         scope = options.scope ? parseScope(options.scope) : undefined;
       } catch (err) {
-        console.error(t('model.error.scope', lang, { message: (err as Error).message }));
-        process.exit(1);
+        // 非法 scope：JSON envelope / 人类 stderr 单行 + exit 1（文案与既有逐字一致）
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('model.error.scope', lang, { message: (err as Error).message }),
+          detail: { reason: 'invalid-scope', scope: options.scope },
+        });
+        return;
       }
+      let result: GetModelResult;
       try {
-        printByScope(getAgentModel(agent, scope), scope, lang);
+        result = getAgentModel(agent, scope);
       } catch (err) {
-        console.error(t('model.get.failed', lang, { message: (err as Error).message }));
-        process.exit(1);
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('model.get.failed', lang, { message: (err as Error).message }),
+          detail: { reason: 'agent-not-found', agent },
+        });
+        return;
       }
+      if (options.json) {
+        const d = toJsonModel(result, scope);
+        emitJson(withSchemaVersion({
+          scope: scope ?? null,
+          agent: result.agentId,
+          provider: d.provider,
+          model: d.model,
+          source: d.source,
+        }));
+        return;
+      }
+      printByScope(result, scope, lang);
     });
 
   // ── list ──
@@ -145,17 +209,33 @@ export function registerModelCommand(program: Command): void {
     .command('list')
     .description(t('help.model.list'))
     .option('--scope <scope>', t('help.model.list.scope'))
-    .action((options: { scope?: string }) => {
+    .option('--json', t('help.model.list.json', getCliLang(process.cwd())))
+    .action((options: { scope?: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       let scope: ModelScope | undefined;
       try {
         scope = options.scope ? parseScope(options.scope) : undefined;
       } catch (err) {
-        console.error(t('model.error.scope', lang, { message: (err as Error).message }));
-        process.exit(1);
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('model.error.scope', lang, { message: (err as Error).message }),
+          detail: { reason: 'invalid-scope', scope: options.scope },
+        });
+        return;
+      }
+      const results = listAgentModels(scope);
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          scope: scope ?? null,
+          agents: results.map((r) => {
+            const d = toJsonModel(r, scope);
+            return { agent: r.agentId, provider: d.provider, model: d.model, source: d.source };
+          }),
+        }));
+        return;
       }
       console.log(t('model.list.title', lang));
-      for (const r of listAgentModels(scope)) {
+      for (const r of results) {
         const value = scope ? r.byScope[scope] : r.effective;
         console.log(`  ${r.agentId}: ${value ?? t('model.get.none', lang)}`);
       }

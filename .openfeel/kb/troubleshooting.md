@@ -1383,3 +1383,23 @@ opencode 侧同源同语义：`~/.config/opencode/agents/<name>.md` 的 `model` 
 **实证**：v1.2.3-stage-99 T3（REV-98-006①）：`src/core/fs/file-lock.ts` + `test/core/fs/file-lock.test.ts`（gate / 合法 / 非法 / 显式优先）+ 新增 `test/cli/lock-timeout.test.ts`；E2E 重复 3 次稳定；生产默认 `LOCK_TIMEOUT_MS_DEFAULT` / `LOCK_STALE_MS_DEFAULT` 与算法零 diff。
 
 **参见：** `src/core/fs/file-lock.ts`、`test/cli/lock-timeout.test.ts`、`docs/json-contract.md` §14.1、`.openfeel/manual/core/fs.md`；kb/patterns.md #环境变量覆盖型路径函数的「函数体内读 env」可测试性模式、#建议性文件锁模式、#补丁版本转出项收口范式；kb/troubleshooting.md #默认开启写真实用户目录的副作用防护、#子进程测试未设 cwd 致真实仓库污染
+
+## [+] 读命令 JSON 全覆盖的计数口径：成功出口数与注册 `--json` 选项数分开计（40 / 41） (2026-10-17)
+
+**现象**：任务预估「本版新增 N 个出口 → 39 成功出口 / 40 注册选项」，实测源码 `option('--json'` 注册点为 **41**。差 1 的来源是 `lint kb` 与 `lint i18n`——它们是两个**独立 Commander 子命令**，冻结计数测试按命令树遍历，各自需要注册 `--json`，因此各计 1。
+
+**根因**：把「命令面数量」当成「成功出口数量」直接相加，或反过来把「注册选项数」当「成功出口数」。两个口径的分母不同：
+- **成功出口** = 成功路径输出单文档 JSON 的出口（含同一命令多出口、形态变体单列）；
+- **注册选项** = 命令树中 `option('--json'` 的注册点数（含 `flow advance --json` 这类**错误模式开关**——成功仍输出人类文本，不计成功出口）。
+
+**处置**：
+1. **新命令面先逐项核验再加总**：对每个新增命令列出「是否成功出口 / 是否注册选项 / 是否既有出口扩展」，`config get --all` 与 `archive --force` 属于**既有出口的选项扩展**，不计新增出口。
+2. **三处对齐**：源码注册点（`grep -rc "option('--json'" src/` 累加）＝ 契约文档计数表（成功出口 #1~#N + 注册 M）＝ 冻结测试出口枚举；不等即红灯。
+3. **文档同时写两个数并说明差异**：本版 **40 成功出口 / 41 注册选项**，并显式登记「`lint kb` / `lint i18n` 各计 1」「`flow advance --json` 为错误模式开关」。
+4. **测试计数用例落固定位置**（如 `knowledge.test.ts` 的计数断言），并把「为何差 1」写成注释，防止下版再次误估。
+
+**判据**：① 成功出口与注册选项**不得混用同一个数字**；② 新增命令面必须逐项判类（新增出口 / 既有扩展 / 错误模式开关）；③ 三处对齐是权威，文档声明不得领先于源码；④ 差异原因必须显式登记（不能只写「+1」）。
+
+**实证**：v1.2.4-stage-100（33 + 7 = **40 成功出口**；34 + 7 = **41 注册选项**；源码实测 41；契约 / 冻结测试同口径）；门禁 G7。
+
+**参见：** `docs/json-contract.md` §5 / §7、`test/commands/knowledge.test.ts` 计数用例、`.openfeel/manual/cli/commands.md` 计数节；kb/troubleshooting.md #零回归口径的「数量词陷阱」、#新增输出键/契约的同步面清单；kb/patterns.md #读命令 `--json` 全量补全

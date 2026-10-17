@@ -4,8 +4,9 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { FlowManager } from '../../../src/core/flow-manager.js';
-import { archiveStage, type ArchiveResult } from '../../../src/core/archive/merge.js';
+import { archiveStage, ArchiveExistsError, type ArchiveResult } from '../../../src/core/archive/merge.js';
 import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -282,6 +283,77 @@ describe('Archive Merge', () => {
       expect(result!.reviewsCount).toBe(1);
       expect(result!.summary).toContain('含点阶段审查记录');
       expect(result!.summary).not.toContain('无关条目');
+    });
+
+    // ── v1.2.4 A1：归档覆盖保护（core 层） ──
+
+    /** 归档内容哈希 + flow.json revision / log 长度（零写盘主判据） */
+    function snapshot(stageName: string): { hash: string; revision: number | undefined; logLength: number } {
+      const archivePath = join(tmpDir, '.openfeel', 'log', `archive-${stageName}.md`);
+      const data = new FlowManager(tmpDir).getData()!;
+      return {
+        hash: createHash('sha256').update(readFileSync(archivePath)).digest('hex'),
+        revision: data.meta.revision,
+        logLength: data.log.length,
+      };
+    }
+
+    it('A1: 已有归档且未 force → 抛 ArchiveExistsError 且零写盘', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage('stage-06'));
+      mgr.save();
+      archiveStage(tmpDir, 'stage-06');
+      const before = snapshot('stage-06');
+
+      expect(() => archiveStage(tmpDir, 'stage-06')).toThrow(ArchiveExistsError);
+      // 错误携带目标路径，供命令层 detail 使用
+      try {
+        archiveStage(tmpDir, 'stage-06');
+      } catch (err) {
+        expect((err as ArchiveExistsError).archivePath).toBe(
+          join(tmpDir, '.openfeel', 'log', 'archive-stage-06.md'),
+        );
+        expect((err as ArchiveExistsError).stage).toBe('stage-06');
+      }
+      expect(snapshot('stage-06')).toEqual(before);
+    });
+
+    it('A1: force=true → 真实覆盖（哈希变化 / revision 递增 / log 追加）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage('stage-06'));
+      mgr.save();
+      archiveStage(tmpDir, 'stage-06');
+      const before = snapshot('stage-06');
+
+      const result = archiveStage(tmpDir, 'stage-06', { force: true });
+      expect(result).not.toBeNull();
+      const after = snapshot('stage-06');
+      expect(after.hash).not.toBe(before.hash);
+      expect(after.revision).toBeGreaterThan(before.revision as number);
+      expect(after.logLength).toBe(before.logLength + 1);
+    });
+
+    it('A1: 别名边界 → 短名/全名派生不同目标文件，互不触发保护', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      const data = makeFlowWithStage('v1.2.0-stage-78', {
+        stages: {
+          'v1.2.0-stage-78': { name: 'v1.2.0-stage-78', status: 'pending', deps: [], ops: {} },
+          'stage-78': { name: 'stage-78', status: 'pending', deps: [], ops: {} },
+        },
+      });
+      mgr.setData(data);
+      mgr.save();
+
+      expect(archiveStage(tmpDir, 'v1.2.0-stage-78')).not.toBeNull();
+      // 短名派生 archive-stage-78.md：不应被全名归档文件触发
+      expect(archiveStage(tmpDir, 'stage-78')).not.toBeNull();
+      expect(existsSync(join(tmpDir, '.openfeel', 'log', 'archive-v1.2.0-stage-78.md'))).toBe(true);
+      expect(existsSync(join(tmpDir, '.openfeel', 'log', 'archive-stage-78.md'))).toBe(true);
+      // 全名重跑 → 只保护全名文件
+      expect(() => archiveStage(tmpDir, 'v1.2.0-stage-78')).toThrow(ArchiveExistsError);
     });
   });
 });

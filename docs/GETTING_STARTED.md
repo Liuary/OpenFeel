@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.2.3 快照** | 更新日期：2026-10-17 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.2.4 快照** | 更新日期：2026-10-17 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -186,6 +186,15 @@ openfeel req board                                               # 看板视图�
 ```
 
 需求 7 状态（`draft` / `scheduled` / `in_progress` / `done` / `blocked` / `cancelled` / `rejected`）；**全部关联阶段 done 时需求自动收口**。用法权威源见 `openfeel-req` skill。
+
+## v1.2.4 修复速览（补丁）
+
+> 对应阶段 stage-100（DSH ACTION-GUIDE A1~A5 收口）。JSON 契约升级为 **40 成功出口 / 41 注册选项**；退出码 0/1/2/3 语义不变；本仓收口基线 **75 文件 / 21 阶段**。
+
+- **A1 归档覆盖保护（数据安全，P1）**：`openfeel archive <stage>` 对已有归档默认拒绝（`ARCHIVE_EXISTS`/refusal/1，零写盘）；显式 `--force` 才覆盖。
+- **A2~A4 新增 `--json`（P1/P2）**：`plan stage list`（#34）、`model list|get`（#35/#36）、`flow retry`（#37）、`lint i18n|kb`（#38/#39）、`roadmap show`（#40）。
+- **A5 `config get --all --json`（P2）**：项目模式一次取全量 `defaults` 四键，不再报 `key-required`。
+- **契约**：错误码表 13 行（新增 `ARCHIVE_EXISTS`）；既有出口与人类输出零回归。
 
 ## v1.2.3 修复速览
 

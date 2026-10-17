@@ -763,6 +763,67 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(process.exitCode).toBe(1);
   });
 
+  // ── v1.2.4 A5：config get --all ──
+
+  it('A5 JSON：--all → scope:project + defaults 四键固定序', async () => {
+    writeProjectConfigRaw([
+      'defaults:',
+      '  execution_mode: auto',
+      '  auto_advance: disabled',
+      '  merge_mode: auto',
+      '  workflow_mode: fast',
+      '',
+    ].join('\n'));
+
+    const doc = await jsonDoc(['config', 'get', '--all', '--json']);
+
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'scope', 'defaults']);
+    expect(doc.scope).toBe('project');
+    const defaults = doc.defaults as Record<string, unknown>;
+    expect(Object.keys(defaults)).toEqual([
+      'execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode',
+    ]);
+    expect(defaults).toEqual({
+      execution_mode: 'auto',
+      auto_advance: 'disabled',
+      merge_mode: 'auto',
+      workflow_mode: 'fast',
+    });
+    // 不再报 key-required
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('A5 JSON：--all + --global / --all + key → INVALID_ARGUMENT', async () => {
+    const globalConflict = await jsonError(['config', 'get', '--all', '--global', '--json']);
+    expect(globalConflict.error.code).toBe('INVALID_ARGUMENT');
+    expect(globalConflict.error.detail).toEqual({ reason: 'all-global-conflict' });
+
+    process.exitCode = 0;
+    const keyConflict = await jsonError(['config', 'get', '--all', 'auto_advance', '--json']);
+    expect(keyConflict.error.code).toBe('INVALID_ARGUMENT');
+    expect(keyConflict.error.detail).toEqual({ reason: 'all-with-key', key: 'auto_advance' });
+  });
+
+  it('A5 基线：人类 --all 输出四行；无 --all 的既有 key-required 不变', async () => {
+    writeProjectConfigRaw('defaults:\n  execution_mode: manual\n');
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['config', 'get', '--all']);
+
+    const out = stdout();
+    for (const key of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode']) {
+      expect(out).toContain(key);
+    }
+    expect(out).not.toContain('schemaVersion');
+
+    // 既有行为：项目模式无 key 且无 --all → 仍 key-required
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['config', 'get']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(stderr()).toContain('必须提供 key');
+  });
+
   it('op-002 JSON：config get --global 无 key → values 6 键固定顺序', async () => {
     const doc = await jsonDoc(['config', 'get', '--global', '--json']);
 

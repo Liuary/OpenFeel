@@ -10,8 +10,8 @@
 
 ```
 node bin/openfeel.js model set <agent> <model> [--scope default|global|project] [--build] [--force]
-node bin/openfeel.js model get <agent> [--scope default|global|project]   # 无 --scope 展示生效值
-node bin/openfeel.js model list [--scope default|global|project]          # 无 --scope 展示生效值
+node bin/openfeel.js model get <agent> [--scope default|global|project] [--json]   # 无 --scope 展示生效值
+node bin/openfeel.js model list [--scope default|global|project] [--json]          # 无 --scope 展示生效值
 ```
 
 > ⚠️ 本仓执行一律用 `node bin/openfeel.js <cmd>`；全局 `openfeel` 可能命中旧版（如 1.1.1）。
@@ -21,6 +21,7 @@ node bin/openfeel.js model list [--scope default|global|project]          # 无 
 
 ## 关键行为
 
+- **JSON 输出（v1.2.4-stage-100，A3）**：`list` 输出 `{schemaVersion,scope,agents:[{agent,provider,model,source}]}`；`get` 输出 `{schemaVersion,scope,agent,provider,model,source}`。`scope` 回显 `--scope`（未指定 `null`）；`provider`/`model` 按生效值首个 `/` 切分（无 `/` → `provider:null`）；`source` = 生效层（default > project > global），无值 `null`；非法 scope → `INVALID_ARGUMENT`/refusal/1。人类输出不变。
 - **非 TTY 守卫（REV-1504）**：`--scope default` 在非 TTY 下必须显式 `--force` 或 `--build`，否则拒绝退出 1。
 - **default 层源码就位预判（REV-1703）**：`isFrameworkSourceReady()` 复用 core 层路径推导，不受 cwd 影响。
 - **build 触发（REV-1604）**：default 写入后 `--build` 触发 `execSync('npm run build')`；未带 `--build` 仅提示 `needsBuild`。
@@ -35,4 +36,5 @@ help/错误文案走 `t()`（域 `help.model.*`、`model.*`）；`model.get.shad
 
 | 阶段 | 变更 |
 |------|------|
+| v1.2.4-stage-100 | `model list|get --json`（#35/#36）：provider/model/source 派生与固定键序；人类输出不变 |
 | stage-40 | 初始创建。set/get/list + --scope + --build + --force + 非 TTY 守卫 + 遮蔽提示 |

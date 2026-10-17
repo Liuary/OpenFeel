@@ -80,6 +80,17 @@ openfeel flow status
 
 升级迁移提示见 [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)「工作流模式（full / fast）与自动推进」小节与 [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`。
 
+## v1.2.4 新增能力（补丁）
+
+> 对应阶段：**stage-100**。本版收口 `dsh/ACTION-GUIDE.md` A1~A5；JSON 契约口径升级为 **40 成功出口 / 41 注册选项**，退出码 0/1/2/3 语义不变。本仓收口基线：**75 文件 / 1941 用例 / 21 阶段**。
+
+- **A1 归档覆盖保护（数据安全）**：`openfeel archive <stage>` 目标归档文件已存在时拒绝覆盖（`ARCHIVE_EXISTS` / `refusal` / exit 1，**零写盘**：归档内容哈希、`flow.json` revision、`log[]` 长度、KB 条目数均不变）；显式 `--force` 才覆盖。保护为**归档文件级**（短名/全名别名派生不同文件、互不触发）。
+- **A2 `plan stage list --json`（#34）**：`{schemaVersion,stages,count}`；`stages[]` 七键 `id,phase,status,deps,workflowMode,opsTotal,opsDone`。
+- **A3 `model list|get --json`（#35/#36）**：list `{schemaVersion,scope,agents:[{agent,provider,model,source}]}`；get 六键；按首个 `/` 切分 provider/model，`source` 取生效层（default > project > global）。
+- **A4 三命令面（#37~#40）**：`flow retry --op <id> --json`、`lint i18n|kb --json`（`ok:false` 仍为成功文档 + exit 1）、`roadmap show [version] --json`（表头驱动里程碑，兼容 3/4 列）。
+- **A5 `config get --all --json`**：项目模式一次取全量 `defaults` 四键，不再报 `key-required`；冲突组合 → `INVALID_ARGUMENT`。
+- **契约**：错误码表 **13 行**（新增 `ARCHIVE_EXISTS`）；既有出口字段零破坏、人类输出逐字不变；`dsh/` 零改动。
+
 ## v1.2.3 修复（补丁）
 
 > 对应阶段：**stage-99**。本版为 v1.2.2 转出项收口，不新增功能；JSON 契约 33 成功出口 / 34 注册选项与退出码语义不变。本仓收口基线：**75 文件 / 1911 用例 / 21 阶段**。

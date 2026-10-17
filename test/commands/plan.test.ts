@@ -203,6 +203,45 @@ describe('plan 命令', () => {
     expect(stageLine).toBeDefined();
   });
 
+  // ── v1.2.4 A2：plan stage list --json ──
+
+  it('A2 JSON：stage list 键序 + 元素七键 + count（flow.json 注册序）', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    // 写入 ops 以验证计数键
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.stages['v1.0.0-stage-01'].ops = {
+      'op-001': { title: 'a', state: 'done' },
+      'op-002': { title: 'b', state: 'pending' },
+    } as never;
+    mgr.save();
+
+    const doc = await jsonDoc(['plan', 'stage', 'list', '--json']);
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'stages', 'count']);
+    const stages = doc.stages as Array<Record<string, unknown>>;
+    expect(doc.count).toBe(stages.length);
+    expect(Object.keys(stages[0])).toEqual([
+      'id', 'phase', 'status', 'deps', 'workflowMode', 'opsTotal', 'opsDone',
+    ]);
+    expect(stages[0]).toMatchObject({ id: 'v1.0.0-stage-01', deps: [], opsTotal: 2, opsDone: 1 });
+    expect(typeof stages[0].workflowMode).toBe('string');
+  });
+
+  it('A2 JSON：空态 → stages:[] / count:0 / exit 0', async () => {
+    const doc = await jsonDoc(['plan', 'stage', 'list', '--json']);
+    expect(doc.stages).toEqual([]);
+    expect(doc.count).toBe(0);
+    expect(exitMock).not.toHaveBeenCalled();
+  });
+
+  it('A2 基线：stage list 人类输出逐字不变', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-01']);
+    logMock.mockClear();
+    await safeParse(['plan', 'stage', 'list']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('- stage-01');
+    expect(out).not.toContain('schemaVersion');
+  });
+
   // ── plan scheme 子命令 ──
 
   it('plan scheme create 应创建操作方案', async () => {

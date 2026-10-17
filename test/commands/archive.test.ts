@@ -9,7 +9,8 @@ import { archiveStage } from '../../src/core/archive/merge.js';
 import { FlowManager, type FlowData } from '../../src/core/flow-manager.js';
 import { t } from '../../src/core/i18n.js';
 import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -205,9 +206,10 @@ describe('archive 命令（op-010 L2）', () => {
     expect(payload.knowledgeExtracts.every((x: unknown) => typeof x === 'string')).toBe(true);
 
     // 空态：无审查条目 → knowledgeExtracts 为空数组（非 null / 非缺省）
+    // v1.2.4 A1：同名归档文件已存在，须显式 --force 才允许覆盖
     setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
     logMock.mockClear();
-    await safeParse(['archive', 'stage-01', '--json']);
+    await safeParse(['archive', 'stage-01', '--json', '--force']);
     const empty = JSON.parse(logMock.mock.calls[0][0] as string);
     expect(empty.knowledgeExtracts).toEqual([]);
   });
@@ -254,5 +256,157 @@ describe('archive 命令（op-010 L2）', () => {
     const payload = JSON.parse(logMock.mock.calls[0][0] as string);
     expect(payload.error).toMatchObject({ code: 'INTERNAL_ERROR', kind: 'internal' });
     expect(payload.error.detail).toMatchObject({ name: 'Error', message: 'boom' });
+  });
+
+  // ── v1.2.4 A1：归档覆盖保护 + --force（数据安全） ──
+
+  /** 零写盘主判据快照：归档内容哈希 / flow.json revision / log[] 长度 / KB 条目数（mtime 仅辅助，不入断言） */
+  function zeroWriteSnapshot(stageName: string): {
+    archiveHash: string;
+    revision: number | undefined;
+    logLength: number;
+    kbFiles: number;
+    kbEntries: number;
+  } {
+    const archivePath = join(tmpDir, '.openfeel', 'log', `archive-${stageName}.md`);
+    const mgr = new FlowManager(tmpDir);
+    const data = mgr.getData()!;
+    const kbDir = join(tmpDir, '.openfeel', 'kb');
+    let kbFiles = 0;
+    let kbEntries = 0;
+    if (existsSync(kbDir)) {
+      const files = readdirSync(kbDir).filter((f) => f.endsWith('.md'));
+      kbFiles = files.length;
+      for (const f of files) {
+        const content = readFileSync(join(kbDir, f), 'utf-8');
+        kbEntries += (content.match(/^## \[[+-]\]/gm) ?? []).length;
+      }
+    }
+    return {
+      archiveHash: createHash('sha256').update(readFileSync(archivePath)).digest('hex'),
+      revision: data.meta.revision,
+      logLength: data.log.length,
+      kbFiles,
+      kbEntries,
+    };
+  }
+
+  it('A1: 人类模式已有归档 → 拒绝覆盖 + exit 1 + 零写盘', async () => {
+    setupFlow(
+      { 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) },
+      [mkReview('REV-001', 'v1.0.0-stage-01.op-001', 'closed')],
+    );
+    // 首次归档（建立 KB 条目与归档文件）
+    await safeParse(['archive', 'stage-01', '--json']);
+    expect(process.exitCode).toBe(0);
+    const before = zeroWriteSnapshot('stage-01');
+
+    logMock.mockClear();
+    errorMock.mockClear();
+    exitMock.mockClear();
+    await safeParse(['archive', 'stage-01']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const stderr = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(stderr).toContain('已存在');
+    expect(stderr).toContain('--force');
+    // 主判据：内容哈希 / revision / log 长度 / KB 条目数全部不变
+    expect(zeroWriteSnapshot('stage-01')).toEqual(before);
+  });
+
+  it('A1: --json 已有归档 → ARCHIVE_EXISTS/refusal/exit 1 + 零写盘', async () => {
+    setupFlow(
+      { 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) },
+      [mkReview('REV-001', 'v1.0.0-stage-01.op-001', 'closed')],
+    );
+    await safeParse(['archive', 'stage-01', '--json']);
+    const before = zeroWriteSnapshot('stage-01');
+    const archivePath = join(tmpDir, '.openfeel', 'log', 'archive-stage-01.md');
+
+    logMock.mockClear();
+    errorMock.mockClear();
+    setJsonMode(true);
+    try {
+      await safeParse(['archive', 'stage-01', '--json']);
+    } finally {
+      resetJsonModeForTest();
+    }
+
+    expect(process.exitCode).toBe(1);
+    expect(errorMock).not.toHaveBeenCalled();
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(payload)).toEqual(['schemaVersion', 'error']);
+    expect(payload.error).toMatchObject({
+      code: 'ARCHIVE_EXISTS',
+      kind: 'refusal',
+      detail: { stage: 'stage-01', archivePath },
+    });
+    expect(zeroWriteSnapshot('stage-01')).toEqual(before);
+    process.exitCode = 0;
+  });
+
+  it('A1: --force 正控 → 真实覆盖（哈希变化 / revision 递增）+ #33 六键', async () => {
+    setupFlow(
+      { 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) },
+      [mkReview('REV-001', 'v1.0.0-stage-01.op-001', 'closed')],
+    );
+    await safeParse(['archive', 'stage-01', '--json']);
+    const before = zeroWriteSnapshot('stage-01');
+
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['archive', 'stage-01', '--json', '--force']);
+
+    expect(process.exitCode).toBe(0);
+    expect(errorMock).not.toHaveBeenCalled();
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(payload)).toEqual([
+      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts',
+    ]);
+    const after = zeroWriteSnapshot('stage-01');
+    expect(after.archiveHash).not.toBe(before.archiveHash);
+    expect(after.revision).toBeGreaterThan(before.revision as number);
+    expect(after.logLength).toBe(before.logLength + 1);
+  });
+
+  it('A1: 别名边界 → v1.2.0-stage-78 与 stage-78 派生不同文件、互不触发', async () => {
+    setupFlow({
+      'v1.2.0-stage-78': mkStageObj('v1.2.0-stage-78', []),
+      'stage-78': mkStageObj('stage-78', []),
+    });
+    const fullPath = join(tmpDir, '.openfeel', 'log', 'archive-v1.2.0-stage-78.md');
+    const shortPath = join(tmpDir, '.openfeel', 'log', 'archive-stage-78.md');
+
+    // 全名归档后，短名归档不应被全名文件触发保护
+    await safeParse(['archive', 'v1.2.0-stage-78', '--json']);
+    expect(process.exitCode).toBe(0);
+    await safeParse(['archive', 'stage-78', '--json']);
+    expect(process.exitCode).toBe(0);
+    expect(existsSync(fullPath)).toBe(true);
+    expect(existsSync(shortPath)).toBe(true);
+    expect(fullPath).not.toBe(shortPath);
+
+    // 反向：再归档全名 → 仅保护全名目标文件
+    logMock.mockClear();
+    errorMock.mockClear();
+    setJsonMode(true);
+    try {
+      await safeParse(['archive', 'v1.2.0-stage-78', '--json']);
+    } finally {
+      resetJsonModeForTest();
+    }
+    expect(process.exitCode).toBe(1);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(payload.error.code).toBe('ARCHIVE_EXISTS');
+    expect(payload.error.detail.archivePath).toBe(fullPath);
+    expect(existsSync(shortPath)).toBe(true);
+    process.exitCode = 0;
+  });
+
+  it('A1: i18n en 新键无 CJK', () => {
+    expect(/[一-鿿]/.test(t('archive.errorArchiveExistsTmpl', 'en', { stage: 's', path: 'p' }))).toBe(false);
+    expect(/[一-鿿]/.test(t('help.archive.force', 'en'))).toBe(false);
   });
 });

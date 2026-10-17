@@ -2,7 +2,7 @@
 
 > 模块文档，由归档官在归档时维护。对应源码：`src/cli/index.ts` + `src/commands/*.ts`。
 >
-> **版本快照：v1.2.3（2026-10-17 补丁收口）** —— 契约 **33 成功出口 / 34 注册 `--json` 选项**（`--version --json` 单列）；命令面与本模块「调度决策面」「读命令 `--json` 全量补全」「全局选项与错误处理」三节一致，细节以 `node bin/openfeel.js <cmd> --help` 实测为准。v1.2.3：并发 JSON 退出统一（置码返回）+ `--review-tier` help 文案订正。
+> **版本快照：v1.2.4（2026-10-17 补丁收口）** —— 契约 **40 成功出口 / 41 注册 `--json` 选项**（`--version --json` 单列）；命令面与本模块「调度决策面」「读命令 `--json` 全量补全」「全局选项与错误处理」三节一致，细节以 `node bin/openfeel.js <cmd> --help` 实测为准。v1.2.4：A1 归档覆盖保护 + A2~A5 七个新 `--json` 出口与 `config get --all`。
 
 ## 职责
 
@@ -68,10 +68,10 @@ src/commands/req.ts         registerReqCommand
 - `runCli()`：包裹 `program.parse()`，捕获冒泡异常交给 `handleCliError()`；`bin/openfeel.js` 有参数模式改调 `runCli()`（REPL 分支不变）。
 - `handleCliError(err)`：识别 `isFlowConcurrentError(err)`（flow.json 乐观并发冲突）→ 统一并发出口（v1.2.3 起：JSON 模式 emit envelope + 置 `process.exitCode=2` 后返回；非 JSON 模式 `process.exit(EXIT_CONCURRENT)`）；非并发错误原样 rethrow。
 - `EXIT_CONCURRENT = 2`：并发冲突退出码，与通用错误 1 区分，供自动化识别「可重试」冲突。
-- **错误层（v1.2.2-stage-95）**：`src/core/errors.ts` 提供 12 行 `code → kind → exitCode` 映射表（单一权威，含 `kind ∈ {refusal,internal}`）；`src/commands/shared/errors.ts` 提供 `failCli` / `failRefusal` / `failInternal`；`runCli` 统一 catch——JSON 模式输出错误 envelope，非 JSON 模式保留既有 stderr 文案并把内部错误置 exit 3。**v1.2.3-stage-99（REV-95-009）**：`handleConcurrentConflict` JSON 分支与 `failCli` 同机制（emit → exitCode → return），`handleAddStageError` 返回类型 `void`，10 个调用点显式返回、无 fallthrough。
+- **错误层（v1.2.2-stage-95）**：`src/core/errors.ts` 提供 13 行 `code → kind → exitCode` 映射表（单一权威，含 `kind ∈ {refusal,internal}`；v1.2.4 新增 `ARCHIVE_EXISTS`）；`src/commands/shared/errors.ts` 提供 `failCli` / `failRefusal` / `failInternal`；`runCli` 统一 catch——JSON 模式输出错误 envelope，非 JSON 模式保留既有 stderr 文案并把内部错误置 exit 3。**v1.2.3-stage-99（REV-95-009）**：`handleConcurrentConflict` JSON 分支与 `failCli` 同机制（emit → exitCode → return），`handleAddStageError` 返回类型 `void`，10 个调用点显式返回、无 fallthrough。
 - **双形态**：新 envelope `{schemaVersion:1,error:{code,kind,message,detail}}` 覆盖文本型失败；legacy `{schemaVersion,error:'...'}` 保留 `error` 为 `string` 与既有键序，仅在末尾追加 `errorKind`；判别唯一规则 `typeof doc.error`。
 - **JSON 模式用法错误**：Commander 解析期错误（未知命令 / 未知选项 / 缺参）经 `exitOverride` 归 `INVALID_ARGUMENT`/refusal/1；非 JSON 模式零变化。
-- 完整契约（首键 / 单文档 / **33 出口冻结表** / 12 行映射表 / 迁移边界）见 [JSON 输出契约](../core/json-contract.md)。
+- 完整契约（首键 / 单文档 / **40 出口冻结表** / 13 行映射表 / 迁移边界）见 [JSON 输出契约](../core/json-contract.md)。
 
 | 场景 | kind | 退出码 |
 |------|------|:--:|
@@ -153,11 +153,11 @@ src/commands/req.ts         registerReqCommand
 
 > 面向 DSH 等机器消费者：契约正文单一权威 = `docs/json-contract.md`；可执行冻结 = `test/cli/json-contract.test.ts`；错误矩阵 = `test/cli/error-envelope.test.ts`。
 
-- **33 个成功出口**（v1.2.2-stage-97 起）：`flow` 15（status / next / **recover** / **checkpoint list** / **log** / overview / current / metrics / phases / mode / ops list / archive / archive list / archive show / health）+ `req` 5（list / show / split / board / next）+ `instructions` 1 + `setup --check` 1 + **`stage status` 1** + **`knowledge` 4**（search / list / index / dedup）+ **`config` 2**（get / effective）+ **`view list` 1** + **`plan scheme list` 1** + **`project overview` 1** + **`archive <stage>` 1**；全部 `schemaVersion:1` 运行时首键 + stdout 单文档；键序/键集冻结，只增不改。
+- **40 个成功出口**（v1.2.4-stage-100 起）：`flow` 16（status / next / recover / checkpoint list / log / overview / current / metrics / phases / mode / ops list / archive / archive list / archive show / health / **retry**）+ `req` 5（list / show / split / board / next）+ `instructions` 1 + `setup --check` 1 + `stage status` 1 + `knowledge` 4（search / list / index / dedup）+ `config` 2（get / effective）+ `view list` 1 + `plan` 2（scheme list / **stage list**）+ `project overview` 1 + `archive <stage>` 1 + **`model` 2（list / get）** + **`lint` 2（i18n / kb）** + **`roadmap show` 1**；全部 `schemaVersion:1` 运行时首键 + stdout 单文档；键序/键集冻结，只增不改。
 - **条件键登记**：`flow health.reconciled` 与 `flow ops list[].warning` 为恒在键（缺省 `null`）；`req next.candidates` 为条件出现键（`--limit > 1`）。
 - **有意变更**：C1 `instructions` 补首键；C1b/G-1 `flow archive show` 首键由第 6 位重定位为 `schemaVersion`（其余 6 键相对序不变）；v1.2.2-stage-97 #8 `flow archive` 判据明细三新键、#12 `req list` 末位两键。
-- **错误模式开关**：`flow advance --json` 成功仍输出人类文本、仅失败走 envelope，**不计入 33 个成功出口**。
-- **注册选项数 34**：33 个成功出口 + 1 个错误模式开关；「注册选项数」与「成功出口数」不得混用（v1.2.2-stage-97：33 / 34）。
+- **错误模式开关**：`flow advance --json` 成功仍输出人类文本、仅失败走 envelope，**不计入 40 个成功出口**。
+- **注册选项数 41**：40 个成功出口 + 1 个错误模式开关；「注册选项数」与「成功出口数」不得混用（v1.2.4-stage-100：40 / 41；`lint i18n` / `lint kb` 各计 1）。
 - **契约助手**：`src/commands/shared/json-output.ts`（`withSchemaVersion` / `emitJson` / `setJsonMode` / `resolveJsonMode` / argv 预扫描）；命令层不得自行解析 `--json`。
 
 ### 调度决策面（v1.2.2-stage-96）
@@ -172,7 +172,7 @@ src/commands/req.ts         registerReqCommand
 
 ### 读命令 `--json` 全量补全与判据扩展（v1.2.2-stage-97）
 
-> 面向 DSH 等适配器：13 个读命令面不再需要解析中文人类文本；`req list` / `flow archive` 两个既有出口只增不改。契约权威 = `docs/json-contract.md` §5（33 出口）、§6（有意增量）、§13（读命令细则）。
+> 面向 DSH 等适配器：13 个读命令面不再需要解析中文人类文本；`req list` / `flow archive` 两个既有出口只增不改。契约权威 = `docs/json-contract.md` §5（40 出口）、§6（有意增量）、§13（读命令细则）、§15（v1.2.4 细则）。
 
 - **新增 `--json` 的 13 个命令面（14 个新成功出口 #20~#33）**：
   - `stage status [stageId] --json`：无参 `{schemaVersion,stages:[{stageId,status,statusPath}],count}`；有参 `{schemaVersion,stageId,statusPath,fields,tasks,blockedBy}`——`fields` 为 7 规范键（`execMode,autoAdvance,status,reviewAgent,previousReviewAgent,updatedAt,workflowMode`）+ `raw`（原始中文键）；`tasks[]` 元素 `{number,done,description}`；路径为绝对路径；阶段不存在 → `STAGE_NOT_FOUND`/refusal/1。
@@ -183,12 +183,12 @@ src/commands/req.ts         registerReqCommand
   - `knowledge list --json`：`{schemaVersion,entries:[{title,category,date,enabled}],count}`（不含正文）。
   - `knowledge index --json`：`{schemaVersion,categories,recentUpdates}`。
   - `knowledge dedup --json`：`{schemaVersion,threshold,categories,found,readOnly:true,matches:[{category,title,date,enabled,similarity,flagged}]}`。
-  - `config get [key] [--global] --json`：项目 `{schemaVersion,scope,key,value}`；全局无 key `{schemaVersion,scope,values}`（6 键固定序）；项目无 key → `INVALID_ARGUMENT`/refusal/1。
+  - `config get [key] [--global] [--all] --json`：项目 `{schemaVersion,scope,key,value}`；项目 `--all` `{schemaVersion,scope:"project",defaults}`（四键固定序）；全局无 key `{schemaVersion,scope,values}`（6 键固定序）；项目无 key 且无 `--all` → `INVALID_ARGUMENT`/refusal/1；`--all` 冲突组合 → `all-global-conflict` / `all-with-key`。
   - `config effective [key] --json`：`{schemaVersion,effective:{key:{value,source}}}` 或指定 key `{schemaVersion,key,value,source}`。
   - `view list --json`：`{schemaVersion,count,reviews:[{id,op,status,priority,title,filed_by,filed_at,blocking,canAutoFix,autoFixDetail}]}`（`blocking` 缺省 `true`、`canAutoFix` 缺省 `false`、`autoFixDetail` 可空）。
   - `plan scheme list [stage] --json`：`{schemaVersion,stage,count,schemes:[{stage,opId,title,filePath,draft,fill}]}`（`fill` 复用 `detectFillState`）。
   - `project overview --json`：`{schemaVersion,project:{name,version,description},dirs,stats,entries,techStack}`（先 `collectProjectOverview` 聚合再双渲染；无 `initialized` 键，恒 exit 0）。
-- **`archive <stage> --json`（第 33 个成功出口）**：`{schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts}`；`archivePath` 与人类输出同源（绝对路径）；失败（阶段不存在/未初始化/写盘拒绝）→ `ARCHIVE_FAILED`/refusal/1；内部异常 → `INTERNAL_ERROR`/internal/3；不改变归档写盘行为。与 `flow archive <version>`（版本分片）职责分离。
+- **`archive <stage> --json`（第 33 个成功出口；v1.2.4 A1 增覆盖保护）**：`{schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts}`；`archivePath` 与人类输出同源（绝对路径）；失败（阶段不存在/未初始化）→ `ARCHIVE_FAILED`/refusal/1；已有归档且未 `--force` → `ARCHIVE_EXISTS`/refusal/1（零写盘）；内部异常 → `INTERNAL_ERROR`/internal/3；`--force` 不新增返回键。与 `flow archive <version>`（版本分片）职责分离。
 - **`req list --json` 增量**：`requirements[]` 元素末位追加 `linkedStages:[{id,phase}]` 与 `progress:{done,total}`（聚合单点 `listLinkedStages` + `computeRequirementAggregate`）；零关联 `[]` + `{0,0}`；既有字段顺序/值不变。
 - **`flow archive --dry-run --json` 判据明细**：判据拒绝分支（exit 1）保留 legacy `schemaVersion,error(string),version,notDone,blockingOpen`，在 `blockingOpen` 后、`errorKind` 前插入 `eligible:false` / `unfinishedStages:[{id,phase}]` / `blockingReviews:[{id,title,priority}]`（9 键）；成功 dry-run 与非 dry-run 同形追加 `eligible:true` + 两空数组；判据复用 `listArchivableCandidates` + `listBlockingOpenRevsForVersion`；`--dry-run` 零写盘。
 - **no-init / 空态口径**：读视图 0 + `initialized:false`（`flow recover`）/ 空集合 0（`checkpoint list` / `flow log` / `knowledge search·list` / `view list` / `plan scheme list` / `project overview`）；需项目命令 refusal 1（`stage status <不存在>` → `STAGE_NOT_FOUND`；`config get` 项目无 key / `config effective` 未知 key → `INVALID_ARGUMENT`）。
@@ -196,6 +196,14 @@ src/commands/req.ts         registerReqCommand
 - **判定风格**：13 命令面的成功分支读**命令级 `options.json`**，错误 envelope 一律经 `isJsonMode()` 单点（§13 登记例外；`flow next` 沿用 `isJsonMode()`）。
 - **已知边界**：`plan scheme list.draft` 的 opId 跨阶段同名匹配风险（§13.5，转 stage-98）；`knowledge index.recentUpdates` 的 `category/title` 受索引表头解析口径影响（人类输出同样表现，非本阶段引入）。
 - **stage-98（文档收口）**：快照 / 计数 / 错误封装 / 读命令说明定稿；无源码变更。
+
+### v1.2.4-stage-100（DSH ACTION-GUIDE A1~A5）
+
+- **A1 `archive <stage> [--json] [--force]`**：存在性检查位于任何写盘之前；已有归档且未 `--force` → `ARCHIVE_EXISTS`/refusal/1，零写盘；`--force` 走原写盘路径且出口 #33 六键不变。保护为归档文件级（短名/全名别名互不触发）。
+- **A2 `plan stage list --json`（#34）**：`{schemaVersion,stages,count}`；`stages[]` 七键 `id,phase,status,deps,workflowMode,opsTotal,opsDone`；flow.json 注册阶段声明序；空态 `[]/0`；人类输出仍为计划目录清单。
+- **A3 `model list|get --json`（#35/#36）**：list `{schemaVersion,scope,agents:[{agent,provider,model,source}]}`；get 六键；首个 `/` 切分；`source` 取 default > project > global 首个非空层。
+- **A4 `flow retry`（#37）/ `lint i18n|kb`（#38/#39）/ `roadmap show`（#40）**：retry 六键；lint `{target,ok,issues:[{path,message}]}`（`ok:false` 仍成功文档 + exit 1）；roadmap 表头驱动 `milestones[{title,theme,stage,deliverable}]`（兼容 3/4 列）。
+- **A5 `config get --all --json`（#27 扩展）**：项目 `defaults` 四键固定序；不再 `key-required`。
 
 ### 需求命令组 `req`（v1.2.0-stage-82）
 

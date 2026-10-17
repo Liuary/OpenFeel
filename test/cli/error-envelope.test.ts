@@ -1,7 +1,7 @@
 /**
  * 错误层测试（v1.2.2-stage-95 op-002）
  *
- * 覆盖：12 行 code→kind→exitCode 映射表逐行断言 / envelope 形态 / refusal 主场景 /
+ * 覆盖：13 行 code→kind→exitCode 映射表逐行断言 / envelope 形态 / refusal 主场景 /
  *       Commander 用法错误 / 并发冲突 / internal 双模式（JSON + 非 JSON）/
  *       命令层 internal / zh-en code 一致 / 非 JSON 文案与退出码不变。
  * 隔离：临时项目 fixture + 进程内 parseAsync（必要时 setJsonMode(true)）；不触碰真实工作区。
@@ -117,9 +117,9 @@ describe('错误层（stage-95 op-002）', () => {
     return JSON.parse(logMock.mock.calls[logMock.mock.calls.length - 1][0] as string) as Record<string, unknown>;
   }
 
-  // ── 1：12 行映射表逐行断言 ──
+  // ── 1：13 行映射表逐行断言 ──
 
-  it('① 映射表：12 行、code 唯一、逐行 code/kind/exitCode 与契约 §3 一致', () => {
+  it('① 映射表：13 行、code 唯一、逐行 code/kind/exitCode 与契约 §3 一致', () => {
     const expected: Array<[string, string, number]> = [
       ['NO_INIT', 'refusal', 1],
       ['INVALID_ARGUMENT', 'refusal', 1],
@@ -133,9 +133,10 @@ describe('错误层（stage-95 op-002）', () => {
       ['FLOW_CONCURRENT_CONFLICT', 'refusal', 2],
       ['INTERNAL_ERROR', 'internal', 3],
       ['ARCHIVE_FAILED', 'refusal', 1],
+      ['ARCHIVE_EXISTS', 'refusal', 1],
     ];
-    expect(CLI_ERROR_TABLE).toHaveLength(12);
-    expect(new Set(CLI_ERROR_TABLE.map((r) => r.code)).size).toBe(12);
+    expect(CLI_ERROR_TABLE).toHaveLength(13);
+    expect(new Set(CLI_ERROR_TABLE.map((r) => r.code)).size).toBe(13);
     expect(CLI_ERROR_TABLE.map((r) => [r.code, r.kind, r.exitCode])).toEqual(expected);
     // 码表键与 code 字段一致（防字符串漂移）
     for (const [key, spec] of Object.entries(CLI_ERROR_CODES)) {

@@ -109,6 +109,75 @@ describe('openfeel model 命令', () => {
     }
   });
 
+  it('A3 JSON：list 键序 + agents 元素四键 + 首个 / 切分 + source=project', () => {
+    const proj = mkdtempSync(join(tmpdir(), 'model-cmd-json-'));
+    const prevCwd = process.cwd();
+    process.chdir(proj);
+    try {
+      writeFileSync(join(proj, 'opencode.jsonc'), JSON.stringify({
+        agent: { 'openfeel-executor': { model: 'deepseek/deepseek-flash' } },
+      }, null, 2) + '\n', 'utf-8');
+
+      const r = runModel(['list', '--scope', 'project', '--json']);
+      expect(r.exitCode).toBe(0);
+      const doc = JSON.parse(r.stdout) as Record<string, unknown>;
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'scope', 'agents']);
+      expect(doc.scope).toBe('project');
+      const agents = doc.agents as Array<Record<string, unknown>>;
+      expect(agents.length).toBeGreaterThan(0);
+      expect(Object.keys(agents[0])).toEqual(['agent', 'provider', 'model', 'source']);
+      expect(agents.find((a) => a.agent === 'openfeel-executor')).toEqual({
+        agent: 'openfeel-executor', provider: 'deepseek', model: 'deepseek-flash', source: 'project',
+      });
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(proj, { recursive: true, force: true });
+    }
+  });
+
+  it('A3 JSON：get 六键 + 未指定 scope 时 source=default', () => {
+    const proj = mkdtempSync(join(tmpdir(), 'model-cmd-json-get-'));
+    const prevCwd = process.cwd();
+    process.chdir(proj);
+    try {
+      writeFileSync(join(proj, 'opencode.jsonc'), JSON.stringify({
+        agent: { 'openfeel-executor': { model: 'deepseek/deepseek-flash' } },
+      }, null, 2) + '\n', 'utf-8');
+
+      const scoped = runModel(['get', 'openfeel-executor', '--scope', 'project', '--json']);
+      expect(scoped.exitCode).toBe(0);
+      const doc = JSON.parse(scoped.stdout) as Record<string, unknown>;
+      expect(Object.keys(doc)).toEqual([
+        'schemaVersion', 'scope', 'agent', 'provider', 'model', 'source',
+      ]);
+      expect(doc).toMatchObject({
+        scope: 'project', agent: 'openfeel-executor', provider: 'deepseek',
+        model: 'deepseek-flash', source: 'project',
+      });
+
+      // 未指定 scope → 生效值（default > project > global）→ 框架默认层
+      const eff = runModel(['get', 'openfeel-executor', '--json']);
+      expect(eff.exitCode).toBe(0);
+      const effDoc = JSON.parse(eff.stdout) as Record<string, unknown>;
+      expect(effDoc.scope).toBeNull();
+      expect(effDoc).toMatchObject({
+        agent: 'openfeel-executor', provider: 'deepseek', model: 'deepseek-flash', source: 'default',
+      });
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(proj, { recursive: true, force: true });
+    }
+  });
+
+  it('A3 基线：list/get 人类输出保持（无 schemaVersion）', () => {
+    const list = runModel(['list']);
+    expect(list.exitCode).toBe(0);
+    expect(list.stdout).not.toContain('schemaVersion');
+    const get = runModel(['get', 'openfeel-executor']);
+    expect(get.exitCode).toBe(0);
+    expect(get.stdout).not.toContain('schemaVersion');
+  });
+
   it('T41：--build 的 execSync 带 timeout；超时（ETIMEDOUT）→ 错误文案 + exitCode 1', () => {
     const proj = mkdtempSync(join(tmpdir(), 'model-build-timeout-'));
     const prevCwd = process.cwd();

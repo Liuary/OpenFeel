@@ -2,7 +2,7 @@
  * CLI 稳定错误码表（v1.2.2-stage-95 op-002）
  *
  * 职责：提供 `code → kind → exitCode` 的**单一权威**映射，供命令层与测试共用。
- * 契约：`docs/json-contract.md` §3（12 行，逐行同源）；本文件为唯一实现来源，命令层不得硬编码 kind / exitCode。
+ * 契约：`docs/json-contract.md` §3（13 行，逐行同源）；本文件为唯一实现来源，命令层不得硬编码 kind / exitCode。
  * 边界：仅定义分类，不承担输出控制（envelope / stderr 归 `src/commands/shared/errors.ts`）。
  */
 
@@ -20,7 +20,7 @@ export interface CliErrorSpec {
 }
 
 /**
- * 12 个稳定错误码（kind 与 exitCode 内嵌，禁止命令层自行推导）。
+ * 13 个稳定错误码（kind 与 exitCode 内嵌，禁止命令层自行推导）。
  * 顺序与 `docs/json-contract.md` §3 逐行一致。
  */
 export const CLI_ERROR_CODES = {
@@ -37,12 +37,14 @@ export const CLI_ERROR_CODES = {
   INTERNAL_ERROR: { code: 'INTERNAL_ERROR', kind: 'internal', exitCode: 3 },
   // stage-97 预留：archive <stage> --json 失败（本阶段不实现，仅登记映射）
   ARCHIVE_FAILED: { code: 'ARCHIVE_FAILED', kind: 'refusal', exitCode: 1 },
+  // v1.2.4 A1：目标归档文件已存在且未显式 --force（零写盘拒绝）
+  ARCHIVE_EXISTS: { code: 'ARCHIVE_EXISTS', kind: 'refusal', exitCode: 1 },
 } as const;
 
 /** 稳定错误码联合类型（由码表键派生，防字符串漂移） */
 export type CliErrorCode = keyof typeof CLI_ERROR_CODES;
 
-/** 有序 12 行映射表（顺序与契约文档 §3 逐行一致，供测试逐行断言） */
+/** 有序 13 行映射表（顺序与契约文档 §3 逐行一致，供测试逐行断言） */
 export const CLI_ERROR_TABLE: readonly CliErrorSpec[] = [
   CLI_ERROR_CODES.NO_INIT,
   CLI_ERROR_CODES.INVALID_ARGUMENT,
@@ -56,6 +58,7 @@ export const CLI_ERROR_TABLE: readonly CliErrorSpec[] = [
   CLI_ERROR_CODES.FLOW_CONCURRENT_CONFLICT,
   CLI_ERROR_CODES.INTERNAL_ERROR,
   CLI_ERROR_CODES.ARCHIVE_FAILED,
+  CLI_ERROR_CODES.ARCHIVE_EXISTS,
 ];
 
 /**

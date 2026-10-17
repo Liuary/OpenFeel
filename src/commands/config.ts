@@ -8,7 +8,7 @@
  */
 import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
-import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey, STAGE_FIELD_BY_CONFIG_KEY } from '../core/config.js';
+import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey, resolveConfigDefaults, STAGE_FIELD_BY_CONFIG_KEY } from '../core/config.js';
 import { FlowManager } from '../core/flow-manager.js';
 import { normalizeStageId, suggestStageId, isArchivedVersionOf } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
@@ -136,11 +136,30 @@ export function registerConfigCommand(program: Command): void {
     .command('get [key]')
     .description(t('help.config.get'))
     .option('-g, --global', '操作全局 profile（~/.config/openfeel/profile.yaml）')
+    .option('--all', t('help.config.get.all', getCliLang(process.cwd())))
     .option('--json', t('help.config.get.json', getCliLang(process.cwd())))
     .action(function (key: string | undefined) {
-      const opts = this.opts() as { global?: boolean; json?: boolean };
+      const opts = this.opts() as { global?: boolean; json?: boolean; all?: boolean };
       const asJson = opts.json === true;
       const lang = getCliLang(process.cwd());
+
+      // --all 仅项目模式可用：冲突组合一律预期拒绝（零副作用）
+      if (opts.all && opts.global) {
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('config.get.noProject', lang, { err: '--all 不能与 --global 组合（--all 仅项目模式）' }),
+          detail: { reason: 'all-global-conflict' },
+        });
+        return;
+      }
+      if (opts.all && key !== undefined) {
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('config.get.noProject', lang, { err: '--all 不能与位置 key 组合' }),
+          detail: { reason: 'all-with-key', key },
+        });
+        return;
+      }
 
       // 全局模式：操作 ~/.config/openfeel/profile.yaml
       if (opts.global) {
@@ -188,8 +207,26 @@ export function registerConfigCommand(program: Command): void {
         return;
       }
 
-      // 项目模式（原行为）：key 必填
+      // 项目模式（原行为）：key 必填（--all 为全量读取的显式例外）
       if (!key) {
+        if (opts.all) {
+          // 一次取全量：键序固定，缺失/非法逐键回退 DEFAULT_CONFIG
+          const resolved = resolveConfigDefaults(process.cwd());
+          const defaults = {
+            execution_mode: resolved.execution_mode,
+            auto_advance: resolved.auto_advance,
+            merge_mode: resolved.merge_mode,
+            workflow_mode: resolved.workflow_mode,
+          };
+          if (asJson) {
+            emitJson(withSchemaVersion({ scope: 'project', defaults }));
+            return;
+          }
+          for (const k of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'] as const) {
+            console.log(t('config.get.result', lang, { key: k, value: defaults[k] }));
+          }
+          return;
+        }
         // JSON 模式走 envelope（isJsonMode 单点判定）；人类模式逐字保持 exit 1
         failRefusal({
           code: 'INVALID_ARGUMENT',

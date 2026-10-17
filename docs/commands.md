@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.2.3 快照** | 更新日期：2026-10-17
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.2.4 快照** | 更新日期：2026-10-17
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -25,7 +25,7 @@
 
 **全局 `--project` 边界（v1.2.2）**：`runCli` argv 预扫描后 `process.chdir` 单点注入；多值且不一致 → `INVALID_ARGUMENT`（exit 1），路径不存在或非目录 → `PROJECT_NOT_FOUND`（exit 1）；命令输出语言按**目标项目**解析，而 `--help` 语言按原始 cwd（`applyHelpI18n` 于 chdir 前执行）；`--log-file` 相对路径按**原始 cwd**；`knowledge dedup` 保留其本地 `--project <path>` 声明（语法零变化，经 `optsWithGlobals()` + 单点解析读取）；CLI 为单进程单命令，`chdir` 每进程至多一次。
 
-**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 33 个成功出口、也不计入 34 个注册选项**。
+**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 40 个成功出口、也不计入 41 个注册选项**。
 
 ## 错误封装（v1.2.2）
 
@@ -78,7 +78,7 @@
 | `2` | 并发写冲突 | `refusal` | 保留 `EXIT_CONCURRENT`；可重试 |
 | `3` | 内部错误 | `internal` | **v1.2.2 新增**；既有 0/1/2 语义零改动 |
 
-### `code → kind → exitCode`（12 行，与契约 §3 同源）
+### `code → kind → exitCode`（13 行，与契约 §3 同源）
 
 | code | kind | exitCode |
 |------|------|:--:|
@@ -94,6 +94,7 @@
 | `FLOW_CONCURRENT_CONFLICT` | refusal | 2 |
 | `INTERNAL_ERROR` | internal | 3 |
 | `ARCHIVE_FAILED` | refusal | 1 |
+| `ARCHIVE_EXISTS` | refusal | 1（v1.2.4 A1：已有归档且未 `--force`；零写盘） |
 
 ### 迁移边界
 
@@ -167,6 +168,16 @@ openfeel flow current [--json]
 ```
 
 `--json`（v1.2.2）：`{schemaVersion,stage,op,phase}`（均为 string，空态 `''`）。
+
+### flow retry
+
+查询指定操作的重试状态（只读）。
+
+```bash
+openfeel flow retry --op <stageId.opId> [--json]
+```
+
+`--json`（v1.2.4 A4）：`{schemaVersion,op,attempts,maxAttempts,exhausted,state}`；`attempts = getRetryCount(op)`、`exhausted = attempts >= maxAttempts`。未初始化 → `NO_INIT`；阶段不存在 → `STAGE_NOT_FOUND`；非法 opId / op 不存在 → `INVALID_ARGUMENT`（detail.reason）。
 
 ### flow phases
 
@@ -449,10 +460,12 @@ openfeel roadmap create <version>
 显示分期大纲内容。
 
 ```bash
-openfeel roadmap show [version]
+openfeel roadmap show [version] [--json]
 ```
 
 不传版本号时列出所有分期大纲。
+
+**`roadmap show --json`（v1.2.4 A4）**：`{schemaVersion,version,milestones}`；`milestones[]{title,theme,stage,deliverable}` 由 `## 里程碑` 表格**表头驱动**解析（兼容 3/4 列历史格式，缺列 `null`）；不传版本 → `version:null,milestones:[]`（exit 0）；版本不存在 → `INVALID_ARGUMENT`/refusal/1；人类输出逐字不变。
 
 ### 示例
 
@@ -511,7 +524,7 @@ openfeel plan stage add v1.1.7-stage-78 --workflow-mode full
 列出所有工作阶段。
 
 ```bash
-openfeel plan stage list
+openfeel plan stage list [--json]
 ```
 
 输出示例：
@@ -520,6 +533,8 @@ openfeel plan stage list
 - stage-01  .openfeel/plan/v1/stage-01/
 - stage-02  .openfeel/plan/v1/stage-02/
 ```
+
+**`plan stage list --json`（v1.2.4 A2）**：`{schemaVersion,stages,count}`；`stages[]` 七键 `id,phase,status,deps,workflowMode,opsTotal,opsDone`，数据源为 **flow.json 注册阶段**（声明序）；空态 `stages:[]` + `count:0` + exit 0。JSON 为调度视图，人类输出保持计划目录清单（两种视图）。
 
 ### plan scheme create
 
@@ -655,13 +670,14 @@ openfeel view accept <rev-id>
 Archiver Agent 使用此命令归档已完成阶段。
 
 ```bash
-openfeel archive <stage> [--json]
+openfeel archive <stage> [--json] [--force]
 ```
 
 | 参数/选项 | 说明 |
 |------|------|
 | `stage` | 阶段名称（如 stage-01） |
 | `--json` | v1.2.2：`{schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts}`；`archivePath` 为绝对路径；失败（阶段不存在 / 未初始化 / 写盘拒绝）→ `ARCHIVE_FAILED`/refusal/1；内部异常 → `INTERNAL_ERROR`/internal/3（人类保持 1） |
+| `--force` | **v1.2.4 A1**：显式覆盖已存在的归档文件；缺省时目标文件已存在 → `ARCHIVE_EXISTS`/refusal/1，**零写盘**（归档内容哈希、`flow.json` revision、`log[]` 长度、KB 条目数均不变）。保护为**归档文件级**：短名/全名别名派生不同文件、互不触发 |
 
 归档操作会汇总阶段产出、生成摘要、提取知识条目。（**阶段摘要归档**——与 `flow archive` 的 flow.json 版本分片归档职责不同。）
 
@@ -717,11 +733,11 @@ openfeel config effective [key] [--json]
 读取/写入项目 `config.yaml`（`--global` 时操作全局 `profile.yaml`）。
 
 ```bash
-openfeel config get [key] [--global] [--json]
+openfeel config get [key] [--global] [--all] [--json]
 openfeel config set <key> <value> [--global] [--sync-stages] [--stage <ids...>]
 ```
 
-**`config get --json`（v1.2.2）**：项目 → `{schemaVersion,scope,key,value}`；全局无 key → `{schemaVersion,scope,values}`（6 全局键固定序）；全局有 key → 同项目形态；项目无 key → envelope `INVALID_ARGUMENT`（refusal/1）。`config set` 无 `--json`（写命令保持人类文本）。
+**`config get --json`（v1.2.2 / v1.2.4 A5）**：项目 → `{schemaVersion,scope,key,value}`；项目 `--all` → `{schemaVersion,scope:"project",defaults}`（`defaults` 四键固定序 `execution_mode,auto_advance,merge_mode,workflow_mode`，取自 `resolveConfigDefaults`，**不再报 `key-required`**）；全局无 key → `{schemaVersion,scope,values}`（6 全局键固定序）；全局有 key → 同项目形态；项目无 key 且无 `--all` → envelope `INVALID_ARGUMENT`（refusal/1）；`--all`+`--global` → `all-global-conflict`；`--all`+key → `all-with-key`。`config set` 无 `--json`（写命令保持人类文本）。
 
 - **支持全量 `defaults.*` 键**（schema 驱动）：`execution_mode` / `auto_advance` / `merge_mode` / `workflow_mode` 等受管配置键均可通过 `config set`/`get` 读写（与 `config effective` 覆盖范围一致）。**注意**：原布尔测试门禁键已于 v1.1.4-stage-62 移除，`config set` 该键将被判定为**无效键**（报错、不写盘）。
 - **`defaults.X ≡ X`（v1.1.4-stage-63）**：项目模式下 `defaults.` 前缀与 bare key 等价（键归一，单一来源）；`--global` 的 profile 键域不同，不受影响。
@@ -819,9 +835,11 @@ openfeel knowledge dedup [content] [--project <path>] [--category <name>] [--thr
 ## lint — 质量门禁检查
 
 ```bash
-openfeel lint i18n [--fix]   # i18n 键对称性校验（zh/en 三向比对 + 空值检测）
-openfeel lint kb [--fix]     # kb 过期引用检测（扫描 kb 文件中的路径引用是否存在）
+openfeel lint i18n [--json]   # i18n 键对称性校验（zh/en 三向比对 + 空值检测）
+openfeel lint kb [--json]     # kb 过期引用检测（扫描 kb 文件中的路径引用是否存在）
 ```
+
+**`lint i18n|kb --json`（v1.2.4 A4）**：`{schemaVersion,target,ok,issues}`；`target ∈ {i18n,kb}`；`issues[]{path,message}`（i18n = 语言源文件相对路径；kb = `.openfeel/kb/<file>`）；`ok = issues.length === 0`。`ok:false` 仍输出成功文档并保持既有 exit 1 门禁语义；结构化 issues 与人类行同源（人类输出逐字不变）。`lint kb` 无 KB 目录 → `ok:true,issues:[]`。
 
 **退出码（门禁语义，v1.1.2）**：发现问题时**非 0 退出**（对齐 `flow health`），使 CI/脚本可直接以其作为门禁；无问题 `exit 0`。**未提供** `--warn-only`/`--no-fail` 逃生阀——若需忽略结果，请由调用方显式表达（如 `openfeel lint kb || true`）。
 
@@ -845,9 +863,11 @@ openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stag
 
 ```bash
 openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]
-openfeel model get <agent> [--scope ...]
-openfeel model list
+openfeel model get <agent> [--scope ...] [--json]
+openfeel model list [--scope ...] [--json]
 ```
+
+**`model list|get --json`（v1.2.4 A3）**：list `{schemaVersion,scope,agents:[{agent,provider,model,source}]}`；get `{schemaVersion,scope,agent,provider,model,source}`；`scope` 回显 `--scope`（未指定 `null`）；`provider`/`model` 按生效值首个 `/` 切分（无 `/` → `provider:null`）；`source` = 生效层（default > project > global），无值 `null`；非法 scope → `INVALID_ARGUMENT`/refusal/1。人类输出不变。
 
 ## setup — 全局部署
 
@@ -881,9 +901,9 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## v1.2.2 JSON 出口一览
+## JSON 出口一览（v1.2.4 快照）
 
-> 计数口径：**33 个成功出口 / 34 个注册选项**；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：74 文件 / 1894 用例 / 21 阶段。
+> 计数口径：**40 个成功出口 / 41 个注册选项**；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 
 | # | 出口 | 命令面 | 顶层键序 |
 |:-:|------|--------|----------|
@@ -913,16 +933,23 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 24 | `knowledge list` | `knowledge list --json` | `schemaVersion,entries,count` |
 | 25 | `knowledge index` | `knowledge index --json` | `schemaVersion,categories,recentUpdates` |
 | 26 | `knowledge dedup` | `knowledge dedup [content] --json` | `schemaVersion,threshold,categories,found,readOnly,matches` |
-| 27 | `config get` | `config get [key] [--global] --json` | `schemaVersion,scope,key,value`；全局无 key `schemaVersion,scope,values` |
+| 27 | `config get` | `config get [key] [--global] [--all] --json` | `schemaVersion,scope,key,value`；项目 `--all`：`schemaVersion,scope,defaults`；全局无 key `schemaVersion,scope,values` |
 | 28 | `config effective` | `config effective [key] --json` | `schemaVersion,effective`；有 key `schemaVersion,key,value,source` |
 | 29 | `view list` | `view list --json` | `schemaVersion,count,reviews` |
 | 30 | `plan scheme list` | `plan scheme list [stage] --json` | `schemaVersion,stage,count,schemes` |
 | 31 | `flow log` | `flow log --json` | `schemaVersion,count,entries` |
 | 32 | `project overview` | `project overview --json` | `schemaVersion,project,dirs,stats,entries,techStack` |
-| 33 | `archive <stage>` | `archive <stage> --json` | `schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts` |
-| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 33 / 34**） |
+| 33 | `archive <stage>` | `archive <stage> --json [--force]` | `schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts` |
+| 34 | `plan stage list` | `plan stage list --json` | `schemaVersion,stages,count` |
+| 35 | `model list` | `model list [--scope] --json` | `schemaVersion,scope,agents` |
+| 36 | `model get` | `model get <agent> [--scope] --json` | `schemaVersion,scope,agent,provider,model,source` |
+| 37 | `flow retry` | `flow retry --op <id> --json` | `schemaVersion,op,attempts,maxAttempts,exhausted,state` |
+| 38 | `lint i18n` | `lint i18n --json` | `schemaVersion,target,ok,issues` |
+| 39 | `lint kb` | `lint kb --json` | `schemaVersion,target,ok,issues` |
+| 40 | `roadmap show` | `roadmap show [version] --json` | `schemaVersion,version,milestones` |
+| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 40 / 41**） |
 
-> 说明：以上为 v1.2.2 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 v1.2.4 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

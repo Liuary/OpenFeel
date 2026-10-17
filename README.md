@@ -8,7 +8,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.2.3**（v1.2.2 转出项收口 · 补丁） — 并发 JSON 退出机制统一（emit → `process.exitCode=2` → return）+ `flow advance --help --review-tier` 文案订正（缺省=full 零裁剪）+ `req show` / `req set` 过滤单点化 + 锁等待超时 E2E 测试钩子（test-only）。**33 个成功出口 / 34 个注册选项**契约与退出码 0/1/2/3 语义不变。
+> 📦 **最新版本 v1.2.4**（DSH ACTION-GUIDE A1~A5 收口 · 补丁） — `archive <stage>` 覆盖保护（`ARCHIVE_EXISTS` + `--force` + 零写盘）+ 7 个新增 `--json` 命令面（`plan stage list` / `model list|get` / `flow retry` / `lint i18n|kb` / `roadmap show`）+ `config get --all`。**40 个成功出口 / 41 个注册选项**；退出码 0/1/2/3 语义不变。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 
@@ -47,6 +47,17 @@ npm install -g openfeel@latest # 更新到最新版本
 - **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast|general`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast|general`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast|general`（项目默认记忆）。**`general` 仅需求级合法**（v1.2.1 起，见下「v1.2.1 新增能力」）。
 - **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast|general] [--stage <id>]`（按模式查看转移表）。
 - **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
+
+## v1.2.4 新增能力（补丁）
+
+> 对应阶段：**stage-100**。本版收口 `dsh/ACTION-GUIDE.md` A1~A5；JSON 契约口径升级为 **40 成功出口 / 41 注册选项**，退出码 0/1/2/3 语义不变。本仓收口基线：**75 文件 / 1941 用例 / 21 阶段**。
+
+- **A1 归档覆盖保护（数据安全）**：`openfeel archive <stage>` 目标归档文件已存在时拒绝覆盖（`ARCHIVE_EXISTS` / `refusal` / exit 1，**零写盘**：归档内容哈希、`flow.json` revision、`log[]` 长度、KB 条目数均不变）；显式 `--force` 才覆盖。保护为**归档文件级**（短名/全名别名派生不同文件、互不触发）。
+- **A2 `plan stage list --json`（#34）**：`{schemaVersion,stages,count}`；`stages[]` 七键 `id,phase,status,deps,workflowMode,opsTotal,opsDone`（flow.json 注册阶段调度视图；人类输出保持计划目录清单）。
+- **A3 `model list|get --json`（#35/#36）**：list `{schemaVersion,scope,agents:[{agent,provider,model,source}]}`；get 六键；`provider`/`model` 按首个 `/` 切分，`source` 取生效层（default > project > global）。
+- **A4 三命令面（#37~#40）**：`flow retry --op <id> --json`（六键）、`lint i18n|kb --json`（`{target,ok,issues:[{path,message}]}`，`ok:false` 仍为成功文档 + exit 1）、`roadmap show [version] --json`（`version` + 表头驱动的 `milestones[{title,theme,stage,deliverable}]`，兼容 3/4 列）。
+- **A5 `config get --all --json`**：项目模式一次取全量 `{scope:"project",defaults:{execution_mode,auto_advance,merge_mode,workflow_mode}}`，不再报 `key-required`；与 `--global` 或位置 key 组合 → `INVALID_ARGUMENT`。
+- **契约**：错误码表 **13 行**（新增 `ARCHIVE_EXISTS`）；既有 33 个成功出口字段零破坏、人类输出逐字不变；`dsh/` 零改动。
 
 ## v1.2.3 修复（补丁）
 

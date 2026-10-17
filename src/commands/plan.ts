@@ -154,9 +154,31 @@ export function registerPlanCommand(program: Command): void {
   stageCmd
     .command('list')
     .description('列出所有工作阶段')
-    .action(() => {
+    .option('--json', t('help.plan.stage.list.json', getCliLang(process.cwd())))
+    .action((options: { json?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
+
+      // JSON 视图 = flow.json 注册阶段的调度视图（与人类「计划目录清单」是两种视图）
+      if (options.json) {
+        const mgr = new FlowManager(projectPath);
+        const data = mgr.isLoaded() ? mgr.getData() : null;
+        const stages = data
+          ? Object.entries(data.stages).map(([id, stage]) => ({
+              id,
+              phase: stage.phase ?? null,
+              status: stage.status ?? null,
+              deps: Array.isArray(stage.deps) ? stage.deps : [],
+              // 工作流模式经单点解析（不读 stage.workflow_mode 冗余）
+              workflowMode: mgr.resolveStageWorkflowMode(id).value,
+              opsTotal: Object.keys(stage.ops ?? {}).length,
+              opsDone: Object.values(stage.ops ?? {}).filter((op) => op.state === 'done').length,
+            }))
+          : [];
+        emitJson(withSchemaVersion({ stages, count: stages.length }));
+        return;
+      }
+
       const stages = listStages(projectPath);
 
       if (stages.length === 0) {

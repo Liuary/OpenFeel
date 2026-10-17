@@ -84,4 +84,67 @@ describe('lint 命令（stage-50 op-002 T17/R1）', () => {
     await safeParse(['lint', 'kb']);
     expect(process.exitCode).toBeUndefined();
   });
+
+  // ── v1.2.4 A4：lint --json（结构化 issues 与人类输出同源） ──
+
+  it('A4 JSON：lint i18n → target/ok/issues 键序，ok:false + exit 1', async () => {
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'i18n', '--json']);
+
+    const raw = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    const doc = JSON.parse(raw) as Record<string, unknown>;
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'target', 'ok', 'issues']);
+    expect(doc.target).toBe('i18n');
+    // 本文件 mock 注入 zh-only 键 → ok:false，问题路径为中文源文件
+    expect(doc.ok).toBe(false);
+    const issues = doc.issues as Array<Record<string, unknown>>;
+    expect(Object.keys(issues[0])).toEqual(['path', 'message']);
+    expect(issues.some((i) => String(i.message).includes('fake.onlyZh'))).toBe(true);
+    expect(issues.every((i) => i.path === 'src/core/i18n-data/zh-CN.ts')).toBe(true);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('A4 JSON：lint kb 无目录 → ok:true / issues:[] / exit 0', async () => {
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'kb', '--json']);
+
+    const raw = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    const doc = JSON.parse(raw) as Record<string, unknown>;
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'target', 'ok', 'issues']);
+    expect(doc).toMatchObject({ target: 'kb', ok: true, issues: [] });
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('A4 JSON：lint kb 过期引用 → issues path/message + exit 1', async () => {
+    const kbDir = join(tmpDir, '.openfeel', 'kb');
+    mkdirSync(kbDir, { recursive: true });
+    writeFileSync(join(kbDir, 'patterns.md'), '见 [缺失](missing-file.md)\n', 'utf-8');
+    logMock.mockClear();
+    process.exitCode = undefined;
+
+    await safeParse(['lint', 'kb', '--json']);
+
+    const raw = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    const doc = JSON.parse(raw) as Record<string, unknown>;
+    expect(doc).toMatchObject({ target: 'kb', ok: false });
+    const issues = doc.issues as Array<Record<string, unknown>>;
+    expect(Object.keys(issues[0])).toEqual(['path', 'message']);
+    expect(issues[0].path).toBe('.openfeel/kb/patterns.md');
+    expect(String(issues[0].message)).toContain('missing-file.md');
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('A4 基线：lint kb 人类输出逐字不变（无 schemaVersion）', async () => {
+    const kbDir = join(tmpDir, '.openfeel', 'kb');
+    mkdirSync(kbDir, { recursive: true });
+    writeFileSync(join(kbDir, 'patterns.md'), '无引用内容\n', 'utf-8');
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'kb']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('扫描 1 个 kb 文件中的文件引用');
+    expect(out).not.toContain('schemaVersion');
+  });
 });

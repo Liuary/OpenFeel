@@ -589,6 +589,7 @@ export const knowledge: I18nDomain = {
 /* ==================== archive ==================== */
 export const archive: I18nDomain = {
   'errorArchiveFailedTmpl':      { key: 'archive.errorArchiveFailedTmpl',      zh: '', en: 'Error: Archive failed, please confirm stage "{stage}" exists and flow.json is initialized.' },
+  'errorArchiveExistsTmpl':      { key: 'archive.errorArchiveExistsTmpl',      zh: '', en: 'Error: the archive file for stage "{stage}" already exists ({path}); pass --force to overwrite explicitly.' },
   'okTmpl':                      { key: 'archive.okTmpl',                      zh: '', en: '✓ Stage archived: {stage}' },
   'opsCount':                    { key: 'archive.opsCount',                    zh: '', en: 'Ops' },
   'reviewsCount':                { key: 'archive.reviewsCount',                zh: '', en: 'Review Entries' },
@@ -625,6 +626,7 @@ export const lint: I18nDomain = {
   'kb.okTmpl':             { key: 'lint.kb.okTmpl',             zh: '', en: '✅ No stale references (checked {n} reference(s))' },
   'kb.staleTmpl':          { key: 'lint.kb.staleTmpl',          zh: '', en: '❌ Found {n} stale reference(s)' },
   'kb.staleItemTmpl':      { key: 'lint.kb.staleItemTmpl',      zh: '', en: '  {file} L{line}: "{ref}" → file not found' },
+  'kb.issueTmpl':          { key: 'lint.kb.issueTmpl',          zh: '', en: 'L{line}: "{ref}" → file not found' },
 };
 
 /* ==================== help ==================== */
@@ -733,6 +735,7 @@ export const help: I18nDomain = {
   'flow.review.remove.argrev-id': { key: 'help.flow.review.remove.argrev-id', zh: '', en: 'Review entry ID (e.g. REV-001)' },
   'flow.retry':            { key: 'help.flow.retry',            zh: '', en: 'Query operation retry status' },
   'flow.retry.op':         { key: 'help.flow.retry.op',         zh: '', en: 'Operation ID (e.g. stage-01.op-001)' },
+  'flow.retry.json':       { key: 'help.flow.retry.json',       zh: '', en: 'Output { schemaVersion, op, attempts, maxAttempts, exhausted, state } as JSON' },
   'flow.repair':           { key: 'help.flow.repair',           zh: '', en: 'Auto-detect and fix common issues in flow.json' },
   'flow.repair.dryRun':    { key: 'help.flow.repair.dryRun',    zh: '', en: 'Detect only, do not fix' },
   'flow.repair.backup':    { key: 'help.flow.repair.backup',    zh: '', en: 'Backup as .bak before repair' },
@@ -765,6 +768,7 @@ export const help: I18nDomain = {
   'config.get':            { key: 'help.config.get',            zh: '', en: 'Read a config value (project config; --global reads global profile; keys accept defaults.X, equivalent to X)' },
   'config.get.global':     { key: 'help.config.get.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
   'config.get.json':       { key: 'help.config.get.json',       zh: '', en: 'Output as JSON (single JSON document with schemaVersion)' },
+  'config.get.all':        { key: 'help.config.get.all',        zh: '', en: 'Read all project defaults at once (four keys; cannot combine with --global or a key)' },
   'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a config value (project config; --global writes global profile; keys accept defaults.X, equivalent to X)' },
   'config.set.global':     { key: 'help.config.set.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
   'config.effective':      { key: 'help.config.effective',      zh: '', en: 'Show effective config values and their source (status.md > config.yaml > profile.yaml > builtin)' },
@@ -781,6 +785,7 @@ export const help: I18nDomain = {
   'plan.stage.add.argname': { key: 'help.plan.stage.add.argname', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
   'plan.stage.add.tasks':  { key: 'help.plan.stage.add.tasks',  zh: '', en: 'Initial task list (space- or comma-separated, written to status.md)' },
   'plan.stage.list':       { key: 'help.plan.stage.list',       zh: '', en: 'List all work stages' },
+  'plan.stage.list.json':  { key: 'help.plan.stage.list.json',  zh: '', en: 'Output { schemaVersion, stages: [{ id, phase, status, deps, workflowMode, opsTotal, opsDone }], count } as JSON' },
   'plan.scheme':           { key: 'help.plan.scheme',           zh: '', en: 'Operation scheme management' },
   'plan.scheme.create':    { key: 'help.plan.scheme.create',    zh: '', en: 'Create operation scheme' },
   'plan.scheme.create.argstage': { key: 'help.plan.scheme.create.argstage', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
@@ -860,12 +865,14 @@ export const help: I18nDomain = {
   'archive':               { key: 'help.archive',               zh: '', en: 'Archive stage (summarize output, generate summary, extract knowledge)' },
   'archive.argstage':      { key: 'help.archive.argstage',      zh: '', en: 'Stage name (e.g. stage-06)' },
   'archive.json':          { key: 'help.archive.json',          zh: '', en: 'Output { schemaVersion, stage, archivePath, opsCount, reviewsCount, knowledgeExtracts } as JSON' },
+  'archive.force':         { key: 'help.archive.force',         zh: '', en: 'Explicitly overwrite an existing archive file (refused by default with zero writes)' },
 
   'roadmap':               { key: 'help.roadmap',               zh: '', en: 'Roadmap management' },
   'roadmap.create':        { key: 'help.roadmap.create',        zh: '', en: 'Create roadmap (version number like 1.0, 2.0)' },
   'roadmap.create.argversion': { key: 'help.roadmap.create.argversion', zh: '', en: 'Version number' },
   'roadmap.show':          { key: 'help.roadmap.show',          zh: '', en: 'Show roadmap content (list all if no version)' },
   'roadmap.show.argversion': { key: 'help.roadmap.show.argversion', zh: '', en: 'Version number (optional)' },
+  'roadmap.show.json':     { key: 'help.roadmap.show.json',     zh: '', en: 'Output { schemaVersion, version, milestones: [{ title, theme, stage, deliverable }] } as JSON' },
 
   'instructions':          { key: 'help.instructions',          zh: '', en: 'Generate structured instructions (XML or JSON) for an artifact' },
   'instructions.argartifactId': { key: 'help.instructions.argartifactId', zh: '', en: 'Target artifact ID (e.g. proposal, implementation)' },
@@ -875,7 +882,9 @@ export const help: I18nDomain = {
 
   'lint':                  { key: 'help.lint',                  zh: '', en: 'Project health checks (i18n key consistency, kb reference validity)' },
   'lint.i18n':             { key: 'help.lint.i18n',             zh: '', en: 'Validate i18n key consistency (empty values / zh-CN-only / en-only keys)' },
+  'lint.i18n.json':        { key: 'help.lint.i18n.json',        zh: '', en: 'Output { schemaVersion, target, ok, issues: [{ path, message }] } as JSON' },
   'lint.kb':               { key: 'help.lint.kb',               zh: '', en: 'Detect stale file references in .openfeel/kb/' },
+  'lint.kb.json':          { key: 'help.lint.kb.json',          zh: '', en: 'Output { schemaVersion, target, ok, issues: [{ path, message }] } as JSON' },
 
   // migrate (legacy layout migration)
   'migrate':               { key: 'help.migrate',               zh: '', en: 'Legacy layout migration (detect/backup/migrate/rollback existing project legacy layout)' },
@@ -893,8 +902,10 @@ export const help: I18nDomain = {
   'model.set.force':     { key: 'help.model.set.force',     zh: '', en: 'Confirm modifying the framework default (required for --scope default in non-TTY)' },
   'model.get':           { key: 'help.model.get',           zh: '', en: 'Read the model of a given agent' },
   'model.get.scope':     { key: 'help.model.get.scope',     zh: '', en: 'Scope (omit to show effective value)' },
+  'model.get.json':      { key: 'help.model.get.json',      zh: '', en: 'Output { schemaVersion, scope, agent, provider, model, source } as JSON' },
   'model.list':          { key: 'help.model.list',          zh: '', en: 'List models of all agents' },
   'model.list.scope':    { key: 'help.model.list.scope',    zh: '', en: 'Scope (omit to show effective value)' },
+  'model.list.json':     { key: 'help.model.list.json',     zh: '', en: 'Output { schemaVersion, scope, agents: [{ agent, provider, model, source }] } as JSON' },
 
   // req (requirement flow command group)
   'req':                 { key: 'help.req',                 zh: '', en: 'Requirement management (add/list/show/claim/release/set/link/advance/board/next)' },

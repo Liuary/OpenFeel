@@ -13,6 +13,34 @@ import { resolve, join } from 'node:path';
 import { t, getCliLang } from '../core/i18n.js';
 import { allDomains as zhAllDomains } from '../core/i18n-data/zh-CN.js';
 import { allDomains as enAllDomains } from '../core/i18n-data/en.js';
+import { withSchemaVersion, emitJson } from './shared/json-output.js';
+
+/** 结构化问题条目（JSON 契约形态 `{path,message}`） */
+interface LintIssue {
+  /** i18n = 语言源文件相对路径；kb = 源 KB 文件的项目根相对路径 */
+  path: string;
+  /** 本地化问题文案（与人类输出同源） */
+  message: string;
+}
+
+/** i18n lint 报告（结构化 issues + 人类输出所需计数同源） */
+interface LintI18nReport {
+  issues: LintIssue[];
+  consistentCount: number;
+  total: number;
+}
+
+/** kb lint 报告（结构化 issues + 人类输出所需明细同源） */
+interface LintKbReport {
+  /** .openfeel/kb/ 是否存在 */
+  hasDir: boolean;
+  /** 扫描到的 kb 文件数 */
+  scanCount: number;
+  /** 已检查引用数 */
+  checkedCount: number;
+  /** 过期引用明细（人类输出与 issues 的共同来源） */
+  stale: Array<{ file: string; ref: string; line: number }>;
+}
 
 export function registerLintCommand(program: Command): void {
   const lint = program
@@ -23,11 +51,21 @@ export function registerLintCommand(program: Command): void {
   lint
     .command('i18n')
     .description('校验 i18n 键一致性（空值/中英独有键）')
-    .action(() => {
+    .option('--json', t('help.lint.i18n.json', getCliLang(process.cwd())))
+    .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
-      const problems = runLintI18n(lang);
-      // R1（用户已裁定）：发现问题即非 0 退出，对齐 flow health（用 process.exitCode 保证输出刷出且可测试）
-      if (problems > 0) {
+      const report = collectLintI18n(lang);
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          target: 'i18n',
+          ok: report.issues.length === 0,
+          issues: report.issues,
+        }));
+      } else {
+        printLintI18n(report, lang);
+      }
+      // R1（用户已裁定）：发现问题即非 0 退出，对齐 flow health（JSON 成功文档 + 同退出码）
+      if (report.issues.length > 0) {
         process.exitCode = 1;
       }
     });
@@ -36,23 +74,35 @@ export function registerLintCommand(program: Command): void {
   lint
     .command('kb')
     .description('检测 .openfeel/kb/ 中的过期文件引用')
-    .action(() => {
+    .option('--json', t('help.lint.kb.json', getCliLang(process.cwd())))
+    .action((options: { json?: boolean }) => {
       const lang = getCliLang(process.cwd());
-      const stale = runLintKb(process.cwd(), lang);
+      const report = collectLintKb(process.cwd(), lang);
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          target: 'kb',
+          ok: report.stale.length === 0,
+          issues: report.stale.map((s) => ({
+            path: `.openfeel/kb/${s.file}`,
+            message: t('lint.kb.issueTmpl', lang, { line: String(s.line), ref: s.ref }),
+          })),
+        }));
+      } else {
+        printLintKb(report, lang);
+      }
       // R1（用户已裁定）：存在过期引用即非 0 退出
-      if (stale > 0) {
+      if (report.stale.length > 0) {
         process.exitCode = 1;
       }
     });
 }
 
 /**
- * 校验 zh-CN.ts 与 en.ts 的键一致性。
- * 检测项：目标语言字段为空（zh-CN 表中 zh 为空 / en 表中 en 为空）、
- * 中文版独有键、英文版独有键。
- * @returns 问题条数（> 0 供命令层设置非 0 退出码，R1）
+ * 收集中英文键一致性问题（与人类输出同源：issues[].message 即人类问题行文案）。
+ * 检测项：目标语言字段为空、中文版独有键、英文版独有键。
+ * @returns 结构化问题 + 一致键数 / 总键数（人类输出计数）
  */
-function runLintI18n(lang: string): number {
+function collectLintI18n(lang: string): LintI18nReport {
   // 构建 key → 目标语言字段 映射（zh 表取 zh 字段，en 表取 en 字段）
   const zhMap = new Map<string, string>();
   const enMap = new Map<string, string>();
@@ -67,22 +117,24 @@ function runLintI18n(lang: string): number {
     }
   }
 
-  // 逐项检测，收集问题列表
-  const problems: string[] = [];
+  // 逐项检测，收集结构化问题（path = 问题所在语言源文件）
+  const zhPath = 'src/core/i18n-data/zh-CN.ts';
+  const enPath = 'src/core/i18n-data/en.ts';
+  const issues: LintIssue[] = [];
   for (const [key, zh] of zhMap) {
     if (zh === '') {
-      problems.push(t('lint.i18n.emptyZhTmpl', lang, { key }));
+      issues.push({ path: zhPath, message: t('lint.i18n.emptyZhTmpl', lang, { key }) });
     }
     if (!enMap.has(key)) {
-      problems.push(t('lint.i18n.zhOnlyTmpl', lang, { key }));
+      issues.push({ path: zhPath, message: t('lint.i18n.zhOnlyTmpl', lang, { key }) });
     }
   }
   for (const [key, en] of enMap) {
     if (en === '') {
-      problems.push(t('lint.i18n.emptyEnTmpl', lang, { key }));
+      issues.push({ path: enPath, message: t('lint.i18n.emptyEnTmpl', lang, { key }) });
     }
     if (!zhMap.has(key)) {
-      problems.push(t('lint.i18n.enOnlyTmpl', lang, { key }));
+      issues.push({ path: enPath, message: t('lint.i18n.enOnlyTmpl', lang, { key }) });
     }
   }
 
@@ -90,37 +142,40 @@ function runLintI18n(lang: string): number {
   const consistentCount = [...zhMap.keys()].filter(
     (k) => zhMap.get(k) !== '' && enMap.has(k) && enMap.get(k) !== '',
   ).length;
-  const total = zhMap.size;
 
-  if (problems.length === 0) {
-    console.log(t('lint.i18n.okTmpl', lang, { n: String(consistentCount) }));
-    return 0;
-  }
+  return { issues, consistentCount, total: zhMap.size };
+}
 
-  console.log(t('lint.i18n.failTitleTmpl', lang, { m: String(problems.length) }));
-  for (const p of problems) {
-    console.log(`  ${p}`);
+/** 打印 i18n lint 人类输出（逐字保持既有文案） */
+function printLintI18n(report: LintI18nReport, lang: string): void {
+  if (report.issues.length === 0) {
+    console.log(t('lint.i18n.okTmpl', lang, { n: String(report.consistentCount) }));
+    return;
   }
-  console.log(t('lint.i18n.consistentTmpl', lang, { n: String(consistentCount), total: String(total) }));
-  return problems.length;
+  console.log(t('lint.i18n.failTitleTmpl', lang, { m: String(report.issues.length) }));
+  for (const issue of report.issues) {
+    console.log(`  ${issue.message}`);
+  }
+  console.log(t('lint.i18n.consistentTmpl', lang, {
+    n: String(report.consistentCount),
+    total: String(report.total),
+  }));
 }
 
 /**
- * 扫描 .openfeel/kb/*.md 中的文件引用，检测过期引用（引用的文件已不存在）。
+ * 扫描 .openfeel/kb/*.md 中的文件引用，收集过期引用（人类输出与 JSON issues 的共同来源）。
  * 提取来源：markdown 链接 `[text](path)` 与行内代码引用 `` `path` ``。
- * @returns 过期引用条数（> 0 供命令层设置非 0 退出码，R1）
+ * @returns kb 报告（无目录时 hasDir=false、stale 为空）
  */
-function runLintKb(projectPath: string, lang: string): number {
+function collectLintKb(projectPath: string, lang: string): LintKbReport {
+  void lang;
   const kbDir = resolve(projectPath, '.openfeel', 'kb');
 
   if (!existsSync(kbDir)) {
-    console.log(t('lint.kb.noDir', lang));
-    return 0;
+    return { hasDir: false, scanCount: 0, checkedCount: 0, stale: [] };
   }
 
   const files = readdirSync(kbDir).filter((f) => f.endsWith('.md'));
-  console.log(t('lint.kb.scanTmpl', lang, { n: String(files.length) }));
-
   const stale: Array<{ file: string; ref: string; line: number }> = [];
   let checkedCount = 0;
 
@@ -144,16 +199,27 @@ function runLintKb(projectPath: string, lang: string): number {
     });
   }
 
-  if (stale.length === 0) {
-    console.log(t('lint.kb.okTmpl', lang, { n: String(checkedCount) }));
-    return 0;
+  return { hasDir: true, scanCount: files.length, checkedCount, stale };
+}
+
+/** 打印 kb lint 人类输出（逐字保持既有文案） */
+function printLintKb(report: LintKbReport, lang: string): void {
+  if (!report.hasDir) {
+    console.log(t('lint.kb.noDir', lang));
+    return;
   }
 
-  console.log(t('lint.kb.staleTmpl', lang, { n: String(stale.length) }));
-  for (const s of stale) {
+  console.log(t('lint.kb.scanTmpl', lang, { n: String(report.scanCount) }));
+
+  if (report.stale.length === 0) {
+    console.log(t('lint.kb.okTmpl', lang, { n: String(report.checkedCount) }));
+    return;
+  }
+
+  console.log(t('lint.kb.staleTmpl', lang, { n: String(report.stale.length) }));
+  for (const s of report.stale) {
     console.log(t('lint.kb.staleItemTmpl', lang, { file: s.file, ref: s.ref, line: String(s.line) }));
   }
-  return stale.length;
 }
 
 /** 引用候选：原始文本 + 来源类型 */

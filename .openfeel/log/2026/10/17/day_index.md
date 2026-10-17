@@ -27,3 +27,5 @@
 | [2026-10-17-Liuary-022.md](2026-10-17-Liuary-022.md) | Liuary | 阶段 v1.2.2-stage-98 完成 |
 | [2026-10-17-Liuary-023.md](2026-10-17-Liuary-023.md) | Archiver | v1.2.3-stage-99 归档完成（v1.2.2 转出项收口 · 版本 1.2.3 补丁收口） |
 | [2026-10-17-Liuary-024.md](2026-10-17-Liuary-024.md) | Liuary | 阶段 v1.2.3-stage-99 完成 |
+| [2026-10-17-Liuary-025.md](2026-10-17-Liuary-025.md) | Archiver | v1.2.4-stage-100 归档完成（DSH ACTION-GUIDE A1~A5 收口 · 版本 1.2.4 补丁收口） |
+| [2026-10-17-Liuary-026.md](2026-10-17-Liuary-026.md) | Liuary | 阶段 v1.2.4-stage-100 完成 |

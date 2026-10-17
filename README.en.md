@@ -80,6 +80,17 @@ openfeel flow status
 
 Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) ("工作流模式（full / fast）与自动推进" section, Chinese) and [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`.
 
+## What's New in v1.2.4 (Patch)
+
+> Stage covered: **stage-100**. This patch closes `dsh/ACTION-GUIDE.md` A1~A5; the JSON contract now counts **40 successful exports / 41 registered options**, and exit-code semantics 0/1/2/3 are unchanged. This repository's closure baseline: **75 test files / 1941 cases / 21 stages**.
+
+- **A1 archive overwrite protection (data safety)**: `openfeel archive <stage>` refuses to overwrite an existing archive file (`ARCHIVE_EXISTS` / `refusal` / exit 1 with **zero writes**: archive content hash, `flow.json` revision, `log[]` length and KB entry count all unchanged); explicit `--force` is required to overwrite. Protection is **per archive file** (short/full aliases derive different files and do not trigger each other).
+- **A2 `plan stage list --json` (#34)**: `{schemaVersion,stages,count}`; each stage has seven keys `id,phase,status,deps,workflowMode,opsTotal,opsDone` (flow.json registered-stage scheduling view).
+- **A3 `model list|get --json` (#35/#36)**: list `{schemaVersion,scope,agents:[{agent,provider,model,source}]}`; get returns six keys; `provider`/`model` split at the first `/`, `source` is the effective layer (default > project > global).
+- **A4 three command surfaces (#37~#40)**: `flow retry --op <id> --json`, `lint i18n|kb --json` (`ok:false` is still a success document plus exit 1), and `roadmap show [version] --json` (header-driven milestones, 3/4-column compatible).
+- **A5 `config get --all --json`**: read all project defaults at once (`defaults` with four keys); `key-required` no longer applies; conflicting combinations return `INVALID_ARGUMENT`.
+- **Contract**: error table grows to **13 rows** (adds `ARCHIVE_EXISTS`); existing exports keep their keys/order and human output is unchanged; `dsh/` untouched.
+
 ## Fixes in v1.2.3 (Patch)
 
 > Stage covered: **stage-99**. This patch closes the items carried out of v1.2.2 and adds no new features; the 33 successful exports / 34 registered options contract and exit-code semantics are unchanged. This repository's closure baseline: **75 test files / 1911 cases / 21 stages**.

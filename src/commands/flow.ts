@@ -31,7 +31,7 @@ import { parse as parseYaml } from 'yaml';
 import { MetricsStore, PHASE_AGENT_MAP } from '../core/metrics.js';
 import { runtimeLog } from '../core/runtime-log.js';
 import { addReviewEntry } from '../core/view/entry.js';
-import { failCli, failInternal, handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
+import { failCli, failInternal, failRefusal, handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
 import { withSchemaVersion, isJsonMode, emitJson } from './shared/json-output.js';   // JSON 契约助手（stage-95 op-001/op-002）
 import { type CliErrorKind } from '../core/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
@@ -1608,26 +1608,39 @@ export function registerFlowCommand(program: Command): void {
     .command('retry')
     .description('查询操作的重试状态')
     .requiredOption('--op <id>', '操作 ID（如 stage-01.op-001）')
-    .action((options: { op: string }) => {
+    .option('--json', t('help.flow.retry.json', getCliLang(process.cwd())))
+    .action((options: { op: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
-        console.error(t('common.errorNoInit', lang));
-        process.exit(1);
+        failRefusal({
+          code: 'NO_INIT',
+          message: t('common.errorNoInit', lang),
+          detail: { reason: 'no-init' },
+        });
+        return;
       }
 
       // 通过 getData() 获取 op 的 max_attempts
       const data = mgr.getData();
       if (!data) {
-        console.error(t('flow.retry.errorNoData', lang));
-        process.exit(1);
+        failRefusal({
+          code: 'NO_INIT',
+          message: t('flow.retry.errorNoData', lang),
+          detail: { reason: 'no-data' },
+        });
+        return;
       }
 
       // 解析 opId 查找 op
       const dotIdx = options.op.lastIndexOf('.');
       if (dotIdx === -1) {
-        console.error(t('common.invalidOpId', lang));
-        process.exit(1);
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('common.invalidOpId', lang),
+          detail: { reason: 'invalid-op-id', op: options.op },
+        });
+        return;
       }
       const rawStageId = options.op.substring(0, dotIdx);
       const opLocalId = options.op.substring(dotIdx + 1);
@@ -1636,21 +1649,41 @@ export function registerFlowCommand(program: Command): void {
       const stageId = normalizeStageId(rawStageId) ?? rawStageId;
       const stage = data.stages[stageId] ?? data.stages[rawStageId];
       if (!stage) {
-        console.error(t('flow.retry.errorStageNotFoundTmpl', lang, { stage: stageId }));
-        process.exit(1);
+        failRefusal({
+          code: 'STAGE_NOT_FOUND',
+          message: t('flow.retry.errorStageNotFoundTmpl', lang, { stage: stageId }),
+          detail: { reason: 'stage-not-found', stage: stageId },
+        });
+        return;
       }
 
       const op = stage.ops[opLocalId];
       if (!op) {
-        console.error(t('flow.retry.errorOpNotFoundTmpl', lang, { op: options.op }));
-        process.exit(1);
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('flow.retry.errorOpNotFoundTmpl', lang, { op: options.op }),
+          detail: { reason: 'op-not-found', op: options.op },
+        });
+        return;
       }
 
       const retryCount = mgr.getRetryCount(options.op);
+      // JSON 与人类输出共享同一业务判定（attempts / exhausted 计算单点）
+      const exhausted = retryCount >= op.max_attempts;
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          op: options.op,
+          attempts: retryCount,
+          maxAttempts: op.max_attempts,
+          exhausted,
+          state: op.state,
+        }));
+        return;
+      }
       console.log(t('common.op', lang) + `: ${options.op}`);
       console.log(t('common.status', lang) + `: ${op.state}`);
       console.log(t('flow.retry.attemptCount', lang) + `: ${retryCount} / ${op.max_attempts}`);
-      if (retryCount >= op.max_attempts) {
+      if (exhausted) {
         console.log(t('flow.retry.exhausted', lang));
       }
     });

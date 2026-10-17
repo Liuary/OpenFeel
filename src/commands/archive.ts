@@ -3,7 +3,7 @@
  * openfeel archive <stage>  — 阶段归档（openfeel-archiver 操作）
  */
 import { Command } from 'commander';
-import { archiveStage } from '../core/archive/merge.js';
+import { archiveStage, ArchiveExistsError } from '../core/archive/merge.js';
 import { join } from 'node:path';
 import { t, getCliLang } from '../core/i18n.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
@@ -15,11 +15,12 @@ export function registerArchiveCommand(program: Command): void {
     .description('归档指定阶段（汇总产出、生成摘要、提取知识）')
     .argument('<stage>', '阶段名称（如 stage-06）')
     .option('--json', t('help.archive.json', getCliLang(process.cwd())))
-    .action((stage: string, options: { json?: boolean }) => {
+    .option('--force', t('help.archive.force', getCliLang(process.cwd())))
+    .action((stage: string, options: { json?: boolean; force?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const asJson = options.json === true;
       try {
-        const result = archiveStage(process.cwd(), stage);
+        const result = archiveStage(process.cwd(), stage, { force: options.force === true });
 
         if (!result) {
           // 业务拒绝（阶段不存在 / 未初始化）：JSON envelope ARCHIVE_FAILED / refusal / 1
@@ -64,6 +65,16 @@ export function registerArchiveCommand(program: Command): void {
         // 输出归档文件路径
         console.log(`  ${t('archive.archivePath', lang)}: ${archivePath}`);
       } catch (err) {
+        // A1：已有归档且未显式 --force → 预期拒绝（JSON envelope / 人类 stderr 单行 + exit 1）
+        // archiveStage 的检查先于任何写盘，此分支保证零写盘
+        if (err instanceof ArchiveExistsError) {
+          failRefusal({
+            code: 'ARCHIVE_EXISTS',
+            message: t('archive.errorArchiveExistsTmpl', lang, { stage, path: err.archivePath }),
+            detail: { stage, archivePath: err.archivePath },
+          });
+          return;
+        }
         // 异常：JSON → INTERNAL_ERROR / internal / 3；人类保持既有 exit 1 文案
         if (asJson) {
           const msg = err instanceof Error ? err.message : String(err);

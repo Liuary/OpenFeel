@@ -1640,6 +1640,43 @@ describe('flow 命令（stage-41）', () => {
     expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('op-001');
   });
 
+  // ── v1.2.4 A4：flow retry --json ──
+
+  it('A4 JSON：retry 六键 + exhausted 判定（attempts >= maxAttempts）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-86');
+    mgr.getData()!.stages['v1.0.0-stage-86'].ops = {
+      'op-001': { ...(makeOp('op-001') as object), state: 'failed', attempts: 3, max_attempts: 3 } as never,
+    };
+    mgr.save();
+
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['flow', 'retry', '--op', 'v1.0.0-stage-86.op-001', '--json']);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const doc = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(doc)).toEqual([
+      'schemaVersion', 'op', 'attempts', 'maxAttempts', 'exhausted', 'state',
+    ]);
+    expect(doc).toMatchObject({
+      op: 'v1.0.0-stage-86.op-001', attempts: 3, maxAttempts: 3, exhausted: true, state: 'failed',
+    });
+  });
+
+  it('A4 基线：retry 人类输出逐字不变（无 schemaVersion）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-86');
+    mgr.getData()!.stages['v1.0.0-stage-86'].ops = { 'op-001': makeOp('op-001') as never };
+    mgr.save();
+
+    logMock.mockClear();
+    await safeParse(['flow', 'retry', '--op', 'v1.0.0-stage-86.op-001']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('op-001');
+    expect(out).not.toContain('schemaVersion');
+  });
+
   it('op-013/T1: attempt --op 短名前缀等价（F4）+ draft 守卫回归', async () => {
     // 短名前缀 attempt pass → exit 0，指针指向下一 pending
     const mgr = new FlowManager(tmpDir);
@@ -3028,7 +3065,8 @@ describe('flow 命令（stage-41）', () => {
         { args: ['plan', 'stage', 'add', 'v1.9.7-stage-51', '--deps', 'v1.9.1-stage-11'], mode: 'green' }, // 21
         { args: ['plan', 'scheme', 'list'], mode: 'green' },                                      // 22
         { args: ['plan', 'scheme', 'register', 'v1.9.1-stage-11'], mode: 'green' },               // 23
-        { args: ['archive', 'v1.9.1-stage-11'], mode: 'green' },                                  // 24
+        // v1.2.4 A1：两次 pass 均需覆盖同一归档文件 → 显式 --force（不改变消费点语义）
+        { args: ['archive', 'v1.9.1-stage-11', '--force'], mode: 'green' },                       // 24
         { args: ['config', 'set', 'workflow_mode', 'full', '--sync-stages'], mode: 'green' },     // 25
       ];
     }

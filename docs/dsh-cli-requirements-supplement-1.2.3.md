@@ -1,14 +1,14 @@
-# OpenFeel 1.2.3 补充材料（供 OpenFeel-DSH 合并到 `docs/CLI-REQUIREMENTS.md`）
+# OpenFeel 1.2.3 / 1.2.4 补充材料（供 OpenFeel-DSH 合并到 `docs/CLI-REQUIREMENTS.md`）
 
-> **状态**：已实现并验收（OpenFeel `v1.2.2` + `v1.2.3`）
-> **基线**：`v1.2.1` → 当前 `v1.2.3`
+> **状态**：已实现并验收（OpenFeel `v1.2.2` + `v1.2.3` + `v1.2.4`）
+> **基线**：`v1.2.1` → 当前 `v1.2.4`
 > **日期**：2026-10-17
 > **权威契约**：OpenFeel 仓库 `docs/json-contract.md`
-> **对应需求单**：OpenFeel-DSH `docs/CLI-REQUIREMENTS.md`（11 项 P0/P1/P2 已全部交付）
+> **对应需求单**：OpenFeel-DSH `docs/CLI-REQUIREMENTS.md`（11 项 P0/P1/P2 已全部交付）+ ACTION-GUIDE A1~A5
 >
 > **边界声明**：本文档由 OpenFeel 仓库提供，供 OpenFeel-DSH **自行合并/取用**；
 > OpenFeel 不直接修改 DSH 仓库内容。DSH 可将其作为 `CLI-REQUIREMENTS.md` 的补充章节，
-> 或拆分为独立文档自行维护。
+> 或拆分为独立文档自行维护。文件名保留 `1.2.3` 以维持既有链接稳定，内容已增量至 v1.2.4。
 
 ---
 
@@ -35,14 +35,15 @@ DSH 适配器侧的对应改造（OUT-1）也已完成：`PHASE_AGENT` 本地镜
 | `v1.2.2` | `stage-97` | 13 个读命令面 `--json`、`req list` 扩展、`flow archive --dry-run`、`archive <stage>` |
 | `v1.2.2` | `stage-98` | 文档与版本收口、CHANGELOG、DSH 端到端验收 |
 | `v1.2.3` | `stage-99` | 转出项补丁：并发 JSON 退出统一、`--review-tier` help、锁超时 E2E 钩子、`req` 过滤单点 |
+| `v1.2.4` | `stage-100` | ACTION-GUIDE A1~A5：归档覆盖保护（`ARCHIVE_EXISTS` + `--force`）、`plan stage list` / `model list|get` / `flow retry` / `lint i18n|kb` / `roadmap show` 新 `--json`、`config get --all` |
 
-**最终契约规模**：
+**最终契约规模（v1.2.4）**：
 
-- **33 个成功 `--json` 出口** / **34 个注册 `--json` 选项**（v1.2.1 为 18 / 20）
-- 测试：**75 文件 / 1911 用例 / 0 failed / 0 skipped**
-- `--version` = **1.2.3**
+- **40 个成功 `--json` 出口** / **41 个注册 `--json` 选项**（v1.2.3 为 33 / 34）
+- 测试：**75 文件 / 1941 用例 / 0 failed / 0 skipped**
+- `--version` = **1.2.4**
 
-> 计数口径：`flow advance --json` 仅用于失败 envelope（成功仍为人类输出），**不计入** 33 个成功出口；`--version --json` 单列，也不计入 33。
+> 计数口径：`flow advance --json` 仅用于失败 envelope（成功仍为人类输出），**不计入** 40 个成功出口；`--version --json` 单列，也不计入 40。`lint i18n` 与 `lint kb` 是两个独立子命令，各计 1 个注册选项。
 
 ---
 
@@ -230,6 +231,65 @@ openfeel flow status --project=/path/to/project --json
 
 ---
 
+### 3.11 v1.2.4 A1~A5（DSH ACTION-GUIDE 收口）
+
+**A1 `archive <stage> [--json] [--force]`**
+
+```jsonc
+// 已有归档且未 --force → 失败 envelope
+{ "schemaVersion": 1, "error": { "code": "ARCHIVE_EXISTS", "kind": "refusal",
+  "message": "……", "detail": { "stage": "v1.2.0-stage-78",
+  "archivePath": "<abs>/.openfeel/log/archive-v1.2.0-stage-78.md" } } }   // exit 1，零写盘
+```
+
+- 零写盘：归档内容 SHA-256、`flow.json` revision、`log[]` 长度、KB 条目数均不变。
+- 保护为**归档文件级**：`archive v1.2.0-stage-78` 与 `archive stage-78` 派生不同文件、互不触发。
+- `--force` 走原写盘路径，成功出口 #33 六键不变。
+
+**A2 `plan stage list --json`（#34）**
+
+```json
+{ "schemaVersion": 1, "stages": [ { "id": "v1.2.3-stage-99", "phase": "done",
+  "status": "done", "deps": [], "workflowMode": "full", "opsTotal": 4, "opsDone": 4 } ],
+  "count": 1 }
+```
+
+**A3 `model list|get --json`（#35/#36）**
+
+```jsonc
+// list
+{ "schemaVersion": 1, "scope": "project", "agents": [ { "agent": "openfeel-executor",
+  "provider": "deepseek", "model": "deepseek-flash", "source": "project" } ] }
+// get
+{ "schemaVersion": 1, "scope": null, "agent": "openfeel-executor",
+  "provider": "deepseek", "model": "deepseek-flash", "source": "default" }
+```
+
+**A4 `flow retry` / `lint` / `roadmap show`（#37~#40）**
+
+```jsonc
+// flow retry --op <id>
+{ "schemaVersion": 1, "op": "…", "attempts": 1, "maxAttempts": 3,
+  "exhausted": false, "state": "failed" }
+// lint kb|i18n（ok:false 仍为成功文档 + exit 1）
+{ "schemaVersion": 1, "target": "kb", "ok": true, "issues": [ { "path": "…", "message": "…" } ] }
+// roadmap show [version]（不传 version → null/[]）
+{ "schemaVersion": 1, "version": "1.2.4",
+  "milestones": [ { "title": "M54 …", "theme": "收口", "stage": "stage-100", "deliverable": "……" } ] }
+```
+
+**A5 `config get --all --json`**
+
+```json
+{ "schemaVersion": 1, "scope": "project",
+  "defaults": { "execution_mode": "manual", "auto_advance": "enabled",
+                "merge_mode": "manual", "workflow_mode": "full" } }
+```
+
+- 仅项目模式；`--all`+`--global` → `INVALID_ARGUMENT`（`all-global-conflict`）；`--all`+key → `all-with-key`。
+
+---
+
 ## 4. DSH 适配器侧已完成（OUT-1）
 
 | 文件 | 变更 |
@@ -304,8 +364,8 @@ openfeel flow advance --stage <done-stage> --to bogus --dry-run --json
 openfeel flow archive <version> --dry-run --json
 ```
 
-OpenFeel 侧最终门禁：75 文件 / 1911 用例 / 0 failed；tsc 0；lint i18n 983；
-lint kb 0 过期（643 引用）；build ×2 幂等；`--version` = 1.2.3。
+OpenFeel 侧最终门禁（v1.2.4）：75 文件 / 1941 用例 / 0 failed；tsc 0；lint i18n 通过；
+lint kb 0 过期；build ×2 幂等；`--version` = 1.2.4；`dsh/` 零 diff。
 
 ---
 
@@ -317,6 +377,9 @@ lint kb 0 过期（643 引用）；build ×2 幂等；`--version` = 1.2.3。
 4. **未 `npm publish`**：本次仅 push 到 GitHub `master`；全局 CLI 由本地构建安装为 1.2.3。
 5. **OpenFeel-DSH 不是 git 仓库**：适配器改动已落盘，但没有对应 commit/push。
 6. **DSH 文档中的历史需求单**：`CLI-REQUIREMENTS.md` 保留原文，作为需求溯源；实现状态以本文档为准。
+7. **归档保护为文件级（v1.2.4）**：短名/全名别名派生不同目标文件、互不触发；跨别名保护不在本版范围。
+8. **`lint --json` 退出码（v1.2.4）**：`ok:false` 仍输出成功文档（单文档、无 `error` 键），但退出码保持 **1** 门禁语义；适配器应读 `ok` 而非仅看退出码。
+9. **`config get --all` 仅项目模式（v1.2.4）**：`--all` 与 `--global` / 位置 key 组合返回 `INVALID_ARGUMENT`；全局全量仍用 `config get --global --json` 的 `values`。
 
 ---
 

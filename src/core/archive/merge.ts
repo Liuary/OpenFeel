@@ -9,6 +9,24 @@ import { join } from 'node:path';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { initKnowledgeBase, addKnowledgeEntry } from '../workspace/knowledge.js';
 
+/**
+ * 归档文件已存在错误（A1 数据安全保护）。
+ * 在解析到阶段后、任何写盘之前抛出，保证拒绝路径零写盘。
+ */
+export class ArchiveExistsError extends Error {
+  /** 用户输入的阶段名原值 */
+  readonly stage: string;
+  /** 本次命令的目标归档文件绝对路径 */
+  readonly archivePath: string;
+
+  constructor(stage: string, archivePath: string) {
+    super(`归档文件已存在：${archivePath}`);
+    this.name = 'ArchiveExistsError';
+    this.stage = stage;
+    this.archivePath = archivePath;
+  }
+}
+
 /** 归档结果 */
 export interface ArchiveResult {
   /** 归档摘要（Markdown 格式） */
@@ -26,9 +44,15 @@ export interface ArchiveResult {
  * 汇总阶段产出、生成 Markdown 摘要、提取知识条目并写入归档文件
  * @param projectPath 项目路径
  * @param stageName 阶段名称（如 stage-06）
+ * @param options.force 显式覆盖已有归档文件（仅绕过文件覆盖保护）
  * @returns ArchiveResult，若 flow.json 未加载或阶段不存在则返回 null
+ * @throws ArchiveExistsError 目标归档文件已存在且未显式 force（零写盘）
  */
-export function archiveStage(projectPath: string, stageName: string): ArchiveResult | null {
+export function archiveStage(
+  projectPath: string,
+  stageName: string,
+  options?: { force?: boolean },
+): ArchiveResult | null {
   const mgr = new FlowManager(projectPath);
 
   // 若 flow.json 未加载，返回 null
@@ -48,6 +72,14 @@ export function archiveStage(projectPath: string, stageName: string): ArchiveRes
   const stage = data.stages[key] ?? data.stages[stageName];
   if (!stage) {
     return null;
+  }
+
+  // A1 数据安全：目标文件存在性检查必须位于任何写盘（mkdir / 归档文件 / flow.json / KB）之前。
+  // 保护为归档文件级：目标文件名由本次输入原值派生，别名（短名/全名）派生不同文件、互不触发。
+  const logDir = join(projectPath, '.openfeel', 'log');
+  const archivePath = join(logDir, `archive-${stageName}.md`);
+  if (existsSync(archivePath) && options?.force !== true) {
+    throw new ArchiveExistsError(stageName, archivePath);
   }
 
   // 统计该阶段所有 ops
@@ -106,14 +138,12 @@ ${reviewRows}
     .filter((r) => r.status === 'closed' || r.status === 'resolved')
     .map((r) => `[${r.id}] ${r.title}`);
 
-  // 确保 .openfeel/log/ 目录存在
-  const logDir = join(projectPath, '.openfeel', 'log');
+  // 确保 .openfeel/log/ 目录存在（仅在通过覆盖保护后才会执行）
   if (!existsSync(logDir)) {
     mkdirSync(logDir, { recursive: true });
   }
 
   // 写入归档摘要文件（每阶段唯一，不加锁；flow 同步走 mgr.save()）
-  const archivePath = join(logDir, `archive-${stageName}.md`);
   atomicWriteFileSync(archivePath, summary);
 
   // 追加归档日志到 flow.json

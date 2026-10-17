@@ -141,3 +141,15 @@
 - **后果 / 适用边界**：v1.2.3 为 semver 合法补丁号（不使用四段 `1.2.2.1`）；33 成功出口 / 34 注册选项与退出码 0/1/2 语义不变；存量 flow.json 零迁移。
 - **回滚**：`git revert` v1.2.3 归档 commit（`ea9aa68`）及版本分片归档 commit；版本号回退 1.2.2；无数据迁移。
 
+### ADR-014：v1.2.4 补丁收口 —— 归档覆盖保护 + 读命令 JSON 全覆盖
+- **日期**：2026-10-17
+- **状态**：accepted（v1.2.4-stage-100 实施并验收完成）
+- **决策**：
+  1. **A1 数据安全优先**：`archive <stage>` 对已有归档文件**拒绝覆盖**（`ARCHIVE_EXISTS` / `kind=refusal` / exit 1 / 零写盘），存在性检查**先于任何写盘**；新增 `--force` 显式覆盖；保护为**归档文件级**（`v1.2.0-stage-78` 与 `stage-78` 派生不同目标文件，互不触发）。
+  2. **A2~A5 读命令 JSON 全覆盖**：`plan stage list`、`model list|get`、`flow retry`、`lint kb|i18n`、`roadmap show` 全部 `--json`；`config get --all --json` 一次取全量（不再因缺 key 拒绝）。
+  3. **计数权威**：**40 成功出口 / 41 注册 `--json` 选项**；源码 / 契约 §5/§7 / 计数测试三处同步；`lint kb` 与 `lint i18n` 为两个独立 Commander 子命令，各计 1；`config get --all` 与 `archive --force` 为既有出口/选项扩展，不新增出口。
+  4. **DSH 边界**：`dsh/` 适配器纳入 OpenFeel 版本管理但**代码归属 DSH 侧**；OpenFeel 不直接修改 `dsh/`，不将其纳入 lint/build/发布扫描；剩余 DSH 消费改造（`cli.text`→`cli.json`、`requiresCli` 升级）由 DSH 自行执行。
+- **理由**：A1 是唯一会造成不可逆数据丢失的缺陷；拒绝覆盖 + `--force` 是最小、最安全的修复。读命令 JSON 全覆盖消除适配器最后的文本回显。计数口径必须三处同步，避免再次漂移。
+- **后果 / 适用边界**：既有出口与退出码语义零改动；`--force` 为显式 opt-in；存量归档与 flow.json 零迁移；`dsh/` 零 diff。
+- **回滚**：`git revert` v1.2.4 归档 commit（`1797df2`）及版本分片归档 commit；版本号回退 1.2.3；无数据迁移。
+

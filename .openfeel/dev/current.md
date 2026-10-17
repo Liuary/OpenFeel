@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.2.3 — 补丁版本收官**（v1.2.2 转出项全部收口）｜ 并发 JSON 退出统一｜`--review-tier` help 订正｜锁超时 E2E 钩子｜`req` 过滤单点重构｜版本 1.2.3 全链路｜ v1.2.2（stage-95~98）已收官 ｜ v1.2.3-stage-99 done；**未 push / 未 `npm publish`**
-> 统计：测试 75 文件 / **1911 用例全绿（0 skipped / 0 failed）** ｜ `lint i18n` **983** 键 ｜ `lint kb` 0 过期（归档后 643 引用）｜ **33 成功出口 / 34 注册 `--json`** ｜ **版本 1.2.3**
+> OpenFeel **v1.2.4 — 补丁版本收官**（ACTION-GUIDE A1~A5 全部收口）｜ 归档覆盖保护（`ARCHIVE_EXISTS` + `--force` + 零写盘）｜ 剩余读命令 `--json`（plan stage list / model list|get / flow retry / lint / roadmap show）｜ `config get --all --json` ｜ **40 成功出口 / 41 注册选项** ｜ 版本 1.2.4 ｜ v1.2.2 / v1.2.3 已收官；**已 push，未 `npm publish`**
+> 统计：测试 75 文件 / **1941 用例全绿（0 skipped / 0 failed）** ｜ `lint i18n` **994** 键 ｜ `lint kb` 0 过期（归档后 649 引用）｜ **40 成功出口 / 41 注册 `--json`** ｜ **版本 1.2.4**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-17** @Liuary：**v1.2.4 补丁版本收官（ACTION-GUIDE A1~A5 全部收口）**——① **A1 数据安全**：`archive <stage>` 对已有归档**拒绝覆盖**（`ARCHIVE_EXISTS` / refusal / exit 1 / 零写盘，存在性检查先于任何写盘），新增 `--force` 显式覆盖；保护为**归档文件级**，`v1.2.0-stage-78` 与 `stage-78` 别名互不触发；② **A2~A5 读命令 JSON**：`plan stage list`、`model list|get`、`flow retry`、`lint kb|i18n`、`roadmap show` 全部 `--json`；`config get --all --json` 一次取全量；③ **计数 40/41**：源码 / 契约 / 测试三处一致（`lint` 双子命令各注册）；④ **版本 1.2.4** 全链路 A/B/C/D/E + CHANGELOG `[1.2.4]` + 文档/manual/skill/supplement 同步 + build 双生成物；⑤ **`dsh/` 零 diff**（适配器归 DSH 侧维护）。单阶段 fast；审查 **passed**（REV-100-001/002 全 closed）；门禁 `npm test` **75 文件 / 1941 用例 0 failed**、tsc 0、i18n 994、kb 0（归档后 649 引用）、build ×2 幂等、`--version` **1.2.4**。知识沉淀 2 条（归档覆盖保护 / JSON 计数口径）；`flow archive v1.2.4` 已执行；提交 `1797df2`
 
 - **2026-10-17** @Liuary：**v1.2.3 补丁版本收官（v1.2.2 转出项收口）**——① **并发 JSON 退出统一**：`handleConcurrentConflict` JSON 分支改为 `emit → exitCode=2 → return`（10 个调用点全枚举，非 JSON 与 exit 2 零改动）；② **`--review-tier` help 订正**：缺省 = **full（零裁剪）**，zh/en 与契约 §14.2 同步；③ **锁超时 E2E 钩子**：仅 `OPENFEEL_TEST_MODE=1` 生效的测试 seam，生产默认 5000/3000ms 不变，E2E 稳定断言 `INTERNAL_ERROR/internal/3`；④ **REV-97-006 纯等价重构**：`req show` / `req set --workflow-mode` 内联过滤改用 `listLinkedStages`，core done 原语保留；⑤ **版本 1.2.3 全链路 A/B/C/D/E** + CHANGELOG `[1.2.3]` + 文档/manual/skill 快照 + build 双生成物。单阶段 fast；审查 **passed**（REV-99-001~003 全 closed）；门禁 `npm test` **75 文件 / 1911 用例 0 failed**、tsc 0、i18n 983、kb 0（631→归档后 643 引用）、build ×2 幂等、`--version` **1.2.3**。知识沉淀 2 条（补丁转出项收口范式 / 测试 env seam 门控）；manual `cli/commands.md`、`core/fs.md`、`core/json-contract.md`、`index.md` 同步；`flow archive v1.2.3` 已执行。**OUT-1 DSH 适配器更新**（退役 `PHASE_AGENT` 镜像 / `errorFromResult` 消费 envelope）另行处理
 

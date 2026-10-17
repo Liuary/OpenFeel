@@ -10,6 +10,7 @@
 | [design-philosophy.md](design-philosophy.md) | 开发思路 — 内部设计决策演变记录 |
 | [claude-code-adapter-plan.md](claude-code-adapter-plan.md) | Claude Code 适配方案 — v1.1.6 立项蓝本（含 cc-switch 中转模型映射与阶段拆分） |
 | [v1.2.1-design.md](v1.2.1-design.md) | v1.2.1 设计与分析 — 流水线优化提速 / 提示词瘦身 / 简化通用任务 / 三模式架构（含三数据面性能分析） |
+| [dsh-cli-requirements-supplement-1.2.3.md](dsh-cli-requirements-supplement-1.2.3.md) | OpenFeel-DSH 需求补充材料 — v1.2.3 CLI 契约、迁移清单与适配器改造说明（由 DSH 自行合并） |
 
 ## 研发分期归档
 

@@ -1,11 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.3.1 — DSH 部署热修复**｜ `openfeel setup --tools dsh` 的 `pnpm install` 增加 `--no-frozen-lockfile`，修复 profile lockfile 过期时的 `ERR_PNPM_OUTDATED_LOCKFILE` ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.1 ｜ **待 push；CI 发布 1.3.1**
+> OpenFeel **v1.3.1 — DSH 部署热修复**｜ `openfeel setup --tools dsh` 的 `pnpm install` 增加 `--no-frozen-lockfile`，修复 profile lockfile 过期时的 `ERR_PNPM_OUTDATED_LOCKFILE` ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.1 ｜ **已 push；npm 1.3.1 已发布**
 > 统计：测试 77 文件 / **1978 用例全绿（0 skipped / 0 failed）** ｜ `lint i18n` **1013** 键 ｜ `lint kb` 0 过期（649 引用）｜ **13 错误码 / 40 成功出口 / 41 注册 `--json`** ｜ **版本 1.3.1**
 
 ## 近期提交记录（最多 5 条，最新在上）
 
-- **2026-10-17** @Liuary：**v1.3.1 热修复：`setup --tools dsh` 的 pnpm frozen-lockfile 部署失败**——根因：profile 的 `openfeel-dsh` `link:` 目标变化使 `pnpm-lock.yaml` specifier 过期，内部 `CI=1` 的 `pnpm install` 默认 frozen-lockfile → `ERR_PNPM_OUTDATED_LOCKFILE`，部署回滚。修复：`runPnpmInstall` 改为 `pnpm install --prefer-offline --no-frozen-lockfile`，保留超时/回滚/错误映射；单测精确断言第 2 次 `spawnSync` argv；文档补充「失败时 lockfile/node_modules 可能保留部分更新，下次 setup 收敛」。已用临时 DSH_HOME + 过期 lockfile 端到端验证 `setup --tools dsh` exit 0。版本 1.3.1 全链路收口；待 push / CI 发布
+- **2026-10-17** @Liuary：**v1.3.1 热修复：`setup --tools dsh` 的 pnpm frozen-lockfile 部署失败**——根因：profile 的 `openfeel-dsh` `link:` 目标变化使 `pnpm-lock.yaml` specifier 过期，内部 `CI=1` 的 `pnpm install` 默认 frozen-lockfile → `ERR_PNPM_OUTDATED_LOCKFILE`，部署回滚。修复：`runPnpmInstall` 改为 `pnpm install --prefer-offline --no-frozen-lockfile`，保留超时/回滚/错误映射；单测精确断言第 2 次 `spawnSync` argv；文档补充「失败时 lockfile/node_modules 可能保留部分更新，下次 setup 收敛」。已用临时 DSH_HOME + 过期 lockfile 端到端验证 `setup --tools dsh` exit 0。**已完成门禁/阶段归档/版本归档/push 发布**（npm 1.3.1）
 
 - **2026-10-17** @Liuary：**v1.3.0 单包分发 DSH 适配器 + README 重构**——① 根 `package.json.files` 纳入 `dsh/` 运行文件（含 ADAPTER.md，不含 test）；② 新增 `openfeel setup --tools dsh [--dsh-profile]`：DSH profile 预检 → 锁外备份 → 锁内重读/合并 → 按需 `pnpm install` → 失败回滚；纯 dsh 不写全局 `update_state.json`；错误映射复用 `INVALID_ARGUMENT`/1 与 `INTERNAL_ERROR`/3（不新增 13 码）；③ `update --tools dsh` 在 auto-init 前拒绝；④ 修复适配器 6 处 `pushOption('', value)` 空位置参数 → `pushPositional`；⑤ README 三语瘦身（版本能力迁至单一 `docs/VERSIONS.md`）+ DSH 安装节 + 「需求 + fast」推荐用法；⑥ 版本 1.3.0 A/B/C/D/E、`dsh/package.json` lockstep、CI 适配器 `node --check`。**已完成门禁/阶段归档/版本归档/push 发布**（npm 1.3.0，CI run 71；三套适配器测试 42/77/10 全绿；全量 77 文件 / 1978 用例）
 

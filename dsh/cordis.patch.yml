@@ -24,3 +24,17 @@
         autoPrompt: true
         # 系统提示段语言：zh-CN | en
         language: zh-CN
+        # 未初始化工作区的提示策略：
+        #   auto   = 已初始化→完整 Feel 纪律；未初始化→短 bootstrap（默认）
+        #   always = 所有工作区都注入完整 Feel 纪律
+        #   off    = 不注入任何提示
+        activation: auto
+        # 写入门禁（ctx.tools.guard）：
+        #   always  = 所有工作区都拦截（默认；无 .openfeel 时也会拒绝写文件）
+        #   project = 仅当会话工作区本身是 OpenFeel 项目时拦截
+        #   off     = 完全不注册 guard（含 flow.json/status.md 也不拦）
+        enforce: always
+        # general 需求在 in_progress 且无阶段时，允许源码写入（需求级例外）。
+        allowGeneral: true
+        # mutatingTools 默认：[edit, write, apply_patch, str_replace_editor]。
+        # 需要时显式覆盖；pwsh/bash 默认不守（显式逃生通道）。

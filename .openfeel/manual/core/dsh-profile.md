@@ -51,3 +51,4 @@
 |------|------|
 | v1.3.0-stage-101 | 初始创建：单包 DSH 部署（`setup --tools dsh`）、profile 合并/预检/锁序/回滚/错误映射 |
 | v1.3.1-stage-102 | install 增加 `--no-frozen-lockfile`：修复 profile lockfile 过期时的 `ERR_PNPM_OUTDATED_LOCKFILE` |
+| v1.3.2-stage-103 | DSH 适配器写入门禁（`ctx.tools.guard`）+ 非项目 bootstrap；`enforce=always` 默认，`project`/`off` opt-out；`pwsh` 仍是逃生通道 |

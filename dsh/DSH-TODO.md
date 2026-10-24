@@ -181,3 +181,17 @@ Loader 按 URL 缓存 ESM 模块，`set_bundle enable=false→true` **不会**�
 重启后才会加载 v1.2.4 适配器。<br>
 （注：上轮「路径迁移」曾因真实路径变化意外绕过缓存，本轮回路径稳定，故需重启。）
 
+---
+
+## v1.3.2（stage-103）：写入门禁 + bootstrap
+
+- `lib/guard.js`：`ctx.tools.guard()` 同步拒绝 `edit` / `write` / `apply_patch` / `str_replace_editor`。
+- `enforce: always` 默认；`project` / `off` opt-out；`off` 完全不注册 guard。
+- `.openfeel/**` 流程产物任意阶段可写（`flow.json` / `status.md` 除外）；外部源码要求 `exec_running`。
+- 无 `.openfeel` 时 `always` 拒绝全部文件写入，防止绕过 init 创建项目产物。
+- `apply_patch` 解析全部 patch 头；混合/无头保守拒绝。
+- `activation: auto` 非项目注入短 bootstrap；`always` 注入完整纪律；`off` 不注入。
+- `ctx.effect` 管理 disposer，避免 HMR 累积；`ctx.tools.guard` 缺失时降级警告。
+- 测试：contract 42 / verify 83 / guard 36 / integration 10 = 171 断言。
+- `pwsh` / `bash` 默认不守，显式逃生通道；`guardShell` 留到后续。
+

@@ -105,6 +105,10 @@ function mockContext(cwd) {
   const commands = [];
   /** @type {any[]} */
   const sections = [];
+  /** @type {Array<(execution: any) => string | undefined>} */
+  const guards = [];
+  /** @type {Array<() => void>} */
+  const effects = [];
   /** @type {string[]} */
   const logs = [];
 
@@ -132,6 +136,23 @@ function mockContext(cwd) {
         tools.set(definition.name, definition);
         return () => tools.delete(definition.name);
       },
+      /** @param {(execution: any) => string | undefined} guard */
+      guard: (guard) => {
+        guards.push(guard);
+        return () => {
+          const index = guards.indexOf(guard);
+          if (index >= 0) guards.splice(index, 1);
+        };
+      },
+    },
+    /** @param {() => (() => void) | void} effect */
+    effect: (effect) => {
+      const dispose = effect();
+      const cleanup = () => {
+        if (typeof dispose === 'function') dispose();
+      };
+      effects.push(cleanup);
+      return cleanup;
     },
     commands: {
       /** @param {any} definition */
@@ -150,7 +171,7 @@ function mockContext(cwd) {
     },
   };
 
-  return { ctx, tools, commands, sections, logs, cwd, services };
+  return { ctx, tools, commands, sections, guards, effects, logs, cwd, services };
 }
 
 /**
@@ -179,6 +200,7 @@ async function main() {
   process.stdout.write('[1] 模块导出与工具注册\n');
   const workspace = mockContext(SOURCE_PROJECT);
   apply(workspace.ctx, {});
+  assert(workspace.guards.length === 1, `应注册 1 个写入门禁，实际 ${workspace.guards.length}`);
 
   /**
    * 等待启动自检完成。
@@ -850,12 +872,80 @@ async function main() {
     assert(text.includes(SOURCE_PROJECT), `提示应包含项目根，实际未包含`);
   });
 
-  await check('提示段：非项目目录返回空串（不注入）', async () => {
+  await check('提示段：非项目目录注入 bootstrap（不注入完整 Feel 纪律）', async () => {
     const { apply: applyAdapter } = await import('../lib/index.js');
     const nonProject = mockContext(join(tmpdir(), 'feel-verify-deep', 'a', 'b'));
     applyAdapter(nonProject.ctx, {});
     const text = nonProject.sections[0].text();
-    assert(text === '', `非项目目录不应注入，实际: ${String(text).slice(0, 120)}`);
+    assert(text.includes('OpenFeel 未初始化'), `非项目目录应注入 bootstrap，实际: ${String(text).slice(0, 160)}`);
+    assert(!text.includes('Feel 模式已启用'), `非项目目录不应注入完整 Feel 纪律，实际: ${String(text).slice(0, 160)}`);
+  });
+
+  await check('提示段：activation=off 不注入', async () => {
+    const { apply: applyAdapter } = await import('../lib/index.js');
+    const off = mockContext(join(tmpdir(), 'feel-verify-deep', 'a', 'b'));
+    applyAdapter(off.ctx, { activation: 'off' });
+    assert(off.sections.length === 0, `activation=off 不应注册提示段，实际 ${off.sections.length}`);
+  });
+
+  await check('提示段：activation=always + 非项目注入完整纪律（detected:false）', async () => {
+    const { apply: applyAdapter } = await import('../lib/index.js');
+    const always = mockContext(join(tmpdir(), 'feel-verify-always', 'a'));
+    applyAdapter(always.ctx, { activation: 'always' });
+    const text = always.sections[0].text();
+    assert(text.includes('Feel 模式未初始化'), `应显示未初始化，实际: ${String(text).slice(0, 100)}`);
+    assert(text.includes('尚未检测到'), '应说明未检测到 .openfeel');
+    assert(!text.includes('Feel 模式已启用'), '未初始化不应误报已启用');
+  });
+
+  await check('提示段：autoPrompt=false 不注入但 guard 仍注册', async () => {
+    const { apply: applyAdapter } = await import('../lib/index.js');
+    const noPrompt = mockContext(join(tmpdir(), 'feel-verify-noprompt', 'a'));
+    applyAdapter(noPrompt.ctx, { autoPrompt: false });
+    assert(noPrompt.sections.length === 0, `autoPrompt=false 不应注册提示段，实际 ${noPrompt.sections.length}`);
+    assert(noPrompt.guards.length === 1, `autoPrompt=false 仍应注册 guard，实际 ${noPrompt.guards.length}`);
+  });
+
+  await check('写入门禁：重复 apply 释放旧 guard 后不累积', async () => {
+    const { apply: applyAdapter } = await import('../lib/index.js');
+    const repeat = mockContext(SOURCE_PROJECT);
+    repeat.ctx.tools.register = () => () => {};
+    repeat.ctx.commands.register = () => () => {};
+    repeat.ctx.systemPrompt.section = () => () => {};
+    applyAdapter(repeat.ctx, { enforce: 'always' });
+    assert(repeat.guards.length === 1, `首次 apply 应有 1 个 guard，实际 ${repeat.guards.length}`);
+    // 未释放时再次 apply 会注册第二个（Cordis 的 HMR dispose 负责回收）。
+    applyAdapter(repeat.ctx, { enforce: 'always' });
+    assert(repeat.guards.length === 2, `未释放时两次 apply 应有 2 个 guard，实际 ${repeat.guards.length}`);
+    while (repeat.effects.length > 0) repeat.effects.pop()();
+    assert(repeat.guards.length === 0, `释放后应清空 guard，实际 ${repeat.guards.length}`);
+    applyAdapter(repeat.ctx, { enforce: 'always' });
+    assert(repeat.guards.length === 1, `释放后再次 apply 不应累积，实际 ${repeat.guards.length}`);
+  });
+
+  await check('写入门禁：无 ctx.effect 时走 ctx.on(dispose) 兜底', async () => {
+    const { apply: applyAdapter } = await import('../lib/index.js');
+    const noEffect = mockContext(SOURCE_PROJECT);
+    delete noEffect.ctx.effect;
+    /** @type {Array<() => void>} */
+    const disposers = [];
+    noEffect.ctx.on = (event, handler) => {
+      if (event === 'dispose') disposers.push(handler);
+      return () => {};
+    };
+    applyAdapter(noEffect.ctx, { enforce: 'always' });
+    assert(noEffect.guards.length === 1, `应注册 1 个 guard，实际 ${noEffect.guards.length}`);
+    assert(disposers.length === 1, `应注册 1 个 dispose 回调，实际 ${disposers.length}`);
+    disposers[0]();
+    assert(noEffect.guards.length === 0, `dispose 后应清空 guard，实际 ${noEffect.guards.length}`);
+  });
+
+  await check('写入门禁：ctx.tools.guard 缺失时降级不崩', async () => {
+    const { apply: applyAdapter } = await import('../lib/index.js');
+    const noGuard = mockContext(SOURCE_PROJECT);
+    delete noGuard.ctx.tools.guard;
+    applyAdapter(noGuard.ctx, { enforce: 'always' });
+    assert(noGuard.logs.some((line) => line.includes('不支持 ctx.tools.guard')), '应记录降级警告');
   });
 
   await check('提示段：拿不到会话 Agent 时返回空串', async () => {

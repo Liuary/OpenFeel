@@ -1,0 +1,304 @@
+/**
+ * OpenFeel × DSH — 写入门禁测试
+ *
+ * 纯 Node 运行：`node dsh/test/guard.js`
+ * 只使用临时目录与 fake ToolExecution，不接触真实 DSH 运行时。
+ */
+
+import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { clearGuardCache, createOpenFeelGuard, normalizeForComparison, parsePatchTargets } from '../lib/guard.js';
+import { renderBootstrapPrompt, renderFeelPrompt } from '../lib/surface/prompt.js';
+
+const root = mkdtempSync(join(tmpdir(), 'openfeel-guard-'));
+let passed = 0;
+let failed = 0;
+
+/** @param {string} label @param {() => void} fn */
+function check(label, fn) {
+  try {
+    fn();
+    passed += 1;
+    process.stdout.write(`  ok  ${label}\n`);
+  } catch (error) {
+    failed += 1;
+    process.stdout.write(`  FAIL ${label}\n       ${error instanceof Error ? error.message : String(error)}\n`);
+  }
+}
+
+/** @param {string} name */
+function workspace(name) {
+  const dir = join(root, name);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/** @param {string} name @param {any} flow */
+function project(name, flow) {
+  const dir = workspace(name);
+  mkdirSync(join(dir, '.openfeel'), { recursive: true });
+  writeFileSync(join(dir, '.openfeel', 'flow.json'), JSON.stringify(flow, null, 2), 'utf8');
+  return dir;
+}
+
+/** @param {string} name @param {string} cwd @param {any} [args] */
+function execution(name, cwd, args = {}) {
+  return { name, arguments: args, agent: { session: { header: { cwd } } } };
+}
+
+const always = createOpenFeelGuard({ enforce: 'always', language: 'zh-CN' });
+const projectOnly = createOpenFeelGuard({ enforce: 'project', language: 'zh-CN' });
+const off = createOpenFeelGuard({ enforce: 'off', language: 'zh-CN' });
+
+const planFlow = { stages: { 'v1-stage-1': { phase: 'plan_review' } }, requirements: [] };
+const execFlow = { stages: { 'v1-stage-1': { phase: 'exec_running' } }, requirements: [] };
+const noStageFlow = { stages: { 'v1-stage-1': { phase: 'done' } }, requirements: [] };
+const generalFlow = {
+  stages: { 'v1-stage-1': { phase: 'done' } },
+  requirements: [{ id: 'REQ-1', status: 'in_progress', workflow_mode: 'general' }],
+};
+const multiFlow = {
+  stages: { 'v1-stage-1': { phase: 'plan_review' }, 'v1-stage-2': { phase: 'exec_running' } },
+  requirements: [],
+};
+
+process.stdout.write('\nOpenFeel × DSH 写入门禁测试\n');
+process.stdout.write('='.repeat(60) + '\n\n');
+
+clearGuardCache();
+
+check('off：源码放行', () => {
+  assert.equal(off(execution('edit', workspace('off-src'), { path: 'src/foo.cs' })), undefined);
+});
+
+check('off：flow.json/status.md 也放行（B10）', () => {
+  const cwd = project('off-flow', planFlow);
+  assert.equal(off(execution('edit', cwd, { path: '.openfeel/flow.json' })), undefined);
+  assert.equal(off(execution('write', cwd, { path: '.openfeel/plan/v1/stage-1/status.md' })), undefined);
+});
+
+check('always + 无 .openfeel：源码拒绝', () => {
+  const reason = always(execution('edit', workspace('always-src'), { path: 'src/foo.cs' }));
+  assert.match(String(reason), /尚未初始化|not OpenFeel-initialized/);
+});
+
+check('always + 无 .openfeel：写 docs 拒绝（B7）', () => {
+  const reason = always(execution('write', workspace('always-doc'), { path: 'docs/design.md' }));
+  assert.equal(typeof reason, 'string');
+});
+
+check('always + 无 .openfeel：.openfeel/plan 拒绝（B8）', () => {
+  const reason = always(execution('write', workspace('always-internal'), { path: '.openfeel/plan/x.md' }));
+  assert.equal(typeof reason, 'string');
+});
+
+check('project + 无 .openfeel：源码放行', () => {
+  assert.equal(projectOnly(execution('edit', workspace('project-src'), { path: 'src/foo.cs' })), undefined);
+});
+
+check('project + 无 .openfeel：.openfeel/plan 放行（N4）', () => {
+  assert.equal(projectOnly(execution('write', workspace('project-internal'), { path: '.openfeel/plan/x.md' })), undefined);
+});
+
+check('project + 无 .openfeel：flow.json 受保护拒绝', () => {
+  const reason = projectOnly(execution('write', workspace('project-flow'), { path: '.openfeel/flow.json' }));
+  assert.equal(typeof reason, 'string');
+});
+
+check('plan_review：源码拒绝，消息含 phase', () => {
+  const cwd = project('plan-src', planFlow);
+  const reason = projectOnly(execution('edit', cwd, { path: 'src/foo.cs' }));
+  assert.equal(typeof reason, 'string');
+  assert.match(String(reason), /plan_review/);
+});
+
+check('guard 启用时 status.md 始终拒绝', () => {
+  const cwd = project('status-enabled', planFlow);
+  assert.equal(typeof projectOnly(execution('write', cwd, { path: '.openfeel/plan/v1/stage-1/status.md' })), 'string');
+});
+
+check('plan_review：.openfeel/plan 放行（B1）', () => {
+  const cwd = project('plan-internal', planFlow);
+  assert.equal(projectOnly(execution('write', cwd, { path: '.openfeel/plan/v1/stage-1/plan.md' })), undefined);
+});
+
+check('exec_running：源码放行', () => {
+  const cwd = project('exec-src', execFlow);
+  assert.equal(projectOnly(execution('edit', cwd, { path: 'src/foo.cs' })), undefined);
+});
+
+check('无活跃阶段：源码拒绝', () => {
+  const cwd = project('no-stage', noStageFlow);
+  assert.equal(typeof projectOnly(execution('edit', cwd, { path: 'src/foo.cs' })), 'string');
+});
+
+check('general 需求 in_progress：无阶段放行', () => {
+  const cwd = project('general-allow', generalFlow);
+  assert.equal(projectOnly(execution('edit', cwd, { path: 'src/foo.cs' })), undefined);
+});
+
+check('allowGeneral=false：general 需求也拒绝', () => {
+  const cwd = project('general-deny', generalFlow);
+  const strict = createOpenFeelGuard({ enforce: 'project', language: 'zh-CN', allowGeneral: false });
+  assert.equal(typeof strict(execution('edit', cwd, { path: 'src/foo.cs' })), 'string');
+});
+
+check('flow.json 损坏：拒绝', () => {
+  const cwd = workspace('corrupt');
+  mkdirSync(join(cwd, '.openfeel'), { recursive: true });
+  writeFileSync(join(cwd, '.openfeel', 'flow.json'), '{broken', 'utf8');
+  assert.equal(typeof projectOnly(execution('edit', cwd, { path: 'src/foo.cs' })), 'string');
+});
+
+check('多活跃阶段：任一 exec_running 放行', () => {
+  const cwd = project('multi', multiFlow);
+  assert.equal(projectOnly(execution('edit', cwd, { path: 'src/foo.cs' })), undefined);
+});
+
+check('非 mutating 工具放行（feel_status/read/pwsh）', () => {
+  const cwd = project('non-mutating', planFlow);
+  for (const name of ['feel_status', 'read', 'todo_write', 'pwsh']) {
+    assert.equal(projectOnly(execution(name, cwd, {})), undefined, name);
+  }
+});
+
+check('apply_patch：全部目标在 .openfeel 内放行', () => {
+  const cwd = project('patch-internal', planFlow);
+  const reason = projectOnly(execution('apply_patch', cwd, {
+    patch: '*** Begin Patch\n*** Update File: .openfeel/plan/v1/stage-1/plan.md\n@@\n-a\n+b\n*** End Patch',
+  }));
+  assert.equal(reason, undefined);
+});
+
+check('apply_patch：混合目标拒绝（B9）', () => {
+  const cwd = project('patch-mixed', planFlow);
+  const reason = projectOnly(execution('apply_patch', cwd, {
+    patch: '*** Begin Patch\n*** Update File: .openfeel/plan/x.md\n*** Update File: src/foo.cs\n@@\n-a\n+b\n*** End Patch',
+  }));
+  assert.equal(typeof reason, 'string');
+});
+
+check('apply_patch：全部外部拒绝', () => {
+  const cwd = project('patch-external', planFlow);
+  const reason = projectOnly(execution('apply_patch', cwd, {
+    patch: '*** Begin Patch\n*** Update File: src/foo.cs\n@@\n-a\n+b\n*** End Patch',
+  }));
+  assert.equal(typeof reason, 'string');
+});
+
+check('apply_patch：flow.json 拒绝', () => {
+  const cwd = project('patch-flow', planFlow);
+  const reason = projectOnly(execution('apply_patch', cwd, {
+    patch: '*** Begin Patch\n*** Update File: .openfeel/flow.json\n@@\n-a\n+b\n*** End Patch',
+  }));
+  assert.equal(typeof reason, 'string');
+});
+
+check('apply_patch：无标准头拒绝', () => {
+  const cwd = project('patch-no-header', planFlow);
+  const reason = projectOnly(execution('apply_patch', cwd, { patch: 'just text' }));
+  assert.equal(typeof reason, 'string');
+});
+
+check('apply_patch：Move to 缺少同块 Update File 源拒绝（N8）', () => {
+  const cwd = project('patch-move', planFlow);
+  const reason = projectOnly(execution('apply_patch', cwd, {
+    patch: '*** Begin Patch\n*** Move to: .openfeel/plan/y.md\n*** End Patch',
+  }));
+  assert.equal(typeof reason, 'string');
+});
+
+check('apply_patch：Move 必须同块 Update（B2）', () => {
+  const bad = parsePatchTargets('*** Update File: .openfeel/plan/x.md\n*** Add File: src/new.cs\n*** Move to: src/outside.cs');
+  assert.equal(bad.ok, false);
+  const ok = parsePatchTargets('*** Update File: .openfeel/plan/x.md\n*** Move to: .openfeel/plan/y.md');
+  assert.deepEqual(ok, { ok: true, paths: ['.openfeel/plan/x.md', '.openfeel/plan/y.md'] });
+});
+
+check('apply_patch：Add/Delete/--- 正目标解析', () => {
+  assert.deepEqual(parsePatchTargets('*** Add File: .openfeel/plan/x.md'), { ok: true, paths: ['.openfeel/plan/x.md'] });
+  assert.deepEqual(parsePatchTargets('*** Delete File: src/foo.cs'), { ok: true, paths: ['src/foo.cs'] });
+  assert.deepEqual(parsePatchTargets('--- a/src/foo.cs\n+++ b/src/foo.cs'), { ok: true, paths: ['src/foo.cs'] });
+});
+
+check('apply_patch：Add 内部放行 / Delete 外部拒绝', () => {
+  const cwd = project('patch-add-delete', execFlow);
+  assert.equal(projectOnly(execution('apply_patch', cwd, {
+    patch: '*** Add File: .openfeel/plan/new.md',
+  })), undefined);
+  assert.equal(typeof projectOnly(execution('apply_patch', project('patch-delete', planFlow), {
+    patch: '*** Delete File: src/foo.cs',
+  })), 'string');
+});
+
+check('apply_patch：引号路径去引号（N8）', () => {
+  const parsed = parsePatchTargets('*** Update File: "src/foo.cs"');
+  assert.deepEqual(parsed, { ok: true, paths: ['src/foo.cs'] });
+});
+
+check('apply_patch：/dev/null 被忽略（N8）', () => {
+  const parsed = parsePatchTargets('--- /dev/null\n+++ b/src/foo.cs');
+  assert.deepEqual(parsed, { ok: true, paths: ['src/foo.cs'] });
+});
+
+check('str_replace_editor：flow.json 拒绝，内部产物放行', () => {
+  const cwd = project('str-editor', planFlow);
+  assert.equal(typeof projectOnly(execution('str_replace_editor', cwd, { path: '.openfeel/flow.json' })), 'string');
+  assert.equal(projectOnly(execution('str_replace_editor', cwd, { path: '.openfeel/plan/x.md' })), undefined);
+});
+
+check('normalizeForComparison 平台分支（B1）', () => {
+  assert.equal(normalizeForComparison('/X/.OPENFEEL/FLOW.JSON', 'darwin'), '/x/.openfeel/flow.json');
+  assert.equal(normalizeForComparison('/X/.OPENFEEL/FLOW.JSON', 'win32'), '/x/.openfeel/flow.json');
+  assert.equal(normalizeForComparison('/X/.OPENFEEL/FLOW.JSON', 'linux'), '/X/.OPENFEEL/FLOW.JSON');
+});
+
+check('Windows/macOS 大小写变体（仅大小写不敏感 FS）', () => {
+  if (process.platform !== 'win32' && process.platform !== 'darwin') return;
+  const cwd = project('case-paths', planFlow);
+  const forward = projectOnly(execution('edit', cwd, { path: '.OPENFEEL/FLOW.JSON' }));
+  assert.match(String(forward), /禁止手改|never hand-edit/);
+  if (process.platform === 'win32') {
+    const backslash = projectOnly(execution('edit', cwd, { path: '.OPENFEEL\\FLOW.JSON' }));
+    assert.match(String(backslash), /禁止手改|never hand-edit/);
+  }
+});
+
+check('bootstrap：always / project / off 文案不同', () => {
+  const strict = renderBootstrapPrompt({ language: 'zh-CN', enforce: 'always' });
+  const relaxed = renderBootstrapPrompt({ language: 'zh-CN', enforce: 'project' });
+  const disabled = renderBootstrapPrompt({ language: 'zh-CN', enforce: 'off' });
+  assert.match(strict, /enforce=always/);
+  assert.match(strict, /拒绝/);
+  assert.match(relaxed, /enforce=project/);
+  assert.match(disabled, /enforce=off/);
+  assert.doesNotMatch(strict, /用户拒绝后直接改/);
+});
+
+check('bootstrap：英文', () => {
+  const text = renderBootstrapPrompt({ language: 'en', enforce: 'always' });
+  assert.match(text, /not initialized/);
+  assert.match(text, /enforce=always/);
+});
+
+check('完整提示：detected=false 不误报已初始化', () => {
+  const text = renderFeelPrompt({ language: 'zh-CN', detected: false });
+  assert.match(text, /尚未检测到/);
+  assert.doesNotMatch(text, /已初始化 `\.openfeel\/`/);
+});
+
+check('完整提示：detected=true 显示已初始化', () => {
+  const text = renderFeelPrompt({ language: 'zh-CN', detected: true, projectRoot: root });
+  assert.match(text, /已初始化/);
+});
+
+rmSync(root, { recursive: true, force: true });
+
+process.stdout.write(`\n通过 ${passed} / ${passed + failed}\n`);
+if (failed > 0) {
+  process.stdout.write(`失败 ${failed}\n`);
+  process.exitCode = 1;
+}

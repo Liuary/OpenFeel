@@ -32,6 +32,80 @@ export function renderFeelPrompt(options = {}) {
 }
 
 /**
+ * 生成「未初始化工作区」的短 bootstrap 段落。
+ *
+ * 只在 `activation=auto` 且 `resolveWorkspace().initialized === false` 时注入；
+ * 不展开完整 Feel 纪律，避免把任意目录都灌成流程提示。
+ *
+ * @param {object} [options]
+ * @param {string} [options.projectRoot]
+ * @param {'zh-CN'|'en'} [options.language]
+ * @param {'off'|'project'|'always'} [options.enforce]
+ * @returns {string}
+ */
+export function renderBootstrapPrompt(options = {}) {
+  const language = options.language ?? 'zh-CN';
+  const enforce = options.enforce === 'off' || options.enforce === 'project' || options.enforce === 'always'
+    ? options.enforce
+    : 'always';
+  return language === 'en' ? renderBootstrapEnglish(enforce, options.projectRoot) : renderBootstrapChinese(enforce, options.projectRoot);
+}
+
+/**
+ * 未初始化 bootstrap（中文）。
+ * @param {'off'|'project'|'always'} enforce
+ * @param {string} [projectRoot]
+ * @returns {string}
+ */
+function renderBootstrapChinese(enforce, projectRoot) {
+  const where = typeof projectRoot === 'string' && projectRoot !== '' ? `（\`${projectRoot}\`）` : '';
+  const writeRule = enforce === 'always'
+    ? '- 写文件（代码/文档）：默认 `enforce=always`，写入门禁会**拒绝**，直到运行 `openfeel init` 并建立需求/阶段；或请用户把 profile 的 `enforce` 改为 `project` / `off`。'
+    : enforce === 'project'
+      ? '- 写文件（代码/文档）：当前 `enforce=project`，非 OpenFeel 工作区不拦截；建议先 `openfeel init` → `feel_req add` → `feel_stage add`。'
+      : '- 写文件（代码/文档）：当前 `enforce=off`，不拦截；建议先 `openfeel init` → `feel_req add` → `feel_stage add`。';
+
+  return `<feel_mode>
+OpenFeel 未初始化：当前工作区尚未检测到 \`.openfeel/\`${where}。
+
+## 只读任务
+- 只读任务可直接进行。
+
+## 写文件
+${writeRule}
+- 用户要求使用 OpenFeel 时：先确认，再 \`openfeel init\` → \`feel_req add\` → \`feel_stage add\`。
+- 不要假装 Feel 模式已激活；不要手改 \`.openfeel/flow.json\` / \`status.md\`。
+</feel_mode>`;
+}
+
+/**
+ * 未初始化 bootstrap（英文）。
+ * @param {'off'|'project'|'always'} enforce
+ * @param {string} [projectRoot]
+ * @returns {string}
+ */
+function renderBootstrapEnglish(enforce, projectRoot) {
+  const where = typeof projectRoot === 'string' && projectRoot !== '' ? ` (${projectRoot})` : '';
+  const writeRule = enforce === 'always'
+    ? '- Writing files (code/docs): the default `enforce=always` write guard will **deny** until you run `openfeel init` and create a requirement/stage; or ask the user to set the profile `enforce` to `project` / `off`.'
+    : enforce === 'project'
+      ? '- Writing files (code/docs): `enforce=project` does not intercept non-OpenFeel workspaces; prefer `openfeel init` → `feel_req add` → `feel_stage add` first.'
+      : '- Writing files (code/docs): `enforce=off` does not intercept; prefer `openfeel init` → `feel_req add` → `feel_stage add` first.';
+
+  return `<feel_mode>
+OpenFeel is not initialized: no \`.openfeel/\` detected in this workspace${where}.
+
+## Read-only work
+- Read-only work may proceed directly.
+
+## Writing files
+${writeRule}
+- If the user wants OpenFeel: confirm first, then \`openfeel init\` → \`feel_req add\` → \`feel_stage add\`.
+- Do not pretend Feel mode is active; never hand-edit \`.openfeel/flow.json\` / \`status.md\`.
+</feel_mode>`;
+}
+
+/**
  * 中文段落。
  * @param {{ projectRoot?: string, detected?: boolean }} options
  * @returns {string}
@@ -40,9 +114,10 @@ function renderChinese(options) {
   const where = options.detected === true && options.projectRoot !== undefined
     ? `当前项目：\`${options.projectRoot}\`（已初始化 \`.openfeel/\`）。`
     : '当前工作区尚未检测到 `.openfeel/`：若用户要求使用 Feel 流程，先提示运行 `openfeel init`。';
+  const status = options.detected === true ? 'Feel 模式已启用' : 'Feel 模式未初始化';
 
   return `<feel_mode>
-Feel 模式已启用：本会话在 OpenFeel 流程治理下工作。${where}
+${status}：本会话在 OpenFeel 流程治理下工作。${where}
 
 ## 你的角色：调度者，不是执行者
 你的价值是判断「该谁做」，而不是自己做。OpenFeel 的 15 个相位各有负责 Agent：
@@ -90,9 +165,10 @@ function renderEnglish(options) {
   const where = options.detected === true && options.projectRoot !== undefined
     ? `Project: \`${options.projectRoot}\` (initialized \`.openfeel/\`).`
     : 'No `.openfeel/` detected in this workspace: if the user asks for the Feel process, suggest `openfeel init` first.';
+  const status = options.detected === true ? 'Feel mode is active' : 'Feel mode is not initialized';
 
   return `<feel_mode>
-Feel mode is active: this session works under OpenFeel process governance. ${where}
+${status}: this session works under OpenFeel process governance. ${where}
 
 ## Your role: orchestrator, not implementer
 Your value is deciding WHO acts, not acting yourself. The 15 pipeline phases each have an owning agent:

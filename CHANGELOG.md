@@ -4,6 +4,25 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.3.2] - 2026-10-24
+
+> 补丁版本（Patch）：**DSH 适配器激活与写入门禁**。新增 `ctx.tools.guard()` 同步拒绝文件修改工具，非 OpenFeel 工作区注入 bootstrap；CLI JSON 契约保持 **13 错误码 / 40 成功出口 / 41 注册选项**。
+
+### Added
+- [stage-103] **DSH 写入门禁（`dsh/lib/guard.js`）**：用 `ctx.tools.guard()` 同步拒绝 `edit` / `write` / `apply_patch` / `str_replace_editor`。`.openfeel/**` 流程产物任意阶段可写（`.openfeel/flow.json` / `.openfeel/**/status.md` 除外）；`.openfeel/` 外源码要求存在 `exec_running` 阶段；无活跃阶段时拒绝，general 需求 `in_progress` 例外。
+- [stage-103] **非项目 bootstrap**：`activation: auto` 时未初始化工作区注入短提示（只读可进行；写文件按 `enforce` 说明），不再静默；`always` 注入完整纪律，`off` 不注入。
+- [stage-103] **配置**：`enforce: always|project|off`（默认 `always`）、`activation: auto|always|off`、`mutatingTools`、`allowGeneral`；`ctx.effect()` 管理 guard disposer，`ctx.tools.guard` 缺失时降级警告。
+- [stage-103] **apply_patch 目标解析**：解析全部 `*** Update/Add/Delete File:`、`*** Move to:`、`---/+++` 头；全部内部才放行，混合/无头保守拒绝；忽略 `/dev/null`、去引号、Move 源校验。
+- [stage-103] **测试**：`dsh/test/guard.js` 36 条门禁矩阵；`dsh/test/verify.js` 增至 83 条；contract 42 / integration 10 不变。
+
+### Changed
+- [stage-103] **默认 `enforce=always`**：无 `.openfeel` 的工作区也会拒绝文件写入，防止绕过 `openfeel init` 创建项目产物；`project` / `off` 可 opt-out。
+- [stage-103] **`dsh/package.json`**：version `1.3.2`，`requiresCli: ">=1.3.2"`；仍 `private: true`，不单独发布 `openfeel-dsh`。
+- [stage-103] **文档**：`dsh/README.md` / `ADAPTER.md` 增写入门禁与边界；`docs/VERSIONS.md` / `CHANGELOG.md` / README 版本快照同步。
+
+### Fixed
+- [stage-103] **新工作区静默绕过**：`dsh/lib/index.js` 原先在 `resolved.initialized === false` 时直接返回空提示；现按 `activation` 注入 bootstrap，并可用 `enforce=always` 在工具层拒绝写入。
+
 ## [1.3.1] - 2026-10-17
 
 > 补丁版本（Patch）：修复 `setup --tools dsh` 在 DSH profile lockfile 过期时因 pnpm frozen-lockfile 部署失败。

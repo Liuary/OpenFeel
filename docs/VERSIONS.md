@@ -9,6 +9,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.3.2** — DSH activation + write guard: `ctx.tools.guard()` denies `edit` / `write` / `apply_patch` / `str_replace_editor`; non-OpenFeel workspaces get a bootstrap prompt, and `enforce=always` blocks writes until `openfeel init` (`project` / `off` opt-out).
 - **v1.3.1** — DSH deploy hotfix: `setup --tools dsh` now runs `pnpm install` with `--no-frozen-lockfile`, so stale profile lockfiles no longer block deployment.
 - **v1.3.0** — The DSH adapter now ships inside the `openfeel` package; `openfeel setup --tools dsh` installs it into DSH profiles. README was slimmed: version notes moved here.
 - **v1.2.4** — Data-safe `archive <stage>` overwrite protection (`ARCHIVE_EXISTS` / `--force`), JSON output for the remaining read commands, and `config get --all`.
@@ -16,6 +17,14 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.3.2 — DSH 激活与写入门禁
+
+- **`ctx.tools.guard` 写入门禁**：同步拒绝 `edit` / `write` / `apply_patch` / `str_replace_editor`。`.openfeel/**` 流程产物任意阶段可写（`flow.json` / `status.md` 除外）；外部源码要求 `exec_running`；无活跃阶段拒绝（general 需求例外）。
+- **非项目 bootstrap**：`activation=auto` 时未初始化工作区注入短提示（只读可进行；写文件按 `enforce` 说明），不再静默。
+- **默认 `enforce=always`**：无 `.openfeel` 时也拒绝文件写入，防止绕过 `openfeel init`；`project` / `off` opt-out。
+- **边界**：`pwsh` / `bash` 默认不守，仍是显式逃生通道；`apply_patch` 混合/无头保守拒绝。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup --tools dsh` → 重启 DSH。详见 [CHANGELOG](../CHANGELOG.md#132---2026-10-24)。
 
 ## v1.3.1 — DSH 部署热修复（frozen-lockfile）
 

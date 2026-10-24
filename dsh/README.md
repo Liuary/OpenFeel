@@ -73,9 +73,13 @@ Windows 上的 `openfeel.cmd` 垫片。
         commandPrefix: []        # 从源码跑时：[node, <repo>/bin/openfeel.js]
         timeoutMs: 120000        # 单次调用超时
         log: false               # 是否写 ~/.openfeel/cli/logs/（默认关闭，只读沙箱更安全）
-        autoPrompt: true         # 是否注入 Feel 纪律系统提示段
+        autoPrompt: true         # 是否注入系统提示段
         language: zh-CN          # 提示段语言：zh-CN | en
         cwd: null                # 兜底工作目录（默认取会话工作区）
+        activation: auto         # auto=项目→完整纪律/非项目→bootstrap；always=完整纪律；off=不注入
+        enforce: always          # always=所有工作区守门禁；project=仅项目；off=完全不注册 guard
+        allowGeneral: true       # general 需求 in_progress 且无阶段时放行源码写入
+        # mutatingTools 默认 [edit, write, apply_patch, str_replace_editor]；pwsh 默认不守
 ```
 
 `normalizeConfig` 对非法值做安全回落（如 `timeoutMs: -5` → `120000`）。
@@ -184,24 +188,48 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 段落正文每次装配时探测 `.openfeel/` 是否存在，因此提示会随工作区状态变化。
 
+`activation`：
+
+- `auto`（默认）：已初始化 → 完整 `<feel_mode>`；未初始化 → 短 bootstrap（只读可进行；写文件按 `enforce` 说明）。
+- `always`：所有工作区都注入完整 `<feel_mode>`（未初始化时 `detected:false`，不会误报已初始化）。
+- `off`：不注入任何提示（写入门禁仍可独立开启）。
+
+---
+
+## 6.5 写入门禁（v1.3.2）
+
+适配器在 `apply()` 中用 DSH 的 `ctx.tools.guard()` 注册同步守卫（`dsh/lib/guard.js`）：
+
+- **只守** `edit` / `write` / `apply_patch` / `str_replace_editor`。`feel_*`、`pwsh`、`read`、`todo_write` 等不受影响。
+- `.openfeel/**` 是**流程产物区**：plan / scheme / review 产物在任意阶段可写；但 `.openfeel/flow.json` 与 `.openfeel/**/status.md` **始终拒绝**（用 `feel_*`）。受保护路径按**会话工作区 `<cwd>`** 判定；执行阶段仍可编辑其他项目的 `.openfeel/`（不做跨项目全局保护）。
+- `.openfeel/` 外的源码/文档：要求存在 `exec_running` 阶段；无活跃阶段或相位不符时拒绝，消息带 phase 与 `feel_flow action=advance` 建议。
+- 无 `.openfeel/`：`enforce=always` 拒绝所有文件写入（含 `.openfeel/plan`，防止绕过 init）；`project`/`off` 放行。
+- `apply_patch` 解析所有 patch 头（`*** Update/Add/Delete File:`、`*** Move to:`、`---/+++`）；全部目标在 `.openfeel/**` 才内部放行，混合/无头保守拒绝。
+- `enforce=off` **完全不注册 guard**（连 flow.json/status.md 也不拦）。
+- `ctx.tools.guard` 缺失时记警告并降级；`ctx.effect` 负责 disposer，避免 HMR 累积。
+
+**逃生通道**：`pwsh` / `bash` 默认不守，仍可直接写盘；`enforce=always` 对非 OpenFeel 工作区较激进，可用 `project` / `off` opt-out。
+
 ---
 
 ## 7. 验证
 
-三套测试，全部本地可跑：
+四套测试，全部本地可跑：
 
 ```powershell
 cd plugin
 node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（42 项）
-node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（77 项）
+node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（83 项）
+node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（36 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（10 项）
 ```
 
 - `contract.js` 用宿主 asar 提取出的**真实** `assertSupportedJsonSchema`。
 - `verify.js` 对真实 OpenFeel 项目做只读校验，**所有写操作只打在 `os.tmpdir()` 副本上**，并断言原项目 `revision` 未被改动。
+- `guard.js` 覆盖 `off/project/always`、`.openfeel/**` 产物、`exec_running`、general 需求、apply_patch 混合/无头/Move 同块、受保护路径、bootstrap 文案等 36 条。
 - `integration.js` 构造真实 Cordis 上下文 + 真实 `ToolRuntime`，调用适配器 `apply()`，断言 13 个工具真的完成注册与投影。
 
-依赖提取：三套测试默认读 `%TEMP%\dsh-asar\dsh\node_modules\@deepseek-ai`（从宿主
+依赖提取：`contract.js` / `integration.js` 默认读 `%TEMP%\dsh-asar\dsh\node_modules\@deepseek-ai`（从宿主
 `app.asar` 解出的包）。缺失时 `contract.js` / `integration.js` 会跳过并说明。
 
 ---
@@ -215,6 +243,7 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 ├── cordis.patch.yml       # 一行 insert：id=openfeel-feel, name=openfeel-dsh
 ├── lib/
 │   ├── index.js           # 插件入口：name / inject / apply / normalizeConfig
+│   ├── guard.js           # 写入门禁：enforce / .openfeel 产物区 / exec_running
 │   ├── adapters/
 │   │   ├── cli.js         # CLI 执行器：可执行文件解析、UTF-8/无色/无日志、退出码语义
 │   │   ├── workspace.js   # 会话工作区 = 项目根（与 CLI 一致，**不回溯**）
@@ -229,6 +258,7 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 └── test/
     ├── contract.js        # DSH schema 契约
     ├── verify.js          # 行为验证（真实 CLI）
+    ├── guard.js           # 写入门禁矩阵（fake ToolExecution）
     └── integration.js     # 真实注册表挂载
 ```
 
@@ -245,7 +275,7 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
    在深层子目录返回空态可证 CLI 从不回溯）。判定项目以 `.openfeel/flow.json` 或
    `config.yaml` 为标记；`~/.openfeel/`（`openfeel setup` 的**全局家目录**）不含这些标记，
    因此不会被误判为项目。未命中项目时工具返回 `refusal` 并提示 `openfeel init`，
-   提示段则**完全不注入**。
+   提示段注入**短 bootstrap**（`activation=auto`）而非完整 Feel 纪律；`enforce=always` 时写文件也会被门禁拒绝。
    > 若需要 monorepo（子目录里工作），那应作为 OpenFeel CLI 的能力
    > （如 `openfeel project resolve --json`）由各适配器共享，而不是每个 harness 各写一套回溯。
 3. **CLI 契约（v1.3.0）**：`flow next --json` 提供调度决策；`flow status --json` 的
@@ -262,3 +292,9 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 6. **超时**：默认单次 120s。超大 `flow.json`（数百 KB）的 `flow status` 可能接近上限。
 7. **不替代 agent 委派**：`feel_next` 给出负责 Agent 与 `[HANDOFF: agent]` 标记，实际派发
    由 DSH 的 `subagent` / `workflow` 完成——DSH 没有 OpenFeel 的 `Task` 语义。
+8. **硬门禁只覆盖文件修改工具**：`edit` / `write` / `apply_patch` / `str_replace_editor`；
+   `pwsh` / `bash` 默认不守，仍可直接写盘（显式逃生通道）。若需要 shell 级策略，属于后续
+   `guardShell` 的独立设计。
+9. **默认 `enforce=always` 较激进**：所有工作区（含非 OpenFeel）都会拦截文件写入，直到
+   `openfeel init` 或用户把 profile 的 `enforce` 改为 `project` / `off`。适合“OpenFeel 必须启用”
+   的机器；普通试用建议 `project`。

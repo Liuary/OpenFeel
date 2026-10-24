@@ -2,6 +2,7 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-24-Liuary-001.md](2026/10/24/2026-10-24-Liuary-001.md) | Liuary | 阶段 v1.3.2-stage-103 完成 |
 | [2026-10-17-Liuary-031.md](2026/10/17/2026-10-17-Liuary-031.md) | Liuary | 阶段 v1.3.1-stage-102 完成 |
 | [2026-10-17-Liuary-030.md](2026/10/17/2026-10-17-Liuary-030.md) | Liuary | 阶段 v1.3.0-stage-101 完成 |
 | [2026-10-17-Liuary-029.md](2026/10/17/2026-10-17-Liuary-029.md) | Liuary | v1.3.0-stage-101.op-001 review_added |
@@ -31,7 +32,6 @@
 | [2026-10-17-Liuary-005.md](2026/10/17/2026-10-17-Liuary-005.md) | Archiver | **v1.2.2 首阶段 — stage-95 归档完成（JSON 输出契约与错误封装基础设施）**：18 个既有 `--json` 成功出口契约冻结（单文档 + `schemaVersion:1` 运行时首键 + 键序/键集冻结；条件键「恒在 / 条件出现」二选一登记；`instructions` 补首键 C1、`flow archive show` 首键重定位 C1b/G-1）+ 统一错误层（12 行 `code→kind→exitCode` 映射单一权威；退出码 **0/1/2 语义零改动 + 3=internal 新增**；legacy `error` 恒 `string`、仅末尾追加 `errorKind`；Commander 用法错误 → `INVALID_ARGUMENT/1`）+ `--version --json`（三键精确）+ 全局 `--project`（argv 预扫描 + `chdir` 单点；`--log-file` 原始 cwd；语言按目标项目；预扫描成对防误判；`knowledge dedup` 保留本地声明 + `optsWithGlobals` 单点）。4 ops 恒串行（op-001 契约冻结 / op-002 错误层 / op-003 `--project` + version / op-004 i18n + 零回归 + 门禁〔阶段末 op〕）；门禁 **74 文件 / 1779 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` **950**、`lint kb` **0 过期 / 624 引用**、build ×2 幂等、`--version`=1.2.1；审查 **passed**（REV-95-001~007 闭环；008/009 非阻塞转 stage-97）；验收 **必验 8/8、Bug 0**；知识沉淀 **5 条**（architecture 2 + patterns 2 + troubleshooting 1）；manual `cli/commands.md` + 新增 `core/json-contract.md` + `index.md`；roadmap/plan 回填（M49 done + REV-95-005 旧口径修正）。**未推进 flow 至 done（由 Feel 执行）／未 commit／未 push／未 publish** |
 | [2026-10-17-Liuary-004.md](2026/10/17/2026-10-17-Liuary-004.md) | Liuary | v1.2.2-stage-95.op-004 执行通过 |
 | [2026-10-17-Liuary-003.md](2026/10/17/2026-10-17-Liuary-003.md) | Liuary | v1.2.2-stage-95.op-003 执行通过 |
-| [2026-10-17-Liuary-002.md](2026/10/17/2026-10-17-Liuary-002.md) | Liuary | v1.2.2-stage-95.op-002 执行通过 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

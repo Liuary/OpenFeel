@@ -24,8 +24,9 @@
 
 import { FeelCli } from './adapters/cli.js';
 import { resolveWorkspace } from './adapters/workspace.js';
+import { createOpenFeelGuard } from './guard.js';
 import { createFeelCommandHandler } from './surface/command.js';
-import { FEEL_PROMPT_NAME, FEEL_PROMPT_ORDER, renderFeelPrompt } from './surface/prompt.js';
+import { FEEL_PROMPT_NAME, FEEL_PROMPT_ORDER, renderBootstrapPrompt, renderFeelPrompt } from './surface/prompt.js';
 import { createTools } from './tools/index.js';
 
 /** Loader 入口 id。 */
@@ -51,7 +52,7 @@ const COMMAND_ID = '@openfeel/dsh/feel';
  * - `log: false`（不写 `~/.openfeel/cli/logs/`，避免只读沙箱下失败）。
  *
  * @param {Record<string, any> | undefined} raw Loader 传入的配置。
- * @returns {{ command: string, commandPrefix: string[], timeoutMs: number, log: boolean, autoPrompt: boolean, language: string, cwd: string | undefined }}
+ * @returns {{ command: string, commandPrefix: string[], timeoutMs: number, log: boolean, autoPrompt: boolean, activation: 'auto'|'always'|'off', language: string, cwd: string | undefined, enforce: 'off'|'project'|'always', mutatingTools: string[], allowGeneral: boolean }}
  */
 export function normalizeConfig(raw) {
   const source = typeof raw === 'object' && raw !== null ? raw : {};
@@ -59,14 +60,25 @@ export function normalizeConfig(raw) {
     ? source.commandPrefix.filter((item) => typeof item === 'string')
     : [];
   const timeoutMs = Number.isFinite(source.timeoutMs) && source.timeoutMs > 0 ? Number(source.timeoutMs) : 120_000;
+  const activation = source.activation === 'always' || source.activation === 'off' ? source.activation : 'auto';
+  const enforce = source.enforce === 'off' || source.enforce === 'project' || source.enforce === 'always'
+    ? source.enforce
+    : 'always';
+  const mutatingTools = Array.isArray(source.mutatingTools)
+    ? source.mutatingTools.filter((item) => typeof item === 'string' && item !== '')
+    : ['edit', 'write', 'apply_patch', 'str_replace_editor'];
   return {
     command: typeof source.command === 'string' && source.command !== '' ? source.command : 'openfeel',
     commandPrefix,
     timeoutMs,
     log: source.log === true,
     autoPrompt: source.autoPrompt !== false,
+    activation,
     language: source.language === 'en' ? 'en' : 'zh-CN',
     cwd: typeof source.cwd === 'string' && source.cwd !== '' ? source.cwd : undefined,
+    enforce,
+    mutatingTools,
+    allowGeneral: source.allowGeneral !== false,
   };
 }
 
@@ -122,6 +134,28 @@ export function apply(ctx, rawConfig) {
     ctx.tools.register(tool);
   }
 
+  /* ── 写入门禁 ───────────────────────────────────────────── */
+
+  if (config.enforce !== 'off') {
+    if (typeof ctx.tools.guard !== 'function') {
+      log.warn('当前 DSH 不支持 ctx.tools.guard；写入门禁未启用（仍可用 feel_* 工具）');
+    } else {
+      const registerGuard = () => ctx.tools.guard(createOpenFeelGuard({
+        enforce: config.enforce,
+        mutatingTools: config.mutatingTools,
+        allowGeneral: config.allowGeneral,
+        language: config.language,
+        cwd: config.cwd,
+      }));
+      if (typeof ctx.effect === 'function') {
+        ctx.effect(registerGuard);
+      } else {
+        const dispose = registerGuard();
+        if (typeof ctx.on === 'function' && typeof dispose === 'function') ctx.on('dispose', dispose);
+      }
+    }
+  }
+
   /* ── 人类命令面 ─────────────────────────────────────────── */
 
   ctx.commands.register({
@@ -137,7 +171,7 @@ export function apply(ctx, rawConfig) {
 
   /* ── 系统提示面 ─────────────────────────────────────────── */
 
-  if (config.autoPrompt) {
+  if (config.autoPrompt && config.activation !== 'off') {
     ctx.systemPrompt.section({
       name: FEEL_PROMPT_NAME,
       order: FEEL_PROMPT_ORDER,
@@ -157,10 +191,22 @@ export function apply(ctx, rawConfig) {
         } catch {
           return '';
         }
-        // 不回溯：只有会话工作区**本身**是 OpenFeel 项目时才注入 Feel 纪律。
-        // 否则在任意目录开会话都会被灌流程提示（这正是曾经的误报来源）。
-        if (!resolved.initialized) return '';
-        return renderFeelPrompt({ projectRoot: resolved.projectRoot, detected: true, language: config.language });
+        // 不回溯：只按会话工作区本身判定。
+        // - 已初始化 → 完整 Feel 纪律；
+        // - 未初始化 + activation=always → 完整提示（detected:false）；
+        // - 未初始化 + activation=auto → 短 bootstrap；
+        // - activation=off → 外层不注册 section。
+        if (resolved.initialized) {
+          return renderFeelPrompt({ projectRoot: resolved.projectRoot, detected: true, language: config.language });
+        }
+        if (config.activation === 'always') {
+          return renderFeelPrompt({ projectRoot: resolved.projectRoot, detected: false, language: config.language });
+        }
+        return renderBootstrapPrompt({
+          projectRoot: resolved.projectRoot,
+          language: config.language,
+          enforce: config.enforce,
+        });
       },
     });
   }

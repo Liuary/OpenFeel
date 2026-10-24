@@ -1,11 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.3.2 — DSH 激活与写入门禁**｜ `ctx.tools.guard` 同步拒绝文件修改工具；非 OpenFeel 工作区 bootstrap；默认 `enforce=always` ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.2 ｜ **待 push；CI 发布 1.3.2**
+> OpenFeel **v1.3.2 — DSH 激活与写入门禁**｜ `ctx.tools.guard` 同步拒绝文件修改工具；非 OpenFeel 工作区 bootstrap；默认 `enforce=always` ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.2 ｜ **已 push；npm 1.3.2 已发布**
 > 统计：测试 77 文件 / **1978 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 83 + 36 + 10 = **171 断言** ｜ `lint i18n` **1013** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.3.2**
 
 ## 近期提交记录（最多 5 条，最新在上）
 
-- **2026-10-24** @Liuary：**v1.3.2 激活与写入门禁**——根因：`dsh/lib/index.js` 在 `resolved.initialized === false` 时直接返回空提示，新工作区完全静默。① **写入门禁**：新增 `dsh/lib/guard.js`，用 DSH `ctx.tools.guard()` 同步拒绝 `edit` / `write` / `apply_patch` / `str_replace_editor`；`.openfeel/**` 流程产物任意阶段可写（flow.json / status.md 除外），外部源码要求 `exec_running`；无 `.openfeel` 且 `enforce=always` 时拒绝全部文件写入（含 `.openfeel/plan`），general 需求 `in_progress` 例外；apply_patch 解析全部 patch 头，混合/无头保守拒绝；`ctx.effect` 管理 disposer，guard 缺失降级。② **bootstrap**：`activation=auto` 未初始化注入短提示，`always` 完整纪律，`off` 不注入。③ **默认 `enforce=always`**，`project`/`off` opt-out；`pwsh` 默认不守（显式逃生通道）。④ 测试：guard 36、verify 83、contract 42、integration 10；全量 77/1978、tsc 0、i18n 1013、kb 0、build ×2、pack 359 文件（dsh 20，无 test）。阶段 v1.3.2-stage-103（fast）；待 push / CI 发布 1.3.2
+- **2026-10-24** @Liuary：**v1.3.2 激活与写入门禁**——根因：`dsh/lib/index.js` 在 `resolved.initialized === false` 时直接返回空提示，新工作区完全静默。① **写入门禁**：新增 `dsh/lib/guard.js`，用 DSH `ctx.tools.guard()` 同步拒绝 `edit` / `write` / `apply_patch` / `str_replace_editor`；`.openfeel/**` 流程产物任意阶段可写（flow.json / status.md 除外），外部源码要求 `exec_running`；无 `.openfeel` 且 `enforce=always` 时拒绝全部文件写入（含 `.openfeel/plan`），general 需求 `in_progress` 例外；apply_patch 解析全部 patch 头，混合/无头保守拒绝；`ctx.effect` 管理 disposer，guard 缺失降级。② **bootstrap**：`activation=auto` 未初始化注入短提示，`always` 完整纪律，`off` 不注入。③ **默认 `enforce=always`**，`project`/`off` opt-out；`pwsh` 默认不守（显式逃生通道）。④ 测试：guard 36、verify 83、contract 42、integration 10；全量 77/1978、tsc 0、i18n 1013、kb 0、build ×2、pack 359 文件（dsh 20，无 test）。阶段 v1.3.2-stage-103（fast）；**已 push；npm 1.3.2 已发布**
 
 - **2026-10-17** @Liuary：**v1.3.1 热修复：`setup --tools dsh` 的 pnpm frozen-lockfile 部署失败**——根因：profile 的 `openfeel-dsh` `link:` 目标变化使 `pnpm-lock.yaml` specifier 过期，内部 `CI=1` 的 `pnpm install` 默认 frozen-lockfile → `ERR_PNPM_OUTDATED_LOCKFILE`，部署回滚。修复：`runPnpmInstall` 改为 `pnpm install --prefer-offline --no-frozen-lockfile`，保留超时/回滚/错误映射；单测精确断言第 2 次 `spawnSync` argv；文档补充「失败时 lockfile/node_modules 可能保留部分更新，下次 setup 收敛」。已用临时 DSH_HOME + 过期 lockfile 端到端验证 `setup --tools dsh` exit 0。**已完成门禁/阶段归档/版本归档/push 发布**（npm 1.3.1）
 

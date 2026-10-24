@@ -21,7 +21,7 @@
 - [x] 任务1：新增 dsh/lib/guard.js：enforce off/project/always + mutatingTools + active stage/phase 检查
 - [x] 任务2：apply 注册 ctx.tools.guard；非 OpenFeel 工作区 bootstrap 提示 + activation 配置
 - [x] 任务3：测试 guard 全矩阵 + bootstrap 提示 + 非项目/项目
-- [ ] 任务4：文档 README/ADAPTER、版本 1.3.2 收口、门禁、归档、push 发布
+- [x] 任务4：文档 README/ADAPTER、版本 1.3.2 收口、门禁、归档、push 发布
 
 ## 阻塞 / 暂停原因
 

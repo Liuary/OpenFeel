@@ -1,0 +1,146 @@
+{
+  "version": "v1.4.0",
+  "stages": {
+    "v1.4.0-stage-107": {
+      "name": "v1.4.0-stage-107",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-008",
+      "stats": {
+        "start_time": "2026-10-30T14:53:21.018Z",
+        "end_time": "2026-10-30T15:01:50.942Z",
+        "duration_ms": 509924
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.4.0-stage-107",
+      "stage": "v1.4.0-stage-107",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "代码自审：静态资源分类矩阵 / 源码底线 / 混合从严 / audit / chore 不越相位（无 blocking；2013 单测 + dsh 194 + 验收 a–d）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-30T15:01:46.031Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-10-30T14:53:08.045Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:21.015Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:23.742Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:25.949Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:46.712Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:46.733Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:47.020Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:47.324Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.4.0-stage-107.md"
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:50.937Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 1,
+    "log": 9
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-10-30T15:01:51.903Z"
+}

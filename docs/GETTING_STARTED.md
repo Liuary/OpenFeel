@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.3.5 快照** | 更新日期：2026-10-30 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.4.0 快照** | 更新日期：2026-10-30 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -115,6 +115,8 @@ openfeel flow phases --mode fast                        # 按指定模式查看�
 > **分发链路修复（v1.3.4）**：升级 CLI 后请执行 `openfeel setup` 刷新部署标记，然后**完全退出并重启 harness**（重载后端不替换 host module）。若 `openfeel setup --check` 返回 `restart-required`，说明文件已新、宿主仍是旧模块——**重启宿主即可，不要重复 setup**。DSH 用户：`feel_flow action=review_add --stage <id>` 现已可用。
 
 > **命令执行工具（v1.3.5）**：Agent 运行 shell 命令时，**Windows 下优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）**；macOS / Linux 用 `bash`；默认不用 `cmd.exe`；同一任务内保持同一 shell，路径与转义按该 shell 书写。
+
+> **微变更（v1.4.0）**：静态展示资源（`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`、`assets/**`、`public/**`）在任意相位可直接写；需要改源码的微调在**无活跃阶段**时用 `openfeel chore "<说明>"` 开启 60 分钟写窗口，`openfeel chore --end` 收口（不建阶段）。源码阶段门禁、`flow.json` / `status.md` 保护、混合目标从严均不变。
 
 > **存量项目升级迁移（v1.1.7 起）**：若项目 `config.yaml` 未设置 `defaults.workflow_mode`（v1.1.7 之前创建的项目），升级后**新建阶段的骨架初值回落内置默认 `fast`**；既有阶段的 `status.md` 若无「工作流模式」字段，其模式解析同样按级联回落 `fast`（无感行为变更）。希望保持完整流程的存量项目，建议执行：
 >

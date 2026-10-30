@@ -1110,7 +1110,7 @@ describe('req 命令组（stage-82）', () => {
     }
   });
 
-  it('T-C4 既有命令零破坏：cli/index.ts 仅两行 + 顶层命令组共 17 个（含 req）', () => {
+  it('T-C4 既有命令零破坏：cli/index.ts 仅两行 + 顶层命令组共 18 个（含 req / chore）', () => {
     const cliSrc = readFileSync(new URL('../../src/cli/index.ts', import.meta.url), 'utf-8');
     // 仅两行（import + register）→ 该标识符恰出现 2 次
     expect(cliSrc.split('registerReqCommand').length - 1).toBe(2);
@@ -1120,7 +1120,8 @@ describe('req 命令组（stage-82）', () => {
       expect(names, `既有命令组缺失: ${old}`).toContain(old);
     }
     expect(names).toContain('req');
-    expect(rootProgram.commands.length).toBe(17);
+    expect(names).toContain('chore');
+    expect(rootProgram.commands.length).toBe(18);
   });
 
   it('T-C5′ 越界静态断言（stage-90 supersede）：7 禁止串零命中 + 7 正控命中', () => {

@@ -372,6 +372,15 @@ export const flow: I18nDomain = {
   'wizard.modeFull':                { key: 'flow.wizard.modeFull',                zh: '', en: 'full (complete pipeline: plan review / scheme / test included)' },
   'wizard.modeFast':                { key: 'flow.wizard.modeFast',                zh: '', en: 'fast (quick iteration: scheme/test skipped; single-round plan review and code review kept)' },
   'wizard.modeRememberedTmpl':      { key: 'flow.wizard.modeRememberedTmpl',      zh: '', en: '✓ Workflow mode remembered: {mode} (written to status.md and project config.yaml)' },
+  // chore micro-change channel (v1.4.0)
+  'chore.startedTmpl':              { key: 'flow.chore.startedTmpl',              zh: '', en: '✓ Chore opened: {note} ({id}; writable for {ttl} min; close with `openfeel chore --end`)' },
+  'chore.endTmpl':                  { key: 'flow.chore.endTmpl',                  zh: '', en: '✓ Chore closed ({id})' },
+  'chore.noActiveTmpl':             { key: 'flow.chore.noActiveTmpl',             zh: '', en: 'No active chore (nothing to close).' },
+  'chore.busyTmpl':                 { key: 'flow.chore.busyTmpl',                 zh: '', en: 'Active stage(s) present ({stages}); chore is only for micro-changes without an active stage. Use a fast/full stage.' },
+  'chore.needNote':                 { key: 'flow.chore.needNote',                 zh: '', en: 'Usage: openfeel chore "<note>" [--ttl-min N]; or `--end` / `--status`.' },
+  'chore.statusActiveTmpl':         { key: 'flow.chore.statusActiveTmpl',         zh: '', en: 'Chore active: {id} — {note} (expires {expires})' },
+  'chore.statusExpiredTmpl':        { key: 'flow.chore.statusExpiredTmpl',        zh: '', en: 'Chore expired: {id} (reopen, or use the static-asset/doc channel).' },
+  'chore.statusNoneTmpl':           { key: 'flow.chore.statusNoneTmpl',           zh: '', en: 'No chore (static assets/docs remain writable when no stage is active).' },
 };
 
 /* ==================== init ==================== */
@@ -924,6 +933,11 @@ export const help: I18nDomain = {
 
   // req (requirement flow command group)
   'req':                 { key: 'help.req',                 zh: '', en: 'Requirement management (add/list/show/claim/release/set/link/advance/board/next)' },
+  // chore (micro-change channel)
+  'chore':               { key: 'help.chore',               zh: '', en: 'Micro-change channel: open/close an ephemeral write window (no stage; adapter guard chore exception)' },
+  'chore.argnote':       { key: 'help.chore.argnote',       zh: '', en: 'Micro-change note (required to start; e.g. "adjust UI radius")' },
+  'chore.end':           { key: 'help.chore.end',           zh: '', en: 'Close the current chore (auto-close)' },
+  'chore.status':        { key: 'help.chore.status',        zh: '', en: 'Show current chore status (read-only)' },
   'req.add':             { key: 'help.req.add',             zh: '', en: 'Create a requirement (auto ID; body skeleton under .openfeel/requirements/)' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '', en: 'Requirement title' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '', en: 'Target version (e.g. v1.3.0)' },

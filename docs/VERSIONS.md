@@ -9,6 +9,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.4.0** — Write-gate tiering + `chore` micro-change channel: static presentational assets (`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`, `assets/**`, `public/**`) are writable in any phase like docs (mixed targets stay strict); `openfeel chore "<note>"` opens a 1-step, 60-minute write window without creating a stage (no `flow.json.stages` entry; `--end`/`--status`), and guard writes an audit line for every exemption.
 - **v1.3.5** — Unified shell-tool guidance: on Windows prefer `bash` (Git Bash), then `pwsh` (PowerShell 7); macOS/Linux use `bash`; avoid defaulting to `cmd.exe`. Added to the DSH Feel system prompt and the OpenFeel global constraint templates (`agents-md` / `claude` constraint / `openfeel-tool-usage` skill).
 - **v1.3.4** — Distribution-chain fixes: the DSH `feel_flow review_add` now forwards `--stage` (stage-level REVs work without ops); `openfeel setup --check` gains a `restart-required` state (adapter fingerprint deployed vs loaded) so upgrades no longer loop; `setup --tools dsh` now refreshes `update_state.json` even when profiles are already up to date.
 - **v1.3.3** — Fast-mode structural fixes from field feedback: stage-level review entries (`flow review add --stage`) so reviews work without ops; rework edge `review_passed → exec_running` (`flow advance --reason`); risk-tiered write guard (new files in an uninitialized workspace, `docs/**` and doc/note paths allowed; source still requires `exec_running`); `plan stage add` focuses atomically; status.md becomes a derived view; stage-ID ↔ plan-directory mapping documented.
@@ -20,6 +21,15 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.4.0 — 写入门禁分层 + chore 微变更通道
+
+- **静态展示资源与 doc 同层**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp` 与 `assets/**`、`public/**` 在任意相位（含全部阶段 done）可写，不要求活跃阶段；**混合目标从严**（同时含源码与静态资源 → 按源码规则）。
+- **源码底线不变**：`.rs/.ts/.js/.py` 等仍严格要求 `exec_running`；`.openfeel/flow.json` 与 `**/status.md` 仍禁止手改。
+- **审计**：豁免放行与 chore 放行写 `.openfeel/log/guard-audit.jsonl`（谁、何时、写了哪些路径、相位/原因）。
+- **`openfeel chore "<说明>"`**：承认「单文件、无接口变化、可肉眼验证」的微变更——无活跃阶段时开启 60 分钟写窗口（源码也可写），`--end` 收口、`--status` 查看；**不写入 `flow.json` 的阶段列表**，只留日志与 ephemeral `chore.json`；存在活跃阶段时拒绝（不绕过相位门）。
+- **兼容性**：无新增 JSON 出口（`chore` 无 `--json`）；注册选项 41 → 43；相位机 / REV / 归档语义不变。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → **完全退出并重启宿主**（DSH 的 host module 不热加载）。详见 [CHANGELOG](../CHANGELOG.md#140---2026-10-30)。
 
 ## v1.3.5 — 统一 shell 工具推荐（Windows：Git Bash → PowerShell 7）
 

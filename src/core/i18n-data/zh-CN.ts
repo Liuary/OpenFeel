@@ -398,6 +398,15 @@ export const flow: I18nDomain = {
   'wizard.modeFull':                { key: 'flow.wizard.modeFull',                zh: 'full（完整链路：含计划审查/方案/测试）',     en: '' },
   'wizard.modeFast':                { key: 'flow.wizard.modeFast',                zh: 'fast（快速迭代：跳过方案/测试；保留计划审查与代码审查单轮）',   en: '' },
   'wizard.modeRememberedTmpl':      { key: 'flow.wizard.modeRememberedTmpl',      zh: '✓ 已记忆工作流模式：{mode}（写入 status.md 与项目 config.yaml）', en: '' },
+  // chore 微变更通道（v1.4.0）
+  'chore.startedTmpl':              { key: 'flow.chore.startedTmpl',              zh: '✓ 微变更已开启：{note}（{id}；{ttl} 分钟内可直接写，`openfeel chore --end` 收口）', en: '' },
+  'chore.endTmpl':                  { key: 'flow.chore.endTmpl',                  zh: '✓ 微变更已收口（{id}）',                     en: '' },
+  'chore.noActiveTmpl':             { key: 'flow.chore.noActiveTmpl',             zh: '当前没有进行中的 chore（无需收口）。',        en: '' },
+  'chore.busyTmpl':                 { key: 'flow.chore.busyTmpl',                 zh: '存在活跃阶段（{stages}）；chore 仅用于无活跃阶段的微变更，请走 fast/full 阶段。', en: '' },
+  'chore.needNote':                 { key: 'flow.chore.needNote',                 zh: '用法：openfeel chore "<说明>" [--ttl-min N]；或 `--end` / `--status`。', en: '' },
+  'chore.statusActiveTmpl':         { key: 'flow.chore.statusActiveTmpl',         zh: 'chore 进行中：{id} — {note}（到期 {expires}）', en: '' },
+  'chore.statusExpiredTmpl':        { key: 'flow.chore.statusExpiredTmpl',        zh: 'chore 已过期：{id}（重新开启或直接使用静态资源/doc 通道）。', en: '' },
+  'chore.statusNoneTmpl':           { key: 'flow.chore.statusNoneTmpl',           zh: '当前无 chore（无活跃阶段时静态资源/doc 仍可直接写）。', en: '' },
 };
 
 /* ==================== init 域：初始化命令 ==================== */
@@ -967,6 +976,11 @@ export const help: I18nDomain = {
 
   // req（需求流转命令组）
   'req':                 { key: 'help.req',                 zh: '需求管理（需求流转命令组：添加/列表/详情/认领/推进/看板/推荐）', en: '' },
+  // chore（微变更通道）
+  'chore':               { key: 'help.chore',               zh: '微变更通道：开启/收口 ephemeral 写窗口（不创建阶段；适配器写入门禁的 chore 例外）', en: '' },
+  'chore.argnote':       { key: 'help.chore.argnote',       zh: '微变更说明（开启时必填，如 "调整 UI 圆角"）', en: '' },
+  'chore.end':           { key: 'help.chore.end',           zh: '结束当前 chore（自动收口）', en: '' },
+  'chore.status':        { key: 'help.chore.status',        zh: '查看当前 chore 状态（只读）', en: '' },
   'req.add':             { key: 'help.req.add',             zh: '创建需求（ID 自动分配；正文骨架铺到 .openfeel/requirements/）', en: '' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '需求标题', en: '' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '预估版本（如 v1.3.0）', en: '' },

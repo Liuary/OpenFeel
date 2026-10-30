@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-30T14:46:41.473Z",
-    "revision": 1449,
+    "updated": "2026-10-30T15:01:50.962Z",
+    "revision": 1463,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -28,15 +28,43 @@
     ]
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "",
+      "stage": "v1.4.0-stage-107",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.4.0-stage-107": {
+      "name": "v1.4.0-stage-107",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-008",
+      "stats": {
+        "start_time": "2026-10-30T14:53:21.018Z",
+        "end_time": "2026-10-30T15:01:50.942Z",
+        "duration_ms": 509924
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.4.0-stage-107",
+      "stage": "v1.4.0-stage-107",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "代码自审：静态资源分类矩阵 / 源码底线 / 混合从严 / audit / chore 不越相位（无 blocking；2013 单测 + dsh 194 + 验收 a–d）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-30T15:01:46.031Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
   "log": [
     {
       "time": "2026-07-09T15:31:43.834Z",
@@ -2534,6 +2562,137 @@
         "from": "in_progress",
         "to": "done"
       }
+    },
+    {
+      "time": "2026-10-30T14:53:04.501Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-008",
+        "title": "写入门禁分层：静态展示资源与 doc 同等放行 + chore 微变更通道，发布 1.4.0"
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:07.695Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-008",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:08.045Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:18.379Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.4.0-stage-107",
+        "requirementId": "REQ-008"
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:21.015Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:23.742Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T14:53:25.949Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:46.712Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:46.733Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:47.020Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:47.324Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.4.0-stage-107.md"
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:50.937Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.4.0-stage-107",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2625,6 +2784,19 @@
       "body_path": ".openfeel/requirements/REQ-007.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-30T14:40:45.163Z"
+    },
+    {
+      "id": "REQ-008",
+      "title": "写入门禁分层：静态展示资源与 doc 同等放行 + chore 微变更通道，发布 1.4.0",
+      "status": "draft",
+      "created_at": "2026-10-30T14:53:04.501Z",
+      "updated_at": "2026-10-30T14:53:07.695Z",
+      "target_version": "v1.4.0",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-008.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-30T14:53:07.695Z"
     }
   ]
 }

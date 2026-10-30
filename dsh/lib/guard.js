@@ -14,7 +14,7 @@
  * @module openfeel-dsh/guard
  */
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, extname, join, resolve } from 'node:path';
 
 import { isProjectWorkspace, OPENFEEL_DIR } from './adapters/workspace.js';
@@ -44,6 +44,25 @@ export function normalizeForComparison(value, platform = process.platform) {
 export const DOC_EXTENSIONS = Object.freeze(['.md', '.mdx', '.txt', '.rst', '.adoc']);
 
 /**
+ * 静态展示资源扩展名（v1.4.0；与 doc 同层：任意相位可写，不要求活跃阶段）。
+ * 依据：反馈 `openfeel-write-gate-friction-2026-10-30.md` —— UI 微调无执行语义。
+ */
+export const PRESENTATIONAL_EXTENSIONS = Object.freeze([
+  '.css', '.scss', '.html', '.svg', '.png', '.jpg', '.jpeg', '.webp',
+]);
+
+/**
+ * 源码扩展名（v1.4.0）：`assets/**` / `public/**` 的目录豁免**不得**覆盖这些扩展名，
+ * 保证「源码仍严格要求 exec_running」这条底线（`assets/gen.ts` 仍是源码）。
+ */
+export const SOURCE_EXTENSIONS = Object.freeze([
+  '.rs', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py',
+  '.go', '.java', '.rb', '.c', '.cc', '.cpp', '.h', '.hpp', '.cs',
+  '.php', '.swift', '.kt', '.kts', '.scala', '.sh', '.bash', '.ps1',
+  '.lua', '.dart', '.ex', '.exs',
+]);
+
+/**
  * 是否为文档/笔记类目标（P0-4）：扩展名命中，或位于**工作区根级 `docs/`** 下。
  * v1.3.3 复核：`docs` 必须直接位于会话工作区下（`src/docs/x.ts` 不算文档，防源码借名绕过相位门）。
  * 仅用于「放行 doc/note」；源代码仍按 `exec_running` 严格判定。
@@ -67,6 +86,77 @@ function isDocPath(absolute, cwd) {
  */
 function isUnderWorkspace(absolute, cwd) {
   return absolute === cwd || absolute.startsWith(`${cwd}\\`) || absolute.startsWith(`${cwd}/`);
+}
+
+/**
+ * 是否为**静态展示资源**（v1.4.0；与 doc 同层豁免）。
+ *
+ * 命中条件（任一）：
+ * - 扩展名 ∈ `PRESENTATIONAL_EXTENSIONS`（css/scss/html/svg/png/jpg/jpeg/webp）；
+ * - 路径任一段为 `assets` 或 `public`（支持 `crates/cli/assets/index.html` 这类嵌套资产目录）。
+ *
+ * 源码扩展名（`.rs/.ts/.js/.py` 等）不在此列；混合目标仍按源码规则从严。
+ * @param {string} absolute 已归一化绝对路径
+ * @returns {boolean}
+ */
+export function isPresentationalAssetPath(absolute) {
+  const ext = extname(absolute).toLowerCase();
+  if (PRESENTATIONAL_EXTENSIONS.includes(ext)) return true;
+  // 目录豁免不覆盖源码扩展名（`assets/gen.ts` 仍按源码门禁）。
+  if (SOURCE_EXTENSIONS.includes(ext)) return false;
+  const segments = absolute.split(/[\\/]/);
+  return segments.includes('assets') || segments.includes('public');
+}
+
+/** doc + 静态展示资源合并豁免判据（v1.4.0）。 */
+function isExemptPath(absolute, cwd) {
+  return isDocPath(absolute, cwd) || isPresentationalAssetPath(absolute);
+}
+
+/**
+ * 写入门禁审计（v1.4.0）：豁免放行时追加 JSONL 到 `.openfeel/log/guard-audit.jsonl`。
+ * best-effort：任何写失败都吞掉，不影响放行结果。
+ * @param {string} cwd 已归一化工作区
+ * @param {{ tool: string, reason: 'doc-asset'|'chore', phase: string, paths: string[] }} event
+ */
+function recordGuardAudit(cwd, event) {
+  try {
+    const logDir = join(cwd, '.openfeel', 'log');
+    if (!existsSync(logDir)) {
+      mkdirSync(logDir, { recursive: true });
+    }
+    const entry = {
+      time: new Date().toISOString(),
+      event: 'guard_allow',
+      tool: event.tool,
+      reason: event.reason,
+      phase: event.phase,
+      paths: event.paths,
+    };
+    appendFileSync(join(logDir, 'guard-audit.jsonl'), `${JSON.stringify(entry)}\n`, 'utf-8');
+  } catch {
+    /* 审计写失败不阻塞放行 */
+  }
+}
+
+/**
+ * 读取 chore 写窗口（v1.4.0；`.openfeel/chore.json`）。
+ * 仅当文件存在、JSON 合法且 `expires_at` 未过期时返回对象，否则 null。
+ * @param {string} cwd 已归一化工作区
+ * @returns {{ id?: string, note?: string, expires_at?: string } | null}
+ */
+function readActiveChore(cwd) {
+  try {
+    const chorePath = join(cwd, '.openfeel', 'chore.json');
+    if (!existsSync(chorePath)) return null;
+    const raw = JSON.parse(readFileSync(chorePath, 'utf-8'));
+    if (typeof raw !== 'object' || raw === null) return null;
+    const expiresAt = typeof raw.expires_at === 'string' ? Date.parse(raw.expires_at) : NaN;
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
+    return raw;
+  } catch {
+    return null;
+  }
 }
 
 /** flow.json 读取缓存（path → { mtimeMs, size, value }）。 */
@@ -340,7 +430,8 @@ export function createOpenFeelGuard(options = {}) {
     }
 
     const targets = rawTargets.map((target) => normalizeTarget(resolvedCwd, target));
-    const allDoc = targets.every((target) => isDocPath(target, normalizedCwd));
+    // doc + 静态展示资源合并豁免（v1.4.0）；混合目标须**全部**命中豁免才放行
+    const allExempt = targets.every((target) => isExemptPath(target, normalizedCwd));
 
     // 受保护路径：guard 启用时始终拒绝（enforce=off 已提前返回）。
     if (targets.some((target) => isProtectedPath(target, normalizedCwd))) {
@@ -394,8 +485,17 @@ export function createOpenFeelGuard(options = {}) {
     const active = activeStages(flow.value);
     if (active.length === 0) {
       if (allowGeneral && hasGeneralRequirement(flow.value)) return undefined;
-      // P0-4：doc/note 类产物不要求活跃阶段（收口后仍可写文档）；混合目标从严。
-      if (allDoc) return undefined;
+      // v1.4.0 chore 通道：仅在**无活跃阶段**时生效；受保护路径已在上方拒绝。
+      const chore = readActiveChore(normalizedCwd);
+      if (chore !== null) {
+        recordGuardAudit(normalizedCwd, { tool: name, reason: 'chore', phase: 'done', paths: targets });
+        return undefined;
+      }
+      // P0-4/v1.4.0：doc/note 与静态展示资源不要求活跃阶段（收口后仍可写）；混合目标从严。
+      if (allExempt) {
+        recordGuardAudit(normalizedCwd, { tool: name, reason: 'doc-asset', phase: 'done', paths: targets });
+        return undefined;
+      }
       return t(
         'OpenFeel 写入门禁：当前无活跃阶段，不能修改源码/文档。请先 feel_req add → claim → feel_stage add 建立阶段。',
         'OpenFeel write guard: no active stage, so source/docs are read-only. Create a stage via feel_req add → claim → feel_stage add.',
@@ -403,8 +503,14 @@ export function createOpenFeelGuard(options = {}) {
     }
 
     if (active.some((stage) => stage.phase === 'exec_running')) return undefined;
-    // P0-4：非 exec 相位仍允许 doc/note（研究记录、设计文档等）；代码仍严格。
-    if (allDoc) return undefined;
+    // P0-4/v1.4.0：非 exec 相位仍允许 doc/note 与静态展示资源（研究记录、设计文档、UI 资源等）；源码仍严格。
+    if (allExempt) {
+      const phases = active
+        .map((stage) => `${stage.id ?? '(unknown)'}=${stage.phase ?? '(unknown)'}`)
+        .join(', ');
+      recordGuardAudit(normalizedCwd, { tool: name, reason: 'doc-asset', phase: phases, paths: targets });
+      return undefined;
+    }
 
     const summary = active
       .map((stage) => `${stage.id ?? '(unknown)'}=${stage.phase ?? '(unknown)'}`)

@@ -6,11 +6,11 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { clearGuardCache, createOpenFeelGuard, normalizeForComparison, parsePatchTargets } from '../lib/guard.js';
+import { clearGuardCache, createOpenFeelGuard, isPresentationalAssetPath, normalizeForComparison, parsePatchTargets } from '../lib/guard.js';
 import { renderBootstrapPrompt, renderFeelPrompt } from '../lib/surface/prompt.js';
 
 const root = mkdtempSync(join(tmpdir(), 'openfeel-guard-'));
@@ -362,6 +362,98 @@ check('P0-4：doc + src 混合目标从严（拒绝）', () => {
 check('P0-4：exec_running 相位源码照常放行（零回归）', () => {
   const cwd = project('doc-exec', execFlow);
   assert.equal(projectOnly(execution('write', cwd, { path: 'src/a.ts' })), undefined);
+});
+
+// ── v1.4.0：静态展示资源与 doc 同层 + 审计 ───────────────────────────
+
+/** 读取某工作区的 guard 审计行（JSONL） */
+function readAudit(cwd) {
+  const auditPath = join(cwd, '.openfeel', 'log', 'guard-audit.jsonl');
+  assert.ok(existsSync(auditPath), `缺少审计文件 ${auditPath}`);
+  return readFileSync(auditPath, 'utf-8').trim().split('\n').map((line) => JSON.parse(line));
+}
+
+check('v1.4.0：isPresentationalAssetPath 判定（扩展名 + assets/public 目录）', () => {
+  assert.equal(isPresentationalAssetPath('/x/web/index.html'), true);
+  assert.equal(isPresentationalAssetPath('/x/web/style.css'), true);
+  assert.equal(isPresentationalAssetPath('/x/crates/cli/assets/index.html'), true);
+  assert.equal(isPresentationalAssetPath('/x/public/logo.webp'), true);
+  assert.equal(isPresentationalAssetPath('/x/src/main.rs'), false);
+  assert.equal(isPresentationalAssetPath('/x/src/app.ts'), false);
+  assert.equal(isPresentationalAssetPath('/x/assets/gen.ts'), false);
+  assert.equal(isPresentationalAssetPath('/x/public/app.js'), false);
+  assert.equal(isPresentationalAssetPath('/x/assets/logo.svg'), true);
+});
+
+check('v1.4.0：done 后写 web/index.html 放行 + 审计记录', () => {
+  const cwd = project('asset-done', noStageFlow);
+  assert.equal(projectOnly(execution('write', cwd, { path: 'web/index.html' })), undefined);
+  const rows = readAudit(cwd);
+  const last = rows.at(-1);
+  assert.equal(last.reason, 'doc-asset');
+  assert.equal(last.tool, 'write');
+  assert.equal(last.phase, 'done');
+  assert.ok(last.paths.some((p) => p.endsWith('index.html')), `审计 paths 缺 index.html: ${JSON.stringify(last.paths)}`);
+});
+
+check('v1.4.0：done 后写嵌套 crates/cli/assets/index.html 放行', () => {
+  const cwd = project('asset-nested', noStageFlow);
+  assert.equal(projectOnly(execution('edit', cwd, { path: 'crates/cli/assets/index.html' })), undefined);
+});
+
+check('v1.4.0：done 后写 src/main.rs 仍拒（错误文案不变）', () => {
+  const cwd = project('asset-src', noStageFlow);
+  const reason = projectOnly(execution('write', cwd, { path: 'src/main.rs' }));
+  assert.match(String(reason), /无活跃阶段，不能修改源码\/文档/);
+});
+
+check('v1.4.0：静态资源 + 源码混合目标从严（拒绝）', () => {
+  const cwd = project('asset-mixed', noStageFlow);
+  const patch = '*** Begin Patch\n*** Add File: web/index.html\n+x\n*** Add File: src/main.rs\n+y\n*** End Patch\n';
+  assert.match(String(projectOnly(execution('apply_patch', cwd, { patch }))), /无活跃阶段|no active stage/);
+});
+
+check('v1.4.0：plan 相位写静态资源放行 + 审计 phase 含阶段相位', () => {
+  const cwd = project('asset-plan', planFlow);
+  assert.equal(projectOnly(execution('write', cwd, { path: 'web/app.css' })), undefined);
+  const last = readAudit(cwd).at(-1);
+  assert.equal(last.reason, 'doc-asset');
+  assert.match(String(last.phase), /plan_review/);
+});
+
+check('v1.4.0：chore 窗口（无活跃阶段）允许源码 + 审计 reason=chore', () => {
+  const cwd = project('chore-done', noStageFlow);
+  mkdirSync(join(cwd, '.openfeel'), { recursive: true });
+  writeFileSync(
+    join(cwd, '.openfeel', 'chore.json'),
+    JSON.stringify({ id: 'CHORE-test', note: 'ui tweak', started_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60_000).toISOString(), stage_count_at_start: 1 }),
+    'utf8',
+  );
+  clearGuardCache();
+  assert.equal(projectOnly(execution('write', cwd, { path: 'src/main.rs' })), undefined);
+  assert.equal(readAudit(cwd).at(-1).reason, 'chore');
+});
+
+check('v1.4.0：chore 过期 → 源码仍拒', () => {
+  const cwd = project('chore-expired', noStageFlow);
+  writeFileSync(
+    join(cwd, '.openfeel', 'chore.json'),
+    JSON.stringify({ id: 'CHORE-old', note: 'x', started_at: '2020-01-01T00:00:00.000Z', expires_at: '2020-01-01T00:01:00.000Z', stage_count_at_start: 1 }),
+    'utf8',
+  );
+  clearGuardCache();
+  assert.match(String(projectOnly(execution('write', cwd, { path: 'src/main.rs' }))), /无活跃阶段|no active stage/);
+});
+
+check('v1.4.0：存在活跃阶段时 chore 不生效（不绕过相位门）', () => {
+  const cwd = project('chore-active', planFlow);
+  writeFileSync(
+    join(cwd, '.openfeel', 'chore.json'),
+    JSON.stringify({ id: 'CHORE-active', note: 'x', started_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60_000).toISOString(), stage_count_at_start: 1 }),
+    'utf8',
+  );
+  clearGuardCache();
+  assert.match(String(projectOnly(execution('write', cwd, { path: 'src/main.rs' }))), /exec_running/);
 });
 
 rmSync(root, { recursive: true, force: true });

@@ -36,6 +36,8 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
   - **doc/note 不绑相位**：`docs/**` 与 `.md/.mdx/.txt/.rst/.adoc` 在无活跃阶段或非 `exec_running`
     相位也可写；**混合目标从严**（任一源码 → 按源码规则）；
   - 源码（`src/**` 等）仍要求 `exec_running`；`pwsh` / `bash` 默认不守，是显式逃生通道；
+  - **v1.4.0 静态展示资源**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp` 与 `assets/**`、`public/**` 与 doc 同层放行（混合目标从严；源码扩展名不因目录豁免）；豁免放行写 `.openfeel/log/guard-audit.jsonl`；
+  - **v1.4.0 chore 写窗口**：`openfeel chore "<说明>"` 仅无活跃阶段时生效（60 分钟 / `--end` 收口），源码也可写，不创建阶段；
   - `enforce=always`（默认）对非 OpenFeel 工作区也拦截，可用 `project` / `off` opt-out。
 - **审查归属**（v1.3.3 / v1.3.4）：REV 可挂 op（`stageId.op-xxx`）或挂 stage（`op = stageId`，无 op 的 fast 场景）；
   `feel_flow action=review_add` 的 `op` / `stage` 二选一透传（v1.3.4，两者皆无 → `FEEL_BAD_USAGE`）；
@@ -60,7 +62,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
 | `lib/surface/prompt.js` | `<feel_mode>` 系统提示段 |
-| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 87 + 46 + 10 = 185 断言） |
+| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 87 + 55 + 10 = 194 断言） |
 | `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证

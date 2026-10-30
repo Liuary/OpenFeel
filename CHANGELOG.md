@@ -4,6 +4,23 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.4.0] - 2026-10-30
+
+> 次版本（Minor）：**写入门禁分层 + chore 微变更通道**——依据 `OpenFeelHarness/docs/feedback/openfeel-write-gate-friction-2026-10-30.md`（UI 微调被拦 3 次，改 1 行 CSS 需 7 步编排）。源码门禁、受保护路径、混合目标三条底线不变；不新增 JSON 出口（`chore` 无 `--json`）。
+
+### Added
+- [stage-107] **静态展示资源豁免（`dsh/lib/guard.js`）**：新增 `isPresentationalAssetPath()` + `PRESENTATIONAL_EXTENSIONS`——`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`，以及路径含 `assets/` 或 `public/`（支持 `crates/cli/assets/index.html` 嵌套资产目录）。与 doc/note 同层：任意相位可写、不要求活跃阶段；**混合目标从严**（任一源码 → 按源码规则）。
+- [stage-107] **guard 审计**：doc/静态资源豁免与 chore 放行时，追加 JSONL 到 `.openfeel/log/guard-audit.jsonl`（`time/event/tool/reason/phase/paths`），best-effort 不阻塞放行。
+- [stage-107] **`openfeel chore "<说明>"`（微变更通道）**：无活跃阶段时开启 60 分钟写窗口（源码也可写），`--end` 收口、`--status` 只读状态；不写 `flow.json.stages`，只留 `chore_start` / `chore_end` 日志与 ephemeral `.openfeel/chore.json`。存在活跃阶段时拒绝开启，guard 也不生效（不绕过相位门）。
+
+### Changed
+- [stage-107] 注册选项 `41 → 43`（`chore --end` / `chore --status`）；成功出口仍 40（无新增 JSON 出口）。
+- [stage-107] `dsh/package.json`：version `1.4.0`、`requiresCli: ">=1.4.0"`。
+
+### Fixed
+- [stage-107] 全阶段 done 后修改 `.html` / `.css` / 图片 / `assets/**` 被误判为源码而拒绝（反馈验收 1）。
+- [stage-107] 改一行 UI 样式需 7 次编排操作（新增 1 步 chore 通道）。
+
 ## [1.3.5] - 2026-10-30
 
 > 补丁版本（Patch）：**统一 shell 工具推荐**——Windows 下优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS/Linux 用 `bash`；默认不用 `cmd.exe`。仅提示/文档层变更，不改任何 CLI 命令、相位机、写入门禁、审查/归档语义。

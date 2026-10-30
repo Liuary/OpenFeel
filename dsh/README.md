@@ -202,13 +202,17 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ---
 
-## 6.5 写入门禁（v1.3.3）
+## 6.5 写入门禁（v1.4.0）
 
 适配器在 `apply()` 中用 DSH 的 `ctx.tools.guard()` 注册同步守卫（`dsh/lib/guard.js`）：
 
 - **只守** `edit` / `write` / `apply_patch` / `str_replace_editor`。`feel_*`、`pwsh`、`read`、`todo_write` 等不受影响。
 - `.openfeel/**` 是**流程产物区**：plan / scheme / review 产物在任意阶段可写；但 `.openfeel/flow.json` 与 `.openfeel/**/status.md` **始终拒绝**（用 `feel_*`）。受保护路径按**会话工作区 `<cwd>`** 判定；执行阶段仍可编辑其他项目的 `.openfeel/`（不做跨项目全局保护）。
-- **v1.3.3 风险分层**——源码（`src/**` 等）仍要求存在 `exec_running` 阶段；**doc/note**（`docs/**` 与 `.md/.mdx/.txt/.rst/.adoc`）在无活跃阶段或非 `exec_running` 相位也放行；**混合目标从严**（任一源码 → 按源码规则）。
+- **风险分层（v1.3.3 / v1.4.0）**——源码（`src/**` 等）仍要求存在 `exec_running` 阶段；以下两类在无活跃阶段或非 `exec_running` 相位也放行，**混合目标从严**（任一源码 → 按源码规则）：
+  - **doc/note**：`docs/**` 与 `.md/.mdx/.txt/.rst/.adoc`；
+  - **静态展示资源（v1.4.0）**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`，以及路径含 `assets/` 或 `public/`（支持 `crates/cli/assets/index.html` 这类嵌套资产目录；**源码扩展名不因目录豁免**，如 `assets/gen.ts` 仍按源码门禁）。
+- **审计（v1.4.0）**：doc/静态资源豁免放行与 chore 放行时，追加 JSONL 到 `.openfeel/log/guard-audit.jsonl`（`time/tool/reason/phase/paths`），best-effort 不影响放行。
+- **chore 写窗口（v1.4.0）**：`openfeel chore "<说明>"` 在**无活跃阶段**时开启 60 分钟写窗口（源码也可写），`openfeel chore --end` 收口；不写 `flow.json.stages`，只留 `chore_start` / `chore_end` 日志。存在活跃阶段时 chore 不生效（不绕过相位门）。
 - **bootstrap 例外（v1.3.3）**：无 `.openfeel/` 时，全部目标为**新增文件**（`apply_patch` 须全部 `*** Add File:`）→ 放行并提示补账本；已存在文件、`.openfeel/**`、Update/Delete/Move 仍拒绝（`enforce=always` 下）。`project`/`off` 放行。
 - `apply_patch` 解析所有 patch 头（`*** Update/Add/Delete File:`、`*** Move to:`、`---/+++`）；全部目标在 `.openfeel/**` 才内部放行，混合/无头保守拒绝。
 - `enforce=off` **完全不注册 guard**（连 flow.json/status.md 也不拦）。
@@ -226,7 +230,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 cd plugin
 node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（42 项）
 node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（87 项）
-node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（46 项）
+node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（55 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（10 项）
 ```
 

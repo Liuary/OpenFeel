@@ -931,6 +931,21 @@ openfeel setup --check [--json]                       # 只读诊断：一致退
 - 错误：预检 / 用法 / profile 类 → `INVALID_ARGUMENT` / exit 1（`detail.reason=dsh-*`）；备份 / pnpm install → `INTERNAL_ERROR` / exit 3。均零写盘或已回滚。
 - 完成后重启 DSH 宿主（host module 不热加载）。`openfeel update --tools dsh` 不适用，会 exit 1 并指引本命令。
 
+## chore — 微变更通道（v1.4.0）
+
+给「单文件、无接口变化、可肉眼验证」的微变更一条 1 步通道（UI 微调 / 文案 / 静态资源）：
+
+```bash
+openfeel chore "<说明>"     # 开启写窗口（60 分钟；要求无活跃阶段）
+openfeel chore --end        # 收口（幂等）
+openfeel chore --status     # 只读状态（active / expired / none）
+```
+
+- **不创建阶段**：不写 `flow.json.stages`，只追加 `chore_start` / `chore_end` 日志与 `.openfeel/chore.json`（ephemeral，到期自动失效）。
+- **写入效果（DSH 适配器）**：无活跃阶段时，chore 有效期内源码也可写；受保护路径（`.openfeel/flow.json`、`**/status.md`）仍拒绝。存在活跃阶段时 chore **不生效**（不绕过相位门）。
+- **审计**：guard 放行写 `.openfeel/log/guard-audit.jsonl`（`reason=chore`）。
+- **静态资源无需 chore**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp` 与 `assets/**`、`public/**` 在任意相位/无阶段时直接可写（混合目标从严）。
+
 ## migrate — 存量迁移
 
 存量旧布局项目迁移（检测 / 备份 / 迁移 / 回滚）；`--dry-run` 预览不写盘。
@@ -950,9 +965,9 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## JSON 出口一览（v1.3.3 快照，无 JSON 出口变更）
+## JSON 出口一览（v1.4.0 快照，无 JSON 出口变更）
 
-> 计数口径：**40 个成功出口 / 41 个注册选项**；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
+> 计数口径：**40 个成功出口 / 43 个注册选项**（v1.4.0 新增 `chore --end` / `chore --status`）；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 
 | # | 出口 | 命令面 | 顶层键序 |
 |:-:|------|--------|----------|

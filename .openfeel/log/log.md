@@ -2,6 +2,8 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-30-Liuary-016.md](2026/10/30/2026-10-30-Liuary-016.md) | Liuary | 阶段 v1.3.5-stage-106 完成 |
+| [2026-10-30-Liuary-015.md](2026/10/30/2026-10-30-Liuary-015.md) | Liuary | v1.3.5-stage-106 review_added |
 | [2026-10-30-Liuary-014.md](2026/10/30/2026-10-30-Liuary-014.md) | Liuary | 阶段 v1.3.4-stage-105 完成 |
 | [2026-10-30-Liuary-013.md](2026/10/30/2026-10-30-Liuary-013.md) | Liuary | v1.3.4-stage-105 review_added |
 | [2026-10-30-Liuary-012.md](2026/10/30/2026-10-30-Liuary-012.md) | Liuary | v1.3.3-stage-104.op-006 执行通过 |
@@ -30,8 +32,6 @@
 | [2026-10-17-Liuary-021.md](2026/10/17/2026-10-17-Liuary-021.md) | Archiver | **v1.2.2 收官阶段 — stage-98 归档完成（文档与版本收口）= v1.2.2 版本收官**：文档多载体（README×3 / GETTING_STARTED / commands / `docs/json-contract.md` 定稿 / manual×5 / cli-usage skill v1.2.2 快照）+ `CHANGELOG [1.2.2]` + 版本 **1.2.2** 全链路 A/B/C/D/E（A 类 10 处残留 0 / B 类双生成物 build ×4 幂等 / D 类 305 命中未判类 0）+ **DSH 端到端认证**（契约 **41/41**、11 项需求映射 **11/11**、错误 4/4、决策 15/15、多项目 5/5、零回归 5/5、适配器视角 39/39、**真实消费 `verify.js` 48/48 exit 0 @1.2.2**；DSH 仓库 11 文件 SHA-1 0 changed、真实 `flow.json` 哈希零注入）+ 收口期冻结（`flow.ts` 零 diff）；3 ops（文档冻结 → 验收工具链 → 收口最终 op）；门禁 **74 文件 / 1894 用例** 0 failed / 0 skipped、`tsc` 0、`lint i18n` **983**、`lint kb` **0 过期 / 622 引用**、build ×2 幂等、`--version`=**1.2.2**；契约 **33 成功出口 / 34 注册选项**；审查 **passed**（REV-98-001~006 闭环，0 blocking；承接三分 闭合 5 / 转出 3 / 保留 4 / 拆分 1 = 零灭失）；验收 **必验 9/9、Bug 0**；知识沉淀 **4 条**（patterns 3 + troubleshooting 1）；manual 3 文件核对；roadmap/plan 回填（M52 done + 状态「已归档」）。**v1.2.2 版本收官：四阶段 95~98 全 done，REQ-001 11 项需求全部有出口与证据**；**未推进 flow 至 done（由 Feel 执行）／未 commit／未 push／未 publish** |
 | [2026-10-17-Liuary-020.md](2026/10/17/2026-10-17-Liuary-020.md) | Liuary | v1.2.2-stage-98.op-003 执行通过 |
 | [2026-10-17-Liuary-019.md](2026/10/17/2026-10-17-Liuary-019.md) | Liuary | v1.2.2-stage-98.op-002 执行通过 |
-| [2026-10-17-Liuary-018.md](2026/10/17/2026-10-17-Liuary-018.md) | Liuary | v1.2.2-stage-98.op-001 执行通过 |
-| [2026-10-17-Liuary-017.md](2026/10/17/2026-10-17-Liuary-017.md) | Liuary | 阶段 v1.2.2-stage-97 完成 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

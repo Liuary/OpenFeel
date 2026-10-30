@@ -43,6 +43,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **宿主加载指纹**（v1.3.4）：`apply()` 启动时把适配器 `lib/` 指纹写入
   `~/.openfeel/adapter-host-dsh.json`（`OPENFEEL_ADAPTER_HOST_PATH` 可覆盖，测试用）；
   CLI `setup --check` 据此区分「文件旧」与「文件已新但宿主未重启」。
+- **命令执行推荐**（v1.3.5）：系统提示段新增「Windows：优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS/Linux 用 `bash`；默认不用 `cmd.exe`」；同一任务保持同一 shell。
 
 ## 目录
 
@@ -59,7 +60,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
 | `lib/surface/prompt.js` | `<feel_mode>` 系统提示段 |
-| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 86 + 46 + 10 = 184 断言） |
+| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 87 + 46 + 10 = 185 断言） |
 | `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证
@@ -67,7 +68,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 ```bash
 cd dsh
 node test/contract.js      # 42 — DSH schema 契约（真实 assertSupportedJsonSchema）
-node test/verify.js        # 86 — 行为（真实 CLI + 真实 .openfeel 副本）
+node test/verify.js        # 87 — 行为（真实 CLI + 真实 .openfeel 副本）
 node test/guard.js         # 46 — 写入门禁（fake ToolExecution + 临时工作区）
 node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载
 ```

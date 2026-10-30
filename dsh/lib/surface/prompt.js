@@ -146,6 +146,11 @@ Feel（你）只做编排、决策与门禁判断。
 - \`fast\`：跳过 \`scheme_*\` 与 \`test_*\`；**计划审查与代码审查各保留一轮**（fast 不等于免审）。
 - \`general\`：无流水线（空转移表），按需直接调度通用工作者；**仅需求级合法**，阶段级/部署级会拒绝。
 
+## 命令执行
+- **Windows：优先 \`bash\`（Git Bash），其次 \`pwsh\`（PowerShell 7）**；默认不用 \`cmd.exe\`。
+- macOS / Linux：\`bash\`。
+- 同一任务内保持同一 shell；路径与转义按所选 shell 书写。
+
 ## 需求分发
 需求是排期层（\`REQ-NNN\`，7 状态：draft/scheduled/in_progress/done/blocked/cancelled/rejected）。
 接取流程：\`feel_req action=next\` → \`claim\` → \`link\` 到阶段 → 阶段推进驱动聚合 → 全部关联阶段 done 时需求自动收口。
@@ -195,6 +200,11 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 - \`full\`: plan → plan_review → scheme → exec → review → test → archive (all six gates).
 - \`fast\`: skips \`scheme_*\` and \`test_*\`; **plan review and code review each keep one round** (fast is not review-free).
 - \`general\`: no pipeline (empty transition table), dispatch general workers on demand; requirement-level only.
+
+## Command execution
+- **Windows: prefer \`bash\` (Git Bash), then \`pwsh\` (PowerShell 7)**; do not default to \`cmd.exe\`.
+- macOS / Linux: \`bash\`.
+- Keep one shell per task; write paths/escaping for that shell.
 
 ## Requirement distribution
 Requirements are the scheduling layer (\`REQ-NNN\`, 7 statuses: draft/scheduled/in_progress/done/blocked/cancelled/rejected).

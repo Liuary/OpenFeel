@@ -1972,6 +1972,8 @@ When encountering technical issues, **the first action MUST be to consult the kn
 
 4. **Lightweight decision boundary**: Conversational selections (Feel and the user settle a technical direction or design trade-off via the \`question\` tool, producing a conclusion but no plan.md) are handled by Feel directly, without delegating to openfeel-planner; only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the planning scale threshold is reached, should openfeel-planner be delegated. Avoid the extremes of "handle everything personally" or "delegate everything".
 
+5. **Command execution (Windows)**: when running shell commands on Windows, prefer **\`bash\` (Git Bash)**, then **\`pwsh\` (PowerShell 7)**; on macOS / Linux use \`bash\`. Do not default to \`cmd.exe\`; keep one shell per task and write paths/escaping for that shell.
+
 Deviating from the above constraints is considered a violation and will be flagged during review.
 
 ### 10-Agent System Overview
@@ -2022,7 +2024,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.3.4). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.3.5). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -2133,6 +2135,8 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 4. **轻量决策边界**：对话式选型（Feel 与用户通过 \`question\` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由 Feel 直接处理，不委托 openfeel-planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到规划规模阈值时，才委托 openfeel-planner。避免"要么全亲为、要么全委托"的极端。
 
+5. **命令执行工具（Windows）**：运行 shell 命令时，Windows 下**优先 \`bash\`（Git Bash）**，其次 **\`pwsh\`（PowerShell 7）**；macOS / Linux 使用 \`bash\`。默认不用 \`cmd.exe\`；同一任务内保持同一 shell，路径与转义按所选 shell 书写。
+
 偏离以上约束的行为视为违规，审查时将被标记。
 
 ### 10 Agent 体系总览
@@ -2183,7 +2187,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.4）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.5）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 
@@ -4436,7 +4440,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）、v1.2.1 新增能力（需求拆分 \`req split\` / 三模式 \`full/fast/general\` / 审查档位 \`--review-tier\` / 通用工作者 \`openfeel-explorer\` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）、v1.2.4 收口（archive <stage> 覆盖保护 + --force / plan stage list·model list|get·flow retry·lint i18n|kb·roadmap show --json / config get --all / 40 成功出口·41 注册选项）、v1.3.0（DSH 适配器单包分发 / setup --tools dsh / README 版本能力概览迁出）、v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）、v1.3.2（DSH 写入门禁 \`ctx.tools.guard\` + 非项目 bootstrap）、v1.3.3 修复（fast 阶段级 REV / \`review_passed → exec_running\` 返工边 / 写入门禁风险分层 / \`plan stage add\` 原子聚焦 / 阶段 ID ↔ 目录映射文档化）、v1.3.4 修复（适配器 \`review_add --stage\` 透传 / \`setup --check\` 五态含 restart-required / 部署标记刷新）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）、v1.2.1 新增能力（需求拆分 \`req split\` / 三模式 \`full/fast/general\` / 审查档位 \`--review-tier\` / 通用工作者 \`openfeel-explorer\` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）、v1.2.4 收口（archive <stage> 覆盖保护 + --force / plan stage list·model list|get·flow retry·lint i18n|kb·roadmap show --json / config get --all / 40 成功出口·41 注册选项）、v1.3.0（DSH 适配器单包分发 / setup --tools dsh / README 版本能力概览迁出）、v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）、v1.3.2（DSH 写入门禁 \`ctx.tools.guard\` + 非项目 bootstrap）、v1.3.3 修复（fast 阶段级 REV / \`review_passed → exec_running\` 返工边 / 写入门禁风险分层 / \`plan stage add\` 原子聚焦 / 阶段 ID ↔ 目录映射文档化）、v1.3.4 修复（适配器 \`review_add --stage\` 透传 / \`setup --check\` 五态含 restart-required / 部署标记刷新）、v1.3.5 修复（统一 shell 工具推荐：Windows 优先 Git Bash 其次 PowerShell 7）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -4448,7 +4452,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.3.4 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.3.5 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -4506,6 +4510,14 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **\`openfeel update --tools dsh\`**：不适用（全局部署），命令层在 auto-init / 写盘前 exit 1 并指引 \`setup\`。
 - **错误映射**：预检 / 用法 / profile → \`INVALID_ARGUMENT\`（refusal/1，\`detail.reason=dsh-*\`）；备份 / pnpm install → \`INTERNAL_ERROR\`（internal/3，\`dsh-backup-failed\` / \`dsh-pnpm-install-failed\`）。不新增 CLI 错误码。
 - **单包**：不发布独立 \`openfeel-dsh\`；\`dsh/\` 随 \`openfeel\` npm 包分发，默认不部署。README 版本能力概览迁至 \`docs/VERSIONS.md\`。
+
+## v1.3.5（stage-106）
+
+> 补丁版本：统一 shell 工具推荐（仅提示/文档层；CLI 命令与相位机不变）。
+
+- **推荐口径**：Windows 下优先 \`bash\`（Git Bash），其次 \`pwsh\`（PowerShell 7）；macOS / Linux 用 \`bash\`；默认不用 \`cmd.exe\`；同一任务保持同一 shell。
+- **落点**：DSH Feel 系统提示（\`<feel_mode>\` zh/en 新增「命令执行」节）、OpenFeel 全局约束模板（\`agents-md\` / \`claude/constraint\` 第 5 条）、\`openfeel-tool-usage\` skill 注记。
+- **升级**：\`npm i -g openfeel@latest\` → \`openfeel setup\` → **完全退出并重启宿主**。
 
 ## v1.3.4（stage-105）
 
@@ -6049,6 +6061,8 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 | \`skill\` | \`Skill\` | 技能加载 |
 | \`task\` | \`Task\` | 子 Agent 调度 |
 | \`question\` | \`AskUserQuestion\` | 向用户提问 |
+
+> **命令执行工具选择（Windows）**：优先 \`bash\`（Git Bash），其次 \`pwsh\`（PowerShell 7）；macOS / Linux 用 \`bash\`；默认不用 \`cmd.exe\`。同一任务内保持同一 shell，路径与转义按该 shell 书写。DSH 侧同名工具为 \`bash\` / \`pwsh\`（宿主未提供 \`bash\` 时才用 \`pwsh\`）。
 `,
   'openfeel-update-stage-status': `---
 name: openfeel-update-stage-status
@@ -8305,6 +8319,8 @@ When encountering technical issues, **the first action MUST be to consult the kn
 
 4. **Lightweight decision boundary**: Conversational selections (the **main session** and the user settle a technical direction or design trade-off via the \`AskUserQuestion\` tool, producing a conclusion but no plan.md) are handled by the **main session** directly, without delegating to openfeel-planner; only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the planning scale threshold is reached, should openfeel-planner be delegated. Avoid the extremes of "handle everything personally" or "delegate everything".
 
+5. **Command execution (Windows)**: when running shell commands on Windows, prefer **\`Bash\` (Git Bash)**, then **PowerShell 7 (\`pwsh\`)**; on macOS / Linux use \`Bash\`. Do not default to \`cmd.exe\`; keep one shell per task and write paths/escaping for that shell (same for the main session and subagents).
+
 Deviating from the above constraints is considered a violation and will be flagged during review.
 
 ### 10-Agent System Overview
@@ -8358,7 +8374,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.3.4). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.3.5). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -8469,6 +8485,8 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 4. **轻量决策边界**：对话式选型（**主会话**与用户通过 \`AskUserQuestion\` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由**主会话**直接处理，不委托 openfeel-planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到规划规模阈值时，才委托 openfeel-planner。避免"要么全亲为、要么全委托"的极端。
 
+5. **命令执行工具（Windows）**：运行 shell 命令时，Windows 下**优先 \`Bash\`（Git Bash）**，其次 **PowerShell 7（\`pwsh\`）**；macOS / Linux 使用 \`Bash\`。默认不用 \`cmd.exe\`；同一任务内保持同一 shell，路径与转义按所选 shell 书写（主会话与 subagent 一致）。
+
 偏离以上约束的行为视为违规，审查时将被标记。
 
 ### 10 Agent 体系总览
@@ -8522,7 +8540,7 @@ Claude Code 的权限与工具可用性由 subagent 的 \`tools\` 白名单与 \
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.4）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.5）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 

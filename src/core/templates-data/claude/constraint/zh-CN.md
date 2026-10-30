@@ -82,6 +82,8 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 4. **轻量决策边界**：对话式选型（**主会话**与用户通过 `AskUserQuestion` 工具敲定技术方向/设计取舍，产出结论不产出 plan.md）由**主会话**直接处理，不委托 openfeel-planner；仅当需要**产出正式计划文档**（plan.md，含阶段划分、任务表、约束表）或达到规划规模阈值时，才委托 openfeel-planner。避免"要么全亲为、要么全委托"的极端。
 
+5. **命令执行工具（Windows）**：运行 shell 命令时，Windows 下**优先 `Bash`（Git Bash）**，其次 **PowerShell 7（`pwsh`）**；macOS / Linux 使用 `Bash`。默认不用 `cmd.exe`；同一任务内保持同一 shell，路径与转义按所选 shell 书写（主会话与 subagent 一致）。
+
 偏离以上约束的行为视为违规，审查时将被标记。
 
 ### 10 Agent 体系总览
@@ -135,7 +137,7 @@ Claude Code 的权限与工具可用性由 subagent 的 `tools` 白名单与 `se
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.4）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.5）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 

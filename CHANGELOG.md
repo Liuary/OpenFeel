@@ -4,6 +4,21 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.3.5] - 2026-10-30
+
+> 补丁版本（Patch）：**统一 shell 工具推荐**——Windows 下优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS/Linux 用 `bash`；默认不用 `cmd.exe`。仅提示/文档层变更，不改任何 CLI 命令、相位机、写入门禁、审查/归档语义。
+
+### Added
+- [stage-106] **DSH Feel 系统提示**（`dsh/lib/surface/prompt.js`）：新增「命令执行 / Command Execution」节（zh/en），明确 Windows 优先 Git Bash、其次 PowerShell 7，同一任务保持同一 shell。
+- [stage-106] **OpenFeel 全局约束模板**：`agents-md/{zh-CN,en}.md` 与 `claude/constraint/{zh-CN,en}.md` 的「跨 Agent 工具使用约束 / Cross-Agent Tool Usage Constraints」新增第 5 条（同一文案）；`openfeel-tool-usage` skill 的工具名映射表后新增 Windows shell 选择注记。
+
+### Changed
+- [stage-106] **`dsh/package.json`**：version `1.3.5`、`requiresCli: ">=1.3.5"`。
+- [stage-106] **文档**：`dsh/README.md` / `ADAPTER.md` 记录提示段新增推荐；README / GETTING_STARTED / VERSIONS / cli-usage skill 快照同步。
+
+### Fixed
+- [stage-106] 无（本版为提示口径统一，不修复缺陷）。
+
 ## [1.3.4] - 2026-10-30
 
 > 补丁版本（Patch）：**修复分发链路断点**——依据 `OpenFeelHarness/docs/feedback/openfeel-1.3.3-retest.md`（1.3.3 复测）。1.3.3 的代码修复已存在，但适配器透传、部署版本标记与「宿主未重启」检测三处断点导致用户无法闭环。CLI 相位机 / REV 语义 / 写入门禁不变。

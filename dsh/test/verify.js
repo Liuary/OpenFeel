@@ -17,6 +17,7 @@ import { normalizeConfig, apply } from '../lib/index.js';
 import { FeelCli } from '../lib/adapters/cli.js';
 import { readSnapshot } from '../lib/adapters/dashboard.js';
 import { tokenize } from '../lib/surface/command.js';
+import { renderFeelPrompt } from '../lib/surface/prompt.js';
 
 /** 真实 OpenFeel 项目（只读源）。 */
 const SOURCE_PROJECT = 'C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel';
@@ -238,6 +239,14 @@ async function main() {
     for (const marker of ['<feel_mode>', '调度者', 'flow.json', 'blocking REV', 'general']) {
       assert(text.includes(marker), `提示段缺少标记「${marker}」`);
     }
+  });
+  await check('提示段包含 Windows shell 推荐（v1.3.5，zh/en）', () => {
+    const zh = workspace.sections[0].text();
+    assert(zh.includes('Git Bash'), 'zh 提示段缺少 Git Bash');
+    assert(zh.includes('pwsh') && zh.includes('PowerShell 7'), 'zh 提示段缺少 pwsh / PowerShell 7');
+    const en = renderFeelPrompt({ language: 'en', detected: true, projectRoot: SOURCE_PROJECT });
+    assert(en.includes('Git Bash') && en.includes('PowerShell 7'), 'en 提示段缺少 shell 推荐');
+    assert(en.includes('bash'), 'en 提示段缺少 bash');
   });
   await check('启动自检发现 CLI 版本', () => {
     const joined = workspace.logs.join('\n');

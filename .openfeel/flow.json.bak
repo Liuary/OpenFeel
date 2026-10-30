@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-30T13:38:21.512Z",
-    "revision": 1429,
+    "updated": "2026-10-30T14:46:35.040Z",
+    "revision": 1443,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -29,13 +29,41 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "",
+      "stage": "v1.3.5-stage-106",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.3.5-stage-106": {
+      "name": "v1.3.5-stage-106",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-007",
+      "stats": {
+        "start_time": "2026-10-30T14:41:09.614Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.3.5-stage-106",
+      "stage": "v1.3.5-stage-106",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "代码自审：提示段/模板/工具名映射口径一致（无 blocking；2010 单测 + dsh 185）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-30T14:46:27.791Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
   "log": [
     {
       "time": "2026-07-09T15:31:43.834Z",
@@ -2444,6 +2472,135 @@
           "workflow_mode"
         ]
       }
+    },
+    {
+      "time": "2026-10-30T13:38:21.813Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-006",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-30T14:40:42.175Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-007",
+        "title": "1.3.5：统一 shell 工具推荐（Windows 优先 Git Bash，其次 PowerShell 7），发布 1.3.5"
+      }
+    },
+    {
+      "time": "2026-10-30T14:40:45.163Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-007",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-30T14:40:45.525Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.3.5-stage-106",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-30T14:41:07.234Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.3.5-stage-106",
+        "requirementId": "REQ-007"
+      }
+    },
+    {
+      "time": "2026-10-30T14:41:09.608Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.3.5-stage-106",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-30T14:41:12.009Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.3.5-stage-106",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T14:41:14.246Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.3.5-stage-106",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T14:46:15.215Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.3.5-stage-106",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T14:46:30.914Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.3.5-stage-106",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T14:46:34.704Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.3.5-stage-106",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-30T14:46:35.040Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.3.5-stage-106",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.3.5-stage-106.md"
+      }
     }
   ],
   "requirements": [
@@ -2513,15 +2670,28 @@
     {
       "id": "REQ-006",
       "title": "1.3.4：修复适配器 review_stage 透传、setup --check 三态化与部署版本标记，发布 1.3.4",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-10-30T13:28:25.439Z",
-      "updated_at": "2026-10-30T13:38:21.512Z",
+      "updated_at": "2026-10-30T13:38:21.813Z",
       "target_version": "v1.3.4",
       "priority": "P0",
       "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-006.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-30T13:28:28.629Z"
+    },
+    {
+      "id": "REQ-007",
+      "title": "1.3.5：统一 shell 工具推荐（Windows 优先 Git Bash，其次 PowerShell 7），发布 1.3.5",
+      "status": "draft",
+      "created_at": "2026-10-30T14:40:42.175Z",
+      "updated_at": "2026-10-30T14:40:45.163Z",
+      "target_version": "v1.3.5",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-007.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-30T14:40:45.163Z"
     }
   ]
 }

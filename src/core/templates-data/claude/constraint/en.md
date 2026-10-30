@@ -82,6 +82,8 @@ When encountering technical issues, **the first action MUST be to consult the kn
 
 4. **Lightweight decision boundary**: Conversational selections (the **main session** and the user settle a technical direction or design trade-off via the `AskUserQuestion` tool, producing a conclusion but no plan.md) are handled by the **main session** directly, without delegating to openfeel-planner; only when a **formal plan document** (plan.md, including stage division, task table, constraint table) is needed, or the planning scale threshold is reached, should openfeel-planner be delegated. Avoid the extremes of "handle everything personally" or "delegate everything".
 
+5. **Command execution (Windows)**: when running shell commands on Windows, prefer **`Bash` (Git Bash)**, then **PowerShell 7 (`pwsh`)**; on macOS / Linux use `Bash`. Do not default to `cmd.exe`; keep one shell per task and write paths/escaping for that shell (same for the main session and subagents).
+
 Deviating from the above constraints is considered a violation and will be flagged during review.
 
 ### 10-Agent System Overview
@@ -135,7 +137,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.3.4). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.3.5). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 

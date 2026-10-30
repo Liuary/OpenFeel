@@ -67,3 +67,5 @@ description: Agent 工具使用规范（todowrite/question/task/skill 四工具�
 | `skill` | `Skill` | 技能加载 |
 | `task` | `Task` | 子 Agent 调度 |
 | `question` | `AskUserQuestion` | 向用户提问 |
+
+> **命令执行工具选择（Windows）**：优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS / Linux 用 `bash`；默认不用 `cmd.exe`。同一任务内保持同一 shell，路径与转义按该 shell 书写。DSH 侧同名工具为 `bash` / `pwsh`（宿主未提供 `bash` 时才用 `pwsh`）。

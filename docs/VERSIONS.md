@@ -9,6 +9,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.3.5** — Unified shell-tool guidance: on Windows prefer `bash` (Git Bash), then `pwsh` (PowerShell 7); macOS/Linux use `bash`; avoid defaulting to `cmd.exe`. Added to the DSH Feel system prompt and the OpenFeel global constraint templates (`agents-md` / `claude` constraint / `openfeel-tool-usage` skill).
 - **v1.3.4** — Distribution-chain fixes: the DSH `feel_flow review_add` now forwards `--stage` (stage-level REVs work without ops); `openfeel setup --check` gains a `restart-required` state (adapter fingerprint deployed vs loaded) so upgrades no longer loop; `setup --tools dsh` now refreshes `update_state.json` even when profiles are already up to date.
 - **v1.3.3** — Fast-mode structural fixes from field feedback: stage-level review entries (`flow review add --stage`) so reviews work without ops; rework edge `review_passed → exec_running` (`flow advance --reason`); risk-tiered write guard (new files in an uninitialized workspace, `docs/**` and doc/note paths allowed; source still requires `exec_running`); `plan stage add` focuses atomically; status.md becomes a derived view; stage-ID ↔ plan-directory mapping documented.
 - **v1.3.2** — DSH activation + write guard: `ctx.tools.guard()` denies `edit` / `write` / `apply_patch` / `str_replace_editor`; non-OpenFeel workspaces get a bootstrap prompt, and `enforce=always` blocks writes until `openfeel init` (`project` / `off` opt-out).
@@ -19,6 +20,13 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.3.5 — 统一 shell 工具推荐（Windows：Git Bash → PowerShell 7）
+
+- **推荐口径**：Windows 下优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS / Linux 使用 `bash`；默认不用 `cmd.exe`；同一任务内保持同一 shell，路径与转义按该 shell 书写。
+- **落点**：① DSH Feel 系统提示（`<feel_mode>` 中文/英文各新增「命令执行」节）；② OpenFeel 全局约束模板（`agents-md` 与 `claude/constraint` 的跨 Agent 工具使用约束第 5 条）；③ `openfeel-tool-usage` skill 的工具名映射表注记。
+- **边界**：仅提示与文档层；不改任何 CLI 命令、相位机、写入门禁或审查/归档语义。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup`（刷新全局约束）→ **完全退出并重启宿主**（DSH 的 host module 不热加载）。详见 [CHANGELOG](../CHANGELOG.md#135---2026-10-30)。
 
 ## v1.3.4 — 分发链路修复（适配器透传 / setup --check 三态 / 部署标记）
 

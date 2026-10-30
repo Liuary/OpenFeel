@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-30T12:14:48.772Z",
-    "revision": 1399,
+    "updated": "2026-10-30T12:15:39.451Z",
+    "revision": 1410,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -21,193 +21,20 @@
       "v1.2.0",
       "v1.3.0",
       "v1.3.1",
-      "v1.3.2"
+      "v1.3.2",
+      "v1.3.3"
     ]
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.3.3-stage-104",
-      "op": "op-001"
+      "stage": "",
+      "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.3.3-stage-104": {
-      "name": "v1.3.3-stage-104",
-      "phase": "archiving",
-      "status": "archiving",
-      "deps": [],
-      "ops": {
-        "op-001": {
-          "title": "门禁风险分层：bootstrap 新增放行 + doc/note 不绑相位 + 归档 git 告警（P0-1/P0-4/P2-1）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-002": {
-          "title": "审查挂载点与返工边：review add 免 op 挂 stage + review_passed→exec_running（P0-2/P0-3）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-003": {
-          "title": "聚焦与单一真源：stage add 原子聚焦 + flow next 派生 + status.md 派生写 + deps 序列化（P1-1/P1-2）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-004": {
-          "title": "模板/配置/档位一致性：默认 schema + change 可选 + 双开关校验 + 档位回显（P1-3/P1-4/P1-5）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-005": {
-          "title": "体验口径：阶段 ID 归一化文档 + 目录映射对账 + init 目录惰性化（P2-2/P2-3/P2-4）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        },
-        "op-006": {
-          "title": "v1.3.3 版本收口：全量门禁 + 复现脚本验收 + 文档/CHANGELOG/版本载体 + 归档（最终 op）",
-          "state": "pending",
-          "assignee": "openfeel-executor",
-          "attempts": 0,
-          "max_attempts": 3,
-          "checkpoints": {
-            "plan": "pending",
-            "scheme": "pending",
-            "exec": {
-              "attempts": 0,
-              "self": "pending"
-            },
-            "review": "pending",
-            "test": "pending"
-          }
-        }
-      },
-      "workflow_mode": "full",
-      "requirement_id": "REQ-005",
-      "stats": {
-        "start_time": "2026-10-30T11:42:24.672Z",
-        "end_time": "",
-        "duration_ms": 0
-      }
-    }
-  },
-  "reviews": [
-    {
-      "id": "REV-001",
-      "op": "v1.3.3-stage-104.op-002",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "计划审查 B1~B4 / L1~L6 吸收记录（stage-104 计划轮）",
-      "filed_by": "cli",
-      "filed_at": "2026-10-30T11:52:58.184Z",
-      "canAutoFix": false,
-      "blocking": false
-    },
-    {
-      "id": "REV-002",
-      "op": "v1.3.3-stage-104.op-001",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "代码审查：写入门禁 docs 范围与 bootstrap 越界（已修）",
-      "filed_by": "cli",
-      "filed_at": "2026-10-30T12:13:20.460Z",
-      "canAutoFix": false,
-      "blocking": false
-    },
-    {
-      "id": "REV-003",
-      "op": "v1.3.3-stage-104.op-002",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "代码审查：done 门复用 reviewStageOf 单点归属（已修）",
-      "filed_by": "cli",
-      "filed_at": "2026-10-30T12:13:20.788Z",
-      "canAutoFix": false,
-      "blocking": false
-    },
-    {
-      "id": "REV-004",
-      "op": "v1.3.3-stage-104.op-003",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "代码审查：status.md 派生写早于 save 的半写窗口（非阻塞，health --fix 可回收）",
-      "filed_by": "cli",
-      "filed_at": "2026-10-30T12:13:21.104Z",
-      "canAutoFix": false,
-      "blocking": false
-    },
-    {
-      "id": "REV-005",
-      "op": "v1.3.3-stage-104.op-001",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "代码审查：.md 模板源按文档放行（口径确认，ADAPTER/文档已明示）",
-      "filed_by": "cli",
-      "filed_at": "2026-10-30T12:13:21.437Z",
-      "canAutoFix": false,
-      "blocking": false
-    }
-  ],
+  "stages": {},
+  "reviews": [],
   "log": [
     {
       "time": "2026-07-09T15:31:43.834Z",
@@ -2434,15 +2261,6 @@
       }
     },
     {
-      "time": "2026-10-30T11:41:09.124Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-10-30T11:41:10.833Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -2452,200 +2270,99 @@
       }
     },
     {
-      "time": "2026-10-30T11:42:24.672Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
+      "time": "2026-10-30T12:15:06.434Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+        "opId": "v1.3.3-stage-104.op-001",
+        "attempts": 1
       }
     },
     {
-      "time": "2026-10-30T11:45:09.877Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
+      "time": "2026-10-30T12:15:06.772Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "opId": "v1.3.3-stage-104.op-002",
+        "attempts": 1
       }
     },
     {
-      "time": "2026-10-30T11:45:13.658Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
+      "time": "2026-10-30T12:15:07.085Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "plan_passed",
-        "to": "scheme_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "opId": "v1.3.3-stage-104.op-003",
+        "attempts": 1
       }
     },
     {
-      "time": "2026-10-30T11:45:17.552Z",
-      "agent": "cli",
-      "action": "register_op",
+      "time": "2026-10-30T12:15:07.418Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "opId": "op-001"
+        "opId": "v1.3.3-stage-104.op-004",
+        "attempts": 1
       }
     },
     {
-      "time": "2026-10-30T11:45:17.886Z",
-      "agent": "cli",
-      "action": "register_op",
+      "time": "2026-10-30T12:15:07.735Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "opId": "op-002"
+        "opId": "v1.3.3-stage-104.op-005",
+        "attempts": 1
       }
     },
     {
-      "time": "2026-10-30T11:45:18.217Z",
-      "agent": "cli",
-      "action": "register_op",
+      "time": "2026-10-30T12:15:08.069Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "opId": "op-003"
+        "opId": "v1.3.3-stage-104.op-006",
+        "attempts": 1
       }
     },
     {
-      "time": "2026-10-30T11:45:18.559Z",
+      "time": "2026-10-30T12:15:15.531Z",
       "agent": "cli",
-      "action": "register_op",
+      "action": "archive_flow_version",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "opId": "op-004"
+        "version": "v1.3.3",
+        "stages": 1,
+        "reviews": 5,
+        "log": 20
       }
     },
     {
-      "time": "2026-10-30T11:45:18.896Z",
+      "time": "2026-10-30T12:15:33.201Z",
       "agent": "cli",
-      "action": "register_op",
+      "action": "requirement_status",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "opId": "op-005"
+        "id": "REQ-005",
+        "from": "draft",
+        "to": "scheduled"
       }
     },
     {
-      "time": "2026-10-30T11:45:19.227Z",
+      "time": "2026-10-30T12:15:33.493Z",
       "agent": "cli",
-      "action": "register_op",
+      "action": "requirement_status",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "opId": "op-006"
+        "id": "REQ-005",
+        "from": "scheduled",
+        "to": "in_progress"
       }
     },
     {
-      "time": "2026-10-30T11:46:42.609Z",
+      "time": "2026-10-30T12:15:39.451Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "requirement_update",
       "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "scheme_pending",
-        "to": "scheme_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T11:47:25.968Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "scheme_review",
-        "to": "scheme_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T11:47:28.281Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "scheme_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T12:13:39.556Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T12:13:41.439Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T12:13:44.435Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "review_passed",
-        "to": "test_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T12:13:57.700Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "test_pending",
-        "to": "test_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T12:14:45.693Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "from": "test_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T12:14:48.772Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.3.3-stage-104",
-        "opsCount": 6,
-        "reviewsCount": 5,
-        "knowledgeCount": 5,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.3.3-stage-104.md"
+        "id": "REQ-005",
+        "fields": [
+          "workflow_mode"
+        ]
       }
     }
   ],
@@ -2703,12 +2420,12 @@
     {
       "id": "REQ-005",
       "title": "修复 fast 模式 12 项非预期拒绝：审查挂载点 / 返工边 / 写入门禁 / 状态单一真源，发布 1.3.3",
-      "status": "draft",
+      "status": "in_progress",
       "created_at": "2026-10-30T11:41:03.086Z",
-      "updated_at": "2026-10-30T11:41:06.850Z",
+      "updated_at": "2026-10-30T12:15:39.451Z",
       "target_version": "v1.3.3",
       "priority": "P0",
-      "workflow_mode": "full",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-005.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-30T11:41:06.850Z"

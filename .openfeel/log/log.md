@@ -2,6 +2,12 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-30-Liuary-012.md](2026/10/30/2026-10-30-Liuary-012.md) | Liuary | v1.3.3-stage-104.op-006 执行通过 |
+| [2026-10-30-Liuary-011.md](2026/10/30/2026-10-30-Liuary-011.md) | Liuary | v1.3.3-stage-104.op-005 执行通过 |
+| [2026-10-30-Liuary-010.md](2026/10/30/2026-10-30-Liuary-010.md) | Liuary | v1.3.3-stage-104.op-004 执行通过 |
+| [2026-10-30-Liuary-009.md](2026/10/30/2026-10-30-Liuary-009.md) | Liuary | v1.3.3-stage-104.op-003 执行通过 |
+| [2026-10-30-Liuary-008.md](2026/10/30/2026-10-30-Liuary-008.md) | Liuary | v1.3.3-stage-104.op-002 执行通过 |
+| [2026-10-30-Liuary-007.md](2026/10/30/2026-10-30-Liuary-007.md) | Liuary | v1.3.3-stage-104.op-001 执行通过 |
 | [2026-10-30-Liuary-006.md](2026/10/30/2026-10-30-Liuary-006.md) | Liuary | 阶段 v1.3.3-stage-104 完成 |
 | [2026-10-30-Liuary-005.md](2026/10/30/2026-10-30-Liuary-005.md) | Liuary | v1.3.3-stage-104.op-001 review_added |
 | [2026-10-30-Liuary-004.md](2026/10/30/2026-10-30-Liuary-004.md) | Liuary | v1.3.3-stage-104.op-003 review_added |
@@ -26,12 +32,6 @@
 | [2026-10-17-Liuary-017.md](2026/10/17/2026-10-17-Liuary-017.md) | Liuary | 阶段 v1.2.2-stage-97 完成 |
 | [2026-10-17-Liuary-016.md](2026/10/17/2026-10-17-Liuary-016.md) | Archiver | **v1.2.2 第三阶段 — stage-97 归档完成（读命令 `--json` 全量补全）**：13 个读命令面 + `archive <stage>` 新增 **14 个成功出口（#20~#33）**（`stage status` 双形态 / `flow recover` / `checkpoint list` / `flow log` / `project overview` / `knowledge search·list·index·dedup` / `config get·effective` / `view list` / `plan scheme list` / `archive` 6 键）+ `req list` 末位 `linkedStages`/`progress`（`listLinkedStages` 聚合单点，`computeRequirementAggregate` 内部复用）+ `flow archive` 判据明细三键（`eligible`/`unfinishedStages`/`blockingReviews`；legacy 键序保留、`errorKind` 恒末位、`--dry-run` 零写盘）+ 新 `--json` 失败路径接入 stage-95 envelope；契约 **33 成功出口 / 34 注册选项**（源码 / 契约 §7 / 冻结测试 `#1~#33` 三处对齐）。4 ops 恒串行；门禁 **74 文件 / 1894 用例** 0 skipped / 0 failed（基线 1809，+85）、`tsc` 0、`lint i18n` **983**（+14）、`lint kb` **0 过期 / 614 引用**、build ×2 幂等、`--version`=1.2.1（归 stage-98）；审查 **passed**（REV-97-001~006 闭环）；验收 **必验 8/8、Bug 0**；知识沉淀 **3 条**（architecture 1 + patterns 2；去重最高 7.5%）；manual `cli/commands.md` + `core/flow-manager.md` + `core/req.md` + `index.md`；roadmap/plan 回填（M51 done）。**未推进 flow 至 done（由 Feel 执行）／未 commit／未 push／未 publish** |
 | [2026-10-17-Liuary-015.md](2026/10/17/2026-10-17-Liuary-015.md) | Liuary | v1.2.2-stage-97.op-004 执行通过 |
-| [2026-10-17-Liuary-014.md](2026/10/17/2026-10-17-Liuary-014.md) | Liuary | v1.2.2-stage-97.op-003 执行通过 |
-| [2026-10-17-Liuary-013.md](2026/10/17/2026-10-17-Liuary-013.md) | Liuary | v1.2.2-stage-97.op-002 执行通过 |
-| [2026-10-17-Liuary-012.md](2026/10/17/2026-10-17-Liuary-012.md) | Liuary | v1.2.2-stage-97.op-001 执行通过 |
-| [2026-10-17-Liuary-011.md](2026/10/17/2026-10-17-Liuary-011.md) | Liuary | 阶段 v1.2.2-stage-96 完成 |
-| [2026-10-17-Liuary-010.md](2026/10/17/2026-10-17-Liuary-010.md) | Archiver | **v1.2.2 第二阶段 — stage-96 归档完成（调度决策权威：`flow next` 与阶段调度属性）**：新增只读 `flow next [--json]`（12 键固定序：`responsibleAgent` / `legalNextPhases` / `suggestedCommand` / `guards` / `blockingReviews` / `workflowMode` / `reviewTier` / `effectiveReviewTier`；空态「全 `null` + `responsibleAgent='feel'` + `guards=[noActiveStage]`」；只读零写盘）+ `flow status --json.stages[]` 五调度属性（既有 5 字段逐字不变）+ `flow phases --json` 展示/生效档位消歧（既有 7 键不变，末位 +2）；**决策三单点**（`getResponsibleAgent` 委托 `mapPhaseToAgent` / `listStageBlockingOpenReviews` 阶段域谓词 / `DEFAULT_EFFECTIVE_REVIEW_TIER`），`src/commands` 零 `mapPhaseToAgent`，核心层纯增量 +26 行；契约 **19 成功出口（flow 12）/ 20 注册选项**。3 ops 恒串行；门禁 **74 文件 / 1809 用例** 0 skipped / 0 failed（+30）、`tsc` 0、`lint i18n` **969**（+19）、`lint kb` **0 过期 / 604 引用**、build ×2 幂等、`--version`=1.2.1；审查 **passed**（REV-96-001~008 全闭环）；验收 **必验 8/8、Bug 0**；知识沉淀 **3 条**（architecture 1 + patterns 2）；manual `cli/commands.md` + `core/flow-manager.md` + `index.md`；roadmap/plan 回填（M50 done）。**未推进 flow 至 done（由 Feel 执行）／未 commit／未 push／未 publish** |
-| [2026-10-17-Liuary-009.md](2026/10/17/2026-10-17-Liuary-009.md) | Liuary | v1.2.2-stage-96.op-003 执行通过 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-30T13:38:10.540Z",
-    "revision": 1425,
+    "updated": "2026-10-30T13:38:21.512Z",
+    "revision": 1429,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -22,47 +22,20 @@
       "v1.3.0",
       "v1.3.1",
       "v1.3.2",
-      "v1.3.3"
+      "v1.3.3",
+      "v1.3.4"
     ]
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.3.4-stage-105",
+      "stage": "",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.3.4-stage-105": {
-      "name": "v1.3.4-stage-105",
-      "phase": "done",
-      "status": "done",
-      "deps": [],
-      "ops": {},
-      "workflow_mode": "fast",
-      "requirement_id": "REQ-006",
-      "stats": {
-        "start_time": "2026-10-30T13:28:48.351Z",
-        "end_time": "2026-10-30T13:38:10.516Z",
-        "duration_ms": 562165
-      }
-    }
-  },
-  "reviews": [
-    {
-      "id": "REV-001",
-      "op": "v1.3.4-stage-105",
-      "stage": "v1.3.4-stage-105",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "代码自审：review_add 透传 / check 三态 / 部署标记（无 blocking；2009 单测 + 184 dsh + 三态 E2E 覆盖）",
-      "filed_by": "cli",
-      "filed_at": "2026-10-30T13:37:57.844Z",
-      "canAutoFix": false,
-      "blocking": false
-    }
-  ],
+  "stages": {},
+  "reviews": [],
   "log": [
     {
       "time": "2026-07-09T15:31:43.834Z",
@@ -2422,15 +2395,6 @@
       }
     },
     {
-      "time": "2026-10-30T13:28:28.978Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-10-30T13:28:43.213Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -2440,98 +2404,45 @@
       }
     },
     {
-      "time": "2026-10-30T13:28:48.349Z",
+      "time": "2026-10-30T13:38:11.716Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "archive_flow_version",
       "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+        "version": "v1.3.4",
+        "stages": 1,
+        "reviews": 1,
+        "log": 9
       }
     },
     {
-      "time": "2026-10-30T13:28:52.642Z",
+      "time": "2026-10-30T13:38:20.891Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "requirement_status",
       "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "id": "REQ-006",
+        "from": "draft",
+        "to": "scheduled"
       }
     },
     {
-      "time": "2026-10-30T13:28:55.975Z",
+      "time": "2026-10-30T13:38:21.203Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "requirement_status",
       "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "id": "REQ-006",
+        "from": "scheduled",
+        "to": "in_progress"
       }
     },
     {
-      "time": "2026-10-30T13:37:50.790Z",
+      "time": "2026-10-30T13:38:21.512Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "requirement_update",
       "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T13:38:00.747Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T13:38:03.817Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-30T13:38:07.223Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "opsCount": 0,
-        "reviewsCount": 1,
-        "knowledgeCount": 1,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.3.4-stage-105.md"
-      }
-    },
-    {
-      "time": "2026-10-30T13:38:10.509Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.3.4-stage-105",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "id": "REQ-006",
+        "fields": [
+          "workflow_mode"
+        ]
       }
     }
   ],
@@ -2602,12 +2513,12 @@
     {
       "id": "REQ-006",
       "title": "1.3.4：修复适配器 review_stage 透传、setup --check 三态化与部署版本标记，发布 1.3.4",
-      "status": "draft",
+      "status": "in_progress",
       "created_at": "2026-10-30T13:28:25.439Z",
-      "updated_at": "2026-10-30T13:28:28.629Z",
+      "updated_at": "2026-10-30T13:38:21.512Z",
       "target_version": "v1.3.4",
       "priority": "P0",
-      "workflow_mode": "fast",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-006.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-30T13:28:28.629Z"

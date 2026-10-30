@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-30T15:01:51.910Z",
-    "revision": 1464,
+    "updated": "2026-10-30T15:01:56.494Z",
+    "revision": 1468,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -2573,6 +2573,47 @@
         "reviews": 1,
         "log": 9
       }
+    },
+    {
+      "time": "2026-10-30T15:01:55.586Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-008",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:55.899Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-008",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:56.195Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-008",
+        "fields": [
+          "workflow_mode"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-30T15:01:56.494Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-008",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2668,12 +2709,12 @@
     {
       "id": "REQ-008",
       "title": "写入门禁分层：静态展示资源与 doc 同等放行 + chore 微变更通道，发布 1.4.0",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-30T14:53:04.501Z",
-      "updated_at": "2026-10-30T14:53:07.695Z",
+      "updated_at": "2026-10-30T15:01:56.494Z",
       "target_version": "v1.4.0",
       "priority": "P0",
-      "workflow_mode": "fast",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-008.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-30T14:53:07.695Z"

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-30T14:46:36.615Z",
-    "revision": 1445,
+    "updated": "2026-10-30T14:46:41.473Z",
+    "revision": 1449,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -2493,6 +2493,47 @@
         "reviews": 1,
         "log": 9
       }
+    },
+    {
+      "time": "2026-10-30T14:46:40.526Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-007",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-30T14:46:40.839Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-007",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-30T14:46:41.157Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-007",
+        "fields": [
+          "workflow_mode"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-30T14:46:41.473Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-007",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2575,12 +2616,12 @@
     {
       "id": "REQ-007",
       "title": "1.3.5：统一 shell 工具推荐（Windows 优先 Git Bash，其次 PowerShell 7），发布 1.3.5",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-30T14:40:42.175Z",
-      "updated_at": "2026-10-30T14:40:45.163Z",
+      "updated_at": "2026-10-30T14:46:41.473Z",
       "target_version": "v1.3.5",
       "priority": "P1",
-      "workflow_mode": "fast",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-007.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-30T14:40:45.163Z"

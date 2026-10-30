@@ -9,6 +9,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.3.4** — Distribution-chain fixes: the DSH `feel_flow review_add` now forwards `--stage` (stage-level REVs work without ops); `openfeel setup --check` gains a `restart-required` state (adapter fingerprint deployed vs loaded) so upgrades no longer loop; `setup --tools dsh` now refreshes `update_state.json` even when profiles are already up to date.
 - **v1.3.3** — Fast-mode structural fixes from field feedback: stage-level review entries (`flow review add --stage`) so reviews work without ops; rework edge `review_passed → exec_running` (`flow advance --reason`); risk-tiered write guard (new files in an uninitialized workspace, `docs/**` and doc/note paths allowed; source still requires `exec_running`); `plan stage add` focuses atomically; status.md becomes a derived view; stage-ID ↔ plan-directory mapping documented.
 - **v1.3.2** — DSH activation + write guard: `ctx.tools.guard()` denies `edit` / `write` / `apply_patch` / `str_replace_editor`; non-OpenFeel workspaces get a bootstrap prompt, and `enforce=always` blocks writes until `openfeel init` (`project` / `off` opt-out).
 - **v1.3.1** — DSH deploy hotfix: `setup --tools dsh` now runs `pnpm install` with `--no-frozen-lockfile`, so stale profile lockfiles no longer block deployment.
@@ -18,6 +19,14 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.3.4 — 分发链路修复（适配器透传 / setup --check 三态 / 部署标记）
+
+- **`feel_flow review_add` 透传 `--stage`**：DSH 适配器此前只透传 `--op`，导致 `feel_flow action=review_add --stage <id>` 始终报「请提供 --op 或 --stage」。v1.3.4 起 `op` / `stage` 二选一（皆缺 → `FEEL_BAD_USAGE`），fast 无 op 场景可直接在工具层挂阶段级 REV。
+- **`setup --check` 三态化**：新增 `restart-required`——区分「适配器文件旧」（`mismatch`，重跑 `setup`）与「文件已新但宿主仍加载旧适配器」（`restart-required`，只需**完全退出并重启宿主**）。检测方式：`setup` 把适配器 `lib/**` 指纹写入 `update_state.adapters.dsh`，适配器在宿主启动时把实际加载指纹写入 `~/.openfeel/adapter-host-dsh.json`，`check` 比对两者。
+- **部署版本标记修复**：`setup --tools dsh`（含「已是最新、跳过」分支）部署成功后刷新 `openfeel_version` / `last_update` 并写入 `adapters.dsh`，消除「setup 成功但 check 永远 mismatch」的死循环。
+- **兼容性**：`update_state.json` 仅追加可选 `adapters` 字段（旧文件零迁移）；`setup --check --json` 键集/键序不变（`status` 取值扩展）；CLI 相位机 / REV 语义 / 写入门禁不变。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup`（会刷新部署标记）→ **完全退出并重启宿主**；若 `setup --check` 报 `restart-required`，重启即可，无需重跑 `setup`。详见 [CHANGELOG](../CHANGELOG.md#134---2026-10-30)。
 
 ## v1.3.3 — fast 模式结构性修复（反馈 13 项）
 

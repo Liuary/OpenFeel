@@ -23,16 +23,32 @@ const FileStateSchema = z.object({
   status: z.enum(['clean', 'conflict']),
 });
 
+/**
+ * 适配器部署状态（v1.3.4，可选；用于 `setup --check` 区分
+ * 「文件旧」与「文件已新但宿主未重启」）。
+ */
+const AdapterStateSchema = z.object({
+  /** 部署时 CLI 版本 */
+  version: z.string(),
+  /** 适配器 `lib/` 目录指纹（见 core/adapter-hash.ts） */
+  hash: z.string(),
+  /** 部署时间（ISO） */
+  deployed_at: z.string(),
+});
+
 /** update_state.json 顶层 Schema */
 export const UpdateStateSchema = z.object({
   version: z.literal('1.0'),
   last_update: z.string(),
   openfeel_version: z.string(),
   files: z.record(z.string(), FileStateSchema),
+  /** 各 harness 适配器部署指纹（可选；旧 state 零迁移） */
+  adapters: z.record(z.string(), AdapterStateSchema).optional(),
 });
 
 export type UpdateState = z.infer<typeof UpdateStateSchema>;
 export type FileState = z.infer<typeof FileStateSchema>;
+export type AdapterState = z.infer<typeof AdapterStateSchema>;
 
 // ─── 常量 ────────────────────────────────────────────────────────────
 
@@ -212,6 +228,24 @@ export function updateFileHash(
   state.files[relativePath] = {
     hash: hashContent(content),
     status: 'clean',
+  };
+}
+
+/**
+ * 原地记录某 harness 适配器的部署指纹（v1.3.4）。
+ * 空 hash（读取失败）仍记录版本，宿主侧比对会自然落入 restart-required 分支。
+ */
+export function recordAdapterState(
+  state: UpdateState,
+  adapter: string,
+  version: string,
+  hash: string,
+): void {
+  state.adapters ??= {};
+  state.adapters[adapter] = {
+    version,
+    hash,
+    deployed_at: new Date().toISOString(),
   };
 }
 

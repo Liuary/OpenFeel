@@ -37,8 +37,12 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
     相位也可写；**混合目标从严**（任一源码 → 按源码规则）；
   - 源码（`src/**` 等）仍要求 `exec_running`；`pwsh` / `bash` 默认不守，是显式逃生通道；
   - `enforce=always`（默认）对非 OpenFeel 工作区也拦截，可用 `project` / `off` opt-out。
-- **审查归属**（v1.3.3）：REV 可挂 op（`stageId.op-xxx`）或挂 stage（`op = stageId`，无 op 的 fast 场景）；
+- **审查归属**（v1.3.3 / v1.3.4）：REV 可挂 op（`stageId.op-xxx`）或挂 stage（`op = stageId`，无 op 的 fast 场景）；
+  `feel_flow action=review_add` 的 `op` / `stage` 二选一透传（v1.3.4，两者皆无 → `FEEL_BAD_USAGE`）；
   stage 级 REV 参与 blocking 门，但**不参与** `flow attempt` / `flow retry`。
+- **宿主加载指纹**（v1.3.4）：`apply()` 启动时把适配器 `lib/` 指纹写入
+  `~/.openfeel/adapter-host-dsh.json`（`OPENFEEL_ADAPTER_HOST_PATH` 可覆盖，测试用）；
+  CLI `setup --check` 据此区分「文件旧」与「文件已新但宿主未重启」。
 
 ## 目录
 
@@ -50,11 +54,12 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 | `lib/adapters/cli.js` | CLI 执行器：可执行文件解析、UTF-8/无色/无日志、退出码与 envelope 语义 |
 | `lib/adapters/workspace.js` | 会话工作区 → OpenFeel 项目根 |
 | `lib/adapters/dashboard.js` | 状态快照（消费 `flow next --json`）+ 「下一步」决策 |
+| `lib/adapters/host-state.js` | 宿主启动标记：适配器 `lib/` 指纹写入 `~/.openfeel/adapter-host-dsh.json`（v1.3.4） |
 | `lib/tools/index.js` | 13 个工具与 CLI argv 翻译 |
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
 | `lib/surface/prompt.js` | `<feel_mode>` 系统提示段 |
-| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 83 + 46 + 10 = 181 断言） |
+| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 86 + 46 + 10 = 184 断言） |
 | `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证
@@ -62,7 +67,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 ```bash
 cd dsh
 node test/contract.js      # 42 — DSH schema 契约（真实 assertSupportedJsonSchema）
-node test/verify.js        # 83 — 行为（真实 CLI + 真实 .openfeel 副本）
+node test/verify.js        # 86 — 行为（真实 CLI + 真实 .openfeel 副本）
 node test/guard.js         # 46 — 写入门禁（fake ToolExecution + 临时工作区）
 node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载
 ```

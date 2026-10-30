@@ -644,8 +644,40 @@ async function main() {
     );
   });
 
-  await check('feel_req action=add 创建需求', async () => {
-    const result = await workspace.tools.get('feel_req').execute(
+  // v1.3.4：review_add 必须能挂阶段级 REV（fast 无 op 场景）
+  await check('feel_flow review_add 透传 --stage（v1.3.4）', async () => {
+    const result = await workspace.tools.get('feel_flow').execute(
+      { action: 'review_add', stage: fixtureStage, title: 'verify stage-level REV' },
+      tempExec,
+    );
+    const data = ok(result);
+    assert(/REV-\d+/.test(String(data.output)), `review_add --stage 应返回 REV，实际: ${data.output}`);
+    assert(String(data.output).includes(fixtureStage), '输出应包含阶段 ID');
+  });
+
+  await check('feel_flow review_add 缺 op/stage → FEEL_BAD_USAGE', async () => {
+    /** @type {any} */
+    let error;
+    try {
+      await workspace.tools.get('feel_flow').execute({ action: 'review_add', title: 'x' }, tempExec);
+    } catch (caught) {
+      error = caught;
+    }
+    assert(error !== undefined, '缺 op/stage 应抛错');
+    assert(error.code === 'FEEL_BAD_USAGE', `code 应为 FEEL_BAD_USAGE，实际 ${error.code}`);
+  });
+
+  await check('feel_flow review_add 旧 --op 路径零回归', async () => {
+    // 使用副本中真实存在的 op（feel_op create 已建 op-001）
+    const result = await workspace.tools.get('feel_flow').execute(
+      { action: 'review_add', op: `${fixtureStage}.op-001`, title: 'verify op-level REV' },
+      tempExec,
+    );
+    const data = ok(result);
+    assert(/REV-\d+/.test(String(data.output)), `review_add --op 应返回 REV，实际: ${data.output}`);
+  });
+
+  await check('feel_req action=add 创建需求', async () => {    const result = await workspace.tools.get('feel_req').execute(
       { action: 'add', title: '适配器验证需求', target_version: 'v9.9.9' },
       tempExec,
     );

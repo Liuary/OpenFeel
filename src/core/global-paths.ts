@@ -55,6 +55,14 @@ export function getGlobalUpdateInfosPath(): string {
   return join(homedir(), '.openfeel', 'update_infos.md');
 }
 
+/**
+ * 宿主已加载适配器标记路径（~/.openfeel/adapter-host-dsh.json，v1.3.4）。
+ * 由 DSH 适配器在 `apply()`（宿主启动）时 best-effort 写入，`setup --check` 只读比对。
+ */
+export function getGlobalAdapterHostPath(): string {
+  return join(homedir(), '.openfeel', 'adapter-host-dsh.json');
+}
+
 /** 全局 auth.json 路径（opencode 适配器：~/.local/share/opencode/auth.json；模型 provider 校验依据，REV-1505） */
 export function getAuthJsonPath(): string {
   return join(homedir(), '.local', 'share', 'opencode', 'auth.json');

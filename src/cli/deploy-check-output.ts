@@ -48,7 +48,7 @@ export function emitGlobalDeployCheck(options?: DeployCheckOutputOptions): void 
     const check = options?.check ?? checkGlobalDeployment;
     const result = check();
     // ok / unknown → 静默（unknown 避免 Schema 演进误报，R-4）
-    if (result.status !== 'mismatch' && result.status !== 'missing') {
+    if (result.status !== 'mismatch' && result.status !== 'missing' && result.status !== 'restart-required') {
       return;
     }
     const lang = options?.lang ?? getCliLang(process.cwd());
@@ -57,6 +57,13 @@ export function emitGlobalDeployCheck(options?: DeployCheckOutputOptions): void 
         t('update.globalStaleWarnTmpl', lang, {
           deployed: result.deployedVersion ?? '?',
           cli: result.cliVersion,
+        }) + '\n',
+      );
+    } else if (result.status === 'restart-required') {
+      process.stderr.write(
+        t('update.globalRestartRequiredWarnTmpl', lang, {
+          deployed: result.deployedVersion ?? '?',
+          loadedAt: result.adapter?.startedAt ?? '?',
         }) + '\n',
       );
     } else {

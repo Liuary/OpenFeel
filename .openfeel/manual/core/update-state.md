@@ -20,6 +20,7 @@
 | `createGlobalUpdateState(files)` | 组装初始全局 state（不触碰文件系统） |
 | `updateFileHash(state, path, content)` | 原地更新文件 hash，status=clean |
 | `markFileConflict(state, path)` | 原地标记文件 status=conflict |
+| `recordAdapterState(state, adapter, version, hash)` | **v1.3.4** 原地记录 harness 适配器部署指纹（`adapters[adapter] = { version, hash, deployed_at }`），供 `setup --check` 判定 restart-required |
 | `isLegacyFrameworkKey(key)` | 检测 key 是否为「旧框架 key」（`.opencode/` 或 `.opencode\` 前缀——即 **opencode 适配器**的 legacy 项目目录，兼容 Windows 反斜杠），供 migrate 拆分重键识别 |
 
 ## 数据结构
@@ -42,6 +43,7 @@
 - `last_update`：最近一次 update 的 ISO 时间戳
 - `openfeel_version`：写入时的工具版本号
 - `files`：受管文件的 {相对路径 → {hash, status}} 映射
+- `adapters`（**v1.3.4，可选**）：`{ [harness]: { version, hash, deployed_at } }`。`hash` = 适配器 `lib/**` 指纹（见 `core/adapter-hash.ts` 与 `dsh/lib/adapters/host-state.js` 的同算法）；旧 state 无此字段仍合法（零迁移）。
 - `status` 枚举：`clean`（工具管理，无用户修改）| `conflict`（用户修改，拒绝覆盖）
 
 ## 降级策略
@@ -86,3 +88,4 @@ src/commands/update.ts （命令层）
 | v1.0.0-stage-32 | 2026-08-11 | 初始创建，含 hash 追踪 + 冲突标记 + Schema 校验 |
 | v1.1.0-stage-37 | 2026-09-25 | 双 state：新增 `loadGlobalUpdateState` / `saveGlobalUpdateState` / `createGlobalUpdateState`（全局 `~/.openfeel/update_state.json`）；全局 state 加锁 + 原子写；全局资产 key 用绝对路径 |
 | v1.1.0-stage-39 | 2026-09-25 | 新增 `isLegacyFrameworkKey`：识别旧项目 state 的 `.opencode/...` 旧框架 key，供 `openfeel migrate` 拆分重键（识别需移入全局 state 的框架条目）复用 |
+| v1.3.4-stage-105 | 2026-10-30 | Schema 追加可选 `adapters`（适配器部署指纹）+ `recordAdapterState`；`setup --tools dsh` 部署成功（含已是最新分支）刷新 `openfeel_version` 并写入 `adapters.dsh`，供 `setup --check` 三态判定 |

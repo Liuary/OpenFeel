@@ -59,6 +59,11 @@ Windows 上的 `openfeel.cmd` 垫片。
 
 > ⚠️ **改完插件代码需重启 DSH 宿主**。Loader 按 URL 缓存 ESM 模块，重新
 > enable bundle 不会重新导入已加载的模块代码。
+>
+> **v1.3.4**：适配器在宿主启动时把「已加载适配器指纹」写入
+> `~/.openfeel/adapter-host-dsh.json`；`openfeel setup --check` 据此区分
+> **文件旧**（`mismatch`，重跑 `setup`）与**文件已新但宿主未重启**（`restart-required`，只需完全重启宿主）。
+> 看到 `restart-required` 时**不要**再重复 `setup`（那会形成死循环）。
 
 ---
 
@@ -94,7 +99,7 @@ Windows 上的 `openfeel.cmd` 垫片。
 |---|---|---|
 | `feel_status` | `flow next --json`（权威）→ 失败回退 `flow status --json` + `flow mode --json`（+`req list --json`） | **状态快照**：宏观相位、每阶段相位、模式与来源、合法下一相位、负责 Agent、审查档位、守卫、阻塞审查 |
 | `feel_next` | 同上快照的派生决策（`flow next --json` 字段直出） | **该谁做**：负责 Agent、合法下一相位、建议命令、守卫、阻塞审查、推荐工具调用、`[HANDOFF: agent]` 标记 |
-| `feel_flow` | `flow advance/current/overview/phases/mode/log/metrics/retry/repair/migrate/review_*` | 流水线推进与审查条目 |
+| `feel_flow` | `flow advance/current/overview/phases/mode/log/metrics/retry/repair/migrate/review_*` | 流水线推进与审查条目（`review_add` 的 `op` / `stage` 二选一，v1.3.4） |
 | `feel_stage` | `plan stage add/list`、`stage status/set/task`、`flow stage set/reset/remove` | 阶段与 `status.md` |
 | `feel_op` | `flow ops list`、`plan scheme create/publish/rename/remove/register`、`flow attempt/retry` | 操作方案与执行结果 |
 | `feel_req` | `req add/list/show/board/next/claim/release/set/link/advance/split` | 需求分发（7 状态） |
@@ -219,7 +224,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 ```powershell
 cd plugin
 node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（42 项）
-node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（83 项）
+node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（86 项）
 node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（36 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（10 项）
 ```

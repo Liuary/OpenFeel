@@ -22,8 +22,13 @@
  * @module openfeel-dsh
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { FeelCli } from './adapters/cli.js';
 import { resolveWorkspace } from './adapters/workspace.js';
+import { writeHostMarker } from './adapters/host-state.js';
 import { createOpenFeelGuard } from './guard.js';
 import { createFeelCommandHandler } from './surface/command.js';
 import { FEEL_PROMPT_NAME, FEEL_PROMPT_ORDER, renderBootstrapPrompt, renderFeelPrompt } from './surface/prompt.js';
@@ -110,6 +115,22 @@ function currentAgent(ctx) {
  */
 export function apply(ctx, rawConfig) {
   const config = normalizeConfig(rawConfig);
+
+  // v1.3.4：记录「本宿主实际加载的适配器指纹」，供 `openfeel setup --check` 区分
+  // 「文件旧」与「文件已新但宿主未重启」。best-effort：失败不影响挂载。
+  try {
+    const adapterRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+    let adapterVersion = '0.0.0';
+    try {
+      const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+      if (typeof pkg.version === 'string' && pkg.version !== '') adapterVersion = pkg.version;
+    } catch {
+      /* package.json 不可读时保持占位版本 */
+    }
+    writeHostMarker({ adapterRoot, version: adapterVersion });
+  } catch {
+    /* 标记写入失败 → CLI check 会提示 restart-required，可操作，不阻塞 */
+  }
   const log = typeof ctx.logger === 'function'
     ? ctx.logger('openfeel-dsh')
     : {

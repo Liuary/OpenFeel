@@ -1,6 +1,6 @@
 # OpenFeel 用户入门指南
 
-> 适用版本：**v1.3.3 快照** | 更新日期：2026-10-30 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
+> 适用版本：**v1.3.4 快照** | 更新日期：2026-10-30 ｜ 命令细节以 `openfeel <cmd> --help` 实时输出为准
 >
 > ⚠️ 本文示例命令 `openfeel <cmd>` 为**安装后的一般使用者用法**；若在**本仓库源码**中开发/执行，请改用 `node bin/openfeel.js <cmd>`（全局 `openfeel` 可能命中旧版，请以 `openfeel --version` 实测为准）。
 
@@ -111,6 +111,8 @@ openfeel flow phases --mode fast                        # 按指定模式查看�
 > **默认自动推进开启（v1.1.7 起）**：新部署的 `config.yaml` 默认 `auto_advance: enabled`；如需关闭，执行 `openfeel config set auto_advance disabled`，或在创建阶段时显式传 `--auto-advance disabled`。
 
 > **fast 模式修复（v1.3.3）**：① `plan stage add` 后自动聚焦活跃阶段（`flow next` 无需再 `advance`）；② fast 新增返工边 `review_passed → exec_running`（`flow advance --reason "<整改原因>"` 记审计），审查通过后发现问题可直接返工，不再需要 `reset` / `--force`；③ 无 op 的 fast 阶段可用 `flow review add --stage <id>` 挂阶段级 REV；④ 写入门禁按风险分层——空工作区的**新增文件**、`docs/**` 与文档类扩展在非执行相位也可写（源码仍要求 `exec_running`）；⑤ `execution_mode=auto` + `auto_advance=disabled` 的静默无效组合会在 `flow advance` / `flow next` 告警；⑥ `flow advance` 回显本次生效的审查档位。
+
+> **分发链路修复（v1.3.4）**：升级 CLI 后请执行 `openfeel setup` 刷新部署标记，然后**完全退出并重启 harness**（重载后端不替换 host module）。若 `openfeel setup --check` 返回 `restart-required`，说明文件已新、宿主仍是旧模块——**重启宿主即可，不要重复 setup**。DSH 用户：`feel_flow action=review_add --stage <id>` 现已可用。
 
 > **存量项目升级迁移（v1.1.7 起）**：若项目 `config.yaml` 未设置 `defaults.workflow_mode`（v1.1.7 之前创建的项目），升级后**新建阶段的骨架初值回落内置默认 `fast`**；既有阶段的 `status.md` 若无「工作流模式」字段，其模式解析同样按级联回落 `fast`（无感行为变更）。希望保持完整流程的存量项目，建议执行：
 >

@@ -13,21 +13,23 @@
 
 | 函数 | 功能 |
 |------|------|
-| `checkGlobalDeployment({ currentVersion? })` | 只读四态检测，返回 `DeployCheckResult`（`status` / `cliVersion` / `deployedVersion`）；`currentVersion` 仅测试注入用，缺省 `getOpenfeelVersion()` |
+| `checkGlobalDeployment({ currentVersion? })` | 只读检测，返回 `DeployCheckResult`（`status` / `cliVersion` / `deployedVersion` / 可选 `adapter`）；`currentVersion` 仅测试注入用，缺省 `getOpenfeelVersion()` |
 | `shouldRunDeployCheck({ argv, isTTY, env, alreadyWarned })` | 纯函数门控，`true` = 允许被动提示，`false` = 静默；无 IO、可纯测 |
-| `emitGlobalDeployCheck(options?)` | （`src/cli/deploy-check-output.ts`）运行期适配器：组装上下文 → 门控 → 检测 → **仅 stderr** 渲染 `mismatch`/`missing`；异常全捕获静默；每进程一次；不改退出码、不写盘 |
+| `emitGlobalDeployCheck(options?)` | （`src/cli/deploy-check-output.ts`）运行期适配器：组装上下文 → 门控 → 检测 → **仅 stderr** 渲染 `mismatch` / `missing` / `restart-required`；异常全捕获静默；每进程一次；不改退出码、不写盘 |
 
-## DeployCheckResult（四态）
+## DeployCheckResult（v1.3.4 五态）
 
 | 状态 | 触发条件 | `setup --check` 退出码 | 被动提示 |
 |------|----------|:--:|:--:|
-| `ok` | 已部署版本 == CLI 版本 | 0 | 静默 |
+| `ok` | 已部署版本 == CLI 版本；若存在 `adapters.dsh` 还要求宿主加载指纹 == 部署指纹 | 0 | 静默 |
 | `mismatch` | 已部署版本 != CLI 版本（含**降级**：部署版本 > CLI） | 1 | 提示 |
+| `restart-required` | 版本一致、有 `adapters.dsh`，但宿主 marker 缺失或 `loaded_hash` ≠ 部署 `hash`（**文件已新、宿主未重启**） | 1 | 提示（文案要求完全重启宿主，不指引重跑 setup） |
 | `missing` | 全局 state 文件缺失（`existsSync` 判定，尚未 `setup`） | 1 | 提示 |
 | `unknown` | state 存在但 Schema 非法/解析失败/读取异常（权限/占用/EISDIR） | 1 | 静默 |
 
 - **`missing` 与 `unknown` 必须分离**：`loadGlobalUpdateState()` 对「文件缺失」与「Schema 非法/解析失败」**均返回 `null`**，故检测层先用 `existsSync` 判缺失 → `missing`；存在但 load 为 `null` → `unknown`。
 - `unknown` **被动静默**（避免 Schema 演进误报），仅 `setup --check` 显式报告。
+- **`restart-required`（v1.3.4）**：部署指纹由 `setup` 写入 `update_state.adapters.dsh.hash`；宿主加载指纹由 DSH 适配器 `apply()` 启动时写入 `~/.openfeel/adapter-host-dsh.json`。指纹计算单点在 `src/core/adapter-hash.ts` 与 `dsh/lib/adapters/host-state.js`（同算法，parity 有测试）。
 
 ## 门控矩阵（`shouldRunDeployCheck`）
 
@@ -71,3 +73,4 @@ src/commands/setup.ts（setup --check）
 |------|------|
 | v1.1.5-stage-66 | 初始创建：`checkGlobalDeployment` 四态检测 + `shouldRunDeployCheck` 门控纯函数（只读、不写盘、不加锁） |
 | v1.1.5-stage-67 | 接入 CLI：新增 `src/cli/deploy-check-output.ts` 薄适配器 + `runCli`/`startRepl` 接入（stderr、每进程一次、不改退出码）+ `setup --check [--json]` 主动诊断消费同一检测核心 |
+| v1.3.4-stage-105 | 五态化：新增 `restart-required`（部署指纹 vs 宿主加载指纹）+ `DeployCheckResult.adapter` 诊断字段；被动提示新增 restart-required 文案；`setup` 写入 `adapters.dsh` |

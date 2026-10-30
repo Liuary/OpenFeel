@@ -207,9 +207,9 @@ export function createTools(context) {
         '操作。',
         { required: true },
       ),
-      stage: string('阶段 ID（advance/retry 必需；phases/mode 可选用于按阶段派生模式）。'),
+      stage: string('阶段 ID（advance/retry 必需；review_add 与 op 二选一；phases/mode 可选用于按阶段派生模式）。'),
       to: stringEnum(PHASES, 'advance 的目标相位。'),
-      op: string('操作 ID（如 v1.2.1-stage-93.op-001）。'),
+      op: string('操作 ID（如 v1.2.1-stage-93.op-001）；review_add 与 stage 二选一。'),
       force: boolean('advance 时跳过相位合法性与跳跃检查（不能绕过 blocking REV 门）。'),
       dry_run: boolean('仅校验/预览，不写盘。'),
       review_tier: stringEnum(TIERS, '审查档位：full=零裁剪 / lean=裁 scheme_review / skip=再裁 plan_review。缺省不裁剪（=full）。'),
@@ -294,7 +294,12 @@ export function createTools(context) {
         }
         case 'review_add': {
           const argv = ['flow', 'review', 'add'];
-          pushOption(argv, '--op', args.op);
+          // v1.3.4：op / stage 二选一透传（fast 无 op 场景必须能挂阶段级 REV）
+          if (!args.op && !args.stage) {
+            throw new FeelError('review_add 需要 op 或 stage 之一', { kind: 'usage', code: 'FEEL_BAD_USAGE' });
+          }
+          if (args.op) pushOption(argv, '--op', args.op);
+          else pushOption(argv, '--stage', args.stage);
           pushOption(argv, '--title', requireArg(args, 'title', action));
           pushOption(argv, '--auto-fix', args.auto_fix);
           if (args.blocking !== undefined) argv.push('--blocking', args.blocking === true ? 'true' : 'false');

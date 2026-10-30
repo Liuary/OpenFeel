@@ -15,3 +15,5 @@
 | [2026-10-30-Liuary-010.md](2026-10-30-Liuary-010.md) | Liuary | v1.3.3-stage-104.op-004 执行通过 |
 | [2026-10-30-Liuary-011.md](2026-10-30-Liuary-011.md) | Liuary | v1.3.3-stage-104.op-005 执行通过 |
 | [2026-10-30-Liuary-012.md](2026-10-30-Liuary-012.md) | Liuary | v1.3.3-stage-104.op-006 执行通过 |
+| [2026-10-30-Liuary-013.md](2026-10-30-Liuary-013.md) | Liuary | v1.3.4-stage-105 review_added |
+| [2026-10-30-Liuary-014.md](2026-10-30-Liuary-014.md) | Liuary | 阶段 v1.3.4-stage-105 完成 |

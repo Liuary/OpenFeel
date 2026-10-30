@@ -118,6 +118,64 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it('v1.3.4 --check：适配器已新但宿主未重启 → restart-required + 重启文案，exit 1', async () => {
+    const hash = 'a'.repeat(64);
+    mkdirSync(join(homeDir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(homeDir, '.openfeel', 'update_state.json'),
+      JSON.stringify({
+        version: '1.0', last_update: '', openfeel_version: getOpenfeelVersion(), files: {},
+        adapters: { dsh: { version: getOpenfeelVersion(), hash, deployed_at: '2026-10-30T00:00:00.000Z' } },
+      }, null, 2) + '\n',
+      'utf-8',
+    );
+    // 无宿主 marker → 视为未加载新适配器
+    await program.parseAsync(['setup', '--check'], { from: 'user' });
+    expect(process.exitCode).toBe(1);
+    const out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('重启');
+    expect(out).not.toContain('请运行 openfeel setup');
+  });
+
+  it('v1.3.4 --check：宿主已加载同指纹 → ok / exit 0', async () => {
+    const hash = 'b'.repeat(64);
+    mkdirSync(join(homeDir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(homeDir, '.openfeel', 'update_state.json'),
+      JSON.stringify({
+        version: '1.0', last_update: '', openfeel_version: getOpenfeelVersion(), files: {},
+        adapters: { dsh: { version: getOpenfeelVersion(), hash, deployed_at: '2026-10-30T00:00:00.000Z' } },
+      }, null, 2) + '\n',
+      'utf-8',
+    );
+    writeFileSync(
+      join(homeDir, '.openfeel', 'adapter-host-dsh.json'),
+      JSON.stringify({ adapter: 'dsh', version: getOpenfeelVersion(), loaded_hash: hash, started_at: '2026-10-30T00:05:00.000Z' }, null, 2) + '\n',
+      'utf-8',
+    );
+    await program.parseAsync(['setup', '--check'], { from: 'user' });
+    expect(process.exitCode === 0 || process.exitCode === undefined).toBe(true);
+  });
+
+  it('v1.3.4 --check --json：status=restart-required（键集不变）', async () => {
+    const hash = 'c'.repeat(64);
+    mkdirSync(join(homeDir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(homeDir, '.openfeel', 'update_state.json'),
+      JSON.stringify({
+        version: '1.0', last_update: '', openfeel_version: getOpenfeelVersion(), files: {},
+        adapters: { dsh: { version: getOpenfeelVersion(), hash, deployed_at: '2026-10-30T00:00:00.000Z' } },
+      }, null, 2) + '\n',
+      'utf-8',
+    );
+    setJsonMode(true);
+    await program.parseAsync(['setup', '--check', '--json'], { from: 'user' });
+    const doc = JSON.parse(String(logMock.mock.calls[0]?.[0])) as { status: string; schemaVersion: number };
+    expect(doc.schemaVersion).toBe(1);
+    expect(doc.status).toBe('restart-required');
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'status', 'cliVersion', 'deployedVersion']);
+  });
+
   it('T5.13 --check --json 不一致 → 纯 JSON + 退出 1', async () => {
     writeGlobalState(homeDir, '1.0.0');
     await program.parseAsync(['setup', '--check', '--json'], { from: 'user' });
@@ -194,7 +252,7 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
 
   // ── v1.3.0-stage-101：setup --tools dsh ─────────────────────────────
 
-  it('v1.3.0 setup --tools dsh：写入 link + bundles，纯 dsh 不写 update_state', async () => {
+  it('v1.3.4 setup --tools dsh：写入 link + bundles，并刷新 update_state 版本与适配器指纹', async () => {
     const dshHome = join(homeDir, '.dsh');
     const pkg = writeDshProfile(dshHome, 'web', baseDshProfile());
     process.env.DSH_HOME = dshHome;
@@ -209,7 +267,17 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
     };
     expect(json.dependencies['openfeel-dsh']).toMatch(/^link:/);
     expect(json.dsh.profile.bundles).toContain('openfeel-dsh');
-    expect(existsSync(join(homeDir, '.openfeel', 'update_state.json'))).toBe(false);
+    // v1.3.4（P1-6）：dsh-only 部署也必须刷新部署版本事实源，否则 setup --check 永远 mismatch
+    const statePath = join(homeDir, '.openfeel', 'update_state.json');
+    expect(existsSync(statePath)).toBe(true);
+    const state = JSON.parse(readFileSync(statePath, 'utf-8')) as {
+      openfeel_version: string;
+      adapters?: { dsh?: { version: string; hash: string; deployed_at: string } };
+    };
+    expect(state.openfeel_version).toBe(getOpenfeelVersion());
+    expect(state.adapters?.dsh?.version).toBe(getOpenfeelVersion());
+    expect(state.adapters?.dsh?.hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(state.adapters?.dsh?.deployed_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     const out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
     expect(out).toContain('DSH');
     expect(out).toContain('web');

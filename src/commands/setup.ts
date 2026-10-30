@@ -72,6 +72,12 @@ export function registerSetupCommand(program: Command): void {
           console.log(t('setup.checkOkTmpl', lang, { deployed: result.deployedVersion ?? '?', cli: result.cliVersion }));
         } else if (result.status === 'mismatch') {
           console.log(t('setup.checkMismatchTmpl', lang, { deployed: result.deployedVersion ?? '?', cli: result.cliVersion }));
+        } else if (result.status === 'restart-required') {
+          // v1.3.4：文件已新、宿主未重启——不再指引重跑 setup（消除死循环）
+          console.log(t('setup.checkRestartRequiredTmpl', lang, {
+            deployed: result.deployedVersion ?? '?',
+            loadedAt: result.adapter?.startedAt ?? '?',
+          }));
         } else if (result.status === 'missing') {
           console.log(t('setup.checkMissingTmpl', lang));
         } else {

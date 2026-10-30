@@ -6,7 +6,8 @@
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { listAgentIds, loadAgentTemplate, loadTemplate, loadClaudeConstraintTemplate, loadClaudeAgentTemplate, listClaudeAgentIds } from './template-loader.js';
-import { loadGlobalUpdateState, saveGlobalUpdateState, createGlobalUpdateState, updateFileHash, getOpenfeelVersion, type UpdateState } from './update-state.js';
+import { loadGlobalUpdateState, saveGlobalUpdateState, createGlobalUpdateState, updateFileHash, getOpenfeelVersion, recordAdapterState, type UpdateState } from './update-state.js';
+import { hashAdapterFiles } from './adapter-hash.js';
 import { deployGlobalAsset, SKILL_DEFINITIONS } from './update.js';
 import { appendUpdateInfo } from './update-infos.js';
 import { backupFileBeforeWrite, notifyBackupIfTTY, BackupError } from './backup.js';
@@ -160,8 +161,8 @@ export function setupGlobalFramework(
     dsh = { home: dshPlan.home, adapterDir: dshPlan.adapterDir, profiles };
   }
 
-  // 5. 写盘全局 state + 记录已部署 hash（N3：纯 dsh 不刷新全局部署版本事实）
-  const touchesGlobalAssets = tools.includes('opencode') || tools.includes('claude');
+  // 5. 写盘全局 state + 记录已部署 hash（N3；v1.3.4：dsh-only 部署也刷新版本与适配器指纹）
+  const touchesGlobalAssets = tools.includes('opencode') || tools.includes('claude') || dshPlan !== undefined;
   if (touchesGlobalAssets) {
     for (const p of [...created, ...updated, ...appended]) {
       if (existsSync(p)) updateFileHash(globalState, p, readFileSync(p, 'utf-8'));
@@ -169,6 +170,10 @@ export function setupGlobalFramework(
     globalState.last_update = new Date().toISOString();
     // stage-66/D-A：部署完成即刷新「已部署版本」事实源（每次 setup 刷新，语义=当前已部署全局资产的版本）
     globalState.openfeel_version = getOpenfeelVersion();
+    // v1.3.4：记录 DSH 适配器指纹，供 setup --check 判定「文件已新但宿主未重启」
+    if (dshPlan !== undefined) {
+      recordAdapterState(globalState, 'dsh', getOpenfeelVersion(), hashAdapterFiles(dshPlan.adapterDir));
+    }
     saveGlobalUpdateState(globalState);
   }
 

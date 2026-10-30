@@ -12,28 +12,60 @@
  *     true  = 允许输出被动提示；false = 静默
  * ────────────────────────────────────────────────────────────────
  */
-import { existsSync } from 'node:fs';
-import { getGlobalUpdateStatePath } from './global-paths.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { getGlobalAdapterHostPath, getGlobalUpdateStatePath } from './global-paths.js';
 import { loadGlobalUpdateState, getOpenfeelVersion } from './update-state.js';
 
-/** 全局部署一致性检测结果状态 */
-export type DeployCheckStatus = 'ok' | 'mismatch' | 'missing' | 'unknown';
+/** 全局部署一致性检测结果状态（v1.3.4 增 restart-required） */
+export type DeployCheckStatus = 'ok' | 'mismatch' | 'restart-required' | 'missing' | 'unknown';
 
 /** 全局部署一致性检测结果 */
 export interface DeployCheckResult {
-  /** 四态判定 */
+  /** 五态判定 */
   status: DeployCheckStatus;
   /** 当前 CLI 版本（基准） */
   cliVersion: string;
   /** 全局 state 记录的已部署版本；缺失/损坏时为 null */
   deployedVersion: string | null;
+  /** DSH 适配器指纹详情（仅适配器部署场景出现；用于诊断，不参与 JSON 契约冻结键） */
+  adapter?: {
+    /** 部署时写入的适配器指纹（空串 = 计算失败，降级为版本比较） */
+    deployedHash: string;
+    /** 宿主启动时回写的已加载指纹（缺失 = 宿主未加载历史不可知） */
+    loadedHash: string | null;
+    /** 宿主启动时间（ISO；缺失为 null） */
+    startedAt: string | null;
+  } | null;
+}
+
+/** 读取宿主已加载适配器标记（只读；缺失/损坏 → null） */
+function readHostMarker(): { loadedHash: string; startedAt: string | null } | null {
+  try {
+    const markerPath = getGlobalAdapterHostPath();
+    if (!existsSync(markerPath)) {
+      return null;
+    }
+    const raw = JSON.parse(readFileSync(markerPath, 'utf-8')) as Record<string, unknown> | null;
+    if (raw === null || typeof raw !== 'object') {
+      return null;
+    }
+    const loadedHash = typeof raw.loaded_hash === 'string' ? raw.loaded_hash : '';
+    const startedAt = typeof raw.started_at === 'string' ? raw.started_at : null;
+    return { loadedHash, startedAt };
+  } catch {
+    return null;
+  }
 }
 
 /**
  * 检测全局部署版本与当前 CLI 版本是否一致（只读、不写盘、不加锁）。
  * - 全局 state 文件缺失 → 'missing'
  * - 文件存在但 Schema 非法/解析失败（load 返回 null）→ 'unknown'（静默）
- * - 版本一致 → 'ok'；不一致 → 'mismatch'
+ * - 版本不一致 → 'mismatch'（磁盘上的部署旧）
+ * - 版本一致且存在 `adapters.dsh`：
+ *   - 宿主 marker 缺失或 `loaded_hash` ≠ 部署指纹 → 'restart-required'（文件已新但宿主未重启）
+ *   - 指纹一致 → 'ok'
+ * - 版本一致且无适配器记录（opencode / claude）→ 'ok'
  * - 任何读取异常（权限/占用/EISDIR）→ 'unknown'（静默，不抛）
  * @param options.currentVersion 覆盖 CLI 版本基准（测试注入用；缺省取 getOpenfeelVersion()）
  */
@@ -51,10 +83,39 @@ export function checkGlobalDeployment(options?: { currentVersion?: string }): De
       return { status: 'unknown', cliVersion, deployedVersion: null };
     }
     const deployedVersion = state.openfeel_version;
-    // 版本一致 → ok；否则 mismatch（含降级：部署版本 > CLI 版本亦按 != 处理）
-    return deployedVersion === cliVersion
-      ? { status: 'ok', cliVersion, deployedVersion }
-      : { status: 'mismatch', cliVersion, deployedVersion };
+    // 版本不一致 → mismatch（含降级：部署版本 > CLI 版本亦按 != 处理）
+    if (deployedVersion !== cliVersion) {
+      return { status: 'mismatch', cliVersion, deployedVersion };
+    }
+    // v1.3.4：版本一致时，若存在 DSH 适配器指纹，再判断「宿主是否加载了这一份」
+    const dsh = state.adapters?.dsh;
+    if (dsh === undefined) {
+      return { status: 'ok', cliVersion, deployedVersion };
+    }
+    const deployedHash = dsh.hash;
+    // 指纹计算失败（空串）→ 降级为版本比较（不误报 restart）
+    if (deployedHash === '') {
+      return { status: 'ok', cliVersion, deployedVersion, adapter: { deployedHash, loadedHash: null, startedAt: null } };
+    }
+    const host = readHostMarker();
+    if (host === null || host.loadedHash !== deployedHash) {
+      return {
+        status: 'restart-required',
+        cliVersion,
+        deployedVersion,
+        adapter: {
+          deployedHash,
+          loadedHash: host?.loadedHash ?? null,
+          startedAt: host?.startedAt ?? null,
+        },
+      };
+    }
+    return {
+      status: 'ok',
+      cliVersion,
+      deployedVersion,
+      adapter: { deployedHash, loadedHash: host.loadedHash, startedAt: host.startedAt },
+    };
   } catch {
     // 读取异常（权限/占用/目录占位等）→ unknown 静默，不抛
     return { status: 'unknown', cliVersion, deployedVersion: null };

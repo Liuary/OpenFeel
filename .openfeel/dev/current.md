@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.3.3 — fast 模式结构性修复**｜ 阶段级 REV / `review_passed → exec_running` 返工边 / 写入门禁风险分层 / 原子聚焦 / status.md 派生写 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.3 ｜ **未 push；未 npm publish**
-> 统计：测试 78 文件 / **1998 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 83 + 46 + 10 = **181 断言** ｜ `lint i18n` **1025** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.3.3**
+> OpenFeel **v1.3.4 — 分发链路修复**｜ 适配器 `review_add --stage` / `setup --check` 三态（restart-required）/ 部署版本标记刷新 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.4 ｜ **未 push；未 npm publish**
+> 统计：测试 79 文件 / **2009 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 86 + 46 + 10 = **184 断言** ｜ `lint i18n` **1027** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.3.4**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-30** @Liuary：**v1.3.4 分发链路修复（1.3.3 复测）**——依据 `OpenFeelHarness/docs/feedback/openfeel-1.3.3-retest.md`。① **适配器透传**：`feel_flow action=review_add` 的 `op` / `stage` 二选一（皆缺 → `FEEL_BAD_USAGE`），fast 无 op 场景可在工具层建阶段级 REV。② **`setup --check` 三态**：新增 `restart-required`——部署时写 `update_state.adapters.dsh.hash`（适配器 `lib/**` 指纹），宿主 `apply()` 启动写 `~/.openfeel/adapter-host-dsh.json`（同算法加载指纹），`check` 比对后者：文件旧 → `mismatch`（重跑 setup），文件新但宿主旧 → `restart-required`（完全重启宿主，不再引导重跑 setup）。③ **部署标记刷新**：`setup --tools dsh`（含「已是最新、跳过」分支）也刷新 `openfeel_version` / `last_update` + `adapters.dsh`，消除 setup→check→setup 死循环。**兼容**：`update_state.json` 仅追加可选 `adapters`；`--json` 键集/键序不变；相位机/REV/写门禁不变。门禁：全量 **79/2009**、tsc 0、i18n **1027**、kb 0（649）、build ×2、dsh **184**、`--version` 1.3.4；三态 E2E（无 marker → restart-required exit 1；写 marker → ok exit 0；二次 setup 刷新 deployed_at）通过。阶段 v1.3.4-stage-105（fast）。**未 push；未 npm publish**
 
 - **2026-10-30** @Liuary：**v1.3.3 fast 模式结构性修复（反馈 13 项）**——依据 `OpenFeelHarness/docs/feedback/openfeel-feedback-2026-10-30.md`。① **审查挂载点**：`flow review add --op` 可选 + 新增 `--stage`，fast 0-op 阶段挂阶段级 REV（`ReviewItem.stage`，`reviewStageOf` 单点；`archive <stage>` 摘要与 blocking 门一致）。② **返工边**：fast `review_passed → exec_running` + `advance --reason`（审计 `rework_reason`）；`findPhasePath` 对 `review_pending → exec_running` 同深度多义 tie-break（优先经 `review_failed`）。③ **写入门禁**：bootstrap 新增放行（apply_patch 须全为 `*** Add File:`）+ doc/note 分层（`docs/**` 与文档扩展不绑相位，混合从严）。④ **单一真源**：`plan stage add` 原子聚焦；`flow next` current 空时只读派生；`advanceStagePhase` 派生写 status.md 受管字段；DSH 序列化器祖先栈判环。⑤ **模板/配置/档位**：`instructions` 包内置 schema 回退 + `--change` 可选；`auto + auto_advance=disabled` 告警；advance 回显审查档位。⑥ **体验**：init 目录惰性化（核心 4 + dev 2）、阶段 ID↔目录映射文档化 + `plan stage add` 回显目录、非 git 仓库归档告警。门禁：全量 **78/1998**、tsc 0、i18n **1025**、kb 0（649）、build ×2、dsh **181**、`--version` 1.3.3；附录 A 复现 **22/22** + 门禁复现 **9/9**。阶段 v1.3.3-stage-104（full）。**未 push；未 npm publish**
 

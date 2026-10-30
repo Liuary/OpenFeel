@@ -3,7 +3,7 @@
  * 覆盖旧格式（含 .opencode/... 旧框架 key）加载不丢记录，以及 isLegacyFrameworkKey 识别。
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { isLegacyFrameworkKey, loadUpdateState, saveUpdateState } from '../../src/core/update-state.js';
+import { isLegacyFrameworkKey, loadUpdateState, saveUpdateState, UpdateStateSchema, recordAdapterState } from '../../src/core/update-state.js';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -73,6 +73,27 @@ describe('loadUpdateState 旧格式降级', () => {
     });
     const roundTrip = loadUpdateState(tmpDir);
     expect(roundTrip!.files['AGENTS.md']).toEqual({ hash: 'h', status: 'clean' });
+  });
+
+  it('v1.3.4：adapters 为可选字段——旧 state 合法，新 state 往返保留', () => {
+    const legacy = {
+      version: '1.0' as const,
+      last_update: '2020-01-01T00:00:00.000Z',
+      openfeel_version: '1.3.3',
+      files: {},
+    };
+    expect(UpdateStateSchema.safeParse(legacy).success).toBe(true);
+
+    const withAdapter = { ...legacy, adapters: {} as Record<string, unknown> };
+    expect(UpdateStateSchema.safeParse(withAdapter).success).toBe(true);
+    recordAdapterState(withAdapter as never, 'dsh', '1.3.4', 'f'.repeat(64));
+    const parsed = UpdateStateSchema.safeParse(withAdapter);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.adapters?.dsh?.hash).toBe('f'.repeat(64));
+      expect(parsed.data.adapters?.dsh?.version).toBe('1.3.4');
+      expect(parsed.data.adapters?.dsh?.deployed_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    }
   });
 
   it('T51：saveUpdateState 经项目锁路径写入（加锁 + 原子写，连续写最终一致）', () => {

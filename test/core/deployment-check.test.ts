@@ -88,6 +88,76 @@ describe('checkGlobalDeployment', () => {
     expect(statSync(globalStatePath()).mtimeMs).toBe(mtimeBefore);
   });
 
+  it('v1.3.4：有 adapters.dsh + 无宿主 marker → restart-required', () => {
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      globalStatePath(),
+      JSON.stringify({
+        version: '1.0', last_update: '', openfeel_version: '1.3.4', files: {},
+        adapters: { dsh: { version: '1.3.4', hash: 'a'.repeat(64), deployed_at: '2026-10-30T00:00:00.000Z' } },
+      }, null, 2) + '\n',
+      'utf-8',
+    );
+    const r = checkGlobalDeployment({ currentVersion: '1.3.4' });
+    expect(r.status).toBe('restart-required');
+    expect(r.deployedVersion).toBe('1.3.4');
+    expect(r.adapter?.deployedHash).toBe('a'.repeat(64));
+    expect(r.adapter?.loadedHash).toBeNull();
+  });
+
+  it('v1.3.4：宿主 marker 指纹不一致 → restart-required（带 loadedAt）', () => {
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      globalStatePath(),
+      JSON.stringify({
+        version: '1.0', last_update: '', openfeel_version: '1.3.4', files: {},
+        adapters: { dsh: { version: '1.3.4', hash: 'a'.repeat(64), deployed_at: '2026-10-30T00:00:00.000Z' } },
+      }, null, 2) + '\n',
+      'utf-8',
+    );
+    writeFileSync(
+      join(mockHome.dir, '.openfeel', 'adapter-host-dsh.json'),
+      JSON.stringify({ adapter: 'dsh', version: '1.3.3', loaded_hash: 'b'.repeat(64), started_at: '2026-10-30T00:05:00.000Z' }, null, 2) + '\n',
+      'utf-8',
+    );
+    const r = checkGlobalDeployment({ currentVersion: '1.3.4' });
+    expect(r.status).toBe('restart-required');
+    expect(r.adapter?.loadedHash).toBe('b'.repeat(64));
+    expect(r.adapter?.startedAt).toBe('2026-10-30T00:05:00.000Z');
+  });
+
+  it('v1.3.4：宿主 marker 指纹一致 → ok', () => {
+    const hash = 'd'.repeat(64);
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      globalStatePath(),
+      JSON.stringify({
+        version: '1.0', last_update: '', openfeel_version: '1.3.4', files: {},
+        adapters: { dsh: { version: '1.3.4', hash, deployed_at: '2026-10-30T00:00:00.000Z' } },
+      }, null, 2) + '\n',
+      'utf-8',
+    );
+    writeFileSync(
+      join(mockHome.dir, '.openfeel', 'adapter-host-dsh.json'),
+      JSON.stringify({ adapter: 'dsh', version: '1.3.4', loaded_hash: hash, started_at: '2026-10-30T00:05:00.000Z' }, null, 2) + '\n',
+      'utf-8',
+    );
+    expect(checkGlobalDeployment({ currentVersion: '1.3.4' }).status).toBe('ok');
+  });
+
+  it('v1.3.4：版本不一致优先于宿主指纹 → mismatch', () => {
+    mkdirSync(join(mockHome.dir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      globalStatePath(),
+      JSON.stringify({
+        version: '1.0', last_update: '', openfeel_version: '1.3.3', files: {},
+        adapters: { dsh: { version: '1.3.3', hash: 'e'.repeat(64), deployed_at: '2026-10-30T00:00:00.000Z' } },
+      }, null, 2) + '\n',
+      'utf-8',
+    );
+    expect(checkGlobalDeployment({ currentVersion: '1.3.4' }).status).toBe('mismatch');
+  });
+
   it('T-CLI：缺省 currentVersion 取 getOpenfeelVersion()', () => {
     writeGlobalState(getOpenfeelVersion());
     const r = checkGlobalDeployment();

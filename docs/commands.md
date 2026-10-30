@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.3.3 快照** | 更新日期：2026-10-30
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.3.4 快照** | 更新日期：2026-10-30
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -910,7 +910,15 @@ openfeel setup [--lang <zh-CN|en>] [--tools <list>] [--dsh-profile <name>]   # �
 openfeel setup --check [--json]                       # 只读诊断：一致退出 0，否则退出 1
 ```
 
-`--check` 只读，不执行部署；`--json` 输出 `{schemaVersion,status,cliVersion,deployedVersion}`。
+`--check` 只读，不执行部署；`--json` 输出 `{schemaVersion,status,cliVersion,deployedVersion}`。`status`（v1.3.4 起五态）：
+
+| status | 含义 | 建议动作 |
+|---|---|---|
+| `ok` | 一致（有 DSH 部署时还要求宿主已加载同一适配器指纹） | 无 |
+| `mismatch` | 磁盘部署版本 ≠ CLI 版本 | `openfeel setup`（+ 重启） |
+| `restart-required` | **文件已新，但运行中的宿主仍加载旧适配器** | **完全退出并重启宿主**（重载后端无效），不要再跑 setup |
+| `missing` | 未检测到全局部署 | `openfeel setup` |
+| `unknown` | `update_state.json` 缺失/损坏，无法判定 | 重跑 `openfeel setup` |
 
 `--tools claude` → 部署 `~/.claude/`（CLAUDE.md + 10 agents + 22 skills + `settings.json` 注入 `agent:"feel"` 与 `permissions.defaultMode:"auto"`，用户键逐字保留；用户主权键 `model` **无则创建、有则不覆盖**）；默认仅 opencode，`~/.claude` 零触。
 
@@ -918,7 +926,8 @@ openfeel setup --check [--json]                       # 只读诊断：一致退
 
 - `DSH_HOME`（env）或 `~/.dsh` 下的 `profiles/<name>/package.json`；缺省部署**全部**已检测 profile，`--dsh-profile web` 可窄化。
 - 写入 `dependencies["openfeel-dsh"] = "link:<openfeelRoot>/dsh"` + `dsh.profile.bundles += "openfeel-dsh"`；仅在依赖变化或链接无效时执行 `pnpm install --prefer-offline --no-frozen-lockfile`（允许更新过期 lockfile；写前备份、失败回滚 package.json、幂等重跑零备份/零 pnpm；失败时 lockfile/node_modules 可能保留部分更新，下次 setup 收敛）。
-- DSH profile **不进入**全局 `update_state.json` 资产 hash；纯 dsh 不刷新全局部署版本。
+- DSH profile **不进入**全局 `update_state.json` 的 `files` 资产 hash；但 **v1.3.4 起**部署成功会刷新 `openfeel_version` 并写入 `adapters.dsh = { version, hash, deployed_at }`（`hash` = 适配器 `lib/**` 指纹），修复「dsh-only setup 后 `--check` 永远 mismatch」。
+- **宿主加载指纹（v1.3.4）**：DSH 适配器在宿主启动时把自身 `lib/**` 指纹写入 `~/.openfeel/adapter-host-dsh.json`；`setup --check` 比对部署指纹与加载指纹，输出 `restart-required`（文件已新但宿主未重启）。
 - 错误：预检 / 用法 / profile 类 → `INVALID_ARGUMENT` / exit 1（`detail.reason=dsh-*`）；备份 / pnpm install → `INTERNAL_ERROR` / exit 3。均零写盘或已回滚。
 - 完成后重启 DSH 宿主（host module 不热加载）。`openfeel update --tools dsh` 不适用，会 exit 1 并指引本命令。
 
@@ -964,7 +973,7 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 15 | `req board` | `req board --json` | `schemaVersion,groups` |
 | 16 | `req next` | `req next --json` | `schemaVersion,requirement`（`candidates` 条件出现） |
 | 17 | `instructions` | `instructions <artifactId> --json` | `schemaVersion,artifact,task,project_context,rules,dependencies,output,instruction,template,unlocks` |
-| 18 | `setup --check` | `setup --check --json` | `schemaVersion,status,cliVersion,deployedVersion` |
+| 18 | `setup --check` | `setup --check --json` | `schemaVersion,status,cliVersion,deployedVersion`（status 五态，v1.3.4 增 `restart-required`） |
 | 19 | `flow next` | `flow next --json` | `schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews` |
 | 20 | `stage status` | `stage status [<stageId>] --json` | `schemaVersion,stageId,statusPath,fields,tasks,blockedBy`；无参 `schemaVersion,stages,count` |
 | 21 | `flow recover` | `flow recover --json` | `schemaVersion,initialized,phase,currentOp,stageStatus,blockedBy,pendingTasks,stageStats` |

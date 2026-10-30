@@ -399,6 +399,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-10-30 | patterns | [REV-001] 代码自审：review_add 透传 / check 三态 / 部署标记（无 blocking；2009 单测 + 184 dsh + 三态 E2E 覆盖） |
 | 2026-10-30 | patterns | [REV-005] 代码审查：.md 模板源按文档放行（口径确认，ADAPTER/文档已明示） |
 | 2026-10-30 | patterns | [REV-004] 代码审查：status.md 派生写早于 save 的半写窗口（非阻塞，health --fix 可回收） |
 | 2026-10-30 | patterns | [REV-003] 代码审查：done 门复用 reviewStageOf 单点归属（已修） |

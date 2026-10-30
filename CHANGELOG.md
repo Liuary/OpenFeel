@@ -4,6 +4,25 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.3.4] - 2026-10-30
+
+> 补丁版本（Patch）：**修复分发链路断点**——依据 `OpenFeelHarness/docs/feedback/openfeel-1.3.3-retest.md`（1.3.3 复测）。1.3.3 的代码修复已存在，但适配器透传、部署版本标记与「宿主未重启」检测三处断点导致用户无法闭环。CLI 相位机 / REV 语义 / 写入门禁不变。
+
+### Added
+- [stage-105] **`setup --check` 三态化（restart-required）**：`update_state.json` 追加可选 `adapters: { dsh: { version, hash, deployed_at } }`；DSH 适配器在宿主启动时把自身 `lib/**` 指纹写入 `~/.openfeel/adapter-host-dsh.json`；`checkGlobalDeployment` 在版本一致时比对部署指纹与宿主加载指纹——不一致或缺失 → `restart-required`（明确提示「完全退出并重启宿主」，不再指引重跑 setup）。`--json.status` 取值扩展，键集/键序不变。
+- [stage-105] **适配器指纹（新增 `src/core/adapter-hash.ts` + `dsh/lib/adapters/host-state.js`）**：同算法（`lib/**` 相对路径排序 + CRLF→LF + 逐文件 sha256 后拼接再 sha256）；根仓测试直接比较两侧对真实 `dsh/` 目录的输出，锁定 parity。
+- [stage-105] **适配器 `review_add` 透传 `--stage`**：`op` / `stage` 二选一（皆缺 → `FEEL_BAD_USAGE`）；fast 无 op 场景 `feel_flow action=review_add --stage <id>` 可直接建阶段级 REV。
+
+### Changed
+- [stage-105] **`setup` 刷新部署版本事实源**：`--tools dsh`（含「已是最新、跳过」分支）部署成功后也刷新 `update_state.openfeel_version` / `last_update`，并写入 `adapters.dsh`；修复「dsh-only setup 后 `--check` 永远 mismatch」的死循环。
+- [stage-105] **被动部署提示**：`restart-required` 也会在 TTY 下向 stderr 提示（每进程一次），文案区分「重启宿主」与「重跑 setup」。
+- [stage-105] **`dsh/package.json`**：version `1.3.4`、`requiresCli: ">=1.3.4"`。
+
+### Fixed
+- [stage-105] `feel_flow review_add --stage` 报「请提供 --op 或 --stage（二选一）」（适配器未透传）。
+- [stage-105] `setup --check` 无法区分「适配器文件旧」与「文件已新但宿主未重启」，升级后形成 setup → check → setup 死循环。
+- [stage-105] `setup` 在「已是最新 / 跳过」分支不更新 `update_state.json` 版本标记。
+
 ## [1.3.3] - 2026-10-30
 
 > 补丁版本（Patch）：**fast 模式结构性修复**——依据 `OpenFeelHarness/docs/feedback/openfeel-feedback-2026-10-30.md` 的 13 项非预期拒绝（P0×4 / P1×5 / P2×4）逐条修复。合法相位枚举仍 15 项，full 转移表不变；CLI JSON 契约只增不改（无新增成功出口 / 注册选项）。

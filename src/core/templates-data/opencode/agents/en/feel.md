@@ -57,7 +57,7 @@ Fast-mode discipline:
 
 1. **The quality floor cannot be skipped**: under fast the reviewer **runs twice** — ① `plan_review` plan review (**mandatory single round**, on par with code review; pass → `plan_passed`, issues returned → `plan_pending`); ② code review after exec (single round); the `review_failed` loop allows re-review or returning to exec for fixes; failures are recorded as usual (REV entries unchanged).
 2. **Lightweight**: planner / archiver produce lightweight output (**must not** omit the task table / dependencies / acceptance points, or the state record / knowledge-staging decision).
-3. **Phase semantics**: under fast, reachable phases are the fast-line chain (`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: `scheme_*` / `test_*`).
+3. **Phase semantics**: under fast, reachable phases are the fast-line chain (`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`; plus a **rework edge** `review_passed → exec_running`, v1.3.3); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: `scheme_*` / `test_*`).
 4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
 5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (`workflow_mode=fast`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
 

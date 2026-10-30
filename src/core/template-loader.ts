@@ -67,7 +67,7 @@ Fast-mode discipline:
 
 1. **The quality floor cannot be skipped**: under fast the reviewer **runs twice** — ① \`plan_review\` plan review (**mandatory single round**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (single round); the \`review_failed\` loop allows re-review or returning to exec for fixes; failures are recorded as usual (REV entries unchanged).
 2. **Lightweight**: planner / archiver produce lightweight output (**must not** omit the task table / dependencies / acceptance points, or the state record / knowledge-staging decision).
-3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
+3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`; plus a **rework edge** \`review_passed → exec_running\`, v1.3.3); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
 4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
 5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
 
@@ -1018,7 +1018,7 @@ fast 调度纪律：
 
 1. **质量底线不可跳**：reviewer 在 fast 下**必跑两处**——① \`plan_review\` 计划审查（**必经单轮**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（单轮）；\`review_failed\` 回环可重审或回执行修复；失败留痕照常（REV 条目照常）。
 2. **轻量化**：planner / archiver 轻量产出（**不得**省略任务表 / 依赖 / 验收要点与状态记录 / 知识暂存判定）。
-3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
+3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`；另有**返工边** \`review_passed → exec_running\`，v1.3.3）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
 4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
 5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
 
@@ -1198,7 +1198,7 @@ permission:
 
 > ⚠️ 归档完成后阶段状态必须是 \`"done"\`，**不得**使用 \`"completed"\` 等非标准值——\`VALID_TRANSITIONS\` 中不存在 \`"completed"\`。
 
-> **fast 工作流快线下**：15 项相位枚举**不变**（**可达 ≠ 合法**）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）。
+> **fast 工作流快线下**：15 项相位枚举**不变**（**可达 ≠ 合法**）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`；另有**返工边** \`review_passed → exec_running\`，v1.3.3）。
 
 ## 工作流模式感知（fast 轻量归档）
 
@@ -2022,7 +2022,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.3.2). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.3.3). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -2183,7 +2183,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.2）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.3）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 
@@ -2315,7 +2315,7 @@ Fast-mode discipline:
 
 1. **The quality floor cannot be skipped**: under fast the reviewer **runs twice** — ① \`plan_review\` plan review (**mandatory single round**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (single round); the \`review_failed\` loop allows re-review or returning to exec for fixes; failures are recorded as usual (REV entries unchanged).
 2. **Lightweight**: planner / archiver produce lightweight output (**must not** omit the task table / dependencies / acceptance points, or the state record / knowledge-staging decision).
-3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
+3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`; plus a **rework edge** \`review_passed → exec_running\`, v1.3.3); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
 4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
 5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
 
@@ -3266,7 +3266,7 @@ fast 调度纪律：
 
 1. **质量底线不可跳**：reviewer 在 fast 下**必跑两处**——① \`plan_review\` 计划审查（**必经单轮**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（单轮）；\`review_failed\` 回环可重审或回执行修复；失败留痕照常（REV 条目照常）。
 2. **轻量化**：planner / archiver 轻量产出（**不得**省略任务表 / 依赖 / 验收要点与状态记录 / 知识暂存判定）。
-3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
+3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`；另有**返工边** \`review_passed → exec_running\`，v1.3.3）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
 4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
 5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
 
@@ -3446,7 +3446,7 @@ permission:
 
 > ⚠️ 归档完成后阶段状态必须是 \`"done"\`，**不得**使用 \`"completed"\` 等非标准值——\`VALID_TRANSITIONS\` 中不存在 \`"completed"\`。
 
-> **fast 工作流快线下**：15 项相位枚举**不变**（**可达 ≠ 合法**）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）。
+> **fast 工作流快线下**：15 项相位枚举**不变**（**可达 ≠ 合法**）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`；另有**返工边** \`review_passed → exec_running\`，v1.3.3）。
 
 ## 工作流模式感知（fast 轻量归档）
 
@@ -4436,7 +4436,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）、v1.2.1 新增能力（需求拆分 \`req split\` / 三模式 \`full/fast/general\` / 审查档位 \`--review-tier\` / 通用工作者 \`openfeel-explorer\` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）、v1.2.4 收口（archive <stage> 覆盖保护 + --force / plan stage list·model list|get·flow retry·lint i18n|kb·roadmap show --json / config get --all / 40 成功出口·41 注册选项）、v1.3.0（DSH 适配器单包分发 / setup --tools dsh / README 版本能力概览迁出）、v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）、v1.3.2（DSH 写入门禁 \`ctx.tools.guard\` + 非项目 bootstrap）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）、v1.2.1 新增能力（需求拆分 \`req split\` / 三模式 \`full/fast/general\` / 审查档位 \`--review-tier\` / 通用工作者 \`openfeel-explorer\` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）、v1.2.4 收口（archive <stage> 覆盖保护 + --force / plan stage list·model list|get·flow retry·lint i18n|kb·roadmap show --json / config get --all / 40 成功出口·41 注册选项）、v1.3.0（DSH 适配器单包分发 / setup --tools dsh / README 版本能力概览迁出）、v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）、v1.3.2（DSH 写入门禁 \`ctx.tools.guard\` + 非项目 bootstrap）、v1.3.3 修复（fast 阶段级 REV / \`review_passed → exec_running\` 返工边 / 写入门禁风险分层 / \`plan stage add\` 原子聚焦 / 阶段 ID ↔ 目录映射文档化）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -4448,7 +4448,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.3.2 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.3.3 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -4507,6 +4507,17 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **错误映射**：预检 / 用法 / profile → \`INVALID_ARGUMENT\`（refusal/1，\`detail.reason=dsh-*\`）；备份 / pnpm install → \`INTERNAL_ERROR\`（internal/3，\`dsh-backup-failed\` / \`dsh-pnpm-install-failed\`）。不新增 CLI 错误码。
 - **单包**：不发布独立 \`openfeel-dsh\`；\`dsh/\` 随 \`openfeel\` npm 包分发，默认不部署。README 版本能力概览迁至 \`docs/VERSIONS.md\`。
 
+## v1.3.3（stage-104）
+
+> 补丁版本：fast 模式结构性修复（反馈 13 项：P0×4 / P1×5 / P2×4）。合法相位枚举仍 15 项，full 转移表不变；JSON 契约只增不改（无新增成功出口 / 注册选项）。
+
+- **阶段级 REV（P0-2）**：\`flow review add\` 的 \`--op\` 改可选 + 新增 \`--stage <id>\`；fast 无 op 阶段挂 \`op = stageId\` 的阶段级 REV（\`ReviewItem.stage\` 可选字段，参与 blocking 门与 \`archive <stage>\` 摘要；不参与 \`flow attempt\` / \`flow retry\`）。\`--auto-fix\` 仍要求 \`--op\`。
+- **fast 返工边（P0-3）**：\`review_passed → exec_running\` 合法；\`flow advance --reason <text>\` 写入审计键 \`rework_reason\`（仅该一步）。\`review_pending → exec_running\` 同深度多义 tie-break：优先经 \`review_failed\`（行为不回归）。
+- **写入门禁分层（P0-1 / P0-4，适配器侧）**：bootstrap 例外（无 \`.openfeel/\` 且全部新增文件 / \`apply_patch\` 全部 \`*** Add File:\` → 放行并提示补账本）；\`docs/**\` 与 \`.md/.mdx/.txt/.rst/.adoc\` 不绑相位；混合目标从严；源码仍要求 \`exec_running\`。
+- **聚焦 / 单一真源（P1-1 / P1-2）**：\`plan stage add\` 原子聚焦；\`flow next\` 在 current 为空时从 stages 只读派生；\`advance\` 派生写 status.md 受管字段（状态 / 责任 Agent / 更新时间）；DSH 序列化器祖先栈判环（重复引用不再误报 \`[循环引用]\`）。
+- **模板 / 配置 / 档位（P1-3/4/5）**：\`instructions\` 包内置 schema 回退 + \`--change\` 可选；\`execution_mode=auto + auto_advance=disabled\` 静默无效组合在 advance/next 告警；advance 回显生效审查档位。
+- **体验（P2）**：init 目录惰性化；阶段 ID 归一化与 \`plan/\` 目录映射文档化 + \`plan stage add\` 回显目录；非 git 仓库归档显式告警。
+
 ## v1.3.2（stage-103）
 
 > 补丁版本：DSH 适配器激活与写入门禁。CLI JSON 契约保持 **13 错误码 / 40 成功出口 / 41 注册选项**，命令面不变。
@@ -4555,7 +4566,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 ## v1.1.7 新增能力（stage-74~76）
 
 - **双模式工作流（\`workflow_mode\`）**：值域 \`full | fast\`（默认 \`fast\`）（**v1.2.1 起 3 值 \`full | fast | general\`**——\`general\` 仅需求级合法，见「v1.2.1 新增能力」节）。三层载体：\`config.yaml defaults.workflow_mode\`（项目默认 / 记忆）→ \`status.md「工作流模式」\`（阶段覆盖，**读取权威**）→ \`flow.json\` 冗余字段（可选、**不参与级联**）；级联优先序 \`status.md > config.yaml > builtin\`（\`profile.yaml\` 不承载）。只读查询：\`openfeel flow mode [--stage <id>] [--json]\`（当前模式 + 四源 \`source\`）。
-- **fast 快线转移表（并列）**：\`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项）：\`plan_pending → plan_review\`（**计划审查必经**）、\`plan_review → plan_passed / plan_pending\`、\`plan_passed → exec_running\`、\`exec_running → review_pending\`、\`review_pending → review_failed / review_passed\`、\`review_failed → review_pending / exec_running\`（回环）、\`review_passed → archiving\`、\`archiving → done\`、\`done\`（终态）。**\`phases\` / \`advanceAccepted\` 恒 15 项、模式无关**；fast 下 6 个相位不可达（\`scheme_*\` / \`test_*\`）。
+- **fast 快线转移表（并列）**：\`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项）：\`plan_pending → plan_review\`（**计划审查必经**）、\`plan_review → plan_passed / plan_pending\`、\`plan_passed → exec_running\`、\`exec_running → review_pending\`、\`review_pending → review_failed / review_passed\`、\`review_failed → review_pending / exec_running\`（回环）、\`review_passed → archiving\`（**v1.3.3 起另有返工边 \`review_passed → exec_running\`**）、\`archiving → done\`、\`done\`（终态）。**\`phases\` / \`advanceAccepted\` 恒 15 项、模式无关**；fast 下 6 个相位不可达（\`scheme_*\` / \`test_*\`）。
 - **模式命令面**：\`plan stage add --workflow-mode <full|fast>\`（值域派生、非法 exit 1 不建阶段）、\`stage set <id> --workflow-mode <full|fast>\`（缺失字段插入）、\`flow phases [--mode <full|fast>] [--stage <id>]\`（模式分节；\`--json\` 追加 \`workflowMode\`）、\`config set ... --sync-stages [--stage <ids...>]\`（同步字段含「工作流模式」）（**v1.2.1 起三处参数值域均含 \`general\`**）。
 - **\`config effective\` 四键**：\`auto_advance\` / \`execution_mode\` / \`merge_mode\` / \`workflow_mode\`。
 
@@ -4630,7 +4641,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 | \`archiving\` | \`done\` |
 | \`done\` | （终态） |
 
-**fast 快线转移表（\`workflow_mode=fast\`）** —— \`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项），快线链（可达相位序列）为 \`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`：
+**fast 快线转移表（\`workflow_mode=fast\`）** —— \`transitions\` 共 **9 条目**（8 条流转键 + \`done\` 终止项），快线链（可达相位序列）为 \`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`（v1.3.3 起另有返工边 \`review_passed → exec_running\`）：
 
 | phase | 合法目标 |
 |-------|----------|
@@ -4640,7 +4651,7 @@ plan_pending → plan_review → plan_passed → scheme_pending → scheme_revie
 | \`exec_running\` | \`review_pending\` |
 | \`review_pending\` | \`review_failed\`, \`review_passed\` |
 | \`review_failed\` | \`review_pending\`, \`exec_running\` |
-| \`review_passed\` | \`archiving\` |
+| \`review_passed\` | \`archiving\`, \`exec_running\`（返工边，v1.3.3） |
 | \`archiving\` | \`done\` |
 | \`done\` | （终态） |
 
@@ -6462,7 +6473,7 @@ Fast-mode discipline:
 
 1. **The quality floor cannot be skipped**: under fast the reviewer **runs twice** — ① \`plan_review\` plan review (**mandatory single round**, on par with code review; pass → \`plan_passed\`, issues returned → \`plan_pending\`); ② code review after exec (single round); the \`review_failed\` loop allows re-review or returning to exec for fixes; failures are recorded as usual (REV entries unchanged).
 2. **Lightweight**: planner / archiver produce lightweight output (**must not** omit the task table / dependencies / acceptance points, or the state record / knowledge-staging decision).
-3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
+3. **Phase semantics**: under fast, reachable phases are the fast-line chain (\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`; plus a **rework edge** \`review_passed → exec_running\`, v1.3.3); the **legal phase enumeration remains at 15** (6 phases are unreachable under fast: \`scheme_*\` / \`test_*\`).
 4. **Full skeletons unchanged**: fast trims no on-disk structure; it only reduces agent relay steps.
 5. **Terminology disambiguation**: the flow mode is called the **Workflow Fast Line** (\`workflow_mode=fast\`); the review-depth downgrade is called **Fast Track (FAST-PASS)** — they are different mechanisms and must not be cross-referenced or conflated.
 
@@ -7369,7 +7380,7 @@ fast 调度纪律：
 
 1. **质量底线不可跳**：reviewer 在 fast 下**必跑两处**——① \`plan_review\` 计划审查（**必经单轮**，与代码审查同级；通过 → \`plan_passed\`，问题退回 → \`plan_pending\`）；② exec 后代码审查（单轮）；\`review_failed\` 回环可重审或回执行修复；失败留痕照常（REV 条目照常）。
 2. **轻量化**：planner / archiver 轻量产出（**不得**省略任务表 / 依赖 / 验收要点与状态记录 / 知识暂存判定）。
-3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
+3. **相位口径**：fast 下可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`；另有**返工边** \`review_passed → exec_running\`，v1.3.3）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：\`scheme_*\` / \`test_*\`）。
 4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
 5. **术语消歧**：流程模式称「**工作流快线**」（\`workflow_mode=fast\`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
 
@@ -7544,7 +7555,7 @@ model: inherit
 
 > ⚠️ 归档完成后阶段状态必须是 \`"done"\`，**不得**使用 \`"completed"\` 等非标准值——\`VALID_TRANSITIONS\` 中不存在 \`"completed"\`。
 
-> **fast 工作流快线下**：15 项相位枚举**不变**（**可达 ≠ 合法**）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`）。
+> **fast 工作流快线下**：15 项相位枚举**不变**（**可达 ≠ 合法**）；可达相位为快线链（\`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done\`；另有**返工边** \`review_passed → exec_running\`，v1.3.3）。
 
 ## 工作流模式感知（fast 轻量归档）
 
@@ -8338,7 +8349,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.3.2). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.3.3). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -8502,7 +8513,7 @@ Claude Code 的权限与工具可用性由 subagent 的 \`tools\` 白名单与 \
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.2）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.3.3）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 

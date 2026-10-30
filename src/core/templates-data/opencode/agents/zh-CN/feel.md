@@ -57,7 +57,7 @@ fast 调度纪律：
 
 1. **质量底线不可跳**：reviewer 在 fast 下**必跑两处**——① `plan_review` 计划审查（**必经单轮**，与代码审查同级；通过 → `plan_passed`，问题退回 → `plan_pending`）；② exec 后代码审查（单轮）；`review_failed` 回环可重审或回执行修复；失败留痕照常（REV 条目照常）。
 2. **轻量化**：planner / archiver 轻量产出（**不得**省略任务表 / 依赖 / 验收要点与状态记录 / 知识暂存判定）。
-3. **相位口径**：fast 下可达相位为快线链（`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：`scheme_*` / `test_*`）。
+3. **相位口径**：fast 下可达相位为快线链（`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`；另有**返工边** `review_passed → exec_running`，v1.3.3）；**合法相位枚举 15 项不变**（fast 下 6 项不可达：`scheme_*` / `test_*`）。
 4. **骨架全量不变**：fast 不裁剪任何落盘结构，仅减少 Agent 接力环节。
 5. **术语消歧**：流程模式称「**工作流快线**」（`workflow_mode=fast`）；审查深度降级称「**快速通道 / fast track（FAST-PASS）**」——二者为不同机制，不得互相引用 / 混用。
 

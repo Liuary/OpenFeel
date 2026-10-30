@@ -2,7 +2,7 @@
  * 阶段归档模块
  * 负责汇总阶段产出、生成归档摘要、提取知识条目，通过 FlowManager 操作 flow.json
  */
-import { FlowManager } from '../flow-manager.js';
+import { FlowManager, reviewStageOf } from '../flow-manager.js';
 import { normalizeStageId } from '../plan/path.js';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -86,16 +86,16 @@ export function archiveStage(
   const ops = Object.values(stage.ops);
   const opsCount = ops.length;
 
-  // 收集该阶段相关审查条目：op 字段格式为 "stageName.opXxx"
-  // 用 lastIndexOf 分割：stageId 自身可含 '.'（如 v1.0.0-stage-04），indexOf 会取错段（T3）
+  // 收集该阶段相关审查条目：op 级格式 "stageName.opXxx"；stage 级（v1.3.3）op 即 stageId。
+  // 归属解析统一走 reviewStageOf 单点（显式 stage 字段 > stage 级 op > op 前缀），避免 lastIndexOf 误切含点 stageId。
   const relatedReviews = data.reviews.filter((r) => {
-    const dotIdx = r.op.lastIndexOf('.');
-    if (dotIdx === -1) {
+    const reviewStage = reviewStageOf(r);
+    if (!reviewStage) {
       return false;
     }
-    const opStage = r.op.substring(0, dotIdx);
-    // 双键归属比较：归一化键优先，短名（原始输入）键回退，兼容存量短名键数据
-    return opStage === key || opStage === stageName;
+    return reviewStage === key
+      || reviewStage === stageName
+      || (normalizeStageId(reviewStage) ?? reviewStage) === key;
   });
   const reviewsCount = relatedReviews.length;
 

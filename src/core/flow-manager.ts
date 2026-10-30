@@ -72,6 +72,8 @@ export interface Op {
 export interface ReviewItem {
   id: string;
   op: string;
+  /** 阶段级 REV 的显式归属（v1.3.3；op 级 REV 缺省 undefined，向后兼容） */
+  stage?: string;
   status: 'open' | 'resolved' | 'closed';
   priority: 'high' | 'medium' | 'low';
   title: string;
@@ -155,8 +157,24 @@ export function isFlowConcurrentError(err: unknown): err is FlowConcurrentModifi
 }
 
 /**
+ * 解析审查条目的所属阶段（单点；v1.3.3 P0-2）。
+ * 优先级：显式 `review.stage`（stage 级 REV）> `review.op` 自身是合法 stageId（stage 级）
+ * > `review.op` 的 `lastIndexOf('.')` 前缀（op 级）。无法解析 → null。
+ * 返回值可能是短名（存量数据），调用方按需 `normalizeStageId` 比较。
+ */
+export function reviewStageOf(review: ReviewItem): string | null {
+  if (typeof review.stage === 'string' && review.stage !== '') return review.stage;
+  const op = typeof review.op === 'string' ? review.op : '';
+  if (op === '') return null;
+  // stage 级 REV：op 本身就是阶段 ID（含点，如 v1.0.0-stage-01）
+  if (parseStageId(op)) return op;
+  const dotIdx = op.lastIndexOf('.');
+  return dotIdx === -1 ? null : op.substring(0, dotIdx);
+}
+
+/**
  * 过滤指定阶段域的阻塞 open REV（单点谓词）。
- * 阶段域：r.op === stage 或 r.op.startsWith(stage + '.')（`.` 分隔防前缀重叠）。
+ * 阶段域：`reviewStageOf(r)` 与 stage 相等（原始或归一化后）。
  * 阻塞判定：r.blocking !== false（undefined 视为阻塞）且 r.status === 'open'。
  * 纯只读；空 stage → []。
  */
@@ -164,11 +182,14 @@ export function listStageBlockingOpenReviews(reviews: ReviewItem[], stage: strin
   if (!stage) {
     return [];
   }
-  return reviews.filter(
-    (r) => (r.op === stage || r.op.startsWith(stage + '.'))
-      && r.blocking !== false
-      && r.status === 'open',
-  );
+  const normStage = normalizeStageId(stage) ?? stage;
+  return reviews.filter((r) => {
+    const reviewStage = reviewStageOf(r);
+    if (!reviewStage) return false;
+    const belongsToStage = reviewStage === stage
+      || (normalizeStageId(reviewStage) ?? reviewStage) === normStage;
+    return belongsToStage && r.blocking !== false && r.status === 'open';
+  });
 }
 
 /** 阶段目录冲突：两个不同 stageId 映射同一 (series, stageDir)（cli/BUG-002） */
@@ -500,7 +521,9 @@ const FAST_TRANSITIONS: Record<string, string[]> = {
   exec_running: ['review_pending'],
   review_pending: ['review_failed', 'review_passed'],
   review_failed: ['review_pending', 'exec_running'],
-  review_passed: ['archiving'],
+  // v1.3.3 P0-3：审查通过后允许带整改原因返工（feedback P0-3）；full 表不变。
+  // findPhasePath 对 review_pending→exec_running 的同深度多义有显式 tie-break（优先经 review_failed）。
+  review_passed: ['archiving', 'exec_running'],
   archiving: ['done'],
   done: [],
 };
@@ -1488,13 +1511,14 @@ export class FlowManager {
    * @param phase 目标流水线阶段（PipelinePhase）
    * @param triggeredBy 触发者标识（如 'cli' / 'Feel'），默认 'flow-manager'
    * @param opts.reviewTier 本次调用的审查档位（**仅显式声明时写审计键** `review_tier`；缺省不写 ⟹ 既有条目逐字不变）
+   * @param opts.reworkReason 审查通过后返工的整改原因（v1.3.3；仅写审计键 `rework_reason`，不参与状态机判定）
    * @returns 是否触发 done 归档（true = 本次推进将阶段变为 done 且之前非 done，需在 save 后执行归档 commit）
    */
   advanceStagePhase(
     stageName: string,
     phase: PipelinePhase,
     triggeredBy?: string,
-    opts?: { reviewTier?: ReviewTier },
+    opts?: { reviewTier?: ReviewTier; reworkReason?: string },
   ): boolean {
     if (!this.data) {
       return false;
@@ -1528,12 +1552,8 @@ export class FlowManager {
 
     // REV 闭环：blocking REV > 0 时拒绝推进到 done（--force 仅降级警告）
     if (targetPhase === 'done') {
-      const stageReviews = this.data!.reviews.filter(
-        (r) => r.op.startsWith(key + '.') || r.op === key,
-      );
-      const blockingOpen = stageReviews.filter(
-        (r) => r.blocking !== false && r.status === 'open',
-      );
+      // v1.3.3：复用单点归属谓词（含 stage 级 REV / 短名键归一），与归档摘要同口径
+      const blockingOpen = listStageBlockingOpenReviews(this.data!.reviews, key);
       if (blockingOpen.length > 0) {
         const revList = blockingOpen
           .map((r) => `  ${r.id}: ${r.title} (priority=${r.priority})`)
@@ -1590,6 +1610,7 @@ export class FlowManager {
         stageName: key, from: fromPhase, to: targetPhase, session_id: sessionId,
         ...(resumed === null ? {} : { resumed }),
         ...(opts?.reviewTier === undefined ? {} : { review_tier: opts.reviewTier }),
+        ...(opts?.reworkReason === undefined ? {} : { rework_reason: opts.reworkReason }),
       },
     });
 
@@ -1600,6 +1621,9 @@ export class FlowManager {
     const prevStatus = stage.status;
     const newStatus = mapPhaseToStageStatus(targetPhase, prevStatus);
     stage.status = newStatus;
+
+    // v1.3.3 P1-2：status.md 受管字段派生写（仅 CLI 写；缺失文件跳过；失败不阻塞推进）
+    this.syncStatusManifest(key, targetPhase, fromPhase, prevStatus);
 
     // 自动记录阶段计时：首次状态变更时启动
     if (!stage.stats || !stage.stats.start_time) {
@@ -1655,12 +1679,8 @@ export class FlowManager {
 
     // to=done：复用 advanceStagePhase 的 REV 阻塞检查（同语义，--force 不可绕过）
     if (targetPhase === 'done') {
-      const stageReviews = this.data.reviews.filter(
-        (r) => r.op.startsWith(key + '.') || r.op === key,
-      );
-      const blockingOpen = stageReviews.filter(
-        (r) => r.blocking !== false && r.status === 'open',
-      );
+      // v1.3.3：单点归属谓词（stage 级 REV / 短名键归一）——与 advance / 归档摘要同口径
+      const blockingOpen = listStageBlockingOpenReviews(this.data.reviews, key);
       if (blockingOpen.length > 0) {
         const revList = blockingOpen
           .map((r) => `  ${r.id}: ${r.title} (priority=${r.priority})`)
@@ -1728,6 +1748,20 @@ export class FlowManager {
       execFileSync('git', ['commit', '-m', msg], { stdio: 'pipe', cwd: this.projectPath });
       console.log(t('flow.advance.gitCommitOkTmpl', lang, { stage: stageName }));
     } catch {
+      // 区分「非 git 仓库」（无版本兜底 → 显式告警）与「无变更」（仅跳过提示）
+      let inGitRepo = false;
+      try {
+        const revParse = execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
+          stdio: 'pipe',
+          cwd: this.projectPath,
+        });
+        inGitRepo = String(revParse).trim() === 'true';
+      } catch {
+        inGitRepo = false;
+      }
+      if (!inGitRepo) {
+        console.warn(t('flow.advance.gitCommitNoRepoWarnTmpl', lang, { stage: stageName }));
+      }
       // 不在 git 仓库 / git 不可用 / 无变更时静默跳过，不阻塞 done 推进
       console.log(t('flow.advance.gitCommitSkipTmpl', lang, { stage: stageName }));
     }
@@ -2110,6 +2144,15 @@ export class FlowManager {
         }
       }
       if (hits.length > 1) {
+        // v1.3.3 P0-3 显式 tie-break：fast 新增 review_passed→exec_running 后，
+        // review_pending→exec_running 在深度 2 出现两条等价路径（经 review_failed / 经 review_passed）。
+        // 保持修复前行为：优先「失败回环」路径（review_failed 首跳）；其余多义仍拒绝。
+        if (start === 'review_pending' && to === 'exec_running') {
+          const preferred = hits.find((path) => path[0] === 'review_failed');
+          if (preferred) {
+            return { path: preferred, reason: 'ok' };
+          }
+        }
         return { path: [], reason: 'ambiguous' }; // 最短深度多条等价路径 → 拒绝
       }
       if (hits.length === 1) {
@@ -3731,6 +3774,64 @@ export class FlowManager {
       atomicWriteFileSync(statusPath, updated);
       return true;
     });
+  }
+
+  /**
+   * status.md 多字段定向写（原子写 + 按阶段目录加锁；一次读 → 一次写）。
+   * 仅替换**已存在**的 `- **{key}**：{value}` 行；字段缺失保持原样（不插入、不新建文件）。
+   * 供 `syncStatusManifest`（P1-2 派生写）复用，避免逐字段多次加锁/写盘。
+   */
+  private writeStatusFields(statusPath: string, fields: Record<string, string>): boolean {
+    const stageDir = basename(dirname(statusPath));
+    const lockPath = projectLockPath(this.projectPath, `status-${stageDir}`);
+    return withFileLock(lockPath, () => {
+      const content = readFileSync(statusPath, 'utf-8');
+      let updated = content;
+      for (const [key, value] of Object.entries(fields)) {
+        const fieldRegex = new RegExp(
+          `^(-\\s*(?:\\*\\*)?${escapeRegex(key)}(?:\\*\\*)?[：:]\\s*)(.*)$`,
+          'gm',
+        );
+        updated = updated.replace(fieldRegex, `$1${value}`);
+      }
+      if (updated === content) {
+        return false; // 全部未命中（缺失字段 / 同值）
+      }
+      atomicWriteFileSync(statusPath, updated);
+      return true;
+    });
+  }
+
+  /**
+   * 把 flow.json 权威状态派生到 status.md 的受管字段（v1.3.3 P1-2）。
+   *
+   * 只写 4 个受管字段：`状态` / `当前责任 Agent` / `上一责任 Agent`（首次推进保留 none）/ `更新时间`。
+   * **仅 CLI 派生写**：Agent 反向手改 status.md 仍由写入门禁拒绝。
+   * 缺失 status.md / 读取失败 → 静默跳过（不新建文件、不阻塞推进）。
+   */
+  private syncStatusManifest(
+    stageName: string,
+    toPhase: PipelinePhase,
+    fromPhase: PipelinePhase,
+    prevStatus: string,
+  ): void {
+    try {
+      const statusPath = this.findStatusPath(stageName);
+      if (!statusPath || !existsSync(statusPath)) {
+        return;
+      }
+      const fields: Record<string, string> = {
+        '状态': mapPhaseToStageStatus(toPhase, prevStatus),
+        '当前责任 Agent': this.mapPhaseToAgent(toPhase),
+        '更新时间': new Date().toISOString().replace('T', ' ').substring(0, 16),
+      };
+      if (fromPhase !== 'plan_pending') {
+        fields['上一责任 Agent'] = this.mapPhaseToAgent(fromPhase);
+      }
+      this.writeStatusFields(statusPath, fields);
+    } catch {
+      // 派生写失败（权限 / 锁超时等）→ 不阻塞状态机推进（flow.json 仍为权威）
+    }
   }
 
   /**

@@ -65,9 +65,22 @@ describe('instructions 命令（op-010 L2）', () => {
     }
   }
 
-  it('缺 --change → commander 报错（requiredOption）', async () => {
-    await expect(program.parseAsync(['instructions', 'proposal'], { from: 'user' }))
-      .rejects.toBeInstanceOf(CommanderError);
+  it('v1.3.3 P1-3：省略 --change → 缺省 default 仍可生成（不再是 requiredOption）', async () => {
+    await safeParse(['instructions', 'proposal', '--json']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const raw = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    const obj = JSON.parse(raw) as { artifact: { id: string } };
+    expect(obj.artifact.id).toBe('proposal');
+  });
+
+  it('v1.3.3 P1-3：项目无本地 schema → 回退包内置 schemas（空白项目可用）', async () => {
+    rmSync(join(tmpDir, '.openfeel', 'schemas'), { recursive: true, force: true });
+    await safeParse(['instructions', 'proposal', '--change', 'feat-x', '--json']);
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(errorMock).not.toHaveBeenCalled();
+    const raw = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    const obj = JSON.parse(raw) as { artifact: { id: string } };
+    expect(obj.artifact.id).toBe('proposal');
   });
 
   it('--json 输出纯 JSON 单文档（含 artifact 结构）', async () => {

@@ -57,7 +57,7 @@ describe('initProject', () => {
     rmSync(homeDir, { recursive: true, force: true });
   });
 
-  it('应创建 .openfeel/ 目录结构', async () => {
+  it('应创建 .openfeel/ 目录结构（v1.3.3：核心 4 + dev 2；惰性目录不建）', async () => {
     const result = await initProject(tmpDir);
     const base = join(tmpDir, '.openfeel');
 
@@ -69,9 +69,10 @@ describe('initProject', () => {
     expect(existsSync(join(base, 'dev', 'note'))).toBe(true);
     expect(existsSync(join(base, 'dev', 'current_archive'))).toBe(true);
     expect(existsSync(join(base, 'log'))).toBe(true);
-    expect(existsSync(join(base, 'code_review'))).toBe(true);
-    expect(existsSync(join(base, 'bugs'))).toBe(true);
-    expect(existsSync(join(base, 'tmp'))).toBe(true);
+    // v1.3.3 P2-4：惰性目录不在 init 冷启动创建（首次使用按需 mkdir）
+    for (const lazy of ['code_review', 'bugs', 'users', 'tmp', 'manual', 'update_conflicts']) {
+      expect(existsSync(join(base, lazy))).toBe(false);
+    }
 
     // 验证返回的创建列表包含目录
     expect(result.created.some((item) => item.includes('.openfeel/'))).toBe(true);

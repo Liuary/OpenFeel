@@ -80,14 +80,17 @@ check('off：flow.json/status.md 也放行（B10）', () => {
   assert.equal(off(execution('write', cwd, { path: '.openfeel/plan/v1/stage-1/status.md' })), undefined);
 });
 
-check('always + 无 .openfeel：源码拒绝', () => {
-  const reason = always(execution('edit', workspace('always-src'), { path: 'src/foo.cs' }));
+check('always + 无 .openfeel：已存在源码拒绝', () => {
+  const cwd = workspace('always-src');
+  mkdirSync(join(cwd, 'src'), { recursive: true });
+  writeFileSync(join(cwd, 'src', 'foo.cs'), 'x', 'utf8');
+  const reason = always(execution('edit', cwd, { path: 'src/foo.cs' }));
   assert.match(String(reason), /尚未初始化|not OpenFeel-initialized/);
 });
 
-check('always + 无 .openfeel：写 docs 拒绝（B7）', () => {
+check('always + 无 .openfeel：新增 docs 放行（P0-1 bootstrap）', () => {
   const reason = always(execution('write', workspace('always-doc'), { path: 'docs/design.md' }));
-  assert.equal(typeof reason, 'string');
+  assert.equal(reason, undefined);
 });
 
 check('always + 无 .openfeel：.openfeel/plan 拒绝（B8）', () => {
@@ -215,13 +218,16 @@ check('apply_patch：Move 必须同块 Update（B2）', () => {
   const bad = parsePatchTargets('*** Update File: .openfeel/plan/x.md\n*** Add File: src/new.cs\n*** Move to: src/outside.cs');
   assert.equal(bad.ok, false);
   const ok = parsePatchTargets('*** Update File: .openfeel/plan/x.md\n*** Move to: .openfeel/plan/y.md');
-  assert.deepEqual(ok, { ok: true, paths: ['.openfeel/plan/x.md', '.openfeel/plan/y.md'] });
+  assert.deepEqual({ ok: ok.ok, paths: ok.paths }, { ok: true, paths: ['.openfeel/plan/x.md', '.openfeel/plan/y.md'] });
 });
 
 check('apply_patch：Add/Delete/--- 正目标解析', () => {
-  assert.deepEqual(parsePatchTargets('*** Add File: .openfeel/plan/x.md'), { ok: true, paths: ['.openfeel/plan/x.md'] });
-  assert.deepEqual(parsePatchTargets('*** Delete File: src/foo.cs'), { ok: true, paths: ['src/foo.cs'] });
-  assert.deepEqual(parsePatchTargets('--- a/src/foo.cs\n+++ b/src/foo.cs'), { ok: true, paths: ['src/foo.cs'] });
+  const add = parsePatchTargets('*** Add File: .openfeel/plan/x.md');
+  assert.deepEqual({ ok: add.ok, paths: add.paths }, { ok: true, paths: ['.openfeel/plan/x.md'] });
+  const del = parsePatchTargets('*** Delete File: src/foo.cs');
+  assert.deepEqual({ ok: del.ok, paths: del.paths }, { ok: true, paths: ['src/foo.cs'] });
+  const diff = parsePatchTargets('--- a/src/foo.cs\n+++ b/src/foo.cs');
+  assert.deepEqual({ ok: diff.ok, paths: diff.paths }, { ok: true, paths: ['src/foo.cs'] });
 });
 
 check('apply_patch：Add 内部放行 / Delete 外部拒绝', () => {
@@ -236,12 +242,12 @@ check('apply_patch：Add 内部放行 / Delete 外部拒绝', () => {
 
 check('apply_patch：引号路径去引号（N8）', () => {
   const parsed = parsePatchTargets('*** Update File: "src/foo.cs"');
-  assert.deepEqual(parsed, { ok: true, paths: ['src/foo.cs'] });
+  assert.deepEqual({ ok: parsed.ok, paths: parsed.paths }, { ok: true, paths: ['src/foo.cs'] });
 });
 
 check('apply_patch：/dev/null 被忽略（N8）', () => {
   const parsed = parsePatchTargets('--- /dev/null\n+++ b/src/foo.cs');
-  assert.deepEqual(parsed, { ok: true, paths: ['src/foo.cs'] });
+  assert.deepEqual({ ok: parsed.ok, paths: parsed.paths }, { ok: true, paths: ['src/foo.cs'] });
 });
 
 check('str_replace_editor：flow.json 拒绝，内部产物放行', () => {
@@ -293,6 +299,69 @@ check('完整提示：detected=false 不误报已初始化', () => {
 check('完整提示：detected=true 显示已初始化', () => {
   const text = renderFeelPrompt({ language: 'zh-CN', detected: true, projectRoot: root });
   assert.match(text, /已初始化/);
+});
+
+// ── v1.3.3-stage-104：P0-1 bootstrap 例外 / P0-4 doc-note 不绑相位 ─────
+
+check('P0-1 bootstrap：空仓新增文件放行', () => {
+  const cwd = workspace('bootstrap-new');
+  assert.equal(always(execution('write', cwd, { path: 'src/x.ts' })), undefined);
+});
+
+check('P0-1 bootstrap：空仓新文件（嵌套目录）放行', () => {
+  const cwd = workspace('bootstrap-nested');
+  assert.equal(always(execution('edit', cwd, { file_path: 'docs/a/b.md' })), undefined);
+});
+
+check('P0-1 bootstrap：已存在文件仍拒绝', () => {
+  const cwd = workspace('bootstrap-existing');
+  mkdirSync(join(cwd, 'src'), { recursive: true });
+  writeFileSync(join(cwd, 'src', 'x.ts'), 'x', 'utf8');
+  assert.match(String(always(execution('write', cwd, { path: 'src/x.ts' }))), /尚未初始化|not OpenFeel-initialized/);
+});
+
+check('P0-1 bootstrap：apply_patch Add 放行 / Update 拒绝', () => {
+  const addCwd = workspace('bootstrap-patch-add');
+  const addPatch = '*** Begin Patch\n*** Add File: src/a.ts\n+x\n*** End Patch\n';
+  assert.equal(always(execution('apply_patch', addCwd, { patch: addPatch })), undefined);
+  const updCwd = workspace('bootstrap-patch-update');
+  const updPatch = '*** Begin Patch\n*** Update File: src/a.ts\n@@\n-x\n+y\n*** End Patch\n';
+  assert.match(String(always(execution('apply_patch', updCwd, { patch: updPatch }))), /尚未初始化|not OpenFeel-initialized/);
+});
+
+check('P0-1 bootstrap：工作区外路径拒绝（防 ../ 越界）', () => {
+  const cwd = workspace('bootstrap-escape');
+  const outside = join(root, 'outside-target.ts');
+  assert.match(String(always(execution('write', cwd, { path: outside }))), /尚未初始化|not OpenFeel-initialized/);
+});
+
+check('P0-4：源码目录名为 docs 不视为文档（src/docs/x.ts 仍按源码门）', () => {
+  const cwd = project('doc-src-docs', planFlow);
+  assert.match(String(projectOnly(execution('write', cwd, { path: 'src/docs/x.ts' }))), /exec_running/);
+});
+
+check('P0-4：无活跃阶段写 docs 放行 / 源码拒绝', () => {
+  const cwd = project('doc-no-stage', noStageFlow);
+  assert.equal(projectOnly(execution('write', cwd, { path: 'docs/notes.md' })), undefined);
+  assert.match(String(projectOnly(execution('write', cwd, { path: 'src/a.ts' }))), /无活跃阶段|no active stage/);
+});
+
+check('P0-4：plan 相位写 docs / 根 README 放行，源码拒绝', () => {
+  const cwd = project('doc-plan-phase', planFlow);
+  assert.equal(projectOnly(execution('write', cwd, { path: 'docs/design/api.md' })), undefined);
+  assert.equal(projectOnly(execution('write', cwd, { path: 'README.md' })), undefined);
+  assert.match(String(projectOnly(execution('write', cwd, { path: 'src/a.ts' }))), /exec_running/);
+});
+
+check('P0-4：doc + src 混合目标从严（拒绝）', () => {
+  const cwd = project('doc-mixed', noStageFlow);
+  const patch = '*** Begin Patch\n*** Add File: docs/a.md\n+x\n*** Add File: src/a.ts\n+y\n*** End Patch\n';
+  assert.match(String(projectOnly(execution('apply_patch', cwd, { patch }))), /无活跃阶段|no active stage/);
+});
+
+check('P0-4：exec_running 相位源码照常放行（零回归）', () => {
+  const cwd = project('doc-exec', execFlow);
+  assert.equal(projectOnly(execution('write', cwd, { path: 'src/a.ts' })), undefined);
 });
 
 rmSync(root, { recursive: true, force: true });

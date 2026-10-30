@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import { addStage, listStages } from '../core/plan/stage.js';
 import type { StageSkeletonOverrides } from '../core/plan/stage.js';
 import { createScheme, createSchemesFromTasks, listSchemes, removeScheme, publishScheme, renameScheme, registerSchemes } from '../core/plan/scheme.js';
-import { validateStageId, suggestStageId, normalizeStageId, isArchivedVersionOf } from '../core/plan/path.js';
+import { validateStageId, suggestStageId, normalizeStageId, isArchivedVersionOf, parseStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { StageDirConflictError, FlowManager, detectFillState } from '../core/flow-manager.js';
 import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
@@ -148,6 +148,14 @@ export function registerPlanCommand(program: Command): void {
         process.exit(1);
       }
       console.log(t('plan.stage.createdTmpl', lang, { name }));
+      // v1.3.3 P2-3：回显实际 plan 目录（stageId ↔ 目录映射可对账）
+      const created = parseStageId(name);
+      if (created) {
+        console.log('  ' + t('plan.stage.createdDirTmpl', lang, {
+          name: created.fullStageId,
+          dir: `.openfeel/plan/${created.series}/${created.stageDir}/`,
+        }));
+      }
     });
 
   // plan stage list

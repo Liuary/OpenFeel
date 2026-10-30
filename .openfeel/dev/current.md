@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.3.2 — DSH 激活与写入门禁**｜ `ctx.tools.guard` 同步拒绝文件修改工具；非 OpenFeel 工作区 bootstrap；默认 `enforce=always` ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.2 ｜ **已 push；npm 1.3.2 已发布**
-> 统计：测试 77 文件 / **1978 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 83 + 36 + 10 = **171 断言** ｜ `lint i18n` **1013** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.3.2**
+> OpenFeel **v1.3.3 — fast 模式结构性修复**｜ 阶段级 REV / `review_passed → exec_running` 返工边 / 写入门禁风险分层 / 原子聚焦 / status.md 派生写 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 41 注册选项** ｜ 版本 1.3.3 ｜ **未 push；未 npm publish**
+> 统计：测试 78 文件 / **1998 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 83 + 46 + 10 = **181 断言** ｜ `lint i18n` **1025** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.3.3**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-30** @Liuary：**v1.3.3 fast 模式结构性修复（反馈 13 项）**——依据 `OpenFeelHarness/docs/feedback/openfeel-feedback-2026-10-30.md`。① **审查挂载点**：`flow review add --op` 可选 + 新增 `--stage`，fast 0-op 阶段挂阶段级 REV（`ReviewItem.stage`，`reviewStageOf` 单点；`archive <stage>` 摘要与 blocking 门一致）。② **返工边**：fast `review_passed → exec_running` + `advance --reason`（审计 `rework_reason`）；`findPhasePath` 对 `review_pending → exec_running` 同深度多义 tie-break（优先经 `review_failed`）。③ **写入门禁**：bootstrap 新增放行（apply_patch 须全为 `*** Add File:`）+ doc/note 分层（`docs/**` 与文档扩展不绑相位，混合从严）。④ **单一真源**：`plan stage add` 原子聚焦；`flow next` current 空时只读派生；`advanceStagePhase` 派生写 status.md 受管字段；DSH 序列化器祖先栈判环。⑤ **模板/配置/档位**：`instructions` 包内置 schema 回退 + `--change` 可选；`auto + auto_advance=disabled` 告警；advance 回显审查档位。⑥ **体验**：init 目录惰性化（核心 4 + dev 2）、阶段 ID↔目录映射文档化 + `plan stage add` 回显目录、非 git 仓库归档告警。门禁：全量 **78/1998**、tsc 0、i18n **1025**、kb 0（649）、build ×2、dsh **181**、`--version` 1.3.3；附录 A 复现 **22/22** + 门禁复现 **9/9**。阶段 v1.3.3-stage-104（full）。**未 push；未 npm publish**
 
 - **2026-10-24** @Liuary：**v1.3.2 激活与写入门禁**——根因：`dsh/lib/index.js` 在 `resolved.initialized === false` 时直接返回空提示，新工作区完全静默。① **写入门禁**：新增 `dsh/lib/guard.js`，用 DSH `ctx.tools.guard()` 同步拒绝 `edit` / `write` / `apply_patch` / `str_replace_editor`；`.openfeel/**` 流程产物任意阶段可写（flow.json / status.md 除外），外部源码要求 `exec_running`；无 `.openfeel` 且 `enforce=always` 时拒绝全部文件写入（含 `.openfeel/plan`），general 需求 `in_progress` 例外；apply_patch 解析全部 patch 头，混合/无头保守拒绝；`ctx.effect` 管理 disposer，guard 缺失降级。② **bootstrap**：`activation=auto` 未初始化注入短提示，`always` 完整纪律，`off` 不注入。③ **默认 `enforce=always`**，`project`/`off` opt-out；`pwsh` 默认不守（显式逃生通道）。④ 测试：guard 36、verify 83、contract 42、integration 10；全量 77/1978、tsc 0、i18n 1013、kb 0、build ×2、pack 359 文件（dsh 20，无 test）。阶段 v1.3.2-stage-103（fast）；**已 push；npm 1.3.2 已发布**
 

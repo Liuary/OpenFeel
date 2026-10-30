@@ -3879,6 +3879,26 @@ describe('配置级联（stage-42 op-001）', () => {
       // stageName 仅作为单个数组元素（commit -m 消息）出现，未被 shell 解析
       expect(commitCall![1].some((a) => a.includes('stage;1 & rm -rf /'))).toBe(true);
     });
+
+    it('P2-1：autoCommitOnDone 非 git 仓库 → 显式告警（不是静默跳过）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mockedChild.execFileSync.mockReset();
+      mockedChild.execFileSync.mockImplementation(() => {
+        throw new Error('fatal: not a git repository');
+      });
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        mgr.autoCommitOnDone('v1.0.0-stage-01');
+        expect(warn.mock.calls.map((c) => String(c[0])).join('\n')).toMatch(/未初始化 git|not a git repository/);
+        expect(log.mock.calls.map((c) => String(c[0])).join('\n')).toMatch(/跳过自动 git commit/);
+      } finally {
+        warn.mockRestore();
+        log.mockRestore();
+        mockedChild.execFileSync.mockReset();
+      }
+    });
   });
 
   // ═══════════════════════════════════════
@@ -4328,7 +4348,7 @@ describe('双模式转移表（stage-74 op-002）', () => {
     exec_running: ['review_pending'],
     review_pending: ['review_failed', 'review_passed'],
     review_failed: ['review_pending', 'exec_running'],
-    review_passed: ['archiving'],
+    review_passed: ['archiving', 'exec_running'],
     archiving: ['done'],
     done: [],
   };
@@ -4690,6 +4710,21 @@ describe('单一取表点（stage-74 op-004）', () => {
     expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'review_pending')).toBe(true);
     expect(mgr.canAdvance('v1.0.0-stage-02.op-001', 'exec_running')).toBe(true);
     expect(mgr.getAvailablePhases('v1.0.0-stage-02')).toEqual(['review_pending', 'exec_running']);
+  });
+
+  it('v1.3.3 P0-3：fast review_passed→exec_running 返工边可达；review_pending→exec_running tie-break 仍经 review_failed', () => {
+    // 返工边：review_passed 直接到 exec_running（单跳唯一）
+    const rework = setupDualModeFixture();
+    rework.stages['v1.0.0-stage-02'].phase = 'review_passed';
+    const mgrRework = makeMgr(rework);
+    expect(mgrRework.getAvailablePhases('v1.0.0-stage-02')).toEqual(['archiving', 'exec_running']);
+    expect(mgrRework.findPhasePath('v1.0.0-stage-02', 'exec_running')).toEqual({ path: ['exec_running'], reason: 'ok' });
+
+    // 同深度多义 tie-break：review_pending → exec_running 仍走失败回环（修复前行为）
+    const pending = setupDualModeFixture();
+    pending.stages['v1.0.0-stage-02'].phase = 'review_pending';
+    const mgrPending = makeMgr(pending);
+    expect(mgrPending.findPhasePath('v1.0.0-stage-02', 'exec_running')).toEqual({ path: ['review_failed', 'exec_running'], reason: 'ok' });
   });
 
   it('T7.10：同 (stage, mode) 四者键集双向一致', () => {
@@ -5666,7 +5701,7 @@ describe('stage-90：general 模式（空表）与值域同源', () => {
       exec_running: ['review_pending'],
       review_pending: ['review_failed', 'review_passed'],
       review_failed: ['review_pending', 'exec_running'],
-      review_passed: ['archiving'],
+      review_passed: ['archiving', 'exec_running'],
       archiving: ['done'],
       done: [],
     });
@@ -5830,7 +5865,7 @@ describe('审查档位（stage-92 op-001）', () => {
     done: [],
   };
 
-  /** 内置 fast 表期望字面量（9 条目含 done 终止项） */
+  /** 内置 fast 表期望字面量（9 条目含 done 终止项；v1.3.3 起含返工边） */
   const FAST_EXPECTED: Record<string, string[]> = {
     plan_pending: ['plan_review'],
     plan_review: ['plan_passed', 'plan_pending'],
@@ -5838,7 +5873,7 @@ describe('审查档位（stage-92 op-001）', () => {
     exec_running: ['review_pending'],
     review_pending: ['review_failed', 'review_passed'],
     review_failed: ['review_pending', 'exec_running'],
-    review_passed: ['archiving'],
+    review_passed: ['archiving', 'exec_running'],
     archiving: ['done'],
     done: [],
   };
@@ -6167,6 +6202,30 @@ describe('stage-96 op-001 调度单点', () => {
       rev({ id: 'REV-006', op: 'stage-01.op-006' }),
     ];
     expect(listStageBlockingOpenReviews(reviews, 'stage-01').map((r) => r.id)).toEqual(['REV-001', 'REV-002', 'REV-006']);
+  });
+
+  it('v1.3.3 P0-2：stage 级 REV（op=stageId / 显式 stage）命中，含点 stageId 不被 lastIndexOf 误切', () => {
+    const reviews = [
+      rev({ id: 'REV-101', op: 'v0.0.1-stage-01' }),
+      rev({ id: 'REV-102', op: 'v0.0.1-stage-01', stage: 'v0.0.1-stage-01' }),
+      rev({ id: 'REV-103', op: 'v0.0.1-stage-02.op-001' }),
+    ];
+    expect(listStageBlockingOpenReviews(reviews, 'v0.0.1-stage-01').map((r) => r.id)).toEqual(['REV-101', 'REV-102']);
+    // 归一化比较：短名 stage-01 与全名 v1.0.0-stage-01 同域
+    const shortKey = [rev({ id: 'REV-201', op: 'stage-01.op-001' })];
+    expect(listStageBlockingOpenReviews(shortKey, 'v1.0.0-stage-01').map((r) => r.id)).toEqual(['REV-201']);
+  });
+
+  it('v1.3.3 P0-2：短名键阶段 + 阶段级 blocking REV → done 门同口径拒绝', () => {
+    const mgr = new FlowManager(tmpDir);
+    const base = makeTestFlowData();
+    mgr.setData({
+      ...base,
+      stages: { 'stage-01': { ...base.stages['stage-01'], phase: 'archiving' } },
+      reviews: [rev({ id: 'REV-301', op: 'v1.0.0-stage-01', stage: 'v1.0.0-stage-01' })],
+    });
+    expect(listStageBlockingOpenReviews(mgr.getData()!.reviews, 'stage-01').map((r) => r.id)).toEqual(['REV-301']);
+    expect(() => mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase)).toThrow(/REV-301|阻塞/);
   });
 
   it('listStageBlockingOpenReviews：空 stage → []', () => {

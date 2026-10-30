@@ -234,6 +234,41 @@ export function resolveConfigDefaults(projectPath: string): ResolvedConfigDefaul
 // ── 工具函数 ──
 
 /**
+ * 读取项目 `config.yaml` 中**显式声明**的 execution_mode / auto_advance（v1.3.3 P1-4）。
+ *
+ * 与 `resolveConfigDefaults`（缺失即回退 builtin）不同：本函数只返回**用户显式写入**的键，
+ * 用于「双开关组合校验」——只看 builtin 默认（manual + enabled）不应触发告警。
+ * 读侧宽容：文件缺失 / YAML 非法 / 值非法 → 对应键省略。
+ */
+export interface ExplicitConfigDefaults {
+  execution_mode?: 'manual' | 'auto';
+  auto_advance?: 'disabled' | 'enabled';
+}
+
+export function readExplicitConfigDefaults(projectPath: string): ExplicitConfigDefaults {
+  const result: ExplicitConfigDefaults = {};
+  const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
+  if (!existsSync(configPath)) {
+    return result;
+  }
+  try {
+    const raw = parseYaml(readFileSync(configPath, 'utf-8')) as Record<string, unknown> | null;
+    const defaults = (raw?.defaults ?? {}) as Record<string, unknown>;
+    const exec = ConfigDefaultsSchema.shape.execution_mode.safeParse(defaults.execution_mode);
+    if (exec.success && typeof exec.data === 'string') {
+      result.execution_mode = exec.data as 'manual' | 'auto';
+    }
+    const auto = ConfigDefaultsSchema.shape.auto_advance.safeParse(defaults.auto_advance);
+    if (auto.success && typeof auto.data === 'string') {
+      result.auto_advance = auto.data as 'disabled' | 'enabled';
+    }
+  } catch {
+    // 错误路径：YAML 语法/读取失败 → 视为未显式声明（不告警）
+  }
+  return result;
+}
+
+/**
  * 将 Config 的嵌套 defaults 字段提升到顶层
  * 向后兼容旧代码中 config.execution_mode 等扁平访问方式
  */
@@ -433,7 +468,7 @@ const CONFIG_TEMPLATE_ZH = `# .openfeel/config.yaml
 # 本文件为所有阶段提供默认值，status.md 可覆盖
 
 meta:
-  version: 1.3.2
+  version: 1.3.3
   project: OpenFeel
   tech_stack: TypeScript
 
@@ -490,7 +525,7 @@ const CONFIG_TEMPLATE_EN = `# .openfeel/config.yaml
 # This file provides defaults for all stages; status.md can override
 
 meta:
-  version: 1.3.2
+  version: 1.3.3
   project: OpenFeel
   tech_stack: TypeScript
 

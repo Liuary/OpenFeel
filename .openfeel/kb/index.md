@@ -399,6 +399,11 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-10-30 | patterns | [REV-005] 代码审查：.md 模板源按文档放行（口径确认，ADAPTER/文档已明示） |
+| 2026-10-30 | patterns | [REV-004] 代码审查：status.md 派生写早于 save 的半写窗口（非阻塞，health --fix 可回收） |
+| 2026-10-30 | patterns | [REV-003] 代码审查：done 门复用 reviewStageOf 单点归属（已修） |
+| 2026-10-30 | patterns | [REV-002] 代码审查：写入门禁 docs 范围与 bootstrap 越界（已修） |
+| 2026-10-30 | patterns | [REV-001] 计划审查 B1~B4 / L1~L6 吸收记录（stage-104 计划轮） |
 | 2026-10-17 | patterns | [REV-003] B3 计划：DSH profile 路径进入 updated 会被 setup 写入 global update_state hash，与"不属于受管资产"矛盾；只走 SetupResult.dsh |
 | 2026-10-17 | patterns | [REV-002] B2 计划：DSH_* 错误码不在 CliErrorCode 13 码表；改用 INVALID_ARGUMENT/INTERNAL_ERROR + detail.reason，避免改 JSON 契约 §3 |
 | 2026-10-17 | patterns | [REV-001] B1 计划：profile 锁内调用 backup/appendUpdateInfo 造成嵌套全局锁，需改为锁外备份、锁内重读合并写 |

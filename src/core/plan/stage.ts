@@ -161,7 +161,7 @@ ${depsText}
 - **自动推进**：${autoAdvance}
 - **工作流模式**：${workflowMode}
 - **状态**：planned
-- **当前责任 Agent**：user
+- **当前责任 Agent**：${skeletonMgr.isLoaded() ? skeletonMgr.getResponsibleAgent('plan_pending') : 'openfeel-planner'}
 - **上一责任 Agent**：none
 - **更新时间**：${new Date().toISOString().replace('T', ' ').substring(0, 16)}
 
@@ -219,6 +219,8 @@ export function addStage(projectPath: string, name: string, deps?: string[], tas
     // 冗余写入点①：仅「新建」阶段写 workflow_mode（已存在阶段不覆盖，防与 status.md 权威值漂移，D6）
     const existed = !!flowMgr.getData()!.stages[parsed.fullStageId];
     flowMgr.registerStage(parsed.fullStageId, deps ?? []);
+    // v1.3.3 P1-1：注册即聚焦（原子）——避免「注册 / 聚焦」分裂导致 flow next 误报无活跃阶段。
+    flowMgr.getData()!.pipeline.current = { stage: parsed.fullStageId, op: '' };
     if (!existed) {
       // stage-90 P1'：与骨架初值同源（此时 status.md 已含初值 → 第 1 层命中，读回同值；health 第 10 项零告警）
       const resolvedWorkflowMode = overrides?.workflowMode

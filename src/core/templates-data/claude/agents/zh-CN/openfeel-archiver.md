@@ -58,7 +58,7 @@ model: inherit
 
 > ⚠️ 归档完成后阶段状态必须是 `"done"`，**不得**使用 `"completed"` 等非标准值——`VALID_TRANSITIONS` 中不存在 `"completed"`。
 
-> **fast 工作流快线下**：15 项相位枚举**不变**（**可达 ≠ 合法**）；可达相位为快线链（`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`）。
+> **fast 工作流快线下**：15 项相位枚举**不变**（**可达 ≠ 合法**）；可达相位为快线链（`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_failed → review_passed → archiving → done`；另有**返工边** `review_passed → exec_running`，v1.3.3）。
 
 ## 工作流模式感知（fast 轻量归档）
 

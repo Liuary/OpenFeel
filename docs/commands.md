@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.3.2 快照** | 更新日期：2026-10-24
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.3.3 快照** | 更新日期：2026-10-30
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -245,7 +245,7 @@ openfeel flow next [--json]
 推进流水线阶段。
 
 ```bash
-openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--review-tier <tier>] [--dry-run] [--force]
+openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--review-tier <tier>] [--reason <text>] [--dry-run] [--force]
 ```
 
 | 选项 | 说明 |
@@ -253,6 +253,7 @@ openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--review-t
 | `--stage <stage-id>` | 阶段 ID（**必填**，可用短名或完整名） |
 | `--to <phase>` | 目标阶段（必填）。合法 phase 与转移表见 `openfeel flow phases` |
 | `--op <op-id>` | 操作 ID（**可选**，仅用于日志/展示） |
+| `--reason <text>` | 返工原因（v1.3.3）：仅当本步为 `review_passed → exec_running` 时写入审计键 `rework_reason`；其它推进忽略并提示 |
 | `--review-tier <tier>` | 审查档位（`full` / `lean` / `skip`；**缺省 `full`**——未显式传时生效档位恒 `full`，展示值按模式派生（见 `flow phases --json.reviewTier` / `displayReviewTier`）；仅显式声明时裁剪审查关，**不可绕过 REV 阻塞检查**）。三档语义：`full` 零裁剪 / `lean` 裁 `scheme_review` / `skip` 裁 `plan_review` + `scheme_review`（代码审查关 / 测试关 / 归档关恒保留）。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进；「**进入**被裁剪关」仍不可达。显式 `lean` / `skip` 打印一行非阻断警告；值域非法 → exit 1 零写盘。**注**：源码 help 文案已于 v1.2.3 订正为「缺省=full（零裁剪）」，与本节 / 契约 §12.3 一致 |
 | `--dry-run` | 仅验证不修改（预览输出）；**字节级不写盘**（`revision`/phase 不变） |
 | `--force` | 跳过非法 phase 与阶段跳跃检查（仍受 REV 闭环守卫约束，不可绕过） |
@@ -319,8 +320,10 @@ openfeel flow attempt --op <op-id> --result <pass|fail>
 审查条目管理。
 
 ```bash
-# 添加审查条目
+# 添加审查条目（op 级）
 openfeel flow review add --op <op-id> --title <title> [--auto-fix] [--blocking <bool>]
+# 添加审查条目（阶段级；v1.3.3，fast 无 op 场景）
+openfeel flow review add --stage <stage-id> --title <title> [--blocking <bool>]
 
 # 解决审查条目
 openfeel flow review resolve <rev-id>
@@ -328,10 +331,13 @@ openfeel flow review resolve <rev-id>
 
 | 选项 | 说明 |
 |------|------|
-| `--op <op-id>` | 操作 ID（必填，如 `stage-01.op-001`） |
-| `--title <title>` | 审查标题（必填） |
-| `--auto-fix` | 标记为可自动修复 |
+| `--op <op-id>` | 操作 ID（与 `--stage` 二选一，如 `stage-01.op-001`） |
+| `--stage <stage-id>` | 阶段 ID（v1.3.3）：未提供 `--op` 时挂**阶段级 REV**（`op = stageId`，参与 blocking 门与归档摘要；不参与 `flow attempt` / `flow retry`） |
+| `--title <title>` | 审查标题（可选；缺省为「说明: <op/stage>」） |
+| `--auto-fix` | 标记为可自动修复（**必须同时提供 `--op`**） |
 | `--blocking <bool>` | 是否为阻塞项（**默认 `true`**，REV 阻塞闭环核心语义） |
+
+> `--op` 与 `--stage` 均未提供 → exit 1；`--auto-fix` 无 `--op` → exit 1。含点 stageId（如 `v0.0.1-stage-01`）在 `--stage` 路径下**不**走 `lastIndexOf('.')` 的 op 解析（v1.3.3 P0-2）。
 
 ### flow recover
 
@@ -518,6 +524,32 @@ openfeel plan stage add v1.1.7-stage-78 --workflow-mode full
 
 - 三个入口均对非法 stageId 报错并给出建议名（`stage-NN` 或 `vX.Y.Z-stage-NN`）。
 - `stage create` 已弃用：功能保留，TTY 下输出 `[deprecated]` 提示（非 TTY 静默），正式移除不早于 v1.2。
+
+### 阶段 ID 归一化与 plan 目录映射（v1.3.3）
+
+`flow.json` 的 stageId 是**权威键**，`plan/` 目录是**派生组织单位**。三个入口共享同一归一化（`parseStageId` / `normalizeStageId`），`plan stage add` 成功时会回显实际目录（可对账）。
+
+**归一化规则**（输入 → `fullStageId`）：
+
+| 输入形态 | 示例 | 归一化结果 | 说明 |
+|------|------|------|------|
+| 短名 | `stage-99` | `v1.0.0-stage-99` | 默认系列 `v1` + 默认版本 `v1.0.0` |
+| 完整四级 | `v1.3.3-stage-104` | `v1.3.3-stage-104` | 原样保留 |
+| 历史主版本 | `v4-stage-04` | `v4-stage-04` | 原样保留 |
+| 非法 | `foo` / `v1` | 拒绝（exit 1） | 报错并给出建议名 |
+
+**目录映射规则**（`stageId` → `.openfeel/plan/{series}/{stageDir}/`）：
+
+| stageId | series | stageDir | 实际目录 |
+|------|------|------|------|
+| `v0.0.1-stage-1` | `v0` | `stage-1` | `.openfeel/plan/v0/stage-1/` |
+| `v1.3.3-stage-104` | `v1` | `stage-104` | `.openfeel/plan/v1/stage-104/` |
+| `stage-05`（短名） | `v1` | `stage-05` | `.openfeel/plan/v1/stage-05/` |
+
+- `series` = 版本段首段（`MAJOR`）；`stageDir` = `stage-{NN}`（保留原始数字，含前导零）。
+- 同一 `(series, stageDir)` 被两个不同 stageId 命中 → 阶段目录冲突（拒绝写入）。
+- `plan stage add` 输出示例：`已创建阶段: v1.3.3-stage-104` + `已创建阶段: v1.3.3-stage-104（目录：.openfeel/plan/v1/stage-104/）`。
+- **聚焦**（v1.3.3）：三个入口创建/注册成功后**原子设置** `pipeline.current.stage`，`flow next` 无需额外 `advance` 即可给出活跃阶段；`flow next` 在 current 为空时也会从 `stages` 只读派生（插入序首个非 done，不写盘）。
 
 ### plan stage list
 
@@ -909,7 +941,7 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## JSON 出口一览（v1.3.2 快照，无 JSON 变更）
+## JSON 出口一览（v1.3.3 快照，无 JSON 出口变更）
 
 > 计数口径：**40 个成功出口 / 41 个注册选项**；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 

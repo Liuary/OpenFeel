@@ -112,6 +112,7 @@ openfeel setup --tools dsh    # 2. Deploy into DSH profiles (all by default; use
 - **Choose and switch**: `openfeel plan stage add <name> --workflow-mode full|fast|general` (new stage); `openfeel stage set <stage> --workflow-mode full|fast|general` (per-stage switch); `openfeel config set defaults.workflow_mode full|fast|general` (project-level default memory). **`general` is requirement-level only** (since v1.2.1; see [docs/VERSIONS.md](docs/VERSIONS.md)).
 - **Inspect (read-only)**: `openfeel flow mode [--stage <id>] [--json]` (current mode + source); `openfeel flow phases [--mode full|fast|general] [--stage <id>]` (view the transition table per mode).
 - **Auto-advance enabled by default**: new deployments default to `auto_advance: enabled` (since v1.1.7); to disable: `openfeel config set auto_advance disabled`.
+- **v1.3.3 fixes (fast-mode structural gaps)**: fast chain gains a **rework edge** `review_passed → exec_running` (`flow advance --reason "<fix note>"` is audited); fast stages without ops can attach **stage-level REVs** via `flow review add --stage <id>`; the write guard now allows **new files in an uninitialized workspace** and `docs/**` / doc-note paths (source still requires `exec_running`); `plan stage add` now **focuses the stage atomically**. Stage-ID normalization and `plan/` directory mapping: see [docs/commands.md](docs/commands.md).
 
 Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) ("工作流模式（full / fast）与自动推进" section, Chinese) and [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`.
 

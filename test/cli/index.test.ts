@@ -77,15 +77,27 @@ describe('op-002 B7 颜色开关', () => {
   });
 
   it('默认允许彩色；--no-color 关闭；NO_COLOR 非空关闭；空串不视为设置', () => {
-    vi.stubEnv('NO_COLOR', '');
-    expect(shouldUseColor()).toBe(true); // 空串 → 不关闭
-    expect(shouldUseColor({ color: false })).toBe(false); // 显式 --no-color
+    // 环境隔离：外部 shell 若已设 NO_COLOR=1，`unstubAllEnvs` 会恢复它导致「未设置」断言假红。
+    // 先删除并记录原值，用例结束再还原（v1.3.3 门禁稳定性修复）。
+    const prevNoColor = process.env.NO_COLOR;
+    delete process.env.NO_COLOR;
+    try {
+      vi.stubEnv('NO_COLOR', '');
+      expect(shouldUseColor()).toBe(true); // 空串 → 不关闭
+      expect(shouldUseColor({ color: false })).toBe(false); // 显式 --no-color
 
-    vi.stubEnv('NO_COLOR', '1');
-    expect(shouldUseColor()).toBe(false); // 非空 → 关闭（不解析值）
+      vi.stubEnv('NO_COLOR', '1');
+      expect(shouldUseColor()).toBe(false); // 非空 → 关闭（不解析值）
 
-    vi.unstubAllEnvs();
-    expect(shouldUseColor()).toBe(true); // 未设置 → 默认允许
+      vi.unstubAllEnvs();
+      expect(shouldUseColor()).toBe(true); // 未设置 → 默认允许
+    } finally {
+      if (prevNoColor === undefined) {
+        delete process.env.NO_COLOR;
+      } else {
+        process.env.NO_COLOR = prevNoColor;
+      }
+    }
   });
 
   it('根程序注册了全局 --no-color 选项', () => {

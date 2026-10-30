@@ -9,6 +9,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.3.3** — Fast-mode structural fixes from field feedback: stage-level review entries (`flow review add --stage`) so reviews work without ops; rework edge `review_passed → exec_running` (`flow advance --reason`); risk-tiered write guard (new files in an uninitialized workspace, `docs/**` and doc/note paths allowed; source still requires `exec_running`); `plan stage add` focuses atomically; status.md becomes a derived view; stage-ID ↔ plan-directory mapping documented.
 - **v1.3.2** — DSH activation + write guard: `ctx.tools.guard()` denies `edit` / `write` / `apply_patch` / `str_replace_editor`; non-OpenFeel workspaces get a bootstrap prompt, and `enforce=always` blocks writes until `openfeel init` (`project` / `off` opt-out).
 - **v1.3.1** — DSH deploy hotfix: `setup --tools dsh` now runs `pnpm install` with `--no-frozen-lockfile`, so stale profile lockfiles no longer block deployment.
 - **v1.3.0** — The DSH adapter now ships inside the `openfeel` package; `openfeel setup --tools dsh` installs it into DSH profiles. README was slimmed: version notes moved here.
@@ -17,6 +18,16 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.3.3 — fast 模式结构性修复（反馈 13 项）
+
+- **审查挂载点下沉**：`flow review add --op` 改可选，新增 `--stage <id>`；fast 阶段没有 op 时挂**阶段级 REV**（`op = stageId`，新增 `ReviewItem.stage`），blocking 门与 `archive <stage>` 摘要都能正确归属。
+- **fast 返工边**：`review_passed → exec_running` 成为合法转移（`flow advance --reason "<整改原因>"` 落审计）；`review_pending → exec_running` 的同深度多义有显式 tie-break（仍优先经 `review_failed`，行为不回归）。full 表不变。
+- **写入门禁按风险分层**：空工作区、全部为新增文件（`apply_patch` 须全部 `*** Add File:`）→ 放行并提示补账本；`docs/**` 与文档类扩展（`.md/.mdx/.txt/.rst/.adoc`）在无活跃阶段 / 非 `exec_running` 也可写（混合目标从严）；源码仍要求 `exec_running`。
+- **聚焦与单一真源**：`plan stage add` 注册后原子设置 `pipeline.current.stage`；`flow next` 在 current 为空时从 `stages` 只读派生；`advance` 将受管字段（状态 / 责任 Agent / 更新时间）派生写入 `status.md`；DSH 序列化器只对真环标记 `[循环引用]`（重复引用正常输出）。
+- **模板 / 配置 / 档位**：`instructions` 增加包内置 schema 回退（空白项目可用）且 `--change` 可选；`execution_mode=auto + auto_advance=disabled` 的静默无效组合在 `flow advance` / `flow next` 告警；`flow advance` 成功输出回显生效审查档位。
+- **体验**：`init` 目录惰性化（核心 4 + dev 2，其余按需创建）；阶段 ID 归一化与 `plan/` 目录映射文档化，`plan stage add` 回显实际目录；归档时非 git 仓库显式告警（不再静默「跳过 commit」）。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup`；已有项目无需迁移（`ReviewItem.stage` 为可选字段，旧 REV 照常）。详见 [CHANGELOG](../CHANGELOG.md#133---2026-10-30)。
 
 ## v1.3.2 — DSH 激活与写入门禁
 

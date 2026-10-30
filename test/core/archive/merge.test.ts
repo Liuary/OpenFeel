@@ -126,6 +126,33 @@ describe('Archive Merge', () => {
       expect(result!.summary).not.toContain('无关条目');
     });
 
+    it('v1.3.3 P0-2：stage 级 REV（op=含点 stageId）纳入归档摘要，不被 lastIndexOf 误切', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage('v0.0.1-stage-01', {
+        reviews: [
+          {
+            id: 'REV-101', op: 'v0.0.1-stage-01', status: 'closed',
+            priority: 'medium', title: '阶段级审查（无 op）',
+            filed_by: 'cli', filed_at: '2026-10-30T00:00:00Z',
+          },
+          {
+            // 真正属于别的阶段：不应被计入
+            id: 'REV-102', op: 'v0.0.1-stage-02.op-001', status: 'open',
+            priority: 'low', title: '别的阶段',
+            filed_by: 'cli', filed_at: '2026-10-30T00:00:01Z',
+          },
+        ],
+      }));
+      mgr.save();
+
+      const result = archiveStage(tmpDir, 'v0.0.1-stage-01');
+      expect(result).not.toBeNull();
+      expect(result!.reviewsCount).toBe(1);
+      expect(result!.summary).toContain('REV-101');
+      expect(result!.summary).not.toContain('别的阶段');
+    });
+
     it('空阶段（无 ops）正常归档', () => {
       FlowManager.initFlow(tmpDir);
       const mgr = new FlowManager(tmpDir);

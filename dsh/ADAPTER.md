@@ -28,16 +28,23 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **不解析**中文文本：优先消费 `--json`；失败读 `error.kind` / `error.code` / `error.detail`。
 - **不 shadow** 既有能力：DSH 已有的 `subagent` / `workflow` / `todo_write` 照常使用；
   `feel_next` 只给「该谁做」，实际派发交给 DSH。
-- **写入门禁**（v1.3.2）：用 DSH `ctx.tools.guard()` 同步拒绝 `edit` / `write` / `apply_patch` /
-  `str_replace_editor`；`.openfeel/**` 流程产物任意阶段可写（flow.json / `status.md` 除外），
-  `.openfeel/` 外源码要求 `exec_running`。`pwsh` / `bash` 默认不守，是显式逃生通道；
-  `enforce=always`（默认）对非 OpenFeel 工作区也拦截，可用 `project` / `off` opt-out。
+- **写入门禁**（v1.3.3）：用 DSH `ctx.tools.guard()` 同步拒绝 `edit` / `write` / `apply_patch` /
+  `str_replace_editor`；`.openfeel/**` 流程产物任意阶段可写（flow.json / `status.md` 除外）。
+  v1.3.3 起按**风险分层**：
+  - **bootstrap 例外**：工作区无 `.openfeel/` 时，全部目标为「新增文件」（`apply_patch` 还要求全部为
+    `*** Add File:`）→ 放行并提示补账本；已存在文件、`.openfeel/**`、Update/Delete/Move 仍拒绝；
+  - **doc/note 不绑相位**：`docs/**` 与 `.md/.mdx/.txt/.rst/.adoc` 在无活跃阶段或非 `exec_running`
+    相位也可写；**混合目标从严**（任一源码 → 按源码规则）；
+  - 源码（`src/**` 等）仍要求 `exec_running`；`pwsh` / `bash` 默认不守，是显式逃生通道；
+  - `enforce=always`（默认）对非 OpenFeel 工作区也拦截，可用 `project` / `off` opt-out。
+- **审查归属**（v1.3.3）：REV 可挂 op（`stageId.op-xxx`）或挂 stage（`op = stageId`，无 op 的 fast 场景）；
+  stage 级 REV 参与 blocking 门，但**不参与** `flow attempt` / `flow retry`。
 
 ## 目录
 
 | 路径 | 内容 |
 |---|---|
-| `lib/guard.js` | 写入门禁：`enforce`、`.openfeel/**` 产物区、`exec_running`、apply_patch 目标解析 |
+| `lib/guard.js` | 写入门禁：`enforce`、`.openfeel/**` 产物区、bootstrap 新增放行、doc/note 分层、apply_patch 目标解析 |
 | [`ACTION-GUIDE.md`](ACTION-GUIDE.md) | **给 OpenFeel 本体的操作指南**：剩余 5 项待办、验收标准、边界约定 |
 | `lib/index.js` | 插件入口（`name` / `inject` / `apply` / `normalizeConfig`） |
 | `lib/adapters/cli.js` | CLI 执行器：可执行文件解析、UTF-8/无色/无日志、退出码与 envelope 语义 |
@@ -47,7 +54,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
 | `lib/surface/prompt.js` | `<feel_mode>` 系统提示段 |
-| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 83 + 36 + 10 = 171 断言） |
+| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 83 + 46 + 10 = 181 断言） |
 | `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证
@@ -56,7 +63,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 cd dsh
 node test/contract.js      # 42 — DSH schema 契约（真实 assertSupportedJsonSchema）
 node test/verify.js        # 83 — 行为（真实 CLI + 真实 .openfeel 副本）
-node test/guard.js         # 36 — 写入门禁（fake ToolExecution + 临时工作区）
+node test/guard.js         # 46 — 写入门禁（fake ToolExecution + 临时工作区）
 node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载
 ```
 

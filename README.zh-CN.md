@@ -112,6 +112,7 @@ openfeel setup --tools dsh    # 2. 部署到 DSH profile（默认全部；可 --
 - **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast|general`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast|general`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast|general`（项目默认记忆）。**`general` 仅需求级合法**（v1.2.1 起，见 [docs/VERSIONS.md](docs/VERSIONS.md)）。
 - **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast|general] [--stage <id>]`（按模式查看转移表）。
 - **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
+- **v1.3.3 修复（fast 结构性缺口）**：fast 快线新增**返工边** `review_passed → exec_running`（`flow advance --reason "<整改原因>"` 落审计）；无 op 的 fast 阶段可用 `flow review add --stage <id>` 挂**阶段级 REV**；写入门禁对**空仓新增文件**与 `docs/**` / doc-note 放行（源码仍要求 `exec_running`）；`plan stage add` 后**原子聚焦**活跃阶段。阶段 ID 归一化与 `plan/` 目录映射见 [docs/commands.md](docs/commands.md)。
 
 升级迁移提示见 [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)「工作流模式（full / fast）与自动推进」小节与 [CHANGELOG.md](CHANGELOG.md) `[1.1.7]`。
 

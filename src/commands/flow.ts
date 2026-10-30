@@ -26,7 +26,7 @@ import { resolve } from 'node:path';
 import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, type PipelinePhase, type RecoveryContext, type StageStats, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES, DEFAULT_EFFECTIVE_REVIEW_TIER, type ReviewTier } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
-import { getConfigFieldLegalValues, setConfigValue, type WorkflowMode } from '../core/config.js';
+import { getConfigFieldLegalValues, setConfigValue, readExplicitConfigDefaults, type WorkflowMode } from '../core/config.js';
 import { parse as parseYaml } from 'yaml';
 import { MetricsStore, PHASE_AGENT_MAP } from '../core/metrics.js';
 import { runtimeLog } from '../core/runtime-log.js';
@@ -193,9 +193,19 @@ export function registerFlowCommand(program: Command): void {
       const rawStage = data.pipeline.current.stage || '';
       // 双键回退（与 core resolveCurrentPhase / advanceStagePhase 同范式）：归一化键优先，其次原始键
       const normalized = rawStage ? (normalizeStageId(rawStage) ?? rawStage) : '';
-      const activeKey = rawStage
+      let activeKey: string | null = rawStage
         ? (data.stages[normalized] ? normalized : (data.stages[rawStage] ? rawStage : null))
         : null;
+      let derivedFromStages = false;
+      // v1.3.3 P1-1：current 为空时从 stages **只读派生**活跃阶段（tie-break：插入序首个非 done）。
+      // 不写盘、不改 current；命中时在 guards 末位追加派生提示。
+      if (!activeKey) {
+        const derived = Object.entries(data.stages).find(([, stage]) => stage.phase !== 'done');
+        if (derived) {
+          activeKey = derived[0];
+          derivedFromStages = true;
+        }
+      }
 
       let phase: PipelinePhase | null = null;
       let phaseLabel: string | null = null;
@@ -223,8 +233,9 @@ export function registerFlowCommand(program: Command): void {
         blockingReviews = listStageBlockingOpenReviews(data.reviews, activeKey).map((r) => ({
           id: r.id, title: r.title, priority: r.priority, op: r.op,
         }));
-        // 守卫顺序契约固定（§12.1）：auto-advance → blocking → 无目标 → 档位差
-        if (mgr.resolveEffectiveConfig()['auto_advance']?.value === 'disabled') {
+        // 守卫顺序契约固定（§12.1）：auto-advance → blocking → 无目标 → 档位差 → 配置组合 → 派生
+        const effectiveCfg = mgr.resolveEffectiveConfig();
+        if (effectiveCfg['auto_advance']?.value === 'disabled') {
           guards.push(t('flow.next.guardAutoAdvanceDisabled', lang));
         }
         if (blockingReviews.length > 0) {
@@ -235,6 +246,18 @@ export function registerFlowCommand(program: Command): void {
         }
         if (reviewTier !== effectiveReviewTier) {
           guards.push(t('flow.next.guardTierDiffTmpl', lang, { display: reviewTier, effective: effectiveReviewTier }));
+        }
+        // P1-4：execution_mode × auto_advance **显式**组合不一致 → 显式提示。
+        // 仅告警「auto 但关闭自动推进」这一**静默无效**组合；manual+enabled 是内置默认（裁定 E），不告警。
+        const explicitCfg = readExplicitConfigDefaults(process.cwd());
+        if (explicitCfg.execution_mode === 'auto' && explicitCfg.auto_advance === 'disabled') {
+          guards.push(t('flow.next.guardConfigComboTmpl', lang, {
+            mode: explicitCfg.execution_mode,
+            auto: explicitCfg.auto_advance,
+          }));
+        }
+        if (derivedFromStages) {
+          guards.push(t('flow.next.guardDerivedStage', lang));
         }
       } else {
         guards.push(t('flow.next.guardNoActiveStage', lang));
@@ -901,9 +924,10 @@ export function registerFlowCommand(program: Command): void {
     .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
     .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')
     .option('--review-tier <tier>', '审查档位（full / lean / skip；缺省=full（零裁剪）；仅显式声明时裁剪审查关，不可绕过 REV 阻塞检查）')
+    .option('--reason <text>', '返工原因（仅 review_passed → exec_running 时写入审计日志 rework_reason）')
     .option('--json', '以 JSON 输出错误封装（仅失败时；成功输出保持人类文本）')
     .option('--quiet', '静默非错误输出（成功确认与 Git 警告均不打印）')
-    .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean; reviewTier?: string; quiet?: boolean }) => {
+    .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean; reviewTier?: string; reason?: string; quiet?: boolean }) => {
       const lang = getCliLang(process.cwd());
       // JSON 模式（--json 为错误封装开关）下，失败前的人类进展行改走 stderr，保证 stdout 仅一个 envelope；
       // 成功路径的人类输出保持 console.log（advance 成功不 JSON 化，契约 §7/§8）。
@@ -949,6 +973,18 @@ export function registerFlowCommand(program: Command): void {
 
       // REV-005：命令层归一化（短名 → 全名），与 plan.ts / flow.ts 其它 stage 解析点同范式
       const stageArg = normalizeStageId(options.stage) ?? options.stage;
+
+      // P1-4：双开关**显式**组合不一致 → 显式告警（仅「auto + auto_advance=disabled」这一静默无效组合；
+      // builtin / 模板默认 manual+enabled 不告警，避免每个新项目首推即噪声）
+      if (!options.quiet) {
+        const explicitCfg = readExplicitConfigDefaults(process.cwd());
+        if (explicitCfg.execution_mode === 'auto' && explicitCfg.auto_advance === 'disabled') {
+          info(t('flow.advance.configComboWarnTmpl', lang, {
+            mode: explicitCfg.execution_mode,
+            auto: explicitCfg.auto_advance,
+          }));
+        }
+      }
 
       // 自动修复 phase/status 不一致（在 validate() 前执行）
       if (options.stage) {
@@ -1143,11 +1179,23 @@ export function registerFlowCommand(program: Command): void {
       let prevStepDoneMs = 0;  // 多步时上一步完成时刻（i>0 的窗口基线）
       const totalSteps = phasePath.length;
       let archivedAny = false;
+      let reasonUsed = false;
       for (let i = 0; i < totalSteps; i++) {
         const next = phasePath[i];
         let archived = false;
         try {
-          archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli', explicitTier ? { reviewTier: explicitTier } : undefined);
+          // 返工原因仅写入「review_passed → exec_running」这一步（P0-3）
+          const fromPhaseStep = i > 0 ? phasePath[i - 1] : startPhase;
+          const reworkReason = options.reason !== undefined
+            && fromPhaseStep === 'review_passed'
+            && next === 'exec_running'
+            ? options.reason
+            : undefined;
+          if (reworkReason !== undefined) reasonUsed = true;
+          const stepOpts: { reviewTier?: ReviewTier; reworkReason?: string } = {};
+          if (explicitTier) stepOpts.reviewTier = explicitTier;
+          if (reworkReason !== undefined) stepOpts.reworkReason = reworkReason;
+          archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli', Object.keys(stepOpts).length > 0 ? stepOpts : undefined);
         } catch (err: unknown) {
           const stderrLines: string[] = [];
           if (totalSteps > 1) {
@@ -1222,6 +1270,16 @@ export function registerFlowCommand(program: Command): void {
       // 成功确认（单步与多步统一）；--quiet 完全静默
       if (!options.quiet) {
         console.log(t('flow.advance.okTmpl', lang, { stage: stageArg, to: options.to }));
+        // P1-5：显式回显本次生效档位（展示档位 ≠ 生效档位时不再静默）
+        console.log(t('flow.advance.reviewTierTmpl', lang, {
+          tier: effTier,
+          source: explicitTier
+            ? t('flow.advance.reviewTierSourceExplicit', lang)
+            : t('flow.advance.reviewTierSourceDefault', lang),
+        }));
+        if (options.reason !== undefined && !reasonUsed) {
+          console.warn(t('flow.advance.reasonIgnoredTmpl', lang));
+        }
       }
 
       // git 脏区检查（安全网）：默认仅 --to done 时提示；--quiet / 非 done → 完全跳过（含跳过 git 子进程）
@@ -1437,23 +1495,38 @@ export function registerFlowCommand(program: Command): void {
     .command('review')
     .description('管理审查条目');
 
-  // flow review add --op <id> [--title] [--auto-fix <detail>]
+  // flow review add [--op <id> | --stage <id>] [--title] [--auto-fix <detail>]
   reviewCmd
     .command('add')
-    .description('添加审查条目')
-    .requiredOption('--op <id>', '操作 ID（如 stage-01.op-001）')
+    .description('添加审查条目（op 级或阶段级；fast 无 op 时用 --stage）')
+    .option('--op <id>', '操作 ID（如 stage-01.op-001）；与 --stage 二选一')
+    .option('--stage <id>', '阶段 ID（未提供 --op 时挂阶段级 REV；与 --op 二选一）')
     .option('--title <title>', '审查标题')
-    .option('--auto-fix <detail>', '自动修复说明，设置后跳过 scheme_pending 直接推进到 exec_running')
+    .option('--auto-fix <detail>', '自动修复说明，设置后跳过 scheme_pending 直接推进到 exec_running（必须配 --op）')
     .option('--blocking [boolean]', '是否阻塞流水线（默认 true）', 'true')
-    .action((options: { op: string; title?: string; autoFix?: string; blocking?: string | boolean }) => {
+    .action((options: { op?: string; stage?: string; title?: string; autoFix?: string; blocking?: string | boolean }) => {
       const lang = getCliLang(process.cwd());
+      // 目标二选一校验（P0-2：fast 无 op 时允许挂 stage）
+      if (!options.op && !options.stage) {
+        const message = t('flow.review.errorNoTarget', lang);
+        console.error(message);
+        process.exit(1);
+        return;
+      }
+      if (options.autoFix && !options.op) {
+        const message = t('flow.review.errorAutoFixNeedsOp', lang);
+        console.error(message);
+        process.exit(1);
+        return;
+      }
       // 单点实现：解析 / 校验 / REV ID 分配 / 写入均由 addReviewEntry 统一处理（T37/R4）
       const blocking = options.blocking !== undefined
         ? !(options.blocking === 'false' || options.blocking === false)
         : true;
       const result = addReviewEntry(process.cwd(), {
         opId: options.op,
-        title: options.title || t('flow.review.detail', lang) + `: ${options.op}`,
+        stageId: options.stage,
+        title: options.title || t('flow.review.detail', lang) + `: ${options.op ?? options.stage}`,
         priority: 'medium',
         autoFixDetail: options.autoFix,
         blocking,
@@ -1465,6 +1538,15 @@ export function registerFlowCommand(program: Command): void {
           case 'notLoaded':
             console.error(t('common.errorNoInit', lang));
             break;
+          case 'invalidPriority':
+            console.error(t('flow.review.errorInvalidPriorityTmpl', lang, { priority: result.error.priority }));
+            break;
+          case 'invalidTarget':
+            console.error(t('flow.review.errorNoTarget', lang));
+            break;
+          case 'autoFixRequiresOp':
+            console.error(t('flow.review.errorAutoFixNeedsOp', lang));
+            break;
           case 'invalidOpId':
             console.error(t('common.invalidOpId', lang));
             break;
@@ -1473,9 +1555,6 @@ export function registerFlowCommand(program: Command): void {
             break;
           case 'opNotFound':
             console.error(t('flow.review.errorOpNotFoundTmpl', lang, { opId: result.error.opId, op: result.error.op, stage: result.error.stage }));
-            break;
-          case 'invalidPriority':
-            console.error(t('flow.review.errorInvalidPriorityTmpl', lang, { priority: result.error.priority }));
             break;
         }
         process.exit(1);
@@ -1489,8 +1568,10 @@ export function registerFlowCommand(program: Command): void {
         console.log(`  ` + t('common.op', lang) + `: ${options.op}`);
         console.log(`  ` + t('flow.review.detail', lang) + `: ${options.autoFix}`);
         console.log(t('flow.review.autoFixPhase', lang));
-      } else {
+      } else if (options.op) {
         console.log(t('flow.review.addedTmpl', lang, { label: blockingLabel, revId: review.id, op: options.op }) + (options.title ? ` — ${options.title}` : ''));
+      } else {
+        console.log(t('flow.review.addedStageTmpl', lang, { label: blockingLabel, revId: review.id, stage: options.stage! }) + (options.title ? ` — ${options.title}` : ''));
       }
     });
 

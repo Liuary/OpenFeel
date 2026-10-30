@@ -4525,3 +4525,23 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-003] B3 计划：DSH profile 路径进入 updated 会被 setup 写入 global update_state hash，与"不属于受管资产"矛盾；只走 SetupResult.dsh (2026-10-17)
 
 归档自阶段 v1.3.0-stage-101
+
+## [+] [REV-001] 计划审查 B1~B4 / L1~L6 吸收记录（stage-104 计划轮） (2026-10-30)
+
+归档自阶段 v1.3.3-stage-104
+
+## [+] [REV-002] 代码审查：写入门禁 docs 范围与 bootstrap 越界（已修） (2026-10-30)
+
+归档自阶段 v1.3.3-stage-104
+
+## [+] [REV-003] 代码审查：done 门复用 reviewStageOf 单点归属（已修） (2026-10-30)
+
+归档自阶段 v1.3.3-stage-104
+
+## [+] [REV-004] 代码审查：status.md 派生写早于 save 的半写窗口（非阻塞，health --fix 可回收） (2026-10-30)
+
+归档自阶段 v1.3.3-stage-104
+
+## [+] [REV-005] 代码审查：.md 模板源按文档放行（口径确认，ADAPTER/文档已明示） (2026-10-30)
+
+归档自阶段 v1.3.3-stage-104

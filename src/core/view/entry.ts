@@ -86,13 +86,15 @@ export function createReviewEntry(
  * 添加审查条目的统一入参（T37/R4 单点）
  */
 export interface AddReviewOptions {
-  /** 关联的操作 ID（格式 "stageId.opId"） */
-  opId: string;
-  /** 审查标题（缺省时以 opId 兜底；命令层负责传入本地化标题） */
+  /** 关联的操作 ID（格式 "stageId.opId"；与 stageId 二选一） */
+  opId?: string;
+  /** 阶段 ID（未提供 opId 时挂**阶段级** REV：`op = stageId`；与 opId 二选一） */
+  stageId?: string;
+  /** 审查标题（缺省时以 opId/stageId 兜底；命令层负责传入本地化标题） */
   title?: string;
   /** 优先级（默认 medium） */
   priority?: string;
-  /** 自动修复说明（提供时走 addAutoFixReview） */
+  /** 自动修复说明（提供时走 addAutoFixReview；**要求 opId**） */
   autoFixDetail?: string;
   /** 是否阻塞流水线（默认 true） */
   blocking?: boolean;
@@ -104,9 +106,11 @@ export interface AddReviewOptions {
 export type AddReviewError =
   | { code: 'notLoaded' }
   | { code: 'invalidPriority'; priority: string }
+  | { code: 'invalidTarget'; opId?: string; stageId?: string }
   | { code: 'invalidOpId'; opId: string }
   | { code: 'stageNotFound'; opId: string; stage: string }
-  | { code: 'opNotFound'; opId: string; op: string; stage: string };
+  | { code: 'opNotFound'; opId: string; op: string; stage: string }
+  | { code: 'autoFixRequiresOp'; opId?: string };
 
 /** 添加审查条目结果 */
 export interface AddReviewResult {
@@ -135,32 +139,56 @@ export function addReviewEntry(projectPath: string, opts: AddReviewOptions): Add
     return { review: null, error: { code: 'invalidPriority', priority } };
   }
 
-  // opId 格式校验（用 lastIndexOf 分割，兼容含点 stageId）
-  const dotIdx = opts.opId.lastIndexOf('.');
-  if (dotIdx === -1) {
-    return { review: null, error: { code: 'invalidOpId', opId: opts.opId } };
+  // 自动修复必须绑定具体 op（addAutoFixReview 需要 op 才能推进）
+  if (opts.autoFixDetail && !opts.opId) {
+    return { review: null, error: { code: 'autoFixRequiresOp', opId: opts.opId } };
   }
-  const rawStageId = opts.opId.substring(0, dotIdx);
-  const opLocalId = opts.opId.substring(dotIdx + 1);
-  // REV-009：短名前缀归一化 + 双键回退（单点实现，禁第二套校验）
-  const stageId = normalizeStageId(rawStageId) ?? rawStageId;
+
   const data = mgr.getData();
-  const stage = data ? (data.stages[stageId] ?? data.stages[rawStageId]) : undefined;
-  if (!data || !stage) {
-    return { review: null, error: { code: 'stageNotFound', opId: opts.opId, stage: stageId } };
-  }
-  if (!stage.ops[opLocalId]) {
-    return { review: null, error: { code: 'opNotFound', opId: opts.opId, op: opLocalId, stage: stageId } };
+  let opId: string;
+  /** 阶段级 REV 的显式归属（op 级为 undefined，向后兼容） */
+  let reviewStage: string | undefined;
+
+  if (opts.opId) {
+    // op 级：原路径（用 lastIndexOf 分割，兼容含点 stageId）
+    const dotIdx = opts.opId.lastIndexOf('.');
+    if (dotIdx === -1) {
+      return { review: null, error: { code: 'invalidOpId', opId: opts.opId } };
+    }
+    const rawStageId = opts.opId.substring(0, dotIdx);
+    const opLocalId = opts.opId.substring(dotIdx + 1);
+    // REV-009：短名前缀归一化 + 双键回退（单点实现，禁第二套校验）
+    const stageId = normalizeStageId(rawStageId) ?? rawStageId;
+    const stage = data ? (data.stages[stageId] ?? data.stages[rawStageId]) : undefined;
+    if (!data || !stage) {
+      return { review: null, error: { code: 'stageNotFound', opId: opts.opId, stage: stageId } };
+    }
+    if (!stage.ops[opLocalId]) {
+      return { review: null, error: { code: 'opNotFound', opId: opts.opId, op: opLocalId, stage: stageId } };
+    }
+    opId = opts.opId;
+  } else if (opts.stageId) {
+    // 阶段级：**必须绕过** lastIndexOf('.') 的 op 解析（stage id 自身含点，如 v0.0.1-stage-01）
+    const stageId = normalizeStageId(opts.stageId) ?? opts.stageId;
+    const stage = data ? (data.stages[stageId] ?? data.stages[opts.stageId]) : undefined;
+    if (!data || !stage) {
+      return { review: null, error: { code: 'stageNotFound', opId: opts.stageId, stage: stageId } };
+    }
+    opId = stageId;
+    reviewStage = stageId;
+  } else {
+    return { review: null, error: { code: 'invalidTarget', opId: opts.opId, stageId: opts.stageId } };
   }
 
   // REV ID 由单点按「既有最大序号 + 1」分配（T13），两入口不得自行生成
   const revId = generateReviewId(projectPath);
   const review: ReviewItem = {
     id: revId,
-    op: opts.opId,
+    op: opId,
+    ...(reviewStage === undefined ? {} : { stage: reviewStage }),
     status: 'open',
     priority: priority as 'high' | 'medium' | 'low',
-    title: opts.title || opts.opId,
+    title: opts.title || opId,
     filed_by: opts.filedBy ?? 'cli',
     filed_at: new Date().toISOString(),
     canAutoFix: !!opts.autoFixDetail,
@@ -169,7 +197,7 @@ export function addReviewEntry(projectPath: string, opts: AddReviewOptions): Add
   };
 
   if (opts.autoFixDetail) {
-    mgr.addAutoFixReview(review, opts.opId);
+    mgr.addAutoFixReview(review, opId);
   } else {
     mgr.addReview(review);
   }

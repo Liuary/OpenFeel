@@ -92,8 +92,19 @@ describe('plan 命令', () => {
     expect(existsSync(join(stageDir, 'overview.md'))).toBe(true);
     expect(existsSync(join(stageDir, 'status.md'))).toBe(true);
 
-    // 验证 console.log 输出
+    // 验证 console.log 输出（v1.3.3 P2-3：追加实际目录回显）
     expect(logMock).toHaveBeenCalledWith('已创建阶段: stage-01');
+    const calls = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(calls).toContain('目录：.openfeel/plan/v1/stage-01/');
+  });
+
+  it('v1.3.3 P1-1：plan stage add 原子设置 pipeline.current + 骨架责任 Agent 与 flow next 同源', async () => {
+    await safeParse(['plan', 'stage', 'add', 'stage-05']);
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.pipeline.current.stage).toBe('v1.0.0-stage-05');
+    expect(flow.pipeline.current.op).toBe('');
+    const statusContent = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-05', 'status.md'), 'utf-8');
+    expect(statusContent).toContain('- **当前责任 Agent**：openfeel-planner');
   });
 
   // ── stage-75 op-001：plan stage add --workflow-mode（T7.1）──

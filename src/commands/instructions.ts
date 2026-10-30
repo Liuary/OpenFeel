@@ -17,7 +17,7 @@ export function registerInstructionsCommand(program: Command): void {
     .command('instructions')
     .description('为指定 artifact 生成结构化指令（XML 或 JSON）')
     .argument('<artifactId>', '目标 artifact ID（如 proposal、implementation）')
-    .requiredOption('--change <name>', '变更名称（如 feat-login）')
+    .option('--change <name>', '变更名称（如 feat-login）；缺省 default', 'default')
     .option('--json', '输出 JSON 格式而非 XML')
     .option('--schema <name>', 'Schema 名称（默认 spec-driven）', 'spec-driven')
     .action(async (artifactId: string, options: Record<string, string | boolean>) => {

@@ -14,8 +14,8 @@
  * @module openfeel-dsh/guard
  */
 
-import { readFileSync, statSync } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { basename, extname, join, resolve } from 'node:path';
 
 import { isProjectWorkspace, OPENFEEL_DIR } from './adapters/workspace.js';
 
@@ -38,6 +38,35 @@ export const DEFAULT_MUTATING_TOOLS = Object.freeze([
  */
 export function normalizeForComparison(value, platform = process.platform) {
   return platform === 'win32' || platform === 'darwin' ? value.toLowerCase() : value;
+}
+
+/** 文档/笔记类扩展名（写门禁按产物类型分层：doc/note 不绑相位）。 */
+export const DOC_EXTENSIONS = Object.freeze(['.md', '.mdx', '.txt', '.rst', '.adoc']);
+
+/**
+ * 是否为文档/笔记类目标（P0-4）：扩展名命中，或位于**工作区根级 `docs/`** 下。
+ * v1.3.3 复核：`docs` 必须直接位于会话工作区下（`src/docs/x.ts` 不算文档，防源码借名绕过相位门）。
+ * 仅用于「放行 doc/note」；源代码仍按 `exec_running` 严格判定。
+ * @param {string} absolute 已归一化绝对路径
+ * @param {string} cwd 已归一化工作区
+ * @returns {boolean}
+ */
+function isDocPath(absolute, cwd) {
+  if (DOC_EXTENSIONS.includes(extname(absolute).toLowerCase())) return true;
+  const docsRoot = normalizeTarget(cwd, 'docs');
+  return absolute === docsRoot
+    || absolute.startsWith(`${docsRoot}\\`)
+    || absolute.startsWith(`${docsRoot}/`);
+}
+
+/**
+ * 是否位于工作区内（bootstrap 例外边界；防 `..`/绝对路径写出工作区）。
+ * @param {string} absolute 已归一化绝对路径
+ * @param {string} cwd 已归一化工作区
+ * @returns {boolean}
+ */
+function isUnderWorkspace(absolute, cwd) {
+  return absolute === cwd || absolute.startsWith(`${cwd}\\`) || absolute.startsWith(`${cwd}/`);
 }
 
 /** flow.json 读取缓存（path → { mtimeMs, size, value }）。 */
@@ -120,22 +149,32 @@ function extractPatchText(args) {
 }
 
 /**
- * 解析 apply_patch 的全部目标路径。
+ * 解析 apply_patch 的全部目标路径与变更类型。
  *
  * 只认 patch 头，避免正文里出现 `.openfeel/` 被误判。支持：
  * - `*** Update File:`, `*** Add File:`, `*** Delete File:`
  * - `*** Move to:`（要求同块 `*** Update File:` 源，否则拒绝）
  * - `--- a/path`, `+++ b/path`；忽略 `/dev/null`
  *
+ * 返回 `entries`（路径 + kind）供 bootstrap 例外判定「是否纯新增」：
+ * kind ∈ `add | update | delete | move`；同一路径出现多种 kind 时从严记 `update`。
+ *
  * @param {string} patch
- * @returns {{ ok: true, paths: string[] } | { ok: false, reason: string }}
+ * @returns {{ ok: true, paths: string[], entries: Array<{ path: string, kind: string }> } | { ok: false, reason: string }}
  */
 export function parsePatchTargets(patch) {
   const paths = [];
+  const kinds = new Map();
   const seen = new Set();
-  const add = (raw) => {
+  const add = (raw, kind) => {
     const value = cleanPatchPath(raw);
     if (value === '' || value === '/dev/null') return;
+    const prev = kinds.get(value);
+    if (prev === undefined) {
+      kinds.set(value, kind);
+    } else if (prev !== kind) {
+      kinds.set(value, 'update'); // 同路径混合 kind → 从严（bootstrap 例外不成立）
+    }
     if (seen.has(value)) return;
     seen.add(value);
     paths.push(value);
@@ -147,19 +186,19 @@ export function parsePatchTargets(patch) {
     const update = /^\*\*\* Update File:\s*(.+?)\s*$/.exec(line);
     if (update !== null) {
       currentBlock = 'update';
-      add(update[1]);
+      add(update[1], 'update');
       continue;
     }
     const addFile = /^\*\*\* Add File:\s*(.+?)\s*$/.exec(line);
     if (addFile !== null) {
       currentBlock = 'add';
-      add(addFile[1]);
+      add(addFile[1], 'add');
       continue;
     }
     const deleteFile = /^\*\*\* Delete File:\s*(.+?)\s*$/.exec(line);
     if (deleteFile !== null) {
       currentBlock = 'delete';
-      add(deleteFile[1]);
+      add(deleteFile[1], 'delete');
       continue;
     }
     const move = /^\*\*\* Move to:\s*(.+?)\s*$/.exec(line);
@@ -167,7 +206,7 @@ export function parsePatchTargets(patch) {
       if (currentBlock !== 'update') {
         return { ok: false, reason: '*** Move to: 缺少同块 *** Update File: 源路径' };
       }
-      add(move[1]);
+      add(move[1], 'move');
       continue;
     }
     if (/^\*\*\* (?:Begin|End) Patch/.test(line)) {
@@ -175,13 +214,13 @@ export function parsePatchTargets(patch) {
       continue;
     }
     const diff = /^(?:---|\+\+\+) [ab]\/(.+?)\s*$/.exec(line);
-    if (diff !== null) add(diff[1]);
+    if (diff !== null) add(diff[1], 'update');
   }
 
   if (paths.length === 0) {
     return { ok: false, reason: '无法从 patch 头确定目标路径' };
   }
-  return { ok: true, paths };
+  return { ok: true, paths, entries: paths.map((path) => ({ path, kind: kinds.get(path) })) };
 }
 
 /**
@@ -253,6 +292,8 @@ export function createOpenFeelGuard(options = {}) {
   const fallbackCwd = typeof options.cwd === 'string' && options.cwd !== '' ? options.cwd : undefined;
 
   const t = (zh, en) => (english ? en : zh);
+  /** bootstrap 例外提示去重（按工作区路径）。 */
+  const bootstrapHinted = new Set();
 
   if (enforce === 'off') {
     // 完全关闭：连 flow.json/status.md 也不拦。
@@ -270,6 +311,7 @@ export function createOpenFeelGuard(options = {}) {
     const normalizedCwd = normalizeForComparison(resolvedCwd);
 
     let rawTargets;
+    let patchEntries = null;
     if (name === 'apply_patch') {
       const patch = extractPatchText(execution?.arguments);
       if (patch === undefined) {
@@ -286,6 +328,7 @@ export function createOpenFeelGuard(options = {}) {
         );
       }
       rawTargets = parsed.paths;
+      patchEntries = parsed.entries;
     } else {
       rawTargets = extractArgumentPaths(execution?.arguments);
       if (rawTargets.length === 0) {
@@ -297,6 +340,7 @@ export function createOpenFeelGuard(options = {}) {
     }
 
     const targets = rawTargets.map((target) => normalizeTarget(resolvedCwd, target));
+    const allDoc = targets.every((target) => isDocPath(target, normalizedCwd));
 
     // 受保护路径：guard 启用时始终拒绝（enforce=off 已提前返回）。
     if (targets.some((target) => isProtectedPath(target, normalizedCwd))) {
@@ -309,6 +353,25 @@ export function createOpenFeelGuard(options = {}) {
     const initialized = isProjectWorkspace(resolvedCwd);
     if (!initialized) {
       if (enforce === 'always') {
+        // P0-1 bootstrap 例外：空工作区 + 全部为「新增文件」→ 放行（最高风险等级不成立）。
+        // apply_patch 额外要求全部 block 为 `*** Add File:`（Update/Delete/Move/混合一律从严）。
+        // `.openfeel/**` 不适用：流程产物仍要求先 init（B8）。
+        const allNew = targets.every((target) => !existsSync(target));
+        const anyInternal = targets.some((target) => isUnderOpenFeel(target, normalizedCwd));
+        const allInside = targets.every((target) => isUnderWorkspace(target, normalizedCwd));
+        const addOnly = patchEntries === null || patchEntries.every((entry) => entry.kind === 'add');
+        if (allNew && addOnly && !anyInternal && allInside) {
+          if (!bootstrapHinted.has(normalizedCwd)) {
+            bootstrapHinted.add(normalizedCwd);
+            process.stderr.write(
+              `${t(
+                'OpenFeel 写入门禁：[bootstrap] 工作区尚未初始化，已放行本次新增文件；建议稍后运行 `openfeel init` 补账本。',
+                'OpenFeel write guard: [bootstrap] workspace not initialized; this new-file write was allowed. Run `openfeel init` later to record it.',
+              )}\n`,
+            );
+          }
+          return undefined;
+        }
         return t(
           'OpenFeel 写入门禁：当前工作区尚未初始化 OpenFeel（无 `.openfeel/`）。请先运行 `openfeel init` 并建立需求/阶段；或让用户把 profile 的 `enforce` 改为 `project` / `off`。',
           'OpenFeel write guard: this workspace is not OpenFeel-initialized (no `.openfeel/`). Run `openfeel init` and create a requirement/stage first; or ask the user to set `enforce` to `project` / `off`.',
@@ -331,6 +394,8 @@ export function createOpenFeelGuard(options = {}) {
     const active = activeStages(flow.value);
     if (active.length === 0) {
       if (allowGeneral && hasGeneralRequirement(flow.value)) return undefined;
+      // P0-4：doc/note 类产物不要求活跃阶段（收口后仍可写文档）；混合目标从严。
+      if (allDoc) return undefined;
       return t(
         'OpenFeel 写入门禁：当前无活跃阶段，不能修改源码/文档。请先 feel_req add → claim → feel_stage add 建立阶段。',
         'OpenFeel write guard: no active stage, so source/docs are read-only. Create a stage via feel_req add → claim → feel_stage add.',
@@ -338,6 +403,8 @@ export function createOpenFeelGuard(options = {}) {
     }
 
     if (active.some((stage) => stage.phase === 'exec_running')) return undefined;
+    // P0-4：非 exec 相位仍允许 doc/note（研究记录、设计文档等）；代码仍严格。
+    if (allDoc) return undefined;
 
     const summary = active
       .map((stage) => `${stage.id ?? '(unknown)'}=${stage.phase ?? '(unknown)'}`)

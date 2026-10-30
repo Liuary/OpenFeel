@@ -4,6 +4,38 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.3.3] - 2026-10-30
+
+> 补丁版本（Patch）：**fast 模式结构性修复**——依据 `OpenFeelHarness/docs/feedback/openfeel-feedback-2026-10-30.md` 的 13 项非预期拒绝（P0×4 / P1×5 / P2×4）逐条修复。合法相位枚举仍 15 项，full 转移表不变；CLI JSON 契约只增不改（无新增成功出口 / 注册选项）。
+
+### Added
+- [stage-104] **阶段级 REV（P0-2）**：`flow review add` 的 `--op` 改为可选并新增 `--stage <id>`；fast 无 op 阶段挂阶段级审查条目（`op = stageId` + 新增可选字段 `ReviewItem.stage`）。新增单点 `reviewStageOf()`，`listStageBlockingOpenReviews` / `archive <stage>` 摘要统一消费（修复 `lastIndexOf('.')` 误切含点 stageId）。`--auto-fix` 仍要求 `--op`。
+- [stage-104] **fast 返工边（P0-3）**：`FAST_TRANSITIONS.review_passed = ['archiving', 'exec_running']`；`flow advance --reason <text>` 将整改原因写入审计键 `rework_reason`（仅 `review_passed → exec_running` 一步）。`findPhasePath` 对 `review_pending → exec_running` 的同深度双路径显式 tie-break（优先经 `review_failed`，修复前行为不变）。
+- [stage-104] **写入门禁风险分层（P0-1 / P0-4）**：`dsh/lib/guard.js` 新增 bootstrap 例外（无 `.openfeel/` 且全部为新增文件、`apply_patch` 全部为 `*** Add File:` → 放行并提示补账本；`.openfeel/**` / 已存在文件 / Update / Delete / Move 仍拒绝）与 doc-note 分层（`docs/**` 与 `.md/.mdx/.txt/.rst/.adoc` 不绑相位；混合目标从严）。`parsePatchTargets` 追加 `entries[{path,kind}]`（`paths` 形状不变）。
+- [stage-104] **归档 git 告警（P2-1）**：`autoCommitOnDone` 先判 `git rev-parse --is-inside-work-tree`；非 git 仓库显式 `[WARN]`「无版本兜底」，无变更仍仅跳过提示。
+- [stage-104] **阶段映射文档（P2-2 / P2-3）**：`docs/commands.md` 新增「阶段 ID 归一化与 plan 目录映射」；`plan stage add` 输出回显 `.openfeel/plan/{series}/{stageDir}/`；`openfeel-cli-usage` skill / README 同步。
+
+### Changed
+- [stage-104] **聚焦（P1-1）**：`plan stage add` 注册后原子设置 `pipeline.current.stage`；`flow next` 在 current 为空时从 `stages` 只读派生（插入序首个非 done，不写盘；guards 末位提示）。
+- [stage-104] **单一真源（P1-2）**：`advanceStagePhase` 将受管字段（状态 / 当前责任 Agent / 上一责任 Agent / 更新时间）派生写入 `status.md`（一次读一次写、按阶段锁、缺失跳过）；骨架责任 Agent 初值改为 `mapPhaseToAgent(plan_pending)`。DSH `stringifySafe` 改为**祖先栈**判环（DAG 重复引用不再显示 `[循环引用]`）。
+- [stage-104] **模板（P1-3）**：`resolveSchema` 增包根 `schemas/` 回退（源码检出与单包安装均可用）；`instructions --change` 可选，缺省 `default`。
+- [stage-104] **配置（P1-4）**：新增 `readExplicitConfigDefaults()`；仅当项目 `config.yaml` **显式**声明 `execution_mode=auto` 且 `auto_advance=disabled`（静默无效组合）时，`flow advance` 告警、`flow next` guards 提示；builtin / 模板默认 `manual+enabled` 不告警。
+- [stage-104] **档位（P1-5）**：`flow advance` 成功输出回显生效审查档位与来源（显式声明 / 缺省 full）；`--quiet` 时静默。
+- [stage-104] **init（P2-4）**：`.openfeel/` 目录惰性化——init 只建 `plan` / `kb` / `dev` / `log`（+ dev `note` / `current_archive`）；`code_review` / `bugs` / `users` / `tmp` / `manual` / `update_conflicts` 首次使用时按需创建（`ensureLazyDir`）。文件集不变。
+- [stage-104] **dsh/package.json**：version `1.3.3`、`requiresCli: ">=1.3.3"`。
+
+### Fixed
+- [stage-104] 空白工作区首次写入被整体拒绝（bootstrap 例外）。
+- [stage-104] 阶段收口 / 非 exec 相位写文档被拒（doc-note 分层）。
+- [stage-104] `review_passed` 下无返工路径、只能 `reset` / `--force`（fast 返工边）。
+- [stage-104] `plan stage add` 后 `flow next` 误报「无活跃阶段」（原子聚焦 + 只读派生）。
+- [stage-104] `flow next` 与 `status.md` 责任 Agent 不一致（派生写）。
+- [stage-104] `stages[].deps` 误显示 `[循环引用]`（祖先栈判环）。
+- [stage-104] 空白项目 `instructions` 报「找不到 Schema」（包内置回退）。
+- [stage-104] 双开关依赖只写在注释、静默无效（显式组合告警）。
+- [stage-104] 展示档位 ≠ 生效档位且缺省无回显（advance 回显）。
+- [stage-104] 归档时 git 未初始化静默跳过（显式告警）。
+
 ## [1.3.2] - 2026-10-24
 
 > 补丁版本（Patch）：**DSH 适配器激活与写入门禁**。新增 `ctx.tools.guard()` 同步拒绝文件修改工具，非 OpenFeel 工作区注入 bootstrap；CLI JSON 契约保持 **13 错误码 / 40 成功出口 / 41 注册选项**。

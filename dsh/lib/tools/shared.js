@@ -188,26 +188,40 @@ export function toWireEnvelope(action, payload) {
 }
 
 /**
- * 安全序列化：处理循环引用与不可序列化值，永不抛错。
+ * 安全序列化：只对**真环**（祖先路径上出现过的对象）写 `[循环引用]`；
+ * 同一对象的**重复引用**（DAG，如 focus.deps 与 stages[i].deps 指向同一数组）正常复制（P1-2）。
+ * 兼处理 BigInt / 不可序列化值，永不抛错。
  * @param {unknown} value
  * @returns {string}
  */
 export function stringifySafe(value) {
   try {
-    /** @type {WeakSet<object>} */
-    const seen = new WeakSet();
-    return JSON.stringify(
-      value,
-      (_key, item) => {
-        if (typeof item === 'object' && item !== null) {
-          if (seen.has(item)) return '[循环引用]';
-          seen.add(item);
+    /**
+     * @param {unknown} item
+     * @param {WeakSet<object>} ancestors
+     * @returns {unknown}
+     */
+    const clone = (item, ancestors) => {
+      if (typeof item === 'bigint') return item.toString();
+      if (typeof item === 'function' || typeof item === 'symbol') return undefined;
+      if (typeof item !== 'object' || item === null) return item;
+      // 保留 Date / URL 等自带 toJSON 的语义（与 JSON.stringify 一致）
+      if (typeof item.toJSON === 'function') return item.toJSON();
+      if (ancestors.has(item)) return '[循环引用]';
+      ancestors.add(item);
+      let out;
+      if (Array.isArray(item)) {
+        out = item.map((entry) => clone(entry, ancestors));
+      } else {
+        out = {};
+        for (const [key, entry] of Object.entries(item)) {
+          out[key] = clone(entry, ancestors);
         }
-        if (typeof item === 'bigint') return item.toString();
-        return item;
-      },
-      2,
-    );
+      }
+      ancestors.delete(item);
+      return out;
+    };
+    return JSON.stringify(clone(value, new WeakSet()), null, 2);
   } catch {
     return String(value);
   }

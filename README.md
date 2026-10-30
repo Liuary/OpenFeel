@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.3.2**（DSH 激活与写入门禁） — 新增 `ctx.tools.guard` 写入门禁与非 OpenFeel 工作区 bootstrap：未初始化时默认 `enforce=always` 会拒绝文件写入，直到 `openfeel init`；`project` / `off` 可 opt-out。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.3.3**（fast 模式结构性修复） — 修复反馈中 13 项结构性问题（12 次实测拒绝）：审查条目可挂阶段（无 op 的 fast 场景）、fast 新增返工边 `review_passed → exec_running`、写入门禁按风险分层（空仓新增 / doc-note 放行）、`plan stage add` 原子聚焦、status.md 派生写、阶段 ID↔目录映射文档化。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 
@@ -82,5 +82,6 @@ openfeel setup --tools dsh    # 2. 部署到 DSH profile（默认全部；可 --
 - **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast|general`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast|general`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast|general`（项目默认记忆）。**`general` 仅需求级合法**（v1.2.1 起，见 [docs/VERSIONS.md](docs/VERSIONS.md)）。
 - **查看（只读）**：`openfeel flow mode [--stage <id>] [--json]`（当前模式 + 来源）；`openfeel flow phases [--mode full|fast|general] [--stage <id>]`（按模式查看转移表）。
 - **默认自动推进开启**：新部署默认 `auto_advance: enabled`（v1.1.7 起）；如需关闭：`openfeel config set auto_advance disabled`。
+- **v1.3.3 修复（fast 结构性缺口）**：fast 快线新增**返工边** `review_passed → exec_running`（`flow advance --reason` 落审计）；无 op 的 fast 阶段可用 `flow review add --stage <id>` 挂**阶段级 REV**；写入门禁对**空仓新增文件**与 `docs/**` / doc-note 放行（源码仍要求 `exec_running`）；`plan stage add` 后**原子聚焦**。阶段 ID 归一化与 `plan/` 目录映射见 [docs/commands.md](docs/commands.md)。
 
 完整中文文档：[README.zh-CN.md](README.zh-CN.md)（含 Claude Code / DSH 适配器、命令参考与核心概念）

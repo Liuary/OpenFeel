@@ -191,7 +191,7 @@ export async function readSnapshot(cli, options = {}) {
       /** 相位标签由 `flow next` 下发；无权威值时退化为相位名（不维护本地映射）。 */
       phaseLabel: typeof next?.phaseLabel === 'string' ? next.phaseLabel : focusPhase,
       status: focusStage?.status ?? '',
-      deps: Array.isArray(focusStage?.deps) ? focusStage.deps : [],
+      deps: Array.isArray(focusStage?.deps) ? [...focusStage.deps] : [],
       ops: focusStage?.ops ?? {},
       checkpoint: CHECKPOINT_OF_PHASE[focusPhase] ?? '',
       /** 负责该相位的 Agent（CLI 权威字段；无 flow next 时为 unknown）。 */
@@ -229,7 +229,7 @@ export async function readSnapshot(cli, options = {}) {
       id: stage.id ?? stage.name ?? '',
       phase: stage.phase ?? '',
       status: stage.status ?? '',
-      deps: Array.isArray(stage.deps) ? stage.deps : [],
+      deps: Array.isArray(stage.deps) ? [...stage.deps] : [],
       workflowMode: stage.workflowMode ?? stage.workflow_mode ?? null,
       requirementId: stage.requirementId ?? null,
       reviewTier: stage.reviewTier ?? null,

@@ -2,6 +2,12 @@
 
 | 文件 | 用户 | 描述 |
 |------|------|------|
+| [2026-10-30-Liuary-006.md](2026/10/30/2026-10-30-Liuary-006.md) | Liuary | 阶段 v1.3.3-stage-104 完成 |
+| [2026-10-30-Liuary-005.md](2026/10/30/2026-10-30-Liuary-005.md) | Liuary | v1.3.3-stage-104.op-001 review_added |
+| [2026-10-30-Liuary-004.md](2026/10/30/2026-10-30-Liuary-004.md) | Liuary | v1.3.3-stage-104.op-003 review_added |
+| [2026-10-30-Liuary-003.md](2026/10/30/2026-10-30-Liuary-003.md) | Liuary | v1.3.3-stage-104.op-002 review_added |
+| [2026-10-30-Liuary-002.md](2026/10/30/2026-10-30-Liuary-002.md) | Liuary | v1.3.3-stage-104.op-001 review_added |
+| [2026-10-30-Liuary-001.md](2026/10/30/2026-10-30-Liuary-001.md) | Liuary | v1.3.3-stage-104.op-002 review_added |
 | [2026-10-24-Liuary-001.md](2026/10/24/2026-10-24-Liuary-001.md) | Liuary | 阶段 v1.3.2-stage-103 完成 |
 | [2026-10-17-Liuary-031.md](2026/10/17/2026-10-17-Liuary-031.md) | Liuary | 阶段 v1.3.1-stage-102 完成 |
 | [2026-10-17-Liuary-030.md](2026/10/17/2026-10-17-Liuary-030.md) | Liuary | 阶段 v1.3.0-stage-101 完成 |
@@ -26,12 +32,6 @@
 | [2026-10-17-Liuary-011.md](2026/10/17/2026-10-17-Liuary-011.md) | Liuary | 阶段 v1.2.2-stage-96 完成 |
 | [2026-10-17-Liuary-010.md](2026/10/17/2026-10-17-Liuary-010.md) | Archiver | **v1.2.2 第二阶段 — stage-96 归档完成（调度决策权威：`flow next` 与阶段调度属性）**：新增只读 `flow next [--json]`（12 键固定序：`responsibleAgent` / `legalNextPhases` / `suggestedCommand` / `guards` / `blockingReviews` / `workflowMode` / `reviewTier` / `effectiveReviewTier`；空态「全 `null` + `responsibleAgent='feel'` + `guards=[noActiveStage]`」；只读零写盘）+ `flow status --json.stages[]` 五调度属性（既有 5 字段逐字不变）+ `flow phases --json` 展示/生效档位消歧（既有 7 键不变，末位 +2）；**决策三单点**（`getResponsibleAgent` 委托 `mapPhaseToAgent` / `listStageBlockingOpenReviews` 阶段域谓词 / `DEFAULT_EFFECTIVE_REVIEW_TIER`），`src/commands` 零 `mapPhaseToAgent`，核心层纯增量 +26 行；契约 **19 成功出口（flow 12）/ 20 注册选项**。3 ops 恒串行；门禁 **74 文件 / 1809 用例** 0 skipped / 0 failed（+30）、`tsc` 0、`lint i18n` **969**（+19）、`lint kb` **0 过期 / 604 引用**、build ×2 幂等、`--version`=1.2.1；审查 **passed**（REV-96-001~008 全闭环）；验收 **必验 8/8、Bug 0**；知识沉淀 **3 条**（architecture 1 + patterns 2）；manual `cli/commands.md` + `core/flow-manager.md` + `index.md`；roadmap/plan 回填（M50 done）。**未推进 flow 至 done（由 Feel 执行）／未 commit／未 push／未 publish** |
 | [2026-10-17-Liuary-009.md](2026/10/17/2026-10-17-Liuary-009.md) | Liuary | v1.2.2-stage-96.op-003 执行通过 |
-| [2026-10-17-Liuary-008.md](2026/10/17/2026-10-17-Liuary-008.md) | Liuary | v1.2.2-stage-96.op-002 执行通过 |
-| [2026-10-17-Liuary-007.md](2026/10/17/2026-10-17-Liuary-007.md) | Liuary | v1.2.2-stage-96.op-001 执行通过 |
-| [2026-10-17-Liuary-006.md](2026/10/17/2026-10-17-Liuary-006.md) | Liuary | 阶段 v1.2.2-stage-95 完成 |
-| [2026-10-17-Liuary-005.md](2026/10/17/2026-10-17-Liuary-005.md) | Archiver | **v1.2.2 首阶段 — stage-95 归档完成（JSON 输出契约与错误封装基础设施）**：18 个既有 `--json` 成功出口契约冻结（单文档 + `schemaVersion:1` 运行时首键 + 键序/键集冻结；条件键「恒在 / 条件出现」二选一登记；`instructions` 补首键 C1、`flow archive show` 首键重定位 C1b/G-1）+ 统一错误层（12 行 `code→kind→exitCode` 映射单一权威；退出码 **0/1/2 语义零改动 + 3=internal 新增**；legacy `error` 恒 `string`、仅末尾追加 `errorKind`；Commander 用法错误 → `INVALID_ARGUMENT/1`）+ `--version --json`（三键精确）+ 全局 `--project`（argv 预扫描 + `chdir` 单点；`--log-file` 原始 cwd；语言按目标项目；预扫描成对防误判；`knowledge dedup` 保留本地声明 + `optsWithGlobals` 单点）。4 ops 恒串行（op-001 契约冻结 / op-002 错误层 / op-003 `--project` + version / op-004 i18n + 零回归 + 门禁〔阶段末 op〕）；门禁 **74 文件 / 1779 用例** 0 skipped / 0 failed、`tsc` 0、`lint i18n` **950**、`lint kb` **0 过期 / 624 引用**、build ×2 幂等、`--version`=1.2.1；审查 **passed**（REV-95-001~007 闭环；008/009 非阻塞转 stage-97）；验收 **必验 8/8、Bug 0**；知识沉淀 **5 条**（architecture 2 + patterns 2 + troubleshooting 1）；manual `cli/commands.md` + 新增 `core/json-contract.md` + `index.md`；roadmap/plan 回填（M49 done + REV-95-005 旧口径修正）。**未推进 flow 至 done（由 Feel 执行）／未 commit／未 push／未 publish** |
-| [2026-10-17-Liuary-004.md](2026/10/17/2026-10-17-Liuary-004.md) | Liuary | v1.2.2-stage-95.op-004 执行通过 |
-| [2026-10-17-Liuary-003.md](2026/10/17/2026-10-17-Liuary-003.md) | Liuary | v1.2.2-stage-95.op-003 执行通过 |
 # 最近日�?
 | 文件 | 用户 | 描述 |
 |------|------|------|

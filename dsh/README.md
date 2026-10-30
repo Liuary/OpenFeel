@@ -196,14 +196,14 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ---
 
-## 6.5 写入门禁（v1.3.2）
+## 6.5 写入门禁（v1.3.3）
 
 适配器在 `apply()` 中用 DSH 的 `ctx.tools.guard()` 注册同步守卫（`dsh/lib/guard.js`）：
 
 - **只守** `edit` / `write` / `apply_patch` / `str_replace_editor`。`feel_*`、`pwsh`、`read`、`todo_write` 等不受影响。
 - `.openfeel/**` 是**流程产物区**：plan / scheme / review 产物在任意阶段可写；但 `.openfeel/flow.json` 与 `.openfeel/**/status.md` **始终拒绝**（用 `feel_*`）。受保护路径按**会话工作区 `<cwd>`** 判定；执行阶段仍可编辑其他项目的 `.openfeel/`（不做跨项目全局保护）。
-- `.openfeel/` 外的源码/文档：要求存在 `exec_running` 阶段；无活跃阶段或相位不符时拒绝，消息带 phase 与 `feel_flow action=advance` 建议。
-- 无 `.openfeel/`：`enforce=always` 拒绝所有文件写入（含 `.openfeel/plan`，防止绕过 init）；`project`/`off` 放行。
+- **v1.3.3 风险分层**——源码（`src/**` 等）仍要求存在 `exec_running` 阶段；**doc/note**（`docs/**` 与 `.md/.mdx/.txt/.rst/.adoc`）在无活跃阶段或非 `exec_running` 相位也放行；**混合目标从严**（任一源码 → 按源码规则）。
+- **bootstrap 例外（v1.3.3）**：无 `.openfeel/` 时，全部目标为**新增文件**（`apply_patch` 须全部 `*** Add File:`）→ 放行并提示补账本；已存在文件、`.openfeel/**`、Update/Delete/Move 仍拒绝（`enforce=always` 下）。`project`/`off` 放行。
 - `apply_patch` 解析所有 patch 头（`*** Update/Add/Delete File:`、`*** Move to:`、`---/+++`）；全部目标在 `.openfeel/**` 才内部放行，混合/无头保守拒绝。
 - `enforce=off` **完全不注册 guard**（连 flow.json/status.md 也不拦）。
 - `ctx.tools.guard` 缺失时记警告并降级；`ctx.effect` 负责 disposer，避免 HMR 累积。

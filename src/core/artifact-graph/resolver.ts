@@ -4,8 +4,15 @@
  */
 import path from 'node:path';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { getGlobalSchemasDir } from '../global-paths.js';
 import { loadSchema, type Schema } from '../schema.js';
+
+/**
+ * 包内置 schemas 目录（v1.3.3 P1-3）。
+ * `src/core/artifact-graph` 与 `dist/core/artifact-graph` 上溯三级均为包根，故同一相对层级。
+ */
+const PACKAGE_SCHEMAS_DIR = fileURLToPath(new URL('../../../schemas', import.meta.url));
 
 /**
  * 按优先级查找并加载工作流 Schema
@@ -25,6 +32,8 @@ export async function resolveSchema(
     path.join(getGlobalSchemasDir(), name, 'schema.yaml'),
     // 3. 包内置 node_modules/openfeel/schemas/{name}/schema.yaml
     path.join(projectPath, 'node_modules', 'openfeel', 'schemas', name, 'schema.yaml'),
+    // 4. 包根 schemas/{name}/schema.yaml（v1.3.3 P1-3：源码检出 / 单包安装均可用）
+    path.join(PACKAGE_SCHEMAS_DIR, name, 'schema.yaml'),
   ];
 
   for (const p of paths) {

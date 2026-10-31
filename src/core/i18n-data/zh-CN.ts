@@ -35,6 +35,9 @@ export const common: I18nDomain = {
   stageIdInvalidTmpl:  { key: 'common.stageIdInvalidTmpl',  zh: '{input} → 非法阶段 ID（应为 stage-NN 或 vX.Y.Z-stage-NN）', en: '' },
   stageIdSuggestTmpl:  { key: 'common.stageIdSuggestTmpl',  zh: '建议名称：{suggest}', en: '' },
   stageDirConflictTmpl:{ key: 'common.stageDirConflictTmpl', zh: '阶段目录冲突：{stage} 与 {other} 映射同一目录', en: '' },
+  stageDirOccupiedTmpl: { key: 'common.stageDirOccupiedTmpl', zh: '阶段目录已被占用：{dir}（{reason}）；请改用其它阶段编号（建议名称：{suggest}）', en: '' },
+  stageDirOccupiedOwnerTmpl: { key: 'common.stageDirOccupiedOwnerTmpl', zh: '目录属于阶段 {stage}', en: '' },
+  stageDirOccupiedArchived: { key: 'common.stageDirOccupiedArchived', zh: '该阶段已归档', en: '' },
   generalOnlyRequirement: { key: 'common.generalOnlyRequirement', zh: 'general（通用模式）仅限需求级——阶段级 / 部署级不支持；阶段请使用 fast / full。', en: '' },
 };
 
@@ -576,6 +579,7 @@ export const plan: I18nDomain = {
   'stage.createdDirTmpl':        { key: 'plan.stage.createdDirTmpl',        zh: '已创建阶段: {name}（目录：{dir}）',          en: '' },
   'stage.invalidDepsTmpl':       { key: 'plan.stage.invalidDepsTmpl',       zh: '依赖阶段不存在：{deps}（已注册阶段：{known}）', en: '' },
   'stage.archivedDepsTmpl':      { key: 'plan.stage.archivedDepsTmpl',      zh: '依赖已归档（视为已满足）：{deps}',        en: '' },
+  'stage.archivedVersionWarnTmpl': { key: 'plan.stage.archivedVersionWarnTmpl', zh: '提示：版本 {version} 已归档，新建阶段前请确认是否应改用新版本号', en: '' },
   'stage.empty':                 { key: 'plan.stage.empty',                 zh: '暂无工作阶段',                            en: '' },
   'scheme.createdTmpl':          { key: 'plan.scheme.createdTmpl',          zh: '已创建操作方案: {opId}（{stage}）',        en: '' },
   'scheme.create.titleRequiredTmpl': { key: 'plan.scheme.create.titleRequiredTmpl', zh: '缺少方案标题：请提供 <title>，或改用 --from-tasks 从阶段任务表机械生成', en: '' },

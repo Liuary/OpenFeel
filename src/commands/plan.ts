@@ -9,7 +9,8 @@ import { createScheme, createSchemesFromTasks, listSchemes, removeScheme, publis
 import { validateStageId, suggestStageId, normalizeStageId, isArchivedVersionOf, parseStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { enforcePreflightOrFail } from './shared/preflight-gate.js';
-import { StageDirConflictError, FlowManager, detectFillState } from '../core/flow-manager.js';
+import { StageDirConflictError, StageDirOccupiedError, FlowManager, detectFillState } from '../core/flow-manager.js';
+import { formatStageOccupiedError } from './shared/errors.js';
 import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 
@@ -145,6 +146,13 @@ export function registerPlanCommand(program: Command): void {
         // 阶段目录冲突：按类型分流走 i18n 模板（cli/BUG-002 死键消除）
         if (err instanceof StageDirConflictError) {
           console.error(t('common.stageDirConflictTmpl', lang, { stage: err.stage, other: err.other }));
+          process.exit(1);
+        }
+        // v1.5.7：目录已被历史阶段占用 / 该阶段已归档 → 拒绝并提示换号（零写盘）
+        if (err instanceof StageDirOccupiedError) {
+          for (const line of formatStageOccupiedError(err, lang, projectPath)) {
+            console.error(line);
+          }
           process.exit(1);
         }
         // 阶段目录冲突等错误：命令层统一展示并退出码 1

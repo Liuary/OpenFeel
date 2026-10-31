@@ -34,6 +34,9 @@ export const common: I18nDomain = {
   stageIdInvalidTmpl:  { key: 'common.stageIdInvalidTmpl',  zh: '', en: '{input} → invalid stage ID (expected stage-NN or vX.Y.Z-stage-NN)' },
   stageIdSuggestTmpl:  { key: 'common.stageIdSuggestTmpl',  zh: '', en: 'Suggested name: {suggest}' },
   stageDirConflictTmpl:{ key: 'common.stageDirConflictTmpl', zh: '', en: 'Stage dir conflict: {stage} and {other} map to the same directory' },
+  stageDirOccupiedTmpl: { key: 'common.stageDirOccupiedTmpl', zh: '', en: 'Stage dir is already taken: {dir} ({reason}); pick another stage ID (suggested: {suggest})' },
+  stageDirOccupiedOwnerTmpl: { key: 'common.stageDirOccupiedOwnerTmpl', zh: '', en: 'dir belongs to stage {stage}' },
+  stageDirOccupiedArchived: { key: 'common.stageDirOccupiedArchived', zh: '', en: 'stage already archived' },
   generalOnlyRequirement: { key: 'common.generalOnlyRequirement', zh: '', en: 'general (General Mode) is valid at the requirement level only — not supported at stage / deployment level; use fast / full for stages.' },
 };
 
@@ -548,6 +551,7 @@ export const plan: I18nDomain = {
   'stage.createdDirTmpl':        { key: 'plan.stage.createdDirTmpl',        zh: '', en: 'Stage created: {name} (dir: {dir})' },
   'stage.invalidDepsTmpl':       { key: 'plan.stage.invalidDepsTmpl',       zh: '', en: 'Unknown dependency stage(s): {deps} (registered stages: {known})' },
   'stage.archivedDepsTmpl':      { key: 'plan.stage.archivedDepsTmpl',      zh: '', en: 'Archived dependency (treated as satisfied): {deps}' },
+  'stage.archivedVersionWarnTmpl': { key: 'plan.stage.archivedVersionWarnTmpl', zh: '', en: 'Note: version {version} is archived — consider a new version number before adding a stage' },
   'stage.empty':                 { key: 'plan.stage.empty',                 zh: '', en: 'No working stages yet' },
   'scheme.createdTmpl':          { key: 'plan.scheme.createdTmpl',          zh: '', en: 'Op created: {opId} ({stage})' },
   'scheme.create.titleRequiredTmpl': { key: 'plan.scheme.create.titleRequiredTmpl', zh: '', en: 'Missing scheme title: pass <title>, or use --from-tasks to generate mechanically from the stage task table' },

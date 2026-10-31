@@ -161,9 +161,30 @@ export function validateStageId(input: string): StageIdValidation {
 export function suggestStageId(projectPath: string, input: string): string {
   const versionMatch = (input ?? '').trim().match(/^(v\d+(?:\.\d+)*)$/);
   const version = versionMatch ? versionMatch[1] : DEFAULT_STAGE_VERSION;
-  const series = version.split('.')[0]; // v1 / v4
+  return `${version}-stage-${nextStageSeq(projectPath, version.split('.')[0])}`;
+}
 
-  // 收集该 series 下已用的 NN
+/**
+ * 为「已解析的 stageId」推导建议名（v1.5.7）：沿用其版本前缀与 series，只把编号换成该 series 的下一个空闲编号。
+ *
+ * 与 suggestStageId 的区别：输入是完整 stageId 而非纯版本号，不能回退到默认 `v1.0.0`/`v1`
+ * （否则 `v4.0.0-stage-04` 会被建议到 v1 系列，v1.5.x 请求会被建议到可能已归档的 v1.0.0）。
+ *
+ * @param projectPath 项目根路径
+ * @param stageId 已解析的阶段 ID（短名/完整名）
+ * @returns 建议的完整 stageId
+ */
+export function suggestStageIdForExisting(projectPath: string, stageId: string): string {
+  const parsed = parseStageId(stageId);
+  if (!parsed) {
+    return suggestStageId(projectPath, stageId);
+  }
+  const version = parsed.fullStageId.slice(0, -(parsed.stageDir.length + 1));
+  return `${version}-stage-${nextStageSeq(projectPath, parsed.series)}`;
+}
+
+/** 收集某 series 下已占用的阶段编号（flow.json stages 键 ∪ plan/{series}/stage-NN 目录） */
+function collectUsedStageSeqs(projectPath: string, series: string): Set<number> {
   const used = new Set<number>();
 
   // 来源 1：flow.json stages 键
@@ -197,8 +218,14 @@ export function suggestStageId(projectPath: string, input: string): string {
     }
   }
 
+  return used;
+}
+
+/** 该 series 的下一个空闲阶段编号（两位补零） */
+function nextStageSeq(projectPath: string, series: string): string {
+  const used = collectUsedStageSeqs(projectPath, series);
   const nextSeq = used.size > 0 ? Math.max(...used) + 1 : 1;
-  return `${version}-stage-${String(nextSeq).padStart(2, '0')}`;
+  return String(nextSeq).padStart(2, '0');
 }
 
 /**
@@ -236,6 +263,117 @@ export function findStageDirConflict(projectPath: string, stageId: string): stri
     }
   }
   return null;
+}
+
+/** 阶段目录占用信号（v1.5.7：防静默复用已归档阶段的目录/编号） */
+export type StageOccupancyBlocker =
+  /** 目录已属于另一个阶段（status.md 标题声明的完整 stageId 与本请求不同） */
+  | { kind: 'dir-owned-by-other'; ownerStageId: string }
+  /** 该阶段已归档（.openfeel/log/archive-<stage>.md 存在） */
+  | { kind: 'stage-archived' };
+
+/** 阶段目录占用检查结果 */
+export interface StageDirOccupancy {
+  /** 完整 stageId（短名已补默认版本前缀） */
+  stageId: string;
+  /** 相对项目根的目录（.openfeel/plan/v1/stage-01） */
+  dirRel: string;
+  /** 目录是否已存在 */
+  dirExists: boolean;
+  /** status.md 标题声明的 stageId（目录归属；读不到为 null） */
+  ownerStageId: string | null;
+  /** 整版归档：stageId 的版本 ∈ meta.archived_versions */
+  versionArchived: boolean;
+  /** 单阶段归档：archive-<stage>.md 归档日志存在（短名查盲名 / 完整名查全名） */
+  stageArchived: boolean;
+  /** 阻止新建的占用原因（空数组 = 可建） */
+  blockers: StageOccupancyBlocker[];
+}
+
+/** 读 flow.json 的 meta.archived_versions（不可读时为空数组） */
+function readArchivedVersions(projectPath: string): string[] {
+  const flowPath = resolve(projectPath, '.openfeel', 'flow.json');
+  if (!existsSync(flowPath)) {
+    return [];
+  }
+  try {
+    const data = JSON.parse(readFileSync(flowPath, 'utf-8')) as { meta?: { archived_versions?: unknown } };
+    const versions = data.meta?.archived_versions;
+    return Array.isArray(versions) ? versions.filter((v): v is string => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 从 status.md 首行标题解析目录归属的 stageId（`# v1.1.1-stage-01 状态` → `v1.1.1-stage-01`）。
+ * 标题格式异常 / 文件不可读时返回 null。
+ */
+function readOwnerStageId(statusPath: string): string | null {
+  try {
+    const firstLine = readFileSync(statusPath, 'utf-8').split(/\r?\n/, 1)[0] ?? '';
+    const m = firstLine.match(/^#\s+(\S+)\s+状态\s*$/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 检查目标阶段目录是否已被占用（只读，不写盘）。
+ *
+ * 复用事故形态（v1.1.1-stage-01 归档后目录残留，`plan stage add v1.3.0-stage-01` 静默接管该目录）：
+ * 目录按 (series, stageDir) 组织，版本前缀不参与路径，因此**同一目录可被不同版本的 stageId 命中**。
+ * 阻断信号只有两条：目录归属另一个「带版本的完整 stageId」、该阶段已有归档日志；
+ * 整版归档（版本 ∈ archived_versions）仅提示、不阻断（见调用方）。
+ *
+ * @param projectPath 项目根路径
+ * @param stageId 待检查的阶段 ID（短名/完整名）
+ * @returns 占用检查结果；输入无法解析时返回 null
+ */
+export function inspectStageDirOccupancy(projectPath: string, stageId: string): StageDirOccupancy | null {
+  const parsed = parseStageId(stageId);
+  if (!parsed) {
+    return null;
+  }
+  const dirRel = `.openfeel/plan/${parsed.series}/${parsed.stageDir}`;
+  const dirPath = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir);
+  const dirExists = existsSync(dirPath);
+
+  const ownerStageId = dirExists ? readOwnerStageId(resolve(dirPath, 'status.md')) : null;
+
+  const versionArchived = isArchivedVersionOf(stageId, readArchivedVersions(projectPath));
+  const logDir = resolve(projectPath, '.openfeel', 'log');
+  // 归档日志文件名由命令输入原值派生：短名 → archive-<stageDir>.md（series 盲），完整名 → archive-<fullId>.md。
+  // 仅短名查盲名：完整名若也查盲名，v1 的 archive-stage-01.md 会误伤 v2.0.0-stage-01（两者目录互不冲突）。
+  const stageArchived = parsed.fullStageId === stageId
+    ? existsSync(resolve(logDir, `archive-${parsed.fullStageId}.md`))
+    : existsSync(resolve(logDir, `archive-${parsed.stageDir}.md`));
+
+  const blockers: StageOccupancyBlocker[] = [];
+  if (stageArchived) {
+    blockers.push({ kind: 'stage-archived' });
+  }
+  if (dirExists && ownerStageId !== null) {
+    // 目录归属判定：仅当 status.md 标题是**带版本的完整 stageId** 且与本请求不同才阻断。
+    // 短名标题（历史版本写下的 `# stage-41 状态`）、无标题/无 status.md 的目录无法证明跨版本占用
+    // → 按兼容放行（既有测试夹具也依赖「先落目录、后注册」的注册路径）。
+    const ownerParsed = parseStageId(ownerStageId);
+    const ownerIsFull = ownerParsed !== null && ownerParsed.fullStageId === ownerStageId;
+    if (ownerIsFull && ownerParsed.fullStageId !== parsed.fullStageId) {
+      blockers.push({ kind: 'dir-owned-by-other', ownerStageId });
+    }
+  }
+
+  return {
+    stageId: parsed.fullStageId,
+    dirRel,
+    dirExists,
+    ownerStageId,
+    versionArchived,
+    stageArchived,
+    blockers,
+  };
 }
 
 /**

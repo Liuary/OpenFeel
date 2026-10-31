@@ -32,7 +32,7 @@ import {
 import { PublicLogger, formatDate } from './public-logger.js';
 import { t, getCliLang } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
-import { findStageStatusPath, findStageDirConflict, parseStageId, normalizeStageId, isArchivedVersionOf } from './plan/path.js';
+import { findStageStatusPath, findStageDirConflict, inspectStageDirOccupancy, parseStageId, normalizeStageId, isArchivedVersionOf, type StageDirOccupancy } from './plan/path.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, WORKFLOW_MODES, type WorkflowMode } from './config.js';
@@ -207,6 +207,24 @@ export class StageDirConflictError extends Error {
     this.name = 'StageDirConflictError';
     this.stage = stage;
     this.other = other;
+  }
+}
+
+/**
+ * 阶段目录已被占用（v1.5.7）：目录归属另一个已归档/已移除的阶段，或该阶段已有归档日志。
+ * 与 StageDirConflictError 的区别：本错误针对「未注册但目录已被历史阶段占用」的静默复用。
+ */
+export class StageDirOccupiedError extends Error {
+  /** 本次请求的 stageId */
+  readonly stage: string;
+  /** 占用检查明细（命令层据 blockers 组装 i18n 文案） */
+  readonly occupancy: StageDirOccupancy;
+
+  constructor(stage: string, occupancy: StageDirOccupancy) {
+    super(`阶段目录已被占用：${occupancy.dirRel}`);
+    this.name = 'StageDirOccupiedError';
+    this.stage = stage;
+    this.occupancy = occupancy;
   }
 }
 
@@ -1783,9 +1801,15 @@ export class FlowManager {
       throw new Error(`Stage '${stageId}' already exists`);
     }
     // 冲突检测：不同 stageId 映射同一 (series, stageDir) 时拒绝写入（结构化错误，命令层按类型分流 i18n）
+    // 先于占用检查：已注册 stageId 的同目录冲突信息更精确（明确指出另一个 stageId）。
     const conflict = findStageDirConflict(this.projectPath, stageId);
     if (conflict) {
       throw new StageDirConflictError(stageId, conflict);
+    }
+    // v1.5.7：目录已被历史阶段占用（未注册但目录残留）→ 拒绝，避免静默接管归档阶段的产物
+    const occupancy = inspectStageDirOccupancy(this.projectPath, stageId);
+    if (occupancy && occupancy.blockers.length > 0) {
+      throw new StageDirOccupiedError(stageId, occupancy);
     }
     this.data.stages[stageId] = {
       name: stageId,

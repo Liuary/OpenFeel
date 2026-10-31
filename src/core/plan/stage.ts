@@ -4,10 +4,11 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { FlowManager } from '../flow-manager.js';
-import { parseStageId, findStageStatusPath } from './path.js';
+import { FlowManager, StageDirConflictError, StageDirOccupiedError } from '../flow-manager.js';
+import { parseStageId, findStageStatusPath, findStageDirConflict, inspectStageDirOccupancy } from './path.js';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { resolveConfigDefaults, type WorkflowMode } from '../config.js';
+import { getCliLang, t } from '../i18n.js';
 
 /** 工作阶段 */
 export interface Stage {
@@ -208,6 +209,28 @@ export function addStage(projectPath: string, name: string, deps?: string[], tas
   const parsed = parseStageId(name);
   if (!parsed) {
     throw new Error(`非法阶段名: ${name}（应为 stage-NN 或 vX.Y.Z.W-stage-NN）`);
+  }
+
+  // v1.5.7：防止复用已归档阶段的目录/编号。未注册阶段才校验（已注册 = 幂等补骨架，不拦）。
+  // 目录按 (series, stageDir) 组织、版本前缀不进路径 → 不同版本的同号 stageId 会命中同一目录。
+  const checkMgr = new FlowManager(projectPath);
+  const registered = checkMgr.isLoaded() && checkMgr.getData()?.stages[parsed.fullStageId] !== undefined;
+  if (!registered) {
+    // 已注册 stageId 的同目录冲突优先（信息更精确）→ 再查历史目录占用
+    const conflict = findStageDirConflict(projectPath, parsed.fullStageId);
+    if (conflict) {
+      throw new StageDirConflictError(parsed.fullStageId, conflict);
+    }
+    const occupancy = inspectStageDirOccupancy(projectPath, name);
+    if (occupancy) {
+      if (occupancy.blockers.length > 0) {
+        throw new StageDirOccupiedError(parsed.fullStageId, occupancy);
+      }
+      if (occupancy.versionArchived) {
+        const version = parsed.fullStageId.slice(0, -(parsed.stageDir.length + 1));
+        console.log(t('plan.stage.archivedVersionWarnTmpl', getCliLang(projectPath), { version }));
+      }
+    }
   }
 
   // 目录 + overview.md + status.md 骨架（幂等）

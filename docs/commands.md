@@ -681,6 +681,7 @@ openfeel plan stage add v1.1.7-stage-78 --workflow-mode full
 
 - `series` = 版本段首段（`MAJOR`）；`stageDir` = `stage-{NN}`（保留原始数字，含前导零）。
 - 同一 `(series, stageDir)` 被两个不同 stageId 命中 → 阶段目录冲突（拒绝写入）。
+- **目录占用（v1.5.7）**：目录按 `(series, stageDir)` 组织、版本前缀不进路径，归档阶段的残留目录会被同号的其它版本 stageId 命中。若 `status.md` 标题声明的**完整 stageId** 与请求不同，或该阶段已有归档日志（`.openfeel/log/archive-<stage>.md`）→ 拒绝（exit 1），提示占用目录、归属阶段与建议新编号。整版归档（`meta.archived_versions` 命中）只提示、不阻断；目录无 `status.md` 时按无法判定归属放行（兼容「先落目录、后注册」）。
 - `plan stage add` 输出示例：`已创建阶段: v1.3.3-stage-104` + `已创建阶段: v1.3.3-stage-104（目录：.openfeel/plan/v1/stage-104/）`。
 - **聚焦**（v1.3.3）：三个入口创建/注册成功后**原子设置** `pipeline.current.stage`，`flow next` 无需额外 `advance` 即可给出活跃阶段；`flow next` 在 current 为空时也会从 `stages` 只读派生（插入序首个非 done，不写盘）。
 

@@ -451,6 +451,32 @@ describe('plan 命令', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
   });
 
+  // ── v1.5.7：目录被旧版同号阶段占用（归档阶段目录残留） ──
+
+  it('v1.5.7: 目录属于旧版同号阶段 → exit 1 + 占用提示 + 零注册', async () => {
+    // 造「已归档 v1.1.1-stage-07 目录残留」：status.md 标题即归属声明
+    const legacyDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-07');
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, 'status.md'), '# v1.1.1-stage-07 状态\n', 'utf-8');
+    writeFileSync(join(legacyDir, 'overview.md'), '# 旧阶段\n', 'utf-8');
+
+    await safeParse(['plan', 'stage', 'add', 'v1.3.0-stage-07']);
+
+    const errOut = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errOut).toContain('阶段目录已被占用');
+    expect(errOut).toContain('.openfeel/plan/v1/stage-07');
+    expect(errOut).toContain('目录属于阶段 v1.1.1-stage-07');
+    // 建议名沿用请求版本（v1.3.0）与 series（v1），编号取该 series 下一个空闲值 → stage-08
+    expect(errOut).toContain('建议名称');
+    expect(errOut).toContain('v1.3.0-stage-08');
+    expect(exitMock).toHaveBeenCalledWith(1);
+
+    // 零写盘：旧阶段 status.md 未被改写、未注册新阶段
+    expect(readFileSync(join(legacyDir, 'status.md'), 'utf-8')).toBe('# v1.1.1-stage-07 状态\n');
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.3.0-stage-07']).toBeUndefined();
+  });
+
   // ── stage-51/N1-1：plan scheme remove ──
 
   /** 建立 stage-01 + op-001（经 CLI） */

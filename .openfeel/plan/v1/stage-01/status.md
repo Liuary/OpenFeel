@@ -2,6 +2,7 @@
 
 - **执行模式**：manual
 - **自动推进**：disabled
+- **工作流模式**：fast
 - **状态**：done
 - **当前责任 Agent**：openfeel-archiver
 - **上一责任 Agent**：user

@@ -5,7 +5,8 @@
  * 新增 JSON 模式统一错误出口（envelope / failCli / failRefusal / failInternal），
  * kind 与 exitCode 一律经 `src/core/errors.ts` 的单一映射表读取。
  */
-import { isFlowConcurrentError, StageDirConflictError } from '../../core/flow-manager.js';
+import { isFlowConcurrentError, StageDirConflictError, StageDirOccupiedError } from '../../core/flow-manager.js';
+import { suggestStageIdForExisting } from '../../core/plan/path.js';
 import { getCliLang, t } from '../../core/i18n.js';
 import { getCliErrorSpec, type CliErrorCode, type CliErrorKind } from '../../core/errors.js';
 import { emitJson, isJsonMode } from './json-output.js';
@@ -154,7 +155,34 @@ export function handleConcurrentConflict(
 }
 
 /**
- * addStage 失败统一处理（T42）：并发写冲突 / 阶段目录冲突 / 其他错误三类分流。
+ * 阶段目录占用错误 → 本地化文案行（v1.5.7；plan stage add / flow stage add / stage create 共用）。
+ * 调用方负责输出与 exit 1（本函数不退出，便于测试断言文案）。
+ * @param err 占用错误（含 blockers 明细）
+ * @param lang 语言标识
+ * @param projectPath 项目根（缺省 process.cwd()；建议名按该项目的已用编号推导）
+ * @returns 逐行 stderr 文案
+ */
+export function formatStageOccupiedError(
+  err: StageDirOccupiedError,
+  lang: string,
+  projectPath: string = process.cwd(),
+): string[] {
+  const occ = err.occupancy;
+  const reasons = occ.blockers.map((blocker) => {
+    if (blocker.kind === 'stage-archived') {
+      return t('common.stageDirOccupiedArchived', lang);
+    }
+    return t('common.stageDirOccupiedOwnerTmpl', lang, { stage: blocker.ownerStageId });
+  });
+  return [t('common.stageDirOccupiedTmpl', lang, {
+    dir: occ.dirRel,
+    reason: reasons.join('，'),
+    suggest: suggestStageIdForExisting(projectPath, err.stage),
+  })];
+}
+
+/**
+ * addStage 失败统一处理（T42）：并发写冲突 / 阶段目录冲突 / 阶段目录占用 / 其他错误四类分流。
  * `stage create` 与 `flow stage add` 共用，保证两入口输出一致。
  * JSON 并发分支置码返回（调用方须立即 return）；其余分支保持即时退出。
  * @param err 捕获到的错误
@@ -166,6 +194,13 @@ export function handleAddStageError(err: unknown, lang: string): void {
     handleConcurrentConflict(err, lang);
     // JSON 模式仅置码返回 → 显式终止分流，避免落入下方通用错误分支（exit 1 二次输出）
     return;
+  }
+  // 阶段目录占用（v1.5.7）：目录归属历史阶段 / 未知产物 / 该阶段已归档 → 拒绝并提示换号
+  if (err instanceof StageDirOccupiedError) {
+    for (const line of formatStageOccupiedError(err, lang)) {
+      console.error(line);
+    }
+    process.exit(1);
   }
   // 阶段目录冲突：按类型分流走 i18n 模板（cli/BUG-002 死键消除）
   if (err instanceof StageDirConflictError) {

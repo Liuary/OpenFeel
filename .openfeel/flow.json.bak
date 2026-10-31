@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T15:33:38.336Z",
-    "revision": 1708,
+    "updated": "2026-10-31T16:36:18.430Z",
+    "revision": 1739,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -38,13 +38,41 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "",
+      "stage": "v1.5.7-stage-119",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.5.7-stage-119": {
+      "name": "v1.5.7-stage-119",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-021",
+      "stats": {
+        "start_time": "2026-10-31T16:11:58.134Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.7-stage-119",
+      "stage": "v1.5.7-stage-119",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] 建议名串版本/系列（errors.ts 误用 suggestStageId）；单阶段归档信号跨系列误伤（path.ts series 盲查 archive-stage-NN.md）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T16:32:50.391Z",
+      "canAutoFix": false,
+      "blocking": true
+    }
+  ],
   "log": [
     {
       "time": "2026-10-17T12:21:32.344Z",
@@ -1500,6 +1528,327 @@
         "id": "REQ-018",
         "title": "文档债清零：.openfeel/manual/** 快照停在 v1.2.4（35 文件）+ cli-usage SKILL 描述尾部缺 1.5.6 观测项"
       }
+    },
+    {
+      "time": "2026-10-31T15:33:43.358Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-019",
+        "title": "代码债：eslint 33 errors 清零（21 文件，多为 unused vars；当前门禁靠「新增行 0」豁免）"
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:12.775Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-020",
+        "title": "NCA Dev 开发工具条默认隐藏，避免遮挡页面操作区"
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:14.046Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-020",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:18.654Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.3.0-stage-01",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:24.334Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.3.0-stage-01",
+        "requirementId": "REQ-020"
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:24.365Z",
+      "agent": "cli",
+      "action": "config_sync_stage",
+      "detail": {
+        "stage": "v1.3.0-stage-01",
+        "field": "工作流模式",
+        "value": "fast"
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:45.667Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-020",
+        "fields": [
+          "target_version"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:47.300Z",
+      "agent": "cli",
+      "action": "remove_stage",
+      "detail": {
+        "stageId": "v1.3.0-stage-01",
+        "purgeTarget": null,
+        "referencing": [],
+        "snapshot": {
+          "phase": "plan_pending",
+          "status": "planned",
+          "deps": [],
+          "opKeys": []
+        }
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:50.078Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.7-stage-118",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:53.192Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.7-stage-118",
+        "requirementId": "REQ-020"
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:57.890Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-118",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T16:05:59.964Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-118",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:06:02.090Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-118",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:09:09.751Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.7-stage-118",
+        "requirementId": null
+      }
+    },
+    {
+      "time": "2026-10-31T16:09:11.707Z",
+      "agent": "cli",
+      "action": "remove_stage",
+      "detail": {
+        "stageId": "v1.5.7-stage-118",
+        "purgeTarget": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\plan\\v1\\stage-118",
+        "referencing": [],
+        "snapshot": {
+          "phase": "exec_running",
+          "status": "planned",
+          "deps": [],
+          "opKeys": []
+        }
+      }
+    },
+    {
+      "time": "2026-10-31T16:09:13.340Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-020",
+        "from": "draft",
+        "to": "cancelled"
+      }
+    },
+    {
+      "time": "2026-10-31T16:11:50.335Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-021",
+        "title": "stage add 静默复用已归档阶段的目录/编号：应拒绝并提示换号"
+      }
+    },
+    {
+      "time": "2026-10-31T16:11:51.698Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-021",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-31T16:11:53.885Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T16:11:56.383Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.7-stage-119",
+        "requirementId": "REQ-021"
+      }
+    },
+    {
+      "time": "2026-10-31T16:11:58.131Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T16:12:01.004Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:12:02.933Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:30:04.038Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:32:44.959Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:33:01.511Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:36:02.156Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:36:09.544Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-001"
+      }
+    },
+    {
+      "time": "2026-10-31T16:36:13.508Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:36:18.424Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -1732,6 +2081,43 @@
       "priority": "P2",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-018.md"
+    },
+    {
+      "id": "REQ-019",
+      "title": "代码债：eslint 33 errors 清零（21 文件，多为 unused vars；当前门禁靠「新增行 0」豁免）",
+      "status": "draft",
+      "created_at": "2026-10-31T15:33:43.358Z",
+      "updated_at": "2026-10-31T15:33:43.358Z",
+      "target_version": "v1.5.7",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-019.md"
+    },
+    {
+      "id": "REQ-020",
+      "title": "NCA Dev 开发工具条默认隐藏，避免遮挡页面操作区",
+      "status": "cancelled",
+      "created_at": "2026-10-31T16:05:12.775Z",
+      "updated_at": "2026-10-31T16:09:13.340Z",
+      "target_version": "v1.5.7",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-020.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-31T16:05:14.046Z"
+    },
+    {
+      "id": "REQ-021",
+      "title": "stage add 静默复用已归档阶段的目录/编号：应拒绝并提示换号",
+      "status": "draft",
+      "created_at": "2026-10-31T16:11:50.334Z",
+      "updated_at": "2026-10-31T16:11:51.697Z",
+      "target_version": "v1.5.7",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-021.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-31T16:11:51.697Z"
     }
   ]
 }

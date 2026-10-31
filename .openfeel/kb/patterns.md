@@ -4557,3 +4557,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-001] 代码自审：静态资源分类矩阵 / 源码底线 / 混合从严 / audit / chore 不越相位（无 blocking；2013 单测 + dsh 194 + 验收 a–d） (2026-10-30)
 
 归档自阶段 v1.4.0-stage-107
+
+## [+] [REV-001] 代码自审：Only-Feel 归属 / dev 同步幂等与 30min due / log 200 上限 / 提示词瘦身（无 blocking；2021 单测 + dsh 196 + E2E） (2026-10-31)
+
+归档自阶段 v1.5.0-stage-108

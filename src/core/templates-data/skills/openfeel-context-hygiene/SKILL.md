@@ -16,7 +16,7 @@ description: 上下文卫生——按需加载（索引先行）、工具结果�
 
 严格按「索引 → 主题 → 详情」三层顺序取用信息，**禁止**开局整量读取：
 
-1. **索引先行**：会话启动只读索引层——`.openfeel/users/{username}/dev_last.md`、流水线状态视图、`.openfeel/kb/index.md`。
+1. **索引先行**：常规会话只读 `flow next` / `flow status` 状态视图；`dev_last.md` 仅在 `recover` 或用户要求时读（v1.5.0 默认不加载）。
 2. **主题按需**：仅在索引摘要不足以决策时，读对应主题文件 `dev_last/{english-name}.md`。
 3. **详情显式**：`.openfeel/tmp/` 文档、历史归档、`docs/**` 仅在**显式指定**时读取。
 4. **不主动读归档**：常规调度不得读取 `.openfeel/flow-archive/**`（防上下文污染）；确需历史时用只读查询命令。

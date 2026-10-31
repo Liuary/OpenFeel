@@ -84,6 +84,8 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 
 5. **命令执行工具（Windows）**：运行 shell 命令时，Windows 下**优先 `bash`（Git Bash）**，其次 **`pwsh`（PowerShell 7）**；macOS / Linux 使用 `bash`。默认不用 `cmd.exe`；同一任务内保持同一 shell，路径与转义按所选 shell 书写。
 
+6. **状态唯一写者（v1.5.0）**：`dev_last*`、`dev/current.md`、`status.md`、`flow.json` 只由 Feel（主会话）写；**子 agent 一律不读不写**，上下文由派发 prompt / 交接文档提供。日志不强制；需要跨会话时写 ≤5 行交接摘要（开始 / 转折 / 结束，或 30 分钟到期）。
+
 偏离以上约束的行为视为违规，审查时将被标记。
 
 ### 10 Agent 体系总览
@@ -134,7 +136,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.4.0）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.5.0）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 

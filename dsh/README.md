@@ -191,6 +191,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 - `auto_advance=disabled` 时推进前必须询问用户。
 - 三种模式（full / fast / general）与需求 7 状态流转。
 - **命令执行工具（v1.3.5）**：Windows 优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS / Linux 用 `bash`；默认不用 `cmd.exe`；同一任务保持同一 shell。
+- **状态与记录（v1.5.0）**：只有 Feel 写状态；子 agent 不读不写 `dev_last*` / `current.md` / `status.md` / `flow.json`；日志不强制（`flow.json.log` 最近 200 条）；`feel_next` / `feel_status` 返回 `statusSync`（`due` / `lastSync` / `intervalMinutes`=30），到期只提示更新交接摘要 + `openfeel dev sync`。
 
 段落正文每次装配时探测 `.openfeel/` 是否存在，因此提示会随工作区状态变化。
 
@@ -229,7 +230,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 ```powershell
 cd plugin
 node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（42 项）
-node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（87 项）
+node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（89 项）
 node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（55 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（10 项）
 ```

@@ -84,6 +84,8 @@ When encountering technical issues, **the first action MUST be to consult the kn
 
 5. **Command execution (Windows)**: when running shell commands on Windows, prefer **`bash` (Git Bash)**, then **`pwsh` (PowerShell 7)**; on macOS / Linux use `bash`. Do not default to `cmd.exe`; keep one shell per task and write paths/escaping for that shell.
 
+6. **State has a single writer (v1.5.0)**: `dev_last*`, `dev/current.md`, `status.md`, `flow.json` are written by Feel (main session) only; **subagents never read or write them** — context comes from the dispatch prompt / handoff docs. Logs are not mandatory; write a <=5-line handoff summary when needed (start / turning point / end, or every 30 min).
+
 Deviating from the above constraints is considered a violation and will be flagged during review.
 
 ### 10-Agent System Overview
@@ -134,7 +136,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.4.0). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.5.0). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 

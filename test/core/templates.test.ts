@@ -508,7 +508,7 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
       expect(c, `缺子命令 req ${sub}`).toContain(`req ${sub}`);
     }
   });
-  it('S5 cli-usage 补节 + 计数订正 + 快照声明更新（stage-107：快照 → v1.4.0 / 保留 v1.3.5 节）', () => {
+  it('S5 cli-usage 补节 + 计数订正 + 快照声明更新（stage-108：快照 → v1.5.0 / 保留 v1.4.0 节）', () => {
     const c = readFileSync(CLI_SKILL, 'utf-8');
     for (const s of ['## v1.2.0 新增能力（stage-78~84）', '## v1.2.1 新增能力（stage-86~93 + 94）',
       '## v1.2.2 新增能力（stage-95~98）',
@@ -517,8 +517,8 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
       '10 子命令', 'v1.2.1 起 11', 'openfeel-req', 'openfeel req', '**22 个**共享源',
       '## v1.3.0（stage-101）', 'v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）',
       '## v1.3.2（stage-103）', '## v1.3.3（stage-104）', '## v1.3.4（stage-105）', '## v1.3.5（stage-106）',
-      '## v1.4.0（stage-107）',
-      'DSH 写入门禁', '本文档为 v1.4.0 快照']) {
+      '## v1.4.0（stage-107）', '## v1.5.0（stage-108）',
+      'DSH 写入门禁', '本文档为 v1.5.0 快照']) {
       expect(c, `缺 ${s}`).toContain(s);
     }
     expect(c, '陈旧 17 残留').not.toContain('**17 个**共享源');
@@ -534,6 +534,7 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
     expect(c, 'v1.3.3 快照声明残留').not.toContain('本文档为 v1.3.3 快照');
     expect(c, 'v1.3.4 快照声明残留').not.toContain('本文档为 v1.3.4 快照');
     expect(c, 'v1.3.5 快照声明残留').not.toContain('本文档为 v1.3.5 快照');
+    expect(c, 'v1.4.0 快照声明残留').not.toContain('本文档为 v1.4.0 快照');
     expect((c.match(/node bin\/openfeel\.js/g) ?? []).length, 'T53 自举加注恒 1').toBe(1);
   });
 });

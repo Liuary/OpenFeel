@@ -126,12 +126,14 @@ fast 调度纪律：
 用户输入 → 理解意图 → 调用对应 Agent → 检查结果 → 推进流水线
 ```
 
-## 记忆与落档（细节见对应 skill）
+## 状态与记录（v1.5.0，细节见对应 skill）
 
-- **记忆加载**：全局画像 → 项目 `dev_core.md` → `dev_last.md`（**索引**）→ 按需主题文件（`dev_last/decisions.md` 等，**文件名英文**）；偏好合并按「Read → 合并 → 写回」，禁整文件覆盖。
-- **冲突检测与 `update_infos`**：启动时检查 `update_state.json` 冲突条目与 `~/.openfeel/update_infos.md` 的**三类**条目（追加 / 异常 / **备份条目**——含 `backup_failed` 者引导用户重跑更新部署）；确认后用 edit 工具将条目的 `- [ ]` 改为 `- [x]` 勾选，并提醒用户**重启会话**。
-- **决策追加**：按 `- [x] {date}：{决策}` 追加至 `dev_last/decisions.md`（长期决策另同步 ADR）。
-- **信息落档与会话结束写入**：`dev_last.md` 索引 + 主题文件 + **公共交接区**；临界区 `withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })`（锁路径 `.openfeel/tmp/locks/`）。
+- **只有 Feel 写状态**：`dev_last*`、`dev/current.md`、`status.md`、`flow.json` 仅由 Feel 更新；**子 agent 不读不写**（交接走派发 prompt / 交接文档）。
+- **节点更新**：开始 / 转折 / 结束，或 `statusSync.due=true`（默认 30 分钟）时更新一次交接摘要（≤5 行），随后 `openfeel dev sync`（CLI 在节点/到期时自动同步）。
+- **不写流水账**：日志不强制；`flow.json.log` 由 CLI 维护（最近 200 条）。跨会话信息写入「公共交接区」；`dev_last/decisions.md` 仅长期决策。
+- **记忆按需**：默认不加载；仅 `recover` 或用户要求时读 `dev_last/` 索引与主题文件。
+- **写入锁（仅确需写入时）**：`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })`（锁路径 `.openfeel/tmp/locks/`）。
+- **冲突检测与 `update_infos`（不阻塞）**：启动时检查 `update_state.json` 冲突与 `~/.openfeel/update_infos.md` 的**三类**条目（追加 / 异常 / **备份条目**；含 `backup_failed` 者引导用户重跑 update / setup）；确认后用 **edit 工具**把 `- [ ]` 改为 `- [x]`，并提醒用户重启会话。
 - **审查会话健康探测**：唤起审查官首轮先做最小工具自检；会话判定不可用时立即重开，其既有 REV / 验收记录降级为**待复核**。
 
 > 操作步骤与格式详见 `openfeel-memory` / `openfeel-delegation` / `openfeel-workspace`。
@@ -161,4 +163,4 @@ Feel 由**主力推理模型**驱动，确保深度理解与全局调度能力�
 
 - 调度结果：目标 Agent + 任务描述摘要 + 期望返回 + 只读 / 可写边界
 - 下游精简摘要（≤ 10 行）：Agent / 状态 / 摘要 / 产出 / 遗留
-- 落档：日志按 `openfeel-logging`、记忆与 `dev_last.md` 按 `openfeel-memory`、工作区按 `openfeel-workspace`
+- 记录：不写逐操作日志；节点交接摘要按 `openfeel-memory`，工作区按 `openfeel-workspace`

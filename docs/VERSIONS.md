@@ -9,6 +9,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.0** — Workflow slimming: only Feel writes state (`dev_last*` / `dev/current.md` / `status.md` / `flow.json`); subagents never read or write them; logs are no longer mandatory (brief records only, flow log capped at 200); status records update at start / turning point / end or every 30 minutes via `openfeel dev sync` (CLI auto-syncs on `flow advance`); `feel_next`/`feel_status` expose `statusSync.due`.
 - **v1.4.0** — Write-gate tiering + `chore` micro-change channel: static presentational assets (`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`, `assets/**`, `public/**`) are writable in any phase like docs (mixed targets stay strict); `openfeel chore "<note>"` opens a 1-step, 60-minute write window without creating a stage (no `flow.json.stages` entry; `--end`/`--status`), and guard writes an audit line for every exemption.
 - **v1.3.5** — Unified shell-tool guidance: on Windows prefer `bash` (Git Bash), then `pwsh` (PowerShell 7); macOS/Linux use `bash`; avoid defaulting to `cmd.exe`. Added to the DSH Feel system prompt and the OpenFeel global constraint templates (`agents-md` / `claude` constraint / `openfeel-tool-usage` skill).
 - **v1.3.4** — Distribution-chain fixes: the DSH `feel_flow review_add` now forwards `--stage` (stage-level REVs work without ops); `openfeel setup --check` gains a `restart-required` state (adapter fingerprint deployed vs loaded) so upgrades no longer loop; `setup --tools dsh` now refreshes `update_state.json` even when profiles are already up to date.
@@ -21,6 +22,14 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.0 — 工作流瘦身（Only-Feel 写状态 / 日志降级 / 30 分钟 CLI 同步）
+
+- **只有 Feel 写状态**：`dev_last*`、`dev/current.md`、`status.md`、`flow.json` 只由 Feel（主会话）更新；子 agent 一律不读不写，上下文由派发 prompt / 交接文档提供。
+- **日志降级**：日志不强制；`flow.json.log` 由 CLI 自动维护（最近 200 条）。跨会话信息写 ≤5 行交接摘要；`openfeel-logging` / `openfeel-memory` 不再要求逐操作 / 会话结束写档。
+- **节点 + 30 分钟同步**：`openfeel dev sync` 写 `dev_last.md` 的 CLI 受管简要状态块；`flow advance` 在首次 / 超过 30 分钟 / 节点相位自动同步；适配器 `feel_next` / `feel_status` 返回 `statusSync.due`，到期时只提示更新交接摘要。
+- **兼容性**：不改相位机 / 审查 / 归档语义；无新增 JSON 出口；`dev_last.md` 手写内容保留。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → **完全退出并重启宿主**。详见 [CHANGELOG](../CHANGELOG.md#150---2026-10-31)。
 
 ## v1.4.0 — 写入门禁分层 + chore 微变更通道
 

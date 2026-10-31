@@ -233,6 +233,8 @@
 | [2026-10-30](2026/10/30/day_index.md) | 阶段 v1.3.5-stage-106 完成 （嵌套） |
 | [2026-10-30](2026/10/30/day_index.md) | v1.4.0-stage-107 review_added （嵌套） |
 | [2026-10-30](2026/10/30/day_index.md) | 阶段 v1.4.0-stage-107 完成 （嵌套） |
+| [2026-10-31](2026/10/31/day_index.md) | v1.5.0-stage-108 review_added （嵌套） |
+| [2026-10-31](2026/10/31/day_index.md) | 阶段 v1.5.0-stage-108 完成 （嵌套） |
 
 - [29 日](2026/09/29/2026-09-29-Liuary-001.md) — Reviewer 审查 stage-46 计划（部署覆盖前备份，有条件通过：1 high + 2 medium blocking REV，config.yaml 覆盖路径漏备份上报）（末尾追加：文件含历史混合编码，避免整文件重写）
 | [2026-09-29](2026/09/29/day_index.md) | v1.1.2-stage-41.op-001 执行通过 |

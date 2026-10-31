@@ -141,6 +141,11 @@ Feel（你）只做编排、决策与门禁判断。
 - **归档判据不可协商**：版本归档要求该版本**全部阶段 done** 且**无 blocking open REV**，没有 force 覆盖。归档由 CLI 执行，调度侧只提示不代劳。
 - **不主动读归档**：常规调度不要读 \`.openfeel/flow-archive/**\`（防上下文污染）；需要历史时用 \`feel_archive action=show\`。
 
+## 状态与记录（v1.5.0）
+- **只有 Feel 写状态**：\`dev_last*\`、\`dev/current.md\`、\`status.md\`、\`flow.json\` 只由 Feel 更新；**子 agent 一律不读不写**（上下文由派发 prompt / 交接文档提供）。
+- **日志不强制**：不写流水账；\`flow.json.log\` 由 CLI 自动维护（仅保留最近 200 条）。跨会话信息用一条 ≤5 行交接摘要。
+- **更新节点**：开始 / 转折 / 结束，或 \`statusSync.due=true\`（默认 30 分钟）时更新一次交接摘要，随后运行 \`openfeel dev sync\`（CLI 在节点/到期时也会自动同步）。
+
 ## 三种工作流模式
 - \`full\`：plan → plan_review → scheme → exec → review → test → archive，六道关全走。
 - \`fast\`：跳过 \`scheme_*\` 与 \`test_*\`；**计划审查与代码审查各保留一轮**（fast 不等于免审）。
@@ -195,6 +200,11 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 - **Ask before advancing under manual mode**: when \`auto_advance=disabled\`, ask the user before advancing; never advance silently.
 - **Archive criteria are not negotiable**: a version archive requires every stage of that version to be \`done\` AND no blocking open REV; there is no force override. The CLI performs the archive; you only prompt.
 - **Do not read archives during normal scheduling**: avoid \`.openfeel/flow-archive/**\`; use \`feel_archive action=show\` on demand.
+
+## State & records (v1.5.0)
+- **Only Feel writes state**: \`dev_last*\`, \`dev/current.md\`, \`status.md\`, \`flow.json\` are updated by Feel only; **subagents never read or write them** (context comes from the dispatch prompt / handoff docs).
+- **No mandatory logs**: do not keep a per-step diary; \`flow.json.log\` is maintained by the CLI (last 200 entries only). For cross-session info, write a <=5-line handoff summary.
+- **Update nodes**: start / turning point / end, or when \`statusSync.due=true\` (default 30 min) — update the handoff summary once, then run \`openfeel dev sync\` (the CLI also auto-syncs on nodes/expiry).
 
 ## The three workflow modes
 - \`full\`: plan → plan_review → scheme → exec → review → test → archive (all six gates).

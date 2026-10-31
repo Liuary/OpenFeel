@@ -1,88 +1,38 @@
 ---
 name: openfeel-memory
-description: 记忆与落档纪律——记忆加载优先级、偏好合并、冲突检测与仲裁、update_infos 检查修复、决策追加、信息落档与会话结束写入、阶段结束检查。用于「记忆 / 偏好 / 决策记录 / 落档 / 会话结束写入」相关判断。
+description: 记忆与落档（v1.5.0 瘦身）——默认不加载、不写回；仅在 recover / 用户要求 / 节点交接时按需读写；唯一写者是 Feel。用于「记忆 / 交接 / 恢复」相关判断。
 ---
 
-# 记忆与落档纪律
+# 记忆与落档（v1.5.0 瘦身）
 
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
-## 输入
+## 原则
 
-- 会话启动信号（加载记忆）或会话结束信号（写入落档）
-- `.openfeel/update_state.json` / `~/.openfeel/update_infos.md`（若存在）
+- **唯一写者 = Feel**：`dev_last*`、`dev/current.md`、`status.md`、`flow.json` 只由 Feel 写；**子 agent 不读不写**，上下文由派发 prompt / 交接文档提供。
+- **默认不动**：普通会话启动**不读** `dev_last`、**不写**任何状态/日志；上下文来自 `flow next` / 计划 / op / REV。
+- **节点更新**：开始 / 转折 / 结束，或 `statusSync.due=true`（默认 30 分钟）时，Feel 更新一次**交接摘要（≤5 行）**，随后运行 `openfeel dev sync`（CLI 在节点/到期时自动同步）。
 
-## 执行步骤
+## 按需读取（recover / 用户要求）
 
-### 1. 记忆加载优先级（启动时按序）
+1. 全局偏好：`readProfile()`（文件不存在用默认值）。
+2. 项目规则：`.openfeel/dev/dev_core.md`（`[+]` / `[-]`）。
+3. 交接：`dev_last.md` 的「公共交接区」+ `dev_last/` 主题文件（仅需要详情时读）。
 
-1. **全局偏好**：读取全局画像（`readProfile()`，src/core/config.ts）；文件不存在时用默认值。
-2. **项目规则**：读取项目 `.openfeel/dev/dev_core.md`（`[+]` / `[-]` 标记规则；优先级高于全局约束）。
-3. **项目记忆索引**：读取 `.openfeel/users/{username}/dev_last.md`（**索引**）——先取「用户偏好」「主题索引」「公共交接区」。
-4. **按需主题文件**：仅在需要详情时读 `dev_last/{english-name}.md`（**文件名英文 kebab-case**，如 `decisions.md` / `pending.md`）；**旧格式**（无 `## 主题索引` 节）→ 触发**惰性迁移**（按英文命名映射拆分生成 `dev_last/` + 索引，原文保留，仅提示一次，不阻塞会话）。
-5. **自动填充画像**：调用 `ensureProfileDefaults(projectPath)`——`user.name` 为空时从 `.openfeel/.info.json` 或 git config 取用户名，并更新 `history.last_project` / `history.recent_projects`（去重保留最近 5 个）。
+> `dev_last.md` 的「自动状态」块由 CLI 维护（`openfeel dev sync`），**不要手改**。
 
-### 2. 偏好合并（禁整文件覆盖）
+## 按需写入（仅 Feel）
 
-- 语言偏好：全局画像 `user.lang` 优先。
-- `auto_advance`：以项目 `config.yaml` 为准，全局画像 `preferences.auto_advance` 仅兜底（`status.md` 可局部覆盖）。
-- 沟通风格 / 确认阈值：取全局画像 `preferences.communication` / `preferences.confirm_threshold`。
-- 合并后的偏好写入索引「用户偏好」节：**先 Read → 合并 → 写回**，禁止整文件覆盖。
+- 交接摘要写 `dev_last.md`「公共交接区」或主题文件；单条 ≤5 行，只写「做了什么 / 卡在哪 / 下一步」。
+- 长期技术/架构决策 → `.openfeel/dev/decisions.md`（ADR）；会话临时取舍不落档。
+- **确需写主题文件时**（临界区）：`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })`，锁路径 `.openfeel/tmp/locks/`；合并后用 `atomicWriteFileSync` 落盘。
+- `dev/current.md` 仅为可选项，不再强制维护。
 
-### 3. 冲突检测
+## 检查（不阻塞）
 
-启动时检查 `.openfeel/update_state.json`（不存在则静默跳过）：
-
-1. 遍历 `files`，查找 `status=conflict` 条目。
-2. 存在冲突时：TTY 交互环境输出冲突列表与解决指引（冲突文件保存在 `.openfeel/update_conflicts/`）；**非 TTY 环境（如 CI/CD）静默跳过**，不输出提示。
-3. **不阻塞主体流程**——提示后照常进入主流程。
-
-**冲突仲裁优先级**：用户明确指令 > 安全性 / 数据完整性 > 全局约束（全局规则文件）> 动态规则（`dev_core.md`）> 会话临时提示。冲突时须报告并向用户说明仲裁策略。
-
-### 4. update_infos 检查与修复
-
-启动时检查 `~/.openfeel/update_infos.md`（不存在则静默跳过）：
-
-1. 遍历「追加」「异常」「备份」三类条目，按条目记录还原目标文件路径（绝对路径，或「相对路径 (项目: 根)」二元组）。
-2. 逐条处理：
-   - **异常条目**（未写入，待修复）：含 `原因: backup_failed` → 备份失败导致，**非标记问题、不会自愈** → 引导用户重跑 `openfeel update` / `openfeel setup` 重试部署，成功后勾选；其余（标记解析失败）→ 目标文件已含完整 begin/end 标记则**已自愈**，勾选清除该条目。
-   - **追加条目**（无标记追加）：即使目标文件现已含标记，追加的受管区可能仍残留在标记区外造成**内容重复**——**不静默清除**，提示用户人工确认后勾选。
-   - **备份条目**（部署覆盖前已存在 → 已备份）：检查备份文件是否存在——存在则提示「部署覆盖前已备份原文件至 `{backupRel}`，请检查」；缺失则提示「备份已丢失，请谨慎检查当前文件」。确认后勾选。**非 TTY 环境静默**。
-3. 提示方式与「冲突检测」对称：TTY 输出待处理列表与确认引导；非 TTY 静默跳过。
-4. 修复完成后提醒用户**重启会话**（全局 agent / 约束已变更，需重启加载）。
-5. 全部条目勾选后可删除该文件或保留骨架。本流程不调用内部函数接口，仅按标记与条目状态判定。
-
-### 5. 决策追加（`dev_last/decisions.md` 追加式）
-
-做出技术 / 架构决策（选择方案、拒绝备选、调整设计方向、接受 trade-off）时，按 `- [x] {date}：{决策描述}` **追加**到 `dev_last/decisions.md`（不覆盖既有条目；索引仅在主题摘要变化时更新对应 ≤100 字摘要）。
-
-- **归属区分**：长期决策（技术选型、架构方向、跨会话有效的设计取舍）另以 ADR 格式同步写入 `.openfeel/dev/decisions.md`；会话临时决策仅记 `dev_last/decisions.md`。
-- **判断标准**（任一即记）：涉及新依赖引入或版本抉择 / 涉及架构模式选择 / 涉及用户偏好变更 / 涉及流程调整决策。
-- **非决策不记录**：常规代码推进、Bug 修复选择、已确定方案中的细节填充。
-
-### 6. 信息落档与会话结束写入
-
-**关键操作必须落文件，不可仅存于对话中**：阶段状态 → CLI 命令；进度 → `dev_last.md`（索引 + 主题文件）；经验 → `kb/`；审查 / Bug → 私域目录。禁止「做完不记录」。
-
-会话结束前更新 `.openfeel/users/{username}/dev_last.md`（索引）与 `dev_last/*.md`（主题文件）：
-
-> **临界区（A9，一次进出）**：以下 ①~④ 的「读 → 合并 → 写回」须在 `withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })` 内完成（**含读取**；锁路径 `.openfeel/tmp/locks/dev-last-{username}.lock`；临界区内合并后用 `atomicWriteFileSync` 原子落盘；超时 / 陈旧沿用默认 5000 / 3000ms）；`dist` 不可用时退化为「读-合并-写」并标注「未加锁」。
-
-1. 更新索引「用户偏好」（**不整文件覆盖**，Read → 合并 → 写回）。
-2. 更新 / 新建主题文件（**文件名英文**；单条 >300 字或 >10 条时转 `tmp/` 文档并记地址）。
-3. 刷新索引「主题索引」摘要（**≤5 活跃主题 × ≤5 条 × ≤100 字**）；新增主题致 >5 时先合并同类，无可合并则把最旧已完结主题移入「已收敛主题」（**不归档、不移动文件**）。
-4. 更新「公共交接区」（**仅文档位置 + 核心摘要**）。
-5. 若属跨用户整体进度，按规则更新 `.openfeel/dev/current.md` 并轮换归档（该文件属公共域，**不在本锁范围内**）。
-
-### 7. 阶段结束检查清单
-
-标记阶段 done 前逐项确认，全部通过方可推进：
-
-- [ ] 审查已完成？（仅单文件、无跨文件影响的微小改动可跳过审查，须记录理由）
-- [ ] 测试已通过？
-- [ ] 状态已落档（`flow.json` / `status.md` / `dev_last.md`〔索引 + 主题文件〕）？
+- `update_state.json` 冲突条目、`~/.openfeel/update_infos.md` 例外条目：存在时简要提示用户；非 TTY 静默；**不阻塞**主流程。
 
 ## 输出
 
-- 记忆加载摘要：生效偏好（语言 / 自动推进 / 沟通风格 / 确认阈值）+ 活跃主题数
-- 落档记录：写入或更新的文件路径清单
+- 恢复摘要（仅 recover 时）：生效偏好 + 交接摘要（≤5 行）。
+- 写入记录：仅在确实写入时报告路径。

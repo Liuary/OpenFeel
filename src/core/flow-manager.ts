@@ -101,6 +101,9 @@ export interface LogEntry {
   detail: Record<string, unknown>;
 }
 
+/** flow.json.log 保留上限（v1.5.0 日志瘦身：只留简要操作记录） */
+export const MAX_LOG_ENTRIES = 200;
+
 /** 阶段数据结构 */
 export interface StageData {
   name: string;
@@ -2924,7 +2927,7 @@ export class FlowManager {
     });
   }
 
-  /** 追加操作日志（若 time 为空则自动生成） */
+  /** 追加操作日志（若 time 为空则自动生成）；v1.5.0 起只保留最近 {@link MAX_LOG_ENTRIES} 条 */
   appendLog(entry: LogEntry): void {
     if (!this.data) {
       return;
@@ -2934,6 +2937,9 @@ export class FlowManager {
       time: entry.time || new Date().toISOString(),
     };
     this.data.log.push(logEntry);
+    if (this.data.log.length > MAX_LOG_ENTRIES) {
+      this.data.log.splice(0, this.data.log.length - MAX_LOG_ENTRIES);
+    }
   }
 
   // ═══ 校验 ═══

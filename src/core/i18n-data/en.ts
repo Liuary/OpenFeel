@@ -381,6 +381,12 @@ export const flow: I18nDomain = {
   'chore.statusActiveTmpl':         { key: 'flow.chore.statusActiveTmpl',         zh: '', en: 'Chore active: {id} — {note} (expires {expires})' },
   'chore.statusExpiredTmpl':        { key: 'flow.chore.statusExpiredTmpl',        zh: '', en: 'Chore expired: {id} (reopen, or use the static-asset/doc channel).' },
   'chore.statusNoneTmpl':           { key: 'flow.chore.statusNoneTmpl',           zh: '', en: 'No chore (static assets/docs remain writable when no stage is active).' },
+  // dev status sync (v1.5.0)
+  'dev.syncedTmpl':                 { key: 'flow.dev.syncedTmpl',                 zh: '', en: '✓ Status synced: {file} ({syncAt}; next check in {interval} min)' },
+  'dev.statusStageTmpl':            { key: 'flow.dev.statusStageTmpl',            zh: '', en: 'Active stage: {stage}' },
+  'dev.statusLastSyncTmpl':         { key: 'flow.dev.statusLastSyncTmpl',         zh: '', en: 'Last sync: {lastSync} (interval {interval} min)' },
+  'dev.statusDueTmpl':              { key: 'flow.dev.statusDueTmpl',              zh: '', en: 'Status is stale (>= {interval} min): update the handoff summary, then run `openfeel dev sync`.' },
+  'dev.statusOkTmpl':               { key: 'flow.dev.statusOkTmpl',               zh: '', en: 'Status is fresh ({interval} min window); no update needed.' },
 };
 
 /* ==================== init ==================== */
@@ -938,6 +944,9 @@ export const help: I18nDomain = {
   'chore.argnote':       { key: 'help.chore.argnote',       zh: '', en: 'Micro-change note (required to start; e.g. "adjust UI radius")' },
   'chore.end':           { key: 'help.chore.end',           zh: '', en: 'Close the current chore (auto-close)' },
   'chore.status':        { key: 'help.chore.status',        zh: '', en: 'Show current chore status (read-only)' },
+  'dev':                 { key: 'help.dev',                 zh: '', en: 'Dev status records (v1.5.0: Feel-only; CLI maintains the brief status block)' },
+  'dev.sync':            { key: 'help.dev.sync',            zh: '', en: 'Write the brief status block now (dev_last AUTO block + .sync.json)' },
+  'dev.status':          { key: 'help.dev.status',          zh: '', en: 'Show status sync state (read-only; default 30-minute window)' },
   'req.add':             { key: 'help.req.add',             zh: '', en: 'Create a requirement (auto ID; body skeleton under .openfeel/requirements/)' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '', en: 'Requirement title' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '', en: 'Target version (e.g. v1.3.0)' },

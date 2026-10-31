@@ -931,6 +931,20 @@ openfeel setup --check [--json]                       # 只读诊断：一致退
 - 错误：预检 / 用法 / profile 类 → `INVALID_ARGUMENT` / exit 1（`detail.reason=dsh-*`）；备份 / pnpm install → `INTERNAL_ERROR` / exit 3。均零写盘或已回滚。
 - 完成后重启 DSH 宿主（host module 不热加载）。`openfeel update --tools dsh` 不适用，会 exit 1 并指引本命令。
 
+## dev — 开发状态记录（v1.5.0）
+
+工作流瘦身后，`dev_last.md` 的简要状态由 CLI 维护；只有 Feel 写手写交接内容。
+
+```bash
+openfeel dev sync      # 立即写入简要状态块（dev_last AUTO 块 + .sync.json）
+openfeel dev status    # 只读：是否到期（默认 30 分钟窗口）
+```
+
+- **受管块**：只替换 `dev_last.md` 内 `<!-- openfeel:auto:begin/end -->`，不触碰手写内容；无 `--json`（零 JSON 契约变更）。
+- **自动同步**：`flow advance` 成功后，首次 / 超过 30 分钟 / 节点相位（`exec_running` / `review_passed` / `archiving` / `done`）自动同步（best-effort）。
+- **状态归属**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel 写；子 agent 不读不写。
+- **日志**：不强制写日志；`flow.json.log` 由 CLI 维护，仅保留最近 200 条。
+
 ## chore — 微变更通道（v1.4.0）
 
 给「单文件、无接口变化、可肉眼验证」的微变更一条 1 步通道（UI 微调 / 文案 / 静态资源）：

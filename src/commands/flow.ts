@@ -35,6 +35,7 @@ import { failCli, failInternal, failRefusal, handleAddStageError, handleConcurre
 import { withSchemaVersion, isJsonMode, emitJson } from './shared/json-output.js';   // JSON 契约助手（stage-95 op-001/op-002）
 import { type CliErrorKind } from '../core/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
+import { getDevStatus, isSyncNodePhase, syncDevStatus } from '../core/dev-status.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
 import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile } from '../core/flow-archive/archive-ops.js';
@@ -1262,6 +1263,17 @@ export function registerFlowCommand(program: Command): void {
             return;
           }
         }
+      }
+
+      // v1.5.0：状态记录瘦身——节点（开始/转折/结束）或超过 30 分钟时 CLI 自动同步简要状态；
+      // 失败不影响推进（状态记录不是门禁）。
+      try {
+        const projectPath = process.cwd();
+        if (getDevStatus(projectPath).due || isSyncNodePhase(options.to as PipelinePhase)) {
+          syncDevStatus(projectPath);
+        }
+      } catch {
+        /* best-effort */
       }
 
       // T1：仅本命令内有记录时落盘一次（低并发非关键路径；推进失败提前 exit 则不 save）

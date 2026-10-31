@@ -13,6 +13,7 @@
 
 import { FeelError } from '../adapters/cli.js';
 import { legalNextPhases, planNextStep, readSnapshot } from '../adapters/dashboard.js';
+import { readStatusSync } from '../adapters/dev-status.js';
 import { resolveWorkspace } from '../adapters/workspace.js';
 import {
   boolean,
@@ -152,6 +153,7 @@ export function createTools(context) {
           withRequirements: args.with_requirements === true,
         });
         snapshot.project.root = resolved.cwd;
+        snapshot.statusSync = readStatusSync(resolved.cwd);
         const focus = snapshot.focus;
         return {
           data: snapshot,
@@ -182,6 +184,7 @@ export function createTools(context) {
       return envelope('next', async () => {
         const snapshot = await readSnapshot(cli, { cwd: resolved.cwd, signal: exec.signal });
         snapshot.project.root = resolved.cwd;
+        snapshot.statusSync = readStatusSync(resolved.cwd);
         const plan = planNextStep(snapshot);
         return {
           data: plan,

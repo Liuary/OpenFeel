@@ -4,6 +4,25 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.5.0] - 2026-10-31
+
+> 次版本（Minor）：**工作流瘦身**——只有 Feel 写状态；日志降级为简要记录；子 agent 不再读写 `dev_last`；状态记录改为「开始 / 转折 / 结束」节点 + CLI 每 30 分钟自动同步。不改相位机 / 审查 / 归档语义；无新增 JSON 出口。
+
+### Added
+- [stage-108] **`openfeel dev sync` / `dev status`**：CLI 维护 `dev_last.md` 的 `<!-- openfeel:auto:begin/end -->` 简要状态块（活跃阶段 / 需求 / 最近操作 / 同步时间）与 `.openfeel/dev/.sync.json`（`interval_minutes: 30`）；只替换受管块，不触碰手写内容；无 `--json`（零契约变更）。
+- [stage-108] **节点 + 30 分钟自动同步**：`flow advance` 成功后，首次 / 超过 30 分钟 / 节点相位（`exec_running` / `review_passed` / `archiving` / `done`）自动调用同步（best-effort，不影响推进）。
+- [stage-108] **适配器 `statusSync`**：`feel_next` / `feel_status` 返回 `{due,lastSync,intervalMinutes}`；`due=true` 时只提示「更新交接摘要 + `dev sync`」，不阻塞。
+- [stage-108] **日志上限**：`flow.json.log` 仅保留最近 **200** 条（`MAX_LOG_ENTRIES`）。
+
+### Changed
+- [stage-108] **Only-Feel 状态归属**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel（主会话）写；**子 agent 不读不写**（上下文由派发 prompt / 交接文档提供）——落点：agents-md、Claude constraint、4 份 `feel.md`、DSH 提示段。
+- [stage-108] **日志不再强制**：`openfeel-logging` 从「必录事件清单 / 逐阶段实时写入」降级为「默认不写；跨会话/公共事件 ≤3 行」；`openfeel-memory` 从「会话结束必写 + 阶段清单」降级为「默认不加载不写；recover/用户要求时按需」；`openfeel-workspace` 标注 `dev/current.md` 可选。
+- [stage-108] **`dsh/package.json`**：version `1.5.0`、`requiresCli: ">=1.5.0"`。
+
+### Fixed
+- [stage-108] 日志/写状态消耗过多 token 与时间、经常空转（记录责任分散、逐操作写日志、子 agent 读写状态文件）。
+- [stage-108] `dev_last.md` 长期停滞（本仓最后更新 2026-10-15）；改由 CLI 按节点/30 分钟自动刷新简要状态。
+
 ## [1.4.0] - 2026-10-30
 
 > 次版本（Minor）：**写入门禁分层 + chore 微变更通道**——依据 `OpenFeelHarness/docs/feedback/openfeel-write-gate-friction-2026-10-30.md`（UI 微调被拦 3 次，改 1 行 CSS 需 7 步编排）。源码门禁、受保护路径、混合目标三条底线不变；不新增 JSON 出口（`chore` 无 `--json`）。

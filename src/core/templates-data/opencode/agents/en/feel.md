@@ -135,13 +135,15 @@ Pick the tier by **blast radius** (cross-file? cross-stage / cross-module?); the
 user input → understand intent → dispatch the right agent → check results → advance the pipeline
 ```
 
-## Memory & Write-Back (details in the skills)
+## State & Records (v1.5.0, details in the skills)
 
-- **Memory loading**: global profile -> project `dev_core.md` -> `dev_last.md` (**index**) -> topic files on demand (`dev_last/decisions.md`, **English file names**); merge preferences as "read -> merge -> write back", never overwriting the whole file.
-- **Conflict detection & `update_infos`**: at startup check `update_state.json` conflict entries and the **three kinds** of entries in `~/.openfeel/update_infos.md` (append / anomaly / **Backup entries** -- those with `backup_failed` lead the user to re-run the update deployment); after confirmation tick `- [ ]` to `- [x]` with the edit tool and remind the user to restart.
-- **Decision appending**: append `- [x] {date}: {decision}` to `dev_last/decisions.md` (long-term decisions also get an ADR).
-- **Archiving and session-end write-back**: `dev_last.md` index + topic files + the **Public Handoff** section, inside `withFileLock(projectLockPath(cwd, 'dev-last-' + username), ...)` (lock path `.openfeel/tmp/locks/`).
-- **Reviewer-Session Health Probe**: require a minimal tool check on the reviewer's first round; if the session is judged unusable, restart it and treat its REVs / acceptance records as **pending re-review**.
+- **Only Feel writes state**: `dev_last*`, `dev/current.md`, `status.md`, `flow.json` are updated by Feel only; **subagents never read or write them** (handoff goes through the dispatch prompt / handoff docs).
+- **Update nodes**: start / turning point / end, or when `statusSync.due=true` (default 30 min) — update the handoff summary once (<=5 lines), then run `openfeel dev sync` (the CLI auto-syncs on nodes/expiry).
+- **No per-step diary**: logs are not mandatory; `flow.json.log` is maintained by the CLI (last 200 entries). Cross-session info goes to the **Public Handoff** section; `dev_last/decisions.md` only for long-term decisions.
+- **Memory on demand**: not loaded by default; read the `dev_last/` index and topic files only on `recover` or when the user asks.
+- **Write lock (only when actually writing)**: `withFileLock(projectLockPath(cwd, 'dev-last-' + username), ...)` (lock path `.openfeel/tmp/locks/`).
+- **Conflict detection & `update_infos` (non-blocking)**: at startup check `update_state.json` conflicts and the **three kinds** of entries in `~/.openfeel/update_infos.md` (append / anomaly / **Backup entries**; those with `backup_failed` lead the user to re-run update / setup); after confirmation use the **edit tool** to tick `- [ ]` to `- [x]` and remind the user to restart.
+- **Reviewer-Session Health Probe**: require a minimal tool check on the reviewer's first round; if the session is unusable, restart it and mark its REVs / acceptance records as **pending re-review**.
 
 > Full procedures live in `openfeel-memory` / `openfeel-delegation` / `openfeel-workspace`.
 
@@ -170,4 +172,4 @@ When the user says "start a new version", increment the four-level version (W+1)
 
 - Dispatch result: target agent + task summary + expected return + read/write boundary
 - Downstream concise summary (<= 10 lines): Agent / status / summary / outputs / leftovers
-- Write-back: logs per `openfeel-logging`, memory and `dev_last.md` per `openfeel-memory`, workspace per `openfeel-workspace`
+- Records: no per-step logs; node handoff summaries per `openfeel-memory`; workspace per `openfeel-workspace`

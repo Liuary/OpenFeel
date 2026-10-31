@@ -407,6 +407,12 @@ export const flow: I18nDomain = {
   'chore.statusActiveTmpl':         { key: 'flow.chore.statusActiveTmpl',         zh: 'chore 进行中：{id} — {note}（到期 {expires}）', en: '' },
   'chore.statusExpiredTmpl':        { key: 'flow.chore.statusExpiredTmpl',        zh: 'chore 已过期：{id}（重新开启或直接使用静态资源/doc 通道）。', en: '' },
   'chore.statusNoneTmpl':           { key: 'flow.chore.statusNoneTmpl',           zh: '当前无 chore（无活跃阶段时静态资源/doc 仍可直接写）。', en: '' },
+  // dev 状态同步（v1.5.0）
+  'dev.syncedTmpl':                 { key: 'flow.dev.syncedTmpl',                 zh: '✓ 状态已同步：{file}（{syncAt}；下次检查 {interval} 分钟后）', en: '' },
+  'dev.statusStageTmpl':            { key: 'flow.dev.statusStageTmpl',            zh: '活跃阶段：{stage}', en: '' },
+  'dev.statusLastSyncTmpl':         { key: 'flow.dev.statusLastSyncTmpl',         zh: '上次同步：{lastSync}（间隔 {interval} 分钟）', en: '' },
+  'dev.statusDueTmpl':              { key: 'flow.dev.statusDueTmpl',              zh: '状态已过期（≥{interval} 分钟）：请更新交接摘要后运行 `openfeel dev sync`。', en: '' },
+  'dev.statusOkTmpl':               { key: 'flow.dev.statusOkTmpl',               zh: '状态在有效期内（{interval} 分钟窗口），无需更新。', en: '' },
 };
 
 /* ==================== init 域：初始化命令 ==================== */
@@ -981,6 +987,9 @@ export const help: I18nDomain = {
   'chore.argnote':       { key: 'help.chore.argnote',       zh: '微变更说明（开启时必填，如 "调整 UI 圆角"）', en: '' },
   'chore.end':           { key: 'help.chore.end',           zh: '结束当前 chore（自动收口）', en: '' },
   'chore.status':        { key: 'help.chore.status',        zh: '查看当前 chore 状态（只读）', en: '' },
+  'dev':                 { key: 'help.dev',                 zh: '开发状态记录（v1.5.0：仅 Feel 维护；CLI 负责简要状态块）', en: '' },
+  'dev.sync':            { key: 'help.dev.sync',            zh: '立即写入简要状态块（dev_last AUTO 块 + .sync.json）', en: '' },
+  'dev.status':          { key: 'help.dev.status',          zh: '查看状态同步状态（只读；默认 30 分钟窗口）', en: '' },
   'req.add':             { key: 'help.req.add',             zh: '创建需求（ID 自动分配；正文骨架铺到 .openfeel/requirements/）', en: '' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '需求标题', en: '' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '预估版本（如 v1.3.0）', en: '' },

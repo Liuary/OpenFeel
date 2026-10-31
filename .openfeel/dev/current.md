@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.4.0 — 写入门禁分层 + chore 微变更**｜ 静态展示资源与 doc 同层 / `openfeel chore "<说明>"` 1 步写窗口 / guard 审计 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.4.0 ｜ **已 push（3eeaccf）；npm 1.4.0 已发布（CI publish）**
-> 统计：测试 80 文件 / **2013 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 87 + 55 + 10 = **194 断言** ｜ `lint i18n` **1039** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.4.0**
+> OpenFeel **v1.5.0 — 工作流瘦身**｜ Only-Feel 写状态 / 日志降级为简要记录 / `dev_last` 节点 + 30 分钟 CLI 同步 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.0 ｜ **未 push；未 npm publish**
+> 统计：测试 82 文件 / **2021 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 89 + 55 + 10 = **196 断言** ｜ `lint i18n` **1047** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.0**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-31** @Liuary：**v1.5.0 工作流瘦身**——① **只有 Feel 写状态**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 仅由 Feel 更新；子 agent 一律不读不写（上下文走派发 prompt / 交接文档）。② **日志降级**：不写逐操作流水账；`flow.json.log` 由 CLI 维护，仅保留最近 **200** 条；`openfeel-logging` / `openfeel-memory` 改为「默认不写 / 按需」。③ **节点 + 30 分钟同步**：新增 `openfeel dev sync` / `dev status` + `src/core/dev-status.ts`；`flow advance` 在首次 / 超过 30 分钟 / 节点相位（`exec_running` / `review_passed` / `archiving` / `done`）自动写 `dev_last.md` 的 CLI 受管状态块（`.sync.json` 记录时间）；适配器 `feel_next` / `feel_status` 暴露 `statusSync.due`。④ 提示词瘦身：agents-md / Claude constraint / 4 份 feel.md / workspace / context-hygiene。门禁：全量 **82/2021**、tsc 0、i18n **1047**、kb 0（649）、build ×2、dsh **196**、`--version` 1.5.0；E2E（advance 自动同步 / 过期 due / dev sync）通过。阶段 v1.5.0-stage-108（fast）。**未 push；未 npm publish**
 
 - **2026-10-30** @Liuary：**v1.4.0 写入门禁分层 + chore 微变更**——依据 `OpenFeelHarness/docs/feedback/openfeel-write-gate-friction-2026-10-30.md`（UI 微调被拦 3 次、改 1 行 CSS 需 7 步）。① **静态展示资源豁免**：`dsh/lib/guard.js` 新增 `isPresentationalAssetPath` + `PRESENTATIONAL_EXTENSIONS`——`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp` 与路径含 `assets/`、`public/` 的目标与 doc 同层（任意相位/无活跃阶段可写；混合目标从严；`SOURCE_EXTENSIONS` 保证 `assets/gen.ts` 仍按源码门禁）。② **guard 审计**：豁免与 chore 放行写 `.openfeel/log/guard-audit.jsonl`（time/tool/reason/phase/paths）。③ **`openfeel chore "<说明>"`**：无活跃阶段时开启 60 分钟写窗口（源码也可写），`--end` 收口、`--status` 查看；不写 `flow.json.stages`、只留 `chore_start`/`chore_end` 日志与 ephemeral `chore.json`；活跃阶段时拒绝开启且 guard 不生效。门禁：全量 **80/2013**、tsc 0、i18n **1039**、kb 0（649）、build ×2、dsh **194**、`--version` 1.4.0；验收 a–d 真实输出见归档摘要。阶段 v1.4.0-stage-107（fast）。**已 push（3eeaccf）；npm 1.4.0 已发布（CI publish，`npm view openfeel version` = 1.4.0）**
 

@@ -349,6 +349,7 @@ export function planNextStep(snapshot) {
       legalNextPhases: [],
       suggestedCommand: focus.suggestedCommand ?? null,
       guards,
+      statusSync: snapshot.statusSync ?? null,
       adapterHints: [],
       cli: focus.suggestedCommand ?? (allDone ? 'openfeel flow status' : 'openfeel plan stage list'),
       toolCall: null,
@@ -364,6 +365,10 @@ export function planNextStep(snapshot) {
   }
   if (phase === 'review_failed' || phase === 'test_failed') {
     adapterHints.push('失败回环：决定「重试 / 回退重定方案 / 请求人工介入」，并把结论记入 REV 条目。');
+  }
+  // v1.5.0：状态记录到期只提示，不阻塞；CLI advance 会在节点自动同步。
+  if (snapshot.statusSync?.due === true) {
+    adapterHints.push('状态记录已超过 30 分钟：更新交接摘要（仅 Feel）后运行 `openfeel dev sync`；CLI 在节点/到期时会自动同步。');
   }
 
   const cliCommand = typeof focus.suggestedCommand === 'string' && focus.suggestedCommand !== ''
@@ -382,6 +387,7 @@ export function planNextStep(snapshot) {
     legalNextPhases: nextPhases,
     suggestedCommand: focus.suggestedCommand ?? null,
     guards,
+    statusSync: snapshot.statusSync ?? null,
     adapterHints,
     cli: cliCommand,
     toolCall: nextPhases.length === 0

@@ -105,6 +105,7 @@ import { registerModelCommand } from '../commands/model.js';
 import { registerSetupCommand } from '../commands/setup.js';
 import { registerReqCommand } from '../commands/req.js';
 import { registerChoreCommand } from '../commands/chore.js';
+import { registerDevCommand } from '../commands/dev.js';
 
 registerInitCommand(program);
 registerFlowCommand(program);
@@ -124,6 +125,7 @@ registerModelCommand(program);
 registerSetupCommand(program);
 registerReqCommand(program);
 registerChoreCommand(program);
+registerDevCommand(program);
 
 // ── --help 国际化注入 ──
 // 在所有命令注册完成后，遍历 Commander 命令树，

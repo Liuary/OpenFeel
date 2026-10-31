@@ -18,13 +18,13 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 `.openfeel/dev/note/`、`.openfeel/dev/current_archive/`、`.openfeel/log/`、`.openfeel/code_review/`、`.openfeel/bugs/`、`.openfeel/plan/`、`.openfeel/kb/`、`.openfeel/tmp/`
 
 ### 3. 检查公共域文件（缺失则创建空文件）
-`.openfeel/dev/dev_core.md`、`.openfeel/dev/current.md`、`.openfeel/dev/decisions.md`、`.openfeel/kb/index.md`
+`.openfeel/dev/dev_core.md`、`.openfeel/dev/decisions.md`、`.openfeel/kb/index.md`（`dev/current.md` 自 v1.5.0 起为**可选**，不再强制维护）
 
 ### 4. 检查私域目录（基于 {username}）
 `.openfeel/users/{username}/log/`、`note/`、`code_review/`、`bugs/`、`tmp/`、`dev_last/`（主题记录目录；**主题文件名英文**，如 `pending.md`/`decisions.md`）
 
 ### 5. 检查私域文件
-`.openfeel/users/{username}/dev_last.md`（**索引**；同名目录 `dev_last/` 存主题文件，**文件名英文**）
+`.openfeel/users/{username}/dev_last.md`（**索引**；同名目录 `dev_last/` 存主题文件，**文件名英文**）。v1.5.0 起其「自动状态」块由 CLI 维护；**只有 Feel 写**，子 agent 不读不写。
 
 ### 6. 增量更新复核
 检查 `~/.openfeel/update_infos.md`，若存在未修复条目（追加/异常），提醒用户重启会话，并按 `openfeel-memory` 的 update_infos 检查修复流程处理；本 Agent 不自行修改该文件。
@@ -61,7 +61,7 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 | `.openfeel/.info.json` | 用户身份（`{ "user": "username" }`；缺失则由 `git config user.name` 补齐） | 加入 `.gitignore` |
 | `.openfeel/dev/` | 项目共享的核心规则与进度状态 | — |
 | `dev/dev_core.md` | 长期有效规则；每条形如 `[+]` / `[-]` 前缀，**只标禁用不删除** | — |
-| `dev/current.md` | **团队文件（用户级视图）**：跨用户操作与整体信息；**仅个人提交时更新**（一次提交 = 一条记录）；只写整体信息、**禁止** agent 细节；仅保留近期 5 条 | — |
+| `dev/current.md` | **可选**（v1.5.0 起不再强制维护）；如维护则只写整体信息、禁止 agent 细节、仅保留近期 5 条 | — |
 | `dev/current_archive/` | 轮换出的旧记录（**只增不删**，公共域纳版本管理） | `current-{yyyy-mm-dd}-{NNN}.md`（同日 NNN 递增） |
 | `dev/note/dev_note.md` | 团队共享开发笔记（来源 = 成员个人笔记的归入） | — |
 | `log/` | 公共日志：**仅团队级重要事件**；按年 / 月 / 日分层，日目录仅当天有事件时创建 | `yyyy-mm-dd-{username}-NNN.md`；日目录 `day_index.md`；根 `index.md` + `log.md`（最近 30 条） |
@@ -75,8 +75,8 @@ description: 会话启动时检查并补齐 .openfeel/ 工作区目录结构与�
 
 | 路径 | 职责 | 命名约定 |
 |------|------|----------|
-| `dev_last.md`（索引）+ `dev_last/`（主题文件） | 本地状态恢复与操作记录；**超期文件不做归档** | 主题文件**文件名一律英文 kebab-case**（如 `pending.md` / `decisions.md`） |
-| `log/` | 个人日志（日常操作的主要记录位置） | `yyyy-mm-dd-NNN.md`（无需用户名） |
+| `dev_last.md`（索引）+ `dev_last/`（主题文件） | 本地状态恢复与操作记录；**v1.5.0：自动状态块由 CLI 维护，手写仅交接摘要；只有 Feel 写**；**超期文件不做归档** | 主题文件**文件名一律英文 kebab-case**（如 `pending.md` / `decisions.md`） |
+| `log/` | 个人日志**默认不写**（仅跨会话/公共事件，≤3 行） | `yyyy-mm-dd-NNN.md`（无需用户名） |
 | `note/` | 个人笔记（经验教训的**主要记录位置**） | 简要描述 + 子文件索引 |
 | `code_review/` | 开发阶段代码评审问题（架构 / 规范 / 逻辑），按计划阶段组织 | `REV-{plan_stage}.md`；根 `index.md` + `log.md`（最近 30 条） |
 | `bugs/` | 测试阶段缺陷追踪，按模块组织 | `{module}/BUG-{NNN}_{简略标题}.md`（NNN 模块内递增）；根 `index.md` + `log.md`（最近 30 条） |

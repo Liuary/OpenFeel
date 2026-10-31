@@ -344,6 +344,22 @@ async function main() {
     assert(typeof data.phaseLabel === 'string', 'phaseLabel 应来自 CLI（可为空串）');
   });
 
+  await check('feel_next/feel_status 暴露 statusSync（v1.5.0，默认 30 分钟）', async () => {
+    const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
+    assert(next.statusSync && typeof next.statusSync === 'object', 'feel_next 缺 statusSync');
+    assert(typeof next.statusSync.due === 'boolean', 'statusSync.due 应为布尔');
+    assert(next.statusSync.intervalMinutes === 30, `间隔应为 30，实际 ${next.statusSync.intervalMinutes}`);
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assert(status.statusSync && typeof status.statusSync.due === 'boolean', 'feel_status 缺 statusSync');
+  });
+
+  await check('提示段含「只有 Feel 写状态 / 子 agent 禁读写」（v1.5.0）', () => {
+    const text = workspace.sections[0].text();
+    assert(text.includes('只有 Feel 写状态'), 'zh 提示段缺状态归属');
+    assert(text.includes('子 agent 一律不读不写'), 'zh 提示段缺子 agent 禁读写');
+    assert(text.includes('30 分钟'), 'zh 提示段缺 30 分钟同步');
+  });
+
   await check('feel_flow action=phases 返回转移表', async () => {
     const result = await workspace.tools.get('feel_flow').execute({ action: 'phases' }, realExec);
     const data = ok(result);

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T17:00:51.978Z",
-    "revision": 1777,
+    "updated": "2026-10-31T17:01:30.330Z",
+    "revision": 1778,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -126,15 +126,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-10-30T11:41:10.833Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.3.3-stage-104",
-        "requirementId": "REQ-005"
-      }
-    },
     {
       "time": "2026-10-30T12:15:06.434Z",
       "agent": "openfeel-executor",
@@ -2100,6 +2091,16 @@
         "id": "CHORE-20261031T170051",
         "note": "1.5.7 版本收口：README/config.yaml/dsh 版本快照同步 + build",
         "expires_at": "2026-10-31T18:00:51.972Z",
+        "stage_count": 3
+      }
+    },
+    {
+      "time": "2026-10-31T17:01:30.330Z",
+      "agent": "cli",
+      "action": "chore_end",
+      "detail": {
+        "id": "CHORE-20261031T170051",
+        "note": "1.5.7 版本收口：README/config.yaml/dsh 版本快照同步 + build",
         "stage_count": 3
       }
     }

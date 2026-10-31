@@ -102,6 +102,76 @@
 
 ---
 
+## preflight 写命令闸（v1.5.6）
+
+> 源码单一来源：`src/commands/shared/preflight-gate.ts`（命令层薄封装）→ `src/core/preflight.ts`（判定）。**`src/core/preflight.ts` 本版零改动**；本版**零新增错误码、零 JSON 契约变更**。
+
+**语义**：写状态前必须先读状态。`flow next` / `flow status` 把读取事实写入 `.openfeel/dev/.preflight.json`；写命令据此判定。
+
+| 模式（`OPENFEEL_PREFLIGHT`） | 行为 |
+|---|---|
+| `off` | 永不拒绝、永不输出（**仍会读一次账本**再判模式，不是「不读盘」） |
+| `warn`（默认） | 仅当 `stderr.isTTY` 时提示一行后放行；非 TTY（CI / 管道 / 测试）零输出 |
+| `strict` | 账本缺失 / 过期（> 10 分钟）/ 非法 → 拒绝（退出码 1） |
+
+**拒绝形态（统一出口，调用方置码后 `return`）**
+
+- **JSON envelope**（`flow advance` / `flow health --fix` 注册了 `--json`）：`INVALID_ARGUMENT` + `detail: { reason: 'preflight-required', hint: 'openfeel flow next --json' }`；退出码 1。
+- **人类**：单行 stderr（`flow.preflightRequiredTmpl`）+ `process.exitCode = 1`；**不调用 `process.exit`**，由调用方 `return`（保持其后 catch / 回滚路径可收敛）。
+- **legacy 三键**（`flow archive`、`req split`）：顶层键集恒 `['schemaVersion','error','errorKind']`，`error = 'preflight-required'`，**不带 `hint`**；提示只走人类 stderr。
+- **`--json` 注册面**：36 个门位中 **4 个**所属命令注册了 `--json` —— `flow advance`（envelope）/ `flow archive`（legacy 三键）/ `req split`（legacy 三键）/ `flow health --fix`（envelope；`--json` 是既有只读视图选项，`--fix --json` 在 strict 下同样输出 envelope）。其余 **32 个门位**对外形态是「人类 stderr + exit 1」；向它们传 `--json` 仍被 Commander 判 unknown option（exit 1），**不产生** envelope。
+
+**接入面：34 个命令 / 36 个门位**（`stage task` 与 `plan scheme create` 各 2 个门位）
+
+| 文件 | 命令（门位数） |
+|---|---|
+| `flow` | `stage add` · `stage remove` · `stage set` · `stage reset` · `advance` · `attempt` · `review add` · `review resolve` · `review update` · `review remove` · `archive` · `repair` · `checkpoint restore` · `migrate` · `health --fix` · `wizard`（16） |
+| `stage` | `set` · `task`（`--add` 分支 + 主路径 = 2）· `create`（4） |
+| `plan` | `stage add` · `scheme create`（常规 + `--from-tasks` = 2）· `scheme publish` · `scheme rename` · `scheme remove` · `scheme register`（7） |
+| `req` | `add` · `claim` · `release` · `set` · `link` · `advance` · `split`（7） |
+| `config` | `set --sync-stages`（仅同步分支）（1） |
+| `view` | `accept`（1） |
+
+**不在接入面（「全部状态写命令」的排除清单，与上表合计即全覆盖）**
+
+| 排除项 | 理由 |
+|---|---|
+| `chore` | 写工作日志 / `chore.json`，不改 `flow.json.stages` 与阶段状态 |
+| `dev sync` | 写 `dev_last*` / `.sync.json`（开发状态记录），不改阶段状态 |
+| `config set` 的**非 `--sync-stages` 分支** | 只改 `config.yaml` 项目默认值，不写阶段状态 |
+| `config set-lang` | 写全局语言配置（非项目状态） |
+| 顶层 `archive <stage>` | 阶段摘要归档域（`core/archive/merge.ts` 写 flow.json），REQ-015 未列；与版本归档 `flow archive` 职责分离 |
+| 顶层 `migrate` / `migrate rollback` | legacy 布局迁移逃生通道（另一域），`--dry-run` 已覆盖预览需求 |
+| `init` / `update` / `setup` / `project` / `roadmap` / `knowledge` / `model` | 一次性引导 / 文档 / 全局部署类写面 |
+
+**顺序约定**：`参数形状校验` → `NO_INIT / 存在性 / 值域` → **preflight 门** → `首个写盘`。即**非法参数先报错，preflight 后报**（如 `req claim REQ-XXX`、`stage set no-such-stage`、`flow review remove REV-999`、`flow archive bogus`、`plan scheme publish <stage> op-999`、`view accept REV-999`）。为消除遮蔽，`flow review update` / `view accept` / `plan scheme publish|rename|remove|register` 增加**门前只读预检**，且**真值源与判定序都与写函数逐条一致**：
+
+| 命令 | 预检判定序（与写函数同源） |
+|---|---|
+| `flow review update` | `getReviewItems().some(id)` |
+| `view accept` | `listReviews().some(id)` |
+| `plan scheme publish` | ① 未注册 → not-found ② `state !== 'draft'` → not-draft ③ 模板不可读（`readOpTemplate`）→ not-found |
+| `plan scheme rename` | ① 未注册 → not-found ② stageKey 不可归一（`parseStageId`，先于文件检查）→ not-found ③ 模板缺失 → file-missing |
+| `plan scheme remove` | **只认 flow.json 注册键**（不读模板文件；文件存在但未注册 → not-found） |
+| `plan scheme register` | 显式 `opId` 时：未注册 ∧ 模板不可读（`readOpTemplate`）→ not-found |
+
+`flow stage reset` 采用「门后置到 `save()` 之前」（核心 `resetStagePhase` 的非法值判定全部在写盘前 `throw`）。
+
+**`--dry-run` 免门（10 处）**：`flow stage remove` / `flow stage reset` / `flow advance` / `flow repair` / `flow migrate` / `flow checkpoint restore` / `flow health --fix` / `flow archive` / `plan scheme remove` / `plan scheme register`。理由：零写盘零收益，且须保住「`--dry-run` 试探 → `flow next` → 真执行」的正当路径。
+
+**恢复通道豁免（2 处，禁止泛化）**：`flow repair` / `flow checkpoint restore` 在 `mgr.isLoaded() === false`（flow.json 损坏/不可读）时**静默放行**。理由：账本只在 `isLoaded()` 时写入 → 损坏态下 strict 会永久死锁，而这两个命令正是修复手段。状态可读时二者**仍受门**；其它命令一律不使用该豁免。
+
+**零写盘保证**：strict 拒绝时，目标文件（`flow.json` / `status.md` / `config.yaml` / `ops/*.md` / 归档与 `.bak`）全部零写盘；`flow repair --backup` 的门在 `.bak` 复制**之前**，且 `--backup` 复制有两个安全前提 —— **`--dry-run` 下一律跳过**（预览模式不写任何文件），**`flow.json` 不可解析时也跳过**（否则会用损坏内容覆盖原本可用的 `.bak`，而 `repair()` 正是靠 `.bak` 恢复）；`config set --sync-stages` 的门在 `setConfigValue` **之前**（config.yaml / status.md / `flow.json.stages[*].workflow_mode` 三处均不落盘）。
+
+**「读命令副作用」白名单（非门拒绝路径的既有写盘，登记备查）**
+
+- `.openfeel/dev/.preflight.json`：`flow next` / `flow status` 记录账本（门只读账本，不刷新它）。
+- `.openfeel/tmp/session.json`：`flow stage reset` 在**门后置路径**上会先调 `resetStagePhase` → `getSessionId` → `writeProjectSession`，**仅当环境存在 `CLAUDE_CODE_SESSION_ID`** 时写该会话文件（与 `flow.json` 无关的旁路状态）；属既有会话痕迹，不属状态写盘，未纳入本批次改动。
+
+**legacy 错误值**：`preflight-required`（仅 `flow archive` / `req split` 的 `--json` 形态；判别仍是 `typeof doc.error === 'string'`）。
+
+---
+
 ## init — 初始化项目工作区
 
 初始化 OpenFeel 项目工作区，创建 `.openfeel/` 目录结构、配置文件和流水线状态文件。
@@ -302,6 +372,8 @@ openfeel flow stage reset <stageId> --to <phase> [--dry-run]
 
 > `flow advance` 是正向推进，`flow stage reset` 是其**对称复位**能力（可回退）；`to=done` 时同样受 blocking open REV 拦截。
 
+**preflight（v1.5.6）**：`flow stage add` / `stage remove` / `stage set` / `stage reset` 全部受门；`stage remove` / `stage reset` 的 `--dry-run` 免门。`stage reset` 的门**后置到 `save()` 之前**（`resetStagePhase` 的阶段存在 / `--to` 值域 / REV 阻塞判定全部在写盘前 throw），故 `--to bogus` 仍先报非法值。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
+
 ### flow attempt
 
 记录执行结果。
@@ -389,6 +461,8 @@ openfeel flow health [--quick] [--json] [--fix] [--dry-run]
 
 **`--fix` 权威口径（v1.1.4-stage-62）**：权威值 = `mapPhaseToStageStatus(phase)`（`phase` 为单一事实源，`status` 是其**粗粒度投影**）；**仅回写 `status.md` 的「状态」行**（执行模式/自动推进/当前任务/状态记录等独立字段绝不触碰），**批量遍历全部阶段**；`--fix --dry-run` 零写盘；幂等（已一致不写）。`flow advance` **不回写** `status.md`，故 `--fix` 为**唯一批量对账/回写入口**（D3）。
 
+- **preflight（v1.5.6）**：仅 `--fix` 真写路径受门；`--fix --dry-run` 免门。strict 拒绝时 `status.md` 零写盘。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
+
 ### flow checkpoint restore
 
 从 Checkpoint 快照恢复 `flow.json`（v1.1.4-stage-65）。**无 `--stage` 为全量覆盖**（需 `--force`，**最后手段**）；**`--stage <id>` 仅回退该阶段子树**（其它阶段与 `pipeline` 其余字段不动）；**`--dry-run` 只读差异预览**（零写盘）。
@@ -405,6 +479,20 @@ openfeel flow checkpoint restore <checkpoint-file> [--force] [--stage <id>] [--d
 
 - 快照文件名仅允许纯文件名（**拒绝路径分隔符 / `..`**，防路径穿越）；恢复前将当前 `flow.json` 备份为 `.bak`；乐观并发 `revision` 校验（磁盘被并发修改时拒绝）。
 - 选择性恢复时子树 `status` 按 `phase` 投影（单一事实源），且**仅当 `pipeline.current.stage` 指向该阶段时**同步 `current.op`。
+- **preflight（v1.5.6）**：受门；`--dry-run` 免门；**`flow.json` 不可读（`isLoaded() === false`）时豁免放行**（恢复通道，否则 strict 死锁）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
+
+### flow repair / flow migrate / flow wizard
+
+```bash
+openfeel flow repair [--dry-run] [--backup] [--prune-orphans]
+openfeel flow migrate [--dry-run] [--no-backup]
+openfeel flow wizard
+```
+
+- `flow repair`：检测并修复 `flow.json` 常见问题（解析失败可从 `.bak` 恢复 / 重建）。
+- `flow migrate`：把旧版（v4.0 全局 `phase`）迁移到新版（v4.1 阶段级 `phase`）。
+- `flow wizard`：交互式推进（**非 TTY 直接拒绝**并给出指引，不渲染 ANSI）。
+- **preflight（v1.5.6）**：三者均受门。`repair` / `migrate` 的 `--dry-run` 免门；`repair` 在 `flow.json` 不可读时**豁免放行**（恢复通道），且门在 `--backup` 复制 `.bak` **之前**（strict 拒绝时零写盘）；`wizard` 在交互循环前**一次**判定。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 
 ### 故障恢复路径
 
@@ -432,6 +520,8 @@ openfeel flow archive <version> [--dry-run] [--json]
 | `--json` | 结构化输出。**成功（9 键）**：`{schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews}`（`eligible` 成功恒 `true`，两数组恒 `[]`）；**gate-rejected（9 键）**：`{schemaVersion,error(string),version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind}`（`eligible` 恒 `false`；`unfinishedStages[]{id,phase}`；`blockingReviews[]{id,title,priority}`；legacy 五键序保留，三新键插在 `blockingOpen` 后、`errorKind` 前）。判据与门禁同源；`--dry-run` 零写盘 |
 
 **与顶层 `openfeel archive <stage>` 区分**：顶层命令是**阶段摘要归档**，`flow archive` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账）。
+
+- **preflight（v1.5.6）**：受门（判定在**判据门之后** → 夹具须本身 eligible）；`--dry-run` 免门；拒绝形态为 **legacy 三键** `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 
 ### flow archive list
 
@@ -624,6 +714,8 @@ openfeel plan scheme register stage-01
 - **对称关系**：`plan scheme remove` 从 `flow.json` 删除注册键（不删文件）；`plan scheme register` 反向补全（不新写文件），两者构成对账闭环。与 `flow repair --prune-orphans`（仅清**键孤儿**）方向相反——文件孤儿的补注册出口为 `plan scheme register`。
 - `opId` 已注册时报 no-op；`opId` 对应文件不存在时报错。
 
+**preflight（v1.5.6）**：`plan stage add` / `plan scheme create`（常规 + `--from-tasks`）/ `publish` / `rename` / `remove` / `register` 全部受门；`scheme remove` / `scheme register` 的 `--dry-run` 免门。`publish` / `rename` / `remove` 与显式 `opId` 的 `register` 在门前做**只读存在性预检**（`flow.json` 注册键 / `ops/*.md`，与写函数同一真值源）→ `op-999` 报「未找到」而非 preflight；`plan scheme remove` 的「孤儿（无模板文件）可直接注销」能力保持不变。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
+
 ### plan scheme list
 
 列出操作方案。
@@ -695,6 +787,8 @@ openfeel view accept <rev-id>
 |------|------|
 | `rev-id` | 审查条目 ID（如 REV-001） |
 
+- **preflight（v1.5.6，REV-007）**：受门。该命令把 REV 置 `closed`，可清掉 **blocking open REV** 从而绕过 `flow advance --to done` / `flow archive` 的阻塞门，故必须受门。门前做 REV 存在性**只读预检**（`listReviews()`）→ `REV-999` 报「未找到」而非 preflight；strict 拒绝时 `flow.json` 零写盘。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
+
 ---
 
 ## archive — 阶段归档
@@ -737,6 +831,7 @@ openfeel archive <stage> [--json] [--force]
 - **`--json` 契约**：**5 命令（4 读 + `split`）**——四读命令（`list` / `show` / `board` / `next`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。`split`（写命令）= 成功 `{ schemaVersion, parent, children }`，同样遵循单文档契约。**`req list`（v1.2.2）**：`requirements[]` 元素**末位**追加 `linkedStages[]{id,phase}` / `progress{done,total}`（零关联 `[]` + `{0,0}`；既有字段顺序/值不变）。失败 envelope / legacy `errorKind` 判别见上「错误封装（v1.2.2）」。
 - **`--workflow-mode`（v1.2.1-stage-90 起）**：值域 `full` / `fast` / `general`；**`general`（无流水线）仅需求级合法**——阶段级 / 部署级写入面拒绝（`general_mode_conflict` 亦在需求与阶段关联时触发：`general` 需求不接受阶段关联）。**done 门（v1.2.1-stage-93 修复）**：`general` 需求零关联阶段可**显式完成**（载体制对偶完成路径，判据字段直判）；非 `general` 需求仍须全部关联阶段 done，被拒时输出专用文案。
 - **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`。
+- **preflight（v1.5.6）**：7 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split`）全部受门。顺序约定：**ID 格式校验先于门**（`req claim REQ-XXX` 报非法 ID，不报 preflight）；`req split --json` 的拒绝形态为 legacy 三键 `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 - 分工：引擎面 / 状态机语义（校验 / 流转 / 占用 / 关联唯一性 / done 门）见 [`core/req.md`](../.openfeel/manual/core/req.md)；命令面深入参考见 [`cli/req.md`](../.openfeel/manual/cli/req.md)。
 
 ---
@@ -777,6 +872,7 @@ openfeel config set <key> <value> [--global] [--sync-stages] [--stage <ids...>]
 - **`--stage <ids...>` 作用域限定（v1.1.7-stage-75）**：缺省 = 全量；空格/逗号分隔；**前置全量校验**（未注册 exit 1 零写盘）；单独 `--stage` 或与 `--global` 组合 → exit 1；`workflow_mode` 字段缺失走**插入**（锚点链「自动推进」→「执行模式」；锚点皆缺 = `skipped-no-anchor`，**退出码恒 0**）；done 阶段不过滤、正常处理。
 - **值类型归一**：写入前按字段 Schema 归一值类型（枚举键按枚举校验；Schema 中若存在布尔键则 `true`/`false` 归一为布尔值），避免以字符串落盘破坏配置校验。当前受管四键均为枚举型。
 - **枚举校验 + 不写盘**：非法取值（如 `execution_mode bogus`）以非 0 退出并报错，**不修改目标文件**（文件 hash 与 mtime 不变）。
+- **preflight（v1.5.6，REV-004）**：仅 `--sync-stages` 同步分支受门（非同步分支只改 `config.yaml` 的项目默认值，不改阶段状态）。门插在 `setConfigValue` **之前** → strict 拒绝时 `config.yaml` / `status.md` / `flow.json`（`stages[*].workflow_mode`）**三处零写盘**。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 
 ### config get-lang / set-lang
 
@@ -888,6 +984,8 @@ openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stag
 **`stage set --status` 值域（v1.1.4-stage-62）**：仅接受**粗粒度状态枚举** `planned` / `review_failed` / `review_passed` / `testing` / `archiving` / `done`（单一来源 `STAGE_STATUS_VALUES`，与 `status = phase` 投影的取值域一致）；传入**相位值**（如 `review_pending`）或**任意值** → **exit 1 且不写盘**（不生成 `.bak`）。
 
 **`stage set --workflow-mode` 插入语义（v1.1.7-stage-75）**：目标 `status.md` 无「工作流模式」行时走**插入**（锚点链「自动推进」→「执行模式」；`.bak` + 原子写，其余内容逐字保留）；**锚点皆缺 → exit 1 不写盘、无 `.bak`**；`flow.json` 冗余字段仅在实际写入时同步（不参与级联）。
+
+**preflight（v1.5.6）**：`stage set` / `stage task`（`--add` 分支与主路径**各一处**）/ `stage create` 全部受门。顺序约定：**阶段存在性 / 枚举值域 / general 载体制 / `--add` 互斥先于门** → `stage set no-such-stage` 报「阶段未找到」而非 preflight；strict 拒绝时 `status.md` 零写盘且不生成 `.bak`。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 
 ## model — 模型配置
 

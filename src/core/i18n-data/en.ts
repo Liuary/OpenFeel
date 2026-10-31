@@ -288,6 +288,8 @@ export const flow: I18nDomain = {
 
   'repair.backupOk':                { key: 'flow.repair.backupOk',                zh: '', en: 'Backed up: flow.json.bak' },
   'repair.noBackup':                { key: 'flow.repair.noBackup',                zh: '', en: 'flow.json does not exist, no backup needed' },
+  'repair.backupDryRunSkip':        { key: 'flow.repair.backupDryRunSkip',        zh: '', en: '[DRY-RUN] Skipping --backup (preview mode writes nothing)' },
+  'repair.backupCorruptSkip':       { key: 'flow.repair.backupCorruptSkip',       zh: '', en: 'flow.json is unparsable: skipping --backup (would overwrite a usable .bak with corrupt content)' },
   'repair.dryRunTitle':             { key: 'flow.repair.dryRunTitle',             zh: '', en: '[DRY-RUN Mode] The following issues will be fixed:' },
   'repair.recovered':               { key: 'flow.repair.recovered',               zh: '', en: '♻ flow.json restored from .bak' },
   'repair.dryRunHint':              { key: 'flow.repair.dryRunHint',              zh: '', en: 'Issues detected, run without --dry-run to apply fixes.' },

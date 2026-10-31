@@ -399,6 +399,20 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-10-31 | patterns | [REV-018] [复检] plan scheme publish 预检判定序与写函数不一致：非 draft + 模板缺失应报 not-draft 而非 not-found |
+| 2026-10-31 | patterns | [REV-017] [代码审查] isRemovableOp 的 OR hasOpTemplateOnDisk 扩大遮蔽面，removeScheme 只认注册键 |
+| 2026-10-31 | patterns | [REV-016] [代码审查] plan scheme publish/rename 预检漏「模板文件存在」，仍会遮蔽 file-missing/not-found |
+| 2026-10-31 | patterns | [REV-015] [代码审查] 文档计数错：可 JSON 化写命令是 4 个（含 flow health），门位 33 而非 31 |
+| 2026-10-31 | patterns | [REV-014] [代码审查] repair --dry-run --backup 在 dry-run 下仍写 .bak，且会覆盖好的备份（flow.ts:1863-1872） |
+| 2026-10-31 | patterns | [REV-009] [独立审查] §3.4 门遮蔽策略需改：存在性/值域改为门前只读预检（PipelinePhaseSchema / getReviewItems / listSchemes） |
+| 2026-10-31 | patterns | [REV-008] [独立审查] legacy reject 新增顶层 hint 键，违反三键契约（flow.ts:2086 / req.ts:39） |
+| 2026-10-31 | patterns | [REV-007] [独立审查] 漏接 view accept：可置 closed 清掉 blocking REV，绕过 done/archive 阻塞门 |
+| 2026-10-31 | patterns | [REV-006] [独立审查] stage task --add 分支门位不可达：写盘在 stage.ts:601，门位却标 :634 |
+| 2026-10-31 | patterns | [REV-005] [Feel 复核] flow migrate / flow health --fix / flow wizard 三个写盘入口未纳入也未显式排除 |
+| 2026-10-31 | patterns | [REV-004] [Feel 复核+独立审查] 漏接 config set --sync-stages：写 status.md 且写 stages[id].workflow_mode（flow-manager.ts:4051-4058） |
+| 2026-10-31 | patterns | [REV-003] [Feel 复核] 漏接 flow checkpoint restore：直接以快照覆盖 flow.json，handler 无 isLoaded 前置 |
+| 2026-10-31 | patterns | [REV-002] [Feel 复核] 漏接 flow repair：它写 flow.json 且能在损坏状态下工作，无条件加门会死锁 |
+| 2026-10-31 | patterns | [REV-001] [Feel 复核] dry-run 免门覆盖不全：8 个带 --dry-run 的命令只列了 5 个 |
 | 2026-10-31 | patterns | [REV-001] independent review：5 项发现，3 项已修（preflight 写失败降级 / .gitignore / req claim 顺序 / strict 覆盖收紧；无 blocking） |
 | 2026-10-31 | patterns | [REV-001] 批次自审：日志摘要 / revision-stale / 指标 / 空转提示（无 blocking；2024 单测 + dsh 205 + 真实输出） |
 | 2026-10-31 | patterns | [REV-001] 批次自审：dispatch/recovery/交接固定键/同步去重/批次发布（无 blocking；2022 单测 + dsh 203 + E2E） |

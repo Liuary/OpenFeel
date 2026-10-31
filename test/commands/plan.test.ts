@@ -877,4 +877,271 @@ describe('plan 命令', () => {
 
     expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toMatchInlineSnapshot(`"[stage-01] op-001 — 实现核心功能"`);
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // preflight 写命令闸（v1.5.6-stage-114）：strict + 无账本 → 拒绝且零写盘
+  // ═══════════════════════════════════════════════════════════════════
+  describe('preflight 写命令闸（v1.5.6-stage-114）', () => {
+    /** preflight 文案的稳定子串（zh / en 模板共有） */
+    const PREFLIGHT_HINT = 'flow next';
+
+    function flowPath(): string {
+      return join(tmpDir, '.openfeel', 'flow.json');
+    }
+    function flowRaw(): string {
+      return readFileSync(flowPath(), 'utf-8');
+    }
+    function stderr(): string {
+      return errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    }
+    function stdout(): string {
+      return logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    }
+    /** strict + 删除账本（REQ-015 验收基线） */
+    function armStrict(): void {
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      rmSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'), { force: true });
+    }
+    function expectRejected(): void {
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain(PREFLIGHT_HINT);
+      expect(exitMock).not.toHaveBeenCalled();
+    }
+
+    beforeEach(() => {
+      process.exitCode = 0;
+    });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      process.exitCode = 0;
+    });
+
+    it('plan stage add：strict + 无账本 → 拒绝且未建阶段目录', async () => {
+      armStrict();
+      await safeParse(['plan', 'stage', 'add', 'stage-01']);
+      expectRejected();
+      expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01'))).toBe(false);
+      expect(JSON.parse(flowRaw()).stages['v1.0.0-stage-01']).toBeUndefined();
+    });
+
+    it('plan scheme create：strict + 无账本 → 拒绝且未注册 op', async () => {
+      await safeParse(['plan', 'stage', 'add', 'stage-01']);
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'create', 'stage-01', '方案']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+      expect(existsSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001.md'))).toBe(false);
+    });
+
+    it('plan scheme create --from-tasks：strict + 无账本 → 拒绝且零写盘', async () => {
+      await safeParse(['plan', 'stage', 'add', 'stage-01']);
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'create', 'stage-01', '--from-tasks']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('plan scheme publish：strict + 无账本 → 拒绝且仍为 draft（draft fixture：预检通过后才到门）', async () => {
+      // 预检判定序与 publishScheme 一致 → 只有 draft + 模板可读才可达门（REV-018）
+      await safeParse(['plan', 'stage', 'add', 'stage-01']);
+      await safeParse(['plan', 'scheme', 'create', 'stage-01', '草稿方案', '--draft']);
+      logMock.mockClear();
+      errorMock.mockClear();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'publish', 'stage-01', 'op-001']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('plan scheme rename：strict + 无账本 → 拒绝且标题不变', async () => {
+      await setupStageAndOp();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'rename', 'stage-01', 'op-001', '--title', '新标题']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+      const opFile = readFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops', 'op-001.md'), 'utf-8');
+      expect(opFile).not.toContain('新标题');
+    });
+
+    it('plan scheme remove：strict + 无账本 → 拒绝且注册键仍在', async () => {
+      await setupStageAndOp();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+      expect(JSON.parse(flowRaw()).stages['v1.0.0-stage-01'].ops['op-001']).toBeDefined();
+    });
+
+    it('plan scheme register：strict + 无账本 → 拒绝且无新注册', async () => {
+      await setupStageAndOp();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'register', 'stage-01', 'op-001']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+
+    // ── dry-run 免门（2 条；strict + 无账本仍放行且零写盘） ──
+
+    it('strict 且无账本：plan scheme remove --dry-run 放行且零写盘', async () => {
+      await setupStageAndOp();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001', '--dry-run']);
+      expect(process.exitCode).toBe(0);
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+      expect(flowRaw()).toBe(before);
+      expect(stdout()).toContain('DRY-RUN');
+      expect(existsSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'))).toBe(false);
+    });
+
+    it('strict 且无账本：plan scheme register --dry-run 放行且零写盘', async () => {
+      await setupStageAndOp();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'register', 'stage-01', 'op-001', '--dry-run']);
+      expect(process.exitCode).toBe(0);
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+      expect(flowRaw()).toBe(before);
+      expect(existsSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'))).toBe(false);
+    });
+
+    // ── 序位断言：非法目标先报 not-found（REV-009） ──
+
+    it('序位断言：plan scheme publish op-999 + strict → not-found 而非 preflight', async () => {
+      await setupStageAndOp();
+      armStrict();
+      await safeParse(['plan', 'scheme', 'publish', 'stage-01', 'op-999']);
+      expect(stderr()).toContain('op-999');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    });
+
+    it('序位断言：plan scheme remove op-999 + strict → not-found 而非 preflight', async () => {
+      await setupStageAndOp();
+      armStrict();
+      await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-999']);
+      expect(stderr()).toContain('op-999');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    });
+
+    // ── REV-016：已注册但模板文件缺失 → 与写函数同源报错（不是 preflight） ──
+
+    /** 删除该阶段全部 op 模板文件（保留 flow.json 注册键） */
+    function dropOpTemplates(): void {
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      for (const f of readdirSync(opsDir)) {
+        rmSync(join(opsDir, f), { force: true });
+      }
+    }
+
+    it('序位断言：plan scheme publish 已注册 draft 但模板缺失 + strict → not-found 而非 preflight', async () => {
+      // draft + 模板缺失 → 写函数 not-found（scheme.ts:740-744），预检须同序同文案（REV-016）
+      await safeParse(['plan', 'stage', 'add', 'stage-01']);
+      await safeParse(['plan', 'scheme', 'create', 'stage-01', '草稿方案', '--draft']);
+      logMock.mockClear();
+      errorMock.mockClear();
+      dropOpTemplates();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'publish', 'stage-01', 'op-001']);
+      expect(stderr()).toContain('op-001');
+      expect(stderr()).toContain('未找到');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+      expect(flowRaw()).toBe(before);
+    });
+
+    // ── REV-018：publish 预检判定序与写函数一致（非 draft 先于模板检查） ──
+
+    it('序位断言：plan scheme publish 非 draft + 模板缺失 + strict → not-draft（不是 not-found）', async () => {
+      await setupStageAndOp();          // create 缺省 = pending（非 draft）
+      dropOpTemplates();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'publish', 'stage-01', 'op-001']);
+      expect(stderr()).toContain('不是 draft 状态');    // plan.scheme.publish.notDraftTmpl
+      expect(stderr()).not.toContain('未找到');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('口径一致：plan scheme publish 非 draft + 模板缺失 → off 与 strict 输出逐字相同（REV-018 对照）', async () => {
+      await setupStageAndOp();          // 注册键 state=pending
+      dropOpTemplates();
+      // strict：门前预检给出 not-draft（该分支沿用既有 handler 的 process.exit(1) 形态）
+      armStrict();
+      exitMock.mockClear();
+      await safeParse(['plan', 'scheme', 'publish', 'stage-01', 'op-001']);
+      const strictText = stderr();
+      expect(strictText).toContain('不是 draft 状态');
+      const strictExits = exitMock.mock.calls.length;
+      expect(strictExits).toBe(1);
+
+      // off（同一 fixture，无门）：直接走写函数 publishScheme，文案与退出行为须逐字/逐次一致
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'off');
+      logMock.mockClear();
+      errorMock.mockClear();
+      exitMock.mockClear();
+      await safeParse(['plan', 'scheme', 'publish', 'stage-01', 'op-001']);
+      expect(stderr()).toBe(strictText);
+      expect(exitMock.mock.calls.length).toBe(strictExits);
+    });
+
+    it('序位断言：plan scheme rename 已注册但模板缺失 + strict → file-missing 而非 preflight', async () => {
+      await setupStageAndOp();
+      dropOpTemplates();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'rename', 'stage-01', 'op-001', '--title', '新标题']);
+      expect(stderr()).toContain('模板文件');            // plan.scheme.rename.fileMissingTmpl
+      expect(stderr()).toContain('op-001');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+      expect(flowRaw()).toBe(before);
+    });
+
+    // ── REV-017：remove 预检只认注册键（文件存在但未注册 → not-found） ──
+
+    it('序位断言：plan scheme rename 阶段键不可归一 + strict → not-found（parseStageId 先于文件检查）', async () => {
+      // 直接注入不可归一的阶段键（正常 CLI 入口会先拒；这里锁定预检与 renameScheme 的判定序一致）
+      const d = JSON.parse(flowRaw()) as {
+        stages: Record<string, unknown>;
+      };
+      d.stages['weirdKEY'] = {
+        name: 'weirdKEY', phase: 'exec_running', status: 'planned', deps: [],
+        ops: {
+          'op-001': {
+            title: 't', state: 'pending', assignee: 'x', attempts: 0, max_attempts: 3,
+            checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+          },
+        },
+      };
+      writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'rename', 'weirdKEY', 'op-001', '--title', '新标题']);
+      expect(stderr()).toContain('未找到');            // renameScheme 在文件检查前先判 parseStageId → not-found
+      expect(stderr()).not.toContain('模板文件');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('序位断言：plan scheme remove 有文件但未注册 + strict → not-found 而非 preflight', async () => {
+      await safeParse(['plan', 'stage', 'add', 'stage-01']);
+      const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'ops');
+      mkdirSync(opsDir, { recursive: true });
+      writeFileSync(join(opsDir, 'op-009.md'), '# op-009：未注册方案\n', 'utf-8');
+      logMock.mockClear();
+      errorMock.mockClear();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-009']);
+      expect(stderr()).toContain('op-009');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+      expect(flowRaw()).toBe(before);
+    });
+  });
 });

@@ -15,6 +15,7 @@ import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { failRefusal } from './shared/errors.js';
+import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 
 /** 全局 profile 固定键序（人类输出顺序；JSON `values` 同序） */
 const GLOBAL_PROFILE_KEYS = [
@@ -398,6 +399,11 @@ export function registerConfigCommand(program: Command): void {
         // 归一化全名进入 onlyStages（含 off-set；经 syncConfigFieldToStages 循环可达）
         onlyStages = [...new Set(normalizedIds)];
       }
+
+      // v1.5.6-stage-114：`--sync-stages` 写前 preflight（REV-004 —— 门插在 `setConfigValue` **之前**）：
+      // strict 拒绝时 config.yaml / status.md / flow.json（stages[*].workflow_mode）**三处零写盘**。
+      // 仅同步分支受门：非 `--sync-stages` 分支只改 config.yaml 的项目默认值，不改阶段状态。
+      if (opts.syncStages && !enforcePreflightOrFail(process.cwd(), lang)) return;
 
       try {
         setConfigValue(process.cwd(), normalizedKey, value);

@@ -231,4 +231,52 @@ describe('view 命令（A4：list / accept 保留，add 已移除）', () => {
       spy.mockRestore();
     }
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // preflight 写命令闸（v1.5.6-stage-114）：view accept 受门（REV-007）
+  // ═══════════════════════════════════════════════════════════════════
+  describe('preflight 写命令闸（v1.5.6-stage-114）', () => {
+    /** preflight 文案的稳定子串（zh / en 模板共有） */
+    const PREFLIGHT_HINT = 'flow next';
+
+    function flowPath(): string {
+      return join(tmpDir, '.openfeel', 'flow.json');
+    }
+    function flowRaw(): string {
+      return readFileSync(flowPath(), 'utf-8');
+    }
+    function stderr(): string {
+      return errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    }
+
+    beforeEach(() => {
+      process.exitCode = 0;
+    });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      process.exitCode = 0;
+    });
+
+    it('view accept：strict + 无账本 → 拒绝且 REV 仍 open（避免绕过 done/归档阻塞门）', async () => {
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      rmSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'), { force: true });
+      const before = flowRaw();
+      await safeParse(['view', 'accept', 'REV-001']);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain(PREFLIGHT_HINT);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(flowRaw()).toBe(before);
+      const flow = JSON.parse(flowRaw()) as { reviews: Array<{ id: string; status: string }> };
+      expect(flow.reviews.find((r) => r.id === 'REV-001')!.status).toBe('open');
+    });
+
+    it('序位断言：view accept REV-999 + strict → not-found 而非 preflight', async () => {
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      rmSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'), { force: true });
+      await safeParse(['view', 'accept', 'REV-999']);
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(stderr()).toContain('REV-999');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    });
+  });
 });

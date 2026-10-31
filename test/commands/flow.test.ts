@@ -4568,3 +4568,577 @@ describe('flow 命令（stage-41）', () => {
     });
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// preflight 写命令闸（v1.5.6-stage-114）
+// A 组：人类 stderr 路径（strict + 无账本 → 文案 + exitCode 1 + 目标文件不变）
+// B 组：legacy --json（三键单文档，error = 'preflight-required'）
+// C 组：--dry-run 免门（10 处）+ 恢复通道状态不可读豁免（2 处）
+// ═══════════════════════════════════════════════════════════════════════════
+describe('preflight 写命令闸（v1.5.6-stage-114）', () => {
+  let tmpDir: string;
+  let program: Command;
+  let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
+  let cwdMock: ReturnType<typeof vi.fn>;
+  let exitMock: ReturnType<typeof vi.fn>;
+  let prevExitCode: number | string | undefined;
+  let origStdinTTY: boolean | undefined;
+  let origStdoutTTY: boolean | undefined;
+
+  /** preflight 文案的稳定子串（zh / en 模板共有） */
+  const PREFLIGHT_HINT = 'flow next';
+
+  function flowPath(): string {
+    return join(tmpDir, '.openfeel', 'flow.json');
+  }
+  function flowRaw(): string {
+    return readFileSync(flowPath(), 'utf-8');
+  }
+  function ledgerPath(): string {
+    return join(tmpDir, '.openfeel', 'dev', '.preflight.json');
+  }
+  function stdout(): string {
+    return logMock.mock.calls.map((c) => c[0] as string).join('\n');
+  }
+  function stderr(): string {
+    return errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+  }
+  /** strict + 删除账本（REQ-015 验收基线） */
+  function armStrict(): void {
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+    rmSync(ledgerPath(), { force: true });
+  }
+  /** 通用断言：拒绝路径 = 置码 1 + 文案 + 不调用 process.exit（helper 只置码返回） */
+  function expectRejected(): void {
+    expect(process.exitCode).toBe(1);
+    expect(stderr()).toContain(PREFLIGHT_HINT);
+    expect(exitMock).not.toHaveBeenCalled();
+  }
+  function makeStage(phase: PipelinePhase): StageData {
+    return { name: '阶段', phase, status: String(phase), deps: [], ops: {} };
+  }
+  /** 直接写入 flow.json 夹具（覆盖 initProject 产出的空骨架） */
+  function saveFlow(opts: {
+    stages?: FlowData['stages'];
+    reviews?: FlowData['reviews'];
+    phase?: string;
+    current?: { stage: string; op: string };
+  } = {}): void {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      meta: { version: '1.0', project: 'PreflightFixture', updated: '2026-01-01T00:00:00Z' },
+      pipeline: {
+        phase: (opts.phase ?? 'active') as MetaPhase,
+        current: opts.current ?? { stage: '', op: '' },
+        retry: 0,
+      },
+      stages: opts.stages ?? {},
+      reviews: opts.reviews ?? [],
+      log: [],
+    });
+    mgr.save();
+  }
+  function makeRev(id: string, status: ReviewItem['status'] = 'open'): ReviewItem {
+    return {
+      id,
+      op: 'v1.0.0-stage-01.op-001',
+      status,
+      priority: 'high',
+      title: '标题',
+      filed_by: 'openfeel-reviewer',
+      filed_at: '2026-01-01T00:00:00Z',
+    };
+  }
+  /** 单个活跃阶段夹具（多数写命令的前置） */
+  function setupOneStage(phase: PipelinePhase = 'exec_running'): void {
+    saveFlow({ stages: { 'v1.0.0-stage-01': makeStage(phase) } });
+  }
+  /** 可归档版本夹具：v1.9.0 全 done + v1.9.9 未完成（保持 pipeline 活跃） */
+  function setupArchivable(): void {
+    saveFlow({
+      stages: {
+        'v1.9.0-stage-01': makeStage('done'),
+        'v1.9.0-stage-02': makeStage('done'),
+        'v1.9.9-stage-01': makeStage('exec_running'),
+      },
+    });
+  }
+  /** 旧格式夹具（v4.0 全局 phase → needsMigration() === true） */
+  function setupLegacyFormat(): void {
+    saveFlow({ stages: { 'v1.0.0-stage-01': makeStage('exec_running') }, phase: 'exec_running' });
+  }
+
+  async function safeParse(args: string[]): Promise<void> {
+    try {
+      await program.parseAsync(args, { from: 'user' });
+    } catch (err) {
+      if (!(err instanceof CommanderError)) {
+        throw err;
+      }
+    }
+  }
+
+  beforeEach(async () => {
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-pf-home-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-pf-flow-'));
+    mockedChild.execSync.mockReset();
+    mockedChild.execSync.mockReturnValue('');
+    await initProject(tmpDir);
+    setConfigValue(tmpDir, 'workflow_mode', 'full');
+
+    logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    prevExitCode = process.exitCode;
+    process.exitCode = 0;
+    origStdinTTY = process.stdin.isTTY;
+    origStdoutTTY = process.stdout.isTTY;
+
+    program = new Command();
+    program.exitOverride();
+    registerFlowCommand(program);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
+    logMock.mockRestore();
+    errorMock.mockRestore();
+    cwdMock.mockRestore();
+    exitMock.mockRestore();
+    vi.unstubAllEnvs();
+    resetJsonModeForTest();
+    process.exitCode = prevExitCode;
+    Object.defineProperty(process.stdin, 'isTTY', { value: origStdinTTY, configurable: true });
+    Object.defineProperty(process.stdout, 'isTTY', { value: origStdoutTTY, configurable: true });
+  });
+
+  // ── A 组：人类 stderr 拒绝（16 个门位） ──
+
+  it('flow stage add：strict + 无账本 → 拒绝且 flow.json 字节不变', async () => {
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'stage', 'add', 'v1.9.9-stage-01']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow stage remove：strict + 无账本 → 拒绝且零写盘（未删目录）', async () => {
+    setupOneStage();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'stage', 'remove', 'v1.0.0-stage-01']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow stage set --deps：strict + 无账本 → 拒绝且 deps 不变', async () => {
+    saveFlow({
+      stages: {
+        'v1.0.0-stage-01': makeStage('done'),
+        'v1.0.0-stage-02': makeStage('exec_running'),
+      },
+    });
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'stage', 'set', 'v1.0.0-stage-02', '--deps', 'v1.0.0-stage-01']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow stage reset：strict + 无账本 → 拒绝且 phase 不变（门后置到 save 前）', async () => {
+    setupOneStage('exec_running');
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-01', '--to', 'plan_pending']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow advance：strict + 无账本 → 拒绝且 phase 不变（v1.5.5 收敛回归）', async () => {
+    setupOneStage('plan_pending');
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_review']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow attempt：strict + 无账本 → 拒绝且 op 状态不变', async () => {
+    setupOneStage();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'attempt', '--op', 'v1.0.0-stage-01.op-001', '--result', 'pass']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow review add：strict + 无账本 → 拒绝且未新增 REV', async () => {
+    setupOneStage();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'review', 'add', '--stage', 'v1.0.0-stage-01', '--title', 'PREFLIGHT']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+    expect(JSON.parse(flowRaw()).reviews).toEqual([]);
+  });
+
+  it('flow review resolve：strict + 无账本 → 拒绝且 REV 仍 open', async () => {
+    saveFlow({ stages: { 'v1.0.0-stage-01': makeStage('exec_running') }, reviews: [makeRev('REV-001')] });
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'review', 'resolve', 'REV-001']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow review update：strict + 无账本 → 拒绝且 title 不变', async () => {
+    saveFlow({ stages: { 'v1.0.0-stage-01': makeStage('exec_running') }, reviews: [makeRev('REV-001')] });
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'review', 'update', 'REV-001', '--title', '新标题']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow review remove：strict + 无账本 → 拒绝且 REV 仍在', async () => {
+    saveFlow({ stages: { 'v1.0.0-stage-01': makeStage('exec_running') }, reviews: [makeRev('REV-001')] });
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'review', 'remove', 'REV-001']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+    expect(JSON.parse(flowRaw()).reviews).toHaveLength(1);
+  });
+
+  // ── B 组：legacy --json（三键单文档；无 hint —— REV-008） ──
+
+  it('B 组：flow archive --json 在 strict 拒绝下仍为三键单文档（eligible 夹具）', async () => {
+    setupArchivable();
+    armStrict();
+    setJsonMode(true);
+    const before = flowRaw();
+    await safeParse(['flow', 'archive', 'v1.9.0', '--json']);
+    expect(process.exitCode).toBe(1);
+    const doc = JSON.parse(stdout()) as Record<string, unknown>;
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'error', 'errorKind']);
+    expect(doc.error).toBe('preflight-required');
+    expect(doc.errorKind).toBe('refusal');
+    expect(stderr()).toBe('');
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
+  });
+
+  // ── 恢复通道：状态可读时仍受门（REV-002/003） ──
+
+  it('flow repair --backup：state 可读 → 拒绝且不生成 .bak（REV-002 零写盘）', async () => {
+    setupOneStage();
+    // 夹具自身 save() 会留下 .bak → 先清掉，确保断言只反映本次命令
+    rmSync(flowPath() + '.bak', { force: true });
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'repair', '--backup']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(flowPath() + '.bak')).toBe(false);
+  });
+
+  // ── REV-014：`--dry-run --backup` 不得写 / 覆盖 `.bak` ──
+
+  it('strict 且无账本：flow repair --dry-run --backup 放行且不生成 .bak（REV-014）', async () => {
+    setupOneStage();
+    rmSync(flowPath() + '.bak', { force: true });
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'repair', '--dry-run', '--backup']);
+    // dry-run 免门 → 放行；且预览模式不得写任何文件
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(flowPath() + '.bak')).toBe(false);
+    expect(stdout()).toContain('跳过');                       // 显式告知备份被跳过
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  it('strict：flow repair --dry-run --backup 不覆盖已有可用 .bak（数据安全断言，REV-014）', async () => {
+    setupOneStage();
+    // 造「flow.json 已损坏 + .bak 可用」：dry-run 若照抄会把好备份覆盖成损坏内容
+    const goodBackup = flowRaw();
+    writeFileSync(flowPath() + '.bak', goodBackup, 'utf-8');
+    writeFileSync(flowPath(), '{bad', 'utf-8');
+    armStrict();
+    await safeParse(['flow', 'repair', '--dry-run', '--backup']);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    // 好备份逐字未被覆盖
+    expect(readFileSync(flowPath() + '.bak', 'utf-8')).toBe(goodBackup);
+    // dry-run 对 flow.json 本身亦零写盘（仍是损坏内容）
+    expect(flowRaw()).toBe('{bad');
+  });
+
+  it('flow repair --backup（非 dry-run）：flow.json 损坏时不得覆盖可用 .bak（同类数据安全）', async () => {
+    setupOneStage();
+    const goodBackup = flowRaw();
+    writeFileSync(flowPath() + '.bak', goodBackup, 'utf-8');
+    writeFileSync(flowPath(), '{bad', 'utf-8');
+    armStrict();   // 状态不可读 → 恢复通道豁免放行
+    await safeParse(['flow', 'repair', '--backup']);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    // 好备份未被覆盖（损坏内容不得写进 .bak）
+    expect(readFileSync(flowPath() + '.bak', 'utf-8')).toBe(goodBackup);
+    // repair 仍能靠 .bak 恢复：flow.json 重新成为合法 JSON
+    expect(() => JSON.parse(flowRaw())).not.toThrow();
+  });
+
+  // ── 序位断言：非法参数先于 preflight（plan §3.3 全量锁定） ──
+
+  it('序位断言：flow stage reset --to bogus + strict → 报非法 phase 而非 preflight', async () => {
+    setupOneStage('exec_running');
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-01', '--to', 'bogus']);
+    expect(stderr()).toContain('非法 phase');
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('序位断言：flow archive bogus + strict → 报非法版本而非 preflight', async () => {
+    setupArchivable();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'archive', 'bogus']);
+    expect(process.exitCode).toBe(1);
+    expect(stderr()).toContain('bogus');
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('序位断言：flow review remove REV-999 + strict → 报 not-found 而非 preflight', async () => {
+    saveFlow({
+      stages: { 'v1.0.0-stage-01': makeStage('exec_running') },
+      reviews: [makeRev('REV-001')],
+    });
+    armStrict();
+    await safeParse(['flow', 'review', 'remove', 'REV-999']);
+    expect(stderr()).toContain('REV-999');
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+  });
+
+  it('flow checkpoint restore --force：state 可读 → 拒绝且快照未生效（REV-003）', async () => {
+    setupOneStage('exec_running');
+    const snapMgr = new FlowManager(tmpDir);
+    snapMgr.saveCheckpoint('v1.0.0-stage-01', 'review_pending' as PipelinePhase);
+    const snapshot = snapMgr.listCheckpoints()[0];
+    // 改动现行状态，便于验证「恢复未发生」
+    setupOneStage('plan_pending');
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'checkpoint', 'restore', snapshot, '--force']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+  });
+
+  it('flow health --fix --json：strict → INVALID_ARGUMENT envelope（第 4 个注册 --json 的写命令）', async () => {
+    setupOneStage('exec_running');
+    armStrict();
+    setJsonMode(true);
+    try {
+      const before = flowRaw();
+      await safeParse(['flow', 'health', '--fix', '--json']);
+      expect(process.exitCode).toBe(1);
+      const doc = JSON.parse(stdout()) as {
+        schemaVersion: number;
+        error: { code: string; kind: string; detail: { reason: string } };
+      };
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'error']);
+      expect(doc.error.code).toBe('INVALID_ARGUMENT');
+      expect(doc.error.kind).toBe('refusal');
+      expect(doc.error.detail.reason).toBe('preflight-required');
+      expect(stderr()).toBe('');
+      expect(flowRaw()).toBe(before);
+    } finally {
+      resetJsonModeForTest();
+    }
+  });
+
+  it('flow migrate：旧格式 + strict → 拒绝且仍是旧格式', async () => {
+    setupLegacyFormat();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'migrate']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+    expect(JSON.parse(flowRaw()).pipeline.phase).toBe('exec_running');
+    // 迁移 .bak 不得生成
+    expect(existsSync(flowPath() + '.v4.0.bak')).toBe(false);
+  });
+
+  it('flow health --fix：strict → 拒绝且 status.md 不被回写（不一致 fixture + sha 断言）', async () => {
+    setupOneStage('exec_running');
+    // status.md 与 phase 不一致（planned ≠ exec_running 的投影）→ 无门时 --fix 会回写该字段
+    const statusPath = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'status.md');
+    mkdirSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01'), { recursive: true });
+    writeFileSync(statusPath, [
+      '# 阶段状态',
+      '',
+      '- **执行模式**：manual',
+      '- **自动推进**：enabled',
+      '- **状态**：planned',
+      '- **当前责任 Agent**：openfeel-executor',
+      '',
+      '## 当前任务',
+      '',
+      '> 待补充',
+      '',
+    ].join('\n'), 'utf-8');
+    armStrict();
+    const before = flowRaw();
+    const beforeStatus = readFileSync(statusPath, 'utf-8');
+
+    await safeParse(['flow', 'health', '--fix']);
+
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+    expect(readFileSync(statusPath, 'utf-8')).toBe(beforeStatus);
+    expect(existsSync(join(tmpDir, '.openfeel', 'tmp', 'status.v1.0.0-stage-01.bak'))).toBe(false);
+  });
+
+  it('flow wizard：TTY + strict → 拒绝（入口一次，交互不启动）', async () => {
+    setupOneStage();
+    armStrict();
+    Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true });
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+    const before = flowRaw();
+    await safeParse(['flow', 'wizard']);
+    expectRejected();
+    expect(flowRaw()).toBe(before);
+    expect(mockedInquirer.select).not.toHaveBeenCalled();
+  });
+
+  // ── C 组：--dry-run 免门（8 条；strict + 无账本仍放行且零写盘） ──
+
+  it('strict 且无账本：flow stage remove --dry-run 放行且零写盘', async () => {
+    setupOneStage();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'stage', 'remove', 'v1.0.0-stage-01', '--dry-run']);
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  it('strict 且无账本：flow stage reset --dry-run 放行且零写盘', async () => {
+    setupOneStage('exec_running');
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-01', '--to', 'plan_pending', '--dry-run']);
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  it('strict 且无账本：flow advance --dry-run 放行且零写盘', async () => {
+    setupOneStage('plan_pending');
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-01', '--to', 'plan_review', '--dry-run']);
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  it('strict 且无账本：flow repair --dry-run 放行且零写盘', async () => {
+    setupOneStage();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'repair', '--dry-run']);
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  it('strict 且无账本：flow migrate --dry-run 放行且零写盘', async () => {
+    setupLegacyFormat();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'migrate', '--dry-run']);
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(flowPath() + '.v4.0.bak')).toBe(false);
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  it('strict 且无账本：flow checkpoint restore --dry-run 放行且零写盘', async () => {
+    setupOneStage('exec_running');
+    const snapMgr = new FlowManager(tmpDir);
+    snapMgr.saveCheckpoint('v1.0.0-stage-01', 'review_pending' as PipelinePhase);
+    const snapshot = snapMgr.listCheckpoints()[0];
+    setupOneStage('plan_pending');
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'checkpoint', 'restore', snapshot, '--dry-run']);
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  it('strict 且无账本：flow health --fix --dry-run 放行且零写盘', async () => {
+    setupOneStage('exec_running');
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'health', '--fix', '--dry-run']);
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  it('strict 且无账本：flow archive --dry-run 放行且零写盘', async () => {
+    setupArchivable();
+    armStrict();
+    const before = flowRaw();
+    await safeParse(['flow', 'archive', 'v1.9.0', '--dry-run']);
+    expect(process.exitCode).toBe(0);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    expect(flowRaw()).toBe(before);
+    expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
+    expect(existsSync(ledgerPath())).toBe(false);
+  });
+
+  // ── 恢复通道豁免：状态不可读 → 静默放行（§5.5） ──
+
+  it('strict 且无账本：flow repair 在 state 不可读时放行（从 .bak 恢复）', async () => {
+    setupOneStage();
+    writeFileSync(flowPath() + '.bak', flowRaw(), 'utf-8');
+    writeFileSync(flowPath(), '{bad', 'utf-8');
+    armStrict();
+    await safeParse(['flow', 'repair']);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    // 恢复生效：flow.json 重新成为合法 JSON
+    expect(() => JSON.parse(flowRaw())).not.toThrow();
+  });
+
+  it('strict 且无账本：flow checkpoint restore --force 在 state 不可读时放行', async () => {
+    setupOneStage('exec_running');
+    const snapMgr = new FlowManager(tmpDir);
+    snapMgr.saveCheckpoint('v1.0.0-stage-01', 'review_pending' as PipelinePhase);
+    const snapshot = snapMgr.listCheckpoints()[0];
+    const snapshotStages = (JSON.parse(
+      readFileSync(join(tmpDir, '.openfeel', 'checkpoints', snapshot), 'utf-8'),
+    ) as FlowData).stages;
+    writeFileSync(flowPath(), '{bad', 'utf-8');
+    armStrict();
+    await safeParse(['flow', 'checkpoint', 'restore', snapshot, '--force']);
+    expect(stderr()).not.toContain(PREFLIGHT_HINT);
+    // 恢复生效：flow.json 重新成为合法 JSON 且阶段子树与快照一致
+    const restored = JSON.parse(flowRaw()) as FlowData;
+    expect(restored.stages).toEqual(snapshotStages);
+  });
+});

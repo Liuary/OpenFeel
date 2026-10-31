@@ -542,4 +542,87 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
     expect(sha(p)).toBe(before);
     expect(existsSync(join(projDir, '.openfeel', 'flow.json'))).toBe(false);
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // preflight 写命令闸（v1.5.6-stage-114）：strict + 无账本 → 拒绝且零写盘
+  // ═══════════════════════════════════════════════════════════════════
+  describe('preflight 写命令闸（v1.5.6-stage-114）', () => {
+    /** preflight 文案的稳定子串（zh / en 模板共有） */
+    const PREFLIGHT_HINT = 'flow next';
+
+    beforeEach(() => {
+      process.exitCode = 0;
+    });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      process.exitCode = 0;
+    });
+
+    /** strict + 删除账本（REQ-015 验收基线） */
+    function armStrict(): void {
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      rmSync(join(projDir, '.openfeel', 'dev', '.preflight.json'), { force: true });
+    }
+
+    it('stage set：strict + 无账本 → 拒绝且 status.md 不变、无 .bak', async () => {
+      const p = writeStatus('stage-90');
+      const before = sha(p);
+      armStrict();
+      await safeParse(['stage', 'set', 'stage-90', '--status', 'review_passed']);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain(PREFLIGHT_HINT);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(sha(p)).toBe(before);
+      expect(existsSync(bakPath('stage-90'))).toBe(false);
+    });
+
+    it('stage task --add：strict + 无账本 → 拒绝（REV-006 分支独立门）且 status.md 不变', async () => {
+      const p = writeStatus('stage-91');
+      const before = sha(p);
+      armStrict();
+      await safeParse(['stage', 'task', 'stage-91', '--add', '写文档']);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain(PREFLIGHT_HINT);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(sha(p)).toBe(before);
+      expect(readFileSync(p, 'utf-8')).not.toContain('写文档');
+      expect(existsSync(bakPath('stage-91'))).toBe(false);
+    });
+
+    it('stage task --done：strict + 无账本 → 拒绝（主路径门）且 status.md 不变', async () => {
+      const p = writeStatus('stage-92');
+      const before = sha(p);
+      armStrict();
+      await safeParse(['stage', 'task', 'stage-92', '1', '--done']);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain(PREFLIGHT_HINT);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(sha(p)).toBe(before);
+      expect(existsSync(bakPath('stage-92'))).toBe(false);
+    });
+
+    it('stage create：strict + 无账本 → 拒绝且 flow.json 无新阶段', async () => {
+      FlowManager.initFlow(projDir);
+      const before = readFileSync(join(projDir, '.openfeel', 'flow.json'), 'utf-8');
+      armStrict();
+      await safeParse(['stage', 'create', 'v1.0.0-stage-88']);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain(PREFLIGHT_HINT);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(readFileSync(join(projDir, '.openfeel', 'flow.json'), 'utf-8')).toBe(before);
+    });
+
+    it('序位断言：stage set 非法阶段 + strict → 先报「阶段未找到」而非 preflight', async () => {
+      // 让 process.exit 抛出以真实终止（默认 mock 为 no-op，会继续执行后续分支）
+      exitMock.mockImplementation(((code?: number) => {
+        throw new Error(`__EXIT__${code ?? 0}`);
+      }) as never);
+      armStrict();
+      await expect(safeParse(['stage', 'set', 'no-such-stage', '--status', 'planned']))
+        .rejects.toThrow('__EXIT__1');
+      expect(stderr()).toContain('no-such-stage');
+      expect(stderr()).not.toContain(PREFLIGHT_HINT);
+      expect(logMock).not.toHaveBeenCalled();
+    });
+  });
 });

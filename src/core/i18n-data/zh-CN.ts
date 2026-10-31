@@ -310,6 +310,8 @@ export const flow: I18nDomain = {
   // flow repair
   'repair.backupOk':                { key: 'flow.repair.backupOk',                zh: '已备份: flow.json.bak',                  en: '' },
   'repair.noBackup':                { key: 'flow.repair.noBackup',                zh: 'flow.json 不存在，无需备份',              en: '' },
+  'repair.backupDryRunSkip':        { key: 'flow.repair.backupDryRunSkip',        zh: '[DRY-RUN] 跳过 --backup 备份（预览模式不写任何文件）', en: '' },
+  'repair.backupCorruptSkip':       { key: 'flow.repair.backupCorruptSkip',       zh: 'flow.json 不可解析，跳过 --backup 备份（避免用损坏内容覆盖可用的 .bak）', en: '' },
   'repair.dryRunTitle':             { key: 'flow.repair.dryRunTitle',             zh: '[DRY-RUN 模式] 以下问题将被修复:',        en: '' },
   'repair.recovered':               { key: 'flow.repair.recovered',               zh: '♻ flow.json 从 .bak 恢复成功',            en: '' },
   'repair.dryRunHint':              { key: 'flow.repair.dryRunHint',              zh: '检测到可修复的问题，使用不带 --dry-run 执行以应用修复。', en: '' },

@@ -4,6 +4,31 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.5.6] - 2026-10-31
+
+> 批次版本（Patch 批次）：**preflight 写命令全覆盖**。把「先读状态再写状态」从 4 个命令扩到**全部状态写命令**：34 个命令 / 36 个门位统一收敛到单一 helper；dry-run 免门、恢复通道条件豁免、strict 拒绝零写盘。**无 JSON 契约变更、无新增错误码**。
+
+### Added
+- [stage-114] **统一 preflight 闸**：新增 `src/commands/shared/preflight-gate.ts`（`enforcePreflightOrFail`）。`src/core/preflight.ts` **零改动**（判定源不变）；拒绝出口统一为「JSON：`emitErrorEnvelope`；人类：单行 stderr + `process.exitCode`」+ 调用方 `return`（不即时 `process.exit`）。
+- [stage-114] **34 个命令 / 36 个门位接入**：`flow` 16（`stage add|remove|set|reset` / `advance` / `attempt` / `review add|resolve|update|remove` / `archive` / `repair` / `checkpoint restore` / `migrate` / `health --fix` / `wizard`）、`stage` 3 命令 4 门位（`set` / `task`〔`--add` 分支 + 主路径〕/ `create`）、`plan` 6 命令 7 门位、`req` 7 命令 7 门位、`config set --sync-stages`、`view accept`。
+- [stage-114] **门前只读预检**：`flow review update` / `view accept`（`getReviewItems` / `listReviews`）、`plan scheme publish|rename|remove|register`（`flow.json` 注册键 / `ops/*.md`）；`flow stage reset` 采用「门后置到 `save()` 之前」。使非法参数（`REV-999` / `op-999` / `no-such-stage` / `--to bogus`）先报参数错误、再报 preflight。
+- [stage-114] **测试矩阵**：新增 `test/commands/preflight-gate.test.ts`（helper 10 条）与 `test/cli/preflight-cli.test.ts`（6 条真实进程冒烟）；命令级 A/B 组矩阵、dry-run 免门 10 条、恢复通道豁免 4 条；`vitest.config.ts` 默认 `OPENFEEL_PREFLIGHT=off`（防开发机 / CI 导出 strict 时既有用例集体失败）。
+
+### Changed
+- [stage-114] `flow archive` / `req split` 的 legacy `--json` 拒绝新增 `error = 'preflight-required'`（顶层键集恒 `['schemaVersion','error','errorKind']`，**不携带 `hint`**；提示只走人类 stderr）。
+- [stage-114] 写命令拒绝文案来源从各处裸 `console.error` 收敛到同一 i18n 串（`flow.preflightRequiredTmpl`，零新增键）；`flow advance` 非 JSON 拒绝由「即时 `process.exit(1)`」改为「置码 + `return`」（退出码 1 与 stderr 文案不变）。
+- [stage-114] **`--dry-run` 免门 10 处**：`flow stage remove|reset` / `advance` / `repair` / `migrate` / `checkpoint restore` / `health --fix` / `archive` / `plan scheme remove|register`。
+- [stage-114] **恢复通道条件豁免 2 处**：`flow repair` / `flow checkpoint restore` 在 `flow.json` 不可读（`isLoaded() === false`）时静默放行，避免 strict 死锁；状态可读时二者**仍受门**，其它命令禁止使用该豁免。
+- [stage-114] 文档：`docs/commands.md` 新增「preflight 写命令闸（v1.5.6）」段与逐命令注记；`docs/VERSIONS.md`、`docs/GETTING_STARTED.md`、`openfeel-cli-usage` skill 同步（快照声明升至 v1.5.6）。
+- [stage-114] i18n：新增 2 个成对键 `flow.repair.backupDryRunSkip` / `flow.repair.backupCorruptSkip`（zh / en 各 1 条，`lint i18n` 1048→1050）；其余拒绝文案零新增键。
+
+### Fixed
+- [stage-114] `view accept` 可把 blocking open REV 置 `closed`，从而绕过 `flow advance --to done` / `flow archive` 的阻塞门（strict 下无门）→ 已接入并补只读预检。
+- [stage-114] `flow repair --backup` 在 strict 拒绝时仍会写出 `flow.json.bak`（门原在 `.bak` 之后）→ 门前移到 `--backup` 之前，strict 拒绝零写盘；并补两条备份安全前提：`--dry-run` 下一律跳过备份（预览零写盘）、`flow.json` 不可解析时跳过备份（不用损坏内容覆盖原本可用的 `.bak` —— 该覆盖会破坏 `repair()` 的唯一恢复来源）。
+- [stage-114] `config set --sync-stages` 在 strict 拒绝时仍写 `config.yaml`（门原在 `setConfigValue` 之后）→ 门前移，三处（`config.yaml` / `status.md` / `flow.json.stages[*].workflow_mode`）零写盘。
+- [stage-114] `stage task --add` 分支在门位之前写盘并返回（主路径门不可达）→ 补 `--add` 分支独立门。
+- [stage-114] `--dry-run` 探查后被门拦（8 个零写盘命令却受门）→ 统一免门，保住「试探 → `flow next` → 真执行」路径。
+
 ## [1.5.5] - 2026-10-31
 
 > 批次版本（Patch 批次）：**preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性**。解决「阶段流程走了、调度流程没走」：先读状态再写状态成为可校验事实。

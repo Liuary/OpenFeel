@@ -8,7 +8,7 @@ import type { StageSkeletonOverrides } from '../core/plan/stage.js';
 import { createScheme, createSchemesFromTasks, listSchemes, removeScheme, publishScheme, renameScheme, registerSchemes } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId, isArchivedVersionOf, parseStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
-import { preflightGate } from '../core/preflight.js';
+import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 import { StageDirConflictError, FlowManager, detectFillState } from '../core/flow-manager.js';
 import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
@@ -130,12 +130,8 @@ export function registerPlanCommand(program: Command): void {
       }
 
       // v1.5.5：建阶段前先读状态（strict 拒绝；warn 仅 TTY 提示）
-      const preflight = preflightGate(projectPath, t('flow.preflightRequiredTmpl', lang));
-      if (!preflight.ok) {
-        console.error(preflight.message);
-        process.exitCode = 1;
-        return;
-      }
+      // v1.5.6-stage-114：收敛到统一 helper
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
 
       try {
         addStage(
@@ -213,6 +209,56 @@ export function registerPlanCommand(program: Command): void {
     .command('scheme')
     .description('操作方案管理');
 
+  // ── v1.5.6-stage-114 门前只读预检（REV-009：非法目标必须先报 not-found，再报 preflight）──
+
+  /** op 目标探针结果（门前只读，不构成第二套真值） */
+  interface OpProbe {
+    /** 已注册到 flow.json（`stage.ops[localOpId]`，与 scheme 写函数的 not-found 分支同源） */
+    registered: boolean;
+    /** 注册条目的 state（`publishScheme` 的 `not-draft` 判定源；未注册为 undefined） */
+    state: string | undefined;
+    /** 模板文件可读（`FlowManager.readOpTemplate` 非 null，与 publishScheme / renameScheme 同源） */
+    templateReadable: boolean;
+    /** stageKey 可归一为 plan 目录（`renameScheme` 在文件检查**之前**先判 parseStageId，失败即 not-found） */
+    stageParsed: boolean;
+    /** 模板文件的项目相对路径（`renameScheme` 的 file-missing 报告口径） */
+    templatePath: string;
+  }
+
+  /**
+   * op 目标只读探针：把「未注册」「非 draft」「模板文件缺失」「阶段键不可归一」四态分开，
+   * 供 commands 在门之前**按写函数同一判定序**给出同一错误（REV-016 / REV-018）。
+   * 真值源：`stage.ops[localOpId]` + `FlowManager.readOpTemplate(...)` + `parseStageId(...)`，
+   * 全部复用既有导出，不新增判定规则。
+   */
+  function probeOp(projectPath: string, stageName: string, opId: string): OpProbe {
+    const localOpId = opId.includes('.') ? opId.substring(opId.lastIndexOf('.') + 1) : opId;
+    const mgr = new FlowManager(projectPath);
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const data = mgr.isLoaded() ? mgr.getData() : null;
+    const stageData = data ? (data.stages[normalized] ?? data.stages[stageName]) : undefined;
+    // 与写函数同一 stageKey 口径（已注册全名优先，否则用入参原值）
+    const stageKey = data && data.stages[normalized] ? normalized : stageName;
+    const op = stageData?.ops?.[localOpId];
+    const registered = op !== undefined;
+    const state = op?.state;
+    const templateReadable = mgr.isLoaded() ? mgr.readOpTemplate(stageKey, localOpId) !== null : false;
+    const parsed = parseStageId(stageKey);
+    const templatePath = parsed
+      ? `.openfeel/plan/${parsed.series}/${parsed.stageDir}/ops/${localOpId}.md`
+      : '';
+    return { registered, state, templateReadable, stageParsed: parsed !== null, templatePath };
+  }
+
+  /**
+   * `plan scheme remove` 的目标只认**注册键**（`removeScheme` 的 not-found 分支即 `stage.ops[localOpId]`）。
+   * 模板文件缺失但注册键存在（孤儿 op）**仍允许注销**（N1-1 孤儿用例）；「有文件无注册键」属未注册 → not-found
+   * （REV-017：不把遮蔽面扩到文件系统）。
+   */
+  function isRemovableOp(projectPath: string, stageName: string, opId: string): boolean {
+    return probeOp(projectPath, stageName, opId).registered;
+  }
+
   // plan scheme create <stage> <title>
   // plan scheme create <stage> <title> [--draft]
   // plan scheme create <stage> --from-tasks  （机械铺 op 骨架 + ops/deps.yaml 占位）
@@ -235,6 +281,8 @@ export function registerPlanCommand(program: Command): void {
           process.exit(1);
           return;
         }
+        // v1.5.6-stage-114：写前 preflight（`STATUS_NOT_FOUND` 属读 status.md 的写函数内部状态 → 保留遮蔽，§3.4）
+        if (!enforcePreflightOrFail(projectPath, lang)) return;
         try {
           const r = createSchemesFromTasks(projectPath, stage);
           if (r.created.length === 0) {
@@ -268,6 +316,8 @@ export function registerPlanCommand(program: Command): void {
         return;
       }
 
+      // v1.5.6-stage-114：写前 preflight（title 必填校验已在门前）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
       const opId = createScheme(projectPath, stage, title, {
         draft: options.draft,
         // N3-2：阶段未注册时提示已按注册语义补齐阶段骨架
@@ -287,6 +337,29 @@ export function registerPlanCommand(program: Command): void {
     .action((stage: string, opId: string) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
+      // v1.5.6-stage-114：op 只读预检先于门（REV-009 / REV-016 / REV-018）。
+      // **判定序必须与 `publishScheme` 逐条一致**（core/plan/scheme.ts:727-747）：
+      //   ① 未注册（含阶段不存在）→ not-found
+      //   ② 已注册但 state !== 'draft' → not-draft（先于模板检查）
+      //   ③ draft 且模板不可读 → not-found（写函数 readOpTemplate === null 时同样返回 not-found）
+      const probe = probeOp(projectPath, stage, opId);
+      if (!probe.registered) {
+        console.error(t('plan.scheme.publish.notFoundTmpl', lang, { stage, opId }));
+        process.exit(1);
+        return;
+      }
+      if (probe.state !== 'draft') {
+        console.error(t('plan.scheme.publish.notDraftTmpl', lang, { opId }));
+        process.exit(1);
+        return;
+      }
+      if (!probe.templateReadable) {
+        console.error(t('plan.scheme.publish.notFoundTmpl', lang, { stage, opId }));
+        process.exit(1);
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
       const result = publishScheme(projectPath, stage, opId);
       if (result.published) {
         console.log(t('plan.scheme.publish.okTmpl', lang, { opId }));
@@ -323,6 +396,28 @@ export function registerPlanCommand(program: Command): void {
         process.exit(1);
         return;
       }
+      // v1.5.6-stage-114：op 只读预检先于门（REV-009 / REV-016 / REV-018）。
+      // **判定序与 `renameScheme` 一致**（core/plan/scheme.ts:797-825）：
+      //   ① 未注册 → not-found；② stageKey 不可归一（parseStageId 失败）→ not-found（先于文件检查）；
+      //   ③ 模板文件缺失 → file-missing
+      const probe = probeOp(projectPath, stage, opId);
+      if (!probe.registered) {
+        console.error(t('plan.scheme.rename.notFoundTmpl', lang, { stage, opId }));
+        process.exit(1);
+        return;
+      }
+      if (!probe.stageParsed) {
+        console.error(t('plan.scheme.rename.notFoundTmpl', lang, { stage, opId }));
+        process.exit(1);
+        return;
+      }
+      if (!probe.templateReadable) {
+        console.error(t('plan.scheme.rename.fileMissingTmpl', lang, { opId, path: probe.templatePath }));
+        process.exit(1);
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（空标题校验已在门前）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
       const result = renameScheme(projectPath, stage, opId, options.title);
       if (result.renamed) {
         console.log(t('plan.scheme.rename.okTmpl', lang, {
@@ -411,6 +506,16 @@ export function registerPlanCommand(program: Command): void {
     .action((stage: string, opId: string, options: { force?: boolean; dryRun?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
+      // v1.5.6-stage-114：op 只读预检先于门（REV-009 / REV-017）——
+      // **只认 flow.json 注册键**（`removeScheme` 的 not-found 口径）；文件存在但未注册 → not-found。
+      // （模板缺失但注册键存在 = 孤儿 op，仍允许注销，故不因文件缺失而拒绝。）
+      if (!isRemovableOp(projectPath, stage, opId)) {
+        console.error(t('plan.scheme.remove.notFoundTmpl', lang, { stage, opId }));
+        process.exit(1);
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（`--dry-run` 零写盘 → 免门，REV-001）
+      if (!options.dryRun && !enforcePreflightOrFail(projectPath, lang)) return;
       const result = removeScheme(projectPath, stage, opId, {
         force: options.force,
         dryRun: options.dryRun,
@@ -454,6 +559,18 @@ export function registerPlanCommand(program: Command): void {
     .action((stage: string, opId: string | undefined, options: { dryRun?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
+      // v1.5.6-stage-114：显式 opId 时做只读预检先于门（REV-009 / §12.4：无 opId 的「补注册全部孤儿」
+      // 语义下预检会误判，故仅显式分支生效）；`--dry-run` 零写盘 → 免门（REV-001）。
+      // 判定与 registerSchemes 的 skipped 口径同源：未注册 ∧ 模板不可读 → not-found
+      if (opId !== undefined) {
+        const probe = probeOp(projectPath, stage, opId);
+        if (!probe.registered && !probe.templateReadable) {
+          console.error(t('plan.scheme.publish.notFoundTmpl', lang, { stage, opId }));
+          process.exit(1);
+          return;
+        }
+      }
+      if (!options.dryRun && !enforcePreflightOrFail(projectPath, lang)) return;
       const result = registerSchemes(projectPath, stage, opId, { dryRun: options.dryRun });
 
       if (!result.ok) {

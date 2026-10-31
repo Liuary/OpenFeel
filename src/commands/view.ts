@@ -8,6 +8,7 @@ import { normalizeAgentName } from '../core/flow-manager.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { failInternal } from './shared/errors.js';
+import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 
 export function registerViewCommand(program: Command): void {
   const view = program
@@ -74,6 +75,16 @@ export function registerViewCommand(program: Command): void {
     .argument('<rev-id>', '审查条目 ID（如 REV-001）')
     .action((revId: string) => {
       const lang = getCliLang(process.cwd());
+      // v1.5.6-stage-114：REV 存在性只读预检先于门（REV-009：REV-999 必须报 not-found 而非 preflight；
+      // `listReviews` 与 `acceptReview` 读同一份 flow.json → 不构成第二套真值）
+      if (!listReviews(process.cwd()).some((r) => r.id === revId)) {
+        console.error(t('view.accept.errorNotFoundTmpl', lang, { id: revId }));
+        process.exit(1);
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（acceptReview 内 addReview / appendLog / save 写 flow.json，
+      // 且可清掉 blocking open REV 从而绕过 done / 归档阻塞门 —— REV-007）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       try {
         const review = acceptReview(process.cwd(), revId);
 

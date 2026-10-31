@@ -1137,6 +1137,26 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     process.exitCode = 0;
   });
 
+  it('legacy：flow archive --json 在 strict preflight 拒绝 → 三键单文档（与 no-init 同形，REV-008 无 hint）', async () => {
+    seedArchivable();
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+    rmSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'), { force: true });
+    try {
+      const d = await doc(['flow', 'archive', 'v1.9.0', '--json']);
+      // 三键契约：不得新增顶层 `hint` / 不得混人类文案
+      expect(Object.keys(d)).toEqual(['schemaVersion', 'error', 'errorKind']);
+      expect(d.error).toBe('preflight-required');
+      expect(d.errorKind).toBe('refusal');
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+      // 门后零写盘：归档文件未生成
+      expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive', 'v1.9.0.json'))).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+      process.exitCode = 0;
+    }
+  });
+
   it('legacy：flow archive show 不存在 → error 为 string 且既有键序不变', async () => {
     const d = await doc(['flow', 'archive', 'show', 'v9.9.9', '--json']);
     expect(typeof d.error).toBe('string');

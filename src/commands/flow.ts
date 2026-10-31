@@ -35,7 +35,8 @@ import { failCli, failInternal, failRefusal, handleAddStageError, handleConcurre
 import { withSchemaVersion, isJsonMode, emitJson } from './shared/json-output.js';   // JSON 契约助手（stage-95 op-001/op-002）
 import { type CliErrorKind } from '../core/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
-import { preflightGate, recordPreflight } from '../core/preflight.js';
+import { recordPreflight } from '../core/preflight.js';
+import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 import { getDevStatus, isSyncNodePhase, syncDevStatus } from '../core/dev-status.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
@@ -724,6 +725,8 @@ export function registerFlowCommand(program: Command): void {
         console.error(t('common.errorNoInit', lang));
         process.exit(1);
       }
+      // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
       try {
         mgr.addStage(stageId);
         mgr.save();
@@ -756,6 +759,10 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
         return;
       }
+
+      // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
+      // `--dry-run` 零写盘 → 免门（REV-001）
+      if (!options.dryRun && !enforcePreflightOrFail(process.cwd(), lang)) return;
 
       // --dry-run：复用 checkRemovable 做安全校验，失败同样 exit 1（REV-005），并呈现引用者（REV-004）
       if (options.dryRun) {
@@ -862,6 +869,8 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
 
+      // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
       try {
         mgr.setStageDeps(stageId, deps);
       } catch (err: unknown) {
@@ -912,6 +921,12 @@ export function registerFlowCommand(program: Command): void {
           return;
         }
         // 核心层仅改内存；命令层 save()（与 advance 同范式）
+        // v1.5.6-stage-114：门「后置」到 save 之前 —— `resetStagePhase` 的阶段存在 / --to 值域 / REV 阻塞
+        // 全部在写盘前 throw（REV-009：非法值必须先于 preflight 报出）；`--dry-run` 免门（REV-001）。
+        // 零写盘例外（白名单，已登记于 docs/commands.md）：`resetStagePhase` 内部经 `getSessionId` →
+        // `writeProjectSession` 可能写 `.openfeel/tmp/session.json`，仅当环境存在 `CLAUDE_CODE_SESSION_ID`
+        // 时发生，且与 `flow.json` 无关（既有会话痕迹，非状态写盘）。
+        if (!options.dryRun && !enforcePreflightOrFail(process.cwd(), lang)) return;
         mgr.save();
         console.log(t('flow.stage.reset.okTmpl', lang, {
           stage: stageArg,
@@ -987,16 +1002,8 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
       // v1.5.5：先读状态再写状态（strict 拒绝；warn 仅 TTY 提示）
-      const preflight = preflightGate(process.cwd(), t('flow.preflightRequiredTmpl', lang));
-      if (!preflight.ok) {
-        failCli({
-          code: 'INVALID_ARGUMENT',
-          message: preflight.message,
-          detail: { reason: 'preflight-required', hint: 'openfeel flow next --json' },
-          stderrLines: [preflight.message],
-        });
-        return;
-      }
+      // v1.5.6-stage-114：收敛到统一 helper；`--dry-run` 零写盘 → 免门（REV-001）
+      if (!options.dryRun && !enforcePreflightOrFail(process.cwd(), lang)) return;
 
       // REV-005：命令层归一化（短名 → 全名），与 plan.ts / flow.ts 其它 stage 解析点同范式
       const stageArg = normalizeStageId(options.stage) ?? options.stage;
@@ -1373,6 +1380,8 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
 
+      // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       const outcome = mgr.recordAttempt(options.op, options.result as 'pass' | 'fail');
       mgr.save();
 
@@ -1574,6 +1583,9 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
         return;
       }
+      // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
+      // 目标解析（--op/--stage）属写函数内部状态 → 仍在门后（§3.4 保留的遮蔽项）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       // 单点实现：解析 / 校验 / REV ID 分配 / 写入均由 addReviewEntry 统一处理（T37/R4）
       const blocking = options.blocking !== undefined
         ? !(options.blocking === 'false' || options.blocking === false)
@@ -1645,6 +1657,8 @@ export function registerFlowCommand(program: Command): void {
 
       const ok = mgr.resolveReview(revId);
       if (ok) {
+        // v1.5.6-stage-114：写前 preflight（not-found 分支已在前 → 非法 REV 先报，REV-009）
+        if (!enforcePreflightOrFail(process.cwd(), lang)) return;
         mgr.save();
         console.log(t('flow.review.resolvedTmpl', lang, { revId }));
       } else {
@@ -1703,6 +1717,14 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
 
+      // v1.5.6-stage-114：REV 存在性只读预检先于门（REV-009：REV-999 必须报 not-found 而非 preflight）
+      if (!mgr.getReviewItems().some((r) => r.id === revId)) {
+        console.error(t('flow.review.notFoundTmpl', lang, { revId }));
+        process.exit(1);
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       const ok = mgr.updateReview(revId, patch);
       if (!ok) {
         console.error(t('flow.review.notFoundTmpl', lang, { revId }));
@@ -1730,6 +1752,8 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
         return;
       }
+      // v1.5.6-stage-114：写前 preflight（REV 存在性预检已在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       const ok = mgr.removeReview(revId);
       if (!ok) {
         console.error(t('flow.review.notFoundTmpl', lang, { revId }));
@@ -1836,14 +1860,30 @@ export function registerFlowCommand(program: Command): void {
       // 复用统一构造入口 createManager()，避免第二处 new FlowManager（T13）
       const mgr = createManager();
 
+      // v1.5.6-stage-114：恢复通道 —— 门必须在 `--backup` 写 `flow.json.bak` **之前**
+      // （REV-002：strict 拒绝时须零写盘，含 .bak）；`--dry-run` 零写盘 → 免门（REV-001）；
+      // 状态不可读（flow.json 损坏）→ 豁免放行（否则账本永远写不出 → strict 死锁，§4.4）。
+      if (!options.dryRun && !enforcePreflightOrFail(process.cwd(), lang, {
+        stateReadable: mgr.isLoaded(),
+        exemptWhenStateUnreadable: true,
+      })) return;
+
       // --backup 选项：修复前手动备份
-      if (options.backup) {
+      // v1.5.6-stage-114（REV-014）：备份是「写盘」，须同时满足两条安全前提：
+      //   ① `--dry-run` 是纯预览 → **跳过**（dry-run 零写盘是 REV-001 前提）；
+      //   ② 当前 flow.json **不可解析**时 → **跳过**（复制会把损坏内容覆盖到原本可用的 `.bak`，
+      //      而 `repair()` 正是靠 `.bak` 恢复 → 覆盖即数据丢失）。
+      if (options.backup && options.dryRun) {
+        console.log(t('flow.repair.backupDryRunSkip', lang));
+      } else if (options.backup) {
         const fp = resolve(process.cwd(), '.openfeel', 'flow.json');
-        if (existsSync(fp)) {
+        if (!existsSync(fp)) {
+          console.log(t('flow.repair.noBackup', lang));
+        } else if (!mgr.isLoaded()) {
+          console.log(t('flow.repair.backupCorruptSkip', lang));
+        } else {
           copyFileSync(fp, fp + '.bak');
           console.log(t('flow.repair.backupOk', lang));
-        } else {
-          console.log(t('flow.repair.noBackup', lang));
         }
       }
 
@@ -1932,6 +1972,9 @@ export function registerFlowCommand(program: Command): void {
 
       // Commander 的 --no-backup 生成 backup=false（而非 noBackup=true）
       const noBackup = options.backup === false;
+
+      // v1.5.6-stage-114：写前 preflight（`--dry-run` 走 migrate(true) 零写盘 → 免门，REV-001/005）
+      if (!options.dryRun && !enforcePreflightOrFail(process.cwd(), lang)) return;
 
       // --dry-run 输出迁移预览
       if (options.dryRun) {
@@ -2061,6 +2104,12 @@ export function registerFlowCommand(program: Command): void {
         console.error(t('flow.checkpoint.restoreNeedForce', lang));
         process.exit(1);
       }
+      // v1.5.6-stage-114：恢复通道 —— 门在 `restoreCheckpoint` 之前（REV-003）+ `--force` 守卫之后；
+      // 状态不可读时豁免（同 `flow repair`，§4.4）；`--dry-run` 分支已在上方提前 return，前缀为显式审计保留。
+      if (!options.dryRun && !enforcePreflightOrFail(process.cwd(), lang, {
+        stateReadable: mgr.isLoaded(),
+        exemptWhenStateUnreadable: true,
+      })) return;
       const ok = mgr.restoreCheckpoint(file, { stage: options.stage });
       if (ok) {
         console.log(t('flow.checkpoint.restoreOkTmpl', lang, { file }));
@@ -2153,6 +2202,13 @@ export function registerFlowCommand(program: Command): void {
         });
         return;
       }
+      // v1.5.6-stage-114：写前 preflight（legacy 三键：只放 `error` 值，不带 hint —— REV-008）；
+      // `--dry-run` 零写盘 → 免门（REV-001）。位置在判据门之后 → fixture 须本身 eligible（§5.3）。
+      const reject = (m: string): void => {
+        if (options.json === true) failJson({ error: 'preflight-required' });
+        else console.error(m);
+      };
+      if (!options.dryRun && !enforcePreflightOrFail(projectPath, lang, { reject })) return;
       // 切分（纯函数；禁命令层第二套解析/切分）
       const { archive, remainder } = splitForArchive(data, version);
       const counts = archive.counts;
@@ -2359,6 +2415,8 @@ export function registerFlowCommand(program: Command): void {
       // B2-2：--fix 状态对账（仅回写 status.md「状态」字段；--dry-run 预览不写盘）
       let reconciled: StatusReconcileItem[] | undefined;
       if (options.fix) {
+        // v1.5.6-stage-114：写前 preflight（仅 `--fix` 真写路径受门；`--dry-run` 零写盘 → 免门，REV-001/005）
+        if (!options.dryRun && !enforcePreflightOrFail(process.cwd(), lang)) return;
         try {
           reconciled = mgr.reconcileStatusMd({ dryRun: options.dryRun });
         } catch (err: unknown) {
@@ -2544,6 +2602,9 @@ export function registerFlowCommand(program: Command): void {
         console.log(t('common.noInit', lang));
         return;
       }
+
+      // v1.5.6-stage-114：写前 preflight（无条件；交互循环内的 addStage / advance 均写 flow.json，REV-005）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
 
       // 阶段标签映射（从 pipelineConfig.phases 动态生成）
       const phaseLabels = mgr.getPhaseLabels();

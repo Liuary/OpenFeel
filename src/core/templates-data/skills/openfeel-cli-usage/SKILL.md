@@ -12,7 +12,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 `openfeel-tool-usage` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
 
-> 本文档为 v1.5.5 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.6 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
@@ -70,6 +70,15 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **`openfeel update --tools dsh`**：不适用（全局部署），命令层在 auto-init / 写盘前 exit 1 并指引 `setup`。
 - **错误映射**：预检 / 用法 / profile → `INVALID_ARGUMENT`（refusal/1，`detail.reason=dsh-*`）；备份 / pnpm install → `INTERNAL_ERROR`（internal/3，`dsh-backup-failed` / `dsh-pnpm-install-failed`）。不新增 CLI 错误码。
 - **单包**：不发布独立 `openfeel-dsh`；`dsh/` 随 `openfeel` npm 包分发，默认不部署。README 版本能力概览迁至 `docs/VERSIONS.md`。
+
+## v1.5.6（stage-114）
+
+> 批次：preflight 写命令全覆盖（无 JSON 契约变更 / 无新增错误码）。
+
+- **全部状态写命令受门**：34 个命令 / 36 个门位（`flow` 16、`stage` 4、`plan` 7、`req` 7、`config set --sync-stages`、`view accept`）统一走 `enforcePreflightOrFail`；拒绝形态 = JSON envelope / 人类单行 stderr + exit 1 / legacy 三键（`flow archive`、`req split`）。
+- **dry-run 免门（10 处）**：`flow stage remove|reset` / `advance` / `repair` / `migrate` / `checkpoint restore` / `health --fix` / `archive` / `plan scheme remove|register` —— `--dry-run` 永不被 preflight 拒绝（零写盘）。
+- **恢复通道豁免（仅 2 处）**：`flow repair` / `flow checkpoint restore` 在 `flow.json` 不可读（`isLoaded() === false`）时静默放行，避免 strict 死锁；状态可读时仍受门。其它命令**不得**使用该豁免。
+- **参数错误先报**：ID / 阶段 / REV / op / `--to` 校验一律在门之前（含 README 式的 `REV-999` / `op-999` 序位断言）。
 
 ## v1.5.5（stage-113）
 

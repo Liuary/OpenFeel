@@ -77,4 +77,102 @@ describe('preflight（v1.5.5）', () => {
     recordPreflight(dir);
     expect(preflightGate(dir, 'need status').ok).toBe(true);
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  // v1.5.6-stage-114 追加 6 条（判定边界 + TTY 控制）
+  // ═══════════════════════════════════════════════════════════════
+
+  it('v1.5.6：strict + invalid（at 非日期）→ 拒绝且 reason=invalid', () => {
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+    mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
+    writeFileSync(join(dir, '.openfeel', 'dev', '.preflight.json'), JSON.stringify({ at: 'not-a-date' }), 'utf-8');
+    expect(checkPreflight(dir).reason).toBe('invalid');
+    expect(preflightGate(dir, 'need status').ok).toBe(false);
+  });
+
+  it('v1.5.6：strict + at 在未来 → 放行（时钟偏移容忍）', () => {
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+    const rec = recordPreflight(dir);
+    // 以「记录时刻之前」作为 now：ageMs 为负 → 不判过期
+    const earlier = Date.parse(rec.at) - PREFLIGHT_MAX_AGE_MS * 2;
+    expect(checkPreflight(dir, earlier).ok).toBe(true);
+    expect(preflightGate(dir, 'need status').ok).toBe(true);
+  });
+
+  it('v1.5.6：warn + stderr.isTTY=true → 恰好 1 行提示后放行', () => {
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'warn');
+    const orig = Object.getOwnPropertyDescriptor(process.stderr, 'isTTY');
+    Object.defineProperty(process.stderr, 'isTTY', { value: true, configurable: true });
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(preflightGate(dir, 'need status').ok).toBe(true);
+      expect(errSpy).toHaveBeenCalledTimes(1);
+      expect(errSpy.mock.calls[0][0]).toBe('need status');
+    } finally {
+      errSpy.mockRestore();
+      if (orig) {
+        Object.defineProperty(process.stderr, 'isTTY', orig);
+      } else {
+        delete (process.stderr as { isTTY?: boolean }).isTTY;
+      }
+    }
+  });
+
+  it('v1.5.6：warn + stderr.isTTY=false → 放行且零输出', () => {
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'warn');
+    const orig = Object.getOwnPropertyDescriptor(process.stderr, 'isTTY');
+    Object.defineProperty(process.stderr, 'isTTY', { value: false, configurable: true });
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(preflightGate(dir, 'need status').ok).toBe(true);
+      expect(errSpy).not.toHaveBeenCalled();
+    } finally {
+      errSpy.mockRestore();
+      if (orig) {
+        Object.defineProperty(process.stderr, 'isTTY', orig);
+      } else {
+        delete (process.stderr as { isTTY?: boolean }).isTTY;
+      }
+    }
+  });
+
+  it('v1.5.6：off 且账本缺失 → 放行且零输出', () => {
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'off');
+    const orig = Object.getOwnPropertyDescriptor(process.stderr, 'isTTY');
+    Object.defineProperty(process.stderr, 'isTTY', { value: true, configurable: true });
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(preflightGate(dir, 'need status').ok).toBe(true);
+      expect(errSpy).not.toHaveBeenCalled();
+    } finally {
+      errSpy.mockRestore();
+      if (orig) {
+        Object.defineProperty(process.stderr, 'isTTY', orig);
+      } else {
+        delete (process.stderr as { isTTY?: boolean }).isTTY;
+      }
+    }
+  });
+
+  it('v1.5.6：warn 过期 → 放行（仅提示）', () => {
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'warn');
+    mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
+    const stale = new Date(Date.now() - PREFLIGHT_MAX_AGE_MS - 1000).toISOString();
+    writeFileSync(join(dir, '.openfeel', 'dev', '.preflight.json'), JSON.stringify({ at: stale }), 'utf-8');
+    expect(checkPreflight(dir).reason).toBe('expired');
+    const orig = Object.getOwnPropertyDescriptor(process.stderr, 'isTTY');
+    Object.defineProperty(process.stderr, 'isTTY', { value: true, configurable: true });
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(preflightGate(dir, 'need status').ok).toBe(true);
+      expect(errSpy).toHaveBeenCalledTimes(1);   // 仅提示，仍放行
+    } finally {
+      errSpy.mockRestore();
+      if (orig) {
+        Object.defineProperty(process.stderr, 'isTTY', orig);
+      } else {
+        delete (process.stderr as { isTTY?: boolean }).isTTY;
+      }
+    }
+  });
 });

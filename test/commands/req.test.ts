@@ -23,6 +23,7 @@ vi.mock('node:child_process', () => ({
 
 import { Command, CommanderError } from 'commander';
 import { registerReqCommand } from '../../src/commands/req.js';
+import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
 import { applyHelpI18n, program as rootProgram } from '../../src/cli/index.js';
 import { initProject } from '../../src/core/init.js';
 import { hasKey, t } from '../../src/core/i18n.js';
@@ -2026,5 +2027,122 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     expect(process.exitCode).toBe(1);
     expect(err()).toContain('合法目标：');                                     // 非法流转场景保持通用文案
     expect(err()).not.toContain('done 须全部关联阶段');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // preflight 写命令闸（v1.5.6-stage-114）：strict + 无账本 → 拒绝且零写盘
+  // ═══════════════════════════════════════════════════════════════════
+  describe('preflight 写命令闸（v1.5.6-stage-114）', () => {
+    /** preflight 文案的稳定子串（zh / en 模板共有） */
+    const PREFLIGHT_HINT = 'flow next';
+
+    /** strict + 删除账本（REQ-015 验收基线） */
+    function armStrict(): void {
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      rmSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'), { force: true });
+    }
+    function expectRejected(): void {
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain(PREFLIGHT_HINT);
+    }
+
+    beforeEach(() => {
+      process.exitCode = 0;
+    });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      process.exitCode = 0;
+    });
+
+    it('req add：strict + 无账本 → 拒绝且零写盘（收敛回归）', async () => {
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['req', 'add', '新需求']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+      expect(existsSync(join(tmpDir, '.openfeel', 'requirements', 'REQ-001.md'))).toBe(false);
+    });
+
+    it('req claim：strict + 无账本 → 拒绝且零写盘（收敛回归）', async () => {
+      await safeParse(['req', 'add', '需求A']);
+      resetCapture();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['req', 'claim', 'REQ-001', '--owner', 'alice']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('req release：strict + 无账本 → 拒绝且 owner 不变', async () => {
+      seedReq({ status: 'scheduled', owner: 'alice' });
+      resetCapture();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['req', 'release', 'REQ-001']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('req set：strict + 无账本 → 拒绝且字段不变', async () => {
+      seedReq({ status: 'draft' });
+      resetCapture();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['req', 'set', 'REQ-001', '--title', '新标题']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('req link：strict + 无账本 → 拒绝且未关联', async () => {
+      seedReq({ status: 'scheduled' });
+      // 写入一个已注册阶段（link 的引擎前置）
+      const d = readFlow();
+      d.stages = { 'v1.0.0-stage-01': { name: 's', phase: 'exec_running', status: 'planned', deps: [], ops: {} } };
+      writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
+      resetCapture();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['req', 'link', '--stage', 'v1.0.0-stage-01', '--requirement', 'REQ-001']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('req advance：strict + 无账本 → 拒绝且状态不变', async () => {
+      seedReq({ status: 'draft' });
+      resetCapture();
+      armStrict();
+      const before = flowRaw();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'scheduled']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+
+    it('B 组：req split --json 在 strict 拒绝下为三键单文档（无 hint —— REV-008）', async () => {
+      seedReq({ status: 'scheduled' });
+      resetCapture();
+      armStrict();
+      setJsonMode(true);
+      try {
+        const before = flowRaw();
+        await safeParse(['req', 'split', 'REQ-001', '--into', '子需求A', '--json']);
+        expect(process.exitCode).toBe(1);
+        const doc = JSON.parse(out()) as Record<string, unknown>;
+        expect(Object.keys(doc)).toEqual(['schemaVersion', 'error', 'errorKind']);
+        expect(doc.error).toBe('preflight-required');
+        expect(doc.errorKind).toBe('refusal');
+        expect(err()).toBe('');
+        expect(flowRaw()).toBe(before);
+      } finally {
+        resetJsonModeForTest();
+      }
+    });
+
+    it('序位断言：req claim 非法 ID + strict → 先报 invalidId 而非 preflight', async () => {
+      armStrict();
+      await safeParse(['req', 'claim', 'REQ-XXX']);
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain('REQ-XXX');
+      expect(err()).not.toContain(PREFLIGHT_HINT);
+    });
   });
 });

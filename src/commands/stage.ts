@@ -18,6 +18,7 @@ import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
 import { FlowManager, STAGE_STATUS_VALUES } from '../core/flow-manager.js';
 import { failRefusal, handleAddStageError } from './shared/errors.js';
+import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { appendStatusTask } from '../core/plan/stage.js';
@@ -514,6 +515,8 @@ export function registerStageCommand(program: Command): void {
         }
       }
 
+      // v1.5.6-stage-114：写前 preflight（REQ-015 验收项 4：阶段存在性 / 枚举 / general 载体制校验全在门前）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
       // N5-2：先探测后写（同值 no-op 成功；`.bak` 仅在确认变更后生成）
       const applied: string[] = [];
       const flowMgr = new FlowManager(projectPath);
@@ -597,6 +600,8 @@ export function registerStageCommand(program: Command): void {
           process.exit(1);
           return;
         }
+        // v1.5.6-stage-114：`--add` 分支独立门（REV-006：`appendStatusTask` 在本分支内写盘，主路径门到不了）
+        if (!enforcePreflightOrFail(projectPath, lang)) return;
         try {
           const no = appendStatusTask(projectPath, stageId, options.add);
           console.log(t('stage.task.addOkTmpl', lang, { no: String(no), desc: options.add.trim() }));
@@ -631,6 +636,8 @@ export function registerStageCommand(program: Command): void {
         process.exit(1);
       }
 
+      // v1.5.6-stage-114：写前 preflight（阶段存在 / taskNo 校验已在门前）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
       // 写操作前备份
       backupStatus(statusPath, stageId);
 
@@ -670,6 +677,8 @@ export function registerStageCommand(program: Command): void {
         console.error(t('common.stageIdSuggestTmpl', lang, { suggest: suggestStageId(projectPath, stageId) }));
         process.exit(1);
       }
+      // v1.5.6-stage-114：写前 preflight（写盘在 addStage 内）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
       try {
         mgr.addStage(stageId);
         mgr.save();

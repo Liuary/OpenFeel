@@ -11,7 +11,7 @@
  */
 import { Command } from 'commander';
 import { t, getCliLang } from '../core/i18n.js';
-import { preflightGate } from '../core/preflight.js';
+import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 import { FlowManager, isFlowConcurrentError } from '../core/flow-manager.js';
 import { type WorkflowMode } from '../core/config.js';
 import { handleConcurrentConflict } from './shared/errors.js';
@@ -122,12 +122,8 @@ export function registerReqCommand(program: Command): void {
       }
       const data = mgr.getData()!;
       // v1.5.5：需求写操作前先读状态（strict 拒绝；warn 仅 TTY 提示）
-      const preflight = preflightGate(process.cwd(), t('flow.preflightRequiredTmpl', lang));
-      if (!preflight.ok) {
-        console.error(preflight.message);
-        process.exitCode = 1;
-        return;
-      }
+      // v1.5.6-stage-114：收敛到统一 helper
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       try {
         // 运行期值域由引擎单点判定（命令层零校验）；priority / workflow_mode 断言仅编译期
         const created = addRequirement(data, {
@@ -308,12 +304,8 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       // v1.5.5：认领前先读状态（放在 ID 校验之后，避免非法参数先报 preflight）
-      const preflight = preflightGate(process.cwd(), t('flow.preflightRequiredTmpl', lang));
-      if (!preflight.ok) {
-        console.error(preflight.message);
-        process.exitCode = 1;
-        return;
-      }
+      // v1.5.6-stage-114：收敛到统一 helper；**位置不变**（ID 校验仍在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       // --owner 缺省链：.info.json user → git config user.name → 哨兵 'unknown' 拒绝（禁硬编码）
       let owner = options.owner;
       if (owner === undefined) {
@@ -364,6 +356,8 @@ export function registerReqCommand(program: Command): void {
         process.exitCode = 1;
         return;
       }
+      // v1.5.6-stage-114：写前 preflight（ID 校验已在门前，strict 拒绝；warn 仅 TTY 提示）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       const r = releaseRequirement(data, id);
       if (!r.ok) {
         failCode(lang, r.code, { not_found: t('req.err.notFoundTmpl', lang, { id }) });
@@ -410,6 +404,8 @@ export function registerReqCommand(program: Command): void {
         process.exitCode = 1;
         return;
       }
+      // v1.5.6-stage-114：写前 preflight（ID / 无字段守卫已在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       // 命令层零校验：白名单 / 值域 / 流转全由引擎单点判定
       const r = updateRequirement(data, id, {
         status: options.status as RequirementStatus | undefined,
@@ -493,6 +489,8 @@ export function registerReqCommand(program: Command): void {
         }
         requirementId = options.requirement!;
       }
+      // v1.5.6-stage-114：写前 preflight（互斥守卫 / reqId 校验已在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       const r = linkRequirement(data, stageKey, requirementId);
       if (!r.ok) {
         failCode(lang, r.code, {
@@ -549,6 +547,8 @@ export function registerReqCommand(program: Command): void {
       }
       // 读当前状态仅供成功文案与失败 targets 渲染（纯读，非校验）
       const before = getRequirement(data, id)?.status;
+      // v1.5.6-stage-114：写前 preflight（ID 校验已在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       // 命令层零校验：合法目标 + done 门均在引擎单点
       const r = advanceRequirement(data, id, options.to as RequirementStatus);
       if (!r.ok) {
@@ -614,6 +614,13 @@ export function registerReqCommand(program: Command): void {
         }
         return;
       }
+      // v1.5.6-stage-114：写前 preflight（legacy 三键：只放 `error` 值，不带 hint —— REV-008）；
+      // `--into` 守卫已在前（ID / 空 --into 先报）
+      const reject = (m: string): void => {
+        if (asJson) failJson({ error: 'preflight-required' });
+        else console.error(m);
+      };
+      if (!enforcePreflightOrFail(process.cwd(), lang, { reject })) return;
       // 命令层零业务校验：父门 / 终态门 / 子项校验 / ID 分配 / 审计全在引擎单点
       const r = splitRequirement(data, id, into.map((title) => ({ title })));
       if (!r.ok) {

@@ -931,4 +931,47 @@ describe('config 命令（stage-42 op-002）', () => {
       workflow_mode：fast    [来源: builtin]"
     `);
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // preflight 写命令闸（v1.5.6-stage-114）：config set --sync-stages（REV-004）
+  // ═══════════════════════════════════════════════════════════════════
+  describe('preflight 写命令闸（v1.5.6-stage-114）', () => {
+    /** preflight 文案的稳定子串（zh / en 模板共有） */
+    const PREFLIGHT_HINT = 'flow next';
+
+    beforeEach(() => {
+      process.exitCode = 0;
+    });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      process.exitCode = 0;
+    });
+
+    it('config set workflow_mode fast --sync-stages：strict → config.yaml / status.md / flow.json 三处零写盘', async () => {
+      setupTwoStages();
+      // 预置 config.yaml（保证「config.yaml 不变」是真实断言而非「文件不存在的巧合」）
+      writeProjectConfigRaw('defaults:\n  auto_advance: enabled\n  workflow_mode: full\n');
+      const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+      const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+      const beforeCfg = sha(cfgPath);
+      const beforeStatus = sha(stageStatusPath('stage-01'));
+      const beforeStatus2 = sha(stageStatusPath('stage-02'));
+      const beforeFlow = readFileSync(flowPath, 'utf-8');
+
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      rmSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'), { force: true });
+
+      await safeParse(['config', 'set', 'workflow_mode', 'fast', '--sync-stages']);
+
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain(PREFLIGHT_HINT);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(sha(cfgPath)).toBe(beforeCfg);
+      expect(sha(stageStatusPath('stage-01'))).toBe(beforeStatus);
+      expect(sha(stageStatusPath('stage-02'))).toBe(beforeStatus2);
+      expect(readFileSync(flowPath, 'utf-8')).toBe(beforeFlow);
+      // 门后零写盘确认：无 status.md 备份生成
+      expect(existsSync(join(tmpDir, '.openfeel', 'tmp', 'status.v1.0.0-stage-01.bak'))).toBe(false);
+    });
+  });
 });

@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.5.5 — 批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性**｜ 先读后写可校验 / strict 适配器 / 提示段约束 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.5 ｜ **已 push（2436669）；npm 1.5.5 已发布（CI publish）**
-> 统计：测试 84 文件 / **2030 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 96 + 58 + 10 = **206 断言** ｜ `lint i18n` **1048** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.5**
+> OpenFeel **v1.5.6 — 批次：preflight 全覆盖 + lint req 机制 + 流程健康观测**｜ 36 门位全收敛 / 需求正文命令名校验 / 零开销代理指标 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 41 成功出口 / 44 注册选项** ｜ 版本 1.5.6 ｜ **已 push（48aab33）；npm 1.5.6 已发布（CI publish）**
+> 统计：测试 91 文件 / **2201 用例全绿（0 skipped / 0 failed）** ｜ dsh **100/100**（contract 42 + verify 100 + guard 58 + integration 10 的 verify 段已扩至 100） ｜ `lint i18n` **1058** 键 ｜ `lint kb` 0 过期（649 引用）｜ `lint req` 0 问题 ｜ **版本 1.5.6**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-31** @Liuary：**v1.5.6 批次（preflight 全覆盖 / lint req / 流程健康）**——① **preflight 全覆盖**：`src/commands/shared/preflight-gate.ts` 统一 helper，写命令从 4 个扩到 **34 命令 / 36 门位**；10 处 `--dry-run` 条件式免门；`flow repair` / `flow checkpoint restore` 带「状态不可读」豁免（否则 strict 死锁：账本只在 `isLoaded()` 时写）；`flow repair --backup` 修数据安全（dry-run 与损坏态均跳过复制，避免覆盖唯一可用 `.bak`）。② **`lint req` 机制**：新增 `src/core/lint-req.ts` + 出口 #41；前导 token 串解析（**允许下划线**）、用 commander `registeredArguments` 判定参数起点、A 类硬错 / B 类 advisory 分层；抑制标记（行内 + 区间 + 未闭合警告）；修复「带位置参数命令行被误判」与「整 span 跳过漏检」。③ **流程健康观测**：`flow metrics` 人类输出三项代理指标（resumed 比例 / `plan_pending→plan_review` 停留 / preflight 年龄），`--json` 键集零变更；适配器 `feel_status`/`feel_next` 返回 `observability`（preflight 读在 `readSnapshot` **之前**，否则指标自测恒 0s）；`findPhaseEntry` 下沉为单一口径。门禁：全量 **91/2201**、tsc 0、eslint 新增行 0、i18n **1058**、kb 0（649）、`lint req` exit 0（166 候选/抑制 31）、build ×2、dsh verify **100/100**、`--version` 1.5.6。四阶段（114/115/116/117，均 fast）；**24 条 REV 全 closed**（计划轮 13 / 代码轮 8 / 门禁 1 / 复检 2）。**已 push（48aab33）；npm 1.5.6 已发布（CI publish，`npm view openfeel version` = 1.5.6）**
 
 - **2026-10-31** @Liuary：**v1.5.5 批次（preflight/补闸/禁 shell 写/审查独立）**——① **preflight 账本**：`src/core/preflight.ts`；`flow next`/`flow status` 写 `.openfeel/dev/.preflight.json`；`flow advance`/`plan stage add`/`req add`/`req claim` 写前校验 10 分钟窗口（`OPENFEEL_PREFLIGHT=off|warn|strict`，默认 warn 仅 TTY）。② **适配器 strict**：CLI 执行器注入 strict；`feel_status`/`feel_next` 返回 `preflight`。③ **提示段**：状态写操作只用 `feel_*`、禁止 shell 写状态、fast 单轮也需独立 reviewer（自审标 `self-review`）。门禁：全量 **84/2030**、tsc 0、i18n **1048**、kb 0（649）、build ×2、dsh **206**、`--version` 1.5.5。阶段 v1.5.5-stage-113（fast）。**已 push（2436669）；npm 1.5.5 已发布（CI publish）**
 

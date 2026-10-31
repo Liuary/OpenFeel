@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.0**（工作流瘦身） — ① **只有 Feel 写状态**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel 更新，子 agent 一律不读不写（上下文走派发 prompt / 交接文档）；② **日志不再强制**：不写流水账，`flow.json.log` 由 CLI 维护（最近 200 条）；③ **节点 + 30 分钟同步**：`openfeel dev sync` 写简要状态块，`flow advance` 在开始/转折/结束或到期时自动同步，`feel_next` 返回 `statusSync.due`。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.1**（v1.5.0 工作流瘦身 + 发布链路热修） — ① **只有 Feel 写状态**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel 更新，子 agent 一律不读不写；② **日志不再强制**：`flow.json.log` 由 CLI 维护（最近 200 条）；③ **节点 + 30 分钟同步**：`openfeel dev sync` 写简要状态块，`flow advance` 在开始/转折/结束或到期时自动同步。v1.5.1 仅修复 v1.5.0 的 `package-lock`（`natural-compare`）导致 CI `npm ci` 失败。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

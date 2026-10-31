@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.5.0 — 工作流瘦身**｜ Only-Feel 写状态 / 日志降级为简要记录 / `dev_last` 节点 + 30 分钟 CLI 同步 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.0 ｜ **未 push；未 npm publish**
-> 统计：测试 82 文件 / **2021 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 89 + 55 + 10 = **196 断言** ｜ `lint i18n` **1047** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.0**
+> OpenFeel **v1.5.1 — 发布链路热修**｜ v1.5.0 工作流瘦身（Only-Feel 写状态 / 日志降级 / 30 分钟同步）+ 修复 package-lock ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.1 ｜ **未 push；未 npm publish**
+> 统计：测试 82 文件 / **2021 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 89 + 55 + 10 = **196 断言** ｜ `lint i18n` **1047** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.1**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-31** @Liuary：**v1.5.1 发布链路热修**——v1.5.0 发版脚本全局替换 `1.4.0→1.5.0` 时误改 `package-lock.json` 的 `natural-compare`（真实 1.4.0）为不存在的 `1.5.0`，CI `npm ci` `ETARGET` 失败、publish 未执行。仅回改三处（两个依赖范围 + 一个 version），`npm ci` 恢复、全量 **82/2021** 复跑绿；功能与 1.5.0 一致。阶段 v1.5.1-stage-109（fast）。**未 push；未 npm publish**
 
 - **2026-10-31** @Liuary：**v1.5.0 工作流瘦身**——① **只有 Feel 写状态**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 仅由 Feel 更新；子 agent 一律不读不写（上下文走派发 prompt / 交接文档）。② **日志降级**：不写逐操作流水账；`flow.json.log` 由 CLI 维护，仅保留最近 **200** 条；`openfeel-logging` / `openfeel-memory` 改为「默认不写 / 按需」。③ **节点 + 30 分钟同步**：新增 `openfeel dev sync` / `dev status` + `src/core/dev-status.ts`；`flow advance` 在首次 / 超过 30 分钟 / 节点相位（`exec_running` / `review_passed` / `archiving` / `done`）自动写 `dev_last.md` 的 CLI 受管状态块（`.sync.json` 记录时间）；适配器 `feel_next` / `feel_status` 暴露 `statusSync.due`。④ 提示词瘦身：agents-md / Claude constraint / 4 份 feel.md / workspace / context-hygiene。门禁：全量 **82/2021**、tsc 0、i18n **1047**、kb 0（649）、build ×2、dsh **196**、`--version` 1.5.0；E2E（advance 自动同步 / 过期 due / dev sync）通过。阶段 v1.5.0-stage-108（fast）。**未 push；未 npm publish**
 

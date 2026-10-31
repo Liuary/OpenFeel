@@ -399,6 +399,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-10-31 | patterns | [REV-001] 热修自审：仅回改 natural-compare 三处；npm ci + 82/2021 复跑绿（无 blocking） |
 | 2026-10-31 | patterns | [REV-001] 代码自审：Only-Feel 归属 / dev 同步幂等与 30min due / log 200 上限 / 提示词瘦身（无 blocking；2021 单测 + dsh 196 + E2E） |
 | 2026-10-30 | patterns | [REV-001] 代码自审：静态资源分类矩阵 / 源码底线 / 混合从严 / audit / chore 不越相位（无 blocking；2013 单测 + dsh 194 + 验收 a–d） |
 | 2026-10-30 | patterns | [REV-001] 代码自审：提示段/模板/工具名映射口径一致（无 blocking；2010 单测 + dsh 185） |

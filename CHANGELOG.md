@@ -4,6 +4,16 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.5.1] - 2026-10-31
+
+> 补丁版本（Patch）：**发布链路热修**——1.5.0 发版脚本把 `package-lock.json` 中所有 `1.4.0` 误替换为 `1.5.0`，导致 `natural-compare@1.5.0`（不存在）使 CI `npm ci` 失败、publish 未执行。仅回改锁文件三处；功能与 1.5.0 完全一致。
+
+### Fixed
+- [stage-109] `package-lock.json`：`natural-compare` 依赖范围 `^1.5.0 → ^1.4.0`（两处）+ `node_modules/natural-compare.version 1.5.0 → 1.4.0`；`npm ci` 恢复成功，CI publish 可重新执行。
+
+### Changed
+- [stage-109] `dsh/package.json`：version `1.5.1`、`requiresCli: ">=1.5.1"`。
+
 ## [1.5.0] - 2026-10-31
 
 > 次版本（Minor）：**工作流瘦身**——只有 Feel 写状态；日志降级为简要记录；子 agent 不再读写 `dev_last`；状态记录改为「开始 / 转折 / 结束」节点 + CLI 每 30 分钟自动同步。不改相位机 / 审查 / 归档语义；无新增 JSON 出口。

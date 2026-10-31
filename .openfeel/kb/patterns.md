@@ -4561,3 +4561,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-001] 代码自审：Only-Feel 归属 / dev 同步幂等与 30min due / log 200 上限 / 提示词瘦身（无 blocking；2021 单测 + dsh 196 + E2E） (2026-10-31)
 
 归档自阶段 v1.5.0-stage-108
+
+## [+] [REV-001] 热修自审：仅回改 natural-compare 三处；npm ci + 82/2021 复跑绿（无 blocking） (2026-10-31)
+
+归档自阶段 v1.5.1-stage-109

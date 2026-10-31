@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T08:13:08.430Z",
-    "revision": 1482,
+    "updated": "2026-10-31T08:39:02.385Z",
+    "revision": 1500,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -25,111 +25,49 @@
       "v1.3.3",
       "v1.3.4",
       "v1.3.5",
-      "v1.4.0"
+      "v1.4.0",
+      "v1.5.0"
     ]
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.0-stage-108",
+      "stage": "v1.5.1-stage-109",
       "op": ""
     },
     "retry": 0
   },
   "stages": {
-    "v1.5.0-stage-108": {
-      "name": "v1.5.0-stage-108",
-      "phase": "done",
-      "status": "done",
+    "v1.5.1-stage-109": {
+      "name": "v1.5.1-stage-109",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
-      "requirement_id": "REQ-009",
+      "requirement_id": "REQ-010",
       "stats": {
-        "start_time": "2026-10-31T08:03:25.678Z",
-        "end_time": "2026-10-31T08:13:08.404Z",
-        "duration_ms": 582726
+        "start_time": "2026-10-31T08:37:08.983Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
   "reviews": [
     {
       "id": "REV-001",
-      "op": "v1.5.0-stage-108",
-      "stage": "v1.5.0-stage-108",
+      "op": "v1.5.1-stage-109",
+      "stage": "v1.5.1-stage-109",
       "status": "resolved",
       "priority": "medium",
-      "title": "代码自审：Only-Feel 归属 / dev 同步幂等与 30min due / log 200 上限 / 提示词瘦身（无 blocking；2021 单测 + dsh 196 + E2E）",
+      "title": "热修自审：仅回改 natural-compare 三处；npm ci + 82/2021 复跑绿（无 blocking）",
       "filed_by": "cli",
-      "filed_at": "2026-10-31T08:13:02.861Z",
+      "filed_at": "2026-10-31T08:39:00.602Z",
       "canAutoFix": false,
       "blocking": false
     }
   ],
   "log": [
-    {
-      "time": "2026-10-01T01:34:29.010Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T01:36:22.852Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-008",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T01:39:32.556Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-009",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T01:42:05.952Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-011",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T01:47:49.610Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-010",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T02:36:11.750Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-012",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T02:40:56.817Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-53.op-001",
-        "attempts": 1
-      }
-    },
     {
       "time": "2026-10-01T02:45:33.239Z",
       "agent": "openfeel-executor",
@@ -1893,15 +1831,6 @@
       }
     },
     {
-      "time": "2026-10-31T08:03:14.992Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.0-stage-108",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-10-31T08:03:23.870Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1911,22 +1840,110 @@
       }
     },
     {
-      "time": "2026-10-31T08:03:25.675Z",
+      "time": "2026-10-31T08:13:09.891Z",
+      "agent": "cli",
+      "action": "archive_flow_version",
+      "detail": {
+        "version": "v1.5.0",
+        "stages": 1,
+        "reviews": 1,
+        "log": 9
+      }
+    },
+    {
+      "time": "2026-10-31T08:13:10.733Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-009",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-31T08:13:11.106Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-009",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-31T08:13:11.481Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-009",
+        "fields": [
+          "workflow_mode"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-31T08:13:11.860Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-009",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-31T08:36:53.945Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-010",
+        "title": "1.5.1：修复 package-lock natural-compare 版本误替换（CI npm ci 失败），重发 1.5.1"
+      }
+    },
+    {
+      "time": "2026-10-31T08:36:56.581Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-010",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-31T08:36:57.097Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.1-stage-109",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T08:37:00.850Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.1-stage-109",
+        "requirementId": "REQ-010"
+      }
+    },
+    {
+      "time": "2026-10-31T08:37:08.974Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.0-stage-108",
+        "stageName": "v1.5.1-stage-109",
         "from": "plan_pending",
         "to": "plan_review",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
     },
     {
-      "time": "2026-10-31T08:03:28.112Z",
+      "time": "2026-10-31T08:37:09.484Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.0-stage-108",
+        "stageName": "v1.5.1-stage-109",
         "from": "plan_review",
         "to": "plan_passed",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1934,11 +1951,11 @@
       }
     },
     {
-      "time": "2026-10-31T08:03:30.934Z",
+      "time": "2026-10-31T08:37:09.993Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.0-stage-108",
+        "stageName": "v1.5.1-stage-109",
         "from": "plan_passed",
         "to": "exec_running",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1946,11 +1963,11 @@
       }
     },
     {
-      "time": "2026-10-31T08:13:03.651Z",
+      "time": "2026-10-31T08:39:01.671Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.0-stage-108",
+        "stageName": "v1.5.1-stage-109",
         "from": "exec_running",
         "to": "review_pending",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1958,11 +1975,11 @@
       }
     },
     {
-      "time": "2026-10-31T08:13:03.673Z",
+      "time": "2026-10-31T08:39:01.693Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.0-stage-108",
+        "stageName": "v1.5.1-stage-109",
         "from": "review_pending",
         "to": "review_passed",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1970,11 +1987,11 @@
       }
     },
     {
-      "time": "2026-10-31T08:13:04.024Z",
+      "time": "2026-10-31T08:39:02.028Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.0-stage-108",
+        "stageName": "v1.5.1-stage-109",
         "from": "review_passed",
         "to": "archiving",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1982,27 +1999,15 @@
       }
     },
     {
-      "time": "2026-10-31T08:13:04.409Z",
+      "time": "2026-10-31T08:39:02.385Z",
       "agent": "openfeel-archiver",
       "action": "archive_stage",
       "detail": {
-        "stageName": "v1.5.0-stage-108",
+        "stageName": "v1.5.1-stage-109",
         "opsCount": 0,
         "reviewsCount": 1,
         "knowledgeCount": 1,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.0-stage-108.md"
-      }
-    },
-    {
-      "time": "2026-10-31T08:13:08.397Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.0-stage-108",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.1-stage-109.md"
       }
     }
   ],
@@ -2112,15 +2117,28 @@
     {
       "id": "REQ-009",
       "title": "工作流瘦身：Only-Feel 写状态 / 日志降级为简要记录 / dev_last 节点+30 分钟 CLI 同步，发布 1.5.0",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-31T08:03:11.520Z",
-      "updated_at": "2026-10-31T08:03:14.529Z",
+      "updated_at": "2026-10-31T08:13:11.860Z",
       "target_version": "v1.5.0",
       "priority": "P0",
-      "workflow_mode": "fast",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-009.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T08:03:14.529Z"
+    },
+    {
+      "id": "REQ-010",
+      "title": "1.5.1：修复 package-lock natural-compare 版本误替换（CI npm ci 失败），重发 1.5.1",
+      "status": "draft",
+      "created_at": "2026-10-31T08:36:53.945Z",
+      "updated_at": "2026-10-31T08:36:56.581Z",
+      "target_version": "v1.5.1",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-010.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-31T08:36:56.581Z"
     }
   ]
 }

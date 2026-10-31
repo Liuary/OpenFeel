@@ -136,6 +136,70 @@ function safeObservability(snapshot) {
 }
 
 /**
+ * `feel_status` 的默认精简视图（v1.5.7）：只保留调度必需字段。
+ *
+ * 去掉的三块日常用不到、但每次都占大量上下文的冗余：
+ * - `mode.transitionsByMode`（三份转移表，约 60 行）→ 需要时用 `feel_flow action=phases` 现取；
+ * - `recovery.handoff`（交接摘要全文）→ 需要时读 `dev_last/pending.md`；
+ * - `observability`（preflight/statusSync 的复制副本，与顶层字段重复）。
+ *
+ * 需要完整快照时传 `detail: "full"`。
+ * @param {Record<string, any>} snapshot
+ * @returns {Record<string, any>}
+ */
+export function compactStatusSnapshot(snapshot) {
+  const focus = snapshot?.focus ?? {};
+  const mode = snapshot?.mode ?? {};
+  const recovery = snapshot?.recovery ?? {};
+  const compact = {
+    schemaVersion: snapshot?.schemaVersion,
+    project: snapshot?.project,
+    pipeline: snapshot?.pipeline,
+    focus: {
+      stage: focus.stage ?? '',
+      phase: focus.phase ?? '',
+      phaseLabel: focus.phaseLabel ?? '',
+      status: focus.status ?? '',
+      deps: focus.deps ?? [],
+      workflowMode: focus.workflowMode ?? null,
+      reviewTier: focus.reviewTier ?? null,
+      effectiveReviewTier: focus.effectiveReviewTier ?? null,
+      legalNextPhases: focus.legalNextPhases ?? [],
+      suggestedCommand: focus.suggestedCommand ?? null,
+      responsibleAgent: focus.responsibleAgent ?? null,
+      guards: focus.guards ?? [],
+      blockingReviews: focus.blockingReviews ?? [],
+    },
+    mode: {
+      current: mode.current ?? null,
+      source: mode.source ?? null,
+      skippedPhases: mode.skippedPhases ?? [],
+    },
+    stages: snapshot?.stages ?? [],
+    statusSync: snapshot?.statusSync ?? null,
+    workflowGate: snapshot?.workflowGate ?? null,
+    preflight: snapshot?.preflight ?? null,
+    recovery: {
+      stage: recovery.stage ?? null,
+      phase: recovery.phase ?? null,
+      requirement: recovery.requirement ?? null,
+      lastTransition: recovery.lastTransition ?? null,
+      lastError: recovery.lastError ?? null,
+      hasDevLast: recovery.hasDevLast === true,
+      nextAction: recovery.nextAction ?? null,
+    },
+    revision: snapshot?.revision ?? null,
+    snapshotAt: snapshot?.snapshotAt ?? null,
+    stale: snapshot?.stale === true,
+  };
+  // 需求概览是显式开关（with_requirements），compact 档同样只在请求时带上
+  if (snapshot?.requirements !== undefined) {
+    compact.requirements = snapshot.requirements;
+  }
+  return compact;
+}
+
+/**
  * 构造全部工具定义。
  *
  * @param {FeelToolContext} context
@@ -175,11 +239,15 @@ export function createTools(context) {
   const feelStatus = {
     name: 'feel_status',
     description:
-      '读取 OpenFeel 项目当前状态快照：宏观 pipeline 相位、**每个阶段的相位**（调度目标是 phase!=done 的活跃阶段）、当前工作流模式与来源、该阶段在此模式下的**合法下一相位**、负责 Agent、审查档位、守卫与阻塞审查。调度字段优先消费 `flow next --json` 权威输出（失败时回退 `flow status`/`flow mode`）。做任何推进/委派前先调用它。',
+      '读取 OpenFeel 项目状态快照：宏观 pipeline 相位、**每个阶段的相位**（调度目标是 phase!=done 的活跃阶段）、当前工作流模式与来源、该阶段在此模式下的**合法下一相位**、负责 Agent、审查档位、守卫与阻塞审查。默认返回 **compact** 档（调度必需字段）；`detail: "full"` 返回完整快照（含模式转移表 / 交接摘要 / 观测摘要）。模式来源的转移表请按需用 `feel_flow action=phases` / `action=mode` 现取。调度字段优先消费 `flow next --json` 权威输出（失败时回退 `flow status`/`flow mode`）。做任何推进/委派前先调用它。',
     parameters: {
       action: stringConst('status', '固定为 status（读取快照）。'),
       project: string('项目根目录（相对会话工作区或绝对路径）。缺省时从会话工作区向上回溯 .openfeel/。'),
       with_requirements: boolean('是否附带需求概览（多一次 CLI 调用）。'),
+      detail: stringEnum(
+        ['compact', 'full'],
+        '输出档位：compact=默认，只给调度必需字段（省上下文）；full=完整快照（含 mode.transitionsByMode / recovery.handoff / observability）。',
+      ),
     },
     output: { schema: envelopeSchema(), render: renderEnvelope },
     async execute(args, exec) {
@@ -206,8 +274,9 @@ export function createTools(context) {
         const focus = snapshot.focus;
         const gateWarning = snapshot.workflowGate.required ? '⚠ 无活跃阶段：非只读任务先 feel_status→建阶段。' : '';
         const staleWarning = snapshot.stale ? '⚠ 快照为降级（flow next 缺失），以 flow status 为准。' : '';
+        const data = args.detail === 'full' ? snapshot : compactStatusSnapshot(snapshot);
         return {
-          data: snapshot,
+          data,
           summary: `${staleWarning}${gateWarning}pipeline=${snapshot.pipeline.phase || '(空)'} 活跃阶段=${focus.stage || '(无)'} phase=${focus.phase || '(空)'} mode=${snapshot.mode.current}(${snapshot.mode.source}) 负责=${focus.responsibleAgent} 可推进到=[${(focus.legalNextPhases ?? []).join(', ') || '无'}]`,
           next: focus.phase === 'done' || focus.phase === ''
             ? null

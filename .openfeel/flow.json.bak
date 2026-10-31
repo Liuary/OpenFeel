@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T16:36:18.430Z",
-    "revision": 1739,
+    "updated": "2026-10-31T16:44:01.911Z",
+    "revision": 1755,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -38,7 +38,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.5.7-stage-119",
+      "stage": "v1.5.7-stage-120",
       "op": ""
     },
     "retry": 0
@@ -46,14 +46,28 @@
   "stages": {
     "v1.5.7-stage-119": {
       "name": "v1.5.7-stage-119",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "requirement_id": "REQ-021",
       "stats": {
         "start_time": "2026-10-31T16:11:58.134Z",
+        "end_time": "2026-10-31T16:36:24.643Z",
+        "duration_ms": 1466509
+      }
+    },
+    "v1.5.7-stage-120": {
+      "name": "v1.5.7-stage-120",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-022",
+      "stats": {
+        "start_time": "2026-10-31T16:41:36.350Z",
         "end_time": "",
         "duration_ms": 0
       }
@@ -71,6 +85,18 @@
       "filed_at": "2026-10-31T16:32:50.391Z",
       "canAutoFix": false,
       "blocking": true
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.7-stage-120",
+      "stage": "v1.5.7-stage-120",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[self-review] feel_status 默认 compact（去 transitionsByMode/handoff/observability）+ detail=full；contract 44/44、tsc 通过",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T16:43:49.650Z",
+      "canAutoFix": false,
+      "blocking": false
     }
   ],
   "log": [
@@ -1849,6 +1875,163 @@
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-10-31T16:36:24.637Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-119",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:36:49.106Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-021",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-31T16:37:11.318Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-021",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-31T16:37:15.838Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-021",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-31T16:41:13.152Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-022",
+        "title": "feel_status 默认精简：去掉转移表/handoff 全文，detail=full 保留全量"
+      }
+    },
+    {
+      "time": "2026-10-31T16:41:21.388Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-022",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-31T16:41:28.797Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.7-stage-120",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T16:41:32.400Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.7-stage-120",
+        "requirementId": "REQ-022"
+      }
+    },
+    {
+      "time": "2026-10-31T16:41:36.348Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-120",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T16:41:40.894Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-120",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:41:45.215Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-120",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:43:44.594Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-120",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:43:53.154Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-002"
+      }
+    },
+    {
+      "time": "2026-10-31T16:43:56.733Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-120",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:44:01.903Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-120",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2109,15 +2292,28 @@
     {
       "id": "REQ-021",
       "title": "stage add 静默复用已归档阶段的目录/编号：应拒绝并提示换号",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-31T16:11:50.334Z",
-      "updated_at": "2026-10-31T16:11:51.697Z",
+      "updated_at": "2026-10-31T16:37:15.837Z",
       "target_version": "v1.5.7",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-021.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T16:11:51.697Z"
+    },
+    {
+      "id": "REQ-022",
+      "title": "feel_status 默认精简：去掉转移表/handoff 全文，detail=full 保留全量",
+      "status": "draft",
+      "created_at": "2026-10-31T16:41:13.151Z",
+      "updated_at": "2026-10-31T16:41:21.388Z",
+      "target_version": "v1.5.7",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-022.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-31T16:41:21.388Z"
     }
   ]
 }

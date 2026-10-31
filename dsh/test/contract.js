@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { FeelCli } from '../lib/adapters/cli.js';
-import { createTools } from '../lib/tools/index.js';
+import { compactStatusSnapshot, createTools } from '../lib/tools/index.js';
 
 /** 默认的 DSH 包目录（宿主 asar 提取位置）。 */
 const DEFAULT_DSH_MODULES = join(process.env.TEMP ?? '/tmp', 'dsh-asar', 'dsh', 'node_modules', '@deepseek-ai');
@@ -270,6 +270,55 @@ async function main() {
         assert(violations.length > 0, `${tool.name} 关闭了 additionalProperties 却接受未知属性`);
       }
     }
+  });
+
+  await check('feel_status 默认 compact：去转移表 / 交接全文 / 观测副本', () => {
+    /** 代表真实快照形态的最小样本（含会被 compact 丢弃的三块冗余）。 */
+    const sample = {
+      schemaVersion: 1,
+      project: { root: '/tmp/p', initialized: true },
+      pipeline: { phase: 'active', currentStage: 'v1.0.0-stage-01', activeStageCount: 1, doneStageCount: 0, totalStages: 1 },
+      focus: {
+        stage: 'v1.0.0-stage-01', phase: 'exec_running', phaseLabel: '执行中', status: 'planned', deps: [],
+        workflowMode: 'fast', reviewTier: 'lean', effectiveReviewTier: 'full',
+        legalNextPhases: ['review_pending'], suggestedCommand: 'openfeel flow advance --stage v1.0.0-stage-01 --to review_pending',
+        responsibleAgent: 'openfeel-executor', guards: [], blockingReviews: [],
+      },
+      mode: {
+        current: 'fast', source: 'status.md', skippedPhases: ['scheme_pending'],
+        transitionsByMode: { full: { plan_pending: ['plan_review'] }, fast: {}, general: {} },
+      },
+      stages: [],
+      statusSync: { due: false, lastSync: 'x', intervalMinutes: 30 },
+      workflowGate: { required: false },
+      preflight: { ok: true, at: 'x', ageMs: 5, mode: 'warn' },
+      recovery: {
+        stage: null, phase: null, requirement: null, lastTransition: null, lastError: null,
+        handoff: '## 公共交接区（大段全文）', hasDevLast: true, nextAction: null,
+      },
+      observability: { schemaVersion: 1, summary: 'x' },
+      revision: 3,
+      snapshotAt: 'x',
+      stale: false,
+    };
+    const compact = compactStatusSnapshot(sample);
+    assert(compact.mode.transitionsByMode === undefined, 'compact 不应含 mode.transitionsByMode');
+    assert(compact.recovery.handoff === undefined, 'compact 不应含 recovery.handoff 全文');
+    assert(compact.observability === undefined, 'compact 不应含 observability 副本');
+    assert(compact.focus.legalNextPhases[0] === 'review_pending', 'compact 必须保留 legalNextPhases');
+    assert(compact.mode.current === 'fast' && compact.mode.source === 'status.md', 'compact 必须保留 mode.current/source');
+    assert(compact.recovery.hasDevLast === true, 'compact 必须保留 hasDevLast');
+    assert(compact.preflight.ok === true, 'compact 必须保留 preflight');
+    assert(compact.revision === 3 && compact.stale === false, 'compact 必须保留 revision/stale');
+    assert(compact.requirements === undefined, 'compact 未请求需求时不应含 requirements');
+  });
+
+  await check('feel_status 暴露 detail=compact|full 开关', () => {
+    const status = tools.find((tool) => tool.name === 'feel_status');
+    assert(status, '缺少 feel_status 工具');
+    const detail = status.parameters.properties.detail;
+    assert(detail && detail.type === 'string' && Array.isArray(detail.enum), 'detail 参数 schema 缺失');
+    assert(detail.enum.includes('compact') && detail.enum.includes('full'), 'detail 枚举应为 compact|full');
   });
 
   process.stdout.write('\n' + '='.repeat(60) + '\n');

@@ -1,0 +1,146 @@
+{
+  "version": "v1.5.2",
+  "stages": {
+    "v1.5.2-stage-110": {
+      "name": "v1.5.2-stage-110",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-011",
+      "stats": {
+        "start_time": "2026-10-31T08:53:21.082Z",
+        "end_time": "2026-10-31T09:01:29.816Z",
+        "duration_ms": 488734
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.2-stage-110",
+      "stage": "v1.5.2-stage-110",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "入口闸自审：workflowGate / 研究产物守卫 / 拒绝审计 / 提示段 / 调研文档（无 blocking；2021 单测 + dsh 201 + E2E）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T09:01:27.956Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-10-31T08:53:11.327Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:21.080Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:21.460Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:21.856Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:28.698Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:28.721Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:29.056Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:29.416Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.2-stage-110.md"
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:29.810Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 1,
+    "log": 9
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-10-31T09:01:31.105Z"
+}

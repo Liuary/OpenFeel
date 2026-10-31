@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T09:01:29.416Z",
-    "revision": 1520,
+    "updated": "2026-10-31T09:01:29.843Z",
+    "revision": 1521,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -31,7 +31,7 @@
     ]
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.5.2-stage-110",
       "op": ""
@@ -41,16 +41,16 @@
   "stages": {
     "v1.5.2-stage-110": {
       "name": "v1.5.2-stage-110",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "requirement_id": "REQ-011",
       "stats": {
         "start_time": "2026-10-31T08:53:21.082Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-10-31T09:01:29.816Z",
+        "duration_ms": 488734
       }
     }
   },
@@ -69,15 +69,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-10-01T08:25:41.306Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-54.op-002",
-        "attempts": 1
-      }
-    },
     {
       "time": "2026-10-01T08:28:20.508Z",
       "agent": "openfeel-executor",
@@ -2014,6 +2005,18 @@
         "reviewsCount": 1,
         "knowledgeCount": 1,
         "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.2-stage-110.md"
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:29.810Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

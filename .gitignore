@@ -12,6 +12,8 @@ coverage/
 .openfeel/update_conflicts/
 # preflight 账本（读命令副作用，运行时生成，不纳入版本管理）
 .openfeel/dev/.preflight.json
+# 写入门禁审计流水（v1.4.0 起 guard 每次放行/拒绝追加一行；运行时产物，逐次变更不应产生仓库 churn）
+.openfeel/log/guard-audit.jsonl
 
 # DSH 适配器目录内的运行时残留：在 dsh/ 下跑 CLI 会建 .openfeel/tmp/session.json，
 # 它不是 OpenFeel 工作区，根级 .openfeel/tmp/ 规则因带斜杠而锚定，需单独声明。

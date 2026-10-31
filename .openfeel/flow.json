@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T10:03:36.770Z",
-    "revision": 1586,
+    "updated": "2026-10-31T10:12:03.657Z",
+    "revision": 1590,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -1928,6 +1928,44 @@
         "from": "in_progress",
         "to": "done"
       }
+    },
+    {
+      "time": "2026-10-31T10:11:49.482Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-015",
+        "title": "1.5.6 批次：preflight 全覆盖（其余写命令统一 helper + warn/off 集成测试）"
+      }
+    },
+    {
+      "time": "2026-10-31T10:11:49.905Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-016",
+        "title": "1.5.6：preflight / 调度观测指标（拒绝率、feel_next 调用、主会话直写）"
+      }
+    },
+    {
+      "time": "2026-10-31T10:12:03.202Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-015",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-31T10:12:03.657Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-016",
+        "from": "draft",
+        "to": "scheduled"
+      }
     }
   ],
   "requirements": [
@@ -2110,6 +2148,28 @@
       "body_path": ".openfeel/requirements/REQ-014.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T09:47:52.473Z"
+    },
+    {
+      "id": "REQ-015",
+      "title": "1.5.6 批次：preflight 全覆盖（其余写命令统一 helper + warn/off 集成测试）",
+      "status": "scheduled",
+      "created_at": "2026-10-31T10:11:49.481Z",
+      "updated_at": "2026-10-31T10:12:03.201Z",
+      "target_version": "v1.5.6",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-015.md"
+    },
+    {
+      "id": "REQ-016",
+      "title": "1.5.6：preflight / 调度观测指标（拒绝率、feel_next 调用、主会话直写）",
+      "status": "scheduled",
+      "created_at": "2026-10-31T10:11:49.905Z",
+      "updated_at": "2026-10-31T10:12:03.657Z",
+      "target_version": "v1.5.6",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-016.md"
     }
   ]
 }

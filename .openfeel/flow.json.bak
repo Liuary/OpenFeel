@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T10:03:36.412Z",
-    "revision": 1585,
+    "updated": "2026-10-31T10:12:03.202Z",
+    "revision": 1589,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -1918,6 +1918,44 @@
           "workflow_mode"
         ]
       }
+    },
+    {
+      "time": "2026-10-31T10:03:36.769Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-014",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-31T10:11:49.482Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-015",
+        "title": "1.5.6 批次：preflight 全覆盖（其余写命令统一 helper + warn/off 集成测试）"
+      }
+    },
+    {
+      "time": "2026-10-31T10:11:49.905Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-016",
+        "title": "1.5.6：preflight / 调度观测指标（拒绝率、feel_next 调用、主会话直写）"
+      }
+    },
+    {
+      "time": "2026-10-31T10:12:03.202Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-015",
+        "from": "draft",
+        "to": "scheduled"
+      }
     }
   ],
   "requirements": [
@@ -2091,15 +2129,37 @@
     {
       "id": "REQ-014",
       "title": "1.5.5 批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性（统一发布）",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-10-31T09:47:49.464Z",
-      "updated_at": "2026-10-31T10:03:36.412Z",
+      "updated_at": "2026-10-31T10:03:36.769Z",
       "target_version": "v1.5.5",
       "priority": "P0",
       "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-014.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T09:47:52.473Z"
+    },
+    {
+      "id": "REQ-015",
+      "title": "1.5.6 批次：preflight 全覆盖（其余写命令统一 helper + warn/off 集成测试）",
+      "status": "scheduled",
+      "created_at": "2026-10-31T10:11:49.481Z",
+      "updated_at": "2026-10-31T10:12:03.201Z",
+      "target_version": "v1.5.6",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-015.md"
+    },
+    {
+      "id": "REQ-016",
+      "title": "1.5.6：preflight / 调度观测指标（拒绝率、feel_next 调用、主会话直写）",
+      "status": "draft",
+      "created_at": "2026-10-31T10:11:49.905Z",
+      "updated_at": "2026-10-31T10:11:49.905Z",
+      "target_version": "v1.5.6",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-016.md"
     }
   ]
 }

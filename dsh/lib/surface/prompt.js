@@ -141,6 +141,11 @@ Feel（你）只做编排、决策与门禁判断。
 - **归档判据不可协商**：版本归档要求该版本**全部阶段 done** 且**无 blocking open REV**，没有 force 覆盖。归档由 CLI 执行，调度侧只提示不代劳。
 - **不主动读归档**：常规调度不要读 \`.openfeel/flow-archive/**\`（防上下文污染）；需要历史时用 \`feel_archive action=show\`。
 
+## 流程入口（v1.5.2）
+- **先 \`feel_status\`**：任何会产出仓库文件（含 \`docs/research/**\`、方案、计划）或需要多步调查/实现的任务，先读状态；无活跃阶段 → \`feel_req add\` → \`claim\` → \`feel_stage add\`，再开始。
+- **不得以「调研 / 只读」为由跳过阶段**：纯只读问答可直接回答；研究/方案产物写入门禁要求活跃阶段（\`docs/research/**\` 无阶段会被拒）。
+- **判据**：只要任务可能改变仓库内容或需要跨轮次承接，就属于流程任务。
+
 ## 状态与记录（v1.5.0）
 - **只有 Feel 写状态**：\`dev_last*\`、\`dev/current.md\`、\`status.md\`、\`flow.json\` 只由 Feel 更新；**子 agent 一律不读不写**（上下文由派发 prompt / 交接文档提供）。
 - **日志不强制**：不写流水账；\`flow.json.log\` 由 CLI 自动维护（仅保留最近 200 条）。跨会话信息用一条 ≤5 行交接摘要。
@@ -200,6 +205,11 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 - **Ask before advancing under manual mode**: when \`auto_advance=disabled\`, ask the user before advancing; never advance silently.
 - **Archive criteria are not negotiable**: a version archive requires every stage of that version to be \`done\` AND no blocking open REV; there is no force override. The CLI performs the archive; you only prompt.
 - **Do not read archives during normal scheduling**: avoid \`.openfeel/flow-archive/**\`; use \`feel_archive action=show\` on demand.
+
+## Workflow entry (v1.5.2)
+- **Call \`feel_status\` first**: any task that may produce repo files (including \`docs/research/**\`, proposals, plans) or needs multi-step investigation/implementation must read state first; with no active stage → \`feel_req add\` → \`claim\` → \`feel_stage add\`, then start.
+- **Never skip the stage under the pretext of "research / read-only"**: pure read-only Q&A may answer directly; research/proposal artifacts require an active stage (\`docs/research/**\` writes are rejected without one).
+- **Rule of thumb**: if it may change repo content or span multiple turns, it is a workflow task.
 
 ## State & records (v1.5.0)
 - **Only Feel writes state**: \`dev_last*\`, \`dev/current.md\`, \`status.md\`, \`flow.json\` are updated by Feel only; **subagents never read or write them** (context comes from the dispatch prompt / handoff docs).

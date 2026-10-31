@@ -79,6 +79,22 @@ function isDocPath(absolute, cwd) {
 }
 
 /**
+ * 是否为研究/方案产物（v1.5.2）：工作区根级 `docs/research/**`。
+ *
+ * 这类文件是**阶段交付物**而非随手笔记：即使 doc 层原本任意相位可写，
+ * 无活跃阶段时也要求先建立阶段，防止以「只读调研」为由跳过流程。
+ * @param {string} absolute 已归一化绝对路径
+ * @param {string} cwd 已归一化工作区
+ * @returns {boolean}
+ */
+function isResearchArtifactPath(absolute, cwd) {
+  const root = normalizeTarget(cwd, 'docs/research');
+  return absolute === root
+    || absolute.startsWith(`${root}\\`)
+    || absolute.startsWith(`${root}/`);
+}
+
+/**
  * 是否位于工作区内（bootstrap 例外边界；防 `..`/绝对路径写出工作区）。
  * @param {string} absolute 已归一化绝对路径
  * @param {string} cwd 已归一化工作区
@@ -114,10 +130,10 @@ function isExemptPath(absolute, cwd) {
 }
 
 /**
- * 写入门禁审计（v1.4.0）：豁免放行时追加 JSONL 到 `.openfeel/log/guard-audit.jsonl`。
- * best-effort：任何写失败都吞掉，不影响放行结果。
+ * 写入门禁审计（v1.4.0 / v1.5.2）：放行与拒绝都追加 JSONL 到 `.openfeel/log/guard-audit.jsonl`。
+ * best-effort：任何写失败都吞掉，不影响判定结果。
  * @param {string} cwd 已归一化工作区
- * @param {{ tool: string, reason: 'doc-asset'|'chore', phase: string, paths: string[] }} event
+ * @param {{ event?: 'guard_allow'|'guard_deny', tool: string, reason: string, phase: string, paths: string[] }} event
  */
 function recordGuardAudit(cwd, event) {
   try {
@@ -127,7 +143,7 @@ function recordGuardAudit(cwd, event) {
     }
     const entry = {
       time: new Date().toISOString(),
-      event: 'guard_allow',
+      event: event.event ?? 'guard_allow',
       tool: event.tool,
       reason: event.reason,
       phase: event.phase,
@@ -483,6 +499,21 @@ export function createOpenFeelGuard(options = {}) {
     }
 
     const active = activeStages(flow.value);
+    // v1.5.2 入口闸：研究/方案产物（docs/research/**）是阶段交付物，无活跃阶段时不得写入；
+    // chore 也不能绕过（在下方 chore 放行之前判定）。
+    if (active.length === 0 && targets.some((target) => isResearchArtifactPath(target, normalizedCwd))) {
+      recordGuardAudit(normalizedCwd, {
+        event: 'guard_deny',
+        tool: name,
+        reason: 'research-needs-stage',
+        phase: 'done',
+        paths: targets,
+      });
+      return t(
+        'OpenFeel 写入门禁：研究/方案产物（docs/research/**）要求有活跃阶段。请先 feel_req add → claim → feel_stage add 建立阶段，再写调研/方案。纯只读问答无需落盘。',
+        'OpenFeel write guard: research/proposal artifacts (docs/research/**) require an active stage. Create one via feel_req add → claim → feel_stage add before writing. Pure read-only Q&A needs no file.',
+      );
+    }
     if (active.length === 0) {
       if (allowGeneral && hasGeneralRequirement(flow.value)) return undefined;
       // v1.4.0 chore 通道：仅在**无活跃阶段**时生效；受保护路径已在上方拒绝。

@@ -4565,3 +4565,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-001] 热修自审：仅回改 natural-compare 三处；npm ci + 82/2021 复跑绿（无 blocking） (2026-10-31)
 
 归档自阶段 v1.5.1-stage-109
+
+## [+] [REV-001] 入口闸自审：workflowGate / 研究产物守卫 / 拒绝审计 / 提示段 / 调研文档（无 blocking；2021 单测 + dsh 201 + E2E） (2026-10-31)
+
+归档自阶段 v1.5.2-stage-110

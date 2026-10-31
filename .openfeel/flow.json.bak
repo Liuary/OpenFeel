@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T08:39:08.645Z",
-    "revision": 1505,
+    "updated": "2026-10-31T09:01:29.416Z",
+    "revision": 1520,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -33,90 +33,42 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "",
+      "stage": "v1.5.2-stage-110",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.5.2-stage-110": {
+      "name": "v1.5.2-stage-110",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-011",
+      "stats": {
+        "start_time": "2026-10-31T08:53:21.082Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.2-stage-110",
+      "stage": "v1.5.2-stage-110",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "入口闸自审：workflowGate / 研究产物守卫 / 拒绝审计 / 提示段 / 调研文档（无 blocking；2021 单测 + dsh 201 + E2E）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T09:01:27.956Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
   "log": [
-    {
-      "time": "2026-10-01T02:48:33.590Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-53.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T02:52:07.545Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-53.op-004",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T02:54:53.680Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-53.op-005",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T03:16:00.501Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-013",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T03:33:06.814Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-52.op-014",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T07:46:43.975Z",
-      "agent": "cli",
-      "action": "stage_deps_set",
-      "detail": {
-        "stage": "v1.1.2-stage-55",
-        "deps": [
-          "v1.1.2-stage-54"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-01T07:53:59.148Z",
-      "agent": "cli",
-      "action": "stage_deps_set",
-      "detail": {
-        "stage": "v1.1.2-stage-54",
-        "deps": [
-          "v1.1.2-stage-53"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-01T08:24:01.503Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-54.op-001",
-        "attempts": 1
-      }
-    },
     {
       "time": "2026-10-01T08:25:41.306Z",
       "agent": "openfeel-executor",
@@ -1923,6 +1875,146 @@
           "workflow_mode"
         ]
       }
+    },
+    {
+      "time": "2026-10-31T08:39:08.989Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-010",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:07.740Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-011",
+        "title": "调研：调度与持久化优化（上下文健康 / 跨会话恢复 / 成本），产出 1.5.2-1.5.3 迭代方案"
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:10.841Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-011",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:11.327Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:18.319Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.2-stage-110",
+        "requirementId": "REQ-011"
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:21.080Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:21.460Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T08:53:21.856Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T08:54:25.785Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-011",
+        "fields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:28.698Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:28.721Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:29.056Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:01:29.416Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.2-stage-110",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.2-stage-110.md"
+      }
     }
   ],
   "requirements": [
@@ -2044,15 +2136,28 @@
     {
       "id": "REQ-010",
       "title": "1.5.1：修复 package-lock natural-compare 版本误替换（CI npm ci 失败），重发 1.5.1",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-10-31T08:36:53.945Z",
-      "updated_at": "2026-10-31T08:39:08.645Z",
+      "updated_at": "2026-10-31T08:39:08.989Z",
       "target_version": "v1.5.1",
       "priority": "P0",
       "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-010.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T08:36:56.581Z"
+    },
+    {
+      "id": "REQ-011",
+      "title": "1.5.2：流程违规根因修复（研究/方案必须先建阶段）+ DSH 入口闸 + 调度/持久化调研",
+      "status": "draft",
+      "created_at": "2026-10-31T08:53:07.740Z",
+      "updated_at": "2026-10-31T08:54:25.785Z",
+      "target_version": "v1.5.2",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-011.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-31T08:53:10.841Z"
     }
   ]
 }

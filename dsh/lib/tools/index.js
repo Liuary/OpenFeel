@@ -14,6 +14,7 @@
 import { FeelError } from '../adapters/cli.js';
 import { legalNextPhases, planNextStep, readSnapshot } from '../adapters/dashboard.js';
 import { readStatusSync } from '../adapters/dev-status.js';
+import { computeWorkflowGate } from '../adapters/workflow-gate.js';
 import { resolveWorkspace } from '../adapters/workspace.js';
 import {
   boolean,
@@ -154,10 +155,12 @@ export function createTools(context) {
         });
         snapshot.project.root = resolved.cwd;
         snapshot.statusSync = readStatusSync(resolved.cwd);
+        snapshot.workflowGate = computeWorkflowGate(snapshot);
         const focus = snapshot.focus;
+        const gateWarning = snapshot.workflowGate.required ? '⚠ 无活跃阶段：非只读任务先 feel_status→建阶段。' : '';
         return {
           data: snapshot,
-          summary: `pipeline=${snapshot.pipeline.phase || '(空)'} 活跃阶段=${focus.stage || '(无)'} phase=${focus.phase || '(空)'} mode=${snapshot.mode.current}(${snapshot.mode.source}) 负责=${focus.responsibleAgent} 可推进到=[${(focus.legalNextPhases ?? []).join(', ') || '无'}]`,
+          summary: `${gateWarning}pipeline=${snapshot.pipeline.phase || '(空)'} 活跃阶段=${focus.stage || '(无)'} phase=${focus.phase || '(空)'} mode=${snapshot.mode.current}(${snapshot.mode.source}) 负责=${focus.responsibleAgent} 可推进到=[${(focus.legalNextPhases ?? []).join(', ') || '无'}]`,
           next: focus.phase === 'done' || focus.phase === ''
             ? null
             : { tool: 'feel_next', arguments: {}, why: '获取「下一步该谁做」的明确建议。' },
@@ -185,7 +188,12 @@ export function createTools(context) {
         const snapshot = await readSnapshot(cli, { cwd: resolved.cwd, signal: exec.signal });
         snapshot.project.root = resolved.cwd;
         snapshot.statusSync = readStatusSync(resolved.cwd);
+        snapshot.workflowGate = computeWorkflowGate(snapshot);
         const plan = planNextStep(snapshot);
+        plan.workflowGate = snapshot.workflowGate;
+        if (plan.workflowGate.required) {
+          plan.summary = `⚠ ${plan.workflowGate.message} ${plan.summary}`;
+        }
         return {
           data: plan,
           summary: plan.summary,

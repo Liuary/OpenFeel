@@ -4,6 +4,23 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.5.2] - 2026-10-31
+
+> 补丁版本（Patch）：**流程入口闸 + 调度/持久化调研**——修复「以调研/只读为由跳过阶段」的违规；无活跃阶段时研究/方案产物不可写；`feel_status` / `feel_next` 暴露 `workflowGate`。调研文档见 [docs/research/dispatch-persistence-2026-10-31.md](docs/research/dispatch-persistence-2026-10-31.md)。
+
+### Added
+- [stage-110] **DSH 入口闸**：新增 `dsh/lib/adapters/workflow-gate.js`；`feel_status` / `feel_next` 返回 `workflowGate={required,reason,message,actions}`，summary 前置「⚠ 无活跃阶段」提示。
+- [stage-110] **研究产物守卫**：`dsh/lib/guard.js` 新增 `isResearchArtifactPath`——无活跃阶段时写 `docs/research/**` 拒绝（chore 也不能绕过），错误信息给出 `feel_req add → claim → feel_stage add`；拒绝事件写 `guard-audit.jsonl`（`event=guard_deny`）。
+- [stage-110] **调研文档**：`docs/research/dispatch-persistence-2026-10-31.md`（当前拓扑、量化诊断、P0/P1/P2、1.5.2-1.5.4 顺序；含 Codex GPT-6.1-Sol 外部评审取舍）。
+
+### Changed
+- [stage-110] **DSH 提示段**：新增「流程入口」硬规则（先 `feel_status`；不得以调研/只读为由跳过阶段）；`docs/research/**` 无阶段会被拒。
+- [stage-110] `dsh/package.json`：version `1.5.2`、`requiresCli: ">=1.5.2"`。
+
+### Fixed
+- [stage-110] 流程违规：研究/方案任务跳过 `feel_status` 与阶段创建（本次实测发生）。
+- [stage-110] 研究产物此前无阶段也可写（doc 豁免），无摩擦、无审计。
+
 ## [1.5.1] - 2026-10-31
 
 > 补丁版本（Patch）：**发布链路热修**——1.5.0 发版脚本把 `package-lock.json` 中所有 `1.4.0` 误替换为 `1.5.0`，导致 `natural-compare@1.5.0`（不存在）使 CI `npm ci` 失败、publish 未执行。仅回改锁文件三处；功能与 1.5.0 完全一致。

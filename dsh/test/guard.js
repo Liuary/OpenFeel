@@ -456,6 +456,35 @@ check('v1.4.0：存在活跃阶段时 chore 不生效（不绕过相位门）', 
   assert.match(String(projectOnly(execution('write', cwd, { path: 'src/main.rs' }))), /exec_running/);
 });
 
+check('v1.5.2：无活跃阶段写 docs/research/** 被拒（入口闸）', () => {
+  const cwd = project('research-done', noStageFlow);
+  const reason = projectOnly(execution('write', cwd, { path: 'docs/research/topic.md' }));
+  assert.match(String(reason), /研究\/方案产物/);
+  assert.match(String(reason), /feel_req add/);
+  const last = readAudit(cwd).at(-1);
+  assert.equal(last.event, 'guard_deny');
+  assert.equal(last.reason, 'research-needs-stage');
+});
+
+check('v1.5.2：有活跃阶段写 docs/research/** 放行；普通 docs 仍零回归', () => {
+  const cwd = project('research-plan', planFlow);
+  assert.equal(projectOnly(execution('write', cwd, { path: 'docs/research/topic.md' })), undefined);
+  const done = project('docs-plain', noStageFlow);
+  assert.equal(projectOnly(execution('write', done, { path: 'docs/notes.md' })), undefined);
+});
+
+check('v1.5.2：chore 不能绕过研究产物的阶段要求', () => {
+  const cwd = project('research-chore', noStageFlow);
+  writeFileSync(
+    join(cwd, '.openfeel', 'chore.json'),
+    JSON.stringify({ id: 'CHORE-r', note: 'x', started_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60_000).toISOString(), stage_count_at_start: 1 }),
+    'utf8',
+  );
+  clearGuardCache();
+  const reason = projectOnly(execution('write', cwd, { path: 'docs/research/topic.md' }));
+  assert.match(String(reason), /研究\/方案产物/);
+});
+
 rmSync(root, { recursive: true, force: true });
 
 process.stdout.write(`\n通过 ${passed} / ${passed + failed}\n`);

@@ -18,6 +18,7 @@ import { FeelCli } from '../lib/adapters/cli.js';
 import { readSnapshot } from '../lib/adapters/dashboard.js';
 import { tokenize } from '../lib/surface/command.js';
 import { renderFeelPrompt } from '../lib/surface/prompt.js';
+import { computeWorkflowGate } from '../lib/adapters/workflow-gate.js';
 
 /** 真实 OpenFeel 项目（只读源）。 */
 const SOURCE_PROJECT = 'C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel';
@@ -358,6 +359,20 @@ async function main() {
     assert(text.includes('只有 Feel 写状态'), 'zh 提示段缺状态归属');
     assert(text.includes('子 agent 一律不读不写'), 'zh 提示段缺子 agent 禁读写');
     assert(text.includes('30 分钟'), 'zh 提示段缺 30 分钟同步');
+  });
+
+  await check('workflowGate：无活跃阶段 required（v1.5.2）', () => {
+    const none = computeWorkflowGate({ focus: { phase: '' } });
+    assert(none.required === true, '无活跃阶段应 required');
+    assert(none.actions.some((a) => a.includes('feel_stage')), 'actions 应含建阶段');
+    const active = computeWorkflowGate({ focus: { phase: 'exec_running' } });
+    assert(active.required === false, '有活跃阶段不应 required');
+  });
+
+  await check('提示段含流程入口硬规则（v1.5.2）', () => {
+    const text = workspace.sections[0].text();
+    assert(text.includes('流程入口'), 'zh 提示段缺流程入口节');
+    assert(text.includes('不得以「调研 / 只读」为由跳过阶段'), 'zh 提示段缺调研禁跳规则');
   });
 
   await check('feel_flow action=phases 返回转移表', async () => {

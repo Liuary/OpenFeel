@@ -9,6 +9,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.2** — Workflow entry gate: `feel_status`/`feel_next` expose `workflowGate` when no stage is active; `docs/research/**` writes are rejected without an active stage (chore cannot bypass), with a denial audit event. Includes the dispatch/persistence research doc and the 1.5.3/1.5.4 iteration plan.
 - **v1.5.1** — Release hotfix: the v1.5.0 release script accidentally rewrote `natural-compare` in `package-lock.json` to a non-existent `1.5.0`, breaking CI `npm ci`; the lock is repaired (functionality identical to v1.5.0).
 - **v1.5.0** — Workflow slimming: only Feel writes state (`dev_last*` / `dev/current.md` / `status.md` / `flow.json`); subagents never read or write them; logs are no longer mandatory (brief records only, flow log capped at 200); status records update at start / turning point / end or every 30 minutes via `openfeel dev sync` (CLI auto-syncs on `flow advance`); `feel_next`/`feel_status` expose `statusSync.due`.
 - **v1.4.0** — Write-gate tiering + `chore` micro-change channel: static presentational assets (`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`, `assets/**`, `public/**`) are writable in any phase like docs (mixed targets stay strict); `openfeel chore "<note>"` opens a 1-step, 60-minute write window without creating a stage (no `flow.json.stages` entry; `--end`/`--status`), and guard writes an audit line for every exemption.
@@ -23,6 +24,15 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.2 — 流程入口闸（研究/方案不得跳过阶段）
+
+- **违规根因**：把「调研」当纯只读任务，跳过 `feel_status` 与阶段创建；`docs/**` 原本任意相位可写，研究/方案产物没有阶段要求，写入门禁也无摩擦。
+- **入口闸**：`feel_status` / `feel_next` 在无活跃阶段时返回 `workflowGate`（required/reason/message/actions），summary 前置警告。
+- **研究产物守卫**：无活跃阶段写 `docs/research/**` 被拒；错误信息给出建阶段命令；chore 不能绕过；拒绝事件写 `guard-audit.jsonl`（`event=guard_deny`）。
+- **提示段**：新增「流程入口」硬规则（先 `feel_status`；不得以调研/只读为由跳过阶段；纯只读问答例外）。
+- **调研**：`docs/research/dispatch-persistence-2026-10-31.md` 给出 1.5.3（统一派发/返回契约 + 恢复包）与 1.5.4（结构化交接 + 日志索引）顺序。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → **完全退出并重启宿主**（适配器为 host module）。详见 [CHANGELOG](../CHANGELOG.md#152---2026-10-31)。
 
 ## v1.5.1 — 发布链路热修（package-lock）
 

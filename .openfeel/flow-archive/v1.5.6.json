@@ -1,0 +1,971 @@
+{
+  "version": "v1.5.6",
+  "stages": {
+    "v1.5.6-stage-114": {
+      "name": "v1.5.6-stage-114",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-015",
+      "stats": {
+        "start_time": "2026-10-31T10:27:07.464Z",
+        "end_time": "2026-10-31T11:54:15.338Z",
+        "duration_ms": 5227874
+      }
+    },
+    "v1.5.6-stage-115": {
+      "name": "v1.5.6-stage-115",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-017",
+      "stats": {
+        "start_time": "2026-10-31T10:36:29.874Z",
+        "end_time": "2026-10-31T13:09:26.780Z",
+        "duration_ms": 9176906
+      }
+    },
+    "v1.5.6-stage-116": {
+      "name": "v1.5.6-stage-116",
+      "phase": "done",
+      "status": "done",
+      "deps": [
+        "v1.5.6-stage-115"
+      ],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-016",
+      "stats": {
+        "start_time": "2026-10-31T12:24:23.691Z",
+        "end_time": "2026-10-31T13:50:33.877Z",
+        "duration_ms": 5170186
+      }
+    },
+    "v1.5.6-stage-117": {
+      "name": "v1.5.6-stage-117",
+      "phase": "done",
+      "status": "done",
+      "deps": [
+        "v1.5.6-stage-116"
+      ],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-10-31T13:58:44.795Z",
+        "end_time": "2026-10-31T14:07:45.495Z",
+        "duration_ms": 540700
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[Feel 复核] dry-run 免门覆盖不全：8 个带 --dry-run 的命令只列了 5 个",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:37:37.070Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[Feel 复核] 漏接 flow repair：它写 flow.json 且能在损坏状态下工作，无条件加门会死锁",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:37:40.990Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[Feel 复核] 漏接 flow checkpoint restore：直接以快照覆盖 flow.json，handler 无 isLoaded 前置",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:37:44.731Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-004",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[Feel 复核+独立审查] 漏接 config set --sync-stages：写 status.md 且写 stages[id].workflow_mode（flow-manager.ts:4051-4058）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:37:48.967Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-005",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[Feel 复核] flow migrate / flow health --fix / flow wizard 三个写盘入口未纳入也未显式排除",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:37:52.824Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-006",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] stage task --add 分支门位不可达：写盘在 stage.ts:601，门位却标 :634",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:39:06.162Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-007",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] 漏接 view accept：可置 closed 清掉 blocking REV，绕过 done/archive 阻塞门",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:39:10.173Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-008",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] legacy reject 新增顶层 hint 键，违反三键契约（flow.ts:2086 / req.ts:39）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:39:16.750Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-009",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] §3.4 门遮蔽策略需改：存在性/值域改为门前只读预检（PipelinePhaseSchema / getReviewItems / listSchemes）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:39:20.155Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-010",
+      "op": "v1.5.6-stage-115",
+      "stage": "v1.5.6-stage-115",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] 整 span 跳过使最常见引用免检：改为前导 token 串解析并允许下划线",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:47:08.603Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-011",
+      "op": "v1.5.6-stage-115",
+      "stage": "v1.5.6-stage-115",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] 未闭合 ignore-start 静默到 EOF：须 stderr 警告 + 抑制行数统计，T13 改断言警告",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:47:13.289Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-012",
+      "op": "v1.5.6-stage-115",
+      "stage": "v1.5.6-stage-115",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] 测试时序倒置：C10/C12 依赖 op-003 正文改正，须移入 op-003 验收",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:47:17.350Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-013",
+      "op": "v1.5.6-stage-115",
+      "stage": "v1.5.6-stage-115",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[独立审查] 正文改正漏项：REQ-015:18 的 flow review_* 四名与 :11 的 flow config_sync_stage 未列入",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T10:47:22.079Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-014",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[代码审查] repair --dry-run --backup 在 dry-run 下仍写 .bak，且会覆盖好的备份（flow.ts:1863-1872）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T11:26:52.901Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-015",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[代码审查] 文档计数错：可 JSON 化写命令是 4 个（含 flow health），门位 33 而非 31",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T11:26:56.065Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-016",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[代码审查] plan scheme publish/rename 预检漏「模板文件存在」，仍会遮蔽 file-missing/not-found",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T11:26:59.677Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-017",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[代码审查] isRemovableOp 的 OR hasOpTemplateOnDisk 扩大遮蔽面，removeScheme 只认注册键",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T11:27:04.044Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-018",
+      "op": "v1.5.6-stage-114",
+      "stage": "v1.5.6-stage-114",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[复检] plan scheme publish 预检判定序与写函数不一致：非 draft + 模板缺失应报 not-draft 而非 not-found",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T11:44:16.229Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-019",
+      "op": "v1.5.6-stage-115",
+      "stage": "v1.5.6-stage-115",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[门禁] dsh verify A1 用「归档 md >100 行」当夹具假设，小归档合法即误报；改为确定性夹具 + 内容等价断言",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T12:10:22.501Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-020",
+      "op": "v1.5.6-stage-115",
+      "stage": "v1.5.6-stage-115",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[代码审查] 带位置参数的合法命令行被判 A（openfeel stage set stage-01 …）：须用 registeredArguments 判定参数起点",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T12:22:56.547Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-021",
+      "op": "v1.5.6-stage-115",
+      "stage": "v1.5.6-stage-115",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[代码审查] REQ-017 正文规则过时：正则未含下划线、错误举例、i18n 1048/+2 口径失效",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T12:23:09.613Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-022",
+      "op": "v1.5.6-stage-116",
+      "stage": "v1.5.6-stage-116",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[计划审查] observability.preflight 自测：readSnapshot 内 flow status/next 已刷新账本，必须在 readSnapshot 之前读",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T12:32:42.834Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-023",
+      "op": "v1.5.6-stage-116",
+      "stage": "v1.5.6-stage-116",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[计划审查] dwell 算法造第二份口径：锚点漏 add_stage/reset、advance→plan_pending 不可达；应复用 findPhaseEnteredAtMs",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T12:32:48.876Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-024",
+      "op": "v1.5.6-stage-116",
+      "stage": "v1.5.6-stage-116",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[代码审查] summary 把「时间戳不可解析」误报为「未读过状态」；phase-entered 缺 detail 守卫会抛 TypeError",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T13:42:16.192Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-10-31T10:16:59.085Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T10:24:52.122Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T10:27:07.458Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T10:36:29.868Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T10:46:44.451Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T10:47:51.438Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T10:54:47.623Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:15:07.316Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:27:07.190Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:28:19.640Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:38:19.214Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:44:20.006Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:44:26.190Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:52:33.295Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:53:33.798Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:54:07.729Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:54:11.740Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "opsCount": 0,
+        "reviewsCount": 14,
+        "knowledgeCount": 14,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-114.md"
+      }
+    },
+    {
+      "time": "2026-10-31T11:54:15.331Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-114",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T11:54:29.752Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:13:31.322Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:14:22.985Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T12:23:12.680Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:23:18.316Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:24:23.686Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T12:33:46.919Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:37:23.030Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:43:53.656Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:44:00.246Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:50:07.649Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:50:12.252Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:50:44.039Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T12:50:48.713Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "opsCount": 0,
+        "reviewsCount": 7,
+        "knowledgeCount": 7,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-115.md"
+      }
+    },
+    {
+      "time": "2026-10-31T13:09:12.418Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "opsCount": 0,
+        "reviewsCount": 7,
+        "knowledgeCount": 7,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-115.md"
+      }
+    },
+    {
+      "time": "2026-10-31T13:09:26.772Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-115",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:09:33.511Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:09:52.990Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T13:32:47.750Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:42:24.382Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:42:28.468Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:49:43.897Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:49:48.848Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:50:24.260Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:50:28.948Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "opsCount": 0,
+        "reviewsCount": 3,
+        "knowledgeCount": 3,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-116.md"
+      }
+    },
+    {
+      "time": "2026-10-31T13:50:33.871Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:44.787Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:50.266Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:54.865Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:00.022Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:04.962Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:34.144Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:39.311Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "opsCount": 0,
+        "reviewsCount": 0,
+        "knowledgeCount": 0,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-117.md"
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:45.488Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "counts": {
+    "stages": 4,
+    "reviews": 24,
+    "log": 52
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-10-31T14:07:59.732Z"
+}

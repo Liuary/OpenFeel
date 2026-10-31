@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T08:39:02.822Z",
-    "revision": 1501,
+    "updated": "2026-10-31T08:39:08.645Z",
+    "revision": 1505,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -26,47 +26,20 @@
       "v1.3.4",
       "v1.3.5",
       "v1.4.0",
-      "v1.5.0"
+      "v1.5.0",
+      "v1.5.1"
     ]
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.1-stage-109",
+      "stage": "",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.5.1-stage-109": {
-      "name": "v1.5.1-stage-109",
-      "phase": "done",
-      "status": "done",
-      "deps": [],
-      "ops": {},
-      "workflow_mode": "fast",
-      "requirement_id": "REQ-010",
-      "stats": {
-        "start_time": "2026-10-31T08:37:08.983Z",
-        "end_time": "2026-10-31T08:39:02.794Z",
-        "duration_ms": 113811
-      }
-    }
-  },
-  "reviews": [
-    {
-      "id": "REV-001",
-      "op": "v1.5.1-stage-109",
-      "stage": "v1.5.1-stage-109",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "热修自审：仅回改 natural-compare 三处；npm ci + 82/2021 复跑绿（无 blocking）",
-      "filed_by": "cli",
-      "filed_at": "2026-10-31T08:39:00.602Z",
-      "canAutoFix": false,
-      "blocking": false
-    }
-  ],
+  "stages": {},
+  "reviews": [],
   "log": [
     {
       "time": "2026-10-01T02:48:33.590Z",
@@ -1901,15 +1874,6 @@
       }
     },
     {
-      "time": "2026-10-31T08:36:57.097Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-10-31T08:37:00.850Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1919,98 +1883,45 @@
       }
     },
     {
-      "time": "2026-10-31T08:37:08.974Z",
+      "time": "2026-10-31T08:39:03.902Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "archive_flow_version",
       "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+        "version": "v1.5.1",
+        "stages": 1,
+        "reviews": 1,
+        "log": 9
       }
     },
     {
-      "time": "2026-10-31T08:37:09.484Z",
+      "time": "2026-10-31T08:39:07.925Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "requirement_status",
       "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "id": "REQ-010",
+        "from": "draft",
+        "to": "scheduled"
       }
     },
     {
-      "time": "2026-10-31T08:37:09.993Z",
+      "time": "2026-10-31T08:39:08.286Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "requirement_status",
       "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "id": "REQ-010",
+        "from": "scheduled",
+        "to": "in_progress"
       }
     },
     {
-      "time": "2026-10-31T08:39:01.671Z",
+      "time": "2026-10-31T08:39:08.645Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "requirement_update",
       "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-31T08:39:01.693Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-31T08:39:02.028Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-10-31T08:39:02.385Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "opsCount": 0,
-        "reviewsCount": 1,
-        "knowledgeCount": 1,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.1-stage-109.md"
-      }
-    },
-    {
-      "time": "2026-10-31T08:39:02.787Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.1-stage-109",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "id": "REQ-010",
+        "fields": [
+          "workflow_mode"
+        ]
       }
     }
   ],
@@ -2133,12 +2044,12 @@
     {
       "id": "REQ-010",
       "title": "1.5.1：修复 package-lock natural-compare 版本误替换（CI npm ci 失败），重发 1.5.1",
-      "status": "draft",
+      "status": "in_progress",
       "created_at": "2026-10-31T08:36:53.945Z",
-      "updated_at": "2026-10-31T08:36:56.581Z",
+      "updated_at": "2026-10-31T08:39:08.645Z",
       "target_version": "v1.5.1",
       "priority": "P0",
-      "workflow_mode": "fast",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-010.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T08:36:56.581Z"

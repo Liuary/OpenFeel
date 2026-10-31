@@ -141,6 +141,11 @@ Feel（你）只做编排、决策与门禁判断。
 - **归档判据不可协商**：版本归档要求该版本**全部阶段 done** 且**无 blocking open REV**，没有 force 覆盖。归档由 CLI 执行，调度侧只提示不代劳。
 - **不主动读归档**：常规调度不要读 \`.openfeel/flow-archive/**\`（防上下文污染）；需要历史时用 \`feel_archive action=show\`。
 
+## 派发契约（v1.5.3）
+- 派发子 agent 时用 \`feel_next\` 返回的 \`dispatch\` 模板：goal / context / boundaries / returnFormat。
+- 子 agent **只读派发 prompt 与指定文件**；禁读 \`dev_last*\`、\`dev/current.md\`、\`status.md\`、\`flow.json\`。
+- 返回 **≤10 行**（结论 / 改动文件 / 验证 / 阻塞）；不贴全文 diff、日志或大段代码；超标内容留在子 agent，不进入主会话。
+
 ## 流程入口（v1.5.2）
 - **先 \`feel_status\`**：任何会产出仓库文件（含 \`docs/research/**\`、方案、计划）或需要多步调查/实现的任务，先读状态；无活跃阶段 → \`feel_req add\` → \`claim\` → \`feel_stage add\`，再开始。
 - **不得以「调研 / 只读」为由跳过阶段**：纯只读问答可直接回答；研究/方案产物写入门禁要求活跃阶段（\`docs/research/**\` 无阶段会被拒）。
@@ -150,6 +155,7 @@ Feel（你）只做编排、决策与门禁判断。
 - **只有 Feel 写状态**：\`dev_last*\`、\`dev/current.md\`、\`status.md\`、\`flow.json\` 只由 Feel 更新；**子 agent 一律不读不写**（上下文由派发 prompt / 交接文档提供）。
 - **日志不强制**：不写流水账；\`flow.json.log\` 由 CLI 自动维护（仅保留最近 200 条）。跨会话信息用一条 ≤5 行交接摘要。
 - **更新节点**：开始 / 转折 / 结束，或 \`statusSync.due=true\`（默认 30 分钟）时更新一次交接摘要，随后运行 \`openfeel dev sync\`（CLI 在节点/到期时也会自动同步）。
+- **恢复**：新会话先看 \`feel_status.recovery\`（lastTransition / handoff / nextAction）；需要细节再读当前阶段的 plan/op，**不要**启动即读 \`dev_last\` 全文。
 
 ## 三种工作流模式
 - \`full\`：plan → plan_review → scheme → exec → review → test → archive，六道关全走。
@@ -206,6 +212,11 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 - **Archive criteria are not negotiable**: a version archive requires every stage of that version to be \`done\` AND no blocking open REV; there is no force override. The CLI performs the archive; you only prompt.
 - **Do not read archives during normal scheduling**: avoid \`.openfeel/flow-archive/**\`; use \`feel_archive action=show\` on demand.
 
+## Dispatch contract (v1.5.3)
+- When dispatching a subagent, use the \`dispatch\` template returned by \`feel_next\`: goal / context / boundaries / returnFormat.
+- Subagents read **only the dispatch prompt and the listed files**; never \`dev_last*\`, \`dev/current.md\`, \`status.md\`, \`flow.json\`.
+- Return **<=10 lines** (conclusion / changed files / verification / blockers); no full diffs, logs or large code blocks — keep them in the subagent.
+
 ## Workflow entry (v1.5.2)
 - **Call \`feel_status\` first**: any task that may produce repo files (including \`docs/research/**\`, proposals, plans) or needs multi-step investigation/implementation must read state first; with no active stage → \`feel_req add\` → \`claim\` → \`feel_stage add\`, then start.
 - **Never skip the stage under the pretext of "research / read-only"**: pure read-only Q&A may answer directly; research/proposal artifacts require an active stage (\`docs/research/**\` writes are rejected without one).
@@ -215,6 +226,7 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 - **Only Feel writes state**: \`dev_last*\`, \`dev/current.md\`, \`status.md\`, \`flow.json\` are updated by Feel only; **subagents never read or write them** (context comes from the dispatch prompt / handoff docs).
 - **No mandatory logs**: do not keep a per-step diary; \`flow.json.log\` is maintained by the CLI (last 200 entries only). For cross-session info, write a <=5-line handoff summary.
 - **Update nodes**: start / turning point / end, or when \`statusSync.due=true\` (default 30 min) — update the handoff summary once, then run \`openfeel dev sync\` (the CLI also auto-syncs on nodes/expiry).
+- **Recovery**: at session start read \`feel_status.recovery\` (lastTransition / handoff / nextAction); read the stage's plan/op only for details — do **not** load the whole \`dev_last\` at startup.
 
 ## The three workflow modes
 - \`full\`: plan → plan_review → scheme → exec → review → test → archive (all six gates).

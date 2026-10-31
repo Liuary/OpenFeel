@@ -178,15 +178,34 @@ function writeAutoBlock(projectPath: string, block: string): void {
   atomicWriteFileSync(file, content);
 }
 
-/** 执行同步：写 AUTO 块 + 刷新 .sync.json */
+/** 执行同步：写 AUTO 块 + 刷新 .sync.json（状态未变时跳过 dev_last 重写） */
 export function syncDevStatus(
   projectPath: string,
   options: { note?: string; now?: Date } = {},
-): { status: DevStatus; file: string; syncedAt: string } {
+): { status: DevStatus; file: string; syncedAt: string; changed: boolean } {
   const now = options.now ?? new Date();
   const status = getDevStatus(projectPath, now);
   const syncedAt = now.toISOString();
-  writeAutoBlock(projectPath, renderAutoBlock(status, options.note, syncedAt));
+  const block = renderAutoBlock(status, options.note, syncedAt);
+
+  // 跳过未变更：忽略「同步时间」行后比较；状态不变时不重写 dev_last，减少噪音。
+  const existing = existsSync(devLastPath(projectPath))
+    ? readFileSync(devLastPath(projectPath), 'utf-8')
+    : null;
+  const oldBegin = existing?.indexOf(AUTO_BEGIN) ?? -1;
+  const oldEnd = existing?.indexOf(AUTO_END) ?? -1;
+  const oldBlock = existing !== null && oldBegin !== -1 && oldEnd !== -1 && oldEnd > oldBegin
+    ? existing.slice(oldBegin, oldEnd + AUTO_END.length)
+    : null;
+  const stateKey = (text: string): string => text
+    .split('\n')
+    .filter((line) => !line.startsWith('- 同步时间：'))
+    .join('\n');
+  const changed = oldBlock === null || stateKey(oldBlock) !== stateKey(block);
+  if (changed) {
+    writeAutoBlock(projectPath, block);
+  }
+
   const dev = devDir(projectPath);
   if (!existsSync(dev)) mkdirSync(dev, { recursive: true });
   const meta: DevSyncMeta = {
@@ -195,7 +214,7 @@ export function syncDevStatus(
     interval_minutes: DEFAULT_SYNC_INTERVAL_MINUTES,
   };
   writeFileSync(syncMetaPath(projectPath), `${JSON.stringify(meta, null, 2)}\n`, 'utf-8');
-  return { status: { ...status, lastSync: syncedAt, due: false }, file: devLastPath(projectPath), syncedAt };
+  return { status: { ...status, lastSync: syncedAt, due: false }, file: devLastPath(projectPath), syncedAt, changed };
 }
 
 /** 是否处于「节点」（开始 / 转折 / 结束）：需要主动同步 */

@@ -14,6 +14,19 @@ description: 委托与流水线纪律——dispatch 双口径、委托边界与�
 
 ## 执行步骤
 
+### 0. 派发 / 返回契约（v1.5.3）
+
+派发子 agent 时按固定信封（`feel_next` 返回的 `dispatch` 字段可直接用）：
+
+```
+goal:        <一句话目标，可验收>
+context:     只附必要文件路径（plan / op / REV / 目标源码）；不附整目录/整仓
+boundaries:  可写范围；禁读 dev_last* / dev/current.md / status.md / flow.json
+return:      ≤10 行：结论 / 改动文件 / 验证结果 / 阻塞或下一步；不贴全文 diff/日志
+```
+
+子 agent 的上下文只来自派发 prompt 与上述文件；**信息由 Feel 调度流转，不读写持久化状态文件**。返回超标（贴全文/日志）视为派发失败，主会话只保留摘要。
+
 ### 1. dispatch 双口径（两条独立通道，禁混淆）
 
 **口径 ①：直接调度通用工作者。** 任意 Agent（含 subagent）均可**直接**向通用工作者发调度请求，不经多级转介：

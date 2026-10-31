@@ -5,10 +5,18 @@
 > 两者分工：**VERSIONS = 用户视角摘要；CHANGELOG = Keep a Changelog 明细**。本文不记录测试计数与内部审查编号。
 > 覆盖范围：README 曾展示的版本（v1.1.2 起）；更早版本（v1.0.0 / v1.1.0 / v1.1.1）见 [CHANGELOG.md](../CHANGELOG.md)。
 
+## 发布节奏（批次发布，v1.5.3 起）
+
+- **小功能与补丁合并到同一批次**：一个版本只做一组相关改动，完成后统一 push + CI publish；禁止「做完一个小功能就发一版」。
+- **批次开始时锁定范围**：REQ + 阶段任务即范围；中途新增项记入下一批次（紧急缺陷除外）。
+- **版本号**：批次默认 `patch`；含用户可见新能力/契约变更时 `minor`；发布前必须全门禁通过（测试 / dsh / tsc / i18n / kb / build ×2）。
+- **紧急例外**：安装/发布/安全类阻断可单独 patch，但需在 CHANGELOG 标注并评估同批次未完成项。
+
 ## English highlights
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.3** — Batch release: dispatch/return contract (`feel_next.dispatch`: goal/context/boundaries/returnFormat; subagents never read state files, return ≤10 lines), recovery bundle (`feel_status.recovery`: lastTransition / handoff / nextAction), structured handoff (`done / next / block`) and no-op sync when state is unchanged. Release cadence is now batched (see "发布节奏").
 - **v1.5.2** — Workflow entry gate: `feel_status`/`feel_next` expose `workflowGate` when no stage is active; `docs/research/**` writes are rejected without an active stage (chore cannot bypass), with a denial audit event. Includes the dispatch/persistence research doc and the 1.5.3/1.5.4 iteration plan.
 - **v1.5.1** — Release hotfix: the v1.5.0 release script accidentally rewrote `natural-compare` in `package-lock.json` to a non-existent `1.5.0`, breaking CI `npm ci`; the lock is repaired (functionality identical to v1.5.0).
 - **v1.5.0** — Workflow slimming: only Feel writes state (`dev_last*` / `dev/current.md` / `status.md` / `flow.json`); subagents never read or write them; logs are no longer mandatory (brief records only, flow log capped at 200); status records update at start / turning point / end or every 30 minutes via `openfeel dev sync` (CLI auto-syncs on `flow advance`); `feel_next`/`feel_status` expose `statusSync.due`.
@@ -24,6 +32,15 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.3 — 批次：派发契约 + 恢复包 + 结构化交接 + 同步去重
+
+- **派发/返回契约**：`feel_next.dispatch` 给出 goal/context/boundaries/returnFormat；子 agent 禁读 `dev_last*` / `current.md` / `status.md` / `flow.json`，返回 ≤10 行；主会话只保留摘要。
+- **恢复包**：`feel_status.recovery` 聚合 lastTransition、交接摘要（≤600 字）、nextAction；新会话一次调用即可恢复，无需先读全文。
+- **结构化交接**：`dev_last` 交接摘要使用 `done: / next: / block:` 固定键；恢复包直接读取。
+- **同步去重**：AUTO 状态未变时不重写 `dev_last`，只刷新同步时间，减少无意义写。
+- **发布节奏**：改为批次发布（见文首「发布节奏」），本版为 1.5.3 批次统一发布。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → **完全退出并重启宿主**。详见 [CHANGELOG](../CHANGELOG.md#153---2026-10-31)。
 
 ## v1.5.2 — 流程入口闸（研究/方案不得跳过阶段）
 

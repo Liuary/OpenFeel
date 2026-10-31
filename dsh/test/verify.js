@@ -375,6 +375,27 @@ async function main() {
     assert(text.includes('不得以「调研 / 只读」为由跳过阶段'), 'zh 提示段缺调研禁跳规则');
   });
 
+  await check('feel_next 返回 dispatch 契约 + feel_status 返回 recovery（v1.5.3）', async () => {
+    const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
+    assert(next.dispatch && typeof next.dispatch === 'object', 'feel_next 缺 dispatch');
+    for (const key of ['goal', 'context', 'boundaries', 'returnFormat', 'budget']) {
+      assert(next.dispatch[key] !== undefined, `dispatch 缺 ${key}`);
+    }
+    assert(Array.isArray(next.dispatch.boundaries.neverRead), 'boundaries.neverRead 应为数组');
+    assert(next.dispatch.returnFormat.includes('≤10 行'), 'returnFormat 应限制 10 行');
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assert(status.recovery && typeof status.recovery === 'object', 'feel_status 缺 recovery');
+    assert('lastTransition' in status.recovery, 'recovery 缺 lastTransition');
+    assert('handoff' in status.recovery, 'recovery 缺 handoff');
+    assert('nextAction' in status.recovery, 'recovery 缺 nextAction');
+  });
+
+  await check('提示段含派发契约（v1.5.3）', () => {
+    const text = workspace.sections[0].text();
+    assert(text.includes('派发契约'), 'zh 提示段缺派发契约节');
+    assert(text.includes('≤10 行'), 'zh 提示段缺返回行数限制');
+  });
+
   await check('feel_flow action=phases 返回转移表', async () => {
     const result = await workspace.tools.get('feel_flow').execute({ action: 'phases' }, realExec);
     const data = ok(result);

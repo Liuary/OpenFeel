@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T09:01:36.959Z",
-    "revision": 1526,
+    "updated": "2026-10-31T09:14:37.478Z",
+    "revision": 1540,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -32,90 +32,44 @@
     ]
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "",
+      "stage": "v1.5.3-stage-111",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.5.3-stage-111": {
+      "name": "v1.5.3-stage-111",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-012",
+      "stats": {
+        "start_time": "2026-10-31T09:08:22.772Z",
+        "end_time": "2026-10-31T09:14:37.446Z",
+        "duration_ms": 374674
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.3-stage-111",
+      "stage": "v1.5.3-stage-111",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "批次自审：dispatch/recovery/交接固定键/同步去重/批次发布（无 blocking；2022 单测 + dsh 203 + E2E）",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T09:14:35.188Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
   "log": [
-    {
-      "time": "2026-10-01T08:28:20.508Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-54.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T09:00:58.651Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-55.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T09:01:58.323Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-55.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T09:05:05.871Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-55.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T09:08:10.516Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-55.op-004",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T09:23:31.178Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-55.op-005",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T10:03:49.339Z",
-      "agent": "cli",
-      "action": "stage_deps_set",
-      "detail": {
-        "stage": "v1.1.2-stage-56",
-        "deps": [
-          "v1.1.2-stage-55"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-01T10:39:25.145Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-56.op-001",
-        "attempts": 1
-      }
-    },
     {
       "time": "2026-10-01T10:40:43.309Z",
       "agent": "openfeel-executor",
@@ -1939,6 +1893,137 @@
         "from": "in_progress",
         "to": "done"
       }
+    },
+    {
+      "time": "2026-10-31T09:08:06.339Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-012",
+        "title": "1.5.3 批次：派发/返回契约 + 恢复包 + 结构化交接 + 同步去重（统一发布）"
+      }
+    },
+    {
+      "time": "2026-10-31T09:08:09.755Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-012",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-31T09:08:10.218Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T09:08:18.822Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.3-stage-111",
+        "requirementId": "REQ-012"
+      }
+    },
+    {
+      "time": "2026-10-31T09:08:22.769Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T09:08:23.150Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:08:23.548Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:14:36.092Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:14:36.122Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:14:36.536Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T09:14:36.938Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.3-stage-111.md"
+      }
+    },
+    {
+      "time": "2026-10-31T09:14:37.435Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.3-stage-111",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2082,6 +2167,19 @@
       "body_path": ".openfeel/requirements/REQ-011.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T08:53:10.841Z"
+    },
+    {
+      "id": "REQ-012",
+      "title": "1.5.3 批次：派发/返回契约 + 恢复包 + 结构化交接 + 同步去重（统一发布）",
+      "status": "draft",
+      "created_at": "2026-10-31T09:08:06.339Z",
+      "updated_at": "2026-10-31T09:08:09.755Z",
+      "target_version": "v1.5.3",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-012.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-31T09:08:09.755Z"
     }
   ]
 }

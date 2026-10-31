@@ -24,6 +24,7 @@ description: 记忆与落档（v1.5.0 瘦身）——默认不加载、不写回
 ## 按需写入（仅 Feel）
 
 - 交接摘要写 `dev_last.md`「公共交接区」或主题文件；单条 ≤5 行，只写「做了什么 / 卡在哪 / 下一步」。
+- **固定键（v1.5.3，建议）**：`done: …` / `next: …` / `block: …` 三行；恢复包会直接读取该段（≤600 字）。
 - 长期技术/架构决策 → `.openfeel/dev/decisions.md`（ADR）；会话临时取舍不落档。
 - **确需写主题文件时**（临界区）：`withFileLock(projectLockPath(cwd, 'dev-last-' + username), () => { … })`，锁路径 `.openfeel/tmp/locks/`；合并后用 `atomicWriteFileSync` 落盘。
 - `dev/current.md` 仅为可选项，不再强制维护。

@@ -4,6 +4,24 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.5.3] - 2026-10-31
+
+> 批次版本（Patch 批次）：**派发/返回契约 + 恢复包 + 结构化交接 + 同步去重**。按新发布节奏，1.5.3 统一发布，不再为单项功能单独发版。
+
+### Added
+- [stage-111] **派发/返回契约（adapter）**：新增 `dsh/lib/adapters/dispatch.js`；`feel_next` 返回 `dispatch`（goal/context/boundaries/returnFormat/budget），boundaries 明确子 agent **禁读** `dev_last*` / `dev/current.md` / `status.md` / `flow.json`，返回 ≤10 行。
+- [stage-111] **恢复包（adapter）**：新增 `dsh/lib/adapters/recovery.js`；`feel_status` 返回 `recovery`（active stage/phase/requirement、lastTransition、handoff ≤600 字、nextAction），新会话一次调用即可恢复，不必先读 `dev_last` 全文。
+- [stage-111] **发布节奏（流程策略）**：`docs/VERSIONS.md` 新增「批次发布」规则——小功能合并批次、完成全门禁后统一 push + CI publish；禁止单功能即发版。
+
+### Changed
+- [stage-111] **结构化交接**：`openfeel-memory` 交接摘要采用固定键 `done: / next: / block:`；恢复包直接读取该段。
+- [stage-111] **同步去重**：`syncDevStatus` 在 AUTO 内容未变时**不重写** `dev_last.md`（仅刷新 `.sync.json`），减少无意义写与审计噪音；返回值新增 `changed`。
+- [stage-111] **DSH 提示段**：新增「派发契约」节；恢复指引改为优先 `feel_status.recovery`。
+- [stage-111] `dsh/package.json`：version `1.5.3`、`requiresCli: ">=1.5.3"`。
+
+### Fixed
+- [stage-111] 派发无统一信封导致主会话被迫保留子任务细节/日志；恢复需扫多个文件。
+
 ## [1.5.2] - 2026-10-31
 
 > 补丁版本（Patch）：**流程入口闸 + 调度/持久化调研**——修复「以调研/只读为由跳过阶段」的违规；无活跃阶段时研究/方案产物不可写；`feel_status` / `feel_next` 暴露 `workflowGate`。调研文档见 [docs/research/dispatch-persistence-2026-10-31.md](docs/research/dispatch-persistence-2026-10-31.md)。

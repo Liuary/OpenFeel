@@ -11,7 +11,7 @@ import {
   readSyncMeta,
   syncDevStatus,
 } from '../../src/core/dev-status.js';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -74,6 +74,20 @@ describe('dev-status（v1.5.0）', () => {
     expect(after.match(/openfeel:auto:begin/g)).toHaveLength(1);
     expect(after).toContain('`review_passed`');
     expect(after).toContain('手写摘要 A');
+  });
+
+  it('状态未变时重复 sync：changed=false 且不重写 dev_last（v1.5.3）', async () => {
+    const first = syncDevStatus(dir);
+    expect(first.changed).toBe(true);
+    const file = devLastPath(dir);
+    const before = readFileSync(file, 'utf-8');
+    const beforeMtime = statSync(file).mtimeMs;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const second = syncDevStatus(dir);
+    expect(second.changed).toBe(false);
+    expect(readFileSync(file, 'utf-8')).toBe(before);
+    expect(statSync(file).mtimeMs).toBe(beforeMtime);
+    expect(getDevStatus(dir).due).toBe(false);
   });
 
   it('超过 30 分钟 → due=true；30 分钟内 → false', () => {

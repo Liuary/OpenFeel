@@ -14,6 +14,8 @@
 import { FeelError } from '../adapters/cli.js';
 import { legalNextPhases, planNextStep, readSnapshot } from '../adapters/dashboard.js';
 import { readStatusSync } from '../adapters/dev-status.js';
+import { buildDispatchTemplate } from '../adapters/dispatch.js';
+import { readRecovery } from '../adapters/recovery.js';
 import { computeWorkflowGate } from '../adapters/workflow-gate.js';
 import { resolveWorkspace } from '../adapters/workspace.js';
 import {
@@ -156,6 +158,8 @@ export function createTools(context) {
         snapshot.project.root = resolved.cwd;
         snapshot.statusSync = readStatusSync(resolved.cwd);
         snapshot.workflowGate = computeWorkflowGate(snapshot);
+        snapshot.recovery = readRecovery(resolved.cwd);
+        snapshot.recovery.nextAction = snapshot.focus.suggestedCommand ?? null;
         const focus = snapshot.focus;
         const gateWarning = snapshot.workflowGate.required ? '⚠ 无活跃阶段：非只读任务先 feel_status→建阶段。' : '';
         return {
@@ -189,8 +193,12 @@ export function createTools(context) {
         snapshot.project.root = resolved.cwd;
         snapshot.statusSync = readStatusSync(resolved.cwd);
         snapshot.workflowGate = computeWorkflowGate(snapshot);
+        snapshot.recovery = readRecovery(resolved.cwd);
         const plan = planNextStep(snapshot);
         plan.workflowGate = snapshot.workflowGate;
+        snapshot.recovery.nextAction = plan.suggestedCommand ?? null;
+        plan.recovery = snapshot.recovery;
+        plan.dispatch = buildDispatchTemplate(snapshot);
         if (plan.workflowGate.required) {
           plan.summary = `⚠ ${plan.workflowGate.message} ${plan.summary}`;
         }

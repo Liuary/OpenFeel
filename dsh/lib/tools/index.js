@@ -17,6 +17,7 @@ import { readStatusSync } from '../adapters/dev-status.js';
 import { buildDispatchTemplate } from '../adapters/dispatch.js';
 import { readRecovery } from '../adapters/recovery.js';
 import { readPreflightInfo } from '../adapters/preflight.js';
+import { buildObservability } from '../adapters/observability.js';
 import { computeWorkflowGate } from '../adapters/workflow-gate.js';
 import { resolveWorkspace } from '../adapters/workspace.js';
 import {
@@ -101,6 +102,40 @@ async function envelope(action, body) {
 }
 
 /**
+ * `observability` 的完整降级对象（builder 内部任何意外 → 值仍为对象，绝不为 null）。
+ * @type {{ schemaVersion: number, stale: boolean, preflightAgeMs: null, preflightOk: false, statusSync: null, summary: string }}
+ */
+function degradedObservability() {
+  return {
+    schemaVersion: 1,
+    stale: false,
+    preflightAgeMs: null,
+    preflightOk: false,
+    statusSync: null,
+    summary: '观测数据不可用',
+  };
+}
+
+/**
+ * 组装 `snapshot.observability`（v1.5.6）：**只从 snapshot 已有字段复制**，零新增 I/O。
+ *
+ * ⚠ REV-022：调用前 `snapshot.preflight` 必须是**提前于 `readSnapshot`** 读取的那一份，
+ * 否则读到的是本次 `flow status --json` 刚写下的账本（age≈0 ⇒ 指标在测自己）。
+ * @param {Record<string, any>} snapshot
+ */
+function safeObservability(snapshot) {
+  try {
+    return buildObservability({
+      preflight: snapshot?.preflight,
+      statusSync: snapshot?.statusSync,
+      stale: snapshot?.stale,
+    });
+  } catch {
+    return degradedObservability();
+  }
+}
+
+/**
  * 构造全部工具定义。
  *
  * @param {FeelToolContext} context
@@ -151,6 +186,11 @@ export function createTools(context) {
       const resolved = target(exec, args);
       requireInitialized(resolved);
       return envelope('status', async () => {
+        // v1.5.6 / REV-022：preflight 账本必须在 readSnapshot **之前**读——
+        // `readSnapshot` 会跑 `flow status --json` / `flow next --json`，二者在 JSON 早返回前
+        // 就 recordPreflight（src/commands/flow.ts），读晚了会把本次调用刚写的账本当历史 ⇒ 指标自测。
+        // 读取次数不变（仍 1 次/工具），零新增 I/O。
+        const preflight = readPreflightInfo(resolved.cwd);
         const snapshot = await readSnapshot(cli, {
           cwd: resolved.cwd,
           signal: exec.signal,
@@ -160,7 +200,8 @@ export function createTools(context) {
         snapshot.statusSync = readStatusSync(resolved.cwd);
         snapshot.workflowGate = computeWorkflowGate(snapshot);
         snapshot.recovery = readRecovery(resolved.cwd);
-        snapshot.preflight = readPreflightInfo(resolved.cwd);
+        snapshot.preflight = preflight;
+        snapshot.observability = safeObservability(snapshot);
         snapshot.recovery.nextAction = snapshot.focus.suggestedCommand ?? null;
         const focus = snapshot.focus;
         const gateWarning = snapshot.workflowGate.required ? '⚠ 无活跃阶段：非只读任务先 feel_status→建阶段。' : '';
@@ -192,18 +233,22 @@ export function createTools(context) {
       const resolved = target(exec, args);
       requireInitialized(resolved);
       return envelope('next', async () => {
+        // v1.5.6 / REV-022：同 feel_status —— 账本先读，再跑会写账本的 CLI 调用。
+        const preflight = readPreflightInfo(resolved.cwd);
         const snapshot = await readSnapshot(cli, { cwd: resolved.cwd, signal: exec.signal });
         snapshot.project.root = resolved.cwd;
         snapshot.statusSync = readStatusSync(resolved.cwd);
         snapshot.workflowGate = computeWorkflowGate(snapshot);
         snapshot.recovery = readRecovery(resolved.cwd);
-        snapshot.preflight = readPreflightInfo(resolved.cwd);
+        snapshot.preflight = preflight;
+        snapshot.observability = safeObservability(snapshot);
         const plan = planNextStep(snapshot);
         plan.workflowGate = snapshot.workflowGate;
         plan.preflight = snapshot.preflight;
         snapshot.recovery.nextAction = plan.suggestedCommand ?? null;
         plan.recovery = snapshot.recovery;
         plan.dispatch = buildDispatchTemplate(snapshot);
+        plan.observability = snapshot.observability;
         if (plan.workflowGate.required) {
           plan.summary = `⚠ ${plan.workflowGate.message} ${plan.summary}`;
         }

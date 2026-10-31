@@ -35,7 +35,9 @@ import { failCli, failInternal, failRefusal, handleAddStageError, handleConcurre
 import { withSchemaVersion, isJsonMode, emitJson } from './shared/json-output.js';   // JSON 契约助手（stage-95 op-001/op-002）
 import { type CliErrorKind } from '../core/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
-import { recordPreflight } from '../core/preflight.js';
+import { recordPreflight, readPreflight } from '../core/preflight.js';
+import { findPhaseEnteredAtMs } from '../core/phase-entered.js';
+import { computeProcessHealth, formatProcessHealth } from '../core/process-health.js';
 import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 import { getDevStatus, isSyncNodePhase, syncDevStatus } from '../core/dev-status.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
@@ -531,6 +533,15 @@ export function registerFlowCommand(program: Command): void {
         console.log(en ? '── Observability ──' : '── 观测指标 ──');
         console.log(`  ${en ? 'flow.log' : 'flow.log'}: ${logStats.entries} entries / ${logStats.bytes} bytes`);
         console.log(`  ${en ? 'active stages' : '活跃阶段'}: ${active}`);
+        // v1.5.6：流程健康（人类输出；--json 键集/键序零变更；零写盘；不自测）
+        // 位置必须在 :518 的 --json 早返回之后 ⇒ JSON 分支零新增 I/O（INV-1 / INV-9 / INV-10）。
+        const health = computeProcessHealth({
+          log: data?.log ?? [],
+          preflight: readPreflight(process.cwd()),   // 只读账本，绝不 recordPreflight
+          nowMs: Date.now(),
+        });
+        console.log('');
+        for (const line of formatProcessHealth(health, lang)) { console.log(line); }
       }
     });
 
@@ -1254,7 +1265,8 @@ export function registerFlowCommand(program: Command): void {
         const exitedPhase = i > 0 ? phasePath[i - 1] : startPhase;
         const agentName = PHASE_AGENT_MAP[exitedPhase];
         if (agentName) {
-          const baseMs = i > 0 ? prevStepDoneMs : findPhaseEnteredAtMs(mgr, stageArg, exitedPhase, logLenBefore);
+          // v1.5.6（REV-023）：改用 src/core/phase-entered.ts 的唯一实现（纯提取，行为零变更）
+          const baseMs = i > 0 ? prevStepDoneMs : findPhaseEnteredAtMs(mgr.getData()?.log ?? [], stageArg, exitedPhase, logLenBefore);
           if (baseMs !== null && baseMs > 0) {
             metricsStore.recordRun(agentName, Date.now() - baseMs, 'success', 0);
             metricsRecorded = true;
@@ -2840,33 +2852,6 @@ function hasExplicitProjectDefault(projectPath: string, key: string): boolean {
     // 错误路径：YAML 解析失败 → 视为未显式设置（不阻断向导）
     return false;
   }
-}
-
-/**
- * 求「进入 fromPhase 的那次转换」的时间戳（T1 duration 基线；REV-86-002 口径）。
- * 回扫范围 [0, logLenBefore)——本次命令写入之前的存量条目（天然排除本次新写入）；
- * 按 detail.to === fromPhase 匹配 advance/reset 转换条目；plan_pending 无转换条目时兜底 register_stage；
- * 无基线返回 null（调用方跳过不记——不写 0 值）。
- */
-function findPhaseEnteredAtMs(mgr: FlowManager, stageArg: string, fromPhase: string, logLenBefore: number): number | null {
-  const log = mgr.getData()?.log ?? [];
-  const upper = Math.min(logLenBefore, log.length);
-  for (let k = upper - 1; k >= 0; k--) {
-    const e = log[k];
-    if (e.action !== 'advance_stage_phase' && e.action !== 'reset_stage_phase') { continue; }
-    if (e.detail.stageName !== stageArg || e.detail.to !== fromPhase) { continue; }
-    const ms = Date.parse(e.time);
-    return Number.isNaN(ms) ? null : ms;
-  }
-  if (fromPhase === 'plan_pending') {
-    for (let k = upper - 1; k >= 0; k--) {
-      const e = log[k];
-      if (e.action !== 'register_stage' || e.detail.stageName !== stageArg) { continue; }
-      const ms = Date.parse(e.time);
-      return Number.isNaN(ms) ? null : ms;
-    }
-  }
-  return null;
 }
 
 /** 创建 FlowManager 实例（使用当前工作目录） */

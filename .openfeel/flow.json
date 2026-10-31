@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T13:09:26.808Z",
-    "revision": 1681,
+    "updated": "2026-10-31T13:50:33.901Z",
+    "revision": 1696,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -37,7 +37,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.5.6-stage-115",
+      "stage": "v1.5.6-stage-116",
       "op": ""
     },
     "retry": 0
@@ -73,8 +73,8 @@
     },
     "v1.5.6-stage-116": {
       "name": "v1.5.6-stage-116",
-      "phase": "plan_passed",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.5.6-stage-115"
       ],
@@ -83,9 +83,19 @@
       "requirement_id": "REQ-016",
       "stats": {
         "start_time": "2026-10-31T12:24:23.691Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-10-31T13:50:33.877Z",
+        "duration_ms": 5170186
       }
+    },
+    "v1.5.6-stage-117": {
+      "name": "v1.5.6-stage-117",
+      "phase": "plan_pending",
+      "status": "planned",
+      "deps": [
+        "v1.5.6-stage-116"
+      ],
+      "ops": {},
+      "workflow_mode": "fast"
     }
   },
   "reviews": [
@@ -345,7 +355,7 @@
       "id": "REV-022",
       "op": "v1.5.6-stage-116",
       "stage": "v1.5.6-stage-116",
-      "status": "open",
+      "status": "closed",
       "priority": "medium",
       "title": "[计划审查] observability.preflight 自测：readSnapshot 内 flow status/next 已刷新账本，必须在 readSnapshot 之前读",
       "filed_by": "cli",
@@ -357,163 +367,28 @@
       "id": "REV-023",
       "op": "v1.5.6-stage-116",
       "stage": "v1.5.6-stage-116",
-      "status": "open",
+      "status": "closed",
       "priority": "medium",
       "title": "[计划审查] dwell 算法造第二份口径：锚点漏 add_stage/reset、advance→plan_pending 不可达；应复用 findPhaseEnteredAtMs",
       "filed_by": "cli",
       "filed_at": "2026-10-31T12:32:48.876Z",
       "canAutoFix": false,
       "blocking": true
+    },
+    {
+      "id": "REV-024",
+      "op": "v1.5.6-stage-116",
+      "stage": "v1.5.6-stage-116",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[代码审查] summary 把「时间戳不可解析」误报为「未读过状态」；phase-entered 缺 detail 守卫会抛 TypeError",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T13:42:16.192Z",
+      "canAutoFix": false,
+      "blocking": false
     }
   ],
   "log": [
-    {
-      "time": "2026-10-17T05:24:47.394Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.2.2-stage-96.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-17T06:04:16.072Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.2.2-stage-97.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-17T06:11:37.798Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.2.2-stage-97.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-17T06:21:02.699Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.2.2-stage-97.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-17T06:31:00.613Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.2.2-stage-97.op-004",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-17T07:10:16.884Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.2.2-stage-98.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-17T07:32:08.589Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.2.2-stage-98.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-17T07:43:45.386Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.2.2-stage-98.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-17T08:00:09.886Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-001",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.2.2-stage-98"
-      }
-    },
-    {
-      "time": "2026-10-17T08:22:32.881Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.2.2",
-        "stages": 4,
-        "reviews": 0,
-        "log": 69
-      }
-    },
-    {
-      "time": "2026-10-17T08:32:50.468Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.2.1",
-        "stages": 9,
-        "reviews": 0,
-        "log": 127
-      }
-    },
-    {
-      "time": "2026-10-17T09:02:35.322Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.2.3",
-        "stages": 1,
-        "reviews": 0,
-        "log": 8
-      }
-    },
-    {
-      "time": "2026-10-17T10:38:44.955Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.2.4",
-        "stages": 1,
-        "reviews": 0,
-        "log": 8
-      }
-    },
-    {
-      "time": "2026-10-17T11:09:31.102Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.2.0",
-        "stages": 8,
-        "reviews": 0,
-        "log": 153
-      }
-    },
-    {
-      "time": "2026-10-17T11:26:47.117Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-002",
-        "title": "单包分发 DSH 适配器：openfeel 内置 dsh + setup --tools dsh 部署，升版 1.3.0 触发 npm 发布"
-      }
-    },
     {
       "time": "2026-10-17T11:26:50.596Z",
       "agent": "cli",
@@ -2370,6 +2245,169 @@
         "to": "done",
         "triggerStage": "v1.5.6-stage-115"
       }
+    },
+    {
+      "time": "2026-10-31T13:09:33.511Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:09:52.990Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T13:09:57.517Z",
+      "agent": "cli",
+      "action": "stage_deps_set",
+      "detail": {
+        "stage": "v1.5.6-stage-117",
+        "deps": [
+          "v1.5.6-stage-116"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-31T13:32:47.750Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:42:24.382Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:42:28.468Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:49:29.834Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-022"
+      }
+    },
+    {
+      "time": "2026-10-31T13:49:34.369Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-023"
+      }
+    },
+    {
+      "time": "2026-10-31T13:49:39.906Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-024"
+      }
+    },
+    {
+      "time": "2026-10-31T13:49:43.897Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:49:48.848Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:50:24.260Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:50:28.948Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "opsCount": 0,
+        "reviewsCount": 3,
+        "knowledgeCount": 3,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-116.md"
+      }
+    },
+    {
+      "time": "2026-10-31T13:50:33.871Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:50:33.901Z",
+      "agent": "cli",
+      "action": "requirement_auto_done",
+      "detail": {
+        "requirementId": "REQ-016",
+        "from": "in_progress",
+        "to": "done",
+        "triggerStage": "v1.5.6-stage-116"
+      }
     }
   ],
   "requirements": [
@@ -2569,9 +2607,9 @@
     {
       "id": "REQ-016",
       "title": "1.5.6：preflight / 调度观测指标（拒绝率、feel_next 调用、主会话直写）",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-10-31T10:11:49.905Z",
-      "updated_at": "2026-10-31T12:14:31.678Z",
+      "updated_at": "2026-10-31T13:50:33.901Z",
       "target_version": "v1.5.6",
       "priority": "P1",
       "workflow_mode": "fast",

@@ -51,6 +51,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **派发/恢复**（v1.5.3）：`feel_next.dispatch`（goal/context/boundaries/returnFormat；子 agent 禁读状态文件、返回 ≤10 行）；`feel_status.recovery`（lastTransition / handoff / nextAction）。
 - **快照/空转**（v1.5.4）：`feel_status` / `feel_next` 返回 `revision` / `snapshotAt` / `stale`；`plan_pending` 停留 >10 分钟提示空转。
 - **preflight**（v1.5.5）：CLI 执行器默认 `OPENFEEL_PREFLIGHT=strict`；`feel_status` / `feel_next` 返回 `preflight`；写命令要求 10 分钟内读过状态。
+- **观测摘要**（v1.5.6）：`feel_status` / `feel_next` 返回 `observability`（`stale` + `preflightAgeMs`/`preflightOk` 复制副本 + `statusSync` 三键 + 摘要）；`preflightAgeMs`/`preflightOk` **只复制不重算**（权威仍是顶层 `preflight`）。**账本先于 snapshot 读取**（`readPreflightInfo` 早于 `readSnapshot`）——`flow status --json` / `flow next --json` 会在 `--json` 早返回前写账本，读晚了会把本次调用刚写的账本当历史（`age≈0`），指标在测自己。读取次数不变、零新增 I/O。
 
 ## 目录
 

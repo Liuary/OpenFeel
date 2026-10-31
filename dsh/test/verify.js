@@ -19,6 +19,7 @@ import { planNextStep, readSnapshot } from '../lib/adapters/dashboard.js';
 import { tokenize } from '../lib/surface/command.js';
 import { renderFeelPrompt } from '../lib/surface/prompt.js';
 import { computeWorkflowGate } from '../lib/adapters/workflow-gate.js';
+import { buildObservability } from '../lib/adapters/observability.js';
 
 /** 真实 OpenFeel 项目（只读源）。 */
 const SOURCE_PROJECT = 'C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel';
@@ -427,6 +428,186 @@ async function main() {
     const text = workspace.sections[0].text();
     assert(text.includes('状态写操作只能用'), '提示段缺「状态写操作只能用 feel_*」');
     assert(text.includes('self-review'), '提示段缺自审标注约定');
+  });
+
+  await check('observability 组合摘要（v1.5.6）', async () => {
+    /** 精确键集（INV-7；6 键含 schemaVersion，排序比对以消除口径歧义） */
+    const OBS_KEYS = ['schemaVersion', 'stale', 'preflightAgeMs', 'preflightOk', 'statusSync', 'summary'].sort();
+
+    /** 校验形状（INV-7 / INV-13） */
+    const assertShape = (obs, label) => {
+      assert(obs !== null && typeof obs === 'object', `${label} 缺 observability 对象`);
+      const keys = Object.keys(obs);
+      assert(
+        JSON.stringify([...keys].sort()) === JSON.stringify(OBS_KEYS),
+        `${label} observability 键集应恰为 ${OBS_KEYS.join(',')}（实际 ${keys.join(',')}）`,
+      );
+      assert(keys.length === 6, `${label} observability 应为 6 键，实际 ${keys.length}`);
+      assert(obs.schemaVersion === 1, `${label} observability.schemaVersion 应为 1`);
+      assert(typeof obs.stale === 'boolean', `${label} observability.stale 应为布尔`);
+      assert(
+        obs.preflightAgeMs === null || typeof obs.preflightAgeMs === 'number',
+        `${label} observability.preflightAgeMs 应为 number|null`,
+      );
+      assert(typeof obs.preflightOk === 'boolean', `${label} observability.preflightOk 应为布尔`);
+      assert(
+        obs.statusSync === null
+          || (typeof obs.statusSync === 'object'
+            && typeof obs.statusSync.due === 'boolean'
+            && 'lastSync' in obs.statusSync
+            && typeof obs.statusSync.intervalMinutes === 'number'),
+        `${label} observability.statusSync 应为 null 或三键对象`,
+      );
+      if (obs.statusSync !== null) {
+        assert(
+          JSON.stringify(Object.keys(obs.statusSync).sort()) === JSON.stringify(['due', 'intervalMinutes', 'lastSync']),
+          `${label} observability.statusSync 应恰为三键`,
+        );
+      }
+      assertString(obs.summary, `${label} observability.summary 为空`);
+      // 反向：不得嵌套 preflight 对象（只允许两个标量副本）
+      assert(obs.preflight === undefined, `${label} observability 不得嵌套 preflight`);
+    };
+
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assertShape(status.observability, 'feel_status');
+    // 既有键仍在（INV-13）
+    for (const key of ['stale', 'preflight', 'statusSync', 'recovery']) {
+      assert(key in status, `feel_status 既有键 ${key} 丢失`);
+    }
+
+    const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
+    assertShape(next.observability, 'feel_next');
+    for (const key of ['stale', 'preflight', 'statusSync', 'recovery', 'dispatch']) {
+      assert(key in next, `feel_next 既有键 ${key} 丢失`);
+    }
+  });
+
+  await check('observability 复制不重算（v1.5.6）', async () => {
+    // INV-8：两个标量必须与顶层 preflight 同源同值；statusSync 三键全等
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assert(
+      status.observability.preflightAgeMs === status.preflight.ageMs,
+      `feel_status preflightAgeMs 应复制 ageMs（obs=${status.observability.preflightAgeMs} top=${status.preflight.ageMs}）`,
+    );
+    assert(
+      status.observability.preflightOk === status.preflight.ok,
+      'feel_status preflightOk 应复制 preflight.ok（禁止重算）',
+    );
+    assert(
+      JSON.stringify(status.observability.statusSync) === JSON.stringify(status.statusSync),
+      'feel_status observability.statusSync 应与顶层 statusSync 全等（三键原样）',
+    );
+
+    const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
+    assert(
+      next.observability.preflightAgeMs === next.preflight.ageMs,
+      'feel_next preflightAgeMs 应复制 ageMs',
+    );
+    assert(next.observability.preflightOk === next.preflight.ok, 'feel_next preflightOk 应复制 preflight.ok');
+    assert(
+      JSON.stringify(next.observability.statusSync) === JSON.stringify(next.statusSync),
+      'feel_next observability.statusSync 应与顶层 statusSync 全等',
+    );
+  });
+
+  await check('observability preflight 在 snapshot 之前读取（REV-022）', async () => {
+    // INV-12：在**副本**里放一份 8 小时前的账本。若读取发生在 readSnapshot 之后，
+    // `flow status --json` / `flow next --json` 会把账本刷成「现在」⇒ age≈0 ⇒ 本断言必失败。
+    // 绝不写原项目（纪律：所有写操作只打副本）。
+    const root = mkdtempSync(join(tmpdir(), 'feel-observability-'));
+    const project = join(root, 'project');
+    try {
+      cpSync(join(SOURCE_PROJECT, '.openfeel'), join(project, '.openfeel'), { recursive: true });
+      const oldAt = new Date(Date.now() - 8 * 3_600_000).toISOString();
+      writeFileSync(
+        join(project, '.openfeel', 'dev', '.preflight.json'),
+        `${JSON.stringify({ at: oldAt, stage: null, phase: null, revision: null }, null, 2)}\n`,
+      );
+      const status = ok(await workspace.tools.get('feel_status').execute({ project }, execFor(project)));
+      assertString(status.observability?.summary, '副本 feel_status 缺 observability.summary');
+      assert(
+        typeof status.observability.preflightAgeMs === 'number' && status.observability.preflightAgeMs >= 7 * 3_600_000,
+        `读取次序错误（REV-022）：preflightAgeMs=${status.observability.preflightAgeMs}，应 ≥ 7h（在 readSnapshot 之后读会被刷成 ≈0）`,
+      );
+      assert(status.observability.preflightOk === false, '8 小时前的账本必须判为已过期（preflightOk=false）');
+      assert(
+        status.preflight.at === oldAt,
+        `顶层 preflight.at 应保留旧账本时间（实际 ${status.preflight.at}）`,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  await check('observability 纯函数降级（缺失数据不抛，v1.5.6）', () => {
+    const empty = buildObservability({});
+    assert(empty !== null && typeof empty === 'object', 'buildObservability({}) 应返回对象');
+    assert(empty.preflightAgeMs === null, 'preflightAgeMs 应为 null');
+    assert(empty.preflightOk === false, 'preflightOk 应为 false');
+    assert(empty.statusSync === null, 'statusSync 应为 null');
+    assert(empty.stale === false, 'stale 缺失应降为 false');
+    assertString(empty.summary, 'summary 不应为空');
+    assert(empty.summary.includes('无记录'), `summary 应写明无记录：${empty.summary}`);
+
+    // 脏入参不抛，且不臆断
+    const dirty = buildObservability({ preflight: { ok: 'yes', ageMs: 'nope' }, statusSync: { due: 'x' }, stale: 'yes' });
+    assert(dirty.preflightAgeMs === null, '非法 ageMs 应降级为 null');
+    assert(dirty.preflightOk === false, '非法 ok 应降级为 false');
+    assert(dirty.statusSync === null, '非法 statusSync 应降级为 null');
+    assert(dirty.stale === false, '非法 stale 应降级为 false');
+
+    // REV-024：`readPreflightInfo` 对「at 不可解析」返回 at 非空 + ageMs:null ——
+    // 必须单独一档，**不得**与「从未读过状态」合并（否则同一 payload 里 at 有值、summary 说没调用过）。
+    const unparsable = buildObservability({
+      preflight: { ok: false, at: 'garbage', ageMs: null },
+      statusSync: { due: false, lastSync: null, intervalMinutes: 30 },
+      stale: false,
+    });
+    assert(unparsable.preflightAgeMs === null, '不可解析时 preflightAgeMs 应为 null');
+    assert(unparsable.preflightOk === false, '不可解析时 preflightOk 应为 false');
+    assert(
+      unparsable.summary.includes('时间戳不可解析'),
+      `at 不可解析应单独一档（实际：${unparsable.summary}）`,
+    );
+    assert(
+      unparsable.summary.includes('garbage'),
+      `不可解析摘要应保留原始 at（实际：${unparsable.summary}）`,
+    );
+    assert(
+      unparsable.summary.includes('未调用过') === false,
+      `at 非空时不得声称「未调用过」（实际：${unparsable.summary}）`,
+    );
+    // at 为 null 时仍走「无记录」
+    const neverRead = buildObservability({ preflight: { ok: false, at: null, ageMs: null } });
+    assert(neverRead.summary.includes('无记录'), `at:null 应为无记录（实际：${neverRead.summary}）`);
+
+    // 复制而非重算：ok=true 配一个远超 10 分钟的年龄，preflightOk 仍必须为 true
+    const copied = buildObservability({ preflight: { ok: true, ageMs: 8 * 3_600_000 }, statusSync: { due: false, lastSync: '2026-01-01T00:00:00.000Z', intervalMinutes: 30 } });
+    assert(copied.preflightOk === true, 'preflightOk 必须复制 preflight.ok，不得按年龄重算');
+    assert(copied.preflightAgeMs === 8 * 3_600_000, 'preflightAgeMs 应原样复制');
+    assert(copied.statusSync.intervalMinutes === 30, 'statusSync 三键应原样保留');
+    assert(copied.summary.includes('已过期') === false, 'summary 的过期判定跟随复制的 ok');
+
+    // summary 四态（§3.1 降级表）：无记录 / 有效 / 已过期 / 状态同步不可用（+ stale 两种口吻）
+    const fresh = buildObservability({
+      preflight: { ok: true, ageMs: 90_000 },
+      statusSync: { due: false, lastSync: '2026-01-01T00:00:00.000Z', intervalMinutes: 30 },
+      stale: false,
+    });
+    assert(fresh.summary.includes('前（有效）'), `fresh 摘要错误：${fresh.summary}`);
+    assert(fresh.summary.includes('快照=权威'), `stale=false 摘要错误：${fresh.summary}`);
+    const expired = buildObservability({
+      preflight: { ok: false, ageMs: 8 * 3_600_000 },
+      statusSync: { due: true, lastSync: null, intervalMinutes: 30 },
+      stale: true,
+    });
+    assert(expired.summary.includes('前（已过期）'), `expired 摘要错误：${expired.summary}`);
+    assert(expired.summary.includes('状态记录已到期'), `due 摘要错误：${expired.summary}`);
+    assert(expired.summary.includes('快照为降级'), `stale=true 摘要错误：${expired.summary}`);
+    const noSync = buildObservability({ preflight: { ok: true, ageMs: 1_000 }, statusSync: null, stale: false });
+    assert(noSync.statusSync === null, 'statusSync=null 应原样保持 null');
+    assert(noSync.summary.includes('状态同步: 不可用'), `sync 缺失摘要错误：${noSync.summary}`);
   });
 
   await check('feel_flow action=phases 返回转移表', async () => {

@@ -4523,7 +4523,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **错误映射**：预检 / 用法 / profile → \`INVALID_ARGUMENT\`（refusal/1，\`detail.reason=dsh-*\`）；备份 / pnpm install → \`INTERNAL_ERROR\`（internal/3，\`dsh-backup-failed\` / \`dsh-pnpm-install-failed\`）。不新增 CLI 错误码。
 - **单包**：不发布独立 \`openfeel-dsh\`；\`dsh/\` 随 \`openfeel\` npm 包分发，默认不部署。README 版本能力概览迁至 \`docs/VERSIONS.md\`。
 
-## v1.5.6（stage-114 / stage-115）
+## v1.5.6（stage-114 / stage-115 / stage-116）
 
 > 批次：preflight 写命令全覆盖 + 需求正文命令名校验（新增 JSON 出口 #41 \`lint req\`；**无新增错误码**）。
 
@@ -4533,6 +4533,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **dry-run 免门（10 处）**：\`flow stage remove|reset\` / \`advance\` / \`repair\` / \`migrate\` / \`checkpoint restore\` / \`health --fix\` / \`archive\` / \`plan scheme remove|register\` —— \`--dry-run\` 永不被 preflight 拒绝（零写盘）。
 - **恢复通道豁免（仅 2 处）**：\`flow repair\` / \`flow checkpoint restore\` 在 \`flow.json\` 不可读（\`isLoaded() === false\`）时静默放行，避免 strict 死锁；状态可读时仍受门。其它命令**不得**使用该豁免。
 - **参数错误先报**：ID / 阶段 / REV / op / \`--to\` 校验一律在门之前（含 README 式的 \`REV-999\` / \`op-999\` 序位断言）。
+- **流程健康（stage-116，仅人类输出）**：\`flow metrics\` 追加三项**零运行时开销**代理指标——resumed 比例 / \`plan_pending → plan_review\` 平均停留 / 最近 preflight 年龄（只读 \`.preflight.json\`，不刷新账本）；\`--json\` 键集恒 \`schemaVersion,agents\`。适配器 \`feel_status\` / \`feel_next\` 追加 \`observability\`（\`stale\` + \`preflightAgeMs\`/\`preflightOk\` 复制副本 + \`statusSync\` 三键 + 摘要），**账本先于 snapshot 读取**（否则指标在测自己）。
 
 ## v1.5.5（stage-113）
 

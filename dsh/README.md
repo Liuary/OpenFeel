@@ -196,6 +196,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 - **派发/恢复（v1.5.3）**：`feel_next.dispatch`（goal/context/boundaries/returnFormat；子 agent 禁读状态文件、返回 ≤10 行）；`feel_status.recovery`（lastTransition / handoff / nextAction）；提示段新增派发契约节。
 - **快照与空转（v1.5.4）**：`feel_status`/`feel_next` 返回 `revision` / `snapshotAt` / `stale`；`plan_pending` 停留 >10 分钟时提示空转。
 - **preflight（v1.5.5）**：适配器 CLI 调用默认 `OPENFEEL_PREFLIGHT=strict`；`feel_status`/`feel_next` 返回 `preflight`；写命令要求 10 分钟内读过状态。提示段禁止 shell 写状态命令。
+- **观测摘要（v1.5.6）**：`feel_status`/`feel_next` 返回 `observability`（`stale` + `preflightAgeMs`/`preflightOk` 复制副本 + `statusSync` 三键 + 一句摘要）；健康账本**先于 snapshot** 读取（读取次数不变、零新增 I/O），年龄反映「上一次读状态 → 现在」。两者均只增字段，既有键不变。
 
 段落正文每次装配时探测 `.openfeel/` 是否存在，因此提示会随工作区状态变化。
 

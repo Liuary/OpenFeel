@@ -399,6 +399,9 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-10-31 | patterns | [REV-024] [代码审查] summary 把「时间戳不可解析」误报为「未读过状态」；phase-entered 缺 detail 守卫会抛 TypeError |
+| 2026-10-31 | patterns | [REV-023] [计划审查] dwell 算法造第二份口径：锚点漏 add_stage/reset、advance→plan_pending 不可达；应复用 findPhaseEnteredAtMs |
+| 2026-10-31 | patterns | [REV-022] [计划审查] observability.preflight 自测：readSnapshot 内 flow status/next 已刷新账本，必须在 readSnapshot 之前读 |
 | 2026-10-31 | patterns | [REV-021] [代码审查] REQ-017 正文规则过时：正则未含下划线、错误举例、i18n 1048/+2 口径失效 |
 | 2026-10-31 | patterns | [REV-020] [代码审查] 带位置参数的合法命令行被判 A（openfeel stage set stage-01 …）：须用 registeredArguments 判定参数起点 |
 | 2026-10-31 | patterns | [REV-019] [门禁] dsh verify A1 用「归档 md >100 行」当夹具假设，小归档合法即误报；改为确定性夹具 + 内容等价断言 |

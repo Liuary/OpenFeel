@@ -444,6 +444,49 @@ openfeel flow log [--last <n>] [--json]
 | `--last <n>` | 显示最近 n 条日志（默认 10） |
 | `--json` | v1.2.2：`{schemaVersion,count,entries[]{time,agent,action,detail}}`；`time` 原始 ISO（不截断）；空日志与未初始化同形 `entries:[]` + exit 0 |
 
+### flow metrics
+
+展示 Agent 性能指标；v1.5.6 起人类输出追加「流程健康」块（**代理指标**，`--json` 契约不变）。
+
+```bash
+openfeel flow metrics [--json]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--json` | `{schemaVersion,agents}`（顶层键集/键序**冻结**，v1.5.6 零变更） |
+
+**流程健康（v1.5.6-stage-116，仅人类输出）**：不加监控、不告警、不写指标文件，只从已存在的两份账本（`flow.json.log` + `.openfeel/dev/.preflight.json`）推导三项：
+
+```text
+── 流程健康 ──
+  resumed 比例: 0/17 (0.0%) · 另有 3 条不可判定
+  plan_pending → plan_review 平均停留: 10m 35s (n=3)
+  最近 preflight: 2026-10-31T12:13:31 @ 8h 19m 前（已过期）
+```
+
+> 上面三行是**构造输入算出的样例**（固定假时钟 + fixture），不是对某个真实仓库的断言。
+
+| # | 指标 | 口径 |
+|---|---|---|
+| 1 | resumed 比例 | 窗口内 `action === 'advance_stage_phase'` 且 `detail.resumed` 为**布尔**的条目（分母）；分子为 `resumed === true`。`reset_stage_phase` **不计入**（返工 ≠ 推进恢复）。`labeled === 0` → 「无数据」，**不输出 `0.0%`**；**恒**外显「另有 N 条不可判定」 |
+| 2 | `plan_pending → plan_review` 平均停留 | 逐 `plan_review` 事件配对：锚点复用 `src/core/phase-entered.ts` 的**唯一实现**（`advance` / `reset` / `register_stage` / `add_stage`）；`add_stage` 仅当 `detail.phase` 缺失或为 `plan_pending` 时算锚。行内**恒**带 `(n=…)` 或「无样本」，`n=1` 标「样本不足」 |
+| 3 | 最近 preflight | 只读 `.openfeel/dev/.preflight.json`（1× `existsSync` + ≤1× `readFileSync`；**不调用** `recordPreflight`，绝不刷新账本）；>10 分钟标「已过期」；无记录 / 时间戳不可解析各有专门文案 |
+
+**窗口**：`PROCESS_HEALTH_WINDOW = MAX_LOG_ENTRIES`（=200，全保留条目）。不设「最近 50 条」：那会让 n≈1，把「无样本」误当结论。
+
+**局限（必读）**
+
+- **token 无法直接测**：OpenFeel 不持有模型用量（无 API 账单、无 tokenizer 回调）⇒ 三项全是**代理指标**，只回答「流程行为是否变化」，**不回答「省了多少 token」**。
+- **resumed 有结构性偏倚**：阶段出生即 `plan_pending`（写 `phase` 而非 `to`）⇒ 每个阶段第一条 advance 恒不可判定 ⇒ `unlabeled ≥ 阶段数`，故必须外显「另有 N 条不可判定」；`unlabeled` **不进口径**。
+- **低 resumed 比例不能证明闸门有效**：单会话长跑里 `resumed=false` 是常态；`session_id` 为 `proc:` 前缀时整体省略（不可判定）。
+- **dwell 是「入口摩擦」proxy**：只测「建阶段 → 计划过闸」的等待，不含方案/执行/审查耗时。
+- **preflight 年龄只证明「读过状态」**：年龄小 ≠ 读的是当前 revision，也 ≠ 写命令必然合规（`warn` 模式仅提示）。
+- **三项不能单点判「形式主义」**：需与 `flow log` 失败回环、REV 数量、`attempt_fail_*` 频次合看。
+- **已评估、显式降级到 1.5.7**：`preflight` 拒绝次数 / `feel_next` 调用次数 / 主会话直写+自审占比——均需新增埋点或写盘计数器，违反本阶段「零运行时开销 / 不新增写盘」边界。
+
+**零运行时开销**：`--json` 分支在健康块之前早返回 ⇒ **零新增 I/O**（不读账本、不写账本）；人类分支最多 1 次约 120B 的账本读取；单次 O(n)（n ≤ 200），无缓存 / 定时器 / 监听。
+
 ### flow health
 
 流水线健康检查（`flow.json` / 跨文件一致性 / 僵尸状态 / `config.yaml` 等）。

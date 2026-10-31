@@ -58,6 +58,9 @@
 
 ### 0.3 ⚠ 关键修正 1（**REV-023**）：dwell 必须**复用** `findPhaseEnteredAtMs`，不另造口径
 
+> **执行期口径更正（落地后回写，Feel 记录）**：实现最终拆成两个函数——`findPhaseEntry(...)` 是**唯一回扫实现**（含 `includeAddStage` 参数与 `add_stage` 锚），`findPhaseEnteredAtMs(...)` 是**只取时间戳的薄封装**；dwell 走 `findPhaseEntry`。
+> REV-023 的意图（单一实现、不造第二套口径）**完全成立**；本节及后文凡写「`findPhaseEnteredAtMs` 唯一实现 / dwell 调它」处，均按此口径理解。冻结 legacy 等价性测试覆盖薄封装（`includeAddStage:false`），`findPhaseEntry` 另有脏条目降级用例。
+
 仓内**已有权威口径**：
 
 ```ts

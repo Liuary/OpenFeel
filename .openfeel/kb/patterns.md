@@ -4677,3 +4677,15 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-021] [代码审查] REQ-017 正文规则过时：正则未含下划线、错误举例、i18n 1048/+2 口径失效 (2026-10-31)
 
 归档自阶段 v1.5.6-stage-115
+
+## [+] [REV-022] [计划审查] observability.preflight 自测：readSnapshot 内 flow status/next 已刷新账本，必须在 readSnapshot 之前读 (2026-10-31)
+
+归档自阶段 v1.5.6-stage-116
+
+## [+] [REV-023] [计划审查] dwell 算法造第二份口径：锚点漏 add_stage/reset、advance→plan_pending 不可达；应复用 findPhaseEnteredAtMs (2026-10-31)
+
+归档自阶段 v1.5.6-stage-116
+
+## [+] [REV-024] [代码审查] summary 把「时间戳不可解析」误报为「未读过状态」；phase-entered 缺 detail 守卫会抛 TypeError (2026-10-31)
+
+归档自阶段 v1.5.6-stage-116

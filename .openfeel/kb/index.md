@@ -399,6 +399,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-10-31 | patterns | [REV-001] 批次自审：日志摘要 / revision-stale / 指标 / 空转提示（无 blocking；2024 单测 + dsh 205 + 真实输出） |
 | 2026-10-31 | patterns | [REV-001] 批次自审：dispatch/recovery/交接固定键/同步去重/批次发布（无 blocking；2022 单测 + dsh 203 + E2E） |
 | 2026-10-31 | patterns | [REV-001] 入口闸自审：workflowGate / 研究产物守卫 / 拒绝审计 / 提示段 / 调研文档（无 blocking；2021 单测 + dsh 201 + E2E） |
 | 2026-10-31 | patterns | [REV-001] 热修自审：仅回改 natural-compare 三处；npm ci + 82/2021 复跑绿（无 blocking） |

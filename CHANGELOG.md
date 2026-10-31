@@ -4,6 +4,23 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.5.4] - 2026-10-31
+
+> 批次版本（Patch 批次）：**日志阶段摘要 + 快照 revision/stale + 观测指标 + 闸门滥用提示**。无 JSON 契约变更（`flow next` / `flow metrics` 键集不变）。
+
+### Added
+- [stage-112] **阶段日志摘要**：`FlowManager.getStageLogSummary(stageId)` 从最近 200 条日志派生 `lastTransition` / `lastError` / `resumeCount` / 条目与字节；`flow log` 人类输出追加当前阶段摘要（`--json` 契约不变）。
+- [stage-112] **观测指标**：`flow metrics` 人类输出追加 `flow.log` 条目/字节与活跃阶段数（`--json` 键集不变）。
+- [stage-112] **快照 revision/stale（adapter）**：`readSnapshot` 读取 `.openfeel/flow.json` 的 `revision` / mtime，返回 `revision` / `snapshotAt` / `stateUpdatedAt` / `stale`；`feel_status` / `feel_next` 暴露，stale 时 summary 提示以 `flow status` 为准。
+- [stage-112] **闸门滥用提示**：`feel_next` 在 `plan_pending` 停留 >10 分钟时提示「有产物就推进，没有就合并/取消」。
+
+### Changed
+- [stage-112] `recovery` 增加 `lastError` / `resumeCount`（从日志派生，不新增存储）。
+- [stage-112] `dsh/package.json`：version `1.5.4`、`requiresCli: ">=1.5.4"`。
+
+### Fixed
+- [stage-112] 跨会话恢复仍需扫描日志；`flow metrics` 无法观察日志体积与空转风险。
+
 ## [1.5.3] - 2026-10-31
 
 > 批次版本（Patch 批次）：**派发/返回契约 + 恢复包 + 结构化交接 + 同步去重**。按新发布节奏，1.5.3 统一发布，不再为单项功能单独发版。

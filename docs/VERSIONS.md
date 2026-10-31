@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.4** — Batch release: stage log summaries (`flow log`: last transition / last error / resume count), adapter snapshot `revision` / `stale`, observability metrics (`flow metrics`: log entries/bytes), and a gate-abuse hint when a stage sits in `plan_pending` for more than 10 minutes. No JSON contract changes.
 - **v1.5.3** — Batch release: dispatch/return contract (`feel_next.dispatch`: goal/context/boundaries/returnFormat; subagents never read state files, return ≤10 lines), recovery bundle (`feel_status.recovery`: lastTransition / handoff / nextAction), structured handoff (`done / next / block`) and no-op sync when state is unchanged. Release cadence is now batched (see "发布节奏").
 - **v1.5.2** — Workflow entry gate: `feel_status`/`feel_next` expose `workflowGate` when no stage is active; `docs/research/**` writes are rejected without an active stage (chore cannot bypass), with a denial audit event. Includes the dispatch/persistence research doc and the 1.5.3/1.5.4 iteration plan.
 - **v1.5.1** — Release hotfix: the v1.5.0 release script accidentally rewrote `natural-compare` in `package-lock.json` to a non-existent `1.5.0`, breaking CI `npm ci`; the lock is repaired (functionality identical to v1.5.0).
@@ -32,6 +33,15 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.4 — 批次：日志摘要 + 快照 revision/stale + 指标 + 闸门滥用提示
+
+- **阶段日志摘要**：`flow log` 人类输出追加当前阶段的最近转换 / 最近失败 / resume 次数（从最近 200 条日志派生，不新增存储）。
+- **快照 revision/stale**：`feel_status` / `feel_next` 返回 `revision` / `snapshotAt` / `stateUpdatedAt` / `stale`；`flow next` 缺失降级时明确提示。
+- **观测指标**：`flow metrics` 人类输出追加 `flow.log` 条目/字节与活跃阶段数。
+- **闸门滥用提示**：`plan_pending` 停留 >10 分钟时提示推进或合并/取消，避免为过闸建空阶段。
+- **兼容性**：`flow next --json` / `flow metrics --json` 键集不变。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → **完全退出并重启宿主**。详见 [CHANGELOG](../CHANGELOG.md#154---2026-10-31)。
 
 ## v1.5.3 — 批次：派发契约 + 恢复包 + 结构化交接 + 同步去重
 

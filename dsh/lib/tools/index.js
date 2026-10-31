@@ -162,9 +162,10 @@ export function createTools(context) {
         snapshot.recovery.nextAction = snapshot.focus.suggestedCommand ?? null;
         const focus = snapshot.focus;
         const gateWarning = snapshot.workflowGate.required ? '⚠ 无活跃阶段：非只读任务先 feel_status→建阶段。' : '';
+        const staleWarning = snapshot.stale ? '⚠ 快照为降级（flow next 缺失），以 flow status 为准。' : '';
         return {
           data: snapshot,
-          summary: `${gateWarning}pipeline=${snapshot.pipeline.phase || '(空)'} 活跃阶段=${focus.stage || '(无)'} phase=${focus.phase || '(空)'} mode=${snapshot.mode.current}(${snapshot.mode.source}) 负责=${focus.responsibleAgent} 可推进到=[${(focus.legalNextPhases ?? []).join(', ') || '无'}]`,
+          summary: `${staleWarning}${gateWarning}pipeline=${snapshot.pipeline.phase || '(空)'} 活跃阶段=${focus.stage || '(无)'} phase=${focus.phase || '(空)'} mode=${snapshot.mode.current}(${snapshot.mode.source}) 负责=${focus.responsibleAgent} 可推进到=[${(focus.legalNextPhases ?? []).join(', ') || '无'}]`,
           next: focus.phase === 'done' || focus.phase === ''
             ? null
             : { tool: 'feel_next', arguments: {}, why: '获取「下一步该谁做」的明确建议。' },
@@ -202,6 +203,12 @@ export function createTools(context) {
         if (plan.workflowGate.required) {
           plan.summary = `⚠ ${plan.workflowGate.message} ${plan.summary}`;
         }
+        if (snapshot.stale) {
+          plan.summary = `⚠ 快照为降级（flow next 缺失），以 flow status 为准。 ${plan.summary}`;
+        }
+        plan.revision = snapshot.revision ?? null;
+        plan.snapshotAt = snapshot.snapshotAt ?? null;
+        plan.stale = snapshot.stale === true;
         return {
           data: plan,
           summary: plan.summary,

@@ -11,7 +11,24 @@
  * - 合法转移必须从**该阶段自己的模式**解析，而不是全局默认。
  */
 
+import { readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { FeelError } from './cli.js';
+
+/** 读取 flow.json revision 与 mtime（v1.5.4，失败降级 null）。 */
+function readFlowMeta(projectRoot) {
+  try {
+    const file = join(projectRoot, '.openfeel', 'flow.json');
+    const raw = JSON.parse(readFileSync(file, 'utf-8'));
+    const stat = statSync(file);
+    return {
+      revision: typeof raw.revision === 'number' ? raw.revision : null,
+      updatedAt: new Date(stat.mtimeMs).toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
 
 /** 15 个合法流水线相位（`flow phases --json.phases`）。 */
 export const PIPELINE_PHASES = /** @type {const} */ ([
@@ -170,8 +187,13 @@ export async function readSnapshot(cli, options = {}) {
     ? next.legalNextPhases.filter((phase) => typeof phase === 'string')
     : legalNextPhases(focusPhase, activeTransitions);
 
+  const flowMeta = readFlowMeta(cli.cwd ?? '');
   return {
     schemaVersion: 1,
+    revision: flowMeta?.revision ?? null,
+    snapshotAt: new Date().toISOString(),
+    stateUpdatedAt: flowMeta?.updatedAt ?? null,
+    stale: next === undefined,
     project: {
       root: cli.cwd ?? '',
       initialized: true,
@@ -369,6 +391,13 @@ export function planNextStep(snapshot) {
   // v1.5.0：状态记录到期只提示，不阻塞；CLI advance 会在节点自动同步。
   if (snapshot.statusSync?.due === true) {
     adapterHints.push('状态记录已超过 30 分钟：更新交接摘要（仅 Feel）后运行 `openfeel dev sync`；CLI 在节点/到期时会自动同步。');
+  }
+  // v1.5.4：入口闸滥用提示——plan_pending 长时间停留且无推进，提示合并/取消，防止为过闸而建空阶段。
+  if (phase === 'plan_pending' && typeof snapshot.recovery?.lastTransition?.time === 'string') {
+    const lastAt = Date.parse(snapshot.recovery.lastTransition.time);
+    if (Number.isFinite(lastAt) && Date.now() - lastAt > 10 * 60_000) {
+      adapterHints.push('阶段在 plan_pending 已超过 10 分钟：有产物就推进，没有就合并/取消；不要为过闸而建空阶段。');
+    }
   }
 
   const cliCommand = typeof focus.suggestedCommand === 'string' && focus.suggestedCommand !== ''

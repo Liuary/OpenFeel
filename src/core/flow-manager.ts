@@ -2942,6 +2942,55 @@ export class FlowManager {
     }
   }
 
+  /**
+   * 阶段日志摘要（v1.5.4）：从最近 200 条日志派生，不新增持久化字段。
+   * 用于 `flow log` 摘要与恢复包，避免跨会话扫描全部日志。
+   * @param {string} stageId
+   */
+  getStageLogSummary(stageId: string): {
+    entries: number;
+    bytes: number;
+    lastTransition: { from: string; to: string; time: string } | null;
+    lastError: { phase: string; time: string } | null;
+    resumeCount: number;
+  } {
+    const log = this.data?.log ?? [];
+    let entries = 0;
+    let lastTransition: { from: string; to: string; time: string } | null = null;
+    let lastError: { phase: string; time: string } | null = null;
+    let resumeCount = 0;
+    for (const entry of log) {
+      const detail = entry.detail ?? {};
+      const matches = detail.stageName === stageId || detail.stage === stageId;
+      if (!matches) continue;
+      entries += 1;
+      if (entry.action === 'advance_stage_phase') {
+        const from = typeof detail.from === 'string' ? detail.from : '';
+        const to = typeof detail.to === 'string' ? detail.to : '';
+        if (to !== '') {
+          lastTransition = { from, to, time: entry.time };
+          if (to === 'review_failed' || to === 'test_failed') {
+            lastError = { phase: to, time: entry.time };
+          }
+        }
+        if (detail.resumed === true) resumeCount += 1;
+      }
+    }
+    return {
+      entries,
+      bytes: Buffer.byteLength(JSON.stringify(log), 'utf8'),
+      lastTransition,
+      lastError,
+      resumeCount,
+    };
+  }
+
+  /** 日志体积（v1.5.4 指标；只读） */
+  getLogStats(): { entries: number; bytes: number } {
+    const log = this.data?.log ?? [];
+    return { entries: log.length, bytes: Buffer.byteLength(JSON.stringify(log), 'utf8') };
+  }
+
   // ═══ 校验 ═══
 
   /**

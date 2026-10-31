@@ -516,6 +516,18 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
       console.log(store.summary(lang));
+      // v1.5.4：观测代理指标（人类输出；--json 键集不变）
+      const mgr = new FlowManager(process.cwd());
+      if (mgr.isLoaded()) {
+        const logStats = mgr.getLogStats();
+        const data = mgr.getData();
+        const active = data ? Object.values(data.stages).filter((stage) => stage.phase !== 'done').length : 0;
+        const en = lang === 'en';
+        console.log('');
+        console.log(en ? '── Observability ──' : '── 观测指标 ──');
+        console.log(`  ${en ? 'flow.log' : 'flow.log'}: ${logStats.entries} entries / ${logStats.bytes} bytes`);
+        console.log(`  ${en ? 'active stages' : '活跃阶段'}: ${active}`);
+      }
     });
 
   // flow phases — 自描述：列出全部合法 phase 与运行时转移表
@@ -1499,6 +1511,23 @@ export function registerFlowCommand(program: Command): void {
           console.log(`  ` + t('flow.log.detail', lang) + `: ${JSON.stringify(entry.detail)}`);
         }
         console.log('');
+      }
+
+      // v1.5.4：阶段摘要（从最近 200 条日志派生；人类输出，不改 --json 契约）
+      const activeStage = data.pipeline.current.stage
+        || Object.entries(data.stages).find(([, stage]) => stage.phase !== 'done')?.[0]
+        || '';
+      if (activeStage !== '') {
+        const s = mgr.getStageLogSummary(activeStage);
+        const en = lang === 'en';
+        console.log(en ? `── Stage summary: ${activeStage} ──` : `── 阶段摘要：${activeStage} ──`);
+        if (s.lastTransition !== null) {
+          console.log(`  ${en ? 'last transition' : '最近转换'}: ${s.lastTransition.from} → ${s.lastTransition.to} @ ${s.lastTransition.time}`);
+        }
+        if (s.lastError !== null) {
+          console.log(`  ${en ? 'last failure' : '最近失败'}: ${s.lastError.phase} @ ${s.lastError.time}`);
+        }
+        console.log(`  ${en ? 'resume count' : 'resume 次数'}: ${s.resumeCount}`);
       }
     });
 

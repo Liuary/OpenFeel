@@ -63,6 +63,8 @@ export function readRecovery(projectRoot) {
     phase: null,
     requirement: null,
     lastTransition: null,
+    lastError: null,
+    resumeCount: 0,
     handoff: readHandoff(projectRoot),
     hasDevLast: existsSync(join(projectRoot, '.openfeel', 'users', username(projectRoot), 'dev_last.md')),
   };
@@ -76,6 +78,17 @@ export function readRecovery(projectRoot) {
       result.requirement = active[1]?.requirement_id ?? null;
     }
     const log = Array.isArray(flow.log) ? flow.log : [];
+    // v1.5.4：活跃阶段的最近失败 / resume 次数（从 200 条日志派生，不新增存储）
+    if (result.stage !== null) {
+      for (const entry of log) {
+        const detail = entry?.detail ?? {};
+        if (detail.stageName !== result.stage && detail.stage !== result.stage) continue;
+        if (entry.action === 'advance_stage_phase' && (detail.to === 'review_failed' || detail.to === 'test_failed')) {
+          result.lastError = { phase: detail.to, time: entry.time ?? '' };
+        }
+        if (detail.resumed === true) result.resumeCount += 1;
+      }
+    }
     for (let i = log.length - 1; i >= 0; i -= 1) {
       const entry = log[i];
       if (entry?.action === 'advance_stage_phase') {

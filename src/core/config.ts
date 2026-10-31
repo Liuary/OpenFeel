@@ -468,7 +468,7 @@ const CONFIG_TEMPLATE_ZH = `# .openfeel/config.yaml
 # 本文件为所有阶段提供默认值，status.md 可覆盖
 
 meta:
-  version: 1.5.3
+  version: 1.5.4
   project: OpenFeel
   tech_stack: TypeScript
 
@@ -525,7 +525,7 @@ const CONFIG_TEMPLATE_EN = `# .openfeel/config.yaml
 # This file provides defaults for all stages; status.md can override
 
 meta:
-  version: 1.5.3
+  version: 1.5.4
   project: OpenFeel
   tech_stack: TypeScript
 

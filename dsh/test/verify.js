@@ -15,7 +15,7 @@ import { join, resolve } from 'node:path';
 
 import { normalizeConfig, apply } from '../lib/index.js';
 import { FeelCli } from '../lib/adapters/cli.js';
-import { readSnapshot } from '../lib/adapters/dashboard.js';
+import { planNextStep, readSnapshot } from '../lib/adapters/dashboard.js';
 import { tokenize } from '../lib/surface/command.js';
 import { renderFeelPrompt } from '../lib/surface/prompt.js';
 import { computeWorkflowGate } from '../lib/adapters/workflow-gate.js';
@@ -394,6 +394,29 @@ async function main() {
     const text = workspace.sections[0].text();
     assert(text.includes('派发契约'), 'zh 提示段缺派发契约节');
     assert(text.includes('≤10 行'), 'zh 提示段缺返回行数限制');
+  });
+
+  await check('快照 revision / stale / snapshotAt（v1.5.4）', async () => {
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assert(status.revision === null || typeof status.revision === 'number', 'revision 应为 number/null');
+    assert(typeof status.snapshotAt === 'string' && status.snapshotAt.includes('T'), 'snapshotAt 应为 ISO');
+    assert(typeof status.stale === 'boolean', 'stale 应为布尔');
+    const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
+    assert(next.revision === null || typeof next.revision === 'number', 'feel_next revision');
+    assert(typeof next.stale === 'boolean', 'feel_next stale');
+    assert('lastError' in next.recovery, 'recovery 缺 lastError');
+    assert(typeof next.recovery.resumeCount === 'number', 'recovery 缺 resumeCount');
+  });
+
+  await check('plan_pending 超过 10 分钟 → 闸门滥用提示（v1.5.4）', () => {
+    const old = new Date(Date.now() - 11 * 60_000).toISOString();
+    const plan = planNextStep({
+      focus: { stage: 's1', phase: 'plan_pending', legalNextPhases: ['plan_review'], responsibleAgent: 'planner' },
+      mode: { current: 'fast', activeStageMode: 'fast' },
+      recovery: { lastTransition: { time: old } },
+      statusSync: { due: false },
+    });
+    assert(plan.adapterHints.some((hint) => hint.includes('plan_pending')), `缺少空转提示: ${plan.adapterHints.join('|')}`);
   });
 
   await check('feel_flow action=phases 返回转移表', async () => {

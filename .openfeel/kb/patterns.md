@@ -4573,3 +4573,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-001] 批次自审：dispatch/recovery/交接固定键/同步去重/批次发布（无 blocking；2022 单测 + dsh 203 + E2E） (2026-10-31)
 
 归档自阶段 v1.5.3-stage-111
+
+## [+] [REV-001] 批次自审：日志摘要 / revision-stale / 指标 / 空转提示（无 blocking；2024 单测 + dsh 205 + 真实输出） (2026-10-31)
+
+归档自阶段 v1.5.4-stage-112

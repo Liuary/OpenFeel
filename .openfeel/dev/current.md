@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.5.3 — 批次：派发契约 + 恢复包 + 结构化交接 + 同步去重**｜ `feel_next.dispatch` / `feel_status.recovery` / 批次发布 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.3 ｜ **已 push（2abf648）；npm 1.5.3 已发布（CI publish）**
-> 统计：测试 82 文件 / **2022 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 93 + 58 + 10 = **203 断言** ｜ `lint i18n` **1047** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.3**
+> OpenFeel **v1.5.4 — 批次：日志摘要 + 快照 revision/stale + 指标 + 闸门滥用提示**｜ `flow log` 摘要 / `feel_status.revision` / `flow metrics` 观测 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.4 ｜ **未 push；未 npm publish**
+> 统计：测试 83 文件 / **2024 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 95 + 58 + 10 = **205 断言** ｜ `lint i18n` **1047** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.4**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-31** @Liuary：**v1.5.4 批次（日志/快照/指标/空转提示）**——① **阶段日志摘要**：`FlowManager.getStageLogSummary` 从 200 条日志派生 lastTransition / lastError / resumeCount；`flow log` 人类输出追加摘要（`--json` 不变）；② **快照 revision/stale**：adapter `readSnapshot` 读 `flow.json` revision/mtime，`feel_status`/`feel_next` 暴露 `revision`/`snapshotAt`/`stale`；③ **观测指标**：`flow metrics` 人类输出追加 `flow.log` 条目/字节与活跃阶段（JSON 不变）；④ **闸门滥用提示**：`plan_pending` >10 分钟提示空转；⑤ `recovery` 增加 `lastError`/`resumeCount`。门禁：全量 **83/2024**、tsc 0、i18n **1047**、kb 0（649）、build ×2、dsh **205**、`--version` 1.5.4。阶段 v1.5.4-stage-112（fast）。**未 push；未 npm publish**
 
 - **2026-10-31** @Liuary：**v1.5.3 批次（派发/恢复/交接/去重）**——① **派发契约**：`dsh/lib/adapters/dispatch.js` + `feel_next.dispatch`（goal/context/boundaries/returnFormat/budget），子 agent 禁读 `dev_last*` / `current.md` / `status.md` / `flow.json`，返回 ≤10 行；② **恢复包**：`recovery.js` + `feel_status.recovery`（lastTransition / handoff ≤600 字 / nextAction）；③ **结构化交接**：`openfeel-memory` 固定键 `done/next/block`；④ **同步去重**：`syncDevStatus` 内容未变不重写 `dev_last`（返回 `changed`）；⑤ **发布节奏**：`docs/VERSIONS.md` 新增批次发布规则，本版统一发布。门禁：全量 **82/2022**、tsc 0、i18n **1047**、kb 0（649）、build ×2、dsh **203**、`--version` 1.5.3。阶段 v1.5.3-stage-111（fast）。**已 push（2abf648）；npm 1.5.3 已发布（CI publish）**
 

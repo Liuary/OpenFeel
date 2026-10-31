@@ -1,11 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.5.2 — 流程入口闸**｜ 无阶段研究/方案不可写 / `workflowGate` / 调度与持久化调研 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.2 ｜ **未 push；未 npm publish**
+> OpenFeel **v1.5.2 — 流程入口闸**｜ 无阶段研究/方案不可写 / `workflowGate` / 调度与持久化调研 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.2 ｜ **已 push（0c109dd）；npm 1.5.2 已发布（CI publish）**
 > 统计：测试 82 文件 / **2021 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 91 + 58 + 10 = **201 断言** ｜ `lint i18n` **1047** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.2**
 
 ## 近期提交记录（最多 5 条，最新在上）
 
-- **2026-10-31** @Liuary：**v1.5.2 流程入口闸 + 调度/持久化调研**——根因：上一轮把「调研」误当纯只读任务，跳过 `feel_status` 与阶段创建；`docs/**` 任意相位可写，研究/方案无阶段要求。修复：① `dsh/lib/adapters/workflow-gate.js` + `feel_status`/`feel_next` 返回 `workflowGate`（无活跃阶段警告 + 建阶段 actions）；② `guard` 新增 `isResearchArtifactPath`：无阶段写 `docs/research/**` 拒绝（chore 不能绕过），拒绝写 `guard-audit.jsonl`（`guard_deny`）；③ DSH 提示段新增「流程入口」硬规则；④ 调研文档 `docs/research/dispatch-persistence-2026-10-31.md`（含 Codex GPT-6.1-Sol 评审取舍与 1.5.3/1.5.4 顺序）。门禁：全量 **82/2021**、tsc 0、i18n **1047**、kb 0（649）、build ×2、dsh **201**、`--version` 1.5.2。阶段 v1.5.2-stage-110（fast）。**未 push；未 npm publish**
+- **2026-10-31** @Liuary：**v1.5.2 流程入口闸 + 调度/持久化调研**——根因：上一轮把「调研」误当纯只读任务，跳过 `feel_status` 与阶段创建；`docs/**` 任意相位可写，研究/方案无阶段要求。修复：① `dsh/lib/adapters/workflow-gate.js` + `feel_status`/`feel_next` 返回 `workflowGate`（无活跃阶段警告 + 建阶段 actions）；② `guard` 新增 `isResearchArtifactPath`：无阶段写 `docs/research/**` 拒绝（chore 不能绕过），拒绝写 `guard-audit.jsonl`（`guard_deny`）；③ DSH 提示段新增「流程入口」硬规则；④ 调研文档 `docs/research/dispatch-persistence-2026-10-31.md`（含 Codex GPT-6.1-Sol 评审取舍与 1.5.3/1.5.4 顺序）。门禁：全量 **82/2021**、tsc 0、i18n **1047**、kb 0（649）、build ×2、dsh **201**、`--version` 1.5.2。阶段 v1.5.2-stage-110（fast）。**已 push（0c109dd）；npm 1.5.2 已发布（CI publish）**
 
 - **2026-10-31** @Liuary：**v1.5.1 发布链路热修**——v1.5.0 发版脚本全局替换 `1.4.0→1.5.0` 时误改 `package-lock.json` 的 `natural-compare`（真实 1.4.0）为不存在的 `1.5.0`，CI `npm ci` `ETARGET` 失败、publish 未执行。仅回改三处（两个依赖范围 + 一个 version），`npm ci` 恢复、全量 **82/2021** 复跑绿；功能与 1.5.0 一致。阶段 v1.5.1-stage-109（fast）。**已 push（2ca41fa）；npm 1.5.1 已发布（CI publish）**
 

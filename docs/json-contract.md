@@ -1,8 +1,9 @@
-# OpenFeel CLI JSON 输出契约（v1.2.4）
+# OpenFeel CLI JSON 输出契约（v1.5.6）
 
-- **权威范围**：`--json` 成功输出（40 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
+- **权威范围**：`--json` 成功输出（41 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
 - **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。§6 登记的是有意增量清单，未登记即视为破坏。
+- **v1.5.6-stage-115 收口**：新增出口 **#41 `lint req`**（需求正文命令名校验）；计数升为 **41 成功出口 / 42 注册 `--json` 选项**；`target:'req'` 比其他 lint 出口多 `suspects` / `unknownCount` / `suspectCount` 三个键（A/B 分级），详见 §16。
 - **v1.2.4-stage-100 收口**：DSH ACTION-GUIDE A1~A5 交付——A1 `archive <stage>` 覆盖保护（`ARCHIVE_EXISTS`）+ A2~A4 新增 7 个成功出口（#34~#40）+ A5 `config get --all` 扩展。计数升级为 **40 成功出口 / 41 注册 `--json` 选项**；§15 为本版细则。
 - **v1.2.3-stage-99 收口**：并发冲突 JSON 退出机制已与 `failCli` 统一（§14.2）；§14.1 补锁超时 E2E 证据；当时 33 成功出口 / 34 注册选项与退出码语义零改动。
 - **v1.2.2-stage-98 定稿**：文档多载体（README×3 / GETTING_STARTED / commands / manual / cli-usage）已同批同步；本文件为 v1.2.2 发布口径（33 成功出口 / 34 注册选项）。
@@ -95,9 +96,9 @@ typeof doc.error === 'string'  → legacy
 
 - 禁止以退出码、命令名或字段存在性做第二套判别。
 
-## §5 40 出口冻结表
+## §5 41 出口冻结表
 
-> 计数口径：**40 个成功 JSON 出口**（#1~#40）。`flow advance --json` 为错误封装开关，不计入（见 §7）。
+> 计数口径：**41 个成功 JSON 出口**（#1~#41）。`flow advance --json` 为错误封装开关，不计入（见 §7）。
 
 | # | 出口 | 顶层键序 | 元素/嵌套键（实测） | 条件键/形态 |
 |:-:|------|----------|--------------------|------------|
@@ -141,6 +142,7 @@ typeof doc.error === 'string'  → legacy
 | 38 | `lint i18n` | `schemaVersion,target,ok,issues` | `target:"i18n"`；`issues[]{path,message}`；`path ∈ {src/core/i18n-data/zh-CN.ts, src/core/i18n-data/en.ts}` | `ok = issues.length === 0`；`ok:false` 仍为成功文档 + exit 1；人类输出逐字不变 |
 | 39 | `lint kb` | `schemaVersion,target,ok,issues` | `target:"kb"`；`issues[]{path,message}`；`path = .openfeel/kb/<file>`（项目根相对） | 无 kb 目录 → `ok:true,issues:[]` + exit 0；过期引用 → `ok:false` + exit 1 |
 | 40 | `roadmap show` | `schemaVersion,version,milestones` | `milestones[]{title,theme,stage,deliverable}`（表头驱动；兼容 3/4 列，缺列 `null`） | 不传版本 → `version:null,milestones:[]` + exit 0；版本不存在 → `INVALID_ARGUMENT`/refusal/1；人类输出逐字不变 |
+| 41 | `lint req` | `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount` | `target:"req"`；`issues[]{path,message}`（A 类 unknown-command）；`suspects[]{path,message}`（B 类 suspect-command-group）；两个计数为 number；`path = .openfeel/requirements/<file>` | `ok = (issues.length === 0)`（与 #38/#39 一致）；`suspects` 不参与 `ok` / 退出码；无需求目录 → `ok:true,issues:[],suspects:[]` + exit 0；A 类 → `ok:false` + exit 1；抑制行数 / 未闭合警告**不进 JSON**（见 §16） |
 
 **登记类别**：恒在键 / 条件出现键 / 文档形态变体三类，测试断言须与类别一致。
 
@@ -162,16 +164,18 @@ typeof doc.error === 'string'  → legacy
 14. **stage-97：`req list --json.requirements[]` 末位追加 `linkedStages` / `progress`**——既有 `RequirementData` 键序不变，仅末位追加；`linkedStages[]{id,phase}`、`progress{done,total}`（见 §13.3）。
 15. **stage-97：`flow archive --json`（gate-rejected 与成功）追加 `eligible` / `unfinishedStages` / `blockingReviews`**——legacy 键序与 `error` 类型不变；成功形态 9 键、gate-rejected 形态 9 键（见 §4.2 / §13.3）。
 16. **v1.2.4-stage-100：A1~A5 有意增量（#34~#40 + 2 项既有出口扩展）**——A1 `archive <stage>` 增 `ARCHIVE_EXISTS` 拒绝（错误码第 13 行）与 `--force`（出口 #33 键集不变）；A2~A4 新增 #34~#40 七个出口；A5 `config get --all` 扩展 #27（项目模式新增 `defaults` 形态）。既有出口字段键集/键序/类型零改动；详见 §15。
+17. **v1.5.6-stage-115：新增出口 #41 `lint req`**——`target:'req'` 比其他 lint 出口多出 `suspects` 与两个计数键（共 3 个新键：`suspects` / `unknownCount` / `suspectCount`），理由：A 类阻塞 / B 类 advisory 必须可分，塞进单一 `issues` 会破坏 `ok` 不变量。`ok = issues.length === 0` 与 #38/#39 完全一致；既有 40 个出口字段键集/键序/类型零改动；详见 §16。
 
 ## §7 计数口径
 
-- **成功 JSON 出口 = 40 个**（flow 15 + req 5 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 2 + project 1 + archive 1 + model 2 + lint 2 + roadmap 1）。
-  - flow 15 = `status,overview,current,metrics,phases,mode,ops list,archive,archive list,archive show,health,next,recover,checkpoint list,log`。
+- **成功 JSON 出口 = 41 个**（flow 16 + req 5 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 2 + project 1 + archive 1 + model 2 + lint 3 + roadmap 1）。
+  - flow 16 = `status,overview,current,metrics,phases,mode,ops list,archive,archive list,archive show,health,next,recover,checkpoint list,log,retry`。
   - v1.2.4 新增 7 个：#34 `plan stage list`、#35 `model list`、#36 `model get`、#37 `flow retry`、#38 `lint i18n`、#39 `lint kb`、#40 `roadmap show`；`config get --all`（#27 扩展）与 `archive --force`（#33 选项扩展）不计新增出口。
+  - v1.5.6 新增 1 个：#41 `lint req`（lint 分项 2 → 3）。
 - `flow advance --json` 为**错误封装开关**：成功输出保持人类文本，不计入成功出口。
-- 注册的 `--json` 选项数为 **41**（40 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。`lint kb` 与 `lint i18n` 为两个独立 Commander 子命令，各计 1。
-- 三处对齐：源码 `option('--json'` 去重计数 41 / 本文件 40+41 / `test/cli/json-contract.test.ts` 用例 #1~#40；`test/commands/knowledge.test.ts` 计数用例 = 41/40。
-- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 40 个成功出口、也不计入 41 个注册选项（非 Commander 选项）；验收单列。**
+- 注册的 `--json` 选项数为 **42**（41 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。`lint i18n` / `lint kb` / `lint req` 为三个独立 Commander 子命令，各计 1。
+- 三处对齐：源码 `option('--json'` 去重计数 42 / 本文件 41+42 / `test/cli/json-contract.test.ts` 用例 #1~#41；`test/commands/knowledge.test.ts` 计数用例 = 42/41。
+- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 41 个成功出口、也不计入 42 个注册选项（非 Commander 选项）；验收单列。**
 
 ## §8 迁移边界
 
@@ -367,7 +371,7 @@ typeof doc.error === 'string'  → legacy
 ### §15.4 A4：三命令面
 
 - **`flow retry`**：`attempts = getRetryCount(op)`、`maxAttempts = op.max_attempts`、`exhausted = attempts >= maxAttempts`、`state = op.state`；只读零写盘。
-- **`lint i18n|kb`**：`ok = issues.length === 0`；`ok:false` 仍输出成功文档并保持 `process.exitCode = 1` 门禁语义；结构化 issues 与人类输出同源（人类行逐字不变）；`lint kb` 无目录 → `ok:true,issues:[]`。
+- **`lint i18n|kb`**：`ok = issues.length === 0`；`ok:false` 仍输出成功文档并保持 `process.exitCode = 1` 门禁语义；结构化 issues 与人类输出同源（人类行逐字不变）；`lint kb` 无目录 → `ok:true,issues:[]`。（`lint req` 见 §16，历史小节口径不改。）
 - **`roadmap show`**：`version` = 归一化版本（去前导 `v`）；不传版本 → `version:null,milestones:[]`；表头驱动解析 `## 里程碑` 表格（兼容 3/4 列；缺列 `null`）；无小节/占位文案 → `milestones:[]`；版本不存在 → `INVALID_ARGUMENT`/refusal/1。
 
 ### §15.5 A5：`config get --all --json`
@@ -375,3 +379,56 @@ typeof doc.error === 'string'  → legacy
 - 形态：`{schemaVersion,scope:"project",defaults:{execution_mode,auto_advance,merge_mode,workflow_mode}}`（`resolveConfigDefaults` 四键固定序，缺失/非法逐键回退 `DEFAULT_CONFIG`）。
 - **仅项目模式**：`--all` + `--global` → `INVALID_ARGUMENT`（`all-global-conflict`）；`--all` + 位置 key → `INVALID_ARGUMENT`（`all-with-key`）。
 - **不再 `key-required`**：项目模式无 key 且带 `--all` → 成功文档 exit 0；不带 `--all` 的既有行为逐字不变（人类输出四行 `key: value` 仅出现在 `--all`）。
+
+## §16 v1.5.6-stage-115 细则（`lint req`，出口 #41）
+
+**首段（契约差异声明）**：`target:'req'` 比其他 lint 出口**多出 `suspects` 与两个计数键（共 3 个新键：`suspects` / `unknownCount` / `suspectCount`）**，理由：**A/B 分级**——A 类阻塞驱动 `ok` 与退出码，B 类 advisory 仅提示；两级语义无法塞进单一 `issues` 数组而不破坏 `ok` 不变量。本出口无历史消费者，新增键不受「只增不改」约束，但必须在此显式登记。
+
+### §16.1 顶层键序（恒 7 键）
+
+`schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount`（`schemaVersion` 恒首；`target` 恒 `"req"`）。
+`issues[]` / `suspects[]` 元素键序恒 `path,message`（复用 `LintIssue` 形状）；空集恒 `[]`（非 `null`）；两个计数恒 number。
+
+### §16.2 A / B 判定与 `ok`
+
+- **A 类**（`unknown-command`，进 `issues`）：剥 `openfeel` 前缀后，首 token 是根命令、但逐 token 下降在某处断掉，**且断点父命令未声明位置参数** → **阻塞**；message 报「无法解析为命令路径（断在 `<父命令完整内部路径>`）」，如断在 `flow` 或 `flow.stage`。
+- **B 类**（`suspect-command-group`，进 `suspects`）有两种来源 → **advisory**，不影响 `ok` / 退出码：
+  1. 首 token **非**根命令、串长 ≥2、且**尾 token** 命中全树命令名 → message「疑似未知命令组（尾命令 `<tail>` 已注册）」（`op create` / `npm run lint`）；
+  2. **参数起点歧义**：在声明了位置参数的节点上，下一个 token 既不匹配子命令、又命中全树命令名 → message「疑似把参数写成命令名（`<token>` 是已注册命令名，命令路径无法确定）」（`archive create` / `knowledge search lint`）。
+- **通过**：逐 token 全部命中（允许停在父命令，如 `stage` / `plan scheme` / `flow review`）；或到达**声明位置参数的节点**后，剩余 token 均非命令名（视为参数值：`stage set stage-01` / `config get workflow_mode` / `archive v1.2.0`）。
+- **静默**：单 token 且非根命令（`plan_review` / `stage-114`），或两端都不满足 A/B 条件。
+- **`ok = (issues.length === 0)`** —— 与 #38/#39（`lint i18n` / `lint kb`）语义完全一致；**`suspects` 不参与 `ok`、不参与退出码**。
+- **退化边界（已知并接受）**：`flwo stage set` → B（exit 0）；`stagee deps` → 完全静默；`npm run lint` / `git status` 这类外部工具命令 → B 面噪声（故 B 类永不阻塞）；**父命令声明位置参数时，命中命令名的参数值降级为 suspect**（`openfeel archive create` → B 而非 A，因为 `archive <stage>` 的参数值恰好是命令名，路径无法确定）；反过来，参数值本身是命令名时也会被提示（`req add add`），属 B 面噪声、不阻塞。
+- **已知边界（刻意的取舍，**不修**）**：当父命令**同时声明位置参数且有子命令**时（`flow.archive` 1 参数 + 2 子命令、`migrate` 1 参数 + 1 子命令），子命令优先；因此**在值位上拼错的子命令会静默通过**——`flow archive lst` / `migrate rollbak` 被判为「参数值」（A=0/B=0），与合法的 `flow archive v1.2.0` 无法区分。**原因**：位置参数是任意字符串，解析器没有形态学依据判定「这看起来像命令名」。要让它报错只能改判定（把「参数位 + 形近子命令」也报 A），那会把正常参数值（版本号/ID/自由文本）大量误伤——故登记为已知边界，并用测试锁住当前行为（core `T17` / commands `C13`）。
+
+### §16.3 候选识别与前缀 token 串
+
+- 载体：行内反引号 `` `…` ``（不跨行）；span 两端 `trim` 后按 `\s+` 切分。
+- **前缀 token 串**：从第一个 token 起连续收集匹配 `^[a-z][a-z0-9_-]*$` 的 token（**允许下划线**），首个不匹配即停；对**已收集前缀**判定（**不得**「整 span 含不合形态 token 就跳过」——否则 `flow review_add` / `flow stats --json` 永远免检）。
+- **参数起点（REV-020）**：解析按「子命令优先」——当前节点的子命令里有该 token 就下降；否则若当前节点 `argCount > 0`（commander `registeredArguments.length`），**后续 token 视为位置参数**，解析结束：命中命令名 → 降级 suspect，否则 → 通过。
+- 串长 `1 ≤ n ≤ 4`；`n > 4` 整体跳过。
+- 剥前缀：仅首 token 严格等于 `openfeel` 时剥**一次**。
+- 扫描面：仅 `.openfeel/requirements/*.md`（一层、不递归、不跟随符号链接、按文件名升序）；**不扫** `docs/**` / `.openfeel/flow-archive/**` / `.openfeel/plan/**` / `.openfeel/log/**` / `.openfeel/kb/**`。
+
+### §16.4 抑制两档 + 使用约束
+
+- 行内 `<!-- lint-req:ignore -->`：跳过该行全部候选；区间 `<!-- lint-req:ignore-start -->` … `<!-- lint-req:ignore-end -->`：跳过区间内全部候选（**区间起行**与**区间内的止行**自身亦不提取候选；**孤 `ignore-end` 行**按普通行扫描、候选照报，见 §16.5）。
+- 标记匹配对象是**剥离行内代码后的文本** ⇒ 写在反引号里的标记写法不生效；标记**区分大小写**。
+- 未闭合 `ignore-start` → 区间延续到文件末尾（EOF），**不静默**（见 §16.5）；孤 `ignore-end` 不报错、不改变区间状态（该行按普通行扫描）。
+- 状态机（REV-020）：嵌套 `ignore-start` **不覆盖**外层起行（不累加深度）；**同行 start+end 自闭合**不开启区间，也不会提前关闭已开启的外层区间。
+- **使用约束**：只允许用于「正文按定义必须引用**错误命令名**」的场景（bug 例证 / 历史差异记录 / 错误示例）；**不得**用来掩盖正文里的错误命令名（那属于改正正文）。每处标记须在同行或同节说明理由，并配反向验证。
+
+### §16.5 不新增 JSON 键的部分（REV-011）
+
+- **抑制行数**（`suppressedLines`）只进**人类输出**首行（`抑制 {n} 行`），让抑制量可见。
+  **口径**（REV-020）：计入「抑制标记行（起 / 止 / 行内）+ 区间内内容行」；**孤 `ignore-end` 行不计**（它什么也没抑制，按普通行扫描）。
+- **未闭合区间**（`unclosedRegions`）每处一行 **stderr** 警告（`lint.req.unclosedRegionWarn`），**不改退出码**、**不进 JSON**。⇒ JSON 键集**恒 7 键**。
+- `--json` 模式 stdout **恰好一个** JSON 文档；未闭合区间的 stderr 行不是错误信封、不影响退出码。
+
+### §16.6 排序 / 退出码 / `path` / 文案
+
+- **排序**：`issues` 与 `suspects` **各自独立**升序——`path` 字节序 → `line` 升序 → 同行出现序；两类不混排。
+- **退出码**：仅 A 类 → `process.exitCode = 1`；只有 B 类 / 无 issue / 目录缺失 → 0；不新增错误码（复用 exit 1）、不提供 `--fix` / `--warn-only` / `--no-fail`。
+- **`path`**：项目根相对路径 `.openfeel/requirements/<file>`（恒正斜杠），与 `lint kb` 的 `.openfeel/kb/<file>` 同风格。
+- **文案**：`message` 与人类输出**同一份字符串**（人类行 = `'  ' + path + ' ' + message`），不含绝对路径 / 反斜杠 / **不含任何近似纠错建议**（A 类只报「无法解析为命令路径 + 断点位置」）。
+- **无需求目录 / 无 `*.md`** → `files:0,candidates:0,issues:[],suspects:[]` → `ok:true` + exit 0（镜像 `lint kb` 的「无目录即通过」）。

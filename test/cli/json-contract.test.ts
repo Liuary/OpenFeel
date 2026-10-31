@@ -1055,6 +1055,47 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(i18nDoc.issues).toEqual([]);
   });
 
+  it('#41 lint req：七键 + issues/suspects 分离；A 类 ok:false+exit 1 / B 类 ok:true+exit 0', async () => {
+    // 空态（无 .openfeel/requirements/）：ok:true、两个集合空、两个计数 0
+    const empty = await doc(['lint', 'req', '--json']);
+    expect(Object.keys(empty)).toEqual([
+      'schemaVersion', 'target', 'ok', 'issues', 'suspects', 'unknownCount', 'suspectCount',
+    ]);
+    expect(empty).toMatchObject({
+      target: 'req', ok: true, issues: [], suspects: [], unknownCount: 0, suspectCount: 0,
+    });
+    expect(process.exitCode).toBe(0);
+
+    // A 类（首 token 是根命令但解析断裂）→ issues + ok:false + exit 1；B 类 → suspects 仅提示
+    const reqDir = join(tmpDir, '.openfeel', 'requirements');
+    mkdirSync(reqDir, { recursive: true });
+    writeFileSync(join(reqDir, 'REQ-999.md'), '`stage deps` 与 `op create`\n', 'utf-8');
+    const bad = await doc(['lint', 'req', '--json']);
+    expect(Object.keys(bad)).toEqual([
+      'schemaVersion', 'target', 'ok', 'issues', 'suspects', 'unknownCount', 'suspectCount',
+    ]);
+    expect(bad.ok).toBe(false);
+    const issues = bad.issues as Array<Record<string, unknown>>;
+    const suspects = bad.suspects as Array<Record<string, unknown>>;
+    expect(Object.keys(issues[0])).toEqual(['path', 'message']);
+    expect(Object.keys(suspects[0])).toEqual(['path', 'message']);
+    expect(issues[0].path).toBe('.openfeel/requirements/REQ-999.md');
+    expect(String(issues[0].message)).toContain('stage deps');
+    expect(bad.unknownCount).toBe(1);
+    expect(bad.suspectCount).toBe(1);
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+
+    // 仅 B 类 → ok:true 且 exit 0（advisory 不参与 ok / 退出码）
+    rmSync(join(reqDir, 'REQ-999.md'), { force: true });
+    writeFileSync(join(reqDir, 'REQ-998.md'), '`op publish`\n', 'utf-8');
+    const onlyB = await doc(['lint', 'req', '--json']);
+    expect(onlyB.ok).toBe(true);
+    expect(onlyB.issues).toEqual([]);
+    expect(onlyB.suspectCount).toBe(1);
+    expect(process.exitCode).toBe(0);
+  });
+
   it('#40 roadmap show：version/milestones 键序、3/4 列兼容、空态与版本不存在', async () => {
     const roadmapDir = join(tmpDir, '.openfeel', 'roadmap');
     mkdirSync(roadmapDir, { recursive: true });

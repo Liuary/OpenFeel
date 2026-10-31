@@ -16,7 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
-- **v1.5.6** — Batch release: preflight now covers all state-write commands (34 commands / 36 gate sites in one shared helper), `--dry-run` is never gated (10 commands), `flow repair` / `flow checkpoint restore` stay usable when `flow.json` is unreadable, and strict rejections are zero-write (including `flow.json.bak` and `config.yaml`). No JSON contract changes.
+- **v1.5.6** — Batch release: preflight now covers all state-write commands (34 commands / 36 gate sites in one shared helper), `--dry-run` is never gated (10 commands), `flow repair` / `flow checkpoint restore` stay usable when `flow.json` is unreadable, and strict rejections are zero-write (including `flow.json.bak` and `config.yaml`). Also new: `openfeel lint req` (JSON exit #41) validates command names in requirement bodies against the real command tree (A-class blocking / B-class advisory), with in-line and region suppression markers.
 - **v1.5.5** — Batch release: CLI preflight ledger (`flow next` / `flow status` record `.preflight.json`; write commands check a 10-minute window), adapter defaults to strict preflight (`feel_status`/`feel_next` expose `preflight`), prompt bans shell state-write commands and requires independent review (self-review must be marked).
 - **v1.5.4** — Batch release: stage log summaries (`flow log`: last transition / last error / resume count), adapter snapshot `revision` / `stale`, observability metrics (`flow metrics`: log entries/bytes), and a gate-abuse hint when a stage sits in `plan_pending` for more than 10 minutes. No JSON contract changes.
 - **v1.5.3** — Batch release: dispatch/return contract (`feel_next.dispatch`: goal/context/boundaries/returnFormat; subagents never read state files, return ≤10 lines), recovery bundle (`feel_status.recovery`: lastTransition / handoff / nextAction), structured handoff (`done / next / block`) and no-op sync when state is unchanged. Release cadence is now batched (see "发布节奏").
@@ -36,14 +36,16 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
 
-## v1.5.6 — 批次：preflight 写命令全覆盖
+## v1.5.6 — 批次：preflight 写命令全覆盖 + 需求正文命令名校验
 
+- **需求正文命令名校验（新增）**：`openfeel lint req [--json]` 扫 `.openfeel/requirements/*.md` 里的行内反引号命令名，剥 `openfeel` 前缀后沿**真实命令树**解析。**A 类**（命令路径无法解析，如 `stage deps` / `flow review_add`）→ 报错并 **exit 1**；**B 类**（疑似命令组 / 参数写成命令名，如 `op create` / `archive create`）→ 只提示、**exit 0**（advisory 永不阻塞）。带位置参数的正常写法**不会误报**（`openfeel stage set stage-01` / `config get workflow_mode` / `model get openfeel-executor`）。`--json` 恒七键（比其它 lint 出口多 `suspects` / `unknownCount` / `suspectCount`）。
+- **抑制标记（两档）**：行内 `<!-- lint-req:ignore -->`、区间 `<!-- lint-req:ignore-start -->` … `<!-- lint-req:ignore-end -->`；**只用于正文按定义要引用错误命令名**的场合（bug 例证 / 历史差异记录），不用于掩盖真实错误名。漏写 `ignore-end` 会在 **stderr** 告警（不静默、不改退出码），人类输出首行显示「抑制 N 行」。
 - **覆盖到全部状态写命令**：34 个命令 / 36 个门位统一收敛到单一 helper（`src/commands/shared/preflight-gate.ts`）；`src/core/preflight.ts` 判定源零改动。
 - **顺序约定**：参数校验先于 preflight（非法 `REV-999` / `op-999` / 阶段 ID / `--to` 先报参数错误）；`stage task --add` 与 `flow review update` 等此前不可达 / 被遮蔽的门位补齐。
 - **dry-run 免门（10 处）**：`--dry-run` 永不被门拒绝，保住「试探 → `flow next` → 真执行」路径；其中 `flow repair --dry-run --backup` 会**跳过备份**（预览模式不写任何文件，也避免用损坏的 `flow.json` 覆盖原本可用的 `.bak`）。
 - **恢复通道（2 处）**：`flow repair` / `flow checkpoint restore` 在 `flow.json` 不可读时放行（否则 strict 永久死锁）；状态可读时仍受门。
 - **零写盘**：strict 拒绝时 `flow.json` / `status.md` / `config.yaml` / 归档与 `.bak` 全部不落盘（含 `repair --backup`、`config set --sync-stages`）。
-- **兼容性**：无新增错误码、无 `--json` 键集变更；36 个门位中 4 个所属命令注册了 `--json`（`flow advance` / `flow archive` / `req split` / `flow health --fix`；后两者为 legacy 三键，拒绝值 `preflight-required`）；`chore` / `dev sync` / `config set-lang` / 顶层 `archive <stage>` / 顶层 `migrate` 不在接入面（排除清单见 [commands.md](commands.md#preflight-写命令闸v156)）。
+- **兼容性**：无新增错误码；**JSON 契约新增出口 #41 `lint req`（41 成功出口 / 42 注册选项）**，既有 40 个出口键集/键序/类型零改动、错误码表恒 13 行；36 个门位中 4 个所属命令注册了 `--json`（`flow advance` / `flow archive` / `req split` / `flow health --fix`；后两者为 legacy 三键，拒绝值 `preflight-required`）；`chore` / `dev sync` / `config set-lang` / 顶层 `archive <stage>` / 顶层 `migrate` 不在接入面（排除清单见 [commands.md](commands.md#preflight-写命令闸v156)）。
 - **升级**：`npm i -g openfeel@latest` → `openfeel setup` → **完全退出并重启宿主**。详见 [CHANGELOG](../CHANGELOG.md#156---2026-10-31)。
 
 ## v1.5.5 — 批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性

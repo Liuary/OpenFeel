@@ -13,7 +13,7 @@
 - **落点**：`ctx.tools`（13 个 `feel_*` 工具）、`ctx.commands`（`/feel`）、
   `ctx.systemPrompt`（`<feel_mode>` 纪律段）。不写任何领域状态。
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
-  （v1.3.0 起仍 40 个成功出口）；本适配器只消费、不重实现。
+  （v1.5.6 起 41 个成功出口 / 42 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
   的 `openfeel.requiresCli`（≥1.3.2）。
 

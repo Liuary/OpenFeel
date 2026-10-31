@@ -687,6 +687,12 @@ export const lint: I18nDomain = {
   'kb.staleTmpl':          { key: 'lint.kb.staleTmpl',          zh: '❌ 发现 {n} 个过期引用',                en: '' },
   'kb.staleItemTmpl':      { key: 'lint.kb.staleItemTmpl',      zh: '  {file} L{line}: "{ref}" → 文件不存在', en: '' },
   'kb.issueTmpl':          { key: 'lint.kb.issueTmpl',          zh: 'L{line}: "{ref}" → 文件不存在',          en: '' },
+  'req.okTmpl':            { key: 'lint.req.okTmpl',            zh: '✅ 未发现无法解析的命令路径（共检查 {n} 个候选 / {files} 个需求文件；抑制 {suppressed} 行）', en: '' },
+  'req.failTitleTmpl':     { key: 'lint.req.failTitleTmpl',     zh: '❌ 发现 {m} 个无法解析的命令路径（另有 {low} 条低置信提示；抑制 {suppressed} 行）', en: '' },
+  'req.issueTmpl':         { key: 'lint.req.issueTmpl',         zh: 'L{line}: `{span}` → 无法解析为命令路径（断在 `{break}`）', en: '' },
+  'req.suspectTmpl':       { key: 'lint.req.suspectTmpl',       zh: 'L{line}: `{span}` → 疑似未知命令组（尾命令 `{tail}` 已注册）', en: '' },
+  'req.argAsCommandTmpl':  { key: 'lint.req.argAsCommandTmpl',  zh: 'L{line}: `{span}` → 疑似把参数写成命令名（`{token}` 是已注册命令名，命令路径无法确定）', en: '' },
+  'req.unclosedRegionWarn': { key: 'lint.req.unclosedRegionWarn', zh: '⚠️ {path} L{line}: 区间标记未闭合（ignore-start 无对应 ignore-end），已抑制到文件末尾', en: '' },
 };
 
 /* ==================== help 域：命令帮助文本（--help 输出用语） ==================== */
@@ -956,11 +962,13 @@ export const help: I18nDomain = {
   'instructions.schema':   { key: 'help.instructions.schema',   zh: 'Schema 名称（默认 spec-driven）', en: '' },
 
   // lint
-  'lint':                  { key: 'help.lint',                  zh: '项目健康检查（i18n 键一致性、kb 引用有效性）', en: '' },
+  'lint':                  { key: 'help.lint',                  zh: '项目健康检查（i18n 键一致性、kb 引用有效性、需求正文命令名）', en: '' },
   'lint.i18n':             { key: 'help.lint.i18n',             zh: '校验 i18n 键一致性（空值/中英独有键）', en: '' },
   'lint.i18n.json':        { key: 'help.lint.i18n.json',        zh: '以 JSON 输出 { schemaVersion, target, ok, issues: [{ path, message }] }', en: '' },
   'lint.kb':               { key: 'help.lint.kb',               zh: '检测 .openfeel/kb/ 中的过期文件引用', en: '' },
   'lint.kb.json':          { key: 'help.lint.kb.json',          zh: '以 JSON 输出 { schemaVersion, target, ok, issues: [{ path, message }] }', en: '' },
+  'lint.req':              { key: 'help.lint.req',              zh: '校验需求正文中的命令名（沿真实命令树解析）', en: '' },
+  'lint.req.json':         { key: 'help.lint.req.json',         zh: '以 JSON 输出 { schemaVersion, target, ok, issues, suspects, unknownCount, suspectCount }', en: '' },
 
   // migrate（legacy 布局迁移）
   'migrate':               { key: 'help.migrate',               zh: 'Legacy 布局迁移（检测/备份/迁移/回滚存量项目旧布局）', en: '' },

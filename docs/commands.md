@@ -25,7 +25,7 @@
 
 **全局 `--project` 边界（v1.2.2）**：`runCli` argv 预扫描后 `process.chdir` 单点注入；多值且不一致 → `INVALID_ARGUMENT`（exit 1），路径不存在或非目录 → `PROJECT_NOT_FOUND`（exit 1）；命令输出语言按**目标项目**解析，而 `--help` 语言按原始 cwd（`applyHelpI18n` 于 chdir 前执行）；`--log-file` 相对路径按**原始 cwd**；`knowledge dedup` 保留其本地 `--project <path>` 声明（语法零变化，经 `optsWithGlobals()` + 单点解析读取）；CLI 为单进程单命令，`chdir` 每进程至多一次。
 
-**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 40 个成功出口、也不计入 41 个注册选项**。
+**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 41 个成功出口、也不计入 42 个注册选项**。
 
 ## 错误封装（v1.2.2）
 
@@ -965,11 +965,14 @@ openfeel knowledge dedup [content] [--project <path>] [--category <name>] [--thr
 ```bash
 openfeel lint i18n [--json]   # i18n 键对称性校验（zh/en 三向比对 + 空值检测）
 openfeel lint kb [--json]     # kb 过期引用检测（扫描 kb 文件中的路径引用是否存在）
+openfeel lint req [--json]    # 需求正文命令名存在性（真实命令树 + 剥 openfeel 前缀）
 ```
 
 **`lint i18n|kb --json`（v1.2.4 A4）**：`{schemaVersion,target,ok,issues}`；`target ∈ {i18n,kb}`；`issues[]{path,message}`（i18n = 语言源文件相对路径；kb = `.openfeel/kb/<file>`）；`ok = issues.length === 0`。`ok:false` 仍输出成功文档并保持既有 exit 1 门禁语义；结构化 issues 与人类行同源（人类输出逐字不变）。`lint kb` 无 KB 目录 → `ok:true,issues:[]`。
 
-**退出码（门禁语义，v1.1.2）**：发现问题时**非 0 退出**（对齐 `flow health`），使 CI/脚本可直接以其作为门禁；无问题 `exit 0`。**未提供** `--warn-only`/`--no-fail` 逃生阀——若需忽略结果，请由调用方显式表达（如 `openfeel lint kb || true`）。
+**`lint req --json`（v1.5.6 #41）**：`{schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount}`（**恒 7 键**，`target:'req'`）；比其它 lint 出口多 `suspects` / `unknownCount` / `suspectCount` 三键——**A 类**（首 token 是根命令、解析在某处断裂，**且断点父命令未声明位置参数**，`unknown-command`）进 `issues`，驱动 `ok:false` + **exit 1**；**B 类**（`suspect-command-group`）进 `suspects`，`ok` 不受影响、**exit 0**（advisory），来源有两种：① 首 token 非根且尾 token 已注册（`op create`）；② **参数起点歧义**——父命令声明了位置参数而下一 token 又命中命令名（`archive create` / `knowledge search lint`）。反过来，带位置参数的合法写法直接通过（`stage set stage-01` / `config get workflow_mode` / `archive v1.2.0`）。`ok = issues.length === 0`（与 #38/#39 一致）。只扫 `.openfeel/requirements/*.md`（一层、不跟随符号链接）；抑制标记两档（`<!-- lint-req:ignore -->` 行内 / `ignore-start` … `ignore-end` 区间），**只用于正文按定义要引用错误命令名的场景**；未闭合区间只走 **stderr 警告**（不改退出码、不进 JSON），抑制行数只进人类输出。**不给近似纠错建议**（A 类只报「无法解析为命令路径 + 断点位置」）。详见 [json-contract.md](json-contract.md) §16。
+
+**退出码（门禁语义，v1.1.2）**：发现问题时**非 0 退出**（对齐 `flow health`），使 CI/脚本可直接以其作为门禁；无问题 `exit 0`。`lint req` 仅 **A 类**（命令路径无法解析）非 0，**B 类**（疑似命令组 / 参数写成命令名）不改退出码，**未闭合区间**仅 stderr 警告、不改退出码。**未提供** `--warn-only`/`--no-fail` 逃生阀——若需忽略结果，请由调用方显式表达（如 `openfeel lint kb || true`）。
 
 ## stage — 阶段状态
 
@@ -1077,9 +1080,9 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## JSON 出口一览（v1.4.0 快照，无 JSON 出口变更）
+## JSON 出口一览（v1.5.6 快照，新增 #41）
 
-> 计数口径：**40 个成功出口 / 43 个注册选项**（v1.4.0 新增 `chore --end` / `chore --status`）；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
+> 计数口径：**41 个成功出口 / 44 个注册选项**（44 = 42 个 `--json` 选项 + `chore --end` / `chore --status` 两个非 json 选项；v1.5.6 新增 #41 `lint req`）；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 
 | # | 出口 | 命令面 | 顶层键序 |
 |:-:|------|--------|----------|
@@ -1123,9 +1126,10 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 38 | `lint i18n` | `lint i18n --json` | `schemaVersion,target,ok,issues` |
 | 39 | `lint kb` | `lint kb --json` | `schemaVersion,target,ok,issues` |
 | 40 | `roadmap show` | `roadmap show [version] --json` | `schemaVersion,version,milestones` |
-| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 40 / 41**） |
+| 41 | `lint req` | `lint req --json` | `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount` |
+| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 41 / 42**） |
 
-> 说明：以上为 v1.3.0 快照的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 **v1.5.6 快照**（40 出口 → 41；新增 #41 `lint req`）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

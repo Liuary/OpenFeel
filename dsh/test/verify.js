@@ -863,21 +863,20 @@ async function main() {
   // 出口 #33（archive <stage> --json）是**写命令**：只允许打在副本上。
   // v1.2.4 起 CLI 拒绝覆盖已存在的归档文件（ARCHIVE_EXISTS，零写盘）。
   // fixture 用当前活跃阶段（动态取 feel_stage list 首项；版本归档后仍可用）。
+  // ★ REV-019：夹具**无条件**写入（不再 `if (!existsSync)` 守卫）——测试自己控制输入，
+  //   不依赖「项目里恰好存在一个 >100 行的归档」这种脆弱前提。首阶段刚归档时其真实
+  //   archive md 可能只有几十行（0 op / 少量 REV，短是合法的），守卫会让合成夹具被跳过。
   const archivedStage = fixtureStage;
   const archiveMdPath = join(tempProject, '.openfeel', 'log', `archive-${archivedStage}.md`);
   const flowJsonPath = join(tempProject, '.openfeel', 'flow.json');
-  if (!existsSync(archiveMdPath)) {
-    writeFileSync(
-      archiveMdPath,
-      `# synthetic archive fixture — ${archivedStage}\n\n`
-        + Array.from({ length: 120 }, (_, i) => `- synthetic line ${i + 1}`).join('\n')
-        + '\n',
-      'utf8',
-    );
-  }
+  const syntheticArchiveMd = `# synthetic archive fixture — ${archivedStage}\n\n`
+    + Array.from({ length: 120 }, (_, i) => `- synthetic line ${i + 1}`).join('\n')
+    + '\n';
+  writeFileSync(archiveMdPath, syntheticArchiveMd, 'utf8');
 
   await check('A1: 归档文件已存在时拒绝覆盖且零写盘（副本）', async () => {
     const mdBefore = readFileSync(archiveMdPath, 'utf8');
+    assert(mdBefore === syntheticArchiveMd, '前置：拒绝覆盖用例的输入应是合成夹具');
     const revBefore = readFileSync(flowJsonPath, 'utf8').match(/"revision":\s*(\d+)/)?.[1];
     let rejected;
     try {
@@ -889,14 +888,15 @@ async function main() {
     assert(rejected.code === 'ARCHIVE_EXISTS', `code 应为 ARCHIVE_EXISTS，实际 ${rejected.code}`);
     assert(rejected.kind === 'refusal', `kind 应为 refusal，实际 ${rejected.kind}`);
     assert(rejected.message.includes('force=true'), '拒绝消息应指引 force=true');
-    // 四重零写盘：md 内容、revision、log 长度、md 行数
-    assert(readFileSync(archiveMdPath, 'utf8') === mdBefore, '归档 md 内容被改动');
+    // 双重零写盘：md 内容逐字等价（「拒绝覆盖」的不变式是**内容不变**，不是行数）+ revision 不变
+    const mdAfter = readFileSync(archiveMdPath, 'utf8');
+    assert(mdAfter === mdBefore, `归档 md 内容被改动（${mdBefore.length} → ${mdAfter.length} 字节）`);
     const revAfter = readFileSync(flowJsonPath, 'utf8').match(/"revision":\s*(\d+)/)?.[1];
     assert(revAfter === revBefore, `revision 被改动：${revBefore} → ${revAfter}`);
-    assert(mdBefore.split('\n').length > 100, `归档 md 行数异常：${mdBefore.split('\n').length}`);
   });
 
   await check('A1: force=true 显式覆盖并返回 #33 六键文档（副本）', async () => {
+    const mdBeforeForce = readFileSync(archiveMdPath, 'utf8');
     const result = await workspace.tools
       .get('feel_archive')
       .execute({ action: 'stage_summary', stage: archivedStage, force: true }, tempExec);
@@ -908,8 +908,10 @@ async function main() {
     assert(Array.isArray(data.knowledgeExtracts), 'knowledgeExtracts 应为数组');
     assertString(data.archivePath, 'archivePath 为空');
     assert(result.summary.includes('覆盖重写'), 'force 成功时 summary 应标明覆盖重写');
-    // 覆盖确实生效：md 被重写
-    assert(readFileSync(archiveMdPath, 'utf8').split('\n').length < 100, '覆盖后 md 应被重写为存根');
+    // 覆盖确实生效：md 内容**已改变**（与「零写盘」用例的内容不变互为逆变式）
+    const mdAfterForce = readFileSync(archiveMdPath, 'utf8');
+    assert(mdAfterForce !== mdBeforeForce, 'force 覆盖后 md 内容应改变');
+    assert(mdBeforeForce === syntheticArchiveMd, '前置：force 覆盖前的内容应是合成夹具');
   });
 
   await check('原项目归档摘要未被触碰', () => {

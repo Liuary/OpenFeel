@@ -659,6 +659,12 @@ export const lint: I18nDomain = {
   'kb.staleTmpl':          { key: 'lint.kb.staleTmpl',          zh: '', en: '❌ Found {n} stale reference(s)' },
   'kb.staleItemTmpl':      { key: 'lint.kb.staleItemTmpl',      zh: '', en: '  {file} L{line}: "{ref}" → file not found' },
   'kb.issueTmpl':          { key: 'lint.kb.issueTmpl',          zh: '', en: 'L{line}: "{ref}" → file not found' },
+  'req.okTmpl':            { key: 'lint.req.okTmpl',            zh: '', en: '✅ No unresolvable command paths (checked {n} candidate(s) in {files} file(s); {suppressed} suppressed line(s))' },
+  'req.failTitleTmpl':     { key: 'lint.req.failTitleTmpl',     zh: '', en: '❌ Found {m} unresolvable command path(s) ({low} low-confidence hint(s); {suppressed} suppressed line(s))' },
+  'req.issueTmpl':         { key: 'lint.req.issueTmpl',         zh: '', en: 'L{line}: `{span}` → cannot resolve as a command path (lost at `{break}`)' },
+  'req.suspectTmpl':       { key: 'lint.req.suspectTmpl',       zh: '', en: 'L{line}: `{span}` → suspected unknown command group (tail `{tail}` is registered)' },
+  'req.argAsCommandTmpl':  { key: 'lint.req.argAsCommandTmpl',  zh: '', en: 'L{line}: `{span}` → suspected positional argument written as a command name (`{token}` is a registered command name; command path undeterminable)' },
+  'req.unclosedRegionWarn': { key: 'lint.req.unclosedRegionWarn', zh: '', en: '⚠️ {path} L{line}: unclosed ignore-start region (no matching ignore-end); suppressed to end of file' },
 };
 
 /* ==================== help ==================== */
@@ -913,11 +919,13 @@ export const help: I18nDomain = {
   'instructions.json':     { key: 'help.instructions.json',     zh: '', en: 'Output JSON format instead of XML' },
   'instructions.schema':   { key: 'help.instructions.schema',   zh: '', en: 'Schema name (default spec-driven)' },
 
-  'lint':                  { key: 'help.lint',                  zh: '', en: 'Project health checks (i18n key consistency, kb reference validity)' },
+  'lint':                  { key: 'help.lint',                  zh: '', en: 'Project health checks (i18n key consistency, kb reference validity, requirement command names)' },
   'lint.i18n':             { key: 'help.lint.i18n',             zh: '', en: 'Validate i18n key consistency (empty values / zh-CN-only / en-only keys)' },
   'lint.i18n.json':        { key: 'help.lint.i18n.json',        zh: '', en: 'Output { schemaVersion, target, ok, issues: [{ path, message }] } as JSON' },
   'lint.kb':               { key: 'help.lint.kb',               zh: '', en: 'Detect stale file references in .openfeel/kb/' },
   'lint.kb.json':          { key: 'help.lint.kb.json',          zh: '', en: 'Output { schemaVersion, target, ok, issues: [{ path, message }] } as JSON' },
+  'lint.req':              { key: 'help.lint.req',              zh: '', en: 'Validate command names in requirement bodies (resolved against the real command tree)' },
+  'lint.req.json':         { key: 'help.lint.req.json',         zh: '', en: 'Output { schemaVersion, target, ok, issues, suspects, unknownCount, suspectCount } as JSON' },
 
   // migrate (legacy layout migration)
   'migrate':               { key: 'help.migrate',               zh: '', en: 'Legacy layout migration (detect/backup/migrate/rollback existing project legacy layout)' },

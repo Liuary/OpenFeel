@@ -6,15 +6,22 @@
 
 ## [1.5.6] - 2026-10-31
 
-> 批次版本（Patch 批次）：**preflight 写命令全覆盖**。把「先读状态再写状态」从 4 个命令扩到**全部状态写命令**：34 个命令 / 36 个门位统一收敛到单一 helper；dry-run 免门、恢复通道条件豁免、strict 拒绝零写盘。**无 JSON 契约变更、无新增错误码**。
+> 批次版本（Patch 批次）：**preflight 写命令全覆盖 + 需求正文命令名校验**。把「先读状态再写状态」从 4 个命令扩到**全部状态写命令**：34 个命令 / 36 个门位统一收敛到单一 helper；dry-run 免门、恢复通道条件豁免、strict 拒绝零写盘。另新增 `openfeel lint req`（JSON 出口 #41），把「需求正文里的命令名是否存在」变成机器可校验事实。**无新增错误码**。
 
 ### Added
+- [stage-115] **`openfeel lint req [--json]`（JSON 出口 #41）**：扫描 `.openfeel/requirements/*.md` 的行内反引号命令路径，剥 `openfeel` 前缀后沿**真实 Commander 命令树**逐 token 解析。**A 类**（首 token 是根命令、解析断裂，**且断点父命令未声明位置参数**，如 `stage deps` / `flow review_add` / `flow stats --json`）进 `issues` → `ok:false` + exit 1；**B 类**（advisory，`suspects`）有两种来源：① 首 token 非根且尾 token 已注册（`op create`）；② **参数起点歧义**——父命令声明了位置参数而下一 token 命中命令名（`openfeel archive create` / `openfeel knowledge search lint`）；带位置参数的合法写法直接通过（`openfeel stage set stage-01 --workflow-mode full` / `config set-lang en` / `config get workflow_mode` / `model get openfeel-executor` / `req add lint-check`）。候选识别用**前导 token 串**（`^[a-z][a-z0-9_-]*$`，允许下划线），不做「整 span 跳过」；A 类文案为「无法解析为命令路径（断在 X）」。
+- [stage-115] **抑制两档 + 未闭合不静默**：行内 `<!-- lint-req:ignore -->` / 区间 `ignore-start` … `ignore-end`；文件结束仍在区间 → **stderr 一行警告**（`lint.req.unclosedRegionWarn`，不改退出码、不新增 JSON 键），人类输出首行恒显示「抑制 {n} 行」。抑制标记只允许用于「正文按定义要引用错误命令名」的场景。
+- [stage-115] **需求正文规范化**：`REQ-015.md` 五处接入清单按差异表改正为真实命令名（`flow review add|resolve|update|remove`、`flow stage set|reset|remove`、`plan scheme create|publish`、`flow archive`、`config set --sync-stages`），**零抑制标记**；`REQ-017.md` 两处 bug 例证/度量记录加行尾标记。差异表原文保留 ⇒ 正文改正 + 差异表留档 = 审计链。
 - [stage-114] **统一 preflight 闸**：新增 `src/commands/shared/preflight-gate.ts`（`enforcePreflightOrFail`）。`src/core/preflight.ts` **零改动**（判定源不变）；拒绝出口统一为「JSON：`emitErrorEnvelope`；人类：单行 stderr + `process.exitCode`」+ 调用方 `return`（不即时 `process.exit`）。
 - [stage-114] **34 个命令 / 36 个门位接入**：`flow` 16（`stage add|remove|set|reset` / `advance` / `attempt` / `review add|resolve|update|remove` / `archive` / `repair` / `checkpoint restore` / `migrate` / `health --fix` / `wizard`）、`stage` 3 命令 4 门位（`set` / `task`〔`--add` 分支 + 主路径〕/ `create`）、`plan` 6 命令 7 门位、`req` 7 命令 7 门位、`config set --sync-stages`、`view accept`。
 - [stage-114] **门前只读预检**：`flow review update` / `view accept`（`getReviewItems` / `listReviews`）、`plan scheme publish|rename|remove|register`（`flow.json` 注册键 / `ops/*.md`）；`flow stage reset` 采用「门后置到 `save()` 之前」。使非法参数（`REV-999` / `op-999` / `no-such-stage` / `--to bogus`）先报参数错误、再报 preflight。
 - [stage-114] **测试矩阵**：新增 `test/commands/preflight-gate.test.ts`（helper 10 条）与 `test/cli/preflight-cli.test.ts`（6 条真实进程冒烟）；命令级 A/B 组矩阵、dry-run 免门 10 条、恢复通道豁免 4 条；`vitest.config.ts` 默认 `OPENFEEL_PREFLIGHT=off`（防开发机 / CI 导出 strict 时既有用例集体失败）。
 
 ### Changed
+- [stage-115] **JSON 契约升为 41 成功出口 / 42 注册 `--json` 选项**：新增出口 #41 `lint req`（七键 `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount`；`target:'req'` 比其他 lint 出口多 3 键 = A/B 分级，`ok = issues.length === 0` 与 #38/#39 一致）；`docs/json-contract.md` §5/§6/§7 + 新 §16 登记，`docs/commands.md` 口径 44 个注册选项（=42 `--json` + `chore --end`/`--status`）。
+- [stage-115] i18n：新增 **8 个**成对键（`help.lint.req` / `help.lint.req.json` / `lint.req.okTmpl` / `lint.req.failTitleTmpl` / `lint.req.issueTmpl` / `lint.req.suspectTmpl` / `lint.req.argAsCommandTmpl` / `lint.req.unclosedRegionWarn`；zh / en 各 1 条，`lint i18n` 1050→1058）。
+- [stage-115] **抑制状态机与口径**：嵌套 `ignore-start` 不再覆盖外层起行；区间内同行 start+end 自闭合不再提前关闭外层；`suppressedLines` 口径 = 「标记行（起/止/行内）+ 区间内行」，孤 `ignore-end` 不计。
+- [stage-115] `openfeel-cli-usage` skill 快照同步（命令表 `lint i18n|kb|req`、v1.5.6 能力节、契约口径 41/42）；`template-loader.ts` / `update.ts` 经 `npm run build` 重生成（禁手改）。
 - [stage-114] `flow archive` / `req split` 的 legacy `--json` 拒绝新增 `error = 'preflight-required'`（顶层键集恒 `['schemaVersion','error','errorKind']`，**不携带 `hint`**；提示只走人类 stderr）。
 - [stage-114] 写命令拒绝文案来源从各处裸 `console.error` 收敛到同一 i18n 串（`flow.preflightRequiredTmpl`，零新增键）；`flow advance` 非 JSON 拒绝由「即时 `process.exit(1)`」改为「置码 + `return`」（退出码 1 与 stderr 文案不变）。
 - [stage-114] **`--dry-run` 免门 10 处**：`flow stage remove|reset` / `advance` / `repair` / `migrate` / `checkpoint restore` / `health --fix` / `archive` / `plan scheme remove|register`。

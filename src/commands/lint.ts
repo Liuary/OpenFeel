@@ -1,11 +1,13 @@
 /**
  * lint 命令组注册
- * openfeel lint i18n | kb
+ * openfeel lint i18n | kb | req
  *
  * - lint i18n: 校验 src/core/i18n-data/zh-CN.ts 与 en.ts 键一致性
  *   （空值、中文版独有键、英文版独有键）
  * - lint kb: 扫描 .openfeel/kb/*.md 中的文件引用（markdown 链接 + 行内代码引用），
  *   检测引用的文件是否仍然存在，输出过期引用列表
+ * - lint req: 扫描 .openfeel/requirements/*.md 的行内反引号命令路径，沿**真实命令树**
+ *   解析，报出不存在的命令（A 类阻塞 / B 类 advisory；抑制标记两档）
  */
 import { Command } from 'commander';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -14,6 +16,12 @@ import { t, getCliLang } from '../core/i18n.js';
 import { allDomains as zhAllDomains } from '../core/i18n-data/zh-CN.js';
 import { allDomains as enAllDomains } from '../core/i18n-data/en.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
+import {
+  lintRequirements,
+  toCommandTree,
+  type LintReqIssue,
+  type LintReqReport,
+} from '../core/lint-req.js';
 
 /** 结构化问题条目（JSON 契约形态 `{path,message}`） */
 interface LintIssue {
@@ -92,6 +100,46 @@ export function registerLintCommand(program: Command): void {
       }
       // R1（用户已裁定）：存在过期引用即非 0 退出
       if (report.stale.length > 0) {
+        process.exitCode = 1;
+      }
+    });
+
+  // lint req — 需求正文中的命令名存在性（沿真实命令树解析）
+  lint
+    .command('req')
+    .description('校验需求正文中的命令名（沿真实命令树解析）')
+    .option('--json', t('help.lint.req.json', getCliLang(process.cwd())))
+    .action((options: { json?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      // 命令树来自 registerLintCommand 收到的**根 program**（action 运行期现建：此时全部命令组
+      // 已注册完）。★ 禁止 import ../cli/index.js —— cli → commands → cli 会成环。
+      const report = lintRequirements(process.cwd(), toCommandTree(program), lang);
+
+      // ★ REV-011：未闭合 ignore-start 区间不许静默 —— 每处一行 stderr 警告，
+      // 不改退出码、不进 JSON（JSON 键集恒 7 键），stdout 仍恰好一个 JSON 文档。
+      for (const region of report.unclosedRegions) {
+        console.error(t('lint.req.unclosedRegionWarn', lang, {
+          path: region.path,
+          line: String(region.line),
+        }));
+      }
+
+      if (options.json) {
+        // 元素恒 `{path,message}` 两键（复用 lint 既有形状）；issues = A 类、suspects = B 类
+        const toIssue = (issue: LintReqIssue) => ({ path: issue.path, message: issue.message });
+        emitJson(withSchemaVersion({
+          target: 'req',
+          ok: report.issues.length === 0, // 只由 A 类决定（与 #38/#39 同语义）
+          issues: report.issues.map(toIssue),
+          suspects: report.suspects.map(toIssue),
+          unknownCount: report.unknownCount,
+          suspectCount: report.suspectCount,
+        }));
+      } else {
+        printLintReq(report, lang);
+      }
+      // R1 口径：仅 A 类影响退出码（B 类低置信只提示，绝不阻塞）
+      if (report.issues.length > 0) {
         process.exitCode = 1;
       }
     });
@@ -219,6 +267,37 @@ function printLintKb(report: LintKbReport, lang: string): void {
   console.log(t('lint.kb.staleTmpl', lang, { n: String(report.stale.length) }));
   for (const s of report.stale) {
     console.log(t('lint.kb.staleItemTmpl', lang, { file: s.file, ref: s.ref, line: String(s.line) }));
+  }
+}
+
+/**
+ * 打印 req lint 人类输出（与 JSON issues/suspects 同源：人类行 = `'  ' + path + ' ' + message`）。
+ *
+ * - A 类（issues）在前、B 类（suspects）在后；**成功态也展示 suspects**（否则用户只看到
+ *   「✅ 未发现…」而错过低置信提示）；
+ * - 抑制行数恒出现在首行（REV-011：让「抑制了多少」可见）；
+ * - 未闭合区间的 stderr 警告由命令层先行输出（不在本函数内）。
+ */
+function printLintReq(report: LintReqReport, lang: string): void {
+  const suppressed = String(report.suppressedLines);
+  if (report.issues.length === 0) {
+    console.log(t('lint.req.okTmpl', lang, {
+      n: String(report.candidates),
+      files: String(report.files),
+      suppressed,
+    }));
+  } else {
+    console.log(t('lint.req.failTitleTmpl', lang, {
+      m: String(report.issues.length),
+      low: String(report.suspects.length),
+      suppressed,
+    }));
+    for (const issue of report.issues) {
+      console.log(`  ${issue.path} ${issue.message}`);
+    }
+  }
+  for (const suspect of report.suspects) {
+    console.log(`  ${suspect.path} ${suspect.message}`);
   }
 }
 

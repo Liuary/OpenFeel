@@ -29,12 +29,12 @@
     },
     "openfeel-archiver": {
       "agentName": "openfeel-archiver",
-      "totalRuns": 27,
-      "successfulRuns": 27,
+      "totalRuns": 28,
+      "successfulRuns": 28,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 6416289,
-      "avgDurationMs": 237640
+      "totalDurationMs": 6420747,
+      "avgDurationMs": 229312
     },
     "openfeel-planner": {
       "agentName": "openfeel-planner",

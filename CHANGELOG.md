@@ -6,7 +6,7 @@
 
 ## [1.5.6] - 2026-10-31
 
-> 批次版本（Patch 批次）：**preflight 写命令全覆盖 + 需求正文命令名校验**。把「先读状态再写状态」从 4 个命令扩到**全部状态写命令**：34 个命令 / 36 个门位统一收敛到单一 helper；dry-run 免门、恢复通道条件豁免、strict 拒绝零写盘。另新增 `openfeel lint req`（JSON 出口 #41），把「需求正文里的命令名是否存在」变成机器可校验事实。**无新增错误码**。
+> 批次版本（Patch 批次）：**preflight 写命令全覆盖 + 需求正文命令名校验 + 流程健康观测**。把「先读状态再写状态」从 4 个命令扩到**全部状态写命令**：34 个命令 / 36 个门位统一收敛到单一 helper；dry-run 免门、恢复通道条件豁免、strict 拒绝零写盘。另新增 `openfeel lint req`（JSON 出口 #41），把「需求正文里的命令名是否存在」变成机器可校验事实。**无新增错误码**。
 
 ### Added
 - [stage-116] **`flow metrics` 人类输出追加「流程健康」块**（`--json` 顶层键集/键序恒 `['schemaVersion','agents']`，**零变更**）：三项**零运行时开销**代理指标——① resumed 比例（窗口内 `advance_stage_phase` 中 `resumed` 为布尔者作分母，`resumed===true` 为分子；`reset_stage_phase` **显式排除**：返工 ≠ 推进恢复）；② `plan_pending → plan_review` 平均停留（逐 `plan_review` 事件配对，返工轮各自成样本）；③ 最近 preflight 年龄（只读 `.openfeel/dev/.preflight.json`，**绝不** `recordPreflight`）。窗口 = `MAX_LOG_ENTRIES`（全保留条目）；`labeled===0` / `samples===0` 输出「无数据 / 无样本」而**非 `0.0%`**（「没测到」≠「测到为零」）；resumed 行**恒**外显「另有 N 条不可判定」，dwell 行恒带 `(n=…)` 或「无样本」（`n=1` 标「样本不足」）。无新增 i18n 键（内联 zh/en），`lint i18n` 计数不变。
@@ -22,6 +22,7 @@
 - [stage-114] **测试矩阵**：新增 `test/commands/preflight-gate.test.ts`（helper 10 条）与 `test/cli/preflight-cli.test.ts`（6 条真实进程冒烟）；命令级 A/B 组矩阵、dry-run 免门 10 条、恢复通道豁免 4 条；`vitest.config.ts` 默认 `OPENFEEL_PREFLIGHT=off`（防开发机 / CI 导出 strict 时既有用例集体失败）。
 
 ### Changed
+- [stage-117] **版本 1.5.6 收口**：package.json / dsh/package.json lockstep（version + requiresCli）、package-lock.json 两处、.openfeel/config.yaml 的 meta.version、src/core/config.ts 双模板与 templates-data（agents-md / claude constraint）的「当前版本」快照同步；npm run build 重生成 template-loader.ts（生成物禁手改）；README 最新版本行升为 v1.5.6。无行为变更。
 - [stage-116] **适配器只增不改**：`feel_status` / `feel_next` 尾部追加 `observability`（`schemaVersion` / `stale` / `preflightAgeMs` / `preflightOk` / `statusSync` / `summary`）；既有 `stale` / `preflight` / `statusSync` / `recovery` / `dispatch` / `revision` / `snapshotAt` 全部保留、键序不变。**无 JSON 契约变更**（`flow metrics --json` 键集恒 `schemaVersion,agents`；成功出口 41 / 注册 `--json` 选项 42 不变；`docs/json-contract.md` 与 `docs/commands.md` 契约表零改动）。`dsh/lib/adapters/dashboard.js` 零改动（组装点唯一在 `tools/index.js`，与 `recovery` 同范式）。文档：`docs/commands.md` 新增 `### flow metrics`、`docs/VERSIONS.md` v1.5.6 节、`dsh/ADAPTER.md` / `dsh/README.md` 各一行。
 - [stage-116] **已评估、显式降级到 1.5.7**：REQ-016 摘要中的三项动机指标——`preflight` **拒绝次数**、`feel_next` **调用次数**、**主会话直写/自审占比**——均需新增埋点或写盘计数器（拒绝次数要写盘、调用次数要 hook 适配器入口、直写率要对比 shell 审计），**违反本阶段「零运行时开销 / 不新增写盘」边界**，故本阶段**不做**，不是漏做。
 - [stage-115] **JSON 契约升为 41 成功出口 / 42 注册 `--json` 选项**：新增出口 #41 `lint req`（七键 `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount`；`target:'req'` 比其他 lint 出口多 3 键 = A/B 分级，`ok = issues.length === 0` 与 #38/#39 一致）；`docs/json-contract.md` §5/§6/§7 + 新 §16 登记，`docs/commands.md` 口径 44 个注册选项（=42 `--json` + `chore --end`/`--status`）。

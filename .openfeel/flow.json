@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T13:50:33.901Z",
-    "revision": 1696,
+    "updated": "2026-10-31T14:07:45.519Z",
+    "revision": 1704,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -35,9 +35,9 @@
     ]
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "v1.5.6-stage-116",
+      "stage": "v1.5.6-stage-117",
       "op": ""
     },
     "retry": 0
@@ -89,13 +89,18 @@
     },
     "v1.5.6-stage-117": {
       "name": "v1.5.6-stage-117",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.5.6-stage-116"
       ],
       "ops": {},
-      "workflow_mode": "fast"
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-10-31T13:58:44.795Z",
+        "end_time": "2026-10-31T14:07:45.495Z",
+        "duration_ms": 540700
+      }
     }
   },
   "reviews": [
@@ -389,99 +394,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-10-17T11:26:50.596Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-002",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-10-17T11:26:52.711Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "requirementId": "REQ-002"
-      }
-    },
-    {
-      "time": "2026-10-17T11:27:07.913Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-002",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-10-17T11:27:09.691Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-002",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-10-17T11:29:14.403Z",
-      "agent": "cli",
-      "action": "requirement_update",
-      "detail": {
-        "id": "REQ-002",
-        "fields": [
-          "title"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-17T12:17:49.012Z",
-      "agent": "cli",
-      "action": "scheme_remove",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "opId": "op-002",
-        "force": true,
-        "orphan": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:17:49.409Z",
-      "agent": "cli",
-      "action": "scheme_remove",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "opId": "op-003",
-        "force": true,
-        "orphan": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:17:49.815Z",
-      "agent": "cli",
-      "action": "scheme_remove",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "opId": "op-004",
-        "force": true,
-        "orphan": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:17:50.196Z",
-      "agent": "cli",
-      "action": "scheme_remove",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "opId": "op-005",
-        "force": true,
-        "orphan": false
-      }
-    },
     {
       "time": "2026-10-17T12:21:32.344Z",
       "agent": "cli",
@@ -2407,6 +2319,101 @@
         "from": "in_progress",
         "to": "done",
         "triggerStage": "v1.5.6-stage-116"
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:44.787Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:50.266Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:54.865Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:00.022Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:04.962Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:34.144Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:39.311Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "opsCount": 0,
+        "reviewsCount": 0,
+        "knowledgeCount": 0,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-117.md"
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:45.488Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

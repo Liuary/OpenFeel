@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T13:50:28.948Z",
-    "revision": 1695,
+    "updated": "2026-10-31T14:07:39.311Z",
+    "revision": 1703,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -37,7 +37,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.5.6-stage-116",
+      "stage": "v1.5.6-stage-117",
       "op": ""
     },
     "retry": 0
@@ -73,8 +73,8 @@
     },
     "v1.5.6-stage-116": {
       "name": "v1.5.6-stage-116",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [
         "v1.5.6-stage-115"
       ],
@@ -83,19 +83,24 @@
       "requirement_id": "REQ-016",
       "stats": {
         "start_time": "2026-10-31T12:24:23.691Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-10-31T13:50:33.877Z",
+        "duration_ms": 5170186
       }
     },
     "v1.5.6-stage-117": {
       "name": "v1.5.6-stage-117",
-      "phase": "plan_pending",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [
         "v1.5.6-stage-116"
       ],
       "ops": {},
-      "workflow_mode": "fast"
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-10-31T13:58:44.795Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
     }
   },
   "reviews": [
@@ -389,97 +394,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-10-17T11:26:47.117Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-002",
-        "title": "单包分发 DSH 适配器：openfeel 内置 dsh + setup --tools dsh 部署，升版 1.3.0 触发 npm 发布"
-      }
-    },
-    {
-      "time": "2026-10-17T11:26:50.596Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-002",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-10-17T11:26:52.711Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "requirementId": "REQ-002"
-      }
-    },
-    {
-      "time": "2026-10-17T11:27:07.913Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-002",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-10-17T11:27:09.691Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-002",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-10-17T11:29:14.403Z",
-      "agent": "cli",
-      "action": "requirement_update",
-      "detail": {
-        "id": "REQ-002",
-        "fields": [
-          "title"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-17T12:17:49.012Z",
-      "agent": "cli",
-      "action": "scheme_remove",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "opId": "op-002",
-        "force": true,
-        "orphan": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:17:49.409Z",
-      "agent": "cli",
-      "action": "scheme_remove",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "opId": "op-003",
-        "force": true,
-        "orphan": false
-      }
-    },
-    {
-      "time": "2026-10-17T12:17:49.815Z",
-      "agent": "cli",
-      "action": "scheme_remove",
-      "detail": {
-        "stage": "v1.3.0-stage-101",
-        "opId": "op-004",
-        "force": true,
-        "orphan": false
-      }
-    },
     {
       "time": "2026-10-17T12:17:50.196Z",
       "agent": "cli",
@@ -2394,6 +2308,112 @@
         "knowledgeCount": 3,
         "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-116.md"
       }
+    },
+    {
+      "time": "2026-10-31T13:50:33.871Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-116",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:50:33.901Z",
+      "agent": "cli",
+      "action": "requirement_auto_done",
+      "detail": {
+        "requirementId": "REQ-016",
+        "from": "in_progress",
+        "to": "done",
+        "triggerStage": "v1.5.6-stage-116"
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:44.787Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:50.266Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T13:58:54.865Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:00.022Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:04.962Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:34.144Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T14:07:39.311Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.6-stage-117",
+        "opsCount": 0,
+        "reviewsCount": 0,
+        "knowledgeCount": 0,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.6-stage-117.md"
+      }
     }
   ],
   "requirements": [
@@ -2593,9 +2613,9 @@
     {
       "id": "REQ-016",
       "title": "1.5.6：preflight / 调度观测指标（拒绝率、feel_next 调用、主会话直写）",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-10-31T10:11:49.905Z",
-      "updated_at": "2026-10-31T12:14:31.678Z",
+      "updated_at": "2026-10-31T13:50:33.901Z",
       "target_version": "v1.5.6",
       "priority": "P1",
       "workflow_mode": "fast",

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T10:03:34.531Z",
-    "revision": 1582,
+    "updated": "2026-10-31T10:03:36.770Z",
+    "revision": 1586,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -1887,6 +1887,47 @@
         "reviews": 1,
         "log": 12
       }
+    },
+    {
+      "time": "2026-10-31T10:03:35.651Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-014",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-31T10:03:36.040Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-014",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-31T10:03:36.412Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-014",
+        "fields": [
+          "workflow_mode"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-31T10:03:36.769Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-014",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2060,12 +2101,12 @@
     {
       "id": "REQ-014",
       "title": "1.5.5 批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性（统一发布）",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-31T09:47:49.464Z",
-      "updated_at": "2026-10-31T09:47:52.473Z",
+      "updated_at": "2026-10-31T10:03:36.769Z",
       "target_version": "v1.5.5",
       "priority": "P0",
-      "workflow_mode": "fast",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-014.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T09:47:52.473Z"

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T15:32:02.752Z",
-    "revision": 1707,
+    "updated": "2026-10-31T15:33:43.361Z",
+    "revision": 1709,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -1491,6 +1491,24 @@
         "note": "本地异常清理：guard-audit 入 gitignore + docs/commands.md 版本快照订正",
         "stage_count": 0
       }
+    },
+    {
+      "time": "2026-10-31T15:33:38.321Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-018",
+        "title": "文档债清零：.openfeel/manual/** 快照停在 v1.2.4（35 文件）+ cli-usage SKILL 描述尾部缺 1.5.6 观测项"
+      }
+    },
+    {
+      "time": "2026-10-31T15:33:43.358Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-019",
+        "title": "代码债：eslint 33 errors 清零（21 文件，多为 unused vars；当前门禁靠「新增行 0」豁免）"
+      }
     }
   ],
   "requirements": [
@@ -1712,6 +1730,28 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-018",
+      "title": "文档债清零：.openfeel/manual/** 快照停在 v1.2.4（35 文件）+ cli-usage SKILL 描述尾部缺 1.5.6 观测项",
+      "status": "draft",
+      "created_at": "2026-10-31T15:33:38.320Z",
+      "updated_at": "2026-10-31T15:33:38.320Z",
+      "target_version": "v1.5.7",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-018.md"
+    },
+    {
+      "id": "REQ-019",
+      "title": "代码债：eslint 33 errors 清零（21 文件，多为 unused vars；当前门禁靠「新增行 0」豁免）",
+      "status": "draft",
+      "created_at": "2026-10-31T15:33:43.358Z",
+      "updated_at": "2026-10-31T15:33:43.358Z",
+      "target_version": "v1.5.7",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-019.md"
     }
   ]
 }

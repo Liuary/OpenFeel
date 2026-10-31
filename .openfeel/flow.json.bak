@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T15:31:38.655Z",
-    "revision": 1706,
+    "updated": "2026-10-31T15:33:38.336Z",
+    "revision": 1708,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -1481,6 +1481,25 @@
         "expires_at": "2026-10-31T16:31:38.638Z",
         "stage_count": 0
       }
+    },
+    {
+      "time": "2026-10-31T15:32:02.752Z",
+      "agent": "cli",
+      "action": "chore_end",
+      "detail": {
+        "id": "CHORE-20261031T153138",
+        "note": "本地异常清理：guard-audit 入 gitignore + docs/commands.md 版本快照订正",
+        "stage_count": 0
+      }
+    },
+    {
+      "time": "2026-10-31T15:33:38.321Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-018",
+        "title": "文档债清零：.openfeel/manual/** 快照停在 v1.2.4（35 文件）+ cli-usage SKILL 描述尾部缺 1.5.6 观测项"
+      }
     }
   ],
   "requirements": [
@@ -1702,6 +1721,17 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-018",
+      "title": "文档债清零：.openfeel/manual/** 快照停在 v1.2.4（35 文件）+ cli-usage SKILL 描述尾部缺 1.5.6 观测项",
+      "status": "draft",
+      "created_at": "2026-10-31T15:33:38.320Z",
+      "updated_at": "2026-10-31T15:33:38.320Z",
+      "target_version": "v1.5.7",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-018.md"
     }
   ]
 }

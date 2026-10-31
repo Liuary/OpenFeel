@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T17:00:15.668Z",
-    "revision": 1773,
+    "updated": "2026-10-31T17:00:51.978Z",
+    "revision": 1777,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -126,46 +126,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-10-24T09:08:12.134Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-004",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.3.2-stage-103"
-      }
-    },
-    {
-      "time": "2026-10-24T09:08:16.890Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.3.2",
-        "stages": 1,
-        "reviews": 0,
-        "log": 15
-      }
-    },
-    {
-      "time": "2026-10-30T11:41:03.086Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-005",
-        "title": "修复 fast 模式 12 项非预期拒绝：审查挂载点 / 返工边 / 写入门禁 / 状态单一真源，发布 1.3.3"
-      }
-    },
-    {
-      "time": "2026-10-30T11:41:06.850Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-005",
-        "owner": "Liuary"
-      }
-    },
     {
       "time": "2026-10-30T11:41:10.833Z",
       "agent": "cli",
@@ -2101,6 +2061,47 @@
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-10-31T17:00:22.622Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-023",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-31T17:00:27.482Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-023",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-31T17:00:32.782Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-023",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-31T17:00:51.978Z",
+      "agent": "cli",
+      "action": "chore_start",
+      "detail": {
+        "id": "CHORE-20261031T170051",
+        "note": "1.5.7 版本收口：README/config.yaml/dsh 版本快照同步 + build",
+        "expires_at": "2026-10-31T18:00:51.972Z",
+        "stage_count": 3
+      }
     }
   ],
   "requirements": [
@@ -2387,9 +2388,9 @@
     {
       "id": "REQ-023",
       "title": "需求导向：阶段长期开启、需求完成与阶段关闭解耦、仅用户确认时归档发布",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-31T16:49:27.994Z",
-      "updated_at": "2026-10-31T16:49:32.193Z",
+      "updated_at": "2026-10-31T17:00:32.782Z",
       "target_version": "v1.5.7",
       "priority": "P0",
       "workflow_mode": "fast",

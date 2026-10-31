@@ -1,6 +1,6 @@
 {
   "name": "openfeel-dsh",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "description": "OpenFeel × DSH — Feel 模式适配器：把 OpenFeel 的流水线、需求分发、版本归档与知识库接入 DeepSeek Harness",
   "type": "module",
   "private": true,
@@ -32,7 +32,7 @@
   },
   "openfeel": {
     "adapter": "dsh",
-    "requiresCli": ">=1.5.6"
+    "requiresCli": ">=1.5.7"
   },
   "keywords": [
     "openfeel",

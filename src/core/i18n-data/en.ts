@@ -993,7 +993,7 @@ export const help: I18nDomain = {
   'req.link.stage':      { key: 'help.req.link.stage',      zh: '', en: 'Stage ID (stage-NN or vX.Y.Z-stage-NN; short name resolves in the v1.0.0 series)' },
   'req.link.requirement': { key: 'help.req.link.requirement', zh: '', en: 'Requirement ID (to link; exclusive with --unlink)' },
   'req.link.unlink':     { key: 'help.req.link.unlink',     zh: '', en: 'Unlink the requirement from the stage' },
-  'req.advance':         { key: 'help.req.advance',         zh: '', en: 'Advance requirement status (legality by engine transition table; done: non-general requirements require all linked stages done)' },
+  'req.advance':         { key: 'help.req.advance',         zh: '', en: 'Advance requirement status (legality by engine transition table; done: allowed with no linked stages, or once every linked stage reaches exec_running or later)' },
   'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.advance.to':      { key: 'help.req.advance.to',      zh: '', en: 'Target status (legality checked by engine)' },
   'req.board':           { key: 'help.req.board',           zh: '', en: 'Requirement board (grouped by status; 7 fixed groups)' },
@@ -1208,7 +1208,7 @@ export const req: I18nDomain = {
   'err.alreadyLinkedTmpl': { key: 'req.err.alreadyLinkedTmpl', zh: '', en: '{stage} is already linked to another requirement; unlink first: openfeel req link --stage {stage} --unlink' },
   'err.invalidFieldTmpl': { key: 'req.err.invalidFieldTmpl',  zh: '', en: '{id} invalid field value (check --status / --title / --target-version / --priority / --workflow-mode)' },
   'err.invalidStatusTmpl': { key: 'req.err.invalidStatusTmpl', zh: '', en: '{id} target status {to} rejected (current {current}; allowed: {targets})' },
-  'err.doneGateTmpl':    { key: 'req.err.doneGateTmpl',     zh: '', en: '{id} target status done rejected (current {current}) — done requires all linked stages done; a requirement with no linked stages can use general mode for explicit completion' },
+  'err.doneGateTmpl':    { key: 'req.err.doneGateTmpl',     zh: '', en: 'Requirement {id} is not complete yet: a linked stage is still in a plan/scheme phase (current status {current}); advance it to exec_running first. Execution phases do not block requirement completion, and a requirement with no linked stages can be completed directly.' },
   'err.generalModeConflictTmpl': { key: 'req.err.generalModeConflictTmpl', zh: '', en: '{id} has linked stages — general (no pipeline) requires a requirement without linked stages (unlink first, or use fast / full)' },
   'err.generalTargetTmpl': { key: 'req.err.generalTargetTmpl', zh: '', en: '{id} uses workflow mode general (no pipeline) — stage linking is not allowed' },
   // req board

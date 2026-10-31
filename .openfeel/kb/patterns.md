@@ -4689,3 +4689,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-024] [代码审查] summary 把「时间戳不可解析」误报为「未读过状态」；phase-entered 缺 detail 守卫会抛 TypeError (2026-10-31)
 
 归档自阶段 v1.5.6-stage-116
+
+## [+] [REV-003] [self-review] 需求完成门解耦（零关联/exec_running 及之后）+ 适配器需求导向文案；全量 2211 用例、dsh 58/44/100 全绿 (2026-10-31)
+
+归档自阶段 v1.5.7-stage-121

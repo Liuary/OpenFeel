@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T16:44:01.911Z",
-    "revision": 1755,
+    "updated": "2026-10-31T17:00:05.747Z",
+    "revision": 1772,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -38,7 +38,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.5.7-stage-120",
+      "stage": "v1.5.7-stage-121",
       "op": ""
     },
     "retry": 0
@@ -60,14 +60,28 @@
     },
     "v1.5.7-stage-120": {
       "name": "v1.5.7-stage-120",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "requirement_id": "REQ-022",
       "stats": {
         "start_time": "2026-10-31T16:41:36.350Z",
+        "end_time": "2026-10-31T16:44:06.916Z",
+        "duration_ms": 150566
+      }
+    },
+    "v1.5.7-stage-121": {
+      "name": "v1.5.7-stage-121",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirement_id": "REQ-023",
+      "stats": {
+        "start_time": "2026-10-31T16:49:44.688Z",
         "end_time": "",
         "duration_ms": 0
       }
@@ -97,137 +111,21 @@
       "filed_at": "2026-10-31T16:43:49.650Z",
       "canAutoFix": false,
       "blocking": false
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.5.7-stage-121",
+      "stage": "v1.5.7-stage-121",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[self-review] 需求完成门解耦（零关联/exec_running 及之后）+ 适配器需求导向文案；全量 2211 用例、dsh 58/44/100 全绿",
+      "filed_by": "cli",
+      "filed_at": "2026-10-31T16:57:47.077Z",
+      "canAutoFix": false,
+      "blocking": false
     }
   ],
   "log": [
-    {
-      "time": "2026-10-17T12:21:32.344Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-002",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.3.0-stage-101"
-      }
-    },
-    {
-      "time": "2026-10-17T12:21:43.310Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.3.0",
-        "stages": 1,
-        "reviews": 3,
-        "log": 16
-      }
-    },
-    {
-      "time": "2026-10-17T12:33:34.238Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-003",
-        "title": "修复 setup --tools dsh 的 pnpm frozen-lockfile 部署失败（profile lockfile 过期），发布 1.3.1"
-      }
-    },
-    {
-      "time": "2026-10-17T12:33:37.336Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-003",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-10-17T12:33:41.978Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.3.1-stage-102",
-        "requirementId": "REQ-003"
-      }
-    },
-    {
-      "time": "2026-10-17T12:33:42.450Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-003",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-10-17T12:33:51.288Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-003",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-10-17T12:42:22.781Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-003",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.3.1-stage-102"
-      }
-    },
-    {
-      "time": "2026-10-17T12:42:30.002Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.3.1",
-        "stages": 1,
-        "reviews": 0,
-        "log": 9
-      }
-    },
-    {
-      "time": "2026-10-24T08:27:31.862Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-004",
-        "title": "DSH 适配器激活与写入门禁：tools.guard + bootstrap 提示，发布 1.3.2"
-      }
-    },
-    {
-      "time": "2026-10-24T08:27:34.505Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-004",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-10-24T08:27:37.027Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.3.2-stage-103",
-        "requirementId": "REQ-004"
-      }
-    },
-    {
-      "time": "2026-10-24T08:27:37.365Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-004",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
     {
       "time": "2026-10-24T08:27:50.521Z",
       "agent": "cli",
@@ -2032,6 +1930,175 @@
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-10-31T16:44:06.906Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-120",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:44:12.114Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-31T16:44:16.278Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-31T16:44:20.148Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-31T16:49:27.994Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-023",
+        "title": "需求导向：阶段长期开启、需求完成与阶段关闭解耦、仅用户确认时归档发布"
+      }
+    },
+    {
+      "time": "2026-10-31T16:49:32.193Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-023",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-31T16:49:36.854Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.7-stage-121",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T16:49:40.580Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.7-stage-121",
+        "requirementId": "REQ-023"
+      }
+    },
+    {
+      "time": "2026-10-31T16:49:44.684Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-121",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-10-31T16:49:49.107Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-121",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:49:53.749Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-121",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:57:41.740Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-121",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:57:49.213Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-003"
+      }
+    },
+    {
+      "time": "2026-10-31T16:57:53.577Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-121",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T16:59:57.101Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.7-stage-121",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T17:00:05.747Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.7-stage-121",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.7-stage-121.md"
+      }
     }
   ],
   "requirements": [
@@ -2305,15 +2372,28 @@
     {
       "id": "REQ-022",
       "title": "feel_status 默认精简：去掉转移表/handoff 全文，detail=full 保留全量",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-31T16:41:13.151Z",
-      "updated_at": "2026-10-31T16:41:21.388Z",
+      "updated_at": "2026-10-31T16:44:20.148Z",
       "target_version": "v1.5.7",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-022.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T16:41:21.388Z"
+    },
+    {
+      "id": "REQ-023",
+      "title": "需求导向：阶段长期开启、需求完成与阶段关闭解耦、仅用户确认时归档发布",
+      "status": "draft",
+      "created_at": "2026-10-31T16:49:27.994Z",
+      "updated_at": "2026-10-31T16:49:32.193Z",
+      "target_version": "v1.5.7",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-023.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-31T16:49:32.193Z"
     }
   ]
 }

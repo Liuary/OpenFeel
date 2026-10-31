@@ -1036,7 +1036,7 @@ export const help: I18nDomain = {
   'req.link.stage':      { key: 'help.req.link.stage',      zh: '阶段 ID（stage-NN 或 vX.Y.Z-stage-NN；短名按 v1.0.0 系列解析）', en: '' },
   'req.link.requirement': { key: 'help.req.link.requirement', zh: '需求 ID（关联用；与 --unlink 互斥）', en: '' },
   'req.link.unlink':     { key: 'help.req.link.unlink',     zh: '解除该阶段的需求关联', en: '' },
-  'req.advance':         { key: 'help.req.advance',         zh: '显式推进需求状态（合法目标由引擎流转表判定；done：非 general 需求须全部关联阶段 done）', en: '' },
+  'req.advance':         { key: 'help.req.advance',         zh: '显式推进需求状态（合法目标由引擎流转表判定；done：零关联可直接完成，关联阶段进入 exec_running 及之后相位即可完成）', en: '' },
   'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '需求 ID（如 REQ-001）', en: '' },
   'req.advance.to':      { key: 'help.req.advance.to',      zh: '目标状态（合法目标由引擎判定）', en: '' },
   'req.board':           { key: 'help.req.board',           zh: '需求看板（按状态分组；7 组固定顺序）', en: '' },
@@ -1252,7 +1252,7 @@ export const req: I18nDomain = {
   'err.alreadyLinkedTmpl': { key: 'req.err.alreadyLinkedTmpl', zh: '{stage} 已关联其它需求；须先解绑：openfeel req link --stage {stage} --unlink', en: '' },
   'err.invalidFieldTmpl': { key: 'req.err.invalidFieldTmpl',  zh: '{id} 字段取值非法（检查 --status / --title / --target-version / --priority / --workflow-mode）', en: '' },
   'err.invalidStatusTmpl': { key: 'req.err.invalidStatusTmpl', zh: '{id} 目标状态 {to} 被拒（当前 {current}；合法目标：{targets}）', en: '' },
-  'err.doneGateTmpl':    { key: 'req.err.doneGateTmpl',     zh: '{id} 目标状态 done 被拒（当前 {current}）——done 须全部关联阶段 done；零关联阶段的需求可设 general 模式显式完成', en: '' },
+  'err.doneGateTmpl':    { key: 'req.err.doneGateTmpl',     zh: '需求 {id} 尚未完成：关联阶段仍在计划/方案相位（当前状态 {current}）；请先推进阶段到 exec_running。阶段执行期间不阻塞需求完成，零关联需求可直接完成。', en: '' },
   'err.generalModeConflictTmpl': { key: 'req.err.generalModeConflictTmpl', zh: '{id} 已关联阶段——general（无流水线）仅限无关联阶段的需求（可先解绑阶段，或改走 fast / full）', en: '' },
   'err.generalTargetTmpl': { key: 'req.err.generalTargetTmpl', zh: '{id} 工作流模式为 general（无流水线）——不接受阶段关联', en: '' },
   // req board

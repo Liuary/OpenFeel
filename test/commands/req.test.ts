@@ -855,24 +855,36 @@ describe('req 命令组（stage-82）', () => {
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'blocked']);
     expect(readFlow().requirements[0].status).toBe('blocked');
 
-    // --to done 未全 done → exit 1 专用 done 门文案
-    // （stage-93 BUG-002 判类改写：旧断言「合法目标：…」在该场景不再成立——静态表放行 done 而
-    //   完成门拒绝，改用专用键 req.err.doneGateTmpl，矛盾句式消除；exit 1 与零写盘逐字不变）
+    // --to done 仍有阶段在 plan_pending → exit 1 专用 done 门文案（v1.5.7 解耦后仍拒绝 plan/scheme 相位）
+    // （stage-93 BUG-002 判类改写：静态表放行 done 而完成门拒绝，改用专用键 req.err.doneGateTmpl；
+    //   v1.5.7 / REQ-023 起文案改为「关联阶段仍在计划/方案相位」语义，exit 1 与零写盘不变）
     seed('in_progress', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'plan_pending' }) });
     resetCapture();
     let raw = flowRaw();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(1);
-    expect(err()).toContain('done 须全部关联阶段');
+    expect(err()).toContain('尚未完成');
+    expect(err()).toContain('关联阶段仍在计划/方案相位');
+    expect(err()).toContain('exec_running');
     expect(err()).not.toContain('合法目标：done');
     expect(flowRaw()).toBe(raw);
+
+    // 阶段仍在执行（exec_running）→ 需求可完成（v1.5.7 解耦；阶段不关闭）
+    seed('in_progress', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'exec_running' }) });
+    resetCapture();
+    await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+    expect(process.exitCode).toBe(0);
+    let d = readFlow();
+    expect(d.requirements[0].status).toBe('done');
+    expect(d.stages['v1.0.0-stage-01'].phase).toBe('exec_running');        // 阶段未关闭
+    expect(d.log.some((e: any) => e.action === 'requirement_status')).toBe(true);
 
     // 全 done → 成功 + 审计 requirement_status
     seed('in_progress', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'done' }) });
     resetCapture();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(0);
-    let d = readFlow();
+    d = readFlow();
     expect(d.requirements[0].status).toBe('done');
     expect(d.log.some((e: any) => e.action === 'requirement_status')).toBe(true);
 
@@ -1964,6 +1976,13 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     d.requirements = [req_('REQ-001', overrides)];
     writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
   }
+  function seedStage(requirementId: string, phase: string): void {
+    const d = readFlow();
+    d.stages = {
+      'v1.0.0-stage-01': { name: 'S', phase, status: 'planned', deps: [], ops: {}, requirement_id: requirementId },
+    };
+    writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
+  }
 
   it('T93.6：重现链转正——general 需求 advance --to done exit 0（零关联显式完成）', async () => {
     await safeParse(['req', 'add', '通用工作者需求', '--workflow-mode', 'general']);
@@ -2001,22 +2020,31 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     expect(groups.done.map((r: any) => r.id)).toContain('REQ-001');
   });
 
-  it('T93.8：拒绝文案专用化——非 general 零关联 done 被拒（advance / set 两路径同验，exit 1 零写盘）', async () => {
-    // advance 路径
+  it('T93.8：零关联非 general 需求可显式完成（v1.5.7 解耦；advance / set 两路径 + 审计 / 写盘在位）', async () => {
+    // advance 路径：零关联 → 放行
     seedReq({ status: 'in_progress' });
     let raw = flowRaw();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
-    expect(process.exitCode).toBe(1);
-    expect(err()).toContain('done 须全部关联阶段');                            // 新键 req.err.doneGateTmpl 生效
-    expect(err()).not.toContain('合法目标：done');                             // 矛盾句式（该场景）不再出现
-    expect(flowRaw()).toBe(raw);                                              // 零写盘
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements[0].status).toBe('done');
+    expect(readFlow().log.some((e: any) => e.action === 'requirement_status' && e.detail?.to === 'done')).toBe(true);
+    expect(flowRaw()).not.toBe(raw);                                         // 落盘（非零写盘）
 
-    // set 路径（同源条件）
+    // set 路径（同源放行）
+    seedReq({ status: 'in_progress' });
+    resetCapture();
+    await safeParse(['req', 'set', 'REQ-001', '--status', 'done']);
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements[0].status).toBe('done');
+
+    // 关联阶段仍在 plan_pending → 仍拒绝（专用 done 门文案 + 零写盘）
+    seedReq({ status: 'in_progress' });
+    seedStage('REQ-001', 'plan_pending');
     resetCapture();
     raw = flowRaw();
-    await safeParse(['req', 'set', 'REQ-001', '--status', 'done']);
+    await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(1);
-    expect(err()).toContain('done 须全部关联阶段');
+    expect(err()).toContain('尚未完成');
     expect(err()).not.toContain('合法目标：done');
     expect(flowRaw()).toBe(raw);
 
@@ -2026,7 +2054,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(1);
     expect(err()).toContain('合法目标：');                                     // 非法流转场景保持通用文案
-    expect(err()).not.toContain('done 须全部关联阶段');
+    expect(err()).not.toContain('尚未完成');
   });
 
   // ═══════════════════════════════════════════════════════════════════

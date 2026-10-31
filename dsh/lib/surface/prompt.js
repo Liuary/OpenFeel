@@ -151,9 +151,12 @@ Feel（你）只做编排、决策与门禁判断。
 - **先读后写**：核心写命令（advance / stage add / req add / claim）要求 10 分钟内调用过 \`feel_status\` / \`feel_next\`；遇到 preflight 拒绝先 \`feel_status\` 再重试。
 - **审查独立**：fast 单轮审查也应由独立 reviewer 完成；Feel 自审必须在 REV 标题标注 \`self-review\`，归档摘要记录原因。
 
-## 流程入口（v1.5.2）
-- **先 \`feel_status\`**：任何会产出仓库文件（含 \`docs/research/**\`、方案、计划）或需要多步调查/实现的任务，先读状态；无活跃阶段 → \`feel_req add\` → \`claim\` → \`feel_stage add\`，再开始。
-- **不得以「调研 / 只读」为由跳过阶段**：纯只读问答可直接回答；研究/方案产物写入门禁要求活跃阶段（\`docs/research/**\` 无阶段会被拒）。
+## 需求导向与流程入口（v1.5.7）
+- **默认需求导向**：需求（REQ）是工作单元；阶段是**版本容器**，长期保持 \`exec_running\`，一个阶段容纳多个需求。**不要每完成一个需求就推进 / 关闭阶段**。
+- **先 \`feel_status\`**：无开启阶段 → 默认按当前小版本开一个阶段（如 \`v1.5.7-stage-N\`，保持 \`exec_running\`），再 \`feel_req add\` → \`claim\`；已有开启阶段 → 直接在其版本下建需求（\`target_version\` 取阶段版本）。
+- **需求完成与阶段关闭解耦**：阶段进入 \`exec_running\` 后，关联需求即可 \`feel_req advance --to done\`；零关联需求也可显式完成。等阶段 done 不是需求完成的前提。
+- **归档 / 发布只在用户确认后**：只有当用户明确说「归档 / 发布这个版本」时，才把阶段推进到 review / test / archiving / done 并执行 \`feel_archive create\`。需求规模足够支撑发版时可**建议**用户归档，但**不得自行归档或发布**。
+- **不得以「调研 / 只读」为由跳过阶段**：纯只读问答可直接回答；研究/方案产物（\`docs/research/**\`）仍需开启阶段。
 - **判据**：只要任务可能改变仓库内容或需要跨轮次承接，就属于流程任务。
 
 ## 状态与记录（v1.5.0）
@@ -227,9 +230,12 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 - **Read before write**: core write commands (advance / stage add / req add / claim) require a \`feel_status\` / \`feel_next\` within 10 minutes; on preflight refusal, call \`feel_status\` and retry.
 - **Independent review**: even the single fast-mode review should be done by an independent reviewer; if Feel self-reviews, mark the REV title \`self-review\` and record why in the archive summary.
 
-## Workflow entry (v1.5.2)
-- **Call \`feel_status\` first**: any task that may produce repo files (including \`docs/research/**\`, proposals, plans) or needs multi-step investigation/implementation must read state first; with no active stage → \`feel_req add\` → \`claim\` → \`feel_stage add\`, then start.
-- **Never skip the stage under the pretext of "research / read-only"**: pure read-only Q&A may answer directly; research/proposal artifacts require an active stage (\`docs/research/**\` writes are rejected without one).
+## Requirement-first & workflow entry (v1.5.7)
+- **Requirement-first by default**: a requirement (REQ) is the unit of work; a stage is a **version container** that stays in \`exec_running\` and holds many requirements. **Do not advance / close the stage after each requirement.**
+- **Call \`feel_status\` first**: no open stage → open one for the current minor version (e.g. \`v1.5.7-stage-N\`, keep it in \`exec_running\`), then \`feel_req add\` → \`claim\`; with an open stage → create the requirement under that version (\`target_version\` = the stage version).
+- **Requirement done is decoupled from stage closure**: once the stage is in \`exec_running\`, linked requirements may be completed with \`feel_req advance --to done\`; requirements with no linked stage may be completed explicitly too. Stage completion is not a prerequisite.
+- **Archive / release only after the user confirms**: advance the stage to review / test / archiving / done and run \`feel_archive create\` only when the user explicitly says "archive / release this version". You may **suggest** archiving when the accumulated requirements justify a release, but **never archive or publish on your own**.
+- **Never skip the stage under the pretext of "research / read-only"**: pure read-only Q&A may answer directly; research/proposal artifacts (\`docs/research/**\`) still require an open stage.
 - **Rule of thumb**: if it may change repo content or span multiple turns, it is a workflow task.
 
 ## State & records (v1.5.0)

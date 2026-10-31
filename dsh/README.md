@@ -315,3 +315,4 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 9. **默认 `enforce=always` 较激进**：所有工作区（含非 OpenFeel）都会拦截文件写入，直到
    `openfeel init` 或用户把 profile 的 `enforce` 改为 `project` / `off`。适合“OpenFeel 必须启用”
    的机器；普通试用建议 `project`。
+- **需求导向（v1.5.7）**：阶段 = 版本容器，长期保持 `exec_running`、容纳多个需求；提示段 / `workflowGate` / 写入门禁文案统一为「无开启阶段才开阶段；不要每完成需求就推进/关闭阶段；归档/发布需用户确认」。需求完成门同步解耦（零关联可完成；关联阶段进入 `exec_running` 及之后即可完成）。

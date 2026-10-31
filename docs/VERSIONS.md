@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.7** — Requirement-first release: a stage is a long-lived **version container** (stays in `exec_running`, holds many requirements); requirement completion is decoupled from stage closure (`req advance --to done` works with zero linked stages, or while linked stages are at/after `exec_running`); stages are archived/released only after the user confirms. Adapter prompt and gates now say so, and `feel_status` defaults to a compact snapshot (`detail: "full"` for the full one). Also: `plan stage add` / `flow stage add` refuse to silently reuse an archived stage's plan directory.
 - **v1.5.6** — Batch release: preflight now covers all state-write commands (34 commands / 36 gate sites in one shared helper), `--dry-run` is never gated (10 commands), `flow repair` / `flow checkpoint restore` stay usable when `flow.json` is unreadable, and strict rejections are zero-write (including `flow.json.bak` and `config.yaml`). Also new: `openfeel lint req` (JSON exit #41) validates command names in requirement bodies against the real command tree (A-class blocking / B-class advisory), with in-line and region suppression markers. Process-health proxies (`flow metrics`): resumed ratio / `plan_pending → plan_review` dwell / last-preflight age in the human block only (`--json` unchanged), plus adapter `observability` (`feel_status`/`feel_next`), with zero runtime overhead and no self-measurement.
 - **v1.5.5** — Batch release: CLI preflight ledger (`flow next` / `flow status` record `.preflight.json`; write commands check a 10-minute window), adapter defaults to strict preflight (`feel_status`/`feel_next` expose `preflight`), prompt bans shell state-write commands and requires independent review (self-review must be marked).
 - **v1.5.4** — Batch release: stage log summaries (`flow log`: last transition / last error / resume count), adapter snapshot `revision` / `stale`, observability metrics (`flow metrics`: log entries/bytes), and a gate-abuse hint when a stage sits in `plan_pending` for more than 10 minutes. No JSON contract changes.
@@ -35,6 +36,14 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.7 — 需求导向：阶段长期开启 + 需求完成与阶段关闭解耦
+
+- **阶段 = 版本容器**：默认按当前小版本开一个阶段并**保持 `exec_running`**，一个阶段容纳多个需求；不再「每做一个需求就建/推进/关闭阶段」。无开启阶段时才开新阶段。
+- **需求完成与阶段关闭解耦**：`req advance --to done` 在零关联阶段时可直接完成，或关联阶段已进入 `exec_running` 及之后相位（`plan_*` / `scheme_*` 仍拒绝）；聚合自动收口语义不变（零关联仍不误判）。
+- **归档 / 发布只在用户确认后**：只有用户明确「归档/发布这个版本」时才推进阶段到 review/test/archiving/done 并 `feel_archive create`；AI 可在需求规模足够时**建议**归档，但不得自行归档或发布。
+- **适配器**：提示段、`workflowGate` 与写入门禁文案改为需求导向；`feel_status` 默认 compact（`detail:"full"` 取全量，转移表用 `feel_flow action=phases|mode` 现取）。
+- **阶段目录防复用**：`plan stage add` / `flow stage add` 目标目录已被其它阶段（完整 stageId）占用或该阶段已归档时拒绝，并给出建议新编号。
 
 ## v1.5.6 — 批次：preflight 写命令全覆盖 + 需求正文命令名校验
 

@@ -53,6 +53,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **preflight**（v1.5.5）：CLI 执行器默认 `OPENFEEL_PREFLIGHT=strict`；`feel_status` / `feel_next` 返回 `preflight`；写命令要求 10 分钟内读过状态。
 - **观测摘要**（v1.5.6）：`feel_status` / `feel_next` 返回 `observability`（`stale` + `preflightAgeMs`/`preflightOk` 复制副本 + `statusSync` 三键 + 摘要）；`preflightAgeMs`/`preflightOk` **只复制不重算**（权威仍是顶层 `preflight`）。**账本先于 snapshot 读取**（`readPreflightInfo` 早于 `readSnapshot`）——`flow status --json` / `flow next --json` 会在 `--json` 早返回前写账本，读晚了会把本次调用刚写的账本当历史（`age≈0`），指标在测自己。读取次数不变、零新增 I/O。
 - **`feel_status` 输出瘦身**（v1.5.7）：默认返回 **compact** 快照（`project` / `pipeline` / `focus` / `mode` 的 current+source+skippedPhases / `stages` / `statusSync` / `workflowGate` / `preflight` / `recovery` 的 lastTransition+nextAction+hasDevLast / `revision`+`snapshotAt`+`stale`），去掉了 `mode.transitionsByMode`（三份转移表）、`recovery.handoff`（交接全文）、`observability`（与顶层字段重复的副本）。需要完整快照时传 `detail: "full"`；转移表/模式来源可随时用 `feel_flow action=phases` / `action=mode` 现取。`with_requirements` 语义不变（compact 档同样只在显式请求时带 `requirements`）。
+- **需求导向**（v1.5.7）：阶段 = 版本容器，长期保持 `exec_running`、容纳多个需求；提示段 / `workflowGate` / 写入门禁文案统一为「无开启阶段 → 默认按当前小版本开阶段；不要每完成一个需求就推进/关闭阶段；归档/发布只在用户确认后」。需求完成门同时解耦（零关联可显式完成；关联阶段进入 `exec_running` 及之后即可完成）。
 
 ## 目录
 

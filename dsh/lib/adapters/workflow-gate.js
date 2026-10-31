@@ -1,8 +1,9 @@
 /**
- * 流程入口闸（v1.5.2）
+ * 流程入口闸（v1.5.2；v1.5.7 改为需求导向语义）
  *
- * 目的：把「无活跃阶段时不得开始需要落盘/多步调查的任务」从提示词约定
- * 变成 feel_status / feel_next 的结构化字段，避免模型以「只读调研」为由跳过阶段。
+ * 目的：把「每个需求都要建/推进阶段」纠正为「阶段是版本容器、长期保持开启」。
+ * 无开启阶段时提示按当前小版本开一个（保持 exec_running），而不是把它当成一次性任务；
+ * 已开启阶段时不做任何催促（需求在阶段内完成，阶段关闭由用户在发布节点决定）。
  *
  * 纯函数、无 IO；由工具层在读取快照后调用。
  */
@@ -21,11 +22,12 @@ export function computeWorkflowGate(snapshot) {
     required: true,
     reason: 'no-active-stage',
     message:
-      '当前无活跃阶段：任何会产出仓库文件（含 docs/research/**、方案、计划）或需要多步调查/实现的任务，必须先建立阶段；纯只读问答可例外。',
+      '当前没有开启的阶段：默认按当前小版本开一个阶段（保持 exec_running），需求在该版本内逐个推进；'
+      + '不要每完成一个需求就推进/关闭阶段——归档与发布只在用户确认的节点执行。',
     actions: [
-      'feel_req action=add title="<需求>"',
+      'feel_req action=add title="<需求>"（target_version 取小版本）',
       'feel_req action=claim id=REQ-NNN',
-      'feel_stage action=add stage=<vX.Y.Z-stage-N> tasks=[...]',
+      'feel_stage action=add stage=<vX.Y.Z-stage-N>（保持 exec_running，不随需求关闭）',
     ],
   };
 }

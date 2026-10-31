@@ -4,6 +4,24 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.5.7] - 2026-11-01
+
+> 需求导向版本：阶段 = **版本容器**（长期保持 `exec_running`、容纳多个需求），需求是工作单元；需求完成与阶段关闭解耦；归档与发布只在用户确认后执行。
+
+### Added
+- [stage-121] **需求完成门解耦**：`req advance --to done` 现允许「零关联需求显式完成」，或「关联阶段已进入 `exec_running` 及之后相位」时完成；任一关联阶段仍在 `plan_*` / `scheme_*` 时仍拒绝。完成门判据（`canCompleteRequirement`）收敛为这一条；`aggregate` 零关联仍返回 `null`（聚合自动收口语义不变）。
+- [stage-121] **适配器需求导向引导**：提示段、`workflowGate`、写入门禁文案统一改为「无开启阶段 → 默认按当前小版本开阶段并保持 `exec_running`；不要每完成一个需求就推进/关闭阶段；归档/发布需用户确认，AI 只能建议」。
+- [stage-120] **`feel_status` 输出瘦身**：默认返回 compact 快照（去掉 `mode.transitionsByMode` / `recovery.handoff` 全文 / `observability` 副本）；新增 `detail: "full"` 取完整快照，转移表按需用 `feel_flow action=phases|mode` 现取。
+- [stage-119] **阶段目录防复用**：`plan stage add` / `flow stage add` 在目标目录已被另一个「完整 stageId」占用、或该阶段已有归档日志时拒绝写入（零写盘），并提示占用目录、归属阶段与建议新编号；整版归档仅提示不阻断。
+
+### Changed
+- [stage-121] i18n `req.err.doneGateTmpl` 中英按新语义重写（占位符不变）；`req advance` help、`docs/commands.md` done 门段落同步。
+- [stage-119] `plan stage add` 同目录冲突检查前置（已注册 stageId 的 `StageDirConflictError` 信息保持更精确）；`isArchivedVersionOf` 语义不变。
+- [stage-120] `dsh/test/verify.js` 的完整快照断言改用 `detail:"full"`；新增 compact / detail 契约用例（`dsh/test/contract.js` 44 通过）。
+
+### Fixed
+- [stage-121] 旧行为「需求必须等阶段 done 才能完成」在长生命周期阶段模型下无法推进 → 已由完成门解耦修复（含新增 exec_running 成功 + plan_pending 拒绝的回归用例）。
+
 ## [1.5.6] - 2026-10-31
 
 > 批次版本（Patch 批次）：**preflight 写命令全覆盖 + 需求正文命令名校验 + 流程健康观测**。把「先读状态再写状态」从 4 个命令扩到**全部状态写命令**：34 个命令 / 36 个门位统一收敛到单一 helper；dry-run 免门、恢复通道条件豁免、strict 拒绝零写盘。另新增 `openfeel lint req`（JSON 出口 #41），把「需求正文里的命令名是否存在」变成机器可校验事实。**无新增错误码**。

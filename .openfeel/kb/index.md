@@ -399,6 +399,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-10-31 | patterns | [REV-003] [self-review] 需求完成门解耦（零关联/exec_running 及之后）+ 适配器需求导向文案；全量 2211 用例、dsh 58/44/100 全绿 |
 | 2026-10-31 | patterns | [REV-024] [代码审查] summary 把「时间戳不可解析」误报为「未读过状态」；phase-entered 缺 detail 守卫会抛 TypeError |
 | 2026-10-31 | patterns | [REV-023] [计划审查] dwell 算法造第二份口径：锚点漏 add_stage/reset、advance→plan_pending 不可达；应复用 findPhaseEnteredAtMs |
 | 2026-10-31 | patterns | [REV-022] [计划审查] observability.preflight 自测：readSnapshot 内 flow status/next 已刷新账本，必须在 readSnapshot 之前读 |

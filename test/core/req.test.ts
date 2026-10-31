@@ -335,20 +335,48 @@ describe('需求原语 — T5.4a 状态流转', () => {
     expect(data.requirements![0].status).toBe('done');
   });
 
-  it('done 门：零关联 → invalid_status（空集守卫，裁定 H）', () => {
+  it('done 门：零关联 → 允许显式完成（v1.5.7 解耦；聚合仍 null 不误自动收口）', () => {
     const data = makeFlowData();
     data.requirements = [makeReq('REQ-001', 'in_progress')];
-    expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
-    expect(data.requirements![0].status).toBe('in_progress');
+    expect(computeRequirementAggregate(data, 'REQ-001').aggregate).toBeNull();   // 零关联空集守卫（不误自动完成）
+    expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].status).toBe('done');
+    expect(lastLog(data).action).toBe('requirement_status');                     // 审计在位
+    expect(lastLog(data).detail).toEqual({ id: 'REQ-001', from: 'in_progress', to: 'done' });
+    expect(computeRequirementAggregate(data, 'REQ-001').aggregate).toBeNull();   // 显式完成 ≠ 聚合 done
   });
 
-  it('done 门：一阶段未 done → invalid_status', () => {
-    const data = makeFlowData({
-      'vX-stage-01': makeStage({ phase: 'done', requirement_id: 'REQ-001' }),
-      'vX-stage-02': makeStage({ phase: 'exec_running', requirement_id: 'REQ-001' }),
-    });
-    data.requirements = [makeReq('REQ-001', 'in_progress')];
-    expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+  it('done 门：全部执行 / 收口相位均放行（v1.5.7 解耦，表驱动）', () => {
+    const ready = [
+      'exec_running', 'review_pending', 'review_failed', 'review_passed',
+      'test_pending', 'test_failed', 'test_passed', 'archiving', 'done',
+    ] as const;
+    for (const phase of ready) {
+      const data = makeFlowData({
+        'vX-stage-01': makeStage({ phase, requirement_id: 'REQ-001' }),
+      });
+      data.requirements = [makeReq('REQ-001', 'in_progress')];
+      expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+      expect(data.requirements![0].status).toBe('done');
+    }
+  });
+
+  it('done 门：任一关联阶段仍在 plan / scheme 相位 → invalid_status（零变更零审计）', () => {
+    const blocked = [
+      'plan_pending', 'plan_review', 'plan_passed',
+      'scheme_pending', 'scheme_review', 'scheme_passed',
+    ] as const;
+    for (const phase of blocked) {
+      const data = makeFlowData({
+        'vX-stage-01': makeStage({ phase: 'exec_running', requirement_id: 'REQ-001' }),
+        'vX-stage-02': makeStage({ phase, requirement_id: 'REQ-001' }),
+      });
+      data.requirements = [makeReq('REQ-001', 'in_progress')];
+      const n = data.log.length;
+      expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+      expect(data.requirements![0].status).toBe('in_progress');
+      expect(data.log.length).toBe(n);
+    }
   });
 
   const rejectCases: Array<[RequirementStatus, RequirementStatus]> = [
@@ -996,10 +1024,10 @@ describe('聚合模块 — 正交与单源静态断言（stage-83 op-001）', ()
       [makeReq('REQ-001', 'scheduled')],
     );
     const before = computeRequirementAggregate(data, 'REQ-001');
-    data.requirements![0].workflow_mode = 'general';                 // 模式不入聚合 / 不入对账（aggregate.ts 零 workflow_mode）；经载体制对偶完成路径参与 done 门（canCompleteRequirement 字段直判单点——stage-93 supersede）
+    data.requirements![0].workflow_mode = 'general';                 // 模式不入聚合 / 不入对账（aggregate.ts 零 workflow_mode）；完成门只看相位（v1.5.7 解耦，canCompleteRequirement 不再按模式分支）
     const after = computeRequirementAggregate(data, 'REQ-001');
     expect(after).toEqual(before);
-    expect(allLinkedStagesDone(data, 'REQ-001')).toBe(true);         // done 判定单源（allLinkedStagesDone）语义未动——模式经完成门单点前置
+    expect(allLinkedStagesDone(data, 'REQ-001')).toBe(true);         // done 判定单源（allLinkedStagesDone）语义未动——完成门已与聚合解耦（v1.5.7）
   });
 });
 
@@ -1333,8 +1361,9 @@ describe('stage-90 op-002 需求级模式属性（引擎）', () => {
 
 // ═══════════════════════════════════════
 // stage-93 op-001 BUG-002 完成路径（engine）
-// 载体制对偶完成路径：general 需求显式完成（字段直判单点 canCompleteRequirement）；
-// 非 general 单源 allLinkedStagesDone 语义零改动；防御 = general 且有链接（损坏态）从严回落路 1。
+// v1.5.7 / REQ-023 supersede：完成门与阶段关闭解耦——零关联可直接完成；有关联时按相位判
+// （exec_running 及之后放行，plan / scheme 相位拒绝）；workflow_mode 不再参与完成门。
+// allLinkedStagesDone 仍是聚合 done 判定单源（语义不变）。
 // ═══════════════════════════════════════
 describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
   it('T93.1：general 需求全链可显式完成（draft → scheduled → in_progress → done ok:true + 审计在位）', () => {
@@ -1350,23 +1379,34 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     expect(last.detail).toMatchObject({ id: req.id, from: 'in_progress', to: 'done' });
   });
 
-  it('T93.2：非 general 零回归——零关联拒 / 未全 done 拒 / 全 done 允（零变更零审计）', () => {
-    // 零关联（无阶段）→ 拒
+  it('T93.2：v1.5.7 解耦——零关联允 / plan 相位拒 / exec_running 允 / 全 done 允（零变更零审计）', () => {
+    // 零关联（无阶段）→ 允（显式完成；聚合仍 null，不误自动收口）
     const noLink = aggData({}, [makeReq('REQ-001', 'in_progress')]);
-    const n1 = noLink.log.length;
-    expect(advanceRequirement(noLink, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
-    expect(noLink.requirements![0].status).toBe('in_progress');
-    expect(noLink.log.length).toBe(n1);
+    expect(computeRequirementAggregate(noLink, 'REQ-001').aggregate).toBeNull();
+    expect(advanceRequirement(noLink, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+    expect(noLink.requirements![0].status).toBe('done');
+    expect(lastLog(noLink).action).toBe('requirement_status');               // 审计在位
+    expect(computeRequirementAggregate(noLink, 'REQ-001').aggregate).toBeNull();
 
-    // 有链接但未全 done → 拒
+    // 有链接但尚有阶段在计划相位 → 拒（零变更零审计）
     const partial = aggData(
-      { 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'in_progress') },
+      { 'stage-01': linkedStage('REQ-001', 'exec_running'), 'stage-02': linkedStage('REQ-001', 'plan_pending') },
       [makeReq('REQ-001', 'in_progress')],
     );
+    const n = partial.log.length;
     expect(advanceRequirement(partial, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
     expect(partial.requirements![0].status).toBe('in_progress');
+    expect(partial.log.length).toBe(n);
 
-    // 有链接且全 done → 允
+    // 有链接且阶段仍开启（exec_running）→ 允
+    const openStage = aggData(
+      { 'stage-01': linkedStage('REQ-001', 'exec_running') },
+      [makeReq('REQ-001', 'in_progress')],
+    );
+    expect(advanceRequirement(openStage, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+    expect(openStage.requirements![0].status).toBe('done');
+
+    // 有链接且全 done → 允（既有语义保留）
     const allDone = aggData(
       { 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'done') },
       [makeReq('REQ-001', 'in_progress')],
@@ -1375,9 +1415,9 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     expect(allDone.requirements![0].status).toBe('done');
   });
 
-  it('T93.3：防御——general 且有链接（载体制门不可达的损坏态）从严回落路 1', () => {
+  it('T93.3：v1.5.7 起完成门只看相位——general 且有链接（损坏态）按相位判（plan 拒 / done 允）', () => {
     const broken = aggData(
-      { 'stage-01': linkedStage('REQ-001', 'in_progress') },
+      { 'stage-01': linkedStage('REQ-001', 'plan_pending') },
       [makeReq('REQ-001', 'in_progress', { workflow_mode: 'general' })],
     );
     expect(advanceRequirement(broken, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
@@ -1407,7 +1447,7 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
       [makeReq('REQ-001', 'in_progress', { workflow_mode: 'general' })],
     );
     expect(allLinkedStagesDone(data, 'REQ-001')).toBe(true);                         // 语义零改动（general 且全 done 仍 true）
-    expect(canCompleteRequirement(data, data.requirements![0])).toBe(true);          // 回落路 1 判定一致
+    expect(canCompleteRequirement(data, data.requirements![0])).toBe(true);          // 完成门按相位判定一致（v1.5.7 解耦）
 
     const src = readFileSync(new URL('../../src/core/req/aggregate.ts', import.meta.url), 'utf-8');
     for (const n of ['workflow_mode', 'PIPELINE_PHASES', 'getValidTargets', 'flow-archive', 'process.cwd', 'homedir']) {

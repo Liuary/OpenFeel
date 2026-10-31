@@ -530,7 +530,7 @@ export function registerReqCommand(program: Command): void {
   // ── req advance <id> --to <status> ──
   req
     .command('advance <id>')
-    .description('显式推进需求状态（合法目标由引擎流转表判定；done：非 general 需求须全部关联阶段 done）')
+    .description('显式推进需求状态（合法目标由引擎流转表判定；done：零关联可直接完成，关联阶段进入 exec_running 及之后相位即可完成）')
     .requiredOption('--to <status>', '目标状态（合法目标由引擎判定）')
     .action((id: string, options: { to: string }) => {
       const lang = getCliLang(process.cwd());

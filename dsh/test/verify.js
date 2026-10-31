@@ -268,7 +268,8 @@ async function main() {
 
   let snapshot;
   await check('feel_status 返回完整快照', async () => {
-    const result = await status.execute({}, realExec);
+    // v1.5.7：默认 compact；本组断言完整形态 → 显式 detail=full。
+    const result = await status.execute({ detail: 'full' }, realExec);
     const data = ok(result);
     snapshot = data;
     assert(snapshot.pipeline !== undefined, '缺少 pipeline');
@@ -384,7 +385,7 @@ async function main() {
     }
     assert(Array.isArray(next.dispatch.boundaries.neverRead), 'boundaries.neverRead 应为数组');
     assert(next.dispatch.returnFormat.includes('≤10 行'), 'returnFormat 应限制 10 行');
-    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    const status = ok(await workspace.tools.get('feel_status').execute({ detail: 'full' }, realExec));
     assert(status.recovery && typeof status.recovery === 'object', 'feel_status 缺 recovery');
     assert('lastTransition' in status.recovery, 'recovery 缺 lastTransition');
     assert('handoff' in status.recovery, 'recovery 缺 handoff');
@@ -469,7 +470,7 @@ async function main() {
       assert(obs.preflight === undefined, `${label} observability 不得嵌套 preflight`);
     };
 
-    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    const status = ok(await workspace.tools.get('feel_status').execute({ detail: 'full' }, realExec));
     assertShape(status.observability, 'feel_status');
     // 既有键仍在（INV-13）
     for (const key of ['stale', 'preflight', 'statusSync', 'recovery']) {
@@ -485,7 +486,7 @@ async function main() {
 
   await check('observability 复制不重算（v1.5.6）', async () => {
     // INV-8：两个标量必须与顶层 preflight 同源同值；statusSync 三键全等
-    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    const status = ok(await workspace.tools.get('feel_status').execute({ detail: 'full' }, realExec));
     assert(
       status.observability.preflightAgeMs === status.preflight.ageMs,
       `feel_status preflightAgeMs 应复制 ageMs（obs=${status.observability.preflightAgeMs} top=${status.preflight.ageMs}）`,
@@ -524,7 +525,7 @@ async function main() {
         join(project, '.openfeel', 'dev', '.preflight.json'),
         `${JSON.stringify({ at: oldAt, stage: null, phase: null, revision: null }, null, 2)}\n`,
       );
-      const status = ok(await workspace.tools.get('feel_status').execute({ project }, execFor(project)));
+      const status = ok(await workspace.tools.get('feel_status').execute({ project, detail: 'full' }, execFor(project)));
       assertString(status.observability?.summary, '副本 feel_status 缺 observability.summary');
       assert(
         typeof status.observability.preflightAgeMs === 'number' && status.observability.preflightAgeMs >= 7 * 3_600_000,

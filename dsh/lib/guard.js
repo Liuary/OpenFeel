@@ -510,8 +510,8 @@ export function createOpenFeelGuard(options = {}) {
         paths: targets,
       });
       return t(
-        'OpenFeel 写入门禁：研究/方案产物（docs/research/**）要求有活跃阶段。请先 feel_req add → claim → feel_stage add 建立阶段，再写调研/方案。纯只读问答无需落盘。',
-        'OpenFeel write guard: research/proposal artifacts (docs/research/**) require an active stage. Create one via feel_req add → claim → feel_stage add before writing. Pure read-only Q&A needs no file.',
+        'OpenFeel 写入门禁：研究/方案产物（docs/research/**）要求有开启的阶段。请先按当前小版本开一个阶段（保持 exec_running），再 feel_req add → claim 建需求并写调研/方案。纯只读问答无需落盘。',
+        'OpenFeel write guard: research/proposal artifacts (docs/research/**) require an open stage. Open a stage for the current minor version (keep it in exec_running), then feel_req add → claim before writing. Pure read-only Q&A needs no file.',
       );
     }
     if (active.length === 0) {
@@ -528,8 +528,8 @@ export function createOpenFeelGuard(options = {}) {
         return undefined;
       }
       return t(
-        'OpenFeel 写入门禁：当前无活跃阶段，不能修改源码/文档。请先 feel_req add → claim → feel_stage add 建立阶段。',
-        'OpenFeel write guard: no active stage, so source/docs are read-only. Create a stage via feel_req add → claim → feel_stage add.',
+        'OpenFeel 写入门禁：无活跃阶段，不能修改源码/文档（当前没有开启的阶段）。默认按当前小版本开一个阶段并保持 exec_running（feel_stage add stage=<vX.Y.Z-stage-N>），再在该版本下建需求推进；需求完成不要求关闭阶段。',
+        'OpenFeel write guard: no active stage (no open stage), so source/docs are read-only. Open a stage for the current minor version and keep it in exec_running (feel_stage add stage=<vX.Y.Z-stage-N>), then add requirements under that version; requirement completion does not require closing the stage.',
       );
     }
 

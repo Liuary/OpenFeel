@@ -2,12 +2,12 @@
  * 需求原语 — 需求层纯内存操作的单一入口
  *
  * 职责：需求读取（读侧宽容 + 浅副本）、ID 分配、写路径原语（add / claim / release / update / advance / link）
- *       与共用谓词（终态判定 / 全部关联阶段 done）。全部为**纯内存**操作 + 审计内嵌（`data.log`），
+ *       与共用谓词（终态判定 / 全部关联阶段 done（聚合单源）/ 完成门判据）。全部为**纯内存**操作 + 审计内嵌（`data.log`），
  *       零独立写盘点——落盘恒走调用方（命令层）的 `FlowManager` 落盘方法。
  * 边界声明：不依赖归档层；模式属性（workflow_mode?）为调度属性——本层只做「值域校验 + 载体制门」，
  *   解析 / 下发单点在 FlowManager；不参与聚合判定。
  */
-import type { FlowData } from '../flow-manager.js';                 // 仅类型（编译期擦除）
+import type { FlowData, PipelinePhase } from '../flow-manager.js';  // 仅类型（编译期擦除）
 import { WORKFLOW_MODES, type WorkflowMode } from '../config.js';   // 值域单源（运行时值导入，禁就地三值字面量）
 import {
   REQ_ID_PATTERN, REQ_PRIORITIES, REQ_STATUSES,
@@ -87,19 +87,29 @@ export function allLinkedStagesDone(data: FlowData, requirementId: string): bool
 }
 
 /**
- * 完成门判据（BUG-002 单点收口；裁定 4 扩展为两路——stage-93）：
- *   路 1（不变）：非 general 需求 → allLinkedStagesDone（有阶段且全 done；零关联恒 false）；
- *   路 2（新增）：general 需求 → 载体制对偶完成路径（显式完成直接放行；general 恒零关联，
- *     由双向载体制门保证——updateRequirement / linkRequirement）。
- * 判据来源 = 需求自身 workflow_mode 字段直判（与载体制门同源；禁解析级联——解析链仅作用于阶段侧调度）。
- * 防御：general 且有链接 = 载体制门不可达的数据损坏态 → 从严回落路 1（不因模式字段获得额外豁免）。
+ * 完成门「阶段已开工」相位集（v1.5.7 / REQ-023：需求完成与阶段关闭解耦）：
+ * `exec_running` 及其后的全部执行 / 收口相位。阶段是**版本容器**（长期停留在 exec_running），
+ * 需求是**工作单元**，因此阶段仍开启不应阻塞需求完成；plan / scheme 相位（计划方案未落地）仍拒绝。
+ * 与流水线相位生命周期顺序同源，但本模块按 stage-90 正交纪律禁用相位表常量（禁用串零命中），故显式列举。
+ */
+const COMPLETION_READY_PHASES: readonly PipelinePhase[] = [
+  'exec_running', 'review_pending', 'review_failed', 'review_passed',
+  'test_pending', 'test_failed', 'test_passed', 'archiving', 'done',
+];
+
+/**
+ * 完成门判据（v1.5.7 / REQ-023 supersede stage-93 的载体制对偶路径；`applyStatusChange` 单点消费）：
+ *   ① 零关联阶段 → 直接放行（允许显式完成；空集守卫只保留在聚合投影 aggregate.ts——
+ *      聚合仍为 null，禁把「显式完成」误当「自动收口」）；
+ *   ② 有关联阶段 → 仅当**每个**关联阶段 phase ∈ COMPLETION_READY_PHASES（已进入 exec_running 及之后）时放行；
+ *      任一阶段仍在 plan_pending / plan_review / plan_passed / scheme_pending / scheme_review / scheme_passed → 拒绝。
+ * 判据只看关联阶段相位，不再按 workflow_mode 分支（模式是调度属性，不入完成门）；
+ * `allLinkedStagesDone` 仍是聚合 done 判定单源（aggregate.ts），与完成门解耦、语义不变。
  */
 export function canCompleteRequirement(data: FlowData, req: RequirementData): boolean {
-  if (req.workflow_mode === 'general') {
-    const hasLinked = Object.values(data.stages ?? {}).some((s) => (s.requirement_id ?? null) === req.id);
-    if (!hasLinked) { return true; }
-  }
-  return allLinkedStagesDone(data, req.id);
+  const linked = Object.values(data.stages ?? {}).filter((s) => (s.requirement_id ?? null) === req.id);
+  if (linked.length === 0) { return true; }
+  return linked.every((s) => (COMPLETION_READY_PHASES as readonly string[]).includes(s.phase));
 }
 
 // ═══ 写路径原语 ═══

@@ -11,6 +11,7 @@
  */
 import { Command } from 'commander';
 import { t, getCliLang } from '../core/i18n.js';
+import { preflightGate } from '../core/preflight.js';
 import { FlowManager, isFlowConcurrentError } from '../core/flow-manager.js';
 import { type WorkflowMode } from '../core/config.js';
 import { handleConcurrentConflict } from './shared/errors.js';
@@ -120,6 +121,13 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       const data = mgr.getData()!;
+      // v1.5.5：需求写操作前先读状态（strict 拒绝；warn 仅 TTY 提示）
+      const preflight = preflightGate(process.cwd(), t('flow.preflightRequiredTmpl', lang));
+      if (!preflight.ok) {
+        console.error(preflight.message);
+        process.exitCode = 1;
+        return;
+      }
       try {
         // 运行期值域由引擎单点判定（命令层零校验）；priority / workflow_mode 断言仅编译期
         const created = addRequirement(data, {
@@ -296,6 +304,13 @@ export function registerReqCommand(program: Command): void {
       const data = mgr.getData()!;
       if (!isValidReqId(id)) {
         console.error(t('req.invalidIdTmpl', lang, { input: id }));
+        process.exitCode = 1;
+        return;
+      }
+      // v1.5.5：认领前先读状态（放在 ID 校验之后，避免非法参数先报 preflight）
+      const preflight = preflightGate(process.cwd(), t('flow.preflightRequiredTmpl', lang));
+      if (!preflight.ok) {
+        console.error(preflight.message);
         process.exitCode = 1;
         return;
       }

@@ -1,9 +1,11 @@
 # 当前进度
 
-> OpenFeel **v1.5.4 — 批次：日志摘要 + 快照 revision/stale + 指标 + 闸门滥用提示**｜ `flow log` 摘要 / `feel_status.revision` / `flow metrics` 观测 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.4 ｜ **未 push；未 npm publish**
-> 统计：测试 83 文件 / **2024 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 95 + 58 + 10 = **205 断言** ｜ `lint i18n` **1047** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.4**
+> OpenFeel **v1.5.5 — 批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性**｜ 先读后写可校验 / strict 适配器 / 提示段约束 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 40 成功出口 / 43 注册选项** ｜ 版本 1.5.5 ｜ **未 push；未 npm publish**
+> 统计：测试 84 文件 / **2030 用例全绿（0 skipped / 0 failed）** ｜ dsh 42 + 96 + 58 + 10 = **206 断言** ｜ `lint i18n` **1048** 键 ｜ `lint kb` 0 过期（649 引用）｜ **版本 1.5.5**
 
 ## 近期提交记录（最多 5 条，最新在上）
+
+- **2026-10-31** @Liuary：**v1.5.5 批次（preflight/补闸/禁 shell 写/审查独立）**——① **preflight 账本**：`src/core/preflight.ts`；`flow next`/`flow status` 写 `.openfeel/dev/.preflight.json`；`flow advance`/`plan stage add`/`req add`/`req claim` 写前校验 10 分钟窗口（`OPENFEEL_PREFLIGHT=off|warn|strict`，默认 warn 仅 TTY）。② **适配器 strict**：CLI 执行器注入 strict；`feel_status`/`feel_next` 返回 `preflight`。③ **提示段**：状态写操作只用 `feel_*`、禁止 shell 写状态、fast 单轮也需独立 reviewer（自审标 `self-review`）。门禁：全量 **84/2030**、tsc 0、i18n **1048**、kb 0（649）、build ×2、dsh **206**、`--version` 1.5.5。阶段 v1.5.5-stage-113（fast）。**未 push；未 npm publish**
 
 - **2026-10-31** @Liuary：**v1.5.4 批次（日志/快照/指标/空转提示）**——① **阶段日志摘要**：`FlowManager.getStageLogSummary` 从 200 条日志派生 lastTransition / lastError / resumeCount；`flow log` 人类输出追加摘要（`--json` 不变）；② **快照 revision/stale**：adapter `readSnapshot` 读 `flow.json` revision/mtime，`feel_status`/`feel_next` 暴露 `revision`/`snapshotAt`/`stale`；③ **观测指标**：`flow metrics` 人类输出追加 `flow.log` 条目/字节与活跃阶段（JSON 不变）；④ **闸门滥用提示**：`plan_pending` >10 分钟提示空转；⑤ `recovery` 增加 `lastError`/`resumeCount`。门禁：全量 **83/2024**、tsc 0、i18n **1047**、kb 0（649）、build ×2、dsh **205**、`--version` 1.5.4。阶段 v1.5.4-stage-112（fast）。**未 push；未 npm publish**
 

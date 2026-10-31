@@ -4,6 +4,22 @@
 
 > 面向用户的版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)；本文保留逐版本 Added / Changed / Fixed 明细。
 
+## [1.5.5] - 2026-10-31
+
+> 批次版本（Patch 批次）：**preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性**。解决「阶段流程走了、调度流程没走」：先读状态再写状态成为可校验事实。
+
+### Added
+- [stage-113] **CLI preflight 账本**：`src/core/preflight.ts`；`flow next` / `flow status` 写 `.openfeel/dev/.preflight.json`（时间 / stage / phase / revision）；**核心写命令**（`flow advance`、`plan stage add`、`req add`、`req claim`）写前校验（10 分钟窗口；`OPENFEEL_PREFLIGHT=off|warn|strict`，默认 warn 仅 TTY 提示）。
+- [stage-113] **适配器补闸**：CLI 执行器默认注入 `OPENFEEL_PREFLIGHT=strict`；`feel_status` / `feel_next` 返回 `preflight`（ok / at / ageMs / mode）；strict 下未 preflight 的写命令拒绝（`INVALID_ARGUMENT`，`detail.reason=preflight-required`）。
+- [stage-113] **提示段**：状态写操作只能用 `feel_*`，禁止 shell 跑 `openfeel flow/stage/req` 写命令；fast 单轮审查也应由独立 reviewer，自审 REV 标 `self-review`。
+
+### Changed
+- [stage-113] `plan stage add` / `req add` / `req claim` 增加 preflight 检查（默认 warn 非 TTY 静默，不破坏脚本）。
+- [stage-113] `dsh/package.json`：version `1.5.5`、`requiresCli: ">=1.5.5"`。
+
+### Fixed
+- [stage-113] 1.5.4 实测跳过 `feel_status/feel_next`、用 shell CLI 绕过适配器、自审代替独立审查。
+
 ## [1.5.4] - 2026-10-31
 
 > 批次版本（Patch 批次）：**日志阶段摘要 + 快照 revision/stale + 观测指标 + 闸门滥用提示**。无 JSON 契约变更（`flow next` / `flow metrics` 键集不变）。

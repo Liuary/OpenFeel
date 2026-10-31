@@ -195,6 +195,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 - **流程入口闸（v1.5.2）**：`feel_status` / `feel_next` 在无活跃阶段时返回 `workflowGate`；无阶段写 `docs/research/**` 被拒（chore 不能绕过，拒绝写 `guard-audit.jsonl`）；提示段要求先 `feel_status`、不得以「调研/只读」为由跳过阶段。
 - **派发/恢复（v1.5.3）**：`feel_next.dispatch`（goal/context/boundaries/returnFormat；子 agent 禁读状态文件、返回 ≤10 行）；`feel_status.recovery`（lastTransition / handoff / nextAction）；提示段新增派发契约节。
 - **快照与空转（v1.5.4）**：`feel_status`/`feel_next` 返回 `revision` / `snapshotAt` / `stale`；`plan_pending` 停留 >10 分钟时提示空转。
+- **preflight（v1.5.5）**：适配器 CLI 调用默认 `OPENFEEL_PREFLIGHT=strict`；`feel_status`/`feel_next` 返回 `preflight`；写命令要求 10 分钟内读过状态。提示段禁止 shell 写状态命令。
 
 段落正文每次装配时探测 `.openfeel/` 是否存在，因此提示会随工作区状态变化。
 
@@ -233,7 +234,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 ```powershell
 cd plugin
 node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（42 项）
-node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（95 项）
+node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（96 项）
 node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（58 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（10 项）
 ```

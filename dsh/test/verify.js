@@ -419,6 +419,16 @@ async function main() {
     assert(plan.adapterHints.some((hint) => hint.includes('plan_pending')), `缺少空转提示: ${plan.adapterHints.join('|')}`);
   });
 
+  await check('preflight 字段 + 提示段禁 shell 写 / 自审标注（v1.5.5）', async () => {
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assert(status.preflight && typeof status.preflight.ok === 'boolean', 'feel_status 缺 preflight');
+    const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
+    assert(next.preflight && typeof next.preflight.ok === 'boolean', 'feel_next 缺 preflight');
+    const text = workspace.sections[0].text();
+    assert(text.includes('状态写操作只能用'), '提示段缺「状态写操作只能用 feel_*」');
+    assert(text.includes('self-review'), '提示段缺自审标注约定');
+  });
+
   await check('feel_flow action=phases 返回转移表', async () => {
     const result = await workspace.tools.get('feel_flow').execute({ action: 'phases' }, realExec);
     const data = ok(result);
@@ -712,6 +722,8 @@ async function main() {
   });
 
   const tempExec = execFor(tempProject);
+  // v1.5.5：适配器写命令 strict，先对副本调用一次 feel_status 记录 preflight（真实工作流同样先读状态）。
+  await workspace.tools.get('feel_status').execute({ project: tempProject }, tempExec);
   const modeBefore = readFileSync(join(tempProject, '.openfeel', 'flow.json'), 'utf8').match(/"revision":\s*(\d+)/)?.[1];
 
   // 写操作测试必须先于任何「原项目未被修改」断言，且只能打副本。

@@ -4577,3 +4577,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-001] 批次自审：日志摘要 / revision-stale / 指标 / 空转提示（无 blocking；2024 单测 + dsh 205 + 真实输出） (2026-10-31)
 
 归档自阶段 v1.5.4-stage-112
+
+## [+] [REV-001] independent review：5 项发现，3 项已修（preflight 写失败降级 / .gitignore / req claim 顺序 / strict 覆盖收紧；无 blocking） (2026-10-31)
+
+归档自阶段 v1.5.5-stage-113

@@ -266,6 +266,8 @@ export class FeelCli {
       NO_COLOR: '1',
       FORCE_COLOR: '0',
       CI: process.env.CI ?? '1',
+      // v1.5.5：适配器写命令恒 strict（必须先 feel_status/feel_next）；用户 shell 默认 warn。
+      OPENFEEL_PREFLIGHT: 'strict',
       ...(this.log ? {} : { OPENFEEL_LOG: '0' }),
       ...this.env,
     };

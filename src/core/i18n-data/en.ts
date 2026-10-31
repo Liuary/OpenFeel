@@ -387,6 +387,7 @@ export const flow: I18nDomain = {
   'dev.statusLastSyncTmpl':         { key: 'flow.dev.statusLastSyncTmpl',         zh: '', en: 'Last sync: {lastSync} (interval {interval} min)' },
   'dev.statusDueTmpl':              { key: 'flow.dev.statusDueTmpl',              zh: '', en: 'Status is stale (>= {interval} min): update the handoff summary, then run `openfeel dev sync`.' },
   'dev.statusOkTmpl':               { key: 'flow.dev.statusOkTmpl',               zh: '', en: 'Status is fresh ({interval} min window); no update needed.' },
+  'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '', en: 'Run `openfeel flow next` (or `flow status`) before a write operation (preflight missing or expired).' },
 };
 
 /* ==================== init ==================== */

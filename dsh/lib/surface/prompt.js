@@ -146,6 +146,11 @@ Feel（你）只做编排、决策与门禁判断。
 - 子 agent **只读派发 prompt 与指定文件**；禁读 \`dev_last*\`、\`dev/current.md\`、\`status.md\`、\`flow.json\`。
 - 返回 **≤10 行**（结论 / 改动文件 / 验证 / 阻塞）；不贴全文 diff、日志或大段代码；超标内容留在子 agent，不进入主会话。
 
+## 写命令与 preflight（v1.5.5）
+- **状态写操作只能用 \`feel_*\` 工具**（\`feel_flow\` / \`feel_stage\` / \`feel_req\`）；禁止用 shell 跑 \`openfeel flow/stage/req\` 写命令——那会绕过适配器与 preflight。
+- **先读后写**：核心写命令（advance / stage add / req add / claim）要求 10 分钟内调用过 \`feel_status\` / \`feel_next\`；遇到 preflight 拒绝先 \`feel_status\` 再重试。
+- **审查独立**：fast 单轮审查也应由独立 reviewer 完成；Feel 自审必须在 REV 标题标注 \`self-review\`，归档摘要记录原因。
+
 ## 流程入口（v1.5.2）
 - **先 \`feel_status\`**：任何会产出仓库文件（含 \`docs/research/**\`、方案、计划）或需要多步调查/实现的任务，先读状态；无活跃阶段 → \`feel_req add\` → \`claim\` → \`feel_stage add\`，再开始。
 - **不得以「调研 / 只读」为由跳过阶段**：纯只读问答可直接回答；研究/方案产物写入门禁要求活跃阶段（\`docs/research/**\` 无阶段会被拒）。
@@ -216,6 +221,11 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 - When dispatching a subagent, use the \`dispatch\` template returned by \`feel_next\`: goal / context / boundaries / returnFormat.
 - Subagents read **only the dispatch prompt and the listed files**; never \`dev_last*\`, \`dev/current.md\`, \`status.md\`, \`flow.json\`.
 - Return **<=10 lines** (conclusion / changed files / verification / blockers); no full diffs, logs or large code blocks — keep them in the subagent.
+
+## Write commands & preflight (v1.5.5)
+- **State writes only via \`feel_*\` tools** (\`feel_flow\` / \`feel_stage\` / \`feel_req\`); never run \`openfeel flow/stage/req\` write commands through the shell — that bypasses the adapter and preflight.
+- **Read before write**: core write commands (advance / stage add / req add / claim) require a \`feel_status\` / \`feel_next\` within 10 minutes; on preflight refusal, call \`feel_status\` and retry.
+- **Independent review**: even the single fast-mode review should be done by an independent reviewer; if Feel self-reviews, mark the REV title \`self-review\` and record why in the archive summary.
 
 ## Workflow entry (v1.5.2)
 - **Call \`feel_status\` first**: any task that may produce repo files (including \`docs/research/**\`, proposals, plans) or needs multi-step investigation/implementation must read state first; with no active stage → \`feel_req add\` → \`claim\` → \`feel_stage add\`, then start.

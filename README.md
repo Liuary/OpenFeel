@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.4**（批次：日志摘要 + 快照 revision/stale + 指标 + 闸门滥用提示） — ① `flow log` 追加阶段摘要（最近转换 / 失败 / resume）；② `feel_status`/`feel_next` 返回快照 `revision`/`stale`；③ `flow metrics` 观测日志体积；④ `plan_pending` >10 分钟提示空转。无 JSON 契约变更；发布仍为批次制。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.5**（批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性） — ① `flow next`/`flow status` 记录 preflight，写命令校验 10 分钟窗口；② DSH 适配器默认 strict，`feel_status`/`feel_next` 返回 `preflight`；③ 提示段禁止 shell 写状态命令、要求独立审查（自审标 `self-review`）。无 JSON 契约变更；批次发布。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

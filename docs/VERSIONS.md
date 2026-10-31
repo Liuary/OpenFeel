@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.5** — Batch release: CLI preflight ledger (`flow next` / `flow status` record `.preflight.json`; write commands check a 10-minute window), adapter defaults to strict preflight (`feel_status`/`feel_next` expose `preflight`), prompt bans shell state-write commands and requires independent review (self-review must be marked).
 - **v1.5.4** — Batch release: stage log summaries (`flow log`: last transition / last error / resume count), adapter snapshot `revision` / `stale`, observability metrics (`flow metrics`: log entries/bytes), and a gate-abuse hint when a stage sits in `plan_pending` for more than 10 minutes. No JSON contract changes.
 - **v1.5.3** — Batch release: dispatch/return contract (`feel_next.dispatch`: goal/context/boundaries/returnFormat; subagents never read state files, return ≤10 lines), recovery bundle (`feel_status.recovery`: lastTransition / handoff / nextAction), structured handoff (`done / next / block`) and no-op sync when state is unchanged. Release cadence is now batched (see "发布节奏").
 - **v1.5.2** — Workflow entry gate: `feel_status`/`feel_next` expose `workflowGate` when no stage is active; `docs/research/**` writes are rejected without an active stage (chore cannot bypass), with a denial audit event. Includes the dispatch/persistence research doc and the 1.5.3/1.5.4 iteration plan.
@@ -33,6 +34,14 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.5 — 批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性
+
+- **preflight 账本**：`flow next` / `flow status` 记录 `.openfeel/dev/.preflight.json`；`flow advance` / `plan stage add` / `req add` / `req claim` 写前校验 10 分钟窗口。
+- **默认策略**：用户 shell `warn`（仅 TTY 提示，不破坏脚本）；DSH 适配器 `strict`（未读状态拒绝，`detail.reason=preflight-required`）。
+- **提示段**：状态写操作只能用 `feel_*`；禁止 shell 跑 `openfeel flow/stage/req` 写命令；fast 单轮审查也应由独立 reviewer，自审标 `self-review`。
+- **兼容性**：无 JSON 契约变更（拒绝走既有 `INVALID_ARGUMENT`）；`feel_status`/`feel_next` 新增 `preflight` 字段。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → **完全退出并重启宿主**。详见 [CHANGELOG](../CHANGELOG.md#155---2026-10-31)。
 
 ## v1.5.4 — 批次：日志摘要 + 快照 revision/stale + 指标 + 闸门滥用提示
 

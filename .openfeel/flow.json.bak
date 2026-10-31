@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T09:40:07.423Z",
-    "revision": 1559,
+    "updated": "2026-10-31T10:03:26.666Z",
+    "revision": 1580,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -29,140 +29,49 @@
       "v1.5.0",
       "v1.5.1",
       "v1.5.2",
-      "v1.5.3"
+      "v1.5.3",
+      "v1.5.4"
     ]
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.4-stage-112",
+      "stage": "v1.5.5-stage-113",
       "op": ""
     },
     "retry": 0
   },
   "stages": {
-    "v1.5.4-stage-112": {
-      "name": "v1.5.4-stage-112",
-      "phase": "done",
-      "status": "done",
+    "v1.5.5-stage-113": {
+      "name": "v1.5.5-stage-113",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
-      "requirement_id": "REQ-013",
+      "requirement_id": "REQ-014",
       "stats": {
-        "start_time": "2026-10-31T09:32:23.626Z",
-        "end_time": "2026-10-31T09:40:07.396Z",
-        "duration_ms": 463770
+        "start_time": "2026-10-31T09:48:08.801Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
   "reviews": [
     {
       "id": "REV-001",
-      "op": "v1.5.4-stage-112",
-      "stage": "v1.5.4-stage-112",
+      "op": "v1.5.5-stage-113",
+      "stage": "v1.5.5-stage-113",
       "status": "resolved",
       "priority": "medium",
-      "title": "批次自审：日志摘要 / revision-stale / 指标 / 空转提示（无 blocking；2024 单测 + dsh 205 + 真实输出）",
+      "title": "independent review：5 项发现，3 项已修（preflight 写失败降级 / .gitignore / req claim 顺序 / strict 覆盖收紧；无 blocking）",
       "filed_by": "cli",
-      "filed_at": "2026-10-31T09:40:05.450Z",
+      "filed_at": "2026-10-31T10:03:25.152Z",
       "canAutoFix": false,
       "blocking": false
     }
   ],
   "log": [
-    {
-      "time": "2026-10-01T17:59:26.268Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-58.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T18:01:43.955Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-58.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T18:04:13.240Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-58.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T18:45:11.660Z",
-      "agent": "cli",
-      "action": "stage_deps_set",
-      "detail": {
-        "stage": "v1.1.2-stage-59",
-        "deps": [
-          "v1.1.2-stage-58"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-01T19:07:35.501Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-59.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T19:10:27.373Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-59.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-01T21:03:16.793Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.2-stage-60.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-02T05:41:31.605Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.3-stage-61.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-02T05:44:24.620Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.3-stage-61.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-02T05:52:56.038Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.1.3-stage-61.op-003",
-        "attempts": 1
-      }
-    },
     {
       "time": "2026-10-02T23:35:51.522Z",
       "agent": "cli",
@@ -1917,15 +1826,6 @@
       }
     },
     {
-      "time": "2026-10-31T09:31:45.971Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.4-stage-112",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-10-31T09:32:19.987Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1935,22 +1835,110 @@
       }
     },
     {
-      "time": "2026-10-31T09:32:23.617Z",
+      "time": "2026-10-31T09:40:08.747Z",
+      "agent": "cli",
+      "action": "archive_flow_version",
+      "detail": {
+        "version": "v1.5.4",
+        "stages": 1,
+        "reviews": 1,
+        "log": 9
+      }
+    },
+    {
+      "time": "2026-10-31T09:40:12.844Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-013",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-31T09:40:13.198Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-013",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-31T09:40:13.553Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-013",
+        "fields": [
+          "workflow_mode"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-31T09:40:13.971Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-013",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-10-31T09:47:49.464Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-014",
+        "title": "1.5.5 批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性（统一发布）"
+      }
+    },
+    {
+      "time": "2026-10-31T09:47:52.473Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-014",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-10-31T09:47:52.933Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.5-stage-113",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-10-31T09:48:06.703Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.5-stage-113",
+        "requirementId": "REQ-014"
+      }
+    },
+    {
+      "time": "2026-10-31T09:48:08.794Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.4-stage-112",
+        "stageName": "v1.5.5-stage-113",
         "from": "plan_pending",
         "to": "plan_review",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
     },
     {
-      "time": "2026-10-31T09:32:24.012Z",
+      "time": "2026-10-31T09:48:11.880Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.4-stage-112",
+        "stageName": "v1.5.5-stage-113",
         "from": "plan_review",
         "to": "plan_passed",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1958,11 +1946,11 @@
       }
     },
     {
-      "time": "2026-10-31T09:32:24.397Z",
+      "time": "2026-10-31T09:48:14.916Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.4-stage-112",
+        "stageName": "v1.5.5-stage-113",
         "from": "plan_passed",
         "to": "exec_running",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1970,11 +1958,11 @@
       }
     },
     {
-      "time": "2026-10-31T09:40:06.214Z",
+      "time": "2026-10-31T09:58:28.737Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.4-stage-112",
+        "stageName": "v1.5.5-stage-113",
         "from": "exec_running",
         "to": "review_pending",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1982,11 +1970,47 @@
       }
     },
     {
-      "time": "2026-10-31T09:40:06.238Z",
+      "time": "2026-10-31T10:01:04.233Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.4-stage-112",
+        "stageName": "v1.5.5-stage-113",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T10:01:07.612Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.5-stage-113",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T10:03:25.896Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.5-stage-113",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-10-31T10:03:25.919Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.5-stage-113",
         "from": "review_pending",
         "to": "review_passed",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -1994,11 +2018,11 @@
       }
     },
     {
-      "time": "2026-10-31T09:40:06.608Z",
+      "time": "2026-10-31T10:03:26.301Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.4-stage-112",
+        "stageName": "v1.5.5-stage-113",
         "from": "review_passed",
         "to": "archiving",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
@@ -2006,27 +2030,15 @@
       }
     },
     {
-      "time": "2026-10-31T09:40:06.987Z",
+      "time": "2026-10-31T10:03:26.666Z",
       "agent": "openfeel-archiver",
       "action": "archive_stage",
       "detail": {
-        "stageName": "v1.5.4-stage-112",
+        "stageName": "v1.5.5-stage-113",
         "opsCount": 0,
         "reviewsCount": 1,
         "knowledgeCount": 1,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.4-stage-112.md"
-      }
-    },
-    {
-      "time": "2026-10-31T09:40:07.389Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.4-stage-112",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.5-stage-113.md"
       }
     }
   ],
@@ -2188,15 +2200,28 @@
     {
       "id": "REQ-013",
       "title": "1.5.4 批次：日志阶段摘要 + flow next revision/stale + 指标 + 闸门滥用提示（统一发布）",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-31T09:31:42.420Z",
-      "updated_at": "2026-10-31T09:31:45.517Z",
+      "updated_at": "2026-10-31T09:40:13.971Z",
       "target_version": "v1.5.4",
       "priority": "P0",
-      "workflow_mode": "fast",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-013.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T09:31:45.517Z"
+    },
+    {
+      "id": "REQ-014",
+      "title": "1.5.5 批次：preflight 账本 + 适配器补闸 + 禁止 shell 写状态 + 审查独立性（统一发布）",
+      "status": "draft",
+      "created_at": "2026-10-31T09:47:49.464Z",
+      "updated_at": "2026-10-31T09:47:52.473Z",
+      "target_version": "v1.5.5",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-014.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-10-31T09:47:52.473Z"
     }
   ]
 }

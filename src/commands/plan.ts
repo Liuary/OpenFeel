@@ -8,6 +8,7 @@ import type { StageSkeletonOverrides } from '../core/plan/stage.js';
 import { createScheme, createSchemesFromTasks, listSchemes, removeScheme, publishScheme, renameScheme, registerSchemes } from '../core/plan/scheme.js';
 import { validateStageId, suggestStageId, normalizeStageId, isArchivedVersionOf, parseStageId } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
+import { preflightGate } from '../core/preflight.js';
 import { StageDirConflictError, FlowManager, detectFillState } from '../core/flow-manager.js';
 import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
@@ -126,6 +127,14 @@ export function registerPlanCommand(program: Command): void {
       }
       if (options.workflowMode !== undefined) {
         overrides.workflowMode = options.workflowMode as WorkflowMode;
+      }
+
+      // v1.5.5：建阶段前先读状态（strict 拒绝；warn 仅 TTY 提示）
+      const preflight = preflightGate(projectPath, t('flow.preflightRequiredTmpl', lang));
+      if (!preflight.ok) {
+        console.error(preflight.message);
+        process.exitCode = 1;
+        return;
       }
 
       try {

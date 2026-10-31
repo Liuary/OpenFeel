@@ -2030,7 +2030,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.5.4). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.5.5). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -2195,7 +2195,7 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.5.4）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.5.5）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 
@@ -4464,7 +4464,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.5.4 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.5 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -4522,6 +4522,14 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **\`openfeel update --tools dsh\`**：不适用（全局部署），命令层在 auto-init / 写盘前 exit 1 并指引 \`setup\`。
 - **错误映射**：预检 / 用法 / profile → \`INVALID_ARGUMENT\`（refusal/1，\`detail.reason=dsh-*\`）；备份 / pnpm install → \`INTERNAL_ERROR\`（internal/3，\`dsh-backup-failed\` / \`dsh-pnpm-install-failed\`）。不新增 CLI 错误码。
 - **单包**：不发布独立 \`openfeel-dsh\`；\`dsh/\` 随 \`openfeel\` npm 包分发，默认不部署。README 版本能力概览迁至 \`docs/VERSIONS.md\`。
+
+## v1.5.5（stage-113）
+
+> 批次：preflight 账本 / 适配器 strict / 禁止 shell 写状态 / 审查独立性（无 JSON 契约变更）。
+
+- \`flow next\` / \`flow status\` 写 \`.openfeel/dev/.preflight.json\`；写命令校验 10 分钟窗口（\`OPENFEEL_PREFLIGHT=off|warn|strict\`）。
+- DSH 适配器默认 strict；\`feel_status\` / \`feel_next\` 返回 \`preflight\`。
+- 状态写操作只用 \`feel_*\`；自审 REV 标 \`self-review\`。
 
 ## v1.5.4（stage-112）
 
@@ -8360,7 +8368,7 @@ Version progression must be prudent, using the four-level X.Y.Z.W version number
 | Level 4 (W) | Feature detail | Independently committed feature or submodule |
 
 When Feel starts a new version, it defaults to incrementing the fourth level (W+1), unless the user explicitly specifies otherwise.
-The OpenFeel framework has released the official v1.0.x (currently v1.5.4). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
+The OpenFeel framework has released the official v1.0.x (currently v1.5.5). After deploying the global constraints via openfeel setup, new projects set their own starting version number as needed.
 
 ### Module Manuals
 
@@ -8528,7 +8536,7 @@ Claude Code 的权限与工具可用性由 subagent 的 \`tools\` 白名单与 \
 | 四级（W） | 功能细节 | 独立提交的功能或子模块 |
 
 Feel 启动新版本时默认使用四级版本递增（W+1），除非用户明确指定。
-OpenFeel 框架已发布正式版 v1.0.x（当前 v1.5.4）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
+OpenFeel 框架已发布正式版 v1.0.x（当前 v1.5.5）。新项目经 openfeel setup 部署全局约束后，按自身需求设定起始版本号。
 
 ### 模块手册
 

@@ -35,6 +35,7 @@ import { failCli, failInternal, failRefusal, handleAddStageError, handleConcurre
 import { withSchemaVersion, isJsonMode, emitJson } from './shared/json-output.js';   // JSON 契约助手（stage-95 op-001/op-002）
 import { type CliErrorKind } from '../core/errors.js';
 import { t, getCliLang } from '../core/i18n.js';
+import { preflightGate, recordPreflight } from '../core/preflight.js';
 import { getDevStatus, isSyncNodePhase, syncDevStatus } from '../core/dev-status.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
@@ -57,6 +58,7 @@ export function registerFlowCommand(program: Command): void {
     .action((options: { verbose?: boolean; lines: string; json?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
+      if (mgr.isLoaded()) recordPreflight(process.cwd());
       // B1-1：--json 分支须为首行输出且纯 JSON 单文档（不打印标题/颜色/提示行）
       if (options.json) {
         console.log(JSON.stringify(buildStatusJson(mgr), null, 2));
@@ -191,6 +193,7 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
       const data = mgr.getData()!;
+      recordPreflight(process.cwd());
       const rawStage = data.pipeline.current.stage || '';
       // 双键回退（与 core resolveCurrentPhase / advanceStagePhase 同范式）：归一化键优先，其次原始键
       const normalized = rawStage ? (normalizeStageId(rawStage) ?? rawStage) : '';
@@ -981,6 +984,17 @@ export function registerFlowCommand(program: Command): void {
       if (!mgr.isLoaded()) {
         const message = t('common.errorNoInit', lang);
         failCli({ code: 'NO_INIT', message, detail: null, stderrLines: [message] });
+        return;
+      }
+      // v1.5.5：先读状态再写状态（strict 拒绝；warn 仅 TTY 提示）
+      const preflight = preflightGate(process.cwd(), t('flow.preflightRequiredTmpl', lang));
+      if (!preflight.ok) {
+        failCli({
+          code: 'INVALID_ARGUMENT',
+          message: preflight.message,
+          detail: { reason: 'preflight-required', hint: 'openfeel flow next --json' },
+          stderrLines: [preflight.message],
+        });
         return;
       }
 

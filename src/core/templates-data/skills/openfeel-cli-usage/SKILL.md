@@ -12,7 +12,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 `openfeel-tool-usage` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
 
-> 本文档为 v1.5.4 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.5 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
@@ -70,6 +70,14 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **`openfeel update --tools dsh`**：不适用（全局部署），命令层在 auto-init / 写盘前 exit 1 并指引 `setup`。
 - **错误映射**：预检 / 用法 / profile → `INVALID_ARGUMENT`（refusal/1，`detail.reason=dsh-*`）；备份 / pnpm install → `INTERNAL_ERROR`（internal/3，`dsh-backup-failed` / `dsh-pnpm-install-failed`）。不新增 CLI 错误码。
 - **单包**：不发布独立 `openfeel-dsh`；`dsh/` 随 `openfeel` npm 包分发，默认不部署。README 版本能力概览迁至 `docs/VERSIONS.md`。
+
+## v1.5.5（stage-113）
+
+> 批次：preflight 账本 / 适配器 strict / 禁止 shell 写状态 / 审查独立性（无 JSON 契约变更）。
+
+- `flow next` / `flow status` 写 `.openfeel/dev/.preflight.json`；写命令校验 10 分钟窗口（`OPENFEEL_PREFLIGHT=off|warn|strict`）。
+- DSH 适配器默认 strict；`feel_status` / `feel_next` 返回 `preflight`。
+- 状态写操作只用 `feel_*`；自审 REV 标 `self-review`。
 
 ## v1.5.4（stage-112）
 

@@ -413,6 +413,7 @@ export const flow: I18nDomain = {
   'dev.statusLastSyncTmpl':         { key: 'flow.dev.statusLastSyncTmpl',         zh: '上次同步：{lastSync}（间隔 {interval} 分钟）', en: '' },
   'dev.statusDueTmpl':              { key: 'flow.dev.statusDueTmpl',              zh: '状态已过期（≥{interval} 分钟）：请更新交接摘要后运行 `openfeel dev sync`。', en: '' },
   'dev.statusOkTmpl':               { key: 'flow.dev.statusOkTmpl',               zh: '状态在有效期内（{interval} 分钟窗口），无需更新。', en: '' },
+  'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '请先运行 `openfeel flow next`（或 `flow status`）读取状态，再执行写操作（preflight 缺失或已过期）。', en: '' },
 };
 
 /* ==================== init 域：初始化命令 ==================== */

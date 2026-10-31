@@ -242,6 +242,7 @@ node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂
 
 - `contract.js` 用宿主 asar 提取出的**真实** `assertSupportedJsonSchema`。
 - `verify.js` 对真实 OpenFeel 项目做只读校验，**所有写操作只打在 `os.tmpdir()` 副本上**，并断言原项目 `revision` 未被改动。
+  **前置条件**：当前项目必须至少有 1 个已注册阶段（`flow.json` 的 `stages` 非空）。版本归档（`flow archive <version>`）会把阶段从 `flow.json` 移出，归档后 `stages = 0` 时脚本会在 `[2] 只读工具 — 真实项目快照` 报「需要至少一个阶段用于适配器验证」并退出 1——这是**前置条件不满足**，不是适配器缺陷。此时先 `openfeel plan stage add <临时阶段>`（或切到有活跃阶段的工作区）再跑；CI 不执行本脚本（CI 只跑 `node --check dsh/lib/**` 与 `npm test`），不影响发布门禁。
 - `guard.js` 覆盖 `off/project/always`、`.openfeel/**` 产物、`exec_running`、general 需求、apply_patch 混合/无头/Move 同块、受保护路径、bootstrap 文案等 36 条。
 - `integration.js` 构造真实 Cordis 上下文 + 真实 `ToolRuntime`，调用适配器 `apply()`，断言 13 个工具真的完成注册与投影。
 

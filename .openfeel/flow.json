@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T09:14:39.040Z",
-    "revision": 1541,
+    "updated": "2026-10-31T09:14:44.405Z",
+    "revision": 1545,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -1904,6 +1904,47 @@
         "reviews": 1,
         "log": 9
       }
+    },
+    {
+      "time": "2026-10-31T09:14:43.319Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-012",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-10-31T09:14:43.666Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-012",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-10-31T09:14:44.034Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-012",
+        "fields": [
+          "workflow_mode"
+        ]
+      }
+    },
+    {
+      "time": "2026-10-31T09:14:44.405Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-012",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2051,12 +2092,12 @@
     {
       "id": "REQ-012",
       "title": "1.5.3 批次：派发/返回契约 + 恢复包 + 结构化交接 + 同步去重（统一发布）",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-10-31T09:08:06.339Z",
-      "updated_at": "2026-10-31T09:08:09.755Z",
+      "updated_at": "2026-10-31T09:14:44.405Z",
       "target_version": "v1.5.3",
       "priority": "P0",
-      "workflow_mode": "fast",
+      "workflow_mode": "general",
       "body_path": ".openfeel/requirements/REQ-012.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T09:08:09.755Z"

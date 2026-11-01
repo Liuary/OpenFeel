@@ -438,7 +438,7 @@ Skill 加载后，根据步骤 3 的匹配结果决定是否追加提示：
 `,
   'openfeel-cli-usage': `---
 name: openfeel-cli-usage
-description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）、v1.2.1 新增能力（需求拆分 \`req split\` / 三模式 \`full/fast/general\` / 审查档位 \`--review-tier\` / 通用工作者 \`openfeel-explorer\` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）、v1.2.4 收口（archive <stage> 覆盖保护 + --force / plan stage list·model list|get·flow retry·lint i18n|kb·roadmap show --json / config get --all / 40 成功出口·41 注册选项）、v1.3.0（DSH 适配器单包分发 / setup --tools dsh / README 版本能力概览迁出）、v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）、v1.3.2（DSH 写入门禁 \`ctx.tools.guard\` + 非项目 bootstrap）、v1.3.3 修复（fast 阶段级 REV / \`review_passed → exec_running\` 返工边 / 写入门禁风险分层 / \`plan stage add\` 原子聚焦 / 阶段 ID ↔ 目录映射文档化）、v1.3.4 修复（适配器 \`review_add --stage\` 透传 / \`setup --check\` 五态含 restart-required / 部署标记刷新）、v1.3.5 修复（统一 shell 工具推荐：Windows 优先 Git Bash 其次 PowerShell 7）、v1.4.0 新增（静态展示资源与 doc 同层 + \`openfeel chore\` 微变更通道）、v1.5.0 新增（\`openfeel dev sync\` / 状态记录瘦身：Only-Feel 写状态、日志降级、30 分钟同步）、v1.5.2 新增（流程入口闸：无阶段研究/方案不可写）、v1.5.3 新增（派发契约 / 恢复包 / 结构化交接 / 批次发布）、v1.5.4 新增（日志摘要 / 快照 revision/stale / 观测指标）、v1.5.5 新增（preflight 账本 / 适配器 strict / 审查独立性）、v1.5.6 新增（preflight 写命令全覆盖 / \`lint req\` 需求正文命令名校验 + 抑制标记）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
+description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 命名与目录映射约定、v1.1.2 新增能力（自描述/可纠错、--json 结构化输出、health --fix、scheme draft、knowledge dedup、纠正清理侧命令面）、v1.1.4 新增能力（checkpoint 选择性恢复 --stage/--dry-run、flow stage reset 精准复位、故障恢复路径）、v1.1.5 新增能力（setup --check [--json] 诊断 / 被动部署提示）、v1.1.6 新增能力（Claude Code 适配器 \`--tools claude\` / settings 注入）、v1.1.7 新增能力（双模式工作流 workflow_mode：flow mode 只读查询 / flow phases --mode 模式分节 / plan stage add --workflow-mode / stage set --workflow-mode / config set --sync-stages --stage）、v1.2.0 新增能力（需求流转命令组 \`openfeel req\`：需求 7 状态与 10 子命令 / 认领协议；flow.json 版本分片归档 \`flow archive\`：\`<version>\` / \`list\` / \`show\`）、v1.2.1 新增能力（需求拆分 \`req split\` / 三模式 \`full/fast/general\` / 审查档位 \`--review-tier\` / 通用工作者 \`openfeel-explorer\` / 可观测性字段 / 模型默认值统一与部署非破坏性）、v1.2.2 新增能力（flow next 调度决策 / 全局 --project / 13 读命令 --json 与 33 成功出口·34 注册选项 / 错误封装 code+kind+errorKind / --version --json / flow archive 判据明细 / archive <stage> --json / reviewTier 消歧）、v1.2.3 修复（并发 JSON 退出统一 / --review-tier help 文案订正 / req 过滤单点化 / 锁超时 E2E 测试钩子）、v1.2.4 收口（archive <stage> 覆盖保护 + --force / plan stage list·model list|get·flow retry·lint i18n|kb·roadmap show --json / config get --all / 40 成功出口·41 注册选项）、v1.3.0（DSH 适配器单包分发 / setup --tools dsh / README 版本能力概览迁出）、v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）、v1.3.2（DSH 写入门禁 \`ctx.tools.guard\` + 非项目 bootstrap）、v1.3.3 修复（fast 阶段级 REV / \`review_passed → exec_running\` 返工边 / 写入门禁风险分层 / \`plan stage add\` 原子聚焦 / 阶段 ID ↔ 目录映射文档化）、v1.3.4 修复（适配器 \`review_add --stage\` 透传 / \`setup --check\` 五态含 restart-required / 部署标记刷新）、v1.3.5 修复（统一 shell 工具推荐：Windows 优先 Git Bash 其次 PowerShell 7）、v1.4.0 新增（静态展示资源与 doc 同层 + \`openfeel chore\` 微变更通道）、v1.5.0 新增（\`openfeel dev sync\` / 状态记录瘦身：Only-Feel 写状态、日志降级、30 分钟同步）、v1.5.2 新增（流程入口闸：无阶段研究/方案不可写）、v1.5.3 新增（派发契约 / 恢复包 / 结构化交接 / 批次发布）、v1.5.4 新增（日志摘要 / 快照 revision/stale / 观测指标）、v1.5.5 新增（preflight 账本 / 适配器 strict / 审查独立性）、v1.5.6 新增（preflight 写命令全覆盖 / \`lint req\` 需求正文命令名校验 + 抑制标记 / \`flow metrics\` 流程健康三项 + 适配器 \`observability\`）、v1.5.7 新增（需求导向：阶段 = 长期 \`exec_running\` 的版本容器 / 需求完成与阶段关闭解耦 / 归档发布需用户确认 / \`feel_status\` 默认 compact（\`detail:"full"\` 取全量）/ 阶段目录防复用）、v1.5.8 新增（归档官生成发布说明与开发 skill \`--skill\` / 多需求阶段 \`requirements[]\` / 多会话 P0（sessions 登记、并发自动提交跳过、\`feel_status.sessions\`）/ 完成必审验（\`req review|verify\` + \`stage verify\`）/ 需求随版本归档与发布门（\`req release-check|rollover\`、\`--allow-unfinished\`）；JSON 契约 42 成功出口 / 43 注册 \`--json\` 选项）。当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。
 ---
 
 # OpenFeel CLI 用法参考
@@ -450,7 +450,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.5.6 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.8 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -467,21 +467,21 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel flow stage reset\` | 精准复位阶段 phase（\`flow advance\` 的对称复位，允许回退） | \`<stageId> --to <phase> [--dry-run]\`（受合法值域 + \`to=done\` 阻塞 REV 约束） |
 | \`openfeel plan stage add\\|list\` | 工作阶段管理 | \`add <name> --deps <ids...> --tasks <items...> --exec-mode <manual\\|auto> --auto-advance <enabled\\|disabled> --workflow-mode <full\\|fast\\|general>\`（初值取 \`config.yaml.defaults\`；显式选项优先；\`--workflow-mode\` 覆盖 config 默认；**\`general\` 仅需求级合法**——阶段级写入面拒绝） |
 | \`openfeel plan scheme create\\|publish\\|rename\\|list\\|remove\\|register\` | 操作方案管理 | \`create <stage> <title> [--draft]\`、\`publish <stage> <opId>\`、\`rename <stage> <opId> --title <text>\`、\`remove <stage> <opId> [--force] [--dry-run]\`、\`register <stage> [opId] [--dry-run]\`（补注册 fileOrphans）；\`plan stage list [--json]\`（v1.2.4 #34） |
-| \`openfeel stage status\\|set\\|task\` | \`status.md\` 原子操作 | \`set <id> --status/--exec-mode/--auto-advance/--review-agent/--workflow-mode\`、\`task <id> [no] --add/--done/--undone\`（\`stage create\` 已弃用） |
+| \`openfeel stage status\\|set\\|task\\|verify\` | \`status.md\` 原子操作 + 阶段验证证据 | \`set <id> --status/--exec-mode/--auto-advance/--review-agent/--workflow-mode\`、\`task <id> [no] --add/--done/--undone\`、**\`verify <id> --result <pass\\|fail> --kind <test\\|manual\\|build> --by <who> --note <text> [--evidence <path>]\`（v1.5.8，仅 \`archiving\` 相位可记录）**（\`stage create\` 已弃用） |
 | \`openfeel config ...\` | 配置管理 | \`get\\|set <key> <value> [--global]\`（支持全量 \`defaults.*\`，且 \`defaults.X ≡ X\`）、\`get --all [--json]\`（v1.2.4：项目全量 defaults）、\`set ... --sync-stages [--stage <ids...>]\`（批量写入已注册阶段 \`status.md\` 的 \`自动推进\`/\`执行模式\`/\`工作流模式\`；\`--stage\` 限定作用域，单独使用 / 与 \`--global\` 组合 → exit 1）、\`get-lang\\|set-lang\`、\`list-projects\`、\`effective [key]\` |
 | \`openfeel model set\\|get\\|list\` | 模型三层级配置 | \`set <agent> <model>\`；\`get/list [--scope] [--json]\`（v1.2.4 #35/#36） |
 | \`openfeel lint i18n\\|kb\\|req\` | 健康检查（i18n 键一致性 / kb 过期引用 / 需求正文命令名） | \`[--json]\`（\`{target,ok,issues}\`；\`lint req\` 另含 \`suspects\` / \`unknownCount\` / \`suspectCount\`；发现问题**非 0 退出**，\`lint req\` 仅 A 类非 0） |
 | \`openfeel knowledge ...\` | 知识库管理 | \`list\` / \`add\` / \`search\` / \`index\` / \`dedup\` |
-| \`openfeel archive <stage>\` | 归档指定阶段（汇总产出、生成摘要、提取知识） | \`<stage> [--json] [--force]\`（v1.2.4：已有归档默认拒绝，\`ARCHIVE_EXISTS\` 零写盘） |
-| \`openfeel req ...\` | 需求流转（需求管理命令组；**11 子命令**） | 见「v1.2.0 新增能力（stage-78~84）」+「v1.2.1 新增能力（stage-86~93 + 94）」节 |
+| \`openfeel archive <stage>\` | 归档指定阶段（汇总产出、生成摘要与发布说明、提取知识、按 harness 生成 skill） | \`<stage> [--json] [--force] [--skill <slug>]\`（v1.2.4：已有归档默认拒绝，\`ARCHIVE_EXISTS\` 零写盘；**v1.5.8：\`generated{releaseNotes,skills,requirements}\` 追加 + \`--skill <slug>\` 按探测 harness 生成开发 skill、\`--force\` 同时覆盖发布说明与 skill**） |
+| \`openfeel req ...\` | 需求流转（需求管理命令组；**15 子命令**） | 见「v1.5.8（stage-122）」「v1.2.0 新增能力（stage-78~84）」「v1.2.1 新增能力（stage-86~93 + 94）」节 |
 | \`openfeel view list\\|accept\` | 审查条目验收（\`add\` 已移除，改用 \`flow review add\`） | — |
 | \`openfeel project overview\` | 项目结构概览 | \`overview\`（无 \`list\`/\`info\` 子命令） |
 | \`openfeel roadmap create\\|show\` | 分期大纲管理 | \`create <version>\`、\`show [version] [--json]\`（v1.2.4 #40） |
 | \`openfeel instructions <artifactId>\` | 为指定 artifact 生成结构化指令 | \`--change <name>\`、\`--schema <name>\`、\`--json\` |
 
-**全局选项（v1.2.2 起）**：\`--project <path>\`（任意命令前置/后置/\`=\` 形态；语义等效 cwd；语言按目标项目、\`--log-file\` 相对路径按原始 cwd）；\`--version --json\` / \`-v --json\` → \`{schemaVersion:1,version,node}\`（三键；单列，不计入 41 出口 / 42 注册选项）。
+**全局选项（v1.2.2 起）**：\`--project <path>\`（任意命令前置/后置/\`=\` 形态；语义等效 cwd；语言按目标项目、\`--log-file\` 相对路径按原始 cwd）；\`--version --json\` / \`-v --json\` → \`{schemaVersion:1,version,node}\`（三键；单列，不计入 42 出口 / 43 注册选项）。
 
-**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`mode\`（\`[--stage <id>] [--json]\`，只读） / \`next\`（\`[--json]\`，只读，v1.2.2 起） / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`、**\`--review-tier <full\\|lean\\|skip>\`**、\`--json\`（仅错误封装））/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\` / \`archive\`（\`<version>\` / \`list\` / \`show\`）。
+**flow 子命令**：\`status\` / \`current\` / \`overview\` / \`phases\` / \`mode\`（\`[--stage <id>] [--json]\`，只读） / \`next\`（\`[--json]\`，只读，v1.2.2 起） / \`stage\`（\`add\` / \`remove\` / \`set --deps\` / **\`reset <id> --to <phase> [--dry-run]\`**）/ \`metrics\` / \`advance\`（\`--stage <id> --to <phase>\`、\`--op\`、\`--force\`、\`--dry-run\`、\`--quiet\`、**\`--review-tier <full\\|lean\\|skip>\`**、\`--json\`（仅错误封装））/ \`attempt\` / \`log\` / \`review\` / \`retry\` / \`repair\` / \`ops\` / \`migrate\` / \`checkpoint\`（\`list\` / **\`restore <file> [--force] [--stage <id>] [--dry-run]\`**）/ \`health\` / \`recover\` / \`wizard\` / \`archive\`（\`<version>\` / \`list\` / \`show\`；\`<version>\` 支持 \`--dry-run\` / \`--json\` / **\`--allow-unfinished\`（v1.5.8 发布软门）**）。
 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
@@ -489,13 +489,13 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 ## v1.2.2 新增能力（stage-95~98）
 
-> 以下能力**v1.2.2 起提供**；JSON 契约单一权威 docs/json-contract.md（**v1.5.6 起 41 成功出口 / 42 注册选项**；本仓收口基线 75 文件 / 21 阶段）。
+> 以下能力**v1.2.2 起提供**；JSON 契约单一权威 docs/json-contract.md（**v1.5.8 起 42 成功出口 / 43 注册选项**；本仓收口基线 75 文件 / 21 阶段）。
 
 - **\`flow next [--json]\`（决策权威，只读；v1.2.2 起提供）**：输出当前阶段调度决策。\`--json\` **12 键固定序** \`schemaVersion,stage,phase,phaseLabel,responsibleAgent,workflowMode,reviewTier,effectiveReviewTier,legalNextPhases,suggestedCommand,guards,blockingReviews\`；\`responsibleAgent\` 与 \`mapPhaseToAgent\` 同源；\`legalNextPhases\` 为直接可达集（每个元素均被 \`flow advance\` 接受）；\`suggestedCommand\` 空集为 \`null\`；\`guards\` 五类固定序；\`blockingReviews[]{id,title,priority,op}\`；只读零写盘；本版不支持 \`--stage\`。
 - **全局 \`--project <path>\`（v1.2.2 起提供）**：任意命令前置/后置/\`=\` 形态；语义等效 cwd；多值冲突 \`INVALID_ARGUMENT\` / 非法路径 \`PROJECT_NOT_FOUND\`；命令输出语言按目标项目、\`--log-file\` 相对路径按原始 cwd；\`knowledge dedup\` 保留本地 \`--project\` 声明（语法兼容）。
-- **读命令 \`--json\` 全量补全（13 个命令面；v1.2.2 起提供）**：\`stage status\` / \`flow recover\` / \`flow checkpoint list\` / \`flow log\` / \`project overview\` / \`knowledge search|list|index|dedup\` / \`config get|effective\` / \`view list\` / \`plan scheme list\`，另 \`archive <stage> --json\`；统一单文档 + \`schemaVersion\` 首键、可选字段 \`null\`、集合 \`[]\`；累计 **41 个成功出口 / 42 个注册选项**（v1.2.4 新增 #34~#40，v1.5.6 新增 #41 \`lint req\`）。
+- **读命令 \`--json\` 全量补全（13 个命令面；v1.2.2 起提供）**：\`stage status\` / \`flow recover\` / \`flow checkpoint list\` / \`flow log\` / \`project overview\` / \`knowledge search|list|index|dedup\` / \`config get|effective\` / \`view list\` / \`plan scheme list\`，另 \`archive <stage> --json\`；统一单文档 + \`schemaVersion\` 首键、可选字段 \`null\`、集合 \`[]\`；累计 **42 个成功出口 / 43 个注册选项**（v1.2.4 新增 #34~#40，v1.5.6 新增 #41 \`lint req\`，v1.5.8 新增 #42 \`req release-check\`）。
 - **机器可读错误封装（v1.2.2 起提供）**：\`{schemaVersion:1,error:{code,kind,message,detail}}\`；退出码 **0 成功 / 1 预期拒绝 / 2 并发冲突 / 3 内部错误（新增）**；legacy \`{error:'...'}\` 保留 string 类型与键序、末尾追加 \`errorKind\`；判别唯一规则 \`typeof doc.error === 'string'\`；12 行 \`code→kind→exitCode\` 映射表。
-- **\`--version --json\`（v1.2.2 起提供）**：\`{schemaVersion:1,version,node}\`（三键）；**单列，不计入 41 成功出口、也不计入 42 注册选项**；纯文本 \`--version\` 逐字不变。
+- **\`--version --json\`（v1.2.2 起提供）**：\`{schemaVersion:1,version,node}\`（三键）；**单列，不计入 42 成功出口、也不计入 43 注册选项**；纯文本 \`--version\` 逐字不变。
 - **\`flow archive --dry-run --json\` 判据明细 + \`archive <stage> --json\`（v1.2.2 起提供）**：\`flow archive\` 成功 9 键 / gate-rejected 9 键，含 \`eligible\` / \`unfinishedStages[]{id,phase}\` / \`blockingReviews[]{id,title,priority}\`；\`archive <stage> --json\` 输出 \`archivePath\` / 计数 / \`knowledgeExtracts\`；\`--dry-run\` 零写盘；与 \`flow archive\`（版本分片）职责分离。
 - **\`reviewTier\` 消歧（v1.2.2 起提供）**：\`flow phases --json\` / \`flow status.stages[]\` / \`flow next\` 同时给出展示值 \`reviewTier\`/\`displayReviewTier\` 与生效值 \`effectiveReviewTier\`（恒 \`full\`）。**订正**：\`flow advance\` 未显式传 \`--review-tier\` 时生效档位恒 **\`full\`**（不是按模式派生）；按模式派生的是 \`flow phases --json.reviewTier\` 展示值。源码 help 文案已于 v1.2.3 订正。
 - **兼容承诺（v1.2.2 起提供）**：既有 19 个成功出口字段零破坏（只增不改）；人类输出逐字不变；退出码 0/1/2 语义不变、3 仅新增；phase 枚举 15 项 / \`advanceAccepted\` / full-fast 行为不变；存量 \`flow.json\` 零迁移零注入；REQ-001 L80「2=内部错误或用法错误」登记为需求文本勘误（权威口径见契约 §2/§10）。
@@ -520,6 +520,26 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **恢复通道豁免（仅 2 处）**：\`flow repair\` / \`flow checkpoint restore\` 在 \`flow.json\` 不可读（\`isLoaded() === false\`）时静默放行，避免 strict 死锁；状态可读时仍受门。其它命令**不得**使用该豁免。
 - **参数错误先报**：ID / 阶段 / REV / op / \`--to\` 校验一律在门之前（含 README 式的 \`REV-999\` / \`op-999\` 序位断言）。
 - **流程健康（stage-116，仅人类输出）**：\`flow metrics\` 追加三项**零运行时开销**代理指标——resumed 比例 / \`plan_pending → plan_review\` 平均停留 / 最近 preflight 年龄（只读 \`.preflight.json\`，不刷新账本）；\`--json\` 键集恒 \`schemaVersion,agents\`。适配器 \`feel_status\` / \`feel_next\` 追加 \`observability\`（\`stale\` + \`preflightAgeMs\`/\`preflightOk\` 复制副本 + \`statusSync\` 三键 + 摘要），**账本先于 snapshot 读取**（否则指标在测自己）。
+
+## v1.5.8（stage-122 / REQ-024·027·028·029·030）
+
+> 需求导向批次（二）：归档官增强 / 阶段多需求 / 多会话 P0 / 完成必审验 / 需求随版本归档与发布门。JSON 契约升为 **42 成功出口 / 43 注册 \`--json\` 选项**（新增 #42 \`req release-check\`）；退出码语义不变。
+
+- **归档官增强（REQ-024）**：\`archive <stage>\` 归档时汇总已完成需求，生成 \`docs/releases/<version>.md\` 草稿（缺省不覆盖）、按探测 harness（\`.dsh/\` → \`.claude/\` → \`.opencode/\`，无标记回退 \`opencode\`）生成开发 skill（\`--skill <slug>\`，slug 须匹配 \`^[a-z0-9][a-z0-9-]*$\`，非法 → \`INVALID_ARGUMENT\` 零写盘）；\`--json\` 追加 \`generated{releaseNotes,skills,requirements}\`（既有 6 键键序不变）；\`--force\` 同时覆盖发布说明与 skill。
+- **阶段多需求编排（REQ-028）**：\`stages[*].requirements[]\` 为权威关联面（元素 \`{id, role?, order?}\`），旧单值 \`requirement_id\` 读取兼容、**写路径不再写**；\`req link\` 支持多值追加 / 单条解绑（\`--requirement\` + \`--unlink\`）/ 全清；需求进度与归档由该数组单点派生。
+- **多会话收束 P0（REQ-029）**：\`.openfeel/dev/sessions.json\` 会话登记；\`flow advance --to done\` 的自动 git commit 在存在**其它 10 分钟内活跃会话**时跳过（\`git add -A\` 一次都不执行），改 stderr 警告并提示手动 scoped commit；工作树干净 / 非 git 仓库同样跳过；\`pipeline.current\` 指向 done 阶段时切到非 done；适配器 \`feel_status\` / \`feel_next\` 返回 \`sessions\`。
+- **完成必审验（REQ-027）**：需求 \`done\` 门 = 相位判据 + \`review.result === 'pass'\`（\`req review --independent|--self\`）+ \`verification.result === 'pass'\`（\`req verify --kind test|manual|build --evidence\`），缺一项即 \`invalid_status\`，**无 force**；阶段 \`archiving → done\` 需 \`stage verify\` 记录 pass 且关联需求全部 done（cancelled / rejected 亦视为未完成）。\`req verify\` / \`stage verify\` 无 \`--json\`；\`req review|verify\` 受 preflight 门。
+- **需求随版本归档与发布门（REQ-030）**：\`flow archive <version>\` 把 \`target_version === version\` 且终态（done/cancelled/rejected）的需求移入归档文件 \`requirements[]\` 并从 \`flow.json\` 删除（归档 \`counts\` 追加可选 \`requirements\`，老文件读侧视同 0）；\`req release-check <version>\`（#42，只读软门，恒 exit 0）与 \`req rollover --from <v> --to <v> （--id|--all）\`（改写 \`target_version\` + \`carried_from\`）；\`flow archive <version> --allow-unfinished\` 显式放行未完成需求（缺省拒绝且零写盘）；需求 ID 单调性由 \`meta.last_req_seq\` 维持，\`req list --include-archived\` 合并已归档需求。
+- **preflight 面扩展**：\`req review|verify\` / \`stage verify\` / \`req rollover\` 纳入写命令门（注意顺序：ID 格式校验先于门）。
+
+## v1.5.7（stage-119 / stage-120 / stage-121）
+
+> 需求导向版本：**阶段 = 版本容器**（长期保持 \`exec_running\`、容纳多个需求），需求是工作单元；需求完成与阶段关闭解耦；归档 / 发布只在用户确认后执行。无新增命令 / JSON 出口。
+
+- **完成门解耦（REQ-023）**：\`req advance --to done\` 允许「零关联需求显式完成」或「全部关联阶段已进入 \`exec_running\` 及之后相位」；任一关联阶段仍在 \`plan_*\` / \`scheme_*\` 时拒绝。聚合自动收口语义不变（零关联仍返回 \`null\`）。
+- **\`feel_status\` 默认 compact（REQ-022）**：默认去掉 \`mode.transitionsByMode\` / \`recovery.handoff\` 全文 / \`observability\`；\`detail: "full"\` 取完整快照，转移表按需用 \`feel_flow action=phases|mode\` 现取。
+- **阶段目录防复用（REQ-021）**：\`plan stage add\` / \`flow stage add\` 在目标目录已被另一完整 stageId 占用、或该阶段已有归档日志时拒绝（exit 1 零写盘），提示占用目录 / 归属阶段 / 建议新编号；整版归档仅提示不阻断。
+- **流程出口**：无开启阶段 → 按当前小版本开阶段并保持 \`exec_running\`；需求完成后**不**推进 / 关闭阶段；归档 / 发布须用户明确确认（AI 只能建议）。
 
 ## v1.5.5（stage-113）
 

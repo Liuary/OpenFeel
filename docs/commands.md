@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.5.6 快照** | 更新日期：2026-10-31
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.5.8 快照** | 更新日期：2026-11-01
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -1154,7 +1154,7 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## JSON 出口一览（v1.5.6 快照，新增 #41；v1.5.8 / REQ-030 新增 #42）
+## JSON 出口一览（v1.5.8 快照：v1.5.6 新增 #41；v1.5.8 / REQ-030 新增 #42）
 
 > 计数口径：**42 个成功出口 / 45 个注册选项**（45 = 43 个 `--json` 选项 + `chore --end` / `chore --status` 两个非 json 选项；v1.5.6 新增 #41 `lint req`；v1.5.8 / REQ-030 新增 #42 `req release-check`）；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 
@@ -1204,7 +1204,7 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 42 | `req release-check` | `req release-check <version> --json` | `schemaVersion,version,done,unfinished,counts` |
 | 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 42 / 43**） |
 
-> 说明：以上为 **v1.5.6 快照 + v1.5.8 / REQ-030**（40 → 41 → 42；新增 #41 `lint req`、#42 `req release-check`）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 **v1.5.8 快照（含 v1.5.6 / REQ-030 增量）**（40 → 41 → 42；新增 #41 `lint req`、#42 `req release-check`）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

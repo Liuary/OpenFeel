@@ -1,4 +1,4 @@
-# OpenFeel CLI JSON 输出契约（v1.5.6）
+# OpenFeel CLI JSON 输出契约（v1.5.8）
 
 - **权威范围**：`--json` 成功输出（42 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。

@@ -272,8 +272,8 @@ plan_pending → plan_review → plan_passed
 ## 需求字段（v1.2.0-stage-81）
 
 - **`FlowData.requirements?: RequirementData[]`**（顶层可选，类比 `reviews`）——需求条目存储段；类型定义与需求原语见 `manual/core/req.md`。**读侧宽容**：`load()` **不补齐**该字段（**不注入**）；读侧由 `src/core/req/requirement-ops.ts` 的 `getRequirements` 派生 `?? []`，写侧 `addRequirement` 内 `??= []` 兜底——对齐 REV-78-015（stage-79 移除 `meta.archived_versions` load 补齐）的方向，避免任意 `load→save` 向存量 `flow.json` 注入 `requirements: []`。**`load()` / `save()` 对既有语义零改动**（净变更 = 1 `import type` + 2 处字段声明 + 注释）。
-- **`StageData.requirement_id?: string | null`**（单值可空）——需求↔阶段 **1:N** 的「阶段侧」关联；缺省 ≡ `null`（存量 = 遗留无需求，不迁移）。
-- **`requirements` 随版本归档的口径留后续版本**（本版**不归档** `requirements`）；需求层**携带**模式属性（`RequirementData.workflow_mode?`，v1.2.1-stage-90 supersede 旧「正交」口径）——模式仅经单点解析器 `resolveStageWorkflowMode` 消费、**不入聚合**（见「需求级模式与载体制约束」节）。
+- **`StageData.requirement_id?: string | null`**（单值可空）——需求↔阶段 **1:N** 的「阶段侧」关联；缺省 ≡ `null`（存量 = 遗留无需求，不迁移）。**v1.5.8 / REQ-028 起写路径退役**：权威面为 `StageData.requirements?: Array<{ id: string; role?: string; order?: number }>`（一个阶段可挂多个需求），读侧经 `src/core/req/stage-links.ts` 的 `stageRequirementIds` 单点归一（`requirements` 非空取之、缺省/空回落单值）；`req link` 写多值并删除旧单值键（防双真源）。
+- **需求随版本归档（v1.5.8 / REQ-030 supersede 旧「留后续版本」口径）**：`flow archive <version>` 把 `target_version === version` 的终态需求搬入归档文件 `requirements[]` 并从 `flow.json.requirements` 删除；ID 单调性由 `FlowData.meta.last_req_seq?: number` 维持。需求层**携带**模式属性（`RequirementData.workflow_mode?`，v1.2.1-stage-90 supersede 旧「正交」口径）——模式仅经单点解析器 `resolveStageWorkflowMode` 消费、**不入聚合**。
 
 ## 需求聚合回写接入（v1.2.0-stage-83）
 
@@ -286,6 +286,26 @@ plan_pending → plan_review → plan_passed
 - **零回归**：无 `requirement_id` / 无 `requirements` 键的阶段推进**逐字节不变**（补丁前/后归一化快照 diff 为空；三路径：本函数 / `flow wizard` / deprecated `advancePhase` 同口径）。
 
 > 详见 `manual/core/req.md`「聚合投影与对称回写」节；`flow health` 新增「需求对账」/「需求漂移」两 section（warn-only、不改退出码、不参与 `--fix`）。
+
+## 多需求阶段 / 阶段验证 / 多会话（v1.5.8-stage-122）
+
+### 阶段多需求编排（REQ-028）
+
+- **存储**：`StageData.requirements?: Array<{ id, role?, order? }>` 为**权威**关联面；旧 `requirement_id` 仅读兼容、写路径删除（`req link` / `linkRequirement`）。
+- **读侧单点**：`src/core/req/stage-links.ts` 的 `stageRequirementIds(stage)`（`requirements` 非空 → 其 id 序列去重保序；缺省/空/全非法 → 回落单值）；聚合 `aggregate.ts`、`req list/show`、归档需求汇总统一消费，**禁第二份过滤表达式**。
+- **聚合与归档**：需求进度 / 自动收口 / 归档需求汇总均由该数组派生；`req link` 多值追加 / 单条解绑 / 全清（缺 `--requirement` 且带 `--unlink`）。
+
+### 阶段验证记录（REQ-027）
+
+- `StageData.verification?: StageVerificationRecord`（`{result, kind, by, at, note, evidence?}`，与需求验证记录同形），由 `openfeel stage verify <id> --result … --kind … --by … --note … [--evidence]` 写入 + 审计 `stage_verification`。
+- **仅 `archiving` 相位可记录**（`done` 之后不接受补记）；阶段 `archiving → done` 硬门 = `verification.result === 'pass'` **且**关联需求全部 done（cancelled / rejected 亦视为未完成，**无 force**）。
+
+### 多会话收束 P0（REQ-029）
+
+- **会话登记**：`.openfeel/dev/sessions.json`（gitignore，运行时状态）记录会话心跳；适配器 `feel_status` / `feel_next` 返回 `sessions`。
+- **自动提交防污染**：`flow advance --to done` 的自动 git commit 先做并发决策——存在**其它 10 分钟内活跃会话**时跳过（`git add -A` 一次都不执行），改 stderr 警告并提示手动 scoped commit；工作树无改动（`git status --porcelain` 为空）/ 非 git 仓库同样跳过。
+- **当前阶段规则**：`pipeline.current` 指向 done 阶段时切到非 done 阶段（不再依赖人工推进）。
+- **不变**：`done` 转换本体不受影响（只跳过提交），REV 门 / 归档判据零改动。
 
 ## op 时间字段与跨会话恢复标注（v1.2.1-stage-86）
 

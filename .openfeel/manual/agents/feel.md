@@ -61,6 +61,17 @@
 - **权威源 → 生成物**：改 `templates-data/**` 后同批 `npm run build` 重生成 `template-loader.ts` + `update.ts`（**禁手改**）。
 - **`general` 的运行时语义**：见 `manual/core/flow-manager.md`「需求级模式与载体制约束」节；agent 侧只承载**语义说明**，判定一律在引擎单点。
 
+## 需求导向调度与适配器快照（v1.5.7 ~ v1.5.8）
+
+> 落点：DSH 适配器（`dsh/`）系统提示与工具面 + `templates-data/agents-md`（zh/en）约束；本仓 `.openfeel/manual` 只记录语义，判定仍在引擎单点。
+
+- **需求导向（v1.5.7）**：阶段 = **版本容器**（默认按当前小版本开一个阶段并长期保持 `exec_running`，容纳多个需求）；需求是工作单元。**不**每完成一个需求就推进 / 关闭阶段；**归档 / 发布只在用户明确确认后**执行（AI 只能在需求规模足够时建议）。
+- **需求完成与阶段关闭解耦（v1.5.7）**：`req advance --to done` 在零关联或关联阶段已进入 `exec_running` 及之后相位时放行；**完成必审验（v1.5.8）**：需求 done 另需 `review.pass` + `verification.pass`，阶段 `archiving → done` 需 `stage verify` pass 且关联需求全 done——Feel 派发审查 / 验证者，不得自审替代（自审须标 `self-review`）。
+- **`feel_status` 默认 compact（v1.5.7）**：去掉 `mode.transitionsByMode` / `recovery.handoff` 全文 / `observability`；`detail:"full"` 取全量，转移表按需 `feel_flow action=phases|mode` 现取。
+- **多会话（v1.5.8）**：`feel_status` / `feel_next` 返回 `sessions`；并发会话存在时 `flow advance --to done` 的自动提交被跳过（防 `git add -A` 污染），Feel 需提示手动 scoped commit。
+- **写命令纪律（v1.5.6）**：状态写操作只用 `feel_*` 工具；写前先 `feel_status`（preflight 10 分钟窗口）；`--dry-run` 免门；strict 拒绝时零写盘。
+- **模板快照**：`templates-data/agents-md/{zh-CN,en}.md` 的「当前版本」行随版本收口更新；改 `templates-data/**` 后同批 `npm run build`（生成物禁手改）。
+
 ## 提示词索引壳与 skill 下沉（v1.2.1-stage-91）
 
 > 落点（权威源）：`src/core/templates-data/{opencode,claude}/agents/{zh-CN,en}/*.md`（**40 份正文重写**）+ `.../skills/**`（新建 4 / 增补 5）+ `.../{agents-md,claude/constraint}/**`（4 约束瘦身）；断言 `test/core/templates.test.ts` + `claude-adapter.test.ts`。

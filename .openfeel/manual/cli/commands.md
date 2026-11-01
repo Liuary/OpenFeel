@@ -2,7 +2,7 @@
 
 > 模块文档，由归档官在归档时维护。对应源码：`src/cli/index.ts` + `src/commands/*.ts`。
 >
-> **版本快照：v1.2.4（2026-10-17 补丁收口）** —— 契约 **40 成功出口 / 41 注册 `--json` 选项**（`--version --json` 单列）；命令面与本模块「调度决策面」「读命令 `--json` 全量补全」「全局选项与错误处理」三节一致，细节以 `node bin/openfeel.js <cmd> --help` 实测为准。v1.2.4：A1 归档覆盖保护 + A2~A5 七个新 `--json` 出口与 `config get --all`。
+> **版本快照：v1.5.8（2026-11-01 需求导向批次收口）** —— 契约 **42 成功出口 / 43 注册 `--json` 选项**（`--version --json` 单列）；命令面与本模块「调度决策面」「读命令 `--json` 全量补全」「全局选项与错误处理」三节一致，细节以 `node bin/openfeel.js <cmd> --help` 实测为准。**v1.2.4**：A1 归档覆盖保护 + A2~A5 七个新 `--json` 出口与 `config get --all`；**v1.5.6**：preflight 写命令全覆盖 + `lint req`（#41）+ 流程健康；**v1.5.7**：需求导向（阶段=版本容器 / 完成门解耦 / 阶段目录防复用）；**v1.5.8**：`stage verify` / `req review|verify` / `req release-check`（#42）·`req rollover` / 归档官 `--skill` / 多需求 `requirements[]` / 多会话 P0 / `--allow-unfinished`。
 
 ## 职责
 
@@ -173,7 +173,7 @@ src/commands/req.ts         registerReqCommand
 
 ### 读命令 `--json` 全量补全与判据扩展（v1.2.2-stage-97）
 
-> 面向 DSH 等适配器：13 个读命令面不再需要解析中文人类文本；`req list` / `flow archive` 两个既有出口只增不改。契约权威 = `docs/json-contract.md` §5（40 出口）、§6（有意增量）、§13（读命令细则）、§15（v1.2.4 细则）。
+> 面向 DSH 等适配器：13 个读命令面不再需要解析中文人类文本；`req list` / `flow archive` 两个既有出口只增不改。契约权威 = `docs/json-contract.md` §5（**42 出口**，v1.5.8 起）、§6（有意增量）、§13（读命令细则）、§15（v1.2.4 细则）、§16（v1.5.6 `lint req`）。
 
 - **新增 `--json` 的 13 个命令面（14 个新成功出口 #20~#33）**：
   - `stage status [stageId] --json`：无参 `{schemaVersion,stages:[{stageId,status,statusPath}],count}`；有参 `{schemaVersion,stageId,statusPath,fields,tasks,blockedBy}`——`fields` 为 7 规范键（`execMode,autoAdvance,status,reviewAgent,previousReviewAgent,updatedAt,workflowMode`）+ `raw`（原始中文键）；`tasks[]` 元素 `{number,done,description}`；路径为绝对路径；阶段不存在 → `STAGE_NOT_FOUND`/refusal/1。
@@ -206,22 +206,38 @@ src/commands/req.ts         registerReqCommand
 - **A4 `flow retry`（#37）/ `lint i18n|kb`（#38/#39）/ `roadmap show`（#40）**：retry 六键；lint `{target,ok,issues:[{path,message}]}`（`ok:false` 仍成功文档 + exit 1）；roadmap 表头驱动 `milestones[{title,theme,stage,deliverable}]`（兼容 3/4 列）。
 - **A5 `config get --all --json`（#27 扩展）**：项目 `defaults` 四键固定序；不再 `key-required`。
 
+### v1.5.6 ~ v1.5.8 能力增量（preflight 全覆盖 / 完成必审验 / 需求归档与发布门）
+
+- **preflight 写命令闸（v1.5.5 账本 / v1.5.6 全覆盖）**：`flow next` / `flow status` 写 `.openfeel/dev/.preflight.json`（`{at,stage,phase,revision}`），写命令校验 10 分钟窗口；模式 `OPENFEEL_PREFLIGHT=off|warn|strict`（默认 `warn`，DSH 适配器以 `strict` 调用）。**34 命令 / 36 门位**统一经 `src/commands/shared/preflight-gate.ts` 的 `enforcePreflightOrFail`（判定仍委托 `src/core/preflight.ts`，core 零改动）：JSON 拒绝 = `emitErrorEnvelope`（`INVALID_ARGUMENT` + `detail.reason='preflight-required'`，legacy 命令 `flow archive` / `req split` 保持三键）；人类拒绝 = 单行 stderr；只置 `process.exitCode` 并返回，调用方立即 `return`。**dry-run 免门 10 处**（`flow stage remove|reset` / `advance` / `repair` / `migrate` / `checkpoint restore` / `health --fix` / `archive` / `plan scheme remove|register`）；**恢复通道豁免仅 2 处**（`flow repair` / `flow checkpoint restore` 在 `flow.json` 不可读时静默放行）；参数校验一律先于门；strict 拒绝零写盘（含 `flow.json.bak` / `config.yaml`）。v1.5.8 起 `req review|verify|rollover` / `stage verify` 亦纳门。
+- **`lint req`（v1.5.6，出口 #41）**：扫 `.openfeel/requirements/*.md` 行内反引号命令，沿真实命令树解析；A 类（首 token 是根命令但解析断裂）进 `issues` → `ok:false` + exit 1；B 类 advisory 进 `suspects` → exit 0；`--json` 七键（`schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount`）；抑制两档 `<!-- lint-req:ignore -->` / `ignore-start` … `ignore-end`（未闭合 → stderr 警告，不改退出码）。
+- **流程健康（v1.5.6）**：`flow metrics` 人类输出追加三项零运行时开销代理指标（resumed 比例 / `plan_pending → plan_review` 平均停留 / 最近 preflight 年龄；`--json` 键集恒 `schemaVersion,agents`）；适配器 `feel_status` / `feel_next` 追加 `observability`。
+- **完成必审验（v1.5.8 / REQ-027）**：`stage verify <id> --result <pass|fail> --kind <test|manual|build> --by <who> --note <text> [--evidence <path>]` 写 `stages[id].verification` + 审计 `stage_verification`（**仅 `archiving` 相位可记录**；`archiving → done` 额外要求 `result=pass` 且关联需求全部 done）；需求 done 门追加 `review.result=pass`（`req review --independent|--self`）+ `verification.result=pass`（`req verify`），缺项即 `invalid_status`、**无 force**。
+- **需求归档与发布门（v1.5.8 / REQ-030）**：`flow archive <version>` 把 `target_version === version` 的终态需求移入归档 `requirements[]` 并从 `flow.json` 删除（`counts` 追加可选 `requirements`，老文件读侧视同 0）；发布软门——该版本仍有未完成需求时缺省拒绝且零写盘，须 `req rollover --from <v> --to <v> (--id|--all)` 顺延或显式 `--allow-unfinished`；`req release-check <version> --json`（#42，只读、恒 exit 0）= `{schemaVersion,version,done,unfinished,counts{done,unfinished,other,total}}`；`req list --include-archived` 合并已归档需求；ID 单调性由 `meta.last_req_seq` 维持。
+- **归档官增强（v1.5.8 / REQ-024）**：顶层 `archive <stage>` 汇总已完成需求、生成 `docs/releases/<version>.md` 草稿、按探测 harness 生成开发 skill（`--skill <slug>`，slug 正则 `^[a-z0-9][a-z0-9-]*$`，非法 `INVALID_ARGUMENT` 零写盘）；`--json` 追加 `generated{releaseNotes,skills,requirements}`（既有 6 键键序不变）；`--force` 同时覆盖发布说明与 skill。
+- **多需求阶段（v1.5.8 / REQ-028）**：`stages[*].requirements[]`（元素 `{id,role?,order?}`）为权威关联面，旧单值 `requirement_id` 读侧兼容、写路径不再写；`req link` 支持多值追加 / 单条解绑 / 全清。
+- **多会话 P0（v1.5.8 / REQ-029）**：`.openfeel/dev/sessions.json` 会话登记；`flow advance --to done` 自动 commit 在有其它 10 分钟内活跃会话时跳过（不执行 `git add -A`），改 stderr 警告 + 提示手动 scoped commit；`pipeline.current` 指向 done 阶段时切非 done；适配器返回 `sessions`。
+- **需求导向（v1.5.7 / REQ-023）**：`req advance --to done` 允许零关联需求显式完成，或全部关联阶段已进入 `exec_running` 及之后相位（仍在 `plan_*` / `scheme_*` 拒绝）；阶段目录防复用（`plan stage add` / `flow stage add` 目录被其它完整 stageId 占用或已有归档日志 → exit 1 零写盘）；`feel_status` 默认 compact（`detail:"full"` 取全量）。
+
 ### 需求命令组 `req`（v1.2.0-stage-82）
 
-> 需求流转系统（主题一）的命令面（`openfeel req`，**11 子命令**；v1.2.1-stage-87 增 `split`）；命令层**零业务逻辑**（字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联唯一性 / done 门**单点在引擎** `src/core/req/`）。**`split` 为唯一带 `--json` 的写命令**，其余写命令无 `--json`（既有边界，后续增补属纯增量）。
+> 需求流转系统（主题一）的命令面（`openfeel req`，**15 子命令**；v1.2.1-stage-87 增 `split`，v1.5.8 增 `review` / `verify` / `release-check` / `rollover`）；命令层**零业务逻辑**（字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联 / done 门**单点在引擎** `src/core/req/`）。**`split` 与 `release-check` 带 `--json`**（后者只读），其余写命令无 `--json`（既有边界，后续增补属纯增量）。
 
 - `node bin/openfeel.js req add <title> [--target-version <v>] [--priority <P0|P1|P2>] [--workflow-mode <full|fast|general>]` — 创建需求（ID 自动分配 `REQ-NNN`；正文骨架铺到 `.openfeel/requirements/`；**`--workflow-mode` v1.2.1-stage-90 增**——`general` 无流水线、仅需求级合法、缺省不写该键；引擎抛错分流 → `common.errorTmpl` exit 1）。
-- `node bin/openfeel.js req list [--status <s>] [--target-version <v>] [--owner <o>] [--json]` — 列出需求（多条件 AND；`--status` 值域取 `REQ_STATUSES`，非法 → exit 1）。**v1.2.2-stage-97 起**：`--json.requirements[]` 元素**末位**追加 `linkedStages:[{id,phase}]` 与 `progress:{done,total}`（聚合单点 `listLinkedStages` + `computeRequirementAggregate`，无 N+1；零关联 `[]` + `{0,0}`；既有字段顺序/值逐字不变）。
+- `node bin/openfeel.js req list [--status <s>] [--target-version <v>] [--owner <o>] [--include-archived] [--json]` — 列出需求（多条件 AND；`--status` 值域取 `REQ_STATUSES`，非法 → exit 1；**`--include-archived` v1.5.8 增**：合并已随版本归档的需求，只读）。**v1.2.2-stage-97 起**：`--json.requirements[]` 元素**末位**追加 `linkedStages:[{id,phase}]` 与 `progress:{done,total}`（聚合单点 `listLinkedStages` + `computeRequirementAggregate`，无 N+1；零关联 `[]` + `{0,0}`；既有字段顺序/值逐字不变）。
 - `node bin/openfeel.js req split <id> --into <title> [--into <title> ...] [--json]` — **拆分一等动作**（v1.2.1-stage-87；**首个 repeatable option** + **首个带 `--json` 的写命令**）：顺序 ID + `parent_id` + 子初值 `scheduled`（拆分即发布）；失败零写盘（父不存在/父终态/空标题/缺 `--into`）；exit 0/1/2。
 - `node bin/openfeel.js req show <id> [--json]` — 需求详情（关联阶段为**原始只读枚举**，零 done/进度聚合；v1.2.1-stage-87：human +父/子 2 行、`--json` 追加 `parent`/`children`，**只增不改**）。
 - `node bin/openfeel.js req claim <id> [--owner <name>]` — 认领（四码分流 `not_found`/`already_claimed`/`invalid_field`/`invalid_status`；`--owner` 缺省走三级链 `.info.json user` → `git config user.name` → 哨兵 `unknown` 拒绝，**禁硬编码**；同 owner 幂等）。
 - `node bin/openfeel.js req release <id>` — 释放认领（未占用 **no-op 恒 exit 0**）。
 - `node bin/openfeel.js req set <id> [--status <s>] [--title <t>] [--target-version <v>] [--priority <p>] [--workflow-mode <m>]` — 更新字段（白名单；值域/流转合法性由引擎判定；合法目标经 `getAllowedNextStatuses` 派生，**禁命令层枚举**；**`--workflow-mode` v1.2.1-stage-90 增**——`general` 有链接 → `general_mode_conflict` 拒；`set`/`link` 经单点 `syncConfigFieldToStages` **下发**关联阶段）。
-- `node bin/openfeel.js req link --stage <stageId> (--requirement <id> | --unlink)` — 关联/解绑（`--requirement` 与 `--unlink` **二选一**；`already_linked` **硬拒** exit 1 零写盘，须先解绑；仅一次 `normalizeStageId` 归一）。
-- `node bin/openfeel.js req advance <id> --to <status>` — 显式推进状态（合法目标由引擎流转表判定；**done 门：非 `general` 需求须全部关联阶段 done；零关联 `general` 需求可显式完成**（v1.2.1-stage-93 载体制对偶完成路径）；被拒时 `done` 门场景输出专用文案 `req.err.doneGateTmpl`，错误码恒 `invalid_status`；**不设 `--force`**；同值 no-op exit 0）。
+- `node bin/openfeel.js req link --stage <stageId> (--requirement <id> | --unlink)` — 关联/解绑（`--requirement` 与 `--unlink` **二选一**；`already_linked` **硬拒** exit 1 零写盘，须先解绑；仅一次 `normalizeStageId` 归一）。**v1.5.8 多值**：写 `stages[*].requirements[]`（权威面），同需求重复链接幂等 no-op；`--unlink` 单条解绑，缺 `--requirement` 且带 `--unlink` 为全清；旧单值 `requirement_id` 仅读兼容。
+- `node bin/openfeel.js req advance <id> --to <status>` — 显式推进状态（合法目标由引擎流转表判定；**done 门（v1.5.7 / REQ-023 重定义）**：零关联需求可显式完成，或**全部**关联阶段已进入 `exec_running` 及之后相位；任一关联阶段仍在 `plan_*` / `scheme_*` 时拒绝；**v1.5.8 追加硬门**：`review.result=pass` 且 `verification.result=pass`，缺项 `invalid_status`、**无 force**；被拒时 `done` 门场景输出专用文案 `req.err.doneGateTmpl`；同值 no-op exit 0）。
+- `node bin/openfeel.js req review <id> --result <pass|fail> --by <who> --note <text> [--independent|--self]` — **v1.5.8 完成必审**：写需求审查记录（`--self` = 非独立，归档摘要标注 self-review）；受 preflight 门。
+- `node bin/openfeel.js req verify <id> --result <pass|fail> --kind <test|manual|build> --by <who> --note <text> [--evidence <path>]` — **v1.5.8 完成必验**：写验证记录（`result=pass` 才满足 done 门）；受 preflight 门。
+- `node bin/openfeel.js req release-check <version> [--json]` — **v1.5.8 发布门（软，只读）**：列出该版本已完成 / 未完成 / 其它（cancelled+rejected）需求；恒 exit 0；`--json` = `{schemaVersion,version,done,unfinished,counts{done,unfinished,other,total}}`。
+- `node bin/openfeel.js req rollover (--id <REQ> | --all) --from <v> --to <v>` — **v1.5.8 顺延**：改写 `target_version = to`、`carried_from` 去重保序追加、刷新 `updated_at`（`--id` / `--all` 互斥且必选其一；来源与目标版本归一后须不同）；受 preflight 门。
 - `node bin/openfeel.js req board [--target-version <v>] [--json]` — 需求看板（按状态分组，**7 组固定顺序** = `REQ_STATUSES`，恒含空组；v1.2.1-stage-87：条目行 owner 非空时追加后缀，**仅 human**）。
 - `node bin/openfeel.js req next [--owner <name>] [--limit <n>] [--json]` — 推荐下一个可接取需求（scheduled ∧ 未认领；排序：`target_version` 升序 → `created_at` → `id`；v1.2.1-stage-87：`--limit`（≥1 整数，判定基准 = 解析后数值；`> 1` 时 `--json` 追加 `candidates`））。
-- **`--json` 契约**（5 命令 `list`/`show`/`split`/`board`/`next`）：成功/失败**均走 stdout 纯 JSON 单文档** + **stderr 零输出**；成功 `{schemaVersion:1,...领域对象}`、失败 `{schemaVersion:1,error,...ctx}` + exit 1；**exit 2（并发冲突）走统一出口非 JSON 单文档**（有意差异）。
+- **`--json` 契约**（6 命令 `list`/`show`/`split`/`board`/`next`/`release-check`）：成功/失败**均走 stdout 纯 JSON 单文档** + **stderr 零输出**；成功 `{schemaVersion:1,...领域对象}`、失败 `{schemaVersion:1,error,...ctx}` + exit 1；**exit 2（并发冲突）走统一出口非 JSON 单文档**（有意差异）。
 - **退出码 0/1/2**：成功 0 / 各错误 1（`process.exitCode = 1`，**禁 `process.exit(1)`**）/ 并发写冲突 2（`handleConcurrentConflict` 单点）；失败路径 flow.json 逐字节零写盘。
 - **help 键双规**（`applyHelpI18n`）：位置参数键 = `arg`+参数名逐字（非 camelCase）、选项键 = 长名 camelCase —— **44 键双向逐键断言**防死键（REV-82-011；37 → 42（v1.2.1-stage-87）→ **44**（v1.2.1-stage-90 增 `--workflow-mode`））。
 - **正交**：`src/commands/req.ts` 不引用 `ALLOWED_TRANSITIONS` / 工作流模式 / 归档层 / `.phase` / `allLinkedStagesDone`（直读源文全内容 7 禁止串零命中）。
@@ -247,8 +263,8 @@ src/commands/req.ts         registerReqCommand
 
 ## 相关 skill
 
-- **`openfeel-cli-usage`**（CLI 用法参考，**查询型**）：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 三格式与目录映射约定、典型场景、权限要点；含**快照声明**「本文档为 v1.2.2 快照，命令/参数细节以 `node bin/openfeel.js <cmd> --help` 实时输出为准」（防文档-实现发散；**v1.2.2-stage-98 更新说明**：权威源 `src/core/templates-data/skills/openfeel-cli-usage/SKILL.md` 已同批更新为 **v1.2.2 快照**，含 `flow next` / 全局 `--project` / 13 读命令 `--json`（33 成功出口 / 34 注册选项）/ 错误封装 / `--version --json` / `reviewTier` 消歧；skill 权威源已于 stage-68 迁**中立共享源**）。与 `openfeel-wizard`（**执行型**交互向导）职责分离、正文互引。
-  - 权威源：`src/core/templates-data/skills/openfeel-cli-usage/SKILL.md`（**中立共享源**，stage-68 由 `templates-data/opencode/skills/` 迁入；**扁平单文件、中文单语**）；经 `npm run build` 双注入（`update.ts` 的 `SKILL_DEFINITIONS` / `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`）；由 `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（**生成物禁手改**）。**stage-55 起仓库自身不再自举项目级 `.opencode/skills/**`**（自举步骤已随 `build.js` 步骤 8 移除）。skill 总数 **18**。
+- **`openfeel-cli-usage`**（CLI 用法参考，**查询型**）：命令清单与关键参数、15 个 phase 枚举与转移表、stageId 三格式与目录映射约定、典型场景、权限要点；含**快照声明**「本文档为 v1.5.8 快照，命令/参数细节以 `node bin/openfeel.js <cmd> --help` 实时输出为准」（防文档-实现发散；权威源 `src/core/templates-data/skills/openfeel-cli-usage/SKILL.md` 已于 v1.5.8 批次同步，含 preflight 全覆盖 / `lint req` / 完成必审验 / 需求归档与发布门 / 多需求阶段 / 多会话 P0 / **42 成功出口 / 43 注册选项**；skill 权威源已于 stage-68 迁**中立共享源**）。与 `openfeel-wizard`（**执行型**交互向导）职责分离、正文互引。
+  - 权威源：`src/core/templates-data/skills/openfeel-cli-usage/SKILL.md`（**中立共享源**，stage-68 由 `templates-data/opencode/skills/` 迁入；**扁平单文件、中文单语**）；经 `npm run build` 双注入（`update.ts` 的 `SKILL_DEFINITIONS` / `template-loader.ts` 的 `OPENCODE_SKILL_DEFINITIONS`）；由 `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（**生成物禁手改**）。**stage-55 起仓库自身不再自举项目级 `.opencode/skills/**`**（自举步骤已随 `build.js` 步骤 8 移除）。skill 总数 **22**。
   - 维护触发：新增/修改 CLI 命令、phase 枚举或 stageId 约定时，须同批更新该 skill 权威源 + 跑 build（详见 `manual/index.md` 维护规则「skill 体系」行）。
 
-- **`openfeel-req`**（需求流转用法参考，**查询型**；**v1.2.0-stage-84 新增**）：需求生命周期 7 状态、`openfeel req` **11 子命令**与参数（v1.2.1-stage-87 增 `split`）、认领协议（`owner` + `claimed_at`，无 TTL）、`REQ-NNN.md` 正文与机读权威源（`flow.json`）、需求与计划的关系（需求 ≠ 计划、实现仍走流水线）、**需求与版本解绑** + **并行接取**（v1.2.1-stage-87）、与 `workflow_mode` 正交；**快照声明**「以 `node bin/openfeel.js req --help` 为准」（v1.2.0 起提供）。权威源 `src/core/templates-data/skills/openfeel-req/SKILL.md`（中立共享源、扁平单文件中文单语）；经 `npm run build` 双注入（`update.ts` / `template-loader.ts`，键集 18）+ `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（生成物禁手改）。
+- **`openfeel-req`**（需求流转用法参考，**查询型**；**v1.2.0-stage-84 新增**）：需求生命周期 7 状态、`openfeel req` **15 子命令**与参数（v1.2.1-stage-87 增 `split`，v1.5.8 增 `review` / `verify` / `release-check` / `rollover`）、认领协议（`owner` + `claimed_at`，无 TTL）、`REQ-NNN.md` 正文与机读权威源（`flow.json`）、需求与计划的关系（需求 ≠ 计划、实现仍走流水线）、**需求与版本解绑** + **并行接取**（v1.2.1-stage-87）、**完成必审验** + **随版本归档与发布门**（v1.5.8）、与 `workflow_mode` 正交；**快照声明**「以 `node bin/openfeel.js req --help` 为准」（v1.2.0 起提供）。权威源 `src/core/templates-data/skills/openfeel-req/SKILL.md`（中立共享源、扁平单文件中文单语）；经 `npm run build` 双注入（`update.ts` / `template-loader.ts`，键集 22）+ `openfeel setup` 部署至全局 `~/.config/opencode/skills/`（生成物禁手改）。

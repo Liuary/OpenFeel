@@ -1,6 +1,6 @@
 # JSON 输出契约与错误封装（json-contract）
 
-> 模块文档，由归档官在归档时维护。对应源码：`src/commands/shared/json-output.ts`、`src/core/errors.ts`、`src/commands/shared/errors.ts`、`src/cli/project-option.ts`。契约正文单一权威：`docs/json-contract.md`。**v1.2.2-stage-95 新建 / stage-96 扩展（`flow next` + 调度属性）/ stage-97 扩展至 33 成功出口 / stage-98 收官归档核对（33/34 计数三处对齐、无源码变更）/ v1.2.3-stage-99 并发 JSON 退出统一（REV-95-009）+ 锁超时 E2E 证据 / v1.2.4-stage-100 A1~A5：13 行错误码、40 成功出口 / 41 注册选项（#34~#40 + `config get --all`）**。
+> 模块文档，由归档官在归档时维护。对应源码：`src/commands/shared/json-output.ts`、`src/core/errors.ts`、`src/commands/shared/errors.ts`、`src/cli/project-option.ts`。契约正文单一权威：`docs/json-contract.md`。**v1.2.2-stage-95 新建 / stage-96 扩展（`flow next` + 调度属性）/ stage-97 扩展至 33 成功出口 / stage-98 收官归档核对（33/34 计数三处对齐、无源码变更）/ v1.2.3-stage-99 并发 JSON 退出统一（REV-95-009）+ 锁超时 E2E 证据 / v1.2.4-stage-100 A1~A5：13 行错误码、40 成功出口 / 41 注册选项（#34~#40 + `config get --all`）/ **v1.5.6-stage-115：新增 #41 `lint req` → 41 / 42** / **v1.5.8-stage-122：新增 #42 `req release-check` + `flow archive` 追加 `requirements` 段 → 42 成功出口 / 43 注册选项**。
 
 ## 职责
 
@@ -21,7 +21,7 @@
 1. **单文档**：`--json` 模式 stdout 恰一个 JSON 文档，不混人类文本（唯一例外：`flow advance --json` 成功保持人类文本）。
 2. **首键**：`schemaVersion` 恒为运行时首键且值 `1`；构造序固定（类型签名不保证键序）。
 3. **空值形态**：可选字段 `null`、集合 `[]`、映射 `{}`；禁止 `undefined`。
-4. **40 个成功出口冻结**（v1.2.4-stage-100 起）：`flow` 16（status / next / recover / checkpoint list / log / overview / current / metrics / phases / mode / ops list / archive / archive list / archive show / health / retry）+ `req` 5 + `instructions` 1 + `setup --check` 1 + `stage status` 1 + `knowledge` 4 + `config` 2 + `view list` 1 + `plan` 2（scheme list / stage list）+ `project overview` 1 + `archive <stage>` 1 + `model` 2（list / get）+ `lint` 2（i18n / kb）+ `roadmap show` 1；只增不改、键序保留。注册 `--json` 选项 **41**（40 + `flow advance --json` 错误模式开关）。
+4. **42 个成功出口冻结**（v1.5.8-stage-122 起）：`flow` 16（status / next / recover / checkpoint list / log / overview / current / metrics / phases / mode / ops list / archive / archive list / archive show / health / retry）+ `req` 6（v1.5.8 增 `release-check`）+ `instructions` 1 + `setup --check` 1 + `stage status` 1 + `knowledge` 4 + `config` 2 + `view list` 1 + `plan` 2（scheme list / stage list）+ `project overview` 1 + `archive <stage>` 1 + `model` 2（list / get）+ `lint` 3（i18n / kb / req）+ `roadmap show` 1；只增不改、键序保留。注册 `--json` 选项 **43**（42 成功出口 + `flow advance --json` 错误模式开关）；`--version --json` 单列不计入。
 5. **条件键二选一**：恒在键（缺省 `null`）或条件出现键（附依据）；`reconciled` / `warning` 恒在，`req next.candidates` 条件出现。
 6. **有意变更全枚举**：C1 `instructions` 补首键；C1b/G-1 `flow archive show` 首键重定位；stage-97 #8 `flow archive` 判据三新键、#12 `req list` 末位两键。
 7. **错误 envelope**：`{schemaVersion:1,error:{code,kind,message,detail}}`，`code` 语言无关、`message` 本地化、`detail` 可定位。
@@ -56,6 +56,8 @@
 
 | 版本 | 阶段 | 变更 |
 |------|------|------|
+| v1.5.8 | stage-122 | 新增出口 **#42 `req release-check`**（`{schemaVersion,version,done,unfinished,counts}`，只读软门恒 exit 0）；`flow archive` 成功/预演末位追加 `requirements`（既有 9 键键序零改动）；`archive <stage> --json` 追加 `generated{releaseNotes,skills,requirements}`；**42 成功出口 / 43 注册选项** |
+| v1.5.6 | stage-115 | 新增出口 **#41 `lint req`**（七键：`schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount`；A 类 exit 1 / B 类 advisory）；`flow metrics` 人类输出追加流程健康块（`--json` 键集恒 `schemaVersion,agents` 零变更）；**41 成功出口 / 42 注册选项** |
 | v1.2.4 | stage-100 | A1 `ARCHIVE_EXISTS`（13 行）+ A2~A4 新出口 #34~#40 + A5 `config get --all`；**40 成功出口 / 41 注册选项**；既有出口与人类输出零改动 |
 | v1.2.3 | stage-99 | **并发 JSON 退出统一（REV-95-009）**：`handleConcurrentConflict` JSON 分支 emit → `process.exitCode=2` → return；非 JSON 分支逐字不变；`handleAddStageError` `never → void` + 10 调用点显式返回；§14.1 补锁超时 E2E 证据（test-only env seam）；33/34 与退出码语义零改动 |
 | v1.2.2 | stage-98 | 文档收口：33/34 计数与多载体同步核对；无源码变更。`--version --json`（三键）单列，不计入 33 出口 / 34 注册选项 |

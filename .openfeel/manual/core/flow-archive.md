@@ -29,11 +29,21 @@
   "stages": { /* stageId → StageData */ },
   "reviews": [ /* ReviewItem[] */ ],
   "log": [ /* LogEntry[] */ ],
-  "counts": { "stages": 4, "reviews": 12, "log": 89 }  // 冗余展示；读侧缺失按实际长度回填（读时计算不写盘）
+  "requirements": [ /* RequirementData[]（v1.5.8 / REQ-030；可选，随版本归档的终态需求） */ ],
+  "counts": { "stages": 4, "reviews": 12, "log": 89, "requirements": 3 }  // 冗余展示；读侧缺失按实际长度回填（读时计算不写盘；requirements 为 v1.5.8 追加可选键）
 }
 ```
 
 只增不改（无 unarchive）；同版本重归档 = **幂等覆盖写**（`backup:false`，无 `.bak`）。归档目录**不纳入 `WORKSPACE_DIRS`**、零 gitignore 改动、按需 `mkdirSync` 幂等创建。
+
+### 需求随版本归档（v1.5.8 / REQ-030）
+
+- **入选判据**：`target_version === version` **且**终态（`done` / `cancelled` / `rejected`）；活跃 / 无版本 / 非终态需求保留在 `flow.json`。
+- **搬移语义**：写入归档文件 `requirements[]` 后从 `flow.json.requirements` 删除（同一两步事务：先写归档文件，后 `mgr.save()`）；`counts.requirements` 冗余计数。
+- **ID 单调性**：`flow.json.meta.last_req_seq` 为单调计数器（`max(现存最大号, last_req_seq)`），归档移走条目后 **ID 不复用**。
+- **发布软门**：归档时该版本仍有未完成需求 → 缺省拒绝且**零写盘**，须先 `req rollover` 顺延，或显式 `--allow-unfinished`（人类模式 stderr 警告 / JSON 模式 stderr 零输出）；**无 force 覆盖该门**。
+- **读侧宽容**：旧归档文件无 `requirements` 键（不注入，读侧视同 0）；`flow archive list` 的 `counts` 亦追加 `requirements`。
+- **归档官增强（v1.5.8 / REQ-024，顶层 `archive <stage>` 而非本模块 `flow archive`）**：汇总已完成需求并生成 `docs/releases/<version>.md` 草稿 + 按探测 harness 生成开发 skill（`--skill <slug>`）；`archive --json` 追加 `generated{releaseNotes,skills,requirements}`。
 
 ## 核心 API
 
@@ -76,8 +86,8 @@
 
 | 命令 | 语义 | 写盘 |
 |------|------|------|
-| `flow archive <version>` | 执行归档：**版本存在性门前置**（无候选 → exit 1 零写盘）→ **判据门**（全 done + 无 blocking open REV）→ `--dry-run`？预览 → **两步事务**（先 `writeArchiveFile` → 移除三段 + `addArchivedVersion` + `applyArchivePipelineDisposition` → `mgr.save()`）→ 审计 `archive_flow_version`。`--json` 成功 `{schemaVersion:1,version,stages,reviews,log,dryRun}`、失败纯 JSON 单文档 + exit 1；并发冲突 exit 2 | 是（成功且非 dry-run） |
-| `flow archive list [--json]` | 列出已归档版本 + 计数（引擎**字典序**）；空目录 → 「暂无归档」exit 0 | 否（只读） |
+| `flow archive <version> [--dry-run] [--allow-unfinished] [--json]` | 执行归档：**版本存在性门前置**（无候选 → exit 1 零写盘）→ **判据门**（全 done + 无 blocking open REV + **v1.5.8 发布软门**）→ `--dry-run`？预览 → **两步事务**（先 `writeArchiveFile` → 移除三段 + 终态需求 + `addArchivedVersion` + `applyArchivePipelineDisposition` → `mgr.save()`）→ 审计 `archive_flow_version`。`--json` 成功 `{schemaVersion:1,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews,requirements}`、失败纯 JSON 单文档 + exit 1；并发冲突 exit 2；`--allow-unfinished` 显式放行未完成需求（缺省拒绝零写盘） | 是（成功且非 dry-run） |
+| `flow archive list [--json]` | 列出已归档版本 + 计数（引擎**字典序**；`counts` 含 `requirements`（v1.5.8 追加，老文件视同 0））；空目录 → 「暂无归档」exit 0 | 否（只读） |
 | `flow archive show <version> [--json]` | 查看指定归档版本（人类 = counts + stages 概览；`--json` = **全量**含 log/reviews + `schemaVersion:1`）；不存在 → exit 1 | 否（只读） |
 
 **关键机制**：① **存在性门前置**——`listArchivableCandidates` 无该 version 候选 → 拒（防空归档覆盖既有归档）；**覆盖写仅在活跃集仍含该版本条目时允许**（重跑幂等收敛）；② **blocking 谓词单源**——`listBlockingOpenRevsForVersion`；③ **两步事务顺序**——归档文件写成功前不改 `flow.json`，`save()` 失败 → 归档文件在、flow.json 原样、exit 2 可重跑；④ **`--json` 失败纯单文档**——`writeArchiveFile` 包 try/catch（`archive-write-failed`）；⑤ **子命令 action 合并 `command.parent?.opts().json`**（父命令 `--json` 会被先行消费，REV-79-018）；⑥ **`--dry-run` 深拷 pipeline**（不就地改 live `data.pipeline`；四写盘点零写盘）。
@@ -109,3 +119,4 @@
 | v1.2.0-stage-78 | **新增本模块**（`archive-file.ts` / `grouping.ts` / `archive-ops.ts` + 单测）：归档文件 schema + 版本分组/切分纯函数 + IO 原语与索引；`flow-manager.ts` 最小追加 `FlowData.meta.archived_versions?: string[]` + `load()` 读侧补齐（REV-78-006，12 增/1 删，语义删除 0）。**已知语义**：存量 flow.json 于**下一次 `save()`** 会写入 `archived_versions: []`（读侧宽容，无兼容风险；「是否删除 load 补齐」留 stage-79/85 评估，REV-78-015）。阶段门禁 68 文件 / 1337 用例 0 failed、tsc 0、i18n 796（不变）、build ×2 幂等 |
 | v1.2.0-stage-79 | **新增命令面**（`flow archive` 子命令组挂 `src/commands/flow.ts`：执行 / `list` / `show`）：版本存在性门前置 + 判据门 + `--dry-run`（四写盘点零写盘）+ 两步事务顺序 + 审计 `archive_flow_version` + `pipeline` 处置；**本模块导出扩 3**（`normalizeArchiveVersion` / `applyArchivePipelineDisposition`〔纯内存〕/ `listBlockingOpenRevsForVersion`〔blocking 谓词单源〕+ `isValidArchiveVersion` 导出）；`flow-manager.ts` **净减法 −4**（**REV-78-015 定稿：移除 `load()` 读侧补齐**，「缺失 ≡ []」由 `getArchivedVersions` 承担）；i18n **796 → 826**（+30）。**「零常规路径触碰」表述自本阶段失效**——引擎被命令面 import，仅只读命令不读归档文件（T5.7 归档目录重命名全绿验证）。阶段门禁 68 文件 / 1372 用例 0 failed、tsc 0、i18n 826、kb 0、build ×2 幂等；审查 passed（计划轮 001~010 + 方案轮 013~016闭合、代码轮 018 闭合；7 条非阻塞 pending 转 v1.2.0 收口） |
 | v1.2.0-stage-80 | **新增 `archive-health.ts`**（`flow health` 归档一致性 a/b/c，纯函数恒无 fail；b 项经 **REV-80-019** 收窄为**键粒度两段式**——版本前缀 ∈ `archived_versions` 预筛 ∧ stageId ∈ 匹配快照 `stages` 键集，默认版本新建阶段不误报；对 flow-manager 仅 `import type`、**仅被 `commands/flow.ts` 消费**）+ **消费点适配**（`isArchivedVersionOf` 单一口径 4 调用点；`config set --sync-stages --stage` 已归档目标降级；`syncConfigFieldToStages` 循环重构）+ **本仓 78 阶段九组一次性迁移**（`flow.json` **425323 B → ~59-62KB**、9 快照、`archived_versions=9`、阶段 86→8、log 1364→233、孤儿 89→0）。i18n 826 → **829**。阶段门禁 68 文件 / **1408 用例** 0 failed、tsc 0、i18n 829、kb 0、build ×2 幂等；审查 passed（计划轮 fail→修订 pass、方案轮 pass、**代码轮 fail→op-004 修复→复审 pass**，REV-80-019 blocking 闭合；020/023/029 非阻塞 pending） |
+| v1.5.8-stage-122 | **需求随版本归档与发布软门（REQ-030）**：`ArchiveFile.requirements?` + `ArchiveCounts.requirements?`（可选、读侧宽容不注入）；`flow archive <version>` 搬移 `target_version === version` 的终态需求（done/cancelled/rejected）并删除源条目、`counts` 追加 `requirements`；发布软门拒绝未完成需求（零写盘，`--allow-unfinished` 显式放行）；`meta.last_req_seq` 单调 ID；`flow archive list` 计数追加 `requirements`。归档官增强（REQ-024，顶层 `archive <stage>`）：生成 `docs/releases/<version>.md` 草稿 + `--skill <slug>` 开发 skill + `--json.generated`。 |

@@ -19,7 +19,7 @@
 
 ## 核心数据
 
-### `RequirementData`（12 字段）
+### `RequirementData`（15 字段）
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -35,13 +35,17 @@
 | `body_path?` | `string` | 正文相对路径（POSIX 分隔符，如 `.openfeel/requirements/REQ-001.md`） |
 | `parent_id?` | `string` | **拆分来源父需求 ID**（v1.2.1-stage-87 新增；**仅溯源**——不参与聚合判定 / 不参与 done 门 / 无父子级联 / 不进 `PATCH_WHITELIST`；**读侧宽容不 load 补齐**） |
 | `workflow_mode?` | `WorkflowMode` | **需求级模式属性**（v1.2.1-stage-90 新增；值域 `full`/`fast`/`general`，权威 = `WORKFLOW_MODES` 单源）。**仅调度属性**——不入聚合 / 不入 done 门 / 不入对账；**读侧宽容 + 零注入**；`import type` 保「零运行时 import」。经**单点解析**作用于其关联阶段（链序 `status.md > 需求级 > config > profile > builtin`）；`general` **仅需求级合法**（见下「需求级模式」节） |
+| `review?` | `RequirementReviewRecord` | **审查记录**（v1.5.8 / REQ-027 新增）：`{result:'pass'\|'fail', by, at, note, independent}`；`independent:false` = 自我审查（归档摘要须标注）。done 门要求 `result='pass'`；读侧宽容不 load 补齐 |
+| `verification?` | `RequirementVerificationRecord` | **验证记录**（v1.5.8 / REQ-027 新增）：`{result, kind:'test'\|'manual'\|'build', by, at, note, evidence?}`；done 门要求 `result='pass'`；读侧宽容 |
+| `carried_from?` | `string[]` | **顺延来源版本链**（v1.5.8 / REQ-030 新增）：`req rollover` 每次改 `target_version` 时去重保序追加来源版本；不参与 done 门 / 聚合判定；读侧宽容 |
 
 **值域常量（单一来源，命令层须从此派生、禁硬编码）**：`REQ_STATUSES` = `draft`/`scheduled`/`in_progress`/`done`/`blocked`/`cancelled`/`rejected`（7 值）；`REQ_PRIORITIES` = `P0`/`P1`/`P2`。**无 `source`、无 `reason`**（REV-81-005；`reason` 属 Q4-schema 未来增量可选字段，本版不冻结）。
 
 ### 存储字段（`flow-manager.ts` 最小追加）
 
 - `FlowData.requirements?: RequirementData[]`——**顶层可选**（类比 `reviews`）；**读侧宽容**：`load()` **不补齐**，读侧 `getRequirements` 派生 `?? []`、写侧 `addRequirement` 内 `??= []` 兜底（对齐 REV-78-015 / stage-79 移除 `archived_versions` load 补齐的方向；避免任意 `load→save` 向存量 `flow.json` 注入 `requirements: []`）。
-- `StageData.requirement_id?: string | null`——需求↔阶段 **1:N** 的「阶段侧单值」；缺省 ≡ `null`（存量不迁移）。
+- `StageData.requirement_id?: string | null`——需求↔阶段 **1:N** 的「阶段侧单值」；缺省 ≡ `null`（存量不迁移）。**v1.5.8 / REQ-028 起写路径退役**：权威关联面改为 `StageData.requirements?: Array<{ id: string; role?: string; order?: number }>`（一个阶段可挂多个需求；`requirements` 非空时忽略单值键，缺省/空时回落单值，防双真源；读侧由 `stage-links.ts` 的 `stageRequirementIds` 单点归一）。
+- `FlowData.meta.last_req_seq?: number`——需求 ID **单调计数器**（v1.5.8 / REQ-030）：`nextRequirementId` 取 `max(现存最大号, last_req_seq)`，归档移走条目后不复用 ID；读侧宽容。
 
 ## 核心 API（`requirement-ops.ts`）
 
@@ -69,7 +73,7 @@
 |-------------|----------------|
 | `draft` | `scheduled` / `blocked` / `cancelled` / `rejected` |
 | `scheduled` | `in_progress` / `blocked` / `cancelled` / `rejected` |
-| `in_progress` | `done`（**门**：`allLinkedStagesDone`）/ `blocked` / `cancelled` / `rejected` |
+| `in_progress` | `done`（**门**：v1.5.7 起 `canCompleteRequirement`——零关联可完成，或全部关联阶段已进入 `exec_running` 及之后相位；v1.5.8 起再追加 `review.result='pass'` + `verification.result='pass'`）/ `blocked` / `cancelled` / `rejected` |
 | `blocked` | `scheduled` / `in_progress` / `cancelled` / `rejected` |
 | `done` / `cancelled` / `rejected` | 终态，无可显式流转（done 的自动回退由 stage-83 聚合承担） |
 | 同值（`X → X`） | 幂等 no-op `{ok:true, changed:false}` |
@@ -87,6 +91,9 @@
 | `requirement_update` | `{ id, fields: [...] }` | 仅字段实际变更 |
 | `requirement_link` | `{ stage, requirementId }`（解绑 = `null`） | 仅实际变更 |
 | `requirement_split` | `{ parentId, children: [ids] }` | 恒（每次拆分恰 1 条聚合事件，**非 N 条子事件**；v1.2.1-stage-87） |
+| `requirement_review` | `{ id, result, by, independent }` | 恒（每次 `req review`；v1.5.8） |
+| `requirement_verification` | `{ id, result, kind, by }` | 恒（每次 `req verify`；v1.5.8） |
+| `requirement_rollover` | `{ id, from, to }` | 仅实际顺延（`req rollover`；v1.5.8） |
 
 - 审计**在内存**追加（`appendRequirementLog` 单点，镜像 `FlowManager.appendLog` 的 time 填充），**落盘由调用方 `save()` 承担**——原语零写盘点。
 - **幂等 / 冲突路径零审计**（日志 = 事实变更）。
@@ -106,7 +113,7 @@
 
 > 命令面源码：`src/commands/req.ts`（`registerReqCommand`）；`src/cli/index.ts` **两行注册**（import + register）。
 
-**11 子命令**（v1.2.1-stage-87 增 `split`）：
+**15 子命令**（v1.2.1-stage-87 增 `split`；v1.5.8 增 `review` / `verify` / `release-check` / `rollover`）：
 
 | 子命令 | 类型 | `--json` | 关键行为 |
 |--------|------|:--:|----------|
@@ -121,6 +128,10 @@
 | `advance <id> --to <status>` | 写 | ✗ | 零校验；done 门引擎单点；不设 `--force` |
 | `board [--target-version]` | 读 | ✓ | 7 组固定顺序（= `REQ_STATUSES`）恒含空组；v1.2.1-stage-87：条目行 owner 非空时追加后缀（**仅 human**；`--json groups` 键集零改动） |
 | `next [--owner] [--limit]` | 读 | ✓ | scheduled ∧ 未认领（`--owner` 扩候选）；排序冻结；v1.2.1-stage-87：`--limit <n>`（≥1 整数，**判定基准 = 解析后数值**——显式 `--limit 1` 与缺省同形态；`> 1` 时 `--json` 追加 `candidates` + human 多行；非法值 exit 1 零写盘） |
+| `review <id> --result --by --note [--independent\|--self]` | 写 | ✗ | v1.5.8：写 `review` 记录（恰 1 条 `requirement_review`）；`--self` = 非独立（归档摘要标注）；受 preflight 门 |
+| `verify <id> --result --kind --by --note [--evidence]` | 写 | ✗ | v1.5.8：写 `verification` 记录（恰 1 条 `requirement_verification`）；`result=pass` 才满足 done 门；受 preflight 门 |
+| `release-check <version>` | 读 | ✓ | v1.5.8：发布门（软）三桶 done / 未完成 / 其它；恒 exit 0；`--json` 五键 + `counts` |
+| `rollover (--id \| --all) --from --to` | 写 | ✗ | v1.5.8：改写 `target_version` + `carried_from` 去重保序（恰 1 条 `requirement_rollover`）；`--id`/`--all` 互斥且必选；受 preflight 门 |
 
 **命令层零业务逻辑**：字段白名单 / 值域 / 状态流转合法性 / 认领占用 / 关联唯一性 / done 门**单点在引擎**；命令层仅「解析参数 → 调引擎原语 → 错误码→文案映射 → `save()`（成功路径）→ `process.exitCode`」。`set`/`advance` **零校验**（合法目标经引擎新增导出 `getAllowedNextStatuses` 派生，禁命令层硬编码枚举 → 防第二份流转表）。
 
@@ -178,6 +189,14 @@
 
 **关联阶段枚举单点（v1.2.2-stage-97）**：`listLinkedStages(data, requirementId)` 为「`requirement_id` 过滤」的唯一新增实现（`data.stages` 单次遍历 + 键序），`computeRequirementAggregate` 内部改用它（原内联 filter 删除，行为等价）；`req list --json` 末位两键直接消费。**空态/悬空**：零关联与悬空 `requirement_id` 均给 `[]` + `{done:0,total:0}`；与 `req show --json.stages` 的一致性由测试交叉断言。**已知边界（REV-97-006）**：`req show`（stages）与 `req split` 仍保留既有内联过滤，单点覆盖范围 = `req list + aggregate`；纯等价重构留待 stage-98/后续版本，当前语义等价。
 
+## 完成必审验 / 多值关联 / 归档与发布门（v1.5.7 ~ v1.5.8）
+
+- **done 门三段（单点 `canCompleteRequirement` + `applyStatusChange`）**：① 相位判据（v1.5.7 / REQ-023：零关联可完成；有关联时**全部**关联阶段须已进入 `exec_running` 及之后相位，仍在 `plan_*` / `scheme_*` 拒绝；`general` 载体制对偶路径不变）；② `review.result === 'pass'`；③ `verification.result === 'pass'`。缺 ②/③ → `invalid_status`，**无 force 逃生口**；命令层按判据分流 `req.err.reviewRequiredTmpl` / `req.err.verificationRequiredTmpl`。
+- **记录原语（v1.5.8 / REQ-027）**：`recordRequirementReview(data, id, {result, by, note, independent})` 与 `recordRequirementVerification(data, id, {result, kind, by, note, evidence?})`——纯内存、恰 1 条审计（`requirement_review` / `requirement_verification`）、落盘恒由调用方 `save()`；`fail` 同样留痕（不满足门）。
+- **多值关联单点（v1.5.8 / REQ-028）**：`src/core/req/stage-links.ts` 的 `stageRequirementIds(stage)` 为「阶段 → 需求 ID 序列」唯一读侧实现（`requirements[]` 非空取之；缺省/空回落旧单值；去重保序）；聚合 `aggregate.ts` 的关联判定统一经此，**禁第二份 `requirement_id` 过滤表达式**。`linkRequirement` 写路径只写 `requirements[]` 并删除旧单值键（防双真源）。
+- **需求随版本归档与发布门（v1.5.8 / REQ-030，消费方 `flow-archive`）**：归档把 `target_version === version` 且终态（done/cancelled/rejected）的需求移入归档文件 `requirements[]` 并从 `flow.json` 删除；`meta.last_req_seq` 保 ID 单调；`req release-check`（只读三桶、恒 exit 0）/ `req rollover`（`target_version` 改写 + `carried_from` 去重保序）为发布门配套原语；`req list --include-archived` 合并读归档。
+- **不变量**：聚合自动收口（零关联 `aggregate=null`）不变；`workflow_mode` 仍不入聚合 / 不入 done 门；归档只读路径不主动加载。
+
 ## 设计要点与判据
 
 - **纯内存 + 调用方落盘**：本模块**零独立写盘点**（唯一 IO = 正文文件骨架）；`flow.json` 落盘恒经 `FlowManager.save()`（锁 + `meta.revision` 乐观锁 + `.bak` + 原子写）——需求写入**零自造路径**。
@@ -191,6 +210,8 @@
 
 | 版本 | 变更 |
 |------|------|
+| v1.5.8-stage-122 | **完成必审验 + 多值关联 + 需求归档与发布门（REQ-027/028/030）**：`RequirementData` +`review?` / `verification?` / `carried_from?`（**15 字段**）；done 门追加 `review.pass` + `verification.pass`；新增原语 `recordRequirementReview` / `recordRequirementVerification` / `rolloverRequirements`（各恰 1 条审计）；关联权威面改 `stages[*].requirements[]`（`stage-links.ts` 的 `stageRequirementIds` 单点，旧单值仅读兼容、写路径删除）；`meta.last_req_seq` 单调计数器；命令面 **11 → 15 子命令**（`review` / `verify` / `release-check` / `rollover`）+ `req list --include-archived`；归档消费方 `flow-archive` 移入终态需求。 |
+| v1.5.7-stage-121 | **需求完成与阶段关闭解耦（REQ-023）**：`canCompleteRequirement` 判据改为「零关联可完成，或全部关联阶段已进入 `exec_running` 及之后相位」（仍在 `plan_*` / `scheme_*` 拒绝）；聚合自动收口语义不变（零关联仍 `null`）；适配器 / 文案改为需求导向。 |
 | v1.2.3-stage-99 | **命令层过滤单点化（REV-97-006）**：`req show` / `req set --workflow-mode` 内联 `requirement_id` 过滤改为复用 `listLinkedStages`；`req split` 与 core done 原语零改动；行为零变化。 |
 | v1.2.2-stage-98 | 文档收口复核：`listLinkedStages` / `req list` 两键口径与契约一致；无源码变更。 |
 | v1.2.1-stage-93 | **缺陷清零（`req/BUG-002`）**：新增导出谓词 `canCompleteRequirement(data, req)`（**载体制对偶完成路径**：`general` 需求显式完成直接放行；判据 = 需求自身 `workflow_mode` **字段直判**，与载体制门 `:287-290` / `:346` **同源**；禁解析级联——`resolveStageWorkflowMode` 于 `requirement-ops.ts` 仍零出现）；`applyStatusChange` done 门改**单点消费**（谓词恰 1 处新增）；`general` 且有链接（损坏态）**从严回落**路 1（`allLinkedStagesDone`）；`allLinkedStagesDone` 语义零改动（仍含唯一 `.every(`）；i18n +1 键 `req.err.doneGateTmpl`（zh/en 成对）+ 条件消费（`commands/req.ts` set / advance 两处；错误码恒 `invalid_status`）+ `req.advance` help 三处同步；i18n 944 → **945**；C2 断言**显式 supersede**（段 C 注释改写 + 差额对照逐条；聚合面 NEEDLES 6 串零命中保持）。门禁 **71 文件 / 1719 用例** 0 skipped 0 failed、`tsc` 0、`lint kb` 0、build ×2 幂等。 |

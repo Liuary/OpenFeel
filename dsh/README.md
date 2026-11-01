@@ -49,9 +49,28 @@ openfeel setup --tools dsh   # 2. 写入 DSH profile + 按需 pnpm install（可
 #   然后：
 pnpm install --prefer-offline
 
-# 方式 B：经插件管理器安装（file: 拷贝，改代码后需重装）
+**方式 B：经插件管理器安装（file: 拷贝，改代码后需重装）**
 #   plugin_manager install_bundle  →  file:<repo>\dsh
 ```
+
+**方式 C（无 npm 包，git 源）**：经 DSH 官方「发现」页的索引安装，索引指向本仓 `dsh/` 的固定 commit：
+
+```
+# 1. 插件页 → 实验性插件 旁的「更多」→ 打开「自定义插件市场」
+# 2. 已安装 旁的「发现」→「添加索引源」→ 填：
+#      https://liuary.github.io/OpenFeel/market/index.json
+# 3. 卡片上点「安装」，确认框会显示 git 仓库 + commit + 目录
+```
+
+DSH 装成的依赖形如 `git+https://github.com/Liuary/OpenFeel.git#<commit>&path:/dsh`。
+索引生成/校验见 [`docs/market/README.md`](../docs/market/README.md)（`npm run market:index`）。
+
+> **渠道上限（重要）**：git 源条目只能进**官方发现页**。社区市场
+> （awesome-dsh-plugin / dshmarket / 1024Store / dshbase / DSH Community Market）一律要求 npm 包身份，
+> 不会收录 `source.type=git` 的条目。要进社区市场，仍需把 `dsh/` 作为独立 npm 包发布（去掉 `private: true`）。
+> 现状选择是「不发布独立包」，因为适配器与 CLI 的版本必须同步（`openfeel.requiresCli`）。
+> 详见 [`docs/research/dsh-plugin-market-landscape.md`](../docs/research/dsh-plugin-market-landscape.md)。
+
 
 **前置条件**：已安装 OpenFeel CLI（`npm install -g openfeel`，`openfeel --version` 可用）。
 适配器会自动在 PATH、npm 全局 bin、`node` 同目录下探测可执行文件——包括

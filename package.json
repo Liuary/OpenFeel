@@ -14,7 +14,9 @@
     "build": "node build.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "dev": "vitest"
+    "dev": "vitest",
+    "market:index": "node scripts/build-market-index.mjs",
+    "market:index:check": "node scripts/build-market-index.mjs --check"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",

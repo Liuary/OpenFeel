@@ -12,6 +12,8 @@ coverage/
 .openfeel/update_conflicts/
 # preflight 账本（读命令副作用，运行时生成，不纳入版本管理）
 .openfeel/dev/.preflight.json
+# 多会话登记（v1.5.8 / REQ-029：会话心跳，运行时状态，逐次变更不应产生仓库 churn）
+.openfeel/dev/sessions.json
 # 写入门禁审计流水（v1.4.0 起 guard 每次放行/拒绝追加一行；运行时产物，逐次变更不应产生仓库 churn）
 .openfeel/log/guard-audit.jsonl
 

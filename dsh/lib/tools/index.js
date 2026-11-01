@@ -20,6 +20,8 @@ import { readPreflightInfo } from '../adapters/preflight.js';
 import { buildObservability } from '../adapters/observability.js';
 import { computeWorkflowGate } from '../adapters/workflow-gate.js';
 import { resolveWorkspace } from '../adapters/workspace.js';
+// v1.5.8 / REQ-029：多会话登记（与 CLI `.openfeel/dev/sessions.json` 同一文件格式）
+import { readSessions as readSessionEntries, touchSession as touchSessionFile } from '../adapters/sessions.js';
 import {
   boolean,
   compileParameters,
@@ -191,6 +193,8 @@ export function compactStatusSnapshot(snapshot) {
     revision: snapshot?.revision ?? null,
     snapshotAt: snapshot?.snapshotAt ?? null,
     stale: snapshot?.stale === true,
+    // v1.5.8 / REQ-029：会话登记（compact 档同样暴露，体积可控——只含存活/近期会话）
+    sessions: snapshot?.sessions ?? [],
   };
   // 需求概览是显式开关（with_requirements），compact 档同样只在请求时带上
   if (snapshot?.requirements !== undefined) {
@@ -271,6 +275,10 @@ export function createTools(context) {
         snapshot.preflight = preflight;
         snapshot.observability = safeObservability(snapshot);
         snapshot.recovery.nextAction = snapshot.focus.suggestedCommand ?? null;
+        // v1.5.8 / REQ-029：先登记本会话心跳，再读登记表（保证本次调用即可见自身条目）；
+        // touchSessionFile 内部已 try/catch 静默，读失败同样降级为 []（绝不阻断主流程）。
+        touchSessionFile(resolved.cwd, snapshot.focus?.stage ?? '');
+        snapshot.sessions = readSessionEntries(resolved.cwd);
         const focus = snapshot.focus;
         const gateWarning = snapshot.workflowGate.required ? '⚠ 无活跃阶段：非只读任务先 feel_status→建阶段。' : '';
         const staleWarning = snapshot.stale ? '⚠ 快照为降级（flow next 缺失），以 flow status 为准。' : '';
@@ -327,6 +335,9 @@ export function createTools(context) {
         plan.revision = snapshot.revision ?? null;
         plan.snapshotAt = snapshot.snapshotAt ?? null;
         plan.stale = snapshot.stale === true;
+        // v1.5.8 / REQ-029：会话登记（与 feel_status 同源；失败静默）
+        touchSessionFile(resolved.cwd, snapshot.focus?.stage ?? '');
+        plan.sessions = readSessionEntries(resolved.cwd);
         return {
           data: plan,
           summary: plan.summary,
@@ -1361,7 +1372,7 @@ export function createTools(context) {
     presentCall: (args) => presentCall(`Feel 模型 ${args.action}`, args.action, args.agent),
   };
 
-  return [
+  const tools = [
     feelStatus,
     feelNext,
     feelFlow,
@@ -1378,6 +1389,47 @@ export function createTools(context) {
     // 注册表既不编译也不校验 parameters（本插件不经 defineTool），
     // 因此在交给注册表前统一转成子集接受的裸 JSON Schema。
   ].map((tool) => ({ ...tool, parameters: compileParameters(tool.parameters) }));
+
+  // v1.5.8 / REQ-029：会话登记——每次 feel_* 执行都 upsert 一条心跳（stage 从结果派生）。
+  // feel_status / feel_next 已在各自 execute 内登记（能带准确 stage），此处不重复包装。
+  return tools.map((tool) => (tool.name === 'feel_status' || tool.name === 'feel_next'
+    ? tool
+    : {
+      ...tool,
+      async execute(args, exec) {
+        let result;
+        try {
+          result = await tool.execute(args, exec);
+          return result;
+        } finally {
+          try {
+            const workspace = resolveWorkspace(exec, {
+              projectPath: typeof args?.project === 'string' ? args.project : undefined,
+              fallback: cli.cwd,
+            });
+            if (workspace.initialized) touchSessionFile(workspace.projectRoot, stageFromResult(result));
+          } catch {
+            // 静默：会话登记绝不影响工具结果
+          }
+        }
+      },
+    }));
+}
+
+/**
+ * 从工具 wire 结果里尽力取活跃阶段（仅用于会话登记，取不到 → 空串）。
+ * @param {any} result 工具返回值（`details` 为 JSON 字符串）
+ * @returns {string}
+ */
+function stageFromResult(result) {
+  try {
+    const details = typeof result?.details === 'string' ? JSON.parse(result.details) : result?.details;
+    if (details === null || typeof details !== 'object') return '';
+    const stage = details.focus?.stage ?? details.stage;
+    return typeof stage === 'string' ? stage : '';
+  } catch {
+    return '';
+  }
 }
 
 /**

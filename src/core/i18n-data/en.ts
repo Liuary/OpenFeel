@@ -190,6 +190,7 @@ export const flow: I18nDomain = {
   'advance.gitCommitOkTmpl':    { key: 'flow.advance.gitCommitOkTmpl',    zh: '', en: '✓ Stage {stage} auto git commit archived' },
   'advance.gitCommitSkipTmpl':  { key: 'flow.advance.gitCommitSkipTmpl',  zh: '', en: '(Skipped auto git commit: not a git repo or no changes) {stage}' },
   'advance.gitCommitNoRepoWarnTmpl': { key: 'flow.advance.gitCommitNoRepoWarnTmpl', zh: '', en: '[WARN] This workspace is not a git repository: stage {stage} reached done without a version safety net. Run git init or back up manually.' },
+  'advance.gitCommitConcurrentSessionsWarnTmpl': { key: 'flow.advance.gitCommitConcurrentSessionsWarnTmpl', zh: '', en: '[WARN] Concurrent sessions detected ({sessions}): automatic commit was skipped so other sessions\' changes are not swept into the archive commit for stage {stage}. Please make a scoped commit manually (git add <files changed by this session> && git commit). The done transition is unaffected.' },
   'advance.reasonIgnoredTmpl': { key: 'flow.advance.reasonIgnoredTmpl', zh: '', en: '[WARN] --reason is only recorded for review_passed → exec_running rework; ignored this time.' },
   'advance.dryRunForceWarn':    { key: 'flow.advance.dryRunForceWarn',    zh: '', en: '⚠ --force + --dry-run: Stage jump check and invalid phase check skipped' },
   'advance.dryRunTitle':        { key: 'flow.advance.dryRunTitle',        zh: '', en: '═══ Dry-run Preview ═══' },

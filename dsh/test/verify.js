@@ -356,6 +356,35 @@ async function main() {
     assert(status.statusSync && typeof status.statusSync.due === 'boolean', 'feel_status 缺 statusSync');
   });
 
+  await check('feel_status/feel_next 暴露会话登记 sessions（v1.5.8 / REQ-029）', async () => {
+    // 会话登记写 `.openfeel/dev/sessions.json`（运行时状态，已在 .gitignore 忽略）。
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assert(Array.isArray(status.sessions), 'feel_status.sessions 应为数组');
+    assert(status.sessions.length > 0, 'feel_status.sessions 应含当前会话条目');
+    for (const entry of status.sessions) {
+      assert(entry !== null && typeof entry === 'object', 'sessions 元素应为对象');
+      assertString(entry.id, 'sessions[].id');
+      assertString(entry.cwd, 'sessions[].cwd');
+      assertString(entry.lastSeen, 'sessions[].lastSeen');
+      assert(
+        Number.isFinite(Date.parse(entry.lastSeen)),
+        `sessions[].lastSeen 应为可解析时间：${entry.lastSeen}`,
+      );
+      assert(entry.stage === null || typeof entry.stage === 'string', 'sessions[].stage 应为 string|null');
+    }
+    // 本会话条目必须是最近一次心跳（先登记后读取）
+    const newest = [...status.sessions].sort((a, b) => Date.parse(b.lastSeen) - Date.parse(a.lastSeen))[0];
+    assert(newest !== undefined, 'sessions 排序后不应为空');
+    assert(
+      Math.abs(Date.now() - Date.parse(newest.lastSeen)) <= 60_000,
+      `最近一条会话心跳应 ≤ 60s，实际 ${newest.lastSeen}`,
+    );
+
+    const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
+    assert(Array.isArray(next.sessions), 'feel_next.sessions 应为数组');
+    assert(next.sessions.length > 0, 'feel_next.sessions 应含当前会话条目');
+  });
+
   await check('提示段含「只有 Feel 写状态 / 子 agent 禁读写」（v1.5.0）', () => {
     const text = workspace.sections[0].text();
     assert(text.includes('只有 Feel 写状态'), 'zh 提示段缺状态归属');

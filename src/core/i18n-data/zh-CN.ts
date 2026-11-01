@@ -202,6 +202,7 @@ export const flow: I18nDomain = {
   'advance.gitCommitOkTmpl':    { key: 'flow.advance.gitCommitOkTmpl',    zh: '✓ 阶段 {stage} 已自动 git commit 归档',    en: '' },
   'advance.gitCommitSkipTmpl':  { key: 'flow.advance.gitCommitSkipTmpl',  zh: '（跳过自动 git commit：非 git 仓库或无变更）{stage}', en: '' },
   'advance.gitCommitNoRepoWarnTmpl': { key: 'flow.advance.gitCommitNoRepoWarnTmpl', zh: '⚠ 当前仓库未初始化 git：阶段 {stage} 的 done 推进没有版本兜底，建议 git init 或手动备份。', en: '' },
+  'advance.gitCommitConcurrentSessionsWarnTmpl': { key: 'flow.advance.gitCommitConcurrentSessionsWarnTmpl', zh: '⚠ 检测到并发会话（{sessions}）：已跳过自动提交，避免把其它会话的改动混入阶段 {stage} 的归档提交；请手动执行 scoped commit（git add <本会话改动的文件> && git commit）。done 推进不受影响。', en: '' },
   'advance.reasonIgnoredTmpl': { key: 'flow.advance.reasonIgnoredTmpl', zh: '[WARN] --reason 仅在 review_passed → exec_running 返工时记录；本次推进已忽略。', en: '' },
   'advance.dryRunForceWarn':    { key: 'flow.advance.dryRunForceWarn',    zh: '⚠ --force + --dry-run：已跳过阶段跳跃检查和非法 phase 校验', en: '' },
   'advance.dryRunTitle':        { key: 'flow.advance.dryRunTitle',        zh: '═══ Dry-run 预览 ═══',                     en: '' },

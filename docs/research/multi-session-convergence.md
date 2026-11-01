@@ -1,6 +1,6 @@
 # 多会话并行：冲突来源与收束方案（研究）
 
-> 状态：研究稿（v1.5.8 / REQ-028 期间调研）。目标：回答「多个会话同时做不同需求时，如何安全收束」。
+> 状态：研究稿（v1.5.8 / REQ-028 期间调研）。**P0 三项已由 REQ-029 落地**（见 §5）。目标：回答「多个会话同时做不同需求时，如何安全收束」。
 
 ## 1. 今天观察到的真实事故
 
@@ -46,10 +46,13 @@
 
 ## 5. 推荐路线（分阶段）
 
-**P0（本批，低风险）**
+**P0（本批，低风险）— 状态：已实现（v1.5.8 / REQ-029）**
 1. **B 提交作用域**：`autoCommitOnDone` 改为提交「本阶段/本需求归属路径」；至少先过滤 `.openfeel/checkpoints/**`、`dev/sessions.json`、其它会话的未跟踪文件；无法判定归属时**不自动提交**，提示人工。
+   → **已实现**：`shouldAutoCommit()`（纯决策，注入 git 探针）+ 会话登记 `.openfeel/dev/sessions.json`（`src/core/dev/sessions.ts`）；存在其它存活会话 → 跳过提交并告警（不做 `git add -A`）；无改动 / 非 git 仓库 → 跳过；提交排除 `:(exclude).openfeel/checkpoints/**`，消息附 `session=<id>`。`dev/sessions.json` 已入 `.gitignore`（无需 pathspec 过滤）。
 2. **F 收口规则**：stage done 时，把关联且 `draft` 的需求按 `draft → scheduled → in_progress → done` 推进（写审计 `requirement_auto_done`，当前函数已有该 action）；`pipeline.current` 优先非 done 阶段。
+   → **已实现（`pipeline.current` 部分）**：被推进阶段是 current 且推进到 `done` 时，current 切到插入序第一个非 done 阶段（op 置空），全 done 保持现状。`draft` 需求收口部分仍属后续批次（见 §7 第 2 条）。
 3. **G 可观测**：`feel_status` 增 `sessions`（读 claim owner + `.openfeel/dev/sessions.json`）与 `dirtyOwners`（按最近触碰/声明路径推断），guard 重叠告警。
+   → **已实现（`sessions` 部分）**：`feel_status` / `feel_next` 返回 `sessions`；每次 `feel_*` 执行 upsert 心跳（失败静默）。`dirtyOwners` 与 guard 重叠告警仍属后续批次。
 
 **P1**
 4. **D 会话登记 + 需求租约**：`feel_req claim` 写 `lease_until`（可配，默认 2h）；`feel_status` 显示存活；过期允许抢占并审计；guard 对「同一路径两会话」警告。

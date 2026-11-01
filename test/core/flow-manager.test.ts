@@ -878,6 +878,61 @@ describe('FlowManager', () => {
       expect(result).toBe(false);
     });
 
+    // ═══ v1.5.8 / REQ-029 P0：pipeline.current 选择规则（done 阶段不得占据焦点）═══
+    it('REQ-029：A done 后 current 切到插入序第一个非 done 阶段（B），op 置空', () => {
+      const mgr = new FlowManager(tmpDir);
+      const base = makeTestFlowData();
+      mgr.setData({
+        ...base,
+        stages: {
+          A: { ...base.stages['stage-01'], name: 'A', phase: 'archiving' as PipelinePhase },
+          B: { ...base.stages['stage-01'], name: 'B', phase: 'exec_running' as PipelinePhase, ops: {} },
+        },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'A', op: 'op-001' }, retry: 0 },
+      });
+
+      expect(mgr.advanceStagePhase('A', 'done' as PipelinePhase)).toBe(true);
+
+      // 焦点不再停在 done 的 A，而是插入序第一个非 done 阶段 B
+      expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'B', op: '' });
+    });
+
+    it('REQ-029：全部阶段 done 时 current 保持现状（不强制指向 done 阶段）', () => {
+      const mgr = new FlowManager(tmpDir);
+      const base = makeTestFlowData();
+      mgr.setData({
+        ...base,
+        stages: {
+          A: { ...base.stages['stage-01'], name: 'A', phase: 'done' as PipelinePhase },
+          B: { ...base.stages['stage-01'], name: 'B', phase: 'archiving' as PipelinePhase, ops: {} },
+        },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'B', op: 'op-009' }, retry: 0 },
+      });
+
+      expect(mgr.advanceStagePhase('B', 'done' as PipelinePhase)).toBe(true);
+
+      // 无非 done 阶段 → 现状不变（current 仍为 B，op 不被改动）
+      expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'B', op: 'op-009' });
+      expect(mgr.getPhase()).toBe('done');
+    });
+
+    it('REQ-029：非 done 推进仍由 syncCurrentOp 聚焦推进目标（既有语义不变）', () => {
+      const mgr = new FlowManager(tmpDir);
+      const base = makeTestFlowData();
+      mgr.setData({
+        ...base,
+        stages: {
+          A: { ...base.stages['stage-01'], name: 'A', phase: 'archiving' as PipelinePhase },
+          B: { ...base.stages['stage-01'], name: 'B', phase: 'plan_passed' as PipelinePhase, ops: { 'op-001': base.stages['stage-01'].ops['op-001'] } },
+        },
+        pipeline: { phase: 'active' as MetaPhase, current: { stage: 'A', op: '' }, retry: 0 },
+      });
+
+      mgr.advanceStagePhase('B', 'exec_running' as PipelinePhase);
+
+      expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'B', op: 'op-001' });
+    });
+
     it('已是 done 再次推进到 done 应返回 false（不重复触发归档）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
@@ -3867,17 +3922,90 @@ describe('配置级联（stage-42 op-001）', () => {
     it('T16：autoCommitOnDone 以 execFileSync 数组参数调用 git（无 shell 解析）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
-      mockedChild.execFileSync.mockClear();
-      mgr.autoCommitOnDone('stage;1 & rm -rf /');
-      const calls = mockedChild.execFileSync.mock.calls as unknown as Array<[string, string[]]>;
-      expect(calls.length).toBeGreaterThan(0);
-      expect(calls[0][0]).toBe('git');
-      expect(Array.isArray(calls[0][1])).toBe(true);
-      expect(calls[0][1]).toContain('add');
-      const commitCall = calls.find((c) => Array.isArray(c[1]) && c[1].includes('commit'));
-      expect(commitCall).toBeDefined();
-      // stageName 仅作为单个数组元素（commit -m 消息）出现，未被 shell 解析
-      expect(commitCall![1].some((a) => a.includes('stage;1 & rm -rf /'))).toBe(true);
+      mockedChild.execFileSync.mockReset();
+      // v1.5.8 / REQ-029：决策层先跑 git 探针（rev-parse / status --porcelain）→ 按参数分流回包
+      mockedChild.execFileSync.mockImplementation((_cmd: string, args: string[]) => {
+        if (args.includes('rev-parse')) return 'true\n';
+        if (args.includes('status')) return 'M src/app.ts\n';
+        return '';
+      });
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        mgr.autoCommitOnDone('stage;1 & rm -rf /');
+        const calls = mockedChild.execFileSync.mock.calls as unknown as Array<[string, string[]]>;
+        expect(calls.length).toBeGreaterThan(0);
+        // 所有调用都是 git + 数组参数（无 shell 拼接）
+        expect(calls.every((c) => c[0] === 'git')).toBe(true);
+        expect(calls.every((c) => Array.isArray(c[1]))).toBe(true);
+        const addCall = calls.find((c) => Array.isArray(c[1]) && c[1].includes('add'));
+        expect(addCall).toBeDefined();
+        expect(addCall![1]).toContain('-A');
+        // 提交时排除快照目录（REQ-029：checkpoints 属运行时噪声）
+        expect(addCall![1]).toContain(':(exclude).openfeel/checkpoints/**');
+        const commitCall = calls.find((c) => Array.isArray(c[1]) && c[1].includes('commit'));
+        expect(commitCall).toBeDefined();
+        // stageName 仅作为单个数组元素（commit -m 消息）出现，未被 shell 解析
+        expect(commitCall![1].some((a) => a.includes('stage;1 & rm -rf /'))).toBe(true);
+        // 既有消息前缀逐字保留（session= 另起一段，不改变前缀）
+        expect(commitCall![1]).toContain('chore: 阶段归档 stage;1 & rm -rf /');
+      } finally {
+        warn.mockRestore();
+        mockedChild.execFileSync.mockReset();
+      }
+    });
+
+    // ═══ v1.5.8 / REQ-029 P0：自动提交防污染（并发会话 → 绝不清工作树）═══
+    it('REQ-029：检测到并发会话 → 不执行 git add，打印警告（跳过自动提交）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mkdirSync(join(tmpDir, '.openfeel', 'dev'), { recursive: true });
+      writeFileSync(
+        join(tmpDir, '.openfeel', 'dev', 'sessions.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          sessions: [{ id: 'env:neighbour', cwd: tmpDir, lastSeen: new Date().toISOString(), stage: 'B' }],
+        }),
+        'utf-8',
+      );
+      mockedChild.execFileSync.mockReset();
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        mgr.autoCommitOnDone('v1.0.0-stage-01');
+        // 零 git 调用：既不做 git add -A，也不进入任何提交/探测路径
+        expect(mockedChild.execFileSync.mock.calls).toHaveLength(0);
+        const warned = warn.mock.calls.map((c) => String(c[0])).join('\n');
+        expect(warned).toMatch(/并发会话/);
+        expect(warned).toMatch(/env:neighbour/);
+        // 并发跳过不是「无变更」跳过：不得复用 skip 文案
+        expect(log.mock.calls.map((c) => String(c[0])).join('\n')).not.toMatch(/跳过自动 git commit/);
+      } finally {
+        warn.mockRestore();
+        log.mockRestore();
+        mockedChild.execFileSync.mockReset();
+      }
+    });
+
+    it('REQ-029：工作树无改动（git status 空）→ 跳过提交且不调用 git add', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mockedChild.execFileSync.mockReset();
+      mockedChild.execFileSync.mockImplementation((_cmd: string, args: string[]) => {
+        if (args.includes('rev-parse')) return 'true\n';
+        if (args.includes('status')) return '';
+        return '';
+      });
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        mgr.autoCommitOnDone('v1.0.0-stage-01');
+        const calls = mockedChild.execFileSync.mock.calls as unknown as Array<[string, string[]]>;
+        expect(calls.some((c) => c[1].includes('add'))).toBe(false);
+        expect(calls.some((c) => c[1].includes('commit'))).toBe(false);
+        expect(log.mock.calls.map((c) => String(c[0])).join('\n')).toMatch(/跳过自动 git commit/);
+      } finally {
+        log.mockRestore();
+        mockedChild.execFileSync.mockReset();
+      }
     });
 
     it('P2-1：autoCommitOnDone 非 git 仓库 → 显式告警（不是静默跳过）', () => {

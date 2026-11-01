@@ -331,6 +331,8 @@ openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--review-t
 
 支持的阶段（phase）：`plan_pending`、`plan_review`、`plan_passed`、`scheme_pending`、`scheme_review`、`scheme_passed`、`exec_running`、`review_pending`、`review_failed`、`review_passed`、`test_pending`、`test_failed`、`test_passed`、`archiving`、`done`（以运行时 `pipeline.yaml` 为准，用 `openfeel flow phases` 查看）
 
+> **自动提交防污染（v1.5.8 / REQ-029 P0）**：`--to done` 之后的自动 git commit 先做并发决策——`.openfeel/dev/sessions.json` 中存在**其它 10 分钟内活跃的会话**时**跳过提交**（`git add -A` 一次都不执行），改打印警告并提示手动 scoped commit；工作树无改动（`git status --porcelain` 空）/ 非 git 仓库同样跳过。提交时排除快照目录 `:(exclude).openfeel/checkpoints/**`，消息仍为 `chore: 阶段归档 <stage>`（附注 `session=<id>`）。同时：被推进阶段是 `pipeline.current.stage` 且推进到 `done` 时，`current` 自动切到**插入序第一个非 done 阶段**（op 置空），done 阶段不再占据焦点。
+
 ### flow stage add
 
 新增流水线阶段（**注册层**：仅注册 `flow.json`，不创建 `plan/` 目录；通常应使用 `openfeel plan stage add`）。

@@ -41,6 +41,7 @@ import type { RequirementData } from './req/types.js';
 import { syncRequirementStatus } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）
 import { stageRequirementIds } from './req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { getSessionId } from './session.js';                  // 会话标识（stage-86 T4；core→core 零环）
+import { shouldAutoCommit } from './dev/sessions.js';         // 多会话登记 / 自动提交防污染（v1.5.8 / REQ-029）
 
 /** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed' | 'draft';
@@ -1486,6 +1487,48 @@ export class FlowManager {
   // ═══ 推进 ═══
 
   /**
+   * 判定 `pipeline.current.stage` 是否指向给定阶段键（短名/全名归一；**只读**，不改 current）。
+   * @param stageKey 阶段键（`stages` 中的实际键）
+   */
+  private currentPointsAt(stageKey: string): boolean {
+    const cur = this.data?.pipeline.current.stage ?? '';
+    if (cur === '') {
+      return false;
+    }
+    const curKey = this.data?.stages[cur] ? cur : (normalizeStageId(cur) ?? cur);
+    return curKey === stageKey;
+  }
+
+  /**
+   * current 选择规则（v1.5.8 / REQ-029 P0）：把 `pipeline.current` 指向**插入序第一个非 done 阶段**（op 置空）。
+   *
+   * 用于阶段推进到 `done` 之后：
+   * - 当前焦点仍是非 done 阶段 → 不动（不抢占别人的焦点）；
+   * - 当前焦点即为刚 done 的阶段（或已悬空）→ 退到插入序第一个非 done 阶段；
+   * - 全部阶段都 done → **保持现状**（不把 current 挪到 done 阶段；`pipeline.phase=done` 由既有逻辑处理）。
+   *
+   * @returns 是否发生了切换（无其它非 done 阶段 → false）
+   */
+  private focusFirstActiveStage(): boolean {
+    if (!this.data) {
+      return false;
+    }
+    const curRaw = this.data.pipeline.current.stage;
+    const curKey = curRaw ? (this.data.stages[curRaw] ? curRaw : (normalizeStageId(curRaw) ?? curRaw)) : '';
+    const curStage = curKey ? this.data.stages[curKey] : undefined;
+    // 焦点已是活跃（非 done）阶段 → 保持现状，不抢占
+    if (curStage && curStage.phase !== 'done') {
+      return false;
+    }
+    const fallback = Object.keys(this.data.stages).find((k) => this.data!.stages[k].phase !== 'done');
+    if (fallback === undefined) {
+      return false; // 无其它非 done 阶段 → 保持现状（pipeline 全 done）
+    }
+    this.data.pipeline.current = { stage: fallback, op: '' };
+    return true;
+  }
+
+  /**
    * 同步 pipeline.current 到指定阶段中首个 pending / executing 的 op。
    * 单一 owner：被 advanceStagePhase 与 recordAttempt 共用，禁止各自实现。
    * @param stageName 目标阶段 ID（如 'v1.1.2-stage-50'）
@@ -1628,7 +1671,14 @@ export class FlowManager {
     }
 
     // 同步更新 pipeline.current：单一 owner syncCurrentOp（未命中置空 op，修复跨阶段悬空 T1）
-    this.syncCurrentOp(key);
+    // v1.5.8 / REQ-029：**焦点就是被推进阶段**且推进到 done 时，改用「首个非 done 阶段」规则——
+    // done 阶段不得占据焦点（否则 feel_next 以已归档阶段为焦点，见研究稿事故 #4）。
+    // 焦点不在该阶段时的既有语义（syncCurrentOp 聚焦推进目标）保持不变。
+    if (targetPhase === 'done' && this.currentPointsAt(key)) {
+      this.focusFirstActiveStage();
+    } else {
+      this.syncCurrentOp(key);
+    }
 
     // 同步更新 pipeline.phase：所有 stage 均 done 时置 'done'，否则 'active'（P3 全量 done 判定）
     // 说明（T6）：pipeline.phase 无条件覆写，手工 `paused` 属**软状态** —— 阶段推进即视为恢复，
@@ -1775,34 +1825,95 @@ export class FlowManager {
   }
 
   /**
+   * git 工作树探针：是否位于 git 工作树内（失败 / 非仓库 → false）。
+   * 供 `shouldAutoCommit` 注入——决策函数本身保持纯（无 git 调用，可单测）。
+   */
+  private isGitWorkTree(): boolean {
+    try {
+      const revParse = execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
+        stdio: 'pipe',
+        cwd: this.projectPath,
+      });
+      return String(revParse).trim() === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * git 工作树探针：是否存在改动（`git status --porcelain` 非空）。
+   * 探测失败 → 保守返回 true（不因探针失败而静默跳过提交，交给 commit 阶段报错）。
+   */
+  private hasWorkTreeChanges(): boolean {
+    try {
+      const status = execFileSync('git', ['status', '--porcelain'], {
+        stdio: 'pipe',
+        cwd: this.projectPath,
+      });
+      return String(status).trim().length > 0;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
    * 阶段归档自动 git 提交
    * 目标 phase 为 done 时自动将工作区变更提交，保证归档点有版本记录。
    * 非 git 仓库、git 不可用或无变更时静默跳过，不阻塞 done 推进。
    * 必须在 flow.json save() 之后调用，确保 commit 包含本次 phase 变更。
+   *
+   * **多会话防污染（v1.5.8 / REQ-029 P0）**：先走 `shouldAutoCommit` 决策——
+   * 检测到**其它存活会话**时**绝不**执行 `git add -A`（会把别人的未完成改动扫进本阶段归档
+   * 提交，见 docs/research/multi-session-convergence.md 事故 #1），改为告警并提示人工
+   * scoped commit。提交时排除快照目录 `.openfeel/checkpoints/**`（运行时噪声）。
    * @param stageName 阶段名（用于 commit message）
    */
   public autoCommitOnDone(stageName: string): void {
     const lang = getCliLang(process.cwd());
+    const sessionId = getSessionId({ projectPath: this.projectPath });
+    // 决策函数纯：git 探针在此注入（vitest 无 git 时由测试注入假探针）
+    const decision = shouldAutoCommit(this.projectPath, sessionId, Date.now(), {
+      inRepo: () => this.isGitWorkTree(),
+      hasChanges: () => this.hasWorkTreeChanges(),
+    });
+
+    if (decision.reason === 'concurrent-sessions') {
+      // 有并发会话：不清工作树、不提交，交人工 scoped commit（不阻塞 done 推进）
+      console.warn(t('flow.advance.gitCommitConcurrentSessionsWarnTmpl', lang, {
+        stage: stageName,
+        sessions: decision.liveSessions.join(', '),
+      }));
+      return;
+    }
+    if (decision.reason === 'no-repo') {
+      // 非 git 仓库：无版本兜底 → 显式告警（不是静默跳过）
+      console.warn(t('flow.advance.gitCommitNoRepoWarnTmpl', lang, { stage: stageName }));
+      console.log(t('flow.advance.gitCommitSkipTmpl', lang, { stage: stageName }));
+      return;
+    }
+    if (decision.reason === 'no-changes') {
+      console.log(t('flow.advance.gitCommitSkipTmpl', lang, { stage: stageName }));
+      return;
+    }
+
     try {
       const msg = `chore: 阶段归档 ${stageName}`;
       // cwd 指向项目根，确保 git 在 flow.json 所在仓库执行而非进程工作目录
       // 使用 execFileSync 数组参数（无 shell 解析），避免 stageName 注入 shell（T16）
-      execFileSync('git', ['add', '-A'], { stdio: 'pipe', cwd: this.projectPath });
-      execFileSync('git', ['commit', '-m', msg], { stdio: 'pipe', cwd: this.projectPath });
+      // `:(exclude)` 排除 checkpoints 快照目录（运行时产物；其余 .openfeel 状态仍入库）
+      execFileSync('git', ['add', '-A', '--', '.', ':(exclude).openfeel/checkpoints/**'], {
+        stdio: 'pipe',
+        cwd: this.projectPath,
+      });
+      // 会话标识单独成段（不改变既有消息前缀断言 `chore: 阶段归档 <stage>`）
+      execFileSync('git', ['commit', '-m', msg, '-m', `session=${sessionId}`], {
+        stdio: 'pipe',
+        cwd: this.projectPath,
+      });
       console.log(t('flow.advance.gitCommitOkTmpl', lang, { stage: stageName }));
     } catch {
-      // 区分「非 git 仓库」（无版本兜底 → 显式告警）与「无变更」（仅跳过提示）
-      let inGitRepo = false;
-      try {
-        const revParse = execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
-          stdio: 'pipe',
-          cwd: this.projectPath,
-        });
-        inGitRepo = String(revParse).trim() === 'true';
-      } catch {
-        inGitRepo = false;
-      }
-      if (!inGitRepo) {
+      // 提交阶段失败（hook / 冲突 / 竞态）：区分「非 git 仓库」与「无变更」的既有文案
+      if (!this.isGitWorkTree()) {
         console.warn(t('flow.advance.gitCommitNoRepoWarnTmpl', lang, { stage: stageName }));
       }
       // 不在 git 仓库 / git 不可用 / 无变更时静默跳过，不阻塞 done 推进

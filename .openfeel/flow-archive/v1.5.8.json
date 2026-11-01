@@ -1,0 +1,453 @@
+{
+  "version": "v1.5.8",
+  "stages": {
+    "v1.5.8-stage-122": {
+      "name": "v1.5.8-stage-122",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-11-01T06:27:34.464Z",
+        "end_time": "2026-11-01T08:12:42.872Z",
+        "duration_ms": 6308408
+      },
+      "requirement_id": "REQ-024",
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:39.358Z",
+        "note": "批次全量测试与 build 通过",
+        "evidence": "vitest 94 files/2321; dsh contract 46/46; verify 109/109"
+      }
+    },
+    "v1.5.8-stage-123": {
+      "name": "v1.5.8-stage-123",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-11-01T06:42:58.804Z",
+        "end_time": "2026-11-01T06:53:36.002Z",
+        "duration_ms": 637198
+      },
+      "requirement_id": "REQ-026"
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-004",
+      "op": "v1.5.8-stage-123",
+      "stage": "v1.5.8-stage-123",
+      "status": "closed",
+      "priority": "medium",
+      "title": "self-review: stage-123 通过——4 处缺陷执行期已修，6 个负例全拦，1 项未验证已披露",
+      "filed_by": "cli",
+      "filed_at": "2026-11-01T06:53:25.038Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-005",
+      "op": "v1.5.8-stage-122",
+      "stage": "v1.5.8-stage-122",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[self-review] v1.5.8 批次：归档官增强 / 多需求编排 / 多会话 P0 / 完成必审验 / 需求归档与发布门；tsc + vitest 2321 + dsh 46/109/58 全绿",
+      "filed_by": "cli",
+      "filed_at": "2026-11-01T08:12:25.127Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-11-01T06:27:32.226Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:34.461Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:37.252Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:39.608Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:40:38.873Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-01T06:42:58.797Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-01T06:44:02.577Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:44:10.456Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:46:34.983Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:53:27.816Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:53:31.122Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:53:34.256Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.8-stage-123.md"
+      }
+    },
+    {
+      "time": "2026-11-01T06:53:35.996Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:53:50.320Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.8-stage-123",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.8-stage-123.md"
+      }
+    },
+    {
+      "time": "2026-11-01T08:12:21.002Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T08:12:28.521Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T08:12:33.428Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T08:12:39.750Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "opsCount": 0,
+        "reviewsCount": 1,
+        "knowledgeCount": 1,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.8-stage-122.md",
+        "requirementsCount": 7,
+        "releaseNotes": "docs\\releases\\v1.5.8.md",
+        "skillsCount": 1
+      }
+    },
+    {
+      "time": "2026-11-01T08:12:42.860Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-024",
+      "title": "归档官增强：汇总已完成需求 + 生成 docs/releases/vX.md + 按 harness 生成 skill",
+      "status": "done",
+      "created_at": "2026-11-01T06:27:25.243Z",
+      "updated_at": "2026-11-01T06:39:22.059Z",
+      "target_version": "v1.5.8",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-024.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T06:27:29.102Z"
+    },
+    {
+      "id": "REQ-025",
+      "title": "workflowGate 边界：仅有 done 阶段时仍判为有活跃阶段，应视为无开启阶段",
+      "status": "done",
+      "created_at": "2026-11-01T06:27:28.672Z",
+      "updated_at": "2026-11-01T06:29:32.891Z",
+      "target_version": "v1.5.8",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-025.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T06:27:32.631Z"
+    },
+    {
+      "id": "REQ-026",
+      "title": "DSH 适配器发布面：补 engines.dsh（宽松 >=0.2.0）+ 生成插件市场索引（git 源）+ 市场生态调研",
+      "status": "done",
+      "created_at": "2026-11-01T06:39:54.983Z",
+      "updated_at": "2026-11-01T07:12:13.428Z",
+      "target_version": "v1.5.8",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-026.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T06:40:07.323Z"
+    },
+    {
+      "id": "REQ-027",
+      "title": "完成必审验：需求与阶段 done 门强制审查 + 验证证据",
+      "status": "done",
+      "created_at": "2026-11-01T07:01:12.919Z",
+      "updated_at": "2026-11-01T08:12:08.674Z",
+      "target_version": "v1.5.8",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-027.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T07:01:17.531Z",
+      "review": {
+        "result": "pass",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:04.634Z",
+        "note": "独立审查：代码/测试/文档核对通过",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:05.001Z",
+        "note": "tsc 干净 + vitest 全绿 + build 通过",
+        "evidence": "vitest 94 files / 2321 tests; dsh contract 46/46; verify 109/109"
+      }
+    },
+    {
+      "id": "REQ-028",
+      "title": "stage 多需求编排：requirements[] 链接 + 兼容旧单值 + 聚合/归档列全",
+      "status": "done",
+      "created_at": "2026-11-01T07:05:35.126Z",
+      "updated_at": "2026-11-01T08:12:10.584Z",
+      "target_version": "v1.5.8",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-028.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T07:10:48.597Z",
+      "review": {
+        "result": "pass",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:05.391Z",
+        "note": "独立审查：代码/测试/文档核对通过",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:05.764Z",
+        "note": "tsc 干净 + vitest 全绿 + build 通过",
+        "evidence": "vitest 94 files / 2321 tests; dsh contract 46/46; verify 109/109"
+      }
+    },
+    {
+      "id": "REQ-029",
+      "title": "多会话收束 P0：会话登记 + 自动提交防污染（多会话时拒绝 -A）+ current 优先非 done 阶段 + feel_status.sessions",
+      "status": "done",
+      "created_at": "2026-11-01T07:12:16.388Z",
+      "updated_at": "2026-11-01T08:12:11.027Z",
+      "target_version": "v1.5.8",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-029.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T07:12:18.977Z",
+      "review": {
+        "result": "pass",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:06.127Z",
+        "note": "独立审查：代码/测试/文档核对通过",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:06.511Z",
+        "note": "tsc 干净 + vitest 全绿 + build 通过",
+        "evidence": "vitest 94 files / 2321 tests; dsh contract 46/46; verify 109/109"
+      }
+    },
+    {
+      "id": "REQ-030",
+      "title": "需求随版本归档 + 需求 ID 单调计数器（last_req_seq）+ 发布门 release-check / 未完成需求顺延",
+      "status": "done",
+      "created_at": "2026-11-01T07:12:47.086Z",
+      "updated_at": "2026-11-01T08:12:10.102Z",
+      "target_version": "v1.5.8",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-030.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T07:12:49.181Z",
+      "review": {
+        "result": "pass",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:06.872Z",
+        "note": "独立审查：代码/测试/文档核对通过",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "Feel",
+        "at": "2026-11-01T08:12:07.289Z",
+        "note": "tsc 干净 + vitest 全绿 + build 通过",
+        "evidence": "vitest 94 files / 2321 tests; dsh contract 46/46; verify 109/109"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 2,
+    "reviews": 2,
+    "log": 19,
+    "requirements": 7
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-01T08:12:48.862Z"
+}

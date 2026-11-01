@@ -1,3 +1,20 @@
+## [1.5.8] - 2026-11-01
+
+> 需求导向批次（二）：归档官增强、stage 多需求编排、多会话收束 P0、完成必审验、需求随版本归档与发布门。全部需求完成后归档并发布。
+
+### Added
+- [stage-122] 归档官增强（REQ-024）：归档时汇总已完成需求、生成 `docs/releases/<version>.md` 草稿、按当前 harness 生成 `SKILL.md`（.dsh/.claude/.opencode）；`archive --skill <slug>`。
+- [stage-122] stage 多需求编排（REQ-028）：`stages[*].requirements[]` 权威、旧单值兼容、`req link` 多值/单解绑/全清、聚合与归档单点派生。
+- [stage-122] 多会话收束 P0（REQ-029）：`.openfeel/dev/sessions.json` 会话登记；并发会话时自动提交跳过（防 `git add -A` 污染）；`pipeline.current` done 后切非 done；`feel_status/feel_next` 增 `sessions`。
+- [stage-122] 完成必审验（REQ-027）：需求 done 门 = 相位 + `review.pass` + `verification.pass`；阶段 `archiving→done` 需 `stage.verification.pass` + 关联需求全 done；新增 `req review` / `req verify` / `stage verify`。
+- [stage-122] 需求随版本归档与发布门（REQ-030）：归档文件增 `requirements`（终态随版本搬走）；`meta.last_req_seq` 防 ID 复用；`req next` 数值排序；`req release-check`；`req rollover`（`carried_from`）；归档 `--allow-unfinished` 软门；`req list --include-archived`。
+
+### Changed
+- [stage-122] 版本 1.5.8 收口：package.json / dsh / config / README / CHANGELOG / VERSIONS 同步；`npm run build` 重生成模板。
+- [stage-122] 适配器 `feel_req` 增 `release-check` / `rollover` / `include_archived`，`feel_archive` 增 `allow_unfinished`。
+
+### Fixed
+- [stage-122] `plan stage add` 复用已归档阶段目录（REQ-021，已在 1.5.7 发布）；`feel_status` 默认 compact（REQ-022，1.5.7）；需求完成与阶段关闭解耦（REQ-023，1.5.7）。
 # Changelog
 
 本项目的全部重要变更记录在本文档中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
@@ -718,3 +735,4 @@
 
 ### Fixed
 - 一期部署验证：首个测试项目端到端跑通，产出部署对比分析报告
+

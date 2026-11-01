@@ -37,6 +37,7 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
 
+- **v1.5.8** — Requirement-first batch: archiver gathers completed requirements, writes `docs/releases/<version>.md` and harness-aware skills; stages hold multiple requirements (`requirements[]`); multi-session P0 (sessions registry, auto-commit pollution guard, current-stage rule, `feel_status.sessions`); completion requires review + verification evidence at both requirement and stage level; completed requirements travel into version archives with a monotonic `last_req_seq` counter, plus `req release-check` / `req rollover` (carried_from) and an `--allow-unfinished` archive gate.
 ## v1.5.7 — 需求导向：阶段长期开启 + 需求完成与阶段关闭解耦
 
 - **阶段 = 版本容器**：默认按当前小版本开一个阶段并**保持 `exec_running`**，一个阶段容纳多个需求；不再「每做一个需求就建/推进/关闭阶段」。无开启阶段时才开新阶段。
@@ -220,3 +221,4 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 ---
 
 > 更早版本（v1.0.x / v1.1.0 / v1.1.1 等）见 [CHANGELOG.md](../CHANGELOG.md) 与 [docs/index.md](index.md)。
+

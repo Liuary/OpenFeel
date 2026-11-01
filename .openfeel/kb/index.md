@@ -399,6 +399,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-11-01 | patterns | [REV-001] [self-review] v1.5.9 批次：v1.5.7 归档补齐 + 文档快照 v1.5.8 + eslint 清零 + sessions.stage 修复；tsc/lint/vitest 2321 全绿 |
 | 2026-11-01 | patterns | [REV-005] [self-review] v1.5.8 批次：归档官增强 / 多需求编排 / 多会话 P0 / 完成必审验 / 需求归档与发布门；tsc + vitest 2321 + dsh 46/109/58 全绿 |
 | 2026-11-01 | patterns | [REV-004] self-review: stage-123 通过——4 处缺陷执行期已修，6 个负例全拦，1 项未验证已披露 |
 | 2026-11-01 | patterns | [REV-004] self-review: stage-123 通过——4 处缺陷执行期已修，6 个负例全拦，1 项未验证已披露 |

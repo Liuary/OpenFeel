@@ -4705,3 +4705,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-005] [self-review] v1.5.8 批次：归档官增强 / 多需求编排 / 多会话 P0 / 完成必审验 / 需求归档与发布门；tsc + vitest 2321 + dsh 46/109/58 全绿 (2026-11-01)
 
 归档自阶段 v1.5.8-stage-122
+
+## [+] [REV-001] [self-review] v1.5.9 批次：v1.5.7 归档补齐 + 文档快照 v1.5.8 + eslint 清零 + sessions.stage 修复；tsc/lint/vitest 2321 全绿 (2026-11-01)
+
+归档自阶段 v1.5.9-stage-124

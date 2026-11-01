@@ -1246,7 +1246,9 @@ export const req: I18nDomain = {
   // req link
   'link.doneTmpl':       { key: 'req.link.doneTmpl',          zh: '已将 {stage} 关联到 {id}', en: '' },
   'link.unlinkDoneTmpl': { key: 'req.link.unlinkDoneTmpl',    zh: '已解除 {stage} 的需求关联', en: '' },
+  'link.unlinkOneTmpl':  { key: 'req.link.unlinkOneTmpl',     zh: '已解除 {stage} 与 {id} 的关联', en: '' },
   'link.noopTmpl':       { key: 'req.link.noopTmpl',          zh: '{stage} 关联未变化（no-op）', en: '' },
+  'link.needArgTmpl':    { key: 'req.link.needArgTmpl',       zh: '必须提供 --requirement（关联 / 解绑单个）或 --unlink（清空全部）之一', en: '' },
   'link.exclusiveTmpl':  { key: 'req.link.exclusiveTmpl',     zh: '--requirement 与 --unlink 必须且只能提供一个', en: '' },
   'link.terminalTmpl':   { key: 'req.link.terminalTmpl',      zh: '{id} 已是终态（{status}），不可关联', en: '' },
   'link.modeSyncedTmpl': { key: 'req.link.modeSyncedTmpl',    zh: '已将需求工作流模式 {mode} 下发到阶段 {stage}（status.md 字段 + flow.json 冗余同批）', en: '' },

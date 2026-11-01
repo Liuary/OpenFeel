@@ -13,6 +13,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { stageRequirementIds } from './req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028；零运行时环）
 
 /** 默认同步间隔（分钟） */
 export const DEFAULT_SYNC_INTERVAL_MINUTES = 30;
@@ -92,7 +93,12 @@ function readPipelineBrief(projectPath: string): {
   const empty = { stage: null, phase: null, requirement: null, lastAction: null, lastActionAt: null, stageCount: 0 };
   try {
     const flow = JSON.parse(readFileSync(join(projectPath, '.openfeel', 'flow.json'), 'utf-8')) as {
-      stages?: Record<string, { phase?: string; requirement_id?: string | null }>;
+      stages?: Record<string, {
+        phase?: string;
+        requirement_id?: string | null;
+        // v1.5.8 / REQ-028 多值关联（原始 JSON 读取面；经 stageRequirementIds 单点兜底旧字段）
+        requirements?: Array<{ id?: string } | null>;
+      }>;
       log?: Array<{ time?: string; action?: string }>;
     };
     const stages = flow.stages ?? {};
@@ -101,7 +107,8 @@ function readPipelineBrief(projectPath: string): {
     return {
       stage: active?.[0] ?? null,
       phase: active?.[1]?.phase ?? null,
-      requirement: active?.[1]?.requirement_id ?? null,
+      // 多值模型下取首个关联需求（既有单值输出面形状不变）
+      requirement: active ? (stageRequirementIds(active[1])[0] ?? null) : null,
       lastAction: lastLog?.action ?? null,
       lastActionAt: lastLog?.time ?? null,
       stageCount: Object.keys(stages).length,

@@ -11,8 +11,15 @@
  */
 import type { FlowData, HealthCheckItem, PipelinePhase } from '../flow-manager.js';   // 仅类型（编译期擦除；防运行时环）
 import { allLinkedStagesDone } from './requirement-ops.js';   // done 判定唯一原语（REV-83-002）
+import { stageRequirementIds } from './stage-links.js';       // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import type { RequirementStatus } from './types.js';
 import { t } from '../i18n.js';                                        // 对账文案（新键 flow.health.req*；双表成对）
+
+/**
+ * 阶段↔需求关联读取单点的对外再导出（v1.5.8 / REQ-028）。
+ * 既有调用面（命令层 / 归档 / 开发状态）可经 aggregate 取用，实现仍是 `stage-links.ts` 单份。
+ */
+export { stageRequirementIds, type StageRequirementFields } from './stage-links.js';
 
 /** auto-done 前置集（REV-83-004）：聚合 done 时自动置 done 的合法来源状态。
  *  health 漂移判据与此**同口径**（结构化单点，禁第二份列表）；draft/blocked/终态为设计豁免。 */
@@ -45,7 +52,8 @@ export interface LinkedStage {
 
 /**
  * 需求关联阶段单点过滤（命令层输出面 + 聚合投影的唯一实现）。
- * requirement_id 缺省 / 空串 / null 一律视为未关联（与既有 `(s.requirement_id ?? null) === requirementId` 等价）。
+ * 关联判定经 `stageRequirementIds`（v1.5.8 / REQ-028）：多值 `requirements[]` 权威、旧 `requirement_id` 兜底；
+ * 缺省 / 空串 / null 一律视为未关联。
  * 边界：core 引擎层 done 判定原语（allLinkedStagesDone / hasLinked）为领域逻辑，保留、不在本单点范围。
  * @param data flow 数据（只读）
  * @param requirementId 需求 ID
@@ -53,7 +61,7 @@ export interface LinkedStage {
  */
 export function listLinkedStages(data: FlowData, requirementId: string): LinkedStage[] {
   return Object.entries(data.stages ?? {})
-    .filter(([, s]) => (s.requirement_id ?? null) === requirementId)
+    .filter(([, s]) => stageRequirementIds(s).includes(requirementId))
     .map(([id, s]) => ({ id, phase: s.phase }));
 }
 
@@ -81,19 +89,33 @@ export function computeRequirementAggregate(data: FlowData, requirementId: strin
 }
 
 /**
- * 单阶段 → 其关联需求的目标状态（纯函数；供回写入口消费）。
- * 阶段不存在 / 无关联（null / undefined / 空串）→ null（早返回单点——零动作）。
+ * 单阶段 → 其**全部**关联需求的目标状态列表（纯函数；供回写入口消费）。
+ * v1.5.8 / REQ-028：阶段可挂多个需求 → 逐个独立投影（各自聚合可能不同：同一需求可能还挂在其它阶段）。
+ * 阶段不存在 / 无关联（缺省 / 空串 / 空集）→ []（早返回单点——零动作）。
+ */
+export function resolveRequirementStatusesForStage(
+  data: FlowData,
+  stageId: string,
+): Array<{ requirementId: string; target: Exclude<RequirementAggregateValue, null> }> {
+  const stage = data.stages?.[stageId];
+  const resolved: Array<{ requirementId: string; target: Exclude<RequirementAggregateValue, null> }> = [];
+  for (const requirementId of stageRequirementIds(stage)) {
+    const agg = computeRequirementAggregate(data, requirementId);
+    if (agg.aggregate === null) { continue; }   // 不可达（该阶段自身即关联）——防御
+    resolved.push({ requirementId, target: agg.aggregate });
+  }
+  return resolved;
+}
+
+/**
+ * 单阶段 → 首个关联需求的目标状态（v1.5.7 及以前签名；保留向后兼容）。
+ * 语义 = `resolveRequirementStatusesForStage` 的首元素（无关联 → null）。
  */
 export function resolveRequirementStatusForStage(
   data: FlowData,
   stageId: string,
 ): { requirementId: string; target: Exclude<RequirementAggregateValue, null> } | null {
-  const stage = data.stages?.[stageId];
-  const requirementId = stage?.requirement_id ?? null;
-  if (!requirementId) { return null; }
-  const agg = computeRequirementAggregate(data, requirementId);
-  if (agg.aggregate === null) { return null; }   // 不可达（该阶段自身即关联）——防御
-  return { requirementId, target: agg.aggregate };
+  return resolveRequirementStatusesForStage(data, stageId)[0] ?? null;
 }
 
 /** 追加聚合回写审计日志（纯内存；save 由调用方承担；与需求原语审计同形——agent 'cli'，S-83-6） */
@@ -107,30 +129,31 @@ function appendAggregateLog(data: FlowData, action: string, detail: Record<strin
  * - 聚合 done ∧ status ∈ AUTO_DONE_PRECONDITION → 置 done + 审计 requirement_auto_done；
  * - 聚合 ≠ done ∧ status === 'done' → 回退 'in_progress'（不做 done→scheduled 细粒度回退，S-83-5）+ 审计 requirement_auto_reopen；
  * - 其余（前置集外 / 悬空关联 / 状态无变化）→ 零动作零审计。
+ * v1.5.8 / REQ-028：阶段可挂多个需求 → 对**每个**关联需求各自投影与回写（各自 target 独立）。
  * 触发点由调用方约束：advance 仅 done 分支 / reset 写入后（op-002）；dry-run 路径均不可达。
  */
 export function syncRequirementStatus(data: FlowData, stageId: string): string[] {
-  const resolved = resolveRequirementStatusForStage(data, stageId);
-  if (!resolved) { return []; }
-  // raw find 改本体（禁经浅副本——与需求原语写路径同纪律）；非数组视同空集（读侧宽容，零注入）
-  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === resolved.requirementId);
-  if (!req) { return []; }   // 悬空 requirement_id → 零动作（health 对账报告，不自动修）
   const affected: string[] = [];
-  if (resolved.target === 'done') {
-    // 正向：聚合 done ∧ 前置集内 → done（前置集外零动作零审计——REV-83-004）
-    if ((AUTO_DONE_PRECONDITION as readonly string[]).includes(req.status)) {
-      const from = req.status;
-      req.status = 'done';
+  for (const resolved of resolveRequirementStatusesForStage(data, stageId)) {
+    // raw find 改本体（禁经浅副本——与需求原语写路径同纪律）；非数组视同空集（读侧宽容，零注入）
+    const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === resolved.requirementId);
+    if (!req) { continue; }   // 悬空关联 → 零动作（health 对账报告，不自动修）
+    if (resolved.target === 'done') {
+      // 正向：聚合 done ∧ 前置集内 → done（前置集外零动作零审计——REV-83-004）
+      if ((AUTO_DONE_PRECONDITION as readonly string[]).includes(req.status)) {
+        const from = req.status;
+        req.status = 'done';
+        req.updated_at = new Date().toISOString();
+        appendAggregateLog(data, 'requirement_auto_done', { requirementId: req.id, from, to: 'done', triggerStage: stageId });
+        affected.push(req.id);
+      }
+    } else if (req.status === 'done') {
+      // 对称回退（聚合视图，不绑定事件）：聚合 ≠ done ∧ status === done → in_progress（REV-83-005）
+      req.status = 'in_progress';
       req.updated_at = new Date().toISOString();
-      appendAggregateLog(data, 'requirement_auto_done', { requirementId: req.id, from, to: 'done', triggerStage: stageId });
+      appendAggregateLog(data, 'requirement_auto_reopen', { requirementId: req.id, from: 'done', to: 'in_progress', triggerStage: stageId });
       affected.push(req.id);
     }
-  } else if (req.status === 'done') {
-    // 对称回退（聚合视图，不绑定事件）：聚合 ≠ done ∧ status === done → in_progress（REV-83-005）
-    req.status = 'in_progress';
-    req.updated_at = new Date().toISOString();
-    appendAggregateLog(data, 'requirement_auto_reopen', { requirementId: req.id, from: 'done', to: 'in_progress', triggerStage: stageId });
-    affected.push(req.id);
   }
   return affected;
 }
@@ -141,7 +164,7 @@ const SECTION_REQ_LINKS = '需求对账';
 const SECTION_REQ_DRIFT = '需求漂移';
 
 /**
- * 需求对账检查项（只读纯函数）：① 悬空 requirement_id（阶段引用的需求不存在）；
+ * 需求对账检查项（只读纯函数）：① 悬空关联（阶段引用的需求不存在；多值逐条检查）；
  * ② done 漂移（**前置集内**（AUTO_DONE_PRECONDITION 同口径单点）∧ 聚合 done ∧ status ≠ done——
  * draft/blocked/终态为设计豁免不报）。恒无 fail → 不改退出码、不参与 --fix（对齐归档对账范式）。
  */
@@ -152,11 +175,12 @@ export function requirementHealthItems(input: { data: FlowData; lang?: string })
   const requirements = Array.isArray(data.requirements) ? data.requirements : [];
   const ids = new Set(requirements.map((r) => r?.id).filter((x): x is string => typeof x === 'string'));
 
-  // ① 悬空需求关联（阶段 → 不存在需求）
+  // ① 悬空需求关联（阶段 → 不存在需求；v1.5.8 / REQ-028 多值逐条）
   const dangling: string[] = [];
   for (const [stageId, s] of Object.entries(data.stages ?? {})) {
-    const rid = s?.requirement_id ?? null;
-    if (rid !== null && rid !== '' && !ids.has(rid)) { dangling.push(`${stageId} → ${rid}`); }
+    for (const rid of stageRequirementIds(s)) {
+      if (!ids.has(rid)) { dangling.push(`${stageId} → ${rid}`); }
+    }
   }
   if (dangling.length === 0) {
     items.push({ section: SECTION_REQ_LINKS, status: 'pass', message: t('flow.health.reqLinksPassTmpl', lang, { n: String(requirements.length) }) });

@@ -39,6 +39,7 @@ import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, WORKFL
 import { getGlobalProfilePath } from './global-paths.js';
 import type { RequirementData } from './req/types.js';
 import { syncRequirementStatus } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）
+import { stageRequirementIds } from './req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { getSessionId } from './session.js';                  // 会话标识（stage-86 T4；core→core 零环）
 
 /** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
@@ -104,6 +105,19 @@ export interface LogEntry {
 /** flow.json.log 保留上限（v1.5.0 日志瘦身：只留简要操作记录） */
 export const MAX_LOG_ENTRIES = 200;
 
+/**
+ * 阶段 ↔ 需求关联条目（v1.5.8 / REQ-028 多值模型）。
+ * `id` 必填；`role` / `order` 为可选编排元数据（排序 / 角色标注），读侧宽容。
+ */
+export interface StageRequirementLink {
+  /** 需求 ID（如 REQ-028） */
+  id: string;
+  /** 可选角色标注（如 owner / reviewer；自由文本，不参与判定） */
+  role?: string;
+  /** 可选排序键（同阶段内展示顺序；缺省按声明顺序） */
+  order?: number;
+}
+
 /** 阶段数据结构 */
 export interface StageData {
   name: string;
@@ -116,7 +130,15 @@ export interface StageData {
   stats?: StageStats;
   /** 工作流模式（可选冗余，不参与级联；读取权威恒为 status.md/级联，裁定 G） */
   workflow_mode?: WorkflowMode;
-  /** 关联需求 ID（单值可空；存量缺省 ≡ null，不迁移——裁定 D/L） */
+  /**
+   * 关联需求列表（v1.5.8 / REQ-028 多值权威面；一个阶段可挂多个需求）。
+   * 读侧单点：`stageRequirementIds`（src/core/req/stage-links.ts），禁就地过滤。
+   */
+  requirements?: StageRequirementLink[];
+  /**
+   * 关联需求 ID（**旧版单值兼容字段**，v1.5.7 及以前的数据模型）。
+   * 写路径已退役（不再写入）；读路径仅在 `requirements` 缺省 / 空集时兜底（裁定 D/L 兼容）。
+   */
   requirement_id?: string | null;
 }
 
@@ -2535,10 +2557,10 @@ export class FlowManager {
     }
     // ── 需求级层（stage-90 T2.2）：阶段关联需求携带的模式属性 ──
     // 读侧宽容：缺失 / 悬空 / 非法 → 自然回落下一层（零报错）；阶段定位与 status.md 层同域（归一 + 键回退）
+    // v1.5.8 / REQ-028：一个阶段可挂多个需求 —— 按 `stageRequirementIds` 声明序取**首个**携带合法模式的需求
     const reqTarget = stageId ?? this.data?.pipeline.current.stage;
     const reqStageRec = reqTarget ? this.data?.stages?.[normalizeStageId(reqTarget) ?? reqTarget] : undefined;
-    const reqId = reqStageRec?.requirement_id ?? null;
-    if (reqId) {
+    for (const reqId of stageRequirementIds(reqStageRec)) {
       const reqRec = (Array.isArray(this.data?.requirements) ? this.data!.requirements : []).find((r) => r?.id === reqId);
       const reqMode = reqRec?.workflow_mode;
       if (reqMode !== undefined && (WORKFLOW_MODES as readonly string[]).includes(reqMode)) {

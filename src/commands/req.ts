@@ -455,13 +455,13 @@ export function registerReqCommand(program: Command): void {
       console.log(t('req.set.doneTmpl', lang, { id }));
     });
 
-  // ── req link --stage <stageId> (--requirement <id> | --unlink) ──
+  // ── req link --stage <stageId> (--requirement <id> [--unlink] | --unlink) ──
   req
     .command('link')
-    .description('关联需求到阶段 / 解绑（--requirement 与 --unlink 二选一）')
+    .description('关联需求到阶段（可多个）/ 解绑（--unlink 单个或全部）')
     .requiredOption('--stage <stageId>', '阶段 ID（stage-NN 或 vX.Y.Z-stage-NN）')
-    .option('--requirement <id>', '需求 ID（关联用；与 --unlink 互斥）')
-    .option('--unlink', '解除该阶段的需求关联')
+    .option('--requirement <id>', '需求 ID（关联用；与 --unlink 同用时表示只解绑该需求）')
+    .option('--unlink', '解除该阶段的需求关联（缺省清空全部；与 --requirement 同用只解该需求）')
     .action((options: { stage: string; requirement?: string; unlink?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
@@ -470,11 +470,11 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       const data = mgr.getData()!;
-      // 互斥守卫（argument-shape）：both / neither 均拒绝
+      // 参数守卫（argument-shape）：至少提供一个（v1.5.8 / REQ-028：两者同用 = 只解绑该需求）
       const hasRequirement = options.requirement !== undefined;
       const hasUnlink = options.unlink === true;
-      if (hasRequirement === hasUnlink) {
-        console.error(t('req.link.exclusiveTmpl', lang));
+      if (!hasRequirement && !hasUnlink) {
+        console.error(t('req.link.needArgTmpl', lang));
         process.exitCode = 1;
         return;
       }
@@ -489,9 +489,12 @@ export function registerReqCommand(program: Command): void {
         }
         requirementId = options.requirement!;
       }
-      // v1.5.6-stage-114：写前 preflight（互斥守卫 / reqId 校验已在门前）
+      // v1.5.6-stage-114：写前 preflight（参数守卫 / reqId 校验已在门前）
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
-      const r = linkRequirement(data, stageKey, requirementId);
+      // 三分支：link（追加）/ unlink 单个 / unlink 全部
+      const r = hasUnlink
+        ? linkRequirement(data, stageKey, null, hasRequirement ? { unlinkRequirementId: requirementId! } : {})
+        : linkRequirement(data, stageKey, requirementId);
       if (!r.ok) {
         failCode(lang, r.code, {
           stage_not_found: t('req.err.stageNotFoundTmpl', lang, { stage: stageKey }),
@@ -513,7 +516,7 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       // stage-90 T2.3：需求级模式下发（需求携带 workflow_mode 时经单点同步到关联阶段）
-      if (hasRequirement && requirementId) {
+      if (!hasUnlink && hasRequirement && requirementId) {
         const reqLinked = getRequirement(data, requirementId);
         if (reqLinked?.workflow_mode) {
           const synced = mgr.syncConfigFieldToStages('workflow_mode', reqLinked.workflow_mode, { onlyStages: [stageKey] });
@@ -522,9 +525,13 @@ export function registerReqCommand(program: Command): void {
           }
         }
       }
-      console.log(hasRequirement
-        ? t('req.link.doneTmpl', lang, { stage: stageKey, id: requirementId ?? '' })
-        : t('req.link.unlinkDoneTmpl', lang, { stage: stageKey }));
+      if (hasUnlink) {
+        console.log(hasRequirement
+          ? t('req.link.unlinkOneTmpl', lang, { stage: stageKey, id: requirementId ?? '' })
+          : t('req.link.unlinkDoneTmpl', lang, { stage: stageKey }));
+      } else {
+        console.log(t('req.link.doneTmpl', lang, { stage: stageKey, id: requirementId ?? '' }));
+      }
     });
 
   // ── req advance <id> --to <status> ──

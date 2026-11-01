@@ -1202,7 +1202,9 @@ export const req: I18nDomain = {
   // req link
   'link.doneTmpl':       { key: 'req.link.doneTmpl',          zh: '', en: 'Linked {stage} to {id}' },
   'link.unlinkDoneTmpl': { key: 'req.link.unlinkDoneTmpl',    zh: '', en: 'Unlinked requirement from {stage}' },
+  'link.unlinkOneTmpl':  { key: 'req.link.unlinkOneTmpl',     zh: '', en: 'Unlinked {id} from {stage}' },
   'link.noopTmpl':       { key: 'req.link.noopTmpl',          zh: '', en: '{stage} link unchanged (no-op)' },
+  'link.needArgTmpl':    { key: 'req.link.needArgTmpl',       zh: '', en: 'Provide --requirement (link / unlink one) or --unlink (clear all)' },
   'link.exclusiveTmpl':  { key: 'req.link.exclusiveTmpl',     zh: '', en: 'Provide exactly one of --requirement or --unlink' },
   'link.terminalTmpl':   { key: 'req.link.terminalTmpl',      zh: '', en: '{id} is in a terminal status ({status}); cannot link' },
   'link.modeSyncedTmpl': { key: 'req.link.modeSyncedTmpl',    zh: '', en: 'Requirement workflow mode {mode} dispatched to stage {stage} (status.md field + flow.json redundancy batched)' },

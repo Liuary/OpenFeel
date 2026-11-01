@@ -874,18 +874,19 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 | `req claim <id>` | 认领需求（占用校验） | `--owner <owner>` |
 | `req release <id>` | 释放认领（未认领为 no-op 成功） | — |
 | `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` / `--workflow-mode` |
-| `req link` | 关联需求到阶段 / 解绑（二选一） | `--stage <stageId>`、`--requirement <id>`、`--unlink` |
+| `req link` | 关联需求到阶段（**一个阶段可挂多个需求**） / 解绑（单个或全部） | `--stage <stageId>`、`--requirement <id>`、`--unlink` |
 | `req advance <id>` | 显式推进需求状态 | `--to <status>` |
 | `req split <id>` | 拆分需求为若干子需求（**拆分即发布**：子需求入 `scheduled`） | `--into <title>`（**可重复**，至少一项）、`--json` |
 | `req board` | 需求看板（7 组固定顺序） | `--target-version <version>`、`--json` |
 | `req next` | 推荐下一个可接取需求 | `--owner <owner>`、`--json` |
 
+- **`req link` 多值语义（v1.5.8 / REQ-028）**：`flow.json` 的 `stages[*].requirements[]` 是**权威**关联面（元素 `{id, role?, order?}`），一个阶段可挂多个需求，一个需求也可被多个阶段引用；同一需求重复链接为**幂等 no-op**。写路径**不再写**旧单值键 `stage.requirement_id`（旧数据读取仍兼容：`requirements` 缺省 / 空集时回落到 `requirement_id`；首次追加链接时把旧单值迁移进 `requirements[]` 并清空旧键，防双真源）。解绑三分支：`--requirement <id>` 关联 ｜ `--unlink --requirement <id>` **只解绑该需求** ｜ `--unlink`（无 requirement）**清空该阶段全部关联**；两者都不给 → 参数错误 exit 1。`req show` / `req list --json` 的 `linkedStages`、`flow status` 的 `requirementId`（取首个关联需求）与归档摘要的「已完成需求 / 关联需求」均经单点 `stageRequirementIds` 派生。
 - **退出码**：`0` 成功 ｜ `1` 校验 / 占用 / 存在性失败（经 `process.exitCode`；错误码 分流 `not_found` / `stage_not_found` / `already_claimed` / `invalid_field` / `invalid_status` / `general_mode_conflict`）｜ `2` 并发写冲突（共享单点）。
 - **`--json` 契约**：**5 命令（4 读 + `split`）**——四读命令（`list` / `show` / `board` / `next`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。`split`（写命令）= 成功 `{ schemaVersion, parent, children }`，同样遵循单文档契约。**`req list`（v1.2.2）**：`requirements[]` 元素**末位**追加 `linkedStages[]{id,phase}` / `progress{done,total}`（零关联 `[]` + `{0,0}`；既有字段顺序/值不变）。失败 envelope / legacy `errorKind` 判别见上「错误封装（v1.2.2）」。
 - **`--workflow-mode`（v1.2.1-stage-90 起）**：值域 `full` / `fast` / `general`；**`general`（无流水线）仅需求级合法**——阶段级 / 部署级写入面拒绝（`general_mode_conflict` 亦在需求与阶段关联时触发：`general` 需求不接受阶段关联）。**done 门（v1.5.7 / REQ-023 重定义）**：**阶段 = 版本容器**（长期保持在 `exec_running`），**需求 = 工作单元**，可在阶段仍开启时完成。① **零关联阶段**的需求可直接显式完成；② **有关联阶段**时，每个关联阶段只需已进入 `exec_running` 及之后相位（`exec_running` / `review_*` / `test_*` / `archiving` / `done`）即可完成；仍有阶段处于 `plan_pending` / `plan_review` / `plan_passed` / `scheme_pending` / `scheme_review` / `scheme_passed` 时拒绝并输出专用文案（`req.err.doneGateTmpl`）。**注意**：聚合**自动收口**仍要求全部关联阶段 done（`aggregate.ts` 空集守卫不变）；显式完成不等于自动收口。
 - **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`。
 - **preflight（v1.5.6）**：7 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split`）全部受门。顺序约定：**ID 格式校验先于门**（`req claim REQ-XXX` 报非法 ID，不报 preflight）；`req split --json` 的拒绝形态为 legacy 三键 `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
-- 分工：引擎面 / 状态机语义（校验 / 流转 / 占用 / 关联唯一性 / done 门）见 [`core/req.md`](../.openfeel/manual/core/req.md)；命令面深入参考见 [`cli/req.md`](../.openfeel/manual/cli/req.md)。
+- 分工：引擎面 / 状态机语义（校验 / 流转 / 占用 / 关联（多值 `requirements[]`，旧单值兼容） / done 门）见 [`core/req.md`](../.openfeel/manual/core/req.md)；命令面深入参考见 [`cli/req.md`](../.openfeel/manual/cli/req.md)。
 
 ---
 

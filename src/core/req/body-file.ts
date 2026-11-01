@@ -60,7 +60,7 @@ function renderRequirementBodySkeleton(req: RequirementData): string {
     '',
     '## 关联阶段',
     '',
-    '（以 flow.json 的 `stages[*].requirement_id` 为准；此处可人工补充说明）',
+    '（以 flow.json 的 `stages[*].requirements[]` 为准——阶段可挂多个需求；旧单值 `requirement_id` 仅兼容读取；此处可人工补充说明）',
     '',
     '## 变更记录',
     '',

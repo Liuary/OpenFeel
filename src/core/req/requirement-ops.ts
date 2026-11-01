@@ -7,7 +7,8 @@
  * 边界声明：不依赖归档层；模式属性（workflow_mode?）为调度属性——本层只做「值域校验 + 载体制门」，
  *   解析 / 下发单点在 FlowManager；不参与聚合判定。
  */
-import type { FlowData, PipelinePhase } from '../flow-manager.js';  // 仅类型（编译期擦除）
+import type { FlowData, PipelinePhase, StageData, StageRequirementLink } from '../flow-manager.js';  // 仅类型（编译期擦除）
+import { stageRequirementIds } from './stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { WORKFLOW_MODES, type WorkflowMode } from '../config.js';   // 值域单源（运行时值导入，禁就地三值字面量）
 import {
   REQ_ID_PATTERN, REQ_PRIORITIES, REQ_STATUSES,
@@ -19,7 +20,7 @@ export type RequirementErrorCode =
   | 'not_found'        // 需求不存在
   | 'stage_not_found'  // 阶段不存在（link 专用）
   | 'already_claimed'  // 已被他人占用（claim）
-  | 'already_linked'   // 阶段已属其它需求（link 重绑；须先解绑）
+  | 'already_linked'   // **已退役**（v1.5.8 / REQ-028 多值模型下阶段可挂多个需求，link 不再返回）；保留取值以兼容既有映射面
   | 'invalid_status'   // 状态门拒绝（claim 终态 / 非法流转 / patch.status 非法值 / link 终态需求）
   | 'invalid_field'      // 字段门拒绝（白名单外键 / 非法值 / owner 空串 / title 空串）
   | 'general_mode_conflict'; // 载体制门（stage-90）：general 仅限无关联阶段的需求 / general 需求不接受阶段关联
@@ -80,9 +81,9 @@ export function isTerminalRequirementStatus(status: RequirementStatus): boolean 
   return status === 'done' || status === 'cancelled' || status === 'rejected';
 }
 
-/** 裁定 4：全部关联阶段 done（零关联 → false，空集守卫） */
+/** 裁定 4：全部关联阶段 done（零关联 → false，空集守卫）；v1.5.8 / REQ-028 多值经单点判定 */
 export function allLinkedStagesDone(data: FlowData, requirementId: string): boolean {
-  const linked = Object.values(data.stages ?? {}).filter((s) => (s.requirement_id ?? null) === requirementId);
+  const linked = Object.values(data.stages ?? {}).filter((s) => stageRequirementIds(s).includes(requirementId));
   return linked.length > 0 && linked.every((s) => s.phase === 'done');
 }
 
@@ -107,7 +108,7 @@ const COMPLETION_READY_PHASES: readonly PipelinePhase[] = [
  * `allLinkedStagesDone` 仍是聚合 done 判定单源（aggregate.ts），与完成门解耦、语义不变。
  */
 export function canCompleteRequirement(data: FlowData, req: RequirementData): boolean {
-  const linked = Object.values(data.stages ?? {}).filter((s) => (s.requirement_id ?? null) === req.id);
+  const linked = Object.values(data.stages ?? {}).filter((s) => stageRequirementIds(s).includes(req.id));
   if (linked.length === 0) { return true; }
   return linked.every((s) => (COMPLETION_READY_PHASES as readonly string[]).includes(s.phase));
 }
@@ -312,7 +313,7 @@ export function updateRequirement(
   }
   // 载体制门（D-90-4）：general 仅限**无关联阶段**的需求（有链接阶段 → 拒绝；零变更零审计）
   if (p.workflow_mode === 'general') {
-    const hasLinked = Object.values(data.stages ?? {}).some((s) => (s.requirement_id ?? null) === id);
+    const hasLinked = Object.values(data.stages ?? {}).some((s) => stageRequirementIds(s).includes(id));
     if (hasLinked) { return { ok: false, code: 'general_mode_conflict' }; }
   }
 
@@ -357,11 +358,68 @@ export function advanceRequirement(data: FlowData, id: string, to: RequirementSt
 }
 
 /**
- * 阶段关联需求（stage 侧写点；`null` = 解绑）。
- * 终态需求拒绝关联、他人已关联阶段拒绝重绑（须先解绑）；
+ * 阶段需求关联写路径可选参数（v1.5.8 / REQ-028）。
+ * `unlinkRequirementId` 仅在 `requirementId === null`（解绑方向）时生效：只解绑该需求；
+ * 缺省 = 清空该阶段的**全部**关联（既有语义）。
+ */
+export interface LinkRequirementOptions {
+  /** 只解绑这一个需求（其余关联保留；未关联 → no-op 零写盘） */
+  unlinkRequirementId?: string;
+}
+
+/**
+ * 归一阶段需求链接（纯函数：返回规范化列表，**不改** stage）。
+ * - `requirements[]` 元素缺 `id` / 空串 / 重复 → 丢弃（读侧宽容，写前收敛）；
+ * - `requirements` 缺省 / 空集 + 旧 `requirement_id` 非空 → 以旧单值构造单元素列表（**迁移语义**，防写多值时丢旧关联）。
+ */
+function normalizedStageLinks(stage: StageData): StageRequirementLink[] {
+  const src = Array.isArray(stage.requirements) ? stage.requirements : [];
+  const links: StageRequirementLink[] = [];
+  const seen = new Set<string>();
+  for (const link of src) {
+    const id = typeof link?.id === 'string' ? link.id : '';
+    if (id === '' || seen.has(id)) { continue; }
+    seen.add(id);
+    links.push({ ...link, id });
+  }
+  if (links.length === 0 && typeof stage.requirement_id === 'string' && stage.requirement_id !== '') {
+    links.push({ id: stage.requirement_id });
+  }
+  return links;
+}
+
+/** 追加关联的排序键：取现有 order 最大值 +1（无 order 时退化为列表长度） */
+function nextLinkOrder(links: StageRequirementLink[]): number {
+  let next = links.length;
+  for (const link of links) {
+    if (typeof link.order === 'number' && Number.isFinite(link.order) && link.order >= next) {
+      next = link.order + 1;
+    }
+  }
+  return next;
+}
+
+/**
+ * 阶段关联需求（stage 侧写点；v1.5.8 / REQ-028 **多值语义**）。
+ *
+ * 写语义：
+ * - `requirementId` 非 null → **追加**关联（同一需求重复链接 → 幂等 no-op）；同一需求可挂多个阶段（既有语义保留）；
+ * - `requirementId === null` ∧ 无 options → 清空该阶段**全部**关联（既有语义）；
+ * - `requirementId === null` ∧ `options.unlinkRequirementId` → 只解绑该需求（其余保留）。
+ *
+ * 校验（顺序固定；任一失败 → 零变更零审计）：stage 不存在 → `stage_not_found`；需求不存在 → `not_found`；
+ * 需求终态 → `invalid_status`；`workflow_mode === 'general'` → `general_mode_conflict`。
+ *
+ * 兼容：写路径**不再写** `requirement_id`（旧键存在时清空，避免双真源；读取仍经 stageRequirementIds 兜底）。
+ * 审计：`requirement_link`，detail `{ stage, requirementId, action: 'link' | 'unlink' }`。
  * 不刷新 requirement.updated_at（关联写点落在 stage 记录，需求对象零变更）。
  */
-export function linkRequirement(data: FlowData, stageId: string, requirementId: string | null): RequirementOpResult {
+export function linkRequirement(
+  data: FlowData,
+  stageId: string,
+  requirementId: string | null,
+  options: LinkRequirementOptions = {},
+): RequirementOpResult {
   const stage = data.stages?.[stageId];
   if (!stage) { return { ok: false, code: 'stage_not_found' }; }     // ① 阶段不存在
 
@@ -371,16 +429,35 @@ export function linkRequirement(data: FlowData, stageId: string, requirementId: 
     if (isTerminalRequirementStatus(req.status)) { return { ok: false, code: 'invalid_status' }; }  // 终态拒绝
     // 载体制门（D-90-4）：general（无流水线）需求不接受阶段关联
     if (req.workflow_mode === 'general') { return { ok: false, code: 'general_mode_conflict' }; }
-    if ((stage.requirement_id ?? null) === requirementId) { return { ok: true, changed: false }; }   // 同值幂等
-    if (stage.requirement_id != null) { return { ok: false, code: 'already_linked' }; }              // 跨需求重绑
-    stage.requirement_id = requirementId;
-    appendRequirementLog(data, 'requirement_link', { stage: stageId, requirementId });
+    const links = normalizedStageLinks(stage);
+    if (links.some((l) => l.id === requirementId)) { return { ok: true, changed: false }; }   // 同值幂等（多值模型下即「已链接」）
+    links.push({ id: requirementId, order: nextLinkOrder(links) });
+    stage.requirements = links;
+    delete stage.requirement_id;               // 单值键退役（防双真源；旧数据读取仍兼容）
+    appendRequirementLog(data, 'requirement_link', { stage: stageId, requirementId, action: 'link' });
     return { ok: true, changed: true };
   }
 
-  // ③ null = 解绑（显式 null，对齐「可空」裁定 D）
-  if (stage.requirement_id == null) { return { ok: true, changed: false }; }
-  stage.requirement_id = null;
-  appendRequirementLog(data, 'requirement_link', { stage: stageId, requirementId: null });
+  // ③ null = 解绑方向（显式 null，对齐「可空」裁定 D）
+  const links = normalizedStageLinks(stage);
+  const target = options.unlinkRequirementId;
+  if (target !== undefined) {
+    // 只解绑指定需求（未关联 → no-op；旧单值同值键一并清理）
+    const rest = links.filter((l) => l.id !== target);
+    if (rest.length === links.length) {
+      return { ok: true, changed: false };
+    }
+    if (rest.length === 0) { delete stage.requirements; } else { stage.requirements = rest; }
+    if (stage.requirement_id === target) { delete stage.requirement_id; }
+    appendRequirementLog(data, 'requirement_link', { stage: stageId, requirementId: target, action: 'unlink' });
+    return { ok: true, changed: true };
+  }
+  // 清空全部（既有语义）：多值列表 + 旧单值键一并移除
+  if (links.length === 0 && stage.requirement_id === undefined && stage.requirements === undefined) {
+    return { ok: true, changed: false };
+  }
+  delete stage.requirements;
+  delete stage.requirement_id;
+  appendRequirementLog(data, 'requirement_link', { stage: stageId, requirementId: null, action: 'unlink' });
   return { ok: true, changed: true };
 }

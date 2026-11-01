@@ -44,7 +44,7 @@ import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/a
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
 import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile } from '../core/flow-archive/archive-ops.js';
 import { archiveHealthItems } from '../core/flow-archive/archive-health.js';
-import { requirementHealthItems } from '../core/req/aggregate.js';   // 需求对账项（stage-83 T3）
+import { requirementHealthItems, stageRequirementIds } from '../core/req/aggregate.js';   // 需求对账项（stage-83 T3）/ 关联读取单点（REQ-028）
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -2965,6 +2965,8 @@ function buildStatusJson(mgr: FlowManager): Record<string, unknown> {
     const ops = collectOpStates(stage);
     // 模式单点解析：逐阶段经 resolveStageWorkflowMode（同一 manager 快照；D-96-12 不缓存）
     const workflowMode = mgr.resolveStageWorkflowMode(id).value;
+    // v1.5.8 / REQ-028：阶段可挂多个需求 —— `requirementId` 保持既有形状（首个关联需求，可空）
+    const requirementIds = stageRequirementIds(stage);
     return {
       id,
       phase: stage.phase,
@@ -2972,7 +2974,7 @@ function buildStatusJson(mgr: FlowManager): Record<string, unknown> {
       deps: stage.deps ?? [],
       ops,
       workflowMode,
-      requirementId: stage.requirement_id ?? null,
+      requirementId: requirementIds[0] ?? null,
       reviewTier: MODE_DERIVED_TIER[workflowMode],
       effectiveReviewTier: DEFAULT_EFFECTIVE_REVIEW_TIER,
       opsSummary: summarizeOpStates(ops),

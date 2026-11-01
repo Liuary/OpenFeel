@@ -3,7 +3,7 @@
  * 负责汇总阶段产出、生成归档摘要、提取知识条目，通过 FlowManager 操作 flow.json
  *
  * v1.5.8（REQ-024）归档官增强：归档时额外
- *   ① 汇总该版本 `status === 'done'` 的需求（并入阶段 `requirement_id` 指向的 done 需求）；
+ *   ① 汇总该版本 `status === 'done'` 的需求（并入阶段关联需求集 `stageRequirementIds(stage)` 指向的 done 需求）；
  *   ② 生成 `docs/releases/<version>.md` 发布说明草稿（已存在不覆盖，`force` 时覆盖）；
  *   ③ 按探测到的 harness 生成 `<skillDir>/<slug>/SKILL.md`（仅当传入 `skill`）。
  * 版本号派生复用 `parseStageId`（格式唯一权威，禁自写正则）。
@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { initKnowledgeBase, addKnowledgeEntry } from '../workspace/knowledge.js';
 import type { RequirementData } from '../req/types.js';
+import { stageRequirementIds } from '../req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { detectHarnesses } from '../harness.js';
 
 /**
@@ -105,17 +106,17 @@ function titleizeSlug(slug: string): string {
 /**
  * 收集归档需要汇总的「已完成需求」。
  *
- * 口径：`status === 'done'` ∧ (`target_version === version` ∨ `id === stage.requirement_id`)；
- * 去重保序（版本命中在前，阶段关联命中在最后并入）。
+ * 口径（v1.5.8 / REQ-028 多值关联）：`status === 'done'` ∧ (`target_version === version` ∨ `id` ∈ 阶段关联需求集)；
+ * 去重保序（版本命中在前，阶段关联命中按 `stageRequirementIds` 声明序并入）。
  *
  * @param requirements flow.json 顶层需求列表（可选字段，读侧宽容）
  * @param version 由阶段 ID 派生的版本号（无法派生时为 null：只保留阶段关联的 done 需求）
- * @param linkedId 阶段 `requirement_id`（未关联为 null）
+ * @param linkedIds 阶段 `stageRequirementIds(stage)`（无关联为空数组）
  */
 function collectCompletedRequirements(
   requirements: RequirementData[] | undefined,
   version: string | null,
-  linkedId: string | null,
+  linkedIds: readonly string[],
 ): RequirementData[] {
   const done = (Array.isArray(requirements) ? requirements : []).filter((req) => req?.status === 'done');
   const picked: RequirementData[] = [];
@@ -130,10 +131,11 @@ function collectCompletedRequirements(
     }
   }
 
-  if (linkedId) {
+  for (const linkedId of linkedIds) {
     const linked = done.find((req) => req.id === linkedId);
     if (linked && !seen.has(linked.id)) {
       picked.push(linked);
+      seen.add(linked.id);
     }
   }
 
@@ -310,11 +312,12 @@ export function archiveStage(
     ? parsed.fullStageId.slice(0, -(parsed.stageDir.length + 1))
     : null;
 
-  // 已完成需求汇总（版本命中 ∪ 阶段 requirement_id 命中的 done 需求）
+  // 已完成需求汇总（版本命中 ∪ 阶段关联需求命中的 done 需求；v1.5.8 / REQ-028 多值逐条并入）
+  const linkedRequirementIds = stageRequirementIds(stage);
   const completedRequirements = collectCompletedRequirements(
     data.requirements,
     version,
-    stage.requirement_id ?? null,
+    linkedRequirementIds,
   );
 
   // 统计该阶段所有 ops
@@ -355,6 +358,7 @@ export function archiveStage(
 - **版本**：${version ?? '（未识别）'}
 - **阶段状态**：${stage.status}
 - **依赖阶段**：${Array.isArray(stage.deps) && stage.deps.length > 0 ? stage.deps.join(', ') : '无'}
+- **关联需求**：${linkedRequirementIds.length > 0 ? linkedRequirementIds.join(', ') : '无'}
 
 ## 已完成需求
 

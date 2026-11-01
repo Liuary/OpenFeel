@@ -731,7 +731,7 @@ describe('req 命令组（stage-82）', () => {
     expect(err()).toContain(`合法目标：${expectedTargets}`);
   });
 
-  it('T-B8 link：两径归一 / --unlink / already_linked / stage_not_found / not_found / invalid_status / 互斥 / 幂等', async () => {
+  it('T-B8 link：多值追加 / 两径归一 / 单解绑 / 全解绑 / stage_not_found / not_found / invalid_status / 参数守卫 / 幂等', async () => {
     const seed = (d: any): void => {
       d.requirements = [
         req_('REQ-001'),
@@ -744,13 +744,14 @@ describe('req 命令组（stage-82）', () => {
       };
     };
 
-    // 短名归一
+    // 短名归一 + 首次关联写 requirements[]（不写旧 requirement_id）
     writeFlow(seed);
     resetCapture();
     await safeParse(['req', 'link', '--stage', 'stage-01', '--requirement', 'REQ-001']);
     expect(process.exitCode).toBe(0);
     let d = readFlow();
-    expect(d.stages['v1.0.0-stage-01'].requirement_id).toBe('REQ-001');
+    expect(d.stages['v1.0.0-stage-01'].requirements).toEqual([{ id: 'REQ-001', order: 0 }]);
+    expect(d.stages['v1.0.0-stage-01'].requirement_id).toBeUndefined();
     expect(d.log.some((e: any) => e.action === 'requirement_link')).toBe(true);
     expect(out()).toContain('已将 v1.0.0-stage-01 关联到 REQ-001');
 
@@ -762,20 +763,26 @@ describe('req 命令组（stage-82）', () => {
     expect(out()).toContain('no-op');
     expect(readFlow().meta.revision).toBe(rev);
 
-    // already_linked 硬拒 + 完整解绑命令提示
+    // 同一 stage 追加第二个需求（REQ-028 多值语义；不再 already_linked）
     resetCapture();
-    let raw = flowRaw();
     await safeParse(['req', 'link', '--stage', 'stage-01', '--requirement', 'REQ-002']);
-    expect(process.exitCode).toBe(1);
-    expect(err()).toContain('须先解绑');
-    expect(err()).toContain('openfeel req link --stage v1.0.0-stage-01 --unlink');
-    expect(flowRaw()).toBe(raw);
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().stages['v1.0.0-stage-01'].requirements.map((l: any) => l.id))
+      .toEqual(['REQ-001', 'REQ-002']);
 
-    // --unlink 解绑
+    // --unlink --requirement：只解绑指定需求
+    resetCapture();
+    await safeParse(['req', 'link', '--stage', 'stage-01', '--requirement', 'REQ-001', '--unlink']);
+    expect(process.exitCode).toBe(0);
+    expect(out()).toContain('已解除 v1.0.0-stage-01 与 REQ-001 的关联');
+    expect(readFlow().stages['v1.0.0-stage-01'].requirements.map((l: any) => l.id)).toEqual(['REQ-002']);
+
+    // --unlink（无 requirement）：清空全部
     resetCapture();
     await safeParse(['req', 'link', '--stage', 'stage-01', '--unlink']);
     expect(process.exitCode).toBe(0);
-    expect(readFlow().stages['v1.0.0-stage-01'].requirement_id).toBeNull();
+    expect(readFlow().stages['v1.0.0-stage-01'].requirements).toBeUndefined();
+    expect(readFlow().stages['v1.0.0-stage-01'].requirement_id).toBeUndefined();
 
     // 未关联解绑 → no-op exit 0
     resetCapture();
@@ -783,9 +790,15 @@ describe('req 命令组（stage-82）', () => {
     expect(process.exitCode).toBe(0);
     expect(out()).toContain('no-op');
 
+    // 未关联需求单解绑 → no-op exit 0
+    resetCapture();
+    await safeParse(['req', 'link', '--stage', 'stage-02', '--requirement', 'REQ-001', '--unlink']);
+    expect(process.exitCode).toBe(0);
+    expect(out()).toContain('no-op');
+
     // stage_not_found
     resetCapture();
-    raw = flowRaw();
+    let raw = flowRaw();
     await safeParse(['req', 'link', '--stage', 'v9.9.9-stage-99', '--requirement', 'REQ-001']);
     expect(process.exitCode).toBe(1);
     expect(err()).toContain('阶段 v9.9.9-stage-99 不存在');
@@ -803,16 +816,11 @@ describe('req 命令组（stage-82）', () => {
     expect(process.exitCode).toBe(1);
     expect(err()).toContain('已是终态');
 
-    // 互斥守卫：neither / both
+    // 参数守卫：neither（两者同用 = 只解绑该需求，已在上方覆盖）
     resetCapture();
     await safeParse(['req', 'link', '--stage', 'stage-02']);
     expect(process.exitCode).toBe(1);
-    expect(err()).toContain('必须且只能提供一个');
-
-    resetCapture();
-    await safeParse(['req', 'link', '--stage', 'stage-02', '--requirement', 'REQ-001', '--unlink']);
-    expect(process.exitCode).toBe(1);
-    expect(err()).toContain('必须且只能提供一个');
+    expect(err()).toContain('必须提供');
   });
 
   it('T-B9 advance：合法目标全表 + done 门两态 + 同值 no-op + 终态拒绝', async () => {

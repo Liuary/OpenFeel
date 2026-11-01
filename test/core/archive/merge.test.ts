@@ -467,6 +467,42 @@ describe('Archive Merge', () => {
       expect(readFileSync(archiveFile, 'utf-8')).toContain('## 已完成需求');
     });
 
+    it('多需求关联（REQ-028）：摘要列出全部关联需求，已完成需求仍只收 done（版本命中在前）', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage(stageName, {
+        stages: {
+          [stageName]: {
+            name: '多需求阶段', status: 'in_progress', deps: [], ops: {},
+            requirements: [{ id: 'REQ-002' }, { id: 'REQ-003' }],
+          },
+        },
+        requirements: [
+          {
+            id: 'REQ-001', title: '已完成A', status: 'done', target_version: version,
+            priority: 'P1', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-30T00:00:00Z',
+          },
+          {
+            id: 'REQ-002', title: '进行中B', status: 'in_progress', target_version: version,
+            priority: 'P2', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-31T00:00:00Z',
+          },
+          {
+            id: 'REQ-003', title: '已完成C', status: 'done', target_version: 'v1.4.0',
+            priority: 'P0', created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-30T00:00:00Z',
+          },
+        ],
+      }));
+      mgr.save();
+
+      const result = archiveStage(tmpDir, stageName);
+      expect(result).not.toBeNull();
+      // 阶段信息列出该 stage 的全部关联需求（声明序）
+      expect(result!.summary).toContain('- **关联需求**：REQ-002, REQ-003');
+      // 已完成需求 = 版本命中（REQ-001）∪ 关联命中且 done（REQ-003）；REQ-002 未完成被排除
+      expect(result!.generated.requirements).toEqual(['REQ-001', 'REQ-003']);
+      expect(result!.summary).not.toContain('进行中B');
+    });
+
     it('无已完成需求时摘要该节写「无」，generated.requirements 为空数组', () => {
       FlowManager.initFlow(tmpDir);
       const mgr = new FlowManager(tmpDir);

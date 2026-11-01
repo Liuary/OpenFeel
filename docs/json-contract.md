@@ -233,7 +233,7 @@ typeof doc.error === 'string'  → legacy
 
 - **10 键固定序**：`id,phase,status,deps,ops,workflowMode,requirementId,reviewTier,effectiveReviewTier,opsSummary`。既有 5 键（`id,phase,status,deps,ops`）键序与类型**逐字不变**，新增 5 键仅追加于其后。
 - **`workflowMode`**：逐阶段经 `resolveStageWorkflowMode(id).value` 单点解析（同一 manager 快照；本版不缓存）。
-- **`requirementId`**：`stage.requirement_id ?? null`（恒在、可空；存量缺省 ≡ `null`）。
+- **`requirementId`**：`stageRequirementIds(stage)[0] ?? null`（恒在、可空；v1.5.8 / REQ-028 多值模型下取**首个**关联需求，阶段可挂多个需求但本键形状不变；旧 `requirement_id` 单值数据经 helper 兜底）。
 - **`reviewTier`**：`MODE_DERIVED_TIER[workflowMode]`（展示值；`full→full` / `fast→lean` / `general→full`）。
 - **`effectiveReviewTier`**：`DEFAULT_EFFECTIVE_REVIEW_TIER`（生效值，恒 `'full'`）。
 - **`opsSummary`**：`{ total, byState }`；`total = Object.keys(ops).length = Σ byState`；`byState` **仅含观测到的状态**（零值键不出现），键序 = 状态首次出现序；空 ops → `{ total: 0, byState: {} }`；畸形 op 的 `state` 为空串时按观测键 `''` 计数（与 `collectOpStates` 的 `op?.state ?? ''` 同源）。
@@ -298,7 +298,7 @@ typeof doc.error === 'string'  → legacy
 
 - **绝对路径**：`stage.status.statusPath`（`resolve(projectPath, ...)`）、`archive <stage>.archivePath`（`join(process.cwd(), '.openfeel', 'log', ...)`）。
 - **项目根相对路径**：`plan scheme list.schemes[].filePath`（如 `.openfeel/plan/v1/stage-01/ops/op-001.md`）。
-- **`req list` 增量**：`linkedStages[]` 元素 `{id, phase}`（按 flow.json `stages` 声明序）；`progress` = `{done,total}`（`computeRequirementAggregate` 单点派生）。
+- **`req list` 增量**：`linkedStages[]` 元素 `{id, phase}`（按 flow.json `stages` 声明序；v1.5.8 / REQ-028 关联判定经 `stageRequirementIds` 单点——一个需求可被多个阶段关联，形状不变）；`progress` = `{done,total}`（`computeRequirementAggregate` 单点派生）。
 - **`flow archive` legacy 增量**：gate-rejected 的 `unfinishedStages[]{id,phase}`、`blockingReviews[]{id,title,priority}`；成功形态 `dryRun:boolean`、`eligible:true`、两数组恒 `[]`。键位：legacy 五键序保留，三新键插在 `blockingOpen` 后、`errorKind` 前。
 - **`stage.status.fields`**：7 规范键 `execMode,autoAdvance,status,reviewAgent,previousReviewAgent,updatedAt,workflowMode` + `raw`（原始中文键映射）；`tasks[]` 仅三元组 `number,done,description`（不输出 `line`）。
 

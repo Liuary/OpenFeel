@@ -399,6 +399,8 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-11-01 | patterns | [REV-005] [self-review] v1.5.8 批次：归档官增强 / 多需求编排 / 多会话 P0 / 完成必审验 / 需求归档与发布门；tsc + vitest 2321 + dsh 46/109/58 全绿 |
+| 2026-11-01 | patterns | [REV-004] self-review: stage-123 通过——4 处缺陷执行期已修，6 个负例全拦，1 项未验证已披露 |
 | 2026-11-01 | patterns | [REV-004] self-review: stage-123 通过——4 处缺陷执行期已修，6 个负例全拦，1 项未验证已披露 |
 | 2026-10-31 | patterns | [REV-003] [self-review] 需求完成门解耦（零关联/exec_running 及之后）+ 适配器需求导向文案；全量 2211 用例、dsh 58/44/100 全绿 |
 | 2026-10-31 | patterns | [REV-024] [代码审查] summary 把「时间戳不可解析」误报为「未读过状态」；phase-entered 缺 detail 守卫会抛 TypeError |

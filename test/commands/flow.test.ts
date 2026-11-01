@@ -958,6 +958,10 @@ describe('flow 命令（stage-41）', () => {
     mockedChild.execSync.mockReturnValue(' M x.ts\n');
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.1.2-stage-77');
+    // v1.5.8 / REQ-027：done 门前置（阶段验证 pass；零关联需求 → 相位维度放行）
+    mgr.getData()!.stages['v1.1.2-stage-77'].verification = {
+      result: 'pass', kind: 'test', by: 'tester', at: '', note: 'ok',
+    };
     mgr.save();
     const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -1711,8 +1715,15 @@ describe('flow 命令（stage-41）', () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.1.2-stage-5');
     mgr.getData()!.stages['v1.1.2-stage-5'].phase = 'test_passed';
+    // v1.5.8 / REQ-027：done 门前置（阶段验证 pass），使本用例只考察 REV 归属谓词
+    mgr.getData()!.stages['v1.1.2-stage-5'].verification = {
+      result: 'pass', kind: 'test', by: 'tester', at: '', note: 'ok',
+    };
     mgr.addStage('v1.1.2-stage-52');
     mgr.getData()!.stages['v1.1.2-stage-52'].phase = 'test_passed';
+    mgr.getData()!.stages['v1.1.2-stage-52'].verification = {
+      result: 'pass', kind: 'test', by: 'tester', at: '', note: 'ok',
+    };
     // blocking open REV 挂在 stage-52（stage-5 是其前缀）
     mgr.getData()!.reviews.push({
       id: 'REV-OVL', op: 'v1.1.2-stage-52.op-001', status: 'open', priority: 'high',
@@ -1825,6 +1836,10 @@ describe('flow 命令（stage-41）', () => {
     mockedChild.execSync.mockReturnValue(' M x.ts\n');
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.1.2-stage-71');
+    // v1.5.8 / REQ-027：done 门前置（阶段验证 pass）
+    mgr.getData()!.stages['v1.1.2-stage-71'].verification = {
+      result: 'pass', kind: 'test', by: 'tester', at: '', note: 'ok',
+    };
     mgr.save();
     const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
     logMock.mockClear();
@@ -3338,15 +3353,18 @@ describe('flow 命令（stage-41）', () => {
     reviews: [], log: [],
     ...extraTop,
   });
-  /** 关联某需求的阶段 */
+  /** 关联某需求的阶段（v1.5.8 / REQ-027：默认带 pass 的阶段验证——done 门前置） */
   const s83Stage = (phase: string, requirementId?: string): Record<string, unknown> => {
-    const s: Record<string, unknown> = { name: '阶段', phase, status: phase, deps: [], ops: {} };
+    const s: Record<string, unknown> = {
+      name: '阶段', phase, status: phase, deps: [], ops: {},
+      verification: { result: 'pass', kind: 'test', by: 'tester', at: '', note: 'ok' },
+    };
     if (requirementId !== undefined) { s.requirement_id = requirementId; }
     return s;
   };
 
   it('op-003 T4.4-① flow advance --dry-run 字节零写盘（含需求字段）+ 正控（真实推进有变化）', async () => {
-    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('archiving', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'in_progress')] }));
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('archiving', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'done')] }));
     const before = readFlowRaw();
     logMock.mockClear();
     const prevExit = process.exitCode;
@@ -3469,9 +3487,9 @@ describe('flow 命令（stage-41）', () => {
     expect(parsed.pipeline.phase).toBe('done');
     expect(logMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('已推进');
 
-    // 正控：关联 fixture → requirement_auto_done 出现（回写经 wizard 路径已接通）
+    // 正控：关联 fixture 且需求已 done → wizard 仍可推进到 done（REQ-027 done 门放行）；零回写
     logMock.mockClear();
-    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('archiving', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'in_progress')] }));
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('archiving', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'done')] }));
     mockedInquirer.select.mockResolvedValueOnce('done').mockResolvedValueOnce('yes');
     setTty(true);
     try {
@@ -3480,8 +3498,25 @@ describe('flow 命令（stage-41）', () => {
       setTty(false);
     }
     const parsed2 = JSON.parse(readFlowRaw());
-    expect(parsed2.requirements[0].status).toBe('done');
-    expect((parsed2.log as Array<{ action: string }>).some((l) => l.action === 'requirement_auto_done')).toBe(true);
+    expect(parsed2.stages[S83_STAGE].phase).toBe('done');
+    expect(parsed2.requirements[0].status).toBe('done');                             // 已是 done：零回写
+    expect((parsed2.log as Array<{ action: string }>).some((l) => l.action === 'requirement_auto_done')).toBe(false);
+
+    // 负控（v1.5.8 / REQ-027）：关联需求未 done → wizard 推进被 done 门拒绝（阶段保持 archiving）
+    logMock.mockClear();
+    errorMock.mockClear();
+    writeS83Flow(s83Base({ [S83_STAGE]: s83Stage('archiving', 'REQ-001') }, { requirements: [s83Req('REQ-001', 'in_progress')] }));
+    mockedInquirer.select.mockResolvedValueOnce('done').mockResolvedValueOnce('yes');
+    setTty(true);
+    try {
+      await safeParse(['flow', 'wizard']);
+    } finally {
+      setTty(false);
+    }
+    const parsed3 = JSON.parse(readFlowRaw());
+    expect(parsed3.stages[S83_STAGE].phase).toBe('archiving');                       // 零推进
+    expect(parsed3.requirements[0].status).toBe('in_progress');                      // 零回写
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('关联需求未全部完成');
   });
 
   it('op-003 i18n 键真实接入（t() 渲染 ≠ 原始键；en 渲染非空）', () => {

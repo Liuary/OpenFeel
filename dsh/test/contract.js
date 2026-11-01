@@ -321,6 +321,33 @@ async function main() {
     assert(detail.enum.includes('compact') && detail.enum.includes('full'), 'detail 枚举应为 compact|full');
   });
 
+  await check('v1.5.8 / REQ-027：review / verify 新 action 与参数枚举合法', () => {
+    const reqTool = tools.find((tool) => tool.name === 'feel_req');
+    assert(reqTool, '缺少 feel_req 工具');
+    const reqActions = reqTool.parameters.properties.action.enum;
+    for (const action of ['review', 'verify']) {
+      assert(reqActions.includes(action), `feel_req.action 缺枚举值 ${action}`);
+    }
+    for (const [key, allowed] of [
+      ['result', ['pass', 'fail']],
+      ['kind', ['test', 'manual', 'build']],
+    ]) {
+      const spec = reqTool.parameters.properties[key];
+      assert(spec && Array.isArray(spec.enum), `feel_req.${key} 应为枚举参数`);
+      assert(JSON.stringify(spec.enum) === JSON.stringify(allowed), `feel_req.${key} 枚举应为 ${allowed.join('|')}`);
+    }
+    for (const key of ['by', 'note', 'evidence']) {
+      assert(reqTool.parameters.properties[key]?.type === 'string', `feel_req.${key} 应为 string`);
+    }
+    assert(reqTool.parameters.properties.independent?.type === 'boolean', 'feel_req.independent 应为 boolean');
+
+    const stageTool = tools.find((tool) => tool.name === 'feel_stage');
+    assert(stageTool, '缺少 feel_stage 工具');
+    assert(stageTool.parameters.properties.action.enum.includes('verify'), 'feel_stage.action 缺枚举值 verify');
+    assert(JSON.stringify(stageTool.parameters.properties.kind.enum) === JSON.stringify(['test', 'manual', 'build']), 'feel_stage.kind 枚举非法');
+    assert(stageTool.parameters.properties.result.enum.includes('pass'), 'feel_stage.result 缺 pass');
+  });
+
   process.stdout.write('\n' + '='.repeat(60) + '\n');
   process.stdout.write(`通过 ${passed} / ${passed + failed}\n`);
   if (failed > 0) {

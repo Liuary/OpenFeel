@@ -496,9 +496,9 @@ export function createTools(context) {
   const feelStage = {
     name: 'feel_stage',
     description:
-      '工作阶段与 status.md 操作。action=list 列出工作阶段；action=add 添加工作阶段（建目录 + overview/status + 注册 flow.json，这是**唯一完整入口**）；action=status 查看阶段状态；action=set 原子更新 status.md 字段（状态/执行模式/自动推进/责任 Agent/工作流模式）；action=task 勾选或追加任务；action=deps 设置依赖；action=reset 复位相位；action=remove 移除阶段。禁止直接编辑 status.md 或 flow.json。',
+      '工作阶段与 status.md 操作。action=list 列出工作阶段；action=add 添加工作阶段（建目录 + overview/status + 注册 flow.json，这是**唯一完整入口**）；action=status 查看阶段状态；action=set 原子更新 status.md 字段（状态/执行模式/自动推进/责任 Agent/工作流模式）；action=task 勾选或追加任务；action=deps 设置依赖；action=reset 复位相位；action=remove 移除阶段；action=verify 记录阶段验证证据（仅 archiving 相位；archiving→done 硬门要求 result=pass 且关联需求全部 done）。禁止直接编辑 status.md 或 flow.json。',
     parameters: {
-      action: stringEnum(['list', 'add', 'status', 'set', 'task', 'deps', 'reset', 'remove'], '操作。', { required: true }),
+      action: stringEnum(['list', 'add', 'status', 'set', 'task', 'deps', 'reset', 'remove', 'verify'], '操作。', { required: true }),
       stage: string('阶段 ID（如 v1.2.1-stage-93 或 stage-93）。除 list/add 外必需。'),
       deps: stringArray('依赖阶段 ID 列表（add/deps）。'),
       tasks: stringArray('初始任务列表（add）。'),
@@ -515,6 +515,11 @@ export function createTools(context) {
       dry_run: boolean('仅预览（reset/remove）。'),
       force: boolean('remove 时越过安全校验。'),
       purge: boolean('remove 时同时删除阶段目录（非 TTY 须配 force）。'),
+      result: stringEnum(['pass', 'fail'], 'verify 的验证结论（pass 才满足 done 门）。'),
+      kind: stringEnum(['test', 'manual', 'build'], 'verify 的验证种类。'),
+      by: string('verify 的验证者（如 feel-tester）。'),
+      note: string('verify 的结论摘要（进入归档摘要）。'),
+      evidence: string('verify 的证据（测试命令 / 报告路径）。'),
       project: string('项目根目录。'),
     },
     output: { schema: envelopeSchema(), render: renderEnvelope },
@@ -605,6 +610,22 @@ export function createTools(context) {
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return { data: { stage, output: out.text }, summary: `阶段 ${stage} 已${args.dry_run === true ? '预演移除' : '移除'}。` };
+          });
+        }
+        case 'verify': {
+          const stage = requireArg(args, 'stage', action);
+          const argv = ['stage', 'verify', stage];
+          pushOption(argv, '--result', requireArg(args, 'result', action));
+          pushOption(argv, '--kind', requireArg(args, 'kind', action));
+          pushOption(argv, '--by', requireArg(args, 'by', action));
+          pushOption(argv, '--note', requireArg(args, 'note', action));
+          pushOption(argv, '--evidence', args.evidence);
+          return envelope(action, async () => {
+            const out = await cli.write(argv, opts);
+            return {
+              data: { stage, result: args.result, kind: args.kind, by: args.by, output: out.text },
+              summary: `阶段 ${stage} 验证已记录（${args.kind} / ${args.result}）。`,
+            };
           });
         }
         default:
@@ -718,10 +739,10 @@ export function createTools(context) {
   const feelReq = {
     name: 'feel_req',
     description:
-      '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配）；list 过滤列表；show 详情；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：非 general 需求须全部关联阶段 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）。',
+      '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配）；list 过滤列表；show 详情；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：非 general 需求须全部关联阶段 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）；review 记录需求审查；verify 记录需求验证（**v1.5.8 完成必审验：done 门额外要求 review.result=pass 且 verification.result=pass**）。',
     parameters: {
-      action: stringEnum(['add', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split'], '操作。', { required: true }),
-      id: string('需求 ID（如 REQ-001）。show/claim/release/set/advance/split 必需。'),
+      action: stringEnum(['add', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split', 'review', 'verify'], '操作。', { required: true }),
+      id: string('需求 ID（如 REQ-001）。show/claim/release/set/advance/split/review/verify 必需。'),
       title: string('需求标题（add 必需；set 为改标题）。'),
       target_version: string('预估版本（如 v1.3.0；纯展示/过滤维度，非门禁）。'),
       priority: stringEnum(REQ_PRIORITIES, '优先级。'),
@@ -734,6 +755,12 @@ export function createTools(context) {
       unlink: boolean('link 时解除该阶段的需求关联。'),
       to: stringEnum(REQ_STATUSES, 'advance 的目标状态。'),
       into: stringArray('split 的子需求标题列表（至少一项）。'),
+      result: stringEnum(['pass', 'fail'], 'review/verify 的结论（pass 才满足 done 门）。'),
+      kind: stringEnum(['test', 'manual', 'build'], 'verify 的验证种类。'),
+      by: string('review/verify 的审查者 / 验证者。'),
+      note: string('review/verify 的结论摘要（进入归档摘要）。'),
+      evidence: string('verify 的证据（测试命令 / 报告路径）。'),
+      independent: boolean('review 是否独立审查（缺省 false = 自我审查，须显式标注 self-review）。'),
       project: string('项目根目录。'),
     },
     output: { schema: envelopeSchema(), render: renderEnvelope },
@@ -867,6 +894,38 @@ export function createTools(context) {
               next: children.length === 0 || children[0].id === undefined
                 ? null
                 : { tool: 'feel_req', arguments: { action: 'next' }, why: '选取下一个可接取的子需求。' },
+            };
+          });
+        }
+        case 'review': {
+          const id = requireArg(args, 'id', action);
+          const argv = ['req', 'review', id];
+          pushOption(argv, '--result', requireArg(args, 'result', action));
+          pushOption(argv, '--by', requireArg(args, 'by', action));
+          pushOption(argv, '--note', requireArg(args, 'note', action));
+          // 独立 / 自我审查**恒显式标注**（自我审查在归档摘要中必须可见）
+          argv.push(args.independent === true ? '--independent' : '--self');
+          return envelope(action, async () => {
+            const out = await cli.write(argv, opts);
+            return {
+              data: { id, result: args.result, by: args.by, independent: args.independent === true, output: out.text },
+              summary: `需求 ${id} 审查已记录（${args.result}${args.independent === true ? '，独立' : '，自我审查'}）。`,
+            };
+          });
+        }
+        case 'verify': {
+          const id = requireArg(args, 'id', action);
+          const argv = ['req', 'verify', id];
+          pushOption(argv, '--result', requireArg(args, 'result', action));
+          pushOption(argv, '--kind', requireArg(args, 'kind', action));
+          pushOption(argv, '--by', requireArg(args, 'by', action));
+          pushOption(argv, '--note', requireArg(args, 'note', action));
+          pushOption(argv, '--evidence', args.evidence);
+          return envelope(action, async () => {
+            const out = await cli.write(argv, opts);
+            return {
+              data: { id, result: args.result, kind: args.kind, by: args.by, output: out.text },
+              summary: `需求 ${id} 验证已记录（${args.kind} / ${args.result}）。`,
             };
           });
         }

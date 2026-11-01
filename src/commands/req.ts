@@ -12,13 +12,15 @@
 import { Command } from 'commander';
 import { t, getCliLang } from '../core/i18n.js';
 import { enforcePreflightOrFail } from './shared/preflight-gate.js';
-import { FlowManager, isFlowConcurrentError } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, type FlowData } from '../core/flow-manager.js';
 import { type WorkflowMode } from '../core/config.js';
 import { handleConcurrentConflict } from './shared/errors.js';
 import {
   addRequirement, getRequirement, getRequirements, listRequirements,
   claimRequirement, releaseRequirement, updateRequirement, advanceRequirement, linkRequirement,
-  getAllowedNextStatuses, splitRequirement, type RequirementErrorCode,
+  getAllowedNextStatuses, splitRequirement, requirementDoneBlocker,
+  recordRequirementReview, recordRequirementVerification,
+  type RequirementErrorCode,
 } from '../core/req/requirement-ops.js';
 import { REQ_STATUSES, REQ_ID_PATTERN, type RequirementStatus, type RequirementPriority, type RequirementData } from '../core/req/types.js';
 import { writeRequirementBodySkeleton } from '../core/req/body-file.js';
@@ -80,6 +82,24 @@ function failGeneric(lang: string, err: unknown): void {
   const msg = err instanceof Error ? err.message : String(err);
   console.error(t('common.errorTmpl', lang, { msg }));
   process.exitCode = 1;
+}
+
+/**
+ * done 门拒绝文案分流（v1.5.8 / REQ-027「完成必审验」）。
+ * 触发前提（既有判类，stage-93 BUG-002）：静态流转表放行 `done` 而引擎仍返回 invalid_status ⇒ 唯一可能是完成门。
+ * 判据单源 = `requirementDoneBlocker`（引擎）；命令层只做「判据 → i18n 模板」映射：
+ * 未审 → `req.err.reviewRequiredTmpl`；未验 → `req.err.verificationRequiredTmpl`；阶段相位 → 既有 `doneGateTmpl`。
+ */
+function doneGateMessage(lang: string, data: FlowData, id: string, current: string): string {
+  const req = getRequirement(data, id);
+  const blocker = req ? requirementDoneBlocker(data, req) : null;
+  if (blocker === 'review') {
+    return t('req.err.reviewRequiredTmpl', lang, { id, current });
+  }
+  if (blocker === 'verification') {
+    return t('req.err.verificationRequiredTmpl', lang, { id, current });
+  }
+  return t('req.err.doneGateTmpl', lang, { id, current });
 }
 
 /**
@@ -423,7 +443,7 @@ export function registerReqCommand(program: Command): void {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
           invalid_field: t('req.err.invalidFieldTmpl', lang, { id }),
           invalid_status: doneGate
-            ? t('req.err.doneGateTmpl', lang, { id, current })
+            ? doneGateMessage(lang, data, id, current)
             : t('req.err.invalidStatusTmpl', lang, {
               id,
               to: options.status ?? '',
@@ -566,7 +586,7 @@ export function registerReqCommand(program: Command): void {
         failCode(lang, r.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
           invalid_status: doneGate
-            ? t('req.err.doneGateTmpl', lang, { id, current: before ?? '' })
+            ? doneGateMessage(lang, data, id, before ?? '')
             : t('req.err.invalidStatusTmpl', lang, {
               id,
               to: options.to,
@@ -584,6 +604,104 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       console.log(t('req.advance.doneTmpl', lang, { id, from: before ?? '', to: options.to }));
+    });
+
+  // ── req review <id> --result pass|fail --by <who> --note <text> [--independent|--self] ──
+  req
+    .command('review <id>')
+    .description('记录需求审查（v1.5.8 完成必审：done 门要求 review.result=pass；--independent 独立审查 / --self 自我审查）')
+    .requiredOption('--result <result>', '审查结论（pass / fail）')
+    .requiredOption('--by <who>', '审查者')
+    .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
+    .option('--independent', '独立审查（推荐）')
+    .option('--self', '自我审查（非独立；归档摘要标注 self-review）')
+    .action((id: string, options: { result: string; by: string; note: string; independent?: boolean; self?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, false);
+        return;
+      }
+      const data = mgr.getData()!;
+      if (!isValidReqId(id)) {
+        console.error(t('req.invalidIdTmpl', lang, { input: id }));
+        process.exitCode = 1;
+        return;
+      }
+      // 参数互斥守卫（argument-shape，非业务校验）
+      if (options.independent === true && options.self === true) {
+        console.error(t('req.review.exclusiveFlagTmpl', lang));
+        process.exitCode = 1;
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（ID / 互斥守卫已在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
+      // 命令层零校验：值域（result）/ 非空（by/note）/ 终态全在引擎单点
+      const r = recordRequirementReview(data, id, {
+        result: options.result,
+        by: options.by,
+        note: options.note,
+        independent: options.independent === true,
+      });
+      if (!r.ok) {
+        failCode(lang, r.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id }),
+          invalid_status: t('req.review.terminalTmpl', lang, { id, status: getRequirement(data, id)?.status ?? '' }),
+          invalid_field: t('req.review.invalidTmpl', lang),
+        });
+        return;
+      }
+      if (!saveOrFail(mgr, lang)) {
+        return;
+      }
+      const suffix = options.independent === true ? '' : t('req.review.selfSuffix', lang);
+      console.log(t('req.review.doneTmpl', lang, { id, result: options.result, by: options.by }) + suffix);
+    });
+
+  // ── req verify <id> --result pass|fail --kind test|manual|build --by <who> --note <text> [--evidence <path>] ──
+  req
+    .command('verify <id>')
+    .description('记录需求验证（v1.5.8 完成必验：done 门要求 verification.result=pass）')
+    .requiredOption('--result <result>', '验证结论（pass / fail）')
+    .requiredOption('--kind <kind>', '验证种类（test / manual / build）')
+    .requiredOption('--by <who>', '验证者')
+    .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
+    .option('--evidence <path>', '证据（测试命令 / 报告路径 / 摘要）')
+    .action((id: string, options: { result: string; kind: string; by: string; note: string; evidence?: string }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, false);
+        return;
+      }
+      const data = mgr.getData()!;
+      if (!isValidReqId(id)) {
+        console.error(t('req.invalidIdTmpl', lang, { input: id }));
+        process.exitCode = 1;
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（ID 校验已在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
+      // 命令层零校验：值域（result / kind）/ 非空（by/note）/ 终态全在引擎单点
+      const r = recordRequirementVerification(data, id, {
+        result: options.result,
+        kind: options.kind,
+        by: options.by,
+        note: options.note,
+        evidence: options.evidence,
+      });
+      if (!r.ok) {
+        failCode(lang, r.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id }),
+          invalid_status: t('req.verify.terminalTmpl', lang, { id, status: getRequirement(data, id)?.status ?? '' }),
+          invalid_field: t('req.verify.invalidTmpl', lang),
+        });
+        return;
+      }
+      if (!saveOrFail(mgr, lang)) {
+        return;
+      }
+      console.log(t('req.verify.doneTmpl', lang, { id, kind: options.kind, result: options.result, by: options.by }));
     });
 
   // ── req split <id> --into <title> [--into <title>...] [--json] ──

@@ -20,6 +20,55 @@ export type RequirementPriority = (typeof REQ_PRIORITIES)[number];
 /** 需求 ID 格式（REQ-NNN 三位起补零；含数字捕获组；非全局标志，防 lastIndex 状态污染） */
 export const REQ_ID_PATTERN = /^REQ-(\d{3,})$/;   // 含数字捕获组（m[1] 供 nextRequirementId 解析）；非全局标志
 
+/** 审查 / 验证结果值域（单一来源；v1.5.8 / REQ-027） */
+export const REVIEW_RESULTS = ['pass', 'fail'] as const;
+/** 审查结果类型（自 REVIEW_RESULTS 派生） */
+export type ReviewResult = (typeof REVIEW_RESULTS)[number];
+
+/** 验证种类值域（单一来源；test = 自动化测试 / manual = 手工验证 / build = 构建或类型检查） */
+export const VERIFICATION_KINDS = ['test', 'manual', 'build'] as const;
+/** 验证种类类型（自 VERIFICATION_KINDS 派生） */
+export type VerificationKind = (typeof VERIFICATION_KINDS)[number];
+
+/**
+ * 需求审查记录（v1.5.8 / REQ-027「完成必审验」）。
+ * done 门要求 `review.result === 'pass'`；`independent === false` 表示自我审查（归档摘要须标注）。
+ */
+export interface RequirementReviewRecord {
+  /** 结论：pass / fail（fail 同样留痕，但不满足 done 门） */
+  result: ReviewResult;
+  /** 审查者（自由文本；非空） */
+  by: string;
+  /** 记录时间 ISO 8601 */
+  at: string;
+  /** 结论摘要（非空） */
+  note: string;
+  /** 是否独立审查（false = 自我审查，须显式标注） */
+  independent: boolean;
+}
+
+/**
+ * 需求验证记录（v1.5.8 / REQ-027）。
+ * done 门要求 `verification.result === 'pass'`；`evidence` 可选（测试命令 / 报告路径等）。
+ */
+export interface RequirementVerificationRecord {
+  /** 结论：pass / fail */
+  result: ReviewResult;
+  /** 验证种类 */
+  kind: VerificationKind;
+  /** 验证者（自由文本；非空） */
+  by: string;
+  /** 记录时间 ISO 8601 */
+  at: string;
+  /** 结论摘要（非空） */
+  note: string;
+  /** 证据（命令 / 路径 / 摘要；可选） */
+  evidence?: string;
+}
+
+/** 阶段验证记录（与需求验证记录同形；v1.5.8 / REQ-027） */
+export type StageVerificationRecord = RequirementVerificationRecord;
+
 /** 需求条目数据（需求层显式字段；聚合方向归 stage-83） */
 export interface RequirementData {
   /** 需求 ID（REQ-NNN，max+1 不回收；格式见 REQ_ID_PATTERN） */
@@ -46,4 +95,8 @@ export interface RequirementData {
   parent_id?: string;
   /** 需求级工作流模式（**调度属性**：经解析单点作用于其关联阶段；可选 + 读侧宽容不 load 补齐；不入聚合 / 不入 done 门；值域权威 = WORKFLOW_MODES） */
   workflow_mode?: WorkflowMode;
+  /** 最近一次审查记录（v1.5.8 / REQ-027；done 门要求 result === 'pass'；可选——读侧宽容） */
+  review?: RequirementReviewRecord;
+  /** 最近一次验证记录（v1.5.8 / REQ-027；done 门要求 result === 'pass'；可选——读侧宽容） */
+  verification?: RequirementVerificationRecord;
 }

@@ -625,4 +625,71 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
       expect(logMock).not.toHaveBeenCalled();
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // stage verify（v1.5.8 / REQ-027）：阶段验证证据写入
+  // ═══════════════════════════════════════════════════════════════════
+
+  describe('stage verify（REQ-027）', () => {
+    /** 初始化 flow.json 并注入一个指定相位的已注册阶段 */
+    function seedStage(phase: string): string {
+      FlowManager.initFlow(projDir);
+      const mgr = new FlowManager(projDir);
+      mgr.addStage('v1.0.0-stage-01');
+      mgr.getData()!.stages['v1.0.0-stage-01'].phase = phase as never;
+      mgr.save();
+      return join(projDir, '.openfeel', 'flow.json');
+    }
+
+    it('archiving 相位：写入 verification + 审计 stage_verification + 人类输出', async () => {
+      const flowPath = seedStage('archiving');
+      await safeParse([
+        'stage', 'verify', 'v1.0.0-stage-01', '--result', 'pass', '--kind', 'test',
+        '--by', 'feel-tester', '--note', 'vitest 全绿', '--evidence', 'npx vitest run',
+      ]);
+      expect(process.exitCode).toBe(0);
+      const flow = JSON.parse(readFileSync(flowPath, 'utf-8'));
+      expect(flow.stages['v1.0.0-stage-01'].verification).toMatchObject({
+        result: 'pass', kind: 'test', by: 'feel-tester', note: 'vitest 全绿', evidence: 'npx vitest run',
+      });
+      expect(flow.log.some((e: { action: string }) => e.action === 'stage_verification')).toBe(true);
+      expect(stdout()).toContain('已记录阶段 v1.0.0-stage-01 验证');
+    });
+
+    it('非 archiving 相位：拒绝（exit 1 + 相位提示 + 零写盘）', async () => {
+      const flowPath = seedStage('exec_running');
+      const before = readFileSync(flowPath, 'utf-8');
+      await safeParse([
+        'stage', 'verify', 'v1.0.0-stage-01', '--result', 'pass', '--kind', 'test', '--by', 't', '--note', 'n',
+      ]);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain('archiving');
+      expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+    });
+
+    it('阶段不存在：STAGE_NOT_FOUND 拒绝（exit 1）', async () => {
+      FlowManager.initFlow(projDir);
+      await safeParse([
+        'stage', 'verify', 'v1.0.0-stage-99', '--result', 'pass', '--kind', 'test', '--by', 't', '--note', 'n',
+      ]);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain('v1.0.0-stage-99');
+    });
+
+    it('值域非法（--kind e2e）：拒绝 + 零写盘；缺 --note → CommanderError', async () => {
+      const flowPath = seedStage('archiving');
+      const before = readFileSync(flowPath, 'utf-8');
+      await safeParse([
+        'stage', 'verify', 'v1.0.0-stage-01', '--result', 'pass', '--kind', 'e2e', '--by', 't', '--note', 'n',
+      ]);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain('验证记录取值非法');
+      expect(readFileSync(flowPath, 'utf-8')).toBe(before);
+
+      await expect(program.parseAsync(
+        ['stage', 'verify', 'v1.0.0-stage-01', '--result', 'pass', '--kind', 'test', '--by', 't'],
+        { from: 'user' },
+      )).rejects.toBeInstanceOf(CommanderError);
+    });
+  });
 });

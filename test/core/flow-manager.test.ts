@@ -9,7 +9,7 @@ import { t } from '../../src/core/i18n.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
-import { AUTO_DONE_PRECONDITION } from '../../src/core/req/aggregate.js';
+import { AUTO_DONE_PRECONDITION, syncRequirementStatus } from '../../src/core/req/aggregate.js';
 import { REQ_STATUSES, type RequirementData, type RequirementStatus } from '../../src/core/req/types.js';
 import { resetSessionCache } from '../../src/core/session.js';
 
@@ -29,6 +29,9 @@ vi.mock('node:child_process', () => ({ execFileSync: mockedChild.execFileSync })
 // 执行环境真实存在 CLAUDE_CODE_SESSION_ID → 不 stub 则值非确定）
 const GOLDEN_SESSION_ID = 'golden-fixed';
 const GOLDEN_SESSION_LABEL = 'env:' + GOLDEN_SESSION_ID;
+
+/** v1.5.8 / REQ-027：archiving → done 硬门所需的阶段验证记录（`at` 固定空串，供 golden 逐字节比对） */
+const PASS_VERIFICATION = { result: 'pass' as const, kind: 'test' as const, by: 'tester', at: '', note: 'ok' };
 
 /** 创建测试用 FlowData（带一个阶段和一个 op） */
 function makeTestFlowData(overrides?: Partial<FlowData>): FlowData {
@@ -62,6 +65,7 @@ function makeTestFlowData(overrides?: Partial<FlowData>): FlowData {
             },
           },
         },
+        verification: { ...PASS_VERIFICATION },
       },
     },
     reviews: [],
@@ -5196,7 +5200,10 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
 
   /** 构造阶段（可选关联需求） */
   function stage(phase: PipelinePhase, requirementId?: string): StageData {
-    const s: StageData = { name: '阶段', phase, status: 'in_progress', deps: [], ops: {} };
+    const s: StageData = {
+      name: '阶段', phase, status: 'in_progress', deps: [], ops: {},
+      verification: { ...PASS_VERIFICATION },   // v1.5.8 / REQ-027：done 门前置（阶段验证证据）
+    };
     if (requirementId !== undefined) { s.requirement_id = requirementId; }
     return s;
   }
@@ -5229,7 +5236,13 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
     return {
       meta: { version: '1.0', project: 'Stage83Regression', updated: '2026-01-01T00:00:00.000Z' },
       pipeline: { phase: 'active' as MetaPhase, current: { stage: '', op: '' }, retry: 0 },
-      stages: { 'stage-01': { name: '回归阶段', phase: 'plan_pending' as PipelinePhase, status: 'in_progress', deps: [], ops: {} } },
+      stages: {
+        'stage-01': {
+          name: '回归阶段', phase: 'plan_pending' as PipelinePhase, status: 'in_progress', deps: [], ops: {},
+          // v1.5.8 / REQ-027：done 门前置（零关联 → 相位维度放行，验证维度仍需 pass）
+          verification: { ...PASS_VERIFICATION },
+        },
+      },
       reviews: [], log: [],
     };
   }
@@ -5277,6 +5290,13 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
       "status": "done",
       "deps": [],
       "ops": {},
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "tester",
+        "at": "",
+        "note": "ok"
+      },
       "stats": {
         "start_time": "",
         "end_time": "",
@@ -5322,6 +5342,13 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
       "status": "done",
       "deps": [],
       "ops": {},
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "tester",
+        "at": "",
+        "note": "ok"
+      },
       "stats": {
         "start_time": "",
         "end_time": "",
@@ -5345,71 +5372,73 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
   ]
 }`;
 
-  it('T4.2-① 正向矩阵（7 status × 聚合 done——真实 advanceStagePhase）：仅 {scheduled,in_progress} 写 + 审计逐字段；返回值恒 true', () => {
+  it('T4.2-① done 门（v1.5.8 / REQ-027）：关联需求未 done → 拒绝推进（7 status 穷举）；已 done → 放行且零回写', () => {
     for (const status of REQ_STATUSES) {
       const data = flowData({ 'stage-01': stage('archiving', 'REQ-001') }, [reqObj('REQ-001', status)]);
       const mgr = mgrWith(data);
-      const before = mgr.getData()!.requirements![0].updated_at;
-      const ret = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
-      expect(ret).toBe(true);                                    // 返回值与回写解耦：恒 true
-      const req = mgr.getData()!.requirements![0];
-      if ((AUTO_DONE_PRECONDITION as readonly string[]).includes(status)) {
-        expect(req.status).toBe('done');
-        expect(req.updated_at).not.toBe(before);                 // updated_at 刷新
-        expect(countAction(mgr, 'requirement_auto_done')).toBe(1);
-        const entry = mgr.getData()!.log.find((l) => l.action === 'requirement_auto_done')!;
-        expect(entry.agent).toBe('cli');
-        expect(entry.detail).toEqual({ requirementId: 'REQ-001', from: status, to: 'done', triggerStage: 'stage-01' });
+      if (status === 'done') {
+        // 需求已 done → 放行；聚合恒 done，回写零动作零审计
+        expect(mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli')).toBe(true);
+        expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+        expect(mgr.getData()!.requirements![0].status).toBe('done');
+        expect(countReqLogs(mgr)).toBe(0);
       } else {
-        expect(req.status).toBe(status);                         // 前置集外：状态逐字不变
-        expect(countReqLogs(mgr)).toBe(0);                       // 零审计
+        // 未 done（含 cancelled / rejected——保守口径：发布判据只认 done）→ 阶段 done 门拒绝，零变更零审计
+        expect(() => mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli'))
+          .toThrow(/关联需求|linked requirements/);
+        expect(mgr.getData()!.stages['stage-01'].phase).toBe('archiving');
+        expect(mgr.getData()!.requirements![0].status).toBe(status);
+        expect(countReqLogs(mgr)).toBe(0);
       }
     }
+    // 前置集常量仍是聚合回写的合法来源集（单源未改动，仅 done 门收紧）
+    expect([...AUTO_DONE_PRECONDITION]).toEqual(['scheduled', 'in_progress']);
   });
 
-  it('T4.2-② 反向矩阵（7 status × 聚合非 done——需求同时关联 stage-A 与 stage-B）：仅 done 回退 + 审计；其余 6 零动作', () => {
+  it('T4.2-② 反向矩阵（7 status × 聚合非 done）：聚合回写单点直调——仅 done 回退 + 审计；其余 6 零动作', () => {
     for (const status of REQ_STATUSES) {
-      // 需求同时关联 A（archiving→advance done）与 B（exec_running 固定），推进 A 后聚合仍非 done
+      // 需求同时关联 A（done）与 B（exec_running），回写作用于 A 时聚合仍非 done
       const data = flowData({
-        'stage-A': stage('archiving', 'REQ-001'),
+        'stage-A': stage('done', 'REQ-001'),
         'stage-B': stage('exec_running', 'REQ-001'),
       }, [reqObj('REQ-001', status)]);
       const mgr = mgrWith(data);
-      const ret = mgr.advanceStagePhase('stage-A', 'done' as PipelinePhase, 'cli');
-      expect(ret).toBe(true);
+      const affected = syncRequirementStatus(mgr.getData()!, 'stage-A');
       const req = mgr.getData()!.requirements![0];
       if (status === 'done') {
         // S-83-3 漂移自愈格：done × 聚合非 done → 回退 + 审计
+        expect(affected).toEqual(['REQ-001']);
         expect(req.status).toBe('in_progress');
         expect(countAction(mgr, 'requirement_auto_reopen')).toBe(1);
         const entry = mgr.getData()!.log.find((l) => l.action === 'requirement_auto_reopen')!;
         expect(entry.agent).toBe('cli');
         expect(entry.detail).toEqual({ requirementId: 'REQ-001', from: 'done', to: 'in_progress', triggerStage: 'stage-A' });
       } else {
+        expect(affected).toEqual([]);
         expect(req.status).toBe(status);
         expect(countReqLogs(mgr)).toBe(0);
       }
     }
   });
 
-  it('T4.2-③ 对称循环（advance done ↔ reset）：双向对称 + 审计条数逐次断言', () => {
-    const data = flowData({ 'stage-01': stage('archiving', 'REQ-001') }, [reqObj('REQ-001', 'in_progress')]);
+  it('T4.2-③ 对称循环（advance done → reset 回退 → 再 advance 被 done 门拒绝）', () => {
+    const data = flowData({ 'stage-01': stage('archiving', 'REQ-001') }, [reqObj('REQ-001', 'done')]);
     const mgr = mgrWith(data);
-    // ① advance → done
+    // ① advance → done（需求已 done：门前置满足，零回写）
     expect(mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli')).toBe(true);
     expect(mgr.getData()!.requirements![0].status).toBe('done');
-    expect(countAction(mgr, 'requirement_auto_done')).toBe(1);
-    // ② reset（复位到 review_failed——投影 status ≠ done，故再次 advance 仍重入 done 分支）
+    expect(countReqLogs(mgr)).toBe(0);
+    // ② reset（复位到 review_failed——聚合 ≠ done → 需求回退 in_progress + 审计）
     const res = mgr.resetStagePhase('stage-01', 'review_failed');
     expect(res.changed).toBe(true);
     expect(res.from).toBe('done');
     expect(res.to).toBe('review_failed');
-    expect(mgr.getData()!.requirements![0].status).toBe('in_progress');   // 聚合 ≠ done → 回退
+    expect(mgr.getData()!.requirements![0].status).toBe('in_progress');
     expect(countAction(mgr, 'requirement_auto_reopen')).toBe(1);
-    // ③ 再 advance → done（对称往返）
-    expect(mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli')).toBe(true);
-    expect(mgr.getData()!.requirements![0].status).toBe('done');
-    expect(countAction(mgr, 'requirement_auto_done')).toBe(2);            // 第二条 done 审计
+    // ③ 再 advance → done：需求已回退成 in_progress → done 门拒绝（REQ-027 收紧点）
+    expect(() => mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli'))
+      .toThrow(/关联需求|linked requirements/);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('review_failed');
   });
 
   it('REV-83-013 加固：非 current 阶段的 reset 仍触发聚合回写（回写不在 `if (normCur === key)` 之内）', () => {
@@ -5443,18 +5472,17 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
     expect(countReqLogs(mgr)).toBe(0);                           // 零审计
   });
 
-  it('T4.2-⑥ 悬空关联（requirement_id: REQ-999 且 requirements: []）→ 零动作零审计、不抛错', () => {
+  it('T4.2-⑥ 悬空关联（requirement_id: REQ-999 且 requirements: []）→ done 门拒绝（悬空视为未完成）+ 零审计', () => {
     const data = flowData({ 'stage-01': stage('archiving', 'REQ-999') }, []);
     const mgr = mgrWith(data);
-    let ret: boolean | undefined;
-    expect(() => { ret = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli'); }).not.toThrow();
-    expect(ret).toBe(true);
-    expect(countReqLogs(mgr)).toBe(0);
-    expect(mgr.getData()!.requirements).toEqual([]);
+    expect(() => mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli')).toThrow(/REQ-999/);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('archiving');   // 零变更
+    expect(countReqLogs(mgr)).toBe(0);                                   // 零审计
+    expect(mgr.getData()!.requirements).toEqual([]);                     // 零注入
   });
 
-  it('T4.2-⑦ 同事务：并发冲突下磁盘无中间态（phase 变更与需求状态恒同现）', () => {
-    writeFlow(flowData({ 'stage-01': stage('archiving', 'REQ-001') }, [reqObj('REQ-001', 'in_progress')]));
+  it('T4.2-⑦ 同事务：并发冲突下磁盘无中间态（phase 变更与 save 单事务）', () => {
+    writeFlow(flowData({ 'stage-01': stage('archiving', 'REQ-001') }, [reqObj('REQ-001', 'done')]));
     const a = new FlowManager(tmpDir);
     const b = new FlowManager(tmpDir);
     // A：真实推进 + save 成功
@@ -5479,9 +5507,10 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
     expect(normalize(parsed)).toBe(GOLDEN_ADVANCE);              // 归一化后逐字节等值
     expect('requirements' in parsed).toBe(false);                // 零注入
     expect((parsed.log as any[]).filter((l) => String(l.action).startsWith('requirement_'))).toHaveLength(0);
-    // 正控（对照实验）：加关联 + requirements → auto_done 出现（证明回写已接通，「零命中」非因未激活）
-    const positive = mgrWith(flowData({ 'stage-01': stage('plan_pending', 'REQ-001') }, [reqObj('REQ-001', 'in_progress')]));
-    positive.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
+    // 正控（对照实验）：聚合回写单点直调 → auto_done 出现（证明回写已接通，「零命中」非因未激活）
+    // v1.5.8 / REQ-027 起 advanceStagePhase 的 done 门要求关联需求已 done，故正控改走回写单点本身。
+    const positive = mgrWith(flowData({ 'stage-01': stage('done', 'REQ-001') }, [reqObj('REQ-001', 'in_progress')]));
+    expect(syncRequirementStatus(positive.getData()!, 'stage-01')).toEqual(['REQ-001']);
     expect(countAction(positive, 'requirement_auto_done')).toBe(1);
   });
 
@@ -6414,5 +6443,142 @@ describe('stage-96 op-001 调度单点', () => {
     expect(block![0]).toContain('this.getAvailablePhases()');
     expect(block![0]).toContain('this.getPhaseLabels()');
     expect(block![0]).toContain('this.mapPhaseToAgent(phase)');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.5.8 / REQ-027「完成必审验」：阶段验证写路径 + archiving → done 硬门
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('REQ-027 完成必审验（阶段层）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-req027-stage-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 最小阶段构造（可覆盖 phase / requirement / verification） */
+  function stageFixture(overrides: Partial<StageData> = {}): StageData {
+    return {
+      name: '阶段', phase: 'archiving' as PipelinePhase, status: 'archiving', deps: [], ops: {},
+      ...overrides,
+    };
+  }
+
+  /** 构造 manager（内存数据；不落盘） */
+  function mgrWith(stages: Record<string, StageData>, requirements?: RequirementData[]): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData({
+      stages,
+      ...(requirements === undefined ? {} : { requirements }),
+    }));
+    return mgr;
+  }
+
+  /** 通过态验证记录 */
+  const PASS_VER = { result: 'pass' as const, kind: 'test' as const, by: 'tester', at: '', note: 'ok' };
+
+  it('T027.6 recordStageVerification：archiving 相位写入 + 审计 stage_verification', () => {
+    const mgr = mgrWith({ 'stage-01': stageFixture() });
+    expect(mgr.recordStageVerification('stage-01', {
+      result: 'pass', kind: 'build', by: ' Feel ', note: 'tsc ok', evidence: ' npx tsc --noEmit ',
+    })).toEqual({ ok: true, changed: true });
+    const stage = mgr.getData()!.stages['stage-01'];
+    expect(stage.verification).toMatchObject({
+      result: 'pass', kind: 'build', by: 'Feel', note: 'tsc ok', evidence: 'npx tsc --noEmit',
+    });
+    const entry = mgr.getData()!.log.find((l) => l.action === 'stage_verification')!;
+    expect(entry.agent).toBe('cli');
+    expect(entry.detail).toEqual({ stage: 'stage-01', result: 'pass', kind: 'build', by: 'Feel' });
+  });
+
+  it('T027.7 recordStageVerification 拒绝路径：不存在 / 非 archiving / 值域非法（零变更零审计）', () => {
+    const mgr = mgrWith({
+      'stage-01': stageFixture({ phase: 'exec_running' as PipelinePhase }),
+      'stage-02': stageFixture({ phase: 'done' as PipelinePhase }),
+    });
+    const logLen = mgr.getData()!.log.length;
+
+    expect(mgr.recordStageVerification('stage-999', { result: 'pass', kind: 'test', by: 't', note: 'n' }))
+      .toEqual({ ok: false, code: 'not_found' });
+    expect(mgr.recordStageVerification('stage-01', { result: 'pass', kind: 'test', by: 't', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_phase' });                       // exec_running
+    expect(mgr.recordStageVerification('stage-02', { result: 'pass', kind: 'test', by: 't', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_phase' });                       // done 之后不接受补记
+
+    const data = mgr.getData()!;
+    data.stages['stage-03'] = stageFixture();
+    expect(mgr.recordStageVerification('stage-03', { result: 'ok', kind: 'test', by: 't', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_field' });                       // result 值域
+    expect(mgr.recordStageVerification('stage-03', { result: 'pass', kind: 'e2e', by: 't', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_field' });                       // kind 值域
+    expect(mgr.recordStageVerification('stage-03', { result: 'pass', kind: 'test', by: ' ', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_field' });                       // by 空
+    expect(mgr.recordStageVerification('stage-03', { result: 'pass', kind: 'test', by: 't', note: '' }))
+      .toEqual({ ok: false, code: 'invalid_field' });                       // note 空
+    expect('verification' in data.stages['stage-03']).toBe(false);
+    expect(mgr.getData()!.log.length).toBe(logLen);                         // 零审计
+  });
+
+  it('T027.8 describeStageDoneGate：验证缺失 / 关联需求未 done / 齐全', () => {
+    const req = (id: string, status: RequirementStatus): RequirementData => ({
+      id, title: id, status, created_at: '', updated_at: '',
+    });
+    const mgr = mgrWith({
+      'stage-01': stageFixture({ requirement_id: 'REQ-001' }),
+    }, [req('REQ-001', 'in_progress')]);
+    expect(mgr.describeStageDoneGate('stage-01')).toEqual({
+      verificationMissing: true, incompleteRequirements: ['REQ-001'],
+    });
+    // 短名归一化同样命中
+    expect(mgr.describeStageDoneGate('stage-01').incompleteRequirements).toEqual(['REQ-001']);
+
+    const okMgr = mgrWith({
+      'stage-01': stageFixture({ requirement_id: 'REQ-001', verification: { ...PASS_VER } }),
+    }, [req('REQ-001', 'done')]);
+    expect(okMgr.describeStageDoneGate('stage-01')).toEqual({
+      verificationMissing: false, incompleteRequirements: [],
+    });
+  });
+
+  it('T027.9 archiving → done 三态：无阶段验证拒绝 / 关联需求未 done 拒绝 / 齐全通过', () => {
+    // ① 无阶段验证 → 拒绝（零变更零审计）
+    const noVer = mgrWith({ 'stage-01': stageFixture() });
+    expect(() => noVer.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli'))
+      .toThrow(/缺少阶段验证记录/);
+    expect(noVer.getData()!.stages['stage-01'].phase).toBe('archiving');
+    expect(noVer.getData()!.log.filter((l) => l.action === 'advance_stage_phase')).toHaveLength(0);
+
+    // ② 有验证但关联需求未 done → 拒绝
+    const pendingReq = mgrWith({
+      'stage-01': stageFixture({ requirement_id: 'REQ-001' }),
+    }, [{ id: 'REQ-001', title: 'R', status: 'cancelled', created_at: '', updated_at: '' }]);
+    pendingReq.getData()!.stages['stage-01'].verification = { ...PASS_VER };
+    expect(() => pendingReq.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli'))
+      .toThrow(/关联需求未全部完成.*REQ-001/);
+    expect(pendingReq.getData()!.stages['stage-01'].phase).toBe('archiving');
+
+    // ③ 齐全 → 通过（返回值 true + phase done）
+    const ready = mgrWith({
+      'stage-01': stageFixture({ requirement_id: 'REQ-001', verification: { ...PASS_VER } }),
+    }, [{ id: 'REQ-001', title: 'R', status: 'done', created_at: '', updated_at: '' }]);
+    expect(ready.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli')).toBe(true);
+    expect(ready.getData()!.stages['stage-01'].phase).toBe('done');
+  });
+
+  it('T027.10 formatStageDoneGate 文案成对：zh / en 均非空且含阶段 ID', () => {
+    const mgr = mgrWith({ 'stage-01': stageFixture({ requirement_id: 'REQ-001' }) }, []);
+    const gate = mgr.describeStageDoneGate('stage-01');
+    const zh = mgr.formatStageDoneGate('stage-01', gate, 'zh-CN');
+    expect(zh).toHaveLength(2);
+    expect(zh[0]).toContain('stage-01');
+    expect(zh[1]).toContain('REQ-001');
+    const en = mgr.formatStageDoneGate('stage-01', gate, 'en');
+    expect(en).toHaveLength(2);
+    expect(/[\u4e00-\u9fff]/.test(en.join(''))).toBe(false);
   });
 });

@@ -15,7 +15,8 @@ import {
   addRequirement, claimRequirement, releaseRequirement, updateRequirement,
   advanceRequirement, linkRequirement, splitRequirement,
   isTerminalRequirementStatus, allLinkedStagesDone, canCompleteRequirement,
-  getAllowedNextStatuses,
+  getAllowedNextStatuses, recordRequirementReview, recordRequirementVerification,
+  requirementDoneBlocker,
 } from '../../src/core/req/requirement-ops.js';
 import {
   getRequirementsDir, getRequirementBodyRelPath, getRequirementBodyPath, writeRequirementBodySkeleton,
@@ -51,7 +52,9 @@ function makeStage(overrides: Partial<StageData> = {}): StageData {
   };
 }
 
-/** 构造需求条目（直构，供状态流转/认领用） */
+/** 构造需求条目（直构，供状态流转/认领用）。
+ * v1.5.8 / REQ-027：默认补齐「通过的审查 + 验证」——done 门要求两者均 pass；
+ * 负向用例显式传 `review` / `verification` 覆盖（含 `review: undefined`）。 */
 function makeReq(id: string, status: RequirementStatus, overrides: Partial<RequirementData> = {}): RequirementData {
   return {
     id,
@@ -59,6 +62,8 @@ function makeReq(id: string, status: RequirementStatus, overrides: Partial<Requi
     status,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
+    review: { result: 'pass', by: 'reviewer', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
+    verification: { result: 'pass', kind: 'test', by: 'tester', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
     ...overrides,
   };
 }
@@ -1558,6 +1563,11 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     expect(req.workflow_mode).toBe('general');
     expect(advanceRequirement(data, req.id, 'scheduled')).toEqual({ ok: true, changed: true });
     expect(advanceRequirement(data, req.id, 'in_progress')).toEqual({ ok: true, changed: true });
+    // v1.5.8 / REQ-027：done 门要求审查 + 验证均 pass
+    expect(recordRequirementReview(data, req.id, { result: 'pass', by: 'reviewer', note: 'ok', independent: true }))
+      .toEqual({ ok: true, changed: true });
+    expect(recordRequirementVerification(data, req.id, { result: 'pass', kind: 'test', by: 'tester', note: 'ok' }))
+      .toEqual({ ok: true, changed: true });
     expect(advanceRequirement(data, req.id, 'done')).toEqual({ ok: true, changed: true });
     expect(getRequirement(data, req.id)!.status).toBe('done');
     const last = lastLog(data);
@@ -1620,6 +1630,9 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     const req = addRequirement(data, { title: 'g', workflow_mode: 'general' });
     advanceRequirement(data, req.id, 'scheduled');
     advanceRequirement(data, req.id, 'in_progress');
+    // v1.5.8 / REQ-027：done 门前置（审查 + 验证）
+    recordRequirementReview(data, req.id, { result: 'pass', by: 'reviewer', note: 'ok', independent: true });
+    recordRequirementVerification(data, req.id, { result: 'pass', kind: 'test', by: 'tester', note: 'ok' });
     advanceRequirement(data, req.id, 'done');
     expect(getRequirement(data, req.id)!.status).toBe('done');
     expect(computeRequirementAggregate(data, req.id).aggregate).toBeNull();          // 零关联 → null（不入聚合）
@@ -1673,5 +1686,129 @@ describe('REQ-97-006 命令层过滤单点化', () => {
     const src = readFileSync(new URL('../../src/core/req/requirement-ops.ts', import.meta.url), 'utf-8');
     expect(src).toContain('export function allLinkedStagesDone');
     expect(src).toContain('hasLinked');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.5.8 / REQ-027「完成必审验」：需求 done 门三态 + 审查/验证记录写路径
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('REQ-027 完成必审验（需求层）', () => {
+  /** 零关联 + 缺记录的需求（负向基线） */
+  function bareData(overrides: Partial<RequirementData> = {}): FlowData {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress', { review: undefined, verification: undefined, ...overrides })];
+    return data;
+  }
+
+  it('T027.1 done 门三态：无审 → review / 无验 → verification / 齐全 → null（并放行）', () => {
+    // ① 无审查（有验证）
+    const noReview = bareData({
+      verification: { result: 'pass', kind: 'test', by: 't', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
+    });
+    expect(requirementDoneBlocker(noReview, noReview.requirements![0])).toBe('review');
+    expect(advanceRequirement(noReview, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+    expect(noReview.requirements![0].status).toBe('in_progress');           // 零变更
+    expect(noReview.log.length).toBe(0);                                    // 零审计
+
+    // ② 无验证（有审查）
+    const noVerify = bareData({
+      review: { result: 'pass', by: 'r', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
+    });
+    expect(requirementDoneBlocker(noVerify, noVerify.requirements![0])).toBe('verification');
+    expect(advanceRequirement(noVerify, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+
+    // ③ 齐全且均 pass → 放行
+    const full = bareData({
+      review: { result: 'pass', by: 'r', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: false },
+      verification: { result: 'pass', kind: 'manual', by: 'v', at: '2026-01-01T00:00:00.000Z', note: 'ok', evidence: 'x' },
+    });
+    expect(requirementDoneBlocker(full, full.requirements![0])).toBeNull();
+    expect(advanceRequirement(full, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+  });
+
+  it('T027.2 判据顺序：阶段相位优先于审查 / 验证（文案分流依据）', () => {
+    const data = makeFlowData({ 'stage-01': makeStage({ phase: 'plan_pending', requirement_id: 'REQ-001' }) });
+    data.requirements = [makeReq('REQ-001', 'in_progress', { review: undefined, verification: undefined })];
+    expect(requirementDoneBlocker(data, data.requirements![0])).toBe('stage_phase');
+    expect(canCompleteRequirement(data, data.requirements![0])).toBe(false);
+  });
+
+  it('T027.3 result=fail 不满足 done 门（记录留痕但不放行）', () => {
+    const data = bareData({
+      review: { result: 'fail', by: 'r', at: '2026-01-01T00:00:00.000Z', note: '有问题', independent: true },
+      verification: { result: 'pass', kind: 'build', by: 'v', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
+    });
+    expect(requirementDoneBlocker(data, data.requirements![0])).toBe('review');
+
+    const failedVerify = bareData({
+      review: { result: 'pass', by: 'r', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
+      verification: { result: 'fail', kind: 'test', by: 'v', at: '2026-01-01T00:00:00.000Z', note: '失败' },
+    });
+    expect(requirementDoneBlocker(failedVerify, failedVerify.requirements![0])).toBe('verification');
+  });
+
+  it('T027.4 recordRequirementReview：写入 + 审计；值域 / 空 by / 空 note / 不存在 / 终态均拒绝且零变更', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress', { review: undefined })];
+    expect(recordRequirementReview(data, 'REQ-001', {
+      result: 'pass', by: ' Alice ', note: ' LGTM ', independent: false,
+    })).toEqual({ ok: true, changed: true });
+    const req = data.requirements[0];
+    expect(req.review).toMatchObject({ result: 'pass', by: 'Alice', note: 'LGTM', independent: false });
+    expect(typeof req.review!.at).toBe('string');
+    expect(lastLog(data).action).toBe('requirement_review');
+    expect(lastLog(data).detail).toMatchObject({ id: 'REQ-001', result: 'pass', by: 'Alice', independent: false });
+
+    const n = data.log.length;
+    const before = { ...req.review };
+    // 值域外 result
+    expect(recordRequirementReview(data, 'REQ-001', { result: 'ok', by: 'a', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_field' });
+    // 空 by / 空 note
+    expect(recordRequirementReview(data, 'REQ-001', { result: 'pass', by: '  ', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_field' });
+    expect(recordRequirementReview(data, 'REQ-001', { result: 'pass', by: 'a', note: '' }))
+      .toEqual({ ok: false, code: 'invalid_field' });
+    // 不存在
+    expect(recordRequirementReview(data, 'REQ-999', { result: 'pass', by: 'a', note: 'n' }))
+      .toEqual({ ok: false, code: 'not_found' });
+    expect(data.log.length).toBe(n);                                    // 零审计
+    expect(data.requirements[0].review).toEqual(before);                // 零变更
+
+    // 终态拒绝
+    data.requirements[0].status = 'done';
+    expect(recordRequirementReview(data, 'REQ-001', { result: 'pass', by: 'a', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_status' });
+  });
+
+  it('T027.5 recordRequirementVerification：写入 + 审计（含 evidence 可选）；kind 值域 / 终态拒绝', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress', { verification: undefined })];
+    expect(recordRequirementVerification(data, 'REQ-001', {
+      result: 'pass', kind: 'test', by: 'tester', note: 'vitest 全绿', evidence: ' npx vitest run ',
+    })).toEqual({ ok: true, changed: true });
+    expect(data.requirements[0].verification).toMatchObject({
+      result: 'pass', kind: 'test', by: 'tester', note: 'vitest 全绿', evidence: 'npx vitest run',
+    });
+    expect(lastLog(data).action).toBe('requirement_verification');
+    expect(lastLog(data).detail).toEqual({ id: 'REQ-001', result: 'pass', kind: 'test', by: 'tester' });
+
+    const n = data.log.length;
+    expect(recordRequirementVerification(data, 'REQ-001', { result: 'pass', kind: 'e2e', by: 't', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_field' });
+    expect(recordRequirementVerification(data, 'REQ-001', { result: 'pass', kind: 'test', by: '', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_field' });
+    expect(data.log.length).toBe(n);
+
+    data.requirements[0].status = 'cancelled';
+    expect(recordRequirementVerification(data, 'REQ-001', { result: 'pass', kind: 'test', by: 't', note: 'n' }))
+      .toEqual({ ok: false, code: 'invalid_status' });
+
+    // evidence 缺省：不写该键（读侧宽容）
+    const bare = makeFlowData();
+    bare.requirements = [makeReq('REQ-002', 'in_progress', { verification: undefined })];
+    recordRequirementVerification(bare, 'REQ-002', { result: 'fail', kind: 'manual', by: 'm', note: '手测失败' });
+    expect('evidence' in bare.requirements[0].verification!).toBe(false);
   });
 });

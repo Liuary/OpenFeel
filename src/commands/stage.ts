@@ -16,8 +16,8 @@ import { atomicWriteFileSync } from '../core/fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../core/fs/file-lock.js';
 import fastGlob from 'fast-glob';
 import { t, getCliLang } from '../core/i18n.js';
-import { FlowManager, STAGE_STATUS_VALUES } from '../core/flow-manager.js';
-import { failRefusal, handleAddStageError } from './shared/errors.js';
+import { FlowManager, STAGE_STATUS_VALUES, isFlowConcurrentError } from '../core/flow-manager.js';
+import { failRefusal, failInternal, handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
 import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
@@ -651,6 +651,78 @@ export function registerStageCommand(program: Command): void {
 
       const actionLabel = toDone ? t('stage.task.done', lang) : t('stage.task.undone', lang);
       console.log(t('stage.task.actionLabelTmpl', lang, { label: actionLabel, stageId, taskNo: String(taskNo) }));
+    });
+
+  // ═══ stage verify <stageId> --result --kind --by --note [--evidence] ═══
+  // v1.5.8 / REQ-027「完成必验」：阶段验证证据（仅 archiving 相位可记录；
+  // archiving → done 的硬门要求 stage.verification.result === 'pass'）。人类输出，无 --json。
+  stage
+    .command('verify')
+    .description('记录阶段验证证据（archiving 相位；阶段 done 门要求 result=pass）')
+    .argument('<stageId>', '阶段 ID（如 v1.5.8-stage-122 或 stage-122）')
+    .requiredOption('--result <result>', '验证结论（pass / fail）')
+    .requiredOption('--kind <kind>', '验证种类（test / manual / build）')
+    .requiredOption('--by <who>', '验证者')
+    .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
+    .option('--evidence <path>', '证据（命令 / 报告路径）')
+    .action((stageId: string, options: { result: string; kind: string; by: string; note: string; evidence?: string }) => {
+      const projectPath = process.cwd();
+      const lang = getCliLang(projectPath);
+      const mgr = new FlowManager(projectPath);
+      if (!mgr.isLoaded()) {
+        console.error(t('common.errorNoInit', lang));
+        process.exit(1);
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（阶段存在 / 相位 / 值域校验在门前，由核心单点判定）
+      if (!enforcePreflightOrFail(projectPath, lang)) return;
+      const r = mgr.recordStageVerification(stageId, {
+        result: options.result,
+        kind: options.kind,
+        by: options.by,
+        note: options.note,
+        evidence: options.evidence,
+      });
+      if (!r.ok) {
+        if (r.code === 'not_found') {
+          failRefusal({
+            code: 'STAGE_NOT_FOUND',
+            message: t('stage.verify.notFoundTmpl', lang, { stage: stageId }),
+            detail: { stage: stageId },
+          });
+          return;
+        }
+        if (r.code === 'invalid_phase') {
+          const data = mgr.getData()!;
+          const key = normalizeStageId(stageId) ?? stageId;
+          const phase = (data.stages[key] ?? data.stages[stageId])?.phase ?? '';
+          failRefusal({
+            code: 'INVALID_ARGUMENT',
+            message: t('stage.verify.phaseTmpl', lang, { stage: stageId, phase }),
+            detail: { stage: stageId, phase },
+          });
+          return;
+        }
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('stage.verify.invalidTmpl', lang),
+          detail: { stage: stageId },
+        });
+        return;
+      }
+      try {
+        mgr.save();
+      } catch (err) {
+        if (isFlowConcurrentError(err)) {
+          handleConcurrentConflict(err, lang);
+        } else {
+          failInternal(err);
+        }
+        return;
+      }
+      console.log(t('stage.verify.doneTmpl', lang, {
+        stage: stageId, kind: options.kind, result: options.result, by: options.by,
+      }));
     });
 
   // ═══ stage create <stageId> ═══

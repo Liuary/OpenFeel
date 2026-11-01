@@ -158,7 +158,8 @@ describe('req 命令组（stage-82）', () => {
     writeFileSync(join(tmpDir, '.openfeel', 'flow.json'), JSON.stringify(d, null, 2) + '\n', 'utf-8');
   }
 
-  /** 构造需求条目 */
+  /** 构造需求条目（v1.5.8 / REQ-027：默认补齐 pass 的审查 + 验证——done 门要求两者均 pass；
+   * 负向用例显式传 `review: undefined` / `verification: undefined` 覆盖） */
   function req_(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
     return {
       id,
@@ -166,6 +167,8 @@ describe('req 命令组（stage-82）', () => {
       status: 'draft',
       created_at: '2026-01-01T00:00:00.000Z',
       updated_at: '2026-01-01T00:00:00.000Z',
+      review: { result: 'pass', by: 'reviewer', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
+      verification: { result: 'pass', kind: 'test', by: 'tester', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
       ...overrides,
     };
   }
@@ -1073,7 +1076,7 @@ describe('req 命令组（stage-82）', () => {
     expect(err()).toContain('flow.json 未初始化');
   });
 
-  it('T-C3 help 键双向逐键断言（44 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
+  it('T-C3 help 键双向逐键断言（58 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
     const EXPECTED = [
       'help.req',
       'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority', 'help.req.add.workflowMode',
@@ -1087,8 +1090,13 @@ describe('req 命令组（stage-82）', () => {
       'help.req.board', 'help.req.board.targetVersion', 'help.req.board.json',
       'help.req.next', 'help.req.next.owner', 'help.req.next.json', 'help.req.next.limit',
       'help.req.split', 'help.req.split.argid', 'help.req.split.into', 'help.req.split.json',
+      // v1.5.8 / REQ-027：req review / req verify
+      'help.req.review', 'help.req.review.argid', 'help.req.review.result', 'help.req.review.by',
+      'help.req.review.note', 'help.req.review.independent', 'help.req.review.self',
+      'help.req.verify', 'help.req.verify.argid', 'help.req.verify.result', 'help.req.verify.kind',
+      'help.req.verify.by', 'help.req.verify.note', 'help.req.verify.evidence',
     ];
-    expect(EXPECTED).toHaveLength(44);
+    expect(EXPECTED).toHaveLength(58);
 
     // ① 正向：zh / en 双侧 hasKey
     for (const k of EXPECTED) {
@@ -1976,6 +1984,9 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       title: `需求 ${id}`,
       status: 'scheduled',
       created_at: '2026-01-01T00:00:00.000Z',
+      // v1.5.8 / REQ-027：done 门前置（负向用例显式置 undefined 覆盖）
+      review: { result: 'pass', by: 'reviewer', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
+      verification: { result: 'pass', kind: 'test', by: 'tester', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
       ...overrides,
     };
   }
@@ -2004,6 +2015,14 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
 
     resetCapture();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'in_progress']);
+    expect(process.exitCode).toBe(0);
+
+    // v1.5.8 / REQ-027：done 门要求审查 + 验证均 pass（先记录，再推进）
+    resetCapture();
+    await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--by', 'reviewer', '--note', 'ok', '--independent']);
+    expect(process.exitCode).toBe(0);
+    resetCapture();
+    await safeParse(['req', 'verify', 'REQ-001', '--result', 'pass', '--kind', 'test', '--by', 'tester', '--note', 'ok']);
     expect(process.exitCode).toBe(0);
 
     resetCapture();
@@ -2179,6 +2198,138 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       expect(process.exitCode).toBe(1);
       expect(err()).toContain('REQ-XXX');
       expect(err()).not.toContain(PREFLIGHT_HINT);
+    });
+
+    it('req review / req verify：strict + 无账本 → 拒绝且零写盘', async () => {
+      seedReq({ status: 'in_progress' });
+      armStrict();
+      let before = flowRaw();
+      resetCapture();
+      await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--by', 'r', '--note', 'n']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+
+      before = flowRaw();
+      resetCapture();
+      await safeParse(['req', 'verify', 'REQ-001', '--result', 'pass', '--kind', 'test', '--by', 't', '--note', 'n']);
+      expectRejected();
+      expect(flowRaw()).toBe(before);
+    });
+  });
+
+  // ═══ v1.5.8 / REQ-027：req review / req verify 命令面（三路径）═══
+  describe('req review / req verify（REQ-027）', () => {
+    it('review 成功：写 review 字段 + 审计 requirement_review + 人类输出', async () => {
+      seedReq({ status: 'in_progress', review: undefined });
+      resetCapture();
+      await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--by', 'reviewer', '--note', 'LGTM', '--independent']);
+      expect(process.exitCode).toBe(0);
+      const r = readFlow().requirements[0];
+      expect(r.review).toMatchObject({ result: 'pass', by: 'reviewer', note: 'LGTM', independent: true });
+      expect(readFlow().log.some((e: any) => e.action === 'requirement_review')).toBe(true);
+      expect(out()).toContain('审查');
+      expect(out()).not.toContain('self-review');
+    });
+
+    it('review --self：independent=false 且输出标注 self-review', async () => {
+      seedReq({ status: 'in_progress', review: undefined });
+      resetCapture();
+      await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--by', 'feel', '--note', '自审', '--self']);
+      expect(process.exitCode).toBe(0);
+      expect(readFlow().requirements[0].review.independent).toBe(false);
+      expect(out()).toContain('self-review');
+    });
+
+    it('review 值域 / 互斥 / 缺参 / 终态：exit 1 + 零写盘；缺 requiredOption → CommanderError', async () => {
+      seedReq({ status: 'in_progress', review: undefined });
+      let raw = flowRaw();
+
+      resetCapture();
+      await safeParse(['req', 'review', 'REQ-001', '--result', 'ok', '--by', 'r', '--note', 'n']);
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain('审查记录取值非法');
+      expect(flowRaw()).toBe(raw);
+
+      resetCapture();
+      await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--by', 'r', '--note', 'n', '--independent', '--self']);
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain('不能同时使用');
+      expect(flowRaw()).toBe(raw);
+
+      seedReq({ status: 'done' });
+      resetCapture();
+      raw = flowRaw();
+      await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--by', 'r', '--note', 'n']);
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain('终态');
+      expect(flowRaw()).toBe(raw);
+
+      // 缺 --note → commander 拒绝（错误路径不经 failCode）
+      await expect(program.parseAsync(['req', 'review', 'REQ-001', '--result', 'pass', '--by', 'r'], { from: 'user' }))
+        .rejects.toBeInstanceOf(CommanderError);
+    });
+
+    it('verify 成功：写 verification 字段（含 evidence）+ 审计 requirement_verification', async () => {
+      seedReq({ status: 'in_progress', verification: undefined });
+      resetCapture();
+      await safeParse([
+        'req', 'verify', 'REQ-001', '--result', 'pass', '--kind', 'test',
+        '--by', 'tester', '--note', 'vitest 全绿', '--evidence', 'npx vitest run',
+      ]);
+      expect(process.exitCode).toBe(0);
+      const r = readFlow().requirements[0];
+      expect(r.verification).toMatchObject({ result: 'pass', kind: 'test', by: 'tester', note: 'vitest 全绿', evidence: 'npx vitest run' });
+      expect(readFlow().log.some((e: any) => e.action === 'requirement_verification')).toBe(true);
+      expect(out()).toContain('验证');
+    });
+
+    it('verify 值域 / 缺参：非法 kind → exit 1 零写盘；缺 --kind → CommanderError', async () => {
+      seedReq({ status: 'in_progress', verification: undefined });
+      const raw = flowRaw();
+      resetCapture();
+      await safeParse(['req', 'verify', 'REQ-001', '--result', 'pass', '--kind', 'e2e', '--by', 't', '--note', 'n']);
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain('验证记录取值非法');
+      expect(flowRaw()).toBe(raw);
+
+      await expect(program.parseAsync(['req', 'verify', 'REQ-001', '--result', 'pass', '--by', 't', '--note', 'n'], { from: 'user' }))
+        .rejects.toBeInstanceOf(CommanderError);
+    });
+
+    it('done 门文案分流：未审 → 专用文案；未验 → 专用文案；齐全 → 成功', async () => {
+      // 未审
+      seedReq({ status: 'in_progress', review: undefined });
+      let raw = flowRaw();
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain('缺少通过的审查记录');
+      expect(flowRaw()).toBe(raw);
+
+      // 未验
+      seedReq({
+        status: 'in_progress',
+        review: { result: 'pass', by: 'r', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
+        verification: undefined,
+      });
+      resetCapture();
+      raw = flowRaw();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain('缺少通过的验证记录');
+      expect(flowRaw()).toBe(raw);
+
+      // 齐全 → 成功
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+      expect(process.exitCode).toBe(1);   // 仍缺验证（上面未记录）——保持拒绝
+      resetCapture();
+      await safeParse(['req', 'verify', 'REQ-001', '--result', 'pass', '--kind', 'manual', '--by', 't', '--note', '手测']);
+      expect(process.exitCode).toBe(0);
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+      expect(process.exitCode).toBe(0);
+      expect(readFlow().requirements[0].status).toBe('done');
     });
   });
 });

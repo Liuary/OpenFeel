@@ -11,8 +11,9 @@ import type { FlowData, PipelinePhase, StageData, StageRequirementLink } from '.
 import { stageRequirementIds } from './stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { WORKFLOW_MODES, type WorkflowMode } from '../config.js';   // 值域单源（运行时值导入，禁就地三值字面量）
 import {
-  REQ_ID_PATTERN, REQ_PRIORITIES, REQ_STATUSES,
+  REQ_ID_PATTERN, REQ_PRIORITIES, REQ_STATUSES, REVIEW_RESULTS, VERIFICATION_KINDS,
   type RequirementData, type RequirementPriority, type RequirementStatus,
+  type ReviewResult, type VerificationKind,
 } from './types.js';
 
 /** 需求原语错误码（冻结；命令层据此映射 exit 非 0 零写盘） */
@@ -99,18 +100,121 @@ const COMPLETION_READY_PHASES: readonly PipelinePhase[] = [
 ];
 
 /**
- * 完成门判据（v1.5.7 / REQ-023 supersede stage-93 的载体制对偶路径；`applyStatusChange` 单点消费）：
- *   ① 零关联阶段 → 直接放行（允许显式完成；空集守卫只保留在聚合投影 aggregate.ts——
- *      聚合仍为 null，禁把「显式完成」误当「自动收口」）；
- *   ② 有关联阶段 → 仅当**每个**关联阶段 phase ∈ COMPLETION_READY_PHASES（已进入 exec_running 及之后）时放行；
- *      任一阶段仍在 plan_pending / plan_review / plan_passed / scheme_pending / scheme_review / scheme_passed → 拒绝。
- * 判据只看关联阶段相位，不再按 workflow_mode 分支（模式是调度属性，不入完成门）；
- * `allLinkedStagesDone` 仍是聚合 done 判定单源（aggregate.ts），与完成门解耦、语义不变。
+ * 完成门拒绝原因（v1.5.8 / REQ-027「完成必审验」）：命令层据此区分文案。
+ * - `stage_phase`：关联阶段仍在 plan / scheme 相位（v1.5.7 判据，未变）
+ * - `review`：缺审查记录或结果非 pass
+ * - `verification`：缺验证记录或结果非 pass
  */
-export function canCompleteRequirement(data: FlowData, req: RequirementData): boolean {
+export type RequirementDoneBlocker = 'stage_phase' | 'review' | 'verification';
+
+/**
+ * 完成门判据（v1.5.7 / REQ-023 相位判据 + v1.5.8 / REQ-027 审查验证判据）：
+ *   ① 零关联阶段 → 相位维度直接放行（允许显式完成；空集守卫只保留在聚合投影 aggregate.ts）；
+ *   ② 有关联阶段 → 仅当**每个**关联阶段 phase ∈ COMPLETION_READY_PHASES（已进入 exec_running 及之后）时放行；
+ *   ③ 追加硬门（REQ-027）：`review?.result === 'pass'` ∧ `verification?.result === 'pass'`——
+ *      「完成必审验」：缺审查 / 缺验证一律拒绝，且**无 force 逃生口**（证据不可协商）。
+ * 判据只看关联阶段相位与两条记录，不按 workflow_mode 分支（模式是调度属性，不入完成门）；
+ * `allLinkedStagesDone` 仍是聚合 done 判定单源（aggregate.ts），与完成门解耦、语义不变。
+ * @returns 首个不满足的判据（null = 可完成）；判定顺序固定：阶段相位 → 审查 → 验证
+ */
+export function requirementDoneBlocker(data: FlowData, req: RequirementData): RequirementDoneBlocker | null {
   const linked = Object.values(data.stages ?? {}).filter((s) => stageRequirementIds(s).includes(req.id));
-  if (linked.length === 0) { return true; }
-  return linked.every((s) => (COMPLETION_READY_PHASES as readonly string[]).includes(s.phase));
+  if (linked.length > 0 && !linked.every((s) => (COMPLETION_READY_PHASES as readonly string[]).includes(s.phase))) {
+    return 'stage_phase';
+  }
+  if (req.review?.result !== 'pass') { return 'review'; }
+  if (req.verification?.result !== 'pass') { return 'verification'; }
+  return null;
+}
+
+/** 完成门布尔投影（单点消费者：`applyStatusChange`；文案分流用 `requirementDoneBlocker`） */
+export function canCompleteRequirement(data: FlowData, req: RequirementData): boolean {
+  return requirementDoneBlocker(data, req) === null;
+}
+
+// ═══ 审查 / 验证记录写路径（v1.5.8 / REQ-027「完成必审验」）═══
+
+/** 需求审查记录入参（命令层 / 适配器共用；值域校验在本层单点） */
+export interface ReviewRecordInput {
+  /** 结论（值域 = REVIEW_RESULTS） */
+  result: string;
+  /** 审查者（非空） */
+  by: string;
+  /** 结论摘要（非空） */
+  note: string;
+  /** 是否独立审查（缺省 false = 自我审查，须显式标注） */
+  independent?: boolean;
+}
+
+/** 需求验证记录入参（命令层 / 适配器共用；值域校验在本层单点） */
+export interface VerificationRecordInput {
+  /** 结论（值域 = REVIEW_RESULTS） */
+  result: string;
+  /** 验证种类（值域 = VERIFICATION_KINDS） */
+  kind: string;
+  /** 验证者（非空） */
+  by: string;
+  /** 结论摘要（非空） */
+  note: string;
+  /** 证据（命令 / 报告路径；可选，空串视为未提供） */
+  evidence?: string;
+}
+
+/**
+ * 记录需求审查（纯内存 + 单条审计 `requirement_review`；落盘恒由调用方 save()）。
+ * 校验顺序固定（任一失败 → 零变更零审计）：需求存在 → 非终态 → result 值域 → by / note 非空。
+ * 覆盖语义：新记录整体替换旧记录（不保留历史；历史在 `data.log` 审计里）。
+ * @returns `{ ok: true, changed: true }`（记录写入即真实变更）或错误码
+ */
+export function recordRequirementReview(
+  data: FlowData,
+  id: string,
+  input: ReviewRecordInput,
+): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (isTerminalRequirementStatus(req.status)) { return { ok: false, code: 'invalid_status' }; }
+  const result = typeof input?.result === 'string' ? input.result.trim() : '';
+  const by = typeof input?.by === 'string' ? input.by.trim() : '';
+  const note = typeof input?.note === 'string' ? input.note.trim() : '';
+  if (!(REVIEW_RESULTS as readonly string[]).includes(result)) { return { ok: false, code: 'invalid_field' }; }
+  if (by === '' || note === '') { return { ok: false, code: 'invalid_field' }; }
+  const at = new Date().toISOString();
+  const independent = input?.independent === true;
+  req.review = { result: result as ReviewResult, by, at, note, independent };
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_review', { id, result, by, independent });
+  return { ok: true, changed: true };
+}
+
+/** 与 `recordRequirementReview` 同构的验证记录写入（审计 action `requirement_verification`） */
+export function recordRequirementVerification(
+  data: FlowData,
+  id: string,
+  input: VerificationRecordInput,
+): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (isTerminalRequirementStatus(req.status)) { return { ok: false, code: 'invalid_status' }; }
+  const result = typeof input?.result === 'string' ? input.result.trim() : '';
+  const kind = typeof input?.kind === 'string' ? input.kind.trim() : '';
+  const by = typeof input?.by === 'string' ? input.by.trim() : '';
+  const note = typeof input?.note === 'string' ? input.note.trim() : '';
+  const evidence = typeof input?.evidence === 'string' ? input.evidence.trim() : '';
+  if (!(REVIEW_RESULTS as readonly string[]).includes(result)) { return { ok: false, code: 'invalid_field' }; }
+  if (!(VERIFICATION_KINDS as readonly string[]).includes(kind)) { return { ok: false, code: 'invalid_field' }; }
+  if (by === '' || note === '') { return { ok: false, code: 'invalid_field' }; }
+  const at = new Date().toISOString();
+  const record = {
+    result: result as ReviewResult,
+    kind: kind as VerificationKind,
+    by, at, note,
+    ...(evidence === '' ? {} : { evidence }),
+  };
+  req.verification = record;
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_verification', { id, result, kind, by });
+  return { ok: true, changed: true };
 }
 
 // ═══ 写路径原语 ═══

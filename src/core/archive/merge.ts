@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { initKnowledgeBase, addKnowledgeEntry } from '../workspace/knowledge.js';
 import type { RequirementData } from '../req/types.js';
+import type { StageData } from '../flow-manager.js';
 import { stageRequirementIds } from '../req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { detectHarnesses } from '../harness.js';
 
@@ -157,9 +158,48 @@ function renderCompletedRequirementsTable(requirements: RequirementData[]): stri
   ].join('\n');
 }
 
+/**
+ * 归档摘要「审查 / 验证」小节（v1.5.8 / REQ-027「完成必审验」）。
+ * 逐需求列出 review（结果 / 审查者 / 是否独立）与 verification（种类 / 结果 / 验证者 / 说明 / 证据），
+ * 并单行列阶段自身 verification。缺记录的项以 `-` / 「无」占位（不省略小节，便于审计对比）。
+ */
+function renderReviewVerificationSection(requirements: RequirementData[], stage: StageData): string {
+  const noRows = '| (无) | - | - | - | - | - | - |';
+  const rows = requirements.map((req) => {
+    const review = req.review;
+    const verification = req.verification;
+    const cells = [
+      escapeTableCell(req.id),
+      review ? escapeTableCell(review.result) : '-',
+      review ? escapeTableCell(`${review.by}${review.independent ? '' : '（self-review）'}`) : '-',
+      verification ? escapeTableCell(verification.result) : '-',
+      verification ? escapeTableCell(verification.kind) : '-',
+      verification ? escapeTableCell(verification.by) : '-',
+      verification
+        ? escapeTableCell(`${verification.note}${verification.evidence ? `（证据：${verification.evidence}）` : ''}`)
+        : '-',
+    ];
+    return `| ${cells.join(' | ')} |`;
+  });
+  const sv = stage.verification;
+  const stageLine = sv
+    ? `- 阶段验证：${escapeTableCell(sv.kind)} / ${escapeTableCell(sv.result)}（by ${escapeTableCell(sv.by)}，${escapeTableCell(sv.at)}）：${escapeTableCell(sv.note)}${
+      sv.evidence ? `（证据：${escapeTableCell(sv.evidence)}）` : ''
+    }`
+    : '- 阶段验证：无';
+  return `### 需求审查与验证
+
+| ID | 审查 | 审查者 | 验证 | 种类 | 验证者 | 验证说明 |
+|----|------|--------|------|------|--------|----------|
+${rows.length > 0 ? rows.join('\n') : noRows}
+
+### 阶段验证
+
+${stageLine}`;
+}
+
 /** 发布说明中的需求列表（无则「无」） */
-function renderRequirementList(requirements: RequirementData[]): string {
-  if (requirements.length === 0) {
+function renderRequirementList(requirements: RequirementData[]): string {  if (requirements.length === 0) {
     return '无';
   }
   return requirements
@@ -363,6 +403,10 @@ export function archiveStage(
 ## 已完成需求
 
 ${renderCompletedRequirementsTable(completedRequirements)}
+
+## 审查 / 验证
+
+${renderReviewVerificationSection(completedRequirements, stage)}
 
 ## 操作产出
 

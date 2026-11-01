@@ -37,7 +37,8 @@ import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, WORKFLOW_MODES, type WorkflowMode } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
-import type { RequirementData } from './req/types.js';
+import type { RequirementData, RequirementReviewRecord, RequirementVerificationRecord, StageVerificationRecord } from './req/types.js';
+import { VERIFICATION_KINDS } from './req/types.js';    // 验证种类值域单源（v1.5.8 / REQ-027；运行时值导入）
 import { syncRequirementStatus } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）
 import { stageRequirementIds } from './req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { getSessionId } from './session.js';                  // 会话标识（stage-86 T4；core→core 零环）
@@ -120,8 +121,7 @@ export interface StageRequirementLink {
 }
 
 /** 阶段数据结构 */
-export interface StageData {
-  name: string;
+export interface StageData {  name: string;
   /** 阶段当前流水线阶段 */
   phase: PipelinePhase;
   status: string;
@@ -141,7 +141,22 @@ export interface StageData {
    * 写路径已退役（不再写入）；读路径仅在 `requirements` 缺省 / 空集时兜底（裁定 D/L 兼容）。
    */
   requirement_id?: string | null;
+  /**
+   * 阶段验证记录（v1.5.8 / REQ-027「完成必审验」；可选——读侧宽容）。
+   * 写入点单点：`FlowManager.recordStageVerification`（仅 archiving 相位）；
+   * 消费点单点：`advanceStagePhase` 的 done 硬门（`archiving → done` 要求 result === 'pass'）。
+   */
+  verification?: StageVerificationRecord;
 }
+
+/**
+ * 审查 / 验证记录类型的公共再导出（v1.5.8 / REQ-027）。
+ * 定义单源在叶子模块 `req/types.ts`（`RequirementData` 亦驻此；禁第二份形状）；
+ * 此处再导出使外部消费方（归档 / 适配器）只依赖 flow-manager 类型面。
+ */
+export type {
+  RequirementReviewRecord, RequirementVerificationRecord, StageVerificationRecord,
+} from './req/types.js';
 
 /** Flow 完整数据结构 */
 export interface FlowData {
@@ -250,6 +265,22 @@ export class StageDirOccupiedError extends Error {
     this.occupancy = occupancy;
   }
 }
+
+/** 阶段 done 门缺项（v1.5.8 / REQ-027；纯读判定，命令层与 advanceStagePhase 共用单源） */
+export interface StageDoneGate {
+  /** 阶段验证记录缺失或结果非 pass */
+  verificationMissing: boolean;
+  /** 关联需求中「不存在 / 未 done」的 ID 列表（空 = 全部已完成；零关联恒空） */
+  incompleteRequirements: string[];
+}
+
+/** 阶段验证记录写入错误码（命令层据此映射 exit 非 0 零写盘） */
+export type StageVerificationErrorCode = 'not_found' | 'invalid_phase' | 'invalid_field';
+
+/** 阶段验证记录写入结果 */
+export type StageVerificationWriteResult =
+  | { ok: true; changed: boolean }
+  | { ok: false; code: StageVerificationErrorCode };
 
 /** 流水线摘要 */
 export interface PipelineSummary {
@@ -1653,6 +1684,17 @@ export class FlowManager {
     // 保存旧 phase 用于日志
     const fromPhase = stage.phase;
 
+    // v1.5.8 / REQ-027「完成必审验」硬门：**进入** done 要求
+    //   ① 阶段验证记录 result === 'pass'；② 关联需求全部 done（零关联放行——空集守卫）。
+    // 位置：blocking REV 门之后、任何状态写入之前（拒绝路径零写盘零审计）；**无 force 逃生口**。
+    // 已在 done 的阶段重复推进（幂等重入）不再复检——证据只需在首次收口时存在。
+    if (targetPhase === 'done' && fromPhase !== 'done') {
+      const gate = this.describeStageDoneGate(key);
+      if (gate.verificationMissing || gate.incompleteRequirements.length > 0) {
+        throw new Error(this.formatStageDoneGate(key, gate).join('\n'));
+      }
+    }
+
     // 更新 stage phase
     this.data.stages[key].phase = targetPhase;
 
@@ -1734,6 +1776,97 @@ export class FlowManager {
       return true;
     }
     return false;
+  }
+
+  /**
+   * 阶段 done 门缺项查询（v1.5.8 / REQ-027；纯只读，零写盘）。
+   * 单源谓词：`advanceStagePhase` 的硬门与命令层（`flow advance --to done`）的拒绝文案共用，
+   * 禁第二份「阶段 done 判据」表达式。
+   * @param stageName 阶段 ID（短名 / 全名；与 advanceStagePhase 同款归一化 + 双键回退）
+   * @returns 缺项（阶段不存在 → 两项皆空，由调用方的存在性校验负责）
+   */
+  describeStageDoneGate(stageName: string): StageDoneGate {
+    const data = this.data;
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const key = data?.stages?.[normalized] ? normalized : stageName;
+    const stage = data?.stages?.[key];
+    if (!stage) {
+      return { verificationMissing: false, incompleteRequirements: [] };
+    }
+    const incompleteRequirements: string[] = [];
+    for (const requirementId of stageRequirementIds(stage)) {
+      const req = (Array.isArray(data!.requirements) ? data!.requirements : []).find((r) => r?.id === requirementId);
+      // 不存在（悬空关联）/ cancelled / rejected 一律视为「未完成」——保守口径：
+      // 发布判据不看需求的终态细分，只认 done（放宽需用户显式确认发布，见 docs/commands.md）。
+      if (!req || req.status !== 'done') { incompleteRequirements.push(requirementId); }
+    }
+    return { verificationMissing: stage.verification?.result !== 'pass', incompleteRequirements };
+  }
+
+  /**
+   * 阶段 done 门缺项 → 本地化文案行（命令层 / 核心抛错共用；不自带输出与退出码）。
+   * @param stageName 阶段 ID
+   * @param gate `describeStageDoneGate` 的返回值
+   * @param lang 语言标识（缺省按项目路径解析）
+   * @returns 逐行文案（无缺项 → 空数组）
+   */
+  formatStageDoneGate(stageName: string, gate: StageDoneGate, lang?: string): string[] {
+    const l = lang ?? getCliLang(this.projectPath);
+    const lines: string[] = [];
+    if (gate.verificationMissing) {
+      lines.push(t('flow.manager.stageVerificationMissingTmpl', l, { stage: stageName }));
+    }
+    if (gate.incompleteRequirements.length > 0) {
+      lines.push(t('flow.manager.stageRequirementsIncompleteTmpl', l, {
+        stage: stageName,
+        items: gate.incompleteRequirements.join(', '),
+      }));
+    }
+    return lines;
+  }
+
+  /**
+   * 记录阶段验证证据（v1.5.8 / REQ-027；纯内存 + 单条审计 `stage_verification`，落盘由调用方 save()）。
+   * 相位门：仅 `phase === 'archiving'` 可记录（阶段验证是归档前证据；done 之后不再接受补记）。
+   * 校验顺序固定（任一失败 → 零变更零审计）：阶段存在 → 相位 → result / kind 值域 → by / note 非空。
+   * 覆盖语义：新记录整体替换旧记录（历史在 `data.log`）。
+   * @param stageName 阶段 ID（短名 / 全名）
+   * @param input 验证记录入参（值域校验在本方法单点）
+   */
+  recordStageVerification(
+    stageName: string,
+    input: { result: string; kind: string; by: string; note: string; evidence?: string },
+  ): StageVerificationWriteResult {
+    const data = this.data;
+    if (!data) { throw new Error('flow.json 未加载'); }
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const key = data.stages[normalized] ? normalized : stageName;
+    const stage = data.stages[key];
+    if (!stage) { return { ok: false, code: 'not_found' }; }
+    if (stage.phase !== 'archiving') { return { ok: false, code: 'invalid_phase' }; }
+    const result = typeof input?.result === 'string' ? input.result.trim() : '';
+    const kind = typeof input?.kind === 'string' ? input.kind.trim() : '';
+    const by = typeof input?.by === 'string' ? input.by.trim() : '';
+    const note = typeof input?.note === 'string' ? input.note.trim() : '';
+    const evidence = typeof input?.evidence === 'string' ? input.evidence.trim() : '';
+    if (result !== 'pass' && result !== 'fail') { return { ok: false, code: 'invalid_field' }; }
+    if (!(VERIFICATION_KINDS as readonly string[]).includes(kind)) { return { ok: false, code: 'invalid_field' }; }
+    if (by === '' || note === '') { return { ok: false, code: 'invalid_field' }; }
+    stage.verification = {
+      result,
+      kind: kind as (typeof VERIFICATION_KINDS)[number],
+      by,
+      at: new Date().toISOString(),
+      note,
+      ...(evidence === '' ? {} : { evidence }),
+    };
+    this.appendLog({
+      time: '',
+      agent: 'cli',
+      action: 'stage_verification',
+      detail: { stage: key, result, kind, by },
+    });
+    return { ok: true, changed: true };
   }
 
   /**

@@ -119,16 +119,16 @@
 - **JSON envelope**（`flow advance` / `flow health --fix` 注册了 `--json`）：`INVALID_ARGUMENT` + `detail: { reason: 'preflight-required', hint: 'openfeel flow next --json' }`；退出码 1。
 - **人类**：单行 stderr（`flow.preflightRequiredTmpl`）+ `process.exitCode = 1`；**不调用 `process.exit`**，由调用方 `return`（保持其后 catch / 回滚路径可收敛）。
 - **legacy 三键**（`flow archive`、`req split`）：顶层键集恒 `['schemaVersion','error','errorKind']`，`error = 'preflight-required'`，**不带 `hint`**；提示只走人类 stderr。
-- **`--json` 注册面**：36 个门位中 **4 个**所属命令注册了 `--json` —— `flow advance`（envelope）/ `flow archive`（legacy 三键）/ `req split`（legacy 三键）/ `flow health --fix`（envelope；`--json` 是既有只读视图选项，`--fix --json` 在 strict 下同样输出 envelope）。其余 **32 个门位**对外形态是「人类 stderr + exit 1」；向它们传 `--json` 仍被 Commander 判 unknown option（exit 1），**不产生** envelope。
+- **`--json` 注册面**：39 个门位中 **4 个**所属命令注册了 `--json` —— `flow advance`（envelope）/ `flow archive`（legacy 三键）/ `req split`（legacy 三键）/ `flow health --fix`（envelope；`--json` 是既有只读视图选项，`--fix --json` 在 strict 下同样输出 envelope）。其余 **35 个门位**对外形态是「人类 stderr + exit 1」；向它们传 `--json` 仍被 Commander 判 unknown option（exit 1），**不产生** envelope。
 
-**接入面：34 个命令 / 36 个门位**（`stage task` 与 `plan scheme create` 各 2 个门位）
+**接入面：37 个命令 / 39 个门位**（`stage task` 与 `plan scheme create` 各 2 个门位）
 
 | 文件 | 命令（门位数） |
 |---|---|
 | `flow` | `stage add` · `stage remove` · `stage set` · `stage reset` · `advance` · `attempt` · `review add` · `review resolve` · `review update` · `review remove` · `archive` · `repair` · `checkpoint restore` · `migrate` · `health --fix` · `wizard`（16） |
-| `stage` | `set` · `task`（`--add` 分支 + 主路径 = 2）· `create`（4） |
+| `stage` | `set` · `task`（`--add` 分支 + 主路径 = 2）· `verify`（v1.5.8）· `create`（5） |
 | `plan` | `stage add` · `scheme create`（常规 + `--from-tasks` = 2）· `scheme publish` · `scheme rename` · `scheme remove` · `scheme register`（7） |
-| `req` | `add` · `claim` · `release` · `set` · `link` · `advance` · `split`（7） |
+| `req` | `add` · `claim` · `release` · `set` · `link` · `advance` · `review` · `verify`（v1.5.8）· `split`（9） |
 | `config` | `set --sync-stages`（仅同步分支）（1） |
 | `view` | `accept`（1） |
 
@@ -326,12 +326,14 @@ openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--review-t
 | `--reason <text>` | 返工原因（v1.3.3）：仅当本步为 `review_passed → exec_running` 时写入审计键 `rework_reason`；其它推进忽略并提示 |
 | `--review-tier <tier>` | 审查档位（`full` / `lean` / `skip`；**缺省 `full`**——未显式传时生效档位恒 `full`，展示值按模式派生（见 `flow phases --json.reviewTier` / `displayReviewTier`）；仅显式声明时裁剪审查关，**不可绕过 REV 阻塞检查**）。三档语义：`full` 零裁剪 / `lean` 裁 `scheme_review` / `skip` 裁 `plan_review` + `scheme_review`（代码审查关 / 测试关 / 归档关恒保留）。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进；「**进入**被裁剪关」仍不可达。显式 `lean` / `skip` 打印一行非阻断警告；值域非法 → exit 1 零写盘。**注**：源码 help 文案已于 v1.2.3 订正为「缺省=full（零裁剪）」，与本节 / 契约 §12.3 一致 |
 | `--dry-run` | 仅验证不修改（预览输出）；**字节级不写盘**（`revision`/phase 不变） |
-| `--force` | 跳过非法 phase 与阶段跳跃检查（仍受 REV 闭环守卫约束，不可绕过） |
+| `--force` | 跳过非法 phase 与阶段跳跃检查（仍受 REV 闭环守卫约束，不可绕过；**完成必验门同样不可绕过**） |
 | `--json` | 错误封装开关（v1.2.2）：**仅失败时**在 JSON 模式下输出错误 envelope；成功仍输出人类文本，**不计入成功出口** |
 
 支持的阶段（phase）：`plan_pending`、`plan_review`、`plan_passed`、`scheme_pending`、`scheme_review`、`scheme_passed`、`exec_running`、`review_pending`、`review_failed`、`review_passed`、`test_pending`、`test_failed`、`test_passed`、`archiving`、`done`（以运行时 `pipeline.yaml` 为准，用 `openfeel flow phases` 查看）
 
 > **自动提交防污染（v1.5.8 / REQ-029 P0）**：`--to done` 之后的自动 git commit 先做并发决策——`.openfeel/dev/sessions.json` 中存在**其它 10 分钟内活跃的会话**时**跳过提交**（`git add -A` 一次都不执行），改打印警告并提示手动 scoped commit；工作树无改动（`git status --porcelain` 空）/ 非 git 仓库同样跳过。提交时排除快照目录 `:(exclude).openfeel/checkpoints/**`，消息仍为 `chore: 阶段归档 <stage>`（附注 `session=<id>`）。同时：被推进阶段是 `pipeline.current.stage` 且推进到 `done` 时，`current` 自动切到**插入序第一个非 done 阶段**（op 置空），done 阶段不再占据焦点。
+
+> **完成必验门（v1.5.8 / REQ-027）**：**进入** `done`（`fromPhase !== 'done'`）额外要求 ① `stages[id].verification.result === 'pass'`（先 `openfeel stage verify <id> --result pass --kind test|manual|build --by <人> --note <结论>`，仅 `archiving` 相位可记录）；② 该阶段关联需求（`stageRequirementIds`）**全部 `done`**（`cancelled` / `rejected` 也算未完成——保守口径；零关联阶段空集放行）。任一不满足 → refusal（`INVALID_ARGUMENT`/1，`--json` 下为 envelope；`detail` 含 `verificationMissing` / `incompleteRequirements`），零写盘零审计。判据单点为 `FlowManager.describeStageDoneGate`（命令层门与 `advanceStagePhase` 核心门同源）；`--dry-run` 只预览相位路径、不预演证据门。
 
 ### flow stage add
 
@@ -878,6 +880,8 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 | `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` / `--workflow-mode` |
 | `req link` | 关联需求到阶段（**一个阶段可挂多个需求**） / 解绑（单个或全部） | `--stage <stageId>`、`--requirement <id>`、`--unlink` |
 | `req advance <id>` | 显式推进需求状态 | `--to <status>` |
+| `req review <id>` | 记录需求审查（**v1.5.8 完成必审**：done 门要求 `review.result=pass`） | `--result <pass\|fail>`、`--by <who>`、`--note <text>`、`--independent` / `--self` |
+| `req verify <id>` | 记录需求验证（**v1.5.8 完成必验**：done 门要求 `verification.result=pass`） | `--result <pass\|fail>`、`--kind <test\|manual\|build>`、`--by <who>`、`--note <text>`、`--evidence <path>` |
 | `req split <id>` | 拆分需求为若干子需求（**拆分即发布**：子需求入 `scheduled`） | `--into <title>`（**可重复**，至少一项）、`--json` |
 | `req board` | 需求看板（7 组固定顺序） | `--target-version <version>`、`--json` |
 | `req next` | 推荐下一个可接取需求 | `--owner <owner>`、`--json` |
@@ -886,8 +890,10 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 - **退出码**：`0` 成功 ｜ `1` 校验 / 占用 / 存在性失败（经 `process.exitCode`；错误码 分流 `not_found` / `stage_not_found` / `already_claimed` / `invalid_field` / `invalid_status` / `general_mode_conflict`）｜ `2` 并发写冲突（共享单点）。
 - **`--json` 契约**：**5 命令（4 读 + `split`）**——四读命令（`list` / `show` / `board` / `next`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。`split`（写命令）= 成功 `{ schemaVersion, parent, children }`，同样遵循单文档契约。**`req list`（v1.2.2）**：`requirements[]` 元素**末位**追加 `linkedStages[]{id,phase}` / `progress{done,total}`（零关联 `[]` + `{0,0}`；既有字段顺序/值不变）。失败 envelope / legacy `errorKind` 判别见上「错误封装（v1.2.2）」。
 - **`--workflow-mode`（v1.2.1-stage-90 起）**：值域 `full` / `fast` / `general`；**`general`（无流水线）仅需求级合法**——阶段级 / 部署级写入面拒绝（`general_mode_conflict` 亦在需求与阶段关联时触发：`general` 需求不接受阶段关联）。**done 门（v1.5.7 / REQ-023 重定义）**：**阶段 = 版本容器**（长期保持在 `exec_running`），**需求 = 工作单元**，可在阶段仍开启时完成。① **零关联阶段**的需求可直接显式完成；② **有关联阶段**时，每个关联阶段只需已进入 `exec_running` 及之后相位（`exec_running` / `review_*` / `test_*` / `archiving` / `done`）即可完成；仍有阶段处于 `plan_pending` / `plan_review` / `plan_passed` / `scheme_pending` / `scheme_review` / `scheme_passed` 时拒绝并输出专用文案（`req.err.doneGateTmpl`）。**注意**：聚合**自动收口**仍要求全部关联阶段 done（`aggregate.ts` 空集守卫不变）；显式完成不等于自动收口。
+- **完成必审验（v1.5.8 / REQ-027）**：需求 `done` 门在上述相位判据之上**追加**两条硬门——`review.result === 'pass'` 且 `verification.result === 'pass'`（缺任一即 `invalid_status`，**无 force 逃生口**）。命令层按判据分流文案：未审 → `req.err.reviewRequiredTmpl`、未验 → `req.err.verificationRequiredTmpl`、阶段相位 → 既有 `req.err.doneGateTmpl`。记录写路径：`req review <id>`（`--independent` 独立审查 / `--self` 自我审查，自我审查在归档摘要标注 `self-review`）与 `req verify <id>`（`--kind test|manual|build`，`--evidence` 可选）。两者写 `flow.json` 的 `requirements[*].review` / `.verification` 并各留一条审计（`requirement_review` / `requirement_verification`）；终态需求拒绝补记（`invalid_status`）。
+- **预检受门命令（v1.5.8 起）**：9 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify`）全部受 preflight 门。
 - **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`。
-- **preflight（v1.5.6）**：7 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split`）全部受门。顺序约定：**ID 格式校验先于门**（`req claim REQ-XXX` 报非法 ID，不报 preflight）；`req split --json` 的拒绝形态为 legacy 三键 `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
+- **preflight（v1.5.6；v1.5.8 起 9 个写命令）**：9 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify`）全部受门。顺序约定：**ID 格式校验先于门**（`req claim REQ-XXX` 报非法 ID，不报 preflight）；`req split --json` 的拒绝形态为 legacy 三键 `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 - 分工：引擎面 / 状态机语义（校验 / 流转 / 占用 / 关联（多值 `requirements[]`，旧单值兼容） / done 门）见 [`core/req.md`](../.openfeel/manual/core/req.md)；命令面深入参考见 [`cli/req.md`](../.openfeel/manual/cli/req.md)。
 
 ---
@@ -1035,8 +1041,11 @@ openfeel lint req [--json]    # 需求正文命令名存在性（真实命令树
 ```bash
 openfeel stage status [stageId] [--json]  # 查看阶段状态
 openfeel stage set <id> --status <v>    # 更新阶段状态（写入 status.md 字段；另支持 --exec-mode / --auto-advance / --workflow-mode / --review-agent）
+openfeel stage verify <id> --result <pass|fail> --kind <test|manual|build> --by <who> --note <text> [--evidence <path>]  # 记录阶段验证（v1.5.8 完成必验）
 openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stage add` 等价；建议用 `plan stage add`）
 ```
+
+**`stage verify`（v1.5.8 / REQ-027 完成必验）**：把阶段验证证据写入 `flow.json` 的 `stages[id].verification`（`{result, kind, by, at, note, evidence?}`）并留审计 `stage_verification`。**仅 `archiving` 相位可记录**（阶段验证是归档前证据；`done` 之后不接受补记）；阶段不存在 → `STAGE_NOT_FOUND`/refusal/1，相位不符或值域非法 → `INVALID_ARGUMENT`/refusal/1，均零写盘。人类输出、无 `--json`。消费点：`flow advance --to done` 的**完成必验硬门**（`archiving → done` 要求 `verification.result === 'pass'` **且**关联需求全部 `done`；`--force` 不绕过，详见 [`flow advance`](#flow-advance)）。
 
 **`stage status --json`（v1.2.2）**：有参 → `{schemaVersion,stageId,statusPath,fields,tasks,blockedBy}`（`fields` = 7 规范键 `execMode,autoAdvance,status,reviewAgent,previousReviewAgent,updatedAt,workflowMode` + `raw`；`tasks[]{number,done,description}`；`statusPath` 绝对路径；`blockedBy` 可空）；无参 → `{schemaVersion,stages[]{stageId,status,statusPath},count}`（空态 `stages:[]` + `count:0`，exit 0）；阶段未找到 → envelope `STAGE_NOT_FOUND`/refusal/1。
 

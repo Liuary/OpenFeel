@@ -48,6 +48,7 @@ openfeel flow next                                               # 5. 按调度�
 - **full**：大改动 / 架构变更，完整六关；
 - **general**：无流水线的零散任务，仅需求级合法；
 - 需求关联阶段后，全部关联阶段 done 时自动收口需求。
+- **完成必审验（v1.5.8 / REQ-027）**：需求 `done` 前必须 `openfeel req review <id> …` + `openfeel req verify <id> …`（两者均 `--result pass`）；阶段 `archiving → done` 前必须 `openfeel stage verify <id> …` 且该阶段关联需求全部 `done`——缺证据即被拒，`--force` 不绕过。
 
 ## Claude Code 适配器（v1.1.6 起）
 

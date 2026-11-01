@@ -1214,6 +1214,30 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
 
+      // v1.5.8 / REQ-027「完成必验」硬门（命令层前置）：**进入** done 还要求
+      //   ① 阶段验证记录 result === 'pass'；② 关联需求全部 done。
+      // 判据单源 = mgr.describeStageDoneGate（与 advanceStagePhase 内的核心门同一谓词）；
+      // --force **不绕过**（证据不可协商；force 只跳过相位合法性）。
+      // 位置：dry-run 之后（dry-run 只预览相位路径合法性，不预演证据门）、逐步推进之前。
+      if (options.to === 'done' && options.stage) {
+        const gate = mgr.describeStageDoneGate(stageArg);
+        if (gate.verificationMissing || gate.incompleteRequirements.length > 0) {
+          const lines = mgr.formatStageDoneGate(stageArg, gate, lang);
+          failRefusal({
+            code: 'INVALID_ARGUMENT',
+            message: lines[0] ?? t('common.errorTmpl', lang, { msg: 'done gate' }),
+            detail: {
+              stage: stageArg,
+              to: 'done',
+              verificationMissing: gate.verificationMissing,
+              incompleteRequirements: gate.incompleteRequirements,
+            },
+            stderrLines: lines,
+          });
+          return;
+        }
+      }
+
       // 逐步推进（B5-2 / A3）：唯一路径 → 依次调用 advanceStagePhase（保留每步校验/日志/checkpoint）
       // 中间态不回滚（A3）；失败 → 输出「已完成 / 失败点 / 剩余路径」+ exit 1
       // T1：recordRun 接线（命令层；--dry-run 已于上方提前 return——天然排除）

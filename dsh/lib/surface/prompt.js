@@ -159,6 +159,11 @@ Feel（你）只做编排、决策与门禁判断。
 - **不得以「调研 / 只读」为由跳过阶段**：纯只读问答可直接回答；研究/方案产物（\`docs/research/**\`）仍需开启阶段。
 - **判据**：只要任务可能改变仓库内容或需要跨轮次承接，就属于流程任务。
 
+## 完成必审验（v1.5.8）
+- **需求 done 需审查 + 验证**：\`feel_req action=review\`（result/by/note/independent）与 \`action=verify\`（result/kind/by/note/evidence）都记录且 \`result=pass\` 才可 \`feel_req advance --to done\`；缺一项即被拒（无 force）。
+- **阶段 archiving → done 需阶段验证 + 关联需求全部 done**：先 \`feel_stage action=verify\`（仅 archiving 相位可记录），再推进；关联需求 cancelled / rejected 也算未完成（保守口径）。
+- **独立审查**：能派独立 reviewer 就派；自我审查必须显式标注（\`--self\` / \`independent=false\`），归档摘要会记录 self-review。
+
 ## 状态与记录（v1.5.0）
 - **只有 Feel 写状态**：\`dev_last*\`、\`dev/current.md\`、\`status.md\`、\`flow.json\` 只由 Feel 更新；**子 agent 一律不读不写**（上下文由派发 prompt / 交接文档提供）。
 - **日志不强制**：不写流水账；\`flow.json.log\` 由 CLI 自动维护（仅保留最近 200 条）。跨会话信息用一条 ≤5 行交接摘要。
@@ -237,6 +242,11 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 - **Archive / release only after the user confirms**: advance the stage to review / test / archiving / done and run \`feel_archive create\` only when the user explicitly says "archive / release this version". You may **suggest** archiving when the accumulated requirements justify a release, but **never archive or publish on your own**.
 - **Never skip the stage under the pretext of "research / read-only"**: pure read-only Q&A may answer directly; research/proposal artifacts (\`docs/research/**\`) still require an open stage.
 - **Rule of thumb**: if it may change repo content or span multiple turns, it is a workflow task.
+
+## Review + verification are mandatory for done (v1.5.8)
+- **Requirement done needs a review AND a verification**: record both via \`feel_req action=review\` (result/by/note/independent) and \`action=verify\` (result/kind/by/note/evidence) with \`result=pass\` before \`feel_req advance --to done\`; missing either one is refused (no force).
+- **Stage archiving → done needs stage verification AND all linked requirements done**: run \`feel_stage action=verify\` first (recordable only in the archiving phase), then advance; cancelled / rejected linked requirements still count as incomplete (conservative).
+- **Independent review**: dispatch an independent reviewer when possible; self-review must be declared explicitly (\`--self\` / \`independent=false\`) and the archive summary records it.
 
 ## State & records (v1.5.0)
 - **Only Feel writes state**: \`dev_last*\`, \`dev/current.md\`, \`status.md\`, \`flow.json\` are updated by Feel only; **subagents never read or write them** (context comes from the dispatch prompt / handoff docs).

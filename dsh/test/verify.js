@@ -1137,6 +1137,116 @@ async function main() {
     assert(lineCount > 100, `原项目归档摘要疑似被覆盖：仅 ${lineCount} 行`);
   });
 
+  // ── v1.5.8 / REQ-027：review / verify 新 action（副本） ──
+  // 能力探测：适配器验证跑在**已安装的 openfeel CLI** 上（版本与仓库 dist 各自独立）。
+  // 旧版 CLI 没有这些命令时按「跳过并说明」处理，避免把「未安装新版」误报成适配器缺陷。
+  const tempCli = new FeelCli({ command: 'openfeel', cwd: tempProject });
+  let hasReq027 = false;
+  try {
+    // 注意：unknown 子命令 + --help 仍会退出 0（commander 在父级处理 --help），
+    // 故必须**读父级 help 的输出**判定子命令是否注册。
+    const probe = await tempCli.run(['req', '--help'], { cwd: tempProject });
+    hasReq027 = probe.code === 0
+      && probe.stdout.includes('review <id>')
+      && probe.stdout.includes('verify <id>');
+  } catch {
+    hasReq027 = false;
+  }
+
+  await check('feel_req action=review / verify 记录审查与验证（REQ-027，副本）', async () => {
+    if (!hasReq027) {
+      process.stdout.write('    (skip: 目标 openfeel CLI 未包含 REQ-027 命令，重装新版后覆盖)\n');
+      return;
+    }
+    const listed = ok(await workspace.tools.get('feel_req').execute({ action: 'list' }, tempExec), 'req list');
+    const target = listed.requirements.find((/** @type {any} */ item) => item.title === '适配器验证需求');
+    assert(target !== undefined, '未找到适配器验证需求');
+
+    const reviewResult = await workspace.tools.get('feel_req').execute(
+      { action: 'review', id: target.id, result: 'pass', by: 'feel-reviewer', note: 'LGTM', independent: true },
+      tempExec,
+    );
+    const reviewData = ok(reviewResult, 'req review');
+    assert(reviewData.result === 'pass', `review result 应回显 pass，实际 ${reviewData.result}`);
+    assert(reviewResult.summary.includes('审查'), `summary 应含「审查」：${reviewResult.summary}`);
+
+    const verifyResult = await workspace.tools.get('feel_req').execute(
+      { action: 'verify', id: target.id, result: 'pass', kind: 'test', by: 'feel-tester', note: 'vitest 全绿', evidence: 'npx vitest run' },
+      tempExec,
+    );
+    const verifyData = ok(verifyResult, 'req verify');
+    assert(verifyData.kind === 'test', `verify kind 应回显 test，实际 ${verifyData.kind}`);
+
+    const shown = ok(await workspace.tools.get('feel_req').execute({ action: 'show', id: target.id }, tempExec), 'req show');
+    assert(shown.requirement.review?.result === 'pass', 'review 未落库');
+    assert(shown.requirement.review?.independent === true, 'independent 未落库');
+    assert(shown.requirement.verification?.kind === 'test', 'verification.kind 未落库');
+    assert(shown.requirement.verification?.evidence === 'npx vitest run', 'evidence 未落库');
+  });
+
+  await check('feel_req action=review 缺 result → FEEL_BAD_USAGE', async () => {
+    if (!hasReq027) {
+      process.stdout.write('    (skip: 目标 openfeel CLI 未包含 REQ-027 命令)\n');
+      return;
+    }
+    const listed = ok(await workspace.tools.get('feel_req').execute({ action: 'list' }, tempExec), 'req list');
+    const target = listed.requirements.find((/** @type {any} */ item) => item.title === '适配器验证需求');
+    assert(target !== undefined, '未找到适配器验证需求');
+    /** @type {any} */
+    let error;
+    try {
+      await workspace.tools.get('feel_req').execute(
+        { action: 'review', id: target.id, by: 'r', note: 'n' },
+        tempExec,
+      );
+    } catch (caught) {
+      error = caught;
+    }
+    assert(error !== undefined, '缺 result 应抛错');
+    assert(error.code === 'FEEL_BAD_USAGE', `code 应为 FEEL_BAD_USAGE，实际 ${error.code}`);
+  });
+
+  await check('feel_stage action=verify：非 archiving 相位拒绝、archiving 相位写入（REQ-027，副本）', async () => {
+    if (!hasReq027) {
+      process.stdout.write('    (skip: 目标 openfeel CLI 未包含 REQ-027 命令)\n');
+      return;
+    }
+    // 非 archiving → 拒绝（fixture 阶段当前相位不是 archiving）
+    /** @type {any} */
+    let rejected;
+    try {
+      await workspace.tools.get('feel_stage').execute(
+        { action: 'verify', stage: fixtureStage, result: 'pass', kind: 'test', by: 't', note: 'n' },
+        tempExec,
+      );
+    } catch (caught) {
+      rejected = caught;
+    }
+    assert(rejected !== undefined, '非 archiving 相位应拒绝');
+    assert(rejected.kind === 'refusal', `kind 应为 refusal，实际 ${rejected.kind}`);
+    assert(rejected.message.includes('archiving'), `拒绝文案应提示 archiving：${rejected.message}`);
+
+    // 副本内直接把该阶段置为 archiving，再验证成功路径（只写副本）
+    const flowPath = join(tempProject, '.openfeel', 'flow.json');
+    const flow = JSON.parse(readFileSync(flowPath, 'utf8'));
+    assert(flow.stages[fixtureStage] !== undefined, `副本中缺少阶段键 ${fixtureStage}`);
+    flow.stages[fixtureStage].phase = 'archiving';
+    writeFileSync(flowPath, `${JSON.stringify(flow, null, 2)}\n`, 'utf8');
+
+    const result = await workspace.tools.get('feel_stage').execute(
+      { action: 'verify', stage: fixtureStage, result: 'pass', kind: 'test', by: 'feel-tester', note: 'vitest 全绿', evidence: 'npx vitest run' },
+      tempExec,
+    );
+    ok(result, 'stage verify');
+    const after = JSON.parse(readFileSync(flowPath, 'utf8'));
+    assert(after.stages[fixtureStage].verification?.result === 'pass', '阶段 verification 未落库');
+    assert(after.stages[fixtureStage].verification?.kind === 'test', '阶段 verification.kind 未落库');
+    assert(
+      (after.log ?? []).some((/** @type {any} */ entry) => entry.action === 'stage_verification'),
+      '缺少 stage_verification 审计',
+    );
+  });
+
   // 5) 错误语义
   process.stdout.write('\n[5] 错误语义与边界\n');
 

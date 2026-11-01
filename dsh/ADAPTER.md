@@ -55,6 +55,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **`feel_status` 输出瘦身**（v1.5.7）：默认返回 **compact** 快照（`project` / `pipeline` / `focus` / `mode` 的 current+source+skippedPhases / `stages` / `statusSync` / `workflowGate` / `preflight` / `recovery` 的 lastTransition+nextAction+hasDevLast / `revision`+`snapshotAt`+`stale`），去掉了 `mode.transitionsByMode`（三份转移表）、`recovery.handoff`（交接全文）、`observability`（与顶层字段重复的副本）。需要完整快照时传 `detail: "full"`；转移表/模式来源可随时用 `feel_flow action=phases` / `action=mode` 现取。`with_requirements` 语义不变（compact 档同样只在显式请求时带 `requirements`）。
 - **需求导向**（v1.5.7）：阶段 = 版本容器，长期保持 `exec_running`、容纳多个需求；提示段 / `workflowGate` / 写入门禁文案统一为「无开启阶段 → 默认按当前小版本开阶段；不要每完成一个需求就推进/关闭阶段；归档/发布只在用户确认后」。需求完成门同时解耦（零关联可显式完成；关联阶段进入 `exec_running` 及之后即可完成）。
 - **多会话收束 P0**（v1.5.8 / REQ-029）：`feel_status` / `feel_next` 末位追加 `sessions`（`[{id, cwd, lastSeen, stage}]`，读 `.openfeel/dev/sessions.json`；文件缺失 → `[]`）；**每次 `feel_*` 执行**都 upsert 一条本会话心跳（读写失败静默、不阻断主流程）。该文件是运行时状态（`.gitignore` 忽略），与 CLI 侧 `src/core/dev/sessions.ts` **同一格式**（`{ schemaVersion: 1, sessions }`）；CLI 的 `autoCommitOnDone` 据此在检测到其它存活会话时跳过自动提交。
+- **完成必审验**（v1.5.8 / REQ-027）：`feel_req` 新增 `action=review`（`result`/`by`/`note`/`independent`）与 `action=verify`（`result`/`kind`/`by`/`note`/`evidence`），`feel_stage` 新增 `action=verify`（仅 archiving 相位）；需求 `done` 门要求 review + verification 均 `pass`，阶段 `archiving → done` 要求阶段验证 `pass` 且关联需求全部 `done`（`--force` 不绕过）。review 缺省按**自我审查**处理并显式传 `--self`（归档摘要标注 `self-review`）。
 
 ## 目录
 

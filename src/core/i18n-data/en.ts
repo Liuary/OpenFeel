@@ -334,6 +334,10 @@ export const flow: I18nDomain = {
   'health.reqDanglingTmpl':         { key: 'flow.health.reqDanglingTmpl',         zh: '', en: 'Dangling requirement links: {items} (referenced requirement does not exist; unbind via req link --unlink)' },
   'health.reqDriftTmpl':            { key: 'flow.health.reqDriftTmpl',            zh: '', en: 'Requirement status drift: {items} (all linked stages done but requirement status is not done)' },
 
+  // flow done gate (v1.5.8 / REQ-027): archiving → done hard gate
+  'manager.stageVerificationMissingTmpl': { key: 'flow.manager.stageVerificationMissingTmpl', zh: '', en: 'Cannot advance stage {stage} to done: stage verification record is missing (run: openfeel stage verify {stage} --result pass --kind test|manual|build --by <who> --note <note>)' },
+  'manager.stageRequirementsIncompleteTmpl': { key: 'flow.manager.stageRequirementsIncompleteTmpl', zh: '', en: 'Cannot advance stage {stage} to done: linked requirements are not all done ({items}); finish them first (req review + req verify + req advance --to done)' },
+
   'recover.title':                  { key: 'flow.recover.title',                  zh: '', en: '═══ Cross-Session Context Recovery ═══' },
   'recover.globalStatus':           { key: 'flow.recover.globalStatus',           zh: '', en: 'Global Status' },
   'recover.phase':                  { key: 'flow.recover.phase',                  zh: '', en: 'Pipeline Phase' },
@@ -544,6 +548,11 @@ export const stage: I18nDomain = {
   'task.sectionMissingTmpl':     { key: 'stage.task.sectionMissingTmpl',     zh: '', en: 'status.md has no task section; run "openfeel plan stage add" to create the skeleton first' },
   'create.addedTmpl':            { key: 'stage.create.addedTmpl',            zh: '', en: '✓ Stage created: {stage} → plan_pending' },
   'create.deprecated':           { key: 'stage.create.deprecated',           zh: '', en: '[deprecated] `openfeel stage create` is deprecated; use `openfeel flow stage add <stageId>` (register only) or `openfeel plan stage add <name>` (full entry)' },
+  // stage verify (v1.5.8 / REQ-027)
+  'verify.doneTmpl':             { key: 'stage.verify.doneTmpl',             zh: '', en: 'Recorded stage verification for {stage}: {kind} / {result} (by {by})' },
+  'verify.notFoundTmpl':         { key: 'stage.verify.notFoundTmpl',         zh: '', en: 'Stage {stage} not found (not registered in flow.json stages)' },
+  'verify.phaseTmpl':            { key: 'stage.verify.phaseTmpl',            zh: '', en: 'Stage {stage} is in phase {phase}; stage verification can only be recorded in the archiving phase (advance to archiving first)' },
+  'verify.invalidTmpl':          { key: 'stage.verify.invalidTmpl',          zh: '', en: 'Invalid verification record: --result must be pass|fail, --kind must be test|manual|build, and --by / --note must not be empty' },
 };
 
 /* ==================== plan ==================== */
@@ -881,6 +890,13 @@ export const help: I18nDomain = {
   'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '', en: 'Mark task as not done' },
   'stage.create':          { key: 'help.stage.create',          zh: '', en: 'Create a stage (deprecated; use openfeel flow stage add)' },
   'stage.create.argstageId': { key: 'help.stage.create.argstageId', zh: '', en: 'Stage ID (e.g. v1.0.0-stage-30)' },
+  'stage.verify':          { key: 'help.stage.verify',          zh: '', en: 'Record stage verification evidence (v1.5.8: archiving phase only; the stage done gate requires result=pass)' },
+  'stage.verify.argstageId': { key: 'help.stage.verify.argstageId', zh: '', en: 'Stage ID (e.g. v1.5.8-stage-122 or stage-122)' },
+  'stage.verify.result':   { key: 'help.stage.verify.result',   zh: '', en: 'Verification result (pass / fail)' },
+  'stage.verify.kind':     { key: 'help.stage.verify.kind',     zh: '', en: 'Verification kind (test / manual / build)' },
+  'stage.verify.by':       { key: 'help.stage.verify.by',       zh: '', en: 'Verifier' },
+  'stage.verify.note':     { key: 'help.stage.verify.note',     zh: '', en: 'Conclusion note (included in the archive summary)' },
+  'stage.verify.evidence': { key: 'help.stage.verify.evidence', zh: '', en: 'Evidence (command / report path)' },
 
   'view':                  { key: 'help.view',                  zh: '', en: 'Review entry management' },
   'view.list':             { key: 'help.view.list',             zh: '', en: 'List review entries' },
@@ -1015,6 +1031,20 @@ export const help: I18nDomain = {
   'req.split.argid':     { key: 'help.req.split.argid',     zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.split.into':      { key: 'help.req.split.into',      zh: '', en: 'Child requirement title (repeatable; at least one)' },
   'req.split.json':      { key: 'help.req.split.json',      zh: '', en: 'Output JSON { schemaVersion, parent, children }' },
+  'req.review':          { key: 'help.req.review',          zh: '', en: 'Record a requirement review (v1.5.8: the done gate requires review.result=pass; --independent for an independent review, --self for a self-review)' },
+  'req.review.argid':    { key: 'help.req.review.argid',    zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.review.result':   { key: 'help.req.review.result',   zh: '', en: 'Review result (pass / fail)' },
+  'req.review.by':       { key: 'help.req.review.by',       zh: '', en: 'Reviewer' },
+  'req.review.note':     { key: 'help.req.review.note',     zh: '', en: 'Conclusion note (included in the archive summary)' },
+  'req.review.independent': { key: 'help.req.review.independent', zh: '', en: 'Independent review (recommended)' },
+  'req.review.self':     { key: 'help.req.review.self',     zh: '', en: 'Self-review (not independent; marked self-review in the archive summary)' },
+  'req.verify':          { key: 'help.req.verify',          zh: '', en: 'Record requirement verification (v1.5.8: the done gate requires verification.result=pass)' },
+  'req.verify.argid':    { key: 'help.req.verify.argid',    zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.verify.result':   { key: 'help.req.verify.result',   zh: '', en: 'Verification result (pass / fail)' },
+  'req.verify.kind':     { key: 'help.req.verify.kind',     zh: '', en: 'Verification kind (test / manual / build)' },
+  'req.verify.by':       { key: 'help.req.verify.by',       zh: '', en: 'Verifier' },
+  'req.verify.note':     { key: 'help.req.verify.note',     zh: '', en: 'Conclusion note (included in the archive summary)' },
+  'req.verify.evidence': { key: 'help.req.verify.evidence', zh: '', en: 'Evidence (test command / report path / summary)' },
 };
 
 /* ==================== config ==================== */
@@ -1212,6 +1242,15 @@ export const req: I18nDomain = {
   // req advance
   'advance.doneTmpl':    { key: 'req.advance.doneTmpl',       zh: '', en: 'Advanced {id}: {from} -> {to}' },
   'advance.noopTmpl':    { key: 'req.advance.noopTmpl',       zh: '', en: '{id} is already {to} (no-op)' },
+  // req review / verify (v1.5.8 / REQ-027)
+  'review.doneTmpl':     { key: 'req.review.doneTmpl',        zh: '', en: 'Recorded review for {id}: {result} (by {by})' },
+  'review.selfSuffix':   { key: 'req.review.selfSuffix',      zh: '', en: ' [self-review]' },
+  'review.terminalTmpl': { key: 'req.review.terminalTmpl',    zh: '', en: '{id} is in a terminal status ({status}); cannot record a review' },
+  'review.invalidTmpl':  { key: 'req.review.invalidTmpl',     zh: '', en: 'Invalid review record: --result must be pass|fail, and --by / --note must not be empty' },
+  'review.exclusiveFlagTmpl': { key: 'req.review.exclusiveFlagTmpl', zh: '', en: '--independent and --self are mutually exclusive' },
+  'verify.doneTmpl':     { key: 'req.verify.doneTmpl',        zh: '', en: 'Recorded verification for {id}: {kind} / {result} (by {by})' },
+  'verify.terminalTmpl': { key: 'req.verify.terminalTmpl',    zh: '', en: '{id} is in a terminal status ({status}); cannot record verification' },
+  'verify.invalidTmpl':  { key: 'req.verify.invalidTmpl',     zh: '', en: 'Invalid verification record: --result must be pass|fail, --kind must be test|manual|build, and --by / --note must not be empty' },
   // error-code mapping
   'err.stageNotFoundTmpl': { key: 'req.err.stageNotFoundTmpl', zh: '', en: 'Stage {stage} not found (not registered in flow.json stages)' },
   'err.alreadyClaimedTmpl': { key: 'req.err.alreadyClaimedTmpl', zh: '', en: '{id} is claimed by someone else; release first: openfeel req release {id}' },
@@ -1219,6 +1258,8 @@ export const req: I18nDomain = {
   'err.invalidFieldTmpl': { key: 'req.err.invalidFieldTmpl',  zh: '', en: '{id} invalid field value (check --status / --title / --target-version / --priority / --workflow-mode)' },
   'err.invalidStatusTmpl': { key: 'req.err.invalidStatusTmpl', zh: '', en: '{id} target status {to} rejected (current {current}; allowed: {targets})' },
   'err.doneGateTmpl':    { key: 'req.err.doneGateTmpl',     zh: '', en: 'Requirement {id} is not complete yet: a linked stage is still in a plan/scheme phase (current status {current}); advance it to exec_running first. Execution phases do not block requirement completion, and a requirement with no linked stages can be completed directly.' },
+  'err.reviewRequiredTmpl': { key: 'req.err.reviewRequiredTmpl', zh: '', en: 'Requirement {id} is not complete yet: no passing review record (current {current}); run: openfeel req review {id} --result pass --by <who> --note <note> [--independent|--self]' },
+  'err.verificationRequiredTmpl': { key: 'req.err.verificationRequiredTmpl', zh: '', en: 'Requirement {id} is not complete yet: no passing verification record (current {current}); run: openfeel req verify {id} --result pass --kind test|manual|build --by <who> --note <note> [--evidence <evidence>]' },
   'err.generalModeConflictTmpl': { key: 'req.err.generalModeConflictTmpl', zh: '', en: '{id} has linked stages — general (no pipeline) requires a requirement without linked stages (unlink first, or use fast / full)' },
   'err.generalTargetTmpl': { key: 'req.err.generalTargetTmpl', zh: '', en: '{id} uses workflow mode general (no pipeline) — stage linking is not allowed' },
   // req board

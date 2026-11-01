@@ -664,3 +664,82 @@ describe('Archive Merge', () => {
     });
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.5.8 / REQ-027：归档摘要「审查 / 验证」小节
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('归档摘要 — 审查 / 验证小节（REQ-027）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-archive-req027-'));
+    mockHome.dir = tmpDir;
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
+  });
+
+  it('摘要含「审查 / 验证」节：逐需求 review / verification 明细 + 阶段验证一行', () => {
+    FlowManager.initFlow(tmpDir);
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeFlowWithStage('v1.0.0-stage-01', {
+      stages: {
+        'v1.0.0-stage-01': {
+          name: '阶段', phase: 'done', status: 'done', deps: [], ops: {},
+          requirements: [{ id: 'REQ-001' }],
+          verification: {
+            result: 'pass', kind: 'test', by: 'feel-tester', at: '2026-11-01T00:00:00.000Z',
+            note: 'vitest 全绿', evidence: 'npx vitest run',
+          },
+        },
+      },
+      requirements: [
+        {
+          id: 'REQ-001', title: '完成必审验', status: 'done', target_version: 'v1.0.0',
+          created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-02T00:00:00Z',
+          review: { result: 'pass', by: 'openfeel-reviewer', at: '2026-11-01T00:00:00.000Z', note: 'LGTM', independent: true },
+          verification: { result: 'pass', kind: 'test', by: 'feel-tester', at: '2026-11-01T00:00:00.000Z', note: 'vitest 全绿', evidence: 'npx vitest run' },
+        },
+      ],
+    }));
+    mgr.save();
+
+    const result = archiveStage(tmpDir, 'v1.0.0-stage-01');
+    expect(result).not.toBeNull();
+    const summary = result!.summary;
+    expect(summary).toContain('## 审查 / 验证');
+    expect(summary).toContain('### 需求审查与验证');
+    expect(summary).toContain('### 阶段验证');
+    // 逐需求明细
+    expect(summary).toContain('openfeel-reviewer');
+    expect(summary).toContain('feel-tester');
+    expect(summary).toContain('vitest 全绿');
+    expect(summary).toContain('npx vitest run');
+    // 阶段验证一行（kind / result / by / note）
+    expect(summary).toMatch(/阶段验证：test \/ pass（by feel-tester/);
+    // 落盘摘要同样含该节
+    const onDisk = readFileSync(join(tmpDir, '.openfeel', 'log', 'archive-v1.0.0-stage-01.md'), 'utf-8');
+    expect(onDisk).toContain('## 审查 / 验证');
+  });
+
+  it('缺记录时仍输出小节并以占位符兜底（不省略、不崩）', () => {
+    FlowManager.initFlow(tmpDir);
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeFlowWithStage('v1.0.0-stage-02', {
+      stages: {
+        'v1.0.0-stage-02': { name: '阶段', phase: 'done', status: 'done', deps: [], ops: {} },
+      },
+      requirements: [],
+    }));
+    mgr.save();
+
+    const result = archiveStage(tmpDir, 'v1.0.0-stage-02');
+    expect(result).not.toBeNull();
+    expect(result!.summary).toContain('## 审查 / 验证');
+    expect(result!.summary).toContain('| (无) |');
+    expect(result!.summary).toContain('阶段验证：无');
+  });
+});

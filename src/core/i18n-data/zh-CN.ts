@@ -358,6 +358,10 @@ export const flow: I18nDomain = {
   'health.reqDanglingTmpl':         { key: 'flow.health.reqDanglingTmpl',         zh: '悬空需求关联：{items}（阶段引用的需求不存在；可经 req link --unlink 解绑）', en: '' },
   'health.reqDriftTmpl':            { key: 'flow.health.reqDriftTmpl',            zh: '需求状态漂移：{items}（关联阶段已全部 done 但需求状态非 done）', en: '' },
 
+  // flow 完成必审验（v1.5.8 / REQ-027）：archiving → done 硬门
+  'manager.stageVerificationMissingTmpl': { key: 'flow.manager.stageVerificationMissingTmpl', zh: '无法推进阶段 {stage} 到 done：缺少阶段验证记录（先运行：openfeel stage verify {stage} --result pass --kind test|manual|build --by <验证者> --note <结论>）', en: '' },
+  'manager.stageRequirementsIncompleteTmpl': { key: 'flow.manager.stageRequirementsIncompleteTmpl', zh: '无法推进阶段 {stage} 到 done：关联需求未全部完成（{items}）；先完成需求（req review + req verify + req advance --to done）', en: '' },
+
   // flow recover
   'recover.title':                  { key: 'flow.recover.title',                  zh: '═══ 跨会话上下文恢复 ═══',               en: '' },
   'recover.globalStatus':           { key: 'flow.recover.globalStatus',           zh: '全局状态',                               en: '' },
@@ -572,6 +576,11 @@ export const stage: I18nDomain = {
   'task.sectionMissingTmpl':     { key: 'stage.task.sectionMissingTmpl',     zh: 'status.md 缺少任务小节，请先运行 openfeel plan stage add 生成骨架', en: '' },
   'create.addedTmpl':            { key: 'stage.create.addedTmpl',            zh: '✓ 已创建阶段: {stage} → plan_pending',    en: '' },
   'create.deprecated':           { key: 'stage.create.deprecated',           zh: '[deprecated] `openfeel stage create` 已弃用；请改用 `openfeel flow stage add <stageId>`（仅注册）或 `openfeel plan stage add <name>`（完整入口）', en: '' },
+  // stage verify（v1.5.8 / REQ-027）：archiving 相位的验证证据
+  'verify.doneTmpl':             { key: 'stage.verify.doneTmpl',             zh: '已记录阶段 {stage} 验证：{kind} / {result}（by {by}）', en: '' },
+  'verify.notFoundTmpl':         { key: 'stage.verify.notFoundTmpl',         zh: '阶段 {stage} 不存在（未注册于 flow.json 的 stages）', en: '' },
+  'verify.phaseTmpl':            { key: 'stage.verify.phaseTmpl',            zh: '阶段 {stage} 当前相位为 {phase}；仅 archiving 相位可记录阶段验证（先推进到 archiving）', en: '' },
+  'verify.invalidTmpl':          { key: 'stage.verify.invalidTmpl',          zh: '验证记录取值非法：--result 需为 pass|fail，--kind 需为 test|manual|build，--by 与 --note 不能为空', en: '' },
 };
 
 /* ==================== plan 域：计划命令 ==================== */
@@ -918,6 +927,13 @@ export const help: I18nDomain = {
   'stage.task.undone':     { key: 'help.stage.task.undone',     zh: '标记任务为未完成', en: '' },
   'stage.create':          { key: 'help.stage.create',          zh: '创建新阶段（已弃用，请改用 openfeel flow stage add）', en: '' },
   'stage.create.argstageId': { key: 'help.stage.create.argstageId', zh: '阶段 ID（如 v1.0.0-stage-30）', en: '' },
+  'stage.verify':          { key: 'help.stage.verify',          zh: '记录阶段验证证据（v1.5.8 完成必验：仅 archiving 相位；阶段 done 门要求 result=pass）', en: '' },
+  'stage.verify.argstageId': { key: 'help.stage.verify.argstageId', zh: '阶段 ID（如 v1.5.8-stage-122 或 stage-122）', en: '' },
+  'stage.verify.result':   { key: 'help.stage.verify.result',   zh: '验证结论（pass / fail）', en: '' },
+  'stage.verify.kind':     { key: 'help.stage.verify.kind',     zh: '验证种类（test / manual / build）', en: '' },
+  'stage.verify.by':       { key: 'help.stage.verify.by',       zh: '验证者', en: '' },
+  'stage.verify.note':     { key: 'help.stage.verify.note',     zh: '结论摘要（进入归档摘要）', en: '' },
+  'stage.verify.evidence': { key: 'help.stage.verify.evidence', zh: '证据（命令 / 报告路径）', en: '' },
 
   // view
   'view':                  { key: 'help.view',                  zh: '审查条目管理', en: '' },
@@ -1058,6 +1074,20 @@ export const help: I18nDomain = {
   'req.split.argid':     { key: 'help.req.split.argid',     zh: '需求 ID（如 REQ-001）', en: '' },
   'req.split.into':      { key: 'help.req.split.into',      zh: '子需求标题（可重复；至少一项）', en: '' },
   'req.split.json':      { key: 'help.req.split.json',      zh: '以 JSON 输出 { schemaVersion, parent, children }', en: '' },
+  'req.review':          { key: 'help.req.review',          zh: '记录需求审查（v1.5.8 完成必审：done 门要求 review.result=pass；--independent 独立审查 / --self 自我审查）', en: '' },
+  'req.review.argid':    { key: 'help.req.review.argid',    zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.review.result':   { key: 'help.req.review.result',   zh: '审查结论（pass / fail）', en: '' },
+  'req.review.by':       { key: 'help.req.review.by',       zh: '审查者', en: '' },
+  'req.review.note':     { key: 'help.req.review.note',     zh: '结论摘要（进入归档摘要）', en: '' },
+  'req.review.independent': { key: 'help.req.review.independent', zh: '独立审查（推荐）', en: '' },
+  'req.review.self':     { key: 'help.req.review.self',     zh: '自我审查（非独立；归档摘要标注 self-review）', en: '' },
+  'req.verify':          { key: 'help.req.verify',          zh: '记录需求验证（v1.5.8 完成必验：done 门要求 verification.result=pass）', en: '' },
+  'req.verify.argid':    { key: 'help.req.verify.argid',    zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.verify.result':   { key: 'help.req.verify.result',   zh: '验证结论（pass / fail）', en: '' },
+  'req.verify.kind':     { key: 'help.req.verify.kind',     zh: '验证种类（test / manual / build）', en: '' },
+  'req.verify.by':       { key: 'help.req.verify.by',       zh: '验证者', en: '' },
+  'req.verify.note':     { key: 'help.req.verify.note',     zh: '结论摘要（进入归档摘要）', en: '' },
+  'req.verify.evidence': { key: 'help.req.verify.evidence', zh: '证据（测试命令 / 报告路径 / 摘要）', en: '' },
 };
 
 /* ==================== config 域：配置管理命令 ==================== */
@@ -1256,6 +1286,15 @@ export const req: I18nDomain = {
   // req advance
   'advance.doneTmpl':    { key: 'req.advance.doneTmpl',       zh: '已推进 {id}：{from} → {to}', en: '' },
   'advance.noopTmpl':    { key: 'req.advance.noopTmpl',       zh: '{id} 已是 {to}（no-op）', en: '' },
+  // req review / verify（v1.5.8 / REQ-027）
+  'review.doneTmpl':     { key: 'req.review.doneTmpl',        zh: '已记录 {id} 审查：{result}（by {by}）', en: '' },
+  'review.selfSuffix':   { key: 'req.review.selfSuffix',      zh: '［self-review］', en: '' },
+  'review.terminalTmpl': { key: 'req.review.terminalTmpl',    zh: '{id} 已是终态（{status}），不可记录审查', en: '' },
+  'review.invalidTmpl':  { key: 'req.review.invalidTmpl',     zh: '审查记录取值非法：--result 需为 pass|fail，--by 与 --note 不能为空', en: '' },
+  'review.exclusiveFlagTmpl': { key: 'req.review.exclusiveFlagTmpl', zh: '--independent 与 --self 不能同时使用', en: '' },
+  'verify.doneTmpl':     { key: 'req.verify.doneTmpl',        zh: '已记录 {id} 验证：{kind} / {result}（by {by}）', en: '' },
+  'verify.terminalTmpl': { key: 'req.verify.terminalTmpl',    zh: '{id} 已是终态（{status}），不可记录验证', en: '' },
+  'verify.invalidTmpl':  { key: 'req.verify.invalidTmpl',     zh: '验证记录取值非法：--result 需为 pass|fail，--kind 需为 test|manual|build，--by 与 --note 不能为空', en: '' },
   // 错误码映射
   'err.stageNotFoundTmpl': { key: 'req.err.stageNotFoundTmpl', zh: '阶段 {stage} 不存在（未注册于 flow.json 的 stages）', en: '' },
   'err.alreadyClaimedTmpl': { key: 'req.err.alreadyClaimedTmpl', zh: '{id} 已被他人认领；须先释放：openfeel req release {id}', en: '' },
@@ -1263,6 +1302,8 @@ export const req: I18nDomain = {
   'err.invalidFieldTmpl': { key: 'req.err.invalidFieldTmpl',  zh: '{id} 字段取值非法（检查 --status / --title / --target-version / --priority / --workflow-mode）', en: '' },
   'err.invalidStatusTmpl': { key: 'req.err.invalidStatusTmpl', zh: '{id} 目标状态 {to} 被拒（当前 {current}；合法目标：{targets}）', en: '' },
   'err.doneGateTmpl':    { key: 'req.err.doneGateTmpl',     zh: '需求 {id} 尚未完成：关联阶段仍在计划/方案相位（当前状态 {current}）；请先推进阶段到 exec_running。阶段执行期间不阻塞需求完成，零关联需求可直接完成。', en: '' },
+  'err.reviewRequiredTmpl': { key: 'req.err.reviewRequiredTmpl', zh: '需求 {id} 尚未完成：缺少通过的审查记录（当前 {current}）；先运行：openfeel req review {id} --result pass --by <审查者> --note <结论> [--independent|--self]', en: '' },
+  'err.verificationRequiredTmpl': { key: 'req.err.verificationRequiredTmpl', zh: '需求 {id} 尚未完成：缺少通过的验证记录（当前 {current}）；先运行：openfeel req verify {id} --result pass --kind test|manual|build --by <验证者> --note <结论> [--evidence <证据>]', en: '' },
   'err.generalModeConflictTmpl': { key: 'req.err.generalModeConflictTmpl', zh: '{id} 已关联阶段——general（无流水线）仅限无关联阶段的需求（可先解绑阶段，或改走 fast / full）', en: '' },
   'err.generalTargetTmpl': { key: 'req.err.generalTargetTmpl', zh: '{id} 工作流模式为 general（无流水线）——不接受阶段关联', en: '' },
   // req board

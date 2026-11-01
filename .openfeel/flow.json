@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-01T09:43:28.420Z",
-    "revision": 1881,
+    "updated": "2026-11-01T09:43:43.305Z",
+    "revision": 1883,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -34,64 +34,20 @@
       "v1.5.5",
       "v1.5.6",
       "v1.5.8",
-      "v1.5.7"
+      "v1.5.7",
+      "v1.5.9"
     ]
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.9-stage-124",
+      "stage": "",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.5.9-stage-124": {
-      "name": "v1.5.9-stage-124",
-      "phase": "done",
-      "status": "done",
-      "deps": [],
-      "ops": {},
-      "workflow_mode": "fast",
-      "stats": {
-        "start_time": "2026-11-01T09:12:57.608Z",
-        "end_time": "2026-11-01T09:43:28.396Z",
-        "duration_ms": 1830788
-      },
-      "requirements": [
-        {
-          "id": "REQ-018",
-          "order": 0
-        },
-        {
-          "id": "REQ-019",
-          "order": 1
-        }
-      ],
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel",
-        "at": "2026-11-01T09:43:22.406Z",
-        "note": "v1.5.9 批次全量测试与 lint 通过",
-        "evidence": "eslint 0 errors; tsc clean; vitest 94 files/2321 tests; lint i18n 1141; lint kb 650"
-      }
-    }
-  },
-  "reviews": [
-    {
-      "id": "REV-001",
-      "op": "v1.5.9-stage-124",
-      "stage": "v1.5.9-stage-124",
-      "status": "closed",
-      "priority": "medium",
-      "title": "[self-review] v1.5.9 批次：v1.5.7 归档补齐 + 文档快照 v1.5.8 + eslint 清零 + sessions.stage 修复；tsc/lint/vitest 2321 全绿",
-      "filed_by": "cli",
-      "filed_at": "2026-11-01T09:43:10.695Z",
-      "canAutoFix": false,
-      "blocking": false
-    }
-  ],
+  "stages": {},
+  "reviews": [],
   "log": [
     {
       "time": "2026-10-31T09:40:08.747Z",
@@ -1565,50 +1521,6 @@
       }
     },
     {
-      "time": "2026-11-01T09:12:55.191Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "deps": []
-      }
-    },
-    {
-      "time": "2026-11-01T09:12:57.600Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "time": "2026-11-01T09:13:00.398Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-01T09:13:04.664Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-01T09:13:08.736Z",
       "agent": "cli",
       "action": "requirement_claim",
@@ -1751,47 +1663,11 @@
       }
     },
     {
-      "time": "2026-11-01T09:43:07.555Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-01T09:43:13.882Z",
       "agent": "openfeel-reviewer",
       "action": "review_accept",
       "detail": {
         "reviewId": "REV-001"
-      }
-    },
-    {
-      "time": "2026-11-01T09:43:16.241Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-01T09:43:19.263Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -1806,30 +1682,26 @@
       }
     },
     {
-      "time": "2026-11-01T09:43:25.632Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
+      "time": "2026-11-01T09:43:35.476Z",
+      "agent": "cli",
+      "action": "archive_flow_version",
       "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "opsCount": 0,
-        "reviewsCount": 1,
-        "knowledgeCount": 1,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.5.9-stage-124.md",
-        "requirementsCount": 2,
-        "releaseNotes": "docs\\releases\\v1.5.9.md",
-        "skillsCount": 1
+        "version": "v1.5.9",
+        "stages": 1,
+        "reviews": 1,
+        "log": 9,
+        "requirements": 2
       }
     },
     {
-      "time": "2026-11-01T09:43:28.390Z",
+      "time": "2026-11-01T09:43:43.304Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "chore_start",
       "detail": {
-        "stageName": "v1.5.9-stage-124",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "id": "CHORE-20261101T094343",
+        "note": "1.5.9 版本收口",
+        "expires_at": "2026-11-01T10:43:43.287Z",
+        "stage_count": 0
       }
     }
   ],
@@ -2052,68 +1924,6 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
-    },
-    {
-      "id": "REQ-018",
-      "title": "文档债清零：.openfeel/manual/** 快照停在 v1.2.4（35 文件）+ cli-usage SKILL 描述尾部缺 1.5.6 观测项",
-      "status": "done",
-      "created_at": "2026-10-31T15:33:38.320Z",
-      "updated_at": "2026-11-01T09:23:34.230Z",
-      "target_version": "v1.5.9",
-      "priority": "P2",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-018.md",
-      "carried_from": [
-        "v1.5.8"
-      ],
-      "owner": "Liuary",
-      "claimed_at": "2026-11-01T09:13:08.735Z",
-      "review": {
-        "result": "pass",
-        "by": "Feel",
-        "at": "2026-11-01T09:23:29.909Z",
-        "note": "manual/skill/模板快照升到 v1.5.8，计数 42/43，preflight 模块文档新增",
-        "independent": true
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel",
-        "at": "2026-11-01T09:23:32.231Z",
-        "note": "文档快照与生成物一致性校验通过",
-        "evidence": "tsc clean; lint i18n 1141; lint kb 650 refs; vitest 94 files/2321 tests"
-      }
-    },
-    {
-      "id": "REQ-019",
-      "title": "代码债：eslint 33 errors 清零（21 文件，多为 unused vars；当前门禁靠「新增行 0」豁免）",
-      "status": "done",
-      "created_at": "2026-10-31T15:33:43.358Z",
-      "updated_at": "2026-11-01T09:21:05.513Z",
-      "target_version": "v1.5.9",
-      "priority": "P2",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-019.md",
-      "carried_from": [
-        "v1.5.8"
-      ],
-      "owner": "Liuary",
-      "claimed_at": "2026-11-01T09:13:10.823Z",
-      "review": {
-        "result": "pass",
-        "by": "Feel",
-        "at": "2026-11-01T09:21:00.306Z",
-        "note": "eslint 35→0 errors；tsc 通过；vitest 2321 全绿",
-        "independent": true
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel",
-        "at": "2026-11-01T09:21:03.641Z",
-        "note": "lint 与全量测试通过",
-        "evidence": "eslint 0 errors; tsc clean; vitest 94 files/2321 tests"
-      }
     }
   ]
 }

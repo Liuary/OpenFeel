@@ -1,3 +1,18 @@
+## [1.5.9] - 2026-11-01
+
+> 收尾批次：文档/模板快照升到 v1.5.8、eslint 清零、补齐 v1.5.7 版本归档，并修掉版本迭代遗留坑。
+
+### Added
+- [stage-124] 文档债清零（REQ-018）：`.openfeel/manual/**` 升到 v1.5.8（9 改 + 新增 `core/preflight.md`）、`openfeel-cli-usage` skill 补 1.5.6 观测项与 1.5.7/1.5.8 能力节、计数 41/42→42/43；agents-md / claude constraint 版本快照升 v1.5.8（`npm run build` 重生成）。
+- [stage-124] 补齐 v1.5.7 版本归档（阶段 3 / 审查 3 / 日志 32 / 需求 4）。
+
+### Changed
+- [stage-124] 版本 1.5.9 收口：package.json / dsh / config / README / CHANGELOG / VERSIONS 同步。
+- [stage-124] 适配器 `sessions.stage` 语义修正：`''` 明确清空（无开启阶段），`undefined` 才保留旧值，避免已完成阶段滞留。
+
+### Fixed
+- [stage-124] eslint errors **35 → 0**（REQ-019，20 文件，未使用任何 disable；tsc 与全量测试通过）。
+- [stage-124] README 最新版本描述与真实批次能力对齐；`.openfeel/chore.json` 加入 .gitignore 并移除已提交副本。
 ## [1.5.8] - 2026-11-01
 
 > 需求导向批次（二）：归档官增强、stage 多需求编排、多会话收束 P0、完成必审验、需求随版本归档与发布门。全部需求完成后归档并发布。
@@ -735,4 +750,5 @@
 
 ### Fixed
 - 一期部署验证：首个测试项目端到端跑通，产出部署对比分析报告
+
 

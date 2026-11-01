@@ -2,7 +2,7 @@
  * roadmap 单元测试
  * 测试 createRoadmap 和 showRoadmap 在临时目录中的行为
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createRoadmap, showRoadmap } from '../../../src/core/plan/roadmap.js';
 import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';

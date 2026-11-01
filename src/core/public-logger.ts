@@ -10,7 +10,7 @@
  * - 异步乐观：写入失败仅 console.warn，不阻塞流水线推进
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
-import { resolve, relative } from 'node:path';
+import { resolve } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { reserveSequence } from './fs/sequence.js';
@@ -353,7 +353,7 @@ export class PublicLogger {
       return;
     }
 
-    let content = readFileSync(logPath, 'utf-8');
+    const content = readFileSync(logPath, 'utf-8');
 
     // 避免重复追加
     if (content.includes(fileName)) {

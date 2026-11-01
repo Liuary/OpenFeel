@@ -49,14 +49,13 @@ function expectArgsNoCjk(program: Command, checks: Array<[string[], string]>): v
 
 describe('BUG-004 / N2-5：en 模式 argument 描述无 CJK', () => {
   let tmpDir: string;
-  let cwdMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-help-args-'));
     mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
     writeFileSync(join(tmpDir, '.openfeel', '.info.json'), JSON.stringify({ user: 't', lang: 'en' }), 'utf-8');
     mockHome.dir = tmpDir;
-    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 

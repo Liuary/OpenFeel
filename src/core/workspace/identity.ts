@@ -17,7 +17,7 @@ export interface InfoJson {
 }
 
 /** 默认语言 */
-const DEFAULT_LANG: 'zh-CN' = 'zh-CN';
+const DEFAULT_LANG = 'zh-CN' as const;
 
 /** 判断是否为普通对象（排除 null / 数组 / 标量，T31 鲁棒性校验） */
 function isPlainObject(value: unknown): value is Record<string, unknown> {

@@ -13,7 +13,7 @@ vi.mock('node:os', async (importOriginal) => {
 
 import { Command, CommanderError } from 'commander';
 import { registerInitCommand } from '../../src/commands/init.js';
-import { existsSync, mkdtempSync, rmSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 

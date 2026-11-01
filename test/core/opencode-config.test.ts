@@ -3,7 +3,6 @@
  * 验证框架/项目配置对象、JSONC 解析、深度合并与全局合并序列化。
  */
 import { describe, it, expect, vi } from 'vitest';
-import { join } from 'node:path';
 
 // mock homedir：隔离 global-paths 的 homedir 依赖（回调内不可引用外层 import）
 const mockHome = vi.hoisted(() => ({ dir: '/mock/home' }));

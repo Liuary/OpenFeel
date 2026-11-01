@@ -297,7 +297,6 @@ export function backupLegacy(
  */
 export function splitUpdateState(
   projectPath: string,
-  lang: 'zh-CN' | 'en' = 'zh-CN',
   globalStateIn?: UpdateState,
 ): SplitStateResult {
   const state = loadUpdateState(projectPath);
@@ -314,7 +313,7 @@ export function splitUpdateState(
 
   for (const [key, fileState] of Object.entries(state.files)) {
     if (!isLegacyFrameworkKey(key)) { keptInProject.push(key); continue; }
-    const mapped = remapLegacyKey(key, lang);
+    const mapped = remapLegacyKey(key);
     if (mapped) {
       // 移入全局 state：hash 沿用（旧文件内容 hash 与新全局内容不同时由后续 update 重新计算；
       // 此处仅保留记录，避免「无记录」触发全量追加，REV-911 安全行为）
@@ -357,7 +356,7 @@ function remapSkillName(name: string): string | null {
 }
 
 /** 旧框架 key → 全局绝对路径 key；无法映射返回 null */
-function remapLegacyKey(key: string, lang: 'zh-CN' | 'en'): string | null {
+function remapLegacyKey(key: string): string | null {
   const norm = key.replace(/\\/g, '/');
   // .opencode/agents/{name}.md → agentsDir/{newName}.md
   if (norm.startsWith('.opencode/agents/') && norm.endsWith('.md')) {
@@ -561,7 +560,7 @@ export function migrateProject(
     saveGlobalUpdateState(globalState);
 
     // 3. state 拆分/重键（REV-1402：复用上面已加载的 globalState，避免重复 IO）
-    stateSplit = splitUpdateState(projectPath, lang, globalState);
+    stateSplit = splitUpdateState(projectPath, globalState);
     globalStateKeys.push(...stateSplit.movedToGlobal);  // REV-1302：拆分移入全局的 key 纳入 rollback 范围
   } finally {
     // REV-1302 / REV-1405：无论部署是否成功，均回填 manifest.globalStateKeys

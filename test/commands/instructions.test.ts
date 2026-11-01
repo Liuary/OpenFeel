@@ -8,7 +8,7 @@ import { registerInstructionsCommand } from '../../src/commands/instructions.js'
 import { t } from '../../src/core/i18n.js';
 import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
 import { mkdtempSync, rmSync, mkdirSync, copyFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 

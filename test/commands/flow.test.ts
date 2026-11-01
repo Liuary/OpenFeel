@@ -2582,7 +2582,6 @@ describe('flow 命令（stage-41）', () => {
       expect(exitMock).toHaveBeenCalledWith(2);
       // 归档文件先落盘
       expect(existsSync(archivePath('v1.9.0'))).toBe(true);
-      const archivedBytes = readFileSync(archivePath('v1.9.0'), 'utf-8');
       // flow.json 原样（save 未生效）
       expect(readFileSync(flowJsonPath(), 'utf-8')).toBe(beforeFlow);
 
@@ -2662,7 +2661,6 @@ describe('flow 命令（stage-41）', () => {
       process.exitCode = 0;
     });
 
-    const flowJsonPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
     const archivePath = (v: string): string => join(tmpDir, '.openfeel', 'flow-archive', `${v}.json`);
 
     /** 夹具：写入 v1.0.0 当前阶段（保留）+ 各待归档版本的 done 阶段 / 可辨识 reviews / log */

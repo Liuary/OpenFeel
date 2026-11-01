@@ -3,7 +3,7 @@
  *
  * 与 zh-CN.ts 保持完全相同的 key 结构，仅 en 字段有值。
  */
-import type { I18nEntry, I18nDomain } from './types.js';
+import type { I18nDomain } from './types.js';
 
 /* ==================== common ==================== */
 export const common: I18nDomain = {

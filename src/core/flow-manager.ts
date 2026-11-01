@@ -37,7 +37,7 @@ import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, WORKFLOW_MODES, type WorkflowMode } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
-import type { RequirementData, RequirementReviewRecord, RequirementVerificationRecord, StageVerificationRecord } from './req/types.js';
+import type { RequirementData, StageVerificationRecord } from './req/types.js';
 import { VERIFICATION_KINDS } from './req/types.js';    // 验证种类值域单源（v1.5.8 / REQ-027；运行时值导入）
 import { syncRequirementStatus } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）
 import { stageRequirementIds } from './req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
@@ -453,17 +453,6 @@ export interface HealthCheckResult {
 }
 
 // ── 默认值 ──
-
-/** 创建默认的 Checkpoints */
-function defaultCheckpoints(): Checkpoints {
-  return {
-    plan: 'pending',
-    scheme: 'pending',
-    exec: { attempts: 0, self: 'pending' },
-    review: 'pending',
-    test: 'pending',
-  };
-}
 
 /** 创建默认的 FlowData */
 function defaultFlowData(): FlowData {
@@ -1476,7 +1465,6 @@ export class FlowManager {
           }
 
           // 提取待完成/待续事项
-          const contentLower = content.toLowerCase();
           // 查找待续事项或未完成的任务（`(?=##|$)` 支持其作为文件最后章节的边界场景）
           const todoSection = content.match(/##\s*待续事项[\s\S]*?(?=##|$)/i)
             || content.match(/##\s*待做[\s\S]*?(?=##|$)/i);
@@ -3966,7 +3954,7 @@ export class FlowManager {
           oldPhase,
           newMetaPhase,
           currentStage: currentStageId,
-          stagesUpdated: stageEntries.filter(([_, s]) => s.phase !== undefined).length,
+          stagesUpdated: stageEntries.filter(([, s]) => s.phase !== undefined).length,
         },
       });
     }

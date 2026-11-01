@@ -9,7 +9,6 @@ import {
   searchKnowledge,
   getKnowledgeIndex,
 } from '../core/workspace/knowledge.js';
-import type { KnowledgeEntry } from '../core/workspace/knowledge.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { resolve } from 'node:path';
 import { findSimilarEntries } from '../utils/kb-dedup.js';

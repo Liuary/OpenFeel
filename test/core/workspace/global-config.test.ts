@@ -19,8 +19,8 @@ import {
   isFirstUse,
   DEFAULT_GLOBAL_CONFIG,
 } from '../../../src/core/workspace/identity.js';
-import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { existsSync, rmSync, writeFileSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 describe('全局配置 - getGlobalConfig/setGlobalConfig/isFirstUse', () => {

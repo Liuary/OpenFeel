@@ -622,7 +622,7 @@ describe('req 命令组（stage-82）', () => {
     writeInfo({ lang: 'zh-CN' });
     mockedChild.execSync.mockImplementation(() => { throw new Error('no git'); });
     resetCapture();
-    let raw = flowRaw();
+    const raw = flowRaw();
     await safeParse(['req', 'claim', 'REQ-001']);
     expect(process.exitCode).toBe(1);
     expect(err()).toContain('无法解析当前用户名');
@@ -668,7 +668,7 @@ describe('req 命令组（stage-82）', () => {
     resetCapture();
     await safeParse(['req', 'set', 'REQ-001', '--title', '新标题', '--target-version', 'v1.4.0', '--priority', 'P2']);
     expect(process.exitCode).toBe(0);
-    let d = readFlow();
+    const d = readFlow();
     expect(d.meta.revision).toBe(before + 1);
     expect(d.requirements[0].title).toBe('新标题');
     expect(d.requirements[0].target_version).toBe('v1.4.0');
@@ -752,7 +752,7 @@ describe('req 命令组（stage-82）', () => {
     resetCapture();
     await safeParse(['req', 'link', '--stage', 'stage-01', '--requirement', 'REQ-001']);
     expect(process.exitCode).toBe(0);
-    let d = readFlow();
+    const d = readFlow();
     expect(d.stages['v1.0.0-stage-01'].requirements).toEqual([{ id: 'REQ-001', order: 0 }]);
     expect(d.stages['v1.0.0-stage-01'].requirement_id).toBeUndefined();
     expect(d.log.some((e: any) => e.action === 'requirement_link')).toBe(true);
@@ -801,7 +801,7 @@ describe('req 命令组（stage-82）', () => {
 
     // stage_not_found
     resetCapture();
-    let raw = flowRaw();
+    const raw = flowRaw();
     await safeParse(['req', 'link', '--stage', 'v9.9.9-stage-99', '--requirement', 'REQ-001']);
     expect(process.exitCode).toBe(1);
     expect(err()).toContain('阶段 v9.9.9-stage-99 不存在');
@@ -2526,7 +2526,7 @@ describe('REQ-030 发布门 / 顺延 / 已归档读取', () => {
     expect(process.exitCode).toBe(1);
     expect(err()).toContain('--id 与 --all 必须且只能提供一个');
 
-    let before = flowRaw();
+    const before = flowRaw();
     resetCapture();
     await safeParse(['req', 'rollover', '--from', 'v1.5.8', '--to', 'v1.6.0', '--id', 'REQ-002']);
     expect(process.exitCode).toBe(1);

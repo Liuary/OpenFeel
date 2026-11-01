@@ -9,7 +9,6 @@ import {
   archiveStage,
   ArchiveExistsError,
   InvalidSkillSlugError,
-  type ArchiveResult,
 } from '../../../src/core/archive/merge.js';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';

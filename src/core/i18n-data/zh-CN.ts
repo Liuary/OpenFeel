@@ -4,7 +4,7 @@
  * 按功能域组织，键名对照 I18nEntry.key。
  * 本文件为唯一真相源——所有中文字符串集中管理于此。
  */
-import type { I18nEntry, I18nDomain } from './types.js';
+import type { I18nDomain } from './types.js';
 
 /* ==================== common 域：跨命令共享字符串 ==================== */
 export const common: I18nDomain = {

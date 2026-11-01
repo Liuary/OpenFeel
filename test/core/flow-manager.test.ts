@@ -1281,7 +1281,7 @@ describe('FlowManager', () => {
       const bad = makeTestFlowData();
       bad.stages = null as unknown as FlowData['stages'];
       mgr.setData(bad);
-      const { valid, errors } = mgr.validate();
+      const { valid } = mgr.validate();
       expect(valid).toBe(false);
     });
 
@@ -1290,7 +1290,7 @@ describe('FlowManager', () => {
       const bad = makeTestFlowData();
       bad.reviews = null as unknown as FlowData['reviews'];
       mgr.setData(bad);
-      const { valid, errors } = mgr.validate();
+      const { valid } = mgr.validate();
       expect(valid).toBe(false);
     });
 
@@ -1373,7 +1373,7 @@ describe('FlowManager', () => {
       const data = makeTestFlowData();
       data.pipeline.phase = 'paused' as MetaPhase;
       mgr.setData(data);
-      const { valid, errors, warnings } = mgr.validate();
+      const { valid, errors } = mgr.validate();
       expect(valid).toBe(true);
       expect(errors.length).toBe(0);
     });
@@ -1398,7 +1398,7 @@ describe('FlowManager', () => {
       // 将 stage phase 设为 undefined 以触发缺失补全
       delete (data.stages['stage-01'] as Record<string, unknown>).phase;
       mgr.setData(data);
-      const { valid, errors, warnings } = mgr.validate();
+      const { valid, warnings } = mgr.validate();
       expect(valid).toBe(true);
       expect(warnings.some((w) => w.includes('缺失'))).toBe(true);
     });

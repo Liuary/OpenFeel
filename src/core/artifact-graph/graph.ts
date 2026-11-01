@@ -12,7 +12,7 @@
  * - requires 中 type='hard'（默认）的视为 hard 依赖
  * - requires 中 type='soft' 的不影响拓扑排序和就绪判断
  */
-import type { Schema, Artifact, Dependency } from '../schema.js';
+import type { Schema, Artifact } from '../schema.js';
 import type { BuildOrder, BlockedInfo, BlockedArtifacts } from './types.js';
 
 /**

@@ -10,7 +10,6 @@ import {
   listReviews,
   acceptReview,
   addReviewEntry,
-  type ReviewItem,
 } from '../../../src/core/view/entry.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';

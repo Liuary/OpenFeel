@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-10-31T17:01:30.330Z",
-    "revision": 1778,
+    "updated": "2026-11-01T06:29:32.891Z",
+    "revision": 1792,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -36,9 +36,9 @@
     ]
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.7-stage-121",
+      "stage": "v1.5.8-stage-122",
       "op": ""
     },
     "retry": 0
@@ -85,6 +85,20 @@
         "end_time": "2026-10-31T17:00:15.642Z",
         "duration_ms": 630954
       }
+    },
+    "v1.5.8-stage-122": {
+      "name": "v1.5.8-stage-122",
+      "phase": "exec_running",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-11-01T06:27:34.464Z",
+        "end_time": "",
+        "duration_ms": 0
+      },
+      "requirement_id": "REQ-024"
     }
   },
   "reviews": [
@@ -126,102 +140,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-10-30T12:15:06.434Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.3.3-stage-104.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:06.772Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.3.3-stage-104.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:07.085Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.3.3-stage-104.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:07.418Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.3.3-stage-104.op-004",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:07.735Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.3.3-stage-104.op-005",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:08.069Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.3.3-stage-104.op-006",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:15.531Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.3.3",
-        "stages": 1,
-        "reviews": 5,
-        "log": 20
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:33.201Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-005",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:33.493Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-005",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-10-30T12:15:39.451Z",
-      "agent": "cli",
-      "action": "requirement_update",
-      "detail": {
-        "id": "REQ-005",
-        "fields": [
-          "workflow_mode"
-        ]
-      }
-    },
     {
       "time": "2026-10-30T12:15:39.756Z",
       "agent": "cli",
@@ -2103,6 +2021,147 @@
         "note": "1.5.7 版本收口：README/config.yaml/dsh 版本快照同步 + build",
         "stage_count": 3
       }
+    },
+    {
+      "time": "2026-11-01T06:27:25.243Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-024",
+        "title": "归档官增强：汇总已完成需求 + 生成 docs/releases/vX.md + 按 harness 生成 skill"
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:25.646Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-018",
+        "fields": [
+          "target_version"
+        ]
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:26.064Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-019",
+        "fields": [
+          "target_version"
+        ]
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:28.673Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-025",
+        "title": "workflowGate 边界：仅有 done 阶段时仍判为有活跃阶段，应视为无开启阶段"
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:29.103Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-024",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:32.226Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:32.631Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-025",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:34.461Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:37.252Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:39.608Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.8-stage-122",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T06:27:46.681Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.8-stage-122",
+        "requirementId": "REQ-024"
+      }
+    },
+    {
+      "time": "2026-11-01T06:29:29.256Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-025",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-01T06:29:31.134Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-025",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-01T06:29:32.891Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-025",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2330,8 +2389,8 @@
       "title": "文档债清零：.openfeel/manual/** 快照停在 v1.2.4（35 文件）+ cli-usage SKILL 描述尾部缺 1.5.6 观测项",
       "status": "draft",
       "created_at": "2026-10-31T15:33:38.320Z",
-      "updated_at": "2026-10-31T15:33:38.320Z",
-      "target_version": "v1.5.7",
+      "updated_at": "2026-11-01T06:27:25.646Z",
+      "target_version": "v1.5.8",
       "priority": "P2",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-018.md"
@@ -2341,8 +2400,8 @@
       "title": "代码债：eslint 33 errors 清零（21 文件，多为 unused vars；当前门禁靠「新增行 0」豁免）",
       "status": "draft",
       "created_at": "2026-10-31T15:33:43.358Z",
-      "updated_at": "2026-10-31T15:33:43.358Z",
-      "target_version": "v1.5.7",
+      "updated_at": "2026-11-01T06:27:26.063Z",
+      "target_version": "v1.5.8",
       "priority": "P2",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-019.md"
@@ -2398,6 +2457,32 @@
       "body_path": ".openfeel/requirements/REQ-023.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T16:49:32.193Z"
+    },
+    {
+      "id": "REQ-024",
+      "title": "归档官增强：汇总已完成需求 + 生成 docs/releases/vX.md + 按 harness 生成 skill",
+      "status": "draft",
+      "created_at": "2026-11-01T06:27:25.243Z",
+      "updated_at": "2026-11-01T06:27:29.102Z",
+      "target_version": "v1.5.8",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-024.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T06:27:29.102Z"
+    },
+    {
+      "id": "REQ-025",
+      "title": "workflowGate 边界：仅有 done 阶段时仍判为有活跃阶段，应视为无开启阶段",
+      "status": "done",
+      "created_at": "2026-11-01T06:27:28.672Z",
+      "updated_at": "2026-11-01T06:29:32.891Z",
+      "target_version": "v1.5.8",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-025.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T06:27:32.631Z"
     }
   ]
 }

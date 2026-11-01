@@ -659,6 +659,12 @@ export const archive: I18nDomain = {
   'reviewsCount':                { key: 'archive.reviewsCount',                zh: '审查条目数',                              en: '' },
   'knowledgeExtracts':           { key: 'archive.knowledgeExtracts',           zh: '知识提取',                                en: '' },
   'archivePath':                 { key: 'archive.archivePath',                 zh: '归档文件',                                en: '' },
+  'completedRequirements':       { key: 'archive.completedRequirements',       zh: '已完成需求',                              en: '' },
+  'noneLabel':                   { key: 'archive.noneLabel',                   zh: '无',                                      en: '' },
+  'releaseNotes':                { key: 'archive.releaseNotes',                zh: '发布说明草稿',                            en: '' },
+  'generatedSkill':              { key: 'archive.generatedSkill',              zh: '生成的 Skill',                            en: '' },
+  'skillSkippedTmpl':            { key: 'archive.skillSkippedTmpl',            zh: 'Skill 已存在，未覆盖: {skill}（如需覆盖请使用 --force）', en: '' },
+  'errorInvalidSkillTmpl':       { key: 'archive.errorInvalidSkillTmpl',       zh: '错误：非法 skill slug "{skill}"（应为小写字母/数字/连字符，如 openfeel-archive）。', en: '' },
 };
 
 /* ==================== roadmap 域：路线图命令 ==================== */
@@ -945,10 +951,11 @@ export const help: I18nDomain = {
   'knowledge.dedup.json':      { key: 'help.knowledge.dedup.json',      zh: '以 JSON 输出（纯 JSON 单文档，含 schemaVersion）', en: '' },
 
   // archive
-  'archive':               { key: 'help.archive',               zh: '归档指定阶段（汇总产出、生成摘要、提取知识）', en: '' },
+  'archive':               { key: 'help.archive',               zh: '归档指定阶段（汇总产出、生成摘要、提取知识、生成发布说明与 skill）', en: '' },
   'archive.argstage':      { key: 'help.archive.argstage',      zh: '阶段名称（如 stage-06）', en: '' },
-  'archive.json':          { key: 'help.archive.json',          zh: '以 JSON 输出 { schemaVersion, stage, archivePath, opsCount, reviewsCount, knowledgeExtracts }', en: '' },
-  'archive.force':         { key: 'help.archive.force',         zh: '显式覆盖已存在的归档文件（缺省拒绝覆盖，零写盘）', en: '' },
+  'archive.json':          { key: 'help.archive.json',          zh: '以 JSON 输出 { schemaVersion, stage, archivePath, opsCount, reviewsCount, knowledgeExtracts, generated }', en: '' },
+  'archive.force':         { key: 'help.archive.force',         zh: '显式覆盖已存在的归档文件（缺省拒绝覆盖，零写盘；同时覆盖已存在的发布说明与 skill）', en: '' },
+  'archive.skill':         { key: 'help.archive.skill',         zh: '按探测到的 harness 生成开发 skill（slug：小写字母/数字/连字符，如 openfeel-archive）', en: '' },
 
   // roadmap
   'roadmap':               { key: 'help.roadmap',               zh: '分期大纲管理', en: '' },

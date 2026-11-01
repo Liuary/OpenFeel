@@ -369,6 +369,9 @@ async function main() {
     assert(none.actions.some((a) => a.includes('feel_stage')), 'actions 应含建阶段');
     const active = computeWorkflowGate({ focus: { phase: 'exec_running' } });
     assert(active.required === false, '有活跃阶段不应 required');
+    // v1.5.8：仅剩 done 阶段 = 无开启阶段（需求导向下应提示开新阶段）
+    const doneOnly = computeWorkflowGate({ focus: { phase: 'done' } });
+    assert(doneOnly.required === true, '仅剩 done 阶段应视为无开启阶段');
   });
 
   await check('提示段含流程入口硬规则（v1.5.2）', () => {

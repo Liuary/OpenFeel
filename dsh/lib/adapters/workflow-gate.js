@@ -14,8 +14,10 @@
  */
 export function computeWorkflowGate(snapshot) {
   const phase = snapshot?.focus?.phase;
-  const hasActiveStage = phase !== '' && phase !== null && phase !== undefined;
-  if (hasActiveStage) {
+  // v1.5.8：『开启阶段』= phase 非空且非 done。仅剩 done 阶段时同样要求开新阶段
+  // （此前 done 被当成活跃阶段，导致需求导向下永远不提示开阶段）。
+  const hasOpenStage = typeof phase === 'string' && phase !== '' && phase !== 'done';
+  if (hasOpenStage) {
     return { required: false, reason: null, message: '', actions: [] };
   }
   return {

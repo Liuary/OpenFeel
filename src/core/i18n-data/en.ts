@@ -631,6 +631,12 @@ export const archive: I18nDomain = {
   'reviewsCount':                { key: 'archive.reviewsCount',                zh: '', en: 'Review Entries' },
   'knowledgeExtracts':           { key: 'archive.knowledgeExtracts',           zh: '', en: 'Knowledge Extracts' },
   'archivePath':                 { key: 'archive.archivePath',                 zh: '', en: 'Archive File' },
+  'completedRequirements':       { key: 'archive.completedRequirements',       zh: '', en: 'Completed Requirements' },
+  'noneLabel':                   { key: 'archive.noneLabel',                   zh: '', en: 'None' },
+  'releaseNotes':                { key: 'archive.releaseNotes',                zh: '', en: 'Release Notes Draft' },
+  'generatedSkill':              { key: 'archive.generatedSkill',              zh: '', en: 'Generated Skill' },
+  'skillSkippedTmpl':            { key: 'archive.skillSkippedTmpl',            zh: '', en: 'Skill already exists, not overwritten: {skill} (pass --force to overwrite)' },
+  'errorInvalidSkillTmpl':       { key: 'archive.errorInvalidSkillTmpl',       zh: '', en: 'Error: invalid skill slug "{skill}" (expected lowercase letters/digits/hyphens, e.g. openfeel-archive).' },
 };
 
 /* ==================== roadmap ==================== */
@@ -905,10 +911,11 @@ export const help: I18nDomain = {
   'knowledge.dedup.threshold': { key: 'help.knowledge.dedup.threshold', zh: '', en: 'Similarity threshold 0–1 (default 0.8)' },
   'knowledge.dedup.json':      { key: 'help.knowledge.dedup.json',      zh: '', en: 'Output as JSON (single JSON document with schemaVersion)' },
 
-  'archive':               { key: 'help.archive',               zh: '', en: 'Archive stage (summarize output, generate summary, extract knowledge)' },
+  'archive':               { key: 'help.archive',               zh: '', en: 'Archive stage (summarize output, generate summary, extract knowledge, generate release notes and skill)' },
   'archive.argstage':      { key: 'help.archive.argstage',      zh: '', en: 'Stage name (e.g. stage-06)' },
-  'archive.json':          { key: 'help.archive.json',          zh: '', en: 'Output { schemaVersion, stage, archivePath, opsCount, reviewsCount, knowledgeExtracts } as JSON' },
-  'archive.force':         { key: 'help.archive.force',         zh: '', en: 'Explicitly overwrite an existing archive file (refused by default with zero writes)' },
+  'archive.json':          { key: 'help.archive.json',          zh: '', en: 'Output { schemaVersion, stage, archivePath, opsCount, reviewsCount, knowledgeExtracts, generated } as JSON' },
+  'archive.force':         { key: 'help.archive.force',         zh: '', en: 'Explicitly overwrite an existing archive file (refused by default with zero writes; also overwrites existing release notes and skill)' },
+  'archive.skill':         { key: 'help.archive.skill',         zh: '', en: 'Generate a dev skill per detected harness (slug: lowercase letters/digits/hyphens, e.g. openfeel-archive)' },
 
   'roadmap':               { key: 'help.roadmap',               zh: '', en: 'Roadmap management' },
   'roadmap.create':        { key: 'help.roadmap.create',        zh: '', en: 'Create roadmap (version number like 1.0, 2.0)' },

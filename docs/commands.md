@@ -840,14 +840,23 @@ openfeel view accept <rev-id>
 Archiver Agent 使用此命令归档已完成阶段。
 
 ```bash
-openfeel archive <stage> [--json] [--force]
+openfeel archive <stage> [--json] [--force] [--skill <slug>]
 ```
 
 | 参数/选项 | 说明 |
 |------|------|
 | `stage` | 阶段名称（如 stage-01） |
-| `--json` | v1.2.2：`{schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts}`；`archivePath` 为绝对路径；失败（阶段不存在 / 未初始化 / 写盘拒绝）→ `ARCHIVE_FAILED`/refusal/1；内部异常 → `INTERNAL_ERROR`/internal/3（人类保持 1） |
-| `--force` | **v1.2.4 A1**：显式覆盖已存在的归档文件；缺省时目标文件已存在 → `ARCHIVE_EXISTS`/refusal/1，**零写盘**（归档内容哈希、`flow.json` revision、`log[]` 长度、KB 条目数均不变）。保护为**归档文件级**：短名/全名别名派生不同文件、互不触发 |
+| `--json` | v1.2.2：`{schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts}`；**v1.5.8 追加** `generated{releaseNotes,skills,requirements}`（既有 6 键键序不变；`releaseNotes`/`skills` 为项目根相对路径）；`archivePath` 为绝对路径；失败（阶段不存在 / 未初始化 / 写盘拒绝）→ `ARCHIVE_FAILED`/refusal/1；内部异常 → `INTERNAL_ERROR`/internal/3（人类保持 1） |
+| `--force` | **v1.2.4 A1**：显式覆盖已存在的归档文件；缺省时目标文件已存在 → `ARCHIVE_EXISTS`/refusal/1，**零写盘**（归档内容哈希、`flow.json` revision、`log[]` 长度、KB 条目数均不变）。保护为**归档文件级**：短名/全名别名派生不同文件、互不触发。**v1.5.8**：同一 `--force` 也覆盖已存在的发布说明与 skill 文件（缺省不覆盖） |
+| `--skill <slug>` | **v1.5.8**：按探测到的 harness 生成开发 skill（`<skillDir>/<slug>/SKILL.md`）。slug 须匹配 `/^[a-z0-9][a-z0-9-]*$/`；非法 → `INVALID_ARGUMENT`/refusal/1，**零写盘**（守护项在任何写盘之前） |
+
+**v1.5.8 归档生成物**（除既有归档摘要 `.openfeel/log/archive-<stage>.md`）：
+
+| 生成物 | 落点 | 语义 |
+|--------|------|------|
+| 已完成需求 | 归档摘要新增 `## 已完成需求`（ID / 标题 / 优先级 / 更新时间） | 汇总 `status === 'done'` 且 `target_version` = 阶段版本前缀的需求，并并入阶段 `requirement_id` 指向的 done 需求（去重保序）；无则写「无」 |
+| 发布说明草稿 | `docs/releases/<version>.md` | 结构：`# <version> 发布说明` / 生成信息 / `## 已完成需求` / `## 变更摘要` / `## 升级与验证`；版本由 `parseStageId(stage)` 派生（短名 → `v1.0.0`）。**已存在不覆盖**（`--force` 时覆盖）；阶段名无法解析出版本时跳过 |
+| 开发 skill | `<skillDir>/<slug>/SKILL.md` | 仅 `--skill` 提供时生成；harness 探测顺序：项目标记 `.dsh/` → `.claude/` → `.opencode/`（按此序收集），项目无标记时用全局标记（`~/.openfeel/adapter-host-dsh.json` / `~/.claude/` / `~/.config/opencode/`），仍无则回退 `opencode`。同名 skill 已存在不覆盖（`--force` 时覆盖） |
 
 归档操作会汇总阶段产出、生成摘要、提取知识条目。（**阶段摘要归档**——与 `flow archive` 的 flow.json 版本分片归档职责不同。）
 
@@ -1162,7 +1171,7 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 30 | `plan scheme list` | `plan scheme list [stage] --json` | `schemaVersion,stage,count,schemes` |
 | 31 | `flow log` | `flow log --json` | `schemaVersion,count,entries` |
 | 32 | `project overview` | `project overview --json` | `schemaVersion,project,dirs,stats,entries,techStack` |
-| 33 | `archive <stage>` | `archive <stage> --json [--force]` | `schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts` |
+| 33 | `archive <stage>` | `archive <stage> --json [--force] [--skill <slug>]` | `schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts,generated` |
 | 34 | `plan stage list` | `plan stage list --json` | `schemaVersion,stages,count` |
 | 35 | `model list` | `model list [--scope] --json` | `schemaVersion,scope,agents` |
 | 36 | `model get` | `model get <agent> [--scope] --json` | `schemaVersion,scope,agent,provider,model,source` |

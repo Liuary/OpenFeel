@@ -899,7 +899,7 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect((d2.entries as Record<string, unknown>).available).toBe(true);
   });
 
-  it('#33 archive <stage>：6 键；阶段不存在 → ARCHIVE_FAILED/refusal/1', async () => {
+  it('#33 archive <stage>：6 键 + v1.5.8 追加 generated；阶段不存在 → ARCHIVE_FAILED/refusal/1', async () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.2.2-stage-97');
     mgr.getData()!.stages['v1.2.2-stage-97'].ops = {
@@ -915,13 +915,19 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
 
     const d = await doc(['archive', 'v1.2.2-stage-97', '--json']);
     expect(Object.keys(d)).toEqual([
-      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts',
+      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts', 'generated',
     ]);
     expect(d.stage).toBe('v1.2.2-stage-97');
     expect(String(d.archivePath).startsWith(tmpDir)).toBe(true);
     expect(d.opsCount).toBe(1);
     expect(d.reviewsCount).toBe(1);
     expect(d.knowledgeExtracts).toEqual(['[REV-001] k']);
+    // v1.5.8 生成物：releaseNotes 为相对项目根路径；无 --skill → skills 空数组
+    expect(d.generated).toEqual({
+      releaseNotes: join('docs', 'releases', 'v1.2.2.md'),
+      skills: [],
+      requirements: [],
+    });
     expect(process.exitCode).toBe(0);
 
     // v1.2.4 A1：已有归档 + 无 --force → ARCHIVE_EXISTS/refusal/1，归档内容逐字不变

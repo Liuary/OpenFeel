@@ -9,7 +9,7 @@ import { archiveStage } from '../../src/core/archive/merge.js';
 import { FlowManager, type FlowData } from '../../src/core/flow-manager.js';
 import { t } from '../../src/core/i18n.js';
 import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
-import { mkdtempSync, rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -97,8 +97,12 @@ describe('archive 命令（op-010 L2）', () => {
     return { id, op: reviewOp, status, priority: 'high', title: 'k', filed_by: 'r', filed_at: '2026-01-01T00:00:00Z' };
   }
 
-  /** 写入 flow.json（注入数据） */
-  function setupFlow(stages: Record<string, unknown>, reviews: unknown[] = []): void {
+  /** 写入 flow.json（注入数据；`requirements` 为 v1.5.8 需求汇总测试用，缺省空数组） */
+  function setupFlow(
+    stages: Record<string, unknown>,
+    reviews: unknown[] = [],
+    requirements: unknown[] = [],
+  ): void {
     FlowManager.initFlow(tmpDir);
     const mgr = new FlowManager(tmpDir);
     mgr.setData({
@@ -106,6 +110,7 @@ describe('archive 命令（op-010 L2）', () => {
       pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
       stages,
       reviews,
+      requirements,
       log: [],
     } as unknown as FlowData);
     mgr.save();
@@ -177,7 +182,7 @@ describe('archive 命令（op-010 L2）', () => {
 
   // ── stage-97 op-003：archive <stage> --json（D-97-03-05） ──
 
-  it('op-003: --json 成功 → 6 键固定序 / archivePath 绝对 / 计数 / knowledgeExtracts 数组', async () => {
+  it('op-003: --json 成功 → 6 键 + 追加 generated / archivePath 绝对 / 计数 / knowledgeExtracts 数组', async () => {
     setupFlow(
       { 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001', 'op-002']) },
       [mkReview('REV-001', 'v1.0.0-stage-01.op-001', 'closed')],
@@ -194,7 +199,7 @@ describe('archive 命令（op-010 L2）', () => {
     expect(raw).not.toMatch(/\u001b\[/);   // 无 ANSI
     const payload = JSON.parse(raw);
     expect(Object.keys(payload)).toEqual([
-      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts',
+      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts', 'generated',
     ]);
     expect(payload.schemaVersion).toBe(1);
     expect(payload.stage).toBe('stage-01');             // 用户输入原值
@@ -204,6 +209,11 @@ describe('archive 命令（op-010 L2）', () => {
     expect(Array.isArray(payload.knowledgeExtracts)).toBe(true);
     expect(payload.knowledgeExtracts).toContain('[REV-001] k');   // 已关闭审查 → 知识提取
     expect(payload.knowledgeExtracts.every((x: unknown) => typeof x === 'string')).toBe(true);
+    // v1.5.8 生成物：无 --skill → skills 空；短名 stage-01 → 版本 v1.0.0
+    expect(Object.keys(payload.generated)).toEqual(['releaseNotes', 'skills', 'requirements']);
+    expect(payload.generated.releaseNotes).toBe(join('docs', 'releases', 'v1.0.0.md'));
+    expect(payload.generated.skills).toEqual([]);
+    expect(payload.generated.requirements).toEqual([]);
 
     // 空态：无审查条目 → knowledgeExtracts 为空数组（非 null / 非缺省）
     // v1.2.4 A1：同名归档文件已存在，须显式 --force 才允许覆盖
@@ -363,7 +373,7 @@ describe('archive 命令（op-010 L2）', () => {
     expect(logMock).toHaveBeenCalledTimes(1);
     const payload = JSON.parse(logMock.mock.calls[0][0] as string);
     expect(Object.keys(payload)).toEqual([
-      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts',
+      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts', 'generated',
     ]);
     const after = zeroWriteSnapshot('stage-01');
     expect(after.archiveHash).not.toBe(before.archiveHash);
@@ -408,5 +418,127 @@ describe('archive 命令（op-010 L2）', () => {
   it('A1: i18n en 新键无 CJK', () => {
     expect(/[一-鿿]/.test(t('archive.errorArchiveExistsTmpl', 'en', { stage: 's', path: 'p' }))).toBe(false);
     expect(/[一-鿿]/.test(t('help.archive.force', 'en'))).toBe(false);
+    // v1.5.8 新键
+    expect(/[一-鿿]/.test(t('archive.errorInvalidSkillTmpl', 'en', { skill: 's' }))).toBe(false);
+    expect(/[一-鿿]/.test(t('archive.completedRequirements', 'en'))).toBe(false);
+    expect(/[一-鿿]/.test(t('archive.releaseNotes', 'en'))).toBe(false);
+    expect(/[一-鿿]/.test(t('archive.generatedSkill', 'en'))).toBe(false);
+    expect(/[一-鿿]/.test(t('archive.skillSkippedTmpl', 'en', { skill: 's' }))).toBe(false);
+    expect(/[一-鿿]/.test(t('archive.noneLabel', 'en'))).toBe(false);
+    expect(/[一-鿿]/.test(t('help.archive.skill', 'en'))).toBe(false);
+    expect(/[一-鿿]/.test(t('help.archive.json', 'en'))).toBe(false);
+  });
+
+  // ── v1.5.8 / REQ-024：归档官增强（--skill / generated / 已完成需求） ──
+
+  it('v1.5.8: 汇总该版本 done 需求到摘要与人类输出（未完成需求不入）', async () => {
+    setupFlow(
+      { 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) },
+      [],
+      [
+        {
+          id: 'REQ-001', title: '已完成A', status: 'done', target_version: 'v1.0.0',
+          priority: 'P1', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-30T00:00:00Z',
+        },
+        {
+          id: 'REQ-002', title: '未完成B', status: 'in_progress', target_version: 'v1.0.0',
+          priority: 'P2', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-31T00:00:00Z',
+        },
+      ],
+    );
+    logMock.mockClear();
+    errorMock.mockClear();
+
+    await safeParse(['archive', 'stage-01']);
+
+    expect(errorMock).not.toHaveBeenCalled();
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('已完成需求');
+    expect(out).toContain('REQ-001');
+    expect(out).not.toContain('REQ-002');
+
+    const summary = readFileSync(join(tmpDir, '.openfeel', 'log', 'archive-stage-01.md'), 'utf-8');
+    expect(summary).toContain('## 已完成需求');
+    expect(summary).toContain('已完成A');
+    expect(summary).not.toContain('REQ-002');
+  });
+
+  it('v1.5.8: --skill 透传 → 人类输出生成物行 + 按 harness 各写一份 SKILL.md', async () => {
+    setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
+    mkdirSync(join(tmpDir, '.dsh'), { recursive: true });
+    mkdirSync(join(tmpDir, '.claude'), { recursive: true });
+    logMock.mockClear();
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['archive', 'stage-01', '--skill', 'openfeel-archive']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('发布说明草稿');
+    expect(out).toContain(join('.dsh', 'skills', 'openfeel-archive', 'SKILL.md'));
+    expect(out).toContain(join('.claude', 'skills', 'openfeel-archive', 'SKILL.md'));
+    expect(existsSync(join(tmpDir, '.dsh', 'skills', 'openfeel-archive', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.claude', 'skills', 'openfeel-archive', 'SKILL.md'))).toBe(true);
+  });
+
+  it('v1.5.8: --json --skill → generated 三键（既有键序前置不变）', async () => {
+    setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
+    mkdirSync(join(tmpDir, '.dsh'), { recursive: true });
+    logMock.mockClear();
+    errorMock.mockClear();
+
+    await safeParse(['archive', 'stage-01', '--json', '--skill', 'openfeel-archive']);
+
+    expect(process.exitCode).toBe(0);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(payload)).toEqual([
+      'schemaVersion', 'stage', 'archivePath', 'opsCount', 'reviewsCount', 'knowledgeExtracts', 'generated',
+    ]);
+    expect(payload.generated.releaseNotes).toBe(join('docs', 'releases', 'v1.0.0.md'));
+    expect(payload.generated.skills).toEqual([join('.dsh', 'skills', 'openfeel-archive', 'SKILL.md')]);
+    expect(payload.generated.requirements).toEqual([]);
+    expect(existsSync(join(tmpDir, 'docs', 'releases', 'v1.0.0.md'))).toBe(true);
+  });
+
+  it('v1.5.8: 非法 slug 人类模式 → exit 1 + 文案 + 零写盘', async () => {
+    setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
+    logMock.mockClear();
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['archive', 'stage-01', '--skill', 'Bad Slug']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const stderr = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(stderr).toContain('非法 skill slug');
+    // 零写盘：归档文件 / 发布说明 / skill 目录均不存在
+    expect(existsSync(join(tmpDir, '.openfeel', 'log', 'archive-stage-01.md'))).toBe(false);
+    expect(existsSync(join(tmpDir, 'docs', 'releases', 'v1.0.0.md'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.dsh'))).toBe(false);
+  });
+
+  it('v1.5.8: 非法 slug --json → INVALID_ARGUMENT/refusal/1 + detail', async () => {
+    setupFlow({ 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) });
+    logMock.mockClear();
+    errorMock.mockClear();
+    setJsonMode(true);
+    try {
+      await safeParse(['archive', 'stage-01', '--json', '--skill', 'Bad_Slug']);
+    } finally {
+      resetJsonModeForTest();
+    }
+
+    expect(process.exitCode).toBe(1);
+    expect(errorMock).not.toHaveBeenCalled();
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(payload)).toEqual(['schemaVersion', 'error']);
+    expect(payload.error).toMatchObject({
+      code: 'INVALID_ARGUMENT',
+      kind: 'refusal',
+      detail: { stage: 'stage-01', skill: 'Bad_Slug' },
+    });
+    expect(existsSync(join(tmpDir, '.openfeel', 'log', 'archive-stage-01.md'))).toBe(false);
+    process.exitCode = 0;
   });
 });

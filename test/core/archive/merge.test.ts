@@ -1,14 +1,27 @@
 /**
  * Archive Merge 单元测试
  * 测试阶段归档核心操作：归档汇总、摘要生成、知识提取
+ * v1.5.8（REQ-024）：已完成需求汇总 / 发布说明草稿 / 按 harness 生成 skill
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FlowManager } from '../../../src/core/flow-manager.js';
-import { archiveStage, ArchiveExistsError, type ArchiveResult } from '../../../src/core/archive/merge.js';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import {
+  archiveStage,
+  ArchiveExistsError,
+  InvalidSkillSlugError,
+  type ArchiveResult,
+} from '../../../src/core/archive/merge.js';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+
+// 隔离 HOME：skill 生成的 harness 探测在项目无标记时会读全局标记（v1.5.8）
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
 
 /**
  * 创建含阶段和操作的基础 FlowData 用于测试
@@ -59,10 +72,12 @@ describe('Archive Merge', () => {
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-archive-test-'));
+    mockHome.dir = tmpDir;
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
   });
 
   describe('archiveStage', () => {
@@ -381,6 +396,235 @@ describe('Archive Merge', () => {
       expect(existsSync(join(tmpDir, '.openfeel', 'log', 'archive-stage-78.md'))).toBe(true);
       // 全名重跑 → 只保护全名文件
       expect(() => archiveStage(tmpDir, 'v1.2.0-stage-78')).toThrow(ArchiveExistsError);
+    });
+  });
+
+  // ── v1.5.8 / REQ-024：归档官增强 ──
+
+  describe('v1.5.8 归档官增强（REQ-024）', () => {
+    const stageName = 'v1.5.8-stage-122';
+    const version = 'v1.5.8';
+    const releaseNotesRel = join('docs', 'releases', `${version}.md`);
+
+    /** 建 flow：阶段 v1.5.8-stage-122 + 三条需求（REQ-003 经 requirement_id 关联、版本不同） */
+    function setupFlow(requirementId: string | null = 'REQ-003'): void {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage(stageName, {
+        stages: {
+          [stageName]: {
+            name: '归档官增强',
+            status: 'in_progress',
+            deps: [],
+            requirement_id: requirementId,
+            ops: {
+              'op-001': {
+                id: 'op-001', title: '归档增强', state: 'done' as const,
+                assignee: 'openfeel-executor', attempts: 1, max_attempts: 3,
+                checkpoints: {
+                  plan: 'passed', scheme: 'passed',
+                  exec: { attempts: 1, self: 'passed' },
+                  review: 'passed', test: 'passed',
+                },
+              },
+            },
+          },
+        },
+        requirements: [
+          {
+            id: 'REQ-001', title: '已完成A', status: 'done', target_version: version,
+            priority: 'P1', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-30T00:00:00Z',
+          },
+          {
+            id: 'REQ-002', title: '进行中B', status: 'in_progress', target_version: version,
+            priority: 'P2', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-31T00:00:00Z',
+          },
+          {
+            id: 'REQ-003', title: '已完成C', status: 'done', target_version: 'v1.4.0',
+            priority: 'P0', created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-30T00:00:00Z',
+          },
+        ],
+      }));
+      mgr.save();
+    }
+
+    it('归档摘要含「已完成需求」：版本命中 ∪ 阶段关联，排除未完成需求', () => {
+      setupFlow();
+      const result = archiveStage(tmpDir, stageName);
+      expect(result).not.toBeNull();
+
+      const summary = result!.summary;
+      expect(summary).toContain('## 已完成需求');
+      expect(summary).toContain('REQ-001');
+      expect(summary).toContain('已完成A');
+      expect(summary).toContain('REQ-003');        // requirement_id 命中（版本不同也并入）
+      expect(summary).toContain('已完成C');
+      expect(summary).not.toContain('REQ-002');    // status != done
+      expect(result!.generated.requirements).toEqual(['REQ-001', 'REQ-003']);
+
+      // 归档文件落盘内容与 summary 一致
+      const archiveFile = join(tmpDir, '.openfeel', 'log', `archive-${stageName}.md`);
+      expect(readFileSync(archiveFile, 'utf-8')).toContain('## 已完成需求');
+    });
+
+    it('无已完成需求时摘要该节写「无」，generated.requirements 为空数组', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage(stageName, {
+        stages: {
+          [stageName]: { name: '无需求阶段', status: 'pending', deps: [], ops: {} },
+        },
+      }));
+      mgr.save();
+
+      const result = archiveStage(tmpDir, stageName);
+      expect(result).not.toBeNull();
+      expect(result!.summary).toContain('## 已完成需求\n\n无');
+      expect(result!.generated.requirements).toEqual([]);
+    });
+
+    it('生成 docs/releases/<version>.md 草稿，返回相对路径', () => {
+      setupFlow();
+      const result = archiveStage(tmpDir, stageName);
+      expect(result).not.toBeNull();
+      expect(result!.generated.releaseNotes).toBe(releaseNotesRel);
+
+      const abs = join(tmpDir, releaseNotesRel);
+      expect(existsSync(abs)).toBe(true);
+      const content = readFileSync(abs, 'utf-8');
+      expect(content).toContain(`# ${version} 发布说明`);
+      expect(content).toContain('## 已完成需求');
+      expect(content).toContain('**REQ-001** 已完成A（P1）');
+      expect(content).toContain('## 变更摘要');
+      expect(content).toContain(`.openfeel/log/archive-${stageName}.md`);
+      expect(content).toContain('## 升级与验证');
+    });
+
+    it('发布说明已存在 → 不覆盖（releaseNotes 为 null）；--force 才覆盖', () => {
+      setupFlow();
+      const abs = join(tmpDir, releaseNotesRel);
+      mkdirSync(join(tmpDir, 'docs', 'releases'), { recursive: true });
+      writeFileSync(abs, 'KEEP-RELEASE-NOTES', 'utf-8');
+
+      const first = archiveStage(tmpDir, stageName);
+      expect(first).not.toBeNull();
+      expect(first!.generated.releaseNotes).toBeNull();
+      expect(readFileSync(abs, 'utf-8')).toBe('KEEP-RELEASE-NOTES');
+
+      const forced = archiveStage(tmpDir, stageName, { force: true });
+      expect(forced).not.toBeNull();
+      expect(forced!.generated.releaseNotes).toBe(releaseNotesRel);
+      const content = readFileSync(abs, 'utf-8');
+      expect(content).not.toBe('KEEP-RELEASE-NOTES');
+      expect(content).toContain(`# ${version} 发布说明`);
+    });
+
+    it('--skill：按探测到的 harness 各写一份 SKILL.md（.dsh / .claude）', () => {
+      setupFlow();
+      mkdirSync(join(tmpDir, '.dsh'), { recursive: true });
+      mkdirSync(join(tmpDir, '.claude'), { recursive: true });
+
+      const result = archiveStage(tmpDir, stageName, { skill: 'openfeel-archive' });
+      expect(result).not.toBeNull();
+
+      const expected = [
+        join('.dsh', 'skills', 'openfeel-archive', 'SKILL.md'),
+        join('.claude', 'skills', 'openfeel-archive', 'SKILL.md'),
+      ];
+      expect(result!.generated.skills).toEqual(expected);
+
+      for (const rel of expected) {
+        const abs = join(tmpDir, rel);
+        expect(existsSync(abs)).toBe(true);
+        const content = readFileSync(abs, 'utf-8');
+        expect(content).toContain('# Openfeel Archive');            // slug 标题化默认值
+        expect(content).toContain('由 OpenFeel 归档生成');
+        expect(content).toContain(`（${version} · `);
+        expect(content).toContain('## 何时使用');
+        expect(content).toContain('REQ-001 已完成A');                // 依据需求标题
+        expect(content).toContain('## 步骤');
+        expect(content).toContain('## 参考');
+        expect(content).toContain(`.openfeel/log/archive-${stageName}.md`);
+        expect(content).toContain(releaseNotesRel);                  // 发布说明路径
+      }
+    });
+
+    it('无 --skill 选项 → 不生成任何 skill 文件', () => {
+      setupFlow();
+      mkdirSync(join(tmpDir, '.dsh'), { recursive: true });
+
+      const result = archiveStage(tmpDir, stageName);
+      expect(result).not.toBeNull();
+      expect(result!.generated.skills).toEqual([]);
+      expect(existsSync(join(tmpDir, '.dsh', 'skills'))).toBe(false);
+    });
+
+    it('skill 已存在 → 不覆盖（skills 为空）；--force 才覆盖', () => {
+      setupFlow();
+      mkdirSync(join(tmpDir, '.dsh'), { recursive: true });
+      const skillAbs = join(tmpDir, '.dsh', 'skills', 'openfeel-archive', 'SKILL.md');
+      mkdirSync(join(tmpDir, '.dsh', 'skills', 'openfeel-archive'), { recursive: true });
+      writeFileSync(skillAbs, 'KEEP-SKILL', 'utf-8');
+
+      const first = archiveStage(tmpDir, stageName, { skill: 'openfeel-archive' });
+      expect(first).not.toBeNull();
+      expect(first!.generated.skills).toEqual([]);
+      expect(readFileSync(skillAbs, 'utf-8')).toBe('KEEP-SKILL');
+
+      const forced = archiveStage(tmpDir, stageName, { force: true, skill: 'openfeel-archive' });
+      expect(forced).not.toBeNull();
+      expect(forced!.generated.skills).toEqual([join('.dsh', 'skills', 'openfeel-archive', 'SKILL.md')]);
+      expect(readFileSync(skillAbs, 'utf-8')).toContain('# Openfeel Archive');
+    });
+
+    it('非法 slug → 抛 InvalidSkillSlugError 且零写盘', () => {
+      setupFlow();
+      const archiveFile = join(tmpDir, '.openfeel', 'log', `archive-${stageName}.md`);
+      const releaseAbs = join(tmpDir, releaseNotesRel);
+      const before = new FlowManager(tmpDir).getData()!;
+      const revisionBefore = before.meta.revision;
+      const logBefore = before.log.length;
+
+      for (const bad of ['OpenFeel', 'a/b', '-leading', '', 'has space']) {
+        expect(() => archiveStage(tmpDir, stageName, { skill: bad })).toThrow(InvalidSkillSlugError);
+      }
+
+      expect(existsSync(archiveFile)).toBe(false);
+      expect(existsSync(releaseAbs)).toBe(false);
+      expect(existsSync(join(tmpDir, '.dsh'))).toBe(false);
+      const after = new FlowManager(tmpDir).getData()!;
+      expect(after.meta.revision).toBe(revisionBefore);
+      expect(after.log.length).toBe(logBefore);
+
+      try {
+        archiveStage(tmpDir, stageName, { skill: 'BAD' });
+      } catch (err) {
+        expect((err as InvalidSkillSlugError).skill).toBe('BAD');
+      }
+    });
+
+    it('阶段名无法解析出模块版本 → 跳过发布说明（releaseNotes 为 null）但仍归档', () => {
+      FlowManager.initFlow(tmpDir);
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeFlowWithStage('stage-empty', {
+        stages: { 'stage-empty': { name: '空阶段', status: 'pending', deps: [], ops: {} } },
+        requirements: [
+          {
+            id: 'REQ-009', title: '短名阶段关联', status: 'done', target_version: 'v9.9.9',
+            priority: 'P2', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-02T00:00:00Z',
+          },
+        ],
+      }));
+      mgr.save();
+
+      // 短名 stage-empty 无法被 parseStageId 解析 → 版本为 null；目标版本需求不被误并
+      const result = archiveStage(tmpDir, 'stage-empty', { skill: 'foo-bar' });
+      expect(result).not.toBeNull();
+      expect(result!.generated.releaseNotes).toBeNull();
+      expect(result!.generated.requirements).toEqual([]);
+      // 回退 harness（无项目标记 + HOME 隔离）→ .opencode/skills/foo-bar/SKILL.md
+      expect(result!.generated.skills).toEqual([join('.opencode', 'skills', 'foo-bar', 'SKILL.md')]);
+      expect(existsSync(join(tmpDir, '.opencode', 'skills', 'foo-bar', 'SKILL.md'))).toBe(true);
     });
   });
 });

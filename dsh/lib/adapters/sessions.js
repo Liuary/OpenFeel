@@ -137,12 +137,16 @@ function writeSessions(projectRoot, sessions) {
  * @param {string|null} [stage] 当前活跃阶段（无 → ''）
  * @param {number} [now] 当前时间（毫秒；注入以便单测）
  */
-export function touchSession(projectRoot, stage = '', now = Date.now()) {
+export function touchSession(projectRoot, stage = undefined, now = Date.now()) {
   try {
     const id = resolveSessionId(projectRoot);
-    const nextStage = typeof stage === 'string' && stage !== '' ? stage : null;
     const current = readSessions(projectRoot);
     const previous = current.find((entry) => entry.id === id);
+    // 语义（v1.5.9 修复）：undefined = 调用方无阶段信息 → 保留旧值；'' = 明确无开启阶段 → 清空；
+    // 此前 '' 也保留旧值，导致已完成/已归档阶段长期滞留在 sessions[].stage。
+    const nextStage = stage === undefined
+      ? (previous?.stage ?? null)
+      : (typeof stage === 'string' && stage !== '' ? stage : null);
     const kept = current.filter(
       (entry) => entry.id !== id && now - Date.parse(entry.lastSeen) <= PRUNE_OLDER_THAN_MS,
     );
@@ -150,7 +154,7 @@ export function touchSession(projectRoot, stage = '', now = Date.now()) {
       id,
       cwd: projectRoot,
       lastSeen: new Date(now).toISOString(),
-      stage: nextStage ?? previous?.stage ?? null,
+      stage: nextStage,
     });
     writeSessions(projectRoot, kept);
   } catch {

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-01T09:43:43.305Z",
-    "revision": 1883,
+    "updated": "2026-11-01T09:43:58.781Z",
+    "revision": 1884,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -1701,6 +1701,16 @@
         "id": "CHORE-20261101T094343",
         "note": "1.5.9 版本收口",
         "expires_at": "2026-11-01T10:43:43.287Z",
+        "stage_count": 0
+      }
+    },
+    {
+      "time": "2026-11-01T09:43:58.781Z",
+      "agent": "cli",
+      "action": "chore_end",
+      "detail": {
+        "id": "CHORE-20261101T094343",
+        "note": "1.5.9 版本收口",
         "stage_count": 0
       }
     }

@@ -164,6 +164,12 @@ export const flow: I18nDomain = {
   'archive.show.stagesLabel':         { key: 'flow.archive.show.stagesLabel',         zh: '阶段：', en: '' },
   'archive.show.stageLineTmpl':       { key: 'flow.archive.show.stageLineTmpl',       zh: '  - {stage} [{phase}]', en: '' },
   'archive.show.fullHint':            { key: 'flow.archive.show.fullHint',            zh: '（完整 log / reviews 请用 --json 查看）', en: '' },
+  // flow archive 发布软门 + 需求随版本归档（v1.5.8 / REQ-030）
+  'archive.unfinishedTitleTmpl':      { key: 'flow.archive.unfinishedTitleTmpl',      zh: '版本 {version} 仍有未完成需求（{n} 条）：发布软门未通过', en: '' },
+  'archive.unfinishedHintTmpl':       { key: 'flow.archive.unfinishedHintTmpl',       zh: '先顺延：openfeel req rollover --from {version} --to <新版本> --all；或显式放行：openfeel flow archive {version} --allow-unfinished（零写盘拒绝）', en: '' },
+  'archive.unfinishedWarnTmpl':       { key: 'flow.archive.unfinishedWarnTmpl',       zh: '警告：版本 {version} 仍有 {n} 条未完成需求，已按 --allow-unfinished 继续归档（未完成需求保留在 flow.json）', en: '' },
+  'archive.requirementsTmpl':         { key: 'flow.archive.requirementsTmpl',         zh: '需求：{requirements} 条（终态，已随版本移入归档文件）', en: '' },
+  'archive.previewRequirementsTmpl':  { key: 'flow.archive.previewRequirementsTmpl',  zh: '[dry-run] 将归档需求：{requirements} 条', en: '' },
 
   // flow stage remove
   'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '阶段不存在：{stage}',                             en: '' },
@@ -772,7 +778,8 @@ export const help: I18nDomain = {
   'flow.archive':          { key: 'help.flow.archive',          zh: 'flow.json 版本分片归档（按版本号归档已收官历史；与顶层 openfeel archive〔阶段摘要归档〕职责分离）', en: '' },
   'flow.archive.argversion': { key: 'help.flow.archive.argversion', zh: '版本号（如 v1.1.7；前缀 v 可省略）', en: '' },
   'flow.archive.dryRun':   { key: 'help.flow.archive.dryRun',   zh: '仅预览（判据门照常校验；零写盘）', en: '' },
-  'flow.archive.json':     { key: 'help.flow.archive.json',     zh: '以 JSON 输出 { schemaVersion, version, stages, reviews, log, dryRun, eligible, unfinishedStages, blockingReviews }', en: '' },
+  'flow.archive.json':     { key: 'help.flow.archive.json',     zh: '以 JSON 输出 { schemaVersion, version, stages, reviews, log, dryRun, eligible, unfinishedStages, blockingReviews, requirements }', en: '' },
+  'flow.archive.allowUnfinished': { key: 'help.flow.archive.allowUnfinished', zh: '显式放行「该版本仍有未完成需求」（发布软门；缺省拒绝，零写盘）', en: '' },
   'flow.archive.list':       { key: 'help.flow.archive.list',       zh: '列出已归档版本及计数（只读；引擎字典序）', en: '' },
   'flow.archive.list.json':  { key: 'help.flow.archive.list.json',  zh: '以 JSON 输出 { schemaVersion, versions: [{version, counts}] }', en: '' },
   'flow.archive.show':       { key: 'help.flow.archive.show',       zh: '查看指定归档版本（只读；人类输出 = counts + 阶段概览）', en: '' },
@@ -1020,7 +1027,7 @@ export const help: I18nDomain = {
   'model.list.json':     { key: 'help.model.list.json',     zh: '以 JSON 输出 { schemaVersion, scope, agents: [{ agent, provider, model, source }] }', en: '' },
 
   // req（需求流转命令组）
-  'req':                 { key: 'help.req',                 zh: '需求管理（需求流转命令组：添加/列表/详情/认领/推进/看板/推荐）', en: '' },
+  'req':                 { key: 'help.req',                 zh: '需求管理（需求流转命令组：添加/列表/详情/认领/推进/看板/推荐/审查验证/发布门/顺延）', en: '' },
   // chore（微变更通道）
   'chore':               { key: 'help.chore',               zh: '微变更通道：开启/收口 ephemeral 写窗口（不创建阶段；适配器写入门禁的 chore 例外）', en: '' },
   'chore.argnote':       { key: 'help.chore.argnote',       zh: '微变更说明（开启时必填，如 "调整 UI 圆角"）', en: '' },
@@ -1034,7 +1041,7 @@ export const help: I18nDomain = {
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '预估版本（如 v1.3.0）', en: '' },
   'req.add.priority':    { key: 'help.req.add.priority',    zh: '优先级（P0/P1/P2）', en: '' },
   'req.add.workflowMode': { key: 'help.req.add.workflowMode', zh: '工作流模式（full / fast / general；缺省不设置）', en: '' },
-  'req.list':            { key: 'help.req.list',            zh: '列出需求（可按状态/版本/认领人过滤）', en: '' },
+  'req.list':            { key: 'help.req.list',            zh: '列出需求（可按状态/版本/认领人过滤；--include-archived 合并已归档需求）', en: '' },
   'req.list.status':     { key: 'help.req.list.status',     zh: '按状态过滤（draft/scheduled/in_progress/done/blocked/cancelled/rejected）', en: '' },
   'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '按预估版本过滤', en: '' },
   'req.list.owner':      { key: 'help.req.list.owner',      zh: '按认领人过滤', en: '' },
@@ -1088,6 +1095,16 @@ export const help: I18nDomain = {
   'req.verify.by':       { key: 'help.req.verify.by',       zh: '验证者', en: '' },
   'req.verify.note':     { key: 'help.req.verify.note',     zh: '结论摘要（进入归档摘要）', en: '' },
   'req.verify.evidence': { key: 'help.req.verify.evidence', zh: '证据（测试命令 / 报告路径 / 摘要）', en: '' },
+  // v1.5.8 / REQ-030：需求随版本归档 + 发布门 / 顺延
+  'req.list.includeArchived': { key: 'help.req.list.includeArchived', zh: '包含已随版本归档的需求（只读；合并 .openfeel/flow-archive/*.json）', en: '' },
+  'req.release-check':   { key: 'help.req.release-check',   zh: '发布门（软）：列出该版本的已完成 / 未完成 / 其它需求；只读、退出码恒 0', en: '' },
+  'req.release-check.argversion': { key: 'help.req.release-check.argversion', zh: '版本号（如 v1.5.8）', en: '' },
+  'req.release-check.json': { key: 'help.req.release-check.json', zh: '以 JSON 输出 { schemaVersion, version, done, unfinished, counts }', en: '' },
+  'req.rollover':        { key: 'help.req.rollover',        zh: '顺延未完成需求到新版本（改写 target_version + carried_from 溯源；仅非终态需求）', en: '' },
+  'req.rollover.from':   { key: 'help.req.rollover.from',   zh: '来源版本（如 v1.5.8）', en: '' },
+  'req.rollover.to':     { key: 'help.req.rollover.to',     zh: '目标版本（如 v1.6.0）', en: '' },
+  'req.rollover.id':     { key: 'help.req.rollover.id',     zh: '只顺延该需求（与 --all 互斥）', en: '' },
+  'req.rollover.all':    { key: 'help.req.rollover.all',    zh: '顺延该版本全部未完成需求（与 --id 互斥）', en: '' },
 };
 
 /* ==================== config 域：配置管理命令 ==================== */
@@ -1329,6 +1346,24 @@ export const req: I18nDomain = {
   'show.childrenLabel':  { key: 'req.show.childrenLabel',     zh: '子需求:', en: '' },
   'show.childItemTmpl':  { key: 'req.show.childItemTmpl',     zh: '  - {id} [{status}] {title}', en: '' },
   'show.childrenNone':   { key: 'req.show.childrenNone',      zh: '子需求: （无）', en: '' },
+  // v1.5.8 / REQ-030：需求随版本归档 + 发布门 / 顺延
+  'list.archivedSuffixTmpl': { key: 'req.list.archivedSuffixTmpl', zh: '（已归档）', en: '' },
+  'show.archivedTmpl':   { key: 'req.show.archivedTmpl',      zh: '已归档：随版本 {version} 移入 .openfeel/flow-archive/（只读）', en: '' },
+  'releaseCheck.titleTmpl': { key: 'req.releaseCheck.titleTmpl', zh: '发布检查 {version}：共 {total} 条需求', en: '' },
+  'releaseCheck.doneLabel': { key: 'req.releaseCheck.doneLabel', zh: '已完成（{n}）：', en: '' },
+  'releaseCheck.unfinishedLabel': { key: 'req.releaseCheck.unfinishedLabel', zh: '未完成（{n}）：', en: '' },
+  'releaseCheck.otherLabel': { key: 'req.releaseCheck.otherLabel', zh: '其它（{n}）：', en: '' },
+  'releaseCheck.itemTmpl': { key: 'req.releaseCheck.itemTmpl', zh: '  - {id} [{status}] {title}', en: '' },
+  'releaseCheck.emptySection': { key: 'req.releaseCheck.emptySection', zh: '  （无）', en: '' },
+  'releaseCheck.countsTmpl': { key: 'req.releaseCheck.countsTmpl', zh: '计数：done={done} unfinished={unfinished} other={other} total={total}', en: '' },
+  'releaseCheck.unfinishedHintTmpl': { key: 'req.releaseCheck.unfinishedHintTmpl', zh: '存在未完成需求：先顺延（openfeel req rollover --from {version} --to <新版本> --all），或归档时显式传 --allow-unfinished', en: '' },
+  'rollover.doneTmpl':   { key: 'req.rollover.doneTmpl',      zh: '已顺延 {count} 条需求：{from} → {to}', en: '' },
+  'rollover.itemTmpl':   { key: 'req.rollover.itemTmpl',      zh: '  - {id} [{status}] {title}', en: '' },
+  'rollover.noopTmpl':   { key: 'req.rollover.noopTmpl',      zh: '版本 {from} 无未完成需求需要顺延（no-op）', en: '' },
+  'rollover.exclusiveTmpl': { key: 'req.rollover.exclusiveTmpl', zh: '--id 与 --all 必须且只能提供一个', en: '' },
+  'rollover.invalidVersionTmpl': { key: 'req.rollover.invalidVersionTmpl', zh: '--from {from} 与 --to {to} 必须非空且不同', en: '' },
+  'rollover.notInVersionTmpl': { key: 'req.rollover.notInVersionTmpl', zh: '{id} 的预估版本不是 {from}（当前 {current}），无法顺延', en: '' },
+  'rollover.terminalTmpl': { key: 'req.rollover.terminalTmpl', zh: '{id} 已是终态（{status}），不可顺延', en: '' },
 };
 
 /* ==================== 聚合导出 ==================== */

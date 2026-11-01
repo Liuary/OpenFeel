@@ -65,16 +65,57 @@ export function listRequirements(
   return result;
 }
 
-/** 下一个需求 ID：现存 id 数字部分 max+1（不回收；异常 id 跳过不崩） */
-export function nextRequirementId(data: FlowData): string {
+/** 需求 ID 格式化（三位起补零；序列化单点） */
+function formatRequirementId(seq: number): string {
+  return `REQ-${String(seq).padStart(3, '0')}`;
+}
+
+/**
+ * 现存需求 ID 的最大序号（异常 id 跳过不崩；空集 → 0）。
+ * 仅看 `requirements` 现存条目——归档后条目已被移出，故**不可**作为唯一单调依据（见 requirementSeqFloor）。
+ */
+function maxRequirementSeqInList(requirements: RequirementData[]): number {
   let max = 0;
-  for (const r of getRequirements(data)) {
+  for (const r of requirements) {
     const m = REQ_ID_PATTERN.exec(typeof r?.id === 'string' ? r.id : '');
-    if (!m) { continue; }                                    // 异常 id 跳过（不崩）
+    if (!m) { continue; }
     const n = Number.parseInt(m[1], 10);
     if (Number.isFinite(n) && n > max) { max = n; }
   }
-  return `REQ-${String(max + 1).padStart(3, '0')}`;
+  return max;
+}
+
+/**
+ * 需求序号下限（单调计数器读取单点；v1.5.8 / REQ-030）：
+ * `max(现存 requirements 最大号, meta.last_req_seq ?? 0)`。
+ * 旧数据无 `last_req_seq` → 0 兜底；归档后现存集为空时仍由计数器防复用。
+ */
+export function requirementSeqFloor(data: FlowData): number {
+  const stored = typeof data.meta?.last_req_seq === 'number' && Number.isFinite(data.meta.last_req_seq)
+    ? data.meta.last_req_seq
+    : 0;
+  return Math.max(stored, maxRequirementSeqInList(Array.isArray(data.requirements) ? data.requirements : []));
+}
+
+/**
+ * 下一个需求 ID（**只读**：不写计数器）。
+ * 语义 = `requirementSeqFloor(data) + 1`；分配场景请用 `allocateRequirementId`（同批写回计数器）。
+ */
+export function nextRequirementId(data: FlowData): string {
+  return formatRequirementId(requirementSeqFloor(data) + 1);
+}
+
+/**
+ * 分配需求 ID 并**同批写回** `meta.last_req_seq`（纯内存；落盘恒由调用方 save() 承担——单批原子）。
+ * 写回的是本次分配序号，保证归档移走条目后 seq 不回退（单调不复用）。
+ * @returns 分配的 ID（`REQ-NNN`）
+ */
+export function allocateRequirementId(data: FlowData): string {
+  const seq = requirementSeqFloor(data) + 1;
+  if (data.meta && typeof data.meta === 'object') {
+    data.meta.last_req_seq = seq;
+  }
+  return formatRequirementId(seq);
 }
 
 /** 终态判定（done/cancelled/rejected；claim / link 门共用） */
@@ -242,7 +283,7 @@ export function addRequirement(
   data.requirements = Array.isArray(data.requirements) ? data.requirements : [];
   const now = new Date().toISOString();
   const req: RequirementData = {
-    id: nextRequirementId(data),                                   // 须在 push 之前分配
+    id: allocateRequirementId(data),                               // 须在 push 之前分配（同批写回 meta.last_req_seq）
     title,
     status: 'draft',                                               // 新建即 draft（REV-81-005）
     created_at: now,
@@ -292,14 +333,15 @@ export function splitRequirement(
     if (title === '') { return { ok: false, code: 'invalid_field' }; }
     titles.push(title);
   }
-  // staged 容器承载「当前 max」：复用 nextRequirementId 单源派生 → 顺序分配且不重解析
+  // staged 容器承载「当前 max」：复用 allocateRequirementId 单源派生 → 顺序分配且同批写回 meta.last_req_seq
+  // （staged 与 data 共享同一 meta 引用；写回随调用方 save() 单批落盘）
   const list: RequirementData[] = Array.isArray(data.requirements) ? [...data.requirements] : [];
   const staged: FlowData = { ...data, requirements: list };
   const now = new Date().toISOString();
   const created: RequirementData[] = [];
   for (const title of titles) {
     const child: RequirementData = {
-      id: nextRequirementId(staged),
+      id: allocateRequirementId(staged),
       title,
       status: SPLIT_CHILD_STATUS,
       parent_id: parentId,
@@ -459,6 +501,130 @@ export function updateRequirement(
 /** 显式人工推进（裁定 M）；语义与 update({status}) 完全一致（同表同门同审计，零第二套） */
 export function advanceRequirement(data: FlowData, id: string, to: RequirementStatus): RequirementOpResult {
   return updateRequirement(data, id, { status: to });
+}
+
+// ═══ 发布门与顺延（v1.5.8 / REQ-030）═══
+
+/**
+ * 版本号归一（**仅比较用**）：trim + 去单个前导 `v`。
+ * 让 `v1.5.8` 与 `1.5.8` 视为同一版本；不校验形态（target_version 是自由文本维度）。
+ */
+function normalizeVersionToken(version: string): string {
+  const trimmed = typeof version === 'string' ? version.trim() : '';
+  return trimmed.startsWith('v') ? trimmed.slice(1) : trimmed;
+}
+
+/** target_version 是否等于给定版本（比较用归一；缺失 target_version → false） */
+function sameRequirementVersion(target: string | undefined, version: string): boolean {
+  return typeof target === 'string' && normalizeVersionToken(target) === normalizeVersionToken(version);
+}
+
+/** 发布检查分桶结果（只读；命令层人类 / JSON 输出共用） */
+export interface ReleaseCheckResult {
+  /** 归一后的版本号（回显用户输入 trim 值） */
+  version: string;
+  /** 已完成需求（status=done） */
+  done: RequirementData[];
+  /** 未完成需求（非终态：draft / scheduled / in_progress / blocked） */
+  unfinished: RequirementData[];
+  /** 其它（cancelled / rejected） */
+  other: RequirementData[];
+  /** 计数（四段；total = done + unfinished + other） */
+  counts: { done: number; unfinished: number; other: number; total: number };
+}
+
+/**
+ * 发布检查（**只读纯函数**，零写盘；v1.5.8 / REQ-030）：
+ * 按 `target_version === version` 分三桶——done / 未完成（非终态）/ 其它（cancelled+rejected）。
+ * 作为「软门」的唯一判据来源：`flow archive` 与 `req release-check` 共用，未完成需求**不阻断**发布，
+ * 但归档需显式 `--allow-unfinished`。已归档需求不在 flow.json，故本函数只反映活跃集。
+ */
+export function releaseCheckRequirements(data: FlowData, version: string): ReleaseCheckResult {
+  const done: RequirementData[] = [];
+  const unfinished: RequirementData[] = [];
+  const other: RequirementData[] = [];
+  for (const req of getRequirements(data)) {
+    if (!sameRequirementVersion(req.target_version, version)) { continue; }
+    if (req.status === 'done') {
+      done.push(req);
+    } else if (isTerminalRequirementStatus(req.status)) {
+      other.push(req);
+    } else {
+      unfinished.push(req);
+    }
+  }
+  return {
+    version: typeof version === 'string' ? version.trim() : '',
+    done,
+    unfinished,
+    other,
+    counts: { done: done.length, unfinished: unfinished.length, other: other.length, total: done.length + unfinished.length + other.length },
+  };
+}
+
+/** 顺延结果（成功携实际改动需求列表；空列表 = no-op 成功） */
+export type RolloverResult =
+  | { ok: true; moved: RequirementData[] }
+  | { ok: false; code: RequirementErrorCode };
+
+/**
+ * 未完成需求顺延到新版本（纯内存 + 单条审计 `requirement_rollover`；落盘恒由调用方 save()）。
+ *
+ * 门（顺序固定；任一失败 → **零变更零审计**）：
+ *   ① `from` / `to` 归一后非空且不同 → 否则 invalid_field；
+ *   ② `--id` 与 `--all` 必须且只能提供一个 → 否则 invalid_field（命令层亦做 argument-shape 守卫）；
+ *   ③ `--id`：不存在 → not_found；终态 → invalid_status；`target_version` 不属于 `from` → invalid_field；
+ *   ④ `--all`：仅取 `target_version === from` 且**非终态**的需求（终态静默跳过）。
+ *
+ * 写语义：`target_version = to`；`carried_from` 去重保序追加 `from`；`updated_at` 单次刷新。
+ * 审计恰一条（detail `{from,to,ids,count}`；changed=0 时不写审计）。
+ * @returns `{ ok: true, moved }`（moved 为空 = no-op 成功）或错误码
+ */
+export function rolloverRequirements(
+  data: FlowData,
+  from: string,
+  to: string,
+  options: { id?: string; all?: boolean },
+): RolloverResult {
+  const source = typeof from === 'string' ? from.trim() : '';
+  const target = typeof to === 'string' ? to.trim() : '';
+  if (source === '' || target === '' || normalizeVersionToken(source) === normalizeVersionToken(target)) {
+    return { ok: false, code: 'invalid_field' };
+  }
+  const byId = typeof options?.id === 'string' && options.id !== '';
+  const all = options?.all === true;
+  if (byId === all) { return { ok: false, code: 'invalid_field' }; }   // 互斥且必选其一
+
+  let candidates: RequirementData[];
+  if (byId) {
+    const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === options.id);
+    if (!req) { return { ok: false, code: 'not_found' }; }
+    if (isTerminalRequirementStatus(req.status)) { return { ok: false, code: 'invalid_status' }; }
+    if (!sameRequirementVersion(req.target_version, source)) { return { ok: false, code: 'invalid_field' }; }
+    candidates = [req];
+  } else {
+    candidates = (Array.isArray(data.requirements) ? data.requirements : []).filter(
+      (r) => r && !isTerminalRequirementStatus(r.status) && sameRequirementVersion(r.target_version, source),
+    );
+  }
+
+  if (candidates.length === 0) { return { ok: true, moved: [] }; }
+
+  const at = new Date().toISOString();
+  for (const req of candidates) {
+    req.target_version = target;
+    const carried = Array.isArray(req.carried_from) ? req.carried_from.filter((v) => typeof v === 'string') : [];
+    // 去重保序：同一来源版本只记一次（回滚到旧版本再顺延时不会堆叠重复）
+    req.carried_from = carried.includes(source) ? carried : [...carried, source];
+    req.updated_at = at;
+  }
+  appendRequirementLog(data, 'requirement_rollover', {
+    from: source,
+    to: target,
+    ids: candidates.map((r) => r.id),
+    count: candidates.length,
+  });
+  return { ok: true, moved: candidates };
 }
 
 /**

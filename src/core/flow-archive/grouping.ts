@@ -6,6 +6,8 @@
  */
 import { parseStageId } from '../plan/path.js';
 import type { FlowData, StageData, ReviewItem, LogEntry } from '../flow-manager.js';
+import type { RequirementData } from '../req/types.js';
+import { isTerminalRequirementStatus } from '../req/requirement-ops.js';
 import type { ArchiveFile } from './archive-file.js';
 
 /** splitForArchive 返回：归档段（缺 schemaVersion/archived_at，由命令层装配） + 保留段 */
@@ -17,6 +19,8 @@ export interface SplitResult {
     stages: Record<string, StageData>;
     reviews: ReviewItem[];
     log: LogEntry[];
+    /** 留在 flow.json 的需求（活跃 / 无版本 / 非终态 / 版本不匹配） */
+    requirements: RequirementData[];
   };
 }
 
@@ -125,10 +129,26 @@ function versionOfLogEntry(entry: LogEntry): string | null {
 }
 
 /**
+ * 需求 → 是否随该版本归档（v1.5.8 / REQ-030）：
+ * `target_version` 归一比较命中版本 **且** 终态（done/cancelled/rejected）。
+ * 版本比较归一（去单个前导 `v`）：让 `v1.5.8` 与 `1.5.8` 视为同一版本；无 target_version / 活跃需求一律留下。
+ */
+function isArchivableRequirement(req: RequirementData, version: string): boolean {
+  if (!req || typeof req.target_version !== 'string') { return false; }
+  const norm = (v: string): string => {
+    const trimmed = v.trim();
+    return trimmed.startsWith('v') ? trimmed.slice(1) : trimmed;
+  };
+  return norm(req.target_version) === norm(version) && isTerminalRequirementStatus(req.status);
+}
+
+/**
  * 按版本切分 flow 数据（纯函数，不写盘）。
  * - stages：该版本全部 stageId 条目整体搬入 archive；其余（含不可解析 stageId）保留 remainder。
  * - reviews：`versionOfReviewOp(r.op) === version` 者搬入；其余保留（保序）。
  * - log：`versionOfLogEntry(e) === version` 者搬入；其余保留（保序；无 stageName / 不可解析一律保留）。
+ * - requirements（v1.5.8 / REQ-030）：`target_version` 归一命中版本 **且终态** 者搬入 archive；
+ *   其余（活跃 / 无版本 / 非终态 / 版本不匹配）保留 remainder（保序）。
  * - 版本不存在 → archive 为空集（counts 全 0），不抛错。
  * 返回集合中的对象为原数据浅引用（调用方不得修改）。
  */
@@ -163,22 +183,35 @@ export function splitForArchive(data: FlowData, version: string): SplitResult {
     }
   }
 
+  const archiveRequirements: RequirementData[] = [];
+  const remainderRequirements: RequirementData[] = [];
+  for (const req of Array.isArray(data.requirements) ? data.requirements : []) {
+    if (isArchivableRequirement(req, version)) {
+      archiveRequirements.push(req);
+    } else {
+      remainderRequirements.push(req);
+    }
+  }
+
   return {
     archive: {
       version,
       stages: archiveStages,
       reviews: archiveReviews,
       log: archiveLog,
+      requirements: archiveRequirements,
       counts: {
         stages: Object.keys(archiveStages).length,
         reviews: archiveReviews.length,
         log: archiveLog.length,
+        requirements: archiveRequirements.length,
       },
     },
     remainder: {
       stages: remainderStages,
       reviews: remainderReviews,
       log: remainderLog,
+      requirements: remainderRequirements,
     },
   };
 }

@@ -1,8 +1,9 @@
 # OpenFeel CLI JSON 输出契约（v1.5.6）
 
-- **权威范围**：`--json` 成功输出（41 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
+- **权威范围**：`--json` 成功输出（42 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
 - **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。§6 登记的是有意增量清单，未登记即视为破坏。
+- **v1.5.8 / REQ-030 追加**：新增出口 **#42 `req release-check`**（只读发布软门）；计数升为 **42 成功出口 / 43 注册 `--json` 选项**；`flow archive` 成功/预演追加末键 `requirements`（既有 9 键键序零改动）；归档文件 schema 增可选 `requirements[]` 段与可选 `counts.requirements`（老文件缺省视同 0）。
 - **v1.5.6-stage-115 收口**：新增出口 **#41 `lint req`**（需求正文命令名校验）；计数升为 **41 成功出口 / 42 注册 `--json` 选项**；`target:'req'` 比其他 lint 出口多 `suspects` / `unknownCount` / `suspectCount` 三个键（A/B 分级），详见 §16。
 - **v1.2.4-stage-100 收口**：DSH ACTION-GUIDE A1~A5 交付——A1 `archive <stage>` 覆盖保护（`ARCHIVE_EXISTS`）+ A2~A4 新增 7 个成功出口（#34~#40）+ A5 `config get --all` 扩展。计数升级为 **40 成功出口 / 41 注册 `--json` 选项**；§15 为本版细则。
 - **v1.2.3-stage-99 收口**：并发冲突 JSON 退出机制已与 `failCli` 统一（§14.2）；§14.1 补锁超时 E2E 证据；当时 33 成功出口 / 34 注册选项与退出码语义零改动。
@@ -85,6 +86,7 @@
 
 - `error` **恒为 string**，既有键序不变；仅允许在末尾追加顶层 `errorKind`（`refusal | internal`）。
 - `flow archive` 判据拒绝（gate-rejected）9 键固定序：`schemaVersion,error,version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind`；`eligible` 恒 `false`；`unfinishedStages[]{id,phase}`；`blockingReviews[]{id,title,priority}`（见 §13.3）。
+- `flow archive` **发布软门拒绝**（v1.5.8 / REQ-030）键序：`schemaVersion,error,version,unfinished,counts,errorKind`；`error` 恒 `'unfinished-requirements'`；`unfinished:string[]`（未完成需求 ID）；`counts{done,unfinished,other,total}`；`errorKind` 恒末尾 `refusal`，exit 1，**零写盘**（显式 `--allow-unfinished` 才继续）。
 - 适用：`flow archive` / `flow archive show` / `req` 族既有 `failJson` 路径。
 
 ### 4.3 唯一判别规则
@@ -96,9 +98,9 @@ typeof doc.error === 'string'  → legacy
 
 - 禁止以退出码、命令名或字段存在性做第二套判别。
 
-## §5 41 出口冻结表
+## §5 42 出口冻结表
 
-> 计数口径：**41 个成功 JSON 出口**（#1~#41）。`flow advance --json` 为错误封装开关，不计入（见 §7）。
+> 计数口径：**42 个成功 JSON 出口**（#1~#42）。`flow advance --json` 为错误封装开关，不计入（见 §7）。v1.5.8 / REQ-030 新增 #42 `req release-check`。
 
 | # | 出口 | 顶层键序 | 元素/嵌套键（实测） | 条件键/形态 |
 |:-:|------|----------|--------------------|------------|
@@ -109,12 +111,12 @@ typeof doc.error === 'string'  → legacy
 | 5 | `flow phases` | `schemaVersion,phases,transitions,advanceAccepted,transitionsDiff,workflowMode,reviewTier,displayReviewTier,effectiveReviewTier` | `transitionsDiff{missing,extra,changed}` | 恒在；末位新增 2 键（既有 7 键不变，见 §12.3） |
 | 6 | `flow mode` | `schemaVersion,stage,mode,source,modes` | `modes{full,fast,general}`（各为 transitions 映射） | 恒在 |
 | 7 | `flow ops list` | `schemaVersion,ops` | `ops[]{stage,opId,title,state,fill,warning}` | `warning` 恒在，非 empty 时 `null` |
-| 8 | `flow archive` | 成功：`schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews` | `stages/reviews/log` 为 number；`dryRun` 为 boolean；`eligible` 成功恒 `true`；`unfinishedStages` / `blockingReviews` 成功恒 `[]` | 失败为 legacy（见 §4；gate-rejected 9 键见 #8b） |
-| 9 | `flow archive list` | `schemaVersion,versions` | `versions[]{version,counts}`；`counts{stages,reviews,log}` 或 `null` | `counts` 恒在、可空 |
-| 10 | `flow archive show` | **`schemaVersion,version,stages,reviews,log,counts,archived_at`**（本版首键重定位；其余相对序不变） | 嵌套透传归档文件原文 | 失败为 legacy（见 §4） |
+| 8 | `flow archive` | 成功：`schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews,requirements` | `stages/reviews/log/requirements` 为 number；`dryRun` 为 boolean；`eligible` 成功恒 `true`；`unfinishedStages` / `blockingReviews` 成功恒 `[]`；`requirements` = 随版本归档的终态需求数（v1.5.8 追加，末键） | 失败为 legacy（见 §4；gate-rejected 9 键见 #8b；发布软门拒绝见 §4.2） |
+| 9 | `flow archive list` | `schemaVersion,versions` | `versions[]{version,counts}`；`counts{stages,reviews,log,requirements}` 或 `null`（老归档无 `requirements` 键 → 读侧不注入，视同 0） | `counts` 恒在、可空 |
+| 10 | `flow archive show` | **`schemaVersion,version,stages,reviews,log,requirements,counts,archived_at`**（本版首键重定位；v1.5.8 在 log 后追加 `requirements`，其余相对序不变） | 嵌套透传归档文件原文（`requirements?` 为归档需求数组，老文件缺省） | 失败为 legacy（见 §4） |
 | 11 | `flow health` | `schemaVersion,ok,items,reconciled` | `items[]{name,status,detail}` | `reconciled` 恒在，非 `--fix` 时 `null`；`ok:false` 仍为成功文档 + exit 1 |
-| 12 | `req list` | `schemaVersion,requirements` | `requirements[]` = `RequirementData` + 末位追加 `linkedStages,progress`；`linkedStages[]{id,phase}`；`progress{done,total}`；`RequirementData` 可选字段（`target_version,priority,owner,claimed_at,body_path,parent_id,workflow_mode`）**条件出现**（读侧宽容不注入） | 条件出现键（依据：`src/core/req/types.ts` 可选标记 + 读侧宽容不注入）；两新键恒在且恒为末位 |
-| 13 | `req show` | `schemaVersion,requirement,stages,parent,children` | `stages:string[]`；`parent:string|null`；`children:string[]` | `parent` 恒在、可空 |
+| 12 | `req list` | `schemaVersion,requirements` | `requirements[]` = `RequirementData` + 末位追加 `linkedStages,progress`；`linkedStages[]{id,phase}`；`progress{done,total}`；`RequirementData` 可选字段（`target_version,priority,owner,claimed_at,body_path,parent_id,workflow_mode,carried_from,review,verification`）**条件出现**（读侧宽容不注入）；`--include-archived` 时归档需求再末位追加 `archived:true` | 条件出现键（依据：`src/core/req/types.ts` 可选标记 + 读侧宽容不注入）；两新键恒在且恒为末位；`archived` 仅归档需求出现 |
+| 13 | `req show` | `schemaVersion,requirement,stages,parent,children`（活跃）/ `schemaVersion,requirement,stages,parent,children,archived`（已归档回退） | `stages:string[]`；`parent:string|null`；`children:string[]` | `parent` 恒在、可空；`archived:true` 为**末尾可选键**（仅归档回退路径） |
 | 14 | `req split` | `schemaVersion,parent,children` | `children` = `RequirementData[]` | 恒在 |
 | 15 | `req board` | `schemaVersion,groups` | `groups` 键序 = `REQ_STATUSES`（7 值）；值为数组 | 恒在 |
 | 16 | `req next` | `schemaVersion,requirement` | `requirement` 对象或 `null` | **`candidates` 条件出现键**（仅 `limit>1`） |
@@ -143,6 +145,7 @@ typeof doc.error === 'string'  → legacy
 | 39 | `lint kb` | `schemaVersion,target,ok,issues` | `target:"kb"`；`issues[]{path,message}`；`path = .openfeel/kb/<file>`（项目根相对） | 无 kb 目录 → `ok:true,issues:[]` + exit 0；过期引用 → `ok:false` + exit 1 |
 | 40 | `roadmap show` | `schemaVersion,version,milestones` | `milestones[]{title,theme,stage,deliverable}`（表头驱动；兼容 3/4 列，缺列 `null`） | 不传版本 → `version:null,milestones:[]` + exit 0；版本不存在 → `INVALID_ARGUMENT`/refusal/1；人类输出逐字不变 |
 | 41 | `lint req` | `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount` | `target:"req"`；`issues[]{path,message}`（A 类 unknown-command）；`suspects[]{path,message}`（B 类 suspect-command-group）；两个计数为 number；`path = .openfeel/requirements/<file>` | `ok = (issues.length === 0)`（与 #38/#39 一致）；`suspects` 不参与 `ok` / 退出码；无需求目录 → `ok:true,issues:[],suspects:[]` + exit 0；A 类 → `ok:false` + exit 1；抑制行数 / 未闭合警告**不进 JSON**（见 §16） |
+| 42 | `req release-check` | `schemaVersion,version,done,unfinished,counts` | `done:string[]` / `unfinished:string[]`（需求 ID）；`counts{done,unfinished,other,total}`（number） | **只读软门**：恒 exit 0（未完成需求只报告，不阻断）；版本比较去单前导 `v`（`v1.5.8` ≡ `1.5.8`）；「其它」= cancelled/rejected 只进 `counts.other` |
 
 **登记类别**：恒在键 / 条件出现键 / 文档形态变体三类，测试断言须与类别一致。
 
@@ -165,17 +168,20 @@ typeof doc.error === 'string'  → legacy
 15. **stage-97：`flow archive --json`（gate-rejected 与成功）追加 `eligible` / `unfinishedStages` / `blockingReviews`**——legacy 键序与 `error` 类型不变；成功形态 9 键、gate-rejected 形态 9 键（见 §4.2 / §13.3）。
 16. **v1.2.4-stage-100：A1~A5 有意增量（#34~#40 + 2 项既有出口扩展）**——A1 `archive <stage>` 增 `ARCHIVE_EXISTS` 拒绝（错误码第 13 行）与 `--force`（出口 #33 键集不变）；A2~A4 新增 #34~#40 七个出口；A5 `config get --all` 扩展 #27（项目模式新增 `defaults` 形态）。既有出口字段键集/键序/类型零改动；详见 §15。
 17. **v1.5.6-stage-115：新增出口 #41 `lint req`**——`target:'req'` 比其他 lint 出口多出 `suspects` 与两个计数键（共 3 个新键：`suspects` / `unknownCount` / `suspectCount`），理由：A 类阻塞 / B 类 advisory 必须可分，塞进单一 `issues` 会破坏 `ok` 不变量。`ok = issues.length === 0` 与 #38/#39 完全一致；既有 40 个出口字段键集/键序/类型零改动；详见 §16。
+18. **v1.5.8 / REQ-030：新增出口 #42 `req release-check` + 归档追加需求段**——`req release-check --json` 只读软门（恒 exit 0）；`flow archive` 成功/预演**末位追加** `requirements`（既有 9 键键序零改动）；`flow archive list` 的 `counts` 在 `log` 后追加可选 `requirements`；`flow archive show` 在 `log` 后追加可选 `requirements`；归档文件 schema 增可选 `requirements[]`（老文件无此键可读，不注入）；`req list --include-archived` 的归档需求元素**末位追加**可选 `archived:true`；`req show` 回退路径末位追加 `archived:true`；`flow archive` 新增 legacy 拒绝形态 `unfinished-requirements`（见 §4.2）。
 
 ## §7 计数口径
 
-- **成功 JSON 出口 = 41 个**（flow 16 + req 5 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 2 + project 1 + archive 1 + model 2 + lint 3 + roadmap 1）。
+- **成功 JSON 出口 = 42 个**（flow 16 + req 6 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 2 + project 1 + archive 1 + model 2 + lint 3 + roadmap 1）。
   - flow 16 = `status,overview,current,metrics,phases,mode,ops list,archive,archive list,archive show,health,next,recover,checkpoint list,log,retry`。
+  - req 6 = `list,show,split,board,next,release-check`。
   - v1.2.4 新增 7 个：#34 `plan stage list`、#35 `model list`、#36 `model get`、#37 `flow retry`、#38 `lint i18n`、#39 `lint kb`、#40 `roadmap show`；`config get --all`（#27 扩展）与 `archive --force`（#33 选项扩展）不计新增出口。
   - v1.5.6 新增 1 个：#41 `lint req`（lint 分项 2 → 3）。
+  - v1.5.8 / REQ-030 新增 1 个：#42 `req release-check`（req 分项 5 → 6）。
 - `flow advance --json` 为**错误封装开关**：成功输出保持人类文本，不计入成功出口。
-- 注册的 `--json` 选项数为 **42**（41 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。`lint i18n` / `lint kb` / `lint req` 为三个独立 Commander 子命令，各计 1。
-- 三处对齐：源码 `option('--json'` 去重计数 42 / 本文件 41+42 / `test/cli/json-contract.test.ts` 用例 #1~#41；`test/commands/knowledge.test.ts` 计数用例 = 42/41。
-- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 41 个成功出口、也不计入 42 个注册选项（非 Commander 选项）；验收单列。**
+- 注册的 `--json` 选项数为 **43**（42 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。`lint i18n` / `lint kb` / `lint req` 为三个独立 Commander 子命令，各计 1。
+- 三处对齐：源码 `option('--json'` 去重计数 43 / 本文件 42+43 / `test/cli/json-contract.test.ts` 用例 #1~#42；`test/commands/knowledge.test.ts` 计数用例 = 43/42。
+- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 42 个成功出口、也不计入 43 个注册选项（非 Commander 选项）；验收单列。**
 
 ## §8 迁移边界
 

@@ -167,6 +167,12 @@ export interface FlowData {
     revision?: number;
     /** 已归档版本前缀索引（轻量索引，裁定 Q；缺失视为 []，由 getArchivedVersions 承担——REV-78-015 移除 load 读侧补齐） */
     archived_versions?: string[];
+    /**
+     * 需求 ID 单调计数器（v1.5.8 / REQ-030）：最近一次分配的序号。
+     * 归档会把终态需求移出 `requirements`，仅靠现存最大号会复用 ID；计数器随每次分配同批写回，
+     * 旧数据无此键 → 0 兜底。读取单点 = `requirementSeqFloor`（src/core/req/requirement-ops.ts）。
+     */
+    last_req_seq?: number;
   };
   pipeline: { phase: MetaPhase; current: { stage: string; op: string }; retry: number };
   stages: Record<string, StageData>;

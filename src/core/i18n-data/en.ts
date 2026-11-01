@@ -154,6 +154,12 @@ export const flow: I18nDomain = {
   'archive.show.stagesLabel':         { key: 'flow.archive.show.stagesLabel',         zh: '', en: 'Stages:' },
   'archive.show.stageLineTmpl':       { key: 'flow.archive.show.stageLineTmpl',       zh: '', en: '  - {stage} [{phase}]' },
   'archive.show.fullHint':            { key: 'flow.archive.show.fullHint',            zh: '', en: '(use --json to view the full log / reviews)' },
+  // flow archive release soft gate + requirements archived with the version (v1.5.8 / REQ-030)
+  'archive.unfinishedTitleTmpl':      { key: 'flow.archive.unfinishedTitleTmpl',      zh: '', en: 'Version {version} still has unfinished requirements ({n}): release soft gate not passed' },
+  'archive.unfinishedHintTmpl':       { key: 'flow.archive.unfinishedHintTmpl',       zh: '', en: 'Roll them over first: openfeel req rollover --from {version} --to <new-version> --all; or allow explicitly: openfeel flow archive {version} --allow-unfinished (refused with zero writes)' },
+  'archive.unfinishedWarnTmpl':       { key: 'flow.archive.unfinishedWarnTmpl',       zh: '', en: 'Warning: version {version} still has {n} unfinished requirements; archived anyway because --allow-unfinished was passed (they stay in flow.json)' },
+  'archive.requirementsTmpl':         { key: 'flow.archive.requirementsTmpl',         zh: '', en: 'Requirements: {requirements} (terminal, moved into the archive file with this version)' },
+  'archive.previewRequirementsTmpl':  { key: 'flow.archive.previewRequirementsTmpl',  zh: '', en: '[dry-run] requirements to archive: {requirements}' },
 
   'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '', en: 'Stage not found: {stage}' },
   'stage.remove.okTmpl':            { key: 'flow.stage.remove.okTmpl',            zh: '', en: '✓ Removed stage: {stage}' },
@@ -739,7 +745,8 @@ export const help: I18nDomain = {
   'flow.archive':          { key: 'help.flow.archive',          zh: '', en: 'Archive flow.json slices by version (archives completed history by version prefix; separate from top-level openfeel archive [stage summaries])' },
   'flow.archive.argversion': { key: 'help.flow.archive.argversion', zh: '', en: 'Version (e.g. v1.1.7; the leading v may be omitted)' },
   'flow.archive.dryRun':   { key: 'help.flow.archive.dryRun',   zh: '', en: 'Preview only (the gate is still checked; zero writes)' },
-  'flow.archive.json':     { key: 'help.flow.archive.json',     zh: '', en: 'Output { schemaVersion, version, stages, reviews, log, dryRun, eligible, unfinishedStages, blockingReviews } as JSON' },
+  'flow.archive.json':     { key: 'help.flow.archive.json',     zh: '', en: 'Output { schemaVersion, version, stages, reviews, log, dryRun, eligible, unfinishedStages, blockingReviews, requirements } as JSON' },
+  'flow.archive.allowUnfinished': { key: 'help.flow.archive.allowUnfinished', zh: '', en: 'Explicitly allow "this version still has unfinished requirements" (release soft gate; default refuses with zero writes)' },
   'flow.archive.list':       { key: 'help.flow.archive.list',       zh: '', en: 'List archived versions and their counts (read-only; engine lexicographic order)' },
   'flow.archive.list.json':  { key: 'help.flow.archive.list.json',  zh: '', en: 'Output { schemaVersion, versions: [{version, counts}] } as JSON' },
   'flow.archive.show':       { key: 'help.flow.archive.show',       zh: '', en: 'Show a given archived version (read-only; human output = counts + stage overview)' },
@@ -977,7 +984,7 @@ export const help: I18nDomain = {
   'model.list.json':     { key: 'help.model.list.json',     zh: '', en: 'Output { schemaVersion, scope, agents: [{ agent, provider, model, source }] } as JSON' },
 
   // req (requirement flow command group)
-  'req':                 { key: 'help.req',                 zh: '', en: 'Requirement management (add/list/show/claim/release/set/link/advance/board/next)' },
+  'req':                 { key: 'help.req',                 zh: '', en: 'Requirement management (add/list/show/claim/release/set/link/advance/board/next/review/verify/release-check/rollover)' },
   // chore (micro-change channel)
   'chore':               { key: 'help.chore',               zh: '', en: 'Micro-change channel: open/close an ephemeral write window (no stage; adapter guard chore exception)' },
   'chore.argnote':       { key: 'help.chore.argnote',       zh: '', en: 'Micro-change note (required to start; e.g. "adjust UI radius")' },
@@ -991,7 +998,7 @@ export const help: I18nDomain = {
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '', en: 'Target version (e.g. v1.3.0)' },
   'req.add.priority':    { key: 'help.req.add.priority',    zh: '', en: 'Priority (P0/P1/P2)' },
   'req.add.workflowMode': { key: 'help.req.add.workflowMode', zh: '', en: 'Workflow mode (full / fast / general; unset by default)' },
-  'req.list':            { key: 'help.req.list',            zh: '', en: 'List requirements (filter by status/version/owner)' },
+  'req.list':            { key: 'help.req.list',            zh: '', en: 'List requirements (filter by status/version/owner; --include-archived merges archived ones)' },
   'req.list.status':     { key: 'help.req.list.status',     zh: '', en: 'Filter by status (draft/scheduled/in_progress/done/blocked/cancelled/rejected)' },
   'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '', en: 'Filter by target version' },
   'req.list.owner':      { key: 'help.req.list.owner',      zh: '', en: 'Filter by owner' },
@@ -1045,6 +1052,16 @@ export const help: I18nDomain = {
   'req.verify.by':       { key: 'help.req.verify.by',       zh: '', en: 'Verifier' },
   'req.verify.note':     { key: 'help.req.verify.note',     zh: '', en: 'Conclusion note (included in the archive summary)' },
   'req.verify.evidence': { key: 'help.req.verify.evidence', zh: '', en: 'Evidence (test command / report path / summary)' },
+  // v1.5.8 / REQ-030: requirements archived with a version + release gate / rollover
+  'req.list.includeArchived': { key: 'help.req.list.includeArchived', zh: '', en: 'Include requirements already archived with a version (read-only; merges .openfeel/flow-archive/*.json)' },
+  'req.release-check':   { key: 'help.req.release-check',   zh: '', en: 'Release gate (soft): list done / unfinished / other requirements for a version; read-only, always exit 0' },
+  'req.release-check.argversion': { key: 'help.req.release-check.argversion', zh: '', en: 'Version (e.g. v1.5.8)' },
+  'req.release-check.json': { key: 'help.req.release-check.json', zh: '', en: 'Output { schemaVersion, version, done, unfinished, counts } as JSON' },
+  'req.rollover':        { key: 'help.req.rollover',        zh: '', en: 'Roll unfinished requirements over to a new version (rewrites target_version + carried_from provenance; non-terminal only)' },
+  'req.rollover.from':   { key: 'help.req.rollover.from',   zh: '', en: 'Source version (e.g. v1.5.8)' },
+  'req.rollover.to':     { key: 'help.req.rollover.to',     zh: '', en: 'Target version (e.g. v1.6.0)' },
+  'req.rollover.id':     { key: 'help.req.rollover.id',     zh: '', en: 'Roll over only this requirement (mutually exclusive with --all)' },
+  'req.rollover.all':    { key: 'help.req.rollover.all',    zh: '', en: 'Roll over every unfinished requirement of that version (mutually exclusive with --id)' },
 };
 
 /* ==================== config ==================== */
@@ -1285,6 +1302,24 @@ export const req: I18nDomain = {
   'show.childrenLabel':  { key: 'req.show.childrenLabel',     zh: '', en: 'Children:' },
   'show.childItemTmpl':  { key: 'req.show.childItemTmpl',     zh: '', en: '  - {id} [{status}] {title}' },
   'show.childrenNone':   { key: 'req.show.childrenNone',      zh: '', en: 'Children: (none)' },
+  // v1.5.8 / REQ-030: requirements archived with a version + release gate / rollover
+  'list.archivedSuffixTmpl': { key: 'req.list.archivedSuffixTmpl', zh: '', en: ' (archived)' },
+  'show.archivedTmpl':   { key: 'req.show.archivedTmpl',      zh: '', en: 'Archived: moved into .openfeel/flow-archive/ with version {version} (read-only)' },
+  'releaseCheck.titleTmpl': { key: 'req.releaseCheck.titleTmpl', zh: '', en: 'Release check {version}: {total} requirement(s)' },
+  'releaseCheck.doneLabel': { key: 'req.releaseCheck.doneLabel', zh: '', en: 'Done ({n}):' },
+  'releaseCheck.unfinishedLabel': { key: 'req.releaseCheck.unfinishedLabel', zh: '', en: 'Unfinished ({n}):' },
+  'releaseCheck.otherLabel': { key: 'req.releaseCheck.otherLabel', zh: '', en: 'Other ({n}):' },
+  'releaseCheck.itemTmpl': { key: 'req.releaseCheck.itemTmpl', zh: '', en: '  - {id} [{status}] {title}' },
+  'releaseCheck.emptySection': { key: 'req.releaseCheck.emptySection', zh: '', en: '  (none)' },
+  'releaseCheck.countsTmpl': { key: 'req.releaseCheck.countsTmpl', zh: '', en: 'counts: done={done} unfinished={unfinished} other={other} total={total}' },
+  'releaseCheck.unfinishedHintTmpl': { key: 'req.releaseCheck.unfinishedHintTmpl', zh: '', en: 'Unfinished requirements exist: roll them over first (openfeel req rollover --from {version} --to <new-version> --all), or pass --allow-unfinished when archiving' },
+  'rollover.doneTmpl':   { key: 'req.rollover.doneTmpl',      zh: '', en: 'Rolled over {count} requirement(s): {from} -> {to}' },
+  'rollover.itemTmpl':   { key: 'req.rollover.itemTmpl',      zh: '', en: '  - {id} [{status}] {title}' },
+  'rollover.noopTmpl':   { key: 'req.rollover.noopTmpl',      zh: '', en: 'Version {from} has no unfinished requirements to roll over (no-op)' },
+  'rollover.exclusiveTmpl': { key: 'req.rollover.exclusiveTmpl', zh: '', en: '--id and --all are mutually exclusive and one is required' },
+  'rollover.invalidVersionTmpl': { key: 'req.rollover.invalidVersionTmpl', zh: '', en: '--from {from} and --to {to} must be non-empty and different' },
+  'rollover.notInVersionTmpl': { key: 'req.rollover.notInVersionTmpl', zh: '', en: '{id} targets version {current}, not {from}; cannot roll over' },
+  'rollover.terminalTmpl': { key: 'req.rollover.terminalTmpl', zh: '', en: '{id} is in a terminal status ({status}); cannot roll over' },
 };
 
 /* ==================== 聚合导出 ==================== */

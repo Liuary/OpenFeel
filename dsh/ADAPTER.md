@@ -13,7 +13,7 @@
 - **落点**：`ctx.tools`（13 个 `feel_*` 工具）、`ctx.commands`（`/feel`）、
   `ctx.systemPrompt`（`<feel_mode>` 纪律段）。不写任何领域状态。
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
-  （v1.5.6 起 41 个成功出口 / 42 个注册 `--json` 选项）；本适配器只消费、不重实现。
+  （v1.5.8 / REQ-030 起 42 个成功出口 / 43 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
   的 `openfeel.requiresCli`（≥1.3.2）。
 
@@ -56,6 +56,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **需求导向**（v1.5.7）：阶段 = 版本容器，长期保持 `exec_running`、容纳多个需求；提示段 / `workflowGate` / 写入门禁文案统一为「无开启阶段 → 默认按当前小版本开阶段；不要每完成一个需求就推进/关闭阶段；归档/发布只在用户确认后」。需求完成门同时解耦（零关联可显式完成；关联阶段进入 `exec_running` 及之后即可完成）。
 - **多会话收束 P0**（v1.5.8 / REQ-029）：`feel_status` / `feel_next` 末位追加 `sessions`（`[{id, cwd, lastSeen, stage}]`，读 `.openfeel/dev/sessions.json`；文件缺失 → `[]`）；**每次 `feel_*` 执行**都 upsert 一条本会话心跳（读写失败静默、不阻断主流程）。该文件是运行时状态（`.gitignore` 忽略），与 CLI 侧 `src/core/dev/sessions.ts` **同一格式**（`{ schemaVersion: 1, sessions }`）；CLI 的 `autoCommitOnDone` 据此在检测到其它存活会话时跳过自动提交。
 - **完成必审验**（v1.5.8 / REQ-027）：`feel_req` 新增 `action=review`（`result`/`by`/`note`/`independent`）与 `action=verify`（`result`/`kind`/`by`/`note`/`evidence`），`feel_stage` 新增 `action=verify`（仅 archiving 相位）；需求 `done` 门要求 review + verification 均 `pass`，阶段 `archiving → done` 要求阶段验证 `pass` 且关联需求全部 `done`（`--force` 不绕过）。review 缺省按**自我审查**处理并显式传 `--self`（归档摘要标注 `self-review`）。
+- **需求随版本归档 + 发布门**（v1.5.8 / REQ-030）：归档前先 `feel_req action=release-check`（只读，恒 exit 0）；该版本仍有未完成需求时缺省拒绝归档，先 `feel_req action=rollover`（`from`/`to`/`id`|`all`）顺延，或 `feel_archive action=create` 显式 `allow_unfinished=true`。归档会把该版本**终态**需求移入归档文件；`feel_req action=list` 传 `include_archived=true` 合并查看，`action=show` 对已归档需求回退读归档文件（`archived: true`）。需求 ID 由 `flow.json.meta.last_req_seq` 单调分配，归档后不复用。
 
 ## 目录
 
@@ -72,15 +73,15 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
 | `lib/surface/prompt.js` | `<feel_mode>` 系统提示段 |
-| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（42 + 96 + 58 + 10 = 206 断言） |
+| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（46 + 109 + 58 + 10 断言，v1.5.8 / REQ-030 后实测） |
 | `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证
 
 ```bash
 cd dsh
-node test/contract.js      # 42 — DSH schema 契约（真实 assertSupportedJsonSchema）
-node test/verify.js        # 96 — 行为（真实 CLI + 真实 .openfeel 副本）
+node test/contract.js      # 46 — DSH schema 契约（真实 assertSupportedJsonSchema）
+node test/verify.js        # 109 — 行为（真实 CLI + 真实 .openfeel 副本）
 node test/guard.js         # 58 — 写入门禁（fake ToolExecution + 临时工作区）
 node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载
 ```

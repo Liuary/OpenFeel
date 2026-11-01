@@ -1,7 +1,7 @@
 /**
  * req 命令组注册 — 需求流转命令面（stage-82）
  *
- * 职责：注册 `openfeel req` 顶层命令组（10 子命令）与输出呈现。
+ * 职责：注册 `openfeel req` 顶层命令组（15 子命令）与输出呈现。
  * 命令层零业务逻辑：解析 / 校验 / ID 分配 / 写入全部单点在 `src/core/req/`；本文件仅做
  *   「参数解析 → 调用引擎原语 → 错误码→文案映射 → 退出码」。
  * 命令层零校验：状态流转合法性 / 认领占用 / 关联唯一性 / 写命令字段校验一律由引擎单点判定。
@@ -20,11 +20,14 @@ import {
   claimRequirement, releaseRequirement, updateRequirement, advanceRequirement, linkRequirement,
   getAllowedNextStatuses, splitRequirement, requirementDoneBlocker,
   recordRequirementReview, recordRequirementVerification,
+  releaseCheckRequirements, rolloverRequirements, isTerminalRequirementStatus,
   type RequirementErrorCode,
 } from '../core/req/requirement-ops.js';
 import { REQ_STATUSES, REQ_ID_PATTERN, type RequirementStatus, type RequirementPriority, type RequirementData } from '../core/req/types.js';
 import { writeRequirementBodySkeleton } from '../core/req/body-file.js';
 import { computeRequirementAggregate, listLinkedStages } from '../core/req/aggregate.js';
+import { stageRequirementIds } from '../core/req/stage-links.js';
+import { findArchivedRequirement, listArchivedRequirements } from '../core/flow-archive/archive-ops.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { getUserName } from '../core/workspace/identity.js';
 import { normalizeStageId } from '../core/plan/path.js';
@@ -64,6 +67,17 @@ function failNoInit(lang: string, asJson: boolean): void {
 /** 需求 ID 格式校验（取 core 常量单点，防 typo） */
 function isValidReqId(id: string): boolean {
   return REQ_ID_PATTERN.test(id);
+}
+
+/**
+ * 需求 ID 的数值序号（排序用；v1.5.8 / REQ-030）。
+ * 解析 `REQ-(\d+)` 后取 int；解析失败返回 null（调用方退回字符串比较——异常 id 不崩）。
+ */
+function reqIdSeq(id: string): number | null {
+  const m = REQ_ID_PATTERN.exec(id);
+  if (!m) { return null; }
+  const n = Number.parseInt(m[1], 10);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** --into 累积（repeatable option；**本仓首个 repeatable**——既有先例为 variadic `<ids...>`（`flow.ts:665` 选项描述自警「建议置于命令末尾」），其有吞后续参数风险故不采用） */
@@ -171,15 +185,16 @@ export function registerReqCommand(program: Command): void {
       }
     });
 
-  // ── req list [--status <s>] [--target-version <v>] [--owner <o>] [--json] ──
+  // ── req list [--status <s>] [--target-version <v>] [--owner <o>] [--include-archived] [--json] ──
   req
     .command('list')
-    .description('列出需求（可按状态/版本/认领人过滤）')
+    .description('列出需求（可按状态/版本/认领人过滤；--include-archived 合并已随版本归档的需求）')
     .option('--status <status>', '按状态过滤（draft/scheduled/in_progress/done/blocked/cancelled/rejected）')
     .option('--target-version <version>', '按预估版本过滤')
     .option('--owner <owner>', '按认领人过滤')
+    .option('--include-archived', '包含已随版本归档的需求（只读；合并 .openfeel/flow-archive/*.json）')
     .option('--json', '以 JSON 输出 { schemaVersion, requirements }')
-    .action((options: { status?: string; targetVersion?: string; owner?: string; json?: boolean }, command: Command) => {
+    .action((options: { status?: string; targetVersion?: string; owner?: string; includeArchived?: boolean; json?: boolean }, command: Command) => {
       const lang = getCliLang(process.cwd());
       const asJson = asJsonOf(options, command);
       const mgr = createManager();
@@ -207,25 +222,54 @@ export function registerReqCommand(program: Command): void {
         target_version: options.targetVersion,
         owner: options.owner,
       });
+      // v1.5.8 / REQ-030：--include-archived 合并归档文件中的终态需求（只读；活跃需求优先，不重复输出）
+      const archivedRows: RequirementData[] = [];
+      const activeIds = new Set(rows.map((r) => r.id));
+      if (options.includeArchived === true) {
+        const seen = new Set<string>();
+        for (const { requirement } of listArchivedRequirements(process.cwd())) {
+          if (activeIds.has(requirement.id) || seen.has(requirement.id)) { continue; }
+          // 归档只收终态：读到非终态（人工篡改）跳过，避免把活跃需求当归档输出
+          if (!isTerminalRequirementStatus(requirement.status)) { continue; }
+          seen.add(requirement.id);
+          if (options.status !== undefined && requirement.status !== options.status) { continue; }
+          if (options.targetVersion !== undefined && requirement.target_version !== options.targetVersion) { continue; }
+          if (options.owner !== undefined && requirement.owner !== options.owner) { continue; }
+          archivedRows.push(requirement);
+        }
+      }
       if (asJson) {
-        // 末位追加关联阶段与进度（既有 RequirementData 键序零改；聚合/关联阶段共用单点实现）
-        const requirements = rows.map((r) => {
-          const agg = computeRequirementAggregate(data, r.id);
-          return {
+        // 末位追加关联阶段与进度（既有 RequirementData 键序零改；聚合/关联阶段共用单点实现）；
+        // 归档需求末位再追加 `archived: true`（可选键，活跃需求不出现）
+        const requirements = [
+          ...rows.map((r) => {
+            const agg = computeRequirementAggregate(data, r.id);
+            return {
+              ...r,
+              linkedStages: listLinkedStages(data, r.id),
+              progress: { done: agg.doneCount, total: agg.stageCount },
+            };
+          }),
+          ...archivedRows.map((r) => ({
             ...r,
-            linkedStages: listLinkedStages(data, r.id),
-            progress: { done: agg.doneCount, total: agg.stageCount },
-          };
-        });
+            linkedStages: [] as Array<{ id: string; phase: string }>,
+            progress: { done: 0, total: 0 },
+            archived: true,
+          })),
+        ];
         emitJson(withSchemaVersion({ requirements }));
         return;
       }
-      if (rows.length === 0) {
+      if (rows.length === 0 && archivedRows.length === 0) {
         console.log(t('req.list.empty', lang));
         return;
       }
       for (const r of rows) {
         console.log(t('req.list.itemTmpl', lang, { id: r.id, status: r.status, title: r.title }));
+      }
+      for (const r of archivedRows) {
+        console.log(t('req.list.itemTmpl', lang, { id: r.id, status: r.status, title: r.title })
+          + t('req.list.archivedSuffixTmpl', lang));
       }
     });
 
@@ -252,57 +296,86 @@ export function registerReqCommand(program: Command): void {
         }
         return;
       }
-      const r = getRequirement(data, id);
-      if (!r) {
+      const active = getRequirement(data, id);
+      // 子需求行（活跃集存储顺序枚举；不额外排序——避免第二排序源；对齐 stages 无排序先例）
+      /** 统一人类 / JSON 输出（活跃与归档共用，键序零改动） */
+      const emitRequirement = (
+        r: RequirementData,
+        stageIds: string[],
+        childRows: RequirementData[],
+        archivedVersion: string | null,
+      ): void => {
+        const children = childRows.map((c) => c.id);
+        // 父需求 ID **原样回显**（悬空不报错、不做存在性判定——悬空对账职责单点在 requirementHealthItems，REV-87-004①）
+        const parent = r.parent_id ?? null;
         if (asJson) {
-          failJson({ error: 'not_found', id });
-        } else {
-          console.error(t('req.err.notFoundTmpl', lang, { id }));
-          process.exitCode = 1;
+          // `archived` 为**末尾可选键**（仅归档回退路径出现；活跃需求既有 5 键键序零改）
+          console.log(JSON.stringify(
+            archivedVersion === null
+              ? { schemaVersion: 1, requirement: r, stages: stageIds, parent, children }
+              : { schemaVersion: 1, requirement: r, stages: stageIds, parent, children, archived: true },
+            null,
+            2,
+          ));
+          return;
         }
+        if (archivedVersion !== null) {
+          console.log(t('req.show.archivedTmpl', lang, { version: archivedVersion }));
+        }
+        console.log(t('req.show.titleTmpl', lang, { id: r.id, title: r.title }));
+        console.log(t('req.show.metaTmpl', lang, {
+          status: r.status,
+          targetVersion: r.target_version ?? t('common.none', lang),
+          priority: r.priority ?? t('common.none', lang),
+        }));
+        console.log(r.owner
+          ? t('req.show.ownerTmpl', lang, { owner: r.owner, claimedAt: r.claimed_at ?? '' })
+          : t('req.show.ownerNone', lang));
+        console.log(t('req.show.timesTmpl', lang, { created: r.created_at, updated: r.updated_at }));
+        console.log(t('req.show.bodyTmpl', lang, { path: r.body_path ?? t('common.none', lang) }));
+        console.log(parent !== null
+          ? t('req.show.parentTmpl', lang, { parent })
+          : t('req.show.parentNone', lang));
+        if (childRows.length === 0) {
+          console.log(t('req.show.childrenNone', lang));
+        } else {
+          console.log(t('req.show.childrenLabel', lang));
+          for (const c of childRows) {
+            console.log(t('req.show.childItemTmpl', lang, { id: c.id, status: c.status, title: c.title }));
+          }
+        }
+        if (stageIds.length === 0) {
+          console.log(t('req.show.stagesNone', lang));
+        } else {
+          console.log(t('req.show.stagesLabel', lang));
+          for (const s of stageIds) {
+            console.log(t('req.show.stageItemTmpl', lang, { stage: s }));
+          }
+        }
+      };
+      if (!active) {
+        // 已归档回退（只读；v1.5.8 / REQ-030）：命中归档文件 → 标记 archived；否则维持 not_found
+        const hit = findArchivedRequirement(process.cwd(), id);
+        if (!hit) {
+          if (asJson) {
+            failJson({ error: 'not_found', id });
+          } else {
+            console.error(t('req.err.notFoundTmpl', lang, { id }));
+            process.exitCode = 1;
+          }
+          return;
+        }
+        // 关联阶段 / 子需求从归档文件派生（单点 stageRequirementIds；读侧宽容）
+        const archivedStages = Object.entries(hit.file.stages ?? {})
+          .filter(([, stage]) => stageRequirementIds(stage).includes(id))
+          .map(([stageId]) => stageId);
+        const archivedChildren = (Array.isArray(hit.file.requirements) ? hit.file.requirements : [])
+          .filter((c) => c?.parent_id === id);
+        emitRequirement(hit.requirement, archivedStages, archivedChildren, hit.version);
         return;
       }
       // 关联阶段 = 原始只读枚举（零聚合计算 / 零阶段推进字段读取——归后续阶段）；命令层输出面复用单点过滤（REV-97-006）
-      const stages = listLinkedStages(data, id).map((l) => l.id);
-      // 子需求 = 存储顺序枚举（不额外排序——避免第二排序源；对齐 stages 无排序先例）
-      const childRows = getRequirements(data).filter((r) => r.parent_id === id);
-      const children = childRows.map((c) => c.id);
-      // 父需求 ID **原样回显**（悬空不报错、不做存在性判定——悬空对账职责单点在 requirementHealthItems，REV-87-004①）
-      const parent = r.parent_id ?? null;
-      if (asJson) {
-        console.log(JSON.stringify({ schemaVersion: 1, requirement: r, stages, parent, children }, null, 2));
-        return;
-      }
-      console.log(t('req.show.titleTmpl', lang, { id: r.id, title: r.title }));
-      console.log(t('req.show.metaTmpl', lang, {
-        status: r.status,
-        targetVersion: r.target_version ?? t('common.none', lang),
-        priority: r.priority ?? t('common.none', lang),
-      }));
-      console.log(r.owner
-        ? t('req.show.ownerTmpl', lang, { owner: r.owner, claimedAt: r.claimed_at ?? '' })
-        : t('req.show.ownerNone', lang));
-      console.log(t('req.show.timesTmpl', lang, { created: r.created_at, updated: r.updated_at }));
-      console.log(t('req.show.bodyTmpl', lang, { path: r.body_path ?? t('common.none', lang) }));
-      console.log(parent !== null
-        ? t('req.show.parentTmpl', lang, { parent })
-        : t('req.show.parentNone', lang));
-      if (childRows.length === 0) {
-        console.log(t('req.show.childrenNone', lang));
-      } else {
-        console.log(t('req.show.childrenLabel', lang));
-        for (const c of childRows) {
-          console.log(t('req.show.childItemTmpl', lang, { id: c.id, status: c.status, title: c.title }));
-        }
-      }
-      if (stages.length === 0) {
-        console.log(t('req.show.stagesNone', lang));
-      } else {
-        console.log(t('req.show.stagesLabel', lang));
-        for (const s of stages) {
-          console.log(t('req.show.stageItemTmpl', lang, { stage: s }));
-        }
-      }
+      emitRequirement(active, listLinkedStages(data, id).map((l) => l.id), getRequirements(data).filter((r) => r.parent_id === id), null);
     });
 
   // ── req claim <id> [--owner <name>] ──
@@ -867,7 +940,14 @@ export function registerReqCommand(program: Command): void {
           if (av > bv) { return 1; }
         }
         if (a.created_at !== b.created_at) { return a.created_at < b.created_at ? -1 : 1; }
-        if (a.id !== b.id) { return a.id < b.id ? -1 : 1; }
+        if (a.id !== b.id) {
+          // 第三排序键 = **数值**升序（v1.5.8 / REQ-030：字符串比较会让 REQ-1000 排在 REQ-999 之前）；
+          // 解析失败退回字符串比较（异常 id 不崩、确定性不变）
+          const an = reqIdSeq(a.id);
+          const bn = reqIdSeq(b.id);
+          if (an !== null && bn !== null && an !== bn) { return an - bn; }
+          return a.id < b.id ? -1 : 1;
+        }
         return 0;
       });
       const picked = candidates.slice(0, limit);       // 切片只作用于**已排序**结果——候选池与排序冻结语义零变
@@ -892,6 +972,125 @@ export function registerReqCommand(program: Command): void {
         let line = t('req.next.itemTmpl', lang, { id: r.id, status: r.status, title: r.title });
         if (r.owner) { line += t('req.next.ownedSuffixTmpl', lang, { owner: r.owner }); }
         console.log(line);
+      }
+    });
+
+  // ── req release-check <version> [--json] ──（v1.5.8 / REQ-030）
+  req
+    .command('release-check <version>')
+    .description('发布门（软）：列出该版本的已完成 / 未完成 / 其它需求；只读、退出码恒 0')
+    .option('--json', '以 JSON 输出 { schemaVersion, version, done, unfinished, counts }')
+    .action((version: string, options: { json?: boolean }, command: Command) => {
+      const lang = getCliLang(process.cwd());
+      const asJson = asJsonOf(options, command);
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, asJson);
+        return;
+      }
+      const data = mgr.getData()!;
+      // 只读保证：不 save / 不 appendLog / 零写盘；软门恒 exit 0（未完成需求只报告，不拒绝）
+      const check = releaseCheckRequirements(data, version);
+      if (asJson) {
+        emitJson(withSchemaVersion({
+          version: check.version,
+          done: check.done.map((r) => r.id),
+          unfinished: check.unfinished.map((r) => r.id),
+          counts: check.counts,
+        }));
+        return;
+      }
+      console.log(t('req.releaseCheck.titleTmpl', lang, { version: check.version, total: String(check.counts.total) }));
+      const section = (label: string, rows: RequirementData[]): void => {
+        console.log(label);
+        if (rows.length === 0) {
+          console.log(t('req.releaseCheck.emptySection', lang));
+          return;
+        }
+        for (const r of rows) {
+          console.log(t('req.releaseCheck.itemTmpl', lang, { id: r.id, status: r.status, title: r.title }));
+        }
+      };
+      section(t('req.releaseCheck.doneLabel', lang, { n: String(check.counts.done) }), check.done);
+      section(t('req.releaseCheck.unfinishedLabel', lang, { n: String(check.counts.unfinished) }), check.unfinished);
+      section(t('req.releaseCheck.otherLabel', lang, { n: String(check.counts.other) }), check.other);
+      console.log(t('req.releaseCheck.countsTmpl', lang, {
+        done: String(check.counts.done),
+        unfinished: String(check.counts.unfinished),
+        other: String(check.counts.other),
+        total: String(check.counts.total),
+      }));
+      if (check.unfinished.length > 0) {
+        console.log(t('req.releaseCheck.unfinishedHintTmpl', lang, { version: check.version }));
+      }
+    });
+
+  // ── req rollover --from <version> --to <version> (--id <REQ> | --all) ──（v1.5.8 / REQ-030）
+  req
+    .command('rollover')
+    .description('顺延未完成需求到新版本（改写 target_version + carried_from 溯源；仅非终态需求）')
+    .requiredOption('--from <version>', '来源版本（如 v1.5.8）')
+    .requiredOption('--to <version>', '目标版本（如 v1.6.0）')
+    .option('--id <id>', '只顺延该需求（与 --all 互斥）')
+    .option('--all', '顺延该版本全部未完成需求（与 --id 互斥）')
+    .action((options: { from: string; to: string; id?: string; all?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, false);
+        return;
+      }
+      const data = mgr.getData()!;
+      // argument-shape 守卫（非业务校验）：--id 与 --all 必须且只能提供一个
+      if ((options.id !== undefined) === (options.all === true)) {
+        console.error(t('req.rollover.exclusiveTmpl', lang));
+        process.exitCode = 1;
+        return;
+      }
+      if (options.id !== undefined && !isValidReqId(options.id)) {
+        console.error(t('req.invalidIdTmpl', lang, { input: options.id }));
+        process.exitCode = 1;
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（参数 / ID 校验已在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
+      // 命令层零校验：版本门 / 终态门 / 归属门 / carried_from 与审计全在引擎单点
+      const r = rolloverRequirements(data, options.from, options.to, {
+        ...(options.id !== undefined ? { id: options.id } : {}),
+        all: options.all === true,
+      });
+      if (!r.ok) {
+        failCode(lang, r.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id: options.id ?? '' }),
+          invalid_status: t('req.rollover.terminalTmpl', lang, {
+            id: options.id ?? '',
+            status: options.id !== undefined ? (getRequirement(data, options.id)?.status ?? '') : '',
+          }),
+          invalid_field: options.id !== undefined
+            ? t('req.rollover.notInVersionTmpl', lang, {
+              id: options.id,
+              from: options.from,
+              current: getRequirement(data, options.id)?.target_version ?? t('common.none', lang),
+            })
+            : t('req.rollover.invalidVersionTmpl', lang, { from: options.from, to: options.to }),
+        });
+        return;
+      }
+      if (r.moved.length === 0) {
+        // no-op：不 save（revision 不变）
+        console.log(t('req.rollover.noopTmpl', lang, { from: options.from }));
+        return;
+      }
+      if (!saveOrFail(mgr, lang)) {
+        return;
+      }
+      console.log(t('req.rollover.doneTmpl', lang, {
+        count: String(r.moved.length),
+        from: options.from,
+        to: options.to,
+      }));
+      for (const moved of r.moved) {
+        console.log(t('req.rollover.itemTmpl', lang, { id: moved.id, status: moved.status, title: moved.title }));
       }
     });
 }

@@ -739,10 +739,10 @@ export function createTools(context) {
   const feelReq = {
     name: 'feel_req',
     description:
-      '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配）；list 过滤列表；show 详情；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：非 general 需求须全部关联阶段 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）；review 记录需求审查；verify 记录需求验证（**v1.5.8 完成必审验：done 门额外要求 review.result=pass 且 verification.result=pass**）。',
+      '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配，**单调计数器 meta.last_req_seq**：归档移走条目后也不复用 ID）；list 过滤列表（include_archived=true 合并已随版本归档的需求）；show 详情（已归档需求回退读归档文件）；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：非 general 需求须全部关联阶段 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）；review 记录需求审查；verify 记录需求验证（**v1.5.8 完成必审验：done 门额外要求 review.result=pass 且 verification.result=pass**）；release-check 发布门（软，只读）：列出该版本 done / 未完成 / 其它需求；rollover 顺延：把未完成需求的 target_version 改到新版本并记录 carried_from。',
     parameters: {
-      action: stringEnum(['add', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split', 'review', 'verify'], '操作。', { required: true }),
-      id: string('需求 ID（如 REQ-001）。show/claim/release/set/advance/split/review/verify 必需。'),
+      action: stringEnum(['add', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split', 'review', 'verify', 'release-check', 'rollover'], '操作。', { required: true }),
+      id: string('需求 ID（如 REQ-001）。show/claim/release/set/advance/split/review/verify/rollover 必需（rollover 与 all 互斥）。'),
       title: string('需求标题（add 必需；set 为改标题）。'),
       target_version: string('预估版本（如 v1.3.0；纯展示/过滤维度，非门禁）。'),
       priority: stringEnum(REQ_PRIORITIES, '优先级。'),
@@ -753,7 +753,11 @@ export function createTools(context) {
       stage: string('阶段 ID（link 必需）。'),
       requirement: string('需求 ID（link 关联用）。'),
       unlink: boolean('link 时解除该阶段的需求关联。'),
-      to: stringEnum(REQ_STATUSES, 'advance 的目标状态。'),
+      to: string('advance 的目标状态（合法目标由引擎判定）；rollover 的目标版本。'),
+      from: string('rollover 的来源版本（如 v1.5.8）。'),
+      all: boolean('rollover 时顺延该版本全部未完成需求（与 id 互斥，二者必选其一）。'),
+      include_archived: boolean('list 时合并已随版本归档的需求（只读）。'),
+      version: string('版本号（release-check 必填，如 v1.5.8）。'),
       into: stringArray('split 的子需求标题列表（至少一项）。'),
       result: stringEnum(['pass', 'fail'], 'review/verify 的结论（pass 才满足 done 门）。'),
       kind: stringEnum(['test', 'manual', 'build'], 'verify 的验证种类。'),
@@ -785,10 +789,11 @@ export function createTools(context) {
           pushOption(argv, '--status', args.status);
           pushOption(argv, '--target-version', args.target_version);
           pushOption(argv, '--owner', args.owner);
+          pushFlag(argv, '--include-archived', args.include_archived);
           return envelope(action, async () => {
             const data = await cli.json(argv, opts);
             const count = Array.isArray(data?.requirements) ? data.requirements.length : 0;
-            return { data, summary: `共 ${count} 条需求。` };
+            return { data, summary: `共 ${count} 条需求${args.include_archived === true ? '（含已归档）' : ''}。` };
           });
         }
         case 'board': {
@@ -929,6 +934,48 @@ export function createTools(context) {
             };
           });
         }
+        case 'release-check': {
+          const version = requireArg(args, 'version', action);
+          return envelope(action, async () => {
+            // 只读软门：CLI 恒 exit 0；未完成需求只报告，不拒绝
+            const data = await cli.json(['req', 'release-check', version, '--json'], opts);
+            const unfinished = Array.isArray(data?.unfinished) ? data.unfinished : [];
+            return {
+              data,
+              summary: unfinished.length === 0
+                ? `版本 ${version} 发布检查：无未完成需求，可归档。`
+                : `版本 ${version} 有 ${unfinished.length} 条未完成需求：先 feel_req action=rollover 顺延，或归档时显式 allow_unfinished=true。`,
+              next: unfinished.length === 0
+                ? null
+                : {
+                  tool: 'feel_req',
+                  arguments: { action: 'rollover', from: version, to: '<新版本>', all: true },
+                  why: '把未完成需求顺延到新版本，再归档；确需带未完成需求归档时传 allow_unfinished=true。',
+                },
+            };
+          });
+        }
+        case 'rollover': {
+          const from = requireArg(args, 'from', action);
+          const to = requireArg(args, 'to', action);
+          const all = args.all === true;
+          if (all && args.id !== undefined) {
+            throw new FeelError('req rollover 的 --id 与 --all 互斥；二者只能选一个', { kind: 'usage', code: 'FEEL_BAD_USAGE' });
+          }
+          const argv = ['req', 'rollover', '--from', from, '--to', to];
+          if (all) {
+            argv.push('--all');
+          } else {
+            argv.push('--id', requireArg(args, 'id', action));
+          }
+          return envelope(action, async () => {
+            const out = await cli.write(argv, opts);
+            return {
+              data: { from, to, all, id: all ? null : args.id, output: out.text },
+              summary: `需求顺延已执行：${from} → ${to}。`,
+            };
+          });
+        }
         default:
           throw new FeelError(`未知 action: ${action}`, { kind: 'usage', code: 'FEEL_UNKNOWN_ACTION' });
       }
@@ -993,12 +1040,13 @@ export function createTools(context) {
   const feelArchive = {
     name: 'feel_archive',
     description:
-      '版本管理。action=list 列出已归档版本；action=show 查看某归档版本；action=create 执行 flow.json 版本分片归档（判据门：该版本全部阶段 done **且** 无 blocking open REV；**无 force 覆盖**；归档后该版本阶段从 flow.json 移除）；action=stage_summary 是**另一个**功能（顶层 openfeel archive <stage>，生成阶段摘要到 .openfeel/log/，不动 flow.json）。v1.2.4 起 stage_summary **拒绝覆盖**已存在的归档文件（`ARCHIVE_EXISTS`，零写盘）；确需覆盖须传 force=true。',
+      '版本管理。action=list 列出已归档版本；action=show 查看某归档版本；action=create 执行 flow.json 版本分片归档（判据门：该版本全部阶段 done **且** 无 blocking open REV；**无 force 覆盖**；归档后该版本阶段**与该版本的终态需求**从 flow.json 移除，移入归档文件）；action=stage_summary 是**另一个**功能（顶层 openfeel archive <stage>，生成阶段摘要到 .openfeel/log/，不动 flow.json）。**发布软门（v1.5.8 / REQ-030）**：该版本仍有未完成需求（非 done/cancelled/rejected）时缺省拒绝且零写盘，须先 `feel_req action=rollover` 顺延，或显式传 allow_unfinished=true 放行。v1.2.4 起 stage_summary **拒绝覆盖**已存在的归档文件（`ARCHIVE_EXISTS`，零写盘）；确需覆盖须传 force=true。',
     parameters: {
       action: stringEnum(['list', 'show', 'create', 'stage_summary'], '操作。', { required: true }),
       version: string('版本号（如 v1.2.0；前缀 v 可省略）。show/create 必需。'),
       stage: string('阶段 ID（stage_summary 必需）。'),
       dry_run: boolean('create 仅预览判据与将归档内容，零写盘。'),
+      allow_unfinished: boolean('create 显式放行「该版本仍有未完成需求」（发布软门；缺省拒绝）。'),
       force: boolean('stage_summary 覆盖已存在的归档文件（默认拒绝；覆盖会冲掉既有摘要）。'),
       project: string('项目根目录。'),
     },
@@ -1026,6 +1074,7 @@ export function createTools(context) {
           const version = requireArg(args, 'version', action);
           const argv = ['flow', 'archive', version, '--json'];
           pushFlag(argv, '--dry-run', args.dry_run);
+          pushFlag(argv, '--allow-unfinished', args.allow_unfinished);
           return envelope(action, async () => {
             const data = await cli.json(argv, opts);
             return {

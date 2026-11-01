@@ -25,12 +25,15 @@ import {
   isValidArchiveVersion,
   normalizeArchiveVersion,
   applyArchivePipelineDisposition,
+  listArchivedRequirements,
+  findArchivedRequirement,
 } from '../../src/core/flow-archive/archive-ops.js';
 import {
   ARCHIVE_SCHEMA_VERSION,
   type ArchiveFile,
 } from '../../src/core/flow-archive/archive-file.js';
 import { archiveHealthItems } from '../../src/core/flow-archive/archive-health.js';
+import type { RequirementData } from '../../src/core/req/types.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
 import type { FlowData, StageData, ReviewItem, LogEntry } from '../../src/core/flow-manager.js';
 
@@ -255,7 +258,7 @@ describe('splitForArchive（切分无损双向断言）', () => {
     expect(archive.counts.stages).toBe(Object.keys(archive.stages).length);
     expect(archive.counts.reviews).toBe(archive.reviews.length);
     expect(archive.counts.log).toBe(archive.log.length);
-    expect(archive.counts).toEqual({ stages: 1, reviews: 1, log: 1 });
+    expect(archive.counts).toEqual({ stages: 1, reviews: 1, log: 1, requirements: 0 });
   });
 
   it('保序：archive / remainder 内条目相对顺序与原数组一致', () => {
@@ -281,6 +284,104 @@ describe('splitForArchive（切分无损双向断言）', () => {
       .toEqual(['v1.0.0-stage-34', 'v1.0.0-stage-35']);
     expect(archive.reviews.map((r) => r.op)).toEqual(['v1.1.7-stage-73.op-001', 'v1.1.7-stage-74.op-001']);
     expect(remainder.reviews.map((r) => r.op)).toEqual(['v1.0.0-stage-01.op-001']);
+  });
+});
+
+// ═══════════════════════════════════════════════
+// REQ-030：需求随版本归档
+// ═══════════════════════════════════════════════
+
+/** 构造需求条目最小样本（v1.5.8 / REQ-030） */
+function makeReq(
+  id: string,
+  status: RequirementData['status'],
+  overrides: Partial<RequirementData> = {},
+): RequirementData {
+  return {
+    id,
+    title: `需求 ${id}`,
+    status,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+describe('splitForArchive — 需求随版本归档（REQ-030）', () => {
+  it('终态且目标版本命中 → 搬入 archive；活跃 / 无版本 / 异版本 / 非终态 → 留 flow.json', () => {
+    const done = makeReq('REQ-001', 'done', { target_version: 'v1.1.7' });
+    const cancelled = makeReq('REQ-002', 'cancelled', { target_version: 'v1.1.7' });
+    const rejected = makeReq('REQ-003', 'rejected', { target_version: '1.1.7' });   // 前缀归一
+    const active = makeReq('REQ-004', 'in_progress', { target_version: 'v1.1.7' });
+    const blocked = makeReq('REQ-005', 'blocked', { target_version: 'v1.1.7' });
+    const noVersion = makeReq('REQ-006', 'done');
+    const otherVersion = makeReq('REQ-007', 'done', { target_version: 'v1.0.0' });
+    const data = makeData({
+      requirements: [done, cancelled, rejected, active, blocked, noVersion, otherVersion],
+    });
+
+    const { archive, remainder } = splitForArchive(data, 'v1.1.7');
+
+    expect(archive.requirements?.map((r) => r.id)).toEqual(['REQ-001', 'REQ-002', 'REQ-003']);
+    expect(remainder.requirements.map((r) => r.id)).toEqual(['REQ-004', 'REQ-005', 'REQ-006', 'REQ-007']);
+    // 双向断言：并集 = 原集（无漏无重、保序）
+    expect([...archive.requirements!, ...remainder.requirements]).toEqual(data.requirements);
+    expect(archive.counts.requirements).toBe(3);
+  });
+
+  it('requirements 缺失 → archive.requirements 为空数组、counts.requirements=0（不崩）', () => {
+    const { archive, remainder } = splitForArchive(makeData(), 'v1.1.7');
+    expect(archive.requirements).toEqual([]);
+    expect(archive.counts.requirements).toBe(0);
+    expect(remainder.requirements).toEqual([]);
+  });
+
+  it('归档文件写入后可读回 requirements；counts 四段齐全', () => {
+    const data = makeData({ requirements: [makeReq('REQ-001', 'done', { target_version: 'v1.1.7' })] });
+    const { archive } = splitForArchive(data, 'v1.1.7');
+    const file: ArchiveFile = { ...archive, schemaVersion: ARCHIVE_SCHEMA_VERSION, archived_at: '2026-01-01T00:00:00.000Z' };
+    writeArchiveFile(tmpDir, file);
+    const read = readArchiveFile(tmpDir, 'v1.1.7')!;
+    expect(read.requirements?.map((r) => r.id)).toEqual(['REQ-001']);
+    expect(read.counts).toEqual({ stages: 0, reviews: 0, log: 0, requirements: 1 });
+  });
+
+  it('旧归档文件无 requirements / counts.requirements 键 → 可读且不注入该键（视同 0）', () => {
+    mkdirSync(getArchiveDir(tmpDir), { recursive: true });
+    const legacy = {
+      schemaVersion: 1,
+      version: 'v1.1.7',
+      archived_at: '',
+      stages: {},
+      reviews: [],
+      log: [],
+      counts: { stages: 0, reviews: 0, log: 0 },
+    };
+    writeFileSync(getArchiveFilePath(tmpDir, 'v1.1.7'), JSON.stringify(legacy), 'utf-8');
+    const read = readArchiveFile(tmpDir, 'v1.1.7')!;
+    expect(read.requirements).toBeUndefined();
+    expect('requirements' in read.counts).toBe(false);
+    expect(read.counts.requirements ?? 0).toBe(0);
+    // 归档需求检索：无 requirements 段 → 空列表
+    expect(listArchivedRequirements(tmpDir)).toEqual([]);
+    expect(findArchivedRequirement(tmpDir, 'REQ-001')).toBeNull();
+  });
+
+  it('含 requirements 但缺 counts → 按实际长度回填 requirements 计数', () => {
+    mkdirSync(getArchiveDir(tmpDir), { recursive: true });
+    const raw = {
+      schemaVersion: 1,
+      version: 'v1.1.7',
+      archived_at: '',
+      stages: {},
+      reviews: [],
+      log: [],
+      requirements: [makeReq('REQ-001', 'done', { target_version: 'v1.1.7' })],
+    };
+    writeFileSync(getArchiveFilePath(tmpDir, 'v1.1.7'), JSON.stringify(raw), 'utf-8');
+    const read = readArchiveFile(tmpDir, 'v1.1.7')!;
+    expect(read.counts).toEqual({ stages: 0, reviews: 0, log: 0, requirements: 1 });
+    expect(read.requirements).toHaveLength(1);
   });
 });
 
@@ -487,7 +588,7 @@ describe('边界（T4.4）', () => {
     expect(Object.keys(archive.stages)).toEqual(['v1.7.0-stage-01']);
     expect(archive.reviews).toEqual([]);
     expect(archive.log).toEqual([]);
-    expect(archive.counts).toEqual({ stages: 1, reviews: 0, log: 0 });
+    expect(archive.counts).toEqual({ stages: 1, reviews: 0, log: 0, requirements: 0 });
     expect(remainder.stages).toEqual({});
     expect(remainder.reviews).toEqual([]);
     expect(remainder.log).toEqual([]);
@@ -499,7 +600,7 @@ describe('边界（T4.4）', () => {
 
     expect(archive.stages).toEqual({});
     expect(archive.log).toHaveLength(1);
-    expect(archive.counts).toEqual({ stages: 0, reviews: 0, log: 1 });
+    expect(archive.counts).toEqual({ stages: 0, reviews: 0, log: 1, requirements: 0 });
   });
 
   it('单阶段版本：counts.stages = 1 且 allDone 为 true', () => {
@@ -523,7 +624,7 @@ describe('边界（T4.4）', () => {
     expect(archive.stages).toEqual({});
     expect(archive.reviews).toEqual([]);
     expect(archive.log).toEqual([]);
-    expect(archive.counts).toEqual({ stages: 0, reviews: 0, log: 0 });
+    expect(archive.counts).toEqual({ stages: 0, reviews: 0, log: 0, requirements: 0 });
 
     expect(new Set(Object.keys(remainder.stages))).toEqual(new Set(Object.keys(data.stages)));
     expect(remainder.stages).toEqual(data.stages);

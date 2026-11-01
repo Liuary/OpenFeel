@@ -184,6 +184,7 @@ Feel（你）只做编排、决策与门禁判断。
 需求是排期层（\`REQ-NNN\`，7 状态：draft/scheduled/in_progress/done/blocked/cancelled/rejected）。
 接取流程：\`feel_req action=next\` → \`claim\` → \`link\` 到阶段 → 阶段推进驱动聚合 → 全部关联阶段 done 时需求自动收口。
 \`done\` 门：非 general 需求必须**全部关联阶段 done**；general 需求在零关联阶段时走双完成路径。
+**发布前先检查**：归档前先 \`feel_req action=release-check\`（只读）；仍有未完成需求时先 \`feel_req action=rollover\` 顺延，或归档时显式 \`allow_unfinished=true\`（缺省拒绝）。
 
 ## 收尾
 多步骤任务（≥3 步）开始即建 todo 列表并持续更新。阶段推进与需求流转后，向用户汇报「做了什么 / 卡在哪 / 建议下一步」。
@@ -268,6 +269,7 @@ planner / schemer / executor / reviewer / feel-tester / archiver. **The authorit
 Requirements are the scheduling layer (\`REQ-NNN\`, 7 statuses: draft/scheduled/in_progress/done/blocked/cancelled/rejected).
 Flow: \`feel_req action=next\` → \`claim\` → \`link\` to a stage → stage advancement drives aggregation → auto-close when every linked stage is done.
 The \`done\` gate: a non-general requirement needs ALL linked stages done; a general requirement with zero linked stages uses the dual completion path.
+**Check before release**: run \`feel_req action=release-check\` (read-only) before archiving; if unfinished requirements remain, roll them over with \`feel_req action=rollover\`, or archive with an explicit \`allow_unfinished=true\` (default: refused).
 
 ## Wrap-up
 Create a todo list at the start of any multi-step task (≥3 steps) and keep it current. After advancing a phase or requirement, report what changed, what blocked, and the suggested next step.

@@ -25,7 +25,7 @@
 
 **全局 `--project` 边界（v1.2.2）**：`runCli` argv 预扫描后 `process.chdir` 单点注入；多值且不一致 → `INVALID_ARGUMENT`（exit 1），路径不存在或非目录 → `PROJECT_NOT_FOUND`（exit 1）；命令输出语言按**目标项目**解析，而 `--help` 语言按原始 cwd（`applyHelpI18n` 于 chdir 前执行）；`--log-file` 相对路径按**原始 cwd**；`knowledge dedup` 保留其本地 `--project <path>` 声明（语法零变化，经 `optsWithGlobals()` + 单点解析读取）；CLI 为单进程单命令，`chdir` 每进程至多一次。
 
-**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 41 个成功出口、也不计入 42 个注册选项**。
+**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 42 个成功出口、也不计入 43 个注册选项**。
 
 ## 错误封装（v1.2.2）
 
@@ -119,16 +119,16 @@
 - **JSON envelope**（`flow advance` / `flow health --fix` 注册了 `--json`）：`INVALID_ARGUMENT` + `detail: { reason: 'preflight-required', hint: 'openfeel flow next --json' }`；退出码 1。
 - **人类**：单行 stderr（`flow.preflightRequiredTmpl`）+ `process.exitCode = 1`；**不调用 `process.exit`**，由调用方 `return`（保持其后 catch / 回滚路径可收敛）。
 - **legacy 三键**（`flow archive`、`req split`）：顶层键集恒 `['schemaVersion','error','errorKind']`，`error = 'preflight-required'`，**不带 `hint`**；提示只走人类 stderr。
-- **`--json` 注册面**：39 个门位中 **4 个**所属命令注册了 `--json` —— `flow advance`（envelope）/ `flow archive`（legacy 三键）/ `req split`（legacy 三键）/ `flow health --fix`（envelope；`--json` 是既有只读视图选项，`--fix --json` 在 strict 下同样输出 envelope）。其余 **35 个门位**对外形态是「人类 stderr + exit 1」；向它们传 `--json` 仍被 Commander 判 unknown option（exit 1），**不产生** envelope。
+- **`--json` 注册面**：40 个门位中 **4 个**所属命令注册了 `--json` —— `flow advance`（envelope）/ `flow archive`（legacy 三键）/ `req split`（legacy 三键）/ `flow health --fix`（envelope；`--json` 是既有只读视图选项，`--fix --json` 在 strict 下同样输出 envelope）。其余 **36 个门位**对外形态是「人类 stderr + exit 1」；向它们传 `--json` 仍被 Commander 判 unknown option（exit 1），**不产生** envelope。
 
-**接入面：37 个命令 / 39 个门位**（`stage task` 与 `plan scheme create` 各 2 个门位）
+**接入面：38 个命令 / 40 个门位**（`stage task` 与 `plan scheme create` 各 2 个门位）
 
 | 文件 | 命令（门位数） |
 |---|---|
 | `flow` | `stage add` · `stage remove` · `stage set` · `stage reset` · `advance` · `attempt` · `review add` · `review resolve` · `review update` · `review remove` · `archive` · `repair` · `checkpoint restore` · `migrate` · `health --fix` · `wizard`（16） |
 | `stage` | `set` · `task`（`--add` 分支 + 主路径 = 2）· `verify`（v1.5.8）· `create`（5） |
 | `plan` | `stage add` · `scheme create`（常规 + `--from-tasks` = 2）· `scheme publish` · `scheme rename` · `scheme remove` · `scheme register`（7） |
-| `req` | `add` · `claim` · `release` · `set` · `link` · `advance` · `review` · `verify`（v1.5.8）· `split`（9） |
+| `req` | `add` · `claim` · `release` · `set` · `link` · `advance` · `review` · `verify`（v1.5.8）· `split` · `rollover`（v1.5.8 / REQ-030）（10） |
 | `config` | `set --sync-stages`（仅同步分支）（1） |
 | `view` | `accept`（1） |
 
@@ -555,24 +555,25 @@ openfeel flow wizard
 
 ### flow archive &lt;version&gt;
 
-执行 flow.json 版本分片归档（v1.2.0-stage-78）。**判据门**：该版本**全部阶段 done** 且**无 blocking open REV**（不满足即拒绝，exit ≠ 0，**零写盘**；**不设 `--force`**）。归档落点 `.openfeel/flow-archive/{version}.json`；采用两步事务顺序保证一致性。
+执行 flow.json 版本分片归档（v1.2.0-stage-78）。**判据门**：该版本**全部阶段 done** 且**无 blocking open REV**（不满足即拒绝，exit ≠ 0，**零写盘**；**不设 `--force`**）。归档落点 `.openfeel/flow-archive/{version}.json`；采用两步事务顺序保证一致性。**发布软门（v1.5.8 / REQ-030）**：该版本仍有未完成需求（非 done/cancelled/rejected）时缺省拒绝（exit 1，零写盘），须显式 `--allow-unfinished` 才继续（仍会保留未完成需求在 flow.json）；该版本**终态**需求随归档移入归档文件并从 flow.json 删除。
 
 ```bash
-openfeel flow archive <version> [--dry-run] [--json]
+openfeel flow archive <version> [--dry-run] [--allow-unfinished] [--json]
 ```
 
 | 选项 | 说明 |
 |------|------|
-| `--dry-run` | 仅预览（判据门照常校验；零写盘） |
-| `--json` | 结构化输出。**成功（9 键）**：`{schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews}`（`eligible` 成功恒 `true`，两数组恒 `[]`）；**gate-rejected（9 键）**：`{schemaVersion,error(string),version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind}`（`eligible` 恒 `false`；`unfinishedStages[]{id,phase}`；`blockingReviews[]{id,title,priority}`；legacy 五键序保留，三新键插在 `blockingOpen` 后、`errorKind` 前）。判据与门禁同源；`--dry-run` 零写盘 |
+| `--dry-run` | 仅预览（判据门 / 软门照常校验；零写盘） |
+| `--allow-unfinished` | **发布软门**：显式放行「该版本仍有未完成需求」；缺省拒绝且零写盘。人类模式给 stderr 警告；JSON 模式不输出警告（保持 stderr 零输出） |
+| `--json` | 结构化输出。**成功（10 键）**：`{schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews,requirements}`（`eligible` 成功恒 `true`，两数组恒 `[]`，`requirements` = 随版本归档的终态需求数，**末位追加键**）；**gate-rejected（9 键）**：`{schemaVersion,error(string),version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind}`；**发布软门拒绝**：`{schemaVersion,error:'unfinished-requirements',version,unfinished,counts,errorKind}`（legacy 形态，`unfinished:string[]`、`counts{done,unfinished,other,total}`）。判据与门禁同源；`--dry-run` 零写盘 |
 
-**与顶层 `openfeel archive <stage>` 区分**：顶层命令是**阶段摘要归档**，`flow archive` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账）。
+**与顶层 `openfeel archive <stage>` 区分**：顶层命令是**阶段摘要归档**，`flow archive` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账；`req list --include-archived` / `req show` 是显式只读例外）。
 
-- **preflight（v1.5.6）**：受门（判定在**判据门之后** → 夹具须本身 eligible）；`--dry-run` 免门；拒绝形态为 **legacy 三键** `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
+- **preflight（v1.5.6）**：受门（判定在**判据门 / 软门之后** → 夹具须本身 eligible）；`--dry-run` 免门；拒绝形态为 **legacy 三键** `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 
 ### flow archive list
 
-列出已归档版本及计数（只读；引擎字典序）。
+列出已归档版本及计数（只读；引擎字典序）。`counts` 为 `{stages,reviews,log,requirements}`——`requirements` 为 **v1.5.8 追加键**；老归档文件无该键（读侧不注入，视同 0）。
 
 ```bash
 openfeel flow archive list
@@ -872,9 +873,9 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 
 | 子命令 | 用途 | 关键参数 |
 |--------|------|----------|
-| `req add <title>` | 创建需求（ID 自动分配） | `--target-version <version>`、`--priority <P0\|P1\|P2>`、`--workflow-mode <full\|fast\|general>` |
-| `req list` | 列出需求 | `--status <status>`、`--target-version <version>`、`--owner <owner>`、`--json` |
-| `req show <id>` | 查看需求详情 | `--json` |
+| `req add <title>` | 创建需求（ID 自动分配；**单调计数器** `meta.last_req_seq`，归档后不复用） | `--target-version <version>`、`--priority <P0\|P1\|P2>`、`--workflow-mode <full\|fast\|general>` |
+| `req list` | 列出需求 | `--status <status>`、`--target-version <version>`、`--owner <owner>`、`--include-archived`、`--json` |
+| `req show <id>` | 查看需求详情（已归档需求回退读归档文件，标注 `archived`） | `--json` |
 | `req claim <id>` | 认领需求（占用校验） | `--owner <owner>` |
 | `req release <id>` | 释放认领（未认领为 no-op 成功） | — |
 | `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` / `--workflow-mode` |
@@ -885,15 +886,23 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 | `req split <id>` | 拆分需求为若干子需求（**拆分即发布**：子需求入 `scheduled`） | `--into <title>`（**可重复**，至少一项）、`--json` |
 | `req board` | 需求看板（7 组固定顺序） | `--target-version <version>`、`--json` |
 | `req next` | 推荐下一个可接取需求 | `--owner <owner>`、`--json` |
+| `req release-check <version>` | **发布门（软，只读）**：列出该版本 已完成 / 未完成 / 其它需求；退出码恒 0 | `--json` |
+| `req rollover` | **顺延**未完成需求到新版本（改写 `target_version` + 追加 `carried_from`） | `--from <version>`、`--to <version>`、`--id <REQ>` \| `--all`（互斥且必选其一） |
+
+- **需求随版本归档（v1.5.8 / REQ-030）**：`flow archive <version>` 会把 `target_version === version` **且终态**（done/cancelled/rejected）的需求移入归档文件的 `requirements[]` 并从 `flow.json` 删除；活跃 / 无版本 / 非终态需求保留。需求 ID 单调性由 `flow.json.meta.last_req_seq` 维持（分配时同批写回；旧数据无该键 → 0 兜底），归档移走条目后**不复用**旧号。
+- **`req list --include-archived`**（只读）：合并 `.openfeel/flow-archive/*.json` 的终态需求与活跃需求；过滤参数同样作用于归档需求；活跃需求优先且不重复。`--json` 既有键序不变，归档需求元素**末位**追加可选 `archived: true`；人类输出追加「（已归档）」。
+- **`req show <id>` 已归档回退**：活跃集未命中时扫描归档文件，命中则只读输出并在 JSON 追加末位 `archived: true`（人类输出标注所属版本）；未命中仍报 `not_found`。
+- **`req release-check <version>`**（v1.5.8 / REQ-030）：三桶 = `done` / 未完成（非终态）/ 其它（cancelled+rejected）；版本比较去单个前导 `v`（`v1.5.8` ≡ `1.5.8`）。`--json` = `{schemaVersion,version,done,unfinished,counts{done,unfinished,other,total}}`（`done`/`unfinished` 为需求 ID 数组）；**只读零写盘、退出码恒 0**（软门，仅报告）。
+- **`req rollover`**（v1.5.8 / REQ-030）：`--from` 来源版本、`--to` 目标版本（归一后必须不同）；`--id`（只顺延该需求，须属于 `--from` 且非终态）与 `--all`（顺延该版本全部未完成需求）**互斥且必选其一**。写语义：`target_version = to`、`carried_from` 去重保序追加来源版本、刷新 `updated_at`，审计一条 `requirement_rollover`（detail `{from,to,ids,count}`）；无候选 → no-op 成功（不写盘）。
 
 - **`req link` 多值语义（v1.5.8 / REQ-028）**：`flow.json` 的 `stages[*].requirements[]` 是**权威**关联面（元素 `{id, role?, order?}`），一个阶段可挂多个需求，一个需求也可被多个阶段引用；同一需求重复链接为**幂等 no-op**。写路径**不再写**旧单值键 `stage.requirement_id`（旧数据读取仍兼容：`requirements` 缺省 / 空集时回落到 `requirement_id`；首次追加链接时把旧单值迁移进 `requirements[]` 并清空旧键，防双真源）。解绑三分支：`--requirement <id>` 关联 ｜ `--unlink --requirement <id>` **只解绑该需求** ｜ `--unlink`（无 requirement）**清空该阶段全部关联**；两者都不给 → 参数错误 exit 1。`req show` / `req list --json` 的 `linkedStages`、`flow status` 的 `requirementId`（取首个关联需求）与归档摘要的「已完成需求 / 关联需求」均经单点 `stageRequirementIds` 派生。
 - **退出码**：`0` 成功 ｜ `1` 校验 / 占用 / 存在性失败（经 `process.exitCode`；错误码 分流 `not_found` / `stage_not_found` / `already_claimed` / `invalid_field` / `invalid_status` / `general_mode_conflict`）｜ `2` 并发写冲突（共享单点）。
-- **`--json` 契约**：**5 命令（4 读 + `split`）**——四读命令（`list` / `show` / `board` / `next`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。`split`（写命令）= 成功 `{ schemaVersion, parent, children }`，同样遵循单文档契约。**`req list`（v1.2.2）**：`requirements[]` 元素**末位**追加 `linkedStages[]{id,phase}` / `progress{done,total}`（零关联 `[]` + `{0,0}`；既有字段顺序/值不变）。失败 envelope / legacy `errorKind` 判别见上「错误封装（v1.2.2）」。
+- **`--json` 契约**：**6 命令（5 读 + `split`）**——五读命令（`list` / `show` / `board` / `next` / `release-check`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。`split`（写命令）= 成功 `{ schemaVersion, parent, children }`，同样遵循单文档契约。**`req list`（v1.2.2）**：`requirements[]` 元素**末位**追加 `linkedStages[]{id,phase}` / `progress{done,total}`（零关联 `[]` + `{0,0}`；既有字段顺序/值不变）；`--include-archived` 时归档需求再末位追加 `archived`。失败 envelope / legacy `errorKind` 判别见上「错误封装（v1.2.2）」。
 - **`--workflow-mode`（v1.2.1-stage-90 起）**：值域 `full` / `fast` / `general`；**`general`（无流水线）仅需求级合法**——阶段级 / 部署级写入面拒绝（`general_mode_conflict` 亦在需求与阶段关联时触发：`general` 需求不接受阶段关联）。**done 门（v1.5.7 / REQ-023 重定义）**：**阶段 = 版本容器**（长期保持在 `exec_running`），**需求 = 工作单元**，可在阶段仍开启时完成。① **零关联阶段**的需求可直接显式完成；② **有关联阶段**时，每个关联阶段只需已进入 `exec_running` 及之后相位（`exec_running` / `review_*` / `test_*` / `archiving` / `done`）即可完成；仍有阶段处于 `plan_pending` / `plan_review` / `plan_passed` / `scheme_pending` / `scheme_review` / `scheme_passed` 时拒绝并输出专用文案（`req.err.doneGateTmpl`）。**注意**：聚合**自动收口**仍要求全部关联阶段 done（`aggregate.ts` 空集守卫不变）；显式完成不等于自动收口。
 - **完成必审验（v1.5.8 / REQ-027）**：需求 `done` 门在上述相位判据之上**追加**两条硬门——`review.result === 'pass'` 且 `verification.result === 'pass'`（缺任一即 `invalid_status`，**无 force 逃生口**）。命令层按判据分流文案：未审 → `req.err.reviewRequiredTmpl`、未验 → `req.err.verificationRequiredTmpl`、阶段相位 → 既有 `req.err.doneGateTmpl`。记录写路径：`req review <id>`（`--independent` 独立审查 / `--self` 自我审查，自我审查在归档摘要标注 `self-review`）与 `req verify <id>`（`--kind test|manual|build`，`--evidence` 可选）。两者写 `flow.json` 的 `requirements[*].review` / `.verification` 并各留一条审计（`requirement_review` / `requirement_verification`）；终态需求拒绝补记（`invalid_status`）。
-- **预检受门命令（v1.5.8 起）**：9 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify`）全部受 preflight 门。
+- **预检受门命令（v1.5.8 起）**：10 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify` / `rollover`）全部受 preflight 门。
 - **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`。
-- **preflight（v1.5.6；v1.5.8 起 9 个写命令）**：9 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify`）全部受门。顺序约定：**ID 格式校验先于门**（`req claim REQ-XXX` 报非法 ID，不报 preflight）；`req split --json` 的拒绝形态为 legacy 三键 `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
+- **preflight（v1.5.6；v1.5.8 起 10 个写命令）**：10 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify` / `rollover`）全部受门。顺序约定：**ID 格式校验先于门**（`req claim REQ-XXX` 报非法 ID，不报 preflight）；`req split --json` 的拒绝形态为 legacy 三键 `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 - 分工：引擎面 / 状态机语义（校验 / 流转 / 占用 / 关联（多值 `requirements[]`，旧单值兼容） / done 门）见 [`core/req.md`](../.openfeel/manual/core/req.md)；命令面深入参考见 [`cli/req.md`](../.openfeel/manual/cli/req.md)。
 
 ---
@@ -1145,9 +1154,9 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## JSON 出口一览（v1.5.6 快照，新增 #41）
+## JSON 出口一览（v1.5.6 快照，新增 #41；v1.5.8 / REQ-030 新增 #42）
 
-> 计数口径：**41 个成功出口 / 44 个注册选项**（44 = 42 个 `--json` 选项 + `chore --end` / `chore --status` 两个非 json 选项；v1.5.6 新增 #41 `lint req`）；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
+> 计数口径：**42 个成功出口 / 45 个注册选项**（45 = 43 个 `--json` 选项 + `chore --end` / `chore --status` 两个非 json 选项；v1.5.6 新增 #41 `lint req`；v1.5.8 / REQ-030 新增 #42 `req release-check`）；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 
 | # | 出口 | 命令面 | 顶层键序 |
 |:-:|------|--------|----------|
@@ -1158,12 +1167,12 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 5 | `flow phases` | `flow phases --json` | `schemaVersion,phases,transitions,advanceAccepted,transitionsDiff,workflowMode,reviewTier,displayReviewTier,effectiveReviewTier` |
 | 6 | `flow mode` | `flow mode --json` | `schemaVersion,stage,mode,source,modes` |
 | 7 | `flow ops list` | `flow ops list --json` | `schemaVersion,ops` |
-| 8 | `flow archive` | `flow archive <version> --json` | `schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews` |
+| 8 | `flow archive` | `flow archive <version> --json [--allow-unfinished]` | `schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews,requirements` |
 | 9 | `flow archive list` | `flow archive list --json` | `schemaVersion,versions` |
-| 10 | `flow archive show` | `flow archive show <version> --json` | `schemaVersion,version,stages,reviews,log,counts,archived_at` |
+| 10 | `flow archive show` | `flow archive show <version> --json` | `schemaVersion,version,stages,reviews,log,requirements,counts,archived_at` |
 | 11 | `flow health` | `flow health --json` | `schemaVersion,ok,items,reconciled` |
-| 12 | `req list` | `req list --json` | `schemaVersion,requirements`（元素末位 `linkedStages,progress`） |
-| 13 | `req show` | `req show <id> --json` | `schemaVersion,requirement,stages,parent,children` |
+| 12 | `req list` | `req list [--include-archived] --json` | `schemaVersion,requirements`（元素末位 `linkedStages,progress`；归档需求再末位 `archived`） |
+| 13 | `req show` | `req show <id> --json` | `schemaVersion,requirement,stages,parent,children`（已归档回退末位 `archived`） |
 | 14 | `req split` | `req split <id> --into ... --json` | `schemaVersion,parent,children` |
 | 15 | `req board` | `req board --json` | `schemaVersion,groups` |
 | 16 | `req next` | `req next --json` | `schemaVersion,requirement`（`candidates` 条件出现） |
@@ -1192,9 +1201,10 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 39 | `lint kb` | `lint kb --json` | `schemaVersion,target,ok,issues` |
 | 40 | `roadmap show` | `roadmap show [version] --json` | `schemaVersion,version,milestones` |
 | 41 | `lint req` | `lint req --json` | `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount` |
-| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 41 / 42**） |
+| 42 | `req release-check` | `req release-check <version> --json` | `schemaVersion,version,done,unfinished,counts` |
+| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 42 / 43**） |
 
-> 说明：以上为 **v1.5.6 快照**（40 出口 → 41；新增 #41 `lint req`）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 **v1.5.6 快照 + v1.5.8 / REQ-030**（40 → 41 → 42；新增 #41 `lint req`、#42 `req release-check`）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

@@ -11,6 +11,7 @@ import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../fs/file-lock.js';
 import { versionOfStageId } from './grouping.js';
 import type { FlowData, MetaPhase } from '../flow-manager.js';
+import type { RequirementData } from '../req/types.js';
 import type { ArchiveFile } from './archive-file.js';
 
 /** 归档写盘锁名（独立于 flow 锁；锁文件落 .openfeel/tmp/locks/flow-archive.lock） */
@@ -121,15 +122,20 @@ export function readArchiveFile(projectPath: string, version: string): ArchiveFi
   }
 }
 
-/** 读侧宽容：counts 三段齐全则原样返回；否则按实际长度回填（读时计算，不写盘） */
+/**
+ * 读侧宽容：计数齐全则原样返回；否则按实际长度回填（读时计算，不写盘）。
+ * `counts.requirements` 为 v1.5.8 / REQ-030 追加键——老归档文件（无 `requirements` 段）保持
+ * 「无该键」形态，**不注入**（读侧视同 0）；含需求段但缺计数时按实际长度回填。
+ */
 function withCountsFallback(file: ArchiveFile): ArchiveFile {
   const counts = file.counts;
-  if (
-    counts &&
-    typeof counts.stages === 'number' &&
-    typeof counts.reviews === 'number' &&
-    typeof counts.log === 'number'
-  ) {
+  const requirements = Array.isArray(file.requirements) ? file.requirements : undefined;
+  const countsComplete = !!counts
+    && typeof counts.stages === 'number'
+    && typeof counts.reviews === 'number'
+    && typeof counts.log === 'number'
+    && (typeof counts.requirements === 'number' || requirements === undefined);
+  if (countsComplete) {
     return file;
   }
   const stages = file.stages ?? {};
@@ -140,10 +146,12 @@ function withCountsFallback(file: ArchiveFile): ArchiveFile {
     stages,
     reviews,
     log,
+    ...(requirements === undefined ? {} : { requirements }),
     counts: {
       stages: Object.keys(stages).length,
       reviews: reviews.length,
       log: log.length,
+      ...(requirements === undefined ? {} : { requirements: requirements.length }),
     },
   };
 }
@@ -154,6 +162,54 @@ function withCountsFallback(file: ArchiveFile): ArchiveFile {
 export function getArchivedVersions(data: FlowData): string[] {
   const list = data.meta?.archived_versions;
   return Array.isArray(list) ? [...list] : [];
+}
+
+/** 已归档需求命中（读侧；`file` 为所属归档文件快照，供 show 派生阶段/父子） */
+export interface ArchivedRequirementHit {
+  /** 所属归档版本前缀（如 `v1.5.8`） */
+  version: string;
+  /** 所属归档文件（读侧宽容；`requirements` 可能缺省） */
+  file: ArchiveFile;
+  /** 命中的需求条目（归档文件原文引用） */
+  requirement: RequirementData;
+}
+
+/**
+ * 列举全部归档文件中的需求（只读；v1.5.8 / REQ-030）。
+ * 版本序 = `listArchiveVersions`（字典序）；文件内保持声明序；损坏 / 非法文件静默跳过。
+ * 老归档文件（无 `requirements` 键）→ 不产生条目。
+ */
+export function listArchivedRequirements(projectPath: string): Array<{ version: string; requirement: RequirementData }> {
+  const out: Array<{ version: string; requirement: RequirementData }> = [];
+  for (const version of listArchiveVersions(projectPath)) {
+    const file = readArchiveFile(projectPath, version);
+    const rows = Array.isArray(file?.requirements) ? file.requirements : [];
+    for (const requirement of rows) {
+      if (requirement && typeof requirement.id === 'string') {
+        out.push({ version, requirement });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * 按 ID 查找已归档需求（只读；版本字典序首个命中）。
+ * 命中返回 `{version, file, requirement}`；未命中 / 归档目录缺失 / 文件损坏 → null。
+ */
+export function findArchivedRequirement(projectPath: string, id: string): ArchivedRequirementHit | null {
+  if (typeof id !== 'string' || id === '') {
+    return null;
+  }
+  for (const version of listArchiveVersions(projectPath)) {
+    const file = readArchiveFile(projectPath, version);
+    if (!file) { continue; }
+    const requirement = (Array.isArray(file.requirements) ? file.requirements : []).find((r) => r?.id === id);
+    if (requirement) {
+      return { version, file, requirement };
+    }
+  }
+  return null;
 }
 
 /**

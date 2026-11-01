@@ -45,6 +45,7 @@ import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchi
 import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile } from '../core/flow-archive/archive-ops.js';
 import { archiveHealthItems } from '../core/flow-archive/archive-health.js';
 import { requirementHealthItems, stageRequirementIds } from '../core/req/aggregate.js';   // 需求对账项（stage-83 T3）/ 关联读取单点（REQ-028）
+import { releaseCheckRequirements } from '../core/req/requirement-ops.js';                // 发布软门（v1.5.8 / REQ-030）
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -2161,8 +2162,9 @@ export function registerFlowCommand(program: Command): void {
     .description('flow.json 版本分片归档（按版本号归档已收官历史）')
     .argument('<version>', '版本号（如 v1.1.7；前缀 v 可省略）')
     .option('--dry-run', '仅预览（判据门照常校验；零写盘）')
+    .option('--allow-unfinished', '显式放行「该版本仍有未完成需求」（发布软门；缺省拒绝，零写盘）')
     .option('--json', '以 JSON 输出 (machine-readable, single JSON document)')
-    .action((versionInput: string, options: { dryRun?: boolean; json?: boolean }) => {
+    .action((versionInput: string, options: { dryRun?: boolean; json?: boolean; allowUnfinished?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const mgr = createManager();
@@ -2238,6 +2240,40 @@ export function registerFlowCommand(program: Command): void {
         });
         return;
       }
+      // 发布软门（v1.5.8 / REQ-030）：同一 release-check 判据；未完成需求**不阻断**发布，
+      // 但缺省拒绝并要求显式 --allow-unfinished（零写盘）。位置在判据门之后、preflight 之前。
+      const releaseCheck = releaseCheckRequirements(data, version);
+      const unfinishedIds = releaseCheck.unfinished.map((r) => r.id);
+      if (unfinishedIds.length > 0 && options.allowUnfinished !== true) {
+        if (options.json) {
+          // legacy 形态：error 恒 string；既有键序不变，新键追加（末尾 errorKind 仍由 failJson 兜底）
+          failJson({
+            error: 'unfinished-requirements',
+            version,
+            unfinished: unfinishedIds,
+            counts: releaseCheck.counts,
+          });
+          return;
+        }
+        const stderrLines: string[] = [
+          t('flow.archive.unfinishedTitleTmpl', lang, { version, n: String(unfinishedIds.length) }),
+        ];
+        for (const id of unfinishedIds) {
+          stderrLines.push(t('flow.archive.gateItemTmpl', lang, { item: id }));
+        }
+        stderrLines.push(t('flow.archive.unfinishedHintTmpl', lang, { version }));
+        failRefusal({
+          code: 'ARCHIVE_GATE_REJECTED',
+          message: stderrLines[0],
+          detail: { version, unfinished: unfinishedIds, counts: releaseCheck.counts },
+          stderrLines,
+        });
+        return;
+      }
+      // 显式放行：人类模式给 stderr 警告（JSON 模式保持 stderr 零输出契约）
+      if (unfinishedIds.length > 0 && options.json !== true) {
+        console.error(t('flow.archive.unfinishedWarnTmpl', lang, { version, n: String(unfinishedIds.length) }));
+      }
       // v1.5.6-stage-114：写前 preflight（legacy 三键：只放 `error` 值，不带 hint —— REV-008）；
       // `--dry-run` 零写盘 → 免门（REV-001）。位置在判据门之后 → fixture 须本身 eligible（§5.3）。
       const reject = (m: string): void => {
@@ -2248,6 +2284,7 @@ export function registerFlowCommand(program: Command): void {
       // 切分（纯函数；禁命令层第二套解析/切分）
       const { archive, remainder } = splitForArchive(data, version);
       const counts = archive.counts;
+      const archivedRequirements = counts.requirements ?? 0;
       // 装配（REV-79-009）：SplitResult.archive 不含 schemaVersion / archived_at
       const file: ArchiveFile = { ...archive, schemaVersion: ARCHIVE_SCHEMA_VERSION, archived_at: new Date().toISOString() };
       // --dry-run：纯内存推演（不写归档文件 / 不 addArchivedVersion / 不 appendLog / 不 save）——四写盘点零触碰
@@ -2258,18 +2295,21 @@ export function registerFlowCommand(program: Command): void {
           stages: remainder.stages,
           reviews: remainder.reviews,
           log: remainder.log,
+          requirements: remainder.requirements,
           pipeline: { ...data.pipeline, current: { ...data.pipeline.current } },
         };
         const preview = applyArchivePipelineDisposition(previewData, version);
         if (options.json) {
-          // 成功 9 键（D-97-03-03）：dry-run 只读 counts，零写盘
+          // 成功 9 键（D-97-03-03）+ v1.5.8 追加 requirements（第 10 键，末尾）；dry-run 只读 counts，零写盘
           console.log(JSON.stringify({
             schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log,
             dryRun: true, eligible: true, unfinishedStages: [], blockingReviews: [],
+            requirements: archivedRequirements,
           }, null, 2));
           return;
         }
         console.log(t('flow.archive.previewTmpl', lang, { version, stages: String(counts.stages), reviews: String(counts.reviews), log: String(counts.log) }));
+        console.log(t('flow.archive.previewRequirementsTmpl', lang, { requirements: String(archivedRequirements) }));
         console.log(t('flow.archive.pipelineTmpl', lang, {
           current: preview.currentCleared ? t('common.none', lang) : (previewData.pipeline.current.stage || t('common.none', lang)),
           phase: preview.phase,
@@ -2288,16 +2328,20 @@ export function registerFlowCommand(program: Command): void {
         failCli({ code: 'ARCHIVE_WRITE_FAILED', message, detail: { version }, stderrLines: [message] });
         return;
       }
-      // ② 内存移除（stages / reviews / log 三段）
+      // ② 内存移除（stages / reviews / log / requirements 四段；v1.5.8 / REQ-030 增需求段）
       data.stages = remainder.stages;
       data.reviews = remainder.reviews;
       data.log = remainder.log;
+      // 需求段：仅当原数据含 requirements 时改写（无该键的项目不被注入空数组）
+      if (Array.isArray(data.requirements)) {
+        data.requirements = remainder.requirements;
+      }
       // ③ 索引（幂等去重；纯内存）
       const added = addArchivedVersion(data, version);
       // ④ pipeline 处置（纯内存；空集 → active，与 flow-manager.ts:1495-1496 守卫同效）
       const disposed = applyArchivePipelineDisposition(data, version);
       // ⑤ 审计（须晚于 ②，记录在归档后 flow.json——不混入被归档段）
-      mgr.appendLog({ time: '', agent: 'cli', action: 'archive_flow_version', detail: { version, stages: counts.stages, reviews: counts.reviews, log: counts.log } });
+      mgr.appendLog({ time: '', agent: 'cli', action: 'archive_flow_version', detail: { version, stages: counts.stages, reviews: counts.reviews, log: counts.log, requirements: archivedRequirements } });
       // ⑥ 后 save()（顺序不变量：归档文件写成功之前不改 flow.json）
       try {
         mgr.save();
@@ -2311,10 +2355,11 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
       if (options.json) {
-        // 成功 9 键（D-97-03-03）：保持在 mgr.save() 成功之后输出（顺序不变）
+        // 成功 9 键（D-97-03-03）+ v1.5.8 追加 requirements（第 10 键，末尾）；保持在 mgr.save() 成功之后输出（顺序不变）
         console.log(JSON.stringify({
           schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log,
           dryRun: false, eligible: true, unfinishedStages: [], blockingReviews: [],
+          requirements: archivedRequirements,
         }, null, 2));
         return;
       }
@@ -2323,6 +2368,7 @@ export function registerFlowCommand(program: Command): void {
       } else {
         console.log(t('flow.archive.rearchivedTmpl', lang, { version }));
       }
+      console.log(t('flow.archive.requirementsTmpl', lang, { requirements: String(archivedRequirements) }));
       console.log(t('flow.archive.pipelineTmpl', lang, {
         current: disposed.currentCleared ? t('common.none', lang) : (data.pipeline.current.stage || t('common.none', lang)),
         phase: disposed.phase,

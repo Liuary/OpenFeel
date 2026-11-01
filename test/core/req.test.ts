@@ -17,6 +17,7 @@ import {
   isTerminalRequirementStatus, allLinkedStagesDone, canCompleteRequirement,
   getAllowedNextStatuses, recordRequirementReview, recordRequirementVerification,
   requirementDoneBlocker,
+  allocateRequirementId, requirementSeqFloor, releaseCheckRequirements, rolloverRequirements,
 } from '../../src/core/req/requirement-ops.js';
 import {
   getRequirementsDir, getRequirementBodyRelPath, getRequirementBodyPath, writeRequirementBodySkeleton,
@@ -1810,5 +1811,187 @@ describe('REQ-027 完成必审验（需求层）', () => {
     bare.requirements = [makeReq('REQ-002', 'in_progress', { verification: undefined })];
     recordRequirementVerification(bare, 'REQ-002', { result: 'fail', kind: 'manual', by: 'm', note: '手测失败' });
     expect('evidence' in bare.requirements[0].verification!).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════
+// v1.5.8 / REQ-030：需求 ID 单调计数器 + 发布门 + 顺延
+// ═══════════════════════════════════════
+
+describe('REQ-030 需求 ID 单调计数器（meta.last_req_seq）', () => {
+  it('旧数据无 last_req_seq → 0 兜底；floor = 现存最大号', () => {
+    const empty = makeFlowData();
+    expect(requirementSeqFloor(empty)).toBe(0);
+    expect(nextRequirementId(empty)).toBe('REQ-001');
+
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'draft'), makeReq('REQ-005', 'draft')];
+    expect('last_req_seq' in data.meta).toBe(false);
+    expect(requirementSeqFloor(data)).toBe(5);
+    expect(nextRequirementId(data)).toBe('REQ-006');
+    // 只读：nextRequirementId 不写计数器
+    expect('last_req_seq' in data.meta).toBe(false);
+  });
+
+  it('allocate 写回 last_req_seq（同批内存）；add 连续分配 1 → 2', () => {
+    const data = makeFlowData();
+    expect(allocateRequirementId(data)).toBe('REQ-001');
+    expect(data.meta.last_req_seq).toBe(1);
+    expect(allocateRequirementId(data)).toBe('REQ-002');
+    expect(data.meta.last_req_seq).toBe(2);
+
+    const viaAdd = makeFlowData();
+    const a = addRequirement(viaAdd, { title: 'a' });
+    const b = addRequirement(viaAdd, { title: 'b' });
+    expect([a.id, b.id]).toEqual(['REQ-001', 'REQ-002']);
+    expect(viaAdd.meta.last_req_seq).toBe(2);
+  });
+
+  it('计数器优先于现存最大号：last_req_seq=7 + 现存 REQ-002 → REQ-008', () => {
+    const data = makeFlowData();
+    data.meta.last_req_seq = 7;
+    data.requirements = [makeReq('REQ-002', 'draft')];
+    expect(requirementSeqFloor(data)).toBe(7);
+    expect(nextRequirementId(data)).toBe('REQ-008');
+  });
+
+  it('归档移走终态需求后 next 不复用（计数器留在 flow.json）', () => {
+    const data = makeFlowData();
+    data.meta.last_req_seq = 7;
+    // 模拟归档：终态需求已从 requirements 移出，现存集为空
+    data.requirements = [];
+    expect(nextRequirementId(data)).toBe('REQ-008');
+
+    // 即便现存集出现小号空洞，也不回收
+    data.requirements = [makeReq('REQ-003', 'draft')];
+    expect(nextRequirementId(data)).toBe('REQ-008');
+  });
+
+  it('split 逐子顺序分配并写回计数器（三位起补零）', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-998', 'draft')];
+    const r = splitRequirement(data, 'REQ-998', [{ title: 'a' }, { title: 'b' }]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) { return; }
+    expect(r.children.map((c) => c.id)).toEqual(['REQ-999', 'REQ-1000']);
+    expect(data.meta.last_req_seq).toBe(1000);
+  });
+
+  it('save 集成：last_req_seq 随 flow.json 落盘并可读回', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'openfeel-req-seq-'));
+    try {
+      FlowManager.initFlow(dir);
+      const mgr = new FlowManager(dir);
+      const data = mgr.getData()!;
+      addRequirement(data, { title: '一' });
+      addRequirement(data, { title: '二' });
+      mgr.save();
+      const reloaded = new FlowManager(dir).getData()!;
+      expect(reloaded.meta.last_req_seq).toBe(2);
+      expect(nextRequirementId(reloaded)).toBe('REQ-003');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('REQ-030 发布检查 releaseCheckRequirements（只读软门）', () => {
+  it('按目标版本分三桶：done / 未完成（非终态）/ 其它（cancelled+rejected）', () => {
+    const data = makeFlowData();
+    data.requirements = [
+      makeReq('REQ-001', 'done', { target_version: 'v1.5.8' }),
+      makeReq('REQ-002', 'in_progress', { target_version: 'v1.5.8' }),
+      makeReq('REQ-003', 'blocked', { target_version: 'v1.5.8' }),
+      makeReq('REQ-004', 'cancelled', { target_version: 'v1.5.8' }),
+      makeReq('REQ-005', 'rejected', { target_version: '1.5.8' }),      // 前缀归一
+      makeReq('REQ-006', 'done', { target_version: 'v1.6.0' }),          // 异版本
+      makeReq('REQ-007', 'draft'),                                       // 无版本
+    ];
+    const check = releaseCheckRequirements(data, 'v1.5.8');
+    expect(check.done.map((r) => r.id)).toEqual(['REQ-001']);
+    expect(check.unfinished.map((r) => r.id)).toEqual(['REQ-002', 'REQ-003']);
+    expect(check.other.map((r) => r.id)).toEqual(['REQ-004', 'REQ-005']);
+    expect(check.counts).toEqual({ done: 1, unfinished: 2, other: 2, total: 5 });
+  });
+
+  it('只读零写盘（log 不变）且版本空集 → 全 0', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'done', { target_version: 'v1.5.8' })];
+    const logLength = data.log.length;
+    const check = releaseCheckRequirements(data, '9.9.9');
+    expect(check.counts).toEqual({ done: 0, unfinished: 0, other: 0, total: 0 });
+    expect(data.log.length).toBe(logLength);
+  });
+});
+
+describe('REQ-030 顺延 rolloverRequirements', () => {
+  function seed(): FlowData {
+    const data = makeFlowData();
+    data.requirements = [
+      makeReq('REQ-001', 'in_progress', { target_version: 'v1.5.8' }),
+      makeReq('REQ-002', 'blocked', { target_version: 'v1.5.8' }),
+      makeReq('REQ-003', 'done', { target_version: 'v1.5.8' }),
+      makeReq('REQ-004', 'scheduled', { target_version: 'v1.6.0' }),
+    ];
+    return data;
+  }
+
+  it('--all：仅非终态同版本顺延；carried_from 去重保序；审计恰一条', () => {
+    const data = seed();
+    const r = rolloverRequirements(data, 'v1.5.8', 'v1.6.0', { all: true });
+    expect(r.ok).toBe(true);
+    if (!r.ok) { return; }
+    expect(r.moved.map((x) => x.id)).toEqual(['REQ-001', 'REQ-002']);
+    expect(data.requirements!.map((x) => x.target_version)).toEqual(['v1.6.0', 'v1.6.0', 'v1.5.8', 'v1.6.0']);
+    expect(data.requirements![0].carried_from).toEqual(['v1.5.8']);
+    expect(data.requirements![1].carried_from).toEqual(['v1.5.8']);
+    // 终态需求原样（不动 target_version / 不写 carried_from）
+    expect(data.requirements![2].target_version).toBe('v1.5.8');
+    expect('carried_from' in data.requirements![2]).toBe(false);
+    expect(data.log).toHaveLength(1);
+    expect(lastLog(data).action).toBe('requirement_rollover');
+    expect(lastLog(data).detail).toEqual({ from: 'v1.5.8', to: 'v1.6.0', ids: ['REQ-001', 'REQ-002'], count: 2 });
+  });
+
+  it('carried_from 去重：同源再顺延不重复追加', () => {
+    const data = seed();
+    data.requirements![0].carried_from = ['v1.4.0', 'v1.5.8'];
+    const r = rolloverRequirements(data, 'v1.5.8', 'v1.6.0', { id: 'REQ-001' });
+    expect(r.ok).toBe(true);
+    expect(data.requirements![0].carried_from).toEqual(['v1.4.0', 'v1.5.8']);
+    expect(data.requirements![0].target_version).toBe('v1.6.0');
+  });
+
+  it('--id：只动该需求；不存在 / 终态 / 版本不匹配 / 互斥缺失均零变更零审计', () => {
+    const data = seed();
+    const logLength = data.log.length;
+
+    expect(rolloverRequirements(data, 'v1.5.8', 'v1.6.0', { id: 'REQ-002' })).toEqual({
+      ok: true,
+      moved: [data.requirements![1]],
+    });
+    expect(data.log.length).toBe(logLength + 1);
+
+    const n = data.log.length;
+    expect(rolloverRequirements(data, 'v1.5.8', 'v1.6.0', { id: 'REQ-999' }))
+      .toEqual({ ok: false, code: 'not_found' });
+    expect(rolloverRequirements(data, 'v1.5.8', 'v1.6.0', { id: 'REQ-003' }))
+      .toEqual({ ok: false, code: 'invalid_status' });                  // done 终态
+    expect(rolloverRequirements(data, 'v1.5.8', 'v1.6.0', { id: 'REQ-004' }))
+      .toEqual({ ok: false, code: 'invalid_field' });                   // 版本不是来源
+    expect(rolloverRequirements(data, 'v1.5.8', 'v1.6.0', {}))
+      .toEqual({ ok: false, code: 'invalid_field' });                   // 未选 id/all
+    expect(rolloverRequirements(data, 'v1.5.8', 'v1.6.0', { id: 'REQ-001', all: true }))
+      .toEqual({ ok: false, code: 'invalid_field' });                   // 二者同用
+    expect(rolloverRequirements(data, 'v1.5.8', '1.5.8', { all: true }))
+      .toEqual({ ok: false, code: 'invalid_field' });                   // 同版本（归一后）
+    expect(data.log.length).toBe(n);
+  });
+
+  it('无候选 → no-op 成功且零审计', () => {
+    const data = seed();
+    const logLength = data.log.length;
+    expect(rolloverRequirements(data, 'v9.9.9', 'v9.9.10', { all: true })).toEqual({ ok: true, moved: [] });
+    expect(data.log.length).toBe(logLength);
   });
 });

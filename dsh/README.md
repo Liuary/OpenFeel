@@ -121,9 +121,9 @@ Windows 上的 `openfeel.cmd` 垫片。
 | `feel_flow` | `flow advance/current/overview/phases/mode/log/metrics/retry/repair/migrate/review_*` | 流水线推进与审查条目（`review_add` 的 `op` / `stage` 二选一，v1.3.4） |
 | `feel_stage` | `plan stage add/list`、`stage status/set/task`、`flow stage set/reset/remove` | 阶段与 `status.md` |
 | `feel_op` | `flow ops list`、`plan scheme create/publish/rename/remove/register`、`flow attempt/retry` | 操作方案与执行结果 |
-| `feel_req` | `req add/list/show/board/next/claim/release/set/link/advance/split` | 需求分发（7 状态） |
+| `feel_req` | `req add/list/show/board/next/claim/release/set/link/advance/split/review/verify/release-check/rollover` | 需求分发（7 状态；发布门 + 顺延，v1.5.8 / REQ-030） |
 | `feel_checkpoint` | `flow checkpoint list/restore` | 检查点快照与选择性回退 |
-| `feel_archive` | `flow archive <version>/list/show`、`archive <stage>` | 版本分片归档 + 阶段摘要归档 |
+| `feel_archive` | `flow archive <version>/list/show`、`archive <stage>` | 版本分片归档（`allow_unfinished` 显式放行发布软门）+ 阶段摘要归档 |
 | `feel_kb` | `knowledge list/add/search/index/dedup` | 知识库（4 个固定分类） |
 | `feel_verify` | `flow health`、`lint i18n/kb`、`flow recover`、`project overview`、`config get/set/effective` | 健康检查与配置 |
 | `feel_review` | `view list/accept` | REV 条目视图 |

@@ -69,6 +69,7 @@ export const VALUE_OPTIONS: ReadonlySet<string> = new Set<string>([
   '--change',
   '--deps',
   '--exec-mode',
+  '--from',
   '--into',
   '--lang',
   '--limit',

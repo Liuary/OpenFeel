@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command, CommanderError } from 'commander';
 import { registerArchiveCommand } from '../../src/commands/archive.js';
+import { registerFlowCommand } from '../../src/commands/flow.js';
 import { archiveStage } from '../../src/core/archive/merge.js';
 import { FlowManager, type FlowData } from '../../src/core/flow-manager.js';
 import { t } from '../../src/core/i18n.js';
@@ -540,5 +541,173 @@ describe('archive 命令（op-010 L2）', () => {
     });
     expect(existsSync(join(tmpDir, '.openfeel', 'log', 'archive-stage-01.md'))).toBe(false);
     process.exitCode = 0;
+  });
+});
+
+// ═══════════════════════════════════════════════
+// v1.5.8 / REQ-030：flow archive 发布软门（未完成需求）
+// ═══════════════════════════════════════════════
+
+describe('flow archive 发布软门（REQ-030）', () => {
+  let tmpDir: string;
+  let program: Command;
+  let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
+  let cwdMock: ReturnType<typeof vi.fn>;
+  let exitMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-flow-archive-'));
+    mockHome.dir = tmpDir;
+    logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    process.exitCode = 0;
+    program = new Command();
+    program.exitOverride();
+    registerFlowCommand(program);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    mockHome.dir = '';
+    logMock.mockRestore();
+    errorMock.mockRestore();
+    cwdMock.mockRestore();
+    exitMock.mockRestore();
+  });
+
+  async function safeParse(args: string[]): Promise<void> {
+    try {
+      await program.parseAsync(args, { from: 'user' });
+    } catch (err) {
+      if (!(err instanceof CommanderError)) {
+        throw err;
+      }
+    }
+  }
+
+  const flowPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
+  const archivePath = (v: string): string => join(tmpDir, '.openfeel', 'flow-archive', `${v}.json`);
+  const stagesDir = (): string => join(tmpDir, '.openfeel', 'flow-archive');
+
+  /** 构造阶段对象（含 1 个 op） */
+  function mkStageObj(name: string, opIds: string[]): Record<string, unknown> {
+    const ops: Record<string, unknown> = {};
+    for (const id of opIds) {
+      ops[id] = {
+        id, title: 't', state: 'pending', assignee: 'x', attempts: 0, max_attempts: 3,
+        checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+      };
+    }
+    return { name, phase: 'done', status: 'done', deps: [], ops };
+  }
+
+  /** 可归档夹具：v1.0.0 阶段全 done + 终态需求 REQ-001 + 未完成需求 REQ-002 */
+  function setupArchivable(): void {
+    FlowManager.initFlow(tmpDir);
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      meta: { version: '1.0', project: 'Test', updated: new Date().toISOString() },
+      pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
+      stages: { 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) },
+      reviews: [],
+      requirements: [
+        {
+          id: 'REQ-001', title: '已完成', status: 'done', target_version: 'v1.0.0',
+          created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+        },
+        {
+          id: 'REQ-002', title: '未完成', status: 'in_progress', target_version: 'v1.0.0',
+          created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+        },
+      ],
+      log: [],
+    } as unknown as FlowData);
+    mgr.save();
+  }
+
+  it('未完成需求缺省拒绝（零写盘）+ 提示 rollover / --allow-unfinished', async () => {
+    setupArchivable();
+    const before = readFileSync(flowPath(), 'utf-8');
+
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['flow', 'archive', 'v1.0.0']);
+
+    expect(process.exitCode).toBe(1);
+    const stderr = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(stderr).toContain('未完成需求');
+    expect(stderr).toContain('REQ-002');
+    expect(stderr).toContain('--allow-unfinished');
+    expect(stderr).toContain('req rollover');
+    // 零写盘：flow.json 逐字节不变 + 归档文件不存在
+    expect(readFileSync(flowPath(), 'utf-8')).toBe(before);
+    expect(existsSync(stagesDir())).toBe(false);
+  });
+
+  it('--json 缺省拒绝 → error=unfinished-requirements + unfinished/counts（零写盘）', async () => {
+    setupArchivable();
+    const before = readFileSync(flowPath(), 'utf-8');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'archive', 'v1.0.0', '--json']);
+
+    expect(process.exitCode).toBe(1);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(payload.error).toBe('unfinished-requirements');
+    expect(payload.version).toBe('v1.0.0');
+    expect(payload.unfinished).toEqual(['REQ-002']);
+    expect(payload.counts).toEqual({ done: 1, unfinished: 1, other: 0, total: 2 });
+    expect(payload.errorKind).toBe('refusal');
+    expect(readFileSync(flowPath(), 'utf-8')).toBe(before);
+    expect(existsSync(stagesDir())).toBe(false);
+  });
+
+  it('--allow-unfinished 放行：终态需求搬入归档 + 从 flow.json 删除 + 人类输出需求数', async () => {
+    setupArchivable();
+    const before = readFileSync(flowPath(), 'utf-8');
+
+    logMock.mockClear();
+    errorMock.mockClear();
+    await safeParse(['flow', 'archive', 'v1.0.0', '--allow-unfinished']);
+
+    expect(process.exitCode).toBe(0);
+    expect(existsSync(archivePath('v1.0.0'))).toBe(true);
+    const file = JSON.parse(readFileSync(archivePath('v1.0.0'), 'utf-8'));
+    expect(file.requirements.map((r: { id: string }) => r.id)).toEqual(['REQ-001']);
+    expect(file.counts).toMatchObject({ requirements: 1 });
+
+    const after = JSON.parse(readFileSync(flowPath(), 'utf-8')) as FlowData;
+    expect(after.requirements?.map((r) => r.id)).toEqual(['REQ-002']);   // 未完成需求保留
+    expect(after.log[after.log.length - 1].action).toBe('archive_flow_version');
+    expect(after.log[after.log.length - 1].detail).toMatchObject({ requirements: 1 });
+    expect(before).not.toBe(readFileSync(flowPath(), 'utf-8'));
+
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(out).toContain('需求：1 条');
+    // 显式放行时人类模式给出警告（stderr）
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('警告');
+  });
+
+  it('--json --allow-unfinished → 既有 9 键保持序 + 末尾追加 requirements', async () => {
+    setupArchivable();
+
+    logMock.mockClear();
+    await safeParse(['flow', 'archive', 'v1.0.0', '--json', '--allow-unfinished']);
+
+    expect(process.exitCode).toBe(0);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(payload)).toEqual([
+      'schemaVersion', 'version', 'stages', 'reviews', 'log', 'dryRun',
+      'eligible', 'unfinishedStages', 'blockingReviews', 'requirements',
+    ]);
+    expect(payload).toMatchObject({
+      schemaVersion: 1, version: 'v1.0.0', dryRun: false, eligible: true,
+      unfinishedStages: [], blockingReviews: [], requirements: 1,
+    });
   });
 });

@@ -99,4 +99,9 @@ export interface RequirementData {
   review?: RequirementReviewRecord;
   /** 最近一次验证记录（v1.5.8 / REQ-027；done 门要求 result === 'pass'；可选——读侧宽容） */
   verification?: RequirementVerificationRecord;
+  /**
+   * 顺延来源版本链（v1.5.8 / REQ-030）：`req rollover` 每次改 `target_version` 时追加来源版本，
+   * 去重保序（不重复记录同一版本）。可选——读侧宽容不 load 补齐，不参与 done 门 / 聚合判定。
+   */
+  carried_from?: string[];
 }

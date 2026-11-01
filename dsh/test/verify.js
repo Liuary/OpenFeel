@@ -9,7 +9,7 @@
  * 用法：node test/verify.js [--keep]
  */
 
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -1555,6 +1555,159 @@ async function main() {
     assert(Array.isArray(config.commandPrefix) && config.commandPrefix.length === 0, '非法前缀应回落空数组');
     assert(config.autoPrompt === false, 'autoPrompt=false 应被尊重');
     assert(config.language === 'en', 'language=en 应被尊重');
+  });
+
+  // ── v1.5.8 / REQ-030：发布门 / 顺延 / 需求随版本归档（副本） ──
+  // 能力探测同 REQ-027：验证跑在已安装 CLI 上，旧版无新子命令时跳过并说明。
+  let hasReq030 = false;
+  try {
+    const probe = await tempCli.run(['req', '--help'], { cwd: tempProject });
+    hasReq030 = probe.code === 0
+      && probe.stdout.includes('release-check')
+      && probe.stdout.includes('rollover');
+  } catch {
+    hasReq030 = false;
+  }
+
+  await check('feel_req action=release-check 只读返回 done/unfinished（REQ-030，副本）', async () => {
+    if (!hasReq030) {
+      process.stdout.write('    (skip: 目标 openfeel CLI 未包含 REQ-030 命令，重装新版后覆盖)\n');
+      return;
+    }
+    const before = readFileSync(join(tempProject, '.openfeel', 'flow.json'), 'utf8');
+    const result = await workspace.tools.get('feel_req').execute(
+      { action: 'release-check', version: 'v9.9.9' },
+      tempExec,
+    );
+    const data = ok(result, 'req release-check');
+    assert(data.version === 'v9.9.9', `version 应回显 v9.9.9，实际 ${data.version}`);
+    assert(Array.isArray(data.done), 'done 应为数组');
+    assert(Array.isArray(data.unfinished), 'unfinished 应为数组');
+    assert(data.unfinished.length >= 1, `未完成需求应 >=1，实际 ${JSON.stringify(data.unfinished)}`);
+    assert(typeof data.counts?.unfinished === 'number', 'counts.unfinished 应为 number');
+    assert(result.summary.includes('未完成'), `summary 应提示未完成需求：${result.summary}`);
+    // 只读：flow.json 逐字节不变
+    assert(readFileSync(join(tempProject, '.openfeel', 'flow.json'), 'utf8') === before, 'release-check 不应写盘');
+  });
+
+  await check('feel_req action=rollover --all 改 target_version + carried_from（REQ-030，副本）', async () => {
+    if (!hasReq030) {
+      process.stdout.write('    (skip: 目标 openfeel CLI 未包含 REQ-030 命令)\n');
+      return;
+    }
+    const listed = ok(await workspace.tools.get('feel_req').execute({ action: 'list' }, tempExec), 'req list');
+    const target = listed.requirements.find((/** @type {any} */ item) => item.title === '适配器验证需求');
+    assert(target !== undefined, '未找到适配器验证需求');
+    ok(await workspace.tools.get('feel_req').execute(
+      { action: 'rollover', from: 'v9.9.9', to: 'v9.9.10', all: true },
+      tempExec,
+    ), 'req rollover');
+    const shown = ok(await workspace.tools.get('feel_req').execute({ action: 'show', id: target.id }, tempExec), 'req show');
+    assert(shown.requirement.target_version === 'v9.9.10', `target_version 应为 v9.9.10，实际 ${shown.requirement.target_version}`);
+    assert(
+      Array.isArray(shown.requirement.carried_from) && shown.requirement.carried_from.includes('v9.9.9'),
+      `carried_from 应记录 v9.9.9：${JSON.stringify(shown.requirement.carried_from)}`,
+    );
+  });
+
+  await check('feel_req action=rollover --id 与 --all 互斥 → FEEL_BAD_USAGE（REQ-030）', async () => {
+    if (!hasReq030) {
+      process.stdout.write('    (skip: 目标 openfeel CLI 未包含 REQ-030 命令)\n');
+      return;
+    }
+    /** @type {any} */
+    let error;
+    try {
+      await workspace.tools.get('feel_req').execute(
+        { action: 'rollover', from: 'v9.9.10', to: 'v9.9.11', id: 'REQ-001', all: true },
+        tempExec,
+      );
+    } catch (caught) {
+      error = caught;
+    }
+    assert(error !== undefined, '--id 与 --all 同用应抛错');
+    assert(error.code === 'FEEL_BAD_USAGE', `code 应为 FEEL_BAD_USAGE，实际 ${error.code}`);
+  });
+
+  await check('feel_req action=list include_archived / show 已归档回退（REQ-030，副本）', async () => {
+    if (!hasReq030) {
+      process.stdout.write('    (skip: 目标 openfeel CLI 未包含 REQ-030 命令)\n');
+      return;
+    }
+    // 直接写一份归档文件（副本）：含一条终态需求 REQ-900
+    const archiveDir = join(tempProject, '.openfeel', 'flow-archive');
+    mkdirSync(archiveDir, { recursive: true });
+    const archivedReq = {
+      id: 'REQ-900',
+      title: '已归档需求',
+      status: 'done',
+      target_version: 'v9.9.8',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-02T00:00:00.000Z',
+    };
+    writeFileSync(join(archiveDir, 'v9.9.8.json'), `${JSON.stringify({
+      schemaVersion: 1,
+      version: 'v9.9.8',
+      archived_at: '2026-01-02T00:00:00.000Z',
+      stages: {},
+      reviews: [],
+      log: [],
+      requirements: [archivedReq],
+      counts: { stages: 0, reviews: 0, log: 0, requirements: 1 },
+    }, null, 2)}\n`, 'utf8');
+
+    const listed = ok(await workspace.tools.get('feel_req').execute(
+      { action: 'list', include_archived: true },
+      tempExec,
+    ), 'req list --include-archived');
+    const found = listed.requirements.find((/** @type {any} */ item) => item.id === 'REQ-900');
+    assert(found !== undefined, 'list include_archived 应包含 REQ-900');
+    assert(found.archived === true, '归档需求应标记 archived:true');
+
+    const shown = ok(await workspace.tools.get('feel_req').execute({ action: 'show', id: 'REQ-900' }, tempExec), 'req show 已归档');
+    assert(shown.archived === true, 'show 已归档需求应标记 archived:true');
+    assert(shown.requirement.id === 'REQ-900', 'show 应回退读取归档文件');
+  });
+
+  await check('feel_archive create 发布软门：未完成需求缺省拒绝 / allow_unfinished 放行（REQ-030，副本）', async () => {
+    if (!hasReq030) {
+      process.stdout.write('    (skip: 目标 openfeel CLI 未包含 REQ-030 命令)\n');
+      return;
+    }
+    // 副本内造一个「阶段全 done + 一条未完成需求」的版本 v9.9.7
+    const flowPath = join(tempProject, '.openfeel', 'flow.json');
+    const flow = JSON.parse(readFileSync(flowPath, 'utf8'));
+    flow.stages['v9.9.7-stage-01'] = {
+      name: 's', phase: 'done', status: 'done', deps: [], ops: {},
+    };
+    flow.requirements = Array.isArray(flow.requirements) ? flow.requirements : [];
+    flow.requirements.push({
+      id: 'REQ-901', title: '未完成需求', status: 'in_progress', target_version: 'v9.9.7',
+      created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
+    });
+    writeFileSync(flowPath, `${JSON.stringify(flow, null, 2)}\n`, 'utf8');
+
+    // 缺省：拒绝（零写盘）
+    const before = readFileSync(flowPath, 'utf8');
+    /** @type {any} */
+    let rejected;
+    try {
+      await workspace.tools.get('feel_archive').execute({ action: 'create', version: 'v9.9.7', dry_run: true }, tempExec);
+    } catch (caught) {
+      rejected = caught;
+    }
+    assert(rejected !== undefined, '存在未完成需求应拒绝');
+    assert(rejected.kind === 'refusal', `kind 应为 refusal，实际 ${rejected.kind}`);
+    assert(readFileSync(flowPath, 'utf8') === before, '拒绝应零写盘');
+    assert(!existsSync(join(tempProject, '.openfeel', 'flow-archive', 'v9.9.7.json')), '拒绝不应写归档文件');
+
+    // allow_unfinished=true：dry-run 放行（零写盘）
+    const allowed = ok(await workspace.tools.get('feel_archive').execute(
+      { action: 'create', version: 'v9.9.7', dry_run: true, allow_unfinished: true },
+      tempExec,
+    ), 'feel_archive create --allow-unfinished');
+    assert(allowed.dryRun === true, 'dryRun 应为 true');
+    assert(allowed.requirements === 0, `未完成需求不应随版本归档，requirements 应为 0，实际 ${allowed.requirements}`);
   });
 
   // 清理

@@ -2457,11 +2457,12 @@ describe('flow 命令（stage-41）', () => {
       const payload = JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
       expect(Object.keys(payload)).toEqual([
         'schemaVersion', 'version', 'stages', 'reviews', 'log', 'dryRun',
-        'eligible', 'unfinishedStages', 'blockingReviews',
+        'eligible', 'unfinishedStages', 'blockingReviews', 'requirements',
       ]);
       expect(payload).toMatchObject({
         schemaVersion: 1, version: 'v1.9.0', stages: 2, reviews: 1, log: 1,
         dryRun: false, eligible: true, unfinishedStages: [], blockingReviews: [],
+        requirements: 0,
       });
     });
 
@@ -2511,12 +2512,12 @@ describe('flow 命令（stage-41）', () => {
       const payload = JSON.parse(logMock.mock.calls[0][0] as string) as Record<string, unknown>;
       expect(payload).toEqual({
         schemaVersion: 1, version: 'v1.9.0', stages: 2, reviews: 1, log: 1, dryRun: true,
-        eligible: true, unfinishedStages: [], blockingReviews: [],
+        eligible: true, unfinishedStages: [], blockingReviews: [], requirements: 0,
       });
-      // 键序冻结（D-97-03-03）：成功 9 键
+      // 键序冻结（D-97-03-03）：成功 9 键 + v1.5.8 追加 requirements（第 10 键）
       expect(Object.keys(payload)).toEqual([
         'schemaVersion', 'version', 'stages', 'reviews', 'log', 'dryRun',
-        'eligible', 'unfinishedStages', 'blockingReviews',
+        'eligible', 'unfinishedStages', 'blockingReviews', 'requirements',
       ]);
       expect(collectWrites()).toEqual(before);
     });
@@ -2771,7 +2772,7 @@ describe('flow 命令（stage-41）', () => {
       };
       expect(Object.keys(payload).sort()).toEqual(['schemaVersion', 'versions']);
       expect(payload.schemaVersion).toBe(1);
-      expect(payload.versions).toEqual([{ version: 'v1.1.7', counts: { stages: 1, reviews: 1, log: 1 } }]);
+      expect(payload.versions).toEqual([{ version: 'v1.1.7', counts: { stages: 1, reviews: 1, log: 1, requirements: 0 } }]);
     });
 
     it('T5.5c2: list 损坏文件 → 不可读文案（不抛）', async () => {
@@ -2827,8 +2828,9 @@ describe('flow 命令（stage-41）', () => {
       expect(payload).toEqual(onDisk);
       expect(payload.schemaVersion).toBe(1);
       // stage-95 op-001 / G-1：首键重定位（命令层 withSchemaVersion；其余相对序不变）
+      // v1.5.8 / REQ-030：`requirements` 为归档文件追加段（log 之后、counts 之前）
       expect(Object.keys(payload)).toEqual([
-        'schemaVersion', 'version', 'stages', 'reviews', 'log', 'counts', 'archived_at',
+        'schemaVersion', 'version', 'stages', 'reviews', 'log', 'requirements', 'counts', 'archived_at',
       ]);
       expect(payload.log).toHaveLength(1);
       expect(payload.reviews).toHaveLength(1);
@@ -2956,7 +2958,8 @@ describe('flow 命令（stage-41）', () => {
         const optDesc = (cmd: Command, flag: string): string =>
           cmd.options.find((o) => o.long === flag)!.description;
         expect(optDesc(archiveCmd, '--dry-run')).toContain('判据门照常校验');
-        expect(optDesc(archiveCmd, '--json')).toContain('{ schemaVersion, version, stages, reviews, log, dryRun, eligible, unfinishedStages, blockingReviews }');
+        expect(optDesc(archiveCmd, '--json')).toContain('{ schemaVersion, version, stages, reviews, log, dryRun, eligible, unfinishedStages, blockingReviews, requirements }');
+        expect(optDesc(archiveCmd, '--allow-unfinished')).toContain('未完成需求');
 
         const listCmd = archiveCmd.commands.find((c) => c.name() === 'list')!;
         expect(listCmd.description()).toContain('引擎字典序');

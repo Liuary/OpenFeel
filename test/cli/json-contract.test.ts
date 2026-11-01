@@ -385,9 +385,10 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     const d = await doc(['flow', 'archive', 'v1.9.0', '--json']);
     expect(Object.keys(d)).toEqual([
       'schemaVersion', 'version', 'stages', 'reviews', 'log', 'dryRun',
-      'eligible', 'unfinishedStages', 'blockingReviews',
+      'eligible', 'unfinishedStages', 'blockingReviews', 'requirements',
     ]);
     expect(d.dryRun).toBe(false);
+    expect(d.requirements).toBe(0);
   });
 
   it('#9 flow archive list：顶层与元素键序冻结', async () => {
@@ -398,7 +399,7 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     const rows = d.versions as Array<Record<string, unknown>>;
     expect(rows).toHaveLength(1);
     expect(Object.keys(rows[0])).toEqual(['version', 'counts']);
-    expect(Object.keys(rows[0].counts as object)).toEqual(['stages', 'reviews', 'log']);
+    expect(Object.keys(rows[0].counts as object)).toEqual(['stages', 'reviews', 'log', 'requirements']);
   });
 
   it('#10 flow archive show：首键重定位（G-1）且其余相对序不变', async () => {
@@ -407,7 +408,7 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     const raw = await capture(['flow', 'archive', 'show', 'v1.9.0', '--json']);
     const d = JSON.parse(raw) as Record<string, unknown>;
     expect(Object.keys(d)).toEqual([
-      'schemaVersion', 'version', 'stages', 'reviews', 'log', 'counts', 'archived_at',
+      'schemaVersion', 'version', 'stages', 'reviews', 'log', 'requirements', 'counts', 'archived_at',
     ]);
     expect(d.schemaVersion).toBe(1);
     expect(typeof d.archived_at).toBe('string');

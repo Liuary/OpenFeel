@@ -1095,8 +1095,12 @@ describe('req 命令组（stage-82）', () => {
       'help.req.review.note', 'help.req.review.independent', 'help.req.review.self',
       'help.req.verify', 'help.req.verify.argid', 'help.req.verify.result', 'help.req.verify.kind',
       'help.req.verify.by', 'help.req.verify.note', 'help.req.verify.evidence',
+      // v1.5.8 / REQ-030：需求随版本归档 + 发布门 / 顺延
+      'help.req.list.includeArchived',
+      'help.req.release-check', 'help.req.release-check.argversion', 'help.req.release-check.json',
+      'help.req.rollover', 'help.req.rollover.from', 'help.req.rollover.to', 'help.req.rollover.id', 'help.req.rollover.all',
     ];
-    expect(EXPECTED).toHaveLength(58);
+    expect(EXPECTED).toHaveLength(67);
 
     // ① 正向：zh / en 双侧 hasKey
     for (const k of EXPECTED) {
@@ -1154,17 +1158,19 @@ describe('req 命令组（stage-82）', () => {
     expect(rootProgram.commands.length).toBe(19);
   });
 
-  it('T-C5′ 越界静态断言（stage-90 supersede）：7 禁止串零命中 + 7 正控命中', () => {
+  it('T-C5′ 越界静态断言（stage-90；REQ-030 起解禁归档读依赖）：6 禁止串零命中 + 7 正控命中', () => {
     const src = readFileSync(new URL('../../src/commands/req.ts', import.meta.url), 'utf-8');
     expect(src.length).toBeGreaterThan(0);
     const FORBIDDEN = [
-      'ALLOWED_TRANSITIONS', 'resolveStageWorkflowMode', 'getValidTargets', 'flow-archive',
+      'ALLOWED_TRANSITIONS', 'resolveStageWorkflowMode', 'getValidTargets',
       '.phase', 'allLinkedStagesDone', 'padStart',
     ];
-    expect(FORBIDDEN.length).toBe(7);
+    expect(FORBIDDEN.length).toBe(6);
     for (const n of FORBIDDEN) {
       expect(src.includes(n), `禁止串命中: ${n}`).toBe(false);
     }
+    // REQ-030 新边界（正向）：`req list --include-archived` / `req show` 已归档回退**允许**命令层读归档层
+    expect(src).toContain('flow-archive');
     const POSITIVE = [
       'getAllowedNextStatuses', 'REQ_STATUSES', 'REQ_ID_PATTERN',
       'linkRequirement', 'writeRequirementBodySkeleton', 'listRequirements',
@@ -2331,5 +2337,286 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       expect(process.exitCode).toBe(0);
       expect(readFlow().requirements[0].status).toBe('done');
     });
+  });
+});
+
+// ═══════════════════════════════════════
+// v1.5.8 / REQ-030：发布门 / 顺延 / 需求随版本归档（命令层）
+// ═══════════════════════════════════════
+
+describe('REQ-030 发布门 / 顺延 / 已归档读取', () => {
+  let tmpDir: string;
+  let program: Command;
+  let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
+  let cwdMock: ReturnType<typeof vi.fn>;
+  let exitMock: ReturnType<typeof vi.fn>;
+  let prevExitCode: number | string | undefined;
+
+  beforeEach(async () => {
+    mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-r30-home-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-r30-test-'));
+    mockedChild.execSync.mockReset();
+    mockedChild.execFileSync.mockReset();
+    await initProject(tmpDir);
+
+    logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    prevExitCode = process.exitCode;
+    process.exitCode = 0;
+
+    program = new Command();
+    program.exitOverride();
+    registerReqCommand(program);
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(mockHome.dir, { recursive: true, force: true });
+    logMock.mockRestore();
+    errorMock.mockRestore();
+    cwdMock.mockRestore();
+    exitMock.mockRestore();
+    process.exitCode = prevExitCode;
+  });
+
+  async function safeParse(args: string[]): Promise<void> {
+    try {
+      await program.parseAsync(args, { from: 'user' });
+    } catch (err) {
+      if (!(err instanceof CommanderError)) {
+        throw err;
+      }
+    }
+  }
+
+  const out = (): string => logMock.mock.calls.map((c) => c[0] as string).join('\n');
+  const err = (): string => errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+  const flowPath = (): string => join(tmpDir, '.openfeel', 'flow.json');
+  const flowRaw = (): string => readFileSync(flowPath(), 'utf-8');
+  const readFlow = (): any => JSON.parse(flowRaw());
+
+  function writeFlow(mutate: (d: any) => void): void {
+    const d = readFlow();
+    mutate(d);
+    writeFileSync(flowPath(), `${JSON.stringify(d, null, 2)}\n`, 'utf-8');
+  }
+
+  function reqRow(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id,
+      title: `需求 ${id}`,
+      status: 'draft',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      ...overrides,
+    };
+  }
+
+  function resetCapture(): void {
+    logMock.mockClear();
+    errorMock.mockClear();
+    process.exitCode = 0;
+  }
+
+  /** 写一份归档文件（含终态需求；用于 include-archived / show 回退） */
+  function writeArchive(version: string, requirements: Array<Record<string, unknown>>): void {
+    const dir = join(tmpDir, '.openfeel', 'flow-archive');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${version}.json`), `${JSON.stringify({
+      schemaVersion: 1,
+      version,
+      archived_at: '2026-01-02T00:00:00.000Z',
+      stages: {},
+      reviews: [],
+      log: [],
+      requirements,
+      counts: { stages: 0, reviews: 0, log: 0, requirements: requirements.length },
+    }, null, 2)}\n`, 'utf-8');
+  }
+
+  it('req release-check：人类三桶 + 未完成提示 + exit 0（软门不阻断）', async () => {
+    writeFlow((d) => {
+      d.requirements = [
+        reqRow('REQ-001', { status: 'done', target_version: 'v1.5.8' }),
+        reqRow('REQ-002', { status: 'in_progress', target_version: 'v1.5.8' }),
+        reqRow('REQ-003', { status: 'cancelled', target_version: 'v1.5.8' }),
+        reqRow('REQ-004', { status: 'draft', target_version: 'v1.6.0' }),
+      ];
+    });
+    resetCapture();
+    await safeParse(['req', 'release-check', 'v1.5.8']);
+
+    expect(process.exitCode).toBe(0);
+    expect(errorMock).not.toHaveBeenCalled();
+    expect(out()).toContain('发布检查 v1.5.8');
+    expect(out()).toContain('已完成（1）');
+    expect(out()).toContain('未完成（1）');
+    expect(out()).toContain('其它（1）');
+    expect(out()).toContain('REQ-002');
+    expect(out()).toContain('done=1 unfinished=1 other=1 total=3');
+    expect(out()).toContain('--allow-unfinished');
+  });
+
+  it('req release-check --json：四键 + 分桶/计数；零写盘', async () => {
+    writeFlow((d) => {
+      d.requirements = [
+        reqRow('REQ-001', { status: 'done', target_version: 'v1.5.8' }),
+        reqRow('REQ-002', { status: 'blocked', target_version: 'v1.5.8' }),
+        reqRow('REQ-003', { status: 'rejected', target_version: '1.5.8' }),
+      ];
+    });
+    const before = flowRaw();
+    resetCapture();
+    await safeParse(['req', 'release-check', 'v1.5.8', '--json']);
+
+    expect(process.exitCode).toBe(0);
+    const raw = logMock.mock.calls[0][0] as string;
+    const payload = JSON.parse(raw);
+    expect(Object.keys(payload)).toEqual(['schemaVersion', 'version', 'done', 'unfinished', 'counts']);
+    expect(payload.schemaVersion).toBe(1);
+    expect(payload.version).toBe('v1.5.8');
+    expect(payload.done).toEqual(['REQ-001']);
+    expect(payload.unfinished).toEqual(['REQ-002']);
+    expect(payload.counts).toEqual({ done: 1, unfinished: 1, other: 1, total: 3 });
+    expect(flowRaw()).toBe(before);            // 只读零写盘
+  });
+
+  it('req rollover --all：改 target_version + carried_from + requirement_rollover 审计', async () => {
+    writeFlow((d) => {
+      d.requirements = [
+        reqRow('REQ-001', { status: 'in_progress', target_version: 'v1.5.8' }),
+        reqRow('REQ-002', { status: 'draft', target_version: 'v1.5.8' }),
+        reqRow('REQ-003', { status: 'done', target_version: 'v1.5.8' }),
+        reqRow('REQ-004', { status: 'scheduled', target_version: 'v1.6.0' }),
+      ];
+    });
+    resetCapture();
+    await safeParse(['req', 'rollover', '--from', 'v1.5.8', '--to', 'v1.6.0', '--all']);
+
+    expect(process.exitCode).toBe(0);
+    expect(out()).toContain('已顺延 2 条需求');
+    const d = readFlow();
+    const byId = (id: string): any => d.requirements.find((r: any) => r.id === id);
+    expect(byId('REQ-001').target_version).toBe('v1.6.0');
+    expect(byId('REQ-001').carried_from).toEqual(['v1.5.8']);
+    expect(byId('REQ-002').target_version).toBe('v1.6.0');
+    expect(byId('REQ-003').target_version).toBe('v1.5.8');   // 终态不动
+    expect(byId('REQ-003').carried_from).toBeUndefined();
+    expect(byId('REQ-004').target_version).toBe('v1.6.0');   // 异版本不动
+    const last = d.log[d.log.length - 1];
+    expect(last.action).toBe('requirement_rollover');
+    expect(last.detail).toMatchObject({ from: 'v1.5.8', to: 'v1.6.0', ids: ['REQ-001', 'REQ-002'], count: 2 });
+  });
+
+  it('req rollover --id：只动目标；互斥 / 终态 / 版本不匹配均拒绝且零写盘', async () => {
+    writeFlow((d) => {
+      d.requirements = [
+        reqRow('REQ-001', { status: 'in_progress', target_version: 'v1.5.8' }),
+        reqRow('REQ-002', { status: 'done', target_version: 'v1.5.8' }),
+        reqRow('REQ-003', { status: 'scheduled', target_version: 'v1.6.0' }),
+      ];
+    });
+
+    // 互斥守卫
+    resetCapture();
+    await safeParse(['req', 'rollover', '--from', 'v1.5.8', '--to', 'v1.6.0', '--id', 'REQ-001', '--all']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('--id 与 --all 必须且只能提供一个');
+
+    let before = flowRaw();
+    resetCapture();
+    await safeParse(['req', 'rollover', '--from', 'v1.5.8', '--to', 'v1.6.0', '--id', 'REQ-002']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('终态');
+    expect(flowRaw()).toBe(before);
+
+    resetCapture();
+    await safeParse(['req', 'rollover', '--from', 'v1.5.8', '--to', 'v1.6.0', '--id', 'REQ-003']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('无法顺延');
+    expect(flowRaw()).toBe(before);
+
+    // 成功路径
+    resetCapture();
+    await safeParse(['req', 'rollover', '--from', 'v1.5.8', '--to', 'v1.6.0', '--id', 'REQ-001']);
+    expect(process.exitCode).toBe(0);
+    expect(readFlow().requirements.find((r: any) => r.id === 'REQ-001').target_version).toBe('v1.6.0');
+  });
+
+  it('req list --include-archived：合并归档终态需求（archived 标记末位）；过滤与去重', async () => {
+    writeFlow((d) => {
+      d.requirements = [
+        reqRow('REQ-001', { status: 'in_progress', target_version: 'v1.5.8' }),
+        reqRow('REQ-002', { status: 'done', target_version: 'v1.5.8' }),
+      ];
+    });
+    // 归档文件：REQ-002（与活跃重复 → 去重）+ REQ-900
+    writeArchive('v1.0.0', [
+      reqRow('REQ-002', { status: 'done', target_version: 'v1.5.8' }),
+      reqRow('REQ-900', { status: 'done', target_version: 'v1.0.0' }),
+    ]);
+
+    resetCapture();
+    await safeParse(['req', 'list', '--include-archived', '--json']);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    const ids = payload.requirements.map((r: any) => r.id);
+    expect(ids).toEqual(['REQ-001', 'REQ-002', 'REQ-900']);
+    const active = payload.requirements.find((r: any) => r.id === 'REQ-002');
+    expect(active.archived).toBeUndefined();                    // 活跃需求不出现 archived 键
+    const archived = payload.requirements.find((r: any) => r.id === 'REQ-900');
+    expect(archived.archived).toBe(true);
+    expect(Object.keys(archived).slice(-1)).toEqual(['archived']);
+
+    // --status 过滤同样作用于归档需求
+    resetCapture();
+    await safeParse(['req', 'list', '--include-archived', '--status', 'done', '--json']);
+    const doneOnly = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(doneOnly.requirements.map((r: any) => r.id)).toEqual(['REQ-002', 'REQ-900']);
+
+    // 人类输出标注（已归档）
+    resetCapture();
+    await safeParse(['req', 'list', '--include-archived']);
+    expect(out()).toContain('REQ-900');
+    expect(out()).toContain('（已归档）');
+  });
+
+  it('req show 已归档回退：归档文件只读读取 + archived:true；未命中仍 not_found', async () => {
+    writeFlow((d) => { d.requirements = []; });
+    writeArchive('v1.0.0', [reqRow('REQ-900', { status: 'done', target_version: 'v1.0.0' })]);
+    const before = flowRaw();
+
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-900', '--json']);
+    expect(process.exitCode).toBe(0);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(Object.keys(payload)).toEqual(['schemaVersion', 'requirement', 'stages', 'parent', 'children', 'archived']);
+    expect(payload.archived).toBe(true);
+    expect(payload.requirement.id).toBe('REQ-900');
+    expect(flowRaw()).toBe(before);                             // 只读零写盘
+
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-900']);
+    expect(out()).toContain('已归档：随版本 v1.0.0');
+
+    resetCapture();
+    await safeParse(['req', 'show', 'REQ-999', '--json']);
+    expect(process.exitCode).toBe(1);
+    expect(JSON.parse(logMock.mock.calls[0][0] as string).error).toBe('not_found');
+  });
+
+  it('req next 第三排序键为数值：REQ-999 在 REQ-1000 之前', async () => {
+    writeFlow((d) => {
+      d.requirements = [
+        reqRow('REQ-1000', { status: 'scheduled', target_version: 'v1.5.8' }),
+        reqRow('REQ-999', { status: 'scheduled', target_version: 'v1.5.8' }),
+      ];
+    });
+    resetCapture();
+    await safeParse(['req', 'next', '--limit', '2', '--json']);
+    const payload = JSON.parse(logMock.mock.calls[0][0] as string);
+    expect(payload.candidates.map((r: any) => r.id)).toEqual(['REQ-999', 'REQ-1000']);
   });
 });

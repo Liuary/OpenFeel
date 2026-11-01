@@ -348,6 +348,26 @@ async function main() {
     assert(stageTool.parameters.properties.result.enum.includes('pass'), 'feel_stage.result 缺 pass');
   });
 
+  await check('v1.5.8 / REQ-030：发布门 / 顺延 / 归档软门参数合法', () => {
+    const reqTool = tools.find((tool) => tool.name === 'feel_req');
+    assert(reqTool, '缺少 feel_req 工具');
+    const reqActions = reqTool.parameters.properties.action.enum;
+    for (const action of ['release-check', 'rollover']) {
+      assert(reqActions.includes(action), `feel_req.action 缺枚举值 ${action}`);
+    }
+    for (const key of ['version', 'from', 'to']) {
+      assert(reqTool.parameters.properties[key]?.type === 'string', `feel_req.${key} 应为 string`);
+    }
+    for (const key of ['all', 'include_archived']) {
+      assert(reqTool.parameters.properties[key]?.type === 'boolean', `feel_req.${key} 应为 boolean`);
+    }
+    assert(/release-check/.test(reqTool.description ?? ''), 'feel_req.description 应提到 release-check');
+    const archiveTool = tools.find((tool) => tool.name === 'feel_archive');
+    assert(archiveTool, '缺少 feel_archive 工具');
+    assert(archiveTool.parameters.properties.allow_unfinished?.type === 'boolean', 'feel_archive.allow_unfinished 应为 boolean');
+    assert(/allow_unfinished/.test(archiveTool.description ?? ''), 'feel_archive.description 应提到 allow_unfinished');
+  });
+
   process.stdout.write('\n' + '='.repeat(60) + '\n');
   process.stdout.write(`通过 ${passed} / ${passed + failed}\n`);
   if (failed > 0) {

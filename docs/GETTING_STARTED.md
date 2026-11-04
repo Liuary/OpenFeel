@@ -116,7 +116,7 @@ openfeel flow phases --mode fast                        # 按指定模式查看�
 
 > **命令执行工具（v1.3.5）**：Agent 运行 shell 命令时，**Windows 下优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）**；macOS / Linux 用 `bash`；默认不用 `cmd.exe`；同一任务内保持同一 shell，路径与转义按该 shell 书写。
 
-> **微变更（v1.4.0）**：静态展示资源（`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`、`assets/**`、`public/**`）在任意相位可直接写；需要改源码的微调在**无活跃阶段**时用 `openfeel chore "<说明>"` 开启 60 分钟写窗口，`openfeel chore --end` 收口（不建阶段）。源码阶段门禁、`flow.json` / `status.md` 保护、混合目标从严均不变。
+> **微变更（v1.4.0 / chore 于 v1.5.11 收窄）**：静态展示资源（`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`、`assets/**`、`public/**`）在任意相位可直接写；需要改源码的微调在**无活跃阶段**时由**人类在外部终端**执行 `openfeel chore "<说明>"` 开启写窗口（**上限 30 分钟**，`--ttl-min 1..30` 只能改短；**源码写入必须显式 `--source`**，缺省只放行 doc/静态资源），`openfeel chore --end` 收口（不建阶段）。源码阶段门禁、`flow.json` / `status.md` 保护、混合目标从严均不变。
 
 > **状态与记录（v1.5.0）**：只有 Feel 写状态；子 agent 不读写 `dev_last*` / `current.md` / `status.md` / `flow.json`。日志不强制（`flow.json.log` 由 CLI 维护，最近 200 条）。`dev_last.md` 的简要状态由 `openfeel dev sync` 维护：`flow advance` 在开始 / 转折 / 结束或每 30 分钟自动同步；`openfeel dev status` 可查看是否到期。
 

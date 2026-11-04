@@ -381,7 +381,7 @@ describe('knowledge dedup（stage-51 op-007 N9-2）', () => {
 
   // ── stage-97 op-003 / v1.2.4 A1~A5：注册选项 / 成功出口计数 ──
 
-  it('v1.5.6 计数：注册 --json 选项 43 / 成功出口 42（v1.5.8 / REQ-030 新增 req release-check --json）', () => {
+  it('v1.5.6 计数：注册 --json 选项 44 / 成功出口 43（v1.5.8 / REQ-030 新增 req release-check --json；v1.5.10 / stage-125 新增 dashboard --json）', () => {
     // 遍历完整命令树（src/cli/index.ts 已注册全部命令组）
     const withJson: Command[] = [];
     const walk = (cmd: Command): void => {
@@ -394,10 +394,10 @@ describe('knowledge dedup（stage-51 op-007 N9-2）', () => {
     };
     walk(rootProgram);
 
-    expect(withJson).toHaveLength(43);
+    expect(withJson).toHaveLength(44);
     // 「注册选项数」= 成功出口 + 1（flow advance 的 --json 仅错误模式，不构成成功出口）
     const errorOnly = withJson.filter((c) => c.name() === 'advance' && c.parent?.name() === 'flow');
     expect(errorOnly).toHaveLength(1);
-    expect(withJson.length - errorOnly.length).toBe(42);
+    expect(withJson.length - errorOnly.length).toBe(43);
   });
 });

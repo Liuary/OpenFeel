@@ -103,7 +103,10 @@ Windows 上的 `openfeel.cmd` 垫片。
         activation: auto         # auto=项目→完整纪律/非项目→bootstrap；always=完整纪律；off=不注入
         enforce: always          # always=所有工作区守门禁；project=仅项目；off=完全不注册 guard
         allowGeneral: true       # general 需求 in_progress 且无阶段时放行源码写入
-        # mutatingTools 默认 [edit, write, apply_patch, str_replace_editor]；pwsh 默认不守
+        # mutatingTools 默认 [edit, write, apply_patch, str_replace_editor, bash, pwsh, shell, execute_command, exec]
+        # （bash / pwsh 默认受守；shell / execute_command / exec 本宿主不存在，仅作跨宿主防御）
+        # shellGate 可选（只影响 shell 分支；env OPENFEEL_SHELL_GATE 优先）：strict | warn | off
+        # shellGate: strict
 ```
 
 `normalizeConfig` 对非法值做安全回落（如 `timeoutMs: -5` → `120000`）。
@@ -232,19 +235,25 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 适配器在 `apply()` 中用 DSH 的 `ctx.tools.guard()` 注册同步守卫（`dsh/lib/guard.js`）：
 
-- **只守** `edit` / `write` / `apply_patch` / `str_replace_editor`。`feel_*`、`pwsh`、`read`、`todo_write` 等不受影响。
+- **文件工具与 shell 都受守（v1.5.11）**：文件工具 `edit` / `write` / `apply_patch` / `str_replace_editor`；shell `bash` / `pwsh`（`shell` / `execute_command` / `exec` 在本宿主不存在，仅预置为跨宿主防御条目）。`feel_*`、`read`、`todo_write` 等不受影响。
 - `.openfeel/**` 是**流程产物区**：plan / scheme / review 产物在任意阶段可写；但 `.openfeel/flow.json` 与 `.openfeel/**/status.md` **始终拒绝**（用 `feel_*`）。受保护路径按**会话工作区 `<cwd>`** 判定；执行阶段仍可编辑其他项目的 `.openfeel/`（不做跨项目全局保护）。
 - **风险分层（v1.3.3 / v1.4.0）**——源码（`src/**` 等）仍要求存在 `exec_running` 阶段；以下两类在无活跃阶段或非 `exec_running` 相位也放行，**混合目标从严**（任一源码 → 按源码规则）：
   - **doc/note**：`docs/**` 与 `.md/.mdx/.txt/.rst/.adoc`；
   - **静态展示资源（v1.4.0）**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`，以及路径含 `assets/` 或 `public/`（支持 `crates/cli/assets/index.html` 这类嵌套资产目录；**源码扩展名不因目录豁免**，如 `assets/gen.ts` 仍按源码门禁）。
 - **审计（v1.4.0）**：doc/静态资源豁免放行与 chore 放行时，追加 JSONL 到 `.openfeel/log/guard-audit.jsonl`（`time/tool/reason/phase/paths`），best-effort 不影响放行。
-- **chore 写窗口（v1.4.0）**：`openfeel chore "<说明>"` 在**无活跃阶段**时开启 60 分钟写窗口（源码也可写），`openfeel chore --end` 收口；不写 `flow.json.stages`，只留 `chore_start` / `chore_end` 日志。存在活跃阶段时 chore 不生效（不绕过相位门）。
+- **shell 四类判定（v1.5.11 / D-126-02）**：`bash` / `pwsh` 默认受守，按命令文本分四类——
+  1. **硬拒**：受保护路径（`flow.json` / `status.md` / `chore.json` / `config.yaml` / `.preflight.json` / `guard-state.json` / `pipeline.yaml` / `flow-archive/**` 等）、用 shell 跑 `openfeel` 写子命令（`flow` / `stage` / `req` / `chore` 等，应改用 `feel_*`），以及编码与间接执行形态（`-EncodedCommand` / `iex` / `bash -c` / `node -e` / `python -c`）。
+  2. **按目标判定**：能静态解析出目标路径的源码写与 git 工作区写（`checkout` / `restore` / `reset --hard|--merge` / `stash pop|apply` / `clean` / `apply` / `commit`）→ 按相位拒（源码要求 `exec_running`；整树 git 写在无 `exec_running` 或 `.openfeel/**` 有未提交改动时拒）。
+  3. **构建产物豁免**：`dist/**`、`build/**`、`out/**`、`target/**`、`.next/**`、`*.tsbuildinfo`；`npx vitest` / `npm run build` / `cargo build` / `tsc -b` / `git status` 等只读或产物命令不误杀。
+  4. **不可判定 → 默认告警放行 + 审计留痕**（`kind=undecidable`）；要更严设 `OPENFEEL_SHELL_GATE=strict`。
+  相对路径按 `workdir ?? guard cwd` 解析；档位见下方「shell 判定档位」。
+- **chore 写窗口（v1.5.11 收窄）**：`openfeel chore "<说明>"` **只允许人类在外部终端**开启（agent 经 shell 跑 `openfeel chore` 属写子命令 → 硬拒；`.openfeel/chore.json` 也是受保护路径）。窗口上限 **30 分钟**（`--ttl-min 1..30` 只能改短，越界 / 非整数 exit 1 且零写盘）；**源码写入必须显式 `--source`**——缺省窗口只放行 doc / 静态资源，旧 `chore.json` 无 `source_allowed: true` 一律视为未授权。`openfeel chore --end` 收口；不写 `flow.json.stages`，只留 `chore_start` / `chore_end` 日志。存在活跃阶段时 chore 不生效（不绕过相位门）。
 - **bootstrap 例外（v1.3.3）**：无 `.openfeel/` 时，全部目标为**新增文件**（`apply_patch` 须全部 `*** Add File:`）→ 放行并提示补账本；已存在文件、`.openfeel/**`、Update/Delete/Move 仍拒绝（`enforce=always` 下）。`project`/`off` 放行。
 - `apply_patch` 解析所有 patch 头（`*** Update/Add/Delete File:`、`*** Move to:`、`---/+++`）；全部目标在 `.openfeel/**` 才内部放行，混合/无头保守拒绝。
 - `enforce=off` **完全不注册 guard**（连 flow.json/status.md 也不拦）。
 - `ctx.tools.guard` 缺失时记警告并降级；`ctx.effect` 负责 disposer，避免 HMR 累积。
 
-**逃生通道**：`pwsh` / `bash` 默认不守，仍可直接写盘；`enforce=always` 对非 OpenFeel 工作区较激进，可用 `project` / `off` opt-out。
+**shell 判定档位（`OPENFEEL_SHELL_GATE`；只影响 shell 分支，文件工具不受影响）**：缺省 = 「第 1/2 类拒 + 第 4 类告警」；`strict` = 第 4 类也拒；`warn` = 第 1/2/4 类全部降级为告警放行（仍写审计）；`off` = shell 完全不解析（`edit` / `write` 等仍受守）。profile 的 `shellGate:` 同值，环境变量优先（排障逃生阀）。`enforce=always` 对非 OpenFeel 工作区较激进，可用 `project` / `off` opt-out。
 
 ---
 
@@ -254,16 +263,16 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ```powershell
 cd plugin
-node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（42 项）
-node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（96 项）
-node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（58 项）
+node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（46 项）
+node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（112 项）
+node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（138 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（10 项）
 ```
 
 - `contract.js` 用宿主 asar 提取出的**真实** `assertSupportedJsonSchema`。
 - `verify.js` 对真实 OpenFeel 项目做只读校验，**所有写操作只打在 `os.tmpdir()` 副本上**，并断言原项目 `revision` 未被改动。
   **前置条件**：当前项目必须至少有 1 个已注册阶段（`flow.json` 的 `stages` 非空）。版本归档（`flow archive <version>`）会把阶段从 `flow.json` 移出，归档后 `stages = 0` 时脚本会在 `[2] 只读工具 — 真实项目快照` 报「需要至少一个阶段用于适配器验证」并退出 1——这是**前置条件不满足**，不是适配器缺陷。此时先 `openfeel plan stage add <临时阶段>`（或切到有活跃阶段的工作区）再跑；CI 不执行本脚本（CI 只跑 `node --check dsh/lib/**` 与 `npm test`），不影响发布门禁。
-- `guard.js` 覆盖 `off/project/always`、`.openfeel/**` 产物、`exec_running`、general 需求、apply_patch 混合/无头/Move 同块、受保护路径、bootstrap 文案等 36 条。
+- `guard.js` 覆盖 `off/project/always`、`.openfeel/**` 产物、`exec_running`、general 需求、apply_patch 混合/无头/Move 同块、受保护路径、bootstrap 文案、shell 四类判定与 `OPENFEEL_SHELL_GATE` 三档等 138 条。
 - `integration.js` 构造真实 Cordis 上下文 + 真实 `ToolRuntime`，调用适配器 `apply()`，断言 13 个工具真的完成注册与投影。
 
 依赖提取：`contract.js` / `integration.js` 默认读 `%TEMP%\dsh-asar\dsh\node_modules\@deepseek-ai`（从宿主
@@ -329,9 +338,9 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 6. **超时**：默认单次 120s。超大 `flow.json`（数百 KB）的 `flow status` 可能接近上限。
 7. **不替代 agent 委派**：`feel_next` 给出负责 Agent 与 `[HANDOFF: agent]` 标记，实际派发
    由 DSH 的 `subagent` / `workflow` 完成——DSH 没有 OpenFeel 的 `Task` 语义。
-8. **硬门禁只覆盖文件修改工具**：`edit` / `write` / `apply_patch` / `str_replace_editor`；
-   `pwsh` / `bash` 默认不守，仍可直接写盘（显式逃生通道）。若需要 shell 级策略，属于后续
-   `guardShell` 的独立设计。
+8. **写入门禁覆盖文件工具 + shell（v1.5.11）**：`edit` / `write` / `apply_patch` / `str_replace_editor`
+   与 `bash` / `pwsh` 都受守；shell 按四类判定（见 §6.5）——第 1/2 类拒、第 3 类构建产物豁免、
+   第 4 类默认告警，可用 `OPENFEEL_SHELL_GATE=strict` 收紧、`=warn|off` 放宽（只影响 shell 分支）。
 9. **默认 `enforce=always` 较激进**：所有工作区（含非 OpenFeel）都会拦截文件写入，直到
    `openfeel init` 或用户把 profile 的 `enforce` 改为 `project` / `off`。适合“OpenFeel 必须启用”
    的机器；普通试用建议 `project`。

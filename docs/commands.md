@@ -25,7 +25,7 @@
 
 **全局 `--project` 边界（v1.2.2）**：`runCli` argv 预扫描后 `process.chdir` 单点注入；多值且不一致 → `INVALID_ARGUMENT`（exit 1），路径不存在或非目录 → `PROJECT_NOT_FOUND`（exit 1）；命令输出语言按**目标项目**解析，而 `--help` 语言按原始 cwd（`applyHelpI18n` 于 chdir 前执行）；`--log-file` 相对路径按**原始 cwd**；`knowledge dedup` 保留其本地 `--project <path>` 声明（语法零变化，经 `optsWithGlobals()` + 单点解析读取）；CLI 为单进程单命令，`chdir` 每进程至多一次。
 
-**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 42 个成功出口、也不计入 43 个注册选项**。
+**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 43 个成功出口、也不计入 44 个注册选项**。
 
 ## 错误封装（v1.2.2）
 
@@ -1120,20 +1120,24 @@ openfeel dev status    # 只读：是否到期（默认 30 分钟窗口）
 - **状态归属**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel 写；子 agent 不读不写。
 - **日志**：不强制写日志；`flow.json.log` 由 CLI 维护，仅保留最近 200 条。
 
-## chore — 微变更通道（v1.4.0）
+## chore — 微变更通道（v1.4.0；v1.5.11 收窄）
 
 给「单文件、无接口变化、可肉眼验证」的微变更一条 1 步通道（UI 微调 / 文案 / 静态资源）：
 
 ```bash
-openfeel chore "<说明>"     # 开启写窗口（60 分钟；要求无活跃阶段）
-openfeel chore --end        # 收口（幂等）
-openfeel chore --status     # 只读状态（active / expired / none）
+openfeel chore "<说明>"                       # 开启写窗口（默认 30 分钟；要求无活跃阶段）
+openfeel chore --source "<说明>"              # 开启并显式允许写源码（默认只放行 doc/asset）
+openfeel chore --ttl-min 10 "<说明>"          # 只把窗口改短（1..30 的整数；>30/0/-1/1.5/abc 直接 exit 1 且零写盘）
+openfeel chore --end                          # 收口（幂等）
+openfeel chore --status                       # 只读状态（active / expired / none；标注是否允许源码与剩余分钟）
 ```
 
 - **不创建阶段**：不写 `flow.json.stages`，只追加 `chore_start` / `chore_end` 日志与 `.openfeel/chore.json`（ephemeral，到期自动失效）。
-- **写入效果（DSH 适配器）**：无活跃阶段时，chore 有效期内源码也可写；受保护路径（`.openfeel/flow.json`、`**/status.md`）仍拒绝。存在活跃阶段时 chore **不生效**（不绕过相位门）。
-- **审计**：guard 放行写 `.openfeel/log/guard-audit.jsonl`（`reason=chore`）。
-- **静态资源无需 chore**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp` 与 `assets/**`、`public/**` 在任意相位/无阶段时直接可写（混合目标从严）。
+- **TTL 上限硬定 30 分钟**：`--ttl-min` 只允许 **1..30 的整数**且只能改短；越界/非整数/≤0 → `console.error` + exit 1 + **零写盘**，不接受 env/config 绕过。
+- **写入效果（DSH 适配器）**：无活跃阶段时，chore 有效期内**默认只放行 doc/静态资源**；源码（`src/**` 等）**必须**用 `--source` 开启（`chore.json` 写 `source_allowed: true`，旧记录缺该字段视为未授权）。受保护路径（`.openfeel/flow.json`、`**/status.md`、`.openfeel/chore.json` 等）仍硬拒。存在活跃阶段时 chore **不生效**（不绕过相位门）。
+- **纯人类通道**：shell 门禁拒 agent 用 `bash`/`pwsh` 开启 chore（`--status` / `--end` 放行），`chore.json` 又在受保护名单 ⇒ 窗口只能由人类在外部终端开启。这是设计意图：写权限只能由人授予。
+- **审计**：guard 放行写 `.openfeel/log/guard-audit.jsonl`（`reason=chore`）；`chore_start` 日志 `detail.source_allowed` 显式记录是否允许源码。
+- **静态资源无需 chore**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp` 与 `assets/**`、`public/**` 在任意相位/无阶段时直接可写（混合目标从严）；**v1.5.11 起代码目录（`src` / `test` / `scripts` / `dsh` / `bin`）内不再享受该豁免**。
 
 ## migrate — 存量迁移
 
@@ -1154,9 +1158,32 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 
 > 注：`project` 组当前仅 `overview` 一个子命令（`list` / `info` 已不存在，v1.1.2-stage-56 由 `cli/BUG-007` 更正）。
 
-## JSON 出口一览（v1.5.8 快照：v1.5.6 新增 #41；v1.5.8 / REQ-030 新增 #42）
+## dashboard — 项目看板（v1.5.10）
 
-> 计数口径：**42 个成功出口 / 45 个注册选项**（45 = 43 个 `--json` 选项 + `chore --end` / `chore --status` 两个非 json 选项；v1.5.6 新增 #41 `lint req`；v1.5.8 / REQ-030 新增 #42 `req release-check`）；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
+> **命名消歧**：本节的 `openfeel dashboard` 是 **CLI 顶层命令**；它与 DSH 适配器内部模块 `dsh/lib/adapters/dashboard.js` **同名不同层**（后者是适配器内部的快照/决策模块，不是 CLI 命令），二者无运行时冲突。
+
+生成**单文件、零外链、零网络、零可执行脚本**的 HTML 项目看板（双击即开）；`--json` 输出同一份聚合数据的单文档（`schemaVersion` 首键）。
+
+```bash
+openfeel dashboard                    # 生成 HTML 到默认路径 + 3 行人类摘要
+openfeel dashboard --out <file>       # 写到指定路径（相对 cwd；父目录不存在则递归创建）
+openfeel dashboard --open             # 写默认路径并用系统默认浏览器打开
+openfeel dashboard --json             # stdout 恰好一个 JSON 文档（不写文件、不拉起进程）
+```
+
+| 参数 | 说明 |
+|------|------|
+| `--out <file>` | 输出路径（相对 cwd）。缺省 `<项目根>/.openfeel/tmp/dashboard.html`（`.gitignore` 已整目录忽略）；指向**已存在目录** → `INVALID_ARGUMENT` / exit 1，零写盘 |
+| `--open` | 写盘后用系统默认浏览器打开；**拉起失败只告警、不改退出码**（无浏览器是常态） |
+| `--json` | 单 JSON 文档 `schemaVersion,generatedAt,generator,project,requirements,stages,releases,blockingReviews,health,metrics`；**与 `--out` / `--open` 互斥**（`INVALID_ARGUMENT` / exit 1） |
+
+- **数据口径**：需求看板 / 阶段流水线 / 版本发布门与归档历史 / 阻塞 REV / 流程健康 / metrics 六块；`health.items[]` 与 `flow health --json` 的合并项**同源、仅键名不同**（`section/message` ↔ `name/detail`）；`releases.gates` **只含未归档版本**（已归档版本只出现在 `archived[]`）；`metrics` 不含 `processHealth`。
+- **退出码**：`0` 成功（含空数据、含 `health.ok=false`、含 `--open` 拉起失败）；`1` 参数拒绝（`INVALID_ARGUMENT`）/ 未初始化（`NO_INIT`）；`3` 建目录或写盘失败（`INTERNAL_ERROR`）。**无 2**（零 `flow.json` 写、不加锁）。
+- 完整 JSON 契约见 [json-contract.md](json-contract.md) §5 #43。
+
+## JSON 出口一览（v1.5.10 快照：v1.5.6 新增 #41；v1.5.8 / REQ-030 新增 #42；v1.5.10 新增 #43 `dashboard`）
+
+> 计数口径：**43 个成功出口 / 48 个注册选项**（48 = 44 个 `--json` 选项 + `chore --end` / `chore --status` / `chore --source` / `chore --ttl-min` 四个非 json 选项；v1.5.6 新增 #41 `lint req`；v1.5.8 / REQ-030 新增 #42 `req release-check`；v1.5.10 新增 #43 `dashboard`；v1.5.11 新增 chore `--source` / `--ttl-min`）；`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。本仓收口基线：75 文件 / 21 阶段。
 
 | # | 出口 | 命令面 | 顶层键序 |
 |:-:|------|--------|----------|
@@ -1202,9 +1229,10 @@ openfeel project overview --json            # 实时扫描项目结构，输出�
 | 40 | `roadmap show` | `roadmap show [version] --json` | `schemaVersion,version,milestones` |
 | 41 | `lint req` | `lint req --json` | `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount` |
 | 42 | `req release-check` | `req release-check <version> --json` | `schemaVersion,version,done,unfinished,counts` |
-| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 42 / 43**） |
+| 43 | `dashboard` | `dashboard [--out <file>] [--open] [--json]` | `schemaVersion,generatedAt,generator,project,requirements,stages,releases,blockingReviews,health,metrics` |
+| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 43 / 44**） |
 
-> 说明：以上为 **v1.5.8 快照（含 v1.5.6 / REQ-030 增量）**（40 → 41 → 42；新增 #41 `lint req`、#42 `req release-check`）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 **v1.5.10 快照（含 v1.5.6 / REQ-030 / v1.5.10 增量）**（40 → 41 → 42 → 43；新增 #41 `lint req`、#42 `req release-check`、#43 `dashboard`）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
 ## update — 更新适配文件
 

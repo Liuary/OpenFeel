@@ -419,8 +419,13 @@ export const flow: I18nDomain = {
   'chore.endTmpl':                  { key: 'flow.chore.endTmpl',                  zh: '✓ 微变更已收口（{id}）',                     en: '' },
   'chore.noActiveTmpl':             { key: 'flow.chore.noActiveTmpl',             zh: '当前没有进行中的 chore（无需收口）。',        en: '' },
   'chore.busyTmpl':                 { key: 'flow.chore.busyTmpl',                 zh: '存在活跃阶段（{stages}）；chore 仅用于无活跃阶段的微变更，请走 fast/full 阶段。', en: '' },
-  'chore.needNote':                 { key: 'flow.chore.needNote',                 zh: '用法：openfeel chore "<说明>" [--ttl-min N]；或 `--end` / `--status`。', en: '' },
+  'chore.needNote':                 { key: 'flow.chore.needNote',                 zh: '用法：openfeel chore "<说明>" [--ttl-min 1..30] [--source]；或 `--end` / `--status`。chore 只能由人类在外部终端开启；默认只放行 doc/静态资源，加 `--source` 才允许写源码。', en: '' },
+  'chore.sourceStartedTmpl':        { key: 'flow.chore.sourceStartedTmpl',        zh: '✓ 微变更已开启（已显式允许写源码）：{note}（{id}；{ttl} 分钟内可写源码与文档，`openfeel chore --end` 收口）', en: '' },
+  'chore.ttlTooLong':               { key: 'flow.chore.ttlTooLong',               zh: '`--ttl-min` 超过上限：chore 写窗口最长 {max} 分钟（收窄口径），只能改短到 1..{max} 分钟。', en: '' },
+  'chore.ttlInvalid':               { key: 'flow.chore.ttlInvalid',               zh: '`--ttl-min` 取值无效：只接受 1..{max} 的整数（如 `--ttl-min 10`）；未开启窗口。', en: '' },
   'chore.statusActiveTmpl':         { key: 'flow.chore.statusActiveTmpl',         zh: 'chore 进行中：{id} — {note}（到期 {expires}）', en: '' },
+  'chore.statusSourceAllowedTmpl':  { key: 'flow.chore.statusSourceAllowedTmpl',  zh: '源码写入：允许（`--source`）；剩余 {remaining} 分钟。', en: '' },
+  'chore.statusSourceDeniedTmpl':   { key: 'flow.chore.statusSourceDeniedTmpl',   zh: '源码写入：不允许（默认窗口只放行 doc/静态资源）；剩余 {remaining} 分钟。需要改源码时，请由人类在外部终端执行 `openfeel chore --source "<说明>"`。', en: '' },
   'chore.statusExpiredTmpl':        { key: 'flow.chore.statusExpiredTmpl',        zh: 'chore 已过期：{id}（重新开启或直接使用静态资源/doc 通道）。', en: '' },
   'chore.statusNoneTmpl':           { key: 'flow.chore.statusNoneTmpl',           zh: '当前无 chore（无活跃阶段时静态资源/doc 仍可直接写）。', en: '' },
   // dev 状态同步（v1.5.0）
@@ -878,6 +883,12 @@ export const help: I18nDomain = {
   'project':               { key: 'help.project',               zh: '项目管理与概览', en: '' },
   'project.overview':      { key: 'help.project.overview',      zh: '实时扫描项目结构，输出结构化概览', en: '' },
   'project.overview.json': { key: 'help.project.overview.json', zh: '以 JSON 输出（纯 JSON 单文档，含 schemaVersion）', en: '' },
+
+  // dashboard（v1.5.10 / stage-125 op-003）
+  'dashboard':             { key: 'help.dashboard',             zh: '生成项目看板（单文件 HTML 快照；零外链零脚本）', en: '' },
+  'dashboard.json':        { key: 'help.dashboard.json',        zh: '以 JSON 输出（纯 JSON 单文档，含 schemaVersion）', en: '' },
+  'dashboard.out':         { key: 'help.dashboard.out',         zh: '输出文件路径（缺省 <项目根>/.openfeel/tmp/dashboard.html）', en: '' },
+  'dashboard.open':        { key: 'help.dashboard.open',        zh: '生成后用系统默认浏览器打开（无 --out 时打开默认产物）', en: '' },
 
   // plan
   'plan':                  { key: 'help.plan',                  zh: '计划管理', en: '' },
@@ -1366,6 +1377,58 @@ export const req: I18nDomain = {
   'rollover.terminalTmpl': { key: 'req.rollover.terminalTmpl', zh: '{id} 已是终态（{status}），不可顺延', en: '' },
 };
 
+/* ==================== dashboard 域：看板 HTML 渲染文案（v1.5.10 / stage-125 op-002） ==================== */
+/**
+ * 域内 property 名一律以 `html.` 为前缀，`key` 字段写完整键（`dashboard.html.*`）。
+ * 若 property 落成 `title`（→ `dashboard.title`），会与 op-003 的 8 个命令文案键（同域、含 `title`）
+ * 重名并被静默覆盖，且 T13~T18 不校验页面标题文本、测不出来——故 28 键全部前移 `html.`。
+ */
+export const dashboard: I18nDomain = {
+  // 文档标题
+  'html.title':                 { key: 'dashboard.html.title',                 zh: 'OpenFeel 项目看板', en: '' },
+  // KPI 条（5）
+  'html.kpi.total':             { key: 'dashboard.html.kpi.total',             zh: '需求总数', en: '' },
+  'html.kpi.done':              { key: 'dashboard.html.kpi.done',              zh: '已完成需求', en: '' },
+  'html.kpi.activeStages':      { key: 'dashboard.html.kpi.activeStages',      zh: '活跃阶段', en: '' },
+  'html.kpi.blockingReviews':   { key: 'dashboard.html.kpi.blockingReviews',   zh: '阻塞审查', en: '' },
+  'html.kpi.archived':          { key: 'dashboard.html.kpi.archived',          zh: '归档版本', en: '' },
+  // 区块标题（7）
+  'html.section.requirements':  { key: 'dashboard.html.section.requirements',  zh: '需求看板', en: '' },
+  'html.section.stages':        { key: 'dashboard.html.section.stages',        zh: '阶段', en: '' },
+  'html.section.releases':      { key: 'dashboard.html.section.releases',      zh: '版本发布门', en: '' },
+  'html.section.archived':      { key: 'dashboard.html.section.archived',      zh: '归档历史', en: '' },
+  'html.section.blockingReviews': { key: 'dashboard.html.section.blockingReviews', zh: '阻塞审查', en: '' },
+  'html.section.health':        { key: 'dashboard.html.section.health',        zh: '流程健康', en: '' },
+  'html.section.metrics':       { key: 'dashboard.html.section.metrics',       zh: '指标', en: '' },
+  // 表头（9）
+  'html.th.requirement':        { key: 'dashboard.html.th.requirement',        zh: '需求', en: '' },
+  'html.th.status':             { key: 'dashboard.html.th.status',             zh: '状态', en: '' },
+  'html.th.priority':           { key: 'dashboard.html.th.priority',           zh: '优先级', en: '' },
+  'html.th.version':            { key: 'dashboard.html.th.version',            zh: '版本', en: '' },
+  'html.th.owner':              { key: 'dashboard.html.th.owner',              zh: '认领人', en: '' },
+  'html.th.phase':              { key: 'dashboard.html.th.phase',              zh: '相位', en: '' },
+  'html.th.ops':                { key: 'dashboard.html.th.ops',                zh: '操作进度', en: '' },
+  'html.th.count':              { key: 'dashboard.html.th.count',              zh: '计数', en: '' },
+  'html.th.stage':              { key: 'dashboard.html.th.stage',              zh: '阶段 ID', en: '' },
+  // 空态与「无未完成项」（2）
+  'html.empty':                 { key: 'dashboard.html.empty',                 zh: '（无数据）', en: '' },
+  'html.none':                  { key: 'dashboard.html.none',                  zh: '—', en: '' },
+  // 页脚（4）
+  'html.footer.generatedAt':    { key: 'dashboard.html.footer.generatedAt',    zh: '生成时间', en: '' },
+  'html.footer.generator':      { key: 'dashboard.html.footer.generator',      zh: '生成器', en: '' },
+  'html.footer.projectRoot':    { key: 'dashboard.html.footer.projectRoot',    zh: '项目根', en: '' },
+  'html.footer.note':           { key: 'dashboard.html.footer.note',           zh: '本文件为服务端渲染的单文件快照看板：无外链、无网络请求、无可执行脚本。', en: '' },
+  // 命令文案（v1.5.10 / stage-125 op-003；property 名即 `dashboard.*` 键尾，勿加 html. 前缀）
+  'title':                      { key: 'dashboard.title',                      zh: 'OpenFeel 项目看板', en: '' },
+  'statsTmpl':                  { key: 'dashboard.statsTmpl',                  zh: '需求 {requirements} / 阶段 {stages} / 阻塞审查 {blockingReviews}', en: '' },
+  'writtenTmpl':                { key: 'dashboard.writtenTmpl',                zh: '已生成看板：{path}', en: '' },
+  'openFailedTmpl':             { key: 'dashboard.openFailedTmpl',             zh: '无法自动打开浏览器：{path}', en: '' },
+  'jsonOutConflict':            { key: 'dashboard.jsonOutConflict',            zh: '--json 与 --out 不可同时使用（--json 输出单文档，不写文件）', en: '' },
+  'jsonOpenConflict':           { key: 'dashboard.jsonOpenConflict',           zh: '--json 与 --open 不可同时使用（--json 不启动外部进程）', en: '' },
+  'outEmpty':                   { key: 'dashboard.outEmpty',                   zh: '--out 的路径不能为空', en: '' },
+  'outIsDirectory':             { key: 'dashboard.outIsDirectory',             zh: '--out 指向已存在的目录：{path}', en: '' },
+};
+
 /* ==================== 聚合导出 ==================== */
 /** 所有功能域的聚合数组（供 i18n.ts 构建 Map 使用） */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
@@ -1390,4 +1453,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'metrics',      domain: metrics },
   { name: 'repl',         domain: repl },
   { name: 'req',          domain: req },
+  { name: 'dashboard',    domain: dashboard },
 ];

@@ -29,7 +29,9 @@ import { fileURLToPath } from 'node:url';
 import { FeelCli } from './adapters/cli.js';
 import { resolveWorkspace } from './adapters/workspace.js';
 import { writeHostMarker } from './adapters/host-state.js';
-import { createOpenFeelGuard } from './guard.js';
+import { writeGuardState } from './adapters/guard-state.js';
+import { touchSession } from './adapters/session-cwd-registry.js';
+import { createOpenFeelGuard, resolveShellGate } from './guard.js';
 import { createFeelCommandHandler } from './surface/command.js';
 import { FEEL_PROMPT_NAME, FEEL_PROMPT_ORDER, renderBootstrapPrompt, renderFeelPrompt } from './surface/prompt.js';
 import { createTools } from './tools/index.js';
@@ -57,7 +59,7 @@ const COMMAND_ID = '@openfeel/dsh/feel';
  * - `log: false`（不写 `~/.openfeel/cli/logs/`，避免只读沙箱下失败）。
  *
  * @param {Record<string, any> | undefined} raw Loader 传入的配置。
- * @returns {{ command: string, commandPrefix: string[], timeoutMs: number, log: boolean, autoPrompt: boolean, activation: 'auto'|'always'|'off', language: string, cwd: string | undefined, enforce: 'off'|'project'|'always', mutatingTools: string[], allowGeneral: boolean }}
+ * @returns {{ command: string, commandPrefix: string[], timeoutMs: number, log: boolean, autoPrompt: boolean, activation: 'auto'|'always'|'off', language: string, cwd: string | undefined, enforce: 'off'|'project'|'always', mutatingTools: string[], allowGeneral: boolean, shellGate: 'strict'|'warn'|'off'|undefined }}
  */
 export function normalizeConfig(raw) {
   const source = typeof raw === 'object' && raw !== null ? raw : {};
@@ -69,9 +71,17 @@ export function normalizeConfig(raw) {
   const enforce = source.enforce === 'off' || source.enforce === 'project' || source.enforce === 'always'
     ? source.enforce
     : 'always';
+  // v1.5.11 D-126-02：默认列表必须与 `guard.js` 的 `DEFAULT_MUTATING_TOOLS` **逐项同步**，
+  // 否则 profile 传空数组会回落到旧列表（pwsh/bash 不受守）。`shell`/`execute_command`/`exec`
+  // 本宿主不存在，只是跨宿主防御条目。
   const mutatingTools = Array.isArray(source.mutatingTools)
     ? source.mutatingTools.filter((item) => typeof item === 'string' && item !== '')
-    : ['edit', 'write', 'apply_patch', 'str_replace_editor'];
+    : ['edit', 'write', 'apply_patch', 'str_replace_editor', 'bash', 'pwsh', 'shell', 'execute_command', 'exec'];
+  // shell 门禁档位（v1.5.11 D-126-02）：`strict` / `warn` / `off` 透传；未设 = 默认组合
+  // （1/2 类拒、4 类告警）。运行时 `OPENFEEL_SHELL_GATE` 优先（见 guard.js）。
+  const shellGate = source.shellGate === 'strict' || source.shellGate === 'warn' || source.shellGate === 'off'
+    ? source.shellGate
+    : undefined;
   return {
     command: typeof source.command === 'string' && source.command !== '' ? source.command : 'openfeel',
     commandPrefix,
@@ -84,6 +94,7 @@ export function normalizeConfig(raw) {
     enforce,
     mutatingTools,
     allowGeneral: source.allowGeneral !== false,
+    shellGate,
   };
 }
 
@@ -116,6 +127,8 @@ function currentAgent(ctx) {
 export function apply(ctx, rawConfig) {
   const config = normalizeConfig(rawConfig);
 
+  /** 本宿主加载标记（D-126-04 自证三键的来源之一：started_at / loaded_hash 同源同值）。 */
+  let hostMarker = null;
   // v1.3.4：记录「本宿主实际加载的适配器指纹」，供 `openfeel setup --check` 区分
   // 「文件旧」与「文件已新但宿主未重启」。best-effort：失败不影响挂载。
   try {
@@ -127,7 +140,7 @@ export function apply(ctx, rawConfig) {
     } catch {
       /* package.json 不可读时保持占位版本 */
     }
-    writeHostMarker({ adapterRoot, version: adapterVersion });
+    hostMarker = writeHostMarker({ adapterRoot, version: adapterVersion });
   } catch {
     /* 标记写入失败 → CLI check 会提示 restart-required，可操作，不阻塞 */
   }
@@ -167,6 +180,7 @@ export function apply(ctx, rawConfig) {
         allowGeneral: config.allowGeneral,
         language: config.language,
         cwd: config.cwd,
+        shellGate: config.shellGate,
       }));
       if (typeof ctx.effect === 'function') {
         ctx.effect(registerGuard);
@@ -176,6 +190,32 @@ export function apply(ctx, rawConfig) {
       }
     }
   }
+
+  /* ── 门禁自检状态（v1.5.11 D-126-04） ──────────────────── */
+
+  // 注册段写一次：registered / enforce / shellGate / cwd / cwdSource / degraded /
+  // resolvedAt + 自证三键（hostStartedAt / loaded_hash / pid，与宿主标记同源同值）。
+  // 启动期还不知道会话 cwd：profile 未配 cwd 时写 `null` → **固定落
+  // `os.tmpdir()/openfeel-guard/guard-state.json`**，绝不用 `process.cwd()`
+  // （那会把宿主启动目录误当会话工作区，正是原 bug 的形态）。
+  const gate = resolveShellGate(
+    typeof process.env.OPENFEEL_SHELL_GATE === 'string' && process.env.OPENFEEL_SHELL_GATE.trim() !== ''
+      ? process.env.OPENFEEL_SHELL_GATE
+      : config.shellGate,
+  );
+  const guardRegistered = config.enforce !== 'off' && typeof ctx.tools.guard === 'function';
+  writeGuardState(config.cwd ?? null, {
+    registered: guardRegistered,
+    enforce: config.enforce,
+    shellGate: gate.label,
+    cwd: config.cwd ?? null,
+    cwdSource: config.cwd === undefined ? 'unresolved' : 'config',
+    degraded: config.cwd === undefined,
+    resolvedAt: new Date().toISOString(),
+    hostStartedAt: hostMarker?.started_at ?? new Date().toISOString(),
+    loaded_hash: hostMarker?.loaded_hash ?? '',
+    pid: process.pid,
+  });
 
   /* ── 人类命令面 ─────────────────────────────────────────── */
 
@@ -203,6 +243,10 @@ export function apply(ctx, rawConfig) {
       text: () => {
         const agent = currentAgent(ctx);
         const sessionCwd = agent?.session?.header?.cwd;
+        // v1.5.11 D-126-01 登记点 ①：提示装配时把会话 cwd 写进登记表，供门禁在
+        // `agent.session.header.cwd` 缺失时兜底（第 3 环）。只有 sessionId 与 cwd
+        // 都非空才写 —— 写入点本身不产生「当前 agent ≈ 所有会话」的误记。
+        touchSession(agent?.session?.id, sessionCwd);
         // 拿不到会话且没有显式 cwd 配置 → 不注入（宁可不打扰，也不给错的项目）。
         if ((typeof sessionCwd !== 'string' || sessionCwd === '') && config.cwd === undefined) return '';
 

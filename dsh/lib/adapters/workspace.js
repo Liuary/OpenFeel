@@ -34,10 +34,12 @@ export const OPENFEEL_DIR = '.openfeel';
  *
  * - `flow.json`：`openfeel init` 必然创建，是核心数据存储。
  * - `config.yaml`：同为 `init` 产物（`flow.json` 被手工删除时的兜底判据）。
+ * - `stages` / `metrics.json`：op-005 / P2 —— `flow.json` 被删/搬走时，
+ *   仍有其它 init 产物可自证「这是 OpenFeel 项目」，避免误落 fail-closed 全拒。
  *
- * 全局家目录 `~/.openfeel/` 两者皆无，因此不会被误判。
+ * 全局家目录 `~/.openfeel/` 这些都没有，因此不会被误判。
  */
-export const PROJECT_MARKERS = /** @type {const} */ (['flow.json', 'config.yaml']);
+export const PROJECT_MARKERS = /** @type {const} */ (['flow.json', 'config.yaml', 'stages', 'metrics.json']);
 
 /**
  * 从工具执行上下文解析会话工作区目录。

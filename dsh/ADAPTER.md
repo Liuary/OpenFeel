@@ -13,9 +13,9 @@
 - **落点**：`ctx.tools`（13 个 `feel_*` 工具）、`ctx.commands`（`/feel`）、
   `ctx.systemPrompt`（`<feel_mode>` 纪律段）。不写任何领域状态。
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
-  （v1.5.8 / REQ-030 起 42 个成功出口 / 43 个注册 `--json` 选项）；本适配器只消费、不重实现。
+  （v1.5.10 起 43 个成功出口 / 44 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.3.2）。
+  的 `openfeel.requiresCli`（≥1.5.11）。
 
 ## 设计边界
 
@@ -28,16 +28,62 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **不解析**中文文本：优先消费 `--json`；失败读 `error.kind` / `error.code` / `error.detail`。
 - **不 shadow** 既有能力：DSH 已有的 `subagent` / `workflow` / `todo_write` 照常使用；
   `feel_next` 只给「该谁做」，实际派发交给 DSH。
-- **写入门禁**（v1.3.3）：用 DSH `ctx.tools.guard()` 同步拒绝 `edit` / `write` / `apply_patch` /
-  `str_replace_editor`；`.openfeel/**` 流程产物任意阶段可写（flow.json / `status.md` 除外）。
-  v1.3.3 起按**风险分层**：
+- **写入门禁**（v1.3.3；v1.5.11 收窄为**三层**）：用 DSH `ctx.tools.guard()` 同步拒绝。
+  - **第 1 层 · 文件工具**：`edit` / `write` / `apply_patch` / `str_replace_editor`。
+  - **第 2 层 · shell**：`bash` / `pwsh`（默认受守，四类判定见下）。
+  - **第 3 层 · 受保护路径**：`.openfeel/flow.json`（含 `.bak`）、`**/status.md`、`.openfeel/chore.json`、
+    `dev/.preflight.json` / `dev/sessions.json` / `dev/guard-state.json`、`flow-archive/**`、
+    `checkpoints/**`、`requirements/*.md`、`log/guard-audit.jsonl` —— **任意相位硬拒**
+    （D-126-05：防 agent 手写状态/写窗口自提权），拒绝文案指向对应的人类 CLI 路径。
+  其余分层：
   - **bootstrap 例外**：工作区无 `.openfeel/` 时，全部目标为「新增文件」（`apply_patch` 还要求全部为
     `*** Add File:`）→ 放行并提示补账本；已存在文件、`.openfeel/**`、Update/Delete/Move 仍拒绝；
   - **doc/note 不绑相位**：`docs/**` 与 `.md/.mdx/.txt/.rst/.adoc` 在无活跃阶段或非 `exec_running`
-    相位也可写；**混合目标从严**（任一源码 → 按源码规则）；
-  - 源码（`src/**` 等）仍要求 `exec_running`；`pwsh` / `bash` 默认不守，是显式逃生通道；
-  - **v1.4.0 静态展示资源**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp` 与 `assets/**`、`public/**` 与 doc 同层放行（混合目标从严；源码扩展名不因目录豁免）；豁免放行写 `.openfeel/log/guard-audit.jsonl`；
-  - **v1.4.0 chore 写窗口**：`openfeel chore "<说明>"` 仅无活跃阶段时生效（60 分钟 / `--end` 收口），源码也可写，不创建阶段；
+    相位也可写；**代码目录（`src` / `test` / `scripts` / `dsh` / `bin`）内任何扩展名都不豁免**
+    （`src/x.md` / `src/assets/logo.svg` 一样按源码判，D-126-06）；**混合目标从严**（任一源码 → 按源码规则）；
+  - 源码（`src/**` 等）要求 `exec_running`；`dist|build|out|target|.next|node_modules|coverage|*.tsbuildinfo`
+    等构建/测试产物不触发判定（保证 `npm run build` / `cargo build` / `tsc -b` 不被误杀，仍需全部目标命中）；
+  - **v1.4.0 静态展示资源**：`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp` 与 `assets/**`、`public/**` 与 doc
+    同层放行（根级 `README*` / `CHANGELOG*` / `LICENSE*` 亦豁免）；豁免放行写 `.openfeel/log/guard-audit.jsonl`；
+  - **v1.5.11 chore 写窗口（纯人类通道）**：窗口**上限 30 分钟**（`--ttl-min 1..30`，只能改短；越界/非整数
+    直接 exit 1 且零写盘），默认只放行 doc/静态资源，**只有 `--source` 才允许源码**
+    （`chore.json.source_allowed: true`；旧记录缺该字段视为未授权）。shell 门禁拒 agent 开启 chore、
+    `chore.json` 又在受保护名单 ⇒ 窗口只能由人类在外部终端 `openfeel chore [--source] "<说明>"` 开启；
+  - **shell 四类判定**（`bash` / `pwsh`；相对路径按 `workdir ?? guard cwd` 解析）：
+    ① **硬拒**：受保护路径、`openfeel flow|stage|req|chore` 的**写**子命令（`--status` / `--end` 放行；
+    引号程序名 / `node <cli 路径>` / `Start-Process openfeel` / 任何 `chore` + `--source` 同样命中）、
+    以及编码/嵌套执行形态（`-EncodedCommand`、`iex`/`Invoke-Expression`、`bash -c`、`eval`、`node -e` 等）
+    与 `.NET` 静态写方法（**正面判定**：`IO.File|Directory|StreamWriter|Compression.*` 等可写类型上
+    方法不在只读白名单即拒 —— `WriteAllTextAsync` / `[IO.File]::Open('x','Create')` 一并命中）、
+    `New-Object` 写对象、`Add-Type` 动态编译；
+    ② **按目标路径判**（与文件工具共用同一 `decideForTargets`）：重定向 / `tee` / `Set-Content` / `New-Item` /
+    `Copy-Item` / `Remove-Item` / `sed -i` / `rm` / `mkdir` / `robocopy` / `xcopy` /
+    下载器输出（`curl -o` / `iwr -OutFile` / `wget -O`）/ `certutil -urlcache|decode` /
+    格式化改写（`prettier --write`、`eslint --fix`、`gofmt -w`；**无写标志的 `prettier --check` /
+    `eslint src` 判确认只读**），以及**全部 git 工作区写**
+    （`checkout --`、`restore`、`reset --hard`、`stash`（含 `push`）、`clean`、`apply`、
+    无 `exec_running` 时的 `commit`；整树写还要求 `.openfeel/**` 无未提交差异，
+    `git clean` / `stash -u` 额外要求**无未跟踪文件**（`checkpoints/`、新 plan 目录），
+    带 `-x` 的 `clean` 还要求**审计 `log/guard-audit.jsonl` 与 `chore.json` 不存在**
+    —— 这两类文件被 .gitignore 忽略，`ls-files` 看不见，但 `clean -fdx` 会删掉；
+    `git commit` 不覆盖工作区，不受这条限制）；
+    ③ **产物豁免**（同上面的构建/测试产物表）；④ **无法判定** → 默认告警放行（审计 + stderr）。
+  - **默认 fail-closed（op-005）**：**无法确认「这条命令不写」就落第 4 类**，不再把未识别命令
+    当作 `no-write` 静默放行。审计的 `kind` 因此能区分 `none`（确认只读）与 `undecidable`。
+    「确认只读」需要正面证据：命中只读白名单、已知构建/测试工具（`npx vitest` / `npm run build` /
+    `cargo build` / `tsc -b` 仍放行），否则一律第 4 类 —— 包括 `npx <任意>`、`node <脚本>`、
+    `python <脚本>`、不可解析的 `& $var`、`$()`/反引号命令替换；
+  - **第 4 类的书面口径**：默认 `warn`（审计 + stderr），要更严就设 `OPENFEEL_SHELL_GATE=strict`。
+    **已知敞口**：第 4 类默认放行意味着「蓄意用未识别写法」仍能写盘（只是留痕）——
+    典型是 `node <脚本>`、`npx <任意>`、`$()`/反引号里再嵌一层不透明执行；
+    门禁的目标是让**默认路径**不静默 —— 需要硬保证时把宿主设成 `strict`（第 4 类也拒）；
+  - **`OPENFEEL_SHELL_GATE` 三档**（缺省 = 「1/2 类拒 + 4 类告警」组合，不是单一开关）：`strict` 第 4 类也拒；
+    `warn` 第 1/2/4 类全部降级为告警放行；`off` shell 完全不解析。**只影响 shell 分支**，文件工具不受影响；
+    `warn`/`off` 的降级事实写进 `guard-state.json.shellGate` 与审计，可反查；
+  - **cwd 解析六环**（fail-closed）：① `OPENFEEL_GUARD_CWD`（env，**最高优先逃生阀**，非空即生效）→
+    ② `agent.session.header.cwd` → ③ `config.cwd`（`cordis.patch.yml` 的 `cwd:`）→ ④ 会话登记表 `[sessionId]` →
+    ⑤ `process.cwd()`（**仅当该目录本身含 `.openfeel/`**）→ ⑥ 全部失败 → 拒绝。已删除 `registry-last`
+    （进程级单标量，多项目会「按别的项目放行」）；非 `agent-session` 来源 stderr 告警 + `feel_status.guard.degraded=true`；
   - `enforce=always`（默认）对非 OpenFeel 工作区也拦截，可用 `project` / `off` opt-out。
 - **审查归属**（v1.3.3 / v1.3.4）：REV 可挂 op（`stageId.op-xxx`）或挂 stage（`op = stageId`，无 op 的 fast 场景）；
   `feel_flow action=review_add` 的 `op` / `stage` 二选一透传（v1.3.4，两者皆无 → `FEEL_BAD_USAGE`）；
@@ -45,6 +91,17 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **宿主加载指纹**（v1.3.4）：`apply()` 启动时把适配器 `lib/` 指纹写入
   `~/.openfeel/adapter-host-dsh.json`（`OPENFEEL_ADAPTER_HOST_PATH` 可覆盖，测试用）；
   CLI `setup --check` 据此区分「文件旧」与「文件已新但宿主未重启」。
+- **门禁可见性**（v1.5.11 / D-126-04）：注册 guard 时写 `.openfeel/dev/guard-state.json`
+  （`registered` / `enforce` / `shellGate` / `cwd` / `cwdSource` / `degraded` / `resolvedAt` /
+  `hostStartedAt` / `loaded_hash` / `pid`），每次放行/拒绝更新 `lastDecision`；
+  `feel_status` / `feel_next` 返回 `guard` 段（compact 档也带）。`feel_status` 比对
+  `~/.openfeel/adapter-host-dsh.json` 与当前 `pid` / 启动时刻：指纹不符或来自旧进程 → `guard.stale=true`
+  并在 summary 明说「门禁来自旧进程/旧适配器，判定不可信，请重启宿主」，同时 `workflowGate.required=true`。
+  cwd 解析失败时不静默丢弃：状态与审计固定落 `os.tmpdir()/openfeel-guard/`（`cwd:null`、`cwdSource:'unresolved'`），
+  `feel_status` 在工作区文件缺失时也读该全局文件并标 `degraded=true`。
+- **生效条件（重要）**：门禁在 `apply()` 时注册，**部署/更新后必须完全重启 DSH 宿主**才生效
+  （重启会话不够，Loader 按 URL 缓存 ESM 模块）；重启后第一条判定即写 `guard-state.json`，
+  可用 `feel_status.guard` 核对 `registered` / `cwdSource` / `stale`。
 - **命令执行推荐**（v1.3.5）：系统提示段新增「Windows：优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS/Linux 用 `bash`；默认不用 `cmd.exe`」；同一任务保持同一 shell。
 - **状态与记录**（v1.5.0）：只有 Feel 写状态；子 agent 不读不写 `dev_last*` / `current.md` / `status.md` / `flow.json`；日志不强制；`feel_next` / `feel_status` 暴露 `statusSync.due`（30 分钟），到期只提示更新交接摘要 + `openfeel dev sync`。
 - **流程入口闸**（v1.5.2）：`feel_status` / `feel_next` 在无活跃阶段时返回 `workflowGate`；无阶段写 `docs/research/**` 被拒（chore 不能绕过；拒绝写 `guard-audit.jsonl`，`event=guard_deny`）。
@@ -62,7 +119,9 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 
 | 路径 | 内容 |
 |---|---|
-| `lib/guard.js` | 写入门禁：`enforce`、`.openfeel/**` 产物区、bootstrap 新增放行、doc/note 分层、apply_patch 目标解析 |
+| `lib/guard.js` | 写入门禁：三层（文件工具 / shell 四类 / 受保护路径）、`enforce`、bootstrap 新增放行、doc/asset 分层、apply_patch 目标解析、cwd 六环 fail-closed |
+| `lib/adapters/guard-state.js` | 门禁自证：`.openfeel/dev/guard-state.json`（注册态 + `lastDecision`）与 cwd 失败时的全局落点 |
+| `lib/adapters/session-cwd-registry.js` | 会话 cwd 登记表（只按 `sessionId`，**无 `lastCwd`** 进程级兜底） |
 | [`ACTION-GUIDE.md`](ACTION-GUIDE.md) | **给 OpenFeel 本体的操作指南**：剩余 5 项待办、验收标准、边界约定 |
 | `lib/index.js` | 插件入口（`name` / `inject` / `apply` / `normalizeConfig`） |
 | `lib/adapters/cli.js` | CLI 执行器：可执行文件解析、UTF-8/无色/无日志、退出码与 envelope 语义 |
@@ -73,7 +132,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
 | `lib/surface/prompt.js` | `<feel_mode>` 系统提示段 |
-| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（46 + 109 + 58 + 10 断言，v1.5.8 / REQ-030 后实测） |
+| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（46 + 112 + 138 + 10 断言，v1.5.11 / stage-126 后实测） |
 | `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证
@@ -81,8 +140,8 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 ```bash
 cd dsh
 node test/contract.js      # 46 — DSH schema 契约（真实 assertSupportedJsonSchema）
-node test/verify.js        # 109 — 行为（真实 CLI + 真实 .openfeel 副本）
-node test/guard.js         # 58 — 写入门禁（fake ToolExecution + 临时工作区）
+node test/verify.js        # 112 — 行为（真实 CLI + 真实 .openfeel 副本）
+node test/guard.js         # 138 — 写入门禁（fake ToolExecution + 临时工作区）
 node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载
 ```
 

@@ -1,3 +1,35 @@
+## [1.5.11] - 2026-11-04
+
+> 写入门禁加固批次：shell（`bash` / `pwsh`）纳入守卫、受保护路径扩展、doc/asset 豁免收窄、Win32 路径归一化、cwd 六环 fail-closed + `guard-state` 自证、`chore` 收窄为纯人类通道。**与 v1.5.10 同批发布：npm 上线版本为 1.5.11，1.5.10 未单独发布。**
+
+### Added
+- [stage-126] **shell 写入门禁（REQ-019 / D-126-02）**：`bash` / `pwsh` 纳入 `DEFAULT_MUTATING_TOOLS`，四类判定——① 受保护路径与 `openfeel` 写命令**硬拒**；② 按目标判定源码写与 git 工作区写（`git checkout` / `restore` / `reset --hard|--merge` / `stash pop|apply` / `clean` / `apply` / `commit`）；③ 构建产物豁免（`dist/**`、`build/**`、`out/**`、`target/**`、`.next/**`、`*.tsbuildinfo`；`npx vitest` / `npm run build` / `cargo build` / `tsc -b` / `git status` 不误杀）；④ 不可判定告警。相对路径按 `workdir ?? guard cwd` 解析；编码 / 间接执行形态（`-EncodedCommand` / `iex` / `bash -c` / `node -e` / `python -c`）归第 1 类硬拒；`OPENFEEL_SHELL_GATE` 默认「1/2 类拒 + 4 类告警」。
+- [stage-126] **受保护路径扩展（D-126-05）**：`chore.json`、`dev/.preflight.json`、`dev/sessions.json`、`dev/guard-state.json`、`pipeline.yaml`、`config.yaml`、`metrics.json`、`flow-archive/**`、`checkpoints/**`、`requirements/*.md`、`log/guard-audit.jsonl`、`dsh/cordis.patch.yml` 由 agent 工具写一律拒绝，消息指向对应 CLI；guard 只拦工具调用，适配器 / CLI 的 fs 直写不受影响。
+- [stage-126] **门禁可观测（D-126-04）**：注册 guard 时写 `.openfeel/dev/guard-state.json`（`registered` / `enforce` / `shellGate` / `cwd` / `cwdSource` / `degraded` / `hostStartedAt` / `loaded_hash` / `pid` / `resolvedAt` / `lastDecision`），`feel_status` / `feel_next` 暴露 `guard` 段并比对 boot / 进程，不符即 `stale`；`registered=false` / cwd 解析失败 / `stale` → `workflowGate.required=true`；cwd 失败固定落 `os.tmpdir()/openfeel-guard/guard-state.json`（绝不用 `process.cwd()`），审计同落全局 + stderr，禁止静默丢弃。
+- [stage-126] **Win32 路径归一化**：判定前归一并归一化尾点、ADS（`file.ts:stream`）与 8.3 短名，路径别名不再绕过受保护路径与代码目录判定。
+
+### Changed
+- [stage-126] **doc/asset 豁免收窄（D-126-06）**：先判代码目录（`src/**`、`test/**`、`scripts/**`、`dsh/**`、`bin/**`）再判扩展名——代码目录内 `.md` / `.css` / `assets/*` 不再豁免；豁免面只留 `docs/**`、`.openfeel/**`、根级 `README*` / `CHANGELOG*` / `LICENSE*`、显式 `assets/` / `public/`。
+- [stage-126] **cwd 六环 + fail-closed（D-126-01）**：`OPENFEEL_GUARD_CWD` → `agent.session.header.cwd` → `config.cwd` → 按 sessionId 登记表 → `process.cwd()`（仅当含 `.openfeel/` 时采用）→ fail-closed；删除 `registry-last`（跨项目串味会把 fail-closed 偷换成「按别的项目放行」）。
+- [stage-126] **`chore` 收窄（D-126-03）**：窗口上限 60 → **30 分钟**（`--ttl-min 1..30`，越界 / 非整数 / ≤0 → exit 1 且零写盘）；源码写入须显式 `--source` 并落 `detail.source_allowed=true`；与 D-126-05 / 02 协同后 `chore` 成为**纯人类通道**。
+- [stage-126] 版本 1.5.11 收口：`package.json` / `dsh/package.json`（version + `requiresCli`）/ `package-lock.json` 根 version / CHANGELOG / VERSIONS / README 最新版本行 / `openfeel-cli-usage` skill 快照与计数同步（**43 成功出口 / 44 注册 `--json` 选项**）；`npm run build` 重生成 AUTO-GENERATED 段。
+
+### Fixed
+- [stage-126] v1.5.10 复盘暴露的三处绕过面（REQ-019）：`.txt` 探针命中 doc/asset 豁免造成假绿；`bash` / `pwsh` 零判定；agent 手写 `.openfeel/chore.json` / `dev/.preflight.json` 自提权。
+
+## [1.5.10] - 2026-11-04
+
+> 看板批次：新增 `openfeel dashboard [--json] [--out <file>] [--open]`，进程内聚合需求 / 阶段 / 发布门 / 归档 / 阻塞 REV / 健康 / 指标，产出**单文件自包含 HTML**（零外链、零网络、零可执行脚本）。**与 v1.5.11 同批发布：npm 上线版本为 1.5.11，1.5.10 未单独发布。**
+
+### Added
+- [stage-125] **`openfeel dashboard`（REQ-018）**：进程内聚合四块数据——需求看板（7 状态）/ 阶段流水线进度（phase + `opsDone`/`opsTotal`）/ 版本发布门与归档历史 / 阻塞 REV 与流程健康指标；默认输出 `<项目根>/.openfeel/tmp/dashboard.html`（`.gitignore` 已忽略）；`--out <file>` 指定路径、`--open` 打开（失败仅 warn、恒 exit 0）。
+- [stage-125] **单文件 HTML 十条硬约束**：数据内嵌、零外链、零网络请求、零可执行脚本（CSP `default-src 'none'; script-src 'none'`）、禁 JS 仍可读、`escapeHtml` 全量转义、`</script>` 经 `\u003c` 转义、文本全量 i18n（28 个 `dashboard.html.*` 键）、剔除 `generatedAt` 后产物确定、双击 `file://` 即可打开。
+- [stage-125] **`dashboard --json`（成功出口 #43）**：10 键固定序 `schemaVersion,generatedAt,generator,project,requirements,stages,releases,blockingReviews,health,metrics`；`generatedAt` 为成功出口中首个**非确定字段**（测试不断言其值）；`health.items[]` 复用 `{section,status,message}`；**快照命令**（非门禁）：`health.ok=false` 仍 exit 0；`--json` 与 `--out` / `--open` 互斥（`INVALID_ARGUMENT` / exit 1，零写盘）。
+
+### Changed
+- [stage-125] **JSON 契约升为 43 成功出口 / 44 注册 `--json` 选项**：`docs/json-contract.md` §5 冻结表新增 #43 并在 §6 第 19 项登记；`docs/commands.md` 新增 `## dashboard` 段并同步计数口径（43 成功出口 / 48 注册选项）；`dsh/ADAPTER.md` 契约行同步 43/44。
+- [stage-125] 新增 12 个 i18n 键（4 help + 8 命令，产物语言跟随 `getCliLang`）；`json-output.ts` 的 `VALUE_OPTIONS` 加 `--out`；计数硬断言同步（`knowledge.test.ts` 44/43、`req.test.ts` 19 → 20、`lint-req.test.ts` 插入 `dashboard`）。
+
 ## [1.5.9] - 2026-11-01
 
 > 收尾批次：文档/模板快照升到 v1.5.8、eslint 清零、补齐 v1.5.7 版本归档，并修掉版本迭代遗留坑。

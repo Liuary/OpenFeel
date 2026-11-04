@@ -89,6 +89,7 @@ export function shouldUseColor(options?: { color?: boolean }): boolean {
 
 import { registerInitCommand } from '../commands/init.js';
 import { registerFlowCommand } from '../commands/flow.js';
+import { registerDashboardCommand } from '../commands/dashboard.js';
 import { registerPlanCommand } from '../commands/plan.js';
 import { registerViewCommand } from '../commands/view.js';
 import { registerArchiveCommand } from '../commands/archive.js';
@@ -109,6 +110,7 @@ import { registerDevCommand } from '../commands/dev.js';
 
 registerInitCommand(program);
 registerFlowCommand(program);
+registerDashboardCommand(program);
 registerPlanCommand(program);
 registerViewCommand(program);
 registerArchiveCommand(program);

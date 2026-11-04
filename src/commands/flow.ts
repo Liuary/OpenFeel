@@ -3020,8 +3020,9 @@ function summarizeOpStates(ops: Record<string, string>): { total: number; byStat
  * 构建 `flow status --json` 的结构化输出（B1-1）。
  * 顶层对象 + schemaVersion:1；stages 为数组，ops 为 opId→state 映射；counts 为阶段计数。
  * stage-96 op-002：stages[] 末位追加 5 个调度属性（既有 5 键键序/类型逐字不变）。
+ * 形状冻结：改动须过 `json-contract.test.ts` #1 断言；出现第三个消费者再下沉 core。
  */
-function buildStatusJson(mgr: FlowManager): Record<string, unknown> {
+export function buildStatusJson(mgr: FlowManager): Record<string, unknown> {
   const data = mgr.getData();
   if (!data) {
     return {

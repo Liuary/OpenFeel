@@ -16,6 +16,10 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.11** — Write-gate hardening (shipped together with v1.5.10 as npm **1.5.11**; `1.5.10` was not published on its own): shell tools (`bash` / `pwsh`) are now gated with four outcomes — hard-deny protected paths and `openfeel` write commands, judge source / git-workspace writes by target, exempt build artifacts (`npx vitest` / `npm run build` / `git status` keep working), and warn when undecidable; the protected-path list grows (`chore.json`, `dev/.preflight.json`, `dev/sessions.json`, `dev/guard-state.json`, `pipeline.yaml`, `config.yaml`, `metrics.json`, `flow-archive/**`, `checkpoints/**`, `requirements/*.md`, `log/guard-audit.jsonl`, `dsh/cordis.patch.yml`); doc/asset exemptions no longer apply inside code directories; Win32 path normalization (trailing dots / ADS / 8.3 short names); six-link cwd resolution with fail-closed and a `guard-state.json` self-check (`pid` / `loaded_hash` / HMAC) surfaced as `feel_status.guard`; `chore` shrinks to a human-only channel (30-minute cap, `--source` required for source writes, `--ttl-min 1..30`).
+- **v1.5.10** — Project dashboard: `openfeel dashboard [--json] [--out] [--open]` aggregates requirements / stages / release gates / archives / blocking REVs / health / metrics into a single self-contained HTML file (default `.openfeel/tmp/dashboard.html`; zero external links, zero network, zero executable scripts); `dashboard --json` is JSON exit #43 (contract at 43 success exits / 44 registered `--json` options).
+- **v1.5.9** — Cleanup batch: manual/template/skill snapshots refreshed to v1.5.8, eslint errors cleared (35 → 0), v1.5.7 version archive backfilled, and pitfalls fixed (README capability text, adapter `sessions.stage` clearing semantics, `chore.json` ignored).
+- **v1.5.8** — Requirement-first batch: archiver gathers completed requirements, writes `docs/releases/<version>.md` and harness-aware skills; stages hold multiple requirements (`requirements[]`); multi-session P0 (sessions registry, auto-commit pollution guard, current-stage rule, `feel_status.sessions`); completion requires review + verification evidence at both requirement and stage level; completed requirements travel into version archives with a monotonic `last_req_seq` counter, plus `req release-check` / `req rollover` (carried_from) and an `--allow-unfinished` archive gate.
 - **v1.5.7** — Requirement-first release: a stage is a long-lived **version container** (stays in `exec_running`, holds many requirements); requirement completion is decoupled from stage closure (`req advance --to done` works with zero linked stages, or while linked stages are at/after `exec_running`); stages are archived/released only after the user confirms. Adapter prompt and gates now say so, and `feel_status` defaults to a compact snapshot (`detail: "full"` for the full one). Also: `plan stage add` / `flow stage add` refuse to silently reuse an archived stage's plan directory.
 - **v1.5.6** — Batch release: preflight now covers all state-write commands (34 commands / 36 gate sites in one shared helper), `--dry-run` is never gated (10 commands), `flow repair` / `flow checkpoint restore` stay usable when `flow.json` is unreadable, and strict rejections are zero-write (including `flow.json.bak` and `config.yaml`). Also new: `openfeel lint req` (JSON exit #41) validates command names in requirement bodies against the real command tree (A-class blocking / B-class advisory), with in-line and region suppression markers. Process-health proxies (`flow metrics`): resumed ratio / `plan_pending → plan_review` dwell / last-preflight age in the human block only (`--json` unchanged), plus adapter `observability` (`feel_status`/`feel_next`), with zero runtime overhead and no self-measurement.
 - **v1.5.5** — Batch release: CLI preflight ledger (`flow next` / `flow status` record `.preflight.json`; write commands check a 10-minute window), adapter defaults to strict preflight (`feel_status`/`feel_next` expose `preflight`), prompt bans shell state-write commands and requires independent review (self-review must be marked).
@@ -37,9 +41,25 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
 
-- **v1.5.9** — Cleanup batch: manual/template/skill snapshots refreshed to v1.5.8, eslint errors cleared (35 → 0), v1.5.7 version archive backfilled, and pitfalls fixed (README capability text, adapter `sessions.stage` clearing semantics, `chore.json` ignored).
+## v1.5.11 — 写入门禁加固（shell 守卫 / 受保护路径 / fail-closed / chore 收窄）
 
-- **v1.5.8** — Requirement-first batch: archiver gathers completed requirements, writes `docs/releases/<version>.md` and harness-aware skills; stages hold multiple requirements (`requirements[]`); multi-session P0 (sessions registry, auto-commit pollution guard, current-stage rule, `feel_status.sessions`); completion requires review + verification evidence at both requirement and stage level; completed requirements travel into version archives with a monotonic `last_req_seq` counter, plus `req release-check` / `req rollover` (carried_from) and an `--allow-unfinished` archive gate.
+- **与 v1.5.10 同批发布**：npm 上线版本为 **1.5.11**，`1.5.10` 未单独发布。
+- **shell 纳入守卫**：`bash` / `pwsh` 四类判定——受保护路径与 `openfeel` 写命令**硬拒**；源码与 git 工作区写按目标判定；构建产物（`dist` / `build` / `out` / `target` / `.next` 等）豁免；不可判定只告警。`npx vitest` / `npm run build` / `git status` 不误杀。
+- **受保护路径扩展**：`chore.json`、`dev/.preflight.json`、`dev/sessions.json`、`dev/guard-state.json`、`pipeline.yaml`、`config.yaml`、`metrics.json`、`flow-archive/**`、`checkpoints/**`、`requirements/*.md`、`log/guard-audit.jsonl`、`dsh/cordis.patch.yml` 只能经 CLI 写入，堵住 agent 手写状态文件自提权。
+- **豁免收窄**：代码目录（`src` / `test` / `scripts` / `dsh` / `bin`）内 `.md` / `.css` / `assets/*` 不再按文档放行——先判目录、再判扩展名。
+- **cwd 六环 + fail-closed**：解析不到工作区时显式拒绝并自我暴露（`guard-state.json` 落 `os.tmpdir()` 全局路径 + stderr 告警），不再静默放行；`.openfeel/dev/guard-state.json` 记录 `pid` / `loaded_hash` / HMAC，`feel_status` / `feel_next` 的 `guard` 段对不上即 `stale`。
+- **Win32 路径归一化**：尾点 / ADS / 8.3 短名在判定前归一，路径别名不再绕过。
+- **`chore` 收窄为纯人类通道**：窗口上限 30 分钟（`--ttl-min 1..30`），源码写入须显式 `--source`。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → **完全退出并重启宿主**（guard 只在宿主重启时重新注册）。详见 [CHANGELOG](../CHANGELOG.md#1511---2026-11-04)。
+
+## v1.5.10 — 项目看板（dashboard）
+
+- **新增 `openfeel dashboard [--json] [--out <file>] [--open]`**：聚合需求看板（7 状态）/ 阶段进度 / 版本发布门与归档历史 / 阻塞 REV 与流程健康，默认生成**单文件自包含 HTML**（`.openfeel/tmp/dashboard.html`），零外链、零网络请求、零可执行脚本，双击 `file://` 即可打开。
+- **`dashboard --json`（成功出口 #43）**：10 键固定序；与 `--out` / `--open` 互斥；**快照命令**（`health.ok=false` 仍 exit 0）。
+- **兼容性**：JSON 契约升为 **43 成功出口 / 44 注册 `--json` 选项**；既有 42 个出口零改动。
+- **与 v1.5.11 同批发布**：`1.5.10` 未单独发布。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup`。详见 [CHANGELOG](../CHANGELOG.md#1510---2026-11-04)。
+
 ## v1.5.7 — 需求导向：阶段长期开启 + 需求完成与阶段关闭解耦
 
 - **阶段 = 版本容器**：默认按当前小版本开一个阶段并**保持 `exec_running`**，一个阶段容纳多个需求；不再「每做一个需求就建/推进/关闭阶段」。无开启阶段时才开新阶段。

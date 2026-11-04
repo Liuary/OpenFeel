@@ -19,6 +19,10 @@ import { readRecovery } from '../adapters/recovery.js';
 import { readPreflightInfo } from '../adapters/preflight.js';
 import { buildObservability } from '../adapters/observability.js';
 import { computeWorkflowGate } from '../adapters/workflow-gate.js';
+import { buildGuardSection } from '../adapters/guard-state.js';
+import { readHostMarker } from '../adapters/host-state.js';
+import { resolveGuardCwd } from '../guard.js';
+import { touchSession as touchSessionCwd } from '../adapters/session-cwd-registry.js';
 import { resolveWorkspace } from '../adapters/workspace.js';
 // v1.5.8 / REQ-029：多会话登记（与 CLI `.openfeel/dev/sessions.json` 同一文件格式）
 import { readSessions as readSessionEntries, touchSession as touchSessionFile } from '../adapters/sessions.js';
@@ -180,6 +184,9 @@ export function compactStatusSnapshot(snapshot) {
     stages: snapshot?.stages ?? [],
     statusSync: snapshot?.statusSync ?? null,
     workflowGate: snapshot?.workflowGate ?? null,
+    // v1.5.11 D-126-04：门禁自检段（registered / cwd / cwdSource / degraded / stale /
+    // lastDecision）；compact 档同样带，否则「门禁是否生效」在默认档看不见。
+    guard: snapshot?.guard ?? null,
     preflight: snapshot?.preflight ?? null,
     recovery: {
       stage: recovery.stage ?? null,
@@ -201,6 +208,31 @@ export function compactStatusSnapshot(snapshot) {
     compact.requirements = snapshot.requirements;
   }
   return compact;
+}
+
+/**
+ * 门禁自检段的摘要告警（v1.5.11 D-126-04）：让「门禁没生效 / 判定不可信 /
+ * cwd 降级」在 summary 里一眼可见，而不是藏在 JSON 深处。
+ * @param {Record<string, any> | null | undefined} guard
+ * @returns {string}
+ */
+function guardWarnings(guard) {
+  if (guard === null || guard === undefined) return '';
+  if (guard.registered === false) {
+    return '⚠ 写入门禁未生效（guard-state 缺失或 guard 未注册），源码写入当前无门禁保护。';
+  }
+  if (guard.stale === true) {
+    // op-005 / P1-6：stale 也可能是「guard-state 被整体重写」（HMAC 校验失败），
+    // 文案要把「篡改」说清楚，不能只怪旧进程。
+    if (guard.staleReason === 'hmac') {
+      return '⚠ 门禁状态被篡改或来自旧进程（guard-state 签名校验失败），判定不可信；请重启宿主后确认 feel_status.guard.stale === false。';
+    }
+    return '⚠ 门禁来自旧进程/旧适配器，判定不可信，请重启宿主后再写入。';
+  }
+  if (guard.degraded === true && typeof guard.cwdSource === 'string' && guard.cwdSource !== 'agent-session') {
+    return `⚠ 门禁 cwd 为降级来源（cwdSource=${guard.cwdSource}），请核对 guard 段。`;
+  }
+  return '';
 }
 
 /**
@@ -270,6 +302,15 @@ export function createTools(context) {
         });
         snapshot.project.root = resolved.cwd;
         snapshot.statusSync = readStatusSync(resolved.cwd);
+        // v1.5.11 D-126-01 登记点 ②：每次 feel_* 也记会话 cwd（门禁第 3 环兜底）。
+        touchSessionCwd(exec?.agent?.session?.id, resolved.sessionCwd);
+        // v1.5.11 D-126-04：门禁自检段（必须在 computeWorkflowGate 之前装配，
+        // 让 workflowGate 能读到 guard.registered / cwd / stale）。
+        snapshot.guard = buildGuardSection({
+          root: resolved.cwd,
+          hostMarker: readHostMarker(),
+          live: resolveGuardCwd(exec, { cwd: cli.cwd }),
+        });
         snapshot.workflowGate = computeWorkflowGate(snapshot);
         snapshot.recovery = readRecovery(resolved.cwd);
         snapshot.preflight = preflight;
@@ -282,10 +323,11 @@ export function createTools(context) {
         const focus = snapshot.focus;
         const gateWarning = snapshot.workflowGate.required ? '⚠ 无活跃阶段：非只读任务先 feel_status→建阶段。' : '';
         const staleWarning = snapshot.stale ? '⚠ 快照为降级（flow next 缺失），以 flow status 为准。' : '';
+        const guardWarning = guardWarnings(snapshot.guard);
         const data = args.detail === 'full' ? snapshot : compactStatusSnapshot(snapshot);
         return {
           data,
-          summary: `${staleWarning}${gateWarning}pipeline=${snapshot.pipeline.phase || '(空)'} 活跃阶段=${focus.stage || '(无)'} phase=${focus.phase || '(空)'} mode=${snapshot.mode.current}(${snapshot.mode.source}) 负责=${focus.responsibleAgent} 可推进到=[${(focus.legalNextPhases ?? []).join(', ') || '无'}]`,
+          summary: `${staleWarning}${gateWarning}${guardWarning}pipeline=${snapshot.pipeline.phase || '(空)'} 活跃阶段=${focus.stage || '(无)'} phase=${focus.phase || '(空)'} mode=${snapshot.mode.current}(${snapshot.mode.source}) 负责=${focus.responsibleAgent} 可推进到=[${(focus.legalNextPhases ?? []).join(', ') || '无'}]`,
           next: focus.phase === 'done' || focus.phase === ''
             ? null
             : { tool: 'feel_next', arguments: {}, why: '获取「下一步该谁做」的明确建议。' },
@@ -315,12 +357,21 @@ export function createTools(context) {
         const snapshot = await readSnapshot(cli, { cwd: resolved.cwd, signal: exec.signal });
         snapshot.project.root = resolved.cwd;
         snapshot.statusSync = readStatusSync(resolved.cwd);
+        // v1.5.11 D-126-01 登记点 ②：每次 feel_* 也记会话 cwd（门禁第 3 环兜底）。
+        touchSessionCwd(exec?.agent?.session?.id, resolved.sessionCwd);
+        // v1.5.11 D-126-04：门禁自检段先装配，workflowGate 才能读到 guard 状态。
+        snapshot.guard = buildGuardSection({
+          root: resolved.cwd,
+          hostMarker: readHostMarker(),
+          live: resolveGuardCwd(exec, { cwd: cli.cwd }),
+        });
         snapshot.workflowGate = computeWorkflowGate(snapshot);
         snapshot.recovery = readRecovery(resolved.cwd);
         snapshot.preflight = preflight;
         snapshot.observability = safeObservability(snapshot);
         const plan = planNextStep(snapshot);
         plan.workflowGate = snapshot.workflowGate;
+        plan.guard = snapshot.guard;
         plan.preflight = snapshot.preflight;
         snapshot.recovery.nextAction = plan.suggestedCommand ?? null;
         plan.recovery = snapshot.recovery;
@@ -329,6 +380,8 @@ export function createTools(context) {
         if (plan.workflowGate.required) {
           plan.summary = `⚠ ${plan.workflowGate.message} ${plan.summary}`;
         }
+        const guardWarning = guardWarnings(snapshot.guard);
+        if (guardWarning !== '') plan.summary = `${guardWarning} ${plan.summary}`;
         if (snapshot.stale) {
           plan.summary = `⚠ 快照为降级（flow next 缺失），以 flow status 为准。 ${plan.summary}`;
         }

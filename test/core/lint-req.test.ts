@@ -2,7 +2,7 @@
  * `lint req` 纯函数核心测试（v1.5.6-stage-115 op-001；T1~T20 / 21 条）
  *
  * 树来源纪律：直接 import **生产同源**的 `program as rootProgram`（`src/cli/index.ts` 模块顶层
- * 已注册全部 19 组）——**不得**用 `new Command()` + 只注册 lint 组（那样树是空的/残缺的，
+ * 已注册全部 20 组）——**不得**用 `new Command()` + 只注册 lint 组（那样树是空的/残缺的，
  * `stage deps` 会被误判），也不手写注册序列（易与生产漂移）。
  */
 import { describe, it, expect } from 'vitest';
@@ -17,7 +17,7 @@ import {
   type LintReqReport,
 } from '../../src/core/lint-req.js';
 
-/** 生产同源命令树（19 根命令 + 全部子树） */
+/** 生产同源命令树（20 根命令 + 全部子树） */
 const TREE: CommandNode[] = toCommandTree(rootProgram);
 
 /** 单文件便利入口：正文 → 报告（`zh-CN` 文案，便于断言 message 逐字含中文） */
@@ -60,10 +60,10 @@ describe('lint req core：命令树构建', () => {
     expect(tree[0].argCount).toBe(0);
   });
 
-  it('T2：守卫 —— 生产树根命令恰 19 项，lint 组含 req，且带参节点元数据真实存在', () => {
+  it('T2：守卫 —— 生产树根命令恰 20 项，lint 组含 req，且带参节点元数据真实存在', () => {
     const roots = TREE.map((n) => n.name).sort();
     expect(roots).toEqual([
-      'archive', 'chore', 'config', 'dev', 'flow', 'init', 'instructions', 'knowledge',
+      'archive', 'chore', 'config', 'dashboard', 'dev', 'flow', 'init', 'instructions', 'knowledge',
       'lint', 'migrate', 'model', 'plan', 'project', 'req', 'roadmap', 'setup', 'stage',
       'update', 'view',
     ]);

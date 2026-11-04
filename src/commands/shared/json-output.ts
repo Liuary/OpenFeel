@@ -75,6 +75,7 @@ export const VALUE_OPTIONS: ReadonlySet<string> = new Set<string>([
   '--limit',
   '--mode',
   '--op',
+  '--out',
   '--owner',
   '--priority',
   '--requirement',

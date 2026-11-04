@@ -393,8 +393,13 @@ export const flow: I18nDomain = {
   'chore.endTmpl':                  { key: 'flow.chore.endTmpl',                  zh: '', en: '✓ Chore closed ({id})' },
   'chore.noActiveTmpl':             { key: 'flow.chore.noActiveTmpl',             zh: '', en: 'No active chore (nothing to close).' },
   'chore.busyTmpl':                 { key: 'flow.chore.busyTmpl',                 zh: '', en: 'Active stage(s) present ({stages}); chore is only for micro-changes without an active stage. Use a fast/full stage.' },
-  'chore.needNote':                 { key: 'flow.chore.needNote',                 zh: '', en: 'Usage: openfeel chore "<note>" [--ttl-min N]; or `--end` / `--status`.' },
+  'chore.needNote':                 { key: 'flow.chore.needNote',                 zh: '', en: 'Usage: openfeel chore "<note>" [--ttl-min 1..30] [--source]; or `--end` / `--status`. Chore is human-only (open it from an external terminal); by default only docs/static assets are writable — add `--source` to allow source writes.' },
+  'chore.sourceStartedTmpl':        { key: 'flow.chore.sourceStartedTmpl',        zh: '', en: '✓ Chore opened (source writes explicitly allowed): {note} ({id}; source and docs writable for {ttl} min; close with `openfeel chore --end`)' },
+  'chore.ttlTooLong':               { key: 'flow.chore.ttlTooLong',               zh: '', en: '`--ttl-min` is above the cap: a chore window lasts at most {max} min (narrowed policy); it can only be shortened to 1..{max} min.' },
+  'chore.ttlInvalid':               { key: 'flow.chore.ttlInvalid',               zh: '', en: '`--ttl-min` is invalid: only an integer in 1..{max} is accepted (e.g. `--ttl-min 10`); no window was opened.' },
   'chore.statusActiveTmpl':         { key: 'flow.chore.statusActiveTmpl',         zh: '', en: 'Chore active: {id} — {note} (expires {expires})' },
+  'chore.statusSourceAllowedTmpl':  { key: 'flow.chore.statusSourceAllowedTmpl',  zh: '', en: 'Source writes: allowed (`--source`); {remaining} min left.' },
+  'chore.statusSourceDeniedTmpl':   { key: 'flow.chore.statusSourceDeniedTmpl',   zh: '', en: 'Source writes: not allowed (default window covers docs/static assets only); {remaining} min left. To change source, the human must run `openfeel chore --source "<note>"` from an external terminal.' },
   'chore.statusExpiredTmpl':        { key: 'flow.chore.statusExpiredTmpl',        zh: '', en: 'Chore expired: {id} (reopen, or use the static-asset/doc channel).' },
   'chore.statusNoneTmpl':           { key: 'flow.chore.statusNoneTmpl',           zh: '', en: 'No chore (static assets/docs remain writable when no stage is active).' },
   // dev status sync (v1.5.0)
@@ -843,6 +848,12 @@ export const help: I18nDomain = {
   'project':               { key: 'help.project',               zh: '', en: 'Project management and overview' },
   'project.overview':      { key: 'help.project.overview',      zh: '', en: 'Scan project structure in real-time, output structured overview' },
   'project.overview.json': { key: 'help.project.overview.json', zh: '', en: 'Output as JSON (single JSON document with schemaVersion)' },
+
+  // dashboard (v1.5.10 / stage-125 op-003)
+  'dashboard':             { key: 'help.dashboard',             zh: '', en: 'Generate the project dashboard (single-file HTML snapshot; zero external links, zero scripts)' },
+  'dashboard.json':        { key: 'help.dashboard.json',        zh: '', en: 'Output as JSON (single JSON document with schemaVersion)' },
+  'dashboard.out':         { key: 'help.dashboard.out',         zh: '', en: 'Output file path (default <project root>/.openfeel/tmp/dashboard.html)' },
+  'dashboard.open':        { key: 'help.dashboard.open',        zh: '', en: 'Open the generated dashboard in the system default browser (opens the default artifact when --out is omitted)' },
 
   'plan':                  { key: 'help.plan',                  zh: '', en: 'Plan management' },
   'plan.stage':            { key: 'help.plan.stage',            zh: '', en: 'Work stage management' },
@@ -1322,6 +1333,58 @@ export const req: I18nDomain = {
   'rollover.terminalTmpl': { key: 'req.rollover.terminalTmpl', zh: '', en: '{id} is in a terminal status ({status}); cannot roll over' },
 };
 
+/* ==================== dashboard domain: dashboard HTML rendering copy (v1.5.10 / stage-125 op-002) ==================== */
+/**
+ * Property names inside this domain always carry the `html.` prefix and `key` holds the full
+ * `dashboard.html.*` key; a bare `title` property would map to `dashboard.title` and silently
+ * collide with op-003's command copy keys (same domain).
+ */
+export const dashboard: I18nDomain = {
+  // Document title
+  'html.title':                 { key: 'dashboard.html.title',                 zh: '', en: 'OpenFeel Project Dashboard' },
+  // KPI strip (5)
+  'html.kpi.total':             { key: 'dashboard.html.kpi.total',             zh: '', en: 'Requirements' },
+  'html.kpi.done':              { key: 'dashboard.html.kpi.done',              zh: '', en: 'Done' },
+  'html.kpi.activeStages':      { key: 'dashboard.html.kpi.activeStages',      zh: '', en: 'Active stages' },
+  'html.kpi.blockingReviews':   { key: 'dashboard.html.kpi.blockingReviews',   zh: '', en: 'Blocking reviews' },
+  'html.kpi.archived':          { key: 'dashboard.html.kpi.archived',          zh: '', en: 'Archived versions' },
+  // Section titles (7)
+  'html.section.requirements':  { key: 'dashboard.html.section.requirements',  zh: '', en: 'Requirement board' },
+  'html.section.stages':        { key: 'dashboard.html.section.stages',        zh: '', en: 'Stages' },
+  'html.section.releases':      { key: 'dashboard.html.section.releases',      zh: '', en: 'Release gates' },
+  'html.section.archived':      { key: 'dashboard.html.section.archived',      zh: '', en: 'Archive history' },
+  'html.section.blockingReviews': { key: 'dashboard.html.section.blockingReviews', zh: '', en: 'Blocking reviews' },
+  'html.section.health':        { key: 'dashboard.html.section.health',        zh: '', en: 'Pipeline health' },
+  'html.section.metrics':       { key: 'dashboard.html.section.metrics',       zh: '', en: 'Metrics' },
+  // Table headers (9)
+  'html.th.requirement':        { key: 'dashboard.html.th.requirement',        zh: '', en: 'Requirement' },
+  'html.th.status':             { key: 'dashboard.html.th.status',             zh: '', en: 'Status' },
+  'html.th.priority':           { key: 'dashboard.html.th.priority',           zh: '', en: 'Priority' },
+  'html.th.version':            { key: 'dashboard.html.th.version',            zh: '', en: 'Version' },
+  'html.th.owner':              { key: 'dashboard.html.th.owner',              zh: '', en: 'Owner' },
+  'html.th.phase':              { key: 'dashboard.html.th.phase',              zh: '', en: 'Phase' },
+  'html.th.ops':                { key: 'dashboard.html.th.ops',                zh: '', en: 'Ops progress' },
+  'html.th.count':              { key: 'dashboard.html.th.count',              zh: '', en: 'Count' },
+  'html.th.stage':              { key: 'dashboard.html.th.stage',              zh: '', en: 'Stage ID' },
+  // Empty state + "no unfinished items" (2)
+  'html.empty':                 { key: 'dashboard.html.empty',                 zh: '', en: '(no data)' },
+  'html.none':                  { key: 'dashboard.html.none',                  zh: '', en: '—' },
+  // Footer (4)
+  'html.footer.generatedAt':    { key: 'dashboard.html.footer.generatedAt',    zh: '', en: 'Generated at' },
+  'html.footer.generator':      { key: 'dashboard.html.footer.generator',      zh: '', en: 'Generator' },
+  'html.footer.projectRoot':    { key: 'dashboard.html.footer.projectRoot',    zh: '', en: 'Project root' },
+  'html.footer.note':           { key: 'dashboard.html.footer.note',           zh: '', en: 'This file is a server-rendered single-file snapshot dashboard: no external links, no network requests, no executable scripts.' },
+  // Command copy (v1.5.10 / stage-125 op-003; property name is the `dashboard.*` key tail, no html. prefix)
+  'title':                      { key: 'dashboard.title',                      zh: '', en: 'OpenFeel Project Dashboard' },
+  'statsTmpl':                  { key: 'dashboard.statsTmpl',                  zh: '', en: 'Requirements {requirements} / Stages {stages} / Blocking reviews {blockingReviews}' },
+  'writtenTmpl':                { key: 'dashboard.writtenTmpl',                zh: '', en: 'Dashboard written: {path}' },
+  'openFailedTmpl':             { key: 'dashboard.openFailedTmpl',             zh: '', en: 'Could not open the browser automatically: {path}' },
+  'jsonOutConflict':            { key: 'dashboard.jsonOutConflict',            zh: '', en: '--json and --out cannot be combined (--json emits a single document and writes no file)' },
+  'jsonOpenConflict':           { key: 'dashboard.jsonOpenConflict',           zh: '', en: '--json and --open cannot be combined (--json starts no external process)' },
+  'outEmpty':                   { key: 'dashboard.outEmpty',                   zh: '', en: 'The --out path must not be empty' },
+  'outIsDirectory':             { key: 'dashboard.outIsDirectory',             zh: '', en: 'The --out path is an existing directory: {path}' },
+};
+
 /* ==================== 聚合导出 ==================== */
 export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'common',       domain: common },
@@ -1345,4 +1408,5 @@ export const allDomains: Array<{ name: string; domain: I18nDomain }> = [
   { name: 'metrics',      domain: metrics },
   { name: 'repl',         domain: repl },
   { name: 'req',          domain: req },
+  { name: 'dashboard',    domain: dashboard },
 ];

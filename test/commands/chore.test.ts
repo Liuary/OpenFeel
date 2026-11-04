@@ -125,4 +125,84 @@ describe('chore 命令（v1.4.0）', () => {
     await safeParse(['chore', '--status']);
     expect(logMock.mock.calls.map((c) => String(c[0])).join('\n')).toContain('已过期');
   });
+
+  // ── v1.5.11 / D-126-03：TTL 收窄 + --source ──────────────────────────
+
+  type StartLog = { action: string; detail: Record<string, unknown> };
+
+  function startLogs(): StartLog[] {
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as { log: StartLog[] };
+    return flow.log.filter((entry) => entry.action === 'chore_start');
+  }
+
+  it('默认 TTL = 30 分钟（expires_at - started_at === 30min）', async () => {
+    seed('done');
+    await safeParse(['chore', '默认窗口']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const chore = JSON.parse(readFileSync(chorePath(), 'utf-8')) as { started_at: string; expires_at: string };
+    expect(Date.parse(chore.expires_at) - Date.parse(chore.started_at)).toBe(30 * 60_000);
+    const logs = startLogs();
+    expect(logs).toHaveLength(1);
+    expect(logs[0].detail.source_allowed).toBe(false);
+  });
+
+  it('--ttl-min 10 / 30 → 生效；窗口只能改短', async () => {
+    seed('done');
+    await safeParse(['chore', '十分钟', '--ttl-min', '10']);
+    const ten = JSON.parse(readFileSync(chorePath(), 'utf-8')) as { started_at: string; expires_at: string };
+    expect(Date.parse(ten.expires_at) - Date.parse(ten.started_at)).toBe(10 * 60_000);
+
+    await safeParse(['chore', '--end']);
+    await safeParse(['chore', '三十分钟', '--ttl-min', '30']);
+    const thirty = JSON.parse(readFileSync(chorePath(), 'utf-8')) as { started_at: string; expires_at: string };
+    expect(Date.parse(thirty.expires_at) - Date.parse(thirty.started_at)).toBe(30 * 60_000);
+  });
+
+  it('--ttl-min 越界/非法（31/999/0/-1/1.5/abc）→ exit 1 且零写盘', async () => {
+    seed('done');
+    for (const bad of ['31', '999', '0', '-1', '1.5', 'abc']) {
+      exitMock.mockClear();
+      errorMock.mockClear();
+      await safeParse(['chore', '不应开启', '--ttl-min', bad]);
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(errorMock.mock.calls.length).toBeGreaterThan(0);
+      expect(existsSync(chorePath())).toBe(false);
+      expect(startLogs()).toHaveLength(0);
+    }
+  });
+
+  it('--source → chore.json.source_allowed === true，日志 detail 同值', async () => {
+    seed('done');
+    await safeParse(['chore', '行为调整', '--source']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const chore = JSON.parse(readFileSync(chorePath(), 'utf-8')) as { source_allowed?: boolean };
+    expect(chore.source_allowed).toBe(true);
+    const logs = startLogs();
+    expect(logs).toHaveLength(1);
+    expect(logs[0].detail.source_allowed).toBe(true);
+  });
+
+  it('无 --source → 不写 source_allowed 字段（旧记录同样视为未授权）', async () => {
+    seed('done');
+    await safeParse(['chore', '只改文案']);
+    const chore = JSON.parse(readFileSync(chorePath(), 'utf-8')) as { source_allowed?: boolean };
+    expect(chore.source_allowed).toBeUndefined();
+    expect(startLogs()[0].detail.source_allowed).toBe(false);
+  });
+
+  it('--status 标注是否允许源码与剩余分钟', async () => {
+    seed('done');
+    await safeParse(['chore', '仅文档']);
+    logMock.mockClear();
+    await safeParse(['chore', '--status']);
+    const deniedStatus = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(deniedStatus).toContain('源码写入：不允许');
+    expect(deniedStatus).toMatch(/剩余 \d+ 分钟/);
+
+    await safeParse(['chore', '--end']);
+    await safeParse(['chore', '--source', '源码窗口']);
+    logMock.mockClear();
+    await safeParse(['chore', '--status']);
+    expect(logMock.mock.calls.map((c) => String(c[0])).join('\n')).toContain('源码写入：允许（');
+  });
 });

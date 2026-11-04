@@ -19,6 +19,7 @@ import { planNextStep, readSnapshot } from '../lib/adapters/dashboard.js';
 import { tokenize } from '../lib/surface/command.js';
 import { renderFeelPrompt } from '../lib/surface/prompt.js';
 import { computeWorkflowGate } from '../lib/adapters/workflow-gate.js';
+import { buildGuardSection, computeGuardStale, readGuardState, writeGuardState } from '../lib/adapters/guard-state.js';
 import { buildObservability } from '../lib/adapters/observability.js';
 
 /** 真实 OpenFeel 项目（只读源）。 */
@@ -383,6 +384,118 @@ async function main() {
     const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
     assert(Array.isArray(next.sessions), 'feel_next.sessions 应为数组');
     assert(next.sessions.length > 0, 'feel_next.sessions 应含当前会话条目');
+  });
+
+  await check('feel_status/feel_next 暴露 guard 段（v1.5.11 D-126-04）', async () => {
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assert(status.guard && typeof status.guard === 'object', 'feel_status 缺 guard 段（compact 档也要带）');
+    assert(status.guard.registered === true, `guard.registered 应为 true，实际 ${status.guard.registered}`);
+    assert(status.guard.registered === true && typeof status.guard.shellGate === 'string', 'guard.shellGate 应可见');
+    assertString(status.guard.cwd, 'guard.cwd');
+    assert(
+      status.guard.cwdSource === 'agent-session',
+      `guard.cwdSource 应为 agent-session，实际 ${status.guard.cwdSource}`,
+    );
+    assert(status.guard.degraded === false, 'agent-session 来源不应 degraded');
+    // stale 依赖「当前进程」判 pid：只有确认 state 由本进程写时才断言不 stale
+    // （全局 guard-state 是跨进程共享文件，并发跑别的测试脚本可能把它改写）。
+    assert(typeof status.guard.stale === 'boolean', 'guard.stale 应为布尔');
+    assertString(status.guard.hostStartedAt, 'guard.hostStartedAt');
+    assertString(status.guard.loaded_hash, 'guard.loaded_hash');
+    // 跨进程/并发：他进程写的 state 必须被 HMAC/stale 判为不可信（v1.5.11 P1-6 设计）。
+    // 真实 DSH 宿主同时在跑时本测试会读到宿主的 state（pid 不同）→ 期望 stale=true。
+    if (status.guard.pid === process.pid) {
+      assert(status.guard.stale === false, '同进程注册不应 stale');
+    } else {
+      assert(
+        status.guard.stale === true,
+        `非同进程 state 应 stale（本进程 ${process.pid}，state ${status.guard.pid}）`,
+      );
+    }
+
+    const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
+    assert(next.guard && next.guard.registered === true, 'feel_next 缺 guard 段');
+    if (next.guard.pid === process.pid) {
+      assert(next.guard.stale === false, 'feel_next 同进程不应 stale');
+    }
+  });
+
+  await check('workflowGate：guard 不可信三种注入 → required（v1.5.11 D-126-04）', () => {
+    const base = { focus: { phase: 'exec_running' } };
+    const cases = [
+      [{ registered: false }, 'guard-inactive'],
+      [{ registered: true, cwd: null, cwdSource: 'unresolved' }, 'guard-cwd-unresolved'],
+      [{ registered: true, cwd: '/x/project', cwdSource: 'agent-session', stale: true }, 'guard-stale'],
+    ];
+    for (const [guard, reason] of cases) {
+      const gate = computeWorkflowGate({ ...base, guard });
+      assert(gate.required === true, `${reason} 应 required`);
+      assert(gate.reason === reason, `reason 应为 ${reason}，实际 ${gate.reason}`);
+      assert(Array.isArray(gate.actions) && gate.actions.length > 0, `${reason} 应给修复动作`);
+    }
+    // 无 guard 字段 → 行为完全不变（零回归）
+    assert(computeWorkflowGate({ focus: { phase: 'exec_running' } }).required === false, '无 guard 字段不应 required');
+    assert(computeWorkflowGate({ focus: { phase: '' } }).reason === 'no-active-stage', '无 guard 字段仍按阶段判定');
+  });
+
+  await check('guard-state：假 state + 假 host-marker 注入 → stale 可见（副本，不写真实项目）', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'feel-verify-guard-'));
+    try {
+      const startedAt = new Date(Date.now() - 60_000).toISOString();
+      writeGuardState(dir, {
+        registered: true,
+        enforce: 'always',
+        shellGate: 'default(1/2=deny,4=warn)',
+        cwd: dir,
+        cwdSource: 'agent-session',
+        degraded: false,
+        hostStartedAt: startedAt,
+        loaded_hash: 'hash-a',
+        pid: process.pid,
+      });
+      const state = readGuardState(dir);
+      assert(state !== null && state.source === 'workspace', 'guard-state 应落工作区');
+      const marker = { loaded_hash: 'hash-a', started_at: new Date(Date.now() - 120_000).toISOString() };
+      const fresh = buildGuardSection({ root: dir, hostMarker: marker });
+      assert(fresh.registered === true && fresh.stale === false, '同哈希/同 pid 不应 stale');
+      assert(fresh.cwdSource === 'agent-session', 'agent-session 不应降级');
+      // 假 marker：loaded_hash 不符 → «适配器已更新但宿主没重启»
+      const hashStale = buildGuardSection({ root: dir, hostMarker: { ...marker, loaded_hash: 'hash-b' } });
+      assert(hashStale.stale === true, 'loaded_hash 不符应 stale');
+      // 假 state：pid 不符 → «状态来自旧进程»
+      assert(computeGuardStale(state, marker, process.pid + 1) === true, 'pid 不符应 stale');
+      // 假 marker：started_at 更晚 → «hostStartedAt 早于当前宿主启动»
+      const bootStale = buildGuardSection({ root: dir, hostMarker: { ...marker, started_at: new Date().toISOString() } });
+      assert(bootStale.stale === true, 'hostStartedAt 早于宿主启动应 stale');
+      // 假 state：fail-closed 判定（lastDecision + cwd:null）→ 给出 live 也不得粉饰
+      writeGuardState(dir, {
+        registered: true,
+        cwd: null,
+        cwdSource: 'unresolved',
+        degraded: true,
+        lastDecision: {
+          at: new Date().toISOString(),
+          tool: 'write',
+          decision: 'deny',
+          reason: 'cwd-unresolved',
+          paths: [],
+          cwd: null,
+          cwdSource: 'unresolved',
+        },
+      });
+      const failClosed = buildGuardSection({
+        root: dir,
+        hostMarker: marker,
+        live: { cwd: 'C:/elsewhere', source: 'process', degraded: true },
+      });
+      assert(failClosed.cwd === null && failClosed.cwdSource === 'unresolved', 'fail-closed 状态不得被 live 解析粉饰');
+      assert(
+        computeWorkflowGate({ focus: { phase: 'exec_running' }, guard: failClosed }).reason === 'guard-cwd-unresolved',
+        'fail-closed 必须让 workflowGate 报警',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   await check('提示段含「只有 Feel 写状态 / 子 agent 禁读写」（v1.5.0）', () => {

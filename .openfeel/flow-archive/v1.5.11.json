@@ -1,0 +1,250 @@
+{
+  "version": "v1.5.11",
+  "stages": {
+    "v1.5.11-stage-126": {
+      "name": "v1.5.11-stage-126",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-019",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-03T16:38:06.006Z",
+        "end_time": "2026-11-04T15:39:36.175Z",
+        "duration_ms": 82890169
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-04T15:39:33.665Z",
+        "note": "门禁加固阶段（REQ-019）验证通过：src/dsh 双套全绿、对抗性绕过向量已被拒、实机生效且只读命令不误杀。",
+        "evidence": "独立代码审查两轮（首轮 BLOCK：3 P0 未识别命令默认放行 / Win32 归一化缺失 / pipeline.yaml+config.yaml 未保护；修复后对抗复打 PASS：13 项绕过向量 11/13 全堵、P0 7/7 deny、无新增误杀；再修 2 P1 后 guard 138/138）。门禁：src 95 文件 / 2353 用例全绿；dsh 串行四套 guard 138/138、verify 112/112、contract 46/46、integration 全通过。实机验收（重启后）：[IO.File]::WriteAllText / Set-Content -Path / node -e 含写 API / 写 .openfeel/chore.json 全部被拒；openfeel flow status、git status、npx vitest 均放行；feel_status.guard = registered:true、cwdSource:agent-session、loaded_hash 与仓库一致。"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-011",
+      "op": "v1.5.11-stage-126",
+      "stage": "v1.5.11-stage-126",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P0] shell 未识别命令默认 allow（kind=none 静默放行）：[IO.File]::WriteAllText / iwr -OutFile / curl -o / certutil / robocopy / npx --write 全部绕过",
+      "filed_by": "cli",
+      "filed_at": "2026-11-03T18:23:01.108Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-012",
+      "op": "v1.5.11-stage-126",
+      "stage": "v1.5.11-stage-126",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P0] Win32 文件名归一化缺失：flow.json. / flow.json::$DATA / FLOW~1.JSO 绕过受保护名单（真机已验证 flow.json 被覆盖）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-03T18:23:06.214Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-013",
+      "op": "v1.5.11-stage-126",
+      "stage": "v1.5.11-stage-126",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P0] .openfeel/pipeline.yaml（转移表）与 config.yaml（workflow_mode/auto_advance）不在受保护名单 → 任意相位可改，可让 plan_pending→done 变「合法」",
+      "filed_by": "cli",
+      "filed_at": "2026-11-03T18:23:10.612Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-014",
+      "op": "v1.5.11-stage-126",
+      "stage": "v1.5.11-stage-126",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P1 批] 引号/&quot;node openfeel&quot; 可绕过写子命令检测自开 chore；exec_running 下整树 git 写覆盖 .openfeel；git stash 被判只读；git commit 在 archiving 被误杀；间接写 API 表缺 child_process/pathlib；guard-state 缺 pid 不判 stale",
+      "filed_by": "cli",
+      "filed_at": "2026-11-03T18:23:14.791Z",
+      "canAutoFix": false,
+      "blocking": true
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-11-03T16:28:05.766Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-03T16:38:05.996Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-03T16:55:27.510Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T16:55:57.597Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T19:07:55.535Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T19:07:59.362Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T15:15:59.066Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "review_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T15:38:50.346Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T15:38:52.808Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T15:39:29.346Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T15:39:36.169Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.11-stage-126",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-019",
+      "title": "门禁加固：写入门禁静默 fail-open（cwd 解析失败即放行）+ shell 写通道未守 + chore 可绕过阶段改源码",
+      "status": "done",
+      "created_at": "2026-11-03T16:27:58.899Z",
+      "updated_at": "2026-11-03T19:08:18.346Z",
+      "target_version": "v1.5.11",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-019.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-03T16:28:02.266Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-03T19:08:04.042Z",
+        "note": "两轮独立对抗性审查：首轮 BLOCK（3 P0：未识别命令默认放行 / Win32 归一化缺失 / pipeline.yaml+config.yaml 未保护；6 P1），修复后复审 PASS（13 项绕过向量 11/13 全堵、P0 7/7 deny、无新增误杀），残留 2 P1 再修后 guard 138/138。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-executor",
+        "at": "2026-11-03T19:08:08.828Z",
+        "note": "加固四组：受保护路径扩展 + doc 豁免收窄 + shell 四类判定 + cwd 六环与自证 + chore 收窄。已知敞口已写入 ADAPTER.md：第 4 类（node 脚本 / npx 任意 / $() 嵌套）默认仅告警，要硬保证需 OPENFEEL_SHELL_GATE=strict。",
+        "evidence": "npx vitest run → 95 files / 2353 tests passed；dsh 四套串行：guard 138/138、verify 112/112、contract 46/46、integration 全通过；node --check 全部改动文件通过。对抗复打：13 项绕过向量 11/13 完全 deny，P0 向量 7/7 deny（[IO.File]::WriteAllText / flow.json. / ::$DATA / 8.3 短名 / pipeline.yaml / config.yaml / npx --write 全部拒），无新增误杀（npx vitest / npm run build / cargo build / tsc -b / git status / openfeel flow status 全放行）。"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 4,
+    "log": 11,
+    "requirements": 1
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-04T15:39:43.686Z"
+}

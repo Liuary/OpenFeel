@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-04T15:39:36.198Z",
-    "revision": 1970,
+    "updated": "2026-11-04T17:48:23.294Z",
+    "revision": 1988,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -36,93 +36,86 @@
       "v1.5.8",
       "v1.5.7",
       "v1.5.9",
-      "v1.5.10"
+      "v1.5.10",
+      "v1.5.11"
     ],
-    "last_req_seq": 19
+    "last_req_seq": 20
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.11-stage-126",
+      "stage": "v1.5.12-stage-127",
       "op": ""
     },
     "retry": 0
   },
   "stages": {
-    "v1.5.11-stage-126": {
-      "name": "v1.5.11-stage-126",
-      "phase": "done",
-      "status": "done",
+    "v1.5.12-stage-127": {
+      "name": "v1.5.12-stage-127",
+      "phase": "exec_running",
+      "status": "planned",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "requirements": [
         {
-          "id": "REQ-019",
+          "id": "REQ-020",
           "order": 0
         }
       ],
       "stats": {
-        "start_time": "2026-11-03T16:38:06.006Z",
-        "end_time": "2026-11-04T15:39:36.175Z",
-        "duration_ms": 82890169
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-04T15:39:33.665Z",
-        "note": "门禁加固阶段（REQ-019）验证通过：src/dsh 双套全绿、对抗性绕过向量已被拒、实机生效且只读命令不误杀。",
-        "evidence": "独立代码审查两轮（首轮 BLOCK：3 P0 未识别命令默认放行 / Win32 归一化缺失 / pipeline.yaml+config.yaml 未保护；修复后对抗复打 PASS：13 项绕过向量 11/13 全堵、P0 7/7 deny、无新增误杀；再修 2 P1 后 guard 138/138）。门禁：src 95 文件 / 2353 用例全绿；dsh 串行四套 guard 138/138、verify 112/112、contract 46/46、integration 全通过。实机验收（重启后）：[IO.File]::WriteAllText / Set-Content -Path / node -e 含写 API / 写 .openfeel/chore.json 全部被拒；openfeel flow status、git status、npx vitest 均放行；feel_status.guard = registered:true、cwdSource:agent-session、loaded_hash 与仓库一致。"
+        "start_time": "2026-11-04T17:18:25.372Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
   "reviews": [
     {
-      "id": "REV-011",
-      "op": "v1.5.11-stage-126",
-      "stage": "v1.5.11-stage-126",
+      "id": "REV-001",
+      "op": "v1.5.12-stage-127",
+      "stage": "v1.5.12-stage-127",
       "status": "closed",
       "priority": "medium",
-      "title": "[P0] shell 未识别命令默认 allow（kind=none 静默放行）：[IO.File]::WriteAllText / iwr -OutFile / curl -o / certutil / robocopy / npx --write 全部绕过",
+      "title": "[P0-plan] gitSubcommand 被 classifyShellCommand/analyzeShellStatement 的字段白名单重建丢弃，C 的放行条件恒不成立（实测 undefined）",
       "filed_by": "cli",
-      "filed_at": "2026-11-03T18:23:01.108Z",
+      "filed_at": "2026-11-04T17:28:29.307Z",
       "canAutoFix": false,
       "blocking": true
     },
     {
-      "id": "REV-012",
-      "op": "v1.5.11-stage-126",
-      "stage": "v1.5.11-stage-126",
+      "id": "REV-002",
+      "op": "v1.5.12-stage-127",
+      "stage": "v1.5.12-stage-127",
       "status": "closed",
       "priority": "medium",
-      "title": "[P0] Win32 文件名归一化缺失：flow.json. / flow.json::$DATA / FLOW~1.JSO 绕过受保护名单（真机已验证 flow.json 被覆盖）",
+      "title": "[P0-plan] classifyShellCommand 遇首条 whole-tree 就 return，`git commit && git clean -fdx` / `; git checkout -- .` / 重定向全部绕过；C 放行必须限定单语句",
       "filed_by": "cli",
-      "filed_at": "2026-11-03T18:23:06.214Z",
+      "filed_at": "2026-11-04T17:28:31.432Z",
       "canAutoFix": false,
       "blocking": true
     },
     {
-      "id": "REV-013",
-      "op": "v1.5.11-stage-126",
-      "stage": "v1.5.11-stage-126",
+      "id": "REV-003",
+      "op": "v1.5.12-stage-127",
+      "stage": "v1.5.12-stage-127",
       "status": "closed",
       "priority": "medium",
-      "title": "[P0] .openfeel/pipeline.yaml（转移表）与 config.yaml（workflow_mode/auto_advance）不在受保护名单 → 任意相位可改，可让 plan_pending→done 变「合法」",
+      "title": "[P0-plan] C 的路径集合漏 index-only 改动：git add src/x.ts 后 git restore -W -s HEAD 可让 worktree 干净、未跟踪为空 → 纯书账放行把暂存源码提交",
       "filed_by": "cli",
-      "filed_at": "2026-11-03T18:23:10.612Z",
+      "filed_at": "2026-11-04T17:28:33.919Z",
       "canAutoFix": false,
       "blocking": true
     },
     {
-      "id": "REV-014",
-      "op": "v1.5.11-stage-126",
-      "stage": "v1.5.11-stage-126",
+      "id": "REV-004",
+      "op": "v1.5.12-stage-127",
+      "stage": "v1.5.12-stage-127",
       "status": "closed",
       "priority": "medium",
-      "title": "[P1 批] 引号/&quot;node openfeel&quot; 可绕过写子命令检测自开 chore；exec_running 下整树 git 写覆盖 .openfeel；git stash 被判只读；git commit 在 archiving 被误杀；间接写 API 表缺 child_process/pathlib；guard-state 缺 pid 不判 stale",
+      "title": "[P1-plan] `git -c user.name=x commit` 误判 readonly（v1.5.11 已有洞）/ `-C`/`--git-dir`/`--work-tree` 未处理 / marker 单文件导致多 profile 永久 stale / 测试 runtimeIdentity 泄漏",
       "filed_by": "cli",
-      "filed_at": "2026-11-03T18:23:14.791Z",
+      "filed_at": "2026-11-04T17:28:36.385Z",
       "canAutoFix": false,
       "blocking": true
     }
@@ -1580,15 +1573,6 @@
       }
     },
     {
-      "time": "2026-11-03T16:28:05.766Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-11-03T16:28:09.327Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1596,41 +1580,6 @@
         "stage": "v1.5.11-stage-126",
         "requirementId": "REQ-019",
         "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-03T16:38:05.996Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "time": "2026-11-03T16:55:27.510Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-03T16:55:57.597Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -1742,30 +1691,6 @@
       }
     },
     {
-      "time": "2026-11-03T19:07:55.535Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-03T19:07:59.362Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-03T19:08:04.042Z",
       "agent": "cli",
       "action": "requirement_review",
@@ -1818,42 +1743,6 @@
       }
     },
     {
-      "time": "2026-11-04T15:15:59.066Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "review_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-04T15:38:50.346Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-04T15:38:52.808Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-04T15:39:09.493Z",
       "agent": "cli",
       "action": "stage_verification",
@@ -1877,18 +1766,6 @@
       }
     },
     {
-      "time": "2026-11-04T15:39:29.346Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-04T15:39:33.665Z",
       "agent": "cli",
       "action": "stage_verification",
@@ -1900,13 +1777,141 @@
       }
     },
     {
-      "time": "2026-11-04T15:39:36.169Z",
+      "time": "2026-11-04T15:39:43.692Z",
+      "agent": "cli",
+      "action": "archive_flow_version",
+      "detail": {
+        "version": "v1.5.11",
+        "stages": 1,
+        "reviews": 4,
+        "log": 11,
+        "requirements": 1
+      }
+    },
+    {
+      "time": "2026-11-04T15:48:50.707Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-020",
+        "title": "门禁收尾批次：归档后无法提交书账 / dsh 测试污染宿主 marker 导致 guard-stale / feel_status 标题误报「无活跃阶段」/ setup 多 profile 部署提示"
+      }
+    },
+    {
+      "time": "2026-11-04T17:09:21.387Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-020",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-04T17:09:24.649Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.12-stage-127",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-04T17:09:26.284Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.12-stage-127",
+        "requirementId": "REQ-020",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-04T17:18:25.364Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.11-stage-126",
-        "from": "archiving",
-        "to": "done",
+        "stageName": "v1.5.12-stage-127",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-04T17:28:18.213Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.12-stage-127",
+        "from": "plan_review",
+        "to": "plan_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T17:38:15.404Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.12-stage-127",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T17:48:13.165Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-001"
+      }
+    },
+    {
+      "time": "2026-11-04T17:48:14.886Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-002"
+      }
+    },
+    {
+      "time": "2026-11-04T17:48:16.755Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-003"
+      }
+    },
+    {
+      "time": "2026-11-04T17:48:18.879Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-004"
+      }
+    },
+    {
+      "time": "2026-11-04T17:48:20.866Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.12-stage-127",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T17:48:23.287Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.12-stage-127",
+        "from": "plan_passed",
+        "to": "exec_running",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
@@ -2133,32 +2138,17 @@
       "claimed_at": "2026-10-31T10:24:48.059Z"
     },
     {
-      "id": "REQ-019",
-      "title": "门禁加固：写入门禁静默 fail-open（cwd 解析失败即放行）+ shell 写通道未守 + chore 可绕过阶段改源码",
-      "status": "done",
-      "created_at": "2026-11-03T16:27:58.899Z",
-      "updated_at": "2026-11-03T19:08:18.346Z",
-      "target_version": "v1.5.11",
-      "priority": "P0",
+      "id": "REQ-020",
+      "title": "门禁收尾批次：归档后无法提交书账 / dsh 测试污染宿主 marker 导致 guard-stale / feel_status 标题误报「无活跃阶段」/ setup 多 profile 部署提示",
+      "status": "draft",
+      "created_at": "2026-11-04T15:48:50.706Z",
+      "updated_at": "2026-11-04T17:09:21.387Z",
+      "target_version": "v1.5.12",
+      "priority": "P2",
       "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-019.md",
+      "body_path": ".openfeel/requirements/REQ-020.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-03T16:28:02.266Z",
-      "review": {
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-03T19:08:04.042Z",
-        "note": "两轮独立对抗性审查：首轮 BLOCK（3 P0：未识别命令默认放行 / Win32 归一化缺失 / pipeline.yaml+config.yaml 未保护；6 P1），修复后复审 PASS（13 项绕过向量 11/13 全堵、P0 7/7 deny、无新增误杀），残留 2 P1 再修后 guard 138/138。",
-        "independent": true
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-executor",
-        "at": "2026-11-03T19:08:08.828Z",
-        "note": "加固四组：受保护路径扩展 + doc 豁免收窄 + shell 四类判定 + cwd 六环与自证 + chore 收窄。已知敞口已写入 ADAPTER.md：第 4 类（node 脚本 / npx 任意 / $() 嵌套）默认仅告警，要硬保证需 OPENFEEL_SHELL_GATE=strict。",
-        "evidence": "npx vitest run → 95 files / 2353 tests passed；dsh 四套串行：guard 138/138、verify 112/112、contract 46/46、integration 全通过；node --check 全部改动文件通过。对抗复打：13 项绕过向量 11/13 完全 deny，P0 向量 7/7 deny（[IO.File]::WriteAllText / flow.json. / ::$DATA / 8.3 短名 / pipeline.yaml / config.yaml / npx --write 全部拒），无新增误杀（npx vitest / npm run build / cargo build / tsc -b / git status / openfeel flow status 全放行）。"
-      }
+      "claimed_at": "2026-11-04T17:09:21.387Z"
     }
   ]
 }

@@ -29,21 +29,21 @@
     },
     "openfeel-archiver": {
       "agentName": "openfeel-archiver",
-      "totalRuns": 39,
-      "successfulRuns": 39,
+      "totalRuns": 40,
+      "successfulRuns": 40,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 7631745,
-      "avgDurationMs": 195686
+      "totalDurationMs": 7638606,
+      "avgDurationMs": 190965
     },
     "openfeel-planner": {
       "agentName": "openfeel-planner",
-      "totalRuns": 98,
-      "successfulRuns": 98,
+      "totalRuns": 102,
+      "successfulRuns": 102,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 250132655,
-      "avgDurationMs": 2552374
+      "totalDurationMs": 252468936,
+      "avgDurationMs": 2475186
     },
     "openfeel-schemer": {
       "agentName": "openfeel-schemer",

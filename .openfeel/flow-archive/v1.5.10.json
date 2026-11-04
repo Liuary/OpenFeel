@@ -1,0 +1,530 @@
+{
+  "version": "v1.5.10",
+  "stages": {
+    "v1.5.10-stage-125": {
+      "name": "v1.5.10-stage-125",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {
+        "op-001": {
+          "title": "op-001 数据聚合层：src/core/dashboard/aggregate.ts + DashboardData 类型（T3~T8、T24 层间禁串单测）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-001"
+        },
+        "op-002": {
+          "title": "op-002 HTML 渲染层：src/core/dashboard/render.ts + 26 个 dashboard.html.* i18n 键（zh/en 同批，T13~T18）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-002"
+        },
+        "op-003": {
+          "title": "op-003 命令层与注册 + 全部计数/枚举修复：src/commands/dashboard.ts + flow.ts 导出 + cli/index.ts + 12 键（T1/T2/T9~T12/T19~T23/T25）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-003"
+        },
+        "op-004": {
+          "title": "op-004 文档与生成物：docs/json-contract.md(9 处) + docs/commands.md(4 处) + SKILL.md + dsh/ADAPTER.md + npm run build",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-004"
+        },
+        "op-005": {
+          "title": "op-005 全量收口与人工验证：全量 npm test + lint i18n + §0.4.1 穷举扫描留档 + D-125-06 人工 6 步",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-005"
+        }
+      },
+      "workflow_mode": "full",
+      "requirements": [
+        {
+          "id": "REQ-018",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-01T17:09:02.288Z",
+        "end_time": "2026-11-04T15:39:11.854Z",
+        "duration_ms": 253809566
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-feel-tester",
+        "at": "2026-11-04T15:39:09.493Z",
+        "note": "看板阶段（REQ-018）验证通过：全量测试绿、阶段验证 6/6、审查缺陷闭环、视觉验证通过。",
+        "evidence": "npx vitest run → 95 files / 2353 tests passed；stage 阶段验证 6/6 PASS（空项目 / EN / --json 纯粹性零写盘 / 参数与退出码 6 例 / 本仓库产物约束 script 各 1 且零外链 / 回归）；产物 .openfeel/tmp/dashboard.html 已生成并经 Edge 无头渲染核对；独立代码审查两轮（BLOCK→PASS），REV-008/009/010 全 closed。"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P0-plan] 根命令集枚举断言未穷举：test/commands/req.test.ts:1158(19) + test/core/lint-req.test.ts:63-69(19 项 sorted 列表)，新增 dashboard 后两处必红",
+      "filed_by": "cli",
+      "filed_at": "2026-11-01T17:15:08.505Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P0-plan] D-125-04 H3 CSP 缺 script-src，与 H4 内联增强脚本矛盾（H4 成死代码，T12 抓不到）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-01T17:15:10.459Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P1-plan] D-125-03 i18n 键清单缺 HTML 区块/表头/空态键，产物语言来源未定义",
+      "filed_by": "cli",
+      "filed_at": "2026-11-01T17:15:12.132Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-004",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P1-plan] D-125-03 health 只取 healthCheck() 原生项，漏 archiveHealthItems + requirementHealthItems（flow.ts:2489-2519）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-01T17:15:13.915Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-005",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P1-plan] D-125-02 未定 buildStatusJson 引入层；core/dashboard import commands/flow 构成反向依赖（preflight-gate.ts:11-12 禁止）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-01T17:15:16.895Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-006",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P1-plan] 26 个 dashboard.html.* i18n 键排在 op-003，但 render.ts/T16/T18 在 op-002 → 缺键时 t() 回退返回 key，T16 前假绿后转红",
+      "filed_by": "cli",
+      "filed_at": "2026-11-01T17:23:20.661Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-007",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P1-visual] 需求看板每列 220px 内塞四列表格 → 中文标题按字折行、竖条不可读；第 7 列被挤到第二行（视觉验证截图发现，测试未覆盖）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-03T15:41:20.328Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-008",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P0] dashboard.ts:75/91 Windows --open 用 cmd /c start 传裸路径：&amp; | &lt; &gt; ^ 被 cmd 二次解析（实测 R&amp;D 路径拆成两段、失败仍 exit 0），目录名可命令注入",
+      "filed_by": "cli",
+      "filed_at": "2026-11-03T16:32:40.944Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-009",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P1] json-contract.md:150 #43 行漏 archived[].counts.requirements 且未写 counts:null 降级（实测 {stages,reviews,log,requirements}）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-03T16:33:11.127Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-010",
+      "op": "v1.5.10-stage-125",
+      "stage": "v1.5.10-stage-125",
+      "status": "closed",
+      "priority": "medium",
+      "title": "[P2 批量] escapeHtml 非字符串 TypeError / listArchiveVersions 未容错 / th 复用区块 key / 「全部完成」显示为「无数据」/ 测试自证与覆盖缺口（T5 排序、T24 动态 import、T19 不可达、payload 矩阵）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-03T16:33:15.139Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-11-01T17:04:03.875Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-01T17:09:02.282Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-01T17:15:18.917Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "plan_review",
+        "to": "plan_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T17:20:09.725Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T17:32:02.802Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T17:32:05.091Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T17:32:08.024Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-11-01T17:32:09.993Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-11-01T17:32:11.940Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-11-01T17:32:13.874Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "opId": "op-004"
+      }
+    },
+    {
+      "time": "2026-11-01T17:32:15.245Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "opId": "op-005"
+      }
+    },
+    {
+      "time": "2026-11-01T17:35:15.751Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T17:40:41.709Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "scheme_review",
+        "to": "scheme_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-01T17:40:44.029Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T16:20:12.080Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T16:43:36.991Z",
+      "agent": "flow-manager",
+      "action": "reset_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "review_pending",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T17:05:55.408Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T17:06:00.527Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T17:06:15.847Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "review_passed",
+        "to": "test_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-03T17:16:22.327Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "test_pending",
+        "to": "test_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T15:39:05.800Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "test_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-04T15:39:11.847Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.10-stage-125",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-018",
+      "title": "看板数据导出：openfeel dashboard 生成自包含 HTML 看板（需求看板 / 阶段进度 / 发布门与归档 / 阻塞 REV）",
+      "status": "done",
+      "created_at": "2026-11-01T17:04:00.430Z",
+      "updated_at": "2026-11-03T17:16:49.594Z",
+      "target_version": "v1.5.10",
+      "priority": "P2",
+      "workflow_mode": "full",
+      "body_path": ".openfeel/requirements/REQ-018.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-01T17:04:01.744Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-03T17:16:27.428Z",
+        "note": "独立代码审查两轮：首轮 BLOCK（P0 Windows --open 经 cmd 可命令注入、P1 契约漏 archived.counts.requirements、P2 批）；修复后定点复核 PASS（P0/P1 闭环）。全量 95 文件 / 2347 用例绿。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-feel-tester",
+        "at": "2026-11-03T17:16:32.006Z",
+        "note": "阶段验证 6/6 PASS（空项目 / EN / --json 纯粹性 / 参数与退出码 / 本仓库产物约束 / 回归）。唯一非阻塞偏差：空项目时需求区出整块空态而非 7 个空列（已裁定为期望行为）。",
+        "evidence": "npx vitest run → 95 files / 2347 tests passed；node bin/openfeel.js dashboard → .openfeel/tmp/dashboard.html (28.8KB)，script 开/闭各 1、http(s)=0、<link=0、fetch(=0、undefined=0、charset 为 head 首子元素；--json 整目录零写入、10 顶层键、7 组键序=REQ_STATUSES、gates 与 31 个归档版本零交集；参数矩阵 6/6 退出码正确；EN 渲染无残键。"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 10,
+    "log": 22,
+    "requirements": 1
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-04T15:39:26.233Z"
+}

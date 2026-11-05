@@ -90,6 +90,11 @@ export interface DshProfilePlan {
   home: string;
   adapterDir: string;
   profiles: DshProfile[];
+  /**
+   * 检测到的全部 profile（**未被 `--dsh-profile` 收窄**；顺序同 `listDshProfiles`）。
+   * 仅用于「其余 profile 保持原样」提示，不参与写盘（部署只看 `profiles`）。
+   */
+  allProfiles: DshProfile[];
 }
 
 /** 单个 profile 的部署结果 */
@@ -347,7 +352,10 @@ export function isLinkValid(profileDir: string, adapterDir: string): boolean {
 /** 预检：home → profiles → 逐个结构校验 → adapter；不预检 pnpm，零写盘 */
 export function planDshDeployment(options: DshPlanOptions = {}): DshProfilePlan {
   const home = options.dshHome ?? resolveDshHome();
-  const profiles = selectDshProfiles(listDshProfiles(home), options.dshProfile);
+  // 先列全部再按 --dsh-profile 收窄：`allProfiles` 供「其余 profile 保持原样」提示，
+  // 预检顺序与零写盘语义不变（仍只对 `profiles` 做结构校验）。
+  const allProfiles = listDshProfiles(home);
+  const profiles = selectDshProfiles(allProfiles, options.dshProfile);
   const adapterDir = options.adapterDir ?? getDshAdapterDir(options.openfeelRoot);
   for (const profile of profiles) {
     const json = readDshProfilePackage(profile);
@@ -362,7 +370,7 @@ export function planDshDeployment(options: DshPlanOptions = {}): DshProfilePlan 
       throw error;
     }
   }
-  return { home, adapterDir, profiles };
+  return { home, adapterDir, profiles, allProfiles };
 }
 
 /** 预检 pnpm 是否可用（仅在需要 install 时调用） */

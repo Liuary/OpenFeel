@@ -7,11 +7,11 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
-import { clearGuardCache, createOpenFeelGuard, isPresentationalAssetPath, normalizeForComparison, parsePatchTargets, resolveGuardCwd } from '../lib/guard.js';
+import { classifyShellCommand, clearGuardCache, createOpenFeelGuard, isPresentationalAssetPath, normalizeForComparison, parsePatchTargets, resolveGuardCwd } from '../lib/guard.js';
 import { touchSession } from '../lib/adapters/sessions.js';
 import {
   CWD_REGISTRY_LIMIT,
@@ -26,12 +26,27 @@ import {
   clearGuardState,
   computeGuardStale,
   globalGuardAuditPath,
+  globalGuardDir,
   globalGuardStatePath,
+  guardAuditPath,
+  guardStatePath,
+  maybeSelfHealGuardState,
+  readGuardSelfHealStats,
   readGuardState,
+  repairGuardState,
+  resetGuardSelfHealState,
+  setGuardRuntimeIdentity,
   writeGuardState,
 } from '../lib/adapters/guard-state.js';
+import { defaultMarkerPath } from '../lib/adapters/host-state.js';
 import { computeWorkflowGate } from '../lib/adapters/workflow-gate.js';
 import { renderBootstrapPrompt, renderFeelPrompt } from '../lib/surface/prompt.js';
+import { assertRealGuardUntouched, installIsolatedGuardEnv, snapshotRealGuardState } from './guard-isolation.js';
+
+// v1.5.12 / stage-127 §3-B：先把 guard 状态与宿主 marker 指到临时目录（绝不改写真实状态），
+// 再记录真实状态快照供收尾断言（V4）。
+const iso = installIsolatedGuardEnv();
+const realGuardBefore = snapshotRealGuardState();
 
 const root = mkdtempSync(join(tmpdir(), 'openfeel-guard-'));
 // 测试隔离：cwd 链第 0 环（OPENFEEL_GUARD_CWD）与 shell 档位都读环境变量，
@@ -1152,8 +1167,9 @@ check('D-126-01 第 5 环：全链失败 → fail-closed，证据固定落全局
       assert.match(String(reason), /fail-closed/);
       assert.match(String(reason), /cordis\.patch\.yml/);
       assert.match(String(reason), /OPENFEEL_GUARD_CWD/);
-      // 全局落点（绝不用 process.cwd()）
-      assert.equal(globalGuardStatePath(), join(tmpdir(), 'openfeel-guard', 'guard-state.json'));
+      // 全局落点（绝不用 process.cwd()）；v1.5.12 §3-B：路径由隔离 env 决定，不再写字面量
+      assert.equal(globalGuardDir(), process.env.OPENFEEL_GUARD_DIR);
+      assert.equal(globalGuardStatePath(), join(globalGuardDir(), 'guard-state.json'));
       const state = JSON.parse(readFileSync(globalGuardStatePath(), 'utf-8'));
       assert.equal(state.cwd, null);
       assert.equal(state.cwdSource, 'unresolved');
@@ -1229,37 +1245,56 @@ check('D-126-04：guard-state 写入/读取（工作区优先，缺失回退全�
   clearGuardState(cwd);
 });
 
-check('D-126-04：stale 判定（pid / loaded_hash / hostStartedAt 三键）', () => {
+check('D-126-04 / stage-127：stale 只认 pid / loaded_hash（hostStartedAt 仅诊断）', () => {
   const cwd = project('guard-state-stale', execFlow);
   clearGuardState(null);
-  const startedAt = new Date(Date.now() - 60_000).toISOString();
-  writeGuardState(cwd, {
-    registered: true,
-    enforce: 'always',
-    shellGate: 'default(1/2=deny,4=warn)',
-    cwd,
-    cwdSource: 'agent-session',
-    degraded: false,
-    hostStartedAt: startedAt,
-    loaded_hash: 'aaa',
-    pid: process.pid,
-  });
-  const marker = { loaded_hash: 'aaa', started_at: new Date(Date.now() - 120_000).toISOString() };
-  const fresh = buildGuardSection({ root: cwd, hostMarker: marker });
-  assert.equal(fresh.registered, true);
-  assert.equal(fresh.stale, false);
-  assert.equal(fresh.cwdSource, 'agent-session');
-  // loaded_hash 不符 → 适配器已更新但宿主没重启
-  assert.equal(computeGuardStale(readGuardState(cwd), { ...marker, loaded_hash: 'bbb' }), true);
-  // pid 不符 → 状态来自旧进程
-  assert.equal(computeGuardStale(readGuardState(cwd), marker, process.pid + 1), true);
-  // hostStartedAt 早于当前宿主启动 → stale
-  writeGuardState(cwd, { hostStartedAt: new Date(Date.now() - 300_000).toISOString(), loaded_hash: 'aaa' });
-  assert.equal(computeGuardStale(readGuardState(cwd), marker), true);
-  assert.equal(buildGuardSection({ root: cwd, hostMarker: marker }).stale, true);
-  // 两处都缺 → 不假装生效
   clearGuardState(cwd);
-  clearGuardState(null);
+  const startedAt = new Date(Date.now() - 60_000).toISOString();
+  const marker = { loaded_hash: 'aaa', started_at: new Date(Date.now() - 120_000).toISOString() };
+  try {
+    // v4-P2-1：身份来自运行时注册值（不在同一 patch 里又传旧 hostStartedAt，避免自相矛盾）
+    setGuardRuntimeIdentity({ pid: process.pid, hostStartedAt: startedAt, loaded_hash: 'aaa' });
+    writeGuardState(cwd, {
+      registered: true,
+      enforce: 'always',
+      shellGate: 'default(1/2=deny,4=warn)',
+      cwd,
+      cwdSource: 'agent-session',
+      degraded: false,
+    });
+    const state = readGuardState(cwd);
+    assert.equal(state.hostStartedAt, startedAt, 'hostStartedAt 应由运行时注册值刷新');
+    assert.equal(state.pid, process.pid);
+    assert.equal(state.loaded_hash, 'aaa');
+    const fresh = buildGuardSection({ root: cwd, hostMarker: marker });
+    assert.equal(fresh.registered, true);
+    assert.equal(fresh.stale, false);
+    assert.equal(fresh.signature, 'valid');
+    assert.equal(fresh.cwdSource, 'agent-session');
+    // loaded_hash 不符 → 适配器已更新但宿主没重启（这条不能放宽）
+    assert.equal(computeGuardStale(state, { ...marker, loaded_hash: 'bbb' }), true);
+    assert.equal(
+      buildGuardSection({ root: cwd, hostMarker: { ...marker, loaded_hash: 'bbb' } }).staleReason,
+      'loaded-hash',
+    );
+    // pid 不符 → 状态来自旧进程
+    assert.equal(computeGuardStale(state, marker, process.pid + 1), true);
+    // hostStartedAt 早于 marker.started_at 只有诊断意义 → 不再 stale（V13 / P1-3）
+    const oldStartValue = new Date(Date.now() - 300_000).toISOString();
+    writeGuardState(cwd, { hostStartedAt: oldStartValue, loaded_hash: 'aaa' });
+    const oldStart = readGuardState(cwd);
+    assert.equal(oldStart.hostStartedAt, oldStartValue);
+    assert.equal(computeGuardStale(oldStart, marker), false);
+    assert.equal(buildGuardSection({ root: cwd, hostMarker: marker }).stale, false);
+    // 局部 patch 只补 loaded_hash：hostStartedAt 仍由注册值刷新
+    writeGuardState(cwd, { loaded_hash: 'aaa' });
+    assert.equal(readGuardState(cwd).hostStartedAt, startedAt);
+  } finally {
+    setGuardRuntimeIdentity(null);
+    clearGuardState(cwd);
+    clearGuardState(null);
+  }
+  // 两处都缺 → 不假装生效（恰 4 键，P2-2 守门）
   assert.deepEqual(buildGuardSection({ root: cwd }), {
     registered: false, cwd: null, cwdSource: null, stale: false,
   });
@@ -1613,29 +1648,385 @@ check('P1-5：间接写 API（child_process / pathlib / urlretrieve / os.system 
   assert.equal(projectOnly(shellExec('bash', cwd, 'node -e "console.log(1)"')), undefined);
 });
 
-check('P1-6：guard-state 缺 pid → stale；HMAC 校验失败 → stale（篡改或旧进程）', () => {
+check('P1-6 / stage-127：缺 pid → stale；HMAC 失配 → hmacWarn（不 stale、不掩盖 loaded_hash）', () => {
   const cwd = project('op005-guard-state-tamper', execFlow);
   const file = join(cwd, '.openfeel', 'dev', 'guard-state.json');
   clearGuardState(null);
-  // 缺 pid → stale
-  writeGuardState(cwd, { registered: true, cwd, cwdSource: 'agent-session', degraded: false });
-  const noPid = buildGuardSection({ root: cwd });
-  assert.equal(noPid.stale, true);
-  assert.equal(noPid.staleReason, 'pid-missing');
-  // 正常写入（带 pid + 同进程 HMAC）→ 不 stale
-  writeGuardState(cwd, { registered: true, cwd, cwdSource: 'agent-session', degraded: false, pid: process.pid });
-  assert.equal(buildGuardSection({ root: cwd }).stale, false);
-  // 直接改文件（模拟 agent 用写通道整体重写）→ 签名失效 → stale
-  tamperFile(file, (raw) => { raw.lastDecision = { decision: 'allow', reason: 'internal' }; });
-  const tampered = buildGuardSection({ root: cwd });
-  assert.equal(tampered.stale, true);
-  assert.equal(tampered.staleReason, 'hmac');
-  assert.match(String(tampered.staleMessage), /篡改|旧进程/);
-  // 伪造 hmac 字段同样失效
-  tamperFile(file, (raw) => { raw.hmac = 'deadbeef'.repeat(8); });
-  assert.equal(buildGuardSection({ root: cwd }).stale, true);
   clearGuardState(cwd);
-  clearGuardState(null);
+  try {
+    setGuardRuntimeIdentity(null);
+    // 缺 pid → stale（fail-closed；HMAC 失配不再参与，故无 hmacWarn）
+    writeGuardState(cwd, { registered: true, cwd, cwdSource: 'agent-session', degraded: false });
+    const noPid = buildGuardSection({ root: cwd });
+    assert.equal(noPid.stale, true);
+    assert.equal(noPid.staleReason, 'pid-missing');
+    assert.equal(noPid.hmacWarn, undefined);
+    // 正常写入（同一进程签名）→ 不 stale、signature valid、无 hmacWarn
+    writeGuardState(cwd, {
+      registered: true,
+      cwd,
+      cwdSource: 'agent-session',
+      degraded: false,
+      pid: process.pid,
+      loaded_hash: 'aaa',
+      hostStartedAt: new Date().toISOString(),
+    });
+    const healthy = buildGuardSection({ root: cwd, hostMarker: { loaded_hash: 'aaa' } });
+    assert.equal(healthy.stale, false);
+    assert.equal(healthy.signature, 'valid');
+    assert.equal(healthy.hmacWarn, undefined);
+    // 直接改文件（模拟 agent 用写通道整体重写）→ 签名失配：降级为可见告警，不 stale
+    tamperFile(file, (raw) => { raw.lastDecision = { decision: 'allow', reason: 'internal' }; });
+    const tampered = buildGuardSection({ root: cwd, hostMarker: { loaded_hash: 'aaa' } });
+    assert.equal(tampered.stale, false);
+    assert.equal(tampered.hmacWarn, true);
+    assert.equal(tampered.signature, 'mismatch');
+    assert.equal(tampered.staleReason, undefined);
+    // 反控：同样验签失败但 loaded_hash 不符 → stale，不被 hmacWarn 掩盖
+    const hashStale = buildGuardSection({ root: cwd, hostMarker: { loaded_hash: 'bbb' } });
+    assert.equal(hashStale.stale, true);
+    assert.equal(hashStale.staleReason, 'loaded-hash');
+    assert.equal(hashStale.hmacWarn, undefined);
+    // 伪造 hmac 字段：签名仍失配 → hmacWarn
+    tamperFile(file, (raw) => { raw.hmac = 'deadbeef'.repeat(8); });
+    assert.equal(buildGuardSection({ root: cwd, hostMarker: { loaded_hash: 'aaa' } }).hmacWarn, true);
+  } finally {
+    setGuardRuntimeIdentity(null);
+    clearGuardState(cwd);
+    clearGuardState(null);
+  }
+});
+
+/* ── stage-127 / op-001：身份自证（G1~G5）+ 受支持自愈（§3-F）─────────────── */
+
+/** 写隔离目录里的宿主 marker（测试用；内容由用例指定）。 */
+function writeTestMarker(marker) {
+  const path = defaultMarkerPath();
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify({ adapter: 'dsh', version: 'test', ...marker }, null, 2)}\n`, 'utf8');
+  // marker 变了 → 清缓存/节流/审计上限，避免用例之间串味
+  resetGuardSelfHealState();
+}
+
+/** 直接写一个「旧身份/未签名」的 state 文件（模拟上一轮宿主留下的残留）。 */
+function writeRawGuardState(cwd, state) {
+  const file = guardStatePath(cwd);
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+}
+
+check('G1/G2：旧工作区身份绝不继承；运行时身份 + 全局注册段胜出（根因①）', () => {
+  const cwd = project('guard-identity-refresh', execFlow);
+  const marker = { started_at: new Date().toISOString(), loaded_hash: 'hash-current' };
+  try {
+    clearGuardState(cwd);
+    clearGuardState(null);
+    // 上一轮宿主留下的工作区 state：旧身份 + 旧 lastDecision
+    writeRawGuardState(cwd, {
+      registered: true,
+      hostStartedAt: '2020-01-01T00:00:00.000Z',
+      loaded_hash: 'hash-old',
+      pid: process.pid + 1,
+      cwd,
+      cwdSource: 'config',
+      lastDecision: { at: 'old', tool: 'write', decision: 'deny', reason: 'phase' },
+    });
+    setGuardRuntimeIdentity({ pid: process.pid, hostStartedAt: marker.started_at, loaded_hash: marker.loaded_hash });
+    // 启动期 cwd 未解析 → 全局注册段（当前身份）
+    writeGuardState(null, { registered: true, shellGate: 'default(1/2=deny,4=warn)' });
+    // 工作区首次判定：不带任何身份字段
+    writeGuardState(cwd, {
+      cwd,
+      cwdSource: 'agent-session',
+      lastDecision: { at: 'new', tool: 'write', decision: 'deny', reason: 'phase' },
+    });
+    const state = readGuardState(cwd);
+    assert.equal(state.hostStartedAt, marker.started_at, '旧 hostStartedAt 不得覆盖当前身份');
+    assert.equal(state.pid, process.pid, '旧 pid 不得覆盖当前身份');
+    assert.equal(state.loaded_hash, marker.loaded_hash, '旧 loaded_hash 不得覆盖当前身份');
+    assert.equal(state.lastDecision.at, 'new', 'lastDecision 等易变字段仍应继承/覆盖');
+    assert.equal(state.cwdSource, 'agent-session');
+    assert.equal(computeGuardStale(state, marker), false);
+  } finally {
+    setGuardRuntimeIdentity(null);
+    clearGuardState(cwd);
+    clearGuardState(null);
+  }
+});
+
+check('G2：runtimeIdentity 为空时用全局注册段兜底（弱兜底），旧工作区身份仍剥离', () => {
+  const cwd = project('guard-identity-seed', execFlow);
+  const marker = { started_at: new Date().toISOString(), loaded_hash: 'hash-global' };
+  try {
+    setGuardRuntimeIdentity(null);
+    clearGuardState(cwd);
+    clearGuardState(null);
+    writeGuardState(null, {
+      registered: true,
+      hostStartedAt: marker.started_at,
+      loaded_hash: marker.loaded_hash,
+      pid: process.pid,
+    });
+    writeRawGuardState(cwd, {
+      registered: true,
+      hostStartedAt: '2019-01-01T00:00:00.000Z',
+      loaded_hash: 'hash-stale',
+      pid: process.pid + 2,
+      cwd,
+      cwdSource: 'config',
+    });
+    writeGuardState(cwd, { cwd, cwdSource: 'agent-session' });
+    const state = readGuardState(cwd);
+    assert.equal(state.hostStartedAt, marker.started_at, '全局注册段应作为弱兜底');
+    assert.equal(state.pid, process.pid);
+    assert.equal(state.loaded_hash, 'hash-global');
+    assert.equal(state.cwdSource, 'agent-session');
+    assert.equal(computeGuardStale(state, marker), false);
+  } finally {
+    setGuardRuntimeIdentity(null);
+    clearGuardState(cwd);
+    clearGuardState(null);
+  }
+});
+
+check('F：repairGuardState 保留易变字段、写审计、重复调用幂等', () => {
+  const cwd = project('guard-repair', execFlow);
+  const marker = { started_at: new Date().toISOString(), loaded_hash: 'hash-new' };
+  const lastDecision = { at: '2026-01-01T00:00:00.000Z', tool: 'write', decision: 'deny', reason: 'phase' };
+  try {
+    setGuardRuntimeIdentity(null);
+    writeTestMarker(marker);
+    clearGuardState(null);
+    writeRawGuardState(cwd, {
+      registered: true,
+      cwd: 'C:/previous',
+      cwdSource: 'agent-session',
+      hostStartedAt: '2020-01-01T00:00:00.000Z',
+      loaded_hash: 'hash-old',
+      pid: process.pid + 1,
+      lastDecision,
+    });
+    const first = repairGuardState(cwd, { hostMarker: marker });
+    assert.equal(first.ok, true);
+    assert.equal(first.changed, true);
+    const state = readGuardState(cwd);
+    assert.equal(state.pid, process.pid);
+    assert.equal(state.loaded_hash, 'hash-new');
+    assert.equal(state.hostStartedAt, marker.started_at);
+    assert.deepEqual(state.lastDecision, lastDecision, 'lastDecision 应逐字段保留');
+    assert.equal(state.cwd, 'C:/previous', 'cwd 应保留');
+    assert.equal(state.cwdSource, 'agent-session', 'cwdSource 应保留');
+    assert.equal(computeGuardStale(state, marker), false);
+    const auditLines = readFileSync(guardAuditPath(cwd), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    const last = auditLines.at(-1);
+    assert.equal(last.event, 'guard_repair');
+    assert.equal(last.auto, false);
+    assert.equal(last.old.pid, process.pid + 1);
+    assert.equal(last.old.loaded_hash, 'hash-old');
+    assert.equal(last.new.pid, process.pid);
+    assert.equal(last.new.loaded_hash, 'hash-new');
+    // 幂等：不写盘、不审计
+    const second = repairGuardState(cwd, { hostMarker: marker });
+    assert.equal(second.ok, true);
+    assert.equal(second.changed, false);
+    assert.equal(readFileSync(guardAuditPath(cwd), 'utf8').trim().split('\n').length, auditLines.length);
+  } finally {
+    setGuardRuntimeIdentity(null);
+    clearGuardState(cwd);
+  }
+});
+
+check('F：repairGuardState marker 缺失 → 明确报错且零写盘', () => {
+  const cwd = project('guard-repair-no-marker', execFlow);
+  try {
+    setGuardRuntimeIdentity(null);
+    clearGuardState(null);
+    writeRawGuardState(cwd, { registered: true, hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: process.pid + 1 });
+    rmSync(defaultMarkerPath(), { force: true });
+    const before = readFileSync(guardStatePath(cwd), 'utf8');
+    const result = repairGuardState(cwd, { hostMarker: null });
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'marker-missing');
+    assert.equal(readFileSync(guardStatePath(cwd), 'utf8'), before, 'marker 缺失时必须零写盘');
+    assert.equal(existsSync(guardAuditPath(cwd)), false, 'marker 缺失时不得写审计');
+  } finally {
+    clearGuardState(cwd);
+  }
+});
+
+check('F：state 为 null + marker 存在 → repair 写出可信 state', () => {
+  const cwd = project('guard-repair-null-state', execFlow);
+  const marker = { started_at: new Date().toISOString(), loaded_hash: 'hash-new' };
+  try {
+    setGuardRuntimeIdentity(null);
+    writeTestMarker(marker);
+    clearGuardState(null);
+    clearGuardState(cwd);
+    const result = repairGuardState(cwd, { hostMarker: marker });
+    assert.equal(result.ok, true);
+    assert.equal(result.changed, true);
+    const state = readGuardState(cwd);
+    assert.equal(state.registered, true);
+    assert.equal(state.cwd, cwd);
+    assert.equal(state.cwdSource, 'repair');
+    assert.equal(state.pid, process.pid);
+    assert.equal(computeGuardStale(state, marker), false);
+  } finally {
+    setGuardRuntimeIdentity(null);
+    clearGuardState(cwd);
+    clearGuardState(null);
+  }
+});
+
+check('F：自动自愈 — 死 pid 修复 / 活异 pid 跳过 / OPENFEEL_GUARD_SELF_HEAL=off', () => {
+  const marker = { started_at: new Date().toISOString(), loaded_hash: 'hash-new' };
+  writeTestMarker(marker);
+  // 死 pid（上一轮宿主残留）→ 自动修
+  const deadRoot = project('guard-selfheal-dead', execFlow);
+  writeRawGuardState(deadRoot, {
+    registered: true, cwd: deadRoot, cwdSource: 'agent-session',
+    hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: 2147483647,
+  });
+  const healed = maybeSelfHealGuardState(deadRoot);
+  assert.equal(healed.checked, true);
+  assert.equal(healed.healed, true);
+  const deadState = readGuardState(deadRoot);
+  assert.equal(deadState.pid, process.pid);
+  assert.equal(deadState.loaded_hash, 'hash-new');
+  assert.equal(computeGuardStale(deadState, marker), false);
+  // 活着的异 pid → 跳过（显式入口才修）
+  const aliveRoot = project('guard-selfheal-alive', execFlow);
+  const alivePid = process.ppid;
+  assert.ok(Number.isFinite(alivePid) && alivePid !== process.pid, '需要可用的父进程 pid 做存活性断言');
+  writeRawGuardState(aliveRoot, {
+    registered: true, cwd: aliveRoot, cwdSource: 'agent-session',
+    hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: alivePid,
+  });
+  const aliveBefore = readFileSync(guardStatePath(aliveRoot), 'utf8');
+  const skipped = maybeSelfHealGuardState(aliveRoot);
+  assert.equal(skipped.healed, false);
+  assert.equal(skipped.reason, 'foreign-pid-alive');
+  assert.equal(readFileSync(guardStatePath(aliveRoot), 'utf8'), aliveBefore, '活着的异 pid 不得自动改写');
+  // 逃生阀
+  const offRoot = project('guard-selfheal-off', execFlow);
+  writeRawGuardState(offRoot, {
+    registered: true, cwd: offRoot, cwdSource: 'agent-session',
+    hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: 2147483647,
+  });
+  const offBefore = readFileSync(guardStatePath(offRoot), 'utf8');
+  process.env.OPENFEEL_GUARD_SELF_HEAL = 'off';
+  try {
+    const disabled = maybeSelfHealGuardState(offRoot);
+    assert.equal(disabled.checked, false);
+    assert.equal(disabled.reason, 'disabled');
+  } finally {
+    delete process.env.OPENFEEL_GUARD_SELF_HEAL;
+  }
+  assert.equal(readFileSync(guardStatePath(offRoot), 'utf8'), offBefore, 'off 时零写盘');
+  clearGuardState(deadRoot);
+  clearGuardState(aliveRoot);
+  clearGuardState(offRoot);
+  rmSync(guardAuditPath(deadRoot), { force: true });
+  rmSync(guardAuditPath(aliveRoot), { force: true });
+  rmSync(guardAuditPath(offRoot), { force: true });
+});
+
+check('F：自动自愈 — fresh 不写盘、60s 节流、marker 缓存、单次 ≤2 次同步读', () => {
+  const marker = { started_at: new Date().toISOString(), loaded_hash: 'hash-new' };
+  writeTestMarker(marker);
+  // fresh（pid + hash 一致）→ 不写盘
+  const freshRoot = project('guard-selfheal-fresh', execFlow);
+  try {
+    setGuardRuntimeIdentity({ pid: process.pid, hostStartedAt: marker.started_at, loaded_hash: marker.loaded_hash });
+    writeGuardState(freshRoot, { registered: true, cwd: freshRoot, cwdSource: 'agent-session' });
+  } finally {
+    setGuardRuntimeIdentity(null);
+  }
+  const freshMtime = statSync(guardStatePath(freshRoot)).mtimeMs;
+  const fresh = maybeSelfHealGuardState(freshRoot);
+  assert.equal(fresh.healed, false);
+  assert.equal(fresh.reason, 'trusted');
+  assert.equal(statSync(guardStatePath(freshRoot)).mtimeMs, freshMtime, 'fresh 时不得写盘');
+  // 节流：同一 root 60s 内只检查一次
+  const throttleRoot = project('guard-selfheal-throttle', execFlow);
+  writeRawGuardState(throttleRoot, {
+    registered: true, cwd: throttleRoot, cwdSource: 'agent-session',
+    hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: 2147483647,
+  });
+  const throttleFirst = maybeSelfHealGuardState(throttleRoot);
+  assert.equal(throttleFirst.healed, true);
+  // 再次人为置旧 → 60s 内第二次必须节流（不读、不写）
+  writeRawGuardState(throttleRoot, {
+    registered: true, cwd: throttleRoot, cwdSource: 'agent-session',
+    hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: 2147483647,
+  });
+  const throttleSecond = maybeSelfHealGuardState(throttleRoot);
+  assert.equal(throttleSecond.checked, false);
+  assert.equal(throttleSecond.reason, 'throttled');
+  assert.equal(readGuardState(throttleRoot).loaded_hash, 'hash-old', '节流期间不得改写');
+  // 读次数：单次自动检查 ≤2（state 1 + marker 1）；marker 缓存命中后不再读
+  resetGuardSelfHealState();
+  const readRootA = project('guard-selfheal-read-a', execFlow);
+  writeRawGuardState(readRootA, {
+    registered: true, cwd: readRootA, cwdSource: 'agent-session',
+    hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: 2147483647,
+  });
+  const readHealA = maybeSelfHealGuardState(readRootA);
+  assert.equal(readHealA.healed, true);
+  let stats = readGuardSelfHealStats();
+  assert.ok(
+    stats.stateReads + stats.markerReads + stats.writeReads <= 4,
+    `单次自动检查应 ≤4 次同步读（state 1 + marker 1 + 写盘内部 2），实际 state=${stats.stateReads} marker=${stats.markerReads} write=${stats.writeReads}`,
+  );
+  assert.equal(stats.markerReads, 1);
+  const readRootB = project('guard-selfheal-read-b', execFlow);
+  writeRawGuardState(readRootB, {
+    registered: true, cwd: readRootB, cwdSource: 'agent-session',
+    hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: 2147483647,
+  });
+  const readHealB = maybeSelfHealGuardState(readRootB);
+  assert.equal(readHealB.healed, true);
+  stats = readGuardSelfHealStats();
+  assert.equal(stats.markerReads, 1, 'marker mtime+size 未变 → 命中缓存、零内容读盘');
+  assert.equal(stats.checks, 2);
+  clearGuardState(freshRoot);
+  clearGuardState(throttleRoot);
+  clearGuardState(readRootA);
+  clearGuardState(readRootB);
+  for (const dir of [freshRoot, throttleRoot, readRootA, readRootB]) rmSync(guardAuditPath(dir), { force: true });
+});
+
+check('F：自动自愈的 guard_repair 审计每宿主启动至多 1 条；显式修复按实际变更加 1 条', () => {
+  const marker = { started_at: new Date().toISOString(), loaded_hash: 'hash-new' };
+  writeTestMarker(marker);
+  const rootA = project('guard-selfheal-audit-a', execFlow);
+  const rootB = project('guard-selfheal-audit-b', execFlow);
+  for (const dir of [rootA, rootB]) {
+    writeRawGuardState(dir, {
+      registered: true, cwd: dir, cwdSource: 'agent-session',
+      hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: 2147483647,
+    });
+  }
+  maybeSelfHealGuardState(rootA);
+  maybeSelfHealGuardState(rootB);
+  const auditA = readFileSync(guardAuditPath(rootA), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+  assert.equal(auditA.filter((record) => record.event === 'guard_repair' && record.auto === true).length, 1);
+  // 第二个 root 的自动修复只写 state、不再追加审计
+  assert.equal(existsSync(guardAuditPath(rootB)), false, '自动自愈审计每宿主启动至多 1 条');
+  // 显式修复：每次实际变更各 1 条；幂等时不写
+  const rootC = project('guard-selfheal-audit-c', execFlow);
+  writeRawGuardState(rootC, {
+    registered: true, cwd: rootC, cwdSource: 'agent-session',
+    hostStartedAt: '2020-01-01T00:00:00.000Z', loaded_hash: 'hash-old', pid: process.pid + 1,
+  });
+  repairGuardState(rootC, { hostMarker: marker });
+  repairGuardState(rootC, { hostMarker: marker });
+  const auditC = readFileSync(guardAuditPath(rootC), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+  assert.equal(auditC.filter((record) => record.event === 'guard_repair').length, 1, '幂等时不得新增审计');
+  for (const dir of [rootA, rootB, rootC]) {
+    clearGuardState(dir);
+    rmSync(guardAuditPath(dir), { force: true });
+  }
 });
 
 check('P2：pwsh 解析器继承 POSIX 写命令集（touch / sed -i）', () => {
@@ -1706,6 +2097,441 @@ check('P2：formatter 无写标志 = 确认只读（kind=none，strict 档不误
     assert.equal(strict(shellExec('bash', cwd, command)), undefined, command);
     assert.equal(readAudit(cwd).at(-1).kind, 'none', command);
   }
+});
+
+// ── v1.5.12 / stage-127 op-002：无阶段 `git commit` 只放行单条纯书账 ────────
+//
+// 对应 plan §3-C（七条件）/ §4 op-002 / 验收 V5·V7·V8·V9。负向用例就是本次门禁：
+// 每条都必须 DENY，且审计/lastDecision 的 reason **绝不出现** `git-commit-bookkeeping`。
+
+/** 断言一条命令被拒，且没有走「纯书账」放行分支。 */
+function denyBookkeeping(guardFn, dir, command, tool = 'bash', workdir) {
+  const result = guardFn(shellExec(tool, dir, command, workdir));
+  assert.equal(typeof result, 'string', `应拒绝：${command}`);
+  const row = readAudit(dir).at(-1);
+  assert.notEqual(row.reason, 'git-commit-bookkeeping', `不得走书账放行：${command}`);
+  assert.ok(
+    row.reason === 'shell-git-whole-tree' || row.reason === 'shell-indirect-exec',
+    `reason=${row.reason}（${command}）`,
+  );
+  return String(result);
+}
+
+/** 纯 `git` 仓库（不含 `.openfeel`），给「非项目工作区」用例。 */
+function bareGitRepo(name) {
+  const dir = workspace(name);
+  const git = (...args) => execFileSync('git', args, { cwd: dir, stdio: 'ignore', windowsHide: true });
+  try {
+    git('-c', 'init.defaultBranch=main', 'init');
+    git('config', 'user.email', 'guard-test@example.com');
+    git('config', 'user.name', 'guard-test');
+    writeFileSync(join(dir, 'x.txt'), '1', 'utf8');
+    git('add', '-A');
+    git('commit', '-m', 'init');
+    return dir;
+  } catch {
+    return null;
+  }
+}
+
+check('op-002 / V5：无阶段 + 只有 `.openfeel/**` 差异 → `git commit -m x` 放行且 reason=git-commit-bookkeeping', () => {
+  const repo = gitProject('op002-bookkeeping-allow', noStageFlow);
+  if (repo === null) return;
+  const { dir } = repo;
+  // 只改 `.openfeel/**`（tracked），工作区其它路径干净
+  tamperFile(join(dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  assert.equal(projectOnly(shellExec('bash', dir, 'git commit -m x')), undefined);
+  assert.equal(readAudit(dir).at(-1).reason, 'git-commit-bookkeeping');
+  assert.equal(readGuardState(dir).lastDecision.reason, 'git-commit-bookkeeping');
+});
+
+check('op-002：有 `exec_running` 阶段 → 照常放行（reason=git-worktree-write，不走书账分支）', () => {
+  const repo = gitProject('op002-bookkeeping-exec', execFlow);
+  if (repo === null) return;
+  assert.equal(projectOnly(shellExec('bash', repo.dir, 'git commit -m x')), undefined);
+  assert.equal(readAudit(repo.dir).at(-1).reason, 'git-worktree-write');
+});
+
+check('op-002 / V7：多语句 / 管道 / 后台 / 重定向 / 命令替换 / 嵌套 wrapper 一律 DENY', () => {
+  const repo = gitProject('op002-bookkeeping-deny', noStageFlow);
+  if (repo === null) return;
+  const { dir } = repo;
+  tamperFile(join(dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  // 组合形态（`splitShellStatements` / 重定向 / 掩码后的裸分隔符）
+  for (const command of [
+    'git commit -m x && git clean -fdx',
+    'git commit -m x; git checkout -- .',
+    'git commit -m x | cat',
+    'git commit -m x &',
+    'git commit -m x > src/x.ts',
+  ]) {
+    denyBookkeeping(projectOnly, dir, command);
+  }
+  // 会真执行的替换 payload（双引号内 `$()` 在 bash 里是真替换）
+  denyBookkeeping(projectOnly, dir, 'git commit -m "$(rm -rf src)"');
+  denyBookkeeping(projectOnly, dir, 'git commit -m "`rm -rf src`"');
+  // nested wrapper：内层即使是干净 commit 也不放行
+  denyBookkeeping(projectOnly, dir, 'bash -c "git commit -m x; rm -rf src"');
+  denyBookkeeping(projectOnly, dir, 'pwsh -Command "git commit -m x; rm -rf src"', 'pwsh');
+});
+
+check('op-002 / V8：staged-only（`git add` 后 `git restore -W -s HEAD`）→ DENY 且点名路径', () => {
+  const repo = gitProject('op002-bookkeeping-staged', noStageFlow);
+  if (repo === null) return;
+  const { dir, git } = repo;
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'x.ts'), 'old', 'utf8');
+  git('add', '-A');
+  git('commit', '-m', 'src baseline');
+  writeFileSync(join(dir, 'src', 'x.ts'), 'new', 'utf8');
+  git('add', 'src/x.ts');
+  git('restore', '-W', '-s', 'HEAD', 'src/x.ts');
+  clearGuardCache();
+  // worktree 已还原到 HEAD，但 index 仍有改动 —— 只有 porcelain 的 X 位看得见
+  const denied = denyBookkeeping(projectOnly, dir, 'git commit -m x');
+  assert.match(denied, /src\/x\.ts/);
+  assert.match(denied, /\.openfeel\/ 之外的条目/);
+});
+
+check('op-002：未跟踪 `src/new.ts` → DENY 且点名（`--untracked-files=all`）', () => {
+  const repo = gitProject('op002-bookkeeping-untracked', noStageFlow);
+  if (repo === null) return;
+  const { dir } = repo;
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'new.ts'), '1', 'utf8');
+  clearGuardCache();
+  const denied = denyBookkeeping(projectOnly, dir, 'git commit -m x');
+  assert.match(denied, /src\/new\.ts/);
+});
+
+check('op-002 / C.3 + op-004 P1-2：R/C 条目的新旧路径都参与 offender 判定', () => {
+  const repo = gitProject('op002-bookkeeping-rename', noStageFlow);
+  if (repo === null) return;
+  const { dir, git } = repo;
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'a.ts'), 'a', 'utf8');
+  git('add', '-A');
+  git('commit', '-m', 'src a');
+  git('mv', 'src/a.ts', 'src/b.ts');
+  clearGuardCache();
+  const denied = denyBookkeeping(projectOnly, dir, 'git commit -m x');
+  // op-004（P1-2）：R/C 条目的**新旧路径都算** offender（旧路径可能正是被搬走的源码）
+  assert.match(denied, /src\/a\.ts/);
+  assert.match(denied, /src\/b\.ts/);
+  // 纯 `.openfeel/**` 的重命名仍是纯书账 → 放行（先把上面的 src 重命名撤回；
+  // 注意**不能**重命名 `flow.json`：它是项目标记，移走会让工作区不再是项目）
+  git('mv', 'src/b.ts', 'src/a.ts');
+  writeFileSync(join(dir, '.openfeel', 'notes.md'), 'n', 'utf8');
+  git('add', '.openfeel/notes.md');
+  git('commit', '-m', 'notes');
+  git('mv', '.openfeel/notes.md', '.openfeel/notes-renamed.md');
+  clearGuardCache();
+  assert.equal(projectOnly(shellExec('bash', dir, 'git commit -m x')), undefined);
+  assert.equal(readAudit(dir).at(-1).reason, 'git-commit-bookkeeping');
+});
+
+check('op-002 / V9：`-C` / `-C=` / `--git-dir` / `--work-tree` 的 commit 一律拒且文案说明', () => {
+  const repo = gitProject('op002-bookkeeping-repo-override', noStageFlow);
+  if (repo === null) return;
+  for (const command of [
+    'git -C ../other commit -am x',
+    'git -C=../other commit -m x',
+    'git --git-dir=/x commit -m x',
+    'git --work-tree=/x commit -m x',
+  ]) {
+    const denied = denyBookkeeping(projectOnly, repo.dir, command);
+    assert.match(denied, /无法校验仓库归属/, command);
+  }
+});
+
+check('op-002 / V9 + op-006：`-c` / `--config-env` 分离与附着形式都进入 commit 判定（安全键）', () => {
+  const repo = gitProject('op002-bookkeeping-config', execFlow);
+  if (repo === null) return;
+  for (const command of [
+    'git -c user.name=x commit -m y',
+    'git -cuser.name=x commit -m y',
+    'git -c=user.name=x commit -m y',
+    'git --config-env=user.name=CONFIG_ENV_NAME commit -m y',
+  ]) {
+    assert.equal(projectOnly(shellExec('bash', repo.dir, command)), undefined, command);
+    const row = readAudit(repo.dir).at(-1);
+    assert.equal(row.reason, 'git-worktree-write', command);
+    assert.equal(row.kind, 'whole-tree', command);
+  }
+});
+
+check('op-002：`classifyShellCommand` 透传 `gitSubcommand` / 保留 `undecidable`（不得回退为 false）', () => {
+  const baseDir = workspace('op002-classify');
+  const plain = classifyShellCommand({ command: 'git commit -m x', baseDir, shell: 'bash' });
+  assert.equal(plain.kind, 'whole-tree');
+  assert.equal(plain.gitSubcommand, 'commit');
+  assert.equal(plain.repoOverride, false);
+  const substituted = classifyShellCommand({ command: 'git commit -m "$(x)"', baseDir, shell: 'bash' });
+  assert.equal(substituted.kind, 'whole-tree');
+  assert.equal(substituted.undecidable, true);
+  const backticked = classifyShellCommand({ command: 'git commit -m "`x`"', baseDir, shell: 'bash' });
+  assert.equal(backticked.kind, 'whole-tree');
+  assert.equal(backticked.gitSubcommand, 'commit');
+  // 引号内分号不拆语句（正向边界，放行侧见下一条用例）
+  const semicolon = classifyShellCommand({ command: 'git commit -m "a; b"', baseDir, shell: 'bash' });
+  assert.equal(semicolon.kind, 'whole-tree');
+  assert.equal(semicolon.undecidable, false);
+});
+
+check('op-002：非项目工作区 / `flow.json` 不可读 → 书账放行不成立（fail-closed）', () => {
+  // 非项目：只有 `.git`，无 `.openfeel`。`project` 档按设计放行整树写，
+  // 所以用 `always` 档观察「书账条件不成立 → 拒绝」。
+  const bare = bareGitRepo('op002-bare-repo');
+  if (bare !== null) {
+    assert.equal(typeof always(shellExec('bash', bare, 'git commit -m x')), 'string');
+  }
+  // flow.json 坏掉的项目：不能把「flow 读不出」当成「无阶段」
+  const broken = gitProject('op002-flow-broken', noStageFlow);
+  if (broken === null) return;
+  writeFileSync(join(broken.dir, '.openfeel', 'flow.json'), '{ broken', 'utf8');
+  clearGuardCache();
+  assert.equal(typeof projectOnly(shellExec('bash', broken.dir, 'git commit -m x')), 'string');
+});
+
+check('op-002：正向边界 `git commit -m "a; b"` 在书账仓库放行；单引号 `$(…)` 被拒（已知代价）', () => {
+  const repo = gitProject('op002-bookkeeping-boundary', noStageFlow);
+  if (repo === null) return;
+  const { dir } = repo;
+  tamperFile(join(dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  assert.equal(projectOnly(shellExec('bash', dir, 'git commit -m "a; b"')), undefined);
+  assert.equal(readAudit(dir).at(-1).reason, 'git-commit-bookkeeping');
+  // 单引号内的 `$(` 也会被拒：宁可误拒，不可漏检真执行形态
+  const knownCost = projectOnly(shellExec('bash', dir, "git commit -m 'fix $(x)'"));
+  assert.equal(typeof knownCost, 'string');
+  assert.notEqual(readAudit(dir).at(-1).reason, 'git-commit-bookkeeping');
+});
+
+// ── v1.5.12 / stage-127 op-004（复审：1 P0 + 4 P1 + 2 P2 的对抗性绕过）───────
+
+check('op-004 P0：进程替换 `<(...)` / `>(...)` 与输入重定向不进书账放行', () => {
+  const repo = gitProject('op004-procsub', noStageFlow);
+  if (repo === null) return;
+  const { dir } = repo;
+  tamperFile(join(dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  for (const command of [
+    'git commit -m x < <(rm -rf src)',
+    'git commit -m x > >(cat)',
+    'git commit -m x < src/x.ts',
+    'git commit -m x <<< "msg"',
+  ]) {
+    denyBookkeeping(projectOnly, dir, command);
+  }
+  // 引号内的 `<(` 是字面量，不误拒
+  assert.equal(projectOnly(shellExec('bash', dir, 'git commit -m "a <(b)"')), undefined);
+  // `/dev/null` 是空设备：读/写都放行
+  assert.equal(projectOnly(shellExec('bash', dir, 'git commit -m x < /dev/null')), undefined);
+  assert.equal(projectOnly(shellExec('bash', dir, 'git commit -m x > /dev/null')), undefined);
+});
+
+check('op-004 P1-1 / op-006：`-c` / `--config-env` 不进书账分支（不安全的键第 1 类）', () => {
+  const repo = gitProject('op004-config', noStageFlow);
+  if (repo === null) return;
+  const { dir } = repo;
+  tamperFile(join(dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  // 非白名单键（hooksPath）→ 第 1 类硬拒，任何相位
+  const hooks = denyBookkeeping(projectOnly, dir, 'git -c core.hooksPath=.openfeel/tmp commit -am x');
+  assert.match(hooks, /嵌套解释器|编码执行/);
+  assert.equal(readAudit(dir).at(-1).reason, 'shell-indirect-exec');
+  // 安全键也不进书账分支（文案说明原因）
+  for (const command of [
+    'git -c user.name=x commit -m y',
+    'git -cuser.name=x commit -m y',
+    'git -c=user.name=x commit -m y',
+    'git --config-env=user.name=CONFIG_ENV_NAME commit -m y',
+  ]) {
+    const denied = denyBookkeeping(projectOnly, dir, command);
+    assert.match(denied, /-c \/ --config-env/, command);
+  }
+});
+
+check('op-004 P1-3：`-c alias.*` 硬拒；未知 git 子命令不再当 readonly', () => {
+  const baseDir = workspace('op004-alias-classify');
+  assert.equal(
+    classifyShellCommand({ command: "git -c 'alias.zz=commit -a -m pwn' zz", baseDir, shell: 'bash' }).kind,
+    'indirect',
+  );
+  assert.equal(classifyShellCommand({ command: 'git zz', baseDir, shell: 'bash' }).kind, 'undecidable');
+  assert.equal(classifyShellCommand({ command: 'git submodule update --init', baseDir, shell: 'bash' }).kind, 'undecidable');
+  // index / refs / 对象库类子命令沿用旧行为（不误杀日常 `git add` 流程）
+  assert.equal(classifyShellCommand({ command: 'git add -A', baseDir, shell: 'bash' }).kind, 'none');
+  // 持久化别名同源（P1-3）；只读用法照旧
+  assert.equal(classifyShellCommand({ command: 'git config alias.zz "!rm -rf src"', baseDir, shell: 'bash' }).kind, 'indirect');
+  assert.equal(classifyShellCommand({ command: 'git config alias.zz', baseDir, shell: 'bash' }).kind, 'none');
+  assert.equal(classifyShellCommand({ command: 'git config --get alias.zz', baseDir, shell: 'bash' }).kind, 'none');
+  // 端到端：plan_review 相位（无书账窗口）也硬拒别名展开
+  const projectDir = project('op004-alias-project', planFlow);
+  const denied = String(projectOnly(shellExec('bash', projectDir, "git -c 'alias.zz=commit -a -m pwn' zz")));
+  assert.match(denied, /嵌套解释器|编码执行/);
+  assert.equal(readAudit(projectDir).at(-1).reason, 'shell-indirect-exec');
+  // 未知子命令落第 4 类：默认 warn（审计可见），strict 才拒
+  assert.equal(projectOnly(shellExec('bash', projectDir, 'git zz')), undefined);
+  assert.equal(readAudit(projectDir).at(-1).kind, 'undecidable');
+});
+
+check('op-004 P1-4 / op-006：非白名单 `GIT_*` 前缀（含 GIT_DIR）一律第 1 类，文案说明仓库归属', () => {
+  const repo = gitProject('op004-env-prefix', noStageFlow);
+  if (repo === null) return;
+  const { dir } = repo;
+  tamperFile(join(dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  for (const command of [
+    'GIT_DIR=../other/.git GIT_WORK_TREE=../other git commit -m x',
+    'env GIT_DIR=../other/.git git commit -m x',
+    'GIT_INDEX_FILE=.git/index.other git commit -m x',
+  ]) {
+    const denied = denyBookkeeping(projectOnly, dir, command);
+    assert.match(denied, /无法校验仓库归属/, command);
+  }
+  // 分类层面：赋值前缀被剥离后先判 env 白名单（GIT_DIR 属非白名单）
+  const classified = classifyShellCommand({ command: 'GIT_DIR=../x git commit -m x', baseDir: dir, shell: 'bash' });
+  assert.equal(classified.kind, 'indirect');
+  assert.match(classified.detail, /无法校验仓库归属/);
+  // 只读子命令也不能借非白名单 GIT_* 绕过
+  assert.equal(typeof projectOnly(shellExec('bash', dir, 'GIT_DIR=../x git status')), 'string');
+});
+
+check('op-004 P2-1：workdir 指向被忽略的嵌套仓库 → 不判纯书账', () => {
+  const repo = gitProject('op004-workdir-nested', noStageFlow);
+  if (repo === null) return;
+  const { dir, git } = repo;
+  const nested = join(dir, 'nested');
+  mkdirSync(nested, { recursive: true });
+  const nestedGit = (...args) => execFileSync('git', args, { cwd: nested, stdio: 'ignore', windowsHide: true });
+  try {
+    nestedGit('-c', 'init.defaultBranch=main', 'init');
+    nestedGit('config', 'user.email', 'guard-test@example.com');
+    nestedGit('config', 'user.name', 'guard-test');
+    writeFileSync(join(nested, 'a.txt'), 'a', 'utf8');
+    nestedGit('add', '-A');
+    nestedGit('commit', '-m', 'nested init');
+  } catch {
+    return;
+  }
+  // 外层 `.gitignore` 忽略 nested/ → 外层 status 看着干净（旧实现会放行）
+  writeFileSync(join(dir, '.gitignore'), '.openfeel/dev/\n.openfeel/log/\n.openfeel/tmp/\nnested/\n', 'utf8');
+  git('add', '.gitignore');
+  git('commit', '-m', 'ignore nested');
+  tamperFile(join(dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  const denied = denyBookkeeping(projectOnly, dir, 'git commit -m x', 'bash', 'nested');
+  assert.match(denied, /不是项目工作区/);
+});
+
+check('op-004 P1-2：`git mv src/a.ts .openfeel/a.ts` → DENY（R 旧路径同样算）', () => {
+  const repo = gitProject('op004-rename-into-openfeel', noStageFlow);
+  if (repo === null) return;
+  const { dir, git } = repo;
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'a.ts'), 'a', 'utf8');
+  git('add', '-A');
+  git('commit', '-m', 'src a');
+  git('mv', 'src/a.ts', '.openfeel/a.ts');
+  clearGuardCache();
+  const denied = denyBookkeeping(projectOnly, dir, 'git commit -m x');
+  assert.match(denied, /src\/a\.ts/);
+});
+
+// ── v1.5.12 / stage-127 op-006：git「外部执行面」由黑名单改白名单（根治）────────
+
+check('op-006：`-c` / `--config-env` / `git config` 的安全键白名单之外一律第 1 类', () => {
+  const baseDir = workspace('op006-config-allowlist');
+  for (const command of [
+    'git -c diff.external="sh run-me.sh" diff',
+    'git -c core.pager=less log',
+    'git -c core.editor=vim commit -m x',
+    'git -c gpg.program=gpg2 tag',
+    'git -c include.path=evil.cfg status',
+    'git -c alias.zz=status zz',
+    'git config diff.external "sh run-me.sh"',
+  ]) {
+    const r = classifyShellCommand({ command, baseDir, shell: 'bash' });
+    assert.equal(r.kind, 'indirect', command);
+    assert.match(r.detail, /安全白名单/, command);
+  }
+  // 安全键（user.* / color.* / core.quotepath|autocrlf|safecrlf / i18n.*）不误杀
+  for (const command of [
+    'git -c user.name=x commit -m y',
+    'git -c user.email=a@b.com commit -m y',
+    'git -c color.ui=always diff',
+    'git -c core.quotepath=false status',
+    'git -c core.autocrlf=true add .',
+    'git -c i18n.logOutputEncoding=utf-8 log',
+    'git --config-env=user.name=CONFIG_ENV_NAME commit -m y',
+    'git config user.name x',
+    'git config --get diff.external',
+  ]) {
+    assert.notEqual(classifyShellCommand({ command, baseDir, shell: 'bash' }).kind, 'indirect', command);
+  }
+});
+
+check('op-006：非白名单 `GIT_*` 环境前缀一律第 1 类（身份/时间戳白名单不误杀）', () => {
+  const baseDir = workspace('op006-env-allowlist');
+  for (const command of [
+    'GIT_EXTERNAL_DIFF="sh run-me.sh" git diff',
+    'GIT_CONFIG_GLOBAL=evil.cfg git zz',
+    'GIT_PAGER=less git log',
+    'GIT_SSH_COMMAND="ssh -o ProxyCommand=x" git fetch',
+    'GIT_ASKPASS=evil git push',
+    'env GIT_EXTERNAL_DIFF="sh run-me.sh" git diff',
+    'GIT_DIR=../other/.git git status',
+  ]) {
+    const r = classifyShellCommand({ command, baseDir, shell: 'bash' });
+    assert.equal(r.kind, 'indirect', command);
+    assert.match(r.detail, /安全白名单|无法校验仓库归属/, command);
+  }
+  for (const command of [
+    'GIT_AUTHOR_NAME=x git commit -m y',
+    'GIT_COMMITTER_EMAIL=a@b git commit -m y',
+    'GIT_AUTHOR_DATE="2026-01-01T00:00:00Z" git commit -m y',
+  ]) {
+    assert.equal(classifyShellCommand({ command, baseDir, shell: 'bash' }).kind, 'whole-tree', command);
+  }
+});
+
+check('op-006：端到端负例 DENY + 日常命令零误杀', () => {
+  const cwd = project('op006-e2e', planFlow);
+  for (const command of [
+    'git -c diff.external="sh run-me.sh" diff',
+    'GIT_EXTERNAL_DIFF="sh run-me.sh" git diff',
+    'GIT_CONFIG_GLOBAL=evil.cfg git zz',
+    'git -c core.pager=less log',
+    'GIT_PAGER=less git log',
+    'GIT_ASKPASS=evil git push',
+  ]) {
+    assert.equal(typeof projectOnly(shellExec('bash', cwd, command)), 'string', command);
+    assert.equal(readAudit(cwd).at(-1).reason, 'shell-indirect-exec', command);
+  }
+  // 白名单 env / 安全键不升级为第 1 类（commit 仍按相位判）
+  String(projectOnly(shellExec('bash', cwd, 'GIT_AUTHOR_NAME=x git commit -m y')));
+  assert.equal(readAudit(cwd).at(-1).reason, 'shell-git-whole-tree');
+  const execCwd = project('op006-e2e-exec', execFlow);
+  for (const command of ['GIT_AUTHOR_NAME=x git commit -m y', 'git -c user.name=x commit -m y']) {
+    assert.equal(projectOnly(shellExec('bash', execCwd, command)), undefined, command);
+  }
+  // 日常命令零误杀
+  for (const command of [
+    'git status', 'git diff', 'git log', 'git add .',
+    'npx vitest run', 'npm run build', 'openfeel flow status',
+  ]) {
+    assert.equal(projectOnly(shellExec('bash', cwd, command)), undefined, command);
+  }
+});
+
+// V4：真实宿主 marker 与真实全局目录未被本测试改写（loaded_hash 变 → FAIL；仅时间/条目变 → skip）。
+check('B/V4：真实 marker 与真实全局目录未被本测试改写', () => {
+  const verdict = assertRealGuardUntouched(realGuardBefore, iso);
+  assert.ok(verdict === 'PASS' || verdict === 'skip: host-active', `未知判定：${verdict}`);
+  if (verdict !== 'PASS') process.stdout.write(`       (${verdict})\n`);
 });
 
 rmSync(root, { recursive: true, force: true });

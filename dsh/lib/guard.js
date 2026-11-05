@@ -1988,6 +1988,110 @@ function classifyBuildTool(name, args) {
 const WHOLE_TREE_GIT_TARGETS = new Set(['.', './', './*', ':/', ':(top)', '*', '**', '.\\']);
 
 /**
+ * 确认只读（不写工作区）的 git 子命令（v1.5.12 / stage-127 op-004 / P1-3）。
+ *
+ * 旧实现把所有未命中写分支的子命令都当 `readonly` —— `git -c 'alias.zz=commit -a -m pwn' zz`
+ * 因此得到 `kind:'none'`，任意相位放行（真展开成 commit 提交了源码）。未知子命令现在
+ * 落第 4 类（`undecidable`，默认告警 + strict 拒），只保留下面这张正面白名单。
+ * 注意：`bisect` / `submodule` / `worktree` / `lfs` / `add` / `push` / `init` / `clone`
+ * 都会改工作区或仓库状态，**不在**白名单里。
+ */
+const GIT_READONLY_SUBCOMMANDS = new Set([
+  // 查询类
+  'status', 'log', 'diff', 'show', 'branch', 'fetch', 'remote', 'rev-parse', 'rev-list',
+  'ls-files', 'ls-tree', 'ls-remote', 'cat-file', 'hash-object', 'grep', 'blame', 'describe',
+  'shortlog', 'tag', 'show-ref', 'for-each-ref', 'merge-base', 'name-rev', 'reflog',
+  'symbolic-ref', 'whatchanged', 'count-objects', 'fsck', 'help', 'version', 'var',
+  'diff-tree', 'diff-index', 'diff-files', 'check-ignore', 'check-attr', 'cherry', 'notes',
+  'verify-commit', 'verify-tag', 'range-diff',
+  // 只动 index / refs / 对象库，**不覆盖工作区**（沿用旧行为，避免严格档误杀日常流程）
+  'add', 'update-index', 'read-tree', 'write-tree', 'commit-tree', 'update-ref', 'pack-refs',
+  'gc', 'prune', 'maintenance', 'repack', 'rerere', 'replace', 'push',
+]);
+
+/**
+ * `-c` / `--config-env` / `git config` 的**安全键白名单**（v1.5.12 / stage-127 op-006）。
+ *
+ * 旧实现是黑名单（只拦 alias.* / core.hooksPath / core.fsmonitor），于是
+ * `git -c diff.external="sh run-me.sh" diff` / `core.pager` / `core.editor` /
+ * `gpg.program` / `include.path` 这类「外部执行面」全漏。黑名单永远补不完 ——
+ * 改成白名单：只放行确定不会执行外部程序、也不改写仓库归属的键，**其余（含未来新增）
+ * 一律第 1 类硬拒**。
+ *
+ * 精确键：`user.name` / `user.email` / `core.quotepath` / `core.autocrlf` / `core.safecrlf`
+ * 前缀键：`color.*` / `i18n.*`
+ */
+const SAFE_GIT_CONFIG_KEYS = new Set([
+  'user.name', 'user.email', 'core.quotepath', 'core.autocrlf', 'core.safecrlf',
+]);
+const SAFE_GIT_CONFIG_PREFIXES = ['color.', 'i18n.'];
+
+/**
+ * 允许出现在命令位置的 `GIT_*` 环境变量（v1.5.12 / stage-127 op-006）。
+ *
+ * 只允许「身份/时间戳」类：写进提交对象的作者/提交者信息，不触发外部程序、不改仓库。
+ * `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE`（仓库归属）、`GIT_EXTERNAL_DIFF`、
+ * `GIT_CONFIG_GLOBAL`、`GIT_PAGER`、`GIT_SSH_COMMAND`、`GIT_ASKPASS` … **一律不放行**。
+ */
+const SAFE_GIT_ENV_VARS = new Set([
+  'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_AUTHOR_DATE',
+  'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'GIT_COMMITTER_DATE',
+]);
+
+/**
+ * 该 git 配置键是否在安全白名单内（大小写不敏感）。
+ * @param {string} key
+ * @returns {boolean}
+ */
+function isSafeGitConfigKey(key) {
+  const k = String(key).trim().toLowerCase();
+  if (k === '') return false;
+  if (SAFE_GIT_CONFIG_KEYS.has(k)) return true;
+  return SAFE_GIT_CONFIG_PREFIXES.some((prefix) => k.startsWith(prefix));
+}
+
+/**
+ * `-c` / `--config-env` / `git config <key>` 的键安全判定（v1.5.12 / stage-127 op-006）。
+ *
+ * 白名单之外一律返回拒绝理由：未列入安全白名单的配置键**可触发外部程序执行**
+ * （`diff.external` / `core.pager` / `core.editor` / `gpg.program` / `include.path`
+ * / `alias.*` …），静态无法判定。
+ * @param {string} value `-c` 的值（`key=value` / `key`），或 `git config` 的第一个位置参数
+ * @returns {string | null}
+ */
+function gitUnsafeConfigDetail(value) {
+  if (typeof value !== 'string') return 'git 配置缺少键名';
+  const key = value.replace(/^=/, '').split('=')[0].trim();
+  if (key === '') return 'git 配置缺少键名';
+  if (isSafeGitConfigKey(key)) return null;
+  return `git 配置键 ${key.toLowerCase()} 不在安全白名单（未列入白名单的配置键可触发外部程序执行或改写仓库）`;
+}
+
+/**
+ * 扫命令位置的 `VAR=value` 前缀里的非白名单 `GIT_*`（v1.5.12 / stage-127 op-006）。
+ *
+ * 非白名单 `GIT_*` 与 `-c` 是同一类外部执行面（`GIT_EXTERNAL_DIFF` / `GIT_CONFIG_GLOBAL`
+ * / `GIT_PAGER` / `GIT_SSH_COMMAND` / `GIT_ASKPASS` …），一律第 1 类硬拒；
+ * `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE` 额外说明「无法校验仓库归属」。
+ * @param {string[]} prefixTokens 命令位置上的赋值前缀 token
+ * @returns {string | null}
+ */
+function findUnsafeGitEnv(prefixTokens) {
+  for (const token of prefixTokens) {
+    const match = /^([A-Za-z_][A-Za-z0-9_]*)=/.exec(String(token));
+    if (match === null) continue;
+    const name = match[1].toUpperCase();
+    if (!name.startsWith('GIT_')) continue;
+    if (SAFE_GIT_ENV_VARS.has(name)) continue;
+    if (name === 'GIT_DIR' || name === 'GIT_WORK_TREE' || name === 'GIT_INDEX_FILE') {
+      return `${name} 改写 git 仓库归属，无法校验仓库归属，一律拒绝`;
+    }
+    return `${name} 不在安全白名单（git 环境变量可触发外部程序执行）`;
+  }
+  return null;
+}
+
+/**
  * 该 git 路径参数是否覆盖整个工作树（op-005 / P1-2）。
  * @param {string} token
  * @returns {boolean}
@@ -2007,14 +2111,54 @@ function coversWholeTree(token) {
  * @param {string[]} tokens
  * @param {number} start
  * @param {string} baseDir
- * @returns {{ kind: 'readonly' } | { kind: 'targets', targets: string[] } | { kind: 'whole-tree', detail: string, phases?: string[] } | { kind: 'undecidable', detail: string }}
+ * @returns {{ kind: 'readonly' } | { kind: 'targets', targets: string[] } | { kind: 'whole-tree', detail: string, phases?: string[], gitSubcommand?: string, repoOverride?: boolean, gitConfig?: boolean } | { kind: 'unsafe', detail: string } | { kind: 'undecidable', detail: string }}
  */
 function classifyGitCommand(tokens, start, baseDir) {
   let index = start + 1;
   let subcommand;
+  // v1.5.12 / stage-127 C.4：git 全局选项解析。
+  // **大小写敏感**：`-c`（config）与 `-C`（repo）是不同选项，必须先判 `-C` 再判 `-c`，
+  // 否则 `-C/path` 会被 `-c` 前缀吞掉。分离值形式吞值 `+2`，附着形式（`-cV` / `-c=V`
+  // / `--config-env=V` / `-C=…`）值已在本 token 内，只能 `+1`（再 `+2` 会把 `commit`
+  // 当值吞掉 → 判成 `kind:'none'` 任意相位放行）。
+  let repoOverride = false;
+  /** 是否出现 `-c` / `--config-env`（v1.5.12 / stage-127 op-004 / P1-1）。 */
+  let gitConfig = false;
   while (index < tokens.length && tokens[index] !== '|') {
     const token = tokens[index];
-    if (token === '-C' || token === '--git-dir' || token === '--work-tree') { index += 2; continue; }
+    // 仓库改写：`-C` / `--git-dir` / `--work-tree`（精确与附着两种形式）。
+    if (token === '-C' || token === '--git-dir' || token === '--work-tree') {
+      repoOverride = true;
+      index += 2;
+      continue;
+    }
+    if (
+      token.startsWith('-C=')
+      || (token.startsWith('-C') && token.length > 2)
+      || token.startsWith('--git-dir=')
+      || token.startsWith('--work-tree=')
+    ) {
+      repoOverride = true;
+      index += 1;
+      continue;
+    }
+    // config 类：吞值后继续；记录出现过 `-c`（书账分支要求没有），并把
+    // **安全键白名单之外**的键判为外部执行面（op-006：黑名单永远补不完）。
+    if (token === '-c' || token === '--config-env') {
+      gitConfig = true;
+      const unsafe = gitUnsafeConfigDetail(tokens[index + 1]);
+      if (unsafe !== null) return { kind: 'unsafe', detail: unsafe };
+      index += 2;
+      continue;
+    }
+    if (token.startsWith('-c=') || (token.startsWith('-c') && token.length > 2) || token.startsWith('--config-env=')) {
+      gitConfig = true;
+      const value = token.startsWith('--config-env=') ? token.slice('--config-env='.length) : token.slice(2);
+      const unsafe = gitUnsafeConfigDetail(value);
+      if (unsafe !== null) return { kind: 'unsafe', detail: unsafe };
+      index += 1;
+      continue;
+    }
     if (token.startsWith('-')) { index += 1; continue; }
     subcommand = token.toLowerCase();
     break;
@@ -2086,11 +2230,17 @@ function classifyGitCommand(tokens, start, baseDir) {
       // `commit` **不覆盖工作区**（它是把当前状态记进版本库），所以 P1-2 的
       // 「`.openfeel/**` 必须干净」不能套在它身上 —— 否则「先提交 .openfeel」
       // 的修复动作本身会被拒（死锁）。
+      // v1.5.12 / stage-127 C.1/C.4：`gitSubcommand` 与 `repoOverride` 供
+      // 「无阶段纯书账」分支判定（字段白名单必须两处一并透传，见
+      // `analyzeShellStatement` / `classifyShellCommand`）。
       return {
         kind: 'whole-tree',
         detail: 'git commit',
         phases: ['exec_running', 'archiving'],
         preservesWorktree: true,
+        gitSubcommand: 'commit',
+        repoOverride,
+        gitConfig,
       };
     case 'merge':
     case 'rebase':
@@ -2104,9 +2254,29 @@ function classifyGitCommand(tokens, start, baseDir) {
       return positionals.length > 0
         ? { kind: 'targets', targets: positionals }
         : { kind: 'undecidable', detail: `git ${subcommand}` };
-    default:
-      // `status|log|diff|show|branch|fetch|remote|rev-parse|…` 与其它非工作区写命令
+    case 'config': {
+      // v1.5.12 / stage-127 op-006：持久化配置与 `-c` 是同一类外部执行面
+      // （`diff.external` / `core.pager` / `alias.*` / `include.path` …）。只读用法
+      // （`--get*` / `--list` / `git config <key>` 单参数读值）照旧放行；
+      // **安全键白名单之外**的键写入硬拒（`--unset*` / `--remove-section`
+      // 只会减少攻击面，直接放行）。
+      const readOnly = rest.some((token) => [
+        '--get', '--get-all', '--get-regexp', '--get-urlmatch', '--list', '-l', '--show-origin',
+        '--show-scope', '--name-only', '--null', '-z', '--help', '-h', '--type', '--bool', '--int',
+      ].includes(token));
+      const removing = rest.some((token) => token === '--unset' || token === '--unset-all' || token === '--remove-section');
+      const writing = positionals.length >= 2
+        || rest.some((token) => ['--add', '--replace-all', '--edit', '-e', '--rename-section'].includes(token));
+      const unsafe = readOnly || removing || !writing ? null : gitUnsafeConfigDetail(positionals[0]);
+      if (unsafe !== null) return { kind: 'unsafe', detail: `git config：${unsafe}` };
       return { kind: 'readonly' };
+    }
+    default:
+      // v1.5.12 / stage-127 op-004 / P1-3：**未知子命令不再当只读** ——
+      // `git -c 'alias.zz=…' zz` / 未来新增写子命令都曾因此「任意相位放行」。
+      // 正面白名单之外一律落第 4 类（默认告警 + strict 拒）。
+      if (GIT_READONLY_SUBCOMMANDS.has(subcommand)) return { kind: 'readonly' };
+      return { kind: 'undecidable', detail: `git ${subcommand} 不在只读白名单（写入意图无法判定）` };
   }
 }
 
@@ -2120,7 +2290,7 @@ function classifyGitCommand(tokens, start, baseDir) {
  * @param {string} statement
  * @param {'bash'|'pwsh'} shell
  * @param {string} baseDir
- * @returns {{ targets: string[], wholeTree?: string, wholeTreePhases?: string[], undecidable: boolean, detail: string }}
+ * @returns {{ targets: string[], wholeTree?: string, wholeTreePhases?: string[], wholeTreeGitSubcommand?: string, wholeTreeRepoOverride?: boolean, wholeTreeGitConfig?: boolean, blockedGit?: string, undecidable: boolean, detail: string }}
  */
 function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
   const redirections = scanShellRedirections(statement);
@@ -2138,8 +2308,16 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
   // 命令替换（`echo $(touch x)` / 反引号）的内层命令不进入解析器 → 第 4 类。
   // 叠加在正常分析之上（不提前返回）：`git commit -m "…$(…)"` 仍按整树写判。
   // 反引号用掩码文本判断，避免提交信息里的反引号被误当命令替换。
-  if (/\$\(/.test(statement) || maskQuoted(statement).includes('`')) {
-    noteUnknown('命令替换（$() / 反引号）的内层命令无法解析');
+  // v1.5.12 / stage-127 op-004（P0）：**进程替换** `<(...)` / `>(...)` 同样会真执行内层
+  // 命令（`git commit -m x < <(rm -rf src)`），而且不进 tokenizer → 也记第 4 类。
+  // 引号内是字面量（bash 不展开），所以用掩码文本判，避免提交信息被误杀。
+  const maskedForSubstitution = maskQuoted(statement);
+  if (
+    /\$\(/.test(statement)
+    || maskedForSubstitution.includes('`')
+    || /<\(|>\(/.test(maskedForSubstitution)
+  ) {
+    noteUnknown('命令替换 / 进程替换（$() / 反引号 / <() / >()）的内层命令无法解析');
   }
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -2149,11 +2327,17 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
     const isCommandStart = index === 0 || tokens[index - 1] === '|' || tokens[index - 1] === '&';
     if (!isCommandStart) continue;
     let cursor = index;
+    // v1.5.12 / stage-127 op-004（P1-4）：命令位置的 `VAR=value` 环境赋值前缀。
+    // 不剥离的话 `GIT_DIR=../other/.git GIT_WORK_TREE=../other git commit` 会把
+    // `GIT_DIR=…` 当成「未识别命令」→ 第 4 类默认 warn 放行（真把提交写进别的仓库）。
+    while (cursor < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[cursor])) cursor += 1;
     while (cursor < tokens.length && SHELL_WRAPPER_COMMANDS.has(commandNameOf(tokens[cursor]))) {
       cursor += 1;
       while (cursor < tokens.length && (tokens[cursor].startsWith('-') || /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[cursor]))) cursor += 1;
     }
     if (cursor >= tokens.length || tokens[cursor] === '|') continue;
+    /** 命令位置的赋值前缀（`VAR=value`，含 wrapper 之后的），op-006 用它判 `GIT_*` 白名单。 */
+    const prefixTokens = tokens.slice(index, cursor);
     let name = commandNameOf(tokens[cursor]);
     // `&` / `.` 调用运算符（op-005 / P0-1）：被调用者是字面量就按它判，
     // 是**同命令内一次字面量赋值**（`$c='Set-Content'; & $c …`）→ 解析成该程序再判
@@ -2177,7 +2361,15 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
     for (let rest = cursor + 1; rest < tokens.length && tokens[rest] !== '|'; rest += 1) args.push(tokens[rest]);
 
     if (name === 'git') {
+      // v1.5.12 / stage-127 op-006：**先判执行面，再判子命令** —— 非白名单 `GIT_*`
+      // 环境前缀（GIT_EXTERNAL_DIFF / GIT_CONFIG_GLOBAL / GIT_PAGER / GIT_SSH_COMMAND /
+      // GIT_ASKPASS / GIT_DIR …）可触发外部程序或改写仓库归属，一律第 1 类硬拒。
+      const unsafeEnv = findUnsafeGitEnv(prefixTokens);
+      if (unsafeEnv !== null) return { targets, blockedGit: unsafeEnv, undecidable, detail };
       const git = classifyGitCommand(tokens, cursor, baseDir);
+      // v1.5.12 / stage-127 op-004/op-006：`-c` / `--config-env` 的键不在安全白名单
+      // 即外部执行面（内容不可见）→ 交回第 1 类硬拒（只读子命令也先过这一关）。
+      if (git.kind === 'unsafe') return { targets, blockedGit: git.detail, undecidable, detail };
       if (git.kind === 'whole-tree') {
         return {
           targets,
@@ -2186,6 +2378,12 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
           wholeTreePreservesWorktree: git.preservesWorktree,
           wholeTreeDestroysUntracked: git.destroysUntracked === true,
           wholeTreePurgesIgnored: git.purgesIgnored === true,
+          // v1.5.12 / stage-127 C.1：**新增字段必须同时改这两处白名单**
+          // （这里 + `classifyShellCommand` 的 whole-tree 重建），否则字段丢失
+          // 会让「无阶段纯书账」放行条件恒不成立。
+          wholeTreeGitSubcommand: git.gitSubcommand,
+          wholeTreeRepoOverride: git.repoOverride === true,
+          wholeTreeGitConfig: git.gitConfig === true,
           undecidable,
           detail,
         };
@@ -2291,7 +2489,7 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
  *   内层可判定按内层判；内层为空/不可判定 → 第 4 类（`undecidable`）。
  *
  * @param {{ command: string, baseDir: string, shell: 'bash'|'pwsh', depth?: number }} input
- * @returns {{ kind: 'indirect'|'openfeel-write'|'whole-tree'|'targets'|'undecidable'|'none'|'readonly-interpreter', detail: string, targets: string[], undecidable: boolean, phases?: string[] }}
+ * @returns {{ kind: 'indirect'|'openfeel-write'|'whole-tree'|'targets'|'undecidable'|'none'|'readonly-interpreter', detail: string, targets: string[], undecidable: boolean, phases?: string[], gitSubcommand?: string, repoOverride?: boolean, gitConfig?: boolean }}
  */
 export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
   const statements = splitShellStatements(command);
@@ -2374,6 +2572,11 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
     // 命令替换 / 反引号的内层命令在 `analyzeShellStatement` 里**叠加**判定为第 4 类
     // （不和 git 整树写等更强结论二选一）。
     const analysis = analyzeShellStatement(statement, shell, baseDir, vars);
+    // v1.5.12 / stage-127 op-004（P1-1/P1-3）：git 危险配置（`-c alias.*` /
+    // `core.fsmonitor` / `core.hooksPath`）内容不可见 → 第 1 类硬拒。
+    if (analysis.blockedGit !== undefined) {
+      return { kind: 'indirect', detail: analysis.blockedGit, targets: [], undecidable: false };
+    }
     if (analysis.wholeTree !== undefined) {
       return {
         kind: 'whole-tree',
@@ -2382,8 +2585,18 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
         preservesWorktree: analysis.wholeTreePreservesWorktree === true,
         destroysUntracked: analysis.wholeTreeDestroysUntracked === true,
         purgesIgnored: analysis.wholeTreePurgesIgnored === true,
+        // v1.5.12 / stage-127 C.1：与 `analyzeShellStatement` 的 whole-tree 返回
+        // **必须同时改**（字段白名单重建会丢字段 → 放行条件恒不成立）。
+        gitSubcommand: analysis.wholeTreeGitSubcommand,
+        repoOverride: analysis.wholeTreeRepoOverride === true,
+        gitConfig: analysis.wholeTreeGitConfig === true,
         targets: [],
-        undecidable: false,
+        // v1.5.12 / stage-127 C.1（v4-P0①）：这里**原先写死 false**，让
+        // 「undecidable !== true」在 whole-tree 分支成为死条件 ——
+        // 实测 `git commit -m "$(rm -rf src)"` 得到 undecidable:false。
+        // 必须保留 analyzeShellStatement 算出的 `$(` / 反引号 / wrapper 不可判结论。
+        // **不得改回 false**（测试钉死：classifyShellCommand('git commit -m "$(x)").undecidable === true）。
+        undecidable: analysis.undecidable === true,
       };
     }
     for (const raw of analysis.targets) pushTarget(raw);
@@ -2750,6 +2963,160 @@ function openfeelTreeDirty(resolvedCwd, options = {}) {
 }
 
 /**
+ * 「单条纯书账 commit」的**命令文本**硬条件（v1.5.12 / stage-127 C.2）。
+ *
+ * **必须对原始 command 判定，不得先 `maskQuoted`**：
+ * - 单语句（`;` / `&&` / `||` / 换行都被 `splitShellStatements` 切开）；
+ * - 无重定向（`git commit -m x > src/x.ts` 会真写源码）；
+ * - 原始字符串不含 `$(` 与反引号 —— 双引号内的 `$()` 在 bash 里是**真替换、会真执行**，
+ *   不能因为它在引号里就放过。**已知代价**：单引号内的 `$(` / 反引号也会被误拒
+ *   （`git commit -m 'fix $(x)'`）—— 接受，改用双引号或去掉即可；绝不为了少误拒
+ *   而漏检真执行形态。
+ * - 裸 `;` / `|` / `&`：在**掩码后**的文本上判（引号内的 `"a; b"` 不拆语句，属正向边界）。
+ * - v1.5.12 / stage-127 op-004（P0）：**进程替换** `<(...)` / `>(...)` 会真执行内层命令
+ *   （`git commit -m x < <(rm -rf src)` 七条件全过且真建了文件）；输入重定向 `< file`
+ *   同样不是纯书账需要的东西，只放行 `< /dev/null`。两者都按掩码文本判（引号内是字面量）。
+ * @param {string} command
+ * @returns {boolean}
+ */
+function isSingleSimpleCommit(command) {
+  const text = String(command);
+  if (splitShellStatements(text).length !== 1) return false;
+  if (scanShellRedirections(text).targets.length !== 0) return false;
+  if (/\$\(/.test(text)) return false;
+  if (text.includes('`')) return false;
+  const masked = maskQuoted(text);
+  if (/[;|&]/.test(masked)) return false;
+  if (hasUnsafeInputRedirect(masked)) return false;
+  return true;
+}
+
+/**
+ * 掩码文本里是否有「进程替换 / 非 `/dev/null` 输入重定向」（v1.5.12 / stage-127 op-004 P0）。
+ *
+ * 覆盖：`<(...)` / `>(...)`、`<<` 与 `<<<`（heredoc / herestring）、`< file`、`0<file`、
+ * `2< file`。只放行 `</dev/null`（Git Bash 下的空设备）。掩码已把引号内容变成空格，
+ * 所以 `git commit -m "a < b"` 不会被误拒。
+ * @param {string} masked
+ * @returns {boolean}
+ */
+function hasUnsafeInputRedirect(masked) {
+  for (let index = 0; index < masked.length; index += 1) {
+    if (masked[index] !== '<') continue;
+    const next = masked[index + 1];
+    if (next === '(' || next === '<') return true; // 进程替换 / heredoc-herestring
+    let cursor = index + 1;
+    while (cursor < masked.length && /\s/.test(masked[cursor])) cursor += 1;
+    let target = '';
+    while (cursor < masked.length && !/[\s;&|<>]/.test(masked[cursor])) {
+      target += masked[cursor];
+      cursor += 1;
+    }
+    if (target === '') return true; // `<&3` / 悬空重定向
+    if (target.toLowerCase() !== '/dev/null') return true;
+    index = cursor - 1;
+  }
+  return false;
+}
+
+/**
+ * 是否为**直接** git 调用（v1.5.12 / stage-127 C.2 / v4-P0③）。
+ *
+ * 以 `git` 开头（`/^git(\s|$)/`）且没有 `bash -c` / `pwsh -Command` 之类外层 wrapper。
+ * **凡来自 nested wrapper 的分类结果一律不放行**：内层语句分隔 / 替换藏在 wrapper
+ * 字符串里，无法用同一条 `isSingleSimpleCommit` 判定。
+ * @param {string} command
+ * @returns {boolean}
+ */
+function isDirectGitInvocation(command) {
+  const text = String(command).trim();
+  if (!/^git(\s|$)/.test(text)) return false;
+  return extractWrapperPayload(text) === null;
+}
+
+/**
+ * 「纯书账」待提交路径集（v1.5.12 / stage-127 C.3）。
+ *
+ * 用 `git status --porcelain=v1 -z --untracked-files=all` 而不是 `git diff HEAD`：
+ * - porcelain 的 `X` 位能看见 **staged-only**（`git add src/x.ts` 后
+ *   `git restore -W -s HEAD src/x.ts` 可让 worktree 干净、`diff HEAD` 看不到）；
+ * - `??` 覆盖未跟踪；`X`/`Y` 两个位置全覆盖。
+ * `-z` 关闭引号 + `core.quotePath=false` 双保险。
+ *
+ * v1.5.12 / stage-127 op-004（P1-2 / P2-1）：
+ * - `R`/`C` 条目的**新旧路径都参与** offender 判定。只取新路径时
+ *   `git mv src/a.ts .openfeel/a.ts` 会被判纯书账放行，而 HEAD 里 `src/a.ts` 被删。
+ * - 判定必须对**实际生效仓库**做：`workdir` 可能指向被外层 `.gitignore` 忽略的嵌套
+ *   仓库（外层判干净、实际提交进 nested）。生效仓库根 ≠ 项目工作区 → 拒绝。
+ *
+ * @param {string} resolvedCwd 会话工作区（项目根）
+ * @param {string} baseDir shell 的相对路径基准（`resolvedCwd + workdir`）
+ * @returns {{ ok: true, offenders: string[] } | { ok: false, offenders: string[], repoMismatch?: boolean, repoRoot?: string } | null}
+ *   `null` = 无法判定（非仓库 / 无 HEAD / status 失败）→ 调用方拒绝。
+ */
+function inspectCommitBookkeeping(resolvedCwd, baseDir = resolvedCwd) {
+  const run = (args, capture = false) => {
+    try {
+      const stdout = execFileSync('git', args, {
+        cwd: resolvedCwd,
+        stdio: capture ? ['ignore', 'pipe', 'ignore'] : 'ignore',
+        encoding: 'utf8',
+        timeout: 5000,
+        windowsHide: true,
+      });
+      return { status: 0, stdout: typeof stdout === 'string' ? stdout : '' };
+    } catch (error) {
+      const status = error !== null && typeof error === 'object' && Number.isInteger(error.status)
+        ? error.status
+        : null;
+      return { status, stdout: '' };
+    }
+  };
+  /** 某个目录实际生效的仓库根（跟随 workdir / 嵌套仓库）。 */
+  const toplevelOf = (dir) => {
+    const result = run(['-C', dir, 'rev-parse', '--show-toplevel'], true);
+    if (result.status !== 0) return null;
+    const text = result.stdout.trim();
+    if (text === '') return null;
+    return normalizeTarget(dir, text);
+  };
+  const repoRoot = toplevelOf(baseDir);
+  if (repoRoot === null) return null;
+  const projectRoot = normalizeTarget(resolvedCwd, '.');
+  if (repoRoot !== projectRoot) {
+    // workdir 落在另一个仓库（常见：被外层 .gitignore 忽略的嵌套仓库）→ 不书账。
+    return { ok: false, offenders: [], repoMismatch: true, repoRoot };
+  }
+  // 非仓库目录里 `git status` 会失败（不同于 `git diff` 退化成 --no-index）→ null。
+  if (run(['rev-parse', '--git-dir']).status !== 0) return null;
+  if (run(['rev-parse', '--verify', '--quiet', 'HEAD']).status !== 0) return null;
+  const status = run(['-c', 'core.quotePath=false', 'status', '--porcelain=v1', '-z', '--untracked-files=all'], true);
+  if (status.status !== 0) return null;
+
+  const entries = status.stdout.split('\0');
+  const paths = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (entry === '') continue;
+    // `XY <path>`：`-z` 下没有引号，但格式异常一律按「不可判定」拒绝。
+    if (entry.length < 4) return null;
+    const xy = entry.slice(0, 2);
+    const path = entry.slice(3);
+    if (path === '') return null;
+    // `R`/`C`：下一项是**原路径**；新旧路径**都算**（旧路径可能正是被搬走的源码）。
+    if (xy[0] === 'R' || xy[0] === 'C') {
+      const original = entries[index + 1];
+      index += 1;
+      if (typeof original === 'string' && original !== '') paths.push(original);
+    }
+    paths.push(path);
+  }
+  // 空集合 = 交给 git 报 nothing to commit（不是放行写源码的理由）。
+  const offenders = paths.filter((path) => path !== OPENFEEL_DIR && !path.startsWith(`${OPENFEEL_DIR}/`));
+  return { ok: offenders.length === 0, offenders };
+}
+
+/**
  * 生成守卫。
  *
  * @param {object} options
@@ -2966,10 +3333,58 @@ export function createOpenFeelGuard(options = {}) {
       // 第 2 类：git 整树工作区写（需要相位 + `.openfeel/**` 无差异，见 P1-2 / P1-4）
       if (classification.kind === 'whole-tree') {
         if (!allowsWholeTreeWrite(resolvedCwd, enforce, classification.phases)) {
-          return denyDecidable('shell-git-whole-tree', t(
+          // v1.5.12 / stage-127 §3-C（C.5/C.6）+ op-004 复审修正：无 `exec_running` /
+          // `archiving` 阶段时，只给「单条、直接、纯 `.openfeel/**` 书账」的
+          // `git commit` 开一道窄口。**条件缺一不可**（漏一条即变后门，见 plan R8）：
+          // ① 无 exec_running/archiving 阶段 —— 上面 `allowsWholeTreeWrite` 已保证；
+          // ② 是项目工作区且 flow.json 可读（fail-closed：非项目 / flow 读不出
+          //    不等于「无阶段」，不能一律当书账）；
+          // ③ 单条简单 commit（对**原始命令**判：无多语句/重定向/`$(`/反引号/进程替换）；
+          // ④ 直接 git 调用（无 `bash -c` / `pwsh -Command` 等 wrapper payload）；
+          // ⑤ 分类结果可判定（`undecidable !== true`，C.1 修好后才是真条件）；
+          // ⑥ 待提交路径（含 R/C 旧路径）全部落在 `.openfeel/` 下，且实际生效仓库
+          //    就是项目工作区自身（workdir 嵌套仓库不放行）；
+          // ⑦ 无 `-C` / `--git-dir` / `--work-tree` / `GIT_DIR` 等仓库改写；
+          // ⑧ 无 `-c` / `--config-env`（hooks / fsmonitor / alias 是外部执行面）。
+          const flow = readFlow(resolvedCwd);
+          const canBeBookkeeping = classification.gitSubcommand === 'commit'
+            && classification.repoOverride !== true
+            && classification.gitConfig !== true
+            && classification.undecidable !== true
+            && isSingleSimpleCommit(command)
+            && isDirectGitInvocation(command)
+            && isProjectWorkspace(resolvedCwd) === true
+            && flow.ok === true;
+          const scope = canBeBookkeeping ? inspectCommitBookkeeping(resolvedCwd, baseDir) : null;
+          if (scope !== null && scope.ok === true) return allowShell('git-commit-bookkeeping', []);
+          let denyMessage = t(
             `OpenFeel 写入门禁：禁止在没有 exec_running 阶段时用 shell 做 git 工作区写（${classification.detail}）—— 它会整树覆盖/丢弃源码或把状态直接写进仓库，等同绕过文件门禁。请先 feel_flow action=advance 推进到 exec_running；只读查询（git status / log / diff）不受影响。`,
             `OpenFeel write guard: git worktree writes via the shell (${classification.detail}) are blocked without an exec_running stage — they overwrite/discard sources across the whole tree or write repo state, bypassing the file gate. Advance to exec_running with feel_flow action=advance; read-only git status / log / diff are unaffected.`,
-          ), []);
+          );
+          if (scope !== null && scope.repoMismatch === true) {
+            denyMessage += `\n${t(
+              `待提交仓库根（${scope.repoRoot}）不是项目工作区（${normalizeTarget(resolvedCwd, '.')}）：workdir 指向了另一个仓库（常见于被外层 .gitignore 忽略的嵌套仓库），纯书账只对项目自身的仓库生效。`,
+              `The repository root for this commit (${scope.repoRoot}) is not the project workspace (${normalizeTarget(resolvedCwd, '.')}): the workdir points at another repository (often a nested repo ignored by the outer .gitignore). Bookkeeping commits only apply to the project's own repository.`,
+            )}`;
+          } else if (scope !== null && scope.ok === false) {
+            // 安全阀文案（追加行）：点名前 5 条外部路径。
+            const shown = scope.offenders.slice(0, 5).join(', ');
+            denyMessage += `\n${t(
+              `本次待提交路径含 .openfeel/ 之外的条目：${shown}；该命令仅在提交纯书账时放行。`,
+              `Pending paths include entries outside .openfeel/: ${shown}; this command is only allowed for pure bookkeeping commits.`,
+            )}`;
+          } else if (classification.gitSubcommand === 'commit' && classification.repoOverride === true) {
+            denyMessage += `\n${t(
+              '该 commit 带 -C / --git-dir / --work-tree（或 GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE），无法校验仓库归属，一律拒绝。',
+              'This commit carries -C / --git-dir / --work-tree (or GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE), so the repository it targets cannot be verified; it is refused.',
+            )}`;
+          } else if (classification.gitSubcommand === 'commit' && classification.gitConfig === true) {
+            denyMessage += `\n${t(
+              '该 commit 带 -c / --config-env（可改写 hooks / fsmonitor / 别名），无法证明只提交书账，一律拒绝。',
+              'This commit carries -c / --config-env (which can redirect hooks, fsmonitor or aliases), so a pure bookkeeping commit cannot be proven; it is refused.',
+            )}`;
+          }
+          return denyDecidable('shell-git-whole-tree', denyMessage, []);
         }
         // op-005 / P1-2：整树写会覆盖受保护路径所在的 `.openfeel/**`（flow.json /
         // chore.json / guard-audit…），「受保护路径任意相位硬拒」在主相位会被它绕过。

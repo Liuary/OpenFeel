@@ -139,6 +139,16 @@ export function registerSetupCommand(program: Command): void {
             profiles: dsh.profiles.map((profile) => profile.name).join(', '),
           }));
         }
+        // stage-127 §3-D：显式 --dsh-profile 收窄了范围时，把「其余 profile 保持原样」说清楚
+        // ——否则容易出现「部署了、重启了、门禁却没生效」（web 部署了，desktop/acp 还是旧链接）。
+        // 一律 stderr（部署分支无 JSON 契约，stdout 人类输出逐字不变）。
+        const scope = dsh.profileScope;
+        if (scope !== undefined && scope.skipped.length > 0 && options?.dshProfile !== undefined) {
+          console.error(t('setup.dshProfileNarrowHint', lang, {
+            deployed: scope.deployed.join(', '),
+            rest: scope.skipped.join(', '),
+          }));
+        }
         for (const profile of dsh.profiles) {
           const key = profile.action === 'updated'
             ? 'setup.dshProfileUpdatedTmpl'

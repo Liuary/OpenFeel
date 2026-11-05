@@ -15,7 +15,7 @@
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
   （v1.5.10 起 43 个成功出口 / 44 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.5.11）。
+  的 `openfeel.requiresCli`（≥1.5.12）。
 
 ## 设计边界
 
@@ -68,6 +68,10 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
     —— 这两类文件被 .gitignore 忽略，`ls-files` 看不见，但 `clean -fdx` 会删掉；
     `git commit` 不覆盖工作区，不受这条限制）；
     ③ **产物豁免**（同上面的构建/测试产物表）；④ **无法判定** → 默认告警放行（审计 + stderr）。
+    **例外（v1.5.12 / op-002 纯书账）**：无 `exec_running` / `archiving` 阶段时，`git commit` 仅在
+    **单条、直接、无重定向/`$()`/反引号**，且 `git status --porcelain -z` 的待提交路径**全部**落在
+    `.openfeel/**` 下才放行（允许原因 `git-commit-bookkeeping`，审计可查）；出现外部路径则拒并点名前
+    5 条。带 `-C` / `--git-dir` / `--work-tree` 的 commit 一律拒（仓库归属无法校验）；
   - **默认 fail-closed（op-005）**：**无法确认「这条命令不写」就落第 4 类**，不再把未识别命令
     当作 `no-write` 静默放行。审计的 `kind` 因此能区分 `none`（确认只读）与 `undecidable`。
     「确认只读」需要正面证据：命中只读白名单、已知构建/测试工具（`npx vitest` / `npm run build` /
@@ -91,17 +95,47 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **宿主加载指纹**（v1.3.4）：`apply()` 启动时把适配器 `lib/` 指纹写入
   `~/.openfeel/adapter-host-dsh.json`（`OPENFEEL_ADAPTER_HOST_PATH` 可覆盖，测试用）；
   CLI `setup --check` 据此区分「文件旧」与「文件已新但宿主未重启」。
-- **门禁可见性**（v1.5.11 / D-126-04）：注册 guard 时写 `.openfeel/dev/guard-state.json`
-  （`registered` / `enforce` / `shellGate` / `cwd` / `cwdSource` / `degraded` / `resolvedAt` /
-  `hostStartedAt` / `loaded_hash` / `pid`），每次放行/拒绝更新 `lastDecision`；
-  `feel_status` / `feel_next` 返回 `guard` 段（compact 档也带）。`feel_status` 比对
-  `~/.openfeel/adapter-host-dsh.json` 与当前 `pid` / 启动时刻：指纹不符或来自旧进程 → `guard.stale=true`
-  并在 summary 明说「门禁来自旧进程/旧适配器，判定不可信，请重启宿主」，同时 `workflowGate.required=true`。
-  cwd 解析失败时不静默丢弃：状态与审计固定落 `os.tmpdir()/openfeel-guard/`（`cwd:null`、`cwdSource:'unresolved'`），
-  `feel_status` 在工作区文件缺失时也读该全局文件并标 `degraded=true`。
+- **门禁可见性**（v1.5.11 / D-126-04；v1.5.12 / stage-127 身份自证）：注册 guard 时写
+  `.openfeel/dev/guard-state.json`（`registered` / `enforce` / `shellGate` / `cwd` / `cwdSource` /
+  `degraded` / `resolvedAt` / `hostStartedAt` / `loaded_hash` / `pid`），每次放行/拒绝更新 `lastDecision`；
+  `feel_status` / `feel_next` 返回 `guard` 段（compact 档也带）。
+  **身份三键只来自当前进程**（`setGuardRuntimeIdentity` 在 `apply()` 写完 marker 后登记）或显式 patch，
+  **旧工作区文件里的身份一律剥离、绝不继承**（重启后不再因旧 `hostStartedAt` 恒 `stale`）。
+  **stale 只认 `pid` + `loaded_hash`**：`pid` 缺失/不符、`loaded_hash` 缺失（`loaded-hash-missing`）、
+  或双方非空的 `loaded_hash` 不符 → `guard.stale=true`
+  并让 summary 明说「门禁来自旧进程/旧适配器」，同时 `workflowGate.required=true`（**不拒写**，见 §F.0 决策）。
+  `guard.hostStartedAt` 是**诊断字段**：`stale:false` 时它仍可能是 state 里的旧值（不改 `guard` 段键形状，
+  避免动 `deepEqual` 契约）；时间比较在多 profile/多宿主下必然误报，故不参与判定。
+  **HMAC**（进程内密钥，不落盘）跨进程必然失配，因此只降级为可见信号：`guard.signature='valid'|'mismatch'`；
+  `pid`/`loaded_hash` 都通过而验签失败时加 `guard.hmacWarn=true`（不置 stale、不进 `workflowGate`、不进 summary 门禁）。
+  残留敞口：伪造只影响显示；跨进程识别由 `pid` 覆盖，代码版本由 `loaded_hash` 覆盖。
+  cwd 解析失败时不静默丢弃：状态与审计固定落 `os.tmpdir()/openfeel-guard/`（`cwd:null`、`cwdSource:'unresolved'`；
+  `OPENFEEL_GUARD_DIR` 可覆盖，测试隔离用），`feel_status` 在工作区文件缺失时也读该全局文件并标 `degraded=true`。
+- **门禁自愈**（v1.5.12 / stage-127；op-005 加固）：官方修复路径**不需要删除** `.openfeel/dev/guard-state.json`。
+  - **自动**：重启后**首次任意 `feel_*`** 即尝试修复（`target()` 公共入口，best-effort，异常绝不阻断）。
+    **只对「`pid` 缺失 / `pid` 已死（`ESRCH`）」自动修**：活着的异 pid（含 `EPERM`）跳过（两个活宿主共享
+    同一工程会互相覆盖）；**同 pid 的 `loaded_hash` 失配绝不自动修**——那是「适配器已更新但宿主没重启」的
+    信号，必须在展示前保留（`stale` 保持），交由完全重启或显式入口。marker 不完整（缺 `started_at` /
+    空 `loaded_hash`）时自动修也会以 `marker-incomplete` 拒绝且零写盘。
+    同一 root 60s 节流（**检查成功后才记时间**，异常不占窗口；节流表上限 64，LRU）；
+    marker 按 `{path, mtimeMs, size}` 缓存；单次自动检查 3~4 次同步小 JSON 读
+    （state 1 + marker 0~1 + 修复写盘内部 `writeGuardState` 的 global/workspace 2）；自动 `guard_repair`
+    审计每宿主启动至多 1 条（**取舍**：多 root 时只第一条自动修复进审计，其余只写 state；要逐 root 追溯用显式入口）。
+  - **显式**：`feel_verify action=health fix=true`（`dry_run` 不写盘）→ 结果在 `data.health.guardRepair`，
+    summary 明示成功/失败；marker 缺失报 `marker-missing`、marker 不完整报 `marker-incomplete`，均**零写盘**。
+    身份**只来自 marker + 当前宿主 `process.pid`**，不接受任何工具参数（agent 无法注入 pid/loaded_hash）。
+  - **逃生阀**：`OPENFEEL_GUARD_SELF_HEAL=off` 关闭自动自愈（显式入口仍可用）。
+  - **审计**：修复追加 `.openfeel/log/guard-audit.jsonl`（`event:'guard_repair'`，含 old/new；幂等时不写）。
+    该文件本身是受保护路径（工具写被 guard 拒），而 repair 走适配器进程内 `fs` 直写、不经 guard，故无自锁。
+  - **多宿主同工程时不要用显式修复**（会把 state 归到当前宿主）；自动自愈在活 pid 场景已自动跳过。
+- **测试隔离 env（非安全边界）**：`OPENFEEL_GUARD_DIR`（覆盖全局 guard 目录，状态+审计一起隔离）与
+  `OPENFEEL_ADAPTER_HOST_PATH`（沿用，覆盖宿主 marker 路径）应在宿主启动前设置；
+  `dsh/test/{guard,verify,contract,integration}.js` 各自指向 `mkdtempSync` 临时目录，并断言真实状态未被改写。
+  该断言按**逐文件内容**比对（name + size + mtime + sha256）：内容变 → FAIL；仅新增/删除文件或
+  `started_at` 变 → `skip: host-active`；全不变 → PASS。`dsh/test/guard-isolation.js` 自带这三条自测。
 - **生效条件（重要）**：门禁在 `apply()` 时注册，**部署/更新后必须完全重启 DSH 宿主**才生效
-  （重启会话不够，Loader 按 URL 缓存 ESM 模块）；重启后第一条判定即写 `guard-state.json`，
-  可用 `feel_status.guard` 核对 `registered` / `cwdSource` / `stale`。
+  （重启会话不够，Loader 按 URL 缓存 ESM 模块）；重启后首条判定即写 `guard-state.json`，
+  可用 `feel_status.guard` 核对 `registered` / `cwdSource` / `stale`（`stale` 由 pid/loaded_hash 判定，可自愈）。
 - **命令执行推荐**（v1.3.5）：系统提示段新增「Windows：优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS/Linux 用 `bash`；默认不用 `cmd.exe`」；同一任务保持同一 shell。
 - **状态与记录**（v1.5.0）：只有 Feel 写状态；子 agent 不读不写 `dev_last*` / `current.md` / `status.md` / `flow.json`；日志不强制；`feel_next` / `feel_status` 暴露 `statusSync.due`（30 分钟），到期只提示更新交接摘要 + `openfeel dev sync`。
 - **流程入口闸**（v1.5.2）：`feel_status` / `feel_next` 在无活跃阶段时返回 `workflowGate`；无阶段写 `docs/research/**` 被拒（chore 不能绕过；拒绝写 `guard-audit.jsonl`，`event=guard_deny`）。

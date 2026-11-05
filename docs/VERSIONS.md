@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.12** — Guard recovery & git boundaries (fixes the `guard.stale`-never-recovers bug reported by an external project): the guard marker's identity keys (`pid` / `hostStartedAt` / `loaded_hash`) now come only from the current runtime and `stale` is decided by `pid` + `loaded_hash` alone (the `host-started-at` false positive is gone; an HMAC mismatch downgrades to `hmacWarn` instead of `stale`) — **deleting `guard-state.json` is no longer needed**. Supported self-heal repairs only dead-pid states (live foreign pids and `loaded_hash` mismatches stay untouched) and is also available explicitly on the DSH side via `feel_verify action=health fix=true` (missing/incomplete marker → `marker-incomplete`, zero writes). Also: dsh test isolation via `OPENFEEL_GUARD_DIR`, a seven-condition allowance for pure bookkeeping `git commit` (all pending paths under `.openfeel/**`), a whitelist for the git external-execution surface (`-c` / `--config-env` and `GIT_*`), a multi-profile notice for `setup --tools dsh`, and `feel_status` / `feel_next` headlines that no longer say "no active stage" for guard reasons.
 - **v1.5.11** — Write-gate hardening (shipped together with v1.5.10 as npm **1.5.11**; `1.5.10` was not published on its own): shell tools (`bash` / `pwsh`) are now gated with four outcomes — hard-deny protected paths and `openfeel` write commands, judge source / git-workspace writes by target, exempt build artifacts (`npx vitest` / `npm run build` / `git status` keep working), and warn when undecidable; the protected-path list grows (`chore.json`, `dev/.preflight.json`, `dev/sessions.json`, `dev/guard-state.json`, `pipeline.yaml`, `config.yaml`, `metrics.json`, `flow-archive/**`, `checkpoints/**`, `requirements/*.md`, `log/guard-audit.jsonl`, `dsh/cordis.patch.yml`); doc/asset exemptions no longer apply inside code directories; Win32 path normalization (trailing dots / ADS / 8.3 short names); six-link cwd resolution with fail-closed and a `guard-state.json` self-check (`pid` / `loaded_hash` / HMAC) surfaced as `feel_status.guard`; `chore` shrinks to a human-only channel (30-minute cap, `--source` required for source writes, `--ttl-min 1..30`).
 - **v1.5.10** — Project dashboard: `openfeel dashboard [--json] [--out] [--open]` aggregates requirements / stages / release gates / archives / blocking REVs / health / metrics into a single self-contained HTML file (default `.openfeel/tmp/dashboard.html`; zero external links, zero network, zero executable scripts); `dashboard --json` is JSON exit #43 (contract at 43 success exits / 44 registered `--json` options).
 - **v1.5.9** — Cleanup batch: manual/template/skill snapshots refreshed to v1.5.8, eslint errors cleared (35 → 0), v1.5.7 version archive backfilled, and pitfalls fixed (README capability text, adapter `sessions.stage` clearing semantics, `chore.json` ignored).
@@ -40,6 +41,15 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.12 — 门禁自愈与 git 边界（`guard-stale` 修复）
+
+- **修复 `guard.stale` 重启后永久为 true**（外部项目报告的缺陷）：`guard-state.json` 的身份三键（`pid` / `hostStartedAt` / `loaded_hash`）只来自当前运行时，不再继承旧文件；`stale` 判定只认 `pid` + `loaded_hash`，删除 `host-started-at` 误报（多 profile / 多宿主下时间比较必然误报），HMAC 失配只降级为 `hmacWarn` 可见提示、不再判 stale。**此刻起不再需要删掉 `.openfeel/dev/guard-state.json` 来恢复门禁。**
+- **受支持自愈**：重启后首次任意 `feel_*` 自动修复（只针对 `pid` 缺失 / `pid` 已死的陈旧状态；活异 pid 与 `loaded_hash` 失配保持不动——前者防多宿主互写，后者是「适配器已更新但宿主未重启」的信号）；DSH 侧显式入口 `feel_verify action=health fix=true`（`dry_run` 零写盘，结果见 `data.health.guardRepair`）；marker 缺失 / 不完整 → 明确报 `marker-missing` / `marker-incomplete` 且零写盘；`OPENFEEL_GUARD_SELF_HEAL=off` 可关闭自动自愈。
+- **dsh 测试隔离**：新增 `OPENFEEL_GUARD_DIR`（沿用 `OPENFEEL_ADAPTER_HOST_PATH`），四套 dsh 测试不再覆写真实宿主的 marker / guard-state。
+- **`git commit` 纯书账放行**：单语句、直连 git、无重定向与进程替换、无 `-c` / `-C` / `--git-dir` / `--work-tree`、无改写仓库的 env、无不可判定形态、且待提交路径全在 `.openfeel/**` —— 七条件全满足才放行。
+- **git 外部执行白名单**：`-c` / `--config-env` 与 `GIT_*` 环境前缀改为白名单（只放 `user.name` / `user.email` / `color.*` / `core.quotepath` / `core.autocrlf` / `core.safecrlf` / `i18n.*` 与 `GIT_AUTHOR_*` / `GIT_COMMITTER_*` 六项），其余硬拒。
+- **可读性修复**：`setup --tools dsh` 在显式 `--dsh-profile` 且还有其他 profile 时于 stderr 提示「其余保持原样」，`SetupResult.dsh.profileScope` 记录 deployed / skipped；`feel_status` / `feel_next` 不再把 `guard-stale` 等门禁原因误报成「无活跃阶段」。
 
 ## v1.5.11 — 写入门禁加固（shell 守卫 / 受保护路径 / fail-closed / chore 收窄）
 

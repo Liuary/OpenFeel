@@ -83,3 +83,52 @@ export function computeWorkflowGate(snapshot) {
     ],
   };
 }
+
+/**
+ * 门禁标题（**单句、不带 `⚠ ` 前缀**）——`feel_status` / `feel_next` 两处共用，避免再次分叉。
+ *
+ * v1.5.12 / stage-127 §3-E：旧实现两个工具各自硬编码「⚠ 无活跃阶段：非只读任务先
+ * feel_status→建阶段。」，于是 `guard-stale` / `guard-inactive` / `guard-cwd-unresolved`
+ * 时标题与真实原因矛盾（门禁自身没生效，却在催建阶段）。
+ *
+ * 口径：
+ * - `no-active-stage` → 保留既有短句（仅此一条 reason 才允许出现「无活跃阶段」）；
+ * - `guard-*` 三条 → **逐字使用 `gate.message`**（门禁原因文案；同一原因只说一次，
+ *   与 `guardWarnings` 的 `skipGateCovered` 配合，不重复堆两句）；
+ * - 其它/未知 reason → 回落 `gate.message`；无 message 时空串（调用方据此不加标题）。
+ *
+ * @param {{ reason?: string|null, message?: string } | null | undefined} gate
+ * @returns {string}
+ */
+export function workflowGateTitle(gate) {
+  if (gate === null || gate === undefined || typeof gate !== 'object') return '';
+  switch (gate.reason) {
+    case 'no-active-stage':
+      // 唯一允许出现「无活跃阶段」的 reason
+      return '无活跃阶段：非只读任务先 feel_status→建阶段。';
+    case 'guard-inactive':
+    case 'guard-cwd-unresolved':
+    case 'guard-stale':
+      // 与 gate.message 逐字一致：原因 + 修复动作全部取自单源，不在标题里另写一套
+      break;
+    default:
+      break;
+  }
+  return typeof gate.message === 'string' ? gate.message : '';
+}
+
+/**
+ * 一句话门禁告警（`⚠ ` 开头的完整标题；无告警时返回空串）。
+ *
+ * 两处调用点只做「拼到 summary 前面」，选择文案的逻辑只在 `workflowGateTitle` 一处。
+ *
+ * @param {{ workflowGate?: { required?: boolean, reason?: string|null, message?: string } } | null | undefined} snapshot
+ * @returns {string}
+ */
+export function headlineWarning(snapshot) {
+  const gate = snapshot?.workflowGate;
+  if (gate === null || gate === undefined || typeof gate !== 'object' || gate.required !== true) return '';
+  const title = workflowGateTitle(gate);
+  if (title === '') return '';
+  return `⚠ ${title}`;
+}

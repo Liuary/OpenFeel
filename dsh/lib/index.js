@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { FeelCli } from './adapters/cli.js';
 import { resolveWorkspace } from './adapters/workspace.js';
 import { writeHostMarker } from './adapters/host-state.js';
-import { writeGuardState } from './adapters/guard-state.js';
+import { setGuardRuntimeIdentity, writeGuardState } from './adapters/guard-state.js';
 import { touchSession } from './adapters/session-cwd-registry.js';
 import { createOpenFeelGuard, resolveShellGate } from './guard.js';
 import { createFeelCommandHandler } from './surface/command.js';
@@ -144,6 +144,14 @@ export function apply(ctx, rawConfig) {
   } catch {
     /* 标记写入失败 → CLI check 会提示 restart-required，可操作，不阻塞 */
   }
+  // v1.5.12 / stage-127 D1：登记**当前进程**的运行时身份（pid / marker 的 started_at+loaded_hash）。
+  // guard-state 写入时用它在 seed 之后覆盖旧身份；旧工作区文件的身份一律剥离，
+  // 因此重启后首条判定即可自证可信（不再因旧 hostStartedAt 恒 stale）。
+  setGuardRuntimeIdentity({
+    pid: process.pid,
+    hostStartedAt: hostMarker?.started_at ?? new Date().toISOString(),
+    loaded_hash: hostMarker?.loaded_hash ?? '',
+  });
   const log = typeof ctx.logger === 'function'
     ? ctx.logger('openfeel-dsh')
     : {

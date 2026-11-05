@@ -31,6 +31,16 @@ export interface SetupResult {
     home: string;
     adapterDir: string;
     profiles: DshProfileResult[];
+    /** 检测到的全部 profile 名（未按 `--dsh-profile` 收窄；按名称升序） */
+    allProfileNames?: string[];
+    /**
+     * 本次部署范围：`deployed` = 实际写入的 profile，`skipped` = 因 `--dsh-profile` 未触碰的 profile。
+     * 未收窄时 `deployed` 为全部、`skipped` 为空（默认行为不变）。仅供命令层提示，非 JSON 契约。
+     */
+    profileScope?: {
+      deployed: string[];
+      skipped: string[];
+    };
   };
 }
 
@@ -157,8 +167,18 @@ export function setupGlobalFramework(
   let dsh: SetupResult['dsh'];
   if (dshPlan !== undefined) {
     const profiles = applyDshDeployment(dshPlan);
+    // 部署范围：`allProfiles` 由预检给出（未被 --dsh-profile 收窄），差值即「保持原样」的 profile
+    const deployed = profiles.map((profile) => profile.name);
+    const allProfileNames = dshPlan.allProfiles.map((profile) => profile.name);
+    const skippedProfiles = allProfileNames.filter((name) => !deployed.includes(name));
     // REV-003：DSH profile 不属于受管全局资产，只放 result.dsh，不进入 created/updated/skipped
-    dsh = { home: dshPlan.home, adapterDir: dshPlan.adapterDir, profiles };
+    dsh = {
+      home: dshPlan.home,
+      adapterDir: dshPlan.adapterDir,
+      profiles,
+      allProfileNames,
+      profileScope: { deployed, skipped: skippedProfiles },
+    };
   }
 
   // 5. 写盘全局 state + 记录已部署 hash（N3；v1.3.4：dsh-only 部署也刷新版本与适配器指纹）

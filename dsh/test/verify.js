@@ -9,7 +9,8 @@
  * 用法：node test/verify.js [--keep]
  */
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -18,9 +19,11 @@ import { FeelCli } from '../lib/adapters/cli.js';
 import { planNextStep, readSnapshot } from '../lib/adapters/dashboard.js';
 import { tokenize } from '../lib/surface/command.js';
 import { renderFeelPrompt } from '../lib/surface/prompt.js';
-import { computeWorkflowGate } from '../lib/adapters/workflow-gate.js';
+import { computeWorkflowGate, headlineWarning, workflowGateTitle } from '../lib/adapters/workflow-gate.js';
+import { guardWarnings } from '../lib/tools/index.js';
 import { buildGuardSection, computeGuardStale, readGuardState, writeGuardState } from '../lib/adapters/guard-state.js';
 import { buildObservability } from '../lib/adapters/observability.js';
+import { assertRealGuardUntouched, installIsolatedGuardEnv, snapshotRealGuardState } from './guard-isolation.js';
 
 /** 真实 OpenFeel 项目（只读源）。 */
 const SOURCE_PROJECT = 'C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel';
@@ -195,6 +198,9 @@ function execFor(cwd) {
 /* ────────────────────────── 主流程 ────────────────────────── */
 
 async function main() {
+  // v1.5.12 / stage-127 §3-B：先把 guard 状态与宿主 marker 指到临时目录，绝不可改写真实状态。
+  const iso = installIsolatedGuardEnv();
+  const realGuardBefore = snapshotRealGuardState();
   const keep = process.argv.includes('--keep');
 
   process.stdout.write('\nOpenFeel × DSH 适配器 — 验证\n');
@@ -438,6 +444,208 @@ async function main() {
     assert(computeWorkflowGate({ focus: { phase: '' } }).reason === 'no-active-stage', '无 guard 字段仍按阶段判定');
   });
 
+  // v1.5.12 / stage-127 §3-E：标题误报修复（`guard-*` 不得再说「无活跃阶段」）
+  await check('workflowGateTitle：四个 reason 各自成句，guard-* 与 gate.message 同源（stage-127 E）', () => {
+    const cases = [
+      [{ registered: false }, 'guard-inactive'],
+      [{ registered: true, cwd: null, cwdSource: 'unresolved' }, 'guard-cwd-unresolved'],
+      [{ registered: true, cwd: '/x/project', cwdSource: 'agent-session', stale: true }, 'guard-stale'],
+    ];
+    for (const [guard, reason] of cases) {
+      const gate = computeWorkflowGate({ focus: { phase: 'exec_running' }, guard });
+      assert(gate.reason === reason, `sanity：reason 应为 ${reason}，实际 ${gate.reason}`);
+      const title = workflowGateTitle(gate);
+      assertString(title, `${reason} 标题`);
+      assert(!title.includes('无活跃阶段'), `${reason} 标题不得出现「无活跃阶段」（实际：${title}）`);
+      assert(title === gate.message, `${reason} 标题应与 gate.message 逐字一致（单源，不另写一套）`);
+      const headline = headlineWarning({ workflowGate: gate });
+      assert(headline === `⚠ ${gate.message}`, `${reason} headline 应为「⚠ + message」，实际：${headline}`);
+    }
+    // 真无活跃阶段 + guard 正常 → 唯一允许出现「无活跃阶段」的 reason
+    const noStage = computeWorkflowGate({
+      focus: { phase: '' },
+      guard: { registered: true, cwd: '/x/project', cwdSource: 'agent-session', stale: false },
+    });
+    assert(noStage.reason === 'no-active-stage', `sanity：应判 no-active-stage，实际 ${noStage.reason}`);
+    const noStageHeadline = headlineWarning({ workflowGate: noStage });
+    assert(
+      noStageHeadline.includes('无活跃阶段'),
+      `真无活跃阶段时 headline 应含「无活跃阶段」（实际：${noStageHeadline}）`,
+    );
+    // 有活跃阶段（门禁无需）→ 空串，不得凭空加标题
+    assert(
+      headlineWarning({ workflowGate: computeWorkflowGate({ focus: { phase: 'exec_running' } }) }) === '',
+      '有活跃阶段时不应有门禁标题',
+    );
+    assert(headlineWarning(null) === '' && headlineWarning({}) === '', '空快照不得出标题');
+  });
+
+  await check('feel_status / feel_next：guard-stale 时两处标题都按门禁原因给出（副本 + 自愈关闭）', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'feel-verify-gate-title-'));
+    const project = join(root, 'project');
+    const savedSelfHeal = process.env.OPENFEEL_GUARD_SELF_HEAL;
+    try {
+      cpSync(join(SOURCE_PROJECT, '.openfeel'), join(project, '.openfeel'), { recursive: true });
+      // 关掉自动自愈：否则「重启后首次 feel_* 即修」会把假 stale 在展示前修掉（stage-127 §3-F）
+      process.env.OPENFEEL_GUARD_SELF_HEAL = 'off';
+      // 假 state：pid 是别的进程 → stale（reason 由 buildGuardSection 权威给出）
+      writeGuardState(project, {
+        registered: true,
+        enforce: 'always',
+        shellGate: 'default(1/2=deny,4=warn)',
+        cwd: project,
+        cwdSource: 'agent-session',
+        degraded: false,
+        pid: process.pid + 1,
+      });
+      const statusResult = await workspace.tools.get('feel_status').execute({ project }, execFor(project));
+      const status = ok(statusResult);
+      assert(status.guard?.stale === true, 'sanity：假 state（异 pid）应被判 stale');
+      assert(
+        status.workflowGate?.reason === 'guard-stale',
+        `workflowGate.reason 应为 guard-stale，实际 ${status.workflowGate?.reason}`,
+      );
+      assert(
+        !statusResult.summary.includes('无活跃阶段'),
+        `guard-stale 时 feel_status.summary 不得含「无活跃阶段」（实际：${statusResult.summary}）`,
+      );
+      assert(
+        statusResult.summary.includes('门禁来自旧进程/旧适配器'),
+        `feel_status.summary 应给出 guard-stale 原因文案（实际：${statusResult.summary}）`,
+      );
+      assert(
+        !statusResult.summary.includes('⚠ 写入门禁未生效'),
+        '门禁标题已覆盖 stale，不得再堆 guardWarnings 同一句（skipGateCovered）',
+      );
+
+      const nextResult = await workspace.tools.get('feel_next').execute({ project }, execFor(project));
+      const next = ok(nextResult);
+      assert(next.workflowGate?.reason === 'guard-stale', `feel_next guard-stale 丢失：${next.workflowGate?.reason}`);
+      assert(
+        !nextResult.summary.includes('无活跃阶段'),
+        `guard-stale 时 feel_next.summary 不得含「无活跃阶段」（实际：${nextResult.summary}）`,
+      );
+      assert(
+        nextResult.summary.includes('门禁来自旧进程/旧适配器'),
+        `feel_next.summary 应给出 guard-stale 原因文案（实际：${nextResult.summary}）`,
+      );
+
+      // ③ 两处同源：句首的「⚠ …。」逐字相同（同一 helper 的输出）
+      const headOf = (summary, label) => {
+        const matched = String(summary).match(/^⚠ [^。]*。/);
+        assert(matched !== null, `${label}.summary 应以「⚠ …。」开头（实际：${String(summary).slice(0, 80)}）`);
+        return matched[0];
+      };
+      const statusHead = headOf(statusResult.summary, 'feel_status');
+      const nextHead = headOf(nextResult.summary, 'feel_next');
+      assert(statusHead === nextHead, `两处标题必须同源：status=${statusHead} / next=${nextHead}`);
+      assert(
+        statusResult.summary.startsWith(`⚠ ${status.workflowGate.message}`)
+        && nextResult.summary.startsWith(`⚠ ${next.workflowGate.message}`),
+        '两处 summary 都应逐字以「⚠ workflowGate.message」开头',
+      );
+    } finally {
+      if (savedSelfHeal === undefined) delete process.env.OPENFEEL_GUARD_SELF_HEAL;
+      else process.env.OPENFEEL_GUARD_SELF_HEAL = savedSelfHeal;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  await check('feel_status：真无活跃阶段 + guard 正常时仍显示「无活跃阶段」（全新 init 项目）', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'feel-verify-nostage-'));
+    const project = join(root, 'project');
+    try {
+      mkdirSync(project, { recursive: true });
+      const init = spawnSync(
+        process.execPath,
+        [join(SOURCE_PROJECT, 'bin', 'openfeel.js'), 'init', '--project', project],
+        { cwd: SOURCE_PROJECT, encoding: 'utf8', timeout: 60_000 },
+      );
+      assert(init.status === 0, `openfeel init 失败（exit ${init.status}）：${init.stderr ?? ''}`);
+      // 健康 state（同进程、已签名）→ guard 正常，门禁只剩「没开阶段」一条
+      writeGuardState(project, {
+        registered: true,
+        enforce: 'always',
+        shellGate: 'default(1/2=deny,4=warn)',
+        cwd: project,
+        cwdSource: 'agent-session',
+        degraded: false,
+        pid: process.pid,
+      });
+      const result = await workspace.tools.get('feel_status').execute({ project }, execFor(project));
+      const data = ok(result);
+      assert(data.guard?.stale === false, `健康 state 不应 stale（实际 stale=${data.guard?.stale}）`);
+      assert(
+        data.workflowGate?.reason === 'no-active-stage',
+        `全新项目应判 no-active-stage，实际 ${data.workflowGate?.reason}`,
+      );
+      assert(
+        result.summary.includes('无活跃阶段'),
+        `真无活跃阶段时 summary 仍须含「无活跃阶段」（实际：${result.summary}）`,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  await check('feel_status / feel_next 标题同源：门禁文案只在 workflow-gate.js（无本地分叉）', () => {
+    const toolsSource = readFileSync(new URL('../lib/tools/index.js', import.meta.url), 'utf-8');
+    assert(
+      !toolsSource.includes('无活跃阶段'),
+      'tools/index.js 不得再硬编码「无活跃阶段」（应统一走 headlineWarning）',
+    );
+    const between = (start, end) => {
+      const a = toolsSource.indexOf(start);
+      const b = toolsSource.indexOf(end);
+      assert(a >= 0 && b > a, `定位失败：${start} … ${end}`);
+      return toolsSource.slice(a, b);
+    };
+    assert(
+      between("name: 'feel_status'", "name: 'feel_next'").includes('headlineWarning('),
+      'feel_status 未走 headlineWarning（两处会再次分叉）',
+    );
+    assert(
+      between("name: 'feel_next'", "name: 'feel_flow'").includes('headlineWarning('),
+      'feel_next 未走 headlineWarning（两处会再次分叉）',
+    );
+    const gateSource = readFileSync(new URL('../lib/adapters/workflow-gate.js', import.meta.url), 'utf-8');
+    assert(gateSource.includes('export function headlineWarning'), 'workflow-gate.js 应导出 headlineWarning');
+    assert(gateSource.includes('export function workflowGateTitle'), 'workflow-gate.js 应导出 workflowGateTitle');
+  });
+
+  await check('guardWarnings：hmacWarn 一行提示 + skipGateCovered 不重复堆两句（stage-127 E）', () => {
+    const healthy = {
+      registered: true,
+      cwd: '/x/project',
+      cwdSource: 'agent-session',
+      stale: false,
+      degraded: false,
+    };
+    assert(guardWarnings(healthy) === '', '健康 guard 不应有告警');
+    const hmac = guardWarnings({ ...healthy, hmacWarn: true });
+    assert(
+      hmac.includes('签名失配') && hmac.includes('仅提示'),
+      `hmacWarn 应出一行「签名失配（仅提示，不影响判定）」：${hmac}`,
+    );
+    assert(
+      guardWarnings({ ...healthy, hmacWarn: true }, { skipGateCovered: true }).includes('签名失配'),
+      'hmacWarn 不在门禁覆盖范围内，skipGateCovered 不得吞掉它',
+    );
+    assert(
+      guardWarnings({ ...healthy, registered: false }, { skipGateCovered: true }) === '',
+      'guard-inactive 已由门禁标题覆盖，不得重复',
+    );
+    assert(
+      guardWarnings({ ...healthy, stale: true }, { skipGateCovered: true }) === '',
+      'guard-stale 已由门禁标题覆盖，不得重复',
+    );
+    const degraded = guardWarnings(
+      { registered: true, cwd: '/x', cwdSource: 'process', degraded: true, stale: false },
+      { skipGateCovered: true },
+    );
+    assert(degraded.includes('降级来源'), `skipGateCovered 不得吞掉 degraded（实际：${degraded}）`);
+  });
+
   await check('guard-state：假 state + 假 host-marker 注入 → stale 可见（副本，不写真实项目）', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'feel-verify-guard-'));
     try {
@@ -464,9 +672,9 @@ async function main() {
       assert(hashStale.stale === true, 'loaded_hash 不符应 stale');
       // 假 state：pid 不符 → «状态来自旧进程»
       assert(computeGuardStale(state, marker, process.pid + 1) === true, 'pid 不符应 stale');
-      // 假 marker：started_at 更晚 → «hostStartedAt 早于当前宿主启动»
+      // 假 marker：started_at 更晚 → hostStartedAt 仅诊断字段，不再判 stale（v1.5.12 / D2）
       const bootStale = buildGuardSection({ root: dir, hostMarker: { ...marker, started_at: new Date().toISOString() } });
-      assert(bootStale.stale === true, 'hostStartedAt 早于宿主启动应 stale');
+      assert(bootStale.stale === false, 'hostStartedAt 早于宿主启动仅为诊断，不得 stale');
       // 假 state：fail-closed 判定（lastDecision + cwd:null）→ 给出 live 也不得粉饰
       writeGuardState(dir, {
         registered: true,
@@ -1821,6 +2029,13 @@ async function main() {
     ), 'feel_archive create --allow-unfinished');
     assert(allowed.dryRun === true, 'dryRun 应为 true');
     assert(allowed.requirements === 0, `未完成需求不应随版本归档，requirements 应为 0，实际 ${allowed.requirements}`);
+  });
+
+  // v1.5.12 / stage-127 §3-B（V4）：真实 guard 状态未被本测试改写。
+  await check('guard 测试隔离：真实 marker 与全局目录未被改写（V4）', () => {
+    const verdict = assertRealGuardUntouched(realGuardBefore, iso);
+    assert(verdict === 'PASS' || verdict === 'skip: host-active', `未知判定：${verdict}`);
+    if (verdict !== 'PASS') process.stdout.write(`    (${verdict})\n`);
   });
 
   // 清理

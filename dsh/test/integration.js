@@ -17,6 +17,8 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { assertRealGuardUntouched, installIsolatedGuardEnv, snapshotRealGuardState } from './guard-isolation.js';
+
 /** 默认的 DSH 包目录（宿主 asar 提取位置）。 */
 const DEFAULT_DSH_MODULES = join(process.env.TEMP ?? '/tmp', 'dsh-asar', 'dsh', 'node_modules', '@deepseek-ai');
 
@@ -58,6 +60,9 @@ function pickContext(cordis) {
 }
 
 async function main() {
+  // v1.5.12 / stage-127 §3-B：先把 guard 状态与宿主 marker 指到临时目录，绝不可改写真实状态。
+  const iso = installIsolatedGuardEnv();
+  const realGuardBefore = snapshotRealGuardState();
   const dshModules = process.argv[2] ?? DEFAULT_DSH_MODULES;
   const cordisEntry = join(dshModules, 'cordis', 'lib', 'index.js');
   const toolsEntry = join(dshModules, 'dsh-tools', 'lib', 'index.js');
@@ -304,6 +309,16 @@ async function main() {
     process.stdout.write('  ✓ 空参数被真实校验拒绝\n');
   } else {
     process.stdout.write('  ✗ 空参数未被拒绝\n');
+    failed += 1;
+  }
+
+  // ── 8. 测试隔离（v1.5.12 / stage-127 §3-B，V4） ─────────────────
+  process.stdout.write('\n[6] 测试隔离\n');
+  try {
+    const verdict = assertRealGuardUntouched(realGuardBefore, iso);
+    process.stdout.write(`  ✓ 真实 marker 与全局目录未被本测试改写（${verdict}）\n`);
+  } catch (error) {
+    process.stdout.write(`  ✗ 真实 guard 状态被改写：${error instanceof Error ? error.message : String(error)}\n`);
     failed += 1;
   }
 

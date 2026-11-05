@@ -1,3 +1,21 @@
+## [1.5.12] - 2026-11-05
+
+> 门禁收尾批次：**修复外部项目报告的 `guard.stale` 重启后永不恢复问题**（此后不再需要删 `.openfeel/dev/guard-state.json`），补上受支持自愈与 dsh 测试隔离，并给 `git commit` 纯书账与 git 外部执行面划出可判定的边界。
+
+### Added
+- [stage-127] **受支持自愈**：`maybeSelfHealGuardState`（重启后首次任意 `feel_*` 触发，best-effort，异常绝不阻断）**只对「`pid` 缺失 / `pid` 已死（`ESRCH`）」的陈旧状态自动修**；活着的异 pid（含 `EPERM`）与同 pid 的 `loaded_hash` 失配**不自动修**——前者防多宿主共享工程互写，后者是「适配器已更新但宿主未重启」的信号，须完全重启或走显式入口。显式入口 `feel_verify action=health fix=true`（`dry_run` 零写盘，结果在 `data.health.guardRepair`）；marker 缺失 / 不完整 → `marker-missing` / `marker-incomplete` 且**零写盘**；身份只取 marker + 当前宿主 `process.pid`，不接受工具参数注入；`OPENFEEL_GUARD_SELF_HEAL=off` 关闭自动自愈（显式入口仍可用）。
+- [stage-127] **dsh 测试隔离**：新增 `OPENFEEL_GUARD_DIR`（覆盖全局 guard 目录，状态 + 审计一起隔离；沿用 `OPENFEEL_ADAPTER_HOST_PATH`），四套 dsh 测试各自指向 `mkdtempSync` 临时目录，并逐文件校验真实宿主的 marker / `guard-state` 未被覆写。
+- [stage-127] **`git commit` 纯书账放行**：七条件同时满足才放行——① 单语句；② 直连 `git`；③ 无重定向与进程替换；④ 无 `-c` / `-C` / `--git-dir` / `--work-tree`；⑤ 无改写仓库的 env；⑥ 无不可判定形态；⑦ 待提交路径全在 `.openfeel/**`。放行理由记为 `git-commit-bookkeeping`。
+- [stage-127] **`setup --tools dsh` 多 profile 提示**：显式 `--dsh-profile` 且还存在其他 profile 时，stderr 提示「其余保持原样」；`SetupResult.dsh.profileScope` 记录 `deployed` / `skipped`。
+
+### Changed
+- [stage-127] **git 外部执行面白名单**：`-c` / `--config-env` 与 `GIT_*` 环境前缀从黑名单改为**白名单**——配置键只放 `user.name` / `user.email` / `color.*` / `core.quotepath` / `core.autocrlf` / `core.safecrlf` / `i18n.*`，env 只放 `GIT_AUTHOR_*` / `GIT_COMMITTER_*` 六项；其余一律归第 1 类硬拒（hooks / fsmonitor / alias 等外部执行面不再可借道）。
+- [stage-127] 版本 1.5.12 收口：`package.json` / `dsh/package.json`（version + `requiresCli`）/ `package-lock.json` 根 version / CHANGELOG / VERSIONS / README 最新版本行 / `dsh/ADAPTER.md` requiresCli / `openfeel-cli-usage` skill 快照与能力行同步；`npm run build` 重生成 AUTO-GENERATED 段。
+
+### Fixed
+- [stage-127] **`guard.stale` 重启后永久为 true（外部项目报告）**：工作区 `guard-state.json` 的身份三键（`pid` / `hostStartedAt` / `loaded_hash`）**只来自当前运行时**（`setGuardRuntimeIdentity` 在 `apply()` 写完 marker 后登记）或显式 patch，不再从旧文件继承；`stale` 判定**只认 `pid` + `loaded_hash`**，删除 `host-started-at` 误报（多 profile / 多宿主下时间比较必然误报，`hostStartedAt` 降级为诊断字段）；HMAC 跨进程必然失配，故降级为 `hmacWarn` / `signature:'mismatch'` 可见信号，**不再判 stale**。
+- [stage-127] **`feel_status` / `feel_next` 标题误报**：`guard-stale` / `guard-inactive` / `guard-cwd-unresolved` 等门禁原因不再统一显示「无活跃阶段」，只有 `no-active-stage` 一条保留该短句。
+
 ## [1.5.11] - 2026-11-04
 
 > 写入门禁加固批次：shell（`bash` / `pwsh`）纳入守卫、受保护路径扩展、doc/asset 豁免收窄、Win32 路径归一化、cwd 六环 fail-closed + `guard-state` 自证、`chore` 收窄为纯人类通道。**与 v1.5.10 同批发布：npm 上线版本为 1.5.11，1.5.10 未单独发布。**

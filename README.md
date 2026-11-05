@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.11**（写入门禁加固 + 项目看板，同批发布） — ① shell（`bash` / `pwsh`）纳入守卫：受保护路径与 `openfeel` 写命令硬拒、源码 / git 工作区写按目标判定、构建产物豁免、不可判定告警；② 受保护路径扩展（`chore.json`、`dev/*.json`、`pipeline.yaml`、`config.yaml`、`flow-archive/**`、`requirements/*.md` 等），doc/asset 豁免收窄到代码目录之外；③ cwd 六环 fail-closed + `guard-state` 自证，Win32 路径归一化，`chore` 收窄为 30 分钟纯人类通道；④ 新增 `openfeel dashboard`（单文件自包含 HTML 看板，`--json` 成功出口 #43）。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.12**（门禁自愈与 git 边界） — ① 修复外部项目报告的 `guard.stale` 重启后永久为 true：身份三键（`pid` / `hostStartedAt` / `loaded_hash`）只来自当前运行时，`stale` 只认 `pid` + `loaded_hash`，HMAC 失配降级为 `hmacWarn` 提示，**不再需要删 `guard-state.json` 恢复门禁**；② 受支持自愈（只修死 pid 的陈旧状态，活异 pid 与 `loaded_hash` 失配不修）+ `feel_verify action=health fix=true` 显式入口；③ `git commit` 纯书账七条件放行、git 外部执行面（`-c` / `--config-env` / `GIT_*`）改为白名单；④ `OPENFEEL_GUARD_DIR` 测试隔离、`setup --tools dsh` 多 profile 提示、`feel_status` / `feel_next` 门禁原因标题修正。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

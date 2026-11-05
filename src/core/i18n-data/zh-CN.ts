@@ -1231,6 +1231,7 @@ export const setup: I18nDomain = {
   'dshInstallOkTmpl': { key: 'setup.dshInstallOkTmpl', zh: '  pnpm install 完成：{path}', en: '' },
   'dshInstallSkipTmpl': { key: 'setup.dshInstallSkipTmpl', zh: '  pnpm install 跳过：依赖未变化且链接有效', en: '' },
   'dshMultiProfileHint': { key: 'setup.dshMultiProfileHint', zh: '检测到多个 DSH profile（{profiles}），将全部部署；可用 --dsh-profile 窄化。', en: '' },
+  'dshProfileNarrowHint': { key: 'setup.dshProfileNarrowHint', zh: '仅部署了 {deployed}，其余 profile（{rest}）保持原样；如需全部部署请去掉 --dsh-profile。', en: '' },
   'dshRestartHint': { key: 'setup.dshRestartHint', zh: '请重启 DSH 宿主以加载适配器（host module 不走热加载）。', en: '' },
   'dshHomeMissingTmpl': { key: 'setup.dshHomeMissingTmpl', zh: '未检测到 DSH profile 目录：{dir}。请先安装/启动 DSH，或设置 DSH_HOME。', en: '' },
   'dshProfileMissingTmpl': { key: 'setup.dshProfileMissingTmpl', zh: 'DSH profiles 目录下没有可识别 profile（需含 package.json）：{dir}。', en: '' },

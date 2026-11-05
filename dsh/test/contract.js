@@ -23,6 +23,7 @@ import { pathToFileURL } from 'node:url';
 
 import { FeelCli } from '../lib/adapters/cli.js';
 import { compactStatusSnapshot, createTools } from '../lib/tools/index.js';
+import { assertRealGuardUntouched, installIsolatedGuardEnv, snapshotRealGuardState } from './guard-isolation.js';
 
 /** 默认的 DSH 包目录（宿主 asar 提取位置）。 */
 const DEFAULT_DSH_MODULES = join(process.env.TEMP ?? '/tmp', 'dsh-asar', 'dsh', 'node_modules', '@deepseek-ai');
@@ -84,6 +85,9 @@ function collectTypeless(node, path) {
 }
 
 async function main() {
+  // v1.5.12 / stage-127 §3-B：先把 guard 状态与宿主 marker 指到临时目录，绝不可改写真实状态。
+  const iso = installIsolatedGuardEnv();
+  const realGuardBefore = snapshotRealGuardState();
   const dshModules = process.argv[2] ?? DEFAULT_DSH_MODULES;
   const toolsEntry = join(dshModules, 'dsh-tools', 'lib', 'index.js');
 
@@ -366,6 +370,13 @@ async function main() {
     assert(archiveTool, '缺少 feel_archive 工具');
     assert(archiveTool.parameters.properties.allow_unfinished?.type === 'boolean', 'feel_archive.allow_unfinished 应为 boolean');
     assert(/allow_unfinished/.test(archiveTool.description ?? ''), 'feel_archive.description 应提到 allow_unfinished');
+  });
+
+  // v1.5.12 / stage-127 §3-B（V4）：真实 guard 状态未被本测试改写。
+  await check('guard 测试隔离：真实 marker 与全局目录未被改写（V4）', () => {
+    const verdict = assertRealGuardUntouched(realGuardBefore, iso);
+    assert(verdict === 'PASS' || verdict === 'skip: host-active', `未知判定：${verdict}`);
+    if (verdict !== 'PASS') process.stdout.write(`    (${verdict})\n`);
   });
 
   process.stdout.write('\n' + '='.repeat(60) + '\n');

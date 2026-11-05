@@ -15,6 +15,7 @@ vi.mock('node:child_process', () => ({
 
 import { Command } from 'commander';
 import { registerSetupCommand } from '../../src/commands/setup.js';
+import { setupGlobalFramework } from '../../src/core/setup.js';
 import { resetJsonModeForTest, setJsonMode } from '../../src/commands/shared/json-output.js';
 import { getOpenfeelVersion } from '../../src/core/update-state.js';
 import { resetBackupSetCache } from '../../src/core/backup.js';
@@ -50,6 +51,7 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
   let homeDir: string;
   let program: Command;
   let logMock: ReturnType<typeof vi.fn>;
+  let errorMock: ReturnType<typeof vi.fn>;
   let prevExitCode: number | string | undefined;
 
   beforeEach(() => {
@@ -63,7 +65,7 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
     resetJsonModeForTest();
     resetBackupSetCache();
     logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
     program = new Command();
     program.exitOverride();
     registerSetupCommand(program);
@@ -360,5 +362,70 @@ describe('setup 命令（stage-50 op-005 T46）', () => {
     process.env.DSH_HOME = dshHome;
     await program.parseAsync(['setup', '--check', '--tools', 'dsh'], { from: 'user' });
     expect(readFileSync(pkg, 'utf-8')).toBe(before);
+  });
+
+  // ── v1.5.12 / stage-127 §3-D：多 profile 部署范围提示 ────────────────
+
+  it('stage-127/D：多 profile + 显式 --dsh-profile → stderr 一行提示，其余 profile 保持原样', async () => {
+    const dshHome = join(homeDir, '.dsh');
+    writeDshProfile(dshHome, 'web', baseDshProfile());
+    const desktop = writeDshProfile(dshHome, 'desktop', baseDshProfile());
+    const desktopBefore = readFileSync(desktop, 'utf-8');
+    process.env.DSH_HOME = dshHome;
+    childState.queue = [0, 0];
+
+    await program.parseAsync(['setup', '--tools', 'dsh', '--dsh-profile', 'web'], { from: 'user' });
+
+    const stderrText = errorMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(stderrText).toMatch(/保持原样|left untouched/);
+    expect(stderrText).toContain('web');
+    expect(stderrText).toContain('desktop');
+    // 只在 stderr 出现一次（stdout 人类输出不变）
+    expect((stderrText.match(/保持原样|left untouched/g) ?? []).length).toBe(1);
+    const stdoutText = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(stdoutText).not.toMatch(/保持原样|left untouched/);
+    // 未指定的 profile 字节不变（默认行为不变）
+    expect(readFileSync(desktop, 'utf-8')).toBe(desktopBefore);
+  });
+
+  it('stage-127/D：profileScope 记录部署/跳过范围（显式收窄）', () => {
+    const dshHome = join(homeDir, '.dsh');
+    writeDshProfile(dshHome, 'web', baseDshProfile());
+    writeDshProfile(dshHome, 'desktop', baseDshProfile());
+    process.env.DSH_HOME = dshHome;
+    childState.queue = [0, 0];
+
+    const r = setupGlobalFramework('zh-CN', ['dsh'], { dshProfile: 'web' });
+
+    expect(r.dsh?.allProfileNames).toEqual(['desktop', 'web']);
+    expect(r.dsh?.profileScope).toEqual({ deployed: ['web'], skipped: ['desktop'] });
+    expect(r.dsh?.profiles.map((profile) => profile.name)).toEqual(['web']);
+  });
+
+  it('stage-127/D：不传 --dsh-profile 仍部署全部，且无「保持原样」提示', async () => {
+    const dshHome = join(homeDir, '.dsh');
+    const web = writeDshProfile(dshHome, 'web', baseDshProfile());
+    const desktop = writeDshProfile(dshHome, 'desktop', baseDshProfile());
+    process.env.DSH_HOME = dshHome;
+    childState.queue = [0, 0, 0, 0];
+
+    await program.parseAsync(['setup', '--tools', 'dsh'], { from: 'user' });
+
+    expect(JSON.parse(readFileSync(web, 'utf-8')).dependencies['openfeel-dsh']).toMatch(/^link:/);
+    expect(JSON.parse(readFileSync(desktop, 'utf-8')).dependencies['openfeel-dsh']).toMatch(/^link:/);
+    const stderrText = errorMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(stderrText).not.toMatch(/保持原样|left untouched/);
+  });
+
+  it('stage-127/D：未收窄时 profileScope.skipped 为空、deployed 为全部', () => {
+    const dshHome = join(homeDir, '.dsh');
+    writeDshProfile(dshHome, 'web', baseDshProfile());
+    writeDshProfile(dshHome, 'desktop', baseDshProfile());
+    process.env.DSH_HOME = dshHome;
+    childState.queue = [0, 0, 0, 0];
+
+    const r = setupGlobalFramework('zh-CN', ['dsh']);
+
+    expect(r.dsh?.profileScope).toEqual({ deployed: ['desktop', 'web'], skipped: [] });
   });
 });

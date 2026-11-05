@@ -18,8 +18,8 @@ import { buildDispatchTemplate } from '../adapters/dispatch.js';
 import { readRecovery } from '../adapters/recovery.js';
 import { readPreflightInfo } from '../adapters/preflight.js';
 import { buildObservability } from '../adapters/observability.js';
-import { computeWorkflowGate } from '../adapters/workflow-gate.js';
-import { buildGuardSection } from '../adapters/guard-state.js';
+import { computeWorkflowGate, headlineWarning } from '../adapters/workflow-gate.js';
+import { buildGuardSection, maybeSelfHealGuardState, repairGuardState } from '../adapters/guard-state.js';
 import { readHostMarker } from '../adapters/host-state.js';
 import { resolveGuardCwd } from '../guard.js';
 import { touchSession as touchSessionCwd } from '../adapters/session-cwd-registry.js';
@@ -213,15 +213,25 @@ export function compactStatusSnapshot(snapshot) {
 /**
  * 门禁自检段的摘要告警（v1.5.11 D-126-04）：让「门禁没生效 / 判定不可信 /
  * cwd 降级」在 summary 里一眼可见，而不是藏在 JSON 深处。
+ *
+ * v1.5.12 / stage-127 §3-E：
+ * - `skipGateCovered:true`（由调用方按 `workflowGate.reason` 以 `guard-` 开头传入）跳过
+ *   `registered === false` 与 `stale` 两条 —— 它们已由门禁标题（`headlineWarning`）
+ *   逐字覆盖，避免同一原因在 summary 里堆两遍；`degraded` 仍保留。
+ * - `hmacWarn`（验签失败但 pid/loaded_hash 都对）只在这里渲染一行提示：不进
+ *   `workflowGate`、不置 stale，见 guard-state 的 P1-6 设计。
+ *
  * @param {Record<string, any> | null | undefined} guard
+ * @param {{ skipGateCovered?: boolean }} [options]
  * @returns {string}
  */
-function guardWarnings(guard) {
+export function guardWarnings(guard, options = {}) {
   if (guard === null || guard === undefined) return '';
-  if (guard.registered === false) {
+  const skipGateCovered = options.skipGateCovered === true;
+  if (guard.registered === false && !skipGateCovered) {
     return '⚠ 写入门禁未生效（guard-state 缺失或 guard 未注册），源码写入当前无门禁保护。';
   }
-  if (guard.stale === true) {
+  if (guard.stale === true && !skipGateCovered) {
     // op-005 / P1-6：stale 也可能是「guard-state 被整体重写」（HMAC 校验失败），
     // 文案要把「篡改」说清楚，不能只怪旧进程。
     if (guard.staleReason === 'hmac') {
@@ -229,10 +239,24 @@ function guardWarnings(guard) {
     }
     return '⚠ 门禁来自旧进程/旧适配器，判定不可信，请重启宿主后再写入。';
   }
+  if (guard.hmacWarn === true) {
+    // v1.5.12 / P1-6：签名失配但 pid/loaded_hash 都通过 → 仅提示，不影响判定
+    return '⚠ 门禁状态签名失配（仅提示，不影响判定）；如显示异常可完全重启宿主。';
+  }
   if (guard.degraded === true && typeof guard.cwdSource === 'string' && guard.cwdSource !== 'agent-session') {
     return `⚠ 门禁 cwd 为降级来源（cwdSource=${guard.cwdSource}），请核对 guard 段。`;
   }
   return '';
+}
+
+/**
+ * 门禁标题已覆盖的原因（`guard-*`）——此时 `guardWarnings` 跳过重复项。
+ *
+ * @param {Record<string, any> | null | undefined} gate
+ * @returns {boolean}
+ */
+function gateCoversGuardWarning(gate) {
+  return typeof gate?.reason === 'string' && gate.reason.startsWith('guard-');
 }
 
 /**
@@ -246,15 +270,28 @@ export function createTools(context) {
 
   /**
    * 在目标项目上执行（把 cwd 锚定到解析出的项目根）。
+   *
+   * v1.5.12 / stage-127 §3-F：所有 `feel_*` 公共入口都先尝试**自动自愈** guard-state
+   * （重启后首次 `feel_*` 即修，不要求删除任何文件）。`OPENFEEL_GUARD_SELF_HEAL=off`
+   * 可关；活着的异 pid 不自动修（见 `maybeSelfHealGuardState`）。best-effort，绝不阻断。
+   *
    * @param {object} exec
    * @param {Record<string, any>} args
-   * @returns {{ cwd: string, sessionCwd: string }}
+   * @param {{ selfHeal?: boolean }} [options] `selfHeal:false` 供显式修复入口接管（避免自动修抢在显式修之前）
+   * @returns {{ cwd: string, sessionCwd: string, initialized: boolean }}
    */
-  const target = (exec, args) => {
+  const target = (exec, args, options = {}) => {
     const workspace = resolveWorkspace(exec, {
       projectPath: typeof args.project === 'string' ? args.project : undefined,
       fallback: cli.cwd,
     });
+    if (options.selfHeal !== false && workspace.initialized === true) {
+      try {
+        maybeSelfHealGuardState(workspace.projectRoot);
+      } catch {
+        /* 自愈是 best-effort：任何异常都不得阻断 feel_* */
+      }
+    }
     return { cwd: workspace.projectRoot, sessionCwd: workspace.sessionCwd, initialized: workspace.initialized };
   };
 
@@ -321,9 +358,12 @@ export function createTools(context) {
         touchSessionFile(resolved.cwd, snapshot.focus?.stage ?? '');
         snapshot.sessions = readSessionEntries(resolved.cwd);
         const focus = snapshot.focus;
-        const gateWarning = snapshot.workflowGate.required ? '⚠ 无活跃阶段：非只读任务先 feel_status→建阶段。' : '';
+        // v1.5.12 / stage-127 §3-E：标题按 workflowGate.reason 选择，与 feel_next 同源（headlineWarning）
+        const gateWarning = headlineWarning(snapshot);
         const staleWarning = snapshot.stale ? '⚠ 快照为降级（flow next 缺失），以 flow status 为准。' : '';
-        const guardWarning = guardWarnings(snapshot.guard);
+        const guardWarning = guardWarnings(snapshot.guard, {
+          skipGateCovered: gateCoversGuardWarning(snapshot.workflowGate),
+        });
         const data = args.detail === 'full' ? snapshot : compactStatusSnapshot(snapshot);
         return {
           data,
@@ -378,9 +418,13 @@ export function createTools(context) {
         plan.dispatch = buildDispatchTemplate(snapshot);
         plan.observability = snapshot.observability;
         if (plan.workflowGate.required) {
-          plan.summary = `⚠ ${plan.workflowGate.message} ${plan.summary}`;
+          // v1.5.12 / stage-127 §3-E：与 feel_status 同一 helper（标题文案只在 workflow-gate.js）
+          const gateWarning = headlineWarning({ workflowGate: plan.workflowGate });
+          if (gateWarning !== '') plan.summary = `${gateWarning} ${plan.summary}`;
         }
-        const guardWarning = guardWarnings(snapshot.guard);
+        const guardWarning = guardWarnings(snapshot.guard, {
+          skipGateCovered: gateCoversGuardWarning(snapshot.workflowGate),
+        });
         if (guardWarning !== '') plan.summary = `${guardWarning} ${plan.summary}`;
         if (snapshot.stale) {
           plan.summary = `⚠ 快照为降级（flow next 缺失），以 flow status 为准。 ${plan.summary}`;
@@ -1271,8 +1315,11 @@ export function createTools(context) {
     },
     output: { schema: envelopeSchema(), render: renderEnvelope },
     async execute(args, exec) {
-      const { cwd } = target(exec, args);
       const action = args.action;
+      // v1.5.12 / stage-127 §3-F：显式修复入口（`health fix=true`）由本工具接管自愈，
+      // 避免 `target()` 的自动自愈抢在显式修复之前把「旧→新」证据修掉。
+      const repairing = action === 'health' && args.fix === true && args.dry_run !== true;
+      const { cwd } = target(exec, args, { selfHeal: !repairing });
       const opts = { cwd, signal: exec.signal };
 
       switch (action) {
@@ -1282,8 +1329,25 @@ export function createTools(context) {
           pushFlag(argv, '--fix', args.fix);
           pushFlag(argv, '--dry-run', args.dry_run);
           return envelope(action, async () => {
-            const data = await cli.json(argv, opts);
-            return { data, summary: '已执行流水线健康检查。' };
+            // 显式修复：身份只来自 marker + 当前宿主 pid（不接受工具参数）。
+            const guardRepair = repairing
+              ? repairGuardState(cwd, { hostMarker: readHostMarker(), tool: 'feel_verify' })
+              : null;
+            let data = await cli.json(argv, opts);
+            let repairNote = '';
+            if (guardRepair !== null) {
+              if (guardRepair.ok === true) {
+                const health = typeof data?.health === 'object' && data.health !== null ? data.health : {};
+                data = { ...data, health: { ...health, guardRepair } };
+                repairNote = guardRepair.changed === true
+                  ? `门禁自证已修复（pid ${guardRepair.old?.pid ?? '(无)'}→${guardRepair.next?.pid ?? process.pid}，hash ${String(guardRepair.old?.loaded_hash ?? '(无)').slice(0, 8)}→${String(guardRepair.next?.loaded_hash ?? '').slice(0, 8)}）。`
+                  : '门禁自证已可信（无需修复）。';
+              } else {
+                data = { ...data, health: { ...(typeof data?.health === 'object' && data.health !== null ? data.health : {}), guardRepair } };
+                repairNote = `⚠ 门禁自愈失败：${guardRepair.reason ?? 'unknown'}（marker 缺失请重启宿主）。`;
+              }
+            }
+            return { data, summary: `已执行流水线健康检查。${repairNote}` };
           });
         }
         case 'lint': {

@@ -1187,6 +1187,7 @@ export const setup: I18nDomain = {
   'dshInstallOkTmpl': { key: 'setup.dshInstallOkTmpl', zh: '', en: '  pnpm install completed: {path}' },
   'dshInstallSkipTmpl': { key: 'setup.dshInstallSkipTmpl', zh: '', en: '  pnpm install skipped: dependency unchanged and link valid' },
   'dshMultiProfileHint': { key: 'setup.dshMultiProfileHint', zh: '', en: 'Multiple DSH profiles detected ({profiles}); deploying to all. Use --dsh-profile to narrow.' },
+  'dshProfileNarrowHint': { key: 'setup.dshProfileNarrowHint', zh: '', en: 'Deployed {deployed} only; other profile(s) ({rest}) left untouched. Omit --dsh-profile to deploy all of them.' },
   'dshRestartHint': { key: 'setup.dshRestartHint', zh: '', en: 'Restart the DSH host to load the adapter (host modules are not hot-reloaded).' },
   'dshHomeMissingTmpl': { key: 'setup.dshHomeMissingTmpl', zh: '', en: 'DSH profiles directory not found: {dir}. Install/start DSH first, or set DSH_HOME.' },
   'dshProfileMissingTmpl': { key: 'setup.dshProfileMissingTmpl', zh: '', en: 'No recognizable DSH profile (package.json) under: {dir}.' },

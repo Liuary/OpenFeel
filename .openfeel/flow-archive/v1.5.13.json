@@ -1,0 +1,201 @@
+{
+  "version": "v1.5.13",
+  "stages": {
+    "v1.5.13-stage-128": {
+      "name": "v1.5.13-stage-128",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-021",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-05T13:15:43.572Z",
+        "end_time": "2026-11-05T13:50:22.578Z",
+        "duration_ms": 2079006
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-05T13:50:13.934Z",
+        "note": "v1.5.13 发布前验证通过：commit 四相位放行（写侧零放宽）+ SKILL frontmatter 截断修复。",
+        "evidence": "计划审查 PASS + 定点代码审查 PASS：实跑 commit 在 exec_running/review_passed/test_passed/archiving → allow（reason=git-worktree-write 等值），在 plan_pending/plan_review/review_pending/review_failed/test_pending/test_failed/done → deny（reason=shell-git-whole-tree 等值，夹具含未跟踪 src 防书账假绿）；写侧未放宽（review_passed 下 write/checkout/reset/clean/stash 均拒）；SKILL description 解析 2766 字符、frontmatter 无裸 #（对照 HEAD 2455 含 # 的反证）。门禁：dsh guard 170/170、verify 118/118、contract 47/47、integration 全通过、guard-isolation 8/8；src 95 文件 2358 用例（含 T4.4 与 S6）；tsc 0；lint i18n 1187。"
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-11-05T13:11:26.511Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-05T13:15:43.565Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-05T13:20:20.882Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:20:23.556Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:40:25.504Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:40:28.452Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:42:42.365Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "review_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:50:04.118Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:50:06.653Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:50:09.631Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:50:22.572Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.13-stage-128",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-021",
+      "title": "门禁易用性补丁：git commit 允许相位扩到 review_passed/test_passed；SKILL frontmatter description 的 # 被 YAML 注释截断",
+      "status": "done",
+      "created_at": "2026-11-05T13:11:20.444Z",
+      "updated_at": "2026-11-05T13:40:41.033Z",
+      "target_version": "v1.5.13",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-021.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-05T13:11:23.364Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-05T13:40:31.771Z",
+        "note": "计划审查 PASS（1 P1 + 4 P2 随派发落实）+ 定点代码审查 PASS：实跑 4 相位 commit allow（reason=git-worktree-write）、7 相位 deny（reason=shell-git-whole-tree）、写侧未放宽（write/checkout/reset/clean/stash 在 review_passed 仍拒）；SKILL description 解析 2766 字符、关键字齐全、frontmatter 无裸 #；3 条 P2 已收。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-executor",
+        "at": "2026-11-05T13:40:34.911Z",
+        "note": "易用性补丁验证通过：commit 相位扩到四相位（写侧未放宽）、SKILL description 不再被 YAML 截断。",
+        "evidence": "dsh 五套：guard 170/170、verify 118/118、contract 47/47、integration 全通过、guard-isolation 8/8；npx vitest run 95 文件 2358 用例（含 T4.4 逐字节与新增 S6）；tsc 0 错；lint i18n 1187 键。独立探针：commit 相位 4 允许/7 拒绝且 reason 等值；done + 仅 .openfeel 差异仍走书账窄口（判别力验证）；SKILL frontmatter description=2766 字符且无裸 #（对照 HEAD 旧版 2455 且含 # 的反证）。"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 0,
+    "log": 11,
+    "requirements": 1
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-05T13:50:25.726Z"
+}

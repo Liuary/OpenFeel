@@ -14,3 +14,4 @@
 | [2026-11-05-Liuary-009.md](2026-11-05-Liuary-009.md) | Liuary | v1.5.12-stage-127 review_added |
 | [2026-11-05-Liuary-010.md](2026-11-05-Liuary-010.md) | Liuary | v1.5.12-stage-127 review_added |
 | [2026-11-05-Liuary-011.md](2026-11-05-Liuary-011.md) | Liuary | 阶段 v1.5.12-stage-127 完成 |
+| [2026-11-05-Liuary-012.md](2026-11-05-Liuary-012.md) | Liuary | 阶段 v1.5.13-stage-128 完成 |

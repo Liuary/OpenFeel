@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-05T13:50:09.638Z",
-    "revision": 2022,
+    "updated": "2026-11-05T13:50:13.934Z",
+    "revision": 2023,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -68,22 +68,19 @@
         "start_time": "2026-11-05T13:15:43.572Z",
         "end_time": "",
         "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-05T13:50:13.934Z",
+        "note": "v1.5.13 发布前验证通过：commit 四相位放行（写侧零放宽）+ SKILL frontmatter 截断修复。",
+        "evidence": "计划审查 PASS + 定点代码审查 PASS：实跑 commit 在 exec_running/review_passed/test_passed/archiving → allow（reason=git-worktree-write 等值），在 plan_pending/plan_review/review_pending/review_failed/test_pending/test_failed/done → deny（reason=shell-git-whole-tree 等值，夹具含未跟踪 src 防书账假绿）；写侧未放宽（review_passed 下 write/checkout/reset/clean/stash 均拒）；SKILL description 解析 2766 字符、frontmatter 无裸 #（对照 HEAD 2455 含 # 的反证）。门禁：dsh guard 170/170、verify 118/118、contract 47/47、integration 全通过、guard-isolation 8/8；src 95 文件 2358 用例（含 T4.4 与 S6）；tsc 0；lint i18n 1187。"
       }
     }
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-10-31T11:54:15.363Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-015",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.5.6-stage-114"
-      }
-    },
     {
       "time": "2026-10-31T12:14:17.676Z",
       "agent": "cli",
@@ -2037,6 +2034,17 @@
         "to": "archiving",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T13:50:13.934Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.13-stage-128",
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer"
       }
     }
   ],

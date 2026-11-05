@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-05T01:42:25.898Z",
-    "revision": 2001,
+    "updated": "2026-11-05T01:42:29.891Z",
+    "revision": 2002,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -67,6 +67,14 @@
         "start_time": "2026-11-04T17:18:25.372Z",
         "end_time": "",
         "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-05T01:42:29.891Z",
+        "note": "v1.5.12 发布前验证通过：stale 自愈、测试隔离、纯书账提交、多 profile 提示、标题修正、git 外部执行白名单。",
+        "evidence": "四轮对抗性审查（计划 3 轮 + 代码 3 轮）：5 条真绕过（进程替换 / core.hooksPath / alias / GIT_DIR 前缀 / R-C 重命名）与 git 外部执行面（diff.external、GIT_EXTERNAL_DIFF、GIT_CONFIG_GLOBAL）全部收口为双白名单。门禁：src 95 文件 2357 用例；dsh guard 167/167、verify 118/118、contract 47/47、integration 11/11、guard-isolation 8/8；tsc 0 错；lint i18n 1187 键；独立探针 9/9。真机：重启后 guard.stale=false（signature valid）、git -c diff.external 被拒、日常命令零误杀。"
       }
     }
   },
@@ -2058,6 +2066,17 @@
         "to": "archiving",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-05T01:42:29.891Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.12-stage-127",
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer"
       }
     }
   ],

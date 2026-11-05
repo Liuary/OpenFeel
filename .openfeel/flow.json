@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-05T01:42:29.891Z",
-    "revision": 2002,
+    "updated": "2026-11-05T01:42:36.003Z",
+    "revision": 2003,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -42,7 +42,7 @@
     "last_req_seq": 20
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.5.12-stage-127",
       "op": ""
@@ -52,8 +52,8 @@
   "stages": {
     "v1.5.12-stage-127": {
       "name": "v1.5.12-stage-127",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -65,8 +65,8 @@
       ],
       "stats": {
         "start_time": "2026-11-04T17:18:25.372Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-05T01:42:35.981Z",
+        "duration_ms": 30250609
       },
       "verification": {
         "result": "pass",
@@ -2077,6 +2077,18 @@
         "result": "pass",
         "kind": "test",
         "by": "openfeel-reviewer"
+      }
+    },
+    {
+      "time": "2026-11-05T01:42:35.973Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.12-stage-127",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

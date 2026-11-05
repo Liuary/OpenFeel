@@ -1,3 +1,15 @@
+## [1.5.13] - 2026-11-05
+
+> 小批次：**`git commit` 的允许相位从 `exec_running|archiving` 扩到四相位**（`exec_running|review_passed|test_passed|archiving`），并修掉 `openfeel-cli-usage` skill frontmatter 被裸 `#` 截断、导致 v1.5.10~12 能力串丢失的问题。
+
+### Changed
+- [stage-128] **`git commit` 允许相位扩展**：由 `exec_running|archiving` 扩为 **`exec_running|review_passed|test_passed|archiving`**——审查通过 / 测试通过后即可提交，不必先 `advance` 到 `archiving`。**写侧未放宽**：只影响 commit 的相位判定，其余源码写与整树 git 写仍只认 `exec_running`。`review_pending` / `test_pending` / `*_failed` / `plan_*` / `scheme_*` / `done` 仍拒；拒绝文案按 commit 分叉并列出四个允许相位，非 commit 的拒绝文案不变。
+- [stage-128] 版本 1.5.13 收口：`package.json` / `dsh/package.json`（version + `requiresCli`）/ `package-lock.json` 根 version 两处 / CHANGELOG / VERSIONS / README 最新版本行 / `dsh/ADAPTER.md` requiresCli / `openfeel-cli-usage` skill 快照与能力行同步；`npm run build` 重生成 AUTO-GENERATED 段。
+
+### Fixed
+- [stage-128] **`SKILL.md` frontmatter 被 `#` 截断**：`SKILL.md:3` 的未加引号 YAML 标量里 `出口 #43` 的裸 `#` 被当作注释起点，`description` 解析值停在 2455 字符——**v1.5.10 / v1.5.11 / v1.5.12 三段能力串与触发末句全部丢失**。修复为 `出口 No.43` 后解析长度 2455 → **2766**，缺失能力串全部回到 frontmatter。
+- [stage-128] **新增 S6 回归测试**：用生产 `splitFrontmatter` 解析（不另写正则）、以 2766 为长度锚，并断言 `出口 No.43` 存在和注入副本（`update.ts` / `template-loader.ts`）同步；裸 `#` 的阴性断言**只判 frontmatter 段**，避免正文 `## 标题` 假红。
+
 ## [1.5.12] - 2026-11-05
 
 > 门禁收尾批次：**修复外部项目报告的 `guard.stale` 重启后永不恢复问题**（此后不再需要删 `.openfeel/dev/guard-state.json`），补上受支持自愈与 dsh 测试隔离，并给 `git commit` 纯书账与 git 外部执行面划出可判定的边界。

@@ -15,7 +15,7 @@
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
   （v1.5.10 起 43 个成功出口 / 44 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.5.12）。
+  的 `openfeel.requiresCli`（≥1.5.13）。
 
 ## 设计边界
 
@@ -62,13 +62,14 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
     格式化改写（`prettier --write`、`eslint --fix`、`gofmt -w`；**无写标志的 `prettier --check` /
     `eslint src` 判确认只读**），以及**全部 git 工作区写**
     （`checkout --`、`restore`、`reset --hard`、`stash`（含 `push`）、`clean`、`apply`、
-    无 `exec_running` 时的 `commit`；整树写还要求 `.openfeel/**` 无未提交差异，
+    不在允许相位的 `commit`（`exec_running|review_passed|test_passed|archiving`）；整树写还要求 `.openfeel/**` 无未提交差异，
     `git clean` / `stash -u` 额外要求**无未跟踪文件**（`checkpoints/`、新 plan 目录），
     带 `-x` 的 `clean` 还要求**审计 `log/guard-audit.jsonl` 与 `chore.json` 不存在**
     —— 这两类文件被 .gitignore 忽略，`ls-files` 看不见，但 `clean -fdx` 会删掉；
     `git commit` 不覆盖工作区，不受这条限制）；
     ③ **产物豁免**（同上面的构建/测试产物表）；④ **无法判定** → 默认告警放行（审计 + stderr）。
-    **例外（v1.5.12 / op-002 纯书账）**：无 `exec_running` / `archiving` 阶段时，`git commit` 仅在
+    **例外（v1.5.12 / op-002 纯书账）**：无上述四相位（`exec_running` / `review_passed` /
+    `test_passed` / `archiving`）时，`git commit` 仅在
     **单条、直接、无重定向/`$()`/反引号**，且 `git status --porcelain -z` 的待提交路径**全部**落在
     `.openfeel/**` 下才放行（允许原因 `git-commit-bookkeeping`，审计可查）；出现外部路径则拒并点名前
     5 条。带 `-C` / `--git-dir` / `--work-tree` 的 commit 一律拒（仓库归属无法校验）；

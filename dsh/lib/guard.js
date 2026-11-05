@@ -2106,7 +2106,9 @@ function coversWholeTree(token) {
  * 整树写（`reset --hard`/`--merge`、`stash`（含 `push`）、`clean`、`commit`、
  * `checkout/switch 分支`、`merge/rebase/pull/…`）需要特定相位：
  * - 默认要求 `exec_running`（否则「非 exec 相位用 git 还原/丢弃源码」绕过一切文件门禁）；
- * - `commit` 额外允许 `archiving`（op-005 / P1-4：发版提交发生在 archiving）；
+ * - `commit` 额外允许 `review_passed` / `test_passed` / `archiving`（op-005 / P1-4：
+ *   发版提交发生在 archiving；v1.5.13 / stage-128：审完即可提交、测完即可提交）；
+ *   只放宽 `commit` 的 `phases`，写侧相位门槛（`decideForTargets`）仍只认 `exec_running`；
  * - 进入整树写前还有一道 `.openfeel/**` 无差异检查（op-005 / P1-2），见 `openfeelTreeDirty`。
  * @param {string[]} tokens
  * @param {number} start
@@ -2233,10 +2235,13 @@ function classifyGitCommand(tokens, start, baseDir) {
       // v1.5.12 / stage-127 C.1/C.4：`gitSubcommand` 与 `repoOverride` 供
       // 「无阶段纯书账」分支判定（字段白名单必须两处一并透传，见
       // `analyzeShellStatement` / `classifyShellCommand`）。
+      // v1.5.13 / stage-128：审完即可提交（`review_passed`）/ 测完即可提交（`test_passed`），
+      // `done` 仍拒（工作已收口，落地走归档提交）。**只放宽 commit**：写侧相位
+      // （`decideForTargets`）与 `checkout`/`reset --hard`/`stash`/`clean` 一律不动。
       return {
         kind: 'whole-tree',
         detail: 'git commit',
-        phases: ['exec_running', 'archiving'],
+        phases: ['exec_running', 'review_passed', 'test_passed', 'archiving'],
         preservesWorktree: true,
         gitSubcommand: 'commit',
         repoOverride,
@@ -2883,7 +2888,8 @@ function decideForTargets(context, request) {
  * 未初始化工作区沿用 `enforce` 语义（`always` 下 fail-closed）。
  * @param {string} resolvedCwd
  * @param {'off'|'project'|'always'} enforce
- * @param {string[]} [phases] 放行的相位（缺省 `['exec_running']`；`git commit` 额外允许 `archiving`）
+ * @param {string[]} [phases] 放行的相位（缺省 `['exec_running']`；`git commit` 额外允许
+ *   `review_passed` / `test_passed` / `archiving`）
  * @returns {boolean}
  */
 function allowsWholeTreeWrite(resolvedCwd, enforce, phases = ['exec_running']) {
@@ -3334,9 +3340,12 @@ export function createOpenFeelGuard(options = {}) {
       if (classification.kind === 'whole-tree') {
         if (!allowsWholeTreeWrite(resolvedCwd, enforce, classification.phases)) {
           // v1.5.12 / stage-127 §3-C（C.5/C.6）+ op-004 复审修正：无 `exec_running` /
-          // `archiving` 阶段时，只给「单条、直接、纯 `.openfeel/**` 书账」的
-          // `git commit` 开一道窄口。**条件缺一不可**（漏一条即变后门，见 plan R8）：
-          // ① 无 exec_running/archiving 阶段 —— 上面 `allowsWholeTreeWrite` 已保证；
+          // `review_passed` / `test_passed` / `archiving` 阶段时，只给「单条、直接、纯
+          // `.openfeel/**` 书账」的 `git commit` 开一道窄口。**条件缺一不可**（漏一条即变后门，见 plan R8）：
+          // ① 无上述四相位阶段 —— 上面 `allowsWholeTreeWrite` 已保证（v1.5.13 / stage-128
+          //    把 `review_passed` / `test_passed` 并入白名单后，二者不再走这道窄口，窄口只剩
+          //    `plan_*` / `scheme_*` / `review_pending` / `review_failed` / `test_pending` /
+          //    `test_failed` / `done` 七类）；
           // ② 是项目工作区且 flow.json 可读（fail-closed：非项目 / flow 读不出
           //    不等于「无阶段」，不能一律当书账）；
           // ③ 单条简单 commit（对**原始命令**判：无多语句/重定向/`$(`/反引号/进程替换）；
@@ -3357,10 +3366,20 @@ export function createOpenFeelGuard(options = {}) {
             && flow.ok === true;
           const scope = canBeBookkeeping ? inspectCommitBookkeeping(resolvedCwd, baseDir) : null;
           if (scope !== null && scope.ok === true) return allowShell('git-commit-bookkeeping', []);
-          let denyMessage = t(
-            `OpenFeel 写入门禁：禁止在没有 exec_running 阶段时用 shell 做 git 工作区写（${classification.detail}）—— 它会整树覆盖/丢弃源码或把状态直接写进仓库，等同绕过文件门禁。请先 feel_flow action=advance 推进到 exec_running；只读查询（git status / log / diff）不受影响。`,
-            `OpenFeel write guard: git worktree writes via the shell (${classification.detail}) are blocked without an exec_running stage — they overwrite/discard sources across the whole tree or write repo state, bypassing the file gate. Advance to exec_running with feel_flow action=advance; read-only git status / log / diff are unaffected.`,
-          );
+          // v1.5.13 / stage-128：文案按子命令分叉，相位串从 `classification.phases`
+          // 派生（单一真值，防数组与文案两处漂移）。**必须保留**「git 工作区写」字样
+          // （既有断言 `/git 工作区写/`），非 commit 的通用文案逐字保留（stash/clean/
+          // reset --hard 仍在文案里提示 advance 到 exec_running，不能谎报四相位可用）。
+          const allowedPhaseList = (classification.phases ?? ['exec_running']).join(' / ');
+          let denyMessage = classification.gitSubcommand === 'commit'
+            ? t(
+              `OpenFeel 写入门禁：禁止在当前阶段用 shell 做 git 工作区写（${classification.detail}）—— git commit 只允许活跃阶段处于 ${allowedPhaseList} 之一；plan_* / scheme_* / review_pending / review_failed / test_pending / test_failed / done 一律拒绝（done 表示工作已收口，请走归档提交）。只读查询（git status / log / diff）不受影响。`,
+              `OpenFeel write guard: git worktree writes via the shell (${classification.detail}) are blocked in this phase — git commit is only allowed when an active stage is in ${allowedPhaseList}; plan_* / scheme_* / review_pending / review_failed / test_pending / test_failed / done are always refused (done means the work is closed — commit through the archive flow). Read-only git status / log / diff are unaffected.`,
+            )
+            : t(
+              `OpenFeel 写入门禁：禁止在没有 exec_running 阶段时用 shell 做 git 工作区写（${classification.detail}）—— 它会整树覆盖/丢弃源码或把状态直接写进仓库，等同绕过文件门禁。请先 feel_flow action=advance 推进到 exec_running；只读查询（git status / log / diff）不受影响。`,
+              `OpenFeel write guard: git worktree writes via the shell (${classification.detail}) are blocked without an exec_running stage — they overwrite/discard sources across the whole tree or write repo state, bypassing the file gate. Advance to exec_running with feel_flow action=advance; read-only git status / log / diff are unaffected.`,
+            );
           if (scope !== null && scope.repoMismatch === true) {
             denyMessage += `\n${t(
               `待提交仓库根（${scope.repoRoot}）不是项目工作区（${normalizeTarget(resolvedCwd, '.')}）：workdir 指向了另一个仓库（常见于被外层 .gitignore 忽略的嵌套仓库），纯书账只对项目自身的仓库生效。`,

@@ -7,6 +7,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { getCurrentTemplate } from '../../src/core/templates.js';
 import { listAgentIds, listClaudeAgentIds } from '../../src/core/template-loader.js';
+import { splitFrontmatter } from '../../src/core/managed-region.js';
 
 const ROOT = process.cwd();
 const SKILLS_DIR = join(ROOT, 'src', 'core', 'templates-data', 'skills');
@@ -518,7 +519,7 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
       '## v1.3.0（stage-101）', 'v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）',
       '## v1.3.2（stage-103）', '## v1.3.3（stage-104）', '## v1.3.4（stage-105）', '## v1.3.5（stage-106）',
       '## v1.4.0（stage-107）', '## v1.5.0（stage-108）', '## v1.5.2（stage-110）', '## v1.5.3（stage-111）', '## v1.5.4（stage-112）', '## v1.5.5（stage-113）',
-      'DSH 写入门禁', '本文档为 v1.5.12 快照',
+      'DSH 写入门禁', '本文档为 v1.5.13 快照',
       'openfeel dashboard', '43 成功出口', 'OPENFEEL_SHELL_GATE', 'guard-state']) {
       expect(c, `缺 ${s}`).toContain(s);
     }
@@ -543,6 +544,48 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
     expect(c, 'v1.5.4 快照声明残留').not.toContain('本文档为 v1.5.4 快照');
     expect(c, 'v1.5.5 快照声明残留').not.toContain('本文档为 v1.5.5 快照');
     expect((c.match(/node bin\/openfeel\.js/g) ?? []).length, 'T53 自举加注恒 1').toBe(1);
+  });
+
+  /**
+   * S6（stage-128 / REQ-021）：frontmatter `#` 截断修复。
+   *
+   * `SKILL.md:3` 是未加引号的 YAML 标量 —— `--json` 出口 #43 的裸 `#` 被 YAML 当作注释起点，
+   * 解析值停在 2455 字符（v1.5.10/11/12 与触发末句全丢）。修复为 `出口 #43` → `出口 No.43`。
+   * 阴性断言**只作用于 frontmatter 段**：正文有数十处 `## 标题`，全文件跑 `/\s#/` 会假红。
+   */
+  it('S6 frontmatter 不被 `#` 截断（description 全长 2766 + 版本关键字 + 注入副本同步）', () => {
+    const src = readFileSync(CLI_SKILL, 'utf-8');
+    // ① 用生产解析器（勿自写正则）：src/core/managed-region.ts splitFrontmatter
+    const split = splitFrontmatter(src);
+    expect(split, 'frontmatter 可解析').not.toBeNull();
+    const description = (split?.frontmatter.description ?? '') as string;
+    expect(typeof description).toBe('string');
+    // ② 长度锚：截断必失败（原截断值 2455，修复后 2766）
+    expect(description.length, 'description 解析长度').toBe(2766);
+    // ③ 截断后丢失的段全部回位：v1.5.10~12 + JSON 契约 + 触发末句
+    for (const s of [
+      'v1.5.10 新增', 'openfeel dashboard', '出口 No.43', 'v1.5.11 加固', 'guard-state',
+      'v1.5.12 修复', '纯书账放行', 'JSON 契约 43 成功出口',
+      '当需要查询 CLI 命令、参数、phase、stageId、阶段命名时加载。',
+    ]) {
+      expect(description, `description 缺 ${s}`).toContain(s);
+    }
+    expect(description, '解析值不得停在「出口」').not.toMatch(/出口$/);
+    // ④ 裸 `#` 阴性：只判 frontmatter 段（正文 `## 标题` 不参与）
+    const lines = src.split('\n');
+    expect(lines[2], 'SKILL.md 第 3 行').toContain('出口 No.43');
+    const frontmatterEnd = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
+    expect(frontmatterEnd, 'frontmatter 闭合').toBeGreaterThan(0);
+    const frontmatter = lines.slice(0, frontmatterEnd + 1).join('\n');
+    expect(frontmatter, 'frontmatter 段含裸 #').not.toMatch(/\s#/);
+    // ⑤ 注入副本同步（改了源忘了 `npm run build` 会在这里红）。
+    //    注意：build.js 的 validateSingleSourceConsistency 只比两份注入副本、不读源，
+    //    源↔注入的逐字节一致由 T4.4（templates-migration.test.ts）显式承担。
+    for (const rel of [join('src', 'core', 'update.ts'), join('src', 'core', 'template-loader.ts')]) {
+      const injected = readFileSync(join(ROOT, rel), 'utf-8');
+      expect(injected, `${rel} 缺 出口 No.43`).toContain('出口 No.43');
+      expect(injected, `${rel} 残留 出口 #43`).not.toContain('出口 #43');
+    }
   });
 });
 

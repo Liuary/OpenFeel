@@ -1631,6 +1631,90 @@ check('P1-4：`git commit` 在 archiving 放行、在 done / plan_review 拒', (
   assert.equal(typeof projectOnly(shellExec('bash', repo.dir, 'git reset --hard')), 'string');
 });
 
+// ── v1.5.13 / stage-128（REQ-021）：`git commit` 允许相位扩到 review_passed / test_passed ──
+//
+// 口径：**只放宽 commit**。写侧相位（`decideForTargets`）与 `checkout` / `reset --hard` /
+// `stash` / `clean` 一律不动。负例夹具**必须**带 `src/**` 待提交（计划 R2）：若只有
+// `.openfeel/**` 差异，`done` 会被 v1.5.12 op-002 的纯书账窄口以 `git-commit-bookkeeping`
+// 放行 → 负例假绿。
+
+check('stage-128：`git commit` 允许相位=exec_running/review_passed/test_passed/archiving（4 正 / 7 负）', () => {
+  const repo = gitProject('stage128-commit-phase', execFlow);
+  if (repo === null) return; // 无 git → 跳过
+  const { dir } = repo;
+  // 夹具：真实 `src/**` 待提交改动 —— 让「相位」成为负例的唯一变量（R2 防假绿）。
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'pending.ts'), 'pending', 'utf8');
+  const setPhase = (phase) => {
+    writeFileSync(
+      join(dir, '.openfeel', 'flow.json'),
+      JSON.stringify({ stages: { 'v1-stage-1': { phase } }, requirements: [] }),
+      'utf8',
+    );
+    clearGuardCache();
+  };
+  const commit = 'git commit -m "stage-128"';
+
+  // 4 正例：全部放行，且 reason **等值** `git-worktree-write`（走相位门，不是书账窄口）
+  for (const phase of ['exec_running', 'review_passed', 'test_passed', 'archiving']) {
+    setPhase(phase);
+    assert.equal(projectOnly(shellExec('bash', dir, commit)), undefined, phase);
+    assert.equal(readAudit(dir).at(-1).reason, 'git-worktree-write', phase);
+  }
+
+  // 7 负例：全部 DENY，且 reason **精确值** `shell-git-whole-tree`（绝不走书账放行）
+  for (const phase of ['plan_pending', 'plan_review', 'review_pending', 'review_failed', 'test_pending', 'test_failed', 'done']) {
+    setPhase(phase);
+    const denied = projectOnly(shellExec('bash', dir, commit));
+    assert.equal(typeof denied, 'string', phase);
+    assert.equal(readAudit(dir).at(-1).reason, 'shell-git-whole-tree', phase);
+    // 文案：commit 分叉 → 保留「git 工作区写」+ 相位串从 classification.phases 派生
+    assert.match(String(denied), /git 工作区写/, phase);
+    assert.match(String(denied), /exec_running \/ review_passed \/ test_passed \/ archiving/, phase);
+    // done 的可操作指引：走归档提交
+    if (phase === 'done') assert.match(String(denied), /归档提交/, phase);
+  }
+});
+
+check('stage-128：只改 `.openfeel/**` 时 review_passed 走相位直放、done 仍走书账窄口（窄口零改动）', () => {
+  // ① review_passed：相位已放宽 → 直接放行，**不再**需要书账窄口
+  const review = gitProject('stage128-bookkeeping-review', { stages: { 'v1-stage-1': { phase: 'review_passed' } }, requirements: [] });
+  if (review === null) return;
+  tamperFile(join(review.dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  assert.equal(projectOnly(shellExec('bash', review.dir, 'git commit -m x')), undefined);
+  assert.equal(readAudit(review.dir).at(-1).reason, 'git-worktree-write');
+
+  // ② done：相位仍不放行 → 仍走 op-002 纯书账窄口（`git-commit-bookkeeping`），本次不改它
+  const done = gitProject('stage128-bookkeeping-done', noStageFlow);
+  tamperFile(join(done.dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  assert.equal(projectOnly(shellExec('bash', done.dir, 'git commit -m x')), undefined);
+  assert.equal(readAudit(done.dir).at(-1).reason, 'git-commit-bookkeeping');
+});
+
+check('stage-128：review_passed 只放宽 commit —— write 工具与 checkout/reset/stash/clean 仍拒', () => {
+  const reviewFlow = { stages: { 'v1-stage-1': { phase: 'review_passed' } }, requirements: [] };
+  const cwd = project('stage128-write-lock', reviewFlow);
+  // 文件工具：写侧相位门槛仍只认 exec_running（审完不能再生新改动）
+  const writeReason = projectOnly(execution('write', cwd, { path: 'src/a.ts' }));
+  assert.equal(typeof writeReason, 'string');
+  assert.match(String(writeReason), /exec_running/);
+  assert.equal(readGuardState(cwd).lastDecision.reason, 'phase');
+  // shell 目标写：`git checkout -- src` 走 decideForTargets，同样拒
+  const checkoutReason = projectOnly(shellExec('bash', cwd, 'git checkout -- src'));
+  assert.equal(typeof checkoutReason, 'string');
+  assert.equal(readAudit(cwd).at(-1).reason, 'phase');
+  // 整树写：别的子命令不跟着放宽；非 commit 通用文案保留「git 工作区写」与 advance 指引
+  for (const command of ['git reset --hard', 'git stash push -m x', 'git clean -fd']) {
+    const denied = projectOnly(shellExec('bash', cwd, command));
+    assert.equal(typeof denied, 'string', command);
+    assert.equal(readAudit(cwd).at(-1).reason, 'shell-git-whole-tree', command);
+    assert.match(String(denied), /git 工作区写/, command);
+    assert.match(String(denied), /推进到 exec_running/, command);
+  }
+});
+
 check('P1-5：间接写 API（child_process / pathlib / urlretrieve / os.system / subprocess）→ 第 1 类', () => {
   const cwd = project('op005-indirect-api', planFlow);
   for (const command of [

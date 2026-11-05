@@ -243,7 +243,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 - **审计（v1.4.0）**：doc/静态资源豁免放行与 chore 放行时，追加 JSONL 到 `.openfeel/log/guard-audit.jsonl`（`time/tool/reason/phase/paths`），best-effort 不影响放行。
 - **shell 四类判定（v1.5.11 / D-126-02）**：`bash` / `pwsh` 默认受守，按命令文本分四类——
   1. **硬拒**：受保护路径（`flow.json` / `status.md` / `chore.json` / `config.yaml` / `.preflight.json` / `guard-state.json` / `pipeline.yaml` / `flow-archive/**` 等）、用 shell 跑 `openfeel` 写子命令（`flow` / `stage` / `req` / `chore` 等，应改用 `feel_*`），以及编码与间接执行形态（`-EncodedCommand` / `iex` / `bash -c` / `node -e` / `python -c`）。
-  2. **按目标判定**：能静态解析出目标路径的源码写与 git 工作区写（`checkout` / `restore` / `reset --hard|--merge` / `stash pop|apply` / `clean` / `apply` / `commit`）→ 按相位拒（源码要求 `exec_running`；整树 git 写在无 `exec_running` 或 `.openfeel/**` 有未提交改动时拒）。
+  2. **按目标判定**：能静态解析出目标路径的源码写与 git 工作区写（`checkout` / `restore` / `reset --hard|--merge` / `stash pop|apply` / `clean` / `apply` / `commit`）→ 按相位拒（源码要求 `exec_running`；`git commit` 仅在 `exec_running|review_passed|test_passed|archiving` 放行，其它整树 git 写仍只认 `exec_running`，且 `.openfeel/**` 有未提交改动时拒）。
   3. **构建产物豁免**：`dist/**`、`build/**`、`out/**`、`target/**`、`.next/**`、`*.tsbuildinfo`；`npx vitest` / `npm run build` / `cargo build` / `tsc -b` / `git status` 等只读或产物命令不误杀。
   4. **不可判定 → 默认告警放行 + 审计留痕**（`kind=undecidable`）；要更严设 `OPENFEEL_SHELL_GATE=strict`。
   相对路径按 `workdir ?? guard cwd` 解析；档位见下方「shell 判定档位」。

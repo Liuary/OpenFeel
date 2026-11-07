@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-07T09:56:46.328Z",
-    "revision": 2036,
+    "updated": "2026-11-07T10:02:45.853Z",
+    "revision": 2041,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -54,8 +54,8 @@
   "stages": {
     "v1.5.14-stage-129": {
       "name": "v1.5.14-stage-129",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -69,65 +69,19 @@
         "start_time": "2026-11-07T09:12:17.670Z",
         "end_time": "",
         "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-07T10:02:45.852Z",
+        "note": "v1.5.14 全量门禁：vitest 2370/2370、dsh guard 179/179、preflight 10/10、contract 47/47、verify 118/118、tsc 0、lint i18n 1194、build 一致性 3/3、--version=1.5.14。",
+        "evidence": "npm test; node dsh/test/guard.js; node dsh/test/preflight.js; node dsh/test/contract.js; node dsh/test/verify.js; npx tsc --noEmit; node bin/openfeel.js lint i18n; npm run build"
       }
     }
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-10-31T12:14:27.620Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.6-stage-116",
-        "requirementId": "REQ-016"
-      }
-    },
-    {
-      "time": "2026-10-31T12:14:31.678Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-016",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-10-31T12:21:23.036Z",
-      "agent": "cli",
-      "action": "stage_deps_set",
-      "detail": {
-        "stage": "v1.5.6-stage-116",
-        "deps": [
-          "v1.5.6-stage-115"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-31T12:49:34.454Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-010"
-      }
-    },
-    {
-      "time": "2026-10-31T12:49:38.698Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-011"
-      }
-    },
-    {
-      "time": "2026-10-31T12:49:43.355Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-012"
-      }
-    },
     {
       "time": "2026-10-31T12:49:48.775Z",
       "agent": "openfeel-reviewer",
@@ -2040,6 +1994,63 @@
         "from": "scheduled",
         "to": "in_progress"
       }
+    },
+    {
+      "time": "2026-11-07T09:56:50.652Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-07T10:02:25.285Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T10:02:35.529Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T10:02:40.706Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T10:02:45.853Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.14-stage-129",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
     }
   ],
   "requirements": [
@@ -2265,9 +2276,9 @@
     {
       "id": "REQ-022",
       "title": "体验反馈修复批次：op 状态落盘 / preflight 长任务 / 归档收尾提交 / 门禁体验（OF-02~OF-08）",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-11-07T09:10:46.041Z",
-      "updated_at": "2026-11-07T09:56:46.327Z",
+      "updated_at": "2026-11-07T09:56:50.652Z",
       "target_version": "v1.5.14",
       "priority": "P1",
       "workflow_mode": "fast",

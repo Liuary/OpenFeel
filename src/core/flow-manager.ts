@@ -567,6 +567,26 @@ interface OpIdParts {
   opLocalId: string;
 }
 
+/** `resolveOpRef` 解析结果（OF-02：命令层统一 op 引用入口） */
+export interface OpRefResolution {
+  /** 阶段 ID（flow.json 键，短名前缀已归一化） */
+  stage: string;
+  /** 阶段内 op 本地 ID（如 op-001） */
+  op: string;
+  /** 全名（`<stage>.<op>`） */
+  fullId: string;
+}
+
+/** `diagnoseOpRef` 诊断结果（OF-02：解析失败时给出原因与候选，不猜） */
+export interface OpRefDiagnosis {
+  /** 失败原因：未找到 / 歧义 */
+  reason: 'not-found' | 'ambiguous';
+  /** 歧义命中（`reason === 'ambiguous'` 时至少 2 项；其余为空数组） */
+  matches: string[];
+  /** 候选全名（`<stage>.<op>`；not-found 为全仓候选，ambiguous 为命中集） */
+  candidates: string[];
+}
+
 /** findPhasePath 的路径查找结果（B5-1） */
 export interface PhasePathResult {
   /** 唯一可达路径（含起点后的逐跳目标）；不存在/多义时为 [] */
@@ -1036,11 +1056,19 @@ export class FlowManager {
     return { stage: cur.stage, op: cur.op };
   }
 
-  /** 解析 opId（格式 "stage-xx.op-xxx"） */
+  /**
+   * 解析 opId（格式 "stage-xx.op-xxx"）。
+   *
+   * OF-02：无 `.` 的引用按**短 ID** 解析（不猜）：
+   * 1. 先取 `pipeline.current.stage` 的同名 op（当前阶段优先）；
+   * 2. 再在全 stages 中查**唯一**命中；
+   * 3. 未命中 / 歧义（≥2 命中）→ null（由调用方报错，禁止静默 no-op）。
+   */
   private parseOpId(opId: string): OpIdParts | null {
     const dotIdx = opId.lastIndexOf('.');
     if (dotIdx === -1) {
-      return null;
+      const matches = this.findShortOpRefMatches(opId);
+      return matches.length === 1 ? matches[0] : null;
     }
     const rawStageId = opId.substring(0, dotIdx);
     const opLocalId = opId.substring(dotIdx + 1);
@@ -1057,6 +1085,115 @@ export class FlowManager {
       ? normalized
       : (this.data?.stages[rawStageId] ? rawStageId : normalized);
     return { stageId, opLocalId };
+  }
+
+  /**
+   * 短 op 引用（无阶段段）的候选解析（OF-02 短 ID）。
+   *
+   * 语义：**未 done 的**当前阶段命中即独占返回（与「先当前阶段」同义）；否则返回全 stages
+   * 同名命中集，0 项 = 未找到、≥2 项 = 歧义——两者均由调用方判为无法解析（不猜）。
+   * 当前阶段若已 `done`（`pipeline.current` 可暂时仍指向它），不得独占，避免把短 ID
+   * 静默写到已收口阶段；此时走全局唯一命中 / 歧义判定。
+   */
+  private findShortOpRefMatches(opLocalId: string): OpIdParts[] {
+    if (!this.data || opLocalId === '') {
+      return [];
+    }
+    const rawCurrent = this.data.pipeline?.current?.stage ?? '';
+    if (rawCurrent !== '') {
+      // 双键回退（与 parseOpId / resolveCurrentPhase 同范式）：原始键优先，其次归一化键
+      const currentKey = this.data.stages[rawCurrent]
+        ? rawCurrent
+        : (normalizeStageId(rawCurrent) ?? rawCurrent);
+      const currentStage = this.data.stages[currentKey];
+      if (currentStage && currentStage.phase !== 'done' && this.hasOpKey(currentStage, opLocalId)) {
+        return [{ stageId: currentKey, opLocalId }];
+      }
+    }
+    const hits: OpIdParts[] = [];
+    for (const [stageId, stage] of Object.entries(this.data.stages)) {
+      if (this.hasOpKey(stage, opLocalId)) {
+        hits.push({ stageId, opLocalId });
+      }
+    }
+    return hits;
+  }
+
+  /** ops 表是否含该本地 op 键（自有键 + 值超假，避免原型键 / 脏数据误命中） */
+  private hasOpKey(stage: StageData | undefined, opLocalId: string): boolean {
+    const ops = stage?.ops;
+    if (!ops || typeof ops !== 'object' || opLocalId === '') {
+      return false;
+    }
+    return Object.prototype.hasOwnProperty.call(ops, opLocalId) && !!ops[opLocalId];
+  }
+
+  /**
+   * 解析 op 引用为「阶段 + 本地 op + 全名」（OF-02：命令层统一入口）。
+   * 支持全名 `<stage>.<op>` 与短 ID `<op>`（解析规则见 `parseOpId`）。
+   * @returns 命中时的规范三元组；未命中 / 歧义 → null（不猜）
+   */
+  resolveOpRef(ref: string): OpRefResolution | null {
+    if (!this.data || typeof ref !== 'string' || ref === '') {
+      return null;
+    }
+    const parts = this.parseOpId(ref);
+    if (!parts) {
+      return null;
+    }
+    const stage = this.data.stages[parts.stageId];
+    if (!this.hasOpKey(stage, parts.opLocalId)) {
+      return null;
+    }
+    return {
+      stage: parts.stageId,
+      op: parts.opLocalId,
+      fullId: `${parts.stageId}.${parts.opLocalId}`,
+    };
+  }
+
+  /**
+   * 诊断无法解析的 op 引用（OF-02；仅在 `resolveOpRef` 返回 null 时有意义）。
+   * 只读：不写盘、不改内存。
+   *
+   * 候选范围：短 ID → 全仓同名候选；全名 `<stage>.<op>` → 只列该阶段内的 op
+   * （大仓下不给全仓噪声；阶段不存在时由命令层报 STAGE_NOT_FOUND，候选为空）。
+   * @returns 失败原因（未找到 / 歧义）与候选全名；无数据时 null
+   */
+  diagnoseOpRef(ref: string): OpRefDiagnosis | null {
+    if (!this.data || typeof ref !== 'string') {
+      return null;
+    }
+    const dotIdx = ref.lastIndexOf('.');
+    /** 全名引用：只列该阶段候选（阶段不存在 → 空，交由命令层报阶段错误）。 */
+    if (dotIdx !== -1) {
+      const rawStageId = ref.substring(0, dotIdx);
+      const normalized = normalizeStageId(rawStageId) ?? rawStageId;
+      const stageId = this.data.stages[normalized] ? normalized : rawStageId;
+      const stage = this.data.stages[stageId];
+      const candidates: string[] = [];
+      if (stage !== undefined) {
+        for (const opLocalId of Object.keys(stage.ops ?? {})) {
+          if (this.hasOpKey(stage, opLocalId)) {
+            candidates.push(`${stageId}.${opLocalId}`);
+          }
+        }
+      }
+      return { reason: 'not-found', matches: [], candidates };
+    }
+    const hits = this.findShortOpRefMatches(ref).map((p) => `${p.stageId}.${p.opLocalId}`);
+    if (hits.length >= 2) {
+      return { reason: 'ambiguous', matches: hits, candidates: hits };
+    }
+    const candidates: string[] = [];
+    for (const [stageId, stage] of Object.entries(this.data.stages)) {
+      for (const opLocalId of Object.keys(stage.ops ?? {})) {
+        if (this.hasOpKey(stage, opLocalId)) {
+          candidates.push(`${stageId}.${opLocalId}`);
+        }
+      }
+    }
+    return { reason: 'not-found', matches: [], candidates };
   }
 
   /** 根据 opId 查找 Op 对象 */
@@ -2970,6 +3107,8 @@ export class FlowManager {
       // T3：op 级埋点（唯一写入点 = recordAttempt；pass 同时进入 done 终态）
       op.attempted_at = new Date().toISOString();
       op.completed_at = op.attempted_at;
+      // 边界（OF-02）：recordAttempt 只写 state / attempted_at / completed_at，
+      // **不写 checkpoints**（checkpoints 归 advancePhase / advanceStagePhase 维护）。
       if (stageIdOfOp) { this.syncCurrentOp(stageIdOfOp); }
       this.data.pipeline.retry = 0;
       this.appendLog({

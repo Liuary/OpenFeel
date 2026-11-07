@@ -45,7 +45,14 @@ import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchi
 import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile } from '../core/flow-archive/archive-ops.js';
 import { archiveHealthItems } from '../core/flow-archive/archive-health.js';
 import { requirementHealthItems, stageRequirementIds } from '../core/req/aggregate.js';   // 需求对账项（stage-83 T3）/ 关联读取单点（REQ-028）
-import { releaseCheckRequirements } from '../core/req/requirement-ops.js';                // 发布软门（v1.5.8 / REQ-030）
+import { releaseCheckRequirements, isTerminalRequirementStatus } from '../core/req/requirement-ops.js';                // 发布软门（v1.5.8 / REQ-030）/ 终态判定单点（OF-07）
+
+/**
+ * OF-07 悬挂阶段提醒的相位集：执行后、尚未被 done 门收口的活跃相位。
+ * 仅在这些相位提示「关联需求已全部完成，可考虑阶段收口/归档」——
+ * 需求完成与阶段关闭解耦后，阶段会长期停留在 exec_running（REQ-023）。
+ */
+const HUNG_STAGE_PHASES: readonly PipelinePhase[] = ['exec_running', 'review_passed', 'test_passed'];
 
 export function registerFlowCommand(program: Command): void {
   const flow = program
@@ -235,8 +242,15 @@ export function registerFlowCommand(program: Command): void {
         reviewTier = MODE_DERIVED_TIER[workflowMode];
         effectiveReviewTier = DEFAULT_EFFECTIVE_REVIEW_TIER;
         legalNextPhases = mgr.getAvailablePhases(activeKey);
-        suggestedCommand = legalNextPhases.length > 0
-          ? `openfeel flow advance --stage ${activeKey} --to ${legalNextPhases[0]}`
+        // OF-06：通过路径优先（review_pending → review_passed / test_pending → test_passed）。
+        // `legalNextPhases` 数组**顺序不变**（测试有 toEqual 顺序断言），仅「建议命令」的选项目标变化。
+        const suggestedPhase = currentPhase === 'review_pending' && legalNextPhases.includes('review_passed')
+          ? 'review_passed'
+          : currentPhase === 'test_pending' && legalNextPhases.includes('test_passed')
+            ? 'test_passed'
+            : legalNextPhases[0];
+        suggestedCommand = legalNextPhases.length > 0 && suggestedPhase
+          ? `openfeel flow advance --stage ${activeKey} --to ${suggestedPhase}`
           : null;
         blockingReviews = listStageBlockingOpenReviews(data.reviews, activeKey).map((r) => ({
           id: r.id, title: r.title, priority: r.priority, op: r.op,
@@ -266,6 +280,28 @@ export function registerFlowCommand(program: Command): void {
         }
         if (derivedFromStages) {
           guards.push(t('flow.next.guardDerivedStage', lang));
+        }
+        // OF-06：archiving 收口前置提示（固定追加在既有守卫之后；`suggestedCommand` 仍为 advance --to done）
+        if (currentPhase === 'archiving') {
+          guards.push(t('flow.next.guardArchivingVerifyTmpl', lang, { stage: activeKey }));
+        }
+        // OF-07：悬挂阶段提醒（关联需求 ≥1 且全部终态）——固定末位（archiving 提示之后）
+        if (HUNG_STAGE_PHASES.includes(currentPhase)) {
+          const linkedReqIds = stageRequirementIds(data.stages[activeKey]);
+          if (linkedReqIds.length > 0) {
+            const requirementList = Array.isArray(data.requirements) ? data.requirements : [];
+            const allTerminal = linkedReqIds.every((id) => {
+              const req = requirementList.find((r) => r.id === id);
+              // 关联需求查不到（孤儿关联）保守视为未完成，不提示
+              return req !== undefined && isTerminalRequirementStatus(req.status);
+            });
+            if (allTerminal) {
+              guards.push(t('flow.next.guardRequirementAllDoneTmpl', lang, {
+                n: String(linkedReqIds.length),
+                stage: activeKey,
+              }));
+            }
+          }
         }
       } else {
         guards.push(t('flow.next.guardNoActiveStage', lang));
@@ -1384,7 +1420,9 @@ export function registerFlowCommand(program: Command): void {
       }
 
       if (options.op && !options.quiet) {
-        console.log(t('flow.advance.opLabelTmpl', lang, { op: options.op }));
+        // OF-02：`--op` 走 parseOpId（短 ID 可解析为 `<stage>.<op>` 全名）；无法解析时原样回显，不阻断推进
+        const opRef = mgr.resolveOpRef(options.op);
+        console.log(t('flow.advance.opLabelTmpl', lang, { op: opRef?.fullId ?? options.op }));
       }
     });
 
@@ -1407,19 +1445,37 @@ export function registerFlowCommand(program: Command): void {
         process.exit(1);
       }
 
+      // OF-02：先解析 op 引用（全名 `<stage>.<op>` 或阶段内短 ID），未命中/歧义必须报错退出，
+      // 禁止「getOp 返回 null → recordAttempt 静默 no-op → 仍打印成功」。
+      const resolvedOp = mgr.resolveOpRef(options.op);
+      if (!resolvedOp) {
+        const diagnosis = mgr.diagnoseOpRef(options.op);
+        const ambiguous = diagnosis?.reason === 'ambiguous';
+        const message = ambiguous
+          ? t('flow.opRef.ambiguousTmpl', lang, {
+            op: options.op,
+            matches: (diagnosis?.matches ?? []).join(', ') || t('common.none', lang),
+          })
+          : t('flow.opRef.notFoundTmpl', lang, { op: options.op });
+        console.error(message);
+        const candidates = diagnosis?.candidates ?? [];
+        if (candidates.length > 0) {
+          console.error(t('flow.opRef.candidatesTmpl', lang, { candidates: candidates.join(', ') }));
+        }
+        process.exit(1);
+        return;
+      }
+
       // B4-5（A1 第 5 条）/ REV-52-002：draft op 拒绝记录执行结果（命令层守卫；核心层 recordAttempt 另有兜底）
-      if (mgr.getOpState(options.op) === 'draft') {
-        const dotIdx = options.op.lastIndexOf('.');
-        const stageId = dotIdx >= 0 ? options.op.substring(0, dotIdx) : '';
-        const localOpId = dotIdx >= 0 ? options.op.substring(dotIdx + 1) : options.op;
-        console.error(t('flow.attempt.draftRefusedTmpl', lang, { stage: stageId, opId: localOpId }));
+      if (mgr.getOpState(resolvedOp.fullId) === 'draft') {
+        console.error(t('flow.attempt.draftRefusedTmpl', lang, { stage: resolvedOp.stage, opId: resolvedOp.op }));
         process.exit(1);
         return;
       }
 
       // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
-      const outcome = mgr.recordAttempt(options.op, options.result as 'pass' | 'fail');
+      const outcome = mgr.recordAttempt(resolvedOp.fullId, options.result as 'pass' | 'fail');
       mgr.save();
 
       if (options.result === 'pass') {
@@ -1429,7 +1485,7 @@ export function registerFlowCommand(program: Command): void {
       } else if (outcome.shouldReplan) {
         console.log(t('flow.attempt.failReplanTmpl', lang, { op: options.op }));
         // BUG-03 修复：shouldReplan 时自动推进到 scheme_pending
-        mgr.advancePhase(options.op, 'scheme_pending');
+        mgr.advancePhase(resolvedOp.fullId, 'scheme_pending');
         mgr.save();
         console.log(t('flow.attempt.autoReplan', lang));
       }
@@ -1829,32 +1885,50 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
 
-      // 解析 opId 查找 op
-      const dotIdx = options.op.lastIndexOf('.');
-      if (dotIdx === -1) {
+      // OF-02：统一 op 引用解析（全名 / 短 ID 同语义）；不再自带 lastIndexOf('.') 拒绝（同仓禁双套 ID 语义）
+      const resolvedOp = mgr.resolveOpRef(options.op);
+      if (!resolvedOp) {
+        const diagnosis = mgr.diagnoseOpRef(options.op);
+        const ambiguous = diagnosis?.reason === 'ambiguous';
+        const message = ambiguous
+          ? t('flow.opRef.ambiguousTmpl', lang, {
+            op: options.op,
+            matches: (diagnosis?.matches ?? []).join(', ') || t('common.none', lang),
+          })
+          : t('flow.opRef.notFoundTmpl', lang, { op: options.op });
+        const candidates = diagnosis?.candidates ?? [];
+        // v1.5.14：全名引用的阶段不存在 → 保留既有 STAGE_NOT_FOUND 契约
+        // （docs/commands.md `flow retry` 与 json-contract；短 ID 未命中仍走 INVALID_ARGUMENT）。
+        const dotIdx = options.op.lastIndexOf('.');
+        if (dotIdx > 0) {
+          const rawStageId = options.op.substring(0, dotIdx);
+          const stageId = normalizeStageId(rawStageId) ?? rawStageId;
+          if (!data.stages[stageId] && !data.stages[rawStageId]) {
+            failRefusal({
+              code: 'STAGE_NOT_FOUND',
+              message: t('flow.retry.errorStageNotFoundTmpl', lang, { stage: stageId }),
+              detail: { reason: 'stage-not-found', stage: stageId },
+            });
+            return;
+          }
+        }
+        const stderrLines = candidates.length > 0
+          ? [message, t('flow.opRef.candidatesTmpl', lang, { candidates: candidates.join(', ') })]
+          : [message];
         failRefusal({
           code: 'INVALID_ARGUMENT',
-          message: t('common.invalidOpId', lang),
-          detail: { reason: 'invalid-op-id', op: options.op },
-        });
-        return;
-      }
-      const rawStageId = options.op.substring(0, dotIdx);
-      const opLocalId = options.op.substring(dotIdx + 1);
-
-      // REV-007：短名前缀归一化（与 op-012 advance 同范式）+ 双键回退（归一化键优先）
-      const stageId = normalizeStageId(rawStageId) ?? rawStageId;
-      const stage = data.stages[stageId] ?? data.stages[rawStageId];
-      if (!stage) {
-        failRefusal({
-          code: 'STAGE_NOT_FOUND',
-          message: t('flow.retry.errorStageNotFoundTmpl', lang, { stage: stageId }),
-          detail: { reason: 'stage-not-found', stage: stageId },
+          message,
+          detail: {
+            reason: diagnosis?.reason ?? 'op-not-found',
+            op: options.op,
+            candidates,
+          },
+          stderrLines,
         });
         return;
       }
 
-      const op = stage.ops[opLocalId];
+      const op = data.stages[resolvedOp.stage]?.ops?.[resolvedOp.op];
       if (!op) {
         failRefusal({
           code: 'INVALID_ARGUMENT',
@@ -1864,7 +1938,7 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
 
-      const retryCount = mgr.getRetryCount(options.op);
+      const retryCount = mgr.getRetryCount(resolvedOp.fullId);
       // JSON 与人类输出共享同一业务判定（attempts / exhausted 计算单点）
       const exhausted = retryCount >= op.max_attempts;
       if (options.json) {
@@ -2281,6 +2355,38 @@ export function registerFlowCommand(program: Command): void {
         else console.error(m);
       };
       if (!options.dryRun && !enforcePreflightOrFail(projectPath, lang, { reject })) return;
+      // OF-02：归档前提示候选阶段内未完成的 op（仅人类模式；不阻断、不改退出码、`--json` 零变化）。
+      // 位置：preflight 之后、切分之前——判据门外仍可见，避免「op 未标记完成却被静默归档」。
+      if (options.json !== true) {
+        for (const stageId of candidate.stages) {
+          const stage = data.stages[stageId];
+          if (!stage) continue;
+          for (const [opLocalId, op] of Object.entries(stage.ops ?? {})) {
+            if (op && op.state !== 'done') {
+              console.error(t('flow.archive.opNotDoneTmpl', lang, {
+                op: `${stageId}.${opLocalId}`,
+                state: op.state,
+              }));
+            }
+          }
+        }
+      }
+      // OF-04：归档前脏区提示（仅人类模式；不阻断、不改退出码、`--json` 零变化）。
+      // 归档后收尾提交走 `git-commit-idle` 通道，但「先提交再归档」仍是更干净的顺序。
+      if (options.json !== true) {
+        try {
+          const dirty = execSync('git status --porcelain', {
+            cwd: projectPath,
+            encoding: 'utf-8',
+            timeout: 5000,
+          }).trim();
+          if (dirty !== '') {
+            console.error(t('flow.archive.gitDirtyWarnTmpl', lang, { version }));
+          }
+        } catch {
+          /* 非 git 仓库 / git 不可用：静默跳过（与 flow advance 的脏区检查同语义） */
+        }
+      }
       // 切分（纯函数；禁命令层第二套解析/切分）
       const { archive, remainder } = splitForArchive(data, version);
       const counts = archive.counts;

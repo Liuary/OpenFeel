@@ -1,3 +1,23 @@
+## [1.5.14] - 2026-11-07
+
+> 反馈修复批次：外部项目（CultivationOpenRealm）两天长会话实录 `openfeel-feedback-2026-11-07` 中 **OF-02 ~ OF-08**。OF-01（DSH 宿主 auto-review fail-open）不在本仓实现范围（本仓库无 auto-review 代码）。
+
+### Added
+- [stage-129] **preflight 窗口可配（OF-03）**：`OPENFEEL_PREFLIGHT_MAX_AGE_MS`（毫秒，仅正整数生效，缺省 10 分钟）；CLI 闸门、`flow health` 的「最近 preflight」与 DSH 适配器 `feel_status.preflight` 三处同源（`getPreflightMaxAgeMs` 单点），长构建不再必然触发写命令拒绝。
+- [stage-129] **适配器写前自愈（OF-03）**：DSH 适配器写命令前若本地 `.preflight.json` 缺失/过期，先真实执行一次 `flow next --json`（仅一次、失败不阻断），再由 CLI 闸门作唯一权威判定。
+- [stage-129] **第 4 类 shell 白名单（OF-05）**：`OPENFEEL_SHELL_ALLOW`（`||` 分隔、折叠空白后**整条全等**；禁止子串），命中 `undecidable` 命令按 `shell-allowlisted` 放行（`strict` 档同样生效）；第 1/2 类 deny 永不接受白名单。
+- [stage-129] **归档收尾提交（OF-04）**：`git commit` 新增 `git-commit-idle` 通道——无任何非 done 阶段且（`stages` 空集 或 `pipeline.phase === 'done'`）时，允许单条直连、无 `-C`/`-c`、仓库根=工作区的收尾提交（`docs` / 源码等）；纯 `.openfeel/**` 仍优先走 `git-commit-bookkeeping`。
+- [stage-129] **`flow next` 新增两类守卫（OF-06/OF-07）**：`archiving` 提示先 `stage verify`（否则 done 门拒绝）；活跃阶段关联需求 ≥1 且全部终态时提示可收口/归档。
+
+### Changed
+- [stage-129] **建议命令通过路径优先（OF-06）**：`flow next.suggestedCommand` 在 `review_pending` / `test_pending` 优先选 `review_passed` / `test_passed`（`legalNextPhases` 数组顺序不变）；DSH 适配器 `planNextStep.toolCall` 跟随 CLI 权威 `suggestedCommand` 的 `--to`。
+- [stage-129] **门禁诊断信息放宽（OF-08.1）**：guard 审计与 `lastDecision.command` 截断上限 200 → 500 字符。
+- [stage-129] 版本 1.5.14 收口：`package.json` / `dsh/package.json`（version + `requiresCli`）/ `package-lock.json` 根 version 两处 / CHANGELOG / VERSIONS / README 最新版本行 / `dsh/ADAPTER.md` requiresCli / `openfeel-cli-usage` skill 快照与能力行同步；`npm run build` 重生成 AUTO-GENERATED 段。
+
+### Fixed
+- [stage-129] **op 短 ID 静默 no-op（OF-02）**：`flow attempt --op op-001` / `flow retry --op op-001` 现按「当前阶段优先 → 全 stages 唯一命中」解析；歧义/未命中列出候选并非 0 退出（不再打印成功却什么都没写）；`flow advance --op` 回显解析后的全名。短 ID 的 draft 守卫改用解析后的阶段/op。
+- [stage-129] **归档前可见性（OF-02/OF-04）**：`flow archive` 人类模式在写盘前提示「候选阶段内未完成的 op」与「工作区未提交改动」；`--json` 三键/十键契约零变化。
+
 ## [1.5.13] - 2026-11-05
 
 > 小批次：**`git commit` 的允许相位从 `exec_running|archiving` 扩到四相位**（`exec_running|review_passed|test_passed|archiving`），并修掉 `openfeel-cli-usage` skill frontmatter 被裸 `#` 截断、导致 v1.5.10~12 能力串丢失的问题。

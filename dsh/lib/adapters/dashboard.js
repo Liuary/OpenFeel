@@ -404,6 +404,13 @@ export function planNextStep(snapshot) {
     ? focus.suggestedCommand
     : `openfeel flow advance --stage ${stage} --to <${nextPhases[0] ?? 'phase'}>`;
 
+  // v1.5.14 / OF-06.3：toolCall 跟随 CLI 权威 `suggestedCommand` 的 `--to <phase>`；
+  // 解析不到或不在合法相位内才回退 `nextPhases[0]`（形状不变）。
+  const suggestedMatch = /--to\s+(\S+)/.exec(cliCommand);
+  const suggestedTo = suggestedMatch !== null && nextPhases.includes(suggestedMatch[1])
+    ? suggestedMatch[1]
+    : null;
+
   return {
     phase,
     stage,
@@ -421,7 +428,7 @@ export function planNextStep(snapshot) {
     cli: cliCommand,
     toolCall: nextPhases.length === 0
       ? null
-      : { tool: 'feel_flow', arguments: { action: 'advance', stage, to: nextPhases[0] } },
+      : { tool: 'feel_flow', arguments: { action: 'advance', stage, to: suggestedTo ?? nextPhases[0] } },
     /** OpenFeel 的交接标记；DSH 侧建议配合 `subagent` 工具派发。 */
     handoff: agent === 'none' || agent === 'unknown' ? null : `[HANDOFF: ${agent}]`,
   };

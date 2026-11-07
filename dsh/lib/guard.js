@@ -119,6 +119,43 @@ export function resolveShellGate(raw) {
 }
 
 /**
+ * `OPENFEEL_SHELL_ALLOW` 白名单解析（v1.5.14 / stage-129 OF-05）。
+ *
+ * `||` 分隔多条；条目与命令在比较前都折叠空白、去首尾。只用于第 4 类
+ * `undecidable` 出口，且必须**整条命令全等**——绝不做子串匹配：否则白名单
+ * `npm run build` 会把 `rm -rf x && npm run build` 一起放行。
+ *
+ * @param {unknown} [raw]
+ * @returns {string[]}
+ */
+function parseShellAllowlist(raw = process.env.OPENFEEL_SHELL_ALLOW) {
+  if (typeof raw !== 'string' || raw.trim() === '') return [];
+  return raw
+    .split('||')
+    .map((entry) => entry.replace(/\s+/g, ' ').trim())
+    .filter((entry) => entry !== '');
+}
+
+/** 命令与白名单条目共用的归一化：折叠连续空白 + 去首尾。 */
+function collapseShellWhitespace(value) {
+  return String(value).replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * 命令是否命中 `OPENFEEL_SHELL_ALLOW`（整条全等；空命令永不命中）。
+ *
+ * @param {string} command
+ * @param {string[]} entries
+ * @returns {boolean}
+ */
+function isShellAllowlisted(command, entries) {
+  if (entries.length === 0 || typeof command !== 'string') return false;
+  const normalized = collapseShellWhitespace(command);
+  if (normalized === '') return false;
+  return entries.some((entry) => entry === normalized);
+}
+
+/**
  * 大小写不敏感文件系统：Windows + 默认 macOS（APFS/HFS+）。
  * 在这两类平台上把路径统一小写，防止 `.OPENFEEL/FLOW.JSON` 绕过。
  * 导出以允许在任意平台测试该分支（platform 可注入）。
@@ -412,12 +449,16 @@ export function isExemptPath(absolute, cwd) {
 }
 
 /**
- * 审计里的命令片段（v1.5.11 D-126-02）：折叠空白并截断到 200 字符。
+ * 审计里的命令片段（v1.5.11 D-126-02）：折叠空白并截断到 500 字符。
+ *
+ * v1.5.14 / stage-129 OF-08.1：上限 200 → 500。`lastDecision`
+ * （`.openfeel/dev/guard-state.json`）与审计（`guard-audit.jsonl`）**共用**该上限
+ * （两处都走本函数，没有第二份截断逻辑）；长命令的排查信息不再被腰斩。
  * @param {unknown} command
  * @param {number} [limit]
  * @returns {string | undefined}
  */
-function truncateCommand(command, limit = 200) {
+function truncateCommand(command, limit = 500) {
   if (typeof command !== 'string') return undefined;
   const value = command.replace(/\s+/g, ' ').trim();
   if (value === '') return undefined;
@@ -432,10 +473,10 @@ function truncateCommand(command, limit = 200) {
  * —— 那恰好是最需要证据的时刻。写失败也出声（stderr）。
  *
  * 每行必须带 `cwdSource`（验收 14）与 `decision`（allow|deny|warn）；shell 行
- * 额外带 `command`（截断 ≤200 字符），否则「门禁是否真的拦过」无法自证。
+ * 额外带 `command`（截断 ≤500 字符，v1.5.14 / stage-129 OF-08.1），否则「门禁是否真的拦过」无法自证。
  *
  * @param {string | null} cwd 已归一化工作区（null = 不可解析）
- * @param {{ event?: 'guard_allow'|'guard_deny'|'guard_shell_unresolved'|'guard_shell_downgraded', decision?: 'allow'|'deny'|'warn', tool: string, reason: string, phase: string, paths: string[], cwdSource?: string, command?: string }} event
+ * @param {{ event?: 'guard_allow'|'guard_deny'|'guard_shell_unresolved'|'guard_shell_downgraded'|'guard_shell_allowlisted', decision?: 'allow'|'deny'|'warn', tool: string, reason: string, phase: string, paths: string[], cwdSource?: string, command?: string }} event
  */
 function recordGuardAudit(cwd, event) {
   const entry = {
@@ -3305,6 +3346,15 @@ export function createOpenFeelGuard(options = {}) {
       /** 第 4 类：默认告警放行 + 审计 + stderr 一行；`strict` 下拒绝。 */
       const undecidableShell = (detail, paths) => {
         const reason = 'shell-undecidable';
+        // v1.5.14 / stage-129 OF-05：`OPENFEEL_SHELL_ALLOW` 是**用户显式配置**的整条
+        // 命令白名单，只挂在这一类出口上（第 1/2 类 deny 永不触达）。整条全等才算命中
+        // —— 子串匹配会让 `rm -rf x && npm run build` 被白名单 `npm run build` 顺带放行。
+        // `strict` 下同样放行（这是用户显式声明的例外，不是门禁降级）。
+        if (isShellAllowlisted(command, parseShellAllowlist())) {
+          recordShellAudit({ event: 'guard_shell_allowlisted', decision: 'allow', reason: 'shell-allowlisted', paths });
+          recordDecision('allow', { reason: 'shell-allowlisted', paths });
+          return undefined;
+        }
         if (shellGate.undecidable === 'deny') {
           recordShellAudit({ event: 'guard_deny', decision: 'deny', reason, paths });
           recordDecision('deny', { reason, paths });
@@ -3366,6 +3416,27 @@ export function createOpenFeelGuard(options = {}) {
             && flow.ok === true;
           const scope = canBeBookkeeping ? inspectCommitBookkeeping(resolvedCwd, baseDir) : null;
           if (scope !== null && scope.ok === true) return allowShell('git-commit-bookkeeping', []);
+          // v1.5.14 / stage-129 OF-04：归档收尾提交（idle commit）。
+          //
+          // 版本归档 / 收口后只剩「done 阶段」或「无阶段」，涉 docs/源码的收尾提交
+          // 原本无处可走（书账窄口只认纯 `.openfeel/**`）。这里开一道**窄于四相位门**
+          // 的通道，条件同样缺一不可（见 plan R1）：
+          // ① 与书账窄口同源的命令/项目条件（单条直连 commit、无 -C/-c、可判定、
+          //    项目工作区、flow 可读）；
+          // ② **无任何活跃阶段**（`activeStages` 空）；
+          // ③ `stages` 是空集 **或** `pipeline.phase === 'done'` —— 「done 阶段但
+          //    pipeline 仍在跑」不满足（既有 done 负例夹具正是这种形态，仍拒）；
+          // ④ 实际生效仓库根 = 项目工作区（`repoMismatch !== true`）。待提交路径里的
+          //    offender **不构成拒绝**：这是收尾提交，本来就要提交 src/docs。
+          const idleEligible = canBeBookkeeping
+            && activeStages(flow.value).length === 0
+            && (
+              Object.keys(flow.value?.stages ?? {}).length === 0
+              || flow.value?.pipeline?.phase === 'done'
+            );
+          if (idleEligible && scope !== null && scope.repoMismatch !== true) {
+            return allowShell('git-commit-idle', []);
+          }
           // v1.5.13 / stage-128：文案按子命令分叉，相位串从 `classification.phases`
           // 派生（单一真值，防数组与文案两处漂移）。**必须保留**「git 工作区写」字样
           // （既有断言 `/git 工作区写/`），非 commit 的通用文案逐字保留（stash/clean/

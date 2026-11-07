@@ -89,6 +89,8 @@ export const flow: I18nDomain = {
   'next.guardNoLegalTargets':   { key: 'flow.next.guardNoLegalTargets',   zh: '当前相位无合法下一相位（可能需要 --force、调整工作流模式或检查转移表）', en: '' },
   'next.guardTierDiffTmpl':     { key: 'flow.next.guardTierDiffTmpl',     zh: '展示档位 {display} ≠ 生效档位 {effective}（flow advance 缺省使用 {effective}）', en: '' },
   'next.guardConfigComboTmpl':  { key: 'flow.next.guardConfigComboTmpl',  zh: '配置组合静默无效：execution_mode={mode} 且 auto_advance={auto}（自动推进不会生效；依赖关系只写在注释里）', en: '' },
+  'next.guardArchivingVerifyTmpl': { key: 'flow.next.guardArchivingVerifyTmpl', zh: 'archiving 收口前置：先执行 `openfeel stage verify {stage} --result pass --kind <test|manual|build> --by <agent> --note <摘要> --evidence <证据>`（阶段 ID 为位置参数），否则 done 门拒绝', en: '' },
+  'next.guardRequirementAllDoneTmpl': { key: 'flow.next.guardRequirementAllDoneTmpl', zh: '关联需求已全部完成（{n} 条，均处于终态）：可考虑阶段收口 / 归档（openfeel flow advance --stage {stage} --to done，或归档该版本）', en: '' },
 
   // flow overview
   'overview.title':             { key: 'flow.overview.title',             zh: 'OpenFeel 流水线全景视图',                 en: '' },
@@ -170,6 +172,9 @@ export const flow: I18nDomain = {
   'archive.unfinishedWarnTmpl':       { key: 'flow.archive.unfinishedWarnTmpl',       zh: '警告：版本 {version} 仍有 {n} 条未完成需求，已按 --allow-unfinished 继续归档（未完成需求保留在 flow.json）', en: '' },
   'archive.requirementsTmpl':         { key: 'flow.archive.requirementsTmpl',         zh: '需求：{requirements} 条（终态，已随版本移入归档文件）', en: '' },
   'archive.previewRequirementsTmpl':  { key: 'flow.archive.previewRequirementsTmpl',  zh: '[dry-run] 将归档需求：{requirements} 条', en: '' },
+  // flow archive：未完成 op 提示（OF-02；仅人类模式，不阻断）
+  'archive.opNotDoneTmpl':            { key: 'flow.archive.opNotDoneTmpl',            zh: '提示：{op} 未完成（state={state}）；归档不会为其补记完成标记（如确实已完成，请先 openfeel flow attempt --op {op} --result pass）', en: '' },
+  'archive.gitDirtyWarnTmpl':         { key: 'flow.archive.gitDirtyWarnTmpl',         zh: '提示：工作区有未提交改动；建议先提交再归档 {version}（归档后收尾提交可用 `git-commit-idle` 通道）', en: '' },
 
   // flow stage remove
   'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '阶段不存在：{stage}',                             en: '' },
@@ -240,6 +245,11 @@ export const flow: I18nDomain = {
   'advance.gitDirtyBoxBottom':  { key: 'flow.advance.gitDirtyBoxBottom',  zh: '[!] ╚════════════════════════════════════════╝', en: '' },
   'advance.revBlockedTitleTmpl':{ key: 'flow.advance.revBlockedTitleTmpl',zh: '[!] 检测到 {n} 个未解决的阻塞 REV：',          en: '' },
   'advance.revBlockedItemTmpl': { key: 'flow.advance.revBlockedItemTmpl', zh: '    {id}: {title} (priority={priority})',       en: '' },
+
+  // op 引用解析（OF-02：flow attempt / flow retry 共用的短 ID 与全名解析失败文案）
+  'opRef.notFoundTmpl':         { key: 'flow.opRef.notFoundTmpl',         zh: '错误：未找到 op "{op}"（当前阶段与任一阶段均无同名 op）',  en: '' },
+  'opRef.ambiguousTmpl':        { key: 'flow.opRef.ambiguousTmpl',        zh: '错误：op "{op}" 存在歧义（多个阶段存在同名 op）：{matches}', en: '' },
+  'opRef.candidatesTmpl':       { key: 'flow.opRef.candidatesTmpl',       zh: '候选（请使用完整 ID <stage>.<op>）：{candidates}',          en: '' },
 
   // flow attempt
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '错误：--result 必须为 pass 或 fail',       en: '' },

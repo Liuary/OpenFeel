@@ -10,12 +10,12 @@
  *
  * 硬约束：
  * - 全部为**纯函数**（零 I/O、零副作用），非法输入一律降级跳过，**绝不抛**；
- * - 不新增写盘；本模块不 import `preflight.ts` 的写入口（只 import 其类型与阈值常量）；
+ * - 不新增写盘；本模块不 import `preflight.ts` 的写入口（只 import 其类型与阈值读取函数）；
  * - token 无法直接测 ⇒ 这些只是「流程行为是否变化」的代理指标（见 docs/commands.md 局限）。
  */
 import { MAX_LOG_ENTRIES, type LogEntry } from './flow-manager.js';
 import { findPhaseEntry, type PhaseEntryAnchor } from './phase-entered.js';
-import { PREFLIGHT_MAX_AGE_MS, type PreflightRecord } from './preflight.js';
+import { getPreflightMaxAgeMs, type PreflightRecord } from './preflight.js';
 
 /**
  * 统计窗口 = 全保留条目。
@@ -164,12 +164,12 @@ export function computePlanDwell(log: LogEntry[], window: number = PROCESS_HEALT
 
 /**
  * 最近 preflight（**只读**；`record === null` → 无记录）。
- * 阈值复用 `PREFLIGHT_MAX_AGE_MS`（不另写 10 分钟常量，避免与核心闸门漂移）。
+ * 阈值复用 `getPreflightMaxAgeMs()`（与核心闸门同一来源，含 `OPENFEEL_PREFLIGHT_MAX_AGE_MS`）。
  */
 export function describePreflight(
   record: PreflightRecord | null,
   nowMs: number,
-  maxAgeMs: number = PREFLIGHT_MAX_AGE_MS,
+  maxAgeMs: number = getPreflightMaxAgeMs(),
 ): PreflightAge {
   if (record === null || typeof record.at !== 'string') {
     return { at: null, ageMs: null, ok: false };

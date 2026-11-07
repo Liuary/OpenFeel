@@ -3,7 +3,8 @@
  *
  * 目的：让「先读状态、再写状态」从提示词约定变成可校验事实。
  * - `flow next` / `flow status` 记录 `.openfeel/dev/.preflight.json`；
- * - 写命令（flow advance / plan stage add / req add / claim）在 strict 模式下要求 10 分钟内读过状态。
+ * - 写命令（flow advance / plan stage add / req add / claim）在 strict 模式下要求窗口内读过状态
+ *   （默认 10 分钟，`OPENFEEL_PREFLIGHT_MAX_AGE_MS` 可配，供长构建显式放宽）。
  *
  * 模式（OPENFEEL_PREFLIGHT）：off | warn（默认，仅 TTY 提示）| strict（拒绝）。
  * DSH 适配器以 strict 调用 CLI，用户 shell 默认 warn。
@@ -13,6 +14,27 @@ import { dirname, join } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 
 export const PREFLIGHT_MAX_AGE_MS = 10 * 60_000;
+
+/** 解析「正整数」窗口配置；非法（非数字 / ≤0 / 非整数 / 空）→ null（调用方用默认）。 */
+function parsePositiveInteger(raw: string | undefined): number | null {
+  if (typeof raw !== 'string') return null;
+  const text = raw.trim();
+  if (text === '') return null;
+  const value = Number(text);
+  if (!Number.isFinite(value) || value <= 0 || !Number.isInteger(value)) return null;
+  return value;
+}
+
+/**
+ * preflight 账本有效期（毫秒）。
+ *
+ * 单一阈值来源：`OPENFEEL_PREFLIGHT_MAX_AGE_MS` 仅接受**正整数**，任何非法值
+ * （非数字、0、负数、小数、空白）一律回退 `PREFLIGHT_MAX_AGE_MS`（10 分钟）。
+ * `dsh/lib/adapters/preflight.js` 以同一语义独立读取该环境变量。
+ */
+export function getPreflightMaxAgeMs(env: NodeJS.ProcessEnv = process.env): number {
+  return parsePositiveInteger(env.OPENFEEL_PREFLIGHT_MAX_AGE_MS) ?? PREFLIGHT_MAX_AGE_MS;
+}
 
 export type PreflightMode = 'off' | 'warn' | 'strict';
 
@@ -100,7 +122,7 @@ export function checkPreflight(projectPath: string, now: number = Date.now()): P
     return { ok: false, mode, reason: 'invalid', record, ageMs: null };
   }
   const ageMs = now - at;
-  if (ageMs > PREFLIGHT_MAX_AGE_MS) {
+  if (ageMs > getPreflightMaxAgeMs()) {
     return { ok: false, mode, reason: 'expired', record, ageMs };
   }
   return { ok: true, mode, reason: 'ok', record, ageMs };

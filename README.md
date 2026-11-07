@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.13**（提交相位放宽 + skill frontmatter 修复） — ① `git commit` 允许相位由 `exec_running|archiving` 扩为 **`exec_running|review_passed|test_passed|archiving`**（审查/测试通过即可提交，无需先推进到 archiving；写侧未放宽，其余源码写仍只认 `exec_running`）；② 修复 `openfeel-cli-usage` skill frontmatter 被裸 `#` 截断（`出口 #43` → `出口 No.43`，`description` 解析长度 2455 → 2766，v1.5.10/11/12 能力串重回 frontmatter）+ 新增 S6 回归测试。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.14**（外部长会话反馈修复：op 落盘 / preflight 自愈 / 归档收尾提交 / 门禁体验） — ① `flow attempt` / `flow retry` 支持 op 短 ID，未找到/歧义列出候选并非 0 退出（不再静默 no-op）；② preflight 窗口可用 `OPENFEEL_PREFLIGHT_MAX_AGE_MS` 放宽，适配器写前账本过期会真实自愈一次；③ 归档后无活跃阶段时新增 `git-commit-idle` 收尾提交通道；④ `flow next` 建议走通过路径、`archiving` 前提示先 verify、关联需求全完成时提示收口；⑤ `OPENFEEL_SHELL_ALLOW` 整条命令白名单 + 命令截断 200→500。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

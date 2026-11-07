@@ -4464,7 +4464,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.5.13 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.14 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -4501,6 +4501,16 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
 > 命令职责分层：\`plan stage add\`（完整，推荐）> \`flow stage add\`（仅注册 \`flow.json\`，不建目录）> \`stage create\`（已弃用）。
+
+## v1.5.14（stage-129）
+
+> 外部长会话反馈修复：op 结果真正落盘、preflight 长任务自愈、归档收尾提交、门禁体验。JSON 契约不变（**43 成功出口 / 44 注册 \`--json\` 选项**）；\`flow next\` 的 12 键与 \`guards\` 顺序约定不变（新增两项固定追加在既有守卫之后）。
+
+- **op 引用解析（v1.5.14 / OF-02）**：\`flow attempt\` / \`flow retry\` 接受短 op ID（当前阶段优先 → 全 stages 唯一命中；歧义/未找到列出候选并非 0 退出）；\`flow advance --op\` 回显解析后的 \`stage.op\`。归档前人类模式提示未完成 op 与脏区（\`--json\` 不变）。
+- **preflight 窗口（v1.5.14 / OF-03）**：\`OPENFEEL_PREFLIGHT_MAX_AGE_MS\`（毫秒，正整数，缺省 10 分钟）在 CLI / \`flow health\` / DSH 适配器同源；适配器写命令前对过期账本会先真实执行一次 \`flow next --json\`。
+- **归档收尾提交（v1.5.14 / OF-04）**：\`git-commit-idle\` —— 无活跃阶段（\`stages\` 空集或 \`pipeline.phase=done\`）时，单条直连、无 \`-C\`/\`-c\`、仓库根=工作区的 \`git commit\` 可提交 docs/源码收尾；纯 \`.openfeel/**\` 仍为 \`git-commit-bookkeeping\`。
+- **建议命令与提醒（v1.5.14 / OF-06、OF-07）**：\`flow next.suggestedCommand\` 在 \`review_pending\` / \`test_pending\` 优先 \`review_passed\` / \`test_passed\`；\`archiving\` 提示先 \`stage verify\`；关联需求（≥1 条）全部终态时提示可收口/归档。
+- **shell 白名单与诊断（v1.5.14 / OF-05、OF-08.1）**：\`OPENFEEL_SHELL_ALLOW\`（\`||\` 分隔，折叠空白后整条全等）放行第 4 类命令（\`strict\` 同样生效）；guard 审计与 \`lastDecision.command\` 截断 500 字符。
 
 ## v1.5.13（stage-128）
 

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-05T13:50:25.733Z",
-    "revision": 2025,
+    "updated": "2026-11-07T09:56:50.652Z",
+    "revision": 2037,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -41,17 +41,37 @@
       "v1.5.12",
       "v1.5.13"
     ],
-    "last_req_seq": 21
+    "last_req_seq": 22
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "",
+      "stage": "v1.5.14-stage-129",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
+  "stages": {
+    "v1.5.14-stage-129": {
+      "name": "v1.5.14-stage-129",
+      "phase": "exec_running",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-022",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-07T09:12:17.670Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
   "reviews": [],
   "log": [
     {
@@ -1906,6 +1926,130 @@
         "log": 11,
         "requirements": 1
       }
+    },
+    {
+      "time": "2026-11-07T09:10:46.042Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-022",
+        "title": "体验反馈修复批次：op 状态落盘 / preflight 长任务 / 归档收尾提交 / 门禁体验（OF-02~OF-08）"
+      }
+    },
+    {
+      "time": "2026-11-07T09:11:13.638Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-07T09:11:15.878Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-022",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-07T09:11:19.325Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.14-stage-129",
+        "requirementId": "REQ-022",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-07T09:12:17.665Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-07T09:17:33.562Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T09:17:37.009Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T09:53:11.856Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-022",
+        "result": "pass",
+        "by": "openfeel-reviewer (independent subagent)",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-07T09:56:17.681Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-022",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel"
+      }
+    },
+    {
+      "time": "2026-11-07T09:56:32.543Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-07T09:56:46.328Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-07T09:56:50.652Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2127,6 +2271,34 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-022",
+      "title": "体验反馈修复批次：op 状态落盘 / preflight 长任务 / 归档收尾提交 / 门禁体验（OF-02~OF-08）",
+      "status": "done",
+      "created_at": "2026-11-07T09:10:46.041Z",
+      "updated_at": "2026-11-07T09:56:50.652Z",
+      "target_version": "v1.5.14",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-022.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-07T09:11:15.878Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer (independent subagent)",
+        "at": "2026-11-07T09:53:11.856Z",
+        "note": "两轮独立审查：计划审查（OF-04 通道顺序/夹具、OF-03 阈值单源、OF-05 整条全等、OF-02 flow retry 短 ID）与代码审查（archiving verify 命令形态错误、retry STAGE_NOT_FOUND 契约回退 2 处 blocking 已修复；done 阶段短 ID 优先级、全名候选范围 2 处非阻塞也已修复）。全量测试 2370 通过。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel",
+        "at": "2026-11-07T09:56:17.681Z",
+        "note": "全量门禁通过：vitest 2370/2370（95 文件）、dsh guard 179/179、preflight 10/10、contract 47/47、verify 118/118、tsc --noEmit 0、lint i18n 1194 键一致、npm run build 单源一致性 3/3、CLI --version=1.5.14 与 package.json 一致。",
+        "evidence": "npm test; node dsh/test/guard.js; node dsh/test/preflight.js; node dsh/test/contract.js; node dsh/test/verify.js; npx tsc --noEmit; node bin/openfeel.js lint i18n; npm run build"
+      }
     }
   ]
 }

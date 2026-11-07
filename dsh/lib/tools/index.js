@@ -741,7 +741,7 @@ export function createTools(context) {
     parameters: {
       action: stringEnum(['list', 'create', 'publish', 'rename', 'remove', 'register', 'attempt', 'retry'], '操作。', { required: true }),
       stage: string('阶段 ID。除 retry 外必需。'),
-      op: string('操作 ID（如 op-001，或 attempt/retry 用的完整 ID v1.2.1-stage-93.op-001）。'),
+      op: string('操作 ID：完整 ID `<stage>.op-001`，或阶段内短 ID `op-001`（当前阶段优先；歧义/未找到会列候选并报错）。'),
       title: string('方案标题（create/rename）。'),
       result: stringEnum(['pass', 'fail'], 'attempt 的执行结果。'),
       project: string('项目根目录。'),

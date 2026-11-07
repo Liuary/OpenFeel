@@ -4248,6 +4248,266 @@ describe('flow 命令（stage-41）', () => {
     });
   });
   // ═══════════════════════════════════════════════
+  // v1.5.14-stage-129：OF-02（op 短 ID / 静默 no-op）/ OF-06（suggestedCommand）/ OF-07（悬挂阶段提醒）
+  // ═══════════════════════════════════════════════
+
+  describe('v1.5.14-stage-129 OF-02 / OF-06 / OF-07', () => {
+    const STAGE = 'v1.5.14-stage-129';
+
+    /** 最小 pending op 夹具 */
+    function opFixture(id: string): Record<string, unknown> {
+      return {
+        id, title: 't', state: 'pending', assignee: 'openfeel-executor', attempts: 0, max_attempts: 3,
+        checkpoints: {
+          plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending',
+        },
+      };
+    }
+
+    interface StageSeed {
+      phase?: PipelinePhase;
+      ops?: Record<string, Record<string, unknown>>;
+      /** 关联需求 ID（写入 `stage.requirements[]` 多值权威面） */
+      requirements?: string[];
+    }
+
+    /**
+     * 写多阶段夹具（addStage 建记录 → 覆盖 phase/ops/requirements → 显式聚焦 current）。
+     * requirements 参数写顶层需求表（status 由用例决定）。
+     */
+    function seedStages(
+      stages: Record<string, StageSeed>,
+      currentStage?: string,
+      requirements?: Array<{ id: string; status: string }>,
+    ): void {
+      const mgr = new FlowManager(tmpDir);
+      for (const [key, seed] of Object.entries(stages)) {
+        mgr.addStage(key);
+        const stage = mgr.getData()!.stages[key];
+        stage.phase = seed.phase ?? 'exec_running';
+        stage.ops = (seed.ops ?? {}) as never;
+        if (seed.requirements && seed.requirements.length > 0) {
+          stage.requirements = seed.requirements.map((id) => ({ id }));
+        }
+      }
+      if (currentStage !== undefined) {
+        mgr.getData()!.pipeline.current = { stage: currentStage, op: '' };
+      }
+      if (requirements && requirements.length > 0) {
+        mgr.getData()!.requirements = requirements.map((r) => ({
+          id: r.id,
+          title: r.id,
+          status: r.status as never,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        }));
+      }
+      mgr.save();
+    }
+
+    /** 读 flow.json 当前快照 */
+    function flowSnapshot(): FlowData {
+      return JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as FlowData;
+    }
+
+    /** stdout / stderr 聚合 */
+    function stdoutText(): string {
+      return logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    }
+    function stderrText(): string {
+      return errorMock.mock.calls.map((c) => String(c[0])).join('\n');
+    }
+
+    it('OF-02：短 ID attempt（当前阶段命中）→ state=done / attempts=1 / attempted_at+completed_at 有值', async () => {
+      seedStages({ [STAGE]: { ops: { 'op-001': opFixture('op-001'), 'op-002': opFixture('op-002') } } }, STAGE);
+      exitMock.mockClear();
+      logMock.mockClear();
+      errorMock.mockClear();
+
+      await safeParse(['flow', 'attempt', '--op', 'op-001', '--result', 'pass']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      const op = flowSnapshot().stages[STAGE].ops['op-001'] as Record<string, unknown>;
+      expect(op.state).toBe('done');
+      expect(op.attempts).toBe(1);
+      expect(typeof op.attempted_at).toBe('string');
+      expect(typeof op.completed_at).toBe('string');
+      expect(op.completed_at).toBe(op.attempted_at);
+      // recordAttempt 只写 state / attempted_at / completed_at，**不写 checkpoints**（checkpoints 由 advancePhase 维护）
+      expect((op.checkpoints as { exec: { self: string } }).exec.self).toBe('pending');
+      expect(stdoutText()).toContain('执行成功');
+      expect(stderrText()).toBe('');
+    });
+
+    it('OF-02：短 ID 跨阶段唯一命中（当前阶段无同名 op）→ 解析到该阶段并落盘', async () => {
+      seedStages({
+        'v1.0.0-stage-211': { ops: {} },
+        'v1.0.0-stage-212': { ops: { 'op-001': opFixture('op-001') } },
+      }, 'v1.0.0-stage-211');
+      exitMock.mockClear();
+
+      await safeParse(['flow', 'attempt', '--op', 'op-001', '--result', 'pass']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      const flow = flowSnapshot();
+      expect((flow.stages['v1.0.0-stage-212'].ops['op-001'] as Record<string, unknown>).state).toBe('done');
+      expect(flow.pipeline.current.stage).toBe('v1.0.0-stage-212');
+    });
+
+    it('OF-02：短 ID 未找到 → exit 1 + stderr 列出候选 + 无成功文案', async () => {
+      seedStages({ [STAGE]: { ops: { 'op-001': opFixture('op-001') } } }, STAGE);
+      exitMock.mockClear();
+      logMock.mockClear();
+      errorMock.mockClear();
+
+      await safeParse(['flow', 'attempt', '--op', 'op-999', '--result', 'pass']);
+
+      expect(exitMock).toHaveBeenCalledWith(1);
+      const err = stderrText();
+      expect(err).toContain('未找到');
+      expect(err).toContain(`${STAGE}.op-001`);
+      expect(stdoutText()).not.toContain('执行成功');
+      // 静默 no-op 不再发生：目标 op 未被改动
+      expect((flowSnapshot().stages[STAGE].ops['op-001'] as Record<string, unknown>).state).toBe('pending');
+    });
+
+    it('OF-02：短 ID 歧义（当前阶段无同名 op，≥2 阶段命中）→ exit 1 + 歧义文案 + 命中列表', async () => {
+      seedStages({
+        'v1.0.0-stage-221': { ops: { 'op-002': opFixture('op-002') } },
+        'v1.0.0-stage-222': { ops: { 'op-001': opFixture('op-001') } },
+        'v1.0.0-stage-223': { ops: { 'op-001': opFixture('op-001') } },
+      }, 'v1.0.0-stage-221');
+      exitMock.mockClear();
+      errorMock.mockClear();
+
+      await safeParse(['flow', 'attempt', '--op', 'op-001', '--result', 'pass']);
+
+      expect(exitMock).toHaveBeenCalledWith(1);
+      const err = stderrText();
+      expect(err).toContain('歧义');
+      expect(err).toContain('v1.0.0-stage-222.op-001');
+      expect(err).toContain('v1.0.0-stage-223.op-001');
+    });
+
+    it('OF-02：retry 短 ID 同语义（不再自带 lastIndexOf(\'.\') 拒绝）', async () => {
+      seedStages({ [STAGE]: { ops: { 'op-001': opFixture('op-001') } } }, STAGE);
+      exitMock.mockClear();
+      logMock.mockClear();
+      errorMock.mockClear();
+
+      await safeParse(['flow', 'retry', '--op', 'op-001']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      const out = stdoutText();
+      expect(out).toContain('op-001');
+      expect(out).toContain('0 / 3');
+      expect(stderrText()).toBe('');
+    });
+
+    it('OF-02：retry 全名引用的阶段不存在 → STAGE_NOT_FOUND（既有契约保留）', async () => {
+      seedStages({ [STAGE]: { ops: { 'op-001': opFixture('op-001') } } }, STAGE);
+      exitMock.mockClear();
+      errorMock.mockClear();
+
+      try {
+        await safeParse(['flow', 'retry', '--op', 'v9.9.9-stage-999.op-001']);
+
+        expect(exitMock).toHaveBeenCalledWith(1);
+        expect(stderrText()).toContain('未找到阶段');
+        expect(stderrText()).toContain('v9.9.9-stage-999');
+      } finally {
+        // failRefusal 会置 process.exitCode=1；本用例断言后复位，避免泄漏到后续用例
+        process.exitCode = 0;
+      }
+    });
+
+    it('OF-02：current 指向已 done 阶段时不独占短 ID（歧义报错，不静默写死阶段）', async () => {
+      seedStages({
+        'v1.0.0-stage-231': { phase: 'done', ops: { 'op-001': opFixture('op-001') } },
+        'v1.0.0-stage-232': { phase: 'exec_running', ops: { 'op-001': opFixture('op-001') } },
+      }, 'v1.0.0-stage-231');
+      exitMock.mockClear();
+      errorMock.mockClear();
+
+      await safeParse(['flow', 'attempt', '--op', 'op-001', '--result', 'pass']);
+
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(stderrText()).toContain('歧义');
+      // 两个阶段都未被写：done 阶段保持 done、活跃阶段保持 pending
+      const flow = flowSnapshot();
+      expect((flow.stages['v1.0.0-stage-232'].ops['op-001'] as Record<string, unknown>).state).toBe('pending');
+    });
+
+    it('OF-02：flow advance --op 短 ID 可解析（回显全名）且推进成功', async () => {
+      seedStages({ [STAGE]: { phase: 'plan_pending', ops: { 'op-001': opFixture('op-001') } } }, STAGE);
+      exitMock.mockClear();
+      logMock.mockClear();
+
+      await safeParse(['flow', 'advance', '--stage', STAGE, '--to', 'plan_passed', '--op', 'op-001', '--force']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(stdoutText()).toContain(`${STAGE}.op-001`);
+      expect(flowSnapshot().stages[STAGE].phase).toBe('plan_passed');
+    });
+
+    it('OF-06：review_pending → 建议 review_passed / test_pending → 建议 test_passed（legalNextPhases 顺序不变）', async () => {
+      seedStages({ [STAGE]: { phase: 'review_pending' } }, STAGE);
+      const reviewDoc = await runNextJson();
+      expect(reviewDoc.legalNextPhases).toEqual(['review_failed', 'review_passed']);
+      expect(reviewDoc.suggestedCommand).toBe(`openfeel flow advance --stage ${STAGE} --to review_passed`);
+
+      const mgr = new FlowManager(tmpDir);
+      mgr.getData()!.stages[STAGE].phase = 'test_pending';
+      mgr.save();
+      const testDoc = await runNextJson();
+      expect(testDoc.legalNextPhases).toEqual(['test_failed', 'test_passed']);
+      expect(testDoc.suggestedCommand).toBe(`openfeel flow advance --stage ${STAGE} --to test_passed`);
+    });
+
+    it('OF-06：archiving guards 末尾含 stage verify 前置提示（建议命令仍 advance --to done）', async () => {
+      seedStages({ [STAGE]: { phase: 'archiving' } }, STAGE);
+      const d = await runNextJson();
+      expect(d.legalNextPhases).toEqual(['done']);
+      expect(d.suggestedCommand).toBe(`openfeel flow advance --stage ${STAGE} --to done`);
+      const guards = d.guards as string[];
+      expect(guards).toHaveLength(1);
+      // 实际 CLI 形态：阶段 ID 是 `stage verify` 的**位置参数**（不是 --stage）
+      expect(guards[0]).toContain(`openfeel stage verify ${STAGE} --result pass`);
+      expect(guards[0]).not.toContain('stage verify --stage');
+      expect(guards[0]).toContain(STAGE);
+    });
+
+    it('OF-07：关联需求全部终态（≥1 条）→ guards 末位含收口提示', async () => {
+      seedStages(
+        { [STAGE]: { phase: 'exec_running', requirements: ['REQ-001', 'REQ-002'] } },
+        STAGE,
+        [{ id: 'REQ-001', status: 'done' }, { id: 'REQ-002', status: 'cancelled' }],
+      );
+      const d = await runNextJson();
+      const guards = d.guards as string[];
+      const last = guards[guards.length - 1];
+      expect(last).toContain('关联需求已全部完成');
+      expect(last).toContain('2');
+      expect(last).toContain(STAGE);
+    });
+
+    it('OF-07：关联需求未全完成 / 无关联需求 → 不提示', async () => {
+      seedStages(
+        { [STAGE]: { phase: 'exec_running', requirements: ['REQ-001', 'REQ-002'] } },
+        STAGE,
+        [{ id: 'REQ-001', status: 'done' }, { id: 'REQ-002', status: 'in_progress' }],
+      );
+      const partial = await runNextJson();
+      expect(partial.guards).toEqual([]);
+
+      // 空集不触发（另一阶段，避免重复注册同名阶段）
+      seedStages({ 'v1.5.14-stage-130': { phase: 'exec_running' } }, 'v1.5.14-stage-130');
+      const empty = await runNextJson();
+      expect(empty.guards).toEqual([]);
+    });
+  });
+
+  // ═══════════════════════════════════════════════
   // stage-96 op-002：flow status --json 阶段调度属性 + flow phases --json 档位消歧
   // ═══════════════════════════════════════════════
 
@@ -4804,6 +5064,17 @@ describe('preflight 写命令闸（v1.5.6-stage-114）', () => {
 
   it('flow attempt：strict + 无账本 → 拒绝且 op 状态不变', async () => {
     setupOneStage();
+    // OF-02：attempt 先解析 op 引用（未命中会在 preflight 之前报错）→ 夹具须含目标 op，
+    // 使本用例只考察 preflight 闸门（既有断言与语义不变）。
+    const mgr = new FlowManager(tmpDir);
+    mgr.getData()!.stages['v1.0.0-stage-01'].ops = {
+      'op-001': {
+        id: 'op-001', title: 't', state: 'pending', assignee: 'openfeel-executor',
+        attempts: 0, max_attempts: 3,
+        checkpoints: { plan: 'pending', scheme: 'pending', exec: { attempts: 0, self: 'pending' }, review: 'pending', test: 'pending' },
+      } as never,
+    };
+    mgr.save();
     armStrict();
     const before = flowRaw();
     await safeParse(['flow', 'attempt', '--op', 'v1.0.0-stage-01.op-001', '--result', 'pass']);

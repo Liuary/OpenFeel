@@ -112,7 +112,9 @@
 |---|---|
 | `off` | 永不拒绝、永不输出（**仍会读一次账本**再判模式，不是「不读盘」） |
 | `warn`（默认） | 仅当 `stderr.isTTY` 时提示一行后放行；非 TTY（CI / 管道 / 测试）零输出 |
-| `strict` | 账本缺失 / 过期（> 10 分钟）/ 非法 → 拒绝（退出码 1） |
+| `strict` | 账本缺失 / 过期（> 窗口）/ 非法 → 拒绝（退出码 1） |
+
+**窗口（v1.5.14）**：缺省 10 分钟；`OPENFEEL_PREFLIGHT_MAX_AGE_MS` 可显式放宽（毫秒，仅正整数生效，非法值回退缺省）。CLI 判定、`flow health` 的「最近 preflight」与 DSH 适配器 `feel_status.preflight` 三处同源同语义（`src/core/preflight.ts:getPreflightMaxAgeMs`）。DSH 适配器在写命令前若发现本地账本缺失/过期，会先真实执行一次 `flow next --json` 自愈（仅一次，失败不阻断，CLI 的闸门仍是唯一权威）。
 
 **拒绝形态（统一出口，调用方置码后 `return`）**
 
@@ -304,8 +306,8 @@ openfeel flow next [--json]
 
 - **`responsibleAgent`**：与 `mapPhaseToAgent` 同源（`done → 'none'`）；无活跃阶段 → `'feel'`（显式约定）。
 - **`legalNextPhases`**：`getAvailablePhases(stage)` 的**直接可达**目标（非多步 BFS）；顺序 = 转移表遍历序去重；每个元素均被 `flow advance` 接受。
-- **`suggestedCommand`**：`openfeel flow advance --stage <stage> --to <legalNextPhases[0]>`；空集 → `null`。
-- **`guards`**：本地化字符串数组，顺序固定 ①无活跃阶段 ②`auto_advance=disabled` ③blocking open REV 非空 ④无合法目标 ⑤展示档位 ≠ 生效档位；活跃且健康时 `[]`。
+- **`suggestedCommand`**：`openfeel flow advance --stage <stage> --to <target>`；`target` 缺省 `legalNextPhases[0]`，通过路径优先（v1.5.14 / OF-06：`review_pending`→`review_passed`、`test_pending`→`test_passed`）；空集 → `null`。
+- **`guards`**：本地化字符串数组，顺序固定 ①无活跃阶段 ②`auto_advance=disabled` ③blocking open REV 非空 ④无合法目标 ⑤展示档位 ≠ 生效档位 ⑥配置组合不一致 ⑦派生阶段 ⑧`archiving` 的 verify 前置（v1.5.14 / OF-06） ⑨关联需求全部终态的阶段收口提示（v1.5.14 / OF-07；要求至少 1 条关联需求）；活跃且健康时 `[]`。
 - **`blockingReviews`**：元素键序 `{id,title,priority,op}`；阶段域过滤（`r.op === stage || r.op.startsWith(stage + '.')` ∧ `blocking !== false` ∧ `open`）。
 - **空态**：无活跃阶段 → 可空字段全 `null`、数组 `[]`、`responsibleAgent='feel'`；`phase`/`phaseLabel`/`workflowMode`/`reviewTier`/`effectiveReviewTier` 全 `null`。
 - **只读**：不写盘、不改 phase、不 `save()`、不 `appendLog`；本版不支持 `--stage`。
@@ -475,7 +477,7 @@ openfeel flow metrics [--json]
 |---|---|---|
 | 1 | resumed 比例 | 窗口内 `action === 'advance_stage_phase'` 且 `detail.resumed` 为**布尔**的条目（分母）；分子为 `resumed === true`。`reset_stage_phase` **不计入**（返工 ≠ 推进恢复）。`labeled === 0` → 「无数据」，**不输出 `0.0%`**；**恒**外显「另有 N 条不可判定」 |
 | 2 | `plan_pending → plan_review` 平均停留 | 逐 `plan_review` 事件配对：锚点复用 `src/core/phase-entered.ts` 的**唯一实现**（`advance` / `reset` / `register_stage` / `add_stage`）；`add_stage` 仅当 `detail.phase` 缺失或为 `plan_pending` 时算锚。行内**恒**带 `(n=…)` 或「无样本」，`n=1` 标「样本不足」 |
-| 3 | 最近 preflight | 只读 `.openfeel/dev/.preflight.json`（1× `existsSync` + ≤1× `readFileSync`；**不调用** `recordPreflight`，绝不刷新账本）；>10 分钟标「已过期」；无记录 / 时间戳不可解析各有专门文案 |
+| 3 | 最近 preflight | 只读 `.openfeel/dev/.preflight.json`（1× `existsSync` + ≤1× `readFileSync`；**不调用** `recordPreflight`，绝不刷新账本）；超过窗口（缺省 10 分钟，`OPENFEEL_PREFLIGHT_MAX_AGE_MS` 可配）标「已过期」；无记录 / 时间戳不可解析各有专门文案 |
 
 **窗口**：`PROCESS_HEALTH_WINDOW = MAX_LOG_ENTRIES`（=200，全保留条目）。不设「最近 50 条」：那会让 n≈1，把「无样本」误当结论。
 

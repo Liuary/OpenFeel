@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-05T13:50:22.602Z",
-    "revision": 2024,
+    "updated": "2026-11-07T09:56:46.328Z",
+    "revision": 2036,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -38,44 +38,37 @@
       "v1.5.9",
       "v1.5.10",
       "v1.5.11",
-      "v1.5.12"
+      "v1.5.12",
+      "v1.5.13"
     ],
-    "last_req_seq": 21
+    "last_req_seq": 22
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.13-stage-128",
+      "stage": "v1.5.14-stage-129",
       "op": ""
     },
     "retry": 0
   },
   "stages": {
-    "v1.5.13-stage-128": {
-      "name": "v1.5.13-stage-128",
-      "phase": "done",
-      "status": "done",
+    "v1.5.14-stage-129": {
+      "name": "v1.5.14-stage-129",
+      "phase": "exec_running",
+      "status": "planned",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "requirements": [
         {
-          "id": "REQ-021",
+          "id": "REQ-022",
           "order": 0
         }
       ],
       "stats": {
-        "start_time": "2026-11-05T13:15:43.572Z",
-        "end_time": "2026-11-05T13:50:22.578Z",
-        "duration_ms": 2079006
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-05T13:50:13.934Z",
-        "note": "v1.5.13 发布前验证通过：commit 四相位放行（写侧零放宽）+ SKILL frontmatter 截断修复。",
-        "evidence": "计划审查 PASS + 定点代码审查 PASS：实跑 commit 在 exec_running/review_passed/test_passed/archiving → allow（reason=git-worktree-write 等值），在 plan_pending/plan_review/review_pending/review_failed/test_pending/test_failed/done → deny（reason=shell-git-whole-tree 等值，夹具含未跟踪 src 防书账假绿）；写侧未放宽（review_passed 下 write/checkout/reset/clean/stash 均拒）；SKILL description 解析 2766 字符、frontmatter 无裸 #（对照 HEAD 2455 含 # 的反证）。门禁：dsh guard 170/170、verify 118/118、contract 47/47、integration 全通过、guard-isolation 8/8；src 95 文件 2358 用例（含 T4.4 与 S6）；tsc 0；lint i18n 1187。"
+        "start_time": "2026-11-07T09:12:17.670Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
@@ -1850,15 +1843,6 @@
       }
     },
     {
-      "time": "2026-11-05T13:11:26.511Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-11-05T13:11:29.328Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1866,65 +1850,6 @@
         "stage": "v1.5.13-stage-128",
         "requirementId": "REQ-021",
         "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-05T13:15:43.565Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "time": "2026-11-05T13:20:20.882Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-05T13:20:23.556Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-05T13:40:25.504Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-05T13:40:28.452Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -1980,54 +1905,6 @@
       }
     },
     {
-      "time": "2026-11-05T13:42:42.365Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "review_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-05T13:50:04.118Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-05T13:50:06.653Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-05T13:50:09.631Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-05T13:50:13.934Z",
       "agent": "cli",
       "action": "stage_verification",
@@ -2039,15 +1916,129 @@
       }
     },
     {
-      "time": "2026-11-05T13:50:22.572Z",
+      "time": "2026-11-05T13:50:25.733Z",
+      "agent": "cli",
+      "action": "archive_flow_version",
+      "detail": {
+        "version": "v1.5.13",
+        "stages": 1,
+        "reviews": 0,
+        "log": 11,
+        "requirements": 1
+      }
+    },
+    {
+      "time": "2026-11-07T09:10:46.042Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-022",
+        "title": "体验反馈修复批次：op 状态落盘 / preflight 长任务 / 归档收尾提交 / 门禁体验（OF-02~OF-08）"
+      }
+    },
+    {
+      "time": "2026-11-07T09:11:13.638Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-07T09:11:15.878Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-022",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-07T09:11:19.325Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.14-stage-129",
+        "requirementId": "REQ-022",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-07T09:12:17.665Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.13-stage-128",
-        "from": "archiving",
-        "to": "done",
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-07T09:17:33.562Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_review",
+        "to": "plan_passed",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T09:17:37.009Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T09:53:11.856Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-022",
+        "result": "pass",
+        "by": "openfeel-reviewer (independent subagent)",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-07T09:56:17.681Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-022",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel"
+      }
+    },
+    {
+      "time": "2026-11-07T09:56:32.543Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-07T09:56:46.328Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-022",
+        "from": "scheduled",
+        "to": "in_progress"
       }
     }
   ],
@@ -2272,31 +2263,31 @@
       "claimed_at": "2026-10-31T10:24:48.059Z"
     },
     {
-      "id": "REQ-021",
-      "title": "门禁易用性补丁：git commit 允许相位扩到 review_passed/test_passed；SKILL frontmatter description 的 # 被 YAML 注释截断",
-      "status": "done",
-      "created_at": "2026-11-05T13:11:20.444Z",
-      "updated_at": "2026-11-05T13:40:41.033Z",
-      "target_version": "v1.5.13",
-      "priority": "P2",
+      "id": "REQ-022",
+      "title": "体验反馈修复批次：op 状态落盘 / preflight 长任务 / 归档收尾提交 / 门禁体验（OF-02~OF-08）",
+      "status": "in_progress",
+      "created_at": "2026-11-07T09:10:46.041Z",
+      "updated_at": "2026-11-07T09:56:46.327Z",
+      "target_version": "v1.5.14",
+      "priority": "P1",
       "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-021.md",
+      "body_path": ".openfeel/requirements/REQ-022.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-05T13:11:23.364Z",
+      "claimed_at": "2026-11-07T09:11:15.878Z",
       "review": {
         "result": "pass",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-05T13:40:31.771Z",
-        "note": "计划审查 PASS（1 P1 + 4 P2 随派发落实）+ 定点代码审查 PASS：实跑 4 相位 commit allow（reason=git-worktree-write）、7 相位 deny（reason=shell-git-whole-tree）、写侧未放宽（write/checkout/reset/clean/stash 在 review_passed 仍拒）；SKILL description 解析 2766 字符、关键字齐全、frontmatter 无裸 #；3 条 P2 已收。",
+        "by": "openfeel-reviewer (independent subagent)",
+        "at": "2026-11-07T09:53:11.856Z",
+        "note": "两轮独立审查：计划审查（OF-04 通道顺序/夹具、OF-03 阈值单源、OF-05 整条全等、OF-02 flow retry 短 ID）与代码审查（archiving verify 命令形态错误、retry STAGE_NOT_FOUND 契约回退 2 处 blocking 已修复；done 阶段短 ID 优先级、全名候选范围 2 处非阻塞也已修复）。全量测试 2370 通过。",
         "independent": true
       },
       "verification": {
         "result": "pass",
         "kind": "test",
-        "by": "openfeel-executor",
-        "at": "2026-11-05T13:40:34.911Z",
-        "note": "易用性补丁验证通过：commit 相位扩到四相位（写侧未放宽）、SKILL description 不再被 YAML 截断。",
-        "evidence": "dsh 五套：guard 170/170、verify 118/118、contract 47/47、integration 全通过、guard-isolation 8/8；npx vitest run 95 文件 2358 用例（含 T4.4 逐字节与新增 S6）；tsc 0 错；lint i18n 1187 键。独立探针：commit 相位 4 允许/7 拒绝且 reason 等值；done + 仅 .openfeel 差异仍走书账窄口（判别力验证）；SKILL frontmatter description=2766 字符且无裸 #（对照 HEAD 旧版 2455 且含 # 的反证）。"
+        "by": "feel",
+        "at": "2026-11-07T09:56:17.681Z",
+        "note": "全量门禁通过：vitest 2370/2370（95 文件）、dsh guard 179/179、preflight 10/10、contract 47/47、verify 118/118、tsc --noEmit 0、lint i18n 1194 键一致、npm run build 单源一致性 3/3、CLI --version=1.5.14 与 package.json 一致。",
+        "evidence": "npm test; node dsh/test/guard.js; node dsh/test/preflight.js; node dsh/test/contract.js; node dsh/test/verify.js; npx tsc --noEmit; node bin/openfeel.js lint i18n; npm run build"
       }
     }
   ]

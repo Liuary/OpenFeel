@@ -53,6 +53,9 @@ const root = mkdtempSync(join(tmpdir(), 'openfeel-guard-'));
 // 不清掉本机配置就会串进所有用例（需要时由 withGuardEnv / guardWithShellGate 临时设置）。
 delete process.env.OPENFEEL_GUARD_CWD;
 delete process.env.OPENFEEL_SHELL_GATE;
+// v1.5.14 / stage-129 OF-05：白名单是第 4 类出口的显式例外，本机若设置了会串进所有
+// 第 4 类用例；需要时由 withShellAllowlist 临时设置。
+delete process.env.OPENFEEL_SHELL_ALLOW;
 let passed = 0;
 let failed = 0;
 
@@ -957,13 +960,13 @@ check('D-126-02 第 2 类：变量「单次字面量赋值」→ 拒；拼接/�
   assert.equal(last.kind, 'undecidable');
   assert.equal(last.cwdSource, 'agent-session');
   assert.equal(typeof last.command, 'string');
-  assert.ok(last.command.length <= 200);
+  assert.ok(last.command.length <= 500);
   assert.match(String(last.command), /Set-Content/);
 });
 
-check('D-126-02：审计带 cwdSource + command（command 截断 ≤200）', () => {
+check('D-126-02：审计带 cwdSource + command（command 截断 ≤500，v1.5.14 OF-08.1）', () => {
   const cwd = project('shell-audit-truncate', planFlow);
-  const longCommand = `Set-Content src/x.ts '${'a'.repeat(400)}'`;
+  const longCommand = `Set-Content src/x.ts '${'a'.repeat(800)}'`;
   assert.equal(projectOnly(shellExec('bash', cwd, 'git status')), undefined);
   const allowRow = readAudit(cwd).at(-1);
   assert.equal(allowRow.cwdSource, 'agent-session');
@@ -972,8 +975,13 @@ check('D-126-02：审计带 cwdSource + command（command 截断 ≤200）', () 
   const denied = readAudit(cwd).at(-1);
   assert.equal(denied.decision, 'deny');
   assert.equal(denied.cwdSource, 'agent-session');
-  assert.ok(denied.command.length <= 200, `command 未截断: ${denied.command.length}`);
+  assert.ok(denied.command.length <= 500, `command 未截断: ${denied.command.length}`);
   assert.ok(denied.command.endsWith('…'));
+  // OF-08.1：`lastDecision` 与审计共用 500 上限（同一 `truncateCommand`）
+  const lastDecision = readGuardState(cwd).lastDecision;
+  assert.equal(typeof lastDecision.command, 'string');
+  assert.ok(lastDecision.command.length <= 500, `lastDecision 未截断: ${lastDecision.command.length}`);
+  assert.ok(lastDecision.command.endsWith('…'));
 });
 
 check('D-126-02：workdir 基准（baseDir = resolve(guardCwd, workdir)）', () => {
@@ -2609,6 +2617,174 @@ check('op-006：端到端负例 DENY + 日常命令零误杀', () => {
   ]) {
     assert.equal(projectOnly(shellExec('bash', cwd, command)), undefined, command);
   }
+});
+
+// ── v1.5.14 / stage-129 OF-04：归档收尾提交（idle commit）─────────────────────
+//
+// 口径：只有「无任何活跃阶段」且（`stages` 空集 **或** `pipeline.phase === 'done'`）
+// 才开这道通道；书账窄口仍在最前（纯 `.openfeel/**` 仍报 `git-commit-bookkeeping`）。
+// 待提交路径里的 `src/**` offender **不构成拒绝** —— 收尾提交本来就要提交源码。
+
+check('OF-04：done 阶段 + pipeline done + 真实仓库 + src 待提交 → git-commit-idle 放行', () => {
+  const repo = gitProject('of04-idle-done', {
+    pipeline: { phase: 'done' },
+    stages: { 'v1-stage-1': { phase: 'done' } },
+    requirements: [],
+  });
+  if (repo === null) return; // 无 git → 跳过
+  const { dir } = repo;
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'pending.ts'), 'pending', 'utf8');
+  clearGuardCache();
+  assert.equal(projectOnly(shellExec('bash', dir, 'git commit -m "release"')), undefined);
+  assert.equal(readAudit(dir).at(-1).reason, 'git-commit-idle');
+  assert.equal(readGuardState(dir).lastDecision.reason, 'git-commit-idle');
+  // 只放宽 commit：其它整树写仍拒
+  assert.equal(typeof projectOnly(shellExec('bash', dir, 'git reset --hard')), 'string');
+  assert.equal(typeof projectOnly(shellExec('bash', dir, 'git clean -fd')), 'string');
+});
+
+check('OF-04：stages 空集 + pipeline 仍 active + 真实仓库 + 待提交 → git-commit-idle 放行', () => {
+  const repo = gitProject('of04-idle-empty-stages', {
+    pipeline: { phase: 'active' },
+    stages: {},
+    requirements: [],
+  });
+  if (repo === null) return;
+  const { dir } = repo;
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'pending.ts'), 'pending', 'utf8');
+  clearGuardCache();
+  assert.equal(projectOnly(shellExec('bash', dir, 'git commit -m "wrap up"')), undefined);
+  assert.equal(readAudit(dir).at(-1).reason, 'git-commit-idle');
+  assert.equal(readGuardState(dir).lastDecision.reason, 'git-commit-idle');
+});
+
+check('OF-04：有活跃阶段（plan_review / review_pending / test_pending）→ 仍拒 shell-git-whole-tree', () => {
+  const repo = gitProject('of04-idle-active', {
+    pipeline: { phase: 'active' },
+    stages: { 'v1-stage-1': { phase: 'plan_review' } },
+    requirements: [],
+  });
+  if (repo === null) return;
+  const { dir } = repo;
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'pending.ts'), 'pending', 'utf8');
+  const setPhase = (phase) => {
+    writeFileSync(
+      join(dir, '.openfeel', 'flow.json'),
+      JSON.stringify({ pipeline: { phase: 'active' }, stages: { 'v1-stage-1': { phase } }, requirements: [] }),
+      'utf8',
+    );
+    clearGuardCache();
+  };
+  for (const phase of ['plan_review', 'review_pending', 'test_pending']) {
+    setPhase(phase);
+    const denied = projectOnly(shellExec('bash', dir, 'git commit -m x'));
+    assert.equal(typeof denied, 'string', phase);
+    assert.equal(readAudit(dir).at(-1).reason, 'shell-git-whole-tree', phase);
+  }
+});
+
+check('OF-04：非 git 目录 / flow.json 不可读 → 不满足 idle 条件（仍拒）', () => {
+  // 非 git：`inspectCommitBookkeeping` 返回 null / repoMismatch → 不放行
+  const plain = project('of04-idle-nongit', { pipeline: { phase: 'done' }, stages: {}, requirements: [] });
+  assert.equal(typeof projectOnly(shellExec('bash', plain, 'git commit -m x')), 'string');
+  assert.equal(readAudit(plain).at(-1).reason, 'shell-git-whole-tree');
+  // flow 不可读：不能把「flow 读不出」当「无阶段」
+  const repo = gitProject('of04-idle-broken-flow', { pipeline: { phase: 'done' }, stages: {}, requirements: [] });
+  if (repo === null) return;
+  writeFileSync(join(repo.dir, '.openfeel', 'flow.json'), '{ broken', 'utf8');
+  clearGuardCache();
+  assert.equal(typeof projectOnly(shellExec('bash', repo.dir, 'git commit -m x')), 'string');
+  assert.equal(readAudit(repo.dir).at(-1).reason, 'shell-git-whole-tree');
+});
+
+check('OF-04：纯 `.openfeel/**` + done → 书账窄口优先（reason 仍 git-commit-bookkeeping）', () => {
+  const repo = gitProject('of04-idle-bookkeeping-first', {
+    pipeline: { phase: 'done' },
+    stages: { 'v1-stage-1': { phase: 'done' } },
+    requirements: [],
+  });
+  if (repo === null) return;
+  tamperFile(join(repo.dir, '.openfeel', 'flow.json'), (raw) => { raw.__bookkeeping = true; });
+  clearGuardCache();
+  assert.equal(projectOnly(shellExec('bash', repo.dir, 'git commit -m x')), undefined);
+  assert.equal(readAudit(repo.dir).at(-1).reason, 'git-commit-bookkeeping');
+});
+
+check('OF-04：`-C` / `-c` 的 commit 不走 idle 通道（仓库归属 / 配置不可证）', () => {
+  const repo = gitProject('of04-idle-repo-override', { pipeline: { phase: 'done' }, stages: {}, requirements: [] });
+  if (repo === null) return;
+  const { dir } = repo;
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src', 'pending.ts'), 'p', 'utf8');
+  for (const command of ['git -C . commit -m x', 'git -c user.name=x commit -m y']) {
+    const denied = projectOnly(shellExec('bash', dir, command));
+    assert.equal(typeof denied, 'string', command);
+    assert.equal(readAudit(dir).at(-1).reason, 'shell-git-whole-tree', command);
+  }
+});
+
+// ── v1.5.14 / stage-129 OF-05：第 4 类 undecidable 白名单（整条全等）──────────
+
+/** 临时设置/清除 `OPENFEEL_SHELL_ALLOW`（避免本机环境串进用例）。 */
+function withShellAllowlist(value, fn) {
+  const previous = process.env.OPENFEEL_SHELL_ALLOW;
+  if (value === undefined) delete process.env.OPENFEEL_SHELL_ALLOW;
+  else process.env.OPENFEEL_SHELL_ALLOW = value;
+  try {
+    return fn();
+  } finally {
+    if (previous === undefined) delete process.env.OPENFEEL_SHELL_ALLOW;
+    else process.env.OPENFEEL_SHELL_ALLOW = previous;
+  }
+}
+
+check('OF-05：整条命令命中白名单 → 放行 reason=shell-allowlisted（strict 档同样放行）', () => {
+  const cwd = project('of05-allow-exact', planFlow);
+  const unknown = 'totally-unknown-tool --flag src/x.ts';
+  // 条目与命令两侧都折叠空白/去首尾；`||` 分隔多条
+  withShellAllowlist('  totally-unknown-tool   --flag src/x.ts || npm run deploy ', () => {
+    assert.equal(projectOnly(shellExec('bash', cwd, unknown)), undefined);
+    const row = readAudit(cwd).at(-1);
+    assert.equal(row.event, 'guard_shell_allowlisted');
+    assert.equal(row.decision, 'allow');
+    assert.equal(row.reason, 'shell-allowlisted');
+    assert.equal(readGuardState(cwd).lastDecision.reason, 'shell-allowlisted');
+    // strict：白名单是用户显式配置 → 第 4 类也放行
+    const strict = guardWithShellGate('strict');
+    assert.equal(strict(shellExec('bash', cwd, unknown)), undefined);
+    assert.equal(readAudit(cwd).at(-1).reason, 'shell-allowlisted');
+  });
+});
+
+check('OF-05：子串不命中（整条全等）→ 仍按第 4 类 warn；写命令不被顺带放行', () => {
+  const cwd = project('of05-allow-substring', planFlow);
+  withShellAllowlist('npm run build', () => {
+    // 组合命令 ≠ 白名单条目 → 仍告警放行（不是 allow）
+    const combined = 'npm run build && totally-unknown-tool --flag src/x.ts';
+    assert.equal(projectOnly(shellExec('bash', cwd, combined)), undefined);
+    const warnRow = readAudit(cwd).at(-1);
+    assert.equal(warnRow.reason, 'shell-undecidable');
+    assert.equal(warnRow.decision, 'warn');
+    // 含白名单子串的写命令仍是第 2 类 deny
+    const denied = projectOnly(shellExec('bash', cwd, 'rm -rf x && npm run build'));
+    assert.equal(typeof denied, 'string');
+    assert.notEqual(readAudit(cwd).at(-1).reason, 'shell-allowlisted');
+  });
+});
+
+check('OF-05：白名单不触达第 1/2 类 deny（openfeel 写命令 / 受保护路径）', () => {
+  const cwd = project('of05-allow-deny-boundary', planFlow);
+  const openfeelCommand = 'openfeel flow advance --stage v1-stage-1';
+  const protectedCommand = "Set-Content .openfeel/flow.json '1'";
+  withShellAllowlist(`${openfeelCommand}||${protectedCommand}`, () => {
+    assert.match(String(projectOnly(shellExec('pwsh', cwd, openfeelCommand))), /禁止用 shell 跑 openfeel 写命令/);
+    assert.equal(readAudit(cwd).at(-1).reason, 'shell-openfeel-write');
+    assert.equal(typeof projectOnly(shellExec('pwsh', cwd, protectedCommand)), 'string');
+    assert.equal(readAudit(cwd).at(-1).reason, 'shell-protected');
+  });
 });
 
 // V4：真实宿主 marker 与真实全局目录未被本测试改写（loaded_hash 变 → FAIL；仅时间/条目变 → skip）。

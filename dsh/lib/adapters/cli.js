@@ -19,6 +19,8 @@ import { spawn } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { delimiter, dirname, isAbsolute, join } from 'node:path';
 
+import { readPreflightInfo } from './preflight.js';
+
 /* ────────────────────────── 错误模型 ────────────────────────── */
 
 /**
@@ -428,11 +430,24 @@ export class FeelCli {
    * 写命令的门禁拒绝（例如 phase 不合法、需求 done 门未过）是**预期结果**，
    * 以 `refusal` 分类抛出，让 agent 知道「这样做不对」而不是「系统坏了」。
    *
+   * v1.5.14 / OF-03：本地 preflight 账本缺失或过期时，先真实执行一次
+   * `flow next --json` 自愈（**仅一次**），再照常写入。用 `run` 而非 `json`/`write`：
+   * 不递归、不解析；无 flow.json 时 CLI 会 NO_INIT，异常一律吞掉，写入仍执行，
+   * 由 CLI 的 preflight 闸门作唯一权威判定（R4：刷新即真实读状态，不伪造证据）。
+   *
    * @param {string[]} args
    * @param {object} [options]
    * @returns {Promise<{ ok: true, text: string, durationMs: number }>}
    */
   async write(args, options = {}) {
+    const cwd = options.cwd ?? this.cwd;
+    if (typeof cwd === 'string' && cwd !== '' && readPreflightInfo(cwd).ok !== true) {
+      try {
+        await this.run(['flow', 'next', '--json'], { cwd });
+      } catch {
+        /* 自愈失败不阻断：没有 flow.json / CLI 故障时由随后的写命令报权威错误。 */
+      }
+    }
     const result = await this.run(args, options);
     if (result.code !== 0) throw this.errorFromResult(result, args);
     return { ok: true, text: result.stdout, durationMs: result.durationMs };

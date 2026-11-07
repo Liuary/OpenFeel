@@ -87,6 +87,8 @@ export const flow: I18nDomain = {
   'next.guardNoLegalTargets':   { key: 'flow.next.guardNoLegalTargets',   zh: '', en: 'No legal next phase from the current phase (consider --force, adjusting workflow mode, or checking the transition table)' },
   'next.guardTierDiffTmpl':     { key: 'flow.next.guardTierDiffTmpl',     zh: '', en: 'Display tier {display} ≠ effective tier {effective} (flow advance defaults to {effective})' },
   'next.guardConfigComboTmpl':  { key: 'flow.next.guardConfigComboTmpl',  zh: '', en: 'Silently ineffective config: execution_mode={mode} with auto_advance={auto} (auto-advance will not apply; the dependency is documented only in comments)' },
+  'next.guardArchivingVerifyTmpl': { key: 'flow.next.guardArchivingVerifyTmpl', zh: '', en: 'Before closing the archiving phase, run `openfeel stage verify {stage} --result pass --kind <test|manual|build> --by <agent> --note <summary> --evidence <evidence>` (the stage ID is positional); otherwise the done gate rejects' },
+  'next.guardRequirementAllDoneTmpl': { key: 'flow.next.guardRequirementAllDoneTmpl', zh: '', en: 'All linked requirements are complete ({n}, all terminal): consider closing / archiving the stage (openfeel flow advance --stage {stage} --to done, or archive this version)' },
 
   'overview.title':             { key: 'flow.overview.title',             zh: '', en: 'OpenFeel Pipeline Overview' },
   'overview.currentStatus':     { key: 'flow.overview.currentStatus',     zh: '', en: '📍 Current Status' },
@@ -160,6 +162,8 @@ export const flow: I18nDomain = {
   'archive.unfinishedWarnTmpl':       { key: 'flow.archive.unfinishedWarnTmpl',       zh: '', en: 'Warning: version {version} still has {n} unfinished requirements; archived anyway because --allow-unfinished was passed (they stay in flow.json)' },
   'archive.requirementsTmpl':         { key: 'flow.archive.requirementsTmpl',         zh: '', en: 'Requirements: {requirements} (terminal, moved into the archive file with this version)' },
   'archive.previewRequirementsTmpl':  { key: 'flow.archive.previewRequirementsTmpl',  zh: '', en: '[dry-run] requirements to archive: {requirements}' },
+  'archive.opNotDoneTmpl':            { key: 'flow.archive.opNotDoneTmpl',            zh: '', en: 'Note: {op} is not done (state={state}); archiving will not record completion for it (if it is actually finished, run openfeel flow attempt --op {op} --result pass first)' },
+  'archive.gitDirtyWarnTmpl':         { key: 'flow.archive.gitDirtyWarnTmpl',         zh: '', en: 'Note: the worktree has uncommitted changes; commit before archiving {version} (the `git-commit-idle` channel can wrap up after archiving)' },
 
   'stage.remove.notFoundTmpl':      { key: 'flow.stage.remove.notFoundTmpl',      zh: '', en: 'Stage not found: {stage}' },
   'stage.remove.okTmpl':            { key: 'flow.stage.remove.okTmpl',            zh: '', en: '✓ Removed stage: {stage}' },
@@ -228,6 +232,11 @@ export const flow: I18nDomain = {
   'advance.gitDirtyBoxBottom':  { key: 'flow.advance.gitDirtyBoxBottom',  zh: '', en: '[!] ╚════════════════════════════════════════╝' },
   'advance.revBlockedTitleTmpl':{ key: 'flow.advance.revBlockedTitleTmpl',zh: '', en: '[!] {n} unresolved blocking REV(s) detected:' },
   'advance.revBlockedItemTmpl': { key: 'flow.advance.revBlockedItemTmpl', zh: '', en: '    {id}: {title} (priority={priority})' },
+
+  // op reference resolution (OF-02: shared by flow attempt / flow retry for short ID and fully-qualified refs)
+  'opRef.notFoundTmpl':         { key: 'flow.opRef.notFoundTmpl',         zh: '', en: 'Error: op "{op}" not found (no same-named op in the current stage or any stage)' },
+  'opRef.ambiguousTmpl':        { key: 'flow.opRef.ambiguousTmpl',        zh: '', en: 'Error: op "{op}" is ambiguous (same-named op exists in multiple stages): {matches}' },
+  'opRef.candidatesTmpl':       { key: 'flow.opRef.candidatesTmpl',       zh: '', en: 'Candidates (use the fully-qualified ID <stage>.<op>): {candidates}' },
 
   'attempt.errorInvalidResult': { key: 'flow.attempt.errorInvalidResult', zh: '', en: 'Error: --result must be pass or fail' },
   'attempt.passTmpl':           { key: 'flow.attempt.passTmpl',           zh: '', en: '✓ {op} completed successfully' },

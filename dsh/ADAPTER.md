@@ -15,7 +15,7 @@
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
   （v1.5.10 起 43 个成功出口 / 44 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.5.13）。
+  的 `openfeel.requiresCli`（≥1.5.14）。
 
 ## 设计边界
 
@@ -73,12 +73,19 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
     **单条、直接、无重定向/`$()`/反引号**，且 `git status --porcelain -z` 的待提交路径**全部**落在
     `.openfeel/**` 下才放行（允许原因 `git-commit-bookkeeping`，审计可查）；出现外部路径则拒并点名前
     5 条。带 `-C` / `--git-dir` / `--work-tree` 的 commit 一律拒（仓库归属无法校验）；
+    **归档收尾提交（v1.5.14 / OF-04）**：上述书账窄口不命中时，若**无任何非 done 阶段**且
+    （`stages` 为空集 **或** `pipeline.phase === 'done'`），同一条「单条直连 commit、无 `-C`/`-c`、
+    可判定、仓库根 = 工作区」约束下，允许提交 `docs` / 源码等收尾改动（原因 `git-commit-idle`）。
+    它比四相位门窄：有活跃阶段时永不生效；`plan_*` / `scheme_*` / `review_pending` / `test_pending`
+    仍拒。与 `flow advance --to done` 的自动提交分工：自动提交可能已包含这些改动，先看
+    `git status` 再决定是否需要 `git-commit-idle` 这一次提交；
   - **默认 fail-closed（op-005）**：**无法确认「这条命令不写」就落第 4 类**，不再把未识别命令
     当作 `no-write` 静默放行。审计的 `kind` 因此能区分 `none`（确认只读）与 `undecidable`。
     「确认只读」需要正面证据：命中只读白名单、已知构建/测试工具（`npx vitest` / `npm run build` /
     `cargo build` / `tsc -b` 仍放行），否则一律第 4 类 —— 包括 `npx <任意>`、`node <脚本>`、
     `python <脚本>`、不可解析的 `& $var`、`$()`/反引号命令替换；
   - **第 4 类的书面口径**：默认 `warn`（审计 + stderr），要更严就设 `OPENFEEL_SHELL_GATE=strict`。
+    **白名单（v1.5.14 / OF-05）**：`OPENFEEL_SHELL_ALLOW` 用 `||` 分隔**整条命令**（折叠空白后全等匹配，禁止子串），命中的第 4 类命令按 `shell-allowlisted` 放行（`strict` 下同样生效）；第 1/2 类 deny 永不接受白名单。
     **已知敞口**：第 4 类默认放行意味着「蓄意用未识别写法」仍能写盘（只是留痕）——
     典型是 `node <脚本>`、`npx <任意>`、`$()`/反引号里再嵌一层不透明执行；
     门禁的目标是让**默认路径**不静默 —— 需要硬保证时把宿主设成 `strict`（第 4 类也拒）；
@@ -142,7 +149,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **流程入口闸**（v1.5.2）：`feel_status` / `feel_next` 在无活跃阶段时返回 `workflowGate`；无阶段写 `docs/research/**` 被拒（chore 不能绕过；拒绝写 `guard-audit.jsonl`，`event=guard_deny`）。
 - **派发/恢复**（v1.5.3）：`feel_next.dispatch`（goal/context/boundaries/returnFormat；子 agent 禁读状态文件、返回 ≤10 行）；`feel_status.recovery`（lastTransition / handoff / nextAction）。
 - **快照/空转**（v1.5.4）：`feel_status` / `feel_next` 返回 `revision` / `snapshotAt` / `stale`；`plan_pending` 停留 >10 分钟提示空转。
-- **preflight**（v1.5.5）：CLI 执行器默认 `OPENFEEL_PREFLIGHT=strict`；`feel_status` / `feel_next` 返回 `preflight`；写命令要求 10 分钟内读过状态。
+- **preflight**（v1.5.5）：CLI 执行器默认 `OPENFEEL_PREFLIGHT=strict`；`feel_status` / `feel_next` 返回 `preflight`；写命令要求窗口内读过状态。**窗口可配（v1.5.14 / OF-03）**：`OPENFEEL_PREFLIGHT_MAX_AGE_MS`（毫秒，正整数，缺省 10 分钟）同时作用于 CLI 闸门、`flow health` 与适配器视图；适配器写命令前若本地账本缺失/过期，会先真实执行一次 `flow next --json` 自愈（仅一次、失败不阻断，CLI 闸门仍是唯一权威）。
 - **观测摘要**（v1.5.6）：`feel_status` / `feel_next` 返回 `observability`（`stale` + `preflightAgeMs`/`preflightOk` 复制副本 + `statusSync` 三键 + 摘要）；`preflightAgeMs`/`preflightOk` **只复制不重算**（权威仍是顶层 `preflight`）。**账本先于 snapshot 读取**（`readPreflightInfo` 早于 `readSnapshot`）——`flow status --json` / `flow next --json` 会在 `--json` 早返回前写账本，读晚了会把本次调用刚写的账本当历史（`age≈0`），指标在测自己。读取次数不变、零新增 I/O。
 - **`feel_status` 输出瘦身**（v1.5.7）：默认返回 **compact** 快照（`project` / `pipeline` / `focus` / `mode` 的 current+source+skippedPhases / `stages` / `statusSync` / `workflowGate` / `preflight` / `recovery` 的 lastTransition+nextAction+hasDevLast / `revision`+`snapshotAt`+`stale`），去掉了 `mode.transitionsByMode`（三份转移表）、`recovery.handoff`（交接全文）、`observability`（与顶层字段重复的副本）。需要完整快照时传 `detail: "full"`；转移表/模式来源可随时用 `feel_flow action=phases` / `action=mode` 现取。`with_requirements` 语义不变（compact 档同样只在显式请求时带 `requirements`）。
 - **需求导向**（v1.5.7）：阶段 = 版本容器，长期保持 `exec_running`、容纳多个需求；提示段 / `workflowGate` / 写入门禁文案统一为「无开启阶段 → 默认按当前小版本开阶段；不要每完成一个需求就推进/关闭阶段；归档/发布只在用户确认后」。需求完成门同时解耦（零关联可显式完成；关联阶段进入 `exec_running` 及之后即可完成）。

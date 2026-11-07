@@ -148,7 +148,7 @@ Feel（你）只做编排、决策与门禁判断。
 
 ## 写命令与 preflight（v1.5.5）
 - **状态写操作只能用 \`feel_*\` 工具**（\`feel_flow\` / \`feel_stage\` / \`feel_req\`）；禁止用 shell 跑 \`openfeel flow/stage/req\` 写命令——那会绕过适配器与 preflight。
-- **先读后写**：核心写命令（advance / stage add / req add / claim）要求 10 分钟内调用过 \`feel_status\` / \`feel_next\`；遇到 preflight 拒绝先 \`feel_status\` 再重试。
+- **先读后写**：核心写命令（advance / stage add / req add / claim）要求窗口内调用过 \`feel_status\` / \`feel_next\`（缺省 10 分钟；长构建可用 \`OPENFEEL_PREFLIGHT_MAX_AGE_MS\` 显式放宽）；遇到 preflight 拒绝先 \`feel_status\` 再重试。适配器会在账本过期时为你真实读一次状态，但**不要**依赖它跳过读状态。
 - **审查独立**：fast 单轮审查也应由独立 reviewer 完成；Feel 自审必须在 REV 标题标注 \`self-review\`，归档摘要记录原因。
 
 ## 需求导向与流程入口（v1.5.7）

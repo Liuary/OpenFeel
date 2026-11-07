@@ -234,8 +234,8 @@ typeof doc.error === 'string'  → legacy
 - **`phase` / `phaseLabel` / `workflowMode` / `reviewTier` / `effectiveReviewTier`**：无活跃阶段或阶段记录缺失 → 全 `null`（不采用「display 为 null 而 effective 为 full」的混合态）。
 - **`responsibleAgent`**：与 `mapPhaseToAgent` 同源（`done → 'none'`）；无活跃阶段 → `'feel'`（显式约定）。
 - **`legalNextPhases`**：`getAvailablePhases(stage)`（缺省 tier=`full`）的**直接可达**目标；不是多步 BFS 可达集；顺序 = 转移表遍历序去重。
-- **`suggestedCommand`**：`openfeel flow advance --stage <stage> --to <legalNextPhases[0]>`；空集 → `null`。
-- **`guards`**：本地化字符串数组；本版不提供 `guardCodes`；顺序固定 ①无活跃阶段 ②`auto_advance=disabled` ③blocking open REV 非空 ④无合法目标 ⑤展示档位 ≠ 生效档位。活跃且健康时 `[]`。
+- **`suggestedCommand`**：`openfeel flow advance --stage <stage> --to <target>`；`target` 缺省为 `legalNextPhases[0]`，通过路径优先（v1.5.14 / OF-06）：`review_pending` 且含 `review_passed` → `review_passed`；`test_pending` 且含 `test_passed` → `test_passed`。`legalNextPhases` 数组顺序**不变**。空集 → `null`。
+- **`guards`**：本地化字符串数组；本版不提供 `guardCodes`；顺序固定 ①无活跃阶段 ②`auto_advance=disabled` ③blocking open REV 非空 ④无合法目标 ⑤展示档位 ≠ 生效档位 ⑥配置组合不一致 ⑦派生阶段 ⑧`archiving` 的 verify 前置（v1.5.14 / OF-06） ⑨关联需求全部终态的阶段收口提示（v1.5.14 / OF-07；要求至少 1 条关联需求）。活跃且健康时 `[]`。
 - **`blockingReviews`**：仅当前阶段域（`r.op === stage || r.op.startsWith(stage + '.')`）∧ `blocking !== false` ∧ `status === 'open'`；元素键序 `id,title,priority,op`。
 - **只读**：不写盘、不改 phase、不 save、不 appendLog；本版不支持 `--stage`。
 

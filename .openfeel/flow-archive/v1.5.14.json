@@ -1,0 +1,165 @@
+{
+  "version": "v1.5.14",
+  "stages": {
+    "v1.5.14-stage-129": {
+      "name": "v1.5.14-stage-129",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-022",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-07T09:12:17.670Z",
+        "end_time": "2026-11-07T10:02:51.659Z",
+        "duration_ms": 3033989
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-07T10:02:45.852Z",
+        "note": "v1.5.14 全量门禁：vitest 2370/2370、dsh guard 179/179、preflight 10/10、contract 47/47、verify 118/118、tsc 0、lint i18n 1194、build 一致性 3/3、--version=1.5.14。",
+        "evidence": "npm test; node dsh/test/guard.js; node dsh/test/preflight.js; node dsh/test/contract.js; node dsh/test/verify.js; npx tsc --noEmit; node bin/openfeel.js lint i18n; npm run build"
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-11-07T09:11:13.638Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-07T09:12:17.665Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-07T09:17:33.562Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T09:17:37.009Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T10:02:25.285Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T10:02:35.529Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T10:02:40.706Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-07T10:02:51.654Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.14-stage-129",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-022",
+      "title": "体验反馈修复批次：op 状态落盘 / preflight 长任务 / 归档收尾提交 / 门禁体验（OF-02~OF-08）",
+      "status": "done",
+      "created_at": "2026-11-07T09:10:46.041Z",
+      "updated_at": "2026-11-07T09:56:50.652Z",
+      "target_version": "v1.5.14",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-022.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-07T09:11:15.878Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer (independent subagent)",
+        "at": "2026-11-07T09:53:11.856Z",
+        "note": "两轮独立审查：计划审查（OF-04 通道顺序/夹具、OF-03 阈值单源、OF-05 整条全等、OF-02 flow retry 短 ID）与代码审查（archiving verify 命令形态错误、retry STAGE_NOT_FOUND 契约回退 2 处 blocking 已修复；done 阶段短 ID 优先级、全名候选范围 2 处非阻塞也已修复）。全量测试 2370 通过。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel",
+        "at": "2026-11-07T09:56:17.681Z",
+        "note": "全量门禁通过：vitest 2370/2370（95 文件）、dsh guard 179/179、preflight 10/10、contract 47/47、verify 118/118、tsc --noEmit 0、lint i18n 1194 键一致、npm run build 单源一致性 3/3、CLI --version=1.5.14 与 package.json 一致。",
+        "evidence": "npm test; node dsh/test/guard.js; node dsh/test/preflight.js; node dsh/test/contract.js; node dsh/test/verify.js; npx tsc --noEmit; node bin/openfeel.js lint i18n; npm run build"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 0,
+    "log": 8,
+    "requirements": 1
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-07T10:03:01.802Z"
+}

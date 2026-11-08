@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-08T09:19:19.118Z",
-    "revision": 2060,
+    "updated": "2026-11-08T09:19:24.150Z",
+    "revision": 2061,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -40,47 +40,20 @@
       "v1.5.11",
       "v1.5.12",
       "v1.5.13",
-      "v1.5.14"
+      "v1.5.14",
+      "v1.5.15"
     ],
     "last_req_seq": 23
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.15-stage-130",
+      "stage": "",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.5.15-stage-130": {
-      "name": "v1.5.15-stage-130",
-      "phase": "done",
-      "status": "done",
-      "deps": [],
-      "ops": {},
-      "workflow_mode": "fast",
-      "requirements": [
-        {
-          "id": "REQ-023",
-          "order": 0
-        }
-      ],
-      "stats": {
-        "start_time": "2026-11-08T09:09:14.677Z",
-        "end_time": "2026-11-08T09:19:19.094Z",
-        "duration_ms": 604417
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "feel-tester",
-        "at": "2026-11-08T09:19:14.146Z",
-        "note": "v1.5.15 门禁：vitest 2377/2377（identity 新增 8 例 + req claim 缺省链 unknown 集成 3 例）、tsc 0、lint i18n 一致、build 单源一致性 3/3、--version=1.5.15；真实目标项目 getUserName 复验返回 Liuary。",
-        "evidence": "npm test; npx vitest run test/core/workspace/identity.test.ts test/commands/req.test.ts test/core/templates.test.ts; node bin/openfeel.js --version; npm run build"
-      }
-    }
-  },
+  "stages": {},
   "reviews": [],
   "log": [
     {
@@ -1924,15 +1897,6 @@
       }
     },
     {
-      "time": "2026-11-08T09:08:46.183Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-11-08T09:08:53.245Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1940,41 +1904,6 @@
         "stage": "v1.5.15-stage-130",
         "requirementId": "REQ-023",
         "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-08T09:09:14.673Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "time": "2026-11-08T09:09:19.540Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-08T09:09:24.780Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -2010,42 +1939,6 @@
       }
     },
     {
-      "time": "2026-11-08T09:18:51.527Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-08T09:18:57.282Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-08T09:19:06.396Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-08T09:19:14.146Z",
       "agent": "cli",
       "action": "stage_verification",
@@ -2057,15 +1950,15 @@
       }
     },
     {
-      "time": "2026-11-08T09:19:19.089Z",
+      "time": "2026-11-08T09:19:24.150Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "archive_flow_version",
       "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "version": "v1.5.15",
+        "stages": 1,
+        "reviews": 0,
+        "log": 8,
+        "requirements": 1
       }
     }
   ],
@@ -2288,34 +2181,6 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
-    },
-    {
-      "id": "REQ-023",
-      "title": "getUserName 把 .info.json 的 unknown 哨兵当有效名，不回落 git config，导致 feel_req claim 必须显式 --owner",
-      "status": "done",
-      "created_at": "2026-11-08T09:08:30.529Z",
-      "updated_at": "2026-11-08T09:17:48.098Z",
-      "target_version": "v1.5.15",
-      "priority": "P2",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-023.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-08T09:08:40.020Z",
-      "review": {
-        "result": "pass",
-        "by": "openfeel-reviewer (independent subagent)",
-        "at": "2026-11-08T09:17:34.269Z",
-        "note": "独立审查通过（无 blocking）：unknown/空串/大小写/非字符串/JSON 损坏/文件缺失的回落链核对无误；ensureInfoJson 仅在 resolved 有效时写盘；claim 显式 --owner、哨兵文案、正常值不覆盖均保持。非阻塞 4 条已处理或记录：真实用户名恰为 unknown 的取舍与 trim 行为已写入 CHANGELOG；ensureInfoJson 仅 init 可达已在 CHANGELOG 澄清；gitAvailable 跳过的假绿风险已由 req.test.ts 的 mock 版 B2 用例覆盖（CultivationOpenRealm 场景）。",
-        "independent": true
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "feel",
-        "at": "2026-11-08T09:17:45.268Z",
-        "note": "vitest 2377/2377（含 identity 新增 8 例、req claim 缺省链 unknown 集成 3 例）；真实目标项目复验：CultivationOpenRealm（.info.json user=unknown、git user.name=Liuary）修复后 getUserName 返回 Liuary；--version=1.5.15 与 package.json 一致；build 一致性 3/3。",
-        "evidence": "npm test; npx vitest run test/core/workspace/identity.test.ts test/commands/req.test.ts test/core/templates.test.ts; node bin/openfeel.js --version; npm run build; node --input-type=module -e \"import('dist/core/workspace/identity.js')...\""
-      }
     }
   ]
 }

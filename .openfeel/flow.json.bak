@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-08T09:17:45.268Z",
-    "revision": 2054,
+    "updated": "2026-11-08T09:19:14.146Z",
+    "revision": 2059,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -55,8 +55,8 @@
   "stages": {
     "v1.5.15-stage-130": {
       "name": "v1.5.15-stage-130",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -70,76 +70,19 @@
         "start_time": "2026-11-08T09:09:14.677Z",
         "end_time": "",
         "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-08T09:19:14.146Z",
+        "note": "v1.5.15 门禁：vitest 2377/2377（identity 新增 8 例 + req claim 缺省链 unknown 集成 3 例）、tsc 0、lint i18n 一致、build 单源一致性 3/3、--version=1.5.15；真实目标项目 getUserName 复验返回 Liuary。",
+        "evidence": "npm test; npx vitest run test/core/workspace/identity.test.ts test/commands/req.test.ts test/core/templates.test.ts; node bin/openfeel.js --version; npm run build"
       }
     }
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-10-31T12:50:02.654Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-021"
-      }
-    },
-    {
-      "time": "2026-10-31T13:09:26.808Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-017",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.5.6-stage-115"
-      }
-    },
-    {
-      "time": "2026-10-31T13:09:57.517Z",
-      "agent": "cli",
-      "action": "stage_deps_set",
-      "detail": {
-        "stage": "v1.5.6-stage-117",
-        "deps": [
-          "v1.5.6-stage-116"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-31T13:49:29.834Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-022"
-      }
-    },
-    {
-      "time": "2026-10-31T13:49:34.369Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-023"
-      }
-    },
-    {
-      "time": "2026-10-31T13:49:39.906Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-024"
-      }
-    },
-    {
-      "time": "2026-10-31T13:50:33.901Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-016",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.5.6-stage-116"
-      }
-    },
     {
       "time": "2026-10-31T14:07:59.739Z",
       "agent": "cli",
@@ -2066,6 +2009,63 @@
         "kind": "test",
         "by": "feel"
       }
+    },
+    {
+      "time": "2026-11-08T09:17:48.098Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-023",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-08T09:18:51.527Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.15-stage-130",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T09:18:57.282Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.15-stage-130",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T09:19:06.396Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.15-stage-130",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T09:19:14.146Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.15-stage-130",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
     }
   ],
   "requirements": [
@@ -2291,9 +2291,9 @@
     {
       "id": "REQ-023",
       "title": "getUserName 把 .info.json 的 unknown 哨兵当有效名，不回落 git config，导致 feel_req claim 必须显式 --owner",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-11-08T09:08:30.529Z",
-      "updated_at": "2026-11-08T09:17:45.268Z",
+      "updated_at": "2026-11-08T09:17:48.098Z",
       "target_version": "v1.5.15",
       "priority": "P2",
       "workflow_mode": "fast",

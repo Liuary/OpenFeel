@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-08T09:17:48.098Z",
-    "revision": 2055,
+    "updated": "2026-11-08T09:19:19.118Z",
+    "revision": 2060,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -45,7 +45,7 @@
     "last_req_seq": 23
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.5.15-stage-130",
       "op": ""
@@ -55,8 +55,8 @@
   "stages": {
     "v1.5.15-stage-130": {
       "name": "v1.5.15-stage-130",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -68,89 +68,21 @@
       ],
       "stats": {
         "start_time": "2026-11-08T09:09:14.677Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-08T09:19:19.094Z",
+        "duration_ms": 604417
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-08T09:19:14.146Z",
+        "note": "v1.5.15 门禁：vitest 2377/2377（identity 新增 8 例 + req claim 缺省链 unknown 集成 3 例）、tsc 0、lint i18n 一致、build 单源一致性 3/3、--version=1.5.15；真实目标项目 getUserName 复验返回 Liuary。",
+        "evidence": "npm test; npx vitest run test/core/workspace/identity.test.ts test/commands/req.test.ts test/core/templates.test.ts; node bin/openfeel.js --version; npm run build"
       }
     }
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-10-31T12:50:02.654Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-021"
-      }
-    },
-    {
-      "time": "2026-10-31T13:09:26.808Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-017",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.5.6-stage-115"
-      }
-    },
-    {
-      "time": "2026-10-31T13:09:57.517Z",
-      "agent": "cli",
-      "action": "stage_deps_set",
-      "detail": {
-        "stage": "v1.5.6-stage-117",
-        "deps": [
-          "v1.5.6-stage-116"
-        ]
-      }
-    },
-    {
-      "time": "2026-10-31T13:49:29.834Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-022"
-      }
-    },
-    {
-      "time": "2026-10-31T13:49:34.369Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-023"
-      }
-    },
-    {
-      "time": "2026-10-31T13:49:39.906Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-024"
-      }
-    },
-    {
-      "time": "2026-10-31T13:50:33.901Z",
-      "agent": "cli",
-      "action": "requirement_auto_done",
-      "detail": {
-        "requirementId": "REQ-016",
-        "from": "in_progress",
-        "to": "done",
-        "triggerStage": "v1.5.6-stage-116"
-      }
-    },
-    {
-      "time": "2026-10-31T14:07:59.739Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.6",
-        "stages": 4,
-        "reviews": 24,
-        "log": 52
-      }
-    },
     {
       "time": "2026-10-31T15:31:38.654Z",
       "agent": "cli",
@@ -2075,6 +2007,65 @@
         "id": "REQ-023",
         "from": "in_progress",
         "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-08T09:18:51.527Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.15-stage-130",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T09:18:57.282Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.15-stage-130",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T09:19:06.396Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.15-stage-130",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T09:19:14.146Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.15-stage-130",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-08T09:19:19.089Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.15-stage-130",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

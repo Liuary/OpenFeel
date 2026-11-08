@@ -1,0 +1,165 @@
+{
+  "version": "v1.5.16",
+  "stages": {
+    "v1.5.16-stage-131": {
+      "name": "v1.5.16-stage-131",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-024",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-08T09:58:05.556Z",
+        "end_time": "2026-11-08T10:31:52.748Z",
+        "duration_ms": 2027192
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-08T10:31:47.886Z",
+        "note": "v1.5.16 门禁：vitest 2381/2381（attempt 同步 pass/fail/耗尽、done op 静默、scheme remove 保护、json-contract done 夹具）、tsc 0、lint i18n 1194、build 一致性 3/3、--version=1.5.16；独立审查无 blocking。",
+        "evidence": "npm test; npx vitest run test/commands/flow.test.ts test/commands/plan.test.ts test/cli/json-contract.test.ts test/core/templates.test.ts; npx tsc --noEmit; node bin/openfeel.js lint i18n; npm run build"
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-11-08T09:57:15.492Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-08T09:58:05.552Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-08T09:58:09.886Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T09:58:14.549Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T10:31:28.181Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T10:31:34.887Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T10:31:41.155Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T10:31:52.741Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-024",
+      "title": "复核反馈：attempt 同步 checkpoints.exec.attempts / done op 空模板告警降噪 / claim 不改状态文档化",
+      "status": "done",
+      "created_at": "2026-11-08T09:57:07.659Z",
+      "updated_at": "2026-11-08T10:15:55.303Z",
+      "target_version": "v1.5.16",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-024.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-08T09:57:19.959Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer (independent subagent)",
+        "at": "2026-11-08T10:15:42.777Z",
+        "note": "独立审查无 blocking。非阻塞 9 条已处理：①pass 分支过期注释已改；②exec 非对象时安全跳过（typeof 校验）；③scheme remove 的 checkpoint 保护行为变化已补 remove 用例 + CHANGELOG Changed；④failed 一并静默 + 注释修正；⑤health 数据卫生口径已在 CHANGELOG/VERSIONS 说明；⑥human 断言行内锚定 + 耗尽路径用例；⑦json-contract #7 增加 done+empty 夹具；⑨claim 文案改为 owner/claimed_at/updated_at+审计。未处理：⑧config 模板 meta.version 1.5.6 属既有历史值，与本阶段无关。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel",
+        "at": "2026-11-08T10:15:50.852Z",
+        "note": "全量 vitest 2381/2381（+4：attempt 同步 fail/耗尽、done op 静默、scheme remove attempts 保护、json-contract done 夹具）；目标文件 433/433；tsc 0；lint i18n 1194 键一致；build 单源一致性 3/3；--version=1.5.16。",
+        "evidence": "npm test; npx vitest run test/commands/flow.test.ts test/commands/plan.test.ts test/cli/json-contract.test.ts test/core/templates.test.ts; npx tsc --noEmit; node bin/openfeel.js lint i18n; npm run build"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 0,
+    "log": 8,
+    "requirements": 1
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-08T10:31:58.581Z"
+}

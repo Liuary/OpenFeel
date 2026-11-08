@@ -177,6 +177,7 @@ Feel（你）只做编排、决策与门禁判断。
 
 ## 命令执行
 - **Windows：优先 \`bash\`（Git Bash），其次 \`pwsh\`（PowerShell 7）**；默认不用 \`cmd.exe\`。
+- 第 4 类 shell 判定（无法静态判定写入目标）默认 \`warn\`：**已告警放行、不阻断**，只落审计 + 一行 stderr。已知安全命令可用 \`OPENFEEL_SHELL_ALLOW\`（\`||\` 分隔、整条命令全等）白名单；需要硬保证时设 \`OPENFEEL_SHELL_GATE=strict\`。
 - macOS / Linux：\`bash\`。
 - 同一任务内保持同一 shell；路径与转义按所选 shell 书写。
 

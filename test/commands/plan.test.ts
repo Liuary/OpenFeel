@@ -517,6 +517,23 @@ describe('plan 命令', () => {
     expect(flow.stages['v1.0.0-stage-01'].ops['op-001']).toBeUndefined();
   });
 
+  it('N1-1/REQ-024: 仅 attempts>0（无快照文件）也受 checkpoint 保护，--force 可删', async () => {
+    await setupStageAndOp();
+    const mgr = new FlowManager(tmpDir);
+    const op = mgr.getData()!.stages['v1.0.0-stage-01'].ops['op-001'];
+    op.attempts = 1;
+    op.checkpoints.exec.attempts = 1;
+    mgr.save();
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => c[0] as string).join('\n')).toContain('checkpoint');
+
+    await safeParse(['plan', 'scheme', 'remove', 'stage-01', 'op-001', '--force']);
+    const flow = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(flow.stages['v1.0.0-stage-01'].ops['op-001']).toBeUndefined();
+  });
+
   it('N1-1: 存在含该 op 的 checkpoint 快照时默认拒绝，--force 可删除', async () => {
     await setupStageAndOp();
     const cpDir = join(tmpDir, '.openfeel', 'checkpoints');

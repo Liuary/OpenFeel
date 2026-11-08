@@ -350,32 +350,39 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
 
   // ── 7：flow ops list（warning 恒在） ──
 
-  it('#7 flow ops list：warning 恒在（empty → string，其余 null）', async () => {
+  it('#7 flow ops list：warning 恒在（empty 且非 done/failed → string，其余 null）', async () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.2.2-stage-95');
     mgr.getData()!.stages['v1.2.2-stage-95'].ops = {
       'op-001': { title: 't1', state: 'pending' },
       'op-002': { title: 't2', state: 'pending' },
+      'op-003': { title: 't3', state: 'done' },
     } as never;
     mgr.save();
     const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-95', 'ops');
     mkdirSync(opsDir, { recursive: true });
     writeFileSync(join(opsDir, 'op-001.md'), '# op-001：t\n\n- [ ] 待补充\n', 'utf-8');
     writeFileSync(join(opsDir, 'op-002.md'), '# op-002：t\n\n- [x] ok\n', 'utf-8');
+    writeFileSync(join(opsDir, 'op-003.md'), '# op-003：t\n\n- [ ] 待补充\n', 'utf-8');
 
     const d = await doc(['flow', 'ops', 'list', '--json']);
     expect(Object.keys(d)).toEqual(['schemaVersion', 'ops']);
     const ops = d.ops as Array<Record<string, unknown>>;
-    expect(ops).toHaveLength(2);
+    expect(ops).toHaveLength(3);
     for (const o of ops) {
       expect(Object.keys(o)).toEqual(['stage', 'opId', 'title', 'state', 'fill', 'warning']);
-      if (o.fill === 'empty') {
+      const quiet = o.state === 'done' || o.state === 'failed';
+      if (o.fill === 'empty' && !quiet) {
         expect(typeof o.warning).toBe('string');
       } else {
         expect(o.warning).toBeNull();
       }
     }
     expect(ops.some((o) => o.fill === 'empty')).toBe(true);
+    // v1.5.16 / REQ-024：done op 即使模板空也不再告警（fill 仍为 empty）
+    const doneOp = ops.find((o) => o.opId === 'op-003')!;
+    expect(doneOp.fill).toBe('empty');
+    expect(doneOp.warning).toBeNull();
   });
 
   // ── 8~11：flow archive* / health ──

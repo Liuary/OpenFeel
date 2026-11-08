@@ -450,7 +450,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.5.15 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.16 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -487,6 +487,14 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
 > 命令职责分层：\`plan stage add\`（完整，推荐）> \`flow stage add\`（仅注册 \`flow.json\`，不建目录）> \`stage create\`（已弃用）。
+
+## v1.5.16（stage-131）
+
+> 一致性收尾：checkpoint 计数同步、done/failed op 空模板告警降噪。JSON 契约不变，但 \`flow ops list[].warning\` 语义收紧（仅 \`empty\` 且 \`state∉{done,failed}\` 为 string）。
+
+- **\`attempt\` 同步 checkpoint（v1.5.16 / REQ-024）**：\`checkpoints.exec.attempts\` 与顶层 \`attempts\` 同步（pass / fail / 耗尽），\`exec.self\` 仍由 \`advancePhase\` 维护。
+- **done/failed op 不再提示空模板**：\`flow ops list\` 的 \`warning\` 仅在 \`fill==='empty' && state∉{done,failed}\` 时输出；\`fill\` 仍如实反映填充度；\`flow health\` 的空模板项仍按数据卫生统计（含 done）。
+- **语义澄清**：\`req claim\` 只写 \`owner\`/\`claimed_at\`，不改 status（用 \`req advance\`）；第 4 类 shell 判定为非阻断 \`warn\`，\`OPENFEEL_SHELL_ALLOW\` 可白名单整条命令；\`plan scheme remove\` 删 done / 有 checkpoint 进展的 op 需 \`--force\`。
 
 ## v1.5.15（stage-130）
 

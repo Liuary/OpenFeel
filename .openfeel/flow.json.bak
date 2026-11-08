@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-08T09:19:19.118Z",
-    "revision": 2060,
+    "updated": "2026-11-08T10:15:50.852Z",
+    "revision": 2072,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -40,70 +40,42 @@
       "v1.5.11",
       "v1.5.12",
       "v1.5.13",
-      "v1.5.14"
+      "v1.5.14",
+      "v1.5.15"
     ],
-    "last_req_seq": 23
+    "last_req_seq": 24
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.15-stage-130",
+      "stage": "v1.5.16-stage-131",
       "op": ""
     },
     "retry": 0
   },
   "stages": {
-    "v1.5.15-stage-130": {
-      "name": "v1.5.15-stage-130",
-      "phase": "done",
-      "status": "done",
+    "v1.5.16-stage-131": {
+      "name": "v1.5.16-stage-131",
+      "phase": "exec_running",
+      "status": "planned",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "requirements": [
         {
-          "id": "REQ-023",
+          "id": "REQ-024",
           "order": 0
         }
       ],
       "stats": {
-        "start_time": "2026-11-08T09:09:14.677Z",
-        "end_time": "2026-11-08T09:19:19.094Z",
-        "duration_ms": 604417
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "feel-tester",
-        "at": "2026-11-08T09:19:14.146Z",
-        "note": "v1.5.15 门禁：vitest 2377/2377（identity 新增 8 例 + req claim 缺省链 unknown 集成 3 例）、tsc 0、lint i18n 一致、build 单源一致性 3/3、--version=1.5.15；真实目标项目 getUserName 复验返回 Liuary。",
-        "evidence": "npm test; npx vitest run test/core/workspace/identity.test.ts test/commands/req.test.ts test/core/templates.test.ts; node bin/openfeel.js --version; npm run build"
+        "start_time": "2026-11-08T09:58:05.556Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-10-31T15:31:38.654Z",
-      "agent": "cli",
-      "action": "chore_start",
-      "detail": {
-        "id": "CHORE-20261031T153138",
-        "note": "本地异常清理：guard-audit 入 gitignore + docs/commands.md 版本快照订正",
-        "expires_at": "2026-10-31T16:31:38.638Z",
-        "stage_count": 0
-      }
-    },
-    {
-      "time": "2026-10-31T15:32:02.752Z",
-      "agent": "cli",
-      "action": "chore_end",
-      "detail": {
-        "id": "CHORE-20261031T153138",
-        "note": "本地异常清理：guard-audit 入 gitignore + docs/commands.md 版本快照订正",
-        "stage_count": 0
-      }
-    },
     {
       "time": "2026-10-31T15:33:38.321Z",
       "agent": "cli",
@@ -1924,15 +1896,6 @@
       }
     },
     {
-      "time": "2026-11-08T09:08:46.183Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-11-08T09:08:53.245Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1940,41 +1903,6 @@
         "stage": "v1.5.15-stage-130",
         "requirementId": "REQ-023",
         "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-08T09:09:14.673Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "time": "2026-11-08T09:09:19.540Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-08T09:09:24.780Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -2010,42 +1938,6 @@
       }
     },
     {
-      "time": "2026-11-08T09:18:51.527Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-08T09:18:57.282Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-08T09:19:06.396Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-08T09:19:14.146Z",
       "agent": "cli",
       "action": "stage_verification",
@@ -2057,15 +1949,129 @@
       }
     },
     {
-      "time": "2026-11-08T09:19:19.089Z",
+      "time": "2026-11-08T09:19:24.150Z",
+      "agent": "cli",
+      "action": "archive_flow_version",
+      "detail": {
+        "version": "v1.5.15",
+        "stages": 1,
+        "reviews": 0,
+        "log": 8,
+        "requirements": 1
+      }
+    },
+    {
+      "time": "2026-11-08T09:57:07.659Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-024",
+        "title": "复核反馈：attempt 同步 checkpoints.exec.attempts / done op 空模板告警降噪 / claim 不改状态文档化"
+      }
+    },
+    {
+      "time": "2026-11-08T09:57:13.299Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-024",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-08T09:57:15.492Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-08T09:57:19.959Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-024",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-08T09:57:22.544Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.16-stage-131",
+        "requirementId": "REQ-024",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-08T09:57:56.862Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-024",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-08T09:58:05.552Z",
       "agent": "cli",
       "action": "advance_stage_phase",
       "detail": {
-        "stageName": "v1.5.15-stage-130",
-        "from": "archiving",
-        "to": "done",
+        "stageName": "v1.5.16-stage-131",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-08T09:58:09.886Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "plan_review",
+        "to": "plan_passed",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T09:58:14.549Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.16-stage-131",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-08T10:15:42.777Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-024",
+        "result": "pass",
+        "by": "openfeel-reviewer (independent subagent)",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-08T10:15:50.852Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-024",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel"
       }
     }
   ],
@@ -2290,31 +2296,31 @@
       "claimed_at": "2026-10-31T10:24:48.059Z"
     },
     {
-      "id": "REQ-023",
-      "title": "getUserName 把 .info.json 的 unknown 哨兵当有效名，不回落 git config，导致 feel_req claim 必须显式 --owner",
-      "status": "done",
-      "created_at": "2026-11-08T09:08:30.529Z",
-      "updated_at": "2026-11-08T09:17:48.098Z",
-      "target_version": "v1.5.15",
+      "id": "REQ-024",
+      "title": "复核反馈：attempt 同步 checkpoints.exec.attempts / done op 空模板告警降噪 / claim 不改状态文档化",
+      "status": "in_progress",
+      "created_at": "2026-11-08T09:57:07.659Z",
+      "updated_at": "2026-11-08T10:15:50.852Z",
+      "target_version": "v1.5.16",
       "priority": "P2",
       "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-023.md",
+      "body_path": ".openfeel/requirements/REQ-024.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-08T09:08:40.020Z",
+      "claimed_at": "2026-11-08T09:57:19.959Z",
       "review": {
         "result": "pass",
         "by": "openfeel-reviewer (independent subagent)",
-        "at": "2026-11-08T09:17:34.269Z",
-        "note": "独立审查通过（无 blocking）：unknown/空串/大小写/非字符串/JSON 损坏/文件缺失的回落链核对无误；ensureInfoJson 仅在 resolved 有效时写盘；claim 显式 --owner、哨兵文案、正常值不覆盖均保持。非阻塞 4 条已处理或记录：真实用户名恰为 unknown 的取舍与 trim 行为已写入 CHANGELOG；ensureInfoJson 仅 init 可达已在 CHANGELOG 澄清；gitAvailable 跳过的假绿风险已由 req.test.ts 的 mock 版 B2 用例覆盖（CultivationOpenRealm 场景）。",
+        "at": "2026-11-08T10:15:42.777Z",
+        "note": "独立审查无 blocking。非阻塞 9 条已处理：①pass 分支过期注释已改；②exec 非对象时安全跳过（typeof 校验）；③scheme remove 的 checkpoint 保护行为变化已补 remove 用例 + CHANGELOG Changed；④failed 一并静默 + 注释修正；⑤health 数据卫生口径已在 CHANGELOG/VERSIONS 说明；⑥human 断言行内锚定 + 耗尽路径用例；⑦json-contract #7 增加 done+empty 夹具；⑨claim 文案改为 owner/claimed_at/updated_at+审计。未处理：⑧config 模板 meta.version 1.5.6 属既有历史值，与本阶段无关。",
         "independent": true
       },
       "verification": {
         "result": "pass",
         "kind": "test",
         "by": "feel",
-        "at": "2026-11-08T09:17:45.268Z",
-        "note": "vitest 2377/2377（含 identity 新增 8 例、req claim 缺省链 unknown 集成 3 例）；真实目标项目复验：CultivationOpenRealm（.info.json user=unknown、git user.name=Liuary）修复后 getUserName 返回 Liuary；--version=1.5.15 与 package.json 一致；build 一致性 3/3。",
-        "evidence": "npm test; npx vitest run test/core/workspace/identity.test.ts test/commands/req.test.ts test/core/templates.test.ts; node bin/openfeel.js --version; npm run build; node --input-type=module -e \"import('dist/core/workspace/identity.js')...\""
+        "at": "2026-11-08T10:15:50.852Z",
+        "note": "全量 vitest 2381/2381（+4：attempt 同步 fail/耗尽、done op 静默、scheme remove attempts 保护、json-contract done 夹具）；目标文件 433/433；tsc 0；lint i18n 1194 键一致；build 单源一致性 3/3；--version=1.5.16。",
+        "evidence": "npm test; npx vitest run test/commands/flow.test.ts test/commands/plan.test.ts test/cli/json-contract.test.ts test/core/templates.test.ts; npx tsc --noEmit; node bin/openfeel.js lint i18n; npm run build"
       }
     }
   ]

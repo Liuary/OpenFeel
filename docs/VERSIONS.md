@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.16** — Consistency polish: `attempt` now keeps `checkpoints.exec.attempts` in sync with the top-level counter, `flow ops list` stops warning about empty templates on `done`/`failed` ops (the `fill` value stays truthful; `flow health` still reports them as data hygiene), and docs now state that `req claim` only records the owner fields (use `req advance` to change status), that the fourth shell-gate class is a non-blocking warning with `OPENFEEL_SHELL_ALLOW` as the exact-command allowlist, and that removing a `done` op needs `--force`.
 - **v1.5.15** — Owner-resolution fix: a persisted `"user": "unknown"` sentinel in `.openfeel/.info.json` no longer blocks the fallback to `git config user.name`, so `feel_req claim` works without an explicit `--owner` again; `ensureInfoJson` also heals such existing files when a git identity is available (never writes `unknown` as a result).
 - **v1.5.14** — Feedback-fix batch from a two-day external session: op results actually land now (`flow attempt` / `flow retry` accept short op IDs, and mismatch/ambiguity fails loudly with candidates instead of a silent no-op), the preflight window is configurable (`OPENFEEL_PREFLIGHT_MAX_AGE_MS`) and the DSH adapter self-heals a stale ledger once before a write, an archive-idle `git commit` channel (`git-commit-idle`) covers the post-archive cleanup commit, `flow next` prefers the pass path (`review_passed` / `test_passed`) and warns before `archiving → done` (run `stage verify`) and when all linked requirements are terminal, `OPENFEEL_SHELL_ALLOW` whitelists exact undecidable shell commands, and guard audit/`lastDecision` commands keep 500 chars instead of 200.
 - **v1.5.13** — Commit-phase widening: `git commit` is now allowed in `exec_running|review_passed|test_passed|archiving`, so you can commit right after review or test pass instead of first advancing to `archiving` (the write side is unchanged — source writes still require `exec_running`, and `review_pending` / `test_pending` / `*_failed` / `plan_*` / `scheme_*` / `done` stay rejected, with a commit-specific denial message that lists the four allowed phases). Also fixes the `openfeel-cli-usage` skill frontmatter being truncated at a bare `#` ("exit #43" → "exit No.43"): the parsed `description` grows from 2455 to 2766 chars, so the v1.5.10 / v1.5.11 / v1.5.12 capability chains finally appear in the skill's frontmatter, with a new S6 regression test using the production `splitFrontmatter` and a frontmatter-only `/\s#/` check.
@@ -44,6 +45,13 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.16 — 一致性收尾（checkpoint 计数 / done op 告警降噪 / 文档明确）
+
+- **`checkpoints.exec.attempts` 同步**：`attempt` 后不再出现「顶层 `attempts=1`、`checkpoints.exec.attempts=0`」的漂移；pass / fail / 重试耗尽三条路径一致。
+- **done/failed op 不再报空模板告警**：`flow ops list` 只对可推进状态提示「模板未填充」；`fill` 仍如实反映模板填充度（不伪装已填充）；`flow health` 的空模板项保留数据卫生口径（含 done）。
+- **`plan scheme remove` 保护收紧**：尝试过一次（`exec.attempts>0`）的 op 默认拒绝注销（`--force` 可越过）——此前该子句因计数恒 0 是死代码。
+- **文档澄清**：`req claim` 只写 `owner`/`claimed_at`，**不改状态**（推进用 `req advance`）；第 4 类 shell 判定是**非阻断告警**（审计 + 一行 stderr），已知安全命令用 `OPENFEEL_SHELL_ALLOW`（`||` 分隔、整条全等）白名单；`plan scheme remove` 删除 `done` 或存在 checkpoint 进展的 op 需 `--force`。
 
 ## v1.5.15 — owner 缺省链修复（unknown 哨兵回落 git config）
 

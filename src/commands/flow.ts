@@ -1555,7 +1555,9 @@ export function registerFlowCommand(program: Command): void {
           title: it.title,
           state: it.state,
           fill: it.fill,
-          warning: it.fill === 'empty' ? t('flow.ops.emptyWarningTmpl', lang, { opId: it.opId }) : null,
+          // v1.5.16 / REQ-024：done/failed 已无可执行动作，空模板告警只制造噪声 → 只对其它状态提示；
+          // `fill` 仍为真实模板填充度（不把未填充伪装成已填充）。
+          warning: it.fill === 'empty' && it.state !== 'done' && it.state !== 'failed' ? t('flow.ops.emptyWarningTmpl', lang, { opId: it.opId }) : null,
         }));
         console.log(JSON.stringify({ schemaVersion: 1, ops }, null, 2));
         return;
@@ -1571,8 +1573,9 @@ export function registerFlowCommand(program: Command): void {
         console.log(label);
         for (const it of list) {
           console.log(`  ${it.stage}.${it.opId} [${it.state}] (${it.fill}) ${it.title}`);
-          // 空模板 warning（draft 亦提示，引导 publish 前先填充）
-          if (it.fill === 'empty') {
+          // 空模板 warning（draft/pending 等**可推进**状态提示，引导 publish 前先填充；
+          // done/failed 已是终态，不再提示——v1.5.16 / REQ-024）
+          if (it.fill === 'empty' && it.state !== 'done' && it.state !== 'failed') {
             console.log(t('flow.ops.emptyWarningTmpl', lang, { opId: it.opId }));
           }
         }

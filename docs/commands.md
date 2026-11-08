@@ -763,6 +763,7 @@ openfeel plan scheme register stage-01
 
 - **注册默认**：`state=pending`、`assignee=openfeel-executor`、`attempts=0`、`max_attempts=3`，`title` 取自文件内容首行（回退文件名），审计动作 `register_op`。
 - **对称关系**：`plan scheme remove` 从 `flow.json` 删除注册键（不删文件）；`plan scheme register` 反向补全（不新写文件），两者构成对账闭环。与 `flow repair --prune-orphans`（仅清**键孤儿**）方向相反——文件孤儿的补注册出口为 `plan scheme register`。
+- **删除保护（v1.5.16 明确）**：`plan scheme remove` 默认拒绝删除 `state=done` 或存在 checkpoint 进展的 op（需 `--force`）——保护审计链与快照引用。临时 / 复核用 op 建议保持 `draft`，或删模板文件后用 `flow repair --prune-orphans` 清键孤儿。
 - `opId` 已注册时报 no-op；`opId` 对应文件不存在时报错。
 
 **preflight（v1.5.6）**：`plan stage add` / `plan scheme create`（常规 + `--from-tasks`）/ `publish` / `rename` / `remove` / `register` 全部受门；`scheme remove` / `scheme register` 的 `--dry-run` 免门。`publish` / `rename` / `remove` 与显式 `opId` 的 `register` 在门前做**只读存在性预检**（`flow.json` 注册键 / `ops/*.md`，与写函数同一真值源）→ `op-999` 报「未找到」而非 preflight；`plan scheme remove` 的「孤儿（无模板文件）可直接注销」能力保持不变。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
@@ -903,7 +904,8 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 - **`--workflow-mode`（v1.2.1-stage-90 起）**：值域 `full` / `fast` / `general`；**`general`（无流水线）仅需求级合法**——阶段级 / 部署级写入面拒绝（`general_mode_conflict` 亦在需求与阶段关联时触发：`general` 需求不接受阶段关联）。**done 门（v1.5.7 / REQ-023 重定义）**：**阶段 = 版本容器**（长期保持在 `exec_running`），**需求 = 工作单元**，可在阶段仍开启时完成。① **零关联阶段**的需求可直接显式完成；② **有关联阶段**时，每个关联阶段只需已进入 `exec_running` 及之后相位（`exec_running` / `review_*` / `test_*` / `archiving` / `done`）即可完成；仍有阶段处于 `plan_pending` / `plan_review` / `plan_passed` / `scheme_pending` / `scheme_review` / `scheme_passed` 时拒绝并输出专用文案（`req.err.doneGateTmpl`）。**注意**：聚合**自动收口**仍要求全部关联阶段 done（`aggregate.ts` 空集守卫不变）；显式完成不等于自动收口。
 - **完成必审验（v1.5.8 / REQ-027）**：需求 `done` 门在上述相位判据之上**追加**两条硬门——`review.result === 'pass'` 且 `verification.result === 'pass'`（缺任一即 `invalid_status`，**无 force 逃生口**）。命令层按判据分流文案：未审 → `req.err.reviewRequiredTmpl`、未验 → `req.err.verificationRequiredTmpl`、阶段相位 → 既有 `req.err.doneGateTmpl`。记录写路径：`req review <id>`（`--independent` 独立审查 / `--self` 自我审查，自我审查在归档摘要标注 `self-review`）与 `req verify <id>`（`--kind test|manual|build`，`--evidence` 可选）。两者写 `flow.json` 的 `requirements[*].review` / `.verification` 并各留一条审计（`requirement_review` / `requirement_verification`）；终态需求拒绝补记（`invalid_status`）。
 - **预检受门命令（v1.5.8 起）**：10 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify` / `rollover`）全部受 preflight 门。
-- **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`。
+- **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`（`user` 为空/`unknown` 时回落 git；v1.5.15）。
+- **`req claim` 只改身份字段、不改 `status`**（v1.5.16 明确）：写入 `owner` / `claimed_at` / `updated_at` + 一条 `requirement_claim` 审计；状态流转用 `req advance <id> --to <status>`（`scheduled → in_progress → done`）。历史需求若显示 `in_progress`，是当时显式 `advance` 的结果，不是 claim 的副作用。
 - **preflight（v1.5.6；v1.5.8 起 10 个写命令）**：10 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify` / `rollover`）全部受门。顺序约定：**ID 格式校验先于门**（`req claim REQ-XXX` 报非法 ID，不报 preflight）；`req split --json` 的拒绝形态为 legacy 三键 `{schemaVersion, error:'preflight-required', errorKind:'refusal'}`（无 `hint`）。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 - 分工：引擎面 / 状态机语义（校验 / 流转 / 占用 / 关联（多值 `requirements[]`，旧单值兼容） / done 门）见 [`core/req.md`](../.openfeel/manual/core/req.md)；命令面深入参考见 [`cli/req.md`](../.openfeel/manual/cli/req.md)。
 

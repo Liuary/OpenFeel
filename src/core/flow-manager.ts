@@ -3098,6 +3098,13 @@ export class FlowManager {
     }
 
     op.attempts += 1;
+    // v1.5.16 / REQ-024：`checkpoints.exec.attempts` 的唯一写点 = recordAttempt（此前只初始化 0，
+    // 与顶层 attempts 长期不一致）。`exec.self` 语义仍由 advancePhase 维护，这里只同步计数；
+    // 脏数据（缺 exec / exec 非对象）时跳过（不新建结构、不抛 TypeError）。
+    const execCheckpoint = op.checkpoints?.exec;
+    if (execCheckpoint !== null && typeof execCheckpoint === 'object') {
+      execCheckpoint.attempts = op.attempts;
+    }
 
     // current.op 生命周期单一 owner：state 变更后同步（T1，禁双实现）
     const stageIdOfOp = this.parseOpId(opId)?.stageId;
@@ -3107,8 +3114,8 @@ export class FlowManager {
       // T3：op 级埋点（唯一写入点 = recordAttempt；pass 同时进入 done 终态）
       op.attempted_at = new Date().toISOString();
       op.completed_at = op.attempted_at;
-      // 边界（OF-02）：recordAttempt 只写 state / attempted_at / completed_at，
-      // **不写 checkpoints**（checkpoints 归 advancePhase / advanceStagePhase 维护）。
+      // 边界：recordAttempt 写 state / attempted_at / completed_at + 同步 checkpoints.exec.attempts；
+      // 其余 checkpoint 字段（含 exec.self）归 advancePhase / advanceStagePhase 维护。
       if (stageIdOfOp) { this.syncCurrentOp(stageIdOfOp); }
       this.data.pipeline.retry = 0;
       this.appendLog({

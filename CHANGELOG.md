@@ -1,3 +1,16 @@
+## [1.5.16] - 2026-11-08
+
+> 小批次：1.5.15 复核中确认的两处不一致 + 文档缺口 —— `attempt` 不更新 `checkpoints.exec.attempts`、done op 仍报空模板告警；明确 `req claim` 不改状态、第 4 类 shell 判定为非阻断告警。
+
+### Fixed
+- [stage-131] **`checkpoints.exec.attempts` 同步（REQ-024）**：`recordAttempt` 在 `op.attempts += 1` 后同步写 `checkpoints.exec.attempts`（pass / fail-retry / fail-exhausted 三条路径共用），与顶层计数不再漂移；`exec.self` 语义不变（仍由 `advancePhase` 维护），脏数据缺 `checkpoints.exec` 时跳过不新建。
+- [stage-131] **done / failed op 空模板告警降噪**：`flow ops list` 的 `warning` 仅在 `fill==='empty' && state∉{done,failed}` 时输出（human + `--json` 一致）；`fill` 仍为真实模板填充度，不伪装已填充。`flow health` 的「空模板」项保持**数据卫生**口径（仍统计 done op，提醒模板从未填充），与 ops list 的「可执行性」口径不同。
+- [stage-131] 版本 1.5.16 收口：`package.json` / `dsh/package.json`（version + `requiresCli`）/ `package-lock.json` 根 version 两处 / CHANGELOG / VERSIONS / README 最新版本行 / `dsh/ADAPTER.md` requiresCli / `openfeel-cli-usage` skill 快照同步；`npm run build` 重生成 AUTO-GENERATED 段。
+
+### Changed
+- [stage-131] **`plan scheme remove` 的 checkpoint 保护生效**：此前 `hasCheckpointProgress` 的 `exec.attempts` 子句是死代码（该计数恒 0）；REQ-024 打通计数后，「尝试过一次」的 op 默认拒绝注销（`--force` 可越过）。这是有意的行为收紧，已补 remove 用例。
+- [stage-131] 文档：`docs/commands.md` 明确 **`req claim` 只改 `owner`/`claimed_at`/`updated_at` 并留审计，不改 `status`**（状态流转用 `req advance`）；`docs/json-contract.md` 更新 `flow ops list[].warning` 语义；README / DSH 提示词补第 4 类 `warn` 为**非阻断告警放行**与 `OPENFEEL_SHELL_ALLOW`（`||` 分隔、整条全等）用法；`plan scheme remove` 补 done / 有 checkpoint 进展需 `--force` 的说明。
+
 ## [1.5.15] - 2026-11-08
 
 > 小批次：修复外部项目反馈残留 —— `.openfeel/.info.json` 把 `unknown` 哨兵当真实用户名持久化后，`getUserName` 不再回落 `git config user.name`，导致 `feel_req claim` 仍必须显式传 `--owner`。

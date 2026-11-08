@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.15**（owner 缺省链修复） — `.openfeel/.info.json` 里持久化的 `"user": "unknown"` 不再阻断回落：`getUserName` 把 `unknown`（大小写/空白不敏感）与空串视为未解析，继续读 `git config user.name`，`feel_req claim` 重新可以不带 `--owner`；`ensureInfoJson` 会在 git 身份可用时自愈历史 `unknown` 文件。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.16**（一致性收尾） — ① `attempt` 现在同步 `checkpoints.exec.attempts`，不再与顶层 `attempts` 漂移；② `flow ops list` 对 **done** op 不再报「模板未填充」告警（`fill` 仍如实反映填充度）；③ 文档明确：`req claim` 只写 owner/claimed_at 不改状态（用 `req advance`）、第 4 类 shell 判定为**非阻断告警**且支持 `OPENFEEL_SHELL_ALLOW` 整条命令白名单、删除 done op 需 `--force`。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 
@@ -73,6 +73,7 @@ openfeel setup --tools dsh    # 2. 部署到 DSH profile（默认全部；可 --
 - 前提：DSH `0.2.0-rc.2`、Node ≥ 20.17、存在 DSH profile、全局 `openfeel` 可用。
 - 升级：`npm i -g openfeel@latest` → 重启 DSH；`link:` 指向同一路径，随包更新。
 - 开发态可直接 `link:` 仓库 `dsh/`；详见 [dsh/README.md](dsh/README.md) 与 [dsh/ADAPTER.md](dsh/ADAPTER.md)。
+- 写入门禁第 4 类（无法静态判定写入目标）默认 **告警放行、不阻断**，只落审计 + 一行 stderr（不消耗模型轮次）；已知安全命令可用 `OPENFEEL_SHELL_ALLOW` 白名单（`||` 分隔，折叠空白后**整条命令全等**，`strict` 档同样生效），例如 `OPENFEEL_SHELL_ALLOW="Build.bat all || node Tools/gen-typings.js"`。
 - `openfeel update --tools dsh` 不适用（DSH 是全局部署）。
 
 ## 快速迭代模式（v1.1.7 起）

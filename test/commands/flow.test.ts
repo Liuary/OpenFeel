@@ -1810,6 +1810,41 @@ describe('flow 命令（stage-41）', () => {
     }
   });
 
+  it('op-005/REQ-024: done op 空模板不再告警；pending 仍告警（human 计数 + --json）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.1.2-stage-78');
+    mgr.getData()!.stages['v1.1.2-stage-78'].ops = {
+      'op-001': { ...(makeOp('op-001') as object), state: 'pending' } as never,
+      'op-002': { ...(makeOp('op-002') as object), state: 'done' } as never,
+    };
+    mgr.save();
+    const opsDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-78', 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    writeFileSync(join(opsDir, 'op-001.md'), '# op-001：t\n\n- [ ] 待补充\n', 'utf-8');
+    writeFileSync(join(opsDir, 'op-002.md'), '# op-002：t\n\n- [ ] 待补充\n', 'utf-8');
+    logMock.mockClear();
+
+    await safeParse(['flow', 'ops', 'list']);
+    const out = logMock.mock.calls.map((c) => c[0] as string).join('\n');
+    // 只有 pending 的 op-001 应提示；done 的 op-002 不提示（行内锚定，挂错 op 会红）
+    expect(out).toMatch(/op-001[^\n]*模板未填充/);
+    expect(out).not.toMatch(/op-002[^\n]*模板未填充/);
+    expect(out.match(/模板未填充/g) ?? []).toHaveLength(1);
+    expect(out).toContain('op-001');
+
+    logMock.mockClear();
+    await safeParse(['flow', 'ops', 'list', '--json']);
+    const obj = JSON.parse(logMock.mock.calls[0][0] as string);
+    const byId = new Map<string, { fill: string; warning: unknown }>(
+      (obj.ops as Array<{ opId: string; fill: string; warning: unknown }>).map((o) => [o.opId, o]),
+    );
+    expect(byId.get('op-001')!.fill).toBe('empty');
+    expect(typeof byId.get('op-001')!.warning).toBe('string');
+    // fill 仍是真实填充度（不伪装已填充），但 done 后不再出告警
+    expect(byId.get('op-002')!.fill).toBe('empty');
+    expect(byId.get('op-002')!.warning).toBeNull();
+  });
+
   it('op-005/B4-5: attempt --op <draft op> → exit 1 且 attempts 未递增', async () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.1.2-stage-77');
@@ -4333,10 +4368,48 @@ describe('flow 命令（stage-41）', () => {
       expect(typeof op.attempted_at).toBe('string');
       expect(typeof op.completed_at).toBe('string');
       expect(op.completed_at).toBe(op.attempted_at);
-      // recordAttempt 只写 state / attempted_at / completed_at，**不写 checkpoints**（checkpoints 由 advancePhase 维护）
+      // v1.5.16 / REQ-024：checkpoints.exec.attempts 与顶层 attempts 同步（唯一写点 = recordAttempt）
+      expect((op.checkpoints as { exec: { attempts: number } }).exec.attempts).toBe(1);
+      // exec.self 仍由 advancePhase 维护，recordAttempt 不改它
       expect((op.checkpoints as { exec: { self: string } }).exec.self).toBe('pending');
       expect(stdoutText()).toContain('执行成功');
       expect(stderrText()).toBe('');
+    });
+
+    it('OF-02：attempt fail（未耗尽）也同步 checkpoints.exec.attempts，state 回 pending', async () => {
+      seedStages({ [STAGE]: { ops: { 'op-001': opFixture('op-001') } } }, STAGE);
+      exitMock.mockClear();
+      logMock.mockClear();
+      errorMock.mockClear();
+
+      await safeParse(['flow', 'attempt', '--op', 'op-001', '--result', 'fail']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      const op = flowSnapshot().stages[STAGE].ops['op-001'] as Record<string, unknown>;
+      expect(op.state).toBe('pending');
+      expect(op.attempts).toBe(1);
+      expect((op.checkpoints as { exec: { attempts: number } }).exec.attempts).toBe(1);
+    });
+
+    it('OF-02：attempt fail 耗尽（attempts=2/max=3）→ state=failed 且 exec.attempts=3', async () => {
+      seedStages({
+        [STAGE]: {
+          ops: {
+            'op-001': { ...opFixture('op-001'), attempts: 2, state: 'pending' },
+          },
+        },
+      }, STAGE);
+      exitMock.mockClear();
+      logMock.mockClear();
+      errorMock.mockClear();
+
+      await safeParse(['flow', 'attempt', '--op', 'op-001', '--result', 'fail']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      const op = flowSnapshot().stages[STAGE].ops['op-001'] as Record<string, unknown>;
+      expect(op.state).toBe('failed');
+      expect(op.attempts).toBe(3);
+      expect((op.checkpoints as { exec: { attempts: number } }).exec.attempts).toBe(3);
     });
 
     it('OF-02：短 ID 跨阶段唯一命中（当前阶段无同名 op）→ 解析到该阶段并落盘', async () => {

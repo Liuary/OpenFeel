@@ -16,7 +16,139 @@ vi.mock('node:os', async (importOriginal) => {
 });
 
 import { tmpdir } from 'node:os';   // tmpdir 仍为真实值（mock 展开 actual）
-import { ensureInfoJson, getLang, recordProjectLang, getGlobalConfig } from '../../../src/core/workspace/identity.js';
+import { execFileSync } from 'node:child_process';
+import { ensureInfoJson, getLang, getUserName, recordProjectLang, getGlobalConfig } from '../../../src/core/workspace/identity.js';
+
+/** git 是否可用（不可用则跳过依赖真实 git 的用例，避免假绿）。 */
+function gitAvailable(): boolean {
+  try {
+    execFileSync('git', ['--version'], { stdio: 'ignore', timeout: 5000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 在临时目录初始化真实 git 仓库并写入本地 user.name。 */
+function initGitRepo(dir: string, userName: string): void {
+  execFileSync('git', ['init', '-q'], { cwd: dir, stdio: 'ignore', timeout: 10000 });
+  execFileSync('git', ['config', 'user.name', userName], { cwd: dir, stdio: 'ignore', timeout: 10000 });
+  execFileSync('git', ['config', 'user.email', `${userName}@example.invalid`], { cwd: dir, stdio: 'ignore', timeout: 10000 });
+}
+
+/**
+ * 临时屏蔽本机全局 git 身份（模拟「没有 git 身份」），fn 结束后恢复。
+ * 只影响子进程可读的配置来源，不触碰真实 ~/.gitconfig。
+ */
+function withNoGitIdentity<T>(fn: () => T): T {
+  const keys = ['GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM', 'GIT_CONFIG_SYSTEM'] as const;
+  const previous = new Map<string, string | undefined>();
+  for (const key of keys) {
+    previous.set(key, process.env[key]);
+    delete process.env[key];
+  }
+  process.env.GIT_CONFIG_GLOBAL = join(tmpdir(), 'openfeel-identity-no-global.gitconfig');
+  process.env.GIT_CONFIG_NOSYSTEM = '1';
+  try {
+    return fn();
+  } finally {
+    for (const key of keys) {
+      const value = previous.get(key);
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
+/**
+ * v1.5.15 / REQ-023：`.info.json` 的 `unknown` 是解析失败哨兵，不是有效用户名。
+ * 回归锚：CultivationOpenRealm 的 `.info.json` 为 `{"user":"unknown"}` 且 git 有身份，
+ * `feel_req claim` 仍要求显式 `--owner`。
+ */
+describe('getUserName（REQ-023：unknown 哨兵回落 git config）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-identity-user-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function writeInfo(user: string): void {
+    writeFileSync(join(tmpDir, '.openfeel', '.info.json'), JSON.stringify({ user, lang: 'zh-CN' }), 'utf-8');
+  }
+
+  it('user="unknown" + git 有身份 → 回落 git user.name（回归锚）', () => {
+    if (!gitAvailable()) return;
+    initGitRepo(tmpDir, 'Liuary');
+    writeInfo('unknown');
+    expect(getUserName(tmpDir)).toBe('Liuary');
+  });
+
+  it('user="Unknown"/"  unknown  "（大小写/空白）同样回落', () => {
+    if (!gitAvailable()) return;
+    initGitRepo(tmpDir, 'Liuary');
+    writeInfo('Unknown');
+    expect(getUserName(tmpDir)).toBe('Liuary');
+    writeInfo('  unknown  ');
+    expect(getUserName(tmpDir)).toBe('Liuary');
+  });
+
+  it('user 为正常值时不被 git 覆盖', () => {
+    if (!gitAvailable()) return;
+    initGitRepo(tmpDir, 'Liuary');
+    writeInfo('Alice');
+    expect(getUserName(tmpDir)).toBe('Alice');
+  });
+
+  it('无 .info.json + git 有身份 → git user.name', () => {
+    if (!gitAvailable()) return;
+    initGitRepo(tmpDir, 'Liuary');
+    expect(getUserName(tmpDir)).toBe('Liuary');
+  });
+
+  it('user="unknown" + 无 git 身份 → 仍返回哨兵 unknown', () => {
+    if (!gitAvailable()) return;
+    writeInfo('unknown');
+    expect(withNoGitIdentity(() => getUserName(tmpDir))).toBe('unknown');
+  });
+});
+
+describe('ensureInfoJson 自愈 unknown 用户（REQ-023）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-identity-heal-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('已有 unknown + git 有身份 → 文件修成 git user.name 且保留 lang', () => {
+    if (!gitAvailable()) return;
+    initGitRepo(tmpDir, 'Liuary');
+    const infoPath = join(tmpDir, '.openfeel', '.info.json');
+    writeFileSync(infoPath, JSON.stringify({ user: 'unknown', lang: 'en' }), 'utf-8');
+    ensureInfoJson(tmpDir);
+    const info = JSON.parse(readFileSync(infoPath, 'utf-8'));
+    expect(info.user).toBe('Liuary');
+    expect(info.lang).toBe('en');
+  });
+
+  it('已有 unknown + 无 git 身份 → 文件不被改写（不自造身份）', () => {
+    if (!gitAvailable()) return;
+    const infoPath = join(tmpDir, '.openfeel', '.info.json');
+    const original = JSON.stringify({ user: 'unknown', lang: 'zh-CN' }, null, 2) + '\n';
+    writeFileSync(infoPath, original, 'utf-8');
+    withNoGitIdentity(() => ensureInfoJson(tmpDir));
+    expect(readFileSync(infoPath, 'utf-8')).toBe(original);
+  });
+});
 
 describe('getLang', () => {
   let tmpDir: string;

@@ -617,6 +617,17 @@ describe('req 命令组（stage-82）', () => {
     expect(process.exitCode).toBe(0);
     expect(readFlow().requirements[0].owner).toBe('Bob');
 
+    // B2（REQ-023 回归锚）：.info.json user 为哨兵 'unknown' + git config 命中 → 仍回落 git
+    for (const sentinel of ['unknown', 'Unknown', '  unknown  ']) {
+      writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+      writeInfo({ user: sentinel, lang: 'zh-CN' });
+      mockedChild.execSync.mockReturnValue('Bob\n');
+      resetCapture();
+      await safeParse(['req', 'claim', 'REQ-001']);
+      expect(process.exitCode, sentinel).toBe(0);
+      expect(readFlow().requirements[0].owner, sentinel).toBe('Bob');
+    }
+
     // C：两源皆无（哨兵 'unknown'）→ 拒绝 + 提示显式 --owner
     writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
     writeInfo({ lang: 'zh-CN' });

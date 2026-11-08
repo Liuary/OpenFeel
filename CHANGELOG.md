@@ -1,3 +1,16 @@
+## [1.5.15] - 2026-11-08
+
+> 小批次：修复外部项目反馈残留 —— `.openfeel/.info.json` 把 `unknown` 哨兵当真实用户名持久化后，`getUserName` 不再回落 `git config user.name`，导致 `feel_req claim` 仍必须显式传 `--owner`。
+
+### Fixed
+- [stage-130] **owner 缺省链（REQ-023）**：`getUserName` 现将空串与哨兵 `unknown`（trim + 大小写不敏感）视为**未解析**，继续回落 `git config user.name`；两源皆无时仍返回 `unknown`（`req claim` 保留「请显式传 --owner」的拒绝语义，不硬编码身份）。
+- [stage-130] **`.info.json` 自愈**：`ensureInfoJson` 在文件已存在时除修 `lang` 外，还会在 `user` 为空/`unknown` 且 git 身份可用时写回真实用户名；git 不可用时不改写（不把 `unknown` 当结果落盘）。正常用户值一律不覆盖。**注意**：`ensureInfoJson` 只在 `init` 路径调用；升级后 `claim` 能立刻用 git 回落，但历史文件要等下一次 `init` 才会被改写，升级本身不等同于修文件。
+- [stage-130] 已知取舍：真实用户名恰为 `unknown`（大小写不敏感）的用户会被当作未解析，仍需显式 `--owner`（哨兵与真实身份不可区分的既有语义；`.info.json` 带前后空格的旧用户名现会 trim 后使用）。
+- [stage-130] 版本 1.5.15 收口：`package.json` / `dsh/package.json`（version + `requiresCli`）/ `package-lock.json` 根 version 两处 / CHANGELOG / VERSIONS / README 最新版本行 / `dsh/ADAPTER.md` requiresCli / `openfeel-cli-usage` skill 快照同步；`npm run build` 重生成 AUTO-GENERATED 段。
+
+### Added
+- [stage-130] **回归测试**：`test/core/workspace/identity.test.ts` 新增 `getUserName` 用例（`unknown` / `Unknown` / 空白回落、正常值不被覆盖、无 `.info.json` 走 git、无 git 保留哨兵）与 `ensureInfoJson` 自愈用例（有 git 修复、无 git 不改写）；`test/commands/req.test.ts` 的 `--owner` 缺省链补 `unknown` 哨兵 + git 命中的集成用例。
+
 ## [1.5.14] - 2026-11-07
 
 > 反馈修复批次：外部项目（CultivationOpenRealm）两天长会话实录 `openfeel-feedback-2026-11-07` 中 **OF-02 ~ OF-08**。OF-01（DSH 宿主 auto-review fail-open）不在本仓实现范围（本仓库无 auto-review 代码）。

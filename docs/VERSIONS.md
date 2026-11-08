@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.15** — Owner-resolution fix: a persisted `"user": "unknown"` sentinel in `.openfeel/.info.json` no longer blocks the fallback to `git config user.name`, so `feel_req claim` works without an explicit `--owner` again; `ensureInfoJson` also heals such existing files when a git identity is available (never writes `unknown` as a result).
 - **v1.5.14** — Feedback-fix batch from a two-day external session: op results actually land now (`flow attempt` / `flow retry` accept short op IDs, and mismatch/ambiguity fails loudly with candidates instead of a silent no-op), the preflight window is configurable (`OPENFEEL_PREFLIGHT_MAX_AGE_MS`) and the DSH adapter self-heals a stale ledger once before a write, an archive-idle `git commit` channel (`git-commit-idle`) covers the post-archive cleanup commit, `flow next` prefers the pass path (`review_passed` / `test_passed`) and warns before `archiving → done` (run `stage verify`) and when all linked requirements are terminal, `OPENFEEL_SHELL_ALLOW` whitelists exact undecidable shell commands, and guard audit/`lastDecision` commands keep 500 chars instead of 200.
 - **v1.5.13** — Commit-phase widening: `git commit` is now allowed in `exec_running|review_passed|test_passed|archiving`, so you can commit right after review or test pass instead of first advancing to `archiving` (the write side is unchanged — source writes still require `exec_running`, and `review_pending` / `test_pending` / `*_failed` / `plan_*` / `scheme_*` / `done` stay rejected, with a commit-specific denial message that lists the four allowed phases). Also fixes the `openfeel-cli-usage` skill frontmatter being truncated at a bare `#` ("exit #43" → "exit No.43"): the parsed `description` grows from 2455 to 2766 chars, so the v1.5.10 / v1.5.11 / v1.5.12 capability chains finally appear in the skill's frontmatter, with a new S6 regression test using the production `splitFrontmatter` and a frontmatter-only `/\s#/` check.
 - **v1.5.12** — Guard recovery & git boundaries (fixes the `guard.stale`-never-recovers bug reported by an external project): the guard marker's identity keys (`pid` / `hostStartedAt` / `loaded_hash`) now come only from the current runtime and `stale` is decided by `pid` + `loaded_hash` alone (the `host-started-at` false positive is gone; an HMAC mismatch downgrades to `hmacWarn` instead of `stale`) — **deleting `guard-state.json` is no longer needed**. Supported self-heal repairs only dead-pid states (live foreign pids and `loaded_hash` mismatches stay untouched) and is also available explicitly on the DSH side via `feel_verify action=health fix=true` (missing/incomplete marker → `marker-incomplete`, zero writes). Also: dsh test isolation via `OPENFEEL_GUARD_DIR`, a seven-condition allowance for pure bookkeeping `git commit` (all pending paths under `.openfeel/**`), a whitelist for the git external-execution surface (`-c` / `--config-env` and `GIT_*`), a multi-profile notice for `setup --tools dsh`, and `feel_status` / `feel_next` headlines that no longer say "no active stage" for guard reasons.
@@ -43,6 +44,12 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.15 — owner 缺省链修复（unknown 哨兵回落 git config）
+
+- **问题**：`.openfeel/.info.json` 一旦持久化成 `{"user":"unknown"}`（init 时 git 未配置），`getUserName` 会把它当真实用户名直接返回，**不再回落 `git config user.name`**，于是 `feel_req claim` 永远要求显式 `--owner`。
+- **修复**：`unknown`（trim + 大小写不敏感）与空串都视为「未解析」，继续读 `git config user.name`；两源皆无时才返回哨兵 `unknown`，`req claim` 仍给出「请显式传 --owner」的可操作提示。
+- **自愈**：`ensureInfoJson` 遇到已存在的 `user` 为空/`unknown` 且 git 身份可用时写回真实用户名（`lang` 与正常用户值不覆盖；git 不可用时不写 `unknown`）。
 
 ## v1.5.14 — 外部长会话反馈修复（op 落盘 / preflight / 归档收尾 / 门禁体验）
 

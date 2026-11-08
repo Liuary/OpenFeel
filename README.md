@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.14**（外部长会话反馈修复：op 落盘 / preflight 自愈 / 归档收尾提交 / 门禁体验） — ① `flow attempt` / `flow retry` 支持 op 短 ID，未找到/歧义列出候选并非 0 退出（不再静默 no-op）；② preflight 窗口可用 `OPENFEEL_PREFLIGHT_MAX_AGE_MS` 放宽，适配器写前账本过期会真实自愈一次；③ 归档后无活跃阶段时新增 `git-commit-idle` 收尾提交通道；④ `flow next` 建议走通过路径、`archiving` 前提示先 verify、关联需求全完成时提示收口；⑤ `OPENFEEL_SHELL_ALLOW` 整条命令白名单 + 命令截断 200→500。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.15**（owner 缺省链修复） — `.openfeel/.info.json` 里持久化的 `"user": "unknown"` 不再阻断回落：`getUserName` 把 `unknown`（大小写/空白不敏感）与空串视为未解析，继续读 `git config user.name`，`feel_req claim` 重新可以不带 `--owner`；`ensureInfoJson` 会在 git 身份可用时自愈历史 `unknown` 文件。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

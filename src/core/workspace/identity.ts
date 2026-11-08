@@ -38,21 +38,38 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   projects: {} as Record<string, 'zh-CN' | 'en'>,
 };
 
+/** 用户名哨兵：解析失败时的返回值（命令层据此拒绝并提示 --owner） */
+export const UNKNOWN_USER = 'unknown';
+
+/**
+ * 用户名是否「未解析」。
+ *
+ * v1.5.15 / REQ-023：`unknown` 是 `getUserName` 自己的失败哨兵，历史 `.info.json`
+ * 可能把它当成真实用户名持久化（init 时 git 未配置）。它**不是**有效身份，
+ * 必须继续回落 `git config user.name`，否则 `feel_req claim` 永远要求显式 `--owner`。
+ * 判定大小写不敏感 + trim，避免 `"Unknown"` / `" unknown "` 绕过。
+ */
+function isUnresolvedUserName(value: unknown): boolean {
+  if (typeof value !== 'string') return true;
+  const name = value.trim();
+  return name === '' || name.toLowerCase() === UNKNOWN_USER;
+}
+
 /**
  * 获取用户名
- * 优先读取 .openfeel/.info.json，若不存在则尝试从 git config 获取，
+ * 优先读取 .openfeel/.info.json，若缺失/为哨兵 `unknown` 则尝试从 git config 获取，
  * 均失败则返回默认值 'unknown'。
  */
 export function getUserName(projectPath: string): string {
   const infoPath = resolve(projectPath, '.openfeel', '.info.json');
 
-  // 尝试从 .info.json 读取
+  // 尝试从 .info.json 读取（哨兵 unknown / 空白视为未解析，继续回落）
   if (existsSync(infoPath)) {
     try {
       const content = readFileSync(infoPath, 'utf-8');
-      const info = JSON.parse(content) as { user?: string };
-      if (info.user && info.user.length > 0) {
-        return info.user;
+      const info = JSON.parse(content) as { user?: unknown };
+      if (!isUnresolvedUserName(info.user)) {
+        return (info.user as string).trim();
       }
     } catch {
       // JSON 解析失败，忽略，回退到 git config
@@ -65,14 +82,14 @@ export function getUserName(projectPath: string): string {
       encoding: 'utf-8',
       cwd: projectPath,
     }).trim();
-    if (name.length > 0) {
+    if (!isUnresolvedUserName(name)) {
       return name;
     }
   } catch {
     // git 命令执行失败，忽略
   }
 
-  return 'unknown';
+  return UNKNOWN_USER;
 }
 
 /**
@@ -101,8 +118,8 @@ export function getLang(projectPath: string): 'zh-CN' | 'en' {
 /**
  * 确保 .openfeel/.info.json 存在
  * 若不存在则创建并写入当前用户名和默认语言。
- * 若已存在则检查 lang 字段，不存在或为空时补充写入默认值 zh-CN。
- * 不会覆盖已有的 user 和 lang 值。
+ * 若已存在则检查 lang 字段（缺省/非法补 zh-CN）与 user 字段（空/哨兵 `unknown`
+ * 时尝试重新解析并修复）；已有效的 user / lang 一律不覆盖。
  */
 export function ensureInfoJson(projectPath: string): void {
   const infoPath = resolve(projectPath, '.openfeel', '.info.json');
@@ -114,15 +131,25 @@ export function ensureInfoJson(projectPath: string): void {
     return;
   }
 
-  // 文件已存在，检查 lang 字段
+  // 文件已存在：修 lang，并自愈历史遗留的 unknown 用户（v1.5.15 / REQ-023）
   try {
     const content = readFileSync(infoPath, 'utf-8');
     const info = JSON.parse(content) as InfoJson;
+    let changed = false;
     if (!info.lang || !VALID_LANGS.includes(info.lang as any)) {
       info.lang = 'zh-CN';
+      changed = true;
+    }
+    if (isUnresolvedUserName(info.user)) {
+      const resolved = getUserName(projectPath);
+      if (!isUnresolvedUserName(resolved)) {
+        info.user = resolved;
+        changed = true;
+      }
+    }
+    if (changed) {
       atomicWriteFileSync(infoPath, JSON.stringify(info, null, 2) + '\n');
     }
-    // lang 已存在且有效，保留不变（向后兼容）
   } catch {
     // JSON 解析失败，不做修改
   }

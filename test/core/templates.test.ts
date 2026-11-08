@@ -519,7 +519,7 @@ describe('stage-84：新 skill openfeel-req + cli-usage 补节（S4/S5）', () =
       '## v1.3.0（stage-101）', 'v1.3.1 修复（setup --tools dsh 的 pnpm frozen-lockfile 部署失败）',
       '## v1.3.2（stage-103）', '## v1.3.3（stage-104）', '## v1.3.4（stage-105）', '## v1.3.5（stage-106）',
       '## v1.4.0（stage-107）', '## v1.5.0（stage-108）', '## v1.5.2（stage-110）', '## v1.5.3（stage-111）', '## v1.5.4（stage-112）', '## v1.5.5（stage-113）',
-      '## v1.5.14（stage-129）', 'OPENFEEL_SHELL_ALLOW', 'git-commit-idle', 'OPENFEEL_PREFLIGHT_MAX_AGE_MS', '本文档为 v1.5.14 快照',
+      '## v1.5.14（stage-129）', '## v1.5.15（stage-130）', 'OPENFEEL_SHELL_ALLOW', 'git-commit-idle', 'OPENFEEL_PREFLIGHT_MAX_AGE_MS', '本文档为 v1.5.15 快照',
       'DSH 写入门禁', 'openfeel dashboard', '43 成功出口', 'OPENFEEL_SHELL_GATE', 'guard-state']) {
       expect(c, `缺 ${s}`).toContain(s);
     }

@@ -27,8 +27,47 @@ export const FEEL_PROMPT_NAME = 'feel-mode';
  */
 export function renderFeelPrompt(options = {}) {
   const language = options.language ?? 'zh-CN';
-  if (language === 'en') return renderEnglish(options);
-  return renderChinese(options);
+  // v1.5.17：feel_mode=disabled → 软关闭（只放松流程强制；硬门与写入门禁不变）
+  const feelDisabled = options?.feelMode?.value === 'disabled';
+  const merged = { ...options, feelDisabled };
+  if (language === 'en') return renderEnglish(merged);
+  return renderChinese(merged);
+}
+
+/**
+ * 自由模式节（中文；v1.5.17）。
+ * 只放松「流程强制」：需求/阶段由 AI 自行判断、preflight 降级为提示；
+ * 状态机 / done 门 / 阶段验证 / 归档判据 / blocking REV / 写入门禁全部保留。
+ * @returns {string}
+ */
+function renderFreeModeChinese() {
+  return `
+## 自由模式（\`feel_mode=disabled\`；与后文冲突时以本节为准）
+- **不强制流程**：是否创建需求（REQ）、是否建立阶段/工作流，由你判断；不再催你「先建阶段」。
+- **可以直接干活**：只读任务直接做；改代码/写文档直接做（写入门禁仍生效）。
+- **先读后写降级**：preflight 从「拒绝」降为「提示」——不必先 \`feel_status\` 才能写；写状态前读一眼仍是好习惯。
+- **后文流程动作均为可选**：「每次动手前」「需求导向与流程入口」「写命令与 preflight」中的强制动作在本模式下不强制。
+- **仍然不可协商**：禁止手改 \`flow.json\` / \`status.md\` / \`pipeline.yaml\` / \`config.yaml\`；状态机合法性、\`done\` 门、阶段验证门、版本归档判据、blocking REV 门、写入门禁**全部照旧**。
+- **归档 / 发布仍需用户确认**；需要历史时用 \`feel_archive\` 查询。
+- **若选择走流程**：\`feel_req add\` → \`claim\` → \`feel_stage add\`；一旦进入流水线，相位门禁照常执行。
+`;
+}
+
+/**
+ * 自由模式节（英文；v1.5.17）。
+ * @returns {string}
+ */
+function renderFreeModeEnglish() {
+  return `
+## Free mode (\`feel_mode=disabled\`; this section wins over later conflicts)
+- **Workflow is optional**: whether to create a requirement (REQ) or open a stage/workflow is your call; nobody nags you to open a stage.
+- **Work directly when appropriate**: read-only work proceeds immediately; code/doc edits proceed immediately (the write guard still applies).
+- **Read-before-write is relaxed**: preflight downgrades from "refuse" to "warn" — you no longer need \`feel_status\` before writing; still a good habit before state writes.
+- **Later mandatory-looking steps are optional**: "Before acting", "Requirement-first & workflow entry", and "Write commands & preflight" are advisory in this mode.
+- **Still non-negotiable**: never hand-edit \`flow.json\` / \`status.md\` / \`pipeline.yaml\` / \`config.yaml\`; the state machine, \`done\` gate, stage verification gate, version-archive criteria, blocking-REV gate and the write guard all remain in force.
+- **Archive / release still needs user confirmation**; use \`feel_archive\` to inspect history.
+- **If you do choose the workflow**: \`feel_req add\` → \`claim\` → \`feel_stage add\`; once in the pipeline, phase gates apply as usual.
+`;
 }
 
 /**
@@ -114,11 +153,13 @@ function renderChinese(options) {
   const where = options.detected === true && options.projectRoot !== undefined
     ? `当前项目：\`${options.projectRoot}\`（已初始化 \`.openfeel/\`）。`
     : '当前工作区尚未检测到 `.openfeel/`：若用户要求使用 Feel 流程，先提示运行 `openfeel init`。';
-  const status = options.detected === true ? 'Feel 模式已启用' : 'Feel 模式未初始化';
+  const status = options.detected === true
+    ? (options.feelDisabled === true ? 'Feel 模式已启用（`feel_mode=disabled`：自由模式）' : 'Feel 模式已启用')
+    : 'Feel 模式未初始化';
 
   return `<feel_mode>
 ${status}：本会话在 OpenFeel 流程治理下工作。${where}
-
+${options.feelDisabled === true ? renderFreeModeChinese() : ''}
 ## 你的角色：调度者，不是执行者
 你的价值是判断「该谁做」，而不是自己做。OpenFeel 的 15 个相位各有负责 Agent：
 planner（计划）/ schemer（方案）/ executor（执行）/ reviewer（审查）/ feel-tester（测试）/ archiver（归档）。
@@ -201,11 +242,13 @@ function renderEnglish(options) {
   const where = options.detected === true && options.projectRoot !== undefined
     ? `Project: \`${options.projectRoot}\` (initialized \`.openfeel/\`).`
     : 'No `.openfeel/` detected in this workspace: if the user asks for the Feel process, suggest `openfeel init` first.';
-  const status = options.detected === true ? 'Feel mode is active' : 'Feel mode is not initialized';
+  const status = options.detected === true
+    ? (options.feelDisabled === true ? 'Feel mode is active (`feel_mode=disabled`: free mode)' : 'Feel mode is active')
+    : 'Feel mode is not initialized';
 
   return `<feel_mode>
 ${status}: this session works under OpenFeel process governance. ${where}
-
+${options.feelDisabled === true ? renderFreeModeEnglish() : ''}
 ## Your role: orchestrator, not implementer
 Your value is deciding WHO acts, not acting yourself. The 15 pipeline phases each have an owning agent:
 planner / schemer / executor / reviewer / feel-tester / archiver. **The authoritative mapping comes from

@@ -861,22 +861,28 @@ Invariants:
 
 ---
 
-## 8. Config cascade — precedence and the four managed keys
+## 8. Config cascade — precedence and the five managed keys
 
-### 8.1 The four managed keys
+### 8.1 The five managed keys
 
 `EFFECTIVE_CONFIG_KEYS` and `DEFAULT_CONFIG`:
 
 ```ts
-const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'] as const;
+const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode'] as const;
 
 export const DEFAULT_CONFIG: Config = {
   execution_mode: 'manual',
   auto_advance: 'enabled',   // 裁定 E：部署级默认自动推进开启（与 workflow_mode 无关）
   merge_mode: 'manual',
   workflow_mode: 'fast',     // 裁定 B：新建默认 fast
+  feel_mode: 'enabled',      // v1.5.17：默认按门禁走流程
 };
 ```
+
+`feel_mode`（v1.5.17）：项目 `defaults.feel_mode` > 全局 profile `preferences.feel_mode` > `builtin=enabled`；
+它**没有阶段级字段**（`status.md` 不承载，故来源永不为 `status.md`）。`disabled` 时 CLI 侧
+`preflight` 的 `strict` 降级为 `warn`，适配器侧 `workflowGate` 的 `no-active-stage` 分支替换为
+`feel-mode-off`（`required:false`、message 为空），但 `guard-*` 自检与数据完整性硬门保持不变。
 
 `ConfigDefaultsSchema` (per-key `.default()` **must** stay in sync with `DEFAULT_CONFIG`):
 
@@ -1519,8 +1525,8 @@ Errors surface as `错误：{msg}` (`common.errorTmpl`) → exit 1; `isFlowConcu
 | `PHASE_PATH_MAX_DEPTH` | `8` |
 | `CHECKPOINT_MAX_KEEP` | `20` |
 | `STAGE_STATUS_VALUES` | `['planned','review_failed','review_passed','testing','archiving','done']` |
-| `EFFECTIVE_CONFIG_KEYS` | `['execution_mode','auto_advance','merge_mode','workflow_mode']` |
-| `DEFAULT_CONFIG` | `{ execution_mode:'manual', auto_advance:'enabled', merge_mode:'manual', workflow_mode:'fast' }` |
+| `EFFECTIVE_CONFIG_KEYS` | `['execution_mode','auto_advance','merge_mode','workflow_mode','feel_mode']` |
+| `DEFAULT_CONFIG` | `{ execution_mode:'manual', auto_advance:'enabled', merge_mode:'manual', workflow_mode:'fast', feel_mode:'enabled' }` |
 | `DEFAULT_SERIES` / `DEFAULT_STAGE_VERSION` | `'v1'` / `'v1.0.0'` |
 | `SKELETON_PHASES` | `['exec_running','review_pending','test_pending','archiving']` |
 | `flow phases --json` key count | `7` |

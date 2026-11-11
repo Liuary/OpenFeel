@@ -883,7 +883,7 @@ export const help: I18nDomain = {
   'config.get':            { key: 'help.config.get',            zh: '读取配置项的值（项目配置；--global 时读取全局 profile；键支持 defaults.X，与 X 等价）', en: '' },
   'config.get.global':     { key: 'help.config.get.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
   'config.get.json':       { key: 'help.config.get.json',       zh: '以 JSON 输出（纯 JSON 单文档，含 schemaVersion）', en: '' },
-  'config.get.all':        { key: 'help.config.get.all',        zh: '项目模式一次读取全量 defaults（四键；不可与 --global 或 key 组合）', en: '' },
+  'config.get.all':        { key: 'help.config.get.all',        zh: '项目模式一次读取全量 defaults（五键；不可与 --global 或 key 组合）', en: '' },
   'config.set':            { key: 'help.config.set',            zh: '设置配置项的值（项目配置；--global 时写入全局 profile；键支持 defaults.X，与 X 等价）', en: '' },
   'config.set.global':     { key: 'help.config.set.global',     zh: '操作全局 profile（~/.config/openfeel/profile.yaml）', en: '' },
   'config.effective':      { key: 'help.config.effective',      zh: '输出配置的有效值 + 生效来源（status.md > config.yaml > profile.yaml > builtin）', en: '' },

@@ -781,13 +781,15 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(doc.scope).toBe('project');
     const defaults = doc.defaults as Record<string, unknown>;
     expect(Object.keys(defaults)).toEqual([
-      'execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode',
+      'execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode',
     ]);
     expect(defaults).toEqual({
       execution_mode: 'auto',
       auto_advance: 'disabled',
       merge_mode: 'auto',
       workflow_mode: 'fast',
+      // v1.5.17：缺省逐键回退 DEFAULT_CONFIG（enabled）
+      feel_mode: 'enabled',
     });
     // 不再报 key-required
     expect(exitMock).not.toHaveBeenCalled();
@@ -804,14 +806,14 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(keyConflict.error.detail).toEqual({ reason: 'all-with-key', key: 'auto_advance' });
   });
 
-  it('A5 基线：人类 --all 输出四行；无 --all 的既有 key-required 不变', async () => {
+  it('A5 基线：人类 --all 输出五行；无 --all 的既有 key-required 不变', async () => {
     writeProjectConfigRaw('defaults:\n  execution_mode: manual\n');
     logMock.mockClear();
     errorMock.mockClear();
     await safeParse(['config', 'get', '--all']);
 
     const out = stdout();
-    for (const key of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode']) {
+    for (const key of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode']) {
       expect(out).toContain(key);
     }
     expect(out).not.toContain('schemaVersion');
@@ -824,7 +826,7 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(stderr()).toContain('必须提供 key');
   });
 
-  it('op-002 JSON：config get --global 无 key → values 6 键固定顺序', async () => {
+  it('op-002 JSON：config get --global 无 key → values 7 键固定顺序', async () => {
     const doc = await jsonDoc(['config', 'get', '--global', '--json']);
 
     expect(Object.keys(doc)).toEqual(['schemaVersion', 'scope', 'values']);
@@ -837,11 +839,16 @@ describe('config 命令（stage-42 op-002）', () => {
       'preferences.review_mode',
       'preferences.communication',
       'preferences.confirm_threshold',
+      // v1.5.17：全局 feel_mode 偏好（第七键）
+      'preferences.feel_mode',
     ]);
-    // readProfile 深合并默认值 → 6 键均为字符串（缺省 null 规则见契约 §13.6）
-    for (const k of Object.keys(values)) {
+    // readProfile 深合并默认值 → 前 6 键均为字符串（缺省 null 规则见契约 §13.6）
+    for (const k of Object.keys(values).filter((k) => k !== 'preferences.feel_mode')) {
       expect(typeof values[k]).toBe('string');
     }
+    // v1.5.17：feel_mode **不在** DEFAULT_PROFILE 中（避免「未显式设置」被误判为 profile 来源）
+    // → 未显式声明时 JSON 按契约输出 null（人类显示空串）
+    expect(values['preferences.feel_mode']).toBeNull();
   });
 
   it('op-002 JSON：config get --global 有 key / 未知 key → value:null', async () => {
@@ -879,10 +886,12 @@ describe('config 命令（stage-42 op-002）', () => {
 
     expect(Object.keys(doc)).toEqual(['schemaVersion', 'effective']);
     const effective = doc.effective as Record<string, { value: string; source: string }>;
-    expect(Object.keys(effective)).toEqual(['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode']);
+    expect(Object.keys(effective)).toEqual(['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode']);
     expect(Object.keys(effective.auto_advance)).toEqual(['value', 'source']);
     expect(typeof effective.auto_advance.value).toBe('string');
     expect(effective.auto_advance.source).toBe('builtin');
+    // v1.5.17：feel_mode 缺省 builtin/enabled
+    expect(effective.feel_mode).toEqual({ value: 'enabled', source: 'builtin' });
   });
 
   it('op-002 JSON：config effective 有 key → key,value,source；未知 key → INVALID_ARGUMENT', async () => {
@@ -896,7 +905,7 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(err.error.code).toBe('INVALID_ARGUMENT');
     expect(err.error.detail).toEqual({
       key: 'bogus',
-      keys: ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'],
+      keys: ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode'],
     });
     expect(process.exitCode).toBe(1);
   });
@@ -909,7 +918,7 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(stdout()).toMatchInlineSnapshot(`"auto_advance：disabled"`);
   });
 
-  it('op-002 基线：config get --global 无 key 人类输出逐字不变', async () => {
+  it('op-002 基线：config get --global 无 key 人类输出（v1.5.17 增第七行）', async () => {
     await safeParse(['config', 'get', '--global']);
     expect(stdout()).toMatchInlineSnapshot(`
       "user.name: 
@@ -917,19 +926,69 @@ describe('config 命令（stage-42 op-002）', () => {
       preferences.auto_advance: disabled
       preferences.review_mode: full
       preferences.communication: concise
-      preferences.confirm_threshold: medium"
+      preferences.confirm_threshold: medium
+      preferences.feel_mode: "
     `);
   });
 
-  it('op-002 基线：config effective 无 key 人类输出逐字不变', async () => {
+  it('op-002 基线：config effective 无 key 人类输出（v1.5.17 增第五行）', async () => {
     await safeParse(['config', 'effective']);
     expect(stdout()).toMatchInlineSnapshot(`
       "配置有效值与来源
       execution_mode：manual    [来源: builtin]
       auto_advance：enabled    [来源: builtin]
       merge_mode：manual    [来源: builtin]
-      workflow_mode：fast    [来源: builtin]"
+      workflow_mode：fast    [来源: builtin]
+      feel_mode：enabled    [来源: builtin]"
     `);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // feel_mode 开关（v1.5.17）：项目级覆盖全局；effective 来源
+  // ═══════════════════════════════════════════════════════════════════
+  describe('feel_mode（v1.5.17）', () => {
+    it('项目 set feel_mode disabled → config.yaml 写入 + effective 来源 config.yaml', async () => {
+      writeProjectConfigRaw('defaults:\n  execution_mode: manual\n');
+      await safeParse(['config', 'set', 'feel_mode', 'disabled']);
+      expect(readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8')).toContain('feel_mode: disabled');
+
+      logMock.mockClear();
+      const doc = await jsonDoc(['config', 'effective', 'feel_mode', '--json']);
+      expect(doc).toEqual({ schemaVersion: 1, key: 'feel_mode', value: 'disabled', source: 'config.yaml' });
+    });
+
+    it('全局 set --global preferences.feel_mode disabled → 仅全局时 effective 来源 profile.yaml', async () => {
+      await safeParse(['config', 'set', 'preferences.feel_mode', 'disabled', '--global']);
+      expect(readFileSync(join(tmpDir, '.config', 'openfeel', 'profile.yaml'), 'utf-8')).toContain('feel_mode: disabled');
+
+      const doc = await jsonDoc(['config', 'effective', 'feel_mode', '--json']);
+      expect(doc).toEqual({ schemaVersion: 1, key: 'feel_mode', value: 'disabled', source: 'profile.yaml' });
+    });
+
+    it('项目 enabled 覆盖全局 disabled', async () => {
+      writeProjectConfigRaw('defaults:\n  feel_mode: enabled\n');
+      const dir = join(tmpDir, '.config', 'openfeel');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'profile.yaml'), 'preferences:\n  feel_mode: disabled\n', 'utf-8');
+
+      const doc = await jsonDoc(['config', 'effective', 'feel_mode', '--json']);
+      expect(doc).toEqual({ schemaVersion: 1, key: 'feel_mode', value: 'enabled', source: 'config.yaml' });
+    });
+
+    it('非法值 → exit 1 且零写盘（项目 / 全局）', async () => {
+      writeProjectConfigRaw('defaults:\n  execution_mode: manual\n');
+      const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+      const before = readFileSync(cfgPath, 'utf-8');
+
+      await safeParse(['config', 'set', 'feel_mode', 'maybe']);
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(readFileSync(cfgPath, 'utf-8')).toBe(before);
+
+      exitMock.mockClear();
+      await safeParse(['config', 'set', 'preferences.feel_mode', 'maybe', '--global']);
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(existsSync(join(tmpDir, '.config', 'openfeel', 'profile.yaml'))).toBe(false);
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════

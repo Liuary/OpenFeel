@@ -848,7 +848,7 @@ export const help: I18nDomain = {
   'config.get':            { key: 'help.config.get',            zh: '', en: 'Read a config value (project config; --global reads global profile; keys accept defaults.X, equivalent to X)' },
   'config.get.global':     { key: 'help.config.get.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
   'config.get.json':       { key: 'help.config.get.json',       zh: '', en: 'Output as JSON (single JSON document with schemaVersion)' },
-  'config.get.all':        { key: 'help.config.get.all',        zh: '', en: 'Read all project defaults at once (four keys; cannot combine with --global or a key)' },
+  'config.get.all':        { key: 'help.config.get.all',        zh: '', en: 'Read all project defaults at once (five keys; cannot combine with --global or a key)' },
   'config.set':            { key: 'help.config.set',            zh: '', en: 'Set a config value (project config; --global writes global profile; keys accept defaults.X, equivalent to X)' },
   'config.set.global':     { key: 'help.config.set.global',     zh: '', en: 'Operate on global profile (~/.config/openfeel/profile.yaml)' },
   'config.effective':      { key: 'help.config.effective',      zh: '', en: 'Show effective config values and their source (status.md > config.yaml > profile.yaml > builtin)' },

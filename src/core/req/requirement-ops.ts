@@ -118,6 +118,29 @@ export function allocateRequirementId(data: FlowData): string {
   return formatRequirementId(seq);
 }
 
+/**
+ * 抬升需求序号下限（纯内存；v1.5.17 配套修复）。
+ *
+ * 背景：`meta.last_req_seq` 只随新建递增，**不感知归档**——归档移走条目后计数器可能低于
+ * 已用过的最大号（存量缺陷：归档 REQ-025~030 后计数器仍为 24），导致下一个 ID 复用归档 ID。
+ * 命令层在分配前用 `archivedRequirementMaxSeq(projectPath)` 求归档最大号并经本函数并入。
+ *
+ * 语义：`last_req_seq = max(requirementSeqFloor(data), floor)`；非法 floor（非有限数 / ≤0 /
+ * 非整数）视为无提示，零变更。落盘恒由调用方 `save()` 承担（本函数不写盘、不改 requirements）。
+ * @param data flow 数据（原地修改 meta）
+ * @param floor 外部下限（通常为归档需求最大序号）
+ */
+export function raiseRequirementSeqFloor(data: FlowData, floor: number): void {
+  const hint = Number.isFinite(floor) && Number.isInteger(floor) && floor > 0 ? floor : 0;
+  if (hint === 0) {
+    return;
+  }
+  const next = Math.max(requirementSeqFloor(data), hint);
+  if (data.meta && typeof data.meta === 'object') {
+    data.meta.last_req_seq = next;
+  }
+}
+
 /** 终态判定（done/cancelled/rejected；claim / link 门共用） */
 export function isTerminalRequirementStatus(status: RequirementStatus): boolean {
   return status === 'done' || status === 'cancelled' || status === 'rejected';

@@ -1325,6 +1325,18 @@ check('D-126-04：workflowGate 在 guard 未注册 / cwd 不可解析 / stale �
   // 无 guard 字段 → 零回归
   assert.equal(computeWorkflowGate({ focus }).required, false);
   assert.equal(computeWorkflowGate({ focus: { phase: 'plan_review' } }).required, false);
+  // v1.5.17：feel_mode=disabled 不得吞掉 guard-* 告警（写入门禁失活优先于「不催建阶段」）
+  const disabledFeel = { value: 'disabled', source: 'config.yaml' };
+  assert.equal(computeWorkflowGate({ focus: { phase: '' }, feelMode: disabledFeel }).reason, 'feel-mode-off');
+  for (const guard of [
+    { registered: false },
+    { registered: true, cwd: null, cwdSource: 'unresolved' },
+    { registered: true, cwd: '/x', cwdSource: 'agent-session', stale: true },
+  ]) {
+    const gate = computeWorkflowGate({ focus: { phase: '' }, guard, feelMode: disabledFeel });
+    assert.equal(gate.required, true, 'disabled 时 guard-* 仍应 required');
+    assert.match(gate.reason, /^guard-/, 'disabled 时 reason 仍应为 guard-*');
+  }
 });
 
 check('D-126-04：每次判定都更新 lastDecision（拒/放/告警三种）', () => {

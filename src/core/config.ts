@@ -28,6 +28,16 @@ export const WORKFLOW_MODES = ['full', 'fast', 'general'] as const;
 /** 工作流模式：full=完整链路（含计划审查/方案/测试）；fast=快速迭代（跳过方案/测试环节；计划审查与代码审查各保留单轮） */
 export type WorkflowMode = (typeof WORKFLOW_MODES)[number];
 
+/**
+ * feel_mode 枚举值域（单一来源；v1.5.17）。
+ * `enabled`（默认）= 现状：按门禁走流程，要求需求/阶段、preflight strict 生效；
+ * `disabled` = 软关闭：不强制建需求/阶段（workflowGate 不催办）、preflight 降级为提示，
+ * 但状态机 / done 门 / 归档判据 / blocking REV / 写入门禁**保持有效**。
+ */
+export const FEEL_MODES = ['enabled', 'disabled'] as const;
+/** feel_mode 取值（enabled=按门禁走流程；disabled=软关闭流程强制） */
+export type FeelMode = (typeof FEEL_MODES)[number];
+
 /** defaults 块 Schema（允许扩展字段） */
 export const ConfigDefaultsSchema = z.object({
   execution_mode: z.enum(['manual', 'auto']).optional().default('manual'),
@@ -35,6 +45,8 @@ export const ConfigDefaultsSchema = z.object({
   auto_advance: z.enum(['disabled', 'enabled']).optional().default('enabled'),
   merge_mode: z.enum(['manual', 'auto']).optional().default('manual'),
   workflow_mode: z.enum(WORKFLOW_MODES).optional().default('fast'),
+  // v1.5.17：流程开关（无阶段级字段；status.md 不承载，故不能经 --sync-stages 下发）
+  feel_mode: z.enum(FEEL_MODES).optional().default('enabled'),
 }).passthrough();
 
 /** 逐层解包 ZodDefault / ZodOptional / ZodNullable，取得底层类型（schema 驱动的类型判定用） */
@@ -116,6 +128,8 @@ export const ProfilePreferencesSchema = z.object({
   review_mode: z.enum(['full', 'skip_small_changes']).optional(),
   communication: z.enum(['concise', 'detailed']).optional(),
   confirm_threshold: z.enum(['low', 'medium', 'high']).optional(),
+  // v1.5.17：全局 feel_mode 偏好（项目 .openfeel/config.yaml 的 defaults.feel_mode 覆盖它）
+  feel_mode: z.enum(FEEL_MODES).optional(),
 }).passthrough();
 
 /** 历史记录 Schema：最近项目信息（passthrough：保全自定义扩展键，遗留 #7） */
@@ -160,13 +174,14 @@ export interface ModelsConfig {
 /** 配置文件结构（backward-compatible: 扁平字段 + 嵌套结构并存） */
 export interface Config {
   meta?: { version?: string; project?: string; tech_stack?: string; [key: string]: unknown };
-  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; merge_mode?: 'manual' | 'auto'; workflow_mode?: WorkflowMode; [key: string]: unknown };
+  defaults?: { execution_mode?: 'manual' | 'auto'; auto_advance?: 'disabled' | 'enabled'; merge_mode?: 'manual' | 'auto'; workflow_mode?: WorkflowMode; feel_mode?: FeelMode; [key: string]: unknown };
   models?: ModelsConfig;
   // 向后兼容：扁平字段（由 normalizeConfig 从 defaults 提升）
   execution_mode?: 'manual' | 'auto';
   auto_advance?: 'disabled' | 'enabled';
   merge_mode?: 'manual' | 'auto';
   workflow_mode?: WorkflowMode;
+  feel_mode?: FeelMode;
   [key: string]: unknown;
 }
 
@@ -176,14 +191,16 @@ export const DEFAULT_CONFIG: Config = {
   auto_advance: 'enabled',   // 裁定 E：部署级默认自动推进开启（与 workflow_mode 无关）
   merge_mode: 'manual',
   workflow_mode: 'fast',     // 裁定 B：新建默认 fast
+  feel_mode: 'enabled',      // v1.5.17：默认按门禁走流程（用户要求默认开启）
 };
 
-/** 配置默认值解析结果（四键；不返回已移除的 test_enabled） */
+/** 配置默认值解析结果（五键；不返回已移除的 test_enabled） */
 export interface ResolvedConfigDefaults {
   execution_mode: 'manual' | 'auto';
   auto_advance: 'disabled' | 'enabled';
   merge_mode: 'manual' | 'auto';
   workflow_mode: WorkflowMode;
+  feel_mode: FeelMode;
 }
 
 /**
@@ -200,7 +217,7 @@ export function normalizeConfigKey(key: string): string {
  * 解析项目 config.yaml 的 defaults 块为**骨架初值**（不读 status.md、不做 effective 合并）。
  * 逐键经 ConfigDefaultsSchema 校验；缺失/非法逐键回退 DEFAULT_CONFIG。
  * @param projectPath 项目根路径
- * @returns 四键默认值（execution_mode / auto_advance / merge_mode / workflow_mode）
+ * @returns 五键默认值（execution_mode / auto_advance / merge_mode / workflow_mode / feel_mode）
  */
 export function resolveConfigDefaults(projectPath: string): ResolvedConfigDefaults {
   const result: ResolvedConfigDefaults = {
@@ -208,6 +225,7 @@ export function resolveConfigDefaults(projectPath: string): ResolvedConfigDefaul
     auto_advance: DEFAULT_CONFIG.auto_advance as ResolvedConfigDefaults['auto_advance'],
     merge_mode: DEFAULT_CONFIG.merge_mode as ResolvedConfigDefaults['merge_mode'],
     workflow_mode: DEFAULT_CONFIG.workflow_mode as ResolvedConfigDefaults['workflow_mode'],
+    feel_mode: DEFAULT_CONFIG.feel_mode as ResolvedConfigDefaults['feel_mode'],
   };
   const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
   if (!existsSync(configPath)) {
@@ -218,7 +236,7 @@ export function resolveConfigDefaults(projectPath: string): ResolvedConfigDefaul
     const defaults = (raw?.defaults ?? {}) as Record<string, unknown>;
     // 以字符串记录表赋值，规避 TS 联合键索引赋值推导为 never 的限制
     const target = result as unknown as Record<string, string>;
-    for (const key of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'] as const) {
+    for (const key of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode'] as const) {
       const parsed = ConfigDefaultsSchema.shape[key].safeParse(defaults[key]);
       // 仅接受 schema 校验通过的字符串值；失败/非字符串保持 DEFAULT_CONFIG
       if (parsed.success && typeof parsed.data === 'string') {
@@ -266,6 +284,58 @@ export function readExplicitConfigDefaults(projectPath: string): ExplicitConfigD
     // 错误路径：YAML 语法/读取失败 → 视为未显式声明（不告警）
   }
   return result;
+}
+
+/**
+ * feel_mode 有效值 + 生效来源（v1.5.17 解析单点）。
+ *
+ * 层级（项目覆盖全局，与用户要求一致）：
+ *   1. 项目 `.openfeel/config.yaml` 的 `defaults.feel_mode`
+ *   2. 全局 `~/.config/openfeel/profile.yaml` 的 `preferences.feel_mode`
+ *   3. 框架内置默认 `DEFAULT_CONFIG.feel_mode`（enabled）
+ *
+ * **同源约束**：与 `FlowManager.buildCascadeConfig` 一样**直接读原始 YAML、只认显式声明**；
+ * 不走 `readProfile()`（它会与 DEFAULT_PROFILE 深合并，把「未显式设置」误判为 profile 来源），
+ * 也不把 feel_mode 写进 DEFAULT_PROFILE。读侧宽容：文件缺失 / YAML 非法 / 值非法 → 跳到下一层。
+ */
+export interface ResolvedFeelMode {
+  value: FeelMode;
+  source: 'config.yaml' | 'profile.yaml' | 'builtin';
+}
+
+/** 读取某 YAML 文件中 `holder.feel_mode` 的**显式**声明；缺失/非法/读取失败 → undefined。 */
+function readExplicitFeelMode(filePath: string, holder: 'defaults' | 'preferences'): FeelMode | undefined {
+  if (!existsSync(filePath)) {
+    return undefined;
+  }
+  try {
+    const raw = parseYaml(readFileSync(filePath, 'utf-8')) as Record<string, unknown> | null;
+    const block = raw?.[holder];
+    if (block === null || typeof block !== 'object' || Array.isArray(block)) {
+      return undefined;
+    }
+    const value = (block as Record<string, unknown>).feel_mode;
+    return value === 'enabled' || value === 'disabled' ? value : undefined;
+  } catch {
+    // 错误路径：YAML 语法/读取失败 → 视为未显式声明（回落下层）
+    return undefined;
+  }
+}
+
+/**
+ * 解析 feel_mode 有效值（enabled/disabled）与来源。
+ * @param projectPath 项目根路径（`.openfeel/` 所在目录）
+ */
+export function resolveFeelMode(projectPath: string): ResolvedFeelMode {
+  const project = readExplicitFeelMode(resolve(projectPath, '.openfeel', 'config.yaml'), 'defaults');
+  if (project !== undefined) {
+    return { value: project, source: 'config.yaml' };
+  }
+  const global = readExplicitFeelMode(getGlobalProfilePath(), 'preferences');
+  if (global !== undefined) {
+    return { value: global, source: 'profile.yaml' };
+  }
+  return { value: DEFAULT_CONFIG.feel_mode as FeelMode, source: 'builtin' };
 }
 
 /**
@@ -493,6 +563,12 @@ defaults:
   #            fast=快速迭代（跳过方案/测试环节；计划审查与代码审查各保留单轮）
   workflow_mode: ${DEFAULT_CONFIG.workflow_mode}
 
+  # 流程开关（v1.5.17）：enabled=按门禁走流程（要求需求/阶段、先读后写严格检查）
+  #                   disabled=软关闭（不强制建需求/阶段、preflight 仅提示；状态机/done 门/归档判据/写入门禁仍有效）
+  # 缺省**不写本键**：未显式声明时按全局 ~/.config/openfeel/profile.yaml 的 preferences.feel_mode 或 builtin(enabled) 生效；
+  # 显式写 enabled 会**永久覆盖**全局 disabled（项目级优先）。需要固定为 enabled 时取消下一行注释。
+  # feel_mode: enabled
+
 # ---- 模型配置 ----
 # 配置 Agent 使用的模型后端。支持 Agent/角色 级精细化覆盖。
 # 注：实际模型由平台层分配，此处为 Awareness 目的。
@@ -549,6 +625,15 @@ defaults:
   # Workflow mode: full=full pipeline (incl. plan review / scheme / test)
   #                fast=quick iteration (skips scheme/test; keeps single-round plan review and code review)
   workflow_mode: ${DEFAULT_CONFIG.workflow_mode}
+
+  # Feel-mode switch (v1.5.17): enabled=run through the gates (requires requirement/stage, strict read-before-write)
+  #                             disabled=soft off (no forced requirement/stage, preflight only warns; the state machine,
+  #                                      done gate, archive criteria and write guard stay in force)
+  # Leave this key **unset** by default: without an explicit value the global
+  # ~/.config/openfeel/profile.yaml preferences.feel_mode (or builtin=enabled) applies.
+  # An explicit enabled here **permanently overrides** a global disabled (project-level wins).
+  # Uncomment the next line to pin enabled for this project.
+  # feel_mode: enabled
 
 # ---- Model Configuration ----
 # Configure the model backend used by Agents. Supports Agent/role level fine-grained overrides.

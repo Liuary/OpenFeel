@@ -3,7 +3,7 @@
  * 测试 readConfig 和 writeDefaultConfig 的 YAML 解析行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, DEFAULT_CONFIG, ConfigDefaultsSchema, normalizeConfigKey, resolveConfigDefaults, getConfigFieldLegalValues, WORKFLOW_MODES, type Profile } from '../../src/core/config.js';
+import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, DEFAULT_CONFIG, ConfigDefaultsSchema, normalizeConfigKey, resolveConfigDefaults, getConfigFieldLegalValues, WORKFLOW_MODES, FEEL_MODES, resolveFeelMode, type Profile } from '../../src/core/config.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -603,6 +603,8 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
+      // v1.5.17：第五键（缺省 builtin enabled）
+      feel_mode: 'enabled',
     });
   });
 
@@ -612,6 +614,8 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
+      // v1.5.17：第五键（缺省 builtin enabled）
+      feel_mode: 'enabled',
     });
   });
 
@@ -626,6 +630,8 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
+      // v1.5.17：第五键（缺省 builtin enabled）
+      feel_mode: 'enabled',
     });
   });
 
@@ -636,6 +642,8 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
+      // v1.5.17：第五键（缺省 builtin enabled）
+      feel_mode: 'enabled',
     });
   });
 
@@ -649,14 +657,81 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
+      // v1.5.17：第五键（缺省 builtin enabled）
+      feel_mode: 'enabled',
     });
     mockHome.dir = '';
   });
 });
 
-// ═══════════════════════════════════════
-// stage-74 op-001：T7.6 模板（ZH / EN）
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// v1.5.17：feel_mode 解析单点（项目 > 全局 > builtin；只认显式声明）
+// ═══════════════════════════════════════════════════════════
+
+describe('resolveFeelMode（v1.5.17）', () => {
+  let projectDir: string;
+  let homeDir: string;
+
+  beforeEach(() => {
+    projectDir = mkdtempSync(join(tmpdir(), 'openfeel-feel-project-'));
+    mkdirSync(join(projectDir, '.openfeel'), { recursive: true });
+    homeDir = mkdtempSync(join(tmpdir(), 'openfeel-feel-home-'));
+    mockHome.dir = homeDir;
+  });
+
+  afterEach(() => {
+    mockHome.dir = '';
+    rmSync(projectDir, { recursive: true, force: true });
+    rmSync(homeDir, { recursive: true, force: true });
+  });
+
+  /** 写项目 config.yaml 的 defaults 块 */
+  function writeProject(content: string): void {
+    writeFileSync(join(projectDir, '.openfeel', 'config.yaml'), content, 'utf-8');
+  }
+
+  /** 写全局 profile（隔离 HOME） */
+  function writeProfile(content: string): void {
+    mkdirSync(join(homeDir, '.config', 'openfeel'), { recursive: true });
+    writeFileSync(join(homeDir, '.config', 'openfeel', 'profile.yaml'), content, 'utf-8');
+  }
+
+  it('无任何声明 → builtin enabled（默认开启）', () => {
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'enabled', source: 'builtin' });
+  });
+
+  it('项目 defaults.feel_mode: disabled → config.yaml', () => {
+    writeProject('defaults:\n  feel_mode: disabled\n');
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'disabled', source: 'config.yaml' });
+  });
+
+  it('仅全局 preferences.feel_mode: disabled → profile.yaml', () => {
+    writeProfile('preferences:\n  auto_advance: enabled\n  feel_mode: disabled\n');
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'disabled', source: 'profile.yaml' });
+  });
+
+  it('项目 enabled 覆盖全局 disabled', () => {
+    writeProject('defaults:\n  feel_mode: enabled\n');
+    writeProfile('preferences:\n  feel_mode: disabled\n');
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'enabled', source: 'config.yaml' });
+  });
+
+  it('项目非法值 → 回落到全局显式声明（读侧宽容）', () => {
+    writeProject('defaults:\n  feel_mode: maybe\n');
+    writeProfile('preferences:\n  feel_mode: disabled\n');
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'disabled', source: 'profile.yaml' });
+  });
+
+  it('YAML 语法损坏 → 视为未声明（回落下层/内置）', () => {
+    writeProject('defaults: [unclosed\n');
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'enabled', source: 'builtin' });
+  });
+
+  it('profile 未显式声明 feel_mode → 不得误判为 profile 来源（DEFAULT_PROFILE 不得注入）', () => {
+    writeProfile('user:\n  name: Someone\npreferences:\n  auto_advance: enabled\n');
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'enabled', source: 'builtin' });
+  });
+});
 
 describe('writeDefaultConfig 模板（stage-74 op-001 T7.6）', () => {
   let tmpDir: string;

@@ -11,7 +11,7 @@ import { atomicWriteFileSync } from '../fs/atomic-write.js';
 import { withFileLock, projectLockPath } from '../fs/file-lock.js';
 import { versionOfStageId } from './grouping.js';
 import type { FlowData, MetaPhase } from '../flow-manager.js';
-import type { RequirementData } from '../req/types.js';
+import { REQ_ID_PATTERN, type RequirementData } from '../req/types.js';
 import type { ArchiveFile } from './archive-file.js';
 
 /** 归档写盘锁名（独立于 flow 锁；锁文件落 .openfeel/tmp/locks/flow-archive.lock） */
@@ -210,6 +210,36 @@ export function findArchivedRequirement(projectPath: string, id: string): Archiv
     }
   }
   return null;
+}
+
+/**
+ * 需求条目列表中的最大序号（纯函数；空集 / 异常 id → 0）。
+ *
+ * 用途（v1.5.17）：需求 ID 的单调性由 `meta.last_req_seq` 维持，但**归档移走条目时该计数器
+ * 不会前进**（历史缺陷：v1.5.8 归档 REQ-025~030 后计数器仍停在 24，后续新建即复用 ID）。
+ * 写侧（`flow archive`）与读侧（`req add` / `req split`）都用本函数求「被归档/已归档」的最大号。
+ */
+export function maxRequirementSeq(requirements: RequirementData[] | undefined): number {
+  let max = 0;
+  for (const req of Array.isArray(requirements) ? requirements : []) {
+    const m = REQ_ID_PATTERN.exec(typeof req?.id === 'string' ? req.id : '');
+    if (!m) {
+      continue;
+    }
+    const n = Number.parseInt(m[1], 10);
+    if (Number.isFinite(n) && n > max) {
+      max = n;
+    }
+  }
+  return max;
+}
+
+/**
+ * 已归档需求的最大序号（只读；v1.5.17 存量修补）。
+ * 供命令层在分配新需求 ID 前把归档最大号并入下限；读侧宽容：归档目录缺失 / 文件损坏 → 0。
+ */
+export function archivedRequirementMaxSeq(projectPath: string): number {
+  return maxRequirementSeq(listArchivedRequirements(projectPath).map((hit) => hit.requirement));
 }
 
 /**

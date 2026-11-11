@@ -751,6 +751,8 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(Object.keys(values)).toEqual([
       'user.name', 'user.lang', 'preferences.auto_advance',
       'preferences.review_mode', 'preferences.communication', 'preferences.confirm_threshold',
+      // v1.5.17：第七键（全局 feel_mode 偏好）
+      'preferences.feel_mode',
     ]);
     expect(values['user.name']).toBe('tester');
     // 缺失字段经 DEFAULT_PROFILE 回填；人类显示同值（JSON null 仅用于 undefined）
@@ -776,7 +778,7 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     const all = await doc(['config', 'effective', '--json']);
     expect(Object.keys(all)).toEqual(['schemaVersion', 'effective']);
     expect(Object.keys(all.effective as object)).toEqual([
-      'execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode',
+      'execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode',
     ]);
 
     const one = await doc(['config', 'effective', 'auto_advance', '--json']);

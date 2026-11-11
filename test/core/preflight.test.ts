@@ -14,6 +14,15 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
+// v1.5.17：隔离全局画像——`checkPreflight` 现经 `resolvePreflightMode → resolveFeelMode`
+// 读取 `~/.config/openfeel/profile.yaml`；不隔离会让「本机把全局 feel_mode 设成 disabled」
+// 的开发者机器上 strict 用例翻红（CI 干净 HOME 才绿）。
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
+
 describe('preflight（v1.5.5）', () => {
   let dir: string;
 
@@ -25,9 +34,12 @@ describe('preflight（v1.5.5）', () => {
       pipeline: { current: { stage: '', op: '' } },
       stages: { 'v0.0.1-stage-01': { name: 's1', phase: 'exec_running', status: 'planned', deps: [], ops: {} } },
     }), 'utf-8');
+    // 不存在的 HOME → 无 profile.yaml 干扰（feel_mode 回落 builtin）
+    mockHome.dir = join(dir, 'no-such-home');
   });
 
   afterEach(() => {
+    mockHome.dir = '';
     rmSync(dir, { recursive: true, force: true });
     vi.unstubAllEnvs();
   });
@@ -76,6 +88,17 @@ describe('preflight（v1.5.5）', () => {
     expect(preflightGate(dir, 'need status').ok).toBe(false);
     recordPreflight(dir);
     expect(preflightGate(dir, 'need status').ok).toBe(true);
+  });
+
+  it('v1.5.17：strict + 项目 feel_mode=disabled → 有效模式降级 warn 并放行', () => {
+    writeFileSync(join(dir, '.openfeel', 'config.yaml'), 'defaults:\n  feel_mode: disabled\n', 'utf-8');
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+    // 降级必须落在模式判定处：check.mode 也报 warn（不能「报 strict 却放行」）
+    expect(checkPreflight(dir).mode).toBe('warn');
+    expect(preflightGate(dir, 'need status').ok).toBe(true);
+    // off 仍最高优先
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'off');
+    expect(checkPreflight(dir).mode).toBe('off');
   });
 
   // ═══════════════════════════════════════════════════════════════

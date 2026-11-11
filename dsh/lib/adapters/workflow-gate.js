@@ -70,6 +70,15 @@ export function computeWorkflowGate(snapshot) {
   if (hasOpenStage) {
     return { required: false, reason: null, message: '', actions: [] };
   }
+  // v1.5.17：feel_mode=disabled（软关闭）→ 不催建需求/阶段。
+  // 注意：本分支只替换 `no-active-stage`；`guard-*` 三条自检在上面且优先级更高
+  // （写入门禁失活比「没开阶段」严重，disabled 也不得吞掉）。
+  // `message` 恒为 ''：`workflowGateTitle` 的 default 分支会返回 message 原文，
+  // 一旦给文案就会产生「⚠ 自由模式」类噪声标题。
+  const feelMode = snapshot?.feelMode;
+  if (feelMode !== null && typeof feelMode === 'object' && feelMode.value === 'disabled') {
+    return { required: false, reason: 'feel-mode-off', message: '', actions: [] };
+  }
   return {
     required: true,
     reason: 'no-active-stage',

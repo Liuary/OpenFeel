@@ -1,3 +1,18 @@
+## [1.5.17] - 2026-11-11
+
+> 新特性：`feel_mode` 流程开关（默认 `enabled` = 按门禁走流程；`disabled` = 软关闭流程强制）+ 配套修复「需求 ID 分配不感知归档」。
+
+### Added
+- [stage-1] **`feel_mode` 开关（REQ-031）**：项目 `.openfeel/config.yaml` 的 `defaults.feel_mode` 覆盖全局 `~/.config/openfeel/profile.yaml` 的 `preferences.feel_mode`，缺省 `builtin=enabled`。新增解析单点 `resolveFeelMode`（`src/core/config.ts`）；`config get --all` 四键→五键、`config get --global` 6 键→7 键，`config set` / `config set --global` / `config effective` 均支持；`feel_status` / `feel_next` 输出 `feelMode{value,source}`。
+- [stage-1] **`disabled` 语义（软关闭）**：不强制创建需求/阶段（`workflowGate` 的 `no-active-stage` 分支换为 `feel-mode-off`，`required:false`、无标题文案）；CLI `preflight` 的 `strict` 降级为 `warn`（`checkPreflight().mode` 同步报 `warn`）；DSH 系统提示注入「自由模式」节（中/英）。**保留**：状态机合法性、`done` 门、阶段验证门、版本归档判据、blocking REV 门、写入门禁、`guard-*` 失活告警。
+- [stage-1] **适配器镜像解析**：`dsh/lib/adapters/feel-mode.js`（同步读项目 config.yaml / 全局 profile.yaml，每轮现读、即时生效）；`dsh/test/verify.js` 增解析矩阵 / 提示词分支 / gate 优先级断言，`dsh/test/contract.js` 断言 compact 档保留 `feelMode`。
+
+### Fixed
+- [stage-1] **需求 ID 分配不感知归档（配套修复）**：`meta.last_req_seq` 在版本归档时不前进，导致归档过的 ID 被复用（本仓 v1.5.8 归档 REQ-025~030 后计数器仍为 24，新需求会分配出重复 ID）。写侧：`flow archive` 在移除需求前抬升计数器（`maxRequirementSeq` + `raiseRequirementSeqFloor`）；读侧：`req add` / `req split` 分配前把 `.openfeel/flow-archive/*.json` 的最大号并入下限（`archivedRequirementMaxSeq`）。
+
+### Changed
+- [stage-1] 文档与模板：`docs/commands.md` / `docs/json-contract.md` 更新五键 / 7 全局键与 `feel_mode` 语义；`dsh/README.md` / `dsh/docs/compat/pipeline.md` / `dsh/ACTION-GUIDE.md` 同步；`init` 生成的 `config.yaml` 模板新增 `feel_mode` 注释与默认值。
+
 ## [1.5.16] - 2026-11-08
 
 > 小批次：1.5.15 复核中确认的两处不一致 + 文档缺口 —— `attempt` 不更新 `checkpoints.exec.attempts`、done op 仍报空模板告警；明确 `req claim` 不改状态、第 4 类 shell 判定为非阻断告警。

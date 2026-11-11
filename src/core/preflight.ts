@@ -12,6 +12,7 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { resolveFeelMode } from './config.js';
 
 export const PREFLIGHT_MAX_AGE_MS = 10 * 60_000;
 
@@ -63,6 +64,28 @@ export function getPreflightMode(env: NodeJS.ProcessEnv = process.env): Prefligh
   return 'warn';
 }
 
+/**
+ * 有效 preflight 模式（v1.5.17；含 feel_mode 软关闭降级）。
+ *
+ * 语义：`OPENFEEL_PREFLIGHT=off` 仍最高优先（显式关闭压过一切）；`strict` 在
+ * **`feel_mode: disabled`** 的项目里降级为 `warn`（只提示不拒绝）——用户明确要求「关闭时不严格检查」；
+ * 其余保持 env 语义。降级必须在这里（`checkPreflight` 的唯一取模式点），否则
+ * `check.mode` 仍报 strict 而实际放行，与展示/文档矛盾。
+ *
+ * 保守回退：`resolveFeelMode` 抛错（配置不可读）→ 维持 strict（宁可严格要求）。
+ * @param projectPath 项目根（`.openfeel/` 所在目录）
+ * @param env 环境变量（测试注入）
+ */
+export function resolvePreflightMode(projectPath: string, env: NodeJS.ProcessEnv = process.env): PreflightMode {
+  const mode = getPreflightMode(env);
+  if (mode !== 'strict') return mode;
+  try {
+    return resolveFeelMode(projectPath).value === 'disabled' ? 'warn' : 'strict';
+  } catch {
+    return 'strict';
+  }
+}
+
 export function recordPreflight(projectPath: string, now: Date = new Date()): PreflightRecord {
   let stage: string | null = null;
   let phase: string | null = null;
@@ -112,7 +135,9 @@ export function readPreflight(projectPath: string): PreflightRecord | null {
 }
 
 export function checkPreflight(projectPath: string, now: number = Date.now()): PreflightCheck {
-  const mode = getPreflightMode();
+  // v1.5.17：模式经 resolvePreflightMode（含 feel_mode=disabled 的 strict→warn 降级），
+  // 保证 check.mode 与实际判定同源，不出现「报告 strict 却放行」。
+  const mode = resolvePreflightMode(projectPath);
   const record = readPreflight(projectPath);
   if (record === null) {
     return { ok: false, mode, reason: 'missing', record: null, ageMs: null };

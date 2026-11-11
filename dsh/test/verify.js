@@ -20,6 +20,7 @@ import { planNextStep, readSnapshot } from '../lib/adapters/dashboard.js';
 import { tokenize } from '../lib/surface/command.js';
 import { renderFeelPrompt } from '../lib/surface/prompt.js';
 import { computeWorkflowGate, headlineWarning, workflowGateTitle } from '../lib/adapters/workflow-gate.js';
+import { resolveFeelMode } from '../lib/adapters/feel-mode.js';
 import { guardWarnings } from '../lib/tools/index.js';
 import { buildGuardSection, computeGuardStale, readGuardState, writeGuardState } from '../lib/adapters/guard-state.js';
 import { buildObservability } from '../lib/adapters/observability.js';
@@ -261,6 +262,84 @@ async function main() {
     const joined = workspace.logs.join('\n');
     assert(/OpenFeel CLI \d+\.\d+\.\d+/.test(joined), `未记录版本，实际日志: ${joined}`);
   });
+
+  // v1.5.17：feel_mode 镜像解析 + 自由模式提示词
+  await check('resolveFeelMode 镜像矩阵（项目 > 全局 > builtin；只认显式声明）', () => {
+    const root = mkdtempSync(join(tmpdir(), 'feel-mode-matrix-'));
+    const home = join(root, 'home');
+    const project = join(root, 'project');
+    mkdirSync(join(project, '.openfeel'), { recursive: true });
+    mkdirSync(join(home, '.config', 'openfeel'), { recursive: true });
+    const projectConfig = join(project, '.openfeel', 'config.yaml');
+    const profile = join(home, '.config', 'openfeel', 'profile.yaml');
+
+    // ① 无声明 → builtin
+    assert(resolveFeelMode(project, { homeDir: home }).source === 'builtin', '无声明应 builtin');
+    assert(resolveFeelMode(project, { homeDir: home }).value === 'enabled', '无声明应 enabled');
+
+    // ② 仅项目 disabled → config.yaml
+    writeFileSync(projectConfig, 'defaults:\n  execution_mode: auto\n  feel_mode: disabled # 关\n', 'utf-8');
+    assert(JSON.stringify(resolveFeelMode(project, { homeDir: home })) === JSON.stringify({ value: 'disabled', source: 'config.yaml' }), '项目层');
+
+    // ③ 项目 enabled 覆盖全局 disabled
+    writeFileSync(projectConfig, 'defaults:\n  feel_mode: enabled\n', 'utf-8');
+    writeFileSync(profile, 'preferences:\n  auto_advance: enabled\n  feel_mode: disabled\n', 'utf-8');
+    assert(JSON.stringify(resolveFeelMode(project, { homeDir: home })) === JSON.stringify({ value: 'enabled', source: 'config.yaml' }), '项目覆盖全局');
+
+    // ④ 仅全局 → profile.yaml
+    writeFileSync(projectConfig, 'defaults:\n  execution_mode: auto\n', 'utf-8');
+    assert(JSON.stringify(resolveFeelMode(project, { homeDir: home })) === JSON.stringify({ value: 'disabled', source: 'profile.yaml' }), '全局层');
+
+    // ⑤ 非法项目值 → 回落全局
+    writeFileSync(projectConfig, 'defaults:\n  feel_mode: maybe\n', 'utf-8');
+    assert(resolveFeelMode(project, { homeDir: home }).source === 'profile.yaml', '非法项目值应回落 profile');
+
+    // ⑥ profile 未显式声明 → 不得误判为 profile（DEFAULT_PROFILE 不注入）
+    writeFileSync(profile, 'preferences:\n  auto_advance: enabled\n', 'utf-8');
+    assert(resolveFeelMode(project, { homeDir: home }).source === 'builtin', '未显式声明不得算 profile');
+
+    // ⑦ 更深嵌套不算 direct child（与 CLI yaml.parse 取值语义一致：defaults.nested.feel_mode ≠ defaults.feel_mode）
+    writeFileSync(projectConfig, 'defaults:\n  nested:\n    feel_mode: disabled\n', 'utf-8');
+    assert(resolveFeelMode(project, { homeDir: home }).source === 'builtin', '深层嵌套不得被识别为 direct child');
+
+    // ⑧ flow 内联 map（CLI 能读到；镜像不得分叉）
+    writeFileSync(projectConfig, 'defaults: { feel_mode: disabled }\n', 'utf-8');
+    assert(
+      JSON.stringify(resolveFeelMode(project, { homeDir: home })) === JSON.stringify({ value: 'disabled', source: 'config.yaml' }),
+      'flow 内联 map 应被识别',
+    );
+
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  await check('renderFeelPrompt：disabled 中/英含自由模式节且保留硬门；enabled 逐字不变', () => {
+    const enabledZh = renderFeelPrompt({ language: 'zh-CN', detected: true, projectRoot: SOURCE_PROJECT });
+    assert(!enabledZh.includes('自由模式'), 'enabled 不应出现自由模式节');
+    // v1.5.17 回归锁定（字节级）：enabled 路径不得多出空行（曾出现 `\n\n\n##`）
+    assert(enabledZh.includes('（已初始化 `.openfeel/`）。\n\n## 你的角色：调度者'), 'enabled zh 标题前应恰为一个空行');
+    assert(!enabledZh.includes('\n\n\n'), 'enabled zh 不得出现连续三换行');
+    const disabledZh = renderFeelPrompt({
+      language: 'zh-CN', detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value: 'disabled', source: 'config.yaml' },
+    });
+    assert(disabledZh.includes('自由模式'), 'disabled zh 缺少自由模式节');
+    assert(disabledZh.includes('\n\n## 自由模式（'), 'disabled zh 自由模式节前应恰为空行');
+    assert(disabledZh.includes('执行。\n\n## 你的角色：调度者'), 'disabled zh 自由模式节后应恰为空行');
+    for (const marker of ['由你判断', 'preflight', 'done` 门', '归档判据', 'flow.json']) {
+      assert(disabledZh.includes(marker), `disabled zh 缺少标记「${marker}」`);
+    }
+    const disabledEn = renderFeelPrompt({
+      language: 'en', detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value: 'disabled', source: 'builtin' },
+    });
+    assert(disabledEn.includes('Free mode'), 'disabled en 缺少 Free mode 节');
+    assert(disabledEn.includes('\n\n## Free mode ('), 'disabled en 自由模式节前应恰为空行');
+    for (const marker of ['optional', 'done` gate', 'archive criteria', 'write guard']) {
+      assert(disabledEn.includes(marker), `disabled en 缺少标记「${marker}」`);
+    }
+    const enabledEn = renderFeelPrompt({ language: 'en', detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value: 'enabled', source: 'builtin' } });
+    assert(!enabledEn.includes('Free mode'), 'enabled en 不应出现 Free mode');
+    assert(enabledEn.includes('`.openfeel/`).\n\n## Your role'), 'enabled en 标题前应恰为一个空行');
+    assert(!enabledEn.includes('\n\n\n'), 'enabled en 不得出现连续三换行');
+  });
   await check('dashboard 不再导出 PHASE_AGENT 本地镜像', async () => {
     const dashboard = await import('../lib/adapters/dashboard.js');
     assert(!Object.hasOwn(dashboard, 'PHASE_AGENT'), 'PHASE_AGENT 应从 dashboard.js 移除（改由 flow next 权威输出）');
@@ -442,6 +521,35 @@ async function main() {
     // 无 guard 字段 → 行为完全不变（零回归）
     assert(computeWorkflowGate({ focus: { phase: 'exec_running' } }).required === false, '无 guard 字段不应 required');
     assert(computeWorkflowGate({ focus: { phase: '' } }).reason === 'no-active-stage', '无 guard 字段仍按阶段判定');
+  });
+
+  // v1.5.17：feel_mode=disabled（软关闭）
+  await check('workflowGate：feel_mode=disabled → 不催建阶段，但 guard-* 优先且自带文案为空', () => {
+    const disabledFeel = { value: 'disabled', source: 'config.yaml' };
+    const openStage = { focus: { phase: 'exec_running' } };
+    const noStage = { focus: { phase: '' } };
+
+    // 有开启阶段：与既有行为一致（不 required，无 reason）
+    const withStage = computeWorkflowGate({ ...openStage, feelMode: disabledFeel });
+    assert(withStage.required === false && withStage.reason === null, 'disabled + 开启阶段应保持不 required');
+
+    // 无开启阶段：reason 换为 feel-mode-off，且 message/actions 为空（不得产出标题）
+    const off = computeWorkflowGate({ ...noStage, feelMode: disabledFeel });
+    assert(off.required === false, 'disabled 时不应 required');
+    assert(off.reason === 'feel-mode-off', `reason 应为 feel-mode-off，实际 ${off.reason}`);
+    assert(off.message === '' && off.actions.length === 0, 'feel-mode-off 应零文案零动作');
+    assert(headlineWarning({ workflowGate: off }) === '', 'feel-mode-off 不得产出门禁标题');
+    assert(workflowGateTitle(off) === '', 'workflowGateTitle(feel-mode-off) 应为空串');
+
+    // guard-* 优先级不变：disabled 不得吞掉写入门禁失活告警
+    const guardFirst = computeWorkflowGate({ ...noStage, feelMode: disabledFeel, guard: { registered: false } });
+    assert(guardFirst.required === true && guardFirst.reason === 'guard-inactive', 'guard-inactive 应优先于 feel-mode-off');
+
+    // enabled / 缺失 → 旧行为逐字不变
+    for (const feelMode of [undefined, { value: 'enabled', source: 'builtin' }]) {
+      const legacy = computeWorkflowGate({ ...noStage, feelMode });
+      assert(legacy.required === true && legacy.reason === 'no-active-stage', 'enabled/缺失 应保持 no-active-stage');
+    }
   });
 
   // v1.5.12 / stage-127 §3-E：标题误报修复（`guard-*` 不得再说「无活跃阶段」）

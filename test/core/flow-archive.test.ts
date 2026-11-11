@@ -27,6 +27,8 @@ import {
   applyArchivePipelineDisposition,
   listArchivedRequirements,
   findArchivedRequirement,
+  archivedRequirementMaxSeq,
+  maxRequirementSeq,
 } from '../../src/core/flow-archive/archive-ops.js';
 import {
   ARCHIVE_SCHEMA_VERSION,
@@ -970,5 +972,44 @@ describe('archiveHealthItems（归档一致性）', () => {
     expect(items[0].section).toBe('归档一致性');
     expect(items[0].status).toBe('pass');
     expect(items.some((i) => i.section === '归档残留')).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════
+// v1.5.17：需求 ID 下限（归档不参与 floor 的缺陷修复）
+// ═══════════════════════════════════════════════
+
+describe('archivedRequirementMaxSeq / maxRequirementSeq（v1.5.17）', () => {
+  it('归档目录缺失 → 0（读侧宽容）', () => {
+    expect(archivedRequirementMaxSeq(tmpDir)).toBe(0);
+  });
+
+  it('maxRequirementSeq：空集 / undefined / 异常 id → 0；取最大号', () => {
+    expect(maxRequirementSeq([])).toBe(0);
+    expect(maxRequirementSeq(undefined)).toBe(0);
+    expect(maxRequirementSeq([{ id: 'NOT-A-REQ' } as unknown as RequirementData])).toBe(0);
+    expect(maxRequirementSeq([makeReq('REQ-009', 'done'), makeReq('REQ-042', 'done')])).toBe(42);
+  });
+
+  it('多归档文件取全局最大号（不受版本字典序影响）', () => {
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.0.0', {
+      requirements: [makeReq('REQ-009', 'done'), makeReq('REQ-042', 'done')],
+      counts: { stages: 0, reviews: 0, log: 0, requirements: 2 },
+    }));
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.1.0', {
+      requirements: [makeReq('REQ-007', 'done')],
+      counts: { stages: 0, reviews: 0, log: 0, requirements: 1 },
+    }));
+    expect(archivedRequirementMaxSeq(tmpDir)).toBe(42);
+  });
+
+  it('归档文件损坏 / 无 requirements 段 → 不拖垮计算', () => {
+    mkdirSync(getArchiveDir(tmpDir), { recursive: true });
+    writeFileSync(getArchiveFilePath(tmpDir, 'v1.0.0'), '{broken', 'utf-8');
+    writeArchiveFile(tmpDir, makeArchiveFile('v1.1.0', {
+      requirements: [makeReq('REQ-005', 'done')],
+      counts: { stages: 0, reviews: 0, log: 0, requirements: 1 },
+    }));
+    expect(archivedRequirementMaxSeq(tmpDir)).toBe(5);
   });
 });

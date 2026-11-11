@@ -25,6 +25,8 @@ const GLOBAL_PROFILE_KEYS = [
   'preferences.review_mode',
   'preferences.communication',
   'preferences.confirm_threshold',
+  // v1.5.17：全局 feel_mode（项目 config.yaml 的 defaults.feel_mode 覆盖它）
+  'preferences.feel_mode',
 ] as const;
 
 /** 全局配置 key 白名单：key → 合法值列表（null 表示任意 string） */
@@ -35,6 +37,7 @@ const GLOBAL_ALLOWED_KEYS: Record<string, string[] | null> = {
   'preferences.review_mode': ['full', 'skip_small_changes'],
   'preferences.communication': ['concise', 'detailed'],
   'preferences.confirm_threshold': ['low', 'medium', 'high'],
+  'preferences.feel_mode': ['enabled', 'disabled'],
 };
 
 /**
@@ -188,6 +191,8 @@ export function registerConfigCommand(program: Command): void {
           console.log(t('config.get.globalResult', lang, { key: 'preferences.review_mode', value: String(getNestedValue(profile, 'preferences.review_mode') ?? '') }));
           console.log(t('config.get.globalResult', lang, { key: 'preferences.communication', value: String(getNestedValue(profile, 'preferences.communication') ?? '') }));
           console.log(t('config.get.globalResult', lang, { key: 'preferences.confirm_threshold', value: String(getNestedValue(profile, 'preferences.confirm_threshold') ?? '') }));
+          // v1.5.17：第七行（与 GLOBAL_PROFILE_KEYS 固定键序一致）
+          console.log(t('config.get.globalResult', lang, { key: 'preferences.feel_mode', value: String(getNestedValue(profile, 'preferences.feel_mode') ?? '') }));
           return;
         }
         // 有 key：深层取值
@@ -218,12 +223,14 @@ export function registerConfigCommand(program: Command): void {
             auto_advance: resolved.auto_advance,
             merge_mode: resolved.merge_mode,
             workflow_mode: resolved.workflow_mode,
+            // v1.5.17：第五键（追加末位，保持既有四键序）
+            feel_mode: resolved.feel_mode,
           };
           if (asJson) {
             emitJson(withSchemaVersion({ scope: 'project', defaults }));
             return;
           }
-          for (const k of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'] as const) {
+          for (const k of ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode'] as const) {
             console.log(t('config.get.result', lang, { key: k, value: defaults[k] }));
           }
           return;

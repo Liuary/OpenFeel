@@ -9,7 +9,8 @@
  *          以便其后的 catch / 回滚路径仍可收敛（非 JSON 分支若即退会破坏这一收敛）。
  *
  * 边界：本模块归**命令层**（依赖 `emitErrorEnvelope` / `isJsonMode`），不得下沉进 `src/core`
- *       （否则 core → commands 层次反转）。`src/core/preflight.ts` 零改动。
+ *       （否则 core → commands 层次反转）。`src/core/preflight.ts` 只承载判定（v1.5.17 起
+ *       `checkPreflight` 会按 feel_mode 把 strict 降级为 warn；无循环依赖——config.ts 不依赖 preflight）。
  */
 import { preflightGate } from '../../core/preflight.js';
 import { t } from '../../core/i18n.js';

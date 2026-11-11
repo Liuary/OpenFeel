@@ -19,6 +19,7 @@ import { readRecovery } from '../adapters/recovery.js';
 import { readPreflightInfo } from '../adapters/preflight.js';
 import { buildObservability } from '../adapters/observability.js';
 import { computeWorkflowGate, headlineWarning } from '../adapters/workflow-gate.js';
+import { resolveFeelMode } from '../adapters/feel-mode.js';
 import { buildGuardSection, maybeSelfHealGuardState, repairGuardState } from '../adapters/guard-state.js';
 import { readHostMarker } from '../adapters/host-state.js';
 import { resolveGuardCwd } from '../guard.js';
@@ -142,6 +143,22 @@ function safeObservability(snapshot) {
 }
 
 /**
+ * 展示层对齐（v1.5.17）：`feel_mode=disabled` 时 CLI 的 preflight 有效模式已降级为 warn
+ * （`src/core/preflight.ts:resolvePreflightMode`），而适配器读到的是**宿主 env**（可能仍是 strict）。
+ * 这里同步展示为 warn，避免出现「报告 strict 却实际放行」的矛盾视图。
+ * @param {Record<string, any>|null|undefined} preflight readPreflightInfo 结果
+ * @param {{ value?: string }|null|undefined} feelMode resolveFeelMode 结果
+ * @returns {Record<string, any>|null|undefined}
+ */
+function applyFeelModeToPreflight(preflight, feelMode) {
+  if (preflight === null || preflight === undefined || typeof preflight !== 'object') return preflight;
+  if (feelMode?.value === 'disabled' && preflight.mode === 'strict') {
+    return { ...preflight, mode: 'warn', downgradedByFeelMode: true };
+  }
+  return preflight;
+}
+
+/**
  * `feel_status` 的默认精简视图（v1.5.7）：只保留调度必需字段。
  *
  * 去掉的三块日常用不到、但每次都占大量上下文的冗余：
@@ -184,6 +201,8 @@ export function compactStatusSnapshot(snapshot) {
     stages: snapshot?.stages ?? [],
     statusSync: snapshot?.statusSync ?? null,
     workflowGate: snapshot?.workflowGate ?? null,
+    // v1.5.17：feel_mode 及来源（default 档/compact 档都要能看见闸是否被软关闭）
+    feelMode: snapshot?.feelMode ?? null,
     // v1.5.11 D-126-04：门禁自检段（registered / cwd / cwdSource / degraded / stale /
     // lastDecision）；compact 档同样带，否则「门禁是否生效」在默认档看不见。
     guard: snapshot?.guard ?? null,
@@ -331,13 +350,17 @@ export function createTools(context) {
         // `readSnapshot` 会跑 `flow status --json` / `flow next --json`，二者在 JSON 早返回前
         // 就 recordPreflight（src/commands/flow.ts），读晚了会把本次调用刚写的账本当历史 ⇒ 指标自测。
         // 读取次数不变（仍 1 次/工具），零新增 I/O。
-        const preflight = readPreflightInfo(resolved.cwd);
+        const preflightInfo = readPreflightInfo(resolved.cwd);
         const snapshot = await readSnapshot(cli, {
           cwd: resolved.cwd,
           signal: exec.signal,
           withRequirements: args.with_requirements === true,
         });
         snapshot.project.root = resolved.cwd;
+        // v1.5.17：feel_mode 每轮现读（即时生效），供 workflowGate 与输出使用
+        snapshot.feelMode = resolveFeelMode(resolved.cwd);
+        // 展示一致：disabled 时 preflight 实际按 warn 放行（CLI 侧降级），这里同步展示模式
+        const preflight = applyFeelModeToPreflight(preflightInfo, snapshot.feelMode);
         snapshot.statusSync = readStatusSync(resolved.cwd);
         // v1.5.11 D-126-01 登记点 ②：每次 feel_* 也记会话 cwd（门禁第 3 环兜底）。
         touchSessionCwd(exec?.agent?.session?.id, resolved.sessionCwd);
@@ -393,9 +416,12 @@ export function createTools(context) {
       requireInitialized(resolved);
       return envelope('next', async () => {
         // v1.5.6 / REV-022：同 feel_status —— 账本先读，再跑会写账本的 CLI 调用。
-        const preflight = readPreflightInfo(resolved.cwd);
+        const preflightInfo = readPreflightInfo(resolved.cwd);
         const snapshot = await readSnapshot(cli, { cwd: resolved.cwd, signal: exec.signal });
         snapshot.project.root = resolved.cwd;
+        // v1.5.17：feel_mode 每轮现读（即时生效）；preflight 展示与 CLI 降级语义对齐
+        snapshot.feelMode = resolveFeelMode(resolved.cwd);
+        const preflight = applyFeelModeToPreflight(preflightInfo, snapshot.feelMode);
         snapshot.statusSync = readStatusSync(resolved.cwd);
         // v1.5.11 D-126-01 登记点 ②：每次 feel_* 也记会话 cwd（门禁第 3 环兜底）。
         touchSessionCwd(exec?.agent?.session?.id, resolved.sessionCwd);
@@ -411,6 +437,7 @@ export function createTools(context) {
         snapshot.observability = safeObservability(snapshot);
         const plan = planNextStep(snapshot);
         plan.workflowGate = snapshot.workflowGate;
+        plan.feelMode = snapshot.feelMode ?? null;
         plan.guard = snapshot.guard;
         plan.preflight = snapshot.preflight;
         snapshot.recovery.nextAction = plan.suggestedCommand ?? null;

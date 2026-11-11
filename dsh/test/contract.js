@@ -295,6 +295,8 @@ async function main() {
       stages: [],
       statusSync: { due: false, lastSync: 'x', intervalMinutes: 30 },
       workflowGate: { required: false },
+      // v1.5.17：feel_mode 顶层键（compact 档必须保留）
+      feelMode: { value: 'disabled', source: 'config.yaml' },
       preflight: { ok: true, at: 'x', ageMs: 5, mode: 'warn' },
       recovery: {
         stage: null, phase: null, requirement: null, lastTransition: null, lastError: null,
@@ -315,6 +317,12 @@ async function main() {
     assert(compact.preflight.ok === true, 'compact 必须保留 preflight');
     assert(compact.revision === 3 && compact.stale === false, 'compact 必须保留 revision/stale');
     assert(compact.requirements === undefined, 'compact 未请求需求时不应含 requirements');
+    // v1.5.17：feel_mode（value + source）必须进 compact 档
+    assert(
+      compact.feelMode && compact.feelMode.value === 'disabled' && compact.feelMode.source === 'config.yaml',
+      'compact 必须保留 feelMode（value/source）',
+    );
+    assert(compactStatusSnapshot({}).feelMode === null, '缺 feelMode 时应显式 null（形状稳定）');
   });
 
   await check('feel_status 暴露 detail=compact|full 开关', () => {

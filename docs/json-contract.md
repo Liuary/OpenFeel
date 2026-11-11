@@ -131,7 +131,7 @@ typeof doc.error === 'string'  → legacy
 | 24 | `knowledge list` | `schemaVersion,entries,count` | `entries[]{title,category,date,enabled}`（不含 `content`） | 空态 `entries:[]` + exit 0 |
 | 25 | `knowledge index` | `schemaVersion,categories,recentUpdates` | `categories[]{name,description}`；`recentUpdates[]{date,category,title}` | `index.md` 缺失时 `categories` 为 4 分类缺省、`recentUpdates:[]` |
 | 26 | `knowledge dedup` | `schemaVersion,threshold,categories,found,readOnly,matches` | `matches[]{category,title,date,enabled,similarity,flagged}`；`categories:string[]` | 恒 `readOnly:true`；无匹配 `found:false` + `matches:[]`；非法阈值/分类走 envelope（refusal/1） |
-| 27 | `config get` | 项目：`schemaVersion,scope,key,value`；项目 `--all`：`schemaVersion,scope,defaults`；全局无 key：`schemaVersion,scope,values`；全局有 key：同项目形态 | `values` = 6 全局键固定序（`user.name,user.lang,preferences.auto_advance,preferences.review_mode,preferences.communication,preferences.confirm_threshold`）；`defaults` = 4 项目键固定序（`execution_mode,auto_advance,merge_mode,workflow_mode`，取自 `resolveConfigDefaults`） | 全局缺省值 `undefined` → JSON `null`（人类显示空串；`DEFAULT_PROFILE` 回填后 6 键通常有值）；项目无 key 且无 `--all` → envelope `INVALID_ARGUMENT`（`key-required`）；`--all`+`--global` → `all-global-conflict`；`--all`+key → `all-with-key` |
+| 27 | `config get` | 项目：`schemaVersion,scope,key,value`；项目 `--all`：`schemaVersion,scope,defaults`；全局无 key：`schemaVersion,scope,values`；全局有 key：同项目形态 | `values` = 7 全局键固定序（`user.name,user.lang,preferences.auto_advance,preferences.review_mode,preferences.communication,preferences.confirm_threshold,preferences.feel_mode`）；`defaults` = 5 项目键固定序（`execution_mode,auto_advance,merge_mode,workflow_mode,feel_mode`，取自 `resolveConfigDefaults`） | 全局缺省值 `undefined` → JSON `null`（人类显示空串；`DEFAULT_PROFILE` 回填后前 6 键通常有值，`feel_mode` **不在** `DEFAULT_PROFILE` 中故未设置时为 `null`）；项目无 key 且无 `--all` → envelope `INVALID_ARGUMENT`（`key-required`）；`--all`+`--global` → `all-global-conflict`；`--all`+key → `all-with-key` |
 | 28 | `config effective` | 无 key：`schemaVersion,effective`；有 key：`schemaVersion,key,value,source` | `effective` 为受管键映射（键序 = `EFFECTIVE_CONFIG_KEYS`） | 未知 key → envelope `INVALID_ARGUMENT`（refusal/1） |
 | 29 | `view list` | `schemaVersion,count,reviews` | `reviews[]` 10 键：`id,op,status,priority,title,filed_by,filed_at,blocking,canAutoFix,autoFixDetail` | `blocking` 缺省 `true`（`!== false`）；`canAutoFix` 缺省 `false`（`=== true`）；`autoFixDetail` 可空；空态 `reviews:[]`；内部异常 JSON `INTERNAL_ERROR`/3（人类 1） |
 | 30 | `plan scheme list` | `schemaVersion,stage,count,schemes` | `schemes[]{stage,opId,title,filePath,draft,fill}`；`filePath` 为项目根相对路径 | `stage` 可空（`null` = 全部）；`draft` = flow.json 同 opId 存在 `state:'draft'`（跨阶段全局匹配，见 §13.5）；`fill` 经 `detectFillState`；空态 `schemes:[]` |
@@ -297,7 +297,7 @@ typeof doc.error === 'string'  → legacy
 | `knowledge index` | `index.md` 缺失 → 4 分类缺省 + `recentUpdates:[]` | 0 | 人类分类概览 + 无更新（exit 0） |
 | `knowledge dedup` | 无匹配 → `found:false` + `matches:[]`；无内容 → envelope `INVALID_ARGUMENT` | 0 / 1 | 人类「无相似条目」/ 错误（exit 0 / 1） |
 | `config get`（项目） | 无 key → envelope `INVALID_ARGUMENT` | 1 | 人类错误（exit 1） |
-| `config get --global`（无 key） | `values` 6 键齐全；`undefined` → JSON `null`（`DEFAULT_PROFILE` 回填后 6 键通常有值；人类模式同值/空串） | 0 | 人类逐行（`undefined` 显示空串） |
+| `config get --global`（无 key） | `values` 7 键齐全；`undefined` → JSON `null`（`DEFAULT_PROFILE` 回填后前 6 键通常有值，`feel_mode` 未显式设置时为 `null`；人类模式同值/空串） | 0 | 人类逐行（`undefined` 显示空串） |
 | `config effective` | `effective` 恒为受管键映射（含缺省解析值） | 0 | 人类逐行（exit 0） |
 | `view list` | `count:0,reviews:[]` | 0 | 人类「空」（exit 0） |
 | `plan scheme list` | `schemes:[]` + `count:0`（非法 stage 名同为空） | 0 | 人类「空」（exit 0） |
@@ -387,9 +387,9 @@ typeof doc.error === 'string'  → legacy
 
 ### §15.5 A5：`config get --all --json`
 
-- 形态：`{schemaVersion,scope:"project",defaults:{execution_mode,auto_advance,merge_mode,workflow_mode}}`（`resolveConfigDefaults` 四键固定序，缺失/非法逐键回退 `DEFAULT_CONFIG`）。
+- 形态：`{schemaVersion,scope:"project",defaults:{execution_mode,auto_advance,merge_mode,workflow_mode,feel_mode}}`（`resolveConfigDefaults` 五键固定序，缺失/非法逐键回退 `DEFAULT_CONFIG`）。
 - **仅项目模式**：`--all` + `--global` → `INVALID_ARGUMENT`（`all-global-conflict`）；`--all` + 位置 key → `INVALID_ARGUMENT`（`all-with-key`）。
-- **不再 `key-required`**：项目模式无 key 且带 `--all` → 成功文档 exit 0；不带 `--all` 的既有行为逐字不变（人类输出四行 `key: value` 仅出现在 `--all`）。
+- **不再 `key-required`**：项目模式无 key 且带 `--all` → 成功文档 exit 0；不带 `--all` 的既有行为逐字不变（人类输出五行 `key: value` 仅出现在 `--all`）。
 
 ## §16 v1.5.6-stage-115 细则（`lint req`，出口 #41）
 

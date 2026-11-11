@@ -204,6 +204,32 @@ describe('req 命令组（stage-82）', () => {
     expect(out()).toContain('正文骨架');
   });
 
+  // ═══ T-A1b v1.5.17：归档需求参与 ID 下限（禁复用归档 ID）═══
+
+  it('v1.5.17 add：归档已有 REQ-042 → 新需求分配 REQ-043，且 last_req_seq 抬升', async () => {
+    const archiveDir = join(tmpDir, '.openfeel', 'flow-archive');
+    mkdirSync(archiveDir, { recursive: true });
+    writeFileSync(join(archiveDir, 'v0.0.1.json'), JSON.stringify({
+      schemaVersion: 1,
+      version: 'v0.0.1',
+      archived_at: '',
+      stages: {},
+      reviews: [],
+      log: [],
+      requirements: [req_('REQ-042', { status: 'done' })],
+      counts: { stages: 0, reviews: 0, log: 0, requirements: 1 },
+    }), 'utf-8');
+
+    await safeParse(['req', 'add', '归档后新需求']);
+
+    expect(process.exitCode).toBe(0);
+    const d = readFlow();
+    expect(d.requirements).toHaveLength(1);
+    expect(d.requirements[0].id).toBe('REQ-043');
+    expect(d.meta.last_req_seq).toBeGreaterThanOrEqual(43);
+    expect(existsSync(join(tmpDir, '.openfeel', 'requirements', 'REQ-043.md'))).toBe(true);
+  });
+
   // ═══ T-A2 add 抛错分流（三径：空 title / 非法 priority / 空 target_version）═══
 
   it('T-A2 add 抛错分流：三径 → stderr errorTmpl + exit 1 + flow.json 逐字节零变更', async () => {

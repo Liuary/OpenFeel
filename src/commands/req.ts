@@ -21,13 +21,14 @@ import {
   getAllowedNextStatuses, splitRequirement, requirementDoneBlocker,
   recordRequirementReview, recordRequirementVerification,
   releaseCheckRequirements, rolloverRequirements, isTerminalRequirementStatus,
+  raiseRequirementSeqFloor,
   type RequirementErrorCode,
 } from '../core/req/requirement-ops.js';
 import { REQ_STATUSES, REQ_ID_PATTERN, type RequirementStatus, type RequirementPriority, type RequirementData } from '../core/req/types.js';
 import { writeRequirementBodySkeleton } from '../core/req/body-file.js';
 import { computeRequirementAggregate, listLinkedStages } from '../core/req/aggregate.js';
 import { stageRequirementIds } from '../core/req/stage-links.js';
-import { findArchivedRequirement, listArchivedRequirements } from '../core/flow-archive/archive-ops.js';
+import { findArchivedRequirement, listArchivedRequirements, archivedRequirementMaxSeq } from '../core/flow-archive/archive-ops.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { getUserName } from '../core/workspace/identity.js';
 import { normalizeStageId } from '../core/plan/path.js';
@@ -159,6 +160,9 @@ export function registerReqCommand(program: Command): void {
       // v1.5.6-stage-114：收敛到统一 helper
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       try {
+        // v1.5.17：分配前把**已归档**需求最大号并入下限——`meta.last_req_seq` 不感知归档，
+        // 否则归档过的 ID 会被复用（本仓 v1.5.8 归档 REQ-025~030 后计数器停在 24）。
+        raiseRequirementSeqFloor(data, archivedRequirementMaxSeq(process.cwd()));
         // 运行期值域由引擎单点判定（命令层零校验）；priority / workflow_mode 断言仅编译期
         const created = addRequirement(data, {
           title,
@@ -819,6 +823,8 @@ export function registerReqCommand(program: Command): void {
         else console.error(m);
       };
       if (!enforcePreflightOrFail(process.cwd(), lang, { reject })) return;
+      // v1.5.17：同 req add —— 分配前把已归档需求最大号并入下限（禁 ID 复用）
+      raiseRequirementSeqFloor(data, archivedRequirementMaxSeq(process.cwd()));
       // 命令层零业务校验：父门 / 终态门 / 子项校验 / ID 分配 / 审计全在引擎单点
       const r = splitRequirement(data, id, into.map((title) => ({ title })));
       if (!r.ok) {

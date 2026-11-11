@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-08T10:31:58.588Z",
-    "revision": 2079,
+    "updated": "2026-11-11T01:54:38.066Z",
+    "revision": 2124,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -44,382 +44,161 @@
       "v1.5.15",
       "v1.5.16"
     ],
-    "last_req_seq": 24
+    "last_req_seq": 32
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "",
+      "stage": "v1.5.17-stage-1",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.5.17-stage-1": {
+      "name": "v1.5.17-stage-1",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {
+        "op-001": {
+          "title": "配套修复：需求 ID 分配 floor 纳入归档（写侧抬升 + 读侧补存量）",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 1,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-11-11T01:33:07.380Z",
+          "completed_at": "2026-11-11T01:33:07.380Z"
+        },
+        "op-002": {
+          "title": "CLI 侧：feel_mode 配置层 + 命令面 + preflight 降级 + 文案面同步",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 1,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-11-11T01:33:07.865Z",
+          "completed_at": "2026-11-11T01:33:07.865Z"
+        },
+        "op-003": {
+          "title": "DSH 适配器：feel_mode 镜像解析 + workflowGate 放宽 + 自由模式提示词 + 工具输出",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 1,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-11-11T01:33:09.872Z",
+          "completed_at": "2026-11-11T01:33:09.872Z"
+        },
+        "op-004": {
+          "title": "测试与文档：CLI/dsh 矩阵用例 + 文档/CHANGELOG/lint i18n",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 1,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-11-11T01:33:10.333Z",
+          "completed_at": "2026-11-11T01:33:10.333Z"
+        }
+      },
+      "workflow_mode": "full",
+      "stats": {
+        "start_time": "2026-11-10T16:36:51.334Z",
+        "end_time": "2026-11-11T01:54:38.043Z",
+        "duration_ms": 33466709
+      },
+      "requirements": [
+        {
+          "id": "REQ-031",
+          "order": 0
+        }
+      ],
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-11T01:54:36.237Z",
+        "note": "阶段交付：feel_mode 开关（CLI 解析 + 命令面 + preflight 降级 + DSH 适配器镜像/gate/提示词/工具输出）+ 需求 ID 分配归档感知修复；全量验证绿，REQ-031 已 done。",
+        "evidence": "npx tsc --noEmit 0 errors; npx vitest run 95 files / 2403 tests passed; node bin/openfeel.js lint i18n 1194 键; npm run build 通过; node dsh/test/verify.js 121/121; node dsh/test/guard.js 179/179"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.17-stage-1",
+      "stage": "v1.5.17-stage-1",
+      "status": "closed",
+      "priority": "medium",
+      "title": "plan-review：6 处必修连锁点（get --global 硬编码 / 四键文案面 / workflowGate 优先级 / profile 原始 YAML / strict 注入位置 / 降级落点）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-10T16:39:21.941Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.17-stage-1",
+      "stage": "v1.5.17-stage-1",
+      "status": "closed",
+      "priority": "medium",
+      "title": "scheme-review：4 处阻塞（op-001 写侧落点 / json-contract 精确断言 / workflowGateTitle 无文案 / dsh 用例扩既有文件）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-10T16:42:18.725Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.5.17-stage-1",
+      "stage": "v1.5.17-stage-1",
+      "status": "closed",
+      "priority": "medium",
+      "title": "code-review：3 处必修（enabled 提示多一个空行 / preflight 测试未隔离 HOME / flow archive 抬升计数无用例）+ 2 条建议（init 模板硬编码 / 镜像解析边界）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-11T01:36:34.644Z",
+      "canAutoFix": false,
+      "blocking": true
+    }
+  ],
   "log": [
-    {
-      "time": "2026-10-31T16:05:47.300Z",
-      "agent": "cli",
-      "action": "remove_stage",
-      "detail": {
-        "stageId": "v1.3.0-stage-01",
-        "purgeTarget": null,
-        "referencing": [],
-        "snapshot": {
-          "phase": "plan_pending",
-          "status": "planned",
-          "deps": [],
-          "opKeys": []
-        }
-      }
-    },
-    {
-      "time": "2026-10-31T16:05:53.192Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.7-stage-118",
-        "requirementId": "REQ-020"
-      }
-    },
-    {
-      "time": "2026-10-31T16:09:09.751Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.7-stage-118",
-        "requirementId": null
-      }
-    },
-    {
-      "time": "2026-10-31T16:09:11.707Z",
-      "agent": "cli",
-      "action": "remove_stage",
-      "detail": {
-        "stageId": "v1.5.7-stage-118",
-        "purgeTarget": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\plan\\v1\\stage-118",
-        "referencing": [],
-        "snapshot": {
-          "phase": "exec_running",
-          "status": "planned",
-          "deps": [],
-          "opKeys": []
-        }
-      }
-    },
-    {
-      "time": "2026-10-31T16:09:13.340Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-020",
-        "from": "draft",
-        "to": "cancelled"
-      }
-    },
-    {
-      "time": "2026-10-31T16:11:50.335Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-021",
-        "title": "stage add 静默复用已归档阶段的目录/编号：应拒绝并提示换号"
-      }
-    },
-    {
-      "time": "2026-10-31T16:11:51.698Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-021",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-10-31T16:11:56.383Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.7-stage-119",
-        "requirementId": "REQ-021"
-      }
-    },
-    {
-      "time": "2026-10-31T16:36:09.544Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-001"
-      }
-    },
-    {
-      "time": "2026-10-31T16:36:49.106Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-021",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-10-31T16:37:11.318Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-021",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-10-31T16:37:15.838Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-021",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-10-31T16:41:13.152Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-022",
-        "title": "feel_status 默认精简：去掉转移表/handoff 全文，detail=full 保留全量"
-      }
-    },
-    {
-      "time": "2026-10-31T16:41:21.388Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-022",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-10-31T16:41:32.400Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.7-stage-120",
-        "requirementId": "REQ-022"
-      }
-    },
-    {
-      "time": "2026-10-31T16:43:53.154Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-002"
-      }
-    },
-    {
-      "time": "2026-10-31T16:44:12.114Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-022",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-10-31T16:44:16.278Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-022",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-10-31T16:44:20.148Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-022",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-10-31T16:49:27.994Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-023",
-        "title": "需求导向：阶段长期开启、需求完成与阶段关闭解耦、仅用户确认时归档发布"
-      }
-    },
-    {
-      "time": "2026-10-31T16:49:32.193Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-023",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-10-31T16:49:40.580Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.7-stage-121",
-        "requirementId": "REQ-023"
-      }
-    },
-    {
-      "time": "2026-10-31T16:57:49.213Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-003"
-      }
-    },
-    {
-      "time": "2026-10-31T17:00:22.622Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-023",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-10-31T17:00:27.482Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-023",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-10-31T17:00:32.782Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-023",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-10-31T17:00:51.978Z",
-      "agent": "cli",
-      "action": "chore_start",
-      "detail": {
-        "id": "CHORE-20261031T170051",
-        "note": "1.5.7 版本收口：README/config.yaml/dsh 版本快照同步 + build",
-        "expires_at": "2026-10-31T18:00:51.972Z",
-        "stage_count": 3
-      }
-    },
-    {
-      "time": "2026-10-31T17:01:30.330Z",
-      "agent": "cli",
-      "action": "chore_end",
-      "detail": {
-        "id": "CHORE-20261031T170051",
-        "note": "1.5.7 版本收口：README/config.yaml/dsh 版本快照同步 + build",
-        "stage_count": 3
-      }
-    },
-    {
-      "time": "2026-11-01T06:27:25.243Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-024",
-        "title": "归档官增强：汇总已完成需求 + 生成 docs/releases/vX.md + 按 harness 生成 skill"
-      }
-    },
-    {
-      "time": "2026-11-01T06:27:25.646Z",
-      "agent": "cli",
-      "action": "requirement_update",
-      "detail": {
-        "id": "REQ-018",
-        "fields": [
-          "target_version"
-        ]
-      }
-    },
-    {
-      "time": "2026-11-01T06:27:26.064Z",
-      "agent": "cli",
-      "action": "requirement_update",
-      "detail": {
-        "id": "REQ-019",
-        "fields": [
-          "target_version"
-        ]
-      }
-    },
-    {
-      "time": "2026-11-01T06:27:28.673Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-025",
-        "title": "workflowGate 边界：仅有 done 阶段时仍判为有活跃阶段，应视为无开启阶段"
-      }
-    },
-    {
-      "time": "2026-11-01T06:27:29.103Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-024",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-01T06:27:32.631Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-025",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-01T06:27:46.681Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.8-stage-122",
-        "requirementId": "REQ-024"
-      }
-    },
-    {
-      "time": "2026-11-01T06:29:29.256Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-025",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-01T06:29:31.134Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-025",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
     {
       "time": "2026-11-01T06:29:32.891Z",
       "agent": "cli",
@@ -1968,6 +1747,465 @@
         "log": 8,
         "requirements": 1
       }
+    },
+    {
+      "time": "2026-11-10T16:33:19.548Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-025",
+        "title": "feel_mode 开关：默认开启按门禁走流程，关闭时放松流程强制（项目级覆盖全局）"
+      }
+    },
+    {
+      "time": "2026-11-10T16:34:51.347Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-025",
+        "from": "draft",
+        "to": "cancelled"
+      }
+    },
+    {
+      "time": "2026-11-10T16:34:51.347Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-025",
+        "fields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "time": "2026-11-10T16:35:00.477Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-10T16:36:51.329Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:40.860Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-001"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:42.651Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:47.897Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:50.323Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:50.728Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:52.527Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:52.938Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "opId": "op-004"
+      }
+    },
+    {
+      "time": "2026-11-10T16:40:29.409Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:42:20.267Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-002"
+      }
+    },
+    {
+      "time": "2026-11-10T16:42:21.846Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_review",
+        "to": "scheme_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:42:24.535Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:58:13.854Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-031",
+        "title": "feel_mode 开关：默认按门禁走流程，关闭时放松流程强制（项目级覆盖全局）"
+      }
+    },
+    {
+      "time": "2026-11-10T16:58:27.838Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-032",
+        "title": "feel_mode 开关：默认按门禁走流程，关闭时放松流程强制（项目级覆盖全局）"
+      }
+    },
+    {
+      "time": "2026-11-10T16:58:44.668Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-032",
+        "from": "draft",
+        "to": "cancelled"
+      }
+    },
+    {
+      "time": "2026-11-10T16:58:44.668Z",
+      "agent": "cli",
+      "action": "requirement_update",
+      "detail": {
+        "id": "REQ-032",
+        "fields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "time": "2026-11-10T16:58:45.053Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-031",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-10T16:58:47.943Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.17-stage-1",
+        "requirementId": "REQ-031",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-11T01:33:07.381Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.5.17-stage-1.op-001",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-11-11T01:33:07.865Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.5.17-stage-1.op-002",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-11-11T01:33:09.872Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.5.17-stage-1.op-003",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-11-11T01:33:10.333Z",
+      "agent": "openfeel-executor",
+      "action": "attempt_pass",
+      "detail": {
+        "opId": "v1.5.17-stage-1.op-004",
+        "attempts": 1
+      }
+    },
+    {
+      "time": "2026-11-11T01:33:28.649Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:36:36.424Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:36:38.784Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "review_failed",
+        "to": "scheme_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:36:40.995Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_pending",
+        "to": "scheme_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:36:43.924Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:44:35.784Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-003"
+      }
+    },
+    {
+      "time": "2026-11-11T01:44:40.385Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:44:42.365Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:44:46.198Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "review_passed",
+        "to": "test_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:13.666Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "test_pending",
+        "to": "test_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:16.380Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "test_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:19.839Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-031",
+        "result": "pass",
+        "by": "openfeel-reviewer (独立子 agent)",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:23.525Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-031",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:28.705Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-031",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:30.765Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-031",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:33.025Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-031",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:36.237Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.17-stage-1",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:38.037Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2189,6 +2427,56 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-025",
+      "title": "（作废·ID 分配缺陷）与 v1.5.8 归档 REQ-025 冲突的空条目，请勿使用",
+      "status": "cancelled",
+      "created_at": "2026-11-10T16:33:19.547Z",
+      "updated_at": "2026-11-10T16:34:51.347Z",
+      "target_version": "v1.5.17",
+      "priority": "P1",
+      "workflow_mode": "full",
+      "body_path": ".openfeel/requirements/REQ-025.md"
+    },
+    {
+      "id": "REQ-031",
+      "title": "feel_mode 开关：默认按门禁走流程，关闭时放松流程强制（项目级覆盖全局）",
+      "status": "done",
+      "created_at": "2026-11-10T16:58:13.854Z",
+      "updated_at": "2026-11-11T01:54:33.025Z",
+      "target_version": "v1.5.17",
+      "priority": "P1",
+      "workflow_mode": "full",
+      "body_path": ".openfeel/requirements/REQ-031.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-10T16:58:45.053Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer (独立子 agent)",
+        "at": "2026-11-11T01:54:19.839Z",
+        "note": "独立代码审查两轮：首轮 3 处必修（enabled 提示词多一空行 / preflight 测试未隔离 HOME / flow archive 抬升计数无用例）+ 2 建议（init 模板硬编码、镜像解析边界）全部闭合；复验确认 enabled 输出与 HEAD 字节相等、三处修复有用例锁、无阻塞。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-11T01:54:23.525Z",
+        "note": "全量静态与运行验证通过：类型检查、2403 用例、i18n 键一致性、构建、适配器契约/验证/守门测试；适配器提示词 enabled 路径与 HEAD 字节相等（回归锁定）。",
+        "evidence": "npx tsc --noEmit → 0 errors; npx vitest run → 95 files / 2403 tests passed; node bin/openfeel.js lint i18n → 1194 键一致; npm run build → 通过（含模板单源一致性）; node dsh/test/verify.js → 121/121; node dsh/test/guard.js → 179/179"
+      }
+    },
+    {
+      "id": "REQ-032",
+      "title": "（作废·重复创建）feel_mode 开关：默认按门禁走流程，关闭时放松流程强制（项目级覆盖全局）",
+      "status": "cancelled",
+      "created_at": "2026-11-10T16:58:27.838Z",
+      "updated_at": "2026-11-10T16:58:44.667Z",
+      "target_version": "v1.5.17",
+      "priority": "P1",
+      "workflow_mode": "full",
+      "body_path": ".openfeel/requirements/REQ-032.md"
     }
   ]
 }

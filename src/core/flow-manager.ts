@@ -311,8 +311,8 @@ export interface CascadeConfig {
 /** 配置生效来源枚举（`config effective` 出口，P9） */
 export type ConfigSource = 'status.md' | 'config.yaml' | 'profile.yaml' | 'builtin' | 'requirement';   // 'requirement' = 需求级（stage-90）
 
-/** `openfeel config effective` 的四个受管键（与 DEFAULT_CONFIG 一致） */
-const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode'] as const;
+/** `openfeel config effective` 的受管键（与 DEFAULT_CONFIG 一致；v1.5.17 追加 feel_mode） */
+const EFFECTIVE_CONFIG_KEYS = ['execution_mode', 'auto_advance', 'merge_mode', 'workflow_mode', 'feel_mode'] as const;
 
 /** verbose 模式下的状态变更记录 */
 export interface RecentChange {
@@ -2794,7 +2794,8 @@ export class FlowManager {
 
   /**
    * 构建配置级联信息（优先级：profileDefaults < configDefaults < statusOverrides）
-   * 全局画像仅作最低优先级兜底（P2），且只取 preferences.auto_advance 单值，**不扩展** workflow_mode。
+   * 全局画像仅作最低优先级兜底（P2）：显式声明的 `preferences.auto_advance` 与
+   * `preferences.feel_mode`（v1.5.17）；`workflow_mode` **有意不**从画像承载。
    * @param stageId 可选目标阶段（stage 形参唯一入口）；缺省 = pipeline.current.stage
    *   （**当前阶段域**，无参行为逐字不变）。任意阶段域由 resolveStageWorkflowMode(stageId) 显式传入。
    * 静态约束（REV-74-001/002）：无参调用**仅允许**出现在既有两出口 resolveEffectiveConfig()
@@ -2805,15 +2806,22 @@ export class FlowManager {
     const configDefaults: Record<string, string> = {};
     const statusOverrides: Record<string, string> = {};
 
-    // 最低优先级：全局画像 ~/.config/openfeel/profile.yaml 的 preferences.auto_advance（P2 兜底）
+    // 最低优先级：全局画像 ~/.config/openfeel/profile.yaml 的 preferences.*（P2 兜底）
     // BUG-003（stage-47）：仅当画像文件真实存在且原始 YAML **显式声明**该键时兜底；否则落 builtin。
     const profilePath = getGlobalProfilePath();
     if (existsSync(profilePath)) {
       try {
         const raw = parseYaml(readFileSync(profilePath, 'utf-8')) as Record<string, unknown> | null;
-        const explicit = (raw?.preferences as Record<string, unknown> | undefined)?.auto_advance;
-        if (explicit === 'enabled' || explicit === 'disabled') {
-          profileDefaults['auto_advance'] = explicit;
+        const preferences = raw?.preferences as Record<string, unknown> | undefined;
+        const explicitAuto = preferences?.auto_advance;
+        if (explicitAuto === 'enabled' || explicitAuto === 'disabled') {
+          profileDefaults['auto_advance'] = explicitAuto;
+        }
+        // v1.5.17：全局 feel_mode 偏好 → 被项目 config.yaml 的 defaults.feel_mode 覆盖
+        // （与 config.ts:resolveFeelMode 同源语义：只认显式声明，不做 DEFAULT_PROFILE 合并）
+        const explicitFeel = preferences?.feel_mode;
+        if (explicitFeel === 'enabled' || explicitFeel === 'disabled') {
+          profileDefaults['feel_mode'] = explicitFeel;
         }
       } catch {
         // 解析失败 → 不填 → 落 builtin（更贴近「无有效画像」）
@@ -2918,7 +2926,8 @@ export class FlowManager {
   /**
    * 解析指定阶段的工作流模式（裁定 E：「stage → mode」表选择解析入口；stage-75 `flow mode` 契约）。
    * 带 stage 形参独立解析（REV-74-001）：该阶段 status.md（findStatusPath(stageId)）
-   *   > 需求级（关联需求携带的 workflow_mode）> config.yaml defaults > profile.yaml（**有意不承载**，实际不产出）> builtin（DEFAULT_CONFIG.workflow_mode = fast）。
+   *   > 需求级（关联需求携带的 workflow_mode）> config.yaml defaults > profile.yaml（**workflow_mode 有意不承载**，
+   *   画像层仅承载 auto_advance / feel_mode〔v1.5.17〕）> builtin（DEFAULT_CONFIG.workflow_mode = fast）。
    * 语义边界：`config effective` / `flow status --verbose` = **当前阶段域**（无参）；
    *   本方法显式 stageId = **任意阶段域**（flow mode --stage / 表选择）。
    * @param stageId 目标阶段 ID（缺省 = pipeline.current.stage；无该阶段 status.md → 自然回落下一层）

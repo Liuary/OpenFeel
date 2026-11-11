@@ -42,10 +42,10 @@ import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 import { getDevStatus, isSyncNodePhase, syncDevStatus } from '../core/dev-status.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
-import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile } from '../core/flow-archive/archive-ops.js';
+import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile, maxRequirementSeq } from '../core/flow-archive/archive-ops.js';
 import { archiveHealthItems } from '../core/flow-archive/archive-health.js';
 import { requirementHealthItems, stageRequirementIds } from '../core/req/aggregate.js';   // 需求对账项（stage-83 T3）/ 关联读取单点（REQ-028）
-import { releaseCheckRequirements, isTerminalRequirementStatus } from '../core/req/requirement-ops.js';                // 发布软门（v1.5.8 / REQ-030）/ 终态判定单点（OF-07）
+import { releaseCheckRequirements, isTerminalRequirementStatus, raiseRequirementSeqFloor } from '../core/req/requirement-ops.js';                // 发布软门（v1.5.8 / REQ-030）/ 终态判定单点（OF-07）/ ID 下限抬升（v1.5.17）
 
 /**
  * OF-07 悬挂阶段提醒的相位集：执行后、尚未被 done 门收口的活跃相位。
@@ -2438,6 +2438,10 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
       // ② 内存移除（stages / reviews / log / requirements 四段；v1.5.8 / REQ-030 增需求段）
+      // ②-a 需求 ID 下限抬升（v1.5.17 根因修复）：被归档需求的序号必须在覆写前并入
+      // `meta.last_req_seq`，否则移走条目后计数器不前进 → 后续新建复用归档 ID
+      // （REQ-030 的「不复用」承诺）。必须在 dry-run 分支（零写盘）之外，且早于 ② 的覆写。
+      raiseRequirementSeqFloor(data, maxRequirementSeq(archive.requirements));
       data.stages = remainder.stages;
       data.reviews = remainder.reviews;
       data.log = remainder.log;

@@ -710,4 +710,36 @@ describe('flow archive 发布软门（REQ-030）', () => {
       unfinishedStages: [], blockingReviews: [], requirements: 1,
     });
   });
+
+  // v1.5.17：写侧根因修复——归档移走需求时抬升 meta.last_req_seq（否则后续新建复用归档 ID）
+  it('v1.5.17：归档后 meta.last_req_seq 抬升到被归档需求最大号', async () => {
+    FlowManager.initFlow(tmpDir);
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData({
+      meta: {
+        version: '1.0', project: 'Test', updated: new Date().toISOString(),
+        // 刻意压低：模拟历史缺陷（归档过 REQ-025~030 但计数器停在 24）
+        last_req_seq: 1,
+      } as FlowData['meta'],
+      pipeline: { phase: 'plan_pending', current: { stage: '', op: '' }, retry: 0 },
+      stages: { 'v1.0.0-stage-01': mkStageObj('v1.0.0-stage-01', ['op-001']) },
+      reviews: [],
+      requirements: [{
+        id: 'REQ-042', title: '已归档需求', status: 'done', target_version: 'v1.0.0',
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+      }],
+      log: [],
+    } as unknown as FlowData);
+    mgr.save();
+
+    logMock.mockClear();
+    await safeParse(['flow', 'archive', 'v1.0.0']);
+
+    expect(process.exitCode).toBe(0);
+    const after = JSON.parse(readFileSync(flowPath(), 'utf-8')) as FlowData;
+    expect(after.meta.last_req_seq).toBe(42);
+    expect(after.requirements ?? []).toEqual([]);
+    const file = JSON.parse(readFileSync(archivePath('v1.0.0'), 'utf-8'));
+    expect(file.requirements.map((r: { id: string }) => r.id)).toEqual(['REQ-042']);
+  });
 });

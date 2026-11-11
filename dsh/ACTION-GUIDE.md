@@ -314,6 +314,7 @@ DSH 适配器已并入本仓库 `dsh/`（与 `claude/`、`kilo/` 同级），但
 | A2 + A3 + A4 交付 | 7 处 `cli.text()` 改为 `cli.json()`，文本回显 **8 → 1**（仅剩 `instructions` XML 形态），`--json` 调用点 **25 → 32** |
 | A1 交付 | 视方案更新 `feel_archive` 的 `stage_summary` 语义（`--force` 透传 / 返回合并标记） |
 | A5 交付 | `feel_verify action=config_get` 支持无 key 全量读取 |
+| v1.5.17 `feel_mode` 交付 | `feel_status` / `feel_next` 输出新增 `feelMode`（`{value, source}`）；`config get --all` 四键→五键、`config get --global` 6 键→7 键；适配器新增 `lib/adapters/feel-mode.js`（CLI `resolveFeelMode` 的镜像）；断言已增补到 `dsh/test/contract.js`（compact 保留 `feelMode`）与 `dsh/test/verify.js`（gate / prompt / 镜像矩阵） |
 | 任意新出口 | 在 `dsh/test/contract.js` + `verify.js` 增补断言；`openfeel.requiresCli` 跟随升级 |
 
 同时 DSH 侧会把这轮复核结论同步回

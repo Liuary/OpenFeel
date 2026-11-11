@@ -925,10 +925,12 @@ openfeel config effective [key] [--json]
 
 | 参数 | 说明 |
 |------|------|
-| `key`（可选） | 单个受管键；省略时输出四键（`execution_mode` / `auto_advance` / `merge_mode` / `workflow_mode`） |
+| `key`（可选） | 单个受管键；省略时输出五键（`execution_mode` / `auto_advance` / `merge_mode` / `workflow_mode` / `feel_mode`） |
 | `--json` | v1.2.2：无 key → `{schemaVersion,effective}`（`effective` 为受管键映射，键序 = `EFFECTIVE_CONFIG_KEYS`）；有 key → `{schemaVersion,key,value,source}`；未知 key → envelope `INVALID_ARGUMENT`（refusal/1） |
 
 **来源优先级**：`status.md` > `config.yaml` > `profile.yaml` > `builtin`；未知 key → stderr + exit 1。
+
+**`feel_mode`（v1.5.17，流程开关）**：`config effective feel_mode` 的来源只会是 `config.yaml` / `profile.yaml` / `builtin`（**无阶段字段**，永不来自 `status.md`）。层级为**项目级覆盖全局**：`defaults.feel_mode`（项目）> `preferences.feel_mode`（`--global` 的 profile）> `builtin=enabled`。`disabled` 时：不强制创建需求/阶段、`preflight` 由 `strict` 降级为 `warn`；状态机 / `done` 门 / 阶段验证门 / 归档判据 / blocking REV / 写入门禁**全部保留**。
 
 ### config get / set
 
@@ -939,13 +941,13 @@ openfeel config get [key] [--global] [--all] [--json]
 openfeel config set <key> <value> [--global] [--sync-stages] [--stage <ids...>]
 ```
 
-**`config get --json`（v1.2.2 / v1.2.4 A5）**：项目 → `{schemaVersion,scope,key,value}`；项目 `--all` → `{schemaVersion,scope:"project",defaults}`（`defaults` 四键固定序 `execution_mode,auto_advance,merge_mode,workflow_mode`，取自 `resolveConfigDefaults`，**不再报 `key-required`**）；全局无 key → `{schemaVersion,scope,values}`（6 全局键固定序）；全局有 key → 同项目形态；项目无 key 且无 `--all` → envelope `INVALID_ARGUMENT`（refusal/1）；`--all`+`--global` → `all-global-conflict`；`--all`+key → `all-with-key`。`config set` 无 `--json`（写命令保持人类文本）。
+**`config get --json`（v1.2.2 / v1.2.4 A5 / v1.5.17 增键）**：项目 → `{schemaVersion,scope,key,value}`；项目 `--all` → `{schemaVersion,scope:"project",defaults}`（`defaults` 五键固定序 `execution_mode,auto_advance,merge_mode,workflow_mode,feel_mode`，取自 `resolveConfigDefaults`，**不再报 `key-required`**）；全局无 key → `{schemaVersion,scope,values}`（7 全局键固定序）；全局有 key → 同项目形态；项目无 key 且无 `--all` → envelope `INVALID_ARGUMENT`（refusal/1）；`--all`+`--global` → `all-global-conflict`；`--all`+key → `all-with-key`。`config set` 无 `--json`（写命令保持人类文本）。
 
 - **支持全量 `defaults.*` 键**（schema 驱动）：`execution_mode` / `auto_advance` / `merge_mode` / `workflow_mode` 等受管配置键均可通过 `config set`/`get` 读写（与 `config effective` 覆盖范围一致）。**注意**：原布尔测试门禁键已于 v1.1.4-stage-62 移除，`config set` 该键将被判定为**无效键**（报错、不写盘）。
 - **`defaults.X ≡ X`（v1.1.4-stage-63）**：项目模式下 `defaults.` 前缀与 bare key 等价（键归一，单一来源）；`--global` 的 profile 键域不同，不受影响。
 - **`--sync-stages`（v1.1.4-stage-63）**：仅项目模式（与 `--global` 组合 → exit 1）；将值批量写入**所有已注册阶段** `status.md` 对应字段（适用键 `auto_advance` → `自动推进`、`execution_mode` → `执行模式`、`workflow_mode` → `工作流模式`）；**同值 no-op**；其它键（无阶段字段）跳过并报告。
 - **`--stage <ids...>` 作用域限定（v1.1.7-stage-75）**：缺省 = 全量；空格/逗号分隔；**前置全量校验**（未注册 exit 1 零写盘）；单独 `--stage` 或与 `--global` 组合 → exit 1；`workflow_mode` 字段缺失走**插入**（锚点链「自动推进」→「执行模式」；锚点皆缺 = `skipped-no-anchor`，**退出码恒 0**）；done 阶段不过滤、正常处理。
-- **值类型归一**：写入前按字段 Schema 归一值类型（枚举键按枚举校验；Schema 中若存在布尔键则 `true`/`false` 归一为布尔值），避免以字符串落盘破坏配置校验。当前受管四键均为枚举型。
+- **值类型归一**：写入前按字段 Schema 归一值类型（枚举键按枚举校验；Schema 中若存在布尔键则 `true`/`false` 归一为布尔值），避免以字符串落盘破坏配置校验。当前受管五键均为枚举型。`feel_mode`（v1.5.17）**无阶段字段** → `config set feel_mode --sync-stages` 对每个阶段报 `skipped-no-field`（不改任何 status.md，退出码 0）。
 - **枚举校验 + 不写盘**：非法取值（如 `execution_mode bogus`）以非 0 退出并报错，**不修改目标文件**（文件 hash 与 mtime 不变）。
 - **preflight（v1.5.6，REV-004）**：仅 `--sync-stages` 同步分支受门（非同步分支只改 `config.yaml` 的项目默认值，不改阶段状态）。门插在 `setConfigValue` **之前** → strict 拒绝时 `config.yaml` / `status.md` / `flow.json`（`stages[*].workflow_mode`）**三处零写盘**。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 

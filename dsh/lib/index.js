@@ -30,6 +30,7 @@ import { FeelCli } from './adapters/cli.js';
 import { resolveWorkspace } from './adapters/workspace.js';
 import { writeHostMarker } from './adapters/host-state.js';
 import { setGuardRuntimeIdentity, writeGuardState } from './adapters/guard-state.js';
+import { resolveFeelMode } from './adapters/feel-mode.js';
 import { touchSession } from './adapters/session-cwd-registry.js';
 import { createOpenFeelGuard, resolveShellGate } from './guard.js';
 import { createFeelCommandHandler } from './surface/command.js';
@@ -270,7 +271,13 @@ export function apply(ctx, rawConfig) {
         // - 未初始化 + activation=auto → 短 bootstrap；
         // - activation=off → 外层不注册 section。
         if (resolved.initialized) {
-          return renderFeelPrompt({ projectRoot: resolved.projectRoot, detected: true, language: config.language });
+          // v1.5.17：每轮重新解析 feel_mode（即时生效；镜像 CLI resolveFeelMode，只读两个小文件）
+          return renderFeelPrompt({
+            projectRoot: resolved.projectRoot,
+            detected: true,
+            language: config.language,
+            feelMode: resolveFeelMode(resolved.projectRoot),
+          });
         }
         if (config.activation === 'always') {
           return renderFeelPrompt({ projectRoot: resolved.projectRoot, detected: false, language: config.language });

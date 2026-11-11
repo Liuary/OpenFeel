@@ -13,7 +13,15 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { enforcePreflightOrFail } from '../../src/commands/shared/preflight-gate.js';
 import { resetJsonModeForTest, setJsonMode } from '../../src/commands/shared/json-output.js';
+import { checkPreflight } from '../../src/core/preflight.js';
 import { t } from '../../src/core/i18n.js';
+
+// mock homedir：隔离全局 profile（feel_mode 解析会读 ~/.config/openfeel/profile.yaml）
+const mockHome = vi.hoisted(() => ({ dir: '' }));
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, homedir: () => mockHome.dir };
+});
 
 describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
   let dir: string;
@@ -22,6 +30,7 @@ describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
   let exitMock: ReturnType<typeof vi.fn>;
   let prevExitCode: number | string | undefined;
   let originalStderrIsTTY: boolean | undefined;
+  let homeDir: string;
 
   /** 递归列目录（仅用于「放行路径不写盘」断言） */
   function snapshot(root: string): string[] {
@@ -53,6 +62,9 @@ describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
       pipeline: { current: { stage: '', op: '' } },
       stages: {},
     }), 'utf-8');
+    // v1.5.17：隔离全局画像（feel_mode 解析第二层）
+    homeDir = mkdtempSync(join(tmpdir(), 'openfeel-preflight-home-'));
+    mockHome.dir = homeDir;
 
     prevExitCode = process.exitCode;
     process.exitCode = 0;
@@ -67,6 +79,8 @@ describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
+    rmSync(homeDir, { recursive: true, force: true });
+    mockHome.dir = '';
     logMock.mockRestore();
     errorMock.mockRestore();
     exitMock.mockRestore();
@@ -178,5 +192,49 @@ describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
     // 拒绝路径同样只读账本、不刷新它
     expect(enforcePreflightOrFail(dir, 'zh-CN')).toBe(false);
     expect(snapshot(dir)).toEqual(before);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // v1.5.17：feel_mode=disabled（软关闭）→ strict 降级为 warn
+  // ═══════════════════════════════════════════════════════════════════
+  describe('feel_mode=disabled（v1.5.17）', () => {
+    function writeProjectFeelMode(value: string): void {
+      writeFileSync(join(dir, '.openfeel', 'config.yaml'), `defaults:\n  feel_mode: ${value}\n`, 'utf-8');
+    }
+
+    it('strict + 项目 disabled → 放行，且 check.mode 报 warn（不出现「报 strict 却放行」）', () => {
+      writeProjectFeelMode('disabled');
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      expect(checkPreflight(dir).mode).toBe('warn');
+      expect(enforcePreflightOrFail(dir, 'zh-CN')).toBe(true);
+      expect(process.exitCode).toBe(0);
+      expect(errorMock).not.toHaveBeenCalled();
+    });
+
+    it('strict + 项目 enabled → 仍拒绝（默认行为逐字不变）', () => {
+      writeProjectFeelMode('enabled');
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      expect(checkPreflight(dir).mode).toBe('strict');
+      expect(enforcePreflightOrFail(dir, 'zh-CN')).toBe(false);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it('off 最高优先：disabled 时 env=off 仍为 off', () => {
+      writeProjectFeelMode('disabled');
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'off');
+      expect(checkPreflight(dir).mode).toBe('off');
+      expect(enforcePreflightOrFail(dir, 'zh-CN')).toBe(true);
+    });
+
+    it('全局 disabled（无项目 config）同样降级', () => {
+      mkdirSync(join(homeDir, '.config', 'openfeel'), { recursive: true });
+      writeFileSync(
+        join(homeDir, '.config', 'openfeel', 'profile.yaml'),
+        'preferences:\n  feel_mode: disabled\n',
+        'utf-8',
+      );
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      expect(checkPreflight(dir).mode).toBe('warn');
+    });
   });
 });

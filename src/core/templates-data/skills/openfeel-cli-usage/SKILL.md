@@ -12,7 +12,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 `openfeel-tool-usage` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 `### opencode 适配器` / `### Claude Code 适配器` 两小节。
 
-> 本文档为 v1.5.16 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.17 快照；命令/参数细节以 `openfeel <cmd> --help`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 `node bin/openfeel.js <cmd>`；安装后使用 `openfeel <cmd>`。
 
@@ -49,6 +49,14 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 **纠错/清理侧补充**：`flow review add|resolve|update|remove`；`flow ops list [--stage <id>] [--json]`（操作方案视图，draft 分组展示）；`flow repair [--prune-orphans]`（默认只报告，`--prune-orphans` 仅清键孤儿，单向不删文件）；`plan scheme register`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，`--dry-run` 零写盘；与 `flow repair --prune-orphans`（仅清键孤儿）对称）；**`flow stage reset <id> --to <phase>`**（`advance` 的**对称复位**：允许回退，受合法 phase 值域 + `to=done` 阻塞 REV 约束，`--dry-run` 零写盘）；**`flow checkpoint restore <file> --stage <id> [--dry-run]`**（按阶段选择性回退；`--dry-run` 差异预览零写盘）。
 
 > 命令职责分层：`plan stage add`（完整，推荐）> `flow stage add`（仅注册 `flow.json`，不建目录）> `stage create`（已弃用）。
+
+## v1.5.17（stage-1）
+
+> feel_mode 流程开关（默认 `enabled` = 现状；`disabled` 软关闭流程强制）+ 需求 ID 归档感知修复。JSON 契约键集只增：`config get --all` 四键→五键、`config get --global` 6 键→7 键。
+
+- **`feel_mode: enabled|disabled`（v1.5.17 / REQ-031）**：项目 `.openfeel/config.yaml` 的 `defaults.feel_mode` > 全局 `~/.config/openfeel/profile.yaml` 的 `preferences.feel_mode` > `builtin=enabled`；写入 `config set feel_mode disabled` / `config set preferences.feel_mode disabled --global`；`config effective feel_mode` 查来源（**永不为 `status.md`**——该键无阶段字段，`--sync-stages` 报 `skipped-no-field`）。`disabled` 时：不强制建需求/阶段（`workflowGate` → `feel-mode-off`）、`preflight` 由 `strict` 降 `warn`、DSH `<feel_mode>` 提示切「自由模式」；**保留**状态机 / `done` 门 / 阶段验证门 / 归档判据 / blocking REV / 写入门禁。
+- **需求 ID 不复用（v1.5.17）**：`flow archive` 在移除需求前抬升 `meta.last_req_seq`；`req add` / `req split` 分配前并入 `.openfeel/flow-archive/*.json` 的需求最大号（`archivedRequirementMaxSeq`）。
+- **`config get --all` 变五键**（`feel_mode` 末位）、**`config get --global` 变七键**（`preferences.feel_mode` 末位）；`feel_status` / `feel_next` 输出 `feelMode{value,source}`。
 
 ## v1.5.16（stage-131）
 

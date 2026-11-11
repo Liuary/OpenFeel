@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.16**（一致性收尾） — ① `attempt` 现在同步 `checkpoints.exec.attempts`，不再与顶层 `attempts` 漂移；② `flow ops list` 对 **done** op 不再报「模板未填充」告警（`fill` 仍如实反映填充度）；③ 文档明确：`req claim` 只写 owner/claimed_at 不改状态（用 `req advance`）、第 4 类 shell 判定为**非阻断告警**且支持 `OPENFEEL_SHELL_ALLOW` 整条命令白名单、删除 done op 需 `--force`。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.17**（feel_mode 开关 + 需求 ID 归档感知） — ① 新增 `feel_mode: enabled|disabled` 流程开关（默认 `enabled` = 现状）：`disabled` 时**软关闭**——不强制建需求/阶段、`preflight` 由 `strict` 降为提示、DSH 提示词切「自由模式」，但状态机 / `done` 门 / 归档判据 / blocking REV / 写入门禁全部保留；层级为**项目级覆盖全局**（`.openfeel/config.yaml` > 全局 profile），即时生效。② 修复 `meta.last_req_seq` 不感知归档导致的**需求 ID 复用**：`flow archive` 抬升计数器，`req add`/`split` 分配前并入归档最大号。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

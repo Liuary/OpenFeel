@@ -15,7 +15,7 @@
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
   （v1.5.10 起 43 个成功出口 / 44 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.5.16）。
+  的 `openfeel.requiresCli`（≥1.5.17）。
 
 ## 设计边界
 

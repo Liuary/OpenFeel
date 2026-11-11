@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-11T01:54:36.237Z",
-    "revision": 2123,
+    "updated": "2026-11-11T16:12:08.329Z",
+    "revision": 2134,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -49,7 +49,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.5.17-stage-1",
+      "stage": "v1.5.17-stage-2",
       "op": ""
     },
     "retry": 0
@@ -57,8 +57,8 @@
   "stages": {
     "v1.5.17-stage-1": {
       "name": "v1.5.17-stage-1",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {
         "op-001": {
@@ -141,8 +141,8 @@
       "workflow_mode": "full",
       "stats": {
         "start_time": "2026-11-10T16:36:51.334Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-11T01:54:38.043Z",
+        "duration_ms": 33466709
       },
       "requirements": [
         {
@@ -157,6 +157,27 @@
         "at": "2026-11-11T01:54:36.237Z",
         "note": "阶段交付：feel_mode 开关（CLI 解析 + 命令面 + preflight 降级 + DSH 适配器镜像/gate/提示词/工具输出）+ 需求 ID 分配归档感知修复；全量验证绿，REQ-031 已 done。",
         "evidence": "npx tsc --noEmit 0 errors; npx vitest run 95 files / 2403 tests passed; node bin/openfeel.js lint i18n 1194 键; npm run build 通过; node dsh/test/verify.js 121/121; node dsh/test/guard.js 179/179"
+      }
+    },
+    "v1.5.17-stage-2": {
+      "name": "v1.5.17-stage-2",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-11-11T15:44:54.332Z",
+        "end_time": "",
+        "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-11T16:12:08.329Z",
+        "note": "v1.5.17 版本收口验证：版本号一致性（package.json / package-lock ×2 / dsh package ×2 / ADAPTER.md / README / VERSIONS）、skill 快照三副本一致、构建与全量测试绿。",
+        "evidence": "node bin/openfeel.js --version → 1.5.17（== package.json / dsh/package.json）; npm run build → 通过（模板单源一致性 3/3）; node bin/openfeel.js lint i18n → 1194 键; npx tsc --noEmit → 0; npx vitest run → 95 文件 / 2403 用例; node dsh/test/verify.js → 121/121; node dsh/test/guard.js → 179/179"
       }
     }
   },
@@ -196,103 +217,21 @@
       "filed_at": "2026-11-11T01:36:34.644Z",
       "canAutoFix": false,
       "blocking": true
+    },
+    {
+      "id": "REV-004",
+      "op": "v1.5.17-stage-2",
+      "stage": "v1.5.17-stage-2",
+      "status": "closed",
+      "priority": "medium",
+      "title": "self-review：v1.5.17 发布收口（版本号 8 处 / 文档 4 处 / skill 快照 3 副本 / 构建与测试）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-11T16:11:59.432Z",
+      "canAutoFix": false,
+      "blocking": false
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T06:29:31.134Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-025",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T06:29:32.891Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-025",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-01T06:39:17.789Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-024",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-01T06:39:19.869Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-024",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T06:39:22.059Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-024",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-01T06:39:54.984Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-026",
-        "title": "DSH 适配器发布面：补 engines.dsh（宽松 >=0.2.0）+ 生成插件市场索引（git 源）+ 市场生态调研"
-      }
-    },
-    {
-      "time": "2026-11-01T06:40:07.323Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-026",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-01T06:46:34.518Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.8-stage-123",
-        "requirementId": "REQ-026"
-      }
-    },
-    {
-      "time": "2026-11-01T06:53:27.407Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-004"
-      }
-    },
-    {
-      "time": "2026-11-01T07:01:12.919Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-027",
-        "title": "完成必审验：需求与阶段 done 门强制审查 + 验证证据"
-      }
-    },
     {
       "time": "2026-11-01T07:01:17.531Z",
       "agent": "cli",
@@ -2200,6 +2139,117 @@
       "action": "stage_verification",
       "detail": {
         "stage": "v1.5.17-stage-1",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:38.037Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T15:44:47.973Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-11T15:44:54.330Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-11T15:44:58.019Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T15:45:00.557Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T16:11:56.287Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T16:12:01.509Z",
+      "agent": "openfeel-reviewer",
+      "action": "review_accept",
+      "detail": {
+        "reviewId": "REV-004"
+      }
+    },
+    {
+      "time": "2026-11-11T16:12:02.066Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T16:12:04.960Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T16:12:08.329Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.17-stage-2",
         "result": "pass",
         "kind": "test",
         "by": "feel-tester"

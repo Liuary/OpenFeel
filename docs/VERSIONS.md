@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.17** — Feel-mode switch: `feel_mode: enabled|disabled` (default `enabled` = unchanged). `disabled` softens **process enforcement** only — no forced requirement/stage, `preflight` downgrades from strict to warn, and the DSH prompt switches to "free mode" — while the state machine, `done` gate, stage verification, archive criteria, blocking-REV gate and the write guard stay in force. Resolution is project-over-global (`.openfeel/config.yaml` `defaults.feel_mode` > global `~/.config/openfeel/profile.yaml` `preferences.feel_mode` > builtin `enabled`) and takes effect immediately (the adapter re-reads it on every turn). Also fixes requirement-ID reuse: `flow archive` now raises `meta.last_req_seq`, and `req add` / `req split` fold the archived maximum in before allocating.
 - **v1.5.16** — Consistency polish: `attempt` now keeps `checkpoints.exec.attempts` in sync with the top-level counter, `flow ops list` stops warning about empty templates on `done`/`failed` ops (the `fill` value stays truthful; `flow health` still reports them as data hygiene), and docs now state that `req claim` only records the owner fields (use `req advance` to change status), that the fourth shell-gate class is a non-blocking warning with `OPENFEEL_SHELL_ALLOW` as the exact-command allowlist, and that removing a `done` op needs `--force`.
 - **v1.5.15** — Owner-resolution fix: a persisted `"user": "unknown"` sentinel in `.openfeel/.info.json` no longer blocks the fallback to `git config user.name`, so `feel_req claim` works without an explicit `--owner` again; `ensureInfoJson` also heals such existing files when a git identity is available (never writes `unknown` as a result).
 - **v1.5.14** — Feedback-fix batch from a two-day external session: op results actually land now (`flow attempt` / `flow retry` accept short op IDs, and mismatch/ambiguity fails loudly with candidates instead of a silent no-op), the preflight window is configurable (`OPENFEEL_PREFLIGHT_MAX_AGE_MS`) and the DSH adapter self-heals a stale ledger once before a write, an archive-idle `git commit` channel (`git-commit-idle`) covers the post-archive cleanup commit, `flow next` prefers the pass path (`review_passed` / `test_passed`) and warns before `archiving → done` (run `stage verify`) and when all linked requirements are terminal, `OPENFEEL_SHELL_ALLOW` whitelists exact undecidable shell commands, and guard audit/`lastDecision` commands keep 500 chars instead of 200.
@@ -45,6 +46,13 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.17 — feel_mode 开关（默认按门禁走流程，可软关闭）+ 需求 ID 归档感知
+
+- **新开关 `feel_mode: enabled|disabled`**：`enabled`（默认）= 现状（要求/催促创建需求与阶段、`preflight` 先读后写严格生效）。`disabled` = **软关闭流程强制**：不强制建需求/阶段（`workflowGate` 的 `no-active-stage` 换为 `feel-mode-off`，不催办、无标题告警）、`preflight` 从 `strict` 降为 `warn`、DSH `<feel_mode>` 提示切「自由模式」——是否建需求/工作流由 AI 自行判断。
+- **`disabled` 的边界（刻意保留）**：状态机合法性、`done` 门、阶段验证门、版本归档判据、blocking REV 门、写入门禁（禁止手改 `flow.json` / `status.md` / `pipeline.yaml` / `config.yaml`）、`guard-*` 门禁失活告警。归档 / 发布仍需用户确认。
+- **配置层级与即时生效**：项目 `.openfeel/config.yaml` 的 `defaults.feel_mode` > 全局 `~/.config/openfeel/profile.yaml` 的 `preferences.feel_mode` > `builtin=enabled`；`config get --all` 变五键、`config get --global` 变七键、`config effective feel_mode` 带来源；适配器每轮现读，改完当轮生效（`feel_status` / `feel_next` 输出 `feelMode`）。该键**无阶段级字段**（`--sync-stages` 会报 `skipped-no-field`）。
+- **配套修复**：`meta.last_req_seq` 原不感知归档，归档过的需求 ID 会被复用（本仓 v1.5.8 归档 REQ-025~030 后计数器仍为 24）。现在 `flow archive` 在移除需求前抬升计数器，`req add` / `req split` 分配前并入 `.openfeel/flow-archive/*.json` 的最大号。
 
 ## v1.5.16 — 一致性收尾（checkpoint 计数 / done op 告警降噪 / 文档明确）
 

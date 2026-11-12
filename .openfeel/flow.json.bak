@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-11T16:12:08.329Z",
-    "revision": 2134,
+    "updated": "2026-11-11T16:12:10.630Z",
+    "revision": 2135,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -47,7 +47,7 @@
     "last_req_seq": 32
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.5.17-stage-2",
       "op": ""
@@ -161,15 +161,15 @@
     },
     "v1.5.17-stage-2": {
       "name": "v1.5.17-stage-2",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "stats": {
         "start_time": "2026-11-11T15:44:54.332Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-11T16:12:10.606Z",
+        "duration_ms": 1636274
       },
       "verification": {
         "result": "pass",
@@ -232,15 +232,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T07:01:17.531Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-027",
-        "owner": "Liuary"
-      }
-    },
     {
       "time": "2026-11-01T07:05:35.126Z",
       "agent": "cli",
@@ -2253,6 +2244,18 @@
         "result": "pass",
         "kind": "test",
         "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-11T16:12:10.599Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

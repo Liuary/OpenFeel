@@ -1,0 +1,586 @@
+{
+  "version": "v1.5.17",
+  "stages": {
+    "v1.5.17-stage-1": {
+      "name": "v1.5.17-stage-1",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {
+        "op-001": {
+          "title": "配套修复：需求 ID 分配 floor 纳入归档（写侧抬升 + 读侧补存量）",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 1,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-11-11T01:33:07.380Z",
+          "completed_at": "2026-11-11T01:33:07.380Z",
+          "id": "op-001"
+        },
+        "op-002": {
+          "title": "CLI 侧：feel_mode 配置层 + 命令面 + preflight 降级 + 文案面同步",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 1,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-11-11T01:33:07.865Z",
+          "completed_at": "2026-11-11T01:33:07.865Z",
+          "id": "op-002"
+        },
+        "op-003": {
+          "title": "DSH 适配器：feel_mode 镜像解析 + workflowGate 放宽 + 自由模式提示词 + 工具输出",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 1,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-11-11T01:33:09.872Z",
+          "completed_at": "2026-11-11T01:33:09.872Z",
+          "id": "op-003"
+        },
+        "op-004": {
+          "title": "测试与文档：CLI/dsh 矩阵用例 + 文档/CHANGELOG/lint i18n",
+          "state": "done",
+          "assignee": "openfeel-executor",
+          "attempts": 1,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 1,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "attempted_at": "2026-11-11T01:33:10.333Z",
+          "completed_at": "2026-11-11T01:33:10.333Z",
+          "id": "op-004"
+        }
+      },
+      "workflow_mode": "full",
+      "stats": {
+        "start_time": "2026-11-10T16:36:51.334Z",
+        "end_time": "2026-11-11T01:54:38.043Z",
+        "duration_ms": 33466709
+      },
+      "requirements": [
+        {
+          "id": "REQ-031",
+          "order": 0
+        }
+      ],
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-11T01:54:36.237Z",
+        "note": "阶段交付：feel_mode 开关（CLI 解析 + 命令面 + preflight 降级 + DSH 适配器镜像/gate/提示词/工具输出）+ 需求 ID 分配归档感知修复；全量验证绿，REQ-031 已 done。",
+        "evidence": "npx tsc --noEmit 0 errors; npx vitest run 95 files / 2403 tests passed; node bin/openfeel.js lint i18n 1194 键; npm run build 通过; node dsh/test/verify.js 121/121; node dsh/test/guard.js 179/179"
+      }
+    },
+    "v1.5.17-stage-2": {
+      "name": "v1.5.17-stage-2",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-11-11T15:44:54.332Z",
+        "end_time": "2026-11-11T16:12:10.606Z",
+        "duration_ms": 1636274
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-11T16:12:08.329Z",
+        "note": "v1.5.17 版本收口验证：版本号一致性（package.json / package-lock ×2 / dsh package ×2 / ADAPTER.md / README / VERSIONS）、skill 快照三副本一致、构建与全量测试绿。",
+        "evidence": "node bin/openfeel.js --version → 1.5.17（== package.json / dsh/package.json）; npm run build → 通过（模板单源一致性 3/3）; node bin/openfeel.js lint i18n → 1194 键; npx tsc --noEmit → 0; npx vitest run → 95 文件 / 2403 用例; node dsh/test/verify.js → 121/121; node dsh/test/guard.js → 179/179"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.17-stage-1",
+      "stage": "v1.5.17-stage-1",
+      "status": "closed",
+      "priority": "medium",
+      "title": "plan-review：6 处必修连锁点（get --global 硬编码 / 四键文案面 / workflowGate 优先级 / profile 原始 YAML / strict 注入位置 / 降级落点）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-10T16:39:21.941Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.17-stage-1",
+      "stage": "v1.5.17-stage-1",
+      "status": "closed",
+      "priority": "medium",
+      "title": "scheme-review：4 处阻塞（op-001 写侧落点 / json-contract 精确断言 / workflowGateTitle 无文案 / dsh 用例扩既有文件）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-10T16:42:18.725Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.5.17-stage-1",
+      "stage": "v1.5.17-stage-1",
+      "status": "closed",
+      "priority": "medium",
+      "title": "code-review：3 处必修（enabled 提示多一个空行 / preflight 测试未隔离 HOME / flow archive 抬升计数无用例）+ 2 条建议（init 模板硬编码 / 镜像解析边界）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-11T01:36:34.644Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-004",
+      "op": "v1.5.17-stage-2",
+      "stage": "v1.5.17-stage-2",
+      "status": "closed",
+      "priority": "medium",
+      "title": "self-review：v1.5.17 发布收口（版本号 8 处 / 文档 4 处 / skill 快照 3 副本 / 构建与测试）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-11T16:11:59.432Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-11-10T16:35:00.477Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-10T16:36:51.329Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:42.651Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:47.897Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:50.323Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:50.728Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:52.527Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-11-10T16:39:52.938Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "opId": "op-004"
+      }
+    },
+    {
+      "time": "2026-11-10T16:40:29.409Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:42:21.846Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_review",
+        "to": "scheme_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-10T16:42:24.535Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:33:28.649Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:36:36.424Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:36:38.784Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "review_failed",
+        "to": "scheme_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:36:40.995Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_pending",
+        "to": "scheme_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:36:43.924Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:44:40.385Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:44:42.365Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:44:46.198Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "review_passed",
+        "to": "test_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:13.666Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "test_pending",
+        "to": "test_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:16.380Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "test_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T01:54:38.037Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-1",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T15:44:47.973Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-11T15:44:54.330Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-11T15:44:58.019Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T15:45:00.557Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T16:11:56.287Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T16:12:02.066Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T16:12:04.960Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-11T16:12:10.599Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.17-stage-2",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-025",
+      "title": "（作废·ID 分配缺陷）与 v1.5.8 归档 REQ-025 冲突的空条目，请勿使用",
+      "status": "cancelled",
+      "created_at": "2026-11-10T16:33:19.547Z",
+      "updated_at": "2026-11-10T16:34:51.347Z",
+      "target_version": "v1.5.17",
+      "priority": "P1",
+      "workflow_mode": "full",
+      "body_path": ".openfeel/requirements/REQ-025.md"
+    },
+    {
+      "id": "REQ-031",
+      "title": "feel_mode 开关：默认按门禁走流程，关闭时放松流程强制（项目级覆盖全局）",
+      "status": "done",
+      "created_at": "2026-11-10T16:58:13.854Z",
+      "updated_at": "2026-11-11T01:54:33.025Z",
+      "target_version": "v1.5.17",
+      "priority": "P1",
+      "workflow_mode": "full",
+      "body_path": ".openfeel/requirements/REQ-031.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-10T16:58:45.053Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer (独立子 agent)",
+        "at": "2026-11-11T01:54:19.839Z",
+        "note": "独立代码审查两轮：首轮 3 处必修（enabled 提示词多一空行 / preflight 测试未隔离 HOME / flow archive 抬升计数无用例）+ 2 建议（init 模板硬编码、镜像解析边界）全部闭合；复验确认 enabled 输出与 HEAD 字节相等、三处修复有用例锁、无阻塞。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-11T01:54:23.525Z",
+        "note": "全量静态与运行验证通过：类型检查、2403 用例、i18n 键一致性、构建、适配器契约/验证/守门测试；适配器提示词 enabled 路径与 HEAD 字节相等（回归锁定）。",
+        "evidence": "npx tsc --noEmit → 0 errors; npx vitest run → 95 files / 2403 tests passed; node bin/openfeel.js lint i18n → 1194 键一致; npm run build → 通过（含模板单源一致性）; node dsh/test/verify.js → 121/121; node dsh/test/guard.js → 179/179"
+      }
+    },
+    {
+      "id": "REQ-032",
+      "title": "（作废·重复创建）feel_mode 开关：默认按门禁走流程，关闭时放松流程强制（项目级覆盖全局）",
+      "status": "cancelled",
+      "created_at": "2026-11-10T16:58:27.838Z",
+      "updated_at": "2026-11-10T16:58:44.667Z",
+      "target_version": "v1.5.17",
+      "priority": "P1",
+      "workflow_mode": "full",
+      "body_path": ".openfeel/requirements/REQ-032.md"
+    }
+  ],
+  "counts": {
+    "stages": 2,
+    "reviews": 4,
+    "log": 30,
+    "requirements": 3
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-11T16:12:14.538Z"
+}

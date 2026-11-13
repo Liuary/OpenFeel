@@ -14,9 +14,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-// v1.5.17：隔离全局画像——`checkPreflight` 现经 `resolvePreflightMode → resolveFeelMode`
-// 读取 `~/.config/openfeel/profile.yaml`；不隔离会让「本机把全局 feel_mode 设成 disabled」
-// 的开发者机器上 strict 用例翻红（CI 干净 HOME 才绿）。
+// v1.5.17 起 `checkPreflight` 经 `resolvePreflightMode → resolveFeelMode` 读取
+// `~/.config/openfeel/profile.yaml`；不隔离会让「本机全局 feel_mode 偏好」的
+// 开发者机器上用例翻红（CI 干净 HOME 才绿）。
+// v1.5.18 起产品默认 feel_mode=disabled：依赖 strict 仍拒的用例必须显式 pin enabled。
 const mockHome = vi.hoisted(() => ({ dir: '' }));
 vi.mock('node:os', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:os')>();
@@ -25,6 +26,11 @@ vi.mock('node:os', async (importOriginal) => {
 
 describe('preflight（v1.5.5）', () => {
   let dir: string;
+
+  /** v1.5.18：显式钉死严格（默认已是 disabled/宽松）。 */
+  const pinStrict = (): void => {
+    writeFileSync(join(dir, '.openfeel', 'config.yaml'), 'defaults:\n  feel_mode: enabled\n', 'utf-8');
+  };
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'openfeel-preflight-'));
@@ -84,13 +90,21 @@ describe('preflight（v1.5.5）', () => {
   });
 
   it('strict + 缺失 → gate 拒绝；有记录 → 放行', () => {
+    pinStrict();
     vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
     expect(preflightGate(dir, 'need status').ok).toBe(false);
     recordPreflight(dir);
     expect(preflightGate(dir, 'need status').ok).toBe(true);
   });
 
-  it('v1.5.17：strict + 项目 feel_mode=disabled → 有效模式降级 warn 并放行', () => {
+  it('v1.5.18：项目显式 enabled + strict → 照旧拒绝（默认值翻转不削弱显式严格）', () => {
+    pinStrict();
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+    expect(checkPreflight(dir).mode).toBe('strict');
+    expect(preflightGate(dir, 'need status').ok).toBe(false);
+  });
+
+  it('v1.5.18：项目 disabled → strict 降级 warn 并放行', () => {
     writeFileSync(join(dir, '.openfeel', 'config.yaml'), 'defaults:\n  feel_mode: disabled\n', 'utf-8');
     vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
     // 降级必须落在模式判定处：check.mode 也报 warn（不能「报 strict 却放行」）
@@ -101,11 +115,19 @@ describe('preflight（v1.5.5）', () => {
     expect(checkPreflight(dir).mode).toBe('off');
   });
 
+  it('v1.5.18：无任何声明（builtin 默认 disabled）→ strict 同样降级 warn', () => {
+    // 不写 config.yaml、无全局画像 → builtin=disabled
+    vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+    expect(checkPreflight(dir).mode).toBe('warn');
+    expect(preflightGate(dir, 'need status').ok).toBe(true);
+  });
+
   // ═══════════════════════════════════════════════════════════════
   // v1.5.6-stage-114 追加 6 条（判定边界 + TTY 控制）
   // ═══════════════════════════════════════════════════════════════
 
   it('v1.5.6：strict + invalid（at 非日期）→ 拒绝且 reason=invalid', () => {
+    pinStrict();
     vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
     mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
     writeFileSync(join(dir, '.openfeel', 'dev', '.preflight.json'), JSON.stringify({ at: 'not-a-date' }), 'utf-8');
@@ -114,6 +136,7 @@ describe('preflight（v1.5.5）', () => {
   });
 
   it('v1.5.6：strict + at 在未来 → 放行（时钟偏移容忍）', () => {
+    pinStrict();
     vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
     const rec = recordPreflight(dir);
     // 以「记录时刻之前」作为 now：ageMs 为负 → 不判过期

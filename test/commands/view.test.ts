@@ -6,7 +6,7 @@ import { Command, CommanderError } from 'commander';
 import { registerViewCommand } from '../../src/commands/view.js';
 import { FlowManager } from '../../src/core/flow-manager.js';
 import { setJsonMode, resetJsonModeForTest } from '../../src/commands/shared/json-output.js';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -251,6 +251,9 @@ describe('view 命令（A4：list / accept 保留，add 已移除）', () => {
 
     beforeEach(() => {
       process.exitCode = 0;
+      // v1.5.18：默认 feel_mode=disabled 会降级 strict；本组需显式钉死项目级 enabled。
+      mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+      writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'defaults:\n  feel_mode: enabled\n', 'utf-8');
     });
     afterEach(() => {
       vi.unstubAllEnvs();

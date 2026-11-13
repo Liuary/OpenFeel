@@ -552,6 +552,9 @@ describe('stage 命令（stage-50 op-005 T46）', () => {
 
     beforeEach(() => {
       process.exitCode = 0;
+      // v1.5.18：默认 feel_mode=disabled 会降级 strict；本组需显式钉死项目级 enabled。
+      mkdirSync(join(projDir, '.openfeel'), { recursive: true });
+      writeFileSync(join(projDir, '.openfeel', 'config.yaml'), 'defaults:\n  feel_mode: enabled\n', 'utf-8');
     });
     afterEach(() => {
       vi.unstubAllEnvs();

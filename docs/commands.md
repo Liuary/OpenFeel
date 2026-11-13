@@ -930,7 +930,7 @@ openfeel config effective [key] [--json]
 
 **来源优先级**：`status.md` > `config.yaml` > `profile.yaml` > `builtin`；未知 key → stderr + exit 1。
 
-**`feel_mode`（v1.5.17，流程开关）**：`config effective feel_mode` 的来源只会是 `config.yaml` / `profile.yaml` / `builtin`（**无阶段字段**，永不来自 `status.md`）。层级为**项目级覆盖全局**：`defaults.feel_mode`（项目）> `preferences.feel_mode`（`--global` 的 profile）> `builtin=enabled`。`disabled` 时：不强制创建需求/阶段、`preflight` 由 `strict` 降级为 `warn`；状态机 / `done` 门 / 阶段验证门 / 归档判据 / blocking REV / 写入门禁**全部保留**。
+**`feel_mode`（v1.5.17，流程开关；v1.5.18 起默认宽松）**：`config effective feel_mode` 的来源只会是 `config.yaml` / `profile.yaml` / `builtin`（**无阶段字段**，永不来自 `status.md`）。层级为**项目级覆盖全局**：`defaults.feel_mode`（项目）> `preferences.feel_mode`（`--global` 的 profile）> `builtin=disabled`（缺省宽松，未声明即软关闭）。显式 `enabled` 钉死严格：要求需求/阶段、`preflight` strict 生效。`disabled` 时：不强制创建需求/阶段、`preflight` 由 `strict` 降级为 `warn`；状态机 / `done` 门 / 阶段验证门 / 归档判据 / blocking REV / 写入门禁**全部保留**。
 
 ### config get / set
 

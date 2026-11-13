@@ -1,5 +1,5 @@
 /**
- * feel_mode 解析（v1.5.17）— 适配器侧的**只读镜像**
+ * feel_mode 解析（v1.5.17 引入；v1.5.18 起内置默认 disabled）— 适配器侧的**只读镜像**
  *
  * CLI 单点：`src/core/config.ts:resolveFeelMode`。本模块与之同构（层级 / 显式声明语义 /
  * 读侧宽容必须一致），因为系统提示段落 `text()` 的签名是同步 `() => string`，
@@ -8,7 +8,7 @@
  * 层级（项目覆盖全局，与 CLI 一致）：
  *   1. `<projectRoot>/.openfeel/config.yaml` 的 `defaults.feel_mode:`
  *   2. `~/.config/openfeel/profile.yaml` 的 `preferences.feel_mode:`
- *   3. 内置默认 `enabled`
+ *   3. 内置默认 `disabled`（v1.5.18 起开箱宽松；与 CLI `DEFAULT_CONFIG.feel_mode` 单点一致）
  *
  * 只认**显式声明**：非法值 / 文件缺失 / YAML 读失败 / 键缺失 → 跳到下一层，
  * 不做 DEFAULT_PROFILE 合并（否则「未设置」会被误判为 profile 来源）。
@@ -131,5 +131,5 @@ export function resolveFeelMode(projectRoot, options = {}) {
   const global = readExplicitFeelMode(getGlobalProfilePath(options.homeDir), 'preferences');
   if (global !== undefined) return { value: global, source: 'profile.yaml' };
 
-  return { value: 'enabled', source: 'builtin' };
+  return { value: 'disabled', source: 'builtin' };
 }

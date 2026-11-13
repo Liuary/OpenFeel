@@ -603,19 +603,19 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
-      // v1.5.17：第五键（缺省 builtin enabled）
-      feel_mode: 'enabled',
+      // v1.5.17：第五键（v1.5.18 起缺省 builtin disabled = 宽松）
+      feel_mode: 'disabled',
     });
   });
 
-  it('T6.4b：无 config.yaml → 返回 DEFAULT_CONFIG 四键', () => {
+  it('T6.4b：无 config.yaml → 返回 DEFAULT_CONFIG 四键（含默认宽松 feel_mode）', () => {
     expect(resolveConfigDefaults(tmpDir)).toEqual({
       execution_mode: 'manual',
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
-      // v1.5.17：第五键（缺省 builtin enabled）
-      feel_mode: 'enabled',
+      // v1.5.18：缺省 builtin disabled = 宽松
+      feel_mode: 'disabled',
     });
   });
 
@@ -630,8 +630,8 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
-      // v1.5.17：第五键（缺省 builtin enabled）
-      feel_mode: 'enabled',
+      // v1.5.18：第五键（缺省 builtin disabled = 宽松）
+      feel_mode: 'disabled',
     });
   });
 
@@ -642,8 +642,8 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
-      // v1.5.17：第五键（缺省 builtin enabled）
-      feel_mode: 'enabled',
+      // v1.5.18：第五键（缺省 builtin disabled = 宽松）
+      feel_mode: 'disabled',
     });
   });
 
@@ -657,8 +657,8 @@ describe('resolveConfigDefaults', () => {
       auto_advance: 'enabled',
       merge_mode: 'manual',
       workflow_mode: 'fast',
-      // v1.5.17：第五键（缺省 builtin enabled）
-      feel_mode: 'enabled',
+      // v1.5.18：第五键（缺省 builtin disabled = 宽松）
+      feel_mode: 'disabled',
     });
     mockHome.dir = '';
   });
@@ -696,8 +696,13 @@ describe('resolveFeelMode（v1.5.17）', () => {
     writeFileSync(join(homeDir, '.config', 'openfeel', 'profile.yaml'), content, 'utf-8');
   }
 
-  it('无任何声明 → builtin enabled（默认开启）', () => {
-    expect(resolveFeelMode(projectDir)).toEqual({ value: 'enabled', source: 'builtin' });
+  it('无任何声明 → builtin disabled（v1.5.18 起默认宽松）', () => {
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'disabled', source: 'builtin' });
+  });
+
+  it('仅全局 preferences.feel_mode: enabled → profile.yaml（可覆盖默认宽松）', () => {
+    writeProfile('preferences:\n  feel_mode: enabled\n');
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'enabled', source: 'profile.yaml' });
   });
 
   it('项目 defaults.feel_mode: disabled → config.yaml', () => {
@@ -722,14 +727,14 @@ describe('resolveFeelMode（v1.5.17）', () => {
     expect(resolveFeelMode(projectDir)).toEqual({ value: 'disabled', source: 'profile.yaml' });
   });
 
-  it('YAML 语法损坏 → 视为未声明（回落下层/内置）', () => {
+  it('YAML 语法损坏 → 视为未声明（回落下层/内置 disabled）', () => {
     writeProject('defaults: [unclosed\n');
-    expect(resolveFeelMode(projectDir)).toEqual({ value: 'enabled', source: 'builtin' });
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'disabled', source: 'builtin' });
   });
 
   it('profile 未显式声明 feel_mode → 不得误判为 profile 来源（DEFAULT_PROFILE 不得注入）', () => {
     writeProfile('user:\n  name: Someone\npreferences:\n  auto_advance: enabled\n');
-    expect(resolveFeelMode(projectDir)).toEqual({ value: 'enabled', source: 'builtin' });
+    expect(resolveFeelMode(projectDir)).toEqual({ value: 'disabled', source: 'builtin' });
   });
 });
 
@@ -786,5 +791,10 @@ describe('stage-90：工作流模式值域 3 值同源', () => {
 
   it('DEFAULT_CONFIG.workflow_mode 仍为 fast（默认值不动——裁定 E）', () => {
     expect(DEFAULT_CONFIG.workflow_mode).toBe('fast');
+  });
+
+  it('DEFAULT_CONFIG.feel_mode 为 disabled（v1.5.18 默认宽松）', () => {
+    expect(DEFAULT_CONFIG.feel_mode).toBe('disabled');
+    expect(ConfigDefaultsSchema.parse({})).toMatchObject({ feel_mode: 'disabled' });
   });
 });

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-11T16:12:14.545Z",
-    "revision": 2136,
+    "updated": "2026-11-13T02:30:32.219Z",
+    "revision": 2160,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -45,18 +45,71 @@
       "v1.5.16",
       "v1.5.17"
     ],
-    "last_req_seq": 32
+    "last_req_seq": 33
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "",
+      "stage": "v1.5.18-stage-3",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.5.18-stage-3": {
+      "name": "v1.5.18-stage-3",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-033",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-12T16:22:06.388Z",
+        "end_time": "2026-11-13T02:30:32.195Z",
+        "duration_ms": 36505807
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-13T02:30:25.039Z",
+        "note": "v1.5.18 默认翻转交付：DEFAULT_CONFIG/Schema/适配器镜像三处默认 disabled、init 模板注释与文档/技能快照同步、strict 用例显式 pin enabled、跨进程用例 build→vitest 顺序验证；REQ-033 已 done。",
+        "evidence": "npx tsc --noEmit 0；npx vitest run 2409/2409（build 后）；npm run build 通过（模板单源一致性）；lint i18n 1194；node bin/openfeel.js --version=1.5.18；dsh test verify 121/121、guard 179/179"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.18-stage-3",
+      "stage": "v1.5.18-stage-3",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "plan-review self-review：默认 feel_mode→disabled 计划（机械型小改，无新增逻辑）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-12T16:22:14.249Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.18-stage-3",
+      "stage": "v1.5.18-stage-3",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "code-review：preflight-cli 跨进程用例未 pin enabled（build 后假绿）+ dsh verify 未隔离 HOME",
+      "filed_by": "cli",
+      "filed_at": "2026-11-13T02:25:27.831Z",
+      "canAutoFix": false,
+      "blocking": true
+    }
+  ],
   "log": [
     {
       "time": "2026-11-01T07:05:35.126Z",
@@ -1755,6 +1808,225 @@
         "log": 30,
         "requirements": 3
       }
+    },
+    {
+      "time": "2026-11-12T16:21:17.608Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-033",
+        "title": "默认 feel_mode 改为 disabled（开箱宽松），项目/全局显式可钉死 enabled"
+      }
+    },
+    {
+      "time": "2026-11-12T16:21:21.314Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-033",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-12T16:21:32.764Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-12T16:21:40.700Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.18-stage-3",
+        "requirementId": "REQ-033",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-12T16:22:06.384Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-12T16:22:24.900Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-12T16:22:29.325Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-13T02:19:59.282Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-13T02:25:31.961Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-13T02:25:44.101Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-13T02:29:34.778Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-13T02:29:47.414Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-13T02:29:52.751Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-13T02:29:58.114Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-033",
+        "result": "pass",
+        "by": "openfeel-reviewer (独立子 agent)",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-13T02:30:04.116Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-033",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-13T02:30:08.199Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-033",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-13T02:30:13.329Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-033",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-13T02:30:19.241Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-033",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-13T02:30:25.039Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.18-stage-3",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-13T02:30:32.189Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.18-stage-3",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -1976,6 +2248,34 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-033",
+      "title": "默认 feel_mode 改为 disabled（开箱宽松），项目/全局显式可钉死 enabled",
+      "status": "done",
+      "created_at": "2026-11-12T16:21:17.608Z",
+      "updated_at": "2026-11-13T02:30:19.241Z",
+      "target_version": "v1.5.18",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-033.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-12T16:21:21.314Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer (独立子 agent)",
+        "at": "2026-11-13T02:29:58.114Z",
+        "note": "独立代码审查：确认三处默认值（DEFAULT_CONFIG / ConfigDefaultsSchema / dsh 镜像）均为 disabled，文案/版本/键序核对通过；指出并已修复 1 处必修——preflight-cli 跨进程用例因旧 dist 假绿（需 pin enabled + build→vitest 顺序），另建议 dsh verify 隔离 HOME（已修）。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-13T02:30:04.116Z",
+        "note": "默认翻转验证通过：干净 HOME 全新项目 effective=disabled/builtin 且 workflowGate=feel-mode-off；显式 enabled 项目恢复 strict 且 feelMode=enabled/config.yaml；全量测试/构建/适配器用例绿。",
+        "evidence": "npm run build（含模板单源一致性）→ 通过；npx tsc --noEmit → 0；npx vitest run → 95 文件 / 2409 用例通过（build 之后执行，覆盖跨进程 preflight-cli）；node bin/openfeel.js lint i18n → 1194 键；node bin/openfeel.js --version → 1.5.18；node dsh/test/verify.js → 121/121；node dsh/test/guard.js → 179/179"
+      }
     }
   ]
 }

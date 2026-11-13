@@ -65,6 +65,9 @@ describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
     // v1.5.17：隔离全局画像（feel_mode 解析第二层）
     homeDir = mkdtempSync(join(tmpdir(), 'openfeel-preflight-home-'));
     mockHome.dir = homeDir;
+    // v1.5.18：产品默认 feel_mode=disabled；本文件断言 strict 仍拒，
+    // 因此缺省显式钉死 enabled（需要宽松的用例自行覆写 config.yaml）。
+    writeFileSync(join(dir, '.openfeel', 'config.yaml'), 'defaults:\n  feel_mode: enabled\n', 'utf-8');
 
     prevExitCode = process.exitCode;
     process.exitCode = 0;
@@ -196,10 +199,15 @@ describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
 
   // ═══════════════════════════════════════════════════════════════════
   // v1.5.17：feel_mode=disabled（软关闭）→ strict 降级为 warn
+  // v1.5.18：builtin 默认值翻转为 disabled（显式 enabled 仍钉死严格）
   // ═══════════════════════════════════════════════════════════════════
-  describe('feel_mode=disabled（v1.5.17）', () => {
+  describe('feel_mode 软关闭（v1.5.17 / v1.5.18）', () => {
     function writeProjectFeelMode(value: string): void {
       writeFileSync(join(dir, '.openfeel', 'config.yaml'), `defaults:\n  feel_mode: ${value}\n`, 'utf-8');
+    }
+
+    function clearProjectFeelMode(): void {
+      rmSync(join(dir, '.openfeel', 'config.yaml'), { force: true });
     }
 
     it('strict + 项目 disabled → 放行，且 check.mode 报 warn（不出现「报 strict 却放行」）', () => {
@@ -226,7 +234,8 @@ describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
       expect(enforcePreflightOrFail(dir, 'zh-CN')).toBe(true);
     });
 
-    it('全局 disabled（无项目 config）同样降级', () => {
+    it('全局 disabled 且项目无声明 → 降级', () => {
+      clearProjectFeelMode();
       mkdirSync(join(homeDir, '.config', 'openfeel'), { recursive: true });
       writeFileSync(
         join(homeDir, '.config', 'openfeel', 'profile.yaml'),
@@ -235,6 +244,14 @@ describe('enforcePreflightOrFail（v1.5.6-stage-114）', () => {
       );
       vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
       expect(checkPreflight(dir).mode).toBe('warn');
+    });
+
+    it('v1.5.18：无任何声明（builtin 默认 disabled）→ 降级 warn', () => {
+      clearProjectFeelMode();
+      vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
+      expect(checkPreflight(dir).mode).toBe('warn');
+      expect(enforcePreflightOrFail(dir, 'zh-CN')).toBe(true);
+      expect(process.exitCode).toBe(0);
     });
   });
 });

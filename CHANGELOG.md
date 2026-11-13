@@ -1,3 +1,17 @@
+## [1.5.18] - 2026-11-13
+
+> 行为变更：`feel_mode` **默认值**从 `enabled` 改为 `disabled` —— 全新安装 / 全新用户开箱宽松；显式 `enabled` 仍可钉死严格。解析层级、门禁与归档逻辑不变。
+
+### Changed
+- [stage-3] **默认翻转（REQ-033）**：`DEFAULT_CONFIG.feel_mode` 与 `ConfigDefaultsSchema` 的默认值改为 `disabled`；`resolveFeelMode` 的 builtin 层随之改变。项目 `defaults.feel_mode` > 全局 `preferences.feel_mode` > `builtin` 的层级、显式声明语义与「即时生效」均不变。
+- [stage-3] **init 模板**：`CONFIG_TEMPLATE_ZH/EN` 默认仍**不写键**，注释改为「缺省宽松；取消注释 `feel_mode: enabled` 可钉死严格」。
+- [stage-3] **适配器镜像**：`dsh/lib/adapters/feel-mode.js` 的 builtin 回落改为 `disabled`；未显式声明时系统提示默认渲染「自由模式」节、`workflowGate` 默认 `feel-mode-off`（均为既有 `disabled` 语义，无新增分支）。
+- [stage-3] **测试**：config / preflight / dsh verify 矩阵按新默认更新；strict 用例改为项目显式 `enabled` 钉死，并新增「默认 disabled 时 strict 降级 warn」用例。
+- [stage-3] 文档与 skill 快照同步（README / docs/commands.md / docs/VERSIONS.md / dsh/README.md / dsh/docs/compat/pipeline.md / `openfeel-cli-usage` 三副本）；版本号 1.5.18。
+
+### Notes
+- 既有项目若已显式写 `feel_mode`（`enabled` 或 `disabled`），行为完全不变；只有**未显式声明**的项目/用户受默认值影响。
+
 ## [1.5.17] - 2026-11-11
 
 > 新特性：`feel_mode` 流程开关（默认 `enabled` = 按门禁走流程；`disabled` = 软关闭流程强制）+ 配套修复「需求 ID 分配不感知归档」。

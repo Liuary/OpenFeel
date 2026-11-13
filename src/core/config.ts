@@ -29,10 +29,10 @@ export const WORKFLOW_MODES = ['full', 'fast', 'general'] as const;
 export type WorkflowMode = (typeof WORKFLOW_MODES)[number];
 
 /**
- * feel_mode 枚举值域（单一来源；v1.5.17）。
- * `enabled`（默认）= 现状：按门禁走流程，要求需求/阶段、preflight strict 生效；
- * `disabled` = 软关闭：不强制建需求/阶段（workflowGate 不催办）、preflight 降级为提示，
- * 但状态机 / done 门 / 归档判据 / blocking REV / 写入门禁**保持有效**。
+ * feel_mode 枚举值域（单一来源；v1.5.17 引入，v1.5.18 默认改宽松）。
+ * `disabled`（默认）= 软关闭：不强制建需求/阶段（workflowGate 不催办）、preflight 降级为提示，
+ * 但状态机 / done 门 / 归档判据 / blocking REV / 写入门禁**保持有效**；
+ * `enabled` = 显式钉死：按门禁走流程，要求需求/阶段、preflight strict 生效。
  */
 export const FEEL_MODES = ['enabled', 'disabled'] as const;
 /** feel_mode 取值（enabled=按门禁走流程；disabled=软关闭流程强制） */
@@ -46,7 +46,8 @@ export const ConfigDefaultsSchema = z.object({
   merge_mode: z.enum(['manual', 'auto']).optional().default('manual'),
   workflow_mode: z.enum(WORKFLOW_MODES).optional().default('fast'),
   // v1.5.17：流程开关（无阶段级字段；status.md 不承载，故不能经 --sync-stages 下发）
-  feel_mode: z.enum(FEEL_MODES).optional().default('enabled'),
+  // v1.5.18：默认 disabled（开箱宽松）；显式 enabled 钉死严格
+  feel_mode: z.enum(FEEL_MODES).optional().default('disabled'),
 }).passthrough();
 
 /** 逐层解包 ZodDefault / ZodOptional / ZodNullable，取得底层类型（schema 驱动的类型判定用） */
@@ -191,7 +192,7 @@ export const DEFAULT_CONFIG: Config = {
   auto_advance: 'enabled',   // 裁定 E：部署级默认自动推进开启（与 workflow_mode 无关）
   merge_mode: 'manual',
   workflow_mode: 'fast',     // 裁定 B：新建默认 fast
-  feel_mode: 'enabled',      // v1.5.17：默认按门禁走流程（用户要求默认开启）
+  feel_mode: 'disabled',     // v1.5.18：默认宽松（开箱不强制需求/阶段、preflight 降提示）；显式 enabled 钉死严格
 };
 
 /** 配置默认值解析结果（五键；不返回已移除的 test_enabled） */
@@ -292,7 +293,7 @@ export function readExplicitConfigDefaults(projectPath: string): ExplicitConfigD
  * 层级（项目覆盖全局，与用户要求一致）：
  *   1. 项目 `.openfeel/config.yaml` 的 `defaults.feel_mode`
  *   2. 全局 `~/.config/openfeel/profile.yaml` 的 `preferences.feel_mode`
- *   3. 框架内置默认 `DEFAULT_CONFIG.feel_mode`（enabled）
+ *   3. 框架内置默认 `DEFAULT_CONFIG.feel_mode`（disabled，v1.5.18 起开箱宽松）
  *
  * **同源约束**：与 `FlowManager.buildCascadeConfig` 一样**直接读原始 YAML、只认显式声明**；
  * 不走 `readProfile()`（它会与 DEFAULT_PROFILE 深合并，把「未显式设置」误判为 profile 来源），
@@ -563,10 +564,10 @@ defaults:
   #            fast=快速迭代（跳过方案/测试环节；计划审查与代码审查各保留单轮）
   workflow_mode: ${DEFAULT_CONFIG.workflow_mode}
 
-  # 流程开关（v1.5.17）：enabled=按门禁走流程（要求需求/阶段、先读后写严格检查）
-  #                   disabled=软关闭（不强制建需求/阶段、preflight 仅提示；状态机/done 门/归档判据/写入门禁仍有效）
-  # 缺省**不写本键**：未显式声明时按全局 ~/.config/openfeel/profile.yaml 的 preferences.feel_mode 或 builtin(enabled) 生效；
-  # 显式写 enabled 会**永久覆盖**全局 disabled（项目级优先）。需要固定为 enabled 时取消下一行注释。
+  # 流程开关（v1.5.17；v1.5.18 起默认宽松）：disabled=软关闭（不强制建需求/阶段、preflight 仅提示；状态机/done 门/归档判据/写入门禁仍有效）
+  #                                              enabled=按门禁走流程（要求需求/阶段、先读后写严格检查）
+  # 缺省**不写本键**：未显式声明时按全局 ~/.config/openfeel/profile.yaml 的 preferences.feel_mode 或 builtin(disabled) 生效；
+  # 需要本项目固定严格时取消下一行注释（显式 enabled 覆盖全局宽松）。
   # feel_mode: enabled
 
 # ---- 模型配置 ----
@@ -626,13 +627,14 @@ defaults:
   #                fast=quick iteration (skips scheme/test; keeps single-round plan review and code review)
   workflow_mode: ${DEFAULT_CONFIG.workflow_mode}
 
-  # Feel-mode switch (v1.5.17): enabled=run through the gates (requires requirement/stage, strict read-before-write)
-  #                             disabled=soft off (no forced requirement/stage, preflight only warns; the state machine,
-  #                                      done gate, archive criteria and write guard stay in force)
+  # Feel-mode switch (v1.5.17; relaxed by default since v1.5.18):
+  #   disabled=soft off (no forced requirement/stage, preflight only warns; the state machine,
+  #            done gate, archive criteria and write guard stay in force)
+  #   enabled=run through the gates (requires requirement/stage, strict read-before-write)
   # Leave this key **unset** by default: without an explicit value the global
-  # ~/.config/openfeel/profile.yaml preferences.feel_mode (or builtin=enabled) applies.
-  # An explicit enabled here **permanently overrides** a global disabled (project-level wins).
-  # Uncomment the next line to pin enabled for this project.
+  # ~/.config/openfeel/profile.yaml preferences.feel_mode (or builtin=disabled) applies.
+  # An explicit enabled here **permanently overrides** a global relaxed setting (project-level wins).
+  # Uncomment the next line to pin strict mode for this project.
   # feel_mode: enabled
 
 # ---- Model Configuration ----

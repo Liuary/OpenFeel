@@ -10,7 +10,7 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.17**（feel_mode 开关 + 需求 ID 归档感知） — ① 新增 `feel_mode: enabled|disabled` 流程开关（默认 `enabled` = 现状）：`disabled` 时**软关闭**——不强制建需求/阶段、`preflight` 由 `strict` 降为提示、DSH 提示词切「自由模式」，但状态机 / `done` 门 / 归档判据 / blocking REV / 写入门禁全部保留；层级为**项目级覆盖全局**（`.openfeel/config.yaml` > 全局 profile），即时生效。② 修复 `meta.last_req_seq` 不感知归档导致的**需求 ID 复用**：`flow archive` 抬升计数器，`req add`/`split` 分配前并入归档最大号。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.18**（默认宽松） — `feel_mode` 默认值从 `enabled` 改为 `disabled`：全新安装 / 全新用户**开箱即宽松**（不强制建需求/阶段、`preflight` 由 `strict` 降为提示、DSH 提示词切「自由模式」），但状态机 / `done` 门 / 归档判据 / blocking REV / 写入门禁全部保留；项目 `.openfeel/config.yaml` 或全局 profile 显式 `enabled` 仍可**钉死严格**（项目级覆盖全局），解析层级与即时生效语义不变。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

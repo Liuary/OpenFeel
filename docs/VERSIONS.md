@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.18** — Relaxed by default: `feel_mode` now defaults to `disabled`, so a fresh install / new user starts relaxed (no forced requirement/stage, `preflight` warns instead of blocking, the DSH prompt renders "free mode"), while an explicit `enabled` in the project config or the global profile still pins strict mode (project-over-global). Resolution, immediate effect, and every hard gate (state machine, `done` gate, stage verification, archive criteria, blocking-REV gate, write guard) are unchanged — only the unconfigured default flips; existing projects that already set `feel_mode` are unaffected.
 - **v1.5.17** — Feel-mode switch: `feel_mode: enabled|disabled` (default `enabled` = unchanged). `disabled` softens **process enforcement** only — no forced requirement/stage, `preflight` downgrades from strict to warn, and the DSH prompt switches to "free mode" — while the state machine, `done` gate, stage verification, archive criteria, blocking-REV gate and the write guard stay in force. Resolution is project-over-global (`.openfeel/config.yaml` `defaults.feel_mode` > global `~/.config/openfeel/profile.yaml` `preferences.feel_mode` > builtin `enabled`) and takes effect immediately (the adapter re-reads it on every turn). Also fixes requirement-ID reuse: `flow archive` now raises `meta.last_req_seq`, and `req add` / `req split` fold the archived maximum in before allocating.
 - **v1.5.16** — Consistency polish: `attempt` now keeps `checkpoints.exec.attempts` in sync with the top-level counter, `flow ops list` stops warning about empty templates on `done`/`failed` ops (the `fill` value stays truthful; `flow health` still reports them as data hygiene), and docs now state that `req claim` only records the owner fields (use `req advance` to change status), that the fourth shell-gate class is a non-blocking warning with `OPENFEEL_SHELL_ALLOW` as the exact-command allowlist, and that removing a `done` op needs `--force`.
 - **v1.5.15** — Owner-resolution fix: a persisted `"user": "unknown"` sentinel in `.openfeel/.info.json` no longer blocks the fallback to `git config user.name`, so `feel_req claim` works without an explicit `--owner` again; `ensureInfoJson` also heals such existing files when a git identity is available (never writes `unknown` as a result).
@@ -46,6 +47,13 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.18 — 默认宽松（feel_mode 默认值 enabled → disabled）
+
+- **默认值翻转**：全新安装 / 全新用户未做任何配置时，`feel_mode` 有效值为 `disabled`（宽松）：不强制建需求/阶段、`preflight` 只提示、DSH 提示词渲染「自由模式」；是否建需求/工作流由 AI 自行判断。
+- **显式钉死仍可用**：项目 `.openfeel/config.yaml` 的 `defaults.feel_mode: enabled` 或全局 `preferences.feel_mode: enabled` 仍优先（项目 > 全局），严格门禁与提示词行为不变；`init` 模板默认仍**不写键**，注释说明如何钉死严格。
+- **边界不变**：解析层级、即时生效、状态机 / `done` 门 / 阶段验证门 / 归档判据 / blocking REV / 写入门禁全部保持；已显式配置 `feel_mode` 的项目行为完全不变。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → 重启宿主。
 
 ## v1.5.17 — feel_mode 开关（默认按门禁走流程，可软关闭）+ 需求 ID 归档感知
 

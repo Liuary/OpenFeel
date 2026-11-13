@@ -953,6 +953,9 @@ describe('plan 命令', () => {
 
     beforeEach(() => {
       process.exitCode = 0;
+      // v1.5.18：产品默认 feel_mode=disabled 会把 strict 降级为 warn；
+      // 本组断言「strict 仍拒绝」，显式钉死项目级 enabled。
+      writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'defaults:\n  feel_mode: enabled\n', 'utf-8');
     });
     afterEach(() => {
       vi.unstubAllEnvs();

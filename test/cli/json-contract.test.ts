@@ -1196,6 +1196,8 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
 
   it('legacy：flow archive --json 在 strict preflight 拒绝 → 三键单文档（与 no-init 同形，REV-008 无 hint）', async () => {
     seedArchivable();
+    // v1.5.18：默认 feel_mode=disabled 会降级 strict；本用例需显式钉死项目级 enabled。
+    writeFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'defaults:\n  feel_mode: enabled\n', 'utf-8');
     vi.stubEnv('OPENFEEL_PREFLIGHT', 'strict');
     rmSync(join(tmpDir, '.openfeel', 'dev', '.preflight.json'), { force: true });
     try {

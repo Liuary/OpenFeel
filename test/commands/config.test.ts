@@ -788,8 +788,8 @@ describe('config 命令（stage-42 op-002）', () => {
       auto_advance: 'disabled',
       merge_mode: 'auto',
       workflow_mode: 'fast',
-      // v1.5.17：缺省逐键回退 DEFAULT_CONFIG（enabled）
-      feel_mode: 'enabled',
+      // v1.5.18：缺省逐键回退 DEFAULT_CONFIG（disabled = 宽松）
+      feel_mode: 'disabled',
     });
     // 不再报 key-required
     expect(exitMock).not.toHaveBeenCalled();
@@ -890,8 +890,8 @@ describe('config 命令（stage-42 op-002）', () => {
     expect(Object.keys(effective.auto_advance)).toEqual(['value', 'source']);
     expect(typeof effective.auto_advance.value).toBe('string');
     expect(effective.auto_advance.source).toBe('builtin');
-    // v1.5.17：feel_mode 缺省 builtin/enabled
-    expect(effective.feel_mode).toEqual({ value: 'enabled', source: 'builtin' });
+    // v1.5.18：feel_mode 缺省 builtin/disabled（开箱宽松）
+    expect(effective.feel_mode).toEqual({ value: 'disabled', source: 'builtin' });
   });
 
   it('op-002 JSON：config effective 有 key → key,value,source；未知 key → INVALID_ARGUMENT', async () => {
@@ -939,7 +939,7 @@ describe('config 命令（stage-42 op-002）', () => {
       auto_advance：enabled    [来源: builtin]
       merge_mode：manual    [来源: builtin]
       workflow_mode：fast    [来源: builtin]
-      feel_mode：enabled    [来源: builtin]"
+      feel_mode：disabled    [来源: builtin]"
     `);
   });
 
@@ -955,6 +955,15 @@ describe('config 命令（stage-42 op-002）', () => {
       logMock.mockClear();
       const doc = await jsonDoc(['config', 'effective', 'feel_mode', '--json']);
       expect(doc).toEqual({ schemaVersion: 1, key: 'feel_mode', value: 'disabled', source: 'config.yaml' });
+    });
+
+    it('项目 set feel_mode enabled → config.yaml 钉死严格', async () => {
+      writeProjectConfigRaw('defaults:\n  execution_mode: manual\n');
+      await safeParse(['config', 'set', 'feel_mode', 'enabled']);
+      expect(readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8')).toContain('feel_mode: enabled');
+
+      const doc = await jsonDoc(['config', 'effective', 'feel_mode', '--json']);
+      expect(doc).toEqual({ schemaVersion: 1, key: 'feel_mode', value: 'enabled', source: 'config.yaml' });
     });
 
     it('全局 set --global preferences.feel_mode disabled → 仅全局时 effective 来源 profile.yaml', async () => {
@@ -1009,7 +1018,8 @@ describe('config 命令（stage-42 op-002）', () => {
     it('config set workflow_mode fast --sync-stages：strict → config.yaml / status.md / flow.json 三处零写盘', async () => {
       setupTwoStages();
       // 预置 config.yaml（保证「config.yaml 不变」是真实断言而非「文件不存在的巧合」）
-      writeProjectConfigRaw('defaults:\n  auto_advance: enabled\n  workflow_mode: full\n');
+      // v1.5.18：产品默认 feel_mode=disabled 会把 strict 降级为 warn，本用例需显式钉死 enabled
+      writeProjectConfigRaw('defaults:\n  auto_advance: enabled\n  workflow_mode: full\n  feel_mode: enabled\n');
       const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
       const flowPath = join(tmpDir, '.openfeel', 'flow.json');
       const beforeCfg = sha(cfgPath);

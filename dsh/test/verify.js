@@ -273,9 +273,9 @@ async function main() {
     const projectConfig = join(project, '.openfeel', 'config.yaml');
     const profile = join(home, '.config', 'openfeel', 'profile.yaml');
 
-    // ① 无声明 → builtin
+    // ① 无声明 → builtin（v1.5.18：builtin 默认宽松 disabled）
     assert(resolveFeelMode(project, { homeDir: home }).source === 'builtin', '无声明应 builtin');
-    assert(resolveFeelMode(project, { homeDir: home }).value === 'enabled', '无声明应 enabled');
+    assert(resolveFeelMode(project, { homeDir: home }).value === 'disabled', 'v1.5.18 无声明应 disabled');
 
     // ② 仅项目 disabled → config.yaml
     writeFileSync(projectConfig, 'defaults:\n  execution_mode: auto\n  feel_mode: disabled # 关\n', 'utf-8');
@@ -659,17 +659,41 @@ async function main() {
     }
   });
 
-  await check('feel_status：真无活跃阶段 + guard 正常时仍显示「无活跃阶段」（全新 init 项目）', async () => {
+  await check('feel_status：真无活跃阶段 + guard 正常时仍显示「无活跃阶段」（全新 init 项目，显式 enabled）', async () => {
     const root = mkdtempSync(join(tmpdir(), 'feel-verify-nostage-'));
     const project = join(root, 'project');
+    const cleanHome = join(root, 'home');
+    const savedEnv = { USERPROFILE: process.env.USERPROFILE, HOME: process.env.HOME };
     try {
       mkdirSync(project, { recursive: true });
+      mkdirSync(cleanHome, { recursive: true });
+      // v1.5.18：隔离 HOME，避免宿主机全局 preferences.feel_mode 影响「默认 builtin」断言
+      process.env.USERPROFILE = cleanHome;
+      process.env.HOME = cleanHome;
+      const env = { ...process.env, USERPROFILE: cleanHome, HOME: cleanHome };
       const init = spawnSync(
         process.execPath,
         [join(SOURCE_PROJECT, 'bin', 'openfeel.js'), 'init', '--project', project],
-        { cwd: SOURCE_PROJECT, encoding: 'utf8', timeout: 60_000 },
+        { cwd: SOURCE_PROJECT, encoding: 'utf8', timeout: 60_000, env },
       );
       assert(init.status === 0, `openfeel init 失败（exit ${init.status}）：${init.stderr ?? ''}`);
+      // v1.5.18：全新项目（干净 HOME、无项目声明）默认 feel_mode=disabled（开箱宽松）→ 门禁应为 feel-mode-off。
+      const relaxed = ok(await workspace.tools.get('feel_status').execute({ project }, execFor(project)));
+      assert(
+        relaxed.feelMode?.value === 'disabled' && relaxed.feelMode?.source === 'builtin',
+        `干净 HOME 下全新项目默认应为 disabled/builtin（实际 ${JSON.stringify(relaxed.feelMode)}）`,
+      );
+      assert(
+        relaxed.workflowGate?.reason === 'feel-mode-off' && relaxed.workflowGate?.required === false,
+        `默认宽松时门禁应为 feel-mode-off（实际 ${relaxed.workflowGate?.reason}）`,
+      );
+      // 显式钉死严格后，才回到「没开阶段」这条唯一可提示项。
+      const pinned = spawnSync(
+        process.execPath,
+        [join(SOURCE_PROJECT, 'bin', 'openfeel.js'), 'config', 'set', 'feel_mode', 'enabled', '--project', project],
+        { cwd: SOURCE_PROJECT, encoding: 'utf8', timeout: 60_000, env },
+      );
+      assert(pinned.status === 0, `显式 pin enabled 失败（exit ${pinned.status}）：${pinned.stderr ?? ''}`);
       // 健康 state（同进程、已签名）→ guard 正常，门禁只剩「没开阶段」一条
       writeGuardState(project, {
         registered: true,
@@ -684,14 +708,22 @@ async function main() {
       const data = ok(result);
       assert(data.guard?.stale === false, `健康 state 不应 stale（实际 stale=${data.guard?.stale}）`);
       assert(
+        data.feelMode?.value === 'enabled' && data.feelMode?.source === 'config.yaml',
+        `pin 后 feelMode 应为 enabled/config.yaml（实际 ${JSON.stringify(data.feelMode)}）`,
+      );
+      assert(
         data.workflowGate?.reason === 'no-active-stage',
-        `全新项目应判 no-active-stage，实际 ${data.workflowGate?.reason}`,
+        `显式 enabled 的全新项目应判 no-active-stage，实际 ${data.workflowGate?.reason}`,
       );
       assert(
         result.summary.includes('无活跃阶段'),
         `真无活跃阶段时 summary 仍须含「无活跃阶段」（实际：${result.summary}）`,
       );
     } finally {
+      if (savedEnv.USERPROFILE === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = savedEnv.USERPROFILE;
+      if (savedEnv.HOME === undefined) delete process.env.HOME;
+      else process.env.HOME = savedEnv.HOME;
       rmSync(root, { recursive: true, force: true });
     }
   });

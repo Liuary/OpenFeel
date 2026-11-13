@@ -5055,6 +5055,9 @@ describe('preflight 写命令闸（v1.5.6-stage-114）', () => {
     mockedChild.execSync.mockReturnValue('');
     await initProject(tmpDir);
     setConfigValue(tmpDir, 'workflow_mode', 'full');
+    // v1.5.18：默认 feel_mode=disabled 会把 strict 降级为 warn，本组断言 strict 仍拒绝（wizard 不启动）
+    // → 显式钉死项目级 enabled。
+    setConfigValue(tmpDir, 'feel_mode', 'enabled');
 
     logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
     errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});

@@ -1,0 +1,46 @@
+{
+  "format": 1,
+  "title": {
+    "en": "OpenFeel",
+    "zh": "OpenFeel"
+  },
+  "description": {
+    "en": "Workflow governance adapter: pipeline, requirement dispatch, version archiving and knowledge base for DeepSeek Harness.",
+    "zh": "OpenFeel × DSH 适配器：把流水线、需求分发、版本归档与知识库接入 DeepSeek Harness。"
+  },
+  "plugins": [
+    {
+      "name": "openfeel-dsh",
+      "title": {
+        "en": "OpenFeel",
+        "zh": "OpenFeel"
+      },
+      "description": {
+        "en": "OpenFeel × DSH — 流程治理适配器（Feel Mode 流程模式 / Free Mode 自由模式）：把 OpenFeel 的流水线、需求分发、版本归档与知识库接入 DeepSeek Harness",
+        "zh": "OpenFeel × DSH — 流程治理适配器（Feel Mode 流程模式 / Free Mode 自由模式）：把 OpenFeel 的流水线、需求分发、版本归档与知识库接入 DeepSeek Harness"
+      },
+      "icon": "icons/openfeel.svg",
+      "author": "Liuary",
+      "homepage": "https://github.com/Liuary/OpenFeel#readme",
+      "repository": {
+        "url": "https://github.com/Liuary/OpenFeel",
+        "directory": "dsh"
+      },
+      "versions": [
+        {
+          "version": "1.5.18",
+          "publishTimestamp": 1794638248,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/Liuary/OpenFeel",
+            "commit": "dbf8be069ba0c7e4c0211f7163e7e5fede059b47",
+            "path": "dsh"
+          },
+          "engines": {
+            "dsh": ">=0.2.0"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,32 +1,23 @@
-# OpenFeel × DSH — Feel 模式适配器
+# OpenFeel × DSH
 
-> **这是 OpenFeel 的 DSH 适配版本，不是独立项目。**
-> 它把 OpenFeel 的 CLI 与 `.openfeel/` 工作区投影到 DeepSeek Harness（DSH），
-> 让 agent 与用户都能在 DSH 内使用 Feel 流程。**领域逻辑、门禁判定、持久化契约
-> 全部留在 OpenFeel CLI 里**，适配器不做第二份实现。
+把 OpenFeel 的工作记录和做事流程接进 DeepSeek Harness。
 
-- 适配器位置：**本目录** = OpenFeel 仓库的 `dsh/`（与 `claude/`、`kilo/`、`.opencode/` 同级的
-  一等适配器）。`OpenFeel-DSH/plugin` 是指向本目录的目录联接。
-- 权威契约：[`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md)（40 个成功 `--json` 出口冻结表）
-- 宿主：DSH `0.2.0-rc.2`，profile `web` / `desktop`
+OpenFeel 是一个给 AI 助手用的记录本和工作流程（[项目主页](https://github.com/Liuary/OpenFeel)）。这个插件负责让 DSH 里的 AI 看到：项目做到哪了、有哪些事还没做完、下一步该干什么；同时把 OpenFeel 的检查结果原样转给 AI。它自己不实现流程，也不另存一份数据。
 
----
+## 1. 它做什么
 
-## 1. 设计原则
+- **带出记录**：每一轮对话，都会带上 OpenFeel 记录的项目进度、待办和检查结论，换会话也能接上；
+- **给出下一步**：告诉你现在处在哪个阶段、下一步该谁做、需要先补什么；
+- **两种模式**：默认自由模式（Free Mode，只记录不强制流程）；需要严格按步骤走时切到流程模式（Feel Mode）。切换可以按项目或全局，让 AI 改即可；
+- **原样转述检查结果**：OpenFeel 不允许的操作，会把原因和建议照实告诉 AI，不吞掉、不自己编。
 
-| 原则 | 含义 |
-|---|---|
-| **单一权威** | 相位转移、需求 done 门、REV 阻塞门、版本归档判据、`flow.json` revision CAS —— 全部由 `openfeel` CLI 执行。适配器只翻译意图与结果。 |
-| **零运行时依赖** | 只用 Node 内置模块，因此不依赖任何 DSH 内部包即可被 Loader 加载。 |
-| **拒绝即信息** | CLI 的门禁拒绝原样透传给模型，并附可操作的纠正建议。适配器不吞错、不猜门禁。 |
-| **不碰用户数据** | 不手改 `flow.json` / `status.md`；不读 `.openfeel/flow-archive/**`。 |
+## 2. 它不做什么
 
-为什么不做实现层适配：`flow.json` 有乐观并发（`meta.revision` CAS）、文件锁、
-跨文件对账等不变量；直接写盘会破坏它们。绕开 CLI 的第二个实现迟早与主体漂移。
+- 不写代码，也不代替 OpenFeel 做决定；
+- 不手动改项目的状态文件，不读历史归档；
+- 不做第二套流程：记录、顺序、完成条件都在 OpenFeel 里，插件只读取和转述。
 
----
-
-## 2. 安装
+## 3. 安装
 
 **方式 0（推荐，单包）**：适配器随 `openfeel` npm 包分发（`openfeel` ≥ 1.3.0），无需单独安装本目录：
 
@@ -96,7 +87,7 @@ Windows 上的 `openfeel.cmd` 垫片。
 
 ---
 
-## 3. 配置
+## 4. 配置
 
 ```yaml
 - insert:
@@ -123,7 +114,7 @@ Windows 上的 `openfeel.cmd` 垫片。
 
 ---
 
-## 4. 工具面（13 个）
+## 5. 工具面（13 个）
 
 适配器在 DSH 工具注册表上注册 13 个工具，全部经 `openfeel` CLI 执行。
 
@@ -186,7 +177,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ---
 
-## 5. 命令面 `/feel`
+## 6. 命令面 `/feel`
 
 面向人的轻量入口，直接回显 OpenFeel 原生可读输出：
 
@@ -211,7 +202,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ---
 
-## 6. 系统提示面
+## 7. 系统提示面
 
 启用 `autoPrompt` 时注入 `<feel_mode>` 段落，教会 agent **OpenFeel 的纪律**而非重复工具说明：
 
@@ -242,7 +233,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ---
 
-## 6.5 写入门禁（v1.4.0）
+## 7.5 写入门禁（v1.4.0）
 
 适配器在 `apply()` 中用 DSH 的 `ctx.tools.guard()` 注册同步守卫（`dsh/lib/guard.js`）：
 
@@ -268,7 +259,7 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ---
 
-## 7. 验证
+## 8. 验证
 
 四套测试，全部本地可跑：
 
@@ -291,7 +282,7 @@ node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂
 
 ---
 
-## 8. 目录结构
+## 9. 目录结构
 
 ```
 dsh/                               # OpenFeel 仓库内的一等适配器目录
@@ -324,7 +315,7 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 
 ---
 
-## 9. 已知限制
+## 10. 已知限制
 
 1. **改代码需重启宿主**：Loader 按 URL 缓存 ESM 模块；`set_bundle enable` 不会重新导入。
    用 `link:` 依赖可避免每次重装，但仍需重启。

@@ -1,3 +1,15 @@
+## [1.5.21] - 2026-11-14
+
+> 文案：README 与 DSH 适配器页面（npm `openfeel-dsh` 的 README）改为面向非程序员的通俗介绍，先说清楚解决什么问题，再讲阶段、需求、两种模式和记录位置。无行为变更。
+
+### Changed
+- [stage-8] **README 重写（REQ-037）**：开头改为「它解决两个问题（聊久了会忘事 / 做事容易跳步骤）→ 版本与阶段 → 待办清单 → 两种使用方式 → 记录存在哪」；命令与适配器细节保留在后半部分。
+- [stage-8] **`dsh/README.md` 重写**：开头同样是通俗说明（它做什么 / 它不做什么），安装二选一（`openfeel setup --tools dsh` 或 `dsh plugin add openfeel-dsh`）与后续技术章节保留。
+- [stage-8] **`dsh/package.json` 描述**改为通俗说法，市场卡片/索引随之更新；版本 1.5.21。
+
+### Notes
+- 纯文案改动：配置值、解析层级与门禁行为不变。
+
 ## [1.5.20] - 2026-11-14
 
 > 分发能力：适配器 `dsh/` 以独立 npm 包 **`openfeel-dsh`** 随 CLI 同步发布（社区市场需要 npm 身份），此后可直接 `dsh plugin add openfeel-dsh`；CLI 与门禁仍是必需组件。

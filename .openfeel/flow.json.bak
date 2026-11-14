@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T08:16:51.702Z",
-    "revision": 2245,
+    "updated": "2026-11-14T09:28:53.964Z",
+    "revision": 2252,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -48,12 +48,12 @@
       "v1.5.19",
       "v1.5.20"
     ],
-    "last_req_seq": 36
+    "last_req_seq": 37
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.5.21-stage-7",
+      "stage": "v1.5.21-stage-8",
       "op": ""
     },
     "retry": 0
@@ -61,8 +61,8 @@
   "stages": {
     "v1.5.21-stage-7": {
       "name": "v1.5.21-stage-7",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -74,8 +74,8 @@
       ],
       "stats": {
         "start_time": "2026-11-14T08:07:26.065Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-14T08:16:55.408Z",
+        "duration_ms": 569343
       },
       "verification": {
         "result": "pass",
@@ -84,6 +84,25 @@
         "at": "2026-11-14T08:16:51.702Z",
         "note": "CI 诊断能力到位：dsh 发布失败时注解输出 npm error 摘要；根因判定为 npm 新包首发需 OTP。",
         "evidence": "gh run view 43574682076 --log-failed 读取到 npm error code EOTP；CI #118 注解亦输出该错误摘要"
+      }
+    },
+    "v1.5.21-stage-8": {
+      "name": "v1.5.21-stage-8",
+      "phase": "plan_passed",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-037",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T09:28:48.769Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
@@ -114,76 +133,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T08:12:08.215Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-027",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:08.674Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-027",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:09.178Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-030",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:09.628Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-030",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:10.102Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-030",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:10.584Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-028",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:11.027Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-029",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
     {
       "time": "2026-11-01T08:12:17.419Z",
       "agent": "cli",
@@ -2128,6 +2077,78 @@
         "kind": "test",
         "by": "feel-tester"
       }
+    },
+    {
+      "time": "2026-11-14T08:16:55.402Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:27.669Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-037",
+        "title": "README 与 openfeel-dsh 页面通俗化重写（面向非程序员）+ 发布 1.5.21"
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:33.692Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-037",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:37.304Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:43.591Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.21-stage-8",
+        "requirementId": "REQ-037",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:48.767Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:53.958Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2377,6 +2398,19 @@
         "note": "诊断达成：根因为 npm 新包首次发布要求 OTP，而非 token 权限；修复路径为本地带 OTP 首发一次，之后 CI 可续发。",
         "evidence": "CI #118 注解 + gh run view 43574682076 --log-failed：npm error code EOTP（This operation requires a one-time password）→ 新包首发需 2FA OTP；CLI 包（已存在）发布不受影响"
       }
+    },
+    {
+      "id": "REQ-037",
+      "title": "README 与 openfeel-dsh 页面通俗化重写（面向非程序员）+ 发布 1.5.21",
+      "status": "draft",
+      "created_at": "2026-11-14T09:28:27.669Z",
+      "updated_at": "2026-11-14T09:28:33.692Z",
+      "target_version": "v1.5.21",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-037.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T09:28:33.692Z"
     }
   ]
 }

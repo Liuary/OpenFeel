@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T07:25:19.354Z",
-    "revision": 2208,
+    "updated": "2026-11-14T07:32:36.538Z",
+    "revision": 2219,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -60,8 +60,8 @@
   "stages": {
     "v1.5.20-stage-6": {
       "name": "v1.5.20-stage-6",
-      "phase": "review_failed",
-      "status": "review_failed",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -75,6 +75,14 @@
         "start_time": "2026-11-14T07:08:01.654Z",
         "end_time": "",
         "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T07:32:36.537Z",
+        "note": "v1.5.20 收口：适配器独立 npm 包 + CI 独立发布判定 + 安装文档二选一；独立审查 4 项全部修复。",
+        "evidence": "dry-run publish ./dsh → openfeel-dsh@1.5.20（30 files）；build 通过；tsc 0；vitest 2409/2409；lint i18n 1194；dsh verify 121/121；guard 179/179；market:index:check 通过（1.5.18/19/20）"
       }
     }
   },
@@ -83,7 +91,7 @@
       "id": "REV-001",
       "op": "v1.5.20-stage-6",
       "stage": "v1.5.20-stage-6",
-      "status": "open",
+      "status": "resolved",
       "priority": "medium",
       "title": "code-review：dsh/README 过时、requiresCli 无实现、CI 重试门与 setup 覆盖 npm 安装的文档矛盾",
       "filed_by": "cli",
@@ -1999,6 +2007,117 @@
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-11-14T07:25:23.573Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "review_failed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T07:31:59.163Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:03.414Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:08.832Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:14.495Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-035",
+        "result": "pass",
+        "by": "openfeel-reviewer (独立子 agent agent-2)",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:18.935Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-035",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:23.005Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-035",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:27.138Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-035",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:31.991Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-035",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:36.538Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.20-stage-6",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
     }
   ],
   "requirements": [
@@ -2224,15 +2343,30 @@
     {
       "id": "REQ-035",
       "title": "独立发布 openfeel-dsh 到 npm（去 private + CI 发布）+ 社区市场接入文档",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-14T07:07:37.047Z",
-      "updated_at": "2026-11-14T07:07:44.057Z",
+      "updated_at": "2026-11-14T07:32:31.991Z",
       "target_version": "v1.5.20",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-035.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-14T07:07:44.057Z"
+      "claimed_at": "2026-11-14T07:07:44.057Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer (独立子 agent agent-2)",
+        "at": "2026-11-14T07:32:14.495Z",
+        "note": "独立审查发现并已修复 4 处：dsh/README 过时（含未闭合代码块）、requiresCli 措辞与实现不符（降级为声明字段）、CI dsh 发布受 CLI changed 门限制无法重试（改为独立 dsh_changed 判定）、README 市场安装与 setup 覆盖 link 的矛盾；并补 LICENSE 进 npm 包。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T07:32:18.935Z",
+        "note": "适配器独立 npm 包（去 private/public、files 含 LICENSE）、CI 独立 dsh 发布判定可重试、安装文档二选一（market npm vs setup link）；dry-run 与全量测试绿。",
+        "evidence": "npm publish ./dsh --dry-run → openfeel-dsh@1.5.20（30 files / 322.9 kB，含 LICENSE）；npm run build 通过；tsc 0；vitest 2409/2409；lint i18n 1194；dsh verify 121/121；guard 179/179；market:index:check 通过（3 版本，1.5.20 @ d7604706）"
+      }
     }
   ]
 }

@@ -3,10 +3,10 @@
 - **执行模式**：auto
 - **自动推进**：enabled
 - **工作流模式**：fast
-- **状态**：review_failed
-- **当前责任 Agent**：openfeel-executor
-- **上一责任 Agent**：openfeel-reviewer
-- **更新时间**：2026-11-14 07:25
+- **状态**：done
+- **当前责任 Agent**：none
+- **上一责任 Agent**：openfeel-archiver
+- **更新时间**：2026-11-14 07:32
 
 ## Worktree / Session
 

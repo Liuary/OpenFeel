@@ -457,7 +457,7 @@ function main() {
     plugins: [
       {
         name: pluginManifest.name,
-        title: { en: 'OpenFeel Feel Mode', zh: 'OpenFeel Feel 模式' },
+        title: { en: 'OpenFeel', zh: 'OpenFeel' },
         description: {
           en: pluginManifest.description,
           zh: pluginManifest.description,

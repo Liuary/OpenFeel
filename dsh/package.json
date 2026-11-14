@@ -1,7 +1,7 @@
 {
   "name": "openfeel-dsh",
   "version": "1.5.18",
-  "description": "OpenFeel × DSH — Feel 模式适配器：把 OpenFeel 的流水线、需求分发、版本归档与知识库接入 DeepSeek Harness",
+  "description": "OpenFeel × DSH — 流程治理适配器（Feel Mode 流程模式 / Free Mode 自由模式）：把 OpenFeel 的流水线、需求分发、版本归档与知识库接入 DeepSeek Harness",
   "type": "module",
   "private": true,
   "license": "MIT",

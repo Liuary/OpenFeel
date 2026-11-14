@@ -62,6 +62,7 @@ describe('发布元数据（stage-49 B3/B4）', () => {
       version: string;
       private?: boolean;
       publishConfig?: { access?: string };
+      files: string[];
       openfeel: { requiresCli: string };
     };
     expect(dshPkg.version).toBe(rootPkg.version);
@@ -69,5 +70,8 @@ describe('发布元数据（stage-49 B3/B4）', () => {
     expect(dshPkg.private).toBeUndefined();
     expect(dshPkg.publishConfig?.access).toBe('public');
     expect(dshPkg.openfeel.requiresCli).toBe(`>=${rootPkg.version}`);
+    // npm 包内需带 LICENSE（根 LICENSE 不会随子目录包发布）
+    expect(dshPkg.files).toContain('LICENSE');
+    expect(existsSync(join(ROOT, 'dsh', 'LICENSE'))).toBe(true);
   });
 });

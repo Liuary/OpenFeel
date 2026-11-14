@@ -28,7 +28,7 @@
 
 ## 2. 安装
 
-**方式 0（推荐，单包）**：适配器已随 `openfeel` npm 包分发（`openfeel` ≥ 1.3.0），无需单独安装本目录：
+**方式 0（推荐，单包）**：适配器随 `openfeel` npm 包分发（`openfeel` ≥ 1.3.0），无需单独安装本目录：
 
 ```bash
 npm i -g openfeel@latest     # 1. 安装/升级（包内已含 dsh/）
@@ -42,18 +42,28 @@ openfeel setup --tools dsh   # 2. 写入 DSH profile + 按需 pnpm install（可
 
 **方式 A（开发态）**：把本目录链接进 profile（改动重启即生效）：
 
-```powershell
-#   在 %USERPROFILE%\.dsh\profiles\web\package.json
-#   dependencies 加入：  "openfeel-dsh": "link:<repo>/dsh"
-#   dsh.profile.bundles 加入：  "openfeel-dsh"
-#   然后：
-pnpm install --prefer-offline
-
-**方式 B：经插件管理器安装（file: 拷贝，改代码后需重装）**
-#   plugin_manager install_bundle  →  file:<repo>\dsh
+```jsonc
+// %USERPROFILE%\.dsh\profiles\web\package.json
+"dependencies": { "openfeel-dsh": "link:<repo>/dsh" },
+"dsh": { "profile": { "bundles": ["openfeel-dsh"] } }
 ```
 
-**方式 C（无 npm 包，git 源）**：经 DSH 官方「发现」页的索引安装，索引指向本仓 `dsh/` 的固定 commit：
+```bash
+pnpm install --prefer-offline
+```
+
+**方式 B（npm 包 / 社区市场，v1.5.20 起）**：适配器同时以独立 npm 包 **`openfeel-dsh`** 发布（与 CLI lockstep）：
+
+```bash
+npm i -g openfeel@latest        # CLI 仍需全局安装（门禁在 CLI 里）
+dsh plugin add openfeel-dsh     # 从 npm / 社区市场安装适配器
+# 重启 DSH 宿主
+```
+
+> ⚠️ 用方式 B 时**不要**再执行 `openfeel setup --tools dsh`：setup 会把 profile 依赖改写成
+> 本地 `link:<openfeelRoot>/dsh`（覆盖市场安装版本）。两种方式二选一即可。
+
+**方式 C（git 源，官方「发现」页索引）**：索引指向本仓 `dsh/` 的固定 commit：
 
 ```
 # 1. 插件页 → 实验性插件 旁的「更多」→ 打开「自定义插件市场」
@@ -65,10 +75,10 @@ pnpm install --prefer-offline
 DSH 装成的依赖形如 `git+https://github.com/Liuary/OpenFeel.git#<commit>&path:/dsh`。
 索引生成/校验见 [`docs/market/README.md`](../docs/market/README.md)（`npm run market:index`）。
 
-> **渠道上限（重要）**：git 源条目只能进**官方发现页**。社区市场
-> （awesome-dsh-plugin / dshmarket / 1024Store / dshbase / DSH Community Market）一律要求 npm 包身份，
-> 不会收录 `source.type=git` 的条目。要进社区市场，仍需把 `dsh/` 作为独立 npm 包发布（去掉 `private: true`）。
-> 现状选择是「不发布独立包」，因为适配器与 CLI 的版本必须同步（`openfeel.requiresCli`）。
+> **渠道说明**：git 源条目（方式 C）只进**官方发现页**；社区市场
+> （awesome-dsh-plugin / dshmarket / 1024Store / dshbase / DSH Community Market）要求 npm 身份，
+> 因此 v1.5.20 起同时发布独立包 `openfeel-dsh`（方式 B）。`openfeel.requiresCli` 是**声明字段**
+> （供安装工具/市场读取所需 CLI 下限），适配器启动时不做硬校验——CLI 缺失或过旧时以门禁报错为准。
 > 详见 [`docs/research/dsh-plugin-market-landscape.md`](../docs/research/dsh-plugin-market-landscape.md)。
 
 

@@ -31,7 +31,7 @@ openfeel config effective feel_mode                            # 查看生效值
 
 - **不要和 `workflow_mode` 混淆**：`feel_mode` 决定「**是否**强制流程」；`workflow_mode`（`full` / `fast` / `general`）决定「走流程时**走多少道关**」——两者正交，见下文「快速迭代模式」。
 
-> 📦 **最新版本 v1.5.20**（适配器独立发 npm，社区市场可安装） — 适配器 `dsh/` 以独立 npm 包 **`openfeel-dsh`** 随 `openfeel` 同步发布（版本 lockstep、`requiresCli` 校验下限），因此社区插件市场（awesome-dsh-plugin / dshmarket / 1024Store / dshbase / dsh.market 等）可凭 npm 身份收录并一键安装；DSH 官方「发现」页仍可用 format 1 索引 [`docs/market/index.json`](docs/market/index.json) 添加。CLI 与门禁仍是必需组件：安装适配器后仍需 `npm i -g openfeel` + `openfeel setup --tools dsh` + 重启宿主。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.20**（适配器独立发 npm，社区市场可安装） — 适配器 `dsh/` 以独立 npm 包 **`openfeel-dsh`** 随 `openfeel` 同步发布（版本 lockstep；`requiresCli` 声明所需 CLI 下限），因此社区插件市场（awesome-dsh-plugin / dshmarket / 1024Store / dshbase / dsh.market 等）可凭 npm 身份收录并一键安装；DSH 官方「发现」页仍可用 format 1 索引 [`docs/market/index.json`](docs/market/index.json) 添加。CLI 与门禁仍是必需组件：安装适配器后仍需 `npm i -g openfeel`（供门禁使用）+ 重启宿主。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 
@@ -90,10 +90,10 @@ openfeel setup --tools dsh    # 2. 部署到 DSH profile（默认全部；可 --
 # 3. 重启 DSH 宿主
 ```
 
-**社区市场安装（v1.5.20 起）**：适配器已是独立 npm 包，可直接 `dsh plugin add openfeel-dsh`；但**仍须**全局安装 CLI 并执行 `openfeel setup --tools dsh`（适配器只负责把 OpenFeel 接进 DSH，状态机/门禁在 CLI 里），最后重启宿主。
+**社区市场安装（v1.5.20 起）**：适配器已是独立 npm 包，可直接 `dsh plugin add openfeel-dsh`；**仍须**全局安装 CLI（`npm i -g openfeel`，门禁在 CLI 里），但**不要再执行 `openfeel setup --tools dsh`**——setup 会把 profile 依赖改写成本地 `link:`，覆盖市场安装版本。二选一，最后重启宿主。
 
 - 写入 `<DSH_HOME>/profiles/<name>/package.json`：`dependencies["openfeel-dsh"] = "link:<openfeelRoot>/dsh"` + `dsh.profile.bundles += "openfeel-dsh"`，并在需要时执行 `pnpm install`（依赖未变化且链接有效时跳过）。
-- 前提：DSH `0.2.0-rc.2`、Node ≥ 20.17、存在 DSH profile、全局 `openfeel` 可用（`openfeel-dsh` 的 `requiresCli` 会校验版本下限）。
+- 前提：DSH `0.2.0-rc.2`、Node ≥ 20.17、存在 DSH profile、全局 `openfeel` 可用（`openfeel-dsh` 的 `requiresCli` 声明所需 CLI 下限；适配器不做硬校验，CLI 过旧时以门禁报错为准）。
 - 升级：`npm i -g openfeel@latest` → 重启 DSH；`link:` 指向同一路径，随包更新（社区市场安装则同时升级 `openfeel-dsh`）。
 - 开发态可直接 `link:` 仓库 `dsh/`；详见 [dsh/README.md](dsh/README.md) 与 [dsh/ADAPTER.md](dsh/ADAPTER.md)。
 - 写入门禁第 4 类（无法静态判定写入目标）默认 **告警放行、不阻断**，只落审计 + 一行 stderr（不消耗模型轮次）；已知安全命令可用 `OPENFEEL_SHELL_ALLOW` 白名单（`||` 分隔，折叠空白后**整条命令全等**，`strict` 档同样生效），例如 `OPENFEEL_SHELL_ALLOW="Build.bat all || node Tools/gen-typings.js"`。

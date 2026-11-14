@@ -3,7 +3,7 @@
 > 分发能力：适配器 `dsh/` 以独立 npm 包 **`openfeel-dsh`** 随 CLI 同步发布（社区市场需要 npm 身份），此后可直接 `dsh plugin add openfeel-dsh`；CLI 与门禁仍是必需组件。
 
 ### Added
-- [stage-6] **适配器独立发 npm（REQ-035）**：`dsh/package.json` 移除 `private`、补 `publishConfig.access=public`；CI 的 `publish` job 在 CLI 发布后按「`dsh/package.json` 版本 ≠ `npm view openfeel-dsh version`」幂等执行 `npm publish ./dsh --access public`。两包版本 lockstep，`requiresCli` 校验 CLI 下限。
+- [stage-6] **适配器独立发 npm（REQ-035）**：`dsh/package.json` 移除 `private`、补 `publishConfig.access=public`、`files` 增 `LICENSE`；CI 的 `publish` job 在 CLI 发布后按「`dsh/package.json` 版本 ≠ `npm view openfeel-dsh version`」幂等执行 `npm publish ./dsh --access public`。两包版本 lockstep；`requiresCli` 声明所需 CLI 下限（安装工具/市场读取，适配器不做硬校验）。
 - [stage-6] **README**：DSH 适配器一节新增「社区市场安装（v1.5.20 起）」，说明 `dsh plugin add openfeel-dsh` 之外仍需 `npm i -g openfeel` + `openfeel setup --tools dsh` + 重启宿主。
 - [stage-6] **市场文档**：`docs/market/README.md` 渠道表更新（社区一键安装由 ❌ 改为 ✅）；`docs/research/dsh-plugin-market-landscape.md` 的「路径 C」更新为「npm 侧已完成，下一步 awesome-dsh-plugin PR」。
 

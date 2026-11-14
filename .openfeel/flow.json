@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T07:08:11.208Z",
-    "revision": 2205,
+    "updated": "2026-11-14T07:25:23.579Z",
+    "revision": 2209,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -61,7 +61,7 @@
     "v1.5.20-stage-6": {
       "name": "v1.5.20-stage-6",
       "phase": "exec_running",
-      "status": "planned",
+      "status": "review_failed",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -78,7 +78,20 @@
       }
     }
   },
-  "reviews": [],
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.20-stage-6",
+      "stage": "v1.5.20-stage-6",
+      "status": "open",
+      "priority": "medium",
+      "title": "code-review：dsh/README 过时、requiresCli 无实现、CI 重试门与 setup 覆盖 npm 安装的文档矛盾",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T07:25:16.189Z",
+      "canAutoFix": false,
+      "blocking": true
+    }
+  ],
   "log": [
     {
       "time": "2026-11-01T07:22:51.913Z",
@@ -1958,6 +1971,42 @@
       "detail": {
         "stageName": "v1.5.20-stage-6",
         "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T07:21:45.503Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T07:25:19.347Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "review_pending",
+        "to": "review_failed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T07:25:23.573Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "review_failed",
         "to": "exec_running",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false

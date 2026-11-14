@@ -492,7 +492,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 > 分发：适配器以独立 npm 包 \`openfeel-dsh\` 随 CLI lockstep 发布（社区市场需 npm 身份）；单仓 \`npm publish ./dsh\`，无镜像子仓库。安装仍需 CLI。
 
-- **独立包 \`openfeel-dsh\`（v1.5.20 / REQ-035）**：\`dsh/package.json\` 去 \`private\`、\`publishConfig.access=public\`；CI 在 CLI 发布后按版本差幂等执行 \`npm publish ./dsh --access public\`。适配器可 \`dsh plugin add openfeel-dsh\`，但必须另装 \`openfeel\` CLI + \`openfeel setup --tools dsh\` + 重启宿主；\`requiresCli\` 校验下限。
+- **独立包 \`openfeel-dsh\`（v1.5.20 / REQ-035）**：\`dsh/package.json\` 去 \`private\`、\`publishConfig.access=public\`；CI 在 CLI 发布后按版本差幂等执行 \`npm publish ./dsh --access public\`（dsh 发布判定独立于 CLI，可单独重试）。适配器可 \`dsh plugin add openfeel-dsh\`，但必须另装 \`openfeel\` CLI；**不要**再叠加 \`openfeel setup --tools dsh\`（会改写为 link）。\`requiresCli\` 声明所需 CLI 下限（安装工具/市场读取，非硬校验）。
 - **市场两条路径**：DSH 官方「发现」页 → \`docs/market/index.json\`（git 源、固定 commit、\`path:/dsh\`）；社区市场 → npm 包 \`openfeel-dsh\`（awesome-dsh-plugin PR / topic 自动收录）。
 
 ## v1.5.19（stage-4）

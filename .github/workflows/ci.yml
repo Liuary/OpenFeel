@@ -156,7 +156,10 @@ jobs:
           npm publish ./dsh --access public --registry https://registry.npmjs.org 2>&1 | tee /tmp/dsh-publish.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
-            msg=$(tr '\n' ' ' < /tmp/dsh-publish.log | cut -c1-600)
+            # 优先取 npm error 行（真正的失败原因）；没有则取日志尾部
+            errs=$(grep -E 'npm (error|ERR!)' /tmp/dsh-publish.log | tail -n 6 | tr '\n' ' ')
+            [ -z "$errs" ] && errs=$(tail -c 800 /tmp/dsh-publish.log | tr '\n' ' ')
+            msg=$(printf '%s' "$errs" | cut -c1-700)
             echo "::error::openfeel-dsh publish failed (exit $status): $msg"
             exit "$status"
           fi

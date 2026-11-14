@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T10:59:02.275Z",
-    "revision": 2292,
+    "updated": "2026-11-14T11:06:30.187Z",
+    "revision": 2304,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -52,7 +52,7 @@
     "last_req_seq": 39
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.5.22-stage-10",
       "op": ""
@@ -89,8 +89,8 @@
     },
     "v1.5.22-stage-10": {
       "name": "v1.5.22-stage-10",
-      "phase": "exec_running",
-      "status": "planned",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -102,8 +102,16 @@
       ],
       "stats": {
         "start_time": "2026-11-14T10:58:51.707Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-14T11:06:30.162Z",
+        "duration_ms": 458455
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T11:06:25.088Z",
+        "note": "v1.5.22 页面重排收口，无行为变更。",
+        "evidence": "build 通过；tsc 0；vitest 2409/2409；lint 1194；dsh verify 121/121；guard 179/179；market 索引校验通过"
       }
     }
   },
@@ -119,113 +127,21 @@
       "filed_at": "2026-11-14T09:58:04.095Z",
       "canAutoFix": false,
       "blocking": false
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.22-stage-10",
+      "stage": "v1.5.22-stage-10",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：dsh/README 主介绍改为 OpenFeel，适配细节后置；版本 1.5.22",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T11:05:44.699Z",
+      "canAutoFix": false,
+      "blocking": false
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T09:21:05.513Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-019",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-01T09:23:24.505Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-018",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-01T09:23:27.263Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-018",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T09:23:29.909Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-018",
-        "result": "pass",
-        "by": "Feel",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-01T09:23:32.231Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-018",
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel"
-      }
-    },
-    {
-      "time": "2026-11-01T09:23:34.230Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-018",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-01T09:43:13.882Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-001"
-      }
-    },
-    {
-      "time": "2026-11-01T09:43:22.406Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.9-stage-124",
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel"
-      }
-    },
-    {
-      "time": "2026-11-01T09:43:35.476Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.9",
-        "stages": 1,
-        "reviews": 1,
-        "log": 9,
-        "requirements": 2
-      }
-    },
-    {
-      "time": "2026-11-01T09:43:43.304Z",
-      "agent": "cli",
-      "action": "chore_start",
-      "detail": {
-        "id": "CHORE-20261101T094343",
-        "note": "1.5.9 版本收口",
-        "expires_at": "2026-11-01T10:43:43.287Z",
-        "stage_count": 0
-      }
-    },
     {
       "time": "2026-11-01T09:43:58.781Z",
       "agent": "cli",
@@ -2130,6 +2046,117 @@
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-11-14T11:05:39.585Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T11:05:51.446Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T11:05:57.279Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T11:06:01.706Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-039",
+        "result": "pass",
+        "by": "feel (self-review)",
+        "independent": false
+      }
+    },
+    {
+      "time": "2026-11-14T11:06:06.326Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-039",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-14T11:06:10.935Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-039",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-14T11:06:15.248Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-039",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-14T11:06:19.085Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-039",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-14T11:06:25.089Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.22-stage-10",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-14T11:06:30.155Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2383,15 +2410,30 @@
     {
       "id": "REQ-039",
       "title": "openfeel-dsh 页面重写：以 OpenFeel 为主介绍，适配细节后置",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-14T10:58:26.869Z",
-      "updated_at": "2026-11-14T10:58:32.615Z",
+      "updated_at": "2026-11-14T11:06:19.085Z",
       "target_version": "v1.5.22",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-039.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-14T10:58:32.615Z"
+      "claimed_at": "2026-11-14T10:58:32.615Z",
+      "review": {
+        "result": "pass",
+        "by": "feel (self-review)",
+        "at": "2026-11-14T11:06:01.706Z",
+        "note": "self-review：页面结构调整为主讲 OpenFeel；事实与其他 README 一致；适配细节统一后置。",
+        "independent": false
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T11:06:06.326Z",
+        "note": "openfeel-dsh 页面重排完成，安装与细节后置；版本与索引收口。",
+        "evidence": "build 通过；tsc 0；vitest 2409/2409；lint 1194；dsh verify 121/121；guard 179/179；market:index:check 通过（5 版本，1.5.22 @ b4d3886d）"
+      }
     }
   ]
 }

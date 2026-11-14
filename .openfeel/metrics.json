@@ -2,21 +2,21 @@
   "agents": {
     "openfeel-executor": {
       "agentName": "openfeel-executor",
-      "totalRuns": 70,
-      "successfulRuns": 70,
+      "totalRuns": 71,
+      "successfulRuns": 71,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 314628408,
-      "avgDurationMs": 4494692
+      "totalDurationMs": 315025740,
+      "avgDurationMs": 4436982
     },
     "openfeel-reviewer": {
       "agentName": "openfeel-reviewer",
-      "totalRuns": 81,
-      "successfulRuns": 81,
+      "totalRuns": 82,
+      "successfulRuns": 82,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 16355193,
-      "avgDurationMs": 201916
+      "totalDurationMs": 16367071,
+      "avgDurationMs": 199598
     },
     "openfeel-feel-tester": {
       "agentName": "openfeel-feel-tester",

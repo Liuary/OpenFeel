@@ -56,15 +56,18 @@ describe('发布元数据（stage-49 B3/B4）', () => {
     expect(pkg.files).not.toContain('dsh/test');
   });
 
-  it('v1.3.0：dsh/package.json 与根版本 lockstep，requiresCli 同步，仍 private', () => {
+  it('v1.5.20：dsh/package.json 与根版本 lockstep，requiresCli 同步，独立发 npm（public）', () => {
     const rootPkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8')) as { version: string };
     const dshPkg = JSON.parse(readFileSync(join(ROOT, 'dsh', 'package.json'), 'utf-8')) as {
       version: string;
-      private: boolean;
+      private?: boolean;
+      publishConfig?: { access?: string };
       openfeel: { requiresCli: string };
     };
     expect(dshPkg.version).toBe(rootPkg.version);
-    expect(dshPkg.private).toBe(true);
+    // v1.5.20：适配器独立发 npm（社区市场需要 npm 身份）→ 不再 private
+    expect(dshPkg.private).toBeUndefined();
+    expect(dshPkg.publishConfig?.access).toBe('public');
     expect(dshPkg.openfeel.requiresCli).toBe(`>=${rootPkg.version}`);
   });
 });

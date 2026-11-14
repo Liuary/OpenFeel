@@ -90,11 +90,14 @@
 - 本仓操作：① 给仓库加 topic **`dsh-plugin`**（建议同时补 `dsh-bundle`、`deepseek-harness`，具体名单以其扫描配置为准）；② README 写清安装段（其「一键安装」= agent 解析 README 后执行命令）：`npm i -g openfeel` → `openfeel setup --tools dsh` → 重启 DSH；③ 可选到 `2BingLing/dsh-market` 提 issue 请求收录。
 - 限制：以**仓库**为单位，monorepo 子目录 `dsh/` 只能靠 README 解析；无 npm 身份 → 通常只能浏览/复制命令，拿不到真正的一键安装。
 
-### 路径 C：社区一键安装 / awesome-dsh-plugin 的 format 1 索引（唯一需发 npm 的路径）
+### 路径 C：社区一键安装 / awesome-dsh-plugin 的 format 1 索引（需 npm 身份）
 
-- 前置：把 `dsh/` 发布为**独立 npm 包**（`private: false`，包名 `openfeel-dsh`；`files` 已含 `lib` 与 `cordis.patch.yml`），并随 CLI 版本同步发版（`requiresCli` 契约）。
-- 然后向 **awesome-dsh-plugin** 提 PR（一条一行）；这是已确认能进 format 1 索引的路径。收录后 dshmarket / 1024Store / dshbase / dsh.market 会各自通过索引或 topic 发现。
-- 判定不变：**git+path 条目进不了任何社区市场的一键安装**；宁可继续只服务「愿意添加索引源」的官方发现页，也不强行拆包，除非确实需要社区曝光。
+**状态（v1.5.20）：已完成 npm 侧。** 适配器 `dsh/` 以独立包 **`openfeel-dsh`** 随 CLI 同步发布（`private` 已移除、`publishConfig.access=public`；CI 的 publish job 在 CLI 发布后按版本差幂等发布），`requiresCli` 强制 CLI 版本下限。
+
+- 收录操作：向 **awesome-dsh-plugin** 提 PR（一条一行，门槛「能用 `dsh plugin add` 装且描述属实」）；这是已确认能进 format 1 索引的路径。
+- 其余社区市场：1024Store / dshbase / dshmarket 通过 npm 元数据或索引发现；dsh.market 通过 topic/issue 收录（见路径 B）。
+- 安装说明必须写全：`dsh plugin add openfeel-dsh` 之外仍需 `npm i -g openfeel` + `openfeel setup --tools dsh` + 重启宿主（适配器只接入 DSH，流水线/门禁在 CLI 内）。
+- 判定不变：DSH 官方「发现」页的 git+path 条目仍进不了社区市场一键安装；两条路径并行——**索引源走 git，社区市场走 npm**。
 
 ## 参考链接
 

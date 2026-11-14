@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T06:54:36.344Z",
-    "revision": 2198,
+    "updated": "2026-11-14T07:08:11.208Z",
+    "revision": 2205,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -47,17 +47,37 @@
       "v1.5.18",
       "v1.5.19"
     ],
-    "last_req_seq": 34
+    "last_req_seq": 35
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "",
+      "stage": "v1.5.20-stage-6",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
+  "stages": {
+    "v1.5.20-stage-6": {
+      "name": "v1.5.20-stage-6",
+      "phase": "exec_running",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-035",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T07:08:01.654Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
   "reviews": [],
   "log": [
     {
@@ -1870,6 +1890,78 @@
         "log": 20,
         "requirements": 1
       }
+    },
+    {
+      "time": "2026-11-14T07:07:37.047Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-035",
+        "title": "独立发布 openfeel-dsh 到 npm（去 private + CI 发布）+ 社区市场接入文档"
+      }
+    },
+    {
+      "time": "2026-11-14T07:07:44.057Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-035",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-14T07:07:48.723Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T07:07:56.629Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.20-stage-6",
+        "requirementId": "REQ-035",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-14T07:08:01.648Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T07:08:07.348Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T07:08:11.202Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2091,6 +2183,19 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-035",
+      "title": "独立发布 openfeel-dsh 到 npm（去 private + CI 发布）+ 社区市场接入文档",
+      "status": "draft",
+      "created_at": "2026-11-14T07:07:37.047Z",
+      "updated_at": "2026-11-14T07:07:44.057Z",
+      "target_version": "v1.5.20",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-035.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T07:07:44.057Z"
     }
   ]
 }

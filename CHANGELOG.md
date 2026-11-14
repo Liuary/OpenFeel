@@ -1,3 +1,16 @@
+## [1.5.20] - 2026-11-14
+
+> 分发能力：适配器 `dsh/` 以独立 npm 包 **`openfeel-dsh`** 随 CLI 同步发布（社区市场需要 npm 身份），此后可直接 `dsh plugin add openfeel-dsh`；CLI 与门禁仍是必需组件。
+
+### Added
+- [stage-6] **适配器独立发 npm（REQ-035）**：`dsh/package.json` 移除 `private`、补 `publishConfig.access=public`；CI 的 `publish` job 在 CLI 发布后按「`dsh/package.json` 版本 ≠ `npm view openfeel-dsh version`」幂等执行 `npm publish ./dsh --access public`。两包版本 lockstep，`requiresCli` 校验 CLI 下限。
+- [stage-6] **README**：DSH 适配器一节新增「社区市场安装（v1.5.20 起）」，说明 `dsh plugin add openfeel-dsh` 之外仍需 `npm i -g openfeel` + `openfeel setup --tools dsh` + 重启宿主。
+- [stage-6] **市场文档**：`docs/market/README.md` 渠道表更新（社区一键安装由 ❌ 改为 ✅）；`docs/research/dsh-plugin-market-landscape.md` 的「路径 C」更新为「npm 侧已完成，下一步 awesome-dsh-plugin PR」。
+
+### Notes
+- 单仓发布子目录包（`npm publish ./dsh`），**不需要镜像子仓库**；`repository.directory` 已指向 monorepo 的 `dsh/`。
+- 配置值、解析层级与门禁行为不变。
+
 ## [1.5.19] - 2026-11-14
 
 > 术语定名 + DSH 市场索引：`feel_mode` 两态正式称为 **Feel Mode（流程模式，`enabled`）** 与 **Free Mode（自由模式，`disabled`）**；README 新增「两种模式」对照；新增官方 format 1 市场索引。配置值与门禁行为不变。

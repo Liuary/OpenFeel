@@ -135,3 +135,16 @@ jobs:
           if [ "$CLI_VERSION" != "$PKG_VERSION" ]; then echo "::error::版本不一致 CLI=$CLI_VERSION pkg=$PKG_VERSION"; exit 1; fi
       - run: npm publish --access public --registry https://registry.npmjs.org
         if: steps.version.outputs.changed == 'true'
+      - name: Publish openfeel-dsh (adapter sub-package)
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          # v1.5.20：适配器以独立 npm 包发布（社区市场需要 npm 身份）。
+          # 版本与 CLI lockstep；已存在同版本则跳过（幂等）。
+          LOCAL_DSH=$(node -p "require('./dsh/package.json').version")
+          REMOTE_DSH=$(npm view openfeel-dsh version 2>/dev/null || echo "0.0.0")
+          if [ "$LOCAL_DSH" = "$REMOTE_DSH" ]; then
+            echo "openfeel-dsh@$LOCAL_DSH already published; skipping"
+            exit 0
+          fi
+          echo "publishing openfeel-dsh@$LOCAL_DSH"
+          npm publish ./dsh --access public --registry https://registry.npmjs.org

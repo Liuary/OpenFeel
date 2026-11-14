@@ -6,9 +6,10 @@
 ## 当前状态（2026-11-14）
 
 - `index.json` 随本次发版生成并提交；`npm run market:index:check` 可校验。
-- **GitHub Pages 托管需仓库所有者开启**：Settings → Pages → Deploy from a branch → `master` / `/docs`。
-  未开启时 `https://liuary.github.io/OpenFeel/market/index.json` 返回 404。
+- **GitHub Pages 已启用**（Settings → Pages → `master` / `/docs`），索引 URL：
+  `https://liuary.github.io/OpenFeel/market/index.json`（返回 200，含 1.5.18 / 1.5.19 / 1.5.20）。
 - 术语：`feel_mode=enabled` = **Feel Mode（流程模式）**；`disabled` = **Free Mode（自由模式）**。
+- **v1.5.20 起**适配器同时以独立 npm 包 **`openfeel-dsh`** 发布（与 CLI lockstep），社区市场可凭 npm 身份收录。
 - 社区市场（dsh.market / awesome-dsh-plugin / 1024Store 等）的收录方式与限制，见
   [`docs/research/dsh-plugin-market-landscape.md`](../research/dsh-plugin-market-landscape.md) 的「2026-11-14 落地状态」节。
 
@@ -16,12 +17,11 @@
 
 | 渠道 | 本索引能否覆盖 |
 |---|---|
-| DSH 官方「发现」页（用户手动添加索引源 URL） | ✅ 能。这是本索引的**唯一**目标 |
-| 社区市场一键安装（awesome-dsh-plugin / dshmarket / 1024Store / dshbase / DSH Community Market） | ❌ 不能。它们一律要求 npm 包身份；`source.type=git` + `path` 子目录的条目进不去 |
+| DSH 官方「发现」页（用户手动添加索引源 URL） | ✅ 能。本索引的**唯一**目标 |
+| dsh.market（仓库级收录） | ⚠️ 以**仓库**为单位，`dsh/` 子目录靠 README 解析；需给仓库加 `dsh-plugin` topic 并写清安装段 |
+| 社区市场一键安装（awesome-dsh-plugin / dshmarket / 1024Store / dshbase / DSH Community Market） | ✅ v1.5.20 起：适配器已以独立 npm 包 `openfeel-dsh` 发布；需 PR/topic 收录（npm 身份是唯一硬门槛） |
 
 调研依据见 [`docs/research/dsh-plugin-market-landscape.md`](../../research/dsh-plugin-market-landscape.md)。
-**这是有意接受的限制**：为了不发布独立 npm 包（适配器与 CLI 版本必须同步），我们放弃社区市场的一键安装，
-只服务「愿意给 DSH 加一条索引源」的用户。
 
 ## 用户怎么用
 

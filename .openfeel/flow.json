@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T07:32:51.250Z",
-    "revision": 2221,
+    "updated": "2026-11-14T08:16:55.437Z",
+    "revision": 2246,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -48,137 +48,72 @@
       "v1.5.19",
       "v1.5.20"
     ],
-    "last_req_seq": 35
+    "last_req_seq": 36
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
-      "stage": "",
+      "stage": "v1.5.21-stage-7",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.5.21-stage-7": {
+      "name": "v1.5.21-stage-7",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-036",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T08:07:26.065Z",
+        "end_time": "2026-11-14T08:16:55.408Z",
+        "duration_ms": 569343
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T08:16:51.702Z",
+        "note": "CI 诊断能力到位：dsh 发布失败时注解输出 npm error 摘要；根因判定为 npm 新包首发需 OTP。",
+        "evidence": "gh run view 43574682076 --log-failed 读取到 npm error code EOTP；CI #118 注解亦输出该错误摘要"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.21-stage-7",
+      "stage": "v1.5.21-stage-7",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：CI 诊断步（仅捕获 stderr 写注解，不改变发布判定）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T08:08:31.675Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.21-stage-7",
+      "stage": "v1.5.21-stage-7",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：CI 错误注解实现（npm error 行优先），已定位 EOTP",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T08:16:03.875Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
   "log": [
-    {
-      "time": "2026-11-01T07:22:54.478Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-029",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:04.634Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-027",
-        "result": "pass",
-        "by": "Feel",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:05.001Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-027",
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:05.391Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-028",
-        "result": "pass",
-        "by": "Feel",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:05.764Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-028",
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:06.127Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-029",
-        "result": "pass",
-        "by": "Feel",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:06.511Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-029",
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:06.872Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-030",
-        "result": "pass",
-        "by": "Feel",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:07.289Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-030",
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:07.757Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-027",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:08.215Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-027",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
     {
       "time": "2026-11-01T08:12:08.674Z",
       "agent": "cli",
@@ -1964,6 +1899,237 @@
         "log": 11,
         "requirements": 1
       }
+    },
+    {
+      "time": "2026-11-14T08:07:04.358Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-036",
+        "title": "CI 诊断：将 openfeel-dsh 发布失败原因暴露为注解，定位 token/发布错误"
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:09.518Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-036",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:12.212Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:18.398Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.21-stage-7",
+        "requirementId": "REQ-036",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:26.062Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:32.014Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:41.317Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:08:25.043Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:08:38.972Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:08:44.173Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:11:46.372Z",
+      "agent": "flow-manager",
+      "action": "reset_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "archiving",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:15:57.082Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:11.313Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:16.009Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:22.658Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-036",
+        "result": "pass",
+        "by": "feel (self-review)",
+        "independent": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:27.816Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-036",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:34.533Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-036",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:38.840Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-036",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:46.275Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-036",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:51.702Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.21-stage-7",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:55.402Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2185,6 +2351,34 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-036",
+      "title": "CI 诊断：将 openfeel-dsh 发布失败原因暴露为注解，定位 token/发布错误",
+      "status": "done",
+      "created_at": "2026-11-14T08:07:04.358Z",
+      "updated_at": "2026-11-14T08:16:46.274Z",
+      "target_version": "v1.5.21",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-036.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T08:07:09.518Z",
+      "review": {
+        "result": "pass",
+        "by": "feel (self-review)",
+        "at": "2026-11-14T08:16:22.657Z",
+        "note": "self-review：CI 诊断改动仅把 npm 输出写入注解；已用 gh 读取失败日志定位根因 EOTP（新包首发需 2FA 验证码，CI 无法提供）。",
+        "independent": false
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T08:16:27.816Z",
+        "note": "诊断达成：根因为 npm 新包首次发布要求 OTP，而非 token 权限；修复路径为本地带 OTP 首发一次，之后 CI 可续发。",
+        "evidence": "CI #118 注解 + gh run view 43574682076 --log-failed：npm error code EOTP（This operation requires a one-time password）→ 新包首发需 2FA OTP；CLI 包（已存在）发布不受影响"
+      }
     }
   ]
 }

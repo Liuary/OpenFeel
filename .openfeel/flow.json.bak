@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T09:58:42.667Z",
-    "revision": 2284,
+    "updated": "2026-11-14T10:58:57.182Z",
+    "revision": 2291,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -49,12 +49,12 @@
       "v1.5.20",
       "v1.5.21"
     ],
-    "last_req_seq": 38
+    "last_req_seq": 39
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.5.22-stage-9",
+      "stage": "v1.5.22-stage-10",
       "op": ""
     },
     "retry": 0
@@ -62,8 +62,8 @@
   "stages": {
     "v1.5.22-stage-9": {
       "name": "v1.5.22-stage-9",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -75,8 +75,8 @@
       ],
       "stats": {
         "start_time": "2026-11-14T09:48:37.749Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-14T09:58:47.419Z",
+        "duration_ms": 609670
       },
       "verification": {
         "result": "pass",
@@ -85,6 +85,25 @@
         "at": "2026-11-14T09:58:42.667Z",
         "note": "OIDC 可信发布落地并验证；1.5.21 补发完成。",
         "evidence": "CI run 43582380537 全绿（publish job 两个发布步 success，无 token）；npm 1.5.21 双包可用；npm 页面 README 已更新"
+      }
+    },
+    "v1.5.22-stage-10": {
+      "name": "v1.5.22-stage-10",
+      "phase": "plan_passed",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-039",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T10:58:51.707Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
@@ -103,47 +122,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T09:13:14.975Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.9-stage-124",
-        "requirementId": "REQ-019",
-        "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-01T09:20:56.044Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-019",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-01T09:20:57.707Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-019",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T09:21:00.306Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-019",
-        "result": "pass",
-        "by": "Feel",
-        "independent": true
-      }
-    },
     {
       "time": "2026-11-01T09:21:03.641Z",
       "agent": "cli",
@@ -2079,6 +2057,78 @@
         "kind": "test",
         "by": "feel-tester"
       }
+    },
+    {
+      "time": "2026-11-14T09:58:47.412Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:26.869Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-039",
+        "title": "openfeel-dsh 页面重写：以 OpenFeel 为主介绍，适配细节后置"
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:32.616Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-039",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:37.306Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:44.344Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.22-stage-10",
+        "requirementId": "REQ-039",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:51.704Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:57.173Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2328,6 +2378,19 @@
         "note": "CI 已切换到 Trusted Publisher（OIDC），无需 2FA token；1.5.21 双包发布成功。",
         "evidence": "CI run 43582380537 成功；npm view openfeel version=1.5.21、openfeel-dsh version=1.5.21；npm page README 已更新为通俗版；Pages 索引含 1.5.21；build/tsc/vitest/dsh 全绿（阶段 8 已验证）"
       }
+    },
+    {
+      "id": "REQ-039",
+      "title": "openfeel-dsh 页面重写：以 OpenFeel 为主介绍，适配细节后置",
+      "status": "draft",
+      "created_at": "2026-11-14T10:58:26.869Z",
+      "updated_at": "2026-11-14T10:58:32.615Z",
+      "target_version": "v1.5.22",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-039.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T10:58:32.615Z"
     }
   ]
 }

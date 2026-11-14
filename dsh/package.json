@@ -1,6 +1,6 @@
 {
   "name": "openfeel-dsh",
-  "version": "1.5.21",
+  "version": "1.5.22",
   "description": "将 OpenFeel 的工作记录与开发流程接入 DeepSeek Harness：记住项目做到哪、下一步做什么，默认自由模式，也可切到按步骤走的流程模式",
   "type": "module",
   "license": "MIT",
@@ -36,7 +36,7 @@
   },
   "openfeel": {
     "adapter": "dsh",
-    "requiresCli": ">=1.5.21"
+    "requiresCli": ">=1.5.22"
   },
   "keywords": [
     "openfeel",

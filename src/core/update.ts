@@ -450,7 +450,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.5.21 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.22 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -487,6 +487,13 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
 > 命令职责分层：\`plan stage add\`（完整，推荐）> \`flow stage add\`（仅注册 \`flow.json\`，不建目录）> \`stage create\`（已弃用）。
+
+## v1.5.22（stage-10）
+
+> \`openfeel-dsh\` 页面重排：以 OpenFeel 为主介绍，再说明是 DSH 适配版本；适配细节后置。无行为变更。
+
+- **适配器页面（v1.5.22 / REQ-039）**：npm 页开头讲 OpenFeel 是什么、两个问题、版本与阶段、待办清单、两种模式、记录位置，然后一句「这是 OpenFeel 在 DeepSeek Harness 上的适配版本」；工具面/命令面/门禁/验证等归入「适配细节」。
+- **安装**：方式 0（\`openfeel setup --tools dsh\`）、方式 B（\`dsh plugin add openfeel-dsh\`，别再跑 setup）、方式 C（发现页索引）保留。
 
 ## v1.5.21（stage-8）
 

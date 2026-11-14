@@ -36,7 +36,7 @@ OpenFeel 是配合 DSH、Claude Code、opencode 这类 AI 编程工具使用的�
 
 所有记录都保存在项目根目录的 `.openfeel/` 文件夹里，不放在聊天对话中，换会话或关掉软件都不会丢。里面包含当前进度、待办清单、检查记录、历史版本和项目设置。这些文件由 OpenFeel 自己维护，不需要手动修改，DSH 里的适配器只负责读取和转述。
 
-> 📦 **最新版本 v1.5.21** — 介绍与适配器页面改写为更通俗的说明。`feel_mode` 两种取值为 Feel Mode（流程模式，`enabled`）与 Free Mode（自由模式，`disabled`），默认 Free Mode。适配器 `dsh/` 同时以独立 npm 包 `openfeel-dsh` 发布，DSH 官方「发现」页可用索引 [`docs/market/index.json`](docs/market/index.json) 添加。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.22** — 适配器页面（`openfeel-dsh`）重写为「主要介绍 OpenFeel，再说明它是 DSH 适配版本」，适配细节移到后面；`feel_mode` 两种取值为 Feel Mode（流程模式，`enabled`）与 Free Mode（自由模式，`disabled`），默认 Free Mode。DSH 官方「发现」页可用索引 [`docs/market/index.json`](docs/market/index.json) 添加。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

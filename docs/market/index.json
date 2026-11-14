@@ -16,8 +16,8 @@
         "zh": "OpenFeel"
       },
       "description": {
-        "en": "OpenFeel × DSH — 流程治理适配器（Feel Mode 流程模式 / Free Mode 自由模式）：把 OpenFeel 的流水线、需求分发、版本归档与知识库接入 DeepSeek Harness",
-        "zh": "OpenFeel × DSH — 流程治理适配器（Feel Mode 流程模式 / Free Mode 自由模式）：把 OpenFeel 的流水线、需求分发、版本归档与知识库接入 DeepSeek Harness"
+        "en": "将 OpenFeel 的工作记录与开发流程接入 DeepSeek Harness：记住项目做到哪、下一步做什么，默认自由模式，也可切到按步骤走的流程模式",
+        "zh": "将 OpenFeel 的工作记录与开发流程接入 DeepSeek Harness：记住项目做到哪、下一步做什么，默认自由模式，也可切到按步骤走的流程模式"
       },
       "icon": "icons/openfeel.svg",
       "author": "Liuary",
@@ -27,6 +27,19 @@
         "directory": "dsh"
       },
       "versions": [
+        {
+          "version": "1.5.21",
+          "publishTimestamp": 1794648889,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/Liuary/OpenFeel",
+            "commit": "68d38ac48a1c4b1ffd3c5f3358908eb0adcb8cc5",
+            "path": "dsh"
+          },
+          "engines": {
+            "dsh": ">=0.2.0"
+          }
+        },
         {
           "version": "1.5.20",
           "publishTimestamp": 1794641493,

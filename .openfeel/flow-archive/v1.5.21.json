@@ -1,0 +1,397 @@
+{
+  "version": "v1.5.21",
+  "stages": {
+    "v1.5.21-stage-7": {
+      "name": "v1.5.21-stage-7",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-036",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T08:07:26.065Z",
+        "end_time": "2026-11-14T08:16:55.408Z",
+        "duration_ms": 569343
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T08:16:51.702Z",
+        "note": "CI 诊断能力到位：dsh 发布失败时注解输出 npm error 摘要；根因判定为 npm 新包首发需 OTP。",
+        "evidence": "gh run view 43574682076 --log-failed 读取到 npm error code EOTP；CI #118 注解亦输出该错误摘要"
+      }
+    },
+    "v1.5.21-stage-8": {
+      "name": "v1.5.21-stage-8",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-037",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T09:28:48.769Z",
+        "end_time": "2026-11-14T09:35:58.950Z",
+        "duration_ms": 430181
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T09:35:54.376Z",
+        "note": "v1.5.21 文案收口：README / dsh/README 通俗化、版本与市场索引更新，无行为变更。",
+        "evidence": "build 通过；tsc 0；vitest 2409/2409；lint 1194；dsh verify 121/121；guard 179/179；market:index:check 通过（1.5.21）"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.21-stage-7",
+      "stage": "v1.5.21-stage-7",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：CI 诊断步（仅捕获 stderr 写注解，不改变发布判定）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T08:08:31.675Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.21-stage-7",
+      "stage": "v1.5.21-stage-7",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：CI 错误注解实现（npm error 行优先），已定位 EOTP",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T08:16:03.875Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.5.21-stage-8",
+      "stage": "v1.5.21-stage-8",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：README 与 dsh/README 通俗化重写（纯文案，安装章节与事实已核对）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T09:35:11.640Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-11-14T08:07:12.212Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:26.062Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:32.014Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:07:41.317Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:08:25.043Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:08:38.972Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:08:44.173Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:11:46.372Z",
+      "agent": "flow-manager",
+      "action": "reset_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "archiving",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:15:57.082Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:11.313Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:16.009Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T08:16:55.402Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-7",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:37.304Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:48.767Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:53.958Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:28:59.021Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:06.566Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:19.085Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:24.126Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:58.944Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-036",
+      "title": "CI 诊断：将 openfeel-dsh 发布失败原因暴露为注解，定位 token/发布错误",
+      "status": "done",
+      "created_at": "2026-11-14T08:07:04.358Z",
+      "updated_at": "2026-11-14T08:16:46.274Z",
+      "target_version": "v1.5.21",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-036.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T08:07:09.518Z",
+      "review": {
+        "result": "pass",
+        "by": "feel (self-review)",
+        "at": "2026-11-14T08:16:22.657Z",
+        "note": "self-review：CI 诊断改动仅把 npm 输出写入注解；已用 gh 读取失败日志定位根因 EOTP（新包首发需 2FA 验证码，CI 无法提供）。",
+        "independent": false
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T08:16:27.816Z",
+        "note": "诊断达成：根因为 npm 新包首次发布要求 OTP，而非 token 权限；修复路径为本地带 OTP 首发一次，之后 CI 可续发。",
+        "evidence": "CI #118 注解 + gh run view 43574682076 --log-failed：npm error code EOTP（This operation requires a one-time password）→ 新包首发需 2FA OTP；CLI 包（已存在）发布不受影响"
+      }
+    },
+    {
+      "id": "REQ-037",
+      "title": "README 与 openfeel-dsh 页面通俗化重写（面向非程序员）+ 发布 1.5.21",
+      "status": "done",
+      "created_at": "2026-11-14T09:28:27.669Z",
+      "updated_at": "2026-11-14T09:35:48.072Z",
+      "target_version": "v1.5.21",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-037.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T09:28:33.692Z",
+      "review": {
+        "result": "pass",
+        "by": "feel (self-review)",
+        "at": "2026-11-14T09:35:29.624Z",
+        "note": "self-review：纯文案改动；事实（阶段顺序、七种需求状态、两种模式默认值、记录位置）逐条核对；安装章节与 dsh/README 编号已检查。",
+        "independent": false
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T09:35:34.921Z",
+        "note": "README 与 dsh/README 通俗化完成，安装章节保留；市场索引与版本号收口；全量验证绿。",
+        "evidence": "npm run build 通过；tsc 0；vitest 2409/2409；lint i18n 1194；dsh verify 121/121；guard 179/179；market:index:check 通过（4 版本，1.5.21 @ 68d38ac4）"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 2,
+    "reviews": 3,
+    "log": 20,
+    "requirements": 2
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-14T09:36:12.468Z"
+}

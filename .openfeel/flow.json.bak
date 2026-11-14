@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T07:32:36.538Z",
-    "revision": 2219,
+    "updated": "2026-11-14T07:32:39.373Z",
+    "revision": 2220,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -50,7 +50,7 @@
     "last_req_seq": 35
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.5.20-stage-6",
       "op": ""
@@ -60,8 +60,8 @@
   "stages": {
     "v1.5.20-stage-6": {
       "name": "v1.5.20-stage-6",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -73,8 +73,8 @@
       ],
       "stats": {
         "start_time": "2026-11-14T07:08:01.654Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-14T07:32:39.347Z",
+        "duration_ms": 1477693
       },
       "verification": {
         "result": "pass",
@@ -101,16 +101,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T07:22:51.913Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-029",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
     {
       "time": "2026-11-01T07:22:54.478Z",
       "agent": "cli",
@@ -2117,6 +2107,18 @@
         "result": "pass",
         "kind": "test",
         "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-14T07:32:39.341Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.20-stage-6",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

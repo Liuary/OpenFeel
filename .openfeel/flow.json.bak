@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T09:28:53.964Z",
-    "revision": 2252,
+    "updated": "2026-11-14T09:35:54.376Z",
+    "revision": 2264,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -88,8 +88,8 @@
     },
     "v1.5.21-stage-8": {
       "name": "v1.5.21-stage-8",
-      "phase": "plan_passed",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -103,6 +103,14 @@
         "start_time": "2026-11-14T09:28:48.769Z",
         "end_time": "",
         "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T09:35:54.376Z",
+        "note": "v1.5.21 文案收口：README / dsh/README 通俗化、版本与市场索引更新，无行为变更。",
+        "evidence": "build 通过；tsc 0；vitest 2409/2409；lint 1194；dsh verify 121/121；guard 179/179；market:index:check 通过（1.5.21）"
       }
     }
   },
@@ -130,113 +138,21 @@
       "filed_at": "2026-11-14T08:16:03.875Z",
       "canAutoFix": false,
       "blocking": false
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.5.21-stage-8",
+      "stage": "v1.5.21-stage-8",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：README 与 dsh/README 通俗化重写（纯文案，安装章节与事实已核对）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T09:35:11.640Z",
+      "canAutoFix": false,
+      "blocking": false
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T08:12:17.419Z",
-      "agent": "cli",
-      "action": "requirement_rollover",
-      "detail": {
-        "from": "v1.5.8",
-        "to": "v1.5.9",
-        "ids": [
-          "REQ-018",
-          "REQ-019"
-        ],
-        "count": 2
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:25.630Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-004"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:28.072Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-005"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:39.358Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.8-stage-122",
-        "result": "pass",
-        "kind": "test",
-        "by": "Feel"
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:48.868Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.8",
-        "stages": 2,
-        "reviews": 2,
-        "log": 19,
-        "requirements": 7
-      }
-    },
-    {
-      "time": "2026-11-01T08:12:56.035Z",
-      "agent": "cli",
-      "action": "chore_start",
-      "detail": {
-        "id": "CHORE-20261101T081256",
-        "note": "1.5.8 版本收口：版本号/CHANGELOG/VERSIONS/README + build",
-        "expires_at": "2026-11-01T09:12:56.028Z",
-        "stage_count": 3
-      }
-    },
-    {
-      "time": "2026-11-01T08:19:06.674Z",
-      "agent": "cli",
-      "action": "chore_end",
-      "detail": {
-        "id": "CHORE-20261101T081256",
-        "note": "1.5.8 版本收口：版本号/CHANGELOG/VERSIONS/README + build",
-        "stage_count": 3
-      }
-    },
-    {
-      "time": "2026-11-01T09:12:50.947Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.7",
-        "stages": 3,
-        "reviews": 3,
-        "log": 32,
-        "requirements": 4
-      }
-    },
-    {
-      "time": "2026-11-01T09:13:08.736Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-018",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-01T09:13:10.823Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-019",
-        "owner": "Liuary"
-      }
-    },
     {
       "time": "2026-11-01T09:13:13.190Z",
       "agent": "cli",
@@ -2149,6 +2065,117 @@
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-11-14T09:28:59.021Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:06.566Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:19.085Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:24.126Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.21-stage-8",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:29.625Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-037",
+        "result": "pass",
+        "by": "feel (self-review)",
+        "independent": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:34.921Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-037",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:38.319Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-037",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:42.738Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-037",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:48.073Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-037",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-14T09:35:54.376Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.21-stage-8",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
+      }
     }
   ],
   "requirements": [
@@ -2402,15 +2429,30 @@
     {
       "id": "REQ-037",
       "title": "README 与 openfeel-dsh 页面通俗化重写（面向非程序员）+ 发布 1.5.21",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-14T09:28:27.669Z",
-      "updated_at": "2026-11-14T09:28:33.692Z",
+      "updated_at": "2026-11-14T09:35:48.072Z",
       "target_version": "v1.5.21",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-037.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-14T09:28:33.692Z"
+      "claimed_at": "2026-11-14T09:28:33.692Z",
+      "review": {
+        "result": "pass",
+        "by": "feel (self-review)",
+        "at": "2026-11-14T09:35:29.624Z",
+        "note": "self-review：纯文案改动；事实（阶段顺序、七种需求状态、两种模式默认值、记录位置）逐条核对；安装章节与 dsh/README 编号已检查。",
+        "independent": false
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T09:35:34.921Z",
+        "note": "README 与 dsh/README 通俗化完成，安装章节保留；市场索引与版本号收口；全量验证绿。",
+        "evidence": "npm run build 通过；tsc 0；vitest 2409/2409；lint i18n 1194；dsh verify 121/121；guard 179/179；market:index:check 通过（4 版本，1.5.21 @ 68d38ac4）"
+      }
     }
   ]
 }

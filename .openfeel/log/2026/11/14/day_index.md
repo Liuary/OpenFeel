@@ -13,3 +13,5 @@
 | [2026-11-14-Liuary-008.md](2026-11-14-Liuary-008.md) | Liuary | v1.5.21-stage-7 review_added |
 | [2026-11-14-Liuary-009.md](2026-11-14-Liuary-009.md) | Liuary | v1.5.21-stage-7 review_added |
 | [2026-11-14-Liuary-010.md](2026-11-14-Liuary-010.md) | Liuary | 阶段 v1.5.21-stage-7 完成 |
+| [2026-11-14-Liuary-011.md](2026-11-14-Liuary-011.md) | Liuary | v1.5.21-stage-8 review_added |
+| [2026-11-14-Liuary-012.md](2026-11-14-Liuary-012.md) | Liuary | 阶段 v1.5.21-stage-8 完成 |

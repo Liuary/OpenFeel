@@ -151,4 +151,12 @@ jobs:
             exit 0
           fi
           echo "publishing openfeel-dsh@$LOCAL_DSH"
-          npm publish ./dsh --access public --registry https://registry.npmjs.org
+          # 失败时把 npm 输出摘要写进注解，便于无 admin 权限时定位（不含 token 等敏感值）
+          set +e
+          npm publish ./dsh --access public --registry https://registry.npmjs.org 2>&1 | tee /tmp/dsh-publish.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            msg=$(tr '\n' ' ' < /tmp/dsh-publish.log | cut -c1-600)
+            echo "::error::openfeel-dsh publish failed (exit $status): $msg"
+            exit "$status"
+          fi

@@ -28,6 +28,19 @@
       },
       "versions": [
         {
+          "version": "1.5.22",
+          "publishTimestamp": 1794654326,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/Liuary/OpenFeel",
+            "commit": "b4d3886dc9b0d574ffe1422e2ca91e089c1d4c73",
+            "path": "dsh"
+          },
+          "engines": {
+            "dsh": ">=0.2.0"
+          }
+        },
+        {
           "version": "1.5.21",
           "publishTimestamp": 1794648889,
           "source": {

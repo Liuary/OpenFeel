@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T06:46:39.755Z",
-    "revision": 2189,
+    "updated": "2026-11-14T06:54:25.869Z",
+    "revision": 2196,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -86,8 +86,8 @@
     },
     "v1.5.19-stage-5": {
       "name": "v1.5.19-stage-5",
-      "phase": "plan_passed",
-      "status": "planned",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -95,6 +95,14 @@
         "start_time": "2026-11-14T06:46:32.451Z",
         "end_time": "",
         "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T06:54:25.868Z",
+        "note": "v1.5.19 版本收口：版本号 package/lock/dsh/ADAPTER/README 一致，CHANGELOG/VERSIONS/skill 快照同步，市场索引指向含 1.5.19 的 commit。",
+        "evidence": "node bin/openfeel.js --version=1.5.19；tsc 0；vitest 2409/2409；build 通过（skill 三副本同步）；lint i18n 1194；dsh verify 121/121；guard 179/179；npm run market:index:check 通过（2 版本：1.5.18/1.5.19）"
       }
     }
   },
@@ -122,56 +130,21 @@
       "filed_at": "2026-11-14T06:35:58.738Z",
       "canAutoFix": false,
       "blocking": false
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.5.19-stage-5",
+      "stage": "v1.5.19-stage-5",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：v1.5.19 版本收口（版本号五处一致、skill 三副本同步、市场索引 2 版本校验）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T06:54:07.148Z",
+      "canAutoFix": false,
+      "blocking": false
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T07:12:11.310Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-026",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T07:12:13.428Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-026",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-01T07:12:16.388Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-029",
-        "title": "多会话收束 P0：会话登记 + 自动提交防污染（多会话时拒绝 -A）+ current 优先非 done 阶段 + feel_status.sessions"
-      }
-    },
-    {
-      "time": "2026-11-01T07:12:18.977Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-029",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-01T07:12:47.087Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-030",
-        "title": "需求随版本归档 + 需求 ID 单调计数器（last_req_seq）+ 发布门 release-check / 未完成需求顺延"
-      }
-    },
     {
       "time": "2026-11-01T07:12:49.181Z",
       "agent": "cli",
@@ -2139,6 +2112,65 @@
         "to": "plan_passed",
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:46:47.901Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-5",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:54:01.393Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-5",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:54:15.379Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-5",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:54:19.959Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-5",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:54:25.869Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.19-stage-5",
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester"
       }
     }
   ],

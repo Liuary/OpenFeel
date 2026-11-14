@@ -1,3 +1,16 @@
+## [1.5.19] - 2026-11-14
+
+> 术语定名 + DSH 市场索引：`feel_mode` 两态正式称为 **Feel Mode（流程模式，`enabled`）** 与 **Free Mode（自由模式，`disabled`）**；README 新增「两种模式」对照；新增官方 format 1 市场索引。配置值与门禁行为不变。
+
+### Added
+- [stage-4] **术语定名（REQ-034）**：`enabled` = **Feel Mode（流程模式）**、`disabled` = **Free Mode（自由模式）**；DSH 提示词状态行与自由模式节标题同步（`Feel Mode（流程模式）已启用` / `Free Mode（自由模式）已启用`），`docs/commands.md` / `dsh/README.md` / `dsh/docs/compat/pipeline.md` 统一称呼。
+- [stage-4] **README 重订**：新增「两种模式：Feel Mode 与 Free Mode」对照（行为 / 适合场景 / 默认 / 切换命令），并明确 `feel_mode` 与 `workflow_mode` 正交（是否强制流程 vs 走多少道关）。
+- [stage-4] **DSH 市场索引**：`docs/market/index.json`（官方 format 1；`source = git + 固定 commit + path:/dsh`）由 `npm run market:index` 生成、`npm run market:index:check` 校验；插件标题统一为 `OpenFeel`，描述随 `dsh/package.json` 更新。
+- [stage-4] **调研落地**：`docs/research/dsh-plugin-market-landscape.md` 增补「2026-11-14 落地状态与操作清单」（官方发现页 / dsh.market / 社区一键安装前置 = 独立 npm 包）；`docs/market/README.md` 补 Pages 前置与当前状态。
+
+### Notes
+- 本次仅称呼、文档与索引变化：配置值、解析层级、状态机与全部门禁行为不变。
+
 ## [1.5.18] - 2026-11-13
 
 > 行为变更：`feel_mode` **默认值**从 `enabled` 改为 `disabled` —— 全新安装 / 全新用户开箱宽松；显式 `enabled` 仍可钉死严格。解析层级、门禁与归档逻辑不变。

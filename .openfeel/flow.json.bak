@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-14T06:38:59.873Z",
-    "revision": 2185,
+    "updated": "2026-11-14T06:46:39.755Z",
+    "revision": 2189,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -51,7 +51,7 @@
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.5.19-stage-4",
+      "stage": "v1.5.19-stage-5",
       "op": ""
     },
     "retry": 0
@@ -59,8 +59,8 @@
   "stages": {
     "v1.5.19-stage-4": {
       "name": "v1.5.19-stage-4",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -72,8 +72,8 @@
       ],
       "stats": {
         "start_time": "2026-11-14T06:28:30.768Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-14T06:39:07.358Z",
+        "duration_ms": 636590
       },
       "verification": {
         "result": "pass",
@@ -82,6 +82,19 @@
         "at": "2026-11-14T06:38:24.758Z",
         "note": "术语定名（Feel Mode 流程模式 / Free Mode 自由模式）、README 重订、DSH format 1 市场索引生成并校验通过（git 源 + 固定 commit + path:/dsh）；研究文档补两条发布路径与 Pages 前置。",
         "evidence": "npm run market:index:check → 1 插件/1 版本通过（1.5.18 @ dbf8be06, git+path:/dsh）；npx tsc --noEmit 0；npx vitest run 2409/2409；npm run build 通过；node dsh/test/verify.js 121/121；node dsh/test/guard.js 179/179；lint i18n 1194"
+      }
+    },
+    "v1.5.19-stage-5": {
+      "name": "v1.5.19-stage-5",
+      "phase": "plan_passed",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-11-14T06:46:32.451Z",
+        "end_time": "",
+        "duration_ms": 0
       }
     }
   },
@@ -112,54 +125,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-11-01T07:05:35.126Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-028",
-        "title": "stage 多需求编排：requirements[] 链接 + 兼容旧单值 + 聚合/归档列全"
-      }
-    },
-    {
-      "time": "2026-11-01T07:10:48.597Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-028",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-01T07:10:50.873Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-028",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-01T07:10:53.256Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-028",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-01T07:12:09.404Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-026",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
     {
       "time": "2026-11-01T07:12:11.310Z",
       "agent": "cli",
@@ -2130,6 +2095,50 @@
         "id": "REQ-034",
         "from": "in_progress",
         "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-14T06:39:07.348Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-4",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:45:26.004Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.19-stage-5",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T06:46:32.444Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-5",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T06:46:39.748Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-5",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

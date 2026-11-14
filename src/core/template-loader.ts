@@ -4464,7 +4464,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - 与 \`openfeel-tool-usage\` 协同：工具选择规范见该 skill；本 skill 补充 CLI 命令细节。
 - 正文以**能力名**叙述；平台差异见 \`### opencode 适配器\` / \`### Claude Code 适配器\` 两小节。
 
-> 本文档为 v1.5.18 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
+> 本文档为 v1.5.19 快照；命令/参数细节以 \`openfeel <cmd> --help\`（本仓执行）实时输出为准（CLI 演进后本文档可能滞后）。
 >
 > ⚠️ **本仓自举**：本仓（openfeel 源码仓库）开发/执行时请用 \`node bin/openfeel.js <cmd>\`；安装后使用 \`openfeel <cmd>\`。
 
@@ -4501,6 +4501,14 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 **纠错/清理侧补充**：\`flow review add|resolve|update|remove\`；\`flow ops list [--stage <id>] [--json]\`（操作方案视图，draft 分组展示）；\`flow repair [--prune-orphans]\`（默认只报告，\`--prune-orphans\` 仅清键孤儿，单向不删文件）；\`plan scheme register\`（补注册**文件孤儿**：有 op 文件无注册键 → 写入 flow.json，\`--dry-run\` 零写盘；与 \`flow repair --prune-orphans\`（仅清键孤儿）对称）；**\`flow stage reset <id> --to <phase>\`**（\`advance\` 的**对称复位**：允许回退，受合法 phase 值域 + \`to=done\` 阻塞 REV 约束，\`--dry-run\` 零写盘）；**\`flow checkpoint restore <file> --stage <id> [--dry-run]\`**（按阶段选择性回退；\`--dry-run\` 差异预览零写盘）。
 
 > 命令职责分层：\`plan stage add\`（完整，推荐）> \`flow stage add\`（仅注册 \`flow.json\`，不建目录）> \`stage create\`（已弃用）。
+
+## v1.5.19（stage-4）
+
+> 术语定名 + DSH 市场索引：\`feel_mode\` 两态正式称呼为 **Feel Mode（流程模式，\`enabled\`）** 与 **Free Mode（自由模式，\`disabled\`）**；README 新增「两种模式」对照；新增官方 format 1 市场索引 \`docs/market/index.json\`。配置值与行为不变。
+
+- **术语（v1.5.19 / REQ-034）**：\`enabled\` = **Feel Mode（流程模式）**、\`disabled\` = **Free Mode（自由模式）**；DSH 提示词状态行同步（\`Feel Mode（流程模式）已启用\` / \`Free Mode（自由模式）已启用\`），自由模式节标题改为 \`## Free Mode（自由模式；…）\`。\`config set feel_mode enabled|disabled\` 与解析层级不变。
+- **市场索引**：\`npm run market:index\` 生成 \`docs/market/index.json\`（\`format:1\`，\`source=git + commit + path:/dsh\`，版本必须真实存在于该 commit），\`npm run market:index:check\` 校验；部署到 GitHub Pages 后用户在 DSH「发现 → 添加索引源」填入 URL。
+- **\`workflow_mode\` 与 \`feel_mode\` 正交**：前者决定走流程时关卡密度（\`full|fast|general\`），后者决定是否强制流程。
 
 ## v1.5.18（stage-3）
 

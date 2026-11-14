@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.5.19** — Naming & distribution: the two `feel_mode` states are now called **Feel Mode** (`enabled`, full process enforcement) and **Free Mode** (`disabled`, relaxed); the README gains a two-mode comparison (and clarifies that `feel_mode` is orthogonal to `workflow_mode`), the DSH prompt uses the same names, and the repo now ships an official format-1 DSH market index (`docs/market/index.json`, git source pinned to a commit with `path:/dsh`) that users can add as an index source in DSH's Discover page; community-market paths and their npm-identity requirement are documented.
 - **v1.5.18** — Relaxed by default: `feel_mode` now defaults to `disabled`, so a fresh install / new user starts relaxed (no forced requirement/stage, `preflight` warns instead of blocking, the DSH prompt renders "free mode"), while an explicit `enabled` in the project config or the global profile still pins strict mode (project-over-global). Resolution, immediate effect, and every hard gate (state machine, `done` gate, stage verification, archive criteria, blocking-REV gate, write guard) are unchanged — only the unconfigured default flips; existing projects that already set `feel_mode` are unaffected.
 - **v1.5.17** — Feel-mode switch: `feel_mode: enabled|disabled` (default `enabled` = unchanged). `disabled` softens **process enforcement** only — no forced requirement/stage, `preflight` downgrades from strict to warn, and the DSH prompt switches to "free mode" — while the state machine, `done` gate, stage verification, archive criteria, blocking-REV gate and the write guard stay in force. Resolution is project-over-global (`.openfeel/config.yaml` `defaults.feel_mode` > global `~/.config/openfeel/profile.yaml` `preferences.feel_mode` > builtin `enabled`) and takes effect immediately (the adapter re-reads it on every turn). Also fixes requirement-ID reuse: `flow archive` now raises `meta.last_req_seq`, and `req add` / `req split` fold the archived maximum in before allocating.
 - **v1.5.16** — Consistency polish: `attempt` now keeps `checkpoints.exec.attempts` in sync with the top-level counter, `flow ops list` stops warning about empty templates on `done`/`failed` ops (the `fill` value stays truthful; `flow health` still reports them as data hygiene), and docs now state that `req claim` only records the owner fields (use `req advance` to change status), that the fourth shell-gate class is a non-blocking warning with `OPENFEEL_SHELL_ALLOW` as the exact-command allowlist, and that removing a `done` op needs `--force`.
@@ -47,6 +48,13 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.5.19 — 术语定名 + DSH 市场索引
+
+- **两种模式的正式称呼**：`feel_mode: enabled` = **Feel Mode（流程模式）**，`disabled` = **Free Mode（自由模式）**。配置值、解析层级与门禁行为不变；DSH 提示词状态行改用这两个称呼。
+- **README 重订**：新增「两种模式」对照（行为 / 适合场景 / 默认 / 切换命令），并说明 `feel_mode` 与 `workflow_mode` 是两个正交开关——前者决定是否强制流程，后者决定走流程时的关卡密度。
+- **DSH 市场索引**：新增官方 format 1 索引 `docs/market/index.json`（git 源 + 固定 commit + `path:/dsh`，版本随每次发布生成），配合 GitHub Pages 即可在 DSH「发现 → 添加索引源」中添加；dsh.market 等社区市场的收录方式与限制见 `docs/research/dsh-plugin-market-landscape.md`。
+- **升级**：`npm i -g openfeel@latest` → `openfeel setup` → 重启宿主。
 
 ## v1.5.18 — 默认宽松（feel_mode 默认值 enabled → disabled）
 

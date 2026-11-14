@@ -31,7 +31,7 @@ openfeel config effective feel_mode                            # 查看生效值
 
 - **不要和 `workflow_mode` 混淆**：`feel_mode` 决定「**是否**强制流程」；`workflow_mode`（`full` / `fast` / `general`）决定「走流程时**走多少道关**」——两者正交，见下文「快速迭代模式」。
 
-> 📦 **最新版本 v1.5.18**（默认 Free Mode 自由模式） — `feel_mode` 默认值从 `enabled` 改为 `disabled`：全新安装 / 全新用户**开箱即 Free Mode（自由模式）**（不强制建需求/阶段、`preflight` 由 `strict` 降为提示、DSH 提示词切「Free Mode」），但状态机 / `done` 门 / 归档判据 / blocking REV / 写入门禁全部保留；项目 `.openfeel/config.yaml` 或全局 profile 显式 `enabled` 仍可切回 **Feel Mode（流程模式）**（项目级覆盖全局），解析层级与即时生效语义不变。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+> 📦 **最新版本 v1.5.19**（术语定名 + DSH 市场索引） — ① `feel_mode` 两态正式定名：**Feel Mode（流程模式，`enabled`）** 与 **Free Mode（自由模式，`disabled`）**，并重订 README 的「两种模式」节（默认、切换、与 `workflow_mode` 的正交关系）；② 新增 DSH 官方 format 1 市场索引 [`docs/market/index.json`](docs/market/index.json)（git 源 + 固定 commit + `path:/dsh`），配合 GitHub Pages 可被 DSH「发现」页作为索引源添加；社区市场（dsh.market 等）的收录方式与限制见 [调研](docs/research/dsh-plugin-market-landscape.md)。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 

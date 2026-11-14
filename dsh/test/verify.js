@@ -315,14 +315,15 @@ async function main() {
   await check('renderFeelPrompt：disabled 中/英含自由模式节且保留硬门；enabled 逐字不变', () => {
     const enabledZh = renderFeelPrompt({ language: 'zh-CN', detected: true, projectRoot: SOURCE_PROJECT });
     assert(!enabledZh.includes('自由模式'), 'enabled 不应出现自由模式节');
+    assert(enabledZh.includes('Feel Mode（流程模式）已启用'), 'enabled zh 应以 Feel Mode（流程模式）称呼');
     // v1.5.17 回归锁定（字节级）：enabled 路径不得多出空行（曾出现 `\n\n\n##`）
     assert(enabledZh.includes('（已初始化 `.openfeel/`）。\n\n## 你的角色：调度者'), 'enabled zh 标题前应恰为一个空行');
     assert(!enabledZh.includes('\n\n\n'), 'enabled zh 不得出现连续三换行');
     const disabledZh = renderFeelPrompt({
       language: 'zh-CN', detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value: 'disabled', source: 'config.yaml' },
     });
-    assert(disabledZh.includes('自由模式'), 'disabled zh 缺少自由模式节');
-    assert(disabledZh.includes('\n\n## 自由模式（'), 'disabled zh 自由模式节前应恰为空行');
+    assert(disabledZh.includes('Free Mode（自由模式）'), 'disabled zh 缺少 Free Mode（自由模式）字样');
+    assert(disabledZh.includes('\n\n## Free Mode（自由模式；'), 'disabled zh Free Mode 节前应恰为空行');
     assert(disabledZh.includes('执行。\n\n## 你的角色：调度者'), 'disabled zh 自由模式节后应恰为空行');
     for (const marker of ['由你判断', 'preflight', 'done` 门', '归档判据', 'flow.json']) {
       assert(disabledZh.includes(marker), `disabled zh 缺少标记「${marker}」`);
@@ -330,13 +331,14 @@ async function main() {
     const disabledEn = renderFeelPrompt({
       language: 'en', detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value: 'disabled', source: 'builtin' },
     });
-    assert(disabledEn.includes('Free mode'), 'disabled en 缺少 Free mode 节');
-    assert(disabledEn.includes('\n\n## Free mode ('), 'disabled en 自由模式节前应恰为空行');
+    assert(disabledEn.includes('Free Mode'), 'disabled en 缺少 Free Mode 节');
+    assert(disabledEn.includes('\n\n## Free Mode ('), 'disabled en 自由模式节前应恰为空行');
     for (const marker of ['optional', 'done` gate', 'archive criteria', 'write guard']) {
       assert(disabledEn.includes(marker), `disabled en 缺少标记「${marker}」`);
     }
     const enabledEn = renderFeelPrompt({ language: 'en', detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value: 'enabled', source: 'builtin' } });
     assert(!enabledEn.includes('Free mode'), 'enabled en 不应出现 Free mode');
+    assert(enabledEn.includes('Feel Mode is active'), 'enabled en 应以 Feel Mode 称呼');
     assert(enabledEn.includes('`.openfeel/`).\n\n## Your role'), 'enabled en 标题前应恰为一个空行');
     assert(!enabledEn.includes('\n\n\n'), 'enabled en 不得出现连续三换行');
   });

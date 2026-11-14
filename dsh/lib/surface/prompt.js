@@ -42,7 +42,7 @@ export function renderFeelPrompt(options = {}) {
  */
 function renderFreeModeChinese() {
   return `
-## 自由模式（\`feel_mode=disabled\`；与后文冲突时以本节为准）
+## Free Mode（自由模式；\`feel_mode=disabled\`；与后文冲突时以本节为准）
 - **不强制流程**：是否创建需求（REQ）、是否建立阶段/工作流，由你判断；不再催你「先建阶段」。
 - **可以直接干活**：只读任务直接做；改代码/写文档直接做（写入门禁仍生效）。
 - **先读后写降级**：preflight 从「拒绝」降为「提示」——不必先 \`feel_status\` 才能写；写状态前读一眼仍是好习惯。
@@ -59,7 +59,7 @@ function renderFreeModeChinese() {
  */
 function renderFreeModeEnglish() {
   return `
-## Free mode (\`feel_mode=disabled\`; this section wins over later conflicts)
+## Free Mode (\`feel_mode=disabled\`; this section wins over later conflicts)
 - **Workflow is optional**: whether to create a requirement (REQ) or open a stage/workflow is your call; nobody nags you to open a stage.
 - **Work directly when appropriate**: read-only work proceeds immediately; code/doc edits proceed immediately (the write guard still applies).
 - **Read-before-write is relaxed**: preflight downgrades from "refuse" to "warn" — you no longer need \`feel_status\` before writing; still a good habit before state writes.
@@ -154,7 +154,7 @@ function renderChinese(options) {
     ? `当前项目：\`${options.projectRoot}\`（已初始化 \`.openfeel/\`）。`
     : '当前工作区尚未检测到 `.openfeel/`：若用户要求使用 Feel 流程，先提示运行 `openfeel init`。';
   const status = options.detected === true
-    ? (options.feelDisabled === true ? 'Feel 模式已启用（`feel_mode=disabled`：自由模式）' : 'Feel 模式已启用')
+    ? (options.feelDisabled === true ? 'Free Mode（自由模式）已启用' : 'Feel Mode（流程模式）已启用')
     : 'Feel 模式未初始化';
 
   return `<feel_mode>
@@ -243,7 +243,7 @@ function renderEnglish(options) {
     ? `Project: \`${options.projectRoot}\` (initialized \`.openfeel/\`).`
     : 'No `.openfeel/` detected in this workspace: if the user asks for the Feel process, suggest `openfeel init` first.';
   const status = options.detected === true
-    ? (options.feelDisabled === true ? 'Feel mode is active (`feel_mode=disabled`: free mode)' : 'Feel mode is active')
+    ? (options.feelDisabled === true ? 'Free Mode is active' : 'Feel Mode is active')
     : 'Feel mode is not initialized';
 
   return `<feel_mode>

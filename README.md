@@ -10,7 +10,28 @@
 
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。核心理念：**「提示词瘦身，流程入工具」** —— Agent 不靠读长文本理解流程，而是通过 `flow.json` 获取当前状态和下一步指令。
 
-> 📦 **最新版本 v1.5.18**（默认宽松） — `feel_mode` 默认值从 `enabled` 改为 `disabled`：全新安装 / 全新用户**开箱即宽松**（不强制建需求/阶段、`preflight` 由 `strict` 降为提示、DSH 提示词切「自由模式」），但状态机 / `done` 门 / 归档判据 / blocking REV / 写入门禁全部保留；项目 `.openfeel/config.yaml` 或全局 profile 显式 `enabled` 仍可**钉死严格**（项目级覆盖全局），解析层级与即时生效语义不变。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
+## 两种模式：Feel Mode（流程模式）与 Free Mode（自由模式）
+
+`feel_mode` 决定 OpenFeel **是否强制流程**。两个模式共享同一套状态机、数据与硬门禁，区别只在「流程是否被强制」：
+
+| 模式 | 配置值 | 行为 | 适合 |
+|---|---|---|---|
+| **Feel Mode（流程模式）** | `enabled` | 按门禁走流程：要求/催促创建需求与阶段、`preflight` 严格（先读后写）、系统提示是完整 Feel 纪律 | 团队协作、需要可审计的交付 |
+| **Free Mode（自由模式）** | `disabled` | 不强制流程：是否建需求/阶段由 AI 判断、`preflight` 只提示、提示词切「Free Mode」；但状态机 / `done` 门 / 阶段验证门 / 归档判据 / blocking REV / 写入门禁**仍然有效** | 探索、一次性任务、个人快速迭代 |
+
+- **默认**：v1.5.18 起为 **Free Mode**（全新安装开箱宽松）；更早版本默认 Feel Mode。
+- **切换**（即时生效；项目级覆盖全局）：
+
+```bash
+openfeel config set feel_mode enabled                         # 本项目 → Feel Mode
+openfeel config set feel_mode disabled                        # 本项目 → Free Mode
+openfeel config set preferences.feel_mode enabled --global     # 全局默认（未显式声明的项目继承它）
+openfeel config effective feel_mode                            # 查看生效值与来源
+```
+
+- **不要和 `workflow_mode` 混淆**：`feel_mode` 决定「**是否**强制流程」；`workflow_mode`（`full` / `fast` / `general`）决定「走流程时**走多少道关**」——两者正交，见下文「快速迭代模式」。
+
+> 📦 **最新版本 v1.5.18**（默认 Free Mode 自由模式） — `feel_mode` 默认值从 `enabled` 改为 `disabled`：全新安装 / 全新用户**开箱即 Free Mode（自由模式）**（不强制建需求/阶段、`preflight` 由 `strict` 降为提示、DSH 提示词切「Free Mode」），但状态机 / `done` 门 / 归档判据 / blocking REV / 写入门禁全部保留；项目 `.openfeel/config.yaml` 或全局 profile 显式 `enabled` 仍可切回 **Feel Mode（流程模式）**（项目级覆盖全局），解析层级与即时生效语义不变。版本能力概览见 [docs/VERSIONS.md](docs/VERSIONS.md)。
 
 > 📌 本项目基于 [AI_Prompt](https://github.com/Liuary/AI_Prompt) 开发，参考了 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 等工具的设计思路。
 
@@ -78,7 +99,7 @@ openfeel setup --tools dsh    # 2. 部署到 DSH profile（默认全部；可 --
 
 ## 快速迭代模式（v1.1.7 起）
 
-> 与完整流水线（full）**并存**；新部署默认 **fast**（`config.yaml defaults.workflow_mode`），可逐阶段覆盖与切回。
+> 本节讲 `workflow_mode`（走流程时的关卡密度），与上文 `feel_mode`（是否强制流程）正交；新部署默认 **fast**（`config.yaml defaults.workflow_mode`），可逐阶段覆盖与切回。
 
 - **快线链**：`plan_pending → plan_review → plan_passed → exec_running → review_pending → review_passed → archiving → done`（跳过 6 项 `scheme_*` / `test_*`；**计划审查与代码审查保留单轮**，`review_failed` 可回环重试）。
 - **选择与切换**：`openfeel plan stage add <name> --workflow-mode full|fast|general`（新建阶段）；`openfeel stage set <stage> --workflow-mode full|fast|general`（单阶段切回）；`openfeel config set defaults.workflow_mode full|fast|general`（项目默认记忆）。**`general` 仅需求级合法**（v1.2.1 起，见 [docs/VERSIONS.md](docs/VERSIONS.md)）。

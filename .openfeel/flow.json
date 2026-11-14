@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-13T13:38:54.762Z",
-    "revision": 2161,
+    "updated": "2026-11-14T06:36:13.210Z",
+    "revision": 2175,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -46,18 +46,63 @@
       "v1.5.17",
       "v1.5.18"
     ],
-    "last_req_seq": 33
+    "last_req_seq": 34
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "",
+      "stage": "v1.5.19-stage-4",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
-  "reviews": [],
+  "stages": {
+    "v1.5.19-stage-4": {
+      "name": "v1.5.19-stage-4",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-034",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T06:28:30.768Z",
+        "end_time": "",
+        "duration_ms": 0
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.19-stage-4",
+      "stage": "v1.5.19-stage-4",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "plan-review self-review：术语定名 + README 重订 + 市场索引计划（纯文案/生成物，无行为变更）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T06:28:36.783Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.19-stage-4",
+      "stage": "v1.5.19-stage-4",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：术语定名与 README 重订（纯文案 + 提示词称呼；无行为分支变更）",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T06:35:58.738Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
   "log": [
     {
       "time": "2026-11-01T07:05:35.126Z",
@@ -1859,6 +1904,114 @@
         "log": 11,
         "requirements": 1
       }
+    },
+    {
+      "time": "2026-11-14T06:27:54.706Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-034",
+        "title": "术语定名 Feel Mode（流程模式）/ Free Mode（自由模式）+ README 重订 + DSH 市场索引发布路径"
+      }
+    },
+    {
+      "time": "2026-11-14T06:27:59.364Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-034",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-14T06:28:06.470Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.19-stage-4",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T06:28:10.668Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.19-stage-4",
+        "requirementId": "REQ-034",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-14T06:28:30.765Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-4",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T06:28:45.231Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-4",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:28:50.587Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-4",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:35:49.918Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-4",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:36:06.130Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-4",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T06:36:13.204Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.19-stage-4",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2080,6 +2233,19 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-034",
+      "title": "术语定名 Feel Mode（流程模式）/ Free Mode（自由模式）+ README 重订 + DSH 市场索引发布路径",
+      "status": "draft",
+      "created_at": "2026-11-14T06:27:54.706Z",
+      "updated_at": "2026-11-14T06:27:59.364Z",
+      "target_version": "v1.5.19",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-034.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T06:27:59.364Z"
     }
   ]
 }

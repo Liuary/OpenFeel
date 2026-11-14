@@ -3,6 +3,15 @@
 这里是给 DeepSeek Harness「发现」页用的**官方 format 1 索引**（`index.json`），
 以及它的图标。索引指向本仓库 `dsh/` 子目录的**固定 commit**，不是 npm 包。
 
+## 当前状态（2026-11-14）
+
+- `index.json` 随本次发版生成并提交；`npm run market:index:check` 可校验。
+- **GitHub Pages 托管需仓库所有者开启**：Settings → Pages → Deploy from a branch → `master` / `/docs`。
+  未开启时 `https://liuary.github.io/OpenFeel/market/index.json` 返回 404。
+- 术语：`feel_mode=enabled` = **Feel Mode（流程模式）**；`disabled` = **Free Mode（自由模式）**。
+- 社区市场（dsh.market / awesome-dsh-plugin / 1024Store 等）的收录方式与限制，见
+  [`docs/research/dsh-plugin-market-landscape.md`](../research/dsh-plugin-market-landscape.md) 的「2026-11-14 落地状态」节。
+
 ## 这是什么渠道，不是什么渠道
 
 | 渠道 | 本索引能否覆盖 |

@@ -69,6 +69,33 @@
 
 **建议（双轨）**：先自建 git 源索引覆盖「不想装 npm 包」的用户；若要社区渠道 + 版本自动发现，最终仍需发布独立 npm 包（在 `dsh/` 目录发布即可，`files` 已含 `lib` 与 `cordis.patch.yml`，成本低）。发布后向 awesome-dsh-plugin 提 PR 是**唯一已确认**能进 format 1 索引的路径；随后 1024Store、dshbase、dsh.market 各自走 topic/PR/issue 收录。注意被收录 ≠ 被审核，README 与详情页仍需自带供应链风险声明。
 
+## 2026-11-14 落地状态与操作清单
+
+> 本仓已具备 `scripts/build-market-index.mjs`（官方 format 1 生成器）与 `docs/market/README.md`；但 **`docs/market/index.json` 尚未生成/提交**，且 `https://liuary.github.io/OpenFeel/market/index.json` 当前返回 404（GitHub Pages 未启用或未指向 `/docs`）。以下为两条路径的完整操作。
+
+### 路径 A：官方「发现」页（自建 format 1 索引，git 源）
+
+1. **先提交**：索引只能声明「某个 commit 里真实存在的版本」；`dsh/` 有未提交改动时生成器直接拒绝。
+2. `npm run market:index` → 生成 `docs/market/index.json`，条目形如
+   `{"name":"openfeel-dsh", … "source":{"type":"git","url":"https://github.com/Liuary/OpenFeel","commit":"<40位SHA>","path":"dsh"}}`。
+3. `npm run market:index:check` 校验（版本与 commit 内 `dsh/package.json` 一致、图标存在等 7 项）。
+4. 提交生成物并 push。
+5. **用户（仓库所有者）在 GitHub → Settings → Pages → Deploy from a branch → `master` / `/docs`** 开启托管。
+6. 索引 URL：`https://liuary.github.io/OpenFeel/market/index.json`。
+7. 用户侧启用：DSH 插件页 →「实验性插件」旁 **更多** → 打开 **自定义插件市场**；「已安装」旁 **发现** → **添加索引源** → 填上述 URL → 卡片「安装」（确认框显示 git 仓库 + commit + 目录）。
+
+### 路径 B：dsh.market（社区站，以仓库为单位）
+
+- 收录方式：每日管道扫 GitHub topic（`dsh-plugin` 等）+ awesome 列表 + `dsh-external` 组织 + 提交 issue。
+- 本仓操作：① 给仓库加 topic **`dsh-plugin`**（建议同时补 `dsh-bundle`、`deepseek-harness`，具体名单以其扫描配置为准）；② README 写清安装段（其「一键安装」= agent 解析 README 后执行命令）：`npm i -g openfeel` → `openfeel setup --tools dsh` → 重启 DSH；③ 可选到 `2BingLing/dsh-market` 提 issue 请求收录。
+- 限制：以**仓库**为单位，monorepo 子目录 `dsh/` 只能靠 README 解析；无 npm 身份 → 通常只能浏览/复制命令，拿不到真正的一键安装。
+
+### 路径 C：社区一键安装 / awesome-dsh-plugin 的 format 1 索引（唯一需发 npm 的路径）
+
+- 前置：把 `dsh/` 发布为**独立 npm 包**（`private: false`，包名 `openfeel-dsh`；`files` 已含 `lib` 与 `cordis.patch.yml`），并随 CLI 版本同步发版（`requiresCli` 契约）。
+- 然后向 **awesome-dsh-plugin** 提 PR（一条一行）；这是已确认能进 format 1 索引的路径。收录后 dshmarket / 1024Store / dshbase / dsh.market 会各自通过索引或 topic 发现。
+- 判定不变：**git+path 条目进不了任何社区市场的一键安装**；宁可继续只服务「愿意添加索引源」的官方发现页，也不强行拆包，除非确实需要社区曝光。
+
 ## 参考链接
 
 - 官方：[插件市场（中文）](https://deepseek-harness.github.io/deepseek-harness/guide/plugin-market)、[Plugin market (EN)](https://deepseek-harness.github.io/deepseek-harness/en/guide/plugin-market)、[索引格式说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-10-02-plugin-market-index-format.zh.md)、[参考生成器](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/plugin-market-generator/README.zh.md)、[索引校验库](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/util/plugin-market-index/README.zh.md)

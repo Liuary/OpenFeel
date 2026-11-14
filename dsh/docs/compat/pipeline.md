@@ -879,8 +879,8 @@ export const DEFAULT_CONFIG: Config = {
 };
 ```
 
-`feel_mode`（v1.5.17 引入；v1.5.18 起默认宽松）：项目 `defaults.feel_mode` > 全局 profile `preferences.feel_mode` > `builtin=disabled`；
-未显式声明即为宽松；显式 `enabled` 钉死严格。
+`feel_mode`（v1.5.17 引入；v1.5.18 起默认 `disabled`）：两种模式称呼——`enabled` = **Feel Mode（流程模式）**、`disabled` = **Free Mode（自由模式）**。项目 `defaults.feel_mode` > 全局 profile `preferences.feel_mode` > `builtin=disabled`（缺省 Free Mode）；
+未显式声明即为 Free Mode；显式 `enabled` 切回 Feel Mode。
 它**没有阶段级字段**（`status.md` 不承载，故来源永不为 `status.md`）。`disabled` 时 CLI 侧
 `preflight` 的 `strict` 降级为 `warn`，适配器侧 `workflowGate` 的 `no-active-stage` 分支替换为
 `feel-mode-off`（`required:false`、message 为空），但 `guard-*` 自检与数据完整性硬门保持不变。

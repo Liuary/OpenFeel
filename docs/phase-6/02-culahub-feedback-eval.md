@@ -33,7 +33,7 @@
 
 ### 1. 每条 REQ 的固定开销
 
-**现象核实**：成立但数字要修正。当前最小合法序列是 **7 次**，`claim` 实际可省：
+**现象核实**：部分成立——摩擦真实，数字要修正。当前最小合法序列是 **7 次**，`claim` 实际可省：
 
 ```
 add → link → advance(scheduled) → advance(in_progress) → review → verify → advance(done)

@@ -1487,11 +1487,28 @@ describe('版本解绑 — stage-87 op-003', () => {
     expect(advanceRequirement(data, 'REQ-001', 'scheduled').ok).toBe(true);       // 排期
     expect(advanceRequirement(data, 'REQ-001', 'in_progress').ok).toBe(true);     // 进行中
     expect(linkRequirement(data, 'stage-01', 'REQ-001').ok).toBe(true);           // 关联阶段
+    // v1.5.23 / REQ-042（六期缺陷 B）：聚合写侧复检完成门 → 需先有审验记录。
+    // 生产路径不由这里保证（阶段 done 入口硬门已要求关联需求全部 done），此处是写侧自证。
+    expect(recordRequirementReview(data, 'REQ-001', { result: 'pass', by: 'r', note: 'ok' }).ok).toBe(true);
+    expect(recordRequirementVerification(data, 'REQ-001', { result: 'pass', kind: 'test', by: 'v', note: 'ok' }).ok).toBe(true);
     data.stages['stage-01'].phase = 'done';
     expect(syncRequirementStatus(data, 'stage-01')).toEqual(['REQ-001']);         // 聚合收口（无版本条件）
     expect(getRequirement(data, 'REQ-001')!.status).toBe('done');
     expect(lastLog(data).action).toBe('requirement_auto_done');
     expect('target_version' in getRequirement(data, 'REQ-001')!).toBe(false);     // 全程零版本键写入
+  });
+
+  it('v1.5.23 / REQ-042：写侧复检——缺审验记录时聚合不回写 done', () => {
+    const data = makeFlowData({ 'stage-01': makeStage({ phase: 'exec_running' }) });
+    addRequirement(data, { title: '未审验需求' });
+    expect(claimRequirement(data, 'REQ-001', 'Alice').ok).toBe(true);
+    expect(advanceRequirement(data, 'REQ-001', 'scheduled').ok).toBe(true);
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress').ok).toBe(true);
+    expect(linkRequirement(data, 'stage-01', 'REQ-001').ok).toBe(true);
+    data.stages['stage-01'].phase = 'done';   // 模拟「将来放宽阶段门」的不可达态
+    expect(syncRequirementStatus(data, 'stage-01')).toEqual([]);
+    expect(getRequirement(data, 'REQ-001')!.status).toBe('in_progress');
+    expect(data.log.filter((e) => e.action === 'requirement_auto_done')).toHaveLength(0);
   });
 });
 

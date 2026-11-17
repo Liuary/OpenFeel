@@ -1849,7 +1849,7 @@ draft ─→ scheduled ─→ in_progress ─→ done
 | \`req release <id>\` | 释放认领（未认领为 no-op 成功） | — |
 | \`req set <id>\` | 更新需求字段（白名单；状态流转合法性由引擎判定） | \`--status\`、\`--title\`、\`--target-version\`、\`--priority\` |
 | \`req link\` | 关联需求到阶段 / 解绑 | \`--stage <stageId>\`、\`--requirement <id>\`、\`--unlink\`（与 \`--requirement\` 二选一） |
-| \`req advance <id>\` | 显式推进需求状态（合法目标由引擎流转表判定；done：非 \`general\` 需求须全部关联阶段 done） | \`--to <status>\` |
+| \`req advance <id>\` | 显式推进需求状态（合法目标由引擎流转表判定；done：关联阶段须已进入 \`exec_running\` 及之后相位即可完成——阶段是版本容器，不必先 done；另需 \`review\` + \`verify\` 均 pass） | \`--to <status>\` |
 | \`req board\` | 需求看板（按状态分组；7 组固定顺序） | \`--target-version <version>\`、\`--json\` |
 | \`req next\` | 推荐下一个可接取需求（\`scheduled\` 且未认领；按预估版本升序） | \`--owner <owner>\`（含该认领人已认领的 scheduled 需求）、\`--limit <n>\`（缺省 1；大于 1 时 \`--json\` 追加 \`candidates\`）、\`--json\` |
 | \`req split <id>\` | 拆分需求为若干子需求（**拆分即发布**：子需求入 \`scheduled\` 候选池；父子仅溯源、不参与聚合） | \`--into <title>\`（可重复；至少一项）、\`--json\` |

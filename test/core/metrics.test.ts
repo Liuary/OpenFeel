@@ -3,7 +3,7 @@
  * 测试 MetricsStore 单例的性能指标记录、摘要生成与持久化读写
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MetricsStore, PHASE_AGENT_MAP, type AgentMetrics } from '../../src/core/metrics.js';
+import { MetricsStore, PHASE_AGENT_MAP, recordPhaseWindowRun, type AgentMetrics } from '../../src/core/metrics.js';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -227,5 +227,40 @@ describe('MetricsStore', () => {
     // 非归属 phase 不入表
     expect(PHASE_AGENT_MAP['scheme_passed']).toBeUndefined();
     expect(PHASE_AGENT_MAP['done']).toBeUndefined();
+  });
+
+  // v1.5.23 / REQ-042（六期缺陷 A）：失败必须可见——旧实现只记 success，failedRuns 恒 0
+  describe('recordPhaseWindowRun', () => {
+    it('失败且无基线 → 仍记一条（0 时长），failedRuns 可见', () => {
+      const store = MetricsStore.getInstance(tmpDir);
+      expect(recordPhaseWindowRun(store, 'openfeel-executor', null, false, 1000)).toBe(true);
+      const m = store.getAgentMetrics('openfeel-executor') as AgentMetrics;
+      expect(m.totalRuns).toBe(1);
+      expect(m.failedRuns).toBe(1);
+      expect(m.successfulRuns).toBe(0);
+    });
+
+    it('成功且无基线 → 跳过（不写 0 污染 avg）', () => {
+      const store = MetricsStore.getInstance(tmpDir);
+      expect(recordPhaseWindowRun(store, 'openfeel-executor', null, true, 1000)).toBe(false);
+      expect(store.getAgentMetrics('openfeel-executor')).toBeUndefined();
+    });
+
+    it('有基线 → 按窗口计时长（成功/失败同口径）', () => {
+      const store = MetricsStore.getInstance(tmpDir);
+      expect(recordPhaseWindowRun(store, 'openfeel-executor', 1000, true, 3000)).toBe(true);
+      expect(recordPhaseWindowRun(store, 'openfeel-executor', 2000, false, 5000)).toBe(true);
+      const m = store.getAgentMetrics('openfeel-executor') as AgentMetrics;
+      expect(m.totalRuns).toBe(2);
+      expect(m.successfulRuns).toBe(1);
+      expect(m.failedRuns).toBe(1);
+      expect(m.totalDurationMs).toBe(2000 + 3000);
+    });
+
+    it('无 agent（相位不入表）→ 零记录', () => {
+      const store = MetricsStore.getInstance(tmpDir);
+      expect(recordPhaseWindowRun(store, undefined, null, false, 1000)).toBe(false);
+      expect(store.getAgentMetrics()).toEqual([]);
+    });
   });
 });

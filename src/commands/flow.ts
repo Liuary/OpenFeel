@@ -28,7 +28,7 @@ import { PipelinePhaseSchema, PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES,
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
 import { getConfigFieldLegalValues, setConfigValue, readExplicitConfigDefaults, type WorkflowMode } from '../core/config.js';
 import { parse as parseYaml } from 'yaml';
-import { MetricsStore, PHASE_AGENT_MAP } from '../core/metrics.js';
+import { MetricsStore, PHASE_AGENT_MAP, recordPhaseWindowRun } from '../core/metrics.js';
 import { runtimeLog } from '../core/runtime-log.js';
 import { addReviewEntry } from '../core/view/entry.js';
 import { failCli, failInternal, failRefusal, handleAddStageError, handleConcurrentConflict } from './shared/errors.js';
@@ -1303,6 +1303,23 @@ export function registerFlowCommand(program: Command): void {
           if (reworkReason !== undefined) stepOpts.reworkReason = reworkReason;
           archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli', Object.keys(stepOpts).length > 0 ? stepOpts : undefined);
         } catch (err: unknown) {
+          // v1.5.23 / REQ-042（六期缺陷 A）：失败也要记账。
+          // 旧实现只在成功分支 recordRun(..., 'success')，导致 metrics.json 的
+          // failedRuns / 成功率永远是「零失败」——读出来不是空，是静默误导。
+          // 这里按同一 T1 口径（phase 窗口）记一条 failure；指标失败绝不阻断错误路径。
+          try {
+            const failedPhase = i > 0 ? phasePath[i - 1] : startPhase;
+            const failedAgent = PHASE_AGENT_MAP[failedPhase];
+            const failedBaseMs = failedAgent
+              ? findPhaseEnteredAtMs(mgr.getData()?.log ?? [], stageArg, failedPhase, logLenBefore)
+              : null;
+            if (recordPhaseWindowRun(metricsStore, failedAgent, failedBaseMs, false)) {
+              metricsStore.save();
+              metricsRecorded = true;
+            }
+          } catch {
+            // 指标记录失败：静默降级（原错误优先）
+          }
           const stderrLines: string[] = [];
           if (totalSteps > 1) {
             const remaining = phasePath.slice(i).join(t('flow.advance.pathArrow', lang));

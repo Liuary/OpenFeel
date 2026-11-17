@@ -54,6 +54,32 @@ function createDefaultMetrics(agentName: string): AgentMetrics {
 }
 
 /**
+ * 由 phase 窗口基线记录一次运行（v1.5.23 / REQ-042 / 六期缺陷 A）。
+ *
+ * 背景：旧实现只在 `flow advance` 成功分支 `recordRun(..., 'success')`，
+ * `failedRuns` / 成功率因此恒为「零失败」——读出来不是空，是静默误导。
+ *
+ * 口径与成功路径一致（T1：窗口 = 进入 phase 的转换 → 退出）：
+ *  - 有基线：耗时 = now - baseMs；
+ *  - 无基线：成功跳过（不写 0 污染 avg），失败仍记一条（0 时长，只为让失败可见）；
+ *  - 无 agent（该相位不入表）：两者都不记。
+ * @returns 是否真的写入了一条指标
+ */
+export function recordPhaseWindowRun(
+  store: MetricsStore,
+  agentName: string | undefined,
+  baseMs: number | null,
+  ok: boolean,
+  now: number = Date.now(),
+): boolean {
+  if (agentName === undefined || agentName === '') return false;
+  const hasBaseline = baseMs !== null && baseMs > 0;
+  if (!hasBaseline && ok) return false;
+  store.recordRun(agentName, hasBaseline ? now - (baseMs as number) : 0, ok ? 'success' : 'failure', 0);
+  return true;
+}
+
+/**
  * MetricsStore 单例
  * 管理所有 Agent 的性能指标，支持持久化读写
  */

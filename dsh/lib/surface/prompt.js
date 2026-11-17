@@ -225,7 +225,7 @@ Feel（你）只做编排、决策与门禁判断。
 ## 需求分发
 需求是排期层（\`REQ-NNN\`，7 状态：draft/scheduled/in_progress/done/blocked/cancelled/rejected）。
 接取流程：\`feel_req action=next\` → \`claim\` → \`link\` 到阶段 → 阶段推进驱动聚合 → 全部关联阶段 done 时需求自动收口。
-\`done\` 门：非 general 需求必须**全部关联阶段 done**；general 需求在零关联阶段时走双完成路径。
+\`done\` 门（v1.5.23 更正）：**关联阶段须已进入 \`exec_running\` 及之后相位**即可完成（阶段是版本容器，不必先 done）；另需 \`review\` + \`verify\` 均 pass。general 需求在零关联阶段时走双完成路径。
 **发布前先检查**：归档前先 \`feel_req action=release-check\`（只读）；仍有未完成需求时先 \`feel_req action=rollover\` 顺延，或归档时显式 \`allow_unfinished=true\`（缺省拒绝）。
 
 ## 收尾

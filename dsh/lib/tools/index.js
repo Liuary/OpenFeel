@@ -500,7 +500,6 @@ export function createTools(context) {
       priority: stringEnum(['high', 'medium', 'low'], 'review_update 的优先级。'),
       blocking: boolean('review_add/review_update 是否阻塞流水线（缺省视为阻塞）。'),
       auto_fix: string('review_add 的自动修复说明；设置后跳过 scheme_pending 直接推进 exec_running。'),
-      result: stringEnum(['pass', 'fail'], '未使用，保留占位。'),
       prune_orphans: boolean('repair 时清理键孤儿。'),
       backup: boolean('repair 前备份为 .bak。'),
       project: string('项目根目录。'),
@@ -863,7 +862,7 @@ export function createTools(context) {
   const feelReq = {
     name: 'feel_req',
     description:
-      '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配，**单调计数器 meta.last_req_seq**：归档移走条目后也不复用 ID）；list 过滤列表（include_archived=true 合并已随版本归档的需求）；show 详情（已归档需求回退读归档文件）；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：非 general 需求须全部关联阶段 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）；review 记录需求审查；verify 记录需求验证（**v1.5.8 完成必审验：done 门额外要求 review.result=pass 且 verification.result=pass**）；release-check 发布门（软，只读）：列出该版本 done / 未完成 / 其它需求；rollover 顺延：把未完成需求的 target_version 改到新版本并记录 carried_from。',
+      '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配，**单调计数器 meta.last_req_seq**：归档移走条目后也不复用 ID）；list 过滤列表（include_archived=true 合并已随版本归档的需求）；show 详情（已归档需求回退读归档文件）；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：关联阶段须已进入 exec_running 及之后相位即可完成——阶段是版本容器，不必先 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）；review 记录需求审查；verify 记录需求验证（**v1.5.8 完成必审验：done 门额外要求 review.result=pass 且 verification.result=pass**）；release-check 发布门（软，只读）：列出该版本 done / 未完成 / 其它需求；rollover 顺延：把未完成需求的 target_version 改到新版本并记录 carried_from。',
     parameters: {
       action: stringEnum(['add', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split', 'review', 'verify', 'release-check', 'rollover'], '操作。', { required: true }),
       id: string('需求 ID（如 REQ-001）。show/claim/release/set/advance/split/review/verify/rollover 必需（rollover 与 all 互斥）。'),

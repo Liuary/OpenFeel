@@ -10,7 +10,7 @@
  * 写盘：全部纯内存——落盘恒走调用方 FlowManager.save()（不新增写盘点）。
  */
 import type { FlowData, HealthCheckItem, PipelinePhase } from '../flow-manager.js';   // 仅类型（编译期擦除；防运行时环）
-import { allLinkedStagesDone } from './requirement-ops.js';   // done 判定唯一原语（REV-83-002）
+import { allLinkedStagesDone, canCompleteRequirement } from './requirement-ops.js';   // done 判定唯一原语（REV-83-002）+ 完成门判据单点（v1.5.23）
 import { stageRequirementIds } from './stage-links.js';       // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import type { RequirementStatus } from './types.js';
 import { t } from '../i18n.js';                                        // 对账文案（新键 flow.health.req*；双表成对）
@@ -141,6 +141,13 @@ export function syncRequirementStatus(data: FlowData, stageId: string): string[]
     if (resolved.target === 'done') {
       // 正向：聚合 done ∧ 前置集内 → done（前置集外零动作零审计——REV-83-004）
       if ((AUTO_DONE_PRECONDITION as readonly string[]).includes(req.status)) {
+        // v1.5.23 / REQ-042（六期缺陷 B）：写侧自证不变量。
+        // 正常路径不可达——进入阶段 done 的硬门已要求关联需求全部 done
+        // （flow-manager.describeStageDoneGate），此处命中的需求本就是 done。
+        // 复检只为防「将来放宽阶段门 / 允许向已完成阶段补挂需求」时静默产出未审验的 done。
+        if (!canCompleteRequirement(data, req)) {
+          continue;
+        }
         const from = req.status;
         req.status = 'done';
         req.updated_at = new Date().toISOString();

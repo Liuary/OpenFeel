@@ -58,6 +58,7 @@ export function readHandoff(projectRoot) {
  * }}
  */
 export function readRecovery(projectRoot) {
+  const handoffPath = join(projectRoot, '.openfeel', 'users', username(projectRoot), 'dev_last.md');
   const result = {
     stage: null,
     phase: null,
@@ -66,7 +67,18 @@ export function readRecovery(projectRoot) {
     lastError: null,
     resumeCount: 0,
     handoff: readHandoff(projectRoot),
-    hasDevLast: existsSync(join(projectRoot, '.openfeel', 'users', username(projectRoot), 'dev_last.md')),
+    hasDevLast: existsSync(handoffPath),
+    // v1.5.23 / REQ-044（六期反馈 #3）：交接摘要的**位置**也一并给出。
+    // 下游项目曾误以为 `.openfeel/dev/current.md` 是自动交接文件（它不会自动更新）；
+    // 真正的自动块在 `dev_last.md` 的 `<!-- openfeel:auto:begin/end -->`，手写摘要则在
+    // `## 交接摘要` / `## 公共交接区`。给出绝对锚点，避免新会话继续看错文件。
+    handoffRef: {
+      path: `.openfeel/users/${username(projectRoot)}/dev_last.md`,
+      autoBlock: '<!-- openfeel:auto:begin/end -->',
+      sections: HANDOFF_HEADINGS,
+    },
+    /** 同一 op 失败 ≥2 次的提示（v1.5.23 / REQ-044 / 六期反馈 #11）；无则 null */
+    failureHint: null,
   };
   try {
     const flow = JSON.parse(readFileSync(join(projectRoot, '.openfeel', 'flow.json'), 'utf-8'));
@@ -91,8 +103,7 @@ export function readRecovery(projectRoot) {
     }
     for (let i = log.length - 1; i >= 0; i -= 1) {
       const entry = log[i];
-      if (entry?.action === 'advance_stage_phase') {
-        const detail = entry.detail ?? {};
+      if (entry?.action === 'advance_stage_phase') {        const detail = entry.detail ?? {};
         result.lastTransition = {
           action: entry.action,
           time: entry.time ?? '',
@@ -112,6 +123,30 @@ export function readRecovery(projectRoot) {
         from: null,
         to: null,
       };
+    }
+    // v1.5.23 / REQ-044（六期反馈 #11）：同一 op 失败 ≥2 次 → 提示沉淀进 KB。
+    // 只依赖已落审计的 attempt_fail_*（reason 自 v1.5.23 起写入）。
+    const failures = new Map();
+    for (const entry of log) {
+      if (entry?.action !== 'attempt_fail_retry' && entry?.action !== 'attempt_fail_exhausted') continue;
+      const opId = typeof entry.detail?.opId === 'string' ? entry.detail.opId : null;
+      if (opId === null) continue;
+      const prev = failures.get(opId) ?? { count: 0, reason: null };
+      failures.set(opId, {
+        count: prev.count + 1,
+        reason: typeof entry.detail?.reason === 'string' ? entry.detail.reason : prev.reason,
+      });
+    }
+    for (const [opId, info] of failures) {
+      if (info.count >= 2) {
+        result.failureHint = {
+          opId,
+          count: info.count,
+          reason: info.reason,
+          hint: '同一操作已失败 ≥2 次：修复后考虑 `feel_kb add category=troubleshooting` 沉淀，避免下一轮重踩。',
+        };
+        break;
+      }
     }
   } catch {
     /* 损坏时降级为 handoff only */

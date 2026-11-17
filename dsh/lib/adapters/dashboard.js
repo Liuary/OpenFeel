@@ -30,8 +30,29 @@ function readFlowMeta(projectRoot) {
   }
 }
 
-/** 15 个合法流水线相位（`flow phases --json.phases`）。 */
-export const PIPELINE_PHASES = /** @type {const} */ ([
+/**
+ * 相位 → 最小可复制示例（v1.5.23 / REQ-044 / 六期反馈 #13）。
+ * 每个相位只给一条最常用调用；数据源单一，不会与命令树大面积漂移。
+ */
+const PHASE_EXAMPLES = {
+  plan_pending: 'feel_stage {action:"add", stage:"vX.Y.Z-stage-N"} → feel_flow {action:"advance", stage:"<stage>", to:"plan_review"}',
+  plan_review: 'feel_flow {action:"advance", stage:"<stage>", to:"plan_passed"}（先自我审查 plan 产物）',
+  plan_passed: 'feel_flow {action:"advance", stage:"<stage>", to:"exec_running"}',
+  scheme_pending: 'feel_op {action:"create", stage:"<stage>", title:"<方案>"}',
+  scheme_review: 'feel_flow {action:"advance", stage:"<stage>", to:"scheme_passed"}',
+  scheme_passed: 'feel_flow {action:"advance", stage:"<stage>", to:"exec_running"}',
+  exec_running: 'feel_req {action:"add", title:"<需求>", target_version:"vX.Y.Z", workflow_mode:"fast"} → claim → link',
+  review_pending: 'feel_flow {action:"review_add", stage:"<stage>", title:"<问题>"}',
+  review_failed: 'feel_flow {action:"advance", stage:"<stage>", to:"exec_running"}（修复后重提）',
+  review_passed: 'feel_stage {action:"verify", stage:"<stage>", result:"pass", kind:"manual", note:"…"}',
+  test_pending: 'feel_stage {action:"set", stage:"<stage>", to:"test_passed"}',
+  test_failed: 'feel_stage {action:"set", stage:"<stage>", to:"test_pending"}',
+  test_passed: 'feel_flow {action:"advance", stage:"<stage>", to:"archiving"}',
+  archiving: 'feel_stage {action:"verify", stage:"<stage>", result:"pass", kind:"test", note:"…", evidence:"…"}',
+  done: 'feel_archive {action:"create", version:"vX.Y.Z"}',
+};
+
+/** 15 个合法流水线相位（`flow phases --json.phases`）。 */export const PIPELINE_PHASES = /** @type {const} */ ([
   'plan_pending',
   'plan_review',
   'plan_passed',
@@ -431,5 +452,11 @@ export function planNextStep(snapshot) {
       : { tool: 'feel_flow', arguments: { action: 'advance', stage, to: suggestedTo ?? nextPhases[0] } },
     /** OpenFeel 的交接标记；DSH 侧建议配合 `subagent` 工具派发。 */
     handoff: agent === 'none' || agent === 'unknown' ? null : `[HANDOFF: ${agent}]`,
+    /**
+     * 最小可复制示例（v1.5.23 / REQ-044 / 六期反馈 #13）。
+     * 工具描述偏长、缺示例时模型容易漏参数；这里只随当前相位给**一条**，
+     * 数据源单一（相位 → 示例），不维护一份会和命令树漂移的 help 表。
+     */
+    example: PHASE_EXAMPLES[phase] ?? null,
   };
 }

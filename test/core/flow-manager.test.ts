@@ -5509,7 +5509,13 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
     expect((parsed.log as any[]).filter((l) => String(l.action).startsWith('requirement_'))).toHaveLength(0);
     // 正控（对照实验）：聚合回写单点直调 → auto_done 出现（证明回写已接通，「零命中」非因未激活）
     // v1.5.8 / REQ-027 起 advanceStagePhase 的 done 门要求关联需求已 done，故正控改走回写单点本身。
-    const positive = mgrWith(flowData({ 'stage-01': stage('done', 'REQ-001') }, [reqObj('REQ-001', 'in_progress')]));
+    // v1.5.23 / REQ-042：写侧复检完成门 → 正控需带审验记录（生产路径由阶段 done 门保证）
+    const positiveReq = {
+      ...reqObj('REQ-001', 'in_progress'),
+      review: { result: 'pass' as const, by: 'r', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
+      verification: { result: 'pass' as const, kind: 'test' as const, by: 'v', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
+    };
+    const positive = mgrWith(flowData({ 'stage-01': stage('done', 'REQ-001') }, [positiveReq]));
     expect(syncRequirementStatus(positive.getData()!, 'stage-01')).toEqual(['REQ-001']);
     expect(countAction(positive, 'requirement_auto_done')).toBe(1);
   });

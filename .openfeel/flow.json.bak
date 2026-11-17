@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-17T14:45:52.058Z",
-    "revision": 2316,
+    "updated": "2026-11-17T15:03:48.178Z",
+    "revision": 2323,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -50,7 +50,7 @@
       "v1.5.21",
       "v1.5.22"
     ],
-    "last_req_seq": 40
+    "last_req_seq": 45
   },
   "pipeline": {
     "phase": "active",
@@ -2040,6 +2040,70 @@
         "from": "scheduled",
         "to": "in_progress"
       }
+    },
+    {
+      "time": "2026-11-17T14:45:57.742Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-040",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-17T15:03:19.572Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-041",
+        "title": "运行态仓库卫生：.sync.json 忽略、init 保证不入索引、dev clean、门禁放行纯索引操作"
+      }
+    },
+    {
+      "time": "2026-11-17T15:03:21.984Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-042",
+        "title": "语义纠偏与视图：删 result 死字段、修 done 门描述、补聚合写侧断言、metrics 记失败、stage 进度、goal、by 缺省"
+      }
+    },
+    {
+      "time": "2026-11-17T15:03:24.429Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-043",
+        "title": "需求生命周期：trivial 审查标记、waive 显式豁免、add --claim --stage 与 req complete 一次收口"
+      }
+    },
+    {
+      "time": "2026-11-17T15:03:26.816Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-044",
+        "title": "交接与判据：recovery.handoff 指向 dev_last、criteria 只读引用、示例与失败提示"
+      }
+    },
+    {
+      "time": "2026-11-17T15:03:34.241Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-045",
+        "title": "v1.5.23 收尾：两包版本同步、CHANGELOG、文档、全量测试"
+      }
+    },
+    {
+      "time": "2026-11-17T15:03:48.178Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-041",
+        "owner": "Liuary"
+      }
     }
   ],
   "requirements": [
@@ -2265,9 +2329,9 @@
     {
       "id": "REQ-040",
       "title": "评估 CulaHub OpenFeel 使用反馈 13 条的可做性与优先级",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-11-17T14:34:03.695Z",
-      "updated_at": "2026-11-17T14:45:52.058Z",
+      "updated_at": "2026-11-17T14:45:57.742Z",
       "target_version": "v1.5.23",
       "priority": "P1",
       "workflow_mode": "fast",
@@ -2289,6 +2353,63 @@
         "note": "交付 docs/phase-6/（原文归档 + 逐条核实 + 索引）；每处引用均经 subagent 与主会话双重核对，关键行号本人逐个打开确认。",
         "evidence": "docs/phase-6/02-culahub-feedback-eval.md"
       }
+    },
+    {
+      "id": "REQ-041",
+      "title": "运行态仓库卫生：.sync.json 忽略、init 保证不入索引、dev clean、门禁放行纯索引操作",
+      "status": "draft",
+      "created_at": "2026-11-17T15:03:19.572Z",
+      "updated_at": "2026-11-17T15:03:48.178Z",
+      "target_version": "v1.5.23",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-041.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-17T15:03:48.178Z"
+    },
+    {
+      "id": "REQ-042",
+      "title": "语义纠偏与视图：删 result 死字段、修 done 门描述、补聚合写侧断言、metrics 记失败、stage 进度、goal、by 缺省",
+      "status": "draft",
+      "created_at": "2026-11-17T15:03:21.984Z",
+      "updated_at": "2026-11-17T15:03:21.984Z",
+      "target_version": "v1.5.23",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-042.md"
+    },
+    {
+      "id": "REQ-043",
+      "title": "需求生命周期：trivial 审查标记、waive 显式豁免、add --claim --stage 与 req complete 一次收口",
+      "status": "draft",
+      "created_at": "2026-11-17T15:03:24.429Z",
+      "updated_at": "2026-11-17T15:03:24.429Z",
+      "target_version": "v1.5.23",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-043.md"
+    },
+    {
+      "id": "REQ-044",
+      "title": "交接与判据：recovery.handoff 指向 dev_last、criteria 只读引用、示例与失败提示",
+      "status": "draft",
+      "created_at": "2026-11-17T15:03:26.816Z",
+      "updated_at": "2026-11-17T15:03:26.816Z",
+      "target_version": "v1.5.23",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-044.md"
+    },
+    {
+      "id": "REQ-045",
+      "title": "v1.5.23 收尾：两包版本同步、CHANGELOG、文档、全量测试",
+      "status": "draft",
+      "created_at": "2026-11-17T15:03:34.240Z",
+      "updated_at": "2026-11-17T15:03:34.240Z",
+      "target_version": "v1.5.23",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-045.md"
     }
   ]
 }

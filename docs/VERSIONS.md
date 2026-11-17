@@ -52,6 +52,15 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
 
+## v1.5.23 — 六期反馈落地（CulaHub 66 轮实践）
+
+- **记账变轻**：`req complete`（review + verify + done 一次收口）、`req add --claim --stage`（开单+认领+关联一次完成）、`--by` 可省（缺省写会话标识）。
+- **仓库卫生**：新增 `openfeel dev clean`——运行态文件（`.sync.json` / `sessions.json` / `guard-state.json` / `.preflight.json` / `guard-audit.jsonl`）默认不入库；`init` 为新项目补 ignore；门禁放行 `git rm --cached` 这类纯索引操作。
+- **终止语义**：`req waive`（显式放弃，移出阶段 done 门并留痕）、`req trivial`（docs/文案类免审验标记）。
+- **看得见**：`stage status` 新增 `progress`（需求完成度 / 最老进行中 / 相位进入时间）；`feel_next.example` 按相位给一条最小示例；`feel_status.recovery` 给出交接摘要位置与失败提示。
+- **纠错**：`feel_req` 的 done 门描述不再要求「全部关联阶段 done」（实际只需阶段进入 `exec_running` 及之后）；删除 `feel_flow.result` 死字段；`metrics.json` 的失败数不再恒为 0。
+- **未做**：`feel_next` 的 `goal` 上下文（依赖 DSH 宿主 API）、`criteria` 升级为 done 门判据（会拒绝存量阶段）。
+
 ## v1.5.22 — 适配器页面以 OpenFeel 为主
 
 - **`openfeel-dsh` 页面重排**：先介绍 OpenFeel 本身（是什么、解决两个问题、版本与阶段、待办清单、两种模式、记录位置），然后说明「这是 OpenFeel 在 DeepSeek Harness 上的适配版本」；安装章节后移。

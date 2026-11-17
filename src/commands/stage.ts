@@ -741,7 +741,8 @@ export function registerStageCommand(program: Command): void {
     .option('--by <who>', '验证者（缺省 = 会话标识，如 session:408e3133）')
     .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
     .option('--evidence <path>', '证据（命令 / 报告路径）')
-    .action((stageId: string, options: { result: string; kind: string; by?: string; note: string; evidence?: string }) => {
+    .option('--criteria <ids>', '关联的验收判据 id（逗号分隔；v1.5.23 只读引用，不改门禁）')
+    .action((stageId: string, options: { result: string; kind: string; by?: string; note: string; evidence?: string; criteria?: string }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const mgr = new FlowManager(projectPath);
@@ -760,6 +761,9 @@ export function registerStageCommand(program: Command): void {
         by,
         note: options.note,
         evidence: options.evidence,
+        criteria: typeof options.criteria === 'string'
+          ? options.criteria.split(',').map((c) => c.trim()).filter((c) => c !== '')
+          : undefined,
       });
       if (!r.ok) {
         if (r.code === 'not_found') {

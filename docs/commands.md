@@ -385,7 +385,7 @@ openfeel flow stage reset <stageId> --to <phase> [--dry-run]
 记录执行结果。
 
 ```bash
-openfeel flow attempt --op <op-id> --result <pass|fail>
+openfeel flow attempt --op <op-id> --result <pass|fail> [--reason <text>]
 ```
 
 | 选项 | 说明 |
@@ -876,7 +876,7 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 
 | 子命令 | 用途 | 关键参数 |
 |--------|------|----------|
-| `req add <title>` | 创建需求（ID 自动分配；**单调计数器** `meta.last_req_seq`，归档后不复用） | `--target-version <version>`、`--priority <P0\|P1\|P2>`、`--workflow-mode <full\|fast\|general>` |
+| `req add <title>` | 创建需求（ID 自动分配；**单调计数器** `meta.last_req_seq`，归档后不复用） | `--target-version <version>`、`--priority <P0\|P1\|P2>`、`--workflow-mode <full\|fast\|general>`、**`--claim`** / **`--stage <stageId>`（v1.5.23：一次开单+认领+关联）** |
 | `req list` | 列出需求 | `--status <status>`、`--target-version <version>`、`--owner <owner>`、`--include-archived`、`--json` |
 | `req show <id>` | 查看需求详情（已归档需求回退读归档文件，标注 `archived`） | `--json` |
 | `req claim <id>` | 认领需求（占用校验） | `--owner <owner>` |
@@ -884,8 +884,11 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 | `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` / `--workflow-mode` |
 | `req link` | 关联需求到阶段（**一个阶段可挂多个需求**） / 解绑（单个或全部） | `--stage <stageId>`、`--requirement <id>`、`--unlink` |
 | `req advance <id>` | 显式推进需求状态 | `--to <status>` |
-| `req review <id>` | 记录需求审查（**v1.5.8 完成必审**：done 门要求 `review.result=pass`） | `--result <pass\|fail>`、`--by <who>`、`--note <text>`、`--independent` / `--self` |
-| `req verify <id>` | 记录需求验证（**v1.5.8 完成必验**：done 门要求 `verification.result=pass`） | `--result <pass\|fail>`、`--kind <test\|manual\|build>`、`--by <who>`、`--note <text>`、`--evidence <path>` |
+| `req review <id>` | 记录需求审查（**v1.5.8 完成必审**：done 门要求 `review.result=pass`） | `--result <pass\|fail>`、**`--by <who>`（v1.5.23 可省，缺省 = `session:xxxxxxxx`）**、`--note <text>`、`--independent` / `--self` |
+| `req verify <id>` | 记录需求验证（**v1.5.8 完成必验**：done 门要求 `verification.result=pass`） | `--result <pass\|fail>`、`--kind <test\|manual\|build>`、`--by <who>`（同上可省）、`--note <text>`、`--evidence <path>` |
+| **`req complete <id>`** | **一次收口（v1.5.23 / REQ-043）**：review + verify + advance(done) 合并；复用既有判据单点，任一步失败**零写盘** | `--result`、`--note`、`--kind`（缺省 manual）、`--evidence`、`--by`、`--independent` / `--self` |
+| **`req waive <id>`** | **显式豁免（v1.5.23 / REQ-043）**：阶段 done 门不再计入该需求，记录谁/何时/为何放弃（与 `cancelled` 区分） | `--reason <text>`、`--by`、`--revoke` |
+| **`req trivial <id>`** | **免审验标记（v1.5.23 / REQ-043）**：done 门跳过 review/verification（docs/文案/测试注释类；相位门与聚合门不变） | `--reason <text>`、`--by`、`--revoke` |
 | `req split <id>` | 拆分需求为若干子需求（**拆分即发布**：子需求入 `scheduled`） | `--into <title>`（**可重复**，至少一项）、`--json` |
 | `req board` | 需求看板（7 组固定顺序） | `--target-version <version>`、`--json` |
 | `req next` | 推荐下一个可接取需求 | `--owner <owner>`、`--json` |
@@ -1056,7 +1059,7 @@ openfeel lint req [--json]    # 需求正文命令名存在性（真实命令树
 ```bash
 openfeel stage status [stageId] [--json]  # 查看阶段状态
 openfeel stage set <id> --status <v>    # 更新阶段状态（写入 status.md 字段；另支持 --exec-mode / --auto-advance / --workflow-mode / --review-agent）
-openfeel stage verify <id> --result <pass|fail> --kind <test|manual|build> --by <who> --note <text> [--evidence <path>]  # 记录阶段验证（v1.5.8 完成必验）
+openfeel stage verify <id> --result <pass|fail> --kind <test|manual|build> --by <who> --note <text> [--evidence <path>] [--criteria <ids>]  # 记录阶段验证（v1.5.8 完成必验；--criteria 为 v1.5.23 只读引用）
 openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stage add` 等价；建议用 `plan stage add`）
 ```
 

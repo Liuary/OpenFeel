@@ -64,6 +64,11 @@ export interface RequirementVerificationRecord {
   note: string;
   /** 证据（命令 / 路径 / 摘要；可选） */
   evidence?: string;
+  /**
+   * 关联的验收判据 id（v1.5.23 / REQ-044 / 六期反馈 #10）。
+   * **只读引用**：记录在案供归档与看板消费，不参与 done 门判定（升级为门禁须另立版本）。
+   */
+  criteria?: string[];
 }
 
 /** 阶段验证记录（与需求验证记录同形；v1.5.8 / REQ-027） */

@@ -19,12 +19,12 @@
 
 ## 处置
 
-反馈经核实后**未进入本轮实现**（本轮只交付评估）。建议处置见 02 文档第五节：
+反馈经核实后**已进入 v1.5.23 落地**（阶段 `v1.5.23-stage-11`，REQ-040~045）：
 
-- **v1.5.23 速赢**（7 项：5 项纯 S + 2 项需跨文件）：#2 门禁放行纯索引操作（含"索引后不自动提交"约束）、#4+C 运行态文件不入库（.gitignore / init / `dev clean` / 历史索引清理）、#6 删除 `result` 死字段、#7 阶段进度视图、#9 `feel_next` 注入 goal、#12 审查署名 session 回填、D 修正 `feel_req` done 门描述（"须全部关联阶段 done"已过时，实际只要求阶段进入 `exec_running` 及之后）。
-- **v1.5.24 结构**（4 条 M）：#1 `add --claim --stage` + `req complete`、#3 交接摘要改正指向、#5 需求级 `trivial` 标记、#8 `waive` 显式豁免。
-- **候补**：#10 criteria 注册表（应落 `.openfeel/criteria.json`，单独立版本）、#11 KB 提示（先补 attempt 失败原因）、#13 `feel_help`（先做随相位的单条示例）。
-- **清理项（非阻塞）**：02 文档第四节 B——聚合回写的写侧不复查 `canCompleteRequirement`；因阶段 done 入口硬门已保证关联需求全部 done，当前调用点下不可达，属防御性缺口。建议随手补一行断言或注释，不单独排期。
+- **v1.5.23 速赢**（已落地）：#2 门禁放行纯索引操作（含"索引后不自动提交"约束）、#4+C 运行态文件不入库（.gitignore / init / `dev clean`）、#6 删除 `result` 死字段、#7 阶段进度视图、#12 审查署名 session 回填、D 修正 `feel_req` done 门描述。
+- **v1.5.24 结构项并入 v1.5.23**（已落地）：#1 `add --claim --stage` + `req complete`、#5 需求级 `trivial` 标记、#8 `waive` 显式豁免、#3 `recovery.handoffRef` 指向 `dev_last`。
+- **候补中已落地**：#10 criteria 只读引用（`stage verify --criteria`）、#13 随相位的单条示例（`feel_next.example`）、#11 op 失败原因 + `failureHint`。
+- **仍未做（如实记录）**：#9 `feel_next` 注入 goal（依赖 DSH 宿主 API）；#10 升级为 done 门判据（会拒绝存量阶段）；#11 跨阶段同因识别（`flow.json.log` 只留 200 条）。
 
 ## 与五期的差异
 

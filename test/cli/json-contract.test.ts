@@ -604,8 +604,12 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     mgr.save();
 
     const single = await doc(['stage', 'status', 'v1.2.2-stage-97', '--json']);
-    expect(Object.keys(single)).toEqual(['schemaVersion', 'stageId', 'statusPath', 'fields', 'tasks', 'blockedBy']);
+    // v1.5.23 / REQ-042：新增 progress（向后兼容的新键；不可读时不出现）
+    expect(Object.keys(single)).toEqual(['schemaVersion', 'stageId', 'statusPath', 'fields', 'tasks', 'blockedBy', 'progress']);
     expect(single.stageId).toBe('v1.2.2-stage-97');
+    const progress = single.progress as Record<string, unknown>;
+    expect(Object.keys(progress)).toEqual(['requirements', 'oldestInProgress', 'phaseEnteredAt']);
+    expect(Object.keys(progress.requirements as object)).toEqual(['total', 'done', 'inProgress', 'other']);
     expect(String(single.statusPath).startsWith(tmpDir)).toBe(true);
     expect(Object.keys(single.fields as object)).toEqual([
       'execMode', 'autoAdvance', 'status', 'reviewAgent', 'previousReviewAgent', 'updatedAt', 'workflowMode', 'raw',

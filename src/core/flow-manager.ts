@@ -1969,7 +1969,7 @@ export class FlowManager {
    */
   recordStageVerification(
     stageName: string,
-    input: { result: string; kind: string; by: string; note: string; evidence?: string },
+    input: { result: string; kind: string; by: string; note: string; evidence?: string; criteria?: string[] },
   ): StageVerificationWriteResult {
     const data = this.data;
     if (!data) { throw new Error('flow.json 未加载'); }
@@ -1983,6 +1983,11 @@ export class FlowManager {
     const by = typeof input?.by === 'string' ? input.by.trim() : '';
     const note = typeof input?.note === 'string' ? input.note.trim() : '';
     const evidence = typeof input?.evidence === 'string' ? input.evidence.trim() : '';
+    // v1.5.23 / REQ-044（六期反馈 #10）：验收判据 id（只读引用，**不参与 done 门**）。
+    // 结构留在验证记录里，归档摘要与后续 criteria 注册表可直接消费。
+    const criteria = Array.isArray(input?.criteria)
+      ? input.criteria.map((c) => (typeof c === 'string' ? c.trim() : '')).filter((c) => c !== '')
+      : [];
     if (result !== 'pass' && result !== 'fail') { return { ok: false, code: 'invalid_field' }; }
     if (!(VERIFICATION_KINDS as readonly string[]).includes(kind)) { return { ok: false, code: 'invalid_field' }; }
     if (by === '' || note === '') { return { ok: false, code: 'invalid_field' }; }
@@ -1993,6 +1998,7 @@ export class FlowManager {
       at: new Date().toISOString(),
       note,
       ...(evidence === '' ? {} : { evidence }),
+      ...(criteria.length === 0 ? {} : { criteria }),
     };
     this.appendLog({
       time: '',
@@ -3087,6 +3093,7 @@ export class FlowManager {
   recordAttempt(
     opId: string,
     result: 'pass' | 'fail',
+    reason?: string,
   ): { shouldRetry: boolean; shouldReplan: boolean } {
     if (!this.data) {
       return { shouldRetry: false, shouldReplan: false };
@@ -3146,6 +3153,11 @@ export class FlowManager {
     }
 
     // result === 'fail'
+    // v1.5.23 / REQ-044（六期反馈 #11）：把失败原因一并落审计——否则「同一失败」无从判断。
+    const failureDetail: Record<string, unknown> = {
+      opId, attempts: op.attempts, maxAttempts: op.max_attempts,
+      ...(typeof reason === 'string' && reason.trim() !== '' ? { reason: reason.trim() } : {}),
+    };
     if (op.attempts < op.max_attempts) {
       op.state = 'pending'; // 回到 pending 等待重试
       // T3：仅记 attempted_at（未进入终态 → completed_at 缺省）
@@ -3156,7 +3168,7 @@ export class FlowManager {
         time: '',
         agent: 'openfeel-executor',
         action: 'attempt_fail_retry',
-        detail: { opId, attempts: op.attempts, maxAttempts: op.max_attempts },
+        detail: failureDetail,
       });
       // 公共日志：记录执行失败-重试（审计链）
       this.publicLogger.logPhaseChange({
@@ -3177,7 +3189,7 @@ export class FlowManager {
       time: '',
       agent: 'openfeel-executor',
       action: 'attempt_fail_exhausted',
-      detail: { opId, attempts: op.attempts, maxAttempts: op.max_attempts },
+      detail: failureDetail,
     });
     // 公共日志：记录执行失败-耗尽（审计链）
     this.publicLogger.logPhaseChange({

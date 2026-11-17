@@ -13,7 +13,7 @@ const DEV_CORE_TEMPLATE_EN = `# Dynamic Rules
 > Use [+] / [-] markers to manage enabled/disabled status. Only disable, do not delete.
 `;
 
-/** 中文版 current.md 模板（团队文件 / 用户级视图：≤5 条近期记录 + 自动归档） */
+/** 中文版 current.md 模板（团队文件 / 用户级视图：≤5 条近期记录） */
 const CURRENT_TEMPLATE_ZH = `# 当前进度
 
 > 总进度：初始化完成，等待计划创建。
@@ -22,7 +22,8 @@ const CURRENT_TEMPLATE_ZH = `# 当前进度
 
 <!-- 示例：- **{yyyy-mm-dd HH:MM}** @{username}：{整体信息：做了什么、处于什么状态} -->
 
-> 更早记录见 \`.openfeel/dev/current_archive/\`（每次提交自动归档最旧一条；本文件仅保留近期 5 份）。
+> 本文件是**团队记录**，只在个人提交时手工更新；跨会话恢复请看 \`.openfeel/users/{username}/dev_last.md\`
+> 的 \`## 交接摘要\`（自动块由 \`openfeel dev sync\` 维护）。更早记录见 \`.openfeel/dev/current_archive/\`。
 `;
 
 /** 英文版 current.md 模板（team file / user-level view: latest 5 records + auto archive） */
@@ -34,7 +35,9 @@ const CURRENT_TEMPLATE_EN = `# Current Progress
 
 <!-- Example: - **{yyyy-mm-dd HH:MM}** @{username}: {overall information: what was done, current state} -->
 
-> Earlier records: see \`.openfeel/dev/current_archive/\` (each submission auto-archives the oldest; this file keeps only the latest 5).
+> Earlier records: see \`.openfeel/dev/current_archive/\`. This file is a **team record**, updated by hand on
+> personal submissions; for cross-session recovery read \`## 交接摘要\` in
+> \`.openfeel/users/{username}/dev_last.md\` (its auto block is maintained by \`openfeel dev sync\`).
 `;
 
 /** 中文版 decisions.md 模板（ADR 轻量格式：决策+理由+日期+状态） */

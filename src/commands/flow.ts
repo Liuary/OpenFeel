@@ -1449,7 +1449,8 @@ export function registerFlowCommand(program: Command): void {
     .description('记录操作执行结果')
     .requiredOption('--op <id>', '操作 ID（如 stage-01.op-001）')
     .requiredOption('--result <pass|fail>', '执行结果（pass 或 fail）')
-    .action((options: { op: string; result: string }) => {
+    .option('--reason <text>', '失败原因（v1.5.23：落审计，供「同一失败」识别与 feel_kb 沉淀）')
+    .action((options: { op: string; result: string; reason?: string }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -1492,7 +1493,7 @@ export function registerFlowCommand(program: Command): void {
 
       // v1.5.6-stage-114：写前 preflight（strict 拒绝；warn 仅 TTY 提示）
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
-      const outcome = mgr.recordAttempt(resolvedOp.fullId, options.result as 'pass' | 'fail');
+      const outcome = mgr.recordAttempt(resolvedOp.fullId, options.result as 'pass' | 'fail', options.reason);
       mgr.save();
 
       if (options.result === 'pass') {

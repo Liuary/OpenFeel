@@ -971,9 +971,10 @@ export const help: I18nDomain = {
   'stage.verify.argstageId': { key: 'help.stage.verify.argstageId', zh: '阶段 ID（如 v1.5.8-stage-122 或 stage-122）', en: '' },
   'stage.verify.result':   { key: 'help.stage.verify.result',   zh: '验证结论（pass / fail）', en: '' },
   'stage.verify.kind':     { key: 'help.stage.verify.kind',     zh: '验证种类（test / manual / build）', en: '' },
-  'stage.verify.by':       { key: 'help.stage.verify.by',       zh: '验证者', en: '' },
+  'stage.verify.by':       { key: 'help.stage.verify.by',       zh: '验证者（缺省 = 会话标识）', en: '' },
   'stage.verify.note':     { key: 'help.stage.verify.note',     zh: '结论摘要（进入归档摘要）', en: '' },
   'stage.verify.evidence': { key: 'help.stage.verify.evidence', zh: '证据（命令 / 报告路径）', en: '' },
+  'stage.verify.criteria': { key: 'help.stage.verify.criteria', zh: '关联的验收判据 id（逗号分隔；只读引用，不改门禁）', en: '' },
 
   // view
   'view':                  { key: 'help.view',                  zh: '审查条目管理', en: '' },

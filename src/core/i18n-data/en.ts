@@ -935,6 +935,7 @@ export const help: I18nDomain = {
   'stage.verify.by':       { key: 'help.stage.verify.by',       zh: '', en: 'Verifier' },
   'stage.verify.note':     { key: 'help.stage.verify.note',     zh: '', en: 'Conclusion note (included in the archive summary)' },
   'stage.verify.evidence': { key: 'help.stage.verify.evidence', zh: '', en: 'Evidence (command / report path)' },
+  'stage.verify.criteria': { key: 'help.stage.verify.criteria', zh: '', en: 'Related acceptance criteria ids (comma-separated; read-only reference, gate unchanged)' },
 
   'view':                  { key: 'help.view',                  zh: '', en: 'Review entry management' },
   'view.list':             { key: 'help.view.list',             zh: '', en: 'List review entries' },

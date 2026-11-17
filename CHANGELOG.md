@@ -1,3 +1,38 @@
+## [1.5.23] - 2026-11-17
+
+> 反馈驱动版本：CulaHub（UE 5.8 开放世界）连续 66 轮自动推进后的 13 条反馈逐条核实（`docs/phase-6/`），
+> 本轮落地 12 条 + 4 个反馈未提及的缺陷；1 条（goal 上下文）因依赖宿主 API 未实现，1 条（criteria 升级门禁）
+> 只做只读引用。
+
+### Added
+- [stage-11] **`openfeel dev clean`（REQ-041）**：运行态文件不入库——保证 `.gitignore` 覆盖 `.openfeel/dev/*` 与 `guard-audit.jsonl`，把已跟踪的运行态文件 `git rm --cached` 移出索引（不删工作区文件）；幂等，`--dry-run` 零写盘，`--json` 输出 `{schemaVersion, gitRepository, gitignore, removed, dryRun}`（注册 `--json` 选项 44 → 45）。
+- [stage-11] **`req waive <id> --reason [--by] [--revoke]`（REQ-043）**：显式豁免——阶段 done 门不再计入该需求，记录谁/何时/为何放弃（与 `cancelled` 区分）；`requirement_waive` / `requirement_unwaive` 审计。
+- [stage-11] **`req trivial <id> --reason [--revoke]`（REQ-043）**：trivial 显式标记——done 门跳过 review/verification 两项（阶段相位门与聚合门不变）；不做按路径自动豁免。
+- [stage-11] **`req complete <id> --result --note [--kind] [--evidence] [--by]`（REQ-043）**：一次收口 = review + verify + advance(done)，复用既有判据单点；任一步失败零写盘。
+- [stage-11] **`req add --claim --stage`（REQ-043）**：一次开单 + 认领 + 关联（收口序列 7 → 5 次调用的第一步）。
+- [stage-11] **`stage status` 进度视图（REQ-042）**：新增 `progress`（关联需求 done/total、最老 in_progress、当前相位进入时间）；JSON 向后兼容新增键。
+- [stage-11] **`stage verify --criteria <ids>`（REQ-044）**：验收判据 id 写入验证记录（只读引用，不参与 done 门）。
+- [stage-11] **`feel_next.example`（REQ-044）**：按当前相位给一条最小可复制示例，替代维护一份会漂的 help 表。
+- [stage-11] **失败指标（REQ-042 / 缺陷 A）**：新增 `recordPhaseWindowRun`；`flow advance` 异常路径记 `failure`，修复 `metrics.json` 的 `failedRuns` 恒 0 的静默误导。
+- [stage-11] **op 失败原因（REQ-044）**：`flow attempt --reason` 落审计；`feel_status.recovery.failureHint` 在同一 op 失败 ≥2 次时提示 `feel_kb add`。
+
+### Changed
+- [stage-11] **`--by` 可省（REQ-042）**：`req review` / `req verify` / `stage verify` 缺省写 `session:xxxxxxxx`（会话标识短形式）；`feel_req` / `feel_stage` 同步放开门禁参数。
+- [stage-11] **`recovery.handoffRef`（REQ-044）**：给出交接摘要的**位置**（`dev_last.md` 的 auto 块与 `## 交接摘要`），避免下游继续误把 `dev/current.md` 当自动交接文件。
+- [stage-11] **`current.md` 模板措辞**：删掉「每次提交自动归档最旧一条」这条从未实现的承诺，改为指向 `dev_last.md`。
+
+### Fixed
+- [stage-11] **`.openfeel/dev/.sync.json` 未忽略（REQ-041 / 缺陷 C）**：此前每次 advance 都写且被归档的 `git add -A` 扫进提交；现进 `.gitignore`，`init` 也为新项目补运行态条目。
+- [stage-11] **门禁误伤 `git rm --cached`（REQ-041）**：`--cached` 判为纯索引操作放行（不带 `--cached` 的 `git rm` 仍按目标写判定）；未 ignore 的目标会被下次自动提交加回索引（净效果白做一次，不丢数据）。
+- [stage-11] **`feel_flow.result` 死字段（REQ-042）**：删除从未被消费的参数（Breaking：传了会报参数错误）。
+- [stage-11] **`feel_req` done 门描述过时（REQ-042 / 缺陷 D）**：更正为「关联阶段已进入 `exec_running` 及之后即可完成」（实际判据一直如此，描述停留在 v1.5.7 之前）。
+- [stage-11] **聚合写侧复检（REQ-042 / 缺陷 B）**：`syncRequirementStatus` 写 done 前复用 `canCompleteRequirement`；生产路径由阶段 done 门兜底，此处是防御性不变量。
+
+### Notes
+- **未实现（如实记录）**：`feel_next` 注入 `goal: {id, round, maxRounds}`——goal 属 DSH 宿主能力（`dsh-tool-goal`），插件侧无公开契约可读，留待宿主 API 明确后补。
+- **只做只读引用**：`criteria` 升级为 done 门判据会拒绝所有存量阶段，按 `docs/phase-6/03-rollout-plan.md` 的「明确不做」留到后续版本。
+- 两包版本 lockstep（`openfeel` / `openfeel-dsh` → 1.5.23）。
+
 ## [1.5.22] - 2026-11-14
 
 > 文档：`openfeel-dsh`（DSH 适配器）的 npm 页面改为**以 OpenFeel 为主**介绍——先讲它是什么、解决什么问题、两个体系、两种模式、记录位置，再说明「这是 OpenFeel 在 DSH 上的适配版本」；适配器技术细节移到「适配细节」一节。

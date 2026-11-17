@@ -1,0 +1,337 @@
+{
+  "version": "v1.5.22",
+  "stages": {
+    "v1.5.22-stage-9": {
+      "name": "v1.5.22-stage-9",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-038",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T09:48:37.749Z",
+        "end_time": "2026-11-14T09:58:47.419Z",
+        "duration_ms": 609670
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T09:58:42.667Z",
+        "note": "OIDC 可信发布落地并验证；1.5.21 补发完成。",
+        "evidence": "CI run 43582380537 全绿（publish job 两个发布步 success，无 token）；npm 1.5.21 双包可用；npm 页面 README 已更新"
+      }
+    },
+    "v1.5.22-stage-10": {
+      "name": "v1.5.22-stage-10",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-039",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-14T10:58:51.707Z",
+        "end_time": "2026-11-14T11:06:30.162Z",
+        "duration_ms": 458455
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T11:06:25.088Z",
+        "note": "v1.5.22 页面重排收口，无行为变更。",
+        "evidence": "build 通过；tsc 0；vitest 2409/2409；lint 1194；dsh verify 121/121；guard 179/179；market 索引校验通过"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.5.22-stage-9",
+      "stage": "v1.5.22-stage-9",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：CI 切 OIDC（id-token、去 token、node 24），发布验证通过",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T09:58:04.095Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.5.22-stage-10",
+      "stage": "v1.5.22-stage-10",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "self-review：dsh/README 主介绍改为 OpenFeel，适配细节后置；版本 1.5.22",
+      "filed_by": "cli",
+      "filed_at": "2026-11-14T11:05:44.699Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-11-14T09:48:24.538Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T09:48:37.747Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T09:48:43.701Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:48:49.663Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:57:58.583Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:58:11.339Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:58:16.045Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T09:58:47.412Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-9",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:37.306Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:51.704Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-14T10:58:57.173Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T10:59:02.269Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T11:05:39.585Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T11:05:51.446Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T11:05:57.279Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-14T11:06:30.155Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.22-stage-10",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-038",
+      "title": "CI 发布切换 Trusted Publisher（OIDC）：去 token 依赖，补发 1.5.21",
+      "status": "done",
+      "created_at": "2026-11-14T09:48:15.540Z",
+      "updated_at": "2026-11-14T09:58:37.728Z",
+      "target_version": "v1.5.22",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-038.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T09:48:19.756Z",
+      "review": {
+        "result": "pass",
+        "by": "feel (self-review)",
+        "at": "2026-11-14T09:58:20.872Z",
+        "note": "self-review：仅改 CI（id-token 权限、移除 token、发布 job 用 Node 24 自带 npm 11）；两个包已通过 OIDC 发布 1.5.21。",
+        "independent": false
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T09:58:25.838Z",
+        "note": "CI 已切换到 Trusted Publisher（OIDC），无需 2FA token；1.5.21 双包发布成功。",
+        "evidence": "CI run 43582380537 成功；npm view openfeel version=1.5.21、openfeel-dsh version=1.5.21；npm page README 已更新为通俗版；Pages 索引含 1.5.21；build/tsc/vitest/dsh 全绿（阶段 8 已验证）"
+      }
+    },
+    {
+      "id": "REQ-039",
+      "title": "openfeel-dsh 页面重写：以 OpenFeel 为主介绍，适配细节后置",
+      "status": "done",
+      "created_at": "2026-11-14T10:58:26.869Z",
+      "updated_at": "2026-11-14T11:06:19.085Z",
+      "target_version": "v1.5.22",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-039.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-14T10:58:32.615Z",
+      "review": {
+        "result": "pass",
+        "by": "feel (self-review)",
+        "at": "2026-11-14T11:06:01.706Z",
+        "note": "self-review：页面结构调整为主讲 OpenFeel；事实与其他 README 一致；适配细节统一后置。",
+        "independent": false
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "feel-tester",
+        "at": "2026-11-14T11:06:06.326Z",
+        "note": "openfeel-dsh 页面重排完成，安装与细节后置；版本与索引收口。",
+        "evidence": "build 通过；tsc 0；vitest 2409/2409；lint 1194；dsh verify 121/121；guard 179/179；market:index:check 通过（5 版本，1.5.22 @ b4d3886d）"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 2,
+    "reviews": 2,
+    "log": 16,
+    "requirements": 2
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-14T11:06:37.620Z"
+}

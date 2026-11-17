@@ -60,6 +60,28 @@ describe('repo-hygiene（v1.5.23 / REQ-041）', () => {
     expect(readFileSync(join(dir, '.gitignore'), 'utf-8')).toBe(after);
   });
 
+  it('表头已存在时只补缺失条目（不重复表头）', () => {
+    writeFileSync(
+      join(dir, '.gitignore'),
+      'node_modules/\n# openfeel：运行态文件（CLI 自动维护，逐次变更；v1.5.23 起默认不入库）\n.openfeel/dev/sessions.json\n',
+      'utf-8',
+    );
+    const result = ensureRuntimeIgnoreEntries(dir);
+    expect(result.added).toContain('.openfeel/dev/.sync.json');
+    const content = readFileSync(join(dir, '.gitignore'), 'utf-8');
+    const headers = content.split(/\r?\n/).filter((line) => line.startsWith('# openfeel：运行态文件'));
+    expect(headers).toHaveLength(1);
+  });
+
+  it('CRLF 文件：追加时沿用 CRLF，不混行尾', () => {
+    writeFileSync(join(dir, '.gitignore'), 'node_modules/\r\n', 'utf-8');
+    ensureRuntimeIgnoreEntries(dir);
+    const content = readFileSync(join(dir, '.gitignore'), 'utf-8');
+    // 除首行原有 CRLF 外，新增部分也必须是 CRLF：不允许出现裸 \n
+    expect(content.includes('\r\n')).toBe(true);
+    expect(/[^\r]\n/.test(content)).toBe(false);
+  });
+
   it('listTrackedRuntimeFiles / untrackRuntimeFiles：移出索引但保留工作区文件', () => {
     gitInit();
     seedRuntimeFiles();

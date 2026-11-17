@@ -865,7 +865,7 @@ export function createTools(context) {
     description:
       '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配，**单调计数器 meta.last_req_seq**：归档移走条目后也不复用 ID）；list 过滤列表（include_archived=true 合并已随版本归档的需求）；show 详情（已归档需求回退读归档文件）；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：关联阶段须已进入 exec_running 及之后相位即可完成——阶段是版本容器，不必先 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）；review 记录需求审查；verify 记录需求验证（**v1.5.8 完成必审验：done 门额外要求 review.result=pass 且 verification.result=pass**）；release-check 发布门（软，只读）：列出该版本 done / 未完成 / 其它需求；rollover 顺延：把未完成需求的 target_version 改到新版本并记录 carried_from。',
     parameters: {
-      action: stringEnum(['add', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split', 'review', 'verify', 'release-check', 'rollover'], '操作。', { required: true }),
+      action: stringEnum(['add', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split', 'review', 'verify', 'complete', 'waive', 'trivial', 'release-check', 'rollover'], '操作。', { required: true }),
       id: string('需求 ID（如 REQ-001）。show/claim/release/set/advance/split/review/verify/rollover 必需（rollover 与 all 互斥）。'),
       title: string('需求标题（add 必需；set 为改标题）。'),
       target_version: string('预估版本（如 v1.3.0；纯展示/过滤维度，非门禁）。'),
@@ -889,6 +889,9 @@ export function createTools(context) {
       note: string('review/verify 的结论摘要（进入归档摘要）。'),
       evidence: string('verify 的证据（测试命令 / 报告路径）。'),
       independent: boolean('review 是否独立审查（缺省 false = 自我审查，须显式标注 self-review）。'),
+      claim: boolean('add 时立即认领（v1.5.23）。'),
+      reason: string('waive / trivial 的原因（标记时必需）。'),
+      revoke: boolean('waive / trivial 时撤销标记。'),
       project: string('项目根目录。'),
     },
     output: { schema: envelopeSchema(), render: renderEnvelope },
@@ -903,6 +906,8 @@ export function createTools(context) {
           pushOption(argv, '--target-version', args.target_version);
           pushOption(argv, '--priority', args.priority);
           pushOption(argv, '--workflow-mode', args.workflow_mode);
+          pushFlag(argv, '--claim', args.claim);
+          pushOption(argv, '--stage', args.stage);
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return { data: { output: out.text }, summary: '需求已创建。' };
@@ -1055,6 +1060,40 @@ export function createTools(context) {
             return {
               data: { id, result: args.result, kind: args.kind, by: args.by, output: out.text },
               summary: `需求 ${id} 验证已记录（${args.kind} / ${args.result}）。`,
+            };
+          });
+        }
+        case 'complete': {
+          // v1.5.23 / REQ-043：一次收口（review + verify + done）
+          const id = requireArg(args, 'id', action);
+          const argv = ['req', 'complete', id];
+          pushOption(argv, '--result', requireArg(args, 'result', action));
+          pushOption(argv, '--kind', optionalArg(args, 'kind'));
+          pushOption(argv, '--note', requireArg(args, 'note', action));
+          pushOption(argv, '--by', optionalArg(args, 'by'));
+          pushOption(argv, '--evidence', args.evidence);
+          argv.push(args.independent === true ? '--independent' : '--self');
+          return envelope(action, async () => {
+            const out = await cli.write(argv, opts);
+            return {
+              data: { id, result: args.result, kind: args.kind ?? 'manual', output: out.text },
+              summary: `需求 ${id} 已收口（${args.result}）。`,
+            };
+          });
+        }
+        case 'waive':
+        case 'trivial': {
+          // v1.5.23 / REQ-043：豁免 / 免审验标记（--revoke 撤销）
+          const id = requireArg(args, 'id', action);
+          const argv = ['req', args.action, id];
+          pushOption(argv, '--reason', optionalArg(args, 'reason'));
+          pushOption(argv, '--by', optionalArg(args, 'by'));
+          pushFlag(argv, '--revoke', args.revoke);
+          return envelope(action, async () => {
+            const out = await cli.write(argv, opts);
+            return {
+              data: { id, revoked: args.revoke === true, output: out.text },
+              summary: args.revoke === true ? `需求 ${id} 的标记已撤销。` : `需求 ${id} 已标记 ${args.action}。`,
             };
           });
         }

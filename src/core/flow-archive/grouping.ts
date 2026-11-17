@@ -7,7 +7,7 @@
 import { parseStageId } from '../plan/path.js';
 import type { FlowData, StageData, ReviewItem, LogEntry } from '../flow-manager.js';
 import type { RequirementData } from '../req/types.js';
-import { isTerminalRequirementStatus } from '../req/requirement-ops.js';
+import { isDisposedRequirement } from '../req/requirement-ops.js';
 import type { ArchiveFile } from './archive-file.js';
 
 /** splitForArchive 返回：归档段（缺 schemaVersion/archived_at，由命令层装配） + 保留段 */
@@ -139,7 +139,7 @@ function isArchivableRequirement(req: RequirementData, version: string): boolean
     const trimmed = v.trim();
     return trimmed.startsWith('v') ? trimmed.slice(1) : trimmed;
   };
-  return norm(req.target_version) === norm(version) && isTerminalRequirementStatus(req.status);
+  return norm(req.target_version) === norm(version) && isDisposedRequirement(req);
 }
 
 /**

@@ -19,6 +19,8 @@ export interface AgentMetrics {
   totalRetries: number;
   totalDurationMs: number;
   avgDurationMs: number;
+  /** 计入平均耗时的样本数（v1.5.23；旧数据缺省 → 按 totalRuns 近似） */
+  durationSamples?: number;
 }
 
 /** phase → 负责 Agent 映射（T1 归属口径；`*_passed` / `done` / meta 等不入表 = 跳过不记） */
@@ -50,6 +52,7 @@ function createDefaultMetrics(agentName: string): AgentMetrics {
     totalRetries: 0,
     totalDurationMs: 0,
     avgDurationMs: 0,
+    durationSamples: 0,
   };
 }
 
@@ -75,7 +78,13 @@ export function recordPhaseWindowRun(
   if (agentName === undefined || agentName === '') return false;
   const hasBaseline = baseMs !== null && baseMs > 0;
   if (!hasBaseline && ok) return false;
-  store.recordRun(agentName, hasBaseline ? now - (baseMs as number) : 0, ok ? 'success' : 'failure', 0);
+  store.recordRun(
+    agentName,
+    hasBaseline ? now - (baseMs as number) : 0,
+    ok ? 'success' : 'failure',
+    0,
+    hasBaseline,
+  );
   return true;
 }
 
@@ -121,6 +130,7 @@ export class MetricsStore {
     durationMs: number,
     result: 'success' | 'failure',
     retries: number = 0,
+    countDuration: boolean = true,
   ): void {
     let metrics = this.agents.get(agentName);
     if (!metrics) {
@@ -128,8 +138,17 @@ export class MetricsStore {
       this.agents.set(agentName, metrics);
     }
 
+    // v1.5.23：平均耗时的分母改为「计入时长的样本数」（旧数据无该键 → 按总次数近似，
+    // 与旧公式一致）。失败但无 phase 基线时只计失败次数、不计时长，避免拉低 avg。
+    const previousSamples = typeof metrics.durationSamples === 'number'
+      ? metrics.durationSamples
+      : metrics.totalRuns;
     metrics.totalRuns += 1;
-    metrics.totalDurationMs += durationMs;
+    const samples = previousSamples + (countDuration ? 1 : 0);
+    metrics.durationSamples = samples;
+    if (countDuration) {
+      metrics.totalDurationMs += durationMs;
+    }
 
     if (result === 'success') {
       metrics.successfulRuns += 1;
@@ -138,8 +157,7 @@ export class MetricsStore {
     }
 
     metrics.totalRetries += retries;
-    // 平均耗时 = 总耗时 / 总执行次数（取整）
-    metrics.avgDurationMs = Math.round(metrics.totalDurationMs / metrics.totalRuns);
+    metrics.avgDurationMs = samples > 0 ? Math.round(metrics.totalDurationMs / samples) : 0;
   }
 
   /**
@@ -194,12 +212,16 @@ export class MetricsStore {
    * 不改变 summary() 既有签名与输出。
    */
   getSummaryData(): { agents: Array<AgentMetrics & { successRate: number | null }> } {
-    const agents = Array.from(this.agents.values()).map((m) => ({
-      ...m,
-      successRate: m.totalRuns > 0
-        ? Number(((m.successfulRuns / m.totalRuns) * 100).toFixed(1))
-        : null,
-    }));
+    const agents = Array.from(this.agents.values()).map((m) => {
+      // v1.5.23：durationSamples 是内部记账字段，不进 JSON 契约（键集与既有冻结一致）
+      const { durationSamples: _durationSamples, ...rest } = m;
+      return {
+        ...rest,
+        successRate: m.totalRuns > 0
+          ? Number(((m.successfulRuns / m.totalRuns) * 100).toFixed(1))
+          : null,
+      };
+    });
     return { agents };
   }
 

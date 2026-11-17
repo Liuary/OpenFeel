@@ -2300,13 +2300,15 @@ function classifyGitCommand(tokens, start, baseDir) {
       // v1.5.23 / REQ-041（六期反馈 #2）：`git rm --cached` **只改索引、不写文件内容**，
       // 是清理「运行态文件被跟踪」的正规手段（`openfeel dev clean` 背后就是它）。
       // 旧实现把 `--cached` 当普通 flag 丢掉 → 目标命中受保护名单即拒（shell-protected），
-      // 于是 agent 连自助清理都做不到。这里按「索引操作」放行。
-      // 风险边界：若目标未被 `.gitignore` 覆盖，紧随其后的自动 `git add -A`
-      // （flow-manager 阶段归档）会把文件原样加回索引——净效果是白做一次，不会丢数据。
+      // 于是 agent 连自助清理都做不到。
+      // 放行范围收窄到 **`.openfeel/**` 内部路径**：这是唯一真实场景，也挡住了
+      // `git rm --cached -r .`（整仓移出索引 + 下一次 commit = 把仓库删空）。
+      // 非内部路径（或 `.` / 通配）仍按「目标写」判定 → 受保护名单照旧生效。
       if (subcommand === 'rm' && rest.includes('--cached')) {
-        return positionals.length > 0
-          ? { kind: 'readonly', detail: 'git rm --cached' }
-          : { kind: 'undecidable', detail: 'git rm --cached' };
+        if (positionals.length === 0) return { kind: 'undecidable', detail: 'git rm --cached' };
+        const allInternal = positionals.every((p) => p.replace(/\\/g, '/').startsWith('.openfeel/'));
+        if (allInternal) return { kind: 'readonly', detail: 'git rm --cached（仅索引，.openfeel/**）' };
+        return { kind: 'targets', targets: positionals };
       }
       return positionals.length > 0
         ? { kind: 'targets', targets: positionals }

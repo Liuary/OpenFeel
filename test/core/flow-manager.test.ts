@@ -6549,6 +6549,17 @@ describe('REQ-027 完成必审验（阶段层）', () => {
     expect(okMgr.describeStageDoneGate('stage-01')).toEqual({
       verificationMissing: false, incompleteRequirements: [],
     });
+
+    // v1.5.23 / REQ-043：waived 需求视为已处置，不再卡阶段 done
+    const waivedMgr = mgrWith({
+      'stage-01': stageFixture({ requirement_id: 'REQ-001', verification: { ...PASS_VER } }),
+    }, [{
+      ...req('REQ-001', 'in_progress'),
+      waiver: { reason: '需求作废', by: 'alice', at: '2026-11-17T00:00:00.000Z' },
+    }]);
+    expect(waivedMgr.describeStageDoneGate('stage-01')).toEqual({
+      verificationMissing: false, incompleteRequirements: [],
+    });
   });
 
   it('T027.9 archiving → done 三态：无阶段验证拒绝 / 关联需求未 done 拒绝 / 齐全通过', () => {

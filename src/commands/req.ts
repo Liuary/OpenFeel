@@ -175,14 +175,6 @@ export function registerReqCommand(program: Command): void {
           priority: options.priority as RequirementPriority | undefined,
           workflow_mode: options.workflowMode as WorkflowMode | undefined,
         });
-        // 正文骨架：严格直传引擎返回本体（禁浅副本）；写失败 → 不 save（flow.json 零变更）
-        let bodyPath: string;
-        try {
-          bodyPath = writeRequirementBodySkeleton(process.cwd(), created);
-        } catch (err) {
-          failGeneric(lang, err);
-          return;
-        }
         // v1.5.23 / REQ-043（六期反馈 #1）：一次开单 + 认领 + 关联
         let claimedOwner: string | undefined;
         if (options.claim === true) {
@@ -196,17 +188,31 @@ export function registerReqCommand(program: Command): void {
         }
         let linkedStage: string | undefined;
         if (options.stage !== undefined) {
-          const l = linkRequirement(data, options.stage, created.id);
+          // v1.5.23：短名/全名都要能命中（与 flow 命令同一归一化 + 双键回退）
+          const normalizedStage = normalizeStageId(options.stage);
+          const stageKey = normalizedStage !== null && data.stages?.[normalizedStage] !== undefined
+            ? normalizedStage
+            : options.stage;
+          const l = linkRequirement(data, stageKey, created.id);
           if (!l.ok) {
             failCode(lang, l.code, {
               not_found: t('req.err.notFoundTmpl', lang, { id: created.id }),
+              stage_not_found: t('req.add.linkFailedTmpl', lang, { id: created.id, stage: options.stage }),
               invalid_field: t('req.add.linkFailedTmpl', lang, { id: created.id, stage: options.stage }),
               invalid_status: t('req.add.linkFailedTmpl', lang, { id: created.id, stage: options.stage }),
               general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id: created.id }),
             });
             return;
           }
-          linkedStage = options.stage;
+          linkedStage = stageKey;
+        }
+        // 正文骨架：认领/关联都成功后再落盘（失败路径不留孤儿正文）
+        let bodyPath: string;
+        try {
+          bodyPath = writeRequirementBodySkeleton(process.cwd(), created);
+        } catch (err) {
+          failGeneric(lang, err);
+          return;
         }
         if (!saveOrFail(mgr, lang)) {
           return;

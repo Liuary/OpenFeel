@@ -257,6 +257,18 @@ describe('MetricsStore', () => {
       expect(m.totalDurationMs).toBe(2000 + 3000);
     });
 
+    it('无基线失败不拉低 avg（countDuration=false）', () => {
+      const store = MetricsStore.getInstance(tmpDir);
+      expect(recordPhaseWindowRun(store, 'openfeel-executor', 1000, true, 3000)).toBe(true); // 2000ms
+      expect(recordPhaseWindowRun(store, 'openfeel-executor', null, false, 5000)).toBe(true); // 0ms，不计时长
+      const m = store.getAgentMetrics('openfeel-executor') as AgentMetrics;
+      expect(m.totalRuns).toBe(2);
+      expect(m.failedRuns).toBe(1);
+      expect(m.totalDurationMs).toBe(2000);
+      expect(m.avgDurationMs).toBe(2000);
+      expect(m.durationSamples).toBe(1);
+    });
+
     it('无 agent（相位不入表）→ 零记录', () => {
       const store = MetricsStore.getInstance(tmpDir);
       expect(recordPhaseWindowRun(store, undefined, null, false, 1000)).toBe(false);

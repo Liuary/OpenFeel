@@ -57,8 +57,17 @@ export function ensureRuntimeIgnoreEntries(
   if (added.length === 0 || options.dryRun === true) {
     return { file, added };
   }
-  const separator = existing === '' ? '' : (existing.endsWith('\n') ? '' : '\n');
-  const block = `${existing === '' ? '' : '\n'}${GITIGNORE_HEADER}\n${added.join('\n')}\n`;
+  // EOL 跟随文件既有风格（CRLF 文件不混入 LF 行）
+  const eol = existing.includes('\r\n') ? '\r\n' : '\n';
+  const separator = existing === '' ? '' : (existing.endsWith('\n') ? '' : eol);
+  // 表头已存在（用户删过部分条目）→ 只补缺失行，不再追加第二个表头
+  const hasHeader = existing.includes(GITIGNORE_HEADER);
+  const block = [
+    existing === '' ? '' : eol,
+    ...(hasHeader ? [] : [GITIGNORE_HEADER, '']),
+    added.join(eol),
+    '',
+  ].filter((line, index) => index > 0 || line !== '').join(eol);
   atomicWriteFileSync(file, existing + separator + block);
   return { file, added };
 }

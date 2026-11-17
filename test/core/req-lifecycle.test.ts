@@ -9,6 +9,7 @@ import {
   waiveRequirement, revokeRequirementWaiver,
   markRequirementTrivial, clearRequirementTrivial,
   canCompleteRequirement, requirementDoneBlocker, getRequirement,
+  recordRequirementReview, isDisposedRequirement, releaseCheckRequirements,
 } from '../../src/core/req/requirement-ops.js';
 import type { FlowData, StageData } from '../../src/core/flow-manager.js';
 
@@ -90,5 +91,37 @@ describe('v1.5.23 / REQ-043：trivial', () => {
     markRequirementTrivial(data, 'REQ-001', { reason: 'docs', by: 'alice' });
     expect(clearRequirementTrivial(data, 'REQ-001').ok).toBe(true);
     expect(requirementDoneBlocker(data, getRequirement(data, 'REQ-001')!)).toBe('review');
+  });
+
+  it('已存在的 review=fail 不会被 trivial 洗白', () => {
+    const data = makeFlowData({ 'stage-01': makeStage() });
+    seedInProgress(data);
+    recordRequirementReview(data, 'REQ-001', { result: 'fail', by: 'r', note: '缺测试' });
+    markRequirementTrivial(data, 'REQ-001', { reason: 'docs', by: 'alice' });
+    expect(requirementDoneBlocker(data, getRequirement(data, 'REQ-001')!)).toBe('review');
+  });
+});
+
+describe('v1.5.23 / REQ-043：waive 与发布/归档闭环', () => {
+  it('release-check：waived 计入 other，不再算未完成', () => {
+    const data = makeFlowData({ 'stage-01': makeStage() });
+    addRequirement(data, { title: 'a', target_version: 'v1.0.0' });
+    advanceRequirement(data, 'REQ-001', 'scheduled');
+    waiveRequirement(data, 'REQ-001', { reason: '需求作废', by: 'alice' });
+    const check = releaseCheckRequirements(data, 'v1.0.0');
+    expect(check.counts.done).toBe(0);
+    expect(check.counts.unfinished).toBe(0);
+    expect(check.counts.other).toBe(1);
+    expect(check.other[0].id).toBe('REQ-001');
+  });
+
+  it('isDisposedRequirement：终态 或 waiver 为真', () => {
+    const data = makeFlowData();
+    addRequirement(data, { title: 'a' });
+    expect(isDisposedRequirement(getRequirement(data, 'REQ-001'))).toBe(false);
+    waiveRequirement(data, 'REQ-001', { reason: 'x', by: 'alice' });
+    expect(isDisposedRequirement(getRequirement(data, 'REQ-001'))).toBe(true);
+    revokeRequirementWaiver(data, 'REQ-001');
+    expect(isDisposedRequirement(getRequirement(data, 'REQ-001'))).toBe(false);
   });
 });

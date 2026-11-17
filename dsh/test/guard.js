@@ -2482,6 +2482,15 @@ check('op-004 P1-3：`-c alias.*` 硬拒；未知 git 子命令不再当 readonl
     classifyShellCommand({ command: 'git rm .openfeel/dev/guard-state.json', baseDir, shell: 'bash' }).kind,
     'targets',
   );
+  // 整仓 / 非 .openfeel 路径的 `--cached` 仍按「目标写」判定（v1.5.23 收窄）
+  assert.equal(
+    classifyShellCommand({ command: 'git rm --cached -r .', baseDir, shell: 'bash' }).kind,
+    'targets',
+  );
+  assert.equal(
+    classifyShellCommand({ command: 'git rm --cached src/core/flow.ts', baseDir, shell: 'bash' }).kind,
+    'targets',
+  );
   // 持久化别名同源（P1-3）；只读用法照旧
   assert.equal(classifyShellCommand({ command: 'git config alias.zz "!rm -rf src"', baseDir, shell: 'bash' }).kind, 'indirect');
   assert.equal(classifyShellCommand({ command: 'git config alias.zz', baseDir, shell: 'bash' }).kind, 'none');

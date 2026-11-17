@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-17T15:03:49.690Z",
-    "revision": 2324,
+    "updated": "2026-11-17T15:39:06.893Z",
+    "revision": 2332,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -81,6 +81,22 @@
         {
           "id": "REQ-041",
           "order": 1
+        },
+        {
+          "id": "REQ-042",
+          "order": 2
+        },
+        {
+          "id": "REQ-043",
+          "order": 3
+        },
+        {
+          "id": "REQ-044",
+          "order": 4
+        },
+        {
+          "id": "REQ-045",
+          "order": 5
         }
       ]
     }
@@ -2118,6 +2134,82 @@
         "requirementId": "REQ-041",
         "action": "link"
       }
+    },
+    {
+      "time": "2026-11-17T15:38:47.099Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-042",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-17T15:38:49.966Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-043",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-17T15:38:52.609Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-044",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-17T15:38:57.137Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-045",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-17T15:38:59.718Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.23-stage-11",
+        "requirementId": "REQ-042",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-17T15:39:03.224Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.23-stage-11",
+        "requirementId": "REQ-043",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-17T15:39:05.091Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.23-stage-11",
+        "requirementId": "REQ-044",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-17T15:39:06.893Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.23-stage-11",
+        "requirementId": "REQ-045",
+        "action": "link"
+      }
     }
   ],
   "requirements": [
@@ -2386,44 +2478,52 @@
       "title": "语义纠偏与视图：删 result 死字段、修 done 门描述、补聚合写侧断言、metrics 记失败、stage 进度、goal、by 缺省",
       "status": "draft",
       "created_at": "2026-11-17T15:03:21.984Z",
-      "updated_at": "2026-11-17T15:03:21.984Z",
+      "updated_at": "2026-11-17T15:38:47.099Z",
       "target_version": "v1.5.23",
       "priority": "P1",
       "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-042.md"
+      "body_path": ".openfeel/requirements/REQ-042.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-17T15:38:47.099Z"
     },
     {
       "id": "REQ-043",
       "title": "需求生命周期：trivial 审查标记、waive 显式豁免、add --claim --stage 与 req complete 一次收口",
       "status": "draft",
       "created_at": "2026-11-17T15:03:24.429Z",
-      "updated_at": "2026-11-17T15:03:24.429Z",
+      "updated_at": "2026-11-17T15:38:49.966Z",
       "target_version": "v1.5.23",
       "priority": "P1",
       "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-043.md"
+      "body_path": ".openfeel/requirements/REQ-043.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-17T15:38:49.966Z"
     },
     {
       "id": "REQ-044",
       "title": "交接与判据：recovery.handoff 指向 dev_last、criteria 只读引用、示例与失败提示",
       "status": "draft",
       "created_at": "2026-11-17T15:03:26.816Z",
-      "updated_at": "2026-11-17T15:03:26.816Z",
+      "updated_at": "2026-11-17T15:38:52.608Z",
       "target_version": "v1.5.23",
       "priority": "P2",
       "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-044.md"
+      "body_path": ".openfeel/requirements/REQ-044.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-17T15:38:52.608Z"
     },
     {
       "id": "REQ-045",
       "title": "v1.5.23 收尾：两包版本同步、CHANGELOG、文档、全量测试",
       "status": "draft",
       "created_at": "2026-11-17T15:03:34.240Z",
-      "updated_at": "2026-11-17T15:03:34.240Z",
+      "updated_at": "2026-11-17T15:38:57.137Z",
       "target_version": "v1.5.23",
       "priority": "P2",
       "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-045.md"
+      "body_path": ".openfeel/requirements/REQ-045.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-17T15:38:57.137Z"
     }
   ]
 }

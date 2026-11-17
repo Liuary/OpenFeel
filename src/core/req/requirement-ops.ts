@@ -146,6 +146,18 @@ export function isTerminalRequirementStatus(status: RequirementStatus): boolean 
   return status === 'done' || status === 'cancelled' || status === 'rejected';
 }
 
+/**
+ * 「已处置」判定（v1.5.23 / REQ-043）：终态 **或** 显式豁免（`waiver`）。
+ *
+ * 语义：waive = 主动放弃并移出活跃工作——发布检查不再把它算未完成，版本归档把它
+ * 与终态需求一起搬进归档文件（否则会永久留在 flow.json、卡住之后每个版本的默认发布）。
+ * 撤销豁免（`waive --revoke`）后需要在下一次归档前处理，届时会重新计入未完成。
+ */
+export function isDisposedRequirement(req: RequirementData | undefined | null): boolean {
+  if (!req) return false;
+  return isTerminalRequirementStatus(req.status) || req.waiver !== undefined;
+}
+
 /** 裁定 4：全部关联阶段 done（零关联 → false，空集守卫）；v1.5.8 / REQ-028 多值经单点判定 */
 export function allLinkedStagesDone(data: FlowData, requirementId: string): boolean {
   const linked = Object.values(data.stages ?? {}).filter((s) => stageRequirementIds(s).includes(requirementId));
@@ -186,8 +198,13 @@ export function requirementDoneBlocker(data: FlowData, req: RequirementData): Re
   if (linked.length > 0 && !linked.every((s) => (COMPLETION_READY_PHASES as readonly string[]).includes(s.phase))) {
     return 'stage_phase';
   }
-  // v1.5.23 / REQ-043（六期 #5）：trivial 显式标记免除审验两项；相位门与聚合门不变
-  if (req.trivial !== undefined) { return null; }
+  // v1.5.23 / REQ-043（六期 #5）：trivial 显式标记免除审验两项；相位门与聚合门不变。
+  // 但**已存在的 fail 记录仍然拦**——标记不能把「审过且没过」洗白。
+  if (req.trivial !== undefined) {
+    if (req.review !== undefined && req.review.result !== 'pass') { return 'review'; }
+    if (req.verification !== undefined && req.verification.result !== 'pass') { return 'verification'; }
+    return null;
+  }
   if (req.review?.result !== 'pass') { return 'review'; }
   if (req.verification?.result !== 'pass') { return 'verification'; }
   return null;
@@ -644,7 +661,8 @@ export function releaseCheckRequirements(data: FlowData, version: string): Relea
     if (!sameRequirementVersion(req.target_version, version)) { continue; }
     if (req.status === 'done') {
       done.push(req);
-    } else if (isTerminalRequirementStatus(req.status)) {
+    } else if (isDisposedRequirement(req)) {
+      // v1.5.23：cancelled / rejected / **waived** 都算「已处置」——不再卡发布软门
       other.push(req);
     } else {
       unfinished.push(req);

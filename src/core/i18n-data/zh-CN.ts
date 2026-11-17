@@ -444,6 +444,13 @@ export const flow: I18nDomain = {
   'dev.statusLastSyncTmpl':         { key: 'flow.dev.statusLastSyncTmpl',         zh: '上次同步：{lastSync}（间隔 {interval} 分钟）', en: '' },
   'dev.statusDueTmpl':              { key: 'flow.dev.statusDueTmpl',              zh: '状态已过期（≥{interval} 分钟）：请更新交接摘要后运行 `openfeel dev sync`。', en: '' },
   'dev.statusOkTmpl':               { key: 'flow.dev.statusOkTmpl',               zh: '状态在有效期内（{interval} 分钟窗口），无需更新。', en: '' },
+  // dev clean（v1.5.23 / REQ-041：运行态文件不入库）
+  'dev.cleanOkTmpl':                { key: 'flow.dev.cleanOkTmpl',                zh: '✓ 仓库卫生检查完成。', en: '' },
+  'dev.cleanGitignoreTmpl':         { key: 'flow.dev.cleanGitignoreTmpl',         zh: '· .gitignore（{file}）：{entries}', en: '' },
+  'dev.cleanUntrackedTmpl':         { key: 'flow.dev.cleanUntrackedTmpl',         zh: '· 移出 git 索引：{files}（工作区文件保留）', en: '' },
+  'dev.cleanDryRunTmpl':            { key: 'flow.dev.cleanDryRunTmpl',            zh: '（dry-run：未写 .gitignore、未改索引）', en: '' },
+  'dev.cleanNotGitWarnTmpl':        { key: 'flow.dev.cleanNotGitWarnTmpl',        zh: '⚠ 当前目录不是 git 仓库：只保证 .gitignore，跳过索引检查。', en: '' },
+  'dev.cleanNone':                  { key: 'flow.dev.cleanNone',                  zh: '（无）', en: '' },
   'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '请先运行 `openfeel flow next`（或 `flow status`）读取状态，再执行写操作（preflight 缺失或已过期）。', en: '' },
 };
 
@@ -1057,6 +1064,8 @@ export const help: I18nDomain = {
   'dev':                 { key: 'help.dev',                 zh: '开发状态记录（v1.5.0：仅 Feel 维护；CLI 负责简要状态块）', en: '' },
   'dev.sync':            { key: 'help.dev.sync',            zh: '立即写入简要状态块（dev_last AUTO 块 + .sync.json）', en: '' },
   'dev.status':          { key: 'help.dev.status',          zh: '查看状态同步状态（只读；默认 30 分钟窗口）', en: '' },
+  'dev.clean':           { key: 'help.dev.clean',           zh: '运行态文件不入库：补 .gitignore + 从 git 索引移除已跟踪的运行态文件（不删工作区文件）', en: '' },
+  'dev.clean.dryRun':    { key: 'help.dev.clean.dryRun',    zh: '只显示将要处理的项（零写盘、零索引改动）', en: '' },
   'req.add':             { key: 'help.req.add',             zh: '创建需求（ID 自动分配；正文骨架铺到 .openfeel/requirements/）', en: '' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '需求标题', en: '' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '预估版本（如 v1.3.0）', en: '' },

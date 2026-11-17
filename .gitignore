@@ -24,3 +24,6 @@ coverage/
 dsh/.openfeel/
 
 .openfeel/chore.json
+
+# openfeel：运行态文件（CLI 自动维护，逐次变更；v1.5.23 起默认不入库）
+.openfeel/dev/.sync.json

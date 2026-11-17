@@ -2297,6 +2297,17 @@ function classifyGitCommand(tokens, start, baseDir) {
       return { kind: 'whole-tree', detail: `git ${subcommand}` };
     case 'rm':
     case 'mv':
+      // v1.5.23 / REQ-041（六期反馈 #2）：`git rm --cached` **只改索引、不写文件内容**，
+      // 是清理「运行态文件被跟踪」的正规手段（`openfeel dev clean` 背后就是它）。
+      // 旧实现把 `--cached` 当普通 flag 丢掉 → 目标命中受保护名单即拒（shell-protected），
+      // 于是 agent 连自助清理都做不到。这里按「索引操作」放行。
+      // 风险边界：若目标未被 `.gitignore` 覆盖，紧随其后的自动 `git add -A`
+      // （flow-manager 阶段归档）会把文件原样加回索引——净效果是白做一次，不会丢数据。
+      if (subcommand === 'rm' && rest.includes('--cached')) {
+        return positionals.length > 0
+          ? { kind: 'readonly', detail: 'git rm --cached' }
+          : { kind: 'undecidable', detail: 'git rm --cached' };
+      }
       return positionals.length > 0
         ? { kind: 'targets', targets: positionals }
         : { kind: 'undecidable', detail: `git ${subcommand}` };

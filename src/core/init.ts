@@ -15,6 +15,7 @@ import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { createWorkspace } from './workspace/structure.js';
 import { ensureInfoJson, isFirstUse, getGlobalConfig, setGlobalConfig, DEFAULT_GLOBAL_CONFIG } from './workspace/identity.js';
+import { ensureRuntimeIgnoreEntries } from './repo-hygiene.js';
 import { writeDefaultConfig } from './config.js';
 import { FlowManager } from './flow-manager.js';
 import { getDevCoreTemplate, getCurrentTemplate, getDecisionsTemplate } from './templates.js';
@@ -210,6 +211,18 @@ function initWorkspaceCore(
 
   // 4b. 将语言写入 .info.json
   writeLang(projectPath, lang);
+
+  // 4c. 运行态文件不入库（v1.5.23 / REQ-041）：保证 .gitignore 覆盖 .openfeel/dev/*
+  //     已跟踪的存量文件不在 init 里动索引（交给 `openfeel dev clean`，见六期反馈 #4）
+  const gitignoreExisted = existsSync(resolve(projectPath, '.gitignore'));
+  const ignoreResult = ensureRuntimeIgnoreEntries(projectPath);
+  if (ignoreResult.added.length > 0) {
+    if (gitignoreExisted) {
+      updated.push('.gitignore');
+    } else {
+      created.push('.gitignore');
+    }
+  }
 
   // 5. 生成 .openfeel/dev/dev_core.md 模板（双语）
   const devCorePath = resolve(projectPath, '.openfeel', 'dev', 'dev_core.md');

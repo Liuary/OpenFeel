@@ -1119,12 +1119,23 @@ openfeel setup --check [--json]                       # 只读诊断：一致退
 ```bash
 openfeel dev sync      # 立即写入简要状态块（dev_last AUTO 块 + .sync.json）
 openfeel dev status    # 只读：是否到期（默认 30 分钟窗口）
+openfeel dev clean     # v1.5.23：运行态文件不入库（补 .gitignore + 移出 git 索引）
 ```
 
-- **受管块**：只替换 `dev_last.md` 内 `<!-- openfeel:auto:begin/end -->`，不触碰手写内容；无 `--json`（零 JSON 契约变更）。
+- **受管块**：只替换 `dev_last.md` 内 `<!-- openfeel:auto:begin/end -->`，不触碰手写内容；`sync` / `status` 无 `--json`（零 JSON 契约变更）。
 - **自动同步**：`flow advance` 成功后，首次 / 超过 30 分钟 / 节点相位（`exec_running` / `review_passed` / `archiving` / `done`）自动同步（best-effort）。
 - **状态归属**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel 写；子 agent 不读不写。
 - **日志**：不强制写日志；`flow.json.log` 由 CLI 维护，仅保留最近 200 条。
+
+### dev clean（v1.5.23 / REQ-041）
+
+运行态文件（`.openfeel/dev/.preflight.json` / `sessions.json` / `guard-state.json` / `.sync.json`、`.openfeel/log/guard-audit.jsonl`）逐次变更，不应入库：
+
+- 保证 `.gitignore` 覆盖以上条目（缺哪条补哪条，不重排既有规则）；
+- 把**已被跟踪**的条目 `git rm --cached` 移出索引（**不删工作区文件**）；
+- 幂等；`--dry-run` 零写盘零索引改动；`--json` 输出 `{ schemaVersion, gitRepository, gitignore: {file, added}, removed, dryRun }`。
+- 非 git 目录：只保证 `.gitignore`，索引步骤跳过并提示。
+- 配套：`openfeel init` 现在会为新项目补这些 ignore 条目；门禁（v1.5.23）放行 `git rm --cached` 这类纯索引操作。
 
 ## chore — 微变更通道（v1.4.0；v1.5.11 收窄）
 

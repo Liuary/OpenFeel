@@ -2468,6 +2468,20 @@ check('op-004 P1-3：`-c alias.*` 硬拒；未知 git 子命令不再当 readonl
   assert.equal(classifyShellCommand({ command: 'git submodule update --init', baseDir, shell: 'bash' }).kind, 'undecidable');
   // index / refs / 对象库类子命令沿用旧行为（不误杀日常 `git add` 流程）
   assert.equal(classifyShellCommand({ command: 'git add -A', baseDir, shell: 'bash' }).kind, 'none');
+  // v1.5.23 / REQ-041（六期反馈 #2）：`git rm --cached` 只改索引 → 与 `git add` 同档，
+  // 不再被受保护名单误杀；不带 `--cached` 的 `git rm` 仍然按「目标写」判定。
+  assert.equal(
+    classifyShellCommand({ command: 'git rm --cached .openfeel/dev/guard-state.json', baseDir, shell: 'bash' }).kind,
+    'none',
+  );
+  assert.equal(
+    classifyShellCommand({ command: 'git rm --cached .openfeel/dev/sessions.json .openfeel/dev/.preflight.json', baseDir, shell: 'bash' }).kind,
+    'none',
+  );
+  assert.equal(
+    classifyShellCommand({ command: 'git rm .openfeel/dev/guard-state.json', baseDir, shell: 'bash' }).kind,
+    'targets',
+  );
   // 持久化别名同源（P1-3）；只读用法照旧
   assert.equal(classifyShellCommand({ command: 'git config alias.zz "!rm -rf src"', baseDir, shell: 'bash' }).kind, 'indirect');
   assert.equal(classifyShellCommand({ command: 'git config alias.zz', baseDir, shell: 'bash' }).kind, 'none');

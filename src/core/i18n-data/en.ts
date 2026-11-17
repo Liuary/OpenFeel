@@ -417,6 +417,13 @@ export const flow: I18nDomain = {
   'dev.statusLastSyncTmpl':         { key: 'flow.dev.statusLastSyncTmpl',         zh: '', en: 'Last sync: {lastSync} (interval {interval} min)' },
   'dev.statusDueTmpl':              { key: 'flow.dev.statusDueTmpl',              zh: '', en: 'Status is stale (>= {interval} min): update the handoff summary, then run `openfeel dev sync`.' },
   'dev.statusOkTmpl':               { key: 'flow.dev.statusOkTmpl',               zh: '', en: 'Status is fresh ({interval} min window); no update needed.' },
+  // dev clean (v1.5.23 / REQ-041: keep runtime state out of git)
+  'dev.cleanOkTmpl':                { key: 'flow.dev.cleanOkTmpl',                zh: '', en: '✓ Repository hygiene check complete.' },
+  'dev.cleanGitignoreTmpl':         { key: 'flow.dev.cleanGitignoreTmpl',         zh: '', en: '· .gitignore ({file}): {entries}' },
+  'dev.cleanUntrackedTmpl':         { key: 'flow.dev.cleanUntrackedTmpl',         zh: '', en: '· Removed from the git index: {files} (working-tree files kept)' },
+  'dev.cleanDryRunTmpl':            { key: 'flow.dev.cleanDryRunTmpl',            zh: '', en: '(dry-run: .gitignore and index untouched)' },
+  'dev.cleanNotGitWarnTmpl':        { key: 'flow.dev.cleanNotGitWarnTmpl',        zh: '', en: '⚠ Not a git repository: only .gitignore is ensured, index check skipped.' },
+  'dev.cleanNone':                  { key: 'flow.dev.cleanNone',                  zh: '', en: '(none)' },
   'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '', en: 'Run `openfeel flow next` (or `flow status`) before a write operation (preflight missing or expired).' },
 };
 
@@ -1013,6 +1020,8 @@ export const help: I18nDomain = {
   'dev':                 { key: 'help.dev',                 zh: '', en: 'Dev status records (v1.5.0: Feel-only; CLI maintains the brief status block)' },
   'dev.sync':            { key: 'help.dev.sync',            zh: '', en: 'Write the brief status block now (dev_last AUTO block + .sync.json)' },
   'dev.status':          { key: 'help.dev.status',          zh: '', en: 'Show status sync state (read-only; default 30-minute window)' },
+  'dev.clean':           { key: 'help.dev.clean',           zh: '', en: 'Keep runtime state out of git: complete .gitignore + remove tracked runtime files from the git index (working-tree files kept)' },
+  'dev.clean.dryRun':    { key: 'help.dev.clean.dryRun',    zh: '', en: 'Show what would be done (no writes, no index change)' },
   'req.add':             { key: 'help.req.add',             zh: '', en: 'Create a requirement (auto ID; body skeleton under .openfeel/requirements/)' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '', en: 'Requirement title' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '', en: 'Target version (e.g. v1.3.0)' },

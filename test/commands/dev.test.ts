@@ -76,4 +76,35 @@ describe('dev 命令（v1.5.0）', () => {
     expect(exitMock).toHaveBeenCalledWith(1);
     expect(errorMock.mock.calls.map((c) => String(c[0])).join('\n')).toContain('未初始化');
   });
+
+  it('dev clean（非 git 目录）→ 补 .gitignore 并给出降级提示', async () => {
+    seed();
+    await safeParse(['dev', 'clean']);
+    expect(exitMock).not.toHaveBeenCalled();
+    const ignore = readFileSync(join(dir, '.gitignore'), 'utf-8');
+    expect(ignore).toContain('.openfeel/dev/.sync.json');
+    const out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('仓库卫生');
+    expect(out).toContain('不是 git 仓库');
+  });
+
+  it('dev clean --json → 输出 schemaVersion 与结构化字段', async () => {
+    seed();
+    await safeParse(['dev', 'clean', '--json']);
+    const raw = String(logMock.mock.calls.at(-1)?.[0] ?? '');
+    const doc = JSON.parse(raw) as { schemaVersion: number; gitRepository: boolean; gitignore: { added: string[] }; removed: string[]; dryRun: boolean };
+    expect(doc.schemaVersion).toBe(1);
+    expect(doc.gitRepository).toBe(false);
+    expect(doc.gitignore.added).toContain('.openfeel/dev/.sync.json');
+    expect(doc.removed).toEqual([]);
+    expect(doc.dryRun).toBe(false);
+  });
+
+  it('dev clean --dry-run → 零写盘（.gitignore 不创建）', async () => {
+    seed();
+    await safeParse(['dev', 'clean', '--dry-run']);
+    expect(existsSync(join(dir, '.gitignore'))).toBe(false);
+    const out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('dry-run');
+  });
 });

@@ -69,6 +69,38 @@ export interface RequirementVerificationRecord {
 /** 阶段验证记录（与需求验证记录同形；v1.5.8 / REQ-027） */
 export type StageVerificationRecord = RequirementVerificationRecord;
 
+/**
+ * 需求豁免记录（v1.5.23 / REQ-043 / 六期反馈 #8）。
+ *
+ * 语义：**主动放弃并移出阶段 done 门**——与 `cancelled`（用户取消）不同，
+ * waived 记录「谁、何时、为什么」放弃，归档与看板仍能看到这条需求。
+ * 不含状态变更：需求状态保持原样，stage done 门把它当作「已处置」。
+ */
+export interface RequirementWaiverRecord {
+  /** 放弃原因（非空） */
+  reason: string;
+  /** 决策人 / 会话标识 */
+  by: string;
+  /** 记录时间 ISO 8601 */
+  at: string;
+}
+
+/**
+ * trivial 标记（v1.5.23 / REQ-043 / 六期反馈 #5）。
+ *
+ * 语义：**显式声明本条改动无需审验**（docs/文案/测试注释类），
+ * done 门跳过 review / verification 两项；阶段相位门与聚合门不变。
+ * 只接受显式标记，不做「按路径自动豁免」——那会让文档即契约的项目失去审查。
+ */
+export interface RequirementTrivialRecord {
+  /** 为什么算 trivial（非空） */
+  reason: string;
+  /** 标记人 / 会话标识 */
+  by: string;
+  /** 标记时间 ISO 8601 */
+  at: string;
+}
+
 /** 需求条目数据（需求层显式字段；聚合方向归 stage-83） */
 export interface RequirementData {
   /** 需求 ID（REQ-NNN，max+1 不回收；格式见 REQ_ID_PATTERN） */
@@ -104,4 +136,8 @@ export interface RequirementData {
    * 去重保序（不重复记录同一版本）。可选——读侧宽容不 load 补齐，不参与 done 门 / 聚合判定。
    */
   carried_from?: string[];
+  /** 豁免记录（v1.5.23 / REQ-043）：存在即视为「已处置」，移出阶段 done 门的未完成集合 */
+  waiver?: RequirementWaiverRecord;
+  /** trivial 标记（v1.5.23 / REQ-043）：存在即视为无需审验（跳过 review / verification 两项） */
+  trivial?: RequirementTrivialRecord;
 }

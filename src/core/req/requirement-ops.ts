@@ -186,9 +186,83 @@ export function requirementDoneBlocker(data: FlowData, req: RequirementData): Re
   if (linked.length > 0 && !linked.every((s) => (COMPLETION_READY_PHASES as readonly string[]).includes(s.phase))) {
     return 'stage_phase';
   }
+  // v1.5.23 / REQ-043（六期 #5）：trivial 显式标记免除审验两项；相位门与聚合门不变
+  if (req.trivial !== undefined) { return null; }
   if (req.review?.result !== 'pass') { return 'review'; }
   if (req.verification?.result !== 'pass') { return 'verification'; }
   return null;
+}
+
+/**
+ * 需求豁免（v1.5.23 / REQ-043 / 六期反馈 #8）：显式放弃并移出**阶段 done 门**。
+ *
+ * 与 `cancelled` 的区别：状态不动（仍可被聚合推开），但 stage done 门把 waived 需求
+ * 视为「已处置」，不再卡住阶段归档；归档摘要与看板仍能看到「谁、为何放弃」。
+ * 门：存在 / 非 done（对已完成的需求标记放弃无意义）；`reason` / `by` 非空。
+ * 幂等重复标记 = 覆盖（保留最后一次记录 + 审计）。
+ */
+export function waiveRequirement(
+  data: FlowData,
+  id: string,
+  input: { reason?: string; by?: string },
+): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (req.status === 'done') { return { ok: false, code: 'invalid_status' }; }
+  const reason = typeof input?.reason === 'string' ? input.reason.trim() : '';
+  const by = typeof input?.by === 'string' ? input.by.trim() : '';
+  if (reason === '' || by === '') { return { ok: false, code: 'invalid_field' }; }
+  const at = new Date().toISOString();
+  req.waiver = { reason, by, at };
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_waive', { id, by, reason });
+  return { ok: true, changed: true };
+}
+
+/** 撤销豁免（v1.5.23 / REQ-043）：无豁免记录 → invalid_status（零变更零审计） */
+export function revokeRequirementWaiver(data: FlowData, id: string): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (req.waiver === undefined) { return { ok: false, code: 'invalid_status' }; }
+  const at = new Date().toISOString();
+  delete req.waiver;
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_unwaive', { id });
+  return { ok: true, changed: true };
+}
+
+/**
+ * 标记 trivial（v1.5.23 / REQ-043 / 六期反馈 #5）：显式声明「本条无需审查+验证」。
+ * 只应落在 docs / 文案 / 测试注释类改动上；代码改动别用。
+ */
+export function markRequirementTrivial(
+  data: FlowData,
+  id: string,
+  input: { reason?: string; by?: string },
+): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (req.status === 'done') { return { ok: false, code: 'invalid_status' }; }
+  const reason = typeof input?.reason === 'string' ? input.reason.trim() : '';
+  const by = typeof input?.by === 'string' ? input.by.trim() : '';
+  if (reason === '' || by === '') { return { ok: false, code: 'invalid_field' }; }
+  const at = new Date().toISOString();
+  req.trivial = { reason, by, at };
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_trivial', { id, by, reason });
+  return { ok: true, changed: true };
+}
+
+/** 撤销 trivial 标记（v1.5.23 / REQ-043） */
+export function clearRequirementTrivial(data: FlowData, id: string): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (req.trivial === undefined) { return { ok: false, code: 'invalid_status' }; }
+  const at = new Date().toISOString();
+  delete req.trivial;
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_untrivial', { id });
+  return { ok: true, changed: true };
 }
 
 /** 完成门布尔投影（单点消费者：`applyStatusChange`；文案分流用 `requirementDoneBlocker`） */

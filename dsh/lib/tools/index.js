@@ -32,6 +32,7 @@ import {
   compileParameters,
   envelopeSchema,
   integer,
+  optionalArg,
   presentCall,
   pushFlag,
   pushOption,
@@ -640,7 +641,7 @@ export function createTools(context) {
       purge: boolean('remove 时同时删除阶段目录（非 TTY 须配 force）。'),
       result: stringEnum(['pass', 'fail'], 'verify 的验证结论（pass 才满足 done 门）。'),
       kind: stringEnum(['test', 'manual', 'build'], 'verify 的验证种类。'),
-      by: string('verify 的验证者（如 feel-tester）。'),
+      by: string('verify 的验证者（可省；缺省 = 会话标识 session:xxxxxxxx）。'),
       note: string('verify 的结论摘要（进入归档摘要）。'),
       evidence: string('verify 的证据（测试命令 / 报告路径）。'),
       project: string('项目根目录。'),
@@ -740,7 +741,7 @@ export function createTools(context) {
           const argv = ['stage', 'verify', stage];
           pushOption(argv, '--result', requireArg(args, 'result', action));
           pushOption(argv, '--kind', requireArg(args, 'kind', action));
-          pushOption(argv, '--by', requireArg(args, 'by', action));
+          pushOption(argv, '--by', optionalArg(args, 'by'));
           pushOption(argv, '--note', requireArg(args, 'note', action));
           pushOption(argv, '--evidence', args.evidence);
           return envelope(action, async () => {
@@ -884,7 +885,7 @@ export function createTools(context) {
       into: stringArray('split 的子需求标题列表（至少一项）。'),
       result: stringEnum(['pass', 'fail'], 'review/verify 的结论（pass 才满足 done 门）。'),
       kind: stringEnum(['test', 'manual', 'build'], 'verify 的验证种类。'),
-      by: string('review/verify 的审查者 / 验证者。'),
+      by: string('review/verify 的审查者 / 验证者（可省；缺省 = 会话标识 session:xxxxxxxx）。'),
       note: string('review/verify 的结论摘要（进入归档摘要）。'),
       evidence: string('verify 的证据（测试命令 / 报告路径）。'),
       independent: boolean('review 是否独立审查（缺省 false = 自我审查，须显式标注 self-review）。'),
@@ -1029,7 +1030,7 @@ export function createTools(context) {
           const id = requireArg(args, 'id', action);
           const argv = ['req', 'review', id];
           pushOption(argv, '--result', requireArg(args, 'result', action));
-          pushOption(argv, '--by', requireArg(args, 'by', action));
+          pushOption(argv, '--by', optionalArg(args, 'by'));
           pushOption(argv, '--note', requireArg(args, 'note', action));
           // 独立 / 自我审查**恒显式标注**（自我审查在归档摘要中必须可见）
           argv.push(args.independent === true ? '--independent' : '--self');
@@ -1046,7 +1047,7 @@ export function createTools(context) {
           const argv = ['req', 'verify', id];
           pushOption(argv, '--result', requireArg(args, 'result', action));
           pushOption(argv, '--kind', requireArg(args, 'kind', action));
-          pushOption(argv, '--by', requireArg(args, 'by', action));
+          pushOption(argv, '--by', optionalArg(args, 'by'));
           pushOption(argv, '--note', requireArg(args, 'note', action));
           pushOption(argv, '--evidence', args.evidence);
           return envelope(action, async () => {

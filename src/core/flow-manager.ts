@@ -1927,6 +1927,9 @@ export class FlowManager {
     const incompleteRequirements: string[] = [];
     for (const requirementId of stageRequirementIds(stage)) {
       const req = (Array.isArray(data!.requirements) ? data!.requirements : []).find((r) => r?.id === requirementId);
+      // v1.5.23 / REQ-043（六期反馈 #8）：显式 waive 的需求视为「已处置」，不再卡阶段 done。
+      // waived 记录「谁/何时/为何放弃」，与 cancelled（用户取消）区分；归档摘要仍可见。
+      if (req !== undefined && req.waiver !== undefined) { continue; }
       // 不存在（悬空关联）/ cancelled / rejected 一律视为「未完成」——保守口径：
       // 发布判据不看需求的终态细分，只认 done（放宽需用户显式确认发布，见 docs/commands.md）。
       if (!req || req.status !== 'done') { incompleteRequirements.push(requirementId); }

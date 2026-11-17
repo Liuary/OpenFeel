@@ -1113,10 +1113,11 @@ describe('req 命令组（stage-82）', () => {
     expect(err()).toContain('flow.json 未初始化');
   });
 
-  it('T-C3 help 键双向逐键断言（58 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
+  it('T-C3 help 键双向逐键断言（88 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
     const EXPECTED = [
       'help.req',
       'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority', 'help.req.add.workflowMode',
+      'help.req.add.claim', 'help.req.add.stage',
       'help.req.list', 'help.req.list.status', 'help.req.list.targetVersion', 'help.req.list.owner', 'help.req.list.json',
       'help.req.show', 'help.req.show.argid', 'help.req.show.json',
       'help.req.claim', 'help.req.claim.argid', 'help.req.claim.owner',
@@ -1136,8 +1137,14 @@ describe('req 命令组（stage-82）', () => {
       'help.req.list.includeArchived',
       'help.req.release-check', 'help.req.release-check.argversion', 'help.req.release-check.json',
       'help.req.rollover', 'help.req.rollover.from', 'help.req.rollover.to', 'help.req.rollover.id', 'help.req.rollover.all',
+      // v1.5.23 / REQ-043：豁免 / trivial / 一次收口
+      'help.req.waive', 'help.req.waive.argid', 'help.req.waive.reason', 'help.req.waive.by', 'help.req.waive.revoke',
+      'help.req.trivial', 'help.req.trivial.argid', 'help.req.trivial.reason', 'help.req.trivial.by', 'help.req.trivial.revoke',
+      'help.req.complete', 'help.req.complete.argid', 'help.req.complete.result', 'help.req.complete.kind',
+      'help.req.complete.note', 'help.req.complete.by', 'help.req.complete.evidence',
+      'help.req.complete.independent', 'help.req.complete.self',
     ];
-    expect(EXPECTED).toHaveLength(67);
+    expect(EXPECTED).toHaveLength(88);
 
     // ① 正向：zh / en 双侧 hasKey
     for (const k of EXPECTED) {
@@ -2285,6 +2292,15 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       expect(process.exitCode).toBe(0);
       expect(readFlow().requirements[0].review.independent).toBe(false);
       expect(out()).toContain('self-review');
+    });
+
+    // v1.5.23 / REQ-042（六期反馈 #12）：--by 可省，缺省写会话标识
+    it('review 省略 --by → 缺省写 session:xxxxxxxx', async () => {
+      seedReq({ status: 'in_progress', review: undefined });
+      resetCapture();
+      await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--note', '免填署名']);
+      expect(process.exitCode).toBe(0);
+      expect(readFlow().requirements[0].review.by).toMatch(/^session:[0-9a-f]{8}$/);
     });
 
     it('review 值域 / 互斥 / 缺参 / 终态：exit 1 + 零写盘；缺 requiredOption → CommanderError', async () => {

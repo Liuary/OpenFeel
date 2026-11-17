@@ -291,6 +291,20 @@ export function requireArg(args, name, action) {
 }
 
 /**
+ * 取可选的字符串参数（缺省 / 空串 → undefined，由 CLI 侧兜底）。
+ *
+ * v1.5.23 / REQ-042（六期反馈 #12）：`--by` 不再强制模型手填——
+ * CLI 会用会话标识兜底（`session:xxxxxxxx`），模型不给也不会写空。
+ * @param {Record<string, unknown>} args
+ * @param {string} name
+ * @returns {string | undefined}
+ */
+export function optionalArg(args, name) {
+  const value = args[name];
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+}
+
+/**
  * 追加一个可选参数到 argv（存在时才追加）。
  * @param {string[]} argv
  * @param {string} flag

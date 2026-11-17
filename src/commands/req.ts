@@ -21,6 +21,8 @@ import {
   getAllowedNextStatuses, splitRequirement, requirementDoneBlocker,
   recordRequirementReview, recordRequirementVerification,
   releaseCheckRequirements, rolloverRequirements, isTerminalRequirementStatus,
+  waiveRequirement, revokeRequirementWaiver,
+  markRequirementTrivial, clearRequirementTrivial,
   raiseRequirementSeqFloor,
   type RequirementErrorCode,
 } from '../core/req/requirement-ops.js';
@@ -32,6 +34,7 @@ import { findArchivedRequirement, listArchivedRequirements, archivedRequirementM
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { getUserName } from '../core/workspace/identity.js';
 import { normalizeStageId } from '../core/plan/path.js';
+import { resolveActorName } from '../core/session.js';
 
 /** 创建 FlowManager（当前工作目录） */
 function createManager(): FlowManager {
@@ -148,7 +151,9 @@ export function registerReqCommand(program: Command): void {
     .option('--target-version <version>', '预估版本（如 v1.3.0）')
     .option('--priority <priority>', '优先级（P0/P1/P2）')
     .option('--workflow-mode <mode>', '工作流模式（full / fast / general；缺省不设置）')
-    .action((title: string, options: { targetVersion?: string; priority?: string; workflowMode?: string }) => {
+    .option('--claim', '创建后立即认领（v1.5.23：一次开单+认领）')
+    .option('--stage <stageId>', '创建后立即关联到该阶段（v1.5.23：一次开单+关联）')
+    .action((title: string, options: { targetVersion?: string; priority?: string; workflowMode?: string; claim?: boolean; stage?: string }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -178,11 +183,42 @@ export function registerReqCommand(program: Command): void {
           failGeneric(lang, err);
           return;
         }
+        // v1.5.23 / REQ-043（六期反馈 #1）：一次开单 + 认领 + 关联
+        let claimedOwner: string | undefined;
+        if (options.claim === true) {
+          const owner = getUserName(process.cwd());
+          const c = claimRequirement(data, created.id, owner);
+          if (!c.ok) {
+            failGeneric(lang, new Error(t('req.add.claimFailedTmpl', lang, { id: created.id })));
+            return;
+          }
+          claimedOwner = owner;
+        }
+        let linkedStage: string | undefined;
+        if (options.stage !== undefined) {
+          const l = linkRequirement(data, options.stage, created.id);
+          if (!l.ok) {
+            failCode(lang, l.code, {
+              not_found: t('req.err.notFoundTmpl', lang, { id: created.id }),
+              invalid_field: t('req.add.linkFailedTmpl', lang, { id: created.id, stage: options.stage }),
+              invalid_status: t('req.add.linkFailedTmpl', lang, { id: created.id, stage: options.stage }),
+              general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id: created.id }),
+            });
+            return;
+          }
+          linkedStage = options.stage;
+        }
         if (!saveOrFail(mgr, lang)) {
           return;
         }
         console.log(t('req.add.doneTmpl', lang, { id: created.id, title: created.title }));
         console.log(t('req.add.bodyTmpl', lang, { path: bodyPath }));
+        if (claimedOwner !== undefined) {
+          console.log(t('req.add.claimedTmpl', lang, { owner: claimedOwner }));
+        }
+        if (linkedStage !== undefined) {
+          console.log(t('req.add.linkedTmpl', lang, { stage: linkedStage }));
+        }
       } catch (err) {
         // 唯一抛错路径（空 title / 非法 priority / 空 target_version）→ 通用模板 exit 1
         failGeneric(lang, err);
@@ -683,16 +719,185 @@ export function registerReqCommand(program: Command): void {
       console.log(t('req.advance.doneTmpl', lang, { id, from: before ?? '', to: options.to }));
     });
 
+  // ── req waive <id> --reason <text> [--by] [--revoke] ──（v1.5.23 / REQ-043 / 六期 #8）
+  req
+    .command('waive <id>')
+    .description('显式豁免：移出阶段 done 门并记录原因（与 cancelled 区分；--revoke 撤销）')
+    .option('--reason <text>', '放弃原因（豁免时必需）')
+    .option('--by <who>', '决策人（缺省 = 会话标识）')
+    .option('--revoke', '撤销豁免')
+    .action((id: string, options: { reason?: string; by?: string; revoke?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, false);
+        return;
+      }
+      const data = mgr.getData()!;
+      if (!isValidReqId(id)) {
+        console.error(t('req.invalidIdTmpl', lang, { input: id }));
+        process.exitCode = 1;
+        return;
+      }
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
+      const by = resolveActorName(process.cwd(), options.by);
+      const r = options.revoke === true
+        ? revokeRequirementWaiver(data, id)
+        : waiveRequirement(data, id, { reason: options.reason, by });
+      if (!r.ok) {
+        failCode(lang, r.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id }),
+          invalid_field: t('req.waive.reasonTmpl', lang),
+          invalid_status: options.revoke === true
+            ? t('req.waive.noWaiverTmpl', lang, { id })
+            : t('req.waive.alreadyDoneTmpl', lang, { id }),
+        });
+        return;
+      }
+      if (!saveOrFail(mgr, lang)) {
+        return;
+      }
+      console.log(options.revoke === true
+        ? t('req.waive.revokedTmpl', lang, { id })
+        : t('req.waive.doneTmpl', lang, { id, reason: options.reason ?? '' }));
+    });
+
+  // ── req trivial <id> --reason <text> [--by] [--revoke] ──（v1.5.23 / REQ-043 / 六期 #5）
+  req
+    .command('trivial <id>')
+    .description('标记为 trivial（免审验：docs/文案/测试注释类；--revoke 撤销）')
+    .option('--reason <text>', '为什么算 trivial（标记时必需）')
+    .option('--by <who>', '标记人（缺省 = 会话标识）')
+    .option('--revoke', '撤销标记')
+    .action((id: string, options: { reason?: string; by?: string; revoke?: boolean }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, false);
+        return;
+      }
+      const data = mgr.getData()!;
+      if (!isValidReqId(id)) {
+        console.error(t('req.invalidIdTmpl', lang, { input: id }));
+        process.exitCode = 1;
+        return;
+      }
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
+      const by = resolveActorName(process.cwd(), options.by);
+      const r = options.revoke === true
+        ? clearRequirementTrivial(data, id)
+        : markRequirementTrivial(data, id, { reason: options.reason, by });
+      if (!r.ok) {
+        failCode(lang, r.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id }),
+          invalid_field: t('req.trivial.reasonTmpl', lang),
+          invalid_status: options.revoke === true
+            ? t('req.trivial.noMarkTmpl', lang, { id })
+            : t('req.trivial.alreadyDoneTmpl', lang, { id }),
+        });
+        return;
+      }
+      if (!saveOrFail(mgr, lang)) {
+        return;
+      }
+      console.log(options.revoke === true
+        ? t('req.trivial.revokedTmpl', lang, { id })
+        : t('req.trivial.doneTmpl', lang, { id, reason: options.reason ?? '' }));
+    });
+
+  // ── req complete <id> --result pass --note <t> [--kind] [--evidence] [--by] [--independent|--self] ──
+  // v1.5.23 / REQ-043（六期反馈 #1）：一次收口 = review + verify + advance(done)。
+  // 复用既有判据单点（recordRequirementReview / recordRequirementVerification / advanceRequirement
+  // → canCompleteRequirement）；任一步失败即返回，**不 save ⇒ flow.json 零变更**。
+  req
+    .command('complete <id>')
+    .description('一次收口：记录审查+验证并推进 done（复用既有 done 门；任一失败零写盘）')
+    .requiredOption('--result <result>', '审验结论（pass / fail；pass 才能收口）')
+    .option('--kind <kind>', '验证种类（test / manual / build；缺省 manual）')
+    .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
+    .option('--by <who>', '审查者 / 验证者（缺省 = 会话标识）')
+    .option('--evidence <path>', '证据（测试命令 / 报告路径 / 摘要）')
+    .option('--independent', '独立审查（推荐）')
+    .option('--self', '自我审查（非独立；归档摘要标注 self-review）')
+    .action((id: string, options: {
+      result: string; kind?: string; note: string; by?: string; evidence?: string;
+      independent?: boolean; self?: boolean;
+    }) => {
+      const lang = getCliLang(process.cwd());
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, false);
+        return;
+      }
+      const data = mgr.getData()!;
+      if (!isValidReqId(id)) {
+        console.error(t('req.invalidIdTmpl', lang, { input: id }));
+        process.exitCode = 1;
+        return;
+      }
+      if (options.independent === true && options.self === true) {
+        console.error(t('req.review.exclusiveFlagTmpl', lang));
+        process.exitCode = 1;
+        return;
+      }
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
+      const by = resolveActorName(process.cwd(), options.by);
+      const independent = options.independent === true;
+      const review = recordRequirementReview(data, id, { result: options.result, by, note: options.note, independent });
+      if (!review.ok) {
+        failCode(lang, review.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id }),
+          invalid_status: t('req.review.terminalTmpl', lang, { id, status: getRequirement(data, id)?.status ?? '' }),
+          invalid_field: t('req.review.invalidTmpl', lang),
+        });
+        return;
+      }
+      const verification = recordRequirementVerification(data, id, {
+        result: options.result,
+        kind: options.kind ?? 'manual',
+        by,
+        note: options.note,
+        evidence: options.evidence,
+      });
+      if (!verification.ok) {
+        failCode(lang, verification.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id }),
+          invalid_status: t('req.verify.terminalTmpl', lang, { id, status: getRequirement(data, id)?.status ?? '' }),
+          invalid_field: t('req.verify.invalidTmpl', lang),
+        });
+        return;
+      }
+      const current = getRequirement(data, id)?.status ?? '';
+      const advanced = advanceRequirement(data, id, 'done');
+      if (!advanced.ok) {
+        // 走到这里 = 审验记录已写但状态没推进：不 save（零写盘），按 done 门文案说明缺什么
+        failCode(lang, advanced.code, {
+          not_found: t('req.err.notFoundTmpl', lang, { id }),
+          invalid_field: t('req.err.invalidFieldTmpl', lang, { id }),
+          invalid_status: doneGateMessage(lang, data, id, current),
+          general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id }),
+        });
+        return;
+      }
+      if (!saveOrFail(mgr, lang)) {
+        return;
+      }
+      const suffix = independent ? '' : t('req.review.selfSuffix', lang);
+      console.log(t('req.complete.doneTmpl', lang, {
+        id, result: options.result, kind: options.kind ?? 'manual',
+      }) + suffix);
+    });
+
   // ── req review <id> --result pass|fail --by <who> --note <text> [--independent|--self] ──
   req
     .command('review <id>')
     .description('记录需求审查（v1.5.8 完成必审：done 门要求 review.result=pass；--independent 独立审查 / --self 自我审查）')
     .requiredOption('--result <result>', '审查结论（pass / fail）')
-    .requiredOption('--by <who>', '审查者')
+    .option('--by <who>', '审查者（缺省 = 会话标识，如 session:408e3133）')
     .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
     .option('--independent', '独立审查（推荐）')
     .option('--self', '自我审查（非独立；归档摘要标注 self-review）')
-    .action((id: string, options: { result: string; by: string; note: string; independent?: boolean; self?: boolean }) => {
+    .action((id: string, options: { result: string; by?: string; note: string; independent?: boolean; self?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -714,9 +919,11 @@ export function registerReqCommand(program: Command): void {
       // v1.5.6-stage-114：写前 preflight（ID / 互斥守卫已在门前）
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       // 命令层零校验：值域（result）/ 非空（by/note）/ 终态全在引擎单点
+      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 会话标识
+      const by = resolveActorName(process.cwd(), options.by);
       const r = recordRequirementReview(data, id, {
         result: options.result,
-        by: options.by,
+        by,
         note: options.note,
         independent: options.independent === true,
       });
@@ -732,7 +939,7 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       const suffix = options.independent === true ? '' : t('req.review.selfSuffix', lang);
-      console.log(t('req.review.doneTmpl', lang, { id, result: options.result, by: options.by }) + suffix);
+      console.log(t('req.review.doneTmpl', lang, { id, result: options.result, by }) + suffix);
     });
 
   // ── req verify <id> --result pass|fail --kind test|manual|build --by <who> --note <text> [--evidence <path>] ──
@@ -741,10 +948,10 @@ export function registerReqCommand(program: Command): void {
     .description('记录需求验证（v1.5.8 完成必验：done 门要求 verification.result=pass）')
     .requiredOption('--result <result>', '验证结论（pass / fail）')
     .requiredOption('--kind <kind>', '验证种类（test / manual / build）')
-    .requiredOption('--by <who>', '验证者')
+    .option('--by <who>', '验证者（缺省 = 会话标识，如 session:408e3133）')
     .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
     .option('--evidence <path>', '证据（测试命令 / 报告路径 / 摘要）')
-    .action((id: string, options: { result: string; kind: string; by: string; note: string; evidence?: string }) => {
+    .action((id: string, options: { result: string; kind: string; by?: string; note: string; evidence?: string }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -760,10 +967,12 @@ export function registerReqCommand(program: Command): void {
       // v1.5.6-stage-114：写前 preflight（ID 校验已在门前）
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       // 命令层零校验：值域（result / kind）/ 非空（by/note）/ 终态全在引擎单点
+      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 会话标识
+      const by = resolveActorName(process.cwd(), options.by);
       const r = recordRequirementVerification(data, id, {
         result: options.result,
         kind: options.kind,
-        by: options.by,
+        by,
         note: options.note,
         evidence: options.evidence,
       });
@@ -778,7 +987,7 @@ export function registerReqCommand(program: Command): void {
       if (!saveOrFail(mgr, lang)) {
         return;
       }
-      console.log(t('req.verify.doneTmpl', lang, { id, kind: options.kind, result: options.result, by: options.by }));
+      console.log(t('req.verify.doneTmpl', lang, { id, kind: options.kind, result: options.result, by }));
     });
 
   // ── req split <id> --into <title> [--into <title>...] [--json] ──

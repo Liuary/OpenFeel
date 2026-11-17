@@ -23,6 +23,9 @@ import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { findStageStatusPath, planDirToStageId, parseStageId, validateStageId, suggestStageId, normalizeStageId } from '../core/plan/path.js';
 import { appendStatusTask } from '../core/plan/stage.js';
 import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
+import { stageRequirementIds } from '../core/req/aggregate.js';
+import { findPhaseEnteredAtMs } from '../core/phase-entered.js';
+import { resolveActorName } from '../core/session.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -213,9 +216,55 @@ function listAllStages(projectPath: string): { stageId: string; statusPath: stri
 }
 
 /**
+ * 阶段进度视图（v1.5.23 / REQ-042 / 六期反馈 #7）。
+ *
+ * 阶段长期停在 `exec_running`（设计如此），但 `stage status` 原先只回读 status.md，
+ * 看不到「这个阶段关联了多少需求、完成多少、卡在哪个需求上」。这里从 flow.json
+ * （机读权威）现取三样：需求完成度、最老 in_progress、当前相位进入时间。
+ * 只读纯函数；flow.json 不可读 → null（人读输出跳过该段，JSON 不新增键）。
+ */
+export interface StageProgress {
+  requirements: { total: number; done: number; inProgress: number; other: number };
+  oldestInProgress: { id: string; since: string | null } | null;
+  phaseEnteredAt: string | null;
+}
+
+export function computeStageProgress(projectPath: string, stageId: string): StageProgress | null {
+  let data;
+  try {
+    const mgr = new FlowManager(projectPath);
+    if (!mgr.isLoaded()) return null;
+    data = mgr.getData();
+  } catch {
+    return null;
+  }
+  if (!data) return null;
+  const normalized = normalizeStageId(stageId) ?? stageId;
+  const stage = data.stages?.[normalized] ?? data.stages?.[stageId];
+  if (!stage) return null;
+  const ids = stageRequirementIds(stage);
+  const reqs = ids
+    .map((id) => (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id))
+    .filter((r): r is NonNullable<typeof r> => r !== undefined);
+  const done = reqs.filter((r) => r.status === 'done').length;
+  const inProgress = reqs.filter((r) => r.status === 'in_progress').length;
+  const oldest = reqs
+    .filter((r) => r.status === 'in_progress')
+    .sort((a, b) => (a.claimed_at ?? a.updated_at).localeCompare(b.claimed_at ?? b.updated_at))[0];
+  const enteredMs = findPhaseEnteredAtMs(data.log ?? [], normalized, stage.phase, 0);
+  return {
+    requirements: { total: reqs.length, done, inProgress, other: reqs.length - done - inProgress },
+    oldestInProgress: oldest
+      ? { id: oldest.id, since: oldest.claimed_at ?? oldest.updated_at ?? null }
+      : null,
+    phaseEnteredAt: enteredMs !== null && enteredMs > 0 ? new Date(enteredMs).toISOString() : null,
+  };
+}
+
+/**
  * 显示单个阶段的详细状态
  */
-function showStageStatus(statusPath: string, stageId: string): void {
+function showStageStatus(projectPath: string, statusPath: string, stageId: string): void {
   const lang = getCliLang(process.cwd());
   const content = readFileSync(statusPath, 'utf-8');
   const fields = parseStatusFields(content);
@@ -253,6 +302,30 @@ function showStageStatus(statusPath: string, stageId: string): void {
   const blockLine = content.match(/^## 阻塞 \/ 暂停原因\n\n(.+?)(?:\n##|\n*$)/ms);
   if (blockLine && blockLine[1].trim() !== '无' && blockLine[1].trim() !== '') {
     console.log(t('stage.task.blockedByTmpl', lang, { reason: blockLine[1].trim() }));
+  }
+
+  // 阶段进度（v1.5.23 / REQ-042 / 六期反馈 #7）：需求完成度 / 最老 in_progress / 相位进入时间
+  const progress = computeStageProgress(projectPath, stageId);
+  if (progress !== null) {
+    if (progress.requirements.total > 0) {
+      console.log(t('stage.status.progressTmpl', lang, {
+        done: String(progress.requirements.done),
+        total: String(progress.requirements.total),
+        inProgress: String(progress.requirements.inProgress),
+        other: String(progress.requirements.other),
+      }));
+      if (progress.oldestInProgress !== null) {
+        console.log(t('stage.status.oldestInProgressTmpl', lang, {
+          id: progress.oldestInProgress.id,
+          since: progress.oldestInProgress.since ?? t('common.unknown', lang),
+        }));
+      }
+    } else {
+      console.log(t('stage.status.progressEmptyTmpl', lang));
+    }
+    if (progress.phaseEnteredAt !== null) {
+      console.log(t('stage.status.phaseEnteredTmpl', lang, { at: progress.phaseEnteredAt }));
+    }
   }
 
   console.log('');
@@ -436,17 +509,20 @@ export function registerStageCommand(program: Command): void {
         const content = readFileSync(statusPath, 'utf-8');
         const fields = parseStatusFields(content);
         const tasks = parseTasks(content);
+        // v1.5.23 / REQ-042：新增 progress（向后兼容的新键；不可读时不出现）
+        const progress = computeStageProgress(projectPath, stageId);
         emitJson(withSchemaVersion({
           stageId,
           statusPath,
           fields: buildCanonicalFields(fields),
           tasks: tasks.map(({ number, done, description }) => ({ number, done, description })),
           blockedBy: extractBlockedReason(content),
+          ...(progress === null ? {} : { progress }),
         }));
         return;
       }
 
-      showStageStatus(statusPath, stageId);
+      showStageStatus(projectPath, statusPath, stageId);
     });
 
   // ═══ stage set <stageId> [--status|--exec-mode|--auto-advance|--review-agent] ═══
@@ -662,10 +738,10 @@ export function registerStageCommand(program: Command): void {
     .argument('<stageId>', '阶段 ID（如 v1.5.8-stage-122 或 stage-122）')
     .requiredOption('--result <result>', '验证结论（pass / fail）')
     .requiredOption('--kind <kind>', '验证种类（test / manual / build）')
-    .requiredOption('--by <who>', '验证者')
+    .option('--by <who>', '验证者（缺省 = 会话标识，如 session:408e3133）')
     .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
     .option('--evidence <path>', '证据（命令 / 报告路径）')
-    .action((stageId: string, options: { result: string; kind: string; by: string; note: string; evidence?: string }) => {
+    .action((stageId: string, options: { result: string; kind: string; by?: string; note: string; evidence?: string }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const mgr = new FlowManager(projectPath);
@@ -676,10 +752,12 @@ export function registerStageCommand(program: Command): void {
       }
       // v1.5.6-stage-114：写前 preflight（阶段存在 / 相位 / 值域校验在门前，由核心单点判定）
       if (!enforcePreflightOrFail(projectPath, lang)) return;
+      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 会话标识
+      const by = resolveActorName(projectPath, options.by);
       const r = mgr.recordStageVerification(stageId, {
         result: options.result,
         kind: options.kind,
-        by: options.by,
+        by,
         note: options.note,
         evidence: options.evidence,
       });
@@ -721,7 +799,7 @@ export function registerStageCommand(program: Command): void {
         return;
       }
       console.log(t('stage.verify.doneTmpl', lang, {
-        stage: stageId, kind: options.kind, result: options.result, by: options.by,
+        stage: stageId, kind: options.kind, result: options.result, by,
       }));
     });
 

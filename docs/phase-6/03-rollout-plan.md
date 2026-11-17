@@ -36,7 +36,22 @@
 - 批 4/5 动需求状态机：兜底靠 `canCompleteRequirement` 单点，禁止在命令层另写判据。
 - 每批独立提交，任一角色为红即停下修，不带病进下一批。
 
-## 验收方式
+## 执行结果（2026-11-17 收口）
 
-- 每批：`npx tsc --noEmit` + 该批相关 `vitest` 文件 + 手工 CLI 冒烟（`--json` 契约优先）。
-- 收尾：全量 `npm test`；在本仓跑一次真实 `req complete` / `stage verify --criteria` 冒烟。
+- 8 个批次全部落地，合并为一个版本 **v1.5.23**（两包 lockstep）。
+- 全量门禁：`npx tsc --noEmit` 0 错；`vitest` **97 文件 / 2432 例全绿**；`node dsh/test/guard.js` 179/179；`node dsh/test/verify.js` 121/121；`npm run build` 模板一致性通过；`market:index:check` 通过（索引由 CI 在提交后生成）。
+- 独立审查（1 个子 agent 复核 6 个提交）提出 5 项必改，已全部修复并补测试：
+  1. waive 会让需求永久 `in_progress`、卡住之后每个版本的默认发布 → 改为 `isDisposedRequirement`，waived 进 release-check 的 `other` 并随版本归档搬走。
+  2. trivial 会把已存在的 `review=fail` 一起放过 → 只免「缺失」，fail 仍拒。
+  3. `req add --stage` 短名未归一化 + 正文骨架先落盘（孤儿） → 归一化 + 双键回退 + 正文延后。
+  4. DSH 工具面缺 `complete` / `waive` / `trivial` / `add --claim --stage`（shell 被门禁拒 → 功能不可达）→ 已补 action 与参数。
+  5. 3 条 phase 示例用了非法调用（`stage verify` 只允许 archiving；`stage set --to` 不存在）→ 改为 `flow advance`。
+- 另按审查意见收窄：`git rm --cached` 只放行 `.openfeel/**` 内部路径（整仓 `-r .` 仍按目标写判定）；metrics 平均耗时改用 `durationSamples` 分母。
+
+## 仍未做（如实记录）
+
+| 项 | 原因 |
+|---|---|
+| `feel_next` 注入 `goal` | goal 属 DSH 宿主能力，插件侧无公开契约 |
+| `criteria` 升级为 done 门判据 | 会拒绝所有存量阶段，破坏性 |
+| 跨阶段同因失败识别 | `flow.json.log` 只留 200 条 |

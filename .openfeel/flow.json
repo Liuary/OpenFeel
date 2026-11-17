@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-17T15:39:06.893Z",
-    "revision": 2332,
+    "updated": "2026-11-17T15:50:50.530Z",
+    "revision": 2357,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -2210,6 +2210,266 @@
         "requirementId": "REQ-045",
         "action": "link"
       }
+    },
+    {
+      "time": "2026-11-17T15:49:22.846Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-041",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:25.502Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-042",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:28.688Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-043",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:32.491Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-044",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:34.072Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-045",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:39.798Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-041",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:42.398Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-042",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:45.387Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-043",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:48.867Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-044",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:51.582Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-045",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-17T15:49:59.218Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-041",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:04.019Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-042",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:07.645Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-043",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:11.334Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-044",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:13.820Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-045",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:20.742Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-041",
+        "result": "pass",
+        "kind": "test",
+        "by": "lead"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:23.393Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-042",
+        "result": "pass",
+        "kind": "test",
+        "by": "lead"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:25.613Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-043",
+        "result": "pass",
+        "kind": "test",
+        "by": "lead"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:30.211Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-044",
+        "result": "pass",
+        "kind": "test",
+        "by": "lead"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:33.494Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-045",
+        "result": "pass",
+        "kind": "build",
+        "by": "lead"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:39.451Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-041",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:40.699Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-042",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:44.416Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-043",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:47.446Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-044",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-17T15:50:50.530Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-045",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2463,67 +2723,142 @@
     {
       "id": "REQ-041",
       "title": "运行态仓库卫生：.sync.json 忽略、init 保证不入索引、dev clean、门禁放行纯索引操作",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-17T15:03:19.572Z",
-      "updated_at": "2026-11-17T15:03:48.178Z",
+      "updated_at": "2026-11-17T15:50:39.451Z",
       "target_version": "v1.5.23",
       "priority": "P0",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-041.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-17T15:03:48.178Z"
+      "claimed_at": "2026-11-17T15:03:48.178Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-17T15:49:59.218Z",
+        "note": "独立子 agent 审查：仓库卫生实现可用；提出 git rm --cached 收窄到 .openfeel/**（整仓 -r . 会删空仓库）与 .gitignore 表头/EOL 问题，均已修并补测试。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "lead",
+        "at": "2026-11-17T15:50:20.742Z",
+        "note": "dev clean 在本仓实跑：.sync.json 已从索引移除并进 .gitignore；repo-hygiene/dev 命令测试含幂等、dry-run、非 git 降级。",
+        "evidence": "npx vitest run → 97 files / 2432 passed；npx tsc --noEmit 0；node dsh/test/guard.js 179/179；node dsh/test/verify.js 121/121；npm run build 通过"
+      }
     },
     {
       "id": "REQ-042",
       "title": "语义纠偏与视图：删 result 死字段、修 done 门描述、补聚合写侧断言、metrics 记失败、stage 进度、goal、by 缺省",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-17T15:03:21.984Z",
-      "updated_at": "2026-11-17T15:38:47.099Z",
+      "updated_at": "2026-11-17T15:50:40.698Z",
       "target_version": "v1.5.23",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-042.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-17T15:38:47.099Z"
+      "claimed_at": "2026-11-17T15:38:47.099Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-17T15:50:04.019Z",
+        "note": "独立子 agent 审查：describe/result/metrics/progress 改动方向正确；提出 trivial 会洗白 review=fail（已修）、metrics avg 被 0 时长拉低（改 durationSamples）、progress 省略键未测（已补 json-contract 断言）。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "lead",
+        "at": "2026-11-17T15:50:23.392Z",
+        "note": "stage status 进度视图在本仓实跑输出「需求：1/2 完成」；review 缺省 by 用例断言 session:xxxxxxxx。",
+        "evidence": "npx vitest run → 97 files / 2432 passed（含 json-contract #20 progress 断言、metrics avg 用例、stage status 冒烟）"
+      }
     },
     {
       "id": "REQ-043",
       "title": "需求生命周期：trivial 审查标记、waive 显式豁免、add --claim --stage 与 req complete 一次收口",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-17T15:03:24.429Z",
-      "updated_at": "2026-11-17T15:38:49.966Z",
+      "updated_at": "2026-11-17T15:50:44.416Z",
       "target_version": "v1.5.23",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-043.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-17T15:38:49.966Z"
+      "claimed_at": "2026-11-17T15:38:49.966Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-17T15:50:07.645Z",
+        "note": "独立子 agent 审查：waive 曾让需求永久 in_progress、卡住发布（已改为 isDisposedRequirement 并进归档/发布桶）；add --stage 短名未归一化 + 孤儿正文（已修）；DSH 工具面缺 complete/waive/trivial（已补）。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "lead",
+        "at": "2026-11-17T15:50:25.613Z",
+        "note": "complete/waive/trivial 为纯内存多步 + 单次 save，失败零写盘；release-check 与归档已把 waived 视为已处置。",
+        "evidence": "npx vitest run → 97 files / 2432 passed；req-lifecycle 覆盖 trivial/fail/waive/release-check；flow-manager 覆盖 waived done 门"
+      }
     },
     {
       "id": "REQ-044",
       "title": "交接与判据：recovery.handoff 指向 dev_last、criteria 只读引用、示例与失败提示",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-17T15:03:26.816Z",
-      "updated_at": "2026-11-17T15:38:52.608Z",
+      "updated_at": "2026-11-17T15:50:47.446Z",
       "target_version": "v1.5.23",
       "priority": "P2",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-044.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-17T15:38:52.608Z"
+      "claimed_at": "2026-11-17T15:38:52.608Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-17T15:50:11.334Z",
+        "note": "独立子 agent 审查：handoffRef/criteria/failureHint 为只读增量；指出 3 条 phase 示例错误（review_passed/test_pending/test_failed），已全部改为合法调用。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "lead",
+        "at": "2026-11-17T15:50:30.211Z",
+        "note": "handoffRef/criteria/example/failureHint 均为只读增量，未改 done 门。",
+        "evidence": "npx vitest run → 97 files / 2432 passed；node dsh/test/verify.js 121/121（含 handoffRef 形状）；build 模板一致性通过"
+      }
     },
     {
       "id": "REQ-045",
       "title": "v1.5.23 收尾：两包版本同步、CHANGELOG、文档、全量测试",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-17T15:03:34.240Z",
-      "updated_at": "2026-11-17T15:38:57.137Z",
+      "updated_at": "2026-11-17T15:50:50.530Z",
       "target_version": "v1.5.23",
       "priority": "P2",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-045.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-17T15:38:57.137Z"
+      "claimed_at": "2026-11-17T15:38:57.137Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-17T15:50:13.820Z",
+        "note": "独立子 agent 审查：CHANGELOG/VERSIONS/commands/json-contract 与实际行为一致；两包 1.5.23 lockstep；market index check 通过（生成须在提交后由 CI 执行）。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "build",
+        "by": "lead",
+        "at": "2026-11-17T15:50:33.494Z",
+        "note": "CHANGELOG/VERSIONS/commands/json-contract 同步；两包 lockstep；market 索引待 CI 在提交后生成。",
+        "evidence": "npm test 2432 passed；npm run build 通过；npm run market:index:check 通过；package.json / dsh/package.json 均 1.5.23"
+      }
     }
   ]
 }

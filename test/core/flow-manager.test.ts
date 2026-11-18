@@ -3184,8 +3184,8 @@ describe('FlowManager', () => {
       expect(r.to).toBe('review_pending');
       const stage = mgr.getData()!.stages['v1.0.0-stage-01'];
       expect(stage.phase).toBe('review_pending');
-      // mapPhaseToStageStatus('review_pending', 'review_passed') → default 分支保持原 status
-      expect(stage.status).toBe('review_passed');
+      // v1.5.24 / REQ-048：review_pending 投影为 coding（不再是粘滞的上一状态）
+      expect(stage.status).toBe('coding');
       const log = mgr.getData()!.log;
       expect(log[log.length - 1].action).toBe('reset_stage_phase');
     });
@@ -3268,7 +3268,7 @@ describe('FlowManager', () => {
     });
 
     it('T6.6 no-op 幂等：phase 与投影 status 均未变 → changed=false 且不追加日志', () => {
-      const mgr = makeResetMgr('review_pending', 'review_passed');
+      const mgr = makeResetMgr('review_pending', 'coding');
       const logCountBefore = mgr.getData()!.log.length;
       const r = mgr.resetStagePhase('v1.0.0-stage-01', 'review_pending');
       expect(r.changed).toBe(false);

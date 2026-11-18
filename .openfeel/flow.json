@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-18T18:00:41.127Z",
-    "revision": 2392,
+    "updated": "2026-11-18T18:13:13.777Z",
+    "revision": 2402,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -65,7 +65,7 @@
     "v1.5.24-stage-12": {
       "name": "v1.5.24-stage-12",
       "phase": "exec_running",
-      "status": "planned",
+      "status": "coding",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -100,367 +100,6 @@
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-11-04T19:08:58.551Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-020",
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-executor"
-      }
-    },
-    {
-      "time": "2026-11-04T19:09:00.282Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-020",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-04T19:09:02.203Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-020",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-04T19:09:03.872Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-020",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-05T01:42:29.891Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.12-stage-127",
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer"
-      }
-    },
-    {
-      "time": "2026-11-05T01:42:42.153Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.12",
-        "stages": 1,
-        "reviews": 5,
-        "log": 13,
-        "requirements": 1
-      }
-    },
-    {
-      "time": "2026-11-05T13:11:20.444Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-021",
-        "title": "门禁易用性补丁：git commit 允许相位扩到 review_passed/test_passed；SKILL frontmatter description 的 # 被 YAML 注释截断"
-      }
-    },
-    {
-      "time": "2026-11-05T13:11:23.364Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-021",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-05T13:11:29.328Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.13-stage-128",
-        "requirementId": "REQ-021",
-        "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-05T13:40:31.771Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-021",
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-05T13:40:34.912Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-021",
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-executor"
-      }
-    },
-    {
-      "time": "2026-11-05T13:40:37.210Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-021",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-05T13:40:39.030Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-021",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-05T13:40:41.033Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-021",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-05T13:50:13.934Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.13-stage-128",
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer"
-      }
-    },
-    {
-      "time": "2026-11-05T13:50:25.733Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.13",
-        "stages": 1,
-        "reviews": 0,
-        "log": 11,
-        "requirements": 1
-      }
-    },
-    {
-      "time": "2026-11-07T09:10:46.042Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-022",
-        "title": "体验反馈修复批次：op 状态落盘 / preflight 长任务 / 归档收尾提交 / 门禁体验（OF-02~OF-08）"
-      }
-    },
-    {
-      "time": "2026-11-07T09:11:15.878Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-022",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-07T09:11:19.325Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.14-stage-129",
-        "requirementId": "REQ-022",
-        "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-07T09:53:11.856Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-022",
-        "result": "pass",
-        "by": "openfeel-reviewer (independent subagent)",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-07T09:56:17.681Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-022",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel"
-      }
-    },
-    {
-      "time": "2026-11-07T09:56:32.543Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-022",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-07T09:56:46.328Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-022",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-07T09:56:50.652Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-022",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-07T10:02:45.853Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.14-stage-129",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel-tester"
-      }
-    },
-    {
-      "time": "2026-11-07T10:03:01.809Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.14",
-        "stages": 1,
-        "reviews": 0,
-        "log": 8,
-        "requirements": 1
-      }
-    },
-    {
-      "time": "2026-11-08T09:08:30.530Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-023",
-        "title": "getUserName 把 .info.json 的 unknown 哨兵当有效名，不回落 git config，导致 feel_req claim 必须显式 --owner"
-      }
-    },
-    {
-      "time": "2026-11-08T09:08:34.930Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-023",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-08T09:08:40.020Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-023",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-08T09:08:44.224Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-023",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-08T09:08:53.245Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.15-stage-130",
-        "requirementId": "REQ-023",
-        "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-08T09:17:34.269Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-023",
-        "result": "pass",
-        "by": "openfeel-reviewer (independent subagent)",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-08T09:17:45.268Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-023",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel"
-      }
-    },
-    {
-      "time": "2026-11-08T09:17:48.098Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-023",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-08T09:19:14.146Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.15-stage-130",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel-tester"
-      }
-    },
     {
       "time": "2026-11-08T09:19:24.150Z",
       "agent": "cli",
@@ -2316,6 +1955,172 @@
         "requirementId": "REQ-050",
         "action": "link"
       }
+    },
+    {
+      "time": "2026-11-18T18:11:27.394Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-048",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:30.579Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-049",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:33.122Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-050",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:38.738Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-048",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:42.549Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-049",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:45.321Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-050",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:51.152Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-048",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:51.152Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-048",
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:51.153Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-048",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:56.785Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-049",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:56.785Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-049",
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer"
+      }
+    },
+    {
+      "time": "2026-11-18T18:11:56.785Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-049",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-18T18:12:00.895Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-050",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-18T18:12:00.895Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-050",
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer"
+      }
+    },
+    {
+      "time": "2026-11-18T18:12:00.895Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-050",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-18T18:13:13.777Z",
+      "agent": "openfeel-executor",
+      "action": "status_projection_repair",
+      "detail": {
+        "stage": "v1.5.24-stage-12",
+        "from": "planned",
+        "to": "coding"
+      }
     }
   ],
   "requirements": [
@@ -2597,41 +2402,89 @@
     {
       "id": "REQ-048",
       "title": "状态类文件自动维护：current.md 自动块、AUTO 块多需求与进度、相位推进同步 status.md 状态",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-18T17:47:18.244Z",
-      "updated_at": "2026-11-18T18:00:24.020Z",
+      "updated_at": "2026-11-18T18:11:51.153Z",
       "target_version": "v1.5.24",
       "priority": "P0",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-048.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-18T18:00:24.020Z"
+      "claimed_at": "2026-11-18T18:00:24.020Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-18T18:11:51.152Z",
+        "note": "独立审查提出 6 项，已修 5：addStage 初值走投影、health --fix 先修存量 stage.status、文档补 coding、current.md 受管块与旧散文处理、测试补齐；dev-status/repo-hygiene/flow-manager 用例全绿。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-18T18:11:51.152Z",
+        "note": "独立审查提出 6 项，已修 5：addStage 初值走投影、health --fix 先修存量 stage.status、文档补 coding、current.md 受管块与旧散文处理、测试补齐；dev-status/repo-hygiene/flow-manager 用例全绿。",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     },
     {
       "id": "REQ-049",
       "title": "修正误导性提示与配置：署名兜底确定性、review/verify 署名回显、阶段收口 guard 措辞",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-18T17:47:20.704Z",
-      "updated_at": "2026-11-18T18:00:26.849Z",
+      "updated_at": "2026-11-18T18:11:56.785Z",
       "target_version": "v1.5.24",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-049.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-18T18:00:26.849Z"
+      "claimed_at": "2026-11-18T18:00:26.849Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-18T18:11:56.785Z",
+        "note": "独立审查：署名确定性、会话/人机区分、DSH 回显三项已改为「by=项目用户 + 记录内 session + 回显 bySource」；阶段收口 guard 文案改为「可继续加需求」。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-18T18:11:56.785Z",
+        "note": "独立审查：署名确定性、会话/人机区分、DSH 回显三项已改为「by=项目用户 + 记录内 session + 回显 bySource」；阶段收口 guard 文案改为「可继续加需求」。",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     },
     {
       "id": "REQ-050",
       "title": "历史遗留文件处置：删除无引用的 task_claim/todo-current 与陈旧 current_archive，dev clean --legacy 支持",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-18T17:47:24.600Z",
-      "updated_at": "2026-11-18T18:00:29.236Z",
+      "updated_at": "2026-11-18T18:12:00.895Z",
       "target_version": "v1.5.24",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-050.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-18T18:00:29.236Z"
+      "claimed_at": "2026-11-18T18:00:29.236Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-18T18:12:00.895Z",
+        "note": "独立审查：破坏性删除已加 --yes 确认、--include-archive 需配 --legacy；「只增不删」文案与模块边界同步；本仓已清理 22 个遗留文件（2 个旧模板 + 20 个陈旧轮换归档）。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-18T18:12:00.895Z",
+        "note": "独立审查：破坏性删除已加 --yes 确认、--include-archive 需配 --legacy；「只增不删」文案与模块边界同步；本仓已清理 22 个遗留文件（2 个旧模板 + 20 个陈旧轮换归档）。",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     }
   ]
 }

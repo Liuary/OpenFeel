@@ -396,6 +396,12 @@ export interface StatusReconcileItem {
   to: string;
   /** 处理结果：planned（dry-run 预览）/ applied（已回写）/ skipped-not-found（字段或文件缺失） */
   result: 'planned' | 'applied' | 'skipped-not-found';
+  /**
+   * 差异来源（v1.5.24 / REQ-048）：
+   * `status_projection` = flow.json 里 stage.status 与相位投影不一致（需 save）；
+   * `status_md` = status.md 状态字段与权威值不一致（已就地写盘）。缺省按 `status_md`。
+   */
+  field?: 'status_projection' | 'status_md';
 }
 
 /** Checkpoint 恢复差异单条（选择性/预览用；`(absent)`/`(removed)` 为哨兵值） */
@@ -4314,7 +4320,7 @@ export class FlowManager {
       if (stage.status !== authoritative) {
         const from = stage.status;
         stage.status = authoritative;
-        out.push({ stage: stageId, from, to: authoritative, result: 'planned' });
+        out.push({ stage: stageId, from, to: authoritative, result: 'planned', field: 'status_projection' });
         this.appendLog({
           time: '',
           agent: 'openfeel-executor',
@@ -5283,7 +5289,11 @@ export function mapPhaseToStageStatus(
     case 'scheme_review':
     case 'scheme_passed':
     case 'exec_running':
+    case 'review_pending':
       return 'coding';
+    case 'test_pending':
+    case 'test_failed':
+      return 'testing';
     case 'review_failed':
       return 'review_failed';
     case 'review_passed':

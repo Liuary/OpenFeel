@@ -2648,6 +2648,10 @@ export function registerFlowCommand(program: Command): void {
         if (!options.dryRun && !enforcePreflightOrFail(process.cwd(), lang)) return;
         try {
           reconciled = mgr.reconcileStatusMd({ dryRun: options.dryRun });
+          // v1.5.24 / REQ-048：status 投影修复发生在内存里，必须落盘（否则下次又从陈旧值开始）
+          if (!options.dryRun && reconciled.some((i) => i.field === 'status_projection')) {
+            mgr.save();
+          }
         } catch (err: unknown) {
           // 写盘失败 → 内部错误（D-95-11：原 exit 1 → exit 3，登记为分类补全）；非 JSON 文案逐字不变
           const msg = err instanceof Error ? err.message : String(err);

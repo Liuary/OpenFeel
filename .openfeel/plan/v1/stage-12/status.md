@@ -3,7 +3,7 @@
 - **执行模式**：auto
 - **自动推进**：enabled
 - **工作流模式**：fast
-- **状态**：planned
+- **状态**：coding
 - **当前责任 Agent**：openfeel-executor
 - **上一责任 Agent**：openfeel-planner
 - **更新时间**：2026-11-18 16:16

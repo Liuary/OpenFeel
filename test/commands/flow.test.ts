@@ -2211,8 +2211,8 @@ describe('flow 命令（stage-41）', () => {
     expect(out).toContain('已复位');
     const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8')) as FlowData;
     expect(after.stages['v1.0.0-stage-01'].phase).toBe('review_pending');
-    // mapPhaseToStageStatus('review_pending', 'review_passed') → default 保持原 status
-    expect(after.stages['v1.0.0-stage-01'].status).toBe('review_passed');
+    // v1.5.24 / REQ-048：review_pending 投影为 coding
+    expect(after.stages['v1.0.0-stage-01'].status).toBe('coding');
     const last = after.log[after.log.length - 1];
     expect(last.action).toBe('reset_stage_phase');
   });

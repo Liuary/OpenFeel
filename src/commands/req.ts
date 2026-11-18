@@ -34,7 +34,12 @@ import { findArchivedRequirement, listArchivedRequirements, archivedRequirementM
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { getUserName } from '../core/workspace/identity.js';
 import { normalizeStageId } from '../core/plan/path.js';
-import { resolveActorName } from '../core/session.js';
+import { getSessionId, resolveActorName } from '../core/session.js';
+
+/** 当前会话标识（写入审查/验证记录，用于人机区分与回溯；v1.5.24 / REQ-049） */
+function currentSession(): string {
+  return getSessionId({ projectPath: process.cwd() });
+}
 
 /** 创建 FlowManager（当前工作目录） */
 function createManager(): FlowManager {
@@ -849,7 +854,7 @@ export function registerReqCommand(program: Command): void {
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       const by = resolveActorName(process.cwd(), options.by);
       const independent = options.independent === true;
-      const review = recordRequirementReview(data, id, { result: options.result, by, note: options.note, independent });
+      const review = recordRequirementReview(data, id, { result: options.result, by, note: options.note, independent, session: currentSession() });
       if (!review.ok) {
         failCode(lang, review.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
@@ -864,6 +869,7 @@ export function registerReqCommand(program: Command): void {
         by,
         note: options.note,
         evidence: options.evidence,
+        session: currentSession(),
       });
       if (!verification.ok) {
         failCode(lang, verification.code, {
@@ -932,6 +938,7 @@ export function registerReqCommand(program: Command): void {
         by,
         note: options.note,
         independent: options.independent === true,
+        session: currentSession(),
       });
       if (!r.ok) {
         failCode(lang, r.code, {
@@ -981,6 +988,7 @@ export function registerReqCommand(program: Command): void {
         by,
         note: options.note,
         evidence: options.evidence,
+        session: currentSession(),
       });
       if (!r.ok) {
         failCode(lang, r.code, {

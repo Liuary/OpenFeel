@@ -45,6 +45,8 @@ export interface RequirementReviewRecord {
   note: string;
   /** 是否独立审查（false = 自我审查，须显式标注） */
   independent: boolean;
+  /** 落库时的会话标识（v1.5.24 / REQ-049：署名用项目用户，人机区分与回溯看这里；可选） */
+  session?: string;
 }
 
 /**
@@ -69,6 +71,8 @@ export interface RequirementVerificationRecord {
    * **只读引用**：记录在案供归档与看板消费，不参与 done 门判定（升级为门禁须另立版本）。
    */
   criteria?: string[];
+  /** 落库时的会话标识（v1.5.24 / REQ-049：署名为项目用户，人机区分看这里；可选） */
+  session?: string;
 }
 
 /** 阶段验证记录（与需求验证记录同形；v1.5.8 / REQ-027） */

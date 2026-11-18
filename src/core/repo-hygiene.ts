@@ -12,7 +12,8 @@
  *  ② 列出「仍被跟踪的运行态文件」；
  *  ③ 把它们从索引移除（**不删工作区文件**）。
  *
- * 边界：不碰用户手写的 ignore 规则；不处理 `current_archive/**` 这类历史内容
+ * 边界：不碰用户手写的 ignore 规则；`current_archive/**` 的清理是**显式破坏性动作**
+ * （`removeLegacyDevFiles` + `--yes`），不随默认 `dev clean` 执行。
  * （它们是否入库属于项目取舍，需要人拍板）；不写 `.openfeel/dev/*` 内容本身。
  */
 import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';

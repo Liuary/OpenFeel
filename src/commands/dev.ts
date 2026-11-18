@@ -62,12 +62,13 @@ export function registerDevCommand(program: Command): void {
 
   dev
     .command('clean')
-    .description('运行态文件不入库：补 .gitignore + 从 git 索引移除已跟踪的运行态文件（不删工作区文件）')
+    .description('运行态文件不入库：补 .gitignore + 从 git 索引移除已跟踪的运行态文件（不删文件）；--legacy 才会删历史遗留文件（需 --yes）')
     .option('--dry-run', '只显示将要处理的项（零写盘、零索引改动）')
-    .option('--legacy', '同时清理历史遗留文件（task_claim.md / todo-current.md；v1.5.24）')
+    .option('--legacy', '清理历史遗留文件（task_claim.md / todo-current.md；v1.5.24；非 dry-run 需 --yes）')
     .option('--include-archive', '与 --legacy 同用：再清理 current_archive/*.md 旧轮换归档')
+    .option('--yes', '确认执行 --legacy 的删除（无 --yes 时只列清单并退出）')
     .option('--json', '以 JSON 输出 { schemaVersion, gitRepository, gitignore, removed, dryRun, legacy }')
-    .action((options: { dryRun?: boolean; legacy?: boolean; includeArchive?: boolean; json?: boolean }) => {
+    .action((options: { dryRun?: boolean; legacy?: boolean; includeArchive?: boolean; yes?: boolean; json?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       if (!new FlowManager(projectPath).isLoaded()) {
@@ -76,12 +77,31 @@ export function registerDevCommand(program: Command): void {
         return;
       }
       const dryRun = options.dryRun === true;
+      // v1.5.24 审查修订：--include-archive 必须配 --legacy（否则语义含混）
+      if (options.includeArchive === true && options.legacy !== true) {
+        console.error(t('flow.dev.cleanIncludeRequiresLegacyTmpl', lang));
+        process.exit(1);
+        return;
+      }
       const gitRepo = isGitRepository(projectPath);
       const ignore = ensureRuntimeIgnoreEntries(projectPath, { dryRun });
       const untracked = gitRepo
         ? untrackRuntimeFiles(projectPath, { dryRun })
         : { files: [] as string[], dryRun, applied: false };
-      const legacy = options.legacy === true || options.includeArchive === true
+      // 破坏性删除：非 dry-run 必须 --yes；否则只预览清单（安全默认）
+      const wantsLegacy = options.legacy === true;
+      const legacyPreview = wantsLegacy
+        ? removeLegacyDevFiles(projectPath, { dryRun: true, includeArchive: options.includeArchive === true })
+        : null;
+      if (wantsLegacy && !dryRun && options.yes !== true) {
+        const listed = legacyPreview === null || legacyPreview.files.length === 0
+          ? t('flow.dev.cleanNone', lang)
+          : legacyPreview.files.join(', ');
+        console.error(t('flow.dev.cleanLegacyConfirmTmpl', lang, { files: listed }));
+        process.exit(1);
+        return;
+      }
+      const legacy = wantsLegacy
         ? removeLegacyDevFiles(projectPath, { dryRun, includeArchive: options.includeArchive === true })
         : null;
 

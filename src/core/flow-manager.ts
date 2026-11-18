@@ -1980,7 +1980,7 @@ export class FlowManager {
    */
   recordStageVerification(
     stageName: string,
-    input: { result: string; kind: string; by: string; note: string; evidence?: string; criteria?: string[] },
+    input: { result: string; kind: string; by: string; note: string; evidence?: string; criteria?: string[]; session?: string },
   ): StageVerificationWriteResult {
     const data = this.data;
     if (!data) { throw new Error('flow.json 未加载'); }
@@ -2010,6 +2010,8 @@ export class FlowManager {
       note,
       ...(evidence === '' ? {} : { evidence }),
       ...(criteria.length === 0 ? {} : { criteria }),
+      // v1.5.24 / REQ-049：署名用项目用户，人机区分与回溯看 session
+      ...(typeof input?.session === 'string' && input.session.trim() !== '' ? { session: input.session.trim() } : {}),
     };
     this.appendLog({
       time: '',
@@ -2296,7 +2298,9 @@ export class FlowManager {
     this.data.stages[stageId] = {
       name: stageId,
       phase: initialPhase,
-      status: 'planned',
+      // v1.5.24 / REQ-048（审查修订）：初值也走投影单点，避免「以 exec_running/scheme_* 建阶段」
+      // 时 phase 与 status 当场不一致（autoRepairInconsistency 只覆盖 done 两种组合，修不到这里）。
+      status: mapPhaseToStageStatus(initialPhase, 'planned'),
       deps: [],
       ops: {},
     };
@@ -4305,6 +4309,19 @@ export class FlowManager {
         continue;
       }
       const authoritative = mapPhaseToStageStatus(stage.phase, stage.status);
+      // v1.5.24 / REQ-048（审查修订）：先修 flow.json 里**陈旧的 stage.status**（投影收紧后的存量迁移），
+      // 再按权威值对账 status.md。这一步只在 `health --fix` / `repair` 路径执行，正常推进由 advance 写。
+      if (stage.status !== authoritative) {
+        const from = stage.status;
+        stage.status = authoritative;
+        out.push({ stage: stageId, from, to: authoritative, result: 'planned' });
+        this.appendLog({
+          time: '',
+          agent: 'openfeel-executor',
+          action: 'status_projection_repair',
+          detail: { stage: stageId, from, to: authoritative },
+        });
+      }
       const statusPath = this.findStatusPath(stageId);
       if (!statusPath || !existsSync(statusPath)) {
         // status.md 缺失 → 安全跳过，不新建文件/字段

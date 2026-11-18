@@ -118,7 +118,7 @@ openfeel flow phases --mode fast                        # 按指定模式查看�
 
 > **微变更（v1.4.0 / chore 于 v1.5.11 收窄）**：静态展示资源（`.css/.scss/.html/.svg/.png/.jpg/.jpeg/.webp`、`assets/**`、`public/**`）在任意相位可直接写；需要改源码的微调在**无活跃阶段**时由**人类在外部终端**执行 `openfeel chore "<说明>"` 开启写窗口（**上限 30 分钟**，`--ttl-min 1..30` 只能改短；**源码写入必须显式 `--source`**，缺省只放行 doc/静态资源），`openfeel chore --end` 收口（不建阶段）。源码阶段门禁、`flow.json` / `status.md` 保护、混合目标从严均不变。
 
-> **状态与记录（v1.5.0）**：只有 Feel 写状态；子 agent 不读写 `dev_last*` / `current.md` / `status.md` / `flow.json`。日志不强制（`flow.json.log` 由 CLI 维护，最近 200 条）。`dev_last.md` 的简要状态由 `openfeel dev sync` 维护：`flow advance` 在开始 / 转折 / 结束或每 30 分钟自动同步；`openfeel dev status` 可查看是否到期。
+> **状态与记录（v1.5.0；v1.5.24 起 `current.md` 同吃受管块）**：只有 Feel 写状态；子 agent 不读写 `dev_last*` / `current.md` / `status.md` / `flow.json`。日志不强制（`flow.json.log` 由 CLI 维护，最近 200 条）。`dev_last.md` 与 `dev/current.md` 的简要状态由 `openfeel dev sync` 维护（块内「关联需求」列全部需求与完成度）：`flow advance` 在开始 / 转折 / 结束或每 30 分钟自动同步；`openfeel dev status` 可查看是否到期。
 
 > **派发与恢复（v1.5.3）**：派发子 agent 用 `feel_next.dispatch`（goal/context/boundaries/returnFormat），子 agent 不读写状态文件、返回 ≤10 行；新会话用 `feel_status.recovery` 一次拿到 lastTransition + 交接摘要 + nextAction。发布采用批次制：小功能合并，完成全门禁后统一发布。
 

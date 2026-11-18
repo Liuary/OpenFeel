@@ -458,6 +458,8 @@ export const flow: I18nDomain = {
   'dev.cleanNotGitWarnTmpl':        { key: 'flow.dev.cleanNotGitWarnTmpl',        zh: '⚠ 当前目录不是 git 仓库：只保证 .gitignore，跳过索引检查。', en: '' },
   'dev.cleanNone':                  { key: 'flow.dev.cleanNone',                  zh: '（无）', en: '' },
   'dev.cleanLegacyTmpl':            { key: 'flow.dev.cleanLegacyTmpl',            zh: '· 历史遗留文件：{files}', en: '' },
+  'dev.cleanLegacyConfirmTmpl':     { key: 'flow.dev.cleanLegacyConfirmTmpl',     zh: '将删除以下历史遗留文件（不可恢复，git 历史仍可追溯）：{files}\n确认请加 --yes 重跑；只想看清单用 --dry-run。', en: '' },
+  'dev.cleanIncludeRequiresLegacyTmpl': { key: 'flow.dev.cleanIncludeRequiresLegacyTmpl', zh: '`--include-archive` 必须与 `--legacy` 同时使用。', en: '' },
   'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '请先运行 `openfeel flow next`（或 `flow status`）读取状态，再执行写操作（preflight 缺失或已过期）。', en: '' },
 };
 
@@ -962,7 +964,7 @@ export const help: I18nDomain = {
   'stage.status.json':     { key: 'help.stage.status.json',     zh: '以 JSON 输出（纯 JSON 单文档，含 schemaVersion）', en: '' },
   'stage.set':             { key: 'help.stage.set',             zh: '设置阶段状态字段（原子更新，保留其余内容不变）', en: '' },
   'stage.set.argstageId':  { key: 'help.stage.set.argstageId',  zh: '阶段 ID（如 v4-stage-04）', en: '' },
-  'stage.set.status':      { key: 'help.stage.set.status',      zh: '状态值（粗粒度：planned/review_failed/review_passed/testing/archiving/done）', en: '' },
+  'stage.set.status':      { key: 'help.stage.set.status',      zh: '状态值（粗粒度：planned/coding/review_failed/review_passed/testing/archiving/done；plan_* → planned，scheme_*/exec_running → coding）', en: '' },
   'stage.set.execMode':    { key: 'help.stage.set.execMode',    zh: '执行模式（manual | auto）', en: '' },
   'stage.set.autoAdvance': { key: 'help.stage.set.autoAdvance', zh: '自动推进（enabled | disabled）', en: '' },
   'stage.set.workflowMode': { key: 'help.stage.set.workflowMode', zh: '工作流模式（full | fast | general）', en: '' },
@@ -1083,6 +1085,7 @@ export const help: I18nDomain = {
   'dev.clean.legacy':    { key: 'help.dev.clean.legacy',    zh: '同时清理历史遗留文件（task_claim.md / todo-current.md；v1.5.24）', en: '' },
   'dev.clean.includeArchive': { key: 'help.dev.clean.includeArchive', zh: '与 --legacy 同用：再清理 current_archive/*.md 旧轮换归档', en: '' },
   'dev.clean.json':      { key: 'help.dev.clean.json',      zh: '以 JSON 输出（含 legacy 清理结果）', en: '' },
+  'dev.clean.yes':       { key: 'help.dev.clean.yes',       zh: '确认执行 --legacy 的删除（无 --yes 时只列清单并退出）', en: '' },
   'req.add':             { key: 'help.req.add',             zh: '创建需求（ID 自动分配；正文骨架铺到 .openfeel/requirements/）', en: '' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '需求标题', en: '' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '预估版本（如 v1.3.0）', en: '' },

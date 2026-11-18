@@ -25,7 +25,7 @@ import { appendStatusTask } from '../core/plan/stage.js';
 import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js';
 import { stageRequirementIds } from '../core/req/aggregate.js';
 import { findPhaseEnteredAtMs } from '../core/phase-entered.js';
-import { resolveActorName } from '../core/session.js';
+import { getSessionId, resolveActorName } from '../core/session.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -761,6 +761,7 @@ export function registerStageCommand(program: Command): void {
         by,
         note: options.note,
         evidence: options.evidence,
+        session: getSessionId({ projectPath: process.cwd() }),
         criteria: typeof options.criteria === 'string'
           ? options.criteria.split(',').map((c) => c.trim()).filter((c) => c !== '')
           : undefined,

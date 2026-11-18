@@ -430,6 +430,8 @@ export const flow: I18nDomain = {
   'dev.cleanNotGitWarnTmpl':        { key: 'flow.dev.cleanNotGitWarnTmpl',        zh: '', en: '⚠ Not a git repository: only .gitignore is ensured, index check skipped.' },
   'dev.cleanNone':                  { key: 'flow.dev.cleanNone',                  zh: '', en: '(none)' },
   'dev.cleanLegacyTmpl':            { key: 'flow.dev.cleanLegacyTmpl',            zh: '', en: '· Legacy files: {files}' },
+  'dev.cleanLegacyConfirmTmpl':     { key: 'flow.dev.cleanLegacyConfirmTmpl',     zh: '', en: 'These legacy files will be deleted (unrecoverable; git history still keeps them): {files}\nRe-run with --yes to confirm; use --dry-run to only list them.' },
+  'dev.cleanIncludeRequiresLegacyTmpl': { key: 'flow.dev.cleanIncludeRequiresLegacyTmpl', zh: '', en: '`--include-archive` must be used together with `--legacy`.' },
   'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '', en: 'Run `openfeel flow next` (or `flow status`) before a write operation (preflight missing or expired).' },
 };
 
@@ -922,7 +924,7 @@ export const help: I18nDomain = {
   'stage.status.json':     { key: 'help.stage.status.json',     zh: '', en: 'Output as JSON (single JSON document with schemaVersion)' },
   'stage.set':             { key: 'help.stage.set',             zh: '', en: 'Set stage status field (atomic update, preserve rest)' },
   'stage.set.argstageId':  { key: 'help.stage.set.argstageId',  zh: '', en: 'Stage ID (e.g. v4-stage-04)' },
-  'stage.set.status':      { key: 'help.stage.set.status',      zh: '', en: 'Status value (coarse-grained: planned/review_failed/review_passed/testing/archiving/done)' },
+  'stage.set.status':      { key: 'help.stage.set.status',      zh: '', en: 'Status value (coarse: planned/coding/review_failed/review_passed/testing/archiving/done; plan_* → planned, scheme_*/exec_running → coding)' },
   'stage.set.execMode':    { key: 'help.stage.set.execMode',    zh: '', en: 'Execution mode (manual | auto)' },
   'stage.set.autoAdvance': { key: 'help.stage.set.autoAdvance', zh: '', en: 'Auto advance (enabled | disabled)' },
   'stage.set.workflowMode': { key: 'help.stage.set.workflowMode', zh: '', en: 'Workflow mode (full | fast | general)' },
@@ -1037,6 +1039,7 @@ export const help: I18nDomain = {
   'dev.clean.legacy':    { key: 'help.dev.clean.legacy',    zh: '', en: 'Also remove legacy files (task_claim.md / todo-current.md; v1.5.24)' },
   'dev.clean.includeArchive': { key: 'help.dev.clean.includeArchive', zh: '', en: 'With --legacy: also remove stale current_archive/*.md files' },
   'dev.clean.json':      { key: 'help.dev.clean.json',      zh: '', en: 'JSON output (includes legacy cleanup result)' },
+  'dev.clean.yes':       { key: 'help.dev.clean.yes',       zh: '', en: 'Confirm the --legacy deletion (without it only a list is printed)' },
   'req.add':             { key: 'help.req.add',             zh: '', en: 'Create a requirement (auto ID; body skeleton under .openfeel/requirements/)' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '', en: 'Requirement title' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '', en: 'Target version (e.g. v1.3.0)' },

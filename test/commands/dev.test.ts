@@ -100,6 +100,35 @@ describe('dev 命令（v1.5.0）', () => {
     expect(doc.dryRun).toBe(false);
   });
 
+  it('dev clean --include-archive 未带 --legacy → exit 1（语义守卫）', async () => {
+    seed();
+    await safeParse(['dev', 'clean', '--include-archive']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls.map((c) => String(c[0])).join('\n')).toContain('--legacy');
+  });
+
+  it('dev clean --legacy 非 dry-run 且无 --yes → 只列清单并 exit 1（破坏性默认关闭）', async () => {
+    seed();
+    mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
+    writeFileSync(join(dir, '.openfeel', 'dev', 'task_claim.md'), 'x\n', 'utf-8');
+    await safeParse(['dev', 'clean', '--legacy']);
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(existsSync(join(dir, '.openfeel', 'dev', 'task_claim.md'))).toBe(true);
+    expect(errorMock.mock.calls.map((c) => String(c[0])).join('\n')).toContain('task_claim.md');
+  });
+
+  it('dev clean --legacy --yes → 删除遗留文件并输出清理项', async () => {
+    seed();
+    mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
+    writeFileSync(join(dir, '.openfeel', 'dev', 'task_claim.md'), 'x\n', 'utf-8');
+    writeFileSync(join(dir, '.openfeel', 'dev', 'todo-current.md'), 'x\n', 'utf-8');
+    await safeParse(['dev', 'clean', '--legacy', '--yes']);
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(existsSync(join(dir, '.openfeel', 'dev', 'task_claim.md'))).toBe(false);
+    expect(existsSync(join(dir, '.openfeel', 'dev', 'todo-current.md'))).toBe(false);
+    expect(logMock.mock.calls.map((c) => String(c[0])).join('\n')).toContain('历史遗留');
+  });
+
   it('dev clean --dry-run → 零写盘（.gitignore 不创建）', async () => {
     seed();
     await safeParse(['dev', 'clean', '--dry-run']);

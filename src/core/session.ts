@@ -129,9 +129,10 @@ export function getSessionId(opts?: { env?: NodeJS.ProcessEnv; projectPath?: str
  *
  * 显式 `--by` 优先；缺省取**项目用户**（`.info.json` 的 `user` → `OPENFEEL_USER` → `openfeel`）。
  *
- * 为什么不再用 `session:xxxxxxxx`：DSH 每次工具调用都是一个新的 CLI 进程，缺少 env 会话变量时
- * 会落到 `proc:` 随机分支——同一轮里两次 review 署出两个不同名字，回显与落库也对不上（误导）。
- * 用户名的语义本来就是「谁审的」，比随机哈希更可读、更稳定。
+ * 为什么不再用 `session:xxxxxxxx`：DSH 每次工具调用都是新的 CLI 进程，缺少 env 会话变量时
+ * 会落到 `proc:` 随机分支——同一轮里两次 review 署出两个不同名字，回显与落库也对不上。
+ * 用户名的语义就是「谁审的」；**人机区分与回溯**由记录里的 `session` 字段承担（见
+ * `RequirementReviewRecord.session`），不再塞进署名。
  */
 export function resolveActorName(projectPath: string, explicit?: string): string {
   const given = typeof explicit === 'string' ? explicit.trim() : '';

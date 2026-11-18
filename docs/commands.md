@@ -1068,7 +1068,7 @@ openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stag
 
 **`stage status --json`（v1.2.2）**：有参 → `{schemaVersion,stageId,statusPath,fields,tasks,blockedBy}`（`fields` = 7 规范键 `execMode,autoAdvance,status,reviewAgent,previousReviewAgent,updatedAt,workflowMode` + `raw`；`tasks[]{number,done,description}`；`statusPath` 绝对路径；`blockedBy` 可空）；无参 → `{schemaVersion,stages[]{stageId,status,statusPath},count}`（空态 `stages:[]` + `count:0`，exit 0）；阶段未找到 → envelope `STAGE_NOT_FOUND`/refusal/1。
 
-**`stage set --status` 值域（v1.1.4-stage-62）**：仅接受**粗粒度状态枚举** `planned` / `review_failed` / `review_passed` / `testing` / `archiving` / `done`（单一来源 `STAGE_STATUS_VALUES`，与 `status = phase` 投影的取值域一致）；传入**相位值**（如 `review_pending`）或**任意值** → **exit 1 且不写盘**（不生成 `.bak`）。
+**`stage set --status` 值域（v1.1.4-stage-62；v1.5.24 / REQ-048 增 `coding`）**：仅接受**粗粒度状态枚举** `planned` / `coding` / `review_failed` / `review_passed` / `testing` / `archiving` / `done`（单一来源 `STAGE_STATUS_VALUES`，与 `status = phase` 投影的取值域一致）。相位 → 状态的投影：`plan_*` → `planned`，`scheme_*` / `exec_running` → `coding`，其余按相位名。传入**相位值**（如 `review_pending`）或**任意值** → **exit 1 且不写盘**（不生成 `.bak`）。
 
 **`stage set --workflow-mode` 插入语义（v1.1.7-stage-75）**：目标 `status.md` 无「工作流模式」行时走**插入**（锚点链「自动推进」→「执行模式」；`.bak` + 原子写，其余内容逐字保留）；**锚点皆缺 → exit 1 不写盘、无 `.bak`**；`flow.json` 冗余字段仅在实际写入时同步（不参与级联）。
 
@@ -1139,7 +1139,7 @@ openfeel dev clean     # v1.5.23：运行态文件不入库（补 .gitignore + �
 - 保证 `.gitignore` 覆盖以上条目（缺哪条补哪条，不重排既有规则）；
 - 把**已被跟踪**的条目 `git rm --cached` 移出索引（**不删工作区文件**）；
 - 幂等；`--dry-run` 零写盘零索引改动；`--json` 输出 `{ schemaVersion, gitRepository, gitignore: {file, added}, removed, dryRun, legacy }`。
-- **`--legacy`（v1.5.24 / REQ-050）**：额外清理历史遗留文件（`.openfeel/dev/task_claim.md` / `todo-current.md`，旧模板残留、代码零引用）；`--include-archive` 再清理 `current_archive/*.md` 陈旧轮换归档（git 历史仍可追溯）。`dev_core.md` / `decisions.md` **不在清理范围**（活功能）。
+- **`--legacy`（v1.5.24 / REQ-050）**：清理历史遗留文件（`.openfeel/dev/task_claim.md` / `todo-current.md`，旧模板残留、代码零引用）；`--include-archive` 再清理 `current_archive/*.md` 陈旧轮换归档。**破坏性**：非 `--dry-run` 时必须显式 `--yes` 才执行删除（否则只列清单并 exit 1）；`--include-archive` 必须与 `--legacy` 同用。已提交过的文件在 git 历史中仍可追溯。`dev_core.md` / `decisions.md` **不在清理范围**（活功能）。
 - 非 git 目录：只保证 `.gitignore`，索引步骤跳过并提示。
 - 配套：`openfeel init` 现在会为新项目补这些 ignore 条目；门禁（v1.5.23）放行 `git rm --cached` 这类纯索引操作。
 

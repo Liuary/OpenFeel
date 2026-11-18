@@ -747,7 +747,7 @@ export function createTools(context) {
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return {
-              data: { stage, result: args.result, kind: args.kind, by: optionalArg(args, 'by') ?? '(项目用户)', output: out.text },
+              data: { stage, result: args.result, kind: args.kind, bySource: optionalArg(args, 'by') === undefined ? 'cli-default' : 'explicit', output: out.text },
               summary: `阶段 ${stage} 验证已记录（${args.kind} / ${args.result}）。`,
             };
           });
@@ -1042,7 +1042,7 @@ export function createTools(context) {
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return {
-              data: { id, result: args.result, by: optionalArg(args, 'by') ?? '(项目用户)', independent: args.independent === true, output: out.text },
+              data: { id, result: args.result, bySource: optionalArg(args, 'by') === undefined ? 'cli-default' : 'explicit', independent: args.independent === true, output: out.text },
               summary: `需求 ${id} 审查已记录（${args.result}${args.independent === true ? '，独立' : '，自我审查'}）。`,
             };
           });
@@ -1058,7 +1058,7 @@ export function createTools(context) {
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return {
-              data: { id, result: args.result, kind: args.kind, by: optionalArg(args, 'by') ?? '(项目用户)', output: out.text },
+              data: { id, result: args.result, kind: args.kind, bySource: optionalArg(args, 'by') === undefined ? 'cli-default' : 'explicit', output: out.text },
               summary: `需求 ${id} 验证已记录（${args.kind} / ${args.result}）。`,
             };
           });

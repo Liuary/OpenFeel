@@ -299,6 +299,8 @@ export interface ReviewRecordInput {
   note: string;
   /** 是否独立审查（缺省 false = 自我审查，须显式标注） */
   independent?: boolean;
+  /** 落库会话标识（v1.5.24 / REQ-049；可选，用于人机区分与回溯） */
+  session?: string;
 }
 
 /** 需求验证记录入参（命令层 / 适配器共用；值域校验在本层单点） */
@@ -313,6 +315,8 @@ export interface VerificationRecordInput {
   note: string;
   /** 证据（命令 / 报告路径；可选，空串视为未提供） */
   evidence?: string;
+  /** 落库会话标识（v1.5.24 / REQ-049；可选） */
+  session?: string;
 }
 
 /**
@@ -336,7 +340,11 @@ export function recordRequirementReview(
   if (by === '' || note === '') { return { ok: false, code: 'invalid_field' }; }
   const at = new Date().toISOString();
   const independent = input?.independent === true;
-  req.review = { result: result as ReviewResult, by, at, note, independent };
+  const session = typeof input?.session === 'string' ? input.session.trim() : '';
+  req.review = {
+    result: result as ReviewResult, by, at, note, independent,
+    ...(session === '' ? {} : { session }),
+  };
   req.updated_at = at;
   appendRequirementLog(data, 'requirement_review', { id, result, by, independent });
   return { ok: true, changed: true };
@@ -360,11 +368,13 @@ export function recordRequirementVerification(
   if (!(VERIFICATION_KINDS as readonly string[]).includes(kind)) { return { ok: false, code: 'invalid_field' }; }
   if (by === '' || note === '') { return { ok: false, code: 'invalid_field' }; }
   const at = new Date().toISOString();
+  const session = typeof input?.session === 'string' ? input.session.trim() : '';
   const record = {
     result: result as ReviewResult,
     kind: kind as VerificationKind,
     by, at, note,
     ...(evidence === '' ? {} : { evidence }),
+    ...(session === '' ? {} : { session }),
   };
   req.verification = record;
   req.updated_at = at;

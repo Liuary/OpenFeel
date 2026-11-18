@@ -14,6 +14,7 @@ import {
   ensureRuntimeIgnoreEntries,
   isGitRepository,
   listTrackedRuntimeFiles,
+  removeLegacyDevFiles,
   untrackRuntimeFiles,
 } from '../../src/core/repo-hygiene.js';
 
@@ -80,6 +81,29 @@ describe('repo-hygiene（v1.5.23 / REQ-041）', () => {
     // 除首行原有 CRLF 外，新增部分也必须是 CRLF：不允许出现裸 \n
     expect(content.includes('\r\n')).toBe(true);
     expect(/[^\r]\n/.test(content)).toBe(false);
+  });
+
+  it('removeLegacyDevFiles：dry-run 只列项；实跑删文件并移出索引；--include-archive 覆盖轮换归档', () => {
+    gitInit();
+    mkdirSync(join(dir, '.openfeel', 'dev', 'current_archive'), { recursive: true });
+    writeFileSync(join(dir, '.openfeel', 'dev', 'task_claim.md'), 'x\n', 'utf-8');
+    writeFileSync(join(dir, '.openfeel', 'dev', 'todo-current.md'), 'x\n', 'utf-8');
+    writeFileSync(join(dir, '.openfeel', 'dev', 'current_archive', 'current-2026-10-01-001.md'), 'x\n', 'utf-8');
+    execFileSync('git', ['add', '-A'], { cwd: dir, stdio: 'ignore' });
+
+    const dry = removeLegacyDevFiles(dir, { dryRun: true, includeArchive: true });
+    expect(dry.removed).toBe(0);
+    expect(dry.files).toHaveLength(3);
+    expect(existsSync(join(dir, '.openfeel', 'dev', 'task_claim.md'))).toBe(true);
+
+    const real = removeLegacyDevFiles(dir, { includeArchive: true });
+    expect(real.removed).toBe(3);
+    for (const rel of real.files) {
+      expect(existsSync(join(dir, rel))).toBe(false);
+    }
+    // 索引已同步：git status 显示删除（而非未跟踪残留）
+    const porcelain = execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf-8' });
+    expect(porcelain).not.toContain('task_claim.md');
   });
 
   it('listTrackedRuntimeFiles / untrackRuntimeFiles：移出索引但保留工作区文件', () => {

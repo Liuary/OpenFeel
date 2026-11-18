@@ -63,6 +63,9 @@ export function readRecovery(projectRoot) {
     stage: null,
     phase: null,
     requirement: null,
+    /** 关联需求列表 + 完成度（v1.5.24 / REQ-048；空阶段为 [] / 0-0） */
+    requirements: [],
+    requirementProgress: { done: 0, total: 0 },
     lastTransition: null,
     lastError: null,
     resumeCount: 0,
@@ -87,7 +90,31 @@ export function readRecovery(projectRoot) {
     if (active) {
       result.stage = active[0];
       result.phase = active[1]?.phase ?? null;
-      result.requirement = active[1]?.requirement_id ?? null;
+      // v1.5.24 / REQ-048：关联需求取全部（`requirements[]` 权威，旧 `requirement_id` 兜底），
+      // 并给出完成度——单值输出面此前会少报，读的人容易误判「这个阶段只挂了一个需求」。
+      const links = Array.isArray(active[1]?.requirements) ? active[1].requirements : [];
+      const ids = [];
+      const seen = new Set();
+      for (const link of links) {
+        const id = typeof link?.id === 'string' ? link.id : '';
+        if (id === '' || seen.has(id)) continue;
+        seen.add(id);
+        ids.push(id);
+      }
+      if (ids.length === 0) {
+        const legacy = typeof active[1]?.requirement_id === 'string' ? active[1].requirement_id : '';
+        if (legacy !== '') ids.push(legacy);
+      }
+      const statusById = new Map();
+      for (const req of Array.isArray(flow.requirements) ? flow.requirements : []) {
+        if (typeof req?.id === 'string') statusById.set(req.id, typeof req.status === 'string' ? req.status : '');
+      }
+      result.requirements = ids;
+      result.requirementProgress = {
+        done: ids.filter((id) => statusById.get(id) === 'done').length,
+        total: ids.length,
+      };
+      result.requirement = ids[0] ?? null;
     }
     const log = Array.isArray(flow.log) ? flow.log : [];
     // v1.5.4：活跃阶段的最近失败 / resume 次数（从 200 条日志派生，不新增存储）

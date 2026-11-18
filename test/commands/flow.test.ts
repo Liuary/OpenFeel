@@ -1267,7 +1267,8 @@ describe('flow 命令（stage-41）', () => {
 
     const mdAfter = readFileSync(statusPath, 'utf-8');
     expect(mdAfter).not.toBe(mdBefore);
-    expect(mdAfter).toContain('- **状态**：active');
+    // v1.5.24 / REQ-048：exec_running 的权威投影是 'coding'（此前依赖粘滞旧值）
+    expect(mdAfter).toContain('- **状态**：coding');
     const beforeLines = mdBefore.split('\n');
     const afterLines = mdAfter.split('\n');
     expect(afterLines.length).toBe(beforeLines.length);
@@ -1292,7 +1293,7 @@ describe('flow 命令（stage-41）', () => {
   });
 
   it('op-003/B2: 已一致 → applied=0 且零写盘（幂等）', async () => {
-    const { statusPath } = setupReconcileStage('stage-98', 'active', 'active');
+    const { statusPath } = setupReconcileStage('stage-98', 'coding', 'coding');
     const flowPath = join(tmpDir, '.openfeel', 'flow.json');
     const flowBefore = readFileSync(flowPath, 'utf-8');
     const mdBefore = readFileSync(statusPath, 'utf-8');

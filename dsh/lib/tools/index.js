@@ -641,7 +641,7 @@ export function createTools(context) {
       purge: boolean('remove 时同时删除阶段目录（非 TTY 须配 force）。'),
       result: stringEnum(['pass', 'fail'], 'verify 的验证结论（pass 才满足 done 门）。'),
       kind: stringEnum(['test', 'manual', 'build'], 'verify 的验证种类。'),
-      by: string('verify 的验证者（可省；缺省 = 会话标识 session:xxxxxxxx）。'),
+      by: string('verify 的验证者（可省；缺省 = 项目用户 .info.json user）。'),
       note: string('verify 的结论摘要（进入归档摘要）。'),
       evidence: string('verify 的证据（测试命令 / 报告路径）。'),
       project: string('项目根目录。'),
@@ -747,7 +747,7 @@ export function createTools(context) {
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return {
-              data: { stage, result: args.result, kind: args.kind, by: args.by, output: out.text },
+              data: { stage, result: args.result, kind: args.kind, by: optionalArg(args, 'by') ?? '(项目用户)', output: out.text },
               summary: `阶段 ${stage} 验证已记录（${args.kind} / ${args.result}）。`,
             };
           });
@@ -885,7 +885,7 @@ export function createTools(context) {
       into: stringArray('split 的子需求标题列表（至少一项）。'),
       result: stringEnum(['pass', 'fail'], 'review/verify 的结论（pass 才满足 done 门）。'),
       kind: stringEnum(['test', 'manual', 'build'], 'verify 的验证种类。'),
-      by: string('review/verify 的审查者 / 验证者（可省；缺省 = 会话标识 session:xxxxxxxx）。'),
+      by: string('review/verify 的审查者 / 验证者（可省；缺省 = 项目用户 .info.json user）。'),
       note: string('review/verify 的结论摘要（进入归档摘要）。'),
       evidence: string('verify 的证据（测试命令 / 报告路径）。'),
       independent: boolean('review 是否独立审查（缺省 false = 自我审查，须显式标注 self-review）。'),
@@ -1042,7 +1042,7 @@ export function createTools(context) {
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return {
-              data: { id, result: args.result, by: args.by, independent: args.independent === true, output: out.text },
+              data: { id, result: args.result, by: optionalArg(args, 'by') ?? '(项目用户)', independent: args.independent === true, output: out.text },
               summary: `需求 ${id} 审查已记录（${args.result}${args.independent === true ? '，独立' : '，自我审查'}）。`,
             };
           });
@@ -1058,7 +1058,7 @@ export function createTools(context) {
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return {
-              data: { id, result: args.result, kind: args.kind, by: args.by, output: out.text },
+              data: { id, result: args.result, kind: args.kind, by: optionalArg(args, 'by') ?? '(项目用户)', output: out.text },
               summary: `需求 ${id} 验证已记录（${args.kind} / ${args.result}）。`,
             };
           });

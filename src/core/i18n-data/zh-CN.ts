@@ -90,7 +90,7 @@ export const flow: I18nDomain = {
   'next.guardTierDiffTmpl':     { key: 'flow.next.guardTierDiffTmpl',     zh: '展示档位 {display} ≠ 生效档位 {effective}（flow advance 缺省使用 {effective}）', en: '' },
   'next.guardConfigComboTmpl':  { key: 'flow.next.guardConfigComboTmpl',  zh: '配置组合静默无效：execution_mode={mode} 且 auto_advance={auto}（自动推进不会生效；依赖关系只写在注释里）', en: '' },
   'next.guardArchivingVerifyTmpl': { key: 'flow.next.guardArchivingVerifyTmpl', zh: 'archiving 收口前置：先执行 `openfeel stage verify {stage} --result pass --kind <test|manual|build> --by <agent> --note <摘要> --evidence <证据>`（阶段 ID 为位置参数），否则 done 门拒绝', en: '' },
-  'next.guardRequirementAllDoneTmpl': { key: 'flow.next.guardRequirementAllDoneTmpl', zh: '关联需求已全部完成（{n} 条，均处于终态）：可考虑阶段收口 / 归档（openfeel flow advance --stage {stage} --to done，或归档该版本）', en: '' },
+  'next.guardRequirementAllDoneTmpl': { key: 'flow.next.guardRequirementAllDoneTmpl', zh: '关联需求已全部完成（{n} 条）：阶段是版本容器，**可继续在同一阶段追加需求**；确认这些工作就是要发的这一版、且不再加需求时，才收口（openfeel flow advance --stage {stage} --to done）或归档该版本', en: '' },
 
   // flow overview
   'overview.title':             { key: 'flow.overview.title',             zh: 'OpenFeel 流水线全景视图',                 en: '' },
@@ -457,6 +457,7 @@ export const flow: I18nDomain = {
   'dev.cleanDryRunTmpl':            { key: 'flow.dev.cleanDryRunTmpl',            zh: '（dry-run：未写 .gitignore、未改索引）', en: '' },
   'dev.cleanNotGitWarnTmpl':        { key: 'flow.dev.cleanNotGitWarnTmpl',        zh: '⚠ 当前目录不是 git 仓库：只保证 .gitignore，跳过索引检查。', en: '' },
   'dev.cleanNone':                  { key: 'flow.dev.cleanNone',                  zh: '（无）', en: '' },
+  'dev.cleanLegacyTmpl':            { key: 'flow.dev.cleanLegacyTmpl',            zh: '· 历史遗留文件：{files}', en: '' },
   'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '请先运行 `openfeel flow next`（或 `flow status`）读取状态，再执行写操作（preflight 缺失或已过期）。', en: '' },
 };
 
@@ -1079,6 +1080,9 @@ export const help: I18nDomain = {
   'dev.status':          { key: 'help.dev.status',          zh: '查看状态同步状态（只读；默认 30 分钟窗口）', en: '' },
   'dev.clean':           { key: 'help.dev.clean',           zh: '运行态文件不入库：补 .gitignore + 从 git 索引移除已跟踪的运行态文件（不删工作区文件）', en: '' },
   'dev.clean.dryRun':    { key: 'help.dev.clean.dryRun',    zh: '只显示将要处理的项（零写盘、零索引改动）', en: '' },
+  'dev.clean.legacy':    { key: 'help.dev.clean.legacy',    zh: '同时清理历史遗留文件（task_claim.md / todo-current.md；v1.5.24）', en: '' },
+  'dev.clean.includeArchive': { key: 'help.dev.clean.includeArchive', zh: '与 --legacy 同用：再清理 current_archive/*.md 旧轮换归档', en: '' },
+  'dev.clean.json':      { key: 'help.dev.clean.json',      zh: '以 JSON 输出（含 legacy 清理结果）', en: '' },
   'req.add':             { key: 'help.req.add',             zh: '创建需求（ID 自动分配；正文骨架铺到 .openfeel/requirements/）', en: '' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '需求标题', en: '' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '预估版本（如 v1.3.0）', en: '' },

@@ -125,19 +125,26 @@ export function getSessionId(opts?: { env?: NodeJS.ProcessEnv; projectPath?: str
 }
 
 /**
- * 审查 / 验证署名解析（v1.5.23 / REQ-042 / 六期反馈 #12）。
+ * 审查 / 验证署名解析（v1.5.23 / REQ-042；v1.5.24 / REQ-049 修正确定性）。
  *
- * 显式 `--by` 优先；缺省取会话标识的短形式（`session:408e3133`），
- * 避免同一个人每轮都要手写同一个名字，也让审计能回到具体会话。
- * 去掉了三级链前缀（`env:` / `project:` / `proc:`）的语义噪音，只保留后 8 位。
+ * 显式 `--by` 优先；缺省取**项目用户**（`.info.json` 的 `user` → `OPENFEEL_USER` → `openfeel`）。
+ *
+ * 为什么不再用 `session:xxxxxxxx`：DSH 每次工具调用都是一个新的 CLI 进程，缺少 env 会话变量时
+ * 会落到 `proc:` 随机分支——同一轮里两次 review 署出两个不同名字，回显与落库也对不上（误导）。
+ * 用户名的语义本来就是「谁审的」，比随机哈希更可读、更稳定。
  */
 export function resolveActorName(projectPath: string, explicit?: string): string {
   const given = typeof explicit === 'string' ? explicit.trim() : '';
   if (given !== '') return given;
-  const id = getSessionId({ projectPath });
-  const separator = id.indexOf(':');
-  const bare = separator === -1 ? id : id.slice(separator + 1);
-  return 'session:' + bare.replace(/-/g, '').slice(0, 8);
+  try {
+    const info = JSON.parse(readFileSync(join(projectPath, '.openfeel', '.info.json'), 'utf-8')) as { user?: unknown };
+    if (typeof info.user === 'string' && info.user.trim() !== '') return info.user.trim();
+  } catch {
+    /* 读不到 .info.json → 继续兜底 */
+  }
+  const envUser = (process.env.OPENFEEL_USER ?? '').trim();
+  if (envUser !== '') return envUser;
+  return 'openfeel';
 }
 
 /** 清空 memo（测试用——模块态隔离） */

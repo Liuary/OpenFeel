@@ -730,7 +730,7 @@ export function registerReqCommand(program: Command): void {
     .command('waive <id>')
     .description('显式豁免：移出阶段 done 门并记录原因（与 cancelled 区分；--revoke 撤销）')
     .option('--reason <text>', '放弃原因（豁免时必需）')
-    .option('--by <who>', '决策人（缺省 = 会话标识）')
+    .option('--by <who>', '决策人（缺省 = 项目用户）')
     .option('--revoke', '撤销豁免')
     .action((id: string, options: { reason?: string; by?: string; revoke?: boolean }) => {
       const lang = getCliLang(process.cwd());
@@ -773,7 +773,7 @@ export function registerReqCommand(program: Command): void {
     .command('trivial <id>')
     .description('标记为 trivial（免审验：docs/文案/测试注释类；--revoke 撤销）')
     .option('--reason <text>', '为什么算 trivial（标记时必需）')
-    .option('--by <who>', '标记人（缺省 = 会话标识）')
+    .option('--by <who>', '标记人（缺省 = 项目用户）')
     .option('--revoke', '撤销标记')
     .action((id: string, options: { reason?: string; by?: string; revoke?: boolean }) => {
       const lang = getCliLang(process.cwd());
@@ -821,7 +821,7 @@ export function registerReqCommand(program: Command): void {
     .requiredOption('--result <result>', '审验结论（pass / fail；pass 才能收口）')
     .option('--kind <kind>', '验证种类（test / manual / build；缺省 manual）')
     .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
-    .option('--by <who>', '审查者 / 验证者（缺省 = 会话标识）')
+    .option('--by <who>', '审查者 / 验证者（缺省 = 项目用户）')
     .option('--evidence <path>', '证据（测试命令 / 报告路径 / 摘要）')
     .option('--independent', '独立审查（推荐）')
     .option('--self', '自我审查（非独立；归档摘要标注 self-review）')
@@ -899,7 +899,7 @@ export function registerReqCommand(program: Command): void {
     .command('review <id>')
     .description('记录需求审查（v1.5.8 完成必审：done 门要求 review.result=pass；--independent 独立审查 / --self 自我审查）')
     .requiredOption('--result <result>', '审查结论（pass / fail）')
-    .option('--by <who>', '审查者（缺省 = 会话标识，如 session:408e3133）')
+    .option('--by <who>', '审查者（缺省 = 项目用户）')
     .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
     .option('--independent', '独立审查（推荐）')
     .option('--self', '自我审查（非独立；归档摘要标注 self-review）')
@@ -925,7 +925,7 @@ export function registerReqCommand(program: Command): void {
       // v1.5.6-stage-114：写前 preflight（ID / 互斥守卫已在门前）
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       // 命令层零校验：值域（result）/ 非空（by/note）/ 终态全在引擎单点
-      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 会话标识
+      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 项目用户
       const by = resolveActorName(process.cwd(), options.by);
       const r = recordRequirementReview(data, id, {
         result: options.result,
@@ -954,7 +954,7 @@ export function registerReqCommand(program: Command): void {
     .description('记录需求验证（v1.5.8 完成必验：done 门要求 verification.result=pass）')
     .requiredOption('--result <result>', '验证结论（pass / fail）')
     .requiredOption('--kind <kind>', '验证种类（test / manual / build）')
-    .option('--by <who>', '验证者（缺省 = 会话标识，如 session:408e3133）')
+    .option('--by <who>', '验证者（缺省 = 项目用户）')
     .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
     .option('--evidence <path>', '证据（测试命令 / 报告路径 / 摘要）')
     .action((id: string, options: { result: string; kind: string; by?: string; note: string; evidence?: string }) => {
@@ -973,7 +973,7 @@ export function registerReqCommand(program: Command): void {
       // v1.5.6-stage-114：写前 preflight（ID 校验已在门前）
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       // 命令层零校验：值域（result / kind）/ 非空（by/note）/ 终态全在引擎单点
-      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 会话标识
+      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 项目用户
       const by = resolveActorName(process.cwd(), options.by);
       const r = recordRequirementVerification(data, id, {
         result: options.result,

@@ -738,7 +738,7 @@ export function registerStageCommand(program: Command): void {
     .argument('<stageId>', '阶段 ID（如 v1.5.8-stage-122 或 stage-122）')
     .requiredOption('--result <result>', '验证结论（pass / fail）')
     .requiredOption('--kind <kind>', '验证种类（test / manual / build）')
-    .option('--by <who>', '验证者（缺省 = 会话标识，如 session:408e3133）')
+    .option('--by <who>', '验证者（缺省 = 项目用户）')
     .requiredOption('--note <text>', '结论摘要（进入归档摘要）')
     .option('--evidence <path>', '证据（命令 / 报告路径）')
     .option('--criteria <ids>', '关联的验收判据 id（逗号分隔；v1.5.23 只读引用，不改门禁）')
@@ -753,7 +753,7 @@ export function registerStageCommand(program: Command): void {
       }
       // v1.5.6-stage-114：写前 preflight（阶段存在 / 相位 / 值域校验在门前，由核心单点判定）
       if (!enforcePreflightOrFail(projectPath, lang)) return;
-      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 会话标识
+      // v1.5.23 / REQ-042（六期 #12）：--by 可省，缺省 = 项目用户
       const by = resolveActorName(projectPath, options.by);
       const r = mgr.recordStageVerification(stageId, {
         result: options.result,

@@ -88,7 +88,7 @@ export const flow: I18nDomain = {
   'next.guardTierDiffTmpl':     { key: 'flow.next.guardTierDiffTmpl',     zh: '', en: 'Display tier {display} ≠ effective tier {effective} (flow advance defaults to {effective})' },
   'next.guardConfigComboTmpl':  { key: 'flow.next.guardConfigComboTmpl',  zh: '', en: 'Silently ineffective config: execution_mode={mode} with auto_advance={auto} (auto-advance will not apply; the dependency is documented only in comments)' },
   'next.guardArchivingVerifyTmpl': { key: 'flow.next.guardArchivingVerifyTmpl', zh: '', en: 'Before closing the archiving phase, run `openfeel stage verify {stage} --result pass --kind <test|manual|build> --by <agent> --note <summary> --evidence <evidence>` (the stage ID is positional); otherwise the done gate rejects' },
-  'next.guardRequirementAllDoneTmpl': { key: 'flow.next.guardRequirementAllDoneTmpl', zh: '', en: 'All linked requirements are complete ({n}, all terminal): consider closing / archiving the stage (openfeel flow advance --stage {stage} --to done, or archive this version)' },
+  'next.guardRequirementAllDoneTmpl': { key: 'flow.next.guardRequirementAllDoneTmpl', zh: '', en: 'All linked requirements are complete ({n}): a stage is a version container, so **you can keep adding requirements to it**; only close it (openfeel flow advance --stage {stage} --to done) or archive the version once you are sure this is the release and no more work goes in' },
 
   'overview.title':             { key: 'flow.overview.title',             zh: '', en: 'OpenFeel Pipeline Overview' },
   'overview.currentStatus':     { key: 'flow.overview.currentStatus',     zh: '', en: '📍 Current Status' },
@@ -429,6 +429,7 @@ export const flow: I18nDomain = {
   'dev.cleanDryRunTmpl':            { key: 'flow.dev.cleanDryRunTmpl',            zh: '', en: '(dry-run: .gitignore and index untouched)' },
   'dev.cleanNotGitWarnTmpl':        { key: 'flow.dev.cleanNotGitWarnTmpl',        zh: '', en: '⚠ Not a git repository: only .gitignore is ensured, index check skipped.' },
   'dev.cleanNone':                  { key: 'flow.dev.cleanNone',                  zh: '', en: '(none)' },
+  'dev.cleanLegacyTmpl':            { key: 'flow.dev.cleanLegacyTmpl',            zh: '', en: '· Legacy files: {files}' },
   'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '', en: 'Run `openfeel flow next` (or `flow status`) before a write operation (preflight missing or expired).' },
 };
 
@@ -1033,6 +1034,9 @@ export const help: I18nDomain = {
   'dev.status':          { key: 'help.dev.status',          zh: '', en: 'Show status sync state (read-only; default 30-minute window)' },
   'dev.clean':           { key: 'help.dev.clean',           zh: '', en: 'Keep runtime state out of git: complete .gitignore + remove tracked runtime files from the git index (working-tree files kept)' },
   'dev.clean.dryRun':    { key: 'help.dev.clean.dryRun',    zh: '', en: 'Show what would be done (no writes, no index change)' },
+  'dev.clean.legacy':    { key: 'help.dev.clean.legacy',    zh: '', en: 'Also remove legacy files (task_claim.md / todo-current.md; v1.5.24)' },
+  'dev.clean.includeArchive': { key: 'help.dev.clean.includeArchive', zh: '', en: 'With --legacy: also remove stale current_archive/*.md files' },
+  'dev.clean.json':      { key: 'help.dev.clean.json',      zh: '', en: 'JSON output (includes legacy cleanup result)' },
   'req.add':             { key: 'help.req.add',             zh: '', en: 'Create a requirement (auto ID; body skeleton under .openfeel/requirements/)' },
   'req.add.argtitle':    { key: 'help.req.add.argtitle',    zh: '', en: 'Requirement title' },
   'req.add.targetVersion': { key: 'help.req.add.targetVersion', zh: '', en: 'Target version (e.g. v1.3.0)' },

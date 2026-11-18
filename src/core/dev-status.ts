@@ -35,7 +35,12 @@ export interface DevStatus {
   due: boolean;
   stage: string | null;
   phase: string | null;
+  /** 首个关联需求（单值兼容面；多值请看 requirements） */
   requirement: string | null;
+  /** 关联需求列表（v1.5.24 / REQ-048：多需求阶段不再少报） */
+  requirements: string[];
+  /** 关联需求完成度（done / total） */
+  requirementProgress: { done: number; total: number };
   lastAction: string | null;
   lastActionAt: string | null;
 }
@@ -88,9 +93,14 @@ export function readSyncMeta(projectPath: string): DevSyncMeta | null {
 /** 读取流水线简要状态（直接读 flow.json，避免循环依赖） */
 function readPipelineBrief(projectPath: string): {
   stage: string | null; phase: string | null; requirement: string | null;
+  requirements: string[]; requirementProgress: { done: number; total: number };
   lastAction: string | null; lastActionAt: string | null; stageCount: number;
 } {
-  const empty = { stage: null, phase: null, requirement: null, lastAction: null, lastActionAt: null, stageCount: 0 };
+  const empty = {
+    stage: null, phase: null, requirement: null,
+    requirements: [] as string[], requirementProgress: { done: 0, total: 0 },
+    lastAction: null, lastActionAt: null, stageCount: 0,
+  };
   try {
     const flow = JSON.parse(readFileSync(join(projectPath, '.openfeel', 'flow.json'), 'utf-8')) as {
       stages?: Record<string, {
@@ -99,16 +109,26 @@ function readPipelineBrief(projectPath: string): {
         // v1.5.8 / REQ-028 多值关联（原始 JSON 读取面；经 stageRequirementIds 单点兜底旧字段）
         requirements?: Array<{ id?: string } | null>;
       }>;
+      requirements?: Array<{ id?: string; status?: string }>;
       log?: Array<{ time?: string; action?: string }>;
     };
     const stages = flow.stages ?? {};
     const active = Object.entries(stages).find(([, s]) => s.phase !== 'done');
     const lastLog = Array.isArray(flow.log) && flow.log.length > 0 ? flow.log[flow.log.length - 1] : null;
+    // v1.5.24 / REQ-048：关联需求取**全部**（读侧单点 stageRequirementIds，兼容旧单值字段）
+    const requirements = active ? stageRequirementIds(active[1]) : [];
+    const statusById = new Map<string, string>();
+    for (const req of Array.isArray(flow.requirements) ? flow.requirements : []) {
+      if (typeof req?.id === 'string') statusById.set(req.id, typeof req.status === 'string' ? req.status : '');
+    }
+    const done = requirements.filter((id) => statusById.get(id) === 'done').length;
     return {
       stage: active?.[0] ?? null,
       phase: active?.[1]?.phase ?? null,
-      // 多值模型下取首个关联需求（既有单值输出面形状不变）
-      requirement: active ? (stageRequirementIds(active[1])[0] ?? null) : null,
+      // 单值兼容面：首个关联需求
+      requirement: requirements[0] ?? null,
+      requirements,
+      requirementProgress: { done, total: requirements.length },
       lastAction: lastLog?.action ?? null,
       lastActionAt: lastLog?.time ?? null,
       stageCount: Object.keys(stages).length,
@@ -135,6 +155,8 @@ export function getDevStatus(projectPath: string, now: Date = new Date()): DevSt
     stage: brief.stage,
     phase: brief.phase,
     requirement: brief.requirement,
+    requirements: brief.requirements,
+    requirementProgress: brief.requirementProgress,
     lastAction: brief.lastAction,
     lastActionAt: brief.lastActionAt,
   };
@@ -145,7 +167,9 @@ function renderAutoBlock(status: DevStatus, note: string | undefined, syncedAt: 
   const stageLine = status.stage === null
     ? '无'
     : `\`${status.stage}\` / \`${status.phase ?? '?'}\``;
-  const reqLine = status.requirement === null ? '无' : `\`${status.requirement}\``;
+  const reqLine = status.requirements.length === 0
+    ? '无'
+    : `${status.requirements.map((id) => `\`${id}\``).join(', ')}（${status.requirementProgress.done}/${status.requirementProgress.total} 完成）`;
   const lastLine = status.lastAction === null
     ? '无'
     : `\`${status.lastAction}\`${status.lastActionAt ? ` @ ${status.lastActionAt}` : ''}`;
@@ -166,14 +190,16 @@ function renderAutoBlock(status: DevStatus, note: string | undefined, syncedAt: 
   return lines.join('\n');
 }
 
-/** 将 AUTO 块写入 dev_last.md（替换既有块或插入；不触碰手写内容） */
-function writeAutoBlock(projectPath: string, block: string): void {
-  const file = devLastPath(projectPath);
+/** current.md 路径（团队文件；v1.5.24 / REQ-048 起也带 AUTO 块） */
+export function currentMdPath(projectPath: string): string {
+  return join(devDir(projectPath), 'current.md');
+}
+
+/** 将 AUTO 块写入指定文件（替换既有块或插入首个标题前；不触碰手写内容） */
+function writeAutoBlock(file: string, block: string, fallbackHeader: string): void {
   const dir = dirname(file);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  let content = existsSync(file)
-    ? readFileSync(file, 'utf-8')
-    : '# dev_last — 索引\n\n> v1.5.0：自动状态由 CLI 维护；手写交接摘要放在「公共交接区」。\n\n## 公共交接区\n\n';
+  let content = existsSync(file) ? readFileSync(file, 'utf-8') : fallbackHeader;
   const begin = content.indexOf(AUTO_BEGIN);
   const end = content.indexOf(AUTO_END);
   if (begin !== -1 && end !== -1 && end > begin) {
@@ -187,7 +213,28 @@ function writeAutoBlock(projectPath: string, block: string): void {
   atomicWriteFileSync(file, content);
 }
 
-/** 执行同步：写 AUTO 块 + 刷新 .sync.json（状态未变时跳过 dev_last 重写） */
+/** 单文件「块是否变化」（忽略状态更新行；旧「同步时间」标签会触发一次迁移重写） */
+function blockChanged(file: string, block: string): boolean {
+  if (!existsSync(file)) return true;
+  const existing = readFileSync(file, 'utf-8');
+  const begin = existing.indexOf(AUTO_BEGIN);
+  const end = existing.indexOf(AUTO_END);
+  if (begin === -1 || end === -1 || end <= begin) return true;
+  const oldBlock = existing.slice(begin, end + AUTO_END.length);
+  const stateKey = (text: string): string => text
+    .split('\n')
+    .filter((line) => !line.startsWith('- 状态更新于：'))
+    .join('\n');
+  return stateKey(oldBlock) !== stateKey(block);
+}
+
+/**
+ * 执行同步：写 AUTO 块（`dev_last.md` + `dev/current.md`）+ 刷新 `.sync.json`。
+ *
+ * v1.5.24 / REQ-048：状态类文件应当**自动维护**，否则 AI 检查时会读到过期内容。
+ * `current.md` 不再停留在模板/上古内容——它同样吃受管块，手写的「近期提交记录」区段不受影响。
+ * 状态未变时跳过对应文件的重写（减少噪音）；任一文件被重写则 `changed=true`。
+ */
 export function syncDevStatus(
   projectPath: string,
   options: { note?: string; now?: Date } = {},
@@ -197,24 +244,17 @@ export function syncDevStatus(
   const syncedAt = now.toISOString();
   const block = renderAutoBlock(status, options.note, syncedAt);
 
-  // 跳过未变更：忽略「状态更新于」行后比较；状态不变时不重写 dev_last，减少噪音。
-  // v1.5.24 / REQ-047：旧文件里的「同步时间」标签不在忽略列表内 → 会被判定为变更并重写一次，
-  // 从而完成标签迁移（迁移后即回到「忽略时间行」的正常比较）。
-  const existing = existsSync(devLastPath(projectPath))
-    ? readFileSync(devLastPath(projectPath), 'utf-8')
-    : null;
-  const oldBegin = existing?.indexOf(AUTO_BEGIN) ?? -1;
-  const oldEnd = existing?.indexOf(AUTO_END) ?? -1;
-  const oldBlock = existing !== null && oldBegin !== -1 && oldEnd !== -1 && oldEnd > oldBegin
-    ? existing.slice(oldBegin, oldEnd + AUTO_END.length)
-    : null;
-  const stateKey = (text: string): string => text
-    .split('\n')
-    .filter((line) => !line.startsWith('- 状态更新于：'))
-    .join('\n');
-  const changed = oldBlock === null || stateKey(oldBlock) !== stateKey(block);
-  if (changed) {
-    writeAutoBlock(projectPath, block);
+  let changed = false;
+  const targets = [
+    { file: devLastPath(projectPath), header: '# dev_last — 索引\n\n> v1.5.0：自动状态由 CLI 维护；手写交接摘要放在「公共交接区」。\n\n## 公共交接区\n\n' },
+    { file: currentMdPath(projectPath), header: '# 当前进度\n\n> （CLI 自动状态块；手写「近期提交记录」不受影响）\n' },
+  ];
+  for (const target of targets) {
+    if (!blockChanged(target.file, block)) continue;
+    // current.md 不凭空创建：项目没这个东西就只维护 dev_last（存量项目兼容）
+    if (target.file === currentMdPath(projectPath) && !existsSync(target.file)) continue;
+    writeAutoBlock(target.file, block, target.header);
+    changed = true;
   }
 
   const dev = devDir(projectPath);

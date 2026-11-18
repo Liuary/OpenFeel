@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-18T16:33:57.962Z",
-    "revision": 2382,
+    "updated": "2026-11-18T18:00:38.396Z",
+    "revision": 2391,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -51,7 +51,7 @@
       "v1.5.22",
       "v1.5.23"
     ],
-    "last_req_seq": 47
+    "last_req_seq": 50
   },
   "pipeline": {
     "phase": "active",
@@ -82,6 +82,14 @@
         {
           "id": "REQ-047",
           "order": 1
+        },
+        {
+          "id": "REQ-048",
+          "order": 2
+        },
+        {
+          "id": "REQ-049",
+          "order": 3
         }
       ]
     }
@@ -2210,6 +2218,90 @@
         "from": "in_progress",
         "to": "done"
       }
+    },
+    {
+      "time": "2026-11-18T16:33:59.753Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-047",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-18T17:47:18.244Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-048",
+        "title": "状态类文件自动维护：current.md 自动块、AUTO 块多需求与进度、相位推进同步 status.md 状态"
+      }
+    },
+    {
+      "time": "2026-11-18T17:47:20.704Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-049",
+        "title": "修正误导性提示与配置：署名兜底确定性、review/verify 署名回显、阶段收口 guard 措辞"
+      }
+    },
+    {
+      "time": "2026-11-18T17:47:24.600Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-050",
+        "title": "历史遗留文件处置：删除无引用的 task_claim/todo-current 与陈旧 current_archive，dev clean --legacy 支持"
+      }
+    },
+    {
+      "time": "2026-11-18T18:00:24.020Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-048",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-18T18:00:26.849Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-049",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-18T18:00:29.236Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-050",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-18T18:00:35.577Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.24-stage-12",
+        "requirementId": "REQ-048",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-18T18:00:38.396Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.24-stage-12",
+        "requirementId": "REQ-049",
+        "action": "link"
+      }
     }
   ],
   "requirements": [
@@ -2463,9 +2555,9 @@
     {
       "id": "REQ-047",
       "title": "dev_last AUTO 块「同步时间」改为「状态更新于」并澄清 .sync.json 语义",
-      "status": "in_progress",
+      "status": "done",
       "created_at": "2026-11-18T16:16:18.559Z",
-      "updated_at": "2026-11-18T16:33:53.548Z",
+      "updated_at": "2026-11-18T16:33:59.752Z",
       "target_version": "v1.5.24",
       "priority": "P2",
       "workflow_mode": "fast",
@@ -2487,6 +2579,45 @@
         "note": "AUTO 块改「状态更新于」，旧标签一次性迁移；.sync.json 仍是同步时刻权威。",
         "evidence": "npx vitest run → 97 files / 2441 passed（含「标签迁移一次」「状态未变不重写」两例）"
       }
+    },
+    {
+      "id": "REQ-048",
+      "title": "状态类文件自动维护：current.md 自动块、AUTO 块多需求与进度、相位推进同步 status.md 状态",
+      "status": "draft",
+      "created_at": "2026-11-18T17:47:18.244Z",
+      "updated_at": "2026-11-18T18:00:24.020Z",
+      "target_version": "v1.5.24",
+      "priority": "P0",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-048.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-18T18:00:24.020Z"
+    },
+    {
+      "id": "REQ-049",
+      "title": "修正误导性提示与配置：署名兜底确定性、review/verify 署名回显、阶段收口 guard 措辞",
+      "status": "draft",
+      "created_at": "2026-11-18T17:47:20.704Z",
+      "updated_at": "2026-11-18T18:00:26.849Z",
+      "target_version": "v1.5.24",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-049.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-18T18:00:26.849Z"
+    },
+    {
+      "id": "REQ-050",
+      "title": "历史遗留文件处置：删除无引用的 task_claim/todo-current 与陈旧 current_archive，dev clean --legacy 支持",
+      "status": "draft",
+      "created_at": "2026-11-18T17:47:24.600Z",
+      "updated_at": "2026-11-18T18:00:29.236Z",
+      "target_version": "v1.5.24",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-050.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-18T18:00:29.236Z"
     }
   ]
 }

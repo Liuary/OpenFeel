@@ -5242,7 +5242,7 @@ export function detectFillState(content: string): 'empty' | 'partial' | 'filled'
  * 注意：不含自由文本/历史相位值；`mapPhaseToStageStatus` 的 default 分支返回 currentStatus，
  * 但对外可写值域收敛为本集合（D-status 裁定）。
  */
-export const STAGE_STATUS_VALUES = ['planned', 'review_failed', 'review_passed', 'testing', 'archiving', 'done'] as const;
+export const STAGE_STATUS_VALUES = ['planned', 'coding', 'review_failed', 'review_passed', 'testing', 'archiving', 'done'] as const;
 
 /**
  * 将 PipelinePhase 映射为 stage 状态
@@ -5257,6 +5257,16 @@ export function mapPhaseToStageStatus(
   currentStatus: string,
 ): string {
   switch (phase) {
+    // v1.5.24 / REQ-048：粗粒度状态明确投影，避免 exec_running 长期显示 planned 误导读者
+    case 'plan_pending':
+    case 'plan_review':
+    case 'plan_passed':
+      return 'planned';
+    case 'scheme_pending':
+    case 'scheme_review':
+    case 'scheme_passed':
+    case 'exec_running':
+      return 'coding';
     case 'review_failed':
       return 'review_failed';
     case 'review_passed':

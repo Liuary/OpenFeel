@@ -10,7 +10,7 @@
  */
 import { Command } from 'commander';
 import { getDevStatus, syncDevStatus } from '../core/dev-status.js';
-import { ensureRuntimeIgnoreEntries, isGitRepository, untrackRuntimeFiles } from '../core/repo-hygiene.js';
+import { ensureRuntimeIgnoreEntries, isGitRepository, removeLegacyDevFiles, untrackRuntimeFiles } from '../core/repo-hygiene.js';
 import { FlowManager } from '../core/flow-manager.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { emitJson, withSchemaVersion } from './shared/json-output.js';
@@ -64,8 +64,10 @@ export function registerDevCommand(program: Command): void {
     .command('clean')
     .description('运行态文件不入库：补 .gitignore + 从 git 索引移除已跟踪的运行态文件（不删工作区文件）')
     .option('--dry-run', '只显示将要处理的项（零写盘、零索引改动）')
-    .option('--json', '以 JSON 输出 { schemaVersion, gitRepository, gitignore, removed, dryRun }')
-    .action((options: { dryRun?: boolean; json?: boolean }) => {
+    .option('--legacy', '同时清理历史遗留文件（task_claim.md / todo-current.md；v1.5.24）')
+    .option('--include-archive', '与 --legacy 同用：再清理 current_archive/*.md 旧轮换归档')
+    .option('--json', '以 JSON 输出 { schemaVersion, gitRepository, gitignore, removed, dryRun, legacy }')
+    .action((options: { dryRun?: boolean; legacy?: boolean; includeArchive?: boolean; json?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       if (!new FlowManager(projectPath).isLoaded()) {
@@ -79,6 +81,9 @@ export function registerDevCommand(program: Command): void {
       const untracked = gitRepo
         ? untrackRuntimeFiles(projectPath, { dryRun })
         : { files: [] as string[], dryRun, applied: false };
+      const legacy = options.legacy === true || options.includeArchive === true
+        ? removeLegacyDevFiles(projectPath, { dryRun, includeArchive: options.includeArchive === true })
+        : null;
 
       if (options.json === true) {
         emitJson(withSchemaVersion({
@@ -86,6 +91,7 @@ export function registerDevCommand(program: Command): void {
           gitignore: { file: ignore.file, added: ignore.added },
           removed: untracked.files,
           dryRun,
+          legacy: legacy === null ? null : { removed: legacy.files },
         }));
         return;
       }
@@ -104,6 +110,11 @@ export function registerDevCommand(program: Command): void {
       }
       if (dryRun) {
         console.log(t('flow.dev.cleanDryRunTmpl', lang));
+      }
+      if (legacy !== null) {
+        console.log(t('flow.dev.cleanLegacyTmpl', lang, {
+          files: legacy.files.length > 0 ? legacy.files.join(', ') : t('flow.dev.cleanNone', lang),
+        }));
       }
     });
 }

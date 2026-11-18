@@ -15,7 +15,7 @@
  * 边界：不碰用户手写的 ignore 规则；不处理 `current_archive/**` 这类历史内容
  * （它们是否入库属于项目取舍，需要人拍板）；不写 `.openfeel/dev/*` 内容本身。
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
@@ -34,6 +34,18 @@ export const RUNTIME_STATE_ENTRIES: readonly string[] = [
 
 /** `.gitignore` 追加块的表头（仅在确有缺项时写入一次） */
 const GITIGNORE_HEADER = '# openfeel：运行态文件（CLI 自动维护，逐次变更；v1.5.23 起默认不入库）';
+
+/**
+ * 历史遗留文件（v1.5.24 / REQ-050）：旧模板留下的、代码里零引用的 dev 文件。
+ * `dev_core.md` / `decisions.md` **不在此列**——它们是活功能（skills 与约束仍在引用）。
+ */
+export const LEGACY_DEV_FILES: readonly string[] = [
+  '.openfeel/dev/task_claim.md',
+  '.openfeel/dev/todo-current.md',
+];
+
+/** `current_archive/` 目录（设计内的公共轮换归档；用于列出陈旧条目） */
+export const CURRENT_ARCHIVE_DIR = '.openfeel/dev/current_archive';
 
 export interface GitignoreEnsureResult {
   /** `.gitignore` 绝对路径 */
@@ -129,4 +141,47 @@ function runGit(projectPath: string, args: string[]): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * 清理历史遗留文件（v1.5.24 / REQ-050）。**显式入口**，不由 `dev clean` 默认执行。
+ *
+ * 处理范围：
+ *  ① `LEGACY_DEV_FILES`（旧模板残留，代码零引用）；
+ *  ② `--include-archive` 时再清理 `current_archive/*.md`（陈旧轮换归档；git 历史仍可追溯）。
+ *
+ * 删除后在工作区消失，并从 git 索引移除（非 git 项目只删文件）。
+ * `dryRun` 只列出将删除项，零写盘。
+ */
+export function removeLegacyDevFiles(
+  projectPath: string,
+  options: { dryRun?: boolean; includeArchive?: boolean } = {},
+): { files: string[]; removed: number } {
+  const dryRun = options.dryRun === true;
+  const files: string[] = [];
+  for (const rel of LEGACY_DEV_FILES) {
+    if (existsSync(join(projectPath, rel))) files.push(rel);
+  }
+  if (options.includeArchive === true) {
+    const archiveDir = join(projectPath, CURRENT_ARCHIVE_DIR);
+    if (existsSync(archiveDir)) {
+      for (const name of readdirSync(archiveDir)) {
+        if (!name.toLowerCase().endsWith('.md')) continue;
+        files.push(`${CURRENT_ARCHIVE_DIR}/${name}`);
+      }
+    }
+  }
+  if (dryRun || files.length === 0) {
+    return { files, removed: 0 };
+  }
+  for (const rel of files) {
+    try {
+      rmSync(join(projectPath, rel), { force: true });
+    } catch {
+      /* 单文件删除失败不阻塞其余项 */
+    }
+  }
+  // 索引同步：git 项目把删除暂存（best-effort；非 git 静默跳过）
+  runGit(projectPath, ['add', '-A', '--', ...files]);
+  return { files, removed: files.length };
 }

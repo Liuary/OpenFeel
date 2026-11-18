@@ -2294,13 +2294,14 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       expect(out()).toContain('self-review');
     });
 
-    // v1.5.23 / REQ-042（六期反馈 #12）：--by 可省，缺省写会话标识
-    it('review 省略 --by → 缺省写 session:xxxxxxxx', async () => {
+    // v1.5.23 / REQ-042（六期反馈 #12）：--by 可省；v1.5.24 / REQ-049 缺省改为项目用户
+    it('review 省略 --by → 缺省写项目用户（.info.json user）', async () => {
+      writeFileSync(join(tmpDir, '.openfeel', '.info.json'), JSON.stringify({ user: 'tester' }, null, 2) + '\n', 'utf-8');
       seedReq({ status: 'in_progress', review: undefined });
       resetCapture();
       await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--note', '免填署名']);
       expect(process.exitCode).toBe(0);
-      expect(readFlow().requirements[0].review.by).toMatch(/^session:[0-9a-f]{8}$/);
+      expect(readFlow().requirements[0].review.by).toBe('tester');
     });
 
     it('review 值域 / 互斥 / 缺参 / 终态：exit 1 + 零写盘；缺 requiredOption → CommanderError', async () => {

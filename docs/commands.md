@@ -885,7 +885,7 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 | `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` / `--workflow-mode` |
 | `req link` | 关联需求到阶段（**一个阶段可挂多个需求**） / 解绑（单个或全部） | `--stage <stageId>`、`--requirement <id>`、`--unlink` |
 | `req advance <id>` | 显式推进需求状态 | `--to <status>` |
-| `req review <id>` | 记录需求审查（**v1.5.8 完成必审**：done 门要求 `review.result=pass`） | `--result <pass\|fail>`、**`--by <who>`（v1.5.23 可省，缺省 = `session:xxxxxxxx`）**、`--note <text>`、`--independent` / `--self` |
+| `req review <id>` | 记录需求审查（**v1.5.8 完成必审**：done 门要求 `review.result=pass`） | `--result <pass\|fail>`、**`--by <who>`（v1.5.23 可省；v1.5.24 起缺省 = 项目用户 `.info.json user`）**、`--note <text>`、`--independent` / `--self` |
 | `req verify <id>` | 记录需求验证（**v1.5.8 完成必验**：done 门要求 `verification.result=pass`） | `--result <pass\|fail>`、`--kind <test\|manual\|build>`、`--by <who>`（同上可省）、`--note <text>`、`--evidence <path>` |
 | **`req complete <id>`** | **一次收口（v1.5.23 / REQ-043）**：review + verify + advance(done) 合并；复用既有判据单点，任一步失败**零写盘** | `--result`、`--note`、`--kind`（缺省 manual）、`--evidence`、`--by`、`--independent` / `--self` |
 | **`req waive <id>`** | **显式豁免（v1.5.23 / REQ-043）**：阶段 done 门不再计入该需求，记录谁/何时/为何放弃（与 `cancelled` 区分） | `--reason <text>`、`--by`、`--revoke` |
@@ -1126,7 +1126,7 @@ openfeel dev status    # 只读：是否到期（默认 30 分钟窗口）
 openfeel dev clean     # v1.5.23：运行态文件不入库（补 .gitignore + 移出 git 索引）
 ```
 
-- **受管块**：只替换 `dev_last.md` 内 `<!-- openfeel:auto:begin/end -->`，不触碰手写内容；`sync` / `status` 无 `--json`（零 JSON 契约变更）。
+- **受管块**：替换 `dev_last.md` 与 `dev/current.md` 内的 `<!-- openfeel:auto:begin/end -->`，不触碰手写内容；`sync` / `status` 无 `--json`（零 JSON 契约变更）。**v1.5.24 / REQ-048**：`current.md` 也吃同一受管块（不再停留在模板/陈旧内容），块内「关联需求」列出全部需求与完成度，避免多需求阶段少报。
 - **块内「状态更新于」（v1.5.24 / REQ-047）**：该行只在**状态变化**时刷新（状态未变时整块不重写，避免噪音），所以它表示「状态上次变化的时间」；真正的同步时刻看 `.openfeel/dev/.sync.json` 的 `last_sync`。
 - **自动同步**：`flow advance` 成功后，首次 / 超过 30 分钟 / 节点相位（`exec_running` / `review_passed` / `archiving` / `done`）自动同步（best-effort）。
 - **状态归属**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel 写；子 agent 不读不写。
@@ -1138,7 +1138,8 @@ openfeel dev clean     # v1.5.23：运行态文件不入库（补 .gitignore + �
 
 - 保证 `.gitignore` 覆盖以上条目（缺哪条补哪条，不重排既有规则）；
 - 把**已被跟踪**的条目 `git rm --cached` 移出索引（**不删工作区文件**）；
-- 幂等；`--dry-run` 零写盘零索引改动；`--json` 输出 `{ schemaVersion, gitRepository, gitignore: {file, added}, removed, dryRun }`。
+- 幂等；`--dry-run` 零写盘零索引改动；`--json` 输出 `{ schemaVersion, gitRepository, gitignore: {file, added}, removed, dryRun, legacy }`。
+- **`--legacy`（v1.5.24 / REQ-050）**：额外清理历史遗留文件（`.openfeel/dev/task_claim.md` / `todo-current.md`，旧模板残留、代码零引用）；`--include-archive` 再清理 `current_archive/*.md` 陈旧轮换归档（git 历史仍可追溯）。`dev_core.md` / `decisions.md` **不在清理范围**（活功能）。
 - 非 git 目录：只保证 `.gitignore`，索引步骤跳过并提示。
 - 配套：`openfeel init` 现在会为新项目补这些 ignore 条目；门禁（v1.5.23）放行 `git rm --cached` 这类纯索引操作。
 

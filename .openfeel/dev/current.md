@@ -1,7 +1,15 @@
 # 当前进度
 
-> OpenFeel **v1.5.6 — 批次：preflight 全覆盖 + lint req 机制 + 流程健康观测**｜ 36 门位全收敛 / 需求正文命令名校验 / 零开销代理指标 ｜ 版本能力概览 `docs/VERSIONS.md` ｜ **13 错误码 / 41 成功出口 / 44 注册选项** ｜ 版本 1.5.6 ｜ **已 push（48aab33）；npm 1.5.6 已发布（CI publish）**
-> 统计：测试 91 文件 / **2201 用例全绿（0 skipped / 0 failed）** ｜ dsh **100/100**（contract 42 + verify 100 + guard 58 + integration 10 的 verify 段已扩至 100） ｜ `lint i18n` **1058** 键 ｜ `lint kb` 0 过期（649 引用）｜ `lint req` 0 问题 ｜ **版本 1.5.6**
+> 历史内容已由自动状态块取代（v1.5.24）；更早的团队记录见 git 历史与 `current_archive/`。
+
+
+<!-- openfeel:auto:begin -->
+## 自动状态（CLI 维护，勿手改）
+- 状态更新于：2026-11-18T18:00:09.933Z
+- 活跃阶段：`v1.5.24-stage-12` / `exec_running`
+- 关联需求：`REQ-046`, `REQ-047`（2/2 完成）
+- 最近操作：`requirement_add` @ 2026-11-18T17:47:24.600Z
+<!-- openfeel:auto:end -->
 
 ## 近期提交记录（最多 5 条，最新在上）
 

@@ -80,6 +80,45 @@ describe('dev-status（v1.5.0）', () => {
     expect(first.changed).toBe(true);
   });
 
+  // v1.5.24 / REQ-048：状态类文件自动维护
+  it('current.md 也吃 AUTO 块（不残留旧内容）；块外手写内容保留', () => {
+    mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
+    writeFileSync(
+      join(dir, '.openfeel', 'dev', 'current.md'),
+      '# 当前进度\n\n> 上古内容 v1.0.0\n\n## 近期提交记录\n\n- 手写 A\n',
+      'utf-8',
+    );
+    syncDevStatus(dir);
+    const content = readFileSync(join(dir, '.openfeel', 'dev', 'current.md'), 'utf-8');
+    expect(content).toContain('<!-- openfeel:auto:begin -->');
+    expect(content).toContain('v0.0.1-stage-01');
+    expect(content).toContain('- 手写 A');
+    // 再同步一次：状态没变 → 两个文件都不重写
+    const before = readFileSync(join(dir, '.openfeel', 'dev', 'current.md'), 'utf-8');
+    expect(syncDevStatus(dir).changed).toBe(false);
+    expect(readFileSync(join(dir, '.openfeel', 'dev', 'current.md'), 'utf-8')).toBe(before);
+  });
+
+  it('多需求阶段：AUTO 块列出全部需求与完成度', () => {
+    // 覆盖 flow.json：一个阶段挂两个需求，其一 done
+    const flowPath = join(dir, '.openfeel', 'flow.json');
+    const flow = JSON.parse(readFileSync(flowPath, 'utf-8')) as Record<string, unknown>;
+    const stages = flow.stages as Record<string, Record<string, unknown>>;
+    const key = Object.keys(stages)[0];
+    stages[key].requirements = [{ id: 'REQ-001' }, { id: 'REQ-002' }];
+    delete stages[key].requirement_id;
+    flow.requirements = [
+      { id: 'REQ-001', status: 'done' },
+      { id: 'REQ-002', status: 'in_progress' },
+    ];
+    writeFileSync(flowPath, JSON.stringify(flow, null, 2) + '\n', 'utf-8');
+    const result = syncDevStatus(dir);
+    const content = readFileSync(result.file, 'utf-8');
+    expect(content).toContain('REQ-001');
+    expect(content).toContain('REQ-002');
+    expect(content).toContain('1/2 完成');
+  });
+
   it('重复 sync 只更新块（不重复），手写交接内容保留', () => {
     syncDevStatus(dir);
     const file = devLastPath(dir);

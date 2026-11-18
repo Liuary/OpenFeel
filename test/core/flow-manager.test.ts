@@ -797,9 +797,9 @@ describe('FlowManager', () => {
     it('应同步更新 stage.status（mapPhaseToStageStatus）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
-      // plan_review → status 保持 'in_progress'
+      // v1.5.24 / REQ-048：plan_review 投影为 'planned'（不再是粘滞的当前值）
       mgr.advanceStagePhase('stage-01', 'plan_review' as PipelinePhase);
-      expect(mgr.getData()!.stages['stage-01'].status).toBe('in_progress');
+      expect(mgr.getData()!.stages['stage-01'].status).toBe('planned');
 
       // done → status 变为 'done'
       mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
@@ -2646,7 +2646,8 @@ describe('FlowManager', () => {
       });
       const result = mgr.autoRepairInconsistency('stage-01', { dryRun: true });
       expect(result.fixed).toBe(true);
-      expect(result.detail).toContain('→ done');
+      // v1.5.24 / REQ-048：exec_running 投影为 'coding'（以 phase 为权威撤销非法 done）
+      expect(result.detail).toContain('→ coding');
       // dryRun 下不写内存
       expect(mgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
     });
@@ -3067,9 +3068,9 @@ describe('FlowManager', () => {
       expect(mapPhaseToStageStatus('done', 'archiving')).toBe('done');
     });
 
-    it('其他阶段应保持当前状态不变', () => {
-      expect(mapPhaseToStageStatus('plan_pending', 'in_progress')).toBe('in_progress');
-      expect(mapPhaseToStageStatus('exec_running', 'planned')).toBe('planned');
+    it('其他阶段按相位投影（v1.5.24 / REQ-048）', () => {
+      expect(mapPhaseToStageStatus('plan_pending', 'in_progress')).toBe('planned');
+      expect(mapPhaseToStageStatus('exec_running', 'planned')).toBe('coding');
     });
   });
 

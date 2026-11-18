@@ -55,6 +55,31 @@ describe('dev-status（v1.5.0）', () => {
     expect(getDevStatus(dir).due).toBe(false);
   });
 
+  // v1.5.24 / REQ-047：AUTO 块的「状态更新于」语义 + 旧标签迁移
+  it('AUTO 块用「状态更新于」；状态未变时不重写文件', () => {
+    const first = syncDevStatus(dir);
+    expect(first.changed).toBe(true);
+    const content = readFileSync(first.file, 'utf-8');
+    expect(content).toContain('- 状态更新于：');
+    expect(content).not.toContain('- 同步时间：');
+    const second = syncDevStatus(dir);
+    expect(second.changed).toBe(false);
+    expect(readFileSync(first.file, 'utf-8')).toBe(content);
+  });
+
+  it('旧「同步时间」标签会被迁移一次（随后恢复 skip）', () => {
+    const first = syncDevStatus(dir);
+    const file = devLastPath(dir);
+    writeFileSync(file, readFileSync(file, 'utf-8').replace('- 状态更新于：', '- 同步时间：'), 'utf-8');
+    const migrated = syncDevStatus(dir);
+    expect(migrated.changed).toBe(true);
+    const content = readFileSync(file, 'utf-8');
+    expect(content).toContain('- 状态更新于：');
+    expect(content).not.toContain('- 同步时间：');
+    expect(syncDevStatus(dir).changed).toBe(false);
+    expect(first.changed).toBe(true);
+  });
+
   it('重复 sync 只更新块（不重复），手写交接内容保留', () => {
     syncDevStatus(dir);
     const file = devLastPath(dir);

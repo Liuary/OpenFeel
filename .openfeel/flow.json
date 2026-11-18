@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-18T15:57:41.772Z",
-    "revision": 2363,
+    "updated": "2026-11-18T16:16:50.582Z",
+    "revision": 2373,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -51,46 +51,43 @@
       "v1.5.22",
       "v1.5.23"
     ],
-    "last_req_seq": 45
+    "last_req_seq": 47
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "",
+      "stage": "v1.5.24-stage-12",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {},
+  "stages": {
+    "v1.5.24-stage-12": {
+      "name": "v1.5.24-stage-12",
+      "phase": "exec_running",
+      "status": "planned",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-11-18T16:16:27.404Z",
+        "end_time": "",
+        "duration_ms": 0
+      },
+      "requirements": [
+        {
+          "id": "REQ-046",
+          "order": 0
+        },
+        {
+          "id": "REQ-047",
+          "order": 1
+        }
+      ]
+    }
+  },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-11-04T17:48:18.879Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-004"
-      }
-    },
-    {
-      "time": "2026-11-04T19:08:48.169Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-005"
-      }
-    },
-    {
-      "time": "2026-11-04T19:08:55.466Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-020",
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "independent": true
-      }
-    },
     {
       "time": "2026-11-04T19:08:58.551Z",
       "agent": "cli",
@@ -2019,6 +2016,106 @@
         "log": 8,
         "requirements": 6
       }
+    },
+    {
+      "time": "2026-11-18T16:16:14.124Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.24-stage-12",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:16.556Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-046",
+        "title": "flow archive 结束后自动提交归档产物（含 --no-commit）"
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:18.559Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-047",
+        "title": "dev_last AUTO 块「同步时间」改为「状态更新于」并澄清 .sync.json 语义"
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:27.402Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.24-stage-12",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:30.238Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-046",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:32.700Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-047",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:35.956Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.24-stage-12",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:40.785Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.24-stage-12",
+        "requirementId": "REQ-046",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:46.829Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.24-stage-12",
+        "requirementId": "REQ-047",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-18T16:16:50.577Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.24-stage-12",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
     }
   ],
   "requirements": [
@@ -2240,6 +2337,32 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-046",
+      "title": "flow archive 结束后自动提交归档产物（含 --no-commit）",
+      "status": "draft",
+      "created_at": "2026-11-18T16:16:16.556Z",
+      "updated_at": "2026-11-18T16:16:30.238Z",
+      "target_version": "v1.5.24",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-046.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-18T16:16:30.238Z"
+    },
+    {
+      "id": "REQ-047",
+      "title": "dev_last AUTO 块「同步时间」改为「状态更新于」并澄清 .sync.json 语义",
+      "status": "draft",
+      "created_at": "2026-11-18T16:16:18.559Z",
+      "updated_at": "2026-11-18T16:16:32.700Z",
+      "target_version": "v1.5.24",
+      "priority": "P2",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-047.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-18T16:16:32.700Z"
     }
   ]
 }

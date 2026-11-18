@@ -152,7 +152,9 @@ function renderAutoBlock(status: DevStatus, note: string | undefined, syncedAt: 
   const lines = [
     AUTO_BEGIN,
     '## 自动状态（CLI 维护，勿手改）',
-    `- 同步时间：${syncedAt}`,
+    // v1.5.24 / REQ-047：这行只在**状态变化**时刷新（状态未变时 syncDevStatus 跳过整块重写，
+    // 避免噪音），所以它表示「状态更新于」而非「本次同步时间」——后者看 `.openfeel/dev/.sync.json`。
+    `- 状态更新于：${syncedAt}`,
     `- 活跃阶段：${stageLine}`,
     `- 关联需求：${reqLine}`,
     `- 最近操作：${lastLine}`,
@@ -195,7 +197,9 @@ export function syncDevStatus(
   const syncedAt = now.toISOString();
   const block = renderAutoBlock(status, options.note, syncedAt);
 
-  // 跳过未变更：忽略「同步时间」行后比较；状态不变时不重写 dev_last，减少噪音。
+  // 跳过未变更：忽略「状态更新于」行后比较；状态不变时不重写 dev_last，减少噪音。
+  // v1.5.24 / REQ-047：旧文件里的「同步时间」标签不在忽略列表内 → 会被判定为变更并重写一次，
+  // 从而完成标签迁移（迁移后即回到「忽略时间行」的正常比较）。
   const existing = existsSync(devLastPath(projectPath))
     ? readFileSync(devLastPath(projectPath), 'utf-8')
     : null;
@@ -206,7 +210,7 @@ export function syncDevStatus(
     : null;
   const stateKey = (text: string): string => text
     .split('\n')
-    .filter((line) => !line.startsWith('- 同步时间：'))
+    .filter((line) => !line.startsWith('- 状态更新于：'))
     .join('\n');
   const changed = oldBlock === null || stateKey(oldBlock) !== stateKey(block);
   if (changed) {

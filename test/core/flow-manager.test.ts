@@ -3958,6 +3958,83 @@ describe('配置级联（stage-42 op-001）', () => {
       }
     });
 
+    // ═══ v1.5.24 / REQ-046：版本归档收尾提交（与阶段归档同源实现）═══
+    it('REQ-046：autoCommitArchive 提交归档产物（消息前缀 + 数组参数 + 排除 checkpoints）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mockedChild.execFileSync.mockReset();
+      mockedChild.execFileSync.mockImplementation((_cmd: string, args: string[]) => {
+        if (args.includes('rev-parse')) return 'true\n';
+        if (args.includes('status')) return 'M .openfeel/flow.json\n';
+        return '';
+      });
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        expect(mgr.autoCommitArchive('v9.9.9')).toBe('committed');
+        const calls = mockedChild.execFileSync.mock.calls as unknown as Array<[string, string[]]>;
+        expect(calls.every((c) => c[0] === 'git' && Array.isArray(c[1]))).toBe(true);
+        const addCall = calls.find((c) => c[1].includes('add'));
+        // v1.5.24 审查修订：归档提交**范围化暂存**（只 .openfeel/**，不扫全树 WIP）
+        expect(addCall![1]).toEqual([
+          'add', '-A', '--',
+          '.openfeel/flow.json', '.openfeel/flow.json.bak', '.openfeel/flow-archive', '.openfeel/requirements',
+        ]);
+        const commitCall = calls.find((c) => c[1].includes('commit'));
+        expect(commitCall![1]).toContain('chore: 归档 v9.9.9（版本分片）');
+        expect(log.mock.calls.map((c) => String(c[0])).join('\n')).toContain('已自动提交归档产物');
+      } finally {
+        log.mockRestore();
+        mockedChild.execFileSync.mockReset();
+      }
+    });
+
+    it('REQ-046：quiet 模式零输出；非 git 仓库返回 skipped-no-repo 且不提交', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mockedChild.execFileSync.mockReset();
+      mockedChild.execFileSync.mockImplementation((_cmd: string, args: string[]) => {
+        if (args.includes('rev-parse')) return 'false\n';   // 非 git 工作树
+        if (args.includes('status')) return '';
+        return '';
+      });
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        expect(mgr.autoCommitArchive('v9.9.9', { quiet: true })).toBe('skipped-no-repo');
+        expect(log).not.toHaveBeenCalled();
+        expect(warn).not.toHaveBeenCalled();
+        const calls = mockedChild.execFileSync.mock.calls as unknown as Array<[string, string[]]>;
+        expect(calls.some((c) => c[1].includes('commit'))).toBe(false);
+      } finally {
+        log.mockRestore();
+        warn.mockRestore();
+        mockedChild.execFileSync.mockReset();
+      }
+    });
+
+    it('REQ-046：quiet 模式下 commit 失败仍写 stderr（不能静默）', () => {
+      const mgr = new FlowManager(tmpDir);
+      mgr.setData(makeTestFlowData());
+      mockedChild.execFileSync.mockReset();
+      mockedChild.execFileSync.mockImplementation((_cmd: string, args: string[]) => {
+        if (args.includes('rev-parse')) return 'true\n';
+        if (args.includes('status')) return 'M .openfeel/flow.json\n';
+        if (args.includes('commit')) throw new Error('hook rejected');
+        return '';
+      });
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        expect(mgr.autoCommitArchive('v9.9.9', { quiet: true })).toBe('failed');
+        expect(log).not.toHaveBeenCalled();
+        expect(err.mock.calls.map((c) => String(c[0])).join('\n')).toContain('自动提交失败');
+      } finally {
+        log.mockRestore();
+        err.mockRestore();
+        mockedChild.execFileSync.mockReset();
+      }
+    });
+
     // ═══ v1.5.8 / REQ-029 P0：自动提交防污染（并发会话 → 绝不清工作树）═══
     it('REQ-029：检测到并发会话 → 不执行 git add，打印警告（跳过自动提交）', () => {
       const mgr = new FlowManager(tmpDir);

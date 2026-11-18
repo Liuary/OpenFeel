@@ -146,6 +146,12 @@ export const flow: I18nDomain = {
 
   // flow archive（stage-79 op-001：flow.json 版本分片归档命令面）
   'archive.doneTmpl':                 { key: 'flow.archive.doneTmpl',                 zh: '已归档 {version}：阶段 {stages} / 审查 {reviews} / 日志 {log}', en: '' },
+  // v1.5.24 / REQ-046：归档产物自动提交
+  'archive.gitCommitOkTmpl':          { key: 'flow.archive.gitCommitOkTmpl',          zh: '✓ 已自动提交归档产物：{version}', en: '' },
+  'archive.gitCommitSkipTmpl':        { key: 'flow.archive.gitCommitSkipTmpl',        zh: '（跳过自动提交：非 git 仓库或无变更）{version}', en: '' },
+  'archive.gitCommitNoRepoWarnTmpl':  { key: 'flow.archive.gitCommitNoRepoWarnTmpl',  zh: '⚠ 当前目录不是 git 仓库：{version} 的归档产物未提交，请稍后手动提交。', en: '' },
+  'archive.gitCommitConcurrentSessionsWarnTmpl': { key: 'flow.archive.gitCommitConcurrentSessionsWarnTmpl', zh: '⚠ 检测到并发会话（{sessions}）：已跳过自动提交，避免把其它会话改动混入 {version} 的归档提交；请手动 scoped commit。', en: '' },
+  'archive.gitCommitFailedWarnTmpl':  { key: 'flow.archive.gitCommitFailedWarnTmpl',  zh: '⚠ 自动提交失败（git commit 被拒 / 索引被锁 / 缺 user.email）：{version} 的归档产物可能已暂存但未提交，请检查 `git status` 后手动提交。', en: '' },
   'archive.rearchivedTmpl':           { key: 'flow.archive.rearchivedTmpl',           zh: '{version} 已重新归档（覆盖写；索引已存在，幂等收敛）', en: '' },
   'archive.previewTmpl':              { key: 'flow.archive.previewTmpl',              zh: '[dry-run] 将归档 {version}：阶段 {stages} / 审查 {reviews} / 日志 {log}', en: '' },
   'archive.previewNoWrite':           { key: 'flow.archive.previewNoWrite',           zh: '（预览模式：未写入任何文件）', en: '' },
@@ -807,6 +813,7 @@ export const help: I18nDomain = {
   'flow.archive.dryRun':   { key: 'help.flow.archive.dryRun',   zh: '仅预览（判据门照常校验；零写盘）', en: '' },
   'flow.archive.json':     { key: 'help.flow.archive.json',     zh: '以 JSON 输出 { schemaVersion, version, stages, reviews, log, dryRun, eligible, unfinishedStages, blockingReviews, requirements }', en: '' },
   'flow.archive.allowUnfinished': { key: 'help.flow.archive.allowUnfinished', zh: '显式放行「该版本仍有未完成需求」（发布软门；缺省拒绝，零写盘）', en: '' },
+  'flow.archive.commit': { key: 'help.flow.archive.commit', zh: '归档后不自动提交（v1.5.24：缺省自动提交归档产物）', en: '' },
   'flow.archive.list':       { key: 'help.flow.archive.list',       zh: '列出已归档版本及计数（只读；引擎字典序）', en: '' },
   'flow.archive.list.json':  { key: 'help.flow.archive.list.json',  zh: '以 JSON 输出 { schemaVersion, versions: [{version, counts}] }', en: '' },
   'flow.archive.show':       { key: 'help.flow.archive.show',       zh: '查看指定归档版本（只读；人类输出 = counts + 阶段概览）', en: '' },

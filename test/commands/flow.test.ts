@@ -2440,6 +2440,62 @@ describe('flow 命令（stage-41）', () => {
       expect(existsSync(join(tmpDir, '.openfeel', 'flow-archive'))).toBe(false);
     });
 
+    // ── v1.5.24 / REQ-046：归档产物自动提交接线 ──
+
+    it('REQ-046：默认成功路径调用 autoCommitArchive（人读模式，非 quiet）', async () => {
+      const spy = vi.spyOn(FlowManager.prototype, 'autoCommitArchive').mockReturnValue('committed');
+      try {
+        setupArchivableV190({ stage: 'v1.9.0-stage-01', op: 'op-001' });
+        logMock.mockClear();
+        await safeParse(['flow', 'archive', 'v1.9.0']);
+        expect(process.exitCode).toBe(0);
+        expect(spy).toHaveBeenCalledWith('v1.9.0');
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('REQ-046：--json 模式以 quiet 调用（不污染单文档 10 键）', async () => {
+      const spy = vi.spyOn(FlowManager.prototype, 'autoCommitArchive').mockReturnValue('committed');
+      try {
+        setupArchivableV190({ stage: 'v1.9.0-stage-01', op: 'op-001' });
+        logMock.mockClear();
+        await safeParse(['flow', 'archive', 'v1.9.0', '--json']);
+        expect(spy).toHaveBeenCalledWith('v1.9.0', { quiet: true });
+        const doc = JSON.parse(logMock.mock.calls.at(-1)?.[0] as string) as Record<string, unknown>;
+        expect(Object.keys(doc)).toHaveLength(10);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('REQ-046：--no-commit 不调用自动提交（产品/索引仍归档）', async () => {
+      const spy = vi.spyOn(FlowManager.prototype, 'autoCommitArchive').mockReturnValue('committed');
+      try {
+        setupArchivableV190({ stage: 'v1.9.0-stage-01', op: 'op-001' });
+        logMock.mockClear();
+        await safeParse(['flow', 'archive', 'v1.9.0', '--no-commit']);
+        expect(process.exitCode).toBe(0);
+        expect(spy).not.toHaveBeenCalled();
+        expect(existsSync(archivePath('v1.9.0'))).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('REQ-046：--dry-run 不调用自动提交', async () => {
+      const spy = vi.spyOn(FlowManager.prototype, 'autoCommitArchive').mockReturnValue('committed');
+      try {
+        setupArchivableV190({ stage: 'v1.9.0-stage-01', op: 'op-001' });
+        logMock.mockClear();
+        await safeParse(['flow', 'archive', 'v1.9.0', '--dry-run']);
+        expect(spy).not.toHaveBeenCalled();
+        expect(existsSync(archivePath('v1.9.0'))).toBe(false);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
     // ── T5.2 成功路径 ──
 
     it('T5.2: 成功路径 — 归档文件 / counts / flow.json 零残留 / 审计 / 索引 / pipeline 处置', async () => {

@@ -2258,8 +2258,10 @@ export function registerFlowCommand(program: Command): void {
     .argument('<version>', '版本号（如 v1.1.7；前缀 v 可省略）')
     .option('--dry-run', '仅预览（判据门照常校验；零写盘）')
     .option('--allow-unfinished', '显式放行「该版本仍有未完成需求」（发布软门；缺省拒绝，零写盘）')
+    // v1.5.24 / REQ-046：negate 选项的描述在注册时按当前语言求值（applyHelpI18n 跳过 negate）
+    .option('--no-commit', t('help.flow.archive.commit', getCliLang(process.cwd())))
     .option('--json', '以 JSON 输出 (machine-readable, single JSON document)')
-    .action((versionInput: string, options: { dryRun?: boolean; json?: boolean; allowUnfinished?: boolean }) => {
+    .action((versionInput: string, options: { dryRun?: boolean; json?: boolean; allowUnfinished?: boolean; commit?: boolean }) => {
       const projectPath = process.cwd();
       const lang = getCliLang(projectPath);
       const mgr = createManager();
@@ -2393,7 +2395,8 @@ export function registerFlowCommand(program: Command): void {
         }
       }
       // OF-04：归档前脏区提示（仅人类模式；不阻断、不改退出码、`--json` 零变化）。
-      // 归档后收尾提交走 `git-commit-idle` 通道，但「先提交再归档」仍是更干净的顺序。
+      // v1.5.24 / REQ-046：归档后的自动提交是**范围化暂存**（只 `.openfeel/**`），
+      // 不会把源码/文档的 WIP 混进「版本分片」提交；这里保留提示只为提醒你另行提交 WIP。
       if (options.json !== true) {
         try {
           const dirty = execSync('git status --porcelain', {
@@ -2486,6 +2489,12 @@ export function registerFlowCommand(program: Command): void {
         return;
       }
       if (options.json) {
+        // v1.5.24 / REQ-046：归档产物自动提交（quiet：不污染单文档 JSON 契约，成功 10 键不变；
+        // 失败时 manager 已写 stderr，这里再落一条运行日志便于事后对账）
+        const commitStatus = options.commit === false ? null : mgr.autoCommitArchive(version, { quiet: true });
+        if (commitStatus === 'failed') {
+          runtimeLog('warn', `archive auto-commit failed: ${version}`);
+        }
         // 成功 9 键（D-97-03-03）+ v1.5.8 追加 requirements（第 10 键，末尾）；保持在 mgr.save() 成功之后输出（顺序不变）
         console.log(JSON.stringify({
           schemaVersion: 1, version, stages: counts.stages, reviews: counts.reviews, log: counts.log,
@@ -2504,6 +2513,13 @@ export function registerFlowCommand(program: Command): void {
         current: disposed.currentCleared ? t('common.none', lang) : (data.pipeline.current.stage || t('common.none', lang)),
         phase: disposed.phase,
       }));
+      // v1.5.24 / REQ-046：归档产物自动提交（人读模式输出提交结果；`--no-commit` 可关）
+      if (options.commit !== false) {
+        const commitStatus = mgr.autoCommitArchive(version);
+        if (commitStatus === 'failed') {
+          runtimeLog('warn', `archive auto-commit failed: ${version}`);
+        }
+      }
     });
 
   // flow archive list — 列出已归档版本及计数（只读；引擎字典序）

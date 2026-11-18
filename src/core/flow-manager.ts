@@ -283,6 +283,17 @@ export interface StageDoneGate {
 /** 阶段验证记录写入错误码（命令层据此映射 exit 非 0 零写盘） */
 export type StageVerificationErrorCode = 'not_found' | 'invalid_phase' | 'invalid_field';
 
+/**
+ * 自动提交结果（v1.5.24 / REQ-046；`autoCommitArchive` 返回，供命令层决定提示）。
+ * `skipped-concurrent` 与 `failed` 都表示**工作树未被改动**。
+ */
+export type AutoCommitStatus =
+  | 'committed'
+  | 'skipped-no-changes'
+  | 'skipped-no-repo'
+  | 'skipped-concurrent'
+  | 'failed';
+
 /** 阶段验证记录写入结果 */
 export type StageVerificationWriteResult =
   | { ok: true; changed: boolean }
@@ -2142,6 +2153,63 @@ export class FlowManager {
    * @param stageName 阶段名（用于 commit message）
    */
   public autoCommitOnDone(stageName: string): void {
+    this.autoCommitWorkTree(`chore: 阶段归档 ${stageName}`, {
+      ok: 'flow.advance.gitCommitOkTmpl',
+      skip: 'flow.advance.gitCommitSkipTmpl',
+      noRepo: 'flow.advance.gitCommitNoRepoWarnTmpl',
+      concurrent: 'flow.advance.gitCommitConcurrentSessionsWarnTmpl',
+      vars: { stage: stageName },
+    });
+  }
+
+  /**
+   * 版本归档（`flow archive`）的收尾提交（v1.5.24 / REQ-046）。
+   *
+   * 背景：归档会写 `flow-archive/<version>.json` 并把阶段/需求移出 `flow.json`，
+   * 但此前没有提交通道——done 相位禁 `git commit`，只能靠「收尾提交」窄口，
+   * 且窄口要求单条无管道命令，人很容易漏提交。
+   *
+   * 语义与 `autoCommitOnDone` 完全同源（同一决策函数 + 同一排除规则）：
+   * 非 git / 无变更 / 有并发会话时**不改工作树**，返回状态供调用方决定是否提示。
+   * @param version 归档版本号（用于 commit message）
+   * @param options.quiet 静默（`--json` 模式下避免污染单文档输出）
+   */
+  public autoCommitArchive(version: string, options: { quiet?: boolean } = {}): AutoCommitStatus {
+    return this.autoCommitWorkTree(`chore: 归档 ${version}（版本分片）`, {
+      ok: 'flow.archive.gitCommitOkTmpl',
+      skip: 'flow.archive.gitCommitSkipTmpl',
+      noRepo: 'flow.archive.gitCommitNoRepoWarnTmpl',
+      concurrent: 'flow.archive.gitCommitConcurrentSessionsWarnTmpl',
+      failed: 'flow.archive.gitCommitFailedWarnTmpl',
+      vars: { version },
+      // v1.5.24 审查修订：归档只产出 `.openfeel/**` 的变化，**范围化暂存**，避免把用户的
+      // WIP（源码 / 文档）混进「版本分片」提交——这是发布边界，不能靠全树 `git add -A`。
+      paths: [
+        '.openfeel/flow.json',
+        '.openfeel/flow.json.bak',
+        '.openfeel/flow-archive',
+        '.openfeel/requirements',
+      ],
+    }, options);
+  }
+
+  /**
+   * 自动提交单点实现（`autoCommitOnDone` / `autoCommitArchive` 共用）。
+   * 只在「仓库内 + 有变更 + 无并发会话」时执行；其余分支不改工作树。
+   */
+  private autoCommitWorkTree(
+    message: string,
+    display: {
+      ok: string; skip: string; noRepo: string; concurrent: string;
+      /** quiet 模式下提交失败时的 stderr 提示键（v1.5.24 审查修订：失败必须有信号） */
+      failed?: string;
+      /** 范围化暂存路径（缺省 = 全树 `git add -A`；归档用 `.openfeel/**` 限定范围） */
+      paths?: string[];
+      vars: Record<string, string>;
+    },
+    options: { quiet?: boolean } = {},
+  ): AutoCommitStatus {
+    const quiet = options.quiet === true;
     const lang = getCliLang(process.cwd());
     const sessionId = getSessionId({ projectPath: this.projectPath });
     // 决策函数纯：git 探针在此注入（vitest 无 git 时由测试注入假探针）
@@ -2151,46 +2219,54 @@ export class FlowManager {
     });
 
     if (decision.reason === 'concurrent-sessions') {
-      // 有并发会话：不清工作树、不提交，交人工 scoped commit（不阻塞 done 推进）
-      console.warn(t('flow.advance.gitCommitConcurrentSessionsWarnTmpl', lang, {
-        stage: stageName,
-        sessions: decision.liveSessions.join(', '),
-      }));
-      return;
+      if (!quiet) {
+        console.warn(t(display.concurrent, lang, {
+          ...display.vars,
+          sessions: decision.liveSessions.join(', '),
+        }));
+      }
+      return 'skipped-concurrent';
     }
     if (decision.reason === 'no-repo') {
-      // 非 git 仓库：无版本兜底 → 显式告警（不是静默跳过）
-      console.warn(t('flow.advance.gitCommitNoRepoWarnTmpl', lang, { stage: stageName }));
-      console.log(t('flow.advance.gitCommitSkipTmpl', lang, { stage: stageName }));
-      return;
+      if (!quiet) {
+        console.warn(t(display.noRepo, lang, display.vars));
+        console.log(t(display.skip, lang, display.vars));
+      }
+      return 'skipped-no-repo';
     }
     if (decision.reason === 'no-changes') {
-      console.log(t('flow.advance.gitCommitSkipTmpl', lang, { stage: stageName }));
-      return;
+      if (!quiet) console.log(t(display.skip, lang, display.vars));
+      return 'skipped-no-changes';
     }
 
     try {
-      const msg = `chore: 阶段归档 ${stageName}`;
       // cwd 指向项目根，确保 git 在 flow.json 所在仓库执行而非进程工作目录
-      // 使用 execFileSync 数组参数（无 shell 解析），避免 stageName 注入 shell（T16）
+      // 使用 execFileSync 数组参数（无 shell 解析），避免名字注入 shell（T16）
       // `:(exclude)` 排除 checkpoints 快照目录（运行时产物；其余 .openfeel 状态仍入库）
-      execFileSync('git', ['add', '-A', '--', '.', ':(exclude).openfeel/checkpoints/**'], {
+      const addArgs = display.paths !== undefined && display.paths.length > 0
+        ? ['add', '-A', '--', ...display.paths]
+        : ['add', '-A', '--', '.', ':(exclude).openfeel/checkpoints/**'];
+      execFileSync('git', addArgs, {
         stdio: 'pipe',
         cwd: this.projectPath,
       });
-      // 会话标识单独成段（不改变既有消息前缀断言 `chore: 阶段归档 <stage>`）
-      execFileSync('git', ['commit', '-m', msg, '-m', `session=${sessionId}`], {
+      // 会话标识单独成段（不改变既有消息前缀断言）
+      execFileSync('git', ['commit', '-m', message, '-m', `session=${sessionId}`], {
         stdio: 'pipe',
         cwd: this.projectPath,
       });
-      console.log(t('flow.advance.gitCommitOkTmpl', lang, { stage: stageName }));
+      if (!quiet) console.log(t(display.ok, lang, display.vars));
+      return 'committed';
     } catch {
-      // 提交阶段失败（hook / 冲突 / 竞态）：区分「非 git 仓库」与「无变更」的既有文案
-      if (!this.isGitWorkTree()) {
-        console.warn(t('flow.advance.gitCommitNoRepoWarnTmpl', lang, { stage: stageName }));
+      // 提交阶段失败（hook / 冲突 / 竞态 / 缺 user.email）：索引可能已被暂存但未提交。
+      // quiet 模式（JSON 输出）也必须给一行 stderr——否则调用方会误以为已提交。
+      if (!quiet) {
+        if (!this.isGitWorkTree()) console.warn(t(display.noRepo, lang, display.vars));
+        console.log(t(display.skip, lang, display.vars));
+      } else if (display.failed !== undefined) {
+        console.error(t(display.failed, lang, display.vars));
       }
-      // 不在 git 仓库 / git 不可用 / 无变更时静默跳过，不阻塞 done 推进
-      console.log(t('flow.advance.gitCommitSkipTmpl', lang, { stage: stageName }));
+      return 'failed';
     }
   }
 

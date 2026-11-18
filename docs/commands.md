@@ -560,14 +560,15 @@ openfeel flow wizard
 执行 flow.json 版本分片归档（v1.2.0-stage-78）。**判据门**：该版本**全部阶段 done** 且**无 blocking open REV**（不满足即拒绝，exit ≠ 0，**零写盘**；**不设 `--force`**）。归档落点 `.openfeel/flow-archive/{version}.json`；采用两步事务顺序保证一致性。**发布软门（v1.5.8 / REQ-030）**：该版本仍有未完成需求（非 done/cancelled/rejected）时缺省拒绝（exit 1，零写盘），须显式 `--allow-unfinished` 才继续（仍会保留未完成需求在 flow.json）；该版本**终态**需求随归档移入归档文件并从 flow.json 删除。
 
 ```bash
-openfeel flow archive <version> [--dry-run] [--allow-unfinished] [--json]
+openfeel flow archive <version> [--dry-run] [--allow-unfinished] [--no-commit] [--json]
 ```
 
 | 选项 | 说明 |
 |------|------|
 | `--dry-run` | 仅预览（判据门 / 软门照常校验；零写盘） |
 | `--allow-unfinished` | **发布软门**：显式放行「该版本仍有未完成需求」；缺省拒绝且零写盘。人类模式给 stderr 警告；JSON 模式不输出警告（保持 stderr 零输出） |
-| `--json` | 结构化输出。**成功（10 键）**：`{schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews,requirements}`（`eligible` 成功恒 `true`，两数组恒 `[]`，`requirements` = 随版本归档的终态需求数，**末位追加键**）；**gate-rejected（9 键）**：`{schemaVersion,error(string),version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind}`；**发布软门拒绝**：`{schemaVersion,error:'unfinished-requirements',version,unfinished,counts,errorKind}`（legacy 形态，`unfinished:string[]`、`counts{done,unfinished,other,total}`）。判据与门禁同源；`--dry-run` 零写盘 |
+| `--no-commit` | **v1.5.24 / REQ-046**：归档后**不自动提交**。缺省会自动提交归档产物（`chore: 归档 <version>（版本分片）`），且**只暂存 `.openfeel/flow.json` / `flow.json.bak` / `flow-archive/` / `requirements/`**——不会把源码或文档的 WIP 混进发布提交；非 git / 无变更 / 有并发会话时跳过并提示，`git commit` 失败时给人读模式与 `--json` 模式都写一行 stderr（失败必须有信号） |
+| `--json` | 结构化输出。**成功（10 键）**：`{schemaVersion,version,stages,reviews,log,dryRun,eligible,unfinishedStages,blockingReviews,requirements}`（`eligible` 成功恒 `true`，两数组恒 `[]`，`requirements` = 随版本归档的终态需求数，**末位追加键**）；**gate-rejected（9 键）**：`{schemaVersion,error(string),version,notDone,blockingOpen,eligible,unfinishedStages,blockingReviews,errorKind}`；**发布软门拒绝**：`{schemaVersion,error:'unfinished-requirements',version,unfinished,counts,errorKind}`（legacy 形态，`unfinished:string[]`、`counts{done,unfinished,other,total}`）。判据与门禁同源；`--dry-run` 零写盘。**自动提交在 JSON 模式下静默执行**（不污染单文档输出，10 键不变） |
 
 **与顶层 `openfeel archive <stage>` 区分**：顶层命令是**阶段摘要归档**，`flow archive` 是 **flow.json 版本分片归档**，二者职责不同；常规命令不读 `.openfeel/flow-archive/**`（`flow health` 仅目录清单级对账；`req list --include-archived` / `req show` 是显式只读例外）。
 
@@ -1126,6 +1127,7 @@ openfeel dev clean     # v1.5.23：运行态文件不入库（补 .gitignore + �
 ```
 
 - **受管块**：只替换 `dev_last.md` 内 `<!-- openfeel:auto:begin/end -->`，不触碰手写内容；`sync` / `status` 无 `--json`（零 JSON 契约变更）。
+- **块内「状态更新于」（v1.5.24 / REQ-047）**：该行只在**状态变化**时刷新（状态未变时整块不重写，避免噪音），所以它表示「状态上次变化的时间」；真正的同步时刻看 `.openfeel/dev/.sync.json` 的 `last_sync`。
 - **自动同步**：`flow advance` 成功后，首次 / 超过 30 分钟 / 节点相位（`exec_running` / `review_passed` / `archiving` / `done`）自动同步（best-effort）。
 - **状态归属**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel 写；子 agent 不读不写。
 - **日志**：不强制写日志；`flow.json.log` 由 CLI 维护，仅保留最近 200 条。

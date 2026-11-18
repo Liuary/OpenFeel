@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-18T16:16:50.582Z",
-    "revision": 2373,
+    "updated": "2026-11-18T16:33:59.753Z",
+    "revision": 2383,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -2116,6 +2116,110 @@
         "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
         "resumed": false
       }
+    },
+    {
+      "time": "2026-11-18T16:33:11.037Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-046",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:14.455Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-047",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:21.251Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-046",
+        "result": "pass",
+        "kind": "test",
+        "by": "lead"
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:27.328Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-047",
+        "result": "pass",
+        "kind": "test",
+        "by": "lead"
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:39.325Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-046",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:47.026Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-047",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:50.659Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-046",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:53.548Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-047",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:57.962Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-046",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-18T16:33:59.753Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-047",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2341,28 +2445,58 @@
     {
       "id": "REQ-046",
       "title": "flow archive 结束后自动提交归档产物（含 --no-commit）",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-18T16:16:16.556Z",
-      "updated_at": "2026-11-18T16:16:30.238Z",
+      "updated_at": "2026-11-18T16:33:57.962Z",
       "target_version": "v1.5.24",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-046.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-18T16:16:30.238Z"
+      "claimed_at": "2026-11-18T16:16:30.238Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-18T16:33:11.037Z",
+        "note": "独立子 agent 审查提出 3 项必改：quiet 下 commit 失败无信号（已补 stderr + failed 键）、命令层无用例（已补 4 例）、全树 add -A 会把 WIP 混入发布提交（已改为范围化暂存 .openfeel/**，比原方案更安全）。另修 --no-commit 的 negate i18n 死键。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "lead",
+        "at": "2026-11-18T16:33:21.251Z",
+        "note": "归档后自动提交：范围化暂存 .openfeel/**，失败/无仓库/并发均给信号，JSON 10 键不变。",
+        "evidence": "npx vitest run → 97 files / 2441 passed；tsc --noEmit 0；build 通过；新增用例：默认/--json quiet/--no-commit/--dry-run 各 1、quiet 失败 stderr 1、范围化 add 参数 1"
+      }
     },
     {
       "id": "REQ-047",
       "title": "dev_last AUTO 块「同步时间」改为「状态更新于」并澄清 .sync.json 语义",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-18T16:16:18.559Z",
-      "updated_at": "2026-11-18T16:16:32.700Z",
+      "updated_at": "2026-11-18T16:33:59.752Z",
       "target_version": "v1.5.24",
       "priority": "P2",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-047.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-18T16:16:32.700Z"
+      "claimed_at": "2026-11-18T16:16:32.700Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-18T16:33:14.455Z",
+        "note": "独立子 agent 审查确认标签迁移安全（stateKey 只作用于 AUTO 块切片、块外手写行不受影响），仅提出测试格式问题（已修）；迁移会按本次调用重建块内内容（含旧备注），已在文档注明。",
+        "independent": true
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "lead",
+        "at": "2026-11-18T16:33:27.328Z",
+        "note": "AUTO 块改「状态更新于」，旧标签一次性迁移；.sync.json 仍是同步时刻权威。",
+        "evidence": "npx vitest run → 97 files / 2441 passed（含「标签迁移一次」「状态未变不重写」两例）"
+      }
     }
   ]
 }

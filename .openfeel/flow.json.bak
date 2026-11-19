@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-19T17:46:29.542Z",
-    "revision": 2404,
+    "updated": "2026-11-19T17:46:31.576Z",
+    "revision": 2405,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -94,6 +94,10 @@
         {
           "id": "REQ-050",
           "order": 4
+        },
+        {
+          "id": "REQ-051",
+          "order": 5
         }
       ]
     }
@@ -2138,6 +2142,16 @@
       "detail": {
         "id": "REQ-051",
         "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-19T17:46:31.576Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.24-stage-12",
+        "requirementId": "REQ-051",
+        "action": "link"
       }
     }
   ],

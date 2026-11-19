@@ -1,3 +1,26 @@
+## [1.5.24] - 2026-11-20
+
+> 反馈与实测驱动的「状态可信 + 收口提速」版本：状态类文件自动维护、误导性提示修正、历史遗留清理、归档产物自动提交，
+> 以及 `req complete` 一条命令走完收口链路。需求 REQ-046~051，门禁 97 文件 / 2451 例。
+
+### Added
+- [stage-12] **`flow archive` 自动提交归档产物（REQ-046）**：默认提交 `chore: 归档 <version>（版本分片）`，**只暂存** `.openfeel/flow.json` / `flow.json.bak` / `flow-archive/` / `requirements/`（不扫全树 WIP）；`--no-commit` 可关；非 git / 无变更 / 并发会话跳过并提示；`git commit` 失败时人读与 `--json` 都写 stderr（失败必须有信号）。
+- [stage-12] **`dev clean --legacy [--include-archive] --yes`（REQ-050）**：清理旧模板残留（`task_claim.md` / `todo-current.md`）与陈旧 `current_archive/*.md`；破坏性删除需显式 `--yes`，`--include-archive` 必须配 `--legacy`。
+- [stage-12] **`req complete` 支持从 `draft` / `scheduled` 起（REQ-051）**：自动补 `scheduled → in_progress`，再 review + verify + done，一条命令完成收口；`blocked` / 终态拒绝且零写盘。
+
+### Changed
+- [stage-12] **状态类文件自动维护（REQ-048）**：`dev/current.md` 与 `dev_last.md` 同吃受管 AUTO 块（不再停留在模板内容）；块内「关联需求」列出**全部**需求与完成度（多需求阶段不再少报）；`stage.status` 改为按相位投影（`plan_* → planned`、`scheme_*/exec_running/review_pending → coding`、`test_* → testing`），并新增 `coding` 到 `STAGE_STATUS_VALUES`；`flow health --fix` 会把存量 `stage.status` 按相位重算并落盘。
+- [stage-12] **署名与回显（REQ-049）**：`--by` 缺省改为**项目用户**（`.info.json user` → `OPENFEEL_USER` → `openfeel`），不再用随进程变化的会话哈希；人机区分与回溯落到记录里的 `session` 字段；DSH 工具回显改为 `bySource: explicit / cli-default`，不再输出假一致的 `by`。
+- [stage-12] **阶段收口 guard 措辞**：从「可考虑阶段收口 / 归档」改为「阶段是版本容器，可继续加需求；确认要发这一版才收口」，避免诱导提前归档。
+
+### Fixed
+- [stage-12] **AUTO 块写入健壮性**：加文件锁；插入锚点跳过代码围栏内的 `## `；标记残缺（只有 begin/end 之一）时拒绝改写并告警，不截断用户内容。
+- [stage-12] **测试 flake**：`deployment-integration` 场景 F（双 harness setup+update）并行跑时常贴近默认 5s 超时 → 显式 30s。
+
+### Notes
+- 本版含破坏性删除入口（`dev clean --legacy`），但默认关闭且需 `--yes`；`dev_core.md` / `decisions.md` 不在清理范围（活功能）。
+- 两包版本 lockstep（`openfeel` / `openfeel-dsh` → 1.5.24）。
+
 ## [1.5.23] - 2026-11-17
 
 > 反馈驱动版本：CulaHub（UE 5.8 开放世界）连续 66 轮自动推进后的 13 条反馈逐条核实（`docs/phase-6/`），

@@ -52,6 +52,14 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
 
+## v1.5.24 — 状态可信 + 收口提速
+
+- **状态类文件自动维护**：`dev/current.md` 与 `dev_last.md` 同吃受管块（不再停留模板）；块内列出全部关联需求与完成度；`stage.status` 按相位投影（`planned/coding/testing/...`），`health --fix` 可迁移存量。
+- **一条命令收口**：`req complete` 支持从 `draft` 直接跑完 `scheduled → in_progress → review → verify → done`。
+- **归档自动提交**：`flow archive` 结束自动提交归档产物（范围化暂存 `.openfeel/**`，不卷 WIP）；`--no-commit` 可关。
+- **误导修正**：`--by` 缺省 = 项目用户（记录里另存 `session`）；DSH 回显改 `bySource`；阶段收口提示改为「可继续加需求」。
+- **历史清理**：`dev clean --legacy --include-archive --yes` 清理旧模板与陈旧轮换归档（默认关闭、需确认）。
+
 ## v1.5.23 — 六期反馈落地（CulaHub 66 轮实践）
 
 - **记账变轻**：`req complete`（review + verify + done 一次收口）、`req add --claim --stage`（开单+认领+关联一次完成）、`--by` 可省（缺省写会话标识）。

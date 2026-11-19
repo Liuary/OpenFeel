@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-19T18:07:37.974Z",
-    "revision": 2425,
+    "updated": "2026-11-19T18:10:56.535Z",
+    "revision": 2427,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -83,6 +83,10 @@
         {
           "id": "REQ-053",
           "order": 1
+        },
+        {
+          "id": "REQ-054",
+          "order": 2
         }
       ]
     }
@@ -2205,6 +2209,68 @@
         "requirementId": "REQ-053",
         "action": "link"
       }
+    },
+    {
+      "time": "2026-11-19T18:07:40.037Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.25-stage-13",
+        "requirementId": "REQ-054",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-19T18:10:56.534Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-053",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-19T18:10:56.534Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-053",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-19T18:10:56.534Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-053",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-19T18:10:56.534Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-053",
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer"
+      }
+    },
+    {
+      "time": "2026-11-19T18:10:56.534Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-053",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "requirements": [
@@ -2460,15 +2526,32 @@
     {
       "id": "REQ-053",
       "title": "需求生命周期合并：req add --claim --stage --start 一条命令到 in_progress",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-19T18:07:22.175Z",
-      "updated_at": "2026-11-19T18:07:32.008Z",
+      "updated_at": "2026-11-19T18:10:56.534Z",
       "target_version": "v1.5.25",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-053.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-19T18:07:32.008Z"
+      "claimed_at": "2026-11-19T18:07:32.008Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:10:56.534Z",
+        "note": "req add 支持 --claim/--stage/--start 一次到 in_progress，复用引擎流转并保留状态链审计；help 键双向锁同步（89 键）。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:10:56.534Z",
+        "note": "req add 支持 --claim/--stage/--start 一次到 in_progress，复用引擎流转并保留状态链审计；help 键双向锁同步（89 键）。",
+        "evidence": "npx vitest run → 2452 passed；新增用例「一次开单：认领+关联+直接 in_progress」断言状态链审计 scheduled→in_progress",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     },
     {
       "id": "REQ-054",

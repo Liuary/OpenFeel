@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-19T17:52:53.056Z",
-    "revision": 2411,
+    "updated": "2026-11-19T17:53:09.806Z",
+    "revision": 2412,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -49,68 +49,20 @@
       "v1.5.20",
       "v1.5.21",
       "v1.5.22",
-      "v1.5.23"
+      "v1.5.23",
+      "v1.5.24"
     ],
     "last_req_seq": 51
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.5.24-stage-12",
+      "stage": "",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.5.24-stage-12": {
-      "name": "v1.5.24-stage-12",
-      "phase": "done",
-      "status": "done",
-      "deps": [],
-      "ops": {},
-      "workflow_mode": "fast",
-      "stats": {
-        "start_time": "2026-11-18T16:16:27.404Z",
-        "end_time": "2026-11-19T17:52:53.031Z",
-        "duration_ms": 92185627
-      },
-      "requirements": [
-        {
-          "id": "REQ-046",
-          "order": 0
-        },
-        {
-          "id": "REQ-047",
-          "order": 1
-        },
-        {
-          "id": "REQ-048",
-          "order": 2
-        },
-        {
-          "id": "REQ-049",
-          "order": 3
-        },
-        {
-          "id": "REQ-050",
-          "order": 4
-        },
-        {
-          "id": "REQ-051",
-          "order": 5
-        }
-      ],
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "Liuary",
-        "at": "2026-11-19T17:52:48.053Z",
-        "note": "v1.5.24：状态文件自动维护 + 误导修正 + 历史清理 + 归档自动提交 + complete 收口链路；6 个需求全 done，独立审查必改项已闭环。",
-        "evidence": "npx vitest run → 97 files / 2451 passed；tsc 0；build 通过；CI run 44581054482 全绿（20.x/22.x）",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    }
-  },
+  "stages": {},
   "reviews": [],
   "log": [
     {
@@ -1548,15 +1500,6 @@
       }
     },
     {
-      "time": "2026-11-18T16:16:14.124Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.5.24-stage-12",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-11-18T16:16:16.556Z",
       "agent": "cli",
       "action": "requirement_add",
@@ -1572,17 +1515,6 @@
       "detail": {
         "id": "REQ-047",
         "title": "dev_last AUTO 块「同步时间」改为「状态更新于」并澄清 .sync.json 语义"
-      }
-    },
-    {
-      "time": "2026-11-18T16:16:27.402Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.24-stage-12",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
     },
     {
@@ -1604,18 +1536,6 @@
       }
     },
     {
-      "time": "2026-11-18T16:16:35.956Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.24-stage-12",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-18T16:16:40.785Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1633,18 +1553,6 @@
         "stage": "v1.5.24-stage-12",
         "requirementId": "REQ-047",
         "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-18T16:16:50.577Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.24-stage-12",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -2082,42 +1990,6 @@
       }
     },
     {
-      "time": "2026-11-19T17:52:32.346Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.24-stage-12",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-19T17:52:35.653Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.24-stage-12",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-19T17:52:42.746Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.5.24-stage-12",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-19T17:52:48.054Z",
       "agent": "cli",
       "action": "stage_verification",
@@ -2129,15 +2001,15 @@
       }
     },
     {
-      "time": "2026-11-19T17:52:53.025Z",
+      "time": "2026-11-19T17:53:09.806Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "archive_flow_version",
       "detail": {
-        "stageName": "v1.5.24-stage-12",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "version": "v1.5.24",
+        "stages": 1,
+        "reviews": 0,
+        "log": 8,
+        "requirements": 6
       }
     }
   ],
@@ -2360,178 +2232,6 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
-    },
-    {
-      "id": "REQ-046",
-      "title": "flow archive 结束后自动提交归档产物（含 --no-commit）",
-      "status": "done",
-      "created_at": "2026-11-18T16:16:16.556Z",
-      "updated_at": "2026-11-18T16:33:57.962Z",
-      "target_version": "v1.5.24",
-      "priority": "P1",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-046.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-18T16:16:30.238Z",
-      "review": {
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-18T16:33:11.037Z",
-        "note": "独立子 agent 审查提出 3 项必改：quiet 下 commit 失败无信号（已补 stderr + failed 键）、命令层无用例（已补 4 例）、全树 add -A 会把 WIP 混入发布提交（已改为范围化暂存 .openfeel/**，比原方案更安全）。另修 --no-commit 的 negate i18n 死键。",
-        "independent": true
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "lead",
-        "at": "2026-11-18T16:33:21.251Z",
-        "note": "归档后自动提交：范围化暂存 .openfeel/**，失败/无仓库/并发均给信号，JSON 10 键不变。",
-        "evidence": "npx vitest run → 97 files / 2441 passed；tsc --noEmit 0；build 通过；新增用例：默认/--json quiet/--no-commit/--dry-run 各 1、quiet 失败 stderr 1、范围化 add 参数 1"
-      }
-    },
-    {
-      "id": "REQ-047",
-      "title": "dev_last AUTO 块「同步时间」改为「状态更新于」并澄清 .sync.json 语义",
-      "status": "done",
-      "created_at": "2026-11-18T16:16:18.559Z",
-      "updated_at": "2026-11-18T16:33:59.752Z",
-      "target_version": "v1.5.24",
-      "priority": "P2",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-047.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-18T16:16:32.700Z",
-      "review": {
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-18T16:33:14.455Z",
-        "note": "独立子 agent 审查确认标签迁移安全（stateKey 只作用于 AUTO 块切片、块外手写行不受影响），仅提出测试格式问题（已修）；迁移会按本次调用重建块内内容（含旧备注），已在文档注明。",
-        "independent": true
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "lead",
-        "at": "2026-11-18T16:33:27.328Z",
-        "note": "AUTO 块改「状态更新于」，旧标签一次性迁移；.sync.json 仍是同步时刻权威。",
-        "evidence": "npx vitest run → 97 files / 2441 passed（含「标签迁移一次」「状态未变不重写」两例）"
-      }
-    },
-    {
-      "id": "REQ-048",
-      "title": "状态类文件自动维护：current.md 自动块、AUTO 块多需求与进度、相位推进同步 status.md 状态",
-      "status": "done",
-      "created_at": "2026-11-18T17:47:18.244Z",
-      "updated_at": "2026-11-18T18:11:51.153Z",
-      "target_version": "v1.5.24",
-      "priority": "P0",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-048.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-18T18:00:24.020Z",
-      "review": {
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-18T18:11:51.152Z",
-        "note": "独立审查提出 6 项，已修 5：addStage 初值走投影、health --fix 先修存量 stage.status、文档补 coding、current.md 受管块与旧散文处理、测试补齐；dev-status/repo-hygiene/flow-manager 用例全绿。",
-        "independent": true,
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-18T18:11:51.152Z",
-        "note": "独立审查提出 6 项，已修 5：addStage 初值走投影、health --fix 先修存量 stage.status、文档补 coding、current.md 受管块与旧散文处理、测试补齐；dev-status/repo-hygiene/flow-manager 用例全绿。",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "id": "REQ-049",
-      "title": "修正误导性提示与配置：署名兜底确定性、review/verify 署名回显、阶段收口 guard 措辞",
-      "status": "done",
-      "created_at": "2026-11-18T17:47:20.704Z",
-      "updated_at": "2026-11-18T18:11:56.785Z",
-      "target_version": "v1.5.24",
-      "priority": "P1",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-049.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-18T18:00:26.849Z",
-      "review": {
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-18T18:11:56.785Z",
-        "note": "独立审查：署名确定性、会话/人机区分、DSH 回显三项已改为「by=项目用户 + 记录内 session + 回显 bySource」；阶段收口 guard 文案改为「可继续加需求」。",
-        "independent": true,
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-18T18:11:56.785Z",
-        "note": "独立审查：署名确定性、会话/人机区分、DSH 回显三项已改为「by=项目用户 + 记录内 session + 回显 bySource」；阶段收口 guard 文案改为「可继续加需求」。",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "id": "REQ-050",
-      "title": "历史遗留文件处置：删除无引用的 task_claim/todo-current 与陈旧 current_archive，dev clean --legacy 支持",
-      "status": "done",
-      "created_at": "2026-11-18T17:47:24.600Z",
-      "updated_at": "2026-11-18T18:12:00.895Z",
-      "target_version": "v1.5.24",
-      "priority": "P1",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-050.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-18T18:00:29.236Z",
-      "review": {
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-18T18:12:00.895Z",
-        "note": "独立审查：破坏性删除已加 --yes 确认、--include-archive 需配 --legacy；「只增不删」文案与模块边界同步；本仓已清理 22 个遗留文件（2 个旧模板 + 20 个陈旧轮换归档）。",
-        "independent": true,
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-18T18:12:00.895Z",
-        "note": "独立审查：破坏性删除已加 --yes 确认、--include-archive 需配 --legacy；「只增不删」文案与模块边界同步；本仓已清理 22 个遗留文件（2 个旧模板 + 20 个陈旧轮换归档）。",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "id": "REQ-051",
-      "title": "收口链路补齐：complete 自动补状态链、AUTO 块写入健壮性、部署集成 flake 修复",
-      "status": "done",
-      "created_at": "2026-11-19T17:46:24.988Z",
-      "updated_at": "2026-11-19T17:47:58.415Z",
-      "target_version": "v1.5.24",
-      "priority": "P1",
-      "workflow_mode": "fast",
-      "body_path": ".openfeel/requirements/REQ-051.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-19T17:46:29.541Z",
-      "review": {
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-19T17:47:58.415Z",
-        "note": "complete 从 draft 一次收口（自动补 scheduled/in_progress，blocked 拒绝且零写盘）；AUTO 块加锁 + 围栏感知 + 残块拒绝已补用例；deployment 场景 F 显式 30s 超时消除并行 flake。全量 97 文件 / 2451 例全绿。",
-        "independent": true,
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer",
-        "at": "2026-11-19T17:47:58.415Z",
-        "note": "complete 从 draft 一次收口（自动补 scheduled/in_progress，blocked 拒绝且零写盘）；AUTO 块加锁 + 围栏感知 + 残块拒绝已补用例；deployment 场景 F 显式 30s 超时消除并行 flake。全量 97 文件 / 2451 例全绿。",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
     }
   ]
 }

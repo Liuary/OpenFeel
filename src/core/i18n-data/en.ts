@@ -1299,6 +1299,7 @@ export const req: I18nDomain = {
   'trivial.noMarkTmpl':  { key: 'req.trivial.noMarkTmpl',     zh: '', en: '{id} has no trivial mark; nothing to revoke' },
   'trivial.alreadyDoneTmpl': { key: 'req.trivial.alreadyDoneTmpl', zh: '', en: '{id} is already done; cannot mark it trivial' },
   'complete.doneTmpl':   { key: 'req.complete.doneTmpl',      zh: '', en: '✓ {id} completed: review {result} / verify {kind} → done' },
+  'complete.statusTmpl': { key: 'req.complete.statusTmpl',    zh: '', en: '{id} is in status {status}: `req complete` only accepts draft / scheduled / in_progress (handle blocked or terminal states first)' },
   'add.bodyTmpl':        { key: 'req.add.bodyTmpl',           zh: '', en: 'Body skeleton: {path}' },
   // shared validation messages
   'invalidIdTmpl':       { key: 'req.invalidIdTmpl',          zh: '', en: '{input} -> invalid requirement ID (expected REQ-NNN, e.g. REQ-001)' },

@@ -887,7 +887,7 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 | `req advance <id>` | 显式推进需求状态 | `--to <status>` |
 | `req review <id>` | 记录需求审查（**v1.5.8 完成必审**：done 门要求 `review.result=pass`） | `--result <pass\|fail>`、**`--by <who>`（v1.5.23 可省；v1.5.24 起缺省 = 项目用户 `.info.json user`）**、`--note <text>`、`--independent` / `--self` |
 | `req verify <id>` | 记录需求验证（**v1.5.8 完成必验**：done 门要求 `verification.result=pass`） | `--result <pass\|fail>`、`--kind <test\|manual\|build>`、`--by <who>`（同上可省）、`--note <text>`、`--evidence <path>` |
-| **`req complete <id>`** | **一次收口（v1.5.23 / REQ-043）**：review + verify + advance(done) 合并；复用既有判据单点，任一步失败**零写盘** | `--result`、`--note`、`--kind`（缺省 manual）、`--evidence`、`--by`、`--independent` / `--self` |
+| **`req complete <id>`** | **一次收口（v1.5.23 / REQ-043；v1.5.24 / REQ-051 支持从 draft/scheduled 起）**：必要时自动补 `scheduled → in_progress`，再 review + verify + advance(done)；复用既有判据单点，任一步失败**零写盘** | `--result`、`--note`、`--kind`（缺省 manual）、`--evidence`、`--by`、`--independent` / `--self` |
 | **`req waive <id>`** | **显式豁免（v1.5.23 / REQ-043）**：阶段 done 门不再计入该需求，记录谁/何时/为何放弃（与 `cancelled` 区分） | `--reason <text>`、`--by`、`--revoke` |
 | **`req trivial <id>`** | **免审验标记（v1.5.23 / REQ-043）**：done 门跳过 review/verification（docs/文案/测试注释类；相位门与聚合门不变） | `--reason <text>`、`--by`、`--revoke` |
 | `req split <id>` | 拆分需求为若干子需求（**拆分即发布**：子需求入 `scheduled`） | `--into <title>`（**可重复**，至少一项）、`--json` |
@@ -1126,7 +1126,7 @@ openfeel dev status    # 只读：是否到期（默认 30 分钟窗口）
 openfeel dev clean     # v1.5.23：运行态文件不入库（补 .gitignore + 移出 git 索引）
 ```
 
-- **受管块**：替换 `dev_last.md` 与 `dev/current.md` 内的 `<!-- openfeel:auto:begin/end -->`，不触碰手写内容；`sync` / `status` 无 `--json`（零 JSON 契约变更）。**v1.5.24 / REQ-048**：`current.md` 也吃同一受管块（不再停留在模板/陈旧内容），块内「关联需求」列出全部需求与完成度，避免多需求阶段少报。
+- **受管块**：替换 `dev_last.md` 与 `dev/current.md` 内的 `<!-- openfeel:auto:begin/end -->`，不触碰手写内容；`sync` / `status` 无 `--json`（零 JSON 契约变更）。**v1.5.24 / REQ-048**：`current.md` 也吃同一受管块（不再停留在模板/陈旧内容），块内「关联需求」列出全部需求与完成度，避免多需求阶段少报。**v1.5.24 审查修订**：写入加文件锁；插入锚点跳过代码围栏内的 `## `；标记残缺（只有 begin 或只有 end）时**拒绝改写**并告警，宁可本次不更新也不截断内容。记录里的 `session` 字段承担人机区分（署名用项目用户）。
 - **块内「状态更新于」（v1.5.24 / REQ-047）**：该行只在**状态变化**时刷新（状态未变时整块不重写，避免噪音），所以它表示「状态上次变化的时间」；真正的同步时刻看 `.openfeel/dev/.sync.json` 的 `last_sync`。
 - **自动同步**：`flow advance` 成功后，首次 / 超过 30 分钟 / 节点相位（`exec_running` / `review_passed` / `archiving` / `done`）自动同步（best-effort）。
 - **状态归属**：`dev_last*` / `dev/current.md` / `status.md` / `flow.json` 只由 Feel 写；子 agent 不读不写。

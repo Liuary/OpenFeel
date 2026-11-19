@@ -88,7 +88,8 @@ describe('stage-66 端到端：刷新 + 检测成对闭环', () => {
     expect(r.deployedVersion).toBe(getOpenfeelVersion());
   });
 
-  it('场景 F：双 harness（setup + update）→ checkGlobalDeployment ok', () => {
+  // v1.5.24：双 harness 会真实写文件（setup + update），并行跑时常贴近默认 5s 超时 → 显式放宽
+  it('场景 F：双 harness（setup + update）→ checkGlobalDeployment ok', { timeout: 30_000 }, () => {
     setupGlobalFramework('zh-CN', ['opencode', 'claude']);
     expect(checkGlobalDeployment({ currentVersion: getOpenfeelVersion() }).status).toBe('ok');
     updateProject(projectDir, ['opencode', 'claude']);

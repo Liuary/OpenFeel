@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-18T18:13:13.777Z",
-    "revision": 2402,
+    "updated": "2026-11-19T17:46:31.576Z",
+    "revision": 2405,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -51,7 +51,7 @@
       "v1.5.22",
       "v1.5.23"
     ],
-    "last_req_seq": 50
+    "last_req_seq": 51
   },
   "pipeline": {
     "phase": "active",
@@ -94,6 +94,10 @@
         {
           "id": "REQ-050",
           "order": 4
+        },
+        {
+          "id": "REQ-051",
+          "order": 5
         }
       ]
     }
@@ -2121,6 +2125,34 @@
         "from": "planned",
         "to": "coding"
       }
+    },
+    {
+      "time": "2026-11-19T17:46:24.988Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-051",
+        "title": "收口链路补齐：complete 自动补状态链、AUTO 块写入健壮性、部署集成 flake 修复"
+      }
+    },
+    {
+      "time": "2026-11-19T17:46:29.542Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-051",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-19T17:46:31.576Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.24-stage-12",
+        "requirementId": "REQ-051",
+        "action": "link"
+      }
     }
   ],
   "requirements": [
@@ -2485,6 +2517,19 @@
         "note": "独立审查：破坏性删除已加 --yes 确认、--include-archive 需配 --legacy；「只增不删」文案与模块边界同步；本仓已清理 22 个遗留文件（2 个旧模板 + 20 个陈旧轮换归档）。",
         "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
+    },
+    {
+      "id": "REQ-051",
+      "title": "收口链路补齐：complete 自动补状态链、AUTO 块写入健壮性、部署集成 flake 修复",
+      "status": "draft",
+      "created_at": "2026-11-19T17:46:24.988Z",
+      "updated_at": "2026-11-19T17:46:29.541Z",
+      "target_version": "v1.5.24",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-051.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-19T17:46:29.541Z"
     }
   ]
 }

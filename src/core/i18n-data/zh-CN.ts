@@ -1347,6 +1347,7 @@ export const req: I18nDomain = {
   'trivial.noMarkTmpl':  { key: 'req.trivial.noMarkTmpl',     zh: '{id} 当前没有 trivial 标记，无需撤销', en: '' },
   'trivial.alreadyDoneTmpl': { key: 'req.trivial.alreadyDoneTmpl', zh: '{id} 已完成，不能再标记 trivial', en: '' },
   'complete.doneTmpl':   { key: 'req.complete.doneTmpl',      zh: '✓ {id} 已收口：review {result} / verify {kind} → done', en: '' },
+  'complete.statusTmpl': { key: 'req.complete.statusTmpl',    zh: '{id} 当前状态 {status}：`req complete` 只接受 draft / scheduled / in_progress（blocked 或终态请先人工处理）', en: '' },
   'add.bodyTmpl':        { key: 'req.add.bodyTmpl',           zh: '正文骨架：{path}', en: '' },
   // 共享校验文案
   'invalidIdTmpl':       { key: 'req.invalidIdTmpl',          zh: '{input} → 非法需求 ID（应为 REQ-NNN，如 REQ-001）', en: '' },

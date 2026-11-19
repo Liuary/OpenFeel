@@ -11,8 +11,9 @@
  * - `.openfeel/users/{user}/dev_last.md`  受管 AUTO 块（其余内容不动）
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
+import { projectLockPath, withFileLock } from './fs/file-lock.js';
 import { stageRequirementIds } from './req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028；零运行时环）
 
 /** 默认同步间隔（分钟） */
@@ -195,22 +196,48 @@ export function currentMdPath(projectPath: string): string {
   return join(devDir(projectPath), 'current.md');
 }
 
-/** 将 AUTO 块写入指定文件（替换既有块或插入首个标题前；不触碰手写内容） */
-function writeAutoBlock(file: string, block: string, fallbackHeader: string): void {
-  const dir = dirname(file);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  let content = existsSync(file) ? readFileSync(file, 'utf-8') : fallbackHeader;
-  const begin = content.indexOf(AUTO_BEGIN);
-  const end = content.indexOf(AUTO_END);
-  if (begin !== -1 && end !== -1 && end > begin) {
-    content = `${content.slice(0, begin)}${block}${content.slice(end + AUTO_END.length)}`;
-  } else {
-    const firstHeading = content.indexOf('\n## ');
-    content = firstHeading !== -1
-      ? `${content.slice(0, firstHeading)}\n\n${block}\n${content.slice(firstHeading)}`
-      : `${content}\n${block}\n`;
-  }
-  atomicWriteFileSync(file, content);
+/**
+ * 将 AUTO 块写入指定文件（替换既有块或插入首个标题前；不触碰手写内容）。
+ *
+ * v1.5.24 审查修订（健壮性）：
+ *  - 加文件锁（与 `stage set` 同源 `withFileLock`），避免与手改并发互相覆盖；
+ *  - 插入锚点**跳过代码围栏**内的 `## `（否则写进示例代码块里）；
+ *  - 标记残缺（只有 begin 或只有 end）→ **不写入**，返回 false，交给调用方告警——
+ *    宁可这一次不更新，也不要把用户内容截断。
+ * @returns 是否真的写了文件
+ */
+function writeAutoBlock(projectPath: string, file: string, block: string, fallbackHeader: string): boolean {
+  const lockPath = projectLockPath(projectPath, `dev-${basename(file)}`);
+  return withFileLock(lockPath, () => {
+    const dir = dirname(file);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    let content = existsSync(file) ? readFileSync(file, 'utf-8') : fallbackHeader;
+    const begin = content.indexOf(AUTO_BEGIN);
+    const end = content.indexOf(AUTO_END);
+    if (begin !== -1 && end !== -1 && end > begin) {
+      content = `${content.slice(0, begin)}${block}${content.slice(end + AUTO_END.length)}`;
+    } else if (begin !== -1 || end !== -1) {
+      return false; // 残块：拒绝改写（避免二次 begin / 内容截断）
+    } else {
+      const lines = content.split('\n');
+      let fence = false;
+      let insertAt = -1;
+      for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
+        if (line.trimStart().startsWith('```')) { fence = !fence; continue; }
+        if (!fence && line.startsWith('## ')) { insertAt = i; break; }
+      }
+      if (insertAt === -1) {
+        content = `${content}${content.endsWith('\n') || content === '' ? '' : '\n'}\n${block}\n`;
+      } else {
+        const before = lines.slice(0, insertAt).join('\n');
+        const after = lines.slice(insertAt).join('\n');
+        content = `${before}\n${block}\n\n${after}`;
+      }
+    }
+    atomicWriteFileSync(file, content);
+    return true;
+  });
 }
 
 /** 单文件「块是否变化」（忽略状态更新行；旧「同步时间」标签会触发一次迁移重写） */
@@ -253,7 +280,12 @@ export function syncDevStatus(
     if (!blockChanged(target.file, block)) continue;
     // current.md 不凭空创建：项目没这个东西就只维护 dev_last（存量项目兼容）
     if (target.file === currentMdPath(projectPath) && !existsSync(target.file)) continue;
-    writeAutoBlock(target.file, block, target.header);
+    const wrote = writeAutoBlock(projectPath, target.file, block, target.header);
+    if (!wrote) {
+      // 残块保护：不写、不截断，只提示一次（sync 无 --json，不涉及契约）
+      console.warn(`[openfeel] ${target.file}: Auto 块标记残缺（只有 begin 或只有 end），已跳过本次更新。`);
+      continue;
+    }
     changed = true;
   }
 

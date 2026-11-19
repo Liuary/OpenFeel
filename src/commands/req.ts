@@ -854,6 +854,30 @@ export function registerReqCommand(program: Command): void {
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
       const by = resolveActorName(process.cwd(), options.by);
       const independent = options.independent === true;
+      // v1.5.24 / REQ-051：收口请求可直接从 draft / scheduled 起——自动补状态链
+      // （这正是一条命令收口的完整语义；blocked / 终态仍需人工先处理）。
+      let stateNow = getRequirement(data, id)?.status ?? '';
+      if (stateNow !== 'draft' && stateNow !== 'scheduled' && stateNow !== 'in_progress') {
+        console.error(t('req.complete.statusTmpl', lang, { id, status: stateNow }));
+        process.exitCode = 1;
+        return;
+      }
+      for (const step of ['scheduled', 'in_progress'] as const) {
+        if (stateNow !== 'draft' && stateNow !== 'scheduled') break;
+        const moved = advanceRequirement(data, id, step);
+        if (!moved.ok) {
+          failCode(lang, moved.code, {
+            not_found: t('req.err.notFoundTmpl', lang, { id }),
+            invalid_field: t('req.err.invalidFieldTmpl', lang, { id }),
+            invalid_status: t('req.err.invalidStatusTmpl', lang, {
+              id, to: step, current: stateNow, targets: getAllowedNextStatuses(stateNow as RequirementStatus).join(', '),
+            }),
+            general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id }),
+          });
+          return;
+        }
+        stateNow = step;
+      }
       const review = recordRequirementReview(data, id, { result: options.result, by, note: options.note, independent, session: currentSession() });
       if (!review.ok) {
         failCode(lang, review.code, {

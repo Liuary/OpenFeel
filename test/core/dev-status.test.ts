@@ -3,7 +3,7 @@
  *
  * 覆盖：受管 AUTO 块幂等、手写内容保留、30 分钟 due、节点判定、缺失元数据。
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   devLastPath,
   getDevStatus,
@@ -117,6 +117,37 @@ describe('dev-status（v1.5.0）', () => {
     expect(content).toContain('REQ-001');
     expect(content).toContain('REQ-002');
     expect(content).toContain('1/2 完成');
+  });
+
+  // v1.5.24 审查修订：写入健壮性
+  it('插入锚点跳过代码围栏内的 ## 标题', () => {
+    mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
+    writeFileSync(
+      join(dir, '.openfeel', 'dev', 'current.md'),
+      '# 当前进度\n\n```md\n## 这是代码块里的标题\n```\n\n## 近期提交记录\n\n- 手写 A\n',
+      'utf-8',
+    );
+    syncDevStatus(dir);
+    const content = readFileSync(join(dir, '.openfeel', 'dev', 'current.md'), 'utf-8');
+    const blockAt = content.indexOf('<!-- openfeel:auto:begin -->');
+    const fenceEnd = content.indexOf('```', content.indexOf('```md') + 3);
+    // 自动块必须在代码块**之后**插入，不能插进 ``` 里
+    expect(blockAt).toBeGreaterThan(fenceEnd);
+    expect(content).toContain('- 手写 A');
+  });
+
+  it('标记残缺（只有 begin）→ 不写文件、不截断内容', () => {
+    mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
+    const broken = '# 当前进度\n\n<!-- openfeel:auto:begin -->\n## 手工残留\n\n用户内容\n';
+    writeFileSync(join(dir, '.openfeel', 'dev', 'current.md'), broken, 'utf-8');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      syncDevStatus(dir);
+      // dev_last 仍会写；current.md 必须保持原样（不重复 begin、不丢用户内容）
+      expect(readFileSync(join(dir, '.openfeel', 'dev', 'current.md'), 'utf-8')).toBe(broken);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('重复 sync 只更新块（不重复），手写交接内容保留', () => {

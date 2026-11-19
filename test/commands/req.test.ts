@@ -2304,7 +2304,35 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       expect(readFlow().requirements[0].review.by).toBe('tester');
     });
 
-    it('review 值域 / 互斥 / 缺参 / 终态：exit 1 + 零写盘；缺 requiredOption → CommanderError', async () => {
+    // v1.5.24 / REQ-051：complete 自动补状态链
+  describe('req complete（v1.5.24 / REQ-051）', () => {
+    it('draft 直接收口 → 自动 scheduled → in_progress → done（一条命令）', async () => {
+      seedReq({ status: 'draft', review: undefined, verification: undefined });
+      resetCapture();
+      await safeParse(['req', 'complete', 'REQ-001', '--result', 'pass', '--note', '一次收口']);
+      expect(process.exitCode).toBe(0);
+      const r = readFlow().requirements[0];
+      expect(r.status).toBe('done');
+      expect(r.review.result).toBe('pass');
+      expect(r.verification.result).toBe('pass');
+      const statusChanges = readFlow().log
+        .filter((e: { action: string }) => e.action === 'requirement_status')
+        .map((e: { detail: { to: string } }) => e.detail.to);
+      expect(statusChanges).toEqual(['scheduled', 'in_progress', 'done']);
+    });
+
+    it('blocked 状态拒绝且零写盘', async () => {
+      seedReq({ status: 'blocked', review: undefined, verification: undefined });
+      const before = JSON.stringify(readFlow());
+      resetCapture();
+      await safeParse(['req', 'complete', 'REQ-001', '--result', 'pass', '--note', 'x']);
+      expect(process.exitCode).toBe(1);
+      expect(JSON.stringify(readFlow())).toBe(before);
+      expect(err()).toContain('blocked');
+    });
+  });
+
+  it('review 值域 / 互斥 / 缺参 / 终态：exit 1 + 零写盘；缺 requiredOption → CommanderError', async () => {
       seedReq({ status: 'in_progress', review: undefined });
       let raw = flowRaw();
 

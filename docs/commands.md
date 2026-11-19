@@ -877,7 +877,7 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 
 | 子命令 | 用途 | 关键参数 |
 |--------|------|----------|
-| `req add <title>` | 创建需求（ID 自动分配；**单调计数器** `meta.last_req_seq`，归档后不复用） | `--target-version <version>`、`--priority <P0\|P1\|P2>`、`--workflow-mode <full\|fast\|general>`、**`--claim`** / **`--stage <stageId>`（v1.5.23：一次开单+认领+关联）** |
+| `req add <title>` | 创建需求（ID 自动分配；**单调计数器** `meta.last_req_seq`，归档后不复用） | `--target-version <version>`、`--priority <P0\|P1\|P2>`、`--workflow-mode <full\|fast\|general>`、**`--claim` / `--stage <stageId>` / `--start`（v1.5.23/v1.5.25：一次开单+认领+关联+进入 in_progress）** |
 | `req list` | 列出需求 | `--status <status>`、`--target-version <version>`、`--owner <owner>`、`--include-archived`、`--json` |
 | `req show <id>` | 查看需求详情（已归档需求回退读归档文件，标注 `archived`） | `--json` |
 | `req claim <id>` | 认领需求（占用校验） | `--owner <owner>` |

@@ -1117,7 +1117,7 @@ describe('req 命令组（stage-82）', () => {
     const EXPECTED = [
       'help.req',
       'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority', 'help.req.add.workflowMode',
-      'help.req.add.claim', 'help.req.add.stage',
+      'help.req.add.claim', 'help.req.add.stage', 'help.req.add.start',
       'help.req.list', 'help.req.list.status', 'help.req.list.targetVersion', 'help.req.list.owner', 'help.req.list.json',
       'help.req.show', 'help.req.show.argid', 'help.req.show.json',
       'help.req.claim', 'help.req.claim.argid', 'help.req.claim.owner',
@@ -1144,7 +1144,7 @@ describe('req 命令组（stage-82）', () => {
       'help.req.complete.note', 'help.req.complete.by', 'help.req.complete.evidence',
       'help.req.complete.independent', 'help.req.complete.self',
     ];
-    expect(EXPECTED).toHaveLength(88);
+    expect(EXPECTED).toHaveLength(89);
 
     // ① 正向：zh / en 双侧 hasKey
     for (const k of EXPECTED) {
@@ -2329,6 +2329,40 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       expect(process.exitCode).toBe(1);
       expect(JSON.stringify(readFlow())).toBe(before);
       expect(err()).toContain('blocked');
+    });
+  });
+
+  // v1.5.25 / REQ-053：add --start 一条命令到 in_progress
+  describe('req add --claim --stage --start（v1.5.25 / REQ-053）', () => {
+    it('一次开单：认领 + 关联 + 直接 in_progress', async () => {
+      const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+      const seeded = JSON.parse(readFileSync(flowPath, 'utf-8')) as Record<string, unknown>;
+      seeded.stages = {
+        'v1.0.0-stage-01': { name: 'S', phase: 'exec_running', status: 'coding', deps: [], ops: {} },
+      };
+      writeFileSync(flowPath, JSON.stringify(seeded, null, 2) + '\n', 'utf-8');
+      writeFileSync(
+        join(tmpDir, '.openfeel', '.info.json'),
+        JSON.stringify({ user: 'tester' }, null, 2) + '\n',
+        'utf-8',
+      );
+      resetCapture();
+      await safeParse([
+        'req', 'add', '一条命令开单', '--claim', '--stage', 'v1.0.0-stage-01', '--start',
+      ]);
+      expect(process.exitCode).toBe(0);
+      const r = readFlow().requirements[0];
+      expect(r.status).toBe('in_progress');
+      expect(r.owner).toBe('tester');
+      expect(r.claimed_at).toBeTruthy();
+      expect(JSON.stringify(readFlow().stages['v1.0.0-stage-01'])).toContain(r.id);
+      const out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(out).toContain('已开始');
+      // 状态链审计齐全
+      const chained = readFlow().log
+        .filter((e: { action: string }) => e.action === 'requirement_status')
+        .map((e: { detail: { to: string } }) => e.detail.to);
+      expect(chained).toEqual(['scheduled', 'in_progress']);
     });
   });
 

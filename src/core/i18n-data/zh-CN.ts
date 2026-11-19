@@ -1093,6 +1093,7 @@ export const help: I18nDomain = {
   'req.add.workflowMode': { key: 'help.req.add.workflowMode', zh: '工作流模式（full / fast / general；缺省不设置）', en: '' },
   'req.add.claim':       { key: 'help.req.add.claim',       zh: '创建后立即认领（v1.5.23）', en: '' },
   'req.add.stage':       { key: 'help.req.add.stage',       zh: '创建后立即关联到该阶段（v1.5.23）', en: '' },
+  'req.add.start':       { key: 'help.req.add.start',       zh: '创建后直接进入 in_progress（自动 scheduled → in_progress；v1.5.25）', en: '' },
   'req.waive':           { key: 'help.req.waive',           zh: '显式豁免：移出阶段 done 门并记录原因（与 cancelled 区分）', en: '' },
   'req.waive.argid':     { key: 'help.req.waive.argid',     zh: '需求 ID', en: '' },
   'req.waive.reason':    { key: 'help.req.waive.reason',    zh: '放弃原因（豁免时必需）', en: '' },
@@ -1333,6 +1334,7 @@ export const req: I18nDomain = {
   'add.doneTmpl':        { key: 'req.add.doneTmpl',           zh: '已创建 {id}：{title}（状态 draft）', en: '' },
   'add.claimedTmpl':     { key: 'req.add.claimedTmpl',        zh: '· 已认领：{owner}', en: '' },
   'add.linkedTmpl':      { key: 'req.add.linkedTmpl',         zh: '· 已关联阶段：{stage}', en: '' },
+  'add.startedTmpl':     { key: 'req.add.startedTmpl',        zh: '· 已开始：{id} → {status}', en: '' },
   'add.claimFailedTmpl': { key: 'req.add.claimFailedTmpl',    zh: '无法认领 {id}（占用校验失败）', en: '' },
   'add.linkFailedTmpl':  { key: 'req.add.linkFailedTmpl',     zh: '无法把 {id} 关联到阶段 {stage}（阶段不存在或载体制冲突）', en: '' },
   // v1.5.23 / REQ-043：豁免 / trivial / 一次收口

@@ -890,6 +890,7 @@ export function createTools(context) {
       evidence: string('verify 的证据（测试命令 / 报告路径）。'),
       independent: boolean('review 是否独立审查（缺省 false = 自我审查，须显式标注 self-review）。'),
       claim: boolean('add 时立即认领（v1.5.23）。'),
+      start: boolean('add 时直接进入 in_progress（自动 scheduled → in_progress；v1.5.25）。'),
       reason: string('waive / trivial 的原因（标记时必需）。'),
       revoke: boolean('waive / trivial 时撤销标记。'),
       project: string('项目根目录。'),
@@ -908,6 +909,7 @@ export function createTools(context) {
           pushOption(argv, '--workflow-mode', args.workflow_mode);
           pushFlag(argv, '--claim', args.claim);
           pushOption(argv, '--stage', args.stage);
+          pushFlag(argv, '--start', args.start);
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return { data: { output: out.text }, summary: '需求已创建。' };

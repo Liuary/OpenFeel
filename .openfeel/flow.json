@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-19T18:05:00.108Z",
-    "revision": 2420,
+    "updated": "2026-11-19T18:07:40.037Z",
+    "revision": 2426,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -52,7 +52,7 @@
       "v1.5.23",
       "v1.5.24"
     ],
-    "last_req_seq": 52
+    "last_req_seq": 54
   },
   "pipeline": {
     "phase": "active",
@@ -79,6 +79,14 @@
         {
           "id": "REQ-052",
           "order": 0
+        },
+        {
+          "id": "REQ-053",
+          "order": 1
+        },
+        {
+          "id": "REQ-054",
+          "order": 2
         }
       ]
     }
@@ -2155,6 +2163,62 @@
         "from": "in_progress",
         "to": "done"
       }
+    },
+    {
+      "time": "2026-11-19T18:07:22.175Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-053",
+        "title": "需求生命周期合并：req add --claim --stage --start 一条命令到 in_progress"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:26.556Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-054",
+        "title": "等待改事件：feel_next 给出等待策略，禁止 job_output/list_agents 轮询"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:32.008Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-053",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:35.664Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-054",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:37.974Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.25-stage-13",
+        "requirementId": "REQ-053",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:40.037Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.25-stage-13",
+        "requirementId": "REQ-054",
+        "action": "link"
+      }
     }
   ],
   "requirements": [
@@ -2406,6 +2470,32 @@
         "evidence": "docs/research/workflow-speed-2026-11-20.md（数据来自 .openfeel/tmp/analyze-sessions.mjs 解析 DSH 会话多帧 zstd）",
         "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
+    },
+    {
+      "id": "REQ-053",
+      "title": "需求生命周期合并：req add --claim --stage --start 一条命令到 in_progress",
+      "status": "draft",
+      "created_at": "2026-11-19T18:07:22.175Z",
+      "updated_at": "2026-11-19T18:07:32.008Z",
+      "target_version": "v1.5.25",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-053.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-19T18:07:32.008Z"
+    },
+    {
+      "id": "REQ-054",
+      "title": "等待改事件：feel_next 给出等待策略，禁止 job_output/list_agents 轮询",
+      "status": "draft",
+      "created_at": "2026-11-19T18:07:26.556Z",
+      "updated_at": "2026-11-19T18:07:35.664Z",
+      "target_version": "v1.5.25",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-054.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-19T18:07:35.664Z"
     }
   ]
 }

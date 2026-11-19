@@ -228,6 +228,11 @@ Feel（你）只做编排、决策与门禁判断。
 \`done\` 门（v1.5.23 更正）：**关联阶段须已进入 \`exec_running\` 及之后相位**即可完成（阶段是版本容器，不必先 done）；另需 \`review\` + \`verify\` 均 pass。general 需求在零关联阶段时走双完成路径。
 **发布前先检查**：归档前先 \`feel_req action=release-check\`（只读）；仍有未完成需求时先 \`feel_req action=rollover\` 顺延，或归档时显式 \`allow_unfinished=true\`（缺省拒绝）。
 
+## 效率（v1.5.25 实测结论）
+- **等待用事件，不轮询**：子 agent / 后台任务完成时宿主会通知；需要阻塞时用 \`wait_agent\`，不要连续 \`job_output\` / \`list_agents\` 去"看好了没"。
+- **批量优先**：一条 shell 做多件事、一次 edit 改多处、能并行发起的调用放在同一轮；连续同名调用是"缺批量化"的信号。
+- **记账合并**：需求用 \`feel_req action=add\` 带 \`claim/stage/start\`，收口用 \`action=complete\`；不要逐条调用拼流程。
+
 ## 收尾
 多步骤任务（≥3 步）开始即建 todo 列表并持续更新。阶段推进与需求流转后，向用户汇报「做了什么 / 卡在哪 / 建议下一步」。
 </feel_mode>`;

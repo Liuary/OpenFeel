@@ -458,5 +458,15 @@ export function planNextStep(snapshot) {
      * 数据源单一（相位 → 示例），不维护一份会和命令树漂移的 help 表。
      */
     example: PHASE_EXAMPLES[phase] ?? null,
+    /**
+     * 等待策略（v1.5.25 / REQ-054）。
+     * 实测：CulaHub 的 `job_output` 335 次合计 421 分钟（占墙钟 29%），`list_agents` 同参轮询 212 次。
+     * 子 agent / 后台任务完成时宿主会通知，不要用轮询去"看好了没"。
+     */
+    waitStrategy: {
+      prefer: ['completion-notice', 'wait_agent'],
+      avoid: ['job_output 轮询', 'list_agents 轮询'],
+      hint: '子 agent 或后台任务完成时宿主会通知；等待用 wait_agent（或直接结束本轮），不要连续轮询 job_output / list_agents。',
+    },
   };
 }

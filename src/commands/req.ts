@@ -158,7 +158,8 @@ export function registerReqCommand(program: Command): void {
     .option('--workflow-mode <mode>', '工作流模式（full / fast / general；缺省不设置）')
     .option('--claim', '创建后立即认领（v1.5.23：一次开单+认领）')
     .option('--stage <stageId>', '创建后立即关联到该阶段（v1.5.23：一次开单+关联）')
-    .action((title: string, options: { targetVersion?: string; priority?: string; workflowMode?: string; claim?: boolean; stage?: string }) => {
+    .option('--start', '创建后直接进入 in_progress（自动 scheduled → in_progress；v1.5.25 / REQ-053）')
+    .action((title: string, options: { targetVersion?: string; priority?: string; workflowMode?: string; claim?: boolean; stage?: string; start?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -211,6 +212,26 @@ export function registerReqCommand(program: Command): void {
           }
           linkedStage = stageKey;
         }
+        // v1.5.25 / REQ-053：一次开单到 in_progress（scheduled → in_progress 属引擎流转，
+        // 命令层不另写判据；失败则整体不 save）
+        let startedStatus: string | undefined;
+        if (options.start === true) {
+          for (const step of ['scheduled', 'in_progress'] as const) {
+            const moved = advanceRequirement(data, created.id, step);
+            if (!moved.ok) {
+              failCode(lang, moved.code, {
+                not_found: t('req.err.notFoundTmpl', lang, { id: created.id }),
+                invalid_field: t('req.err.invalidFieldTmpl', lang, { id: created.id }),
+                invalid_status: t('req.err.invalidStatusTmpl', lang, {
+                  id: created.id, to: step, current: created.status, targets: getAllowedNextStatuses(created.status).join(', '),
+                }),
+                general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id: created.id }),
+              });
+              return;
+            }
+          }
+          startedStatus = 'in_progress';
+        }
         // 正文骨架：认领/关联都成功后再落盘（失败路径不留孤儿正文）
         let bodyPath: string;
         try {
@@ -229,6 +250,9 @@ export function registerReqCommand(program: Command): void {
         }
         if (linkedStage !== undefined) {
           console.log(t('req.add.linkedTmpl', lang, { stage: linkedStage }));
+        }
+        if (startedStatus !== undefined) {
+          console.log(t('req.add.startedTmpl', lang, { id: created.id, status: startedStatus }));
         }
       } catch (err) {
         // 唯一抛错路径（空 title / 非法 priority / 空 target_version）→ 通用模板 exit 1

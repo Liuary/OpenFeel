@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-19T17:58:04.113Z",
-    "revision": 2419,
+    "updated": "2026-11-19T18:07:37.974Z",
+    "revision": 2425,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -52,7 +52,7 @@
       "v1.5.23",
       "v1.5.24"
     ],
-    "last_req_seq": 52
+    "last_req_seq": 54
   },
   "pipeline": {
     "phase": "active",
@@ -79,6 +79,10 @@
         {
           "id": "REQ-052",
           "order": 0
+        },
+        {
+          "id": "REQ-053",
+          "order": 1
         }
       ]
     }
@@ -2103,6 +2107,104 @@
         "requirementId": "REQ-052",
         "action": "link"
       }
+    },
+    {
+      "time": "2026-11-19T18:05:00.107Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-052",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-19T18:05:00.107Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-052",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-19T18:05:00.108Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-052",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-19T18:05:00.108Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-052",
+        "result": "pass",
+        "kind": "manual",
+        "by": "openfeel-reviewer"
+      }
+    },
+    {
+      "time": "2026-11-19T18:05:00.108Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-052",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:22.175Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-053",
+        "title": "需求生命周期合并：req add --claim --stage --start 一条命令到 in_progress"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:26.556Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-054",
+        "title": "等待改事件：feel_next 给出等待策略，禁止 job_output/list_agents 轮询"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:32.008Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-053",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:35.664Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-054",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-19T18:07:37.974Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.5.25-stage-13",
+        "requirementId": "REQ-053",
+        "action": "link"
+      }
     }
   ],
   "requirements": [
@@ -2328,15 +2430,58 @@
     {
       "id": "REQ-052",
       "title": "研究本地历史会话：找出工作流运转慢的根因，提出冗余削减与提速方案",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-19T17:57:33.696Z",
-      "updated_at": "2026-11-19T17:57:41.672Z",
+      "updated_at": "2026-11-19T18:05:00.108Z",
       "target_version": "v1.5.25",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-052.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-19T17:57:41.672Z"
+      "claimed_at": "2026-11-19T17:57:41.672Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:05:00.108Z",
+        "note": "会话数据已解析并量化。独立审查打穿首版（跨项目混算收益、用均值折算、连续段跨文件累加），已按 5 项必改重写：feel_* 仅占 CulaHub 3.9% / OpenFeel 0.6%，墙钟大头是 job_output 29% 与 pwsh 47–72%；P0（写工具自带快照）因收益 1 分钟且有 preflight 语义风险，明确不做。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "manual",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:05:00.108Z",
+        "note": "会话数据已解析并量化。独立审查打穿首版（跨项目混算收益、用均值折算、连续段跨文件累加），已按 5 项必改重写：feel_* 仅占 CulaHub 3.9% / OpenFeel 0.6%，墙钟大头是 job_output 29% 与 pwsh 47–72%；P0（写工具自带快照）因收益 1 分钟且有 preflight 语义风险，明确不做。",
+        "evidence": "docs/research/workflow-speed-2026-11-20.md（数据来自 .openfeel/tmp/analyze-sessions.mjs 解析 DSH 会话多帧 zstd）",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-053",
+      "title": "需求生命周期合并：req add --claim --stage --start 一条命令到 in_progress",
+      "status": "draft",
+      "created_at": "2026-11-19T18:07:22.175Z",
+      "updated_at": "2026-11-19T18:07:32.008Z",
+      "target_version": "v1.5.25",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-053.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-19T18:07:32.008Z"
+    },
+    {
+      "id": "REQ-054",
+      "title": "等待改事件：feel_next 给出等待策略，禁止 job_output/list_agents 轮询",
+      "status": "draft",
+      "created_at": "2026-11-19T18:07:26.556Z",
+      "updated_at": "2026-11-19T18:07:35.664Z",
+      "target_version": "v1.5.25",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-054.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-19T18:07:35.664Z"
     }
   ]
 }

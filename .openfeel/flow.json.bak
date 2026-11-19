@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-19T17:46:31.576Z",
-    "revision": 2405,
+    "updated": "2026-11-19T17:52:48.054Z",
+    "revision": 2410,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -64,8 +64,8 @@
   "stages": {
     "v1.5.24-stage-12": {
       "name": "v1.5.24-stage-12",
-      "phase": "exec_running",
-      "status": "coding",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -99,135 +99,20 @@
           "id": "REQ-051",
           "order": 5
         }
-      ]
+      ],
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "Liuary",
+        "at": "2026-11-19T17:52:48.053Z",
+        "note": "v1.5.24：状态文件自动维护 + 误导修正 + 历史清理 + 归档自动提交 + complete 收口链路；6 个需求全 done，独立审查必改项已闭环。",
+        "evidence": "npx vitest run → 97 files / 2451 passed；tsc 0；build 通过；CI run 44581054482 全绿（20.x/22.x）",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     }
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-11-08T09:19:24.150Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.15",
-        "stages": 1,
-        "reviews": 0,
-        "log": 8,
-        "requirements": 1
-      }
-    },
-    {
-      "time": "2026-11-08T09:57:07.659Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-024",
-        "title": "复核反馈：attempt 同步 checkpoints.exec.attempts / done op 空模板告警降噪 / claim 不改状态文档化"
-      }
-    },
-    {
-      "time": "2026-11-08T09:57:13.299Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-024",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-08T09:57:19.959Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-024",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-08T09:57:22.544Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.16-stage-131",
-        "requirementId": "REQ-024",
-        "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-08T09:57:56.862Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-024",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-08T10:15:42.777Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-024",
-        "result": "pass",
-        "by": "openfeel-reviewer (independent subagent)",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-08T10:15:50.852Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-024",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel"
-      }
-    },
-    {
-      "time": "2026-11-08T10:15:55.303Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-024",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-08T10:31:47.886Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.16-stage-131",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel-tester"
-      }
-    },
-    {
-      "time": "2026-11-08T10:31:58.588Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.16",
-        "stages": 1,
-        "reviews": 0,
-        "log": 8,
-        "requirements": 1
-      }
-    },
-    {
-      "time": "2026-11-10T16:33:19.548Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-025",
-        "title": "feel_mode 开关：默认开启按门禁走流程，关闭时放松流程强制（项目级覆盖全局）"
-      }
-    },
     {
       "time": "2026-11-10T16:34:51.347Z",
       "agent": "cli",
@@ -2153,6 +2038,105 @@
         "requirementId": "REQ-051",
         "action": "link"
       }
+    },
+    {
+      "time": "2026-11-19T17:47:58.415Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-051",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-19T17:47:58.415Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-051",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-19T17:47:58.415Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-051",
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-19T17:47:58.415Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-051",
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer"
+      }
+    },
+    {
+      "time": "2026-11-19T17:47:58.415Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-051",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-19T17:52:32.346Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.24-stage-12",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-19T17:52:35.653Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.24-stage-12",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-19T17:52:42.746Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.24-stage-12",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-19T17:52:48.054Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.24-stage-12",
+        "result": "pass",
+        "kind": "test",
+        "by": "Liuary"
+      }
     }
   ],
   "requirements": [
@@ -2521,15 +2505,31 @@
     {
       "id": "REQ-051",
       "title": "收口链路补齐：complete 自动补状态链、AUTO 块写入健壮性、部署集成 flake 修复",
-      "status": "draft",
+      "status": "done",
       "created_at": "2026-11-19T17:46:24.988Z",
-      "updated_at": "2026-11-19T17:46:29.541Z",
+      "updated_at": "2026-11-19T17:47:58.415Z",
       "target_version": "v1.5.24",
       "priority": "P1",
       "workflow_mode": "fast",
       "body_path": ".openfeel/requirements/REQ-051.md",
       "owner": "Liuary",
-      "claimed_at": "2026-11-19T17:46:29.541Z"
+      "claimed_at": "2026-11-19T17:46:29.541Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T17:47:58.415Z",
+        "note": "complete 从 draft 一次收口（自动补 scheduled/in_progress，blocked 拒绝且零写盘）；AUTO 块加锁 + 围栏感知 + 残块拒绝已补用例；deployment 场景 F 显式 30s 超时消除并行 flake。全量 97 文件 / 2451 例全绿。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T17:47:58.415Z",
+        "note": "complete 从 draft 一次收口（自动补 scheduled/in_progress，blocked 拒绝且零写盘）；AUTO 块加锁 + 围栏感知 + 残块拒绝已补用例；deployment 场景 F 显式 30s 超时消除并行 flake。全量 97 文件 / 2451 例全绿。",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     }
   ]
 }

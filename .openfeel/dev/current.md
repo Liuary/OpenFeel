@@ -5,10 +5,10 @@
 
 <!-- openfeel:auto:begin -->
 ## 自动状态（CLI 维护，勿手改）
-- 状态更新于：2026-11-19T18:11:20.560Z
-- 活跃阶段：`v1.5.25-stage-13` / `exec_running`
+- 状态更新于：2026-11-20T12:17:48.155Z
+- 活跃阶段：`v1.5.25-stage-13` / `archiving`
 - 关联需求：`REQ-052`, `REQ-053`, `REQ-054`（3/3 完成）
-- 最近操作：`requirement_status` @ 2026-11-19T18:10:59.953Z
+- 最近操作：`advance_stage_phase` @ 2026-11-20T12:17:48.137Z
 <!-- openfeel:auto:end -->
 
 ## 近期提交记录（最多 5 条，最新在上）

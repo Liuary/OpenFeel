@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-19T18:10:59.953Z",
-    "revision": 2428,
+    "updated": "2026-11-20T12:18:02.885Z",
+    "revision": 2433,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -55,7 +55,7 @@
     "last_req_seq": 54
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.5.25-stage-13",
       "op": ""
@@ -65,15 +65,15 @@
   "stages": {
     "v1.5.25-stage-13": {
       "name": "v1.5.25-stage-13",
-      "phase": "exec_running",
-      "status": "coding",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "stats": {
         "start_time": "2026-11-19T17:57:37.681Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-20T12:18:02.858Z",
+        "duration_ms": 66025177
       },
       "requirements": [
         {
@@ -88,262 +88,20 @@
           "id": "REQ-054",
           "order": 2
         }
-      ]
+      ],
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "Liuary",
+        "at": "2026-11-20T12:17:54.199Z",
+        "note": "v1.5.25：会话研究（REQ-052）+ 生命周期合并（REQ-053）+ 等待改事件（REQ-054）；3 个需求全 done，独立审查修订已闭环（首版收益估算被推翻并重写）。",
+        "evidence": "npx vitest run → 2452 passed；tsc 0；build 通过；CI 44585136811 全绿；研究数据脚本复算通过",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     }
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-11-10T16:34:51.347Z",
-      "agent": "cli",
-      "action": "requirement_update",
-      "detail": {
-        "id": "REQ-025",
-        "fields": [
-          "title"
-        ]
-      }
-    },
-    {
-      "time": "2026-11-10T16:39:40.860Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-001"
-      }
-    },
-    {
-      "time": "2026-11-10T16:42:20.267Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-002"
-      }
-    },
-    {
-      "time": "2026-11-10T16:58:13.854Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-031",
-        "title": "feel_mode 开关：默认按门禁走流程，关闭时放松流程强制（项目级覆盖全局）"
-      }
-    },
-    {
-      "time": "2026-11-10T16:58:27.838Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-032",
-        "title": "feel_mode 开关：默认按门禁走流程，关闭时放松流程强制（项目级覆盖全局）"
-      }
-    },
-    {
-      "time": "2026-11-10T16:58:44.668Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-032",
-        "from": "draft",
-        "to": "cancelled"
-      }
-    },
-    {
-      "time": "2026-11-10T16:58:44.668Z",
-      "agent": "cli",
-      "action": "requirement_update",
-      "detail": {
-        "id": "REQ-032",
-        "fields": [
-          "title"
-        ]
-      }
-    },
-    {
-      "time": "2026-11-10T16:58:45.053Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-031",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-10T16:58:47.943Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.17-stage-1",
-        "requirementId": "REQ-031",
-        "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-11T01:33:07.381Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.5.17-stage-1.op-001",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-11-11T01:33:07.865Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.5.17-stage-1.op-002",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-11-11T01:33:09.872Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.5.17-stage-1.op-003",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-11-11T01:33:10.333Z",
-      "agent": "openfeel-executor",
-      "action": "attempt_pass",
-      "detail": {
-        "opId": "v1.5.17-stage-1.op-004",
-        "attempts": 1
-      }
-    },
-    {
-      "time": "2026-11-11T01:44:35.784Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-003"
-      }
-    },
-    {
-      "time": "2026-11-11T01:54:19.839Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-031",
-        "result": "pass",
-        "by": "openfeel-reviewer (独立子 agent)",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-11T01:54:23.525Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-031",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel-tester"
-      }
-    },
-    {
-      "time": "2026-11-11T01:54:28.705Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-031",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-11T01:54:30.765Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-031",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-11T01:54:33.025Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-031",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-11T01:54:36.237Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.17-stage-1",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel-tester"
-      }
-    },
-    {
-      "time": "2026-11-11T16:12:01.509Z",
-      "agent": "openfeel-reviewer",
-      "action": "review_accept",
-      "detail": {
-        "reviewId": "REV-004"
-      }
-    },
-    {
-      "time": "2026-11-11T16:12:08.329Z",
-      "agent": "cli",
-      "action": "stage_verification",
-      "detail": {
-        "stage": "v1.5.17-stage-2",
-        "result": "pass",
-        "kind": "test",
-        "by": "feel-tester"
-      }
-    },
-    {
-      "time": "2026-11-11T16:12:14.544Z",
-      "agent": "cli",
-      "action": "archive_flow_version",
-      "detail": {
-        "version": "v1.5.17",
-        "stages": 2,
-        "reviews": 4,
-        "log": 30,
-        "requirements": 3
-      }
-    },
-    {
-      "time": "2026-11-12T16:21:17.608Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-033",
-        "title": "默认 feel_mode 改为 disabled（开箱宽松），项目/全局显式可钉死 enabled"
-      }
-    },
-    {
-      "time": "2026-11-12T16:21:21.314Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-033",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-12T16:21:40.700Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.18-stage-3",
-        "requirementId": "REQ-033",
-        "action": "link"
-      }
-    },
     {
       "time": "2026-11-13T02:29:58.114Z",
       "agent": "cli",
@@ -2322,6 +2080,65 @@
         "id": "REQ-054",
         "from": "in_progress",
         "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-20T12:17:37.706Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-20T12:17:42.440Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-20T12:17:48.137Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-20T12:17:54.200Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.5.25-stage-13",
+        "result": "pass",
+        "kind": "test",
+        "by": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-20T12:18:02.852Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

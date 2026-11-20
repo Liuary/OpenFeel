@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-20T12:17:54.200Z",
-    "revision": 2432,
+    "updated": "2026-11-20T12:18:02.885Z",
+    "revision": 2433,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -55,7 +55,7 @@
     "last_req_seq": 54
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.5.25-stage-13",
       "op": ""
@@ -65,15 +65,15 @@
   "stages": {
     "v1.5.25-stage-13": {
       "name": "v1.5.25-stage-13",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "stats": {
         "start_time": "2026-11-19T17:57:37.681Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-20T12:18:02.858Z",
+        "duration_ms": 66025177
       },
       "requirements": [
         {
@@ -102,16 +102,6 @@
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-11-12T16:21:40.700Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.18-stage-3",
-        "requirementId": "REQ-033",
-        "action": "link"
-      }
-    },
     {
       "time": "2026-11-13T02:29:58.114Z",
       "agent": "cli",
@@ -2137,6 +2127,18 @@
         "result": "pass",
         "kind": "test",
         "by": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-20T12:18:02.852Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
       }
     }
   ],

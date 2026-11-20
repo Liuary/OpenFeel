@@ -1,0 +1,236 @@
+{
+  "version": "v1.5.25",
+  "stages": {
+    "v1.5.25-stage-13": {
+      "name": "v1.5.25-stage-13",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "stats": {
+        "start_time": "2026-11-19T17:57:37.681Z",
+        "end_time": "2026-11-20T12:18:02.858Z",
+        "duration_ms": 66025177
+      },
+      "requirements": [
+        {
+          "id": "REQ-052",
+          "order": 0
+        },
+        {
+          "id": "REQ-053",
+          "order": 1
+        },
+        {
+          "id": "REQ-054",
+          "order": 2
+        }
+      ],
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "Liuary",
+        "at": "2026-11-20T12:17:54.199Z",
+        "note": "v1.5.25：会话研究（REQ-052）+ 生命周期合并（REQ-053）+ 等待改事件（REQ-054）；3 个需求全 done，独立审查修订已闭环（首版收益估算被推翻并重写）。",
+        "evidence": "npx vitest run → 2452 passed；tsc 0；build 通过；CI 44585136811 全绿；研究数据脚本复算通过",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-11-19T17:57:29.880Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-19T17:57:37.679Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-19T17:57:50.626Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-19T17:58:01.596Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-20T12:17:37.706Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-20T12:17:42.440Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-20T12:17:48.137Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-20T12:18:02.852Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.5.25-stage-13",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-052",
+      "title": "研究本地历史会话：找出工作流运转慢的根因，提出冗余削减与提速方案",
+      "status": "done",
+      "created_at": "2026-11-19T17:57:33.696Z",
+      "updated_at": "2026-11-19T18:05:00.108Z",
+      "target_version": "v1.5.25",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-052.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-19T17:57:41.672Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:05:00.108Z",
+        "note": "会话数据已解析并量化。独立审查打穿首版（跨项目混算收益、用均值折算、连续段跨文件累加），已按 5 项必改重写：feel_* 仅占 CulaHub 3.9% / OpenFeel 0.6%，墙钟大头是 job_output 29% 与 pwsh 47–72%；P0（写工具自带快照）因收益 1 分钟且有 preflight 语义风险，明确不做。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "manual",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:05:00.108Z",
+        "note": "会话数据已解析并量化。独立审查打穿首版（跨项目混算收益、用均值折算、连续段跨文件累加），已按 5 项必改重写：feel_* 仅占 CulaHub 3.9% / OpenFeel 0.6%，墙钟大头是 job_output 29% 与 pwsh 47–72%；P0（写工具自带快照）因收益 1 分钟且有 preflight 语义风险，明确不做。",
+        "evidence": "docs/research/workflow-speed-2026-11-20.md（数据来自 .openfeel/tmp/analyze-sessions.mjs 解析 DSH 会话多帧 zstd）",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-053",
+      "title": "需求生命周期合并：req add --claim --stage --start 一条命令到 in_progress",
+      "status": "done",
+      "created_at": "2026-11-19T18:07:22.175Z",
+      "updated_at": "2026-11-19T18:10:56.534Z",
+      "target_version": "v1.5.25",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-053.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-19T18:07:32.008Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:10:56.534Z",
+        "note": "req add 支持 --claim/--stage/--start 一次到 in_progress，复用引擎流转并保留状态链审计；help 键双向锁同步（89 键）。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:10:56.534Z",
+        "note": "req add 支持 --claim/--stage/--start 一次到 in_progress，复用引擎流转并保留状态链审计；help 键双向锁同步（89 键）。",
+        "evidence": "npx vitest run → 2452 passed；新增用例「一次开单：认领+关联+直接 in_progress」断言状态链审计 scheduled→in_progress",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-054",
+      "title": "等待改事件：feel_next 给出等待策略，禁止 job_output/list_agents 轮询",
+      "status": "done",
+      "created_at": "2026-11-19T18:07:26.556Z",
+      "updated_at": "2026-11-19T18:10:59.953Z",
+      "target_version": "v1.5.25",
+      "priority": "P1",
+      "workflow_mode": "fast",
+      "body_path": ".openfeel/requirements/REQ-054.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-19T18:07:35.664Z",
+      "review": {
+        "result": "pass",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:10:59.953Z",
+        "note": "等待策略（completion-notice / wait_agent 优先，避免 job_output/list_agents 轮询）+ 批量优先 + 记账合并三条写进 feel_next 与系统提示；依据是 CulaHub job_output 421 分钟（29% 墙钟）实测。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "openfeel-reviewer",
+        "at": "2026-11-19T18:10:59.953Z",
+        "note": "等待策略（completion-notice / wait_agent 优先，避免 job_output/list_agents 轮询）+ 批量优先 + 记账合并三条写进 feel_next 与系统提示；依据是 CulaHub job_output 421 分钟（29% 墙钟）实测。",
+        "evidence": "npx vitest run → 2452 passed；feel_next 新增 waitStrategy，系统提示新增「效率」节",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 0,
+    "log": 8,
+    "requirements": 3
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-20T12:18:09.305Z"
+}

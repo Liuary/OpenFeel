@@ -1,3 +1,20 @@
+## [1.5.25] - 2026-11-20
+
+> 数据驱动的小版本：先用本地 DSH 历史会话量化「流程到底占多少时间」，再按实测结论做两件事——
+> 合并需求记账、把等待从轮询改成事件。研究报告见 `docs/research/workflow-speed-2026-11-20.md`。
+
+### Added
+- [stage-13] **`req add --start`（REQ-053）**：开单后直接 `scheduled → in_progress`；配合 `--claim` / `--stage` 与 `req complete`，一个需求从创建到收口只需 2 条命令（原实测 7.9 次调用）。
+- [stage-13] **`feel_next.waitStrategy` + 系统提示「效率」节（REQ-054）**：等待子 agent / 后台任务优先用完成通知或 `wait_agent`，避免 `job_output` / `list_agents` 轮询（实测 CulaHub `job_output` 335 次合计 421 分钟，占墙钟 29%）；同时提示批量优先与记账合并。
+
+### Changed
+- [stage-13] `feel_req action=add` 支持 `claim` / `stage` / `start` 参数（与 CLI 对齐）。
+
+### Notes
+- **研究结论（与直觉相反）**：`feel_*` 流程记账只占墙钟 **3.9%（CulaHub）/ 0.6%（本仓）**，砍流程换不来小时级提速；真正的靶子是后台等待、构建/测试粒度与每轮调用数。
+- **明确不做**：写工具自带状态快照、去掉 preflight 显式读——实测只省约 1 分钟，却让跨会话恢复 / 子 agent 有盲写受保护文件的风险。
+- 两包版本 lockstep（`openfeel` / `openfeel-dsh` → 1.5.25）。
+
 ## [1.5.24] - 2026-11-20
 
 > 反馈与实测驱动的「状态可信 + 收口提速」版本：状态类文件自动维护、误导性提示修正、历史遗留清理、归档产物自动提交，

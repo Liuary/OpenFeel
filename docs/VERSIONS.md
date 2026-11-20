@@ -52,6 +52,13 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
 
+## v1.5.25 — 按数据提速（需求记账合并 + 等待改事件）
+
+- **一条命令开单**：`req add --claim --stage --start` 直接到 `in_progress`；配合 `req complete`，一个需求 2 条命令收口。
+- **等待不再轮询**：`feel_next` 给出 `waitStrategy`，系统提示新增「效率」节（等待用完成通知 / `wait_agent`，批量优先，记账合并）。
+- **研究结论**：`feel_*` 只占墙钟 3.9%（CulaHub）/ 0.6%（本仓）；提速真正靠减少后台等待与构建/测试粒度，见 `docs/research/workflow-speed-2026-11-20.md`。
+- **明确不做**：写工具自带快照 / 去掉 preflight 读（收益约 1 分钟，风险是盲写）。
+
 ## v1.5.24 — 状态可信 + 收口提速
 
 - **状态类文件自动维护**：`dev/current.md` 与 `dev_last.md` 同吃受管块（不再停留模板）；块内列出全部关联需求与完成度；`stage.status` 按相位投影（`planned/coding/testing/...`），`health --fix` 可迁移存量。

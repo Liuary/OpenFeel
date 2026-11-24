@@ -1730,9 +1730,9 @@ describe('flow 命令（stage-41）', () => {
     expect(entry?.detail.gate_missing).toMatchObject({ stagePlanMissing: true });
   });
 
-  // ── v1.7.0 / REQ-062 A62.2—A62.3：三处 --force 统一 GateOverride 审计 ──
+  // ── v1.6.1 / REQ-062 A62.2—A62.3：三处 --force 统一 GateOverride 审计 ──
 
-  it('v1.7.0 A62.2：flow advance --force --reason → 审计键集含 gate_overrides/gate_missing/by/reason/from/to/at', async () => {
+  it('v1.6.1 A62.2：flow advance --force --reason → 审计键集含 gate_overrides/gate_missing/by/reason/from/to/at', async () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.0.0-stage-16');
     mgr.getData()!.stages['v1.0.0-stage-16'].phase = 'scheme_passed' as PipelinePhase;
@@ -1757,7 +1757,7 @@ describe('flow 命令（stage-41）', () => {
     expect(Number.isNaN(Date.parse(String(detail.at)))).toBe(false);
   });
 
-  it('v1.7.0 A62.3：flow stage reset --to exec_running --force --reason → 放行且末条审计同键集（不再无审计）', async () => {
+  it('v1.6.1 A62.3：flow stage reset --to exec_running --force --reason → 放行且末条审计同键集（不再无审计）', async () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.0.0-stage-17');
     mgr.getData()!.stages['v1.0.0-stage-17'].phase = 'scheme_passed' as PipelinePhase;
@@ -1782,7 +1782,7 @@ describe('flow 命令（stage-41）', () => {
     expect(typeof detail.at).toBe('string');
   });
 
-  it('v1.7.0 A62.3：同一条 reset 命令无 --force → exit 1 且零伪造审计', async () => {
+  it('v1.6.1 A62.3：同一条 reset 命令无 --force → exit 1 且零伪造审计', async () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.0.0-stage-18');
     mgr.getData()!.stages['v1.0.0-stage-18'].phase = 'scheme_passed' as PipelinePhase;

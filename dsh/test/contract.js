@@ -427,7 +427,7 @@ async function main() {
     assert(Array.isArray(compact.dispatch.records) && compact.dispatch.records.length === 1, 'compact.dispatch.records 应保留');
   });
 
-  await check('v1.7.0 / REQ-066：feel_dispatch finish 与 feel_verify adherence（action 不是新工具）', () => {
+  await check('v1.6.1 / REQ-066：feel_dispatch finish 与 feel_verify adherence（action 不是新工具）', () => {
     const dispatchTool = tools.find((tool) => tool.name === 'feel_dispatch');
     assert(dispatchTool, '缺少 feel_dispatch 工具');
     assert(

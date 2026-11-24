@@ -584,10 +584,10 @@ describe('archive-ops（IO 原语与幂等）', () => {
 
 describe('边界（T4.4）', () => {
   it('空 log + 空 reviews：三段切分不抛错且 remainder 全空', () => {
-    const data = makeData({ stages: { 'v1.7.0-stage-01': makeStage('done') } });
-    const { archive, remainder } = splitForArchive(data, 'v1.7.0');
+    const data = makeData({ stages: { 'v1.6.1-stage-01': makeStage('done') } });
+    const { archive, remainder } = splitForArchive(data, 'v1.6.1');
 
-    expect(Object.keys(archive.stages)).toEqual(['v1.7.0-stage-01']);
+    expect(Object.keys(archive.stages)).toEqual(['v1.6.1-stage-01']);
     expect(archive.reviews).toEqual([]);
     expect(archive.log).toEqual([]);
     expect(archive.counts).toEqual({ stages: 1, reviews: 0, log: 0, requirements: 0 });

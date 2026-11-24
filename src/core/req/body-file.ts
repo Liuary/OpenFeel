@@ -247,7 +247,7 @@ export function updateRequirementBody(
   const raw = options.text !== undefined
     ? options.text
     : (options.file !== undefined ? readBodyTextFile(projectPath, options.file) : '');
-  // v1.7.0 / REQ-064 A64.4：**只拒绝全空白，不做首尾裁剪** —— 输入原样落盘
+  // v1.6.1 / REQ-064 A64.4：**只拒绝全空白，不做首尾裁剪** —— 输入原样落盘
   // （保留首尾空行、缩进、`###` 子标题、行首列表符、`---` 与 CRLF；`lines` 与正文同源）。
   if (raw.trim() === '') {
     throw new RequirementBodyUpdateError('empty_text', 'Section body is empty');

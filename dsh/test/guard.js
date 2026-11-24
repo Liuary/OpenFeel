@@ -691,7 +691,7 @@ check('D-126-06：无活跃阶段写 src/x.md 被拒（文案给「开会话/开
   assert.match(String(reason), /feel_stage add/);
 });
 
-// ── v1.7.0 / REQ-062 A62.1：审后相位（review_passed / test_passed）文档/夹具白名单 ──
+// ── v1.6.1 / REQ-062 A62.1：审后相位（review_passed / test_passed）文档/夹具白名单 ──
 
 const reviewPassedFlow = { stages: { 'v1-stage-1': { phase: 'review_passed' } }, requirements: [] };
 const testPassedFlow = { stages: { 'v1-stage-1': { phase: 'test_passed' } }, requirements: [] };
@@ -2906,7 +2906,7 @@ check('OF-05：白名单不触达第 1/2 类 deny（openfeel 写命令 / 受保�
   });
 });
 
-// ── v1.7.0 / REQ-067 A67.1—A67.4：guard wrapper 静态分类（R7）──────────────
+// ── v1.6.1 / REQ-067 A67.1—A67.4：guard wrapper 静态分类（R7）──────────────
 //
 // fixture 落在 `dsh/test/fixtures/wrapper/`（A67.4）：包装器执行时读脚本正文并按其内容
 // 分类；用例表是**唯一**的用例来源（数量断言直接从表里取，不靠人工数）。
@@ -3037,7 +3037,7 @@ const A67_CASES = [
     auditClass: 'undecidable',
     script: 'missing.ps1',
   },
-  // ── v1.7.0 fix 1：补齐 wrapper 形态（位置参数 / `-File:` / cmd 前置开关 / source / `.`）──
+  // ── v1.6.1 fix 1：补齐 wrapper 形态（位置参数 / `-File:` / cmd 前置开关 / source / `.`）──
   {
     id: 'ps1-positional-deny',
     command: `pwsh "${wrapperFixture('write-openfeel.ps1')}"`,
@@ -3093,7 +3093,7 @@ const A67_CASES = [
     reason: 'wrapper-write',
     script: 'sh-write.sh',
   },
-  // ── v1.7.0 fix 3：`.cmd` 正文按 cmd 语义（copy/move 只算目标；del/ren 全算）──
+  // ── v1.6.1 fix 3：`.cmd` 正文按 cmd 语义（copy/move 只算目标；del/ren 全算）──
   {
     id: 'cmd-copy-move-allow',
     command: `cmd /c "${wrapperFixture('cmd-copy-move.cmd')}"`,

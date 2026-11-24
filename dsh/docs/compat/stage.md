@@ -1451,7 +1451,7 @@ const SchemaSchema = z.object({
 
 ---
 
-## v1.7.0 增量（现行契约；以上 v1.6.0 段保持冻结）
+## v1.6.1 增量（现行契约；以上 v1.6.0 段保持冻结）
 
 > 实现锚点：`src/core/flow/gate-override.ts`、`src/core/flow-manager.ts`（`advanceStagePhase` / `resetStagePhase`）、`src/commands/flow.ts`。
 

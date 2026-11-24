@@ -399,6 +399,7 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-11-24 | patterns | [REV-001] [blocking] 计划审查 REJECT：6 blocking + 4 major（REV-P01..P10 已修订） |
 | 2026-11-24 | patterns | [REV-017] [blocking] A5 盖章路径零测试，真实仓 6 需求只会走 plan_unstamped 放行 |
 | 2026-11-24 | patterns | [REV-016] [blocking] A2/A2c/A8 判据两处都未落地：无 envelope 码也无计划回写 |
 | 2026-11-24 | patterns | [REV-015] [blocking] A1/T12 未取证：6 份需求正文仍是骨架，lint fill 仍报 emptyBody |

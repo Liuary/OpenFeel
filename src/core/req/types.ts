@@ -10,7 +10,7 @@ import type { WorkflowMode } from '../config.js';   // 仅类型（编译期擦�
 /**
  * 需求状态值域（8 值，裁定 B；单一来源——stage-82 命令层校验须从此派生，禁硬编码）。
  *
- * v1.7.0 / REQ-063 A63.1：新增 `review_pending`（需求审查相位），声明序插在
+ * v1.6.1 / REQ-063 A63.1：新增 `review_pending`（需求审查相位），声明序插在
  * `in_progress` 与 `done` 之间 —— 值域声明序即 `req board` / `dashboard` 的分组键序，
  * 旧 7 键**一个不删不改**，只在此处新增一档（向后兼容：旧键保留 + 新键追加）。
  */

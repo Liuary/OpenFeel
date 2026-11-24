@@ -3,7 +3,7 @@
  *
  * 职责：把命令层注入的 `data` / `statusDoc` / `healthReport` 聚合成 `dashboard --json` 的冻结契约
  * （`requirements` / `stages` / `releases` / `blockingReviews` / `health` / `metrics` + `project` 元信息
- * + v1.7.0 末位追加的 `flowDebt` 流程债块）。
+ * + v1.6.1 末位追加的 `flowDebt` 流程债块）。
  *
  * 边界（硬约束）：
  * - 只 import `src/core/**` 与 Node 内建（禁 `commands/` / `cli/` 说明符——层次禁令见
@@ -190,7 +190,7 @@ export interface DashboardData {
   blockingReviews: DashboardBlockingReview[];
   health: DashboardHealthBlock;
   metrics: DashboardMetrics;
-  /** v1.7.0 / REQ-065 A65.2：末位追加（既有 10 键键序零改动） */
+  /** v1.6.1 / REQ-065 A65.2：末位追加（既有 10 键键序零改动） */
   flowDebt: DashboardFlowDebt;
 }
 

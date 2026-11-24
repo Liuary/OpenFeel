@@ -40,9 +40,9 @@ import {
   type DashboardFlowDebt,
   type DashboardStatusDoc,
 } from '../../src/core/dashboard/aggregate.js';
-// v1.7.0 / REQ-065 A65.3：dashboard 的流程债计数与 `lint fill` 同源——测试里直接调同一单点取证
+// v1.6.1 / REQ-065 A65.3：dashboard 的流程债计数与 `lint fill` 同源——测试里直接调同一单点取证
 import { lintRequirementBodies } from '../../src/core/plan/body-lint.js';
-// v1.7.0 / REQ-065 A65.1：写实正文 / 计划一律来自共享夹具工厂（不另拼字符串）
+// v1.6.1 / REQ-065 A65.1：写实正文 / 计划一律来自共享夹具工厂（不另拼字符串）
 import { makeFilledRequirement, makeRequirementPlan } from '../fixtures/requirements.js';
 // op-002 段：HTML 渲染层直接取返回值（本 op 阶段 CLI 尚未注册，不得走命令层 / 写盘）
 import { renderDashboardHtml } from '../../src/core/dashboard/render.js';
@@ -469,7 +469,7 @@ describe('dashboard 聚合层（stage-125 / op-001）', () => {
     expect(Number.isNaN(Date.parse(d.generatedAt))).toBe(false);
   });
 
-  // ═══ v1.7.0 / REQ-065 A65.2 / A65.3：流程债（四类） ═══
+  // ═══ v1.6.1 / REQ-065 A65.2 / A65.3：流程债（四类） ═══
 
   it('D1（A65.2/A65.3）：flowDebt 恰 4 键；emptyBody/missingPlan 与 lintRequirementBodies 同源同值', () => {
     // 真实文件：REQ-001 空壳正文且无计划；REQ-002 写实正文 + 写实计划（均来自共享工厂）
@@ -743,7 +743,7 @@ describe('dashboard 渲染层（stage-125 / op-002）', () => {
     expect(/<head>\s*<meta charset="utf-8">/.test(html)).toBe(true);
   });
 
-  // ═══ v1.7.0 / REQ-065 A65.2：流程债面板（四组计数 + 各前 5 条） ═══
+  // ═══ v1.6.1 / REQ-065 A65.2：流程债面板（四组计数 + 各前 5 条） ═══
 
   it('T27（A65.2）：流程债面板 — 四组标签 + 计数 + 前 5 条 + 「其余 N 条」+ dev 状态', () => {
     const data = makeEmptyDashboard();
@@ -1065,7 +1065,7 @@ describe('dashboard 命令层（stage-125 / op-003）', () => {
     const html = readFileSync(target, 'utf-8');
     expect(html).toContain('<!doctype html');
     expect(html).toContain('<meta charset="utf-8"');
-    // 人类摘要恒 4 行（v1.7.0 / REQ-065 A65.2 追加流程债行），且打印绝对路径
+    // 人类摘要恒 4 行（v1.6.1 / REQ-065 A65.2 追加流程债行），且打印绝对路径
     expect(logMock).toHaveBeenCalledTimes(4);
     expect(out()).toContain(resolve(target));
   });
@@ -1079,7 +1079,7 @@ describe('dashboard 命令层（stage-125 / op-003）', () => {
     expect(out()).toContain(expected);
   });
 
-  // ═══ v1.7.0 / REQ-065 A65.2（human/--json 双出口）＋ A65.3（与 lint fill 同源同值） ═══
+  // ═══ v1.6.1 / REQ-065 A65.2（human/--json 双出口）＋ A65.3（与 lint fill 同源同值） ═══
 
   it('D-CLI（A65.2/A65.3）：--json 末位追加 flowDebt（四键）；human 摘要 4 行含流程债行', async () => {
     await safeParse(['dashboard', '--json']);

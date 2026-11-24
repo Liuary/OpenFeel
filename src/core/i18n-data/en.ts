@@ -736,7 +736,7 @@ export const lint: I18nDomain = {
   'req.suspectTmpl':       { key: 'lint.req.suspectTmpl',       zh: '', en: 'L{line}: `{span}` → suspected unknown command group (tail `{tail}` is registered)' },
   'req.argAsCommandTmpl':  { key: 'lint.req.argAsCommandTmpl',  zh: '', en: 'L{line}: `{span}` → suspected positional argument written as a command name (`{token}` is a registered command name; command path undeterminable)' },
   'req.unclosedRegionWarn': { key: 'lint.req.unclosedRegionWarn', zh: '', en: '⚠️ {path} L{line}: unclosed ignore-start region (no matching ignore-end); suppressed to end of file' },
-  // v1.7.0 / REQ-066 A66.3: adherence metrics (lint adherence; read-only)
+  // v1.6.1 / REQ-066 A66.3: adherence metrics (lint adherence; read-only)
   'adherence.title':             { key: 'lint.adherence.title',             zh: '', en: 'Adherence (read-only observation; numerator/denominator and sample window of each metric are in its definition)' },
   'adherence.sampleTmpl':        { key: 'lint.adherence.sampleTmpl',        zh: '', en: 'Sample: {dispatches} dispatch record(s) / {audit} guard decision(s) / {sessions} session(s) / {requirements} in-progress requirement(s)' },
   'adherence.mainWriteRatio':    { key: 'lint.adherence.mainWriteRatio',    zh: '', en: 'Main-session write ratio' },
@@ -1096,7 +1096,7 @@ export const help: I18nDomain = {
   'req.complete.independent': { key: 'help.req.complete.independent', zh: '', en: 'Independent review (recommended)' },
   'req.complete.self':   { key: 'help.req.complete.self',   zh: '', en: 'Self review (non-independent; marked in the archive summary)' },
   'req.complete.force':  { key: 'help.req.complete.force',  zh: '', en: 'Force gates through with an audit trail (writes body_waiver / plan_waiver + audit; files still need filling in)' },
-  'req.complete.json':   { key: 'help.req.complete.json',   zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.7.0 / REQ-063)' },
+  'req.complete.json':   { key: 'help.req.complete.json',   zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.6.1 / REQ-063)' },
   'req.list':            { key: 'help.req.list',            zh: '', en: 'List requirements (filter by status/version/owner; --include-archived merges archived ones)' },
   'req.list.status':     { key: 'help.req.list.status',     zh: '', en: 'Filter by status (draft/scheduled/in_progress/done/blocked/cancelled/rejected)' },
   'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '', en: 'Filter by target version' },
@@ -1111,7 +1111,7 @@ export const help: I18nDomain = {
   'req.claim.argid':     { key: 'help.req.claim.argid',     zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.claim.owner':     { key: 'help.req.claim.owner',     zh: '', en: 'Owner (default: .openfeel/.info.json user -> git config user.name)' },
   'req.claim.force':     { key: 'help.req.claim.force',     zh: '', en: 'Kept for compatibility: claim does not check the body (the body gate fires only on ->scheduled / ->in_progress / ->done transitions); this option currently has no effect' },
-  'req.claim.json':      { key: 'help.req.claim.json',      zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.7.0 / REQ-063)' },
+  'req.claim.json':      { key: 'help.req.claim.json',      zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.6.1 / REQ-063)' },
   'req.release':         { key: 'help.req.release',         zh: '', en: 'Release claim (no-op success if unclaimed)' },
   'req.release.argid':   { key: 'help.req.release.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.set':             { key: 'help.req.set',             zh: '', en: 'Update requirement fields (whitelist; transition legality checked by engine)' },
@@ -1129,7 +1129,7 @@ export const help: I18nDomain = {
   'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.advance.to':      { key: 'help.req.advance.to',      zh: '', en: 'Target status (legality checked by engine)' },
   'req.advance.force':   { key: 'help.req.advance.force',   zh: '', en: 'Force gates through with an audit trail (body/plan gate writes a waiver, plan deviation +1, in_progress→done review skip records req_review; files still need filling in)' },
-  'req.advance.json':    { key: 'help.req.advance.json',    zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.7.0 / REQ-063)' },
+  'req.advance.json':    { key: 'help.req.advance.json',    zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.6.1 / REQ-063)' },
   'req.board':           { key: 'help.req.board',           zh: '', en: 'Requirement board (grouped by status; 8 fixed groups)' },
   'req.board.targetVersion': { key: 'help.req.board.targetVersion', zh: '', en: 'Filter by target version' },
   'req.board.json':      { key: 'help.req.board.json',      zh: '', en: 'Output JSON { schemaVersion, groups }' },
@@ -1174,7 +1174,7 @@ export const help: I18nDomain = {
   'req.body.append':     { key: 'help.req.body.append',     zh: '', en: 'Append to the end of the section (default replaces the whole section)' },
   'req.body.replace':    { key: 'help.req.body.replace',    zh: '', en: 'Replace the whole section (default; mutually exclusive with --append)' },
   'req.body.json':       { key: 'help.req.body.json',       zh: '', en: 'Output JSON { schemaVersion, id, section, path, lines, created }' },
-  // v1.7.0 / REQ-064: req body --from + req plan (requirement-level plan generation)
+  // v1.6.1 / REQ-064: req body --from + req plan (requirement-level plan generation)
   'req.body.from':       { key: 'help.req.body.from',       zh: '', en: 'Import several business sections at once from a Markdown file split by ## (mutually exclusive with --section/--text/--file)' },
   'req.plan':            { key: 'help.req.plan',            zh: '', en: 'Generate the requirement-level plan skeleton (four sections; refuses to overwrite unless --force)' },
   'req.plan.argid':      { key: 'help.req.plan.argid',      zh: '', en: 'Requirement ID (e.g. REQ-001)' },
@@ -1483,7 +1483,7 @@ export const req: I18nDomain = {
   'claim.bodyForcedSuffix': { key: 'req.claim.bodyForcedSuffix', zh: '', en: ' [body gate force-allowed with audit trail: body_waiver + audit requirement_body_forced]' },
   'advance.gateForcedSuffix': { key: 'req.advance.gateForcedSuffix', zh: '', en: ' [gate force-allowed with audit trail: body_waiver / plan_waiver + audit]' },
   'complete.gateForcedSuffix': { key: 'req.complete.gateForcedSuffix', zh: '', en: ' [gate force-allowed with audit trail: body_waiver / plan_waiver + audit]' },
-  // v1.7.0 / REQ-063 A63.1: review phase (in_progress → review_pending → done)
+  // v1.6.1 / REQ-063 A63.1: review phase (in_progress → review_pending → done)
   'err.reviewPhaseRequiredTmpl': { key: 'req.err.reviewPhaseRequiredTmpl', zh: '', en: 'Requirement {id} cannot complete directly from in_progress: enter the review phase first with `openfeel req advance {id} --to review_pending`, record review and verification, then `--to done`; to skip the review phase use `--force` (audited as gate_overrides=[req_review])' },
 };
 
@@ -1537,7 +1537,7 @@ export const dashboard: I18nDomain = {
   'jsonOpenConflict':           { key: 'dashboard.jsonOpenConflict',           zh: '', en: '--json and --open cannot be combined (--json starts no external process)' },
   'outEmpty':                   { key: 'dashboard.outEmpty',                   zh: '', en: 'The --out path must not be empty' },
   'outIsDirectory':             { key: 'dashboard.outIsDirectory',             zh: '', en: 'The --out path is an existing directory: {path}' },
-  // v1.7.0 / REQ-065 A65.2: process-debt panel (4 counts + first 5 items each)
+  // v1.6.1 / REQ-065 A65.2: process-debt panel (4 counts + first 5 items each)
   'html.section.flowDebt':      { key: 'dashboard.html.section.flowDebt',      zh: '', en: 'Process debt' },
   'html.debt.emptyBody':        { key: 'dashboard.html.debt.emptyBody',        zh: '', en: 'Empty bodies' },
   'html.debt.missingPlan':      { key: 'dashboard.html.debt.missingPlan',      zh: '', en: 'Missing requirement plans' },

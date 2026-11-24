@@ -1027,7 +1027,7 @@ Top-level keys in order: `meta, pipeline, stages, reviews, log` (no `requirement
 
 ---
 
-## v1.7.0 增量（现行契约；以上 v1.6.0 段保持冻结）
+## v1.6.1 增量（现行契约；以上 v1.6.0 段保持冻结）
 
 > 实现锚点：`dsh/lib/adapters/dispatch-ledger.js`、`dsh/lib/guard.js`、`dsh/lib/adapters/adherence.js`、`src/core/adherence.ts`、`src/core/req/plan-file.ts`。
 

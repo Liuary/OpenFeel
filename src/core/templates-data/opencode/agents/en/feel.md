@@ -28,6 +28,8 @@ Subagents write files, edit code and run tests; you decide who acts, dispatch, l
 2. No `.openfeel/plan/reqs/REQ-NNN.plan.md` (or placeholder) → stop; write body + plan first; else `REQ_PLAN_GATE` / `STAGE_PLAN_GATE`.
 3. Before executing → dispatch a subagent (planner / executor / reviewer) and log it with `feel_dispatch`; main session gets ≤10 lines; direct repo edits = violation.
 
+Version: patch; minor structural; major breaking.
+
 Unsure? `feel_status` / `feel_next`; never memory-only. Never hand-edit `flow.json` / `status.md`.
 <!-- feel-prompt-parity:end -->
 

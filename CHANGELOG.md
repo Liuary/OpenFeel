@@ -1,4 +1,4 @@
-## [1.7.0] - 2026-11-25
+## [1.6.1] - 2026-11-25
 
 > 发布链路一条命令 + 文档写白名单 + 需求审查相位 + 需求级计划生成 + 流程债看板 + 派发闭环/遵守率 + guard wrapper 静态分类。
 > 需求 REQ-061~067。
@@ -15,13 +15,17 @@
 ### Changed
 - [stage-133] `flow advance` / `flow stage reset` 的 `--reason` 成为 `--force` 留痕原因（缺省 `manual`）；`--force` 文案统一为「留痕放行」，不绕过 done 门 / blocking REV / 归档判据。
 - [stage-133] JSON 契约计数 46/47 → **51 成功出口 / 52 注册 `--json` 选项**（#47~#51；`release` 脚本的 `--json` 不进 CLI 出口表）；错误码表 15 → **20 行**。
-- [stage-133] 两包 lockstep → **1.7.0**；`openfeel.requiresCli` 抬到 `>=1.7.0`。
+- [stage-133] 两包 lockstep → **1.6.1**；`openfeel.requiresCli` 抬到 `>=1.6.1`。
+- [stage-134] **版本号回落 1.6.1（REQ-068）**：上一版版本号定得过高（按 minor 级，实为补丁级改动），本次纠正为 **1.6.1** —— 两个 `package.json` lockstep、`requiresCli >=1.6.1`，全仓文档 / 注释 / 夹具的版本标注同步；历史阶段 ID（`v1.7.0-stage-133`）的归档与溯源引用**保留不改**。
+- [stage-134] **发布改走 CI 自动发布（REQ-068）**：`npm run release` 默认只做版本校验 + build —— `publish` 步骤记 `skipped`（`publishMode='ci'`）、`market` / `archive-commit` / `tag` 各自缺省 `skipped`（需 `--with-market` / `--commit-archive` / `--tag`）；新增 **`--push`**（在 `archive-commit` / `tag` 之后 `git push`，推 commit 与 tag；`--dry-run` 下只标 `planned`）；`--publish` 降级为**人工兜底**。
+- [stage-134] **CI 发布流程（唯一标准路径）**：**push 到 master 且 `package.json` 版本 ≠ npm 已发版本 → CI 的 publish job（`.github/workflows/ci.yml`）自动 `npm publish`**（`openfeel` + `openfeel-dsh`）；**tag / release 不触发**，**无需手动 `npm publish`**，也不必打 tag；CI 失败才用 `--publish` 兜底并记录原因。
 
 ### Fixed
 - [stage-133] `req plan --json` 的 help 文案补齐覆盖路径条件键 `replaced`（6 键 → 覆盖时 7 键），与实测输出一致。
 
 ### Notes
-- 真实 `npm publish` 只由人类在发版窗口执行（`--publish`）；本版收口只交付脚本与 `--dry-run` / `--notes-only` 取证。
+- [stage-134] **版本号分级规则**：版本号**默认按补丁 `x.y.Z` 推进**；**只有结构性 / 行为性变更才升 minor**；**破坏性变更才升 major**；小改动不要升二级 / 一级（修 CI / 改文档 / 补测试 / 修 bug → 只 `Z+1`）。同一规则写入 Feel 提示词（`dsh/lib/surface/prompt.js` + 4 份 `feel.md` 副本，渲染态仍 ≤1200 字符 / ≤25 行）与 `.openfeel/dev/dev_core.md`；CI 发布规则同时写入 `DEV_CORE` 模板（新项目 `init` 自带）。
+- 真实 `npm publish` 由 **CI** 在 push 到 master 且版本变化时执行；本地 `npm run release` 只做版本校验 + build（`--dry-run` 预检、`--push` 推送）；`--publish` 仅作人工兜底。
 
 ## [1.6.0] - 2026-11-24
 

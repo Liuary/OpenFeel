@@ -767,7 +767,7 @@ export const lint: I18nDomain = {
   'req.suspectTmpl':       { key: 'lint.req.suspectTmpl',       zh: 'L{line}: `{span}` → 疑似未知命令组（尾命令 `{tail}` 已注册）', en: '' },
   'req.argAsCommandTmpl':  { key: 'lint.req.argAsCommandTmpl',  zh: 'L{line}: `{span}` → 疑似把参数写成命令名（`{token}` 是已注册命令名，命令路径无法确定）', en: '' },
   'req.unclosedRegionWarn': { key: 'lint.req.unclosedRegionWarn', zh: '⚠️ {path} L{line}: 区间标记未闭合（ignore-start 无对应 ignore-end），已抑制到文件末尾', en: '' },
-  // v1.7.0 / REQ-066 A66.3：遵守率四指标（lint adherence；只读观测）
+  // v1.6.1 / REQ-066 A66.3：遵守率四指标（lint adherence；只读观测）
   'adherence.title':             { key: 'lint.adherence.title',             zh: '遵守率（只读观测；各指标的分子/分母与样本窗口见 definition）', en: '' },
   'adherence.sampleTmpl':        { key: 'lint.adherence.sampleTmpl',        zh: '样本：派发 {dispatches} 条 / guard 决策 {audit} 条 / 会话 {sessions} 个 / 进行中需求 {requirements} 个', en: '' },
   'adherence.mainWriteRatio':    { key: 'lint.adherence.mainWriteRatio',    zh: '主会话写调用占比', en: '' },
@@ -1142,7 +1142,7 @@ export const help: I18nDomain = {
   'req.complete.independent': { key: 'help.req.complete.independent', zh: '独立审查（推荐）', en: '' },
   'req.complete.self':   { key: 'help.req.complete.self',   zh: '自我审查（非独立；归档摘要标注 self-review）', en: '' },
   'req.complete.force':  { key: 'help.req.complete.force',  zh: '门留痕放行（正文/计划门写 waiver + 审计；文件仍须补写）', en: '' },
-  'req.complete.json':   { key: 'help.req.complete.json',   zh: '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.7.0 / REQ-063）', en: '' },
+  'req.complete.json':   { key: 'help.req.complete.json',   zh: '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.6.1 / REQ-063）', en: '' },
   'req.list':            { key: 'help.req.list',            zh: '列出需求（可按状态/版本/认领人过滤；--include-archived 合并已归档需求）', en: '' },
   'req.list.status':     { key: 'help.req.list.status',     zh: '按状态过滤（draft/scheduled/in_progress/done/blocked/cancelled/rejected）', en: '' },
   'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '按预估版本过滤', en: '' },
@@ -1157,7 +1157,7 @@ export const help: I18nDomain = {
   'req.claim.argid':     { key: 'help.req.claim.argid',     zh: '需求 ID（如 REQ-001）', en: '' },
   'req.claim.owner':     { key: 'help.req.claim.owner',     zh: '认领人（缺省：.openfeel/.info.json user → git config user.name）', en: '' },
   'req.claim.force':     { key: 'help.req.claim.force',     zh: '兼容保留：认领不校验正文（正文门只在 →scheduled / →in_progress / →done 流转时触发），本选项当前无实际作用', en: '' },
-  'req.claim.json':      { key: 'help.req.claim.json',      zh: '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.7.0 / REQ-063）', en: '' },
+  'req.claim.json':      { key: 'help.req.claim.json',      zh: '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.6.1 / REQ-063）', en: '' },
   'req.release':         { key: 'help.req.release',         zh: '释放认领（未认领为 no-op 成功）', en: '' },
   'req.release.argid':   { key: 'help.req.release.argid',   zh: '需求 ID（如 REQ-001）', en: '' },
   'req.set':             { key: 'help.req.set',             zh: '更新需求字段（白名单；状态流转合法性由引擎判定）', en: '' },
@@ -1175,7 +1175,7 @@ export const help: I18nDomain = {
   'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '需求 ID（如 REQ-001）', en: '' },
   'req.advance.to':      { key: 'help.req.advance.to',      zh: '目标状态（合法目标由引擎判定）', en: '' },
   'req.advance.force':   { key: 'help.req.advance.force',   zh: '门留痕放行（正文/计划门写 waiver、计划偏差 +1、in_progress→done 跳链记 req_review；均留审计，文件仍须补写）', en: '' },
-  'req.advance.json':    { key: 'help.req.advance.json',    zh: '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.7.0 / REQ-063）', en: '' },
+  'req.advance.json':    { key: 'help.req.advance.json',    zh: '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.6.1 / REQ-063）', en: '' },
   'req.board':           { key: 'help.req.board',           zh: '需求看板（按状态分组；8 组固定顺序）', en: '' },
   'req.board.targetVersion': { key: 'help.req.board.targetVersion', zh: '按预估版本过滤', en: '' },
   'req.board.json':      { key: 'help.req.board.json',      zh: '以 JSON 输出 { schemaVersion, groups }', en: '' },
@@ -1220,7 +1220,7 @@ export const help: I18nDomain = {
   'req.body.append':     { key: 'help.req.body.append',     zh: '追加到该小节末尾（缺省替换整节）', en: '' },
   'req.body.replace':    { key: 'help.req.body.replace',    zh: '替换整节（缺省；与 --append 互斥）', en: '' },
   'req.body.json':       { key: 'help.req.body.json',       zh: '以 JSON 输出 { schemaVersion, id, section, path, lines, created }', en: '' },
-  // v1.7.0 / REQ-064：req body --from + req plan（需求级计划生成）
+  // v1.6.1 / REQ-064：req body --from + req plan（需求级计划生成）
   'req.body.from':       { key: 'help.req.body.from',       zh: '从 Markdown 文件按 ## 分节一次导入多个业务小节（与 --section/--text/--file 互斥）', en: '' },
   'req.plan':            { key: 'help.req.plan',            zh: '生成需求级计划骨架（四节；已存在默认拒绝，--force 覆盖）', en: '' },
   'req.plan.argid':      { key: 'help.req.plan.argid',      zh: '需求 ID（如 REQ-001）', en: '' },
@@ -1531,7 +1531,7 @@ export const req: I18nDomain = {
   'claim.bodyForcedSuffix': { key: 'req.claim.bodyForcedSuffix', zh: '［正文门已 force 留痕放行：body_waiver + 审计 requirement_body_forced］', en: '' },
   'advance.gateForcedSuffix': { key: 'req.advance.gateForcedSuffix', zh: '［门已 force 留痕放行：body_waiver / plan_waiver + 审计］', en: '' },
   'complete.gateForcedSuffix': { key: 'req.complete.gateForcedSuffix', zh: '［门已 force 留痕放行：body_waiver / plan_waiver + 审计］', en: '' },
-  // v1.7.0 / REQ-063 A63.1：审查相位（in_progress → review_pending → done）
+  // v1.6.1 / REQ-063 A63.1：审查相位（in_progress → review_pending → done）
   'err.reviewPhaseRequiredTmpl': { key: 'req.err.reviewPhaseRequiredTmpl', zh: '需求 {id} 不能从 in_progress 直接完成：先进入审查相位 `openfeel req advance {id} --to review_pending`，补齐审查与验证后再 `--to done`；确需跳过审查相位用 `--force`（留痕 gate_overrides=[req_review]）', en: '' },
 };
 
@@ -1585,7 +1585,7 @@ export const dashboard: I18nDomain = {
   'jsonOpenConflict':           { key: 'dashboard.jsonOpenConflict',           zh: '--json 与 --open 不可同时使用（--json 不启动外部进程）', en: '' },
   'outEmpty':                   { key: 'dashboard.outEmpty',                   zh: '--out 的路径不能为空', en: '' },
   'outIsDirectory':             { key: 'dashboard.outIsDirectory',             zh: '--out 指向已存在的目录：{path}', en: '' },
-  // v1.7.0 / REQ-065 A65.2：流程债面板（四组计数 + 各前 5 条）
+  // v1.6.1 / REQ-065 A65.2：流程债面板（四组计数 + 各前 5 条）
   'html.section.flowDebt':      { key: 'dashboard.html.section.flowDebt',      zh: '流程债', en: '' },
   'html.debt.emptyBody':        { key: 'dashboard.html.debt.emptyBody',        zh: '空壳正文', en: '' },
   'html.debt.missingPlan':      { key: 'dashboard.html.debt.missingPlan',      zh: '缺需求级计划', en: '' },

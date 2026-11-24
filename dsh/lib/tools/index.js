@@ -170,7 +170,7 @@ function safeObservability(snapshot) {
  * 不阻断任何工具调用。台账读取失败降级为空台账（观测数据绝不影响 feel_status）。
  *
  * 形状与 `dispatchSummary` 单点对齐：`{required, total, sincePhase, open, closedRatio, missingRoles, records}`
- * （v1.7.0 / REQ-066 A66.2 增 `open[]` / `closedRatio`；既有四键保留）。
+ * （v1.6.1 / REQ-066 A66.2 增 `open[]` / `closedRatio`；既有四键保留）。
  *
  * @param {string} projectRoot
  * @param {{ stage?: string, phase?: string }} [focus]
@@ -1165,7 +1165,7 @@ export function createTools(context) {
           // shell 跑 openfeel 写命令同样被拒 —— 这是给正文开的唯一通道。
           const id = requireArg(args, 'id', action);
           const section = requireArg(args, 'section', action);
-          // v1.7.0 / REQ-064 A64.4：`text` **不得经 argv**（多行会被截断/转义），也不得 trim
+          // v1.6.1 / REQ-064 A64.4：`text` **不得经 argv**（多行会被截断/转义），也不得 trim
           // （首尾空行 / CRLF / `###` 子标题必须原样落盘）——只判空，随后写 os.tmpdir() 临时文件走 `--file`。
           const text = typeof args.text === 'string' && args.text.trim() !== '' ? args.text : undefined;
           const file = optionalArg(args, 'file');
@@ -1743,7 +1743,7 @@ export function createTools(context) {
             return { data, summary: `lint ${target} ${ok ? '通过' : '发现问题'}（${issues} 项）。` };
           });
         }
-        // v1.7.0 / REQ-066 A66.3：遵守率四指标出口（选定出口，不新增 CLI 子命令/工具；
+        // v1.6.1 / REQ-066 A66.3：遵守率四指标出口（选定出口，不新增 CLI 子命令/工具；
         // 数据源与 CLI `lint adherence --json` 同源，只读展示、不产生任何 deny）。
         case 'adherence':
           return envelope(action, async () => {
@@ -2061,7 +2061,7 @@ export function createTools(context) {
           });
         }
         case 'finish': {
-          // v1.7.0 / REQ-066 A66.1：按 dispatchId 原地补写 closing（行数/行序不变、幂等）。
+          // v1.6.1 / REQ-066 A66.1：按 dispatchId 原地补写 closing（行数/行序不变、幂等）。
           const dispatchId = requireArg(args, 'dispatch_id', action);
           const status = requireArg(args, 'status', action);
           if (status !== 'done' && status !== 'failed') {

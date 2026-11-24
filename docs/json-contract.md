@@ -1,11 +1,11 @@
-# OpenFeel CLI JSON 输出契约（v1.7.0）
+# OpenFeel CLI JSON 输出契约（v1.6.1）
 
 - **权威范围**：`--json` 成功输出（51 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
 - **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。§6 登记的是有意增量清单，未登记即视为破坏。
-- **v1.7.0 / REQ-063 追加**：新增出口 **#47 `req claim`** / **#48 `req advance`** / **#49 `req complete`**（需求写命令 `--json` 首次落地，A63.3）；计数升为 **49 成功出口 / 50 注册 `--json` 选项**；错误码表扩到 **20 行**（新增 `REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED`，消除「gate 码只能靠 human 文案取证」的妥协；**无 `REQ_REVIEW_GATE`**）。`req` 三命令失败形态见 §4.4。`req board` / `dashboard` 的 `groups` 键序随 `REQ_STATUSES` 新增 `review_pending` 一档（旧 7 键**一个不删**，插在 `in_progress` 与 `done` 之间）。
-- **v1.7.0 / REQ-064 追加**：新增出口 **#50 `req plan`**（需求级计划生成；新建路径 6 键固定序 `schemaVersion,id,path,created,overwritten,lines`，`--force` 覆盖已存在计划时末位追加条件键 `replaced:true`（7 键）；已存在 → legacy `plan_exists`）；`req body`（#45）新增 **`--from <md>`** 形态变体（按 `##` 一次导入多节，`--json` 为 `{schemaVersion,id,sections:{name,created,lines}[]}`，元信息小节跳过并在 stderr 报告）；`lint fill`（#46）新增 **`--fix-plan`** 条件键 `created[]` / `skipped[]`（仅该开关出现，既有 7 键键序零改动，仍 advisory exit 0）；`--text` 多行保真（CRLF / `###` / 列表行原样落盘）。计数升为 **50 成功出口 / 51 注册 `--json` 选项**；详见 §5 #50 与 §17。
-- **v1.7.0 / REQ-066 追加**：新增出口 **#51 `lint adherence`**（遵守率四指标；7 键固定序 `schemaVersion,target,ok,main_write_ratio,subagent_per_req,sync_gap,violation_rate`，每项 `{value,definition}`；样本不足 → `value:null`，**只读观测、恒 exit 0**）。该出口是 DSH `feel_verify action=adherence` 的**唯一数据源**（不新增顶层命令 / 不新增 DSH 工具）。计数升为 **51 成功出口 / 52 注册 `--json` 选项**；详见 §5 #51 与 §17.5。
+- **v1.6.1 / REQ-063 追加**：新增出口 **#47 `req claim`** / **#48 `req advance`** / **#49 `req complete`**（需求写命令 `--json` 首次落地，A63.3）；计数升为 **49 成功出口 / 50 注册 `--json` 选项**；错误码表扩到 **20 行**（新增 `REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED`，消除「gate 码只能靠 human 文案取证」的妥协；**无 `REQ_REVIEW_GATE`**）。`req` 三命令失败形态见 §4.4。`req board` / `dashboard` 的 `groups` 键序随 `REQ_STATUSES` 新增 `review_pending` 一档（旧 7 键**一个不删**，插在 `in_progress` 与 `done` 之间）。
+- **v1.6.1 / REQ-064 追加**：新增出口 **#50 `req plan`**（需求级计划生成；新建路径 6 键固定序 `schemaVersion,id,path,created,overwritten,lines`，`--force` 覆盖已存在计划时末位追加条件键 `replaced:true`（7 键）；已存在 → legacy `plan_exists`）；`req body`（#45）新增 **`--from <md>`** 形态变体（按 `##` 一次导入多节，`--json` 为 `{schemaVersion,id,sections:{name,created,lines}[]}`，元信息小节跳过并在 stderr 报告）；`lint fill`（#46）新增 **`--fix-plan`** 条件键 `created[]` / `skipped[]`（仅该开关出现，既有 7 键键序零改动，仍 advisory exit 0）；`--text` 多行保真（CRLF / `###` / 列表行原样落盘）。计数升为 **50 成功出口 / 51 注册 `--json` 选项**；详见 §5 #50 与 §17。
+- **v1.6.1 / REQ-066 追加**：新增出口 **#51 `lint adherence`**（遵守率四指标；7 键固定序 `schemaVersion,target,ok,main_write_ratio,subagent_per_req,sync_gap,violation_rate`，每项 `{value,definition}`；样本不足 → `value:null`，**只读观测、恒 exit 0**）。该出口是 DSH `feel_verify action=adherence` 的**唯一数据源**（不新增顶层命令 / 不新增 DSH 工具）。计数升为 **51 成功出口 / 52 注册 `--json` 选项**；详见 §5 #51 与 §17.5。
 - **v1.6.0 / stage-132 追加**：新增出口 **#45 `req body`**（需求正文唯一业务小节写入口）与 **#46 `lint fill`**（空壳清单，advisory）；补登既有出口 **#44 `dev clean`**（v1.5.23 / REQ-041 实现但此前漏登记）。计数升为 **46 成功出口 / 47 注册 `--json` 选项**；`lint req`（#41）末位追加 `fill` 键（恒 8 键）；错误码表扩到 **15 行**（新增 `STAGE_PLAN_GATE` / `DEV_SYNC_STALE`）。
 - **v1.5.10 / stage-125 追加**：新增出口 **#43 `dashboard`**（单文件自包含 HTML 看板；`--json` 输出同一份聚合数据的单文档，`schemaVersion` 首键）；计数升为 **43 成功出口 / 44 注册 `--json` 选项**。出口语义：**快照命令**（非门禁）——`health.ok=false` 仍 exit 0；`health.items[].message` 与 HTML 文案是**唯一语言相关面**；`--json` 与 `--out` / `--open` **互斥**（`INVALID_ARGUMENT` / exit 1，零写盘）。
 - **v1.5.8 / REQ-030 追加**：新增出口 **#42 `req release-check`**（只读发布软门）；计数升为 **42 成功出口 / 43 注册 `--json` 选项**；`flow archive` 成功/预演追加末键 `requirements`（既有 9 键键序零改动）；归档文件 schema 增可选 `requirements[]` 段与可选 `counts.requirements`（老文件缺省视同 0）。
@@ -56,16 +56,16 @@
 | `ARCHIVE_EXISTS` | refusal | 1（v1.2.4 A1：目标归档文件已存在且未显式 `--force`；零写盘） |
 | `STAGE_PLAN_GATE` | refusal | 1（v1.6.0 / REQ-056：进入 `exec_running` 前阶段计划/在办需求计划缺失或未写实；零写盘，`--force` 留痕放行） |
 | `DEV_SYNC_STALE` | refusal | 1（v1.6.0 / REQ-059：`archiving → done` 前开发账本同步失败；零写盘，`--force` 留痕放行） |
-| `REQ_BODY_GATE` | refusal | 1（v1.7.0 / REQ-063：`req claim/advance/complete --json` 正文 `## 摘要` / `## 目标与验收` 未写实；零写盘） |
-| `REQ_PLAN_GATE` | refusal | 1（v1.7.0 / REQ-063：需求级计划缺失或未写实；零写盘） |
-| `REQ_PLAN_DEVIATION` | refusal | 1（v1.7.0 / REQ-063：已盖章计划被执行改动且 `## 偏差与回写` 未写实；`--force` 留痕 `plan.deviations += 1`） |
-| `REQ_REVIEW_REQUIRED` | refusal | 1（v1.7.0 / REQ-063 A63.2：`review_pending → done` 缺通过的审查记录） |
-| `REQ_VERIFY_REQUIRED` | refusal | 1（v1.7.0 / REQ-063 A63.2：`review_pending → done` 缺通过的验证记录） |
+| `REQ_BODY_GATE` | refusal | 1（v1.6.1 / REQ-063：`req claim/advance/complete --json` 正文 `## 摘要` / `## 目标与验收` 未写实；零写盘） |
+| `REQ_PLAN_GATE` | refusal | 1（v1.6.1 / REQ-063：需求级计划缺失或未写实；零写盘） |
+| `REQ_PLAN_DEVIATION` | refusal | 1（v1.6.1 / REQ-063：已盖章计划被执行改动且 `## 偏差与回写` 未写实；`--force` 留痕 `plan.deviations += 1`） |
+| `REQ_REVIEW_REQUIRED` | refusal | 1（v1.6.1 / REQ-063 A63.2：`review_pending → done` 缺通过的审查记录） |
+| `REQ_VERIFY_REQUIRED` | refusal | 1（v1.6.1 / REQ-063 A63.2：`review_pending → done` 缺通过的验证记录） |
 
 - `code` 为语言无关常量（zh/en 一致）；`message` 可本地化。
 - 映射表与 `src/core/errors.ts` 同源；可执行断言由 `test/cli/error-envelope.test.ts`（op-002）承担。
 - **行数口径**：本表 **20 行**，与 `CLI_ERROR_TABLE.length` 逐一对应（`src/core/errors.ts`）。
-- **需求门禁码（v1.7.0 / REQ-063 收口）**：`REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` 已随 `req claim/advance/complete --json` 进入本表（此前只以 i18n 文案 + exit 1 呈现）。映射单点 = `src/commands/req.ts` 的 `REQ_GATE_ERROR_CODE`（`RequirementErrorCode → CliErrorCode`）；**不存在 `REQ_REVIEW_GATE`**（REQ-063 正文只认两码）。
+- **需求门禁码（v1.6.1 / REQ-063 收口）**：`REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` 已随 `req claim/advance/complete --json` 进入本表（此前只以 i18n 文案 + exit 1 呈现）。映射单点 = `src/commands/req.ts` 的 `REQ_GATE_ERROR_CODE`（`RequirementErrorCode → CliErrorCode`）；**不存在 `REQ_REVIEW_GATE`**（REQ-063 正文只认两码）。
 
 ## §4 错误形态（envelope 与 legacy 双形态）
 
@@ -112,7 +112,7 @@ typeof doc.error === 'string'  → legacy
 
 - 禁止以退出码、命令名或字段存在性做第二套判别。
 
-### 4.4 `req` 三命令 `--json` 失败形态（v1.7.0 / REQ-063 A63.3）
+### 4.4 `req` 三命令 `--json` 失败形态（v1.6.1 / REQ-063 A63.3）
 
 ```json
 {
@@ -134,7 +134,7 @@ typeof doc.error === 'string'  → legacy
 
 ## §5 51 出口冻结表
 
-> 计数口径：**51 个成功 JSON 出口**（#1~#51，v1.7.0 / REQ-063 新增 #47~#49、REQ-064 新增 #50、REQ-066 新增 #51）。`flow advance --json` 为错误封装开关，不计入（见 §7）。v1.6.0 / stage-132 新增 #46 `lint fill`、#45 `req body`，并补登既有 #44 `dev clean`（v1.5.23 / REQ-041 实现但此前漏登记）；v1.5.10 / stage-125 新增 #43 `dashboard`（v1.5.8 / REQ-030 新增 #42 `req release-check`）。
+> 计数口径：**51 个成功 JSON 出口**（#1~#51，v1.6.1 / REQ-063 新增 #47~#49、REQ-064 新增 #50、REQ-066 新增 #51）。`flow advance --json` 为错误封装开关，不计入（见 §7）。v1.6.0 / stage-132 新增 #46 `lint fill`、#45 `req body`，并补登既有 #44 `dev clean`（v1.5.23 / REQ-041 实现但此前漏登记）；v1.5.10 / stage-125 新增 #43 `dashboard`（v1.5.8 / REQ-030 新增 #42 `req release-check`）。
 
 | # | 出口 | 顶层键序 | 元素/嵌套键（实测） | 条件键/形态 |
 |:-:|------|----------|--------------------|------------|
@@ -152,7 +152,7 @@ typeof doc.error === 'string'  → legacy
 | 12 | `req list` | `schemaVersion,requirements` | `requirements[]` = `RequirementData` + 末位追加 `linkedStages,progress`；`linkedStages[]{id,phase}`；`progress{done,total}`；`RequirementData` 可选字段（`target_version,priority,owner,claimed_at,body_path,parent_id,workflow_mode,carried_from,review,verification`）**条件出现**（读侧宽容不注入）；`--include-archived` 时归档需求再末位追加 `archived:true` | 条件出现键（依据：`src/core/req/types.ts` 可选标记 + 读侧宽容不注入）；两新键恒在且恒为末位；`archived` 仅归档需求出现 |
 | 13 | `req show` | `schemaVersion,requirement,stages,parent,children`（活跃）/ `schemaVersion,requirement,stages,parent,children,archived`（已归档回退） | `stages:string[]`；`parent:string|null`；`children:string[]` | `parent` 恒在、可空；`archived:true` 为**末尾可选键**（仅归档回退路径） |
 | 14 | `req split` | `schemaVersion,parent,children` | `children` = `RequirementData[]` | 恒在 |
-| 15 | `req board` | `schemaVersion,groups` | `groups` 键序 = `REQ_STATUSES`（8 值，v1.7.0 新增 `review_pending`）；值为数组 | 恒在 |
+| 15 | `req board` | `schemaVersion,groups` | `groups` 键序 = `REQ_STATUSES`（8 值，v1.6.1 新增 `review_pending`）；值为数组 | 恒在 |
 | 16 | `req next` | `schemaVersion,requirement` | `requirement` 对象或 `null` | **`candidates` 条件出现键**（仅 `limit>1`） |
 | 17 | `instructions` | **`schemaVersion,artifact,task,project_context,rules,dependencies,output,instruction,template,unlocks`**（C1） | `artifact{id,change,schema}`；`project_context{tech_stack,workspace,project,config{execution_mode,auto_advance,merge_mode}}`；`template` 可空 | `template` 恒在、可空 |
 | 18 | `setup --check` | `schemaVersion,status,cliVersion,deployedVersion` | `deployedVersion` 可空 | `status!=='ok'` 仍为成功文档 + exit 1 |
@@ -184,11 +184,11 @@ typeof doc.error === 'string'  → legacy
 | 44 | `dev clean` | `schemaVersion,gitRepository,gitignore,removed,dryRun,legacy` | `gitRepository` boolean；`gitignore{file,added[]}`；`removed: string[]`；`dryRun` boolean；`legacy` 为 `null` 或 `{removed:string[]}` | 恒在（v1.5.23 / REQ-041 补登；`--legacy` 未经 `--yes` 确认时拒绝、不输出 JSON 成功文档）；无 `--json` 的写盘分支不变 |
 | 45 | `req body` | `schemaVersion,id,section,path,lines,created` | `id` = REQ-NNN；`section` 为写入的小节名；`path` 恒 POSIX 相对路径（`.openfeel/requirements/REQ-NNN.md`）；`lines` 为写入正文行数；`created` 表示是否新建小节 | 恒在（v1.6.0 / stage-132 新增；6 键固定序）。元信息小节 → legacy `protected_section`；空正文 → `empty_text`；小节名非法 → `invalid_field`；需求不存在 → `not_found`；均 exit 1 且零写盘 |
 | 46 | `lint fill` | `schemaVersion,target,ok,checked,empty,missingPlan,stageDocs` | `target:"fill"`；`checked` = 扫描的需求正文文件数；`empty[]{id,emptySections}`；`missingPlan[]{id}`；`stageDocs{overviewEmpty[]{stageId},planEmpty[]{stageId}}` | 恒在（v1.6.0 / stage-132 新增；7 键固定序）。**advisory：退出码恒 0**（存量空壳不得让 lint 恒红），`ok:false` 仅在 JSON 内供 CI 消费 |
-| 47 | `req claim` | `schemaVersion,id,from,to,status` | `id` = REQ-NNN；`from`/`to` 同为**认领前后状态**（claim 只写 `owner`/`claimed_at`，不改状态）；`status` = 当前状态 | 恒在（v1.7.0 / REQ-063 A63.3；5 键固定序）。`gates` 为**条件出现键**（仅 `--force` 实际放行过门时，值为门名闭集）——当前 claim 的 `body_empty` 分支不可达（REV-013），故恒不出现 |
-| 48 | `req advance` | `schemaVersion,id,from,to,status` | `from` = 推进前状态；`to` = `--to` 目标；`status` = 推进后状态（no-op 时等于 `from`） | 恒在（v1.7.0 / REQ-063 A63.3；5 键固定序）。`gates` 为**条件出现键**（末位；取值 `req_review` / `req_body` / `req_plan`）——`in_progress → done` 的跳链只能 `--force`（留痕 `gate_overrides=['req_review']`）；缺审/缺验失败走 §4.4 的 `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` |
-| 49 | `req complete` | `schemaVersion,id,from,to,status` | `from` = 收口前状态（draft / scheduled / in_progress / review_pending）；`to` 恒 `"done"`；`status` 恒 `"done"` | 恒在（v1.7.0 / REQ-063 A63.3；5 键固定序）。收口链经 `review_pending`（A63.1）；`gates` 为条件出现键；任一失败**零写盘**并走 §4.4 形态 |
-| 50 | `req plan` | `schemaVersion,id,path,created,overwritten,lines`（覆盖时末位追加 `replaced`） | `id` = REQ-NNN；`path` 恒 POSIX 相对路径 `.openfeel/plan/reqs/REQ-NNN.plan.md`；`created` = 写前不存在；`overwritten` = 写前存在且 `--force`；`lines` = 落盘内容行数；`replaced:true` 为**条件出现键**（仅覆盖已存在计划时，末位第 7 键） | 恒在（v1.7.0 / REQ-064 A64.1；新建路径 6 键固定序，`--force` 覆盖路径 7 键）。已存在且未 `--force` → legacy `plan_exists`（**零写盘**、字节不变）；需求不存在 → `not_found`；非法 ID → `invalid-argument`；未初始化 → `no-init`（均 exit 1）。写后自检 `isRequirementPlanFilled` 未过 → **stderr 提示**、exit 不变 |
-| 51 | `lint adherence` | `schemaVersion,target,ok,main_write_ratio,subagent_per_req,sync_gap,violation_rate` | `target:"adherence"`；四个指标各为 `{value,definition}`（`value` 为 number 或 `null`，`definition` 非空且复述分子/分母 + 样本窗口） | 恒在（v1.7.0 / REQ-066 A66.3；7 键固定序）。**只读观测：恒 exit 0**；分母为 0 / 数据缺失 → `value:null`（绝不 NaN）；是 `feel_verify action=adherence` 的唯一数据源（不新增 DSH 工具） |
+| 47 | `req claim` | `schemaVersion,id,from,to,status` | `id` = REQ-NNN；`from`/`to` 同为**认领前后状态**（claim 只写 `owner`/`claimed_at`，不改状态）；`status` = 当前状态 | 恒在（v1.6.1 / REQ-063 A63.3；5 键固定序）。`gates` 为**条件出现键**（仅 `--force` 实际放行过门时，值为门名闭集）——当前 claim 的 `body_empty` 分支不可达（REV-013），故恒不出现 |
+| 48 | `req advance` | `schemaVersion,id,from,to,status` | `from` = 推进前状态；`to` = `--to` 目标；`status` = 推进后状态（no-op 时等于 `from`） | 恒在（v1.6.1 / REQ-063 A63.3；5 键固定序）。`gates` 为**条件出现键**（末位；取值 `req_review` / `req_body` / `req_plan`）——`in_progress → done` 的跳链只能 `--force`（留痕 `gate_overrides=['req_review']`）；缺审/缺验失败走 §4.4 的 `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` |
+| 49 | `req complete` | `schemaVersion,id,from,to,status` | `from` = 收口前状态（draft / scheduled / in_progress / review_pending）；`to` 恒 `"done"`；`status` 恒 `"done"` | 恒在（v1.6.1 / REQ-063 A63.3；5 键固定序）。收口链经 `review_pending`（A63.1）；`gates` 为条件出现键；任一失败**零写盘**并走 §4.4 形态 |
+| 50 | `req plan` | `schemaVersion,id,path,created,overwritten,lines`（覆盖时末位追加 `replaced`） | `id` = REQ-NNN；`path` 恒 POSIX 相对路径 `.openfeel/plan/reqs/REQ-NNN.plan.md`；`created` = 写前不存在；`overwritten` = 写前存在且 `--force`；`lines` = 落盘内容行数；`replaced:true` 为**条件出现键**（仅覆盖已存在计划时，末位第 7 键） | 恒在（v1.6.1 / REQ-064 A64.1；新建路径 6 键固定序，`--force` 覆盖路径 7 键）。已存在且未 `--force` → legacy `plan_exists`（**零写盘**、字节不变）；需求不存在 → `not_found`；非法 ID → `invalid-argument`；未初始化 → `no-init`（均 exit 1）。写后自检 `isRequirementPlanFilled` 未过 → **stderr 提示**、exit 不变 |
+| 51 | `lint adherence` | `schemaVersion,target,ok,main_write_ratio,subagent_per_req,sync_gap,violation_rate` | `target:"adherence"`；四个指标各为 `{value,definition}`（`value` 为 number 或 `null`，`definition` 非空且复述分子/分母 + 样本窗口） | 恒在（v1.6.1 / REQ-066 A66.3；7 键固定序）。**只读观测：恒 exit 0**；分母为 0 / 数据缺失 → `value:null`（绝不 NaN）；是 `feel_verify action=adherence` 的唯一数据源（不新增 DSH 工具） |
 
 **登记类别**：恒在键 / 条件出现键 / 文档形态变体三类，测试断言须与类别一致。
 
@@ -215,24 +215,24 @@ typeof doc.error === 'string'  → legacy
 19. **v1.5.10-stage-125：新增出口 #43 `dashboard`**——`dashboard --json` 为**快照**出口（非门禁），10 键固定序 `schemaVersion,generatedAt,generator,project,requirements,stages,releases,blockingReviews,health,metrics`；`generatedAt` 是成功出口中首个**非确定字段**（测试不断言值）；`health.items[]` 复用 `HealthCheckItem` 原生 `{section,status,message}`（与 `flow health --json` 的 `{name,status,detail}` **仅键名不同**，该别名映射不可导出）；`releases.gates` 只含未归档版本；`releases.archived[].counts` 逐字透传 `ArchiveCounts`（`stages,reviews,log` + v1.5.8 起可选 `requirements`），归档文件缺失 / 损坏 / 不可读时**降级为 `null`**（不注入零值、不报错）；既有 42 个出口字段键集/键序/类型**零改动**；详见 §5 #43。
 20. **v1.6.0-stage-132：补登 #44 `dev clean` + 新增出口 #45 `req body` / #46 `lint fill`**——#44 为既有出口（v1.5.23 / REQ-041 已实现、`test/commands/dev.test.ts` 已覆盖，本版仅补文档登记，键序零改动）；#45 `req body` 为**唯一正文业务小节写入口**（元信息小节受保护、每次写入追加 `## 变更记录`），6 键固定序 `schemaVersion,id,section,path,lines,created`，失败走 legacy 形态（`not_found` / `protected_section` / `empty_text` / `invalid_field`）；#46 `lint fill` 为**advisory 空壳清单**（4 组：空壳正文 / 缺需求级计划 / 空 overview / 空 plan），7 键固定序，**恒 exit 0**；`lint req`（#41）末位追加 `fill` 键（`{emptyBody,emptyPlan}`，与 `lint fill` 同源，advisory 不改 `ok` / 退出码）；既有 44 个出口字段键集/键序/类型**零改动**（#41 只做了末位追加）；详见 §5 #44/#45/#46 与 §17。
 
-21. **v1.7.0 / REQ-063：新增出口 #47 `req claim` / #48 `req advance` / #49 `req complete` + 需求审查相位**——三命令首次提供 `--json`（成功 5 键固定序 `schemaVersion,id,from,to,status`，`gates` 为末位条件键；失败形态见 §4.4），错误码表扩到 20 行（新增 5 个 `REQ_*` 门禁码，**无 `REQ_REVIEW_GATE`**）；需求状态值域新增 `review_pending`（`in_progress → review_pending → done`，可回退 `in_progress`），旧 `in_progress → done` 直连移除、只能 `--force` 跳链并留痕 `gate_overrides=['req_review']`；`req board` / `dashboard` 的 `groups`/`counts` 键序随 `REQ_STATUSES` 只增一档（旧 7 键零改动）。既有 46 个出口字段键集/键序/类型**零改动**。
+21. **v1.6.1 / REQ-063：新增出口 #47 `req claim` / #48 `req advance` / #49 `req complete` + 需求审查相位**——三命令首次提供 `--json`（成功 5 键固定序 `schemaVersion,id,from,to,status`，`gates` 为末位条件键；失败形态见 §4.4），错误码表扩到 20 行（新增 5 个 `REQ_*` 门禁码，**无 `REQ_REVIEW_GATE`**）；需求状态值域新增 `review_pending`（`in_progress → review_pending → done`，可回退 `in_progress`），旧 `in_progress → done` 直连移除、只能 `--force` 跳链并留痕 `gate_overrides=['req_review']`；`req board` / `dashboard` 的 `groups`/`counts` 键序随 `REQ_STATUSES` 只增一档（旧 7 键零改动）。既有 46 个出口字段键集/键序/类型**零改动**。
 
-22. **v1.7.0 / REQ-064：新增出口 #50 `req plan` + `req body --from` + `lint fill --fix-plan`**——`req plan`（新建路径 6 键固定序、`--force` 覆盖时末位追加 `replaced:true` 共 7 键，见 §5 #50 / §17.4）为需求级计划的唯一生成器（四节内容从需求正文派生，写实判据复用 `filled.ts` 的 `isRequirementPlanFilled`）；`req body`（#45）新增 **`--from <md>`** 形态变体（`--json` = `{schemaVersion,id,sections:{name,created,lines}[]}`，元信息小节跳过并在 stderr 报告，单次调用写多节）；`lint fill`（#46）新增 **`--fix-plan`**，`--json` 末位追加条件键 `created[]` / `skipped[{id,reason}]`，既有 7 键键序/类型零改动、仍 advisory exit 0；`req body --text` 多行保真（首尾空行 / `###` / 列表行 / CRLF 原样落盘，`lines` 与正文同源），适配器侧 `feel_req action=body text=` 改走 `os.tmpdir()` 临时文件 + `--file`（argv 不再出现 `--text`）。既有 49 个出口字段键集/键序/类型**零改动**。
+22. **v1.6.1 / REQ-064：新增出口 #50 `req plan` + `req body --from` + `lint fill --fix-plan`**——`req plan`（新建路径 6 键固定序、`--force` 覆盖时末位追加 `replaced:true` 共 7 键，见 §5 #50 / §17.4）为需求级计划的唯一生成器（四节内容从需求正文派生，写实判据复用 `filled.ts` 的 `isRequirementPlanFilled`）；`req body`（#45）新增 **`--from <md>`** 形态变体（`--json` = `{schemaVersion,id,sections:{name,created,lines}[]}`，元信息小节跳过并在 stderr 报告，单次调用写多节）；`lint fill`（#46）新增 **`--fix-plan`**，`--json` 末位追加条件键 `created[]` / `skipped[{id,reason}]`，既有 7 键键序/类型零改动、仍 advisory exit 0；`req body --text` 多行保真（首尾空行 / `###` / 列表行 / CRLF 原样落盘，`lines` 与正文同源），适配器侧 `feel_req action=body text=` 改走 `os.tmpdir()` 临时文件 + `--file`（argv 不再出现 `--text`）。既有 49 个出口字段键集/键序/类型**零改动**。
 
-23. **v1.7.0 / REQ-066：新增出口 #51 `lint adherence`**——遵守率四指标（`main_write_ratio` / `subagent_per_req` / `sync_gap` / `violation_rate`）的只读出口，7 键固定序，每项 `{value,definition}`；分母为 0 / 数据缺失 → `value:null`（不抛错、不 NaN）；**恒 exit 0**（低遵守率不是门禁）。该出口是 DSH `feel_verify action=adherence` 的**唯一数据源**，不新增 DSH 工具（工具数仍 15）、不新增顶层 CLI 命令；既有 50 个出口字段键集/键序/类型**零改动**。详见 §5 #51 与 §17.5。
+23. **v1.6.1 / REQ-066：新增出口 #51 `lint adherence`**——遵守率四指标（`main_write_ratio` / `subagent_per_req` / `sync_gap` / `violation_rate`）的只读出口，7 键固定序，每项 `{value,definition}`；分母为 0 / 数据缺失 → `value:null`（不抛错、不 NaN）；**恒 exit 0**（低遵守率不是门禁）。该出口是 DSH `feel_verify action=adherence` 的**唯一数据源**，不新增 DSH 工具（工具数仍 15）、不新增顶层 CLI 命令；既有 50 个出口字段键集/键序/类型**零改动**。详见 §5 #51 与 §17.5。
 
 ## §7 计数口径
 
 - **成功 JSON 出口 = 51 个**（flow 16 + req 11 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 2 + project 1 + archive 1 + model 2 + lint 5 + roadmap 1 + dashboard 1 + dev 1）。
   - flow 16 = `status,overview,current,metrics,phases,mode,ops list,archive,archive list,archive show,health,next,recover,checkpoint list,log,retry`。
-  - req 11 = `list,show,split,board,next,release-check,body,claim,advance,complete,plan`（v1.7.0 / REQ-063 新增 claim / advance / complete；REQ-064 新增 plan）。
-  - lint 5 = `i18n,kb,req,fill,adherence`（v1.7.0 / REQ-066 新增 adherence）。
+  - req 11 = `list,show,split,board,next,release-check,body,claim,advance,complete,plan`（v1.6.1 / REQ-063 新增 claim / advance / complete；REQ-064 新增 plan）。
+  - lint 5 = `i18n,kb,req,fill,adherence`（v1.6.1 / REQ-066 新增 adherence）。
   - v1.2.4 新增 7 个：#34 `plan stage list`、#35 `model list`、#36 `model get`、#37 `flow retry`、#38 `lint i18n`、#39 `lint kb`、#40 `roadmap show`；`config get --all`（#27 扩展）与 `archive --force`（#33 选项扩展）不计新增出口。
   - v1.5.6 新增 1 个：#41 `lint req`（lint 分项 2 → 3）。
   - v1.5.8 / REQ-030 新增 1 个：#42 `req release-check`（req 分项 5 → 6）。
   - v1.5.10 新增 1 个：#43 `dashboard`（dashboard 分项 0 → 1）。
   - v1.6.0 / stage-132 补登 1 个：#44 `dev clean`（v1.5.23 / REQ-041 已实现；dev 分项 0 → 1）；新增 2 个：#45 `req body`（req 分项 6 → 7）、#46 `lint fill`（lint 分项 3 → 4）。
-  - v1.7.0 新增 5 个：#47 `req claim` / #48 `req advance` / #49 `req complete`（req 分项 7 → 10）、#50 `req plan`（req 分项 10 → 11）、#51 `lint adherence`（lint 分项 4 → 5）。
+  - v1.6.1 新增 5 个：#47 `req claim` / #48 `req advance` / #49 `req complete`（req 分项 7 → 10）、#50 `req plan`（req 分项 10 → 11）、#51 `lint adherence`（lint 分项 4 → 5）。
 - `flow advance --json` 为**错误封装开关**：成功输出保持人类文本，不计入成功出口。
 - 注册的 `--json` 选项数为 **52**（51 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。`lint i18n` / `lint kb` / `lint req` / `lint fill` / `lint adherence` 为五个独立 Commander 子命令，各计 1。
 - 三处对齐：源码 `option('--json'` 去重计数 52 / 本文件 51+52 / `test/cli/json-contract.test.ts` 用例 #1~#41、#45~#51（**#42 在 `req.test.ts`、#43 在 `dashboard.test.ts`、#44 在 `dev.test.ts`**）；`test/commands/knowledge.test.ts` 计数用例 = 52/51。
@@ -500,7 +500,7 @@ typeof doc.error === 'string'  → legacy
 
 ### §17.1 #45 `req body`
 
-- **命令面（v1.7.0 / REQ-064 扩展）**：`req body <id> (--section <name> (--text <md> | --file <path>) [--append | --replace] | --from <md>) [--json]`；`--section` 与 `--from` 恰一，`--text` / `--file` 恰一（仅 `--section` 形态），`--append` / `--replace` 互斥（缺省替换整节）；`--from` 与 `--section` / `--text` / `--file` / `--append` / `--replace` **全部互斥**（`--from` 恒整节替换，显式拒绝而非静默忽略）。
+- **命令面（v1.6.1 / REQ-064 扩展）**：`req body <id> (--section <name> (--text <md> | --file <path>) [--append | --replace] | --from <md>) [--json]`；`--section` 与 `--from` 恰一，`--text` / `--file` 恰一（仅 `--section` 形态），`--append` / `--replace` 互斥（缺省替换整节）；`--from` 与 `--section` / `--text` / `--file` / `--append` / `--replace` **全部互斥**（`--from` 恒整节替换，显式拒绝而非静默忽略）。
 - **顶层键序（恒 6 键，单节形态）**：`schemaVersion,id,section,path,lines,created`；`path` 恒 POSIX 项目根相对路径（`.openfeel/requirements/REQ-NNN.md`），`lines` = 写入正文行数（number），`created` = 是否新建小节（boolean）。
 - **`--from` 形态变体（恒 3 键）**：`schemaVersion,id,sections`；`sections[]{name,created,lines}` 按 `##` 出现序；元信息小节（`状态` / `预估版本` / `父需求` / `关联阶段` / `变更记录`）与空正文小节**跳过**并在 **stderr** 报告（不进 stdout，保持单文档）；全部被跳过 → legacy `invalid_field` + exit 1 且**零写盘**；文件不可读 → 同上。每个实际写入的小节各追加 1 条 `## 变更记录`。
 - **写语义**：只改目标业务小节；**元信息小节受保护**（`状态` / `变更记录` 等 → legacy `protected_section`）；每次成功写入追加一条 `## 变更记录`。成功出口同时触发开发账本自动同步（REQ-059）。
@@ -511,17 +511,17 @@ typeof doc.error === 'string'  → legacy
 
 - **命令面**：`lint fill [--fix-plan] [--json]`（`src/commands/lint.ts`）。
 - **顶层键序（恒 7 键）**：`schemaVersion,target,ok,checked,empty,missingPlan,stageDocs`；`target` 恒 `"fill"`；`checked` = 扫描的需求正文文件数；`empty[]{id,emptySections[]}`；`missingPlan[]{id}`；`stageDocs{overviewEmpty[]{stageId},planEmpty[]{stageId}}`。
-- **`--fix-plan` 条件键（v1.7.0 / REQ-064 A64.3）**：仅该开关出现时**末位追加** `created[]`（本次新建计划的 ID）与 `skipped[]{id,reason}`（`reason:'exists'` = 已有计划，含空壳 → **字节不变**；其余为写入失败原因）；既有 7 键键序/类型零改动。
+- **`--fix-plan` 条件键（v1.6.1 / REQ-064 A64.3）**：仅该开关出现时**末位追加** `created[]`（本次新建计划的 ID）与 `skipped[]{id,reason}`（`reason:'exists'` = 已有计划，含空壳 → **字节不变**；其余为写入失败原因）；既有 7 键键序/类型零改动。
 - **`--fix-plan` 语义**：只为 `missingPlan`（计划文件不存在）生成四节骨架，内容全部由 `plan-file.ts` 从需求正文派生（**不编内容**）；任何已存在的计划不覆盖；重复执行 `created:[]`（幂等）。输出中的 `missingPlan` / `ok` 描述**动作之后**的状态（缺失计划清零），其余三组沿用首扫结果。
 - **`ok`**：四组清单均为空（`empty` / `missingPlan` / `stageDocs.overviewEmpty` / `stageDocs.planEmpty`）。
 - **退出码（与 i18n/kb/req 三个目标刻意不同）**：**恒 exit 0**——fill 是 advisory 清单，存量空壳不得让 `lint` 恒红；`--fix-plan` 亦不改变退出码。`ok:false` 只在 JSON 里供 CI 消费。人类输出全绿一行 `fill: OK`，否则按四组列出（每组最多 20 条 + 其余计数）；`--fix-plan` 额外一行 `plan-fix: 新建 N 个需求计划 / 跳过 M 个`。
 
 ### §17.3 门禁码与 `--force`（本版契约边界）
 
-- `STAGE_PLAN_GATE` / `DEV_SYNC_STALE` 已入 §3（v1.6.0 时共 15 行；v1.7.0 扩到 20 行，见下条）；`flow advance --json` 失败时输出对应 envelope，`detail` 携带门禁快照（`gate_overrides` / `gate_missing` 落 `flow.json.log`，不进 JSON 出口）。
-- `REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` 已随 v1.7.0 / REQ-063 进入 §3（共 20 行）：`req claim/advance/complete --json` 失败走 §4.4 envelope（`error.code` 为稳定码），`--force` 写 waiver / `plan.deviations+1` 并留 `flow.json.log` 审计。
+- `STAGE_PLAN_GATE` / `DEV_SYNC_STALE` 已入 §3（v1.6.0 时共 15 行；v1.6.1 扩到 20 行，见下条）；`flow advance --json` 失败时输出对应 envelope，`detail` 携带门禁快照（`gate_overrides` / `gate_missing` 落 `flow.json.log`，不进 JSON 出口）。
+- `REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` 已随 v1.6.1 / REQ-063 进入 §3（共 20 行）：`req claim/advance/complete --json` 失败走 §4.4 envelope（`error.code` 为稳定码），`--force` 写 waiver / `plan.deviations+1` 并留 `flow.json.log` 审计。
 
-### §17.4 #50 `req plan`（v1.7.0 / REQ-064 A64.1）
+### §17.4 #50 `req plan`（v1.6.1 / REQ-064 A64.1）
 
 - **命令面**：`req plan <id> [--force] [--json]`（`src/commands/req.ts`）；写前经统一 preflight 闸。
 - **顶层键序（新建路径恒 6 键）**：`schemaVersion,id,path,created,overwritten,lines`；`path` 恒 `.openfeel/plan/reqs/REQ-NNN.plan.md`（POSIX 相对路径，不随阶段/版本漂移）；`created` = 写前不存在；`overwritten` = 写前存在且 `--force`；`lines` = 落盘内容行数。
@@ -531,7 +531,7 @@ typeof doc.error === 'string'  → legacy
 - **拒绝形态**：已存在且未 `--force` → legacy `plan_exists`（含 `hint`；**零写盘、字节不变**）；需求不存在 → `not_found`；非法 ID → `invalid-argument`；未初始化 → `no-init`；均 exit 1，stdout 恰一个文档。
 - **`--force` 不改变门禁判据**：只把 `allowGateOverride` / waiver 传给核心层做留痕放行；`done` 门（review + verify）、blocking REV 门、阶段验证门与版本归档判据**一律不可 force 绕过**。
 
-### §17.5 #51 `lint adherence`（v1.7.0 / REQ-066 A66.3）
+### §17.5 #51 `lint adherence`（v1.6.1 / REQ-066 A66.3）
 
 - **命令面**：`lint adherence [--json]`（`src/commands/lint.ts`）；`--json` 成功文档 7 键固定序 `schemaVersion,target,ok,main_write_ratio,subagent_per_req,sync_gap,violation_rate`；`target` 恒 `"adherence"`、`ok` 恒 `true`。
 - **指标形态**：四键各为 `{value,definition}`（恰 2 键）；`value` 为 number 或 `null`（**样本不足 → null**，绝不 NaN / Infinity）；`definition` 为非空字符串，复述**分子/分母 + 样本窗口**。

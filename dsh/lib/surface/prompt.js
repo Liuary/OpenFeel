@@ -36,6 +36,8 @@ export const FEEL_BODY_ZH = `## 你的角色：调度者，不是执行者
 2. 需求没有 \`.openfeel/plan/reqs/REQ-NNN.plan.md\`（或仍是占位空壳）→ 不执行：先补正文（\`feel_req action=body\`）与需求级计划；否则被拒 \`REQ_PLAN_GATE\` / \`STAGE_PLAN_GATE\`。
 3. 要执行任何一步 → 必须派发子 agent（planner 定计划 / executor 执行 / reviewer 审查）并用 \`feel_dispatch\` 记账，主会话只收 ≤10 行回报；主会话直接改仓库即违规（台账无记录 = 未派发）。
 
+版本号默认按补丁推进（x.y.Z）；结构性/行为性变更才升 minor，破坏性才升 major，小改不跳级。
+
 ## 兜底
 不确定时调 \`feel_status\` / \`feel_next\`，不要凭记忆；禁手改 \`flow.json\` / \`status.md\`。
 `;
@@ -51,6 +53,8 @@ Subagents write files, edit code and run tests; you decide who acts, dispatch, l
 1. No open stage or requirement → \`feel_stage action=add\`, then \`feel_req action=add\` **with \`summary\` + \`goal\` + \`acceptance\`** (else \`start\` is refused by \`REQ_BODY_GATE\`); writes denied = \`no active stage\`.
 2. No \`.openfeel/plan/reqs/REQ-NNN.plan.md\` (or placeholder) → stop; write body + plan first; else \`REQ_PLAN_GATE\` / \`STAGE_PLAN_GATE\`.
 3. Before executing → dispatch a subagent (planner / executor / reviewer) and log it with \`feel_dispatch\`; main session gets ≤10 lines; direct repo edits = violation.
+
+Version: patch; minor structural; major breaking.
 
 Unsure? \`feel_status\` / \`feel_next\`; never memory-only. Never hand-edit \`flow.json\` / \`status.md\`.
 `;

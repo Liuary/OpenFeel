@@ -955,7 +955,7 @@ export function registerFlowCommand(program: Command): void {
       }
       const stageArg = normalizeStageId(stageId) ?? stageId;
       try {
-        // v1.7.0 / REQ-062 A62.2—A62.3：`--force` → 统一 GateOverride（新名；核心层归一，不允许无审计放行）
+        // v1.6.1 / REQ-062 A62.2—A62.3：`--force` → 统一 GateOverride（新名；核心层归一，不允许无审计放行）
         const gateOverride: GateOverride | undefined = options.force === true
           ? createGateOverride({ reason: options.reason, by: 'cli', to: options.to })
           : undefined;
@@ -1349,7 +1349,7 @@ export function registerFlowCommand(program: Command): void {
             ? options.reason
             : undefined;
           if (reworkReason !== undefined) reasonUsed = true;
-          // v1.6.0 / REQ-056 T5；v1.7.0 / REQ-062 A62.2：`--force` → 统一 GateOverride 留痕放行
+          // v1.6.0 / REQ-056 T5；v1.6.1 / REQ-062 A62.2：`--force` → 统一 GateOverride 留痕放行
           // （判定仍在核心层；reason 缺省 manual，经 --reason 带入审计）
           const stepOpts: { reviewTier?: ReviewTier; reworkReason?: string; gateOverride?: GateOverride } = {};
           if (options.force === true) {

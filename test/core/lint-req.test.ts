@@ -70,7 +70,7 @@ describe('lint req core：命令树构建', () => {
     const lintNode = TREE.find((n) => n.name === 'lint');
     expect(lintNode).toBeDefined();
     // ★ v1.6.0-stage-132 / T3：新增 `lint fill`（空壳清单，advisory）；注册序追加在末尾
-    // ★ v1.7.0 / REQ-066 A66.3：新增 `lint adherence`（遵守率四指标；注册序追加在 fill 之后）
+    // ★ v1.6.1 / REQ-066 A66.3：新增 `lint adherence`（遵守率四指标；注册序追加在 fill 之后）
     expect(lintNode!.children.map((n) => n.name)).toEqual(['i18n', 'kb', 'req', 'fill', 'adherence']);
     // REV-020：`archive <stage>` / `knowledge search <query>` 声明了位置参数
     expect(TREE.find((n) => n.name === 'archive')!.argCount).toBeGreaterThan(0);

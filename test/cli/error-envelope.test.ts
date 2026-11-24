@@ -138,7 +138,7 @@ describe('错误层（stage-95 op-002）', () => {
       ['STAGE_PLAN_GATE', 'refusal', 1],
       // v1.6.0 / REQ-059 T8：archiving → done 前开发账本仍陈旧（同步失败）
       ['DEV_SYNC_STALE', 'refusal', 1],
-      // v1.7.0 / REQ-063 A63.3：需求生命周期门禁（req claim/advance/complete --json 的失败码）
+      // v1.6.1 / REQ-063 A63.3：需求生命周期门禁（req claim/advance/complete --json 的失败码）
       ['REQ_BODY_GATE', 'refusal', 1],
       ['REQ_PLAN_GATE', 'refusal', 1],
       ['REQ_PLAN_DEVIATION', 'refusal', 1],
@@ -158,7 +158,7 @@ describe('错误层（stage-95 op-002）', () => {
     expect(isInternalCode('ARCHIVE_WRITE_FAILED')).toBe(true);
     expect(isInternalCode('INVALID_ARGUMENT')).toBe(false);
     expect(isInternalCode('DEV_SYNC_STALE')).toBe(false);
-    // v1.7.0 / REQ-063：五个需求门禁码均为 refusal/1（A63.2 两码 + 既有三码）
+    // v1.6.1 / REQ-063：五个需求门禁码均为 refusal/1（A63.2 两码 + 既有三码）
     for (const code of ['REQ_BODY_GATE', 'REQ_PLAN_GATE', 'REQ_PLAN_DEVIATION', 'REQ_REVIEW_REQUIRED', 'REQ_VERIFY_REQUIRED'] as const) {
       expect(getCliErrorSpec(code)).toEqual({ code, kind: 'refusal', exitCode: 1 });
       expect(isInternalCode(code)).toBe(false);

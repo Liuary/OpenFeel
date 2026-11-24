@@ -501,7 +501,7 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(d2.candidates).toHaveLength(2);
   });
 
-  // ── #47~#49（v1.7.0 / REQ-063 A63.3）：需求写命令成功出口 ──
+  // ── #47~#49（v1.6.1 / REQ-063 A63.3）：需求写命令成功出口 ──
 
   it('#47 req claim：5 键固定序（gates 为条件出现键；claim 不改状态 → from=to=status）', async () => {
     seedRequirements([reqRow('REQ-001', { status: 'scheduled' })]);
@@ -547,7 +547,7 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(d).toMatchObject({ id: 'REQ-001', from: 'in_progress', to: 'done', status: 'done' });
   });
 
-  // ── #50（v1.7.0 / REQ-064 A64.1）：需求级计划生成出口 ──
+  // ── #50（v1.6.1 / REQ-064 A64.1）：需求级计划生成出口 ──
 
   it('#50 req plan：六键固定序 + 固定路径；已存在 → legacy plan_exists（零写盘）', async () => {
     seedRequirements([reqRow('REQ-001')]);
@@ -575,7 +575,7 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     process.exitCode = 0;
   });
 
-  // ── #51（v1.7.0 / REQ-066 A66.3）：遵守率出口（feel_verify action=adherence 的数据源） ──
+  // ── #51（v1.6.1 / REQ-066 A66.3）：遵守率出口（feel_verify action=adherence 的数据源） ──
 
   it('#51 lint adherence：七键固定序 + 四指标各 {value, definition}；恒 exit 0', async () => {
     const d = await doc(['lint', 'adherence', '--json']);

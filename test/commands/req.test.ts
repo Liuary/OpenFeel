@@ -383,7 +383,7 @@ describe('req 命令组（stage-82）', () => {
     expect(fail.error).toBe('invalid-argument');
     expect(fail.field).toBe('status');
     expect(fail.value).toBe('foo');
-    // v1.7.0 / REQ-063 A63.1：allowed 取自 REQ_STATUSES（review_pending 已入值域）
+    // v1.6.1 / REQ-063 A63.1：allowed 取自 REQ_STATUSES（review_pending 已入值域）
     expect(fail.allowed).toEqual(['draft', 'scheduled', 'in_progress', 'review_pending', 'done', 'blocked', 'cancelled', 'rejected']);
     expect(errorMock).not.toHaveBeenCalled();
   });
@@ -946,7 +946,7 @@ describe('req 命令组（stage-82）', () => {
     // --to done 仍有阶段在 plan_pending → exit 1 专用 done 门文案（v1.5.7 解耦后仍拒绝 plan/scheme 相位）
     // （stage-93 BUG-002 判类改写：静态表放行 done 而完成门拒绝，改用专用键 req.err.doneGateTmpl；
     //   v1.5.7 / REQ-023 起文案改为「关联阶段仍在计划/方案相位」语义，exit 1 与零写盘不变）
-    // v1.7.0 / REQ-063 A63.1：done 门前置状态改为 review_pending（in_progress→done 直连已移除），
+    // v1.6.1 / REQ-063 A63.1：done 门前置状态改为 review_pending（in_progress→done 直连已移除），
     // 断言与语义逐字保留。
     seed('review_pending', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'plan_pending' }) });
     resetCapture();
@@ -1011,7 +1011,7 @@ describe('req 命令组（stage-82）', () => {
     mkdirSync(dirname(planAbs), { recursive: true });
     writeFileSync(planAbs, basePlan, 'utf-8');
 
-    /** 盖章 + done 门齐全的在办需求（plan 指纹 = basePlan；v1.7.0：done 门前置状态 = review_pending） */
+    /** 盖章 + done 门齐全的在办需求（plan 指纹 = basePlan；v1.6.1：done 门前置状态 = review_pending） */
     const seedStamped = (): void => {
       writeFlow((d) => {
         d.requirements = [req_('REQ-001', {
@@ -1081,7 +1081,7 @@ describe('req 命令组（stage-82）', () => {
     saveSpy.mockRestore();
   });
 
-  it('T-B11 写命令 --json 闭集（v1.7.0 / REQ-063）：claim/advance/complete 接受，其余写命令仍报未知选项', async () => {
+  it('T-B11 写命令 --json 闭集（v1.6.1 / REQ-063）：claim/advance/complete 接受，其余写命令仍报未知选项', async () => {
     writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
     // ① 新增三命令接受 --json（A63.3）：stdout 恰一个 JSON 文档
     resetCapture();
@@ -1235,7 +1235,7 @@ describe('req 命令组（stage-82）', () => {
       'help.req.claim', 'help.req.claim.argid', 'help.req.claim.owner',
       // v1.6.0 / stage-132 T4：正文门 --force 留痕放行
       'help.req.claim.force',
-      // v1.7.0 / REQ-063 A63.3：claim --json
+      // v1.6.1 / REQ-063 A63.3：claim --json
       'help.req.claim.json',
       'help.req.release', 'help.req.release.argid',
       'help.req.set', 'help.req.set.argid', 'help.req.set.status', 'help.req.set.title', 'help.req.set.targetVersion', 'help.req.set.priority', 'help.req.set.workflowMode',
@@ -1243,7 +1243,7 @@ describe('req 命令组（stage-82）', () => {
       'help.req.advance', 'help.req.advance.argid', 'help.req.advance.to',
       // v1.6.0 / stage-132 T6：计划偏差门 --force 留痕放行
       'help.req.advance.force',
-      // v1.7.0 / REQ-063 A63.3：advance --json
+      // v1.6.1 / REQ-063 A63.3：advance --json
       'help.req.advance.json',
       'help.req.board', 'help.req.board.targetVersion', 'help.req.board.json',
       'help.req.next', 'help.req.next.owner', 'help.req.next.json', 'help.req.next.limit',
@@ -1265,12 +1265,12 @@ describe('req 命令组（stage-82）', () => {
       'help.req.complete.independent', 'help.req.complete.self',
       // v1.6.0 / stage-132 T4 · T7：正文门 / 计划门 --force 留痕放行
       'help.req.complete.force',
-      // v1.7.0 / REQ-063 A63.3：complete --json
+      // v1.6.1 / REQ-063 A63.3：complete --json
       'help.req.complete.json',
       // v1.6.0 / stage-132 T2：req body（需求正文唯一写入口）
       'help.req.body', 'help.req.body.argid', 'help.req.body.section', 'help.req.body.text',
       'help.req.body.file', 'help.req.body.append', 'help.req.body.replace', 'help.req.body.json',
-      // v1.7.0 / REQ-064：req body --from（多节导入）与 req plan（需求级计划生成）
+      // v1.6.1 / REQ-064：req body --from（多节导入）与 req plan（需求级计划生成）
       'help.req.body.from',
       'help.req.plan', 'help.req.plan.argid', 'help.req.plan.force', 'help.req.plan.json',
     ];
@@ -1880,7 +1880,7 @@ describe('stage-87 op-002 接取视图与并行接取', () => {
       'scheduled（1）',
       '  - REQ-001 需求 REQ-001',
       'in_progress（0）',
-      // v1.7.0 / REQ-063 A63.1：值域新增 review_pending（旧 7 组一个不删，新档插在 in_progress 与 done 之间）
+      // v1.6.1 / REQ-063 A63.1：值域新增 review_pending（旧 7 组一个不删，新档插在 in_progress 与 done 之间）
       'review_pending（0）',
       'done（0）',
       'blocked（0）',
@@ -2213,7 +2213,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'in_progress']);
     expect(process.exitCode).toBe(0);
 
-    // v1.7.0 / REQ-063 A63.1：审查相位（in_progress → review_pending）不可跳过
+    // v1.6.1 / REQ-063 A63.1：审查相位（in_progress → review_pending）不可跳过
     resetCapture();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'review_pending']);
     expect(process.exitCode).toBe(0);
@@ -2249,7 +2249,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
   });
 
   it('T93.8：零关联非 general 需求可显式完成（v1.5.7 解耦；advance / set 两路径 + 审计 / 写盘在位）', async () => {
-    // v1.7.0 / REQ-063 A63.1：done 门前置状态 = review_pending（in_progress→done 直连已移除）
+    // v1.6.1 / REQ-063 A63.1：done 门前置状态 = review_pending（in_progress→done 直连已移除）
     // advance 路径：零关联 → 放行
     seedReq({ status: 'review_pending' });
     let raw = flowRaw();
@@ -2471,7 +2471,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       const statusChanges = readFlow().log
         .filter((e: { action: string }) => e.action === 'requirement_status')
         .map((e: { detail: { to: string } }) => e.detail.to);
-      // v1.7.0 / REQ-063 A63.1：收口链经过审查相位（review_pending）
+      // v1.6.1 / REQ-063 A63.1：收口链经过审查相位（review_pending）
       expect(statusChanges).toEqual(['scheduled', 'in_progress', 'review_pending', 'done']);
     });
 
@@ -2585,7 +2585,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     });
 
     it('done 门文案分流：未审 → 专用文案；未验 → 专用文案；齐全 → 成功', async () => {
-      // 未审（v1.7.0 / REQ-063 A63.1：done 门前置状态 = review_pending）
+      // 未审（v1.6.1 / REQ-063 A63.1：done 门前置状态 = review_pending）
       seedReq({ status: 'review_pending', review: undefined });
       let raw = flowRaw();
       resetCapture();
@@ -2622,9 +2622,9 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
   });
 
   // ═══════════════════════════════════════════════════════════════════
-  // v1.7.0 / REQ-063 A63.1—A63.3：审查相位 + req 三命令 --json + 两码
+  // v1.6.1 / REQ-063 A63.1—A63.3：审查相位 + req 三命令 --json + 两码
   // ═══════════════════════════════════════════════════════════════════
-  describe('v1.7.0 / REQ-063 审查相位与 req JSON 错误码', () => {
+  describe('v1.6.1 / REQ-063 审查相位与 req JSON 错误码', () => {
     it('A63.1 状态机：in_progress → review_pending → done 正向链 + 回退 in_progress', async () => {
       seedReq({ status: 'in_progress' });
       resetCapture();
@@ -2681,7 +2681,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       for (const k of ['by', 'reason', 'at'] as const) {
         expect(typeof last.detail.gate_override[k]).toBe('string');
       }
-      // A62.2 统一审计形状（v1.7.0 修复）：需求侧除嵌套外，同时写与 flow 侧一致的**平铺键**
+      // A62.2 统一审计形状（v1.6.1 修复）：需求侧除嵌套外，同时写与 flow 侧一致的**平铺键**
       expect(last.detail.gate_overrides).toEqual(['req_review']);
       expect(last.detail.from).toBe('in_progress');
       expect(last.detail.to).toBe('done');

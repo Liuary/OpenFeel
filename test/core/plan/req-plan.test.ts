@@ -1,5 +1,5 @@
 /**
- * plan-file 单元测试 — 需求级计划骨架（v1.7.0 / REQ-064 A64.1 / A64.3）
+ * plan-file 单元测试 — 需求级计划骨架（v1.6.1 / REQ-064 A64.1 / A64.3）
  *
  * 覆盖：
  * - 四节骨架齐全且 `isRequirementPlanFilled` 为真（内容从需求正文派生，不编判据）；
@@ -28,7 +28,7 @@ const FILLED_SUMMARY =
 const CRITERIA_1 = '- A64.1：`req plan` 生成四节骨架且路径恒为 `.openfeel/plan/reqs/REQ-NNN.plan.md`。';
 const CRITERIA_2 = '- A64.2：`req body --from` 一次导入多节，元信息小节不被覆盖。';
 
-describe('需求级计划骨架（v1.7.0 / REQ-064）', () => {
+describe('需求级计划骨架（v1.6.1 / REQ-064）', () => {
   let tmpDir: string;
 
   beforeEach(() => {

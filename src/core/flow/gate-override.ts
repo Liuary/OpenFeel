@@ -1,5 +1,5 @@
 /**
- * GateOverride — 留痕放行的统一审计 schema（v1.7.0 / REQ-062 A62.2—A62.4）。
+ * GateOverride — 留痕放行的统一审计 schema（v1.6.1 / REQ-062 A62.2—A62.4）。
  *
  * **唯一构造点**：`flow advance --force`、`flow stage reset --force` 与各门
  * `allowGateOverride` 的放行路径都经 {@link buildGateOverrideAudit} 产出同一形状的

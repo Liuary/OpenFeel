@@ -35,7 +35,7 @@ import {
   toWireNext,
 } from '../lib/adapters/next-action.js';
 import { assertRealGuardUntouched, installIsolatedGuardEnv, snapshotRealGuardState } from './guard-isolation.js';
-// v1.7.0 / REQ-065 A65.1：需求正文字段口径与 CLI 测试**共用同一份导出**
+// v1.6.1 / REQ-065 A65.1：需求正文字段口径与 CLI 测试**共用同一份导出**
 // （`test/fixtures/requirement-input.js`，纯 ESM、零依赖；不是注释声明，也不是各拼一份常量）。
 import { makeFilledBodyInput, makeFilledRequirement } from '../../test/fixtures/requirement-input.js';
 
@@ -1129,9 +1129,9 @@ async function main() {
     assert(text.includes('feel_dispatch'), 'zh 提示段缺派发台账记账动作');
   });
 
-  // ── v1.7.0 / REQ-066 A66.1—A66.3：派发闭环 + 派发视图 + 遵守率出口 ──
+  // ── v1.6.1 / REQ-066 A66.1—A66.3：派发闭环 + 派发视图 + 遵守率出口 ──
 
-  await check('A66.1 台账：closeDispatch 原地补写 closing 四键 / 幂等 / 未知 id（v1.7.0 / REQ-066）', () => {
+  await check('A66.1 台账：closeDispatch 原地补写 closing 四键 / 幂等 / 未知 id（v1.6.1 / REQ-066）', () => {
     const t0 = Date.parse('2026-11-25T00:00:00.000Z');
     const dir = mkdtempSync(join(tmpdir(), 'feel-dispatch-close-'));
     mkdirSync(join(dir, '.openfeel'), { recursive: true });
@@ -1185,7 +1185,7 @@ async function main() {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  await check('A66.2 dispatchSummary：open[] / closedRatio / missingRoles 依 closing（v1.7.0 / REQ-066）', () => {
+  await check('A66.2 dispatchSummary：open[] / closedRatio / missingRoles 依 closing（v1.6.1 / REQ-066）', () => {
     const t0 = Date.parse('2026-11-25T00:00:00.000Z');
     const dir = mkdtempSync(join(tmpdir(), 'feel-dispatch-summary-'));
     mkdirSync(join(dir, '.openfeel'), { recursive: true });
@@ -1237,7 +1237,7 @@ async function main() {
     rmSync(emptyDir, { recursive: true, force: true });
   });
 
-  await check('A66.1/A66.2 feel_dispatch finish + feel_status.dispatch 新形状（v1.7.0 / REQ-066）', async () => {
+  await check('A66.1/A66.2 feel_dispatch finish + feel_status.dispatch 新形状（v1.6.1 / REQ-066）', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'feel-dispatch-finish-tool-'));
     mkdirSync(join(dir, '.openfeel'), { recursive: true });
     writeFileSync(
@@ -1314,7 +1314,7 @@ async function main() {
     hasAdherence = false;
   }
 
-  await check('A66.3 feel_verify action=adherence：四键 + 每项 {value, definition}；空样本 null 不抛错（v1.7.0 / REQ-066）', async () => {
+  await check('A66.3 feel_verify action=adherence：四键 + 每项 {value, definition}；空样本 null 不抛错（v1.6.1 / REQ-066）', async () => {
     const verify = workspace.tools.get('feel_verify');
     assert(verify !== undefined, '缺少 feel_verify 工具');
     assert(
@@ -1603,7 +1603,7 @@ async function main() {
     assert(Array.isArray(data.requirements), 'requirements 应为数组');
   });
 
-  await check('feel_req action=board 返回 8 组固定顺序（v1.7.0 / REQ-063 新增 review_pending）', async () => {
+  await check('feel_req action=board 返回 8 组固定顺序（v1.6.1 / REQ-063 新增 review_pending）', async () => {
     const result = await workspace.tools.get('feel_req').execute({ action: 'board' }, realExec);
     const data = ok(result);
     // OpenFeel 契约：groups 是**对象**，键的声明顺序即 REQ_STATUSES（done 在 blocked 之前）。
@@ -1923,7 +1923,7 @@ async function main() {
     // v1.6.0-stage-132 / T13：正文门（REQ_BODY）要求 `## 摘要` 与 `## 目标与验收`
     // **都**写实；`add` 的 summary / goal / acceptance 在 CLI 侧先于状态流转落盘，
     // 这是「一步开单」不再被空壳正文拦下的唯一通道。
-    // v1.7.0 / REQ-065 A65.1：三字段改由共享夹具工厂提供（口径单点在 test/fixtures/requirement-input.js）。
+    // v1.6.1 / REQ-065 A65.1：三字段改由共享夹具工厂提供（口径单点在 test/fixtures/requirement-input.js）。
     const bodyInput = makeFilledBodyInput();
     const result = await workspace.tools.get('feel_req').execute(
       {
@@ -2054,7 +2054,7 @@ async function main() {
     assert(meta.last_sync === synced.lastSync, '.sync.json 与返回值应同源');
   });
 
-  await check('feel_req action=body：argv 映射与参数守卫（v1.6.0 / REQ-055；v1.7.0 A64.4 走临时文件）', async () => {
+  await check('feel_req action=body：argv 映射与参数守卫（v1.6.0 / REQ-055；v1.6.1 A64.4 走临时文件）', async () => {
     /** @type {string[][]} */
     const calls = [];
     /** @type {Array<{ path: string, content: string }>} */
@@ -2225,7 +2225,7 @@ async function main() {
     assert(markdown.includes('## 摘要'), '正文文件应保留 ## 摘要 小节');
   });
 
-  await check('A64.4 feel_req action=body：多行 / ### 子标题 / CRLF 经临时文件原样落盘（v1.7.0 / REQ-064）', async () => {
+  await check('A64.4 feel_req action=body：多行 / ### 子标题 / CRLF 经临时文件原样落盘（v1.6.1 / REQ-064）', async () => {
     // ① 适配器契约（不依赖已安装 CLI）：多行正文必须原样进临时文件，再以 --file 交给 CLI
     const multiLine = '\n第一行：多行正文保真\n\n### 子标题\n\n- 列表项 A\n1. 列表项 B\n\n---\n\n第三段（下一行以 CRLF 结尾）\r\n第四段\n';
     /** @type {string[][]} */

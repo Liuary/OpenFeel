@@ -1,5 +1,5 @@
 /**
- * 共享夹具工厂测试 — v1.7.0 / REQ-065 A65.1
+ * 共享夹具工厂测试 — v1.6.1 / REQ-065 A65.1
  *
  * 断言三件事（判据仍单点在 `src/core/plan/filled.ts`，本文件不复制任何阈值）：
  * 1. 工厂产物**直接**通过 `isRequirementBodyFilled` / `isRequirementPlanFilled` /

@@ -1,12 +1,13 @@
 /**
- * scripts/release.mjs 单测（stage-133 / REQ-061 A61.1—A61.4）。
+ * scripts/release.mjs 单测（stage-133 / REQ-061 A61.1—A61.4；stage-134 / REQ-068 A68.4）。
  *
- * 全部外部命令经注入的 runner 执行——**不调用真实 npm / git**，不会发布、不会提交。
+ * 全部外部命令经注入的 runner 执行——**不调用真实 npm / git**，不会发布、不会提交、不会 push。
  * 覆盖：版本不一致早停 / whoami 失败早停且不 publish / 默认零真实发布 /
  * --dry-run 双包 dry-run publish（不调 whoami）/ --dry-run 六步链（market/archive-commit/tag
  * = planned + 归档 paths + tag 名）/ --publish 失败不 publish /
  * --notes-only 草稿（REQ 标题 + REV 结论）与默认零写盘 / --write-notes 落盘且不覆盖 /
- * 归档提交白名单。
+ * 归档提交白名单 / A68.4：默认 publishMode=ci（push master 且版本变化由 CI 发布）、
+ * --push（archive-commit / tag 之后推送，--dry-run 只 planned）、--publish 兜底路径。
  */
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -93,11 +94,19 @@ type Step = {
 const stepOf = (result: { steps: Step[] }, id: string): Step | undefined =>
   result.steps.find((step) => step.id === id);
 
+type PushState = { status: string; cmd?: string; reason?: string; note?: string; tag?: string };
+
+const pushOf = (result: unknown): PushState | null =>
+  ((result as { push?: PushState | null }).push ?? null);
+
+const gitCalls = (calls: RunCall[], subcommand: string) =>
+  calls.filter((call) => call.cmd === 'git' && call.args[0] === subcommand);
+
 const publishCalls = (calls: RunCall[]) => calls.filter((call) => call.cmd === 'npm' && call.args[0] === 'publish');
 
 describe('scripts/release.mjs', () => {
   it('版本不一致 → exit 1 并列出差异，不进入后续步骤', () => {
-    const cwd = makeProject({ version: '1.6.0', dshVersion: '1.7.0' });
+    const cwd = makeProject({ version: '1.6.0', dshVersion: '1.6.1' });
     const { runner, calls } = makeRunner();
     const { result, output } = execute(cwd, ['--skip-build'], runner);
 
@@ -109,7 +118,7 @@ describe('scripts/release.mjs', () => {
     }
     expect(calls).toEqual([]);
     expect(output).toContain('1.6.0');
-    expect(output).toContain('1.7.0');
+    expect(output).toContain('1.6.1');
     expect(output).toContain('dsh/package.json');
   });
 
@@ -272,10 +281,10 @@ describe('scripts/release.mjs', () => {
     const cwd = makeProject();
     writeFixture(
       cwd,
-      '.openfeel/flow-archive/v1.7.0.json',
+      '.openfeel/flow-archive/v1.6.1.json',
       `${JSON.stringify(
         {
-          version: 'v1.7.0',
+          version: 'v1.6.1',
           stages: { 'v1.7.0-stage-133': { name: 'v1.7.0-stage-133', phase: 'done' } },
           requirements: [
             { id: 'REQ-061', title: '发布链路一条命令', priority: 'P0' },
@@ -303,10 +312,10 @@ describe('scripts/release.mjs', () => {
     );
     const changelogBefore = readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8');
     const { runner, calls } = makeRunner();
-    const { result, output } = execute(cwd, ['1.7.0', '--notes-only'], runner);
+    const { result, output } = execute(cwd, ['1.6.1', '--notes-only'], runner);
 
     expect(result.exitCode).toBe(0);
-    expect(result.draft).toContain('## [1.7.0]');
+    expect(result.draft).toContain('## [1.6.1]');
     expect(result.draft).toContain('**REQ-061** 发布链路一条命令');
     expect(result.draft).toContain('**REQ-062** 文档类写白名单');
     expect(result.draft).toContain('### 审查结论');
@@ -315,7 +324,7 @@ describe('scripts/release.mjs', () => {
     expect(output).toContain('发布链路一条命令');
 
     // A61.3：--notes-only 默认**零写盘**（草稿只进 stdout）——发布说明文件不落盘
-    const draftPath = join(cwd, 'docs/releases/1.7.0.md');
+    const draftPath = join(cwd, 'docs/releases/1.6.1.md');
     expect(existsSync(draftPath)).toBe(false);
     expect(result.draftPath).toBe(draftPath);
     expect(result.draftWritten).toBe(false);
@@ -336,11 +345,11 @@ describe('scripts/release.mjs', () => {
     const cwd = makeProject();
     const changelogBefore = readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8');
     const { runner, calls } = makeRunner();
-    const { result } = execute(cwd, ['1.7.0', '--notes-only', '--write-notes'], runner);
+    const { result } = execute(cwd, ['1.6.1', '--notes-only', '--write-notes'], runner);
 
     expect(result.exitCode).toBe(0);
     expect(result.draftWritten).toBe(true);
-    const draftPath = join(cwd, 'docs/releases/1.7.0.md');
+    const draftPath = join(cwd, 'docs/releases/1.6.1.md');
     expect(existsSync(draftPath)).toBe(true);
     expect(readFileSync(draftPath, 'utf8')).toBe(result.draft);
     expect(readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8')).toBe(changelogBefore);
@@ -349,26 +358,26 @@ describe('scripts/release.mjs', () => {
 
   it('A61.3 --write-notes 且目标已存在 → 不覆盖（字节不变，草稿仍打印）', () => {
     const cwd = makeProject();
-    const draftPath = join(cwd, 'docs/releases/1.7.0.md');
+    const draftPath = join(cwd, 'docs/releases/1.6.1.md');
     const handWritten = '# 人工写的发布说明\n';
     mkdirSync(join(cwd, 'docs/releases'), { recursive: true });
     writeFileSync(draftPath, handWritten, 'utf8');
     const { runner } = makeRunner();
-    const { result } = execute(cwd, ['1.7.0', '--notes-only', '--write-notes'], runner);
+    const { result } = execute(cwd, ['1.6.1', '--notes-only', '--write-notes'], runner);
 
     expect(result.exitCode).toBe(0);
     expect(result.draftWritten).toBe(false);
-    expect(result.draft).toContain('## [1.7.0]');
+    expect(result.draft).toContain('## [1.6.1]');
     expect(readFileSync(draftPath, 'utf8')).toBe(handWritten);
   });
 
   it('--notes-only 且 stage 摘要缺失 → 跳过「审查结论」小节，不报错', () => {
     const cwd = makeProject();
     const { runner } = makeRunner();
-    const { result } = execute(cwd, ['1.7.0', '--notes-only'], runner);
+    const { result } = execute(cwd, ['1.6.1', '--notes-only'], runner);
 
     expect(result.exitCode).toBe(0);
-    expect(result.draft).toContain('## [1.7.0]');
+    expect(result.draft).toContain('## [1.6.1]');
     expect(result.draft).not.toContain('### 审查结论');
   });
 
@@ -423,5 +432,134 @@ describe('scripts/release.mjs', () => {
       'docs/VERSIONS.md',
       'docs/market/index.json',
     ]);
+  });
+
+  it('A68.4 默认 publish 步骤 publishMode=ci（本地不发布：push master 且版本变化由 CI 自动发布）', () => {
+    const cwd = makeProject();
+    const { runner, calls } = makeRunner();
+    const { result, output } = execute(cwd, ['--skip-build'], runner);
+
+    expect(result.exitCode).toBe(0);
+    expect(stepOf(result, 'publish')?.status).toBe('skipped');
+    // A68.4：publish 步骤声明发布权已交给 CI（不再是 'skipped' 的本地语义）
+    expect(stepOf(result, 'publish')?.publishMode).toBe('ci');
+    // 既有断言口径（test :144）依赖的子串必须保留
+    expect(output).toContain('publish skipped');
+    expect(output).toContain('CI');
+    // 默认零真实 publish、零 push
+    expect(publishCalls(calls)).toHaveLength(0);
+    expect(calls.some((call) => call.cmd === 'git' && call.args[0] === 'push')).toBe(false);
+    expect(pushOf(result)?.status).toBe('skipped');
+  });
+
+  it('A68.4 默认（无 --push）→ push 步骤 skipped，零 git 推送', () => {
+    const cwd = makeProject();
+    const { runner, calls } = makeRunner();
+    const { result } = execute(cwd, ['--skip-build'], runner);
+
+    expect(pushOf(result)?.status).toBe('skipped');
+    expect(gitCalls(calls, 'push')).toHaveLength(0);
+    // push 不占六步 id（A61 冻结的 steps 数组不变）
+    expect(result.steps.map((step) => step.id)).toEqual([
+      'version',
+      'build',
+      'publish',
+      'market',
+      'archive-commit',
+      'tag',
+    ]);
+  });
+
+  it('A68.4 --dry-run --push → push 标 planned 并给出推送命令，不真推', () => {
+    const cwd = makeProject();
+    const { runner, calls } = makeRunner();
+    const { result, output } = execute(cwd, ['--skip-build', '--dry-run', '--push'], runner);
+
+    expect(result.exitCode).toBe(0);
+    const push = pushOf(result);
+    expect(push?.status).toBe('planned');
+    expect(push?.cmd).toBe('git push');
+    expect(output).toContain('→ push');
+    // 预演零 git 动作（push 也不执行）
+    expect(gitCalls(calls, 'push')).toHaveLength(0);
+    expect(calls.some((call) => call.cmd === 'git')).toBe(false);
+  });
+
+  it('A68.4 --push（非 dry-run）→ 在 archive-commit 之后执行一次 git push', () => {
+    const cwd = makeProject();
+    for (const relative of [
+      '.openfeel/log/archive-v1.6.0-stage-132.md',
+      '.openfeel/flow-archive/v1.6.0.json',
+      '.openfeel/checkpoints/ckpt-1.json',
+      'docs/releases/v1.6.0.md',
+      'docs/VERSIONS.md',
+      'docs/market/index.json',
+    ]) {
+      writeFixture(cwd, relative, '{}\n');
+    }
+    const { runner, calls } = makeRunner();
+    const { result } = execute(cwd, ['--skip-build', '--commit-archive', '--push'], runner);
+
+    expect(result.exitCode).toBe(0);
+    expect(stepOf(result, 'archive-commit')?.status).toBe('ok');
+    expect(pushOf(result)?.status).toBe('ok');
+
+    const pushes = gitCalls(calls, 'push');
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0].args).toEqual(['push']);
+    // 顺序：git add → git commit → git push（push 是 commit 之后的收尾动作）
+    const order = calls
+      .filter((call) => call.cmd === 'git')
+      .map((call) => call.args[0]);
+    expect(order).toEqual(['add', 'commit', 'push']);
+  });
+
+  it('A68.4 --push --tag → 推 commit 后再推 tag（git push origin v<版本>）', () => {
+    const cwd = makeProject();
+    const { runner, calls } = makeRunner();
+    const { result } = execute(cwd, ['--skip-build', '--tag', '--push'], runner);
+
+    expect(result.exitCode).toBe(0);
+    expect(stepOf(result, 'tag')?.status).toBe('ok');
+    expect(pushOf(result)?.status).toBe('ok');
+    expect(pushOf(result)?.cmd).toBe('git push && git push origin v1.6.0');
+
+    const order = calls
+      .filter((call) => call.cmd === 'git')
+      .map((call) => call.args.join(' '));
+    expect(order).toEqual(['tag v1.6.0', 'push', 'push origin v1.6.0']);
+  });
+
+  it('A68.4 --push 失败 → exit 1 并记录 push 失败原因', () => {
+    const cwd = makeProject();
+    const { runner, calls } = makeRunner((cmd, args) =>
+      cmd === 'git' && args[0] === 'push' ? { status: 1, stderr: 'rejected' } : { status: 0 },
+    );
+    const { result } = execute(cwd, ['--skip-build', '--push'], runner);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.ok).toBe(false);
+    expect(pushOf(result)?.status).toBe('failed');
+    expect(pushOf(result)?.reason).toContain('git push');
+    expect(gitCalls(calls, 'push')).toHaveLength(1);
+  });
+
+  it('A68.4 --publish 保留为人工兜底：whoami 通过后 publishMode=real 且双包真实发布', () => {
+    const cwd = makeProject();
+    const { runner, calls } = makeRunner();
+    const { result } = execute(cwd, ['--skip-build', '--publish'], runner);
+
+    expect(result.exitCode).toBe(0);
+    expect(stepOf(result, 'publish')?.status).toBe('ok');
+    expect(stepOf(result, 'publish')?.publishMode).toBe('real');
+
+    const publishes = publishCalls(calls);
+    expect(publishes).toHaveLength(2);
+    for (const call of publishes) {
+      expect(call.args).toEqual(['publish', '--access', 'public']);
+    }
+    expect(calls.filter((call) => call.cmd === 'npm' && call.args[0] === 'whoami')).toHaveLength(1);
+    // 兜底路径同样不 push（push 只认 --push）
+    expect(gitCalls(calls, 'push')).toHaveLength(0);
   });
 });

@@ -116,7 +116,7 @@ function codeMessage(
 }
 
 /**
- * 需求门码 → CLI 稳定错误码（**单点映射**；v1.7.0 / REQ-063 A63.3）。
+ * 需求门码 → CLI 稳定错误码（**单点映射**；v1.6.1 / REQ-063 A63.3）。
  *
  * 只登记「与具体门一一对应」的五个码（A63.2 两码 + 既有三码）；其余需求侧码
  * （`not_found` / `invalid_status` / `invalid_field` / `already_claimed` …）与门无关，
@@ -153,7 +153,7 @@ function failReqJson(code: CliErrorCode, message: string, detail?: unknown): voi
 }
 
 /**
- * 需求写命令统一失败出口（v1.7.0 / REQ-063 A63.3）：
+ * 需求写命令统一失败出口（v1.6.1 / REQ-063 A63.3）：
  * `--json` → 单文档 + 门码（`REQ_*`）；human → stderr 文案 + exit 1（既有语义零改动）。
  */
 function failReqWrite(
@@ -635,7 +635,7 @@ export function registerReqCommand(program: Command): void {
     .description('认领需求（占用校验；已被他人认领则拒绝）')
     .option('--owner <owner>', '认领人（缺省：.openfeel/.info.json user → git config user.name）')
     .option('--force', '正文门留痕放行（写 body_waiver + 审计 requirement_body_forced；仍应先补写正文）')
-    .option('--json', '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.7.0 / REQ-063）')
+    .option('--json', '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.6.1 / REQ-063）')
     .action((id: string, options: { owner?: string; force?: boolean; json?: boolean }, command: Command) => {
       const lang = getCliLang(process.cwd());
       const asJson = asJsonOf(options, command);
@@ -799,7 +799,7 @@ export function registerReqCommand(program: Command): void {
         // done 门专用文案（stage-93 BUG-002）：静态表放行 done 而仍被拒 ⇒ 唯一可能是完成门
         const doneGate = options.status === 'done'
           && (getAllowedNextStatuses(current as RequirementStatus) as readonly string[]).includes('done');
-        // v1.7.0 / REQ-063 A63.1：`in_progress → done` 直连被流转表拒绝 → 指向 review_pending
+        // v1.6.1 / REQ-063 A63.1：`in_progress → done` 直连被流转表拒绝 → 指向 review_pending
         const reviewPhaseBlocked = options.status === 'done' && current === 'in_progress' && r.code === 'invalid_status';
         failCode(lang, r.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
@@ -809,7 +809,7 @@ export function registerReqCommand(program: Command): void {
           // v1.6.0 / stage-132 T4 · T7：正文门 / 需求级计划门（`set` 无 --force，文案指向 advance --force）
           body_empty: bodyGateMessage(lang, data, id),
           plan_missing: planGateMessage(lang, id),
-          // v1.7.0 / REQ-063 A63.2：done 门两码（`set` 无 --json，沿用 human 文案）
+          // v1.6.1 / REQ-063 A63.2：done 门两码（`set` 无 --json，沿用 human 文案）
           review_required: t('req.err.reviewRequiredTmpl', lang, { id, current }),
           verification_required: t('req.err.verificationRequiredTmpl', lang, { id, current }),
           invalid_status: reviewPhaseBlocked
@@ -932,7 +932,7 @@ export function registerReqCommand(program: Command): void {
     .description('显式推进需求状态（合法目标由引擎流转表判定；done 须先经 review_pending，零关联可直接完成，关联阶段进入 exec_running 及之后相位即可完成）')
     .requiredOption('--to <status>', '目标状态（合法目标由引擎判定）')
     .option('--force', '门留痕放行（正文/计划门写 waiver、计划偏差 +1、in_progress→done 跳链记 req_review；均留审计，文件仍须补写）')
-    .option('--json', '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.7.0 / REQ-063）')
+    .option('--json', '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.6.1 / REQ-063）')
     .action((id: string, options: { to: string; force?: boolean; json?: boolean }, command: Command) => {
       const lang = getCliLang(process.cwd());
       const asJson = asJsonOf(options, command);
@@ -964,7 +964,7 @@ export function registerReqCommand(program: Command): void {
       let reviewSkipped = false;
       /** 实际被 `--force` 放行的门（JSON 成功文档的 `gates`；与 GateOverrideGate 同闭集） */
       const gates: string[] = [];
-      // v1.7.0 / REQ-063 A63.1：`in_progress → done` 的跳链留痕放行（唯一例外通道）——
+      // v1.6.1 / REQ-063 A63.1：`in_progress → done` 的跳链留痕放行（唯一例外通道）——
       // 引擎侧 `allowReviewSkip` 只放行**流转表**这一条拒绝，done 门（review+verify）照旧生效。
       if (!r.ok && r.code === 'invalid_status' && options.to === 'done'
         && before === 'in_progress' && options.force === true) {
@@ -1036,7 +1036,7 @@ export function registerReqCommand(program: Command): void {
         const doneGate = options.to === 'done'
           && before !== undefined
           && (getAllowedNextStatuses(before) as readonly string[]).includes('done');
-        // v1.7.0 / REQ-063 A63.1：`in_progress → done` 直连被流转表拒绝 → 指向 review_pending
+        // v1.6.1 / REQ-063 A63.1：`in_progress → done` 直连被流转表拒绝 → 指向 review_pending
         const reviewPhaseBlocked = options.to === 'done' && before === 'in_progress' && r.code === 'invalid_status';
         failReqWrite(lang, asJson, r.code, codeMessage(lang, r.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
@@ -1045,7 +1045,7 @@ export function registerReqCommand(program: Command): void {
           // v1.6.0 / stage-132 T4 · T7：正文门 / 需求级计划门（补写指引 + 可复制的命令）
           body_empty: bodyGateMessage(lang, data, id),
           plan_missing: planGateMessage(lang, id),
-          // v1.7.0 / REQ-063 A63.2：done 门两码（判据单源 requirementDoneBlocker）
+          // v1.6.1 / REQ-063 A63.2：done 门两码（判据单源 requirementDoneBlocker）
           review_required: t('req.err.reviewRequiredTmpl', lang, { id, current: before ?? '' }),
           verification_required: t('req.err.verificationRequiredTmpl', lang, { id, current: before ?? '' }),
           invalid_status: reviewPhaseBlocked
@@ -1176,7 +1176,7 @@ export function registerReqCommand(program: Command): void {
   // v1.5.23 / REQ-043（六期反馈 #1）：一次收口 = review + verify + advance(done)。
   // 复用既有判据单点（recordRequirementReview / recordRequirementVerification / advanceRequirement
   // → canCompleteRequirement）；任一步失败即返回，**不 save ⇒ flow.json 零变更**。
-  // v1.7.0 / REQ-063 A63.1：收口链改为 in_progress → review_pending → done（审查相位不再被跳过）。
+  // v1.6.1 / REQ-063 A63.1：收口链改为 in_progress → review_pending → done（审查相位不再被跳过）。
   req
     .command('complete <id>')
     .description('一次收口：记录审查+验证并推进 done（经 review_pending 相位；复用既有 done 门；任一失败零写盘）')
@@ -1188,7 +1188,7 @@ export function registerReqCommand(program: Command): void {
     .option('--independent', '独立审查（推荐）')
     .option('--self', '自我审查（非独立；归档摘要标注 self-review）')
     .option('--force', '门留痕放行（正文/计划门写 waiver + 审计；文件仍须补写）')
-    .option('--json', '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.7.0 / REQ-063）')
+    .option('--json', '以 JSON 输出 { schemaVersion, id, from, to, status, gates? }（v1.6.1 / REQ-063）')
     .action((id: string, options: {
       result: string; kind?: string; note: string; by?: string; evidence?: string;
       independent?: boolean; self?: boolean; force?: boolean; json?: boolean;
@@ -1216,7 +1216,7 @@ export function registerReqCommand(program: Command): void {
       const independent = options.independent === true;
       // v1.5.24 / REQ-051：收口请求可直接从 draft / scheduled 起——自动补状态链
       // （这正是一条命令收口的完整语义；blocked / 终态仍需人工先处理）。
-      // v1.7.0 / REQ-063 A63.1：`review_pending` 亦为合法起点（已挂审查窗口的需求可一次收口）。
+      // v1.6.1 / REQ-063 A63.1：`review_pending` 亦为合法起点（已挂审查窗口的需求可一次收口）。
       const fromStatus = getRequirement(data, id)?.status ?? '';
       let stateNow = fromStatus;
       if (!(['draft', 'scheduled', 'in_progress', 'review_pending'] as string[]).includes(stateNow)) {
@@ -1294,7 +1294,7 @@ export function registerReqCommand(program: Command): void {
         }), { id });
         return;
       }
-      // v1.7.0 / REQ-063 A63.1：先入审查相位（in_progress → review_pending），再由审查相位 → done。
+      // v1.6.1 / REQ-063 A63.1：先入审查相位（in_progress → review_pending），再由审查相位 → done。
       // 这一步不经 `--force`：一条命令收口的语义就是「走完整条链」，跳链只留给显式 advance --force。
       if (stateNow === 'in_progress') {
         const hop = advanceRequirement(data, id, 'review_pending', { projectPath });
@@ -1328,7 +1328,7 @@ export function registerReqCommand(program: Command): void {
           // v1.6.0 / stage-132 T4 · T7：正文门 / 计划门（先于 done 门）
           body_empty: bodyGateMessage(lang, data, id),
           plan_missing: planGateMessage(lang, id),
-          // v1.7.0 / REQ-063 A63.2：done 门两码
+          // v1.6.1 / REQ-063 A63.2：done 门两码
           review_required: t('req.err.reviewRequiredTmpl', lang, { id, current }),
           verification_required: t('req.err.verificationRequiredTmpl', lang, { id, current }),
           invalid_status: doneGateMessage(lang, data, id, current),
@@ -1561,7 +1561,7 @@ export function registerReqCommand(program: Command): void {
       const data = mgr.getData()!;
       // 只读保证：不 save / 不 appendLog / 零写盘
       const rows = listRequirements(data, { target_version: options.targetVersion });
-      // 8 组固定顺序 = 状态值域声明序（v1.7.0 / REQ-063：新增 review_pending，旧 7 组一个不删）
+      // 8 组固定顺序 = 状态值域声明序（v1.6.1 / REQ-063：新增 review_pending，旧 7 组一个不删）
       // 恒含空组（域外脏状态不渲染）
       const groups = {} as Record<RequirementStatus, RequirementData[]>;
       for (const s of REQ_STATUSES) {
@@ -1779,7 +1779,7 @@ export function registerReqCommand(program: Command): void {
       }
     });
 
-  // ── req plan <id> [--force] [--json] ──（v1.7.0 / REQ-064 A64.1）
+  // ── req plan <id> [--force] [--json] ──（v1.6.1 / REQ-064 A64.1）
   // 需求级计划从「照模板手写」变成一条命令生成：四节内容一律从需求正文派生（不编判据）。
   req
     .command('plan <id>')
@@ -1829,7 +1829,7 @@ export function registerReqCommand(program: Command): void {
             overwritten: result.overwritten,
             lines: result.lines,
           };
-          // v1.7.0 / REQ-065（REQ-064 A64.1 的 `replaced:true` 取证键）：
+          // v1.6.1 / REQ-065（REQ-064 A64.1 的 `replaced:true` 取证键）：
           // 只在**覆盖了已存在的计划**时末位追加条件键 `replaced:true`——
           // 新建路径的 6 键键集/键序与出口 #50 的冻结契约（`test/cli/json-contract.test.ts`）逐字不变，
           // 覆盖路径则同时给出 `overwritten`（语义等价）与 `replaced`（判据要求的键名）。
@@ -1886,7 +1886,7 @@ export function registerReqCommand(program: Command): void {
 
   // ── req body <id> --section <name> (--text <md> | --file <path>) [--append|--replace] [--json] ──
   // v1.6.0-stage-132 / T2：需求正文**唯一写入口**（元信息小节受保护；每次写入追加 `## 变更记录`）
-  // v1.7.0 / REQ-064 A64.2：新增 `--from <md>` —— 按 `##` 一次导入多节，元信息小节跳过并报告
+  // v1.6.1 / REQ-064 A64.2：新增 `--from <md>` —— 按 `##` 一次导入多节，元信息小节跳过并报告
   req
     .command('body <id>')
     .description('写入需求正文的业务小节（元信息小节受保护；每次写入追加变更记录）')

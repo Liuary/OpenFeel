@@ -29,10 +29,10 @@
  *   `.openfeel/` 之外另有 `PROTECTED_WORKSPACE_PATHS`（`dsh/cordis.patch.yml` 的门禁开关行）；
  * - `.openfeel/` 外的源码/文档要求存在 `exec_running` 阶段（或 general 需求例外）；
  *   **代码目录**（`CODE_DIRECTORIES`）内任何扩展名都不享受 doc/asset 豁免（D-126-06）；
- *   v1.7.0 / REQ-062 A62.1 起 `review_passed` / `test_passed` 只额外放行**文档类**
+ *   v1.6.1 / REQ-062 A62.1 起 `review_passed` / `test_passed` 只额外放行**文档类**
  *   目标（`isDocAssetWritePath`：`docs/**`、根级 `*.md`、`test/fixtures/**` 与
  *   `dsh/test/fixtures/**`），`src/**` 与测试代码仍按源码门禁；
- * - v1.7.0 / REQ-067 A67.1—A67.4（wrapper 静态分类）：`pwsh|powershell -File|-f <脚本>`、
+ * - v1.6.1 / REQ-067 A67.1—A67.4（wrapper 静态分类）：`pwsh|powershell -File|-f <脚本>`、
  *   `cmd /c|/k <脚本>`、`bash|sh <脚本>` 会**读脚本内容**（≤`MAX_SCRIPT_BYTES`）并按
  *   同一套 `classifyShellCommand` 递归分类（`WRAPPER_MAX_DEPTH` 触顶即不可判定）：
  *   内容命中 openfeel 写动词 → 1 类拒；内容可解析出写目标（受保护/相位不允许）→ 2 类拒；
@@ -42,7 +42,7 @@
  *   GBK 等双字节编码**不解码**（同一字节串解错会给出假安全）→ 一律 `undecidable`。
  *   `node <脚本>` 只解析路径、不读内容（读 JS 会把 `node test/guard.js` 这类含 openfeel
  *   字面量的测试脚本误杀）→ 恒为第 4 类并留审计；内联 `node -e` / `bash -c` 仍走原递归。
- * - 审计条目（v1.7.0 / R7）：`execution.agent.session.header` 提供 `origin` /
+ * - 审计条目（v1.6.1 / R7）：`execution.agent.session.header` 提供 `origin` /
  *   `delegationDepth` 时原样写入（缺失即省略，**不伪造**），`detail` 仅在包装器判定时出现；
  * - 判定顺序：受保护路径 → 未初始化/bootstrap → 内部路径早返回 → 研究闸 →
  *   无阶段/chore/doc-asset → 相位判定；
@@ -464,7 +464,7 @@ export function isExemptPath(absolute, cwd) {
 }
 
 /**
- * 审后相位可写「文档/夹具」的相位集（v1.7.0 / REQ-062 A62.1）。
+ * 审后相位可写「文档/夹具」的相位集（v1.6.1 / REQ-062 A62.1）。
  *
  * 语义：`review_passed` / `test_passed` 不再要求为改一句文档/测试夹具而 `--force` 回退
  * `exec_running`；**源码（`src/**` 及代码目录内任何文件）仍拒** —— 相位层只放开
@@ -476,7 +476,7 @@ export function isExemptPath(absolute, cwd) {
 export const DOC_WRITE_PHASES = Object.freeze(['review_passed', 'test_passed']);
 
 /**
- * 是否为**测试夹具**路径（v1.7.0 / REQ-062 A62.1）：只认工作区根级
+ * 是否为**测试夹具**路径（v1.6.1 / REQ-062 A62.1）：只认工作区根级
  * `test/fixtures/**` 与 `dsh/test/fixtures/**`。
  *
  * 刻意**不含** `test/core/**`、`test/commands/**` —— 夹具 ≠ 测试代码：
@@ -507,7 +507,7 @@ function isRootMarkdownFile(absolute, cwd) {
 }
 
 /**
- * **单一判据**：审后相位可写的「文档类」目标（v1.7.0 / REQ-062 A62.1）。
+ * **单一判据**：审后相位可写的「文档类」目标（v1.6.1 / REQ-062 A62.1）。
  *
  * 命中（任一）：
  * - 测试夹具（{@link isFixturePath}，代码目录内唯一例外）；
@@ -553,7 +553,7 @@ function truncateCommand(command, limit = 500) {
  * 每行必须带 `cwdSource`（验收 14）与 `decision`（allow|deny|warn）；shell 行
  * 额外带 `command`（截断 ≤500 字符，v1.5.14 / stage-129 OF-08.1），否则「门禁是否真的拦过」无法自证。
  *
- * v1.7.0 / REQ-067（R7）：
+ * v1.6.1 / REQ-067（R7）：
  * - `detail`：包装器（wrapper 脚本）判定的结构化证据，如
  *   `{wrapper:'pwsh -File', scriptPath:'<绝对路径>', class:'class1', reason:'wrapper-write'}`；
  * - `origin` / `delegationDepth`：来自 `execution.agent.session.header`，**有则写、无则省略**，
@@ -579,12 +579,12 @@ function recordGuardAudit(cwd, event) {
   // op-005 / P0-1：shell 行必须能区分「确认只读（none）」与「无法判定（undecidable）」，
   // 否则审计会把一次静默放行记成「没有写」。
   if (typeof event.kind === 'string' && event.kind !== '') entry.kind = event.kind;
-  // v1.7.0 / R7：包装器脚本证据（字段由分类结果给出，不在这里编造）。
+  // v1.6.1 / R7：包装器脚本证据（字段由分类结果给出，不在这里编造）。
   if (event.detail !== undefined && event.detail !== null && typeof event.detail === 'object') {
     const detail = /** @type {Record<string, unknown>} */ (event.detail);
     if (Object.keys(detail).length > 0) entry.detail = detail;
   }
-  // v1.7.0 / R7：会话来源与委派深度 —— 只有 header 真的给了才写（缺省省略）。
+  // v1.6.1 / R7：会话来源与委派深度 —— 只有 header 真的给了才写（缺省省略）。
   if (typeof event.origin === 'string' && event.origin !== '') entry.origin = event.origin;
   if (Number.isInteger(event.delegationDepth)) entry.delegationDepth = event.delegationDepth;
 
@@ -1157,7 +1157,7 @@ const PS_WRITE_SPECS = new Map([
 ]);
 
 /**
- * **cmd 语义**的写命令表（v1.7.0 fix 3；只用于 `.cmd` / `.bat` 的正文分类）。
+ * **cmd 语义**的写命令表（v1.6.1 fix 3；只用于 `.cmd` / `.bat` 的正文分类）。
  *
  * 与 PowerShell 表的差异是**刻意**的（cmd 的 `copy`/`move` 源不是被写对象）：
  * - `copy` / `move`：只有**目标**（最后一个位置参数）算写 —— 把源算进去会误杀
@@ -1370,7 +1370,7 @@ const INDIRECT_WRITE_PATTERNS = Object.freeze([
 const WRAPPER_MAX_DEPTH = 4;
 
 /**
- * v1.7.0 / REQ-067 A67：脚本文件读取上限（64KB）。
+ * v1.6.1 / REQ-067 A67：脚本文件读取上限（64KB）。
  * 超限不做部分读取 —— 半截内容分类会给出假的「只读」结论，一律 undecidable。
  */
 const MAX_SCRIPT_BYTES = 64 * 1024;
@@ -1378,7 +1378,7 @@ const MAX_SCRIPT_BYTES = 64 * 1024;
 /**
  * 可读内容分类的脚本载体扩展名 → 内容按哪种 shell 解析。
  *
- * v1.7.0 fix 3：`.cmd` / `.bat` 的内容是 **cmd** 语义（`copy`/`move` 只把目标算写，
+ * v1.6.1 fix 3：`.cmd` / `.bat` 的内容是 **cmd** 语义（`copy`/`move` 只把目标算写，
  * `del`/`ren` 全部算写，`>` 重定向算写），不再拿 PowerShell 语义硬套 ——
  * 否则 `move src\x.ts dist\` 会把源也算成写目标（误杀），而 `ren` 完全识别不出。
  */
@@ -1400,7 +1400,7 @@ const CMD_SCRIPT_FLAGS = new Set(['c', 'k']);
  * cmd 的**前置开关**（出现在 `/c` 之前，不改变「读文件执行」语义）：
  * `cmd /d /c x.cmd`、`cmd /q /d /c x.cmd`、`cmd /e:on /c x.cmd`。
  * 旧实现遇到第一个 `/` 开关就 `break`，于是 `cmd /d /c 脚本` 整条落到第 4 类
- * （warn 放行）—— 这是 v1.7.0 fix 1 要封的绕过面。
+ * （warn 放行）—— 这是 v1.6.1 fix 1 要封的绕过面。
  */
 const CMD_PRE_SWITCHES = new Set(['a', 'd', 'e', 'f', 'q', 's', 'u', 'v']);
 
@@ -1723,7 +1723,7 @@ function payloadIsUnresolvable(payload) {
 }
 
 /**
- * 位置参数形式的脚本载体判定（v1.7.0 fix 1）：已知脚本扩展名，或带路径分隔符。
+ * 位置参数形式的脚本载体判定（v1.6.1 fix 1）：已知脚本扩展名，或带路径分隔符。
  *
  * `pwsh build` / `pwsh foo` 这种「一个裸词」不猜是文件（可能只是开关值/参数），
  * 保持第 4 类；`pwsh ./x.ps1` / `pwsh scripts/x.ps1` 才算载体。
@@ -1738,7 +1738,7 @@ function looksLikeScriptPath(token) {
 }
 
 /**
- * 识别「读脚本文件执行」的包装器（v1.7.0 / REQ-067 A67.1—A67.3）。
+ * 识别「读脚本文件执行」的包装器（v1.6.1 / REQ-067 A67.1—A67.3）。
  *
  * 覆盖形态（都是**内容在文件里、命令文本只看得见路径**）：
  * - `pwsh|powershell -File|-f <脚本>`，以及 `-File:<脚本>`（同 token 冒号写法）；
@@ -1775,7 +1775,7 @@ function matchWrapperScriptTarget(statement) {
       return { wrapper: name === 'sh' ? 'sh' : 'bash', scriptPath: candidate, shell: 'bash' };
     }
 
-    // v1.7.0 fix 1：`source x.sh` / `. x.sh` —— 被 source 的脚本正文同样是执行面。
+    // v1.6.1 fix 1：`source x.sh` / `. x.sh` —— 被 source 的脚本正文同样是执行面。
     // 只认**命令位**（句首 / 管道后）：否则 `rg source x.sh` 的参数会被误当载体。
     if ((name === 'source' || name === '.')
       && (index === 0 || tokens[index - 1] === '|')) {
@@ -1794,7 +1794,7 @@ function matchWrapperScriptTarget(statement) {
       let positional = null;
       for (let cursor = 0; cursor < args.length; cursor += 1) {
         const token = args[cursor];
-        // 位置参数形式（v1.7.0 fix 1）：`pwsh ./x.ps1` / `powershell build.ps1`。
+        // 位置参数形式（v1.6.1 fix 1）：`pwsh ./x.ps1` / `powershell build.ps1`。
         // **不 break**：`pwsh -ExecutionPolicy Bypass -File x.ps1` 中间夹着开关值，
         // 提前 break 会漏掉后面的 `-File`（比旧实现更松）。只收「像脚本」的位置参数，
         // 开关值（`Bypass` / `Text`）不会被当成载体。
@@ -1839,7 +1839,7 @@ function matchWrapperScriptTarget(statement) {
           sawFlag = true;
           break;
         }
-        // v1.7.0 fix 1：`/d` `/q` `/e:on` 等前置开关不改变「读文件执行」语义，
+        // v1.6.1 fix 1：`/d` `/q` `/e:on` 等前置开关不改变「读文件执行」语义，
         // 继续往后找 `/c`；旧实现遇到它们就 break → `cmd /d /c 脚本` 落到第 4 类。
         if (CMD_PRE_SWITCHES.has(flag)) continue;
         break;
@@ -1910,7 +1910,7 @@ function sniffUtf16(buffer) {
 }
 
 /**
- * 脚本正文的「可执行语句视图」（v1.7.0 / R7，仅用于分类，不改写文件）。
+ * 脚本正文的「可执行语句视图」（v1.6.1 / R7，仅用于分类，不改写文件）。
  *
  * 脚本里的整行注释（`#` / shebang）、cmd 的 `rem` / `::` 不是命令；cmd 行首 `@`
  * （`@echo off`）也不是命令名。不清洗的话每条带注释的普通脚本都会被打成
@@ -1932,7 +1932,7 @@ function normalizeScriptStatements(content) {
 }
 
 /**
- * 解码脚本内容（v1.7.0 / REQ-067 A67.3 编码口径，零外部依赖）。
+ * 解码脚本内容（v1.6.1 / REQ-067 A67.3 编码口径，零外部依赖）。
  *
  * 只接受 **UTF-8**（含 BOM，严格校验）与 **UTF-16**（BOM 或 NUL 启发式）。
  * **GBK 等双字节编码刻意不解码**：同一串字节按 GBK 解很可能得到「看起来只读」的
@@ -1966,7 +1966,7 @@ function decodeScriptText(buffer) {
 }
 
 /**
- * `node <脚本>` 是否**必须**读内容分类（v1.7.0 fix 2）。
+ * `node <脚本>` 是否**必须**读内容分类（v1.6.1 fix 2）。
  *
  * 默认不读：`node test/guard.js` 这类测试脚本正文里本来就带 openfeel 命令字面量，
  * 一律读内容会误杀日常测试（A67.2「不误杀」）。
@@ -1985,7 +1985,7 @@ function nodeScriptNeedsInspection(scriptPath, baseDir) {
 }
 
 /**
- * 解析包装器背后的脚本文件并读取内容（v1.7.0 / REQ-067 A67）。
+ * 解析包装器背后的脚本文件并读取内容（v1.6.1 / REQ-067 A67）。
  *
  * 返回值三态（调用方据此判 1/2 类或第 4 类）：
  * - `null`：不是「读文件执行」形态（含内联 `-c` / `-e`、`cmd /c` 内联 payload）；
@@ -2205,7 +2205,7 @@ function parsePowerShellWrite(command, tokens, start) {
 }
 
 /**
- * 解析 **cmd 语义**写命令的目标（v1.7.0 fix 3；只用于 `.cmd` / `.bat` 正文）。
+ * 解析 **cmd 语义**写命令的目标（v1.6.1 fix 3；只用于 `.cmd` / `.bat` 正文）。
  *
  * `copy a b` / `move a b`：只有目标（最后一个位置参数）算写 —— 源是读；
  * `del` / `ren` / `rmdir` 等：全部位置参数都算写。
@@ -2855,7 +2855,7 @@ function classifyGitCommand(tokens, start, baseDir) {
  * `undecidable = true`（第 4 类），**不再**静默按「没有写」放行。
  *
  * @param {string} statement
- * @param {'bash'|'pwsh'|'cmd'} shell `cmd` 只用于 `.cmd` / `.bat` 正文（v1.7.0 fix 3）
+ * @param {'bash'|'pwsh'|'cmd'} shell `cmd` 只用于 `.cmd` / `.bat` 正文（v1.6.1 fix 3）
  * @param {string} baseDir
  * @returns {{ targets: string[], wholeTree?: string, wholeTreePhases?: string[], wholeTreeGitSubcommand?: string, wholeTreeRepoOverride?: boolean, wholeTreeGitConfig?: boolean, blockedGit?: string, undecidable: boolean, detail: string }}
  */
@@ -3001,7 +3001,7 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
     // （多出来的目标只会更严，不会更松）。
     const parsed = [];
     if (shell === 'cmd') {
-      // v1.7.0 fix 3：`.cmd` / `.bat` 正文按 **cmd 语义**判定，不并入 PowerShell/POSIX 表
+      // v1.6.1 fix 3：`.cmd` / `.bat` 正文按 **cmd 语义**判定，不并入 PowerShell/POSIX 表
       // （`move` 在 PS 表里是 `all`，会把只被读的源也算成写目标 → 误杀 `copy/move src …`）。
       parsed.push(parseCmdWrite(name, tokens, cursor));
     } else if (shell === 'pwsh') {
@@ -3059,7 +3059,7 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
  *   含写 API 才拒，纯只读诊断（`node -e "console.log(…)"`）放行且不审计（`readonly-interpreter`）；
  * - `bash|sh -c` / `powershell|pwsh -Command` → **递归解析内层命令**（同一判定器），
  *   内层可判定按内层判；内层为空/不可判定 → 第 4 类（`undecidable`）。
- * - v1.7.0 / REQ-067 A67：`pwsh -File` / `cmd /c` / `bash <脚本>` / `source <脚本>` /
+ * - v1.6.1 / REQ-067 A67：`pwsh -File` / `cmd /c` / `bash <脚本>` / `source <脚本>` /
  *   `pwsh <脚本>` → **读脚本内容递归分类**；`.cmd`/`.bat` 用 cmd 语义（fix 3）；
  *   `node <scripts/**>` 或名字含 release|publish|commit 的脚本也读内容，
  *   正文判不了按第 1 类拒绝（fix 2）；
@@ -3102,7 +3102,7 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
 
   for (const statement of statements) {
     // 第 1 类：内容不可见的形态 → 硬拒。
-    // v1.7.0 / R7 例外：`cmd /c <脚本文件>` 以前一律硬拒；现在能解析出脚本文件时改走
+    // v1.6.1 / R7 例外：`cmd /c <脚本文件>` 以前一律硬拒；现在能解析出脚本文件时改走
     // 「读内容分类」（否则普通 `cmd /c build.cmd` 会被一并误杀，A67.2）。解析不出
     // 脚本文件（内联 payload，如 `cmd /c "echo 1 > src/x.ts"`）仍保持硬拒。
     const scriptInvocation = depth < WRAPPER_MAX_DEPTH ? resolveWrapperScript(statement, baseDir) : null;
@@ -3161,7 +3161,7 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
       }
     }
 
-    // v1.7.0 / REQ-067 A67（R7）：`pwsh -File` / `cmd /c` / `bash <脚本>` 读文件执行 ——
+    // v1.6.1 / REQ-067 A67（R7）：`pwsh -File` / `cmd /c` / `bash <脚本>` 读文件执行 ——
     // 命令文本里只有路径，写操作在文件正文里，旧实现整条落到第 4 类（warn 放行）。
     // 这里静态读取脚本内容，交给**同一份** `classifyShellCommand` 递归分类：
     // 内容命中 openfeel 写动词/间接执行 → 1 类；内容解析出写目标 → 2 类（交给相位判定）；
@@ -3209,7 +3209,7 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
         };
         continue;
       }
-      // v1.7.0 fix 2：`node <scripts/**>` / 名字含 release|publish|commit 的脚本（highRisk）。
+      // v1.6.1 fix 2：`node <scripts/**>` / 名字含 release|publish|commit 的脚本（highRisk）。
       // 这类脚本的真实动作（npm publish / git commit）只在正文里；正文按 shell 语义拿不到
       // 确定结论时**不能**继续 warn 放行 —— 那等于发布通道敞开。按第 1 类拒绝。
       if (scriptInvocation.highRisk === true
@@ -3428,7 +3428,7 @@ function decideForTargets(context, request) {
       tool: name,
       cwdSource,
       paths: targets,
-      // v1.7.0 / R7：origin / delegationDepth 由调用方按 header 传入（无则空对象）。
+      // v1.6.1 / R7：origin / delegationDepth 由调用方按 header 传入（无则空对象）。
       ...(request.auditExtra ?? {}),
       ...event,
     });
@@ -3545,7 +3545,7 @@ function decideForTargets(context, request) {
   }
 
   if (active.some((stage) => stage.phase === 'exec_running')) return { decision: 'allow', reason: 'exec-running' };
-  // v1.7.0 / REQ-062 A62.1：审后相位（review_passed / test_passed）允许写文档与测试夹具，
+  // v1.6.1 / REQ-062 A62.1：审后相位（review_passed / test_passed）允许写文档与测试夹具，
   // **源码仍拒**。判据单点 = isDocAssetWritePath（夹具/根 md/docs/**），不在这里散落名单。
   const docWritePhase = active.some((stage) => DOC_WRITE_PHASES.includes(stage.phase));
   if (docWritePhase && targets.every((target) => isDocAssetWritePath(target, normalizedCwd))) {
@@ -3866,7 +3866,7 @@ export function createOpenFeelGuard(options = {}) {
     const normalizedCwd = resolvedCwd === null ? null : normalizeTarget(resolvedCwd, '.');
     const degraded = resolution.degraded;
     const shellCommand = isShell ? extractShellCommand(execution?.arguments).command : undefined;
-    // v1.7.0 / REQ-067（R7）：审计补 `origin` / `delegationDepth` —— **header 提供了才写**，
+    // v1.6.1 / REQ-067（R7）：审计补 `origin` / `delegationDepth` —— **header 提供了才写**，
     // 缺失即省略（伪造会让「谁写的」审计失真）。
     const sessionHeader = execution?.agent?.session?.header ?? {};
     const auditOrigin = {
@@ -3971,7 +3971,7 @@ export function createOpenFeelGuard(options = {}) {
       // 先分类：审计的 `kind` 要能区分 `no-write`（确认只读）与 `undecidable`
       // （无法判定，op-005 / P0-1）。
       const classification = classifyShellCommand({ command, baseDir, shell: name });
-      // v1.7.0 / REQ-067 A67.1—A67.3：包装器脚本证据。命中 1/2 类时审计 `kind` 用
+      // v1.6.1 / REQ-067 A67.1—A67.3：包装器脚本证据。命中 1/2 类时审计 `kind` 用
       // `class1`/`class2`（A67.1 的取证口径），其余仍用原分类 kind（none/undecidable/…）。
       const wrapperDetail = classification.wrapper ?? null;
       const auditKind = wrapperDetail !== null
@@ -4038,7 +4038,7 @@ export function createOpenFeelGuard(options = {}) {
         return undefined;
       };
 
-      // v1.7.0 / REQ-067 A67.1（class 1）：包装器脚本**正文**命中 openfeel 写动词 /
+      // v1.6.1 / REQ-067 A67.1（class 1）：包装器脚本**正文**命中 openfeel 写动词 /
       // 嵌套解释器 / 间接执行 → 拒绝。审计 `kind:'class1'` + `detail:{wrapper,scriptPath,…}`。
       if (wrapperDetail !== null && wrapperDetail.class === 'class1') {
         const target = `${wrapperDetail.wrapper} ${wrapperDetail.scriptPath}`;
@@ -4180,7 +4180,7 @@ export function createOpenFeelGuard(options = {}) {
       }
 
       const shellPaths = classification.targets;
-      // v1.7.0 / REQ-067 A67.1（class 2）：包装器脚本内容可解析出写目标时，拒绝原因统一
+      // v1.6.1 / REQ-067 A67.1（class 2）：包装器脚本内容可解析出写目标时，拒绝原因统一
       // 记为 `wrapper-write`（`detail` 已带 wrapper/scriptPath），但判定仍走同一套目标逻辑
       // （受保护路径 / 相位 / doc-asset），不另立一份表达式。
       const wrapperClass2 = wrapperDetail !== null && wrapperDetail.class === 'class2';

@@ -86,7 +86,7 @@ openfeel flow next                                               # 5. Iterate as
 - **Every mode enforces plan → exec → review**: `general` / `fast` / `full` all require "requirement plan → execute → review"; only the stage-level trimming of scheme/test differs, and `general` remains **requirement-level only** (its stage-level transition table stays empty).
 - `--force` is a **recorded override** (waiver + `flow.json.log` audit), never a bypass of the done gate (review + verify), blocking REVs or archive criteria; existing skeletons are listed by `openfeel lint fill`.
 
-### Review phase, plan generation and the release chain (v1.7.0)
+### Review phase, plan generation and the release chain (v1.6.1)
 
 - **Requirements gain a review gate**: `in_progress → review_pending → done` (the old direct `in_progress → done` is gone; `--force` is recorded); a missing review / verification returns `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` (stable codes from `req claim/advance/complete --json`).
 - **Plan and body in one command**: `openfeel req plan REQ-NNN` generates the requirement-level plan skeleton (refuses to overwrite unless `--force`); `openfeel req body REQ-NNN --from draft.md` imports many sections at once; `openfeel lint fill --fix-plan` fills only missing plans (advisory, always exit 0).

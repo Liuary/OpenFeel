@@ -43,7 +43,7 @@ export const CLI_ERROR_CODES = {
   STAGE_PLAN_GATE: { code: 'STAGE_PLAN_GATE', kind: 'refusal', exitCode: 1 },
   // v1.6.0 / REQ-059：archiving → done 前开发账本仍陈旧（同步失败；零写盘拒绝，--force 留痕放行）
   DEV_SYNC_STALE: { code: 'DEV_SYNC_STALE', kind: 'refusal', exitCode: 1 },
-  // v1.7.0 / REQ-063 A63.3：需求生命周期门禁（`req claim/advance/complete --json` 的失败码）。
+  // v1.6.1 / REQ-063 A63.3：需求生命周期门禁（`req claim/advance/complete --json` 的失败码）。
   // 码值与门一一对应，命令层单点映射（`RequirementErrorCode → CliErrorCode`），不就地拼第二份。
   REQ_BODY_GATE: { code: 'REQ_BODY_GATE', kind: 'refusal', exitCode: 1 },
   REQ_PLAN_GATE: { code: 'REQ_PLAN_GATE', kind: 'refusal', exitCode: 1 },

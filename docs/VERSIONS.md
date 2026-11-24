@@ -8,6 +8,7 @@
 ## 发布节奏（批次发布，v1.5.3 起）
 
 - **小功能与补丁合并到同一批次**：一个版本只做一组相关改动，完成后统一 push + CI publish；禁止「做完一个小功能就发一版」。
+- **发布由 CI 自动执行**：push 到 master、且 `package.json` 版本与 npm 已发版本不同时，CI 的 publish job 自动 `npm publish`（以 `.github/workflows/ci.yml` 为准）；**tag / release 不触发**，**不要手动 `npm publish`**；本地 `npm run release` 默认只做版本校验 + build，推送 commit 用 `--push`；紧急兜底才 `npm run release -- --publish` 并在提交信息 / 日志记录原因。
 - **批次开始时锁定范围**：REQ + 阶段任务即范围；中途新增项记入下一批次（紧急缺陷除外）。
 - **版本号**：批次默认 `patch`；含用户可见新能力/契约变更时 `minor`；发布前必须全门禁通过（测试 / dsh / tsc / i18n / kb / build ×2）。
 - **紧急例外**：安装/发布/安全类阻断可单独 patch，但需在 CHANGELOG 标注并评估同批次未完成项。
@@ -16,7 +17,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
-- **v1.7.0** — Release chain, write whitelist and measurable adherence: `npm run release` runs the whole six-step chain (version → build → publish → market → archive-commit → tag) with **zero real publish by default** (the only real-publish switch is `--publish`, guarded by `npm whoami`; `--dry-run`, `--skip-build`, `--with-market`, `--notes-only`, `--commit-archive`, `--tag`); `review_passed` / `test_passed` now allow doc/fixture writes (`docs/**`, root `*.md`, `test/fixtures/**`, `dsh/test/fixtures/**`) while source stays denied; requirements gain a `review_pending` state (`in_progress → review_pending → done`, old direct transition removed, `--force` recorded) with `req claim/advance/complete --json`; `req plan` generates the requirement-level plan in one command, `req body --from` imports many sections, `lint fill --fix-plan` fills only missing plans, and multi-line `--text` round-trips byte-for-byte; the dashboard adds four flow-debt buckets; the DSH adapter closes the dispatch loop (`feel_dispatch action=finish`, `open[]`/`closedRatio`) and exposes adherence metrics via `feel_verify action=adherence`; the write guard statically classifies wrapper scripts (`pwsh -File`, `cmd /c`, `bash <script>`) with undecidable/encoding-audited fallbacks. JSON contract moves to 51 success exits / 52 registered `--json` options, error-code table to 20 rows.
+- **v1.6.1** — Release chain, write whitelist and measurable adherence: `npm run release` runs the whole six-step chain (version → build → publish → market → archive-commit → tag) with **zero real publish by default** (the only real-publish switch is `--publish`, guarded by `npm whoami`; `--dry-run`, `--skip-build`, `--with-market`, `--notes-only`, `--commit-archive`, `--tag`); `review_passed` / `test_passed` now allow doc/fixture writes (`docs/**`, root `*.md`, `test/fixtures/**`, `dsh/test/fixtures/**`) while source stays denied; requirements gain a `review_pending` state (`in_progress → review_pending → done`, old direct transition removed, `--force` recorded) with `req claim/advance/complete --json`; `req plan` generates the requirement-level plan in one command, `req body --from` imports many sections, `lint fill --fix-plan` fills only missing plans, and multi-line `--text` round-trips byte-for-byte; the dashboard adds four flow-debt buckets; the DSH adapter closes the dispatch loop (`feel_dispatch action=finish`, `open[]`/`closedRatio`) and exposes adherence metrics via `feel_verify action=adherence`; the write guard statically classifies wrapper scripts (`pwsh -File`, `cmd /c`, `bash <script>`) with undecidable/encoding-audited fallbacks. JSON contract moves to 51 success exits / 52 registered `--json` options, error-code table to 20 rows.
 - **v1.6.0** — Trustworthy process: requirement bodies now have a single write entry point (`req body`, JSON exit #45) and a real-content gate (`REQ_BODY_GATE`) on `scheduled` / `in_progress` / `done` transitions (not on claim; `req claim --force` is a compatibility no-op); entering `exec_running` requires a filled stage plan **and** a filled `.openfeel/plan/reqs/REQ-NNN.plan.md` for every in-flight requirement (`STAGE_PLAN_GATE`, same rule for `flow stage reset`), with a `REQ_PLAN_DEVIATION` check before `done`. `general` requirements (and zero-stage `fast`/`full` ones) follow the same plan gate at the requirement level while the stage-level `general` table stays empty. The DSH adapter grows to 15 tools (`feel_dispatch` ledger, `feel_dev`), the prompt is rewritten to ≤1200 chars / ≤25 lines with a per-turn reminder (downgrade path documented), and JSON counts move to 46 success exits / 47 registered `--json` options.
 - **v1.5.22** — Documentation: the `openfeel-dsh` npm page now leads with OpenFeel itself (what it is, the two problems, stages/requirements, the two modes, where records live) and then states that this package is OpenFeel's adapter for DeepSeek Harness; adapter internals moved under an "Adapter details" section. Behavior is unchanged.
 - **v1.5.21** — Documentation: the README and the DSH adapter page (`openfeel-dsh` on npm) are rewritten in plain language for non-programmers — pain points first (losing context, jumping steps), then stages/requirements, the two modes, and where records live. Behavior is unchanged.
@@ -54,7 +55,7 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
 
-## v1.7.0 — 发布链路一条命令 + 可信增量（审查相位 / 需求计划 / 遵守率）
+## v1.6.1 — 发布链路一条命令 + 可信增量（审查相位 / 需求计划 / 遵守率）
 
 - **一条命令发版**：`npm run release` 串起 version → build → publish → market → archive-commit → tag；**默认零真实发布**，唯一真实发布开关是 `--publish`（先 `npm whoami`，失败早停并提示 `npm login`，不打印 token）；`--dry-run` 本地预演、`--notes-only` 只生成 CHANGELOG 草稿（**不覆盖 `CHANGELOG.md`**，人工确认后手工合并）、`--commit-archive` 只提交归档产物白名单、`--tag` 才打 tag。
 - **审后仍可改文档与夹具**：`review_passed` / `test_passed` 相位放行 `docs/**`、根级 `*.md`、`test/fixtures/**`、`dsh/test/fixtures/**`（审计 `doc-asset-phase`），`src/**` 与 `test/core/**` 仍拒；`--force` 统一为一份 `GateOverride` 审计（含 `from`/`to`）。
@@ -64,7 +65,7 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **派发闭环与遵守率**：`feel_dispatch action=finish` 按 `dispatchId` 原地补写 `closing{status,artifacts,durationMs,summary}` + `closedAt`（幂等）；`feel_status.dispatch` 增 `open[]` / `closedRatio`；`feel_verify action=adherence` 输出四指标（`main_write_ratio` / `subagent_per_req` / `sync_gap` / `violation_rate`，每项 `{value,definition}`，样本不足 `null`）。
 - **guard wrapper 静态分类**：`pwsh -File` / `cmd /c` / `bash <脚本>` 读脚本内容后按同一套分类递归判定；UTF-16LE+BOM 解码命中；GBK 不解码 → `undecidable`（warn，`strict` 仍拒）并写审计含 `wrapper` / `scriptPath`。
 - **JSON 契约**：51 个成功出口 / 52 个注册 `--json` 选项（新增 #47~#51）；错误码表 20 行。`release` 脚本的 `--json` **不计入** CLI 出口表。
-- **升级**：`npm i -g openfeel@latest`；`openfeel-dsh` 与本包 lockstep 到 1.7.0（`requiresCli >=1.7.0`）。
+- **升级**：`npm i -g openfeel@latest`；`openfeel-dsh` 与本包 lockstep 到 1.6.1（`requiresCli >=1.6.1`）。
 
 ## v1.6.0 — 流程可信：正文写实、执行前计划、主会话只调度
 

@@ -4777,3 +4777,7 @@ expect(preset).not.toBe(target); // 防假绿：变体替换必须真实生效
 ## [+] [REV-017] [blocking] A5 盖章路径零测试，真实仓 6 需求只会走 plan_unstamped 放行 (2026-11-24)
 
 归档自阶段 v1.6.0-stage-132
+
+## [+] [REV-001] [blocking] 计划审查 REJECT：6 blocking + 4 major（REV-P01..P10 已修订） (2026-11-24)
+
+归档自阶段 v1.7.0-stage-133

@@ -49,7 +49,7 @@ import { stageRequirementIds } from './req/stage-links.js';   // 阶段↔需求
 import { getSessionId } from './session.js';                  // 会话标识（stage-86 T4；core→core 零环）
 import { shouldAutoCommit } from './dev/sessions.js';         // 多会话登记 / 自动提交防污染（v1.5.8 / REQ-029）
 import { maybeSyncDevStatus } from './dev-status.js';         // 开发账本自动同步（v1.6.0 / REQ-059 T8；core→core 零环）
-import { normalizeGateOverride, buildGateOverrideAudit, type GateOverride, type GateOverrideGate } from './flow/gate-override.js';   // 留痕放行统一审计（v1.7.0 / REQ-062 A62.2—A62.4）
+import { normalizeGateOverride, buildGateOverrideAudit, type GateOverride, type GateOverrideGate } from './flow/gate-override.js';   // 留痕放行统一审计（v1.6.1 / REQ-062 A62.2—A62.4）
 // 留痕放行类型对外导出（命令层 `flow advance/reset` 直接消费；A62.4 要求类型可 import）
 export type { GateOverride, GateOverrideGate, GateOverrideAudit } from './flow/gate-override.js';
 export { buildGateOverrideAudit, createGateOverride, normalizeGateOverride } from './flow/gate-override.js';
@@ -1875,7 +1875,7 @@ export class FlowManager {
    * @param triggeredBy 触发者标识（如 'cli' / 'Feel'），默认 'flow-manager'
    * @param opts.reviewTier 本次调用的审查档位（**仅显式声明时写审计键** `review_tier`；缺省不写 ⟹ 既有条目逐字不变）
    * @param opts.reworkReason 审查通过后返工的整改原因（v1.3.3；仅写审计键 `rework_reason`，不参与状态机判定）
-   * @param opts.gateOverride 留痕放行的统一记录（v1.7.0 / REQ-062 A62.2；**仅**门被拦后显式传入；
+   * @param opts.gateOverride 留痕放行的统一记录（v1.6.1 / REQ-062 A62.2；**仅**门被拦后显式传入；
    *   缺省 = 拒绝。`gates` 会与本次实际触发的门取并集，`from`/`to` 由本方法按实际转换补全）
    * @param opts.allowGateOverride 兼容别名（v1.6.0 / REQ-056 旧调用点；内部归一为缺省 reason 的
    *   GateOverride。新代码请用 `gateOverride`。`--force` 的相位合法性跳过与此开关是两件事，此处不看 `--force` 本身）
@@ -1891,7 +1891,7 @@ export class FlowManager {
       return false;
     }
     const actualTrigger = triggeredBy ?? 'flow-manager';
-    // v1.7.0 / REQ-062 A62.2：统一入口 —— 新名 `gateOverride` 与旧别名 `allowGateOverride` 在此归一，
+    // v1.6.1 / REQ-062 A62.2：统一入口 —— 新名 `gateOverride` 与旧别名 `allowGateOverride` 在此归一，
     // 门判定只看这一个布尔（不再在多个 if 里各认一套开关）。
     const allowGateOverride = opts?.gateOverride !== undefined || opts?.allowGateOverride === true;
 
@@ -1937,7 +1937,7 @@ export class FlowManager {
     // 保存旧 phase 用于日志
     const fromPhase = stage.phase;
 
-    // 门留痕收集（v1.6.0；v1.7.0 / REQ-062 A62.2 起统一写入 GateOverride 审计键集）：
+    // 门留痕收集（v1.6.0；v1.6.1 / REQ-062 A62.2 起统一写入 GateOverride 审计键集）：
     // 仅在被拦后显式留痕放行时写入 `appendLog.detail`；正常通过路径零新增键（既有条目字节级不变）。
     const gateOverrides: GateOverrideGate[] = [];
 
@@ -2043,7 +2043,7 @@ export class FlowManager {
     const sessionId = getSessionId({ projectPath: this.projectPath });
     const resumed = this.computeResumed(this.data.log, key, fromPhase, sessionId);
 
-    // v1.7.0 / REQ-062 A62.2：审计键集唯一构造点（helper）。仅当本次确有门被留痕放行才写，
+    // v1.6.1 / REQ-062 A62.2：审计键集唯一构造点（helper）。仅当本次确有门被留痕放行才写，
     // 拒绝路径在上方抛错（零写盘零审计），放行但门正常通过时同样零新增键。
     const gateAudit = gateOverrides.length === 0
       ? null
@@ -2068,7 +2068,7 @@ export class FlowManager {
         ...(resumed === null ? {} : { resumed }),
         ...(opts?.reviewTier === undefined ? {} : { review_tier: opts.reviewTier }),
         ...(opts?.reworkReason === undefined ? {} : { rework_reason: opts.reworkReason }),
-        // v1.6.0 / REQ-056 T5 + REQ-059 T8；v1.7.0 / REQ-062 A62.2：门留痕放行统一由
+        // v1.6.0 / REQ-056 T5 + REQ-059 T8；v1.6.1 / REQ-062 A62.2：门留痕放行统一由
         // buildGateOverrideAudit 构造（含 from/to/by/reason/at；gate_missing 仅计划门有结构化缺项）。
         // 正常通过零新增键（既有条目字节级不变）。
         ...(gateAudit === null ? {} : gateAudit),
@@ -2376,7 +2376,7 @@ export class FlowManager {
    * @param stageName 阶段 ID（短名/全名）
    * @param to 目标 phase 字符串
    * @param options.dryRun 仅计算不修改内存（命令层不 save）
-   * @param options.gateOverride 留痕放行的统一记录（v1.7.0 / REQ-062 A62.2—A62.3；**仅** `flow stage reset --force`
+   * @param options.gateOverride 留痕放行的统一记录（v1.6.1 / REQ-062 A62.2—A62.3；**仅** `flow stage reset --force`
    *   显式传入；缺省 = 拒绝，闭合「复位绕过 exec 门」的后门。`from`/`to`/`gates` 由本方法按实际转换补全）
    * @param options.allowGateOverride 兼容别名（v1.6.0 / REQ-056 旧调用点；内部归一为缺省 reason 的
    *   GateOverride；新代码请用 `gateOverride`）
@@ -2420,7 +2420,7 @@ export class FlowManager {
     // 幂等：phase 与投影 status 均无变化 → no-op（dryRun 与真实路径一致）
     const changed = fromPhase !== targetPhase || stage.status !== projectedStatus;
 
-    // v1.7.0 / REQ-062 A62.2：与 advanceStagePhase 同一套归一（新名 + 兼容别名）。
+    // v1.6.1 / REQ-062 A62.2：与 advanceStagePhase 同一套归一（新名 + 兼容别名）。
     const allowGateOverride = options.gateOverride !== undefined || options.allowGateOverride === true;
     // v1.6.0 / REQ-056 T5：复位到 exec_running 必须与 exec 门同口径复检计划（否则复位就是绕过口）。
     // 位置：REV 阻塞检查之后、任何内存写入之前（拒绝路径零变更零审计）；幂等（from === to）自然不触发。
@@ -2456,7 +2456,7 @@ export class FlowManager {
     // T4：跨会话恢复标注（与 advanceStagePhase 同款；计算在 appendLog 之前）
     const resetSessionId = getSessionId({ projectPath: this.projectPath });
     const resetResumed = this.computeResumed(this.data.log, key, fromPhase, resetSessionId);
-    // v1.7.0 / REQ-062 A62.2—A62.3：`reset --to <后置相> --force` 与 advance 写同一审计键集
+    // v1.6.1 / REQ-062 A62.2—A62.3：`reset --to <后置相> --force` 与 advance 写同一审计键集
     // （含 from/to/by/reason/at）；无 override 条目时不写任何审计键（零伪造审计）。
     const resetGateAudit = gateOverrides.length === 0
       ? null

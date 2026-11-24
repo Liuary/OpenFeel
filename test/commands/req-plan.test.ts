@@ -1,5 +1,5 @@
 /**
- * `req plan` 命令测试（v1.7.0 / REQ-064 A64.1 / A64.5）
+ * `req plan` 命令测试（v1.6.1 / REQ-064 A64.1 / A64.5）
  *
  * 覆盖：生成四节骨架（JSON 六键固定序）/ 已存在默认拒绝（exit 1 + 文案含 --force + 字节不变）/
  *       `--force` 覆盖（overwritten:true）/ 需求不存在 / 非法 ID / 未初始化 / 空壳正文的写后自检提示。
@@ -27,7 +27,7 @@ import { Command, CommanderError } from 'commander';
 import { registerReqCommand } from '../../src/commands/req.js';
 import { initProject } from '../../src/core/init.js';
 import { isRequirementPlanFilled } from '../../src/core/plan/filled.js';
-// v1.7.0 / REQ-065 A65.1：需求正文 / 计划样本一律来自共享夹具工厂（与 dsh/test/verify.js 同一份导出）
+// v1.6.1 / REQ-065 A65.1：需求正文 / 计划样本一律来自共享夹具工厂（与 dsh/test/verify.js 同一份导出）
 import { makeFilledBodyInput, makeRequirementPlan } from '../fixtures/requirements.js';
 import { mkdirSync, mkdtempSync, rmSync, readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -64,7 +64,7 @@ function snapshotDir(dir: string): { rel: string; content: string }[] | null {
 const REAL_REQ_SNAPSHOT = snapshotDir(REAL_REQ_DIR);
 const REAL_PLAN_SNAPSHOT = snapshotDir(REAL_PLAN_DIR);
 
-describe('req plan（v1.7.0 / REQ-064）', () => {
+describe('req plan（v1.6.1 / REQ-064）', () => {
   let tmpDir: string;
   let program: Command;
   let logMock: ReturnType<typeof vi.fn>;
@@ -163,7 +163,7 @@ describe('req plan（v1.7.0 / REQ-064）', () => {
     expect(doc.path).toBe('.openfeel/plan/reqs/REQ-001.plan.md');
     expect(doc.created).toBe(true);
     expect(doc.overwritten).toBe(false);
-    // v1.7.0 / REQ-065（A64.1 的 `replaced:true` 判据）：新建路径**不出现**该条件键——
+    // v1.6.1 / REQ-065（A64.1 的 `replaced:true` 判据）：新建路径**不出现**该条件键——
     // 既有 6 键键集/键序（出口 #50 契约）逐字不变
     expect('replaced' in doc).toBe(false);
 
@@ -231,7 +231,7 @@ describe('req plan（v1.7.0 / REQ-064）', () => {
     expect(isRequirementPlanFilled(readFileSync(planPath(), 'utf-8'))).toBe(true);
   });
 
-  // ═══ 共享夹具工厂复用（v1.7.0 / REQ-065 A65.1） ═══
+  // ═══ 共享夹具工厂复用（v1.6.1 / REQ-065 A65.1） ═══
 
   it('A65.1 复用：已存在计划由共享工厂生成 → 默认拒绝且字节不变', async () => {
     await createFilledRequirement();

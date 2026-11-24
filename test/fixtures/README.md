@@ -1,6 +1,6 @@
 # test/fixtures — 共享夹具工厂
 
-> v1.7.0 / REQ-065 A65.1。**口径单点在 `requirement-input.js`**，任何字段措辞/结构变更只允许改那里。
+> v1.6.1 / REQ-065 A65.1。**口径单点在 `requirement-input.js`**，任何字段措辞/结构变更只允许改那里。
 
 ## 为什么是 `.js`
 

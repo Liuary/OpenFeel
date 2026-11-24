@@ -38,7 +38,7 @@ export type RequirementErrorCode =
   | 'plan_deviation'   // 计划偏差门（v1.6.0 / REQ-056 T6）：已盖章计划被执行改动且 `## 偏差与回写` 未写实
   | 'body_empty'       // 正文门（v1.6.0 / REQ-055 T4；REV-013）：状态流转到 scheduled/in_progress/done 时正文 `## 摘要` / `## 目标与验收` 未写实（**claim 不校验**）
   | 'plan_missing'     // 需求级计划门（v1.6.0 / REQ-058 T7）：general 或零关联阶段需求无写实计划（`in_progress` 前）
-  // v1.7.0 / REQ-063 A63.2：`review_pending → done` 的完成门**码化**（判据本体沿用 requirementDoneBlocker，一字不改）
+  // v1.6.1 / REQ-063 A63.2：`review_pending → done` 的完成门**码化**（判据本体沿用 requirementDoneBlocker，一字不改）
   | 'review_required'       // 缺通过的审查记录（blocker='review'）
   | 'verification_required'; // 缺通过的验证记录（blocker='verification'）
 
@@ -52,7 +52,7 @@ export type RequirementOpResult = { ok: true; changed: boolean } | { ok: false; 
  * `invalid_status`，新门（正文 / 计划）无返回通道。改为「码 | null」后仍是**单点映射**：
  * 命令层不做第二判据，只按码分流文案。
  *
- * v1.7.0 / REQ-063 A63.2：done 门失败**不再一律 `invalid_status`**——`requirementDoneBlocker`
+ * v1.6.1 / REQ-063 A63.2：done 门失败**不再一律 `invalid_status`**——`requirementDoneBlocker`
  * 返回 `'review'` / `'verification'` 时分别给 `'review_required'` / `'verification_required'`
  * （命令层再映射 `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED`）；返回 `'stage_phase'` 时
  * **仍** `invalid_status`（阶段相位 ≠ 未审验，不得冒充）。判据本体与判定顺序一字不改。
@@ -566,7 +566,7 @@ export interface RequirementWriteOptions {
   /** 计划偏差门留痕放行（**仅** `req advance --force` 显式传入；缺省 false = 拒绝） */
   allowPlanDeviation?: boolean;
   /**
-   * 审查相位跳链留痕放行（v1.7.0 / REQ-063 A63.1；**仅** `req advance --force` 显式传入）。
+   * 审查相位跳链留痕放行（v1.6.1 / REQ-063 A63.1；**仅** `req advance --force` 显式传入）。
    * 语义边界：只放行「`in_progress` 一步跳到 `done`，跳过 `review_pending`」这一条**流转表**
    * 拒绝；`review_pending → done` 的完成门（review + verification）**照旧生效**，证据不可协商。
    */
@@ -857,7 +857,7 @@ export function releaseRequirement(data: FlowData, id: string): RequirementOpRes
 /**
  * 显式流转表（裁定 3；终态不再流转）——状态流转单点。
  *
- * v1.7.0 / REQ-063 A63.1（需求审查相位）：`in_progress` **不再直连 `done`**，改为
+ * v1.6.1 / REQ-063 A63.1（需求审查相位）：`in_progress` **不再直连 `done`**，改为
  * `in_progress → review_pending → done`；`review_pending` 可回退 `in_progress`
  * （审不过 / 补改代码），也可 `blocked` / `cancelled` / `rejected`。
  * 旧的 `in_progress → done` 直连只能经 `req advance --force` 跳链（留痕
@@ -907,7 +907,7 @@ function applyStatusChange(
   if (to === req.status) { return 'invalid_status'; }            // 同值由调用方按幂等 no-op 处理
   // 域外 status（存量脏数据 / 人工篡改）→ 查表得 undefined，守卫后与「表外组合」同语义，不抛 TypeError（REV-81-016）
   const allowed = ALLOWED_TRANSITIONS[req.status];
-  // v1.7.0 / REQ-063 A63.1：`in_progress → done` 的**唯一**例外通道 = 显式跳链留痕放行
+  // v1.6.1 / REQ-063 A63.1：`in_progress → done` 的**唯一**例外通道 = 显式跳链留痕放行
   const reviewSkip = to === 'done' && req.status === 'in_progress' && opts?.allowReviewSkip === true;
   if (!allowed || (!allowed.includes(to) && !reviewSkip)) { return 'invalid_status'; }
   // ② 正文门（v1.6.0 / REQ-055 T4）：在 done 门之前——空壳正文先被点名，不冒充「未审/未验」
@@ -920,7 +920,7 @@ function applyStatusChange(
   if (to === 'done') {
     const blocker = requirementDoneBlocker(data, req);
     if (blocker !== null) {
-      // v1.7.0 / REQ-063 A63.2：只把 review / verification **码化**；stage_phase 保持 invalid_status
+      // v1.6.1 / REQ-063 A63.2：只把 review / verification **码化**；stage_phase 保持 invalid_status
       if (blocker === 'review') { return 'review_required'; }
       if (blocker === 'verification') { return 'verification_required'; }
       return 'invalid_status';
@@ -945,7 +945,7 @@ function applyStatusChange(
   req.updated_at = new Date().toISOString();                      // 状态维度刷新（单次赋值纪律，REV-81-013）
   if (reviewSkip) {
     // ⑥ 跳链留痕（A63.1 / A62.2 同形审计）：`gate_overrides=['req_review']` + by/reason/from/to/at。
-    // v1.7.0 修复（A62.2 统一审计形状）：除 `detail.gate_override` 嵌套外，同时写**平铺键**
+    // v1.6.1 修复（A62.2 统一审计形状）：除 `detail.gate_override` 嵌套外，同时写**平铺键**
     // （gate_overrides/by/reason/from/to/at），与 flow 侧 advance / reset 两个写入口逐字同形，
     // 使「两类入口」可用同一组断言核对（嵌套保留为兼容既有需求侧消费方，不删）。
     const audit = buildGateOverrideAudit(createGateOverride({

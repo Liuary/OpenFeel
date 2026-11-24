@@ -6,11 +6,29 @@
 /** 中文版 dev_core.md 模板 */
 const DEV_CORE_TEMPLATE_ZH = `# 动态规则
 > 使用 [+] / [-] 标记管理启用/禁用状态。只能标记禁用不能删除。
+
+## [+] 发布只走 CI 自动发布
+
+远端 **push 到 master、且 \`package.json\` 版本与 npm 已发版本不同** 时，CI 的 publish job 自动 \`npm publish\`（事实源：\`.github/workflows/ci.yml\`）。
+
+- **不要手动 \`npm publish\`**：本地 \`npm run release\` 默认只做版本一致性校验 + build（预检用 \`--dry-run\`）。
+- **tag / release 不触发发布** —— 以 CI 的 \`refs/heads/master\` 条件为准，不需要打 tag。
+- 推送 commit 用 \`npm run release -- --push\`（默认不 push；\`--dry-run --push\` 只标 planned）。
+- **紧急兜底**：只有 CI 失败时才用 \`npm run release -- --publish\`，并在提交信息 / 日志里写明原因。
 `;
 
 /** 英文版 dev_core.md 模板 */
 const DEV_CORE_TEMPLATE_EN = `# Dynamic Rules
 > Use [+] / [-] markers to manage enabled/disabled status. Only disable, do not delete.
+
+## [+] Publishing goes through CI only
+
+When a push to master carries a \`package.json\` version that differs from the published npm version, the CI publish job runs \`npm publish\` (source of truth: \`.github/workflows/ci.yml\`).
+
+- **Do not run \`npm publish\` manually**: local \`npm run release\` only validates versions + builds (use \`--dry-run\` to preview).
+- **Tags / releases do not trigger publishing** — CI keys off \`refs/heads/master\`; no tag is needed.
+- Push commits with \`npm run release -- --push\` (no push by default; \`--dry-run --push\` only marks it planned).
+- **Emergency fallback only**: \`npm run release -- --publish\`, and record the reason in the commit message / log.
 `;
 
 /** 中文版 current.md 模板（团队文件；v1.5.24 起 AUTO 块由 CLI 维护） */

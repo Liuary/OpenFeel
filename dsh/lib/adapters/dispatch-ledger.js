@@ -1,11 +1,11 @@
 /**
- * 派发台账（v1.6.0 / REQ-057；v1.7.0 / REQ-066 增闭环 closing）— DSH 适配器侧
+ * 派发台账（v1.6.0 / REQ-057；v1.6.1 / REQ-066 增闭环 closing）— DSH 适配器侧
  *
  * 文件：`<project>/.openfeel/dev/dispatch.jsonl`（UTF-8 / LF，一行一条 JSON）。
  * 行 schema（plan §5.4）：
  *   { dispatchId, ts, leadSessionId, origin, stage, phase,
  *     targetAgent, role, taskId, goal, files[], returnFormat, dispatchDepth }
- * 可选闭环字段（v1.7.0 / REQ-066 A66.1，由 `closeDispatch` 原地补写）：
+ * 可选闭环字段（v1.6.1 / REQ-066 A66.1，由 `closeDispatch` 原地补写）：
  *   closing: { status: 'done'|'failed', artifacts: string[], durationMs: number, summary: string }
  *   closedAt: ISO 时间（**行的顶层字段**——A66.1 要求 closing 恰 4 键，时间戳不进 closing）
  *
@@ -76,7 +76,7 @@ function asStringArray(value) {
 }
 
 /**
- * 归一化闭环段（v1.7.0 / REQ-066 A66.1）。
+ * 归一化闭环段（v1.6.1 / REQ-066 A66.1）。
  *
  * 输出**恰 4 键**且键序固定：`status` / `artifacts` / `durationMs` / `summary`
  * （`closedAt` 落行的顶层，见文件头注释——A66.1 不允许第 5 键混进 closing）。
@@ -269,7 +269,7 @@ function readRawLedgerLines(projectPath) {
 }
 
 /**
- * 关闭一条派发（v1.7.0 / REQ-066 A66.1）：按 `dispatchId` **原地补写** `closing` + 顶层 `closedAt`。
+ * 关闭一条派发（v1.6.1 / REQ-066 A66.1）：按 `dispatchId` **原地补写** `closing` + 顶层 `closedAt`。
  *
  * 契约：
  * - **行数 / 行序不变**，未命中的行字节不变（只对目标行 JSON.parse → 补键 → stringify）；
@@ -371,7 +371,7 @@ export const DISPATCH_STATUS_RECENT = 5;
 /**
  * 台账里一条记录的摘要（`feel_status.dispatch.records` 的元素）。
  *
- * v1.7.0 / REQ-066 A66.2：透出 `closing`（无闭环 → null）与顶层 `closedAt`，
+ * v1.6.1 / REQ-066 A66.2：透出 `closing`（无闭环 → null）与顶层 `closedAt`，
  * 让「这条派发到底完成没有」在状态快照里可直接读。
  *
  * @param {Record<string, any>} record 已归一化的台账行
@@ -393,7 +393,7 @@ function summarizeDispatch(record) {
 }
 
 /**
- * 派发汇总（`feel_status.dispatch` 的数据源；v1.7.0 / REQ-066 A66.2 增 `open[]` / `closedRatio`）。
+ * 派发汇总（`feel_status.dispatch` 的数据源；v1.6.1 / REQ-066 A66.2 增 `open[]` / `closedRatio`）。
  *
  * - `required`：恒 `true`——**提示级**（用户裁定 ②：只做台账 + 强提示，不做硬拦）；
  * - `total`：台账总行数；

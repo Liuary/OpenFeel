@@ -1258,7 +1258,7 @@ split(data, parentId, children):
 
 ---
 
-## v1.7.0 增量（现行契约；以上 v1.6.0 段保持冻结）
+## v1.6.1 增量（现行契约；以上 v1.6.0 段保持冻结）
 
 > 实现锚点：`src/core/req/types.ts`、`src/core/req/requirement-ops.ts`、`src/core/req/plan-file.ts`、`src/commands/req.ts`、`src/core/errors.ts`。
 

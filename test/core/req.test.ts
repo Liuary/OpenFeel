@@ -316,7 +316,7 @@ describe('需求原语 — T5.4a 状态流转', () => {
   const successCases: Array<[RequirementStatus, RequirementStatus]> = [
     ['draft', 'scheduled'],
     ['scheduled', 'in_progress'],
-    // v1.7.0 / REQ-063 A63.1：审查相位（in_progress → review_pending → done）+ 回退
+    // v1.6.1 / REQ-063 A63.1：审查相位（in_progress → review_pending → done）+ 回退
     ['in_progress', 'review_pending'],
     ['review_pending', 'done'],
     ['review_pending', 'in_progress'],
@@ -338,7 +338,7 @@ describe('需求原语 — T5.4a 状态流转', () => {
     });
   }
 
-  // v1.7.0 / REQ-063 A63.1：done 门的前置状态改为 `review_pending`（`in_progress → done` 直连已移除，
+  // v1.6.1 / REQ-063 A63.1：done 门的前置状态改为 `review_pending`（`in_progress → done` 直连已移除，
   // 判据本体 `requirementDoneBlocker` 一字未动——只换夹具状态，断言与语义零改动）
   it('done 门：review_pending + 全部关联阶段 done → advance done 成功', () => {
     const data = makeFlowData({
@@ -399,7 +399,7 @@ describe('需求原语 — T5.4a 状态流转', () => {
     ['draft', 'done'],
     ['scheduled', 'done'],
     ['scheduled', 'draft'],
-    // v1.7.0 / REQ-063 A63.1：旧直连 in_progress → done 已移除（走 review_pending 或 --force 跳链留痕）
+    // v1.6.1 / REQ-063 A63.1：旧直连 in_progress → done 已移除（走 review_pending 或 --force 跳链留痕）
     ['in_progress', 'done'],
     ['done', 'in_progress'],
   ];
@@ -812,10 +812,10 @@ describe('需求原语 — T5.7 承接回归（stage-82）', () => {
     }
   });
 
-  it('getAllowedNextStatuses：8 状态全表（含 blocked 两出口补全 + v1.7.0 review_pending）', () => {
+  it('getAllowedNextStatuses：8 状态全表（含 blocked 两出口补全 + v1.6.1 review_pending）', () => {
     expect(getAllowedNextStatuses('draft')).toEqual(['scheduled', 'blocked', 'cancelled', 'rejected']);
     expect(getAllowedNextStatuses('scheduled')).toEqual(['in_progress', 'blocked', 'cancelled', 'rejected']);
-    // v1.7.0 / REQ-063 A63.1：in_progress **不再直连 done**；review_pending 含 done 与回退 in_progress
+    // v1.6.1 / REQ-063 A63.1：in_progress **不再直连 done**；review_pending 含 done 与回退 in_progress
     expect(getAllowedNextStatuses('in_progress')).toEqual(['review_pending', 'blocked', 'cancelled', 'rejected']);
     expect(getAllowedNextStatuses('review_pending')).toEqual(['done', 'in_progress', 'blocked', 'cancelled', 'rejected']);
     expect(getAllowedNextStatuses('blocked')).toEqual(['scheduled', 'in_progress', 'cancelled', 'rejected']);
@@ -1608,7 +1608,7 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     expect(req.workflow_mode).toBe('general');
     expect(advanceRequirement(data, req.id, 'scheduled')).toEqual({ ok: true, changed: true });
     expect(advanceRequirement(data, req.id, 'in_progress')).toEqual({ ok: true, changed: true });
-    // v1.7.0 / REQ-063 A63.1：审查相位（in_progress → review_pending）不可跳过
+    // v1.6.1 / REQ-063 A63.1：审查相位（in_progress → review_pending）不可跳过
     expect(advanceRequirement(data, req.id, 'review_pending')).toEqual({ ok: true, changed: true });
     // v1.5.8 / REQ-027：done 门要求审查 + 验证均 pass
     expect(recordRequirementReview(data, req.id, { result: 'pass', by: 'reviewer', note: 'ok', independent: true }))
@@ -1677,7 +1677,7 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     const req = addRequirement(data, { title: 'g', workflow_mode: 'general' });
     advanceRequirement(data, req.id, 'scheduled');
     advanceRequirement(data, req.id, 'in_progress');
-    advanceRequirement(data, req.id, 'review_pending');   // v1.7.0 / REQ-063 A63.1：审查相位
+    advanceRequirement(data, req.id, 'review_pending');   // v1.6.1 / REQ-063 A63.1：审查相位
     // v1.5.8 / REQ-027：done 门前置（审查 + 验证）
     recordRequirementReview(data, req.id, { result: 'pass', by: 'reviewer', note: 'ok', independent: true });
     recordRequirementVerification(data, req.id, { result: 'pass', kind: 'test', by: 'tester', note: 'ok' });
@@ -1738,10 +1738,10 @@ describe('REQ-97-006 命令层过滤单点化', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// v1.7.0 / REQ-063 A63.1—A63.2：审查相位（review_pending）+ done 门码化
+// v1.6.1 / REQ-063 A63.1—A63.2：审查相位（review_pending）+ done 门码化
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('v1.7.0 / REQ-063 审查相位（需求层）', () => {
+describe('v1.6.1 / REQ-063 审查相位（需求层）', () => {
   /** 零关联 + 审验齐全的 review_pending 需求 */
   function pendingData(overrides: Partial<RequirementData> = {}): FlowData {
     const data = makeFlowData();
@@ -1821,7 +1821,7 @@ describe('v1.7.0 / REQ-063 审查相位（需求层）', () => {
 describe('REQ-027 完成必审验（需求层）', () => {
   /**
    * 零关联 + 缺记录的需求（负向基线）。
-   * v1.7.0 / REQ-063 A63.1：done 门现在挂在 `review_pending` 之后（`in_progress → done` 直连已移除），
+   * v1.6.1 / REQ-063 A63.1：done 门现在挂在 `review_pending` 之后（`in_progress → done` 直连已移除），
    * 夹具状态随之改为 review_pending；**三态语义（review / verification / null）一字未改**。
    */
   function bareData(overrides: Partial<RequirementData> = {}): FlowData {
@@ -1836,7 +1836,7 @@ describe('REQ-027 完成必审验（需求层）', () => {
       verification: { result: 'pass', kind: 'test', by: 't', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
     });
     expect(requirementDoneBlocker(noReview, noReview.requirements![0])).toBe('review');
-    // v1.7.0 / REQ-063 A63.2：done 门失败**码化**（判据仍单源 requirementDoneBlocker）
+    // v1.6.1 / REQ-063 A63.2：done 门失败**码化**（判据仍单源 requirementDoneBlocker）
     expect(advanceRequirement(noReview, 'REQ-001', 'done')).toEqual({ ok: false, code: 'review_required' });
     expect(noReview.requirements![0].status).toBe('review_pending');       // 零变更
     expect(noReview.log.length).toBe(0);                                    // 零审计
@@ -2164,7 +2164,7 @@ describe('REQ-056 T6 计划偏差门（需求层）', () => {
   function sha12(content: string): string {
     return createHash('sha256').update(content, 'utf-8').digest('hex').slice(0, 12);
   }
-  /** 已盖章（sha = 给定内容）+ done 门齐全的在办需求（v1.7.0：done 门前置状态 = review_pending） */
+  /** 已盖章（sha = 给定内容）+ done 门齐全的在办需求（v1.6.1：done 门前置状态 = review_pending） */
   function stampedData(planContent: string): FlowData {
     const data = makeFlowData();
     data.requirements = [makeReq('REQ-001', 'review_pending', {
@@ -2242,7 +2242,7 @@ describe('REQ-056 T6 计划偏差门（需求层）', () => {
     const data = stampedData(BASE_PLAN);
     delete data.requirements![0].review;
     writePlan(BASE_PLAN + '\n\n## 执行补充\n- 执行中改了计划。');   // 偏差同时存在
-    // v1.7.0 / REQ-063 A63.2：done 门失败码化（原 invalid_status → review_required），顺序约束不变
+    // v1.6.1 / REQ-063 A63.2：done 门失败码化（原 invalid_status → review_required），顺序约束不变
     expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
       .toEqual({ ok: false, code: 'review_required' });
     expect(data.requirements![0].status).toBe('review_pending');

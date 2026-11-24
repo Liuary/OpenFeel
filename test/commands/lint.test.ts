@@ -245,7 +245,7 @@ describe('lint 命令（stage-50 op-002 T17/R1）', () => {
     expect(process.exitCode).toBeUndefined();
   });
 
-  // ── v1.7.0 / REQ-064 A64.3：--fix-plan（只补缺失、不覆盖、不编内容、advisory exit 0） ──
+  // ── v1.6.1 / REQ-064 A64.3：--fix-plan（只补缺失、不覆盖、不编内容、advisory exit 0） ──
 
   /** 在临时项目内写需求正文文件 */
   function writeRequirementFile(id: string): void {
@@ -328,7 +328,7 @@ describe('lint 命令（stage-50 op-002 T17/R1）', () => {
     ]);
   });
 
-  // ── v1.7.0 / REQ-066 A66.3：lint adherence（遵守率四指标；只读观测，恒 exit 0） ──
+  // ── v1.6.1 / REQ-066 A66.3：lint adherence（遵守率四指标；只读观测，恒 exit 0） ──
 
   /** 写一行 JSONL 到项目内相对路径（自动建父目录） */
   function writeJsonl(relPath: string, rows: Array<Record<string, unknown>>): void {

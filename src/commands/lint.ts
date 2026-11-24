@@ -10,7 +10,7 @@
  *   解析，报出不存在的命令（A 类阻塞 / B 类 advisory；抑制标记两档）
  * - lint fill: 列出空壳需求正文 / 缺需求级计划 / 空阶段文档（v1.6.0-stage-132 T3）。
  *   **advisory：有问题也 exit 0**（存量空壳不能让 lint 恒红）；JSON 的 `ok` 仍可被 CI 消费
- * - lint adherence: 遵守率四指标（v1.7.0 / REQ-066 A66.3；**只读观测，不产生 deny / 不改退出码**）。
+ * - lint adherence: 遵守率四指标（v1.6.1 / REQ-066 A66.3；**只读观测，不产生 deny / 不改退出码**）。
  *   `--json` 出口是 `feel_verify action=adherence` 的数据源（不新增顶层命令）。
  */
 import { Command } from 'commander';
@@ -203,7 +203,7 @@ export function registerLintCommand(program: Command): void {
     });
 
   // lint fill — 空壳需求正文 / 缺需求级计划 / 空阶段文档（v1.6.0-stage-132 T3）
-  // v1.7.0 / REQ-064 A64.3：--fix-plan 只为「计划文件不存在」的需求生成骨架（不覆盖、不编内容）
+  // v1.6.1 / REQ-064 A64.3：--fix-plan 只为「计划文件不存在」的需求生成骨架（不覆盖、不编内容）
   lint
     .command('fill')
     .description('列出空壳需求正文 / 缺需求级计划 / 空阶段文档（advisory，不改退出码）')
@@ -246,7 +246,7 @@ export function registerLintCommand(program: Command): void {
       //   `ok:false` 仅在 JSON 里供 CI 消费。
     });
 
-  // lint adherence — 遵守率四指标（v1.7.0 / REQ-066 A66.3）
+  // lint adherence — 遵守率四指标（v1.6.1 / REQ-066 A66.3）
   // 出口决定：本命令是 `feel_verify action=adherence` 的**唯一数据源**（不新增顶层命令）；
   // 只读观测（用户裁定 ②：不做硬拦），**恒 exit 0**——低遵守率不是门禁。
   lint
@@ -494,7 +494,7 @@ function printFillGroup(title: string, items: readonly string[]): void {
 }
 
 /**
- * `lint fill --fix-plan` 的实现（v1.7.0 / REQ-064 A64.3）：**只补缺失、不覆盖、不编内容**。
+ * `lint fill --fix-plan` 的实现（v1.6.1 / REQ-064 A64.3）：**只补缺失、不覆盖、不编内容**。
  *
  * - 只为 `lintRequirementBodies` 报出的 `missingPlan`（计划文件不存在）生成骨架；
  * - **任何已存在的计划（含空壳）只进 `skipped[]`，字节不变**——空壳走 `req plan --force` 单独通道；
@@ -557,7 +557,7 @@ function printPlanFix(report: LintFillPlanFixReport): void {
 }
 
 /**
- * 采集遵守率输入（v1.7.0 / REQ-066 A66.3）：读文件只在这里做，计算交给纯函数。
+ * 采集遵守率输入（v1.6.1 / REQ-066 A66.3）：读文件只在这里做，计算交给纯函数。
  *
  * 全部 best-effort：任一数据源缺失 / 损坏 → 空样本（指标为 `null`，不是 0、不抛错）。
  * - 台账：`.openfeel/dev/dispatch.jsonl`（只取口径需要的字段；closing 只取 status）
@@ -589,7 +589,7 @@ function collectAdherenceReport(projectPath: string): AdherenceReport {
       event: asUnknownString(row.event),
       decision: asUnknownString(row.decision),
       tool: asUnknownString(row.tool),
-      // v1.7.0 起 guard audit 可携带 origin；缺失 → ''（computeAdherence 计为 unknown 并标注）
+      // v1.6.1 起 guard audit 可携带 origin；缺失 → ''（computeAdherence 计为 unknown 并标注）
       origin: asUnknownString(row.origin),
     }));
   const syncMeta = readSyncMeta(projectPath);

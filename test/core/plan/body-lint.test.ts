@@ -17,7 +17,7 @@ import {
   lintRequirementBodies,
   lintStageDocs,
 } from '../../../src/core/plan/body-lint.js';
-// v1.7.0 / REQ-065 A65.1：写实样本一律来自共享夹具工厂（与 dsh/test/verify.js 同一份导出）
+// v1.6.1 / REQ-065 A65.1：写实样本一律来自共享夹具工厂（与 dsh/test/verify.js 同一份导出）
 import {
   makeFilledRequirement,
   makeOverview,

@@ -1,5 +1,5 @@
 /**
- * 遵守率四指标纯函数（v1.7.0 / REQ-066 A66.3）
+ * 遵守率四指标纯函数（v1.6.1 / REQ-066 A66.3）
  *
  * 口径（与 `src/core/adherence.ts` 头部注释同源）：
  * - mainWriteRatio = origin=root 的**写决策** / 全部写决策（只读 shell 审计不计入）

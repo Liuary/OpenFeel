@@ -5,6 +5,14 @@
  * 把「版本一致性校验 → build → 双包 publish → market:index → 归档产物提交 → tag」串起来，
  * 但**默认不真发**：真实 `npm publish` 的唯一开关是 `--publish`，且必须先过 `npm whoami`。
  *
+ * 发布语义（与 CI 对齐；v1.6.1 / REQ-068 A68.4）：
+ *   - **默认只做 version 校验 + build**：`publish` / `market` / `archive-commit` / `tag` 全 `skipped`，
+ *     分别由 `--publish` / `--with-market` / `--commit-archive` / `--tag` 单点开启。
+ *   - **标准发布路径 = push 到 master**：`.github/workflows/ci.yml` 的 publish job 在
+ *     `push` 到 `master` 且 `package.json` 版本 ≠ npm 已发版本时自动 `npm publish`
+ *     （**tag / release 不触发**）。本地脚本只需 `--push` 推送 commit（打了 tag 时一并推 tag）。
+ *   - `--publish` 保留为**人工兜底**（CI 失败时重试），不是常规路径。
+ *
  * 安全语义（与 stage-133 / REQ-061 的 A61.1—A61.4 对齐）：
  *   - 无 `--publish` → 零真实 publish：给了 `--dry-run` 则根包与 dsh 子包各跑一次
  *     `npm publish --dry-run --access public`（`steps[].publishMode='dry-run'`）；
@@ -23,6 +31,9 @@
  *     `docs/releases/<version>.md`，且**已存在不覆盖**（人工确认后手工合并）。
  *   - `--commit-archive` 才做归档产物提交，只 `git add` 白名单（ARCHIVE_ARTIFACTS），
  *     **不 push、不打 tag**；`--tag` 才 `git tag v<version>`。
+ *   - `--push` 是**收尾动作**（不进六步链）：在 `archive-commit` / `tag` 之后执行 `git push`
+ *     （打了 tag 时再 `git push origin v<version>`）；`--dry-run` 下只标 `planned`，绝不真推。
+ *     默认（不给 `--push`）零 git 推送。
  *
  * 可测试性：所有外部命令都经可注入的 `runner(command, args, options)`；
  * `runRelease()` 额外接受 `readText` / `writeText` / `fileExists` / `now` / `log` 注入。
@@ -31,9 +42,10 @@
  *   node scripts/release.mjs --help
  *   npm run release -- --dry-run --skip-build          # 安全预演（六步链 planned）
  *   npm run release -- --publish                       # 真实发布（双包）
- *   npm run release -- 1.7.0 --notes-only              # 生成 CHANGELOG 草稿（只打印）
- *   npm run release -- 1.7.0 --notes-only --write-notes # 草稿落盘（已存在不覆盖）
+ *   npm run release -- 1.6.1 --notes-only              # 生成 CHANGELOG 草稿（只打印）
+ *   npm run release -- 1.6.1 --notes-only --write-notes # 草稿落盘（已存在不覆盖）
  *   npm run release -- --commit-archive --tag          # 归档产物提交 + 打 tag
+ *   npm run release -- --push                          # 推送 commit（CI 按版本差自动发布）
  */
 
 import { spawnSync } from 'node:child_process';
@@ -78,26 +90,33 @@ npm run release —— 发布链路一条命令
   node scripts/release.mjs [版本号] [选项]
 
 选项
-  --publish          真实发布两个包（openfeel + dsh/ 下的 openfeel-dsh）。
+  --publish          人工兜底：真实发布两个包（openfeel + dsh/ 下的 openfeel-dsh）。
                      唯一真实发布开关；先执行 npm whoami，失败即早停。
+                     常规路径不用它 —— push 到 master 后由 CI 的 publish job 自动发布。
   --dry-run          安全预演整条六步链：publish 走 npm publish --dry-run（不真发）、
                      market/archive-commit/tag 标 planned 并给出将执行的 cmd/paths/tag 名；
-                     不真提交、不打 tag；与 --publish 互斥。
+                     不真提交、不打 tag、不真 push；与 --publish 互斥。
   --skip-build       跳过 npm run build。
   --with-market      即使安全预演也执行 npm run market:index。
   --commit-archive   提交归档产物（只 git add 白名单；不 push）。
   --tag              打 tag v<版本>（不 push）。
+  --push             收尾推送：archive-commit / tag 之后执行 git push（打了 tag 时
+                     再 git push origin v<版本>）。--dry-run 下只标 planned，不真推。
+                     推到 master 且版本与 npm 不同 → CI 自动 npm publish（tag/release 不触发）。
   --notes-only       只生成 CHANGELOG 草稿并打印到 stdout；默认零写盘、不发布。
   --write-notes      与 --notes-only 同用：把草稿写入 docs/releases/<版本>.md
                      （文件已存在则不覆盖；--dry-run 下仍不写）。
-  --json             机器可读输出（steps[].id = version/build/publish/market/archive-commit/tag）。
+  --json             机器可读输出（steps[].id = version/build/publish/market/archive-commit/tag；
+                     push 是六步之外的收尾动作，单独在顶层 push 字段）。
   -h, --help         显示本帮助。
 
 行为
   1. 版本一致性：package.json.version === dsh/package.json.version，
      且 CHANGELOG.md 顶部有「## [<版本>]」段；不一致 exit 1 并列出差异。
   2. build：npm run build（--skip-build 可跳过）。
-  3. publish：只有 --publish 才真实发布；先 npm whoami，失败 exit 1 并提示 npm login
+  3. publish：默认 skipped（publishMode=ci）—— 本地不发布，push 到 master 且
+     package.json 版本 ≠ npm 已发版本时由 CI publish job 自动 npm publish（tag/release 不触发）。
+     只有 --publish 才真实发布（人工兜底）；先 npm whoami，失败 exit 1 并提示 npm login
      （不打印 token）。根包与 dsh 子包各一次 npm publish --access public。
      --dry-run 预演时同样双包各一次 npm publish --dry-run --access public（publishMode=dry-run），
      whoami 只在真实发布时检查。预演若命中「目标版本已发布」（npm 拒绝重发），
@@ -113,9 +132,12 @@ npm run release —— 发布链路一条命令
      --write-notes 才写 docs/releases/<版本>.md（已存在不覆盖）。
      stage 摘要缺失或无 REV 结论时跳过「### 审查结论」小节（不报错）。
      **不覆盖 CHANGELOG.md**（人工确认后手工合并）。
+  8. push：只有 --push 才推送（六步之外的收尾动作，不占 steps[].id）；
+     --dry-run 下标 planned；默认 skipped，零 git push。
 
 安全边界
   - 默认（不带 --publish）零真实 publish；不给 --dry-run 也不真发。
+  - 默认（不带 --push）零 git 推送；--dry-run + --push 也只标 planned。
   - 子进程输出不回显（whoami 尤其），避免 token 出现在日志里。
   - 归档提交发生在发版窗口，由人类在外部终端执行；本脚本不新增任何 guard 放行路径。
 `;
@@ -136,6 +158,7 @@ export function parseArgs(argv = []) {
     dryRun: false,
     commitArchive: false,
     tag: false,
+    push: false,
     notesOnly: false,
     writeNotes: false,
     withMarket: false,
@@ -154,6 +177,7 @@ export function parseArgs(argv = []) {
     else if (raw === '--dry-run') opts.dryRun = true;
     else if (raw === '--commit-archive') opts.commitArchive = true;
     else if (raw === '--tag') opts.tag = true;
+    else if (raw === '--push') opts.push = true;
     else if (raw === '--notes-only') opts.notesOnly = true;
     else if (raw === '--write-notes') opts.writeNotes = true;
     else if (raw === '--with-market') opts.withMarket = true;
@@ -543,6 +567,9 @@ export function runRelease(options = {}) {
     }
   };
 
+  // 六步之外的收尾动作（`--push`）状态；进 `result.push` 与 `--json` 顶层，不占 `steps[]`。
+  let pushState = null;
+
   const finish = (exitCode, extra = {}) => {
     const result = {
       ok: exitCode === 0,
@@ -550,6 +577,7 @@ export function runRelease(options = {}) {
       version: extra.version ?? null,
       mode: modeOf(opts),
       steps,
+      push: extra.push ?? pushState,
       messages,
       draft: extra.draft ?? null,
       draftPath: extra.draftPath ?? null,
@@ -562,6 +590,7 @@ export function runRelease(options = {}) {
         version: result.version,
         mode: result.mode,
         steps,
+        push: result.push,
         draft: result.draft,
         draftPath: result.draftPath,
         draftWritten: result.draftWritten,
@@ -640,10 +669,12 @@ export function runRelease(options = {}) {
       reason: '--notes-only 不发布',
     });
   } else if (!opts.publish && !opts.dryRun) {
+    // 默认不发布：标准路径是 push 到 master 后由 CI publish job 按版本差自动 npm publish。
     mark('publish', 'skipped', {
       cmd: 'npm publish --access public',
-      publishMode: 'skipped',
-      reason: 'publish skipped（未给 --publish：安全预演不真发）',
+      publishMode: 'ci',
+      reason:
+        'publish skipped（本地不发布：push 到 master 且 package.json 版本 ≠ npm 已发版本时，由 CI publish job 自动 npm publish；tag/release 不触发；应急兜底才用 --publish）',
     });
   } else {
     const publishMode = opts.publish ? 'real' : 'dry-run';
@@ -811,6 +842,45 @@ export function runRelease(options = {}) {
       return finish(1);
     }
     mark('tag', 'ok', { cmd: `git tag ${tagName}`, note: '不 push' });
+  }
+
+  // ── 6.5 push（六步链之外的收尾动作；不进 `steps[].id`）──────────────────
+  // 默认 skipped（零 git 推送）；`--dry-run` 下只标 planned；`--push` 才真推，
+  // 且**只在 archive-commit / tag 之后**执行。推到 master 且版本变化 → CI 自动发布。
+  const pushCmd = opts.tag ? `git push && git push origin ${tagName}` : 'git push';
+  if (opts.notesOnly) {
+    pushState = { status: 'skipped', reason: '--notes-only 不 push' };
+    emit(`– push  — ${pushState.reason}`);
+  } else if (!opts.push) {
+    pushState = {
+      status: 'skipped',
+      reason: '未给 --push（默认不 push；push 到 master 且版本 ≠ npm 已发版本时由 CI 自动 npm publish）',
+    };
+    emit(`– push  — ${pushState.reason}`);
+  } else if (opts.dryRun) {
+    pushState = { status: 'planned', cmd: pushCmd, note: '--dry-run 不真 push（cmd = 将执行的推送命令）' };
+    emit(`→ push  ${pushCmd}  — ${pushState.note}`);
+  } else {
+    const pushResult = runner('git', ['push'], { cwd });
+    if (pushResult.status !== 0) {
+      pushState = { status: 'failed', cmd: 'git push', reason: `git push 失败（exit ${pushResult.status}）` };
+      emit(`✗ push  git push  — ${pushState.reason}`);
+      return finish(1, { version });
+    }
+    if (opts.tag) {
+      const pushTagResult = runner('git', ['push', 'origin', tagName], { cwd });
+      if (pushTagResult.status !== 0) {
+        pushState = {
+          status: 'failed',
+          cmd: `git push origin ${tagName}`,
+          reason: `git push origin ${tagName} 失败（exit ${pushTagResult.status}）`,
+        };
+        emit(`✗ push  ${pushState.cmd}  — ${pushState.reason}`);
+        return finish(1, { version });
+      }
+    }
+    pushState = { status: 'ok', cmd: pushCmd, note: 'commit 已推送；CI publish job 按版本差自动发布' };
+    emit(`✓ push  ${pushCmd}`);
   }
 
   // ── 7. notes-only 草稿（默认零写盘；--write-notes 才落盘且不覆盖）────────

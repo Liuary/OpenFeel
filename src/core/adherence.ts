@@ -1,5 +1,5 @@
 /**
- * 遵守率指标（v1.7.0 / REQ-066 A66.3）— 纯函数，零 I/O。
+ * 遵守率指标（v1.6.1 / REQ-066 A66.3）— 纯函数，零 I/O。
  *
  * 目标：把「主会话只调度、不直接写仓库」从口头约定变成**可量化**的四项指标：
  *
@@ -10,7 +10,7 @@
  * | `syncGapMinutes` | 现在 − `.openfeel/dev/.sync.json` 的 `last_sync`（毫秒） | 60000（1 分钟） | 最近一次同步时刻 |
  * | `violationRate` | guard audit 中 `decision='deny'` 的条数 | 全部 guard 决策（allow / deny / warn） | `.openfeel/log/guard-audit.jsonl` 全量 |
  *
- * **「写决策」口径（A66.3 / v1.7.0 修复）**：guard audit 记录的是**门禁决策**而不是「一次写」——
+ * **「写决策」口径（A66.3 / v1.6.1 修复）**：guard audit 记录的是**门禁决策**而不是「一次写」——
  * 只读 shell 命令也会留审计（`kind:'none'` / `reason:'shell-no-write'`），把它们算进
  * `mainWriteRatio` 分母会把比率稀释成假的「主会话写得少」。因此先按行判定是否为写决策：
  *   ① `decision==='deny'`（被拒的写尝试）→ 写；
@@ -59,7 +59,7 @@ export interface GuardAuditRecordInput {
   kind?: string;
   /** 审计原因（`shell-no-write` / `shell-undecidable` / `phase` …）；旧审计行可按它兜底判只读。 */
   reason?: string;
-  /** v1.7.0 起可携带来源：`root` = 主会话，`subagent`/`delegated` = 子 Agent 派生。缺失计为 unknown。 */
+  /** v1.6.1 起可携带来源：`root` = 主会话，`subagent`/`delegated` = 子 Agent 派生。缺失计为 unknown。 */
   origin?: string;
 }
 

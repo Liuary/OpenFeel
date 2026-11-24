@@ -224,3 +224,27 @@ Feel 在会话中应**减少推送频率**。遵守以下规则：
 - 多次 commit 可以积累到本地，统一 push 一次
 
 > 反例：本次会话中 Vision 模型名反复修改，每次修改都单独 push，产生 7+ 次无效 CI 触发。正确做法：所有模型配置修改合为一个 commit，验证通过后一次推送。
+
+---
+
+## [+] 发布只走 CI 自动发布 (2026-11-25)
+
+远端 **push 到 master、且 `package.json` 版本与 npm 已发版本不同** 时，CI 的 publish job（`.github/workflows/ci.yml`）自动 `npm publish`（`openfeel` + `openfeel-dsh` 双包，按版本差幂等）。
+
+- **不要手动 `npm publish`**：本地 `npm run release` 默认只做版本一致性校验 + build（要预检用 `--dry-run`）。
+- **tag / release 不触发发布** —— 以 `ci.yml` 的 `if: github.ref == 'refs/heads/master'` 为准，**不需要打 tag**。
+- 推送 commit 用 `npm run release -- --push`（默认不 push；`--dry-run --push` 只标 planned、不真推）。
+- **紧急兜底**：只有 CI 失败时才用 `npm run release -- --publish`，并在**提交信息 / 会话日志里写明原因**。
+
+> 判据源：`.github/workflows/ci.yml`。改发布流程先改 CI，再改本规则与 `scripts/release.mjs`，避免两套说法。
+
+---
+
+## [+] 版本号分级：默认补丁 (2026-11-25)
+
+版本号**默认按补丁 `x.y.Z` 推进**；**只有结构性 / 行为性变更才升 minor**；**破坏性变更才升 major**；小改动不要升二级 / 一级。
+
+- 修 CI / 改文档 / 补测试 / 调 lint / 修 bug → 只 `Z+1`（例：`1.6.0` → `1.6.1`）。
+- 升 minor 要有**用户可见的新能力或契约变化**；升 major 要有**破坏性变更**。
+- 版本号单点 = `package.json.version`；`dsh/package.json` 与之 lockstep，`requiresCli` 由它派生（`test/core/release-metadata.test.ts` 已锁）。
+- 升版必须同批更新 `CHANGELOG.md` 顶部 `## [<版本>]` 段（`npm run release` 的版本校验会比对三处）。

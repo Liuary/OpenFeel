@@ -377,7 +377,7 @@ describe('req body（v1.6.0-stage-132 / T2）', () => {
     expect(isRequirementBodyFilled(md)).toBe(false);
   });
 
-  // ═══ 12. --from：一次导入多节（v1.7.0 / REQ-064 A64.2 / A64.5） ═══
+  // ═══ 12. --from：一次导入多节（v1.6.1 / REQ-064 A64.2 / A64.5） ═══
 
   /** 在项目内写一个草稿 Markdown（相对路径按项目根解析） */
   function writeDraft(name: string, content: string): string {
@@ -518,7 +518,7 @@ describe('req body（v1.6.0-stage-132 / T2）', () => {
     expect(readBody()).toBe(before);
   });
 
-  // ═══ 13. --text 多行保真（v1.7.0 / REQ-064 A64.4） ═══
+  // ═══ 13. --text 多行保真（v1.6.1 / REQ-064 A64.4） ═══
 
   it('--text 多行原样落盘：首尾空行 / ### 子标题 / 列表行 / --- 分隔线逐字相等', async () => {
     await createRequirement();
